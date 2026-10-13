@@ -7,7 +7,8 @@ import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
 import { UsernameField } from '../components/UsernameField'
 import { USERNAME, suggestFrom } from '../lib/username'
-import { ACCESSORIES, BEARDS, BODIES, DEFAULT_LOOK, EYE_COLORS, HAIR_COLORS, HAIRS, OUTFIT_COLORS, OUTFITS, PATTERNS, SKIN_TONES, WAX_OUTFITS, randomLook, type Choice } from '../avatar/options'
+import { ACCESSORIES, ACCESSORY_COLORS, BEARDS, BODIES, BOTTOM_COLORS, DEFAULT_LOOK, EYE_COLORS, HAIR_COLORS, HAIRS, HEIGHT_RANGE, OUTFIT_COLORS, OUTFIT_DEFAULT_COLOR, OUTFITS, PATTERNS, SHOE_COLORS, SKIN_TONES, WAX_OUTFITS, defaultColors, metres, randomLook, scaleFor, type Choice } from '../avatar/options'
+import { ColorPicker } from '../components/ColorPicker'
 import { Stage, type Focus } from '../avatar/Stage'
 import { Portrait, type Framing } from '../avatar/portrait'
 import { waxTexture } from '../avatar/textures'
@@ -35,7 +36,7 @@ const TRAIT_COLORS: [string, string][] = [['#ff8a65', '#ff3d57'], ['#64b5ff', '#
 const FIRST = { femme: ['Awa', 'Aya', 'Mariam', 'Adjoua', 'Fatou', 'Akissi', 'Ruth', 'Affoué'], homme: ['Kouadio', 'Yao', 'Moussa', 'Koffi', 'Serge', 'Ibrahim', 'Didier', 'Konan'] }
 const LAST = ['Koné', 'Kouassi', 'Traoré', 'Yao', 'Ouattara', 'Bamba', "N'Guessan", 'Diabaté', 'Coulibaly', 'Touré', 'Kouamé']
 const pick = <T,>(a: readonly T[]) => a[Math.floor(Math.random() * a.length)]
-const metres = (h: number, femme: boolean) => `${((femme ? 1.65 : 1.76) * h).toFixed(2).replace('.', ',')} m`
+const showMetres = (m: number) => `${m.toFixed(2).replace('.', ',')} m`
 
 export function CreateSim() {
   const world = useWorld((s) => s.world)
@@ -69,6 +70,8 @@ export function CreateSim() {
   const femme = sim.gender === 'femme'
   const valid = sim.firstName.trim() && sim.lastName.trim() && sim.traits.length > 0 && (!needsUsername || USERNAME.test(username))
   const current = STEPS[step]
+  const height = metres(sim.look.height, sim.gender)
+  const defaults = defaultColors(sim.look, femme)
   const last = step === STEPS.length - 1
 
   function randomize() {
@@ -186,16 +189,25 @@ export function CreateSim() {
           {current.id === 'body' && (
             <div className="space-y-5">
               <Section title="Teint">
-                <Swatches colors={SKIN_TONES} value={sim.look.skin} onChange={(skin) => setLook({ skin })} big />
+                <ColorPicker label="Teint" presets={SKIN_TONES} value={sim.look.skin} onChange={(skin) => setLook({ skin })} big />
               </Section>
               <Section title="Silhouette">
                 <Options choices={BODIES} value={sim.look.body} onPick={(body) => setLook({ body })} look={sim.look} gender={sim.gender} field="body" framing="full" />
               </Section>
-              <Section title="Taille" right={<Chip tone="gold">{metres(sim.look.height, femme)}</Chip>}>
-                <input type="range" min={0.92} max={1.08} step={0.01} value={sim.look.height} onChange={(e) => setLook({ height: Number(e.target.value) })} className="w-full accent-[var(--color-orange)]" aria-label="Taille" />
+              <Section title="Taille" right={<Chip tone="gold">{showMetres(height)}</Chip>}>
+                <input
+                  type="range"
+                  min={HEIGHT_RANGE.min}
+                  max={HEIGHT_RANGE.max}
+                  step={0.01}
+                  value={height}
+                  onChange={(e) => setLook({ height: Math.round(scaleFor(Number(e.target.value), sim.gender) * 1000) / 1000 })}
+                  className="w-full accent-[var(--color-orange)]"
+                  aria-label="Taille"
+                />
                 <div className="flex justify-between text-xs font-extrabold text-[var(--color-ink-soft)]">
-                  <span>Petit·e</span>
-                  <span>Grand·e</span>
+                  <span>{showMetres(HEIGHT_RANGE.min)}</span>
+                  <span>{showMetres(HEIGHT_RANGE.max)}</span>
                 </div>
               </Section>
             </div>
@@ -204,7 +216,7 @@ export function CreateSim() {
           {current.id === 'face' && (
             <div className="space-y-5">
               <Section title="Couleur des yeux">
-                <Swatches colors={EYE_COLORS} value={sim.look.eyes} onChange={(eyes) => setLook({ eyes })} />
+                <ColorPicker label="Yeux" presets={EYE_COLORS} value={sim.look.eyes} onChange={(eyes) => setLook({ eyes })} />
               </Section>
               {!femme && (
                 <Section title="Barbe">
@@ -214,6 +226,11 @@ export function CreateSim() {
               <Section title="Accessoire" icon={Glasses}>
                 <Options choices={ACCESSORIES} value={sim.look.accessory} onPick={(accessory) => setLook({ accessory })} look={sim.look} gender={sim.gender} field="accessory" framing="head" />
               </Section>
+              {sim.look.accessory !== 'none' && (
+                <Section title="Couleur de l'accessoire">
+                  <ColorPicker label="Accessoire" presets={ACCESSORY_COLORS} auto={defaults.accessory} value={sim.look.accessoryColor} onChange={(accessoryColor) => setLook({ accessoryColor })} />
+                </Section>
+              )}
             </div>
           )}
 
@@ -223,7 +240,7 @@ export function CreateSim() {
                 <Options choices={HAIRS} value={sim.look.hair} onPick={(hair) => setLook({ hair })} look={sim.look} gender={sim.gender} field="hair" framing="head" />
               </Section>
               <Section title="Couleur">
-                <Swatches colors={HAIR_COLORS} value={sim.look.hairColor} onChange={(hairColor) => setLook({ hairColor })} />
+                <ColorPicker label="Cheveux" presets={HAIR_COLORS} value={sim.look.hairColor} onChange={(hairColor) => setLook({ hairColor })} />
               </Section>
             </div>
           )}
@@ -231,7 +248,7 @@ export function CreateSim() {
           {current.id === 'outfit' && (
             <div className="space-y-5">
               <Section title="Style">
-                <Options choices={OUTFITS.filter((o) => femme || o.id !== 'robe')} value={sim.look.outfit} onPick={(outfit) => setLook({ outfit })} look={sim.look} gender={sim.gender} field="outfit" framing="full" />
+                <Options choices={OUTFITS.filter((o) => femme || o.id !== 'robe')} value={sim.look.outfit} onPick={(outfit) => setLook({ outfit, ...(OUTFIT_DEFAULT_COLOR[outfit] && { outfitColor: OUTFIT_DEFAULT_COLOR[outfit] }) })} look={sim.look} gender={sim.gender} field="outfit" framing="full" />
               </Section>
               {(WAX_OUTFITS.has(sim.look.outfit) || sim.look.hair === 'headwrap') && (
                 <Section title="Motif du pagne">
@@ -245,11 +262,17 @@ export function CreateSim() {
                   </div>
                 </Section>
               )}
-              {sim.look.outfit !== 'jersey' && (
-                <Section title={sim.look.outfit === 'suit' ? 'Couleur de la cravate' : 'Couleur'}>
-                  <Swatches colors={OUTFIT_COLORS} value={sim.look.outfitColor} onChange={(outfitColor) => setLook({ outfitColor })} />
+              <Section title={WAX_OUTFITS.has(sim.look.outfit) ? 'Couleur du pagne' : 'Couleur du haut'}>
+                <ColorPicker label="Haut" presets={OUTFIT_COLORS} value={sim.look.outfitColor} onChange={(outfitColor) => setLook({ outfitColor })} />
+              </Section>
+              {sim.look.outfit !== 'robe' && (
+                <Section title={sim.look.outfit === 'pagne' && femme ? 'Couleur de la jupe' : 'Couleur du bas'}>
+                  <ColorPicker label="Bas" presets={BOTTOM_COLORS} auto={defaults.bottom} value={sim.look.bottomColor} onChange={(bottomColor) => setLook({ bottomColor })} />
                 </Section>
               )}
+              <Section title="Couleur des chaussures">
+                <ColorPicker label="Chaussures" presets={SHOE_COLORS} auto={defaults.shoe} value={sim.look.shoeColor} onChange={(shoeColor) => setLook({ shoeColor })} />
+              </Section>
             </div>
           )}
 
@@ -396,24 +419,6 @@ function Options({ choices, value, onPick, look, gender, field, framing }: { cho
           </span>
           <span className="px-1 text-center text-[11px] leading-tight font-extrabold">{c.label}</span>
         </button>
-      ))}
-    </div>
-  )
-}
-
-function Swatches({ colors, value, onChange, big }: { colors: string[]; value: string; onChange: (c: string) => void; big?: boolean }) {
-  return (
-    <div className="flex flex-wrap gap-2.5">
-      {colors.map((c) => (
-        <button
-          key={c}
-          type="button"
-          aria-label={c}
-          aria-pressed={value === c}
-          onClick={() => onChange(c)}
-          className={`rounded-full transition ${big ? 'h-12 w-12' : 'h-10 w-10'} ${value === c ? 'scale-110 ring-4 ring-[var(--color-orange)] ring-offset-2' : 'ring-1 ring-black/10'}`}
-          style={{ background: `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.35), transparent 45%), ${c}` }}
-        />
       ))}
     </div>
   )

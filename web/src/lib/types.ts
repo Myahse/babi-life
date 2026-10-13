@@ -57,6 +57,10 @@ export type Look = {
   beard?: string
   accessory?: string
   pattern?: string
+  // Per-part colours; empty means the outfit's own colour.
+  bottomColor?: string
+  shoeColor?: string
+  accessoryColor?: string
 }
 
 export type Sim = {

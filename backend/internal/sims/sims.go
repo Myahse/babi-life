@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -40,6 +41,37 @@ type Look struct {
 	Beard     string  `json:"beard,omitempty"`
 	Accessory string  `json:"accessory,omitempty"`
 	Pattern   string  `json:"pattern,omitempty"`
+	// Per-part colours; empty means the outfit's own colour.
+	BottomColor    string `json:"bottomColor,omitempty"`
+	ShoeColor      string `json:"shoeColor,omitempty"`
+	AccessoryColor string `json:"accessoryColor,omitempty"`
+}
+
+var hexColor = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
+
+// Heights the creator allows, in metres, and the model's height at scale 1.
+const (
+	MinHeight = 1.40
+	MaxHeight = 2.50
+)
+
+func baseHeight(gender string) float64 {
+	if gender == "homme" {
+		return 1.76
+	}
+	return 1.65
+}
+
+func (l Look) validate(gender string) error {
+	if m := l.Height * baseHeight(gender); l.Height != 0 && (m < MinHeight-0.005 || m > MaxHeight+0.005) {
+		return errors.New("taille invalide : entre 1,40 m et 2,50 m")
+	}
+	for _, c := range []string{l.Skin, l.HairColor, l.OutfitColor, l.Eyes, l.BottomColor, l.ShoeColor, l.AccessoryColor} {
+		if c != "" && !hexColor.MatchString(c) {
+			return errors.New("couleur invalide")
+		}
+	}
+	return nil
 }
 
 type Sim struct {
@@ -163,8 +195,8 @@ func (req *createRequest) validate() error {
 		return errors.New("genre invalide")
 	case req.Look.Skin == "" || req.Look.Hair == "" || req.Look.Outfit == "":
 		return errors.New("apparence incomplète")
-	case req.Look.Height != 0 && (req.Look.Height < 0.85 || req.Look.Height > 1.15):
-		return errors.New("taille invalide")
+	case req.Look.validate(req.Gender) != nil:
+		return req.Look.validate(req.Gender)
 	case len(req.Traits) == 0 || len(req.Traits) > game.MaxTraits:
 		return fmt.Errorf("choisis entre 1 et %d traits", game.MaxTraits)
 	case !game.ValidOption(game.Aspirations, req.Aspiration):

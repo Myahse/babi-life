@@ -74,7 +74,20 @@ export const DEFAULT_LOOK: Look = {
   beard: 'none',
   accessory: 'earrings',
   pattern: 'cercles',
+  bottomColor: '',
+  shoeColor: '',
+  accessoryColor: '',
 }
+
+/** The model's height at scale 1, in metres. */
+export const BASE_HEIGHT = { femme: 1.65, homme: 1.76 }
+/** What the creator allows, in metres. */
+export const HEIGHT_RANGE = { min: 1.4, max: 2.5 }
+export const metres = (scale: number, gender: 'femme' | 'homme') => BASE_HEIGHT[gender] * scale
+export const scaleFor = (m: number, gender: 'femme' | 'homme') => m / BASE_HEIGHT[gender]
+
+/** Colours an outfit starts with when it's picked: the kit of the Éléphants is orange. */
+export const OUTFIT_DEFAULT_COLOR: Record<string, string> = { jersey: '#ff8200', suit: '#1f2a44' }
 
 /** Sims made before the creator grew: fill the new fields. */
 export function fullLook(look: Look): Required<Look> {
@@ -90,17 +103,37 @@ export function randomLook(gender: 'femme' | 'homme', random: () => number = Mat
   const femme = gender === 'femme'
   const hairs = femme ? ['braids', 'afro', 'bun', 'weave', 'headwrap', 'locks', 'short'] : ['short', 'bald', 'afro', 'locks', 'short']
   const outfits = femme ? ['pagne', 'boubou', 'casual', 'robe', 'jersey'] : ['pagne', 'boubou', 'casual', 'suit', 'jersey']
+  const outfit = pick(outfits)
   return {
     skin: pick(SKIN_TONES.slice(2)),
     hair: pick(hairs),
     hairColor: random() < 0.75 ? HAIR_COLORS[0] : pick(HAIR_COLORS),
-    outfit: pick(outfits),
-    outfitColor: pick(OUTFIT_COLORS),
+    outfit,
+    outfitColor: OUTFIT_DEFAULT_COLOR[outfit] ?? pick(OUTFIT_COLORS),
     body: pick(BODIES).id,
     height: Math.round((0.94 + random() * 0.12) * 100) / 100,
     eyes: pick(EYE_COLORS.slice(0, 3)),
     beard: femme ? 'none' : pick(BEARDS).id,
     accessory: femme ? pick(['earrings', 'earrings', 'glasses', 'chain', 'none']) : pick(['none', 'chain', 'glasses', 'cap']),
     pattern: pick(PATTERNS).id,
+    bottomColor: '',
+    shoeColor: '',
+    accessoryColor: '',
+  }
+}
+
+export const BOTTOM_COLORS = ['#3d64a8', '#2b2f45', '#141416', '#f4efe6', '#8a5a2b', '#4f6b3a', '#b02e0c']
+export const SHOE_COLORS = ['#f4f4f4', '#141416', '#6b4423', '#8a5a2b', '#e8d9b5', '#ff7a00', '#2a6cf0']
+export const ACCESSORY_COLORS = ['#e8b93c', '#d8d8de', '#17171a', '#b02e0c', '#2a6cf0', '#00a862']
+
+/** The colours an outfit's parts have when the player hasn't picked one. */
+export function defaultColors(l: Required<Look>, femme: boolean) {
+  const bottom: Record<string, string> = { pagne: femme ? l.outfitColor : '#2b2f45', jersey: '#f8f9fa', casual: '#3d64a8' }
+  const shoe: Record<string, string> = { pagne: femme ? '#8a5a2b' : '#6b4423', boubou: '#e8d9b5', robe: '#1c1c22', suit: '#141416', jersey: '#141416', casual: '#f4f4f4' }
+  const outfit = l.outfit === 'robe' && !femme ? 'casual' : l.outfit
+  return {
+    bottom: bottom[outfit] ?? l.outfitColor,
+    shoe: shoe[outfit] ?? '#f4f4f4',
+    accessory: l.accessory === 'glasses' ? '#17171a' : l.accessory === 'cap' ? (l.outfitColor === '#f4efe6' ? '#14213d' : l.outfitColor) : '#e8b93c',
   }
 }

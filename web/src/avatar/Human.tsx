@@ -1,14 +1,19 @@
 import { createContext, useContext, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import type { Look, Sim } from '../lib/types'
-import { fullLook } from './options'
+import { defaultColors, fullLook } from './options'
 import { tint, waxTexture } from './textures'
 
 // A stylised cartoon Sim with human proportions (about six heads tall): soft
-// rounded shapes, toon shading and an expressive face. Built from primitives
-// so every skin × body × hair × outfit combination works without art assets.
-// Units are metres: feet on y=0, facing +Z.
+// rounded shapes, toon shading and an expressive face. Built from generated
+// geometry so every skin × body × hair × outfit × colour combination works
+// without art assets. Units are metres: feet on y=0, facing +Z.
+//
+// The head is one smooth surface; hair and beards are shells laid over it that
+// follow a hairline and fade into the skin, so there are no blobs or seams.
+// The torso is one surface too, with the waist seam where clothes really have one.
 
 export type Pose = 'idle' | 'walk' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer'
 
@@ -35,6 +40,9 @@ const limb = (r0: number, r1: number, len: number) =>
     }
     return new THREE.LatheGeometry(pts, 20)
   })
+/** A thin arc centred on +Y (brows, lash lines, moustache). */
+const arc = (r: number, tube: number, span: number) =>
+  geo(`arc${r}|${tube}|${span}`, () => new THREE.TorusGeometry(r, tube, 8, 24, span).rotateZ(Math.PI / 2 - span / 2))
 
 let gradient: THREE.DataTexture | null = null
 function toonRamp() {
@@ -68,16 +76,22 @@ const flat = (color: string) => {
   if (!m) matCache.set(key, (m = new THREE.MeshBasicMaterial({ color })))
   return m
 }
+const wax = (color: string, pattern: string) => mat('#fff', { map: waxTexture(color, pattern) })
 
 type V3 = [number, number, number]
+type Mat = THREE.Material | THREE.Material[]
 const Shadows = createContext(true)
 /** Wrap crowds in this: background Sims don't need to cast shadows. */
 export const NoShadows = ({ children }: { children: React.ReactNode }) => <Shadows.Provider value={false}>{children}</Shadows.Provider>
 
-function Part({ g, m, p, s, r }: { g: THREE.BufferGeometry; m: THREE.Material; p?: V3; s?: V3 | number; r?: V3 }) {
+function Part({ g, m, p, s, r }: { g: THREE.BufferGeometry; m: Mat; p?: V3; s?: V3 | number; r?: V3 }) {
   return <mesh geometry={g} material={m} position={p} scale={s} rotation={r} castShadow={useContext(Shadows)} />
 }
 const Blob = ({ m, p, r, rot }: { m: THREE.Material; p: V3; r: V3; rot?: V3 }) => <Part g={SPHERE()} m={m} p={p} s={r} r={rot} />
+const smooth = (a: number, b: number, x: number) => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)))
+  return t * t * (3 - 2 * t)
+}
 
 /* ---------- Proportions ---------- */
 
@@ -96,16 +110,223 @@ const UPPER_ARM = 0.25
 const FOREARM = 0.23
 const HEAD_Y = 1.5
 const HEAD: V3 = [0.122, 0.138, 0.124] // head radii
+const WAIST_Y = 0.99 // where tops end and trousers begin
 
-function torsoGeometry(femme: boolean, w: number, belly: number) {
-  return geo(`torso${femme}|${w}|${belly}`, () => {
-    // (radius, height) from the crotch up to the base of the neck.
-    const male: [number, number][] = [[0.001, 0.79], [0.12, 0.8], [0.155, 0.86], [0.16, 0.93], [0.15 + belly, 1.0], [0.152 + belly, 1.08], [0.165, 1.16], [0.172, 1.23], [0.16, 1.285], [0.11, 1.33], [0.05, 1.36], [0.001, 1.365]]
-    const female: [number, number][] = [[0.001, 0.79], [0.13, 0.8], [0.172, 0.86], [0.168, 0.93], [0.128 + belly, 1.02], [0.132 + belly, 1.08], [0.155, 1.15], [0.16, 1.2], [0.145, 1.265], [0.1, 1.315], [0.048, 1.35], [0.001, 1.355]]
-    // A smooth curve through the profile, so toon shading doesn't band.
-    const curve = new THREE.SplineCurve((femme ? female : male).map(([r, y]) => new THREE.Vector2(r * w, y)))
-    const g = new THREE.LatheGeometry(curve.getPoints(48), 36)
-    g.scale(1, 1, 0.7)
+/* ---------- Head: one surface, with shells for hair and beards ---------- */
+
+/** The head's shape for a unit direction: an egg that narrows to a soft jaw. */
+const JAW = 0.14
+const CHIN = 1.05 // the lower half is a little longer than the top
+function headPoint(ux: number, uy: number, uz: number, out: THREE.Vector3) {
+  const low = Math.max(0, -uy)
+  return out.set(ux * HEAD[0] * (1 - JAW * low * low), uy * HEAD[1] * (uy < 0 ? CHIN : 1), uz * HEAD[2] * (1 - 0.06 * low * low))
+}
+
+/** Depth of the face's surface at (x, y), to sit features right on it. */
+function faceZ(x: number, y: number) {
+  const uy = y / (HEAD[1] * (y < 0 ? CHIN : 1))
+  const low = Math.max(0, -uy)
+  const ux = x / (HEAD[0] * (1 - JAW * low * low))
+  return Math.sqrt(Math.max(0, 1 - ux * ux - uy * uy)) * HEAD[2] * (1 - 0.06 * low * low)
+}
+
+/**
+ * A surface over the head, lifted by thickness(direction) metres. Where the
+ * thickness is negative it sinks under the skin, so the edge of the hair or
+ * beard fades in instead of ending on a hard rim.
+ */
+function headShell(key: string, thickness: (ux: number, uy: number, uz: number) => number) {
+  return geo(`shell-${key}`, () => {
+    let g: THREE.BufferGeometry = new THREE.SphereGeometry(1, 96, 64)
+    g.deleteAttribute('uv')
+    g.deleteAttribute('normal')
+    g = mergeVertices(g)
+    const pos = g.attributes.position
+    const v = new THREE.Vector3()
+    const shown: boolean[] = []
+    for (let i = 0; i < pos.count; i++) {
+      const [ux, uy, uz] = [pos.getX(i), pos.getY(i), pos.getZ(i)]
+      const t = thickness(ux, uy, uz)
+      headPoint(ux, uy, uz, v).add(new THREE.Vector3(ux, uy, uz).multiplyScalar(t))
+      pos.setXYZ(i, v.x, v.y, v.z)
+      shown[i] = t > -0.0025
+    }
+    const idx = g.index!
+    const keep: number[] = []
+    for (let i = 0; i < idx.count; i += 3) {
+      const [a, b, c] = [idx.getX(i), idx.getX(i + 1), idx.getX(i + 2)]
+      if (shown[a] || shown[b] || shown[c]) keep.push(a, b, c)
+    }
+    g.setIndex(keep)
+    g.computeVertexNormals()
+    return g
+  })
+}
+
+/** Hairline height (unit-sphere y) at an azimuth: high on the forehead, low at the nape. */
+function hairline(az: number, front: number, side: number, back: number) {
+  const c = Math.cos(az)
+  return c >= 0 ? side + (front - side) * c : side + (side - back) * c
+}
+
+/**
+ * Hair laid over the scalp. The mesh starts exactly on the hairline, so its
+ * edge is a clean curve; it thickens as it goes up.
+ */
+const hairShell = (key: string, depth: number, front = 0.52, side = 0.16, back = -0.55) =>
+  geo(`hair-${key}`, () => {
+    const N = 96
+    const M = 28
+    const pos: number[] = []
+    const index: number[] = []
+    const v = new THREE.Vector3()
+    for (let i = 0; i <= M; i++) {
+      const f = i / M
+      for (let j = 0; j <= N; j++) {
+        const az = (j / N) * Math.PI * 2
+        const h = hairline(az, front, side, back)
+        const uy = h + (1 - h) * f
+        const hr = Math.sqrt(Math.max(0, 1 - uy * uy))
+        const [ux, uz] = [Math.sin(az) * hr, Math.cos(az) * hr]
+        const t = 0.0012 + depth * smooth(0, 0.16, uy - h)
+        headPoint(ux, uy, uz, v).add(new THREE.Vector3(ux, uy, uz).multiplyScalar(t))
+        pos.push(v.x, v.y, v.z)
+      }
+    }
+    for (let i = 0; i < M; i++)
+      for (let j = 0; j < N; j++) {
+        const a = i * (N + 1) + j
+        const c = a + N + 1
+        index.push(a, a + 1, c, a + 1, c + 1, c)
+      }
+    let g: THREE.BufferGeometry = new THREE.BufferGeometry()
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+    g.setIndex(index)
+    g = mergeVertices(g)
+    g.computeVertexNormals()
+    return g
+  })
+
+/* ---------- Torso: one lathe-like surface with an elliptic section ---------- */
+
+// [height, half-width, half-depth, extra forward (chest, bust, belly)]
+type Row = [number, number, number, number]
+const TORSO: Record<'homme' | 'femme', Row[]> = {
+  homme: [
+    [0.79, 0.001, 0.001, 0], [0.8, 0.12, 0.088, 0], [0.86, 0.155, 0.105, 0], [0.93, 0.16, 0.106, 0], [1.0, 0.15, 0.104, 0], [1.08, 0.152, 0.108, 0.004],
+    [1.16, 0.165, 0.112, 0.01], [1.23, 0.178, 0.11, 0.006], [1.27, 0.19, 0.098, 0], [1.305, 0.165, 0.082, 0], [1.34, 0.09, 0.06, 0], [1.362, 0.001, 0.001, 0],
+  ],
+  femme: [
+    [0.79, 0.001, 0.001, 0], [0.8, 0.13, 0.092, 0], [0.86, 0.172, 0.112, 0], [0.93, 0.166, 0.106, 0], [1.02, 0.128, 0.09, 0], [1.08, 0.132, 0.096, 0.004],
+    [1.15, 0.15, 0.104, 0.03], [1.2, 0.162, 0.104, 0.018], [1.245, 0.17, 0.092, 0], [1.285, 0.15, 0.076, 0], [1.325, 0.085, 0.056, 0], [1.352, 0.001, 0.001, 0],
+  ],
+}
+
+type Ring = { y: number; rx: number; rz: number; fz: number }
+const ringCache = new Map<string, Ring[]>()
+function torsoRings(femme: boolean, w: number, belly: number): Ring[] {
+  const key = `${femme}|${w}|${belly}`
+  let rings = ringCache.get(key)
+  if (!rings) ringCache.set(key, (rings = makeRings(femme, w, belly)))
+  return rings
+}
+function makeRings(femme: boolean, w: number, belly: number): Ring[] {
+  const rows = TORSO[femme ? 'femme' : 'homme'].map(([y, rx, rz, fz]) => {
+    const b = y >= 0.98 && y <= 1.09 ? belly : 0
+    return { y, rx: (rx + b * 0.6) * w, rz: (rz + b * 0.4) * w, fz: (fz + b) * w }
+  })
+  // A smooth curve through the rows, so toon shading doesn't band.
+  const curve = new THREE.CatmullRomCurve3(rows.map((r) => new THREE.Vector3(r.rx, r.y, r.rz)))
+  const fz = new THREE.CatmullRomCurve3(rows.map((r) => new THREE.Vector3(r.fz, r.y, 0)))
+  const a = curve.getPoints(72)
+  const b = fz.getPoints(72)
+  return a.map((p, i) => ({ y: p.y, rx: Math.max(0.001, p.x), rz: Math.max(0.001, p.z), fz: Math.max(0, b[i].x) }))
+}
+
+/** The torso's half-width and half-depth at height y. */
+function torsoAt(femme: boolean, w: number, belly: number, y: number) {
+  const rings = torsoRings(femme, w, belly)
+  const i = Math.max(1, rings.findIndex((r) => r.y >= y))
+  const [a, b] = [rings[i - 1], rings[i]]
+  const t = (y - a.y) / (b.y - a.y || 1)
+  const [rz, fz] = [a.rz + (b.rz - a.rz) * t, a.fz + (b.fz - a.fz) * t]
+  return { rx: a.rx + (b.rx - a.rx) * t, rz: rz + fz * 0.5, front: rz + fz }
+}
+
+/** Material 0 below the waist, material 1 above it. */
+function torsoGeometry(femme: boolean, w: number, belly: number, waist: number) {
+  return geo(`torso${femme}|${w}|${belly}|${waist}`, () => {
+    const rings = torsoRings(femme, w, belly)
+    const N = 40
+    const pos: number[] = []
+    const uv: number[] = []
+    const index: number[] = []
+    rings.forEach((r, i) => {
+      for (let j = 0; j <= N; j++) {
+        const a = (j / N) * Math.PI * 2
+        const c = Math.cos(a)
+        pos.push(r.rx * Math.sin(a), r.y, r.rz * c + r.fz * Math.max(0, c) ** 2)
+        uv.push(j / N, i / (rings.length - 1))
+      }
+    })
+    let split = 0
+    for (let i = 0; i < rings.length - 1; i++) {
+      if (rings[i].y < waist) split = index.length + 6 * N
+      for (let j = 0; j < N; j++) {
+        const a = i * (N + 1) + j
+        const c = a + N + 1
+        index.push(a, a + 1, c, a + 1, c + 1, c)
+      }
+    }
+    const g = new THREE.BufferGeometry()
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2))
+    g.setIndex(index)
+    g.addGroup(0, split, 0)
+    g.addGroup(split, index.length - split, 1)
+    g.computeVertexNormals()
+    // The first and last column are the same points: give them one normal.
+    const n = g.attributes.normal
+    for (let i = 0; i < rings.length; i++) {
+      const [a, b] = [i * (N + 1), i * (N + 1) + N]
+      const v = new THREE.Vector3(n.getX(a) + n.getX(b), n.getY(a) + n.getY(b), n.getZ(a) + n.getZ(b)).normalize()
+      n.setXYZ(a, v.x, v.y, v.z)
+      n.setXYZ(b, v.x, v.y, v.z)
+    }
+    return g
+  })
+}
+
+/** A band hugging the torso at height y (belts, waistbands). */
+function bandGeometry(femme: boolean, w: number, belly: number, y: number, tube: number, out = 1.02) {
+  return geo(`band${femme}|${w}|${belly}|${y}|${tube}|${out}`, () => {
+    const rings = torsoRings(femme, w, belly)
+    const i = Math.max(1, rings.findIndex((r) => r.y >= y))
+    const [a, b] = [rings[i - 1], rings[i]]
+    const t = (y - a.y) / (b.y - a.y || 1)
+    const [rx, rz, fz] = [a.rx + (b.rx - a.rx) * t, a.rz + (b.rz - a.rz) * t, a.fz + (b.fz - a.fz) * t]
+    const pts = [...Array(48)].map((_, j) => {
+      const an = (j / 48) * Math.PI * 2
+      const c = Math.cos(an)
+      return new THREE.Vector3(rx * out * Math.sin(an), y, (rz * c + fz * Math.max(0, c) ** 2) * out)
+    })
+    const g = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true), 96, tube, 8, true)
+    g.scale(1, 0.6, 1).translate(0, y * 0.4, 0)
+    return g
+  })
+}
+
+/** A skirt from the waist, over the hips, down to the hem; even rows keep the print even. */
+function skirtGeometry(femme: boolean, w: number, belly: number, hem: number, flareR: number) {
+  return geo(`skirt${femme}|${w}|${belly}|${hem}|${flareR}`, () => {
+    const waist = torsoAt(femme, w, belly, 1.0)
+    const hip = torsoAt(femme, w, belly, 0.87)
+    const hipR = Math.max(hip.rx, hip.rz / 0.75) * 1.06
+    const bottom = Math.max(flareR, hipR * 1.04)
+    const curve = new THREE.CatmullRomCurve3([new THREE.Vector3(bottom, hem, 0), new THREE.Vector3((bottom + hipR) / 2, (hem + 0.87) / 2, 0), new THREE.Vector3(hipR, 0.87, 0), new THREE.Vector3(waist.rx * 1.03, 1.0, 0)])
+    const pts = [new THREE.Vector2(bottom * 0.94, hem + 0.012), ...curve.getPoints(24).map((p) => new THREE.Vector2(p.x, p.y))]
+    const g = new THREE.LatheGeometry(pts, 40)
+    g.scale(1, 1, 0.75)
     return g
   })
 }
@@ -113,138 +334,185 @@ function torsoGeometry(femme: boolean, w: number, belly: number) {
 /** A flared tube (skirt, robe), drawn bottom → top so it faces outwards. */
 function flare(top: number, bottom: number, yTop: number, yBottom: number, depth = 0.8) {
   return geo(`flare${top}|${bottom}|${yTop}|${yBottom}|${depth}`, () => {
-    const pts = [new THREE.Vector2(bottom, yBottom), new THREE.Vector2(bottom * 0.97, yBottom + 0.04), new THREE.Vector2((top + bottom) / 2 + 0.012, (yTop + yBottom) / 2), new THREE.Vector2(top, yTop)]
-    const g = new THREE.LatheGeometry(pts, 32)
+    const pts = [new THREE.Vector2(bottom * 0.94, yBottom + 0.012), new THREE.Vector2(bottom, yBottom), new THREE.Vector2(bottom * 0.97, yBottom + 0.04), new THREE.Vector2((top + bottom) / 2 + 0.012, (yTop + yBottom) / 2), new THREE.Vector2(top, yTop)]
+    const g = new THREE.LatheGeometry(pts, 40)
     g.scale(1, 1, depth)
     return g
   })
 }
 
+/** A short sleeve: a dome over the shoulder, a fitted tube and a turned hem. */
+const shortSleeve = (r: number, len: number) =>
+  geo(`sleeve${r}|${len}`, () => {
+    const pts = [
+      [r * 0.8, -len + 0.008], [r * 0.98, -len], [r, -len * 0.55], [r * 1.02, -len * 0.15], [r * 1.0, 0.012], [r * 0.75, r * 0.66], [0.001, r * 0.92],
+    ].map(([x, y]) => new THREE.Vector2(x, y))
+    return new THREE.LatheGeometry(pts, 24)
+  })
+
 /* ---------- Outfits ---------- */
 
 type Shoe = { color: string; kind: 'sneaker' | 'dress' | 'sandal' | 'boot' | 'heel' }
+type Body = { femme: boolean; w: number; belly: number }
 type Dress = {
   top: THREE.Material
-  sleeve: THREE.Material | null // upper arm; null = bare
-  forearm: THREE.Material | null // null = bare
-  thigh: THREE.Material | null
+  bottom: THREE.Material // trousers, or the skirt's fabric
+  sleeve: 'none' | 'short' | 'long' | 'bell'
+  thigh: THREE.Material | null // null = bare
   shin: THREE.Material | null
   shoe: Shoe
-  skirt?: { m: THREE.Material; hem: number; r: number }
+  skirt?: { m: THREE.Material; hem: number; r: number; band?: THREE.Material }
   robe?: THREE.Material
-  bell?: boolean // wide boubou sleeves
-  extra?: (w: number) => React.ReactNode
+  belt?: THREE.Material
+  extra?: (b: Body) => React.ReactNode
 }
 
 function dressFor(l: Required<Look>, femme: boolean): Dress {
-  const wax = mat('#fff', { map: waxTexture(l.outfitColor, l.pattern) })
-  const solid = mat(l.outfitColor)
-  const dark = mat('#2b2f45')
+  const top = l.outfitColor
+  const dc = defaultColors(l, femme)
+  const shoe = (kind: Shoe['kind']): Shoe => ({ color: l.shoeColor || dc.shoe, kind })
   switch (l.outfit) {
-    case 'pagne':
-      return femme
-        ? { top: wax, sleeve: wax, forearm: null, thigh: null, shin: null, shoe: { color: '#8a5a2b', kind: 'sandal' }, skirt: { m: wax, hem: 0.07, r: 0.2 }, extra: (w) => <Blob m={wax} p={[0.11 * w, 0.95, 0.09 * w]} r={[0.035, 0.03, 0.02]} /> }
-        : { top: wax, sleeve: wax, forearm: null, thigh: dark, shin: dark, shoe: { color: '#6b4423', kind: 'dress' } }
+    case 'pagne': {
+      const print = wax(top, l.pattern)
+      if (!femme) {
+        const trousers = mat(l.bottomColor || dc.bottom)
+        return { top: print, bottom: trousers, sleeve: 'short', thigh: trousers, shin: trousers, shoe: shoe('dress') }
+      }
+      const skirt = l.bottomColor ? wax(l.bottomColor, l.pattern) : print
+      return {
+        top: print,
+        bottom: skirt,
+        sleeve: 'short',
+        thigh: null,
+        shin: null,
+        shoe: shoe('sandal'),
+        skirt: { m: skirt, hem: 0.07, r: 0.2, band: mat(tint(l.bottomColor || top, -0.3)) },
+        // The knot of the pagne at the hip.
+        extra: (b) => {
+          const { rx, rz } = torsoAt(b.femme, b.w, b.belly, 1.0)
+          return (
+            <group position={[rx * 0.55, 0.99, rz * 0.9]}>
+              <Blob m={skirt} p={[0, 0, 0]} r={[0.026, 0.022, 0.018]} />
+              <Blob m={skirt} p={[0.008, -0.04, 0.004]} r={[0.016, 0.04, 0.01]} rot={[0, 0, 0.25]} />
+            </group>
+          )
+        },
+      }
+    }
     case 'boubou': {
-      const fabric = mat(l.outfitColor, { double: true })
+      const fabric = mat(top, { double: true })
       const gold = mat('#e8b93c', { shine: true })
+      const trousers = mat(l.bottomColor || dc.bottom)
       return {
         top: fabric,
-        sleeve: fabric,
-        forearm: null,
-        thigh: fabric,
-        shin: fabric,
-        shoe: { color: '#e8d9b5', kind: 'sandal' },
+        bottom: trousers,
+        sleeve: 'bell',
+        thigh: trousers,
+        shin: trousers,
+        shoe: shoe('sandal'),
         robe: fabric,
-        bell: true,
-        extra: (w) => (
+        // Embroidery round the neck and down the chest.
+        extra: (b) => (
           <group>
-            <mesh geometry={geo('collar', () => new THREE.TorusGeometry(0.06, 0.008, 8, 28))} material={gold} position={[0, 1.33, 0.025]} rotation={[1.2, 0, 0]} scale={[w, 1, 1]} />
-            <Blob m={gold} p={[0, 1.18, 0.125 * w]} r={[0.022, 0.08, 0.008]} />
-            <Blob m={gold} p={[0, 1.08, 0.13 * w]} r={[0.05, 0.012, 0.008]} />
+            <mesh geometry={geo('collar', () => new THREE.TorusGeometry(0.06, 0.008, 8, 28))} material={gold} position={[0, 1.33, 0.025]} rotation={[1.2, 0, 0]} scale={[b.w, 1, 1]} />
+            <Blob m={gold} p={[0, 1.18, torsoAt(b.femme, b.w, b.belly, 1.18).rz + 0.018]} r={[0.022, 0.08, 0.008]} />
+            <Blob m={gold} p={[0, 1.08, torsoAt(b.femme, b.w, b.belly, 1.08).rz + 0.026]} r={[0.05, 0.012, 0.008]} />
           </group>
         ),
       }
     }
-    case 'robe':
+    case 'robe': {
       if (!femme) return dressFor({ ...l, outfit: 'casual' }, femme)
-      return { top: wax, sleeve: null, forearm: null, thigh: null, shin: null, shoe: { color: '#1c1c22', kind: 'heel' }, skirt: { m: wax, hem: 0.45, r: 0.25 } }
+      const print = wax(top, l.pattern)
+      const skirt = l.bottomColor ? wax(l.bottomColor, l.pattern) : print
+      return { top: print, bottom: skirt, sleeve: 'none', thigh: null, shin: null, shoe: shoe('heel'), skirt: { m: skirt, hem: 0.45, r: 0.25 } }
+    }
     case 'suit': {
-      const navy = mat('#1f2a44')
+      const jacket = mat(top)
+      const trousers = mat(l.bottomColor || dc.bottom)
+      const tie = mat((top === '#b02e0c' || top === '#d6336c' ? '#14213d' : '#d6336c'))
       return {
-        top: navy,
-        sleeve: navy,
-        forearm: navy,
-        thigh: navy,
-        shin: navy,
-        shoe: { color: '#141416', kind: 'dress' },
-        extra: (w) => (
-          <group>
-            <Blob m={mat('#f8f9fa')} p={[0, 1.25, 0.1 * w]} r={[0.045, 0.075, 0.03]} />
-            <Blob m={mat(l.outfitColor === '#14213d' ? '#d6336c' : l.outfitColor)} p={[0, 1.2, 0.118 * w]} r={[0.017, 0.085, 0.012]} />
-            {[-1, 1].map((s) => (
-              <Blob key={s} m={navy} p={[s * 0.05 * w, 1.24, 0.108 * w]} r={[0.02, 0.09, 0.018]} rot={[0, 0, s * 0.35]} />
-            ))}
-          </group>
-        ),
+        top: jacket,
+        bottom: trousers,
+        sleeve: 'long',
+        thigh: trousers,
+        shin: trousers,
+        shoe: shoe('dress'),
+        extra: (b) => {
+          const z = torsoAt(b.femme, b.w, b.belly, 1.22).rz
+          return (
+            <group>
+              <Blob m={mat('#f8f9fa')} p={[0, 1.255, z - 0.012]} r={[0.045, 0.07, 0.03]} />
+              <Blob m={tie} p={[0, 1.2, z + 0.004]} r={[0.016, 0.08, 0.01]} />
+              {[-1, 1].map((s) => (
+                <Blob key={s} m={jacket} p={[s * 0.052 * b.w, 1.235, z - 0.002]} r={[0.022, 0.085, 0.016]} rot={[0, 0, s * 0.35]} />
+              ))}
+            </group>
+          )
+        },
       }
     }
     case 'jersey': {
-      const orange = mat('#ff8200')
+      const shirt = mat(top)
       const green = mat('#009a44')
+      const shorts = mat(l.bottomColor || dc.bottom)
       return {
-        top: orange,
-        sleeve: orange,
-        forearm: null,
-        thigh: mat('#f8f9fa'),
+        top: shirt,
+        bottom: shorts,
+        sleeve: 'short',
+        thigh: shorts,
         shin: null,
-        shoe: { color: '#141416', kind: 'boot' },
-        extra: (w) => (
+        shoe: shoe('boot'),
+        extra: (b) => (
           <group>
-            <mesh geometry={geo('collar', () => new THREE.TorusGeometry(0.06, 0.008, 8, 28))} material={green} position={[0, 1.33, 0.025]} rotation={[1.2, 0, 0]} scale={[w, 1, 1]} />
-            <Blob m={green} p={[0, 1.13, 0.118 * w]} r={[0.03, 0.03, 0.006]} />
+            <mesh geometry={geo('collar', () => new THREE.TorusGeometry(0.06, 0.008, 8, 28))} material={green} position={[0, 1.33, 0.025]} rotation={[1.2, 0, 0]} scale={[b.w, 1, 1]} />
+            <Blob m={green} p={[0.065 * b.w, 1.2, torsoAt(b.femme, b.w, b.belly, 1.2).rz - 0.004]} r={[0.022, 0.026, 0.008]} />
           </group>
         ),
       }
     }
-    default:
-      return { top: solid, sleeve: solid, forearm: null, thigh: mat('#3d64a8'), shin: mat('#3d64a8'), shoe: { color: '#f4f4f4', kind: 'sneaker' } }
+    default: {
+      const jeans = mat(l.bottomColor || dc.bottom)
+      return { top: mat(top), bottom: jeans, sleeve: 'short', thigh: jeans, shin: jeans, shoe: shoe('sneaker'), belt: mat('#4a2f1d') }
+    }
   }
 }
 
 /* ---------- Face ---------- */
 
 function Face({ l, femme, skin }: { l: Required<Look>; femme: boolean; skin: THREE.Material }) {
-  const [rx, ry, rz] = HEAD
+  const [rx] = HEAD
   const shade = mat(tint(l.skin, -0.14))
   const lash = flat('#1a0f0a')
   const lip = mat(tint(l.skin, femme ? -0.35 : -0.28).replace(/^#(..)/, (_, r) => `#${Math.min(255, parseInt(r, 16) + 30).toString(16).padStart(2, '0')}`))
+  const blush = mat(tint(l.skin, 0.08).replace(/^#(..)/, (_, r) => `#${Math.min(255, parseInt(r, 16) + 25).toString(16).padStart(2, '0')}`))
   const brow = mat(tint(l.hairColor, -0.25))
+  const lipLine = mat(tint(l.skin, -0.5))
+  const eyeZ = faceZ(0.047, 0) - 0.008
   return (
     <group>
-      {/* Skull, jaw, ears */}
-      <Blob m={skin} p={[0, 0, 0]} r={[rx, ry, rz]} />
-      <Blob m={skin} p={[0, -0.055, 0.012]} r={[rx * 0.86, ry * 0.62, rz * 0.88]} />
+      {/* Head and ears */}
+      <Part g={headShell('head', () => 0)} m={skin} />
       {[-1, 1].map((s) => (
-        <Blob key={s} m={shade} p={[s * rx * 0.98, -0.01, -0.005]} r={[0.016, 0.03, 0.022]} />
+        <Blob key={s} m={shade} p={[s * rx * 0.96, -0.012, -0.008]} r={[0.017, 0.03, 0.022]} />
       ))}
-      {/* Eyes: white, iris, pupil, a catch-light and a lash line */}
+      {/* Eyes: white, iris, pupil, a catch-light, a lash line hugging the lid, a brow */}
       {[-1, 1].map((s) => (
-        <group key={s} position={[s * 0.047, 0.0, rz * 0.88]}>
+        <group key={s} position={[s * 0.047, 0.0, eyeZ]} rotation={[0, s * 0.3, 0]}>
           <Blob m={flat('#fbfaf7')} p={[0, 0, 0]} r={[0.027, 0.031, 0.014]} />
           <Blob m={flat(l.eyes)} p={[0, -0.002, 0.008]} r={[0.0185, 0.021, 0.008]} />
           <Blob m={flat('#080605')} p={[0, -0.002, 0.012]} r={[0.0095, 0.011, 0.005]} />
           <Blob m={flat('#ffffff')} p={[0.006 * s, 0.008, 0.016]} r={[0.0055, 0.0055, 0.003]} />
-          <Blob m={lash} p={[0, 0.026, 0.004]} r={[0.03, 0.006, 0.012]} rot={[0, 0, s * -0.06]} />
-          {femme && <Blob m={lash} p={[s * 0.028, 0.03, 0.002]} r={[0.01, 0.004, 0.006]} rot={[0, 0, s * 0.6]} />}
-          <Blob m={brow} p={[s * 0.002, 0.05, 0.004]} r={[0.026, 0.0065, 0.008]} rot={[0, 0, s * -0.14]} />
+          <Part g={arc(0.028, 0.0036, 2.3)} m={lash} p={[0, 0.001, 0.006]} s={[1, 1.1, 0.8]} />
+          {femme && <Blob m={lash} p={[s * 0.028, 0.025, 0.004]} r={[0.009, 0.0035, 0.005]} rot={[0, 0, s * 0.6]} />}
+          <Part g={arc(0.034, 0.0052, 1.4)} m={brow} p={[s * 0.003, 0.018, 0.007]} s={[1, 1, 0.6]} r={[0, 0, s * -0.12]} />
         </group>
       ))}
-      {/* Nose and a smile */}
-      <Blob m={shade} p={[0, -0.04, rz * 0.94]} r={[0.022, 0.017, 0.016]} />
-      <mesh geometry={geo('smile', () => new THREE.TorusGeometry(0.026, 0.0055, 8, 20, Math.PI))} material={lip} position={[0, -0.068, rz * 0.9]} rotation={[0.25, 0, Math.PI]} />
-      {femme && <Blob m={lip} p={[0, -0.078, rz * 0.875]} r={[0.02, 0.008, 0.008]} />}
-      {femme && [-1, 1].map((s) => <Blob key={s} m={mat(tint(l.skin, 0.08).replace(/^#(..)/, (_, r) => `#${Math.min(255, parseInt(r, 16) + 25).toString(16).padStart(2, '0')}`))} p={[s * 0.07, -0.04, rz * 0.78]} r={[0.022, 0.014, 0.01]} />)}
+      {/* Nose, smile, lips, cheeks */}
+      <Blob m={shade} p={[0, -0.04, faceZ(0, -0.04) - 0.001]} r={[0.022, 0.017, 0.016]} />
+      <Part g={arc(0.024, 0.0042, 2.2)} m={lipLine} p={[0, -0.064, faceZ(0, -0.064) + 0.001]} s={[1, 0.9, 0.5]} r={[0, 0, Math.PI]} />
+      <Blob m={lip} p={[0, -0.08, faceZ(0, -0.08) - 0.002]} r={[femme ? 0.019 : 0.015, femme ? 0.0075 : 0.005, 0.007]} />
+      {femme && [-1, 1].map((s) => <Blob key={s} m={blush} p={[s * 0.07, -0.04, faceZ(0.07, -0.04) - 0.006]} r={[0.022, 0.014, 0.01]} />)}
       <Hair l={l} />
       <Beard l={l} />
       <HeadAccessory l={l} />
@@ -254,75 +522,82 @@ function Face({ l, femme, skin }: { l: Required<Look>; femme: boolean; skin: THR
 
 function Hair({ l }: { l: Required<Look> }) {
   const [rx, ry, rz] = HEAD
-  const hair = mat(l.hairColor)
-  const cap = (
-    <mesh geometry={geo('haircap', () => new THREE.SphereGeometry(1, 32, 18, 0, Math.PI * 2, 0, Math.PI * 0.58))} material={hair} position={[0, 0.016, -0.008]} rotation={[-0.62, 0, 0]} scale={[rx * 1.06, ry * 1.06, rz * 1.06]} castShadow />
-  )
+  // Very dark hair reads as a flat hole under toon light; lift it a touch.
+  const hair = mat(tint(l.hairColor, 0.07))
+  const short = <Part g={hairShell('short', 0.011, 0.5, 0.2)} m={hair} />
   const strands = (n: number, r: number, len: number) =>
     [...Array(n)].map((_, i) => {
       const a = Math.PI + (i / (n - 1) - 0.5) * Math.PI * 1.15
-      return <Part key={i} g={limb(r, r * 0.8, len)} m={hair} p={[Math.sin(a) * rx * 0.95, 0.02, Math.cos(a) * rz * 0.95 - 0.01]} r={[Math.cos(a) * -0.18, 0, Math.sin(a) * 0.18]} />
+      return <Part key={i} g={limb(r, r * 0.8, len)} m={hair} p={[Math.sin(a) * rx * 0.97, 0.0, Math.cos(a) * rz * 0.97 - 0.01]} r={[Math.cos(a) * -0.16, 0, Math.sin(a) * 0.16]} />
     })
-  if (l.accessory === 'cap' && ['afro', 'bun', 'headwrap'].includes(l.hair)) return cap
+  if (l.accessory === 'cap' && ['afro', 'bun', 'headwrap'].includes(l.hair)) return short
   switch (l.hair) {
     case 'bald':
-      return null
+      return <Part g={hairShell('stubble', 0.0015)} m={mat(tint(l.skin, -0.22))} />
     case 'afro':
       return (
         <group>
-          {cap}
-          <mesh geometry={geo('afro', () => new THREE.IcosahedronGeometry(1, 3))} material={hair} position={[0, 0.07, -0.035]} scale={[rx * 1.55, ry * 1.32, rz * 1.42]} castShadow />
+          <Part g={hairShell('afro', 0.02, 0.5, 0.1, -0.6)} m={hair} />
+          <mesh geometry={geo('afro', () => new THREE.IcosahedronGeometry(1, 4))} material={hair} position={[0, 0.07, -0.035]} scale={[rx * 1.55, ry * 1.3, rz * 1.42]} castShadow />
         </group>
       )
     case 'braids':
       return (
         <group>
-          {cap}
+          <Part g={hairShell('rows', 0.01, 0.56)} m={hair} />
           {strands(15, 0.011, 0.33)}
         </group>
       )
     case 'locks':
       return (
         <group>
-          {cap}
+          <Part g={hairShell('locks', 0.016, 0.5)} m={hair} />
           {strands(11, 0.018, 0.2)}
         </group>
       )
     case 'bun':
       return (
         <group>
-          {cap}
-          <Blob m={hair} p={[0, ry * 1.02, -rz * 0.35]} r={[0.062, 0.056, 0.062]} />
+          <Part g={hairShell('sleek', 0.01, 0.58)} m={hair} />
+          <Blob m={hair} p={[0, ry * 1.0, -rz * 0.4]} r={[0.06, 0.054, 0.06]} />
         </group>
       )
     case 'weave':
       return (
         <group>
-          {cap}
-          <mesh geometry={geo('weave', () => new THREE.CylinderGeometry(1.06, 1.25, 1, 32, 1, true, Math.PI * 0.4, Math.PI * 1.2))} material={mat(tint(l.hairColor, 0.05), { double: true })} position={[0, -0.12, -0.012]} scale={[rx, 0.3, rz]} castShadow />
+          <Part g={hairShell('weave', 0.016, 0.42, 0.0, -0.75)} m={hair} />
+          <mesh geometry={geo('weave', () => new THREE.CylinderGeometry(1.08, 1.25, 1, 32, 1, true, Math.PI * 0.4, Math.PI * 1.2))} material={mat(tint(l.hairColor, 0.1), { double: true })} position={[0, -0.12, -0.012]} scale={[rx, 0.3, rz]} castShadow />
           <Blob m={hair} p={[rx * 0.3, ry * 0.68, rz * 0.42]} r={[rx * 0.72, ry * 0.3, rz * 0.5]} rot={[0.25, 0, -0.35]} />
         </group>
       )
     case 'headwrap': {
-      const wax = mat('#fff', { map: waxTexture(l.outfitColor, l.pattern) })
+      const fabric = wax(l.outfitColor, l.pattern)
       return (
         <group position={[0, 0.03, -0.015]} rotation={[-0.3, 0, 0]}>
-          <Part g={geo('wrap', () => new THREE.CylinderGeometry(1.25, 1.02, 1, 32))} m={wax} p={[0, ry * 0.55, 0]} s={[rx, ry * 0.95, rz]} />
-          <Blob m={wax} p={[0, ry * 1.05, 0]} r={[rx * 1.25, ry * 0.4, rz * 1.25]} />
-          <Blob m={wax} p={[rx * 0.3, ry * 1.28, rz * 0.6]} r={[rx * 0.55, ry * 0.36, rz * 0.3]} rot={[0, 0, 0.55]} />
-          <Blob m={wax} p={[-rx * 0.38, ry * 1.22, rz * 0.66]} r={[rx * 0.46, ry * 0.32, rz * 0.26]} rot={[0, 0, -0.65]} />
+          <Part g={geo('wrap', () => new THREE.CylinderGeometry(1.25, 1.02, 1, 32))} m={fabric} p={[0, ry * 0.55, 0]} s={[rx, ry * 0.95, rz]} />
+          <Blob m={fabric} p={[0, ry * 1.05, 0]} r={[rx * 1.25, ry * 0.4, rz * 1.25]} />
+          <Blob m={fabric} p={[rx * 0.3, ry * 1.28, rz * 0.6]} r={[rx * 0.55, ry * 0.36, rz * 0.3]} rot={[0, 0, 0.55]} />
+          <Blob m={fabric} p={[-rx * 0.38, ry * 1.22, rz * 0.66]} r={[rx * 0.46, ry * 0.32, rz * 0.26]} rot={[0, 0, -0.65]} />
         </group>
       )
     }
     default:
-      return cap
+      return short
   }
 }
 
+// Beards are shells over the jaw: they follow the face and fade at their edge.
+const goatee = (ux: number, uy: number, uz: number) => 0.012 * smooth(0.3, 0.2, Math.abs(ux)) * smooth(-0.7, -0.8, uy) * smooth(-0.1, 0.2, uz) - 0.003
+const fullBeard = (ux: number, uy: number, uz: number) => {
+  const az = Math.abs(Math.atan2(ux, uz)) // 0 = chin front, π/2 = ear
+  const top = -0.36 + 0.36 * smooth(0.6, 1.4, az) // up the cheeks to the sideburns
+  const mouth = smooth(-0.74, -0.64, uy) * smooth(0.36, 0.26, Math.abs(ux)) * smooth(0.3, 0.5, uz)
+  return 0.012 * smooth(top + 0.04, top - 0.12, uy) * smooth(-0.35, -0.1, uz) * (1 - mouth) - 0.003
+}
+
 function Beard({ l }: { l: Required<Look> }) {
-  const [, , rz] = HEAD
-  const hair = mat(l.hairColor)
-  const moustache = <Blob m={hair} p={[0, -0.055, rz * 0.94]} r={[0.03, 0.007, 0.01]} />
+  const hair = mat(tint(l.hairColor, 0.07))
+  const moustache = <Part g={arc(0.03, 0.0075, 2.6)} m={hair} p={[0, -0.063, faceZ(0, -0.06) + 0.004]} s={[1, 0.5, 0.6]} />
   switch (l.beard) {
     case 'moustache':
       return moustache
@@ -330,14 +605,14 @@ function Beard({ l }: { l: Required<Look> }) {
       return (
         <group>
           {moustache}
-          <Blob m={hair} p={[0, -0.11, rz * 0.66]} r={[0.026, 0.026, 0.02]} />
+          <Part g={headShell('goatee', goatee)} m={hair} />
         </group>
       )
     case 'full':
       return (
         <group>
           {moustache}
-          <mesh geometry={geo('beard', () => new THREE.SphereGeometry(1, 28, 14, 0, Math.PI * 2, Math.PI * 0.42, Math.PI * 0.42))} material={hair} position={[0, -0.05, 0.012]} scale={[HEAD[0] * 0.92, HEAD[1] * 0.68, HEAD[2] * 0.92]} castShadow />
+          <Part g={headShell('beard', fullBeard)} m={hair} />
         </group>
       )
     default:
@@ -347,18 +622,22 @@ function Beard({ l }: { l: Required<Look> }) {
 
 function HeadAccessory({ l }: { l: Required<Look> }) {
   const [rx, ry, rz] = HEAD
-  const gold = mat('#e8b93c', { shine: true })
+  const color = l.accessoryColor || defaultColors(l, false).accessory
+  const gold = mat(color, { shine: true })
   switch (l.accessory) {
     case 'glasses': {
-      const frame = flat('#17171a')
+      const frame = flat(color)
       return (
-        <group position={[0, 0.0, rz * 0.98]}>
+        <group position={[0, 0.0, faceZ(0.047, 0) + 0.012]}>
           {[-1, 1].map((s) => (
             <mesh key={s} geometry={geo('lens', () => new THREE.TorusGeometry(0.03, 0.004, 8, 24))} material={frame} position={[s * 0.047, 0, 0]} />
           ))}
-          <Part g={geo('bridge', () => new THREE.CylinderGeometry(0.003, 0.003, 0.03, 6))} m={frame} p={[0, 0.006, 0]} r={[0, 0, Math.PI / 2]} />
+          <Part g={geo('bridge', () => new THREE.CylinderGeometry(0.003, 0.003, 0.03, 6))} m={frame} p={[0, 0.006, 0.004]} r={[0, 0, Math.PI / 2]} />
+          {/* Arms from the outer rims back over the ears */}
           {[-1, 1].map((s) => (
-            <Part key={s} g={geo('temple', () => new THREE.CylinderGeometry(0.003, 0.003, 0.12, 6))} m={frame} p={[s * rx * 0.97, 0.005, -0.06]} r={[Math.PI / 2, 0, 0]} />
+            <group key={s} position={[s * (rx * 0.84), 0.005, -0.06]} rotation={[0, -s * 0.36, 0]}>
+              <Part g={geo('temple', () => new THREE.CylinderGeometry(0.003, 0.003, 0.128, 6))} m={frame} r={[Math.PI / 2, 0, 0]} />
+            </group>
           ))}
         </group>
       )
@@ -367,12 +646,12 @@ function HeadAccessory({ l }: { l: Required<Look> }) {
       return (
         <>
           {[-1, 1].map((s) => (
-            <mesh key={s} geometry={geo('hoop', () => new THREE.TorusGeometry(0.019, 0.003, 8, 24))} material={gold} position={[s * rx * 1.0, -0.055, 0]} rotation={[0, Math.PI / 2, 0]} />
+            <mesh key={s} geometry={geo('hoop', () => new THREE.TorusGeometry(0.019, 0.003, 8, 24))} material={gold} position={[s * rx * 1.0, -0.058, -0.004]} rotation={[0, Math.PI / 2, 0]} />
           ))}
         </>
       )
     case 'cap': {
-      const c = l.outfitColor === '#f4efe6' ? '#14213d' : l.outfitColor
+      const c = color
       return (
         <group position={[0, 0.03, -0.004]} rotation={[-0.14, 0, 0]}>
           <mesh geometry={geo('capdome', () => new THREE.SphereGeometry(1, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.5))} material={mat(c)} scale={[rx * 1.1, ry * 1.04, rz * 1.1]} castShadow />
@@ -418,7 +697,7 @@ export function Human({ look, gender, pose = 'idle', seed = 0 }: Props) {
   const femme = gender === 'femme'
   const { w, limb: lw, belly } = BODY[l.body] ?? BODY.moyen
   const skin = mat(l.skin)
-  const d = useMemo(() => dressFor(l, femme), [l.outfit, l.outfitColor, l.pattern, femme]) // eslint-disable-line react-hooks/exhaustive-deps
+  const d = useMemo(() => dressFor(l, femme), [l.outfit, l.outfitColor, l.bottomColor, l.shoeColor, l.accessoryColor, l.pattern, femme]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const root = useRef<THREE.Group>(null)
   const head = useRef<THREE.Group>(null)
@@ -459,7 +738,7 @@ export function Human({ look, gender, pose = 'idle', seed = 0 }: Props) {
         el.rotation.x = -0.35
         el.rotation.z = -1.75
       } else {
-        sh.rotation.set(walk ? -swing * 0.8 : Math.sin(t * 1.2 + i) * 0.03, 0, out * 0.08)
+        sh.rotation.set(walk ? -swing * 0.8 : Math.sin(t * 1.2 + i) * 0.03, 0, out * 0.1)
         el.rotation.x = walk ? -0.35 : -0.12
       }
     }
@@ -478,25 +757,34 @@ export function Human({ look, gender, pose = 'idle', seed = 0 }: Props) {
     head.current!.rotation.x = pose === 'busy' ? 0.25 : Math.sin(t * 0.7) * 0.03
   })
 
+  const body: Body = { femme, w, belly }
   const hipX = 0.082 * w
-  const shX = (femme ? 0.16 : 0.178) * w
+  const shX = (femme ? 0.158 : 0.176) * w
   const thighR = 0.072 * lw * (femme ? 1.06 : 1)
   const skinOr = (m: THREE.Material | null) => m ?? skin
+  const fabric = d.robe ?? d.top
+  const longSleeve = d.sleeve === 'long'
+  const waist = torsoAt(femme, w, belly, d.skirt ? 1.0 : WAIST_Y)
 
   return (
     <group scale={l.height}>
       <group ref={root}>
-        {/* Torso, hips, skirt or robe */}
-        {!d.robe && <Part g={torsoGeometry(femme, w, belly)} m={d.top} />}
-        {!d.robe && <Part g={limb(0.15, 0.13, 0.08)} m={d.skirt ? d.top : skinOr(d.thigh)} p={[0, 0.94, 0]} s={[w, 1, 0.7 * w]} />}
-        <Part g={limb(0.062 * lw, 0.062 * lw, shX * 2 - 0.12)} m={d.robe ?? d.top} p={[-(shX - 0.06), SHOULDER_Y + 0.01, 0]} r={[0, 0, Math.PI / 2]} s={[1, 1, 0.85]} />
+        {/* Torso, waistband, skirt or robe */}
+        <Part g={torsoGeometry(femme, w, belly, d.skirt ? 1.0 : WAIST_Y)} m={[d.robe ?? d.bottom, fabric]} />
+        {d.belt && (
+          <group>
+            <Part g={bandGeometry(femme, w, belly, WAIST_Y + 0.004, 0.012)} m={d.belt} />
+            <Blob m={mat('#c9b27a', { shine: true })} p={[0, WAIST_Y + 0.004, waist.front * 1.02 + 0.008]} r={[0.018, 0.012, 0.006]} />
+          </group>
+        )}
         {d.robe && <Part g={flare(0.17 * w, 0.31 * w, 1.33, 0.06, 0.72)} m={d.robe} />}
-        {d.skirt && <Part g={flare(0.16 * w, d.skirt.r * w, 1.0, d.skirt.hem)} m={d.skirt.m} />}
-        {d.extra?.(w)}
+        {d.skirt && <Part g={skirtGeometry(femme, w, belly, d.skirt.hem, d.skirt.r * w)} m={d.skirt.m} />}
+        {d.skirt?.band && <Part g={bandGeometry(femme, w, belly, 1.0, 0.012, 1.03)} m={d.skirt.band} />}
+        {d.extra?.(body)}
 
         {/* Neck and head */}
         <Part g={limb(0.045, 0.05, 0.08)} m={skin} p={[0, 1.42, 0]} />
-        {l.accessory === 'chain' && <mesh geometry={geo('chain', () => new THREE.TorusGeometry(0.068, 0.005, 6, 28))} material={mat('#e8b93c', { shine: true })} position={[0, 1.335, 0.035]} rotation={[1.15, 0, 0]} scale={[w, 1.1, 1]} />}
+        {l.accessory === 'chain' && <mesh geometry={geo('chain', () => new THREE.TorusGeometry(0.068, 0.005, 6, 28))} material={mat(l.accessoryColor || '#e8b93c', { shine: true })} position={[0, 1.335, 0.035]} rotation={[1.15, 0, 0]} scale={[w, 1.1, 1]} />}
         <group ref={head} position={[0, HEAD_Y, 0.008]}>
           <Face l={l} femme={femme} skin={skin} />
         </group>
@@ -522,13 +810,16 @@ export function Human({ look, gender, pose = 'idle', seed = 0 }: Props) {
         {[0, 1].map((i) => {
           const side = i === 0 ? -1 : 1
           return (
-            <group key={i} ref={shoulder[i]} position={[side * shX, SHOULDER_Y, 0]} rotation={[0, 0, side * 0.08]}>
-              <Part g={limb(0.046 * lw, 0.04 * lw, UPPER_ARM)} m={skinOr(d.sleeve)} />
-              {d.sleeve && !d.forearm && !d.bell && <Part g={limb(0.05 * lw, 0.047 * lw, UPPER_ARM * 0.45)} m={d.sleeve} />}
-              {d.bell && <Part g={geo('bell1', () => new THREE.CylinderGeometry(0.06, 0.11, 1, 20, 1, true).translate(0, -0.5, 0))} m={d.sleeve!} s={[lw, UPPER_ARM + 0.02, lw]} />}
+            <group key={i} ref={shoulder[i]} position={[side * shX, SHOULDER_Y, 0]} rotation={[0, 0, side * 0.1]}>
+              <Part g={limb((d.sleeve === 'short' ? 0.044 : 0.05) * lw, 0.04 * lw, UPPER_ARM)} m={longSleeve ? fabric : skin} />
+              {d.sleeve === 'short' && <Part g={shortSleeve(0.056 * lw, 0.13)} m={fabric} />}
+              {d.sleeve === 'none' && <Blob m={fabric} p={[0, 0.012, 0]} r={[0.05 * lw, 0.034, 0.05 * lw]} />}
+              {d.sleeve === 'bell' && <Part g={geo('bell1', () => new THREE.CylinderGeometry(0.06, 0.11, 1, 20, 1, true).translate(0, -0.5, 0))} m={fabric} s={[lw, UPPER_ARM + 0.02, lw]} />}
+              {d.sleeve === 'bell' && <Blob m={fabric} p={[0, 0, 0]} r={[0.062 * lw, 0.05, 0.062 * lw]} />}
               <group ref={elbow[i]} position={[0, -UPPER_ARM, 0]}>
-                <Part g={limb(0.04 * lw, 0.033 * lw, FOREARM)} m={skinOr(d.forearm)} />
-                {d.bell && <Part g={geo('bell2', () => new THREE.CylinderGeometry(0.11, 0.17, 1, 20, 1, true).translate(0, -0.5, 0))} m={d.sleeve!} p={[0, 0.01, 0]} s={[lw, 0.16, lw]} />}
+                <Part g={limb(0.04 * lw, 0.033 * lw, FOREARM)} m={longSleeve ? fabric : skin} />
+                {longSleeve && <Part g={limb(0.036 * lw, 0.036 * lw, 0.012)} m={mat('#f8f9fa')} p={[0, -FOREARM + 0.012, 0]} />}
+                {d.sleeve === 'bell' && <Part g={geo('bell2', () => new THREE.CylinderGeometry(0.11, 0.17, 1, 20, 1, true).translate(0, -0.5, 0))} m={fabric} p={[0, 0.01, 0]} s={[lw, 0.16, lw]} />}
                 {/* Mitten hand with a thumb */}
                 <Blob m={skin} p={[0, -FOREARM - 0.05, 0.004]} r={[0.03, 0.048, 0.021]} />
                 <Blob m={skin} p={[side * -0.022, -FOREARM - 0.035, 0.016]} r={[0.011, 0.024, 0.011]} rot={[0, 0, side * 0.4]} />
