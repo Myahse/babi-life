@@ -8,8 +8,8 @@ func TestSaturdays(t *testing.T) {
 		from, to int64
 		want     int
 	}{
-		{StartMinute, sat - 1, 0},
-		{StartMinute, sat, 1},
+		{7 * 60, sat - 1, 0},
+		{7 * 60, sat, 1},
 		{sat, sat + 60, 0}, // already settled at sat
 		{sat - 10, sat + minutesPerWeek, 2},
 		{sat + 1, sat + 3*minutesPerWeek, 3},

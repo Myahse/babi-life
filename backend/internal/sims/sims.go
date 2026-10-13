@@ -64,8 +64,10 @@ type Sim struct {
 	Career      string     `json:"career"`
 	CareerLevel int        `json:"careerLevel"`
 	Performance int        `json:"performance"`
-	CreatedAt   time.Time  `json:"createdAt"`
-	lastTick    time.Time
+	// Activity is what the Sim is busy with right now; nil when free.
+	Activity  *game.Activity `json:"activity"`
+	CreatedAt time.Time      `json:"createdAt"`
+	lastTick  time.Time
 }
 
 type Event struct {
@@ -83,37 +85,6 @@ func (s *Sim) state() game.State {
 
 func (s *Sim) setState(st game.State) {
 	s.Needs, s.Money, s.GameMinutes = st.Needs, st.Money, st.GameMinutes
-}
-
-// tick lets game time pass since the last time the Sim was touched.
-func (s *Sim) tick(now time.Time) {
-	mins := game.Elapsed(s.lastTick, now)
-	s.Needs = game.Decay(s.Needs, mins)
-	s.GameMinutes += mins
-	s.lastTick = now
-}
-
-// settle charges rent and loan installments for every Saturday passed since
-// the given game minute, and returns the journal lines.
-func (s *Sim) settle(from int64) []Event {
-	var events []Event
-	l := game.Ledger{Money: s.Money, Loan: s.Loan, RentArrears: s.RentArrears, Housing: s.Housing}
-	for range game.Saturdays(from, s.GameMinutes) {
-		var charges []game.Charge
-		l, charges = game.WeekEnd(l)
-		for _, c := range charges {
-			events = append(events, Event{Kind: "bill", Text: c.Text, Money: c.Money, GameTime: s.GameMinutes})
-		}
-	}
-	s.Money, s.Loan, s.RentArrears, s.Housing = l.Money, l.Loan, l.RentArrears, l.Housing
-	return events
-}
-
-// preview lets time pass for display only; mutate persists it on the next action.
-func (s *Sim) preview(now time.Time) {
-	from := s.GameMinutes
-	s.tick(now)
-	s.settle(from)
 }
 
 func (s *Sim) housing() game.Housing {
@@ -135,17 +106,18 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/career", h.career)
 	r.Post("/sims/{id}/move", h.move)
 	r.Post("/sims/{id}/repay", h.repay)
+	r.Post("/sims/{id}/stop", h.stopActivity)
 }
 
 const simColumns = `id, first_name, last_name, gender, look, traits, aspiration,
 	home_city, home_commune, city, commune, needs, money, game_minutes,
-	origin, housing, loan, rent_arrears, career, career_level, performance, created_at, last_tick`
+	origin, housing, loan, rent_arrears, career, career_level, performance, activity, created_at, last_tick`
 
 func scanSim(row pgx.Row) (Sim, error) {
 	var s Sim
 	err := row.Scan(&s.ID, &s.FirstName, &s.LastName, &s.Gender, &s.Look, &s.Traits, &s.Aspiration,
 		&s.HomeCity, &s.HomeCommune, &s.City, &s.Commune, &s.Needs, &s.Money, &s.GameMinutes,
-		&s.Origin, &s.Housing, &s.Loan, &s.RentArrears, &s.Career, &s.CareerLevel, &s.Performance, &s.CreatedAt, &s.lastTick)
+		&s.Origin, &s.Housing, &s.Loan, &s.RentArrears, &s.Career, &s.CareerLevel, &s.Performance, &s.Activity, &s.CreatedAt, &s.lastTick)
 	return s, err
 }
 
@@ -163,7 +135,7 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 	}
 	now := time.Now()
 	for i := range out {
-		out[i].preview(now)
+		out[i].advance(now, newRand()) // preview only; saved on the next request for that Sim
 	}
 	httpx.JSON(w, http.StatusOK, out)
 }
@@ -234,7 +206,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $8, $9, $10, $11, $12, $13, $14, $15)
 		RETURNING `+simColumns,
 		auth.UserID(r.Context()), req.FirstName, req.LastName, req.Gender, req.Look, req.Traits, req.Aspiration,
-		req.HomeCity, req.HomeCommune, origin.Money, game.FreshNeeds(), game.StartMinute,
+		req.HomeCity, req.HomeCommune, origin.Money, game.FreshNeeds(), game.MinuteOf(time.Now()),
 		origin.ID, origin.Housing, origin.Loan,
 	))
 	if err != nil {
@@ -250,25 +222,9 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusCreated, s)
 }
 
-type simWithJournal struct {
-	Sim
-	Journal []Event `json:"journal"`
-}
-
 func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
-	s, err := scanSim(h.DB.QueryRow(r.Context(),
-		`SELECT `+simColumns+` FROM sims WHERE id = $1 AND user_id = $2`, chi.URLParam(r, "id"), auth.UserID(r.Context())))
-	if err != nil {
-		httpx.Error(w, http.StatusNotFound, "sim introuvable")
-		return
-	}
-	s.preview(time.Now())
-	journal, err := h.journal(r.Context(), s.ID)
-	if err != nil {
-		httpx.Error(w, http.StatusInternalServerError, "could not load journal")
-		return
-	}
-	httpx.JSON(w, http.StatusOK, simWithJournal{Sim: s, Journal: journal})
+	// Reading a Sim lets real time pass for it, so it is saved like an action.
+	h.mutate(w, r, nil)
 }
 
 func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
@@ -280,11 +236,14 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// actionResult is returned by interact and travel.
+// actionResult is returned by every read and action on a Sim.
 type actionResult struct {
 	Sim     Sim          `json:"sim"`
 	Outcome game.Outcome `json:"outcome"`
 	Journal []Event      `json:"journal"`
+	// Fresh are the journal lines produced by this request: activities that
+	// ended, surprises, Saturday bills. The client announces them.
+	Fresh []Event `json:"fresh"`
 }
 
 func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
@@ -343,24 +302,43 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		before := s.GameMinutes
-		mood := s.Needs.Mood()
-		st, out, err := game.Perform(s.state(), kind, it, rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), 0)))
+		placeName := kind.Label
+		switch {
+		case home:
+			placeName = "Chez toi"
+		case req.PlaceID == HappeningPlaceID:
+			placeName = kind.Label
+		default:
+			if _, _, place, ok := world.FindPlace(req.PlaceID); ok {
+				placeName = place.Name
+			}
+		}
+		if err := s.start(it, req.PlaceID, kind.ID, placeName, kind.Events, job.ID); err != nil {
+			return game.Outcome{}, nil, err
+		}
+		text := fmt.Sprintf("%s : %s (%s)", s.FirstName, it.Label, humanMinutes(it.Minutes))
+		return game.Outcome{Text: text, Money: -max(it.Cost, 0)}, nil, nil
+	})
+}
+
+func humanMinutes(m int64) string {
+	switch {
+	case m < 60:
+		return fmt.Sprintf("%d min", m)
+	case m%60 == 0:
+		return fmt.Sprintf("%d h", m/60)
+	default:
+		return fmt.Sprintf("%d h %02d", m/60, m%60)
+	}
+}
+
+func (h *Handler) stopActivity(w http.ResponseWriter, r *http.Request) {
+	h.mutate(w, r, func(s *Sim) (game.Outcome, []Event, error) {
+		ev, err := s.stop()
 		if err != nil {
 			return game.Outcome{}, nil, err
 		}
-		s.setState(st)
-		events := []Event{{Kind: "interaction", Text: out.Text, Money: out.Money, GameTime: before}}
-		if job.ID != "" {
-			if promo := s.work(job, mood); promo != "" {
-				out.Promotion = promo
-				events = append(events, Event{Kind: "career", Text: promo, GameTime: s.GameMinutes})
-			}
-		}
-		if out.Random != nil {
-			events = append(events, Event{Kind: "random", Text: out.Random.Text, Money: out.Random.Money, GameTime: s.GameMinutes})
-		}
-		return out, events, nil
+		return game.Outcome{Text: ev.Text, Money: ev.Money}, []Event{ev}, nil
 	})
 }
 
@@ -385,30 +363,11 @@ func (h *Handler) travel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.mutate(w, r, func(s *Sim) (game.Outcome, []Event, error) {
-		fromCity, _ := world.FindCity(s.City)
-		fromCommune, _ := fromCity.Commune(s.Commune)
-		minutes, fare := world.Trip(fromCity, fromCommune, toCity, toCommune)
-		if minutes == 0 {
-			return game.Outcome{}, nil, errors.New("tu y es déjà")
-		}
-		before := s.GameMinutes
-		st, err := game.Travel(s.state(), minutes, fare)
-		if err != nil {
+		if err := s.leave(toCity, toCommune); err != nil {
 			return game.Outcome{}, nil, err
 		}
-		s.setState(st)
-		s.City, s.Commune = toCity.ID, toCommune.ID
-
-		how := "en woro-woro"
-		if fromCity.ID != toCity.ID {
-			how = "en car"
-		}
-		text := fmt.Sprintf("Trajet %s → %s %s", fromCommune.Name, toCommune.Name, how)
-		if fromCity.ID != toCity.ID {
-			text = fmt.Sprintf("Trajet %s → %s %s", fromCity.Name, toCity.Name, how)
-		}
-		out := game.Outcome{Text: text, Money: -fare}
-		return out, []Event{{Kind: "travel", Text: text, Money: -fare, GameTime: before}}, nil
+		t := s.Activity.Trip
+		return game.Outcome{Text: fmt.Sprintf("%s (%s)", t.Label, humanMinutes(s.Activity.Interaction.Minutes)), Money: -t.Fare}, nil, nil
 	})
 }
 
@@ -429,35 +388,31 @@ func (h *Handler) mutate(w http.ResponseWriter, r *http.Request, fn func(*Sim) (
 		httpx.Error(w, http.StatusNotFound, "sim introuvable")
 		return
 	}
-	from := s.GameMinutes
-	s.tick(time.Now())
-	// Saturdays that passed while the player was away are settled before the
-	// action, so the action sees the real balance.
-	bills := s.settle(from)
-
-	from = s.GameMinutes
-	out, events, err := fn(&s)
-	if err != nil {
-		httpx.Error(w, http.StatusUnprocessableEntity, err.Error())
-		return
+	// Real time passes first, so the action sees the real state.
+	fresh := s.advance(time.Now(), newRand())
+	var out game.Outcome
+	if fn != nil {
+		var events []Event
+		var err error
+		if out, events, err = fn(&s); err != nil {
+			httpx.Error(w, http.StatusUnprocessableEntity, err.Error())
+			return
+		}
+		fresh = append(fresh, events...)
 	}
-	after := s.settle(from)
-	for _, b := range append(bills, after...) {
-		out.Bills = append(out.Bills, game.Bill{Text: b.Text, Money: b.Money})
-	}
-	events = append(append(bills, events...), after...)
 
 	if _, err := tx.Exec(ctx, `
 		UPDATE sims SET city = $2, commune = $3, needs = $4, money = $5, game_minutes = $6, last_tick = $7,
 		       home_city = $8, home_commune = $9, housing = $10, loan = $11, rent_arrears = $12,
-		       career = $13, career_level = $14, performance = $15
+		       career = $13, career_level = $14, performance = $15, activity = $16
 		WHERE id = $1`, s.ID, s.City, s.Commune, s.Needs, s.Money, s.GameMinutes, s.lastTick,
-		s.HomeCity, s.HomeCommune, s.Housing, s.Loan, s.RentArrears, s.Career, s.CareerLevel, s.Performance); err != nil {
+		s.HomeCity, s.HomeCommune, s.Housing, s.Loan, s.RentArrears, s.Career, s.CareerLevel, s.Performance, s.Activity); err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "could not save sim")
 		return
 	}
-	for _, ev := range events {
-		if err := insertEvent(ctx, tx, s.ID, ev.Kind, ev.Text, ev.Money, ev.GameTime); err != nil {
+	for i, ev := range fresh {
+		if err := tx.QueryRow(ctx, `INSERT INTO sim_events (sim_id, kind, text, money, game_time) VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at`,
+			s.ID, ev.Kind, ev.Text, ev.Money, ev.GameTime).Scan(&fresh[i].ID, &fresh[i].At); err != nil {
 			httpx.Error(w, http.StatusInternalServerError, "could not save journal")
 			return
 		}
@@ -468,7 +423,10 @@ func (h *Handler) mutate(w http.ResponseWriter, r *http.Request, fn func(*Sim) (
 	}
 
 	journal, _ := h.journal(ctx, s.ID)
-	httpx.JSON(w, http.StatusOK, actionResult{Sim: s, Outcome: out, Journal: journal})
+	if fresh == nil {
+		fresh = []Event{}
+	}
+	httpx.JSON(w, http.StatusOK, actionResult{Sim: s, Outcome: out, Journal: journal, Fresh: fresh})
 }
 
 type execer interface {

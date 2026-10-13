@@ -1,4 +1,4 @@
-import type { ActionResult, HappeningNow, NewsItem, JournalEvent, Look, Sim, User, World } from './types'
+import type { ActionResult, HappeningNow, NewsItem, Look, Sim, User, World } from './types'
 import { useSession } from '../store/session'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
@@ -52,7 +52,7 @@ export const api = {
   login: (email: string, password: string) => post<Session>('/auth/login', { email, password }),
   me: () => request<User>('/me'),
   sims: () => request<Sim[]>('/sims'),
-  sim: (id: string) => request<Sim & { journal: JournalEvent[] }>(`/sims/${id}`),
+  sim: (id: string) => request<ActionResult>(`/sims/${id}`),
   createSim: (sim: NewSim) => post<Sim>('/sims', sim),
   deleteSim: (id: string) => request<void>(`/sims/${id}`, { method: 'DELETE' }),
   interact: (id: string, placeId: string, interactionId: string) =>
@@ -61,4 +61,5 @@ export const api = {
   career: (id: string, career: string) => post<ActionResult>(`/sims/${id}/career`, { career }),
   move: (id: string, housing: string) => post<ActionResult>(`/sims/${id}/move`, { housing }),
   repay: (id: string, what: 'loan' | 'rent', amount: number) => post<ActionResult>(`/sims/${id}/repay`, { what, amount }),
+  stop: (id: string) => post<ActionResult>(`/sims/${id}/stop`, {}),
 }

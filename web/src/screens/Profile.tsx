@@ -19,7 +19,7 @@ export function Profile() {
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
-    api.sims().then((sims) => (sims.length ? api.sim(sims[0].id).then(setSim) : navigate('/creer')))
+    api.sims().then((sims) => (sims.length ? api.sim(sims[0].id).then((r) => setSim({ ...r.sim, journal: r.journal })) : navigate('/creer')))
   }, [navigate])
 
   if (!sim) return <div className="h-full bg-[var(--color-canvas)]" />
@@ -107,7 +107,7 @@ export function Profile() {
         <section className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <Stat icon={House} colors={['#ffa040', '#ff6a00']} label="Habite à" value={home.commune?.name ?? '—'} sub={housing?.label} />
           <Stat icon={MapPin} colors={['#69e2a0', '#00a862']} label="Est à" value={here.commune?.name ?? '—'} sub={here.city?.name} />
-          <Stat icon={CalendarDays} colors={['#b39dff', '#6c47ff']} label="Calendrier" value={`Jour ${c.day}`} sub={c.weekday} />
+          <Stat icon={CalendarDays} colors={['#b39dff', '#6c47ff']} label="Aujourd'hui" value={c.date} sub={`${c.weekday} · ${c.time}`} />
           <Stat icon={TrendingUp} colors={['#69e2a0', '#00a862']} label="Gagné" value={`${amount(earned)} F`} />
           <Stat icon={TrendingDown} colors={['#ff8a9b', '#ff3d57']} label="Dépensé" value={`${amount(spent)} F`} />
           <Stat icon={Briefcase} colors={['#64b5ff', '#2a6cf0']} label="Métier" value={career ? career.levels[sim.careerLevel].title : 'Au chômage'} sub={career?.label} />

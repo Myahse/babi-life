@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BadgeCheck, Briefcase, Newspaper, Building2, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Wallet, X, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, Briefcase, Hourglass, Newspaper, Square, Building2, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Wallet, X, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
-import type { City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World } from '../lib/types'
+import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World } from '../lib/types'
 import { useWorld } from '../store/world'
 import { GameMap } from '../components/map/GameMap'
 import { boundsFor, pinsFor, type Focus, type Padding } from '../components/map/pins'
@@ -10,11 +10,10 @@ import { Portrait } from '../avatar/portrait'
 import { Neighbourhood } from '../world3d/Neighbourhood'
 import { iconFor, kindColors } from '../components/icons'
 import { Chip, Coin, DayNight, IconTile, MotiveRing, Plumbob, Row, needColor } from '../components/ui'
-import { NEEDS, amount, atHome, available, clock, decay, duration, hours, mood, shift, trip } from '../game/rules'
+import { NEEDS, amount, atHome, available, clock, duration, hours, mood, predict, shift, trip } from '../game/rules'
 import { BankApp, HomeApp, JobsApp, type Act } from './phoneApps'
 import { NewsApp, topicOf } from './NewsApp'
 
-const MAX_LOCAL_CATCH_UP = 180 // game minutes, mirrors the server cap
 const SHEET_PEEK = 0.38 // share of the screen the mobile sheet covers when collapsed
 
 type Toast = { id: number; title: string; text?: string; money: number; tone: 'random' | 'done' | 'error' | 'promo' | 'event'; kind?: string; icon?: string }
@@ -51,24 +50,45 @@ export function Play() {
   useEffect(() => {
     api.sims().then(async (sims) => {
       if (!sims.length) return navigate('/creer', { replace: true })
-      const full = await api.sim(sims[0].id)
-      setBase({ sim: full, at: Date.now() })
-      setJournal(full.journal)
-      setSeen(full.journal[0]?.id ?? 0)
+      const res = await api.sim(sims[0].id)
+      setBase({ sim: res.sim, at: Date.now() })
+      setJournal(res.journal)
+      setSeen(res.journal[0]?.id ?? 0)
+      announce(res.fresh)
     })
-  }, [navigate])
+  }, [navigate]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(t)
   }, [])
 
-  // Between server round-trips the clock and needs advance locally.
+  // The game runs on real time; between server round-trips the clock, needs
+  // and the current activity advance locally, minute by minute.
   const sim = useMemo(() => {
     if (!base) return null
-    const mins = Math.min(Math.floor((now - base.at) / 1000), MAX_LOCAL_CATCH_UP)
-    return { ...base.sim, gameMinutes: base.sim.gameMinutes + mins, needs: decay(base.sim.needs, mins) }
+    const mins = (now - base.at) / 60000
+    return { ...base.sim, gameMinutes: base.sim.gameMinutes + mins, needs: predict(base.sim, mins) }
   }, [base, now])
+
+  // When the activity's end comes, ask the server to settle it (pay, surprises).
+  const settling = useRef(false)
+  const ended = !!sim?.activity && sim.gameMinutes >= sim.activity.end
+  useEffect(() => {
+    if (!ended || !base || settling.current) return
+    settling.current = true
+    api
+      .sim(base.sim.id)
+      .then(apply)
+      .catch(() => undefined)
+      .finally(() => (settling.current = false))
+  }, [ended]) // eslint-disable-line react-hooks/exhaustive-deps
+  // And every few minutes anyway: Saturdays, a long nap, another tab.
+  useEffect(() => {
+    if (!base) return
+    const t = setInterval(() => api.sim(base.sim.id).then(apply).catch(() => undefined), 5 * 60000)
+    return () => clearInterval(t)
+  }, [base?.sim.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const slot = sim ? Math.floor(sim.gameMinutes / 120) : -1
   const where = sim?.commune
@@ -124,19 +144,33 @@ export function Play() {
     setTimeout(() => setToasts((ts) => ts.filter((x) => x.id !== id)), 5000)
   }, [])
 
+  function apply(res: ActionResult) {
+    setBase({ sim: res.sim, at: Date.now() })
+    setJournal(res.journal)
+    announce(res.fresh)
+  }
+
+  /** Toasts for what happened since the last request: activities that ended, surprises, bills. */
+  function announce(fresh: JournalEvent[]) {
+    const bills = fresh.filter((e) => e.kind === 'bill' && e.text.startsWith('Samedi'))
+    const rest = fresh.filter((e) => !bills.includes(e))
+    rest.forEach((e, i) =>
+      setTimeout(() => {
+        if (e.kind === 'random') toast({ tone: 'random', title: 'Imprévu !', text: e.text, money: e.money })
+        else if (e.kind === 'career') toast({ tone: 'promo', title: 'Promotion !', text: e.text.replace(/^Promotion ! /, ''), money: 0 })
+        else if (e.kind === 'travel') toast({ tone: 'done', title: 'Bien arrivé·e !', text: e.text, money: e.money, icon: 'car-taxi-front', kind: 'transport' })
+        else toast({ tone: 'done', title: 'Terminé', text: e.text, money: e.money })
+      }, 300 + i * 700),
+    )
+    if (bills.length) setTimeout(() => toast({ tone: 'random', title: 'Samedi, jour du loyer', text: bills.map((b) => b.text).join(' '), money: bills.reduce((t, b) => t + b.money, 0) }), 300 + rest.length * 700)
+  }
+
   const run: Act = async (label, icon, kind, call) => {
     setPending({ label, icon, kind })
-    const started = Date.now()
     try {
       const res = await call()
-      await new Promise((r) => setTimeout(r, Math.max(0, 2200 - (Date.now() - started))))
-      setBase({ sim: res.sim, at: Date.now() })
-      setJournal(res.journal)
-      toast({ tone: 'done', title: res.outcome.text, money: res.outcome.money, kind, icon })
-      if (res.outcome.promotion) setTimeout(() => toast({ tone: 'promo', title: 'Promotion !', text: res.outcome.promotion!.replace(/^Promotion ! /, ''), money: 0 }), 400)
-      if (res.outcome.random) setTimeout(() => toast({ tone: 'random', title: 'Imprévu !', text: res.outcome.random!.text, money: res.outcome.random!.money }), 600)
-      const bills = res.outcome.bills ?? []
-      if (bills.length) setTimeout(() => toast({ tone: 'random', title: 'Samedi, jour du loyer', text: bills.map((b) => b.text).join(' '), money: bills.reduce((t, b) => t + b.money, 0) }), 900)
+      apply(res)
+      if (res.outcome.text) toast({ tone: 'done', title: res.outcome.text, money: res.outcome.money, kind, icon })
       return true
     } catch (e) {
       toast({ tone: 'error', title: 'Pas possible', text: e instanceof Error ? e.message : 'Erreur', money: 0 })
@@ -174,6 +208,9 @@ export function Play() {
 
   const c = clock(sim.gameMinutes)
   const moodHex = needColor(mood(sim.needs))
+  // The activity the Sim is acting out here, if any (a trip happens on the road).
+  const doing = sim.activity?.kind === 'do' ? sim.activity : null
+  const stop = () => run('Arrêter', 'x', '', () => api.stop(sim.id))
   const city = world.cities.find((x) => x.id === sim.city)!
   const commune = city.communes.find((x) => x.id === sim.commune)!
   const unseen = journal.filter((e) => e.id > seen).length
@@ -191,7 +228,8 @@ export function Play() {
           goTo={goTo}
           onPick={walkTo}
           onArrive={(id) => setPlaceId(id)}
-          busy={pending}
+          busy={doing ? { icon: doing.interaction.icon, kind: doing.placeKind ?? '' } : pending}
+          stationAt={doing?.placeId ?? null}
           happening={happening}
         />
       </div>
@@ -222,7 +260,7 @@ export function Play() {
             <DayNight night={c.isNight} />
             <span className="tnum font-display text-lg font-extrabold">{c.time}</span>
             <span className="text-xs font-extrabold text-[var(--color-ink-soft)] max-sm:hidden">
-              {c.weekday} · J{c.day}
+              {c.weekday} {c.date}
             </span>
           </div>
         </div>
@@ -249,7 +287,7 @@ export function Play() {
         </button>
       </footer>
 
-      {street?.happening && !placeId && !pending && (
+      {street?.happening && !placeId && !pending && !sim.activity && (
         <button
           className="animate-pop absolute bottom-[6.5rem] left-1/2 z-20 flex max-w-[calc(100vw-24px)] -translate-x-1/2 items-center gap-2 rounded-full bg-[var(--color-gold)] py-1.5 pr-4 pl-1.5 text-left text-[#5a3a00] shadow-[0_10px_24px_-10px_rgba(0,0,0,0.6)] ring-2 ring-white lg:bottom-[7.5rem]"
           onClick={() => walkTo('happening')}
@@ -267,10 +305,10 @@ export function Play() {
         <HappeningSheet now={street} sim={sim} hour={c.hour} commune={commune} onClose={() => setPlaceId(null)} onJoin={(it) => (setPlaceId(null), run(it.label, it.icon, 'happening', () => api.interact(sim.id, 'happening', it.id)))} />
       )}
       {placeId && placeId !== 'happening' && (
-        <InteractionMenu world={world} sim={sim} city={city} commune={commune} placeId={placeId} hour={c.hour} desktop={desktop} onClose={() => setPlaceId(null)} onPick={interact} onTravel={travel} />
+        <InteractionMenu world={world} sim={sim} city={city} commune={commune} placeId={placeId} hour={c.hour} desktop={desktop} onClose={() => setPlaceId(null)} onPick={interact} onTravel={travel} onStop={stop} />
       )}
 
-      {pending && <ActionProgress {...pending} name={sim.firstName} />}
+      {sim.activity && !placeId && <ActivityBar sim={sim} onStop={stop} stopping={!!pending} />}
 
       <div className="pointer-events-none absolute top-[5.5rem] left-1/2 z-40 flex w-[min(400px,calc(100vw-24px))] -translate-x-1/2 flex-col gap-2 lg:top-24">
         {toasts.map((t) => (
@@ -567,9 +605,10 @@ type MenuProps = {
   onClose: () => void
   onPick: (it: Interaction, kind: string) => void
   onTravel: ExploreProps['onTravel']
+  onStop: () => void
 }
 
-function InteractionMenu({ world, sim, city, commune, placeId, hour, desktop, onClose, onPick, onTravel }: MenuProps) {
+function InteractionMenu({ world, sim, city, commune, placeId, hour, desktop, onClose, onPick, onTravel, onStop }: MenuProps) {
   const place = placeId === 'home' ? { name: 'Chez toi', kind: 'home' } : commune.places.find((p) => p.id === placeId)!
   const kind = world.kinds[place.kind]
   const colors = kindColors(place.kind)
@@ -577,10 +616,11 @@ function InteractionMenu({ world, sim, city, commune, placeId, hour, desktop, on
   const home = world.housings.find((h) => h.id === sim.housing)!
   const career = world.careers.find((c) => c.id === sim.career && c.kind === place.kind)
   const items = [...(career ? [shift(career, sim.careerLevel)] : []), ...kind.interactions.map((it) => (placeId === 'home' ? atHome(it, home) : it))]
-  const state = (it: Interaction) => ({ open: available(it, hour), broke: it.cost > 0 && sim.money < it.cost })
+  const busy = !!sim.activity
+  const state = (it: Interaction) => ({ open: available(it, hour), broke: it.cost > 0 && sim.money < it.cost, busy })
 
   // Desktop: the Sims radial menu around the place.
-  if (desktop && here) {
+  if (desktop && here && !busy) {
     const rx = 250
     const ry = 175
     return (
@@ -619,6 +659,19 @@ function InteractionMenu({ world, sim, city, commune, placeId, hour, desktop, on
             <X size={22} strokeWidth={2.6} />
           </button>
         </div>
+        {busy && (
+          <div className="mb-3 flex items-center gap-3 rounded-[20px] bg-[#fff4e8] p-3">
+            <Hourglass className="shrink-0 text-[var(--color-orange)]" size={22} />
+            <p className="min-w-0 flex-1 text-sm leading-snug font-bold text-[var(--color-ink-soft)]">
+              {sim.firstName} est occupé·e : {sim.activity!.interaction.label.toLowerCase()}. Arrête pour faire autre chose.
+            </p>
+            {sim.activity!.kind === 'do' && (
+              <button className="btn btn-soft shrink-0 !px-3 !py-2 !text-sm" onClick={onStop}>
+                Arrêter
+              </button>
+            )}
+          </div>
+        )}
         {here ? (
           <div className="grid gap-2">
             {items.map((it) => (
@@ -638,8 +691,8 @@ function InteractionMenu({ world, sim, city, commune, placeId, hour, desktop, on
   )
 }
 
-function ActionButton({ it, colors, open, broke, onPick, compact }: { it: Interaction; colors: [string, string]; open: boolean; broke: boolean; onPick: () => void; compact?: boolean }) {
-  const disabled = !open || broke
+function ActionButton({ it, colors, open, broke, busy, onPick, compact }: { it: Interaction; colors: [string, string]; open: boolean; broke: boolean; busy?: boolean; onPick: () => void; compact?: boolean }) {
+  const disabled = !open || broke || !!busy
   const ups = NEEDS.filter((n) => it.effect[n.key] >= 10)
   return (
     <button
@@ -700,7 +753,7 @@ function HappeningSheet({ now, sim, hour, commune, onClose, onJoin }: { now: Hap
         </div>
         <div className="p-4">
           {h.join ? (
-            <ActionButton it={h.join} colors={['#ffd54f', '#ffa000']} open={available(h.join, hour)} broke={h.join.cost > 0 && sim.money < h.join.cost} onPick={() => onJoin(h.join!)} />
+            <ActionButton it={h.join} colors={['#ffd54f', '#ffa000']} open={available(h.join, hour)} broke={h.join.cost > 0 && sim.money < h.join.cost} busy={!!sim.activity} onPick={() => onJoin(h.join!)} />
           ) : (
             <p className="text-sm font-bold text-[var(--color-ink-soft)]">Rien à faire ici à part regarder… et attendre que ça passe.</p>
           )}
@@ -712,19 +765,32 @@ function HappeningSheet({ now, sim, hour, commune, onClose, onJoin }: { now: Hap
 
 /* ---------- Feedback ---------- */
 
-function ActionProgress({ label, icon, kind, name }: { label: string; icon: string; kind: string; name: string }) {
-  // Non-blocking: the Sim acts it out in the 3D scene, this just shows progress.
+/** What the Sim is busy with, on real time: progress, time left, and a way to stop. */
+function ActivityBar({ sim, onStop, stopping }: { sim: Sim; onStop: () => void; stopping: boolean }) {
+  const a = sim.activity!
+  const span = Math.max(1, a.end - a.start)
+  const done = Math.min(1, Math.max(0, (sim.gameMinutes - a.start) / span))
+  const left = Math.max(0, Math.ceil(a.end - sim.gameMinutes))
+  const travel = a.kind === 'travel'
+  const icon = travel ? CarTaxiFront : iconFor(a.interaction.icon)
+  const colors = travel ? (['#ffa040', '#ff6a00'] as [string, string]) : kindColors(a.placeKind ?? '')
   return (
-    <div className="pointer-events-none absolute bottom-28 left-1/2 z-30 w-[min(320px,85vw)] -translate-x-1/2 lg:bottom-32">
+    <div className="absolute bottom-[6.5rem] left-1/2 z-30 w-[min(360px,calc(100vw-24px))] -translate-x-1/2 lg:bottom-[7.5rem]">
       <div className="card animate-pop flex items-center gap-3 p-3">
-        <IconTile icon={iconFor(icon)} colors={kindColors(kind)} size={44} />
+        <IconTile icon={icon} colors={colors} size={46} />
         <div className="min-w-0 flex-1">
-          <div className="label">{name}</div>
-          <div className="truncate font-display text-base leading-tight font-extrabold">{label}</div>
+          <div className="label truncate">{travel ? 'En route' : a.placeName}</div>
+          <div className="truncate font-display text-[15px] leading-tight font-extrabold">{travel ? a.trip!.label.replace(/^Trajet /, '') : a.interaction.label}</div>
           <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-[var(--color-canvas)]">
-            <div className="h-full rounded-full bg-gradient-to-r from-[#22d388] to-[#00b86b]" style={{ animation: 'grow 2.2s ease-in-out forwards' }} />
+            <div className="h-full rounded-full bg-gradient-to-r from-[#22d388] to-[#00b86b] transition-[width] duration-1000 ease-linear" style={{ width: `${done * 100}%` }} />
           </div>
+          <div className="mt-1 text-[11px] font-extrabold text-[var(--color-ink-soft)]">{left > 0 ? `Encore ${duration(left)} · fin à ${clock(a.end).time}` : 'Presque fini…'}</div>
         </div>
+        {!travel && (
+          <button className="icon-btn shrink-0 bg-[var(--color-canvas)]" onClick={onStop} disabled={stopping} aria-label="Arrêter" title="Arrêter">
+            <Square size={18} strokeWidth={2.8} />
+          </button>
+        )}
       </div>
     </div>
   )
@@ -778,7 +844,7 @@ export function Journal({ events }: { events: JournalEvent[] }) {
             <div className="min-w-0 flex-1">
               <div className="text-sm leading-snug font-bold">{e.text}</div>
               <div className="text-[11px] font-extrabold text-[var(--color-ink-soft)]">
-                {c.weekday} · Jour {c.day} · {c.time}
+                {c.stamp}
               </div>
             </div>
             {e.money !== 0 && <MoneyDelta value={e.money} />}

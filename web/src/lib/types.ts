@@ -81,7 +81,23 @@ export type Sim = {
   career: string
   careerLevel: number
   performance: number
+  /** What the Sim is busy with right now (real time), or null. */
+  activity: Activity | null
   createdAt: string
+}
+
+export type Activity = {
+  kind: 'do' | 'travel'
+  placeId?: string
+  placeKind?: string
+  placeName?: string
+  interaction: Interaction
+  /** Game minutes = real minutes since 2024-01-01 00:00 UTC (Abidjan time). */
+  start: number
+  end: number
+  applied: number
+  career?: string
+  trip?: { fromCity: string; fromCommune: string; city: string; commune: string; mode: 'taxi' | 'car'; fare: number; label: string }
 }
 
 export type JournalEvent = {
@@ -93,8 +109,9 @@ export type JournalEvent = {
   at: string
 }
 
-export type Outcome = { text: string; money: number; random?: { text: string; money: number }; promotion?: string; bills?: { text: string; money: number }[] }
-export type ActionResult = { sim: Sim; outcome: Outcome; journal: JournalEvent[] }
+export type Outcome = { text: string; money: number }
+/** Every read or action on a Sim returns this; `fresh` = journal lines this request produced. */
+export type ActionResult = { sim: Sim; outcome: Outcome; journal: JournalEvent[]; fresh: JournalEvent[] }
 
 export type Happening = { id: string; label: string; icon: string; text: string; minHour?: number; maxHour?: number; join?: Interaction }
 export type HappeningNow = { happening: Happening | null; start: number; end: number }

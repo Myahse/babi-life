@@ -28,6 +28,8 @@ type Props = {
   busy: { icon: string; kind: string } | null
   /** What is going on in the street right now. */
   happening: { id: string; icon: string; label: string } | null
+  /** The place the Sim is busy at when the scene opens (it starts there). */
+  stationAt?: string | null
 }
 
 const SPEED = 4.2 // metres per second: a brisk walk, so errands don't drag
@@ -56,7 +58,7 @@ export function Neighbourhood(props: Props) {
   )
 }
 
-function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening }: Props & { night: boolean; dusk: boolean }) {
+function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt }: Props & { night: boolean; dusk: boolean }) {
   const rain = happening?.id === 'pluie'
   const blackout = night && happening?.id === 'delestage'
   const lit = night && !blackout // street lamps and windows
@@ -119,7 +121,7 @@ function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy,
         ),
       )}
 
-      <Walker sim={sim} lots={places} moodColor={moodColor} goTo={goTo} onArrive={onArrive} busy={busy} />
+      <Walker stationAt={stationAt ?? null} sim={sim} lots={places} moodColor={moodColor} goTo={goTo} onArrive={onArrive} busy={busy} />
     </>
   )
 }
@@ -317,7 +319,7 @@ function LotView({ lot, world, night, label, onPick }: { lot: Lot; world: World;
   )
 }
 
-function Walker({ sim, lots, moodColor, goTo, onArrive, busy }: { sim: Sim; lots: Lot[]; moodColor: string; goTo: Props['goTo']; onArrive: Props['onArrive']; busy: Props['busy'] }) {
+function Walker({ sim, lots, moodColor, goTo, onArrive, busy, stationAt }: { sim: Sim; lots: Lot[]; moodColor: string; goTo: Props['goTo']; onArrive: Props['onArrive']; busy: Props['busy']; stationAt: string | null }) {
   const group = useRef<THREE.Group>(null)
   const path = useRef<[number, number][]>([])
   const target = useRef<string | null>(null)
@@ -325,13 +327,18 @@ function Walker({ sim, lots, moodColor, goTo, onArrive, busy }: { sim: Sim; lots
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null
   const camera = useThree((s) => s.camera)
 
-  // Start at home if there is one, else on the sidewalk. Only once: the place
-  // list also changes when a happening starts, and the Sim must not teleport.
-  const start = (lots.find((l) => l.id === HOME_ID)?.door ?? [0, SIDEWALK]).join()
+  // Start where the Sim is busy, else at home, else on the sidewalk. Only
+  // once: the place list changes later (a happening starts, an activity
+  // ends) and the Sim must never teleport.
+  const placed = useRef(false)
   useEffect(() => {
-    const [x, z] = start.split(',').map(Number)
+    if (placed.current) return
+    const at = lots.find((l) => l.id === stationAt) ?? lots.find((l) => l.id === HOME_ID)
+    const [x, z] = at?.door ?? [0, SIDEWALK]
     group.current!.position.set(x, 0, z)
-  }, [start])
+    if (at) group.current!.rotation.y = at.z < 0 ? Math.PI : 0
+    placed.current = true
+  }, [lots, stationAt])
 
   useEffect(() => {
     if (!goTo) return

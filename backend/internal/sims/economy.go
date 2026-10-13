@@ -62,6 +62,9 @@ func (h *Handler) move(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.mutate(w, r, func(s *Sim) (game.Outcome, []Event, error) {
+		if s.Activity != nil {
+			return game.Outcome{}, nil, game.ErrBusy
+		}
 		to, ok := game.FindHousing(req.Housing)
 		if !ok {
 			return game.Outcome{}, nil, errors.New("logement inconnu")
@@ -80,8 +83,7 @@ func (h *Handler) move(w http.ResponseWriter, r *http.Request) {
 
 		before := s.GameMinutes
 		s.Money -= to.Deposit()
-		s.Needs = game.Decay(s.Needs, game.MoveMinutes).Add(game.Needs{Energy: -20})
-		s.GameMinutes += game.MoveMinutes
+		s.Needs = s.Needs.Add(game.Needs{Energy: -20})
 		s.Housing, s.HomeCity, s.HomeCommune = to.ID, s.City, s.Commune
 
 		text := fmt.Sprintf("Déménagement : %s à %s ! Caution de %d semaines payée.", game.LowerFirst(to.Label), cm.Name, game.DepositWeeks)

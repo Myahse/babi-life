@@ -70,9 +70,6 @@ func FindHousing(id string) (Housing, bool) {
 // DepositWeeks is the caution paid to the new landlord when moving.
 const DepositWeeks = 2
 
-// MoveMinutes is how long moving house takes.
-const MoveMinutes = 3 * 60
-
 func (h Housing) Deposit() int { return h.Rent * DepositWeeks }
 
 // AtHome adapts a home interaction to the comfort of the Sim's home.

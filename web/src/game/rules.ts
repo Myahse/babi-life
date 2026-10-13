@@ -1,7 +1,7 @@
 // Mirrors backend/internal/game so the HUD can tick smoothly between server
 // round-trips. The server stays authoritative on every action.
 import { Droplets, Gamepad2, MessageCircle, UtensilsCrossed, Zap, type LucideIcon } from 'lucide-react'
-import type { Career, Housing, Interaction, NeedKey, Needs } from '../lib/types'
+import type { Career, Housing, Interaction, NeedKey, Needs, Sim } from '../lib/types'
 
 export const NEEDS: { key: NeedKey; label: string; icon: LucideIcon }[] = [
   { key: 'hunger', label: 'Faim', icon: UtensilsCrossed },
@@ -21,15 +21,44 @@ export function decay(n: Needs, minutes: number): Needs {
   return out
 }
 
+/** Mirrors game.IdleFloor: left alone, needs stop dropping here. */
+export const IDLE_FLOOR = 8
+
+/** Needs `minutes` after the server's snapshot, on the real clock. */
+export function predict(sim: Sim, minutes: number): Needs {
+  const a = sim.activity
+  if (!a) {
+    const d = decay(sim.needs, minutes)
+    for (const k of Object.keys(d) as NeedKey[]) d[k] = Math.max(d[k], Math.min(sim.needs[k], IDLE_FLOOR))
+    return d
+  }
+  const now = sim.gameMinutes + minutes
+  const span = Math.max(1, a.end - a.start)
+  const share = Math.min(1, Math.max(0, (Math.min(now, a.end) - a.start) / span)) - a.applied
+  const effect = a.kind === 'travel' ? { hunger: 0, energy: -span / 30, hygiene: 0, social: 0, fun: 0 } : a.interaction.effect
+  const out = decay(sim.needs, minutes)
+  for (const k of Object.keys(out) as NeedKey[]) out[k] = Math.max(0, Math.min(100, out[k] + (effect[k] ?? 0) * Math.max(0, share)))
+  return out
+}
+
 export const mood = (n: Needs) => (n.hunger + n.energy + n.hygiene + n.social + n.fun) / 5
 
 
+/** Game minutes are real minutes since 2024-01-01 00:00 UTC, which is Abidjan time (UTC+0). */
+export const EPOCH = Date.UTC(2024, 0, 1)
+export const minuteOf = (ms: number) => Math.floor((ms - EPOCH) / 60000)
+
+const DAYS = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi']
+const MONTHS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
+
 export function clock(gameMinutes: number) {
-  const day = Math.floor(gameMinutes / 1440) + 1
-  const h = Math.floor((gameMinutes % 1440) / 60)
-  const m = Math.floor(gameMinutes % 60)
-  const weekday = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'][(day - 1) % 7]
-  return { day, weekday, time: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`, hour: h, isNight: h < 6 || h >= 19 }
+  const d = new Date(EPOCH + gameMinutes * 60000)
+  const h = d.getUTCHours()
+  const m = d.getUTCMinutes()
+  const time = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+  const weekday = DAYS[d.getUTCDay()]
+  const date = `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`
+  return { weekday, date, time, hour: h, isNight: h < 6 || h >= 19, stamp: `${weekday} ${date} · ${time}` }
 }
 
 export function available(it: Interaction, hour: number) {

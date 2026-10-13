@@ -3,8 +3,6 @@
 // unit-tested and tuned freely.
 package game
 
-import "time"
-
 // Needs are the Sim's motives, each between 0 (critical) and 100 (full).
 type Needs struct {
 	Hunger  float64 `json:"hunger"`
@@ -18,7 +16,7 @@ func FreshNeeds() Needs {
 	return Needs{Hunger: 80, Energy: 85, Hygiene: 90, Social: 70, Fun: 70}
 }
 
-// decayPerHour is how much each need drops per in-game hour.
+// decayPerHour is how much each need drops per hour (real hours: the game runs on real time).
 var decayPerHour = Needs{Hunger: 4, Energy: 3, Hygiene: 3, Social: 2.5, Fun: 3}
 
 // Add returns n+d with every need clamped to [0, 100].
@@ -49,29 +47,6 @@ func clamp(v float64) float64 {
 		return 100
 	}
 	return v
-}
-
-// Time: one real second is one game minute, so a game day lasts 24 real
-// minutes, like in The Sims.
-const (
-	GameMinutesPerRealSecond = 1
-	// MaxCatchUp caps how much game time passes while the player is away, so
-	// nobody comes back to a starving Sim after a weekend.
-	MaxCatchUp = 3 * time.Hour / time.Minute // in game minutes
-	// StartMinute is 07:00 on day 1.
-	StartMinute = 7 * 60
-)
-
-// Elapsed converts real time since the last tick into game minutes.
-func Elapsed(lastTick, now time.Time) int64 {
-	mins := int64(now.Sub(lastTick).Seconds()) * GameMinutesPerRealSecond
-	if mins < 0 {
-		return 0
-	}
-	if mins > int64(MaxCatchUp) {
-		return int64(MaxCatchUp)
-	}
-	return mins
 }
 
 // Decay lowers the needs for the given number of game minutes.
