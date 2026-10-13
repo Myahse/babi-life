@@ -385,6 +385,9 @@ func (h *Handler) travel(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		City    string `json:"city"`
 		Commune string `json:"commune"`
+		// App books a ride-hailing app ("yango", "indrive"); empty = shared taxi or car.
+		App   string `json:"app,omitempty"`
+		Offer int    `json:"offer,omitempty"`
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
@@ -402,7 +405,7 @@ func (h *Handler) travel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.mutate(w, r, func(s *Sim) (game.Outcome, []Event, error) {
-		if err := s.leave(toCity, toCommune); err != nil {
+		if err := s.leaveWith(toCity, toCommune, Ride{App: req.App, Offer: req.Offer}, newRand()); err != nil {
 			return game.Outcome{}, nil, err
 		}
 		t := s.Activity.Trip

@@ -289,7 +289,7 @@ export function TaxiMarker({ sim, mode }: { sim: Sim | null; mode: string }) {
   return (
     <span className="relative flex items-center">
       <span className="absolute top-0 left-0 h-11 w-11 animate-ping rounded-full bg-[var(--color-orange)]/40" />
-      <span className={`relative grid h-11 w-11 place-items-center rounded-full border-[3px] border-white shadow-[0_8px_18px_-6px_rgba(0,0,0,0.6)] ${mode === 'car' ? 'bg-[var(--color-emerald)]' : 'bg-[var(--color-orange)]'}`}>
+      <span className={`relative grid h-11 w-11 place-items-center rounded-full border-[3px] border-white shadow-[0_8px_18px_-6px_rgba(0,0,0,0.6)] ${mode === 'car' ? 'bg-[var(--color-emerald)]' : mode === 'yango' || mode === 'indrive' ? 'bg-[var(--color-ink)]' : 'bg-[var(--color-orange)]'}`}>
         <CarTaxiFront size={22} color="#fff" strokeWidth={2.4} />
       </span>
       {sim && (

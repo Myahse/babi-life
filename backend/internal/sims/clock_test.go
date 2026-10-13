@@ -108,11 +108,41 @@ func TestCrossingTheLagoonAtRushHourCanJam(t *testing.T) {
 	marcory, _ := abj.Commune("marcory")
 	yop, _ := abj.Commune("yopougon")
 	base, _ := world.Trip(abj, yop, abj, marcory)
-	if err := s.leaveWith(abj, marcory, rand.New(alwaysSource{})); err != nil {
+	if err := s.leaveWith(abj, marcory, Ride{}, rand.New(alwaysSource{})); err != nil {
 		t.Fatal(err)
 	}
 	a := s.Activity
 	if a.Trip.Incident == "" || a.End-a.Start <= base {
 		t.Fatalf("a jam should slow the trip: incident %q, %d min vs %d", a.Trip.Incident, a.End-a.Start, base)
+	}
+}
+
+func TestRideApps(t *testing.T) {
+	abj, _ := world.FindCity("abidjan")
+	cocody, _ := abj.Commune("cocody")
+	yop, _ := abj.Commune("yopougon")
+	taxiMin, taxiFare := world.Trip(abj, yop, abj, cocody)
+
+	s := newSim()
+	if err := s.leaveWith(abj, cocody, Ride{App: "yango"}, rand.New(alwaysSource{})); err != nil {
+		t.Fatal(err)
+	}
+	if tr := s.Activity.Trip; tr.Mode != "yango" || tr.Fare <= taxiFare || s.Activity.End-s.Activity.Start > taxiMin+30 {
+		t.Errorf("Yango should be dearer and not slower: %+v, %d min vs taxi %d", tr, s.Activity.End-s.Activity.Start, taxiMin)
+	}
+
+	s = newSim()
+	if err := s.leaveWith(abj, cocody, Ride{App: "indrive", Offer: 100}, rand.New(alwaysSource{})); err == nil {
+		t.Error("a 100 F offer should find no driver")
+	}
+	_, quote, _ := world.RideQuote(world.RideApps[1], abj, yop, cocody)
+	if err := s.leaveWith(abj, cocody, Ride{App: "indrive", Offer: quote * 9 / 10}, rand.New(alwaysSource{})); err != nil || s.Activity.Trip.Fare != quote*9/10 {
+		t.Errorf("a fair offer should be taken at that price: %v %+v", err, s.Activity)
+	}
+
+	s = newSim()
+	bke, _ := world.FindCity("bouake")
+	if err := s.leaveWith(bke, bke.Communes[0], Ride{App: "yango"}, rand.New(alwaysSource{})); err == nil {
+		t.Error("no Yango ride from Abidjan to Bouaké")
 	}
 }

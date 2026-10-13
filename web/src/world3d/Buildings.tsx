@@ -366,6 +366,44 @@ function Culture({ name, night }: Props) {
   )
 }
 
+/** Shopping centre: a wide glass front under a long canopy, the name on top, a car park. */
+function Mall({ name, night }: Props) {
+  return (
+    <group>
+      <Box p={[0, 3, -3]} s={[13, 6, 5]} c="#e9ecef" />
+      <Box p={[0, 1.8, -0.45]} s={[11, 3.2, 0.12]} c={night ? '#ffe8a3' : '#a5d8ff'} glow={night ? 0.8 : 0} />
+      <Box p={[0, 3.7, 0.3]} s={[12.5, 0.25, 1.8]} c="#495057" />
+      <Sign p={[0, 5, -0.4]} w={8} text={name.toUpperCase()} bg="#c2255c" />
+      {/* Car park */}
+      <Box p={[0, 0.04, 3.6]} s={[12, 0.08, 3.6]} c="#868e96" />
+      {[-4.5, -1.5, 1.5, 4.5].map((x) => (
+        <Box key={x} p={[x, 0.09, 3.6]} s={[0.12, 0.02, 3]} c="#f8f9fa" />
+      ))}
+      <Box p={[-3, 0.5, 3.6]} s={[1.6, 0.9, 2.8]} c="#2a6cf0" />
+      <Box p={[3, 0.5, 3.6]} s={[1.6, 0.9, 2.8]} c="#f8f9fa" />
+      <Palm p={[-6, 0, 5.5]} />
+      <Palm p={[6, 0, 5.5]} />
+    </group>
+  )
+}
+
+/** Restaurant: a bright box with a terrace and its name over the door. */
+function Restaurant({ name, night }: Props) {
+  return (
+    <group>
+      <Box p={[0, 2, -2.5]} s={[9, 4, 6]} c="#fff3e0" />
+      <Box p={[0, 4.1, -2.5]} s={[9.4, 0.3, 6.4]} c="#e8590c" />
+      <Windows w={9} h={1.6} y0={1.8} z={0.55} floors={1} cols={3} night={night} color="#ffe8cc" />
+      <Box p={[0, 1.2, 0.56]} s={[1.6, 2.4, 0.1]} c="#5c3d2e" />
+      <Sign p={[0, 3.3, 0.6]} w={6} text={name.toUpperCase()} bg="#e8590c" />
+      <Box p={[0, 2.6, 2]} s={[9, 0.12, 2.6]} c="#ffa94d" />
+      <TableSet p={[-2.5, 0, 2.4]} />
+      <TableSet p={[2.5, 0, 2.4]} c="#f8f9fa" />
+      <Lamp p={[4.8, 0, 4.5]} night={night} />
+    </group>
+  )
+}
+
 const BY_KIND: Record<string, (p: Props) => React.ReactElement> = {
   home: House,
   maquis: Maquis,
@@ -381,6 +419,8 @@ const BY_KIND: Record<string, (p: Props) => React.ReactElement> = {
   school: School,
   health: Health,
   culture: Culture,
+  mall: Mall,
+  restaurant: Restaurant,
 }
 
 export function Building({ kind, ...props }: Props & { kind: string }) {

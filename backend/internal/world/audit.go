@@ -68,6 +68,7 @@ func Audit() []Issue {
 	a.holidays(time.Now().Year())
 	a.trips()
 	a.expressions()
+	a.rides()
 	sort.SliceStable(a.issues, func(i, j int) bool {
 		if a.issues[i].Severity != a.issues[j].Severity {
 			return a.issues[i].Severity == SevError
@@ -420,6 +421,24 @@ func (a *auditor) expressions() {
 			a.add(SevError, CodeMissingField, ref, "texte, sens, exemple ou langue manquant")
 		}
 		a.source(ref, e.Source, true)
+	}
+}
+
+func (a *auditor) rides() {
+	for _, app := range RideApps {
+		ref := "ride-app:" + app.ID
+		if app.Name == "" || (app.Model != "fixed" && app.Model != "offer") {
+			a.add(SevError, CodeMissingField, ref, "nom ou modèle de prix manquant")
+		}
+		if len(app.Cities) == 0 {
+			a.add(SevError, CodeUnpopulated, ref, "aucune ville desservie")
+		}
+		for _, id := range app.Cities {
+			if _, ok := FindCity(id); !ok {
+				a.add(SevError, CodeBadReference, ref, "ville inconnue %q", id)
+			}
+		}
+		a.source(ref, app.Source, true)
 	}
 }
 

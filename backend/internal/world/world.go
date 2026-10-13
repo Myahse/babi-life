@@ -97,6 +97,12 @@ const (
 	srcYakro           = "https://en.wikipedia.org/wiki/Yamoussoukro"
 	srcYakroSites      = "https://erooamba.com/posts/sites-touristiques-cote-divoire-2026"
 	srcBridges         = game.SrcBridges
+	srcSococe          = "https://business.abidjan.net/pages-jaunes/details-1-services-aux-entreprises-39-commerce-general/10137-club-sococe-sa"
+	srcSococePharma    = "https://annuaireci.com/entreprises/pharmacie-des-deux-plateaux-grde-cocody-cote-divoire/"
+	srcPlayceToyota    = "https://www.toyota-tsusho.com/english/press/detail/170704_003995.html"
+	srcPlayceFA        = "https://financialafrik.com/2017/06/29/cote-divoire-playce-palmeraie-une-nouvelle-etape-du-deploiement-de-cfao-retail"
+	srcCFAORetail      = "https://www.foodbusinessmea.com/cfao-consumer-retail-expands-footprint-in-ivory-coast-acquires-leader-prices-stores/"
+	srcBurgerKing      = "https://www.qsrweb.com/news/burger-king-to-open-first-ivory-coast-location/"
 )
 
 var (
@@ -160,6 +166,11 @@ var Cities = []City{
 					Source: game.Verified("Transformé en établissement public hospitalier national en 2022.", srcCHUStatus)},
 				Place{ID: "cocody-chu-angre", Name: "CHU d'Angré", Kind: "health", Quarter: "Angré", Lat: 5.3900, Lng: -3.9850, Real: true, Approx: true, Operator: "Établissement public hospitalier national",
 					Source: game.Partial("4e CHU d'Abidjan, 250 lits ; quartier d'Angré (Cocody) à confirmer par une source officielle.", srcCHUAngre, srcCHUStatus)},
+				Place{ID: "cocody-sococe", Name: "Sococé", Kind: "mall", Quarter: "Deux-Plateaux", Lat: 5.3605, Lng: -3.9985, Real: true, Approx: true,
+					Source: game.Partial("Centre commercial sur le boulevard Latrille, aux Deux-Plateaux (repère d'annuaires) ; position placée d'après l'adresse, à relever.", srcSococe, srcSococePharma)},
+				Place{ID: "cocody-playce", Name: "PlaYce Palmeraie", Kind: "mall", Quarter: "Riviera Palmeraie", Lat: 5.3668, Lng: -3.9560, Real: true, Approx: true,
+					Operator: "CFAO (CFAO Consumer Retail)",
+					Source: game.Verified("Centre commercial ouvert le 29 juin 2017 à Cocody-Riviera Palmeraie (Génie 2000) : 29 000 m², Carrefour Market, 24 enseignes ; exploité par CFAO. Position placée d'après l'adresse, à relever.", srcPlayceToyota, srcPlayceFA, srcCFAORetail)},
 			),
 			abidjanCommune("yopougon", "Yopougon", "Yop City, capitale de l'ambiance.", 5.3450, -4.0820, "nord",
 				Place{ID: "yop-rue-princesse", Name: "Rue Princesse", Kind: "club", Lat: 5.3380, Lng: -4.0760, Real: true, Approx: true, Closed: "2011-08",
@@ -197,6 +208,11 @@ var Cities = []City{
 				Place{ID: "marcory-bietry", Name: "Maquis de Biétry", Kind: "maquis", Quarter: "Biétry", Lat: 5.2860, Lng: -3.9770, Approx: true, Source: invented},
 				Place{ID: "marcory-anoumabo", Name: "Village d'Anoumabo", Kind: "culture", Quarter: "Anoumabo", Lat: 5.2980, Lng: -3.9750, Real: true, Approx: true,
 					Source: game.Partial("Lieu du FEMUA (festival fondé en 2008 par A'Salfo, de Magic System).", game.SrcFEMUA)},
+				Place{ID: "marcory-playce", Name: "PlaYce Marcory", Kind: "mall", Lat: 5.2965, Lng: -3.9880, Real: true, Approx: true, Operator: "CFAO",
+					Source: game.Partial("Centre commercial CFAO de Marcory (cité en 2015) ; position placée dans la commune, à relever.", srcBurgerKing)},
+				Place{ID: "marcory-burger-king", Name: "Burger King", Kind: "restaurant", Lat: 5.2972, Lng: -3.9874, Real: true, Approx: true,
+					Operator: "Servair Abidjan (franchise, 2015)",
+					Source: game.Partial("Premier Burger King du pays, ouvert en 2015 dans PlaYce Marcory, en franchise avec Servair Abidjan ; activité actuelle à confirmer.", srcBurgerKing)},
 			),
 			abidjanCommune("koumassi", "Koumassi", "Populaire, vivante, au bord de la lagune.", 5.2930, -3.9500, "sud",
 				Place{ID: "koumassi-marche", Name: "Marché de Koumassi", Kind: "market", Lat: 5.2960, Lng: -3.9520, Real: true, Approx: true, Source: game.Unverified("Marché de Koumassi ; à confirmer.")},

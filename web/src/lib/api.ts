@@ -1,4 +1,4 @@
-import type { ActionResult, HappeningNow, NewsItem, Look, Sim, User, World } from './types'
+import type { ActionResult, HappeningNow, NewsItem, Look, Sim, User, World, Ride } from './types'
 import { useSession } from '../store/session'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
@@ -60,7 +60,7 @@ export const api = {
   deleteSim: (id: string) => request<void>(`/sims/${id}`, { method: 'DELETE' }),
   interact: (id: string, placeId: string, interactionId: string) =>
     post<ActionResult>(`/sims/${id}/interact`, { placeId, interactionId }),
-  travel: (id: string, city: string, commune: string) => post<ActionResult>(`/sims/${id}/travel`, { city, commune }),
+  travel: (id: string, city: string, commune: string, ride?: Ride) => post<ActionResult>(`/sims/${id}/travel`, { city, commune, ...ride }),
   career: (id: string, career: string) => post<ActionResult>(`/sims/${id}/career`, { career }),
   move: (id: string, housing: string) => post<ActionResult>(`/sims/${id}/move`, { housing }),
   repay: (id: string, what: 'loan' | 'rent', amount: number) => post<ActionResult>(`/sims/${id}/repay`, { what, amount }),

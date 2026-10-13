@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { CarTaxiFront, Bus, Footprints, Globe2, Landmark, LocateFixed, MapPin, PartyPopper, TriangleAlert, X } from 'lucide-react'
+import { Car, CarTaxiFront, Bus, Footprints, Globe2, Landmark, LocateFixed, MapPin, PartyPopper, TriangleAlert, X } from 'lucide-react'
 import type { City, Commune, Place, Sim, World } from '../lib/types'
 import { GameMap, type Camera } from '../components/map/GameMap'
 import { CIV_BOUNDS, Z_PLACE, Z_TOWN, allPins, boundsFor, routeBounds, type Padding, type Route } from '../components/map/pins'
@@ -234,12 +234,13 @@ function TripCard({ sim, route }: { sim: Sim; route: Route }) {
   const a = sim.activity!
   const left = Math.max(0, Math.ceil(a.end - (Date.now() - EPOCH) / 60000))
   const car = route.mode === 'car'
+  const how = car ? 'En car' : route.mode === 'yango' ? 'En Yango' : route.mode === 'indrive' ? 'En inDrive' : 'En taxi'
   return (
     <Card>
       <div className="flex items-center gap-3">
-        <IconTile icon={car ? Bus : CarTaxiFront} colors={['#ffa040', '#ff6a00']} size={46} />
+        <IconTile icon={car ? Bus : route.mode === 'yango' || route.mode === 'indrive' ? Car : CarTaxiFront} colors={['#ffa040', '#ff6a00']} size={46} />
         <div className="min-w-0 flex-1">
-          <div className="label">{car ? 'En car' : 'En taxi'} · arrivée à {clock(a.end).time}</div>
+          <div className="label">{how} · arrivée à {clock(a.end).time}</div>
           <div className="truncate font-display text-xl leading-tight font-extrabold">Vers {route.label}</div>
         </div>
       </div>

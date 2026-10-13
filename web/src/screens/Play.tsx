@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { BadgeCheck, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Wallet, X, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
-import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World } from '../lib/types'
+import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World, Ride } from '../lib/types'
 import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
 import { WorldMap } from './WorldMap'
@@ -194,10 +194,10 @@ export function Play() {
     run(it.label, it.icon, kind, () => api.interact(sim!.id, id, it.id))
   }
   // The ride shows on the map: the route, and the taxi moving along it.
-  const travel = (cityId: string, communeId: string, label: string) => {
+  const travel = (cityId: string, communeId: string, label: string, ride?: Ride) => {
     setPlaceId(null)
     setOverlay('map')
-    run(label, 'bus', 'transport', () => api.travel(sim!.id, cityId, communeId))
+    run(label, 'bus', 'transport', () => api.travel(sim!.id, cityId, communeId, ride))
   }
 
   if (!sim) {

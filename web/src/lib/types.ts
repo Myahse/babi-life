@@ -27,6 +27,10 @@ export type Commune = {
   places: Place[]
 }
 export type City = { id: string; name: string; blurb: string; lat: number; lng: number; zoom: number; admin?: { type: string; region?: string; source?: Source }; communes: Commune[] }
+/** A ride-hailing app: "fixed" sets the price, "offer" lets you propose it. */
+export type RideApp = { id: string; name: string; model: 'fixed' | 'offer'; cities: string[]; source: Source }
+/** Booking a ride app instead of the shared taxi; offer = the fare proposed. */
+export type Ride = { app?: string; offer?: number }
 export type Expression = { id: string; text: string; lang: string; meaning: string; example: string; context?: string; source: Source }
 
 export type Interaction = {
@@ -68,6 +72,7 @@ export type World = {
   housings: Housing[]
   careers: Career[]
   expressions?: Expression[]
+  rideApps?: RideApp[]
   config: { devLogin: boolean; googleLogin: boolean }
 }
 
@@ -130,7 +135,7 @@ export type Activity = {
   end: number
   applied: number
   career?: string
-  trip?: { fromCity: string; fromCommune: string; city: string; commune: string; mode: 'taxi' | 'car'; fare: number; label: string; incident?: string }
+  trip?: { fromCity: string; fromCommune: string; city: string; commune: string; mode: 'taxi' | 'car' | 'yango' | 'indrive'; fare: number; label: string; incident?: string }
 }
 
 export type JournalEvent = {

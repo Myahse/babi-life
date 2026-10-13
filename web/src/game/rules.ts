@@ -128,6 +128,11 @@ function km(a: Pt, b: Pt) {
   return 2 * r * Math.asin(Math.sqrt(h))
 }
 
+/** A private ride inside a city (mirrors world.RideQuote): dearer than the taxi, quicker. */
+export function rideQuote(taxi: { minutes: number; fare: number }) {
+  return { minutes: Math.round(taxi.minutes * 0.7), fare: Math.max(1000, Math.round((taxi.fare * 3) / 100) * 100) }
+}
+
 export function trip(fromCity: string, from: Pt & { id: string }, toCity: string, to: Pt & { id: string }) {
   const d = km(from, to)
   if (fromCity === toCity) {

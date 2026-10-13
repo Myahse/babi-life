@@ -238,6 +238,32 @@ var Kinds = map[string]PlaceKind{
 			{Text: "Tu croises l'artiste à la sortie : photo souvenir !", Effect: Needs{Fun: 20, Social: 10}},
 		},
 	},
+	"mall": {
+		ID: "mall", Label: "Centre commercial", Icon: "shopping-bag",
+		Interactions: []Interaction{
+			{ID: "supermarche", Label: "Faire les courses au supermarché", Icon: "shopping-cart", Minutes: 60, Cost: 8000, Effect: Needs{Hunger: 25, Fun: 5, Energy: -5}, MinHour: 8, MaxHour: 21},
+			{ID: "leche-vitrine", Label: "Faire du lèche-vitrine", Icon: "shopping-bag", Minutes: 60, Effect: Needs{Fun: 20, Social: 5, Energy: -5}, MinHour: 9, MaxHour: 21},
+			{ID: "vetements", Label: "S'acheter une tenue", Icon: "shirt", Minutes: 45, Cost: 15000, Effect: Needs{Fun: 35}, MinHour: 9, MaxHour: 21},
+			{ID: "glace", Label: "Prendre une glace entre amis", Icon: "ice-cream-cone", Minutes: 30, Cost: 1500, Effect: Needs{Fun: 15, Social: 20, Hunger: 5}, MinHour: 10, MaxHour: 21},
+		},
+		Events: []RandomEvent{
+			{Text: "Promo flash au supermarché : tu repars avec un sac en plus.", Effect: Needs{Fun: 10, Hunger: 10}},
+			{Text: "Tu croises une ancienne camarade de classe entre deux rayons.", Effect: Needs{Social: 20}},
+			{Text: "La clim du centre commercial : enfin de la fraîcheur !", Effect: Needs{Energy: 10}},
+		},
+	},
+	"restaurant": {
+		ID: "restaurant", Label: "Restaurant", Icon: "hamburger",
+		Interactions: []Interaction{
+			{ID: "burger", Label: "Manger un burger-frites", Icon: "hamburger", Minutes: 30, Cost: 4500, Effect: Needs{Hunger: 55, Fun: 10}, MinHour: 10, MaxHour: 23},
+			{ID: "milkshake", Label: "Prendre un milkshake", Icon: "cup-soda", Minutes: 20, Cost: 2500, Effect: Needs{Fun: 10, Hunger: 10, Social: 5}, MinHour: 10, MaxHour: 23},
+			{ID: "anniversaire-resto", Label: "Fêter un anniversaire avec les amis", Icon: "cake", Minutes: 90, Cost: 15000, Effect: Needs{Social: 40, Fun: 35, Hunger: 40}, MinHour: 12, MaxHour: 22},
+		},
+		Events: []RandomEvent{
+			{Text: "La file d'attente est longue : il faut patienter.", Effect: Needs{Fun: -10}},
+			{Text: "On t'offre une boisson avec ton menu.", Effect: Needs{Fun: 10}},
+		},
+	},
 	"nature": {
 		ID: "nature", Label: "Site naturel", Icon: "mountain",
 		Interactions: []Interaction{
