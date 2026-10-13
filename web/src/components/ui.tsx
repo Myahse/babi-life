@@ -101,33 +101,36 @@ export function DayNight({ night, size = 18 }: { night: boolean; size?: number }
   return night ? <Moon size={size} className="text-[var(--color-violet)]" fill="currentColor" /> : <Sun size={size} className="text-[var(--color-orange)]" fill="currentColor" />
 }
 
-/** The wordmark. */
-export function Logo({ size = 64, className = '' }: { size?: number; className?: string }) {
+/** The app mark: a green plumbob over the Abidjan sun, as on the home-screen icon. */
+export function LogoMark({ size = 40, className = '' }: { size?: number; className?: string }) {
   return (
-    <div className={`relative inline-flex flex-col items-center leading-none select-none ${className}`} aria-label="Ivoire Life">
-      <span
-        className="font-display font-extrabold tracking-[0.32em] text-white"
-        style={{ fontSize: size * 0.3, textShadow: '0 2px 0 rgb(0 0 0 / 0.25)', marginRight: '-0.32em' }}
-      >
-        IVOIRE
+    <svg width={size} height={size} viewBox="0 0 64 64" className={`shrink-0 ${className}`} aria-hidden>
+      <defs>
+        <linearGradient id="lm-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#1b1f4b" />
+          <stop offset="1" stopColor="#7a2f6e" />
+        </linearGradient>
+      </defs>
+      <rect width="64" height="64" rx="16" fill="url(#lm-sky)" />
+      <circle cx="32" cy="42" r="18" fill="#ff8a1a" />
+      <path d="M8 64V46h7v-6h6v24M43 64V40h7v6h6v18" fill="#0f1230" opacity="0.9" />
+      <path d="M32 9 43 26 32 43 21 26Z" fill="#00b86b" />
+      <path d="M32 9 43 26H32Z" fill="#fff" opacity="0.38" />
+      <path d="M21 26h11v17Z" fill="#000" opacity="0.18" />
+    </svg>
+  )
+}
+
+/** The logo: the mark and the wordmark "Ivoire Life" on one line. */
+export function Logo({ size = 40, tone = 'light', className = '' }: { size?: number; tone?: 'light' | 'dark'; className?: string }) {
+  return (
+    <span className={`inline-flex items-center select-none ${className}`} style={{ gap: size * 0.28 }} aria-label="Ivoire Life">
+      <LogoMark size={size} />
+      <span className="font-display leading-none font-extrabold tracking-[-0.02em]" style={{ fontSize: size * 0.62 }} aria-hidden>
+        <span className={tone === 'light' ? 'text-white' : 'text-[var(--color-ink)]'}>Ivoire </span>
+        <span className="text-[var(--color-orange)]">Life</span>
       </span>
-      <span className="relative font-display font-extrabold" style={{ fontSize: size, marginTop: -size * 0.02 }}>
-        <span
-          aria-hidden
-          className="absolute inset-0 text-[#7a1f00]"
-          style={{ transform: `translateY(${size * 0.07}px)`, WebkitTextStroke: `${size * 0.14}px #7a1f00` }}
-        >
-          Life
-        </span>
-        <span aria-hidden className="absolute inset-0 text-white" style={{ WebkitTextStroke: `${size * 0.14}px #fff` }}>
-          Life
-        </span>
-        <span className="relative bg-gradient-to-b from-[#ffb03a] via-[#ff7a00] to-[#e8430e] bg-clip-text text-transparent">Life</span>
-      </span>
-      <span className="absolute" style={{ right: -size * 0.3, top: size * 0.05 }}>
-        <Plumbob size={size * 0.2} color="#00b86b" />
-      </span>
-    </div>
+    </span>
   )
 }
 

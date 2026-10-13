@@ -24,7 +24,7 @@ const cache = new Map<string, Promise<string>>()
 
 const frame = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)))
 
-function Studio({ look, gender, framing }: { look: Look; gender: Sim['gender']; framing: Framing }) {
+function Studio({ look, gender, framing, onReady }: { look: Look; gender: Sim['gender']; framing: Framing; onReady: () => void }) {
   const camera = useThree((s) => s.camera)
   const f = FRAMES[framing]
   const h = look.height ?? 1
@@ -33,6 +33,9 @@ function Studio({ look, gender, framing }: { look: Look; gender: Sim['gender']; 
     camera.lookAt(0, f.y * h, 0)
     camera.updateProjectionMatrix()
   }, [camera, f, h])
+  // Tell render() this exact Sim is in the scene: a heavy outfit can take
+  // longer than a frame to build, and a fixed wait would capture the last one.
+  useLayoutEffect(onReady, [onReady])
   return (
     <>
       <hemisphereLight args={['#ffffff', '#d9b27c', 1.4]} />
@@ -59,8 +62,10 @@ async function render(look: Look, gender: Sim['gender'], framing: Framing) {
     gl: { preserveDrawingBuffer: true, alpha: true, antialias: true },
     camera: { fov: 24, near: 0.1, far: 50 },
   })
-  root.render(<Studio look={look} gender={gender} framing={framing} />)
-  await frame()
+  await new Promise<void>((done) => {
+    const timeout = setTimeout(done, 2000)
+    root!.render(<Studio look={look} gender={gender} framing={framing} onReady={() => (clearTimeout(timeout), done())} />)
+  })
   await frame()
   advance(performance.now(), true)
   return canvas.toDataURL('image/png')
