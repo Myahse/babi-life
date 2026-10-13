@@ -8,8 +8,11 @@ import { iconFor, kindColors } from '../components/icons'
 import { IconTile } from '../components/ui'
 import { Building } from './Buildings'
 import { Character } from './Character'
-import { HOME_ID, layoutCommune, route, type Lot } from './layout'
-import { Box, Lamp, Palm, Vehicle } from './props'
+import { BACK_STREET_Z, CROSS_X, EXTENT_X, HOME_ID, SIDEWALK, STREET_HALF, layoutCommune, route, type Lot } from './layout'
+import { Box, Lamp, Mat, Palm, Tree } from './props'
+import { FillerBuilding } from './Fillers'
+import { Pedestrians, Traffic } from './Life'
+import { rng, themeFor, type Theme } from './themes'
 
 type Props = {
   world: World
@@ -24,7 +27,7 @@ type Props = {
   busy: { icon: string; kind: string } | null
 }
 
-const SPEED = 9 // world units per second
+const SPEED = 4.2 // metres per second: a brisk walk, so errands don't drag
 
 /**
  * The commune as a little 3D neighbourhood, seen from an isometric camera that
@@ -39,7 +42,7 @@ export function Neighbourhood(props: Props) {
       orthographic
       shadows
       dpr={[1, 2]}
-      camera={{ position: [30, 32, 30], zoom: 20, near: -200, far: 400 }}
+      camera={{ position: [30, 32, 30], zoom: 30, near: -300, far: 600 }}
       style={{ background: sky, transition: 'background 1s' }}
       gl={{ antialias: true, preserveDrawingBuffer: true }}
     >
@@ -53,6 +56,8 @@ export function Neighbourhood(props: Props) {
 function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, night, dusk }: Props & { night: boolean; dusk: boolean }) {
   const home = sim.homeCity === sim.city && sim.homeCommune === commune.id
   const lots = useMemo(() => layoutCommune(commune, home), [commune, home])
+  const places = useMemo(() => lots.filter((l) => l.kind !== 'filler'), [lots])
+  const theme = useMemo(() => themeFor(commune.id), [commune.id])
   // drei's <Html> loses whichever label mounts with the canvas, so labels
   // mount one frame later, once the canvas is in place.
   const [labels, setLabels] = useState(false)
@@ -60,119 +65,170 @@ function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy,
     const id = requestAnimationFrame(() => setLabels(true))
     return () => cancelAnimationFrame(id)
   }, [])
-  const water = /lagune|plage|mer|port/i.test(commune.blurb + commune.places.map((p) => p.kind).join(' '))
   const { size, camera } = useThree()
 
-  // Fit the zoom to the screen: phones see a bit less of the street.
   useEffect(() => {
+    // The whole block around you: about 70 m across a computer screen,
+    // 52 m along a phone so the Sims stay readable. Pinch to zoom.
     const cam = camera as THREE.OrthographicCamera
-    cam.zoom = THREE.MathUtils.clamp(Math.min(size.width, size.height * 1.3) / 34, 11, 26)
+    cam.zoom = THREE.MathUtils.clamp(Math.max(size.width, size.height) / (size.width >= 1024 ? 70 : 52), 9, 30)
     cam.updateProjectionMatrix()
   }, [size, camera])
 
   return (
     <>
-      <hemisphereLight args={[night ? '#3a4a8a' : '#ffffff', night ? '#1a1a2e' : '#c9a46b', night ? 0.55 : 1.1]} />
+      <hemisphereLight args={[night ? '#3a4a8a' : '#ffffff', night ? '#1a1a2e' : '#c9a46b', night ? 0.6 : 1.15]} />
       <directionalLight
         position={night ? [-20, 30, 10] : [25, 40, 15]}
         intensity={night ? 0.35 : dusk ? 1.1 : 1.6}
         color={night ? '#8fa8ff' : dusk ? '#ffb38a' : '#fff4e0'}
         castShadow
-        shadow-mapSize={[1024, 1024]}
-        shadow-camera-left={-60}
-        shadow-camera-right={60}
-        shadow-camera-top={60}
-        shadow-camera-bottom={-60}
+        shadow-mapSize={[2048, 2048]}
+        shadow-camera-left={-45}
+        shadow-camera-right={45}
+        shadow-camera-top={45}
+        shadow-camera-bottom={-45}
       />
-      <fog attach="fog" args={[night ? '#141a3d' : dusk ? '#f7a072' : '#9fd8f5', 90, 180]} />
+      <fog attach="fog" args={[night ? '#141a3d' : dusk ? '#f7a072' : '#9fd8f5', 110, 260]} />
 
-      <Ground water={water} night={night} />
-      <Street night={night} />
-      <Traffic />
+      <Ground theme={theme} night={night} />
+      <Streets theme={theme} night={night} seed={commune.id} />
+      <Backdrop theme={theme} night={night} />
+      <Traffic theme={theme} seed={commune.id} />
+      <Pedestrians theme={theme} seed={commune.id} />
 
-      {lots.map((lot) => (
-        <LotView key={lot.id} lot={lot} world={world} night={night} label={labels} onPick={onPick} />
-      ))}
+      {lots.map((lot) =>
+        lot.kind === 'filler' ? (
+          <group key={lot.id} position={[lot.x, 0, lot.z]} rotation={[0, lot.rot, 0]}>
+            <FillerBuilding type={lot.filler!} seed={lot.seed} night={night} height={lot.z > 0 ? 0.6 : theme.height} />
+          </group>
+        ) : (
+          <LotView key={lot.id} lot={lot} world={world} night={night} label={labels} onPick={onPick} />
+        ),
+      )}
 
-      <Walker sim={sim} lots={lots} moodColor={moodColor} goTo={goTo} onArrive={onArrive} busy={busy} />
+      <Walker sim={sim} lots={places} moodColor={moodColor} goTo={goTo} onArrive={onArrive} busy={busy} />
     </>
   )
 }
 
-function Ground({ water, night }: { water: boolean; night: boolean }) {
+function Ground({ theme, night }: { theme: Theme; night: boolean }) {
+  const dim = (c: string) => (night ? new THREE.Color(c).multiplyScalar(0.55).getStyle() : c)
   return (
     <group>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
-        <planeGeometry args={[400, 400]} />
-        <meshLambertMaterial color={night ? '#5b4a3a' : '#d9b27c'} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]} receiveShadow>
+        <planeGeometry args={[600, 600]} />
+        <meshLambertMaterial color={dim(theme.ground)} />
       </mesh>
-      {/* Grass patches between lots */}
-      {[-21, 21, -41, 41].flatMap((x) =>
-        [-12, 12].map((z) => (
-          <mesh key={`${x}${z}`} rotation={[-Math.PI / 2, 0, 0]} position={[x, 0.01, z]} receiveShadow>
-            <planeGeometry args={[5, 12]} />
-            <meshLambertMaterial color={night ? '#2f5d3a' : '#7cc566'} />
+      {/* Verges between the lots */}
+      {[-48, -32, -16, 0, 16, 32, 48, -80, -96, 80, 96].flatMap((x) =>
+        [-1, 1].map((s) => (
+          <mesh key={`${x}${s}`} rotation={[-Math.PI / 2, 0, 0]} position={[x, 0.005, s * 22]} receiveShadow>
+            <planeGeometry args={[2, 30]} />
+            <meshLambertMaterial color={dim(theme.grass)} />
           </mesh>
         )),
       )}
-      {water && (
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, -45]}>
-          <planeGeometry args={[400, 40]} />
-          <meshLambertMaterial color={night ? '#1c4e80' : '#36b3e0'} />
-        </mesh>
-      )}
     </group>
   )
 }
 
-function Street({ night }: { night: boolean }) {
-  const dashes = [...Array(26)].map((_, i) => -65 + i * 5.2)
+function Streets({ theme, night, seed }: { theme: Theme; night: boolean; seed: string }) {
+  const r = rng(`street${seed}`)
+  const asphalt = '#3b3f4a'
+  const back = theme.side === 'laterite' ? '#b8693c' : asphalt
+  const dashes = [...Array(Math.floor((EXTENT_X * 2) / 6))].map((_, i) => -EXTENT_X + i * 6)
+  const posts = [...Array(15)].map((_, i) => -112 + i * 16)
   return (
     <group>
-      {/* Main street (X) and cross street (Z) */}
-      <Box p={[0, 0.02, 0]} s={[140, 0.04, 7]} c="#3b3f4a" />
-      <Box p={[0, 0.03, 0]} s={[7, 0.04, 60]} c="#3b3f4a" />
-      {/* Sidewalks */}
-      {[-4.4, 4.4].map((z) => (
-        <Box key={z} p={[0, 0.1, z]} s={[140, 0.2, 1.8]} c="#cfc6b6" />
+      {/* Boulevard, two lanes each way, kerbs and sidewalks */}
+      <Box p={[0, 0.02, 0]} s={[EXTENT_X * 2 + 20, 0.04, STREET_HALF * 2]} c={asphalt} />
+      {[-1, 1].map((s) => (
+        <group key={s}>
+          <Box p={[0, 0.12, s * (STREET_HALF + 1.3)]} s={[EXTENT_X * 2 + 20, 0.24, 2.6]} c="#d6cdbd" />
+          <Box p={[0, 0.13, s * (STREET_HALF + 0.05)]} s={[EXTENT_X * 2 + 20, 0.26, 0.15]} c="#f1f3f5" />
+          {/* Back street behind the second row of lots */}
+          <Box p={[0, 0.015, s * BACK_STREET_Z]} s={[EXTENT_X * 2 + 20, 0.03, 6]} c={back} />
+        </group>
       ))}
       {dashes.map((x) => (
-        <Box key={x} p={[x, 0.06, 0]} s={[2.4, 0.02, 0.22]} c="#f1f3f5" />
+        <Box key={x} p={[x, 0.05, 0]} s={[2.6, 0.02, 0.18]} c="#f1f3f5" />
       ))}
-      {/* Zebra crossing */}
-      {[-2.4, -1.2, 0, 1.2, 2.4].map((x) => (
-        <Box key={x} p={[x, 0.06, 4.8]} s={[0.7, 0.02, 2]} c="#f1f3f5" />
+      {/* Cross streets with zebra crossings */}
+      {[-CROSS_X, CROSS_X].map((x) => (
+        <group key={x}>
+          <Box p={[x, 0.03, 0]} s={[8, 0.04, BACK_STREET_Z * 2 + 6]} c={asphalt} />
+          {[-1, 1].flatMap((s) =>
+            [-2.4, -1.2, 0, 1.2, 2.4].map((dx) => <Box key={`${s}${dx}`} p={[x + dx, 0.06, s * (STREET_HALF + 1.3)]} s={[0.7, 0.02, 2.4]} c="#f1f3f5" />),
+          )}
+        </group>
       ))}
-      {[-55, -42, -24, 24, 42, 55].map((x, i) => (
-        <Palm key={x} p={[x, 0, i % 2 ? 4.6 : -4.6]} h={6 + (i % 3)} />
+      {/* Street lamps and trees along the sidewalks */}
+      {posts.map((x, i) => (
+        <group key={x}>
+          <Lamp p={[x, 0, (i % 2 ? 1 : -1) * (SIDEWALK + 1.1)]} night={night} />
+          <StreetTree kind={theme.trees} p={[x + 8, 0, (i % 2 ? -1 : 1) * (SIDEWALK + 1.1)]} s={0.8 + r() * 0.5} />
+        </group>
       ))}
-      {[-16, 16, -36, 36].map((x, i) => (
-        <Lamp key={x} p={[x, 0, i % 2 ? -4.6 : 4.6]} night={night} />
-      ))}
-      <Vehicle p={[-20, 0, 2]} r={0} kind="taxi" />
-      <Vehicle p={[26, 0, -2]} r={Math.PI} kind="taxi" />
     </group>
   )
 }
 
-/** A gbaka and a taxi driving up and down the main street. */
-function Traffic() {
-  const gbaka = useRef<THREE.Group>(null)
-  const taxi = useRef<THREE.Group>(null)
-  useFrame(({ clock }) => {
-    const t = clock.elapsedTime
-    gbaka.current!.position.x = ((t * 7) % 160) - 80
-    taxi.current!.position.x = 80 - ((t * 10 + 60) % 160)
-  })
+function StreetTree({ kind, p, s }: { kind: Theme['trees']; p: [number, number, number]; s: number }) {
+  if (kind === 'palm' || (kind === 'mixed' && Math.abs(p[0]) % 32 < 16)) return <Palm p={p} h={5 + s * 2} />
+  if (kind === 'baobab')
+    return (
+      <group position={p} scale={s}>
+        <mesh position={[0, 2, 0]} castShadow>
+          <cylinderGeometry args={[0.9, 1.3, 4, 8]} />
+          <Mat color="#8a7461" />
+        </mesh>
+        <mesh position={[0, 4.6, 0]} castShadow>
+          <icosahedronGeometry args={[2.2, 0]} />
+          <Mat color="#7a9a3a" />
+        </mesh>
+      </group>
+    )
+  return <Tree p={p} s={s} />
+}
+
+/** What lies beyond the district: lagoon, sea, mountains, a skyline. */
+function Backdrop({ theme, night }: { theme: Theme; night: boolean }) {
+  const water = night ? '#1c4e80' : '#36b3e0'
   return (
-    <>
-      <group ref={gbaka} position={[0, 0, 1.6]}>
-        <Vehicle p={[0, 0, 0]} kind="gbaka" />
-      </group>
-      <group ref={taxi} position={[0, 0, -1.6]}>
-        <Vehicle p={[0, 0, 0]} r={Math.PI} kind="taxi" />
-      </group>
-    </>
+    <group>
+      {theme.water && (
+        <group position={[0, 0, -BACK_STREET_Z - 22]}>
+          {theme.water === 'sea' && <Box p={[0, 0.02, 4]} s={[600, 0.04, 12]} c="#f2dca6" />}
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, -60]}>
+            <planeGeometry args={[600, 130]} />
+            <meshLambertMaterial color={theme.water === 'sea' ? (night ? '#16406b' : '#2a9fd6') : water} />
+          </mesh>
+          {theme.water === 'lagoon' && <Box p={[0, 0.4, 2]} s={[600, 0.8, 1.2]} c="#a8a29a" />}
+        </group>
+      )}
+      {theme.backdrop === 'mountains' &&
+        [-160, -90, -20, 50, 130].map((x, i) => (
+          <mesh key={x} position={[x, 22 + (i % 2) * 10, -190]}>
+            <coneGeometry args={[60 + (i % 3) * 15, 50 + (i % 2) * 22, 6]} />
+            <meshLambertMaterial color={night ? '#1e3324' : '#4f7d4a'} flatShading />
+          </mesh>
+        ))}
+      {theme.backdrop === 'forest' &&
+        [...Array(26)].map((_, i) => (
+          <mesh key={i} position={[-150 + i * 12, 7, -BACK_STREET_Z - 30 - (i % 3) * 8]}>
+            <coneGeometry args={[6, 14 + (i % 4) * 3, 6]} />
+            <meshLambertMaterial color={night ? '#163020' : i % 2 ? '#2f7a3a' : '#3b8f45'} flatShading />
+          </mesh>
+        ))}
+      {theme.backdrop === 'skyline' &&
+        [...Array(14)].map((_, i) => (
+          <mesh key={i} position={[-130 + i * 20, 15 + (i % 4) * 7, -160]}>
+            <boxGeometry args={[12, 30 + (i % 4) * 14, 12]} />
+            <meshLambertMaterial color={night ? '#22304a' : '#9cb4c9'} />
+          </mesh>
+        ))}
+    </group>
   )
 }
 
@@ -217,7 +273,7 @@ function Walker({ sim, lots, moodColor, goTo, onArrive, busy }: { sim: Sim; lots
   // Start at home if there is one, else at the crossroads.
   useEffect(() => {
     const homeLot = lots.find((l) => l.id === HOME_ID)
-    const [x, z] = homeLot ? homeLot.door : [0, 3]
+    const [x, z] = homeLot ? homeLot.door : [0, SIDEWALK]
     group.current!.position.set(x, 0, z)
   }, [lots])
 
@@ -270,15 +326,15 @@ function Walker({ sim, lots, moodColor, goTo, onArrive, busy }: { sim: Sim; lots
         makeDefault
         enablePan={false}
         enableDamping
-        minZoom={9}
-        maxZoom={40}
+        minZoom={8}
+        maxZoom={70}
         minPolarAngle={0.5}
         maxPolarAngle={1.05}
       />
       <group ref={group}>
         <Character look={sim.look} gender={sim.gender} walking={walking} busy={!!busy} moodColor={moodColor} />
         {busy && (
-          <Html position={[0, 4.4, 0]} center zIndexRange={[30, 20]}>
+          <Html position={[0, 2.7, 0]} center zIndexRange={[30, 20]}>
             <div className="animate-pop rounded-full bg-white p-1.5 shadow-lg">
               <IconTile icon={iconFor(busy.icon)} colors={kindColors(busy.kind)} size={34} radius={17} />
             </div>

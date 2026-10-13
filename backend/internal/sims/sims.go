@@ -30,6 +30,13 @@ type Look struct {
 	HairColor   string `json:"hairColor"`
 	Outfit      string `json:"outfit"`
 	OutfitColor string `json:"outfitColor"`
+	// Added with the new creator; older Sims fall back to defaults in the client.
+	Body      string  `json:"body,omitempty"`
+	Height    float64 `json:"height,omitempty"`
+	Eyes      string  `json:"eyes,omitempty"`
+	Beard     string  `json:"beard,omitempty"`
+	Accessory string  `json:"accessory,omitempty"`
+	Pattern   string  `json:"pattern,omitempty"`
 }
 
 type Sim struct {
@@ -181,6 +188,8 @@ func (req *createRequest) validate() error {
 		return errors.New("genre invalide")
 	case req.Look.Skin == "" || req.Look.Hair == "" || req.Look.Outfit == "":
 		return errors.New("apparence incomplète")
+	case req.Look.Height != 0 && (req.Look.Height < 0.85 || req.Look.Height > 1.15):
+		return errors.New("taille invalide")
 	case len(req.Traits) == 0 || len(req.Traits) > game.MaxTraits:
 		return fmt.Errorf("choisis entre 1 et %d traits", game.MaxTraits)
 	case !game.ValidOption(game.Aspirations, req.Aspiration):

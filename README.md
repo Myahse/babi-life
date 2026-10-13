@@ -14,11 +14,11 @@ maquis… et laisse les évènements aléatoires pimenter ta vie.
 
 ## Les écrans
 
-Captures dans `docs/screens/` (`m-` = mobile, `d-` = ordinateur).
+Captures dans `docs/screens/` (`-m-` = mobile, `-d-` = ordinateur) : `cas-*` pour la création du Sim, `commune-*` pour chaque quartier, `e-*` pour une partie complète.
 
 1. **Accueil** (`/`) : illustration d'Abidjan au coucher du soleil, logo, et un seul bouton « Continuer avec Google ». En local, on peut aussi « Jouer » sans Google.
-2. **Créer un Sim** (`/creer`) : un studio comme dans les jeux mobiles. L'avatar est sur une scène et, en dessous, des onglets (Identité, Teint, Coiffure, Tenue, Caractère, Quartier). Chaque choix montre une vignette de l'avatar plutôt qu'un simple texte. À la fin, une carte révèle le **départ** tiré au hasard (Enfant de riche ou Débrouillard·e).
-3. **Le jeu** (`/jeu`) : un **quartier en 3D** (Three.js / react-three-fiber) où ton Sim se déplace à pied. Clique sur un bâtiment (maquis, marché, maison, club, bureau, gare…) et ton Sim y va, puis le menu des activités s'ouvre. Pour voyager vers une autre commune ou une autre ville, ouvre **Carte**. Le **téléphone** du jeu contient Carte, Quartier, Boulot, Logement, Messages (le journal), Mobile Money et Profil. Captures : `docs/screens/3d-*.png`, et une partie complète avec l'économie dans `docs/screens/e-*.png`.
+2. **Créer un Sim** (`/creer`) : sept étapes numérotées (Identité, Corps, Visage, Coiffure, Tenue, Caractère, Quartier) avec une barre de progression. Le Sim, en 3D, tourne sur un podium (on le fait pivoter du doigt) et la caméra zoome sur le visage pour la coiffure et le visage. Chaque option est une vignette du Sim qui la porte : teint, silhouette, taille, couleur des yeux, barbe, accessoires (lunettes, boucles, chaîne, casquette), huit coiffures, six tenues, quatre motifs de pagne, couleurs. À la fin, une carte révèle le **départ** tiré au hasard (Enfant de riche ou Débrouillard·e).
+3. **Le jeu** (`/jeu`) : un **quartier en 3D** (Three.js / react-three-fiber), à l'échelle réelle (environ 240 × 90 m), où ton Sim se déplace à pied sur les trottoirs. Chaque commune a son style : tours au Plateau, villas à Cocody, cours communes et maquis à Yopougon, marchés à Adjamé, vieilles maisons à arcades à Treichville et Grand-Bassam, cases rondes à Korhogo, montagnes à Man… Des passants marchent ou discutent, les taxis orange, woro-woro, gbakas et motos circulent. Clique sur un bâtiment (maquis, marché, maison, club, bureau, gare…) et ton Sim y va, puis le menu des activités s'ouvre. Pour voyager vers une autre commune ou une autre ville, ouvre **Carte**. Le **téléphone** du jeu contient Carte, Quartier, Boulot, Logement, Messages (le journal), Mobile Money et Profil. Captures : `docs/screens/3d-*.png`, et une partie complète avec l'économie dans `docs/screens/e-*.png`.
    La **Carte** (voyages) est en plein écran avec le HUD (portrait avec l'humeur, pièces en FCFA, horloge). Les jauges des besoins sont des anneaux. Sur mobile, le panneau Explorer est en bas de l'écran ; sur ordinateur, il flotte à gauche. Les activités s'ouvrent dans un menu circulaire façon Sims sur ordinateur et dans une liste en bas de l'écran sur mobile.
 4. **Profil** (`/profil`) : la carte du Sim, à partager (WhatsApp, etc.), avec ses statistiques et son histoire.
 
@@ -27,7 +27,8 @@ Captures dans `docs/screens/` (`m-` = mobile, `d-` = ordinateur).
 - **Mobile d'abord** : en Côte d'Ivoire, on joue surtout sur Android. Les boutons sont grands et à portée du pouce, le panneau du bas se réduit, et rien d'important n'est caché en haut de l'écran.
 - **Codes des jeux mobiles** : boutons en relief, tuiles d'icônes colorées, pièces dorées, des retours à chaque action (barre de progression, notifications, imprévus).
 - **Un seul jeu d'icônes** ([lucide](https://lucide.dev)), choisi par l'API (`icon: "drumstick"`), et une couleur par type de lieu (maquis = rouge corail, marché = or, plage = turquoise…).
-- **Identité ivoirienne** : orange, blanc et vert du drapeau ; pagne wax, foulard, maillot des Éléphants ; textes en français avec des expressions d'ici.
+- **Identité ivoirienne** : orange, blanc et vert du drapeau ; pagne wax, foulard, grand boubou, maillot des Éléphants ; textes en français avec des expressions d'ici.
+- **Les Sims** : un style cartoon 3D aux proportions humaines (environ six têtes), ombrage « toon », visages expressifs. Tout est construit en code (`web/src/avatar/`), sans fichier 3D : chaque combinaison fonctionne et reste légère pour Android. Les vignettes et portraits sont rendus par un seul canvas WebGL caché (`avatar/portrait.tsx`), car les téléphones limitent le nombre de canvas 3D.
 - **La carte hors-ligne est un vrai plateau de jeu** : frontières, fleuves, lacs et routes de Natural Earth, savane au nord et forêt au sud, lagune Ébrié dessinée à la main. Les étiquettes s'écartent automatiquement pour ne pas se chevaucher. Avec un token, Mapbox prend le relais (relief 3D dans les villes, mode nuit qui suit l'horloge du jeu).
 
 ## Lancer en local
@@ -78,6 +79,8 @@ Tests : `cd backend && go test ./...`
 - **Villes, communes et lieux** : `backend/internal/world/world.go`
 - **Types de lieux, interactions et évènements** : `backend/internal/game/catalog.go`
 - **Traits et aspirations** : `backend/internal/game/traits.go`
+- **Le style de chaque commune** (bâtiments, arbres, passants, circulation, couleur des woro-woro, lagune ou mer, décor au loin) : `web/src/world3d/themes.ts`. Les types de bâtiments sont dans `world3d/Fillers.tsx`.
+- **Les options du Sim** (coiffures, tenues, motifs, couleurs) : `web/src/avatar/options.ts`, et leur forme 3D dans `avatar/Human.tsx`.
 - **Départs, logements, carrières, loyer et microcrédit** : `backend/internal/game/economy.go`
 - **Règles** (vitesse du temps, baisse des besoins, chance d'évènement) : `backend/internal/game/needs.go` et `sim.go`. `web/src/game/rules.ts` reprend les mêmes constantes pour le HUD.
 

@@ -6,7 +6,7 @@ import type { City, Commune, Interaction, JournalEvent, Sim, World } from '../li
 import { useWorld } from '../store/world'
 import { GameMap } from '../components/map/GameMap'
 import { boundsFor, pinsFor, type Focus, type Padding } from '../components/map/pins'
-import { SimAvatar } from '../components/SimAvatar'
+import { Portrait } from '../avatar/portrait'
 import { Neighbourhood } from '../world3d/Neighbourhood'
 import { iconFor, kindColors } from '../components/icons'
 import { Chip, Coin, DayNight, IconTile, MotiveRing, Plumbob, Row, needColor } from '../components/ui'
@@ -149,7 +149,7 @@ export function Play() {
         <Link to="/profil" className="hud pointer-events-auto flex items-center gap-2.5 rounded-full py-1 pr-4 pl-1 transition active:scale-95">
           <span className="block rounded-full p-[3px]" style={{ background: `conic-gradient(${moodHex} ${mood(sim.needs) * 3.6}deg, #e7e9f2 0)` }}>
             <span className="block h-11 w-11 overflow-hidden rounded-full border-2 border-white bg-gradient-to-b from-[#ffe7c7] to-[#ffb27a]">
-              <SimAvatar look={sim.look} gender={sim.gender} crop="head" size={40} animated={false} />
+              <Portrait look={sim.look} gender={sim.gender} framing="head" />
             </span>
           </span>
           <span className="leading-tight">

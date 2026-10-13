@@ -45,7 +45,19 @@ export type World = {
 
 export type User = { id: string; email: string; name: string; avatarUrl: string; createdAt: string }
 
-export type Look = { skin: string; hair: string; hairColor: string; outfit: string; outfitColor: string }
+export type Look = {
+  skin: string
+  hair: string
+  hairColor: string
+  outfit: string
+  outfitColor: string
+  body?: string
+  height?: number
+  eyes?: string
+  beard?: string
+  accessory?: string
+  pattern?: string
+}
 
 export type Sim = {
   id: string

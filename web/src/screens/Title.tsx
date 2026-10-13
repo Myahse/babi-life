@@ -7,15 +7,15 @@ import type { Look, User } from '../lib/types'
 import { useSession } from '../store/session'
 import { useWorld } from '../store/world'
 import { Scene } from '../components/Scene'
-import { SimAvatar } from '../components/SimAvatar'
+import { Portrait } from '../avatar/portrait'
 import { Logo } from '../components/ui'
 
 const GOOGLE_ENABLED = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID)
 
 const CROWD: { look: Look; gender: 'femme' | 'homme'; size: number }[] = [
-  { gender: 'homme', size: 104, look: { skin: '#744220', hair: 'short', hairColor: '#1c1410', outfit: 'jersey', outfitColor: '#ff7a00' } },
-  { gender: 'femme', size: 126, look: { skin: '#965a30', hair: 'headwrap', hairColor: '#1c1410', outfit: 'pagne', outfitColor: '#ff7a00' } },
-  { gender: 'femme', size: 112, look: { skin: '#b97a45', hair: 'braids', hairColor: '#3d2414', outfit: 'boubou', outfitColor: '#00b86b' } },
+  { gender: 'homme', size: 120, look: { skin: '#6e4024', hair: 'short', hairColor: '#141010', outfit: 'jersey', outfitColor: '#ff7a00', beard: 'bouc' } },
+  { gender: 'femme', size: 136, look: { skin: '#8a5532', hair: 'headwrap', hairColor: '#141010', outfit: 'pagne', outfitColor: '#ff7a00', accessory: 'earrings', pattern: 'cercles' } },
+  { gender: 'homme', size: 126, look: { skin: '#a46c42', hair: 'locks', hairColor: '#2e1b12', outfit: 'boubou', outfitColor: '#00a862', accessory: 'chain' } },
 ]
 
 export function Title() {
@@ -58,7 +58,9 @@ export function Title() {
         <div className="relative mt-auto flex items-end justify-center">
           {CROWD.map((c, i) => (
             <div key={i} className="animate-up -mx-3" style={{ animationDelay: `${200 + i * 120}ms` }}>
-              <SimAvatar look={c.look} gender={c.gender} size={c.size} />
+              <span className="block" style={{ width: c.size, height: c.size * 1.35 }}>
+                <Portrait look={c.look} gender={c.gender} framing="full" />
+              </span>
             </div>
           ))}
         </div>

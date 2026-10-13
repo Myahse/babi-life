@@ -1,6 +1,6 @@
 import { Building2, House } from 'lucide-react'
 import type { Sim, World } from '../../lib/types'
-import { SimAvatar } from '../SimAvatar'
+import { Portrait } from '../../avatar/portrait'
 import { Plumbob, needColor } from '../ui'
 import { iconFor, kindColors } from '../icons'
 import { mood } from '../../game/rules'
@@ -146,7 +146,7 @@ export function boundsFor(world: World, focus: Focus): Bounds {
 function Face({ sim, size }: { sim: Sim; size: number }) {
   return (
     <span className="block overflow-hidden rounded-full bg-gradient-to-b from-[#ffe7c7] to-[#ffb27a]" style={{ width: size, height: size }}>
-      <SimAvatar look={sim.look} gender={sim.gender} crop="head" size={size} animated={false} />
+      <Portrait look={sim.look} gender={sim.gender} framing="head" />
     </span>
   )
 }
@@ -161,7 +161,7 @@ export function Pin({ pin, sim }: { pin: PinData; sim: Sim | null }) {
         <Plumbob size={14} color={moodHex} />
         <span className="relative z-10 rounded-full bg-white p-[3px] shadow-[0_8px_20px_-6px_rgba(0,0,0,0.5)]">
           <span className="block overflow-hidden rounded-full bg-gradient-to-b from-[#ffe7c7] to-[#ffb27a]" style={{ width: 54, height: 54 }}>
-            <SimAvatar look={sim.look} gender={sim.gender} crop="bust" size={54} />
+            <Portrait look={sim.look} gender={sim.gender} framing="head" />
           </span>
         </span>
         <span className="absolute bottom-[-6px] left-1/2 h-4 w-16 rounded-[50%] border-2 border-white/80" style={{ animation: 'ripple 1.8s ease-out infinite' }} />

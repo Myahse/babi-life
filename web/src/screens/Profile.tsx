@@ -5,7 +5,7 @@ import { api } from '../lib/api'
 import type { JournalEvent, Sim } from '../lib/types'
 import { useSession } from '../store/session'
 import { findCommune, useWorld } from '../store/world'
-import { SimAvatar } from '../components/SimAvatar'
+import { Portrait } from '../avatar/portrait'
 import { iconFor } from '../components/icons'
 import { Chip, Coin, IconTile, MotiveRing, Plumbob, needColor } from '../components/ui'
 import { NEEDS, amount, clock, mood } from '../game/rules'
@@ -69,7 +69,9 @@ export function Profile() {
         <div className="mx-auto flex max-w-3xl flex-col items-center px-4 text-center text-white sm:flex-row sm:items-end sm:gap-6 sm:text-left">
           <div className="flex flex-col items-center">
             <Plumbob size={16} color={needColor(mood(sim.needs))} />
-            <SimAvatar look={sim.look} gender={sim.gender} size={150} />
+            <span className="block h-[220px] w-[165px]">
+              <Portrait look={sim.look} gender={sim.gender} framing="full" />
+            </span>
           </div>
           <div className="pb-4">
             <h1 className="font-display text-4xl leading-none font-extrabold [text-shadow:0_2px_0_rgba(0,0,0,0.12)]">

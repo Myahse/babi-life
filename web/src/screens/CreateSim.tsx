@@ -1,41 +1,51 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Dices, IdCard, MapPin, Palette, Scissors, Shirt, Sparkles, type LucideIcon } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Dices, Glasses, Heart, IdCard, MapPin, PersonStanding, Scissors, Shirt, Smile, type LucideIcon } from 'lucide-react'
 import { api, type NewSim } from '../lib/api'
-import type { Origin } from '../lib/types'
+import type { Look, Origin } from '../lib/types'
 import { useWorld } from '../store/world'
-import { HAIR_COLORS, HAIRS, OUTFIT_COLORS, OUTFITS, SKIN_TONES, SimAvatar } from '../components/SimAvatar'
+import { ACCESSORIES, BEARDS, BODIES, DEFAULT_LOOK, EYE_COLORS, HAIR_COLORS, HAIRS, OUTFIT_COLORS, OUTFITS, PATTERNS, SKIN_TONES, WAX_OUTFITS, randomLook, type Choice } from '../avatar/options'
+import { Stage, type Focus } from '../avatar/Stage'
+import { Portrait, type Framing } from '../avatar/portrait'
+import { waxTexture } from '../avatar/textures'
 import { iconFor } from '../components/icons'
-import { Chip, Coin, IconTile, Plumbob } from '../components/ui'
+import { Chip, Coin, IconTile } from '../components/ui'
 import { amount } from '../game/rules'
 
-const TABS: { id: string; label: string; icon: LucideIcon }[] = [
-  { id: 'identity', label: 'Identité', icon: IdCard },
-  { id: 'skin', label: 'Teint', icon: Palette },
-  { id: 'hair', label: 'Coiffure', icon: Scissors },
-  { id: 'outfit', label: 'Tenue', icon: Shirt },
-  { id: 'traits', label: 'Caractère', icon: Sparkles },
-  { id: 'home', label: 'Quartier', icon: MapPin },
+// The Sim creator, in seven clear steps. The Sim stands on a turntable that
+// zooms to the face for hair and face choices; every option is shown as a
+// picture of *this* Sim wearing it.
+
+type Step = { id: string; label: string; icon: LucideIcon; focus: Focus; hint: string }
+
+const STEPS: Step[] = [
+  { id: 'identity', label: 'Identité', icon: IdCard, focus: 'body', hint: 'Qui es-tu ?' },
+  { id: 'body', label: 'Corps', icon: PersonStanding, focus: 'body', hint: 'Teint, silhouette et taille.' },
+  { id: 'face', label: 'Visage', icon: Smile, focus: 'face', hint: 'Yeux, barbe et accessoires.' },
+  { id: 'hair', label: 'Coiffure', icon: Scissors, focus: 'face', hint: 'Une coupe qui te ressemble.' },
+  { id: 'outfit', label: 'Tenue', icon: Shirt, focus: 'outfit', hint: 'Choisis ton style, ton pagne, ta couleur.' },
+  { id: 'traits', label: 'Caractère', icon: Heart, focus: 'body', hint: 'Trois traits et un rêve de vie.' },
+  { id: 'home', label: 'Quartier', icon: MapPin, focus: 'body', hint: 'Où commence ta vie ?' },
 ]
 
 const TRAIT_COLORS: [string, string][] = [['#ff8a65', '#ff3d57'], ['#64b5ff', '#2a6cf0'], ['#ffd54f', '#ffa000'], ['#b39dff', '#6c47ff'], ['#69e2a0', '#00a862'], ['#ff7ad9', '#b02bd6']]
-
-const FIRST = { femme: ['Awa', 'Aya', 'Mariam', 'Adjoua', 'Fatou', 'Akissi', 'Ruth'], homme: ['Kouadio', 'Yao', 'Moussa', 'Koffi', 'Serge', 'Ibrahim', 'Didier'] }
-const LAST = ['Koné', 'Kouassi', 'Traoré', 'Yao', 'Ouattara', 'Bamba', "N'Guessan", 'Diabaté', 'Coulibaly', 'Touré']
+const FIRST = { femme: ['Awa', 'Aya', 'Mariam', 'Adjoua', 'Fatou', 'Akissi', 'Ruth', 'Affoué'], homme: ['Kouadio', 'Yao', 'Moussa', 'Koffi', 'Serge', 'Ibrahim', 'Didier', 'Konan'] }
+const LAST = ['Koné', 'Kouassi', 'Traoré', 'Yao', 'Ouattara', 'Bamba', "N'Guessan", 'Diabaté', 'Coulibaly', 'Touré', 'Kouamé']
 const pick = <T,>(a: readonly T[]) => a[Math.floor(Math.random() * a.length)]
+const metres = (h: number, femme: boolean) => `${((femme ? 1.65 : 1.76) * h).toFixed(2).replace('.', ',')} m`
 
 export function CreateSim() {
   const world = useWorld((s) => s.world)
   const navigate = useNavigate()
-  const [tab, setTab] = useState(0)
+  const [step, setStep] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [origin, setOrigin] = useState<Origin | null>(null)
-  const [sim, setSim] = useState<NewSim>({
+  const [sim, setSim] = useState<NewSim & { look: Required<Look> }>({
     firstName: 'Awa',
     lastName: 'Koné',
     gender: 'femme',
-    look: { skin: SKIN_TONES[3], hair: 'headwrap', hairColor: HAIR_COLORS[0], outfit: 'pagne', outfitColor: OUTFIT_COLORS[0] },
+    look: DEFAULT_LOOK as Required<Look>,
     traits: ['ambianceur', 'gourmand'],
     aspiration: 'ambiance',
     homeCity: 'abidjan',
@@ -43,13 +53,15 @@ export function CreateSim() {
   })
 
   if (!world) return null
-  const set = (patch: Partial<NewSim>) => setSim((s) => ({ ...s, ...patch }))
-  const setLook = (patch: Partial<NewSim['look']>) => setSim((s) => ({ ...s, look: { ...s.look, ...patch } }))
+  type Draft = NewSim & { look: Required<Look> }
+  const set = (patch: Partial<Draft>) => setSim((s) => ({ ...s, ...patch }))
+  const setLook = (patch: Partial<Look>) => setSim((s) => ({ ...s, look: { ...s.look, ...patch } }))
   const city = world.cities.find((c) => c.id === sim.homeCity)!
   const commune = city.communes.find((c) => c.id === sim.homeCommune)!
-  const aspiration = world.aspirations.find((a) => a.id === sim.aspiration)!
+  const femme = sim.gender === 'femme'
   const valid = sim.firstName.trim() && sim.lastName.trim() && sim.traits.length > 0
-  const last = tab === TABS.length - 1
+  const current = STEPS[step]
+  const last = step === STEPS.length - 1
 
   function randomize() {
     const gender = pick(['femme', 'homme'] as const)
@@ -58,12 +70,19 @@ export function CreateSim() {
       gender,
       firstName: pick(FIRST[gender]),
       lastName: pick(LAST),
-      look: { skin: pick(SKIN_TONES), hair: pick(HAIRS).id, hairColor: pick(HAIR_COLORS), outfit: pick(OUTFITS).id, outfitColor: pick(OUTFIT_COLORS) },
+      look: randomLook(gender),
       traits: [...world!.traits].sort(() => Math.random() - 0.5).slice(0, 3).map((t) => t.id),
       aspiration: pick(world!.aspirations).id,
       homeCity: c.id,
       homeCommune: pick(c.communes).id,
     })
+  }
+
+  function setGender(gender: NewSim['gender']) {
+    // Swap the obviously gendered defaults; everything else is free to mix.
+    const look = randomLookFor(gender, sim.look)
+    const other = FIRST[gender === 'femme' ? 'homme' : 'femme']
+    set({ gender, look, firstName: other.includes(sim.firstName) ? pick(FIRST[gender]) : sim.firstName })
   }
 
   async function submit() {
@@ -83,59 +102,46 @@ export function CreateSim() {
 
   return (
     <div className="flex h-full flex-col bg-[var(--color-night)] lg:flex-row">
-      {/* Stage */}
-      <section className="relative flex min-h-[44%] flex-1 flex-col overflow-hidden bg-[radial-gradient(120%_90%_at_50%_10%,#ffe7c7_0%,#ffb27a_45%,#ff7a59_75%,#c94a6a_100%)]">
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-[repeating-linear-gradient(90deg,rgba(255,255,255,0.07)_0_2px,transparent_2px_64px)]" />
-        <header className="relative z-10 flex items-center justify-between p-3 lg:p-5">
-          <div className="rounded-full bg-white/25 px-3 py-1.5 font-display text-sm font-extrabold text-white backdrop-blur">Crée ton Sim</div>
-          <button className="icon-btn bg-white text-[var(--color-orange)] shadow-lg" onClick={randomize} aria-label="Sim au hasard" title="Au hasard">
+      {/* ---------- Stage ---------- */}
+      <section className="relative flex min-h-[42%] flex-1 flex-col overflow-hidden bg-[radial-gradient(110%_90%_at_50%_15%,#ffe7c7_0%,#ffb27a_45%,#ff7a59_78%,#c94a6a_100%)]">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-[repeating-linear-gradient(90deg,rgba(255,255,255,0.07)_0_2px,transparent_2px_64px)]" />
+        <Stage look={sim.look} gender={sim.gender} focus={current.focus} pose={step === STEPS.length - 1 ? 'wave' : 'idle'} className="!absolute inset-0" />
+
+        <header className="pointer-events-none relative z-10 flex items-start justify-between gap-2 p-3 lg:p-5">
+          <div className="pointer-events-auto rounded-2xl bg-white/25 px-3 py-2 text-white backdrop-blur">
+            <div className="text-[11px] font-extrabold tracking-wider uppercase opacity-90">
+              Étape {step + 1} sur {STEPS.length}
+            </div>
+            <div className="font-display text-xl leading-tight font-extrabold">{current.label}</div>
+          </div>
+          <button className="icon-btn pointer-events-auto bg-white text-[var(--color-orange)] shadow-lg" onClick={randomize} aria-label="Sim au hasard" title="Au hasard">
             <Dices size={24} strokeWidth={2.4} />
           </button>
         </header>
 
-        <div className="relative flex flex-1 flex-col items-center justify-end pb-4 lg:pb-16">
-          <Plumbob size={18} color="#00b86b" />
-          <div key={sim.gender + sim.look.outfit + sim.look.hair} className="animate-pop relative z-10 -mb-5 h-[clamp(150px,30vh,330px)] lg:h-[clamp(260px,56vh,560px)] [&>svg]:h-full [&>svg]:w-auto">
-            <SimAvatar look={sim.look} gender={sim.gender} size={220} />
+        <div className="pointer-events-none relative z-10 mt-auto p-3 text-center text-white lg:pb-8">
+          <div className="font-display text-[26px] leading-none font-extrabold [text-shadow:0_2px_0_rgba(0,0,0,0.15)] lg:text-4xl">
+            {sim.firstName || '…'} {sim.lastName}
           </div>
-          <div className="h-10 w-[min(70%,300px)] rounded-[50%] bg-gradient-to-b from-white/70 to-white/20 shadow-[0_12px_30px_-8px_rgba(120,30,40,0.5)]" />
-          <div className="mt-3 text-center text-white">
-            <div className="font-display text-[26px] leading-none font-extrabold [text-shadow:0_2px_0_rgba(0,0,0,0.12)] lg:text-4xl">
-              {sim.firstName || '…'} {sim.lastName}
-            </div>
-            <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
-              <Chip tone="dark">
-                <MapPin size={12} /> {commune.name}
-              </Chip>
-              <Chip tone="dark">{aspiration.label}</Chip>
-            </div>
-          </div>
+          <div className="mt-1 text-xs font-bold opacity-90">Fais glisser pour tourner ton Sim</div>
         </div>
       </section>
 
-      {/* Editor */}
-      <section className="sheet relative z-10 -mt-6 flex max-h-[58%] flex-col rounded-t-[28px] lg:mt-0 lg:max-h-none lg:w-[520px] lg:rounded-none">
-        <nav className="no-scrollbar flex gap-1 overflow-x-auto px-3 pt-3 pb-2">
-          {TABS.map((t, i) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(i)}
-              className={`flex min-w-[68px] flex-1 flex-col items-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-extrabold transition ${i === tab ? 'bg-[#fff1e3] text-[var(--color-orange)]' : 'text-[var(--color-ink-soft)] hover:bg-[var(--color-canvas)]'}`}
-            >
-              <t.icon size={22} strokeWidth={2.4} />
-              {t.label}
-            </button>
-          ))}
-        </nav>
+      {/* ---------- Editor ---------- */}
+      <section className="sheet relative z-10 -mt-6 flex max-h-[60%] flex-col rounded-t-[28px] lg:mt-0 lg:max-h-none lg:w-[540px] lg:rounded-none">
+        <Stepper step={step} onStep={setStep} />
+        <p className="px-4 pb-1 text-sm font-bold text-[var(--color-ink-soft)]">{current.hint}</p>
 
-        <div key={tab} className="animate-up flex-1 overflow-y-auto px-4 pt-2 pb-4">
-          {TABS[tab].id === 'identity' && (
+        <div key={step} className="animate-up flex-1 overflow-y-auto px-4 pt-2 pb-4">
+          {current.id === 'identity' && (
             <div className="space-y-5">
               <div className="grid grid-cols-2 gap-3">
                 {(['femme', 'homme'] as const).map((g) => (
-                  <button key={g} className="tile flex flex-col items-center pt-2 pb-3" aria-pressed={sim.gender === g} onClick={() => set({ gender: g })}>
-                    <SimAvatar look={{ ...sim.look, hair: g === 'homme' && sim.look.hair === 'headwrap' ? 'short' : sim.look.hair }} gender={g} size={78} crop="head" animated={false} />
-                    <span className="mt-1 font-display text-base font-extrabold">{g === 'femme' ? 'Femme' : 'Homme'}</span>
+                  <button key={g} className="tile flex flex-col items-center overflow-hidden pb-3" aria-pressed={sim.gender === g} onClick={() => setGender(g)}>
+                    <span className="block aspect-square w-full max-w-[150px]">
+                      <Portrait look={sim.gender === g ? sim.look : randomLookFor(g, sim.look)} gender={g} framing="bust" />
+                    </span>
+                    <span className="font-display text-base font-extrabold">{g === 'femme' ? 'Femme' : 'Homme'}</span>
                   </button>
                 ))}
               </div>
@@ -152,51 +158,79 @@ export function CreateSim() {
             </div>
           )}
 
-          {TABS[tab].id === 'skin' && (
-            <div className="grid grid-cols-3 gap-3">
-              {SKIN_TONES.map((c) => (
-                <button key={c} className="tile flex flex-col items-center py-2" aria-pressed={sim.look.skin === c} onClick={() => setLook({ skin: c })} aria-label={`Teint ${c}`}>
-                  <SimAvatar look={{ ...sim.look, skin: c }} gender={sim.gender} size={72} crop="head" animated={false} />
-                </button>
-              ))}
-            </div>
-          )}
-
-          {TABS[tab].id === 'hair' && (
+          {current.id === 'body' && (
             <div className="space-y-5">
-              <div className="grid grid-cols-3 gap-3">
-                {HAIRS.map((h) => (
-                  <button key={h.id} className="tile flex flex-col items-center pt-1 pb-2" aria-pressed={sim.look.hair === h.id} onClick={() => setLook({ hair: h.id })}>
-                    <SimAvatar look={{ ...sim.look, hair: h.id }} gender={sim.gender} size={72} crop="head" animated={false} />
-                    <span className="text-xs font-extrabold">{h.label}</span>
-                  </button>
-                ))}
-              </div>
-              <Swatches label="Couleur" colors={HAIR_COLORS} value={sim.look.hairColor} onChange={(hairColor) => setLook({ hairColor })} />
-            </div>
-          )}
-
-          {TABS[tab].id === 'outfit' && (
-            <div className="space-y-5">
-              <div className="grid grid-cols-3 gap-3">
-                {OUTFITS.map((o) => (
-                  <button key={o.id} className="tile flex flex-col items-center pt-1 pb-2" aria-pressed={sim.look.outfit === o.id} onClick={() => setLook({ outfit: o.id })}>
-                    <SimAvatar look={{ ...sim.look, outfit: o.id }} gender={sim.gender} size={72} crop="bust" animated={false} />
-                    <span className="text-xs font-extrabold">{o.label}</span>
-                  </button>
-                ))}
-              </div>
-              {sim.look.outfit !== 'jersey' && <Swatches label="Tissu" colors={OUTFIT_COLORS} value={sim.look.outfitColor} onChange={(outfitColor) => setLook({ outfitColor })} />}
-            </div>
-          )}
-
-          {TABS[tab].id === 'traits' && (
-            <div className="space-y-5">
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="label">Traits</span>
-                  <Chip tone={sim.traits.length === 3 ? 'good' : 'neutral'}>{sim.traits.length} / 3</Chip>
+              <Section title="Teint">
+                <Swatches colors={SKIN_TONES} value={sim.look.skin} onChange={(skin) => setLook({ skin })} big />
+              </Section>
+              <Section title="Silhouette">
+                <Options choices={BODIES} value={sim.look.body} onPick={(body) => setLook({ body })} look={sim.look} gender={sim.gender} field="body" framing="full" />
+              </Section>
+              <Section title="Taille" right={<Chip tone="gold">{metres(sim.look.height, femme)}</Chip>}>
+                <input type="range" min={0.92} max={1.08} step={0.01} value={sim.look.height} onChange={(e) => setLook({ height: Number(e.target.value) })} className="w-full accent-[var(--color-orange)]" aria-label="Taille" />
+                <div className="flex justify-between text-xs font-extrabold text-[var(--color-ink-soft)]">
+                  <span>Petit·e</span>
+                  <span>Grand·e</span>
                 </div>
+              </Section>
+            </div>
+          )}
+
+          {current.id === 'face' && (
+            <div className="space-y-5">
+              <Section title="Couleur des yeux">
+                <Swatches colors={EYE_COLORS} value={sim.look.eyes} onChange={(eyes) => setLook({ eyes })} />
+              </Section>
+              {!femme && (
+                <Section title="Barbe">
+                  <Options choices={BEARDS} value={sim.look.beard} onPick={(beard) => setLook({ beard })} look={sim.look} gender={sim.gender} field="beard" framing="head" />
+                </Section>
+              )}
+              <Section title="Accessoire" icon={Glasses}>
+                <Options choices={ACCESSORIES} value={sim.look.accessory} onPick={(accessory) => setLook({ accessory })} look={sim.look} gender={sim.gender} field="accessory" framing="head" />
+              </Section>
+            </div>
+          )}
+
+          {current.id === 'hair' && (
+            <div className="space-y-5">
+              <Section title="Coupe">
+                <Options choices={HAIRS} value={sim.look.hair} onPick={(hair) => setLook({ hair })} look={sim.look} gender={sim.gender} field="hair" framing="head" />
+              </Section>
+              <Section title="Couleur">
+                <Swatches colors={HAIR_COLORS} value={sim.look.hairColor} onChange={(hairColor) => setLook({ hairColor })} />
+              </Section>
+            </div>
+          )}
+
+          {current.id === 'outfit' && (
+            <div className="space-y-5">
+              <Section title="Style">
+                <Options choices={OUTFITS.filter((o) => femme || o.id !== 'robe')} value={sim.look.outfit} onPick={(outfit) => setLook({ outfit })} look={sim.look} gender={sim.gender} field="outfit" framing="full" />
+              </Section>
+              {(WAX_OUTFITS.has(sim.look.outfit) || sim.look.hair === 'headwrap') && (
+                <Section title="Motif du pagne">
+                  <div className="grid grid-cols-4 gap-2.5">
+                    {PATTERNS.map((p) => (
+                      <button key={p.id} className="tile flex flex-col items-center gap-1 p-1.5 pb-2" aria-pressed={sim.look.pattern === p.id} onClick={() => setLook({ pattern: p.id })}>
+                        <span className="block aspect-square w-full rounded-xl bg-cover" style={{ backgroundImage: `url(${waxTexture(sim.look.outfitColor, p.id).image.toDataURL()})`, backgroundSize: '200%' }} />
+                        <span className="text-[11px] font-extrabold">{p.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </Section>
+              )}
+              {sim.look.outfit !== 'jersey' && (
+                <Section title={sim.look.outfit === 'suit' ? 'Couleur de la cravate' : 'Couleur'}>
+                  <Swatches colors={OUTFIT_COLORS} value={sim.look.outfitColor} onChange={(outfitColor) => setLook({ outfitColor })} />
+                </Section>
+              )}
+            </div>
+          )}
+
+          {current.id === 'traits' && (
+            <div className="space-y-5">
+              <Section title="Traits" right={<Chip tone={sim.traits.length === 3 ? 'good' : 'neutral'}>{sim.traits.length} / 3</Chip>}>
                 <div className="grid grid-cols-3 gap-2.5">
                   {world.traits.map((t, i) => {
                     const on = sim.traits.includes(t.id)
@@ -215,10 +249,9 @@ export function CreateSim() {
                     )
                   })}
                 </div>
-              </div>
-              <div>
-                <span className="label">Rêve de vie</span>
-                <div className="mt-2 grid gap-2">
+              </Section>
+              <Section title="Rêve de vie">
+                <div className="grid gap-2">
                   {world.aspirations.map((a, i) => (
                     <button key={a.id} className="tile flex items-center gap-3 p-2.5 text-left" aria-pressed={sim.aspiration === a.id} onClick={() => set({ aspiration: a.id })}>
                       <IconTile icon={iconFor(a.icon)} colors={TRAIT_COLORS[(i + 2) % TRAIT_COLORS.length]} size={40} />
@@ -229,11 +262,11 @@ export function CreateSim() {
                     </button>
                   ))}
                 </div>
-              </div>
+              </Section>
             </div>
           )}
 
-          {TABS[tab].id === 'home' && (
+          {current.id === 'home' && (
             <div className="space-y-4">
               <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4">
                 {world.cities.map((c) => (
@@ -258,15 +291,20 @@ export function CreateSim() {
           )}
         </div>
 
-        <footer className="border-t border-[var(--color-line)] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <footer className="flex gap-2 border-t border-[var(--color-line)] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           {error && <p className="mb-2 rounded-2xl bg-[#ffe8ec] px-3 py-2 text-sm font-bold text-[#d81b3f]">{error}</p>}
+          {step > 0 && (
+            <button className="btn btn-soft shrink-0 px-4" onClick={() => setStep(step - 1)} aria-label="Étape précédente">
+              <ChevronLeft size={22} strokeWidth={2.6} />
+            </button>
+          )}
           {last ? (
-            <button className="btn btn-emerald w-full" disabled={busy || !valid} onClick={submit}>
+            <button className="btn btn-emerald flex-1" disabled={busy || !valid} onClick={submit}>
               Emménager à {commune.name}
             </button>
           ) : (
-            <button className="btn w-full" onClick={() => setTab(tab + 1)}>
-              Suivant · {TABS[tab + 1].label}
+            <button className="btn flex-1" onClick={() => setStep(step + 1)}>
+              Suivant · {STEPS[step + 1].label} <ChevronRight size={20} strokeWidth={2.8} />
             </button>
           )}
         </footer>
@@ -274,6 +312,93 @@ export function CreateSim() {
       {origin && <OriginReveal origin={origin} name={sim.firstName} housing={world.housings.find((h) => h.id === origin.housing)?.label ?? ''} onGo={() => navigate('/jeu')} />}
     </div>
   )
+}
+
+/* ---------- Pieces ---------- */
+
+/** The numbered steps across the top of the editor. */
+function Stepper({ step, onStep }: { step: number; onStep: (i: number) => void }) {
+  return (
+    <nav className="px-3 pt-3 pb-2">
+      <div className="mb-2 h-1.5 overflow-hidden rounded-full bg-[var(--color-canvas)]">
+        <div className="h-full rounded-full bg-gradient-to-r from-[#ffa040] to-[#ff6a00] transition-[width] duration-500" style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} />
+      </div>
+      <ol className="no-scrollbar flex gap-1 overflow-x-auto">
+        {STEPS.map((s, i) => {
+          const done = i < step
+          const here = i === step
+          return (
+            <li key={s.id} className="min-w-[64px] flex-1">
+              <button onClick={() => onStep(i)} className={`flex w-full flex-col items-center gap-1 rounded-2xl px-1 py-1.5 transition ${here ? 'bg-[#fff1e3]' : 'hover:bg-[var(--color-canvas)]'}`}>
+                <span
+                  className={`grid h-8 w-8 place-items-center rounded-full font-display text-sm font-extrabold transition ${here ? 'bg-[var(--color-orange)] text-white shadow-[0_4px_12px_-4px_rgba(255,122,0,0.8)]' : done ? 'bg-[var(--color-emerald)] text-white' : 'bg-[var(--color-canvas)] text-[var(--color-ink-soft)]'}`}
+                >
+                  {done ? <Check size={16} strokeWidth={3.2} /> : i + 1}
+                </span>
+                <span className={`text-[11px] leading-none font-extrabold ${here ? 'text-[var(--color-orange)]' : 'text-[var(--color-ink-soft)]'}`}>{s.label}</span>
+              </button>
+            </li>
+          )
+        })}
+      </ol>
+    </nav>
+  )
+}
+
+function Section({ title, right, icon: Icon, children }: { title: string; right?: React.ReactNode; icon?: LucideIcon; children: React.ReactNode }) {
+  return (
+    <section>
+      <div className="mb-2 flex items-center justify-between">
+        <span className="label flex items-center gap-1.5">
+          {Icon && <Icon size={13} />}
+          {title}
+        </span>
+        {right}
+      </div>
+      {children}
+    </section>
+  )
+}
+
+/** A grid of options, each shown as a picture of the Sim wearing it. */
+function Options({ choices, value, onPick, look, gender, field, framing }: { choices: Choice[]; value: string; onPick: (id: string) => void; look: Required<Look>; gender: NewSim['gender']; field: keyof Look; framing: Framing }) {
+  return (
+    <div className={`grid gap-2.5 ${framing === 'full' ? 'grid-cols-3 sm:grid-cols-4' : 'grid-cols-4'}`}>
+      {choices.map((c) => (
+        <button key={c.id} className="tile flex flex-col items-center overflow-hidden pb-1.5" aria-pressed={value === c.id} onClick={() => onPick(c.id)}>
+          <span className={`block w-full ${framing === 'full' ? 'aspect-[3/4]' : 'aspect-square'}`}>
+            <Portrait look={{ ...look, [field]: c.id }} gender={gender} framing={framing} />
+          </span>
+          <span className="px-1 text-center text-[11px] leading-tight font-extrabold">{c.label}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function Swatches({ colors, value, onChange, big }: { colors: string[]; value: string; onChange: (c: string) => void; big?: boolean }) {
+  return (
+    <div className="flex flex-wrap gap-2.5">
+      {colors.map((c) => (
+        <button
+          key={c}
+          type="button"
+          aria-label={c}
+          aria-pressed={value === c}
+          onClick={() => onChange(c)}
+          className={`rounded-full transition ${big ? 'h-12 w-12' : 'h-10 w-10'} ${value === c ? 'scale-110 ring-4 ring-[var(--color-orange)] ring-offset-2' : 'ring-1 ring-black/10'}`}
+          style={{ background: `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.35), transparent 45%), ${c}` }}
+        />
+      ))}
+    </div>
+  )
+}
+
+/** The other gender's picture keeps your colours. */
+function randomLookFor(gender: NewSim['gender'], look: Required<Look>): Required<Look> {
+  return gender === 'homme'
+    ? { ...look, hair: ['headwrap', 'weave', 'bun'].includes(look.hair) ? 'short' : look.hair, outfit: look.outfit === 'robe' ? 'casual' : look.outfit, accessory: look.accessory === 'earrings' ? 'none' : look.accessory }
+    : { ...look, beard: 'none' }
 }
 
 /** Nobody chooses where they start: the server draws it, we reveal it like a card. */
@@ -312,27 +437,6 @@ function OriginReveal({ origin, name, housing, onGo }: { origin: Origin; name: s
             C'est parti, {name} !
           </button>
         </div>
-      </div>
-    </div>
-  )
-}
-
-function Swatches({ label, colors, value, onChange }: { label: string; colors: string[]; value: string; onChange: (c: string) => void }) {
-  return (
-    <div>
-      <span className="label">{label}</span>
-      <div className="mt-2 flex flex-wrap gap-2.5">
-        {colors.map((c) => (
-          <button
-            key={c}
-            type="button"
-            aria-label={c}
-            aria-pressed={value === c}
-            onClick={() => onChange(c)}
-            className={`h-11 w-11 rounded-full transition ${value === c ? 'scale-110 ring-4 ring-[var(--color-orange)] ring-offset-2' : 'ring-1 ring-black/10'}`}
-            style={{ background: c }}
-          />
-        ))}
       </div>
     </div>
   )
