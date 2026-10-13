@@ -1,4 +1,4 @@
-import { Bus, CarTaxiFront, Clock3 } from 'lucide-react'
+import { ArrowRight, Bus, CarTaxiFront, Clock3 } from 'lucide-react'
 import type { Sim, World } from '../lib/types'
 import { amount, duration, trip } from '../game/rules'
 import { Chip, Coin, IconTile } from './ui'
@@ -21,8 +21,10 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
         <IconTile icon={bus ? Bus : CarTaxiFront} colors={['#ffa040', '#ff6a00']} size={40} />
         <div className="min-w-0 flex-1 leading-tight">
           <div className="font-display text-base font-extrabold">{bus ? 'Prendre le car' : 'Prendre un taxi'}</div>
-          <div className="truncate text-xs font-bold text-[var(--color-ink-soft)]">
-            {from.name} → {to.name}
+          <div className="flex min-w-0 items-center gap-1 text-xs font-bold text-[var(--color-ink-soft)]">
+            <span className="truncate">{from.name}</span>
+            <ArrowRight size={12} strokeWidth={3} className="shrink-0" />
+            <span className="truncate">{to.name}</span>
           </div>
         </div>
         <Chip>

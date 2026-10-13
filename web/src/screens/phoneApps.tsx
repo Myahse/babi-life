@@ -1,5 +1,5 @@
 // The economy apps of the in-game phone: Boulot, Logement and Mobile Money.
-import { BadgeCheck, CalendarClock, Clock3, Footprints, House, Map as MapIcon, TrendingUp, TriangleAlert } from 'lucide-react'
+import { BadgeCheck, CalendarClock, Clock3, Footprints, House, Map as MapIcon, TrendingUp, TriangleAlert, ArrowDownLeft, ArrowUpRight } from 'lucide-react'
 import { api } from '../lib/api'
 import type { ActionResult, Commune, JournalEvent, Sim, World } from '../lib/types'
 import { iconFor, kindColors } from '../components/icons'
@@ -32,7 +32,7 @@ export function JobsApp({ world, sim, commune, act, onWalk, onMap }: AppProps & 
 
       <section>
         <h4 className="label mb-2">{career ? 'Changer de métier' : 'Métiers'}</h4>
-        <ul className="space-y-2">
+        <ul className="motion-stagger space-y-2">
           {world.careers
             .filter((c) => c.id !== sim.career)
             .map((c) => (
@@ -53,7 +53,7 @@ export function JobsApp({ world, sim, commune, act, onWalk, onMap }: AppProps & 
       {gigs.length > 0 && (
         <section>
           <h4 className="label mb-2">Petits boulots</h4>
-          <ul className="space-y-2">
+          <ul className="motion-stagger space-y-2">
             {gigs.map(({ place, commune: cm, it }) => (
               <Row key={place.id + it.id} icon={iconFor(it.icon)} colors={kindColors(place.kind)} title={it.label} sub={`${place.name} · ${cm.name}`} onClick={() => (cm.id === commune.id ? onWalk(place.id) : onMap())}>
                 <Chip tone="good">+{amount(-it.cost)} F</Chip>
@@ -118,7 +118,7 @@ function CareerCard({ world, sim, commune, act, onWalk, onMap }: AppProps & { on
       </div>
 
       <h4 className="label">Où travailler</h4>
-      <ul className="space-y-2">
+      <ul className="motion-stagger space-y-2">
         {workplaces.map(({ p, cm }) => {
           const here = cm.id === commune.id
           return (
@@ -184,7 +184,7 @@ export function HomeApp({ world, sim, commune, act }: AppProps) {
       <section>
         <h4 className="label mb-1">Déménager à {commune.name}</h4>
         <p className="mb-2 text-xs font-semibold text-[var(--color-ink-soft)]">Caution de {DEPOSIT_WEEKS} semaines de loyer à l'entrée. Ton nouveau chez-toi sera ici, à {commune.name}.</p>
-        <ul className="space-y-2">
+        <ul className="motion-stagger space-y-2">
           {world.housings.map((h) => {
             const current = h.id === sim.housing && livesHere
             const deposit = h.rent * DEPOSIT_WEEKS
@@ -229,8 +229,12 @@ export function BankApp({ sim, act, journal, renderJournal }: { sim: Sim; act: A
         <div className="label !text-[#7a5200]">Solde</div>
         <div className="tnum font-display text-4xl leading-none font-extrabold">{amount(sim.money)} F</div>
         <div className="mt-3 flex gap-4 text-xs font-extrabold">
-          <span>↑ {amount(earned)} F reçus</span>
-          <span>↓ {amount(spent)} F dépensés</span>
+          <span className="flex items-center gap-1">
+            <ArrowDownLeft size={14} strokeWidth={3} /> {amount(earned)} F reçus
+          </span>
+          <span className="flex items-center gap-1">
+            <ArrowUpRight size={14} strokeWidth={3} /> {amount(spent)} F dépensés
+          </span>
         </div>
       </div>
 

@@ -50,11 +50,27 @@
   50% { transform: scale(1.06); }
 }
 
-/* Lists arriving one after the other: set --i on each item */
+/* Lists arriving one after the other: each item a beat after the last
+   (the first 16 automatically; set --i to override). */
 .motion-stagger > * {
   animation: motion-rise 0.42s var(--ease-out) both;
-  animation-delay: calc(var(--i, 0) * 45ms);
+  animation-delay: calc(var(--i, 0) * 40ms);
 }
+.motion-stagger > :nth-child(2) { --i: 1; }
+.motion-stagger > :nth-child(3) { --i: 2; }
+.motion-stagger > :nth-child(4) { --i: 3; }
+.motion-stagger > :nth-child(5) { --i: 4; }
+.motion-stagger > :nth-child(6) { --i: 5; }
+.motion-stagger > :nth-child(7) { --i: 6; }
+.motion-stagger > :nth-child(8) { --i: 7; }
+.motion-stagger > :nth-child(9) { --i: 8; }
+.motion-stagger > :nth-child(10) { --i: 9; }
+.motion-stagger > :nth-child(11) { --i: 10; }
+.motion-stagger > :nth-child(12) { --i: 11; }
+.motion-stagger > :nth-child(13) { --i: 12; }
+.motion-stagger > :nth-child(14) { --i: 13; }
+.motion-stagger > :nth-child(15) { --i: 14; }
+.motion-stagger > :nth-child(16) { --i: 15; }
 @keyframes motion-rise {
   from { transform: translateY(12px); opacity: 0; }
 }

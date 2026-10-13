@@ -61,7 +61,7 @@ export function Title() {
     try {
       const { token, user } = await p
       signIn(token, user)
-      navigate('/jeu')
+      navigate('/jeu', { viewTransition: true })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Connexion impossible')
     } finally {

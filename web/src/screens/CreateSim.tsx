@@ -107,7 +107,7 @@ export function CreateSim() {
       const created = await api.createSim(sim)
       const drawn = world!.origins.find((o) => o.id === created.origin)
       if (drawn) setOrigin(drawn)
-      else navigate('/jeu')
+      else navigate('/jeu', { viewTransition: true })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erreur')
     } finally {
@@ -360,7 +360,7 @@ export function CreateSim() {
           )}
         </footer>
       </section>
-      {origin && <OriginReveal origin={origin} name={sim.firstName} housing={world.housings.find((h) => h.id === origin.housing)?.label ?? ''} onGo={() => navigate('/jeu')} />}
+      {origin && <OriginReveal origin={origin} name={sim.firstName} housing={world.housings.find((h) => h.id === origin.housing)?.label ?? ''} onGo={() => navigate('/jeu', { viewTransition: true })} />}
     </div>
   )
 }

@@ -52,7 +52,7 @@ export function Profile() {
   async function removeSim() {
     if (!confirm(`Supprimer ${sim!.firstName} pour toujours ?`)) return
     await api.deleteSim(sim!.id)
-    navigate('/creer')
+    navigate('/creer', { viewTransition: true })
   }
 
   return (
@@ -60,7 +60,7 @@ export function Profile() {
       {/* Hero: the Sim card */}
       <section className="relative overflow-hidden bg-[radial-gradient(120%_90%_at_50%_0%,#ffe7c7_0%,#ffb27a_45%,#ff7a59_75%,#c94a6a_100%)] pb-16">
         <div className="mx-auto flex max-w-3xl items-center justify-between p-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:p-5">
-          <Link to="/jeu" className="icon-btn bg-white/90 shadow-lg" aria-label="Retour au jeu">
+          <Link to="/jeu" viewTransition className="icon-btn bg-white/90 shadow-lg" aria-label="Retour au jeu">
             <ChevronLeft size={24} strokeWidth={2.6} />
           </Link>
           <button className="flex h-11 items-center gap-2 rounded-full bg-white/90 px-4 font-display font-extrabold shadow-lg active:scale-95" onClick={share}>
@@ -122,7 +122,7 @@ export function Profile() {
             <div className="tnum font-display text-3xl leading-none font-extrabold">{amount(sim.money)} F</div>
             {sim.loan > 0 && <div className="text-xs font-extrabold text-[#d81b3f]">Microcrédit : {amount(sim.loan)} F à rembourser</div>}
           </div>
-          <Link to="/jeu" className="btn btn-emerald px-5">
+          <Link to="/jeu" viewTransition className="btn btn-emerald px-5">
             Jouer
           </Link>
         </section>

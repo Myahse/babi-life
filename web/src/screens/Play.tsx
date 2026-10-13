@@ -238,7 +238,7 @@ export function Play() {
 
       {/* ---------- Top HUD ---------- */}
       <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:p-5">
-        <Link to="/profil" className="hud pointer-events-auto flex items-center gap-2.5 rounded-full py-1 pr-4 pl-1 transition active:scale-95">
+        <Link to="/profil" viewTransition className="hud pointer-events-auto flex items-center gap-2.5 rounded-full py-1 pr-4 pl-1 transition active:scale-95">
           <span className="block rounded-full p-[3px]" style={{ background: `conic-gradient(${moodHex} ${mood(sim.needs) * 3.6}deg, #e7e9f2 0)` }}>
             <span className="block h-11 w-11 overflow-hidden rounded-full border-2 border-white bg-gradient-to-b from-[#ffe7c7] to-[#ffb27a]">
               <Portrait look={sim.look} gender={sim.gender} framing="head" />
@@ -254,8 +254,10 @@ export function Play() {
         </Link>
 
         <div className="pointer-events-auto flex flex-wrap items-center justify-end gap-2">
-          <div key={sim.money} className="hud animate-pop flex h-11 items-center gap-1.5 rounded-full pr-4 pl-1.5">
-            <Coin size={30} />
+          <div className="hud flex h-11 items-center gap-1.5 rounded-full pr-4 pl-1.5">
+            <span key={sim.money} className="motion-coin">
+              <Coin size={30} />
+            </span>
             <span className="tnum font-display text-lg font-extrabold">{amount(sim.money)}</span>
           </div>
           <div className="hud flex h-11 items-center gap-1.5 rounded-full px-3">
@@ -345,7 +347,7 @@ function Phone({ world, sim, commune, journal, time, act, onClose, onMap, onWalk
     { id: 'news', label: 'Infos', icon: Newspaper, colors: ['#ff8a65', '#e8590c'], open: () => setApp('news') },
     { id: 'messages', label: 'Messages', icon: MessageCircle, colors: ['#b39dff', '#6c47ff'], open: () => setApp('messages') },
     { id: 'bank', label: 'Mobile Money', icon: Wallet, colors: ['#ffd54f', '#ffa000'], open: () => setApp('bank') },
-    { id: 'profile', label: 'Profil', icon: UserRound, colors: ['#ff8a9b', '#ff3d57'], open: () => navigate('/profil') },
+    { id: 'profile', label: 'Profil', icon: UserRound, colors: ['#ff8a9b', '#ff3d57'], open: () => navigate('/profil', { viewTransition: true }) },
   ]
   const title = { here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', bank: 'Mobile Money', news: 'Infos · Côte d’Ivoire' }
 
@@ -370,7 +372,7 @@ function Phone({ world, sim, commune, journal, time, act, onClose, onMap, onWalk
                   {commune.name}, {city.name}
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-x-3 gap-y-5">
+              <div className="motion-stagger grid grid-cols-3 gap-x-3 gap-y-5">
                 {APPS.map((a) => (
                   <button key={a.id} onClick={a.open} className="flex flex-col items-center gap-1.5 active:scale-95">
                     <span className="relative">
@@ -394,7 +396,7 @@ function Phone({ world, sim, commune, journal, time, act, onClose, onMap, onWalk
               </div>
               <div className="flex-1 overflow-y-auto px-3 pb-6">
                 {app === 'here' && (
-                  <ul className="space-y-2">
+                  <ul className="motion-stagger space-y-2">
                     {places.map((p) => (
                       <Row key={p.id} icon={iconFor(p.kind === 'home' ? 'house' : world.kinds[p.kind].icon)} colors={kindColors(p.kind)} title={p.name} sub={p.kind === 'home' ? 'Dormir, se doucher, cuisiner' : world.kinds[p.kind].label} onClick={() => onWalk(p.id)}>
                         <Footprints size={18} className="text-[var(--color-ink-soft)]" />
@@ -498,7 +500,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, hour, desktop, on
           </div>
         )}
         {here ? (
-          <div className="grid gap-2">
+          <div className="motion-stagger grid gap-2">
             {items.map((it) => (
               <ActionButton key={it.id} it={it} colors={colors} {...state(it)} onPick={() => onPick(it, place.kind)} />
             ))}

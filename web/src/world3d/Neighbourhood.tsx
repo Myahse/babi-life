@@ -310,9 +310,9 @@ function LotView({ lot, world, night, label, onPick }: { lot: Lot; world: World;
         <Html position={[0, tall, 0]} center zIndexRange={[20, 0]}>
           <button
             onClick={() => onPick(lot.id)}
-            className={`flex items-center gap-1.5 rounded-full bg-white/95 py-1 pr-3 pl-1 font-display text-[13px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_6px_16px_-6px_rgba(0,0,0,0.5)] transition hover:scale-110 ${hover ? 'scale-110' : ''}`}
+            className={`flex items-center gap-1.5 rounded-xl border border-black/5 bg-white py-1 pr-2.5 pl-1 text-[12.5px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_4px_12px_-6px_rgba(0,0,0,0.45)] transition duration-200 ease-[var(--ease-spring)] hover:scale-110 active:scale-95 ${hover ? 'scale-110' : ''}`}
           >
-            <IconTile icon={iconFor(lot.kind === 'home' ? 'house' : kind?.icon ?? '')} colors={kindColors(lot.kind)} size={24} radius={12} />
+            <IconTile icon={iconFor(lot.kind === 'home' ? 'house' : kind?.icon ?? '')} colors={kindColors(lot.kind)} size={24} radius={8} />
             {lot.name}
           </button>
         </Html>
@@ -401,15 +401,17 @@ function Walker({ sim, lots, moodColor, goTo, onArrive, busy, stationAt, nameTag
         <Character look={sim.look} gender={sim.gender} walking={walking} busy={!!busy} moodColor={moodColor} />
         {labels && nameTag && (
           <Html position={[0, 2.45, 0]} center zIndexRange={[28, 20]}>
-            <span className="pointer-events-none rounded-full bg-[#0f1230]/75 px-2 py-0.5 font-display text-[11px] font-extrabold whitespace-nowrap text-white">{nameTag}</span>
+            <span className="pointer-events-none rounded-md bg-[#0f1230]/80 px-1.5 py-0.5 text-[11px] font-extrabold whitespace-nowrap text-white">{nameTag}</span>
           </Html>
         )}
         {labels && (
           // Always mounted, content toggled: drei's <Html> breaks when unmounted mid-scene.
           <Html position={[0, 2.95, 0]} center zIndexRange={[30, 20]}>
             {busy ? (
-              <div className="motion-pop rounded-full bg-white p-1.5 shadow-lg">
-                <IconTile icon={iconFor(busy.icon)} colors={kindColors(busy.kind)} size={34} radius={17} />
+              <div className="motion-pop">
+                <div className="motion-breathe rounded-2xl border border-black/5 bg-white p-1 shadow-[0_6px_16px_-8px_rgba(0,0,0,0.5)]">
+                  <IconTile icon={iconFor(busy.icon)} colors={kindColors(busy.kind)} size={32} radius={11} />
+                </div>
               </div>
             ) : (
               <span />

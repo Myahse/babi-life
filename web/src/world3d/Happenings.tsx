@@ -377,8 +377,8 @@ export function HappeningMarker({ happening, onPick }: { happening: { id: string
   return (
     <Html position={[HAPPENING_X, 7.5, 0]} center zIndexRange={[25, 0]}>
       {show ? (
-        <button onClick={onPick} className="animate-pop flex items-center gap-1.5 rounded-full bg-[var(--color-gold)] py-1 pr-3 pl-1 font-display text-[13px] font-extrabold whitespace-nowrap text-[#5a3a00] shadow-[0_6px_16px_-6px_rgba(0,0,0,0.5)] ring-2 ring-white">
-          <IconTile icon={iconFor(happening.icon)} colors={['#ffd54f', '#ffa000']} size={24} radius={12} />
+        <button onClick={onPick} className="motion-pop flex items-center gap-1.5 rounded-xl bg-[var(--color-gold)] py-1 pr-2.5 pl-1 text-[12.5px] font-extrabold whitespace-nowrap text-[#5a3a00] shadow-[0_4px_12px_-6px_rgba(0,0,0,0.5)] transition duration-200 hover:scale-110 active:scale-95">
+          <IconTile icon={iconFor(happening.icon)} colors={['#ffd54f', '#ffa000']} size={24} radius={8} />
           {happening.label}
         </button>
       ) : (
