@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BadgeCheck, Briefcase, Hourglass, Newspaper, Square, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Wallet, X, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Wallet, X, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World } from '../lib/types'
 import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
 import { WorldMap } from './WorldMap'
+import { Joystick } from '../components/Joystick'
 import { TravelCTA, type OnTravel } from '../components/TravelCTA'
 import { Portrait } from '../avatar/portrait'
 import { Neighbourhood } from '../world3d/Neighbourhood'
@@ -43,6 +44,8 @@ export function Play() {
   const [goTo, setGoTo] = useState<{ placeId: string; nonce: number } | null>(null)
   const [overlay, setOverlay] = useState<'phone' | 'map' | null>(null)
   const [pending, setPending] = useState<{ label: string; icon: string; kind: string } | null>(null)
+  // The place whose door the Sim is standing at after walking with the pad.
+  const [near, setNear] = useState<string | null>(null)
   const [toasts, setToasts] = useState<Toast[]>([])
   const [street, setStreet] = useState<HappeningNow | null>(null)
   const announced = useRef('')
@@ -216,6 +219,7 @@ export function Play() {
   const city = world.cities.find((x) => x.id === sim.city)!
   const commune = city.communes.find((x) => x.id === sim.commune)!
   const unseen = journal.filter((e) => e.id > seen).length
+  const placeName = (id: string) => (id === 'home' ? 'Chez toi' : id === 'happening' ? (street?.happening?.label ?? 'En ce moment') : (commune.places.find((p) => p.id === id)?.name ?? ''))
 
   return (
     <div className="relative h-full overflow-hidden bg-[var(--color-night)] select-none">
@@ -234,6 +238,8 @@ export function Play() {
           stationAt={doing?.placeId ?? null}
           nameTag={user?.username ? `@${user.username}` : sim.firstName}
           happening={happening}
+          onNear={setNear}
+          frozen={!!sim.activity || !!pending}
         />
       </div>
 
@@ -292,9 +298,28 @@ export function Play() {
         </button>
       </footer>
 
-      {street?.happening && !placeId && !pending && !sim.activity && (
+      {/* The pad: walk the Sim freely (arrow keys / WASD work too) */}
+      {!placeId && !overlay && !sim.activity && (
+        <div className="pointer-events-none absolute bottom-[6.25rem] left-3 z-20 lg:bottom-[7.5rem] lg:left-5">
+          <Joystick disabled={!!sim.activity || !!pending} className="pointer-events-auto" />
+        </div>
+      )}
+      {near && !placeId && !pending && !sim.activity && (
         <button
-          className="animate-pop absolute bottom-[6.5rem] left-1/2 z-20 flex max-w-[calc(100vw-24px)] -translate-x-1/2 items-center gap-2 rounded-full bg-[var(--color-gold)] py-1.5 pr-4 pl-1.5 text-left text-[#5a3a00] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.6)] lg:bottom-[7.5rem]"
+          className="motion-pop absolute bottom-[6.5rem] left-[152px] z-30 flex max-w-[calc(100vw-164px)] items-center lg:left-1/2 lg:max-w-sm lg:-translate-x-1/2 gap-2 rounded-2xl bg-[var(--color-ink)] py-2 pr-4 pl-2 text-left text-white shadow-[0_10px_24px_-10px_rgba(0,0,0,0.6)] lg:bottom-[7.5rem]"
+          onClick={() => setPlaceId(near)}
+        >
+          <IconTile icon={DoorOpen} colors={['#ffa040', '#ff6a00']} size={32} radius={10} />
+          <span className="min-w-0 leading-tight">
+            <span className="block text-[10px] font-extrabold tracking-wider uppercase opacity-70">Entrer</span>
+            <span className="block truncate text-sm font-extrabold">{placeName(near)}</span>
+          </span>
+        </button>
+      )}
+
+      {street?.happening && !near && !placeId && !pending && !sim.activity && (
+        <button
+          className="animate-pop absolute bottom-[6.5rem] left-[152px] z-20 flex max-w-[calc(100vw-164px)] items-center lg:left-1/2 lg:max-w-md lg:-translate-x-1/2 gap-2 rounded-full bg-[var(--color-gold)] py-1.5 pr-4 pl-1.5 text-left text-[#5a3a00] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.6)] lg:bottom-[7.5rem]"
           onClick={() => walkTo('happening')}
         >
           <IconTile icon={iconFor(street.happening.icon)} colors={['#ffd54f', '#ffa000']} size={36} radius={18} />

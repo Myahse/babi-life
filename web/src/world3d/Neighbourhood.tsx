@@ -9,6 +9,7 @@ import { IconTile } from '../components/ui'
 import { Building } from './Buildings'
 import { Character } from './Character'
 import { BACK_STREET_Z, CROSS_X, EXTENT_X, HOME_ID, SIDEWALK, STREET_HALF, layoutCommune, route, type Lot } from './layout'
+import { moveInput } from './input'
 import { Box, Lamp, Mat, Palm, Tree } from './props'
 import { FillerBuilding } from './Fillers'
 import { Pedestrians, Traffic } from './Life'
@@ -32,6 +33,10 @@ type Props = {
   stationAt?: string | null
   /** Shown above the player's Sim (their username). */
   nameTag?: string
+  /** The place whose door the Sim is standing at after walking with the pad (null when none). */
+  onNear?: (placeId: string | null) => void
+  /** The pad can't move the Sim (busy doing something). */
+  frozen?: boolean
 }
 
 const SPEED = 4.2 // metres per second: a brisk walk, so errands don't drag
@@ -60,7 +65,7 @@ export function Neighbourhood(props: Props) {
   )
 }
 
-function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, nameTag }: Props & { night: boolean; dusk: boolean }) {
+function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, nameTag, onNear, frozen }: Props & { night: boolean; dusk: boolean }) {
   const rain = happening?.id === 'pluie'
   const blackout = night && happening?.id === 'delestage'
   const lit = night && !blackout // street lamps and windows
@@ -123,7 +128,7 @@ function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy,
         ),
       )}
 
-      <Walker nameTag={nameTag} labels={labels} stationAt={stationAt ?? null} sim={sim} lots={places} moodColor={moodColor} goTo={goTo} onArrive={onArrive} busy={busy} />
+      <Walker nameTag={nameTag} labels={labels} stationAt={stationAt ?? null} sim={sim} lots={places} blocks={lots} shore={!!theme.waterfront} moodColor={moodColor} goTo={goTo} onArrive={onArrive} busy={busy} onNear={onNear} frozen={!!frozen} />
     </>
   )
 }
@@ -321,7 +326,16 @@ function LotView({ lot, world, night, label, onPick }: { lot: Lot; world: World;
   )
 }
 
-function Walker({ sim, lots, moodColor, goTo, onArrive, busy, stationAt, nameTag, labels }: { sim: Sim; lots: Lot[]; moodColor: string; goTo: Props['goTo']; onArrive: Props['onArrive']; busy: Props['busy']; stationAt: string | null; nameTag?: string; labels: boolean }) {
+/** Can the Sim stand here? Not inside a building's lot, not in the water, not off the map. */
+function walkable(x: number, z: number, blocks: Lot[], shore: boolean) {
+  if (Math.abs(x) > EXTENT_X + 8 || Math.abs(z) > BACK_STREET_Z + 4) return false
+  if (shore && z < SHORE_Z + 1.5) return false
+  return !blocks.some((b) => Math.abs(x - b.x) < LOT_HALF && Math.abs(z - b.z) < LOT_HALF)
+}
+const LOT_HALF = 6.6 // a lot is 14 m square; leave a strip to walk between them
+const NEAR_DOOR = 2.6 // metres from a door to be "at" a place
+
+function Walker({ sim, lots, blocks, shore, moodColor, goTo, onArrive, busy, stationAt, nameTag, labels, onNear, frozen }: { sim: Sim; lots: Lot[]; blocks: Lot[]; shore: boolean; moodColor: string; goTo: Props['goTo']; onArrive: Props['onArrive']; busy: Props['busy']; stationAt: string | null; nameTag?: string; labels: boolean; onNear?: Props['onNear']; frozen: boolean }) {
   const group = useRef<THREE.Group>(null)
   const path = useRef<[number, number][]>([])
   const target = useRef<string | null>(null)
@@ -352,8 +366,48 @@ function Walker({ sim, lots, moodColor, goTo, onArrive, busy, stationAt, nameTag
     setWalking(true)
   }, [goTo, lots])
 
+  const near = useRef<string | null>(null)
+  const padWalking = useRef(false)
   useFrame((_, dt) => {
     const g = group.current!
+    // The pad (or the keyboard) walks the Sim freely, relative to the camera.
+    const input = moveInput()
+    const strength = Math.min(1, Math.hypot(input.x, input.y))
+    if (!frozen && strength > 0.05) {
+      path.current = []
+      target.current = null
+      const fwd = new THREE.Vector3(controls ? controls.target.x - camera.position.x : -1, 0, controls ? controls.target.z - camera.position.z : -1).normalize()
+      const right = new THREE.Vector3(-fwd.z, 0, fwd.x)
+      const dir = right.multiplyScalar(input.x).add(fwd.multiplyScalar(input.y)).normalize()
+      const step = SPEED * strength * Math.min(dt, 0.25)
+      const [x, z] = [g.position.x + dir.x * step, g.position.z + dir.z * step]
+      // Slide along walls: try the full step, then each axis on its own.
+      if (walkable(x, z, blocks, shore)) g.position.set(x, 0, z)
+      else if (walkable(x, g.position.z, blocks, shore)) g.position.x = x
+      else if (walkable(g.position.x, z, blocks, shore)) g.position.z = z
+      g.rotation.y = Math.atan2(dir.x, dir.z)
+      if (!padWalking.current) {
+        padWalking.current = true
+        setWalking(true)
+      }
+    } else if (padWalking.current) {
+      padWalking.current = false
+      setWalking(false)
+    }
+    // Standing at a door: offer to go in.
+    if (onNear) {
+      let best: Lot | null = null
+      let bestD = NEAR_DOOR
+      for (const l of lots) {
+        const d = Math.hypot(l.door[0] - g.position.x, l.door[1] - g.position.z)
+        if (d < bestD) [best, bestD] = [l, d]
+      }
+      const id = path.current.length ? null : (best?.id ?? null)
+      if (id !== near.current) {
+        near.current = id
+        onNear(id)
+      }
+    }
     if (path.current.length) {
       const [tx, tz] = path.current[0]
       const dx = tx - g.position.x
