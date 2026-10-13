@@ -73,7 +73,7 @@ export function Lamp({ p, night }: { p: [number, number, number]; night: boolean
 export type VehicleKind = 'taxi' | 'woro' | 'gbaka' | 'car' | 'moto'
 
 /** Abidjan's traffic: orange taxi compteur, woro-woro, gbaka, cars and motos. Real size, in metres. */
-export function Vehicle({ p, r = 0, kind = 'taxi', color }: { p: [number, number, number]; r?: number; kind?: VehicleKind; color?: string }) {
+export function Vehicle({ p, r = 0, kind = 'taxi', color, trim }: { p: [number, number, number]; r?: number; kind?: VehicleKind; color?: string; trim?: string }) {
   if (kind === 'moto') {
     return (
       <group position={p} rotation={[0, r, 0]}>
@@ -101,7 +101,8 @@ export function Vehicle({ p, r = 0, kind = 'taxi', color }: { p: [number, number
       {gbaka && <Box p={[0, 1.08, 0]} s={[len + 0.02, 0.2, wide + 0.02]} c="#00a862" />}
       {gbaka && <Box p={[0.2, 2.02, 0]} s={[len - 1, 0.12, wide - 0.4]} c="#495057" />}
       {kind === 'taxi' && <Box p={[-0.25, 2.0, 0]} s={[0.7, 0.25, 0.35]} c="#ffe066" />}
-      {kind === 'woro' && <Box p={[0, 1.18, 0]} s={[len + 0.02, 0.12, wide + 0.02]} c="#f8f9fa" />}
+      {kind === 'woro' && <Box p={[0, 1.18, 0]} s={[len + 0.02, 0.12, wide + 0.02]} c={trim ?? '#f8f9fa'} />}
+      {kind === 'woro' && trim && <Box p={[0, 0.45, 0]} s={[len + 0.02, 0.28, wide + 0.02]} c={trim} />}
       {[-1, 1].flatMap((sx) =>
         [-1, 1].map((sz) => (
           <mesh key={`${sx}${sz}`} position={[sx * (len / 2 - 0.85), 0.36, sz * (wide / 2)]} rotation={[Math.PI / 2, 0, 0]}>

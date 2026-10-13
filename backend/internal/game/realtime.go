@@ -51,7 +51,7 @@ type Trip struct {
 	FromCommune string `json:"fromCommune"`
 	City        string `json:"city"`
 	Commune     string `json:"commune"`
-	Mode        string `json:"mode"` // "taxi" | "car"
+	Mode        string `json:"mode"` // "woro" | "compteur" | "taxi" | "car" | a ride app ID
 	Fare        int    `json:"fare"`
 	Label       string `json:"label"`
 	// Incident is what slowed the trip down, if anything (see TripIncidents).

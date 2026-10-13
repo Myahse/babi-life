@@ -77,6 +77,7 @@ func main() {
 				"careers":     game.Careers,
 				"expressions": game.Expressions,
 				"rideApps":    world.RideApps,
+				"compteur":    world.Compteur,
 				"holidays":    game.Holidays,
 				"config":      map[string]any{"devLogin": cfg.DevLogin, "googleLogin": authH.Verifier != nil},
 			})

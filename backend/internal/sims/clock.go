@@ -139,6 +139,7 @@ type Ride struct {
 var (
 	errNoRideHere   = errors.New("cette appli ne fait pas ce trajet")
 	errOfferRefused = errors.New("aucun chauffeur n'a accepté ton prix : propose un peu plus")
+	errNoWoro       = errors.New("pas de woro-woro ici : prends un taxi compteur")
 )
 
 // leaveWith starts a trip; rng draws the incident that may slow it down (and,
@@ -153,37 +154,60 @@ func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, ride Ride, r
 	if minutes == 0 {
 		return fmt.Errorf("tu y es déjà")
 	}
-	var app world.RideApp
-	if ride.App != "" {
+	// Street taxis in Abidjan: the woro-woro of your commune, or the taxi
+	// compteur (always from the Plateau, which has no woro-woro). Elsewhere
+	// it's just "the taxi".
+	mode, label := "taxi", fmt.Sprintf("Trajet %s → %s en taxi", fromCommune.Name, toCommune.Name)
+	street := fromCity.ID == toCity.ID && fromCity.ID == "abidjan"
+	app := ride.App
+	if street && app == "" {
+		app = "woro"
+		if !fromCommune.HasWoro() {
+			app = "compteur"
+		}
+	}
+	switch {
+	case fromCity.ID != toCity.ID:
+		if app != "" {
+			return errNoRideHere
+		}
+		mode, label = "car", fmt.Sprintf("Trajet %s → %s en car", fromCity.Name, toCity.Name)
+	case app == "":
+	case app == "woro":
+		if !street || !fromCommune.HasWoro() {
+			return errNoWoro
+		}
+		mode, label = "woro", fmt.Sprintf("Trajet %s → %s en woro-woro", fromCommune.Name, toCommune.Name)
+	case app == "compteur":
 		var ok bool
-		if app, ok = world.FindRideApp(ride.App); !ok || fromCity.ID != toCity.ID {
+		if minutes, fare, ok = world.CompteurQuote(fromCity, fromCommune, toCommune); !ok {
 			return errNoRideHere
 		}
-		if minutes, fare, ok = world.RideQuote(app, fromCity, fromCommune, toCommune); !ok {
+		mode, label = "compteur", fmt.Sprintf("Trajet %s → %s en taxi compteur", fromCommune.Name, toCommune.Name)
+	default:
+		a, ok := world.FindRideApp(app)
+		if !ok {
 			return errNoRideHere
 		}
-		if app.Model == "offer" {
+		if minutes, fare, ok = world.RideQuote(a, fromCity, fromCommune, toCommune); !ok {
+			return errNoRideHere
+		}
+		if a.Model == "offer" {
 			if ride.Offer <= 0 || rng.Float64() >= world.OfferChance(ride.Offer, fare) {
 				return errOfferRefused
 			}
 			fare = ride.Offer
 		}
+		mode, label = a.ID, fmt.Sprintf("Trajet %s → %s en %s", fromCommune.Name, toCommune.Name, a.Name)
 	}
 	if s.Money < fare {
 		return game.ErrNotEnoughMoney
 	}
 	s.Money -= fare
-	mode, label := "taxi", fmt.Sprintf("Trajet %s → %s en taxi", fromCommune.Name, toCommune.Name)
-	if fromCity.ID != toCity.ID {
-		mode, label = "car", fmt.Sprintf("Trajet %s → %s en car", fromCity.Name, toCity.Name)
-	}
-	if app.ID != "" {
-		mode, label = app.ID, fmt.Sprintf("Trajet %s → %s en %s", fromCommune.Name, toCommune.Name, app.Name)
-	}
 	trip := &game.Trip{FromCity: fromCity.ID, FromCommune: fromCommune.ID, City: toCity.ID, Commune: toCommune.ID, Mode: mode, Fare: fare, Label: label}
 	// Only incidents that fit this route can happen: a jam on the bridges for
 	// a trip across the lagoon, a roadblock on an intercity road…
-	route := game.Route{FromCity: fromCity.ID, FromCommune: fromCommune.ID, ToCity: toCity.ID, ToCommune: toCommune.ID, FromBank: fromCommune.Admin.Bank, ToBank: toCommune.Admin.Bank}
+	route := game.Route{FromCity: fromCity.ID, FromCommune: fromCommune.ID, ToCity: toCity.ID, ToCommune: toCommune.ID, FromBank: fromCommune.Admin.Bank, ToBank: toCommune.Admin.Bank, Mode: mode}
 	if inc := game.IncidentFor(route, s.GameMinutes, rng); inc != nil {
 		minutes += inc.Extra
 		trip.Incident = inc.Text

@@ -93,7 +93,7 @@ export function MapboxMap({ token, pins, camera, night, sim, padding, route, onZ
         taxi.current = { marker: new mapboxgl.Marker({ element: el }).setLngLat(routePoint(route, route.progress)).addTo(m), root: createRoot(el) }
       }
       taxi.current.marker.setLngLat(routePoint(route, route.progress))
-      taxi.current.root.render(<TaxiMarker sim={sim} mode={route.mode} />)
+      taxi.current.root.render(<TaxiMarker sim={sim} mode={route.mode} color={route.color} />)
     } else if (taxi.current) {
       const t = taxi.current
       taxi.current = null

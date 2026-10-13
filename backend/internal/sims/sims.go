@@ -385,7 +385,8 @@ func (h *Handler) travel(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		City    string `json:"city"`
 		Commune string `json:"commune"`
-		// App books a ride-hailing app ("yango", "indrive"); empty = shared taxi or car.
+		// App: "woro", "compteur" or a ride app ("gnango", "idrive"); empty = the
+		// usual street taxi, or the car between cities.
 		App   string `json:"app,omitempty"`
 		Offer int    `json:"offer,omitempty"`
 	}

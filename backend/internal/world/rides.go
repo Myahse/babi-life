@@ -19,16 +19,29 @@ type RideApp struct {
 	Source *game.Source `json:"source"`
 }
 
+// The in-game apps carry their own names; they work like the real apps
+// they are modelled on (sources in the notes).
 var RideApps = []RideApp{
-	{ID: "yango", Name: "Yango", Model: "fixed", Cities: []string{"abidjan", "bouake"},
-		Source: game.Verified("VTC lancé en Côte d'Ivoire en octobre 2018 ; prix fixé à la réservation, sans négocier avec le chauffeur ; présent à Bouaké.",
+	{ID: "gnango", Name: "Gnango", Model: "fixed", Cities: []string{"abidjan", "bouake"},
+		Source: inspired("Appli du jeu inspirée de Yango : VTC lancé en Côte d'Ivoire en octobre 2018 ; prix fixé à la réservation, sans négocier ; présent à Bouaké.",
 			"https://www.afrique-sur7.fr/489400-yango-geant-du-vtc-abidjan", "https://www.fratmat.info/article/222214/societe/transports-le-covoitureur-yango-desormais-a-bouake")},
-	{ID: "indrive", Name: "inDrive", Model: "offer", Cities: []string{"abidjan"},
-		Source: game.Verified("Le passager propose son prix et un chauffeur l'accepte ou non.",
+	{ID: "idrive", Name: "iDrive", Model: "offer", Cities: []string{"abidjan"},
+		Source: inspired("Appli du jeu inspirée d'inDrive : le passager propose son prix et un chauffeur l'accepte ou non.",
 			"https://logistafrica.com/en/highlights/indrive-launches-in-abidjan-a-new-ridesharing-service-with-fair-negotiation-and-zero-commission/", "https://digitalmag.ci/comparatifs-des-applications-de-vtc-en-cote-divoire-prix-disponibilite-confort-et-securite/")},
 }
 
+// Older clients and trips still say "yango" / "indrive".
+var rideAliases = map[string]string{"yango": "gnango", "indrive": "idrive"}
+
+// inspired: an invented brand whose way of working is sourced.
+func inspired(note string, urls ...string) *game.Source {
+	return &game.Source{Status: game.StatusFictional, URLs: urls, Checked: game.Checked, Note: note}
+}
+
 func FindRideApp(id string) (RideApp, bool) {
+	if to, ok := rideAliases[id]; ok {
+		id = to
+	}
 	for _, a := range RideApps {
 		if a.ID == id {
 			return a, true

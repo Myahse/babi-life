@@ -13,8 +13,11 @@ export type Theme = {
   trees: 'palm' | 'mango' | 'baobab' | 'mixed'
   pedestrians: number
   vehicles: number
-  /** Woro-woro colour for this commune (taxis communaux). */
+  /** Woro-woro colour for this commune (taxis communaux); '' = none. In
+   * Abidjan it comes from the world data (backend/internal/world/taxis.go). */
   woro: string
+  /** A second colour low on the body (Abobo's brown bands, Port-Bouët's blue). */
+  woroTrim?: string
   water?: 'lagoon' | 'sea'
   /** The water comes right up behind the far row of buildings (default when there is water). */
   waterfront?: boolean
@@ -36,15 +39,15 @@ const DEFAULT: Theme = {
 }
 
 const THEMES: Record<string, Partial<Theme>> = {
-  plateau: { waterfront: false, fillers: { tower: 6, office: 3, park: 1, church: 0.5 }, trees: 'palm', pedestrians: 16, vehicles: 8, woro: '#ff7a00', water: 'lagoon', height: 1.6, ground: '#cdbb9b' },
+  plateau: { waterfront: false, fillers: { tower: 6, office: 3, park: 1, church: 0.5 }, trees: 'palm', pedestrians: 16, vehicles: 8, woro: '', water: 'lagoon', height: 1.6, ground: '#cdbb9b' },
   cocody: { fillers: { villa: 7, park: 2, office: 1 }, trees: 'mango', pedestrians: 7, vehicles: 5, woro: '#f2b705', water: 'lagoon', grass: '#6fbf5a' },
   yopougon: { fillers: { cour: 7, shop: 3, stall: 2 }, pedestrians: 22, vehicles: 7, woro: '#2a6cf0', side: 'laterite' },
   adjame: { fillers: { shop: 5, stall: 5, cour: 2, warehouse: 1 }, pedestrians: 26, vehicles: 10, woro: '#00a862', backdrop: 'skyline' },
-  abobo: { fillers: { cour: 8, stall: 2, shop: 1 }, pedestrians: 22, vehicles: 6, woro: '#00a862', side: 'laterite', ground: '#d39a62' },
-  treichville: { fillers: { colonial: 4, shop: 4, cour: 2, stall: 1 }, pedestrians: 18, vehicles: 7, woro: '#d6336c', water: 'lagoon', backdrop: 'skyline' },
-  marcory: { fillers: { villa: 3, shop: 4, cour: 2, office: 1 }, pedestrians: 14, vehicles: 7, woro: '#d6336c' },
-  koumassi: { fillers: { cour: 6, shop: 2, stall: 2 }, pedestrians: 18, vehicles: 6, woro: '#d6336c', water: 'lagoon', side: 'laterite' },
-  'port-bouet': { fillers: { cour: 4, villa: 2, stall: 2, warehouse: 1 }, trees: 'palm', pedestrians: 12, vehicles: 5, woro: '#d6336c', water: 'sea', ground: '#e6cf9f' },
+  abobo: { fillers: { cour: 8, stall: 2, shop: 1 }, pedestrians: 22, vehicles: 6, woro: '#e3cfa4', side: 'laterite', ground: '#d39a62' },
+  treichville: { fillers: { colonial: 4, shop: 4, cour: 2, stall: 1 }, pedestrians: 18, vehicles: 7, woro: '#f1f3f5', water: 'lagoon', backdrop: 'skyline' },
+  marcory: { fillers: { villa: 3, shop: 4, cour: 2, office: 1 }, pedestrians: 14, vehicles: 7, woro: '#00a862' },
+  koumassi: { fillers: { cour: 6, shop: 2, stall: 2 }, pedestrians: 18, vehicles: 6, woro: '#00a862', water: 'lagoon', side: 'laterite' },
+  'port-bouet': { fillers: { cour: 4, villa: 2, stall: 2, warehouse: 1 }, trees: 'palm', pedestrians: 12, vehicles: 5, woro: '#f2b705', water: 'sea', ground: '#e6cf9f' },
   attecoube: { fillers: { cour: 6, stall: 1, park: 1 }, trees: 'mango', pedestrians: 14, vehicles: 4, woro: '#00a862', water: 'lagoon', backdrop: 'forest', side: 'laterite' },
   // Peripheral communes of the district (woro-woro colour left at the default: not verified).
   anyama: { fillers: { cour: 6, stall: 3, shop: 1, park: 1 }, trees: 'mango', pedestrians: 12, vehicles: 4, side: 'laterite', backdrop: 'forest', ground: '#d39a62' },

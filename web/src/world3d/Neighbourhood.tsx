@@ -76,7 +76,12 @@ function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy,
     // The happening is somewhere the Sim can walk to, like a place.
     return happening ? [...visit, { id: 'happening', kind: 'happening', name: happening.label, x: HAPPENING_DOOR[0], z: HAPPENING_DOOR[1], rot: 0, door: HAPPENING_DOOR, seed: 0 } as Lot] : visit
   }, [lots, happening])
-  const theme = useMemo(() => themeFor(commune.id), [commune.id])
+  // Woro-woro in the commune's real colour (none at all on the Plateau).
+  const theme = useMemo(() => {
+    const t = themeFor(commune.id)
+    const w = commune.woro
+    return w ? { ...t, woro: w.none ? '' : (w.color ?? t.woro), woroTrim: w.trim } : t
+  }, [commune.id, commune.woro])
   // drei's <Html> loses whichever label mounts with the canvas, so labels
   // mount one frame later, once the canvas is in place.
   const [labels, setLabels] = useState(false)

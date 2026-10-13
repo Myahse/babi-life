@@ -15,6 +15,8 @@ import { Chip, Coin, DayNight, IconTile, MotiveRing, Plumbob, Row, needColor } f
 import { NEEDS, amount, atHome, blockedBy, clock, duration, mood, openAt, openingLabel, predict, shift } from '../game/rules'
 import { BankApp, HomeApp, JobsApp, type Act } from './phoneApps'
 import { NewsApp, topicOf } from './NewsApp'
+import { DriverCall, newCall, type Call } from '../components/DriverCall'
+import { rideLook } from '../game/rides'
 
 type Toast = { id: number; title: string; text?: string; money: number; tone: 'random' | 'done' | 'error' | 'promo' | 'event'; kind?: string; icon?: string }
 
@@ -48,6 +50,7 @@ export function Play() {
   const [near, setNear] = useState<string | null>(null)
   const [toasts, setToasts] = useState<Toast[]>([])
   const [street, setStreet] = useState<HappeningNow | null>(null)
+  const [call, setCall] = useState<Call | null>(null)
   const announced = useRef('')
 
   useEffect(() => {
@@ -197,7 +200,13 @@ export function Play() {
   const travel = (cityId: string, communeId: string, label: string, ride?: Ride) => {
     setPlaceId(null)
     setOverlay('map')
-    run(label, 'bus', 'transport', () => api.travel(sim!.id, cityId, communeId, ride))
+    const from = world.cities.find((x) => x.id === sim!.city)?.communes.find((x) => x.id === sim!.commune)
+    run(label, 'bus', 'transport', () => api.travel(sim!.id, cityId, communeId, ride)).then((ok) => {
+      // Booked in town: the driver calls to say they're on the way.
+      if (!ok || cityId !== sim!.city || !from) return
+      const mode = ride?.app ?? 'taxi'
+      setCall(newCall(rideLook(world, mode, from), mode, ride?.offer ?? 0, from.name, from.woro?.label))
+    })
   }
 
   if (!sim) {
@@ -350,6 +359,7 @@ export function Play() {
         <Phone world={world} sim={sim} commune={commune} journal={journal} time={c.time} act={run} onClose={() => setOverlay(null)} onMap={() => setOverlay('map')} onWalk={walkTo} />
       )}
       {overlay === 'map' && <WorldMap world={world} sim={sim} night={c.isNight} desktop={desktop} onClose={() => setOverlay(null)} onTravel={travel} onWalk={(id) => (setOverlay(null), walkTo(id))} />}
+      {call && <DriverCall call={call} onClose={() => setCall(null)} />}
     </div>
   )
 }

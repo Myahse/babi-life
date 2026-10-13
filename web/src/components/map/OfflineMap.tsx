@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { CarTaxiFront } from 'lucide-react'
+import { Bus, CarTaxiFront } from 'lucide-react'
+import { inkOn } from '../../game/rides'
 import civ from '../../assets/civ.geo.json'
 import features from '../../assets/civ-features.json'
 import { ABIDJAN_COAST, LAGOON, PETIT_BASSAM } from '../../assets/abidjan'
@@ -265,7 +266,7 @@ export function OfflineMap({ pins, camera, night, sim, padding, route, onZoom }:
       {view && route && taxi && (
         <>
           <div className="pointer-events-none absolute z-[35] transition-[left,top] duration-1000 ease-linear" style={{ left: W(taxi[0]) * view.s + view.tx, top: H(taxi[1]) * view.s + view.ty, transform: 'translate(-50%, -50%)' }}>
-            <TaxiMarker sim={sim} mode={route.mode} />
+            <TaxiMarker sim={sim} mode={route.mode} color={route.color} />
           </div>
         </>
       )}
@@ -285,12 +286,12 @@ export function OfflineMap({ pins, camera, night, sim, padding, route, onZoom }:
 }
 
 /** The taxi (or the car) carrying the Sim, with their face riding along. */
-export function TaxiMarker({ sim, mode }: { sim: Sim | null; mode: string }) {
+export function TaxiMarker({ sim, mode, color }: { sim: Sim | null; mode: string; color: string }) {
   return (
     <span className="relative flex items-center">
       <span className="absolute top-0 left-0 h-11 w-11 animate-ping rounded-full bg-[var(--color-orange)]/40" />
-      <span className={`relative grid h-11 w-11 place-items-center rounded-full border-[3px] border-white shadow-[0_8px_18px_-6px_rgba(0,0,0,0.6)] ${mode === 'car' ? 'bg-[var(--color-emerald)]' : mode === 'yango' || mode === 'indrive' ? 'bg-[var(--color-ink)]' : 'bg-[var(--color-orange)]'}`}>
-        <CarTaxiFront size={22} color="#fff" strokeWidth={2.4} />
+      <span className="relative grid h-11 w-11 place-items-center rounded-full border-[3px] border-white shadow-[0_8px_18px_-6px_rgba(0,0,0,0.6)]" style={{ background: color }}>
+        {mode === 'car' ? <Bus size={22} color="#fff" strokeWidth={2.4} /> : <CarTaxiFront size={22} color={inkOn(color)} strokeWidth={2.4} />}
       </span>
       {sim && (
         <span className="relative -ml-2 block h-8 w-8 overflow-hidden rounded-full border-2 border-white bg-[#ffd8a8] shadow">

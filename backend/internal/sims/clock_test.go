@@ -60,7 +60,7 @@ func TestTaxiArrives(t *testing.T) {
 	if err := s.leave(abj, cocody); err != nil {
 		t.Fatal(err)
 	}
-	if s.Activity.Trip.Mode != "taxi" || s.Commune != "yopougon" {
+	if s.Activity.Trip.Mode != "woro" || s.Commune != "yopougon" {
 		t.Fatalf("on the way, still in Yopougon: %+v", s.Activity.Trip)
 	}
 	if _, err := s.stop(); err == nil {
@@ -124,15 +124,15 @@ func TestRideApps(t *testing.T) {
 	taxiMin, taxiFare := world.Trip(abj, yop, abj, cocody)
 
 	s := newSim()
-	if err := s.leaveWith(abj, cocody, Ride{App: "yango"}, rand.New(alwaysSource{})); err != nil {
+	if err := s.leaveWith(abj, cocody, Ride{App: "gnango"}, rand.New(alwaysSource{})); err != nil {
 		t.Fatal(err)
 	}
-	if tr := s.Activity.Trip; tr.Mode != "yango" || tr.Fare <= taxiFare || s.Activity.End-s.Activity.Start > taxiMin+30 {
-		t.Errorf("Yango should be dearer and not slower: %+v, %d min vs taxi %d", tr, s.Activity.End-s.Activity.Start, taxiMin)
+	if tr := s.Activity.Trip; tr.Mode != "gnango" || tr.Fare <= taxiFare || s.Activity.End-s.Activity.Start > taxiMin+30 {
+		t.Errorf("Gnango should be dearer and not slower: %+v, %d min vs taxi %d", tr, s.Activity.End-s.Activity.Start, taxiMin)
 	}
 
 	s = newSim()
-	if err := s.leaveWith(abj, cocody, Ride{App: "indrive", Offer: 100}, rand.New(alwaysSource{})); err == nil {
+	if err := s.leaveWith(abj, cocody, Ride{App: "idrive", Offer: 100}, rand.New(alwaysSource{})); err == nil {
 		t.Error("a 100 F offer should find no driver")
 	}
 	_, quote, _ := world.RideQuote(world.RideApps[1], abj, yop, cocody)
@@ -142,7 +142,35 @@ func TestRideApps(t *testing.T) {
 
 	s = newSim()
 	bke, _ := world.FindCity("bouake")
-	if err := s.leaveWith(bke, bke.Communes[0], Ride{App: "yango"}, rand.New(alwaysSource{})); err == nil {
+	if err := s.leaveWith(bke, bke.Communes[0], Ride{App: "gnango"}, rand.New(alwaysSource{})); err == nil {
 		t.Error("no Yango ride from Abidjan to Bouaké")
+	}
+}
+
+func TestStreetTaxis(t *testing.T) {
+	abj, _ := world.FindCity("abidjan")
+	cocody, _ := abj.Commune("cocody")
+	yop, _ := abj.Commune("yopougon")
+	woroMin, woroFare := world.Trip(abj, yop, abj, cocody)
+
+	s := newSim()
+	if err := s.leaveWith(abj, cocody, Ride{App: "compteur"}, rand.New(alwaysSource{})); err != nil {
+		t.Fatal(err)
+	}
+	if tr := s.Activity.Trip; tr.Mode != "compteur" || tr.Fare <= woroFare || s.Activity.End-s.Activity.Start > woroMin+30 {
+		t.Errorf("the compteur should be dearer and not slower: %+v", tr)
+	}
+	if s.Activity.Trip.Incident == "Le woro-woro attend d'être plein avant de partir." {
+		t.Error("a taxi compteur doesn't wait to fill up")
+	}
+
+	// The Plateau has no woro-woro: you leave in a taxi compteur.
+	s = newSim()
+	s.Commune = "plateau"
+	if err := s.leaveWith(abj, cocody, Ride{App: "woro"}, rand.New(alwaysSource{})); err == nil {
+		t.Error("no woro-woro from the Plateau")
+	}
+	if err := s.leaveWith(abj, cocody, Ride{}, rand.New(alwaysSource{})); err != nil || s.Activity.Trip.Mode != "compteur" {
+		t.Errorf("default from the Plateau should be the compteur: %v %+v", err, s.Activity)
 	}
 }

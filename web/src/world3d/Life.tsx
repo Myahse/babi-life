@@ -58,16 +58,19 @@ export function Pedestrians({ theme, seed }: { theme: Theme; seed: string }) {
   )
 }
 
-type Car = { kind: VehicleKind; color?: string; lane: number; speed: number; x: number }
+type Car = { kind: VehicleKind; color?: string; trim?: string; lane: number; speed: number; x: number }
 
 export function Traffic({ theme, seed }: { theme: Theme; seed: string }) {
   const cars = useMemo<Car[]>(() => {
     const r = rng(`cars${seed}`)
     const kinds: VehicleKind[] = ['taxi', 'woro', 'woro', 'gbaka', 'car', 'car', 'moto']
     return [...Array(theme.vehicles)].map((_, i) => {
-      const kind = kinds[Math.floor(r() * kinds.length)]
+      const drawn = kinds[Math.floor(r() * kinds.length)]
+      // No woro-woro here (the Plateau): an orange taxi compteur instead.
+      const kind = drawn === 'woro' && !theme.woro ? 'taxi' : drawn
       return {
         kind,
+        trim: kind === 'woro' ? theme.woroTrim : undefined,
         color: kind === 'woro' ? theme.woro : kind === 'car' ? ['#f8f9fa', '#212529', '#adb5bd', '#c92a2a', '#1c7ed6'][Math.floor(r() * 5)] : undefined,
         lane: i % 2 ? 2.2 : -2.2,
         speed: (kind === 'gbaka' ? 7 : kind === 'moto' ? 11 : 9) + r() * 3,
@@ -91,7 +94,7 @@ export function Traffic({ theme, seed }: { theme: Theme; seed: string }) {
     <>
       {cars.map((c, i) => (
         <group key={i} ref={(g) => void (refs.current[i] = g)} position={[c.x, 0, c.lane]}>
-          <Vehicle p={[0, 0, 0]} r={c.lane > 0 ? 0 : Math.PI} kind={c.kind} color={c.color} />
+          <Vehicle p={[0, 0, 0]} r={c.lane > 0 ? 0 : Math.PI} kind={c.kind} color={c.color} trim={c.trim} />
         </group>
       ))}
     </>

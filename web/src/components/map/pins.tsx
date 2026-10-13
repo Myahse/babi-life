@@ -75,7 +75,7 @@ export const visibleAt = (p: PinData, pxPerDeg: number) => !p.zoom || (pxPerDeg 
 /* ---------- Trips ---------- */
 
 export type LngLat = [lng: number, lat: number]
-export type Route = { from: LngLat; to: LngLat; progress: number; mode: string; label: string; /** The destination's pin id, highlighted. */ toId: string }
+export type Route = { from: LngLat; to: LngLat; progress: number; mode: string; label: string; /** The car's colour and the "En …" line. */ color: string; how: string; /** The destination's pin id, highlighted. */ toId: string }
 
 /** A trip drawn as a gentle arc, so it reads as a journey rather than a ruler line. */
 export function routePoint(r: Pick<Route, 'from' | 'to'>, t: number): LngLat {

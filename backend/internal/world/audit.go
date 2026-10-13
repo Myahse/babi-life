@@ -438,7 +438,25 @@ func (a *auditor) rides() {
 				a.add(SevError, CodeBadReference, ref, "ville inconnue %q", id)
 			}
 		}
-		a.source(ref, app.Source, true)
+		// The apps are invented brands modelled on real ones.
+		a.source(ref, app.Source, false)
+	}
+	a.source("taxi:compteur", Compteur.Source, true)
+	for _, c := range Cities {
+		if c.ID != "abidjan" {
+			continue
+		}
+		for _, cm := range c.Communes {
+			ref := "woro:" + cm.ID
+			switch {
+			case cm.Woro == nil:
+				a.add(SevWarning, CodeMissingField, ref, "couleur des woro-woro non renseignée")
+			case !cm.Woro.None && cm.Woro.Color == "":
+				a.add(SevError, CodeMissingField, ref, "woro-woro sans couleur")
+			default:
+				a.source(ref, cm.Woro.Source, true)
+			}
+		}
 	}
 }
 

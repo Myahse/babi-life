@@ -11,6 +11,8 @@ type Route struct {
 	ToCity, ToCommune     string
 	// Lagoon banks of Abidjan communes ("nord", "sud"); empty elsewhere.
 	FromBank, ToBank string
+	// Mode: "woro", "compteur", "taxi", "car" or a ride app's ID.
+	Mode string
 }
 
 func (r Route) intercity() bool { return r.FromCity != r.ToCity }
@@ -30,7 +32,8 @@ type TripIncident struct {
 	CrossesLagoon bool     `json:"crossesLagoon,omitempty"`
 	Intercity     bool     `json:"intercity,omitempty"`
 	WithinCity    bool     `json:"withinCity,omitempty"`
-	Ends          []string `json:"ends,omitempty"` // a commune the trip starts or ends in
+	Ends          []string `json:"ends,omitempty"`  // a commune the trip starts or ends in
+	Modes         []string `json:"modes,omitempty"` // only on these kinds of ride
 	// Hours in which it can happen ([MinHour, MaxHour), 0, 0 = any time).
 	MinHour int     `json:"minHour,omitempty"`
 	MaxHour int     `json:"maxHour,omitempty"`
@@ -46,7 +49,7 @@ var TripIncidents = []TripIncident{
 	{ID: "route-aeroport", Text: "Travaux sur la route de l'aéroport : ça roule au ralenti.", Extra: 20, Ends: []string{"port-bouet"}, Chance: 0.3,
 		Effect: Needs{Fun: -10},
 		Source: Partial("Bouchons signalés en novembre 2024 sur la route de l'aéroport à cause de travaux simultanés ; à revoir quand les travaux seront finis.", SrcAirportRoad2024)},
-	{ID: "woro-plein", Text: "Le woro-woro attend d'être plein avant de partir.", Extra: 10, WithinCity: true, Chance: 0.25,
+	{ID: "woro-plein", Text: "Le woro-woro attend d'être plein avant de partir.", Extra: 10, WithinCity: true, Modes: []string{"woro", "taxi"}, Chance: 0.25,
 		Effect: Needs{Fun: -5}, Source: Fictional},
 	{ID: "controle-route", Text: "Contrôle routier : tout le car descend pour montrer ses papiers.", Extra: 20, Intercity: true, Chance: 0.3,
 		Effect: Needs{Fun: -10, Energy: -5}, Source: Fictional},
@@ -59,7 +62,8 @@ func (t TripIncident) applies(r Route, hour int) bool {
 	case t.CrossesLagoon && !r.crossesLagoon(),
 		t.Intercity && !r.intercity(),
 		t.WithinCity && r.intercity(),
-		len(t.Ends) > 0 && !slices.Contains(t.Ends, r.FromCommune) && !slices.Contains(t.Ends, r.ToCommune):
+		len(t.Ends) > 0 && !slices.Contains(t.Ends, r.FromCommune) && !slices.Contains(t.Ends, r.ToCommune),
+		len(t.Modes) > 0 && !slices.Contains(t.Modes, r.Mode):
 		return false
 	}
 	return (Interaction{MinHour: t.MinHour, MaxHour: t.MaxHour}).Available(hour)
