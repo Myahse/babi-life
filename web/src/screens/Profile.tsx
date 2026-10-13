@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { InstallButton } from '../components/InstallButton'
 import { Briefcase, CalendarDays, ChevronLeft, House, LogOut, MapPin, Share2, Sparkles, Trash2, TrendingDown, TrendingUp, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import type { JournalEvent, Sim } from '../lib/types'
@@ -148,6 +149,8 @@ export function Profile() {
             <LogOut size={18} /> Sortir
           </button>
         </section>
+
+        <InstallButton />
 
         <button className="mx-auto flex items-center gap-1.5 text-sm font-extrabold text-[#d81b3f] hover:underline" onClick={removeSim}>
           <Trash2 size={15} /> Supprimer ce Sim

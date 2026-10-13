@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { GoogleLogin } from '@react-oauth/google'
 import { useNavigate } from 'react-router-dom'
+import { InstallButton } from '../components/InstallButton'
+import { useOnline } from '../lib/pwa'
 import { Eye, EyeOff, Gamepad2, Lock, Mail, Smartphone, Sparkles, UserRound } from 'lucide-react'
 import { api } from '../lib/api'
 import type { Look, User } from '../lib/types'
@@ -25,6 +27,7 @@ export function Title() {
   const world = useWorld((s) => s.world)
   const worldError = useWorld((s) => s.error)
   const navigate = useNavigate()
+  const online = useOnline()
   const [devName, setDevName] = useState('Awa Koné')
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [first, setFirst] = useState('')
@@ -197,7 +200,8 @@ export function Title() {
             )}
           </div>
 
-          {worldError && <p className="mt-3 rounded-xl bg-[#ffeef1] px-3 py-2 text-sm font-bold text-[#d81b3f]">Serveur injoignable : {worldError}</p>}
+          <InstallButton className="mt-3" />
+          {worldError && online && <p className="mt-3 rounded-xl bg-[#ffeef1] px-3 py-2 text-sm font-bold text-[#d81b3f]">Serveur injoignable : {worldError}</p>}
 
           <ul className="mt-4 grid grid-cols-3 gap-2 text-center text-[11px] leading-tight font-extrabold text-[var(--color-ink-soft)]">
             <li className="flex flex-col items-center gap-1">

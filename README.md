@@ -62,6 +62,14 @@ Tests : `cd backend && go test ./...`
 3. **Render** : *New → Blueprint* avec `render.yaml` (ou un *Web Service* Docker avec `backend/` comme dossier racine). Renseigne `DATABASE_URL`, `GOOGLE_CLIENT_ID` (facultatif : l'inscription par e-mail marche sans), `ALLOWED_ORIGINS` (URL Vercel) et, si tu veux d'autres sources d'actualités, `NEWS_FEEDS`. Ne mets **pas** `DEV_LOGIN`.
 4. **Vercel** : importe le repo avec `web/` comme *Root Directory* (preset Vite). Variables : `VITE_API_URL=https://<ton-api>.onrender.com/api/v1`, `VITE_MAPBOX_TOKEN`, `VITE_GOOGLE_CLIENT_ID`. `vercel.json` renvoie toutes les routes vers l'app.
 
+### Application installable (PWA)
+
+Le site s'installe comme une app, en plein écran, avec son icône :
+- **Android / Chrome / Edge** : le bouton **Installer l'app** (écran d'accueil du jeu et page Profil) ouvre la fenêtre d'installation du navigateur.
+- **iPhone / iPad** : Safari n'a pas de fenêtre d'installation ; le même bouton montre les trois étapes (Partager → « Sur l'écran d'accueil » → Ajouter).
+
+Le *service worker* (`vite-plugin-pwa`) garde en cache le code, les polices et les icônes : l'app s'ouvre instantanément, même hors connexion, et se met à jour toute seule à la visite suivante. Les données du jeu viennent toujours en direct de l'API ; sans réseau, un bandeau « Hors connexion » s'affiche. Les icônes sont dans `web/public/` (`pwa-192.png`, `pwa-512.png`, `maskable-512.png`, `apple-touch-icon.png`, `icon.svg`).
+
 ## Comment le jeu fonctionne
 
 - **Le temps** : le jeu suit l'heure et la date réelles d'Abidjan (UTC+0). Les activités durent pour de vrai : une nuit de 7 h, une journée de travail de 8 h, un garba de 20 min. Ton Sim reste occupé·e sur place (barre de progression, heure de fin) et tu peux fermer l'appli ; on peut aussi « Arrêter » avant la fin et garder la part déjà faite (effets et salaire au prorata). Les trajets prennent du temps aussi : taxi dans une ville, car entre deux villes. Quand tu n'es pas là, les besoins baissent mais ne descendent pas sous 8.
