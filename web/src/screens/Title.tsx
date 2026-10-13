@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { GoogleLogin } from '@react-oauth/google'
 import { useNavigate } from 'react-router-dom'
-import { Gamepad2, Smartphone, Sparkles } from 'lucide-react'
+import { Eye, EyeOff, Gamepad2, Lock, Mail, Smartphone, Sparkles, UserRound } from 'lucide-react'
 import { api } from '../lib/api'
 import type { Look, User } from '../lib/types'
 import { useSession } from '../store/session'
@@ -24,6 +24,11 @@ export function Title() {
   const worldError = useWorld((s) => s.error)
   const navigate = useNavigate()
   const [devName, setDevName] = useState('Awa Koné')
+  const [mode, setMode] = useState<'login' | 'register'>('login')
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -66,6 +71,21 @@ export function Title() {
         </div>
 
         <section className="animate-up w-full rounded-[28px] bg-white p-5 shadow-[0_30px_60px_-20px_rgba(0,0,0,0.6)]" style={{ animationDelay: '380ms' }}>
+          {/* Se connecter / Créer un compte */}
+          <div className="mb-4 grid grid-cols-2 rounded-full bg-[var(--color-canvas)] p-1" role="tablist">
+            {(['login', 'register'] as const).map((m) => (
+              <button
+                key={m}
+                role="tab"
+                aria-selected={mode === m}
+                onClick={() => (setMode(m), setError(null))}
+                className={`rounded-full py-2.5 font-display text-[15px] font-extrabold transition ${mode === m ? 'bg-white text-[var(--color-ink)] shadow-[0_4px_12px_-6px_rgba(0,0,0,0.35)]' : 'text-[var(--color-ink-soft)]'}`}
+              >
+                {m === 'login' ? 'Se connecter' : 'Créer un compte'}
+              </button>
+            ))}
+          </div>
+
           <div className="flex flex-col gap-3">
             {GOOGLE_ENABLED ? (
               <div className="flex h-[52px] justify-center [&>div]:w-full">
@@ -74,29 +94,83 @@ export function Title() {
                   onError={() => setError('Connexion Google annulée')}
                   shape="pill"
                   size="large"
-                  text="continue_with"
+                  text={mode === 'login' ? 'continue_with' : 'signup_with'}
                   width="360"
                 />
               </div>
             ) : (
               <button className="btn btn-white w-full" disabled title="Ajoute VITE_GOOGLE_CLIENT_ID pour activer">
-                <GoogleIcon /> Continuer avec Google
+                <GoogleIcon /> {mode === 'login' ? 'Continuer avec Google' : "S'inscrire avec Google"}
               </button>
             )}
 
-            {world?.config.devLogin && (
-              <div className="flex gap-2">
-                <input className="input h-[52px] min-w-0 flex-1 text-base" value={devName} onChange={(e) => setDevName(e.target.value)} aria-label="Nom du joueur test" />
-                <button className="btn btn-emerald shrink-0 px-5" disabled={busy || !devName.trim()} onClick={() => finish(api.devLogin(devName))}>
-                  Jouer
+            <div className="flex items-center gap-3 text-xs font-extrabold text-[var(--color-ink-soft)]">
+              <span className="h-px flex-1 bg-[var(--color-line)]" />
+              ou avec ton e-mail
+              <span className="h-px flex-1 bg-[var(--color-line)]" />
+            </div>
+
+            <form
+              className="flex flex-col gap-2.5"
+              onSubmit={(e) => {
+                e.preventDefault()
+                finish(mode === 'login' ? api.login(email, password) : api.register(name, email, password))
+              }}
+            >
+              {mode === 'register' && (
+                <label className="relative">
+                  <UserRound size={18} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[var(--color-ink-soft)]" />
+                  <input className="input h-[52px] !pl-11 text-base" placeholder="Ton nom" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} aria-label="Nom" required />
+                </label>
+              )}
+              <label className="relative">
+                <Mail size={18} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[var(--color-ink-soft)]" />
+                <input className="input h-[52px] !pl-11 text-base" type="email" placeholder="E-mail" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} aria-label="E-mail" required />
+              </label>
+              <label className="relative">
+                <Lock size={18} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[var(--color-ink-soft)]" />
+                <input
+                  className="input h-[52px] !pr-12 !pl-11 text-base"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder={mode === 'register' ? 'Mot de passe (8 caractères min.)' : 'Mot de passe'}
+                  autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+                  minLength={mode === 'register' ? 8 : undefined}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  aria-label="Mot de passe"
+                  required
+                />
+                <button type="button" className="absolute top-1/2 right-3 -translate-y-1/2 p-1 text-[var(--color-ink-soft)]" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Cacher le mot de passe' : 'Afficher le mot de passe'}>
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
-              </div>
+              </label>
+              {error && <p className="animate-pop rounded-2xl bg-[#ffe8ec] px-3 py-2 text-sm font-bold text-[#d81b3f]">{error}</p>}
+              <button className="btn w-full" disabled={busy}>
+                {mode === 'login' ? 'Se connecter' : 'Créer mon compte'}
+              </button>
+            </form>
+
+            <p className="text-center text-sm font-bold text-[var(--color-ink-soft)]">
+              {mode === 'login' ? 'Pas encore de compte ? ' : 'Déjà un compte ? '}
+              <button className="font-extrabold text-[var(--color-orange)] hover:underline" onClick={() => (setMode(mode === 'login' ? 'register' : 'login'), setError(null))}>
+                {mode === 'login' ? 'Inscris-toi' : 'Connecte-toi'}
+              </button>
+            </p>
+
+            {world?.config.devLogin && (
+              <details className="rounded-2xl bg-[var(--color-canvas)] px-3 py-2 text-sm">
+                <summary className="cursor-pointer font-extrabold text-[var(--color-ink-soft)]">Mode test (local)</summary>
+                <div className="mt-2 flex gap-2">
+                  <input className="input h-[44px] min-w-0 flex-1 text-base" value={devName} onChange={(e) => setDevName(e.target.value)} aria-label="Nom du joueur test" />
+                  <button className="btn btn-emerald shrink-0 px-4" disabled={busy || !devName.trim()} onClick={() => finish(api.devLogin(devName))}>
+                    Jouer
+                  </button>
+                </div>
+              </details>
             )}
           </div>
 
-          {(error || worldError) && (
-            <p className="mt-3 rounded-2xl bg-[#ffe8ec] px-3 py-2 text-sm font-bold text-[#d81b3f]">{error ?? `Serveur injoignable : ${worldError}`}</p>
-          )}
+          {worldError && <p className="mt-3 rounded-2xl bg-[#ffe8ec] px-3 py-2 text-sm font-bold text-[#d81b3f]">Serveur injoignable : {worldError}</p>}
 
           <ul className="mt-4 grid grid-cols-3 gap-2 text-center text-[11px] leading-tight font-extrabold text-[var(--color-ink-soft)]">
             <li className="flex flex-col items-center gap-1">

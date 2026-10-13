@@ -32,7 +32,7 @@ export function Pedestrians({ theme, seed }: { theme: Theme; seed: string }) {
   const refs = useRef<(THREE.Group | null)[]>([])
 
   useFrame((_, dt) => {
-    const step = Math.min(dt, 0.05)
+    const step = Math.min(dt, 0.25)
     people.forEach((p, i) => {
       const g = refs.current[i]
       if (!g || p.still) return
@@ -77,7 +77,7 @@ export function Traffic({ theme, seed }: { theme: Theme; seed: string }) {
   }, [theme, seed])
   const refs = useRef<(THREE.Group | null)[]>([])
   useFrame((_, dt) => {
-    const step = Math.min(dt, 0.05)
+    const step = Math.min(dt, 0.25)
     cars.forEach((c, i) => {
       const dir = c.lane > 0 ? 1 : -1
       c.x += dir * c.speed * step

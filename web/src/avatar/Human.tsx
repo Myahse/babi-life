@@ -10,7 +10,7 @@ import { tint, waxTexture } from './textures'
 // so every skin × body × hair × outfit combination works without art assets.
 // Units are metres: feet on y=0, facing +Z.
 
-export type Pose = 'idle' | 'walk' | 'busy' | 'hero' | 'wave'
+export type Pose = 'idle' | 'walk' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer'
 
 /* ---------- Shared geometry and toon materials ---------- */
 
@@ -439,7 +439,15 @@ export function Human({ look, gender, pose = 'idle', seed = 0 }: Props) {
       const sh = shoulder[i].current!
       const el = elbow[i].current!
       el.rotation.z = 0
-      if (pose === 'busy') {
+      if (pose === 'dance') {
+        // Coupé-décalé: arms pumping in turn, one up, one down.
+        const beat = Math.sin(t * 7 + i * Math.PI)
+        sh.rotation.set(-0.6 - beat * 0.5, 0, out * (0.5 + beat * 0.3))
+        el.rotation.x = -1.2 + beat * 0.4
+      } else if (pose === 'cheer') {
+        sh.rotation.set(0, 0, out * (2.7 + Math.sin(t * 10 + i) * 0.15))
+        el.rotation.x = 0
+      } else if (pose === 'busy') {
         sh.rotation.set(-1.1 + Math.sin(t * 6 + i) * 0.25, 0, out * 0.15)
         el.rotation.x = -0.9 + Math.sin(t * 6 + i) * 0.2
       } else if (pose === 'wave' && out > 0) {
@@ -455,7 +463,16 @@ export function Human({ look, gender, pose = 'idle', seed = 0 }: Props) {
         el.rotation.x = walk ? -0.35 : -0.12
       }
     }
-    root.current!.position.y = walk ? Math.abs(Math.cos(t * 8)) * 0.025 : pose === 'busy' ? Math.abs(Math.sin(t * 6)) * 0.02 : Math.sin(t * 1.6) * 0.003
+    root.current!.position.y = walk
+      ? Math.abs(Math.cos(t * 8)) * 0.025
+      : pose === 'busy'
+        ? Math.abs(Math.sin(t * 6)) * 0.02
+        : pose === 'dance'
+          ? Math.abs(Math.sin(t * 7)) * 0.06
+          : pose === 'cheer'
+            ? Math.max(0, Math.sin(t * 5)) * 0.18
+            : Math.sin(t * 1.6) * 0.003
+    root.current!.rotation.y = pose === 'dance' ? Math.sin(t * 3.5) * 0.35 : 0
     head.current!.rotation.y = walk ? 0 : Math.sin(t * 0.5) * 0.2
     head.current!.rotation.z = pose === 'wave' ? 0.08 : 0
     head.current!.rotation.x = pose === 'busy' ? 0.25 : Math.sin(t * 0.7) * 0.03

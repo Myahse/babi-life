@@ -48,8 +48,16 @@ export function layoutCommune(commune: Commune, withHome: boolean): Lot[] {
   const r = rng(commune.id)
   const places = [...(withHome ? [{ id: HOME_ID, kind: 'home', name: 'Chez toi' }] : []), ...commune.places].slice(0, PLACE_SLOTS.length)
   const taken = new Set<string>()
+  // Beaches go on the far side, where the sea is; everything else fills in.
+  const free = [...PLACE_SLOTS]
+  const claim = (side?: number) => {
+    const i = side === undefined ? 0 : Math.max(0, free.findIndex(([, s]) => s === side))
+    return free.splice(i, 1)[0]
+  }
+  const order = [...places].sort((a, b) => Number(b.kind === 'beach') - Number(a.kind === 'beach'))
+  const slot = new Map(order.map((p) => [p.id, claim(p.kind === 'beach' && theme.water ? -1 : undefined)]))
   const lots: Lot[] = places.map((p, i) => {
-    const [x, side] = PLACE_SLOTS[i]
+    const [x, side] = slot.get(p.id)!
     taken.add(`${x}|${side}|f`)
     return { id: p.id, kind: p.kind, name: p.name, seed: i, ...lotAt(x, side) }
   })
@@ -65,7 +73,7 @@ export function layoutCommune(commune: Commune, withHome: boolean): Lot[] {
   for (const side of [-1, 1])
     for (const x of [...COLUMNS, ...OUTER, ...OUTER.map((v) => -v)]) {
       if (!taken.has(`${x}|${side}|f`)) filler(x, side, false)
-      filler(x, side, true)
+      if (!(theme.waterfront && side < 0)) filler(x, side, true) // the water takes the far back row
     }
   return lots
 }

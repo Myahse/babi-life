@@ -1,4 +1,4 @@
-import type { ActionResult, JournalEvent, Look, Sim, User, World } from './types'
+import type { ActionResult, HappeningNow, JournalEvent, Look, Sim, User, World } from './types'
 import { useSession } from '../store/session'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
@@ -44,8 +44,11 @@ export type NewSim = {
 
 export const api = {
   world: () => request<World>('/world'),
+  happening: (commune: string, gameMinutes: number) => request<HappeningNow>(`/happening?commune=${encodeURIComponent(commune)}&t=${Math.floor(gameMinutes)}`),
   googleLogin: (credential: string) => post<Session>('/auth/google', { credential }),
   devLogin: (name: string) => post<Session>('/auth/dev', { name }),
+  register: (name: string, email: string, password: string) => post<Session>('/auth/register', { name, email, password }),
+  login: (email: string, password: string) => post<Session>('/auth/login', { email, password }),
   me: () => request<User>('/me'),
   sims: () => request<Sim[]>('/sims'),
   sim: (id: string) => request<Sim & { journal: JournalEvent[] }>(`/sims/${id}`),

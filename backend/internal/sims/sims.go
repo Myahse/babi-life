@@ -24,6 +24,9 @@ import (
 // HomePlaceID is the virtual "Chez toi" place in the Sim's home commune.
 const HomePlaceID = "home"
 
+// HappeningPlaceID is whatever is going on in the Sim's commune right now.
+const HappeningPlaceID = "happening"
+
 type Look struct {
 	Skin        string `json:"skin"`
 	Hair        string `json:"hair"`
@@ -297,7 +300,14 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 	h.mutate(w, r, func(s *Sim) (game.Outcome, []Event, error) {
 		var kind game.PlaceKind
 		home := req.PlaceID == HomePlaceID
-		if home {
+		if req.PlaceID == HappeningPlaceID {
+			h, _, ok := game.HappeningAt(s.Commune, s.GameMinutes)
+			if !ok || h.Join == nil || req.InteractionID != game.JoinHappeningID {
+				return game.Outcome{}, nil, errors.New("c'est fini, il n'y a plus rien ici")
+			}
+			kind = h.Kind()
+			kind.Interactions = []game.Interaction{*h.Join}
+		} else if home {
 			if s.City != s.HomeCity || s.Commune != s.HomeCommune {
 				return game.Outcome{}, nil, errors.New("rentre d'abord chez toi")
 			}

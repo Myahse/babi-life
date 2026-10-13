@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { BadgeCheck, Briefcase, Building2, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Wallet, X, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
-import type { City, Commune, Interaction, JournalEvent, Sim, World } from '../lib/types'
+import type { City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World } from '../lib/types'
 import { useWorld } from '../store/world'
 import { GameMap } from '../components/map/GameMap'
 import { boundsFor, pinsFor, type Focus, type Padding } from '../components/map/pins'
@@ -16,7 +16,7 @@ import { BankApp, HomeApp, JobsApp, type Act } from './phoneApps'
 const MAX_LOCAL_CATCH_UP = 180 // game minutes, mirrors the server cap
 const SHEET_PEEK = 0.38 // share of the screen the mobile sheet covers when collapsed
 
-type Toast = { id: number; title: string; text?: string; money: number; tone: 'random' | 'done' | 'error' | 'promo'; kind?: string; icon?: string }
+type Toast = { id: number; title: string; text?: string; money: number; tone: 'random' | 'done' | 'error' | 'promo' | 'event'; kind?: string; icon?: string }
 
 function useIsDesktop() {
   const q = '(min-width: 1024px)'
@@ -44,6 +44,7 @@ export function Play() {
   const [overlay, setOverlay] = useState<'phone' | 'map' | null>(null)
   const [pending, setPending] = useState<{ label: string; icon: string; kind: string } | null>(null)
   const [toasts, setToasts] = useState<Toast[]>([])
+  const [street, setStreet] = useState<HappeningNow | null>(null)
 
   useEffect(() => {
     api.sims().then(async (sims) => {
@@ -66,6 +67,38 @@ export function Play() {
     const mins = Math.min(Math.floor((now - base.at) / 1000), MAX_LOCAL_CATCH_UP)
     return { ...base.sim, gameMinutes: base.sim.gameMinutes + mins, needs: decay(base.sim.needs, mins) }
   }, [base, now])
+
+  const slot = sim ? Math.floor(sim.gameMinutes / 120) : -1
+  const where = sim?.commune
+  useEffect(() => {
+    if (!where || slot < 0) return
+    let live = true
+    api
+      .happening(where, slot * 120 + 1)
+      .then((now) => {
+        if (!live) return
+        setStreet((before) => {
+          const h = now.happening
+          if (h && h.id !== before?.happening?.id) {
+            const name = world.cities.flatMap((c) => c.communes).find((c) => c.id === where)?.name ?? ''
+            setTimeout(() => toast({ tone: 'event', title: `Ça se passe à ${name} !`, text: h.text, money: 0, icon: h.icon }), 300)
+          }
+          return now
+        })
+      })
+      .catch(() => undefined)
+    return () => {
+      live = false
+    }
+  }, [where, slot]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Arrived (or still walking) after it ended: say so instead of opening nothing.
+  useEffect(() => {
+    if (placeId === 'happening' && street && !street.happening) {
+      setPlaceId(null)
+      toast({ tone: 'error', title: "C'est fini !", text: 'Tu es arrivé·e trop tard, tout le monde est rentré.', money: 0 })
+    }
+  }, [placeId, street]) // eslint-disable-line react-hooks/exhaustive-deps
+  const happening = useMemo(() => (street?.happening ? { id: street.happening.id, icon: street.happening.icon, label: street.happening.label } : null), [street])
 
   const toast = useCallback((t: Omit<Toast, 'id'>) => {
     const id = Date.now() + Math.random()
@@ -141,6 +174,7 @@ export function Play() {
           onPick={walkTo}
           onArrive={(id) => setPlaceId(id)}
           busy={pending}
+          happening={happening}
         />
       </div>
 
@@ -197,7 +231,24 @@ export function Play() {
         </button>
       </footer>
 
-      {placeId && (
+      {street?.happening && !placeId && !pending && (
+        <button
+          className="animate-pop absolute bottom-[6.5rem] left-1/2 z-20 flex max-w-[calc(100vw-24px)] -translate-x-1/2 items-center gap-2 rounded-full bg-[var(--color-gold)] py-1.5 pr-4 pl-1.5 text-left text-[#5a3a00] shadow-[0_10px_24px_-10px_rgba(0,0,0,0.6)] ring-2 ring-white lg:bottom-[7.5rem]"
+          onClick={() => walkTo('happening')}
+        >
+          <IconTile icon={iconFor(street.happening.icon)} colors={['#ffd54f', '#ffa000']} size={36} radius={18} />
+          <span className="min-w-0 leading-tight">
+            <span className="block text-[10px] font-extrabold tracking-wider uppercase opacity-80">En ce moment</span>
+            <span className="block truncate font-display text-[15px] font-extrabold">{street.happening.label}</span>
+          </span>
+          <ChevronRight size={18} strokeWidth={3} className="shrink-0" />
+        </button>
+      )}
+
+      {placeId === 'happening' && street?.happening && (
+        <HappeningSheet now={street} sim={sim} hour={c.hour} commune={commune} onClose={() => setPlaceId(null)} onJoin={(it) => (setPlaceId(null), run(it.label, it.icon, 'happening', () => api.interact(sim.id, 'happening', it.id)))} />
+      )}
+      {placeId && placeId !== 'happening' && (
         <InteractionMenu world={world} sim={sim} city={city} commune={commune} placeId={placeId} hour={c.hour} desktop={desktop} onClose={() => setPlaceId(null)} onPick={interact} onTravel={travel} />
       )}
 
@@ -601,6 +652,44 @@ function ActionButton({ it, colors, open, broke, onPick, compact }: { it: Intera
   )
 }
 
+/* ---------- What's going on in the street ---------- */
+
+function HappeningSheet({ now, sim, hour, commune, onClose, onJoin }: { now: HappeningNow; sim: Sim; hour: number; commune: Commune; onClose: () => void; onJoin: (it: Interaction) => void }) {
+  const h = now.happening!
+  const left = Math.max(0, now.end - sim.gameMinutes)
+  return (
+    <div className="absolute inset-0 z-30 flex flex-col justify-end bg-[#0f1230]/55 backdrop-blur-[3px] lg:items-center lg:justify-center" onClick={onClose}>
+      <div className="sheet animate-up w-full overflow-hidden rounded-t-[28px] pb-[max(1rem,env(safe-area-inset-bottom))] lg:w-[440px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
+        <div className="bg-gradient-to-br from-[#ffd54f] to-[#ffa000] p-4 text-[#5a3a00]">
+          <div className="flex items-center gap-3">
+            <IconTile icon={iconFor(h.icon)} colors={['#ffffff66', '#ffffff22']} size={52} />
+            <div className="min-w-0 flex-1">
+              <div className="label !text-[#7a5200]">En ce moment à {commune.name}</div>
+              <div className="font-display text-[22px] leading-tight font-extrabold">{h.label}</div>
+            </div>
+            <button className="icon-btn bg-white/60" onClick={onClose} aria-label="Fermer">
+              <X size={22} strokeWidth={2.6} />
+            </button>
+          </div>
+          <p className="mt-2 text-sm leading-snug font-bold">{h.text}</p>
+          <div className="mt-2">
+            <Chip tone="dark">
+              <Clock3 size={12} /> Encore {duration(left)}
+            </Chip>
+          </div>
+        </div>
+        <div className="p-4">
+          {h.join ? (
+            <ActionButton it={h.join} colors={['#ffd54f', '#ffa000']} open={available(h.join, hour)} broke={h.join.cost > 0 && sim.money < h.join.cost} onPick={() => onJoin(h.join!)} />
+          ) : (
+            <p className="text-sm font-bold text-[var(--color-ink-soft)]">Rien à faire ici à part regarder… et attendre que ça passe.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ---------- Feedback ---------- */
 
 function ActionProgress({ label, icon, kind, name }: { label: string; icon: string; kind: string; name: string }) {
@@ -624,9 +713,9 @@ function ActionProgress({ label, icon, kind, name }: { label: string; icon: stri
 function ToastCard({ toast: t }: { toast: Toast }) {
   const icon = t.tone === 'random' ? Dice5 : t.tone === 'promo' ? BadgeCheck : t.tone === 'error' ? TriangleAlert : t.icon ? iconFor(t.icon) : Sparkles
   const colors: [string, string] =
-    t.tone === 'random' ? ['#ffd54f', '#ffa000'] : t.tone === 'promo' ? ['#69e2a0', '#00a862'] : t.tone === 'error' ? ['#ff8a9b', '#ff3d57'] : kindColors(t.kind ?? '')
+    t.tone === 'random' || t.tone === 'event' ? ['#ffd54f', '#ffa000'] : t.tone === 'promo' ? ['#69e2a0', '#00a862'] : t.tone === 'error' ? ['#ff8a9b', '#ff3d57'] : kindColors(t.kind ?? '')
   return (
-    <div className={`card animate-pop pointer-events-auto flex items-center gap-3 p-3 ${t.tone === 'random' ? 'ring-2 ring-[var(--color-gold)]' : t.tone === 'promo' ? 'ring-2 ring-[var(--color-emerald)]' : ''}`}>
+    <div className={`card animate-pop pointer-events-auto flex items-center gap-3 p-3 ${t.tone === 'random' || t.tone === 'event' ? 'ring-2 ring-[var(--color-gold)]' : t.tone === 'promo' ? 'ring-2 ring-[var(--color-emerald)]' : ''}`}>
       <IconTile icon={icon} colors={colors} size={44} />
       <div className="min-w-0 flex-1">
         <div className="font-display text-[15px] leading-tight font-extrabold">{t.title}</div>

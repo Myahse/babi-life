@@ -67,6 +67,11 @@ func (h *Handler) Dev(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) signIn(w http.ResponseWriter, ctx context.Context, id GoogleIdentity) {
+	// Someone who registered with this (Google-verified) e-mail gets Google linked to that account.
+	if _, err := h.DB.Exec(ctx, `UPDATE users SET google_sub = $1 WHERE email = $2 AND google_sub IS NULL`, id.Sub, id.Email); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "could not save user")
+		return
+	}
 	var u User
 	err := h.DB.QueryRow(ctx, `
 		INSERT INTO users (google_sub, email, name, avatar_url)
@@ -81,6 +86,10 @@ func (h *Handler) signIn(w http.ResponseWriter, ctx context.Context, id GoogleId
 		httpx.Error(w, http.StatusInternalServerError, "could not save user")
 		return
 	}
+	h.issue(w, u)
+}
+
+func (h *Handler) issue(w http.ResponseWriter, u User) {
 	token, err := h.Tokens.Issue(u.ID)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "could not issue session")

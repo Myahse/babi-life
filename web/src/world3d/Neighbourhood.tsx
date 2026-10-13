@@ -12,7 +12,8 @@ import { BACK_STREET_Z, CROSS_X, EXTENT_X, HOME_ID, SIDEWALK, STREET_HALF, layou
 import { Box, Lamp, Mat, Palm, Tree } from './props'
 import { FillerBuilding } from './Fillers'
 import { Pedestrians, Traffic } from './Life'
-import { rng, themeFor, type Theme } from './themes'
+import { SHORE_Z, rng, themeFor, type Theme } from './themes'
+import { HAPPENING_DOOR, HappeningMarker, HappeningScene, STOPS_TRAFFIC } from './Happenings'
 
 type Props = {
   world: World
@@ -25,6 +26,8 @@ type Props = {
   onArrive: (placeId: string) => void
   onPick: (placeId: string) => void
   busy: { icon: string; kind: string } | null
+  /** What is going on in the street right now. */
+  happening: { id: string; icon: string; label: string } | null
 }
 
 const SPEED = 4.2 // metres per second: a brisk walk, so errands don't drag
@@ -53,10 +56,17 @@ export function Neighbourhood(props: Props) {
   )
 }
 
-function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, night, dusk }: Props & { night: boolean; dusk: boolean }) {
+function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening }: Props & { night: boolean; dusk: boolean }) {
+  const rain = happening?.id === 'pluie'
+  const blackout = night && happening?.id === 'delestage'
+  const lit = night && !blackout // street lamps and windows
   const home = sim.homeCity === sim.city && sim.homeCommune === commune.id
   const lots = useMemo(() => layoutCommune(commune, home), [commune, home])
-  const places = useMemo(() => lots.filter((l) => l.kind !== 'filler'), [lots])
+  const places = useMemo(() => {
+    const visit = lots.filter((l) => l.kind !== 'filler')
+    // The happening is somewhere the Sim can walk to, like a place.
+    return happening ? [...visit, { id: 'happening', kind: 'happening', name: happening.label, x: HAPPENING_DOOR[0], z: HAPPENING_DOOR[1], rot: 0, door: HAPPENING_DOOR, seed: 0 } as Lot] : visit
+  }, [lots, happening])
   const theme = useMemo(() => themeFor(commune.id), [commune.id])
   // drei's <Html> loses whichever label mounts with the canvas, so labels
   // mount one frame later, once the canvas is in place.
@@ -77,10 +87,10 @@ function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy,
 
   return (
     <>
-      <hemisphereLight args={[night ? '#3a4a8a' : '#ffffff', night ? '#1a1a2e' : '#c9a46b', night ? 0.6 : 1.15]} />
+      <hemisphereLight args={[night ? '#3a4a8a' : '#ffffff', night ? '#1a1a2e' : '#c9a46b', (night ? 0.6 : 1.15) * (rain ? 0.65 : 1) * (blackout ? 0.6 : 1)]} />
       <directionalLight
         position={night ? [-20, 30, 10] : [25, 40, 15]}
-        intensity={night ? 0.35 : dusk ? 1.1 : 1.6}
+        intensity={(night ? 0.35 : dusk ? 1.1 : 1.6) * (rain ? 0.3 : 1)}
         color={night ? '#8fa8ff' : dusk ? '#ffb38a' : '#fff4e0'}
         castShadow
         shadow-mapSize={[2048, 2048]}
@@ -89,21 +99,23 @@ function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy,
         shadow-camera-top={45}
         shadow-camera-bottom={-45}
       />
-      <fog attach="fog" args={[night ? '#141a3d' : dusk ? '#f7a072' : '#9fd8f5', 110, 260]} />
+      <fog attach="fog" args={[rain ? '#8a96a3' : night ? '#141a3d' : dusk ? '#f7a072' : '#9fd8f5', rain ? 50 : 110, rain ? 170 : 260]} />
 
       <Ground theme={theme} night={night} />
-      <Streets theme={theme} night={night} seed={commune.id} />
+      <Streets theme={theme} night={lit} seed={commune.id} />
       <Backdrop theme={theme} night={night} />
-      <Traffic theme={theme} seed={commune.id} />
+      {!(happening && STOPS_TRAFFIC.has(happening.id)) && <Traffic theme={theme} seed={commune.id} />}
+      {happening && <HappeningScene id={happening.id} seed={commune.id} night={night} />}
+      {labels && <HappeningMarker happening={happening} onPick={() => onPick('happening')} />}
       <Pedestrians theme={theme} seed={commune.id} />
 
       {lots.map((lot) =>
         lot.kind === 'filler' ? (
           <group key={lot.id} position={[lot.x, 0, lot.z]} rotation={[0, lot.rot, 0]}>
-            <FillerBuilding type={lot.filler!} seed={lot.seed} night={night} height={lot.z > 0 ? 0.6 : theme.height} />
+            <FillerBuilding type={lot.filler!} seed={lot.seed} night={lit} height={lot.z > 0 ? 0.6 : theme.height} />
           </group>
         ) : (
-          <LotView key={lot.id} lot={lot} world={world} night={night} label={labels} onPick={onPick} />
+          <LotView key={lot.id} lot={lot} world={world} night={lit} label={labels} onPick={onPick} />
         ),
       )}
 
@@ -194,17 +206,24 @@ function StreetTree({ kind, p, s }: { kind: Theme['trees']; p: [number, number, 
 
 /** What lies beyond the district: lagoon, sea, mountains, a skyline. */
 function Backdrop({ theme, night }: { theme: Theme; night: boolean }) {
-  const water = night ? '#1c4e80' : '#36b3e0'
+  const sea = theme.water === 'sea'
+  const water = sea ? (night ? '#16406b' : '#2a9fd6') : night ? '#1c4e80' : '#36b3e0'
+  const shore = theme.waterfront ? SHORE_Z : -BACK_STREET_Z - 22
   return (
     <group>
       {theme.water && (
-        <group position={[0, 0, -BACK_STREET_Z - 22]}>
-          {theme.water === 'sea' && <Box p={[0, 0.02, 4]} s={[600, 0.04, 12]} c="#f2dca6" />}
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, -60]}>
-            <planeGeometry args={[600, 130]} />
-            <meshLambertMaterial color={theme.water === 'sea' ? (night ? '#16406b' : '#2a9fd6') : water} />
+        <group position={[0, 0, shore]}>
+          {/* A beach of sand, or a lagoon quay */}
+          {sea ? <Box p={[0, 0.02, -4]} s={[600, 0.04, 9]} c="#f2dca6" /> : <Box p={[0, 0.35, -0.5]} s={[600, 0.7, 1.4]} c="#a8a29a" />}
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, sea ? -108 : -101]}>
+            <planeGeometry args={[600, 200]} />
+            <meshLambertMaterial color={water} />
           </mesh>
-          {theme.water === 'lagoon' && <Box p={[0, 0.4, 2]} s={[600, 0.8, 1.2]} c="#a8a29a" />}
+          <Waves sea={sea} night={night} from={sea ? -8.5 : -1.5} />
+          {sea && [-90, -50, -12, 30, 66, 104].map((x, i) => <Palm key={x} p={[x, 0, -3 + (i % 2) * 2]} h={6 + (i % 3)} lean={0.2} />)}
+          {[-70, -20, 45, 95].map((x, i) => (
+            <Pirogue key={x} p={[x, 0.1, (sea ? -16 : -8) - (i % 2) * 10]} r={i * 0.7} color={['#ff7a00', '#2a6cf0', '#00a862', '#d6336c'][i]} />
+          ))}
         </group>
       )}
       {theme.backdrop === 'mountains' &&
@@ -228,6 +247,42 @@ function Backdrop({ theme, night }: { theme: Theme; night: boolean }) {
             <meshLambertMaterial color={night ? '#22304a' : '#9cb4c9'} />
           </mesh>
         ))}
+    </group>
+  )
+}
+
+/** White foam lines rolling onto the beach (or ripples on the lagoon). */
+function Waves({ sea, night, from }: { sea: boolean; night: boolean; from: number }) {
+  const refs = useRef<(THREE.Mesh | null)[]>([])
+  useFrame(({ clock }) => {
+    refs.current.forEach((m, i) => {
+      if (!m) return
+      const t = (clock.elapsedTime * (sea ? 0.25 : 0.12) + i / 4) % 1
+      m.position.z = from - (1 - t) * (sea ? 14 : 10)
+      ;(m.material as THREE.MeshBasicMaterial).opacity = Math.sin(t * Math.PI) * (sea ? 0.8 : 0.35)
+    })
+  })
+  return (
+    <>
+      {[0, 1, 2, 3].map((i) => (
+        <mesh key={i} ref={(m) => void (refs.current[i] = m)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, from]}>
+          <planeGeometry args={[600, sea ? 0.7 : 0.25]} />
+          <meshBasicMaterial color={night ? '#9fb7d6' : '#ffffff'} transparent opacity={0.6} />
+        </mesh>
+      ))}
+    </>
+  )
+}
+
+/** A painted fishing pirogue. */
+function Pirogue({ p, r, color }: { p: [number, number, number]; r: number; color: string }) {
+  return (
+    <group position={p} rotation={[0, r, 0]}>
+      <mesh scale={[4.5, 0.6, 0.9]} castShadow>
+        <sphereGeometry args={[1, 16, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2]} />
+        <Mat color={color} />
+      </mesh>
+      <Box p={[0, 0.02, 0]} s={[7, 0.08, 1.2]} c="#f8f9fa" />
     </group>
   )
 }
@@ -270,12 +325,13 @@ function Walker({ sim, lots, moodColor, goTo, onArrive, busy }: { sim: Sim; lots
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null
   const camera = useThree((s) => s.camera)
 
-  // Start at home if there is one, else at the crossroads.
+  // Start at home if there is one, else on the sidewalk. Only once: the place
+  // list also changes when a happening starts, and the Sim must not teleport.
+  const start = (lots.find((l) => l.id === HOME_ID)?.door ?? [0, SIDEWALK]).join()
   useEffect(() => {
-    const homeLot = lots.find((l) => l.id === HOME_ID)
-    const [x, z] = homeLot ? homeLot.door : [0, SIDEWALK]
+    const [x, z] = start.split(',').map(Number)
     group.current!.position.set(x, 0, z)
-  }, [lots])
+  }, [start])
 
   useEffect(() => {
     if (!goTo) return
@@ -294,7 +350,8 @@ function Walker({ sim, lots, moodColor, goTo, onArrive, busy }: { sim: Sim; lots
       const dx = tx - g.position.x
       const dz = tz - g.position.z
       const dist = Math.hypot(dx, dz)
-      const step = Math.min(dist, SPEED * Math.min(dt, 0.05))
+      // Real speed even at a low frame rate (cheap phones): only cap huge gaps, like a tab switch.
+      const step = Math.min(dist, SPEED * Math.min(dt, 0.25))
       if (dist < 0.05) {
         path.current.shift()
         if (!path.current.length) {

@@ -1,5 +1,5 @@
 import {
-  Banana, Banknote, Beer, Bed, BedDouble, BedSingle, Castle, ChefHat, DoorOpen, Gem, HandCoins, Newspaper, Sofa, Briefcase, Building2, Bus, Camera, Coffee, CookingPot, Disc3, Drumstick, Fish,
+  Banana, Banknote, Car, CloudRain, IdCard, Shield, Umbrella, ZapOff, Beer, Bed, BedDouble, BedSingle, Castle, ChefHat, DoorOpen, Gem, HandCoins, Newspaper, Sofa, Briefcase, Building2, Bus, Camera, Coffee, CookingPot, Disc3, Drumstick, Fish,
   Flame, Footprints, HandHeart, Heart, Hourglass, House, Landmark, MessagesSquare, Moon, Mountain, Music, Palette,
   PartyPopper, PiggyBank, ShoppingBasket, ShowerHead, Smartphone, Sparkles, Store, Sunset, TreePalm, Trophy, Tv, Users,
   Volleyball, Waves, type LucideIcon,
@@ -16,6 +16,7 @@ const REGISTRY: Record<string, LucideIcon> = {
   'tree-palm': TreePalm, trophy: Trophy, tv: Tv, users: Users, volleyball: Volleyball, waves: Waves,
   'bed-single': BedSingle, castle: Castle, 'chef-hat': ChefHat, 'door-open': DoorOpen, gem: Gem, 'hand-coins': HandCoins,
   newspaper: Newspaper, sofa: Sofa,
+  car: Car, 'cloud-rain': CloudRain, 'id-card': IdCard, shield: Shield, umbrella: Umbrella, 'zap-off': ZapOff,
 }
 
 export const iconFor = (name: string): LucideIcon => REGISTRY[name] ?? Sparkles
@@ -32,5 +33,6 @@ export const KIND_COLORS: Record<string, [string, string]> = {
   club: ['#ff7ad9', '#b02bd6'],
   sport: ['#69e2a0', '#00a862'],
   nature: ['#9be15d', '#2fa84f'],
+  happening: ['#ffd54f', '#ffa000'],
 }
 export const kindColors = (kind: string) => KIND_COLORS[kind] ?? ['#c3c8dc', '#7a8099']

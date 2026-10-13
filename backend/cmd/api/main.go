@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -74,7 +75,23 @@ func main() {
 				"config":      map[string]any{"devLogin": cfg.DevLogin, "googleLogin": authH.Verifier != nil},
 			})
 		})
+		// What is going on in a commune at a game minute (null when it's quiet).
+		r.Get("/happening", func(w http.ResponseWriter, r *http.Request) {
+			t, err := strconv.ParseInt(r.URL.Query().Get("t"), 10, 64)
+			if err != nil {
+				httpx.Error(w, http.StatusBadRequest, "t is required")
+				return
+			}
+			h, start, ok := game.HappeningAt(r.URL.Query().Get("commune"), t)
+			if !ok {
+				httpx.JSON(w, http.StatusOK, map[string]any{"happening": nil, "start": start, "end": start + game.HappeningMinutes})
+				return
+			}
+			httpx.JSON(w, http.StatusOK, map[string]any{"happening": h, "start": start, "end": start + game.HappeningMinutes})
+		})
 		r.Post("/auth/google", authH.Google)
+		r.Post("/auth/register", authH.Register)
+		r.Post("/auth/login", authH.Login)
 		if cfg.DevLogin {
 			log.Println("⚠️  DEV_LOGIN is on: anyone can sign in without Google")
 			r.Post("/auth/dev", authH.Dev)

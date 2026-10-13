@@ -16,6 +16,8 @@ export type Theme = {
   /** Woro-woro colour for this commune (taxis communaux). */
   woro: string
   water?: 'lagoon' | 'sea'
+  /** The water comes right up behind the far row of buildings (default when there is water). */
+  waterfront?: boolean
   backdrop?: 'mountains' | 'hills' | 'forest' | 'skyline'
   /** Tall buildings scale. */
   height: number
@@ -34,7 +36,7 @@ const DEFAULT: Theme = {
 }
 
 const THEMES: Record<string, Partial<Theme>> = {
-  plateau: { fillers: { tower: 6, office: 3, park: 1, church: 0.5 }, trees: 'palm', pedestrians: 16, vehicles: 8, woro: '#ff7a00', water: 'lagoon', height: 1.6, ground: '#cdbb9b' },
+  plateau: { waterfront: false, fillers: { tower: 6, office: 3, park: 1, church: 0.5 }, trees: 'palm', pedestrians: 16, vehicles: 8, woro: '#ff7a00', water: 'lagoon', height: 1.6, ground: '#cdbb9b' },
   cocody: { fillers: { villa: 7, park: 2, office: 1 }, trees: 'mango', pedestrians: 7, vehicles: 5, woro: '#f2b705', water: 'lagoon', grass: '#6fbf5a' },
   yopougon: { fillers: { cour: 7, shop: 3, stall: 2 }, pedestrians: 22, vehicles: 7, woro: '#2a6cf0', side: 'laterite' },
   adjame: { fillers: { shop: 5, stall: 5, cour: 2, warehouse: 1 }, pedestrians: 26, vehicles: 10, woro: '#00a862', backdrop: 'skyline' },
@@ -55,8 +57,12 @@ const THEMES: Record<string, Partial<Theme>> = {
 }
 
 export function themeFor(communeId: string): Theme {
-  return { ...DEFAULT, ...THEMES[communeId] }
+  const t = { ...DEFAULT, ...THEMES[communeId] }
+  return { ...t, waterfront: t.water ? t.waterfront !== false : false }
 }
+
+/** Where the water starts, on the far (−Z) side, for waterfront communes. */
+export const SHORE_Z = -23
 
 /** A tiny seeded RNG so a commune always looks the same. */
 export function rng(seed: string) {

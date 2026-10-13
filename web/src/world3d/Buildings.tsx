@@ -117,11 +117,14 @@ function Office({ night }: Props) {
 function Beach({ night }: Props) {
   return (
     <group>
-      <Box p={[0, 0.06, 0]} s={[14, 0.12, 14]} c="#f2dca6" />
-      <mesh position={[0, 0.1, -4.5]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[14, 5]} />
-        <meshLambertMaterial color={night ? '#1c4e80' : '#2fb3e0'} transparent opacity={0.9} />
+      {/* Sand down to the sea, which the district draws right behind this lot */}
+      <Box p={[0, 0.06, -2]} s={[14, 0.12, 18]} c="#f2dca6" />
+      <Box p={[-4.5, 1.3, -4]} s={[3, 2.6, 2.4]} c="#c98a4a" />
+      <mesh position={[-4.5, 2.9, -4]} castShadow>
+        <coneGeometry args={[2.6, 1.4, 4]} />
+        <Mat color="#d9b26a" />
       </mesh>
+      <Sign p={[-4.5, 1.9, -2.75]} w={2.6} text="BAR" bg={night ? '#e8590c' : '#ff7a00'} />
       <Palm p={[-5, 0, 2]} h={6.5} lean={-0.25} />
       <Palm p={[4.5, 0, 4]} h={5.5} lean={0.2} />
       {[-2, 2].map((x, i) => (
