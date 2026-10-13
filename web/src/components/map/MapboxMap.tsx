@@ -4,7 +4,7 @@ import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import civ from '../../assets/civ.geo.json'
 import type { Sim } from '../../lib/types'
-import { CIV_BOUNDS, Pin, declutter, pxPerDegree, routeLine, routePoint, visibleAt, type Padding, type PinData, type Route } from './pins'
+import { CIV_BOUNDS, Pin, declutter, pxPerDegree, routeDone, routeLine, routePoint, visibleAt, type Padding, type PinData, type Route } from './pins'
 import type { Camera } from './GameMap'
 import { TaxiMarker } from './OfflineMap'
 
@@ -75,7 +75,7 @@ export function MapboxMap({ token, pins, camera, night, sim, padding, route, onZ
         src.setData({ type: 'FeatureCollection', features: [] })
         return
       }
-      const done = [...Array(33)].map((_, i) => routePoint(route, (i / 32) * route.progress))
+      const done = routeDone(route, route.progress)
       src.setData({
         type: 'FeatureCollection',
         features: [

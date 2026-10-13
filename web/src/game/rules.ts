@@ -1,7 +1,8 @@
 // Mirrors backend/internal/game so the HUD can tick smoothly between server
 // round-trips. The server stays authoritative on every action.
 import { Droplets, Gamepad2, MessageCircle, UtensilsCrossed, Zap, type LucideIcon } from 'lucide-react'
-import type { Career, Housing, Interaction, NeedKey, Needs, Sim } from '../lib/types'
+import type { Career, Housing, Interaction, NeedKey, Needs, Sim, World } from '../lib/types'
+import { routeIn, type LngLat, type Path } from './roads'
 
 export const NEEDS: { key: NeedKey; label: string; icon: LucideIcon }[] = [
   { key: 'hunger', label: 'Faim', icon: UtensilsCrossed },
@@ -133,14 +134,20 @@ export function rideQuote(taxi: { minutes: number; fare: number }) {
   return { minutes: Math.round(taxi.minutes * 0.7), fare: Math.max(1000, Math.round((taxi.fare * 3) / 100) * 100) }
 }
 
-export function trip(fromCity: string, from: Pt & { id: string }, toCity: string, to: Pt & { id: string }) {
+/**
+ * Minutes, fare and the way a trip goes. Mirrors world.TripPath: on the city's
+ * roads and over its bridges when it has a road network; trips are shortened
+ * for the game (minutes across Abidjan, under an hour up country).
+ */
+export function trip(fromCity: string, from: Pt & { id: string }, toCity: string, to: Pt & { id: string }, world?: World) {
   const d = km(from, to)
   if (fromCity === toCity) {
-    if (from.id === to.id) return { minutes: 0, fare: 0, mode: 'sur place' }
-    return { minutes: 20 + Math.trunc(d * 4), fare: 300 + 50 * Math.trunc(d / 3), mode: 'woro-woro' }
+    if (from.id === to.id) return { minutes: 0, fare: 0, mode: 'sur place', path: null as Path | null }
+    const path = (world && routeIn(world, fromCity, from.id, to.id)) || { points: [[from.lng, from.lat], [to.lng, to.lat]] as LngLat[], km: Math.round(d * 12.5) / 10, bridges: [] }
+    return { minutes: Math.round(2 + path.km * 0.6) + path.bridges.length, fare: 300 + 50 * Math.trunc(path.km / 3), mode: 'woro-woro', path }
   }
   const road = d * 1.3
-  return { minutes: Math.trunc(road) + 30, fare: Math.max(500, Math.round(road * 25 / 500) * 500), mode: 'car' }
+  return { minutes: 10 + Math.trunc(road / 12), fare: Math.max(500, Math.round(road * 25 / 500) * 500), mode: 'car', path: null as Path | null }
 }
 
 // Mirrors backend/internal/game/economy.go.

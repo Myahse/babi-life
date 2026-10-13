@@ -442,6 +442,26 @@ func (a *auditor) rides() {
 		a.source(ref, app.Source, false)
 	}
 	a.source("taxi:compteur", Compteur.Source, true)
+	for city, net := range Roads {
+		nodes := map[string]bool{}
+		for _, n := range net.Nodes {
+			nodes[n.ID] = true
+		}
+		for _, r := range net.Roads {
+			ref := "road:" + city + ":" + r.A + "-" + r.B
+			if !nodes[r.A] || !nodes[r.B] {
+				a.add(SevError, CodeBadReference, ref, "route vers un point inconnu")
+			}
+			if r.Bridge != "" {
+				a.source(ref, r.Source, true)
+			}
+		}
+		for _, cm := range mustCity(city).Communes {
+			if _, ok := RouteIn(city, cm.ID, mustCity(city).Communes[0].ID); !ok {
+				a.add(SevError, CodeUnpopulated, "commune:"+cm.ID, "aucune route ne la relie au reste de %s", city)
+			}
+		}
+	}
 	for _, c := range Cities {
 		if c.ID != "abidjan" {
 			continue
@@ -484,4 +504,9 @@ func Summary(issues []Issue) map[string]map[string]int {
 		out[i.Severity][i.Code]++
 	}
 	return out
+}
+
+func mustCity(id string) City {
+	c, _ := FindCity(id)
+	return c
 }

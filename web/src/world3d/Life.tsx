@@ -4,8 +4,9 @@ import * as THREE from 'three'
 import { Human, NoShadows } from '../avatar/Human'
 import { randomLook } from '../avatar/options'
 import { rng, type Theme } from './themes'
-import { EXTENT_X, SIDEWALK } from './layout'
+import { BACK_STREET_Z, CROSS_X, EXTENT_X, SIDEWALK, STREET_HALF } from './layout'
 import { Vehicle, type VehicleKind } from './props'
+import { boulevardLight, crossLight, drive, type Light, type Mover, type Track } from './traffic'
 
 // What makes a street feel alive: people walking the sidewalks or chatting in
 // small groups, and the traffic of taxis, woro-woros, gbakas and motos.
@@ -58,45 +59,126 @@ export function Pedestrians({ theme, seed }: { theme: Theme; seed: string }) {
   )
 }
 
-type Car = { kind: VehicleKind; color?: string; trim?: string; lane: number; speed: number; x: number }
+/* ---------- Traffic and traffic lights ---------- */
+
+const lengthOf = (k: VehicleKind) => (k === 'gbaka' ? 5.6 : k === 'moto' ? 1.6 : 4.3)
+// Stop lines, before the zebra crossings: on the boulevard, from the cross
+// street's centre line; on a cross street, from the boulevard's.
+const STOP_X = 5.5
+const STOP_GAP = STREET_HALF + 3.2
 
 export function Traffic({ theme, seed }: { theme: Theme; seed: string }) {
-  const cars = useMemo<Car[]>(() => {
+  const tracks = useMemo<Track[]>(() => {
     const r = rng(`cars${seed}`)
     const kinds: VehicleKind[] = ['taxi', 'woro', 'woro', 'gbaka', 'car', 'car', 'moto']
-    return [...Array(theme.vehicles)].map((_, i) => {
+    const vehicle = (): Omit<Mover, 's' | 'v'> => {
       const drawn = kinds[Math.floor(r() * kinds.length)]
       // No woro-woro here (the Plateau): an orange taxi compteur instead.
       const kind = drawn === 'woro' && !theme.woro ? 'taxi' : drawn
       return {
         kind,
+        len: lengthOf(kind),
         trim: kind === 'woro' ? theme.woroTrim : undefined,
         color: kind === 'woro' ? theme.woro : kind === 'car' ? ['#f8f9fa', '#212529', '#adb5bd', '#c92a2a', '#1c7ed6'][Math.floor(r() * 5)] : undefined,
-        lane: i % 2 ? 2.2 : -2.2,
         speed: (kind === 'gbaka' ? 7 : kind === 'moto' ? 11 : 9) + r() * 3,
-        x: (r() * 2 - 1) * EXTENT_X,
       }
-    })
+    }
+    const spread = (n: number, length: number) => [...Array(n)].map((_, i) => ({ ...vehicle(), v: 0, s: ((i + r() * 0.5) / n) * length }))
+    const L = EXTENT_X * 2
+    const crossings = [-CROSS_X, CROSS_X]
+    const half = Math.ceil(theme.vehicles / 2)
+    const boulevard: Track[] = [
+      // Eastbound (+x) on the far lane, westbound on the near one.
+      { length: L, movers: spread(half, L), stops: crossings.map((x) => x - STOP_X + EXTENT_X), light: boulevardLight, place: (s) => [s - EXTENT_X, 2.2], rot: 0 },
+      { length: L, movers: spread(theme.vehicles - half, L), stops: crossings.map((x) => EXTENT_X - (x + STOP_X)), light: boulevardLight, place: (s) => [EXTENT_X - s, -2.2], rot: Math.PI },
+    ]
+    // A little traffic on the cross streets, waiting for its green.
+    const CL = (BACK_STREET_Z + 3) * 2
+    const cross: Track[] = crossings.flatMap((x) => [
+      { length: CL, movers: spread(2, CL), stops: [BACK_STREET_Z + 3 - STOP_GAP], light: crossLight, place: (s: number): [number, number] => [x - 1.8, s - BACK_STREET_Z - 3], rot: -Math.PI / 2 },
+      { length: CL, movers: spread(2, CL), stops: [BACK_STREET_Z + 3 - STOP_GAP], light: crossLight, place: (s: number): [number, number] => [x + 1.8, BACK_STREET_Z + 3 - s], rot: Math.PI / 2 },
+    ])
+    return [...boulevard, ...cross]
   }, [theme, seed])
-  const refs = useRef<(THREE.Group | null)[]>([])
-  useFrame((_, dt) => {
-    const step = Math.min(dt, 0.25)
-    cars.forEach((c, i) => {
-      const dir = c.lane > 0 ? 1 : -1
-      c.x += dir * c.speed * step
-      if (c.x > EXTENT_X) c.x = -EXTENT_X
-      if (c.x < -EXTENT_X) c.x = EXTENT_X
-      const g = refs.current[i]
-      if (g) g.position.x = c.x
+  const refs = useRef<(THREE.Group | null)[][]>(tracks.map(() => []))
+  useFrame(({ clock }, dt) => {
+    const step = Math.min(dt, 0.1)
+    const t = clock.elapsedTime
+    tracks.forEach((track, ti) => {
+      drive(track, t, step)
+      track.movers.forEach((m, i) => {
+        const g = refs.current[ti]?.[i]
+        if (!g) return
+        const [x, z] = track.place(m.s)
+        g.position.set(x, 0, z)
+      })
     })
   })
   return (
     <>
-      {cars.map((c, i) => (
-        <group key={i} ref={(g) => void (refs.current[i] = g)} position={[c.x, 0, c.lane]}>
-          <Vehicle p={[0, 0, 0]} r={c.lane > 0 ? 0 : Math.PI} kind={c.kind} color={c.color} trim={c.trim} />
+      {tracks.map((track, ti) =>
+        track.movers.map((m, i) => {
+          const [x, z] = track.place(m.s)
+          return (
+            <group key={`${ti}-${i}`} ref={(g) => void ((refs.current[ti] ??= [])[i] = g)} position={[x, 0, z]}>
+              <Vehicle p={[0, 0, 0]} r={track.rot} kind={m.kind} color={m.color} trim={m.trim} />
+            </group>
+          )
+        }),
+      )}
+    </>
+  )
+}
+
+/** The traffic lights at the cross streets, changing with the traffic. */
+export function TrafficLights() {
+  const heads = useRef<{ light: (t: number) => Light; lamps: (THREE.Mesh | null)[] }[]>([])
+  useFrame(({ clock }) => {
+    for (const h of heads.current) {
+      const now = h.light(clock.elapsedTime)
+      h.lamps.forEach((lamp, i) => {
+        if (!lamp) return
+        const on = (['red', 'amber', 'green'] as Light[])[i] === now
+        const mat = lamp.material as THREE.MeshLambertMaterial
+        mat.emissiveIntensity = on ? 1.6 : 0
+        mat.color.set(on ? LAMP[i] : '#2b2f3a')
+      })
+    }
+  })
+  const poles: { x: number; z: number; light: (t: number) => Light; face: number }[] = [-CROSS_X, CROSS_X].flatMap((X) => [
+    { x: X - 4.6, z: STREET_HALF + 1.6, light: boulevardLight, face: -Math.PI / 2 },
+    { x: X + 4.6, z: -(STREET_HALF + 1.6), light: boulevardLight, face: Math.PI / 2 },
+    { x: X + 4.6, z: STREET_HALF + 1.6, light: crossLight, face: Math.PI },
+    { x: X - 4.6, z: -(STREET_HALF + 1.6), light: crossLight, face: 0 },
+  ])
+  return (
+    <>
+      {poles.map((p, i) => (
+        <group key={i} position={[p.x, 0, p.z]} rotation={[0, p.face, 0]}>
+          <mesh position={[0, 1.6, 0]}>
+            <cylinderGeometry args={[0.09, 0.11, 3.2, 8]} />
+            <meshLambertMaterial color="#3a3f4b" />
+          </mesh>
+          <mesh position={[0, 3.55, 0]}>
+            <boxGeometry args={[0.45, 1.3, 0.4]} />
+            <meshLambertMaterial color="#1d2028" />
+          </mesh>
+          {[0, 1, 2].map((k) => (
+            <mesh
+              key={k}
+              position={[0, 3.95 - k * 0.4, 0.21]}
+              ref={(m) => {
+                heads.current[i] ??= { light: p.light, lamps: [] }
+                heads.current[i].lamps[k] = m
+              }}
+            >
+              <sphereGeometry args={[0.13, 10, 8]} />
+              <meshLambertMaterial color="#2b2f3a" emissive={LAMP[k]} emissiveIntensity={0} />
+            </mesh>
+          ))}
         </group>
       ))}
     </>
   )
 }
+const LAMP = ['#ff3b30', '#ffb300', '#2ee66b']

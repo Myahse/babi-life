@@ -174,3 +174,27 @@ func TestStreetTaxis(t *testing.T) {
 		t.Errorf("default from the Plateau should be the compteur: %v %+v", err, s.Activity)
 	}
 }
+
+func TestFriendsRideAlong(t *testing.T) {
+	abj, _ := world.FindCity("abidjan")
+	cocody, _ := abj.Commune("cocody")
+	yop, _ := abj.Commune("yopougon")
+	_, seat := world.Trip(abj, yop, abj, cocody)
+
+	s := newSim()
+	if err := s.leaveWith(abj, cocody, Ride{App: "woro", Party: 2}, rand.New(alwaysSource{})); err != nil || s.Activity.Trip.Fare != 2*seat {
+		t.Errorf("two seats in the woro-woro cost two fares: %v %+v", err, s.Activity)
+	}
+	s = newSim()
+	_, meter, _ := world.CompteurQuote(abj, yop, cocody)
+	if err := s.leaveWith(abj, cocody, Ride{App: "compteur", Party: 3}, rand.New(alwaysSource{})); err != nil || s.Activity.Trip.Fare != meter {
+		t.Errorf("a taxi compteur takes the group for one fare: %v %+v", err, s.Activity)
+	}
+	five := newSim()
+	if err := five.leaveWith(abj, cocody, Ride{App: "compteur", Party: 5}, rand.New(alwaysSource{})); err != errTooMany {
+		t.Error("five don't fit in a taxi")
+	}
+	if p := s.Activity.Trip.Path; len(p) < 2 {
+		t.Error("the trip should carry its road path for the map")
+	}
+}

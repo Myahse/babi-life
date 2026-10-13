@@ -134,12 +134,19 @@ func (s *Sim) leave(toCity world.City, toCommune world.Commune) error {
 type Ride struct {
 	App   string
 	Offer int
+	// Party: the Sim plus friends riding along (1 when empty). A woro-woro
+	// charges each seat; a taxi compteur or an app car takes the group.
+	Party int
 }
+
+// MaxParty: a taxi or a car takes four passengers.
+const MaxParty = 4
 
 var (
 	errNoRideHere   = errors.New("cette appli ne fait pas ce trajet")
 	errOfferRefused = errors.New("aucun chauffeur n'a accepté ton prix : propose un peu plus")
 	errNoWoro       = errors.New("pas de woro-woro ici : prends un taxi compteur")
+	errTooMany      = errors.New("pas plus de quatre passagers par voiture")
 )
 
 // leaveWith starts a trip; rng draws the incident that may slow it down (and,
@@ -150,9 +157,13 @@ func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, ride Ride, r
 	}
 	fromCity, _ := world.FindCity(s.City)
 	fromCommune, _ := fromCity.Commune(s.Commune)
-	minutes, fare := world.Trip(fromCity, fromCommune, toCity, toCommune)
+	minutes, fare, path := world.TripPath(fromCity, fromCommune, toCity, toCommune)
 	if minutes == 0 {
 		return fmt.Errorf("tu y es déjà")
+	}
+	party := max(1, ride.Party)
+	if party > MaxParty {
+		return errTooMany
 	}
 	// Street taxis in Abidjan: the woro-woro of your commune, or the taxi
 	// compteur (always from the Plateau, which has no woro-woro). Elsewhere
@@ -178,6 +189,7 @@ func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, ride Ride, r
 			return errNoWoro
 		}
 		mode, label = "woro", fmt.Sprintf("Trajet %s → %s en woro-woro", fromCommune.Name, toCommune.Name)
+		fare *= party // one fare per seat
 	case app == "compteur":
 		var ok bool
 		if minutes, fare, ok = world.CompteurQuote(fromCity, fromCommune, toCommune); !ok {
@@ -192,8 +204,10 @@ func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, ride Ride, r
 		if minutes, fare, ok = world.RideQuote(a, fromCity, fromCommune, toCommune); !ok {
 			return errNoRideHere
 		}
+		// Whether a driver takes the offer is played out while booking (the
+		// driver may also cancel then); here only a price nobody would take fails.
 		if a.Model == "offer" {
-			if ride.Offer <= 0 || rng.Float64() >= world.OfferChance(ride.Offer, fare) {
+			if ride.Offer <= 0 || world.OfferChance(ride.Offer, fare) <= 0 {
 				return errOfferRefused
 			}
 			fare = ride.Offer
@@ -204,10 +218,13 @@ func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, ride Ride, r
 		return game.ErrNotEnoughMoney
 	}
 	s.Money -= fare
-	trip := &game.Trip{FromCity: fromCity.ID, FromCommune: fromCommune.ID, City: toCity.ID, Commune: toCommune.ID, Mode: mode, Fare: fare, Label: label}
+	trip := &game.Trip{FromCity: fromCity.ID, FromCommune: fromCommune.ID, City: toCity.ID, Commune: toCommune.ID, Mode: mode, Fare: fare, Label: label, Path: path.Points, Bridges: path.Bridges}
+	if party > 1 {
+		trip.Party = party
+	}
 	// Only incidents that fit this route can happen: a jam on the bridges for
 	// a trip across the lagoon, a roadblock on an intercity road…
-	route := game.Route{FromCity: fromCity.ID, FromCommune: fromCommune.ID, ToCity: toCity.ID, ToCommune: toCommune.ID, FromBank: fromCommune.Admin.Bank, ToBank: toCommune.Admin.Bank, Mode: mode}
+	route := game.Route{FromCity: fromCity.ID, FromCommune: fromCommune.ID, ToCity: toCity.ID, ToCommune: toCommune.ID, FromBank: fromCommune.Admin.Bank, ToBank: toCommune.Admin.Bank, Bridges: path.Bridges, Mode: mode}
 	if inc := game.IncidentFor(route, s.GameMinutes, rng); inc != nil {
 		minutes += inc.Extra
 		trip.Incident = inc.Text

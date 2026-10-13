@@ -3,6 +3,7 @@ import { Car, CarTaxiFront, Bus, Footprints, Globe2, Landmark, LocateFixed, MapP
 import type { City, Commune, Place, Sim, World } from '../lib/types'
 import { GameMap, type Camera } from '../components/map/GameMap'
 import { inkOn, rideLook } from '../game/rides'
+import { routeIn } from '../game/roads'
 import { CIV_BOUNDS, Z_PLACE, Z_TOWN, allPins, boundsFor, routeBounds, type Padding, type Route } from '../components/map/pins'
 import { TravelCTA, type OnTravel } from '../components/TravelCTA'
 import { iconFor, kindColors } from '../components/icons'
@@ -278,7 +279,9 @@ function useTrip(world: World, sim: Sim): Route | null {
     if (!from || !to) return null
     const progress = Math.min(1, Math.max(0, ((now - EPOCH) / 60000 - a.start) / Math.max(1, a.end - a.start)))
     const look = rideLook(world, t.mode, from)
-    return { from: [from.lng, from.lat], to: [to.lng, to.lat], progress, mode: t.mode, color: look.color, how: look.how, toId: `${t.city}/${t.commune}`, label: t.city === t.fromCity ? to.name : `${to.name}, ${toCity!.name}` }
+    // The road it takes: saved with the trip, or worked out again for older trips.
+    const path = t.path ?? (t.city === t.fromCity ? routeIn(world, t.city, t.fromCommune, t.commune)?.points : undefined)
+    return { from: [from.lng, from.lat], to: [to.lng, to.lat], path, progress, mode: t.mode, color: look.color, how: look.how, toId: `${t.city}/${t.commune}`, label: t.city === t.fromCity ? to.name : `${to.name}, ${toCity!.name}` }
   }, [a, now, world])
 }
 

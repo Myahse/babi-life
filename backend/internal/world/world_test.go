@@ -87,7 +87,8 @@ func TestTripPrices(t *testing.T) {
 		t.Errorf("Yop → Cocody fare looks wrong: %dF", f)
 	}
 	bke, _ := FindCity("bouake")
-	if m, f := Trip(abj, coc, bke, bke.Communes[0]); m < 240 || f < 5000 {
-		t.Errorf("Abidjan → Bouaké looks too cheap: %d min %dF", m, f)
+	// Trips are shortened for the game, but the bus up country is still the long one.
+	if m, f := Trip(abj, coc, bke, bke.Communes[0]); m < 30 || m > 60 || f < 5000 {
+		t.Errorf("Abidjan → Bouaké: %d min %dF", m, f)
 	}
 }

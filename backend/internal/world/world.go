@@ -402,16 +402,37 @@ func FindPlace(id string) (City, Commune, Place, bool) {
 // Trip returns the game minutes and FCFA fare to go from one commune to
 // another: woro-woro/gbaka inside a city, intercity bus between cities.
 func Trip(fromCity City, fromCommune Commune, toCity City, toCommune Commune) (minutes int64, fare int) {
+	minutes, fare, _ = TripPath(fromCity, fromCommune, toCity, toCommune)
+	return minutes, fare
+}
+
+// Trips are shortened for the game: a ride across Abidjan takes minutes, not
+// the hour it can take for real, and the bus to Bouaké under an hour.
+const (
+	cityMinBase, cityMinPerKm = 2, 0.6   // + 1 min per bridge
+	busMinBase, busKmPerMin   = 10, 12.0 // road km covered per game minute
+)
+
+// TripPath is Trip plus the way the trip goes: on the city's roads (and over
+// its bridges) when it has a road network, otherwise straight.
+func TripPath(fromCity City, fromCommune Commune, toCity City, toCommune Commune) (minutes int64, fare int, path Path) {
 	km := distanceKm(fromCommune.Lat, fromCommune.Lng, toCommune.Lat, toCommune.Lng)
+	straight := Path{Points: [][2]float64{{fromCommune.Lng, fromCommune.Lat}, {toCommune.Lng, toCommune.Lat}}, Km: math.Round(km*winding*10) / 10}
 	if fromCity.ID == toCity.ID {
 		if fromCommune.ID == toCommune.ID {
-			return 0, 0
+			return 0, 0, Path{}
 		}
-		return 20 + int64(km*4), 300 + 50*int(km/3)
+		path, ok := RouteIn(fromCity.ID, fromCommune.ID, toCommune.ID)
+		if !ok {
+			path = straight
+		}
+		minutes = int64(math.Round(cityMinBase+path.Km*cityMinPerKm)) + int64(len(path.Bridges))
+		return minutes, 300 + 50*int(path.Km/3), path
 	}
-	// Roads are not straight: ~1.3× the crow-flies distance at 60 km/h.
+	// Roads are not straight: ~1.3× the crow-flies distance.
 	road := km * 1.3
-	return int64(road) + 30, roundTo(road*25, 500)
+	straight.Km = math.Round(road*10) / 10
+	return busMinBase + int64(road/busKmPerMin), roundTo(road*25, 500), straight
 }
 
 func distanceKm(lat1, lng1, lat2, lng2 float64) float64 {

@@ -12,7 +12,7 @@ import { BACK_STREET_Z, CROSS_X, EXTENT_X, HOME_ID, SIDEWALK, STREET_HALF, layou
 import { moveInput } from './input'
 import { Box, Lamp, Mat, Palm, Tree } from './props'
 import { FillerBuilding } from './Fillers'
-import { Pedestrians, Traffic } from './Life'
+import { Pedestrians, Traffic, TrafficLights } from './Life'
 import { SHORE_Z, rng, themeFor, type Theme } from './themes'
 import { HAPPENING_DOOR, HappeningMarker, HappeningScene, STOPS_TRAFFIC } from './Happenings'
 
@@ -119,6 +119,7 @@ function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy,
       <Streets theme={theme} night={lit} seed={commune.id} />
       <Backdrop theme={theme} night={night} />
       {!(happening && STOPS_TRAFFIC.has(happening.id)) && <Traffic theme={theme} seed={commune.id} />}
+      <TrafficLights />
       {happening && <HappeningScene id={happening.id} seed={commune.id} night={night} />}
       {labels && <HappeningMarker happening={happening} onPick={() => onPick('happening')} />}
       <Pedestrians theme={theme} seed={commune.id} />

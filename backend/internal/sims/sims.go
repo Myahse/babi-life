@@ -389,6 +389,7 @@ func (h *Handler) travel(w http.ResponseWriter, r *http.Request) {
 		// usual street taxi, or the car between cities.
 		App   string `json:"app,omitempty"`
 		Offer int    `json:"offer,omitempty"`
+		Party int    `json:"party,omitempty"` // the Sim plus friends riding along
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
@@ -406,7 +407,7 @@ func (h *Handler) travel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.mutate(w, r, func(s *Sim) (game.Outcome, []Event, error) {
-		if err := s.leaveWith(toCity, toCommune, Ride{App: req.App, Offer: req.Offer}, newRand()); err != nil {
+		if err := s.leaveWith(toCity, toCommune, Ride{App: req.App, Offer: req.Offer, Party: req.Party}, newRand()); err != nil {
 			return game.Outcome{}, nil, err
 		}
 		t := s.Activity.Trip

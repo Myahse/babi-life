@@ -1,3 +1,4 @@
+import type { RoadNet } from '../game/roads'
 export type Needs = { hunger: number; energy: number; hygiene: number; social: number; fun: number }
 export type NeedKey = keyof Needs
 
@@ -33,7 +34,7 @@ export type City = { id: string; name: string; blurb: string; lat: number; lng: 
 /** A ride-hailing app: "fixed" sets the price, "offer" lets you propose it. */
 export type RideApp = { id: string; name: string; model: 'fixed' | 'offer'; cities: string[]; source: Source }
 /** Booking a ride app instead of the shared taxi; offer = the fare proposed. */
-export type Ride = { app?: string; offer?: number }
+export type Ride = { app?: string; offer?: number; party?: number }
 /** taxi = a town's taxi (or an older trip); yango/indrive = older trips. */
 export type TripMode = 'woro' | 'compteur' | 'taxi' | 'car' | 'gnango' | 'idrive' | 'yango' | 'indrive'
 export type Expression = { id: string; text: string; lang: string; meaning: string; example: string; context?: string; source: Source }
@@ -79,6 +80,7 @@ export type World = {
   expressions?: Expression[]
   rideApps?: RideApp[]
   compteur?: { color: string; cities: string[]; source: Source }
+  roads?: Record<string, RoadNet>
   config: { devLogin: boolean; googleLogin: boolean }
 }
 
@@ -141,7 +143,7 @@ export type Activity = {
   end: number
   applied: number
   career?: string
-  trip?: { fromCity: string; fromCommune: string; city: string; commune: string; mode: TripMode; fare: number; label: string; incident?: string }
+  trip?: { fromCity: string; fromCommune: string; city: string; commune: string; mode: TripMode; fare: number; label: string; incident?: string; path?: [number, number][]; bridges?: string[]; party?: number }
 }
 
 export type JournalEvent = {

@@ -3,6 +3,7 @@ package game
 import (
 	"math/rand/v2"
 	"slices"
+	"strings"
 )
 
 // A Route is what the trip rules need to know about a journey.
@@ -11,15 +12,17 @@ type Route struct {
 	ToCity, ToCommune     string
 	// Lagoon banks of Abidjan communes ("nord", "sud"); empty elsewhere.
 	FromBank, ToBank string
+	// Bridges the trip crosses, from the road network.
+	Bridges []string
 	// Mode: "woro", "compteur", "taxi", "car" or a ride app's ID.
 	Mode string
 }
 
 func (r Route) intercity() bool { return r.FromCity != r.ToCity }
 
-// crossesLagoon: in Abidjan, going between the north and south banks means a bridge.
+// crossesLagoon: the trip goes over one of Abidjan's bridges.
 func (r Route) crossesLagoon() bool {
-	return !r.intercity() && r.FromBank != "" && r.ToBank != "" && r.FromBank != r.ToBank
+	return !r.intercity() && (len(r.Bridges) > 0 || r.FromBank != "" && r.ToBank != "" && r.FromBank != r.ToBank)
 }
 
 // A TripIncident can hit a trip whose route matches its rule; it makes the
@@ -43,17 +46,17 @@ type TripIncident struct {
 }
 
 var TripIncidents = []TripIncident{
-	{ID: "bouchon-pont", Text: "Bouchon sur le pont : la lagune se traverse au pas.", Extra: 25, CrossesLagoon: true, MinHour: 6, MaxHour: 21, Chance: 0.35,
+	{ID: "bouchon-pont", Text: "Bouchon sur le {pont} : la lagune se traverse au pas.", Extra: 8, CrossesLagoon: true, MinHour: 6, MaxHour: 21, Chance: 0.35,
 		Effect: Needs{Fun: -10, Energy: -5},
-		Source: Partial("Les ponts Félix-Houphouët-Boigny et Charles-de-Gaulle relient le Plateau à Treichville, le pont HKB la Riviera à Marcory ; les embouteillages y sont documentés. La fréquence est simulée.", SrcBridges, SrcBridgeHKB)},
-	{ID: "route-aeroport", Text: "Travaux sur la route de l'aéroport : ça roule au ralenti.", Extra: 20, Ends: []string{"port-bouet"}, Chance: 0.3,
+		Source: Partial("Les ponts Félix-Houphouët-Boigny et Charles-de-Gaulle relient le Plateau à Treichville, le pont HKB la Riviera à Marcory ; les embouteillages y sont documentés. La fréquence et la durée (raccourcie pour le jeu) sont simulées.", SrcBridges, SrcBridgeHKB)},
+	{ID: "route-aeroport", Text: "Travaux sur la route de l'aéroport : ça roule au ralenti.", Extra: 6, Ends: []string{"port-bouet"}, Chance: 0.3,
 		Effect: Needs{Fun: -10},
 		Source: Partial("Bouchons signalés en novembre 2024 sur la route de l'aéroport à cause de travaux simultanés ; à revoir quand les travaux seront finis.", SrcAirportRoad2024)},
-	{ID: "woro-plein", Text: "Le woro-woro attend d'être plein avant de partir.", Extra: 10, WithinCity: true, Modes: []string{"woro", "taxi"}, Chance: 0.25,
+	{ID: "woro-plein", Text: "Le woro-woro attend d'être plein avant de partir.", Extra: 3, WithinCity: true, Modes: []string{"woro", "taxi"}, Chance: 0.25,
 		Effect: Needs{Fun: -5}, Source: Fictional},
-	{ID: "controle-route", Text: "Contrôle routier : tout le car descend pour montrer ses papiers.", Extra: 20, Intercity: true, Chance: 0.3,
+	{ID: "controle-route", Text: "Contrôle routier : tout le car descend pour montrer ses papiers.", Extra: 6, Intercity: true, Chance: 0.3,
 		Effect: Needs{Fun: -10, Energy: -5}, Source: Fictional},
-	{ID: "panne-car", Text: "Le car est tombé en panne au bord de la route. On attend le mécanicien.", Extra: 45, Intercity: true, Chance: 0.12,
+	{ID: "panne-car", Text: "Le car est tombé en panne au bord de la route. On attend le mécanicien.", Extra: 15, Intercity: true, Chance: 0.12,
 		Effect: Needs{Fun: -15, Energy: -10, Hunger: -10}, Source: Fictional},
 }
 
@@ -75,6 +78,12 @@ func IncidentFor(r Route, gameMinutes int64, rng *rand.Rand) *TripIncident {
 	hour := HourOf(gameMinutes)
 	for _, t := range TripIncidents {
 		if t.applies(r, hour) && rng.Float64() < t.Chance {
+			// The jam is on the bridge this trip actually takes.
+			pont := "pont"
+			if len(r.Bridges) > 0 {
+				pont = r.Bridges[rng.IntN(len(r.Bridges))]
+			}
+			t.Text = strings.ReplaceAll(t.Text, "{pont}", pont)
 			return &t
 		}
 	}

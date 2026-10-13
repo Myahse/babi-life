@@ -64,7 +64,7 @@ function useRing(on: boolean) {
 }
 
 /** The driver calls to say they're coming. */
-export function DriverCall({ call, onClose }: { call: Call; onClose: () => void }) {
+export function DriverCall({ call, onClose, embedded }: { call: Call; onClose: () => void; embedded?: boolean }) {
   const [answered, setAnswered] = useState<number | null>(null)
   const [now, setNow] = useState(Date.now())
   const closing = useRef(onClose)
@@ -86,7 +86,7 @@ export function DriverCall({ call, onClose }: { call: Call; onClose: () => void 
   const role = call.look.app ? `Chauffeur ${call.look.name}` : call.mode === 'woro' ? `Woro-woro de ${call.from}` : call.look.name
 
   return (
-    <div className="absolute inset-0 z-[70] flex items-end justify-center bg-black/45 p-3 backdrop-blur-[2px] sm:items-center" role="dialog" aria-modal="true" aria-label={`Appel de ${call.driver}`}>
+    <div className={`absolute inset-0 z-[70] flex items-end justify-center p-3 sm:items-center ${embedded ? '' : 'bg-black/45 backdrop-blur-[2px]'}`} role="dialog" aria-modal="true" aria-label={`Appel de ${call.driver}`}>
       <div className="animate-pop w-full max-w-[360px] overflow-hidden rounded-[28px] bg-[linear-gradient(170deg,#262b63,#0f1230)] p-5 text-white shadow-2xl">
         <div className="text-center text-xs font-extrabold tracking-wider text-white/60 uppercase">{answered === null ? 'Appel entrant…' : `En ligne · 0:${String(secs).padStart(2, '0')}`}</div>
         <div className="mt-4 flex flex-col items-center gap-2">

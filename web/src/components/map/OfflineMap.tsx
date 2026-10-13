@@ -6,7 +6,7 @@ import features from '../../assets/civ-features.json'
 import { ABIDJAN_COAST, LAGOON, PETIT_BASSAM } from '../../assets/abidjan'
 import type { Sim } from '../../lib/types'
 import { Portrait } from '../../avatar/portrait'
-import { CIV_BOUNDS, Pin, declutter, routeLine, routePoint, visibleAt, type Bounds, type Padding, type PinData, type Route } from './pins'
+import { CIV_BOUNDS, Pin, declutter, routeDone, routeLine, routePoint, visibleAt, type Bounds, type Padding, type PinData, type Route } from './pins'
 import type { Camera } from './GameMap'
 
 // A stylised, game-board version of the country used when no Mapbox token is
@@ -239,7 +239,7 @@ export function OfflineMap({ pins, camera, night, sim, padding, route, onZoom }:
               <g>
                 <path d={path(routeLine(route), false)} fill="none" stroke="#0f1230" strokeOpacity="0.25" strokeWidth="9" vectorEffect="non-scaling-stroke" strokeLinecap="round" />
                 <path d={path(routeLine(route), false)} fill="none" stroke="#fff" strokeWidth="6" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeDasharray="2 10" />
-                <path d={path([...Array(33)].map((_, i) => routePoint(route, (i / 32) * route.progress)), false)} fill="none" stroke="#ff7a00" strokeWidth="6" vectorEffect="non-scaling-stroke" strokeLinecap="round" />
+                <path d={path(routeDone(route, route.progress), false)} fill="none" stroke="#ff7a00" strokeWidth="6" vectorEffect="non-scaling-stroke" strokeLinecap="round" />
               </g>
             )}
           </g>

@@ -15,8 +15,7 @@ import { Chip, Coin, DayNight, IconTile, MotiveRing, Plumbob, Row, needColor } f
 import { NEEDS, amount, atHome, blockedBy, clock, duration, mood, openAt, openingLabel, predict, shift } from '../game/rules'
 import { BankApp, HomeApp, JobsApp, type Act } from './phoneApps'
 import { NewsApp, topicOf } from './NewsApp'
-import { DriverCall, newCall, type Call } from '../components/DriverCall'
-import { rideLook } from '../game/rides'
+import { RideFlow, type FlowRequest } from '../components/RideFlow'
 
 type Toast = { id: number; title: string; text?: string; money: number; tone: 'random' | 'done' | 'error' | 'promo' | 'event'; kind?: string; icon?: string }
 
@@ -50,7 +49,7 @@ export function Play() {
   const [near, setNear] = useState<string | null>(null)
   const [toasts, setToasts] = useState<Toast[]>([])
   const [street, setStreet] = useState<HappeningNow | null>(null)
-  const [call, setCall] = useState<Call | null>(null)
+  const [flow, setFlow] = useState<FlowRequest | null>(null)
   const announced = useRef('')
 
   useEffect(() => {
@@ -197,16 +196,22 @@ export function Play() {
     run(it.label, it.icon, kind, () => api.interact(sim!.id, id, it.id))
   }
   // The ride shows on the map: the route, and the taxi moving along it.
-  const travel = (cityId: string, communeId: string, label: string, ride?: Ride) => {
+  // In town, a ride is arranged first (hailed at the roadside, or an app
+  // driver coming); the trip starts once the Sim is in the car. The ride
+  // shows on the map: the route, and the taxi moving along it.
+  const travel = (cityId: string, communeId: string, label: string, ride?: Ride, fare = 0) => {
     setPlaceId(null)
     setOverlay('map')
-    const from = world.cities.find((x) => x.id === sim!.city)?.communes.find((x) => x.id === sim!.commune)
-    run(label, 'bus', 'transport', () => api.travel(sim!.id, cityId, communeId, ride)).then((ok) => {
-      // Booked in town: the driver calls to say they're on the way.
-      if (!ok || cityId !== sim!.city || !from) return
-      const mode = ride?.app ?? 'taxi'
-      setCall(newCall(rideLook(world, mode, from), mode, ride?.offer ?? 0, from.name, from.woro?.label))
-    })
+    const fromCity = world.cities.find((x) => x.id === sim!.city)!
+    const from = fromCity.communes.find((x) => x.id === sim!.commune)!
+    const to = world.cities.find((x) => x.id === cityId)?.communes.find((x) => x.id === communeId)
+    if (ride?.app && to) return setFlow({ cityId, from, to, kind: ride.app, offer: ride.offer, fare, party: ride.party ?? 1 })
+    run(label, 'bus', 'transport', () => api.travel(sim!.id, cityId, communeId, ride))
+  }
+  const board = (ride: Ride, label: string) => {
+    const f = flow!
+    setFlow(null)
+    run(label, 'bus', 'transport', () => api.travel(sim!.id, f.cityId, f.to.id, ride))
   }
 
   if (!sim) {
@@ -359,7 +364,7 @@ export function Play() {
         <Phone world={world} sim={sim} commune={commune} journal={journal} time={c.time} act={run} onClose={() => setOverlay(null)} onMap={() => setOverlay('map')} onWalk={walkTo} />
       )}
       {overlay === 'map' && <WorldMap world={world} sim={sim} night={c.isNight} desktop={desktop} onClose={() => setOverlay(null)} onTravel={travel} onWalk={(id) => (setOverlay(null), walkTo(id))} />}
-      {call && <DriverCall call={call} onClose={() => setCall(null)} />}
+      {flow && <RideFlow world={world} req={flow} gameMinutes={sim.gameMinutes} onBoard={board} onClose={() => setFlow(null)} />}
     </div>
   )
 }

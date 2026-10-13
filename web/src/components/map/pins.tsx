@@ -75,10 +75,23 @@ export const visibleAt = (p: PinData, pxPerDeg: number) => !p.zoom || (pxPerDeg 
 /* ---------- Trips ---------- */
 
 export type LngLat = [lng: number, lat: number]
-export type Route = { from: LngLat; to: LngLat; progress: number; mode: string; label: string; /** The car's colour and the "En …" line. */ color: string; how: string; /** The destination's pin id, highlighted. */ toId: string }
+export type Route = { from: LngLat; to: LngLat; /** The road it follows; a gentle curve when unknown. */ path?: LngLat[]; progress: number; mode: string; label: string; /** The car's colour and the "En …" line. */ color: string; how: string; /** The destination's pin id, highlighted. */ toId: string }
 
 /** A trip drawn as a gentle arc, so it reads as a journey rather than a ruler line. */
-export function routePoint(r: Pick<Route, 'from' | 'to'>, t: number): LngLat {
+/** Where the trip is at t (0 → 1): along its road path, by distance, or on a curve. */
+export function routePoint(r: Pick<Route, 'from' | 'to' | 'path'>, t: number): LngLat {
+  if (r.path && r.path.length > 1) {
+    const seg = r.path.slice(1).map((p, i) => Math.hypot(p[0] - r.path![i][0], p[1] - r.path![i][1]))
+    let left = Math.max(0, Math.min(1, t)) * seg.reduce((a, b) => a + b, 0)
+    for (let i = 0; i < seg.length; i++) {
+      if (left <= seg[i] || i === seg.length - 1) {
+        const k = seg[i] ? Math.min(1, left / seg[i]) : 0
+        const [a, b] = [r.path[i], r.path[i + 1]]
+        return [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k]
+      }
+      left -= seg[i]
+    }
+  }
   const [x0, y0] = r.from
   const [x1, y1] = r.to
   const [dx, dy] = [x1 - x0, y1 - y0]
@@ -86,9 +99,23 @@ export function routePoint(r: Pick<Route, 'from' | 'to'>, t: number): LngLat {
   const u = 1 - t
   return [u * u * x0 + 2 * u * t * cx + t * t * x1, u * u * y0 + 2 * u * t * cy + t * t * y1]
 }
-export const routeLine = (r: Pick<Route, 'from' | 'to'>, n = 64) => [...Array(n + 1)].map((_, i) => routePoint(r, i / n))
+export const routeLine = (r: Pick<Route, 'from' | 'to' | 'path'>, n = 64) => (r.path && r.path.length > 1 ? r.path : [...Array(n + 1)].map((_, i) => routePoint(r, i / n)))
 
-export function routeBounds(r: Pick<Route, 'from' | 'to'>): Bounds {
+/** The part already driven, up to t. */
+export function routeDone(r: Pick<Route, 'from' | 'to' | 'path'>, t: number): LngLat[] {
+  if (!(r.path && r.path.length > 1)) return [...Array(33)].map((_, i) => routePoint(r, (i / 32) * t))
+  const end = routePoint(r, t)
+  const seg = r.path.slice(1).map((p, i) => Math.hypot(p[0] - r.path![i][0], p[1] - r.path![i][1]))
+  let left = t * seg.reduce((a, b) => a + b, 0)
+  const out: LngLat[] = [r.path[0]]
+  for (let i = 0; i < seg.length && left > seg[i]; i++) {
+    out.push(r.path[i + 1])
+    left -= seg[i]
+  }
+  return [...out, end]
+}
+
+export function routeBounds(r: Pick<Route, 'from' | 'to' | 'path'>): Bounds {
   const pts = routeLine(r, 16)
   const lngs = pts.map((p) => p[0])
   const lats = pts.map((p) => p[1])

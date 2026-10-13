@@ -56,6 +56,11 @@ type Trip struct {
 	Label       string `json:"label"`
 	// Incident is what slowed the trip down, if anything (see TripIncidents).
 	Incident string `json:"incident,omitempty"`
+	// Path is the way it goes, [lng, lat] points, over these bridges.
+	Path    [][2]float64 `json:"path,omitempty"`
+	Bridges []string     `json:"bridges,omitempty"`
+	// Party: how many travel together (the Sim and friends).
+	Party int `json:"party,omitempty"`
 }
 
 var ErrBusy = fmt.Errorf("ton Sim est occupé·e : arrête d'abord ce qu'il fait")
