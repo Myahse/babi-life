@@ -14,7 +14,7 @@ maquis… et laisse les évènements aléatoires pimenter ta vie.
 
 ## Les écrans
 
-Captures dans `docs/screens/` (`-m-` = mobile, `-d-` = ordinateur) : `cas-*` pour la création du Sim, `commune-*` pour chaque quartier, `e-*` pour une partie complète.
+Une démo vidéo de 3 minutes (inscription, création du Sim, mariage dans la rue, téléphone, carte) : `docs/demo-babi-life.mp4`. Captures dans `docs/screens/` (`-m-` = mobile, `-d-` = ordinateur) : `cas-*` pour la création du Sim, `commune-*` pour chaque quartier, `e-*` pour une partie complète.
 
 1. **Accueil** (`/`) : illustration d'Abidjan au coucher du soleil, logo, puis deux onglets **Se connecter** / **Créer un compte** : avec Google, ou avec un e-mail et un mot de passe (8 caractères minimum, stocké en bcrypt). Un compte créé par e-mail est relié à Google si la personne se connecte ensuite avec Google sur la même adresse. En local, un « Mode test » permet de jouer sans compte.
 2. **Créer un Sim** (`/creer`) : sept étapes numérotées (Identité, Corps, Visage, Coiffure, Tenue, Caractère, Quartier) avec une barre de progression. Le Sim, en 3D, tourne sur un podium (on le fait pivoter du doigt) et la caméra zoome sur le visage pour la coiffure et le visage. Chaque option est une vignette du Sim qui la porte : teint, silhouette, taille, couleur des yeux, barbe, accessoires (lunettes, boucles, chaîne, casquette), huit coiffures, six tenues, quatre motifs de pagne, couleurs. À la fin, une carte révèle le **départ** tiré au hasard (Enfant de riche ou Débrouillard·e).

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { BadgeCheck, Briefcase, Newspaper, Building2, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Wallet, X, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
@@ -46,6 +46,7 @@ export function Play() {
   const [pending, setPending] = useState<{ label: string; icon: string; kind: string } | null>(null)
   const [toasts, setToasts] = useState<Toast[]>([])
   const [street, setStreet] = useState<HappeningNow | null>(null)
+  const announced = useRef('')
 
   useEffect(() => {
     api.sims().then(async (sims) => {
@@ -78,14 +79,15 @@ export function Play() {
       .happening(where, slot * 120 + 1)
       .then((now) => {
         if (!live) return
-        setStreet((before) => {
-          const h = now.happening
-          if (h && h.id !== before?.happening?.id) {
-            const name = world.cities.flatMap((c) => c.communes).find((c) => c.id === where)?.name ?? ''
-            setTimeout(() => toast({ tone: 'event', title: `Ça se passe à ${name} !`, text: h.text, money: 0, icon: h.icon }), 300)
-          }
-          return now
-        })
+        setStreet(now)
+        // Announce each happening once (state updaters may run twice, so not in one).
+        const h = now.happening
+        const key = h ? `${where}|${now.start}|${h.id}` : ''
+        if (h && announced.current !== key) {
+          announced.current = key
+          const name = world.cities.flatMap((c) => c.communes).find((c) => c.id === where)?.name ?? ''
+          setTimeout(() => toast({ tone: 'event', title: `Ça se passe à ${name} !`, text: h.text, money: 0, icon: h.icon }), 300)
+        }
       })
       .catch(() => undefined)
     return () => {
