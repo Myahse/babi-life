@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react'
 import { Moon, Sun } from 'lucide-react'
 import type { CSSProperties, ReactNode } from 'react'
 
-/** A glossy rounded-square tile with a white icon: the game's icon language. */
+/** A flat rounded-square tile with a white icon: the game's icon language. */
 export function IconTile({ icon: Icon, colors, size = 44, radius, className = '', style }: { icon: LucideIcon; colors: [string, string]; size?: number; radius?: number; className?: string; style?: CSSProperties }) {
   return (
     <span
@@ -10,13 +10,12 @@ export function IconTile({ icon: Icon, colors, size = 44, radius, className = ''
       style={{
         width: size,
         height: size,
-        borderRadius: radius ?? size * 0.32,
-        background: `linear-gradient(160deg, ${colors[0]}, ${colors[1]})`,
-        boxShadow: `inset 0 2px 0 rgb(255 255 255 / 0.35), inset 0 -3px 0 rgb(0 0 0 / 0.12), 0 6px 14px -6px ${colors[1]}`,
+        borderRadius: radius ?? size * 0.3,
+        background: colors[1],
         ...style,
       }}
     >
-      <Icon size={size * 0.5} strokeWidth={2.4} />
+      <Icon size={size * 0.48} strokeWidth={2.2} />
     </span>
   )
 }
@@ -95,7 +94,7 @@ export function Chip({ children, tone = 'neutral', className = '' }: { children:
     bad: 'bg-[#ffe8ec] text-[#d81b3f]',
     dark: 'bg-black/35 text-white',
   }
-  return <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-extrabold whitespace-nowrap ${tones[tone]} ${className}`}>{children}</span>
+  return <span className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-extrabold whitespace-nowrap ${tones[tone]} ${className}`}>{children}</span>
 }
 
 export function DayNight({ night, size = 18 }: { night: boolean; size?: number }) {
@@ -136,7 +135,7 @@ export function Logo({ size = 64, className = '' }: { size?: number; className?:
 export function Row({ icon, colors, title, sub, onClick, children }: { icon: LucideIcon; colors: [string, string]; title: string; sub: string; onClick: () => void; children?: ReactNode }) {
   return (
     <li>
-      <button onClick={onClick} className="flex w-full items-center gap-3 rounded-[20px] bg-[var(--color-canvas)] p-2.5 text-left transition hover:bg-[#eceef6] active:scale-[0.98]">
+      <button onClick={onClick} className="flex w-full items-center gap-3 rounded-2xl border border-[var(--color-line)] bg-white p-2.5 text-left transition hover:border-[#d6d9e5] hover:bg-[#fbfbfd] active:scale-[0.99]">
         <IconTile icon={icon} colors={colors} size={46} />
         <span className="min-w-0 flex-1">
           <span className="block truncate font-display text-[17px] leading-tight font-extrabold">{title}</span>

@@ -147,7 +147,7 @@ export function HomeApp({ world, sim, commune, act }: AppProps) {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-[22px] bg-gradient-to-br from-[#ffb347] to-[#ff7a00] p-4 text-white">
+      <div className="rounded-2xl bg-[var(--color-orange)] p-4 text-white">
         <div className="flex items-center gap-3">
           <IconTile icon={iconFor(home.icon)} colors={['#ffffff55', '#ffffff22']} size={52} />
           <div className="min-w-0 flex-1 leading-tight">
@@ -225,7 +225,7 @@ export function BankApp({ sim, act, journal, renderJournal }: { sim: Sim; act: A
 
   return (
     <div className="space-y-3">
-      <div className="rounded-[22px] bg-gradient-to-br from-[#ffd54f] to-[#ffa000] p-4 text-[#5a3a00]">
+      <div className="rounded-2xl bg-[var(--color-gold)] p-4 text-[#5a3a00]">
         <div className="label !text-[#7a5200]">Solde</div>
         <div className="tnum font-display text-4xl leading-none font-extrabold">{amount(sim.money)} F</div>
         <div className="mt-3 flex gap-4 text-xs font-extrabold">

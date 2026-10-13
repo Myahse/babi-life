@@ -74,7 +74,7 @@ export function Profile() {
             </span>
           </div>
           <div className="pb-4">
-            <h1 className="font-display text-4xl leading-none font-extrabold [text-shadow:0_2px_0_rgba(0,0,0,0.12)]">
+            <h1 className="font-display text-4xl leading-none font-extrabold">
               {sim.firstName} {sim.lastName}
             </h1>
             {user?.username && <div className="mt-1 font-display text-lg font-extrabold opacity-90">@{user.username}</div>}

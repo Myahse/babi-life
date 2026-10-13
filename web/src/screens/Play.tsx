@@ -271,7 +271,7 @@ export function Play() {
 
       {/* ---------- Bottom HUD: needs, map, phone ---------- */}
       <footer className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex items-end justify-between gap-2 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:p-5">
-        <button className="hud pointer-events-auto flex h-16 w-16 flex-col items-center justify-center gap-0.5 rounded-[22px] font-display text-[11px] font-extrabold active:scale-95" onClick={() => setOverlay('map')}>
+        <button className="hud pointer-events-auto flex h-16 w-16 flex-col items-center justify-center gap-0.5 rounded-[20px] text-[11px] font-extrabold transition active:scale-95" onClick={() => setOverlay('map')}>
           <MapIcon size={24} strokeWidth={2.4} className="text-[var(--color-emerald)]" />
           Carte
         </button>
@@ -281,7 +281,7 @@ export function Play() {
           ))}
         </div>
         <button
-          className="pointer-events-auto relative flex h-16 w-16 flex-col items-center justify-center gap-0.5 rounded-[22px] bg-gradient-to-b from-[#ff9a2e] to-[#f56d00] font-display text-[11px] font-extrabold text-white shadow-[inset_0_2px_0_rgba(255,255,255,0.35),0_4px_0_#e05a00,0_12px_24px_-8px_rgba(224,90,0,0.6)] active:translate-y-0.5"
+          className="pointer-events-auto relative flex h-16 w-16 flex-col items-center justify-center gap-0.5 rounded-[22px] bg-[var(--color-orange)] text-[11px] font-extrabold text-white shadow-[0_8px_20px_-10px_rgba(224,90,0,0.8)] transition hover:bg-[#f26f00] active:scale-95"
           onClick={() => (setOverlay('phone'), setSeen(journal[0]?.id ?? 0))}
         >
           <Smartphone size={24} strokeWidth={2.4} />
@@ -292,7 +292,7 @@ export function Play() {
 
       {street?.happening && !placeId && !pending && !sim.activity && (
         <button
-          className="animate-pop absolute bottom-[6.5rem] left-1/2 z-20 flex max-w-[calc(100vw-24px)] -translate-x-1/2 items-center gap-2 rounded-full bg-[var(--color-gold)] py-1.5 pr-4 pl-1.5 text-left text-[#5a3a00] shadow-[0_10px_24px_-10px_rgba(0,0,0,0.6)] ring-2 ring-white lg:bottom-[7.5rem]"
+          className="animate-pop absolute bottom-[6.5rem] left-1/2 z-20 flex max-w-[calc(100vw-24px)] -translate-x-1/2 items-center gap-2 rounded-full bg-[var(--color-gold)] py-1.5 pr-4 pl-1.5 text-left text-[#5a3a00] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.6)] lg:bottom-[7.5rem]"
           onClick={() => walkTo('happening')}
         >
           <IconTile icon={iconFor(street.happening.icon)} colors={['#ffd54f', '#ffa000']} size={36} radius={18} />
@@ -434,7 +434,7 @@ function Phone({ world, sim, commune, journal, time, act, onClose, onMap, onWalk
                         <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-[var(--color-rose)] ring-2 ring-white" />
                       )}
                     </span>
-                    <span className="text-xs font-extrabold text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.4)]">{a.label}</span>
+                    <span className="text-xs font-bold text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.35)]">{a.label}</span>
                   </button>
                 ))}
               </div>
@@ -575,7 +575,7 @@ function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: World; 
   const bus = t.mode === 'car'
   const label = bus ? `En car vers ${toCity.name}` : `En woro-woro vers ${to.name}`
   return (
-    <div className="mb-3 rounded-[22px] bg-gradient-to-br from-[#fff4e8] to-[#ffe6cc] p-3">
+    <div className="mb-3 rounded-2xl border border-[#ffe0c2] bg-[#fff7ef] p-3">
       <div className="mb-2.5 flex items-center gap-2.5">
         <IconTile icon={bus ? Bus : CarTaxiFront} colors={['#ffa040', '#ff6a00']} size={40} />
         <div className="min-w-0 flex-1 leading-tight">
@@ -736,7 +736,7 @@ function HappeningSheet({ now, sim, hour, commune, onClose, onJoin }: { now: Hap
   return (
     <div className="absolute inset-0 z-30 flex flex-col justify-end bg-[#0f1230]/55 backdrop-blur-[3px] lg:items-center lg:justify-center" onClick={onClose}>
       <div className="sheet animate-up w-full overflow-hidden rounded-t-[28px] pb-[max(1rem,env(safe-area-inset-bottom))] lg:w-[440px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
-        <div className="bg-gradient-to-br from-[#ffd54f] to-[#ffa000] p-4 text-[#5a3a00]">
+        <div className="bg-[var(--color-gold)] p-4 text-[#5a3a00]">
           <div className="flex items-center gap-3">
             <IconTile icon={iconFor(h.icon)} colors={['#ffffff66', '#ffffff22']} size={52} />
             <div className="min-w-0 flex-1">
@@ -785,7 +785,7 @@ function ActivityBar({ sim, onStop, stopping }: { sim: Sim; onStop: () => void; 
           <div className="label truncate">{travel ? 'En route' : a.placeName}</div>
           <div className="truncate font-display text-[15px] leading-tight font-extrabold">{travel ? a.trip!.label.replace(/^Trajet /, '') : a.interaction.label}</div>
           <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-[var(--color-canvas)]">
-            <div className="h-full rounded-full bg-gradient-to-r from-[#22d388] to-[#00b86b] transition-[width] duration-1000 ease-linear" style={{ width: `${done * 100}%` }} />
+            <div className="h-full rounded-full bg-[var(--color-emerald)] transition-[width] duration-1000 ease-linear" style={{ width: `${done * 100}%` }} />
           </div>
           <div className="mt-1 text-[11px] font-extrabold text-[var(--color-ink-soft)]">{left > 0 ? `Encore ${duration(left)} · fin à ${clock(a.end).time}` : 'Presque fini…'}</div>
         </div>

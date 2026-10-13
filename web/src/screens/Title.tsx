@@ -82,16 +82,15 @@ export function Title() {
           ))}
         </div>
 
-        <section className="animate-up w-full rounded-[28px] bg-white p-5 shadow-[0_30px_60px_-20px_rgba(0,0,0,0.6)]" style={{ animationDelay: '380ms' }}>
+        <section className="animate-up w-full rounded-3xl bg-white p-5 shadow-[0_24px_60px_-24px_rgba(0,0,0,0.7)]" style={{ animationDelay: '380ms' }}>
           {/* Se connecter / Créer un compte */}
-          <div className="mb-4 grid grid-cols-2 rounded-full bg-[var(--color-canvas)] p-1" role="tablist">
+          <div className="segmented mb-4" role="tablist">
             {(['login', 'register'] as const).map((m) => (
               <button
                 key={m}
                 role="tab"
                 aria-selected={mode === m}
                 onClick={() => (setMode(m), setError(null))}
-                className={`rounded-full py-2.5 font-display text-[15px] font-extrabold transition ${mode === m ? 'bg-white text-[var(--color-ink)] shadow-[0_4px_12px_-6px_rgba(0,0,0,0.35)]' : 'text-[var(--color-ink-soft)]'}`}
               >
                 {m === 'login' ? 'Se connecter' : 'Créer un compte'}
               </button>
@@ -100,7 +99,7 @@ export function Title() {
 
           <div className="flex flex-col gap-3">
             {GOOGLE_ENABLED ? (
-              <div className="flex h-[52px] justify-center [&>div]:w-full">
+              <div className="flex h-[50px] justify-center [&>div]:w-full">
                 <GoogleLogin
                   onSuccess={(r) => r.credential && finish(api.googleLogin(r.credential))}
                   onError={() => setError('Connexion Google annulée')}
@@ -134,9 +133,9 @@ export function Title() {
                   <div className="grid grid-cols-2 gap-2.5">
                     <label className="relative">
                       <UserRound size={18} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[var(--color-ink-soft)]" />
-                      <input className="input h-[52px] !pl-11 text-base" placeholder="Prénom" autoComplete="given-name" value={first} onChange={(e) => pickName(e.target.value, last)} aria-label="Prénom" required />
+                      <input className="input !pl-11 text-base" placeholder="Prénom" autoComplete="given-name" value={first} onChange={(e) => pickName(e.target.value, last)} aria-label="Prénom" required />
                     </label>
-                    <input className="input h-[52px] text-base" placeholder="Nom" autoComplete="family-name" value={last} onChange={(e) => pickName(first, e.target.value)} aria-label="Nom" required />
+                    <input className="input text-base" placeholder="Nom" autoComplete="family-name" value={last} onChange={(e) => pickName(first, e.target.value)} aria-label="Nom" required />
                   </div>
                   <UsernameField value={username} onChange={(v) => (setUsername(v), setUsernameTouched(true))} first={first} last={last} />
                 </div>
@@ -144,7 +143,7 @@ export function Title() {
               <label className="relative">
                 <Mail size={18} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[var(--color-ink-soft)]" />
                 <input
-                  className="input h-[52px] !pl-11 text-base"
+                  className="input !pl-11 text-base"
                   type={mode === 'login' ? 'text' : 'email'}
                   placeholder={mode === 'login' ? 'E-mail ou pseudo' : 'E-mail'}
                   autoComplete={mode === 'login' ? 'username' : 'email'}
@@ -158,7 +157,7 @@ export function Title() {
               <label className="relative">
                 <Lock size={18} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[var(--color-ink-soft)]" />
                 <input
-                  className="input h-[52px] !pr-12 !pl-11 text-base"
+                  className="input !pr-12 !pl-11 text-base"
                   type={showPassword ? 'text' : 'password'}
                   placeholder={mode === 'register' ? 'Mot de passe (8 caractères min.)' : 'Mot de passe'}
                   autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
@@ -172,7 +171,7 @@ export function Title() {
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </label>
-              {error && <p className="animate-pop rounded-2xl bg-[#ffe8ec] px-3 py-2 text-sm font-bold text-[#d81b3f]">{error}</p>}
+              {error && <p className="animate-pop rounded-xl bg-[#ffeef1] px-3 py-2 text-sm font-bold text-[#d81b3f]">{error}</p>}
               <button className="btn w-full" disabled={busy}>
                 {mode === 'login' ? 'Se connecter' : 'Créer mon compte'}
               </button>
@@ -198,7 +197,7 @@ export function Title() {
             )}
           </div>
 
-          {worldError && <p className="mt-3 rounded-2xl bg-[#ffe8ec] px-3 py-2 text-sm font-bold text-[#d81b3f]">Serveur injoignable : {worldError}</p>}
+          {worldError && <p className="mt-3 rounded-xl bg-[#ffeef1] px-3 py-2 text-sm font-bold text-[#d81b3f]">Serveur injoignable : {worldError}</p>}
 
           <ul className="mt-4 grid grid-cols-3 gap-2 text-center text-[11px] leading-tight font-extrabold text-[var(--color-ink-soft)]">
             <li className="flex flex-col items-center gap-1">

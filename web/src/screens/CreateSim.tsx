@@ -342,7 +342,7 @@ export function CreateSim() {
           )}
         </div>
 
-        {error && <p className="motion-shake mx-3 mb-2 rounded-2xl bg-[#ffe8ec] px-3 py-2 text-sm font-bold text-[#d81b3f]">{error}</p>}
+        {error && <p className="motion-shake mx-3 mb-2 rounded-xl bg-[#ffeef1] px-3 py-2 text-sm font-bold text-[#d81b3f]">{error}</p>}
         <footer className="flex gap-2 border-t border-[var(--color-line)] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           {step > 0 && (
             <button className="btn btn-soft shrink-0 px-4" onClick={() => setStep(step - 1)} aria-label="Étape précédente">
@@ -372,7 +372,7 @@ function Stepper({ step, onStep }: { step: number; onStep: (i: number) => void }
   return (
     <nav className="px-3 pt-3 pb-2">
       <div className="mb-2 h-1.5 overflow-hidden rounded-full bg-[var(--color-canvas)]">
-        <div className="h-full rounded-full bg-gradient-to-r from-[#ffa040] to-[#ff6a00] transition-[width] duration-500" style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} />
+        <div className="h-full rounded-full bg-[var(--color-orange)] transition-[width] duration-500" style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} />
       </div>
       <ol className="no-scrollbar flex gap-1 overflow-x-auto">
         {STEPS.map((s, i) => {
@@ -382,7 +382,7 @@ function Stepper({ step, onStep }: { step: number; onStep: (i: number) => void }
             <li key={s.id} className="min-w-[64px] flex-1">
               <button onClick={() => onStep(i)} className={`flex w-full flex-col items-center gap-1 rounded-2xl px-1 py-1.5 transition ${here ? 'bg-[#fff1e3]' : 'hover:bg-[var(--color-canvas)]'}`}>
                 <span
-                  className={`grid h-8 w-8 place-items-center rounded-full font-display text-sm font-extrabold transition ${here ? 'bg-[var(--color-orange)] text-white shadow-[0_4px_12px_-4px_rgba(255,122,0,0.8)]' : done ? 'bg-[var(--color-emerald)] text-white' : 'bg-[var(--color-canvas)] text-[var(--color-ink-soft)]'}`}
+                  className={`grid h-8 w-8 place-items-center rounded-full font-display text-sm font-extrabold transition ${here ? 'bg-[var(--color-orange)] text-white' : done ? 'bg-[var(--color-emerald)] text-white' : 'bg-[var(--color-canvas)] text-[var(--color-ink-soft)]'}`}
                 >
                   {done ? <Check size={16} strokeWidth={3.2} /> : i + 1}
                 </span>
@@ -446,20 +446,20 @@ function OriginReveal({ origin, name, housing, onGo }: { origin: Origin; name: s
           <div className="mt-3 flex justify-center">
             <IconTile icon={iconFor(origin.icon)} colors={['#ffffff55', '#ffffff22']} size={84} radius={28} />
           </div>
-          <div className="mt-3 font-display text-[30px] leading-none font-extrabold [text-shadow:0_2px_0_rgba(0,0,0,0.15)]">{origin.label}</div>
+          <div className="mt-3 font-display text-[30px] leading-none font-extrabold">{origin.label}</div>
           <p className="mt-2 text-sm leading-snug font-bold text-white/95">{origin.hint}</p>
         </div>
         <ul className="space-y-2 p-4 text-left">
-          <li className="flex items-center justify-between rounded-[18px] bg-[var(--color-canvas)] px-3 py-2.5">
+          <li className="flex items-center justify-between rounded-xl bg-[var(--color-canvas)] px-3 py-2.5">
             <span className="text-sm font-extrabold text-[var(--color-ink-soft)]">Porte-monnaie</span>
             <span className="flex items-center gap-1 font-display text-lg font-extrabold"><Coin size={20} /> {amount(origin.money)}</span>
           </li>
-          <li className="flex items-center justify-between rounded-[18px] bg-[var(--color-canvas)] px-3 py-2.5">
+          <li className="flex items-center justify-between rounded-xl bg-[var(--color-canvas)] px-3 py-2.5">
             <span className="text-sm font-extrabold text-[var(--color-ink-soft)]">Logement</span>
             <span className="font-display text-base font-extrabold">{housing}</span>
           </li>
           {origin.loan > 0 && (
-            <li className="flex items-center justify-between rounded-[18px] bg-[#ffe8ec] px-3 py-2.5">
+            <li className="flex items-center justify-between rounded-xl bg-[#ffeef1] px-3 py-2.5">
               <span className="text-sm font-extrabold text-[#d81b3f]">Microcrédit à rembourser</span>
               <span className="font-display text-base font-extrabold text-[#d81b3f]">{amount(origin.loan)} F</span>
             </li>
