@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { CarTaxiFront } from 'lucide-react'
 import civ from '../../assets/civ.geo.json'
 import features from '../../assets/civ-features.json'
 import { ABIDJAN_COAST, LAGOON, PETIT_BASSAM } from '../../assets/abidjan'
 import type { Sim } from '../../lib/types'
-import { CIV_BOUNDS, Pin, declutter, type Bounds, type Padding, type PinData } from './pins'
+import { Portrait } from '../../avatar/portrait'
+import { CIV_BOUNDS, Pin, declutter, routeLine, routePoint, visibleAt, type Bounds, type Padding, type PinData, type Route } from './pins'
+import type { Camera } from './GameMap'
 
 // A stylised, game-board version of the country used when no Mapbox token is
 // set: real borders, rivers, lakes and main roads from Natural Earth, painted
@@ -27,7 +30,7 @@ const COAST = path(ABIDJAN_COAST, false)
 const PATCH = path([...ABIDJAN_COAST, [-3.55, 5.45], [-4.45, 5.45]])
 
 type View = { s: number; tx: number; ty: number }
-type Props = { pins: PinData[]; bounds: Bounds; night: boolean; sim: Sim | null; padding: Padding }
+type Props = { pins: PinData[]; camera: Camera; night: boolean; sim: Sim | null; padding: Padding; route?: Route | null; onZoom?: (pxPerDeg: number) => void }
 
 function fit(b: Bounds, size: { w: number; h: number }, pad: Padding): View {
   const w = Math.max(size.w - pad.left - pad.right, 80)
@@ -39,7 +42,9 @@ function fit(b: Bounds, size: { w: number; h: number }, pad: Padding): View {
 
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2)
 
-export function OfflineMap({ pins, bounds, night, sim, padding }: Props) {
+const MAX_S = 60 // 60 000 px per degree: street level is the 3D quartier's job
+
+export function OfflineMap({ pins, camera, night, sim, padding, route, onZoom }: Props) {
   const ref = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState<{ w: number; h: number } | null>(null)
   const [view, setView] = useState<View | null>(null)
@@ -51,7 +56,9 @@ export function OfflineMap({ pins, bounds, night, sim, padding }: Props) {
     return () => ro.disconnect()
   }, [])
 
-  const target = useMemo(() => (size ? fit(bounds, size, padding) : null), [bounds, size, padding])
+  const minS = size ? fit(CIV_BOUNDS, size, { top: 0, bottom: 0, left: 0, right: 0 }).s * 0.8 : 0.01
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const target = useMemo(() => (size ? fit(camera.bounds, size, padding) : null), [camera.key, size])
 
   // Camera flight: zoom in/out in log space so it feels like a real map.
   useEffect(() => {
@@ -86,13 +93,98 @@ export function OfflineMap({ pins, bounds, night, sim, padding }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target])
 
-  const layout = useMemo(() => (view && size ? declutter(pins, (lng, lat) => [W(lng) * view.s + view.tx, H(lat) * view.s + view.ty], size.w, padding.top - 10) : {}), [pins, view, size, padding.top])
+  // Free pan and zoom: drag, pinch, wheel, double-tap. A drag never counts as a tap on a pin.
+  const gesture = useRef<{ pts: Map<number, { x: number; y: number }>; moved: boolean; last?: { x: number; y: number; d: number } }>({ pts: new Map(), moved: false })
+  const apply = (v: View) => {
+    viewRef.current = v
+    setView(v)
+  }
+  const zoomAt = (x: number, y: number, factor: number) => {
+    const v = viewRef.current
+    if (!v) return
+    const s2 = Math.min(MAX_S, Math.max(minS, v.s * factor))
+    const k = s2 / v.s
+    apply({ s: s2, tx: x - (x - v.tx) * k, ty: y - (y - v.ty) * k })
+  }
+  const local = (e: { clientX: number; clientY: number }) => {
+    const r = ref.current!.getBoundingClientRect()
+    return { x: e.clientX - r.left, y: e.clientY - r.top }
+  }
+  const midpoint = () => {
+    const [a, b] = [...gesture.current.pts.values()]
+    return b ? { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, d: Math.hypot(a.x - b.x, a.y - b.y) } : { ...a, d: 0 }
+  }
+  useEffect(() => {
+    const el = ref.current!
+    const wheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const p = local(e)
+      zoomAt(p.x, p.y, Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0018)))
+    }
+    el.addEventListener('wheel', wheel, { passive: false })
+    return () => el.removeEventListener('wheel', wheel)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [minS])
+  const handlers = {
+    onPointerDown: (e: React.PointerEvent) => {
+      const g = gesture.current
+      if (g.pts.size === 0) g.moved = false
+      g.pts.set(e.pointerId, local(e))
+      g.last = midpoint()
+    },
+    onPointerMove: (e: React.PointerEvent) => {
+      const g = gesture.current
+      if (!g.pts.has(e.pointerId)) return
+      g.pts.set(e.pointerId, local(e))
+      const m = midpoint()
+      const last = g.last!
+      const v = viewRef.current
+      if (!v) return
+      if (!g.moved && Math.hypot(m.x - last.x, m.y - last.y) < 6 && Math.abs(m.d - last.d) < 6) return
+      if (!g.moved) {
+        g.moved = true
+        ref.current!.setPointerCapture(e.pointerId)
+      }
+      let next = { ...v, tx: v.tx + m.x - last.x, ty: v.ty + m.y - last.y }
+      if (m.d && last.d) {
+        const s2 = Math.min(MAX_S, Math.max(minS, next.s * (m.d / last.d)))
+        const k = s2 / next.s
+        next = { s: s2, tx: m.x - (m.x - next.tx) * k, ty: m.y - (m.y - next.ty) * k }
+      }
+      apply(next)
+      g.last = m
+    },
+    onPointerUp: (e: React.PointerEvent) => {
+      const g = gesture.current
+      g.pts.delete(e.pointerId)
+      g.last = g.pts.size ? midpoint() : undefined
+    },
+    onDoubleClick: (e: React.MouseEvent) => {
+      const p = local(e)
+      zoomAt(p.x, p.y, 2.2)
+    },
+    // A drag that ends over a pin must not open it.
+    onClickCapture: (e: React.MouseEvent) => {
+      if (gesture.current.moved) {
+        e.stopPropagation()
+        gesture.current.moved = false
+      }
+    },
+  }
+  const zoomNow = view ? view.s * K : 0
+  useEffect(() => {
+    if (zoomNow) onZoom?.(zoomNow)
+  }, [zoomNow, onZoom])
+  const shown = useMemo(() => pins.filter((p) => visibleAt(p, zoomNow)), [pins, zoomNow])
+  const taxi = route ? routePoint(route, route.progress) : null
+
+  const layout = useMemo(() => (view && size ? declutter(shown, (lng, lat) => [W(lng) * view.s + view.tx, H(lat) * view.s + view.ty], size.w, padding.top - 10) : {}), [shown, view, size, padding.top])
   const zoom = view ? view.s * K : 0 // screen px per degree
   const urban = Math.min(Math.max((zoom - 2500) / 6000, 0), 1)
   const countryScale = Math.min(Math.max((600 - zoom) / 400, 0), 1)
 
   return (
-    <div ref={ref} className="isolate absolute inset-0 overflow-hidden bg-[#3aa6d8]">
+    <div ref={ref} className="isolate absolute inset-0 touch-none overflow-hidden bg-[#3aa6d8] select-none" {...handlers} onPointerCancel={handlers.onPointerUp} onPointerLeave={(e) => e.pointerType === 'mouse' && handlers.onPointerUp(e)}>
       {view && (
         <svg className="absolute inset-0 h-full w-full">
           <defs>
@@ -142,6 +234,13 @@ export function OfflineMap({ pins, bounds, night, sim, padding }: Props) {
             <path d={LAKES} fill="#49b4e6" />
             <path d={`${WATER}${ISLAND}`} fill="#49b4e6" fillRule="evenodd" stroke="#fff" strokeOpacity="0.7" strokeWidth="2" vectorEffect="non-scaling-stroke" />
             <path d={COUNTRY} fill="none" stroke="#ff7a00" strokeWidth="2.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" opacity={Math.min(Math.max((1800 - zoom) / 1200, 0), 1)} />
+            {route && (
+              <g>
+                <path d={path(routeLine(route), false)} fill="none" stroke="#0f1230" strokeOpacity="0.25" strokeWidth="9" vectorEffect="non-scaling-stroke" strokeLinecap="round" />
+                <path d={path(routeLine(route), false)} fill="none" stroke="#fff" strokeWidth="6" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeDasharray="2 10" />
+                <path d={path([...Array(33)].map((_, i) => routePoint(route, (i / 32) * route.progress)), false)} fill="none" stroke="#ff7a00" strokeWidth="6" vectorEffect="non-scaling-stroke" strokeLinecap="round" />
+              </g>
+            )}
           </g>
 
           {countryScale > 0 && (
@@ -163,8 +262,16 @@ export function OfflineMap({ pins, bounds, night, sim, padding }: Props) {
       <div className="pointer-events-none absolute inset-0 transition-opacity duration-1000" style={{ background: 'linear-gradient(180deg, #1b1f6b 0%, #0f1230 100%)', mixBlendMode: 'multiply', opacity: night ? 0.55 : 0 }} />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(15,18,48,0.35))]" />
 
+      {view && route && taxi && (
+        <>
+          <div className="pointer-events-none absolute z-[35] transition-[left,top] duration-1000 ease-linear" style={{ left: W(taxi[0]) * view.s + view.tx, top: H(taxi[1]) * view.s + view.ty, transform: 'translate(-50%, -50%)' }}>
+            <TaxiMarker sim={sim} mode={route.mode} />
+          </div>
+        </>
+      )}
+
       {view &&
-        pins.map((p) => (
+        shown.map((p) => (
           <div
             key={p.id}
             className="pointer-events-none absolute [&>*]:pointer-events-auto"
@@ -174,5 +281,22 @@ export function OfflineMap({ pins, bounds, night, sim, padding }: Props) {
           </div>
         ))}
     </div>
+  )
+}
+
+/** The taxi (or the car) carrying the Sim, with their face riding along. */
+export function TaxiMarker({ sim, mode }: { sim: Sim | null; mode: string }) {
+  return (
+    <span className="relative flex items-center">
+      <span className="absolute top-0 left-0 h-11 w-11 animate-ping rounded-full bg-[var(--color-orange)]/40" />
+      <span className={`relative grid h-11 w-11 place-items-center rounded-full border-[3px] border-white shadow-[0_8px_18px_-6px_rgba(0,0,0,0.6)] ${mode === 'car' ? 'bg-[var(--color-emerald)]' : 'bg-[var(--color-orange)]'}`}>
+        <CarTaxiFront size={22} color="#fff" strokeWidth={2.4} />
+      </span>
+      {sim && (
+        <span className="relative -ml-2 block h-8 w-8 overflow-hidden rounded-full border-2 border-white bg-[#ffd8a8] shadow">
+          <Portrait look={sim.look} gender={sim.gender} framing="head" />
+        </span>
+      )}
+    </span>
   )
 }

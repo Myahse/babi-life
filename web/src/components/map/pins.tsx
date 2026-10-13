@@ -1,4 +1,4 @@
-import { Building2, House } from 'lucide-react'
+import { Building2, House, Landmark } from 'lucide-react'
 import type { Sim, World } from '../../lib/types'
 import { Portrait } from '../../avatar/portrait'
 import { Plumbob, needColor } from '../ui'
@@ -24,6 +24,8 @@ export type PinData = {
   /** Which way the label sits relative to its stem; set by declutter(). */
   align?: 'center' | 'start' | 'end'
   onClick?: () => void
+  /** Shown only between these zooms, in screen pixels per degree. */
+  zoom?: [min: number, max: number]
 }
 
 export type Bounds = [west: number, south: number, east: number, north: number]
@@ -41,36 +43,57 @@ export type MapHandlers = {
 // the Sim's home commune.
 export const homePosition = (lat: number, lng: number) => ({ lat: lat - 0.004, lng: lng - 0.012 })
 
-export function pinsFor(world: World, focus: Focus, sim: Sim | null, selectedPlace: string | null, h: MapHandlers): PinData[] {
-  const city = world.cities.find((c) => c.id === focus.cityId)
-  const commune = city?.communes.find((c) => c.id === focus.communeId)
-  const pins: PinData[] = []
+/** Zoom bands, in screen pixels per degree: the country, a city's town halls, a commune's places. */
+export const Z_TOWN = 700
+export const Z_PLACE = 2500
+/** Pixels per degree for a Mapbox zoom level (512 px tiles). */
+export const pxPerDegree = (zoom: number) => (512 * 2 ** zoom) / 360
 
-  if (!city) {
-    for (const c of world.cities) {
-      pins.push({ id: c.id, lat: c.lat, lng: c.lng, label: c.name, variant: 'city', home: c.id === sim?.homeCity, hasSim: c.id === sim?.city, onClick: () => h.onCity(c.id) })
-    }
-  } else if (!commune) {
-    for (const cm of city.communes) {
-      const here = city.id === sim?.city && cm.id === sim?.commune
-      pins.push({
-        id: cm.id, lat: cm.lat, lng: cm.lng, label: cm.name, variant: 'commune',
-        home: city.id === sim?.homeCity && cm.id === sim?.homeCommune, hasSim: here,
-        onClick: () => h.onCommune(city.id, cm.id),
-      })
-    }
-  } else {
-    for (const p of commune.places) {
-      pins.push({ id: p.id, lat: p.lat, lng: p.lng, label: p.name, kind: p.kind, icon: world.kinds[p.kind]?.icon, variant: 'place', active: selectedPlace === p.id, onClick: () => h.onPlace(p.id) })
-    }
-    if (sim && sim.homeCity === city.id && sim.homeCommune === commune.id) {
-      pins.push({ id: 'home', ...homePosition(commune.lat, commune.lng), label: 'Chez toi', kind: 'home', icon: 'house', variant: 'place', active: selectedPlace === 'home', onClick: () => h.onPlace('home') })
-    }
-    if (sim && city.id === sim.city && commune.id === sim.commune) {
-      pins.push({ id: 'sim', lat: commune.lat + 0.0015, lng: commune.lng - 0.002, label: sim.firstName, variant: 'sim' })
+/** Every pin of the country at once; each shows only in its zoom band. */
+export function allPins(world: World, sim: Sim | null, selected: string | null, h: MapHandlers, travelling = false): PinData[] {
+  const pins: PinData[] = []
+  for (const c of world.cities) {
+    pins.push({ id: c.id, lat: c.lat, lng: c.lng, label: c.name, variant: 'city', zoom: [0, Z_TOWN], home: c.id === sim?.homeCity, hasSim: !travelling && c.id === sim?.city, active: selected === c.id, onClick: () => h.onCity(c.id) })
+    for (const cm of c.communes) {
+      const here = !travelling && c.id === sim?.city && cm.id === sim?.commune
+      const home = c.id === sim?.homeCity && cm.id === sim?.homeCommune
+      pins.push({ id: `${c.id}/${cm.id}`, lat: cm.lat, lng: cm.lng, label: cm.name, variant: 'commune', zoom: [Z_TOWN, Infinity], home, hasSim: here, active: selected === `${c.id}/${cm.id}`, onClick: () => h.onCommune(c.id, cm.id) })
+      // On the road, only the town halls, the route and the taxi: places would bury the trip.
+      if (travelling) continue
+      for (const p of cm.places) {
+        pins.push({ id: p.id, lat: p.lat, lng: p.lng, label: p.name, kind: p.kind, icon: world.kinds[p.kind]?.icon, variant: 'place', zoom: [Z_PLACE, Infinity], active: selected === p.id, onClick: () => h.onPlace(p.id) })
+      }
+      if (home) pins.push({ id: 'home', ...homePosition(cm.lat, cm.lng), label: 'Chez toi', kind: 'home', icon: 'house', variant: 'place', zoom: [Z_PLACE, Infinity], active: selected === 'home', onClick: () => h.onPlace('home') })
+      if (here && sim) pins.push({ id: 'sim', lat: cm.lat + 0.0015, lng: cm.lng - 0.002, label: sim.firstName, variant: 'sim', zoom: [Z_PLACE, Infinity] })
     }
   }
   return pins
+}
+
+export const visibleAt = (p: PinData, pxPerDeg: number) => !p.zoom || (pxPerDeg >= p.zoom[0] && pxPerDeg < p.zoom[1])
+
+/* ---------- Trips ---------- */
+
+export type LngLat = [lng: number, lat: number]
+export type Route = { from: LngLat; to: LngLat; progress: number; mode: string; label: string; /** The destination's pin id, highlighted. */ toId: string }
+
+/** A trip drawn as a gentle arc, so it reads as a journey rather than a ruler line. */
+export function routePoint(r: Pick<Route, 'from' | 'to'>, t: number): LngLat {
+  const [x0, y0] = r.from
+  const [x1, y1] = r.to
+  const [dx, dy] = [x1 - x0, y1 - y0]
+  const [cx, cy] = [(x0 + x1) / 2 - dy * 0.18, (y0 + y1) / 2 + dx * 0.18]
+  const u = 1 - t
+  return [u * u * x0 + 2 * u * t * cx + t * t * x1, u * u * y0 + 2 * u * t * cy + t * t * y1]
+}
+export const routeLine = (r: Pick<Route, 'from' | 'to'>, n = 64) => [...Array(n + 1)].map((_, i) => routePoint(r, i / n))
+
+export function routeBounds(r: Pick<Route, 'from' | 'to'>): Bounds {
+  const pts = routeLine(r, 16)
+  const lngs = pts.map((p) => p[0])
+  const lats = pts.map((p) => p[1])
+  const pad = Math.max(0.01, (Math.max(...lngs) - Math.min(...lngs)) * 0.12)
+  return [Math.min(...lngs) - pad, Math.min(...lats) - pad, Math.max(...lngs) + pad, Math.max(...lats) + pad]
 }
 
 type Box = { l: number; r: number; t: number; b: number }
@@ -181,12 +204,12 @@ export function Pin({ pin, sim }: { pin: PinData; sim: Sim | null }) {
     const city = pin.variant === 'city'
     const big = pin.id === 'abidjan'
     const color = pin.home ? '#ff7a00' : city ? '#ff7a00' : '#00b86b'
-    const dot = big ? 26 : city ? 22 : 18
+    const dot = big ? 26 : city ? 22 : 22
     return (
       <button type="button" onClick={pin.onClick} className="group flex flex-col items-center">
         {pin.hasSim && sim && <Plumbob size={12} color={moodHex} className="mb-0.5" />}
         <span
-          className={`flex items-center gap-1.5 rounded-full py-1 pr-3.5 pl-1 font-display ${pin.align === 'start' ? 'translate-x-[calc(50%-14px)]' : pin.align === 'end' ? '-translate-x-[calc(50%-14px)]' : ''} font-extrabold whitespace-nowrap shadow-[0_8px_18px_-6px_rgba(0,0,0,0.45)] transition group-hover:scale-105 ${city ? 'bg-[var(--color-ink)] text-white' : 'bg-white text-[var(--color-ink)]'}`}
+          className={`flex items-center gap-1.5 rounded-full py-1 pr-3.5 pl-1 font-display ${pin.align === 'start' ? 'translate-x-[calc(50%-14px)]' : pin.align === 'end' ? '-translate-x-[calc(50%-14px)]' : ''} font-extrabold whitespace-nowrap shadow-[0_8px_18px_-6px_rgba(0,0,0,0.45)] transition group-hover:scale-105 ${pin.active ? 'scale-110 ring-2 ring-[var(--color-orange)]' : ''} ${city ? 'bg-[var(--color-ink)] text-white' : 'bg-white text-[var(--color-ink)]'}`}
           style={{ fontSize: big ? 15 : city ? 13 : 12.5 }}
         >
           {pin.hasSim && sim ? (
@@ -195,7 +218,7 @@ export function Pin({ pin, sim }: { pin: PinData; sim: Sim | null }) {
             </span>
           ) : (
             <span className="grid place-items-center rounded-full" style={{ width: dot, height: dot, background: `linear-gradient(160deg, ${pin.home || city ? '#ffa040' : '#69e2a0'}, ${color})` }}>
-              {pin.home ? <House size={dot * 0.5} color="#fff" strokeWidth={2.8} /> : city ? <Building2 size={dot * 0.5} color="#fff" strokeWidth={2.6} /> : <span className="h-2 w-2 rounded-full bg-white" />}
+              {pin.home ? <House size={dot * 0.5} color="#fff" strokeWidth={2.8} /> : city ? <Building2 size={dot * 0.5} color="#fff" strokeWidth={2.6} /> : <Landmark size={dot * 0.55} color="#fff" strokeWidth={2.6} />}
             </span>
           )}
           {pin.label}

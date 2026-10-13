@@ -1,21 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BadgeCheck, Briefcase, Hourglass, Newspaper, Square, Building2, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Wallet, X, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, Briefcase, Hourglass, Newspaper, Square, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Wallet, X, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World } from '../lib/types'
 import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
-import { GameMap } from '../components/map/GameMap'
-import { boundsFor, pinsFor, type Focus, type Padding } from '../components/map/pins'
+import { WorldMap } from './WorldMap'
+import { TravelCTA, type OnTravel } from '../components/TravelCTA'
 import { Portrait } from '../avatar/portrait'
 import { Neighbourhood } from '../world3d/Neighbourhood'
 import { iconFor, kindColors } from '../components/icons'
 import { Chip, Coin, DayNight, IconTile, MotiveRing, Plumbob, Row, needColor } from '../components/ui'
-import { NEEDS, amount, atHome, available, clock, duration, hours, mood, predict, shift, trip } from '../game/rules'
+import { NEEDS, amount, atHome, available, clock, duration, hours, mood, predict, shift } from '../game/rules'
 import { BankApp, HomeApp, JobsApp, type Act } from './phoneApps'
 import { NewsApp, topicOf } from './NewsApp'
-
-const SHEET_PEEK = 0.38 // share of the screen the mobile sheet covers when collapsed
 
 type Toast = { id: number; title: string; text?: string; money: number; tone: 'random' | 'done' | 'error' | 'promo' | 'event'; kind?: string; icon?: string }
 
@@ -191,9 +189,10 @@ export function Play() {
     setPlaceId(null)
     run(it.label, it.icon, kind, () => api.interact(sim!.id, id, it.id))
   }
+  // The ride shows on the map: the route, and the taxi moving along it.
   const travel = (cityId: string, communeId: string, label: string) => {
     setPlaceId(null)
-    setOverlay(null)
+    setOverlay('map')
     run(label, 'bus', 'transport', () => api.travel(sim!.id, cityId, communeId))
   }
 
@@ -311,7 +310,7 @@ export function Play() {
         <InteractionMenu world={world} sim={sim} city={city} commune={commune} placeId={placeId} hour={c.hour} desktop={desktop} onClose={() => setPlaceId(null)} onPick={interact} onTravel={travel} onStop={stop} />
       )}
 
-      {sim.activity && !placeId && <ActivityBar sim={sim} onStop={stop} stopping={!!pending} />}
+      {sim.activity && !placeId && <ActivityBar sim={sim} onStop={stop} stopping={!!pending} onRoute={() => setOverlay('map')} />}
 
       <div className="pointer-events-none absolute top-[5.5rem] left-1/2 z-40 flex w-[min(400px,calc(100vw-24px))] -translate-x-1/2 flex-col gap-2 lg:top-24">
         {toasts.map((t) => (
@@ -322,61 +321,7 @@ export function Play() {
       {overlay === 'phone' && (
         <Phone world={world} sim={sim} commune={commune} journal={journal} time={c.time} act={run} onClose={() => setOverlay(null)} onMap={() => setOverlay('map')} onWalk={walkTo} />
       )}
-      {overlay === 'map' && <TravelMap world={world} sim={sim} desktop={desktop} onClose={() => setOverlay(null)} onTravel={travel} onWalk={walkTo} />}
-    </div>
-  )
-}
-
-/* ---------- Travel map (the old map view, now a full-screen overlay) ---------- */
-
-function TravelMap({ world, sim, desktop, onClose, onTravel, onWalk }: { world: World; sim: Sim; desktop: boolean; onClose: () => void; onTravel: ExploreProps['onTravel']; onWalk: (id: string) => void }) {
-  const [focus, setFocus] = useState<Focus>({ cityId: sim.city })
-  const [expanded, setExpanded] = useState(false)
-  const c = clock(sim.gameMinutes)
-  const bounds = useMemo(() => boundsFor(world, focus), [world, focus])
-  const here = (cityId?: string, communeId?: string) => cityId === sim.city && communeId === sim.commune
-  const pins = useMemo(
-    () =>
-      pinsFor(world, focus, sim, null, {
-        onCity: (cityId) => setFocus({ cityId }),
-        onCommune: (cityId, communeId) => setFocus({ cityId, communeId }),
-        onPlace: (id) => here(focus.cityId, focus.communeId) && onWalk(id),
-      }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [world, focus, sim.city, sim.commune],
-  )
-  const padding = useMemo<Padding>(
-    () => (desktop ? { top: 110, bottom: 60, left: 440, right: 80 } : { top: 90, bottom: Math.round(window.innerHeight * SHEET_PEEK) + 30, left: 24, right: 24 }),
-    [desktop],
-  )
-  const city = world.cities.find((x) => x.id === focus.cityId)
-  const commune = city?.communes.find((x) => x.id === focus.communeId)
-
-  return (
-    <div className="animate-up absolute inset-0 z-50 bg-[var(--color-night)]">
-      <GameMap pins={pins} bounds={bounds} night={c.isNight} sim={sim} padding={padding} />
-      <button className="hud absolute top-3 right-3 z-20 grid h-12 w-12 place-items-center rounded-full lg:top-5 lg:right-5" onClick={onClose} aria-label="Fermer la carte">
-        <X size={24} strokeWidth={2.6} />
-      </button>
-      <aside
-        className="sheet absolute inset-x-0 bottom-0 z-10 flex flex-col rounded-t-[28px] transition-[height] duration-300 ease-out lg:top-5 lg:bottom-5 lg:left-5 lg:!h-auto lg:w-[400px] lg:rounded-[28px]"
-        style={{ height: `${(expanded ? 0.72 : SHEET_PEEK) * 100}%` }}
-      >
-        <button className="mx-auto flex h-5 w-16 shrink-0 items-center justify-center lg:hidden" onClick={() => setExpanded(!expanded)} aria-label={expanded ? 'Réduire' : 'Agrandir'}>
-          <span className="h-1.5 w-10 rounded-full bg-[var(--color-line)]" />
-        </button>
-        <div onScroll={(e) => !desktop && !expanded && e.currentTarget.scrollTop > 24 && setExpanded(true)} className="flex-1 overflow-y-auto px-3 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))] lg:px-5 lg:pt-5">
-          <Explore
-            world={world}
-            sim={sim}
-            city={city}
-            commune={commune}
-            setFocus={(f) => (setFocus(f), setExpanded(false))}
-            onPlace={(id) => (here(city?.id, commune?.id) ? onWalk(id) : undefined)}
-            onTravel={onTravel}
-          />
-        </div>
-      </aside>
+      {overlay === 'map' && <WorldMap world={world} sim={sim} night={c.isNight} desktop={desktop} onClose={() => setOverlay(null)} onTravel={travel} onWalk={(id) => (setOverlay(null), walkTo(id))} />}
     </div>
   )
 }
@@ -472,129 +417,6 @@ function Phone({ world, sim, commune, journal, time, act, onClose, onMap, onWalk
   )
 }
 
-/* ---------- Explore panel ---------- */
-
-type ExploreProps = {
-  world: World
-  sim: Sim
-  city?: City
-  commune?: Commune
-  setFocus: (f: Focus) => void
-  onPlace: (id: string) => void
-  onTravel: (cityId: string, communeId: string, label: string) => void
-}
-
-function Explore({ world, sim, city, commune, setFocus, onPlace, onTravel }: ExploreProps) {
-  const simCity = world.cities.find((c) => c.id === sim.city)!
-  const simCommune = simCity.communes.find((c) => c.id === sim.commune)!
-  const here = (cityId: string, communeId?: string) => cityId === sim.city && (!communeId || communeId === sim.commune)
-  const back = commune ? () => setFocus({ cityId: city!.id }) : city ? () => setFocus({}) : undefined
-
-  return (
-    <div className="animate-up" key={`${city?.id}-${commune?.id}`}>
-      <div className="mb-3 flex items-start gap-2">
-        {back && (
-          <button className="icon-btn -ml-1 shrink-0 bg-[var(--color-canvas)]" onClick={back} aria-label="Retour">
-            <ChevronLeft size={22} strokeWidth={2.6} />
-          </button>
-        )}
-        <div className="min-w-0 flex-1">
-          <div className="label">{commune ? city!.name : city ? "Côte d'Ivoire" : 'Carte'}</div>
-          <h2 className="font-display text-[26px] leading-tight font-extrabold">{commune?.name ?? city?.name ?? 'Où aller ?'}</h2>
-          <p className="text-sm leading-snug font-semibold text-[var(--color-ink-soft)]">{commune?.blurb ?? city?.blurb ?? 'Choisis une ville. Le car coûte du temps… et des francs.'}</p>
-        </div>
-      </div>
-
-      {commune && !here(city!.id, commune.id) && <TravelCTA world={world} sim={sim} cityId={city!.id} communeId={commune.id} onTravel={onTravel} />}
-
-      <ul className="space-y-2">
-        {!city &&
-          world.cities.map((c) => {
-            const t = trip(simCity.id, simCommune, c.id, c.communes[0])
-            return (
-              <Row key={c.id} icon={c.id === sim.homeCity ? House : Building2} colors={['#ffa040', '#ff6a00']} title={c.name} sub={c.blurb} onClick={() => setFocus({ cityId: c.id })}>
-                {here(c.id) ? <HereChip /> : <FareChip fare={t.fare} minutes={t.minutes} />}
-              </Row>
-            )
-          })}
-
-        {city &&
-          !commune &&
-          city.communes.map((cm) => {
-            const t = trip(simCity.id, simCommune, city.id, cm)
-            const home = city.id === sim.homeCity && cm.id === sim.homeCommune
-            return (
-              <Row key={cm.id} icon={home ? House : MapPin} colors={home ? ['#ffa040', '#ff6a00'] : ['#69e2a0', '#00a862']} title={cm.name} sub={cm.blurb} onClick={() => setFocus({ cityId: city.id, communeId: cm.id })}>
-                {here(city.id, cm.id) ? <HereChip /> : <FareChip fare={t.fare} />}
-              </Row>
-            )
-          })}
-
-        {commune && (
-          <>
-            {sim.homeCity === city!.id && sim.homeCommune === commune.id && (
-              <Row icon={House} colors={kindColors('home')} title="Chez toi" sub="Dormir, se doucher, cuisiner" onClick={() => onPlace('home')}>
-                <ChevronRight size={20} className="text-[var(--color-ink-soft)]" />
-              </Row>
-            )}
-            {commune.places.map((p) => {
-              const k = world.kinds[p.kind]
-              return (
-                <Row key={p.id} icon={iconFor(k.icon)} colors={kindColors(p.kind)} title={p.name} sub={`${k.label} · ${k.interactions.length} activités`} onClick={() => onPlace(p.id)}>
-                  <ChevronRight size={20} className="text-[var(--color-ink-soft)]" />
-                </Row>
-              )
-            })}
-          </>
-        )}
-      </ul>
-    </div>
-  )
-}
-
-const HereChip = () => <Chip tone="good">Tu es ici</Chip>
-
-function FareChip({ fare, minutes }: { fare: number; minutes?: number }) {
-  return (
-    <span className="flex flex-col items-end gap-0.5">
-      <span className="flex items-center gap-1 font-display text-sm font-extrabold">
-        <Coin size={15} />
-        {amount(fare)}
-      </span>
-      {minutes !== undefined && <span className="text-[11px] font-bold text-[var(--color-ink-soft)]">{duration(minutes)}</span>}
-    </span>
-  )
-}
-
-function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: World; sim: Sim; cityId: string; communeId: string; onTravel: ExploreProps['onTravel'] }) {
-  const fromCity = world.cities.find((c) => c.id === sim.city)!
-  const from = fromCity.communes.find((c) => c.id === sim.commune)!
-  const toCity = world.cities.find((c) => c.id === cityId)!
-  const to = toCity.communes.find((c) => c.id === communeId)!
-  const t = trip(fromCity.id, from, toCity.id, to)
-  const bus = t.mode === 'car'
-  const label = bus ? `En car vers ${toCity.name}` : `En woro-woro vers ${to.name}`
-  return (
-    <div className="mb-3 rounded-2xl border border-[#ffe0c2] bg-[#fff7ef] p-3">
-      <div className="mb-2.5 flex items-center gap-2.5">
-        <IconTile icon={bus ? Bus : CarTaxiFront} colors={['#ffa040', '#ff6a00']} size={40} />
-        <div className="min-w-0 flex-1 leading-tight">
-          <div className="font-display text-base font-extrabold">{bus ? 'Prendre le car' : 'Prendre un woro-woro'}</div>
-          <div className="text-xs font-bold text-[var(--color-ink-soft)]">
-            {from.name} → {to.name}
-          </div>
-        </div>
-        <Chip>
-          <Clock3 size={12} /> {duration(t.minutes)}
-        </Chip>
-      </div>
-      <button className="btn w-full" disabled={sim.money < t.fare} onClick={() => onTravel(cityId, communeId, label)}>
-        Y aller · <Coin size={22} /> {amount(t.fare)}
-      </button>
-    </div>
-  )
-}
-
 /* ---------- Interaction menu ---------- */
 
 type MenuProps = {
@@ -607,7 +429,7 @@ type MenuProps = {
   desktop: boolean
   onClose: () => void
   onPick: (it: Interaction, kind: string) => void
-  onTravel: ExploreProps['onTravel']
+  onTravel: OnTravel
   onStop: () => void
 }
 
@@ -769,7 +591,7 @@ function HappeningSheet({ now, sim, hour, commune, onClose, onJoin }: { now: Hap
 /* ---------- Feedback ---------- */
 
 /** What the Sim is busy with, on real time: progress, time left, and a way to stop. */
-function ActivityBar({ sim, onStop, stopping }: { sim: Sim; onStop: () => void; stopping: boolean }) {
+function ActivityBar({ sim, onStop, stopping, onRoute }: { sim: Sim; onStop: () => void; stopping: boolean; onRoute: () => void }) {
   const a = sim.activity!
   const span = Math.max(1, a.end - a.start)
   const done = Math.min(1, Math.max(0, (sim.gameMinutes - a.start) / span))
@@ -789,6 +611,11 @@ function ActivityBar({ sim, onStop, stopping }: { sim: Sim; onStop: () => void; 
           </div>
           <div className="mt-1 text-[11px] font-extrabold text-[var(--color-ink-soft)]">{left > 0 ? `Encore ${duration(left)} · fin à ${clock(a.end).time}` : 'Presque fini…'}</div>
         </div>
+        {travel && (
+          <button className="icon-btn shrink-0 bg-[var(--color-canvas)]" onClick={onRoute} aria-label="Voir le trajet" title="Voir le trajet">
+            <MapIcon size={20} strokeWidth={2.4} />
+          </button>
+        )}
         {!travel && (
           <button className="icon-btn shrink-0 bg-[var(--color-canvas)]" onClick={onStop} disabled={stopping} aria-label="Arrêter" title="Arrêter">
             <Square size={18} strokeWidth={2.8} />
