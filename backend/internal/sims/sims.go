@@ -21,8 +21,6 @@ import (
 	"github.com/myahse/babi-life/backend/internal/world"
 )
 
-const startingMoney = 25000 // FCFA
-
 // HomePlaceID is the virtual "Chez toi" place in the Sim's home commune.
 const HomePlaceID = "home"
 
@@ -49,6 +47,13 @@ type Sim struct {
 	Needs       game.Needs `json:"needs"`
 	Money       int        `json:"money"`
 	GameMinutes int64      `json:"gameMinutes"`
+	Origin      string     `json:"origin"`
+	Housing     string     `json:"housing"`
+	Loan        int        `json:"loan"`
+	RentArrears int        `json:"rentArrears"`
+	Career      string     `json:"career"`
+	CareerLevel int        `json:"careerLevel"`
+	Performance int        `json:"performance"`
 	CreatedAt   time.Time  `json:"createdAt"`
 	lastTick    time.Time
 }
@@ -78,6 +83,34 @@ func (s *Sim) tick(now time.Time) {
 	s.lastTick = now
 }
 
+// settle charges rent and loan installments for every Saturday passed since
+// the given game minute, and returns the journal lines.
+func (s *Sim) settle(from int64) []Event {
+	var events []Event
+	l := game.Ledger{Money: s.Money, Loan: s.Loan, RentArrears: s.RentArrears, Housing: s.Housing}
+	for range game.Saturdays(from, s.GameMinutes) {
+		var charges []game.Charge
+		l, charges = game.WeekEnd(l)
+		for _, c := range charges {
+			events = append(events, Event{Kind: "bill", Text: c.Text, Money: c.Money, GameTime: s.GameMinutes})
+		}
+	}
+	s.Money, s.Loan, s.RentArrears, s.Housing = l.Money, l.Loan, l.RentArrears, l.Housing
+	return events
+}
+
+// preview lets time pass for display only; mutate persists it on the next action.
+func (s *Sim) preview(now time.Time) {
+	from := s.GameMinutes
+	s.tick(now)
+	s.settle(from)
+}
+
+func (s *Sim) housing() game.Housing {
+	h, _ := game.FindHousing(s.Housing)
+	return h
+}
+
 type Handler struct {
 	DB *pgxpool.Pool
 }
@@ -89,15 +122,20 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Delete("/sims/{id}", h.delete)
 	r.Post("/sims/{id}/interact", h.interact)
 	r.Post("/sims/{id}/travel", h.travel)
+	r.Post("/sims/{id}/career", h.career)
+	r.Post("/sims/{id}/move", h.move)
+	r.Post("/sims/{id}/repay", h.repay)
 }
 
 const simColumns = `id, first_name, last_name, gender, look, traits, aspiration,
-	home_city, home_commune, city, commune, needs, money, game_minutes, created_at, last_tick`
+	home_city, home_commune, city, commune, needs, money, game_minutes,
+	origin, housing, loan, rent_arrears, career, career_level, performance, created_at, last_tick`
 
 func scanSim(row pgx.Row) (Sim, error) {
 	var s Sim
 	err := row.Scan(&s.ID, &s.FirstName, &s.LastName, &s.Gender, &s.Look, &s.Traits, &s.Aspiration,
-		&s.HomeCity, &s.HomeCommune, &s.City, &s.Commune, &s.Needs, &s.Money, &s.GameMinutes, &s.CreatedAt, &s.lastTick)
+		&s.HomeCity, &s.HomeCommune, &s.City, &s.Commune, &s.Needs, &s.Money, &s.GameMinutes,
+		&s.Origin, &s.Housing, &s.Loan, &s.RentArrears, &s.Career, &s.CareerLevel, &s.Performance, &s.CreatedAt, &s.lastTick)
 	return s, err
 }
 
@@ -115,7 +153,7 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 	}
 	now := time.Now()
 	for i := range out {
-		out[i].tick(now) // read-only preview; persisted on the next action
+		out[i].preview(now)
 	}
 	httpx.JSON(w, http.StatusOK, out)
 }
@@ -175,13 +213,17 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusUnprocessableEntity, err.Error())
 		return
 	}
+	// Like in real life, nobody picks where they start.
+	origin := game.Origins[rand.IntN(len(game.Origins))]
 	s, err := scanSim(h.DB.QueryRow(r.Context(), `
 		INSERT INTO sims (user_id, first_name, last_name, gender, look, traits, aspiration,
-		                  home_city, home_commune, city, commune, money, needs, game_minutes)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $8, $9, $10, $11, $12)
+		                  home_city, home_commune, city, commune, money, needs, game_minutes,
+		                  origin, housing, loan)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $8, $9, $10, $11, $12, $13, $14, $15)
 		RETURNING `+simColumns,
 		auth.UserID(r.Context()), req.FirstName, req.LastName, req.Gender, req.Look, req.Traits, req.Aspiration,
-		req.HomeCity, req.HomeCommune, startingMoney, game.FreshNeeds(), game.StartMinute,
+		req.HomeCity, req.HomeCommune, origin.Money, game.FreshNeeds(), game.StartMinute,
+		origin.ID, origin.Housing, origin.Loan,
 	))
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "could not create sim")
@@ -190,6 +232,9 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	city, _ := world.FindCity(s.HomeCity)
 	cm, _ := city.Commune(s.HomeCommune)
 	_ = insertEvent(r.Context(), h.DB, s.ID, "random", fmt.Sprintf("%s s'installe à %s, %s. Bienvenue !", s.FirstName, cm.Name, city.Name), 0, s.GameMinutes)
+	if origin.Loan > 0 {
+		_ = insertEvent(r.Context(), h.DB, s.ID, "bill", fmt.Sprintf("Microcrédit accordé. Tu dois %s, remboursés chaque samedi.", game.FCFA(origin.Loan)), 0, s.GameMinutes)
+	}
 	httpx.JSON(w, http.StatusCreated, s)
 }
 
@@ -205,7 +250,7 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusNotFound, "sim introuvable")
 		return
 	}
-	s.tick(time.Now())
+	s.preview(time.Now())
 	journal, err := h.journal(r.Context(), s.ID)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "could not load journal")
@@ -242,7 +287,8 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 
 	h.mutate(w, r, func(s *Sim) (game.Outcome, []Event, error) {
 		var kind game.PlaceKind
-		if req.PlaceID == HomePlaceID {
+		home := req.PlaceID == HomePlaceID
+		if home {
 			if s.City != s.HomeCity || s.Commune != s.HomeCommune {
 				return game.Outcome{}, nil, errors.New("rentre d'abord chez toi")
 			}
@@ -257,18 +303,41 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 			}
 			kind = game.Kinds[place.Kind]
 		}
-		it, ok := kind.Interaction(req.InteractionID)
-		if !ok {
-			return game.Outcome{}, nil, errors.New("action inconnue")
+		var it game.Interaction
+		var job game.Career
+		if req.InteractionID == game.WorkInteractionID {
+			c, ok := game.FindCareer(s.Career)
+			if !ok {
+				return game.Outcome{}, nil, errors.New("tu n'as pas de travail. Ouvre l'appli Boulot")
+			}
+			if c.Kind != kind.ID {
+				return game.Outcome{}, nil, errors.New("ce n'est pas ton lieu de travail")
+			}
+			job, it = c, c.Shift(s.CareerLevel)
+		} else {
+			var ok bool
+			if it, ok = kind.Interaction(req.InteractionID); !ok {
+				return game.Outcome{}, nil, errors.New("action inconnue")
+			}
+			if home {
+				it = s.housing().AtHome(it)
+			}
 		}
 
 		before := s.GameMinutes
+		mood := s.Needs.Mood()
 		st, out, err := game.Perform(s.state(), kind, it, rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), 0)))
 		if err != nil {
 			return game.Outcome{}, nil, err
 		}
 		s.setState(st)
 		events := []Event{{Kind: "interaction", Text: out.Text, Money: out.Money, GameTime: before}}
+		if job.ID != "" {
+			if promo := s.work(job, mood); promo != "" {
+				out.Promotion = promo
+				events = append(events, Event{Kind: "career", Text: promo, GameTime: s.GameMinutes})
+			}
+		}
 		if out.Random != nil {
 			events = append(events, Event{Kind: "random", Text: out.Random.Text, Money: out.Random.Money, GameTime: s.GameMinutes})
 		}
@@ -341,17 +410,30 @@ func (h *Handler) mutate(w http.ResponseWriter, r *http.Request, fn func(*Sim) (
 		httpx.Error(w, http.StatusNotFound, "sim introuvable")
 		return
 	}
+	from := s.GameMinutes
 	s.tick(time.Now())
+	// Saturdays that passed while the player was away are settled before the
+	// action, so the action sees the real balance.
+	bills := s.settle(from)
 
+	from = s.GameMinutes
 	out, events, err := fn(&s)
 	if err != nil {
 		httpx.Error(w, http.StatusUnprocessableEntity, err.Error())
 		return
 	}
+	after := s.settle(from)
+	for _, b := range append(bills, after...) {
+		out.Bills = append(out.Bills, game.Bill{Text: b.Text, Money: b.Money})
+	}
+	events = append(append(bills, events...), after...)
 
 	if _, err := tx.Exec(ctx, `
-		UPDATE sims SET city = $2, commune = $3, needs = $4, money = $5, game_minutes = $6, last_tick = $7
-		WHERE id = $1`, s.ID, s.City, s.Commune, s.Needs, s.Money, s.GameMinutes, s.lastTick); err != nil {
+		UPDATE sims SET city = $2, commune = $3, needs = $4, money = $5, game_minutes = $6, last_tick = $7,
+		       home_city = $8, home_commune = $9, housing = $10, loan = $11, rent_arrears = $12,
+		       career = $13, career_level = $14, performance = $15
+		WHERE id = $1`, s.ID, s.City, s.Commune, s.Needs, s.Money, s.GameMinutes, s.lastTick,
+		s.HomeCity, s.HomeCommune, s.Housing, s.Loan, s.RentArrears, s.Career, s.CareerLevel, s.Performance); err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "could not save sim")
 		return
 	}

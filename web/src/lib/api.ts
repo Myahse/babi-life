@@ -54,4 +54,7 @@ export const api = {
   interact: (id: string, placeId: string, interactionId: string) =>
     post<ActionResult>(`/sims/${id}/interact`, { placeId, interactionId }),
   travel: (id: string, city: string, commune: string) => post<ActionResult>(`/sims/${id}/travel`, { city, commune }),
+  career: (id: string, career: string) => post<ActionResult>(`/sims/${id}/career`, { career }),
+  move: (id: string, housing: string) => post<ActionResult>(`/sims/${id}/move`, { housing }),
+  repay: (id: string, what: 'loan' | 'rent', amount: number) => post<ActionResult>(`/sims/${id}/repay`, { what, amount }),
 }

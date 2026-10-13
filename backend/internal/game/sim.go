@@ -23,6 +23,15 @@ type Outcome struct {
 	Text   string       `json:"text"`
 	Money  int          `json:"money"`
 	Random *RandomEvent `json:"random,omitempty"`
+	// Promotion is set when a work shift earned the Sim a new job title.
+	Promotion string `json:"promotion,omitempty"`
+	// Bills are the Saturday charges (rent, loan) settled during the action.
+	Bills []Bill `json:"bills,omitempty"`
+}
+
+type Bill struct {
+	Text  string `json:"text"`
+	Money int    `json:"money"`
 }
 
 // RandomEventChance is the probability that something unexpected happens

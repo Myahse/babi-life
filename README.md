@@ -17,8 +17,8 @@ maquis… et laisse les évènements aléatoires pimenter ta vie.
 Captures dans `docs/screens/` (`m-` = mobile, `d-` = ordinateur).
 
 1. **Accueil** (`/`) : illustration d'Abidjan au coucher du soleil, logo, et un seul bouton « Continuer avec Google ». En local, on peut aussi « Jouer » sans Google.
-2. **Créer un Sim** (`/creer`) : un studio comme dans les jeux mobiles. L'avatar est sur une scène et, en dessous, des onglets (Identité, Teint, Coiffure, Tenue, Caractère, Quartier). Chaque choix montre une vignette de l'avatar plutôt qu'un simple texte.
-3. **Le jeu** (`/jeu`) : un **quartier en 3D** (Three.js / react-three-fiber) où ton Sim se déplace à pied. Clique sur un bâtiment (maquis, marché, maison, club, bureau, gare…) et ton Sim y va, puis le menu des activités s'ouvre. Pour voyager vers une autre commune ou une autre ville, ouvre **Carte**. Le **téléphone** du jeu contient Carte, Quartier, Boulot, Messages (le journal), Mobile Money et Profil. Captures : `docs/screens/3d-*.png`.
+2. **Créer un Sim** (`/creer`) : un studio comme dans les jeux mobiles. L'avatar est sur une scène et, en dessous, des onglets (Identité, Teint, Coiffure, Tenue, Caractère, Quartier). Chaque choix montre une vignette de l'avatar plutôt qu'un simple texte. À la fin, une carte révèle le **départ** tiré au hasard (Enfant de riche ou Débrouillard·e).
+3. **Le jeu** (`/jeu`) : un **quartier en 3D** (Three.js / react-three-fiber) où ton Sim se déplace à pied. Clique sur un bâtiment (maquis, marché, maison, club, bureau, gare…) et ton Sim y va, puis le menu des activités s'ouvre. Pour voyager vers une autre commune ou une autre ville, ouvre **Carte**. Le **téléphone** du jeu contient Carte, Quartier, Boulot, Logement, Messages (le journal), Mobile Money et Profil. Captures : `docs/screens/3d-*.png`, et une partie complète avec l'économie dans `docs/screens/e-*.png`.
    La **Carte** (voyages) est en plein écran avec le HUD (portrait avec l'humeur, pièces en FCFA, horloge). Les jauges des besoins sont des anneaux. Sur mobile, le panneau Explorer est en bas de l'écran ; sur ordinateur, il flotte à gauche. Les activités s'ouvrent dans un menu circulaire façon Sims sur ordinateur et dans une liste en bas de l'écran sur mobile.
 4. **Profil** (`/profil`) : la carte du Sim, à partager (WhatsApp, etc.), avec ses statistiques et son histoire.
 
@@ -67,6 +67,10 @@ Tests : `cd backend && go test ./...`
 - **Les besoins** (Faim, Énergie, Hygiène, Social, Loisirs) baissent à chaque heure de jeu. Leur moyenne donne la couleur du losange.
 - **Les interactions** coûtent du temps et de l'argent (ou en rapportent : le travail, le petit commerce). Certaines ne sont possibles qu'à certaines heures, par exemple le maquis le soir et la boîte de nuit après 21 h.
 - **Les évènements aléatoires** : après une action, il y a 35 % de chances qu'il se passe quelque chose (coupure de courant, un grand-frère qui paie la tournée, un gnambro qui te fait payer 100F de plus…).
+- **Le départ** : à la création, le serveur tire au hasard. *Enfant de riche* : 200 000F et un appartement. *Débrouillard·e* : un entrer-coucher, 65 000F en poche dont un microcrédit de 50 000F (60 000F à rembourser).
+- **Le logement** : Entrer-coucher (7 000F/sem), Studio (15 000F), Appartement (30 000F), Villa avec piscine (75 000F). Plus le logement est beau, plus dormir, se doucher ou regarder la télé fait du bien (confort de 70 % à 130 %). On déménage depuis l'appli Logement, dans la commune où l'on se trouve, en payant 2 semaines de caution.
+- **Le samedi** : à 00 h chaque samedi, le loyer tombe, puis l'agent de la microfinance prend 10 000F. Si tu ne peux pas payer, ça s'accumule ; à 2 semaines de retard, le propriétaire t'expulse vers le logement d'en dessous.
+- **Les carrières** : Bureau, Restauration, Commerce, Transport et Ambiance, chacune avec 5 échelons (de Stagiaire à PDG, d'Apprenti gbaka à Propriétaire de flotte…). On postule dans l'appli Boulot, puis on va travailler sur le lieu (marché, maquis, gare…) pendant les heures de service. Chaque service rapporte des points selon l'humeur du Sim (+1 pour les *Travailleurs*) ; 10 points × échelon et c'est la promotion.
 - Le serveur décide de tout, et le front ne fait que prédire l'horloge et les jauges entre deux actions.
 
 ## Ajouter du contenu
@@ -74,6 +78,7 @@ Tests : `cd backend && go test ./...`
 - **Villes, communes et lieux** : `backend/internal/world/world.go`
 - **Types de lieux, interactions et évènements** : `backend/internal/game/catalog.go`
 - **Traits et aspirations** : `backend/internal/game/traits.go`
+- **Départs, logements, carrières, loyer et microcrédit** : `backend/internal/game/economy.go`
 - **Règles** (vitesse du temps, baisse des besoins, chance d'évènement) : `backend/internal/game/needs.go` et `sim.go`. `web/src/game/rules.ts` reprend les mêmes constantes pour le HUD.
 
 Un test vérifie que chaque lieu utilise un type qui existe et que tous les identifiants sont uniques.

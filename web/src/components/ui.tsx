@@ -131,3 +131,19 @@ export function Logo({ size = 64, className = '' }: { size?: number; className?:
     </div>
   )
 }
+
+/** A tappable list row: icon tile, title, subtitle and a trailing slot. */
+export function Row({ icon, colors, title, sub, onClick, children }: { icon: LucideIcon; colors: [string, string]; title: string; sub: string; onClick: () => void; children?: ReactNode }) {
+  return (
+    <li>
+      <button onClick={onClick} className="flex w-full items-center gap-3 rounded-[20px] bg-[var(--color-canvas)] p-2.5 text-left transition hover:bg-[#eceef6] active:scale-[0.98]">
+        <IconTile icon={icon} colors={colors} size={46} />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-display text-[17px] leading-tight font-extrabold">{title}</span>
+          <span className="block truncate text-xs font-semibold text-[var(--color-ink-soft)]">{sub}</span>
+        </span>
+        {children}
+      </button>
+    </li>
+  )
+}

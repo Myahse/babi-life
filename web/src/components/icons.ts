@@ -1,5 +1,5 @@
 import {
-  Banana, Banknote, Beer, Bed, BedDouble, Briefcase, Building2, Bus, Camera, Coffee, CookingPot, Disc3, Drumstick, Fish,
+  Banana, Banknote, Beer, Bed, BedDouble, BedSingle, Castle, ChefHat, DoorOpen, Gem, HandCoins, Newspaper, Sofa, Briefcase, Building2, Bus, Camera, Coffee, CookingPot, Disc3, Drumstick, Fish,
   Flame, Footprints, HandHeart, Heart, Hourglass, House, Landmark, MessagesSquare, Moon, Mountain, Music, Palette,
   PartyPopper, PiggyBank, ShoppingBasket, ShowerHead, Smartphone, Sparkles, Store, Sunset, TreePalm, Trophy, Tv, Users,
   Volleyball, Waves, type LucideIcon,
@@ -14,6 +14,8 @@ const REGISTRY: Record<string, LucideIcon> = {
   mountain: Mountain, music: Music, palette: Palette, 'party-popper': PartyPopper, 'piggy-bank': PiggyBank,
   'shopping-basket': ShoppingBasket, 'shower-head': ShowerHead, smartphone: Smartphone, store: Store, sunset: Sunset,
   'tree-palm': TreePalm, trophy: Trophy, tv: Tv, users: Users, volleyball: Volleyball, waves: Waves,
+  'bed-single': BedSingle, castle: Castle, 'chef-hat': ChefHat, 'door-open': DoorOpen, gem: Gem, 'hand-coins': HandCoins,
+  newspaper: Newspaper, sofa: Sofa,
 }
 
 export const iconFor = (name: string): LucideIcon => REGISTRY[name] ?? Sparkles

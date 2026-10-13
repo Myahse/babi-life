@@ -18,11 +18,28 @@ export type Interaction = {
 export type PlaceKind = { id: string; label: string; icon: string; interactions: Interaction[] }
 export type Option = { id: string; label: string; icon: string; hint: string }
 
+export type Origin = Option & { money: number; loan: number; housing: string }
+export type Housing = Option & { rent: number; comfort: number }
+export type Career = {
+  id: string
+  label: string
+  icon: string
+  kind: string
+  levels: { title: string; pay: number }[]
+  minHour: number
+  maxHour: number
+  minutes: number
+  effect: Needs
+}
+
 export type World = {
   cities: City[]
   kinds: Record<string, PlaceKind>
   traits: Option[]
   aspirations: Option[]
+  origins: Origin[]
+  housings: Housing[]
+  careers: Career[]
   config: { devLogin: boolean; googleLogin: boolean }
 }
 
@@ -45,17 +62,24 @@ export type Sim = {
   needs: Needs
   money: number
   gameMinutes: number
+  origin: string
+  housing: string
+  loan: number
+  rentArrears: number
+  career: string
+  careerLevel: number
+  performance: number
   createdAt: string
 }
 
 export type JournalEvent = {
   id: number
-  kind: 'interaction' | 'random' | 'travel'
+  kind: 'interaction' | 'random' | 'travel' | 'bill' | 'career'
   text: string
   money: number
   gameTime: number
   at: string
 }
 
-export type Outcome = { text: string; money: number; random?: { text: string; money: number } }
+export type Outcome = { text: string; money: number; random?: { text: string; money: number }; promotion?: string; bills?: { text: string; money: number }[] }
 export type ActionResult = { sim: Sim; outcome: Outcome; journal: JournalEvent[] }

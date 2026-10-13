@@ -1,21 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Briefcase, Building2, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, Smartphone, Sparkles, TriangleAlert, UserRound, Wallet, X, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, Briefcase, Building2, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Wallet, X, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
-import type { ActionResult, City, Commune, Interaction, JournalEvent, Sim, World } from '../lib/types'
+import type { City, Commune, Interaction, JournalEvent, Sim, World } from '../lib/types'
 import { useWorld } from '../store/world'
 import { GameMap } from '../components/map/GameMap'
 import { boundsFor, pinsFor, type Focus, type Padding } from '../components/map/pins'
 import { SimAvatar } from '../components/SimAvatar'
 import { Neighbourhood } from '../world3d/Neighbourhood'
 import { iconFor, kindColors } from '../components/icons'
-import { Chip, Coin, DayNight, IconTile, MotiveRing, Plumbob, needColor } from '../components/ui'
-import { NEEDS, amount, available, clock, decay, duration, mood, trip } from '../game/rules'
+import { Chip, Coin, DayNight, IconTile, MotiveRing, Plumbob, Row, needColor } from '../components/ui'
+import { NEEDS, amount, atHome, available, clock, decay, duration, hours, mood, shift, trip } from '../game/rules'
+import { BankApp, HomeApp, JobsApp, type Act } from './phoneApps'
 
 const MAX_LOCAL_CATCH_UP = 180 // game minutes, mirrors the server cap
 const SHEET_PEEK = 0.38 // share of the screen the mobile sheet covers when collapsed
 
-type Toast = { id: number; title: string; text?: string; money: number; tone: 'random' | 'done' | 'error'; kind?: string; icon?: string }
+type Toast = { id: number; title: string; text?: string; money: number; tone: 'random' | 'done' | 'error' | 'promo'; kind?: string; icon?: string }
 
 function useIsDesktop() {
   const q = '(min-width: 1024px)'
@@ -72,7 +73,7 @@ export function Play() {
     setTimeout(() => setToasts((ts) => ts.filter((x) => x.id !== id)), 5000)
   }, [])
 
-  async function run(label: string, icon: string, kind: string, call: () => Promise<ActionResult>) {
+  const run: Act = async (label, icon, kind, call) => {
     setPending({ label, icon, kind })
     const started = Date.now()
     try {
@@ -81,7 +82,10 @@ export function Play() {
       setBase({ sim: res.sim, at: Date.now() })
       setJournal(res.journal)
       toast({ tone: 'done', title: res.outcome.text, money: res.outcome.money, kind, icon })
+      if (res.outcome.promotion) setTimeout(() => toast({ tone: 'promo', title: 'Promotion !', text: res.outcome.promotion!.replace(/^Promotion ! /, ''), money: 0 }), 400)
       if (res.outcome.random) setTimeout(() => toast({ tone: 'random', title: 'Imprévu !', text: res.outcome.random!.text, money: res.outcome.random!.money }), 600)
+      const bills = res.outcome.bills ?? []
+      if (bills.length) setTimeout(() => toast({ tone: 'random', title: 'Samedi, jour du loyer', text: bills.map((b) => b.text).join(' '), money: bills.reduce((t, b) => t + b.money, 0) }), 900)
       return true
     } catch (e) {
       toast({ tone: 'error', title: 'Pas possible', text: e instanceof Error ? e.message : 'Erreur', money: 0 })
@@ -206,7 +210,7 @@ export function Play() {
       </div>
 
       {overlay === 'phone' && (
-        <Phone world={world} sim={sim} commune={commune} journal={journal} time={c.time} onClose={() => setOverlay(null)} onMap={() => setOverlay('map')} onWalk={walkTo} />
+        <Phone world={world} sim={sim} commune={commune} journal={journal} time={c.time} act={run} onClose={() => setOverlay(null)} onMap={() => setOverlay('map')} onWalk={walkTo} />
       )}
       {overlay === 'map' && <TravelMap world={world} sim={sim} desktop={desktop} onClose={() => setOverlay(null)} onTravel={travel} onWalk={walkTo} />}
     </div>
@@ -269,29 +273,25 @@ function TravelMap({ world, sim, desktop, onClose, onTravel, onWalk }: { world: 
 
 /* ---------- The in-game phone ---------- */
 
-type PhoneProps = { world: World; sim: Sim; commune: Commune; journal: JournalEvent[]; time: string; onClose: () => void; onMap: () => void; onWalk: (id: string) => void }
+type PhoneProps = { world: World; sim: Sim; commune: Commune; journal: JournalEvent[]; time: string; act: Act; onClose: () => void; onMap: () => void; onWalk: (id: string) => void }
 
-function Phone({ world, sim, commune, journal, time, onClose, onMap, onWalk }: PhoneProps) {
-  const [app, setApp] = useState<null | 'here' | 'jobs' | 'messages' | 'bank'>(null)
+function Phone({ world, sim, commune, journal, time, act, onClose, onMap, onWalk }: PhoneProps) {
+  const [app, setApp] = useState<null | 'here' | 'jobs' | 'home' | 'messages' | 'bank'>(null)
   const navigate = useNavigate()
   const home = sim.homeCity === sim.city && sim.homeCommune === commune.id
   const places = [...(home ? [{ id: 'home', name: 'Chez toi', kind: 'home' }] : []), ...commune.places]
   const city = world.cities.find((c) => c.id === sim.city)!
-  const jobs = city.communes.flatMap((cm) =>
-    cm.places.flatMap((p) => world.kinds[p.kind].interactions.filter((it) => it.cost < 0).map((it) => ({ place: p, commune: cm, it }))),
-  )
-  const earned = journal.reduce((s, e) => s + Math.max(0, e.money), 0)
-  const spent = Math.abs(journal.reduce((s, e) => s + Math.min(0, e.money), 0))
 
   const APPS: { id: string; label: string; icon: LucideIcon; colors: [string, string]; open: () => void }[] = [
     { id: 'map', label: 'Carte', icon: MapIcon, colors: ['#69e2a0', '#00a862'], open: onMap },
     { id: 'here', label: 'Quartier', icon: MapPin, colors: ['#ffa040', '#ff6a00'], open: () => setApp('here') },
     { id: 'jobs', label: 'Boulot', icon: Briefcase, colors: ['#64b5ff', '#2a6cf0'], open: () => setApp('jobs') },
+    { id: 'home', label: 'Logement', icon: House, colors: ['#ffb347', '#ff7a00'], open: () => setApp('home') },
     { id: 'messages', label: 'Messages', icon: MessageCircle, colors: ['#b39dff', '#6c47ff'], open: () => setApp('messages') },
     { id: 'bank', label: 'Mobile Money', icon: Wallet, colors: ['#ffd54f', '#ffa000'], open: () => setApp('bank') },
     { id: 'profile', label: 'Profil', icon: UserRound, colors: ['#ff8a9b', '#ff3d57'], open: () => navigate('/profil') },
   ]
-  const title = { here: commune.name, jobs: 'Boulot', messages: 'Messages', bank: 'Mobile Money' }
+  const title = { here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', bank: 'Mobile Money' }
 
   return (
     <div className="absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center" onClick={onClose}>
@@ -319,7 +319,9 @@ function Phone({ world, sim, commune, journal, time, onClose, onMap, onWalk }: P
                   <button key={a.id} onClick={a.open} className="flex flex-col items-center gap-1.5 active:scale-95">
                     <span className="relative">
                       <IconTile icon={a.icon} colors={a.colors} size={60} radius={18} />
-                      {a.id === 'messages' && journal.length > 0 && <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-[var(--color-rose)] ring-2 ring-white" />}
+                      {((a.id === 'messages' && journal.length > 0) || (a.id === 'home' && sim.rentArrears > 0) || (a.id === 'jobs' && !sim.career)) && (
+                        <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-[var(--color-rose)] ring-2 ring-white" />
+                      )}
                     </span>
                     <span className="text-xs font-extrabold text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.4)]">{a.label}</span>
                   </button>
@@ -344,29 +346,10 @@ function Phone({ world, sim, commune, journal, time, onClose, onMap, onWalk }: P
                     ))}
                   </ul>
                 )}
-                {app === 'jobs' && (
-                  <ul className="space-y-2">
-                    {jobs.map(({ place, commune: cm, it }) => (
-                      <Row key={place.id + it.id} icon={iconFor(it.icon)} colors={kindColors(place.kind)} title={it.label} sub={`${place.name} · ${cm.name}`} onClick={() => (cm.id === commune.id ? onWalk(place.id) : onMap())}>
-                        <Chip tone="good">+{amount(-it.cost)} F</Chip>
-                      </Row>
-                    ))}
-                  </ul>
-                )}
+                {app === 'jobs' && <JobsApp world={world} sim={sim} commune={commune} act={act} onWalk={onWalk} onMap={onMap} />}
+                {app === 'home' && <HomeApp world={world} sim={sim} commune={commune} act={act} />}
                 {app === 'messages' && <Journal events={journal} />}
-                {app === 'bank' && (
-                  <div className="space-y-3">
-                    <div className="rounded-[22px] bg-gradient-to-br from-[#ffd54f] to-[#ffa000] p-4 text-[#5a3a00]">
-                      <div className="label !text-[#7a5200]">Solde</div>
-                      <div className="tnum font-display text-4xl leading-none font-extrabold">{amount(sim.money)} F</div>
-                      <div className="mt-3 flex gap-4 text-xs font-extrabold">
-                        <span>↑ {amount(earned)} F reçus</span>
-                        <span>↓ {amount(spent)} F dépensés</span>
-                      </div>
-                    </div>
-                    <Journal events={journal.filter((e) => e.money !== 0)} />
-                  </div>
-                )}
+                {app === 'bank' && <BankApp sim={sim} act={act} journal={journal} renderJournal={(events) => <Journal events={events} />} />}
               </div>
             </div>
           )}
@@ -457,21 +440,6 @@ function Explore({ world, sim, city, commune, setFocus, onPlace, onTravel }: Exp
   )
 }
 
-function Row({ icon, colors, title, sub, onClick, children }: { icon: LucideIcon; colors: [string, string]; title: string; sub: string; onClick: () => void; children?: React.ReactNode }) {
-  return (
-    <li>
-      <button onClick={onClick} className="flex w-full items-center gap-3 rounded-[20px] bg-[var(--color-canvas)] p-2.5 text-left transition hover:bg-[#eceef6] active:scale-[0.98]">
-        <IconTile icon={icon} colors={colors} size={46} />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate font-display text-[17px] leading-tight font-extrabold">{title}</span>
-          <span className="block truncate text-xs font-semibold text-[var(--color-ink-soft)]">{sub}</span>
-        </span>
-        {children}
-      </button>
-    </li>
-  )
-}
-
 const HereChip = () => <Chip tone="good">Tu es ici</Chip>
 
 function FareChip({ fare, minutes }: { fare: number; minutes?: number }) {
@@ -535,7 +503,9 @@ function InteractionMenu({ world, sim, city, commune, placeId, hour, desktop, on
   const kind = world.kinds[place.kind]
   const colors = kindColors(place.kind)
   const here = sim.city === city.id && sim.commune === commune.id
-  const items = kind.interactions
+  const home = world.housings.find((h) => h.id === sim.housing)!
+  const career = world.careers.find((c) => c.id === sim.career && c.kind === place.kind)
+  const items = [...(career ? [shift(career, sim.careerLevel)] : []), ...kind.interactions.map((it) => (placeId === 'home' ? atHome(it, home) : it))]
   const state = (it: Interaction) => ({ open: available(it, hour), broke: it.cost > 0 && sim.money < it.cost })
 
   // Desktop: the Sims radial menu around the place.
@@ -619,7 +589,7 @@ function ActionButton({ it, colors, open, broke, onPick, compact }: { it: Intera
               {amount(Math.abs(it.cost))} F
             </Chip>
           )}
-          {!open && <Chip tone="bad">{String(it.minHour ?? 0).padStart(2, '0')}h–{String(it.maxHour || 24).padStart(2, '0')}h</Chip>}
+          {!open && <Chip tone="bad">{hours(it)}</Chip>}
           {ups.map((n) => (
             <span key={n.key} className="grid h-[22px] w-[22px] place-items-center rounded-full bg-[#e3f9ee] text-[var(--color-emerald-deep)]" title={`${n.label} +`}>
               <n.icon size={12} strokeWidth={3} />
@@ -652,10 +622,11 @@ function ActionProgress({ label, icon, kind, name }: { label: string; icon: stri
 }
 
 function ToastCard({ toast: t }: { toast: Toast }) {
-  const icon = t.tone === 'random' ? Dice5 : t.tone === 'error' ? TriangleAlert : t.icon ? iconFor(t.icon) : Sparkles
-  const colors: [string, string] = t.tone === 'random' ? ['#ffd54f', '#ffa000'] : t.tone === 'error' ? ['#ff8a9b', '#ff3d57'] : kindColors(t.kind ?? '')
+  const icon = t.tone === 'random' ? Dice5 : t.tone === 'promo' ? BadgeCheck : t.tone === 'error' ? TriangleAlert : t.icon ? iconFor(t.icon) : Sparkles
+  const colors: [string, string] =
+    t.tone === 'random' ? ['#ffd54f', '#ffa000'] : t.tone === 'promo' ? ['#69e2a0', '#00a862'] : t.tone === 'error' ? ['#ff8a9b', '#ff3d57'] : kindColors(t.kind ?? '')
   return (
-    <div className={`card animate-pop pointer-events-auto flex items-center gap-3 p-3 ${t.tone === 'random' ? 'ring-2 ring-[var(--color-gold)]' : ''}`}>
+    <div className={`card animate-pop pointer-events-auto flex items-center gap-3 p-3 ${t.tone === 'random' ? 'ring-2 ring-[var(--color-gold)]' : t.tone === 'promo' ? 'ring-2 ring-[var(--color-emerald)]' : ''}`}>
       <IconTile icon={icon} colors={colors} size={44} />
       <div className="min-w-0 flex-1">
         <div className="font-display text-[15px] leading-tight font-extrabold">{t.title}</div>
@@ -683,7 +654,15 @@ export function Journal({ events }: { events: JournalEvent[] }) {
       {events.map((e) => {
         const c = clock(e.gameTime)
         const [icon, colors]: [LucideIcon, [string, string]] =
-          e.kind === 'random' ? [Dice5, ['#ffd54f', '#ffa000']] : e.kind === 'travel' ? [Bus, ['#8c9eff', '#3d4fd6']] : [Sparkles, ['#ffa040', '#ff6a00']]
+          e.kind === 'random'
+            ? [Dice5, ['#ffd54f', '#ffa000']]
+            : e.kind === 'travel'
+              ? [Bus, ['#8c9eff', '#3d4fd6']]
+              : e.kind === 'bill'
+                ? [ReceiptText, ['#ff8a9b', '#ff3d57']]
+                : e.kind === 'career'
+                  ? [BadgeCheck, ['#69e2a0', '#00a862']]
+                  : [Sparkles, ['#ffa040', '#ff6a00']]
         return (
           <li key={e.id} className={`flex items-center gap-3 rounded-[20px] p-2.5 ${e.kind === 'random' ? 'bg-[#fff7df]' : 'bg-[var(--color-canvas)]'}`}>
             <IconTile icon={icon} colors={colors} size={38} />

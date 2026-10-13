@@ -53,6 +53,13 @@ export function Neighbourhood(props: Props) {
 function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, night, dusk }: Props & { night: boolean; dusk: boolean }) {
   const home = sim.homeCity === sim.city && sim.homeCommune === commune.id
   const lots = useMemo(() => layoutCommune(commune, home), [commune, home])
+  // drei's <Html> loses whichever label mounts with the canvas, so labels
+  // mount one frame later, once the canvas is in place.
+  const [labels, setLabels] = useState(false)
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setLabels(true))
+    return () => cancelAnimationFrame(id)
+  }, [])
   const water = /lagune|plage|mer|port/i.test(commune.blurb + commune.places.map((p) => p.kind).join(' '))
   const { size, camera } = useThree()
 
@@ -84,7 +91,7 @@ function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy,
       <Traffic />
 
       {lots.map((lot) => (
-        <LotView key={lot.id} lot={lot} world={world} night={night} onPick={onPick} />
+        <LotView key={lot.id} lot={lot} world={world} night={night} label={labels} onPick={onPick} />
       ))}
 
       <Walker sim={sim} lots={lots} moodColor={moodColor} goTo={goTo} onArrive={onArrive} busy={busy} />
@@ -169,7 +176,7 @@ function Traffic() {
   )
 }
 
-function LotView({ lot, world, night, onPick }: { lot: Lot; world: World; night: boolean; onPick: (id: string) => void }) {
+function LotView({ lot, world, night, label, onPick }: { lot: Lot; world: World; night: boolean; label: boolean; onPick: (id: string) => void }) {
   const [hover, setHover] = useState(false)
   const kind = world.kinds[lot.kind]
   const tall = lot.kind === 'office' ? 17 : lot.kind === 'worship' ? 13 : lot.kind === 'nature' ? 11 : 7.5
@@ -184,15 +191,17 @@ function LotView({ lot, world, night, onPick }: { lot: Lot; world: World; night:
       >
         <Building kind={lot.kind} name={lot.name} night={night} />
       </group>
-      <Html position={[0, tall, 0]} center zIndexRange={[20, 0]}>
-        <button
-          onClick={() => onPick(lot.id)}
-          className={`flex items-center gap-1.5 rounded-full bg-white/95 py-1 pr-3 pl-1 font-display text-[13px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_6px_16px_-6px_rgba(0,0,0,0.5)] transition hover:scale-110 ${hover ? 'scale-110' : ''}`}
-        >
-          <IconTile icon={iconFor(lot.kind === 'home' ? 'house' : kind?.icon ?? '')} colors={kindColors(lot.kind)} size={24} radius={12} />
-          {lot.name}
-        </button>
-      </Html>
+      {label && (
+        <Html position={[0, tall, 0]} center zIndexRange={[20, 0]}>
+          <button
+            onClick={() => onPick(lot.id)}
+            className={`flex items-center gap-1.5 rounded-full bg-white/95 py-1 pr-3 pl-1 font-display text-[13px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_6px_16px_-6px_rgba(0,0,0,0.5)] transition hover:scale-110 ${hover ? 'scale-110' : ''}`}
+          >
+            <IconTile icon={iconFor(lot.kind === 'home' ? 'house' : kind?.icon ?? '')} colors={kindColors(lot.kind)} size={24} radius={12} />
+            {lot.name}
+          </button>
+        </Html>
+      )}
     </group>
   )
 }

@@ -46,7 +46,7 @@ var Kinds = map[string]PlaceKind{
 		Events: []RandomEvent{
 			{Text: "Coupure de courant ! La CIE a encore frappé.", Effect: Needs{Fun: -10}},
 			{Text: "Ta voisine t'apporte un plat de foutou sauce graine.", Effect: Needs{Hunger: 30, Social: 10}},
-			{Text: "Le propriétaire passe réclamer le loyer.", Money: -15000, Effect: Needs{Fun: -10}},
+			{Text: "La pompe à eau est en panne, il faut cotiser pour le plombier.", Money: -3000, Effect: Needs{Hygiene: -10, Fun: -10}},
 		},
 	},
 	"maquis": {
@@ -79,7 +79,7 @@ var Kinds = map[string]PlaceKind{
 	"office": {
 		ID: "office", Label: "Bureau", Icon: "briefcase",
 		Interactions: []Interaction{
-			{ID: "work-shift", Label: "Travailler (journée)", Icon: "briefcase", Minutes: 8 * 60, Cost: -12000, Effect: Needs{Energy: -35, Fun: -20, Hunger: -20, Social: 10}, MinHour: 7, MaxHour: 11},
+			{ID: "read-ads", Label: "Lire les offres d'emploi", Icon: "newspaper", Minutes: 30, Effect: Needs{Fun: -5, Social: 5}},
 			{ID: "coffee-break", Label: "Pause café avec les collègues", Icon: "coffee", Minutes: 20, Cost: 300, Effect: Needs{Energy: 10, Social: 15}},
 		},
 		Events: []RandomEvent{

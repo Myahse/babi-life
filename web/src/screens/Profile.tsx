@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { CalendarDays, ChevronLeft, Dice5, House, LogOut, MapPin, Share2, Sparkles, Trash2, TrendingDown, TrendingUp, type LucideIcon } from 'lucide-react'
+import { Briefcase, CalendarDays, ChevronLeft, House, LogOut, MapPin, Share2, Sparkles, Trash2, TrendingDown, TrendingUp, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import type { JournalEvent, Sim } from '../lib/types'
 import { useSession } from '../store/session'
@@ -28,6 +28,9 @@ export function Profile() {
   const here = findCommune(world, sim.city, sim.commune)
   const c = clock(sim.gameMinutes)
   const asp = world.aspirations.find((a) => a.id === sim.aspiration)
+  const origin = world.origins.find((o) => o.id === sim.origin)
+  const housing = world.housings.find((h) => h.id === sim.housing)
+  const career = world.careers.find((x) => x.id === sim.career)
   const earned = sim.journal.reduce((s, e) => s + Math.max(0, e.money), 0)
   const spent = Math.abs(sim.journal.reduce((s, e) => s + Math.min(0, e.money), 0))
 
@@ -73,6 +76,7 @@ export function Profile() {
               {sim.firstName} {sim.lastName}
             </h1>
             <div className="mt-3 flex flex-wrap justify-center gap-1.5 sm:justify-start">
+              {origin && <Chip tone="dark">{origin.label}</Chip>}
               {asp && (
                 <Chip tone="dark">
                   {(() => {
@@ -99,12 +103,12 @@ export function Profile() {
         </section>
 
         <section className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <Stat icon={House} colors={['#ffa040', '#ff6a00']} label="Habite à" value={home.commune?.name ?? '—'} sub={home.city?.name} />
+          <Stat icon={House} colors={['#ffa040', '#ff6a00']} label="Habite à" value={home.commune?.name ?? '—'} sub={housing?.label} />
           <Stat icon={MapPin} colors={['#69e2a0', '#00a862']} label="Est à" value={here.commune?.name ?? '—'} sub={here.city?.name} />
           <Stat icon={CalendarDays} colors={['#b39dff', '#6c47ff']} label="Calendrier" value={`Jour ${c.day}`} sub={c.weekday} />
           <Stat icon={TrendingUp} colors={['#69e2a0', '#00a862']} label="Gagné" value={`${amount(earned)} F`} />
           <Stat icon={TrendingDown} colors={['#ff8a9b', '#ff3d57']} label="Dépensé" value={`${amount(spent)} F`} />
-          <Stat icon={Dice5} colors={['#ffd54f', '#ffa000']} label="Imprévus" value={String(sim.journal.filter((e) => e.kind === 'random').length)} sub={plural(sim.journal.filter((e) => e.kind === 'interaction').length, 'activité')} />
+          <Stat icon={Briefcase} colors={['#64b5ff', '#2a6cf0']} label="Métier" value={career ? career.levels[sim.careerLevel].title : 'Au chômage'} sub={career?.label} />
         </section>
 
         <section className="card flex items-center gap-3 p-4">
@@ -112,6 +116,7 @@ export function Profile() {
           <div className="flex-1">
             <div className="label">Porte-monnaie</div>
             <div className="tnum font-display text-3xl leading-none font-extrabold">{amount(sim.money)} F</div>
+            {sim.loan > 0 && <div className="text-xs font-extrabold text-[#d81b3f]">Microcrédit : {amount(sim.loan)} F à rembourser</div>}
           </div>
           <Link to="/jeu" className="btn btn-emerald px-5">
             Jouer
@@ -162,4 +167,3 @@ function Stat({ icon, colors, label, value, sub }: { icon: LucideIcon; colors: [
   )
 }
 
-const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? 's' : ''}`

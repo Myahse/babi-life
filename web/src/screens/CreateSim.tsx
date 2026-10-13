@@ -2,10 +2,12 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Dices, IdCard, MapPin, Palette, Scissors, Shirt, Sparkles, type LucideIcon } from 'lucide-react'
 import { api, type NewSim } from '../lib/api'
+import type { Origin } from '../lib/types'
 import { useWorld } from '../store/world'
 import { HAIR_COLORS, HAIRS, OUTFIT_COLORS, OUTFITS, SKIN_TONES, SimAvatar } from '../components/SimAvatar'
 import { iconFor } from '../components/icons'
-import { Chip, IconTile, Plumbob } from '../components/ui'
+import { Chip, Coin, IconTile, Plumbob } from '../components/ui'
+import { amount } from '../game/rules'
 
 const TABS: { id: string; label: string; icon: LucideIcon }[] = [
   { id: 'identity', label: 'Identité', icon: IdCard },
@@ -28,6 +30,7 @@ export function CreateSim() {
   const [tab, setTab] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [origin, setOrigin] = useState<Origin | null>(null)
   const [sim, setSim] = useState<NewSim>({
     firstName: 'Awa',
     lastName: 'Koné',
@@ -67,8 +70,10 @@ export function CreateSim() {
     setBusy(true)
     setError(null)
     try {
-      await api.createSim(sim)
-      navigate('/jeu')
+      const created = await api.createSim(sim)
+      const drawn = world!.origins.find((o) => o.id === created.origin)
+      if (drawn) setOrigin(drawn)
+      else navigate('/jeu')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erreur')
     } finally {
@@ -266,6 +271,48 @@ export function CreateSim() {
           )}
         </footer>
       </section>
+      {origin && <OriginReveal origin={origin} name={sim.firstName} housing={world.housings.find((h) => h.id === origin.housing)?.label ?? ''} onGo={() => navigate('/jeu')} />}
+    </div>
+  )
+}
+
+/** Nobody chooses where they start: the server draws it, we reveal it like a card. */
+function OriginReveal({ origin, name, housing, onGo }: { origin: Origin; name: string; housing: string; onGo: () => void }) {
+  const rich = origin.loan === 0
+  const colors: [string, string] = rich ? ['#ffd54f', '#ffa000'] : ['#69e2a0', '#00a862']
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-[#0f1230]/70 p-4 backdrop-blur-[4px]">
+      <div className="card animate-pop w-full max-w-sm overflow-hidden text-center">
+        <div className="relative px-5 pt-6 pb-5 text-white" style={{ background: `radial-gradient(120% 100% at 50% 0%, ${colors[0]}, ${colors[1]})` }}>
+          <div className="label !text-white/85">Le destin a parlé</div>
+          <div className="mt-3 flex justify-center">
+            <IconTile icon={iconFor(origin.icon)} colors={['#ffffff55', '#ffffff22']} size={84} radius={28} />
+          </div>
+          <div className="mt-3 font-display text-[30px] leading-none font-extrabold [text-shadow:0_2px_0_rgba(0,0,0,0.15)]">{origin.label}</div>
+          <p className="mt-2 text-sm leading-snug font-bold text-white/95">{origin.hint}</p>
+        </div>
+        <ul className="space-y-2 p-4 text-left">
+          <li className="flex items-center justify-between rounded-[18px] bg-[var(--color-canvas)] px-3 py-2.5">
+            <span className="text-sm font-extrabold text-[var(--color-ink-soft)]">Porte-monnaie</span>
+            <span className="flex items-center gap-1 font-display text-lg font-extrabold"><Coin size={20} /> {amount(origin.money)}</span>
+          </li>
+          <li className="flex items-center justify-between rounded-[18px] bg-[var(--color-canvas)] px-3 py-2.5">
+            <span className="text-sm font-extrabold text-[var(--color-ink-soft)]">Logement</span>
+            <span className="font-display text-base font-extrabold">{housing}</span>
+          </li>
+          {origin.loan > 0 && (
+            <li className="flex items-center justify-between rounded-[18px] bg-[#ffe8ec] px-3 py-2.5">
+              <span className="text-sm font-extrabold text-[#d81b3f]">Microcrédit à rembourser</span>
+              <span className="font-display text-base font-extrabold text-[#d81b3f]">{amount(origin.loan)} F</span>
+            </li>
+          )}
+        </ul>
+        <div className="px-4 pb-4">
+          <button className="btn w-full" onClick={onGo}>
+            C'est parti, {name} !
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

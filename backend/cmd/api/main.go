@@ -68,6 +68,9 @@ func main() {
 				"kinds":       game.Kinds,
 				"traits":      game.Traits,
 				"aspirations": game.Aspirations,
+				"origins":     game.Origins,
+				"housings":    game.Housings,
+				"careers":     game.Careers,
 				"config":      map[string]any{"devLogin": cfg.DevLogin, "googleLogin": authH.Verifier != nil},
 			})
 		})

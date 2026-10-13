@@ -1,7 +1,7 @@
 // Mirrors backend/internal/game so the HUD can tick smoothly between server
 // round-trips. The server stays authoritative on every action.
 import { Droplets, Gamepad2, MessageCircle, UtensilsCrossed, Zap, type LucideIcon } from 'lucide-react'
-import type { Interaction, NeedKey, Needs } from '../lib/types'
+import type { Career, Housing, Interaction, NeedKey, Needs } from '../lib/types'
 
 export const NEEDS: { key: NeedKey; label: string; icon: LucideIcon }[] = [
   { key: 'hunger', label: 'Faim', icon: UtensilsCrossed },
@@ -44,6 +44,11 @@ export const amount = (n: number) => n.toLocaleString('fr-FR')
 
 export function duration(minutes: number) {
   if (minutes < 60) return `${minutes} min`
+  if (minutes >= 24 * 60) {
+    const d = Math.floor(minutes / 1440)
+    const h = Math.floor((minutes % 1440) / 60)
+    return h ? `${d} j ${h} h` : `${d} j`
+  }
   const h = Math.floor(minutes / 60)
   const m = minutes % 60
   return m ? `${h} h ${m}` : `${h} h`
@@ -68,4 +73,35 @@ export function trip(fromCity: string, from: Pt & { id: string }, toCity: string
   }
   const road = d * 1.3
   return { minutes: Math.trunc(road) + 30, fare: Math.max(500, Math.round(road * 25 / 500) * 500), mode: 'car' }
+}
+
+// Mirrors backend/internal/game/economy.go.
+export const DEPOSIT_WEEKS = 2
+export const LOAN_INSTALLMENT = 10000
+export const PERFORMANCE_TO_PROMOTE = 10
+export const neededToPromote = (level: number) => PERFORMANCE_TO_PROMOTE * (level + 1)
+
+/** The work interaction for a career level, as the server builds it. */
+export function shift(c: Career, level: number): Interaction {
+  const l = c.levels[level]
+  return { id: 'work', label: `Aller au travail (${l.title})`, icon: c.icon, minutes: c.minutes, cost: -l.pay, effect: c.effect, minHour: c.minHour, maxHour: c.maxHour }
+}
+
+/** Home interactions are better in a nicer home. */
+export function atHome(it: Interaction, h: Housing): Interaction {
+  const effect = { ...it.effect }
+  for (const k of Object.keys(effect) as NeedKey[]) if (effect[k] > 0) effect[k] = Math.round(effect[k] * h.comfort)
+  return { ...it, effect }
+}
+
+/** Game minutes until rent is due (00:00 next Saturday). */
+export function untilSaturday(gameMinutes: number) {
+  const week = 7 * 1440
+  const sat = 5 * 1440
+  const into = (((gameMinutes - sat) % week) + week) % week
+  return week - into
+}
+
+export function hours(it: { minHour?: number; maxHour?: number }) {
+  return `${String(it.minHour ?? 0).padStart(2, '0')}h–${String(it.maxHour || 24).padStart(2, '0')}h`
 }
