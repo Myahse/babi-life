@@ -45,6 +45,8 @@ type Look struct {
 	BottomColor    string `json:"bottomColor,omitempty"`
 	ShoeColor      string `json:"shoeColor,omitempty"`
 	AccessoryColor string `json:"accessoryColor,omitempty"`
+	// Bumps and bruises: none, pansement, griffures, genou, bagarre.
+	Marks string `json:"marks,omitempty"`
 }
 
 var hexColor = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)

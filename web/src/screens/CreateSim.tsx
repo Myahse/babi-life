@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BadgeCheck, Check, ChevronLeft, ChevronRight, Dices, Glasses, Heart, IdCard, MapPin, PersonStanding, Scissors, Shirt, Smile, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, Bandage, Check, ChevronLeft, ChevronRight, Dices, Glasses, Heart, IdCard, MapPin, PersonStanding, Scissors, Shirt, Smile, type LucideIcon } from 'lucide-react'
 import { api, type NewSim } from '../lib/api'
 import type { Look, Origin } from '../lib/types'
 import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
 import { UsernameField } from '../components/UsernameField'
 import { USERNAME, suggestFrom } from '../lib/username'
-import { ACCESSORIES, ACCESSORY_COLORS, BEARDS, BODIES, BOTTOM_COLORS, DEFAULT_LOOK, EYE_COLORS, HAIR_COLORS, HAIRS, HEIGHT_RANGE, OUTFIT_COLORS, OUTFIT_DEFAULT_COLOR, OUTFITS, PATTERNS, SHOE_COLORS, SKIN_TONES, WAX_OUTFITS, defaultColors, metres, randomLook, scaleFor, type Choice } from '../avatar/options'
+import { ACCESSORIES, ACCESSORY_COLORS, MARKS, BEARDS, BODIES, BOTTOM_COLORS, DEFAULT_LOOK, EYE_COLORS, HAIR_COLORS, HAIRS, HEIGHT_RANGE, OUTFIT_COLORS, OUTFIT_DEFAULT_COLOR, OUTFITS, PATTERNS, SHOE_COLORS, SKIN_TONES, WAX_OUTFITS, defaultColors, metres, randomLook, scaleFor, type Choice } from '../avatar/options'
 import { ColorPicker } from '../components/ColorPicker'
 import { Stage, type Focus } from '../avatar/Stage'
 import { Portrait, type Framing } from '../avatar/portrait'
@@ -223,6 +223,9 @@ export function CreateSim() {
                   <Options choices={BEARDS} value={sim.look.beard} onPick={(beard) => setLook({ beard })} look={sim.look} gender={sim.gender} field="beard" framing="head" />
                 </Section>
               )}
+              <Section title="Bobos" icon={Bandage}>
+                <Options choices={MARKS} value={sim.look.marks} onPick={(marks) => setLook({ marks })} look={sim.look} gender={sim.gender} field="marks" framing="head" />
+              </Section>
               <Section title="Accessoire" icon={Glasses}>
                 <Options choices={ACCESSORIES} value={sim.look.accessory} onPick={(accessory) => setLook({ accessory })} look={sim.look} gender={sim.gender} field="accessory" framing="head" />
               </Section>

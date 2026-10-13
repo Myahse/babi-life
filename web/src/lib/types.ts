@@ -61,6 +61,7 @@ export type Look = {
   bottomColor?: string
   shoeColor?: string
   accessoryColor?: string
+  marks?: string // bumps and bruises: none, pansement, griffures, genou, bagarre
 }
 
 export type Sim = {

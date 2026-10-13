@@ -48,7 +48,7 @@ function Wedding({ seed }: { seed: string }) {
   const couple = useMemo<Person[]>(
     () => [
       { gender: 'femme', look: { ...randomLook('femme', rng(`bride${seed}`)), outfit: 'robe', outfitColor: '#f4efe6', pattern: 'cercles', hair: 'bun', accessory: 'earrings' }, seed: 1 },
-      { gender: 'homme', look: { ...randomLook('homme', rng(`groom${seed}`)), outfit: 'suit', outfitColor: '#f2b705', accessory: 'none' }, seed: 2 },
+      { gender: 'homme', look: { ...randomLook('homme', rng(`groom${seed}`)), outfit: 'suit', outfitColor: '#14213d', accessoryColor: '#f2b705', accessory: 'none' }, seed: 2 },
     ],
     [seed],
   )
@@ -120,7 +120,7 @@ function Flag({ p }: { p: [number, number, number] }) {
 
 function Match({ seed }: { seed: string }) {
   const screen = useScreenTexture()
-  const crowd = useCrowd(14, `match${seed}`, (r) => (r() < 0.7 ? { outfit: 'jersey' } : {}))
+  const crowd = useCrowd(14, `match${seed}`, (r) => (r() < 0.7 ? { outfit: 'jersey', outfitColor: '#ff8200' } : {}))
   const [goal, setGoal] = useState(false)
   useFrame(({ clock }) => {
     const g = clock.elapsedTime % 12 < 2.5

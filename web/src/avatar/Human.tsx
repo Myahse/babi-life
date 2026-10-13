@@ -269,9 +269,10 @@ function torsoGeometry(femme: boolean, w: number, belly: number, waist: number) 
         uv.push(j / N, i / (rings.length - 1))
       }
     })
-    let split = 0
+    const groups: { start: number; m: number }[] = []
     for (let i = 0; i < rings.length - 1; i++) {
-      if (rings[i].y < waist) split = index.length + 6 * N
+      const m = rings[i].y < waist ? 0 : 1
+      if (groups.at(-1)?.m !== m) groups.push({ start: index.length, m })
       for (let j = 0; j < N; j++) {
         const a = i * (N + 1) + j
         const c = a + N + 1
@@ -282,8 +283,7 @@ function torsoGeometry(femme: boolean, w: number, belly: number, waist: number) 
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
     g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2))
     g.setIndex(index)
-    g.addGroup(0, split, 0)
-    g.addGroup(split, index.length - split, 1)
+    groups.forEach((gr, k) => g.addGroup(gr.start, (groups[k + 1]?.start ?? index.length) - gr.start, gr.m))
     g.computeVertexNormals()
     // The first and last column are the same points: give them one normal.
     const n = g.attributes.normal
@@ -295,6 +295,50 @@ function torsoGeometry(femme: boolean, w: number, belly: number, waist: number) 
     }
     return g
   })
+}
+
+/**
+ * A vest painted on the torso: scoop neck, straps over the shoulders and low
+ * armholes, with skin everywhere else. u goes round the body (0 = front), v up it.
+ */
+const vestCache = new Map<string, THREE.CanvasTexture>()
+function vestTexture(femme: boolean, w: number, belly: number, vest: string, skin: string) {
+  const key = `${femme}|${w}|${belly}|${vest}|${skin}`
+  let t = vestCache.get(key)
+  if (t) return t
+  const rings = torsoRings(femme, w, belly)
+  const [W, H] = [512, 256]
+  const c = document.createElement('canvas')
+  c.width = W
+  c.height = H
+  const g = c.getContext('2d')!
+  g.fillStyle = skin
+  g.fillRect(0, 0, W, H)
+  g.fillStyle = vest
+  // The vest's top edge as one smooth path, so the neckline is clean.
+  const vOf = (y: number) => {
+    const k = rings.findIndex((r) => r.y >= y)
+    if (k < 0) return 1
+    if (k === 0) return 0
+    return (k - 1 + (y - rings[k - 1].y) / (rings[k].y - rings[k - 1].y)) / (rings.length - 1)
+  }
+  g.beginPath()
+  g.moveTo(0, H)
+  for (let px = 0; px <= W; px++) {
+    const a = (px / W) * Math.PI * 2
+    const [side, front] = [Math.abs(Math.sin(a)), Math.cos(a)]
+    // Straps: a soft-edged band at the shoulders, front and back.
+    const strap = 1 - smooth(0.07, 0.1, Math.abs(side - 0.5))
+    const neck = 1.17 + ((front >= 0 ? 1.225 : 1.25) - 1.17) * Math.abs(front) ** 1.6
+    g.lineTo(px, H - vOf(neck + (1.4 - neck) * strap) * H)
+  }
+  g.lineTo(W, H)
+  g.closePath()
+  g.fill()
+  t = new THREE.CanvasTexture(c)
+  t.colorSpace = THREE.SRGBColorSpace
+  vestCache.set(key, t)
+  return t
 }
 
 /** A band hugging the torso at height y (belts, waistbands). */
@@ -364,6 +408,8 @@ type Dress = {
   skirt?: { m: THREE.Material; hem: number; r: number; band?: THREE.Material }
   robe?: THREE.Material
   belt?: THREE.Material
+  tank?: boolean // a vest: bare shoulders and straps
+  shorts?: { m: THREE.Material; stripe: THREE.Material } // short sport shorts over bare thighs
   extra?: (b: Body) => React.ReactNode
 }
 
@@ -471,6 +517,13 @@ function dressFor(l: Required<Look>, femme: boolean): Dress {
         ),
       }
     }
+    case 'debardeur': {
+      // The white vest and sport shorts of the quartier, with claquettes.
+      const vest = mat(top)
+      const shorts = mat(l.bottomColor || dc.bottom)
+      const stripe = mat(tint(l.bottomColor || dc.bottom, 0.85))
+      return { top: vest, bottom: shorts, sleeve: 'none', thigh: null, shin: null, shoe: shoe('sandal'), tank: true, shorts: { m: shorts, stripe } }
+    }
     default: {
       const jeans = mat(l.bottomColor || dc.bottom)
       return { top: mat(top), bottom: jeans, sleeve: 'short', thigh: jeans, shin: jeans, shoe: shoe('sneaker'), belt: mat('#4a2f1d') }
@@ -513,9 +566,41 @@ function Face({ l, femme, skin }: { l: Required<Look>; femme: boolean; skin: THR
       <Part g={arc(0.024, 0.0042, 2.2)} m={lipLine} p={[0, -0.064, faceZ(0, -0.064) + 0.001]} s={[1, 0.9, 0.5]} r={[0, 0, Math.PI]} />
       <Blob m={lip} p={[0, -0.08, faceZ(0, -0.08) - 0.002]} r={[femme ? 0.019 : 0.015, femme ? 0.0075 : 0.005, 0.007]} />
       {femme && [-1, 1].map((s) => <Blob key={s} m={blush} p={[s * 0.07, -0.04, faceZ(0.07, -0.04) - 0.006]} r={[0.022, 0.014, 0.01]} />)}
+      <Marks marks={l.marks} />
       <Hair l={l} />
       <Beard l={l} />
       <HeadAccessory l={l} />
+    </group>
+  )
+}
+
+/** Three red scratch marks. */
+function Scratches({ p, rot = 0.5 }: { p: V3; rot?: number }) {
+  const red = mat('#a8322a')
+  return (
+    <group position={p} rotation={[0, 0, rot]}>
+      {[-1, 0, 1].map((k) => (
+        <Blob key={k} m={red} p={[k * 0.008, k * 0.002, 0]} r={[0.0022, 0.016 - Math.abs(k) * 0.003, 0.0022]} />
+      ))}
+    </group>
+  )
+}
+
+/** Bumps and bruises: a crossed plaster on the cheek, scratches on the other. */
+function Marks({ marks }: { marks: string }) {
+  const plaster = marks === 'pansement' || marks === 'bagarre'
+  const scratches = marks === 'griffures' || marks === 'bagarre'
+  const tape = mat('#ecc996')
+  return (
+    <group>
+      {plaster && (
+        <group position={[0.072, -0.052, faceZ(0.072, -0.052) - 0.002]} rotation={[0, 0.55, 0]}>
+          <Blob m={tape} p={[0, 0, 0]} r={[0.03, 0.0085, 0.004]} rot={[0, 0, 0.6]} />
+          <Blob m={tape} p={[0, 0, 0.001]} r={[0.03, 0.0085, 0.004]} rot={[0, 0, -0.6]} />
+          <Blob m={mat('#d9a96e')} p={[0, 0, 0.003]} r={[0.008, 0.008, 0.003]} />
+        </group>
+      )}
+      {scratches && <Scratches p={[-0.07, -0.05, faceZ(0.07, -0.05) - 0.001]} rot={-0.5} />}
     </group>
   )
 }
@@ -770,7 +855,7 @@ export function Human({ look, gender, pose = 'idle', seed = 0 }: Props) {
     <group scale={l.height}>
       <group ref={root}>
         {/* Torso, waistband, skirt or robe */}
-        <Part g={torsoGeometry(femme, w, belly, d.skirt ? 1.0 : WAIST_Y)} m={[d.robe ?? d.bottom, fabric]} />
+        <Part g={torsoGeometry(femme, w, belly, d.skirt ? 1.0 : WAIST_Y)} m={[d.robe ?? d.bottom, d.tank ? mat('#fff', { map: vestTexture(femme, w, belly, l.outfitColor, l.skin) }) : fabric]} />
         {d.belt && (
           <group>
             <Part g={bandGeometry(femme, w, belly, WAIST_Y + 0.004, 0.012)} m={d.belt} />
@@ -795,8 +880,15 @@ export function Human({ look, gender, pose = 'idle', seed = 0 }: Props) {
           return (
             <group key={i} ref={hip[i]} position={[side * hipX, HIP_Y, 0]}>
               <Part g={limb(thighR, 0.054 * lw, THIGH)} m={skinOr(d.thigh)} />
+              {d.shorts && (
+                <group>
+                  <Part g={shortSleeve(thighR * 1.1, 0.17)} m={d.shorts.m} />
+                  <Blob m={d.shorts.stripe} p={[side * thighR * 1.1, -0.08, 0]} r={[0.005, 0.085, 0.012]} rot={[0, 0, -side * 0.08]} />
+                </group>
+              )}
               <group ref={knee[i]} position={[0, -THIGH, 0]}>
                 <Part g={limb(0.054 * lw, 0.04 * lw, SHIN - 0.04)} m={skinOr(d.shin)} />
+                {!d.shin && !d.skirt && side < 0 && (l.marks === 'genou' || l.marks === 'bagarre') && <Part g={limb(0.059 * lw, 0.057 * lw, 0.05)} m={mat('#f4f1ea')} p={[0, 0.02, 0]} />}
                 {l.outfit === 'jersey' && <Part g={limb(0.05 * lw, 0.045 * lw, 0.14)} m={mat('#009a44')} p={[0, -0.17, 0]} />}
                 <group position={[0, -SHIN - 0.01, 0]}>
                   <ShoeMesh shoe={d.shoe} skin={skin} />
@@ -813,13 +905,14 @@ export function Human({ look, gender, pose = 'idle', seed = 0 }: Props) {
             <group key={i} ref={shoulder[i]} position={[side * shX, SHOULDER_Y, 0]} rotation={[0, 0, side * 0.1]}>
               <Part g={limb((d.sleeve === 'short' ? 0.044 : 0.05) * lw, 0.04 * lw, UPPER_ARM)} m={longSleeve ? fabric : skin} />
               {d.sleeve === 'short' && <Part g={shortSleeve(0.056 * lw, 0.13)} m={fabric} />}
-              {d.sleeve === 'none' && <Blob m={fabric} p={[0, 0.012, 0]} r={[0.05 * lw, 0.034, 0.05 * lw]} />}
+              {d.sleeve === 'none' && !d.tank && <Blob m={fabric} p={[0, 0.012, 0]} r={[0.05 * lw, 0.034, 0.05 * lw]} />}
               {d.sleeve === 'bell' && <Part g={geo('bell1', () => new THREE.CylinderGeometry(0.06, 0.11, 1, 20, 1, true).translate(0, -0.5, 0))} m={fabric} s={[lw, UPPER_ARM + 0.02, lw]} />}
               {d.sleeve === 'bell' && <Blob m={fabric} p={[0, 0, 0]} r={[0.062 * lw, 0.05, 0.062 * lw]} />}
               <group ref={elbow[i]} position={[0, -UPPER_ARM, 0]}>
                 <Part g={limb(0.04 * lw, 0.033 * lw, FOREARM)} m={longSleeve ? fabric : skin} />
                 {longSleeve && <Part g={limb(0.036 * lw, 0.036 * lw, 0.012)} m={mat('#f8f9fa')} p={[0, -FOREARM + 0.012, 0]} />}
                 {d.sleeve === 'bell' && <Part g={geo('bell2', () => new THREE.CylinderGeometry(0.11, 0.17, 1, 20, 1, true).translate(0, -0.5, 0))} m={fabric} p={[0, 0.01, 0]} s={[lw, 0.16, lw]} />}
+                {!longSleeve && d.sleeve !== 'bell' && side > 0 && (l.marks === 'griffures' || l.marks === 'bagarre') && <Scratches p={[0, -0.1, 0.036 * lw]} />}
                 {/* Mitten hand with a thumb */}
                 <Blob m={skin} p={[0, -FOREARM - 0.05, 0.004]} r={[0.03, 0.048, 0.021]} />
                 <Blob m={skin} p={[side * -0.022, -FOREARM - 0.035, 0.016]} r={[0.011, 0.024, 0.011]} rot={[0, 0, side * 0.4]} />
