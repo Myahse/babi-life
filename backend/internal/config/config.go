@@ -17,6 +17,9 @@ type Config struct {
 	// DevLogin enables POST /api/v1/auth/dev so the game can be played locally
 	// without a Google client ID. Never enable it in production.
 	DevLogin bool
+	// NewsFeeds are RSS feeds for the in-game "Infos" app (comma-separated);
+	// empty uses news.DefaultFeeds.
+	NewsFeeds []string
 }
 
 func Load() (Config, error) {
@@ -29,6 +32,7 @@ func Load() (Config, error) {
 		GoogleClientID: os.Getenv("GOOGLE_CLIENT_ID"),
 		AllowedOrigins: splitList(getenv("ALLOWED_ORIGINS", "http://localhost:5173")),
 		DevLogin:       os.Getenv("DEV_LOGIN") == "true",
+		NewsFeeds:      splitList(os.Getenv("NEWS_FEEDS")),
 	}
 
 	if cfg.DatabaseURL == "" {
@@ -36,9 +40,6 @@ func Load() (Config, error) {
 	}
 	if len(cfg.JWTSecret) < 32 {
 		return cfg, fmt.Errorf("JWT_SECRET must be at least 32 characters")
-	}
-	if cfg.GoogleClientID == "" && !cfg.DevLogin {
-		return cfg, fmt.Errorf("GOOGLE_CLIENT_ID is required (or set DEV_LOGIN=true for local play)")
 	}
 	return cfg, nil
 }

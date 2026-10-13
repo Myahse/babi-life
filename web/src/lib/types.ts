@@ -98,3 +98,5 @@ export type ActionResult = { sim: Sim; outcome: Outcome; journal: JournalEvent[]
 
 export type Happening = { id: string; label: string; icon: string; text: string; minHour?: number; maxHour?: number; join?: Interaction }
 export type HappeningNow = { happening: Happening | null; start: number; end: number }
+
+export type NewsItem = { id: string; title: string; source: string; link: string; published: string; topic: 'sport' | 'politique' | 'economie' | 'societe' | 'culture' | 'meteo' }

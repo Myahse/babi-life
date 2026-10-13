@@ -20,6 +20,7 @@ import (
 	"github.com/myahse/babi-life/backend/internal/db"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
+	"github.com/myahse/babi-life/backend/internal/news"
 	"github.com/myahse/babi-life/backend/internal/sims"
 	"github.com/myahse/babi-life/backend/internal/world"
 )
@@ -48,6 +49,8 @@ func main() {
 		authH.Verifier = auth.NewGoogleVerifier(cfg.GoogleClientID)
 	}
 	simsH := &sims.Handler{DB: pool}
+	headlines := news.New(cfg.NewsFeeds)
+	go headlines.Run(ctx)
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.RealIP, middleware.Logger, middleware.Recoverer)
@@ -89,6 +92,7 @@ func main() {
 			}
 			httpx.JSON(w, http.StatusOK, map[string]any{"happening": h, "start": start, "end": start + game.HappeningMinutes})
 		})
+		r.Get("/news", headlines.Handler)
 		r.Post("/auth/google", authH.Google)
 		r.Post("/auth/register", authH.Register)
 		r.Post("/auth/login", authH.Login)

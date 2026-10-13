@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BadgeCheck, Briefcase, Building2, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Wallet, X, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, Briefcase, Newspaper, Building2, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Wallet, X, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import type { City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World } from '../lib/types'
 import { useWorld } from '../store/world'
@@ -12,6 +12,7 @@ import { iconFor, kindColors } from '../components/icons'
 import { Chip, Coin, DayNight, IconTile, MotiveRing, Plumbob, Row, needColor } from '../components/ui'
 import { NEEDS, amount, atHome, available, clock, decay, duration, hours, mood, shift, trip } from '../game/rules'
 import { BankApp, HomeApp, JobsApp, type Act } from './phoneApps'
+import { NewsApp, topicOf } from './NewsApp'
 
 const MAX_LOCAL_CATCH_UP = 180 // game minutes, mirrors the server cap
 const SHEET_PEEK = 0.38 // share of the screen the mobile sheet covers when collapsed
@@ -99,6 +100,21 @@ export function Play() {
     }
   }, [placeId, street]) // eslint-disable-line react-hooks/exhaustive-deps
   const happening = useMemo(() => (street?.happening ? { id: street.happening.id, icon: street.happening.icon, label: street.happening.label } : null), [street])
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      api
+        .news()
+        .then(({ items }) => {
+          const top = items[0]
+          if (!top || sessionStorage.getItem('babi-flash') === top.id) return
+          sessionStorage.setItem('babi-flash', top.id)
+          toast({ tone: 'event', title: `Flash info · ${topicOf(top.topic).label}`, text: `${top.title} (${top.source})`, money: 0, icon: 'newspaper' })
+        })
+        .catch(() => undefined)
+    }, 4000)
+    return () => clearTimeout(t)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const toast = useCallback((t: Omit<Toast, 'id'>) => {
     const id = Date.now() + Math.random()
@@ -327,7 +343,7 @@ function TravelMap({ world, sim, desktop, onClose, onTravel, onWalk }: { world: 
 type PhoneProps = { world: World; sim: Sim; commune: Commune; journal: JournalEvent[]; time: string; act: Act; onClose: () => void; onMap: () => void; onWalk: (id: string) => void }
 
 function Phone({ world, sim, commune, journal, time, act, onClose, onMap, onWalk }: PhoneProps) {
-  const [app, setApp] = useState<null | 'here' | 'jobs' | 'home' | 'messages' | 'bank'>(null)
+  const [app, setApp] = useState<null | 'here' | 'jobs' | 'home' | 'messages' | 'bank' | 'news'>(null)
   const navigate = useNavigate()
   const home = sim.homeCity === sim.city && sim.homeCommune === commune.id
   const places = [...(home ? [{ id: 'home', name: 'Chez toi', kind: 'home' }] : []), ...commune.places]
@@ -338,11 +354,12 @@ function Phone({ world, sim, commune, journal, time, act, onClose, onMap, onWalk
     { id: 'here', label: 'Quartier', icon: MapPin, colors: ['#ffa040', '#ff6a00'], open: () => setApp('here') },
     { id: 'jobs', label: 'Boulot', icon: Briefcase, colors: ['#64b5ff', '#2a6cf0'], open: () => setApp('jobs') },
     { id: 'home', label: 'Logement', icon: House, colors: ['#ffb347', '#ff7a00'], open: () => setApp('home') },
+    { id: 'news', label: 'Infos', icon: Newspaper, colors: ['#ff8a65', '#e8590c'], open: () => setApp('news') },
     { id: 'messages', label: 'Messages', icon: MessageCircle, colors: ['#b39dff', '#6c47ff'], open: () => setApp('messages') },
     { id: 'bank', label: 'Mobile Money', icon: Wallet, colors: ['#ffd54f', '#ffa000'], open: () => setApp('bank') },
     { id: 'profile', label: 'Profil', icon: UserRound, colors: ['#ff8a9b', '#ff3d57'], open: () => navigate('/profil') },
   ]
-  const title = { here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', bank: 'Mobile Money' }
+  const title = { here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', bank: 'Mobile Money', news: 'Infos · Côte d’Ivoire' }
 
   return (
     <div className="absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center" onClick={onClose}>
@@ -400,6 +417,7 @@ function Phone({ world, sim, commune, journal, time, act, onClose, onMap, onWalk
                 {app === 'jobs' && <JobsApp world={world} sim={sim} commune={commune} act={act} onWalk={onWalk} onMap={onMap} />}
                 {app === 'home' && <HomeApp world={world} sim={sim} commune={commune} act={act} />}
                 {app === 'messages' && <Journal events={journal} />}
+                {app === 'news' && <NewsApp />}
                 {app === 'bank' && <BankApp sim={sim} act={act} journal={journal} renderJournal={(events) => <Journal events={events} />} />}
               </div>
             </div>
