@@ -18,7 +18,7 @@ export function InstallButton({ className = '' }: { className?: string }) {
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
                 <div className="label">Sur iPhone et iPad</div>
-                <h2 className="font-display text-2xl leading-tight font-extrabold">Ajoute Ivoire Life à l'écran d'accueil</h2>
+                <h2 className="font-display text-2xl leading-tight font-extrabold">Ajoute Babi Life à l'écran d'accueil</h2>
               </div>
               <button className="icon-btn shrink-0 bg-[var(--color-canvas)]" onClick={() => setSteps(false)} aria-label="Fermer">
                 <X size={20} strokeWidth={2.6} />

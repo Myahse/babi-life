@@ -266,7 +266,7 @@ export function Title() {
           ))}
         </ul>
         <p className="mt-8 flex items-center justify-center gap-2 text-xs font-bold text-white/55">
-          <LogoMark size={18} /> Ivoire Life · fait à Abidjan
+          <LogoMark size={18} /> Babi Life · fait à Abidjan
         </p>
       </section>
     </div>

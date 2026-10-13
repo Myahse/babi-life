@@ -13,8 +13,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg', 'apple-touch-icon.png', 'favicon-48.png'],
       manifest: {
-        name: 'Ivoire Life',
-        short_name: 'Ivoire Life',
+        name: 'Babi Life',
+        short_name: 'Babi Life',
         description: "Ta vie. Ton quartier. Ton Babi. Une vie à la Sims en Côte d'Ivoire.",
         lang: 'fr',
         dir: 'ltr',

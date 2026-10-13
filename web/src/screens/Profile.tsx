@@ -36,9 +36,9 @@ export function Profile() {
   const spent = Math.abs(sim.journal.reduce((s, e) => s + Math.min(0, e.money), 0))
 
   async function share() {
-    const text = `Je vis à ${home.commune?.name} dans Ivoire Life ! Mon Sim s'appelle ${sim!.firstName} ${sim!.lastName}.`
+    const text = `Je vis à ${home.commune?.name} dans Babi Life ! Mon Sim s'appelle ${sim!.firstName} ${sim!.lastName}.`
     try {
-      if (navigator.share) await navigator.share({ title: 'Ivoire Life', text, url: location.origin })
+      if (navigator.share) await navigator.share({ title: 'Babi Life', text, url: location.origin })
       else {
         await navigator.clipboard.writeText(`${text} ${location.origin}`)
         setCopied(true)

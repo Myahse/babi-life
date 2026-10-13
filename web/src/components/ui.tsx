@@ -121,13 +121,13 @@ export function LogoMark({ size = 40, className = '' }: { size?: number; classNa
   )
 }
 
-/** The logo: the mark and the wordmark "Ivoire Life" on one line. */
+/** The logo: the mark and the wordmark "Babi Life" on one line. */
 export function Logo({ size = 40, tone = 'light', className = '' }: { size?: number; tone?: 'light' | 'dark'; className?: string }) {
   return (
-    <span className={`inline-flex items-center select-none ${className}`} style={{ gap: size * 0.28 }} aria-label="Ivoire Life">
+    <span className={`inline-flex items-center select-none ${className}`} style={{ gap: size * 0.28 }} aria-label="Babi Life">
       <LogoMark size={size} />
       <span className="font-display leading-none font-extrabold tracking-[-0.02em]" style={{ fontSize: size * 0.62 }} aria-hidden>
-        <span className={tone === 'light' ? 'text-white' : 'text-[var(--color-ink)]'}>Ivoire </span>
+        <span className={tone === 'light' ? 'text-white' : 'text-[var(--color-ink)]'}>Babi </span>
         <span className="text-[var(--color-orange)]">Life</span>
       </span>
     </span>

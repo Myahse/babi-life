@@ -112,7 +112,7 @@ func main() {
 
 	srv := &http.Server{Addr: ":" + cfg.Port, Handler: r, ReadHeaderTimeout: 10 * time.Second}
 	go func() {
-		log.Printf("Ivoire Life API listening on :%s", cfg.Port)
+		log.Printf("Babi Life API listening on :%s", cfg.Port)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatal(err)
 		}
