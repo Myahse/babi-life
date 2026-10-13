@@ -48,8 +48,11 @@ export const api = {
   happening: (commune: string, gameMinutes: number) => request<HappeningNow>(`/happening?commune=${encodeURIComponent(commune)}&t=${Math.floor(gameMinutes)}`),
   googleLogin: (credential: string) => post<Session>('/auth/google', { credential }),
   devLogin: (name: string) => post<Session>('/auth/dev', { name }),
-  register: (name: string, email: string, password: string) => post<Session>('/auth/register', { name, email, password }),
-  login: (email: string, password: string) => post<Session>('/auth/login', { email, password }),
+  register: (u: { firstName: string; lastName: string; username: string; email: string; password: string }) => post<Session>('/auth/register', u),
+  /** `login` is an e-mail or a username. */
+  login: (login: string, password: string) => post<Session>('/auth/login', { email: login, password }),
+  usernameAvailable: (u: string) => request<{ available: boolean }>(`/auth/username?u=${encodeURIComponent(u)}`),
+  setUsername: (username: string) => request<User>('/me/username', { method: 'PUT', body: JSON.stringify({ username }) }),
   me: () => request<User>('/me'),
   sims: () => request<Sim[]>('/sims'),
   sim: (id: string) => request<ActionResult>(`/sims/${id}`),

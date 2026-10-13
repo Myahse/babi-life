@@ -30,6 +30,8 @@ type Props = {
   happening: { id: string; icon: string; label: string } | null
   /** The place the Sim is busy at when the scene opens (it starts there). */
   stationAt?: string | null
+  /** Shown above the player's Sim (their username). */
+  nameTag?: string
 }
 
 const SPEED = 4.2 // metres per second: a brisk walk, so errands don't drag
@@ -58,7 +60,7 @@ export function Neighbourhood(props: Props) {
   )
 }
 
-function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt }: Props & { night: boolean; dusk: boolean }) {
+function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, nameTag }: Props & { night: boolean; dusk: boolean }) {
   const rain = happening?.id === 'pluie'
   const blackout = night && happening?.id === 'delestage'
   const lit = night && !blackout // street lamps and windows
@@ -121,7 +123,7 @@ function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy,
         ),
       )}
 
-      <Walker stationAt={stationAt ?? null} sim={sim} lots={places} moodColor={moodColor} goTo={goTo} onArrive={onArrive} busy={busy} />
+      <Walker nameTag={nameTag} labels={labels} stationAt={stationAt ?? null} sim={sim} lots={places} moodColor={moodColor} goTo={goTo} onArrive={onArrive} busy={busy} />
     </>
   )
 }
@@ -319,7 +321,7 @@ function LotView({ lot, world, night, label, onPick }: { lot: Lot; world: World;
   )
 }
 
-function Walker({ sim, lots, moodColor, goTo, onArrive, busy, stationAt }: { sim: Sim; lots: Lot[]; moodColor: string; goTo: Props['goTo']; onArrive: Props['onArrive']; busy: Props['busy']; stationAt: string | null }) {
+function Walker({ sim, lots, moodColor, goTo, onArrive, busy, stationAt, nameTag, labels }: { sim: Sim; lots: Lot[]; moodColor: string; goTo: Props['goTo']; onArrive: Props['onArrive']; busy: Props['busy']; stationAt: string | null; nameTag?: string; labels: boolean }) {
   const group = useRef<THREE.Group>(null)
   const path = useRef<[number, number][]>([])
   const target = useRef<string | null>(null)
@@ -397,11 +399,21 @@ function Walker({ sim, lots, moodColor, goTo, onArrive, busy, stationAt }: { sim
       />
       <group ref={group}>
         <Character look={sim.look} gender={sim.gender} walking={walking} busy={!!busy} moodColor={moodColor} />
-        {busy && (
-          <Html position={[0, 2.7, 0]} center zIndexRange={[30, 20]}>
-            <div className="animate-pop rounded-full bg-white p-1.5 shadow-lg">
-              <IconTile icon={iconFor(busy.icon)} colors={kindColors(busy.kind)} size={34} radius={17} />
-            </div>
+        {labels && nameTag && (
+          <Html position={[0, 2.45, 0]} center zIndexRange={[28, 20]}>
+            <span className="pointer-events-none rounded-full bg-[#0f1230]/75 px-2 py-0.5 font-display text-[11px] font-extrabold whitespace-nowrap text-white">{nameTag}</span>
+          </Html>
+        )}
+        {labels && (
+          // Always mounted, content toggled: drei's <Html> breaks when unmounted mid-scene.
+          <Html position={[0, 2.95, 0]} center zIndexRange={[30, 20]}>
+            {busy ? (
+              <div className="motion-pop rounded-full bg-white p-1.5 shadow-lg">
+                <IconTile icon={iconFor(busy.icon)} colors={kindColors(busy.kind)} size={34} radius={17} />
+              </div>
+            ) : (
+              <span />
+            )}
           </Html>
         )}
       </group>

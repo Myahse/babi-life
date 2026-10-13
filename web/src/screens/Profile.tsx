@@ -77,6 +77,7 @@ export function Profile() {
             <h1 className="font-display text-4xl leading-none font-extrabold [text-shadow:0_2px_0_rgba(0,0,0,0.12)]">
               {sim.firstName} {sim.lastName}
             </h1>
+            {user?.username && <div className="mt-1 font-display text-lg font-extrabold opacity-90">@{user.username}</div>}
             <div className="mt-3 flex flex-wrap justify-center gap-1.5 sm:justify-start">
               {origin && <Chip tone="dark">{origin.label}</Chip>}
               {asp && (

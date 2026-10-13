@@ -4,6 +4,7 @@ import { BadgeCheck, Briefcase, Hourglass, Newspaper, Square, Building2, Bus, Ca
 import { api } from '../lib/api'
 import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World } from '../lib/types'
 import { useWorld } from '../store/world'
+import { useSession } from '../store/session'
 import { GameMap } from '../components/map/GameMap'
 import { boundsFor, pinsFor, type Focus, type Padding } from '../components/map/pins'
 import { Portrait } from '../avatar/portrait'
@@ -32,6 +33,7 @@ function useIsDesktop() {
 
 export function Play() {
   const world = useWorld((s) => s.world)!
+  const user = useSession((s) => s.user)
   const navigate = useNavigate()
   const desktop = useIsDesktop()
 
@@ -230,6 +232,7 @@ export function Play() {
           onArrive={(id) => setPlaceId(id)}
           busy={doing ? { icon: doing.interaction.icon, kind: doing.placeKind ?? '' } : pending}
           stationAt={doing?.placeId ?? null}
+          nameTag={user?.username ? `@${user.username}` : sim.firstName}
           happening={happening}
         />
       </div>
@@ -243,7 +246,7 @@ export function Play() {
             </span>
           </span>
           <span className="leading-tight">
-            <span className="block font-display text-[17px] font-extrabold">{sim.firstName}</span>
+            <span className="block font-display text-[17px] font-extrabold">{user?.username ? `@${user.username}` : sim.firstName}</span>
             <span className="flex items-center gap-1 text-[11px] font-extrabold text-[var(--color-ink-soft)]">
               <MapPin size={11} strokeWidth={3} />
               {commune.name} · {city.name}

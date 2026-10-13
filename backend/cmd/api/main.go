@@ -96,6 +96,7 @@ func main() {
 		r.Post("/auth/google", authH.Google)
 		r.Post("/auth/register", authH.Register)
 		r.Post("/auth/login", authH.Login)
+		r.Get("/auth/username", authH.UsernameAvailable)
 		if cfg.DevLogin {
 			log.Println("⚠️  DEV_LOGIN is on: anyone can sign in without Google")
 			r.Post("/auth/dev", authH.Dev)
@@ -104,6 +105,7 @@ func main() {
 		r.Group(func(r chi.Router) {
 			r.Use(tokens.Require)
 			r.Get("/me", authH.Me)
+			r.Put("/me/username", authH.SetUsername)
 			simsH.Routes(r)
 		})
 	})

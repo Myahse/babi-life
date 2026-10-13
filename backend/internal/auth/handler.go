@@ -15,8 +15,18 @@ type User struct {
 	ID        string    `json:"id"`
 	Email     string    `json:"email"`
 	Name      string    `json:"name"`
+	FirstName string    `json:"firstName"`
+	LastName  string    `json:"lastName"`
+	Username  string    `json:"username"` // "" until chosen
 	AvatarURL string    `json:"avatarUrl"`
 	CreatedAt time.Time `json:"createdAt"`
+}
+
+// userColumns and scanUser read a users row the same way everywhere.
+const userColumns = `id, email, name, first_name, last_name, coalesce(username, ''), avatar_url, created_at`
+
+func scanUser(row interface{ Scan(...any) error }, u *User) error {
+	return row.Scan(&u.ID, &u.Email, &u.Name, &u.FirstName, &u.LastName, &u.Username, &u.AvatarURL, &u.CreatedAt)
 }
 
 type Handler struct {
@@ -63,7 +73,8 @@ func (h *Handler) Dev(w http.ResponseWriter, r *http.Request) {
 		name = "Joueur Test"
 	}
 	slug := strings.ToLower(strings.Join(strings.Fields(name), "."))
-	h.signIn(w, r.Context(), GoogleIdentity{Sub: "dev:" + slug, Email: slug + "@dev.local", Name: name})
+	first, last, _ := strings.Cut(name, " ")
+	h.signIn(w, r.Context(), GoogleIdentity{Sub: "dev:" + slug, Email: slug + "@dev.local", Name: name, FirstName: first, LastName: last})
 }
 
 func (h *Handler) signIn(w http.ResponseWriter, ctx context.Context, id GoogleIdentity) {
@@ -72,16 +83,21 @@ func (h *Handler) signIn(w http.ResponseWriter, ctx context.Context, id GoogleId
 		httpx.Error(w, http.StatusInternalServerError, "could not save user")
 		return
 	}
+	if id.FirstName == "" {
+		id.FirstName, id.LastName, _ = strings.Cut(id.Name, " ")
+	}
 	var u User
-	err := h.DB.QueryRow(ctx, `
-		INSERT INTO users (google_sub, email, name, avatar_url)
-		VALUES ($1, $2, $3, $4)
+	err := scanUser(h.DB.QueryRow(ctx, `
+		INSERT INTO users (google_sub, email, name, first_name, last_name, avatar_url)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT (google_sub) DO UPDATE
-		   SET email = EXCLUDED.email, name = EXCLUDED.name,
-		       avatar_url = EXCLUDED.avatar_url, last_login_at = now()
-		RETURNING id, email, name, avatar_url, created_at`,
-		id.Sub, id.Email, id.Name, id.Picture,
-	).Scan(&u.ID, &u.Email, &u.Name, &u.AvatarURL, &u.CreatedAt)
+		   SET email = EXCLUDED.email, name = EXCLUDED.name, avatar_url = EXCLUDED.avatar_url,
+		       first_name = CASE WHEN users.first_name = '' THEN EXCLUDED.first_name ELSE users.first_name END,
+		       last_name  = CASE WHEN users.last_name  = '' THEN EXCLUDED.last_name  ELSE users.last_name  END,
+		       last_login_at = now()
+		RETURNING `+userColumns,
+		id.Sub, id.Email, id.Name, id.FirstName, id.LastName, id.Picture,
+	), &u)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "could not save user")
 		return
@@ -100,9 +116,7 @@ func (h *Handler) issue(w http.ResponseWriter, u User) {
 
 func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 	var u User
-	err := h.DB.QueryRow(r.Context(),
-		`SELECT id, email, name, avatar_url, created_at FROM users WHERE id = $1`, UserID(r.Context()),
-	).Scan(&u.ID, &u.Email, &u.Name, &u.AvatarURL, &u.CreatedAt)
+	err := scanUser(h.DB.QueryRow(r.Context(), `SELECT `+userColumns+` FROM users WHERE id = $1`, UserID(r.Context())), &u)
 	if err != nil {
 		httpx.Error(w, http.StatusUnauthorized, "user not found")
 		return

@@ -19,10 +19,12 @@ const googleCertsURL = "https://www.googleapis.com/oauth2/v3/certs"
 
 // GoogleIdentity is what we keep from a verified Google ID token.
 type GoogleIdentity struct {
-	Sub     string
-	Email   string
-	Name    string
-	Picture string
+	Sub       string
+	Email     string
+	Name      string
+	FirstName string
+	LastName  string
+	Picture   string
 }
 
 // GoogleVerifier checks ID tokens issued by Google Sign-In against Google's
@@ -44,6 +46,8 @@ type googleClaims struct {
 	Email         string `json:"email"`
 	EmailVerified bool   `json:"email_verified"`
 	Name          string `json:"name"`
+	GivenName     string `json:"given_name"`
+	FamilyName    string `json:"family_name"`
 	Picture       string `json:"picture"`
 	jwt.RegisteredClaims
 }
@@ -67,7 +71,7 @@ func (v *GoogleVerifier) Verify(ctx context.Context, idToken string) (GoogleIden
 	if !claims.EmailVerified || claims.Email == "" {
 		return GoogleIdentity{}, errors.New("email not verified")
 	}
-	return GoogleIdentity{Sub: claims.Subject, Email: claims.Email, Name: claims.Name, Picture: claims.Picture}, nil
+	return GoogleIdentity{Sub: claims.Subject, Email: claims.Email, Name: claims.Name, FirstName: claims.GivenName, LastName: claims.FamilyName, Picture: claims.Picture}, nil
 }
 
 func (v *GoogleVerifier) key(ctx context.Context, kid string) (*rsa.PublicKey, error) {

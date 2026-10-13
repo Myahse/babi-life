@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Check, ChevronLeft, ChevronRight, Dices, Glasses, Heart, IdCard, MapPin, PersonStanding, Scissors, Shirt, Smile, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, Check, ChevronLeft, ChevronRight, Dices, Glasses, Heart, IdCard, MapPin, PersonStanding, Scissors, Shirt, Smile, type LucideIcon } from 'lucide-react'
 import { api, type NewSim } from '../lib/api'
 import type { Look, Origin } from '../lib/types'
 import { useWorld } from '../store/world'
+import { useSession } from '../store/session'
+import { UsernameField } from '../components/UsernameField'
+import { USERNAME, suggestFrom } from '../lib/username'
 import { ACCESSORIES, BEARDS, BODIES, DEFAULT_LOOK, EYE_COLORS, HAIR_COLORS, HAIRS, OUTFIT_COLORS, OUTFITS, PATTERNS, SKIN_TONES, WAX_OUTFITS, randomLook, type Choice } from '../avatar/options'
 import { Stage, type Focus } from '../avatar/Stage'
 import { Portrait, type Framing } from '../avatar/portrait'
@@ -36,14 +39,19 @@ const metres = (h: number, femme: boolean) => `${((femme ? 1.65 : 1.76) * h).toF
 
 export function CreateSim() {
   const world = useWorld((s) => s.world)
+  const { user, signIn, token } = useSession()
   const navigate = useNavigate()
+  // Google sign-ups have no username yet: they choose it here.
+  const needsUsername = !user?.username
+  const [username, setUsername] = useState(() => suggestFrom(user?.firstName ?? '', user?.lastName ?? ''))
   const [step, setStep] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [origin, setOrigin] = useState<Origin | null>(null)
   const [sim, setSim] = useState<NewSim & { look: Required<Look> }>({
-    firstName: 'Awa',
-    lastName: 'Koné',
+    // Taken from the account; the player only corrects them if needed.
+    firstName: user?.firstName || user?.name.split(' ')[0] || 'Awa',
+    lastName: user?.lastName || user?.name.split(' ').slice(1).join(' ') || 'Koné',
     gender: 'femme',
     look: DEFAULT_LOOK as Required<Look>,
     traits: ['ambianceur', 'gourmand'],
@@ -59,7 +67,7 @@ export function CreateSim() {
   const city = world.cities.find((c) => c.id === sim.homeCity)!
   const commune = city.communes.find((c) => c.id === sim.homeCommune)!
   const femme = sim.gender === 'femme'
-  const valid = sim.firstName.trim() && sim.lastName.trim() && sim.traits.length > 0
+  const valid = sim.firstName.trim() && sim.lastName.trim() && sim.traits.length > 0 && (!needsUsername || USERNAME.test(username))
   const current = STEPS[step]
   const last = step === STEPS.length - 1
 
@@ -89,6 +97,10 @@ export function CreateSim() {
     setBusy(true)
     setError(null)
     try {
+      if (needsUsername) {
+        const u = await api.setUsername(username)
+        signIn(token!, u)
+      }
       const created = await api.createSim(sim)
       const drawn = world!.origins.find((o) => o.id === created.origin)
       if (drawn) setOrigin(drawn)
@@ -145,6 +157,19 @@ export function CreateSim() {
                   </button>
                 ))}
               </div>
+              {needsUsername && (
+                <div>
+                  <span className="label">Ton pseudo</span>
+                  <div className="mt-1.5">
+                    <UsernameField value={username} onChange={setUsername} first={sim.firstName} last={sim.lastName} />
+                  </div>
+                </div>
+              )}
+              {user?.firstName && (
+                <p className="flex items-center gap-1.5 text-xs font-bold text-[var(--color-ink-soft)]">
+                  <BadgeCheck size={14} className="text-[var(--color-emerald)]" /> Prénom et nom repris de ton compte. Corrige-les seulement si besoin.
+                </p>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <label>
                   <span className="label">Prénom</span>
@@ -291,8 +316,8 @@ export function CreateSim() {
           )}
         </div>
 
+        {error && <p className="motion-shake mx-3 mb-2 rounded-2xl bg-[#ffe8ec] px-3 py-2 text-sm font-bold text-[#d81b3f]">{error}</p>}
         <footer className="flex gap-2 border-t border-[var(--color-line)] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          {error && <p className="mb-2 rounded-2xl bg-[#ffe8ec] px-3 py-2 text-sm font-bold text-[#d81b3f]">{error}</p>}
           {step > 0 && (
             <button className="btn btn-soft shrink-0 px-4" onClick={() => setStep(step - 1)} aria-label="Étape précédente">
               <ChevronLeft size={22} strokeWidth={2.6} />

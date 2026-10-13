@@ -9,6 +9,8 @@ import { useWorld } from '../store/world'
 import { Scene } from '../components/Scene'
 import { Portrait } from '../avatar/portrait'
 import { Logo } from '../components/ui'
+import { UsernameField } from '../components/UsernameField'
+import { suggestFrom } from '../lib/username'
 
 const GOOGLE_ENABLED = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID)
 
@@ -25,12 +27,22 @@ export function Title() {
   const navigate = useNavigate()
   const [devName, setDevName] = useState('Awa Koné')
   const [mode, setMode] = useState<'login' | 'register'>('login')
-  const [name, setName] = useState('')
+  const [first, setFirst] = useState('')
+  const [last, setLast] = useState('')
+  const [username, setUsername] = useState('')
+  const [usernameTouched, setUsernameTouched] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+
+  // The username follows the names until the person types one themselves.
+  function pickName(f: string, l: string) {
+    setFirst(f)
+    setLast(l)
+    if (!usernameTouched) setUsername(suggestFrom(f, l))
+  }
 
   async function finish(p: Promise<{ token: string; user: User }>) {
     setBusy(true)
@@ -114,18 +126,34 @@ export function Title() {
               className="flex flex-col gap-2.5"
               onSubmit={(e) => {
                 e.preventDefault()
-                finish(mode === 'login' ? api.login(email, password) : api.register(name, email, password))
+                finish(mode === 'login' ? api.login(email, password) : api.register({ firstName: first, lastName: last, username, email, password }))
               }}
             >
               {mode === 'register' && (
-                <label className="relative">
-                  <UserRound size={18} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[var(--color-ink-soft)]" />
-                  <input className="input h-[52px] !pl-11 text-base" placeholder="Ton nom" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} aria-label="Nom" required />
-                </label>
+                <div className="motion-stagger flex flex-col gap-2.5">
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <label className="relative">
+                      <UserRound size={18} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[var(--color-ink-soft)]" />
+                      <input className="input h-[52px] !pl-11 text-base" placeholder="Prénom" autoComplete="given-name" value={first} onChange={(e) => pickName(e.target.value, last)} aria-label="Prénom" required />
+                    </label>
+                    <input className="input h-[52px] text-base" placeholder="Nom" autoComplete="family-name" value={last} onChange={(e) => pickName(first, e.target.value)} aria-label="Nom" required />
+                  </div>
+                  <UsernameField value={username} onChange={(v) => (setUsername(v), setUsernameTouched(true))} first={first} last={last} />
+                </div>
               )}
               <label className="relative">
                 <Mail size={18} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[var(--color-ink-soft)]" />
-                <input className="input h-[52px] !pl-11 text-base" type="email" placeholder="E-mail" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} aria-label="E-mail" required />
+                <input
+                  className="input h-[52px] !pl-11 text-base"
+                  type={mode === 'login' ? 'text' : 'email'}
+                  placeholder={mode === 'login' ? 'E-mail ou pseudo' : 'E-mail'}
+                  autoComplete={mode === 'login' ? 'username' : 'email'}
+                  autoCapitalize="none"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  aria-label={mode === 'login' ? 'E-mail ou pseudo' : 'E-mail'}
+                  required
+                />
               </label>
               <label className="relative">
                 <Lock size={18} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[var(--color-ink-soft)]" />
