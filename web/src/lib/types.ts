@@ -1,9 +1,33 @@
 export type Needs = { hunger: number; energy: number; hygiene: number; social: number; fun: number }
 export type NeedKey = keyof Needs
 
-export type Place = { id: string; name: string; kind: string; lat: number; lng: number }
-export type Commune = { id: string; name: string; blurb: string; lat: number; lng: number; places: Place[] }
-export type City = { id: string; name: string; blurb: string; lat: number; lng: number; zoom: number; communes: Commune[] }
+/** Where a fact comes from: verified, partial, unverified, or invented for the game. */
+export type Source = { status: 'verified' | 'partial' | 'unverified' | 'fictional'; urls?: string[]; checked?: string; note?: string }
+export type Place = {
+  id: string
+  name: string
+  kind: string
+  lat: number
+  lng: number
+  quarter?: string
+  real?: boolean
+  approx?: boolean
+  owner?: string
+  operator?: string
+  closed?: string
+  source?: Source
+}
+export type Commune = {
+  id: string
+  name: string
+  blurb: string
+  lat: number
+  lng: number
+  admin?: { type: string; parent: string; mairie: string; bank?: 'nord' | 'sud'; source?: Source }
+  places: Place[]
+}
+export type City = { id: string; name: string; blurb: string; lat: number; lng: number; zoom: number; admin?: { type: string; region?: string; source?: Source }; communes: Commune[] }
+export type Expression = { id: string; text: string; lang: string; meaning: string; example: string; context?: string; source: Source }
 
 export type Interaction = {
   id: string
@@ -14,6 +38,9 @@ export type Interaction = {
   effect: Needs
   minHour?: number
   maxHour?: number
+  /** Opening days, 0 = lundi … 6 = dimanche; absent = every day. */
+  days?: number[]
+  requires?: { resident?: boolean; minMoney?: number; anyTrait?: string[]; career?: string }
 }
 export type PlaceKind = { id: string; label: string; icon: string; interactions: Interaction[] }
 export type Option = { id: string; label: string; icon: string; hint: string }
@@ -40,6 +67,7 @@ export type World = {
   origins: Origin[]
   housings: Housing[]
   careers: Career[]
+  expressions?: Expression[]
   config: { devLogin: boolean; googleLogin: boolean }
 }
 
@@ -102,7 +130,7 @@ export type Activity = {
   end: number
   applied: number
   career?: string
-  trip?: { fromCity: string; fromCommune: string; city: string; commune: string; mode: 'taxi' | 'car'; fare: number; label: string }
+  trip?: { fromCity: string; fromCommune: string; city: string; commune: string; mode: 'taxi' | 'car'; fare: number; label: string; incident?: string }
 }
 
 export type JournalEvent = {
@@ -118,7 +146,7 @@ export type Outcome = { text: string; money: number }
 /** Every read or action on a Sim returns this; `fresh` = journal lines this request produced. */
 export type ActionResult = { sim: Sim; outcome: Outcome; journal: JournalEvent[]; fresh: JournalEvent[] }
 
-export type Happening = { id: string; label: string; icon: string; text: string; minHour?: number; maxHour?: number; join?: Interaction }
+export type Happening = { id: string; label: string; icon: string; text: string; category?: string; minHour?: number; maxHour?: number; days?: number[]; join?: Interaction; source?: Source }
 export type HappeningNow = { happening: Happening | null; start: number; end: number }
 
 export type NewsItem = { id: string; title: string; source: string; link: string; published: string; topic: 'sport' | 'politique' | 'economie' | 'societe' | 'culture' | 'meteo' }

@@ -54,13 +54,15 @@ type Trip struct {
 	Mode        string `json:"mode"` // "taxi" | "car"
 	Fare        int    `json:"fare"`
 	Label       string `json:"label"`
+	// Incident is what slowed the trip down, if anything (see TripIncidents).
+	Incident string `json:"incident,omitempty"`
 }
 
 var ErrBusy = fmt.Errorf("ton Sim est occupé·e : arrête d'abord ce qu'il fait")
 
 // Begin checks an interaction can start now and charges what is paid up front.
 func Begin(st State, it Interaction) (State, error) {
-	if !it.Available(HourOf(st.GameMinutes)) {
+	if !it.OpenAt(st.GameMinutes) {
 		return st, ErrClosed
 	}
 	if it.Cost > 0 && st.Money < it.Cost {

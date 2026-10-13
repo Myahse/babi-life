@@ -13,6 +13,59 @@ type Interaction struct {
 	// (24h clock, MaxHour exclusive). Zero values mean "any time".
 	MinHour int `json:"minHour,omitempty"`
 	MaxHour int `json:"maxHour,omitempty"`
+	// Days it is open (0 = lundi … 6 = dimanche); empty = every day.
+	Days []int `json:"days,omitempty"`
+	// Requires limits who can do it; nil = anyone.
+	Requires *Requirement `json:"requires,omitempty"`
+}
+
+// A Requirement limits an interaction to some Sims.
+type Requirement struct {
+	// Resident: only Sims who live in the commune (the mairie's état civil…).
+	Resident bool `json:"resident,omitempty"`
+	// MinMoney the Sim must hold, beyond the cost (a contribution, a deposit…).
+	MinMoney int `json:"minMoney,omitempty"`
+	// AnyTrait: the Sim needs at least one of these traits.
+	AnyTrait []string `json:"anyTrait,omitempty"`
+	// Career: the Sim must work in this career.
+	Career string `json:"career,omitempty"`
+}
+
+// Who describes a Sim for requirement checks.
+type Who struct {
+	Resident bool
+	Money    int
+	Traits   []string
+	Career   string
+}
+
+// Check explains why a Sim can't do it, or returns nil.
+func (r *Requirement) Check(w Who) error {
+	if r == nil {
+		return nil
+	}
+	switch {
+	case r.Resident && !w.Resident:
+		return ErrResidentsOnly
+	case w.Money < r.MinMoney:
+		return ErrNotEnoughMoney
+	case r.Career != "" && w.Career != r.Career:
+		return ErrWrongCareer
+	case len(r.AnyTrait) > 0 && !anyIn(r.AnyTrait, w.Traits):
+		return ErrNotYourThing
+	}
+	return nil
+}
+
+func anyIn(want, have []string) bool {
+	for _, a := range want {
+		for _, b := range have {
+			if a == b {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // A RandomEvent may happen after an interaction at a place of that kind.
@@ -134,6 +187,55 @@ var Kinds = map[string]PlaceKind{
 		},
 		Events: []RandomEvent{
 			{Text: "Tu marques le but de la victoire ! On scande ton nom.", Effect: Needs{Fun: 25, Social: 15}},
+		},
+	},
+	// Public services and culture. Opening days and hours are game rules,
+	// not the institutions' real timetables.
+	"mairie": {
+		ID: "mairie", Label: "Mairie", Icon: "landmark",
+		Interactions: []Interaction{
+			{ID: "etat-civil", Label: "Demander un extrait d'acte de naissance", Icon: "file-text", Minutes: 60, Cost: 500, Effect: Needs{Fun: -10, Social: 5},
+				MinHour: 8, MaxHour: 16, Days: Weekdays, Requires: &Requirement{Resident: true}},
+			{ID: "legalisation", Label: "Faire légaliser un document", Icon: "stamp", Minutes: 45, Cost: 500, Effect: Needs{Fun: -10, Social: 5}, MinHour: 8, MaxHour: 16, Days: Weekdays},
+			{ID: "mariage-civil", Label: "Être témoin d'un mariage civil", Icon: "heart", Minutes: 90, Effect: Needs{Social: 35, Fun: 25}, MinHour: 9, MaxHour: 14, Days: []int{Vendredi, Samedi}},
+			{ID: "conseil", Label: "Assister au conseil municipal", Icon: "users", Minutes: 120, Effect: Needs{Social: 20, Fun: -5, Energy: -5}, MinHour: 9, MaxHour: 12, Days: []int{Mercredi}, Requires: &Requirement{Resident: true}},
+		},
+		Events: []RandomEvent{
+			{Text: "Le système est en panne : « Revenez demain. »", Effect: Needs{Fun: -15}},
+			{Text: "L'agent d'accueil te reconnaît : il t'aide à passer vite.", Effect: Needs{Fun: 10, Social: 10}},
+		},
+	},
+	"school": {
+		ID: "school", Label: "École", Icon: "graduation-cap",
+		Interactions: []Interaction{
+			{ID: "cours-du-soir", Label: "Suivre un cours du soir", Icon: "book-open", Minutes: 120, Cost: 1000, Effect: Needs{Fun: -5, Energy: -15, Social: 15}, MinHour: 17, MaxHour: 20, Days: Weekdays},
+			{ID: "bibliotheque", Label: "Réviser à la bibliothèque", Icon: "library", Minutes: 90, Effect: Needs{Fun: -5, Energy: -10}, MinHour: 8, MaxHour: 18, Days: Workweek},
+			{ID: "conference", Label: "Assister à une conférence", Icon: "presentation", Minutes: 90, Effect: Needs{Fun: 15, Social: 15, Energy: -5}, MinHour: 9, MaxHour: 17, Days: Weekdays},
+		},
+		Events: []RandomEvent{
+			{Text: "Ton professeur te félicite devant toute la classe.", Effect: Needs{Fun: 20}},
+			{Text: "Grève surprise : les cours sont annulés.", Effect: Needs{Fun: 10, Social: 5}},
+		},
+	},
+	"health": {
+		ID: "health", Label: "Santé", Icon: "hospital",
+		Interactions: []Interaction{
+			{ID: "consultation", Label: "Se faire consulter", Icon: "stethoscope", Minutes: 90, Cost: 3000, Effect: Needs{Energy: 15, Fun: -5}, MinHour: 7, MaxHour: 18},
+			{ID: "visite-malade", Label: "Rendre visite à un malade", Icon: "hand-heart", Minutes: 45, Effect: Needs{Social: 30, Fun: -5}, MinHour: 12, MaxHour: 19},
+		},
+		Events: []RandomEvent{
+			{Text: "La salle d'attente est pleine : tu patientes longtemps.", Effect: Needs{Fun: -15, Energy: -5}},
+			{Text: "L'infirmière te donne de bons conseils pour ta santé.", Effect: Needs{Energy: 10}},
+		},
+	},
+	"culture": {
+		ID: "culture", Label: "Culture", Icon: "drama",
+		Interactions: []Interaction{
+			{ID: "spectacle", Label: "Voir un spectacle", Icon: "drama", Minutes: 120, Cost: 3000, Effect: Needs{Fun: 45, Social: 15}, MinHour: 18, MaxHour: 23},
+			{ID: "exposition", Label: "Visiter une exposition", Icon: "palette", Minutes: 60, Cost: 1000, Effect: Needs{Fun: 25}, MinHour: 9, MaxHour: 18, Days: []int{Mardi, Mercredi, Jeudi, Vendredi, Samedi, Dimanche}},
+		},
+		Events: []RandomEvent{
+			{Text: "Tu croises l'artiste à la sortie : photo souvenir !", Effect: Needs{Fun: 20, Social: 10}},
 		},
 	},
 	"nature": {

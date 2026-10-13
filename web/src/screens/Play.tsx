@@ -11,7 +11,7 @@ import { Portrait } from '../avatar/portrait'
 import { Neighbourhood } from '../world3d/Neighbourhood'
 import { iconFor, kindColors } from '../components/icons'
 import { Chip, Coin, DayNight, IconTile, MotiveRing, Plumbob, Row, needColor } from '../components/ui'
-import { NEEDS, amount, atHome, available, clock, duration, hours, mood, predict, shift } from '../game/rules'
+import { NEEDS, amount, atHome, blockedBy, clock, duration, mood, openAt, openingLabel, predict, shift } from '../game/rules'
 import { BankApp, HomeApp, JobsApp, type Act } from './phoneApps'
 import { NewsApp, topicOf } from './NewsApp'
 
@@ -92,11 +92,12 @@ export function Play() {
 
   const slot = sim ? Math.floor(sim.gameMinutes / 120) : -1
   const where = sim?.commune
+  const whereCity = sim?.city
   useEffect(() => {
     if (!where || slot < 0) return
     let live = true
     api
-      .happening(where, slot * 120 + 1)
+      .happening(whereCity ?? '', where, slot * 120 + 1)
       .then((now) => {
         if (!live) return
         setStreet(now)
@@ -306,10 +307,10 @@ export function Play() {
       )}
 
       {placeId === 'happening' && street?.happening && (
-        <HappeningSheet now={street} sim={sim} hour={c.hour} commune={commune} onClose={() => setPlaceId(null)} onJoin={(it) => (setPlaceId(null), run(it.label, it.icon, 'happening', () => api.interact(sim.id, 'happening', it.id)))} />
+        <HappeningSheet now={street} sim={sim} commune={commune} onClose={() => setPlaceId(null)} onJoin={(it) => (setPlaceId(null), run(it.label, it.icon, 'happening', () => api.interact(sim.id, 'happening', it.id)))} />
       )}
       {placeId && placeId !== 'happening' && (
-        <InteractionMenu world={world} sim={sim} city={city} commune={commune} placeId={placeId} hour={c.hour} desktop={desktop} onClose={() => setPlaceId(null)} onPick={interact} onTravel={travel} onStop={stop} />
+        <InteractionMenu world={world} sim={sim} city={city} commune={commune} placeId={placeId} desktop={desktop} onClose={() => setPlaceId(null)} onPick={interact} onTravel={travel} onStop={stop} />
       )}
 
       {sim.activity && !placeId && <ActivityBar sim={sim} onStop={stop} stopping={!!pending} onRoute={() => setOverlay('map')} />}
@@ -372,6 +373,7 @@ function Phone({ world, sim, commune, journal, time, act, onClose, onMap, onWalk
                   {commune.name}, {city.name}
                 </div>
               </div>
+              <WordOfTheDay world={world} gameMinutes={sim.gameMinutes} />
               <div className="motion-stagger grid grid-cols-3 gap-x-3 gap-y-5">
                 {APPS.map((a) => (
                   <button key={a.id} onClick={a.open} className="flex flex-col items-center gap-1.5 active:scale-95">
@@ -427,7 +429,6 @@ type MenuProps = {
   city: City
   commune: Commune
   placeId: string
-  hour: number
   desktop: boolean
   onClose: () => void
   onPick: (it: Interaction, kind: string) => void
@@ -435,7 +436,7 @@ type MenuProps = {
   onStop: () => void
 }
 
-function InteractionMenu({ world, sim, city, commune, placeId, hour, desktop, onClose, onPick, onTravel, onStop }: MenuProps) {
+function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose, onPick, onTravel, onStop }: MenuProps) {
   const place = placeId === 'home' ? { name: 'Chez toi', kind: 'home' } : commune.places.find((p) => p.id === placeId)!
   const kind = world.kinds[place.kind]
   const colors = kindColors(place.kind)
@@ -444,7 +445,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, hour, desktop, on
   const career = world.careers.find((c) => c.id === sim.career && c.kind === place.kind)
   const items = [...(career ? [shift(career, sim.careerLevel)] : []), ...kind.interactions.map((it) => (placeId === 'home' ? atHome(it, home) : it))]
   const busy = !!sim.activity
-  const state = (it: Interaction) => ({ open: available(it, hour), broke: it.cost > 0 && sim.money < it.cost, busy })
+  const state = (it: Interaction) => ({ open: openAt(it, sim.gameMinutes), broke: it.cost > 0 && sim.money < it.cost, busy, reason: blockedBy(it, sim, city.id, commune.id) })
 
   // Desktop: the Sims radial menu around the place.
   if (desktop && here && !busy) {
@@ -518,8 +519,8 @@ function InteractionMenu({ world, sim, city, commune, placeId, hour, desktop, on
   )
 }
 
-function ActionButton({ it, colors, open, broke, busy, onPick, compact }: { it: Interaction; colors: [string, string]; open: boolean; broke: boolean; busy?: boolean; onPick: () => void; compact?: boolean }) {
-  const disabled = !open || broke || !!busy
+function ActionButton({ it, colors, open, broke, busy, reason, onPick, compact }: { it: Interaction; colors: [string, string]; open: boolean; broke: boolean; busy?: boolean; reason?: string | null; onPick: () => void; compact?: boolean }) {
+  const disabled = !open || broke || !!busy || !!reason
   const ups = NEEDS.filter((n) => it.effect[n.key] >= 10)
   return (
     <button
@@ -527,7 +528,7 @@ function ActionButton({ it, colors, open, broke, busy, onPick, compact }: { it: 
       onClick={onPick}
       className={`flex items-center gap-3 rounded-[20px] p-2.5 text-left transition ${compact ? 'w-60 bg-white shadow-[0_14px_30px_-10px_rgba(0,0,0,0.45)] hover:scale-105' : 'w-full bg-[var(--color-canvas)] active:scale-[0.98]'} ${disabled ? 'opacity-55 grayscale-[0.6] hover:scale-100' : ''}`}
     >
-      <IconTile icon={disabled && !open ? Lock : iconFor(it.icon)} colors={colors} size={44} />
+      <IconTile icon={disabled && (!open || reason) ? Lock : iconFor(it.icon)} colors={colors} size={44} />
       <span className="min-w-0 flex-1">
         <span className="block font-display text-[15px] leading-tight font-extrabold">{it.label}</span>
         <span className="mt-1 flex flex-wrap items-center gap-1">
@@ -540,7 +541,8 @@ function ActionButton({ it, colors, open, broke, busy, onPick, compact }: { it: 
               {amount(Math.abs(it.cost))} F
             </Chip>
           )}
-          {!open && <Chip tone="bad">{hours(it)}</Chip>}
+          {!open && <Chip tone="bad">{openingLabel(it)}</Chip>}
+          {reason && <Chip tone="bad">{reason}</Chip>}
           {ups.map((n) => (
             <span key={n.key} className="grid h-[22px] w-[22px] place-items-center rounded-full bg-[#e3f9ee] text-[var(--color-emerald-deep)]" title={`${n.label} +`}>
               <n.icon size={12} strokeWidth={3} />
@@ -554,7 +556,7 @@ function ActionButton({ it, colors, open, broke, busy, onPick, compact }: { it: 
 
 /* ---------- What's going on in the street ---------- */
 
-function HappeningSheet({ now, sim, hour, commune, onClose, onJoin }: { now: HappeningNow; sim: Sim; hour: number; commune: Commune; onClose: () => void; onJoin: (it: Interaction) => void }) {
+function HappeningSheet({ now, sim, commune, onClose, onJoin }: { now: HappeningNow; sim: Sim; commune: Commune; onClose: () => void; onJoin: (it: Interaction) => void }) {
   const h = now.happening!
   const left = Math.max(0, now.end - sim.gameMinutes)
   return (
@@ -580,7 +582,7 @@ function HappeningSheet({ now, sim, hour, commune, onClose, onJoin }: { now: Hap
         </div>
         <div className="p-4">
           {h.join ? (
-            <ActionButton it={h.join} colors={['#ffd54f', '#ffa000']} open={available(h.join, hour)} broke={h.join.cost > 0 && sim.money < h.join.cost} busy={!!sim.activity} onPick={() => onJoin(h.join!)} />
+            <ActionButton it={h.join} colors={['#ffd54f', '#ffa000']} open={openAt(h.join, sim.gameMinutes)} broke={h.join.cost > 0 && sim.money < h.join.cost} busy={!!sim.activity} reason={blockedBy(h.join, sim, sim.city, commune.id)} onPick={() => onJoin(h.join!)} />
           ) : (
             <p className="text-sm font-bold text-[var(--color-ink-soft)]">Rien à faire ici à part regarder… et attendre que ça passe.</p>
           )}
@@ -684,5 +686,27 @@ export function Journal({ events }: { events: JournalEvent[] }) {
         )
       })}
     </ol>
+  )
+}
+
+/** "Le mot du jour": a Nouchi or Ivorian French expression, one per real day, from the checked ones only. */
+function WordOfTheDay({ world, gameMinutes }: { world: World; gameMinutes: number }) {
+  const words = (world.expressions ?? []).filter((e) => e.source.status === 'verified' || e.source.status === 'partial')
+  if (!words.length) return null
+  const e = words[Math.floor(gameMinutes / (24 * 60)) % words.length]
+  return (
+    <div className="mb-5 rounded-2xl bg-white/15 p-3 text-white backdrop-blur">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[11px] font-extrabold tracking-wide uppercase opacity-80">Le mot du jour · {e.lang}</span>
+        {e.source.urls?.[0] && (
+          <a href={e.source.urls[0]} target="_blank" rel="noreferrer" className="text-[11px] font-bold underline opacity-80">
+            source
+          </a>
+        )}
+      </div>
+      <div className="mt-1 font-display text-xl leading-tight font-extrabold">« {e.text} »</div>
+      <p className="text-sm leading-snug font-semibold opacity-95">{e.meaning}</p>
+      <p className="mt-1 text-xs italic opacity-80">{e.example}</p>
+    </div>
   )
 }

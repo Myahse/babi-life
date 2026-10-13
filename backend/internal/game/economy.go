@@ -97,6 +97,8 @@ type Career struct {
 	MaxHour int   `json:"maxHour"`
 	Minutes int64 `json:"minutes"`
 	Effect  Needs `json:"effect"` // how a shift tires the Sim
+	// Days a shift can start (0 = lundi); empty = every day.
+	Days []int `json:"days,omitempty"`
 }
 
 type Level struct {
@@ -120,6 +122,16 @@ var Careers = []Career{
 	{ID: "ambiance", Label: "Ambiance", Icon: "disc-3", Kind: "club", MinHour: 21, MaxHour: 2, Minutes: 5 * 60,
 		Effect: Needs{Energy: -40, Hygiene: -15, Fun: 20, Social: 25},
 		Levels: []Level{{"DJ de quartier", 5000}, {"Animateur·rice", 10000}, {"DJ de la Rue Princesse", 18000}, {"Artiste coupé-décalé", 32000}, {"Star internationale", 60000}}},
+	// Public service careers, at the new places; pay is a game balance, not a real salary grid.
+	{ID: "mairie", Label: "Service municipal", Icon: "landmark", Kind: "mairie", MinHour: 7, MaxHour: 10, Minutes: 8 * 60, Days: Weekdays,
+		Effect: Needs{Energy: -30, Fun: -15, Hunger: -20, Social: 20},
+		Levels: []Level{{"Agent d'accueil", 5500}, {"Agent d'état civil", 10000}, {"Chef de service", 18000}, {"Secrétaire général·e", 30000}, {"Maire", 50000}}},
+	{ID: "enseignement", Label: "Enseignement", Icon: "graduation-cap", Kind: "school", MinHour: 7, MaxHour: 10, Minutes: 6 * 60, Days: Workweek,
+		Effect: Needs{Energy: -30, Fun: -5, Hunger: -15, Social: 20},
+		Levels: []Level{{"Surveillant·e", 5000}, {"Professeur·e contractuel·le", 9500}, {"Professeur·e titulaire", 16000}, {"Proviseur·e", 26000}, {"Président·e d'université", 45000}}},
+	{ID: "sante", Label: "Santé", Icon: "stethoscope", Kind: "health", MinHour: 6, MaxHour: 20, Minutes: 8 * 60,
+		Effect: Needs{Energy: -40, Hygiene: -10, Fun: -10, Social: 15},
+		Levels: []Level{{"Aide-soignant·e", 6000}, {"Infirmier·ère", 11000}, {"Sage-femme / Major", 17000}, {"Médecin", 30000}, {"Professeur·e de médecine", 52000}}},
 }
 
 func FindCareer(id string) (Career, bool) {
@@ -142,7 +154,7 @@ func (c Career) Shift(level int) Interaction {
 	l := c.Levels[level]
 	return Interaction{
 		ID: WorkInteractionID, Label: fmt.Sprintf("Aller au travail (%s)", l.Title), Icon: c.Icon,
-		Minutes: c.Minutes, Cost: -l.Pay, Effect: c.Effect, MinHour: c.MinHour, MaxHour: c.MaxHour,
+		Minutes: c.Minutes, Cost: -l.Pay, Effect: c.Effect, MinHour: c.MinHour, MaxHour: c.MaxHour, Days: c.Days,
 	}
 }
 

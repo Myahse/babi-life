@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { CarTaxiFront, Bus, Footprints, Globe2, Landmark, LocateFixed, MapPin, PartyPopper, X } from 'lucide-react'
+import { CarTaxiFront, Bus, Footprints, Globe2, Landmark, LocateFixed, MapPin, PartyPopper, TriangleAlert, X } from 'lucide-react'
 import type { City, Commune, Place, Sim, World } from '../lib/types'
 import { GameMap, type Camera } from '../components/map/GameMap'
 import { CIV_BOUNDS, Z_PLACE, Z_TOWN, allPins, boundsFor, routeBounds, type Padding, type Route } from '../components/map/pins'
@@ -180,6 +180,7 @@ function SelectionCard({ world, sim, s, onClose, onTravel, onWalk, onZoom }: { w
           </div>
           {close}
         </div>
+        {commune.admin && <p className="mt-1.5 text-xs font-bold text-[var(--color-ink-soft)]">Commune · {commune.admin.parent}</p>}
         <div className="mt-2 flex flex-wrap gap-1.5">
           <Chip>{commune.places.length} lieux</Chip>
           {here(city.id, commune.id) && <Chip tone="good">Tu es ici</Chip>}
@@ -208,6 +209,7 @@ function SelectionCard({ world, sim, s, onClose, onTravel, onWalk, onZoom }: { w
           </div>
           <div className="font-display text-xl leading-tight font-extrabold">{home ? 'Chez toi' : place.name}</div>
           <p className="mt-0.5 text-sm leading-snug font-semibold text-[var(--color-ink-soft)]">{home ? 'Dormir, se doucher, cuisiner' : `${kind!.interactions.length} activités sur place`}</p>
+          {!home && <PlaceFacts place={place} />}
         </div>
         {close}
       </div>
@@ -245,6 +247,11 @@ function TripCard({ sim, route }: { sim: Sim; route: Route }) {
         <div className="h-full rounded-full bg-[var(--color-orange)] transition-[width] duration-1000 ease-linear" style={{ width: `${route.progress * 100}%` }} />
       </div>
       <div className="mt-1.5 text-xs font-extrabold text-[var(--color-ink-soft)]">{left > 0 ? `Encore ${duration(left)} de route` : 'On arrive…'}</div>
+      {a.trip?.incident && (
+        <p className="mt-2 flex items-start gap-1.5 rounded-xl bg-[#fff4e5] px-3 py-2 text-xs font-bold text-[#a35200]">
+          <TriangleAlert size={14} className="mt-px shrink-0" /> {a.trip.incident}
+        </p>
+      )}
     </Card>
   )
 }
@@ -269,4 +276,17 @@ function useTrip(world: World, sim: Sim): Route | null {
     const progress = Math.min(1, Math.max(0, ((now - EPOCH) / 60000 - a.start) / Math.max(1, a.end - a.start)))
     return { from: [from.lng, from.lat], to: [to.lng, to.lat], progress, mode: t.mode, toId: `${t.city}/${t.commune}`, label: t.city === t.fromCity ? to.name : `${to.name}, ${toCity!.name}` }
   }, [a, now, world])
+}
+
+/** Real or invented, who runs it, and whether it still exists: from the world data's provenance. */
+function PlaceFacts({ place }: { place: Place }) {
+  const verified = place.source?.status === 'verified' || place.source?.status === 'partial'
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+      {place.real ? <Chip tone={verified ? 'good' : 'neutral'}>{verified ? 'Lieu réel' : 'Lieu réel, à vérifier'}</Chip> : <Chip>Lieu du jeu</Chip>}
+      {place.quarter && <Chip>{place.quarter}</Chip>}
+      {place.operator && <Chip>{place.operator}</Chip>}
+      {place.closed && <Chip tone="bad">Fermé en vrai depuis {place.closed.slice(0, 4)}</Chip>}
+    </div>
+  )
 }

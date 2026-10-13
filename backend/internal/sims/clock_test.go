@@ -95,3 +95,24 @@ func TestActivityDueNowEnds(t *testing.T) {
 		t.Fatalf("an activity due now must end: %+v %v", s.Activity, ev)
 	}
 }
+
+// alwaysSource makes every random draw 0: every possible incident happens.
+type alwaysSource struct{}
+
+func (alwaysSource) Uint64() uint64 { return 0 }
+
+func TestCrossingTheLagoonAtRushHourCanJam(t *testing.T) {
+	s := newSim()                                           // in Yopougon (north bank) at noon
+	s.GameMinutes = game.MinuteOf(noon.Add(-4 * time.Hour)) // 8h
+	abj, _ := world.FindCity("abidjan")
+	marcory, _ := abj.Commune("marcory")
+	yop, _ := abj.Commune("yopougon")
+	base, _ := world.Trip(abj, yop, abj, marcory)
+	if err := s.leaveWith(abj, marcory, rand.New(alwaysSource{})); err != nil {
+		t.Fatal(err)
+	}
+	a := s.Activity
+	if a.Trip.Incident == "" || a.End-a.Start <= base {
+		t.Fatalf("a jam should slow the trip: incident %q, %d min vs %d", a.Trip.Incident, a.End-a.Start, base)
+	}
+}

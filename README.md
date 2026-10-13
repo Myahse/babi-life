@@ -95,4 +95,25 @@ Le *service worker* (`vite-plugin-pwa`) garde en cache le code, les polices et l
 - **Départs, logements, carrières, loyer et microcrédit** : `backend/internal/game/economy.go`
 - **Règles** (vitesse du temps, baisse des besoins, chance d'évènement) : `backend/internal/game/needs.go` et `sim.go`. `web/src/game/rules.ts` reprend les mêmes constantes pour le HUD.
 
-Un test vérifie que chaque lieu utilise un type qui existe et que tous les identifiants sont uniques.
+- **Jours fériés et calendrier** (jours de la semaine, Pâques calculée, fêtes déclarées chaque année) : `backend/internal/game/calendar.go`
+- **Incidents de trajet** (bouchon sur les ponts, contrôle routier…, selon l'itinéraire) : `backend/internal/game/trips.go`
+- **Expressions** (nouchi et français ivoirien, avec sens, exemple et source) : `backend/internal/game/expressions.go`
+
+### Données du monde : réel ou inventé, et sources
+
+Le monde couvre les **13 communes du District autonome d'Abidjan** (dont Anyama, Bingerville et Songon) et **Yamoussoukro, Bouaké, Grand-Bassam, San-Pédro, Man, Korhogo et Daloa**. Chaque commune a son rattachement administratif (district, département, région), sa **mairie** (un lieu jouable) et, à Abidjan, sa rive de la lagune (nord/sud), qui décide des bouchons sur les ponts.
+
+Chaque lieu dit s'il est **réel** (`real`) ou **inventé pour le jeu**, d'où vient l'information (`source` : statut `verified`, `partial`, `unverified` ou `fictional`, liens, date de vérification), si sa position est **approximative** (`approx`), son quartier, son **propriétaire** et son **gestionnaire** (gardés séparés, laissés vides quand on ne sait pas), et s'il a **fermé** dans la réalité (la Rue Princesse, rasée en 2011). Les évènements, jours fériés, incidents et expressions portent la même provenance. Les horaires et les prix des activités sont des **règles du jeu**, pas des horaires ou tarifs réels.
+
+Les activités peuvent avoir des **jours d'ouverture** (`days`) et des **conditions** (`requires` : habitants de la commune seulement, argent minimum, métier, trait). Les évènements de quartier peuvent être limités à des **villes ou communes**, des **mois** (festivals), des **jours** ou un **jour férié** ; le même évènement ne revient jamais deux créneaux de suite.
+
+**« À corriger » (Look to fix)** : `world.Audit()` liste tout ce qui manque ou cloche — champs obligatoires, données réelles non vérifiées, positions approximatives, lieux hors de leur commune ou du pays, doublons, mairie manquante ou en double, références cassées (types, métiers, communes, jours fériés), évènements incomplets, fêtes lunaires dont la date de l'année n'est pas encore saisie, lieux fermés encore actifs. Les **erreurs** font échouer les tests ; les **avertissements** sont le travail restant.
+
+```bash
+cd backend
+go run ./cmd/worldcheck           # toute la liste
+go run ./cmd/worldcheck -errors   # seulement les erreurs (code de sortie 1 s'il y en a)
+curl localhost:8080/api/v1/world/issues   # la même liste en JSON
+```
+
+Pour compléter une donnée : corriger l'entrée dans le code (garder son identifiant, les Sims existants s'y réfèrent), mettre sa `source` à jour avec les liens consultés et la date, relancer `go test ./...`.

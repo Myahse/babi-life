@@ -45,7 +45,7 @@ export type NewSim = {
 export const api = {
   world: () => request<World>('/world'),
   news: () => request<{ items: NewsItem[]; updated: string }>('/news'),
-  happening: (commune: string, gameMinutes: number) => request<HappeningNow>(`/happening?commune=${encodeURIComponent(commune)}&t=${Math.floor(gameMinutes)}`),
+  happening: (city: string, commune: string, gameMinutes: number) => request<HappeningNow>(`/happening?city=${encodeURIComponent(city)}&commune=${encodeURIComponent(commune)}&t=${Math.floor(gameMinutes)}`),
   googleLogin: (credential: string) => post<Session>('/auth/google', { credential }),
   devLogin: (name: string) => post<Session>('/auth/dev', { name }),
   register: (u: { firstName: string; lastName: string; username: string; email: string; password: string }) => post<Session>('/auth/register', u),

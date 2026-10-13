@@ -6,7 +6,10 @@ import (
 
 var (
 	ErrNotEnoughMoney = errors.New("pas assez d'argent")
-	ErrClosed         = errors.New("pas disponible à cette heure")
+	ErrClosed         = errors.New("pas disponible à cette heure ou ce jour-là")
+	ErrResidentsOnly  = errors.New("réservé aux habitants de la commune")
+	ErrWrongCareer    = errors.New("réservé aux personnes qui travaillent ici")
+	ErrNotYourThing   = errors.New("ton Sim n'a pas le caractère pour ça")
 )
 
 // State is the part of a Sim that the rules change.
@@ -27,6 +30,24 @@ type Outcome struct {
 const RandomEventChance = 0.35
 
 // Available reports whether the interaction can start at the given game hour.
+// OpenAt reports whether it can be started at a game minute: the right hour
+// and, when it has opening days, the right day of the week.
+func (it Interaction) OpenAt(gameMinutes int64) bool {
+	if !it.Available(HourOf(gameMinutes)) {
+		return false
+	}
+	if len(it.Days) == 0 {
+		return true
+	}
+	d := WeekdayOf(gameMinutes)
+	for _, x := range it.Days {
+		if x == d {
+			return true
+		}
+	}
+	return false
+}
+
 func (it Interaction) Available(hour int) bool {
 	if it.MinHour == 0 && it.MaxHour == 0 {
 		return true

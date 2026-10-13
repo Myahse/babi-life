@@ -46,6 +46,10 @@ const THEMES: Record<string, Partial<Theme>> = {
   koumassi: { fillers: { cour: 6, shop: 2, stall: 2 }, pedestrians: 18, vehicles: 6, woro: '#d6336c', water: 'lagoon', side: 'laterite' },
   'port-bouet': { fillers: { cour: 4, villa: 2, stall: 2, warehouse: 1 }, trees: 'palm', pedestrians: 12, vehicles: 5, woro: '#d6336c', water: 'sea', ground: '#e6cf9f' },
   attecoube: { fillers: { cour: 6, stall: 1, park: 1 }, trees: 'mango', pedestrians: 14, vehicles: 4, woro: '#00a862', water: 'lagoon', backdrop: 'forest', side: 'laterite' },
+  // Peripheral communes of the district (woro-woro colour left at the default: not verified).
+  anyama: { fillers: { cour: 6, stall: 3, shop: 1, park: 1 }, trees: 'mango', pedestrians: 12, vehicles: 4, side: 'laterite', backdrop: 'forest', ground: '#d39a62' },
+  bingerville: { fillers: { colonial: 3, villa: 3, park: 2, cour: 2 }, trees: 'mixed', pedestrians: 9, vehicles: 4, water: 'lagoon' },
+  songon: { fillers: { cour: 5, hut: 1, stall: 2, park: 1 }, trees: 'palm', pedestrians: 8, vehicles: 3, water: 'lagoon', side: 'laterite' },
   // Other cities: one district each for now.
   'yakro-centre': { fillers: { villa: 3, office: 2, park: 3, shop: 1 }, trees: 'palm', pedestrians: 8, vehicles: 4, woro: '#2fb3e0', water: 'lagoon' },
   'bouake-centre': { fillers: { shop: 4, stall: 4, cour: 3 }, pedestrians: 18, vehicles: 6, woro: '#00a862', side: 'laterite', ground: '#d6a26a' },

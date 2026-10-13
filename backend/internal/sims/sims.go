@@ -294,7 +294,7 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 		var kind game.PlaceKind
 		home := req.PlaceID == HomePlaceID
 		if req.PlaceID == HappeningPlaceID {
-			h, _, ok := game.HappeningAt(s.Commune, s.GameMinutes)
+			h, _, ok := game.HappeningAt(s.City, s.Commune, s.GameMinutes)
 			if !ok || h.Join == nil || req.InteractionID != game.JoinHappeningID {
 				return game.Outcome{}, nil, errors.New("c'est fini, il n'y a plus rien ici")
 			}
@@ -334,6 +334,11 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 			if home {
 				it = s.housing().AtHome(it)
 			}
+		}
+
+		// Who may do it: residents only, enough money, the right trait or job.
+		if err := it.Requires.Check(game.Who{Resident: s.City == s.HomeCity && s.Commune == s.HomeCommune, Money: s.Money, Traits: s.Traits, Career: s.Career}); err != nil {
+			return game.Outcome{}, nil, err
 		}
 
 		placeName := kind.Label
@@ -401,7 +406,11 @@ func (h *Handler) travel(w http.ResponseWriter, r *http.Request) {
 			return game.Outcome{}, nil, err
 		}
 		t := s.Activity.Trip
-		return game.Outcome{Text: fmt.Sprintf("%s (%s)", t.Label, humanMinutes(s.Activity.Interaction.Minutes)), Money: -t.Fare}, nil, nil
+		text := fmt.Sprintf("%s (%s)", t.Label, humanMinutes(s.Activity.Interaction.Minutes))
+		if t.Incident != "" {
+			text += " · " + t.Incident
+		}
+		return game.Outcome{Text: text, Money: -t.Fare}, nil, nil
 	})
 }
 

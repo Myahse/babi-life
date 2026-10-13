@@ -2,7 +2,8 @@ import {
   Banana, Banknote, Car, CloudRain, IdCard, Shield, Umbrella, ZapOff, Beer, Bed, BedDouble, BedSingle, Castle, ChefHat, DoorOpen, Gem, HandCoins, Newspaper, Sofa, Briefcase, Building2, Bus, Camera, Coffee, CookingPot, Disc3, Drumstick, Fish,
   Flame, Footprints, HandHeart, Heart, Hourglass, House, Landmark, MessagesSquare, Moon, Mountain, Music, Palette,
   PartyPopper, PiggyBank, ShoppingBasket, ShowerHead, Smartphone, Sparkles, Store, Sunset, TreePalm, Trophy, Tv, Users,
-  Volleyball, Waves, type LucideIcon,
+  Volleyball, Waves, Baby, Bird, BookOpen, BrushCleaning, Cake, CarTaxiFront, Drama, Drum, FileText, Flag, Flower2, Gift, GraduationCap, Hammer,
+  Hospital, Library, Presentation, Shovel, Stamp, Stethoscope, Utensils, type LucideIcon,
 } from 'lucide-react'
 
 // Icon names sent by the API (backend/internal/game) → components.
@@ -17,6 +18,10 @@ const REGISTRY: Record<string, LucideIcon> = {
   'bed-single': BedSingle, castle: Castle, 'chef-hat': ChefHat, 'door-open': DoorOpen, gem: Gem, 'hand-coins': HandCoins,
   newspaper: Newspaper, sofa: Sofa,
   car: Car, 'cloud-rain': CloudRain, 'id-card': IdCard, shield: Shield, umbrella: Umbrella, 'zap-off': ZapOff,
+  baby: Baby, bird: Bird, 'book-open': BookOpen, 'brush-cleaning': BrushCleaning, cake: Cake, 'car-taxi-front': CarTaxiFront,
+  drama: Drama, drum: Drum, 'file-text': FileText, flag: Flag, 'flower-2': Flower2, gift: Gift, 'graduation-cap': GraduationCap,
+  hammer: Hammer, hospital: Hospital, library: Library, presentation: Presentation, shovel: Shovel, sparkles: Sparkles,
+  stamp: Stamp, stethoscope: Stethoscope, utensils: Utensils,
 }
 
 export const iconFor = (name: string): LucideIcon => REGISTRY[name] ?? Sparkles
@@ -34,5 +39,9 @@ export const KIND_COLORS: Record<string, [string, string]> = {
   sport: ['#69e2a0', '#00a862'],
   nature: ['#9be15d', '#2fa84f'],
   happening: ['#ffd54f', '#ffa000'],
+  mairie: ['#69e2a0', '#00895a'],
+  school: ['#7fd3ff', '#1e88e5'],
+  health: ['#ff9aa8', '#e53950'],
+  culture: ['#ffb07a', '#d9480f'],
 }
 export const kindColors = (kind: string) => KIND_COLORS[kind] ?? ['#c3c8dc', '#7a8099']

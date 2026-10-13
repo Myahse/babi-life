@@ -125,6 +125,11 @@ func (s *Sim) start(it game.Interaction, placeID, placeKind, placeName string, s
 
 // leave sets off on a trip by taxi (inside a city) or car (between cities).
 func (s *Sim) leave(toCity world.City, toCommune world.Commune) error {
+	return s.leaveWith(toCity, toCommune, newRand())
+}
+
+// leaveWith starts a trip; rng draws the incident that may slow it down.
+func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, rng *rand.Rand) error {
 	if s.Activity != nil {
 		return game.ErrBusy
 	}
@@ -142,10 +147,19 @@ func (s *Sim) leave(toCity world.City, toCommune world.Commune) error {
 	if fromCity.ID != toCity.ID {
 		mode, label = "car", fmt.Sprintf("Trajet %s → %s en car", fromCity.Name, toCity.Name)
 	}
+	trip := &game.Trip{FromCity: fromCity.ID, FromCommune: fromCommune.ID, City: toCity.ID, Commune: toCommune.ID, Mode: mode, Fare: fare, Label: label}
+	// Only incidents that fit this route can happen: a jam on the bridges for
+	// a trip across the lagoon, a roadblock on an intercity road…
+	route := game.Route{FromCity: fromCity.ID, FromCommune: fromCommune.ID, ToCity: toCity.ID, ToCommune: toCommune.ID, FromBank: fromCommune.Admin.Bank, ToBank: toCommune.Admin.Bank}
+	if inc := game.IncidentFor(route, s.GameMinutes, rng); inc != nil {
+		minutes += inc.Extra
+		trip.Incident = inc.Text
+		s.Needs = s.Needs.Add(inc.Effect)
+	}
 	s.Activity = &game.Activity{
 		Kind: "travel", Interaction: game.Interaction{ID: "travel", Label: label, Icon: "car-taxi-front", Minutes: minutes},
 		Start: s.GameMinutes, End: s.GameMinutes + minutes,
-		Trip: &game.Trip{FromCity: fromCity.ID, FromCommune: fromCommune.ID, City: toCity.ID, Commune: toCommune.ID, Mode: mode, Fare: fare, Label: label},
+		Trip: trip,
 	}
 	return nil
 }

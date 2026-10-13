@@ -68,6 +68,40 @@ export function available(it: Interaction, hour: number) {
   return min < end ? hour >= min && hour < end : hour >= min || hour < end
 }
 
+/** 0 = lundi … 6 = dimanche (the epoch is a Monday). */
+export const weekdayOf = (gameMinutes: number) => Math.floor(gameMinutes / (24 * 60)) % 7
+const DAY_SHORT = ['lun', 'mar', 'mer', 'jeu', 'ven', 'sam', 'dim']
+
+/** Open at this game minute: the right hour and, if it has opening days, the right day. */
+export function openAt(it: Interaction, gameMinutes: number) {
+  if (!available(it, Math.floor(gameMinutes / 60) % 24)) return false
+  return !it.days?.length || it.days.includes(weekdayOf(gameMinutes))
+}
+
+/** "08h–16h · lun–ven" */
+export function openingLabel(it: Interaction) {
+  const h = it.minHour || it.maxHour ? hours(it) : ''
+  const d = it.days?.length ? daysLabel(it.days) : ''
+  return [h, d].filter(Boolean).join(' · ') || 'fermé'
+}
+
+export function daysLabel(days: number[]) {
+  const s = [...days].sort((a, b) => a - b)
+  const run = s.every((d, i) => i === 0 || d === s[i - 1] + 1)
+  return run && s.length > 2 ? `${DAY_SHORT[s[0]]}–${DAY_SHORT[s[s.length - 1]]}` : s.map((d) => DAY_SHORT[d]).join(', ')
+}
+
+/** Why this Sim can't do it (mirrors game.Requirement.Check), or null. */
+export function blockedBy(it: Interaction, sim: Sim, cityId: string, communeId: string): string | null {
+  const r = it.requires
+  if (!r) return null
+  if (r.resident && !(sim.homeCity === cityId && sim.homeCommune === communeId && sim.city === cityId && sim.commune === communeId)) return 'Habitants seulement'
+  if (r.minMoney && sim.money < r.minMoney) return `Il faut ${amount(r.minMoney)} F`
+  if (r.career && sim.career !== r.career) return 'Réservé au personnel'
+  if (r.anyTrait?.length && !r.anyTrait.some((t) => sim.traits.includes(t))) return 'Pas ton caractère'
+  return null
+}
+
 export const fcfa = (n: number) => `${n.toLocaleString('fr-FR')} F`
 export const amount = (n: number) => n.toLocaleString('fr-FR')
 

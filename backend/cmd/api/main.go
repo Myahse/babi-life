@@ -75,8 +75,15 @@ func main() {
 				"origins":     game.Origins,
 				"housings":    game.Housings,
 				"careers":     game.Careers,
+				"expressions": game.Expressions,
+				"holidays":    game.Holidays,
 				"config":      map[string]any{"devLogin": cfg.DevLogin, "googleLogin": authH.Verifier != nil},
 			})
+		})
+		// The "Look to fix" list of the world data (see world.Audit).
+		r.Get("/world/issues", func(w http.ResponseWriter, r *http.Request) {
+			issues := world.Audit()
+			httpx.JSON(w, http.StatusOK, map[string]any{"summary": world.Summary(issues), "issues": issues})
 		})
 		// What is going on in a commune at a game minute (null when it's quiet).
 		r.Get("/happening", func(w http.ResponseWriter, r *http.Request) {
@@ -85,7 +92,7 @@ func main() {
 				httpx.Error(w, http.StatusBadRequest, "t is required")
 				return
 			}
-			h, start, ok := game.HappeningAt(r.URL.Query().Get("commune"), t)
+			h, start, ok := game.HappeningAt(r.URL.Query().Get("city"), r.URL.Query().Get("commune"), t)
 			if !ok {
 				httpx.JSON(w, http.StatusOK, map[string]any{"happening": nil, "start": start, "end": start + game.HappeningMinutes})
 				return

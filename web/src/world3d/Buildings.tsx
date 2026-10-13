@@ -267,6 +267,105 @@ function Nature({ name }: Props) {
   )
 }
 
+// The Ivorian flag: orange, white, green vertical bands.
+function Flag({ p }: { p: [number, number, number] }) {
+  const [x, y, z] = p
+  return (
+    <group>
+      <Box p={[x, y + 3, z]} s={[0.12, 6, 0.12]} c="#dee2e6" />
+      <Box p={[x + 0.45, y + 5.5, z]} s={[0.6, 0.9, 0.05]} c="#ff8200" />
+      <Box p={[x + 1.05, y + 5.5, z]} s={[0.6, 0.9, 0.05]} c="#ffffff" />
+      <Box p={[x + 1.65, y + 5.5, z]} s={[0.6, 0.9, 0.05]} c="#009a44" />
+    </group>
+  )
+}
+
+/** Hôtel de ville: white civic block, columned portico, steps and the flag. */
+function Mairie({ night }: Props) {
+  return (
+    <group>
+      <Box p={[0, 3, -2]} s={[11, 6, 6]} c="#f4f1ea" />
+      <Box p={[0, 6.2, -2]} s={[11.6, 0.4, 6.6]} c="#d8cfc0" />
+      <Windows w={11} h={2.2} y0={1.8} z={1.05} floors={2} cols={5} night={night} color="#9cc9e8" />
+      {/* Portico */}
+      <Box p={[0, 4.6, 2.2]} s={[5.4, 0.5, 2.4]} c="#e9e2d4" />
+      {[-2.2, -0.75, 0.75, 2.2].map((x) => (
+        <Box key={x} p={[x, 2.2, 3.1]} s={[0.4, 4.4, 0.4]} c="#ffffff" />
+      ))}
+      <Box p={[0, 0.15, 3.8]} s={[6, 0.3, 1.6]} c="#d8cfc0" />
+      <Box p={[0, 1.3, 1.1]} s={[1.6, 2.6, 0.1]} c="#6b4423" />
+      <Sign p={[0, 5.2, 3.45]} w={4.4} text="MAIRIE" bg="#00895a" />
+      <Flag p={[5, 0, 4.2]} />
+      <Tree p={[-5, 0, 4]} s={0.8} />
+    </group>
+  )
+}
+
+/** School or university: a long ochre block with a courtyard and the flag. */
+function School({ name, night }: Props) {
+  const label = /université|inp/i.test(name) ? 'UNIVERSITÉ' : 'ÉCOLE'
+  return (
+    <group>
+      <Box p={[0, 2.6, -3]} s={[12.5, 5.2, 4.5]} c="#f2c879" />
+      <Box p={[0, 5.35, -3]} s={[13, 0.3, 5]} c="#b5651d" />
+      <Windows w={12} h={2.2} y0={1.6} z={-0.7} floors={2} cols={6} night={night} color="#a5d8ff" />
+      {/* Covered walkway along the front */}
+      <Box p={[0, 2.6, 0.6]} s={[12.5, 0.15, 2]} c="#9aa5b1" />
+      {[-5.8, -2, 2, 5.8].map((x) => (
+        <Box key={x} p={[x, 1.3, 1.5]} s={[0.2, 2.6, 0.2]} c="#6c757d" />
+      ))}
+      <Box p={[0, 0.06, 3.6]} s={[9, 0.12, 3.4]} c="#d9c9a8" />
+      <Sign p={[0, 4.6, -0.65]} w={6} text={label} bg="#1e88e5" />
+      <Flag p={[-5.5, 0, 4.5]} />
+      <Tree p={[5, 0, 4.3]} s={0.9} />
+    </group>
+  )
+}
+
+/** Hospital: white block with a red cross, an entrance canopy and an ambulance bay. */
+function Health({ night }: Props) {
+  return (
+    <group>
+      <Box p={[0, 3.5, -2.5]} s={[11, 7, 5.5]} c="#ffffff" />
+      <Box p={[0, 0.5, -2.5]} s={[11.05, 1, 5.55]} c="#74c0fc" />
+      <Windows w={11} h={2} y0={2.2} z={0.3} floors={3} cols={5} night={night} color="#d0ebff" />
+      {/* Red cross */}
+      <Box p={[0, 6.2, 0.35]} s={[0.5, 1.5, 0.1]} c="#e03131" glow={night ? 0.8 : 0} />
+      <Box p={[0, 6.2, 0.36]} s={[1.5, 0.5, 0.1]} c="#e03131" glow={night ? 0.8 : 0} />
+      <Box p={[0, 2.4, 1.8]} s={[4.5, 0.2, 2.6]} c="#adb5bd" />
+      {[-2, 2].map((x) => (
+        <Box key={x} p={[x, 1.2, 2.9]} s={[0.2, 2.4, 0.2]} c="#868e96" />
+      ))}
+      <Box p={[0, 1.1, 0.3]} s={[2, 2.2, 0.1]} c="#a5d8ff" />
+      <Sign p={[0, 3, 3.05]} w={4} text="URGENCES" bg="#e03131" />
+      <Box p={[-4.5, 0.06, 3.4]} s={[3.5, 0.12, 3]} c="#ced4da" />
+    </group>
+  )
+}
+
+/** Cultural venue: a big hall with a sweeping roof and a banner. */
+function Culture({ name, night }: Props) {
+  const text = name.length > 16 ? 'CULTURE' : name.toUpperCase()
+  return (
+    <group>
+      <Box p={[0, 3, -2.5]} s={[11.5, 6, 6]} c="#ffd8a8" />
+      <mesh position={[0, 6.4, -2.5]} rotation={[0, 0, Math.PI / 2]} castShadow>
+        <cylinderGeometry args={[1.4, 1.4, 12.5, 16, 1, false, 0, Math.PI]} />
+        <Mat color="#d9480f" />
+      </mesh>
+      <Windows w={11} h={2} y0={2.2} z={0.55} floors={2} cols={3} night={night} color="#ffe8cc" />
+      <Box p={[0, 1.4, 0.6]} s={[3.6, 2.8, 0.1]} c="#5c3d2e" />
+      <Sign p={[0, 5.2, 0.6]} w={7} text={text} bg="#7b2cbf" />
+      {[-4.5, 4.5].map((x) => (
+        <Box key={x} p={[x, 2.5, 2.4]} s={[0.15, 5, 0.15]} c="#495057" />
+      ))}
+      <Box p={[0, 0.06, 3.5]} s={[10, 0.12, 3]} c="#e9d8c4" />
+      <Lamp p={[-5, 0, 4.5]} night={night} />
+      <Lamp p={[5, 0, 4.5]} night={night} />
+    </group>
+  )
+}
+
 const BY_KIND: Record<string, (p: Props) => React.ReactElement> = {
   home: House,
   maquis: Maquis,
@@ -278,6 +377,10 @@ const BY_KIND: Record<string, (p: Props) => React.ReactElement> = {
   club: Club,
   sport: Pitch,
   nature: Nature,
+  mairie: Mairie,
+  school: School,
+  health: Health,
+  culture: Culture,
 }
 
 export function Building({ kind, ...props }: Props & { kind: string }) {
