@@ -1,0 +1,128 @@
+package auth
+
+import (
+	"context"
+	"crypto/rsa"
+	"encoding/base64"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"math/big"
+	"net/http"
+	"sync"
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+)
+
+const googleCertsURL = "https://www.googleapis.com/oauth2/v3/certs"
+
+// GoogleIdentity is what we keep from a verified Google ID token.
+type GoogleIdentity struct {
+	Sub     string
+	Email   string
+	Name    string
+	Picture string
+}
+
+// GoogleVerifier checks ID tokens issued by Google Sign-In against Google's
+// published signing keys, which it caches for an hour.
+type GoogleVerifier struct {
+	clientID string
+	client   *http.Client
+
+	mu      sync.Mutex
+	keys    map[string]*rsa.PublicKey
+	fetched time.Time
+}
+
+func NewGoogleVerifier(clientID string) *GoogleVerifier {
+	return &GoogleVerifier{clientID: clientID, client: &http.Client{Timeout: 10 * time.Second}}
+}
+
+type googleClaims struct {
+	Email         string `json:"email"`
+	EmailVerified bool   `json:"email_verified"`
+	Name          string `json:"name"`
+	Picture       string `json:"picture"`
+	jwt.RegisteredClaims
+}
+
+func (v *GoogleVerifier) Verify(ctx context.Context, idToken string) (GoogleIdentity, error) {
+	var claims googleClaims
+	_, err := jwt.ParseWithClaims(idToken, &claims, func(t *jwt.Token) (any, error) {
+		kid, _ := t.Header["kid"].(string)
+		return v.key(ctx, kid)
+	},
+		jwt.WithValidMethods([]string{"RS256"}),
+		jwt.WithAudience(v.clientID),
+		jwt.WithExpirationRequired(),
+	)
+	if err != nil {
+		return GoogleIdentity{}, err
+	}
+	if claims.Issuer != "accounts.google.com" && claims.Issuer != "https://accounts.google.com" {
+		return GoogleIdentity{}, errors.New("unexpected issuer")
+	}
+	if !claims.EmailVerified || claims.Email == "" {
+		return GoogleIdentity{}, errors.New("email not verified")
+	}
+	return GoogleIdentity{Sub: claims.Subject, Email: claims.Email, Name: claims.Name, Picture: claims.Picture}, nil
+}
+
+func (v *GoogleVerifier) key(ctx context.Context, kid string) (*rsa.PublicKey, error) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	if k, ok := v.keys[kid]; ok && time.Since(v.fetched) < time.Hour {
+		return k, nil
+	}
+	if err := v.refresh(ctx); err != nil {
+		return nil, err
+	}
+	if k, ok := v.keys[kid]; ok {
+		return k, nil
+	}
+	return nil, fmt.Errorf("unknown key id %q", kid)
+}
+
+func (v *GoogleVerifier) refresh(ctx context.Context) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, googleCertsURL, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := v.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("fetch google certs: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("fetch google certs: %s", resp.Status)
+	}
+
+	var set struct {
+		Keys []struct {
+			Kid string `json:"kid"`
+			N   string `json:"n"`
+			E   string `json:"e"`
+		} `json:"keys"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&set); err != nil {
+		return err
+	}
+
+	keys := make(map[string]*rsa.PublicKey, len(set.Keys))
+	for _, k := range set.Keys {
+		n, err := base64.RawURLEncoding.DecodeString(k.N)
+		if err != nil {
+			return err
+		}
+		e, err := base64.RawURLEncoding.DecodeString(k.E)
+		if err != nil {
+			return err
+		}
+		keys[k.Kid] = &rsa.PublicKey{N: new(big.Int).SetBytes(n), E: int(new(big.Int).SetBytes(e).Int64())}
+	}
+	v.keys, v.fetched = keys, time.Now()
+	return nil
+}
