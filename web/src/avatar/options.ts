@@ -41,6 +41,7 @@ export const ACCESSORIES: Choice[] = [
   { id: 'earrings', label: "Boucles d'oreilles" },
   { id: 'chain', label: 'Chaîne en or' },
   { id: 'cap', label: 'Casquette' },
+  { id: 'capback', label: "Casquette à l'envers" },
 ]
 
 export const OUTFITS: Choice[] = [
@@ -51,6 +52,8 @@ export const OUTFITS: Choice[] = [
   { id: 'suit', label: 'Costume' },
   { id: 'jersey', label: 'Maillot des Éléphants' },
   { id: 'debardeur', label: 'Débardeur & short' },
+  { id: 'survet', label: 'Survêtement' },
+  { id: 'basket', label: 'Tenue de basket' },
 ]
 
 export const MARKS: Choice[] = [
@@ -97,7 +100,7 @@ export const metres = (scale: number, gender: 'femme' | 'homme') => BASE_HEIGHT[
 export const scaleFor = (m: number, gender: 'femme' | 'homme') => m / BASE_HEIGHT[gender]
 
 /** Colours an outfit starts with when it's picked: the kit of the Éléphants is orange. */
-export const OUTFIT_DEFAULT_COLOR: Record<string, string> = { jersey: '#ff8200', suit: '#1f2a44', debardeur: '#f8f9fa' }
+export const OUTFIT_DEFAULT_COLOR: Record<string, string> = { jersey: '#ff8200', suit: '#1f2a44', debardeur: '#f8f9fa', basket: '#1d428a' }
 
 /** Sims made before the creator grew: fill the new fields. */
 export function fullLook(look: Look): Required<Look> {
@@ -112,7 +115,7 @@ export function randomLook(gender: 'femme' | 'homme', random: () => number = Mat
   const pick = <T,>(a: readonly T[]) => a[Math.floor(random() * a.length)]
   const femme = gender === 'femme'
   const hairs = femme ? ['braids', 'afro', 'bun', 'weave', 'headwrap', 'locks', 'short'] : ['short', 'bald', 'afro', 'locks', 'short']
-  const outfits = femme ? ['pagne', 'boubou', 'casual', 'robe', 'jersey', 'debardeur'] : ['pagne', 'boubou', 'casual', 'suit', 'jersey', 'debardeur']
+  const outfits = femme ? ['pagne', 'boubou', 'casual', 'robe', 'jersey', 'debardeur', 'survet'] : ['pagne', 'boubou', 'casual', 'suit', 'jersey', 'debardeur', 'survet', 'basket']
   const outfit = pick(outfits)
   return {
     skin: pick(SKIN_TONES.slice(2)),
@@ -124,7 +127,7 @@ export function randomLook(gender: 'femme' | 'homme', random: () => number = Mat
     height: Math.round((0.94 + random() * 0.12) * 100) / 100,
     eyes: pick(EYE_COLORS.slice(0, 3)),
     beard: femme ? 'none' : pick(BEARDS).id,
-    accessory: femme ? pick(['earrings', 'earrings', 'glasses', 'chain', 'none']) : pick(['none', 'chain', 'glasses', 'cap']),
+    accessory: femme ? pick(['earrings', 'earrings', 'glasses', 'chain', 'none']) : pick(['none', 'chain', 'glasses', 'cap', 'capback']),
     pattern: pick(PATTERNS).id,
     bottomColor: '',
     shoeColor: '',
@@ -139,12 +142,12 @@ export const ACCESSORY_COLORS = ['#e8b93c', '#d8d8de', '#17171a', '#b02e0c', '#2
 
 /** The colours an outfit's parts have when the player hasn't picked one. */
 export function defaultColors(l: Required<Look>, femme: boolean) {
-  const bottom: Record<string, string> = { pagne: femme ? l.outfitColor : '#2b2f45', jersey: '#f8f9fa', casual: '#3d64a8', debardeur: '#1f2a44' }
-  const shoe: Record<string, string> = { debardeur: '#141416', pagne: femme ? '#8a5a2b' : '#6b4423', boubou: '#e8d9b5', robe: '#1c1c22', suit: '#141416', jersey: '#141416', casual: '#f4f4f4' }
+  const bottom: Record<string, string> = { pagne: femme ? l.outfitColor : '#2b2f45', jersey: '#f8f9fa', casual: '#3d64a8', debardeur: '#1f2a44', basket: l.outfitColor }
+  const shoe: Record<string, string> = { debardeur: '#141416', basket: '#f8f9fa', survet: '#f4f4f4', pagne: femme ? '#8a5a2b' : '#6b4423', boubou: '#e8d9b5', robe: '#1c1c22', suit: '#141416', jersey: '#141416', casual: '#f4f4f4' }
   const outfit = l.outfit === 'robe' && !femme ? 'casual' : l.outfit
   return {
     bottom: bottom[outfit] ?? l.outfitColor,
     shoe: shoe[outfit] ?? '#f4f4f4',
-    accessory: l.accessory === 'glasses' ? '#17171a' : l.accessory === 'cap' ? (l.outfitColor === '#f4efe6' ? '#14213d' : l.outfitColor) : '#e8b93c',
+    accessory: l.accessory === 'glasses' ? '#17171a' : l.accessory === 'cap' || l.accessory === 'capback' ? (l.outfitColor === '#f4efe6' ? '#14213d' : l.outfitColor) : '#e8b93c',
   }
 }

@@ -78,6 +78,28 @@ const flat = (color: string) => {
 }
 const wax = (color: string, pattern: string) => mat('#fff', { map: waxTexture(color, pattern) })
 
+/** Fabric with three stripes down the outer side of a limb (u = ¼ is +X on a lathe, ¾ is -X). */
+const stripeCache = new Map<string, THREE.CanvasTexture>()
+function striped(base: string, stripe: string, side: number) {
+  const key = `${base}|${stripe}|${side}`
+  let t = stripeCache.get(key)
+  if (!t) {
+    const c = document.createElement('canvas')
+    c.width = 256
+    c.height = 4
+    const g = c.getContext('2d')!
+    g.fillStyle = base
+    g.fillRect(0, 0, 256, 4)
+    g.fillStyle = stripe
+    const mid = side > 0 ? 64 : 192
+    for (const k of [-1, 0, 1]) g.fillRect(mid + k * 7 - 2, 0, 4, 4)
+    t = new THREE.CanvasTexture(c)
+    t.colorSpace = THREE.SRGBColorSpace
+    stripeCache.set(key, t)
+  }
+  return mat('#fff', { map: t })
+}
+
 type V3 = [number, number, number]
 type Mat = THREE.Material | THREE.Material[]
 const Shadows = createContext(true)
@@ -302,8 +324,10 @@ function torsoGeometry(femme: boolean, w: number, belly: number, waist: number) 
  * armholes, with skin everywhere else. u goes round the body (0 = front), v up it.
  */
 const vestCache = new Map<string, THREE.CanvasTexture>()
-function vestTexture(femme: boolean, w: number, belly: number, vest: string, skin: string) {
-  const key = `${femme}|${w}|${belly}|${vest}|${skin}`
+type VestStyle = { strap: number; armhole: number; neck: number; trim?: string; number?: string; ribs?: boolean }
+const VEST: VestStyle = { strap: 0.085, armhole: 1.17, neck: 1.225, ribs: true }
+function vestTexture(femme: boolean, w: number, belly: number, vest: string, skin: string, st: VestStyle = VEST) {
+  const key = `${femme}|${w}|${belly}|${vest}|${skin}|${JSON.stringify(st)}`
   let t = vestCache.get(key)
   if (t) return t
   const rings = torsoRings(femme, w, belly)
@@ -322,19 +346,56 @@ function vestTexture(femme: boolean, w: number, belly: number, vest: string, ski
     if (k === 0) return 0
     return (k - 1 + (y - rings[k - 1].y) / (rings[k].y - rings[k - 1].y)) / (rings.length - 1)
   }
-  g.beginPath()
-  g.moveTo(0, H)
+  const edge: [number, number][] = []
   for (let px = 0; px <= W; px++) {
     const a = (px / W) * Math.PI * 2
     const [side, front] = [Math.abs(Math.sin(a)), Math.cos(a)]
     // Straps: a soft-edged band at the shoulders, front and back.
-    const strap = 1 - smooth(0.07, 0.1, Math.abs(side - 0.5))
-    const neck = 1.17 + ((front >= 0 ? 1.225 : 1.25) - 1.17) * Math.abs(front) ** 1.6
-    g.lineTo(px, H - vOf(neck + (1.4 - neck) * strap) * H)
+    const strap = 1 - smooth(st.strap - 0.015, st.strap + 0.015, Math.abs(side - 0.5))
+    const neck = st.armhole + ((front >= 0 ? st.neck : st.neck + 0.025) - st.armhole) * Math.abs(front) ** 1.6
+    edge.push([px, H - vOf(neck + (1.4 - neck) * strap) * H])
   }
-  g.lineTo(W, H)
-  g.closePath()
+  const outline = () => {
+    g.beginPath()
+    g.moveTo(0, H)
+    edge.forEach(([x, y]) => g.lineTo(x, y))
+    g.lineTo(W, H)
+    g.closePath()
+  }
+  outline()
   g.fill()
+  g.save()
+  outline()
+  g.clip()
+  if (st.ribs) {
+    // Ribbed cotton: fine vertical lines.
+    g.fillStyle = 'rgba(0,0,0,0.05)'
+    for (let x = 0; x < W; x += 6) g.fillRect(x, 0, 2, H)
+  }
+  if (st.number) {
+    // Numbers front (u = 0, so drawn on both edges) and back (u = ½).
+    g.fillStyle = st.trim ?? '#ffffff'
+    g.textAlign = 'center'
+    g.textBaseline = 'middle'
+    const y = H - vOf(1.1) * H
+    for (const [x, size] of [[0, 54], [W, 54], [W / 2, 64]] as const) {
+      g.save()
+      g.translate(x, y)
+      g.scale(0.85, 1)
+      g.font = `900 ${size}px system-ui, sans-serif`
+      g.fillText(st.number, 0, 0)
+      g.restore()
+    }
+  }
+  g.restore()
+  if (st.trim) {
+    // A contrasting trim round the neck and armholes.
+    g.strokeStyle = st.trim
+    g.lineWidth = 7
+    g.beginPath()
+    edge.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)))
+    g.stroke()
+  }
   t = new THREE.CanvasTexture(c)
   t.colorSpace = THREE.SRGBColorSpace
   vestCache.set(key, t)
@@ -396,7 +457,7 @@ const shortSleeve = (r: number, len: number) =>
 
 /* ---------- Outfits ---------- */
 
-type Shoe = { color: string; kind: 'sneaker' | 'dress' | 'sandal' | 'boot' | 'heel' }
+type Shoe = { color: string; kind: 'sneaker' | 'dress' | 'sandal' | 'boot' | 'heel' | 'slide' }
 type Body = { femme: boolean; w: number; belly: number }
 type Dress = {
   top: THREE.Material
@@ -409,7 +470,11 @@ type Dress = {
   robe?: THREE.Material
   belt?: THREE.Material
   tank?: boolean // a vest: bare shoulders and straps
-  shorts?: { m: THREE.Material; stripe: THREE.Material } // short sport shorts over bare thighs
+  shorts?: { m: THREE.Material; stripe: THREE.Material; long?: boolean } // sport shorts over bare thighs
+  vest?: VestStyle // how the tank top is cut
+  waistband?: { m: THREE.Material; cords: THREE.Material } // elastic waist with a drawstring
+  stripes?: { color: string; top: string; bottom: string } // three stripes down the outside of sleeves and legs
+  cuffs?: THREE.Material // joggers gathered at the ankle
   extra?: (b: Body) => React.ReactNode
 }
 
@@ -522,7 +587,59 @@ function dressFor(l: Required<Look>, femme: boolean): Dress {
       const vest = mat(top)
       const shorts = mat(l.bottomColor || dc.bottom)
       const stripe = mat(tint(l.bottomColor || dc.bottom, 0.85))
-      return { top: vest, bottom: shorts, sleeve: 'none', thigh: null, shin: null, shoe: shoe('sandal'), tank: true, shorts: { m: shorts, stripe } }
+      return {
+        top: vest,
+        bottom: shorts,
+        sleeve: 'none',
+        thigh: null,
+        shin: null,
+        shoe: shoe('slide'),
+        tank: true,
+        shorts: { m: shorts, stripe },
+        waistband: { m: mat(tint(l.bottomColor || dc.bottom, -0.25)), cords: mat('#f4f1ea') },
+      }
+    }
+    case 'survet': {
+      // Tracksuit: zip jacket and joggers with three stripes.
+      const jacket = mat(top)
+      const joggers = mat(l.bottomColor || dc.bottom)
+      const light = parseInt(top.slice(1), 16) > 0xb0b0b0
+      const stripes = { color: light ? '#14213d' : '#f8f9fa', top, bottom: l.bottomColor || dc.bottom }
+      return {
+        top: jacket,
+        bottom: joggers,
+        sleeve: 'long',
+        thigh: joggers,
+        shin: joggers,
+        shoe: shoe('sneaker'),
+        stripes,
+        cuffs: mat(tint(l.bottomColor || dc.bottom, -0.2)),
+        extra: (b) => (
+          <group>
+            <Part g={bandGeometry(b.femme, b.w, b.belly, 1.335, 0.016, 1.0)} m={jacket} />
+            <Blob m={mat('#c9ccd4', { shine: true })} p={[0, 1.16, torsoAt(b.femme, b.w, b.belly, 1.16).front + 0.001]} r={[0.0035, 0.16, 0.003]} />
+            <Blob m={mat('#c9ccd4', { shine: true })} p={[0.01, 1.3, torsoAt(b.femme, b.w, b.belly, 1.3).front + 0.004]} r={[0.006, 0.012, 0.004]} />
+          </group>
+        ),
+      }
+    }
+    case 'basket': {
+      // Basketball: a numbered jersey with trim and long baggy shorts.
+      const shorts = mat(l.bottomColor || dc.bottom)
+      const light = parseInt(top.slice(1), 16) > 0xb0b0b0
+      const trim = light ? '#14213d' : '#f8f9fa'
+      return {
+        top: mat(top),
+        bottom: shorts,
+        sleeve: 'none',
+        thigh: null,
+        shin: null,
+        shoe: shoe('boot'),
+        tank: true,
+        vest: { strap: 0.13, armhole: 1.12, neck: 1.25, trim, number: '23' },
+        shorts: { m: shorts, stripe: mat(trim), long: true },
+        waistband: { m: mat(trim), cords: mat(trim) },
+      }
     }
     default: {
       const jeans = mat(l.bottomColor || dc.bottom)
@@ -615,7 +732,7 @@ function Hair({ l }: { l: Required<Look> }) {
       const a = Math.PI + (i / (n - 1) - 0.5) * Math.PI * 1.15
       return <Part key={i} g={limb(r, r * 0.8, len)} m={hair} p={[Math.sin(a) * rx * 0.97, 0.0, Math.cos(a) * rz * 0.97 - 0.01]} r={[Math.cos(a) * -0.16, 0, Math.sin(a) * 0.16]} />
     })
-  if (l.accessory === 'cap' && ['afro', 'bun', 'headwrap'].includes(l.hair)) return short
+  if ((l.accessory === 'cap' || l.accessory === 'capback') && ['afro', 'bun', 'headwrap'].includes(l.hair)) return short
   switch (l.hair) {
     case 'bald':
       return <Part g={hairShell('stubble', 0.0015)} m={mat(tint(l.skin, -0.22))} />
@@ -735,10 +852,12 @@ function HeadAccessory({ l }: { l: Required<Look> }) {
           ))}
         </>
       )
-    case 'cap': {
+    case 'cap':
+    case 'capback': {
       const c = color
+      const back = l.accessory === 'capback'
       return (
-        <group position={[0, 0.03, -0.004]} rotation={[-0.14, 0, 0]}>
+        <group position={[0, 0.03, -0.004]} rotation={back ? [0.1, Math.PI, 0] : [-0.14, 0, 0]}>
           <mesh geometry={geo('capdome', () => new THREE.SphereGeometry(1, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.5))} material={mat(c)} scale={[rx * 1.1, ry * 1.04, rz * 1.1]} castShadow />
           <Blob m={mat(tint(c, -0.25))} p={[0, 0.002, rz * 1.12]} r={[rx * 0.82, 0.008, rz * 0.62]} />
           <Blob m={mat(tint(c, -0.25))} p={[0, ry * 1.04, 0]} r={[0.012, 0.008, 0.012]} />
@@ -755,6 +874,16 @@ function HeadAccessory({ l }: { l: Required<Look> }) {
 function ShoeMesh({ shoe, skin }: { shoe: Shoe; skin: THREE.Material }) {
   const upper = mat(shoe.color)
   const sole = mat(shoe.kind === 'sneaker' ? '#ffffff' : '#2a1c12')
+  if (shoe.kind === 'slide')
+    // Claquettes: a thick sole and one wide strap over bare toes.
+    return (
+      <group>
+        <Blob m={skin} p={[0, 0.034, 0.035]} r={[0.042, 0.026, 0.088]} />
+        <Blob m={mat(tint(shoe.color, -0.15))} p={[0, 0.012, 0.035]} r={[0.052, 0.014, 0.104]} />
+        <Blob m={upper} p={[0, 0.042, 0.04]} r={[0.05, 0.022, 0.042]} />
+        <Blob m={mat('#f8f9fa')} p={[0, 0.058, 0.046]} r={[0.018, 0.006, 0.02]} />
+      </group>
+    )
   if (shoe.kind === 'sandal')
     return (
       <group>
@@ -855,11 +984,19 @@ export function Human({ look, gender, pose = 'idle', seed = 0 }: Props) {
     <group scale={l.height}>
       <group ref={root}>
         {/* Torso, waistband, skirt or robe */}
-        <Part g={torsoGeometry(femme, w, belly, d.skirt ? 1.0 : WAIST_Y)} m={[d.robe ?? d.bottom, d.tank ? mat('#fff', { map: vestTexture(femme, w, belly, l.outfitColor, l.skin) }) : fabric]} />
+        <Part g={torsoGeometry(femme, w, belly, d.skirt ? 1.0 : WAIST_Y)} m={[d.robe ?? d.bottom, d.tank ? mat('#fff', { map: vestTexture(femme, w, belly, l.outfitColor, l.skin, d.vest) }) : fabric]} />
         {d.belt && (
           <group>
             <Part g={bandGeometry(femme, w, belly, WAIST_Y + 0.004, 0.012)} m={d.belt} />
             <Blob m={mat('#c9b27a', { shine: true })} p={[0, WAIST_Y + 0.004, waist.front * 1.02 + 0.008]} r={[0.018, 0.012, 0.006]} />
+          </group>
+        )}
+        {d.waistband && (
+          <group>
+            <Part g={bandGeometry(femme, w, belly, WAIST_Y + 0.006, 0.016)} m={d.waistband.m} />
+            {[-1, 1].map((s) => (
+              <Blob key={s} m={d.waistband!.cords} p={[s * 0.012, WAIST_Y - 0.03, waist.front * 1.02 + 0.012]} r={[0.0032, 0.03, 0.0032]} rot={[0, 0, s * 0.12]} />
+            ))}
           </group>
         )}
         {d.robe && <Part g={flare(0.17 * w, 0.31 * w, 1.33, 0.06, 0.72)} m={d.robe} />}
@@ -879,15 +1016,16 @@ export function Human({ look, gender, pose = 'idle', seed = 0 }: Props) {
           const side = i === 0 ? -1 : 1
           return (
             <group key={i} ref={hip[i]} position={[side * hipX, HIP_Y, 0]}>
-              <Part g={limb(thighR, 0.054 * lw, THIGH)} m={skinOr(d.thigh)} />
+              <Part g={limb(thighR, 0.054 * lw, THIGH)} m={d.stripes ? striped(d.stripes.bottom, d.stripes.color, side) : skinOr(d.thigh)} />
               {d.shorts && (
                 <group>
-                  <Part g={shortSleeve(thighR * 1.1, 0.17)} m={d.shorts.m} />
-                  <Blob m={d.shorts.stripe} p={[side * thighR * 1.1, -0.08, 0]} r={[0.005, 0.085, 0.012]} rot={[0, 0, -side * 0.08]} />
+                  <Part g={shortSleeve(thighR * (d.shorts.long ? 1.15 : 1.1), d.shorts.long ? 0.31 : 0.17)} m={d.shorts.m} />
+                  <Blob m={d.shorts.stripe} p={[side * thighR * (d.shorts.long ? 1.15 : 1.1), d.shorts.long ? -0.15 : -0.08, 0]} r={[0.005, d.shorts.long ? 0.15 : 0.085, 0.012]} rot={[0, 0, -side * 0.08]} />
                 </group>
               )}
               <group ref={knee[i]} position={[0, -THIGH, 0]}>
-                <Part g={limb(0.054 * lw, 0.04 * lw, SHIN - 0.04)} m={skinOr(d.shin)} />
+                {d.cuffs && <Part g={limb(0.045 * lw, 0.045 * lw, 0.03)} m={d.cuffs} p={[0, -SHIN + 0.075, 0]} />}
+                <Part g={limb(0.054 * lw, 0.04 * lw, SHIN - 0.04)} m={d.stripes ? striped(d.stripes.bottom, d.stripes.color, side) : skinOr(d.shin)} />
                 {!d.shin && !d.skirt && side < 0 && (l.marks === 'genou' || l.marks === 'bagarre') && <Part g={limb(0.059 * lw, 0.057 * lw, 0.05)} m={mat('#f4f1ea')} p={[0, 0.02, 0]} />}
                 {l.outfit === 'jersey' && <Part g={limb(0.05 * lw, 0.045 * lw, 0.14)} m={mat('#009a44')} p={[0, -0.17, 0]} />}
                 <group position={[0, -SHIN - 0.01, 0]}>
@@ -903,14 +1041,14 @@ export function Human({ look, gender, pose = 'idle', seed = 0 }: Props) {
           const side = i === 0 ? -1 : 1
           return (
             <group key={i} ref={shoulder[i]} position={[side * shX, SHOULDER_Y, 0]} rotation={[0, 0, side * 0.1]}>
-              <Part g={limb((d.sleeve === 'short' ? 0.044 : 0.05) * lw, 0.04 * lw, UPPER_ARM)} m={longSleeve ? fabric : skin} />
+              <Part g={limb((d.sleeve === 'short' ? 0.044 : 0.05) * lw, 0.04 * lw, UPPER_ARM)} m={d.stripes ? striped(d.stripes.top, d.stripes.color, side) : longSleeve ? fabric : skin} />
               {d.sleeve === 'short' && <Part g={shortSleeve(0.056 * lw, 0.13)} m={fabric} />}
               {d.sleeve === 'none' && !d.tank && <Blob m={fabric} p={[0, 0.012, 0]} r={[0.05 * lw, 0.034, 0.05 * lw]} />}
               {d.sleeve === 'bell' && <Part g={geo('bell1', () => new THREE.CylinderGeometry(0.06, 0.11, 1, 20, 1, true).translate(0, -0.5, 0))} m={fabric} s={[lw, UPPER_ARM + 0.02, lw]} />}
               {d.sleeve === 'bell' && <Blob m={fabric} p={[0, 0, 0]} r={[0.062 * lw, 0.05, 0.062 * lw]} />}
               <group ref={elbow[i]} position={[0, -UPPER_ARM, 0]}>
-                <Part g={limb(0.04 * lw, 0.033 * lw, FOREARM)} m={longSleeve ? fabric : skin} />
-                {longSleeve && <Part g={limb(0.036 * lw, 0.036 * lw, 0.012)} m={mat('#f8f9fa')} p={[0, -FOREARM + 0.012, 0]} />}
+                <Part g={limb(0.04 * lw, 0.033 * lw, FOREARM)} m={d.stripes ? striped(d.stripes.top, d.stripes.color, side) : longSleeve ? fabric : skin} />
+                {longSleeve && <Part g={limb(0.036 * lw, 0.036 * lw, 0.012)} m={d.cuffs ?? mat('#f8f9fa')} p={[0, -FOREARM + 0.012, 0]} />}
                 {d.sleeve === 'bell' && <Part g={geo('bell2', () => new THREE.CylinderGeometry(0.11, 0.17, 1, 20, 1, true).translate(0, -0.5, 0))} m={fabric} p={[0, 0.01, 0]} s={[lw, 0.16, lw]} />}
                 {!longSleeve && d.sleeve !== 'bell' && side > 0 && (l.marks === 'griffures' || l.marks === 'bagarre') && <Scratches p={[0, -0.1, 0.036 * lw]} />}
                 {/* Mitten hand with a thumb */}
