@@ -288,6 +288,10 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     }
     // Up and down bridges.
     if (nav.heightAt) g.position.y = nav.heightAt(g.position.x, g.position.z)
+    // What the other players see of this Sim.
+    whereabouts.simY = g.position.y
+    whereabouts.simHeading = g.rotation.y
+    whereabouts.simPose = busy ? (busy.kind === 'chat' ? 'talk' : 'busy') : walking ? (run ? 'run' : 'walk') : 'idle'
     // Camera follows the Sim, keeping whatever angle the player chose.
     if (controls && !free.current && !gesture.current) {
       const want = new THREE.Vector3(g.position.x, close ? 1.4 : 0, g.position.z)

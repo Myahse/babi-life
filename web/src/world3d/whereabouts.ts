@@ -6,6 +6,10 @@ type XZ = [number, number]
 
 export const whereabouts = {
   sim: [0, 0] as XZ,
+  /** The Sim's height (up on a bridge), which way it faces, and what it's doing: sent to the other players (lib/live.ts). */
+  simY: 0,
+  simHeading: 0,
+  simPose: 'idle' as 'idle' | 'walk' | 'run' | 'busy' | 'talk',
   /** Camera heading: the angle (radians) of the way the camera looks, on the ground. 0 is north, clockwise. */
   heading: 0,
   /** Angle from straight down (radians). 0 is overhead, π/2 is the horizon. */

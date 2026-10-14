@@ -20,6 +20,7 @@ import (
 	"github.com/myahse/babi-life/backend/internal/db"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
+	"github.com/myahse/babi-life/backend/internal/live"
 	"github.com/myahse/babi-life/backend/internal/news"
 	"github.com/myahse/babi-life/backend/internal/sims"
 	"github.com/myahse/babi-life/backend/internal/world"
@@ -51,6 +52,9 @@ func main() {
 	simsH := &sims.Handler{DB: pool}
 	headlines := news.New(cfg.NewsFeeds)
 	go headlines.Run(ctx)
+	// The players of a commune, live (positions and poses, over a WebSocket).
+	players := live.NewHub(pool, tokens, cfg.AllowedOrigins)
+	go players.Run(ctx)
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.RealIP, middleware.Logger, middleware.Recoverer)
@@ -114,6 +118,7 @@ func main() {
 			w.Header().Set("Cache-Control", "no-store")
 			httpx.JSON(w, http.StatusOK, map[string]int64{"now": time.Now().UnixMilli()})
 		})
+		r.Get("/live", players.ServeHTTP)
 		r.Get("/news", headlines.Handler)
 		r.Post("/auth/google", authH.Google)
 		r.Post("/auth/register", authH.Register)

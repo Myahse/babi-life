@@ -5,6 +5,7 @@ import { api } from '../lib/api'
 import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World, Ride } from '../lib/types'
 import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
+import { useLive } from '../lib/live'
 import { WorldMap } from './WorldMap'
 import { Joystick, RunButton } from '../components/Joystick'
 import { cameraTurn } from '../world3d/input'
@@ -282,6 +283,8 @@ export function Play() {
 
   // Live: the other players in the commune, every few seconds.
   const [around, refreshPlayers] = usePlayers(base?.sim.id, `${sim?.city}/${sim?.commune}`)
+  // …and where they are in the street, a few times a second.
+  useLive(base?.sim.id, classic ? 'street' : 'open', `${sim?.city}/${sim?.commune}`)
 
   if (!sim) {
     return (

@@ -1,0 +1,111 @@
+import { useEffect } from 'react'
+import { useSession } from '../store/session'
+import { whereabouts } from '../world3d/whereabouts'
+import { clockSample, localNow, serverNow } from './worldClock'
+
+// The other players of the commune, live: a WebSocket to the API sends where
+// this player's Sim is a few times a second and gets everyone else's back
+// (backend/internal/live). Their Sims are drawn a moment in the past,
+// between two positions received, so they glide instead of jumping.
+
+const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
+/** Draw others this far behind the latest news of them: two updates' worth. */
+const DELAY = 300
+
+export type LivePose = 'idle' | 'walk' | 'run' | 'busy' | 'talk' | 'sit' | 'dance' | 'wave' | 'cheer'
+type Snap = { at: number; x: number; y: number; z: number; h: number; p: LivePose }
+export type LiveSample = { x: number; y: number; z: number; h: number; p: LivePose }
+
+const snaps = new Map<string, Snap[]>()
+/** Whether the connection is up (for the HUD). */
+export const liveStatus = { connected: false }
+
+/** Where another player's Sim is now, on this screen; null if not heard from. */
+export function sampleLive(id: string): LiveSample | null {
+  const list = snaps.get(id)
+  if (!list?.length) return null
+  const t = serverNow() - DELAY
+  if (t - list[list.length - 1].at > 10000) return null
+  let i = list.findIndex((s) => s.at > t)
+  if (i === -1) i = list.length - 1
+  if (i === 0) return list[0]
+  const [a, b] = [list[i - 1], list[i]]
+  const k = Math.min(1, Math.max(0, (t - a.at) / (b.at - a.at || 1)))
+  const dh = Math.atan2(Math.sin(b.h - a.h), Math.cos(b.h - a.h))
+  return { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k, z: a.z + (b.z - a.z) * k, h: a.h + dh * k, p: k < 0.5 ? a.p : b.p }
+}
+
+/** Keeps this player connected while the street is on screen. */
+export function useLive(simId: string | undefined, mode: 'open' | 'street', where: string) {
+  const token = useSession((s) => s.token)
+  useEffect(() => {
+    if (!simId || !token) return
+    return connect(token, simId, mode)
+  }, [simId, token, mode, where])
+}
+
+function connect(token: string, sim: string, mode: 'open' | 'street') {
+  let ws: WebSocket | null = null
+  let closed = false
+  let retry = 1000
+  let timers: ReturnType<typeof setInterval>[] = []
+  let last = ''
+  let lastSent = 0
+
+  const open = () => {
+    ws = new WebSocket(BASE.replace(/^http/, 'ws') + '/live')
+    ws.onopen = () => {
+      retry = 1000
+      liveStatus.connected = true
+      ws!.send(JSON.stringify({ t: 'hello', token, sim, mode }))
+      const ping = () => ws?.readyState === WebSocket.OPEN && ws.send(JSON.stringify({ t: 'ping', c: localNow() }))
+      // A few pings to set the clock, then one now and then to keep it right.
+      ;[300, 900, 1800].forEach((d) => setTimeout(ping, d))
+      timers.push(setInterval(ping, 20000))
+      // Where this Sim is: when it changes, and every second anyway.
+      timers.push(
+        setInterval(() => {
+          if (ws?.readyState !== WebSocket.OPEN) return
+          const s = whereabouts
+          const msg = { t: 'state', x: round(s.sim[0]), y: round(s.simY), z: round(s.sim[1]), h: round(s.simHeading), p: s.simPose }
+          const key = JSON.stringify(msg)
+          if (key === last && performance.now() - lastSent < 1000) return
+          last = key
+          lastSent = performance.now()
+          ws.send(key)
+        }, 150),
+      )
+    }
+    ws.onmessage = (e) => {
+      const m = JSON.parse(e.data as string)
+      if (m.t === 'pong') clockSample(m.c, m.s, localNow())
+      else if (m.t === 'leave') snaps.delete(m.id)
+      else if (m.t === 'states')
+        for (const s of m.players as (Snap & { id: string })[]) {
+          if (s.id === sim) continue
+          const list = snaps.get(s.id) ?? []
+          if (list.length && list[list.length - 1].at >= s.at) continue
+          list.push({ at: s.at, x: s.x, y: s.y, z: s.z, h: s.h, p: s.p })
+          if (list.length > 12) list.shift()
+          snaps.set(s.id, list)
+        }
+    }
+    ws.onclose = () => {
+      liveStatus.connected = false
+      timers.forEach(clearInterval)
+      timers = []
+      if (closed) return
+      // Back again soon, then less and less often.
+      setTimeout(() => !closed && open(), retry)
+      retry = Math.min(retry * 2, 30000)
+    }
+  }
+  open()
+  return () => {
+    closed = true
+    snaps.clear()
+    ws?.close()
+  }
+}
+
+const round = (v: number) => Math.round(v * 100) / 100
