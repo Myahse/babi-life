@@ -1,6 +1,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
+import { EffectComposer, N8AO } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import type { Commune, Player, Sim, World } from '../lib/types'
 import { iconFor, kindColors } from '../components/icons'
@@ -133,6 +134,12 @@ function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy,
       />
       <fog attach="fog" args={[rain ? '#8a96a3' : night ? '#141a3d' : dusk ? '#f7a072' : '#9fd8f5', rain ? 50 : 110, rain ? 170 : 260]} />
 
+      {/* Soft shade in corners and at the foot of walls, for depth (not on small phones). */}
+      {(typeof navigator === 'undefined' || (navigator.hardwareConcurrency ?? 4) > 4) && (
+        <EffectComposer enableNormalPass={false} multisampling={0}>
+          <N8AO halfRes aoRadius={3} distanceFalloff={1} intensity={night ? 1.5 : 2.4} quality="performance" color="#1a1410" />
+        </EffectComposer>
+      )}
       <Ground theme={theme} night={night} />
       <Streets theme={theme} night={lit} seed={commune.id} />
       <Backdrop theme={theme} night={night} />

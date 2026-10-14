@@ -43,14 +43,35 @@ const lights: Painter = (px, r) => {
   for (let y = 5; y < 10; y++) for (let x = 5; x < 11; x++) px(x, y, r() < 0.15 ? '#a8742a' : '#ffcf6b')
 }
 
+/** A ground-floor shop: the sign over the door, the rolled-down metal shutter. */
+const shop: Painter = (px, r) => {
+  noisy([236, 232, 224], 18)(px, r)
+  for (let x = 0; x < 16; x++) for (let y = 1; y < 4; y++) px(x, y, y === 2 && x > 2 && x < 13 && r() < 0.7 ? '#c0392b' : '#f4f1ea') // the painted sign
+  for (let y = 5; y < 16; y++)
+    for (let x = 2; x < 14; x++) px(x, y, x === 2 || x === 13 ? '#5b5f66' : y % 2 ? '#9aa0a8' : '#7d838c') // shutter ribs
+  for (let x = 1; x < 15; x++) px(x, 4, '#4a4e55')
+}
+
+/** A home's ground floor: a door and a barred window. */
+const house: Painter = (px, r) => {
+  noisy([236, 232, 224], 18)(px, r)
+  for (let y = 4; y < 16; y++) for (let x = 2; x < 7; x++) px(x, y, x === 2 || x === 6 || y === 4 ? '#4e3424' : r() < 0.1 ? '#6e4a30' : '#7a5235')
+  px(5, 10, '#d4af37')
+  for (let y = 5; y < 10; y++) for (let x = 9; x < 14; x++) px(x, y, x === 9 || x === 13 || y === 5 || y === 9 ? '#5a4a3a' : x === 11 ? '#2b2b2b' : '#2c3f5a')
+  for (let x = 0; x < 16; x++) px(x, 15, '#b9b1a3')
+}
+
 export function makeTextures() {
   return {
     wall: texture(wall, 3),
     lights: texture(lights, 5),
     roof: texture(noisy([168, 168, 160], 26), 7),
+    shop: texture(shop, 29),
+    house: texture(house, 31),
+    plaster: texture(noisy([238, 234, 226], 14), 33),
     tin: texture((px, r) => {
       // Corrugated sheet metal, the « tôle » of the courtyards.
-      for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) px(x, y, x % 4 === 0 ? '#7d3b22' : x % 4 === 2 ? '#c06a3e' : `rgb(${160 + r() * 30},${80 + r() * 15},${50})`)
+      for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) px(x, y, x % 4 === 0 ? '#8e4a2c' : x % 4 === 2 ? '#e08a58' : `rgb(${196 + r() * 30},${104 + r() * 20},${66 + r() * 10})`)
     }, 9),
     asphalt: texture(noisy([64, 66, 74], 20), 11),
     pavement: texture((px, r) => {

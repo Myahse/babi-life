@@ -8,7 +8,7 @@ import { resolvePlaces, type PlaceSpot } from './places'
 // thread, so walking stays smooth while the world loads around the Sim.
 
 export type ChunkRequest = { id: number; origin: Origin; tx: number; ty: number; token: string; places: PlaceSpot[] }
-export type Arrays = { position: Float32Array; uv: Float32Array; normal: Float32Array; color?: Float32Array; index: Uint32Array }
+export type Arrays = { position: Float32Array; uv: Float32Array; normal: Float32Array; color?: Float32Array; colorSize?: number; index: Uint32Array }
 
 self.onmessage = async (e: MessageEvent<ChunkRequest>) => {
   const { id, origin, tx, ty, token, places } = e.data
@@ -24,7 +24,7 @@ self.onmessage = async (e: MessageEvent<ChunkRequest>) => {
     for (const [name, g] of Object.entries(meshes)) {
       if (!g) continue
       const arr = (n: string) => g.getAttribute(n)?.array as Float32Array | undefined
-      const a: Arrays = { position: arr('position')!, uv: arr('uv')!, normal: arr('normal')!, color: arr('color'), index: new Uint32Array(g.getIndex()!.array) }
+      const a: Arrays = { position: arr('position')!, uv: arr('uv')!, normal: arr('normal')!, color: arr('color'), colorSize: g.getAttribute('color')?.itemSize, index: new Uint32Array(g.getIndex()!.array) }
       out[name] = a
       for (const v of [a.position, a.uv, a.normal, a.color, a.index]) if (v) transfer.push(v.buffer as ArrayBuffer)
     }

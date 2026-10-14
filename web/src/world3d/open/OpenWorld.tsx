@@ -1,5 +1,6 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { EffectComposer, N8AO } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { Human, NoShadows } from '../../avatar/Human'
@@ -33,12 +34,56 @@ const HAPPENING_KEY = 'happening'
 
 type Loaded = { data: ChunkData; geos: Record<string, THREE.BufferGeometry> }
 
+/** What casts a shadow: the buildings, not the roads. */
+const SOLID = new Set(['walls', 'shop', 'house', 'trim', 'roofs', 'tin'])
+
+/** Ambient occlusion where the device can afford it (not on small phones). */
+const RICH = typeof navigator === 'undefined' || (navigator.hardwareConcurrency ?? 4) > 4
+
+/** The sun, and its shadows, over wherever the camera looks. */
+function Sun({ night, dusk }: { night: boolean; dusk: boolean }) {
+  const light = useRef<THREE.DirectionalLight>(null)
+  const controls = useThree((s) => s.controls) as OrbitControlsImpl | null
+  const scene = useThree((s) => s.scene)
+  useEffect(() => {
+    const l = light.current
+    if (!l) return
+    scene.add(l.target)
+    return () => void scene.remove(l.target)
+  }, [scene])
+  useFrame(() => {
+    const l = light.current
+    if (!l || !controls) return
+    const t = controls.target
+    // Snap to whole metres so the shadows don't shimmer as the Sim walks.
+    const [x, z] = [Math.round(t.x), Math.round(t.z)]
+    l.position.set(x + 60, 110, z + 35)
+    l.target.position.set(x, 0, z)
+  })
+  return (
+    <directionalLight
+      ref={light}
+      castShadow
+      intensity={night ? 0.3 : dusk ? 1.1 : 1.7}
+      color={night ? '#8fa8ff' : dusk ? '#ffb38a' : '#fff4e0'}
+      shadow-mapSize={[2048, 2048]}
+      shadow-camera-left={-90}
+      shadow-camera-right={90}
+      shadow-camera-top={90}
+      shadow-camera-bottom={-90}
+      shadow-camera-far={300}
+      shadow-bias={-0.0006}
+      shadow-normalBias={0.04}
+    />
+  )
+}
+
 export function OpenWorld(props: Props & { token: string; onFail: () => void }) {
   const night = props.hour < 6 || props.hour >= 19
   const dusk = props.hour >= 17 && props.hour < 19
   const sky = night ? '#141a3d' : dusk ? '#f7a072' : '#8ec9f0'
   return (
-    <Canvas dpr={[1, 1.75]} camera={{ position: [45, 48, 45], fov: 45, near: 0.5, far: 2500 }} style={{ background: sky, transition: 'background 1s' }} gl={{ antialias: true }}>
+    <Canvas shadows dpr={[1, 1.75]} camera={{ position: [45, 48, 45], fov: 45, near: 0.5, far: 2500 }} style={{ background: sky, transition: 'background 1s' }} gl={{ antialias: true }}>
       <Suspense fallback={null}>
         <World {...props} night={night} dusk={dusk} sky={sky} />
       </Suspense>
@@ -52,8 +97,12 @@ function useMaterials(night: boolean) {
     const lambert = (map: THREE.Texture, extra: THREE.MeshLambertMaterialParameters = {}) => new THREE.MeshLambertMaterial({ map, ...extra })
     return {
       walls: lambert(t.wall, { vertexColors: true, emissiveMap: t.lights, emissive: new THREE.Color('#ffffff'), emissiveIntensity: 0 }),
+      shop: lambert(t.shop, { vertexColors: true }),
+      house: lambert(t.house, { vertexColors: true }),
+      trim: lambert(t.plaster, { vertexColors: true, side: THREE.DoubleSide }),
       roofs: lambert(t.roof),
-      tin: lambert(t.tin),
+      tin: lambert(t.tin, { side: THREE.DoubleSide }),
+      contact: new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }),
       asphalt: lambert(t.asphalt, { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
       laterite: lambert(t.laterite, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
       pavement: lambert(t.pavement, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
@@ -119,7 +168,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
         g.setAttribute('position', new THREE.BufferAttribute(a.position, 3))
         g.setAttribute('uv', new THREE.BufferAttribute(a.uv, 2))
         g.setAttribute('normal', new THREE.BufferAttribute(a.normal, 3))
-        if (a.color) g.setAttribute('color', new THREE.BufferAttribute(a.color, 3))
+        if (a.color) g.setAttribute('color', new THREE.BufferAttribute(a.color, a.colorSize ?? 3))
         g.setIndex(new THREE.BufferAttribute(a.index, 1))
         g.computeBoundingSphere()
         geos[name] = g
@@ -255,17 +304,22 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
   return (
     <>
       <hemisphereLight args={[night ? '#3a4a8a' : '#ffffff', night ? '#1a1a2e' : '#b8a27c', night ? 0.7 : 1.2]} />
-      <directionalLight position={[60, 120, 40]} intensity={night ? 0.3 : dusk ? 1.0 : 1.5} color={night ? '#8fa8ff' : dusk ? '#ffb38a' : '#fff4e0'} />
+      <Sun night={night} dusk={dusk} />
+      {RICH && (
+        <EffectComposer enableNormalPass={false} multisampling={0}>
+          <N8AO halfRes aoRadius={4} distanceFalloff={1.2} intensity={night ? 1.6 : 2.6} quality="performance" color="#1a1410" />
+        </EffectComposer>
+      )}
       {/* The haze at the edge of the loaded world: Minecraft's render distance */}
       <fog attach="fog" args={[sky, 280, 760]} />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]} material={mats.ground}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]} material={mats.ground} receiveShadow>
         <planeGeometry args={[9000, 9000]} />
       </mesh>
 
       {[...chunks.values()].map((c) => (
         <group key={c.data.key}>
           {Object.entries(c.geos).map(([name, g]) => (
-            <mesh key={name} geometry={g} material={mats[name as keyof typeof mats]} />
+            <mesh key={name} geometry={g} material={mats[name as keyof typeof mats]} castShadow={SOLID.has(name)} receiveShadow={name !== 'contact'} />
           ))}
           <Trees pts={c.data.trees} bark={mats.bark} leaves={mats.leaves} />
         </group>
@@ -334,10 +388,10 @@ function Trees({ pts, bark, leaves }: { pts: XZ[]; bark: THREE.Material; leaves:
   if (!pts.length) return null
   return (
     <>
-      <instancedMesh ref={trunks} args={[undefined, bark, pts.length]}>
+      <instancedMesh ref={trunks} args={[undefined, bark, pts.length]} castShadow>
         <boxGeometry args={[1, 1, 1]} />
       </instancedMesh>
-      <instancedMesh ref={tops} args={[undefined, leaves, pts.length]}>
+      <instancedMesh ref={tops} args={[undefined, leaves, pts.length]} castShadow receiveShadow>
         <boxGeometry args={[1, 1, 1]} />
       </instancedMesh>
     </>
