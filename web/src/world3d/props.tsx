@@ -1,7 +1,5 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
-import { Human, NoShadows } from '../avatar/Human'
-import { randomLook } from '../avatar/options'
 
 // Small low-poly props shared by buildings and the street scene. Everything
 // uses flat-shaded Lambert materials: cheap on low-end Android phones and
@@ -68,66 +66,6 @@ export function Lamp({ p, night }: { p: [number, number, number]; night: boolean
         <boxGeometry args={[0.5, 0.18, 0.5]} />
         <Mat color={night ? '#ffe08a' : '#d9d9d9'} emissive={night ? '#ffd166' : undefined} intensity={night ? 1.6 : 0} />
       </mesh>
-    </group>
-  )
-}
-
-// The gbaka's apprenti hangs out of the sliding door, calling the stops and
-// waving at people on the sidewalk.
-const APPRENTI = { ...randomLook('homme', () => 0.37), outfit: 'jersey', outfitColor: '#ff8200', hair: 'short', accessory: 'capback' }
-function Apprenti({ len, wide }: { len: number; wide: number }) {
-  return (
-    <NoShadows>
-      <group position={[len * 0.12, 0.32, wide / 2 + 0.22]} rotation={[0, Math.PI / 2, -0.12]}>
-        <Human look={APPRENTI} gender="homme" pose="wave" seed={2} />
-      </group>
-    </NoShadows>
-  )
-}
-
-export type VehicleKind = 'taxi' | 'woro' | 'gbaka' | 'car' | 'moto'
-
-/** Abidjan's traffic: orange taxi compteur, woro-woro, gbaka, cars and motos. Real size, in metres. */
-export function Vehicle({ p, r = 0, kind = 'taxi', color, trim }: { p: [number, number, number]; r?: number; kind?: VehicleKind; color?: string; trim?: string }) {
-  if (kind === 'moto') {
-    return (
-      <group position={p} rotation={[0, r, 0]}>
-        <Box p={[0, 0.7, 0]} s={[1.5, 0.35, 0.3]} c={color ?? '#c92a2a'} />
-        <Box p={[-0.2, 0.95, 0]} s={[0.7, 0.15, 0.32]} c="#1d1d24" />
-        <Box p={[0.65, 1.05, 0]} s={[0.08, 0.6, 0.6]} c="#495057" />
-        {[-0.6, 0.65].map((x) => (
-          <mesh key={x} position={[x, 0.33, 0]} rotation={[Math.PI / 2, 0, 0]}>
-            <cylinderGeometry args={[0.32, 0.32, 0.12, 12]} />
-            <Mat color="#1d1d24" />
-          </mesh>
-        ))}
-      </group>
-    )
-  }
-  const gbaka = kind === 'gbaka'
-  const body = color ?? (gbaka ? '#f4c430' : kind === 'taxi' ? '#ff7a00' : '#e9ecef')
-  const len = gbaka ? 5.6 : 4.3
-  const wide = gbaka ? 2.1 : 1.8
-  return (
-    <group position={p} rotation={[0, r, 0]}>
-      <Box p={[0, 0.75, 0]} s={[len, 0.85, wide]} c={body} />
-      <Box p={[gbaka ? 0.2 : -0.25, 1.5, 0]} s={[gbaka ? len - 0.7 : 2.3, 0.75, wide - 0.1]} c={gbaka ? body : body} />
-      <Box p={[gbaka ? 0.2 : -0.25, 1.52, 0]} s={[gbaka ? len - 0.5 : 2.4, 0.5, wide - 0.04]} c="#2a3446" />
-      {gbaka && <Box p={[0, 1.08, 0]} s={[len + 0.02, 0.2, wide + 0.02]} c="#00a862" />}
-      {gbaka && <Box p={[0.2, 2.02, 0]} s={[len - 1, 0.12, wide - 0.4]} c="#495057" />}
-      {gbaka && <Apprenti len={len} wide={wide} />}
-      {kind === 'taxi' && <Box p={[-0.25, 2.0, 0]} s={[0.7, 0.25, 0.35]} c="#ffe066" />}
-      {kind === 'woro' && <Box p={[0, 1.18, 0]} s={[len + 0.02, 0.12, wide + 0.02]} c={trim ?? '#f8f9fa'} />}
-      {kind === 'woro' && trim && <Box p={[0, 0.45, 0]} s={[len + 0.02, 0.28, wide + 0.02]} c={trim} />}
-      {[-1, 1].flatMap((sx) =>
-        [-1, 1].map((sz) => (
-          <mesh key={`${sx}${sz}`} position={[sx * (len / 2 - 0.85), 0.36, sz * (wide / 2)]} rotation={[Math.PI / 2, 0, 0]}>
-            <cylinderGeometry args={[0.36, 0.36, 0.26, 10]} />
-            <Mat color="#1d1d24" />
-          </mesh>
-        )),
-      )}
-      <Box p={[len / 2, 0.85, 0]} s={[0.05, 0.3, wide - 0.4]} c="#fff3bf" />
     </group>
   )
 }

@@ -1,4 +1,5 @@
-import { Box, Lamp, Mat, Palm, Sign, TableSet, Tree, Vehicle } from './props'
+import { Box, Lamp, Mat, Palm, Sign, TableSet, Tree } from './props'
+import { Vehicle } from './vehicles'
 
 // One low-poly building per kind of place. Local space: the lot is 14×14
 // centred on the origin and the front (door) faces +Z, towards the street.

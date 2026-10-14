@@ -9,7 +9,8 @@ import { iconFor } from '../components/icons'
 import { IconTile } from '../components/ui'
 import { rng } from './themes'
 import { SIDEWALK } from './layout'
-import { Box, Mat, Sign, Vehicle } from './props'
+import { Box, Mat, Sign } from './props'
+import { Vehicle } from './vehicles'
 
 // What is going on in the street right now (see backend/internal/game/happenings.go),
 // staged on the boulevard around HAPPENING_X so the player can find it.

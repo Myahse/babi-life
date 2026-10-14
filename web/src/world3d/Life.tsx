@@ -5,7 +5,7 @@ import { Human, NoShadows, type Pose } from '../avatar/Human'
 import { randomLook } from '../avatar/options'
 import { rng, type Theme } from './themes'
 import { BACK_STREET_Z, CROSS_X, EXTENT_X, SIDEWALK, STREET_HALF } from './layout'
-import { Vehicle, type VehicleKind } from './props'
+import { Vehicle, type VehicleKind } from './vehicles'
 import { CHECK_SECONDS, boulevardLight, crossLight, drive, type Light, type Mover, type Track } from './traffic'
 
 // What makes a street feel alive: people walking the sidewalks or chatting in
@@ -231,7 +231,7 @@ export function Traffic({ theme, seed }: { theme: Theme; seed: string }) {
           const [x, z] = track.place(m.s)
           return (
             <group key={`${ti}-${i}`} ref={(g) => void ((refs.current[ti] ??= [])[i] = g)} position={[x, 0, z]}>
-              <Vehicle p={[0, 0, 0]} r={track.rot} kind={m.kind} color={m.color} trim={m.trim} />
+              <Vehicle p={[0, 0, 0]} r={track.rot} kind={m.kind} color={m.color} trim={m.trim} seed={i} />
             </group>
           )
         }),

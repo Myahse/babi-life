@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
 import { rng, type Filler } from './themes'
-import { Box, Mat, Palm, Sign, Tree, Vehicle } from './props'
+import { Box, Mat, Palm, Sign, Tree } from './props'
+import { Vehicle } from './vehicles'
 
 // The buildings that fill a commune around the places you can visit. Each
 // fits a 14 m lot centred on the origin, front (+Z) facing its street, and

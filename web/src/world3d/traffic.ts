@@ -1,4 +1,4 @@
-import type { VehicleKind } from './props'
+import type { VehicleKind } from './vehicles'
 
 // The traffic rules of the street scene, kept free of React and three.js.
 
