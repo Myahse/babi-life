@@ -999,7 +999,8 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
   const phase = useRef<number | null>(null)
   const glance = useRef({ y: 0, x: 0, next: 0 })
   useFrame((_, dtRaw) => {
-    const dt = Math.min(dtRaw, 0.1)
+    // Never backwards (a video rendered frame by frame can step back), at most 0.1 s.
+    const dt = Math.min(Math.max(dtRaw, 0), 0.1)
     const t = worldTime() + seed
     const run = pose === 'run'
     const walk = pose === 'walk' || run || pose === 'dribble'

@@ -1,0 +1,17 @@
+{
+  "name": "babi-life-marketing",
+  "private": true,
+  "type": "module",
+  "description": "Logos, flyer and video for Babi Life's wish list. See README.md.",
+  "scripts": {
+    "logos": "node logos.mjs",
+    "flyer": "node flyer.mjs",
+    "video": "node video.mjs",
+    "all": "node logos.mjs && node flyer.mjs && node video.mjs"
+  },
+  "dependencies": {
+    "opentype.js": "^1.3.4",
+    "playwright-core": "^1.56.0",
+    "qrcode": "^1.5.4"
+  }
+}

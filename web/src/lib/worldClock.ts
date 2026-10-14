@@ -31,8 +31,14 @@ export function clockSample(sentAt: number, serverMs: number, receivedAt: number
 /** Now, on the server's clock (ms since 1970). */
 export const serverNow = () => local() + offset
 
+let frozen: number | null = null
+/** Holds the shared clock at one instant (null lets it run): for rendering a video frame by frame. */
+export function freezeWorldTime(t: number | null) {
+  frozen = t
+}
+
 /** Seconds since the game's epoch on the shared clock: what animations read. */
-export const worldTime = () => (serverNow() - EPOCH_MS) / 1000
+export const worldTime = () => frozen ?? (serverNow() - EPOCH_MS) / 1000
 
 /** The local clock, for timing a sample. */
 export const localNow = local
