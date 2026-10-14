@@ -1,5 +1,7 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
+import { Human, NoShadows } from '../avatar/Human'
+import { randomLook } from '../avatar/options'
 
 // Small low-poly props shared by buildings and the street scene. Everything
 // uses flat-shaded Lambert materials: cheap on low-end Android phones and
@@ -70,6 +72,19 @@ export function Lamp({ p, night }: { p: [number, number, number]; night: boolean
   )
 }
 
+// The gbaka's apprenti hangs out of the sliding door, calling the stops and
+// waving at people on the sidewalk.
+const APPRENTI = { ...randomLook('homme', () => 0.37), outfit: 'jersey', outfitColor: '#ff8200', hair: 'short', accessory: 'capback' }
+function Apprenti({ len, wide }: { len: number; wide: number }) {
+  return (
+    <NoShadows>
+      <group position={[len * 0.12, 0.32, wide / 2 + 0.22]} rotation={[0, Math.PI / 2, -0.12]}>
+        <Human look={APPRENTI} gender="homme" pose="wave" seed={2} />
+      </group>
+    </NoShadows>
+  )
+}
+
 export type VehicleKind = 'taxi' | 'woro' | 'gbaka' | 'car' | 'moto'
 
 /** Abidjan's traffic: orange taxi compteur, woro-woro, gbaka, cars and motos. Real size, in metres. */
@@ -100,6 +115,7 @@ export function Vehicle({ p, r = 0, kind = 'taxi', color, trim }: { p: [number, 
       <Box p={[gbaka ? 0.2 : -0.25, 1.52, 0]} s={[gbaka ? len - 0.5 : 2.4, 0.5, wide - 0.04]} c="#2a3446" />
       {gbaka && <Box p={[0, 1.08, 0]} s={[len + 0.02, 0.2, wide + 0.02]} c="#00a862" />}
       {gbaka && <Box p={[0.2, 2.02, 0]} s={[len - 1, 0.12, wide - 0.4]} c="#495057" />}
+      {gbaka && <Apprenti len={len} wide={wide} />}
       {kind === 'taxi' && <Box p={[-0.25, 2.0, 0]} s={[0.7, 0.25, 0.35]} c="#ffe066" />}
       {kind === 'woro' && <Box p={[0, 1.18, 0]} s={[len + 0.02, 0.12, wide + 0.02]} c={trim ?? '#f8f9fa'} />}
       {kind === 'woro' && trim && <Box p={[0, 0.45, 0]} s={[len + 0.02, 0.28, wide + 0.02]} c={trim} />}

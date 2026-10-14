@@ -4,7 +4,7 @@ import { ContactShadows, OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { Look, Sim } from '../lib/types'
-import { Human, type Pose } from './Human'
+import { Baby, Human, type Pose } from './Human'
 
 // The creator's turntable: the Sim on a round podium, drag to spin it.
 // `focus` glides the camera between the whole body and a close-up of the face.
@@ -34,7 +34,7 @@ function Rig({ focus, height }: { focus: Focus; height: number }) {
   return null
 }
 
-export function Stage({ look, gender, focus = 'body', pose = 'idle', className = '' }: { look: Look; gender: Sim['gender']; focus?: Focus; pose?: Pose; className?: string }) {
+export function Stage({ look, gender, focus = 'body', pose = 'idle', className = '', baby = false }: { look: Look; gender: Sim['gender']; focus?: Focus; pose?: Pose; className?: string; /** Show the Sim as the baby it will be born. */ baby?: boolean }) {
   const h = look.height ?? 1
   return (
     <Canvas className={className} shadows dpr={[1, 2]} camera={{ position: [0.9, 1.1, 4.3], fov: 28 }} gl={{ antialias: true, alpha: true }}>
@@ -51,7 +51,13 @@ export function Stage({ look, gender, focus = 'body', pose = 'idle', className =
         <meshBasicMaterial color="#ff9a2e" />
       </mesh>
       <ContactShadows position={[0, 0.001, 0]} opacity={0.35} scale={2.4} blur={2.5} far={1.5} />
-      <Human look={look} gender={gender} pose={pose} />
+      {baby ? (
+        <group scale={2.6}>
+          <Baby look={look} gender={gender} pose="busy" />
+        </group>
+      ) : (
+        <Human look={look} gender={gender} pose={pose} />
+      )}
       <OrbitControls makeDefault enablePan={false} enableZoom={false} minPolarAngle={1.05} maxPolarAngle={1.75} rotateSpeed={0.7} />
       <Rig focus={focus} height={h} />
     </Canvas>

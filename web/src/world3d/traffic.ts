@@ -16,7 +16,19 @@ export function crossLight(t: number): Light {
 }
 
 // A vehicle on a track (one lane, one direction); s is how far along it is.
-export type Mover = { kind: VehicleKind; color?: string; trim?: string; len: number; speed: number; v: number; s: number }
+export type Mover = {
+  kind: VehicleKind
+  color?: string
+  trim?: string
+  len: number
+  speed: number
+  v: number
+  s: number
+  /** Seconds left standing still: a gbaka picking up clients, or held at the checkpoint. */
+  pause?: number
+  /** At the police checkpoint: pulled over, or waved through, this time round. */
+  check?: 'stop' | 'pass' | 'held'
+}
 export type Track = {
   length: number
   movers: Mover[]
@@ -25,7 +37,11 @@ export type Track = {
   light: (t: number) => Light
   place: (s: number) => [number, number]
   rot: number
+  /** A police checkpoint (where fronts stop) that pulls gbakas over. */
+  checkpoint?: number
 }
+
+export const CHECK_SECONDS = 7
 
 /** Move every vehicle: keep a distance to the one ahead, stop at red lights. */
 export function drive(track: Track, t: number, dt: number) {
@@ -46,7 +62,21 @@ export function drive(track: Track, t: number, dt: number) {
       // Amber: stop if there's room to brake, otherwise go through.
       if (light === 'red' || (light === 'amber' && d > (m.v * m.v) / 16)) room = Math.min(room, d)
     }
-    const target = room <= 0.3 ? 0 : m.speed * Math.min(1, room / 14)
+    // Gbakas stop wherever someone waves, whatever the highway code says.
+    if (m.kind === 'gbaka' && !m.pause && m.v > 3 && Math.random() < 0.06 * dt) m.pause = 2 + Math.random() * 3
+    // The checkpoint: police pull over most gbakas; papers, a note, and off.
+    if (track.checkpoint !== undefined && m.kind === 'gbaka') {
+      let d = track.checkpoint - front
+      if (d < -track.length / 2) d += track.length
+      if (d > 30) m.check = undefined
+      else if (d > 0 && !m.check) m.check = Math.random() < 0.65 ? 'stop' : 'pass'
+      if (m.check === 'stop') {
+        room = Math.min(room, Math.max(0, d))
+        if (d < 0.6 && m.v < 0.3) (m.check = 'held'), (m.pause = CHECK_SECONDS)
+      }
+    }
+    const target = m.pause ? 0 : room <= 0.3 ? 0 : m.speed * Math.min(1, room / 14)
+    if (m.pause) m.pause = Math.max(0, m.pause - dt)
     m.v += Math.max(-14 * dt, Math.min(6 * dt, target - m.v))
     m.v = Math.max(0, m.v)
     m.s = (m.s + m.v * dt) % track.length

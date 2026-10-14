@@ -245,6 +245,14 @@ function VehicleSide({ kind, color, trim, taken }: { kind: Kind; color: string; 
       <path d={long ? `M6 44 V16 Q6 8 14 8 H${w - 14} Q${w - 4} 8 ${w - 4} 20 V44 Z` : `M4 44 V30 Q4 24 12 23 L28 10 Q31 8 36 8 H74 Q80 8 84 12 L96 23 Q${w - 4} 24 ${w - 4} 32 V44 Z`} fill={color} stroke="rgba(0,0,0,0.25)" strokeWidth="1.5" />
       {trim && <rect x="5" y="36" width={w - 10} height="7" fill={trim} />}
       {kind === 'compteur' && <rect x="44" y="2" width="20" height="7" rx="2" fill="#ffe066" stroke="rgba(0,0,0,0.25)" />}
+      {/* The apprenti hanging out of the gbaka's door */}
+      {long && (
+        <g>
+          <rect x={w - 52} y="14" width="9" height="20" rx="3" fill="#ff8200" />
+          <circle cx={w - 47.5} cy="9" r="5" fill="#5a3b26" />
+          <path d={`M${w - 43} 18 L${w - 33} 8`} stroke="#5a3b26" strokeWidth="3" strokeLinecap="round" />
+        </g>
+      )}
       {[...Array(seats)].map((_, i) => {
         const x = long ? 18 + i * 25 : 32 + i * 20
         return (

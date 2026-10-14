@@ -6,7 +6,7 @@ import { randomLook } from '../avatar/options'
 import { rng, type Theme } from './themes'
 import { BACK_STREET_Z, CROSS_X, EXTENT_X, SIDEWALK, STREET_HALF } from './layout'
 import { Vehicle, type VehicleKind } from './props'
-import { boulevardLight, crossLight, drive, type Light, type Mover, type Track } from './traffic'
+import { CHECK_SECONDS, boulevardLight, crossLight, drive, type Light, type Mover, type Track } from './traffic'
 
 // What makes a street feel alive: people walking the sidewalks or chatting in
 // small groups, and the traffic of taxis, woro-woros, gbakas and motos.
@@ -65,6 +65,35 @@ const lengthOf = (k: VehicleKind) => (k === 'gbaka' ? 5.6 : k === 'moto' ? 1.6 :
 // Stop lines, before the zebra crossings: on the boulevard, from the cross
 // street's centre line; on a cross street, from the boulevard's.
 const STOP_X = 5.5
+// Where the police set up, on the eastbound side of the boulevard.
+const CHECK_X = 88
+const COP = (seed: number) => ({ ...randomLook('homme', () => seed), outfit: 'suit', outfitColor: '#2f4a3a', bottomColor: '#2f4a3a', accessory: 'cap', accessoryColor: '#2f4a3a' })
+
+function Checkpoint({ pose, copRef, noteRef }: { pose: Pose; copRef: React.RefObject<THREE.Group | null>; noteRef: React.RefObject<THREE.Mesh | null> }) {
+  return (
+    <group>
+      {/* Cones across half the lane, and the sergeant who stays put */}
+      {[0, 1, 2].map((k) => (
+        <mesh key={k} position={[CHECK_X + 3 + k * 1.6, 0.35, 3.9 - k * 0.5]}>
+          <coneGeometry args={[0.22, 0.7, 10]} />
+          <meshLambertMaterial color={k % 2 ? '#ffffff' : '#ff6a00'} />
+        </mesh>
+      ))}
+      <NoShadows>
+        <group position={[CHECK_X + 4, 0, STREET_HALF + 1.4]} rotation={[0, Math.PI, 0]}>
+          <Human look={COP(0.21)} gender="homme" pose="idle" seed={5} />
+        </group>
+        <group ref={copRef} position={[CHECK_X + 1.5, 0, STREET_HALF + 1]}>
+          <Human look={COP(0.63)} gender="homme" pose={pose} seed={9} />
+        </group>
+      </NoShadows>
+      <mesh ref={noteRef} visible={false}>
+        <boxGeometry args={[0.16, 0.02, 0.08]} />
+        <meshBasicMaterial color="#7cc576" />
+      </mesh>
+    </group>
+  )
+}
 const STOP_GAP = STREET_HALF + 3.2
 
 export function Traffic({ theme, seed }: { theme: Theme; seed: string }) {
@@ -86,10 +115,11 @@ export function Traffic({ theme, seed }: { theme: Theme; seed: string }) {
     const spread = (n: number, length: number) => [...Array(n)].map((_, i) => ({ ...vehicle(), v: 0, s: ((i + r() * 0.5) / n) * length }))
     const L = EXTENT_X * 2
     const crossings = [-CROSS_X, CROSS_X]
+    const police = r() < 0.7
     const half = Math.ceil(theme.vehicles / 2)
     const boulevard: Track[] = [
       // Eastbound (+x) on the far lane, westbound on the near one.
-      { length: L, movers: spread(half, L), stops: crossings.map((x) => x - STOP_X + EXTENT_X), light: boulevardLight, place: (s) => [s - EXTENT_X, 2.2], rot: 0 },
+      { length: L, movers: spread(half, L), stops: crossings.map((x) => x - STOP_X + EXTENT_X), light: boulevardLight, place: (s) => [s - EXTENT_X, 2.2], rot: 0, checkpoint: police ? CHECK_X + EXTENT_X : undefined },
       { length: L, movers: spread(theme.vehicles - half, L), stops: crossings.map((x) => EXTENT_X - (x + STOP_X)), light: boulevardLight, place: (s) => [EXTENT_X - s, -2.2], rot: Math.PI },
     ]
     // A little traffic on the cross streets, waiting for its green.
@@ -116,6 +146,13 @@ export function Traffic({ theme, seed }: { theme: Theme; seed: string }) {
     )
   }, [seed])
   const beggarRefs = useRef<(THREE.Group | null)[]>([])
+  // The police at the checkpoint: one stays by the cones, the other walks to
+  // the gbaka pulled over, takes the papers… and the note slipped with them.
+  const hasPolice = tracks[0].checkpoint !== undefined
+  const cop = useRef({ x: CHECK_X + 1.5, z: STREET_HALF + 1 })
+  const copRef = useRef<THREE.Group>(null)
+  const noteRef = useRef<THREE.Mesh>(null)
+  const [copPose, setCopPose] = useState<Pose>('idle')
   const [poses, setPoses] = useState<Pose[]>(() => beggars.map(() => 'idle'))
 
   useFrame(({ clock }, dt) => {
@@ -156,9 +193,32 @@ export function Traffic({ theme, seed }: { theme: Theme; seed: string }) {
       return (d > 0.05 ? 'walk' : target === b.home ? 'idle' : 'beg') as Pose
     })
     if (next.some((p, i) => p !== poses[i])) setPoses(next)
+    if (hasPolice) {
+      const held = tracks[0].movers.find((m) => m.check === 'held' && (m.pause ?? 0) > 0)
+      const target: [number, number] = held ? [tracks[0].place(held.s)[0] + 1, 3.5] : [CHECK_X + 1.5, STREET_HALF + 1]
+      const c = cop.current
+      const dx = target[0] - c.x
+      const dz = target[1] - c.z
+      const d = Math.hypot(dx, dz)
+      if (d > 0.05) {
+        const v = Math.min(d, 1.6 * step)
+        c.x += (dx / d) * v
+        c.z += (dz / d) * v
+      }
+      copRef.current?.position.set(c.x, 0, c.z)
+      if (copRef.current) copRef.current.rotation.y = d > 0.05 ? Math.atan2(dx, dz) : Math.PI
+      // The note changes hands near the end of the stop.
+      if (noteRef.current) {
+        noteRef.current.visible = !!held && d < 0.1 && (held.pause ?? 0) < CHECK_SECONDS - 3
+        noteRef.current.position.set(c.x, 1.25, c.z - 0.45)
+      }
+      const p: Pose = d > 0.05 ? 'walk' : held ? 'beg' : 'idle'
+      if (p !== copPose) setCopPose(p)
+    }
   })
   return (
     <>
+      {hasPolice && <Checkpoint pose={copPose} copRef={copRef} noteRef={noteRef} />}
       <NoShadows>
         {beggars.map((b, i) => (
           <group key={`b${i}`} ref={(g) => void (beggarRefs.current[i] = g)} position={[b.x, 0, b.z]}>

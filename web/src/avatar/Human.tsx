@@ -904,10 +904,11 @@ function ShoeMesh({ shoe, skin }: { shoe: Shoe; skin: THREE.Material }) {
 
 /* ---------- The whole Sim ---------- */
 
-type Props = { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number }
+type Props = { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; /** Children have bigger heads for their size (1 = adult). */ headScale?: number }
 
-export function Human({ look, gender, pose = 'idle', seed = 0 }: Props) {
-  const l = fullLook(look)
+export function Human({ look, gender, pose = 'idle', seed = 0, headScale = 1 }: Props) {
+  const young = headScale > 1
+  const l = young ? { ...fullLook(look), beard: 'none', accessory: 'none' } : fullLook(look)
   const femme = gender === 'femme'
   const { w, limb: lw, belly } = BODY[l.body] ?? BODY.moyen
   const skin = mat(l.skin)
@@ -1021,7 +1022,7 @@ export function Human({ look, gender, pose = 'idle', seed = 0 }: Props) {
         {/* Neck and head */}
         <Part g={limb(0.045, 0.05, 0.08)} m={skin} p={[0, 1.42, 0]} />
         {l.accessory === 'chain' && <mesh geometry={geo('chain', () => new THREE.TorusGeometry(0.068, 0.005, 6, 28))} material={mat(l.accessoryColor || '#e8b93c', { shine: true })} position={[0, 1.335, 0.035]} rotation={[1.15, 0, 0]} scale={[w, 1.1, 1]} />}
-        <group ref={head} position={[0, HEAD_Y, 0.008]}>
+        <group ref={head} position={[0, HEAD_Y + (headScale - 1) * 0.1, 0.008]} scale={headScale}>
           <Face l={l} femme={femme} skin={skin} />
         </group>
 
@@ -1076,3 +1077,73 @@ export function Human({ look, gender, pose = 'idle', seed = 0 }: Props) {
     </group>
   )
 }
+
+/* ---------- A baby ---------- */
+
+/**
+ * A baby: a big head with a tuft of hair, a onesie and a nappy, short arms and
+ * legs. Sits and babbles when still, crawls when it moves, claps when busy.
+ */
+export function Baby({ look, gender, pose = 'idle', seed = 0 }: Props) {
+  const full = fullLook(look)
+  const l: Required<Look> = { ...full, hair: full.hair === 'bald' ? 'bald' : 'short', beard: 'none', accessory: 'none', marks: 'none' }
+  const skin = mat(l.skin)
+  const onesie = mat(BABY_COLORS[Math.abs(Math.round(seed * 7)) % BABY_COLORS.length] ?? '#bde0fe')
+  const nappy = mat('#f8f9fa')
+  const root = useRef<THREE.Group>(null)
+  const head = useRef<THREE.Group>(null)
+  const arms = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
+  const legs = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime + seed
+    const crawl = pose === 'walk'
+    // On all fours to crawl; sitting up otherwise.
+    root.current!.rotation.x = crawl ? 1.05 : 0
+    root.current!.position.y = crawl ? 0.17 + Math.abs(Math.sin(t * 6)) * 0.01 : 0
+    root.current!.position.z = crawl ? -0.12 : 0
+    head.current!.rotation.x = crawl ? -0.9 : Math.sin(t * 1.3) * 0.08
+    head.current!.rotation.z = crawl ? 0 : Math.sin(t * 0.9) * 0.1
+    for (const i of [0, 1]) {
+      const out = i === 0 ? -1 : 1
+      const a = arms[i].current!
+      const g = legs[i].current!
+      if (crawl) {
+        const step = Math.sin(t * 6 + i * Math.PI)
+        a.rotation.set(-1.25 + step * 0.35, 0, 0)
+        g.rotation.set(-0.25 - step * 0.3, 0, 0)
+      } else if (pose === 'busy') {
+        a.rotation.set(-1.2, 0, -out * (0.45 + Math.max(0, Math.sin(t * 9)) * 0.35))
+        g.rotation.set(-1.45, 0, out * 0.25)
+      } else {
+        a.rotation.set(-0.5 + Math.sin(t * 2 + i * 2) * 0.35, 0, out * 0.25)
+        g.rotation.set(-1.45, 0, out * 0.3)
+      }
+    }
+  })
+  return (
+    <group ref={root}>
+      {/* Body in a onesie, and the nappy */}
+      <Blob m={onesie} p={[0, 0.24, 0]} r={[0.12, 0.14, 0.105]} />
+      <Blob m={nappy} p={[0, 0.12, -0.005]} r={[0.115, 0.075, 0.1]} />
+      {/* Legs: chubby, sticking out in front when sitting */}
+      {[0, 1].map((i) => (
+        <group key={i} ref={legs[i]} position={[(i ? 1 : -1) * 0.06, 0.1, 0]}>
+          <Part g={limb(0.045, 0.038, 0.17)} m={onesie} />
+          <Blob m={skin} p={[0, -0.18, 0.02]} r={[0.032, 0.026, 0.045]} />
+        </group>
+      ))}
+      {/* Arms */}
+      {[0, 1].map((i) => (
+        <group key={i} ref={arms[i]} position={[(i ? 1 : -1) * 0.115, 0.31, 0]}>
+          <Part g={limb(0.035, 0.03, 0.15)} m={onesie} />
+          <Blob m={skin} p={[0, -0.165, 0]} r={[0.03, 0.03, 0.03]} />
+        </group>
+      ))}
+      {/* A big head, the same face as the grown-up Sim will have */}
+      <group ref={head} position={[0, 0.5, 0.01]} scale={1.05}>
+        <Face l={l} femme={gender === 'femme'} skin={skin} />
+      </group>
+    </group>
+  )
+}
+const BABY_COLORS = ['#bde0fe', '#ffc8dd', '#cdeac0', '#fff1a8', '#e2cfea']
