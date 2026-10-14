@@ -39,6 +39,8 @@ export default defineConfig({
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         navigateFallback: '/index.html',
         cleanupOutdatedCaches: true,
+        // The two body models (~3 MB each) are kept after the first visit.
+        runtimeCaching: [{ urlPattern: /\/models\/.*\.glb$/, handler: 'StaleWhileRevalidate', options: { cacheName: 'models' } }],
       },
     }),
   ],

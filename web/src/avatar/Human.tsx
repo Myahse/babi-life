@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useRef, useState } from 'react'
+import { createContext, lazy, Suspense, useContext, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
@@ -112,6 +112,8 @@ type Mat = THREE.Material | THREE.Material[]
 const Shadows = createContext(true)
 /** Wrap crowds in this: background Sims don't need to cast shadows. */
 export const NoShadows = ({ children }: { children: React.ReactNode }) => <Shadows.Provider value={false}>{children}</Shadows.Provider>
+/** Whether the people here cast shadows (not in a NoShadows crowd). */
+export const useCastShadows = () => useContext(Shadows)
 
 function Part({ g, m, p, s, r }: { g: THREE.BufferGeometry; m: Mat; p?: V3; s?: V3 | number; r?: V3 }) {
   return <mesh geometry={g} material={m} position={p} scale={s} rotation={r} castShadow={useContext(Shadows)} />
@@ -958,45 +960,23 @@ function ShoeMesh({ shoe, skin }: { shoe: Shoe; skin: THREE.Material }) {
   )
 }
 
-/* ---------- The whole Sim ---------- */
-
-type Props = { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; /** Children have bigger heads for their size (1 = adult). */ headScale?: number; /** Walking speed (m/s): the steps follow it. */ speed?: number }
-
-/**
- * A person, in full detail up close, and as a simple figure (LowHuman) past
- * FAR metres from the camera, where the detail can't be seen anyway. The
- * switch has some slack so nobody flickers between the two at the border.
- */
-const FAR = 24
-export function Human(props: Props & { /** Always in full detail (the creator, close-ups). */ full?: boolean }) {
-  const anchor = useRef<THREE.Group>(null)
-  const [far, setFar] = useState(false)
-  const at = useRef(new THREE.Vector3())
-  useFrame(({ camera }) => {
-    if (props.full || !anchor.current) return
-    const d = anchor.current.getWorldPosition(at.current).distanceTo(camera.position)
-    if (!far && d > FAR + 3) setFar(true)
-    else if (far && d < FAR - 3) setFar(false)
-  })
-  return <group ref={anchor}>{far && !props.full ? <LowHuman look={props.look} gender={props.gender} pose={props.pose} seed={props.seed} speed={props.speed} /> : <FullHuman {...props} />}</group>
+/** The joints the poses move: the old avatar's groups, or the bones of the new one. */
+export type Rig = {
+  root: React.RefObject<THREE.Object3D | null>
+  head: React.RefObject<THREE.Object3D | null>
+  chest: React.RefObject<THREE.Object3D | null>
+  hip: React.RefObject<THREE.Object3D | null>[]
+  knee: React.RefObject<THREE.Object3D | null>[]
+  shoulder: React.RefObject<THREE.Object3D | null>[]
+  elbow: React.RefObject<THREE.Object3D | null>[]
 }
 
-function FullHuman({ look, gender, pose = 'idle', seed = 0, headScale = 1, speed }: Props) {
-  const young = headScale > 1
-  const l = young ? { ...fullLook(look), beard: 'none', accessory: 'none' } : fullLook(look)
-  const femme = gender === 'femme'
-  const { w, limb: lw, belly } = BODY[l.body] ?? BODY.moyen
-  const skin = mat(l.skin)
-  const d = useMemo(() => dressFor(l, femme), [l.outfit, l.outfitColor, l.bottomColor, l.shoeColor, l.accessoryColor, l.pattern, femme]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const root = useRef<THREE.Group>(null)
-  const head = useRef<THREE.Group>(null)
-  const hip = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
-  const knee = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
-  const shoulder = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
-  const elbow = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
-  const chest = useRef<THREE.Group>(null)
-
+/**
+ * Moves a rig for a pose, every frame: index 0 of each pair is the side at -x.
+ * Rotations are about the rest pose's axes (the person faces +z): x swings a
+ * limb forward (negative) or back, z raises it sideways.
+ */
+export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Rig, pose: Pose, seed: number, speed?: number) {
   // The walk's phase, carried on frame to frame so the stride can change
   // pace without a jump; where the eyes look, changing now and then.
   const phase = useRef(seed * 3)
@@ -1149,6 +1129,64 @@ function FullHuman({ look, gender, pose = 'idle', seed = 0, headScale = 1, speed
     to(hd.rotation, 'z', pose === 'wave' ? 0.08 : pose === 'talk' ? Math.sin(t * 1.3) * 0.05 : 0)
     to(hd.rotation, 'x', pose === 'busy' || pose === 'write' ? 0.25 : pose === 'eat' ? 0.1 : pose === 'drink' ? -0.15 : pose === 'hug' ? 0.15 : pose === 'beg' ? 0.12 : walk ? 0.02 : g.x + Math.sin(t * 0.7) * 0.02)
   })
+}
+
+/* ---------- The whole Sim ---------- */
+
+type Props = { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; /** Children have bigger heads for their size (1 = adult). */ headScale?: number; /** Walking speed (m/s): the steps follow it. */ speed?: number }
+
+/**
+ * A person, in full detail up close, and as a simple figure (LowHuman) past
+ * FAR metres from the camera, where the detail can't be seen anyway. The
+ * switch has some slack so nobody flickers between the two at the border.
+ */
+const FAR = 24
+/** The MakeHuman body (avatar/MHHuman.tsx), loaded with its model; `?oldavatar` shows the old built-in one. */
+const MHHuman = lazy(() => import('./MHHuman').then((m) => ({ default: m.MHHuman })))
+const OLD_AVATAR = typeof location !== 'undefined' && new URLSearchParams(location.search).has('oldavatar')
+export function Human(props: Props & { /** Always in full detail (the creator, close-ups). */ full?: boolean }) {
+  const anchor = useRef<THREE.Group>(null)
+  const [far, setFar] = useState(false)
+  const at = useRef(new THREE.Vector3())
+  useFrame(({ camera }) => {
+    if (props.full || !anchor.current) return
+    const d = anchor.current.getWorldPosition(at.current).distanceTo(camera.position)
+    if (!far && d > FAR + 3) setFar(true)
+    else if (far && d < FAR - 3) setFar(false)
+  })
+  const low = <LowHuman look={props.look} gender={props.gender} pose={props.pose} seed={props.seed} speed={props.speed} />
+  return (
+    <group ref={anchor}>
+      {far && !props.full ? (
+        low
+      ) : OLD_AVATAR ? (
+        <FullHuman {...props} />
+      ) : (
+        <Suspense fallback={low}>
+          <MHHuman {...props} />
+        </Suspense>
+      )}
+    </group>
+  )
+}
+
+function FullHuman({ look, gender, pose = 'idle', seed = 0, headScale = 1, speed }: Props) {
+  const young = headScale > 1
+  const l = young ? { ...fullLook(look), beard: 'none', accessory: 'none' } : fullLook(look)
+  const femme = gender === 'femme'
+  const { w, limb: lw, belly } = BODY[l.body] ?? BODY.moyen
+  const skin = mat(l.skin)
+  const d = useMemo(() => dressFor(l, femme), [l.outfit, l.outfitColor, l.bottomColor, l.shoeColor, l.accessoryColor, l.pattern, femme]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const root = useRef<THREE.Group>(null)
+  const head = useRef<THREE.Group>(null)
+  const hip = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
+  const knee = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
+  const shoulder = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
+  const elbow = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
+  const chest = useRef<THREE.Group>(null)
+
+  usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }, pose, seed, speed)
 
   const body: Body = { femme, w, belly }
   const hipX = 0.082 * w

@@ -934,8 +934,9 @@ export function basketStep(s: BasketSim, dt: number, say: (text: string) => void
 
 export function Basket({ seed }: { seed: string }) {
   const players = useTeams(`basket${seed}`, 6, (team) => ({
-    outfit: 'debardeur',
+    outfit: 'basket',
     outfitColor: team ? RED : BLUE,
+    bottomColor: team ? RED : BLUE,
     accessory: 'none',
   }))
   const fans = useCrowd(8, `basketfans${seed}`)
