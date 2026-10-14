@@ -1,25 +1,23 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { Html, OrbitControls } from '@react-three/drei'
+import { Html } from '@react-three/drei'
 import * as THREE from 'three'
-import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { Commune, Player, Sim, World } from '../lib/types'
 import { iconFor, kindColors } from '../components/icons'
 import { IconTile } from '../components/ui'
 import { Building } from './Buildings'
-import { Character } from './Character'
-import { BACK_STREET_Z, CROSS_X, EXTENT_X, FAR_CROSS_X, HOME_ID, LOT_XS, SIDEWALK, STREET_HALF, layoutCommune, route, type Lot } from './layout'
-import { moveInput } from './input'
+import { BACK_STREET_Z, CROSS_X, EXTENT_X, FAR_CROSS_X, LOT_XS, SIDEWALK, STREET_HALF, layoutCommune, route, type Lot } from './layout'
 import { Box, Lamp, Mat, Palm, Tree } from './props'
 import { FillerBuilding } from './Fillers'
 import { Pedestrians, Traffic, TrafficLights } from './Life'
 import { Bande, Fou, Lovers } from './Nightlife'
 import { OtherPlayers } from './Players'
+import { Walker, type WalkNav } from './Walker'
 import { SHORE_Z, rng, themeFor, type Theme } from './themes'
 import { lifeOf } from '../game/rules'
 import { HAPPENING_DOOR, HappeningMarker, HappeningScene, STOPS_TRAFFIC } from './Happenings'
 
-type Props = {
+export type Props = {
   world: World
   commune: Commune
   sim: Sim
@@ -47,9 +45,10 @@ type Props = {
   /** The player moved the camera away from the Sim (true) or it follows again (false). */
   onFreeCamera?: (free: boolean) => void
   onPickPlayer?: (id: string) => void
+  /** The open world's close, third-person camera. */
+  closeView?: boolean
 }
 
-const SPEED = 4.2 // metres per second: a brisk walk, so errands don't drag
 
 /**
  * The commune as a little 3D neighbourhood, seen from an isometric camera that
@@ -100,6 +99,15 @@ function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy,
     return () => cancelAnimationFrame(id)
   }, [])
   const { size, camera } = useThree()
+  // The street's ways: the sidewalks to a place's door, the street grid elsewhere.
+  const nav = useMemo<WalkNav>(() => {
+    const shore = !!theme.waterfront
+    return {
+      walkable: (x, z) => walkable(x, z, lots, shore),
+      route: (a, b, door) => (door ? route(a, b) : streetPath(a, b, (p, q) => clear(p, q, lots, shore))),
+      bounds: { x0: -EXTENT_X, x1: EXTENT_X, z0: -BACK_STREET_Z - 30, z1: BACK_STREET_Z + 10 },
+    }
+  }, [lots, theme.waterfront])
 
   useEffect(() => {
     // The whole block around you: about 70 m across a computer screen,
@@ -148,7 +156,7 @@ function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy,
       )}
 
       {players && players.length > 0 && <OtherPlayers players={players} lots={places} labels={labels} onPick={(id) => onPickPlayer?.(id)} />}
-      <Walker stage={lifeOf(world, sim).stage?.id ?? 'adulte'} nameTag={nameTag} labels={labels} stationAt={stationAt ?? null} sim={sim} lots={places} blocks={lots} shore={!!theme.waterfront} moodColor={moodColor} goTo={goTo} onArrive={onArrive} busy={busy} onNear={onNear} frozen={!!frozen} recenter={recenter ?? 0} onFreeCamera={onFreeCamera} />
+      <Walker stage={lifeOf(world, sim).stage?.id ?? 'adulte'} nameTag={nameTag} labels={labels} stationAt={stationAt ?? null} sim={sim} lots={places} nav={nav} moodColor={moodColor} goTo={goTo} onArrive={onArrive} busy={busy} onNear={onNear} frozen={!!frozen} recenter={recenter ?? 0} onFreeCamera={onFreeCamera} />
     </>
   )
 }
@@ -319,7 +327,7 @@ function Pirogue({ p, r, color }: { p: [number, number, number]; r: number; colo
   )
 }
 
-function LotView({ lot, world, night, label, onPick }: { lot: Lot; world: World; night: boolean; label: boolean; onPick: (id: string) => void }) {
+export function LotView({ lot, world, night, label, onPick }: { lot: Lot; world: World; night: boolean; label: boolean; onPick: (id: string) => void }) {
   const [hover, setHover] = useState(false)
   const kind = world.kinds[lot.kind]
   const tall = lot.kind === 'office' ? 17 : lot.kind === 'worship' ? 13 : lot.kind === 'nature' ? 11 : 7.5
@@ -389,214 +397,4 @@ function streetPath(a: [number, number], b: [number, number], ok: (p: [number, n
     }
   }
   return best
-}
-const NEAR_DOOR = 2.6 // metres from a door to be "at" a place
-
-function Walker({ sim, stage, lots, blocks, shore, moodColor, goTo, onArrive, busy, stationAt, nameTag, labels, onNear, frozen, recenter, onFreeCamera }: { sim: Sim; stage: string; lots: Lot[]; blocks: Lot[]; shore: boolean; moodColor: string; goTo: Props['goTo']; onArrive: Props['onArrive']; busy: Props['busy']; stationAt: string | null; nameTag?: string; labels: boolean; onNear?: Props['onNear']; frozen: boolean; recenter: number; onFreeCamera?: Props['onFreeCamera'] }) {
-  const group = useRef<THREE.Group>(null)
-  const path = useRef<[number, number][]>([])
-  const target = useRef<string | null>(null)
-  const [walking, setWalking] = useState(false)
-  const controls = useThree((s) => s.controls) as OrbitControlsImpl | null
-  const camera = useThree((s) => s.camera)
-
-  // Start where the Sim is busy, else at home, else on the sidewalk. Only
-  // once: the place list changes later (a happening starts, an activity
-  // ends) and the Sim must never teleport.
-  const placed = useRef(false)
-  useEffect(() => {
-    if (placed.current) return
-    const at = lots.find((l) => l.id === stationAt) ?? lots.find((l) => l.id === HOME_ID)
-    const [x, z] = at?.door ?? [0, SIDEWALK]
-    group.current!.position.set(x, 0, z)
-    if (at) group.current!.rotation.y = at.z < 0 ? Math.PI : 0
-    placed.current = true
-  }, [lots, stationAt])
-
-  // The camera follows the Sim, unless the player dragged it away to look
-  // around; walking (or the recentre button) brings it back.
-  const free = useRef(false)
-  const gesture = useRef(false)
-  const setFree = (f: boolean) => {
-    if (free.current !== f) {
-      free.current = f
-      onFreeCamera?.(f)
-    }
-  }
-  useEffect(() => setFree(false), [recenter]) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (!controls) return
-    const start = () => (gesture.current = true)
-    const end = () => {
-      gesture.current = false
-      const g = group.current
-      if (g && Math.hypot(controls.target.x - g.position.x, controls.target.z - g.position.z) > 3) setFree(true)
-    }
-    controls.addEventListener('start', start)
-    controls.addEventListener('end', end)
-    return () => (controls.removeEventListener('start', start), controls.removeEventListener('end', end))
-  }, [controls]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (!goTo) return
-    const lot = lots.find((l) => l.id === goTo.placeId)
-    if (!lot) return
-    const p = group.current!.position
-    path.current = route([p.x, p.z], lot.door).slice(1)
-    target.current = lot.id
-    setFree(false)
-    setWalking(true)
-  }, [goTo, lots]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  /** Tap the ground: the Sim walks there, along the streets. */
-  const walkToPoint = (x: number, z: number) => {
-    if (frozen || !walkable(x, z, blocks, shore)) return
-    const p = group.current!.position
-    const way = streetPath([p.x, p.z], [x, z], (a, b) => clear(a, b, blocks, shore))
-    if (!way) return
-    path.current = way.slice(1)
-    target.current = null
-    setFree(false)
-    setWalking(true)
-  }
-
-  const near = useRef<string | null>(null)
-  const padWalking = useRef(false)
-  useFrame((_, dt) => {
-    const g = group.current!
-    // The pad (or the keyboard) walks the Sim freely, relative to the camera.
-    const input = moveInput()
-    const strength = Math.min(1, Math.hypot(input.x, input.y))
-    if (!frozen && strength > 0.05) {
-      path.current = []
-      target.current = null
-      if (free.current) setFree(false)
-      const fwd = new THREE.Vector3(controls ? controls.target.x - camera.position.x : -1, 0, controls ? controls.target.z - camera.position.z : -1).normalize()
-      const right = new THREE.Vector3(-fwd.z, 0, fwd.x)
-      const dir = right.multiplyScalar(input.x).add(fwd.multiplyScalar(input.y)).normalize()
-      const step = SPEED * strength * Math.min(dt, 0.25)
-      const [x, z] = [g.position.x + dir.x * step, g.position.z + dir.z * step]
-      // Slide along walls: try the full step, then each axis on its own.
-      if (walkable(x, z, blocks, shore)) g.position.set(x, 0, z)
-      else if (walkable(x, g.position.z, blocks, shore)) g.position.x = x
-      else if (walkable(g.position.x, z, blocks, shore)) g.position.z = z
-      g.rotation.y = Math.atan2(dir.x, dir.z)
-      if (!padWalking.current) {
-        padWalking.current = true
-        setWalking(true)
-      }
-    } else if (padWalking.current) {
-      padWalking.current = false
-      setWalking(false)
-    }
-    // Standing at a door: offer to go in.
-    if (onNear) {
-      let best: Lot | null = null
-      let bestD = NEAR_DOOR
-      for (const l of lots) {
-        const d = Math.hypot(l.door[0] - g.position.x, l.door[1] - g.position.z)
-        if (d < bestD) [best, bestD] = [l, d]
-      }
-      const id = path.current.length ? null : (best?.id ?? null)
-      if (id !== near.current) {
-        near.current = id
-        onNear(id)
-      }
-    }
-    if (path.current.length) {
-      const [tx, tz] = path.current[0]
-      const dx = tx - g.position.x
-      const dz = tz - g.position.z
-      const dist = Math.hypot(dx, dz)
-      // Real speed even at a low frame rate (cheap phones): only cap huge gaps, like a tab switch.
-      const step = Math.min(dist, SPEED * Math.min(dt, 0.25))
-      if (dist < 0.05) {
-        path.current.shift()
-        if (!path.current.length) {
-          setWalking(false)
-          // Face the building and hand over to the action menu.
-          const lot = lots.find((l) => l.id === target.current)
-          if (lot) g.rotation.y = lot.z < 0 ? Math.PI : 0
-          if (target.current) onArrive(target.current)
-        }
-      } else {
-        g.position.x += (dx / dist) * step
-        g.position.z += (dz / dist) * step
-        g.rotation.y = Math.atan2(dx, dz)
-      }
-    }
-    // Camera follows the Sim, keeping whatever angle the player chose.
-    if (controls && !free.current && !gesture.current) {
-      const want = new THREE.Vector3(g.position.x, 0, g.position.z)
-      const delta = want.sub(controls.target).multiplyScalar(0.08)
-      controls.target.add(delta)
-      camera.position.add(delta)
-      controls.update()
-    }
-    // Looking around stays over the commune.
-    if (controls) {
-      const t = controls.target
-      const cx = THREE.MathUtils.clamp(t.x, -EXTENT_X, EXTENT_X) - t.x
-      const cz = THREE.MathUtils.clamp(t.z, -BACK_STREET_Z - 30, BACK_STREET_Z + 10) - t.z
-      if (cx || cz) {
-        t.x += cx
-        t.z += cz
-        camera.position.x += cx
-        camera.position.z += cz
-      }
-    }
-  })
-
-  return (
-    <>
-      <OrbitControls
-        makeDefault
-        enablePan
-        screenSpacePanning={false}
-        // One finger (or the mouse) drags the view; two fingers zoom and turn.
-        touches={{ ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE }}
-        mouseButtons={{ LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE }}
-        enableDamping
-        zoomSpeed={1.6}
-        minZoom={2.2}
-        maxZoom={70}
-        minPolarAngle={0.5}
-        maxPolarAngle={1.05}
-      />
-      {/* The ground you can tap to walk to (a drag isn't a tap). */}
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, 0.3, 0]}
-        onClick={(e) => {
-          if (e.delta > 6 || e.intersections[0]?.object !== e.object) return
-          walkToPoint(e.point.x, e.point.z)
-        }}
-      >
-        <planeGeometry args={[EXTENT_X * 2 + 16, BACK_STREET_Z * 2 + 8]} />
-        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-      </mesh>
-      <group ref={group}>
-        <Character look={sim.look} gender={sim.gender} walking={walking} busy={!!busy} moodColor={moodColor} stage={stage} />
-        {labels && nameTag && (
-          <Html position={[0, 2.45, 0]} center zIndexRange={[28, 20]}>
-            <span className="pointer-events-none rounded-md bg-[#0f1230]/80 px-1.5 py-0.5 text-[11px] font-extrabold whitespace-nowrap text-white">{nameTag}</span>
-          </Html>
-        )}
-        {labels && (
-          // Always mounted, content toggled: drei's <Html> breaks when unmounted mid-scene.
-          <Html position={[0, 2.95, 0]} center zIndexRange={[30, 20]}>
-            {busy ? (
-              <div className="motion-pop">
-                <div className="motion-breathe rounded-2xl border border-black/5 bg-white p-1 shadow-[0_6px_16px_-8px_rgba(0,0,0,0.5)]">
-                  <IconTile icon={iconFor(busy.icon)} colors={kindColors(busy.kind)} size={32} radius={11} />
-                </div>
-              </div>
-            ) : (
-              <span />
-            )}
-          </Html>
-        )}
-      </group>
-    </>
-  )
 }

@@ -1,0 +1,75 @@
+import * as THREE from 'three'
+
+// Pixel-art textures, 16×16 like Minecraft's, drawn once at startup: no
+// image files, and nearest-pixel filtering keeps them crisp and blocky.
+
+type Painter = (px: (x: number, y: number, c: string) => void, r: () => number) => void
+
+function texture(paint: Painter, seed = 1) {
+  const c = document.createElement('canvas')
+  c.width = c.height = 16
+  const g = c.getContext('2d')!
+  let s = seed
+  const r = () => ((s = (s * 16807) % 2147483647) / 2147483647)
+  paint((x, y, col) => ((g.fillStyle = col), g.fillRect(x, y, 1, 1)), r)
+  const t = new THREE.CanvasTexture(c)
+  t.magFilter = THREE.NearestFilter
+  t.minFilter = THREE.NearestMipmapNearestFilter
+  t.wrapS = t.wrapT = THREE.RepeatWrapping
+  t.colorSpace = THREE.SRGBColorSpace
+  return t
+}
+
+const noisy = (base: number[], spread: number): Painter => (px, r) => {
+  for (let y = 0; y < 16; y++)
+    for (let x = 0; x < 16; x++) {
+      const d = (r() - 0.5) * spread
+      px(x, y, `rgb(${base.map((v) => Math.max(0, Math.min(255, Math.round(v + d)))).join(',')})`)
+    }
+}
+
+/** A storey of wall: plaster, and a window with its frame. White, tinted per building. */
+const wall: Painter = (px, r) => {
+  noisy([236, 232, 224], 18)(px, r)
+  for (let y = 4; y < 11; y++)
+    for (let x = 4; x < 12; x++) px(x, y, x === 4 || x === 11 || y === 4 || y === 10 ? '#6b5a4a' : x === 8 || y === 7 ? '#5a6f86' : y < 7 ? '#3a5170' : '#2c3f5a')
+  for (let x = 3; x < 13; x++) px(x, 11, '#bdb6aa') // sill
+  for (let x = 0; x < 16; x++) px(x, 15, '#c9c2b6') // floor line
+}
+
+/** The same storey at night: only the window glows. */
+const lights: Painter = (px, r) => {
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) px(x, y, '#000')
+  for (let y = 5; y < 10; y++) for (let x = 5; x < 11; x++) px(x, y, r() < 0.15 ? '#a8742a' : '#ffcf6b')
+}
+
+export function makeTextures() {
+  return {
+    wall: texture(wall, 3),
+    lights: texture(lights, 5),
+    roof: texture(noisy([168, 168, 160], 26), 7),
+    tin: texture((px, r) => {
+      // Corrugated sheet metal, the « tôle » of the courtyards.
+      for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) px(x, y, x % 4 === 0 ? '#7d3b22' : x % 4 === 2 ? '#c06a3e' : `rgb(${160 + r() * 30},${80 + r() * 15},${50})`)
+    }, 9),
+    asphalt: texture(noisy([64, 66, 74], 20), 11),
+    pavement: texture((px, r) => {
+      noisy([196, 188, 172], 16)(px, r)
+      for (let i = 0; i < 16; i++) (px(i, 0, '#a59c8c'), px(0, i, '#a59c8c'), px(i, 8, '#a59c8c'), px(8, i, '#a59c8c'))
+    }, 13),
+    laterite: texture(noisy([184, 102, 58], 30), 15),
+    grass: texture(noisy([104, 170, 72], 34), 17),
+    sand: texture(noisy([236, 214, 160], 20), 19),
+    water: texture(noisy([52, 150, 205], 22), 21),
+    pitch: texture((px, r) => {
+      noisy([70, 160, 80], 14)(px, r)
+      for (let i = 0; i < 16; i++) px(i, 0, '#f1f3f5')
+    }, 23),
+    bark: texture(noisy([110, 78, 46], 30), 25),
+    leaves: texture((px, r) => {
+      for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) px(x, y, r() < 0.12 ? '#1f5a22' : `rgb(${40 + r() * 30},${120 + r() * 50},${40 + r() * 20})`)
+    }, 27),
+  }
+}
+
+export type Textures = ReturnType<typeof makeTextures>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BadgeCheck, Cake, LocateFixed, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, Cake, Eye, LocateFixed, Mountain, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World, Ride } from '../lib/types'
 import { useWorld } from '../store/world'
@@ -10,6 +10,7 @@ import { Joystick } from '../components/Joystick'
 import { TravelCTA, type OnTravel } from '../components/TravelCTA'
 import { Portrait } from '../avatar/portrait'
 import { Neighbourhood } from '../world3d/Neighbourhood'
+import { OpenWorld } from '../world3d/open/OpenWorld'
 import { iconFor, kindColors } from '../components/icons'
 import { Chip, Coin, DayNight, IconTile, MotiveRing, Plumbob, Row, needColor } from '../components/ui'
 import { NEEDS, ageBlock, amount, atHome, blockedBy, lifeOf, clock, duration, mood, openAt, openingLabel, predict, shift } from '../game/rules'
@@ -39,6 +40,8 @@ function useIsDesktop() {
   }, [])
   return match
 }
+
+const MAP_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
 
 export function Play() {
   const world = useWorld((s) => s.world)!
@@ -70,6 +73,9 @@ export function Play() {
   // The camera dragged away from the Sim, and the way back.
   const [freeCam, setFreeCam] = useState(false)
   const [recenter, setRecenter] = useState(0)
+  // The real streets (open world) when a map token is set and they load; else the classic street.
+  const [classic, setClassic] = useState(!MAP_TOKEN)
+  const [closeView, setCloseView] = useState(false)
   const announced = useRef('')
 
   useEffect(() => {
@@ -310,27 +316,30 @@ export function Play() {
         </button>
       )}
       <div className={`absolute inset-0 ${showInside ? 'invisible' : ''}`}>
-        <Neighbourhood
-          key={commune.id}
-          world={world}
-          commune={commune}
-          sim={sim}
-          moodColor={moodHex}
-          hour={c.hour}
-          goTo={goTo}
-          onPick={walkTo}
-          onArrive={(id) => (setOutside(false), setPlaceId(id))}
-          busy={doing ? { icon: doing.interaction.icon, kind: doing.placeKind ?? '' } : pending}
-          stationAt={doing?.placeId ?? null}
-          nameTag={user?.username ? `@${user.username}` : sim.firstName}
-          happening={happening}
-          onNear={setNear}
-          frozen={!!sim.activity || !!pending}
-          players={around.players}
-          onPickPlayer={(id) => setPlayers({ focus: id })}
-          recenter={recenter}
-          onFreeCamera={setFreeCam}
-        />
+        {(() => {
+          const street = {
+            world,
+            commune,
+            sim,
+            moodColor: moodHex,
+            hour: c.hour,
+            goTo,
+            onPick: walkTo,
+            onArrive: (id: string) => (setOutside(false), setPlaceId(id)),
+            busy: doing ? { icon: doing.interaction.icon, kind: doing.placeKind ?? '' } : pending,
+            stationAt: doing?.placeId ?? null,
+            nameTag: user?.username ? `@${user.username}` : sim.firstName,
+            happening,
+            onNear: setNear,
+            frozen: !!sim.activity || !!pending,
+            players: around.players,
+            onPickPlayer: (id: string) => setPlayers({ focus: id }),
+            recenter,
+            onFreeCamera: setFreeCam,
+            closeView,
+          }
+          return classic ? <Neighbourhood key={commune.id} {...street} /> : <OpenWorld key={commune.id} {...street} token={MAP_TOKEN!} onFail={() => setClassic(true)} />
+        })()}
       </div>
 
       {/* ---------- Top HUD ---------- */}
@@ -391,6 +400,12 @@ export function Play() {
       </footer>
 
       <Soundtrack track={track} seed={trackSeed} />
+      {!classic && !showInside && !placeId && !overlay && (
+        <button className="hud absolute top-[5.5rem] right-3 z-20 flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold lg:right-5" onClick={() => setCloseView((v) => !v)}>
+          {closeView ? <Mountain size={17} strokeWidth={2.6} className="text-[var(--color-emerald)]" /> : <Eye size={17} strokeWidth={2.6} className="text-[var(--color-emerald)]" />}
+          {closeView ? 'Vue de haut' : 'Vue de près'}
+        </button>
+      )}
       {freeCam && !placeId && !overlay && (
         <button className="hud motion-pop absolute right-3 bottom-[6.25rem] z-20 flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-extrabold lg:right-5 lg:bottom-[7.5rem]" onClick={() => setRecenter((n) => n + 1)}>
           <LocateFixed size={18} strokeWidth={2.6} className="text-[var(--color-orange)]" /> Revenir à moi
