@@ -119,7 +119,7 @@ func (h *Handler) repay(w http.ResponseWriter, r *http.Request) {
 		}
 		s.Money -= amount
 		*owed -= amount
-		text := fmt.Sprintf("Remboursement (%s) via Mobile Money. Reste %s.", label, game.FCFA(*owed))
+		text := fmt.Sprintf("Remboursement (%s) via Waye. Reste %s.", label, game.FCFA(*owed))
 		out := game.Outcome{Text: text, Money: -amount}
 		return out, []Event{{Kind: "bill", Text: text, Money: -amount, GameTime: s.GameMinutes}}, nil
 	})

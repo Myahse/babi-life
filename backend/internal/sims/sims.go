@@ -99,8 +99,10 @@ type Sim struct {
 	CareerLevel int        `json:"careerLevel"`
 	Performance int        `json:"performance"`
 	// Activity is what the Sim is busy with right now; nil when free.
-	Activity  *game.Activity `json:"activity"`
-	CreatedAt time.Time      `json:"createdAt"`
+	Activity *game.Activity `json:"activity"`
+	// Apps installed on the phone (world.PhoneApps).
+	Apps      []string  `json:"apps"`
+	CreatedAt time.Time `json:"createdAt"`
 	lastTick  time.Time
 }
 
@@ -141,17 +143,20 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/move", h.move)
 	r.Post("/sims/{id}/repay", h.repay)
 	r.Post("/sims/{id}/stop", h.stopActivity)
+	r.Post("/sims/{id}/apps", h.apps)
+	r.Post("/sims/{id}/send", h.send)
+	r.Post("/sims/{id}/order", h.order)
 }
 
 const simColumns = `id, first_name, last_name, gender, look, traits, aspiration,
 	home_city, home_commune, city, commune, needs, money, game_minutes,
-	origin, housing, loan, rent_arrears, career, career_level, performance, activity, created_at, last_tick`
+	origin, housing, loan, rent_arrears, career, career_level, performance, activity, apps, created_at, last_tick`
 
 func scanSim(row pgx.Row) (Sim, error) {
 	var s Sim
 	err := row.Scan(&s.ID, &s.FirstName, &s.LastName, &s.Gender, &s.Look, &s.Traits, &s.Aspiration,
 		&s.HomeCity, &s.HomeCommune, &s.City, &s.Commune, &s.Needs, &s.Money, &s.GameMinutes,
-		&s.Origin, &s.Housing, &s.Loan, &s.RentArrears, &s.Career, &s.CareerLevel, &s.Performance, &s.Activity, &s.CreatedAt, &s.lastTick)
+		&s.Origin, &s.Housing, &s.Loan, &s.RentArrears, &s.Career, &s.CareerLevel, &s.Performance, &s.Activity, &s.Apps, &s.CreatedAt, &s.lastTick)
 	return s, err
 }
 
@@ -407,6 +412,9 @@ func (h *Handler) travel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.mutate(w, r, func(s *Sim) (game.Outcome, []Event, error) {
+		if app, ok := world.FindRideApp(req.App); ok && !s.hasApp(app.ID) {
+			return game.Outcome{}, nil, fmt.Errorf("installe d'abord %s depuis le Store", app.Name)
+		}
 		if err := s.leaveWith(toCity, toCommune, Ride{App: req.App, Offer: req.Offer, Party: req.Party}, newRand()); err != nil {
 			return game.Outcome{}, nil, err
 		}
@@ -452,9 +460,9 @@ func (h *Handler) mutate(w http.ResponseWriter, r *http.Request, fn func(*Sim) (
 	if _, err := tx.Exec(ctx, `
 		UPDATE sims SET city = $2, commune = $3, needs = $4, money = $5, game_minutes = $6, last_tick = $7,
 		       home_city = $8, home_commune = $9, housing = $10, loan = $11, rent_arrears = $12,
-		       career = $13, career_level = $14, performance = $15, activity = $16
+		       career = $13, career_level = $14, performance = $15, activity = $16, apps = $17
 		WHERE id = $1`, s.ID, s.City, s.Commune, s.Needs, s.Money, s.GameMinutes, s.lastTick,
-		s.HomeCity, s.HomeCommune, s.Housing, s.Loan, s.RentArrears, s.Career, s.CareerLevel, s.Performance, s.Activity); err != nil {
+		s.HomeCity, s.HomeCommune, s.Housing, s.Loan, s.RentArrears, s.Career, s.CareerLevel, s.Performance, s.Activity, s.Apps); err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "could not save sim")
 		return
 	}

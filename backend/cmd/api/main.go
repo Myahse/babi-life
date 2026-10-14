@@ -79,6 +79,9 @@ func main() {
 				"rideApps":    world.RideApps,
 				"compteur":    world.Compteur,
 				"roads":       world.Roads,
+				"phoneApps":   world.PhoneApps,
+				"contacts":    world.Contacts,
+				"menus":       world.Menus,
 				"holidays":    game.Holidays,
 				"config":      map[string]any{"devLogin": cfg.DevLogin, "googleLogin": authH.Verifier != nil},
 			})

@@ -64,5 +64,8 @@ export const api = {
   career: (id: string, career: string) => post<ActionResult>(`/sims/${id}/career`, { career }),
   move: (id: string, housing: string) => post<ActionResult>(`/sims/${id}/move`, { housing }),
   repay: (id: string, what: 'loan' | 'rent', amount: number) => post<ActionResult>(`/sims/${id}/repay`, { what, amount }),
+  setApp: (id: string, app: string, install: boolean) => post<ActionResult>(`/sims/${id}/apps`, { app, install }),
+  send: (id: string, to: string, amount: number) => post<ActionResult>(`/sims/${id}/send`, { to, amount }),
+  order: (id: string, place: string, dish: string) => post<ActionResult>(`/sims/${id}/order`, { place, dish }),
   stop: (id: string) => post<ActionResult>(`/sims/${id}/stop`, {}),
 }

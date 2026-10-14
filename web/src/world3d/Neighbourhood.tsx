@@ -13,6 +13,7 @@ import { moveInput } from './input'
 import { Box, Lamp, Mat, Palm, Tree } from './props'
 import { FillerBuilding } from './Fillers'
 import { Pedestrians, Traffic, TrafficLights } from './Life'
+import { Fou, Lovers } from './Nightlife'
 import { SHORE_Z, rng, themeFor, type Theme } from './themes'
 import { HAPPENING_DOOR, HappeningMarker, HappeningScene, STOPS_TRAFFIC } from './Happenings'
 
@@ -65,7 +66,7 @@ export function Neighbourhood(props: Props) {
   )
 }
 
-function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, nameTag, onNear, frozen }: Props & { night: boolean; dusk: boolean }) {
+function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, nameTag, onNear, frozen, hour }: Props & { night: boolean; dusk: boolean }) {
   const rain = happening?.id === 'pluie'
   const blackout = night && happening?.id === 'delestage'
   const lit = night && !blackout // street lamps and windows
@@ -123,6 +124,8 @@ function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy,
       {happening && <HappeningScene id={happening.id} seed={commune.id} night={night} />}
       {labels && <HappeningMarker happening={happening} onPick={() => onPick('happening')} />}
       <Pedestrians theme={theme} seed={commune.id} />
+      <Lovers seed={commune.id} hour={hour} />
+      <Fou seed={commune.id} />
 
       {lots.map((lot) =>
         lot.kind === 'filler' ? (

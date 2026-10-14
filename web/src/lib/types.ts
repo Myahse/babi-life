@@ -29,6 +29,12 @@ export type Commune = {
   woro?: Woro
   places: Place[]
 }
+/** An app of the phone's store (invented names, modelled on real services). */
+export type PhoneApp = { id: string; name: string; tagline: string; about: string; category: string; sizeMB: number; preinstalled?: boolean; source: Source }
+/** Someone to send money to with Waye. */
+export type Contact = { id: string; name: string; note: string; effect: Partial<Needs> }
+/** A dish on Golvo. */
+export type Dish = { id: string; label: string; icon: string; price: number; minutes: number; effect: Partial<Needs>; minHour?: number; maxHour?: number }
 export type Woro = { color?: string; trim?: string; label?: string; none?: boolean; source: Source }
 export type City = { id: string; name: string; blurb: string; lat: number; lng: number; zoom: number; admin?: { type: string; region?: string; source?: Source }; communes: Commune[] }
 /** A ride-hailing app: "fixed" sets the price, "offer" lets you propose it. */
@@ -79,6 +85,9 @@ export type World = {
   careers: Career[]
   expressions?: Expression[]
   rideApps?: RideApp[]
+  phoneApps?: PhoneApp[]
+  contacts?: Contact[]
+  menus?: Record<string, Dish[]>
   compteur?: { color: string; cities: string[]; source: Source }
   roads?: Record<string, RoadNet>
   config: { devLogin: boolean; googleLogin: boolean }
@@ -130,6 +139,8 @@ export type Sim = {
   /** What the Sim is busy with right now (real time), or null. */
   activity: Activity | null
   createdAt: string
+  /** Apps installed on the phone (from the Store). */
+  apps?: string[]
 }
 
 export type Activity = {

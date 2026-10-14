@@ -1,7 +1,7 @@
-import { useMemo, useRef } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { Human, NoShadows } from '../avatar/Human'
+import { Human, NoShadows, type Pose } from '../avatar/Human'
 import { randomLook } from '../avatar/options'
 import { rng, type Theme } from './themes'
 import { BACK_STREET_Z, CROSS_X, EXTENT_X, SIDEWALK, STREET_HALF } from './layout'
@@ -101,6 +101,23 @@ export function Traffic({ theme, seed }: { theme: Theme; seed: string }) {
     return [...boulevard, ...cross]
   }, [theme, seed])
   const refs = useRef<(THREE.Group | null)[][]>(tracks.map(() => []))
+
+  // Beggars at the lights: they wait on the median before each crossing and,
+  // when the cars stop at the red, walk to a driver's window with a hand out.
+  const beggars = useMemo(() => {
+    const r = rng(`beggars${seed}`)
+    return [-CROSS_X, CROSS_X].flatMap((X) =>
+      [0, 1].map((track) => {
+        const side = track === 0 ? 1 : -1 // eastbound lane is z > 0
+        const home: [number, number] = [X - side * (STOP_X + 7), side * 0.5]
+        const gender: 'femme' | 'homme' = r() < 0.5 ? 'femme' : 'homme'
+        return { track, side, home, x: home[0], z: home[1], gender, look: { ...randomLook(gender, r), outfit: r() < 0.5 ? 'boubou' : 'pagne', outfitColor: '#9c8f7a' }, seed: r() * 100 }
+      }),
+    )
+  }, [seed])
+  const beggarRefs = useRef<(THREE.Group | null)[]>([])
+  const [poses, setPoses] = useState<Pose[]>(() => beggars.map(() => 'idle'))
+
   useFrame(({ clock }, dt) => {
     const step = Math.min(dt, 0.1)
     const t = clock.elapsedTime
@@ -113,9 +130,42 @@ export function Traffic({ theme, seed }: { theme: Theme; seed: string }) {
         g.position.set(x, 0, z)
       })
     })
+    const next = beggars.map((b, i) => {
+      const track = tracks[b.track]
+      // A car stopped at this light, close to the beggar: go to its window.
+      let target = b.home
+      if (track.light(t) === 'red') {
+        const stop = track.stops.find((st) => Math.abs(track.place(st)[0] - (b.home[0] + b.side * 7)) < 1)!
+        const car = track.movers.filter((m) => m.v < 0.4 && m.s + m.len / 2 > stop - 16 && m.s + m.len / 2 < stop + 0.5).sort((a, c) => c.s - a.s)[0]
+        if (car) target = [track.place(car.s)[0] - b.side * 0.4, b.side * 1.05]
+      }
+      const dx = target[0] - b.x
+      const dz = target[1] - b.z
+      const d = Math.hypot(dx, dz)
+      const v = Math.min(d, 1.4 * step)
+      if (d > 0.05) {
+        b.x += (dx / d) * v
+        b.z += (dz / d) * v
+      }
+      const g = beggarRefs.current[i]
+      if (g) {
+        g.position.set(b.x, 0, b.z)
+        // Face where they walk; at a window, face the car.
+        g.rotation.y = d > 0.05 ? Math.atan2(dx, dz) : target === b.home ? (b.side > 0 ? Math.PI / 2 : -Math.PI / 2) : b.side > 0 ? 0 : Math.PI
+      }
+      return (d > 0.05 ? 'walk' : target === b.home ? 'idle' : 'beg') as Pose
+    })
+    if (next.some((p, i) => p !== poses[i])) setPoses(next)
   })
   return (
     <>
+      <NoShadows>
+        {beggars.map((b, i) => (
+          <group key={`b${i}`} ref={(g) => void (beggarRefs.current[i] = g)} position={[b.x, 0, b.z]}>
+            <Human look={b.look} gender={b.gender} pose={poses[i]} seed={b.seed} />
+          </group>
+        ))}
+      </NoShadows>
       {tracks.map((track, ti) =>
         track.movers.map((m, i) => {
           const [x, z] = track.place(m.s)

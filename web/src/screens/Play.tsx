@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BadgeCheck, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Wallet, X, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, X, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World, Ride } from '../lib/types'
 import { useWorld } from '../store/world'
@@ -13,9 +13,13 @@ import { Neighbourhood } from '../world3d/Neighbourhood'
 import { iconFor, kindColors } from '../components/icons'
 import { Chip, Coin, DayNight, IconTile, MotiveRing, Plumbob, Row, needColor } from '../components/ui'
 import { NEEDS, amount, atHome, blockedBy, clock, duration, mood, openAt, openingLabel, predict, shift } from '../game/rules'
-import { BankApp, HomeApp, JobsApp, type Act } from './phoneApps'
+import { HomeApp, JobsApp, type Act } from './phoneApps'
 import { NewsApp, topicOf } from './NewsApp'
 import { RideFlow, type FlowRequest } from '../components/RideFlow'
+import { AppLogo } from '../components/AppLogo'
+import { GolvoApp, deliveryState, type Delivery } from './GolvoApp'
+import { WayeApp } from './WayeApp'
+import { StoreApp } from './StoreApp'
 
 type Toast = { id: number; title: string; text?: string; money: number; tone: 'random' | 'done' | 'error' | 'promo' | 'event'; kind?: string; icon?: string }
 
@@ -50,6 +54,9 @@ export function Play() {
   const [toasts, setToasts] = useState<Toast[]>([])
   const [street, setStreet] = useState<HappeningNow | null>(null)
   const [flow, setFlow] = useState<FlowRequest | null>(null)
+  // A Golvo order on its way, and the phone app to open.
+  const [delivery, setDelivery] = useState<Delivery | null>(null)
+  const [phoneApp, setPhoneApp] = useState<PhoneAppId | null>(null)
   const announced = useRef('')
 
   useEffect(() => {
@@ -214,6 +221,11 @@ export function Play() {
     run(label, 'bus', 'transport', () => api.travel(sim!.id, f.cityId, f.to.id, ride))
   }
 
+  const collect = () => {
+    const d = delivery!
+    run(d.dish.label, d.dish.icon, 'eat', () => api.order(sim!.id, d.place.id, d.dish.id)).then((ok) => ok && setDelivery(null))
+  }
+
   if (!sim) {
     return (
       <div className="grid h-full place-items-center bg-[var(--color-night)] text-white">
@@ -361,9 +373,24 @@ export function Play() {
       </div>
 
       {overlay === 'phone' && (
-        <Phone world={world} sim={sim} commune={commune} journal={journal} time={c.time} act={run} onClose={() => setOverlay(null)} onMap={() => setOverlay('map')} onWalk={walkTo} />
+        <Phone
+          world={world}
+          sim={sim}
+          commune={commune}
+          journal={journal}
+          time={c.time}
+          act={run}
+          startApp={phoneApp}
+          delivery={delivery}
+          onDelivery={setDelivery}
+          onCollect={collect}
+          onClose={() => (setOverlay(null), setPhoneApp(null))}
+          onMap={() => setOverlay('map')}
+          onWalk={walkTo}
+        />
       )}
       {overlay === 'map' && <WorldMap world={world} sim={sim} night={c.isNight} desktop={desktop} onClose={() => setOverlay(null)} onTravel={travel} onWalk={(id) => (setOverlay(null), walkTo(id))} />}
+      {delivery && overlay !== 'phone' && <DeliveryPill delivery={delivery} now={now} onOpen={() => (setPhoneApp('golvo'), setOverlay('phone'))} />}
       {flow && <RideFlow world={world} req={flow} gameMinutes={sim.gameMinutes} onBoard={board} onClose={() => setFlow(null)} />}
     </div>
   )
@@ -371,15 +398,39 @@ export function Play() {
 
 /* ---------- The in-game phone ---------- */
 
-type PhoneProps = { world: World; sim: Sim; commune: Commune; journal: JournalEvent[]; time: string; act: Act; onClose: () => void; onMap: () => void; onWalk: (id: string) => void }
+type PhoneAppId = 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo'
+type PhoneProps = {
+  world: World
+  sim: Sim
+  commune: Commune
+  journal: JournalEvent[]
+  time: string
+  act: Act
+  startApp: PhoneAppId | null
+  delivery: Delivery | null
+  onDelivery: (d: Delivery | null) => void
+  onCollect: () => void
+  onClose: () => void
+  onMap: () => void
+  onWalk: (id: string) => void
+}
 
-function Phone({ world, sim, commune, journal, time, act, onClose, onMap, onWalk }: PhoneProps) {
-  const [app, setApp] = useState<null | 'here' | 'jobs' | 'home' | 'messages' | 'bank' | 'news'>(null)
+function Phone({ world, sim, commune, journal, time, act, startApp, delivery, onDelivery, onCollect, onClose, onMap, onWalk }: PhoneProps) {
+  const [app, setApp] = useState<PhoneAppId | null>(startApp)
   const navigate = useNavigate()
   const home = sim.homeCity === sim.city && sim.homeCommune === commune.id
   const places = [...(home ? [{ id: 'home', name: 'Chez toi', kind: 'home' }] : []), ...commune.places]
   const city = world.cities.find((c) => c.id === sim.city)!
 
+  const has = (id: string) => sim.apps?.includes(id) ?? false
+  // Apps from the store, once installed. The ride apps open the map to pick where to go.
+  const STORE_APPS: { id: string; label: string; open: () => void }[] = [
+    { id: 'store', label: 'Store', open: () => setApp('store') },
+    ...(has('waye') ? [{ id: 'waye', label: 'Waye', open: () => setApp('waye') }] : []),
+    ...(has('golvo') ? [{ id: 'golvo', label: 'Golvo', open: () => setApp('golvo') }] : []),
+    ...(has('gnango') ? [{ id: 'gnango', label: 'Gnango', open: onMap }] : []),
+    ...(has('idrive') ? [{ id: 'idrive', label: 'iDrive', open: onMap }] : []),
+  ]
   const APPS: { id: string; label: string; icon: LucideIcon; colors: [string, string]; open: () => void }[] = [
     { id: 'map', label: 'Carte', icon: MapIcon, colors: ['#69e2a0', '#00a862'], open: onMap },
     { id: 'here', label: 'Quartier', icon: MapPin, colors: ['#ffa040', '#ff6a00'], open: () => setApp('here') },
@@ -387,10 +438,9 @@ function Phone({ world, sim, commune, journal, time, act, onClose, onMap, onWalk
     { id: 'home', label: 'Logement', icon: House, colors: ['#ffb347', '#ff7a00'], open: () => setApp('home') },
     { id: 'news', label: 'Infos', icon: Newspaper, colors: ['#ff8a65', '#e8590c'], open: () => setApp('news') },
     { id: 'messages', label: 'Messages', icon: MessageCircle, colors: ['#b39dff', '#6c47ff'], open: () => setApp('messages') },
-    { id: 'bank', label: 'Mobile Money', icon: Wallet, colors: ['#ffd54f', '#ffa000'], open: () => setApp('bank') },
     { id: 'profile', label: 'Profil', icon: UserRound, colors: ['#ff8a9b', '#ff3d57'], open: () => navigate('/profil', { viewTransition: true }) },
   ]
-  const title = { here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', bank: 'Mobile Money', news: 'Infos · Côte d’Ivoire' }
+  const title: Record<PhoneAppId, string> = { here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo' }
 
   return (
     <div className="absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center" onClick={onClose}>
@@ -426,6 +476,15 @@ function Phone({ world, sim, commune, journal, time, act, onClose, onMap, onWalk
                     <span className="text-xs font-bold text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.35)]">{a.label}</span>
                   </button>
                 ))}
+                {STORE_APPS.map((a) => (
+                  <button key={a.id} onClick={a.open} className="flex flex-col items-center gap-1.5 active:scale-95">
+                    <span className="relative">
+                      <AppLogo id={a.id} />
+                      {a.id === 'golvo' && delivery && <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-[var(--color-rose)] ring-2 ring-white" />}
+                    </span>
+                    <span className="text-xs font-bold text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.35)]">{a.label}</span>
+                  </button>
+                ))}
               </div>
             </div>
           ) : (
@@ -450,7 +509,9 @@ function Phone({ world, sim, commune, journal, time, act, onClose, onMap, onWalk
                 {app === 'home' && <HomeApp world={world} sim={sim} commune={commune} act={act} />}
                 {app === 'messages' && <Journal events={journal} />}
                 {app === 'news' && <NewsApp />}
-                {app === 'bank' && <BankApp sim={sim} act={act} journal={journal} renderJournal={(events) => <Journal events={events} />} />}
+                {app === 'store' && <StoreApp world={world} sim={sim} act={act} onOpen={(id) => (id === 'gnango' || id === 'idrive' ? onMap() : setApp(id as PhoneAppId))} />}
+                {app === 'waye' && <WayeApp world={world} sim={sim} act={act} journal={journal} renderJournal={(events) => <Journal events={events} />} />}
+                {app === 'golvo' && <GolvoApp world={world} sim={sim} delivery={delivery} onOrder={onDelivery} onCancel={() => onDelivery(null)} onCollect={onCollect} />}
               </div>
             </div>
           )}
@@ -748,5 +809,16 @@ function WordOfTheDay({ world, gameMinutes }: { world: World; gameMinutes: numbe
       <p className="text-sm leading-snug font-semibold opacity-95">{e.meaning}</p>
       <p className="mt-1 text-xs italic opacity-80">{e.example}</p>
     </div>
+  )
+}
+
+/** The Golvo courier on the way, over the street. */
+function DeliveryPill({ delivery, now, onOpen }: { delivery: Delivery; now: number; onOpen: () => void }) {
+  const st = deliveryState(delivery, now)
+  return (
+    <button className="hud absolute top-[5.5rem] left-1/2 z-30 flex max-w-[calc(100vw-24px)] -translate-x-1/2 items-center gap-2 rounded-full py-1.5 pr-4 pl-1.5 text-sm font-extrabold whitespace-nowrap" onClick={onOpen}>
+      <AppLogo id="golvo" size={30} radius={15} />
+      {st.stage === 'here' ? `${delivery.courier} est là avec ta commande !` : st.stage === 'kitchen' ? `${delivery.place.name} prépare ta commande` : `${delivery.courier} arrive · ${st.minutesLeft} min`}
+    </button>
   )
 }

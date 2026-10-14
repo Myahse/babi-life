@@ -1,10 +1,10 @@
-// The economy apps of the in-game phone: Boulot, Logement and Mobile Money.
-import { BadgeCheck, CalendarClock, Clock3, Footprints, House, Map as MapIcon, TrendingUp, TriangleAlert, ArrowDownLeft, ArrowUpRight } from 'lucide-react'
+// The economy apps of the in-game phone: Boulot and Logement (money is in Waye).
+import { BadgeCheck, CalendarClock, Clock3, Footprints, House, Map as MapIcon, TrendingUp, TriangleAlert } from 'lucide-react'
 import { api } from '../lib/api'
-import type { ActionResult, Commune, JournalEvent, Sim, World } from '../lib/types'
+import type { ActionResult, Commune, Sim, World } from '../lib/types'
 import { iconFor, kindColors } from '../components/icons'
 import { Chip, Coin, IconTile, Row } from '../components/ui'
-import { DEPOSIT_WEEKS, LOAN_INSTALLMENT, amount, duration, hours, neededToPromote, untilSaturday } from '../game/rules'
+import { DEPOSIT_WEEKS, amount, duration, hours, neededToPromote, untilSaturday } from '../game/rules'
 
 export type Act = (label: string, icon: string, kind: string, call: () => Promise<ActionResult>) => Promise<boolean>
 
@@ -212,53 +212,6 @@ export function HomeApp({ world, sim, commune, act }: AppProps) {
           })}
         </ul>
       </section>
-    </div>
-  )
-}
-
-/* ---------- Mobile Money ---------- */
-
-export function BankApp({ sim, act, journal, renderJournal }: { sim: Sim; act: Act; journal: JournalEvent[]; renderJournal: (events: JournalEvent[]) => React.ReactNode }) {
-  const earned = journal.reduce((s, e) => s + Math.max(0, e.money), 0)
-  const spent = Math.abs(journal.reduce((s, e) => s + Math.min(0, e.money), 0))
-  const installment = Math.min(LOAN_INSTALLMENT, sim.loan)
-
-  return (
-    <div className="space-y-3">
-      <div className="rounded-2xl bg-[var(--color-gold)] p-4 text-[#5a3a00]">
-        <div className="label !text-[#7a5200]">Solde</div>
-        <div className="tnum font-display text-4xl leading-none font-extrabold">{amount(sim.money)} F</div>
-        <div className="mt-3 flex gap-4 text-xs font-extrabold">
-          <span className="flex items-center gap-1">
-            <ArrowDownLeft size={14} strokeWidth={3} /> {amount(earned)} F reçus
-          </span>
-          <span className="flex items-center gap-1">
-            <ArrowUpRight size={14} strokeWidth={3} /> {amount(spent)} F dépensés
-          </span>
-        </div>
-      </div>
-
-      {sim.loan > 0 && (
-        <div className="rounded-[22px] bg-[#ffe8ec] p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="label !text-[#a3122f]">Microcrédit</div>
-              <div className="tnum font-display text-2xl leading-none font-extrabold text-[#d81b3f]">{amount(sim.loan)} F</div>
-            </div>
-            <Chip tone="bad">−{amount(LOAN_INSTALLMENT)} F chaque samedi</Chip>
-          </div>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <button className="btn btn-soft !py-2 !text-sm" disabled={sim.money < installment} onClick={() => act('Rembourser le microcrédit', 'hand-coins', 'market', () => api.repay(sim.id, 'loan', installment))}>
-              Rembourser {amount(installment)}
-            </button>
-            <button className="btn !py-2 !text-sm" disabled={sim.money < sim.loan} onClick={() => act('Solder le microcrédit', 'hand-coins', 'market', () => api.repay(sim.id, 'loan', sim.loan))}>
-              Tout solder
-            </button>
-          </div>
-        </div>
-      )}
-
-      {renderJournal(journal.filter((e) => e.money !== 0))}
     </div>
   )
 }

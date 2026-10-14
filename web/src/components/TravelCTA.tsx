@@ -38,13 +38,15 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
     if (world.compteur?.cities.includes(cityId)) choices.push({ id: 'street', name: 'Bord de route', colors: woro ? [woro.color!, world.compteur.color] : [world.compteur.color], minutes: woro ? t.minutes : meter.minutes, fare: woro ? t.fare * party : meter.fare })
     else choices.push({ id: 'taxi', name: 'Taxi', colors: ['#ff7a00'], minutes: t.minutes, fare: t.fare })
     for (const a of world.rideApps ?? []) {
-      if (!a.cities.includes(cityId)) continue
+      if (!a.cities.includes(cityId) || !sim.apps?.includes(a.id)) continue
       choices.push({ id: a.id, name: a.name, colors: ['#161a2b'], minutes: quote.minutes, fare: a.model === 'offer' ? offer : quote.fare, app: a.model })
     }
   }
   const [pick, setPick] = useState(choices[0].id)
   const c = choices.find((x) => x.id === pick) ?? choices[0]
 
+  // Ride apps that would work here but aren't on the phone yet.
+  const missing = bus ? [] : (world.rideApps ?? []).filter((a) => a.cities.includes(cityId) && !sim.apps?.includes(a.id)).map((a) => a.name)
   const broke = sim.money < c.fare
   const chance = c.app === 'offer' ? offerChance(offer, quote.fare) : 1
   const title = bus ? 'Prendre le car' : c.app ? `Commander un ${c.name}` : c.id === 'street' ? 'Héler un taxi' : 'Prendre un taxi'
@@ -94,6 +96,8 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
           ))}
         </div>
       )}
+
+      {missing.length > 0 && <p className="mb-2 text-[11px] font-bold text-[var(--color-ink-soft)]">{missing.join(' et ')} : à installer depuis le Store du téléphone.</p>}
 
       {c.id === 'street' && (
         <p className="mb-2.5 text-xs font-bold text-[var(--color-ink-soft)]">

@@ -15,7 +15,7 @@ import { tint, waxTexture } from './textures'
 // follow a hairline and fade into the skin, so there are no blobs or seams.
 // The torso is one surface too, with the waist seam where clothes really have one.
 
-export type Pose = 'idle' | 'walk' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer'
+export type Pose = 'idle' | 'walk' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant'
 
 /* ---------- Shared geometry and toon materials ---------- */
 
@@ -947,6 +947,19 @@ export function Human({ look, gender, pose = 'idle', seed = 0 }: Props) {
         sh.rotation.set(0, 0, 2.6)
         el.rotation.x = 0
         el.rotation.z = 0.35 + Math.sin(t * 9) * 0.35
+      } else if (pose === 'hug') {
+        // Arms around the other one, swaying a little.
+        sh.rotation.set(-1.25, 0, out * -0.35)
+        el.rotation.x = -0.9 + Math.sin(t * 1.3 + i) * 0.05
+      } else if (pose === 'beg' && out > 0) {
+        // A hand held out at the car window.
+        sh.rotation.set(-1.05 + Math.sin(t * 2) * 0.05, 0, 0.1)
+        el.rotation.x = -0.35
+      } else if (pose === 'rant') {
+        // Talking to nobody, arms going.
+        const g = Math.sin(t * 4.5 + i * 2.1)
+        sh.rotation.set(-0.7 - g * 0.6, 0, out * (0.3 + Math.max(0, g) * 0.6))
+        el.rotation.x = -0.8 + g * 0.3
       } else if (pose === 'hero' && out > 0) {
         sh.rotation.set(0.15, 0, 0.6)
         el.rotation.x = -0.35
@@ -965,10 +978,11 @@ export function Human({ look, gender, pose = 'idle', seed = 0 }: Props) {
           : pose === 'cheer'
             ? Math.max(0, Math.sin(t * 5)) * 0.18
             : Math.sin(t * 1.6) * 0.003
-    root.current!.rotation.y = pose === 'dance' ? Math.sin(t * 3.5) * 0.35 : 0
+    root.current!.rotation.y = pose === 'dance' ? Math.sin(t * 3.5) * 0.35 : pose === 'rant' ? Math.sin(t * 0.9) * 0.5 : pose === 'hug' ? Math.sin(t * 0.8) * 0.06 : 0
     head.current!.rotation.y = walk ? 0 : Math.sin(t * 0.5) * 0.2
     head.current!.rotation.z = pose === 'wave' ? 0.08 : 0
-    head.current!.rotation.x = pose === 'busy' ? 0.25 : Math.sin(t * 0.7) * 0.03
+    head.current!.rotation.x = pose === 'busy' ? 0.25 : pose === 'hug' ? 0.15 : pose === 'beg' ? 0.12 : Math.sin(t * 0.7) * 0.03
+    if (pose === 'rant') head.current!.rotation.y = Math.sin(t * 2.3) * 0.45
   })
 
   const body: Body = { femme, w, belly }
