@@ -1,0 +1,196 @@
+import { useEffect, useState } from 'react'
+import { ArrowRight, Check, Copy, Hammer, MapPinned, MessageCircle, Shirt, Smartphone, UserRound, type LucideIcon } from 'lucide-react'
+import { Scene } from '../components/Scene'
+import { Portrait } from '../avatar/portrait'
+import { IconTile, Logo } from '../components/ui'
+import { useWorld } from '../store/world'
+import { CROWD } from './Title'
+
+// The wish list (/liste): before the game opens, people leave a first name
+// and an e-mail or a WhatsApp number to hear when it does. The flyer's QR
+// code and the video lead here (?src=flyer, ?src=video say which).
+
+const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
+
+/** The communes offered while the world data isn't there (it lists them all). */
+const ABIDJAN = ['Abobo', 'Adjamé', 'Attécoubé', 'Cocody', 'Koumassi', 'Marcory', 'Plateau', 'Port-Bouët', 'Treichville', 'Yopougon', 'Bingerville', 'Songon', 'Anyama']
+
+const PROMISES: { icon: LucideIcon; colors: [string, string]; title: string; text: string }[] = [
+  { icon: Shirt, colors: ['#b39dff', '#7b5cff'], title: 'Ton Sim en blocs', text: 'Pagne wax, boubou, survêt, coiffures : un Sim carré à ton style.' },
+  { icon: Hammer, colors: ['#ffa040', '#ff7a00'], title: 'Ta maison, bloc par bloc', text: 'Banco, planches, parpaing, tôle… puis brique, carreaux et marbre.' },
+  { icon: MapPinned, colors: ['#69e2a0', '#00a862'], title: 'Les vrais quartiers', text: "Abidjan en vrai, avec tes amis dans la même rue, au même moment." },
+]
+
+type Done = { name: string; count: number; already: boolean }
+
+export function Waitlist() {
+  const world = useWorld((s) => s.world)
+  const communes = world ? [...new Set(world.cities.flatMap((c) => c.communes.map((x) => x.name)))].sort((a, b) => a.localeCompare(b, 'fr')) : ABIDJAN
+  const source = new URLSearchParams(location.search).get('src') ?? ''
+  const [first, setFirst] = useState('')
+  const [contact, setContact] = useState('')
+  const [commune, setCommune] = useState('')
+  const [beta, setBeta] = useState(true)
+  const [website, setWebsite] = useState('') // unseen: only bots fill it
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [done, setDone] = useState<Done | null>(null)
+  const [count, setCount] = useState<number | null>(null)
+
+  useEffect(() => {
+    fetch(`${BASE}/waitlist/count`)
+      .then((r) => r.json())
+      .then((d: { count: number }) => setCount(d.count))
+      .catch(() => undefined)
+  }, [])
+
+  async function join(e: React.FormEvent) {
+    e.preventDefault()
+    setBusy(true)
+    setError(null)
+    try {
+      const res = await fetch(`${BASE}/waitlist`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ firstName: first, contact, commune, beta, source, website }) })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(body.error ?? 'Inscription impossible pour le moment')
+      setDone({ name: first.trim(), count: body.count ?? 0, already: !!body.already })
+    } catch (err) {
+      setError(err instanceof Error && err.message !== 'Failed to fetch' ? err.message : 'Pas de réseau : réessaie dans un instant.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="relative min-h-full overflow-x-hidden bg-[var(--color-night)] text-white">
+      <div className="pointer-events-none fixed inset-0">
+        <Scene className="h-full w-full" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0f1230]/55 via-[#0f1230]/20 to-[#0f1230]/90" />
+      </div>
+
+      <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-2 lg:px-8 lg:pt-6">
+        <Logo size={36} />
+        {count !== null && count > 0 && (
+          <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-extrabold backdrop-blur">{count.toLocaleString('fr-FR')} inscrit·e·s</span>
+        )}
+      </header>
+
+      <main className="relative z-10 mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] gap-8 px-5 pb-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-center lg:gap-12 lg:px-8 lg:pt-10">
+        {/* ---------- Hero ---------- */}
+        <section className="motion-stagger flex flex-col items-center text-center lg:items-start lg:text-left">
+          <span className="mt-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-extrabold backdrop-blur lg:mt-0">
+            <span className="flex overflow-hidden rounded-[3px]" aria-hidden>
+              <i className="block h-3 w-1.5 bg-[#ff8200]" />
+              <i className="block h-3 w-1.5 bg-white" />
+              <i className="block h-3 w-1.5 bg-[#009a44]" />
+            </span>
+            Bientôt · Liste d'attente
+          </span>
+          <h1 className="mt-4 font-display text-[44px] leading-[0.95] font-extrabold tracking-[-0.02em] sm:text-6xl lg:text-7xl">
+            Ta vie.
+            <br />
+            Ton quartier.
+            <br />
+            <span className="text-[var(--color-orange)]">Ton Babi.</span>
+          </h1>
+          <p className="mt-4 max-w-md text-base leading-relaxed font-semibold text-white/85 lg:text-lg">
+            Babi Life arrive : crée ton Sim, construis ta maison et vis Abidjan avec tes amis. Inscris-toi pour être prévenu·e en premier.
+          </p>
+          <button
+            className="btn mt-6 w-full max-w-sm lg:hidden"
+            onClick={() => {
+              document.getElementById('liste')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+              setTimeout(() => document.querySelector<HTMLInputElement>('#liste input')?.focus({ preventScroll: true }), 450)
+            }}
+          >
+            Je m'inscris <ArrowRight size={18} strokeWidth={2.6} />
+          </button>
+          <ul className="mt-6 grid w-full max-w-md gap-2.5 text-left">
+            {PROMISES.map((p) => (
+              <li key={p.title} className="flex items-center gap-3 rounded-[20px] border border-white/15 bg-white/10 p-2.5 backdrop-blur">
+                <IconTile icon={p.icon} colors={p.colors} size={44} />
+                <span className="min-w-0">
+                  <span className="block font-display text-[15px] leading-tight font-extrabold">{p.title}</span>
+                  <span className="block text-sm leading-snug font-semibold text-white/75">{p.text}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-6 flex items-end justify-center lg:justify-start" aria-hidden>
+            {CROWD.map((c, i) => (
+              <span key={i} className="-mx-2 block" style={{ width: `min(${c.size}px, ${Math.round(c.size / 4.9)}vw)`, aspectRatio: '1 / 1.35' }}>
+                <Portrait look={c.look} gender={c.gender} framing="full" />
+              </span>
+            ))}
+          </div>
+        </section>
+
+        {/* ---------- Sign-up card ---------- */}
+        <section id="liste" className="card scroll-mt-6 w-full self-start p-5 text-[var(--color-ink)] lg:p-6">
+          {done ? (
+            <div className="motion-stagger flex flex-col items-center gap-3 text-center">
+              <span className="grid h-16 w-16 place-items-center rounded-full bg-[var(--color-emerald)] text-white">
+                <Check size={34} strokeWidth={3} />
+              </span>
+              <h2 className="font-display text-2xl font-extrabold">{done.already ? `Tu es déjà sur la liste, ${done.name} !` : `C'est noté, ${done.name} !`}</h2>
+              <p className="text-sm font-semibold text-[var(--color-ink-soft)]">
+                On te prévient dès que Babi Life ouvre{beta ? ', et tu pourras tester avant tout le monde' : ''}.
+                {done.count > 1 && ` Vous êtes déjà ${done.count.toLocaleString('fr-FR')} sur la liste.`}
+              </p>
+              <Share />
+            </div>
+          ) : (
+            <form className="flex flex-col gap-2.5" onSubmit={join}>
+              <h2 className="font-display text-2xl leading-tight font-extrabold">Je m'inscris</h2>
+              <p className="-mt-1 mb-1 text-sm font-semibold text-[var(--color-ink-soft)]">Gratuit. Juste pour être prévenu·e quand ça ouvre.</p>
+              <label className="relative">
+                <UserRound size={18} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[var(--color-ink-soft)]" />
+                <input className="input !pl-11 text-base" placeholder="Prénom" autoComplete="given-name" value={first} onChange={(e) => setFirst(e.target.value)} aria-label="Prénom" required maxLength={60} />
+              </label>
+              <label className="relative">
+                <Smartphone size={18} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[var(--color-ink-soft)]" />
+                <input className="input !pl-11 text-base" placeholder="E-mail ou numéro WhatsApp" autoComplete="email" inputMode="email" value={contact} onChange={(e) => setContact(e.target.value)} aria-label="E-mail ou numéro WhatsApp" required />
+              </label>
+              <label className="relative">
+                <MapPinned size={18} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[var(--color-ink-soft)]" />
+                <input className="input !pl-11 text-base" placeholder="Ta commune (facultatif)" list="communes" value={commune} onChange={(e) => setCommune(e.target.value)} aria-label="Ta commune" maxLength={60} />
+                <datalist id="communes">
+                  {communes.map((c) => (
+                    <option key={c} value={c} />
+                  ))}
+                </datalist>
+              </label>
+              <label className="flex cursor-pointer items-center gap-3 rounded-xl bg-[var(--color-canvas)] px-3 py-2.5 text-sm font-bold">
+                <input type="checkbox" className="h-5 w-5 shrink-0 accent-[var(--color-orange)]" checked={beta} onChange={(e) => setBeta(e.target.checked)} />
+                Je veux tester le jeu avant tout le monde
+              </label>
+              {/* Not for people: bots fill every field they find */}
+              <input className="hidden" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} aria-hidden />
+              {error && <p className="animate-pop rounded-xl bg-[#ffeef1] px-3 py-2 text-sm font-bold text-[#d81b3f]" role="alert">{error}</p>}
+              <button className="btn mt-1 w-full" disabled={busy}>
+                {busy ? 'Un instant…' : "M'inscrire sur la liste"} <ArrowRight size={18} strokeWidth={2.6} />
+              </button>
+              <p className="text-center text-xs font-semibold text-[var(--color-ink-soft)]">Ton contact sert seulement à te prévenir de l'ouverture. Pas de pub, pas de revente.</p>
+            </form>
+          )}
+        </section>
+      </main>
+    </div>
+  )
+}
+
+/** Tell the others: WhatsApp first (that's where Babi talks), or copy the link. */
+function Share() {
+  const [copied, setCopied] = useState(false)
+  const link = `${location.origin}/liste`
+  const text = `Babi Life arrive : crée ton Sim, construis ta maison et vis Abidjan avec nous. Inscris-toi : ${link}`
+  return (
+    <div className="mt-1 flex w-full flex-col gap-2">
+      <a className="btn btn-emerald w-full" href={`https://wa.me/?text=${encodeURIComponent(text)}`} target="_blank" rel="noreferrer">
+        <MessageCircle size={18} strokeWidth={2.6} /> Partager sur WhatsApp
+      </a>
+      <button className="btn btn-soft w-full" onClick={() => navigator.clipboard?.writeText(link).then(() => setCopied(true))}>
+        {copied ? <Check size={18} strokeWidth={2.6} /> : <Copy size={18} strokeWidth={2.6} />} {copied ? 'Lien copié' : 'Copier le lien'}
+      </button>
+    </div>
+  )
+}
