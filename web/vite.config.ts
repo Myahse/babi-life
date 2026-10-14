@@ -4,6 +4,8 @@ import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  // VITE_ variables, and the commit Vercel builds from (shown as the version).
+  envPrefix: ['VITE_', 'VERCEL_GIT_COMMIT_SHA'],
   plugins: [
     react(),
     tailwindcss(),

@@ -250,6 +250,7 @@ export function Title() {
 
           <InstallButton className="mt-3" />
           {worldError && online && <p className="mt-3 rounded-xl bg-[#ffeef1] px-3 py-2 text-sm font-bold text-[#d81b3f]">Serveur injoignable : {worldError}</p>}
+          <p className="mt-3 text-center text-[11px] font-bold opacity-50">Version {String(import.meta.env.VERCEL_GIT_COMMIT_SHA ?? 'dev').slice(0, 7)}</p>
         </section>
       </main>
 
