@@ -6,7 +6,7 @@ import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEve
 import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
 import { WorldMap } from './WorldMap'
-import { Joystick } from '../components/Joystick'
+import { Joystick, RunButton } from '../components/Joystick'
 import { TravelCTA, type OnTravel } from '../components/TravelCTA'
 import { Portrait } from '../avatar/portrait'
 import { Neighbourhood } from '../world3d/Neighbourhood'
@@ -427,6 +427,7 @@ export function Play() {
       {/* The pad: walk the Sim freely (arrow keys / WASD work too) */}
       {!placeId && !overlay && !sim.activity && (
         <div className="pointer-events-none absolute bottom-[6.25rem] left-3 z-20 lg:bottom-[7.5rem] lg:left-5">
+          <RunButton />
           <Joystick disabled={!!sim.activity || !!pending} className="pointer-events-auto" />
         </div>
       )}

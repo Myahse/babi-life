@@ -1,6 +1,5 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { EffectComposer, N8AO } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { Human, NoShadows } from '../../avatar/Human'
@@ -46,8 +45,9 @@ type Loaded = { data: ChunkData; geos: Record<string, THREE.BufferGeometry> }
 /** What casts a shadow: the buildings, not the roads. */
 const SOLID = new Set(['walls', 'inst', 'entrance', 'shop', 'house', 'trim', 'roofs', 'tin'])
 
-/** Ambient occlusion where the device can afford it (not on small phones). */
-const RICH = typeof navigator === 'undefined' || (navigator.hardwareConcurrency ?? 4) > 4
+// No screen-space ambient occlusion here: over kilometres of view its depth
+// buffer is too coarse and it blackens the ground. The buildings carry their
+// own shade (darker walls near the ground, a dark band at their foot).
 
 /** The sun, and its shadows, over wherever the camera looks. */
 function Sun({ night, dusk }: { night: boolean; dusk: boolean }) {
@@ -339,11 +339,6 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
     <>
       <hemisphereLight args={[night ? '#3a4a8a' : '#ffffff', night ? '#1a1a2e' : '#b8a27c', night ? 0.7 : 1.2]} />
       <Sun night={night} dusk={dusk} />
-      {RICH && (
-        <EffectComposer enableNormalPass={false} multisampling={0}>
-          <N8AO halfRes aoRadius={4} distanceFalloff={1.2} intensity={night ? 1.6 : 2.6} quality="performance" color="#1a1410" />
-        </EffectComposer>
-      )}
       {/* The haze at the edge of the loaded world: Minecraft's render distance */}
       <fog attach="fog" args={[sky, 400, 5200]} />
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]} material={mats.ground} receiveShadow>

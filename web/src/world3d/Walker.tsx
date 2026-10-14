@@ -8,12 +8,15 @@ import { iconFor, kindColors } from '../components/icons'
 import { IconTile } from '../components/ui'
 import { Character } from './Character'
 import { HOME_ID, SIDEWALK, type Lot } from './layout'
-import { moveInput } from './input'
+import { moveInput, running } from './input'
 import { whereabouts } from './whereabouts'
 
 type XZ = [number, number]
 
 const SPEED = 4.2 // metres per second: a brisk walk, so errands don't drag
+const RUN = 8.5 // running
+/** Further than this, the Sim runs there by itself. */
+const RUN_FROM = 90
 /** A walk never takes longer than this many seconds: far away, the Sim hurries. */
 const LONGEST_WALK = 40
 
@@ -71,6 +74,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   const target = useRef<string | null>(null)
   const [walking, setWalking] = useState(false)
   const speed = useRef(SPEED)
+  const [run, setRun] = useState(false)
+  const autoRun = useRef(false)
   // The way the Sim is going, drawn on the ground.
   const [route, setRoute] = useState<XZ[] | null>(null)
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null
@@ -147,7 +152,9 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       group.current!.position.set(lot.door[0], 0, lot.door[1])
       path.current = [lot.door]
     }
-    speed.current = Math.max(SPEED, pathLength(path.current, [p.x, p.z]) / LONGEST_WALK)
+    const far = pathLength(path.current, [p.x, p.z])
+    autoRun.current = far > RUN_FROM
+    speed.current = Math.max(autoRun.current ? RUN : SPEED, far / LONGEST_WALK)
     target.current = lot.id
     setRoute([...path.current])
     setFree(false)
@@ -161,7 +168,9 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     const way = nav.route([p.x, p.z], [x, z], false)
     if (!way) return
     path.current = way.slice(1)
-    speed.current = Math.max(SPEED, pathLength(path.current, [p.x, p.z]) / LONGEST_WALK)
+    const far = pathLength(path.current, [p.x, p.z])
+    autoRun.current = far > RUN_FROM
+    speed.current = Math.max(autoRun.current ? RUN : SPEED, far / LONGEST_WALK)
     target.current = null
     setRoute([...path.current])
     setFree(false)
@@ -183,7 +192,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       const fwd = new THREE.Vector3(controls ? controls.target.x - camera.position.x : -1, 0, controls ? controls.target.z - camera.position.z : -1).normalize()
       const right = new THREE.Vector3(-fwd.z, 0, fwd.x)
       const dir = right.multiplyScalar(input.x).add(fwd.multiplyScalar(input.y)).normalize()
-      const step = SPEED * strength * Math.min(dt, 0.25)
+      const step = (running() ? RUN : SPEED) * strength * Math.min(dt, 0.25)
       const [x, z] = [g.position.x + dir.x * step, g.position.z + dir.z * step]
       // Slide along walls: try the full step, then each axis on its own.
       if (nav.walkable(x, z)) g.position.set(x, 0, z)
@@ -235,6 +244,10 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         g.rotation.y = Math.atan2(dx, dz)
       }
     }
+    // Running with the pad (Shift, the button), or on a long way.
+    const nowRunning = (padWalking.current && running()) || (path.current.length > 0 && (autoRun.current || running()))
+    if (path.current.length && running() && speed.current < RUN) speed.current = RUN
+    if (nowRunning !== run) setRun(nowRunning)
     // For the mini-map: where the Sim is, which way the camera looks.
     whereabouts.sim = [g.position.x, g.position.z]
     if (controls) whereabouts.heading = Math.atan2(controls.target.x - camera.position.x, -(controls.target.z - camera.position.z))
@@ -296,7 +309,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       </mesh>
       {route && <RouteDots route={route} from={group} heightAt={nav.heightAt} />}
       <group ref={group}>
-        <Character look={sim.look} gender={sim.gender} walking={walking} busy={!!busy} moodColor={moodColor} stage={stage} />
+        <Character look={sim.look} gender={sim.gender} walking={walking} running={run} busy={!!busy} moodColor={moodColor} stage={stage} />
         {labels && nameTag && (
           <Html position={[0, 2.45, 0]} center zIndexRange={[28, 20]}>
             <span className="pointer-events-none rounded-md bg-[#0f1230]/80 px-1.5 py-0.5 text-[11px] font-extrabold whitespace-nowrap text-white">{nameTag}</span>

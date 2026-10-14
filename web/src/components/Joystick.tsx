@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { listenKeys, pad } from '../world3d/input'
+import { Zap } from 'lucide-react'
+import { listenKeys, pad, sprint } from '../world3d/input'
 
 const RADIUS = 52 // how far the knob travels, px
 
@@ -64,5 +65,23 @@ export function Joystick({ disabled = false, className = '' }: { disabled?: bool
         style={{ transform: `translate(${knob.x}px, ${knob.y}px) scale(${active ? 1.06 : 1})` }}
       />
     </div>
+  )
+}
+
+/** Run (or walk again): a toggle, as Shift on a keyboard. */
+export function RunButton() {
+  const [on, setOn] = useState(sprint.on)
+  useEffect(() => () => void (sprint.on = false), [])
+  return (
+    <button
+      className={`pointer-events-auto mb-2 ml-1 flex h-12 items-center gap-1.5 rounded-full px-4 text-sm font-extrabold shadow-[0_8px_20px_-10px_rgba(0,0,0,0.6)] transition active:scale-95 ${on ? 'bg-[var(--color-orange)] text-white' : 'hud'}`}
+      onClick={() => {
+        sprint.on = !on
+        setOn(!on)
+      }}
+      aria-pressed={on}
+    >
+      <Zap size={18} strokeWidth={2.6} className={on ? '' : 'text-[var(--color-orange)]'} /> {on ? 'Je cours' : 'Courir'}
+    </button>
   )
 }

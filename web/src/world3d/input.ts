@@ -3,6 +3,9 @@
 // walker reads it every frame. x: right +, y: forward + (both -1…1).
 
 export const pad = { x: 0, y: 0 }
+/** Running: the on-screen button, or Shift held. */
+export const sprint = { on: false, shift: false }
+export const running = () => sprint.on || sprint.shift
 const keys = { x: 0, y: 0 }
 
 /** The current direction: the pad, or the keyboard when the pad is idle. */
@@ -34,16 +37,18 @@ function update() {
 export function listenKeys() {
   const typing = (e: KeyboardEvent) => e.target instanceof HTMLElement && (e.target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName))
   const down = (e: KeyboardEvent) => {
+    if (e.key === 'Shift') sprint.shift = true
     if (!DIRS[e.code] || typing(e)) return
     e.preventDefault()
     held.add(e.code)
     update()
   }
   const up = (e: KeyboardEvent) => {
+    if (e.key === 'Shift') sprint.shift = false
     if (!held.delete(e.code)) return
     update()
   }
-  const blur = () => (held.clear(), update())
+  const blur = () => (held.clear(), (sprint.shift = false), update())
   window.addEventListener('keydown', down)
   window.addEventListener('keyup', up)
   window.addEventListener('blur', blur)

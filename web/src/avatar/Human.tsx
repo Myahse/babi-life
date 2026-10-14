@@ -15,7 +15,7 @@ import { tint, waxTexture } from './textures'
 // follow a hairline and fade into the skin, so there are no blobs or seams.
 // The torso is one surface too, with the waist seam where clothes really have one.
 
-export type Pose = 'idle' | 'walk' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw'
+export type Pose = 'idle' | 'walk' | 'run' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw'
 
 /** Poses done sitting on a chair (hips at seat height). */
 export const SEATED: Pose[] = ['sit', 'eat', 'drink', 'write']
@@ -51,8 +51,10 @@ const arc = (r: number, tube: number, span: number) =>
 let gradient: THREE.DataTexture | null = null
 function toonRamp() {
   if (!gradient) {
-    gradient = new THREE.DataTexture(new Uint8Array([105, 105, 105, 255, 185, 185, 185, 255, 255, 255, 255, 255]), 3, 1, THREE.RGBAFormat)
-    gradient.minFilter = gradient.magFilter = THREE.NearestFilter
+    // Five soft steps from shade to light: round, but still cartoon.
+    const steps = [118, 150, 186, 222, 255]
+    gradient = new THREE.DataTexture(new Uint8Array(steps.flatMap((v) => [v, v, v, 255])), steps.length, 1, THREE.RGBAFormat)
+    gradient.minFilter = gradient.magFilter = THREE.LinearFilter
     gradient.needsUpdate = true
   }
   return gradient
@@ -654,8 +656,24 @@ function dressFor(l: Required<Look>, femme: boolean): Dress {
 
 /* ---------- Face ---------- */
 
-function Face({ l, femme, skin }: { l: Required<Look>; femme: boolean; skin: THREE.Material }) {
+function Face({ l, femme, skin, seed = 0 }: { l: Required<Look>; femme: boolean; skin: THREE.Material; seed?: number }) {
   const [rx] = HEAD
+  // Alive: the eyes blink every few seconds and glance about.
+  const eyes = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
+  const gaze = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime + seed * 7.3
+    const period = 3.2 + (seed % 3)
+    const k = (t % period) / period
+    const lid = k > 0.965 ? Math.max(0.08, Math.abs(Math.cos(((k - 0.965) / 0.035) * Math.PI))) : 1
+    const look = Math.floor(t / 2.4)
+    const gx = Math.sin(look * 12.9898 + seed) * 0.0045
+    const gy = Math.cos(look * 78.233 + seed) * 0.002
+    for (const i of [0, 1]) {
+      if (eyes[i].current) eyes[i].current.scale.y = lid
+      if (gaze[i].current) gaze[i].current.position.set(gx, gy, 0)
+    }
+  })
   const shade = mat(tint(l.skin, -0.14))
   const lash = flat('#1a0f0a')
   const lip = mat(tint(l.skin, femme ? -0.35 : -0.28).replace(/^#(..)/, (_, r) => `#${Math.min(255, parseInt(r, 16) + 30).toString(16).padStart(2, '0')}`))
@@ -668,24 +686,37 @@ function Face({ l, femme, skin }: { l: Required<Look>; femme: boolean; skin: THR
       {/* Head and ears */}
       <Part g={headShell('head', () => 0)} m={skin} />
       {[-1, 1].map((s) => (
-        <Blob key={s} m={shade} p={[s * rx * 0.96, -0.012, -0.008]} r={[0.017, 0.03, 0.022]} />
+        <group key={s}>
+          <Blob m={shade} p={[s * rx * 0.96, -0.012, -0.008]} r={[0.017, 0.03, 0.022]} />
+          <Blob m={mat(tint(l.skin, -0.3))} p={[s * rx * 1.02, -0.012, -0.004]} r={[0.006, 0.016, 0.01]} />
+        </group>
       ))}
       {/* Eyes: white, iris, pupil, a catch-light, a lash line hugging the lid, a brow */}
-      {[-1, 1].map((s) => (
+      {[-1, 1].map((s, i) => (
         <group key={s} position={[s * 0.047, 0.0, eyeZ]} rotation={[0, s * 0.3, 0]}>
-          <Blob m={flat('#fbfaf7')} p={[0, 0, 0]} r={[0.027, 0.031, 0.014]} />
-          <Blob m={flat(l.eyes)} p={[0, -0.002, 0.008]} r={[0.0185, 0.021, 0.008]} />
-          <Blob m={flat('#080605')} p={[0, -0.002, 0.012]} r={[0.0095, 0.011, 0.005]} />
-          <Blob m={flat('#ffffff')} p={[0.006 * s, 0.008, 0.016]} r={[0.0055, 0.0055, 0.003]} />
-          <Part g={arc(0.028, 0.0036, 2.3)} m={lash} p={[0, 0.001, 0.006]} s={[1, 1.1, 0.8]} />
-          {femme && <Blob m={lash} p={[s * 0.028, 0.025, 0.004]} r={[0.009, 0.0035, 0.005]} rot={[0, 0, s * 0.6]} />}
+          <group ref={eyes[i]}>
+            <Blob m={flat('#fbfaf7')} p={[0, 0, 0]} r={[0.027, 0.031, 0.014]} />
+            <group ref={gaze[i]}>
+              <Blob m={flat(l.eyes)} p={[0, -0.002, 0.008]} r={[0.0185, 0.021, 0.008]} />
+              <Blob m={flat('#080605')} p={[0, -0.002, 0.012]} r={[0.0095, 0.011, 0.005]} />
+              <Blob m={flat('#ffffff')} p={[0.006 * s, 0.008, 0.016]} r={[0.0055, 0.0055, 0.003]} />
+            </group>
+            <Part g={arc(0.028, 0.0036, 2.3)} m={lash} p={[0, 0.001, 0.006]} s={[1, 1.1, 0.8]} />
+          </group>
+          {femme && [0, 1, 2].map((k) => <Blob key={k} m={lash} p={[s * (0.02 + k * 0.006), 0.026 - k * 0.003, 0.004]} r={[0.0075, 0.0028, 0.004]} rot={[0, 0, s * (0.35 + k * 0.25)]} />)}
           <Part g={arc(0.034, 0.0052, 1.4)} m={brow} p={[s * 0.003, 0.018, 0.007]} s={[1, 1, 0.6]} r={[0, 0, s * -0.12]} />
         </group>
       ))}
       {/* Nose, smile, lips, cheeks */}
       <Blob m={shade} p={[0, -0.04, faceZ(0, -0.04) - 0.001]} r={[0.022, 0.017, 0.016]} />
+      {/* the nostrils */}
+      {[-1, 1].map((s) => (
+        <Blob key={s} m={mat(tint(l.skin, -0.42))} p={[s * 0.009, -0.048, faceZ(0, -0.048) + 0.011]} r={[0.0045, 0.003, 0.003]} />
+      ))}
       <Part g={arc(0.024, 0.0042, 2.2)} m={lipLine} p={[0, -0.064, faceZ(0, -0.064) + 0.001]} s={[1, 0.9, 0.5]} r={[0, 0, Math.PI]} />
-      <Blob m={lip} p={[0, -0.08, faceZ(0, -0.08) - 0.002]} r={[femme ? 0.019 : 0.015, femme ? 0.0075 : 0.005, 0.007]} />
+      {/* the upper lip a shade darker, the lower one fuller */}
+      <Blob m={mat(tint(l.skin, -0.32))} p={[0, -0.068, faceZ(0, -0.068) - 0.003]} r={[femme ? 0.02 : 0.017, 0.0045, 0.006]} />
+      <Blob m={lip} p={[0, -0.08, faceZ(0, -0.08) - 0.002]} r={[femme ? 0.019 : 0.016, femme ? 0.0085 : 0.0065, 0.008]} />
       {femme && [-1, 1].map((s) => <Blob key={s} m={blush} p={[s * 0.07, -0.04, faceZ(0.07, -0.04) - 0.006]} r={[0.022, 0.014, 0.01]} />)}
       <Marks marks={l.marks} />
       <Hair l={l} />
@@ -726,6 +757,22 @@ function Marks({ marks }: { marks: string }) {
   )
 }
 
+// Points on the afro's upper surface (unit ellipsoid), and each curl's size.
+const AFRO_CURLS: [number, number, number, number][] = (() => {
+  const out: [number, number, number, number][] = []
+  const n = 120
+  for (let i = 0; i < n; i++) {
+    // A golden-angle spiral over the dome, not too low at the front.
+    const y = 1 - (i / (n - 1)) * 1.25
+    const r = Math.sqrt(Math.max(0, 1 - y * y))
+    const a = i * 2.39996
+    const [x, z] = [Math.cos(a) * r, Math.sin(a) * r]
+    if (z > 0.25 && y < 0.38) continue // keep the face clear
+    out.push([x * 0.98, y * 0.98, z * 0.98, 0.014 + ((i * 37) % 10) * 0.0011])
+  }
+  return out
+})()
+
 function Hair({ l }: { l: Required<Look> }) {
   const [rx, ry, rz] = HEAD
   // Very dark hair reads as a flat hole under toon light; lift it a touch.
@@ -744,7 +791,11 @@ function Hair({ l }: { l: Required<Look> }) {
       return (
         <group>
           <Part g={hairShell('afro', 0.02, 0.5, 0.1, -0.6)} m={hair} />
-          <mesh geometry={geo('afro', () => new THREE.IcosahedronGeometry(1, 4))} material={hair} position={[0, 0.07, -0.035]} scale={[rx * 1.55, ry * 1.3, rz * 1.42]} castShadow />
+          <mesh geometry={geo('afro', () => new THREE.IcosahedronGeometry(1, 4))} material={hair} position={[0, 0.095, -0.06]} scale={[rx * 1.55, ry * 1.25, rz * 1.32]} castShadow />
+          {/* Curls all over it, so it isn't a smooth ball */}
+          {AFRO_CURLS.map(([x, y, z, r], k) => (
+            <Blob key={k} m={k % 3 ? hair : mat(tint(l.hairColor, 0.14))} p={[x * rx * 1.55, 0.095 + y * ry * 1.25, -0.06 + z * rz * 1.32]} r={[r, r, r]} />
+          ))}
         </group>
       )
     case 'braids':
@@ -924,17 +975,21 @@ export function Human({ look, gender, pose = 'idle', seed = 0, headScale = 1 }: 
   const knee = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
   const shoulder = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
   const elbow = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
+  const chest = useRef<THREE.Group>(null)
 
   useFrame(({ clock }) => {
     const t = clock.elapsedTime + seed
-    const walk = pose === 'walk'
-    const s = Math.sin(t * 8)
+    const run = pose === 'run'
+    const walk = pose === 'walk' || run
+    // Running: a quicker stride, longer steps, knees up.
+    const f = run ? 13 : 8
+    const s = Math.sin(t * f)
     for (const i of [0, 1]) {
       const out = i === 0 ? -1 : 1 // -1 = left side (-X)
-      const swing = walk ? s * 0.5 * out : 0
+      const swing = walk ? s * (run ? 0.95 : 0.5) * out : 0
       const seated = SEATED.includes(pose)
       hip[i].current!.rotation.x = seated ? -1.5 : swing
-      knee[i].current!.rotation.x = seated ? 1.5 : walk ? Math.max(0, Math.sin(t * 8 + (out > 0 ? Math.PI : 0))) * 0.8 : 0
+      knee[i].current!.rotation.x = seated ? 1.5 : walk ? Math.max(0, Math.sin(t * f + (out > 0 ? Math.PI : 0))) * (run ? 1.5 : 0.8) : 0
       const sh = shoulder[i].current!
       const el = elbow[i].current!
       el.rotation.z = 0
@@ -988,6 +1043,10 @@ export function Human({ look, gender, pose = 'idle', seed = 0, headScale = 1 }: 
         sh.rotation.set(0.15, 0, 0.6)
         el.rotation.x = -0.35
         el.rotation.z = -1.75
+      } else if (run) {
+        // Arms bent, pumping against the legs.
+        sh.rotation.set(-swing * 0.9, 0, out * 0.12)
+        el.rotation.x = -1.45
       } else {
         sh.rotation.set(walk ? -swing * 0.8 : Math.sin(t * 1.2 + i) * 0.03, 0, out * 0.1)
         el.rotation.x = walk ? -0.35 : -0.12
@@ -995,6 +1054,8 @@ export function Human({ look, gender, pose = 'idle', seed = 0, headScale = 1 }: 
     }
     root.current!.position.y = SEATED.includes(pose)
       ? -SEAT_DROP
+      : run
+        ? Math.abs(Math.cos(t * f)) * 0.09
       : walk
         ? Math.abs(Math.cos(t * 8)) * 0.025
       : pose === 'busy'
@@ -1004,6 +1065,13 @@ export function Human({ look, gender, pose = 'idle', seed = 0, headScale = 1 }: 
           : pose === 'cheer'
             ? Math.max(0, Math.sin(t * 5)) * 0.18
             : Math.sin(t * 1.6) * 0.003
+    // Breathing: the chest rises a little (faster after running).
+    if (chest.current) {
+      const b = Math.sin(t * (pose === 'run' ? 4.5 : 1.7))
+      chest.current.scale.set(1 + b * 0.006, 1, 1 + b * (pose === 'run' ? 0.025 : 0.014))
+    }
+    // Leaning into the run.
+    root.current!.rotation.x = run ? 0.16 : 0
     root.current!.rotation.y = pose === 'dance' ? Math.sin(t * 3.5) * 0.35 : pose === 'rant' ? Math.sin(t * 0.9) * 0.5 : pose === 'hug' ? Math.sin(t * 0.8) * 0.06 : 0
     head.current!.rotation.y = walk ? 0 : Math.sin(t * 0.5) * 0.2
     head.current!.rotation.z = pose === 'wave' ? 0.08 : 0
@@ -1024,7 +1092,9 @@ export function Human({ look, gender, pose = 'idle', seed = 0, headScale = 1 }: 
     <group scale={l.height}>
       <group ref={root}>
         {/* Torso, waistband, skirt or robe */}
-        <Part g={torsoGeometry(femme, w, belly, d.skirt ? 1.0 : WAIST_Y)} m={[d.robe ?? d.bottom, d.tank ? mat('#fff', { map: vestTexture(femme, w, belly, l.outfitColor, l.skin, d.vest) }) : fabric]} />
+        <group ref={chest}>
+          <Part g={torsoGeometry(femme, w, belly, d.skirt ? 1.0 : WAIST_Y)} m={[d.robe ?? d.bottom, d.tank ? mat('#fff', { map: vestTexture(femme, w, belly, l.outfitColor, l.skin, d.vest) }) : fabric]} />
+        </group>
         {d.belt && (
           <group>
             <Part g={bandGeometry(femme, w, belly, WAIST_Y + 0.004, 0.012)} m={d.belt} />
@@ -1048,7 +1118,7 @@ export function Human({ look, gender, pose = 'idle', seed = 0, headScale = 1 }: 
         <Part g={limb(0.045, 0.05, 0.08)} m={skin} p={[0, 1.42, 0]} />
         {l.accessory === 'chain' && <mesh geometry={geo('chain', () => new THREE.TorusGeometry(0.068, 0.005, 6, 28))} material={mat(l.accessoryColor || '#e8b93c', { shine: true })} position={[0, 1.335, 0.035]} rotation={[1.15, 0, 0]} scale={[w, 1.1, 1]} />}
         <group ref={head} position={[0, HEAD_Y + (headScale - 1) * 0.1, 0.008]} scale={headScale}>
-          <Face l={l} femme={femme} skin={skin} />
+          <Face l={l} femme={femme} skin={skin} seed={seed} />
         </group>
 
         {/* Legs: hip → knee → foot */}
@@ -1091,9 +1161,12 @@ export function Human({ look, gender, pose = 'idle', seed = 0, headScale = 1 }: 
                 {longSleeve && <Part g={limb(0.036 * lw, 0.036 * lw, 0.012)} m={d.cuffs ?? mat('#f8f9fa')} p={[0, -FOREARM + 0.012, 0]} />}
                 {d.sleeve === 'bell' && <Part g={geo('bell2', () => new THREE.CylinderGeometry(0.11, 0.17, 1, 20, 1, true).translate(0, -0.5, 0))} m={fabric} p={[0, 0.01, 0]} s={[lw, 0.16, lw]} />}
                 {!longSleeve && d.sleeve !== 'bell' && side > 0 && (l.marks === 'griffures' || l.marks === 'bagarre') && <Scratches p={[0, -0.1, 0.036 * lw]} />}
-                {/* Mitten hand with a thumb */}
-                <Blob m={skin} p={[0, -FOREARM - 0.05, 0.004]} r={[0.03, 0.048, 0.021]} />
-                <Blob m={skin} p={[side * -0.022, -FOREARM - 0.035, 0.016]} r={[0.011, 0.024, 0.011]} rot={[0, 0, side * 0.4]} />
+                {/* The hand: a palm, four fingers a little curled, the thumb */}
+                <Blob m={skin} p={[0, -FOREARM - 0.035, 0.004]} r={[0.028, 0.034, 0.018]} />
+                {[-1.5, -0.5, 0.5, 1.5].map((f) => (
+                  <Part key={f} g={limb(0.0072, 0.0062, 0.042 - Math.abs(f) * 0.005)} m={skin} p={[f * 0.0118, -FOREARM - 0.062, 0.006]} r={[0.22, 0, f * 0.05]} />
+                ))}
+                <Part g={limb(0.0085, 0.007, 0.03)} m={skin} p={[side * -0.024, -FOREARM - 0.03, 0.012]} r={[0.3, 0, side * 0.55]} />
               </group>
             </group>
           )
