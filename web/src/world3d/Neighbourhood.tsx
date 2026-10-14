@@ -15,6 +15,7 @@ import { FillerBuilding } from './Fillers'
 import { Pedestrians, Traffic, TrafficLights } from './Life'
 import { Fou, Lovers } from './Nightlife'
 import { SHORE_Z, rng, themeFor, type Theme } from './themes'
+import { lifeOf } from '../game/rules'
 import { HAPPENING_DOOR, HappeningMarker, HappeningScene, STOPS_TRAFFIC } from './Happenings'
 
 type Props = {
@@ -137,7 +138,7 @@ function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy,
         ),
       )}
 
-      <Walker nameTag={nameTag} labels={labels} stationAt={stationAt ?? null} sim={sim} lots={places} blocks={lots} shore={!!theme.waterfront} moodColor={moodColor} goTo={goTo} onArrive={onArrive} busy={busy} onNear={onNear} frozen={!!frozen} />
+      <Walker scale={lifeOf(world, sim).stage?.scale ?? 1} nameTag={nameTag} labels={labels} stationAt={stationAt ?? null} sim={sim} lots={places} blocks={lots} shore={!!theme.waterfront} moodColor={moodColor} goTo={goTo} onArrive={onArrive} busy={busy} onNear={onNear} frozen={!!frozen} />
     </>
   )
 }
@@ -344,7 +345,7 @@ function walkable(x: number, z: number, blocks: Lot[], shore: boolean) {
 const LOT_HALF = 6.6 // a lot is 14 m square; leave a strip to walk between them
 const NEAR_DOOR = 2.6 // metres from a door to be "at" a place
 
-function Walker({ sim, lots, blocks, shore, moodColor, goTo, onArrive, busy, stationAt, nameTag, labels, onNear, frozen }: { sim: Sim; lots: Lot[]; blocks: Lot[]; shore: boolean; moodColor: string; goTo: Props['goTo']; onArrive: Props['onArrive']; busy: Props['busy']; stationAt: string | null; nameTag?: string; labels: boolean; onNear?: Props['onNear']; frozen: boolean }) {
+function Walker({ sim, scale, lots, blocks, shore, moodColor, goTo, onArrive, busy, stationAt, nameTag, labels, onNear, frozen }: { sim: Sim; scale: number; lots: Lot[]; blocks: Lot[]; shore: boolean; moodColor: string; goTo: Props['goTo']; onArrive: Props['onArrive']; busy: Props['busy']; stationAt: string | null; nameTag?: string; labels: boolean; onNear?: Props['onNear']; frozen: boolean }) {
   const group = useRef<THREE.Group>(null)
   const path = useRef<[number, number][]>([])
   const target = useRef<string | null>(null)
@@ -461,7 +462,7 @@ function Walker({ sim, lots, blocks, shore, moodColor, goTo, onArrive, busy, sta
         maxPolarAngle={1.05}
       />
       <group ref={group}>
-        <Character look={sim.look} gender={sim.gender} walking={walking} busy={!!busy} moodColor={moodColor} />
+        <Character look={sim.look} gender={sim.gender} walking={walking} busy={!!busy} moodColor={moodColor} scale={scale} />
         {labels && nameTag && (
           <Html position={[0, 2.45, 0]} center zIndexRange={[28, 20]}>
             <span className="pointer-events-none rounded-md bg-[#0f1230]/80 px-1.5 py-0.5 text-[11px] font-extrabold whitespace-nowrap text-white">{nameTag}</span>

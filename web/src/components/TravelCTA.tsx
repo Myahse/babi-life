@@ -47,6 +47,11 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
 
   // Ride apps that would work here but aren't on the phone yet.
   const missing = bus ? [] : (world.rideApps ?? []).filter((a) => a.cities.includes(cityId) && !sim.apps?.includes(a.id)).map((a) => a.name)
+  // Babies and children don't take the road alone.
+  const small = (() => {
+    const age = sim.bornAt ? Math.floor((sim.gameMinutes - sim.bornAt) / (world.yearMinutes ?? 480)) : 25
+    return age < 12
+  })()
   const broke = sim.money < c.fare
   const chance = c.app === 'offer' ? offerChance(offer, quote.fare) : 1
   const title = bus ? 'Prendre le car' : c.app ? `Commander un ${c.name}` : c.id === 'street' ? 'Héler un taxi' : 'Prendre un taxi'
@@ -142,8 +147,8 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
         </div>
       )}
 
-      <button className="btn w-full" disabled={broke || !!sim.activity || chance <= 0} onClick={go}>
-        {broke ? 'Pas assez de francs' : sim.activity ? 'Ton Sim est occupé·e' : c.id === 'street' ? 'Aller au bord de la route' : c.app ? (c.app === 'offer' ? 'Proposer' : 'Commander') : 'Y aller'}
+      <button className="btn w-full" disabled={small || broke || !!sim.activity || chance <= 0} onClick={go}>
+        {small ? 'Trop petit·e pour y aller seul·e' : broke ? 'Pas assez de francs' : sim.activity ? 'Ton Sim est occupé·e' : c.id === 'street' ? 'Aller au bord de la route' : c.app ? (c.app === 'offer' ? 'Proposer' : 'Commander') : 'Y aller'}
         {c.id !== 'street' && (
           <>
             {' '}

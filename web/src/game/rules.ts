@@ -180,3 +180,20 @@ export function untilSaturday(gameMinutes: number) {
 export function hours(it: { minHour?: number; maxHour?: number }) {
   return `${String(it.minHour ?? 0).padStart(2, '0')}h–${String(it.maxHour || 24).padStart(2, '0')}h`
 }
+
+/** A Sim's age in years and stage of life (mirrors game.AgeAt / StageOf). */
+export function lifeOf(world: World, sim: Pick<Sim, 'bornAt' | 'gameMinutes'>) {
+  const stages = world.stages ?? []
+  const age = sim.bornAt ? Math.floor(Math.max(0, sim.gameMinutes - sim.bornAt) / (world.yearMinutes ?? 480)) : 25
+  const stage = [...stages].reverse().find((s) => age >= s.from) ?? stages[stages.length - 1]
+  return { age, stage, minor: age < 18 }
+}
+
+const AGE_ORDER = ['bebe', 'enfant', 'ado', 'adulte']
+/** Why this stage of life can't do it (mirrors Interaction.AllowedFor). */
+export function ageBlock(it: Interaction, stage?: string) {
+  if (!stage) return null
+  const ages = it.ages?.length ? it.ages : ['enfant', 'ado', 'adulte']
+  if (ages.includes(stage)) return null
+  return AGE_ORDER.indexOf(stage) < AGE_ORDER.indexOf(ages[0]) ? 'Trop jeune pour ça' : "Plus de ton âge"
+}

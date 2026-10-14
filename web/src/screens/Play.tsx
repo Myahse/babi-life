@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BadgeCheck, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, X, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, Cake, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, X, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World, Ride } from '../lib/types'
 import { useWorld } from '../store/world'
@@ -12,7 +12,7 @@ import { Portrait } from '../avatar/portrait'
 import { Neighbourhood } from '../world3d/Neighbourhood'
 import { iconFor, kindColors } from '../components/icons'
 import { Chip, Coin, DayNight, IconTile, MotiveRing, Plumbob, Row, needColor } from '../components/ui'
-import { NEEDS, amount, atHome, blockedBy, clock, duration, mood, openAt, openingLabel, predict, shift } from '../game/rules'
+import { NEEDS, ageBlock, amount, atHome, blockedBy, lifeOf, clock, duration, mood, openAt, openingLabel, predict, shift } from '../game/rules'
 import { HomeApp, JobsApp, type Act } from './phoneApps'
 import { NewsApp, topicOf } from './NewsApp'
 import { RideFlow, type FlowRequest } from '../components/RideFlow'
@@ -281,7 +281,7 @@ export function Play() {
             <span className="block font-display text-[17px] font-extrabold">{user?.username ? `@${user.username}` : sim.firstName}</span>
             <span className="flex items-center gap-1 text-[11px] font-extrabold text-[var(--color-ink-soft)]">
               <MapPin size={11} strokeWidth={3} />
-              {commune.name} · {city.name}
+              {commune.name} · {lifeOf(world, sim).stage?.label ?? ''}, {lifeOf(world, sim).age < 1 ? "moins d'un an" : `${lifeOf(world, sim).age} an${lifeOf(world, sim).age > 1 ? 's' : ''}`}
             </span>
           </span>
         </Link>
@@ -422,16 +422,21 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
   const places = [...(home ? [{ id: 'home', name: 'Chez toi', kind: 'home' }] : []), ...commune.places]
   const city = world.cities.find((c) => c.id === sim.city)!
 
-  const has = (id: string) => sim.apps?.includes(id) ?? false
+  const life = lifeOf(world, sim)
+  // A phone of one's own comes at 12; work and rent at 18.
+  const ownPhone = !life.minor || life.age >= 12
+  const has = (id: string) => ownPhone && (sim.apps?.includes(id) ?? false)
   // Apps from the store, once installed. The ride apps open the map to pick where to go.
   const STORE_APPS: { id: string; label: string; open: () => void }[] = [
-    { id: 'store', label: 'Store', open: () => setApp('store') },
+    ...(ownPhone ? [{ id: 'store', label: 'Store', open: () => setApp('store') }] : []),
     ...(has('waye') ? [{ id: 'waye', label: 'Waye', open: () => setApp('waye') }] : []),
     ...(has('golvo') ? [{ id: 'golvo', label: 'Golvo', open: () => setApp('golvo') }] : []),
     ...(has('gnango') ? [{ id: 'gnango', label: 'Gnango', open: onMap }] : []),
     ...(has('idrive') ? [{ id: 'idrive', label: 'iDrive', open: onMap }] : []),
   ]
-  const APPS: { id: string; label: string; icon: LucideIcon; colors: [string, string]; open: () => void }[] = [
+  type Tile = { id: string; label: string; icon: LucideIcon; colors: [string, string]; open: () => void }
+  const APPS = (
+    [
     { id: 'map', label: 'Carte', icon: MapIcon, colors: ['#69e2a0', '#00a862'], open: onMap },
     { id: 'here', label: 'Quartier', icon: MapPin, colors: ['#ffa040', '#ff6a00'], open: () => setApp('here') },
     { id: 'jobs', label: 'Boulot', icon: Briefcase, colors: ['#64b5ff', '#2a6cf0'], open: () => setApp('jobs') },
@@ -439,7 +444,8 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
     { id: 'news', label: 'Infos', icon: Newspaper, colors: ['#ff8a65', '#e8590c'], open: () => setApp('news') },
     { id: 'messages', label: 'Messages', icon: MessageCircle, colors: ['#b39dff', '#6c47ff'], open: () => setApp('messages') },
     { id: 'profile', label: 'Profil', icon: UserRound, colors: ['#ff8a9b', '#ff3d57'], open: () => navigate('/profil', { viewTransition: true }) },
-  ]
+    ] as Tile[]
+  ).filter((a) => !life.minor || (a.id !== 'jobs' && a.id !== 'home'))
   const title: Record<PhoneAppId, string> = { here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo' }
 
   return (
@@ -544,9 +550,11 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
   const here = sim.city === city.id && sim.commune === commune.id
   const home = world.housings.find((h) => h.id === sim.housing)!
   const career = world.careers.find((c) => c.id === sim.career && c.kind === place.kind)
-  const items = [...(career ? [shift(career, sim.careerLevel)] : []), ...kind.interactions.map((it) => (placeId === 'home' ? atHome(it, home) : it))]
+  const life = lifeOf(world, sim)
+  // Things past this age (the biberon for an adult) don't show; things for later do, greyed.
+  const items = [...(career ? [shift(career, sim.careerLevel)] : []), ...kind.interactions.map((it) => (placeId === 'home' ? atHome(it, home) : it))].filter((it) => ageBlock(it, life.stage?.id) !== 'Plus de ton âge')
   const busy = !!sim.activity
-  const state = (it: Interaction) => ({ open: openAt(it, sim.gameMinutes), broke: it.cost > 0 && sim.money < it.cost, busy, reason: blockedBy(it, sim, city.id, commune.id) })
+  const state = (it: Interaction) => ({ open: openAt(it, sim.gameMinutes), broke: it.cost > 0 && sim.money < it.cost, busy, reason: ageBlock(it, life.stage?.id) ?? blockedBy(it, sim, city.id, commune.id) })
 
   // Desktop: the Sims radial menu around the place.
   if (desktop && here && !busy) {
@@ -772,7 +780,9 @@ export function Journal({ events }: { events: JournalEvent[] }) {
                 ? [ReceiptText, ['#ff8a9b', '#ff3d57']]
                 : e.kind === 'career'
                   ? [BadgeCheck, ['#69e2a0', '#00a862']]
-                  : [Sparkles, ['#ffa040', '#ff6a00']]
+                  : e.kind === 'life'
+                    ? [Cake, ['#ff8ad8', '#d63aa8']]
+                    : [Sparkles, ['#ffa040', '#ff6a00']]
         return (
           <li key={e.id} className={`flex items-center gap-3 rounded-[20px] p-2.5 ${e.kind === 'random' ? 'bg-[#fff7df]' : 'bg-[var(--color-canvas)]'}`}>
             <IconTile icon={icon} colors={colors} size={38} />

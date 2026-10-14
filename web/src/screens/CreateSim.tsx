@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BadgeCheck, Bandage, Check, ChevronLeft, ChevronRight, Dices, Glasses, Heart, IdCard, MapPin, PersonStanding, Scissors, Shirt, Smile, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, Bandage, Check, ChevronLeft, ChevronRight, Dices, Baby, Glasses, Heart, IdCard, PersonStanding, Scissors, Shirt, Smile, type LucideIcon } from 'lucide-react'
 import { api, type NewSim } from '../lib/api'
-import type { Look, Origin } from '../lib/types'
+import type { Family, Look } from '../lib/types'
 import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
 import { UsernameField } from '../components/UsernameField'
@@ -13,7 +13,7 @@ import { Stage, type Focus } from '../avatar/Stage'
 import { Portrait, type Framing } from '../avatar/portrait'
 import { waxTexture } from '../avatar/textures'
 import { iconFor } from '../components/icons'
-import { Chip, Coin, IconTile } from '../components/ui'
+import { Chip, IconTile } from '../components/ui'
 import { amount } from '../game/rules'
 
 // The Sim creator, in seven clear steps. The Sim stands on a turntable that
@@ -29,7 +29,7 @@ const STEPS: Step[] = [
   { id: 'hair', label: 'Coiffure', icon: Scissors, focus: 'face', hint: 'Une coupe qui te ressemble.' },
   { id: 'outfit', label: 'Tenue', icon: Shirt, focus: 'outfit', hint: 'Choisis ton style, ton pagne, ta couleur.' },
   { id: 'traits', label: 'Caractère', icon: Heart, focus: 'body', hint: 'Trois traits et un rêve de vie.' },
-  { id: 'home', label: 'Quartier', icon: MapPin, focus: 'body', hint: 'Où commence ta vie ?' },
+  { id: 'home', label: 'Naissance', icon: Baby, focus: 'body', hint: 'Ta famille, tu ne la choisis pas.' },
 ]
 
 const TRAIT_COLORS: [string, string][] = [['#ff8a65', '#ff3d57'], ['#64b5ff', '#2a6cf0'], ['#ffd54f', '#ffa000'], ['#b39dff', '#6c47ff'], ['#69e2a0', '#00a862'], ['#ff7ad9', '#b02bd6']]
@@ -48,7 +48,7 @@ export function CreateSim() {
   const [step, setStep] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [origin, setOrigin] = useState<Origin | null>(null)
+  const [born, setBorn] = useState<{ family: Family; commune: string } | null>(null)
   const [sim, setSim] = useState<NewSim & { look: Required<Look> }>({
     // Taken from the account; the player only corrects them if needed.
     firstName: user?.firstName || user?.name.split(' ')[0] || 'Awa',
@@ -65,8 +65,6 @@ export function CreateSim() {
   type Draft = NewSim & { look: Required<Look> }
   const set = (patch: Partial<Draft>) => setSim((s) => ({ ...s, ...patch }))
   const setLook = (patch: Partial<Look>) => setSim((s) => ({ ...s, look: { ...s.look, ...patch } }))
-  const city = world.cities.find((c) => c.id === sim.homeCity)!
-  const commune = city.communes.find((c) => c.id === sim.homeCommune)!
   const femme = sim.gender === 'femme'
   const valid = sim.firstName.trim() && sim.lastName.trim() && sim.traits.length > 0 && (!needsUsername || USERNAME.test(username))
   const current = STEPS[step]
@@ -105,8 +103,8 @@ export function CreateSim() {
         signIn(token!, u)
       }
       const created = await api.createSim(sim)
-      const drawn = world!.origins.find((o) => o.id === created.origin)
-      if (drawn) setOrigin(drawn)
+      const drawn = world!.families?.find((f) => f.id === created.family)
+      if (drawn) setBorn({ family: drawn, commune: world!.cities.find((c) => c.id === created.homeCity)?.communes.find((c) => c.id === created.homeCommune)?.name ?? '' })
       else navigate('/jeu', { viewTransition: true })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erreur')
@@ -318,26 +316,22 @@ export function CreateSim() {
           )}
 
           {current.id === 'home' && (
-            <div className="space-y-4">
-              <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4">
-                {world.cities.map((c) => (
-                  <button
-                    key={c.id}
-                    onClick={() => set({ homeCity: c.id, homeCommune: c.communes[0].id })}
-                    className={`shrink-0 rounded-full px-4 py-2 font-display text-sm font-extrabold transition ${sim.homeCity === c.id ? 'bg-[var(--color-ink)] text-white' : 'bg-[var(--color-canvas)] text-[var(--color-ink-soft)]'}`}
-                  >
-                    {c.name}
-                  </button>
-                ))}
-              </div>
-              <div className="grid grid-cols-2 gap-2.5">
-                {city.communes.map((cm) => (
-                  <button key={cm.id} className="tile p-3 text-left" aria-pressed={sim.homeCommune === cm.id} onClick={() => set({ homeCommune: cm.id })}>
-                    <span className="block font-display text-base leading-tight font-extrabold">{cm.name}</span>
-                    <span className="mt-0.5 block text-xs leading-snug text-[var(--color-ink-soft)]">{cm.blurb}</span>
-                  </button>
-                ))}
-              </div>
+            <div className="space-y-3">
+              <p className="text-sm font-bold text-[var(--color-ink-soft)]">
+                {sim.firstName || 'Ton Sim'} naît bébé à Abidjan, et grandit : enfant à 3 ans, ado à 12, adulte à 18 (une année de jeu dure 8 heures). La famille est tirée au sort, comme dans la vraie vie.
+              </p>
+              {(world.families ?? []).map((f) => (
+                <div key={f.id} className="tile flex items-center gap-3 p-3">
+                  <IconTile icon={iconFor(f.icon)} colors={FAMILY_COLORS[f.id] ?? ['#ffa040', '#ff6a00']} size={42} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="font-display text-base leading-tight font-extrabold">{f.label}</span>
+                      <span className="text-xs font-extrabold text-[var(--color-ink-soft)]">{Math.round(f.weight * 100)} % des naissances</span>
+                    </div>
+                    <span className="text-xs leading-snug text-[var(--color-ink-soft)]">{f.hint}</span>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -351,7 +345,7 @@ export function CreateSim() {
           )}
           {last ? (
             <button className="btn btn-emerald flex-1" disabled={busy || !valid} onClick={submit}>
-              Emménager à {commune.name}
+              Naître
             </button>
           ) : (
             <button className="btn flex-1" onClick={() => setStep(step + 1)}>
@@ -360,7 +354,7 @@ export function CreateSim() {
           )}
         </footer>
       </section>
-      {origin && <OriginReveal origin={origin} name={sim.firstName} housing={world.housings.find((h) => h.id === origin.housing)?.label ?? ''} onGo={() => navigate('/jeu', { viewTransition: true })} />}
+      {born && <FamilyReveal family={born.family} commune={born.commune} name={sim.firstName} housing={world.housings.find((h) => h.id === born.family.housing)?.label ?? ''} onGo={() => navigate('/jeu', { viewTransition: true })} />}
     </div>
   )
 }
@@ -435,42 +429,42 @@ function randomLookFor(gender: NewSim['gender'], look: Required<Look>): Required
 }
 
 /** Nobody chooses where they start: the server draws it, we reveal it like a card. */
-function OriginReveal({ origin, name, housing, onGo }: { origin: Origin; name: string; housing: string; onGo: () => void }) {
-  const rich = origin.loan === 0
-  const colors: [string, string] = rich ? ['#ffd54f', '#ffa000'] : ['#69e2a0', '#00a862']
+const FAMILY_COLORS: Record<string, [string, string]> = { late: ['#ffd54f', '#ffa000'], poignon: ['#64b5ff', '#2a6cf0'], coule: ['#69e2a0', '#00a862'], gnambro: ['#b0a8a0', '#6b625a'] }
+
+function FamilyReveal({ family, commune, name, housing, onGo }: { family: Family; commune: string; name: string; housing: string; onGo: () => void }) {
+  const colors = FAMILY_COLORS[family.id] ?? ['#ffa040', '#ff6a00']
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-[#0f1230]/70 p-4 backdrop-blur-[4px]">
       <div className="card animate-pop w-full max-w-sm overflow-hidden text-center">
         <div className="relative px-5 pt-6 pb-5 text-white" style={{ background: `radial-gradient(120% 100% at 50% 0%, ${colors[0]}, ${colors[1]})` }}>
-          <div className="label !text-white/85">Le destin a parlé</div>
+          <div className="label !text-white/85">C'est un bébé !</div>
           <div className="mt-3 flex justify-center">
-            <IconTile icon={iconFor(origin.icon)} colors={['#ffffff55', '#ffffff22']} size={84} radius={28} />
+            <IconTile icon={iconFor(family.icon)} colors={['#ffffff55', '#ffffff22']} size={84} radius={28} />
           </div>
-          <div className="mt-3 font-display text-[30px] leading-none font-extrabold">{origin.label}</div>
-          <p className="mt-2 text-sm leading-snug font-bold text-white/95">{origin.hint}</p>
+          <div className="mt-3 font-display text-[30px] leading-none font-extrabold">Famille {family.label.toLowerCase()}</div>
+          <p className="mt-2 text-sm leading-snug font-bold text-white/95">{family.hint}</p>
         </div>
         <ul className="space-y-2 p-4 text-left">
-          <li className="flex items-center justify-between rounded-xl bg-[var(--color-canvas)] px-3 py-2.5">
-            <span className="text-sm font-extrabold text-[var(--color-ink-soft)]">Porte-monnaie</span>
-            <span className="flex items-center gap-1 font-display text-lg font-extrabold"><Coin size={20} /> {amount(origin.money)}</span>
-          </li>
-          <li className="flex items-center justify-between rounded-xl bg-[var(--color-canvas)] px-3 py-2.5">
-            <span className="text-sm font-extrabold text-[var(--color-ink-soft)]">Logement</span>
-            <span className="font-display text-base font-extrabold">{housing}</span>
-          </li>
-          {origin.loan > 0 && (
-            <li className="flex items-center justify-between rounded-xl bg-[#ffeef1] px-3 py-2.5">
-              <span className="text-sm font-extrabold text-[#d81b3f]">Microcrédit à rembourser</span>
-              <span className="font-display text-base font-extrabold text-[#d81b3f]">{amount(origin.loan)} F</span>
-            </li>
-          )}
+          <Fact label="Né·e à" value={`${commune}, Abidjan`} />
+          <Fact label="La maison familiale" value={housing} />
+          <Fact label="Argent de poche" value={family.pocket ? `${amount(family.pocket)} F le samedi` : 'Rien'} />
+          <Fact label="À 18 ans" value={`${amount(family.start)} F pour démarrer`} />
         </ul>
         <div className="px-4 pb-4">
           <button className="btn w-full" onClick={onGo}>
-            C'est parti, {name} !
+            Bienvenue au monde, {name} !
           </button>
         </div>
       </div>
     </div>
+  )
+}
+
+function Fact({ label, value }: { label: string; value: string }) {
+  return (
+    <li className="flex items-center justify-between gap-3 rounded-xl bg-[var(--color-canvas)] px-3 py-2.5">
+      <span className="text-sm font-extrabold text-[var(--color-ink-soft)]">{label}</span>
+      <span className="text-right font-display text-base font-extrabold">{value}</span>
+    </li>
   )
 }

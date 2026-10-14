@@ -33,6 +33,9 @@ func (h *Handler) career(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.mutate(w, r, func(s *Sim) (game.Outcome, []Event, error) {
+		if s.minor() && req.Career != "" {
+			return game.Outcome{}, nil, errTooYoungToWork
+		}
 		if req.Career == s.Career {
 			return game.Outcome{}, nil, errors.New("c'est déjà ton travail")
 		}

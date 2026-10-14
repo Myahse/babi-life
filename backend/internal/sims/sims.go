@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/rand/v2"
 	"net/http"
 	"regexp"
 	"strings"
@@ -101,7 +100,11 @@ type Sim struct {
 	// Activity is what the Sim is busy with right now; nil when free.
 	Activity *game.Activity `json:"activity"`
 	// Apps installed on the phone (world.PhoneApps).
-	Apps      []string  `json:"apps"`
+	Apps []string `json:"apps"`
+	// BornAt: game minute of birth (0 = an adult from before births).
+	BornAt int64 `json:"bornAt"`
+	// Family the Sim was born into (game.Families); "" for older Sims.
+	Family    string    `json:"family"`
 	CreatedAt time.Time `json:"createdAt"`
 	lastTick  time.Time
 }
@@ -150,13 +153,13 @@ func (h *Handler) Routes(r chi.Router) {
 
 const simColumns = `id, first_name, last_name, gender, look, traits, aspiration,
 	home_city, home_commune, city, commune, needs, money, game_minutes,
-	origin, housing, loan, rent_arrears, career, career_level, performance, activity, apps, created_at, last_tick`
+	origin, housing, loan, rent_arrears, career, career_level, performance, activity, apps, born_at, family, created_at, last_tick`
 
 func scanSim(row pgx.Row) (Sim, error) {
 	var s Sim
 	err := row.Scan(&s.ID, &s.FirstName, &s.LastName, &s.Gender, &s.Look, &s.Traits, &s.Aspiration,
 		&s.HomeCity, &s.HomeCommune, &s.City, &s.Commune, &s.Needs, &s.Money, &s.GameMinutes,
-		&s.Origin, &s.Housing, &s.Loan, &s.RentArrears, &s.Career, &s.CareerLevel, &s.Performance, &s.Activity, &s.Apps, &s.CreatedAt, &s.lastTick)
+		&s.Origin, &s.Housing, &s.Loan, &s.RentArrears, &s.Career, &s.CareerLevel, &s.Performance, &s.Activity, &s.Apps, &s.BornAt, &s.Family, &s.CreatedAt, &s.lastTick)
 	return s, err
 }
 
@@ -180,14 +183,15 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 }
 
 type createRequest struct {
-	FirstName   string   `json:"firstName"`
-	LastName    string   `json:"lastName"`
-	Gender      string   `json:"gender"`
-	Look        Look     `json:"look"`
-	Traits      []string `json:"traits"`
-	Aspiration  string   `json:"aspiration"`
-	HomeCity    string   `json:"homeCity"`
-	HomeCommune string   `json:"homeCommune"`
+	FirstName  string   `json:"firstName"`
+	LastName   string   `json:"lastName"`
+	Gender     string   `json:"gender"`
+	Look       Look     `json:"look"`
+	Traits     []string `json:"traits"`
+	Aspiration string   `json:"aspiration"`
+	// Ignored: the family a Sim is born into decides where they grow up.
+	HomeCity    string `json:"homeCity,omitempty"`
+	HomeCommune string `json:"homeCommune,omitempty"`
 }
 
 func (req *createRequest) validate() error {
@@ -216,13 +220,6 @@ func (req *createRequest) validate() error {
 		}
 		seen[t] = true
 	}
-	city, ok := world.FindCity(req.HomeCity)
-	if !ok {
-		return errors.New("ville inconnue")
-	}
-	if _, ok := city.Commune(req.HomeCommune); !ok {
-		return errors.New("commune inconnue")
-	}
 	return nil
 }
 
@@ -236,17 +233,20 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusUnprocessableEntity, err.Error())
 		return
 	}
-	// Like in real life, nobody picks where they start.
-	origin := game.Origins[rand.IntN(len(game.Origins))]
+	// Like in real life, nobody picks where they start: a baby, born into a
+	// family drawn at random, in the family's commune.
+	rng := newRand()
+	fam := game.BornInto(rng)
+	commune := fam.Communes[rng.IntN(len(fam.Communes))]
+	now := game.MinuteOf(time.Now())
 	s, err := scanSim(h.DB.QueryRow(r.Context(), `
 		INSERT INTO sims (user_id, first_name, last_name, gender, look, traits, aspiration,
 		                  home_city, home_commune, city, commune, money, needs, game_minutes,
-		                  origin, housing, loan)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $8, $9, $10, $11, $12, $13, $14, $15)
+		                  origin, housing, loan, born_at, family, apps)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, 'abidjan', $8, 'abidjan', $8, 0, $9, $10, '', $11, 0, $10, $12, '{}')
 		RETURNING `+simColumns,
 		auth.UserID(r.Context()), req.FirstName, req.LastName, req.Gender, req.Look, req.Traits, req.Aspiration,
-		req.HomeCity, req.HomeCommune, origin.Money, game.FreshNeeds(), game.MinuteOf(time.Now()),
-		origin.ID, origin.Housing, origin.Loan,
+		commune, game.FreshNeeds(), now, fam.Housing, fam.ID,
 	))
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "could not create sim")
@@ -254,10 +254,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	}
 	city, _ := world.FindCity(s.HomeCity)
 	cm, _ := city.Commune(s.HomeCommune)
-	_ = insertEvent(r.Context(), h.DB, s.ID, "random", fmt.Sprintf("%s s'installe à %s, %s. Bienvenue !", s.FirstName, cm.Name, city.Name), 0, s.GameMinutes)
-	if origin.Loan > 0 {
-		_ = insertEvent(r.Context(), h.DB, s.ID, "bill", fmt.Sprintf("Microcrédit accordé. Tu dois %s, remboursés chaque samedi.", game.FCFA(origin.Loan)), 0, s.GameMinutes)
-	}
+	_ = insertEvent(r.Context(), h.DB, s.ID, "random", fmt.Sprintf("%s est né·e à %s, dans une famille %s. %s", s.FirstName, cm.Name, strings.ToLower(fam.Label), fam.Hint), 0, s.GameMinutes)
 	httpx.JSON(w, http.StatusCreated, s)
 }
 
@@ -341,6 +338,10 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+		// Old enough? Then: residents only, enough money, the right trait or job.
+		if err := it.AllowedFor(s.stage().ID); err != nil {
+			return game.Outcome{}, nil, err
+		}
 		// Who may do it: residents only, enough money, the right trait or job.
 		if err := it.Requires.Check(game.Who{Resident: s.City == s.HomeCity && s.Commune == s.HomeCommune, Money: s.Money, Traits: s.Traits, Career: s.Career}); err != nil {
 			return game.Outcome{}, nil, err

@@ -57,11 +57,17 @@ export type Interaction = {
   /** Opening days, 0 = lundi … 6 = dimanche; absent = every day. */
   days?: number[]
   requires?: { resident?: boolean; minMoney?: number; anyTrait?: string[]; career?: string }
+  /** Life stages that can do it; empty = from childhood up. */
+  ages?: string[]
 }
 export type PlaceKind = { id: string; label: string; icon: string; interactions: Interaction[] }
 export type Option = { id: string; label: string; icon: string; hint: string }
 
 export type Origin = Option & { money: number; loan: number; housing: string }
+/** The family a Sim is born into: laté, poignon, coulé, gnambro. */
+export type Family = { id: string; label: string; icon: string; hint: string; communes: string[]; housing: string; pocket: number; start: number; leave: string; bacGift: number; weight: number }
+/** A stage of life, from an age in years. */
+export type LifeStage = { id: 'bebe' | 'enfant' | 'ado' | 'adulte'; label: string; from: number; scale: number }
 export type Housing = Option & { rent: number; comfort: number }
 export type Career = {
   id: string
@@ -88,6 +94,10 @@ export type World = {
   phoneApps?: PhoneApp[]
   contacts?: Contact[]
   menus?: Record<string, Dish[]>
+  families?: Family[]
+  stages?: LifeStage[]
+  /** Real minutes in a year of game life. */
+  yearMinutes?: number
   compteur?: { color: string; cities: string[]; source: Source }
   roads?: Record<string, RoadNet>
   config: { devLogin: boolean; googleLogin: boolean }
@@ -141,6 +151,9 @@ export type Sim = {
   createdAt: string
   /** Apps installed on the phone (from the Store). */
   apps?: string[]
+  /** Game minute of birth; 0 = an adult from before births. */
+  bornAt?: number
+  family?: string
 }
 
 export type Activity = {
@@ -159,7 +172,7 @@ export type Activity = {
 
 export type JournalEvent = {
   id: number
-  kind: 'interaction' | 'random' | 'travel' | 'bill' | 'career'
+  kind: 'life' | 'transfer' | 'interaction' | 'random' | 'travel' | 'bill' | 'career'
   text: string
   money: number
   gameTime: number

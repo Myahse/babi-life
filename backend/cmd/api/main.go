@@ -82,6 +82,9 @@ func main() {
 				"phoneApps":   world.PhoneApps,
 				"contacts":    world.Contacts,
 				"menus":       world.Menus,
+				"families":    game.Families,
+				"stages":      game.Stages,
+				"yearMinutes": game.YearMinutes,
 				"holidays":    game.Holidays,
 				"config":      map[string]any{"devLogin": cfg.DevLogin, "googleLogin": authH.Verifier != nil},
 			})

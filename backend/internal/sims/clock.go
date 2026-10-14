@@ -57,6 +57,7 @@ func (s *Sim) finish(rng *rand.Rand) []Event {
 	if a.Interaction.Cost > 0 {
 		money = -a.Interaction.Cost
 	}
+	s.schoolMark(a.Interaction)
 	events := []Event{{Kind: "interaction", Text: fmt.Sprintf("%s — %s", a.PlaceName, a.Interaction.Label), Money: money, GameTime: a.Start}}
 	if a.Career != "" {
 		if c, ok := game.FindCareer(a.Career); ok && a.Career == s.Career {
@@ -94,7 +95,11 @@ func (s *Sim) stop() (Event, error) {
 
 // settleRange charges rent and loan for every Saturday in (from, to].
 func (s *Sim) settleRange(from, to int64) []Event {
-	var events []Event
+	events := s.growUp(from, to)
+	// Children live with their family: no rent, pocket money instead.
+	if s.BornAt != 0 && game.AgeAt(s.BornAt, to) < game.AdultAge {
+		return append(events, s.pocketMoney(from, to)...)
+	}
 	l := game.Ledger{Money: s.Money, Loan: s.Loan, RentArrears: s.RentArrears, Housing: s.Housing}
 	for range game.Saturdays(from, to) {
 		var charges []game.Charge
@@ -154,6 +159,9 @@ var (
 func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, ride Ride, rng *rand.Rand) error {
 	if s.Activity != nil {
 		return game.ErrBusy
+	}
+	if st := s.stage().ID; st == game.StageBebe || st == game.StageEnfant {
+		return errTooSmallToTravel
 	}
 	fromCity, _ := world.FindCity(s.City)
 	fromCommune, _ := fromCity.Commune(s.Commune)

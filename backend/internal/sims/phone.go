@@ -24,6 +24,9 @@ var (
 func (s *Sim) hasApp(id string) bool { return slices.Contains(s.Apps, id) }
 
 func needApp(s *Sim, id string) error {
+	if !s.hasPhone() {
+		return errNoPhoneYet
+	}
 	if s.hasApp(id) {
 		return nil
 	}
@@ -33,6 +36,9 @@ func needApp(s *Sim, id string) error {
 
 // install adds or removes an app from the store.
 func (s *Sim) install(id string, on bool) error {
+	if !s.hasPhone() {
+		return errNoPhoneYet
+	}
 	if _, ok := world.FindPhoneApp(id); !ok {
 		return errUnknownApp
 	}
