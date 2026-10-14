@@ -16,7 +16,7 @@ import { LowHuman } from './LowHuman'
 // follow a hairline and fade into the skin, so there are no blobs or seams.
 // The torso is one surface too, with the waist seam where clothes really have one.
 
-export type Pose = 'idle' | 'walk' | 'run' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk'
+export type Pose = 'idle' | 'walk' | 'run' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper'
 
 /** Poses done sitting on a chair (hips at seat height). */
 export const SEATED: Pose[] = ['sit', 'eat', 'drink', 'write']
@@ -1005,7 +1005,7 @@ function FullHuman({ look, gender, pose = 'idle', seed = 0, headScale = 1, speed
     const dt = Math.min(dtRaw, 0.1)
     const t = clock.elapsedTime + seed
     const run = pose === 'run'
-    const walk = pose === 'walk' || run
+    const walk = pose === 'walk' || run || pose === 'dribble'
     const seated = SEATED.includes(pose)
     // Steps follow the speed: cadence and stride grow with it, so feet don't slide.
     const v = speed ?? (run ? 8 : 1.4)
@@ -1024,11 +1024,13 @@ function FullHuman({ look, gender, pose = 'idle', seed = 0, headScale = 1, speed
       const swing = walk ? s * stride * out : 0
       const h = hip[i].current!
       const kn = knee[i].current!
-      to(h.rotation, 'x', seated ? -1.5 : walk ? swing : 0)
+      // A kick: the right leg swung through; the keeper, knees bent, ready.
+      const kick = pose === 'kick' && out > 0
+      to(h.rotation, 'x', seated ? -1.5 : kick ? -1.15 : pose === 'keeper' ? -0.45 : walk ? swing : 0)
       to(h.rotation, 'z', walk || seated ? 0 : out * shift * 0.03)
       // The knee bends as the leg swings through, and a little on the standing leg.
       const lift = Math.max(0, Math.sin(ph + (out > 0 ? Math.PI : 0) + 0.6))
-      to(kn.rotation, 'x', seated ? 1.5 : walk ? 0.08 + lift * (run ? 1.55 : 0.75) : Math.max(0, -out * shift) * 0.12)
+      to(kn.rotation, 'x', seated ? 1.5 : kick ? 0.15 : pose === 'keeper' ? 0.8 : walk ? 0.08 + lift * (run ? 1.55 : 0.75) : Math.max(0, -out * shift) * 0.12)
       const sh = shoulder[i].current!
       const el = elbow[i].current!
       let [sx, sy, sz, ex, ez] = [0, 0, out * 0.1, -0.12, 0]
@@ -1070,6 +1072,18 @@ function FullHuman({ look, gender, pose = 'idle', seed = 0, headScale = 1, speed
         // Talking with someone: one hand making the point, now and then.
         const g = Math.max(0, Math.sin(t * 2.6 + i * 1.7))
         ;[sx, sz, ex] = [-0.25 - g * 0.55 * (out > 0 ? 1 : 0.4), out * 0.14, -0.5 - g * 0.6]
+      } else if (pose === 'dribble' && out > 0) {
+        // The hand pushing the ball down, bounce after bounce.
+        ;[sx, sz, ex] = [-0.55 + Math.sin(t * 14) * 0.3, 0.32, -0.5 + Math.sin(t * 14) * 0.25]
+      } else if (pose === 'shoot') {
+        // Both arms up, the ball released over the head.
+        ;[sx, sz, ex] = [-2.85, out * 0.12, -0.35]
+      } else if (pose === 'keeper') {
+        // Arms out, ready to dive.
+        ;[sx, sz, ex] = [-0.5, out * 0.75, -0.4]
+      } else if (pose === 'kick') {
+        // Arms out for balance.
+        ;[sx, sz, ex] = [out * 0.35, out * 0.7, -0.3]
       } else if (pose === 'hero' && out > 0) {
         ;[sx, sz, ex, ez] = [0.15, 0.6, -0.35, -1.75]
       } else if (run) {
@@ -1094,7 +1108,9 @@ function FullHuman({ look, gender, pose = 'idle', seed = 0, headScale = 1, speed
       'y',
       seated
         ? -SEAT_DROP
-        : run
+        : pose === 'keeper'
+          ? -0.1
+          : run
           ? Math.abs(Math.cos(ph)) * 0.09
           : walk
             ? Math.abs(Math.cos(ph)) * (0.015 + stride * 0.035)

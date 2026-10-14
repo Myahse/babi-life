@@ -11,6 +11,7 @@ import { rng } from './themes'
 import { SIDEWALK } from './layout'
 import { Box, Mat, Sign } from './props'
 import { Vehicle } from './vehicles'
+import { Basket, Football } from './matches'
 
 // What is going on in the street right now (see backend/internal/game/happenings.go),
 // staged on the boulevard around HAPPENING_X so the player can find it.
@@ -19,7 +20,7 @@ export const HAPPENING_X = 18
 /** Where the player's Sim stands to join in. */
 export const HAPPENING_DOOR: [number, number] = [HAPPENING_X - 5, SIDEWALK]
 /** Happenings that close the boulevard to the usual traffic. */
-export const STOPS_TRAFFIC = new Set(['mariage', 'match', 'concert', 'foot', 'controle', 'embouteillage'])
+export const STOPS_TRAFFIC = new Set(['mariage', 'match', 'concert', 'foot', 'controle', 'embouteillage', 'basket'])
 
 type Person = { gender: 'femme' | 'homme'; look: Look; seed: number }
 
@@ -310,47 +311,6 @@ function Checkpoint({ seed }: { seed: string }) {
   )
 }
 
-/* ---------- Street football ---------- */
-
-function Football({ seed }: { seed: string }) {
-  const kids = useCrowd(8, `foot${seed}`, (r, g) => ({ outfit: r() < 0.5 ? 'jersey' : 'casual', hair: g === 'femme' ? 'braids' : 'short', accessory: 'none', beard: 'none' }))
-  const refs = useRef<(THREE.Group | null)[]>([])
-  const ball = useRef<THREE.Mesh>(null)
-  useFrame(({ clock }) => {
-    const t = clock.elapsedTime
-    refs.current.forEach((g, i) => {
-      if (!g) return
-      const a = t * 0.9 + i * 0.8
-      g.position.set(Math.sin(a) * 7, 0, Math.cos(a * 1.3) * 2.4)
-      g.rotation.y = Math.atan2(Math.cos(a) * 7, -Math.sin(a * 1.3) * 3.1)
-    })
-    if (ball.current) ball.current.position.set(Math.sin(t * 1.4) * 8, 0.25 + Math.abs(Math.sin(t * 4)) * 0.6, Math.sin(t * 2.1) * 2)
-  })
-  return (
-    <group position={[HAPPENING_X, 0, 0]}>
-      {[-10, 10].map((x) => (
-        <group key={x} position={[x, 0, 0]}>
-          {[-1.2, 1.2].map((z) => (
-            <Box key={z} p={[0, 0.7, z]} s={[0.15, 1.4, 0.15]} c="#f8f9fa" />
-          ))}
-          <Box p={[0, 1.4, 0]} s={[0.15, 0.15, 2.55]} c="#f8f9fa" />
-        </group>
-      ))}
-      <mesh ref={ball}>
-        <icosahedronGeometry args={[0.22, 1]} />
-        <Mat color="#ffffff" />
-      </mesh>
-      <NoShadows>
-        {kids.map((p, i) => (
-          <group key={i} ref={(g) => void (refs.current[i] = g)}>
-            <Guest p={[0, 0, 0]} person={p} pose="walk" scale={0.72} />
-          </group>
-        ))}
-      </NoShadows>
-    </group>
-  )
-}
-
 /* ---------- Marker and dispatcher ---------- */
 
 export function HappeningScene({ id, seed, night }: { id: string; seed: string; night: boolean }) {
@@ -363,7 +323,16 @@ export function HappeningScene({ id, seed, night }: { id: string; seed: string; 
       {id === 'delestage' && <Blackout seed={seed} />}
       {id === 'embouteillage' && <Jam />}
       {id === 'controle' && <Checkpoint seed={seed} />}
-      {id === 'foot' && <Football seed={seed} />}
+      {id === 'foot' && (
+        <group position={[HAPPENING_X, 0, 0]}>
+          <Football seed={seed} />
+        </group>
+      )}
+      {id === 'basket' && (
+        <group position={[HAPPENING_X - 3, 0, 0]}>
+          <Basket seed={seed} />
+        </group>
+      )}
     </group>
   )
 }
