@@ -7,10 +7,12 @@ import { CHUNK_ZOOM, centroid, clipLine, clipRing, hash, pointInRing, tileBox, t
 // boulevard is wider than a back street), buildings their outline and
 // height, rounded to whole 3 m blocks like in Minecraft.
 
-export type Road = { cls: string; pts: XZ[]; width: number; paved: boolean; bridge: boolean }
+export type Road = { cls: string; pts: XZ[]; width: number; paved: boolean; bridge: boolean; /** a bridge's name on the map */ name?: string }
+/** An airport's runway or taxiway (not a street: nobody walks there). */
+export type Aeroway = { cls: 'runway' | 'taxiway'; pts: XZ[] }
 export type Building = { ring: XZ[]; holes: XZ[][]; height: number; c: XZ; tint: number }
-export type Area = { kind: 'water' | 'green' | 'sand' | 'pitch' | 'campus' | 'hospital'; rings: XZ[][] }
-export type ChunkData = { key: string; tx: number; ty: number; box: Box; roads: Road[]; buildings: Building[]; areas: Area[]; trees: XZ[]; palms: XZ[] }
+export type Area = { kind: 'water' | 'green' | 'sand' | 'pitch' | 'campus' | 'hospital' | 'apron'; rings: XZ[][] }
+export type ChunkData = { key: string; tx: number; ty: number; box: Box; roads: Road[]; buildings: Building[]; areas: Area[]; trees: XZ[]; palms: XZ[]; aeroways: Aeroway[] }
 
 export const BLOCK = 3 // metres: one storey, one block
 
@@ -39,7 +41,7 @@ export async function fetchChunk(o: Origin, tx: number, ty: number, token: strin
 }
 
 function emptyChunk(o: Origin, tx: number, ty: number, z = CHUNK_ZOOM): ChunkData {
-  return { key: z === CHUNK_ZOOM ? `${tx}/${ty}` : `${z}:${tx}/${ty}`, tx, ty, box: tileBox(o, tx, ty, z), roads: [], buildings: [], areas: [], trees: [], palms: [] }
+  return { key: z === CHUNK_ZOOM ? `${tx}/${ty}` : `${z}:${tx}/${ty}`, tx, ty, box: tileBox(o, tx, ty, z), roads: [], buildings: [], areas: [], trees: [], palms: [], aeroways: [] }
 }
 
 export function decodeChunk(o: Origin, tx: number, ty: number, data: Uint8Array, z = CHUNK_ZOOM): ChunkData {
@@ -64,9 +66,20 @@ export function decodeChunk(o: Origin, tx: number, ty: number, data: Uint8Array,
     const xz = toXZ(f.extent)
     for (const line of f.loadGeometry()) {
       for (const pts of clipLine(line.map(xz), box)) {
-        chunk.roads.push({ cls, pts, width, paved: !UNPAVED.has(cls) && f.properties.surface !== 'unpaved', bridge: f.properties.structure === 'bridge' })
+        const bridge = f.properties.structure === 'bridge'
+        chunk.roads.push({ cls, pts, width, paved: !UNPAVED.has(cls) && f.properties.surface !== 'unpaved', bridge, name: bridge && f.properties.name ? String(f.properties.name) : undefined })
       }
     }
+  }
+
+  // The airport: runways and taxiways are lines, aprons are areas.
+  const aeroway = tile.layers.aeroway
+  for (let i = 0; i < (aeroway?.length ?? 0); i++) {
+    const f = aeroway!.feature(i)
+    const type = String(f.properties.type ?? '')
+    if (f.type !== 2 || (type !== 'runway' && type !== 'taxiway') || (far && type !== 'runway')) continue
+    const xz = toXZ(f.extent)
+    for (const line of f.loadGeometry()) for (const pts of clipLine(line.map(xz), box)) chunk.aeroways.push({ cls: type, pts })
   }
 
   const buildings = far ? undefined : tile.layers.building
@@ -103,6 +116,18 @@ export function decodeChunk(o: Origin, tx: number, ty: number, data: Uint8Array,
   areas('water', () => 'water')
   // Schools and universities, hospitals: their grounds, as the map draws them.
   areas('landuse', (cls) => (GREEN.has(cls) ? 'green' : SAND.has(cls) ? 'sand' : cls === 'pitch' ? 'pitch' : cls === 'school' ? 'campus' : cls === 'hospital' ? 'hospital' : null))
+  if (tile.layers.aeroway) {
+    const l = tile.layers.aeroway
+    for (let i = 0; i < l.length; i++) {
+      const f = l.feature(i)
+      if (f.type !== 3 || !['apron', 'runway', 'taxiway'].includes(String(f.properties.type))) continue
+      const xz = toXZ(f.extent)
+      for (const poly of classifyRings(f.loadGeometry())) {
+        const rings = poly.map((r) => clipRing(open(r.map(xz)), box)).filter((r) => r.length >= 3)
+        if (rings.length && rings[0].length >= 3) chunk.areas.push({ kind: 'apron', rings })
+      }
+    }
+  }
   areas('landuse_overlay', (cls) => (cls.startsWith('wetland') ? 'green' : null))
 
   // Trees in the parks and gardens, a few per block of green.

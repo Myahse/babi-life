@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
+import { Airport } from './airport'
 
 // Landmarks the map alone can't draw: their shape is what people know them
 // by. Built from published descriptions; sizes are estimates for the game.
@@ -11,6 +12,8 @@ export const LANDMARKS: Record<string, number> = {
   'plateau-stade': 105,
   'cocody-hotel-ivoire': 75,
   'yakro-basilique': 130,
+  'pb-aeroport': 150,
+  'cocody-oranjo': 42,
 }
 
 /** The landmark's model, by place. */
@@ -26,6 +29,10 @@ export function Landmark({ id, night }: { id: string; night: boolean }) {
       return <HotelIvoire night={night} />
     case 'yakro-basilique':
       return <Basilica />
+    case 'pb-aeroport':
+      return <Airport night={night} />
+    case 'cocody-oranjo':
+      return <OranjoVillage night={night} />
     default:
       return null
   }
@@ -516,6 +523,62 @@ export function Cathedral() {
           </mesh>
         )
       })}
+    </group>
+  )
+}
+
+/**
+ * Oranjo Village, the game's name for Orange Village (Cocody, Riviera Golf,
+ * Koffi & Diabaté Architectes, 2022): seven levels in rings 68 m across under
+ * a perforated double skin shaped like a golf ball. The sphere's proportions
+ * are an estimate.
+ */
+function OranjoVillage({ night }: { night: boolean }) {
+  const R = 36
+  const CY = -6 // the ball's centre, below the ground: a cap of it stands
+  const skin = useMemo(() => {
+    // White, pierced with round holes like a golf ball's dimples.
+    const t = pixels(16, 16, (g) => {
+      g.fillStyle = '#f7f7f4'
+      g.fillRect(0, 0, 16, 16)
+      g.globalCompositeOperation = 'destination-out'
+      g.beginPath()
+      g.arc(8, 8, 5, 0, Math.PI * 2)
+      g.fill()
+    }, [56, 18])
+    return new THREE.MeshLambertMaterial({ map: t, alphaTest: 0.5, side: THREE.DoubleSide })
+  }, [])
+  const cap = useMemo(() => new THREE.SphereGeometry(R, 56, 20, 0, Math.PI * 2, 0, Math.acos(-CY / R)), [])
+  const glass = useMemo(() => new THREE.MeshLambertMaterial({ color: '#36576f', emissive: '#ffd27a', emissiveIntensity: 0 }), [])
+  const slab = useMemo(() => new THREE.MeshLambertMaterial({ color: '#efece6' }), [])
+  const brand = useMemo(() => new THREE.MeshLambertMaterial({ color: '#ff7900', emissive: '#ff7900', emissiveIntensity: 0.2 }), [])
+  glass.emissiveIntensity = night ? 0.5 : 0
+  brand.emissiveIntensity = night ? 0.8 : 0.2
+  const levels = [...Array(7)].map((_, i) => {
+    const y = i * 4
+    return { y, r: Math.sqrt(R * R - (y + 2 - CY) ** 2) - 3 }
+  })
+  return (
+    <group>
+      {levels.map(({ y, r }, i) => (
+        <group key={i} position={[0, y, 0]}>
+          <mesh position={[0, 2, 0]} material={glass} castShadow>
+            <cylinderGeometry args={[r - 1, r - 1, 3.5, 40]} />
+          </mesh>
+          <mesh position={[0, 3.8, 0]} material={slab} castShadow receiveShadow>
+            <cylinderGeometry args={[r, r, 0.5, 40]} />
+          </mesh>
+        </group>
+      ))}
+      <mesh geometry={cap} position={[0, CY, 0]} material={skin} castShadow />
+      {/* The orange band at the foot, and the forecourt */}
+      <mesh position={[0, 0.6, 0]} material={brand}>
+        <cylinderGeometry args={[Math.sqrt(R * R - CY * CY) + 0.3, Math.sqrt(R * R - CY * CY) + 0.3, 1.2, 56, 1, true]} />
+      </mesh>
+      <mesh position={[0, 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <circleGeometry args={[42, 48]} />
+        <meshLambertMaterial color="#cfc8b8" />
+      </mesh>
     </group>
   )
 }

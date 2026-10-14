@@ -12,7 +12,7 @@ func TestRoutesUseTheBridges(t *testing.T) {
 		bridge   string // one of the bridges it must cross, "" = none
 	}{
 		{"plateau", "treichville", "pont"},
-		{"cocody", "marcory", "pont HKB"},
+		{"cocody", "marcory", "3e pont"},
 		{"yopougon", "plateau", ""},
 		{"abobo", "adjame", ""},
 		{"koumassi", "port-bouet", ""},

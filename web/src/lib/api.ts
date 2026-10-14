@@ -72,6 +72,8 @@ export const api = {
   friend: (id: string, friend: string, action: string) => post<ActionResult>(`/sims/${id}/friend`, { friend, action }),
   gang: (id: string, action: string) => post<ActionResult>(`/sims/${id}/gang`, { action }),
   order: (id: string, place: string, dish: string) => post<ActionResult>(`/sims/${id}/order`, { place, dish }),
+  /** Buy alloco from the tantie's stall in the street (she may have none left). */
+  street: (id: string, vendor: string) => post<ActionResult>(`/sims/${id}/street`, { vendor }),
   stop: (id: string) => post<ActionResult>(`/sims/${id}/stop`, {}),
   /** Other players: who's in the commune, invitations, player friends. */
   around: (id: string) => request<Around>(`/sims/${id}/around`),

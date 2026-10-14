@@ -49,6 +49,8 @@ export type Props = {
   onPickPlayer?: (id: string) => void
   /** The open world's close, third-person camera. */
   closeView?: boolean
+  /** Buy from a street vendor; resolves to what she says (null if it failed). */
+  onStreetBuy?: (vendor: string) => Promise<string | null>
 }
 
 

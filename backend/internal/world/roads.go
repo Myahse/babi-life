@@ -18,6 +18,7 @@ const (
 	srcPontCDG  = "https://structurae.net/fr/ouvrages/pont-charles-de-gaulle-1967-abidjan"
 	srcPontHKB  = "https://fr.wikipedia.org/wiki/Pont_Henri-Konan-B%C3%A9di%C3%A9"
 	srcPontADO  = "https://news.abidjan.net/articles/724046/pont-alassane-ouattara-une-reponse-aux-defis-de-mobilite-dans-le-district-dabidjan"
+	srcPont5    = "https://www.fratmat.info/article/231510/economie/5e-pont-dabidjan-le-president-ouattara-met-en-service-louvrage-dart-qui-porte-son-nom"
 	srcPont4    = "https://www.yeclo.com/yopougon-plateau-voici-litineraire-du-4e-pont-dabidjan"
 	srcPont4Len = "https://www.agenceecofin.com/transports/1401-115193-cote-d-ivoire-le-4e-pont-d-abidjan-et-5-autres-axes-routiers-construits-sur-financement-de-la-bad-ouverts-a-la-circulation"
 )
@@ -70,8 +71,8 @@ var Roads = map[string]*RoadNet{
 		Roads: []Road{
 			bridge("fhb-n", "fhb-s", "pont Félix-Houphouët-Boigny", game.Verified("Pont de 372 m entre le Plateau et Treichville ; coordonnées de son centre publiées.", srcPontFHB)),
 			bridge("cdg-n", "cdg-s", "pont Charles-de-Gaulle", game.Verified("Pont de 1967 entre le Plateau et Treichville ; coordonnées publiées.", srcPontCDG)),
-			bridge("hkb-n", "hkb-s", "pont HKB", game.Verified("Pont Henri-Konan-Bédié, 1 500 m, entre la Riviera (Cocody) et Marcory ; coordonnées publiées.", srcPontHKB)),
-			bridge("ado-o", "ado-e", "pont Alassane-Ouattara", game.Partial("Pont de 630 m sur la baie de Cocody entre le Plateau et Cocody, ouvert en août 2023 ; position approximative.", srcPontADO)),
+			bridge("hkb-n", "hkb-s", "3e pont", game.Verified("Pont Henri-Konan-Bédié (le « 3e pont »), 1 500 m, entre la Riviera (Cocody) et Marcory ; coordonnées publiées.", srcPontHKB)),
+			bridge("ado-o", "ado-e", "5e pont", game.Partial("Pont Alassane-Ouattara (le « 5e pont »), 630 m dont 200 m à haubans, sur la baie de Cocody entre le Plateau et Cocody, ouvert en août 2023 ; position approximative.", srcPontADO, srcPont5)),
 			bridge("4p-o", "4p-e", "4e pont", game.Partial("Relie Yopougon au Plateau par Attécoubé en franchissant la baie du Banco ; position approximative.", srcPont4, srcPont4Len)),
 			{A: "yopougon", B: "4p-o"}, {A: "4p-e", B: "attecoube"},
 			{A: "songon", B: "yopougon", Name: "route de Dabou"},

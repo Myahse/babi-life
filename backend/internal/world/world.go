@@ -106,6 +106,10 @@ const (
 	srcCFAORetail      = "https://www.foodbusinessmea.com/cfao-consumer-retail-expands-footprint-in-ivory-coast-acquires-leader-prices-stores/"
 	srcBurgerKing      = "https://www.qsrweb.com/news/burger-king-to-open-first-ivory-coast-location/"
 	srcHotelIvoire     = "https://en.wikipedia.org/wiki/Village_Ivoire"
+	srcRadisson        = "https://www.businesstraveller.com/news/radisson-blu-opens-abidjan-airport-property/"
+	srcHotelsAbj       = "https://www.climate-chance.org/wp-content/uploads/2026/06/hotels-plateau-cocody-marcory.docx.pdf"
+	srcOrangeVillage   = "https://worldarchitecture.org/architecture-news/enhnz/the-new-headquarters-of-orange-village-in-abidjan-c%C3%B4te-d-ivoire-by-koffi-diabat-architects.html"
+	srcOrangeVillage2  = "https://www.koaci.com/article/2022/01/14/cote-divoire/economie/orange-cote-divoire-inaugure-orange-village-son-nouveau-siege-a-abidjan-et-confirme-son-attachement-et-ses-ambitions-pour-la-cote-divoire_156877.html"
 	srcPyramide        = "https://en.wikipedia.org/wiki/La_Pyramide_(building)"
 	srcPyramide2       = "https://structurae.net/en/structures/la-pyramide"
 	srcBlockhauss      = "https://news.abidjan.net/articles/374315/le-chef-de-letat-aux-populations-de-blockhauss-hier-on-ne-doit-pas-vous-deposseder-totalement-de-vos-terres"
@@ -180,6 +184,10 @@ var Cities = []City{
 				Place{ID: "plateau-cathedrale", Name: "Cathédrale Saint-Paul", Kind: "worship", Lat: 5.3315, Lng: -4.0230, Real: true, Approx: true, Source: game.Unverified("Cathédrale du Plateau ; à confirmer avec une source.")},
 				Place{ID: "plateau-pyramide", Name: "La Pyramide", Kind: "office", Lat: 5.3223, Lng: -4.0165, Real: true, Approx: true,
 					Source: game.Verified("Immeuble de bureaux du Plateau (Rinaldo Olivieri, 1973) : pyramide à gradins de 15 niveaux, environ 62 m. Position placée d'après la carte, à relever.", srcPyramide, srcPyramide2)},
+				Place{ID: "plateau-poulman", Name: "Hôtel Poulman", Kind: "hotel", Lat: 5.3226, Lng: -4.0186, Real: true, Approx: true,
+					Source: game.Partial("Nom du jeu pour le Pullman Abidjan (5 étoiles, rue Abdoulaye Fadiga, Plateau) ; position placée d'après l'adresse, à relever.", srcHotelsAbj)},
+				Place{ID: "plateau-noum", Name: "Noum Hôtel", Kind: "hotel", Lat: 5.3196, Lng: -4.0208, Real: true, Approx: true,
+					Source: game.Partial("Nom du jeu pour le Noom Hôtel (5 étoiles, boulevard Général-de-Gaulle, Plateau) ; position estimée, à relever.", srcHotelsAbj)},
 				Place{ID: "plateau-stade", Name: "Stade Félix-Houphouët-Boigny", Kind: "sport", Lat: 5.3205, Lng: -4.0170, Real: true, Approx: true,
 					Source: game.Verified("Stade du Plateau, ouvert en 1961 sur le site du stade Géo-André ; capacité variable selon les sources (27 000 à 40 000).", srcVenues, srcStadeFHB)},
 			),
@@ -200,6 +208,8 @@ var Cities = []City{
 					Source:   game.Verified("Centre commercial ouvert le 29 juin 2017 à Cocody-Riviera Palmeraie (Génie 2000) : 29 000 m², Carrefour Market, 24 enseignes ; exploité par CFAO. Position placée d'après l'adresse, à relever.", srcPlayceToyota, srcPlayceFA, srcCFAORetail)},
 				Place{ID: "cocody-hotel-ivoire", Name: "Hôtel Ivoire", Kind: "hotel", Lat: 5.3272, Lng: -4.0047, Real: true,
 					Source: game.Partial("Hôtel du complexe Village Ivoire, boulevard Hassan II à Cocody, face à la lagune et au Plateau (5°19′38″N 4°00′17″W) ; exploitant actuel à confirmer.", srcHotelIvoire)},
+				Place{ID: "cocody-oranjo", Name: "Oranjo Village", Kind: "office", Quarter: "Riviera Golf", Lat: 5.3318, Lng: -3.9700, Real: true, Approx: true, Operator: "Oranjo CI (opérateur du jeu)",
+					Source: game.Partial("Nom du jeu pour Orange Village, siège d'Orange Côte d'Ivoire inauguré le 14 janvier 2022 à la Riviera Golf, au bord de la lagune (Koffi & Diabaté Architectes : sept niveaux en anneaux de 68 m de diamètre, double peau en balle de golf). Position estimée, à relever.", srcOrangeVillage, srcOrangeVillage2)},
 				Place{ID: "cocody-baie", Name: "Baie de Cocody", Kind: "lagune", Lat: 5.3345, Lng: -4.0028, Real: true, Approx: true,
 					Source: game.Partial("Baie de la lagune Ébrié entre Cocody et le Plateau, que domine l'Hôtel Ivoire ; promenade placée pour le jeu.", srcHotelIvoire)},
 				Place{ID: "cocody-blockhauss", Name: "Village de Blockhauss", Kind: "village", Quarter: "Blockhauss", Lat: 5.3300, Lng: -3.9930, Real: true, Approx: true,
@@ -245,6 +255,8 @@ var Cities = []City{
 					Source: game.Verified("Transformé en établissement public hospitalier national en 2022.", srcCHUStatus)},
 			),
 			abidjanCommune("marcory", "Marcory", "Zone 4, Biétry, restos et sorties.", 5.3000, -3.9850, "sud",
+				Place{ID: "marcory-azale", Name: "Azalé Hôtel", Kind: "hotel", Lat: 5.3035, Lng: -3.9880, Real: true, Approx: true,
+					Source: game.Partial("Nom du jeu pour l'Azalaï Hôtel Abidjan, à Marcory ; position estimée, à relever.", srcHotelsAbj)},
 				Place{ID: "marcory-zone4", Name: "Zone 4", Kind: "club", Quarter: "Zone 4", Lat: 5.2930, Lng: -3.9900, Approx: true, Source: game.Unverified("Quartier de sorties de Marcory ; le lieu est une ambiance générique.")},
 				Place{ID: "marcory-bietry", Name: "Maquis de Biétry", Kind: "maquis", Quarter: "Biétry", Lat: 5.2860, Lng: -3.9770, Approx: true, Source: invented},
 				Place{ID: "marcory-anoumabo", Name: "Village d'Anoumabo", Kind: "culture", Quarter: "Anoumabo", Lat: 5.2980, Lng: -3.9750, Real: true, Approx: true,
@@ -264,6 +276,8 @@ var Cities = []City{
 			abidjanCommune("port-bouet", "Port-Bouët", "La plage, l'aéroport, le vent de l'océan.", 5.2560, -3.9260, "sud",
 				Place{ID: "pb-plage", Name: "Plage de Port-Bouët", Kind: "beach", Lat: 5.2470, Lng: -3.9400, Real: true, Approx: true, Source: game.Unverified("Plage publique de Port-Bouët ; à confirmer.")},
 				Place{ID: "pb-maquis", Name: "Maquis du Wharf", Kind: "maquis", Lat: 5.2520, Lng: -3.9530, Approx: true, Source: invented},
+				Place{ID: "pb-rabisson", Name: "Rabisson Aéroport", Kind: "hotel", Lat: 5.2578, Lng: -3.9302, Real: true, Approx: true,
+					Source: game.Partial("Nom du jeu pour le Radisson Blu de l'aéroport (boulevard de l'Aéroport, à environ 500 m de l'aéroport) ; position estimée.", srcRadisson)},
 				Place{ID: "pb-aeroport", Name: "Aéroport Félix-Houphouët-Boigny", Kind: "transport", Lat: 5.2614, Lng: -3.9263, Real: true, Approx: true,
 					Owner: "État de Côte d'Ivoire (concédant)", Operator: "AERIA (concession depuis 1996)",
 					Source: game.Verified("Aéroport de Port-Bouët géré par AERIA depuis mai 1996 ; concession renouvelée par l'État en 2010 pour vingt ans.", srcAirport, srcAirport2)},

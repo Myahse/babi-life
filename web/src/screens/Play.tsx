@@ -339,6 +339,15 @@ export function Play() {
             recenter,
             onFreeCamera: setFreeCam,
             closeView,
+            onStreetBuy: async (vendor: string) => {
+              let said: string | null = null
+              await run("L'alloco de la tantie", 'banana', 'market', async () => {
+                const res = await api.street(sim.id, vendor)
+                said = res.outcome.text
+                return res
+              })
+              return said
+            },
           }
           return classic ? <Neighbourhood key={commune.id} {...street} /> : <OpenWorld key={commune.id} {...street} token={MAP_TOKEN!} onFail={() => setClassic(true)} />
         })()}
@@ -572,7 +581,7 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
           <div className="flex items-center justify-between px-6 pt-3 pb-1 text-xs font-extrabold text-white">
             <span className="tnum">{time}</span>
             <span className="h-5 w-20 rounded-full bg-black" />
-            <span>Orange CI · 4G</span>
+            <span>Oranjo CI · 4G</span>
           </div>
 
           {app === null ? (

@@ -27,6 +27,7 @@ export type ChunkMeshes = {
   pavement: THREE.BufferGeometry | null
   water: THREE.BufferGeometry | null
   foam: THREE.BufferGeometry | null
+  paint: THREE.BufferGeometry | null
   green: THREE.BufferGeometry | null
   sand: THREE.BufferGeometry | null
   pitch: THREE.BufferGeometry | null
@@ -117,8 +118,33 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ) => boolean, styleOf: 
   const sand = new Builder()
   const pitch = new Builder()
   for (const a of chunk.areas) {
-    const [to, y, scale] = a.kind === 'water' ? [water, 0.02, 4] : a.kind === 'green' || a.kind === 'campus' ? [green, a.kind === 'campus' ? 0.008 : 0.012, 2] : a.kind === 'sand' ? [sand, 0.014, 2] : a.kind === 'hospital' ? [pavement, 0.009, 2] : [pitch, 0.016, 2]
+    const [to, y, scale] = a.kind === 'water' ? [water, 0.02, 4] : a.kind === 'green' || a.kind === 'campus' ? [green, a.kind === 'campus' ? 0.008 : 0.012, 2] : a.kind === 'sand' ? [sand, 0.014, 2] : a.kind === 'hospital' ? [pavement, 0.009, 2] : a.kind === 'apron' ? [pavement, 0.018, 3] : [pitch, 0.016, 2]
     to.flat(a.rings, y as number, scale as number)
+  }
+
+  // Runways and taxiways: wide asphalt and their white paint (the centre
+  // line in dashes, the edges of a runway).
+  const paint = new Builder()
+  const along = (pts: XZ[], off: number) =>
+    pts.map(([x, z], i) => {
+      const [a, b] = [pts[Math.max(0, i - 1)], pts[Math.min(pts.length - 1, i + 1)]]
+      const l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1
+      return [x - ((b[1] - a[1]) / l) * off, z + ((b[0] - a[0]) / l) * off] as XZ
+    })
+  for (const w of chunk.aeroways) {
+    const runway = w.cls === 'runway'
+    strip(asphalt, w.pts, runway ? 45 : 20, runway ? 0.055 : 0.052, 4)
+    if (runway) for (const off of [-20.5, 20.5]) strip(paint, along(w.pts, off), 0.9, 0.07, 4)
+    // The centre line, in dashes.
+    for (let i = 1; i < w.pts.length; i++) {
+      const [a, b] = [w.pts[i - 1], w.pts[i]]
+      const l = Math.hypot(b[0] - a[0], b[1] - a[1])
+      const [dash, gap] = runway ? [30, 20] : [l, 0]
+      for (let t = 0; t < l; t += dash + gap) {
+        const e = Math.min(l, t + dash)
+        strip(paint, [[a[0] + ((b[0] - a[0]) * t) / l, a[1] + ((b[1] - a[1]) * t) / l], [a[0] + ((b[0] - a[0]) * e) / l, a[1] + ((b[1] - a[1]) * e) / l]], runway ? 0.9 : 0.4, 0.07, 4)
+      }
+    }
   }
 
   // Foam where the water meets the land: the waves on the beaches and the
@@ -167,6 +193,7 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ) => boolean, styleOf: 
     pavement: pavement.geometry(),
     water: water.geometry(),
     foam: foam.geometry(),
+    paint: paint.geometry(),
     green: green.geometry(),
     sand: sand.geometry(),
     pitch: pitch.geometry(),
