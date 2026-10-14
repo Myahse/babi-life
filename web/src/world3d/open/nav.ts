@@ -19,6 +19,7 @@ export class Nav {
   private nodeGrid = new Map<string, number[]>()
   private edgeGrid = new Map<string, number[]>()
   private blockGrid = new Map<string, XZ[][]>()
+  private heights = new Map<XZ[], number>()
   private water: XZ[][][] = []
 
   constructor(chunks: ChunkData[], skipBuilding: (c: XZ) => boolean = () => false) {
@@ -34,6 +35,7 @@ export class Nav {
       }
       for (const b of ch.buildings) {
         if (skipBuilding(b.c)) continue
+        this.heights.set(b.ring, b.height)
         for (const k of this.cellsOf(b.ring)) {
           const list = this.blockGrid.get(k)
           if (list) list.push(b.ring)
@@ -122,6 +124,14 @@ export class Nav {
   onRoad(p: XZ) {
     const n = this.nearest(p, 20)
     return !!n && n.dist <= this.edges[n.edge].width / 2 + 1.5
+  }
+
+  /** How high the building standing here goes (its roof and parapet), 0 in the open. */
+  roofAt(x: number, z: number) {
+    const p: XZ = [x, z]
+    let h = 0
+    for (const ring of this.blockGrid.get(this.key(x, z)) ?? []) if (pointInRing(p, ring)) h = Math.max(h, (this.heights.get(ring) ?? 0) + 1)
+    return h
   }
 
   /** Can a Sim stand here? Not inside a building, not in the water. */

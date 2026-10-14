@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { Builder } from './builder'
 import { hash, pointInRing, type XZ } from './geo'
 import { BLOCK, type Building } from './tiles'
+import { ATLAS } from './textures'
 
 // A real building made to read as a building: a darker plinth, a ground
 // floor of shops (metal shutters) or of a house (door, window), storeys
@@ -39,8 +40,13 @@ export function newBuildingBuilders(): BuildingBuilders {
   return { walls: new Builder(), inst: new Builder(), entrance: new Builder(), shop: new Builder(), house: new Builder(), trim: new Builder(), roofs: new Builder(), tin: new Builder(), contact: new Builder(true) }
 }
 
-// Façades of Abidjan: whites, creams, ochres, pastels.
-const FACADES = ['#ffffff', '#fff3e0', '#ffe0b2', '#fff9c4', '#ffe8cc', '#e3f2fd', '#f8d7e3', '#e8f5e9', '#f1e3c8', '#ffd6a5', '#eeeeee', '#fbe7c6'].map((c) => new THREE.Color(c))
+// Façades of Abidjan: whites and creams, and the painted colours of the
+// quarters: ochre, yellow, salmon, sky blue, mint, lilac.
+const FACADES = ['#ffffff', '#fff3e0', '#f6d58e', '#fbe3a1', '#f4b89a', '#f7c9a8', '#cfe3f3', '#bfe3c6', '#e3d3ef', '#f1e3c8', '#ffd6a5', '#f2a99f', '#eeeeee', '#fbe7c6'].map((c) => new THREE.Color(c))
+// The ground floor is often painted apart: a darker band, or a bold colour.
+const GROUND = ['#c9b79c', '#b5654a', '#4f7fa8', '#6b8f5a', '#d8a24a', '#9a8f84'].map((c) => new THREE.Color(c))
+const AWNINGS = ['#c0392b', '#1f6fb5', '#2e8b57', '#e67e22', '#8e44ad'].map((c) => new THREE.Color(c))
+const DISH = new THREE.Color('#f2f2f0')
 const PLINTH = new THREE.Color('#8f8372')
 // Public buildings: whites, creams, pale grey-blue.
 const PUBLIC = ['#fdfbf5', '#f3ead7', '#e8eef3', '#f6f1e6'].map((c) => new THREE.Color(c))
@@ -142,8 +148,12 @@ function band(b: Builder, ring: XZ[], y0: number, y1: number, out: number, c: TH
   }
 }
 
-/** Walls textured one tile per storey and per 3 m, between y0 and y1. */
-function storeys(b: Builder, ring: XZ[], y0: number, y1: number, c: THREE.Color) {
+/**
+ * Walls textured one tile per storey and per 3 m, between y0 and y1. The
+ * textures are atlases ATLAS tiles across (and `rows` tiles up): each 3 m
+ * takes the next tile, starting at `shift` so buildings don't all match.
+ */
+function storeys(b: Builder, ring: XZ[], y0: number, y1: number, c: THREE.Color, rows = 1, shift = 0) {
   let run = 0
   for (let i = 0; i < ring.length; i++) {
     const p = ring[i]
@@ -152,12 +162,13 @@ function storeys(b: Builder, ring: XZ[], y0: number, y1: number, c: THREE.Color)
     if (len < 0.05) continue
     const [nx, nz] = normal(p, q)
     const n: [number, number, number] = [nx, 0, nz]
-    const u0 = Math.round(run / BLOCK)
-    const u1 = u0 + Math.max(1, Math.round(len / BLOCK))
-    const a = b.vertex(p[0], y0, p[1], u0, y0 / BLOCK, n, c.clone().multiplyScalar(ao(y0)))
-    const d = b.vertex(q[0], y0, q[1], u1, y0 / BLOCK, n, c.clone().multiplyScalar(ao(y0)))
-    const e = b.vertex(q[0], y1, q[1], u1, y1 / BLOCK, n, c.clone().multiplyScalar(ao(y1)))
-    const f = b.vertex(p[0], y1, p[1], u0, y1 / BLOCK, n, c.clone().multiplyScalar(ao(y1)))
+    const u0 = (Math.round(run / BLOCK) + shift) / ATLAS
+    const u1 = u0 + Math.max(1, Math.round(len / BLOCK)) / ATLAS
+    const [v0, v1] = [(y0 / BLOCK + (rows > 1 ? shift * 3 : 0)) / rows, (y1 / BLOCK + (rows > 1 ? shift * 3 : 0)) / rows]
+    const a = b.vertex(p[0], y0, p[1], u0, v0, n, c.clone().multiplyScalar(ao(y0)))
+    const d = b.vertex(q[0], y0, q[1], u1, v0, n, c.clone().multiplyScalar(ao(y0)))
+    const e = b.vertex(q[0], y1, q[1], u1, v1, n, c.clone().multiplyScalar(ao(y1)))
+    const f = b.vertex(p[0], y1, p[1], u0, v1, n, c.clone().multiplyScalar(ao(y1)))
     b.quad(a, f, e, d)
     run += len
   }
@@ -181,8 +192,30 @@ export function addBuilding(B: BuildingBuilders, bd: Building, style: Style = 'd
   // Plinth, ground floor, upper storeys.
   band(B.trim, ring, 0, 0.45, 0.06, PLINTH, false)
   const glazed = pub || style === 'civic' || style === 'hotel'
-  storeys(glazed ? B.entrance : shops ? B.shop : B.house, ring, 0, BLOCK, tint)
-  if (H > BLOCK) storeys(pub ? B.inst : B.walls, ring, BLOCK, H, tint)
+  const shift = Math.floor(hash(bd.c[0], bd.c[1], 5) * 16)
+  // Shops and homes often have their ground floor painted apart from the rest.
+  const r3 = hash(bd.c[0] * 5, bd.c[1] * 3)
+  const ground = !glazed && H > BLOCK && r3 < 0.45 ? tint.clone().lerp(GROUND[Math.floor(r3 * 13) % GROUND.length], 0.55) : tint
+  if (glazed) storeys(B.entrance, ring, 0, BLOCK, tint)
+  else storeys(shops ? B.shop : B.house, ring, 0, BLOCK, ground, 1, shift)
+  if (H > BLOCK) {
+    if (pub) storeys(B.inst, ring, BLOCK, H, tint)
+    else storeys(B.walls, ring, BLOCK, H, tint, ATLAS, shift)
+  }
+  // Pilasters at the corners of the bigger buildings: they frame the façade.
+  if (H >= 2 * BLOCK && ring.length <= 16) {
+    const pil = tint.clone().multiplyScalar(0.9)
+    for (let i = 0; i < ring.length; i++) {
+      const [prev, p, next] = [ring[(i + ring.length - 1) % ring.length], ring[i], ring[(i + 1) % ring.length]]
+      const [n1x, n1z] = normal(prev, p)
+      const [n2x, n2z] = normal(p, next)
+      if (n1x * n2x + n1z * n2z > 0.7) continue // not a real corner
+      const [bx, bz] = [n1x + n2x, n1z + n2z]
+      const l = Math.hypot(bx, bz) || 1
+      const rot = Math.atan2(n2z, n2x) + Math.PI / 2
+      B.trim.box(p[0] + (bx / l) * 0.12, BLOCK + (H - BLOCK) / 2, p[1] + (bz / l) * 0.12, 0.7, H - BLOCK, 0.7, rot, pil)
+    }
+  }
   // A ledge at every floor (a blue band on a hospital).
   const ledge = style === 'hospital' ? HOSPITAL_BAND : tint.clone().multiplyScalar(0.86)
   for (let y = BLOCK; y < H; y += BLOCK) band(B.trim, ring, y - 0.12, y + 0.1, 0.14, ledge, false)
@@ -245,9 +278,12 @@ export function addBuilding(B: BuildingBuilders, bd: Building, style: Style = 'd
       const f = B.trim.vertex(p[0], H + 0.9, p[1], 0, 0.9, n, col)
       B.trim.quad(a, f, e, d)
     }
-    B.roofs.flat([inner], H + 0.02, BLOCK)
+    B.roofs.flat([inner], H + 0.02, BLOCK * 2)
     rooftop(B.trim, inner, H, bd.c, Math.sqrt(area))
   }
+
+  // Tin awnings over the shop fronts, on the longer sides.
+  if (shops) awnings(B, ring, bd.c)
 
   // Balconies on the bigger buildings, along their longest side.
   if ((H >= 3 * BLOCK && r1 > 0.45 && !pub) || (style === 'hotel' && H >= 2 * BLOCK)) {
@@ -282,6 +318,47 @@ export function addBuilding(B: BuildingBuilders, bd: Building, style: Style = 'd
   }
 }
 
+/**
+ * Sloping awnings over the shops: corrugated tin, or a painted canvas, 1.6 m
+ * out from the wall over the pavement. Up to three a building.
+ */
+function awnings(B: BuildingBuilders, ring: XZ[], c: XZ) {
+  let n = 0
+  for (let i = 0; i < ring.length && n < 3; i++) {
+    const p = ring[i]
+    const q = ring[(i + 1) % ring.length]
+    const len = Math.hypot(q[0] - p[0], q[1] - p[1])
+    if (len < 7 || hash(c[0], i, 11) < 0.35) continue
+    n++
+    const [nx, nz] = normal(p, q)
+    const [ux, uz] = [(q[0] - p[0]) / len, (q[1] - p[1]) / len]
+    const w = Math.min(len - 2, 4 + hash(i, c[1]) * 8)
+    const m = 0.5 + (hash(c[1], i) - 0.5) * (1 - w / len)
+    const [cx, cz] = [p[0] + (q[0] - p[0]) * m, p[1] + (q[1] - p[1]) * m]
+    const [ax, az, bx, bz] = [cx - (ux * w) / 2, cz - (uz * w) / 2, cx + (ux * w) / 2, cz + (uz * w) / 2]
+    const [top, low, out] = [2.95, 2.45, 1.6]
+    const up = Math.hypot(top - low, out)
+    const nrm: [number, number, number] = [(nx * (top - low)) / up, out / up, (nz * (top - low)) / up]
+    const tin = hash(c[0], c[1], i) < 0.5
+    const to = tin ? B.tin : B.trim
+    const col = tin ? undefined : AWNINGS[Math.floor(hash(i, c[0], 3) * AWNINGS.length)]
+    const ids = [
+      to.vertex(ax, top, az, 0, 0, nrm, col),
+      to.vertex(bx, top, bz, w / 2, 0, nrm, col),
+      to.vertex(bx + nx * out, low, bz + nz * out, w / 2, out / 2, nrm, col),
+      to.vertex(ax + nx * out, low, az + nz * out, 0, out / 2, nrm, col),
+    ]
+    to.facing(nrm, ids[0], ids[1], ids[2])
+    to.facing(nrm, ids[0], ids[2], ids[3])
+    // Seen from under it, too.
+    const dn: [number, number, number] = [-nrm[0], -nrm[1], -nrm[2]]
+    const shade = new THREE.Color('#5a5048')
+    const jds = [B.trim.vertex(ax, top - 0.02, az, 0, 0, dn, shade), B.trim.vertex(bx, top - 0.02, bz, 1, 0, dn, shade), B.trim.vertex(bx + nx * out, low - 0.02, bz + nz * out, 1, 1, dn, shade), B.trim.vertex(ax + nx * out, low - 0.02, az + nz * out, 0, 1, dn, shade)]
+    B.trim.facing(dn, jds[0], jds[1], jds[2])
+    B.trim.facing(dn, jds[0], jds[2], jds[3])
+  }
+}
+
 /** What stands on an Abidjan roof: water tanks, AC units, the stair head. */
 function rooftop(b: Builder, inner: XZ[], H: number, c: XZ, size: number) {
   const spots = [0, 1, 2, 3, 4, 5].map((k) => {
@@ -303,4 +380,10 @@ function rooftop(b: Builder, inner: XZ[], H: number, c: XZ, size: number) {
   if (a1) b.box(a1[0], H + 0.35, a1[1], 0.9, 0.7, 0.6, rot, AC)
   if (a2 && size > 18) b.box(a2[0], H + 0.35, a2[1], 0.9, 0.7, 0.6, rot + 0.3, AC)
   if (cage && H >= 4 * BLOCK) b.box(cage[0], H + 1.3, cage[1], 2.6, 2.6, 2.6, rot, new THREE.Color('#d8d2c6'))
+  // A satellite dish, tilted to the sky, on one roof in two.
+  const dish = free[5] ?? free[4]
+  if (dish && hash(c[1], 21) < 0.5) {
+    b.box(dish[0], H + 0.5, dish[1], 0.12, 1, 0.12, rot, RAIL)
+    b.box(dish[0], H + 1.1, dish[1], 1.1, 0.9, 0.12, rot + 0.6, DISH)
+  }
 }

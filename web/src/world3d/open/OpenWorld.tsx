@@ -26,6 +26,7 @@ import { LANDMARKS, Landmark } from './landmarks'
 import { Boats } from './boats'
 import { AllocoStalls } from './alloco'
 import { TakeOff } from './airport'
+import { StreetLights } from './streetlights'
 import { makeTextures } from './textures'
 import { FAR_ZOOM, type ChunkData } from './tiles'
 import type { Arrays, ChunkRequest } from './worker'
@@ -111,7 +112,7 @@ function useMaterials(night: boolean) {
       walls: lambert(t.wall, { vertexColors: true, emissiveMap: t.lights, emissive: new THREE.Color('#ffffff'), emissiveIntensity: 0 }),
       inst: lambert(t.inst, { vertexColors: true }),
       entrance: lambert(t.entrance, { vertexColors: true }),
-      shop: lambert(t.shop, { vertexColors: true }),
+      shop: lambert(t.shop, { vertexColors: true, emissiveMap: t.shopLights, emissive: new THREE.Color('#ffffff'), emissiveIntensity: 0 }),
       house: lambert(t.house, { vertexColors: true }),
       trim: lambert(t.plaster, { vertexColors: true, side: THREE.DoubleSide }),
       roofs: lambert(t.roof),
@@ -133,6 +134,7 @@ function useMaterials(night: boolean) {
   }, [])
   useEffect(() => {
     mats.walls.emissiveIntensity = night ? 0.85 : 0
+    mats.shop.emissiveIntensity = night ? 0.7 : 0
     mats.foam.color.set(night ? '#8fa3c8' : '#ffffff')
   }, [night, mats])
   // The water moves: its ripples drift, and the foam comes and goes on the shore.
@@ -354,6 +356,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
       walkable: (x, z) => nav.walkable(x, z),
       route: (a, b) => nav.path(a, b),
       heightAt: (x, z) => nav.heightAt(x, z),
+      roofAt: (x, z) => nav.roofAt(x, z),
       start: homeLot?.door ?? (nav.nearest(focus.current)?.at as XZ | undefined),
     }),
     [nav, homeLot],
@@ -426,6 +429,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
 
       {nav.nodes.length > 0 && !stopsTraffic && <RoadTraffic nav={nav} focus={focus} seed={commune.id} woro={commune.woro} />}
       <Boats water={nearWater} focus={focus} />
+      {nav.nodes.length > 0 && <StreetLights nav={nav} night={night} />}
       {nav.nodes.length > 0 && <AllocoStalls nav={nav} seed={commune.id} onBuy={onStreetBuy} />}
       <TakeOff runways={runways} />
       {bridgeLabels.map((b) => (

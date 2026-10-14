@@ -41,6 +41,8 @@ export type WalkNav = {
   bounds?: { x0: number; x1: number; z0: number; z1: number }
   /** Where the Sim starts when it isn't busy anywhere and has no home here. */
   start?: XZ
+  /** How high the building at this spot goes (0 in the open): the close camera stays out of walls. */
+  roofAt?: (x: number, z: number) => number
   /** The height of the ground (a bridge's deck), when it isn't flat. */
   heightAt?: (x: number, z: number) => number
 }
@@ -105,6 +107,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   // around; walking (or the recentre button) brings it back.
   const free = useRef(false)
   const gesture = useRef(false)
+  /** How far behind the Sim the player wants the close camera (walls may bring it in). */
+  const wantDist = useRef(9.7)
   const setFree = (f: boolean) => {
     if (free.current !== f) {
       free.current = f
@@ -124,6 +128,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     const g = group.current.position
     t.set(g.x, close ? 1.4 : 0, g.z)
     camera.position.set(g.x + flat.x * back, up, g.z + flat.z * back)
+    wantDist.current = Math.hypot(back, up - 1.4)
     controls.update()
     setFree(false)
   }, [close, controls]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -132,6 +137,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     const start = () => (gesture.current = true)
     const end = () => {
       gesture.current = false
+      wantDist.current = camera.position.distanceTo(controls.target)
       const g = group.current
       if (g && Math.hypot(controls.target.x - g.position.x, controls.target.z - g.position.z) > 3) setFree(true)
     }
@@ -261,6 +267,32 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       controls.target.add(delta)
       camera.position.add(delta)
       controls.update()
+    }
+    // Close behind the Sim, the camera never goes through a wall: it comes in
+    // front of the building in the way, and goes back out once past it.
+    if (close && controls && nav.roofAt && !gesture.current) {
+      const t = controls.target
+      const off = camera.position.clone().sub(t)
+      const dist = off.length()
+      if (dist > 0.01) {
+        off.divideScalar(dist)
+        let free = wantDist.current
+        for (let s = 1; s <= 24; s++) {
+          const d = (wantDist.current * s) / 24
+          const x = t.x + off.x * d
+          const z = t.z + off.z * d
+          if (nav.roofAt(x, z) > t.y + off.y * d - 0.4) {
+            free = Math.max(3.2, d - 0.6)
+            break
+          }
+        }
+        const next = free < dist ? free : dist + (free - dist) * (1 - Math.exp(-3 * Math.min(dt, 0.25)))
+        if (Math.abs(next - dist) > 0.001) {
+          camera.position.copy(t).addScaledVector(off, next)
+          // Brought in by a wall: look down on the Sim from a little higher.
+          camera.position.y = Math.max(camera.position.y, t.y + (wantDist.current - next) * 0.45)
+        }
+      }
     }
     // Looking around stays over the playable area.
     if (controls && nav.bounds) {
