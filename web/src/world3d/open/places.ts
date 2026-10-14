@@ -95,7 +95,10 @@ export function resolvePlaces(chunk: ChunkData, spots: PlaceSpot[], onReal?: (b:
       const d = Math.hypot(road.at[0] - x, road.at[1] - z) || 1
       const [ux, uz] = [(x - road.at[0]) / d, (z - road.at[1]) / d]
       const door: XZ = [road.at[0] + ux * (road.width / 2 + 1.2), road.at[1] + uz * (road.width / 2 + 1.2)]
-      const center: XZ = d < s.landmark ? [road.at[0] + ux * s.landmark, road.at[1] + uz * s.landmark] : s.at
+      // Off the street if the map point is on it; a big one (a stadium)
+      // stands on its point, its own streets running round it.
+      const back = Math.min(s.landmark, 40)
+      const center: XZ = d < back ? [road.at[0] + ux * back, road.at[1] + uz * back] : s.at
       out.push({ id: s.id, door, center, rot: Math.atan2(door[0] - center[0], door[1] - center[1]), roadAngle: road.angle })
       continue
     }

@@ -106,6 +106,8 @@ const (
 	srcCFAORetail      = "https://www.foodbusinessmea.com/cfao-consumer-retail-expands-footprint-in-ivory-coast-acquires-leader-prices-stores/"
 	srcBurgerKing      = "https://www.qsrweb.com/news/burger-king-to-open-first-ivory-coast-location/"
 	srcHotelIvoire     = "https://en.wikipedia.org/wiki/Village_Ivoire"
+	srcPyramide        = "https://en.wikipedia.org/wiki/La_Pyramide_(building)"
+	srcPyramide2       = "https://structurae.net/en/structures/la-pyramide"
 	srcBlockhauss      = "https://news.abidjan.net/articles/374315/le-chef-de-letat-aux-populations-de-blockhauss-hier-on-ne-doit-pas-vous-deposseder-totalement-de-vos-terres"
 	srcCocodyVillages  = "https://participate.oidp.net/processes/award2024/f/288/proposals/3254"
 	srcUCAO            = "https://annuaireci.com/entreprises/ucao-uua-universite-catholique-de-lafrique-de-louest-unite-universitaire-a-abidjan-abidjan-cote-divoire/"
@@ -176,6 +178,8 @@ var Cities = []City{
 			abidjanCommune("plateau", "Plateau", "Les tours, les bureaux, les costumes.", 5.3237, -4.0197, "nord",
 				Place{ID: "plateau-tours", Name: "Cité administrative", Kind: "office", Lat: 5.3262, Lng: -4.0178, Real: true, Approx: true, Source: game.Unverified("Bureaux de l'administration au Plateau ; nom et position à confirmer.")},
 				Place{ID: "plateau-cathedrale", Name: "Cathédrale Saint-Paul", Kind: "worship", Lat: 5.3315, Lng: -4.0230, Real: true, Approx: true, Source: game.Unverified("Cathédrale du Plateau ; à confirmer avec une source.")},
+				Place{ID: "plateau-pyramide", Name: "La Pyramide", Kind: "office", Lat: 5.3223, Lng: -4.0165, Real: true, Approx: true,
+					Source: game.Verified("Immeuble de bureaux du Plateau (Rinaldo Olivieri, 1973) : pyramide à gradins de 15 niveaux, environ 62 m. Position placée d'après la carte, à relever.", srcPyramide, srcPyramide2)},
 				Place{ID: "plateau-stade", Name: "Stade Félix-Houphouët-Boigny", Kind: "sport", Lat: 5.3205, Lng: -4.0170, Real: true, Approx: true,
 					Source: game.Verified("Stade du Plateau, ouvert en 1961 sur le site du stade Géo-André ; capacité variable selon les sources (27 000 à 40 000).", srcVenues, srcStadeFHB)},
 			),

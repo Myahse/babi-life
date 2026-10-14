@@ -23,7 +23,8 @@ self.onmessage = async (e: MessageEvent<ChunkRequest>) => {
     const resolved = resolvePlaces(data, places, (b, kind) => styles.set(b, STYLE_OF_KIND[kind] ?? 'default'))
     const marks = new Set(places.filter((p) => p.landmark).map((p) => p.id))
     const made = resolved.filter((r) => !r.real && !marks.has(r.id)).map((r) => r.center)
-    const landmarks = resolved.filter((r) => marks.has(r.id)).map((r) => ({ at: r.center, r: places.find((p) => p.id === r.id)!.landmark! }))
+    // A landmark clears its ground in every chunk it reaches, not only its own.
+    const landmarks = places.filter((p) => p.landmark).map((p) => ({ at: resolved.find((r) => r.id === p.id)?.center ?? p.at, r: p.landmark! }))
     // A building in a campus or a hospital's grounds looks the part.
     const grounds = data.areas.filter((a) => a.kind === 'campus' || a.kind === 'hospital')
     const styleOf = (b: Building): Style => {

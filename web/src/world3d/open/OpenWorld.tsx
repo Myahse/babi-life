@@ -22,7 +22,7 @@ import { whereabouts } from '../whereabouts'
 import { CHUNK_ZOOM, tileBox, tileOf, toLatLng, toLocal, type Origin, type XZ } from './geo'
 import { Nav } from './nav'
 import { inTheWay, type PlaceSpot, type Resolved } from './places'
-import { Cathedral, LANDMARKS } from './landmarks'
+import { LANDMARKS, Landmark } from './landmarks'
 import { makeTextures } from './textures'
 import { FAR_ZOOM, type ChunkData } from './tiles'
 import type { Arrays, ChunkRequest } from './worker'
@@ -118,6 +118,7 @@ function useMaterials(night: boolean) {
       laterite: lambert(t.laterite, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
       pavement: lambert(t.pavement, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
       water: lambert(t.water, { transparent: true, opacity: 0.92 }),
+      foam: new THREE.MeshBasicMaterial({ map: t.foam, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
       green: lambert(t.grass),
       sand: lambert(t.sand),
       pitch: lambert(t.pitch),
@@ -128,7 +129,15 @@ function useMaterials(night: boolean) {
   }, [])
   useEffect(() => {
     mats.walls.emissiveIntensity = night ? 0.85 : 0
+    mats.foam.color.set(night ? '#8fa3c8' : '#ffffff')
   }, [night, mats])
+  // The water moves: its ripples drift, and the foam comes and goes on the shore.
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime
+    mats.water.map!.offset.set(t * 0.012, Math.sin(t * 0.35) * 0.04)
+    mats.foam.map!.offset.set(t * 0.02, Math.sin(t * 0.9) * 0.22)
+    mats.foam.opacity = 0.55 + Math.sin(t * 0.9) * 0.35
+  })
   return mats
 }
 
@@ -361,7 +370,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
         LANDMARKS[lot.id] ? (
           <group key={lot.id}>
             <group position={[lot.x, 0, lot.z]} rotation={[0, lot.rot, 0]} onClick={(e) => (e.stopPropagation(), onPick(lot.id))}>
-              {lot.id === 'plateau-cathedrale' && <Cathedral />}
+              <Landmark id={lot.id} night={night} />
             </group>
             <LotLabel lot={lot} world={world} label={labels} onPick={onPick} y={30} />
           </group>

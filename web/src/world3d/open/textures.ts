@@ -100,6 +100,14 @@ export function makeTextures() {
     grass: texture(noisy([104, 170, 72], 34), 17),
     sand: texture(noisy([236, 214, 160], 20), 19),
     water: texture(noisy([52, 150, 205], 22), 21),
+    // Foam: broken white lines, clear between them (it shows the water).
+    foam: texture((px, r) => {
+      for (let y = 0; y < 16; y++)
+        for (let x = 0; x < 16; x++) {
+          const line = (y + Math.round(Math.sin(x / 2.5) * 1.5) + 16) % 8
+          px(x, y, line < 2 && r() < 0.85 ? `rgba(255,255,255,${0.75 + r() * 0.25})` : r() < 0.06 ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0)')
+        }
+    }, 29),
     pitch: texture((px, r) => {
       noisy([70, 160, 80], 14)(px, r)
       for (let i = 0; i < 16; i++) px(i, 0, '#f1f3f5')

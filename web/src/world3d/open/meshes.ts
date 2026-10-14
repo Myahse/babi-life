@@ -26,6 +26,7 @@ export type ChunkMeshes = {
   laterite: THREE.BufferGeometry | null
   pavement: THREE.BufferGeometry | null
   water: THREE.BufferGeometry | null
+  foam: THREE.BufferGeometry | null
   green: THREE.BufferGeometry | null
   sand: THREE.BufferGeometry | null
   pitch: THREE.BufferGeometry | null
@@ -120,6 +121,37 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ) => boolean, styleOf: 
     to.flat(a.rings, y as number, scale as number)
   }
 
+  // Foam where the water meets the land: the waves on the beaches and the
+  // lagoon lapping at its banks. Not along the tile's edges, where the water
+  // only goes on into the next chunk. (Far tiles are too far to see it.)
+  const foam = new Builder()
+  if (!chunk.key.includes(':')) {
+    const b = chunk.box
+    const onEdge = ([x, z]: XZ) => Math.min(Math.abs(x - b.x0), Math.abs(x - b.x1), Math.abs(z - b.z0), Math.abs(z - b.z1)) < 0.5
+    for (const a of chunk.areas) {
+      if (a.kind !== 'water') continue
+      for (const ring of a.rings) {
+        let along = 0
+        for (let i = 0; i < ring.length; i++) {
+          const [x1, z1] = ring[i]
+          const [x2, z2] = ring[(i + 1) % ring.length]
+          const len = Math.hypot(x2 - x1, z2 - z1)
+          if (len < 0.01 || (onEdge(ring[i]) && onEdge(ring[(i + 1) % ring.length]))) continue
+          const [nx, nz] = [(-(z2 - z1) / len) * 1.6, ((x2 - x1) / len) * 1.6]
+          const up: [number, number, number] = [0, 1, 0]
+          const p = [
+            [x1 + nx, z1 + nz, along, 0],
+            [x2 + nx, z2 + nz, along + len, 0],
+            [x2 - nx, z2 - nz, along + len, 1],
+            [x1 - nx, z1 - nz, along, 1],
+          ].map(([x, z, u, v]) => foam.vertex(x, 0.035, z, u / 8, v, up))
+          foam.quad(p[0], p[1], p[2], p[3])
+          along += len
+        }
+      }
+    }
+  }
+
   return {
     walls: B.walls.geometry(),
     shop: B.shop.geometry(),
@@ -134,6 +166,7 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ) => boolean, styleOf: 
     laterite: laterite.geometry(),
     pavement: pavement.geometry(),
     water: water.geometry(),
+    foam: foam.geometry(),
     green: green.geometry(),
     sand: sand.geometry(),
     pitch: pitch.geometry(),
