@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import type { ChunkData } from './tiles'
-import { bridgeHeights, type XZ } from './geo'
+import { BRIDGE_HEIGHT, bridgeHeights, pointInRing, type XZ } from './geo'
 import * as Three from 'three'
 
 // One chunk's geometry, merged per material so a whole chunk is a handful
@@ -32,6 +32,129 @@ export type ChunkMeshes = {
   green: THREE.BufferGeometry | null
   sand: THREE.BufferGeometry | null
   pitch: THREE.BufferGeometry | null
+}
+
+// Road markings and kerbs. They stop short of the junctions (points shared
+// by two roads), where they would paint across the other road.
+const KERB = new Three.Color('#d9d3c7')
+const CLEAR = 8 // metres kept clear around a junction
+function markings(chunk: ChunkData, paint: Builder, trim: Builder) {
+  const key = ([x, z]: XZ) => `${Math.round(x * 2)},${Math.round(z * 2)}`
+  const count = new Map<string, number>()
+  for (const r of chunk.roads) for (const k of new Set(r.pts.map(key))) count.set(k, (count.get(k) ?? 0) + 1)
+  const cell = (x: number, z: number) => `${Math.floor(x / 20)},${Math.floor(z / 20)}`
+  const grid = new Map<string, XZ[]>()
+  for (const r of chunk.roads)
+    for (const p of r.pts)
+      if ((count.get(key(p)) ?? 0) >= 2) {
+        const c = cell(p[0], p[1])
+        if (!grid.get(c)?.some((q) => q[0] === p[0] && q[1] === p[1])) grid.set(c, [...(grid.get(c) ?? []), p])
+      }
+  // Roads that cross without sharing a point cross all the same: find where.
+  const segs: { a: XZ; b: XZ; r: number }[] = []
+  chunk.roads.forEach((r, ri) => {
+    for (let i = 1; i < r.pts.length; i++) segs.push({ a: r.pts[i - 1], b: r.pts[i], r: ri })
+  })
+  const bucket = new Map<string, number[]>()
+  segs.forEach((sg, i) => {
+    const [x0, x1] = [Math.min(sg.a[0], sg.b[0]), Math.max(sg.a[0], sg.b[0])]
+    const [z0, z1] = [Math.min(sg.a[1], sg.b[1]), Math.max(sg.a[1], sg.b[1])]
+    for (let cx = Math.floor(x0 / 40); cx <= Math.floor(x1 / 40); cx++)
+      for (let cz = Math.floor(z0 / 40); cz <= Math.floor(z1 / 40); cz++) bucket.set(`${cx},${cz}`, [...(bucket.get(`${cx},${cz}`) ?? []), i])
+  })
+  for (const list of bucket.values())
+    for (let i = 0; i < list.length; i++)
+      for (let j = i + 1; j < list.length; j++) {
+        const [p, q] = [segs[list[i]], segs[list[j]]]
+        if (p.r === q.r) continue
+        const [dx1, dz1, dx2, dz2] = [p.b[0] - p.a[0], p.b[1] - p.a[1], q.b[0] - q.a[0], q.b[1] - q.a[1]]
+        const den = dx1 * dz2 - dz1 * dx2
+        if (Math.abs(den) < 1e-6) continue
+        const t = ((q.a[0] - p.a[0]) * dz2 - (q.a[1] - p.a[1]) * dx2) / den
+        const u = ((q.a[0] - p.a[0]) * dz1 - (q.a[1] - p.a[1]) * dx1) / den
+        if (t < 0 || t > 1 || u < 0 || u > 1) continue
+        const x: XZ = [p.a[0] + dx1 * t, p.a[1] + dz1 * t]
+        const c = cell(x[0], x[1])
+        if (!grid.get(c)?.some((g) => Math.hypot(g[0] - x[0], g[1] - x[1]) < 1)) grid.set(c, [...(grid.get(c) ?? []), x])
+      }
+  const junctions = [...grid.values()].flat()
+  const nearJunction = (x: number, z: number) => {
+    const [cx, cz] = [Math.floor(x / 20), Math.floor(z / 20)]
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (const p of grid.get(`${cx + i},${cz + j}`) ?? []) if (Math.hypot(p[0] - x, p[1] - z) < CLEAR) return p
+    return null
+  }
+  const up: [number, number, number] = [0, 1, 0]
+  /** A painted quad from a to b, `w` wide, set across by `off`. */
+  const quad = (a: XZ, b: XZ, off: number, w: number, y: number) => {
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1])
+    if (len < 0.05) return
+    const [nx, nz] = [-(b[1] - a[1]) / len, (b[0] - a[0]) / len]
+    const c = (p: XZ, s: number): [number, number] => [p[0] + nx * (off + (s * w) / 2), p[1] + nz * (off + (s * w) / 2)]
+    const ids = [c(a, -1), c(b, -1), c(b, 1), c(a, 1)].map(([x, z]) => paint.vertex(x, y, z, 0, 0, up))
+    paint.facing(up, ids[0], ids[1], ids[2])
+    paint.facing(up, ids[0], ids[2], ids[3])
+  }
+  for (const r of chunk.roads) {
+    const rank = RANK[r.cls] ?? 0
+    if (!r.paved || rank < 4 || r.width < 6) continue
+    const ys = r.bridge ? bridgeHeights(r.pts, chunk.box) : undefined
+    const base = 0.065 + rank * 0.002
+    const lines: { off: number; w: number; dash: number; gap: number }[] =
+      rank >= 7
+        ? [{ off: -0.18, w: 0.14, dash: 1, gap: 0 }, { off: 0.18, w: 0.14, dash: 1, gap: 0 }, { off: -(r.width / 2 - 0.45), w: 0.16, dash: 1, gap: 0 }, { off: r.width / 2 - 0.45, w: 0.16, dash: 1, gap: 0 }]
+        : rank >= 5
+          ? [{ off: 0, w: 0.15, dash: 3, gap: 5 }]
+          : []
+    let run = 0
+    for (let i = 1; i < r.pts.length; i++) {
+      const [a, b] = [r.pts[i - 1], r.pts[i]]
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1])
+      if (len < 0.05) continue
+      const at = (d: number): XZ => [a[0] + ((b[0] - a[0]) * d) / len, a[1] + ((b[1] - a[1]) * d) / len]
+      const yAt = (d: number) => base + (ys ? ys[i - 1] + ((ys[i] - ys[i - 1]) * d) / len : 0)
+      // The lines, in pieces of 1 m (or dashes), skipping the junctions.
+      for (const l of lines) {
+        const step = l.gap ? l.dash + l.gap : 2
+        for (let d = (step - (run % step)) % step; d < len; d += step) {
+          const e = Math.min(len, d + (l.gap ? l.dash : step))
+          const [p, q] = [at(d), at(e)]
+          if (nearJunction(p[0], p[1]) || nearJunction(q[0], q[1])) continue
+          quad(p, q, l.off, l.w, (yAt(d) + yAt(e)) / 2)
+        }
+      }
+      // Kerbs along the pavement, off the bridges.
+      if (!ys) {
+        const rot = Math.atan2(b[1] - a[1], b[0] - a[0])
+        const [nx, nz] = [-(b[1] - a[1]) / len, (b[0] - a[0]) / len]
+        for (let d = 0; d < len; d += 4) {
+          const e = Math.min(len, d + 4)
+          const [p, q] = [at(d), at(e)]
+          if (nearJunction(p[0], p[1]) || nearJunction(q[0], q[1])) continue
+          const [mx, mz] = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2]
+          for (const s of [1, -1]) trim.box(mx + nx * s * (r.width / 2 + 0.12), 0.1, mz + nz * s * (r.width / 2 + 0.12), e - d, 0.2, 0.24, rot, KERB)
+        }
+      }
+      run += len
+    }
+    // Zebra crossings just before the junctions this road meets.
+    if (!ys)
+      for (let i = 1; i < r.pts.length; i++) {
+        const [a, b] = [r.pts[i - 1], r.pts[i]]
+        const len = Math.hypot(b[0] - a[0], b[1] - a[1])
+        if (len < 1) continue
+        const [ux, uz] = [(b[0] - a[0]) / len, (b[1] - a[1]) / len]
+        for (const j of junctions) {
+          const t = (j[0] - a[0]) * ux + (j[1] - a[1]) * uz
+          if (t < -0.5 || t > len + 0.5 || Math.abs((j[0] - a[0]) * uz - (j[1] - a[1]) * ux) > 0.6) continue
+          for (const dir of [-1, 1]) {
+            // Room on this side of the junction, along this piece of road.
+            if ((dir < 0 ? t : len - t) < CLEAR) continue
+            const at = (d: number): XZ => [j[0] + ux * dir * d, j[1] + uz * dir * d]
+            for (let k = -r.width / 2 + 0.7; k <= r.width / 2 - 0.6; k += 1.1) quad(at(CLEAR - 3.2), at(CLEAR - 0.4), k * dir, 0.55, base)
+          }
+        }
+      }
+  }
 }
 
 /** Buildings the game draws itself (its places) are left out of the map's. */
@@ -76,6 +199,8 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ) => boolean, styleOf: 
   const OLD = new Three.Color('#a9a49a')
   const RAILING = new Three.Color('#e9ecef')
   const GALLERY = new Three.Color('#2c2a28')
+  const waters = chunk.areas.filter((a) => a.kind === 'water')
+  const inWater = (x: number, z: number) => waters.some((a) => pointInRing([x, z], a.rings[0]) && !a.rings.slice(1).some((h) => pointInRing([x, z], h)))
   const bridge = (pts: XZ[], w: number, ys: number[], kind: BridgeKind | null) => {
     const how = BRIDGE_BUILD[kind ?? 'default']
     const stone = kind === 'fhb' ? OLD : CONCRETE
@@ -93,6 +218,13 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ) => boolean, styleOf: 
         continue
       }
       const [mx, mz] = [(x1 + x2) / 2, (z1 + z2) / 2]
+      // Over land, the low end of a ramp stands on an embankment (higher up it
+      // stays on piers: a flyover crosses a road there).
+      if (ym < BRIDGE_HEIGHT * 0.7 && !inWater(mx, mz)) {
+        B.trim.box(mx, (ym - 0.9) / 2, mz, len + 0.05, ym - 0.9, w - 0.2, rot, stone.clone().multiplyScalar(0.92))
+        run += len
+        continue
+      }
       // The girder, down to where it can go above the water (and the ramps).
       const g = Math.min(how.girder, ym - 0.4)
       for (const s of [1, -1]) {
@@ -133,6 +265,7 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ) => boolean, styleOf: 
       run += len
     }
   }
+  const paint = new Builder()
   for (const r of [...chunk.roads].sort((a, b) => (RANK[a.cls] ?? 0) - (RANK[b.cls] ?? 0))) {
     const rank = RANK[r.cls] ?? 0
     const ys = r.bridge ? bridgeHeights(r.pts, chunk.box) : undefined
@@ -143,6 +276,7 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ) => boolean, styleOf: 
     } else strip(laterite, r.pts, r.width, 0.04, 3, ys)
     if (ys) bridge(r.pts, r.width + 3.2, ys, bridgeKind(r.name))
   }
+  markings(chunk, paint, B.trim)
 
   const water = new Builder()
   const green = new Builder()
@@ -155,7 +289,6 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ) => boolean, styleOf: 
 
   // Runways and taxiways: wide asphalt and their white paint (the centre
   // line in dashes, the edges of a runway).
-  const paint = new Builder()
   const along = (pts: XZ[], off: number) =>
     pts.map(([x, z], i) => {
       const [a, b] = [pts[Math.max(0, i - 1)], pts[Math.min(pts.length - 1, i + 1)]]

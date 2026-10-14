@@ -29,7 +29,12 @@ import { TakeOff } from './airport'
 import { StreetLights } from './streetlights'
 import { BRIDGE_LABEL, bridgeKind } from './bridgeNames'
 import { BridgeSights } from './bridges'
-import { makeTextures } from './textures'
+import { SkyDome, skyTone } from './sky'
+import { setVehicleNight } from '../vehicles'
+import { Bloom, EffectComposer } from '@react-three/postprocessing'
+
+const RICH = typeof navigator === 'undefined' || (navigator.hardwareConcurrency ?? 4) > 4
+import { makeTextures, rippleNormals } from './textures'
 import { FAR_ZOOM, type ChunkData } from './tiles'
 import type { Arrays, ChunkRequest } from './worker'
 
@@ -123,7 +128,8 @@ function useMaterials(night: boolean) {
       asphalt: lambert(t.asphalt, { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
       laterite: lambert(t.laterite, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
       pavement: lambert(t.pavement, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
-      water: lambert(t.water, { transparent: true, opacity: 0.92 }),
+      // Glossy water: the sun glints on ripples that drift (a normal map).
+      water: new THREE.MeshPhongMaterial({ map: t.water, normalMap: rippleNormals(), normalScale: new THREE.Vector2(0.55, 0.55), shininess: 80, specular: new THREE.Color('#d8ecff'), transparent: true, opacity: 0.9 }),
       paint: new THREE.MeshLambertMaterial({ color: '#f4f4f0', polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }),
       foam: new THREE.MeshBasicMaterial({ map: t.foam, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
       green: lambert(t.grass),
@@ -137,19 +143,22 @@ function useMaterials(night: boolean) {
   useEffect(() => {
     mats.walls.emissiveIntensity = night ? 0.85 : 0
     mats.shop.emissiveIntensity = night ? 0.7 : 0
+    setVehicleNight(night)
     mats.foam.color.set(night ? '#8fa3c8' : '#ffffff')
+    mats.water.specular.set(night ? '#4a5a80' : '#d8ecff')
   }, [night, mats])
   // The water moves: its ripples drift, and the foam comes and goes on the shore.
   useFrame(({ clock }) => {
     const t = clock.elapsedTime
     mats.water.map!.offset.set(t * 0.012, Math.sin(t * 0.35) * 0.04)
+    mats.water.normalMap!.offset.set(t * 0.03, t * 0.017)
     mats.foam.map!.offset.set(t * 0.02, Math.sin(t * 0.9) * 0.22)
     mats.foam.opacity = 0.55 + Math.sin(t * 0.9) * 0.35
   })
   return mats
 }
 
-function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, night, dusk, sky, happening, stationAt, nameTag, onNear, frozen, players, onPickPlayer, recenter, onFreeCamera, closeView, token, onFail, onStreetBuy }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void }) {
+function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, nameTag, onNear, frozen, players, onPickPlayer, recenter, onFreeCamera, closeView, token, onFail, onStreetBuy }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void }) {
   const origin = useMemo<Origin>(() => ({ lat: commune.lat, lng: commune.lng }), [commune.lat, commune.lng])
   const mats = useMaterials(night)
   const home = sim.homeCity === sim.city && sim.homeCommune === commune.id
@@ -377,10 +386,17 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
   const stopsTraffic = !!happening && STOPS_TRAFFIC.has(happening.id)
   return (
     <>
-      <hemisphereLight args={[night ? '#3a4a8a' : '#ffffff', night ? '#1a1a2e' : '#b8a27c', night ? 0.7 : 1.2]} />
+      <hemisphereLight args={[night ? '#4a5a9a' : '#ffffff', night ? '#2a2a3e' : '#b8a27c', night ? 0.95 : 1.2]} />
       <Sun night={night} dusk={dusk} />
       {/* The haze at the edge of the loaded world: Minecraft's render distance */}
-      <fog attach="fog" args={[sky, 400, 5200]} />
+      <fog attach="fog" args={[skyTone(night, dusk).horizon, 400, 5200]} />
+      <SkyDome night={night} dusk={dusk} />
+      {/* At night, lamps, windows and headlights bloom a little (not on small phones) */}
+      {night && RICH && (
+        <EffectComposer enableNormalPass={false} multisampling={4}>
+          <Bloom mipmapBlur luminanceThreshold={0.75} luminanceSmoothing={0.2} intensity={0.85} />
+        </EffectComposer>
+      )}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]} material={mats.ground} receiveShadow>
         <planeGeometry args={[30000, 30000]} />
       </mesh>

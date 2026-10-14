@@ -254,3 +254,35 @@ export function makeTextures() {
 }
 
 export type Textures = ReturnType<typeof makeTextures>
+
+/**
+ * Ripples for the water, as a normal map: crossing waves that tile (whole
+ * numbers of waves across 64 px), so the sun glints off a moving surface.
+ */
+export function rippleNormals() {
+  const N = 64
+  const c = document.createElement('canvas')
+  c.width = c.height = N
+  const g = c.getContext('2d')!
+  const img = g.createImageData(N, N)
+  const h = (x: number, y: number) => {
+    const [u, v] = [(x / N) * Math.PI * 2, (y / N) * Math.PI * 2]
+    return Math.sin(u * 3 + v * 2) * 0.5 + Math.sin(u * -2 + v * 5 + 1.3) * 0.35 + Math.sin(u * 7 + v * -3 + 0.4) * 0.2 + Math.sin(u * 1 + v * 9 + 2.1) * 0.15
+  }
+  for (let y = 0; y < N; y++)
+    for (let x = 0; x < N; x++) {
+      const dx = h(x + 1, y) - h(x - 1, y)
+      const dy = h(x, y + 1) - h(x, y - 1)
+      const [nx, ny, nz] = [-dx * 2.2, -dy * 2.2, 1]
+      const l = Math.hypot(nx, ny, nz)
+      const i = (y * N + x) * 4
+      img.data[i] = ((nx / l) * 0.5 + 0.5) * 255
+      img.data[i + 1] = ((ny / l) * 0.5 + 0.5) * 255
+      img.data[i + 2] = ((nz / l) * 0.5 + 0.5) * 255
+      img.data[i + 3] = 255
+    }
+  g.putImageData(img, 0, 0)
+  const t = new THREE.CanvasTexture(c)
+  t.wrapS = t.wrapT = THREE.RepeatWrapping
+  return t
+}

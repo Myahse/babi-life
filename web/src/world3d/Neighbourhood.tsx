@@ -11,6 +11,7 @@ import { BACK_STREET_Z, CROSS_X, EXTENT_X, FAR_CROSS_X, LOT_XS, SIDEWALK, STREET
 import { Box, Lamp, Mat, Palm, Tree } from './props'
 import { FillerBuilding } from './Fillers'
 import { Pedestrians, Traffic, TrafficLights } from './Life'
+import { setVehicleNight } from './vehicles'
 import { Bande, Fou, Lovers } from './Nightlife'
 import { OtherPlayers } from './Players'
 import { Walker, type WalkNav } from './Walker'
@@ -73,9 +74,15 @@ export function Neighbourhood(props: Props) {
     >
       <Suspense fallback={null}>
         <World3D {...props} night={night} dusk={dusk} />
+        <NightLights night={night} />
       </Suspense>
     </Canvas>
   )
+}
+
+function NightLights({ night }: { night: boolean }) {
+  useEffect(() => setVehicleNight(night), [night])
+  return null
 }
 
 function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, nameTag, onNear, frozen, hour, players, onPickPlayer, recenter, onFreeCamera }: Props & { night: boolean; dusk: boolean }) {

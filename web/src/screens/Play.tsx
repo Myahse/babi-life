@@ -42,6 +42,8 @@ function useIsDesktop() {
   return match
 }
 
+// In development, ?hour=22 shows the street at that hour (to check the night).
+const HOUR_OVERRIDE = import.meta.env.DEV && new URLSearchParams(location.search).get('hour') ? Number(new URLSearchParams(location.search).get('hour')) : undefined
 const MAP_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
 
 export function Play() {
@@ -324,7 +326,7 @@ export function Play() {
             commune,
             sim,
             moodColor: moodHex,
-            hour: c.hour,
+            hour: HOUR_OVERRIDE ?? c.hour,
             goTo,
             onPick: walkTo,
             onArrive: (id: string) => (setOutside(false), setPlaceId(id)),

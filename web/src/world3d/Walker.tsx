@@ -287,11 +287,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
           }
         }
         const next = free < dist ? free : dist + (free - dist) * (1 - Math.exp(-3 * Math.min(dt, 0.25)))
-        if (Math.abs(next - dist) > 0.001) {
-          camera.position.copy(t).addScaledVector(off, next)
-          // Brought in by a wall: look down on the Sim from a little higher.
-          camera.position.y = Math.max(camera.position.y, t.y + (wantDist.current - next) * 0.45)
-        }
+        if (Math.abs(next - dist) > 0.001) camera.position.copy(t).addScaledVector(off, next)
       }
     }
     // Looking around stays over the playable area.

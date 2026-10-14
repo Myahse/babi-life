@@ -17,6 +17,30 @@ type Model = { body: THREE.BufferGeometry; glass: THREE.BufferGeometry; len: num
 
 const cache = new Map<string, Model>()
 
+// Shared by every vehicle: their lights come on at night (setVehicleNight),
+// with a pool of light on the road ahead.
+const HEAD = new THREE.MeshLambertMaterial({ color: '#fff6cc', emissive: '#fff6cc', emissiveIntensity: 0.6 })
+const TAIL = new THREE.MeshLambertMaterial({ color: '#d7263d', emissive: '#ff2a3d', emissiveIntensity: 0.4 })
+const BEAM = new THREE.MeshBasicMaterial({ color: '#fff1c4', transparent: true, opacity: 0.5, depthWrite: false, blending: THREE.AdditiveBlending, visible: false, polygonOffset: true, polygonOffsetFactor: -5, polygonOffsetUnits: -5 })
+const GLASS = new THREE.MeshPhongMaterial({ color: '#26303d', shininess: 120, specular: new THREE.Color('#b9c8d8') })
+const BEAM_GEO = (() => {
+  // A fan of light on the road: narrow at the car, wide 12 m ahead.
+  const s = new THREE.Shape([new THREE.Vector2(0, -0.7), new THREE.Vector2(12, -2.6), new THREE.Vector2(12, 2.6), new THREE.Vector2(0, 0.7)])
+  const g = new THREE.ShapeGeometry(s)
+  g.rotateX(Math.PI / 2)
+  return g
+})()
+export function setVehicleNight(night: boolean) {
+  HEAD.emissiveIntensity = night ? 2.2 : 0.6
+  TAIL.emissiveIntensity = night ? 1.6 : 0.4
+  BEAM.visible = night
+}
+
+/** Car paint: smooth and a little glossy, it catches the sun. */
+function Paint({ color }: { color: string }) {
+  return <meshPhongMaterial color={color} shininess={60} specular="#7a7a7a" />
+}
+
 function extrude(points: Pt[], depth: number, bevel = 0.05) {
   const shape = new THREE.Shape(points.map(([x, y]) => new THREE.Vector2(x, y)))
   const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: bevel > 0, bevelSize: bevel, bevelThickness: bevel, bevelSegments: 2, curveSegments: 4 })
@@ -105,13 +129,11 @@ function Trim({ len, wide, y, mirrorX, mirrorY }: { len: number; wide: number; y
       {/* Headlights and tail lights */}
       {[-1, 1].map((sz) => (
         <group key={sz}>
-          <mesh position={[h + 0.03, y, sz * (wide / 2 - 0.25)]}>
+          <mesh position={[h + 0.03, y, sz * (wide / 2 - 0.25)]} material={HEAD}>
             <boxGeometry args={[0.06, 0.13, 0.3]} />
-            <Mat color="#fff6cc" emissive="#fff6cc" intensity={0.6} />
           </mesh>
-          <mesh position={[-h - 0.03, y, sz * (wide / 2 - 0.22)]}>
+          <mesh position={[-h - 0.03, y, sz * (wide / 2 - 0.22)]} material={TAIL}>
             <boxGeometry args={[0.06, 0.12, 0.26]} />
-            <Mat color="#d7263d" emissive="#d7263d" intensity={0.4} />
           </mesh>
           {/* Mirrors */}
           <mesh position={[mirrorX, mirrorY, sz * (wide / 2 + 0.1)]}>
@@ -120,6 +142,8 @@ function Trim({ len, wide, y, mirrorX, mirrorY }: { len: number; wide: number; y
           </mesh>
         </group>
       ))}
+      {/* At night, the headlights' pool of light on the road ahead */}
+      <mesh geometry={BEAM_GEO} material={BEAM} position={[h + 0.2, 0.08, 0]} />
       {/* Grille and plates (white, black letters) */}
       <mesh position={[h + 0.035, y - 0.05, 0]}>
         <boxGeometry args={[0.04, 0.16, 0.6]} />
@@ -140,11 +164,9 @@ function Car4({ type, body, trim, roofSign }: { type: 'saloon' | 'suv'; body: st
   return (
     <group>
       <mesh geometry={m.body} castShadow>
-        <Mat color={body} />
+        <Paint color={body} />
       </mesh>
-      <mesh geometry={m.glass}>
-        <Mat color="#26303d" />
-      </mesh>
+      <mesh geometry={m.glass} material={GLASS} />
       {/* Door pillars over the glass */}
       {m.pillars.map((x) => (
         <mesh key={x} position={[x, type === 'suv' ? 1.44 : 1.2, 0]}>
@@ -181,11 +203,9 @@ function Gbaka({ body, stripe }: { body: string; stripe: string }) {
   return (
     <group>
       <mesh geometry={m.body} castShadow>
-        <Mat color={body} />
+        <Paint color={body} />
       </mesh>
-      <mesh geometry={m.glass}>
-        <Mat color="#26303d" />
-      </mesh>
+      <mesh geometry={m.glass} material={GLASS} />
       {m.pillars.map((x) => (
         <mesh key={x} position={[x, 1.57, 0]}>
           <boxGeometry args={[0.1, 0.6, m.wide + 0.22]} />
