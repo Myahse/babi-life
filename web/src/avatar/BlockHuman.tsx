@@ -4,7 +4,7 @@ import * as THREE from 'three'
 import type { Look, Sim } from '../lib/types'
 import { defaultColors, fullLook } from './options'
 import { tint } from './textures'
-import { useCastShadows, usePoseRig, type Pose } from './Human'
+import { useCastShadows, usePoseRig, type Pose, type RigStyle } from './Human'
 import { worldTime } from '../lib/worldClock'
 
 // A blocky Sim, Roblox / Minecraft style: a cube head, a box torso, and arms
@@ -39,6 +39,8 @@ const BODY: Record<string, { w: number; limb: number; depth: number }> = {
   fort: { w: 1.15, limb: 1.16, depth: 1.1 },
   rond: { w: 1.2, limb: 1.12, depth: 1.28 },
 }
+
+const BLOCK_STYLE: RigStyle = { snap: 1.6, swing: 1.15, elbow: 0.3, knee: 0.55, headBob: 1 }
 
 /* ---------- The sheet: where each box is painted (Minecraft-style layout) ---------- */
 
@@ -651,7 +653,26 @@ export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 
   const knee = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
   const shoulder = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
   const elbow = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
-  usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }, pose, seed, speed)
+  // Minecraft-style motion: snappier joints, a wider swing with straight
+  // arms, knees that barely bend, the head nodding with each step.
+  usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }, pose, seed, speed, BLOCK_STYLE)
+
+  // A squash when landing from a jump (cheering, dancing), and back.
+  const body = useRef<THREE.Group>(null)
+  const fall = useRef({ y: 0, v: 0, squash: 0 })
+  useFrame((_, dtRaw) => {
+    const dt = Math.min(dtRaw, 0.1)
+    const r = root.current
+    const b = body.current
+    if (!r || !b || dt <= 0) return
+    const f = fall.current
+    const v = (r.position.y - f.y) / dt
+    if (f.v < -0.4 && v >= -0.05 && r.position.y < 0.03) f.squash = Math.min(1, -f.v / 2.5)
+    f.y = r.position.y
+    f.v = v
+    f.squash *= Math.exp(-10 * dt)
+    b.scale.set(1 + f.squash * 0.06, 1 - f.squash * 0.12, 1 + f.squash * 0.06)
+  })
 
   // The face: eyelids blink every few seconds, the mouth opens when talking.
   const lids = useRef<THREE.Group>(null)
@@ -691,56 +712,58 @@ export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 
 
   return (
     <group scale={l.height * (femme ? 0.96 : 1)}>
-      <group ref={root}>
-        {/* Torso */}
-        <group ref={chest}>{mesh(box(tw, NECK_Y - TORSO_BOTTOM, td, R.body), [0, (NECK_Y + TORSO_BOTTOM) / 2, 0])}</group>
-        {skirt && mesh(box(skW, 0.17, skD, R.skirtTop), [0, 0.885, 0])}
+      <group ref={body}>
+        <group ref={root}>
+          {/* Torso */}
+          <group ref={chest}>{mesh(box(tw, NECK_Y - TORSO_BOTTOM, td, R.body), [0, (NECK_Y + TORSO_BOTTOM) / 2, 0])}</group>
+          {skirt && mesh(box(skW, 0.17, skD, R.skirtTop), [0, 0.885, 0])}
 
-        {/* Head: the cube, the hair layer over it, eyelids, the mouth, hair and caps */}
-        <group ref={head} position={[0, NECK_Y, 0]} scale={headScale}>
-          {mesh(box(HEAD, HEAD, HEAD, R.head), [0, HEAD / 2, 0])}
-          {sheet.hair !== 'bald' && mesh(box(HEAD * HAT, HEAD * HAT, HEAD * HAT, R.hat), [0, HEAD / 2, 0])}
-          <group ref={lids} position={[0, HEAD - 3 * P, HEAD / 2 + 0.002]} visible={false}>
-            {[-1, 1].map((s) => (
-              <mesh key={s} geometry={cube(2 * P, P, 0.004)} material={lambert(tint(l.skin, -0.06))} position={[s * 2 * P, -P / 2, 0]} />
-            ))}
+          {/* Head: the cube, the hair layer over it, eyelids, the mouth, hair and caps */}
+          <group ref={head} position={[0, NECK_Y, 0]} scale={headScale}>
+            {mesh(box(HEAD, HEAD, HEAD, R.head), [0, HEAD / 2, 0])}
+            {sheet.hair !== 'bald' && mesh(box(HEAD * HAT, HEAD * HAT, HEAD * HAT, R.hat), [0, HEAD / 2, 0])}
+            <group ref={lids} position={[0, HEAD - 3 * P, HEAD / 2 + 0.002]} visible={false}>
+              {[-1, 1].map((s) => (
+                <mesh key={s} geometry={cube(2 * P, P, 0.004)} material={lambert(tint(l.skin, -0.06))} position={[s * 2 * P, -P / 2, 0]} />
+              ))}
+            </group>
+            <group ref={mouth} position={[0, HEAD - 6 * P, HEAD / 2 + 0.002]} visible={false}>
+              <mesh geometry={cube(2.4 * P, P, 0.004)} material={lambert('#3b1612')} position={[0, -P / 2, 0]} />
+            </group>
+            <HeadBoxes l={l} hair={sheet.hair} young={young} cast={cast} />
           </group>
-          <group ref={mouth} position={[0, HEAD - 6 * P, HEAD / 2 + 0.002]} visible={false}>
-            <mesh geometry={cube(2.4 * P, P, 0.004)} material={lambert('#3b1612')} position={[0, -P / 2, 0]} />
-          </group>
-          <HeadBoxes l={l} hair={sheet.hair} young={young} cast={cast} />
+
+          {/* Legs: hip → knee, the skirt's two halves swinging with them */}
+          {[0, 1].map((i) => {
+            const side = i === 0 ? -1 : 1
+            const skX = side * (skW / 4 - hipX)
+            return (
+              <group key={i} ref={hip[i]} position={[side * hipX, HIP_Y, 0]}>
+                {mesh(box(lw, THIGH + 0.04, ld, R.leg[i], 0, 6), [0, (0.04 - THIGH) / 2, 0])}
+                {skirt && mesh(box(skW / 2, Math.min(THIGH, HIP_Y - skirt.hem) + 0.05, skD * 0.98, R.skirtLeg, 0, 5), [skX, 0.05 - (Math.min(THIGH, HIP_Y - skirt.hem) + 0.05) / 2, 0])}
+                <group ref={knee[i]} position={[0, -THIGH, 0]}>
+                  {mesh(box(lw * 0.98, SHIN + 0.02, ld * 0.98, R.leg[i], 6, 6), [0, (0.02 - SHIN) / 2, 0])}
+                  {skirt && skirt.hem < kneeY && mesh(box(skW / 2, kneeY - skirt.hem + 0.03, skD * 0.98, R.skirtLeg, 5, 5), [skX, 0.03 - (kneeY - skirt.hem + 0.03) / 2, 0])}
+                </group>
+              </group>
+            )
+          })}
+
+          {/* Arms: shoulder → elbow, the hand at the end */}
+          {[0, 1].map((i) => {
+            const side = i === 0 ? -1 : 1
+            return (
+              <group key={i} ref={shoulder[i]} position={[side * shX, SHOULDER_Y, 0]}>
+                {mesh(box(aw, UPPER_ARM + 0.06, aw, R.arm[i], 0, 6), [0, (0.06 - UPPER_ARM) / 2, 0])}
+                {bell && mesh(cube(aw * 1.4, UPPER_ARM, aw * 1.4), [0, -UPPER_ARM / 2 + 0.02, 0], clothMat(bell))}
+                <group ref={elbow[i]} position={[0, -UPPER_ARM, 0]}>
+                  {mesh(box(aw * 0.98, FOREARM + 0.02, aw * 0.98, R.arm[i], 6, 6), [0, (0.02 - FOREARM) / 2, 0])}
+                  {bell && mesh(cube(aw * 1.9, 0.17, aw * 1.9), [0, -0.075, 0], clothMat(bell))}
+                </group>
+              </group>
+            )
+          })}
         </group>
-
-        {/* Legs: hip → knee, the skirt's two halves swinging with them */}
-        {[0, 1].map((i) => {
-          const side = i === 0 ? -1 : 1
-          const skX = side * (skW / 4 - hipX)
-          return (
-            <group key={i} ref={hip[i]} position={[side * hipX, HIP_Y, 0]}>
-              {mesh(box(lw, THIGH + 0.04, ld, R.leg[i], 0, 6), [0, (0.04 - THIGH) / 2, 0])}
-              {skirt && mesh(box(skW / 2, Math.min(THIGH, HIP_Y - skirt.hem) + 0.05, skD * 0.98, R.skirtLeg, 0, 5), [skX, 0.05 - (Math.min(THIGH, HIP_Y - skirt.hem) + 0.05) / 2, 0])}
-              <group ref={knee[i]} position={[0, -THIGH, 0]}>
-                {mesh(box(lw * 0.98, SHIN + 0.02, ld * 0.98, R.leg[i], 6, 6), [0, (0.02 - SHIN) / 2, 0])}
-                {skirt && skirt.hem < kneeY && mesh(box(skW / 2, kneeY - skirt.hem + 0.03, skD * 0.98, R.skirtLeg, 5, 5), [skX, 0.03 - (kneeY - skirt.hem + 0.03) / 2, 0])}
-              </group>
-            </group>
-          )
-        })}
-
-        {/* Arms: shoulder → elbow, the hand at the end */}
-        {[0, 1].map((i) => {
-          const side = i === 0 ? -1 : 1
-          return (
-            <group key={i} ref={shoulder[i]} position={[side * shX, SHOULDER_Y, 0]}>
-              {mesh(box(aw, UPPER_ARM + 0.06, aw, R.arm[i], 0, 6), [0, (0.06 - UPPER_ARM) / 2, 0])}
-              {bell && mesh(cube(aw * 1.4, UPPER_ARM, aw * 1.4), [0, -UPPER_ARM / 2 + 0.02, 0], clothMat(bell))}
-              <group ref={elbow[i]} position={[0, -UPPER_ARM, 0]}>
-                {mesh(box(aw * 0.98, FOREARM + 0.02, aw * 0.98, R.arm[i], 6, 6), [0, (0.02 - FOREARM) / 2, 0])}
-                {bell && mesh(cube(aw * 1.9, 0.17, aw * 1.9), [0, -0.075, 0], clothMat(bell))}
-              </group>
-            </group>
-          )
-        })}
       </group>
     </group>
   )

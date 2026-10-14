@@ -978,7 +978,22 @@ export type Rig = {
  * Rotations are about the rest pose's axes (the person faces +z): x swings a
  * limb forward (negative) or back, z raises it sideways.
  */
-export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Rig, pose: Pose, seed: number, speed?: number) {
+/** How a body moves on top of the poses: 1 everywhere is the rounded Sim. */
+export type RigStyle = {
+  /** How quickly joints reach their pose (higher: snappier). */
+  snap?: number
+  /** Leg and arm swing when walking or running. */
+  swing?: number
+  /** How much elbows bend when walking or running (blocky arms stay straighter). */
+  elbow?: number
+  /** How much knees lift when walking or running. */
+  knee?: number
+  /** The head nodding with the steps. */
+  headBob?: number
+}
+
+export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Rig, pose: Pose, seed: number, speed?: number, style: RigStyle = {}) {
+  const { snap = 1, swing: swingK = 1, elbow: elbowK = 1, knee: kneeK = 1, headBob = 0 } = style
   // The walk's phase, carried on frame to frame so the stride can change
   // pace without a jump; where the eyes look, changing now and then.
   const phase = useRef<number | null>(null)
@@ -996,9 +1011,9 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
     phase.current = (phase.current ?? t * Math.PI * 2 * cadence) + dt * Math.PI * 2 * cadence
     const ph = phase.current
     const s = Math.sin(ph)
-    const stride = run ? 0.95 : Math.min(0.62, 0.3 + v * 0.09)
+    const stride = (run ? 0.95 : Math.min(0.62, 0.3 + v * 0.09)) * swingK
     // Every joint eases to where it should be: no jump from one pose to the next.
-    const a = 1 - Math.exp(-14 * dt)
+    const a = 1 - Math.exp(-14 * snap * dt)
     const to = (o: THREE.Euler | THREE.Vector3, k: 'x' | 'y' | 'z', target: number) => void (o[k] += (target - o[k]) * a)
     // Standing: the weight goes from one leg to the other, slowly.
     const shift = Math.sin(t * 0.35 + seed)
@@ -1013,7 +1028,7 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
       to(h.rotation, 'z', walk || seated ? 0 : out * shift * 0.03)
       // The knee bends as the leg swings through, and a little on the standing leg.
       const lift = Math.max(0, Math.sin(ph + (out > 0 ? Math.PI : 0) + 0.6))
-      to(kn.rotation, 'x', seated ? 1.5 : kick ? 0.15 : pose === 'keeper' ? 0.8 : walk ? 0.08 + lift * (run ? 1.55 : 0.75) : Math.max(0, -out * shift) * 0.12)
+      to(kn.rotation, 'x', seated ? 1.5 : kick ? 0.15 : pose === 'keeper' ? 0.8 : walk ? (0.08 + lift * (run ? 1.55 : 0.75)) * kneeK : Math.max(0, -out * shift) * 0.12)
       const sh = shoulder[i].current!
       const el = elbow[i].current!
       let [sx, sy, sz, ex, ez] = [0, 0, out * 0.1, -0.12, 0]
@@ -1071,10 +1086,10 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
         ;[sx, sz, ex, ez] = [0.15, 0.6, -0.35, -1.75]
       } else if (run) {
         // Arms bent, pumping against the legs.
-        ;[sx, sz, ex] = [-swing * 0.9, out * 0.12, -1.45]
+        ;[sx, sz, ex] = [-swing * 0.9, out * 0.12, -1.45 * elbowK]
       } else if (walk) {
         // Arms swing against the legs, elbows bending more on the way forward.
-        ;[sx, sz, ex] = [-swing * 0.75, out * 0.09, -0.25 - Math.max(0, -swing * out) * 0.5]
+        ;[sx, sz, ex] = [-swing * 0.75, out * 0.09, (-0.25 - Math.max(0, -swing * out) * 0.5) * elbowK]
       } else {
         // Standing: arms hanging loose, breathing.
         ;[sx, sz, ex] = [Math.sin(t * 1.2 + i) * 0.03, out * (0.1 + Math.max(0, out * shift) * 0.03), -0.14]
@@ -1130,7 +1145,7 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
     const hd = head.current!
     to(hd.rotation, 'y', walk ? -s * stride * 0.1 : pose === 'rant' ? Math.sin(t * 2.3) * 0.45 : pose === 'talk' ? Math.sin(t * 0.9) * 0.12 : g.y)
     to(hd.rotation, 'z', pose === 'wave' ? 0.08 : pose === 'talk' ? Math.sin(t * 1.3) * 0.05 : 0)
-    to(hd.rotation, 'x', pose === 'busy' || pose === 'write' ? 0.25 : pose === 'eat' ? 0.1 : pose === 'drink' ? -0.15 : pose === 'hug' ? 0.15 : pose === 'beg' ? 0.12 : walk ? 0.02 : g.x + Math.sin(t * 0.7) * 0.02)
+    to(hd.rotation, 'x', pose === 'busy' || pose === 'write' ? 0.25 : pose === 'eat' ? 0.1 : pose === 'drink' ? -0.15 : pose === 'hug' ? 0.15 : pose === 'beg' ? 0.12 : walk ? 0.02 + Math.sin(ph * 2) * 0.05 * headBob : g.x + Math.sin(t * 0.7) * 0.02)
   })
 }
 
