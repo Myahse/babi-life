@@ -3,6 +3,9 @@ import { buildChunk } from './meshes'
 import { fetchChunk } from './tiles'
 import type { Origin } from './geo'
 import { inTheWay, resolvePlaces, type PlaceSpot } from './places'
+import { STYLE_OF_KIND, type Style } from './buildings'
+import { pointInRing } from './geo'
+import type { Building } from './tiles'
 
 // Chunks are fetched, decoded and turned into geometry here, off the main
 // thread, so walking stays smooth while the world loads around the Sim.
@@ -16,9 +19,18 @@ self.onmessage = async (e: MessageEvent<ChunkRequest>) => {
     const data = await fetchChunk(origin, tx, ty, token)
     // Places take the real building where the map puts them; only a place
     // with no building on the map gets one made by the game, on its own lot.
-    const resolved = resolvePlaces(data, places)
+    const styles = new Map<Building, Style>()
+    const resolved = resolvePlaces(data, places, (b, kind) => styles.set(b, STYLE_OF_KIND[kind] ?? 'default'))
     const made = resolved.filter((r) => !r.real).map((r) => r.center)
-    const meshes = buildChunk(data, (c) => inTheWay(made, c))
+    // A building in a campus or a hospital's grounds looks the part.
+    const grounds = data.areas.filter((a) => a.kind === 'campus' || a.kind === 'hospital')
+    const styleOf = (b: Building): Style => {
+      const s = styles.get(b)
+      if (s) return s
+      const g = grounds.find((a) => pointInRing(b.c, a.rings[0]))
+      return g ? (g.kind === 'campus' ? 'institution' : 'hospital') : 'default'
+    }
+    const meshes = buildChunk(data, (c) => inTheWay(made, c), styleOf)
     const out: Record<string, Arrays> = {}
     const transfer: ArrayBuffer[] = []
     for (const [name, g] of Object.entries(meshes)) {

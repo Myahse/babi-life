@@ -61,12 +61,30 @@ const house: Painter = (px, r) => {
   for (let x = 0; x < 16; x++) px(x, 15, '#b9b1a3')
 }
 
+/** A public building's storey: a long band of windows, a plain band between floors. */
+const inst: Painter = (px, r) => {
+  noisy([240, 238, 232], 12)(px, r)
+  for (let y = 4; y < 12; y++)
+    for (let x = 0; x < 16; x++) px(x, y, y === 4 || y === 11 || x % 5 === 0 ? '#59606b' : y < 8 ? '#6f8fae' : '#4f6f8f')
+  for (let x = 0; x < 16; x++) (px(x, 13, '#cfcac0'), px(x, 14, '#cfcac0'))
+}
+
+/** A public building's ground floor: glazed doors in the middle, glass on each side. */
+const entrance: Painter = (px, r) => {
+  noisy([236, 233, 226], 12)(px, r)
+  for (let y = 4; y < 16; y++)
+    for (let x = 1; x < 15; x++) px(x, y, x === 1 || x === 14 || y === 4 || x === 5 || x === 10 ? '#4a515c' : x > 5 && x < 10 && y > 6 ? (x === 7 || x === 8 ? '#3f5f80' : '#5f86ab') : '#7d9bb8')
+  for (let x = 0; x < 16; x++) px(x, 15, '#9a958c')
+}
+
 export function makeTextures() {
   return {
     wall: texture(wall, 3),
     lights: texture(lights, 5),
     roof: texture(noisy([168, 168, 160], 26), 7),
     shop: texture(shop, 29),
+    inst: texture(inst, 35),
+    entrance: texture(entrance, 37),
     house: texture(house, 31),
     plaster: texture(noisy([238, 234, 226], 14), 33),
     tin: texture((px, r) => {

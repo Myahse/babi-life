@@ -10,8 +10,23 @@ import { BLOCK, type Building } from './tiles'
 // black water tanks, AC units and stair head of Abidjan rooftops. A soft dark
 // band on the ground holds it down.
 
+/**
+ * How a building looks, from what it is: a campus or hospital building, a
+ * town hall or office, a hotel, shops, a home. Ordinary buildings mix shops
+ * and homes as the street goes.
+ */
+export type Style = 'default' | 'institution' | 'hospital' | 'civic' | 'hotel' | 'commerce' | 'home'
+
+/** The look of each place kind of the game. */
+export const STYLE_OF_KIND: Record<string, Style> = {
+  universite: 'institution', school: 'institution', health: 'hospital', mairie: 'civic', office: 'civic', culture: 'civic', worship: 'civic', police: 'civic',
+  hotel: 'hotel', mall: 'commerce', market: 'commerce', restaurant: 'commerce', maquis: 'commerce', club: 'commerce', barbier: 'commerce', salon: 'commerce', transport: 'commerce', home: 'home',
+}
+
 export type BuildingBuilders = {
   walls: Builder // upper storeys (window texture)
+  inst: Builder // upper storeys of public buildings: long bands of windows
+  entrance: Builder // their ground floor: glazed doors
   shop: Builder // ground floor, shops
   house: Builder // ground floor, a home
   trim: Builder // plain plaster: plinth, ledges, parapets, gables, balconies, rooftop things
@@ -21,12 +36,16 @@ export type BuildingBuilders = {
 }
 
 export function newBuildingBuilders(): BuildingBuilders {
-  return { walls: new Builder(), shop: new Builder(), house: new Builder(), trim: new Builder(), roofs: new Builder(), tin: new Builder(), contact: new Builder(true) }
+  return { walls: new Builder(), inst: new Builder(), entrance: new Builder(), shop: new Builder(), house: new Builder(), trim: new Builder(), roofs: new Builder(), tin: new Builder(), contact: new Builder(true) }
 }
 
 // Façades of Abidjan: whites, creams, ochres, pastels.
 const FACADES = ['#ffffff', '#fff3e0', '#ffe0b2', '#fff9c4', '#ffe8cc', '#e3f2fd', '#f8d7e3', '#e8f5e9', '#f1e3c8', '#ffd6a5', '#eeeeee', '#fbe7c6'].map((c) => new THREE.Color(c))
 const PLINTH = new THREE.Color('#8f8372')
+// Public buildings: whites, creams, pale grey-blue.
+const PUBLIC = ['#fdfbf5', '#f3ead7', '#e8eef3', '#f6f1e6'].map((c) => new THREE.Color(c))
+const CIVIC = ['#f1e3c8', '#ffe0b2', '#f3ead7'].map((c) => new THREE.Color(c))
+const HOSPITAL_BAND = new THREE.Color('#4a90c2')
 const SLAB = new THREE.Color('#c9c4bb')
 const RAIL = new THREE.Color('#3d3f45')
 const TANK = new THREE.Color('#202124')
@@ -144,25 +163,28 @@ function storeys(b: Builder, ring: XZ[], y0: number, y1: number, c: THREE.Color)
   }
 }
 
-export function addBuilding(B: BuildingBuilders, bd: Building) {
+export function addBuilding(B: BuildingBuilders, bd: Building, style: Style = 'default') {
   const ring = signedArea(bd.ring) > 0 ? bd.ring : [...bd.ring].reverse()
   if (ring.length < 3) return
   const H = bd.height
-  const tint = FACADES[Math.floor(bd.tint * FACADES.length)]
+  const pub = style === 'institution' || style === 'hospital'
+  const palette = pub ? (style === 'hospital' ? [new THREE.Color('#ffffff')] : PUBLIC) : style === 'civic' ? CIVIC : FACADES
+  const tint = palette[Math.floor(bd.tint * palette.length)]
   const r1 = hash(bd.c[0] * 3, bd.c[1])
   const r2 = hash(bd.c[1] * 7, bd.c[0] * 2)
   const area = Math.abs(signedArea(ring))
   const rect = orientedRect(ring)
   const rectLike = area / Math.max(1, rect.w * rect.d) > 0.86
-  const pitched = H <= 2 * BLOCK && rectLike && Math.min(rect.w, rect.d) < 20 && r1 < 0.8
-  const shops = H >= 2 * BLOCK && r2 < 0.5
+  const pitched = (style === 'default' || style === 'home') && H <= 2 * BLOCK && rectLike && Math.min(rect.w, rect.d) < 20 && r1 < 0.8
+  const shops = style === 'commerce' || (style === 'default' && H >= 2 * BLOCK && r2 < 0.5)
 
   // Plinth, ground floor, upper storeys.
   band(B.trim, ring, 0, 0.45, 0.06, PLINTH, false)
-  storeys(shops ? B.shop : B.house, ring, 0, BLOCK, tint)
-  if (H > BLOCK) storeys(B.walls, ring, BLOCK, H, tint)
-  // A ledge at every floor.
-  const ledge = tint.clone().multiplyScalar(0.86)
+  const glazed = pub || style === 'civic' || style === 'hotel'
+  storeys(glazed ? B.entrance : shops ? B.shop : B.house, ring, 0, BLOCK, tint)
+  if (H > BLOCK) storeys(pub ? B.inst : B.walls, ring, BLOCK, H, tint)
+  // A ledge at every floor (a blue band on a hospital).
+  const ledge = style === 'hospital' ? HOSPITAL_BAND : tint.clone().multiplyScalar(0.86)
   for (let y = BLOCK; y < H; y += BLOCK) band(B.trim, ring, y - 0.12, y + 0.1, 0.14, ledge, false)
 
   if (pitched) {
@@ -228,7 +250,7 @@ export function addBuilding(B: BuildingBuilders, bd: Building) {
   }
 
   // Balconies on the bigger buildings, along their longest side.
-  if (H >= 3 * BLOCK && r1 > 0.45) {
+  if ((H >= 3 * BLOCK && r1 > 0.45 && !pub) || (style === 'hotel' && H >= 2 * BLOCK)) {
     let best = 0
     let bi = 0
     for (let i = 0; i < ring.length; i++) {

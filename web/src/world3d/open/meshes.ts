@@ -6,7 +6,7 @@ import type { XZ } from './geo'
 // of draw calls: walls, roofs, roads, pavements, water, grass, sand.
 
 import { Builder } from './builder'
-import { addBuilding, newBuildingBuilders } from './buildings'
+import { addBuilding, newBuildingBuilders, type Style } from './buildings'
 
 // Roads draw in order, the bigger on top where they meet.
 const RANK: Record<string, number> = { motorway: 9, trunk: 8, primary: 7, secondary: 6, tertiary: 5, street: 4, street_limited: 3, service: 2, pedestrian: 2, track: 1, path: 0 }
@@ -14,6 +14,8 @@ const RANK: Record<string, number> = { motorway: 9, trunk: 8, primary: 7, second
 export type ChunkMeshes = {
   walls: THREE.BufferGeometry | null
   shop: THREE.BufferGeometry | null
+  inst: THREE.BufferGeometry | null
+  entrance: THREE.BufferGeometry | null
   house: THREE.BufferGeometry | null
   trim: THREE.BufferGeometry | null
   roofs: THREE.BufferGeometry | null
@@ -29,9 +31,9 @@ export type ChunkMeshes = {
 }
 
 /** Buildings the game draws itself (its places) are left out of the map's. */
-export function buildChunk(chunk: ChunkData, skip: (c: XZ) => boolean): ChunkMeshes {
+export function buildChunk(chunk: ChunkData, skip: (c: XZ) => boolean, styleOf: (b: ChunkData['buildings'][number]) => Style = () => 'default'): ChunkMeshes {
   const B = newBuildingBuilders()
-  for (const b of chunk.buildings) if (!skip(b.c)) addBuilding(B, b)
+  for (const b of chunk.buildings) if (!skip(b.c)) addBuilding(B, b, styleOf(b))
 
   const asphalt = new Builder()
   const laterite = new Builder()
@@ -72,13 +74,15 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ) => boolean): ChunkMes
   const sand = new Builder()
   const pitch = new Builder()
   for (const a of chunk.areas) {
-    const [to, y, scale] = a.kind === 'water' ? [water, 0.02, 4] : a.kind === 'green' ? [green, 0.012, 2] : a.kind === 'sand' ? [sand, 0.014, 2] : [pitch, 0.016, 2]
+    const [to, y, scale] = a.kind === 'water' ? [water, 0.02, 4] : a.kind === 'green' || a.kind === 'campus' ? [green, a.kind === 'campus' ? 0.008 : 0.012, 2] : a.kind === 'sand' ? [sand, 0.014, 2] : a.kind === 'hospital' ? [pavement, 0.009, 2] : [pitch, 0.016, 2]
     to.flat(a.rings, y as number, scale as number)
   }
 
   return {
     walls: B.walls.geometry(),
     shop: B.shop.geometry(),
+    inst: B.inst.geometry(),
+    entrance: B.entrance.geometry(),
     house: B.house.geometry(),
     trim: B.trim.geometry(),
     roofs: B.roofs.geometry(),

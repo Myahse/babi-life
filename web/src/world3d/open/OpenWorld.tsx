@@ -40,7 +40,7 @@ const HAPPENING_KEY = 'happening'
 type Loaded = { data: ChunkData; geos: Record<string, THREE.BufferGeometry> }
 
 /** What casts a shadow: the buildings, not the roads. */
-const SOLID = new Set(['walls', 'shop', 'house', 'trim', 'roofs', 'tin'])
+const SOLID = new Set(['walls', 'inst', 'entrance', 'shop', 'house', 'trim', 'roofs', 'tin'])
 
 /** Ambient occlusion where the device can afford it (not on small phones). */
 const RICH = typeof navigator === 'undefined' || (navigator.hardwareConcurrency ?? 4) > 4
@@ -102,6 +102,8 @@ function useMaterials(night: boolean) {
     const lambert = (map: THREE.Texture, extra: THREE.MeshLambertMaterialParameters = {}) => new THREE.MeshLambertMaterial({ map, ...extra })
     return {
       walls: lambert(t.wall, { vertexColors: true, emissiveMap: t.lights, emissive: new THREE.Color('#ffffff'), emissiveIntensity: 0 }),
+      inst: lambert(t.inst, { vertexColors: true }),
+      entrance: lambert(t.entrance, { vertexColors: true }),
       shop: lambert(t.shop, { vertexColors: true }),
       house: lambert(t.house, { vertexColors: true }),
       trim: lambert(t.plaster, { vertexColors: true, side: THREE.DoubleSide }),
@@ -337,6 +339,10 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
           <LotView key={lot.id} lot={lot} world={world} night={night} label={labels} onPick={onPick} />
         ),
       )}
+      {lots.map((lot) => {
+        const g = resolved.get(lot.id)?.gate
+        return g ? <CampusGate key={`gate${lot.id}`} name={lot.name} kind={lot.kind} at={g.at} rot={g.rot} width={g.width} night={night} /> : null
+      })}
       {happening && spot && (
         <group position={[spot.door[0], 0, spot.door[1]]} rotation={[0, -spot.roadAngle, 0]}>
           <group position={[-HAPPENING_X, 0, 0]}>
@@ -422,6 +428,32 @@ function PlaceSign({ lot, world, night, label, onPick }: { lot: Lot & { height?:
           </button>
         </Html>
       )}
+    </group>
+  )
+}
+
+/** A campus gate on its street: two pillars, the name across the top. */
+function CampusGate({ name, kind, at, rot, width, night }: { name: string; kind: string; at: XZ; rot: number; width: number; night: boolean }) {
+  const [, b] = kindColors(kind)
+  const tex = useSignTexture(name.toUpperCase(), b)
+  return (
+    <group position={[at[0], 0, at[1]]} rotation={[0, rot, 0]}>
+      {[-1, 1].map((s) => (
+        <mesh key={s} position={[(s * width) / 2, 2.4, 0]} castShadow>
+          <boxGeometry args={[1.2, 4.8, 1.2]} />
+          <meshLambertMaterial color="#f3ead7" />
+        </mesh>
+      ))}
+      <mesh position={[0, 5.1, 0]} castShadow>
+        <boxGeometry args={[width + 1.6, 1.3, 0.9]} />
+        <meshLambertMaterial color="#f3ead7" />
+      </mesh>
+      {[0.46, -0.46].map((z) => (
+        <mesh key={z} position={[0, 5.1, z]} rotation={[0, z > 0 ? 0 : Math.PI, 0]}>
+          <planeGeometry args={[width + 0.8, 0.95]} />
+          <meshLambertMaterial map={tex} emissive={night ? '#ffffff' : '#000000'} emissiveMap={tex} emissiveIntensity={night ? 0.5 : 0} />
+        </mesh>
+      ))}
     </group>
   )
 }

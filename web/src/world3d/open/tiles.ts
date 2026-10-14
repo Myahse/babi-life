@@ -9,7 +9,7 @@ import { CHUNK_ZOOM, centroid, clipLine, clipRing, hash, pointInRing, tileBox, t
 
 export type Road = { cls: string; pts: XZ[]; width: number; paved: boolean; bridge: boolean }
 export type Building = { ring: XZ[]; holes: XZ[][]; height: number; c: XZ; tint: number }
-export type Area = { kind: 'water' | 'green' | 'sand' | 'pitch'; rings: XZ[][] }
+export type Area = { kind: 'water' | 'green' | 'sand' | 'pitch' | 'campus' | 'hospital'; rings: XZ[][] }
 export type ChunkData = { key: string; tx: number; ty: number; box: Box; roads: Road[]; buildings: Building[]; areas: Area[]; trees: XZ[] }
 
 export const BLOCK = 3 // metres: one storey, one block
@@ -96,19 +96,21 @@ export function decodeChunk(o: Origin, tx: number, ty: number, data: Uint8Array)
     }
   }
   areas('water', () => 'water')
-  areas('landuse', (cls) => (GREEN.has(cls) ? 'green' : SAND.has(cls) ? 'sand' : cls === 'pitch' ? 'pitch' : null))
+  // Schools and universities, hospitals: their grounds, as the map draws them.
+  areas('landuse', (cls) => (GREEN.has(cls) ? 'green' : SAND.has(cls) ? 'sand' : cls === 'pitch' ? 'pitch' : cls === 'school' ? 'campus' : cls === 'hospital' ? 'hospital' : null))
   areas('landuse_overlay', (cls) => (cls.startsWith('wetland') ? 'green' : null))
 
   // Trees in the parks and gardens, a few per block of green.
   for (const a of chunk.areas) {
-    if (a.kind !== 'green') continue
+    if (a.kind !== 'green' && a.kind !== 'campus') continue
     const ring = a.rings[0]
     let [minX, minZ, maxX, maxZ] = [Infinity, Infinity, -Infinity, -Infinity]
     for (const [x, zz] of ring) [minX, minZ, maxX, maxZ] = [Math.min(minX, x), Math.min(minZ, zz), Math.max(maxX, x), Math.max(maxZ, zz)]
-    const n = Math.min(60, Math.floor(((maxX - minX) * (maxZ - minZ)) / 500))
+    const n = Math.min(60, Math.floor(((maxX - minX) * (maxZ - minZ)) / (a.kind === 'campus' ? 900 : 500)))
     for (let k = 0; k < n; k++) {
       const p: XZ = [minX + hash(k, minX) * (maxX - minX), minZ + hash(minZ, k) * (maxZ - minZ)]
-      if (pointInRing(p, ring)) chunk.trees.push(p)
+      // Not inside a building (a campus is full of them).
+      if (pointInRing(p, ring) && !chunk.buildings.some((b) => Math.abs(b.c[0] - p[0]) < 40 && Math.abs(b.c[1] - p[1]) < 40 && pointInRing(p, b.ring))) chunk.trees.push(p)
     }
   }
   return chunk

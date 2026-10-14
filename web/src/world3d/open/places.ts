@@ -18,6 +18,8 @@ export type Resolved = {
   roadAngle: number
   /** The real building that is the place, if there is one: its height. */
   real?: { height: number }
+  /** A campus's gate on the street, when the place stands in one. */
+  gate?: { at: XZ; rot: number; width: number }
 }
 
 /** How far the map's position may be from a building and still mean it. */
@@ -79,7 +81,7 @@ function area(ring: XZ[]) {
   return Math.abs(a / 2)
 }
 
-export function resolvePlaces(chunk: ChunkData, spots: PlaceSpot[]): Resolved[] {
+export function resolvePlaces(chunk: ChunkData, spots: PlaceSpot[], onReal?: (b: Building, kind: string) => void): Resolved[] {
   const { box } = chunk
   const out: Resolved[] = []
   const taken = new Set<Building>()
@@ -102,12 +104,13 @@ export function resolvePlaces(chunk: ChunkData, spots: PlaceSpot[]): Resolved[] 
       }
       if (found) {
         taken.add(found.b)
+        onReal?.(found.b, s.kind ?? '')
         const c = centroid(found.b.ring)
         // The door: on the side facing the nearest street.
         const toward = nearestRoad(chunk, c)?.at ?? road?.at ?? s.at
         const side = closestOnRing(found.b.ring, toward)
         const door: XZ = [side.at[0] + side.n[0] * 1.2, side.at[1] + side.n[1] * 1.2]
-        out.push({ id: s.id, door, center: c, rot: Math.atan2(side.n[0], side.n[1]), roadAngle: road?.angle ?? 0, real: { height: found.b.height } })
+        out.push({ id: s.id, door, center: c, rot: Math.atan2(side.n[0], side.n[1]), roadAngle: road?.angle ?? 0, real: { height: found.b.height }, gate: s.kind === 'universite' || s.kind === 'school' ? campusGate(chunk, c) : undefined })
         continue
       }
     }
@@ -131,4 +134,27 @@ export function resolvePlaces(chunk: ChunkData, spots: PlaceSpot[]): Resolved[] 
 /** Real buildings in the way of a game-made one (it stands on a 14 m lot). */
 export function inTheWay(made: XZ[], c: XZ) {
   return made.some((p) => Math.abs(p[0] - c[0]) < 9 && Math.abs(p[1] - c[1]) < 9)
+}
+
+/**
+ * Where a campus meets its main street: the gate. The map doesn't say where
+ * the real gate is, so it goes where the grounds come closest to a big road.
+ */
+function campusGate(chunk: ChunkData, c: XZ): Resolved['gate'] {
+  const campus = chunk.areas.find((a) => a.kind === 'campus' && pointInRing(c, a.rings[0]))
+  if (!campus) return undefined
+  const ring = campus.rings[0]
+  const { box } = chunk
+  let best: { at: XZ; road: XZ; d: number } | null = null
+  for (const r of chunk.roads) {
+    if (r.width < 9) continue
+    for (const q of r.pts) {
+      const on = closestOnRing(ring, q)
+      // Not on a side of the grounds cut by the chunk's edge.
+      const edge = Math.min(Math.abs(on.at[0] - box.x0), Math.abs(on.at[0] - box.x1), Math.abs(on.at[1] - box.z0), Math.abs(on.at[1] - box.z1)) < 0.5
+      if (!edge && (!best || on.d < best.d)) best = { at: on.at, road: q, d: on.d }
+    }
+  }
+  if (!best || best.d > 40) return undefined
+  return { at: best.at, rot: Math.atan2(best.road[0] - best.at[0], best.road[1] - best.at[1]), width: 9 }
 }
