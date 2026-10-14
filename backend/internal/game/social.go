@@ -27,7 +27,7 @@ const MaxFriends = 12
 
 // Social places: doing these, a Sim may meet someone or see a friend again.
 var SocialInteractions = []string{
-	"aller-ecole", "jouer-cour", "play-football", "watch-match", "drink-with-friends", "dance-coupe-decale",
+	"aller-ecole", "jouer-cour", "play-football", "play-basket", "watch-match", "drink-with-friends", "dance-coupe-decale",
 	"party", "glace", "anniversaire-resto", "spectacle", "pray", "coffee-break", "eat-poulet-braise",
 	"gbairai", "tresses", "amphi", "resto-u", "bar-hotel",
 }

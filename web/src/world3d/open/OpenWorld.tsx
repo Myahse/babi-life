@@ -26,9 +26,9 @@ import { inTheWay, resolvePlaces, type PlaceSpot, type Resolved } from './places
 import { LANDMARKS, Landmark } from './landmarks'
 import { Boats } from './boats'
 import { AllocoStalls } from './alloco'
+import { StreetLife } from './streetlife'
 import { TakeOff } from './airport'
 import { StreetLights } from './streetlights'
-import { StreetLife } from './streetlife'
 import { BRIDGE_LABEL, bridgeKind } from './bridgeNames'
 import { BridgeSights } from './bridges'
 import { matchPoi } from './poiMatch'
@@ -542,7 +542,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
       {nav.nodes.length > 0 && !stopsTraffic && <RoadTraffic nav={nav} focus={focus} seed={commune.id} woro={commune.woro} />}
       <Boats water={nearWater} focus={focus} />
       {nav.nodes.length > 0 && <StreetLights nav={nav} night={night} />}
-      {nav.nodes.length > 0 && <StreetLife nav={nav} seed={commune.id} />}
+      {nav.nodes.length > 0 && <StreetLife nav={nav} seed={commune.id} night={night} />}
       {nav.nodes.length > 0 && <AllocoStalls nav={nav} seed={commune.id} onBuy={onStreetBuy} />}
       <TakeOff runways={runways} />
       <BridgeSights chunks={[...chunks.values()].map((c) => c.data)} night={night} />
@@ -607,7 +607,7 @@ function PlaceSign({ lot, world, night, label, onPick }: { lot: Lot & { height?:
           </>
         )}
         {/* What tells what the place is, in front of it */}
-        <Dressing kind={lot.kind} seed={lot.seed + lot.x * 0.01} night={night} />
+        <Dressing kind={lot.kind} name={lot.name} seed={lot.seed + lot.x * 0.01} night={night} />
         {/* The door */}
         <mesh position={[0, 1.05, 0.06]}>
           <boxGeometry args={[1.2, 2.1, 0.08]} />

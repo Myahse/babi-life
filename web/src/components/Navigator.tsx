@@ -74,6 +74,16 @@ export function MiniMap({ onWalk }: { onWalk: (id: string) => void }) {
         g.stroke()
       }
       g.restore()
+      // North stays marked on the rim as the map turns with the camera.
+      g.save()
+      g.translate(SIZE / 2, SIZE / 2)
+      g.rotate(-whereabouts.heading)
+      g.fillStyle = '#fff'
+      g.font = '800 11px sans-serif'
+      g.textAlign = 'center'
+      g.textBaseline = 'middle'
+      g.fillText('N', 0, -(SIZE / 2 - 14))
+      g.restore()
       // The Sim, in the middle, looking up.
       g.save()
       g.translate(SIZE / 2, SIZE / 2)

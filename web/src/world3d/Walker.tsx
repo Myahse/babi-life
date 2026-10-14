@@ -8,7 +8,7 @@ import { iconFor, kindColors } from '../components/icons'
 import { IconTile } from '../components/ui'
 import { Character } from './Character'
 import { HOME_ID, SIDEWALK, type Lot } from './layout'
-import { moveInput, running } from './input'
+import { cameraTurn, moveInput, running } from './input'
 import { whereabouts } from './whereabouts'
 
 type XZ = [number, number]
@@ -185,7 +185,29 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
 
   const near = useRef<string | null>(null)
   const padWalking = useRef(false)
+  const orbit = useRef({ sph: new THREE.Spherical(), offset: new THREE.Vector3() })
   useFrame((_, dt) => {
+    if (cameraTurn.yaw || cameraTurn.pitch || cameraTurn.snap) {
+      if (controls) {
+        const offset = orbit.current.offset.copy(camera.position).sub(controls.target)
+        const sph = orbit.current.sph.setFromVector3(offset)
+        if (cameraTurn.snap) {
+          const r = sph.radius || (close ? 10 : 48)
+          offset.set(0, Math.cos(sph.phi) * r, Math.sin(sph.phi) * r)
+        } else {
+          sph.theta -= cameraTurn.yaw
+          const minP = perspective ? 0.25 : 0.5
+          const maxP = perspective ? 1.4 : 1.05
+          sph.phi = THREE.MathUtils.clamp(sph.phi + cameraTurn.pitch, minP, maxP)
+          offset.setFromSpherical(sph)
+        }
+        camera.position.copy(controls.target).add(offset)
+        controls.update()
+      }
+      cameraTurn.yaw = 0
+      cameraTurn.pitch = 0
+      cameraTurn.snap = false
+    }
     const g = group.current!
     // The pad (or the keyboard) walks the Sim freely, relative to the camera.
     const input = moveInput()
@@ -256,7 +278,13 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     if (nowRunning !== run) setRun(nowRunning)
     // For the mini-map: where the Sim is, which way the camera looks.
     whereabouts.sim = [g.position.x, g.position.z]
-    if (controls) whereabouts.heading = Math.atan2(controls.target.x - camera.position.x, -(controls.target.z - camera.position.z))
+    if (controls) {
+      const dx = controls.target.x - camera.position.x
+      const dy = camera.position.y - controls.target.y
+      const dz = controls.target.z - camera.position.z
+      whereabouts.heading = Math.atan2(dx, -dz)
+      whereabouts.polar = Math.acos(THREE.MathUtils.clamp(dy / (Math.hypot(dx, dy, dz) || 1), -1, 1))
+    }
     // Up and down bridges.
     if (nav.heightAt) g.position.y = nav.heightAt(g.position.x, g.position.z)
     // Camera follows the Sim, keeping whatever angle the player chose.
@@ -323,9 +351,10 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         makeDefault
         enablePan
         screenSpacePanning={false}
-        // One finger (or the mouse) drags the view; two fingers zoom and turn.
-        touches={{ ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE }}
-        mouseButtons={{ LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE }}
+        // Close up, a drag turns around the Sim. From above, a drag slides the
+        // view and a right-drag (or two fingers) turns it.
+        touches={{ ONE: close ? THREE.TOUCH.ROTATE : THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE }}
+        mouseButtons={{ LEFT: close ? THREE.MOUSE.ROTATE : THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: close ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE }}
         enableDamping
         zoomSpeed={1.6}
         minZoom={2.2}

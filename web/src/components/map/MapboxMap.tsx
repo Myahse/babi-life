@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
@@ -7,6 +7,7 @@ import type { Sim } from '../../lib/types'
 import { CIV_BOUNDS, Pin, declutter, pxPerDegree, routeDone, routeLine, routePoint, visibleAt, type Padding, type PinData, type Route } from './pins'
 import type { Camera } from './GameMap'
 import { TaxiMarker } from './OfflineMap'
+import { OrbitGizmo } from '../OrbitGizmo'
 
 type Props = { token: string; pins: PinData[]; camera: Camera; night: boolean; sim: Sim | null; padding: Padding; route?: Route | null; onZoom?: (pxPerDeg: number) => void }
 
@@ -25,6 +26,8 @@ export function MapboxMap({ token, pins, camera, night, sim, padding, route, onZ
   const container = useRef<HTMLDivElement>(null)
   const map = useRef<mapboxgl.Map | null>(null)
   const markers = useRef<{ pin: PinData; marker: mapboxgl.Marker; root: Root }[]>([])
+  const pose = useRef({ heading: 0, polar: 0 })
+  const readPose = useCallback(() => pose.current, [])
 
   useEffect(() => {
     mapboxgl.accessToken = token
@@ -35,13 +38,27 @@ export function MapboxMap({ token, pins, camera, night, sim, padding, route, onZ
       bounds: CIV_BOUNDS,
       maxBounds: [CIV_BOUNDS[0] - 4, CIV_BOUNDS[1] - 3, CIV_BOUNDS[2] + 4, CIV_BOUNDS[3] + 3],
       pitch: 0,
+      maxPitch: 70,
+      dragRotate: true,
+      touchZoomRotate: true,
+      touchPitch: true,
+      pitchWithRotate: true,
       attributionControl: false,
     })
     m.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right')
+    m.addControl(new mapboxgl.NavigationControl({ showCompass: false, showZoom: true }), 'bottom-right')
+    const syncPose = () => {
+      pose.current.heading = (m.getBearing() * Math.PI) / 180
+      pose.current.polar = (m.getPitch() * Math.PI) / 180
+    }
+    m.on('move', syncPose)
     m.on('load', () => {
       // Mapbox's own CSS sets position:relative on the container, which drops
       // the height to 0 until we measure again.
       m.resize()
+      syncPose()
+      const corner = m.getContainer().querySelector('.mapboxgl-ctrl-bottom-right') as HTMLElement | null
+      if (corner) corner.style.bottom = '4.5rem'
       m.addSource('civ', { type: 'geojson', data: civ as GeoJSON.FeatureCollection })
       m.addSource('mask', { type: 'geojson', data: worldMask() })
       m.addLayer({ id: 'mask', type: 'fill', source: 'mask', paint: { 'fill-color': '#0f1230', 'fill-opacity': 0.45 } })
@@ -165,5 +182,22 @@ export function MapboxMap({ token, pins, camera, night, sim, padding, route, onZ
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pins, sim, padding.top])
 
-  return <div ref={container} className="isolate" style={{ position: 'absolute', inset: 0 }} />
+  return (
+    <div className="absolute inset-0">
+      <div ref={container} className="isolate" style={{ position: 'absolute', inset: 0 }} />
+      <OrbitGizmo
+        className="absolute right-3 bottom-[13rem] z-10 lg:right-5"
+        read={readPose}
+        onYaw={(d) => {
+          const m = map.current
+          if (m) m.setBearing(m.getBearing() + (d * 180) / Math.PI)
+        }}
+        onPitch={(d) => {
+          const m = map.current
+          if (m) m.setPitch(Math.min(70, Math.max(0, m.getPitch() + (d * 180) / Math.PI)))
+        }}
+        onNorth={() => map.current?.easeTo({ bearing: 0, duration: 450 })}
+      />
+    </div>
+  )
 }

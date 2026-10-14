@@ -5,6 +5,11 @@
 export const pad = { x: 0, y: 0 }
 /** Running: the on-screen button, or Shift held. */
 export const sprint = { on: false, shift: false }
+/**
+ * Orbit gizmo, consumed once per frame by the walker.
+ * `yaw` turns right (radians), `pitch` looks further down, `snap` looks north.
+ */
+export const cameraTurn = { yaw: 0, pitch: 0, snap: false }
 export const running = () => sprint.on || sprint.shift
 const keys = { x: 0, y: 0 }
 

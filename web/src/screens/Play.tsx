@@ -7,6 +7,9 @@ import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
 import { WorldMap } from './WorldMap'
 import { Joystick, RunButton } from '../components/Joystick'
+import { cameraTurn } from '../world3d/input'
+import { whereabouts } from '../world3d/whereabouts'
+import { OrbitGizmo } from '../components/OrbitGizmo'
 import { TravelCTA, type OnTravel } from '../components/TravelCTA'
 import { Portrait } from '../avatar/portrait'
 import { Neighbourhood } from '../world3d/Neighbourhood'
@@ -47,6 +50,8 @@ function useIsDesktop() {
 // In development, ?hour=22 shows the street at that hour (to check the night).
 const HOUR_OVERRIDE = import.meta.env.DEV && new URLSearchParams(location.search).get('hour') ? Number(new URLSearchParams(location.search).get('hour')) : undefined
 const MAP_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
+
+const streetPose = () => ({ heading: whereabouts.heading, polar: whereabouts.polar })
 
 export function Play() {
   const world = useWorld((s) => s.world)!
@@ -450,11 +455,21 @@ export function Play() {
         </div>
       )}
       {whereTo && <WhereTo world={world} onWalk={(id) => (setWhereTo(false), walkTo(id))} onClose={() => setWhereTo(false)} />}
-      {!classic && !showInside && !placeId && !overlay && (
-        <button className="hud absolute top-[5.5rem] right-3 z-20 flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold lg:right-5" onClick={() => setCloseView((v) => !v)}>
-          {closeView ? <Mountain size={17} strokeWidth={2.6} className="text-[var(--color-emerald)]" /> : <Eye size={17} strokeWidth={2.6} className="text-[var(--color-emerald)]" />}
-          {closeView ? 'Vue de haut' : 'Vue de près'}
-        </button>
+      {!showInside && !placeId && !overlay && (
+        <div className="absolute top-[5.5rem] right-3 z-20 flex flex-col items-end gap-2 lg:right-5">
+          {!classic && (
+            <button className="hud flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={() => setCloseView((v) => !v)}>
+              {closeView ? <Mountain size={17} strokeWidth={2.6} className="text-[var(--color-emerald)]" /> : <Eye size={17} strokeWidth={2.6} className="text-[var(--color-emerald)]" />}
+              {closeView ? 'Vue de haut' : 'Vue de près'}
+            </button>
+          )}
+          <OrbitGizmo
+            read={streetPose}
+            onYaw={(d) => (cameraTurn.yaw += d)}
+            onPitch={(d) => (cameraTurn.pitch += d)}
+            onNorth={() => (cameraTurn.snap = true)}
+          />
+        </div>
       )}
       {freeCam && !placeId && !overlay && (
         <button className="hud motion-pop absolute right-3 bottom-[6.25rem] z-20 flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-extrabold lg:right-5 lg:bottom-[7.5rem]" onClick={() => setRecenter((n) => n + 1)}>
