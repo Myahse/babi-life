@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { Fragment, useEffect, useMemo, useRef } from 'react'
 import { createPortal, useFrame } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
@@ -90,7 +90,10 @@ function cutFor(l: Required<Look>, femme: boolean): Cut {
 /* ---------- The body's material: skin, clothes, face ---------- */
 
 const BODY_VERT_HEAD = /* glsl */ `
+uniform float uLayer, uLooseTop, uLooseBottom;
 attribute vec2 _zone;
+attribute float _ao;
+varying float vAo;
 varying vec2 vZone;
 varying vec3 vRest;
 varying vec3 vRestN;
@@ -107,13 +110,15 @@ float clothAt(vec2 z, vec3 p) {
   // The neckline goes round the neck: away from it (the shoulders) it's all
   // covered; near it, below the line, lower in front for a V or a scoop.
   float front = max(0.0, p.z) * 4.0 * smoothstep(0.08, 0.0, abs(p.x));
-  if (abs(p.x) > 0.075 + uTop * 0.6 && p.y < uNeck + 0.05) return 1.0;
-  if (p.y < uNeck - front * uVneck - uTop * 0.4 * smoothstep(0.03, 0.09, abs(p.x))) return 1.0;
+  float rise = 0.07 * smoothstep(0.055 + uTop * 0.6, 0.115 + uTop * 0.6, abs(p.x));
+  if (p.y < uNeck - front * uVneck - uTop * 0.4 * smoothstep(0.03, 0.09, abs(p.x)) + rise) return 1.0;
   return 0.0;
 }
 `
 
 const BODY_FRAG_HEAD = /* glsl */ `
+varying float vAo;
+uniform float uLayer;
 varying vec2 vZone;
 varying vec3 vRest;
 varying vec3 vRestN;
@@ -134,8 +139,8 @@ float clothAt(vec2 z, vec3 p) {
   // The neckline goes round the neck: away from it (the shoulders) it's all
   // covered; near it, below the line, lower in front for a V or a scoop.
   float front = max(0.0, p.z) * 4.0 * smoothstep(0.08, 0.0, abs(p.x));
-  if (abs(p.x) > 0.075 + uTop * 0.6 && p.y < uNeck + 0.05) return 1.0;
-  if (p.y < uNeck - front * uVneck - uTop * 0.4 * smoothstep(0.03, 0.09, abs(p.x))) return 1.0;
+  float rise = 0.07 * smoothstep(0.055 + uTop * 0.6, 0.115 + uTop * 0.6, abs(p.x));
+  if (p.y < uNeck - front * uVneck - uTop * 0.4 * smoothstep(0.03, 0.09, abs(p.x)) + rise) return 1.0;
   return 0.0;
 }
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -169,7 +174,7 @@ const BODY_FRAG_COLOR = /* glsl */ `
     float r = 0.0;
     // 1 moustache, 2 bouc (goatee), 3 full beard.
     if (uBeard < 1.5) r = smoothstep(0.012, 0.004, abs(p.y - (uMouth.y + 0.013))) * step(side, 0.03);
-    else if (uBeard < 2.5) r = (smoothstep(0.012, 0.004, abs(p.y - (uMouth.y + 0.013))) * step(side, 0.026) + step(p.y, uMouth.y - 0.012) * step(side, 0.022)) * below;
+    else if (uBeard < 2.5) r = (smoothstep(0.012, 0.004, abs(p.y - (uMouth.y + 0.013))) * smoothstep(0.03, 0.022, side) + smoothstep(1.0, 0.7, length(vec2(side / 0.022, (p.y - (uChin.y + 0.012)) / 0.024)))) * below;
     else r = below * smoothstep(0.075, 0.05, side) * (1.0 - lips);
     r *= front2 * (0.75 + 0.25 * hash(floor(p.xy * 900.0)));
     c = mix(c, uBrow, clamp(r, 0.0, 1.0) * 0.92);
@@ -206,27 +211,39 @@ const BODY_FRAG_COLOR = /* glsl */ `
     f *= 0.96 + 0.04 * hash(floor(p.xy * 700.0));
     c = f;
   }
+  float skinAmt = cloth < 0.5 ? 1.0 : 0.0;
+  // Creases: under the nose, the eye sockets, armpits, between the fingers.
+  c *= mix(1.0, vAo, 0.85);
   diffuseColor.rgb = c;
 `
 
 export type BodyUniforms = Record<string, THREE.IUniform>
 
-function bodyMaterial(u: BodyUniforms) {
+/**
+ * The body (layer 0: skin, with the clothes painted on under the garments)
+ * and the garments (1: the top's shell, 2: the trousers'), which show only
+ * where the outfit covers.
+ */
+function bodyMaterial(u: BodyUniforms, layer = 0) {
   const m = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.62, metalness: 0 })
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, u)
+    sh.uniforms.uLayer = { value: layer }
     sh.vertexShader = BODY_VERT_HEAD + sh.vertexShader.replace(
       '#include <begin_vertex>',
       `#include <begin_vertex>
-      vZone = _zone; vRest = position; vRestN = normal;
-      float cl = clothAt(_zone, position);
-      // Clothes have a thickness; trouser legs fall straight from the knee,
-      // shoes are a size up; the front of the crotch is smoothed under cloth.
-      float th = cl > 2.5 ? 0.011 : cl > 1.5 ? 0.004 + (_zone.y > -0.5 ? 0.006 + 0.016 * smoothstep(0.7, 1.8, _zone.y) : 0.0) : cl > 0.5 ? 0.0025 + (_zone.x > -0.5 ? 0.001 + 0.008 * smoothstep(0.2, 1.4, _zone.x) : 0.0) : 0.0;
-      transformed += normal * th;
-      if (cl > 1.5 && cl < 2.5 && _zone.x < -0.5 && abs(position.x) < 0.07 && position.y < uWaist - 0.06) transformed.z -= max(0.0, position.z - 0.035) * 0.65;`,
+      vZone = _zone; vRest = position; vRestN = normal; vAo = _ao;
+      // Looser garments (a jacket, a boubou, a tracksuit) stand further out.
+      if (uLayer > 0.5 && uLayer < 2.5) transformed += normal * (uLayer < 1.5 ? uLooseTop : uLooseBottom);`,
     )
-    sh.fragmentShader = BODY_FRAG_HEAD + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>\n${BODY_FRAG_COLOR}`)
+    sh.fragmentShader =
+      BODY_FRAG_HEAD +
+      sh.fragmentShader
+        .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>\nif (uLayer > 0.5 && (abs(clothAt(vZone, vRest) - uLayer) > 0.1 || (uLayer > 2.5 && uSandal > 0.5))) discard;`)
+        .replace('#include <color_fragment>', `#include <color_fragment>\n${BODY_FRAG_COLOR}`)
+        // Skin a little glossy, cloth matte; the skin's warmth in the shadows.
+        .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>\nroughnessFactor = mix(0.86, 0.5, skinAmt);`)
+        .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>\ntotalEmissiveRadiance += skinAmt * uSkin * 0.07 * vAo;`)
   }
   m.customProgramCacheKey = () => 'babi-body'
   return m
@@ -323,6 +340,8 @@ export function MHHuman({ look, gender, pose = 'idle', seed = 0, headScale = 1, 
       uHemY: { value: 0 },
       uBelt: { value: 0 },
       uArmX: { value: 0 },
+      uLooseTop: { value: 0 },
+      uLooseBottom: { value: 0 },
       uArmY: { value: 0 },
       uNeck: { value: 0 },
       uVneck: { value: 0 },
@@ -356,11 +375,18 @@ export function MHHuman({ look, gender, pose = 'idle', seed = 0, headScale = 1, 
       uHeadC: { value: v3(info.landmarks.headCenter as V3) },
     }
     meshes.body.material = bodyMaterial(u)
+    meshes.shirt.material = bodyMaterial(u, 1)
+    meshes.pants.material = bodyMaterial(u, 2)
     meshes.skirt.material = skirtMaterial(u)
     meshes.scalp.material = hairMaterial(u)
     meshes.lashes.material = new THREE.MeshStandardMaterial({ color: '#120c0a', roughness: 1, side: THREE.DoubleSide })
     meshes.teeth.material = new THREE.MeshStandardMaterial({ color: '#f4efe4', roughness: 0.4 })
-    return { root, meshes, bone, u, skeleton: meshes.body.skeleton }
+    // Setting a morph on every piece that has it (the lashes blink with the lids).
+    const slots: Record<string, { infl: number[]; i: number }[]> = {}
+    for (const m of Object.values(meshes))
+      for (const [k, i] of Object.entries(m.morphTargetDictionary ?? {})) if (m.morphTargetInfluences) (slots[k] ??= []).push({ infl: m.morphTargetInfluences, i })
+    const morph = (k: string, v: number) => slots[k]?.forEach((x) => (x.infl[x.i] = v))
+    return { root, meshes, bone, u, skeleton: meshes.body.skeleton, morph }
   }, [gltf, info])
   useEffect(() => () => Object.values(model.meshes).forEach((m) => (m.material as THREE.Material).dispose()), [model])
 
@@ -376,7 +402,7 @@ export function MHHuman({ look, gender, pose = 'idle', seed = 0, headScale = 1, 
     const world: Record<string, THREE.Vector3> = {}
     for (const b of info.bones) {
       const p = v3(info.joints[b])
-      for (const [k, w] of Object.entries(infl)) if (w) p.addScaledVector(v3(info.jointDeltas[k][b]), w)
+      for (const [k, w] of Object.entries(infl)) if (w && info.jointDeltas[k]) p.addScaledVector(v3(info.jointDeltas[k][b]), w)
       world[b] = p
     }
     info.bones.forEach((b, i) => {
@@ -414,6 +440,8 @@ export function MHHuman({ look, gender, pose = 'idle', seed = 0, headScale = 1, 
   u.uWaxMap.value = u.uWax.value ? waxTexture(cut.skirt && l.bottomColor ? l.bottomColor : l.outfitColor, l.pattern) : null
   if (u.uWaxMap.value) (u.uWaxMap.value as THREE.Texture).wrapS = (u.uWaxMap.value as THREE.Texture).wrapT = THREE.RepeatWrapping
   u.uDetail.value = cut.detail
+  u.uLooseTop.value = l.outfit === 'suit' ? 0.012 : l.outfit === 'boubou' ? 0.014 : l.outfit === 'survet' ? 0.008 : 0.002
+  u.uLooseBottom.value = l.outfit === 'suit' || l.outfit === 'survet' || l.outfit === 'boubou' ? 0.006 : 0
   u.uBeard.value = femme ? 0 : ({ none: 0, moustache: 1, bouc: 2, full: 3 } as Record<string, number>)[l.beard] ?? 0
   u.uHem.value = cut.skirtHem ?? 1
   u.uFlare.value = cut.flare ?? 1
@@ -469,6 +497,7 @@ export function MHHuman({ look, gender, pose = 'idle', seed = 0, headScale = 1, 
     speed,
   )
   const q = useMemo(() => new THREE.Quaternion(), [])
+  const face = useRef({ blink: -1, next: 1 + (seed % 3), now: { smile: 0, open: 0, browsUp: 0, frown: 0 } })
   useEffect(() => {
     SIDE.forEach((s, i) => {
       for (let f = 2; f <= 5; f++) for (let k = 1; k <= 3; k++) model.bone(`finger${f}-${k}${s}`).quaternion.setFromAxisAngle(rest[i].axis, k === 1 ? 0.25 : 0.35)
@@ -480,9 +509,29 @@ export function MHHuman({ look, gender, pose = 'idle', seed = 0, headScale = 1, 
       model.bone('upperarm01' + s).quaternion.copy(rest[i].qsInv).multiply(q.setFromEuler(arm[i].rotation)).multiply(rest[i].qa)
       model.bone('lowerarm01' + s).quaternion.copy(q.setFromEuler(fore[i].rotation)).multiply(rest[i].qf)
     })
-    // The jaw: talking, shouting, singing.
+    // The face: a blink every few seconds, a smile when happy, the mouth
+    // and brows when talking, a frown when ranting (MakeHuman's expressions).
+    const t = clock.elapsedTime
+    const f = face.current
+    if (t > f.next) {
+      f.blink = t
+      f.next = t + 2 + ((Math.sin(t * 12.99 + seed * 7.1) * 43758.5) % 1 + 1) % 1 * 4
+    }
+    const bu = (t - f.blink) / 0.17
+    const blink = bu >= 0 && bu < 1 ? Math.sin(bu * Math.PI) : 0
+    const happy = pose === 'cheer' || pose === 'dance' || pose === 'wave' || pose === 'hug'
     const talk = pose === 'talk' || pose === 'rant' || pose === 'cheer'
-    model.bone('jaw').rotation.x = talk ? Math.max(0, Math.sin(clock.elapsedTime * 9 + seed)) * 0.09 : 0
+    const ease = (k: keyof typeof f.now, v: number) => (f.now[k] += (v - f.now[k]) * 0.12)
+    ease('smile', happy ? 0.9 : pose === 'talk' ? 0.3 + 0.25 * Math.sin(t * 0.6 + seed) : pose === 'rant' || pose === 'beg' ? 0 : 0.15)
+    ease('open', talk ? Math.max(0, Math.sin(t * 9 + seed)) * (pose === 'cheer' ? 0.8 : 0.45) : pose === 'dance' ? 0.15 : 0)
+    ease('browsUp', pose === 'cheer' || pose === 'wave' ? 0.6 : pose === 'talk' ? Math.max(0, Math.sin(t * 1.7 + seed)) * 0.5 : 0)
+    ease('frown', pose === 'rant' || pose === 'beg' ? 0.7 : 0)
+    model.morph('blinkL', blink)
+    model.morph('blinkR', blink)
+    model.morph('smile', f.now.smile)
+    model.morph('open', f.now.open)
+    model.morph('browsUp', f.now.browsUp)
+    model.morph('frown', f.now.frown)
   })
 
   // A child's head is bigger for the body (the morph already gives a child's proportions).
@@ -494,6 +543,8 @@ export function MHHuman({ look, gender, pose = 'idle', seed = 0, headScale = 1, 
         <primitive object={model.root} />
         {createPortal(<Eyes info={info} eyes={l.eyes} />, model.bone('head'))}
         {createPortal(<HeadExtras info={info} l={l} hair={hair} femme={femme} />, model.bone('head'))}
+        {!cut.sandal &&
+          SIDE.map((s) => <Fragment key={s}>{createPortal(<Shoe info={info} side={s} color={l.shoeColor || dc.shoe} dress={l.outfit === 'suit' || (l.outfit === 'pagne' && !femme) || l.outfit === 'robe'} />, model.bone('foot' + s))}</Fragment>)}
         {(l.marks === 'genou' || l.marks === 'bagarre') && createPortal(<KneeBandage info={info} />, model.bone('lowerleg01.R'))}
         {l.accessory === 'chain' && createPortal(<Chain info={info} color={l.accessoryColor || dc.accessory} />, model.bone('neck01'))}
       </group>
@@ -537,11 +588,26 @@ const EYE = (() => {
 
 function Eyes({ info, eyes }: { info: Info; eyes: string }) {
   const m = useMemo(() => new THREE.MeshStandardMaterial({ map: eyeTexture(eyes), roughness: 0.15 }), [eyes])
+  // The eyes look here, then there (small, quick moves), mostly ahead.
+  const refs = [useRef<THREE.Mesh>(null), useRef<THREE.Mesh>(null)]
+  const gaze = useRef({ x: 0, y: 0, tx: 0, ty: 0, next: 0 })
+  useFrame(({ clock }) => {
+    const g = gaze.current
+    const t = clock.elapsedTime
+    if (t > g.next) {
+      const r1 = Math.random()
+      ;[g.tx, g.ty] = r1 < 0.45 ? [0, 0] : [(Math.random() - 0.5) * 0.2, (Math.random() - 0.5) * 0.6]
+      g.next = t + 0.7 + Math.random() * 2.2
+    }
+    g.x += (g.tx - g.x) * 0.35
+    g.y += (g.ty - g.y) * 0.35
+    for (const ref of refs) ref.current?.rotation.set(g.x, g.y, 0)
+  })
   return (
     <>
-      {(['eyeL', 'eyeR'] as const).map((k) => {
+      {(['eyeL', 'eyeR'] as const).map((k, i) => {
         const p = local(info, info.landmarks[k] as V3)
-        return <mesh key={k} geometry={EYE} material={m} position={[p[0], p[1], p[2] - 0.0035]} />
+        return <mesh key={k} ref={refs[i]} geometry={EYE} material={m} position={[p[0], p[1], p[2] - 0.0035]} />
       })}
     </>
   )
@@ -706,6 +772,44 @@ function KneeBandage({ info }: { info: Info }) {
     <mesh material={solid('#f2efe8', 0.95)} position={[0, -0.02, 0.012]}>
       <cylinderGeometry args={[r, r * 0.95, 0.09, 14, 1, true]} />
     </mesh>
+  )
+}
+
+/**
+ * A shoe on a foot (in the foot bone's space): a rounded shape from heel to
+ * toes, lower at the toe, on a flat sole. Trainers have a white sole, town
+ * shoes are slimmer and shine.
+ */
+const SHOE = (() => {
+  const g = new THREE.SphereGeometry(1, 28, 16)
+  const p = g.attributes.position
+  for (let i = 0; i < p.count; i++) {
+    let [x, y, z] = [p.getX(i), p.getY(i), p.getZ(i)]
+    // Boxier than a ball; narrower at the heel; lower towards the toe; flat underneath.
+    const box = (c: number) => Math.sign(c) * Math.pow(Math.abs(c), 0.6)
+    ;[x, y, z] = [box(x), box(y), box(z)]
+    x *= 0.82 + 0.18 * THREE.MathUtils.smoothstep(z, -1, 0.2)
+    y = Math.max(y, -0.72) * (1 - 0.22 * THREE.MathUtils.smoothstep(z, 0.1, 1))
+    p.setXYZ(i, x, y, z)
+  }
+  g.computeVertexNormals()
+  return g
+})()
+
+function Shoe({ info, side, color: c, dress }: { info: Info; side: string; color: string; dress: boolean }) {
+  const j = info.joints['foot' + side]
+  const box = info.landmarks[side === '.L' ? 'footL' : 'footR'] as unknown as { min: V3; max: V3 }
+  const W = box.max[0] - box.min[0] + (dress ? 0.012 : 0.022)
+  const L = box.max[2] - box.min[2] + (dress ? 0.03 : 0.036)
+  const H = dress ? 0.082 : 0.092
+  const pos: V3 = [(box.min[0] + box.max[0]) / 2 - j[0], 0.72 * (H / 2) + (dress ? 0.006 : 0.012) - j[1], (box.min[2] + box.max[2]) / 2 + 0.008 - j[2]]
+  const light = new THREE.Color(c).getHSL({ h: 0, s: 0, l: 0 }).l > 0.5
+  return (
+    <group position={pos}>
+      <mesh geometry={SHOE} material={solid(c, dress ? 0.28 : 0.7)} scale={[W / 2, H / 2, L / 2]} />
+      {/* The sole */}
+      <mesh geometry={SHOE} material={solid(dress ? '#1b1410' : light ? '#d8d4cc' : '#f2f0ea', 0.9)} position={[0, -0.72 * (H / 2) - (dress ? 0.003 : 0.006), 0]} scale={[(W / 2) * 1.03, dress ? 0.006 : 0.012, (L / 2) * 1.02]} />
+    </group>
   )
 }
 
