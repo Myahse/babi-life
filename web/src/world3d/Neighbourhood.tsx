@@ -3,7 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Html, OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
-import type { Commune, Sim, World } from '../lib/types'
+import type { Commune, Player, Sim, World } from '../lib/types'
 import { iconFor, kindColors } from '../components/icons'
 import { IconTile } from '../components/ui'
 import { Building } from './Buildings'
@@ -14,6 +14,7 @@ import { Box, Lamp, Mat, Palm, Tree } from './props'
 import { FillerBuilding } from './Fillers'
 import { Pedestrians, Traffic, TrafficLights } from './Life'
 import { Bande, Fou, Lovers } from './Nightlife'
+import { OtherPlayers } from './Players'
 import { SHORE_Z, rng, themeFor, type Theme } from './themes'
 import { lifeOf } from '../game/rules'
 import { HAPPENING_DOOR, HappeningMarker, HappeningScene, STOPS_TRAFFIC } from './Happenings'
@@ -39,6 +40,9 @@ type Props = {
   onNear?: (placeId: string | null) => void
   /** The pad can't move the Sim (busy doing something). */
   frozen?: boolean
+  /** Other players in the commune right now. */
+  players?: Player[]
+  onPickPlayer?: (id: string) => void
 }
 
 const SPEED = 4.2 // metres per second: a brisk walk, so errands don't drag
@@ -67,7 +71,7 @@ export function Neighbourhood(props: Props) {
   )
 }
 
-function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, nameTag, onNear, frozen, hour }: Props & { night: boolean; dusk: boolean }) {
+function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, nameTag, onNear, frozen, hour, players, onPickPlayer }: Props & { night: boolean; dusk: boolean }) {
   const rain = happening?.id === 'pluie'
   const blackout = night && happening?.id === 'delestage'
   const lit = night && !blackout // street lamps and windows
@@ -139,6 +143,7 @@ function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy,
         ),
       )}
 
+      {players && players.length > 0 && <OtherPlayers players={players} lots={places} labels={labels} onPick={(id) => onPickPlayer?.(id)} />}
       <Walker stage={lifeOf(world, sim).stage?.id ?? 'adulte'} nameTag={nameTag} labels={labels} stationAt={stationAt ?? null} sim={sim} lots={places} blocks={lots} shore={!!theme.waterfront} moodColor={moodColor} goTo={goTo} onArrive={onArrive} busy={busy} onNear={onNear} frozen={!!frozen} />
     </>
   )

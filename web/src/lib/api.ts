@@ -1,4 +1,4 @@
-import type { ActionResult, HappeningNow, NewsItem, Look, Sim, User, World, Ride } from './types'
+import type { ActionResult, HappeningNow, NewsItem, Look, Sim, User, World, Ride, Around } from './types'
 import { useSession } from '../store/session'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
@@ -40,6 +40,9 @@ export type NewSim = {
   aspiration: string
   homeCity: string
   homeCommune: string
+  /** Where the player is, if shared: the Sim is born in the nearest commune. */
+  lat?: number
+  lng?: number
 }
 
 export const api = {
@@ -70,4 +73,8 @@ export const api = {
   gang: (id: string, action: string) => post<ActionResult>(`/sims/${id}/gang`, { action }),
   order: (id: string, place: string, dish: string) => post<ActionResult>(`/sims/${id}/order`, { place, dish }),
   stop: (id: string) => post<ActionResult>(`/sims/${id}/stop`, {}),
+  /** Other players: who's in the commune, invitations, player friends. */
+  around: (id: string) => request<Around>(`/sims/${id}/around`),
+  meet: (id: string, to: string, action: 'saluer' | 'inviter' | 'rejoindre') => post<ActionResult>(`/sims/${id}/meet`, { to, action }),
+  answerInvite: (id: string, invite: string, answer: 'accepter' | 'refuser') => post<ActionResult>(`/sims/${id}/invites/${invite}`, { answer }),
 }

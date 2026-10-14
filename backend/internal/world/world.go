@@ -403,6 +403,28 @@ var Cities = []City{
 	},
 }
 
+// Nearest: the commune closest to a real position, if one is within maxKm.
+// Its places count as well as its centre, since communes aren't round. Only
+// the commune is kept: the player's coordinates are never stored.
+func Nearest(lat, lng, maxKm float64) (City, Commune, bool) {
+	var bestCity City
+	var best Commune
+	bestKm := math.Inf(1)
+	for _, c := range Cities {
+		for _, cm := range c.Communes {
+			if d := distanceKm(lat, lng, cm.Lat, cm.Lng); d < bestKm {
+				bestCity, best, bestKm = c, cm, d
+			}
+			for _, p := range cm.Places {
+				if d := distanceKm(lat, lng, p.Lat, p.Lng); d < bestKm {
+					bestCity, best, bestKm = c, cm, d
+				}
+			}
+		}
+	}
+	return bestCity, best, bestKm <= maxKm
+}
+
 func FindCity(id string) (City, bool) {
 	for _, c := range Cities {
 		if c.ID == id {

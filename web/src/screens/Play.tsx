@@ -22,6 +22,7 @@ import { GolvoApp, deliveryState, type Delivery } from './GolvoApp'
 import { WayeApp } from './WayeApp'
 import { StoreApp } from './StoreApp'
 import { FriendsApp } from './FriendsApp'
+import { InviteBanner, PlayersChip, PlayersSheet, usePlayers } from '../components/Players'
 
 type Toast = { id: number; title: string; text?: string; money: number; tone: 'random' | 'done' | 'error' | 'promo' | 'event'; kind?: string; icon?: string }
 
@@ -61,6 +62,9 @@ export function Play() {
   // A Golvo order on its way, and the phone app to open.
   const [delivery, setDelivery] = useState<Delivery | null>(null)
   const [phoneApp, setPhoneApp] = useState<PhoneAppId | null>(null)
+  // The other players in the commune, and the invitations they send.
+  const [players, setPlayers] = useState<{ focus: string | null } | null>(null)
+  const [dismissed, setDismissed] = useState<string[]>([])
   const announced = useRef('')
 
   useEffect(() => {
@@ -188,6 +192,7 @@ export function Play() {
       const res = await call()
       apply(res)
       if (res.outcome.text) toast({ tone: 'done', title: res.outcome.text, money: res.outcome.money, kind, icon })
+      if (kind === 'social') refreshPlayers()
       return true
     } catch (e) {
       toast({ tone: 'error', title: 'Pas possible', text: e instanceof Error ? e.message : 'Erreur', money: 0 })
@@ -231,6 +236,9 @@ export function Play() {
     run(d.dish.label, d.dish.icon, 'eat', () => api.order(sim!.id, d.place.id, d.dish.id)).then((ok) => ok && setDelivery(null))
   }
 
+  // Live: the other players in the commune, every few seconds.
+  const [around, refreshPlayers] = usePlayers(base?.sim.id, `${sim?.city}/${sim?.commune}`)
+
   if (!sim) {
     return (
       <div className="grid h-full place-items-center bg-[var(--color-night)] text-white">
@@ -271,7 +279,7 @@ export function Play() {
     <div className="relative h-full overflow-hidden bg-[var(--color-night)] select-none">
       {showInside && (
         <div className="absolute inset-0 z-[1]">
-          <Interior sim={sim} kind={inside!.kind} placeId={inside!.id} interactionId={inside!.it} housing={sim.housing} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
+          <Interior sim={sim} kind={inside!.kind} placeId={inside!.id} interactionId={inside!.it} housing={sim.housing} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id && inside!.id !== 'home')} />
         </div>
       )}
       {inside && (
@@ -296,6 +304,8 @@ export function Play() {
           happening={happening}
           onNear={setNear}
           frozen={!!sim.activity || !!pending}
+          players={around.players}
+          onPickPlayer={(id) => setPlayers({ focus: id })}
         />
       </div>
 
@@ -317,6 +327,7 @@ export function Play() {
         </Link>
 
         <div className="pointer-events-auto flex flex-wrap items-center justify-end gap-2">
+          <PlayersChip count={around.players.length} invites={around.invites.length} onOpen={() => setPlayers({ focus: null })} />
           <div className="hud flex h-11 items-center gap-1.5 rounded-full pr-4 pl-1.5">
             <span key={sim.money} className="motion-coin">
               <Coin size={30} />
@@ -393,6 +404,18 @@ export function Play() {
       {placeId && placeId !== 'happening' && (
         <InteractionMenu world={world} sim={sim} city={city} commune={commune} placeId={placeId} desktop={desktop} onClose={() => setPlaceId(null)} onPick={interact} onTravel={travel} onStop={stop} />
       )}
+
+      {players && <PlayersSheet sim={sim} around={around} communeName={commune.name} focus={players.focus} act={run} onClose={() => setPlayers(null)} />}
+      {!players && !placeId && !overlay && (() => {
+        const inv = around.invites.find((i) => !dismissed.includes(i.id))
+        return inv ? (
+          <InviteBanner
+            key={inv.id}
+            invite={inv}
+            onAnswer={(a) => (setDismissed((d) => [...d, inv.id]), run(a === 'accepter' ? `Rejoindre ${inv.fromName}` : 'Refuser', a === 'accepter' ? 'users' : 'x', 'social', () => api.answerInvite(sim.id, inv.id, a)))}
+          />
+        ) : null
+      })()}
 
       {sim.activity && !placeId && <ActivityBar sim={sim} onStop={stop} stopping={!!pending} onRoute={() => setOverlay('map')} />}
 

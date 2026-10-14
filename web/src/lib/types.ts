@@ -68,6 +68,22 @@ export type Origin = Option & { money: number; loan: number; housing: string }
 export type Family = { id: string; label: string; icon: string; hint: string; /** The kind of neighbourhood, found in every commune. */ sector: string; housing: string; pocket: number; start: number; leave: string; bacGift: number; weight: number }
 /** Someone the Sim knows. */
 export type Friend = { id: string; name: string; gender: 'femme' | 'homme'; seed: number; commune: string; friendship: number; gang?: boolean; met: number; seen: number }
+/** Another player's Sim, as others see it. */
+export type Player = {
+  id: string
+  firstName: string
+  username: string
+  gender: 'femme' | 'homme'
+  look: Look
+  stage: LifeStage['id']
+  activity?: { placeId: string; placeName: string; interactionId: string; label: string; icon: string; joinable: boolean }
+  friendship: number
+  city?: string
+  commune?: string
+  online: boolean
+}
+export type Invite = { id: string; from: string; fromName: string; placeId: string; interactionId: string; label: string; at: string }
+export type Around = { players: Player[]; friends: Player[]; invites: Invite[] }
 export type FriendAction = { id: string; label: string; icon: string; minutes: number; cost: number; friendship: number; phone?: boolean }
 /** A stage of life, from an age in years. */
 export type LifeStage = { id: 'bebe' | 'enfant' | 'ado' | 'adulte'; label: string; from: number; scale: number }

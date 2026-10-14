@@ -1,7 +1,7 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Handshake, LogOut, Phone, ShieldAlert, Users, Zap } from 'lucide-react'
 import { api } from '../lib/api'
-import type { Friend, Sim, World } from '../lib/types'
+import type { Friend, Player, Sim, World } from '../lib/types'
 import { Portrait } from '../avatar/portrait'
 import { randomLook } from '../avatar/options'
 import { rng } from '../world3d/themes'
@@ -73,7 +73,9 @@ export function FriendsApp({ world, sim, act }: { world: World; sim: Sim; act: A
         </p>
       )}
 
-      <div className="label">Tes amis</div>
+      <PlayerFriends world={world} sim={sim} />
+
+      <div className="label">Tes amis du quartier</div>
       {friends.length === 0 ? (
         <p className="text-sm font-bold text-[var(--color-ink-soft)]">Personne encore. Va à l'école, joue au foot, sors au maquis : on se fait des amis en faisant des choses ensemble.</p>
       ) : (
@@ -116,5 +118,48 @@ function FriendRow({ f, world, canCall, busy, onAct }: { f: Friend; world: World
         ))}
       </div>
     </li>
+  )
+}
+
+/** Friends made with other players: who's online, and where. */
+function PlayerFriends({ world, sim }: { world: World; sim: Sim }) {
+  const [friends, setFriends] = useState<Player[] | null>(null)
+  useEffect(() => {
+    api
+      .around(sim.id)
+      .then((a) => setFriends(a.friends))
+      .catch(() => setFriends([]))
+  }, [sim.id])
+  if (!friends) return null
+  const communeName = (p: Player) => world.cities.find((c) => c.id === p.city)?.communes.find((c) => c.id === p.commune)?.name ?? ''
+  return (
+    <>
+      <div className="label">Tes amis joueurs</div>
+      {friends.length === 0 ? (
+        <p className="text-sm font-bold text-[var(--color-ink-soft)]">Les Sims en bleu dans la rue sont d'autres joueurs : salue-les, rejoins-les, invite-les, et vous deviendrez amis.</p>
+      ) : (
+        <ul className="space-y-2">
+          {friends.map((p) => (
+            <li key={p.id} className="flex items-center gap-3 rounded-2xl border border-[var(--color-line)] bg-white p-3">
+              <span className="relative block h-11 w-11 shrink-0">
+                <span className="block h-11 w-11 overflow-hidden rounded-full bg-gradient-to-b from-[#dbeafe] to-[#93c5fd]">
+                  <Portrait look={p.look} gender={p.gender} framing="head" />
+                </span>
+                <span className={`absolute right-0 bottom-0 h-3 w-3 rounded-full ring-2 ring-white ${p.online ? 'bg-[#00b86b]' : 'bg-[#adb5bd]'}`} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="font-display text-base leading-tight font-extrabold">{p.username ? `@${p.username}` : p.firstName}</div>
+                <div className="truncate text-[11px] font-bold text-[var(--color-ink-soft)]">
+                  {p.online ? (p.activity ? `${p.activity.label} · ${p.activity.placeName}` : `En ligne · ${communeName(p)}`) : `Hors ligne · ${communeName(p)}`}
+                </div>
+                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[var(--color-canvas)]">
+                  <div className="h-full rounded-full bg-[#2563eb]" style={{ width: `${p.friendship}%` }} />
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
   )
 }

@@ -48,7 +48,7 @@ export function CreateSim() {
   const [step, setStep] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [born, setBorn] = useState<{ family: Family; commune: string } | null>(null)
+  const [born, setBorn] = useState<{ family: Family; commune: string; located: boolean } | null>(null)
   const [sim, setSim] = useState<NewSim & { look: Required<Look> }>({
     // Taken from the account; the player only corrects them if needed.
     firstName: user?.firstName || user?.name.split(' ')[0] || 'Awa',
@@ -102,9 +102,14 @@ export function CreateSim() {
         const u = await api.setUsername(username)
         signIn(token!, u)
       }
-      const created = await api.createSim(sim)
+      // Born where the player really is: only the nearest commune is kept.
+      const pos = await whereAmI()
+      const created = await api.createSim({ ...sim, ...pos })
       const drawn = world!.families?.find((f) => f.id === created.family)
-      if (drawn) setBorn({ family: drawn, commune: world!.cities.find((c) => c.id === created.homeCity)?.communes.find((c) => c.id === created.homeCommune)?.name ?? '' })
+      const city = world!.cities.find((c) => c.id === created.homeCity)
+      const cm = city?.communes.find((c) => c.id === created.homeCommune)
+      const place = cm && city && cm.name !== city.name ? `${cm.name}, ${city.name}` : (cm?.name ?? '')
+      if (drawn) setBorn({ family: drawn, commune: place, located: !!pos })
       else navigate('/jeu', { viewTransition: true })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erreur')
@@ -318,7 +323,7 @@ export function CreateSim() {
           {current.id === 'home' && (
             <div className="space-y-3">
               <p className="text-sm font-bold text-[var(--color-ink-soft)]">
-                {sim.firstName || 'Ton Sim'} naît bébé à Abidjan, et grandit : enfant à 3 ans, ado à 12, adulte à 18 (une année de jeu dure 8 heures). La famille est tirée au sort, comme dans la vraie vie, et chaque commune a ses quartiers riches et pauvres.
+                {sim.firstName || 'Ton Sim'} naît bébé <b>là où tu es</b> : à la naissance, le jeu demande ta position et choisit la commune la plus proche (seule la commune est gardée, jamais ta position). Sans position, ou loin des villes du jeu, c'est quelque part à Abidjan. Puis {sim.firstName || 'ton Sim'} grandit : enfant à 3 ans, ado à 12, adulte à 18 (une année de jeu dure 8 heures). La famille est tirée au sort, comme dans la vraie vie, et chaque commune a ses quartiers riches et pauvres.
               </p>
               {(world.families ?? []).map((f) => (
                 <div key={f.id} className="tile flex items-center gap-3 p-3">
@@ -354,7 +359,7 @@ export function CreateSim() {
           )}
         </footer>
       </section>
-      {born && <FamilyReveal family={born.family} commune={born.commune} name={sim.firstName} housing={world.housings.find((h) => h.id === born.family.housing)?.label ?? ''} onGo={() => navigate('/jeu', { viewTransition: true })} />}
+      {born && <FamilyReveal family={born.family} commune={born.commune} located={born.located} name={sim.firstName} housing={world.housings.find((h) => h.id === born.family.housing)?.label ?? ''} onGo={() => navigate('/jeu', { viewTransition: true })} />}
     </div>
   )
 }
@@ -431,7 +436,19 @@ function randomLookFor(gender: NewSim['gender'], look: Required<Look>): Required
 /** Nobody chooses where they start: the server draws it, we reveal it like a card. */
 const FAMILY_COLORS: Record<string, [string, string]> = { debout: ['#c9a227', '#6d28d9'], late: ['#ffd54f', '#ffa000'], lagnon: ['#7ee0c3', '#0f9d8a'], poignon: ['#64b5ff', '#2a6cf0'], coule: ['#69e2a0', '#00a862'], gnambro: ['#b0a8a0', '#6b625a'] }
 
-function FamilyReveal({ family, commune, name, housing, onGo }: { family: Family; commune: string; name: string; housing: string; onGo: () => void }) {
+/** The player's position, if they share it (null otherwise, or after 10 s). */
+function whereAmI(): Promise<{ lat: number; lng: number } | null> {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) return resolve(null)
+    navigator.geolocation.getCurrentPosition(
+      (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
+      () => resolve(null),
+      { timeout: 10000, maximumAge: 10 * 60000 },
+    )
+  })
+}
+
+function FamilyReveal({ family, commune, located, name, housing, onGo }: { family: Family; commune: string; located: boolean; name: string; housing: string; onGo: () => void }) {
   const colors = FAMILY_COLORS[family.id] ?? ['#ffa040', '#ff6a00']
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-[#0f1230]/70 p-4 backdrop-blur-[4px]">
@@ -445,7 +462,8 @@ function FamilyReveal({ family, commune, name, housing, onGo }: { family: Family
           <p className="mt-2 text-sm leading-snug font-bold text-white/95">{family.hint}</p>
         </div>
         <ul className="space-y-2 p-4 text-left">
-          <Fact label="Né·e à" value={`${commune}, Abidjan`} />
+          <Fact label="Né·e à" value={commune} />
+          {!located && <li className="px-1 text-xs font-bold text-[var(--color-ink-soft)]">Position non partagée : naissance quelque part à Abidjan.</li>}
           <Fact label="Le quartier" value={family.sector.charAt(0).toUpperCase() + family.sector.slice(1)} />
           <Fact label="La maison familiale" value={housing} />
           <Fact label="Argent de poche" value={family.pocket ? `${amount(family.pocket)} F le samedi` : 'Rien'} />

@@ -1,7 +1,7 @@
 import { Suspense, useMemo, useRef } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import type { Sim } from '../lib/types'
+import type { Player, Sim } from '../lib/types'
 import { Human, NoShadows, type Pose } from '../avatar/Human'
 import { randomLook } from '../avatar/options'
 import { Box } from './props'
@@ -584,7 +584,7 @@ function room(kind: string, housing: string): Room {
 
 /* ---------- The scene ---------- */
 
-export function Interior({ sim, kind, placeId, interactionId, housing, night, stage }: { sim: Sim; kind: string; placeId: string; interactionId?: string; housing: string; night: boolean; stage: string }) {
+export function Interior({ sim, kind, placeId, interactionId, housing, night, stage, others = [] }: { sim: Sim; kind: string; placeId: string; interactionId?: string; housing: string; night: boolean; stage: string; others?: Player[] }) {
   const r = room(kind, housing)
   const act = action(kind, interactionId)
   const me = r.spots[act.spot] ?? r.spots.entrance
@@ -618,6 +618,17 @@ export function Interior({ sim, kind, placeId, interactionId, housing, night, st
           <Character look={sim.look} gender={sim.gender} stage={stage} plumbob={!me.lying} busy={act.pose === 'busy'} pose={act.pose} />
         </group>
         {act.pose === 'throw' && <NoteRain from={me.p} />}
+        {/* Other players here, side by side with the Sim (blue plumbob) */}
+        {others.slice(0, 3).map((o, i) => {
+          const a = action(kind, o.activity?.interactionId)
+          const at = r.spots[a.spot] ?? r.spots.entrance
+          const dx = [-0.95, 0.95, 1.9][i]
+          return (
+            <group key={o.id} position={[at.p[0] + dx, at.p[1], at.p[2]]} rotation={[0, at.r ?? 0, 0]}>
+              <Character look={o.look} gender={o.gender} stage={o.stage} pose={a.pose} moodColor="#3b82f6" />
+            </group>
+          )
+        })}
       </Suspense>
     </Canvas>
   )

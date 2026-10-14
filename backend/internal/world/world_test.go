@@ -92,3 +92,18 @@ func TestTripPrices(t *testing.T) {
 		t.Errorf("Abidjan → Bouaké: %d min %dF", m, f)
 	}
 }
+
+func TestNearest(t *testing.T) {
+	// Angré, in Cocody; the Plateau's towers; Bouaké; Paris.
+	for _, c := range []struct {
+		lat, lng float64
+		want     string
+	}{{5.3950, -3.9850, "cocody"}, {5.3237, -4.0197, "plateau"}, {7.69, -5.03, "bouake-centre"}} {
+		if _, cm, ok := Nearest(c.lat, c.lng, 30); !ok || cm.ID != c.want {
+			t.Errorf("%v,%v: %s %v, want %s", c.lat, c.lng, cm.ID, ok, c.want)
+		}
+	}
+	if _, _, ok := Nearest(48.85, 2.35, 30); ok {
+		t.Error("Paris is not in the game")
+	}
+}

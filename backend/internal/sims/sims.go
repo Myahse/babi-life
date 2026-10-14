@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand/v2"
 	"net/http"
 	"regexp"
 	"strings"
@@ -155,6 +156,9 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/order", h.order)
 	r.Post("/sims/{id}/friend", h.friend)
 	r.Post("/sims/{id}/gang", h.gang)
+	r.Get("/sims/{id}/around", h.around)
+	r.Post("/sims/{id}/meet", h.meet)
+	r.Post("/sims/{id}/invites/{invite}", h.answerInvite)
 }
 
 const simColumns = `id, first_name, last_name, gender, look, traits, aspiration,
@@ -195,9 +199,29 @@ type createRequest struct {
 	Look       Look     `json:"look"`
 	Traits     []string `json:"traits"`
 	Aspiration string   `json:"aspiration"`
-	// Ignored: the family a Sim is born into decides where they grow up.
+	// Ignored: nobody chooses where they're born.
 	HomeCity    string `json:"homeCity,omitempty"`
 	HomeCommune string `json:"homeCommune,omitempty"`
+	// Where the player really is, if they share it: the Sim is born in the
+	// nearest commune. Only that commune is kept, never the coordinates.
+	Lat *float64 `json:"lat,omitempty"`
+	Lng *float64 `json:"lng,omitempty"`
+}
+
+// MaxBirthKm: further than this from every commune of the game (abroad, in
+// the bush), the Sim is born somewhere in Abidjan.
+const MaxBirthKm = 30
+
+// birthplace: the commune nearest the player, or anywhere in Abidjan.
+func birthplace(lat, lng *float64, rng *rand.Rand) (city, commune string) {
+	if lat != nil && lng != nil {
+		if c, cm, ok := world.Nearest(*lat, *lng, MaxBirthKm); ok {
+			return c.ID, cm.ID
+		}
+	}
+	// Any commune: each has its villas and its precarious quarters.
+	abj, _ := world.FindCity("abidjan")
+	return abj.ID, abj.Communes[rng.IntN(len(abj.Communes))].ID
 }
 
 func (req *createRequest) validate() error {
@@ -240,21 +264,19 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Like in real life, nobody picks where they start: a baby, born into a
-	// family drawn at random, somewhere in Abidjan.
+	// family drawn at random, where the player is.
 	rng := newRand()
 	fam := game.BornInto(rng)
-	// Any commune: each has its villas and its precarious quarters.
-	abj, _ := world.FindCity("abidjan")
-	commune := abj.Communes[rng.IntN(len(abj.Communes))].ID
+	cityID, commune := birthplace(req.Lat, req.Lng, rng)
 	now := game.MinuteOf(time.Now())
 	s, err := scanSim(h.DB.QueryRow(r.Context(), `
 		INSERT INTO sims (user_id, first_name, last_name, gender, look, traits, aspiration,
 		                  home_city, home_commune, city, commune, money, needs, game_minutes,
 		                  origin, housing, loan, born_at, family, apps)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, 'abidjan', $8, 'abidjan', $8, 0, $9, $10, '', $11, 0, $10, $12, '{}')
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $13, $8, $13, $8, 0, $9, $10, '', $11, 0, $10, $12, '{}')
 		RETURNING `+simColumns,
 		auth.UserID(r.Context()), req.FirstName, req.LastName, req.Gender, req.Look, req.Traits, req.Aspiration,
-		commune, game.FreshNeeds(), now, fam.Housing, fam.ID,
+		commune, game.FreshNeeds(), now, fam.Housing, fam.ID, cityID,
 	))
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "could not create sim")
@@ -301,78 +323,88 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.mutate(w, r, func(s *Sim) (game.Outcome, []Event, error) {
-		var kind game.PlaceKind
-		home := req.PlaceID == HomePlaceID
-		if req.PlaceID == HappeningPlaceID {
-			h, _, ok := game.HappeningAt(s.City, s.Commune, s.GameMinutes)
-			if !ok || h.Join == nil || req.InteractionID != game.JoinHappeningID {
-				return game.Outcome{}, nil, errors.New("c'est fini, il n'y a plus rien ici")
-			}
-			kind = h.Kind()
-			kind.Interactions = []game.Interaction{*h.Join}
-		} else if home {
-			if s.City != s.HomeCity || s.Commune != s.HomeCommune {
-				return game.Outcome{}, nil, errors.New("rentre d'abord chez toi")
-			}
-			kind = game.Kinds["home"]
-		} else {
-			city, cm, place, ok := world.FindPlace(req.PlaceID)
-			if !ok {
-				return game.Outcome{}, nil, errors.New("lieu inconnu")
-			}
-			if city.ID != s.City || cm.ID != s.Commune {
-				return game.Outcome{}, nil, fmt.Errorf("va d'abord à %s", cm.Name)
-			}
-			kind = game.Kinds[place.Kind]
-		}
-		var it game.Interaction
-		var job game.Career
-		if req.InteractionID == game.WorkInteractionID {
-			c, ok := game.FindCareer(s.Career)
-			if !ok {
-				return game.Outcome{}, nil, errors.New("tu n'as pas de travail. Ouvre l'appli Boulot")
-			}
-			if !c.WorksAt(kind.ID) {
-				return game.Outcome{}, nil, errors.New("ce n'est pas ton lieu de travail")
-			}
-			job, it = c, c.Shift(s.CareerLevel)
-		} else {
-			var ok bool
-			if it, ok = kind.Interaction(req.InteractionID); !ok {
-				return game.Outcome{}, nil, errors.New("action inconnue")
-			}
-			if home {
-				it = s.housing().AtHome(it)
-			}
-		}
-
-		// Old enough? Then: residents only, enough money, the right trait or job.
-		if err := it.AllowedFor(s.stage().ID); err != nil {
+		it, err := s.interactAt(req.PlaceID, req.InteractionID)
+		if err != nil {
 			return game.Outcome{}, nil, err
 		}
-		// Who may do it: residents only, enough money, the right trait or job.
-		if err := it.Requires.Check(game.Who{Resident: s.City == s.HomeCity && s.Commune == s.HomeCommune, Money: s.Money, Traits: s.Traits, Career: s.Career}); err != nil {
-			return game.Outcome{}, nil, err
-		}
-
-		placeName := kind.Label
-		switch {
-		case home:
-			placeName = "Chez toi"
-		case req.PlaceID == HappeningPlaceID:
-			placeName = kind.Label
-		default:
-			if _, _, place, ok := world.FindPlace(req.PlaceID); ok {
-				placeName = place.Name
-			}
-		}
-		if err := s.start(it, req.PlaceID, kind.ID, placeName, kind.Events, job.ID); err != nil {
-			return game.Outcome{}, nil, err
-		}
-		s.restyle(it.ID)
 		text := fmt.Sprintf("%s : %s (%s)", s.FirstName, it.Label, humanMinutes(it.Minutes))
 		return game.Outcome{Text: text, Money: -max(it.Cost, 0)}, nil, nil
 	})
+}
+
+// interactAt: start an interaction at a place of the Sim's commune (or at
+// home, or at the happening in the street).
+func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error) {
+	var kind game.PlaceKind
+	home := placeID == HomePlaceID
+	if placeID == HappeningPlaceID {
+		h, _, ok := game.HappeningAt(s.City, s.Commune, s.GameMinutes)
+		if !ok || h.Join == nil || interactionID != game.JoinHappeningID {
+			return game.Interaction{}, errors.New("c'est fini, il n'y a plus rien ici")
+		}
+		kind = h.Kind()
+		kind.Interactions = []game.Interaction{*h.Join}
+	} else if home {
+		if s.City != s.HomeCity || s.Commune != s.HomeCommune {
+			return game.Interaction{}, errors.New("rentre d'abord chez toi")
+		}
+		kind = game.Kinds["home"]
+	} else {
+		city, cm, place, ok := world.FindPlace(placeID)
+		if !ok {
+			return game.Interaction{}, errors.New("lieu inconnu")
+		}
+		if city.ID != s.City || cm.ID != s.Commune {
+			return game.Interaction{}, fmt.Errorf("va d'abord à %s", cm.Name)
+		}
+		kind = game.Kinds[place.Kind]
+	}
+	var it game.Interaction
+	var job game.Career
+	if interactionID == game.WorkInteractionID {
+		c, ok := game.FindCareer(s.Career)
+		if !ok {
+			return game.Interaction{}, errors.New("tu n'as pas de travail. Ouvre l'appli Boulot")
+		}
+		if !c.WorksAt(kind.ID) {
+			return game.Interaction{}, errors.New("ce n'est pas ton lieu de travail")
+		}
+		job, it = c, c.Shift(s.CareerLevel)
+	} else {
+		var ok bool
+		if it, ok = kind.Interaction(interactionID); !ok {
+			return game.Interaction{}, errors.New("action inconnue")
+		}
+		if home {
+			it = s.housing().AtHome(it)
+		}
+	}
+
+	// Old enough? Then: residents only, enough money, the right trait or job.
+	if err := it.AllowedFor(s.stage().ID); err != nil {
+		return game.Interaction{}, err
+	}
+	// Who may do it: residents only, enough money, the right trait or job.
+	if err := it.Requires.Check(game.Who{Resident: s.City == s.HomeCity && s.Commune == s.HomeCommune, Money: s.Money, Traits: s.Traits, Career: s.Career}); err != nil {
+		return game.Interaction{}, err
+	}
+
+	placeName := kind.Label
+	switch {
+	case home:
+		placeName = "Chez toi"
+	case placeID == HappeningPlaceID:
+		placeName = kind.Label
+	default:
+		if _, _, place, ok := world.FindPlace(placeID); ok {
+			placeName = place.Name
+		}
+	}
+	if err := s.start(it, placeID, kind.ID, placeName, kind.Events, job.ID); err != nil {
+		return game.Interaction{}, err
+	}
+	s.restyle(it.ID)
+	return it, nil
 }
 
 // restyle: a visit to the barbier or the salon changes the Sim's hair.
@@ -454,6 +486,16 @@ func (h *Handler) travel(w http.ResponseWriter, r *http.Request) {
 // mutate loads the Sim under a row lock, lets time pass, applies fn and saves
 // the result together with the journal entries it produced.
 func (h *Handler) mutate(w http.ResponseWriter, r *http.Request, fn func(*Sim) (game.Outcome, []Event, error)) {
+	var wrapped func(*Sim, pgx.Tx) (game.Outcome, []Event, error)
+	if fn != nil {
+		wrapped = func(s *Sim, _ pgx.Tx) (game.Outcome, []Event, error) { return fn(s) }
+	}
+	h.mutateTx(w, r, wrapped)
+}
+
+// mutateTx: like mutate, for actions that also write other rows. They must go
+// through tx: the Sim's row is locked until it commits.
+func (h *Handler) mutateTx(w http.ResponseWriter, r *http.Request, fn func(*Sim, pgx.Tx) (game.Outcome, []Event, error)) {
 	ctx := r.Context()
 	tx, err := h.DB.Begin(ctx)
 	if err != nil {
@@ -474,7 +516,7 @@ func (h *Handler) mutate(w http.ResponseWriter, r *http.Request, fn func(*Sim) (
 	if fn != nil {
 		var events []Event
 		var err error
-		if out, events, err = fn(&s); err != nil {
+		if out, events, err = fn(&s, tx); err != nil {
 			httpx.Error(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
