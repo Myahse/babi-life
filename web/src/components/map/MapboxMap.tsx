@@ -39,6 +39,9 @@ export function MapboxMap({ token, pins, camera, night, sim, padding, route, onZ
     })
     m.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right')
     m.on('load', () => {
+      // Mapbox's own CSS sets position:relative on the container, which drops
+      // the height to 0 until we measure again.
+      m.resize()
       m.addSource('civ', { type: 'geojson', data: civ as GeoJSON.FeatureCollection })
       m.addSource('mask', { type: 'geojson', data: worldMask() })
       m.addLayer({ id: 'mask', type: 'fill', source: 'mask', paint: { 'fill-color': '#0f1230', 'fill-opacity': 0.45 } })
@@ -48,6 +51,16 @@ export function MapboxMap({ token, pins, camera, night, sim, padding, route, onZ
       m.addLayer({ id: 'route-casing', type: 'line', source: 'route', filter: ['==', ['get', 'part'], 'all'], layout: { 'line-cap': 'round' }, paint: { 'line-color': '#0f1230', 'line-opacity': 0.25, 'line-width': 9 } })
       m.addLayer({ id: 'route-ahead', type: 'line', source: 'route', filter: ['==', ['get', 'part'], 'all'], layout: { 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 5, 'line-dasharray': [0.2, 2] } })
       m.addLayer({ id: 'route-done', type: 'line', source: 'route', filter: ['==', ['get', 'part'], 'done'], layout: { 'line-cap': 'round' }, paint: { 'line-color': '#ff7a00', 'line-width': 6 } })
+      // The country veil uses a coarse border. It only helps when the whole
+      // country is on screen; closer in it slices through the lagoon.
+      const board = () => {
+        const country = m.getZoom() < 8
+        m.setPaintProperty('mask', 'fill-opacity', country ? 0.45 : 0)
+        m.setPaintProperty('civ-glow', 'line-opacity', country ? 0.25 : 0)
+        m.setPaintProperty('civ-line', 'line-opacity', country ? 1 : 0)
+      }
+      board()
+      m.on('zoom', board)
     })
     map.current = m
     return () => m.remove()
@@ -152,5 +165,5 @@ export function MapboxMap({ token, pins, camera, night, sim, padding, route, onZ
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pins, sim, padding.top])
 
-  return <div ref={container} className="isolate absolute inset-0" />
+  return <div ref={container} className="isolate" style={{ position: 'absolute', inset: 0 }} />
 }
