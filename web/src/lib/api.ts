@@ -66,6 +66,8 @@ export const api = {
   repay: (id: string, what: 'loan' | 'rent', amount: number) => post<ActionResult>(`/sims/${id}/repay`, { what, amount }),
   setApp: (id: string, app: string, install: boolean) => post<ActionResult>(`/sims/${id}/apps`, { app, install }),
   send: (id: string, to: string, amount: number) => post<ActionResult>(`/sims/${id}/send`, { to, amount }),
+  friend: (id: string, friend: string, action: string) => post<ActionResult>(`/sims/${id}/friend`, { friend, action }),
+  gang: (id: string, action: string) => post<ActionResult>(`/sims/${id}/gang`, { action }),
   order: (id: string, place: string, dish: string) => post<ActionResult>(`/sims/${id}/order`, { place, dish }),
   stop: (id: string) => post<ActionResult>(`/sims/${id}/stop`, {}),
 }

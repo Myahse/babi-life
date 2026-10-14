@@ -13,7 +13,7 @@ import { moveInput } from './input'
 import { Box, Lamp, Mat, Palm, Tree } from './props'
 import { FillerBuilding } from './Fillers'
 import { Pedestrians, Traffic, TrafficLights } from './Life'
-import { Fou, Lovers } from './Nightlife'
+import { Bande, Fou, Lovers } from './Nightlife'
 import { SHORE_Z, rng, themeFor, type Theme } from './themes'
 import { lifeOf } from '../game/rules'
 import { HAPPENING_DOOR, HappeningMarker, HappeningScene, STOPS_TRAFFIC } from './Happenings'
@@ -127,6 +127,7 @@ function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy,
       <Pedestrians theme={theme} seed={commune.id} />
       <Lovers seed={commune.id} hour={hour} />
       <Fou seed={commune.id} />
+      {sim.gang === 'member' && sim.city === sim.homeCity && sim.commune === sim.homeCommune && <Bande seed={commune.id} />}
 
       {lots.map((lot) =>
         lot.kind === 'filler' ? (

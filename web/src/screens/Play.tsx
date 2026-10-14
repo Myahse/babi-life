@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BadgeCheck, Cake, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, X, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, Cake, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World, Ride } from '../lib/types'
 import { useWorld } from '../store/world'
@@ -21,6 +21,7 @@ import { AppLogo } from '../components/AppLogo'
 import { GolvoApp, deliveryState, type Delivery } from './GolvoApp'
 import { WayeApp } from './WayeApp'
 import { StoreApp } from './StoreApp'
+import { FriendsApp } from './FriendsApp'
 
 type Toast = { id: number; title: string; text?: string; money: number; tone: 'random' | 'done' | 'error' | 'promo' | 'event'; kind?: string; icon?: string }
 
@@ -427,7 +428,7 @@ export function Play() {
 
 /* ---------- The in-game phone ---------- */
 
-type PhoneAppId = 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo'
+type PhoneAppId = 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends'
 type PhoneProps = {
   world: World
   sim: Sim
@@ -472,10 +473,11 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
     { id: 'home', label: 'Logement', icon: House, colors: ['#ffb347', '#ff7a00'], open: () => setApp('home') },
     { id: 'news', label: 'Infos', icon: Newspaper, colors: ['#ff8a65', '#e8590c'], open: () => setApp('news') },
     { id: 'messages', label: 'Messages', icon: MessageCircle, colors: ['#b39dff', '#6c47ff'], open: () => setApp('messages') },
+    { id: 'friends', label: 'Amis', icon: Users, colors: ['#ffa8c5', '#e83e8c'], open: () => setApp('friends') },
     { id: 'profile', label: 'Profil', icon: UserRound, colors: ['#ff8a9b', '#ff3d57'], open: () => navigate('/profil', { viewTransition: true }) },
     ] as Tile[]
   ).filter((a) => !life.minor || (a.id !== 'jobs' && a.id !== 'home'))
-  const title: Record<PhoneAppId, string> = { here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo' }
+  const title: Record<PhoneAppId, string> = { here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo', friends: 'Amis' }
 
   return (
     <div className="absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center" onClick={onClose}>
@@ -504,7 +506,7 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
                   <button key={a.id} onClick={a.open} className="flex flex-col items-center gap-1.5 active:scale-95">
                     <span className="relative">
                       <IconTile icon={a.icon} colors={a.colors} size={60} radius={18} />
-                      {((a.id === 'messages' && journal.length > 0) || (a.id === 'home' && sim.rentArrears > 0) || (a.id === 'jobs' && !sim.career)) && (
+                      {((a.id === 'messages' && journal.length > 0) || (a.id === 'friends' && sim.gang === 'invited') || (a.id === 'home' && sim.rentArrears > 0) || (a.id === 'jobs' && !sim.career)) && (
                         <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-[var(--color-rose)] ring-2 ring-white" />
                       )}
                     </span>
@@ -544,6 +546,7 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
                 {app === 'home' && <HomeApp world={world} sim={sim} commune={commune} act={act} />}
                 {app === 'messages' && <Journal events={journal} />}
                 {app === 'news' && <NewsApp />}
+                {app === 'friends' && <FriendsApp world={world} sim={sim} act={act} />}
                 {app === 'store' && <StoreApp world={world} sim={sim} act={act} onOpen={(id) => (id === 'gnango' || id === 'idrive' ? onMap() : setApp(id as PhoneAppId))} />}
                 {app === 'waye' && <WayeApp world={world} sim={sim} act={act} journal={journal} renderJournal={(events) => <Journal events={events} />} />}
                 {app === 'golvo' && <GolvoApp world={world} sim={sim} delivery={delivery} onOrder={onDelivery} onCancel={() => onDelivery(null)} onCollect={onCollect} />}
@@ -811,6 +814,8 @@ export function Journal({ events }: { events: JournalEvent[] }) {
                   ? [BadgeCheck, ['#69e2a0', '#00a862']]
                   : e.kind === 'life'
                     ? [Cake, ['#ff8ad8', '#d63aa8']]
+                    : e.kind === 'social'
+                      ? [Users, ['#ffa8c5', '#e83e8c']]
                     : [Sparkles, ['#ffa040', '#ff6a00']]
         return (
           <li key={e.id} className={`flex items-center gap-3 rounded-[20px] p-2.5 ${e.kind === 'random' ? 'bg-[#fff7df]' : 'bg-[var(--color-canvas)]'}`}>

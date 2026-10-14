@@ -91,3 +91,22 @@ export function Fou({ seed }: { seed: string }) {
     </NoShadows>
   )
 }
+
+/** The bande, at its corner of the street, once the Sim has joined it. */
+export function Bande({ seed }: { seed: string }) {
+  const boys = useMemo(() => {
+    const r = rng(`bande${seed}`)
+    return (['rant', 'idle', 'wave'] as Pose[]).map((pose, i) => ({ pose, look: { ...randomLook('homme', r), outfit: r() < 0.5 ? 'debardeur' : 'basket', accessory: 'capback' }, a: (i / 3) * Math.PI * 2, seed: r() * 100 }))
+  }, [seed])
+  return (
+    <NoShadows>
+      <group position={[CROSS_X - 8, 0, -(SIDEWALK + 1.2)]}>
+        {boys.map((b, i) => (
+          <group key={i} position={[Math.cos(b.a) * 0.9, 0, Math.sin(b.a) * 0.6]} rotation={[0, -b.a - Math.PI / 2, 0]}>
+            <Human look={b.look} gender="homme" pose={b.pose} seed={b.seed} />
+          </group>
+        ))}
+      </group>
+    </NoShadows>
+  )
+}

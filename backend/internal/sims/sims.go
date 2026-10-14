@@ -104,8 +104,12 @@ type Sim struct {
 	// BornAt: game minute of birth (0 = an adult from before births).
 	BornAt int64 `json:"bornAt"`
 	// Family the Sim was born into (game.Families); "" for older Sims.
-	Family    string    `json:"family"`
-	CreatedAt time.Time `json:"createdAt"`
+	Family string `json:"family"`
+	// People the Sim knows; the street gang ("", invited, member, left); arrests.
+	Friends   []game.Friend `json:"friends"`
+	Gang      string        `json:"gang"`
+	Record    int           `json:"record"`
+	CreatedAt time.Time     `json:"createdAt"`
 	lastTick  time.Time
 }
 
@@ -149,17 +153,19 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/apps", h.apps)
 	r.Post("/sims/{id}/send", h.send)
 	r.Post("/sims/{id}/order", h.order)
+	r.Post("/sims/{id}/friend", h.friend)
+	r.Post("/sims/{id}/gang", h.gang)
 }
 
 const simColumns = `id, first_name, last_name, gender, look, traits, aspiration,
 	home_city, home_commune, city, commune, needs, money, game_minutes,
-	origin, housing, loan, rent_arrears, career, career_level, performance, activity, apps, born_at, family, created_at, last_tick`
+	origin, housing, loan, rent_arrears, career, career_level, performance, activity, apps, born_at, family, friends, gang, record, created_at, last_tick`
 
 func scanSim(row pgx.Row) (Sim, error) {
 	var s Sim
 	err := row.Scan(&s.ID, &s.FirstName, &s.LastName, &s.Gender, &s.Look, &s.Traits, &s.Aspiration,
 		&s.HomeCity, &s.HomeCommune, &s.City, &s.Commune, &s.Needs, &s.Money, &s.GameMinutes,
-		&s.Origin, &s.Housing, &s.Loan, &s.RentArrears, &s.Career, &s.CareerLevel, &s.Performance, &s.Activity, &s.Apps, &s.BornAt, &s.Family, &s.CreatedAt, &s.lastTick)
+		&s.Origin, &s.Housing, &s.Loan, &s.RentArrears, &s.Career, &s.CareerLevel, &s.Performance, &s.Activity, &s.Apps, &s.BornAt, &s.Family, &s.Friends, &s.Gang, &s.Record, &s.CreatedAt, &s.lastTick)
 	return s, err
 }
 
@@ -461,9 +467,11 @@ func (h *Handler) mutate(w http.ResponseWriter, r *http.Request, fn func(*Sim) (
 	if _, err := tx.Exec(ctx, `
 		UPDATE sims SET city = $2, commune = $3, needs = $4, money = $5, game_minutes = $6, last_tick = $7,
 		       home_city = $8, home_commune = $9, housing = $10, loan = $11, rent_arrears = $12,
-		       career = $13, career_level = $14, performance = $15, activity = $16, apps = $17
+		       career = $13, career_level = $14, performance = $15, activity = $16, apps = $17,
+		       friends = $18, gang = $19, record = $20
 		WHERE id = $1`, s.ID, s.City, s.Commune, s.Needs, s.Money, s.GameMinutes, s.lastTick,
-		s.HomeCity, s.HomeCommune, s.Housing, s.Loan, s.RentArrears, s.Career, s.CareerLevel, s.Performance, s.Activity, s.Apps); err != nil {
+		s.HomeCity, s.HomeCommune, s.Housing, s.Loan, s.RentArrears, s.Career, s.CareerLevel, s.Performance, s.Activity, s.Apps,
+		friendsOrEmpty(s.Friends), s.Gang, s.Record); err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "could not save sim")
 		return
 	}

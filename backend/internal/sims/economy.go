@@ -36,6 +36,9 @@ func (h *Handler) career(w http.ResponseWriter, r *http.Request) {
 		if s.minor() && req.Career != "" {
 			return game.Outcome{}, nil, errTooYoungToWork
 		}
+		if s.Record > 0 && slices.Contains(game.CleanRecordCareers, req.Career) {
+			return game.Outcome{}, nil, errRecordCareers
+		}
 		if req.Career == s.Career {
 			return game.Outcome{}, nil, errors.New("c'est déjà ton travail")
 		}

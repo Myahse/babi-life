@@ -66,6 +66,7 @@ func (s *Sim) finish(rng *rand.Rand) []Event {
 			}
 		}
 	}
+	events = append(events, s.socialize(a.Interaction, rng)...)
 	if ev := a.Surprise(rng); ev != nil {
 		s.Needs = s.Needs.Add(ev.Effect)
 		s.Money += ev.Money
@@ -82,6 +83,8 @@ func (s *Sim) stop() (Event, error) {
 		return Event{}, fmt.Errorf("ton Sim ne fait rien")
 	case a.Kind == "travel":
 		return Event{}, fmt.Errorf("tu es en route : attends d'arriver")
+	case a.PlaceID == custodyPlace:
+		return Event{}, errInCustody
 	}
 	s.Activity = nil
 	earned := a.Earned()
@@ -95,6 +98,7 @@ func (s *Sim) stop() (Event, error) {
 
 // settleRange charges rent and loan for every Saturday in (from, to].
 func (s *Sim) settleRange(from, to int64) []Event {
+	game.FadeFriends(s.Friends, to)
 	events := s.growUp(from, to)
 	// Children live with their family: no rent, pocket money instead.
 	if s.BornAt != 0 && game.AgeAt(s.BornAt, to) < game.AdultAge {

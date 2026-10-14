@@ -17,7 +17,9 @@ func newBaby(family string) Sim {
 }
 
 // years later, in real time.
-func years(n float64) time.Duration { return time.Duration(n * game.YearMinutes * float64(time.Minute)) }
+func years(n float64) time.Duration {
+	return time.Duration(n * game.YearMinutes * float64(time.Minute))
+}
 
 func TestABabyStaysABaby(t *testing.T) {
 	s := newBaby("poignon")

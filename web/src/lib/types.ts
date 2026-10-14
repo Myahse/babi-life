@@ -66,6 +66,9 @@ export type Option = { id: string; label: string; icon: string; hint: string }
 export type Origin = Option & { money: number; loan: number; housing: string }
 /** The family a Sim is born into: laté, poignon, coulé, gnambro. */
 export type Family = { id: string; label: string; icon: string; hint: string; communes: string[]; housing: string; pocket: number; start: number; leave: string; bacGift: number; weight: number }
+/** Someone the Sim knows. */
+export type Friend = { id: string; name: string; gender: 'femme' | 'homme'; seed: number; commune: string; friendship: number; gang?: boolean; met: number; seen: number }
+export type FriendAction = { id: string; label: string; icon: string; minutes: number; cost: number; friendship: number; phone?: boolean }
 /** A stage of life, from an age in years. */
 export type LifeStage = { id: 'bebe' | 'enfant' | 'ado' | 'adulte'; label: string; from: number; scale: number }
 export type Housing = Option & { rent: number; comfort: number }
@@ -95,6 +98,7 @@ export type World = {
   contacts?: Contact[]
   menus?: Record<string, Dish[]>
   families?: Family[]
+  friendActions?: FriendAction[]
   stages?: LifeStage[]
   /** Real minutes in a year of game life. */
   yearMinutes?: number
@@ -154,6 +158,11 @@ export type Sim = {
   /** Game minute of birth; 0 = an adult from before births. */
   bornAt?: number
   family?: string
+  friends?: Friend[]
+  /** The street gang: '' | invited | member | left. */
+  gang?: string
+  /** Times arrested by the police. */
+  record?: number
 }
 
 export type Activity = {
@@ -172,7 +181,7 @@ export type Activity = {
 
 export type JournalEvent = {
   id: number
-  kind: 'life' | 'transfer' | 'interaction' | 'random' | 'travel' | 'bill' | 'career'
+  kind: 'life' | 'social' | 'transfer' | 'interaction' | 'random' | 'travel' | 'bill' | 'career'
   text: string
   money: number
   gameTime: number

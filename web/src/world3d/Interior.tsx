@@ -19,7 +19,7 @@ type Spot = { p: V3; r?: number; pose: Pose; lying?: boolean }
 type Person = Spot & { gender: 'femme' | 'homme'; look: ReturnType<typeof randomLook>; seed: number }
 
 /** Kinds of places that have an inside (the beach or the football pitch don't). */
-export const INDOOR = new Set(['home', 'maquis', 'club', 'restaurant', 'market', 'office', 'mairie', 'school', 'health', 'worship', 'mall', 'culture'])
+export const INDOOR = new Set(['police', 'home', 'maquis', 'club', 'restaurant', 'market', 'office', 'mairie', 'school', 'health', 'worship', 'mall', 'culture'])
 
 const W = 12 // room width (x)
 const D = 9 // room depth (z)
@@ -30,6 +30,7 @@ type Room = { floor: string; wall: string; dark?: boolean; furniture: React.Reac
 /** What the Sim does there: where it goes and how it moves. */
 function action(kind: string, id: string | undefined): { spot: string; pose: Pose } {
   if (!id) return { spot: 'entrance', pose: 'idle' }
+  if (id === 'garde-a-vue') return { spot: 'seat', pose: 'sit' }
   if (/^(sleep|nap)$/.test(id)) return { spot: 'bed', pose: 'idle' }
   if (/^(biberon|bouillie|hochet|calin)$/.test(id)) return { spot: 'mat', pose: 'busy' }
   if (id === 'bain-bebe' || id === 'shower') return { spot: 'shower', pose: 'idle' }
@@ -409,6 +410,35 @@ function room(kind: string, housing: string): Room {
           counter: { p: [0, 0, 0.6], r: Math.PI, pose: 'idle' },
         },
         crowd: [{ p: [-3.5, 0, -2.9], pose: 'busy' }, { p: [3.5, 0, 0.6], pose: 'busy' }, { p: [-3.5, 0, 2.4], r: Math.PI, pose: 'wave' }],
+      }
+    case 'police':
+      // The commissariat: a counter, and the cell behind its bars.
+      return {
+        floor: '#8d8f93',
+        wall: '#c9cbbf',
+        furniture: (
+          <>
+            <Box p={[3, 0.55, 1]} s={[3, 1.1, 0.8]} c="#5b6472" />
+            <Box p={[-3.5, 0.45, -3.9]} s={[4, 0.12, 0.8]} c="#6b5a45" />
+            {[...Array(11)].map((_, i) => (
+              <mesh key={i} position={[-5.8 + i * 0.45, 1.5, -1.6]}>
+                <cylinderGeometry args={[0.04, 0.04, 3, 8]} />
+                <meshLambertMaterial color="#2b2f3a" />
+              </mesh>
+            ))}
+            <Box p={[-3.5, 2.95, -1.6]} s={[4.8, 0.1, 0.1]} c="#2b2f3a" />
+          </>
+        ),
+        spots: {
+          seat: { p: [-3.3, 0.06, -3.6], pose: 'sit' },
+          entrance: { p: [0, 0, 3.6], r: Math.PI, pose: 'idle' },
+          counter: { p: [3, 0, 2], r: Math.PI, pose: 'idle' },
+        },
+        crowd: [
+          { p: [3, 0, 0.2], pose: 'write' },
+          { p: [1.2, 0, -0.8], r: -2.4, pose: 'idle' },
+          { p: [-4.6, 0.06, -3.6], pose: 'sit' },
+        ],
       }
     default: // worship, culture: rows of seats facing the front
       return {
