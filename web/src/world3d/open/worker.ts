@@ -10,18 +10,20 @@ import type { Building } from './tiles'
 // Chunks are fetched, decoded and turned into geometry here, off the main
 // thread, so walking stays smooth while the world loads around the Sim.
 
-export type ChunkRequest = { id: number; origin: Origin; tx: number; ty: number; token: string; places: PlaceSpot[] }
+export type ChunkRequest = { id: number; origin: Origin; tx: number; ty: number; token: string; places: PlaceSpot[]; z?: number }
 export type Arrays = { position: Float32Array; uv: Float32Array; normal: Float32Array; color?: Float32Array; colorSize?: number; index: Uint32Array }
 
 self.onmessage = async (e: MessageEvent<ChunkRequest>) => {
-  const { id, origin, tx, ty, token, places } = e.data
+  const { id, origin, tx, ty, token, places, z } = e.data
   try {
-    const data = await fetchChunk(origin, tx, ty, token)
+    const data = await fetchChunk(origin, tx, ty, token, undefined, z)
     // Places take the real building where the map puts them; only a place
     // with no building on the map gets one made by the game, on its own lot.
     const styles = new Map<Building, Style>()
     const resolved = resolvePlaces(data, places, (b, kind) => styles.set(b, STYLE_OF_KIND[kind] ?? 'default'))
-    const made = resolved.filter((r) => !r.real).map((r) => r.center)
+    const marks = new Set(places.filter((p) => p.landmark).map((p) => p.id))
+    const made = resolved.filter((r) => !r.real && !marks.has(r.id)).map((r) => r.center)
+    const landmarks = resolved.filter((r) => marks.has(r.id)).map((r) => ({ at: r.center, r: places.find((p) => p.id === r.id)!.landmark! }))
     // A building in a campus or a hospital's grounds looks the part.
     const grounds = data.areas.filter((a) => a.kind === 'campus' || a.kind === 'hospital')
     const styleOf = (b: Building): Style => {
@@ -30,7 +32,7 @@ self.onmessage = async (e: MessageEvent<ChunkRequest>) => {
       const g = grounds.find((a) => pointInRing(b.c, a.rings[0]))
       return g ? (g.kind === 'campus' ? 'institution' : 'hospital') : 'default'
     }
-    const meshes = buildChunk(data, (c) => inTheWay(made, c), styleOf)
+    const meshes = buildChunk(data, (c) => inTheWay(made, c, landmarks), styleOf)
     const out: Record<string, Arrays> = {}
     const transfer: ArrayBuffer[] = []
     for (const [name, g] of Object.entries(meshes)) {

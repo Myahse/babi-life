@@ -14,6 +14,7 @@ import { Pedestrians, Traffic, TrafficLights } from './Life'
 import { Bande, Fou, Lovers } from './Nightlife'
 import { OtherPlayers } from './Players'
 import { Walker, type WalkNav } from './Walker'
+import { whereabouts } from './whereabouts'
 import { SHORE_Z, rng, themeFor, type Theme } from './themes'
 import { lifeOf } from '../game/rules'
 import { HAPPENING_DOOR, HappeningMarker, HappeningScene, STOPS_TRAFFIC } from './Happenings'
@@ -100,6 +101,18 @@ function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy,
     return () => cancelAnimationFrame(id)
   }, [])
   const { size, camera } = useThree()
+  // For the mini-map and the « Où aller ? » list: the places and the streets.
+  useEffect(() => {
+    whereabouts.places = places.map((l) => ({ id: l.id, kind: l.kind, name: l.name, door: l.door }))
+    const X = EXTENT_X
+    whereabouts.roads = [
+      [[-X, 0], [X, 0], 10],
+      [[-X, -BACK_STREET_Z], [X, -BACK_STREET_Z], 6],
+      [[-X, BACK_STREET_Z], [X, BACK_STREET_Z], 6],
+      ...[-FAR_CROSS_X, -CROSS_X, CROSS_X, FAR_CROSS_X].map((x) => [[x, -BACK_STREET_Z], [x, BACK_STREET_Z], 8] as [[number, number], [number, number], number]),
+    ]
+    whereabouts.water = []
+  }, [places])
   // The street's ways: the sidewalks to a place's door, the street grid elsewhere.
   const nav = useMemo<WalkNav>(() => {
     const shore = !!theme.waterfront

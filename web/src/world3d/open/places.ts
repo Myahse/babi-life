@@ -7,7 +7,7 @@ import type { Building, ChunkData } from './tiles'
 // Only where the map has no building at all does the game put up its own,
 // on empty ground beside the street, without removing anything real.
 
-export type PlaceSpot = { id: string; at: XZ; kind?: string }
+export type PlaceSpot = { id: string; at: XZ; kind?: string; /** a landmark the game draws itself, clearing this many metres */ landmark?: number }
 export type Resolved = {
   id: string
   door: XZ
@@ -90,6 +90,15 @@ export function resolvePlaces(chunk: ChunkData, spots: PlaceSpot[], onReal?: (b:
     if (x < box.x0 || x >= box.x1 || z < box.z0 || z >= box.z1) continue
     const road = nearestRoad(chunk, s.at)
 
+    // A landmark stands where the map says, facing its street.
+    if (s.landmark && road) {
+      const d = Math.hypot(road.at[0] - x, road.at[1] - z) || 1
+      const [ux, uz] = [(x - road.at[0]) / d, (z - road.at[1]) / d]
+      const door: XZ = [road.at[0] + ux * (road.width / 2 + 1.2), road.at[1] + uz * (road.width / 2 + 1.2)]
+      const center: XZ = d < s.landmark ? [road.at[0] + ux * s.landmark, road.at[1] + uz * s.landmark] : s.at
+      out.push({ id: s.id, door, center, rot: Math.atan2(door[0] - center[0], door[1] - center[1]), roadAngle: road.angle })
+      continue
+    }
     // The real building there, unless it's a street event.
     if (s.kind !== 'happening') {
       let found: { b: Building; d: number } | null = null
@@ -131,9 +140,9 @@ export function resolvePlaces(chunk: ChunkData, spots: PlaceSpot[], onReal?: (b:
   return out
 }
 
-/** Real buildings in the way of a game-made one (it stands on a 14 m lot). */
-export function inTheWay(made: XZ[], c: XZ) {
-  return made.some((p) => Math.abs(p[0] - c[0]) < 9 && Math.abs(p[1] - c[1]) < 9)
+/** Real buildings in the way of a game-made one (a 14 m lot, or a landmark's ground). */
+export function inTheWay(made: XZ[], c: XZ, landmarks: { at: XZ; r: number }[] = []) {
+  return made.some((p) => Math.abs(p[0] - c[0]) < 9 && Math.abs(p[1] - c[1]) < 9) || landmarks.some((l) => Math.hypot(l.at[0] - c[0], l.at[1] - c[1]) < l.r)
 }
 
 /**

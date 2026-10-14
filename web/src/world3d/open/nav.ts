@@ -1,4 +1,4 @@
-import { pointInRing, type XZ } from './geo'
+import { bridgeHeights, pointInRing, type XZ } from './geo'
 import type { ChunkData } from './tiles'
 
 // Getting around the open world: a graph of the real streets of the loaded
@@ -12,6 +12,8 @@ type Edge = { a: number; b: number; len: number; width: number }
 
 export class Nav {
   nodes: XZ[] = []
+  /** Each node's height: 0 on the ground, up on a bridge. */
+  ys: number[] = []
   adj: { to: number; len: number; width: number }[][] = []
   edges: Edge[] = []
   private nodeGrid = new Map<string, number[]>()
@@ -22,9 +24,10 @@ export class Nav {
   constructor(chunks: ChunkData[], skipBuilding: (c: XZ) => boolean = () => false) {
     for (const ch of chunks) {
       for (const r of ch.roads) {
-        let prev = this.node(r.pts[0])
+        const ys = r.bridge ? bridgeHeights(r.pts, ch.box) : undefined
+        let prev = this.node(r.pts[0], ys?.[0])
         for (let i = 1; i < r.pts.length; i++) {
-          const cur = this.node(r.pts[i])
+          const cur = this.node(r.pts[i], ys?.[i])
           if (cur !== prev) this.edge(prev, cur, r.width)
           prev = cur
         }
@@ -44,7 +47,7 @@ export class Nav {
   private key(x: number, z: number) {
     return `${Math.floor(x / CELL)},${Math.floor(z / CELL)}`
   }
-  private node(p: XZ) {
+  private node(p: XZ, y = 0) {
     const [cx, cz] = [Math.floor(p[0] / CELL), Math.floor(p[1] / CELL)]
     for (let dx = -1; dx <= 1; dx++)
       for (let dz = -1; dz <= 1; dz++)
@@ -52,6 +55,7 @@ export class Nav {
           if (Math.hypot(this.nodes[i][0] - p[0], this.nodes[i][1] - p[1]) < SNAP) return i
         }
     const i = this.nodes.push(p) - 1
+    this.ys.push(y)
     this.adj.push([])
     const k = this.key(p[0], p[1])
     const list = this.nodeGrid.get(k)
@@ -102,6 +106,16 @@ export class Nav {
       if (best && best.dist <= ring * CELL) break
     }
     return best && best.dist <= radius ? best : null
+  }
+
+  /** How high the ground is here: up on a bridge's deck, else 0. */
+  heightAt(x: number, z: number) {
+    const n = this.nearest([x, z], 14)
+    if (!n) return 0
+    const e = this.edges[n.edge]
+    if (n.dist > e.width / 2 + 2) return 0
+    const [ya, yb] = [this.ys[e.a], this.ys[e.b]]
+    return ya || yb ? ya + (yb - ya) * n.t : 0
   }
 
   /** On a street (or a bridge): always walkable, even over water. */

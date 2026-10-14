@@ -9,6 +9,7 @@ import { IconTile } from '../components/ui'
 import { Character } from './Character'
 import { HOME_ID, SIDEWALK, type Lot } from './layout'
 import { moveInput } from './input'
+import { whereabouts } from './whereabouts'
 
 type XZ = [number, number]
 
@@ -37,6 +38,8 @@ export type WalkNav = {
   bounds?: { x0: number; x1: number; z0: number; z1: number }
   /** Where the Sim starts when it isn't busy anywhere and has no home here. */
   start?: XZ
+  /** The height of the ground (a bridge's deck), when it isn't flat. */
+  heightAt?: (x: number, z: number) => number
 }
 
 type Props = {
@@ -68,6 +71,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   const target = useRef<string | null>(null)
   const [walking, setWalking] = useState(false)
   const speed = useRef(SPEED)
+  // The way the Sim is going, drawn on the ground.
+  const [route, setRoute] = useState<XZ[] | null>(null)
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null
   const camera = useThree((s) => s.camera)
 
@@ -144,6 +149,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     }
     speed.current = Math.max(SPEED, pathLength(path.current, [p.x, p.z]) / LONGEST_WALK)
     target.current = lot.id
+    setRoute([...path.current])
     setFree(false)
     setWalking(true)
   }, [goTo, lots]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -157,6 +163,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     path.current = way.slice(1)
     speed.current = Math.max(SPEED, pathLength(path.current, [p.x, p.z]) / LONGEST_WALK)
     target.current = null
+    setRoute([...path.current])
     setFree(false)
     setWalking(true)
   }
@@ -169,6 +176,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     const input = moveInput()
     const strength = Math.min(1, Math.hypot(input.x, input.y))
     if (!frozen && strength > 0.05) {
+      if (path.current.length) setRoute(null)
       path.current = []
       target.current = null
       if (free.current) setFree(false)
@@ -213,11 +221,12 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       const step = Math.min(dist, speed.current * Math.min(dt, 0.25))
       if (dist < 0.05) {
         path.current.shift()
+        setRoute(path.current.length ? [...path.current] : null)
         if (!path.current.length) {
           setWalking(false)
           // Face the building and hand over to the action menu.
           const lot = lots.find((l) => l.id === target.current)
-          if (lot) g.rotation.y = lot.z < 0 ? Math.PI : 0
+          if (lot) g.rotation.y = Math.atan2(lot.x - g.position.x, lot.z - g.position.z)
           if (target.current) onArrive(target.current)
         }
       } else {
@@ -226,6 +235,11 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         g.rotation.y = Math.atan2(dx, dz)
       }
     }
+    // For the mini-map: where the Sim is, which way the camera looks.
+    whereabouts.sim = [g.position.x, g.position.z]
+    if (controls) whereabouts.heading = Math.atan2(controls.target.x - camera.position.x, -(controls.target.z - camera.position.z))
+    // Up and down bridges.
+    if (nav.heightAt) g.position.y = nav.heightAt(g.position.x, g.position.z)
     // Camera follows the Sim, keeping whatever angle the player chose.
     if (controls && !free.current && !gesture.current) {
       const want = new THREE.Vector3(g.position.x, close ? 1.4 : 0, g.position.z)
@@ -264,7 +278,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         minZoom={2.2}
         maxZoom={70}
         minDistance={6}
-        maxDistance={420}
+        maxDistance={perspective ? 1800 : 420}
         minPolarAngle={perspective ? 0.25 : 0.5}
         maxPolarAngle={perspective ? 1.4 : 1.05}
       />
@@ -280,6 +294,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         <planeGeometry args={nav.bounds ? [nav.bounds.x1 - nav.bounds.x0 + 16, nav.bounds.z1 - nav.bounds.z0 + 8] : [8000, 8000]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
+      {route && <RouteDots route={route} from={group} heightAt={nav.heightAt} />}
       <group ref={group}>
         <Character look={sim.look} gender={sim.gender} walking={walking} busy={!!busy} moodColor={moodColor} stage={stage} />
         {labels && nameTag && (
@@ -301,6 +316,58 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
             )}
           </Html>
         )}
+      </group>
+    </>
+  )
+}
+
+/** The way to go, as dots on the ground, and a marker bobbing over where it ends. */
+function RouteDots({ route, from, heightAt }: { route: XZ[]; from: React.RefObject<THREE.Group | null>; heightAt?: (x: number, z: number) => number }) {
+  const MAX = 400
+  const dots = useRef<THREE.InstancedMesh>(null)
+  const pin = useRef<THREE.Group>(null)
+  const m = useRef(new THREE.Object3D())
+  useFrame(({ clock }) => {
+    const mesh = dots.current
+    const g = from.current
+    if (!mesh || !g) return
+    // Dots every 2 m from the Sim along the way.
+    const pts: XZ[] = [[g.position.x, g.position.z], ...route]
+    let n = 0
+    let next = 1 // where the next dot falls, in metres along the way
+    let start = 0
+    for (let i = 1; i < pts.length && n < MAX; i++) {
+      const [ax, az] = pts[i - 1]
+      const [bx, bz] = pts[i]
+      const len = Math.hypot(bx - ax, bz - az)
+      for (; next < start + len && n < MAX; next += 2) {
+        const t = (next - start) / len
+        const [x, z] = [ax + (bx - ax) * t, az + (bz - az) * t]
+        m.current.position.set(x, (heightAt?.(x, z) ?? 0) + 0.12, z)
+        m.current.updateMatrix()
+        mesh.setMatrixAt(n++, m.current.matrix)
+      }
+      start += len
+    }
+    mesh.count = n
+    mesh.instanceMatrix.needsUpdate = true
+    const end = route[route.length - 1]
+    if (pin.current && end) {
+      pin.current.position.set(end[0], (heightAt?.(end[0], end[1]) ?? 0) + 2.6 + Math.sin(clock.elapsedTime * 3) * 0.25, end[1])
+      pin.current.rotation.y = clock.elapsedTime * 1.5
+    }
+  })
+  return (
+    <>
+      <instancedMesh ref={dots} args={[undefined, undefined, MAX]} frustumCulled={false}>
+        <cylinderGeometry args={[0.22, 0.22, 0.05, 10]} />
+        <meshBasicMaterial color="#ff7a00" transparent opacity={0.85} />
+      </instancedMesh>
+      <group ref={pin}>
+        <mesh rotation={[Math.PI, 0, 0]}>
+          <coneGeometry args={[0.5, 1.1, 4]} />
+          <meshBasicMaterial color="#ff7a00" />
+        </mesh>
       </group>
     </>
   )

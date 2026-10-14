@@ -152,3 +152,28 @@ export function hash(...n: number[]) {
   for (const v of n) h = Math.imul(h ^ Math.round(v * 10), 16777619)
   return ((h >>> 0) % 10000) / 10000
 }
+
+/** How high a bridge's deck stands over the water. */
+export const BRIDGE_HEIGHT = 4.5
+const RAMP = 35 // metres to climb from the bank to the deck
+
+/**
+ * The deck's height at each point of a bridge: it climbs from its real ends
+ * (where it meets the road on the bank) and stays up over the water. An end
+ * cut by the chunk's edge isn't a real end: the deck stays up there.
+ */
+export function bridgeHeights(pts: XZ[], b: Box): number[] {
+  const d: number[] = [0]
+  for (let i = 1; i < pts.length; i++) d.push(d[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]))
+  const total = d[d.length - 1]
+  const cut = ([x, z]: XZ) => Math.min(Math.abs(x - b.x0), Math.abs(x - b.x1), Math.abs(z - b.z0), Math.abs(z - b.z1)) < 0.5
+  const startReal = !cut(pts[0])
+  const endReal = !cut(pts[pts.length - 1])
+  const ease = (t: number) => t * t * (3 - 2 * t)
+  return d.map((s) => {
+    let k = 1
+    if (startReal) k = Math.min(k, s / RAMP)
+    if (endReal) k = Math.min(k, (total - s) / RAMP)
+    return BRIDGE_HEIGHT * ease(Math.max(0, Math.min(1, k)))
+  })
+}

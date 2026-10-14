@@ -27,22 +27,26 @@ export function tileUrl(token: string, tx: number, ty: number, z = CHUNK_ZOOM) {
   return `https://api.mapbox.com/v4/mapbox.mapbox-streets-v8/${z}/${tx}/${ty}.vector.pbf?access_token=${encodeURIComponent(token)}`
 }
 
-export async function fetchChunk(o: Origin, tx: number, ty: number, token: string, signal?: AbortSignal): Promise<ChunkData> {
-  const res = await fetch(tileUrl(token, tx, ty), { signal })
-  if (res.status === 404) return emptyChunk(o, tx, ty) // nothing mapped there (open sea)
+/** The far horizon: bigger, plainer tiles (water, beaches, the big roads and bridges). */
+export const FAR_ZOOM = 14
+const FAR_ROADS = new Set(['motorway', 'trunk', 'primary', 'secondary'])
+
+export async function fetchChunk(o: Origin, tx: number, ty: number, token: string, signal?: AbortSignal, z = CHUNK_ZOOM): Promise<ChunkData> {
+  const res = await fetch(tileUrl(token, tx, ty, z), { signal })
+  if (res.status === 404) return emptyChunk(o, tx, ty, z) // nothing mapped there (open sea)
   if (!res.ok) throw new Error(`tile ${tx}/${ty}: ${res.status}`)
-  return decodeChunk(o, tx, ty, new Uint8Array(await res.arrayBuffer()))
+  return decodeChunk(o, tx, ty, new Uint8Array(await res.arrayBuffer()), z)
 }
 
-function emptyChunk(o: Origin, tx: number, ty: number): ChunkData {
-  return { key: `${tx}/${ty}`, tx, ty, box: tileBox(o, tx, ty), roads: [], buildings: [], areas: [], trees: [] }
+function emptyChunk(o: Origin, tx: number, ty: number, z = CHUNK_ZOOM): ChunkData {
+  return { key: z === CHUNK_ZOOM ? `${tx}/${ty}` : `${z}:${tx}/${ty}`, tx, ty, box: tileBox(o, tx, ty, z), roads: [], buildings: [], areas: [], trees: [] }
 }
 
-export function decodeChunk(o: Origin, tx: number, ty: number, data: Uint8Array): ChunkData {
+export function decodeChunk(o: Origin, tx: number, ty: number, data: Uint8Array, z = CHUNK_ZOOM): ChunkData {
   const tile = new VectorTile(new Pbf(data))
-  const chunk = emptyChunk(o, tx, ty)
+  const chunk = emptyChunk(o, tx, ty, z)
   const box = chunk.box
-  const z = CHUNK_ZOOM
+  const far = z !== CHUNK_ZOOM
 
   const toXZ = (extent: number) => (p: { x: number; y: number }): XZ => {
     const ll = tilePoint(tx, ty, z, p.x, p.y, extent)
@@ -56,6 +60,7 @@ export function decodeChunk(o: Origin, tx: number, ty: number, data: Uint8Array)
     const cls = String(f.properties.class ?? '')
     const width = ROAD_WIDTH[cls]
     if (!width || f.properties.structure === 'tunnel') continue
+    if (far && !FAR_ROADS.has(cls) && f.properties.structure !== 'bridge') continue
     const xz = toXZ(f.extent)
     for (const line of f.loadGeometry()) {
       for (const pts of clipLine(line.map(xz), box)) {
@@ -64,7 +69,7 @@ export function decodeChunk(o: Origin, tx: number, ty: number, data: Uint8Array)
     }
   }
 
-  const buildings = tile.layers.building
+  const buildings = far ? undefined : tile.layers.building
   for (let i = 0; i < (buildings?.length ?? 0); i++) {
     const f = buildings!.feature(i)
     if (f.type !== 3 || f.properties.underground === 'true') continue
@@ -101,7 +106,7 @@ export function decodeChunk(o: Origin, tx: number, ty: number, data: Uint8Array)
   areas('landuse_overlay', (cls) => (cls.startsWith('wetland') ? 'green' : null))
 
   // Trees in the parks and gardens, a few per block of green.
-  for (const a of chunk.areas) {
+  for (const a of far ? [] : chunk.areas) {
     if (a.kind !== 'green' && a.kind !== 'campus') continue
     const ring = a.rings[0]
     let [minX, minZ, maxX, maxZ] = [Infinity, Infinity, -Infinity, -Infinity]

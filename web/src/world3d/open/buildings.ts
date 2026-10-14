@@ -264,8 +264,8 @@ export function addBuilding(B: BuildingBuilders, bd: Building, style: Style = 'd
     const len = Math.min(best * 0.6, 12)
     const [mx, mz] = [(p[0] + q[0]) / 2 + nx * 0.6, (p[1] + q[1]) / 2 + nz * 0.6]
     for (let y = BLOCK; y < H; y += BLOCK) {
-      B.trim.box(mx, y + 0.08, mz, len, 0.16, 1.2, -rot, SLAB)
-      B.trim.box(mx + nx * 0.56, y + 0.6, mz + nz * 0.56, len, 0.9, 0.06, -rot, RAIL)
+      B.trim.box(mx, y + 0.08, mz, len, 0.16, 1.2, rot, SLAB)
+      B.trim.box(mx + nx * 0.56, y + 0.6, mz + nz * 0.56, len, 0.9, 0.06, rot, RAIL)
     }
   }
 

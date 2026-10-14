@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BadgeCheck, Cake, Eye, LocateFixed, Mountain, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, Cake, Eye, LocateFixed, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World, Ride } from '../lib/types'
 import { useWorld } from '../store/world'
@@ -25,6 +25,7 @@ import { StoreApp } from './StoreApp'
 import { FriendsApp } from './FriendsApp'
 import { InviteBanner, PlayersChip, PlayersSheet, usePlayers } from '../components/Players'
 import { SoundToggle, Soundtrack } from '../components/Soundtrack'
+import { MiniMap, WhereTo } from '../components/Navigator'
 import type { Track } from '../audio/music'
 
 type Toast = { id: number; title: string; text?: string; money: number; tone: 'random' | 'done' | 'error' | 'promo' | 'event'; kind?: string; icon?: string }
@@ -76,6 +77,7 @@ export function Play() {
   // The real streets (open world) when a map token is set and they load; else the classic street.
   const [classic, setClassic] = useState(!MAP_TOKEN)
   const [closeView, setCloseView] = useState(false)
+  const [whereTo, setWhereTo] = useState(false)
   const announced = useRef('')
 
   useEffect(() => {
@@ -400,6 +402,16 @@ export function Play() {
       </footer>
 
       <Soundtrack track={track} seed={trackSeed} />
+      {/* Finding the way: the mini-map, and every place of the quarter */}
+      {!showInside && !placeId && !overlay && !players && (
+        <div className="pointer-events-none absolute top-[5.5rem] left-3 z-20 flex flex-col items-start gap-2 lg:left-5">
+          <MiniMap onWalk={walkTo} />
+          <button className="hud pointer-events-auto flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={() => setWhereTo(true)}>
+            <Navigation size={17} strokeWidth={2.6} className="text-[var(--color-orange)]" /> Où aller ?
+          </button>
+        </div>
+      )}
+      {whereTo && <WhereTo world={world} onWalk={(id) => (setWhereTo(false), walkTo(id))} onClose={() => setWhereTo(false)} />}
       {!classic && !showInside && !placeId && !overlay && (
         <button className="hud absolute top-[5.5rem] right-3 z-20 flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold lg:right-5" onClick={() => setCloseView((v) => !v)}>
           {closeView ? <Mountain size={17} strokeWidth={2.6} className="text-[var(--color-emerald)]" /> : <Eye size={17} strokeWidth={2.6} className="text-[var(--color-emerald)]" />}

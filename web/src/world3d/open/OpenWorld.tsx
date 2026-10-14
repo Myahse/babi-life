@@ -19,11 +19,13 @@ import { OtherPlayers } from '../Players'
 import { rng } from '../themes'
 import { Vehicle, type VehicleKind } from '../vehicles'
 import { Walker, type WalkNav } from '../Walker'
+import { whereabouts } from '../whereabouts'
 import { CHUNK_ZOOM, tileBox, tileOf, toLatLng, toLocal, type Origin, type XZ } from './geo'
 import { Nav } from './nav'
 import { inTheWay, type PlaceSpot, type Resolved } from './places'
+import { Cathedral, LANDMARKS } from './landmarks'
 import { makeTextures } from './textures'
-import type { ChunkData } from './tiles'
+import { FAR_ZOOM, type ChunkData } from './tiles'
 import type { Arrays, ChunkRequest } from './worker'
 
 // The open world: the real Abidjan around the Sim, like Minecraft's — it
@@ -34,6 +36,8 @@ import type { Arrays, ChunkRequest } from './worker'
 
 const LOAD_RADIUS = 700 // metres around the Sim (or where the camera looks)
 const DROP_RADIUS = 1500
+const FAR_RADIUS = 4500 // the horizon, in plain big tiles
+const FAR_DROP = 7000
 const PARALLEL = 3
 const HAPPENING_KEY = 'happening'
 
@@ -88,7 +92,7 @@ export function OpenWorld(props: Props & { token: string; onFail: () => void }) 
   const dusk = props.hour >= 17 && props.hour < 19
   const sky = night ? '#141a3d' : dusk ? '#f7a072' : '#8ec9f0'
   return (
-    <Canvas shadows dpr={[1, 1.75]} camera={{ position: [45, 48, 45], fov: 45, near: 0.5, far: 2500 }} style={{ background: sky, transition: 'background 1s' }} gl={{ antialias: true }}>
+    <Canvas shadows dpr={[1, 1.75]} camera={{ position: [45, 48, 45], fov: 45, near: 0.5, far: 9000 }} style={{ background: sky, transition: 'background 1s' }} gl={{ antialias: true }}>
       <Suspense fallback={null}>
         <World {...props} night={night} dusk={dusk} sky={sky} />
       </Suspense>
@@ -139,7 +143,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
     const r = rng(`home${sim.id}`)
     const a = r() * Math.PI * 2
     const d = 120 + r() * 260
-    const list = commune.places.map((p) => ({ id: p.id, kind: p.kind, name: p.name, at: toLocal(origin, p.lat, p.lng) }))
+    const list: (PlaceSpot & { kind: string; name: string })[] = commune.places.map((p) => ({ id: p.id, kind: p.kind, name: p.name, at: toLocal(origin, p.lat, p.lng), landmark: LANDMARKS[p.id] }))
     if (home) list.unshift({ id: HOME_ID, kind: 'home', name: 'Chez toi', at: [Math.cos(a) * d, Math.sin(a) * d] })
     list.push({ id: HAPPENING_KEY, kind: 'happening', name: '', at: [35, -20] })
     return list
@@ -204,17 +208,29 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
         if (d <= LOAD_RADIUS) wanted.push({ key: `${tx}/${ty}`, tx, ty, d })
       }
     wanted.sort((a, b) => a.d - b.d)
+    // Then the horizon: the lagoon, the sea, the big roads, kilometres away.
+    const [fxt, fyt] = tileOf(ll.lat, ll.lng, FAR_ZOOM)
+    const horizon: typeof wanted = []
+    for (let dx = -2; dx <= 2; dx++)
+      for (let dy = -2; dy <= 2; dy++) {
+        const [tx, ty] = [fxt + dx, fyt + dy]
+        const b = tileBox(origin, tx, ty, FAR_ZOOM)
+        const d = Math.hypot(Math.max(b.x0 - fx, 0, fx - b.x1), Math.max(b.z0 - fz, 0, fz - b.z1))
+        if (d <= FAR_RADIUS) horizon.push({ key: `${FAR_ZOOM}:${tx}/${ty}`, tx, ty, d })
+      }
+    horizon.sort((a, b) => a.d - b.d)
     const busy = new Set(pending.current.values())
-    for (const c of wanted) {
+    for (const c of [...wanted, ...horizon]) {
       if (pending.current.size >= PARALLEL) break
       if (chunksRef.current.has(c.key) || busy.has(c.key) || (failed.current.get(c.key) ?? 0) >= 3) continue
       const id = nextId.current++
       pending.current.set(id, c.key)
-      const req: ChunkRequest = { id, origin, tx: c.tx, ty: c.ty, token, places: spots.map(({ id, at, kind }) => ({ id, at, kind })) }
+      const far = c.key.includes(':')
+      const req: ChunkRequest = { id, origin, tx: c.tx, ty: c.ty, token, places: far ? [] : spots.map(({ id, at, kind, landmark }) => ({ id, at, kind, landmark })), z: far ? FAR_ZOOM : undefined }
       w.postMessage(req)
     }
-    // Far chunks are let go, like Minecraft's render distance.
-    const far = [...chunksRef.current.values()].filter(({ data: { box: b } }) => Math.hypot(Math.max(b.x0 - fx, 0, fx - b.x1), Math.max(b.z0 - fz, 0, fz - b.z1)) > DROP_RADIUS)
+    // Chunks too far are let go, like Minecraft's render distance.
+    const far = [...chunksRef.current.values()].filter(({ data: { key, box: b } }) => Math.hypot(Math.max(b.x0 - fx, 0, fx - b.x1), Math.max(b.z0 - fz, 0, fz - b.z1)) > (key.includes(':') ? FAR_DROP : DROP_RADIUS))
     if (far.length) {
       for (const c of far) for (const g of Object.values(c.geos)) g.dispose()
       setChunks((m) => {
@@ -263,8 +279,9 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
   })
 
   // The few real buildings in the way of a game-made one don't block the way.
-  const made = useMemo<XZ[]>(() => [...resolved.values()].filter((r) => !r.real).map((r) => r.center), [resolved])
-  const nav = useMemo(() => new Nav([...chunks.values()].map((c) => c.data), (c) => inTheWay(made, c)), [chunks, made])
+  const made = useMemo<XZ[]>(() => [...resolved.values()].filter((r) => !r.real && !LANDMARKS[r.id]).map((r) => r.center), [resolved])
+  const marks = useMemo(() => [...resolved.values()].filter((r) => LANDMARKS[r.id]).map((r) => ({ at: r.center, r: LANDMARKS[r.id] })), [resolved])
+  const nav = useMemo(() => new Nav([...chunks.values()].filter((c) => !c.data.key.includes(':')).map((c) => c.data), (c) => inTheWay(made, c, marks)), [chunks, made, marks])
 
   // The places, once they stand on a loaded street.
   const lots = useMemo<Lot[]>(
@@ -288,11 +305,21 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
   }, [happening, spot])
   const walkLots = useMemo(() => (happeningLot ? [...lots, happeningLot] : lots), [lots, happeningLot])
 
+  // For the mini-map and the « Où aller ? » list.
+  useEffect(() => {
+    whereabouts.places = walkLots.map((l) => ({ id: l.id, kind: l.kind, name: l.name, door: l.door }))
+  }, [walkLots])
+  useEffect(() => {
+    whereabouts.roads = nav.edges.map((e) => [nav.nodes[e.a], nav.nodes[e.b], e.width] as [XZ, XZ, number])
+    whereabouts.water = [...chunks.values()].flatMap((c) => c.data.areas.filter((a) => a.kind === 'water').map((a) => a.rings[0]))
+  }, [nav, chunks])
+
   const homeLot = lots.find((l) => l.id === HOME_ID)
   const walkNav = useMemo<WalkNav>(
     () => ({
       walkable: (x, z) => nav.walkable(x, z),
       route: (a, b) => nav.path(a, b),
+      heightAt: (x, z) => nav.heightAt(x, z),
       start: homeLot?.door ?? (nav.nearest(focus.current)?.at as XZ | undefined),
     }),
     [nav, homeLot],
@@ -318,22 +345,32 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
         </EffectComposer>
       )}
       {/* The haze at the edge of the loaded world: Minecraft's render distance */}
-      <fog attach="fog" args={[sky, 280, 760]} />
+      <fog attach="fog" args={[sky, 400, 5200]} />
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]} material={mats.ground} receiveShadow>
-        <planeGeometry args={[9000, 9000]} />
+        <planeGeometry args={[30000, 30000]} />
       </mesh>
 
-      {[...chunks.values()].map((c) => (
-        <group key={c.data.key}>
+      {[...chunks.values()].map((c) => {
+        const far = c.data.key.includes(':')
+        return (
+        <group key={c.data.key} position={[0, far ? -0.015 : 0, 0]}>
           {Object.entries(c.geos).map(([name, g]) => (
-            <mesh key={name} geometry={g} material={mats[name as keyof typeof mats]} castShadow={SOLID.has(name)} receiveShadow={name !== 'contact'} />
+            <mesh key={name} geometry={g} material={mats[name as keyof typeof mats]} castShadow={!far && SOLID.has(name)} receiveShadow={!far && name !== 'contact'} />
           ))}
           <Trees pts={c.data.trees} bark={mats.bark} leaves={mats.leaves} />
         </group>
-      ))}
+        )
+      })}
 
       {lots.map((lot) =>
-        lot.height ? (
+        LANDMARKS[lot.id] ? (
+          <group key={lot.id}>
+            <group position={[lot.x, 0, lot.z]} rotation={[0, lot.rot, 0]} onClick={(e) => (e.stopPropagation(), onPick(lot.id))}>
+              {lot.id === 'plateau-cathedrale' && <Cathedral />}
+            </group>
+            <LotLabel lot={lot} world={world} label={labels} onPick={onPick} y={30} />
+          </group>
+        ) : lot.height ? (
           <PlaceSign key={lot.id} lot={lot} world={world} night={night} label={labels} onPick={onPick} />
         ) : (
           <LotView key={lot.id} lot={lot} world={world} night={night} label={labels} onPick={onPick} />
@@ -458,6 +495,20 @@ function CampusGate({ name, kind, at, rot, width, night }: { name: string; kind:
   )
 }
 
+/** A place's name floating over it. */
+function LotLabel({ lot, world, label, onPick, y }: { lot: Lot; world: World; label: boolean; onPick: (id: string) => void; y: number }) {
+  if (!label) return null
+  const kind = world.kinds[lot.kind]
+  return (
+    <Html position={[lot.x, y, lot.z]} center zIndexRange={[20, 0]}>
+      <button onClick={() => onPick(lot.id)} className="flex items-center gap-1.5 rounded-xl border border-black/5 bg-white py-1 pr-2.5 pl-1 text-[12.5px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_4px_12px_-6px_rgba(0,0,0,0.45)] transition duration-200 hover:scale-110 active:scale-95">
+        <IconTile icon={iconFor(kind?.icon ?? '')} colors={kindColors(lot.kind)} size={24} radius={8} />
+        {lot.name}
+      </button>
+    </Html>
+  )
+}
+
 /** Minecraft trees: a trunk of blocks and a cube of leaves, instanced. */
 function Trees({ pts, bark, leaves }: { pts: XZ[]; bark: THREE.Material; leaves: THREE.Material }) {
   const trunks = useRef<THREE.InstancedMesh>(null)
@@ -547,7 +598,7 @@ function RoadTraffic({ nav, focus, seed, woro }: { nav: Nav; focus: React.RefObj
       g.visible = m.path.length > 1
       // Drive on the right: shift to the right of the way.
       const off = 2
-      g.position.set(m.x + Math.cos(m.r) * -off, 0, m.z - Math.sin(m.r) * -off)
+      g.position.set(m.x + Math.cos(m.r) * -off, nav.heightAt(m.x, m.z), m.z - Math.sin(m.r) * -off)
       g.rotation.y = m.r - Math.PI / 2
     })
   })
@@ -588,7 +639,7 @@ function Passersby({ nav, focus, seed }: { nav: Nav; focus: React.RefObject<XZ>;
       g.visible = m.path.length > 1
       // On the pavement, not in the middle of the road.
       const off = 4.5 * p.side
-      g.position.set(m.x + Math.cos(m.r) * off, 0, m.z - Math.sin(m.r) * off)
+      g.position.set(m.x + Math.cos(m.r) * off, nav.heightAt(m.x, m.z), m.z - Math.sin(m.r) * off)
       g.rotation.y = m.r
     })
   })
