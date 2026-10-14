@@ -23,6 +23,7 @@ import { CHUNK_ZOOM, tileBox, tileOf, toLatLng, toLocal, type Origin, type XZ } 
 import { Nav } from './nav'
 import { inTheWay, type PlaceSpot, type Resolved } from './places'
 import { LANDMARKS, Landmark } from './landmarks'
+import { Boats } from './boats'
 import { makeTextures } from './textures'
 import { FAR_ZOOM, type ChunkData } from './tiles'
 import type { Arrays, ChunkRequest } from './worker'
@@ -323,6 +324,8 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
     whereabouts.water = [...chunks.values()].flatMap((c) => c.data.areas.filter((a) => a.kind === 'water').map((a) => a.rings[0]))
   }, [nav, chunks])
 
+  const nearWater = useMemo(() => [...chunks.values()].filter((c) => !c.data.key.includes(':')).flatMap((c) => c.data.areas.filter((a) => a.kind === 'water').map((a) => a.rings)), [chunks])
+
   const homeLot = lots.find((l) => l.id === HOME_ID)
   const walkNav = useMemo<WalkNav>(
     () => ({
@@ -362,6 +365,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
             <mesh key={name} geometry={g} material={mats[name as keyof typeof mats]} castShadow={!far && SOLID.has(name)} receiveShadow={!far && name !== 'contact'} />
           ))}
           <Trees pts={c.data.trees} bark={mats.bark} leaves={mats.leaves} />
+          <Palms pts={c.data.palms ?? []} bark={mats.bark} leaves={mats.leaves} />
         </group>
         )
       })}
@@ -399,6 +403,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
       )}
 
       {nav.nodes.length > 0 && !stopsTraffic && <RoadTraffic nav={nav} focus={focus} seed={commune.id} woro={commune.woro} />}
+      <Boats water={nearWater} focus={focus} />
       {nav.nodes.length > 0 && <Passersby nav={nav} focus={focus} seed={commune.id} />}
       {players && players.length > 0 && <OtherPlayers players={players} lots={walkLots} labels={labels} onPick={(id) => onPickPlayer?.(id)} />}
 
@@ -534,6 +539,54 @@ function Trees({ pts, bark, leaves }: { pts: XZ[]; bark: THREE.Material; leaves:
         <boxGeometry args={[1, 1, 1]} />
       </instancedMesh>
       <instancedMesh ref={tops} args={[undefined, leaves, pts.length]} castShadow receiveShadow>
+        <boxGeometry args={[1, 1, 1]} />
+      </instancedMesh>
+    </>
+  )
+}
+
+/**
+ * Coconut palms, Minecraft style: a leaning trunk of blocks, a crown of
+ * long drooping leaves and a bunch of coconuts.
+ */
+function Palms({ pts, bark, leaves }: { pts: XZ[]; bark: THREE.Material; leaves: THREE.Material }) {
+  const trunks = useRef<THREE.InstancedMesh>(null)
+  const fronds = useRef<THREE.InstancedMesh>(null)
+  const nuts = useRef<THREE.InstancedMesh>(null)
+  const FRONDS = 6
+  useEffect(() => {
+    const m = new THREE.Matrix4()
+    const q = new THREE.Quaternion()
+    const e = new THREE.Euler()
+    pts.forEach(([x, z], i) => {
+      const h = 7 + ((i * 5) % 4)
+      const lean = 0.12 + ((i * 3) % 5) * 0.05
+      const dir = (i * 2.399) % (Math.PI * 2)
+      // The trunk leans away from the wind; the crown sits on its top.
+      q.setFromEuler(e.set(Math.cos(dir) * lean, 0, Math.sin(dir) * lean))
+      const top = new THREE.Vector3(0, h, 0).applyQuaternion(q).add(new THREE.Vector3(x, 0, z))
+      trunks.current?.setMatrixAt(i, m.compose(new THREE.Vector3(x, 0, z).lerp(top, 0.5), q, new THREE.Vector3(0.55, h, 0.55)))
+      for (let k = 0; k < FRONDS; k++) {
+        const a = dir + (k / FRONDS) * Math.PI * 2
+        const fq = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, a, -0.45, 'YXZ'))
+        const at = new THREE.Vector3(1.6, -0.55, 0).applyQuaternion(new THREE.Quaternion().setFromEuler(new THREE.Euler(0, a, 0))).add(top)
+        fronds.current?.setMatrixAt(i * FRONDS + k, m.compose(at, fq, new THREE.Vector3(3.6, 0.15, 0.9)))
+      }
+      nuts.current?.setMatrixAt(i, m.compose(top.clone().add(new THREE.Vector3(0, -0.5, 0)), q, new THREE.Vector3(0.9, 0.6, 0.9)))
+    })
+    for (const r of [trunks, fronds, nuts]) if (r.current) r.current.instanceMatrix.needsUpdate = true
+  }, [pts])
+  const nut = useMemo(() => new THREE.MeshLambertMaterial({ color: '#6b4a1e' }), [])
+  if (!pts.length) return null
+  return (
+    <>
+      <instancedMesh ref={trunks} args={[undefined, bark, pts.length]} castShadow>
+        <boxGeometry args={[1, 1, 1]} />
+      </instancedMesh>
+      <instancedMesh ref={fronds} args={[undefined, leaves, pts.length * FRONDS]} castShadow>
+        <boxGeometry args={[1, 1, 1]} />
+      </instancedMesh>
+      <instancedMesh ref={nuts} args={[undefined, nut, pts.length]}>
         <boxGeometry args={[1, 1, 1]} />
       </instancedMesh>
     </>
