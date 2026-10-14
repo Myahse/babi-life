@@ -105,6 +105,12 @@ const (
 	srcPlayceFA        = "https://financialafrik.com/2017/06/29/cote-divoire-playce-palmeraie-une-nouvelle-etape-du-deploiement-de-cfao-retail"
 	srcCFAORetail      = "https://www.foodbusinessmea.com/cfao-consumer-retail-expands-footprint-in-ivory-coast-acquires-leader-prices-stores/"
 	srcBurgerKing      = "https://www.qsrweb.com/news/burger-king-to-open-first-ivory-coast-location/"
+	srcHotelIvoire     = "https://en.wikipedia.org/wiki/Village_Ivoire"
+	srcBlockhauss      = "https://news.abidjan.net/articles/374315/le-chef-de-letat-aux-populations-de-blockhauss-hier-on-ne-doit-pas-vous-deposseder-totalement-de-vos-terres"
+	srcCocodyVillages  = "https://participate.oidp.net/processes/award2024/f/288/proposals/3254"
+	srcUCAO            = "https://annuaireci.com/entreprises/ucao-uua-universite-catholique-de-lafrique-de-louest-unite-universitaire-a-abidjan-abidjan-cote-divoire/"
+	srcUCAO2           = "https://www.goafricaonline.com/ci/62662-ucao-uua-enseignement-superieur-universite-abidjan-cote-ivoire"
+	srcIUA             = "https://timeshighereducation.com/cn/node/720903"
 )
 
 var (
@@ -122,7 +128,22 @@ func abidjanCommune(id, name, blurb string, lat, lng float64, bank string, place
 	src := &game.Source{Status: game.StatusVerified, URLs: append(append([]string{}, abidjanAdmin.URLs...), srcBridges), Checked: game.Checked, Note: abidjanAdmin.Note + " " + bankNote}
 	return Commune{ID: id, Name: name, Blurb: blurb, Lat: lat, Lng: lng,
 		Admin:  Admin{Type: "commune", Parent: "District autonome d'Abidjan", Mairie: "mairie-" + id, Bank: bank, Source: src},
-		Places: append([]Place{mairie(id, name, lat+0.0025, lng-0.0035, srcAbidjanDistrict)}, places...)}
+		Places: append(append([]Place{mairie(id, name, lat+0.0025, lng-0.0035, srcAbidjanDistrict)}, places...), coiffeurs(id, lat, lng)...)}
+}
+
+// coiffeurs: every quarter has its barbier and its salon de coiffure,
+// invented for the game.
+func coiffeurs(communeID string, lat, lng float64) []Place {
+	barbiers := []string{"Barbier « Le Dégradé »", "Barbier « Top Coupe »", "Barbier « Chez Prince »", "Barbier « Le Contour »"}
+	salons := []string{"Salon « Belle Go »", "Salon « Tantie Awa »", "Salon « Mami Coiffure »", "Salon « Doigts de fée »"}
+	n := 0
+	for _, r := range communeID {
+		n += int(r)
+	}
+	return []Place{
+		fictional(communeID+"-barbier", barbiers[n%len(barbiers)], "barbier", "", lat-0.0020, lng+0.0015),
+		fictional(communeID+"-salon", salons[n%len(salons)], "salon", "", lat+0.0018, lng+0.0030),
+	}
 }
 
 func mairie(communeID, communeName string, lat, lng float64, src string) Place {
@@ -159,10 +180,10 @@ var Cities = []City{
 					Source: game.Verified("Stade du Plateau, ouvert en 1961 sur le site du stade Géo-André ; capacité variable selon les sources (27 000 à 40 000).", srcVenues, srcStadeFHB)},
 			),
 			abidjanCommune("cocody", "Cocody", "Résidences, université et Riviera.", 5.3480, -3.9870, "nord",
-				Place{ID: "cocody-danga", Name: "Maquis de Danga", Kind: "maquis", Quarter: "Danga", Lat: 5.3420, Lng: -4.0040, Approx: true, Source: invented},
+				Place{ID: "cocody-danga", Name: "Maquis de Danga", Kind: "maquis", Quarter: "Danga", Lat: 5.3420, Lng: -4.0010, Approx: true, Source: invented},
 				Place{ID: "cocody-ufhb", Name: "Terrain de l'Université", Kind: "sport", Lat: 5.3460, Lng: -3.9890, Approx: true, Source: invented},
 				Place{ID: "cocody-riviera", Name: "Bureaux de la Riviera", Kind: "office", Quarter: "Riviera", Lat: 5.3560, Lng: -3.9640, Approx: true, Source: invented},
-				Place{ID: "cocody-universite", Name: "Université Félix-Houphouët-Boigny", Kind: "school", Lat: 5.3440, Lng: -3.9840, Real: true, Approx: true, Operator: "Université publique",
+				Place{ID: "cocody-universite", Name: "Université Félix-Houphouët-Boigny", Kind: "universite", Lat: 5.3440, Lng: -3.9840, Real: true, Approx: true, Operator: "Université publique",
 					Source: game.Verified("Ex-Université de Cocody (1964), la plus grande université publique du pays.", srcUniversities, srcUniversities2)},
 				Place{ID: "cocody-chu", Name: "CHU de Cocody", Kind: "health", Lat: 5.3410, Lng: -3.9930, Real: true, Approx: true, Operator: "Établissement public hospitalier national",
 					Source: game.Verified("Transformé en établissement public hospitalier national en 2022.", srcCHUStatus)},
@@ -173,10 +194,21 @@ var Cities = []City{
 				Place{ID: "cocody-playce", Name: "PlaYce Palmeraie", Kind: "mall", Quarter: "Riviera Palmeraie", Lat: 5.3668, Lng: -3.9560, Real: true, Approx: true,
 					Operator: "CFAO (CFAO Consumer Retail)",
 					Source:   game.Verified("Centre commercial ouvert le 29 juin 2017 à Cocody-Riviera Palmeraie (Génie 2000) : 29 000 m², Carrefour Market, 24 enseignes ; exploité par CFAO. Position placée d'après l'adresse, à relever.", srcPlayceToyota, srcPlayceFA, srcCFAORetail)},
+				Place{ID: "cocody-hotel-ivoire", Name: "Hôtel Ivoire", Kind: "hotel", Lat: 5.3272, Lng: -4.0047, Real: true,
+					Source: game.Partial("Hôtel du complexe Village Ivoire, boulevard Hassan II à Cocody, face à la lagune et au Plateau (5°19′38″N 4°00′17″W) ; exploitant actuel à confirmer.", srcHotelIvoire)},
+				Place{ID: "cocody-baie", Name: "Baie de Cocody", Kind: "lagune", Lat: 5.3345, Lng: -4.0028, Real: true, Approx: true,
+					Source: game.Partial("Baie de la lagune Ébrié entre Cocody et le Plateau, que domine l'Hôtel Ivoire ; promenade placée pour le jeu.", srcHotelIvoire)},
+				Place{ID: "cocody-blockhauss", Name: "Village de Blockhauss", Kind: "village", Quarter: "Blockhauss", Lat: 5.3300, Lng: -3.9930, Real: true, Approx: true,
+					Source: game.Partial("Village ébrié de Cocody (avec Cocody village, M'badon, M'pouto, Anono, Akouédo), où l'on produit l'attiéké ; position sur la carte à relever.", srcBlockhauss, srcCocodyVillages)},
+				Place{ID: "cocody-ucao", Name: "UCAO-UUA", Kind: "universite", Lat: 5.3470, Lng: -3.9960, Real: true, Approx: true, Operator: "Université catholique de l'Afrique de l'Ouest (privée)",
+					Source: game.Partial("Université catholique de l'Afrique de l'Ouest, unité universitaire d'Abidjan, rue Sainte-Marie à Cocody ; position placée d'après l'adresse, à relever.", srcUCAO, srcUCAO2)},
+				Place{ID: "cocody-iua", Name: "Institut universitaire d'Abidjan (IUA)", Kind: "universite", Lat: 5.3620, Lng: -3.9820, Real: true, Approx: true, Operator: "Établissement privé",
+					Source: game.Unverified("Université privée fondée en 2004 ; adresse non trouvée : la commune et la position sont à confirmer.", srcIUA)},
 			),
 			abidjanCommune("yopougon", "Yopougon", "Yop City, capitale de l'ambiance.", 5.3450, -4.0820, "nord",
 				Place{ID: "yop-rue-princesse", Name: "Rue Princesse", Kind: "club", Lat: 5.3380, Lng: -4.0760, Real: true, Approx: true, Closed: "2011-08",
 					Source: game.Partial("Rue des maquis et boîtes de nuit, rasée en août 2011 pendant l'opération « Pays propre ». Le jeu garde un lieu d'ambiance à cet endroit.", game.SrcRuePrincesse2011)},
+				fictional("yop-ecole", "Groupe scolaire de Niangon", "school", "Niangon", 5.3400, -4.0880),
 				Place{ID: "yop-maquis", Name: "Maquis de Sideci", Kind: "maquis", Quarter: "Sideci", Lat: 5.3320, Lng: -4.0690, Approx: true, Source: invented},
 				Place{ID: "yop-marche", Name: "Marché de Siporex", Kind: "market", Quarter: "Siporex", Lat: 5.3510, Lng: -4.0710, Real: true, Approx: true, Source: game.Unverified("Marché du quartier Siporex ; à confirmer.")},
 				Place{ID: "yop-chu", Name: "CHU de Yopougon", Kind: "health", Lat: 5.3520, Lng: -4.0890, Real: true, Approx: true, Operator: "Établissement public hospitalier national",
@@ -191,7 +223,10 @@ var Cities = []City{
 			),
 			abidjanCommune("abobo", "Abobo", "La plus peuplée. Débrouillardise et solidarité.", 5.4250, -4.0170, "nord",
 				Place{ID: "abobo-marche", Name: "Grand marché d'Abobo", Kind: "market", Lat: 5.4180, Lng: -4.0200, Real: true, Approx: true, Source: game.Unverified("Grand marché d'Abobo ; à confirmer.")},
+				Place{ID: "abobo-una", Name: "Université Nangui-Abrogoua", Kind: "universite", Lat: 5.3880, Lng: -4.0150, Real: true, Approx: true, Operator: "Université publique",
+					Source: game.Partial("Université publique (ex-Université d'Abobo-Adjamé) ; position placée côté Abobo, à relever.", srcUniversities, srcUniversities2)},
 				Place{ID: "abobo-terrain", Name: "Terrain de quartier", Kind: "sport", Lat: 5.4300, Lng: -4.0120, Approx: true, Source: invented},
+				fictional("abobo-ecole", "Groupe scolaire d'Abobo-Baoulé", "school", "Abobo-Baoulé", 5.4290, -4.0210),
 				fictional("abobo-maquis", "Maquis du carrefour", "maquis", "", 5.4220, -4.0090),
 				fictional("abobo-gare", "Gare des gbakas", "transport", "", 5.4160, -4.0130),
 			),
@@ -219,6 +254,7 @@ var Cities = []City{
 			abidjanCommune("koumassi", "Koumassi", "Populaire, vivante, au bord de la lagune.", 5.2930, -3.9500, "sud",
 				Place{ID: "koumassi-marche", Name: "Marché de Koumassi", Kind: "market", Lat: 5.2960, Lng: -3.9520, Real: true, Approx: true, Source: game.Unverified("Marché de Koumassi ; à confirmer.")},
 				fictional("koumassi-maquis", "Maquis de la lagune", "maquis", "", 5.2890, -3.9440),
+				fictional("koumassi-ecole", "Groupe scolaire de Koumassi", "school", "", 5.2990, -3.9560),
 				fictional("koumassi-terrain", "Terrain de Koumassi", "sport", "", 5.2990, -3.9440),
 			),
 			abidjanCommune("port-bouet", "Port-Bouët", "La plage, l'aéroport, le vent de l'océan.", 5.2560, -3.9260, "sud",
@@ -261,7 +297,7 @@ var Cities = []City{
 					{ID: "yakro-basilique", Name: "Basilique Notre-Dame de la Paix", Kind: "worship", Lat: 6.8113, Lng: -5.2970, Real: true, Approx: true,
 						Source: game.Verified("Basilique de Yamoussoukro.", srcYakro, srcYakroSites)},
 					{ID: "yakro-maquis", Name: "Maquis du Lac", Kind: "maquis", Lat: 6.8190, Lng: -5.2760, Approx: true, Source: invented},
-					{ID: "yakro-inphb", Name: "INP-HB", Kind: "school", Lat: 6.8930, Lng: -5.2380, Real: true, Approx: true, Operator: "Institut public d'enseignement supérieur",
+					{ID: "yakro-inphb", Name: "INP-HB", Kind: "universite", Lat: 6.8930, Lng: -5.2380, Real: true, Approx: true, Operator: "Institut public d'enseignement supérieur",
 						Source: game.Verified("Institut national polytechnique Félix-Houphouët-Boigny.", srcINPHB)},
 					{ID: "yakro-lac", Name: "Lac aux caïmans", Kind: "nature", Lat: 6.8170, Lng: -5.2690, Real: true, Approx: true,
 						Source: game.Partial("Caïmans du lac artificiel du palais présidentiel.", srcYakro)},
@@ -279,7 +315,7 @@ var Cities = []City{
 					mairie("bouake-centre", "Bouaké", 7.6930, -5.0330, srcGbeke),
 					{ID: "bouake-marche", Name: "Grand marché de Bouaké", Kind: "market", Lat: 7.6890, Lng: -5.0290, Real: true, Approx: true, Source: game.Unverified("Grand marché ; à confirmer.")},
 					{ID: "bouake-stade", Name: "Stade de la Paix", Kind: "sport", Lat: 7.7050, Lng: -5.0200, Real: true, Approx: true, Source: game.Unverified("Stade de Bouaké ; à confirmer.")},
-					{ID: "bouake-universite", Name: "Université Alassane-Ouattara", Kind: "school", Lat: 7.6750, Lng: -5.0150, Real: true, Approx: true, Operator: "Université publique",
+					{ID: "bouake-universite", Name: "Université Alassane-Ouattara", Kind: "universite", Lat: 7.6750, Lng: -5.0150, Real: true, Approx: true, Operator: "Université publique",
 						Source: game.Verified("Créée en 2012 à partir de l'Université de Bouaké.", srcUniversities, srcUniversities2)},
 					{ID: "bouake-chu", Name: "CHU de Bouaké", Kind: "health", Lat: 7.6980, Lng: -5.0400, Real: true, Approx: true, Operator: "Établissement public hospitalier national",
 						Source: game.Verified("Transformé en établissement public hospitalier national en 2022.", srcCHUStatus)},
@@ -344,7 +380,7 @@ var Cities = []City{
 					mairie("korhogo-centre", "Korhogo", 9.4600, -5.6330, srcPoro),
 					{ID: "korhogo-marche", Name: "Grand marché", Kind: "market", Lat: 9.4560, Lng: -5.6310, Real: true, Approx: true, Source: game.Unverified("Grand marché ; à confirmer.")},
 					{ID: "korhogo-mosquee", Name: "Grande mosquée", Kind: "worship", Lat: 9.4600, Lng: -5.6270, Real: true, Approx: true, Source: game.Unverified("Mosquée principale ; nom exact à confirmer.")},
-					{ID: "korhogo-universite", Name: "Université Peleforo-Gon-Coulibaly", Kind: "school", Lat: 9.4400, Lng: -5.6400, Real: true, Approx: true, Operator: "Université publique",
+					{ID: "korhogo-universite", Name: "Université Peleforo-Gon-Coulibaly", Kind: "universite", Lat: 9.4400, Lng: -5.6400, Real: true, Approx: true, Operator: "Université publique",
 						Source: game.Verified("Université de plein exercice depuis 2012.", srcUniversities, srcUniversities2)},
 				}},
 		},
@@ -360,7 +396,7 @@ var Cities = []City{
 					mairie("daloa-centre", "Daloa", 6.8800, -6.4530, srcRegions),
 					{ID: "daloa-marche", Name: "Marché de Daloa", Kind: "market", Lat: 6.8760, Lng: -6.4500, Real: true, Approx: true, Source: game.Unverified("Marché de la ville ; à confirmer.")},
 					{ID: "daloa-maquis", Name: "Maquis du centre", Kind: "maquis", Lat: 6.8800, Lng: -6.4460, Approx: true, Source: invented},
-					{ID: "daloa-universite", Name: "Université Jean-Lorougnon-Guédé", Kind: "school", Lat: 6.8930, Lng: -6.4300, Real: true, Approx: true, Operator: "Université publique",
+					{ID: "daloa-universite", Name: "Université Jean-Lorougnon-Guédé", Kind: "universite", Lat: 6.8930, Lng: -6.4300, Real: true, Approx: true, Operator: "Université publique",
 						Source: game.Verified("Université de plein exercice depuis 2012, tournée vers l'agroforesterie.", srcUniversities, srcUniversities2)},
 				}},
 		},

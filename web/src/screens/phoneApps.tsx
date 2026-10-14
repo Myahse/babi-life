@@ -72,7 +72,7 @@ function CareerCard({ world, sim, commune, act, onWalk, onMap }: AppProps & { on
   const next = c.levels[sim.careerLevel + 1]
   const need = neededToPromote(sim.careerLevel)
   const city = world.cities.find((x) => x.id === sim.city)!
-  const workplaces = city.communes.flatMap((cm) => cm.places.filter((p) => p.kind === c.kind).map((p) => ({ p, cm })))
+  const workplaces = city.communes.flatMap((cm) => cm.places.filter((p) => p.kind === c.kind || c.also?.includes(p.kind)).map((p) => ({ p, cm })))
   const colors = kindColors(c.kind)
 
   return (

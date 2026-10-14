@@ -3,6 +3,7 @@ package game
 import (
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 )
 
@@ -99,6 +100,13 @@ type Career struct {
 	Effect  Needs `json:"effect"` // how a shift tires the Sim
 	// Days a shift can start (0 = lundi); empty = every day.
 	Days []int `json:"days,omitempty"`
+	// Also: other kinds of place where the job is done.
+	Also []string `json:"also,omitempty"`
+}
+
+// WorksAt: whether the job is done at this kind of place.
+func (c Career) WorksAt(kind string) bool {
+	return c.Kind == kind || slices.Contains(c.Also, kind)
 }
 
 type Level struct {
@@ -126,9 +134,12 @@ var Careers = []Career{
 	{ID: "mairie", Label: "Service municipal", Icon: "landmark", Kind: "mairie", MinHour: 7, MaxHour: 10, Minutes: 8 * 60, Days: Weekdays,
 		Effect: Needs{Energy: -30, Fun: -15, Hunger: -20, Social: 20},
 		Levels: []Level{{"Agent d'accueil", 5500}, {"Agent d'état civil", 10000}, {"Chef de service", 18000}, {"Secrétaire général·e", 30000}, {"Maire", 50000}}},
-	{ID: "enseignement", Label: "Enseignement", Icon: "graduation-cap", Kind: "school", MinHour: 7, MaxHour: 10, Minutes: 6 * 60, Days: Workweek,
+	{ID: "enseignement", Label: "Enseignement", Icon: "graduation-cap", Kind: "school", Also: []string{"universite"}, MinHour: 7, MaxHour: 10, Minutes: 6 * 60, Days: Workweek,
 		Effect: Needs{Energy: -30, Fun: -5, Hunger: -15, Social: 20},
 		Levels: []Level{{"Surveillant·e", 5000}, {"Professeur·e contractuel·le", 9500}, {"Professeur·e titulaire", 16000}, {"Proviseur·e", 26000}, {"Président·e d'université", 45000}}},
+	{ID: "coiffure", Label: "Coiffure", Icon: "scissors", Kind: "salon", Also: []string{"barbier"}, MinHour: 8, MaxHour: 14, Minutes: 6 * 60, Days: Workweek,
+		Effect: Needs{Energy: -25, Fun: 5, Hunger: -15, Social: 30},
+		Levels: []Level{{"Apprenti·e", 3500}, {"Coiffeur·se", 7000}, {"Coiffeur·se reconnu·e", 12000}, {"Patron·ne de salon", 20000}, {"Coiffeur·se des stars", 38000}}},
 	{ID: "sante", Label: "Santé", Icon: "stethoscope", Kind: "health", MinHour: 6, MaxHour: 20, Minutes: 8 * 60,
 		Effect: Needs{Energy: -40, Hygiene: -10, Fun: -10, Social: 15},
 		Levels: []Level{{"Aide-soignant·e", 6000}, {"Infirmier·ère", 11000}, {"Sage-femme / Major", 17000}, {"Médecin", 30000}, {"Professeur·e de médecine", 52000}}},

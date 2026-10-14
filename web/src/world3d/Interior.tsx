@@ -15,11 +15,11 @@ import { rng } from './themes'
 
 type V3 = [number, number, number]
 /** Where someone is and what they're doing. */
-type Spot = { p: V3; r?: number; pose: Pose; lying?: boolean }
+type Spot = { p: V3; r?: number; pose: Pose; lying?: boolean; g?: 'femme' | 'homme' }
 type Person = Spot & { gender: 'femme' | 'homme'; look: ReturnType<typeof randomLook>; seed: number }
 
 /** Kinds of places that have an inside (the beach or the football pitch don't). */
-export const INDOOR = new Set(['police', 'home', 'maquis', 'club', 'restaurant', 'market', 'office', 'mairie', 'school', 'health', 'worship', 'mall', 'culture'])
+export const INDOOR = new Set(['police', 'home', 'maquis', 'club', 'restaurant', 'market', 'office', 'mairie', 'school', 'health', 'worship', 'mall', 'culture', 'barbier', 'salon', 'hotel', 'universite'])
 
 const W = 12 // room width (x)
 const D = 9 // room depth (z)
@@ -31,6 +31,13 @@ type Room = { floor: string; wall: string; dark?: boolean; furniture: React.Reac
 function action(kind: string, id: string | undefined): { spot: string; pose: Pose } {
   if (!id) return { spot: 'entrance', pose: 'idle' }
   if (id === 'garde-a-vue') return { spot: 'seat', pose: 'sit' }
+  if (/^(degrade|boule-a-zero|taille-barbe|tresses|tissage|chignon|manucure)$/.test(id)) return { spot: 'chair', pose: 'sit' }
+  // Gbairai: telling the quarter's news, with the hands.
+  if (id === 'gbairai') return { spot: kind === 'barbier' || kind === 'salon' ? 'bench' : 'table', pose: 'rant' }
+  if (id === 'piscine-hotel') return { spot: 'pool', pose: 'idle' }
+  if (id === 'nuit-hotel') return { spot: 'bed', pose: 'idle' }
+  if (id === 'brunch-lagune' || id === 'resto-u') return { spot: 'table', pose: 'eat' }
+  if (id === 'bar-hotel') return { spot: 'table', pose: 'drink' }
   if (/^(sleep|nap)$/.test(id)) return { spot: 'bed', pose: 'idle' }
   if (/^(biberon|bouillie|hochet|calin)$/.test(id)) return { spot: 'mat', pose: 'busy' }
   if (id === 'bain-bebe' || id === 'shower') return { spot: 'shower', pose: 'idle' }
@@ -41,7 +48,7 @@ function action(kind: string, id: string | undefined): { spot: string; pose: Pos
   if (/dance|party|coupe/.test(id)) return { spot: 'floor', pose: 'dance' }
   if (/^(drink|milkshake|coffee)/.test(id) || id.includes('drink')) return { spot: 'table', pose: 'drink' }
   if (/^(eat|burger|glace|anniversaire)/.test(id) || id.startsWith('golvo-')) return { spot: 'table', pose: 'eat' }
-  if (kind === 'school' || kind === 'office' || /cours|biblio|conference|read-ads|work/.test(id)) return { spot: 'desk', pose: 'write' }
+  if (kind === 'school' || kind === 'universite' || kind === 'office' || /cours|biblio|conference|read-ads|work/.test(id)) return { spot: 'desk', pose: 'write' }
   if (kind === 'culture' || kind === 'worship' || id === 'visite-malade') return { spot: 'seat', pose: 'sit' }
   if (id === 'consultation') return { spot: 'bed', pose: 'idle' }
   if (kind === 'market' || kind === 'mall') return { spot: 'stall', pose: 'busy' }
@@ -440,6 +447,119 @@ function room(kind: string, housing: string): Room {
           { p: [-4.6, 0.06, -3.6], pose: 'sit' },
         ],
       }
+    case 'barbier':
+    case 'salon': {
+      // Chairs facing the mirrors, the bench where people wait and talk.
+      const salon = kind === 'salon'
+      const seat = salon ? '#c2255c' : '#141416'
+      return {
+        floor: salon ? '#f3d9e3' : '#d8dde3',
+        wall: salon ? '#ffe3ee' : '#e7f0f7',
+        furniture: (
+          <>
+            <Box p={[0, 0.9, -4.15]} s={[10.5, 0.08, 0.5]} c="#f8f9fa" />
+            {[-3.5, 0, 3.5].map((x) => (
+              <group key={x} position={[x, 0, 0]}>
+                <Box p={[0, 1.75, -4.4]} s={[1.5, 1.3, 0.05]} c="#cfe8ff" />
+                <Box p={[0, 0.2, -3.2]} s={[0.3, 0.4, 0.3]} c="#868e96" />
+                <Box p={[0, 0.46, -3.2]} s={[0.65, 0.12, 0.6]} c={seat} />
+                <Box p={[0, 0.85, -2.88]} s={[0.65, 0.75, 0.1]} c={seat} />
+                {salon && x < 0 && (
+                  <mesh position={[0, 1.55, -3.2]}>
+                    <sphereGeometry args={[0.38, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
+                    <meshLambertMaterial color="#e9ecef" />
+                  </mesh>
+                )}
+              </group>
+            ))}
+            <Box p={[4.8, 0.45, 1.3]} s={[0.6, 0.1, 3.4]} c="#8a6a3d" />
+            {/* The TV in the corner: football at the barbier's, a série at the salon's */}
+            <Box p={[-5.9, 2.2, 0]} s={[0.06, 0.9, 1.5]} c="#141416" />
+            <Box p={[-5.85, 2.2, 0]} s={[0.04, 0.75, 1.35]} c={salon ? '#f783ac' : '#2b8a3e'} glow={0.4} />
+          </>
+        ),
+        spots: {
+          chair: { p: [0, 0.06, -3.15], r: Math.PI, pose: 'sit' },
+          bench: { p: [3.7, 0, 1.3], r: Math.PI / 2, pose: 'rant' },
+          entrance: { p: [0, 0, 3.6], r: Math.PI, pose: 'idle' },
+          counter: { p: [1.2, 0, -1.8], r: Math.PI, pose: 'idle' },
+        },
+        crowd: [
+          { p: [-3.5, 0.06, -3.15], r: Math.PI, pose: 'sit', g: salon ? 'femme' : 'homme' },
+          { p: [-2.8, 0, -2.4], r: Math.PI * 0.85, pose: 'busy', g: salon ? 'femme' : 'homme' },
+          { p: [0.8, 0, -2.5], r: Math.PI * 0.8, pose: 'busy', g: salon ? 'femme' : 'homme' },
+          { p: [4.55, 0.05, 0.3], r: -Math.PI / 2, pose: 'sit' },
+          { p: [4.55, 0.05, 2.3], r: -Math.PI / 2, pose: 'cheer' },
+        ],
+      }
+    }
+    case 'hotel':
+      // The lobby of a grand hotel, opening onto the pool; a suite at the back.
+      return {
+        floor: '#efe9df',
+        wall: '#d9c7a3',
+        furniture: (
+          <>
+            <Box p={[-3, 0.55, -3.6]} s={[4, 1.1, 0.8]} c="#6b4a32" />
+            <Box p={[-3, 1.12, -3.6]} s={[4.1, 0.06, 0.9]} c="#c9a227" />
+            <Box p={[1.5, 0.02, 0.6]} s={[5.4, 0.06, 4.6]} c="#f8f9fa" />
+            <Box p={[1.5, 0.05, 0.6]} s={[4.6, 0.06, 3.8]} c="#3fb6e0" glow={0.2} />
+            <Bed p={[4.4, 0, -3.3]} c="#f1e3c8" />
+            <Sofa p={[-4.6, 0, 1.6]} c="#2c4a6b" r={Math.PI / 2} />
+            <Table p={[-2.2, 0, 2.6]} c="#ffffff" chairs="#c9a227" />
+            <Plate p={[-2.5, 0, 2.5]} />
+          </>
+        ),
+        spots: {
+          pool: { p: [1.6, 0.05, 0.9], r: 0.4, pose: 'idle' },
+          bed: { p: [4.4, 0.62, -3.1], pose: 'idle', lying: true },
+          table: { p: [-2.2, 0, 3.45], r: Math.PI, pose: 'eat' },
+          entrance: { p: [0, 0, 3.8], r: Math.PI, pose: 'idle' },
+          counter: { p: [-3, 0, -2.8], r: Math.PI, pose: 'idle' },
+        },
+        crowd: [
+          { p: [-3, 0, -4.2], pose: 'busy' },
+          { p: [2.6, 0.05, 0], r: -0.6, pose: 'wave' },
+          { p: [-4.6, 0.05, 1.2], r: Math.PI / 2, pose: 'sit' },
+          { p: [-2.2, 0, 1.75], pose: 'drink' },
+        ],
+      }
+    case 'universite':
+      // The amphi: rows rising to the back, the professor at the board.
+      return {
+        floor: '#b9a27e',
+        wall: '#e8dcc4',
+        furniture: (
+          <>
+            <Box p={[1, 1.7, -4.4]} s={[6, 1.5, 0.06]} c="#264d3b" />
+            <Box p={[1, 0.5, -3.3]} s={[1.4, 1, 0.6]} c="#7a5230" />
+            {[0, 1, 2].map((row) => (
+              <group key={row} position={[1, row * 0.3, -1.4 + row * 1.6]}>
+                {row > 0 && <Box p={[0, -0.15, 0.3]} s={[8, 0.3, 1.6]} c="#a68d68" />}
+                <Box p={[0, 0.74, 0]} s={[8, 0.06, 0.5]} c="#8a6a3d" />
+                <Box p={[0, 0.37, -0.22]} s={[8, 0.74, 0.06]} c="#6b5030" />
+                <Box p={[0, 0.44, 0.55]} s={[8, 0.06, 0.4]} c="#6b5030" />
+              </group>
+            ))}
+            <Table p={[-4.4, 0, 1.6]} c="#ffffff" chairs="#1e88e5" />
+            <Plate p={[-4.6, 0, 1.5]} />
+          </>
+        ),
+        spots: {
+          desk: { p: [1.4, 0.3, 0.75], r: Math.PI, pose: 'write' },
+          table: { p: [-4.4, 0, 2.45], r: Math.PI, pose: 'eat' },
+          entrance: { p: [0, 0, 3.8], r: Math.PI, pose: 'idle' },
+          counter: { p: [1, 0, -2.4], r: Math.PI, pose: 'idle' },
+        },
+        crowd: [
+          { p: [1, 0, -3.8], pose: 'wave' },
+          { p: [-1.5, 0, -0.85], r: Math.PI, pose: 'write' },
+          { p: [3.2, 0, -0.85], r: Math.PI, pose: 'write' },
+          { p: [-0.8, 0.3, 0.75], r: Math.PI, pose: 'write' },
+          { p: [3.8, 0.6, 2.35], r: Math.PI, pose: 'write' },
+          { p: [-1.6, 0.6, 2.35], r: Math.PI, pose: 'idle' },
+        ],
+      }
     default: // worship, culture: rows of seats facing the front
       return {
         floor: '#c9b08a',
@@ -472,7 +592,7 @@ export function Interior({ sim, kind, placeId, interactionId, housing, night, st
     const rand = rng(`inside${placeId}`)
     return r.crowd.map((s) => {
       // The club's dance floor is the women's; elsewhere anyone.
-      const gender: Person['gender'] = kind === 'club' && s.pose === 'dance' ? 'femme' : rand() < 0.5 ? 'femme' : 'homme'
+      const gender: Person['gender'] = s.g ?? (kind === 'club' && s.pose === 'dance' ? 'femme' : kind === 'salon' && rand() < 0.8 ? 'femme' : rand() < 0.5 ? 'femme' : 'homme')
       return { ...s, gender, look: randomLook(gender, rand), seed: rand() * 100 }
     })
   }, [placeId, kind]) // eslint-disable-line react-hooks/exhaustive-deps

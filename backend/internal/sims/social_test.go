@@ -60,12 +60,20 @@ func TestTheStreetGang(t *testing.T) {
 	}
 	foot, _ := game.Kinds["sport"].Interaction("play-football")
 	s := until(t, teen("coule"), func(s *Sim, r *rand.Rand) { s.socialize(foot, r) }, func(s *Sim) bool { return s.Gang == "invited" })
-	for seed := uint64(1); seed < 300; seed++ {
-		rich := teen("late")()
-		rich.socialize(foot, rand.New(rand.NewPCG(seed, 3)))
-		if rich.Gang != "" {
-			t.Fatal("a laté kid isn't recruited by the bande")
+	// Any family can be approached, but struggling ones far more often.
+	invited := func(family string) (n int) {
+		for seed := uint64(1); seed < 2000; seed++ {
+			x := teen(family)()
+			x.socialize(foot, rand.New(rand.NewPCG(seed, 3)))
+			if x.Gang == "invited" {
+				n++
+			}
 		}
+		return n
+	}
+	poor, rich := invited("gnambro"), invited("debout")
+	if rich == 0 || poor < 5*rich {
+		t.Errorf("the bande recruits everywhere, mostly among the poor: gnambro %d, debout %d", poor, rich)
 	}
 
 	if _, _, err := s.gangAction("accepter", lucky()); err != nil || s.Gang != "member" {
@@ -91,6 +99,30 @@ func TestTheStreetGang(t *testing.T) {
 	for _, f := range s.Friends {
 		if f.Gang {
 			t.Error("the bande's boys are gone with it")
+		}
+	}
+}
+
+func TestHairdos(t *testing.T) {
+	s := newSim()
+	s.Look.Hair, s.Look.Beard = "afro", "none"
+	s.restyle("degrade")
+	if s.Look.Hair != "short" || s.Look.Beard != "none" {
+		t.Errorf("a dégradé cuts the hair short: %+v", s.Look)
+	}
+	s.restyle("tresses")
+	s.restyle("taille-barbe")
+	if s.Look.Hair != "braids" || s.Look.Beard != "bouc" {
+		t.Errorf("braids and a trimmed beard: %+v", s.Look)
+	}
+	s.restyle("play-football")
+	if s.Look.Hair != "braids" {
+		t.Error("only the barbier and the salon change the look")
+	}
+	// Anyone can sit at the barbier or the salon.
+	for _, k := range []string{"barbier", "salon"} {
+		if _, ok := game.Kinds[k].Interaction("gbairai"); !ok {
+			t.Errorf("gbairai at the %s", k)
 		}
 	}
 }

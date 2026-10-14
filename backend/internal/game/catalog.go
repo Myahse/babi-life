@@ -120,6 +120,7 @@ var Kinds = map[string]PlaceKind{
 			{ID: "eat-poulet-braise", Label: "Manger un poulet braisé", Icon: "drumstick", Minutes: 45, Cost: 3500, Effect: Needs{Hunger: 60, Fun: 10, Social: 10}},
 			{ID: "eat-garba", Label: "Manger un garba", Icon: "fish", Minutes: 20, Cost: 500, Effect: Needs{Hunger: 40}},
 			{ID: "drink-with-friends", Ages: Adults, Label: "Prendre un pot avec les amis", Icon: "beer", Minutes: 90, Cost: 2000, Effect: Needs{Social: 40, Fun: 30, Energy: -10}, MinHour: 17},
+			Gbairai,
 			{ID: "dance-coupe-decale", Ages: Adults, Label: "Danser le coupé-décalé", Icon: "music", Minutes: 60, Effect: Needs{Fun: 40, Social: 20, Energy: -15, Hygiene: -10}, MinHour: 19},
 		},
 		Events: []RandomEvent{
@@ -134,6 +135,7 @@ var Kinds = map[string]PlaceKind{
 			{ID: "buy-food", Ages: TeensUp, Label: "Faire le marché", Icon: "shopping-basket", Minutes: 60, Cost: 3000, Effect: Needs{Hunger: 15, Social: 10, Energy: -5}},
 			{ID: "bargain", Ages: TeensUp, Label: "Marchander avec les tanties", Icon: "messages-square", Minutes: 30, Effect: Needs{Social: 20, Fun: 10}},
 			{ID: "eat-alloco", Label: "Manger de l'alloco", Icon: "banana", Minutes: 15, Cost: 300, Effect: Needs{Hunger: 25}},
+			Gbairai,
 			{ID: "sell-goods", Ages: TeensUp, Label: "Vendre au petit commerce", Icon: "store", Minutes: 4 * 60, Cost: -4000, Effect: Needs{Energy: -20, Social: 15, Hygiene: -10}, MinHour: 6, MaxHour: 18},
 		},
 		Events: []RandomEvent{
@@ -276,6 +278,88 @@ var Kinds = map[string]PlaceKind{
 			{Text: "On t'offre une boisson avec ton menu.", Effect: Needs{Fun: 10}},
 		},
 	},
+	// Barbers and hair salons: a haircut changes the Sim's look (see
+	// Hairdos), and the chairs are where the quarter's gbairai goes round.
+	// Anyone can sit in either: the barbier cuts short, the salon braids.
+	"barbier": {
+		ID: "barbier", Label: "Barbier", Icon: "scissors",
+		Interactions: []Interaction{
+			{ID: "degrade", Label: "Se faire un dégradé", Icon: "scissors", Minutes: 40, Cost: 1000, Effect: Needs{Hygiene: 20, Fun: 15, Social: 10}, MinHour: 8, MaxHour: 22},
+			{ID: "boule-a-zero", Label: "Se faire raser la tête", Icon: "scissors", Minutes: 25, Cost: 1000, Effect: Needs{Hygiene: 25, Fun: 5}, MinHour: 8, MaxHour: 22},
+			{ID: "taille-barbe", Ages: Adults, Label: "Se faire tailler la barbe", Icon: "scissors", Minutes: 20, Cost: 500, Effect: Needs{Hygiene: 15, Fun: 5}, MinHour: 8, MaxHour: 22},
+			Gbairai,
+		},
+		Events: []RandomEvent{
+			{Text: "Débat enflammé chez le barbier : qui est le meilleur, l'Asec ou l'Africa ?", Effect: Needs{Fun: 15, Social: 10}},
+			{Text: "La tondeuse a dérapé : ton contour n'est plus droit…", Effect: Needs{Fun: -15}},
+			{Text: "Coupure de courant au milieu de la coupe : on attend le groupe électrogène.", Effect: Needs{Fun: -10}},
+		},
+	},
+	"salon": {
+		ID: "salon", Label: "Salon de coiffure", Icon: "flower-2",
+		Interactions: []Interaction{
+			{ID: "tresses", Label: "Se faire tresser", Icon: "flower-2", Minutes: 3 * 60, Cost: 5000, Effect: Needs{Fun: 10, Social: 30, Energy: -10, Hygiene: 15}, MinHour: 8, MaxHour: 20},
+			{ID: "tissage", Ages: TeensUp, Label: "Se faire poser un tissage", Icon: "flower-2", Minutes: 2 * 60, Cost: 15000, Effect: Needs{Fun: 25, Social: 20, Hygiene: 15}, MinHour: 8, MaxHour: 20},
+			{ID: "chignon", Label: "Se faire un chignon", Icon: "flower-2", Minutes: 45, Cost: 2000, Effect: Needs{Fun: 15, Hygiene: 10}, MinHour: 8, MaxHour: 20},
+			{ID: "manucure", Ages: TeensUp, Label: "Se faire les ongles", Icon: "sparkles", Minutes: 45, Cost: 3000, Effect: Needs{Fun: 20, Social: 10}, MinHour: 8, MaxHour: 20},
+			Gbairai,
+		},
+		Events: []RandomEvent{
+			{Text: "Toute la clientèle connaît déjà la nouvelle du quartier. Le gbairai va vite !", Effect: Needs{Social: 15, Fun: 10}},
+			{Text: "La coiffeuse t'a tiré les cheveux trop fort : tu as mal à la tête.", Effect: Needs{Fun: -10}},
+		},
+	},
+	"hotel": {
+		ID: "hotel", Label: "Hôtel", Icon: "hotel",
+		Interactions: []Interaction{
+			{ID: "piscine-hotel", Label: "Se baigner à la piscine", Icon: "waves", Minutes: 60, Cost: 10000, Effect: Needs{Fun: 35, Hygiene: 10, Energy: -10}, MinHour: 8, MaxHour: 19},
+			{ID: "brunch-lagune", Label: "Bruncher face à la lagune", Icon: "utensils", Minutes: 90, Cost: 20000, Effect: Needs{Hunger: 60, Fun: 20, Social: 15}, MinHour: 10, MaxHour: 15},
+			{ID: "bar-hotel", Ages: Adults, Label: "Prendre un verre au bar de l'hôtel", Icon: "beer", Minutes: 60, Cost: 6000, Effect: Needs{Social: 20, Fun: 25}, MinHour: 17},
+			{ID: "nuit-hotel", Ages: Adults, Label: "Passer la nuit à l'hôtel", Icon: "bed-double", Minutes: 8 * 60, Cost: 60000, Effect: Needs{Energy: 100, Hygiene: 40, Fun: 20}, MinHour: 20, MaxHour: 2},
+		},
+		Events: []RandomEvent{
+			{Text: "Une star du coupé-décalé traverse le hall, entourée de gardes du corps.", Effect: Needs{Fun: 20}},
+			{Text: "Il y a un grand mariage dans les salons : la musique s'entend jusqu'à la piscine.", Effect: Needs{Fun: 10, Social: 5}},
+		},
+	},
+	"universite": {
+		ID: "universite", Label: "Université", Icon: "graduation-cap",
+		Interactions: []Interaction{
+			{ID: "amphi", Ages: Adults, Label: "Suivre un cours en amphi", Icon: "presentation", Minutes: 3 * 60, Effect: Needs{Fun: -10, Energy: -20, Social: 20, Hunger: -10}, MinHour: 7, MaxHour: 16, Days: Weekdays},
+			{ID: "partiel", Ages: Adults, Label: "Passer un partiel", Icon: "file-text", Minutes: 3 * 60, Effect: Needs{Fun: -25, Energy: -25}, MinHour: 8, MaxHour: 12, Days: Weekdays},
+			{ID: "bu", Ages: TeensUp, Label: "Réviser à la bibliothèque universitaire", Icon: "library", Minutes: 2 * 60, Effect: Needs{Fun: -5, Energy: -10}, MinHour: 8, MaxHour: 19, Days: Workweek},
+			{ID: "resto-u", Ages: TeensUp, Label: "Manger au resto U", Icon: "utensils", Minutes: 30, Cost: 250, Effect: Needs{Hunger: 45, Social: 10}, MinHour: 11, MaxHour: 14, Days: Workweek},
+			{ID: "conference-u", Ages: TeensUp, Label: "Assister à une conférence", Icon: "presentation", Minutes: 90, Effect: Needs{Fun: 15, Social: 15, Energy: -5}, MinHour: 9, MaxHour: 17, Days: Weekdays},
+		},
+		Events: []RandomEvent{
+			{Text: "Grève : les amphis sont fermés, tout le monde rentre.", Effect: Needs{Fun: 5, Social: 5}},
+			{Text: "L'amphi est plein : tu suis le cours debout, à la fenêtre.", Effect: Needs{Energy: -10, Fun: -10}},
+			{Text: "Les résultats sont affichés : tu valides ton semestre !", Effect: Needs{Fun: 30}},
+		},
+	},
+	// A village of the Ébrié, inside the city: attiéké is made there.
+	"village": {
+		ID: "village", Label: "Village ébrié", Icon: "cooking-pot",
+		Interactions: []Interaction{
+			{ID: "preparer-attieke", Ages: TeensUp, Label: "Aider à préparer l'attiéké", Icon: "cooking-pot", Minutes: 3 * 60, Cost: -3000, Effect: Needs{Energy: -25, Hygiene: -15, Social: 20}, MinHour: 6, MaxHour: 15},
+			{ID: "attieke-frais", Label: "Manger de l'attiéké frais du village", Icon: "fish", Minutes: 20, Cost: 500, Effect: Needs{Hunger: 45, Fun: 5}},
+			{ID: "anciens", Label: "Écouter les anciens raconter le village", Icon: "users", Minutes: 60, Effect: Needs{Social: 25, Fun: 10}},
+		},
+		Events: []RandomEvent{
+			{Text: "Les femmes du village te donnent un sachet d'attiéké pour la maison.", Effect: Needs{Hunger: 20, Social: 10}},
+		},
+	},
+	"lagune": {
+		ID: "lagune", Label: "Bord de lagune", Icon: "waves",
+		Interactions: []Interaction{
+			{ID: "balade-lagune", Label: "Se promener au bord de la lagune", Icon: "footprints", Minutes: 45, Effect: Needs{Fun: 20, Energy: -5, Social: 5}},
+			{ID: "photo-plateau", Label: "Prendre les tours du Plateau en photo", Icon: "camera", Minutes: 20, Effect: Needs{Fun: 15}},
+			{ID: "coucher-soleil", Label: "Regarder le soleil se coucher sur la lagune", Icon: "sunset", Minutes: 30, Effect: Needs{Fun: 25, Energy: 5}, MinHour: 17, MaxHour: 20},
+		},
+		Events: []RandomEvent{
+			{Text: "Une pinasse passe, les passagers te font signe.", Effect: Needs{Fun: 10}},
+		},
+	},
 	"nature": {
 		ID: "nature", Label: "Site naturel", Icon: "mountain",
 		Interactions: []Interaction{
@@ -283,6 +367,20 @@ var Kinds = map[string]PlaceKind{
 			{ID: "photos", Label: "Prendre des photos", Icon: "camera", Minutes: 30, Effect: Needs{Fun: 20}},
 		},
 	},
+}
+
+// Gbairai: gossip, the news of the quarter told from chair to chair. Everyone
+// takes part, whoever they are.
+var Gbairai = Interaction{ID: "gbairai", Ages: TeensUp, Label: "Faire le gbairai (les commérages)", Icon: "messages-square", Minutes: 45, Effect: Needs{Social: 30, Fun: 20}}
+
+// Hairdos: what a visit to the barbier or the salon does to the Sim's look.
+var Hairdos = map[string]struct{ Hair, Beard string }{
+	"degrade":      {Hair: "short"},
+	"boule-a-zero": {Hair: "bald"},
+	"taille-barbe": {Beard: "bouc"},
+	"tresses":      {Hair: "braids"},
+	"tissage":      {Hair: "weave"},
+	"chignon":      {Hair: "bun"},
 }
 
 // Generic events can happen anywhere.

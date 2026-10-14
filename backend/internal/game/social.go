@@ -3,13 +3,12 @@ package game
 import (
 	"fmt"
 	"math/rand/v2"
-	"slices"
 )
 
 // Friends and the street. Sims meet people while doing things with others;
 // friendship grows when they see each other and fades when they don't. A
-// teenager from a poor family can be drawn into a street gang (the
-// « microbes »): quick money and belonging, until the police catch up.
+// teenager from any family, though far more often a struggling one, can be
+// drawn into a street gang (the « microbes »): quick money and belonging, until the police catch up.
 
 // A Friend is someone the Sim knows.
 type Friend struct {
@@ -30,6 +29,7 @@ const MaxFriends = 12
 var SocialInteractions = []string{
 	"aller-ecole", "jouer-cour", "play-football", "watch-match", "drink-with-friends", "dance-coupe-decale",
 	"party", "glace", "anniversaire-resto", "spectacle", "pray", "coffee-break", "eat-poulet-braise",
+	"gbairai", "tresses", "amphi", "resto-u", "bar-hotel",
 }
 
 var (
@@ -89,15 +89,17 @@ const (
 	CustodyMinutes = 3 * 60 // garde à vue, shortened for the game
 )
 
-// GangInviteChance: poor teenagers hanging around get noticed by the bande.
+// GangInviteChance: teenagers hanging around get noticed by the bande. It
+// recruits in every family, but far more among those who struggle.
 func GangInviteChance(stage, family string, marks int) float64 {
-	if stage != StageAdo || !slices.Contains([]string{"coule", "gnambro"}, family) {
+	if stage != StageAdo {
 		return 0
 	}
+	chance := map[string]float64{"gnambro": 0.2, "coule": 0.15, "poignon": 0.07, "lagnon": 0.04, "late": 0.02, "debout": 0.01}[family]
 	if marks < 5 {
-		return 0.3 // out of school: the street is closer
+		chance *= 2 // out of school: the street is closer
 	}
-	return 0.15
+	return chance
 }
 
 // CoupOutcome: the money of a coup, and whether the police catch the Sim.

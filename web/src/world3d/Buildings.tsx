@@ -303,8 +303,7 @@ function Mairie({ night }: Props) {
 }
 
 /** School or university: a long ochre block with a courtyard and the flag. */
-function School({ name, night }: Props) {
-  const label = /université|inp/i.test(name) ? 'UNIVERSITÉ' : 'ÉCOLE'
+function School({ name, night, label = /université|inp/i.test(name) ? 'UNIVERSITÉ' : 'ÉCOLE' }: Props & { label?: string }) {
   return (
     <group>
       <Box p={[0, 2.6, -3]} s={[12.5, 5.2, 4.5]} c="#f2c879" />
@@ -405,6 +404,125 @@ function Restaurant({ name, night }: Props) {
   )
 }
 
+/** The barber's shop: a small shop front, its striped pole and the bench outside. */
+function Barbier({ night }: Props) {
+  return (
+    <group>
+      <Box p={[0, 1.7, -1]} s={[7, 3.4, 4.5]} c="#e9ecef" />
+      <Box p={[0, 3.5, -1]} s={[7.4, 0.2, 4.9]} c="#1d3557" />
+      <Box p={[0, 1.5, 1.26]} s={[4.4, 1.8, 0.08]} c={night ? '#ffe8a3' : '#a5d8ff'} glow={night ? 0.7 : 0} />
+      <Box p={[2.8, 1.1, 1.26]} s={[0.9, 2.2, 0.08]} c="#5c3d2e" />
+      <Sign p={[0, 2.9, 1.3]} w={5} text="BARBIER" bg="#1d3557" />
+      {/* The striped pole by the door */}
+      {[...Array(6)].map((_, i) => (
+        <mesh key={i} position={[-3.1, 0.6 + i * 0.3, 1.5]}>
+          <cylinderGeometry args={[0.16, 0.16, 0.3, 12]} />
+          <Mat color={['#e63946', '#ffffff', '#1d3557'][i % 3]} />
+        </mesh>
+      ))}
+      <Box p={[0, 0.45, 2.6]} s={[3.5, 0.1, 0.6]} c="#8a6a3d" />
+      <Box p={[0, 0.22, 2.6]} s={[3.2, 0.44, 0.1]} c="#6b5030" />
+      <Lamp p={[4.5, 0, 3.5]} night={night} />
+    </group>
+  )
+}
+
+/** The hair salon: a pink shop with a painted sign of braids. */
+function Salon({ night }: Props) {
+  return (
+    <group>
+      <Box p={[0, 1.7, -1]} s={[7.5, 3.4, 4.5]} c="#ffd6e7" />
+      <Box p={[0, 3.5, -1]} s={[7.9, 0.2, 4.9]} c="#c2255c" />
+      <Box p={[0, 2.5, 1.6]} s={[7.5, 0.12, 1.2]} c="#f783ac" />
+      <Box p={[-0.8, 1.4, 1.26]} s={[4.4, 1.7, 0.08]} c={night ? '#ffe8a3' : '#fcc2d7'} glow={night ? 0.7 : 0} />
+      <Box p={[2.6, 1.1, 1.26]} s={[0.9, 2.2, 0.08]} c="#5c3d2e" />
+      <Sign p={[0, 3.05, 1.3]} w={6} text="COIFFURE" bg="#c2255c" />
+      {/* A painted face with braids, as on the salons' walls */}
+      <mesh position={[3.3, 2.2, -0.9]} rotation={[0, Math.PI / 2, 0]}>
+        <circleGeometry args={[0.7, 20]} />
+        <Mat color="#7a4a2a" />
+      </mesh>
+      {[-0.4, -0.2, 0, 0.2, 0.4].map((z) => (
+        <Box key={z} p={[3.78, 1.4, -0.9 + z]} s={[0.04, 1.2, 0.08]} c="#141010" />
+      ))}
+      <TableSet p={[-4.5, 0, 3]} c="#f783ac" />
+    </group>
+  )
+}
+
+/** A grand hotel: a tall white tower over the lagoon, a low wing and the pool. */
+function Hotel({ name, night }: Props) {
+  return (
+    <group>
+      <Box p={[0, 11, -3]} s={[9, 22, 4.5]} c="#f1f3f5" />
+      <Windows w={9} h={1.4} y0={2} z={-0.7} floors={14} cols={6} night={night} color="#4dabf7" />
+      <Box p={[0, 22.3, -3]} s={[9.4, 0.6, 4.9]} c="#adb5bd" />
+      <Box p={[-1, 1.5, 0.5]} s={[12, 3, 3]} c="#e9ecef" />
+      <Box p={[-1, 3.1, 1.2]} s={[12.4, 0.2, 4.4]} c="#c9a227" />
+      <Sign p={[-1, 2.4, 2.05]} w={7} text={name.toUpperCase()} bg="#c9a227" />
+      <Box p={[3, 0.05, 4.6]} s={[6, 0.1, 3]} c="#e9ecef" />
+      <Box p={[3, 0.11, 4.6]} s={[5.2, 0.04, 2.3]} c="#3fb6e0" glow={0.15} />
+      <Palm p={[-5.5, 0, 4.5]} h={6.5} />
+      <Palm p={[6.3, 0, 3]} h={5.5} lean={-0.2} />
+      <Flag p={[-3, 0, 5.5]} />
+    </group>
+  )
+}
+
+/** An Ébrié village: low houses with tin roofs, attiéké drying on mats. */
+function Village({ night }: Props) {
+  return (
+    <group>
+      {[[-4, -3.5, '#e3c9a0'], [0.5, -4, '#f2dca6'], [4.5, -2.5, '#d9b88a']].map(([x, z, c]) => (
+        <group key={String(x)} position={[x as number, 0, z as number]}>
+          <Box p={[0, 1.2, 0]} s={[3.6, 2.4, 2.8]} c={c as string} />
+          <Box p={[0, 2.5, 0]} s={[4, 0.15, 3.2]} c="#9aa5b1" />
+          <Box p={[0, 0.9, 1.42]} s={[0.8, 1.8, 0.06]} c="#5c3d2e" />
+        </group>
+      ))}
+      {/* The attiéké: cassava semolina steaming, then drying in the sun */}
+      {[-3, -1, 1].map((x) => (
+        <Box key={x} p={[x, 0.08, 2]} s={[1.6, 0.06, 1.2]} c="#f8f9fa" />
+      ))}
+      <mesh position={[3.5, 0.45, 1.8]}>
+        <cylinderGeometry args={[0.55, 0.45, 0.9, 14]} />
+        <Mat color="#495057" />
+      </mesh>
+      <Tree p={[-5.5, 0, 3.5]} s={1.4} />
+      <Palm p={[6, 0, 4]} />
+      <Lamp p={[1, 0, 4.5]} night={night} />
+    </group>
+  )
+}
+
+/** The lagoon side: a paved walk, a railing, benches and the water beyond. */
+function Lagune({ night }: Props) {
+  return (
+    <group>
+      <Box p={[0, 0.02, -4]} s={[14, 0.04, 6]} c="#2f7fa8" glow={0.1} />
+      <Box p={[0, 0.06, 1.5]} s={[14, 0.12, 5]} c="#d9c9a8" />
+      <Box p={[0, 0.9, -0.95]} s={[14, 0.08, 0.08]} c="#dee2e6" />
+      {[...Array(8)].map((_, i) => (
+        <Box key={i} p={[-6.5 + i * 1.85, 0.5, -0.95]} s={[0.08, 0.9, 0.08]} c="#dee2e6" />
+      ))}
+      {[-4, 0, 4].map((x) => (
+        <group key={x}>
+          <Box p={[x, 0.45, 0.3]} s={[1.8, 0.1, 0.5]} c="#8a6a3d" />
+          <Box p={[x, 0.22, 0.3]} s={[1.6, 0.44, 0.1]} c="#6b5030" />
+        </group>
+      ))}
+      <Palm p={[-6, 0, 3.5]} />
+      <Palm p={[6, 0, 3.5]} lean={-0.2} />
+      <Lamp p={[-2, 0, 2.5]} night={night} />
+      <Lamp p={[2, 0, 2.5]} night={night} />
+    </group>
+  )
+}
+
+function University(props: Props) {
+  return <School {...props} label="UNIVERSITÉ" />
+}
+
 const BY_KIND: Record<string, (p: Props) => React.ReactElement> = {
   home: House,
   maquis: Maquis,
@@ -422,6 +540,12 @@ const BY_KIND: Record<string, (p: Props) => React.ReactElement> = {
   culture: Culture,
   mall: Mall,
   restaurant: Restaurant,
+  barbier: Barbier,
+  salon: Salon,
+  hotel: Hotel,
+  universite: University,
+  village: Village,
+  lagune: Lagune,
 }
 
 export function Building({ kind, ...props }: Props & { kind: string }) {

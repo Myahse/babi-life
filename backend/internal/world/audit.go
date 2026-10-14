@@ -201,7 +201,7 @@ func (a *auditor) world() {
 				if p.Closed != "" {
 					a.add(SevWarning, CodeInconsistent, pref, "lieu réel fermé depuis %s mais encore actif dans le jeu", p.Closed)
 				}
-				if p.Real && (p.Kind == "health" || p.Kind == "school" || p.Kind == "mairie") && p.Operator == "" {
+				if p.Real && (p.Kind == "health" || p.Kind == "school" || p.Kind == "universite" || p.Kind == "mairie") && p.Operator == "" {
 					a.add(SevWarning, CodeMissingField, pref, "service public sans gestionnaire indiqué")
 				}
 			}
@@ -308,7 +308,7 @@ func (a *auditor) careers() {
 		for _, city := range Cities {
 			for _, cm := range city.Communes {
 				for _, p := range cm.Places {
-					if p.Kind == k.ID {
+					if c.WorksAt(p.Kind) {
 						places++
 					}
 				}

@@ -332,7 +332,7 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 			if !ok {
 				return game.Outcome{}, nil, errors.New("tu n'as pas de travail. Ouvre l'appli Boulot")
 			}
-			if c.Kind != kind.ID {
+			if !c.WorksAt(kind.ID) {
 				return game.Outcome{}, nil, errors.New("ce n'est pas ton lieu de travail")
 			}
 			job, it = c, c.Shift(s.CareerLevel)
@@ -369,9 +369,24 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 		if err := s.start(it, req.PlaceID, kind.ID, placeName, kind.Events, job.ID); err != nil {
 			return game.Outcome{}, nil, err
 		}
+		s.restyle(it.ID)
 		text := fmt.Sprintf("%s : %s (%s)", s.FirstName, it.Label, humanMinutes(it.Minutes))
 		return game.Outcome{Text: text, Money: -max(it.Cost, 0)}, nil, nil
 	})
+}
+
+// restyle: a visit to the barbier or the salon changes the Sim's hair.
+func (s *Sim) restyle(interaction string) {
+	h, ok := game.Hairdos[interaction]
+	if !ok {
+		return
+	}
+	if h.Hair != "" {
+		s.Look.Hair = h.Hair
+	}
+	if h.Beard != "" {
+		s.Look.Beard = h.Beard
+	}
 }
 
 func humanMinutes(m int64) string {
@@ -470,10 +485,10 @@ func (h *Handler) mutate(w http.ResponseWriter, r *http.Request, fn func(*Sim) (
 		UPDATE sims SET city = $2, commune = $3, needs = $4, money = $5, game_minutes = $6, last_tick = $7,
 		       home_city = $8, home_commune = $9, housing = $10, loan = $11, rent_arrears = $12,
 		       career = $13, career_level = $14, performance = $15, activity = $16, apps = $17,
-		       friends = $18, gang = $19, record = $20
+		       friends = $18, gang = $19, record = $20, look = $21
 		WHERE id = $1`, s.ID, s.City, s.Commune, s.Needs, s.Money, s.GameMinutes, s.lastTick,
 		s.HomeCity, s.HomeCommune, s.Housing, s.Loan, s.RentArrears, s.Career, s.CareerLevel, s.Performance, s.Activity, s.Apps,
-		friendsOrEmpty(s.Friends), s.Gang, s.Record); err != nil {
+		friendsOrEmpty(s.Friends), s.Gang, s.Record, s.Look); err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "could not save sim")
 		return
 	}

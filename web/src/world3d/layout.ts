@@ -34,6 +34,8 @@ const OUTER = [72, 88, 104]
 /** Front-row slots, nearest the centre first. */
 const PLACE_SLOTS: [number, number][] = [
   [-8, -1], [8, 1], [8, -1], [-8, 1], [-24, -1], [24, 1], [24, -1], [-24, 1], [-40, -1], [40, 1], [40, -1], [-40, 1],
+  // Past the crossroads, for the busiest communes.
+  [-72, -1], [72, 1], [72, -1], [-72, 1], [-88, -1], [88, 1], [88, -1], [-88, 1], [-104, -1], [104, 1], [104, -1], [-104, 1],
 ]
 
 function lotAt(x: number, side: number, back = false) {

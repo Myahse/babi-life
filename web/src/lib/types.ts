@@ -77,6 +77,8 @@ export type Career = {
   label: string
   icon: string
   kind: string
+  /** Other kinds of place where the job is done. */
+  also?: string[]
   levels: { title: string; pay: number }[]
   minHour: number
   maxHour: number

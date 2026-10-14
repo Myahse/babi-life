@@ -581,7 +581,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
   const colors = kindColors(place.kind)
   const here = sim.city === city.id && sim.commune === commune.id
   const home = world.housings.find((h) => h.id === sim.housing)!
-  const career = world.careers.find((c) => c.id === sim.career && c.kind === place.kind)
+  const career = world.careers.find((c) => c.id === sim.career && (c.kind === place.kind || c.also?.includes(place.kind)))
   const life = lifeOf(world, sim)
   // Things past this age (the biberon for an adult) don't show; things for later do, greyed.
   const items = [...(career ? [shift(career, sim.careerLevel)] : []), ...kind.interactions.map((it) => (placeId === 'home' ? atHome(it, home) : it))].filter((it) => ageBlock(it, life.stage?.id) !== 'Plus de ton âge')
