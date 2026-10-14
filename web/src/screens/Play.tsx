@@ -23,6 +23,8 @@ import { WayeApp } from './WayeApp'
 import { StoreApp } from './StoreApp'
 import { FriendsApp } from './FriendsApp'
 import { InviteBanner, PlayersChip, PlayersSheet, usePlayers } from '../components/Players'
+import { SoundToggle, Soundtrack } from '../components/Soundtrack'
+import type { Track } from '../audio/music'
 
 type Toast = { id: number; title: string; text?: string; money: number; tone: 'random' | 'done' | 'error' | 'promo' | 'event'; kind?: string; icon?: string }
 
@@ -277,6 +279,23 @@ export function Play() {
     return null
   })()
   const showInside = !!inside && !outside
+  // The music of where the Sim is: the club and the maquis inside, and in
+  // the street, the fanfare of a wedding cortège or a concert.
+  const happeningId = street?.happening?.id
+  const track: Track | null = showInside
+    ? inside!.kind === 'club'
+      ? 'club'
+      : inside!.kind === 'maquis'
+        ? 'maquis'
+        : null
+    : happeningId === 'mariage'
+      ? 'fanfare'
+      : happeningId === 'concert' || happeningId === 'femua'
+        ? 'club'
+        : happeningId === 'anniversaire' || happeningId === 'bapteme'
+          ? 'maquis'
+          : null
+  const trackSeed = showInside ? inside!.id : `${commune.id}${happeningId ?? ''}`
 
   return (
     <div className="relative h-full overflow-hidden bg-[var(--color-night)] select-none">
@@ -332,6 +351,7 @@ export function Play() {
         </Link>
 
         <div className="pointer-events-auto flex flex-wrap items-center justify-end gap-2">
+          <SoundToggle />
           <PlayersChip count={around.players.length} invites={around.invites.length} onOpen={() => setPlayers({ focus: null })} />
           <div className="hud flex h-11 items-center gap-1.5 rounded-full pr-4 pl-1.5">
             <span key={sim.money} className="motion-coin">
@@ -370,6 +390,7 @@ export function Play() {
         </button>
       </footer>
 
+      <Soundtrack track={track} seed={trackSeed} />
       {freeCam && !placeId && !overlay && (
         <button className="hud motion-pop absolute right-3 bottom-[6.25rem] z-20 flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-extrabold lg:right-5 lg:bottom-[7.5rem]" onClick={() => setRecenter((n) => n + 1)}>
           <LocateFixed size={18} strokeWidth={2.6} className="text-[var(--color-orange)]" /> Revenir à moi
