@@ -69,6 +69,54 @@ export function SkyDome({ night, dusk }: { night: boolean; dusk: boolean }) {
           <pointsMaterial color="#ffffff" size={1.6} sizeAttenuation={false} fog={false} transparent opacity={0.85} />
         </points>
       )}
+      <Clouds night={night} dusk={dusk} />
+    </group>
+  )
+}
+
+// Soft banks that drift over the city. They ride with the dome, so they
+// stay overhead wherever the Sim walks, and turn slowly so the sky moves.
+function Clouds({ night, dusk }: { night: boolean; dusk: boolean }) {
+  const spin = useRef<THREE.Group>(null)
+  const puff = useMemo(() => new THREE.SphereGeometry(1, 16, 12), [])
+  const mat = useMemo(() => new THREE.MeshBasicMaterial({ transparent: true, fog: false, depthWrite: false }), [])
+  mat.color.set(night ? '#e7eefc' : dusk ? '#ffe0c2' : '#ffffff')
+  mat.opacity = night ? 0.55 : dusk ? 0.8 : 0.9
+  const puffs = useMemo(() => {
+    const out: { p: [number, number, number]; s: [number, number, number] }[] = []
+    let seed = 11
+    const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
+    // High banks for when the camera looks down, and lower ones along the
+    // horizon for when it looks across the city.
+    const bands = [
+      { n: 8, rad: 500, span: 700, y: 380, rise: 200, size: 55 },
+      { n: 12, rad: 1100, span: 1400, y: 90, rise: 80, size: 90 },
+    ]
+    for (const band of bands) {
+      for (let i = 0; i < band.n; i++) {
+        const a = (i / band.n) * Math.PI * 2
+        const rad = band.rad + r() * band.span
+        const y = band.y + r() * band.rise
+        const blobs = 4 + Math.floor(r() * 3)
+        for (let k = 0; k < blobs; k++) {
+          const s = band.size + r() * band.size
+          out.push({
+            p: [Math.cos(a) * rad + (r() - 0.5) * 120, y + (r() - 0.35) * 20, Math.sin(a) * rad + (r() - 0.5) * 70],
+            s: [s, s * 0.42, s * 0.7],
+          })
+        }
+      }
+    }
+    return out
+  }, [])
+  useFrame((_, dt) => {
+    if (spin.current) spin.current.rotation.y += dt * 0.012
+  })
+  return (
+    <group ref={spin}>
+      {puffs.map((c, i) => (
+        <mesh key={i} geometry={puff} material={mat} position={c.p} scale={c.s} />
+      ))}
     </group>
   )
 }

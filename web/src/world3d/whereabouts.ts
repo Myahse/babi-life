@@ -6,8 +6,10 @@ type XZ = [number, number]
 
 export const whereabouts = {
   sim: [0, 0] as XZ,
-  /** Camera heading: the angle (radians) of the way the camera looks, on the ground. */
+  /** Camera heading: the angle (radians) of the way the camera looks, on the ground. 0 is north, clockwise. */
   heading: 0,
+  /** Angle from straight down (radians). 0 is overhead, π/2 is the horizon. */
+  polar: 0.9,
   places: [] as { id: string; kind: string; name: string; door: XZ }[],
   /** Street segments: from, to, width. */
   roads: [] as [XZ, XZ, number][],

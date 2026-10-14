@@ -197,6 +197,7 @@ var Kinds = map[string]PlaceKind{
 		ID: "sport", Label: "Terrain", Icon: "trophy",
 		Interactions: []Interaction{
 			{ID: "play-football", Label: "Jouer au foot", Icon: "volleyball", Minutes: 90, Effect: Needs{Fun: 35, Social: 25, Energy: -25, Hygiene: -30}},
+			{ID: "play-basket", Label: "Jouer au basket", Icon: "trophy", Minutes: 60, Effect: Needs{Fun: 35, Social: 20, Energy: -25, Hygiene: -25}},
 			{ID: "watch-match", Label: "Regarder un match", Icon: "trophy", Minutes: 120, Cost: 1000, Effect: Needs{Fun: 35, Social: 20}},
 		},
 		Events: []RandomEvent{

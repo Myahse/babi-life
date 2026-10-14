@@ -119,7 +119,7 @@ export function WorldMap({ world, sim, night, desktop, onClose, onTravel, onWalk
             </button>
           </Card>
         ) : (
-          <div className="hud rounded-full px-4 py-2 text-center text-xs font-extrabold text-[var(--color-ink-soft)]">Pince ou fais défiler pour zoomer · touche une mairie</div>
+          <div className="hud rounded-full px-4 py-2 text-center text-xs font-extrabold text-[var(--color-ink-soft)]">Glisse pour déplacer · pince pour zoomer · l’orbite tourne et incline</div>
         )}
       </div>
     </div>
