@@ -1,5 +1,9 @@
 import { Suspense, useMemo, useRef } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
+import { OrbitControls } from '@react-three/drei'
+import { EffectComposer, N8AO } from '@react-three/postprocessing'
+import { Shell } from './interior/Shell'
+import { useRoomStyle } from './interior/Decor'
 import * as THREE from 'three'
 import type { Player, Sim } from '../lib/types'
 import { Human, NoShadows, type Pose } from '../avatar/Human'
@@ -21,9 +25,9 @@ type Person = Spot & { gender: 'femme' | 'homme'; look: ReturnType<typeof random
 /** Kinds of places that have an inside (the beach or the football pitch don't). */
 export const INDOOR = new Set(['police', 'home', 'maquis', 'club', 'restaurant', 'market', 'office', 'mairie', 'school', 'health', 'worship', 'mall', 'culture', 'barbier', 'salon', 'hotel', 'universite'])
 
-const W = 12 // room width (x)
-const D = 9 // room depth (z)
-const H = 3.2
+/** Ambient occlusion where the device can afford it. */
+const RICH = typeof navigator === 'undefined' || (navigator.hardwareConcurrency ?? 4) > 4
+
 
 type Room = { floor: string; wall: string; dark?: boolean; furniture: React.ReactNode; spots: Record<string, Spot>; crowd: Spot[] }
 
@@ -586,6 +590,7 @@ function room(kind: string, housing: string): Room {
 
 export function Interior({ sim, kind, placeId, interactionId, housing, night, stage, others = [] }: { sim: Sim; kind: string; placeId: string; interactionId?: string; housing: string; night: boolean; stage: string; others?: Player[] }) {
   const r = room(kind, housing)
+  const style = useRoomStyle(kind, housing)
   const act = action(kind, interactionId)
   const me = r.spots[act.spot] ?? r.spots.entrance
   const people = useMemo<Person[]>(() => {
@@ -598,14 +603,13 @@ export function Interior({ sim, kind, placeId, interactionId, housing, night, st
   }, [placeId, kind]) // eslint-disable-line react-hooks/exhaustive-deps
   const dark = r.dark || night
   return (
-    <Canvas shadows dpr={[1, 2]} camera={{ position: [10, 10.5, 13], fov: 42 }} style={{ background: dark ? '#0b0d1f' : '#2a2340' }} onCreated={({ camera }) => camera.lookAt(0, 0.8, 0)}>
+    <Canvas shadows dpr={[1, 2]} camera={{ position: [8.4, 8.6, 10.8], fov: 42 }} style={{ background: dark ? '#0b0d1f' : '#2a2340' }}>
       <Suspense fallback={null}>
-        <hemisphereLight args={[dark ? '#7a6ab0' : '#ffffff', '#3a2a1a', dark ? 0.9 : 1.0]} />
-        <pointLight position={[0, 2.9, 0]} intensity={dark ? 18 : 30} distance={14} color={kind === 'club' ? '#b18cff' : '#ffe2b0'} castShadow />
-        {/* Floor and the two cut-away walls */}
-        <Box p={[0, -0.05, 0]} s={[W, 0.1, D]} c={r.floor} />
-        <Box p={[0, H / 2, -D / 2]} s={[W, H, 0.15]} c={r.wall} />
-        <Box p={[-W / 2, H / 2, 0]} s={[0.15, H, D]} c={r.wall} />
+        <hemisphereLight args={[dark ? '#7a6ab0' : '#fff6e8', '#3a2a1a', dark ? 0.55 : 0.75]} />
+        <ambientLight intensity={dark ? 0.15 : 0.25} />
+        {kind === 'club' && <pointLight position={[0, 2.9, 0]} intensity={14} distance={14} color="#b18cff" />}
+        <Shell floor={r.floor} floorType={style.floorType} wall={r.wall} lower={style.lower} openings={style.openings} night={night} dark={r.dark} lamps={style.lamps} fan={style.fan} />
+        {style.decor(dark)}
         {r.furniture}
         <NoShadows>
           {people.map((p, i) => (
@@ -618,6 +622,13 @@ export function Interior({ sim, kind, placeId, interactionId, housing, night, st
           <Character look={sim.look} gender={sim.gender} stage={stage} plumbob={!me.lying} busy={act.pose === 'busy'} pose={act.pose} />
         </group>
         {act.pose === 'throw' && <NoteRain from={me.p} />}
+        {/* Turn around the room and zoom, within the cut-away side */}
+        <OrbitControls target={[0, 0.8, 0]} enablePan={false} minDistance={7} maxDistance={24} minPolarAngle={0.35} maxPolarAngle={1.25} minAzimuthAngle={0.15} maxAzimuthAngle={1.4} enableDamping />
+        {RICH && (
+          <EffectComposer enableNormalPass={false} multisampling={0}>
+            <N8AO halfRes aoRadius={1.2} distanceFalloff={0.6} intensity={2.2} quality="performance" color="#1a1410" />
+          </EffectComposer>
+        )}
         {/* Other players here, side by side with the Sim (blue plumbob) */}
         {others.slice(0, 3).map((o, i) => {
           const a = action(kind, o.activity?.interactionId)
