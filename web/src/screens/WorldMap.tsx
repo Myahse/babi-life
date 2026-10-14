@@ -3,7 +3,8 @@ import { Car, CarTaxiFront, Bus, Footprints, Globe2, Landmark, LocateFixed, MapP
 import type { City, Commune, Place, Sim, World } from '../lib/types'
 import { GameMap, type Camera } from '../components/map/GameMap'
 import { inkOn, rideLook } from '../game/rides'
-import { routeIn } from '../game/roads'
+import { routeIn, type LngLat } from '../game/roads'
+import { useDrivingRoute, waypointsOf } from '../components/map/roadRoute'
 import { CIV_BOUNDS, Z_PLACE, Z_TOWN, allPins, boundsFor, routeBounds, type Padding, type Route } from '../components/map/pins'
 import { TravelCTA, type OnTravel } from '../components/TravelCTA'
 import { iconFor, kindColors } from '../components/icons'
@@ -269,7 +270,8 @@ function useTrip(world: World, sim: Sim): Route | null {
     const t = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(t)
   }, [a])
-  return useMemo(() => {
+  // The trip's ends and the road network's path between them…
+  const base = useMemo(() => {
     if (!a?.trip) return null
     const t = a.trip
     const fromCity = world.cities.find((c) => c.id === t.fromCity)
@@ -277,12 +279,20 @@ function useTrip(world: World, sim: Sim): Route | null {
     const from = fromCity?.communes.find((c) => c.id === t.fromCommune)
     const to = toCity?.communes.find((c) => c.id === t.commune)
     if (!from || !to) return null
-    const progress = Math.min(1, Math.max(0, ((now - EPOCH) / 60000 - a.start) / Math.max(1, a.end - a.start)))
-    const look = rideLook(world, t.mode, from)
     // The road it takes: saved with the trip, or worked out again for older trips.
     const path = t.path ?? (t.city === t.fromCity ? routeIn(world, t.city, t.fromCommune, t.commune)?.points : undefined)
-    return { from: [from.lng, from.lat], to: [to.lng, to.lat], path, progress, mode: t.mode, color: look.color, how: look.how, toId: `${t.city}/${t.commune}`, label: t.city === t.fromCity ? to.name : `${to.name}, ${toCity!.name}` }
-  }, [a, now, world])
+    const ends: [LngLat, LngLat] = [[from.lng, from.lat], [to.lng, to.lat]]
+    return { t, from, to, toCity: toCity!, path, ends, waypoints: waypointsOf(world, t.city, path, ...ends) }
+  }, [a, world])
+  // …then the same way on the real streets, once Mapbox has drawn it.
+  const streets = useDrivingRoute(base?.waypoints ?? null)
+  return useMemo(() => {
+    if (!a || !base) return null
+    const { t, from, to, toCity, path, ends } = base
+    const progress = Math.min(1, Math.max(0, ((now - EPOCH) / 60000 - a.start) / Math.max(1, a.end - a.start)))
+    const look = rideLook(world, t.mode, from)
+    return { from: ends[0], to: ends[1], path: streets ?? path, progress, mode: t.mode, color: look.color, how: look.how, toId: `${t.city}/${t.commune}`, label: t.city === t.fromCity ? to.name : `${to.name}, ${toCity.name}` }
+  }, [a, base, streets, now, world])
 }
 
 /** Real or invented, who runs it, and whether it still exists: from the world data's provenance. */
