@@ -5,8 +5,11 @@ import { GoogleOAuthProvider } from '@react-oauth/google'
 import { App } from './App'
 import { OfflineBanner } from './components/InstallButton'
 import './lib/pwa'
+import { startClockSync } from './lib/worldClock'
 import './index.css'
 import './motion.css'
+
+startClockSync()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

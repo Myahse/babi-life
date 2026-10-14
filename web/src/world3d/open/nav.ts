@@ -192,13 +192,15 @@ export class Nav {
     return way.reverse()
   }
 
-  /** A random walk of a few streets from a point, for passers-by and cars. */
+  /** A random walk of a few streets from a node, for passers-by and cars (the same for the same `r`). */
   wander(from: number, steps: number, r: () => number, minWidth = 0): XZ[] {
     const way: XZ[] = [this.nodes[from]]
     let at = from
     let came = -1
     for (let k = 0; k < steps; k++) {
-      const next = this.adj[at].filter((e) => e.to !== came && e.width >= minWidth)
+      // In a fixed order (by where they lead), not the order chunks loaded in:
+      // the same seed takes the same walk on every player's phone.
+      const next = this.adj[at].filter((e) => e.to !== came && e.width >= minWidth).sort((p, q) => this.nodes[p.to][0] - this.nodes[q.to][0] || this.nodes[p.to][1] - this.nodes[q.to][1])
       if (!next.length) break
       const e = next[Math.floor(r() * next.length)]
       came = at

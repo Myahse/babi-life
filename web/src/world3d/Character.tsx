@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { Look, Sim } from '../lib/types'
 import { Baby, Human, type Pose } from '../avatar/Human'
+import { worldTime } from '../lib/worldClock'
 
 // The player's Sim in the 3D neighbourhood: the same cartoon Sim as in the
 // creator, with a shadow and the mood losange floating above.
@@ -20,9 +21,9 @@ export function Character({ look, gender, walking, running, busy, moodColor = '#
   const doing: Pose = pose ?? (busy ? 'busy' : walking ? (running ? 'run' : 'walk') : 'idle')
   const size = SIZE[stage] ?? { scale: 1, head: 1, top: 2.15 }
   const gem = useRef<THREE.Mesh>(null)
-  useFrame(({ clock }) => {
+  useFrame(() => {
     if (!gem.current) return
-    const t = clock.elapsedTime
+    const t = worldTime()
     gem.current.rotation.y = t * 1.5
     gem.current.position.y = size.top + Math.sin(t * 2) * 0.05
   })

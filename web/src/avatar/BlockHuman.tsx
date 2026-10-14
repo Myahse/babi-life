@@ -5,6 +5,7 @@ import type { Look, Sim } from '../lib/types'
 import { defaultColors, fullLook } from './options'
 import { tint } from './textures'
 import { useCastShadows, usePoseRig, type Pose } from './Human'
+import { worldTime } from '../lib/worldClock'
 
 // A blocky Sim, Roblox / Minecraft style: a cube head, a box torso, and arms
 // and legs split at the elbows and knees. Everything that is just colour (the
@@ -655,8 +656,8 @@ export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 
   // The face: eyelids blink every few seconds, the mouth opens when talking.
   const lids = useRef<THREE.Group>(null)
   const mouth = useRef<THREE.Group>(null)
-  useFrame(({ clock }) => {
-    const t = clock.elapsedTime + seed * 7.3
+  useFrame(() => {
+    const t = worldTime() + seed * 7.3
     const period = 3.2 + (Math.abs(seed) % 3)
     const k = (t % period) / period
     const shut = k > 0.955 ? Math.sin(((k - 0.955) / 0.045) * Math.PI) : 0

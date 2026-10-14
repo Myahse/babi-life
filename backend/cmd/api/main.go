@@ -109,6 +109,11 @@ func main() {
 			}
 			httpx.JSON(w, http.StatusOK, map[string]any{"happening": h, "start": start, "end": start + game.HappeningMinutes})
 		})
+		// The server's clock: every player's world runs on it (web/src/lib/worldClock.ts).
+		r.Get("/time", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Cache-Control", "no-store")
+			httpx.JSON(w, http.StatusOK, map[string]int64{"now": time.Now().UnixMilli()})
+		})
 		r.Get("/news", headlines.Handler)
 		r.Post("/auth/google", authH.Google)
 		r.Post("/auth/register", authH.Register)

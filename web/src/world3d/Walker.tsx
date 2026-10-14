@@ -10,6 +10,7 @@ import { Character } from './Character'
 import { HOME_ID, SIDEWALK, type Lot } from './layout'
 import { cameraTurn, moveInput, running } from './input'
 import { whereabouts } from './whereabouts'
+import { worldTime } from '../lib/worldClock'
 
 type XZ = [number, number]
 
@@ -409,7 +410,7 @@ function RouteDots({ route, from, heightAt }: { route: XZ[]; from: React.RefObje
   const dots = useRef<THREE.InstancedMesh>(null)
   const pin = useRef<THREE.Group>(null)
   const m = useRef(new THREE.Object3D())
-  useFrame(({ clock }) => {
+  useFrame(() => {
     const mesh = dots.current
     const g = from.current
     if (!mesh || !g) return
@@ -435,8 +436,8 @@ function RouteDots({ route, from, heightAt }: { route: XZ[]; from: React.RefObje
     mesh.instanceMatrix.needsUpdate = true
     const end = route[route.length - 1]
     if (pin.current && end) {
-      pin.current.position.set(end[0], (heightAt?.(end[0], end[1]) ?? 0) + 2.6 + Math.sin(clock.elapsedTime * 3) * 0.25, end[1])
-      pin.current.rotation.y = clock.elapsedTime * 1.5
+      pin.current.position.set(end[0], (heightAt?.(end[0], end[1]) ?? 0) + 2.6 + Math.sin(worldTime() * 3) * 0.25, end[1])
+      pin.current.rotation.y = worldTime() * 1.5
     }
   })
   return (

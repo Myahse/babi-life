@@ -7,6 +7,7 @@ import { randomLook } from '../avatar/options'
 import type { Look } from '../lib/types'
 import { rng } from './themes'
 import { Box } from './props'
+import { worldTime } from '../lib/worldClock'
 
 // The two street matches, played for real: the ball goes from foot to foot
 // (or hand to hand), each player has a part (keeper, defender, the one who
@@ -950,16 +951,16 @@ export function Basket({ seed }: { seed: string }) {
   const [score, setScore] = useState<[number, number]>([0, 0])
   const [line, setLine] = useState({ text: 'Le tournoi commence !', at: 0 })
   const { view, push } = useView(6)
-  useFrame(({ clock }, dtRaw) => {
+  useFrame((_, dtRaw) => {
     const dt = Math.min(dtRaw, 0.05)
     const s = sim.current
     basketStep(
       s,
       dt,
-      (text) => setLine({ text, at: clock.elapsedTime }),
+      (text) => setLine({ text, at: worldTime() }),
       (team, pts) => setScore((x) => (team ? [x[0], x[1] + pts] : [x[0] + pts, x[1]])),
     )
-    if (line.text && clock.elapsedTime - line.at > 2.2 && line.at >= 0) setLine({ text: '', at: -1 })
+    if (line.text && worldTime() - line.at > 2.2 && line.at >= 0) setLine({ text: '', at: -1 })
     s.ps.forEach((p, i) => {
       const g = refs.current[i]
       if (!g) return

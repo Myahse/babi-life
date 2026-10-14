@@ -22,6 +22,7 @@ import { Walker, type WalkNav } from '../Walker'
 import { whereabouts } from '../whereabouts'
 import { CHUNK_ZOOM, tileBox, tileOf, toLatLng, toLocal, type Origin, type XZ } from './geo'
 import { Nav } from './nav'
+import { along, anchorNode, round, routeLength, turnTo, useCellsAround } from './shared'
 import { inTheWay, resolvePlaces, type PlaceSpot, type Resolved } from './places'
 import { LANDMARKS, Landmark } from './landmarks'
 import { Boats } from './boats'
@@ -41,6 +42,7 @@ const RICH = typeof navigator === 'undefined' || (navigator.hardwareConcurrency 
 import { makeTextures, rippleNormals } from './textures'
 import { FAR_ZOOM, type ChunkData } from './tiles'
 import type { Arrays, ChunkRequest } from './worker'
+import { worldTime } from '../../lib/worldClock'
 
 // The open world: the real Abidjan around the Sim, like Minecraft's — it
 // loads chunk by chunk (one map tile, ~610 m) as the Sim walks, and fades
@@ -173,11 +175,12 @@ function useMaterials(night: boolean) {
     mats.water.specular.set(night ? '#4a5a80' : '#d8ecff')
   }, [night, mats])
   // The water moves: its ripples drift, and the foam comes and goes on the shore.
-  useFrame(({ clock }) => {
-    const t = clock.elapsedTime
-    mats.water.map!.offset.set(t * 0.012, Math.sin(t * 0.35) * 0.04)
-    mats.water.normalMap!.offset.set(t * 0.03, t * 0.017)
-    mats.foam.map!.offset.set(t * 0.02, Math.sin(t * 0.9) * 0.22)
+  useFrame(() => {
+    const t = worldTime()
+    // Offsets wrapped to one repeat: the shared clock is large, the GPU's floats are not.
+    mats.water.map!.offset.set((t * 0.012) % 1, Math.sin(t * 0.35) * 0.04)
+    mats.water.normalMap!.offset.set((t * 0.03) % 1, (t * 0.017) % 1)
+    mats.foam.map!.offset.set((t * 0.02) % 1, Math.sin(t * 0.9) * 0.22)
     mats.foam.opacity = 0.55 + Math.sin(t * 0.9) * 0.35
   })
   return mats
@@ -744,80 +747,92 @@ function Palms({ pts, bark, leaves }: { pts: XZ[]; bark: THREE.Material; leaves:
   )
 }
 
-type Mover = { path: XZ[]; i: number; t: number; speed: number; x: number; z: number; r: number }
-
-/** Start a trip near the focus on the street network. */
-function trip(nav: Nav, focus: XZ, r: () => number, steps: number, minWidth: number, spread = 500): XZ[] {
-  for (let k = 0; k < 12; k++) {
-    const n = nav.nearest([focus[0] + (r() - 0.5) * spread, focus[1] + (r() - 0.5) * spread], 300)
-    if (!n) continue
-    const e = nav.edges[n.edge]
-    if (e.width < minWidth) continue
-    const way = nav.wander(r() < 0.5 ? e.a : e.b, steps, r, minWidth)
-    if (way.length > 1) return way
-  }
-  return []
+/** A route for this round: a few streets from the anchor, the same on every phone. */
+function useRoutes(nav: Nav) {
+  // New streets loaded: routes are drawn again (the same ones, where the map was already there).
+  return useMemo(() => new Map<string, XZ[]>(), [nav]) // eslint-disable-line react-hooks/exhaustive-deps
 }
-
-function advance(m: Mover, dt: number) {
-  while (m.i < m.path.length - 1) {
-    const [ax, az] = m.path[m.i]
-    const [bx, bz] = m.path[m.i + 1]
-    const len = Math.hypot(bx - ax, bz - az) || 0.01
-    m.t += (m.speed * dt) / len
-    if (m.t < 1) {
-      m.x = ax + (bx - ax) * m.t
-      m.z = az + (bz - az) * m.t
-      m.r = Math.atan2(bx - ax, bz - az)
-      return true
+function routeFor(routes: Map<string, XZ[]>, nav: Nav, key: string, anchor: number | null, steps: number, minWidth: number, reach: number): XZ[] {
+  let path = routes.get(key)
+  if (!path) {
+    path = anchor === null ? [] : nav.wander(anchor, steps, rng(key), minWidth)
+    // Only as far as the round has time for.
+    let len = 0
+    const cut: XZ[] = path.slice(0, 1)
+    for (let i = 1; i < path.length && len < reach; i++) {
+      len += Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1])
+      cut.push(path[i])
     }
-    dt = ((m.t - 1) * len) / m.speed
-    m.t = 0
-    m.i++
+    path = cut
+    if (routes.size > 400) routes.clear()
+    routes.set(key, path)
   }
-  return false
+  return path
 }
 
-/** Woro-woro, taxis, gbakas and motos on the big streets around the Sim. */
+const CAR_CELL = 300
+const CARS_PER_CELL = 2
+const CAR_ROUND = 90 // seconds
+
+/** Woro-woro, taxis, gbakas and motos on the big streets around the Sim: the same ones on every screen. */
 function RoadTraffic({ nav, focus, seed, woro }: { nav: Nav; focus: React.RefObject<XZ>; seed: string; woro?: { color?: string; trim?: string; none?: boolean } }) {
-  const cars = useMemo(() => {
-    const r = rng(`otraffic${seed}`)
-    const kinds: VehicleKind[] = ['taxi', 'woro', 'woro', 'gbaka', 'car', 'car', 'moto']
-    return [...Array(16)].map(() => {
-      const drawn = kinds[Math.floor(r() * kinds.length)]
-      const kind: VehicleKind = drawn === 'woro' && woro?.none ? 'taxi' : drawn
-      return { kind, color: kind === 'woro' ? woro?.color : kind === 'car' ? ['#f8f9fa', '#212529', '#adb5bd', '#c92a2a', '#1c7ed6'][Math.floor(r() * 5)] : undefined, trim: kind === 'woro' ? woro?.trim : undefined, seed: r() * 100 }
-    })
-  }, [seed, woro])
-  const r = useMemo(() => rng(`otrips${seed}`), [seed])
-  const movers = useRef<Mover[]>([])
-  const refs = useRef<(THREE.Group | null)[]>([])
-  useFrame((_, dt) => {
-    const step = Math.min(dt, 0.1)
-    cars.forEach((c, k) => {
-      let m = movers.current[k]
-      if (!m || !advance(m, step)) {
-        const path = trip(nav, focus.current, r, 14, 7)
-        m = movers.current[k] = { path, i: 0, t: r(), speed: c.kind === 'gbaka' ? 8 : c.kind === 'moto' ? 11 : 9.5, x: 0, z: 0, r: 0 }
-        advance(m, 0)
-      }
-      const g = refs.current[k]
-      if (!g) return
-      g.visible = m.path.length > 1
-      // Drive on the right: shift to the right of the way.
-      const off = 2
-      g.position.set(m.x + Math.cos(m.r) * -off, nav.heightAt(m.x, m.z), m.z - Math.sin(m.r) * -off)
-      g.rotation.y = m.r - Math.PI / 2
-    })
-  })
+  const cells = useCellsAround(focus, CAR_CELL)
+  const routes = useRoutes(nav)
+  const cars = useMemo(
+    () =>
+      cells.flatMap((cell) =>
+        [...Array(CARS_PER_CELL)].map((_, k) => {
+          const r = rng(`otraffic${seed}|${cell.key}|${k}`)
+          const kinds: VehicleKind[] = ['taxi', 'woro', 'woro', 'gbaka', 'car', 'car', 'moto']
+          const drawn = kinds[Math.floor(r() * kinds.length)]
+          const kind: VehicleKind = drawn === 'woro' && woro?.none ? 'taxi' : drawn
+          return {
+            id: `${seed}|${cell.key}|car${k}`,
+            kind,
+            color: kind === 'woro' ? woro?.color : kind === 'car' ? ['#f8f9fa', '#212529', '#adb5bd', '#c92a2a', '#1c7ed6'][Math.floor(r() * 5)] : undefined,
+            trim: kind === 'woro' ? woro?.trim : undefined,
+            seed: r() * 100,
+            near: [cell.x0 + r() * CAR_CELL, cell.z0 + r() * CAR_CELL] as XZ,
+            speed: kind === 'gbaka' ? 8 : kind === 'moto' ? 11 : 9.5,
+            offset: r() * CAR_ROUND,
+          }
+        }),
+      ),
+    [cells, seed, woro],
+  )
   return (
     <>
-      {cars.map((c, k) => (
-        <group key={k} ref={(g) => void (refs.current[k] = g)}>
-          <Vehicle p={[0, 0, 0]} kind={c.kind} color={c.color} trim={c.trim} seed={c.seed} />
-        </group>
+      {cars.map((c) => (
+        <Car key={c.id} car={c} nav={nav} routes={routes} />
       ))}
     </>
+  )
+}
+
+function Car({ car, nav, routes }: { car: { id: string; kind: VehicleKind; color?: string; trim?: string; seed: number; near: XZ; speed: number; offset: number }; nav: Nav; routes: Map<string, XZ[]> }) {
+  const ref = useRef<THREE.Group>(null)
+  const anchor = useMemo(() => anchorNode(nav, car.near, 7), [nav, car.near])
+  useFrame((_, dt) => {
+    const g = ref.current
+    if (!g) return
+    const reach = CAR_ROUND * 0.42 * car.speed
+    const path = (n: number) => routeFor(routes, nav, `${car.id}|${n}`, anchor, 14, 7, reach)
+    const at = round(worldTime(), CAR_ROUND, car.offset, (n) => routeLength(path(n)), car.speed)
+    const way = path(at.n)
+    g.visible = way.length > 1
+    if (!g.visible) return
+    const p = along(way, at.d)
+    const heading = at.forward ? p.r : p.r + Math.PI
+    // Drive on the right: shift to the right of the way it goes.
+    const off = 2
+    g.position.set(p.x + Math.cos(heading) * -off, nav.heightAt(p.x, p.z), p.z - Math.sin(heading) * -off)
+    // A U-turn at each end, eased so it isn't a snap.
+    g.rotation.y = turnTo(g.rotation.y, heading - Math.PI / 2, 1 - Math.exp(-6 * Math.min(dt, 0.1)))
+  })
+  return (
+    <group ref={ref}>
+      <Vehicle p={[0, 0, 0]} kind={car.kind} color={car.color} trim={car.trim} seed={car.seed} />
+    </group>
   )
 }
 
@@ -829,68 +844,64 @@ const NPC_NAMES = {
 }
 const CALLS = ['Eh, on dit quoi ?', 'Bonne arrivée !', 'Toi là, ça va un peu ?', 'Viens on cause !', 'Y a quoi de neuf ?', 'Ma copine, ça dit quoi ?']
 
+const WALK_CELL = 150
+const WALKERS_PER_CELL = 2
+const WALK_ROUND = 140 // seconds
+
+type Walk = { id: string; name: string; gender: 'femme' | 'homme'; look: ReturnType<typeof randomLook>; seed: number; side: number; near: XZ; speed: number; offset: number }
+
 /**
- * People walking the streets around the Sim. Each has a first name; tap one
- * to talk (they stop and turn to you). Now and then, one nearby calls out.
+ * People walking the streets around the Sim, the same people at the same
+ * spot on every screen (see shared.ts). Each has a first name; tap one to
+ * talk (they stop and turn to you). Now and then, one nearby calls out.
  */
 function Passersby({ nav, focus, seed, onTalk, onCall, talkingTo }: { nav: Nav; focus: React.RefObject<XZ>; seed: string; onTalk?: (npc: Npc) => void; onCall?: (npc: Npc, text: string) => void; talkingTo?: string | null }) {
-  const people = useMemo(() => {
-    const r = rng(`opeople${seed}`)
-    return [...Array(18)].map((_, k) => {
-      const gender: 'femme' | 'homme' = r() < 0.5 ? 'femme' : 'homme'
-      const names = NPC_NAMES[gender]
-      return { id: `${seed}-${k}`, name: names[Math.floor(r() * names.length)], gender, look: randomLook(gender, r), seed: r() * 100, side: r() < 0.5 ? -1 : 1 }
-    })
-  }, [seed])
-  const r = useMemo(() => rng(`owalks${seed}`), [seed])
-  const movers = useRef<Mover[]>([])
-  const refs = useRef<(THREE.Group | null)[]>([])
+  const cells = useCellsAround(focus, WALK_CELL)
+  const routes = useRoutes(nav)
+  const people = useMemo<Walk[]>(
+    () =>
+      cells.flatMap((cell) =>
+        [...Array(WALKERS_PER_CELL)].map((_, k) => {
+          const r = rng(`opeople${seed}|${cell.key}|${k}`)
+          const gender: 'femme' | 'homme' = r() < 0.5 ? 'femme' : 'homme'
+          const names = NPC_NAMES[gender]
+          return {
+            id: `${seed}-${cell.key}-${k}`,
+            name: names[Math.floor(r() * names.length)],
+            gender,
+            look: randomLook(gender, r),
+            seed: r() * 100,
+            side: r() < 0.5 ? -1 : 1,
+            near: [cell.x0 + r() * WALK_CELL, cell.z0 + r() * WALK_CELL] as XZ,
+            speed: 1.1 + r() * 0.5,
+            offset: r() * WALK_ROUND,
+          }
+        }),
+      ),
+    [cells, seed],
+  )
+  const refs = useRef(new Map<string, THREE.Group>())
   // Who is calling out, and what they say.
-  const [said, setSaid] = useState<{ k: number; text: string } | null>(null)
-  const saidRef = useRef(said)
-  saidRef.current = said
+  const [said, setSaid] = useState<{ id: string; text: string } | null>(null)
   const nextCall = useRef(8)
   useFrame((_, dt) => {
-    const step = Math.min(dt, 0.1)
-    const [sx, sz] = whereabouts.sim
-    people.forEach((p, k) => {
-      const g = refs.current[k]
-      // The one you talk to (or who calls out to you) stops and turns to you.
-      if ((p.id === talkingTo || saidRef.current?.k === k) && g) {
-        g.rotation.y += (Math.atan2(sx - g.position.x, sz - g.position.z) - g.rotation.y) * 0.2
-        return
-      }
-      let m = movers.current[k]
-      if (!m || !advance(m, step)) {
-        // Half of them stay around the Sim: the street feels inhabited where you are.
-        const path = trip(nav, focus.current, r, 6, 0, k % 2 ? 500 : 160)
-        m = movers.current[k] = { path, i: 0, t: r(), speed: 1.1 + r() * 0.5, x: 0, z: 0, r: 0 }
-        advance(m, 0)
-      }
-      if (!g) return
-      g.visible = m.path.length > 1
-      // On the pavement, not in the middle of the road.
-      const off = 4.5 * p.side
-      g.position.set(m.x + Math.cos(m.r) * off, nav.heightAt(m.x, m.z), m.z - Math.sin(m.r) * off)
-      g.rotation.y = m.r
-    })
-    // Now and then someone near the Sim greets it.
+    // Now and then someone near the Sim greets it (only on this player's screen: it's to them).
     nextCall.current -= dt
-    if (nextCall.current <= 0) {
-      nextCall.current = 20 + Math.random() * 25
-      let best = -1
-      let bd = 40
-      refs.current.forEach((g, k) => {
-        if (!g?.visible || people[k].id === talkingTo) return
-        const d = Math.hypot(g.position.x - sx, g.position.z - sz)
-        if (d < bd) [best, bd] = [k, d]
-      })
-      if (best >= 0) {
-        const text = CALLS[Math.floor(Math.random() * CALLS.length)]
-        const p = people[best]
-        setSaid({ k: best, text })
-        onCall?.({ id: p.id, name: p.name, gender: p.gender, seed: Math.floor(p.seed * 1000), look: p.look }, text)
-      }
+    if (nextCall.current > 0) return
+    nextCall.current = 20 + Math.random() * 25
+    const [sx, sz] = whereabouts.sim
+    let best: Walk | null = null
+    let bd = 40
+    for (const p of people) {
+      const g = refs.current.get(p.id)
+      if (!g?.visible || p.id === talkingTo) continue
+      const d = Math.hypot(g.position.x - sx, g.position.z - sz)
+      if (d < bd) [best, bd] = [p, d]
+    }
+    if (best) {
+      const text = CALLS[Math.floor(Math.random() * CALLS.length)]
+      setSaid({ id: best.id, text })
+      onCall?.({ id: best.id, name: best.name, gender: best.gender, seed: Math.floor(best.seed * 1000), look: best.look }, text)
     }
   })
   useEffect(() => {
@@ -898,27 +909,74 @@ function Passersby({ nav, focus, seed, onTalk, onCall, talkingTo }: { nav: Nav; 
     const t = setTimeout(() => setSaid(null), 5000)
     return () => clearTimeout(t)
   }, [said])
-  const talk = (k: number) => {
-    const g = refs.current[k]
-    const p = people[k]
+  const talk = (p: Walk) => {
+    const g = refs.current.get(p.id)
     if (!g || !onTalk) return
-    if (Math.hypot(g.position.x - whereabouts.sim[0], g.position.z - whereabouts.sim[1]) > 40) return setSaid({ k, text: 'Approche, on va causer !' })
+    if (Math.hypot(g.position.x - whereabouts.sim[0], g.position.z - whereabouts.sim[1]) > 40) return setSaid({ id: p.id, text: 'Approche, on va causer !' })
     onTalk({ id: p.id, name: p.name, gender: p.gender, seed: Math.floor(p.seed * 1000), look: p.look })
   }
   return (
     <NoShadows>
-      {people.map((p, k) => (
-        <group key={k} ref={(g) => void (refs.current[k] = g)} onClick={(e) => (e.stopPropagation(), talk(k))}>
-          <Human look={p.look} gender={p.gender} pose={p.id === talkingTo || said?.k === k ? 'talk' : 'walk'} seed={p.seed} speed={1.35} />
-          {said?.k === k && (
-            <Html position={[0, 2.35, 0]} center zIndexRange={[25, 0]}>
-              <button onClick={() => talk(k)} className="rounded-2xl rounded-bl-sm border border-black/5 bg-white px-3 py-1.5 text-[13px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_6px_14px_-8px_rgba(0,0,0,0.5)]">
-                <span className="text-[var(--color-orange)]">{p.name}</span> · {said.text}
-              </button>
-            </Html>
-          )}
-        </group>
+      {people.map((p) => (
+        <Passerby
+          key={p.id}
+          p={p}
+          nav={nav}
+          routes={routes}
+          held={p.id === talkingTo || said?.id === p.id}
+          refs={refs.current}
+          onClick={() => talk(p)}
+          bubble={
+            said?.id === p.id && (
+              <Html position={[0, 2.35, 0]} center zIndexRange={[25, 0]}>
+                <button onClick={() => talk(p)} className="rounded-2xl rounded-bl-sm border border-black/5 bg-white px-3 py-1.5 text-[13px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_6px_14px_-8px_rgba(0,0,0,0.5)]">
+                  <span className="text-[var(--color-orange)]">{p.name}</span> · {said.text}
+                </button>
+              </Html>
+            )
+          }
+        />
       ))}
     </NoShadows>
+  )
+}
+
+function Passerby({ p, nav, routes, held, refs, onClick, bubble }: { p: Walk; nav: Nav; routes: Map<string, XZ[]>; held: boolean; refs: Map<string, THREE.Group>; onClick: () => void; bubble: React.ReactNode }) {
+  const ref = useRef<THREE.Group>(null)
+  const anchor = useMemo(() => anchorNode(nav, p.near), [nav, p.near])
+  const [moving, setMoving] = useState(true)
+  useEffect(() => {
+    const g = ref.current
+    if (!g) return
+    refs.set(p.id, g)
+    return () => void refs.delete(p.id)
+  }, [refs, p.id])
+  useFrame(() => {
+    const g = ref.current
+    if (!g) return
+    if (held) {
+      // The one you talk to (or who calls out to you) stops and turns to you.
+      const [sx, sz] = whereabouts.sim
+      g.rotation.y = turnTo(g.rotation.y, Math.atan2(sx - g.position.x, sz - g.position.z), 0.2)
+      return
+    }
+    const reach = WALK_ROUND * 0.42 * p.speed
+    const path = (n: number) => routeFor(routes, nav, `${p.id}|${n}`, anchor, 6, 0, reach)
+    const at = round(worldTime(), WALK_ROUND, p.offset, (n) => routeLength(path(n)), p.speed)
+    const way = path(at.n)
+    g.visible = way.length > 1
+    if (!g.visible) return
+    const pt = along(way, at.d)
+    // On the pavement, not in the middle of the road: always the same side of the street.
+    const off = 4.5 * p.side
+    g.position.set(pt.x + Math.cos(pt.r) * off, nav.heightAt(pt.x, pt.z), pt.z - Math.sin(pt.r) * off)
+    g.rotation.y = turnTo(g.rotation.y, at.forward ? pt.r : pt.r + Math.PI, 0.25)
+    if (at.moving !== moving) setMoving(at.moving)
+  })
+  return (
+    <group ref={ref} onClick={(e) => (e.stopPropagation(), onClick())}>
+      <Human look={p.look} gender={p.gender} pose={held ? 'talk' : moving ? 'walk' : 'idle'} seed={p.seed} speed={p.speed} />
+      {bubble}
+    </group>
   )
 }

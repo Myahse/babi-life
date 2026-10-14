@@ -1,18 +1,26 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { pointInRing, type XZ } from './geo'
+import { along, round, turnTo, useCellsAround } from './shared'
+import { rng } from '../themes'
+import { worldTime } from '../../lib/worldClock'
 
 // Life on the water: the lagoon's bateaux-bus crossing between the banks,
 // and pirogues, a boatman standing at the back, poling or with an outboard.
-// They go from one point of the water to another in a straight line that
-// stays on the water, around the Sim; the loaded chunks are their world.
+// They cross in a straight line that stays on the water and come back, on a
+// schedule every player shares; the loaded chunks are their world.
 
-type Boat = { kind: 'bus' | 'pirogue'; x: number; z: number; heading: number; to: XZ | null; speed: number; seed: number }
+type Boat = { id: string; kind: 'bus' | 'pirogue'; anchor: XZ; speed: number; cycle: number; offset: number; seed: number }
 
-const MAX = { bus: 2, pirogue: 6 }
-const AROUND = 650 // metres from the Sim where boats live
+const CELL = 400 // metres: each square of water may have one boat
+const AROUND = 1 // cells around the Sim's
 
+/**
+ * The boats near the Sim, the same on every screen (see shared.ts): each
+ * square of water has at most one, anchored at a spot of open water; each
+ * round it crosses to a point drawn for that round, waits, and comes back.
+ */
 export function Boats({ water, focus }: { water: XZ[][][]; focus: React.RefObject<XZ> }) {
   // Is a point on the water: inside an area's outer ring, not in its holes.
   const wet = useMemo(() => {
@@ -24,89 +32,80 @@ export function Boats({ water, focus }: { water: XZ[][][]; focus: React.RefObjec
     return ([x, z]: XZ) => boxes.some((b) => x >= b.x0 && x <= b.x1 && z >= b.z0 && z <= b.z1 && pointInRing([x, z], b.rings[0]) && !b.rings.slice(1).some((h) => pointInRing([x, z], h)))
   }, [water])
   // A boat keeps 12 m from the bank: the whole way, sampled.
-  const clear = (a: XZ, b: XZ) => {
-    const n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 8))
-    for (let i = 0; i <= n; i++) {
-      const [x, z] = [a[0] + ((b[0] - a[0]) * i) / n, a[1] + ((b[1] - a[1]) * i) / n]
-      if (!wet([x, z]) || !wet([x + 12, z]) || !wet([x - 12, z]) || !wet([x, z + 12]) || !wet([x, z - 12])) return false
-    }
-    return true
-  }
-
-  const boats = useRef<Boat[]>([])
-  const groups = useRef<(THREE.Group | null)[]>([])
-  const pool = useMemo(() => [...Array(MAX.bus + MAX.pirogue)].map((_, i) => (i < MAX.bus ? 'bus' : 'pirogue') as Boat['kind']), [])
-  const seed = useRef(1)
-  const rand = () => ((seed.current = (seed.current * 16807) % 2147483647) / 2147483647)
-
-  // The water changed (chunks came and went): boats no longer on it go.
-  useEffect(() => {
-    boats.current = boats.current.filter((b) => wet([b.x, b.z]))
-  }, [wet])
-
-  const spawnTick = useRef(0)
-  useFrame(({ clock }, dt) => {
-    const [fx, fz] = focus.current ?? [0, 0]
-    dt = Math.min(dt, 0.1)
-    // A new boat now and then, on the water near the Sim.
-    spawnTick.current += dt
-    if (spawnTick.current > 0.5 && water.length) {
-      spawnTick.current = 0
-      for (const kind of ['bus', 'pirogue'] as const) {
-        if (boats.current.filter((b) => b.kind === kind).length >= MAX[kind]) continue
-        const p: XZ = [fx + (rand() - 0.5) * AROUND * 2, fz + (rand() - 0.5) * AROUND * 2]
-        if (clear(p, p)) boats.current.push({ kind, x: p[0], z: p[1], heading: rand() * Math.PI * 2, to: null, speed: kind === 'bus' ? 6 : 1.6 + rand() * 1.2, seed: rand() * 100 })
+  const clear = useMemo(
+    () => (a: XZ, b: XZ) => {
+      const n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 8))
+      for (let i = 0; i <= n; i++) {
+        const [x, z] = [a[0] + ((b[0] - a[0]) * i) / n, a[1] + ((b[1] - a[1]) * i) / n]
+        if (!wet([x, z]) || !wet([x + 12, z]) || !wet([x - 12, z]) || !wet([x, z + 12]) || !wet([x, z - 12])) return false
+      }
+      return true
+    },
+    [wet],
+  )
+  const cells = useCellsAround(focus, CELL, AROUND)
+  const boats = useMemo(() => {
+    if (!water.length) return []
+    const out: Boat[] = []
+    for (const cell of cells) {
+      const r = rng(`boat|${cell.key}`)
+      const bus = r() < 0.3
+      for (let k = 0; k < 6; k++) {
+        const p: XZ = [cell.x0 + r() * CELL, cell.z0 + r() * CELL]
+        if (!clear(p, p)) continue
+        out.push({ id: cell.key, kind: bus ? 'bus' : 'pirogue', anchor: p, speed: bus ? 6 : 1.6 + r() * 1.2, cycle: bus ? 240 : 360, offset: r() * 360, seed: r() * 100 })
+        break
       }
     }
-    boats.current = boats.current.filter((b) => Math.hypot(b.x - fx, b.z - fz) < AROUND * 1.6)
-    for (const b of boats.current) {
-      if (!b.to) {
-        // Somewhere else on the water, reachable in a straight line.
-        for (let k = 0; k < 6 && !b.to; k++) {
-          const a = rand() * Math.PI * 2
-          const d = (b.kind === 'bus' ? 250 : 80) + rand() * 300
-          const t: XZ = [b.x + Math.cos(a) * d, b.z + Math.sin(a) * d]
-          if (clear([b.x, b.z], t)) b.to = t
-        }
-        if (!b.to) continue
-      }
-      const [dx, dz] = [b.to[0] - b.x, b.to[1] - b.z]
-      const d = Math.hypot(dx, dz)
-      if (d < 4) {
-        b.to = null
-        continue
-      }
-      // Turn gently toward the target, then go.
-      const want = Math.atan2(dx, dz)
-      let turn = want - b.heading
-      turn = Math.atan2(Math.sin(turn), Math.cos(turn))
-      b.heading += Math.sign(turn) * Math.min(Math.abs(turn), dt * (b.kind === 'bus' ? 0.35 : 0.8))
-      const go = b.speed * dt * Math.max(0, Math.cos(turn))
-      b.x += Math.sin(b.heading) * go
-      b.z += Math.cos(b.heading) * go
-    }
-    // Draw: each boat in its slot of the pool, bobbing on the water.
-    const t = clock.elapsedTime
-    pool.forEach((kind, i) => {
-      const g = groups.current[i]
-      if (!g) return
-      const b = boats.current.filter((x) => x.kind === kind)[kind === 'bus' ? i : i - MAX.bus]
-      g.visible = !!b
-      if (!b) return
-      g.position.set(b.x, 0.05 + Math.sin(t * 1.3 + b.seed) * 0.08, b.z)
-      g.rotation.set(Math.sin(t * 0.9 + b.seed) * 0.02, b.heading, Math.sin(t * 1.1 + b.seed) * 0.035)
-    })
-  })
-
+    return out
+  }, [cells, clear, water.length])
   return (
     <>
-      {pool.map((kind, i) => (
-        <group key={i} ref={(g) => void (groups.current[i] = g)} visible={false}>
-          {kind === 'bus' ? <BateauBus /> : <Pirogue motor={i % 2 === 0} />}
-        </group>
+      {boats.map((b) => (
+        <BoatOnWater key={b.id} boat={b} clear={clear} />
       ))}
     </>
   )
+}
+
+function BoatOnWater({ boat, clear }: { boat: Boat; clear: (a: XZ, b: XZ) => boolean }) {
+  const g = useRef<THREE.Group>(null)
+  // Where it crosses to, round after round (the same on every phone).
+  const targets = useMemo(() => new Map<number, XZ | null>(), [clear]) // eslint-disable-line react-hooks/exhaustive-deps
+  const target = (n: number) => {
+    if (!targets.has(n)) {
+      const r = rng(`boat|${boat.id}|${n}`)
+      let to: XZ | null = null
+      for (let k = 0; k < 6 && !to; k++) {
+        const a = r() * Math.PI * 2
+        const d = (boat.kind === 'bus' ? 250 : 80) + r() * 300
+        const t: XZ = [boat.anchor[0] + Math.cos(a) * d, boat.anchor[1] + Math.sin(a) * d]
+        if (clear(boat.anchor, t)) to = t
+      }
+      if (targets.size > 50) targets.clear()
+      targets.set(n, to)
+    }
+    return targets.get(n) ?? null
+  }
+  const heading = useRef<number | null>(null)
+  useFrame((_, dt) => {
+    const grp = g.current
+    if (!grp) return
+    const t = worldTime()
+    const len = (n: number) => {
+      const to = target(n)
+      return to ? Math.hypot(to[0] - boat.anchor[0], to[1] - boat.anchor[1]) : 0
+    }
+    const at = round(t, boat.cycle, boat.offset, len, boat.speed)
+    const to = target(at.n) ?? boat.anchor
+    const p = along([boat.anchor, to], at.d)
+    const want = at.forward ? p.r : p.r + Math.PI
+    // Turning about at each end takes a moment.
+    heading.current = heading.current === null ? want : turnTo(heading.current, want, 1 - Math.exp(-(boat.kind === 'bus' ? 0.8 : 1.6) * Math.min(dt, 0.1)))
+    grp.position.set(p.x, 0.05 + Math.sin(t * 1.3 + boat.seed) * 0.08, p.z)
+    grp.rotation.set(Math.sin(t * 0.9 + boat.seed) * 0.02, heading.current, Math.sin(t * 1.1 + boat.seed) * 0.035)
+  })
+  return <group ref={g}>{boat.kind === 'bus' ? <BateauBus /> : <Pirogue motor={boat.seed > 50} />}</group>
 }
 
 const white = new THREE.MeshLambertMaterial({ color: '#f4f4f0' })

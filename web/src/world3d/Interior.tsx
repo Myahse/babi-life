@@ -11,6 +11,7 @@ import { randomLook } from '../avatar/options'
 import { Box } from './props'
 import { Character } from './Character'
 import { rng } from './themes'
+import { worldTime } from '../lib/worldClock'
 
 // Inside a place, like when a Sim goes through a door in the Sims: a cutaway
 // room with its furniture, the people who are there, and the player's Sim
@@ -134,8 +135,8 @@ function Speaker({ p }: { p: V3 }) {
 /** Disco lights turning over the dance floor. */
 function DiscoLights() {
   const ref = useRef<THREE.Group>(null)
-  useFrame(({ clock }) => {
-    if (ref.current) ref.current.rotation.y = clock.elapsedTime * 0.8
+  useFrame(() => {
+    if (ref.current) ref.current.rotation.y = worldTime() * 0.8
   })
   return (
     <group ref={ref} position={[1.5, 3, 0.5]}>
@@ -156,10 +157,10 @@ function NoteRain({ from }: { from: V3 }) {
   const ref = useRef<THREE.InstancedMesh>(null)
   const notes = useMemo(() => [...Array(COUNT)].map((_, i) => ({ x: 0, y: -1, z: 0, vx: 0, vy: 0, vz: 0, rot: 0, delay: i * 0.12 })), [])
   const m = useMemo(() => new THREE.Object3D(), [])
-  useFrame(({ clock }, dt) => {
+  useFrame((_, dt) => {
     const mesh = ref.current
     if (!mesh) return
-    const t = clock.elapsedTime
+    const t = worldTime()
     notes.forEach((n, i) => {
       if (n.y <= 0.02) {
         if (t < n.delay) return

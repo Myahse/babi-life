@@ -7,6 +7,7 @@ import { rng, type Theme } from './themes'
 import { BACK_STREET_Z, CROSS_X, EXTENT_X, SIDEWALK, STRETCH, STREET_HALF } from './layout'
 import { Vehicle, type VehicleKind } from './vehicles'
 import { CHECK_SECONDS, boulevardLight, crossLight, drive, type Light, type Mover, type Track } from './traffic'
+import { worldTime } from '../lib/worldClock'
 
 // What makes a street feel alive: people walking the sidewalks or chatting in
 // small groups, and the traffic of taxis, woro-woros, gbakas and motos.
@@ -156,9 +157,9 @@ export function Traffic({ theme, seed }: { theme: Theme; seed: string }) {
   const [copPose, setCopPose] = useState<Pose>('idle')
   const [poses, setPoses] = useState<Pose[]>(() => beggars.map(() => 'idle'))
 
-  useFrame(({ clock }, dt) => {
+  useFrame((_, dt) => {
     const step = Math.min(dt, 0.1)
-    const t = clock.elapsedTime
+    const t = worldTime()
     tracks.forEach((track, ti) => {
       drive(track, t, step)
       track.movers.forEach((m, i) => {
@@ -244,9 +245,9 @@ export function Traffic({ theme, seed }: { theme: Theme; seed: string }) {
 /** The traffic lights at the cross streets, changing with the traffic. */
 export function TrafficLights() {
   const heads = useRef<{ light: (t: number) => Light; lamps: (THREE.Mesh | null)[] }[]>([])
-  useFrame(({ clock }) => {
+  useFrame(() => {
     for (const h of heads.current) {
-      const now = h.light(clock.elapsedTime)
+      const now = h.light(worldTime())
       h.lamps.forEach((lamp, i) => {
         if (!lamp) return
         const on = (['red', 'amber', 'green'] as Light[])[i] === now

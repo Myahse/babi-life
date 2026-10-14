@@ -19,6 +19,7 @@ import { whereabouts } from './whereabouts'
 import { SHORE_Z, rng, themeFor, type Theme } from './themes'
 import { lifeOf } from '../game/rules'
 import { HAPPENING_DOOR, HappeningMarker, HappeningScene, STOPS_TRAFFIC } from './Happenings'
+import { worldTime } from '../lib/worldClock'
 
 export type Props = {
   world: World
@@ -329,10 +330,10 @@ function Backdrop({ theme, night }: { theme: Theme; night: boolean }) {
 /** White foam lines rolling onto the beach (or ripples on the lagoon). */
 function Waves({ sea, night, from }: { sea: boolean; night: boolean; from: number }) {
   const refs = useRef<(THREE.Mesh | null)[]>([])
-  useFrame(({ clock }) => {
+  useFrame(() => {
     refs.current.forEach((m, i) => {
       if (!m) return
-      const t = (clock.elapsedTime * (sea ? 0.25 : 0.12) + i / 4) % 1
+      const t = (worldTime() * (sea ? 0.25 : 0.12) + i / 4) % 1
       m.position.z = from - (1 - t) * (sea ? 14 : 10)
       ;(m.material as THREE.MeshBasicMaterial).opacity = Math.sin(t * Math.PI) * (sea ? 0.8 : 0.35)
     })

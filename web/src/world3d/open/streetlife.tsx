@@ -9,6 +9,7 @@ import { rng } from '../themes'
 import { whereabouts } from '../whereabouts'
 import { hash, type XZ } from './geo'
 import type { Nav } from './nav'
+import { worldTime } from '../../lib/worldClock'
 
 // Life at the street side, around the Sim: le grin, children playing football,
 // people talking in a ring, a lit pitch and a basketball court with a crowd,
@@ -209,24 +210,25 @@ function Foot({ seed }: { seed: string }) {
   const cast = useCast(seed, 4)
   const spots: XZ[] = [[-3, -2], [3, -2.5], [2.5, 3], [-2.5, 2.5]]
   const ball = useRef<THREE.Mesh>(null)
-  const [pass, setPass] = useState({ from: 0, to: 1 })
-  const t = useRef(0)
-  useFrame((_, dt) => {
-    t.current += Math.min(dt, 0.1) / 1.1
-    if (t.current >= 1) {
-      t.current = 0
-      const next = (pass.to + 1 + Math.floor(Math.random() * 2)) % spots.length
-      setPass({ from: pass.to, to: next === pass.to ? (next + 1) % spots.length : next })
-    }
-    const [a, b] = [spots[pass.from], spots[pass.to]]
-    const k = t.current
+  // Pass n goes from player a(n−1) to a(n), with a(n) = (2n + b(n)) mod 4 and
+  // b(n) a coin flip seeded by n: never to oneself, worked out from the shared
+  // clock alone, so every screen sees the same pass.
+  const [to, setTo] = useState(0)
+  const offset = useMemo(() => rng(`foot${seed}`)() * 100, [seed])
+  useFrame(() => {
+    const u = (worldTime() + offset) / 1.1
+    const n = Math.floor(u)
+    const who = (m: number) => (2 * m + (rng(`${seed}|${m}`)() < 0.5 ? 0 : 1)) % 4
+    const [a, b] = [spots[who(n - 1)], spots[who(n)]]
+    if (who(n) !== to) setTo(who(n))
+    const k = u - n
     ball.current?.position.set(a[0] + (b[0] - a[0]) * k, 0.12 + Math.sin(k * Math.PI) * 0.6, a[1] + (b[1] - a[1]) * k)
   })
   return (
     <group>
       {cast.map((p, i) => (
         <group key={i} position={[spots[i][0], 0, spots[i][1]]} rotation={[0, Math.atan2(-spots[i][0], -spots[i][1]), 0]} scale={0.62}>
-          <Human look={p.look} gender={p.gender} pose={(i === pass.to ? 'cheer' : 'idle') as Pose} seed={p.seed} headScale={1.2} />
+          <Human look={p.look} gender={p.gender} pose={(i === to ? 'cheer' : 'idle') as Pose} seed={p.seed} headScale={1.2} />
         </group>
       ))}
       <mesh ref={ball} material={ballMat}>
@@ -288,8 +290,8 @@ function Pitch({ spot, night }: { spot: Spot; night: boolean }) {
   const side = useMemo(() => people(`foot${spot.id}`, 6, { outfit: 'jersey', outfitColor: '#ff7a00' }), [spot.id])
   const watch = useMemo(() => people(`crowd${spot.id}`, 5, { outfit: 'casual' }), [spot.id])
   const ball = useRef<THREE.Mesh>(null)
-  useFrame(({ clock }) => {
-    const t = clock.elapsedTime + spot.seed * 8
+  useFrame(() => {
+    const t = worldTime() + spot.seed * 8
     ball.current?.position.set(Math.sin(t * 0.7) * 7, 0.28 + Math.abs(Math.sin(t * 2.4)) * 0.55, Math.cos(t * 0.55) * 2.2)
   })
   return (
@@ -344,8 +346,8 @@ function Court({ spot, night }: { spot: Spot; night: boolean }) {
   const side = useMemo(() => people(`basket${spot.id}`, 4, { outfit: 'basket', outfitColor: '#1d428a' }), [spot.id])
   const watch = useMemo(() => people(`bcrowd${spot.id}`, 4, {}), [spot.id])
   const ball = useRef<THREE.Mesh>(null)
-  useFrame(({ clock }) => {
-    const k = (clock.elapsedTime * 0.35 + spot.seed) % 1
+  useFrame(() => {
+    const k = (worldTime() * 0.35 + spot.seed) % 1
     ball.current?.position.set(-5 + k * 10, 0.45 + Math.sin(k * Math.PI) * 3.1, Math.sin(k * Math.PI * 2) * 0.6)
   })
   return (

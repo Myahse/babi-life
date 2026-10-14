@@ -7,6 +7,7 @@ import { defaultColors, fullLook } from './options'
 import { tint, waxTexture } from './textures'
 import { LowHuman } from './LowHuman'
 import { BlockHuman } from './BlockHuman'
+import { worldTime } from '../lib/worldClock'
 
 // A stylised cartoon Sim with human proportions (about six heads tall): soft
 // rounded shapes, toon shading and an expressive face. Built from generated
@@ -665,8 +666,8 @@ function Face({ l, femme, skin, seed = 0 }: { l: Required<Look>; femme: boolean;
   // Alive: the eyes blink every few seconds and glance about.
   const eyes = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
   const gaze = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
-  useFrame(({ clock }) => {
-    const t = clock.elapsedTime + seed * 7.3
+  useFrame(() => {
+    const t = worldTime() + seed * 7.3
     const period = 3.2 + (seed % 3)
     const k = (t % period) / period
     const lid = k > 0.965 ? Math.max(0.08, Math.abs(Math.cos(((k - 0.965) / 0.035) * Math.PI))) : 1
@@ -980,18 +981,19 @@ export type Rig = {
 export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Rig, pose: Pose, seed: number, speed?: number) {
   // The walk's phase, carried on frame to frame so the stride can change
   // pace without a jump; where the eyes look, changing now and then.
-  const phase = useRef(seed * 3)
+  const phase = useRef<number | null>(null)
   const glance = useRef({ y: 0, x: 0, next: 0 })
-  useFrame(({ clock }, dtRaw) => {
+  useFrame((_, dtRaw) => {
     const dt = Math.min(dtRaw, 0.1)
-    const t = clock.elapsedTime + seed
+    const t = worldTime() + seed
     const run = pose === 'run'
     const walk = pose === 'walk' || run || pose === 'dribble'
     const seated = SEATED.includes(pose)
     // Steps follow the speed: cadence and stride grow with it, so feet don't slide.
     const v = speed ?? (run ? 8 : 1.4)
     const cadence = run ? 1.5 + v * 0.07 : Math.min(2.1, 0.85 + v * 0.3)
-    phase.current += dt * Math.PI * 2 * cadence
+    // It starts from the shared clock, so a walker's steps are in time on every screen.
+    phase.current = (phase.current ?? t * Math.PI * 2 * cadence) + dt * Math.PI * 2 * cadence
     const ph = phase.current
     const s = Math.sin(ph)
     const stride = run ? 0.95 : Math.min(0.62, 0.3 + v * 0.09)
@@ -1309,8 +1311,8 @@ export function Baby({ look, gender, pose = 'idle', seed = 0 }: Props) {
   const head = useRef<THREE.Group>(null)
   const arms = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
   const legs = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
-  useFrame(({ clock }) => {
-    const t = clock.elapsedTime + seed
+  useFrame(() => {
+    const t = worldTime() + seed
     const crawl = pose === 'walk'
     // On all fours to crawl; sitting up otherwise.
     root.current!.rotation.x = crawl ? 1.05 : 0

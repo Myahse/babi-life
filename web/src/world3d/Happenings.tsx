@@ -12,6 +12,7 @@ import { SIDEWALK } from './layout'
 import { Box, Mat, Sign } from './props'
 import { Vehicle } from './vehicles'
 import { Basket, Football } from './matches'
+import { worldTime } from '../lib/worldClock'
 
 // What is going on in the street right now (see backend/internal/game/happenings.go),
 // staged on the boulevard around HAPPENING_X so the player can find it.
@@ -55,8 +56,8 @@ function Wedding({ seed }: { seed: string }) {
     [seed],
   )
   const group = useRef<THREE.Group>(null)
-  useFrame(({ clock }) => {
-    if (group.current) group.current.position.x = HAPPENING_X - 40 + ((clock.elapsedTime * 2.6) % 80)
+  useFrame(() => {
+    if (group.current) group.current.position.x = HAPPENING_X - 40 + ((worldTime() * 2.6) % 80)
   })
   return (
     <group ref={group} position={[HAPPENING_X, 0, 0]}>
@@ -124,8 +125,8 @@ function Match({ seed }: { seed: string }) {
   const screen = useScreenTexture()
   const crowd = useCrowd(14, `match${seed}`, (r) => (r() < 0.7 ? { outfit: 'jersey', outfitColor: '#ff8200' } : {}))
   const [goal, setGoal] = useState(false)
-  useFrame(({ clock }) => {
-    const g = clock.elapsedTime % 12 < 2.5
+  useFrame(() => {
+    const g = worldTime() % 12 < 2.5
     if (g !== goal) setGoal(g)
   })
   return (
@@ -157,9 +158,9 @@ function Concert({ seed, night }: { seed: string; night: boolean }) {
   const crowd = useCrowd(16, `concert${seed}`)
   const dj = useMemo<Person>(() => ({ gender: 'homme', look: { ...randomLook('homme', rng(`dj${seed}`)), outfit: 'casual', outfitColor: '#ffffff', accessory: 'glasses', hair: 'locks' }, seed: 3 }), [seed])
   const lights = useRef<(THREE.Mesh | null)[]>([])
-  useFrame(({ clock }) => {
+  useFrame(() => {
     lights.current.forEach((m, i) => {
-      if (m) m.rotation.z = Math.sin(clock.elapsedTime * 1.8 + i * 2) * 0.5
+      if (m) m.rotation.z = Math.sin(worldTime() * 1.8 + i * 2) * 0.5
     })
   })
   return (
@@ -284,8 +285,8 @@ function Checkpoint({ seed }: { seed: string }) {
     [seed],
   )
   const bar = useRef<THREE.Mesh>(null)
-  useFrame(({ clock }) => {
-    if (bar.current) (bar.current.material as THREE.MeshBasicMaterial).color.set(Math.floor(clock.elapsedTime * 3) % 2 ? '#e03131' : '#1c7ed6')
+  useFrame(() => {
+    if (bar.current) (bar.current.material as THREE.MeshBasicMaterial).color.set(Math.floor(worldTime() * 3) % 2 ? '#e03131' : '#1c7ed6')
   })
   return (
     <group position={[HAPPENING_X, 0, 0]}>

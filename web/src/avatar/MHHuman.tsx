@@ -7,6 +7,7 @@ import type { Look, Sim } from '../lib/types'
 import { defaultColors, fullLook, WAX_OUTFITS } from './options'
 import { tint, waxTexture } from './textures'
 import { usePoseRig, useCastShadows, type Pose } from './Human'
+import { worldTime } from '../lib/worldClock'
 
 // A person on MakeHuman's body (CC0, see tools/avatar/build_makehuman.py):
 // the real shape of a young African adult, with the creator's body types and
@@ -503,7 +504,7 @@ export function MHHuman({ look, gender, pose = 'idle', seed = 0, headScale = 1, 
       for (let f = 2; f <= 5; f++) for (let k = 1; k <= 3; k++) model.bone(`finger${f}-${k}${s}`).quaternion.setFromAxisAngle(rest[i].axis, k === 1 ? 0.25 : 0.35)
     })
   }, [model, rest])
-  useFrame(({ clock }) => {
+  useFrame(() => {
     SIDE.forEach((s, i) => {
       model.bone('shoulder01' + s).quaternion.copy(rest[i].qs)
       model.bone('upperarm01' + s).quaternion.copy(rest[i].qsInv).multiply(q.setFromEuler(arm[i].rotation)).multiply(rest[i].qa)
@@ -511,7 +512,7 @@ export function MHHuman({ look, gender, pose = 'idle', seed = 0, headScale = 1, 
     })
     // The face: a blink every few seconds, a smile when happy, the mouth
     // and brows when talking, a frown when ranting (MakeHuman's expressions).
-    const t = clock.elapsedTime
+    const t = worldTime()
     const f = face.current
     if (t > f.next) {
       f.blink = t
@@ -591,9 +592,9 @@ function Eyes({ info, eyes }: { info: Info; eyes: string }) {
   // The eyes look here, then there (small, quick moves), mostly ahead.
   const refs = [useRef<THREE.Mesh>(null), useRef<THREE.Mesh>(null)]
   const gaze = useRef({ x: 0, y: 0, tx: 0, ty: 0, next: 0 })
-  useFrame(({ clock }) => {
+  useFrame(() => {
     const g = gaze.current
-    const t = clock.elapsedTime
+    const t = worldTime()
     if (t > g.next) {
       const r1 = Math.random()
       ;[g.tx, g.ty] = r1 < 0.45 ? [0, 0] : [(Math.random() - 0.5) * 0.2, (Math.random() - 0.5) * 0.6]

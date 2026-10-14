@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { XZ } from './geo'
+import { worldTime } from '../../lib/worldClock'
 
 // The airport (Port-Bouët): the terminal, its control tower and planes at the
 // gates, drawn by the game at the place; the runway and the taxiways come from
@@ -194,7 +195,7 @@ export function TakeOff({ runways }: { runways: XZ[][] }) {
     return bl > 600 ? best : null
   }, [runways])
   const t0 = useRef(0)
-  useFrame(({ clock }) => {
+  useFrame(() => {
     const p = g.current
     if (!p) return
     if (!line) return void (p.visible = false)
@@ -202,7 +203,7 @@ export function TakeOff({ runways }: { runways: XZ[][] }) {
     const L = Math.hypot(b[0] - a[0], b[1] - a[1])
     const [ux, uz] = [(b[0] - a[0]) / L, (b[1] - a[1]) / L]
     const CYCLE = 75
-    const t = (clock.elapsedTime - t0.current) % CYCLE
+    const t = (worldTime() - t0.current) % CYCLE
     // Roll for 30 s speeding up to ~80 m/s, then climb.
     const ROLL = 30
     const acc = 2.6
