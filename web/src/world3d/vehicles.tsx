@@ -1,3 +1,5 @@
+import { useRef, useState } from 'react'
+import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { Human, NoShadows } from '../avatar/Human'
 import { randomLook } from '../avatar/options'
@@ -299,7 +301,48 @@ function Moto({ color }: { color: string }) {
 }
 
 /** Abidjan's traffic: orange taxi compteur, woro-woro, gbaka, cars and motos. */
-export function Vehicle({ p, r = 0, kind = 'taxi', color, trim, seed = 0 }: { p: [number, number, number]; r?: number; kind?: VehicleKind; color?: string; trim?: string; seed?: number }) {
+type VehicleProps = { p: [number, number, number]; r?: number; kind?: VehicleKind; color?: string; trim?: string; seed?: number }
+
+/**
+ * A vehicle in full detail up close; past FAR metres, a simple shape in the
+ * same colours (a body, its windows, the wheels' shadow): nobody sees the
+ * mirrors and the plates from there.
+ */
+const FAR = 55
+export function Vehicle(props: VehicleProps) {
+  const anchor = useRef<THREE.Group>(null)
+  const [far, setFar] = useState(false)
+  const at = useRef(new THREE.Vector3())
+  useFrame(({ camera }) => {
+    if (!anchor.current) return
+    const d = anchor.current.getWorldPosition(at.current).distanceTo(camera.position)
+    if (!far && d > FAR + 5) setFar(true)
+    else if (far && d < FAR - 5) setFar(false)
+  })
+  return <group ref={anchor}>{far ? <FarVehicle {...props} /> : <NearVehicle {...props} />}</group>
+}
+
+const FAR_SIZE: Record<VehicleKind, [number, number, number]> = { taxi: [4.4, 1.0, 1.66], woro: [4.4, 1.0, 1.66], car: [4.5, 1.1, 1.75], gbaka: [5.3, 1.7, 1.9], moto: [1.9, 0.9, 0.5] }
+const farBody = new Map<string, THREE.MeshLambertMaterial>()
+const farMat = (c: string) => {
+  let m = farBody.get(c)
+  if (!m) farBody.set(c, (m = new THREE.MeshLambertMaterial({ color: c })))
+  return m
+}
+const FAR_BOX = new THREE.BoxGeometry(1, 1, 1)
+function FarVehicle({ p, r = 0, kind = 'taxi', color }: VehicleProps) {
+  const [l, h, w] = FAR_SIZE[kind]
+  const body = color ?? (kind === 'taxi' ? '#ff7a00' : kind === 'gbaka' ? '#f4c430' : kind === 'moto' ? '#c92a2a' : '#e9ecef')
+  return (
+    <group position={p} rotation={[0, r, 0]}>
+      <mesh geometry={FAR_BOX} material={farMat(body)} position={[0, 0.3 + h / 2, 0]} scale={[l, h, w]} />
+      {kind !== 'moto' && <mesh geometry={FAR_BOX} material={GLASS} position={[kind === 'gbaka' ? 0 : -0.25, 0.3 + h + 0.22, 0]} scale={[kind === 'gbaka' ? l * 0.95 : l * 0.5, 0.42, w * 0.96]} />}
+      <mesh geometry={FAR_BOX} material={farMat('#1b1b20')} position={[0, 0.17, 0]} scale={[l * 0.8, 0.34, w * 1.02]} />
+    </group>
+  )
+}
+
+function NearVehicle({ p, r = 0, kind = 'taxi', color, trim, seed = 0 }: VehicleProps) {
   return (
     <group position={p} rotation={[0, r, 0]}>
       {kind === 'moto' ? (

@@ -1,10 +1,11 @@
-import { createContext, useContext, useMemo, useRef } from 'react'
+import { createContext, useContext, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import type { Look, Sim } from '../lib/types'
 import { defaultColors, fullLook } from './options'
 import { tint, waxTexture } from './textures'
+import { LowHuman } from './LowHuman'
 
 // A stylised cartoon Sim with human proportions (about six heads tall): soft
 // rounded shapes, toon shading and an expressive face. Built from generated
@@ -29,7 +30,7 @@ function geo(key: string, make: () => THREE.BufferGeometry) {
   if (!g) geoCache.set(key, (g = make()))
   return g
 }
-const SPHERE = () => geo('sphere', () => new THREE.SphereGeometry(1, 28, 20))
+const SPHERE = () => geo('sphere', () => new THREE.SphereGeometry(1, 20, 14))
 /** A capsule hanging down from its top end, length = distance between the two ball centres. */
 const limb = (r0: number, r1: number, len: number) =>
   geo(`limb${r0}|${r1}|${len}`, () => {
@@ -42,7 +43,7 @@ const limb = (r0: number, r1: number, len: number) =>
       const a = (i / 8) * (Math.PI / 2)
       pts.push(new THREE.Vector2(Math.sin(a) * r0, Math.cos(a) * r0))
     }
-    return new THREE.LatheGeometry(pts, 20)
+    return new THREE.LatheGeometry(pts, 14)
   })
 /** A thin arc centred on +Y (brows, lash lines, moustache). */
 const arc = (r: number, tube: number, span: number) =>
@@ -165,7 +166,7 @@ function faceZ(x: number, y: number) {
  */
 function headShell(key: string, thickness: (ux: number, uy: number, uz: number) => number) {
   return geo(`shell-${key}`, () => {
-    let g: THREE.BufferGeometry = new THREE.SphereGeometry(1, 96, 64)
+    let g: THREE.BufferGeometry = new THREE.SphereGeometry(1, 56, 40)
     g.deleteAttribute('uv')
     g.deleteAttribute('normal')
     g = mergeVertices(g)
@@ -961,7 +962,26 @@ function ShoeMesh({ shoe, skin }: { shoe: Shoe; skin: THREE.Material }) {
 
 type Props = { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; /** Children have bigger heads for their size (1 = adult). */ headScale?: number }
 
-export function Human({ look, gender, pose = 'idle', seed = 0, headScale = 1 }: Props) {
+/**
+ * A person, in full detail up close, and as a simple figure (LowHuman) past
+ * FAR metres from the camera, where the detail can't be seen anyway. The
+ * switch has some slack so nobody flickers between the two at the border.
+ */
+const FAR = 24
+export function Human(props: Props & { /** Always in full detail (the creator, close-ups). */ full?: boolean }) {
+  const anchor = useRef<THREE.Group>(null)
+  const [far, setFar] = useState(false)
+  const at = useRef(new THREE.Vector3())
+  useFrame(({ camera }) => {
+    if (props.full || !anchor.current) return
+    const d = anchor.current.getWorldPosition(at.current).distanceTo(camera.position)
+    if (!far && d > FAR + 3) setFar(true)
+    else if (far && d < FAR - 3) setFar(false)
+  })
+  return <group ref={anchor}>{far && !props.full ? <LowHuman look={props.look} gender={props.gender} pose={props.pose} seed={props.seed} /> : <FullHuman {...props} />}</group>
+}
+
+function FullHuman({ look, gender, pose = 'idle', seed = 0, headScale = 1 }: Props) {
   const young = headScale > 1
   const l = young ? { ...fullLook(look), beard: 'none', accessory: 'none' } : fullLook(look)
   const femme = gender === 'femme'

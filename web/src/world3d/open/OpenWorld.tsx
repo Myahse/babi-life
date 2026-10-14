@@ -2,6 +2,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
+import { PerformanceMonitor } from '@react-three/drei'
 import { Human, NoShadows } from '../../avatar/Human'
 import { randomLook } from '../../avatar/options'
 import { lifeOf } from '../../game/rules'
@@ -71,14 +72,30 @@ function Sun({ night, dusk }: { night: boolean; dusk: boolean }) {
     scene.add(l.target)
     return () => void scene.remove(l.target)
   }, [scene])
-  useFrame(() => {
+  // The shadow map is drawn ten times a second rather than every frame (it
+  // means drawing the whole city around once more), and at once when the
+  // light moves with the Sim.
+  const gl = useThree((s) => s.gl)
+  const since = useRef(0)
+  useEffect(() => {
+    gl.shadowMap.autoUpdate = false
+    gl.shadowMap.needsUpdate = true
+    return () => void (gl.shadowMap.autoUpdate = true)
+  }, [gl])
+  useFrame((_, dt) => {
     const l = light.current
     if (!l || !controls) return
     const t = controls.target
     // Snap to whole metres so the shadows don't shimmer as the Sim walks.
     const [x, z] = [Math.round(t.x), Math.round(t.z)]
+    const moved = l.target.position.x !== x || l.target.position.z !== z
     l.position.set(x + 60, 110, z + 35)
     l.target.position.set(x, 0, z)
+    since.current += dt
+    if (moved || since.current > 0.1) {
+      since.current = 0
+      gl.shadowMap.needsUpdate = true
+    }
   })
   return (
     <directionalLight
@@ -102,8 +119,12 @@ export function OpenWorld(props: Props & { token: string; onFail: () => void }) 
   const night = props.hour < 6 || props.hour >= 19
   const dusk = props.hour >= 17 && props.hour < 19
   const sky = night ? '#141a3d' : dusk ? '#f7a072' : '#8ec9f0'
+  const maxDpr = Math.min(1.75, typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1)
+  const [dpr, setDpr] = useState(Math.min(1.5, maxDpr))
   return (
-    <Canvas shadows dpr={[1, 1.75]} camera={{ position: [45, 48, 45], fov: 45, near: 0.5, far: 9000 }} style={{ background: sky, transition: 'background 1s' }} gl={{ antialias: true }}>
+    <Canvas shadows dpr={dpr} camera={{ position: [45, 48, 45], fov: 45, near: 0.5, far: 9000 }} style={{ background: sky, transition: 'background 1s' }} gl={{ antialias: true }} onCreated={({ gl, scene }) => void (import.meta.env.DEV && Object.assign(window, { __gl: gl, __scene: scene }))}>
+      {/* Resolution follows what the device can keep up with */}
+      <PerformanceMonitor onDecline={() => setDpr((d) => Math.max(0.75, d - 0.25))} onIncline={() => setDpr((d) => Math.min(maxDpr, d + 0.25))} flipflops={4} onFallback={() => setDpr(1)} />
       <Suspense fallback={null}>
         <World {...props} night={night} dusk={dusk} sky={sky} />
       </Suspense>
@@ -122,6 +143,7 @@ function useMaterials(night: boolean) {
       shop: lambert(t.shop, { vertexColors: true, emissiveMap: t.shopLights, emissive: new THREE.Color('#ffffff'), emissiveIntensity: 0 }),
       house: lambert(t.house, { vertexColors: true }),
       trim: lambert(t.plaster, { vertexColors: true, side: THREE.DoubleSide }),
+      kerb: lambert(t.plaster, { vertexColors: true }),
       roofs: lambert(t.roof),
       tin: lambert(t.tin, { side: THREE.DoubleSide }),
       contact: new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }),
@@ -406,7 +428,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
         return (
         <group key={c.data.key} position={[0, far ? -0.015 : 0, 0]}>
           {Object.entries(c.geos).map(([name, g]) => (
-            <mesh key={name} geometry={g} material={mats[name as keyof typeof mats]} castShadow={!far && SOLID.has(name)} receiveShadow={!far && name !== 'contact'} />
+            <mesh key={name} name={name} geometry={g} material={mats[name as keyof typeof mats]} castShadow={!far && SOLID.has(name)} receiveShadow={!far && name !== 'contact'} />
           ))}
           <Trees pts={c.data.trees} bark={mats.bark} leaves={mats.leaves} />
           <Palms pts={c.data.palms ?? []} bark={mats.bark} leaves={mats.leaves} />

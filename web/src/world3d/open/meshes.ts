@@ -29,9 +29,28 @@ export type ChunkMeshes = {
   water: THREE.BufferGeometry | null
   foam: THREE.BufferGeometry | null
   paint: THREE.BufferGeometry | null
+  kerb: THREE.BufferGeometry | null
   green: THREE.BufferGeometry | null
   sand: THREE.BufferGeometry | null
   pitch: THREE.BufferGeometry | null
+}
+
+/** A kerb: just its top and its two long sides (nobody sees the rest). */
+function kerb(b: Builder, cx: number, cz: number, len: number, rot: number) {
+  const [c, s] = [Math.cos(rot), Math.sin(rot)]
+  const at = (u: number, v: number): [number, number] => [cx + u * c - v * s, cz + u * s + v * c]
+  const [h, w] = [len / 2, 0.12]
+  for (const side of [1, -1]) {
+    const n: [number, number, number] = [-s * side, 0, c * side]
+    const [p, q] = [at(-h, w * side), at(h, w * side)]
+    const ids = [b.vertex(p[0], 0, p[1], 0, 0, n, KERB), b.vertex(q[0], 0, q[1], len, 0, n, KERB), b.vertex(q[0], 0.2, q[1], len, 0.2, n, KERB), b.vertex(p[0], 0.2, p[1], 0, 0.2, n, KERB)]
+    b.facing(n, ids[0], ids[1], ids[2])
+    b.facing(n, ids[0], ids[2], ids[3])
+  }
+  const n: [number, number, number] = [0, 1, 0]
+  const ids = [at(-h, -w), at(h, -w), at(h, w), at(-h, w)].map(([x, z], k) => b.vertex(x, 0.2, z, k === 1 || k === 2 ? len : 0, k >= 2 ? 0.24 : 0, n, KERB))
+  b.facing(n, ids[0], ids[1], ids[2])
+  b.facing(n, ids[0], ids[2], ids[3])
 }
 
 // Road markings and kerbs. They stop short of the junctions (points shared
@@ -83,6 +102,28 @@ function markings(chunk: ChunkData, paint: Builder, trim: Builder) {
     for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (const p of grid.get(`${cx + i},${cz + j}`) ?? []) if (Math.hypot(p[0] - x, p[1] - z) < CLEAR) return p
     return null
   }
+  /**
+   * The stretches of a piece of road (0 → len) clear of junctions, sampled
+   * every 2 m, each cut into lengths of at most `max` (bridges: so a line
+   * follows the deck's slope).
+   */
+  const clearRuns = (len: number, at: (d: number) => XZ, max: number): [number, number][] => {
+    const out: [number, number][] = []
+    let start = -1
+    for (let d = 0; d <= len + 0.001; d += 2) {
+      const x = Math.min(d, len)
+      const p = at(x)
+      const ok = !nearJunction(p[0], p[1])
+      if (ok && start < 0) start = x
+      if ((!ok || x >= len) && start >= 0) {
+        const end = ok ? x : Math.max(start, x - 2)
+        for (let s = start; s < end - 0.05; s += max) out.push([s, Math.min(end, s + max)])
+        start = -1
+      }
+      if (x >= len) break
+    }
+    return out
+  }
   const up: [number, number, number] = [0, 1, 0]
   /** A painted quad from a to b, `w` wide, set across by `off`. */
   const quad = (a: XZ, b: XZ, off: number, w: number, y: number) => {
@@ -114,24 +155,24 @@ function markings(chunk: ChunkData, paint: Builder, trim: Builder) {
       const yAt = (d: number) => base + (ys ? ys[i - 1] + ((ys[i] - ys[i - 1]) * d) / len : 0)
       // The lines, in pieces of 1 m (or dashes), skipping the junctions.
       for (const l of lines) {
-        const step = l.gap ? l.dash + l.gap : 2
-        for (let d = (step - (run % step)) % step; d < len; d += step) {
-          const e = Math.min(len, d + (l.gap ? l.dash : step))
-          const [p, q] = [at(d), at(e)]
-          if (nearJunction(p[0], p[1]) || nearJunction(q[0], q[1])) continue
-          quad(p, q, l.off, l.w, (yAt(d) + yAt(e)) / 2)
-        }
+        if (l.gap) {
+          const step = l.dash + l.gap
+          for (let d = (step - (run % step)) % step; d < len; d += step) {
+            const e = Math.min(len, d + l.dash)
+            const [p, q] = [at(d), at(e)]
+            if (nearJunction(p[0], p[1]) || nearJunction(q[0], q[1])) continue
+            quad(p, q, l.off, l.w, (yAt(d) + yAt(e)) / 2)
+          }
+        } else for (const [d, e] of clearRuns(len, at, ys ? 10 : len)) quad(at(d), at(e), l.off, l.w, (yAt(d) + yAt(e)) / 2)
       }
-      // Kerbs along the pavement, off the bridges.
+      // Kerbs along the pavement, off the bridges: one piece per clear stretch.
       if (!ys) {
         const rot = Math.atan2(b[1] - a[1], b[0] - a[0])
         const [nx, nz] = [-(b[1] - a[1]) / len, (b[0] - a[0]) / len]
-        for (let d = 0; d < len; d += 4) {
-          const e = Math.min(len, d + 4)
+        for (const [d, e] of clearRuns(len, at, len)) {
           const [p, q] = [at(d), at(e)]
-          if (nearJunction(p[0], p[1]) || nearJunction(q[0], q[1])) continue
           const [mx, mz] = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2]
-          for (const s of [1, -1]) trim.box(mx + nx * s * (r.width / 2 + 0.12), 0.1, mz + nz * s * (r.width / 2 + 0.12), e - d, 0.2, 0.24, rot, KERB)
+          for (const s of [1, -1]) kerb(trim, mx + nx * s * (r.width / 2 + 0.12), mz + nz * s * (r.width / 2 + 0.12), e - d, rot)
         }
       }
       run += len
@@ -276,7 +317,8 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ) => boolean, styleOf: 
     } else strip(laterite, r.pts, r.width, 0.04, 3, ys)
     if (ys) bridge(r.pts, r.width + 3.2, ys, bridgeKind(r.name))
   }
-  markings(chunk, paint, B.trim)
+  const kerbs = new Builder()
+  markings(chunk, paint, kerbs)
 
   const water = new Builder()
   const green = new Builder()
@@ -358,6 +400,7 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ) => boolean, styleOf: 
     water: water.geometry(),
     foam: foam.geometry(),
     paint: paint.geometry(),
+    kerb: kerbs.geometry(),
     green: green.geometry(),
     sand: sand.geometry(),
     pitch: pitch.geometry(),
