@@ -13,7 +13,7 @@ import { whereabouts } from './whereabouts'
 
 type XZ = [number, number]
 
-const SPEED = 4.2 // metres per second: a brisk walk, so errands don't drag
+const SPEED = 3.2 // metres per second: a brisk walk (long ways are run: autoRun)
 const RUN = 8.5 // running
 /** Further than this, the Sim runs there by itself. */
 const RUN_FROM = 90
@@ -349,7 +349,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       </mesh>
       {route && <RouteDots route={route} from={group} heightAt={nav.heightAt} />}
       <group ref={group}>
-        <Character look={sim.look} gender={sim.gender} walking={walking} running={run} busy={!!busy} moodColor={moodColor} stage={stage} />
+        <Character look={sim.look} gender={sim.gender} walking={walking} running={run} busy={!!busy} pose={busy?.kind === 'chat' ? 'talk' : undefined} moodColor={moodColor} stage={stage} speed={run ? RUN : SPEED} />
         {labels && nameTag && (
           <Html position={[0, 2.45, 0]} center zIndexRange={[28, 20]}>
             <span className="pointer-events-none rounded-md bg-[#0f1230]/80 px-1.5 py-0.5 text-[11px] font-extrabold whitespace-nowrap text-white">{nameTag}</span>

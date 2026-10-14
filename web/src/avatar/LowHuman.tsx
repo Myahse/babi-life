@@ -28,7 +28,7 @@ const mat = (c: string) => {
 
 const LONG = new Set(['pagne', 'boubou', 'robe'])
 
-export function LowHuman({ look, gender, pose = 'idle', seed = 0 }: { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number }) {
+export function LowHuman({ look, gender, pose = 'idle', seed = 0, speed }: { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; speed?: number }) {
   const l = fullLook(look)
   const femme = gender === 'femme'
   const top = l.outfitColor
@@ -36,11 +36,14 @@ export function LowHuman({ look, gender, pose = 'idle', seed = 0 }: { look: Look
   const long = (femme && LONG.has(l.outfit)) || l.outfit === 'boubou'
   const legs = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
   const arms = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
-  useFrame(({ clock }) => {
+  const phase = useRef(seed)
+  useFrame((_, dt) => {
     const run = pose === 'run'
     const walk = pose === 'walk' || run
     const seated = pose === 'sit' || pose === 'eat' || pose === 'drink' || pose === 'write'
-    const s = Math.sin((clock.elapsedTime + seed) * (run ? 13 : 8))
+    const v = speed ?? (run ? 8 : 1.4)
+    phase.current += Math.min(dt, 0.1) * Math.PI * 2 * (run ? 1.5 + v * 0.07 : Math.min(2.1, 0.85 + v * 0.3))
+    const s = Math.sin(phase.current)
     for (const i of [0, 1]) {
       const out = i ? 1 : -1
       const leg = legs[i].current

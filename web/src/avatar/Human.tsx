@@ -16,7 +16,7 @@ import { LowHuman } from './LowHuman'
 // follow a hairline and fade into the skin, so there are no blobs or seams.
 // The torso is one surface too, with the waist seam where clothes really have one.
 
-export type Pose = 'idle' | 'walk' | 'run' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw'
+export type Pose = 'idle' | 'walk' | 'run' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk'
 
 /** Poses done sitting on a chair (hips at seat height). */
 export const SEATED: Pose[] = ['sit', 'eat', 'drink', 'write']
@@ -960,7 +960,7 @@ function ShoeMesh({ shoe, skin }: { shoe: Shoe; skin: THREE.Material }) {
 
 /* ---------- The whole Sim ---------- */
 
-type Props = { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; /** Children have bigger heads for their size (1 = adult). */ headScale?: number }
+type Props = { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; /** Children have bigger heads for their size (1 = adult). */ headScale?: number; /** Walking speed (m/s): the steps follow it. */ speed?: number }
 
 /**
  * A person, in full detail up close, and as a simple figure (LowHuman) past
@@ -978,10 +978,10 @@ export function Human(props: Props & { /** Always in full detail (the creator, c
     if (!far && d > FAR + 3) setFar(true)
     else if (far && d < FAR - 3) setFar(false)
   })
-  return <group ref={anchor}>{far && !props.full ? <LowHuman look={props.look} gender={props.gender} pose={props.pose} seed={props.seed} /> : <FullHuman {...props} />}</group>
+  return <group ref={anchor}>{far && !props.full ? <LowHuman look={props.look} gender={props.gender} pose={props.pose} seed={props.seed} speed={props.speed} /> : <FullHuman {...props} />}</group>
 }
 
-function FullHuman({ look, gender, pose = 'idle', seed = 0, headScale = 1 }: Props) {
+function FullHuman({ look, gender, pose = 'idle', seed = 0, headScale = 1, speed }: Props) {
   const young = headScale > 1
   const l = young ? { ...fullLook(look), beard: 'none', accessory: 'none' } : fullLook(look)
   const femme = gender === 'femme'
@@ -997,106 +997,141 @@ function FullHuman({ look, gender, pose = 'idle', seed = 0, headScale = 1 }: Pro
   const elbow = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
   const chest = useRef<THREE.Group>(null)
 
-  useFrame(({ clock }) => {
+  // The walk's phase, carried on frame to frame so the stride can change
+  // pace without a jump; where the eyes look, changing now and then.
+  const phase = useRef(seed * 3)
+  const glance = useRef({ y: 0, x: 0, next: 0 })
+  useFrame(({ clock }, dtRaw) => {
+    const dt = Math.min(dtRaw, 0.1)
     const t = clock.elapsedTime + seed
     const run = pose === 'run'
     const walk = pose === 'walk' || run
-    // Running: a quicker stride, longer steps, knees up.
-    const f = run ? 13 : 8
-    const s = Math.sin(t * f)
+    const seated = SEATED.includes(pose)
+    // Steps follow the speed: cadence and stride grow with it, so feet don't slide.
+    const v = speed ?? (run ? 8 : 1.4)
+    const cadence = run ? 1.5 + v * 0.07 : Math.min(2.1, 0.85 + v * 0.3)
+    phase.current += dt * Math.PI * 2 * cadence
+    const ph = phase.current
+    const s = Math.sin(ph)
+    const stride = run ? 0.95 : Math.min(0.62, 0.3 + v * 0.09)
+    // Every joint eases to where it should be: no jump from one pose to the next.
+    const a = 1 - Math.exp(-14 * dt)
+    const to = (o: THREE.Euler | THREE.Vector3, k: 'x' | 'y' | 'z', target: number) => void (o[k] += (target - o[k]) * a)
+    // Standing: the weight goes from one leg to the other, slowly.
+    const shift = Math.sin(t * 0.35 + seed)
     for (const i of [0, 1]) {
       const out = i === 0 ? -1 : 1 // -1 = left side (-X)
-      const swing = walk ? s * (run ? 0.95 : 0.5) * out : 0
-      const seated = SEATED.includes(pose)
-      hip[i].current!.rotation.x = seated ? -1.5 : swing
-      knee[i].current!.rotation.x = seated ? 1.5 : walk ? Math.max(0, Math.sin(t * f + (out > 0 ? Math.PI : 0))) * (run ? 1.5 : 0.8) : 0
+      const swing = walk ? s * stride * out : 0
+      const h = hip[i].current!
+      const kn = knee[i].current!
+      to(h.rotation, 'x', seated ? -1.5 : walk ? swing : 0)
+      to(h.rotation, 'z', walk || seated ? 0 : out * shift * 0.03)
+      // The knee bends as the leg swings through, and a little on the standing leg.
+      const lift = Math.max(0, Math.sin(ph + (out > 0 ? Math.PI : 0) + 0.6))
+      to(kn.rotation, 'x', seated ? 1.5 : walk ? 0.08 + lift * (run ? 1.55 : 0.75) : Math.max(0, -out * shift) * 0.12)
       const sh = shoulder[i].current!
       const el = elbow[i].current!
-      el.rotation.z = 0
+      let [sx, sy, sz, ex, ez] = [0, 0, out * 0.1, -0.12, 0]
       if (pose === 'dance') {
         // Coupé-décalé: arms pumping in turn, one up, one down.
         const beat = Math.sin(t * 7 + i * Math.PI)
-        sh.rotation.set(-0.6 - beat * 0.5, 0, out * (0.5 + beat * 0.3))
-        el.rotation.x = -1.2 + beat * 0.4
+        ;[sx, sz, ex] = [-0.6 - beat * 0.5, out * (0.5 + beat * 0.3), -1.2 + beat * 0.4]
       } else if (pose === 'cheer') {
-        sh.rotation.set(0, 0, out * (2.7 + Math.sin(t * 10 + i) * 0.15))
-        el.rotation.x = 0
+        ;[sx, sz, ex] = [0, out * (2.7 + Math.sin(t * 10 + i) * 0.15), 0]
       } else if (pose === 'busy') {
-        sh.rotation.set(-1.1 + Math.sin(t * 6 + i) * 0.25, 0, out * 0.15)
-        el.rotation.x = -0.9 + Math.sin(t * 6 + i) * 0.2
+        ;[sx, sz, ex] = [-1.1 + Math.sin(t * 6 + i) * 0.25, out * 0.15, -0.9 + Math.sin(t * 6 + i) * 0.2]
       } else if (pose === 'wave' && out > 0) {
-        sh.rotation.set(0, 0, 2.6)
-        el.rotation.x = 0
-        el.rotation.z = 0.35 + Math.sin(t * 9) * 0.35
+        ;[sx, sz, ex, ez] = [0, 2.6, 0, 0.35 + Math.sin(t * 9) * 0.35]
       } else if ((pose === 'eat' || pose === 'drink') && out > 0) {
         // Fork (or bottle) to the mouth, and back to the plate.
         const k = Math.max(0, Math.sin(t * (pose === 'eat' ? 2.4 : 1.2)))
-        sh.rotation.set(-0.6 - k * 0.75, 0, 0.12)
-        el.rotation.x = -0.9 - k * 1.1
+        ;[sx, sz, ex] = [-0.6 - k * 0.75, 0.12, -0.9 - k * 1.1]
       } else if (pose === 'write' || ((pose === 'eat' || pose === 'drink') && out < 0)) {
         // Forearms on the table.
-        sh.rotation.set(-0.55, 0, out * 0.1)
-        el.rotation.x = -1.0 + (pose === 'write' && out > 0 ? Math.sin(t * 7) * 0.08 : 0)
+        ;[sx, sz, ex] = [-0.55, out * 0.1, -1.0 + (pose === 'write' && out > 0 ? Math.sin(t * 7) * 0.08 : 0)]
       } else if (pose === 'throw' && out > 0) {
         // Flicking banknotes, one after the other.
         const k = (t * 2.2) % 1
-        sh.rotation.set(-1.6 - Math.sin(k * Math.PI) * 0.9, 0, 0.35)
-        el.rotation.x = -0.6 + Math.sin(k * Math.PI) * 0.5
+        ;[sx, sz, ex] = [-1.6 - Math.sin(k * Math.PI) * 0.9, 0.35, -0.6 + Math.sin(k * Math.PI) * 0.5]
       } else if (pose === 'throw') {
         // The wad of notes held up in the other hand.
-        sh.rotation.set(-0.9, 0, -0.25)
-        el.rotation.x = -1.3
+        ;[sx, sz, ex] = [-0.9, -0.25, -1.3]
       } else if (pose === 'hug') {
         // Arms around the other one, swaying a little.
-        sh.rotation.set(-1.25, 0, out * -0.35)
-        el.rotation.x = -0.9 + Math.sin(t * 1.3 + i) * 0.05
+        ;[sx, sz, ex] = [-1.25, out * -0.35, -0.9 + Math.sin(t * 1.3 + i) * 0.05]
       } else if (pose === 'beg' && out > 0) {
         // A hand held out at the car window.
-        sh.rotation.set(-1.05 + Math.sin(t * 2) * 0.05, 0, 0.1)
-        el.rotation.x = -0.35
+        ;[sx, sz, ex] = [-1.05 + Math.sin(t * 2) * 0.05, 0.1, -0.35]
       } else if (pose === 'rant') {
         // Talking to nobody, arms going.
         const g = Math.sin(t * 4.5 + i * 2.1)
-        sh.rotation.set(-0.7 - g * 0.6, 0, out * (0.3 + Math.max(0, g) * 0.6))
-        el.rotation.x = -0.8 + g * 0.3
+        ;[sx, sz, ex] = [-0.7 - g * 0.6, out * (0.3 + Math.max(0, g) * 0.6), -0.8 + g * 0.3]
+      } else if (pose === 'talk') {
+        // Talking with someone: one hand making the point, now and then.
+        const g = Math.max(0, Math.sin(t * 2.6 + i * 1.7))
+        ;[sx, sz, ex] = [-0.25 - g * 0.55 * (out > 0 ? 1 : 0.4), out * 0.14, -0.5 - g * 0.6]
       } else if (pose === 'hero' && out > 0) {
-        sh.rotation.set(0.15, 0, 0.6)
-        el.rotation.x = -0.35
-        el.rotation.z = -1.75
+        ;[sx, sz, ex, ez] = [0.15, 0.6, -0.35, -1.75]
       } else if (run) {
         // Arms bent, pumping against the legs.
-        sh.rotation.set(-swing * 0.9, 0, out * 0.12)
-        el.rotation.x = -1.45
+        ;[sx, sz, ex] = [-swing * 0.9, out * 0.12, -1.45]
+      } else if (walk) {
+        // Arms swing against the legs, elbows bending more on the way forward.
+        ;[sx, sz, ex] = [-swing * 0.75, out * 0.09, -0.25 - Math.max(0, -swing * out) * 0.5]
       } else {
-        sh.rotation.set(walk ? -swing * 0.8 : Math.sin(t * 1.2 + i) * 0.03, 0, out * 0.1)
-        el.rotation.x = walk ? -0.35 : -0.12
+        // Standing: arms hanging loose, breathing.
+        ;[sx, sz, ex] = [Math.sin(t * 1.2 + i) * 0.03, out * (0.1 + Math.max(0, out * shift) * 0.03), -0.14]
       }
+      to(sh.rotation, 'x', sx)
+      to(sh.rotation, 'y', sy)
+      to(sh.rotation, 'z', sz)
+      to(el.rotation, 'x', ex)
+      to(el.rotation, 'z', ez)
     }
-    root.current!.position.y = SEATED.includes(pose)
-      ? -SEAT_DROP
-      : run
-        ? Math.abs(Math.cos(t * f)) * 0.09
-      : walk
-        ? Math.abs(Math.cos(t * 8)) * 0.025
-      : pose === 'busy'
-        ? Math.abs(Math.sin(t * 6)) * 0.02
-        : pose === 'dance'
-          ? Math.abs(Math.sin(t * 7)) * 0.06
-          : pose === 'cheer'
-            ? Math.max(0, Math.sin(t * 5)) * 0.18
-            : Math.sin(t * 1.6) * 0.003
+    const r = root.current!
+    to(
+      r.position,
+      'y',
+      seated
+        ? -SEAT_DROP
+        : run
+          ? Math.abs(Math.cos(ph)) * 0.09
+          : walk
+            ? Math.abs(Math.cos(ph)) * (0.015 + stride * 0.035)
+            : pose === 'busy'
+              ? Math.abs(Math.sin(t * 6)) * 0.02
+              : pose === 'dance'
+                ? Math.abs(Math.sin(t * 7)) * 0.06
+                : pose === 'cheer'
+                  ? Math.max(0, Math.sin(t * 5)) * 0.18
+                  : Math.sin(t * 1.6) * 0.003 - Math.abs(shift) * 0.006,
+    )
+    // Standing, the hips sit over one leg then the other.
+    to(r.position, 'x', walk || seated ? 0 : shift * 0.018)
     // Breathing: the chest rises a little (faster after running).
     if (chest.current) {
       const b = Math.sin(t * (pose === 'run' ? 4.5 : 1.7))
       chest.current.scale.set(1 + b * 0.006, 1, 1 + b * (pose === 'run' ? 0.025 : 0.014))
+      // Walking, the shoulders turn against the hips.
+      to(chest.current.rotation, 'y', walk ? -s * stride * 0.22 : 0)
     }
-    // Leaning into the run.
-    root.current!.rotation.x = run ? 0.16 : 0
-    root.current!.rotation.y = pose === 'dance' ? Math.sin(t * 3.5) * 0.35 : pose === 'rant' ? Math.sin(t * 0.9) * 0.5 : pose === 'hug' ? Math.sin(t * 0.8) * 0.06 : 0
-    head.current!.rotation.y = walk ? 0 : Math.sin(t * 0.5) * 0.2
-    head.current!.rotation.z = pose === 'wave' ? 0.08 : 0
-    head.current!.rotation.x = pose === 'busy' || pose === 'write' ? 0.25 : pose === 'eat' ? 0.1 : pose === 'drink' ? -0.15 : pose === 'hug' ? 0.15 : pose === 'beg' ? 0.12 : Math.sin(t * 0.7) * 0.03
-    if (pose === 'rant') head.current!.rotation.y = Math.sin(t * 2.3) * 0.45
+    // Leaning into the run; the hips sway with the steps, or with the weight.
+    to(r.rotation, 'x', run ? 0.16 : walk ? 0.03 : 0)
+    to(r.rotation, 'z', walk ? Math.cos(ph) * 0.035 * stride : seated ? 0 : -shift * 0.02)
+    to(r.rotation, 'y', pose === 'dance' ? Math.sin(t * 3.5) * 0.35 : pose === 'rant' ? Math.sin(t * 0.9) * 0.5 : pose === 'hug' ? Math.sin(t * 0.8) * 0.06 : walk ? s * stride * 0.12 : 0)
+    // The eyes: looking ahead when walking; otherwise a glance here, then there.
+    const g = glance.current
+    if (t > g.next) {
+      const n = Math.sin(t * 12.9898 + seed * 78.233) * 43758.5453
+      const rnd = n - Math.floor(n)
+      g.y = rnd < 0.5 ? 0 : (rnd - 0.75) * 1.1
+      g.x = (rnd * 7) % 1 < 0.3 ? 0.08 : 0
+      g.next = t + 1.5 + rnd * 3.5
+    }
+    const hd = head.current!
+    to(hd.rotation, 'y', walk ? -s * stride * 0.1 : pose === 'rant' ? Math.sin(t * 2.3) * 0.45 : pose === 'talk' ? Math.sin(t * 0.9) * 0.12 : g.y)
+    to(hd.rotation, 'z', pose === 'wave' ? 0.08 : pose === 'talk' ? Math.sin(t * 1.3) * 0.05 : 0)
+    to(hd.rotation, 'x', pose === 'busy' || pose === 'write' ? 0.25 : pose === 'eat' ? 0.1 : pose === 'drink' ? -0.15 : pose === 'hug' ? 0.15 : pose === 'beg' ? 0.12 : walk ? 0.02 : g.x + Math.sin(t * 0.7) * 0.02)
   })
 
   const body: Body = { femme, w, belly }

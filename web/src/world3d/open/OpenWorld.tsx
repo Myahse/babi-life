@@ -28,6 +28,7 @@ import { Boats } from './boats'
 import { AllocoStalls } from './alloco'
 import { TakeOff } from './airport'
 import { StreetLights } from './streetlights'
+import { StreetLife } from './streetlife'
 import { BRIDGE_LABEL, bridgeKind } from './bridgeNames'
 import { BridgeSights } from './bridges'
 import { matchPoi } from './poiMatch'
@@ -182,7 +183,7 @@ function useMaterials(night: boolean) {
   return mats
 }
 
-function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, nameTag, onNear, frozen, players, onPickPlayer, recenter, onFreeCamera, closeView, token, onFail, onStreetBuy }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void }) {
+function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, nameTag, onNear, frozen, players, onPickPlayer, recenter, onFreeCamera, closeView, token, onFail, onStreetBuy, onTalk, onCall, talkingTo }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void }) {
   const origin = useMemo<Origin>(() => ({ lat: commune.lat, lng: commune.lng }), [commune.lat, commune.lng])
   const mats = useMaterials(night)
   const home = sim.homeCity === sim.city && sim.homeCommune === commune.id
@@ -541,6 +542,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
       {nav.nodes.length > 0 && !stopsTraffic && <RoadTraffic nav={nav} focus={focus} seed={commune.id} woro={commune.woro} />}
       <Boats water={nearWater} focus={focus} />
       {nav.nodes.length > 0 && <StreetLights nav={nav} night={night} />}
+      {nav.nodes.length > 0 && <StreetLife nav={nav} seed={commune.id} />}
       {nav.nodes.length > 0 && <AllocoStalls nav={nav} seed={commune.id} onBuy={onStreetBuy} />}
       <TakeOff runways={runways} />
       <BridgeSights chunks={[...chunks.values()].map((c) => c.data)} night={night} />
@@ -551,7 +553,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
           </div>
         </Html>
       ))}
-      {nav.nodes.length > 0 && <Passersby nav={nav} focus={focus} seed={commune.id} />}
+      {nav.nodes.length > 0 && <Passersby nav={nav} focus={focus} seed={commune.id} onTalk={onTalk} onCall={onCall} talkingTo={talkingTo} />}
       {players && players.length > 0 && <OtherPlayers players={players} lots={walkLots} labels={labels} onPick={(id) => onPickPlayer?.(id)} />}
 
       {ready && (
@@ -745,9 +747,9 @@ function Palms({ pts, bark, leaves }: { pts: XZ[]; bark: THREE.Material; leaves:
 type Mover = { path: XZ[]; i: number; t: number; speed: number; x: number; z: number; r: number }
 
 /** Start a trip near the focus on the street network. */
-function trip(nav: Nav, focus: XZ, r: () => number, steps: number, minWidth: number): XZ[] {
+function trip(nav: Nav, focus: XZ, r: () => number, steps: number, minWidth: number, spread = 500): XZ[] {
   for (let k = 0; k < 12; k++) {
-    const n = nav.nearest([focus[0] + (r() - 0.5) * 500, focus[1] + (r() - 0.5) * 500], 300)
+    const n = nav.nearest([focus[0] + (r() - 0.5) * spread, focus[1] + (r() - 0.5) * spread], 300)
     if (!n) continue
     const e = nav.edges[n.edge]
     if (e.width < minWidth) continue
@@ -819,28 +821,52 @@ function RoadTraffic({ nav, focus, seed, woro }: { nav: Nav; focus: React.RefObj
   )
 }
 
-/** People walking the streets around the Sim. */
-function Passersby({ nav, focus, seed }: { nav: Nav; focus: React.RefObject<XZ>; seed: string }) {
+/** Someone in the street you can talk to. */
+export type Npc = { id: string; name: string; gender: 'femme' | 'homme'; seed: number; look: ReturnType<typeof randomLook> }
+const NPC_NAMES = {
+  femme: ['Awa', 'Aya', 'Mariam', 'Adjoua', 'Fatou', 'Akissi', 'Ruth', 'Affoué', 'Grâce', 'Nadège', 'Salimata', 'Ange', 'Tatiana', 'Bintou', 'Prisca', 'Clarisse'],
+  homme: ['Kouadio', 'Yao', 'Moussa', 'Koffi', 'Serge', 'Ibrahim', 'Didier', 'Konan', 'Junior', 'Lassina', 'Arouna', 'Fabrice', 'Brice', 'Seydou', 'Hervé', 'Wilfried'],
+}
+const CALLS = ['Eh, on dit quoi ?', 'Bonne arrivée !', 'Toi là, ça va un peu ?', 'Viens on cause !', 'Y a quoi de neuf ?', 'Ma copine, ça dit quoi ?']
+
+/**
+ * People walking the streets around the Sim. Each has a first name; tap one
+ * to talk (they stop and turn to you). Now and then, one nearby calls out.
+ */
+function Passersby({ nav, focus, seed, onTalk, onCall, talkingTo }: { nav: Nav; focus: React.RefObject<XZ>; seed: string; onTalk?: (npc: Npc) => void; onCall?: (npc: Npc, text: string) => void; talkingTo?: string | null }) {
   const people = useMemo(() => {
     const r = rng(`opeople${seed}`)
-    return [...Array(18)].map(() => {
+    return [...Array(18)].map((_, k) => {
       const gender: 'femme' | 'homme' = r() < 0.5 ? 'femme' : 'homme'
-      return { gender, look: randomLook(gender, r), seed: r() * 100, side: r() < 0.5 ? -1 : 1 }
+      const names = NPC_NAMES[gender]
+      return { id: `${seed}-${k}`, name: names[Math.floor(r() * names.length)], gender, look: randomLook(gender, r), seed: r() * 100, side: r() < 0.5 ? -1 : 1 }
     })
   }, [seed])
   const r = useMemo(() => rng(`owalks${seed}`), [seed])
   const movers = useRef<Mover[]>([])
   const refs = useRef<(THREE.Group | null)[]>([])
+  // Who is calling out, and what they say.
+  const [said, setSaid] = useState<{ k: number; text: string } | null>(null)
+  const saidRef = useRef(said)
+  saidRef.current = said
+  const nextCall = useRef(8)
   useFrame((_, dt) => {
     const step = Math.min(dt, 0.1)
+    const [sx, sz] = whereabouts.sim
     people.forEach((p, k) => {
+      const g = refs.current[k]
+      // The one you talk to (or who calls out to you) stops and turns to you.
+      if ((p.id === talkingTo || saidRef.current?.k === k) && g) {
+        g.rotation.y += (Math.atan2(sx - g.position.x, sz - g.position.z) - g.rotation.y) * 0.2
+        return
+      }
       let m = movers.current[k]
       if (!m || !advance(m, step)) {
-        const path = trip(nav, focus.current, r, 6, 0)
+        // Half of them stay around the Sim: the street feels inhabited where you are.
+        const path = trip(nav, focus.current, r, 6, 0, k % 2 ? 500 : 160)
         m = movers.current[k] = { path, i: 0, t: r(), speed: 1.1 + r() * 0.5, x: 0, z: 0, r: 0 }
         advance(m, 0)
       }
-      const g = refs.current[k]
       if (!g) return
       g.visible = m.path.length > 1
       // On the pavement, not in the middle of the road.
@@ -848,12 +874,49 @@ function Passersby({ nav, focus, seed }: { nav: Nav; focus: React.RefObject<XZ>;
       g.position.set(m.x + Math.cos(m.r) * off, nav.heightAt(m.x, m.z), m.z - Math.sin(m.r) * off)
       g.rotation.y = m.r
     })
+    // Now and then someone near the Sim greets it.
+    nextCall.current -= dt
+    if (nextCall.current <= 0) {
+      nextCall.current = 20 + Math.random() * 25
+      let best = -1
+      let bd = 40
+      refs.current.forEach((g, k) => {
+        if (!g?.visible || people[k].id === talkingTo) return
+        const d = Math.hypot(g.position.x - sx, g.position.z - sz)
+        if (d < bd) [best, bd] = [k, d]
+      })
+      if (best >= 0) {
+        const text = CALLS[Math.floor(Math.random() * CALLS.length)]
+        const p = people[best]
+        setSaid({ k: best, text })
+        onCall?.({ id: p.id, name: p.name, gender: p.gender, seed: Math.floor(p.seed * 1000), look: p.look }, text)
+      }
+    }
   })
+  useEffect(() => {
+    if (!said) return
+    const t = setTimeout(() => setSaid(null), 5000)
+    return () => clearTimeout(t)
+  }, [said])
+  const talk = (k: number) => {
+    const g = refs.current[k]
+    const p = people[k]
+    if (!g || !onTalk) return
+    if (Math.hypot(g.position.x - whereabouts.sim[0], g.position.z - whereabouts.sim[1]) > 40) return setSaid({ k, text: 'Approche, on va causer !' })
+    onTalk({ id: p.id, name: p.name, gender: p.gender, seed: Math.floor(p.seed * 1000), look: p.look })
+  }
   return (
     <NoShadows>
       {people.map((p, k) => (
-        <group key={k} ref={(g) => void (refs.current[k] = g)}>
-          <Human look={p.look} gender={p.gender} pose="walk" seed={p.seed} />
+        <group key={k} ref={(g) => void (refs.current[k] = g)} onClick={(e) => (e.stopPropagation(), talk(k))}>
+          <Human look={p.look} gender={p.gender} pose={p.id === talkingTo || said?.k === k ? 'talk' : 'walk'} seed={p.seed} speed={1.35} />
+          {said?.k === k && (
+            <Html position={[0, 2.35, 0]} center zIndexRange={[25, 0]}>
+              <button onClick={() => talk(k)} className="rounded-2xl rounded-bl-sm border border-black/5 bg-white px-3 py-1.5 text-[13px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_6px_14px_-8px_rgba(0,0,0,0.5)]">
+                <span className="text-[var(--color-orange)]">{p.name}</span> · {said.text}
+              </button>
+            </Html>
+          )}
         </group>
       ))}
     </NoShadows>

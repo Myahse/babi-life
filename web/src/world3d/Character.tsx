@@ -16,7 +16,7 @@ const SIZE: Record<string, { scale: number; head: number; top: number }> = {
   ado: { scale: 0.9, head: 1.08, top: 2.05 },
 }
 
-export function Character({ look, gender, walking, running, busy, moodColor = '#00b86b', plumbob = true, seed = 0, stage = 'adulte', pose }: Props) {
+export function Character({ look, gender, walking, running, busy, moodColor = '#00b86b', plumbob = true, seed = 0, stage = 'adulte', pose, speed }: Props & { /** How fast it moves (m/s): the steps follow. */ speed?: number }) {
   const doing: Pose = pose ?? (busy ? 'busy' : walking ? (running ? 'run' : 'walk') : 'idle')
   const size = SIZE[stage] ?? { scale: 1, head: 1, top: 2.15 }
   const gem = useRef<THREE.Mesh>(null)
@@ -36,7 +36,7 @@ export function Character({ look, gender, walking, running, busy, moodColor = '#
         <Baby look={look} gender={gender} pose={doing === 'walk' || doing === 'run' ? 'walk' : doing === 'idle' || doing === 'sit' ? 'idle' : 'busy'} seed={seed} />
       ) : (
         <group scale={size.scale}>
-          <Human look={look} gender={gender} pose={doing} seed={seed} headScale={size.head} />
+          <Human look={look} gender={gender} pose={doing} seed={seed} headScale={size.head} speed={speed} />
         </group>
       )}
       {plumbob && (

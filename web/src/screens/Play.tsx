@@ -26,6 +26,8 @@ import { FriendsApp } from './FriendsApp'
 import { InviteBanner, PlayersChip, PlayersSheet, usePlayers } from '../components/Players'
 import { SoundToggle, Soundtrack } from '../components/Soundtrack'
 import { MiniMap, WhereTo } from '../components/Navigator'
+import { ChatSheet } from '../components/ChatSheet'
+import type { Npc } from '../world3d/open/OpenWorld'
 import type { Track } from '../audio/music'
 
 type Toast = { id: number; title: string; text?: string; money: number; tone: 'random' | 'done' | 'error' | 'promo' | 'event'; kind?: string; icon?: string }
@@ -201,6 +203,28 @@ export function Play() {
     if (bills.length) setTimeout(() => toast({ tone: 'random', title: 'Samedi, jour du loyer', text: bills.map((b) => b.text).join(' '), money: bills.reduce((t, b) => t + b.money, 0) }), 300 + rest.length * 700)
   }
 
+  // Talking to someone in the street (and who, while the chat lasts).
+  const [chat, setChat] = useState<Npc | null>(null)
+  // Someone calling out to the Sim, for a few seconds.
+  const [calling, setCalling] = useState<{ npc: Npc; text: string } | null>(null)
+  useEffect(() => {
+    if (!calling) return
+    const t = setTimeout(() => setCalling(null), 7000)
+    return () => clearTimeout(t)
+  }, [calling])
+  const talkedTo = useRef<string | null>(null)
+  const say = async (topic: string, label: string) => {
+    const npc = chat!
+    talkedTo.current = npc.id
+    let said: string | null = null
+    await run(label, 'messages-square', 'social', async () => {
+      const res = await api.chat(sim!.id, { id: npc.id, name: npc.name, gender: npc.gender, seed: npc.seed }, topic)
+      said = res.outcome.text
+      return res
+    })
+    return said
+  }
+
   const run: Act = async (label, icon, kind, call) => {
     setPending({ label, icon, kind })
     try {
@@ -341,6 +365,9 @@ export function Play() {
             recenter,
             onFreeCamera: setFreeCam,
             closeView,
+            onTalk: (npc: Npc) => setChat(npc),
+            onCall: (npc: Npc, text: string) => !sim.activity && !chat && setCalling({ npc, text }),
+            talkingTo: chat?.id ?? (doing?.placeKind === 'chat' ? talkedTo.current : null),
             onStreetBuy: async (vendor: string) => {
               let said: string | null = null
               await run("L'alloco de la tantie", 'banana', 'market', async () => {
@@ -515,6 +542,22 @@ export function Play() {
       )}
       {overlay === 'map' && <WorldMap world={world} sim={sim} night={c.isNight} desktop={desktop} onClose={() => setOverlay(null)} onTravel={travel} onWalk={(id) => (setOverlay(null), walkTo(id))} />}
       {delivery && overlay !== 'phone' && <DeliveryPill delivery={delivery} now={now} onOpen={() => (setPhoneApp('golvo'), setOverlay('phone'))} />}
+      {calling && !chat && (
+        <div className="absolute top-[max(5.5rem,env(safe-area-inset-top))] left-1/2 z-20 w-[min(92vw,380px)] -translate-x-1/2 animate-up">
+          <div className="hud flex items-center gap-3 rounded-2xl p-2.5 pl-3">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full font-display text-lg font-extrabold text-white" style={{ background: calling.npc.look.outfitColor }}>
+              {calling.npc.name[0]}
+            </div>
+            <div className="min-w-0 flex-1 text-sm font-bold">
+              <span className="font-extrabold text-[var(--color-orange)]">{calling.npc.name}</span> t'appelle : « {calling.text} »
+            </div>
+            <button className="btn shrink-0 px-3 py-2 text-sm" onClick={() => (setChat(calling.npc), setCalling(null))}>
+              Répondre
+            </button>
+          </div>
+        </div>
+      )}
+      {chat && <ChatSheet npc={chat} onSay={say} onClose={() => setChat(null)} />}
       {flow && <RideFlow world={world} req={flow} gameMinutes={sim.gameMinutes} onBoard={board} onClose={() => setFlow(null)} />}
     </div>
   )
