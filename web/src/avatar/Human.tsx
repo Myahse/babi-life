@@ -1141,9 +1141,9 @@ type Props = { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; /*
  * switch has some slack so nobody flickers between the two at the border.
  */
 const FAR = 24
-/** The MakeHuman body (avatar/MHHuman.tsx), loaded with its model; `?oldavatar` shows the old built-in one. */
+/** The MakeHuman body (avatar/MHHuman.tsx), only with `?mhavatar`: the built-in Sim is the game's. */
 const MHHuman = lazy(() => import('./MHHuman').then((m) => ({ default: m.MHHuman })))
-const OLD_AVATAR = typeof location !== 'undefined' && new URLSearchParams(location.search).has('oldavatar')
+const OLD_AVATAR = !(typeof location !== 'undefined' && new URLSearchParams(location.search).has('mhavatar'))
 export function Human(props: Props & { /** Always in full detail (the creator, close-ups). */ full?: boolean }) {
   const anchor = useRef<THREE.Group>(null)
   const [far, setFar] = useState(false)
