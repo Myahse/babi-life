@@ -17,6 +17,8 @@ export type Lot = {
   door: [number, number]
   filler?: Filler
   seed: number
+  /** A real building from the map (the open world): its height. */
+  height?: number
 }
 
 export const HOME_ID = 'home'

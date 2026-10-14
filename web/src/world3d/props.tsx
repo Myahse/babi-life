@@ -106,7 +106,7 @@ export function useSignTexture(text: string, bg: string, fg = '#ffffff') {
     g.font = '800 72px "Baloo 2", system-ui, sans-serif'
     g.textAlign = 'center'
     g.textBaseline = 'middle'
-    g.fillText(text, 256, 70)
+    g.fillText(text, 256, 70, 492)
     const t = new THREE.CanvasTexture(c)
     t.colorSpace = THREE.SRGBColorSpace
     return t

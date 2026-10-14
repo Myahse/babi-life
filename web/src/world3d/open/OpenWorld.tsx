@@ -9,14 +9,19 @@ import { lifeOf } from '../../game/rules'
 import { HAPPENING_DOOR, HAPPENING_X, HappeningMarker, HappeningScene, STOPS_TRAFFIC } from '../Happenings'
 import { HOME_ID, type Lot } from '../layout'
 import { LotView, type Props } from '../Neighbourhood'
+import { useSignTexture } from '../props'
+import type { World } from '../../lib/types'
+import { iconFor, kindColors } from '../../components/icons'
+import { IconTile } from '../../components/ui'
+import { Html } from '@react-three/drei'
 import { Bande } from '../Nightlife'
 import { OtherPlayers } from '../Players'
 import { rng } from '../themes'
 import { Vehicle, type VehicleKind } from '../vehicles'
 import { Walker, type WalkNav } from '../Walker'
-import { CHUNK_ZOOM, PLACE_CLEARANCE, tileBox, tileOf, toLatLng, toLocal, type Origin, type XZ } from './geo'
+import { CHUNK_ZOOM, tileBox, tileOf, toLatLng, toLocal, type Origin, type XZ } from './geo'
 import { Nav } from './nav'
-import type { PlaceSpot, Resolved } from './places'
+import { inTheWay, type PlaceSpot, type Resolved } from './places'
 import { makeTextures } from './textures'
 import type { ChunkData } from './tiles'
 import type { Arrays, ChunkRequest } from './worker'
@@ -203,7 +208,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
       if (chunksRef.current.has(c.key) || busy.has(c.key) || (failed.current.get(c.key) ?? 0) >= 3) continue
       const id = nextId.current++
       pending.current.set(id, c.key)
-      const req: ChunkRequest = { id, origin, tx: c.tx, ty: c.ty, token, places: spots.map(({ id, at }) => ({ id, at })) }
+      const req: ChunkRequest = { id, origin, tx: c.tx, ty: c.ty, token, places: spots.map(({ id, at, kind }) => ({ id, at, kind })) }
       w.postMessage(req)
     }
     // Far chunks are let go, like Minecraft's render distance.
@@ -255,9 +260,9 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
     stream()
   })
 
-  // Real buildings cleared for the game's places don't block the way.
-  const cleared = useMemo<XZ[]>(() => [...[...resolved.values()].map((r) => r.center), ...spots.map((s) => s.at)], [resolved, spots])
-  const nav = useMemo(() => new Nav([...chunks.values()].map((c) => c.data), (c) => cleared.some((p) => Math.hypot(p[0] - c[0], p[1] - c[1]) < PLACE_CLEARANCE)), [chunks, cleared])
+  // The few real buildings in the way of a game-made one don't block the way.
+  const made = useMemo<XZ[]>(() => [...resolved.values()].filter((r) => !r.real).map((r) => r.center), [resolved])
+  const nav = useMemo(() => new Nav([...chunks.values()].map((c) => c.data), (c) => inTheWay(made, c)), [chunks, made])
 
   // The places, once they stand on a loaded street.
   const lots = useMemo<Lot[]>(
@@ -266,7 +271,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
         .filter((s) => s.id !== HAPPENING_KEY && resolved.has(s.id))
         .map((s, i) => {
           const r = resolved.get(s.id)!
-          return { id: s.id, kind: s.kind, name: s.name, x: r.center[0], z: r.center[1], rot: r.rot, door: r.door, seed: i }
+          return { id: s.id, kind: s.kind, name: s.name, x: r.center[0], z: r.center[1], rot: r.rot, door: r.door, seed: i, height: r.real?.height }
         }),
     [spots, resolved],
   )
@@ -325,9 +330,13 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
         </group>
       ))}
 
-      {lots.map((lot) => (
-        <LotView key={lot.id} lot={lot} world={world} night={night} label={labels} onPick={onPick} />
-      ))}
+      {lots.map((lot) =>
+        lot.height ? (
+          <PlaceSign key={lot.id} lot={lot} world={world} night={night} label={labels} onPick={onPick} />
+        ) : (
+          <LotView key={lot.id} lot={lot} world={world} night={night} label={labels} onPick={onPick} />
+        ),
+      )}
       {happening && spot && (
         <group position={[spot.door[0], 0, spot.door[1]]} rotation={[0, -spot.roadAngle, 0]}>
           <group position={[-HAPPENING_X, 0, 0]}>
@@ -368,6 +377,52 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
         />
       )}
     </>
+  )
+}
+
+/**
+ * A place in a real building: its sign over the door, in the colours of its
+ * kind, a little awning, and its name on top. The building itself is the
+ * real one, as the map has it.
+ */
+function PlaceSign({ lot, world, night, label, onPick }: { lot: Lot & { height?: number }; world: World; night: boolean; label: boolean; onPick: (id: string) => void }) {
+  const [a, b] = kindColors(lot.kind)
+  const kind = world.kinds[lot.kind]
+  const tex = useSignTexture(lot.kind === 'home' ? 'CHEZ TOI' : lot.name.toUpperCase(), b)
+  const [dx, dz] = [Math.sin(lot.rot), Math.cos(lot.rot)]
+  return (
+    <group position={[lot.door[0] - dx * 1.15, 0, lot.door[1] - dz * 1.15]} rotation={[0, lot.rot, 0]}>
+      <group onClick={(e) => (e.stopPropagation(), onPick(lot.id))}>
+        {lot.kind !== 'home' && (
+          <>
+            <mesh position={[0, 3.35, 0.12]}>
+              <boxGeometry args={[4.2, 0.8, 0.16]} />
+              <meshLambertMaterial map={tex} emissive={night ? '#ffffff' : '#000000'} emissiveMap={tex} emissiveIntensity={night ? 0.6 : 0} />
+            </mesh>
+            <mesh position={[0, 2.75, 0.75]} rotation={[0.35, 0, 0]}>
+              <boxGeometry args={[3.6, 0.08, 1.4]} />
+              <meshLambertMaterial color={a} />
+            </mesh>
+          </>
+        )}
+        {/* The door */}
+        <mesh position={[0, 1.05, 0.06]}>
+          <boxGeometry args={[1.2, 2.1, 0.08]} />
+          <meshLambertMaterial color={lot.kind === 'home' ? '#6b4426' : '#3d4350'} />
+        </mesh>
+      </group>
+      {label && (
+        <Html position={[0, (lot.height ?? 6) + 2.2, -2]} center zIndexRange={[20, 0]}>
+          <button
+            onClick={() => onPick(lot.id)}
+            className="flex items-center gap-1.5 rounded-xl border border-black/5 bg-white py-1 pr-2.5 pl-1 text-[12.5px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_4px_12px_-6px_rgba(0,0,0,0.45)] transition duration-200 hover:scale-110 active:scale-95"
+          >
+            <IconTile icon={iconFor(lot.kind === 'home' ? 'house' : kind?.icon ?? '')} colors={kindColors(lot.kind)} size={24} radius={8} />
+            {lot.name}
+          </button>
+        </Html>
+      )}
+    </group>
   )
 }
 

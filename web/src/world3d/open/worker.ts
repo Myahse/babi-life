@@ -1,8 +1,8 @@
 /// <reference lib="webworker" />
 import { buildChunk } from './meshes'
 import { fetchChunk } from './tiles'
-import { PLACE_CLEARANCE, type Origin } from './geo'
-import { resolvePlaces, type PlaceSpot } from './places'
+import type { Origin } from './geo'
+import { inTheWay, resolvePlaces, type PlaceSpot } from './places'
 
 // Chunks are fetched, decoded and turned into geometry here, off the main
 // thread, so walking stays smooth while the world loads around the Sim.
@@ -14,11 +14,11 @@ self.onmessage = async (e: MessageEvent<ChunkRequest>) => {
   const { id, origin, tx, ty, token, places } = e.data
   try {
     const data = await fetchChunk(origin, tx, ty, token)
-    // Places in this chunk go on its streets; the real buildings where they
-    // stand make way (a place near a chunk's edge may clear the next one too).
+    // Places take the real building where the map puts them; only a place
+    // with no building on the map gets one made by the game, on its own lot.
     const resolved = resolvePlaces(data, places)
-    const clear = [...resolved.map((r) => r.center), ...places.map((p) => p.at)]
-    const meshes = buildChunk(data, (c) => clear.some((p) => Math.hypot(p[0] - c[0], p[1] - c[1]) < PLACE_CLEARANCE))
+    const made = resolved.filter((r) => !r.real).map((r) => r.center)
+    const meshes = buildChunk(data, (c) => inTheWay(made, c))
     const out: Record<string, Arrays> = {}
     const transfer: ArrayBuffer[] = []
     for (const [name, g] of Object.entries(meshes)) {
