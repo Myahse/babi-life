@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BadgeCheck, Cake, Eye, LocateFixed, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, Cake, Hammer, Eye, LocateFixed, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World, Ride } from '../lib/types'
 import { useWorld } from '../store/world'
@@ -33,6 +33,9 @@ import { MiniMap, WhereTo } from '../components/Navigator'
 import { ChatSheet } from '../components/ChatSheet'
 import type { Npc } from '../world3d/open/OpenWorld'
 import type { Track } from '../audio/music'
+
+/** Building one's house: its own screen, downloaded when opened. */
+const BuildMode = lazy(() => import('../components/BuildMode'))
 
 type Toast = { id: number; title: string; text?: string; money: number; tone: 'random' | 'done' | 'error' | 'promo' | 'event'; kind?: string; icon?: string }
 
@@ -281,6 +284,10 @@ export function Play() {
     run(d.dish.label, d.dish.icon, 'eat', () => api.order(sim!.id, d.place.id, d.dish.id)).then((ok) => ok && setDelivery(null))
   }
 
+  // Building one's house on the plot; the houses are fetched again after.
+  const [building, setBuilding] = useState(false)
+  const [plotsVersion, setPlotsVersion] = useState(0)
+
   // Live: the other players in the commune, every few seconds.
   const [around, refreshPlayers] = usePlayers(base?.sim.id, `${sim?.city}/${sim?.commune}`)
   // …and where they are in the street, a few times a second.
@@ -376,6 +383,7 @@ export function Play() {
             onTalk: (npc: Npc) => setChat(npc),
             onCall: (npc: Npc, text: string) => !sim.activity && !chat && setCalling({ npc, text }),
             talkingTo: chat?.id ?? (doing?.placeKind === 'chat' ? talkedTo.current : null),
+            plotsVersion,
             onStreetBuy: async (vendor: string) => {
               let said: string | null = null
               await run("L'alloco de la tantie", 'banana', 'market', async () => {
@@ -518,7 +526,12 @@ export function Play() {
         <HappeningSheet now={street} sim={sim} commune={commune} onClose={() => setPlaceId(null)} onJoin={(it) => (setPlaceId(null), run(it.label, it.icon, 'happening', () => api.interact(sim.id, 'happening', it.id)))} />
       )}
       {placeId && placeId !== 'happening' && (
-        <InteractionMenu world={world} sim={sim} city={city} commune={commune} placeId={placeId} desktop={desktop} onClose={() => setPlaceId(null)} onPick={interact} onTravel={travel} onStop={stop} />
+        <InteractionMenu world={world} sim={sim} city={city} commune={commune} placeId={placeId} desktop={desktop} onClose={() => setPlaceId(null)} onPick={interact} onTravel={travel} onStop={stop} onBuild={() => (setPlaceId(null), setBuilding(true))} />
+      )}
+      {building && (
+        <Suspense fallback={null}>
+          <BuildMode world={world} sim={sim} onResult={apply} onClose={() => (setBuilding(false), setPlotsVersion((v) => v + 1))} />
+        </Suspense>
       )}
 
       {players && <PlayersSheet sim={sim} around={around} communeName={commune.name} focus={players.focus} act={run} onClose={() => setPlayers(null)} />}
@@ -728,9 +741,11 @@ type MenuProps = {
   onPick: (it: Interaction, kind: string) => void
   onTravel: OnTravel
   onStop: () => void
+  /** At home: build one's house on the plot. */
+  onBuild: () => void
 }
 
-function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose, onPick, onTravel, onStop }: MenuProps) {
+function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose, onPick, onTravel, onStop, onBuild }: MenuProps) {
   const place = placeId === 'home' ? { name: 'Chez toi', kind: 'home' } : commune.places.find((p) => p.id === placeId)!
   const kind = world.kinds[place.kind]
   const colors = kindColors(place.kind)
@@ -741,6 +756,17 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
   // Things past this age (the biberon for an adult) don't show; things for later do, greyed.
   const items = [...(career ? [shift(career, sim.careerLevel)] : []), ...kind.interactions.map((it) => (placeId === 'home' ? atHome(it, home) : it))].filter((it) => ageBlock(it, life.stage?.id) !== 'Plus de ton âge')
   const busy = !!sim.activity
+  const canBuild = placeId === 'home' && here && !!world.materials?.length
+  const tooYoung = life.stage?.id === 'bebe' || life.stage?.id === 'enfant'
+  const build = canBuild && (
+    <button disabled={tooYoung} onClick={onBuild} className={`flex w-full items-center gap-3 rounded-[20px] bg-[#fff4e8] p-2.5 text-left transition active:scale-[0.98] ${tooYoung ? 'opacity-55 grayscale-[0.6]' : ''}`}>
+      <IconTile icon={tooYoung ? Lock : Hammer} colors={colors} size={44} />
+      <span className="min-w-0 flex-1">
+        <span className="block font-display text-[15px] leading-tight font-extrabold">Construire ma maison</span>
+        <span className="mt-0.5 block text-xs font-bold text-[var(--color-ink-soft)]">{tooYoung ? "Quand tu seras ado" : 'Banco, planches, parpaing, tôle… bloc par bloc'}</span>
+      </span>
+    </button>
+  )
   const state = (it: Interaction) => ({ open: openAt(it, sim.gameMinutes), broke: it.cost > 0 && sim.money < it.cost, busy, reason: ageBlock(it, life.stage?.id) ?? blockedBy(it, sim, city.id, commune.id) })
 
   // Desktop: the Sims radial menu around the place.
@@ -754,6 +780,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
             <IconTile icon={iconFor(kind.icon)} colors={colors} size={96} radius={34} />
             <span className="mt-2 rounded-full bg-white px-4 py-1.5 font-display text-lg font-extrabold shadow-lg">{place.name}</span>
           </button>
+          {build && <div className="absolute top-full left-1/2 mt-[200px] w-64 -translate-x-1/2">{build}</div>}
           {items.map((it, i) => {
             const a = (i / items.length) * Math.PI * 2 - Math.PI / 2
             return (
@@ -798,6 +825,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
         )}
         {here ? (
           <div className="motion-stagger grid gap-2">
+            {build}
             {items.map((it) => (
               <ActionButton key={it.id} it={it} colors={colors} {...state(it)} onPick={() => onPick(it, place.kind)} />
             ))}

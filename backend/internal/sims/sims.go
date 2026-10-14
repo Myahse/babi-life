@@ -159,6 +159,9 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/friend", h.friend)
 	r.Post("/sims/{id}/gang", h.gang)
 	r.Get("/sims/{id}/around", h.around)
+	r.Get("/sims/{id}/plot", h.plot)
+	r.Put("/sims/{id}/plot", h.build)
+	r.Get("/sims/{id}/plots", h.plots)
 	r.Post("/sims/{id}/meet", h.meet)
 	r.Post("/sims/{id}/invites/{invite}", h.answerInvite)
 }

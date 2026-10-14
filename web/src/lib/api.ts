@@ -1,4 +1,4 @@
-import type { ActionResult, HappeningNow, NewsItem, Look, Sim, User, World, Ride, Around } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around } from './types'
 import { useSession } from '../store/session'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
@@ -79,6 +79,11 @@ export const api = {
   stop: (id: string) => post<ActionResult>(`/sims/${id}/stop`, {}),
   /** Other players: who's in the commune, invitations, player friends. */
   around: (id: string) => request<Around>(`/sims/${id}/around`),
+  /** The player's own plot, and the houses built in the commune where the Sim is. */
+  plot: (id: string) => request<Plot>(`/sims/${id}/plot`),
+  plots: (id: string) => request<Plot[]>(`/sims/${id}/plots`),
+  /** Blocks placed and taken down; paid from the Sim's money. */
+  build: (id: string, place: Block[], remove: [number, number, number][]) => request<ActionResult>(`/sims/${id}/plot`, { method: 'PUT', body: JSON.stringify({ place, remove }) }),
   meet: (id: string, to: string, action: 'saluer' | 'inviter' | 'rejoindre') => post<ActionResult>(`/sims/${id}/meet`, { to, action }),
   answerInvite: (id: string, invite: string, answer: 'accepter' | 'refuser') => post<ActionResult>(`/sims/${id}/invites/${invite}`, { answer }),
 }

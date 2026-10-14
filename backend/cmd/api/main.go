@@ -91,6 +91,8 @@ func main() {
 				"yearMinutes":   game.YearMinutes,
 				"friendActions": game.FriendActions,
 				"holidays":      game.Holidays,
+				"materials":     game.Materials,
+				"plot":          map[string]int{"w": game.PlotW, "d": game.PlotD, "h": game.PlotH},
 				"config":        map[string]any{"devLogin": cfg.DevLogin, "googleLogin": authH.Verifier != nil},
 			})
 		})

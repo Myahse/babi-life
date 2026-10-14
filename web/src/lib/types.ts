@@ -122,6 +122,9 @@ export type World = {
   yearMinutes?: number
   compteur?: { color: string; cities: string[]; source: Source }
   roads?: Record<string, RoadNet>
+  /** What a house can be built with (game/build.go), and the plot's size in blocks. */
+  materials?: Material[]
+  plot?: { w: number; d: number; h: number }
   config: { devLogin: boolean; googleLogin: boolean }
 }
 
@@ -208,6 +211,12 @@ export type JournalEvent = {
 
 export type Outcome = { text: string; money: number }
 /** Every read or action on a Sim returns this; `fresh` = journal lines this request produced. */
+/** A building material: basic ones from the start, the others unlocked by building. */
+export type Material = { id: string; label: string; color: string; price: number; unlock: number; glass?: boolean }
+/** One block of a house: x, y (up), z on the plot, and its material. */
+export type Block = [number, number, number, string]
+export type Plot = { simId: string; firstName?: string; blocks: Block[]; built: number }
+
 export type ActionResult = { sim: Sim; outcome: Outcome; journal: JournalEvent[]; fresh: JournalEvent[] }
 
 export type Happening = { id: string; label: string; icon: string; text: string; category?: string; minHour?: number; maxHour?: number; days?: number[]; join?: Interaction; source?: Source }

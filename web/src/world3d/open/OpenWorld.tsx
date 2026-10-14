@@ -10,7 +10,9 @@ import { HAPPENING_DOOR, HAPPENING_X, HappeningMarker, HappeningScene, STOPS_TRA
 import { HOME_ID, type Lot } from '../layout'
 import { LotView, type Props } from '../Neighbourhood'
 import { useSignTexture } from '../props'
-import type { World } from '../../lib/types'
+import type { Plot, World } from '../../lib/types'
+import { api } from '../../lib/api'
+import { House } from '../build/House'
 import { iconFor, kindColors } from '../../components/icons'
 import { IconTile } from '../../components/ui'
 import { Html } from '@react-three/drei'
@@ -60,6 +62,14 @@ const PARALLEL = 3
 const HAPPENING_KEY = 'happening'
 
 type Loaded = { data: ChunkData; geos: Record<string, THREE.BufferGeometry> }
+
+/** A plot with a house clears the map's buildings this far around (metres). */
+const PLOT_CLEAR = 12
+/** Where a Sim lives in its commune (angle, distance from the centre): the same on every phone. */
+function homeSpot(simId: string): [number, number] {
+  const r = rng(`home${simId}`)
+  return [r() * Math.PI * 2, 120 + r() * 260]
+}
 
 /** What casts a shadow: the buildings, not the roads. */
 const SOLID = new Set(['walls', 'inst', 'entrance', 'shop', 'house', 'trim', 'roofs', 'tin'])
@@ -188,7 +198,7 @@ function useMaterials(night: boolean) {
   return mats
 }
 
-function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, nameTag, onNear, frozen, players, onPickPlayer, recenter, onFreeCamera, closeView, token, onFail, onStreetBuy, onTalk, onCall, talkingTo }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void }) {
+function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, nameTag, onNear, frozen, players, onPickPlayer, recenter, onFreeCamera, closeView, token, onFail, onStreetBuy, onTalk, onCall, talkingTo, plotsVersion }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void }) {
   const origin = useMemo<Origin>(() => ({ lat: commune.lat, lng: commune.lng }), [commune.lat, commune.lng])
   const mats = useMaterials(night)
   const home = sim.homeCity === sim.city && sim.homeCommune === commune.id
@@ -200,16 +210,75 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
 
   // Where the game's places are on the map, the Sim's home (somewhere in the
   // quarter, the same each time) and the spot of what's happening.
+  // The houses players built on their plots, for the Sims who live here
+  // (this player's own included): they stand where each one lives.
+  const [plots, setPlots] = useState<Plot[] | null>(null)
+  useEffect(() => {
+    let alive = true
+    const load = () =>
+      api
+        .plots(sim.id)
+        .then((p) => alive && setPlots(p))
+        .catch(() => alive && setPlots((p) => p ?? []))
+    void load()
+    const t = setInterval(load, 60000)
+    return () => {
+      alive = false
+      clearInterval(t)
+    }
+  }, [sim.id, commune.id, plotsVersion])
+  const plotKey = (plots ?? []).map((p) => p.simId).sort().join()
+  const myPlot = plots?.find((p) => p.simId === sim.id && p.blocks.length)
+
   const spots = useMemo<(PlaceSpot & { kind: string; name: string })[]>(() => {
-    const r = rng(`home${sim.id}`)
-    const a = r() * Math.PI * 2
-    const d = 120 + r() * 260
+    const [a, d] = homeSpot(sim.id)
     // A real place found on the map (by its name) stands where the map has it.
     const list: (PlaceSpot & { kind: string; name: string })[] = commune.places.map((p) => ({ id: p.id, kind: p.kind, name: p.name, at: snaps.get(p.id) ?? toLocal(origin, p.lat, p.lng), landmark: LANDMARKS[p.id] }))
-    if (home) list.unshift({ id: HOME_ID, kind: 'home', name: 'Chez toi', at: [Math.cos(a) * d, Math.sin(a) * d] })
+    // A home with a house built on it clears its ground: the game draws the house.
+    if (home) list.unshift({ id: HOME_ID, kind: 'home', name: 'Chez toi', at: [Math.cos(a) * d, Math.sin(a) * d], landmark: myPlot ? PLOT_CLEAR : undefined })
+    for (const id of plotKey ? plotKey.split(',') : []) {
+      if (id === sim.id) continue
+      const [pa, pd] = homeSpot(id)
+      list.push({ id: `plot:${id}`, kind: 'plot', name: '', at: [Math.cos(pa) * pd, Math.sin(pa) * pd], landmark: PLOT_CLEAR })
+    }
     list.push({ id: HAPPENING_KEY, kind: 'happening', name: '', at: [35, -20] })
     return list
-  }, [commune.places, origin, home, sim.id, snaps])
+  }, [commune.places, origin, home, sim.id, snaps, plotKey, !!myPlot]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const plotsRef = useRef(plots)
+  plotsRef.current = plots
+  const mounted = useRef(performance.now())
+  // A house appears or goes (built, or all taken down): the chunk it stands on
+  // is built again, with its ground cleared or not.
+  const plotSpots = useRef<Map<string, XZ>>(new Map())
+  useEffect(() => {
+    const now = new Map(spots.filter((x) => x.landmark && (x.kind === 'plot' || x.id === HOME_ID)).map((x) => [x.id, x.at]))
+    const was = plotSpots.current
+    plotSpots.current = now
+    const changed = [...now.keys(), ...was.keys()].filter((id) => now.has(id) !== was.has(id)).map((id) => (now.get(id) ?? was.get(id))!)
+    if (!changed.length) return
+    // Home with a house moves from the real building to the plot: that one too.
+    if (now.has(HOME_ID) !== was.has(HOME_ID)) {
+      const r = resolved.get(HOME_ID)
+      if (r) changed.push(r.center)
+    }
+    setChunks((m) => {
+      const n = new Map(m)
+      for (const [k, c] of m) {
+        if (k.includes(':')) continue
+        const { box } = c.data
+        if (!changed.some(([x, z]) => x >= box.x0 - PLOT_CLEAR && x < box.x1 + PLOT_CLEAR && z >= box.z0 - PLOT_CLEAR && z < box.z1 + PLOT_CLEAR)) continue
+        for (const g of Object.values(c.geos)) g.dispose()
+        n.delete(k)
+      }
+      return n
+    })
+    setResolved((m) => {
+      const n = new Map(m)
+      for (const id of [...was.keys(), ...now.keys()]) if (now.has(id) !== was.has(id)) n.delete(id)
+      return n
+    })
+  }, [spots]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Chunk streaming, around the Sim (or wherever the camera is looking).
   const [chunks, setChunks] = useState<Map<string, Loaded>>(new Map())
@@ -320,6 +389,8 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
   const stream = () => {
     const w = worker.current
     if (!w) return
+    // The first chunks wait (a moment at most) for the houses, so they're cleared at once.
+    if (plotsRef.current === null && performance.now() - mounted.current < 3000) return
     const [fx, fz] = focus.current
     const ll = toLatLng(origin, focus.current)
     const [cx, cy] = tileOf(ll.lat, ll.lng, CHUNK_ZOOM)
@@ -403,15 +474,16 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
   })
 
   // The few real buildings in the way of a game-made one don't block the way.
-  const made = useMemo<XZ[]>(() => [...resolved.values()].filter((r) => !r.real && !LANDMARKS[r.id]).map((r) => r.center), [resolved])
-  const marks = useMemo(() => [...resolved.values()].filter((r) => LANDMARKS[r.id]).map((r) => ({ at: r.center, r: LANDMARKS[r.id] })), [resolved])
+  const clears = useMemo(() => new Map(spots.filter((x) => x.landmark).map((x) => [x.id, x.landmark!])), [spots])
+  const made = useMemo<XZ[]>(() => [...resolved.values()].filter((r) => !r.real && !clears.has(r.id)).map((r) => r.center), [resolved, clears])
+  const marks = useMemo(() => [...resolved.values()].filter((r) => clears.has(r.id)).map((r) => ({ at: r.center, r: clears.get(r.id)! })), [resolved, clears])
   const nav = useMemo(() => new Nav([...chunks.values()].filter((c) => !c.data.key.includes(':')).map((c) => c.data), (c) => inTheWay(made, c, marks)), [chunks, made, marks])
 
   // The places, once they stand on a loaded street.
   const lots = useMemo<Lot[]>(
     () =>
       spots
-        .filter((s) => s.id !== HAPPENING_KEY && resolved.has(s.id))
+        .filter((s) => s.id !== HAPPENING_KEY && s.kind !== 'plot' && resolved.has(s.id))
         .map((s, i) => {
           const r = resolved.get(s.id)!
           return { id: s.id, kind: s.kind, name: s.name, x: r.center[0], z: r.center[1], rot: r.rot, door: r.door, seed: i, height: r.real?.height }
@@ -512,8 +584,21 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
         )
       })}
 
+      {/* Houses built by players: this one's at home, the others' where they live */}
+      {[...resolved.values()].map((r) => {
+        const owner = r.id === HOME_ID ? myPlot : r.id.startsWith('plot:') ? plots?.find((p) => `plot:${p.simId}` === r.id) : undefined
+        return owner && world.materials ? (
+          <group key={`house${r.id}`} position={[r.center[0], 0, r.center[1]]} rotation={[0, r.rot, 0]}>
+            <group position={[-(world.plot?.w ?? 12) / 2, 0, -(world.plot?.d ?? 12) / 2]} onClick={r.id === HOME_ID ? (e) => (e.stopPropagation(), onPick(HOME_ID)) : undefined}>
+              <House blocks={owner.blocks} materials={world.materials} />
+            </group>
+          </group>
+        ) : null
+      })}
       {lots.map((lot) =>
-        LANDMARKS[lot.id] ? (
+        lot.id === HOME_ID && myPlot ? (
+          <LotLabel key={lot.id} lot={lot} world={world} label={labels} onPick={onPick} y={4} />
+        ) : LANDMARKS[lot.id] ? (
           <group key={lot.id}>
             <group position={[lot.x, 0, lot.z]} rotation={[0, lot.rot, 0]} onClick={(e) => (e.stopPropagation(), onPick(lot.id))}>
               <Landmark id={lot.id} night={night} />
