@@ -6,6 +6,7 @@ import type { Look, Sim } from '../lib/types'
 import { defaultColors, fullLook } from './options'
 import { tint, waxTexture } from './textures'
 import { LowHuman } from './LowHuman'
+import { BlockHuman } from './BlockHuman'
 
 // A stylised cartoon Sim with human proportions (about six heads tall): soft
 // rounded shapes, toon shading and an expressive face. Built from generated
@@ -1141,9 +1142,14 @@ type Props = { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; /*
  * switch has some slack so nobody flickers between the two at the border.
  */
 const FAR = 24
-/** The MakeHuman body (avatar/MHHuman.tsx), only with `?mhavatar`: the built-in Sim is the game's. */
+/**
+ * Which Sim is drawn: the blocky one (avatar/BlockHuman.tsx) by default; the
+ * rounded cartoon Sim below with `?oldavatar`; the MakeHuman body
+ * (avatar/MHHuman.tsx) with `?mhavatar`.
+ */
 const MHHuman = lazy(() => import('./MHHuman').then((m) => ({ default: m.MHHuman })))
-const OLD_AVATAR = !(typeof location !== 'undefined' && new URLSearchParams(location.search).has('mhavatar'))
+const AVATAR_PARAMS = typeof location !== 'undefined' ? new URLSearchParams(location.search) : null
+const AVATAR = AVATAR_PARAMS?.has('mhavatar') ? 'mh' : AVATAR_PARAMS?.has('oldavatar') ? 'old' : 'block'
 export function Human(props: Props & { /** Always in full detail (the creator, close-ups). */ full?: boolean }) {
   const anchor = useRef<THREE.Group>(null)
   const [far, setFar] = useState(false)
@@ -1159,7 +1165,9 @@ export function Human(props: Props & { /** Always in full detail (the creator, c
     <group ref={anchor}>
       {far && !props.full ? (
         low
-      ) : OLD_AVATAR ? (
+      ) : AVATAR === 'block' ? (
+        <BlockHuman {...props} />
+      ) : AVATAR === 'old' ? (
         <FullHuman {...props} />
       ) : (
         <Suspense fallback={low}>
