@@ -106,7 +106,7 @@ var Happenings = []Happening{
 	{ID: "anniversaire", Category: "famille", Source: Fictional, Label: "Anniversaire chez les voisins", Icon: "cake", MinHour: 16, MaxHour: 23,
 		Text: "Les voisins fêtent un anniversaire : musique, gâteau et beaucoup de bruit.",
 		Join: &Interaction{ID: JoinHappeningID, Label: "Chanter « Joyeux anniversaire »", Icon: "cake", Minutes: 60, Effect: Needs{Fun: 25, Social: 25, Hunger: 10}}},
-	{ID: "funerailles", Category: "famille", Source: Fictional, Label: "Veillée funéraire", Icon: "flower-2", MinHour: 17, MaxHour: 24, Days: []int{Vendredi, Samedi, Dimanche},
+	{ID: "funerailles", Category: "famille", Source: Fictional, Label: "Veillée funéraire", Icon: "flower-2", MinHour: 17, MaxHour: 24, Days: []int{Vendredi, Samedi, Dimanche}, Weight: 2,
 		Text:      "Une famille du quartier est en deuil : bâches, chorale et veillée jusque tard.",
 		Join:      &Interaction{ID: JoinHappeningID, Label: "Présenter ses condoléances", Icon: "hand-heart", Minutes: 60, Cost: 2000, Effect: Needs{Social: 30, Fun: -10, Energy: -10}},
 		Surprises: []RandomEvent{{Text: "La famille te remercie d'être venu·e. On ne t'oubliera pas.", Effect: Needs{Social: 15}}}},
