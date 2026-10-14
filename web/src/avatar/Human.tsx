@@ -15,7 +15,11 @@ import { tint, waxTexture } from './textures'
 // follow a hairline and fade into the skin, so there are no blobs or seams.
 // The torso is one surface too, with the waist seam where clothes really have one.
 
-export type Pose = 'idle' | 'walk' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant'
+export type Pose = 'idle' | 'walk' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw'
+
+/** Poses done sitting on a chair (hips at seat height). */
+export const SEATED: Pose[] = ['sit', 'eat', 'drink', 'write']
+const SEAT_DROP = 0.41
 
 /* ---------- Shared geometry and toon materials ---------- */
 
@@ -928,8 +932,9 @@ export function Human({ look, gender, pose = 'idle', seed = 0, headScale = 1 }: 
     for (const i of [0, 1]) {
       const out = i === 0 ? -1 : 1 // -1 = left side (-X)
       const swing = walk ? s * 0.5 * out : 0
-      hip[i].current!.rotation.x = swing
-      knee[i].current!.rotation.x = walk ? Math.max(0, Math.sin(t * 8 + (out > 0 ? Math.PI : 0))) * 0.8 : 0
+      const seated = SEATED.includes(pose)
+      hip[i].current!.rotation.x = seated ? -1.5 : swing
+      knee[i].current!.rotation.x = seated ? 1.5 : walk ? Math.max(0, Math.sin(t * 8 + (out > 0 ? Math.PI : 0))) * 0.8 : 0
       const sh = shoulder[i].current!
       const el = elbow[i].current!
       el.rotation.z = 0
@@ -948,6 +953,24 @@ export function Human({ look, gender, pose = 'idle', seed = 0, headScale = 1 }: 
         sh.rotation.set(0, 0, 2.6)
         el.rotation.x = 0
         el.rotation.z = 0.35 + Math.sin(t * 9) * 0.35
+      } else if ((pose === 'eat' || pose === 'drink') && out > 0) {
+        // Fork (or bottle) to the mouth, and back to the plate.
+        const k = Math.max(0, Math.sin(t * (pose === 'eat' ? 2.4 : 1.2)))
+        sh.rotation.set(-0.6 - k * 0.75, 0, 0.12)
+        el.rotation.x = -0.9 - k * 1.1
+      } else if (pose === 'write' || ((pose === 'eat' || pose === 'drink') && out < 0)) {
+        // Forearms on the table.
+        sh.rotation.set(-0.55, 0, out * 0.1)
+        el.rotation.x = -1.0 + (pose === 'write' && out > 0 ? Math.sin(t * 7) * 0.08 : 0)
+      } else if (pose === 'throw' && out > 0) {
+        // Flicking banknotes, one after the other.
+        const k = (t * 2.2) % 1
+        sh.rotation.set(-1.6 - Math.sin(k * Math.PI) * 0.9, 0, 0.35)
+        el.rotation.x = -0.6 + Math.sin(k * Math.PI) * 0.5
+      } else if (pose === 'throw') {
+        // The wad of notes held up in the other hand.
+        sh.rotation.set(-0.9, 0, -0.25)
+        el.rotation.x = -1.3
       } else if (pose === 'hug') {
         // Arms around the other one, swaying a little.
         sh.rotation.set(-1.25, 0, out * -0.35)
@@ -970,8 +993,10 @@ export function Human({ look, gender, pose = 'idle', seed = 0, headScale = 1 }: 
         el.rotation.x = walk ? -0.35 : -0.12
       }
     }
-    root.current!.position.y = walk
-      ? Math.abs(Math.cos(t * 8)) * 0.025
+    root.current!.position.y = SEATED.includes(pose)
+      ? -SEAT_DROP
+      : walk
+        ? Math.abs(Math.cos(t * 8)) * 0.025
       : pose === 'busy'
         ? Math.abs(Math.sin(t * 6)) * 0.02
         : pose === 'dance'
@@ -982,7 +1007,7 @@ export function Human({ look, gender, pose = 'idle', seed = 0, headScale = 1 }: 
     root.current!.rotation.y = pose === 'dance' ? Math.sin(t * 3.5) * 0.35 : pose === 'rant' ? Math.sin(t * 0.9) * 0.5 : pose === 'hug' ? Math.sin(t * 0.8) * 0.06 : 0
     head.current!.rotation.y = walk ? 0 : Math.sin(t * 0.5) * 0.2
     head.current!.rotation.z = pose === 'wave' ? 0.08 : 0
-    head.current!.rotation.x = pose === 'busy' ? 0.25 : pose === 'hug' ? 0.15 : pose === 'beg' ? 0.12 : Math.sin(t * 0.7) * 0.03
+    head.current!.rotation.x = pose === 'busy' || pose === 'write' ? 0.25 : pose === 'eat' ? 0.1 : pose === 'drink' ? -0.15 : pose === 'hug' ? 0.15 : pose === 'beg' ? 0.12 : Math.sin(t * 0.7) * 0.03
     if (pose === 'rant') head.current!.rotation.y = Math.sin(t * 2.3) * 0.45
   })
 

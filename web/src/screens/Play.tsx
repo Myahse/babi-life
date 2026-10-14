@@ -16,6 +16,7 @@ import { NEEDS, ageBlock, amount, atHome, blockedBy, lifeOf, clock, duration, mo
 import { HomeApp, JobsApp, type Act } from './phoneApps'
 import { NewsApp, topicOf } from './NewsApp'
 import { RideFlow, type FlowRequest } from '../components/RideFlow'
+import { INDOOR, Interior } from '../world3d/Interior'
 import { AppLogo } from '../components/AppLogo'
 import { GolvoApp, deliveryState, type Delivery } from './GolvoApp'
 import { WayeApp } from './WayeApp'
@@ -54,6 +55,8 @@ export function Play() {
   const [toasts, setToasts] = useState<Toast[]>([])
   const [street, setStreet] = useState<HappeningNow | null>(null)
   const [flow, setFlow] = useState<FlowRequest | null>(null)
+  // Looking at the street rather than inside the place the Sim is in.
+  const [outside, setOutside] = useState(false)
   // A Golvo order on its way, and the phone app to open.
   const [delivery, setDelivery] = useState<Delivery | null>(null)
   const [phoneApp, setPhoneApp] = useState<PhoneAppId | null>(null)
@@ -200,6 +203,7 @@ export function Play() {
   const interact = (it: Interaction, kind: string) => {
     const id = placeId!
     setPlaceId(null)
+    setOutside(false)
     run(it.label, it.icon, kind, () => api.interact(sim!.id, id, it.id))
   }
   // The ride shows on the map: the route, and the taxi moving along it.
@@ -246,10 +250,35 @@ export function Play() {
   const commune = city.communes.find((x) => x.id === sim.commune)!
   const unseen = journal.filter((e) => e.id > seen).length
   const placeName = (id: string) => (id === 'home' ? 'Chez toi' : id === 'happening' ? (street?.happening?.label ?? 'En ce moment') : (commune.places.find((p) => p.id === id)?.name ?? ''))
+  // Inside a place: while doing something there, or looking at what it offers.
+  const atHomeNow = sim.city === sim.homeCity && sim.commune === sim.homeCommune
+  const inside = (() => {
+    if (doing) {
+      if (doing.placeId === 'golvo') return atHomeNow ? { id: 'home', kind: 'home', it: doing.interaction.id } : null
+      const kind = doing.placeId === 'home' ? 'home' : (doing.placeKind ?? '')
+      return INDOOR.has(kind) && doing.placeId ? { id: doing.placeId, kind, it: doing.interaction.id } : null
+    }
+    if (placeId && placeId !== 'happening') {
+      const kind = placeId === 'home' ? 'home' : commune.places.find((p) => p.id === placeId)?.kind
+      return kind && INDOOR.has(kind) ? { id: placeId, kind, it: undefined } : null
+    }
+    return null
+  })()
+  const showInside = !!inside && !outside
 
   return (
     <div className="relative h-full overflow-hidden bg-[var(--color-night)] select-none">
-      <div className="absolute inset-0">
+      {showInside && (
+        <div className="absolute inset-0 z-[1]">
+          <Interior sim={sim} kind={inside!.kind} placeId={inside!.id} interactionId={inside!.it} housing={sim.housing} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
+        </div>
+      )}
+      {inside && (
+        <button className="hud absolute top-[5.5rem] right-3 z-30 rounded-full px-4 py-2 text-sm font-extrabold lg:right-5" onClick={() => setOutside((o) => !o)}>
+          {outside ? `Entrer · ${placeName(inside.id) || 'Chez toi'}` : 'Voir la rue'}
+        </button>
+      )}
+      <div className={`absolute inset-0 ${showInside ? 'invisible' : ''}`}>
         <Neighbourhood
           key={commune.id}
           world={world}
@@ -259,7 +288,7 @@ export function Play() {
           hour={c.hour}
           goTo={goTo}
           onPick={walkTo}
-          onArrive={(id) => setPlaceId(id)}
+          onArrive={(id) => (setOutside(false), setPlaceId(id))}
           busy={doing ? { icon: doing.interaction.icon, kind: doing.placeKind ?? '' } : pending}
           stationAt={doing?.placeId ?? null}
           nameTag={user?.username ? `@${user.username}` : sim.firstName}

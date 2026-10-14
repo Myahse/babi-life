@@ -2,12 +2,12 @@ import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { Look, Sim } from '../lib/types'
-import { Baby, Human } from '../avatar/Human'
+import { Baby, Human, type Pose } from '../avatar/Human'
 
 // The player's Sim in the 3D neighbourhood: the same cartoon Sim as in the
 // creator, with a shadow and the mood losange floating above.
 
-type Props = { look: Look; gender: Sim['gender']; walking?: boolean; busy?: boolean; moodColor?: string; plumbob?: boolean; seed?: number; /** Stage of life: a baby crawls, children are small with big heads. */ stage?: string }
+type Props = { look: Look; gender: Sim['gender']; walking?: boolean; busy?: boolean; moodColor?: string; plumbob?: boolean; seed?: number; /** Stage of life: a baby crawls, children are small with big heads. */ stage?: string; /** A pose to act out (eating, dancing…); otherwise walking, busy or idle. */ pose?: Pose }
 
 // Size and head for each stage of life (adults are 1).
 const SIZE: Record<string, { scale: number; head: number; top: number }> = {
@@ -16,7 +16,8 @@ const SIZE: Record<string, { scale: number; head: number; top: number }> = {
   ado: { scale: 0.9, head: 1.08, top: 2.05 },
 }
 
-export function Character({ look, gender, walking, busy, moodColor = '#00b86b', plumbob = true, seed = 0, stage = 'adulte' }: Props) {
+export function Character({ look, gender, walking, busy, moodColor = '#00b86b', plumbob = true, seed = 0, stage = 'adulte', pose }: Props) {
+  const doing: Pose = pose ?? (busy ? 'busy' : walking ? 'walk' : 'idle')
   const size = SIZE[stage] ?? { scale: 1, head: 1, top: 2.15 }
   const gem = useRef<THREE.Mesh>(null)
   useFrame(({ clock }) => {
@@ -32,10 +33,10 @@ export function Character({ look, gender, walking, busy, moodColor = '#00b86b', 
         <meshBasicMaterial color="#000" transparent opacity={0.2} />
       </mesh>
       {stage === 'bebe' ? (
-        <Baby look={look} gender={gender} pose={busy ? 'busy' : walking ? 'walk' : 'idle'} seed={seed} />
+        <Baby look={look} gender={gender} pose={doing === 'walk' ? 'walk' : doing === 'idle' || doing === 'sit' ? 'idle' : 'busy'} seed={seed} />
       ) : (
         <group scale={size.scale}>
-          <Human look={look} gender={gender} pose={busy ? 'busy' : walking ? 'walk' : 'idle'} seed={seed} headScale={size.head} />
+          <Human look={look} gender={gender} pose={doing} seed={seed} headScale={size.head} />
         </group>
       )}
       {plumbob && (
