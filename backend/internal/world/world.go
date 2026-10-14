@@ -6,6 +6,7 @@ package world
 
 import (
 	"math"
+	"slices"
 
 	"github.com/myahse/babi-life/backend/internal/game"
 )
@@ -503,12 +504,37 @@ func TripPath(fromCity City, fromCommune Commune, toCity City, toCommune Commune
 			path = straight
 		}
 		minutes = int64(math.Round(cityMinBase+path.Km*cityMinPerKm)) + int64(len(path.Bridges))
-		return minutes, 300 + 50*int(path.Km/3), path
+		return minutes, 300 + 50*int(path.Km/3) + TollOf(path.Bridges)/TollSeats, path
 	}
 	// Roads are not straight: ~1.3× the crow-flies distance.
 	road := km * 1.3
 	straight.Km = math.Round(road*10) / 10
 	return busMinBase + int64(road/busKmPerMin), roundTo(road*25, 500), straight
+}
+
+// The 3e pont (Henri-Konan-Bédié) is a toll bridge: 500 F for a car when the
+// toll opened (category I, light vehicles), and taxi drivers pass it on to
+// their passengers. A taxi compteur or an app ride adds the whole toll; a
+// woro-woro shares it between its seats (a game rule: about five a car).
+const (
+	TollBridge = "3e pont"
+	HKBToll    = 500
+	TollSeats  = 5
+)
+
+// TollOf is the toll a car pays on a trip over these bridges.
+func TollOf(bridges []string) int {
+	if slices.Contains(bridges, TollBridge) {
+		return HKBToll
+	}
+	return 0
+}
+
+// withToll turns a seat-fare multiple into a car's fare: the shared toll comes
+// out of the seat price, the whole toll goes on top.
+func withToll(seat int, bridges []string, times float64, min, round int) int {
+	toll := TollOf(bridges)
+	return max(min, roundTo(float64(seat-toll/TollSeats)*times, round)) + toll
 }
 
 func distanceKm(lat1, lng1, lat2, lng2 float64) float64 {

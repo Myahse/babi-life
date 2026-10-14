@@ -56,8 +56,8 @@ func RideQuote(app RideApp, city City, from, to Commune) (minutes int64, fare in
 	if !slices.Contains(app.Cities, city.ID) || from.ID == to.ID {
 		return 0, 0, false
 	}
-	m, f := Trip(city, from, city, to)
-	return int64(math.Round(float64(m) * 0.7)), max(1000, roundTo(float64(f)*3, 100)), true
+	m, f, path := TripPath(city, from, city, to)
+	return int64(math.Round(float64(m) * 0.7)), withToll(f, path.Bridges, 3, 1000, 100), true
 }
 
 // OfferAccepted: on an "offer" app, how likely a driver takes a proposed

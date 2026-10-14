@@ -129,9 +129,20 @@ function km(a: Pt, b: Pt) {
   return 2 * r * Math.asin(Math.sqrt(h))
 }
 
+/**
+ * The 3e pont's toll (mirrors world.TollOf): 500 F a car when it opened; taxi
+ * drivers pass it on. A woro-woro seat carries a fifth of it, a compteur or
+ * an app ride all of it.
+ */
+export const HKB_TOLL = 500
+export const TOLL_SEATS = 5
+export const tollOf = (bridges?: string[]) => (bridges?.includes('3e pont') ? HKB_TOLL : 0)
+/** A car's fare from the seat fare: the seat's share of the toll out, the whole toll on top. */
+export const withToll = (seat: number, toll: number, times: number, min: number, round: number) => Math.max(min, Math.round(((seat - toll / TOLL_SEATS) * times) / round) * round) + toll
+
 /** A private ride inside a city (mirrors world.RideQuote): dearer than the taxi, quicker. */
-export function rideQuote(taxi: { minutes: number; fare: number }) {
-  return { minutes: Math.round(taxi.minutes * 0.7), fare: Math.max(1000, Math.round((taxi.fare * 3) / 100) * 100) }
+export function rideQuote(taxi: { minutes: number; fare: number; toll?: number }) {
+  return { minutes: Math.round(taxi.minutes * 0.7), fare: withToll(taxi.fare, taxi.toll ?? 0, 3, 1000, 100) }
 }
 
 /**
@@ -142,12 +153,13 @@ export function rideQuote(taxi: { minutes: number; fare: number }) {
 export function trip(fromCity: string, from: Pt & { id: string }, toCity: string, to: Pt & { id: string }, world?: World) {
   const d = km(from, to)
   if (fromCity === toCity) {
-    if (from.id === to.id) return { minutes: 0, fare: 0, mode: 'sur place', path: null as Path | null }
+    if (from.id === to.id) return { minutes: 0, fare: 0, toll: 0, mode: 'sur place', path: null as Path | null }
     const path = (world && routeIn(world, fromCity, from.id, to.id)) || { points: [[from.lng, from.lat], [to.lng, to.lat]] as LngLat[], km: Math.round(d * 12.5) / 10, bridges: [] }
-    return { minutes: Math.round(2 + path.km * 0.6) + path.bridges.length, fare: 300 + 50 * Math.trunc(path.km / 3), mode: 'woro-woro', path }
+    const toll = tollOf(path.bridges)
+    return { minutes: Math.round(2 + path.km * 0.6) + path.bridges.length, fare: 300 + 50 * Math.trunc(path.km / 3) + toll / TOLL_SEATS, toll, mode: 'woro-woro', path }
   }
   const road = d * 1.3
-  return { minutes: 10 + Math.trunc(road / 12), fare: Math.max(500, Math.round(road * 25 / 500) * 500), mode: 'car', path: null as Path | null }
+  return { minutes: 10 + Math.trunc(road / 12), fare: Math.max(500, Math.round(road * 25 / 500) * 500), toll: 0, mode: 'car', path: null as Path | null }
 }
 
 // Mirrors backend/internal/game/economy.go.

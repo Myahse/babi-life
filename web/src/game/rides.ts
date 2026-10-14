@@ -1,3 +1,4 @@
+import { withToll } from './rules'
 import type { Commune, TripMode, World } from '../lib/types'
 
 /** How a ride looks: its name, the "En …" line, the car's colours. */
@@ -24,8 +25,8 @@ export function rideLook(world: World, mode: TripMode | string, from?: Commune):
 }
 
 /** Mirrors world.CompteurQuote: a bit quicker than the woro-woro, about twice the fare. */
-export function compteurQuote(t: { minutes: number; fare: number }) {
-  return { minutes: Math.round(t.minutes * 0.85), fare: Math.max(500, Math.round((t.fare * 2) / 50) * 50) }
+export function compteurQuote(t: { minutes: number; fare: number; toll?: number }) {
+  return { minutes: Math.round(t.minutes * 0.85), fare: withToll(t.fare, t.toll ?? 0, 2, 500, 50) }
 }
 
 /** A readable text colour on a car colour. */

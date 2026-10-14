@@ -76,6 +76,6 @@ func CompteurQuote(city City, from, to Commune) (minutes int64, fare int, ok boo
 	if !slices.Contains(Compteur.Cities, city.ID) || from.ID == to.ID {
 		return 0, 0, false
 	}
-	m, f := Trip(city, from, city, to)
-	return int64(math.Round(float64(m) * 0.85)), max(500, roundTo(float64(f)*2, 50)), true
+	m, f, path := TripPath(city, from, city, to)
+	return int64(math.Round(float64(m) * 0.85)), withToll(f, path.Bridges, 2, 500, 50), true
 }

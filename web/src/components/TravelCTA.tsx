@@ -81,7 +81,7 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
 
       {t.path && (
         <p className="mb-2 text-xs font-bold text-[var(--color-ink-soft)]">
-          {t.path.km.toLocaleString('fr-FR')} km{t.path.bridges.length ? ` · par le ${t.path.bridges.join(' puis le ')}` : ''}
+          {t.path.km.toLocaleString('fr-FR')} km{t.path.bridges.length ? ` · par le ${t.path.bridges.join(' puis le ')}` : ''}{t.toll ? ` · péage ${amount(t.toll)} F compris` : ''}
         </p>
       )}
 

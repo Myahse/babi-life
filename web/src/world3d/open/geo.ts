@@ -154,8 +154,8 @@ export function hash(...n: number[]) {
 }
 
 /** How high a bridge's deck stands over the water. */
-export const BRIDGE_HEIGHT = 4.5
-const RAMP = 35 // metres to climb from the bank to the deck
+export const BRIDGE_HEIGHT = 8
+const RAMP = 60 // metres to climb from the bank to the deck
 
 /**
  * The deck's height at each point of a bridge: it climbs from its real ends

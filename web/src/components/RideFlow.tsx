@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Car, Hand, MessageCircle, Minus, Plus, UserRound, X } from 'lucide-react'
 import type { Commune, Ride, World } from '../lib/types'
-import { amount, clock } from '../game/rules'
+import { amount, clock, tollOf, withToll } from '../game/rules'
+import { routeIn } from '../game/roads'
 import { inkOn, rideLook } from '../game/rides'
 import { DriverCall, newCall, type Call } from './DriverCall'
 
@@ -61,6 +62,8 @@ function Roadside({ world, req, gameMinutes, onBoard, onClose }: { world: World;
   const { from, to } = req
   const hour = clock(gameMinutes).hour
   const woroHere = !!from.woro && !from.woro.none
+  // Over the 3e pont, the toll is on the fare.
+  const toll = tollOf(routeIn(world, req.cityId, from.id, to.id)?.bridges)
   const communes = world.cities.find((c) => c.id === req.cityId)!.communes.filter((c) => c.id !== from.id)
   const [party, setParty] = useState(req.party)
   const [car, setCar] = useState<Passing | null>(null)
@@ -203,7 +206,7 @@ function Roadside({ world, req, gameMinutes, onBoard, onClose }: { world: World;
               Laisser passer
             </button>
             <button className="btn btn-emerald text-[15px] whitespace-nowrap" onClick={board}>
-              Monter · {amount(car?.kind === 'woro' ? woroFare : estimateMeter(req.fare))} F
+              Monter · {amount(car?.kind === 'woro' ? woroFare : estimateMeter(req.fare, toll))} F
             </button>
           </div>
         ) : (
@@ -214,7 +217,7 @@ function Roadside({ world, req, gameMinutes, onBoard, onClose }: { world: World;
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
           <Party party={party} setParty={setParty} />
           <span className="text-[11px] font-extrabold text-[var(--color-ink-soft)]">
-            {woroHere ? `Woro ${amount(req.fare)} F/place · ` : ''}compteur ~{amount(estimateMeter(req.fare))} F
+            {woroHere ? `Woro ${amount(req.fare)} F/place · ` : ''}compteur ~{amount(estimateMeter(req.fare, toll))} F
           </span>
         </div>
       </div>
@@ -222,8 +225,8 @@ function Roadside({ world, req, gameMinutes, onBoard, onClose }: { world: World;
   )
 }
 
-// Mirrors world.CompteurQuote's fare from the woro-woro seat price.
-const estimateMeter = (seat: number) => Math.max(500, Math.round((seat * 2) / 50) * 50)
+// Mirrors world.CompteurQuote's fare from the woro-woro seat price (and the 3e pont's toll).
+const estimateMeter = (seat: number, toll = 0) => withToll(seat, toll, 2, 500, 50)
 
 /** A vehicle seen from the side, with heads in the windows for its passengers. */
 function VehicleSide({ kind, color, trim, taken }: { kind: Kind; color: string; trim?: string; taken: number }) {

@@ -65,8 +65,11 @@ export function decodeChunk(o: Origin, tx: number, ty: number, data: Uint8Array,
     if (far && !FAR_ROADS.has(cls) && f.properties.structure !== 'bridge') continue
     const xz = toXZ(f.extent)
     for (const line of f.loadGeometry()) {
-      for (const pts of clipLine(line.map(xz), box)) {
+      for (let pts of clipLine(line.map(xz), box)) {
         const bridge = f.properties.structure === 'bridge'
+        // A bridge drawn as its two ends gets points along it, so its deck
+        // can climb from the banks and stay up over the water.
+        if (bridge) pts = densify(pts, 10)
         chunk.roads.push({ cls, pts, width, paved: !UNPAVED.has(cls) && f.properties.surface !== 'unpaved', bridge, name: bridge && f.properties.name ? String(f.properties.name) : undefined })
       }
     }
@@ -156,6 +159,17 @@ export function decodeChunk(o: Origin, tx: number, ty: number, data: Uint8Array,
     }
   }
   return chunk
+}
+
+/** A line with extra points so no stretch is longer than `step` metres. */
+function densify(pts: XZ[], step: number): XZ[] {
+  const out: XZ[] = [pts[0]]
+  for (let i = 1; i < pts.length; i++) {
+    const [a, b] = [pts[i - 1], pts[i]]
+    const n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / step)
+    for (let k = 1; k <= n; k++) out.push([a[0] + ((b[0] - a[0]) * k) / n, a[1] + ((b[1] - a[1]) * k) / n])
+  }
+  return out
 }
 
 /** Rings come closed (last point = first); the game wants them open. */

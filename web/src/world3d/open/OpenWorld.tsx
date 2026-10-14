@@ -27,6 +27,8 @@ import { Boats } from './boats'
 import { AllocoStalls } from './alloco'
 import { TakeOff } from './airport'
 import { StreetLights } from './streetlights'
+import { BRIDGE_LABEL, bridgeKind } from './bridgeNames'
+import { BridgeSights } from './bridges'
 import { makeTextures } from './textures'
 import { FAR_ZOOM, type ChunkData } from './tiles'
 import type { Arrays, ChunkRequest } from './worker'
@@ -337,8 +339,9 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
     for (const c of chunks.values()) {
       if (c.data.key.includes(':')) continue
       for (const r of c.data.roads) {
-        const name = r.name && popularBridge(r.name)
-        if (!name) continue
+        const kind = bridgeKind(r.name)
+        if (!kind) continue
+        const name = BRIDGE_LABEL[kind]
         for (let i = 1; i < r.pts.length; i++) {
           const [a, b] = [r.pts[i - 1], r.pts[i]]
           const len = Math.hypot(b[0] - a[0], b[1] - a[1])
@@ -432,6 +435,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
       {nav.nodes.length > 0 && <StreetLights nav={nav} night={night} />}
       {nav.nodes.length > 0 && <AllocoStalls nav={nav} seed={commune.id} onBuy={onStreetBuy} />}
       <TakeOff runways={runways} />
+      <BridgeSights chunks={[...chunks.values()].map((c) => c.data)} night={night} />
       {bridgeLabels.map((b) => (
         <Html key={b.name} position={[b.at[0], 12, b.at[1]]} center zIndexRange={[15, 0]}>
           <div className="flex items-center gap-1.5 rounded-xl border border-black/5 bg-white/95 px-2.5 py-1 text-[12.5px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_4px_12px_-6px_rgba(0,0,0,0.45)]">
@@ -578,22 +582,6 @@ function Trees({ pts, bark, leaves }: { pts: XZ[]; bark: THREE.Material; leaves:
       </instancedMesh>
     </>
   )
-}
-
-/**
- * The big bridges by the names Abidjan calls them: the 1st and 2nd bridges
- * (Félix-Houphouët-Boigny, De Gaulle), the « 3e pont » (Henri-Konan-Bédié),
- * the 4th (Yopougon–Plateau) and the « 5e pont » (Alassane-Ouattara, over the
- * Cocody bay). Matched on the map's name; null for any other bridge.
- */
-function popularBridge(name: string): string | null {
-  const n = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-  if (n.includes('konan bedie') || n.includes('konan-bedie') || /\bhkb\b/.test(n)) return '3e pont · HKB'
-  if (n.includes('alassane ouattara') || n.includes('alassane-ouattara')) return '5e pont · Alassane-Ouattara'
-  if (n.includes('gaulle')) return '2e pont · De Gaulle'
-  if (n.includes('houphouet')) return '1er pont · FHB'
-  if (n.includes('4e pont') || n.includes('4eme pont') || n.includes('quatrieme pont')) return '4e pont'
-  return null
 }
 
 /**

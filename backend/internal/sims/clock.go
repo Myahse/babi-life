@@ -226,6 +226,9 @@ func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, ride Ride, r
 		}
 		mode, label = a.ID, fmt.Sprintf("Trajet %s → %s en %s", fromCommune.Name, toCommune.Name, a.Name)
 	}
+	if street && world.TollOf(path.Bridges) > 0 {
+		label += " (péage du 3e pont compris)"
+	}
 	if s.Money < fare {
 		return game.ErrNotEnoughMoney
 	}
