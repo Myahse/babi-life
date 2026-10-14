@@ -88,38 +88,47 @@ func (it Interaction) AllowedFor(stage string) error {
 	return ErrTooOld
 }
 
-// A Family is where a Sim is born. It sets the commune, the family home, the
-// pocket money while growing up and the start in adult life. The four words
-// are the game's names for the family's means (from the richest down); where
-// each family lives is a game rule, not a statistic.
+// A Family is where a Sim is born. It sets the neighbourhood, the family home,
+// the pocket money while growing up and the start in adult life. The six
+// words are the game's names for the family's means, from the richest down:
+// debout, laté, lagnon, poignon, coulé, gnambro. The odds are game rules,
+// not statistics.
 type Family struct {
-	ID       string   `json:"id"`
-	Label    string   `json:"label"`
-	Icon     string   `json:"icon"`
-	Hint     string   `json:"hint"`
-	Communes []string `json:"communes"`
-	Housing  string   `json:"housing"` // the family home
-	Pocket   int      `json:"pocket"`  // FCFA every Saturday, from childhood
-	Start    int      `json:"start"`   // FCFA the family gives at 18
-	Leave    string   `json:"leave"`   // the first home of one's own
-	BacGift  int      `json:"bacGift"` // for passing the bac
-	Weight   float64  `json:"weight"`  // how often a Sim is born into it
-	Source   *Source  `json:"source"`
+	ID    string `json:"id"`
+	Label string `json:"label"`
+	Icon  string `json:"icon"`
+	Hint  string `json:"hint"`
+	// Sector: the kind of neighbourhood. Every commune has all of them, from
+	// the big villas to the precarious quarters.
+	Sector  string  `json:"sector"`
+	Housing string  `json:"housing"` // the family home
+	Pocket  int     `json:"pocket"`  // FCFA every Saturday, from childhood
+	Start   int     `json:"start"`   // FCFA the family gives at 18
+	Leave   string  `json:"leave"`   // the first home of one's own
+	BacGift int     `json:"bacGift"` // for passing the bac
+	Weight  float64 `json:"weight"`  // how often a Sim is born into it
+	Source  *Source `json:"source"`
 }
 
 var Families = []Family{
-	{ID: "late", Label: "Laté", Icon: "gem", Housing: "villa", Pocket: 15000, Start: 200000, Leave: "appart", BacGift: 100000, Weight: 0.12,
-		Communes: []string{"cocody", "marcory"},
-		Hint:     "Famille riche : villa, chauffeur, vacances à l'étranger. Tout est facile… tant que papa paie.", Source: Fictional},
-	{ID: "poignon", Label: "Poignon", Icon: "briefcase", Housing: "appart", Pocket: 5000, Start: 60000, Leave: "studio", BacGift: 30000, Weight: 0.38,
-		Communes: []string{"yopougon", "koumassi", "port-bouet", "bingerville", "plateau"},
-		Hint:     "Famille moyenne : papa fonctionnaire, maman commerçante. On s'en sort, sans folies.", Source: Fictional},
-	{ID: "coule", Label: "Coulé", Icon: "hand-coins", Housing: "entrer-coucher", Pocket: 1000, Start: 20000, Leave: "entrer-coucher", BacGift: 10000, Weight: 0.32,
-		Communes: []string{"abobo", "adjame", "treichville", "anyama"},
-		Hint:     "Famille pauvre : la cour commune, les fins de mois difficiles, la débrouille.", Source: Fictional},
-	{ID: "gnambro", Label: "Gnambro", Icon: "footprints", Housing: "entrer-coucher", Pocket: 0, Start: 5000, Leave: "entrer-coucher", BacGift: 0, Weight: 0.18,
-		Communes: []string{"attecoube", "abobo", "songon"},
-		Hint:     "Famille très pauvre : rien de côté, pas toujours l'école. La rue n'est jamais loin.", Source: Fictional},
+	{ID: "debout", Label: "Debout", Icon: "crown", Housing: "villa", Pocket: 30000, Start: 500000, Leave: "villa", BacGift: 200000, Weight: 0.04,
+		Sector: "le secteur des grandes villas",
+		Hint:   "Famille qui a beaucoup d'argent : villa avec piscine, gardiens, voitures. Rien n'est hors de portée.", Source: Fictional},
+	{ID: "late", Label: "Laté", Icon: "gem", Housing: "villa", Pocket: 15000, Start: 200000, Leave: "appart", BacGift: 100000, Weight: 0.08,
+		Sector: "le secteur résidentiel",
+		Hint:   "Famille riche : villa, chauffeur, vacances à l'étranger. Tout est facile… tant que papa paie.", Source: Fictional},
+	{ID: "lagnon", Label: "Lagnon", Icon: "sparkles", Housing: "appart", Pocket: 8000, Start: 100000, Leave: "appart", BacGift: 50000, Weight: 0.15,
+		Sector: "un quartier aisé",
+		Hint:   "Entre poignon et laté : un bel appartement, l'école privée, une voiture. On vit bien.", Source: Fictional},
+	{ID: "poignon", Label: "Poignon", Icon: "briefcase", Housing: "appart", Pocket: 5000, Start: 60000, Leave: "studio", BacGift: 30000, Weight: 0.33,
+		Sector: "un quartier moyen",
+		Hint:   "Famille moyenne : papa fonctionnaire, maman commerçante. On s'en sort, sans folies.", Source: Fictional},
+	{ID: "coule", Label: "Coulé", Icon: "hand-coins", Housing: "entrer-coucher", Pocket: 1000, Start: 20000, Leave: "entrer-coucher", BacGift: 10000, Weight: 0.25,
+		Sector: "un quartier populaire",
+		Hint:   "Famille pauvre : la cour commune, les fins de mois difficiles, la débrouille.", Source: Fictional},
+	{ID: "gnambro", Label: "Gnambro", Icon: "footprints", Housing: "entrer-coucher", Pocket: 0, Start: 5000, Leave: "entrer-coucher", BacGift: 0, Weight: 0.15,
+		Sector: "un quartier précaire",
+		Hint:   "Famille très pauvre : rien de côté, pas toujours l'école. La rue n'est jamais loin.", Source: Fictional},
 }
 
 func FindFamily(id string) (Family, bool) {

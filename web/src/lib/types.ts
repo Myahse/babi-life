@@ -64,8 +64,8 @@ export type PlaceKind = { id: string; label: string; icon: string; interactions:
 export type Option = { id: string; label: string; icon: string; hint: string }
 
 export type Origin = Option & { money: number; loan: number; housing: string }
-/** The family a Sim is born into: laté, poignon, coulé, gnambro. */
-export type Family = { id: string; label: string; icon: string; hint: string; communes: string[]; housing: string; pocket: number; start: number; leave: string; bacGift: number; weight: number }
+/** The family a Sim is born into: debout, laté, lagnon, poignon, coulé, gnambro. */
+export type Family = { id: string; label: string; icon: string; hint: string; /** The kind of neighbourhood, found in every commune. */ sector: string; housing: string; pocket: number; start: number; leave: string; bacGift: number; weight: number }
 /** Someone the Sim knows. */
 export type Friend = { id: string; name: string; gender: 'femme' | 'homme'; seed: number; commune: string; friendship: number; gang?: boolean; met: number; seen: number }
 export type FriendAction = { id: string; label: string; icon: string; minutes: number; cost: number; friendship: number; phone?: boolean }

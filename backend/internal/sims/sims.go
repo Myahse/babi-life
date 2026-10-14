@@ -240,10 +240,12 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Like in real life, nobody picks where they start: a baby, born into a
-	// family drawn at random, in the family's commune.
+	// family drawn at random, somewhere in Abidjan.
 	rng := newRand()
 	fam := game.BornInto(rng)
-	commune := fam.Communes[rng.IntN(len(fam.Communes))]
+	// Any commune: each has its villas and its precarious quarters.
+	abj, _ := world.FindCity("abidjan")
+	commune := abj.Communes[rng.IntN(len(abj.Communes))].ID
 	now := game.MinuteOf(time.Now())
 	s, err := scanSim(h.DB.QueryRow(r.Context(), `
 		INSERT INTO sims (user_id, first_name, last_name, gender, look, traits, aspiration,
@@ -260,7 +262,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	}
 	city, _ := world.FindCity(s.HomeCity)
 	cm, _ := city.Commune(s.HomeCommune)
-	_ = insertEvent(r.Context(), h.DB, s.ID, "random", fmt.Sprintf("%s est né·e à %s, dans une famille %s. %s", s.FirstName, cm.Name, strings.ToLower(fam.Label), fam.Hint), 0, s.GameMinutes)
+	_ = insertEvent(r.Context(), h.DB, s.ID, "random", fmt.Sprintf("%s est né·e à %s, dans %s, d'une famille %s. %s", s.FirstName, cm.Name, fam.Sector, strings.ToLower(fam.Label), fam.Hint), 0, s.GameMinutes)
 	httpx.JSON(w, http.StatusCreated, s)
 }
 

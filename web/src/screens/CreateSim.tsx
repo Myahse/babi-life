@@ -318,7 +318,7 @@ export function CreateSim() {
           {current.id === 'home' && (
             <div className="space-y-3">
               <p className="text-sm font-bold text-[var(--color-ink-soft)]">
-                {sim.firstName || 'Ton Sim'} naît bébé à Abidjan, et grandit : enfant à 3 ans, ado à 12, adulte à 18 (une année de jeu dure 8 heures). La famille est tirée au sort, comme dans la vraie vie.
+                {sim.firstName || 'Ton Sim'} naît bébé à Abidjan, et grandit : enfant à 3 ans, ado à 12, adulte à 18 (une année de jeu dure 8 heures). La famille est tirée au sort, comme dans la vraie vie, et chaque commune a ses quartiers riches et pauvres.
               </p>
               {(world.families ?? []).map((f) => (
                 <div key={f.id} className="tile flex items-center gap-3 p-3">
@@ -429,7 +429,7 @@ function randomLookFor(gender: NewSim['gender'], look: Required<Look>): Required
 }
 
 /** Nobody chooses where they start: the server draws it, we reveal it like a card. */
-const FAMILY_COLORS: Record<string, [string, string]> = { late: ['#ffd54f', '#ffa000'], poignon: ['#64b5ff', '#2a6cf0'], coule: ['#69e2a0', '#00a862'], gnambro: ['#b0a8a0', '#6b625a'] }
+const FAMILY_COLORS: Record<string, [string, string]> = { debout: ['#c9a227', '#6d28d9'], late: ['#ffd54f', '#ffa000'], lagnon: ['#7ee0c3', '#0f9d8a'], poignon: ['#64b5ff', '#2a6cf0'], coule: ['#69e2a0', '#00a862'], gnambro: ['#b0a8a0', '#6b625a'] }
 
 function FamilyReveal({ family, commune, name, housing, onGo }: { family: Family; commune: string; name: string; housing: string; onGo: () => void }) {
   const colors = FAMILY_COLORS[family.id] ?? ['#ffa040', '#ff6a00']
@@ -446,6 +446,7 @@ function FamilyReveal({ family, commune, name, housing, onGo }: { family: Family
         </div>
         <ul className="space-y-2 p-4 text-left">
           <Fact label="Né·e à" value={`${commune}, Abidjan`} />
+          <Fact label="Le quartier" value={family.sector.charAt(0).toUpperCase() + family.sector.slice(1)} />
           <Fact label="La maison familiale" value={housing} />
           <Fact label="Argent de poche" value={family.pocket ? `${amount(family.pocket)} F le samedi` : 'Rien'} />
           <Fact label="À 18 ans" value={`${amount(family.start)} F pour démarrer`} />

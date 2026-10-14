@@ -85,11 +85,8 @@ func TestFamiliesAreWellFormed(t *testing.T) {
 				t.Errorf("%s: housing %s", f.ID, h)
 			}
 		}
-		abj, _ := world.FindCity("abidjan")
-		for _, c := range f.Communes {
-			if _, ok := abj.Commune(c); !ok {
-				t.Errorf("%s: commune %s", f.ID, c)
-			}
+		if f.Sector == "" {
+			t.Errorf("%s: no sector", f.ID)
 		}
 	}
 	if total < 0.99 || total > 1.01 {
