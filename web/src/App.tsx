@@ -1,12 +1,21 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useSession } from './store/session'
 import { useWorld } from './store/world'
 import { Title } from './screens/Title'
-import { CreateSim } from './screens/CreateSim'
-import { Play } from './screens/Play'
-import { Profile } from './screens/Profile'
 import { Plumbob } from './components/ui'
+
+// Each screen is its own download: the title screen opens without the 3D
+// game, and the game without the creator.
+const CreateSim = lazy(() => import('./screens/CreateSim').then((m) => ({ default: m.CreateSim })))
+const Play = lazy(() => import('./screens/Play').then((m) => ({ default: m.Play })))
+const Profile = lazy(() => import('./screens/Profile').then((m) => ({ default: m.Profile })))
+
+const Loading = () => (
+  <div className="grid h-full place-items-center bg-[var(--color-night)]">
+    <Plumbob size={24} />
+  </div>
+)
 
 export function App() {
   const token = useSession((s) => s.token)
@@ -16,13 +25,7 @@ export function App() {
     load()
   }, [load])
 
-  if (!world && !error) {
-    return (
-      <div className="grid h-full place-items-center bg-[var(--color-night)]">
-        <Plumbob size={24} />
-      </div>
-    )
-  }
+  if (!world && !error) return <Loading />
 
   if (!token || !world) {
     return (
@@ -33,11 +36,13 @@ export function App() {
   }
 
   return (
-    <Routes>
-      <Route path="/creer" element={<CreateSim />} />
-      <Route path="/jeu" element={<Play />} />
-      <Route path="/profil" element={<Profile />} />
-      <Route path="*" element={<Navigate to="/jeu" replace />} />
-    </Routes>
+    <Suspense fallback={<Loading />}>
+      <Routes>
+        <Route path="/creer" element={<CreateSim />} />
+        <Route path="/jeu" element={<Play />} />
+        <Route path="/profil" element={<Profile />} />
+        <Route path="*" element={<Navigate to="/jeu" replace />} />
+      </Routes>
+    </Suspense>
   )
 }

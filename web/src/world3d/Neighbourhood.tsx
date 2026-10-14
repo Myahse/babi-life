@@ -1,7 +1,6 @@
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
-import { EffectComposer, N8AO } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import type { Commune, Player, Sim, World } from '../lib/types'
 import { iconFor, kindColors } from '../components/icons'
@@ -20,6 +19,9 @@ import { SHORE_Z, rng, themeFor, type Theme } from './themes'
 import { lifeOf } from '../game/rules'
 import { HAPPENING_DOOR, HappeningMarker, HappeningScene, STOPS_TRAFFIC } from './Happenings'
 import { worldTime } from '../lib/worldClock'
+
+/** Soft shade in the corners, downloaded only on phones that show it. */
+const AmbientOcclusion = lazy(() => import('./effects'))
 
 export type Props = {
   world: World
@@ -79,12 +81,34 @@ export function Neighbourhood(props: Props) {
       style={{ background: sky, transition: 'background 1s' }}
       gl={{ antialias: true, preserveDrawingBuffer: true }}
     >
+      <ShadowEvery seconds={0.1} />
       <Suspense fallback={null}>
         <World3D {...props} night={night} dusk={dusk} />
         <NightLights night={night} />
       </Suspense>
     </Canvas>
   )
+}
+
+/**
+ * Draws the shadow map ten times a second rather than every frame: it means
+ * drawing the whole street once more, and shadows barely move in 0.1 s.
+ */
+function ShadowEvery({ seconds }: { seconds: number }) {
+  const gl = useThree((s) => s.gl)
+  const since = useRef(0)
+  useEffect(() => {
+    gl.shadowMap.autoUpdate = false
+    gl.shadowMap.needsUpdate = true
+    return () => void (gl.shadowMap.autoUpdate = true)
+  }, [gl])
+  useFrame((_, dt) => {
+    since.current += dt
+    if (since.current < seconds) return
+    since.current = 0
+    gl.shadowMap.needsUpdate = true
+  })
+  return null
 }
 
 function NightLights({ night }: { night: boolean }) {
@@ -165,9 +189,9 @@ function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy,
 
       {/* Soft shade in corners and at the foot of walls, for depth (not on small phones). */}
       {(typeof navigator === 'undefined' || (navigator.hardwareConcurrency ?? 4) > 4) && (
-        <EffectComposer enableNormalPass={false} multisampling={0}>
-          <N8AO halfRes aoRadius={3} distanceFalloff={1} intensity={night ? 1.5 : 2.4} quality="performance" color="#1a1410" />
-        </EffectComposer>
+        <Suspense fallback={null}>
+          <AmbientOcclusion intensity={night ? 1.5 : 2.4} />
+        </Suspense>
       )}
       <Ground theme={theme} night={night} />
       <Streets theme={theme} night={lit} seed={commune.id} />

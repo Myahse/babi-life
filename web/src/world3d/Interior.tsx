@@ -1,7 +1,6 @@
-import { Suspense, useMemo, useRef } from 'react'
+import { lazy, Suspense, useMemo, useRef } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
-import { EffectComposer, N8AO } from '@react-three/postprocessing'
 import { Shell } from './interior/Shell'
 import { useRoomStyle } from './interior/Decor'
 import * as THREE from 'three'
@@ -12,6 +11,9 @@ import { Box } from './props'
 import { Character } from './Character'
 import { rng } from './themes'
 import { worldTime } from '../lib/worldClock'
+
+/** Soft shade in the corners, downloaded only on phones that show it. */
+const AmbientOcclusion = lazy(() => import('./effects'))
 
 // Inside a place, like when a Sim goes through a door in the Sims: a cutaway
 // room with its furniture, the people who are there, and the player's Sim
@@ -626,9 +628,9 @@ export function Interior({ sim, kind, placeId, interactionId, housing, night, st
         {/* Turn around the room and zoom, within the cut-away side */}
         <OrbitControls target={[0, 0.8, 0]} enablePan={false} minDistance={7} maxDistance={24} minPolarAngle={0.35} maxPolarAngle={1.25} minAzimuthAngle={0.15} maxAzimuthAngle={1.4} enableDamping />
         {RICH && (
-          <EffectComposer enableNormalPass={false} multisampling={0}>
-            <N8AO halfRes aoRadius={1.2} distanceFalloff={0.6} intensity={2.2} quality="performance" color="#1a1410" />
-          </EffectComposer>
+          <Suspense fallback={null}>
+            <AmbientOcclusion radius={1.2} falloff={0.6} intensity={2.2} />
+          </Suspense>
         )}
         {/* Other players here, side by side with the Sim (blue plumbob) */}
         {others.slice(0, 3).map((o, i) => {

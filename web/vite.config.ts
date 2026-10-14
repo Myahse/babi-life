@@ -35,12 +35,20 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
-        // The map chunk is large; keep it so the map opens offline too.
+        // Not downloaded ahead on the first visit (that's megabytes on a phone
+        // plan): the map (1.9 MB), the MakeHuman test body, the screen
+        // effects, and fonts for alphabets the game never shows. They're
+        // kept once used (see runtimeCaching).
+        globIgnores: ['**/MapboxMap-*', '**/MHHuman-*', '**/effects-*', '**/*-{devanagari,cyrillic,cyrillic-ext,greek,vietnamese}-*.woff2'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         navigateFallback: '/index.html',
         cleanupOutdatedCaches: true,
         // The two body models (~3 MB each) are kept after the first visit.
-        runtimeCaching: [{ urlPattern: /\/models\/.*\.glb$/, handler: 'StaleWhileRevalidate', options: { cacheName: 'models' } }],
+        runtimeCaching: [
+          { urlPattern: /\/models\/.*\.glb$/, handler: 'StaleWhileRevalidate', options: { cacheName: 'models' } },
+          // Hashed file names never change: once fetched, kept.
+          { urlPattern: /\/assets\/.*\.(js|css|woff2)$/, handler: 'CacheFirst', options: { cacheName: 'assets', expiration: { maxEntries: 80 } } },
+        ],
       },
     }),
   ],

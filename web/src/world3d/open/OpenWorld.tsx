@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
@@ -36,13 +36,15 @@ import { matchPoi } from './poiMatch'
 import { Dressing } from './dressing'
 import { SkyDome, skyTone } from './sky'
 import { setVehicleNight } from '../vehicles'
-import { Bloom, EffectComposer } from '@react-three/postprocessing'
 
 const RICH = typeof navigator === 'undefined' || (navigator.hardwareConcurrency ?? 4) > 4
 import { makeTextures, rippleNormals } from './textures'
 import { FAR_ZOOM, type ChunkData } from './tiles'
 import type { Arrays, ChunkRequest } from './worker'
 import { worldTime } from '../../lib/worldClock'
+
+/** Bloom at night, downloaded only on phones that show it. */
+const NightBloom = lazy(() => import('../effects').then((m) => ({ default: m.NightBloom })))
 
 // The open world: the real Abidjan around the Sim, like Minecraft's — it
 // loads chunk by chunk (one map tile, ~610 m) as the Sim walks, and fades
@@ -489,9 +491,9 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
       <SkyDome night={night} dusk={dusk} />
       {/* At night, lamps, windows and headlights bloom a little (not on small phones) */}
       {night && RICH && (
-        <EffectComposer enableNormalPass={false} multisampling={4}>
-          <Bloom mipmapBlur luminanceThreshold={0.75} luminanceSmoothing={0.2} intensity={0.85} />
-        </EffectComposer>
+        <Suspense fallback={null}>
+          <NightBloom />
+        </Suspense>
       )}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]} material={mats.ground} receiveShadow>
         <planeGeometry args={[30000, 30000]} />
