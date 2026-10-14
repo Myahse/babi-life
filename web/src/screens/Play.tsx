@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BadgeCheck, Cake, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, Cake, LocateFixed, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World, Ride } from '../lib/types'
 import { useWorld } from '../store/world'
@@ -65,6 +65,9 @@ export function Play() {
   // The other players in the commune, and the invitations they send.
   const [players, setPlayers] = useState<{ focus: string | null } | null>(null)
   const [dismissed, setDismissed] = useState<string[]>([])
+  // The camera dragged away from the Sim, and the way back.
+  const [freeCam, setFreeCam] = useState(false)
+  const [recenter, setRecenter] = useState(0)
   const announced = useRef('')
 
   useEffect(() => {
@@ -306,6 +309,8 @@ export function Play() {
           frozen={!!sim.activity || !!pending}
           players={around.players}
           onPickPlayer={(id) => setPlayers({ focus: id })}
+          recenter={recenter}
+          onFreeCamera={setFreeCam}
         />
       </div>
 
@@ -364,6 +369,12 @@ export function Play() {
           {unseen > 0 && <span className="absolute -top-1.5 -right-1.5 grid h-6 min-w-6 place-items-center rounded-full bg-[var(--color-rose)] px-1 text-xs text-white ring-2 ring-white">{unseen}</span>}
         </button>
       </footer>
+
+      {freeCam && !placeId && !overlay && (
+        <button className="hud motion-pop absolute right-3 bottom-[6.25rem] z-20 flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-extrabold lg:right-5 lg:bottom-[7.5rem]" onClick={() => setRecenter((n) => n + 1)}>
+          <LocateFixed size={18} strokeWidth={2.6} className="text-[var(--color-orange)]" /> Revenir à moi
+        </button>
+      )}
 
       {/* The pad: walk the Sim freely (arrow keys / WASD work too) */}
       {!placeId && !overlay && !sim.activity && (

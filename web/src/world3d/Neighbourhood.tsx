@@ -8,7 +8,7 @@ import { iconFor, kindColors } from '../components/icons'
 import { IconTile } from '../components/ui'
 import { Building } from './Buildings'
 import { Character } from './Character'
-import { BACK_STREET_Z, CROSS_X, EXTENT_X, HOME_ID, SIDEWALK, STREET_HALF, layoutCommune, route, type Lot } from './layout'
+import { BACK_STREET_Z, CROSS_X, EXTENT_X, FAR_CROSS_X, HOME_ID, LOT_XS, SIDEWALK, STREET_HALF, layoutCommune, route, type Lot } from './layout'
 import { moveInput } from './input'
 import { Box, Lamp, Mat, Palm, Tree } from './props'
 import { FillerBuilding } from './Fillers'
@@ -42,6 +42,10 @@ type Props = {
   frozen?: boolean
   /** Other players in the commune right now. */
   players?: Player[]
+  /** Bumped to bring the camera back on the Sim. */
+  recenter?: number
+  /** The player moved the camera away from the Sim (true) or it follows again (false). */
+  onFreeCamera?: (free: boolean) => void
   onPickPlayer?: (id: string) => void
 }
 
@@ -71,7 +75,7 @@ export function Neighbourhood(props: Props) {
   )
 }
 
-function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, nameTag, onNear, frozen, hour, players, onPickPlayer }: Props & { night: boolean; dusk: boolean }) {
+function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, nameTag, onNear, frozen, hour, players, onPickPlayer, recenter, onFreeCamera }: Props & { night: boolean; dusk: boolean }) {
   const rain = happening?.id === 'pluie'
   const blackout = night && happening?.id === 'delestage'
   const lit = night && !blackout // street lamps and windows
@@ -144,10 +148,13 @@ function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy,
       )}
 
       {players && players.length > 0 && <OtherPlayers players={players} lots={places} labels={labels} onPick={(id) => onPickPlayer?.(id)} />}
-      <Walker stage={lifeOf(world, sim).stage?.id ?? 'adulte'} nameTag={nameTag} labels={labels} stationAt={stationAt ?? null} sim={sim} lots={places} blocks={lots} shore={!!theme.waterfront} moodColor={moodColor} goTo={goTo} onArrive={onArrive} busy={busy} onNear={onNear} frozen={!!frozen} />
+      <Walker stage={lifeOf(world, sim).stage?.id ?? 'adulte'} nameTag={nameTag} labels={labels} stationAt={stationAt ?? null} sim={sim} lots={places} blocks={lots} shore={!!theme.waterfront} moodColor={moodColor} goTo={goTo} onArrive={onArrive} busy={busy} onNear={onNear} frozen={!!frozen} recenter={recenter ?? 0} onFreeCamera={onFreeCamera} />
     </>
   )
 }
+
+// Grass strips between neighbouring lots.
+const VERGES = LOT_XS.slice(1).filter((x, i) => x - LOT_XS[i] === 16).map((x) => x - 8)
 
 function Ground({ theme, night }: { theme: Theme; night: boolean }) {
   const dim = (c: string) => (night ? new THREE.Color(c).multiplyScalar(0.55).getStyle() : c)
@@ -158,7 +165,7 @@ function Ground({ theme, night }: { theme: Theme; night: boolean }) {
         <meshLambertMaterial color={dim(theme.ground)} />
       </mesh>
       {/* Verges between the lots */}
-      {[-48, -32, -16, 0, 16, 32, 48, -80, -96, 80, 96].flatMap((x) =>
+      {VERGES.flatMap((x) =>
         [-1, 1].map((s) => (
           <mesh key={`${x}${s}`} rotation={[-Math.PI / 2, 0, 0]} position={[x, 0.005, s * 22]} receiveShadow>
             <planeGeometry args={[2, 30]} />
@@ -175,7 +182,7 @@ function Streets({ theme, night, seed }: { theme: Theme; night: boolean; seed: s
   const asphalt = '#3b3f4a'
   const back = theme.side === 'laterite' ? '#b8693c' : asphalt
   const dashes = [...Array(Math.floor((EXTENT_X * 2) / 6))].map((_, i) => -EXTENT_X + i * 6)
-  const posts = [...Array(15)].map((_, i) => -112 + i * 16)
+  const posts = [...Array(Math.floor(EXTENT_X / 8))].map((_, i) => -EXTENT_X + 8 + i * 16).filter((x) => x < EXTENT_X)
   return (
     <group>
       {/* Boulevard, two lanes each way, kerbs and sidewalks */}
@@ -192,7 +199,7 @@ function Streets({ theme, night, seed }: { theme: Theme; night: boolean; seed: s
         <Box key={x} p={[x, 0.05, 0]} s={[2.6, 0.02, 0.18]} c="#f1f3f5" />
       ))}
       {/* Cross streets with zebra crossings */}
-      {[-CROSS_X, CROSS_X].map((x) => (
+      {[-FAR_CROSS_X, -CROSS_X, CROSS_X, FAR_CROSS_X].map((x) => (
         <group key={x}>
           <Box p={[x, 0.03, 0]} s={[8, 0.04, BACK_STREET_Z * 2 + 6]} c={asphalt} />
           {[-1, 1].flatMap((s) =>
@@ -245,29 +252,29 @@ function Backdrop({ theme, night }: { theme: Theme; night: boolean }) {
             <meshLambertMaterial color={water} />
           </mesh>
           <Waves sea={sea} night={night} from={sea ? -8.5 : -1.5} />
-          {sea && [-90, -50, -12, 30, 66, 104].map((x, i) => <Palm key={x} p={[x, 0, -3 + (i % 2) * 2]} h={6 + (i % 3)} lean={0.2} />)}
-          {[-70, -20, 45, 95].map((x, i) => (
-            <Pirogue key={x} p={[x, 0.1, (sea ? -16 : -8) - (i % 2) * 10]} r={i * 0.7} color={['#ff7a00', '#2a6cf0', '#00a862', '#d6336c'][i]} />
+          {sea && [-200, -160, -90, -50, -12, 30, 66, 104, 150, 196].map((x, i) => <Palm key={x} p={[x, 0, -3 + (i % 2) * 2]} h={6 + (i % 3)} lean={0.2} />)}
+          {[-170, -70, -20, 45, 95, 180].map((x, i) => (
+            <Pirogue key={x} p={[x, 0.1, (sea ? -16 : -8) - (i % 2) * 10]} r={i * 0.7} color={['#ff7a00', '#2a6cf0', '#00a862', '#d6336c'][i % 4]} />
           ))}
         </group>
       )}
       {theme.backdrop === 'mountains' &&
-        [-160, -90, -20, 50, 130].map((x, i) => (
+        [-260, -160, -90, -20, 50, 130, 230].map((x, i) => (
           <mesh key={x} position={[x, 22 + (i % 2) * 10, -190]}>
             <coneGeometry args={[60 + (i % 3) * 15, 50 + (i % 2) * 22, 6]} />
             <meshLambertMaterial color={night ? '#1e3324' : '#4f7d4a'} flatShading />
           </mesh>
         ))}
       {theme.backdrop === 'forest' &&
-        [...Array(26)].map((_, i) => (
-          <mesh key={i} position={[-150 + i * 12, 7, -BACK_STREET_Z - 30 - (i % 3) * 8]}>
+        [...Array(42)].map((_, i) => (
+          <mesh key={i} position={[-250 + i * 12, 7, -BACK_STREET_Z - 30 - (i % 3) * 8]}>
             <coneGeometry args={[6, 14 + (i % 4) * 3, 6]} />
             <meshLambertMaterial color={night ? '#163020' : i % 2 ? '#2f7a3a' : '#3b8f45'} flatShading />
           </mesh>
         ))}
       {theme.backdrop === 'skyline' &&
-        [...Array(14)].map((_, i) => (
-          <mesh key={i} position={[-130 + i * 20, 15 + (i % 4) * 7, -160]}>
+        [...Array(24)].map((_, i) => (
+          <mesh key={i} position={[-230 + i * 20, 15 + (i % 4) * 7, -160]}>
             <boxGeometry args={[12, 30 + (i % 4) * 14, 12]} />
             <meshLambertMaterial color={night ? '#22304a' : '#9cb4c9'} />
           </mesh>
@@ -349,9 +356,43 @@ function walkable(x: number, z: number, blocks: Lot[], shore: boolean) {
   return !blocks.some((b) => Math.abs(x - b.x) < LOT_HALF && Math.abs(z - b.z) < LOT_HALF)
 }
 const LOT_HALF = 6.6 // a lot is 14 m square; leave a strip to walk between them
+
+/** A straight walk from a to b doesn't go through a building or the water. */
+function clear(a: [number, number], b: [number, number], blocks: Lot[], shore: boolean) {
+  const n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 0.5)
+  for (let i = 1; i <= n; i++) {
+    const t = i / n
+    if (!walkable(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, blocks, shore)) return false
+  }
+  return true
+}
+
+// The ways through: the sidewalks and back streets (rows), the cross streets
+// and the strips between lots (columns).
+const ROWS = [-BACK_STREET_Z, -SIDEWALK, SIDEWALK, BACK_STREET_Z]
+const COLS = [-FAR_CROSS_X, -CROSS_X, CROSS_X, FAR_CROSS_X, ...LOT_XS.slice(1).filter((x, i) => x - LOT_XS[i] === 16).map((x) => x - 8)]
+
+/** The shortest walk from a to b along the streets, turning at most a few times. */
+function streetPath(a: [number, number], b: [number, number], ok: (p: [number, number], q: [number, number]) => boolean): [number, number][] | null {
+  const ways: [number, number][][] = [[a, b], [a, [a[0], b[1]], b], [a, [b[0], a[1]], b]]
+  for (const r of ROWS) {
+    ways.push([a, [a[0], r], [b[0], r], b])
+    for (const c of COLS) ways.push([a, [a[0], r], [c, r], [c, b[1]], b], [a, [c, a[1]], [c, r], [b[0], r], b])
+  }
+  for (const c of COLS) ways.push([a, [c, a[1]], [c, b[1]], b])
+  const length = (w: [number, number][]) => w.slice(1).reduce((t, p, i) => t + Math.abs(p[0] - w[i][0]) + Math.abs(p[1] - w[i][1]), 0)
+  let best: [number, number][] | null = null
+  for (const w of ways.sort((x, y) => length(x) - length(y))) {
+    if (w.slice(1).every((p, i) => ok(w[i], p))) {
+      best = w
+      break
+    }
+  }
+  return best
+}
 const NEAR_DOOR = 2.6 // metres from a door to be "at" a place
 
-function Walker({ sim, stage, lots, blocks, shore, moodColor, goTo, onArrive, busy, stationAt, nameTag, labels, onNear, frozen }: { sim: Sim; stage: string; lots: Lot[]; blocks: Lot[]; shore: boolean; moodColor: string; goTo: Props['goTo']; onArrive: Props['onArrive']; busy: Props['busy']; stationAt: string | null; nameTag?: string; labels: boolean; onNear?: Props['onNear']; frozen: boolean }) {
+function Walker({ sim, stage, lots, blocks, shore, moodColor, goTo, onArrive, busy, stationAt, nameTag, labels, onNear, frozen, recenter, onFreeCamera }: { sim: Sim; stage: string; lots: Lot[]; blocks: Lot[]; shore: boolean; moodColor: string; goTo: Props['goTo']; onArrive: Props['onArrive']; busy: Props['busy']; stationAt: string | null; nameTag?: string; labels: boolean; onNear?: Props['onNear']; frozen: boolean; recenter: number; onFreeCamera?: Props['onFreeCamera'] }) {
   const group = useRef<THREE.Group>(null)
   const path = useRef<[number, number][]>([])
   const target = useRef<string | null>(null)
@@ -372,6 +413,30 @@ function Walker({ sim, stage, lots, blocks, shore, moodColor, goTo, onArrive, bu
     placed.current = true
   }, [lots, stationAt])
 
+  // The camera follows the Sim, unless the player dragged it away to look
+  // around; walking (or the recentre button) brings it back.
+  const free = useRef(false)
+  const gesture = useRef(false)
+  const setFree = (f: boolean) => {
+    if (free.current !== f) {
+      free.current = f
+      onFreeCamera?.(f)
+    }
+  }
+  useEffect(() => setFree(false), [recenter]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!controls) return
+    const start = () => (gesture.current = true)
+    const end = () => {
+      gesture.current = false
+      const g = group.current
+      if (g && Math.hypot(controls.target.x - g.position.x, controls.target.z - g.position.z) > 3) setFree(true)
+    }
+    controls.addEventListener('start', start)
+    controls.addEventListener('end', end)
+    return () => (controls.removeEventListener('start', start), controls.removeEventListener('end', end))
+  }, [controls]) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!goTo) return
     const lot = lots.find((l) => l.id === goTo.placeId)
@@ -379,8 +444,21 @@ function Walker({ sim, stage, lots, blocks, shore, moodColor, goTo, onArrive, bu
     const p = group.current!.position
     path.current = route([p.x, p.z], lot.door).slice(1)
     target.current = lot.id
+    setFree(false)
     setWalking(true)
-  }, [goTo, lots])
+  }, [goTo, lots]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Tap the ground: the Sim walks there, along the streets. */
+  const walkToPoint = (x: number, z: number) => {
+    if (frozen || !walkable(x, z, blocks, shore)) return
+    const p = group.current!.position
+    const way = streetPath([p.x, p.z], [x, z], (a, b) => clear(a, b, blocks, shore))
+    if (!way) return
+    path.current = way.slice(1)
+    target.current = null
+    setFree(false)
+    setWalking(true)
+  }
 
   const near = useRef<string | null>(null)
   const padWalking = useRef(false)
@@ -392,6 +470,7 @@ function Walker({ sim, stage, lots, blocks, shore, moodColor, goTo, onArrive, bu
     if (!frozen && strength > 0.05) {
       path.current = []
       target.current = null
+      if (free.current) setFree(false)
       const fwd = new THREE.Vector3(controls ? controls.target.x - camera.position.x : -1, 0, controls ? controls.target.z - camera.position.z : -1).normalize()
       const right = new THREE.Vector3(-fwd.z, 0, fwd.x)
       const dir = right.multiplyScalar(input.x).add(fwd.multiplyScalar(input.y)).normalize()
@@ -447,12 +526,24 @@ function Walker({ sim, stage, lots, blocks, shore, moodColor, goTo, onArrive, bu
       }
     }
     // Camera follows the Sim, keeping whatever angle the player chose.
-    if (controls) {
+    if (controls && !free.current && !gesture.current) {
       const want = new THREE.Vector3(g.position.x, 0, g.position.z)
       const delta = want.sub(controls.target).multiplyScalar(0.08)
       controls.target.add(delta)
       camera.position.add(delta)
       controls.update()
+    }
+    // Looking around stays over the commune.
+    if (controls) {
+      const t = controls.target
+      const cx = THREE.MathUtils.clamp(t.x, -EXTENT_X, EXTENT_X) - t.x
+      const cz = THREE.MathUtils.clamp(t.z, -BACK_STREET_Z - 30, BACK_STREET_Z + 10) - t.z
+      if (cx || cz) {
+        t.x += cx
+        t.z += cz
+        camera.position.x += cx
+        camera.position.z += cz
+      }
     }
   })
 
@@ -460,13 +551,30 @@ function Walker({ sim, stage, lots, blocks, shore, moodColor, goTo, onArrive, bu
     <>
       <OrbitControls
         makeDefault
-        enablePan={false}
+        enablePan
+        screenSpacePanning={false}
+        // One finger (or the mouse) drags the view; two fingers zoom and turn.
+        touches={{ ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE }}
+        mouseButtons={{ LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE }}
         enableDamping
-        minZoom={8}
+        zoomSpeed={1.6}
+        minZoom={2.2}
         maxZoom={70}
         minPolarAngle={0.5}
         maxPolarAngle={1.05}
       />
+      {/* The ground you can tap to walk to (a drag isn't a tap). */}
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, 0.3, 0]}
+        onClick={(e) => {
+          if (e.delta > 6 || e.intersections[0]?.object !== e.object) return
+          walkToPoint(e.point.x, e.point.z)
+        }}
+      >
+        <planeGeometry args={[EXTENT_X * 2 + 16, BACK_STREET_Z * 2 + 8]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
       <group ref={group}>
         <Character look={sim.look} gender={sim.gender} walking={walking} busy={!!busy} moodColor={moodColor} stage={stage} />
         {labels && nameTag && (

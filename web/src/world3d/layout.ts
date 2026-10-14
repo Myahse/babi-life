@@ -2,8 +2,8 @@ import type { Commune } from '../lib/types'
 import { rng, themeFor, weighted, type Filler } from './themes'
 
 // Lays out a commune as a district, in metres. A boulevard runs along X with
-// sidewalks; cross streets cut it at x = ±CROSS_X, back streets run at
-// z = ±BACK_STREET_Z. Lots (14 m square) line both sides of the boulevard in
+// sidewalks; cross streets cut it at x = ±CROSS_X (with lights) and
+// x = ±FAR_CROSS_X, back streets run at z = ±BACK_STREET_Z. Lots (14 m square) line both sides of the boulevard in
 // two rows. The places you can visit take the front-row lots nearest the
 // centre; the rest is filled with buildings in the commune's style.
 
@@ -23,20 +23,22 @@ export const HOME_ID = 'home'
 export const STREET_HALF = 5 // boulevard half-width (two lanes each way)
 export const SIDEWALK = 6.2 // where people walk, either side
 export const CROSS_X = 56
+export const FAR_CROSS_X = 136
 export const BACK_STREET_Z = 40
-export const EXTENT_X = 120
+export const EXTENT_X = 216
+/** How much longer the boulevard is than the first one (120 m): street life scales with it. */
+export const STRETCH = EXTENT_X / 120
 
 const FRONT_Z = 14.5
 const BACK_Z = 30
-const COLUMNS = [-40, -24, -8, 8, 24, 40]
-const OUTER = [72, 88, 104]
+// Lot columns, by block between the cross streets.
+const INNER = [8, 24, 40]
+const OUTER = [72, 88, 104, 120]
+const FAR = [152, 168, 184, 200]
+export const LOT_XS = [...INNER, ...OUTER, ...FAR].flatMap((x) => [-x, x]).sort((a, b) => a - b)
 
-/** Front-row slots, nearest the centre first. */
-const PLACE_SLOTS: [number, number][] = [
-  [-8, -1], [8, 1], [8, -1], [-8, 1], [-24, -1], [24, 1], [24, -1], [-24, 1], [-40, -1], [40, 1], [40, -1], [-40, 1],
-  // Past the crossroads, for the busiest communes.
-  [-72, -1], [72, 1], [72, -1], [-72, 1], [-88, -1], [88, 1], [88, -1], [-88, 1], [-104, -1], [104, 1], [104, -1], [-104, 1],
-]
+/** Front-row slots, nearest the centre first, alternating sides. */
+const PLACE_SLOTS: [number, number][] = [...INNER, ...OUTER, ...FAR].flatMap((x): [number, number][] => [[-x, -1], [x, 1], [x, -1], [-x, 1]])
 
 function lotAt(x: number, side: number, back = false) {
   const z = side * (back ? BACK_Z : FRONT_Z)
@@ -73,7 +75,7 @@ export function layoutCommune(commune: Commune, withHome: boolean): Lot[] {
     n++
   }
   for (const side of [-1, 1])
-    for (const x of [...COLUMNS, ...OUTER, ...OUTER.map((v) => -v)]) {
+    for (const x of LOT_XS) {
       if (!taken.has(`${x}|${side}|f`)) filler(x, side, false)
       if (!(theme.waterfront && side < 0)) filler(x, side, true) // the water takes the far back row
     }

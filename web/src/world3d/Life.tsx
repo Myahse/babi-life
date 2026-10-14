@@ -4,7 +4,7 @@ import * as THREE from 'three'
 import { Human, NoShadows, type Pose } from '../avatar/Human'
 import { randomLook } from '../avatar/options'
 import { rng, type Theme } from './themes'
-import { BACK_STREET_Z, CROSS_X, EXTENT_X, SIDEWALK, STREET_HALF } from './layout'
+import { BACK_STREET_Z, CROSS_X, EXTENT_X, SIDEWALK, STRETCH, STREET_HALF } from './layout'
 import { Vehicle, type VehicleKind } from './vehicles'
 import { CHECK_SECONDS, boulevardLight, crossLight, drive, type Light, type Mover, type Track } from './traffic'
 
@@ -16,10 +16,10 @@ type Walker = { x: number; z: number; dir: number; speed: number; still: boolean
 export function Pedestrians({ theme, seed }: { theme: Theme; seed: string }) {
   const people = useMemo<Walker[]>(() => {
     const r = rng(`people${seed}`)
-    return [...Array(theme.pedestrians)].map(() => {
+    return [...Array(Math.round(theme.pedestrians * STRETCH))].map(() => {
       const gender: Walker['gender'] = r() < 0.5 ? 'femme' : 'homme'
       return {
-        x: (r() * 2 - 1) * 70,
+        x: (r() * 2 - 1) * (EXTENT_X - 30),
         z: (r() < 0.5 ? -1 : 1) * (SIDEWALK + (r() - 0.5) * 0.8),
         dir: r() < 0.5 ? -1 : 1,
         speed: 1.1 + r() * 0.5,
@@ -38,7 +38,7 @@ export function Pedestrians({ theme, seed }: { theme: Theme; seed: string }) {
       const g = refs.current[i]
       if (!g || p.still) return
       p.x += p.dir * p.speed * step
-      if (Math.abs(p.x) > 75) p.dir *= -1
+      if (Math.abs(p.x) > EXTENT_X - 25) p.dir *= -1
       g.position.x = p.x
       g.rotation.y = p.dir > 0 ? Math.PI / 2 : -Math.PI / 2
     })
@@ -116,11 +116,12 @@ export function Traffic({ theme, seed }: { theme: Theme; seed: string }) {
     const L = EXTENT_X * 2
     const crossings = [-CROSS_X, CROSS_X]
     const police = r() < 0.7
-    const half = Math.ceil(theme.vehicles / 2)
+    const vehicles = Math.round(theme.vehicles * STRETCH)
+    const half = Math.ceil(vehicles / 2)
     const boulevard: Track[] = [
       // Eastbound (+x) on the far lane, westbound on the near one.
       { length: L, movers: spread(half, L), stops: crossings.map((x) => x - STOP_X + EXTENT_X), light: boulevardLight, place: (s) => [s - EXTENT_X, 2.2], rot: 0, checkpoint: police ? CHECK_X + EXTENT_X : undefined },
-      { length: L, movers: spread(theme.vehicles - half, L), stops: crossings.map((x) => EXTENT_X - (x + STOP_X)), light: boulevardLight, place: (s) => [EXTENT_X - s, -2.2], rot: Math.PI },
+      { length: L, movers: spread(vehicles - half, L), stops: crossings.map((x) => EXTENT_X - (x + STOP_X)), light: boulevardLight, place: (s) => [EXTENT_X - s, -2.2], rot: Math.PI },
     ]
     // A little traffic on the cross streets, waiting for its green.
     const CL = (BACK_STREET_Z + 3) * 2
