@@ -276,18 +276,30 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       const dist = off.length()
       if (dist > 0.01) {
         off.divideScalar(dist)
-        let free = wantDist.current
-        for (let s = 1; s <= 24; s++) {
-          const d = (wantDist.current * s) / 24
-          const x = t.x + off.x * d
-          const z = t.z + off.z * d
-          if (nav.roofAt(x, z) > t.y + off.y * d - 0.4) {
-            free = Math.max(3.2, d - 0.6)
-            break
+        // How far the camera can go back along `dir` before meeting a building.
+        const room = (dir: THREE.Vector3) => {
+          for (let s = 1; s <= 24; s++) {
+            const d = (wantDist.current * s) / 24
+            if (nav.roofAt!(t.x + dir.x * d, t.z + dir.z * d) > t.y + dir.y * d - 0.4) return d - 0.6
+          }
+          return wantDist.current
+        }
+        let free = room(off)
+        let flipped = false
+        // A wall right behind (the Sim at a door): look from the street side instead.
+        if (free < 3.2) {
+          const other = new THREE.Vector3(-off.x, off.y, -off.z)
+          const there = room(other)
+          if (there > free) {
+            off.copy(other)
+            free = there
+            flipped = true
           }
         }
+        free = Math.max(1.6, free)
         const next = free < dist ? free : dist + (free - dist) * (1 - Math.exp(-3 * Math.min(dt, 0.25)))
-        if (Math.abs(next - dist) > 0.001) camera.position.copy(t).addScaledVector(off, next)
+        if (flipped) camera.position.copy(t).addScaledVector(off, Math.min(free, dist))
+        else if (Math.abs(next - dist) > 0.001) camera.position.copy(t).addScaledVector(off, next)
       }
     }
     // Looking around stays over the playable area.

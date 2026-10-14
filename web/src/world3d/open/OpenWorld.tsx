@@ -22,7 +22,7 @@ import { Walker, type WalkNav } from '../Walker'
 import { whereabouts } from '../whereabouts'
 import { CHUNK_ZOOM, tileBox, tileOf, toLatLng, toLocal, type Origin, type XZ } from './geo'
 import { Nav } from './nav'
-import { inTheWay, type PlaceSpot, type Resolved } from './places'
+import { inTheWay, resolvePlaces, type PlaceSpot, type Resolved } from './places'
 import { LANDMARKS, Landmark } from './landmarks'
 import { Boats } from './boats'
 import { AllocoStalls } from './alloco'
@@ -30,6 +30,8 @@ import { TakeOff } from './airport'
 import { StreetLights } from './streetlights'
 import { BRIDGE_LABEL, bridgeKind } from './bridgeNames'
 import { BridgeSights } from './bridges'
+import { matchPoi } from './poiMatch'
+import { Dressing } from './dressing'
 import { SkyDome, skyTone } from './sky'
 import { setVehicleNight } from '../vehicles'
 import { Bloom, EffectComposer } from '@react-three/postprocessing'
@@ -122,7 +124,7 @@ export function OpenWorld(props: Props & { token: string; onFail: () => void }) 
   const maxDpr = Math.min(1.75, typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1)
   const [dpr, setDpr] = useState(Math.min(1.5, maxDpr))
   return (
-    <Canvas shadows dpr={dpr} camera={{ position: [45, 48, 45], fov: 45, near: 0.5, far: 9000 }} style={{ background: sky, transition: 'background 1s' }} gl={{ antialias: true }} onCreated={({ gl, scene }) => void (import.meta.env.DEV && Object.assign(window, { __gl: gl, __scene: scene }))}>
+    <Canvas shadows dpr={dpr} camera={{ position: [45, 48, 45], fov: 45, near: 0.5, far: 9000 }} style={{ background: sky, transition: 'background 1s' }} gl={{ antialias: true }} onCreated={({ gl, scene }) => void (import.meta.env.DEV && Object.assign(window, { __gl: gl, __scene: scene, __where: whereabouts }))}>
       {/* Resolution follows what the device can keep up with */}
       <PerformanceMonitor onDecline={() => setDpr((d) => Math.max(0.75, d - 0.25))} onIncline={() => setDpr((d) => Math.min(maxDpr, d + 0.25))} flipflops={4} onFallback={() => setDpr(1)} />
       <Suspense fallback={null}>
@@ -185,17 +187,23 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
   const mats = useMaterials(night)
   const home = sim.homeCity === sim.city && sim.homeCommune === commune.id
 
+  // The real places found on the map's points of interest, by name.
+  const [snaps, setSnaps] = useState<Map<string, XZ>>(new Map())
+  const snapsRef = useRef(snaps)
+  snapsRef.current = snaps
+
   // Where the game's places are on the map, the Sim's home (somewhere in the
   // quarter, the same each time) and the spot of what's happening.
   const spots = useMemo<(PlaceSpot & { kind: string; name: string })[]>(() => {
     const r = rng(`home${sim.id}`)
     const a = r() * Math.PI * 2
     const d = 120 + r() * 260
-    const list: (PlaceSpot & { kind: string; name: string })[] = commune.places.map((p) => ({ id: p.id, kind: p.kind, name: p.name, at: toLocal(origin, p.lat, p.lng), landmark: LANDMARKS[p.id] }))
+    // A real place found on the map (by its name) stands where the map has it.
+    const list: (PlaceSpot & { kind: string; name: string })[] = commune.places.map((p) => ({ id: p.id, kind: p.kind, name: p.name, at: snaps.get(p.id) ?? toLocal(origin, p.lat, p.lng), landmark: LANDMARKS[p.id] }))
     if (home) list.unshift({ id: HOME_ID, kind: 'home', name: 'Chez toi', at: [Math.cos(a) * d, Math.sin(a) * d] })
     list.push({ id: HAPPENING_KEY, kind: 'happening', name: '', at: [35, -20] })
     return list
-  }, [commune.places, origin, home, sim.id])
+  }, [commune.places, origin, home, sim.id, snaps])
 
   // Chunk streaming, around the Sim (or wherever the camera is looking).
   const [chunks, setChunks] = useState<Map<string, Loaded>>(new Map())
@@ -234,12 +242,74 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
       }
       const data = e.data.data
       setChunks((m) => new Map(m).set(key, { data, geos }))
-      if (e.data.resolved?.length) setResolved((m) => new Map([...m, ...e.data.resolved!.map((r) => [r.id, r] as const)]))
+      // A place since found elsewhere on the map: this chunk's old answer for it is stale.
+      const fresh = (e.data.resolved ?? []).filter((r) => {
+        const at = snapsRef.current.get(r.id)
+        return !at || Math.hypot(r.center[0] - at[0], r.center[1] - at[1]) < 120
+      })
+      if (fresh.length) setResolved((m) => new Map([...m, ...fresh.map((r) => [r.id, r] as const)]))
     }
     return () => w.terminate()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const chunksRef = useRef(chunks)
+  // Look for the real places on the map's points of interest, as tiles come in;
+  // a place found moves there, onto the building standing at that point.
+  useEffect(() => {
+    const pois = [...chunks.values()].flatMap((c) => c.data.pois ?? [])
+    if (!pois.length) return
+    let changed = false
+    const next = new Map(snapsRef.current)
+    for (const p of commune.places) {
+      if (!p.real) continue
+      const poi = matchPoi({ name: p.name, kind: p.kind, at: toLocal(origin, p.lat, p.lng) }, pois)
+      const was = next.get(p.id)
+      if (poi && (!was || Math.hypot(was[0] - poi.at[0], was[1] - poi.at[1]) > 1)) {
+        next.set(p.id, poi.at)
+        changed = true
+      }
+    }
+    if (!changed) return
+    // The tiles holding a place's old and new spot are built again, so its
+    // building gets the look of what it is (a town hall, a hospital…).
+    const stale = new Set<string>()
+    for (const [id, at] of next) {
+      if (snapsRef.current.get(id) === at) continue
+      const p = commune.places.find((x) => x.id === id)
+      for (const pt of [at, p ? toLocal(origin, p.lat, p.lng) : null]) {
+        if (!pt) continue
+        const c = [...chunks.values()].find(({ data: { key, box } }) => !key.includes(':') && pt[0] >= box.x0 && pt[0] < box.x1 && pt[1] >= box.z0 && pt[1] < box.z1)
+        if (c) stale.add(c.data.key)
+      }
+    }
+    snapsRef.current = next
+    setSnaps(next)
+    if (stale.size)
+      setChunks((m) => {
+        const n = new Map(m)
+        for (const k of stale) {
+          for (const g of Object.values(n.get(k)?.geos ?? {})) g.dispose()
+          n.delete(k)
+        }
+        return n
+      })
+    // Places in chunks already loaded are placed again here, on the main thread.
+    setResolved((m) => {
+      const out = new Map(m)
+      for (const [id, at] of next) {
+        const r = out.get(id)
+        if (r && Math.hypot(r.center[0] - at[0], r.center[1] - at[1]) < 60) continue
+        const c = [...chunks.values()].find(({ data: { key, box } }) => !key.includes(':') && at[0] >= box.x0 && at[0] < box.x1 && at[1] >= box.z0 && at[1] < box.z1)
+        const p = commune.places.find((x) => x.id === id)
+        if (!c || !p) {
+          out.delete(id)
+          continue
+        }
+        for (const x of resolvePlaces(c.data, [{ id, at, kind: p.kind, landmark: LANDMARKS[id] }])) out.set(x.id, x)
+      }
+      return out
+    })
+  }, [chunks, commune.places, origin])
   chunksRef.current = chunks
   const stream = () => {
     const w = worker.current
@@ -534,6 +604,8 @@ function PlaceSign({ lot, world, night, label, onPick }: { lot: Lot & { height?:
             </mesh>
           </>
         )}
+        {/* What tells what the place is, in front of it */}
+        <Dressing kind={lot.kind} seed={lot.seed + lot.x * 0.01} night={night} />
         {/* The door */}
         <mesh position={[0, 1.05, 0.06]}>
           <boxGeometry args={[1.2, 2.1, 0.08]} />

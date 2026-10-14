@@ -1,5 +1,6 @@
 import { VectorTile, classifyRings } from '@mapbox/vector-tile'
 import Pbf from 'pbf'
+import type { Poi } from './poiMatch'
 import { CHUNK_ZOOM, centroid, clipLine, clipRing, hash, pointInRing, tileBox, tilePoint, toLocal, type Box, type Origin, type XZ } from './geo'
 
 // A chunk of the open world: one map tile of real Abidjan (OpenStreetMap data
@@ -12,7 +13,7 @@ export type Road = { cls: string; pts: XZ[]; width: number; paved: boolean; brid
 export type Aeroway = { cls: 'runway' | 'taxiway'; pts: XZ[] }
 export type Building = { ring: XZ[]; holes: XZ[][]; height: number; c: XZ; tint: number }
 export type Area = { kind: 'water' | 'green' | 'sand' | 'pitch' | 'campus' | 'hospital' | 'apron'; rings: XZ[][] }
-export type ChunkData = { key: string; tx: number; ty: number; box: Box; roads: Road[]; buildings: Building[]; areas: Area[]; trees: XZ[]; palms: XZ[]; aeroways: Aeroway[] }
+export type ChunkData = { key: string; tx: number; ty: number; box: Box; roads: Road[]; buildings: Building[]; areas: Area[]; trees: XZ[]; palms: XZ[]; aeroways: Aeroway[]; pois: Poi[] }
 
 export const BLOCK = 3 // metres: one storey, one block
 
@@ -41,7 +42,7 @@ export async function fetchChunk(o: Origin, tx: number, ty: number, token: strin
 }
 
 function emptyChunk(o: Origin, tx: number, ty: number, z = CHUNK_ZOOM): ChunkData {
-  return { key: z === CHUNK_ZOOM ? `${tx}/${ty}` : `${z}:${tx}/${ty}`, tx, ty, box: tileBox(o, tx, ty, z), roads: [], buildings: [], areas: [], trees: [], palms: [], aeroways: [] }
+  return { key: z === CHUNK_ZOOM ? `${tx}/${ty}` : `${z}:${tx}/${ty}`, tx, ty, box: tileBox(o, tx, ty, z), roads: [], buildings: [], areas: [], trees: [], palms: [], aeroways: [], pois: [] }
 }
 
 export function decodeChunk(o: Origin, tx: number, ty: number, data: Uint8Array, z = CHUNK_ZOOM): ChunkData {
@@ -73,6 +74,21 @@ export function decodeChunk(o: Origin, tx: number, ty: number, data: Uint8Array,
         chunk.roads.push({ cls, pts, width, paved: !UNPAVED.has(cls) && f.properties.surface !== 'unpaved', bridge, name: bridge && f.properties.name ? String(f.properties.name) : undefined })
       }
     }
+  }
+
+  // The points of interest, with their name: where the game's real places are.
+  const pois = tile.layers.poi_label
+  for (let i = 0; i < (pois?.length ?? 0); i++) {
+    const f = pois!.feature(i)
+    const name = String(f.properties.name_fr ?? f.properties.name ?? '')
+    if (f.type !== 1 || !name) continue
+    const xz = toXZ(f.extent)
+    for (const pts of f.loadGeometry())
+      for (const p of pts) {
+        const at = xz(p)
+        if (at[0] < box.x0 || at[0] >= box.x1 || at[1] < box.z0 || at[1] >= box.z1) continue
+        chunk.pois.push({ name, cls: String(f.properties.class ?? ''), maki: String(f.properties.maki ?? ''), type: String(f.properties.type ?? ''), at })
+      }
   }
 
   // The airport: runways and taxiways are lines, aprons are areas.
