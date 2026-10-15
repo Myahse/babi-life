@@ -3,14 +3,15 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { PerformanceMonitor } from '@react-three/drei'
-import { Human, NoShadows } from '../../avatar/Human'
+import { Human, NoShadows, type Pose } from '../../avatar/Human'
+import { callsFor } from '../../lib/nouchi'
 import { randomLook } from '../../avatar/options'
 import { lifeOf } from '../../game/rules'
 import { HAPPENING_DOOR, HAPPENING_X, HappeningMarker, HappeningScene, STOPS_TRAFFIC } from '../Happenings'
 import { HOME_ID, type Lot } from '../layout'
 import { LotView, type Props } from '../Neighbourhood'
 import { useSignTexture } from '../props'
-import type { Plot, World } from '../../lib/types'
+import type { Place, Plot, World } from '../../lib/types'
 import { api } from '../../lib/api'
 import { House } from '../build/House'
 import { iconFor, kindColors } from '../../components/icons'
@@ -19,12 +20,12 @@ import { Html } from '@react-three/drei'
 import { Bande } from '../Nightlife'
 import { OtherPlayers } from '../Players'
 import { rng } from '../themes'
-import { Vehicle, type VehicleKind } from '../vehicles'
+import { APPRENTI, GBAKA_DOOR, Vehicle, type VehicleKind } from '../vehicles'
 import { Walker, type WalkNav } from '../Walker'
 import { whereabouts } from '../whereabouts'
-import { CHUNK_ZOOM, tileBox, tileOf, toLatLng, toLocal, type Origin, type XZ } from './geo'
+import { CHUNK_ZOOM, hash, tileBox, tileOf, toLatLng, toLocal, type Origin, type XZ } from './geo'
 import { Nav } from './nav'
-import { along, anchorNode, round, routeLength, turnTo, useCellsAround } from './shared'
+import { along, anchorNode, round, routeLength, turnTo, useCellsAround, type Round } from './shared'
 import { inTheWay, resolvePlaces, type PlaceSpot, type Resolved } from './places'
 import { LANDMARKS, Landmark } from './landmarks'
 import { Boats } from './boats'
@@ -34,6 +35,7 @@ import { TakeOff } from './airport'
 import { StreetLights } from './streetlights'
 import { BRIDGE_LABEL, bridgeKind } from './bridgeNames'
 import { BridgeSights } from './bridges'
+import { BridgeLife } from './bridgeLife'
 import { matchPoi } from './poiMatch'
 import { Dressing } from './dressing'
 import { SkyDome, skyTone } from './sky'
@@ -54,6 +56,10 @@ const NightBloom = lazy(() => import('../effects').then((m) => ({ default: m.Nig
 // (through Mapbox); the game's places stand on the real streets nearest to
 // where they really are.
 
+/** A place from the map (world/osm.go on the server), not one of the game's own. */
+export const isMapPlace = (id: string) => id.includes('-osm-')
+/** Metres around the Sim within which the map's places show their sign. */
+const MAP_SIGNS = 90
 const LOAD_RADIUS = 700 // metres around the Sim (or where the camera looks)
 const DROP_RADIUS = 1500
 const FAR_RADIUS = 4500 // the horizon, in plain big tiles
@@ -132,7 +138,38 @@ function Sun({ night, dusk }: { night: boolean; dusk: boolean }) {
   )
 }
 
-export function OpenWorld(props: Props & { token: string; onFail: () => void }) {
+/** The open world's materials: walls, roofs, roads, water, grass, trees. */
+export function makeWorldMaterials() {
+  const t = makeTextures()
+  const lambert = (map: THREE.Texture, extra: THREE.MeshLambertMaterialParameters = {}) => new THREE.MeshLambertMaterial({ map, ...extra })
+  return {
+    walls: lambert(t.wall, { vertexColors: true, emissiveMap: t.lights, emissive: new THREE.Color('#ffffff'), emissiveIntensity: 0 }),
+    inst: lambert(t.inst, { vertexColors: true }),
+    entrance: lambert(t.entrance, { vertexColors: true }),
+    shop: lambert(t.shop, { vertexColors: true, emissiveMap: t.shopLights, emissive: new THREE.Color('#ffffff'), emissiveIntensity: 0 }),
+    house: lambert(t.house, { vertexColors: true }),
+    trim: lambert(t.plaster, { vertexColors: true, side: THREE.DoubleSide }),
+    kerb: lambert(t.plaster, { vertexColors: true }),
+    roofs: lambert(t.roof),
+    tin: lambert(t.tin, { side: THREE.DoubleSide }),
+    contact: new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }),
+    asphalt: lambert(t.asphalt, { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
+    laterite: lambert(t.laterite, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
+    pavement: lambert(t.pavement, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
+    // Glossy water: the sun glints on ripples that drift (a normal map).
+    water: new THREE.MeshPhongMaterial({ map: t.water, normalMap: rippleNormals(), normalScale: new THREE.Vector2(0.55, 0.55), shininess: 80, specular: new THREE.Color('#d8ecff'), transparent: true, opacity: 0.9 }),
+    paint: new THREE.MeshLambertMaterial({ color: '#f4f4f0', polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }),
+    foam: new THREE.MeshBasicMaterial({ map: t.foam, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
+    green: lambert(t.grass),
+    sand: lambert(t.sand),
+    pitch: lambert(t.pitch),
+    ground: new THREE.MeshLambertMaterial({ color: '#cbb38c' }),
+    bark: lambert(t.bark),
+    leaves: lambert(t.leaves),
+  }
+}
+
+export function OpenWorld(props: Props & { token: string; onFail: () => void; onMapPlaces?: (places: Place[]) => void }) {
   const night = props.hour < 6 || props.hour >= 19
   const dusk = props.hour >= 17 && props.hour < 19
   const sky = night ? '#141a3d' : dusk ? '#f7a072' : '#8ec9f0'
@@ -150,35 +187,7 @@ export function OpenWorld(props: Props & { token: string; onFail: () => void }) 
 }
 
 function useMaterials(night: boolean) {
-  const mats = useMemo(() => {
-    const t = makeTextures()
-    const lambert = (map: THREE.Texture, extra: THREE.MeshLambertMaterialParameters = {}) => new THREE.MeshLambertMaterial({ map, ...extra })
-    return {
-      walls: lambert(t.wall, { vertexColors: true, emissiveMap: t.lights, emissive: new THREE.Color('#ffffff'), emissiveIntensity: 0 }),
-      inst: lambert(t.inst, { vertexColors: true }),
-      entrance: lambert(t.entrance, { vertexColors: true }),
-      shop: lambert(t.shop, { vertexColors: true, emissiveMap: t.shopLights, emissive: new THREE.Color('#ffffff'), emissiveIntensity: 0 }),
-      house: lambert(t.house, { vertexColors: true }),
-      trim: lambert(t.plaster, { vertexColors: true, side: THREE.DoubleSide }),
-      kerb: lambert(t.plaster, { vertexColors: true }),
-      roofs: lambert(t.roof),
-      tin: lambert(t.tin, { side: THREE.DoubleSide }),
-      contact: new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }),
-      asphalt: lambert(t.asphalt, { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
-      laterite: lambert(t.laterite, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
-      pavement: lambert(t.pavement, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
-      // Glossy water: the sun glints on ripples that drift (a normal map).
-      water: new THREE.MeshPhongMaterial({ map: t.water, normalMap: rippleNormals(), normalScale: new THREE.Vector2(0.55, 0.55), shininess: 80, specular: new THREE.Color('#d8ecff'), transparent: true, opacity: 0.9 }),
-      paint: new THREE.MeshLambertMaterial({ color: '#f4f4f0', polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }),
-      foam: new THREE.MeshBasicMaterial({ map: t.foam, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
-      green: lambert(t.grass),
-      sand: lambert(t.sand),
-      pitch: lambert(t.pitch),
-      ground: new THREE.MeshLambertMaterial({ color: '#cbb38c' }),
-      bark: lambert(t.bark),
-      leaves: lambert(t.leaves),
-    }
-  }, [])
+  const mats = useMemo(makeWorldMaterials, [])
   useEffect(() => {
     mats.walls.emissiveIntensity = night ? 0.85 : 0
     mats.shop.emissiveIntensity = night ? 0.7 : 0
@@ -198,7 +207,7 @@ function useMaterials(night: boolean) {
   return mats
 }
 
-function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, nameTag, onNear, frozen, players, onPickPlayer, recenter, onFreeCamera, closeView, token, onFail, onStreetBuy, onTalk, onCall, talkingTo, plotsVersion }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void }) {
+function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, nameTag, onNear, frozen, players, onPickPlayer, recenter, onFreeCamera, closeView, token, onFail, onStreetBuy, onTalk, onCall, talkingTo, plotsVersion, onMapPlaces }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void; onMapPlaces?: (places: Place[]) => void }) {
   const origin = useMemo<Origin>(() => ({ lat: commune.lat, lng: commune.lng }), [commune.lat, commune.lng])
   const mats = useMaterials(night)
   const home = sim.homeCity === sim.city && sim.homeCommune === commune.id
@@ -230,10 +239,16 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
   const plotKey = (plots ?? []).map((p) => p.simId).sort().join()
   const myPlot = plots?.find((p) => p.simId === sim.id && p.blocks.length)
 
+  // The commune's places from the map (OpenStreetMap: thousands in Yopougon),
+  // asked for around the Sim as it goes (see askMap below).
+  const [mapList, setMapList] = useState<Place[]>([])
+  useEffect(() => onMapPlaces?.(mapList), [mapList]) // eslint-disable-line react-hooks/exhaustive-deps
+  const places = useMemo(() => (mapList.length ? [...commune.places, ...mapList] : commune.places), [commune.places, mapList])
+
   const spots = useMemo<(PlaceSpot & { kind: string; name: string })[]>(() => {
     const [a, d] = homeSpot(sim.id)
     // A real place found on the map (by its name) stands where the map has it.
-    const list: (PlaceSpot & { kind: string; name: string })[] = commune.places.map((p) => ({ id: p.id, kind: p.kind, name: p.name, at: snaps.get(p.id) ?? toLocal(origin, p.lat, p.lng), landmark: LANDMARKS[p.id] }))
+    const list: (PlaceSpot & { kind: string; name: string })[] = places.map((p) => ({ id: p.id, kind: p.kind, name: p.name, at: snaps.get(p.id) ?? toLocal(origin, p.lat, p.lng), landmark: LANDMARKS[p.id] }))
     // A home with a house built on it clears its ground: the game draws the house.
     if (home) list.unshift({ id: HOME_ID, kind: 'home', name: 'Chez toi', at: [Math.cos(a) * d, Math.sin(a) * d], landmark: myPlot ? PLOT_CLEAR : undefined })
     for (const id of plotKey ? plotKey.split(',') : []) {
@@ -243,7 +258,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
     }
     list.push({ id: HAPPENING_KEY, kind: 'happening', name: '', at: [35, -20] })
     return list
-  }, [commune.places, origin, home, sim.id, snaps, plotKey, !!myPlot]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [places, origin, home, sim.id, snaps, plotKey, !!myPlot]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const plotsRef = useRef(plots)
   plotsRef.current = plots
@@ -336,7 +351,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
     let changed = false
     const next = new Map(snapsRef.current)
     for (const p of commune.places) {
-      if (!p.real) continue
+      if (!p.real || isMapPlace(p.id)) continue
       const poi = matchPoi({ name: p.name, kind: p.kind, at: toLocal(origin, p.lat, p.lng) }, pois)
       const was = next.get(p.id)
       if (poi && (!was || Math.hypot(was[0] - poi.at[0], was[1] - poi.at[1]) > 1)) {
@@ -350,7 +365,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
     const stale = new Set<string>()
     for (const [id, at] of next) {
       if (snapsRef.current.get(id) === at) continue
-      const p = commune.places.find((x) => x.id === id)
+      const p = places.find((x) => x.id === id)
       for (const pt of [at, p ? toLocal(origin, p.lat, p.lng) : null]) {
         if (!pt) continue
         const c = [...chunks.values()].find(({ data: { key, box } }) => !key.includes(':') && pt[0] >= box.x0 && pt[0] < box.x1 && pt[1] >= box.z0 && pt[1] < box.z1)
@@ -375,7 +390,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
         const r = out.get(id)
         if (r && Math.hypot(r.center[0] - at[0], r.center[1] - at[1]) < 60) continue
         const c = [...chunks.values()].find(({ data: { key, box } }) => !key.includes(':') && at[0] >= box.x0 && at[0] < box.x1 && at[1] >= box.z0 && at[1] < box.z1)
-        const p = commune.places.find((x) => x.id === id)
+        const p = places.find((x) => x.id === id)
         if (!c || !p) {
           out.delete(id)
           continue
@@ -384,7 +399,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
       }
       return out
     })
-  }, [chunks, commune.places, origin])
+  }, [chunks, places, origin])
   chunksRef.current = chunks
   const stream = () => {
     const w = worker.current
@@ -421,7 +436,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
       const id = nextId.current++
       pending.current.set(id, c.key)
       const far = c.key.includes(':')
-      const req: ChunkRequest = { id, origin, tx: c.tx, ty: c.ty, token, places: far ? [] : spots.map(({ id, at, kind, landmark }) => ({ id, at, kind, landmark })), z: far ? FAR_ZOOM : undefined }
+      const req: ChunkRequest = { id, origin, tx: c.tx, ty: c.ty, token, places: far ? [] : spots.filter((x) => !isMapPlace(x.id)).map(({ id, at, kind, landmark }) => ({ id, at, kind, landmark })), z: far ? FAR_ZOOM : undefined }
       w.postMessage(req)
     }
     // Chunks too far are let go, like Minecraft's render distance.
@@ -471,7 +486,69 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
     if (away.current) focus.current = away.current
     else if (controls) focus.current = [controls.target.x, controls.target.z]
     stream()
+    askMap()
+    const [hx, hz] = focus.current
+    if (Math.hypot(hx - here[0], hz - here[1]) > 15) setHere([hx, hz])
   })
+
+  // The map's places around the Sim: asked again every 400 m, kept (up to a
+  // few thousand) so they don't vanish behind it.
+  const mapAsked = useRef<XZ | null>(null)
+  const askMap = () => {
+    const at = focus.current
+    if (mapAsked.current && Math.hypot(at[0] - mapAsked.current[0], at[1] - mapAsked.current[1]) < 400) return
+    mapAsked.current = at
+    const ll = toLatLng(origin, at)
+    api
+      .mapPlaces(commune.id, ll.lat, ll.lng)
+      .then(({ places: got }) => {
+        if (!got.length) return
+        setMapList((was) => {
+          const m = new Map(was.map((p) => [p.id, p]))
+          for (const p of got) m.set(p.id, { ...p, real: true })
+          const all = [...m.values()]
+          return all.length > 5000 ? all.slice(all.length - 5000) : all
+        })
+      })
+      .catch(() => (mapAsked.current = null))
+  }
+  // Busy at a place from the map: that one first, wherever it is, and the
+  // world loads around it.
+  useEffect(() => {
+    if (!stationAt || !isMapPlace(stationAt) || mapList.some((p) => p.id === stationAt)) return
+    api
+      .mapPlace(commune.id, stationAt)
+      .then(({ places: got }) => got.length && setMapList((was) => [...was, ...got.map((p) => ({ ...p, real: true }))]))
+      .catch(() => {})
+  }, [stationAt]) // eslint-disable-line react-hooks/exhaustive-deps
+  const toStation = useRef(false)
+  useEffect(() => {
+    if (toStation.current || !stationAt || !isMapPlace(stationAt) || performance.now() - mounted.current > 15000) return
+    const s = spots.find((x) => x.id === stationAt)
+    if (!s) return
+    toStation.current = true
+    focus.current = s.at
+    stream()
+  }, [spots]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Where the Sim is (to the nearest 15 m): the map's places show their sign up close only.
+  const [here, setHere] = useState<XZ>(() => focus.current)
+
+  // The map's places are put on their building here, on the main thread, in
+  // the chunks already loaded: a real building (or one the game built in
+  // the quarter) within 30 m, or nothing; they don't get a lot of their own.
+  useEffect(() => {
+    const todo = spots.filter((x) => isMapPlace(x.id) && !resolved.has(x.id))
+    if (!todo.length) return
+    const found: Resolved[] = []
+    for (const c of chunks.values()) {
+      if (c.data.key.includes(':')) continue
+      const { box } = c.data
+      const inside = todo.filter(({ at: [x, z] }) => x >= box.x0 && x < box.x1 && z >= box.z0 && z < box.z1)
+      if (!inside.length) continue
+      for (const r of resolvePlaces(c.data, inside.map(({ id, at, kind }) => ({ id, at, kind })))) if (r.real) found.push(r)
+    }
+    if (found.length) setResolved((m) => new Map([...m, ...found.map((r) => [r.id, r] as const)]))
+  }, [spots, chunks]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // The few real buildings in the way of a game-made one don't block the way.
   const clears = useMemo(() => new Map(spots.filter((x) => x.landmark).map((x) => [x.id, x.landmark!])), [spots])
@@ -490,6 +567,8 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
         }),
     [spots, resolved],
   )
+  // Drawn: the game's places, and the map's thousands only near the Sim.
+  const shown = useMemo(() => lots.filter((l) => !isMapPlace(l.id) || Math.hypot(l.x - here[0], l.z - here[1]) < MAP_SIGNS), [lots, here])
   const spot = resolved.get(HAPPENING_KEY)
   const happeningLot = useMemo<Lot | null>(() => {
     if (!happening || !spot) return null
@@ -579,6 +658,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
             <mesh key={name} name={name} geometry={g} material={mats[name as keyof typeof mats]} castShadow={!far && SOLID.has(name)} receiveShadow={!far && name !== 'contact'} />
           ))}
           <Trees pts={c.data.trees} bark={mats.bark} leaves={mats.leaves} />
+          <Forest pts={c.data.forest ?? []} bark={mats.bark} />
           <Palms pts={c.data.palms ?? []} bark={mats.bark} leaves={mats.leaves} />
         </group>
         )
@@ -595,7 +675,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
           </group>
         ) : null
       })}
-      {lots.map((lot) =>
+      {shown.map((lot) =>
         lot.id === HOME_ID && myPlot ? (
           <LotLabel key={lot.id} lot={lot} world={world} label={labels} onPick={onPick} y={4} />
         ) : LANDMARKS[lot.id] ? (
@@ -611,7 +691,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
           <LotView key={lot.id} lot={lot} world={world} night={night} label={labels} onPick={onPick} />
         ),
       )}
-      {lots.map((lot) => {
+      {shown.map((lot) => {
         const g = resolved.get(lot.id)?.gate
         return g ? <CampusGate key={`gate${lot.id}`} name={lot.name} kind={lot.kind} at={g.at} rot={g.rot} width={g.width} night={night} /> : null
       })}
@@ -636,6 +716,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
       {nav.nodes.length > 0 && <AllocoStalls nav={nav} seed={commune.id} onBuy={onStreetBuy} />}
       <TakeOff runways={runways} />
       <BridgeSights chunks={[...chunks.values()].map((c) => c.data)} night={night} />
+      <BridgeLife chunks={[...chunks.values()].map((c) => c.data)} night={night} />
       {bridgeLabels.map((b) => (
         <Html key={b.name} position={[b.at[0], 12, b.at[1]]} center zIndexRange={[15, 0]}>
           <div className="flex items-center gap-1.5 rounded-xl border border-black/5 bg-white/95 px-2.5 py-1 text-[12.5px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_4px_12px_-6px_rgba(0,0,0,0.45)]">
@@ -643,7 +724,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
           </div>
         </Html>
       ))}
-      {nav.nodes.length > 0 && <Passersby nav={nav} focus={focus} seed={commune.id} onTalk={onTalk} onCall={onCall} talkingTo={talkingTo} />}
+      {nav.nodes.length > 0 && <Passersby nav={nav} focus={focus} seed={commune.id} onTalk={onTalk} onCall={onCall} talkingTo={talkingTo} simGender={sim.gender} gameHour={Math.floor((sim.gameMinutes % 1440) / 60)} />}
       {players && players.length > 0 && <OtherPlayers players={players} lots={walkLots} labels={labels} onPick={(id) => onPickPlayer?.(id)} />}
 
       {ready && (
@@ -760,7 +841,7 @@ function LotLabel({ lot, world, label, onPick, y }: { lot: Lot; world: World; la
 }
 
 /** Minecraft trees: a trunk of blocks and a cube of leaves, instanced. */
-function Trees({ pts, bark, leaves }: { pts: XZ[]; bark: THREE.Material; leaves: THREE.Material }) {
+export function Trees({ pts, bark, leaves }: { pts: XZ[]; bark: THREE.Material; leaves: THREE.Material }) {
   const trunks = useRef<THREE.InstancedMesh>(null)
   const tops = useRef<THREE.InstancedMesh>(null)
   useEffect(() => {
@@ -786,11 +867,53 @@ function Trees({ pts, bark, leaves }: { pts: XZ[]; bark: THREE.Material; leaves:
   )
 }
 
+const FOREST_GREENS = ['#1f5f2a', '#2a6e2f', '#276b3a', '#33783a', '#1d5426', '#3b7f33'].map((c) => new THREE.Color(c))
+
+/**
+ * The forest (the Banco): tall trunks of blocks under a broad canopy, close
+ * together, in several greens, a few giants standing out above the rest.
+ * Thousands of them: no shadows of their own, the canopy does the shade.
+ */
+export function Forest({ pts, bark }: { pts: XZ[]; bark: THREE.Material }) {
+  const trunks = useRef<THREE.InstancedMesh>(null)
+  const crowns = useRef<THREE.InstancedMesh>(null)
+  const leaves = useMemo(() => new THREE.MeshLambertMaterial({ color: '#ffffff' }), [])
+  useEffect(() => {
+    const m = new THREE.Matrix4()
+    const q = new THREE.Quaternion()
+    pts.forEach(([x, z], i) => {
+      const r = hash(x, z, 11)
+      const giant = r > 0.9
+      const h = giant ? 16 + r * 6 : 7 + r * 6
+      const w = giant ? 9 : 5 + (i % 3)
+      trunks.current?.setMatrixAt(i, m.compose(new THREE.Vector3(x, h / 2, z), q, new THREE.Vector3(giant ? 1.5 : 1, h, giant ? 1.5 : 1)))
+      crowns.current?.setMatrixAt(i, m.compose(new THREE.Vector3(x, h + 1.5, z), q, new THREE.Vector3(w, giant ? 4.5 : 3 + (i % 2) * 1.5, w)))
+      crowns.current?.setColorAt(i, FOREST_GREENS[Math.floor(hash(z, x, 5) * FOREST_GREENS.length)])
+    })
+    if (trunks.current) trunks.current.instanceMatrix.needsUpdate = true
+    if (crowns.current) {
+      crowns.current.instanceMatrix.needsUpdate = true
+      if (crowns.current.instanceColor) crowns.current.instanceColor.needsUpdate = true
+    }
+  }, [pts])
+  if (!pts.length) return null
+  return (
+    <>
+      <instancedMesh ref={trunks} args={[undefined, bark, pts.length]}>
+        <boxGeometry args={[1, 1, 1]} />
+      </instancedMesh>
+      <instancedMesh ref={crowns} args={[undefined, leaves, pts.length]} receiveShadow>
+        <boxGeometry args={[1, 1, 1]} />
+      </instancedMesh>
+    </>
+  )
+}
+
 /**
  * Coconut palms, Minecraft style: a leaning trunk of blocks, a crown of
  * long drooping leaves and a bunch of coconuts.
  */
-function Palms({ pts, bark, leaves }: { pts: XZ[]; bark: THREE.Material; leaves: THREE.Material }) {
+export function Palms({ pts, bark, leaves }: { pts: XZ[]; bark: THREE.Material; leaves: THREE.Material }) {
   const trunks = useRef<THREE.InstancedMesh>(null)
   const fronds = useRef<THREE.InstancedMesh>(null)
   const nuts = useRef<THREE.InstancedMesh>(null)
@@ -899,6 +1022,9 @@ function RoadTraffic({ nav, focus, seed, woro }: { nav: Nav; focus: React.RefObj
 function Car({ car, nav, routes }: { car: { id: string; kind: VehicleKind; color?: string; trim?: string; seed: number; near: XZ; speed: number; offset: number }; nav: Nav; routes: Map<string, XZ[]> }) {
   const ref = useRef<THREE.Group>(null)
   const anchor = useMemo(() => anchorNode(nav, car.near, 7), [nav, car.near])
+  const gbaka = car.kind === 'gbaka'
+  // The gbaka's leg, for its apprenti: seconds since it left (or since it stopped).
+  const leg = useRef<GbakaLeg>({ moving: false, since: 99, go: 0 })
   useFrame((_, dt) => {
     const g = ref.current
     if (!g) return
@@ -908,7 +1034,10 @@ function Car({ car, nav, routes }: { car: { id: string; kind: VehicleKind; color
     const way = path(at.n)
     g.visible = way.length > 1
     if (!g.visible) return
-    const p = along(way, at.d)
+    // A gbaka pulls away and pulls in (an apprenti has to be able to run
+    // after it): the same leg in the same time, eased at both ends.
+    const d = gbaka ? eased(at, routeLength(way), car.speed, CAR_ROUND, car.offset, leg.current) : at.d
+    const p = along(way, d)
     const heading = at.forward ? p.r : p.r + Math.PI
     // Drive on the right: shift to the right of the way it goes.
     const off = 2
@@ -918,8 +1047,116 @@ function Car({ car, nav, routes }: { car: { id: string; kind: VehicleKind; color
   })
   return (
     <group ref={ref}>
-      <Vehicle p={[0, 0, 0]} kind={car.kind} color={car.color} trim={car.trim} seed={car.seed} />
+      <Vehicle p={[0, 0, 0]} kind={car.kind} color={car.color} trim={car.trim} seed={car.seed} crew={!gbaka} />
+      {gbaka && <Apprenti leg={leg} seed={car.seed} />}
     </group>
+  )
+}
+
+/** Where a gbaka is in its leg: moving or stopped, for how long, and how long the leg takes. */
+export type GbakaLeg = { moving: boolean; since: number; go: number; d?: (s: number) => number }
+
+/** Distance after s seconds of a leg of L metres in go seconds: speeding up, cruising, slowing down. */
+export function legProfile(go: number, L: number) {
+  const ta = Math.min(GBAKA_EASE, go / 3)
+  const v = L / (go - ta)
+  return (s: number) => (s <= ta ? (v * s * s) / (2 * ta) : s >= go - ta ? L - (v * (go - s) ** 2) / (2 * ta) : v * (s - ta / 2))
+}
+
+/** Seconds to get up to speed, and to slow down. */
+const GBAKA_EASE = 5
+
+/**
+ * The gbaka's distance along its leg: the same leg as round()'s, in the
+ * same time, but pulling away slowly and pulling in slowly (a trapezoid of
+ * speed), so the apprenti left on the sidewalk can catch it. Fills `leg`.
+ */
+function eased(at: Round, len: number, speed: number, cycle: number, offset: number, leg: GbakaLeg) {
+  const u = worldTime() + offset
+  const k = u - Math.floor(u / cycle) * cycle
+  const go = Math.min(len / speed, cycle * 0.42)
+  const wait = (cycle - 2 * go) / 2
+  const L = go * speed
+  const dist = legProfile(go, L)
+  leg.go = go
+  leg.d = dist
+  if (at.moving) {
+    const s = at.forward ? k : k - go - wait
+    leg.moving = true
+    leg.since = s
+    const d = dist(Math.max(0, Math.min(go, s)))
+    return at.forward ? d : L - d
+  }
+  leg.moving = false
+  leg.since = at.forward ? k - go : k - 2 * go - wait
+  return at.d
+}
+
+/**
+ * The gbaka's apprenti. At the stop he's down on the sidewalk, calling the
+ * destination. The gbaka pulls away without him; he sees it a beat late,
+ * sprints after it, catches up with the door and leaps for it, and rides
+ * hanging out of it, a hand on the frame, a foot on the step, waving at
+ * people. Coming into the next stop he hops off before it has stopped.
+ * All from the gbaka's own clock: the same chase on every screen.
+ */
+export function Apprenti({ leg, seed }: { leg: React.RefObject<GbakaLeg>; seed: number }) {
+  const g = useRef<THREE.Group>(null)
+  const [pose, setPose] = useState<Pose>('hang')
+  const [runSpeed, setRunSpeed] = useState(6)
+  const [dx, dy, dz] = GBAKA_DOOR
+  const SIDE = dz + 1.1 // standing on the sidewalk, by the gbaka
+  const BACK = -2.0 // at the back of it, taking the fares, calling
+  const REACT = 1.0 + (seed % 1) * 0.4 // he notices it's leaving
+  const CATCH = 3.2 // he has the door frame
+  const LEAP = 0.55 // the jump, before he has it
+  const OFF = 0.6 // hopping off, before the stop
+  useFrame(() => {
+    const o = g.current
+    const l = leg.current
+    if (!o || !l?.d) return
+    const set = (x: number, y: number, z: number, ry: number, p: Pose) => {
+      o.position.set(x, y, z)
+      o.rotation.y = ry
+      if (p !== pose) setPose(p)
+    }
+    const short = l.go < CATCH + 3 // too short a hop to get off
+    if (short) return set(dx, dy, dz, Math.PI / 2, 'hang')
+    if (!l.moving) {
+      // Stopped: on the sidewalk by the door, turned to the people, calling.
+      return set(BACK, 0, SIDE, 0, 'wave')
+    }
+    const s = l.since
+    if (s >= l.go - OFF) {
+      // Hopping off as it slows: from the step down onto the sidewalk.
+      const j = Math.min(1, (s - (l.go - OFF)) / OFF)
+      return set(dx + (BACK - dx) * j, dy * (1 - j) + Math.sin(Math.PI * j) * 0.35, dz + (SIDE - dz) * j, Math.PI / 2 - (Math.PI / 2) * j, j < 1 ? 'leap' : 'wave')
+    }
+    if (s < REACT) {
+      // Still calling: the gbaka is already going (he stays where he is, it moves on).
+      return set(BACK - l.d(s), 0, SIDE, 0, 'wave')
+    }
+    if (s < CATCH) {
+      // Running after it: from where he stood to the door, while it pulls away.
+      const k = (s - REACT) / (CATCH - REACT)
+      const start = BACK - l.d(REACT)
+      const speed = (dx - start + 0.1) / (CATCH - REACT) // how fast he gains on it
+      if (Math.abs(speed + (l.d(CATCH) - l.d(REACT)) / (CATCH - REACT) - runSpeed) > 0.5) setRunSpeed(speed + (l.d(CATCH) - l.d(REACT)) / (CATCH - REACT))
+      const x = start + (dx - start) * k
+      const z = SIDE + (dz - SIDE) * Math.max(0, (k - 0.5) / 0.5)
+      const jump = s > CATCH - LEAP ? (s - (CATCH - LEAP)) / LEAP : -1
+      if (jump >= 0) return set(x, dy * jump + Math.sin(Math.PI * jump) * 0.45, z, Math.PI / 2, 'leap')
+      return set(x, 0, z, Math.PI / 2, 'run')
+    }
+    // On board: hanging out of the door.
+    set(dx, dy, dz, Math.PI / 2, 'hang')
+  })
+  return (
+    <NoShadows>
+      <group ref={g}>
+        <Human look={APPRENTI} gender="homme" pose={pose} seed={seed} speed={pose === 'run' ? runSpeed : undefined} />
+      </group>
+    </NoShadows>
   )
 }
 
@@ -929,7 +1166,6 @@ const NPC_NAMES = {
   femme: ['Awa', 'Aya', 'Mariam', 'Adjoua', 'Fatou', 'Akissi', 'Ruth', 'Affoué', 'Grâce', 'Nadège', 'Salimata', 'Ange', 'Tatiana', 'Bintou', 'Prisca', 'Clarisse'],
   homme: ['Kouadio', 'Yao', 'Moussa', 'Koffi', 'Serge', 'Ibrahim', 'Didier', 'Konan', 'Junior', 'Lassina', 'Arouna', 'Fabrice', 'Brice', 'Seydou', 'Hervé', 'Wilfried'],
 }
-const CALLS = ['Eh, on dit quoi ?', 'Bonne arrivée !', 'Toi là, ça va un peu ?', 'Viens on cause !', 'Y a quoi de neuf ?', 'Ma copine, ça dit quoi ?']
 
 const WALK_CELL = 150
 const WALKERS_PER_CELL = 2
@@ -942,7 +1178,7 @@ type Walk = { id: string; name: string; gender: 'femme' | 'homme'; look: ReturnT
  * spot on every screen (see shared.ts). Each has a first name; tap one to
  * talk (they stop and turn to you). Now and then, one nearby calls out.
  */
-function Passersby({ nav, focus, seed, onTalk, onCall, talkingTo }: { nav: Nav; focus: React.RefObject<XZ>; seed: string; onTalk?: (npc: Npc) => void; onCall?: (npc: Npc, text: string) => void; talkingTo?: string | null }) {
+function Passersby({ nav, focus, seed, onTalk, onCall, talkingTo, simGender, gameHour }: { nav: Nav; focus: React.RefObject<XZ>; seed: string; onTalk?: (npc: Npc) => void; onCall?: (npc: Npc, text: string) => void; talkingTo?: string | null; simGender: 'femme' | 'homme'; gameHour: number }) {
   const cells = useCellsAround(focus, WALK_CELL)
   const routes = useRoutes(nav)
   const people = useMemo<Walk[]>(
@@ -986,7 +1222,8 @@ function Passersby({ nav, focus, seed, onTalk, onCall, talkingTo }: { nav: Nav; 
       if (d < bd) [best, bd] = [p, d]
     }
     if (best) {
-      const text = CALLS[Math.floor(Math.random() * CALLS.length)]
+      const calls = callsFor(simGender, gameHour)
+      const text = calls[Math.floor(Math.random() * calls.length)]
       setSaid({ id: best.id, text })
       onCall?.({ id: best.id, name: best.name, gender: best.gender, seed: Math.floor(best.seed * 1000), look: best.look }, text)
     }

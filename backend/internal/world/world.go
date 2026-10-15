@@ -84,6 +84,18 @@ const (
 	srcPoro            = "https://economie-ivoirienne.ci/pole-competitif/region-du-poro.html"
 	srcRegions         = "https://loidici.biz/?p=13626"
 	srcSudComoe        = "https://economie-ivoirienne.ci/pole-competitif/region-du-sud-comoe.html"
+	srcOSM             = "https://www.openstreetmap.org/"
+	srcYopougon        = "https://fr.wikipedia.org/wiki/Yopougon"
+	srcYopBitume2026   = "https://www.koaci.com/article/2026/07/12/cote-divoire/politique/cote-divoire-independance-a-yopougon-le-gouvernement-accorde-55-kilometres-de-voies-a-bitumer-dans-la-commune_198503.html"
+	srcMarcheSelmer    = "https://news.abidjan.net/articles/426900/inauguration-du-marche-dominique-ouattara-de-selmer-dr-yao-yao-bertin-maire-de-yopougon-le-marche-est-une-expression-de-la-vie"
+	srcFicgayo2013     = "https://connectionivoirienne.net/2013/06/27/un-hotel-communal-bientot-construit-sur-la-place-ficgayo-kafana-kone/"
+	srcFicgayo2026     = "https://www.koaci.com/article/2026/08/05/cote-divoire/politique/cote-divoire-yopougon-la-place-ficgayo-va-changer-de-nom-le-projet-officialise-le-6-aout_199269.html"
+	srcGareSiporex     = "https://www.koaci.com/article/2026/03/04/cote-divoire/societe/cote-divoire-yopougon-siporex-un-comite-mis-en-place-pour-veiller-a-la-proprete-de-la-gare-et-lutter-contre-les-installations-des-fumoirs-le-depute-maire-de-yopougon-adama-bictogo-veut-donner-une-nouv_194834.html"
+	srcStAndre         = "https://gcatholic.org/churches/africa/6581"
+	srcKoute           = "https://www.aip.ci/?p=349306"
+	srcKoute2          = "https://www.fratmat.info/article/230709/societe/yopougon-koute-apres-lobtention-de-son-arrete-le-chef-du-village-appelle-a-la-cohesion-pour-le-developpement"
+	srcLyceeProYop     = "https://fr.allafrica.com/stories/202210200659.html"
+	srcBanco           = "https://fr.wikipedia.org/wiki/Parc_national_du_Banco"
 	srcCHUStatus       = "https://www.koaci.com/article/2022/09/28/cote-divoire/societe/cote-divoire-les-quatre-chu-transformes-en-etablissements-publics-hospitaliers-nationaux_163513.html"
 	srcCHUAngre        = "https://www.fratmat.info/index.php/societe/inauguration-du-chu-d-angre-des-soins-de-qualite-de-specialite-et-de-proximite-pour-tous"
 	srcHGAdjame        = "https://www.fratmat.info/article/80047/10064/sante-et-hygiene-publique-le-president-ouattara-inaugure-ce-vendredi-le-4e-chu-d-abidjan"
@@ -153,6 +165,16 @@ func coiffeurs(communeID string, lat, lng float64) []Place {
 	}
 }
 
+// withMairie puts a commune's mairie where it really is, when that is known.
+func withMairie(c Commune, lat, lng float64, src *game.Source) Commune {
+	for i := range c.Places {
+		if c.Places[i].ID == c.Admin.Mairie {
+			c.Places[i].Lat, c.Places[i].Lng, c.Places[i].Source = lat, lng, src
+		}
+	}
+	return c
+}
+
 func mairie(communeID, communeName string, lat, lng float64, src string) Place {
 	return Place{ID: "mairie-" + communeID, Name: "Mairie " + de(communeName), Kind: "mairie", Lat: lat, Lng: lng, Real: true, Approx: true,
 		Operator: "Commune " + de(communeName), Source: game.Partial(mairieNote, src)}
@@ -220,15 +242,28 @@ var Cities = []City{
 				Place{ID: "cocody-iua", Name: "Institut universitaire d'Abidjan (IUA)", Kind: "universite", Lat: 5.3620, Lng: -3.9820, Real: true, Approx: true, Operator: "Établissement privé",
 					Source: game.Unverified("Université privée fondée en 2004 ; adresse non trouvée : la commune et la position sont à confirmer.", srcIUA)},
 			),
-			abidjanCommune("yopougon", "Yopougon", "Yop City, capitale de l'ambiance.", 5.3450, -4.0820, "nord",
-				Place{ID: "yop-rue-princesse", Name: "Rue Princesse", Kind: "club", Lat: 5.3380, Lng: -4.0760, Real: true, Approx: true, Closed: "2011-08",
-					Source: game.Partial("Rue des maquis et boîtes de nuit, rasée en août 2011 pendant l'opération « Pays propre ». Le jeu garde un lieu d'ambiance à cet endroit.", game.SrcRuePrincesse2011)},
+			withMairie(abidjanCommune("yopougon", "Yopougon", "Yop City, capitale de l'ambiance.", 5.3450, -4.0820, "nord",
+				Place{ID: "yop-rue-princesse", Name: "Rue Princesse", Kind: "club", Lat: 5.34787, Lng: -4.07777, Real: true, Approx: true, Closed: "2011-08",
+					Source: game.Partial("Rue des maquis et boîtes de nuit (« Rue Princesse / Rue P60 » sur OpenStreetMap), rasée en août 2011 pendant l'opération « Pays propre », bitumée en juillet 2026 avant la fête de l'Indépendance à Yopougon. Le jeu garde un lieu d'ambiance à cet endroit ; le tronçon exact des maquis est à confirmer.", game.SrcRuePrincesse2011, srcYopBitume2026, srcOSM)},
 				fictional("yop-ecole", "Groupe scolaire de Niangon", "school", "Niangon", 5.3400, -4.0880),
 				Place{ID: "yop-maquis", Name: "Maquis de Sideci", Kind: "maquis", Quarter: "Sideci", Lat: 5.3320, Lng: -4.0690, Approx: true, Source: invented},
-				Place{ID: "yop-marche", Name: "Marché de Siporex", Kind: "market", Quarter: "Siporex", Lat: 5.3510, Lng: -4.0710, Real: true, Approx: true, Source: game.Unverified("Marché du quartier Siporex ; à confirmer.")},
-				Place{ID: "yop-chu", Name: "CHU de Yopougon", Kind: "health", Lat: 5.3520, Lng: -4.0890, Real: true, Approx: true, Operator: "Établissement public hospitalier national",
-					Source: game.Verified("Transformé en établissement public hospitalier national en 2022.", srcCHUStatus)},
-			),
+				Place{ID: "yop-marche", Name: "Marché Dominique-Ouattara de Selmer", Kind: "market", Quarter: "Selmer", Lat: 5.34032, Lng: -4.06845, Real: true, Approx: true, Operator: "Commune de Yopougon",
+					Source: game.Verified("Marché municipal d'un hectare et de 1 000 places, inauguré le 17 février 2012 (environ 1,5 milliard FCFA). Position d'après OpenStreetMap.", srcMarcheSelmer, srcOSM)},
+				Place{ID: "yop-chu", Name: "CHU de Yopougon", Kind: "health", Lat: 5.35706, Lng: -4.08514, Real: true, Approx: true, Operator: "Établissement public hospitalier national",
+					Source: game.Verified("Transformé en établissement public hospitalier national en 2022. Position d'après OpenStreetMap.", srcCHUStatus, srcOSM)},
+				Place{ID: "yop-ficgayo", Name: "Place Ficgayo", Kind: "culture", Lat: 5.35030, Lng: -4.07281, Real: true, Approx: true, Operator: "Commune de Yopougon",
+					Source: game.Verified("Esplanade d'environ un hectare au centre de Yopougon, nommée d'après la Ficgayo (foire industrielle, commerciale et gastronomique de Yopougon des années 1990) : spectacles, veillées, tournois, meetings. Rénovée avant le 7 août 2026 ; un changement de nom a été annoncé. Position d'après OpenStreetMap.", srcFicgayo2013, srcFicgayo2026, srcOSM)},
+				Place{ID: "yop-gare-siporex", Name: "Gare de Siporex", Kind: "transport", Quarter: "Siporex", Lat: 5.35615, Lng: -4.07545, Real: true, Approx: true,
+					Source: game.Verified("Gare routière sur la route de Dabou, au carrefour Siporex, première correspondance des gbakas venant d'Adjamé. Position d'après OpenStreetMap.", srcGareSiporex, srcYopougon, srcOSM)},
+				Place{ID: "yop-cathedrale", Name: "Cathédrale Saint-André", Kind: "worship", Quarter: "Selmer", Lat: 5.34431, Lng: -4.07444, Real: true, Approx: true, Operator: "Diocèse de Yopougon",
+					Source: game.Verified("Cathédrale du diocèse de Yopougon (créé le 8 juin 1982). Position d'après GCatholic et OpenStreetMap.", srcStAndre, srcYopougon)},
+				Place{ID: "yop-zone-industrielle", Name: "Zone industrielle de Yopougon", Kind: "office", Quarter: "Zone industrielle", Lat: 5.37441, Lng: -4.08454, Real: true, Approx: true,
+					Source: game.Verified("Zone industrielle ouverte en 1972 : cimenteries, plasturgie, pharmacie, textile (Uniwax), boissons (Solibra), agroalimentaire (Nestlé, Cémoi). Position d'après OpenStreetMap.", srcYopougon, srcOSM)},
+				Place{ID: "yop-koute", Name: "Kouté village", Kind: "village", Quarter: "Kouté", Lat: 5.32152, Lng: -4.07489, Real: true, Approx: true,
+					Source: game.Verified("Village atchan (ébrié) de Yopougon, organisé en générations (Tchagba, Blessoué) ; l'un des villages de la commune. Position d'après OpenStreetMap.", srcKoute, srcKoute2, srcYopougon)},
+				Place{ID: "yop-lycee-pro", Name: "Lycée professionnel sectoriel de Yopougon", Kind: "school", Quarter: "Siporex", Lat: 5.35712, Lng: -4.07996, Real: true, Approx: true, Operator: "Établissement public",
+					Source: game.Verified("Lycée professionnel construit avec le C2D (9 milliards FCFA, 390 apprenants), inauguré le 20 octobre 2022. Position d'après OpenStreetMap.", srcLyceeProYop, srcOSM)},
+			), 5.34389, -4.06745, game.Partial("Hôtel de ville de Yopougon, à Selmer ; position d'après OpenStreetMap.", srcYopougon, srcOSM)),
 			abidjanCommune("adjame", "Adjamé", "Le cœur commerçant, ça bouge dans tous les sens.", 5.3550, -4.0240, "nord",
 				Place{ID: "adjame-gare", Name: "Gare routière d'Adjamé", Kind: "transport", Lat: 5.3580, Lng: -4.0220, Real: true, Approx: true, Source: game.Unverified("Grande gare routière d'Adjamé ; à confirmer.")},
 				Place{ID: "adjame-forum", Name: "Forum des marchés", Kind: "market", Lat: 5.3530, Lng: -4.0270, Real: true, Approx: true, Source: game.Unverified("Marché d'Adjamé ; nom à confirmer.")},
@@ -247,8 +282,8 @@ var Cities = []City{
 			),
 			abidjanCommune("treichville", "Treichville", "Le vieux quartier mythique, le Palais des Sports.", 5.2990, -4.0090, "sud",
 				Place{ID: "treich-marche", Name: "Marché de Treichville", Kind: "market", Lat: 5.3020, Lng: -4.0100, Real: true, Approx: true, Source: game.Unverified("Grand marché de Treichville ; à confirmer.")},
-				Place{ID: "treich-palais", Name: "Palais des Sports", Kind: "sport", Lat: 5.2950, Lng: -4.0040, Real: true, Approx: true,
-					Source: game.Verified("Salle couverte de 3 500 places (1978), à côté du Parc des sports.", srcPalaisSports)},
+				Place{ID: "treich-palais", Name: "Palais des Sports", Kind: "sport", Lat: 5.29807, Lng: -4.00545, Real: true,
+					Source: game.Verified("Salle couverte de 3 500 places (1978), à côté du Parc des sports : la rotonde de 66 m de diamètre, rue du Stade (position et taille d'après OpenStreetMap).", srcPalaisSports, "https://www.openstreetmap.org/way/123174041")},
 				Place{ID: "treich-maquis", Name: "Maquis de l'Avenue 16", Kind: "maquis", Lat: 5.3000, Lng: -4.0150, Approx: true, Source: invented},
 				Place{ID: "treich-palais-culture", Name: "Palais de la Culture", Kind: "culture", Lat: 5.3050, Lng: -4.0170, Real: true, Approx: true,
 					Source: game.Verified("Palais de la Culture de Treichville, 12 900 m², 7 salles.", srcVenues)},
@@ -284,7 +319,8 @@ var Cities = []City{
 					Source: game.Verified("Aéroport de Port-Bouët géré par AERIA depuis mai 1996 ; concession renouvelée par l'État en 2010 pour vingt ans.", srcAirport, srcAirport2)},
 			),
 			abidjanCommune("attecoube", "Attécoubé", "Entre lagune et forêt du Banco.", 5.3350, -4.0400, "nord",
-				Place{ID: "attecoube-banco", Name: "Forêt du Banco", Kind: "nature", Lat: 5.3800, Lng: -4.0500, Real: true, Approx: true, Source: game.Unverified("Parc national du Banco ; rattachement à la commune à confirmer.")},
+				Place{ID: "attecoube-banco", Name: "Forêt du Banco", Kind: "nature", Lat: 5.3945, Lng: -4.0520, Real: true, Approx: true,
+					Source: game.Partial("Parc national du Banco : forêt classée en 1926, parc national en 1953, environ 3 438 ha dont 600 ha de forêt primaire ; ses forages donnent une large part de l'eau d'Abidjan. Il touche Attécoubé, Yopougon, Abobo et Adjamé.", srcBanco)},
 				fictional("attecoube-maquis", "Maquis de Santé", "maquis", "", 5.3330, -4.0350),
 			),
 			abidjanCommune("anyama", "Anyama", "Au nord d'Abidjan, entre ville et campagne.", 5.5000, -4.0500, "nord",
@@ -473,7 +509,8 @@ func FindPlace(id string) (City, Commune, Place, bool) {
 			}
 		}
 	}
-	return City{}, Commune{}, Place{}, false
+	// Not a hand-made place: one of the commune's places from the map?
+	return mapPlace(id)
 }
 
 // Trip returns the game minutes and FCFA fare to go from one commune to

@@ -68,7 +68,7 @@ const lengthOf = (k: VehicleKind) => (k === 'gbaka' ? 5.6 : k === 'moto' ? 1.6 :
 const STOP_X = 5.5
 // Where the police set up, on the eastbound side of the boulevard.
 const CHECK_X = 88
-const COP = (seed: number) => ({ ...randomLook('homme', () => seed), outfit: 'suit', outfitColor: '#2f4a3a', bottomColor: '#2f4a3a', accessory: 'cap', accessoryColor: '#2f4a3a' })
+const COP = (seed: number) => ({ ...randomLook('homme', () => seed), outfit: 'policier', accessory: 'none', beard: 'none' })
 
 function Checkpoint({ pose, copRef, noteRef }: { pose: Pose; copRef: React.RefObject<THREE.Group | null>; noteRef: React.RefObject<THREE.Mesh | null> }) {
   return (

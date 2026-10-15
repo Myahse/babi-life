@@ -1,6 +1,8 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
 import { Vehicle } from '../vehicles'
+import { Human, NoShadows, type Pose } from '../../avatar/Human'
+import { randomLook } from '../../avatar/options'
 
 // What stands in front of a place and tells what it is, before you read its
 // sign: the market's stalls and parasols, the maquis's terrace (plastic
@@ -25,7 +27,7 @@ const B = ({ p, s, c, glow = 0, r = 0 }: { p: [number, number, number]; s: [numb
 const rnd = (seed: number) => () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
 
 // These stay open after dark. Everything else pulls a shutter down over the door.
-const OPEN_AT_NIGHT = new Set(['maquis', 'restaurant', 'club', 'hotel', 'health', 'transport', 'home', 'beach', 'lagune', 'nature', 'village', 'sport'])
+const OPEN_AT_NIGHT = new Set(['pharmacie', 'maquis', 'restaurant', 'club', 'hotel', 'health', 'transport', 'home', 'beach', 'lagune', 'nature', 'village', 'sport'])
 
 export function Dressing({ kind, name = '', seed, night }: { kind: string; name?: string; seed: number; night: boolean }) {
   const front = (() => {
@@ -38,7 +40,7 @@ export function Dressing({ kind, name = '', seed, night }: { kind: string; name?
       case 'club':
         return <Neon night={night} />
       case 'health':
-        return <Hospital />
+        return <Hospital seed={seed} />
       case 'mairie':
         return <Flags n={1} />
       case 'hotel':
@@ -55,16 +57,22 @@ export function Dressing({ kind, name = '', seed, night }: { kind: string; name?
       case 'universite':
         return <School />
       case 'mall':
-        return <Mall night={night} />
+        return <Mall night={night} seed={seed} />
       case 'office':
       case 'culture':
-        return <Office />
+        return <Office bank={BANK.test(name)} seed={seed} />
       case 'sport':
         return <Pitch name={name} night={night} />
       case 'home':
         return <Home night={night} />
       case 'village':
         return <Compound />
+      case 'pharmacie':
+        return <Pharmacie night={night} seed={seed} />
+      case 'boutique':
+        return <Boutique seed={seed} />
+      case 'couture':
+        return <Couture seed={seed} />
       default:
         return null
     }
@@ -79,6 +87,28 @@ export function Dressing({ kind, name = '', seed, night }: { kind: string; name?
 }
 
 /** A rolled-down shop shutter: the place is closed. */
+/** Banks, by their name on the map (Abidjan's banks, or the word itself). */
+const BANK = /banque|bank|bicici|sgbci|soci[eé]t[eé] g[eé]n[eé]rale|ecobank|coris|nsia|uba|bni|bdu|orabank|versus|afriland|atlantique|bhci|baci/i
+
+/**
+ * Someone at work in their uniform, in front of the place: the cook at the
+ * maquis grill, the nurse at the hospital, the vigile at the bank's door.
+ */
+function Worker({ p, r = 0, outfit, pose = 'idle', seed }: { p: [number, number, number]; r?: number; outfit: string; pose?: Pose; seed: number }) {
+  const person = useMemo(() => {
+    const rand = rnd(Math.floor(seed * 1000) + outfit.length * 97 + 3)
+    const gender: 'femme' | 'homme' = outfit === 'vigile' ? (rand() < 0.85 ? 'homme' : 'femme') : rand() < 0.5 ? 'femme' : 'homme'
+    return { gender, look: { ...randomLook(gender, rand), outfit, accessory: 'none' }, seed: rand() * 100 }
+  }, [seed, outfit])
+  return (
+    <NoShadows>
+      <group position={p} rotation={[0, r, 0]}>
+        <Human look={person.look} gender={person.gender} pose={pose} seed={person.seed} />
+      </group>
+    </NoShadows>
+  )
+}
+
 function Shutter() {
   return (
     <group>
@@ -155,9 +185,10 @@ function School() {
 }
 
 /** A mall: a glass canopy and three lit shop bands. */
-function Mall({ night }: { night: boolean }) {
+function Mall({ night, seed }: { night: boolean; seed: number }) {
   return (
     <group>
+      <Worker p={[-1.5, 0, 0.9]} outfit="vigile" seed={seed} />
       <B p={[0, 3.1, 1.1]} s={[6.5, 0.1, 2.2]} c="#d7e3ee" />
       {[-2, 0, 2].map((x, i) => (
         <B key={x} p={[x, 2.4, 0.2]} s={[1.5, 0.35, 0.08]} c={['#e8432f', '#1f6fb5', '#f2a81d'][i]} glow={night ? 1.2 : 0.15} />
@@ -167,9 +198,10 @@ function Mall({ night }: { night: boolean }) {
 }
 
 /** An office or a cultural hall: a plaque beside the door. */
-function Office() {
+function Office({ bank, seed }: { bank: boolean; seed: number }) {
   return (
     <group>
+      {bank && <Worker p={[-1.1, 0, 0.8]} outfit="vigile" seed={seed} />}
       <B p={[1.15, 1.55, 0.16]} s={[0.7, 0.45, 0.06]} c="#f4f1ea" />
       <B p={[1.15, 1.55, 0.2]} s={[0.45, 0.06, 0.02]} c="#3d4350" />
     </group>
@@ -178,7 +210,8 @@ function Office() {
 
 /** A yard beside the door: a basket court at a hall, a small pitch everywhere else. Lit after dark. */
 function Pitch({ name, night }: { name: string; night: boolean }) {
-  const basket = /basket|palais|salle/i.test(name)
+  // Basketball at an agora, a gymnase, a palais des sports, a basket court.
+  const basket = /basket|palais|salle|agora|gymnase/i.test(name)
   return (
     <group position={[4.4, 0, 2.6]}>
       <B p={[0, 0.04, 0]} s={basket ? [8, 0.08, 5] : [9, 0.08, 6]} c={basket ? '#d5d0c6' : '#2f9e4a'} />
@@ -281,6 +314,13 @@ function Terrace({ seed, night }: { seed: number; night: boolean }) {
           )}
         </group>
       ))}
+      {/* The grill by the door, and the cook at it */}
+      <group position={[0.4, 0, 1.9]}>
+        <B p={[0, 0.45, 0]} s={[1.1, 0.9, 0.45]} c="#2a2a2a" />
+        <B p={[0, 0.92, 0]} s={[1.0, 0.05, 0.4]} c="#ff5a1a" glow={0.9} />
+        {[-0.3, 0, 0.3].map((x) => <B key={x} p={[x, 0.97, 0]} s={[0.16, 0.05, 0.1]} c="#8a4b2a" />)}
+      </group>
+      <Worker p={[0.4, 0, 1.3]} outfit="cuisinier" pose="cook" seed={seed} />
       {/* The string of bulbs, lit at night */}
       {[...Array(9)].map((_, k) => <B key={k} p={[2.5 + k * 0.85, 2.6 - Math.sin((k / 8) * Math.PI) * 0.35, 2.8]} s={[0.12, 0.12, 0.12]} c={['#ffd36b', '#ff6b6b', '#6bd3ff'][k % 3]} glow={night ? 2 : 0.2} />)}
       {[2.4, 10].map((x) => <mesh key={x} geometry={POLE} material={mat('#555')} position={[x, 1.3, 2.8]} scale={[1, 2.6, 1]} />)}
@@ -301,9 +341,11 @@ function Neon({ night }: { night: boolean }) {
 }
 
 /** A hospital: the red cross on a white panel, an ambulance waiting. */
-function Hospital() {
+function Hospital({ seed }: { seed: number }) {
   return (
     <group>
+      {/* A nurse by the ambulance, talking with the driver's mate */}
+      <Worker p={[1.6, 0, 2.9]} r={Math.PI / 2} outfit="infirmier" pose="talk" seed={seed} />
       <group position={[-3.2, 3.4, 0.2]}>
         <B p={[0, 0, 0]} s={[1.3, 1.3, 0.1]} c="#ffffff" />
         <B p={[0, 0, 0.06]} s={[0.9, 0.28, 0.04]} c="#d62828" />
@@ -312,6 +354,53 @@ function Hospital() {
       <group position={[5, 0, 3.4]} rotation={[0, Math.PI, 0]}>
         <Vehicle p={[0, 0, 0]} kind="gbaka" color="#f4f4f4" trim="#d62828" />
       </group>
+    </group>
+  )
+}
+
+/** The pharmacy's green cross on its pole, lit at night (on duty). */
+function Pharmacie({ night, seed }: { night: boolean; seed: number }) {
+  const green = night ? '#69ff7a' : '#2f9e44'
+  return (
+    <group position={[3.6, 0, 2.2]}>
+      <Worker p={[-5, 0, -1.3]} outfit="vigile" seed={seed} />
+      <mesh geometry={POLE} material={mat('#d9d9d9')} position={[0, 2, 0]} scale={[1, 4, 1]} />
+      <group position={[0, 4.3, 0]}>
+        <B p={[0, 0, 0]} s={[1.5, 0.5, 0.25]} c={green} glow={night ? 1 : 0} />
+        <B p={[0, 0, 0]} s={[0.5, 1.5, 0.25]} c={green} glow={night ? 1 : 0} />
+      </group>
+    </group>
+  )
+}
+
+/** The boutique on the corner: crates of drinks out front, the CRÉDIT board. */
+function Boutique({ seed }: { seed: number }) {
+  const crates = ['#c92a2a', '#1971c2', '#f08c00', '#2b8a3e']
+  return (
+    <group>
+      {[0, 1, 2].map((i) => (
+        <B key={i} p={[-2.2 + (i % 2) * 0.6, 0.25 + Math.floor(i / 2) * 0.5, 1.2]} s={[0.6, 0.5, 0.45]} c={crates[(seed + i) % crates.length]} />
+      ))}
+      <B p={[2.4, 0.8, 1.1]} s={[0.9, 1.6, 0.06]} c="#ffd43b" />
+      <B p={[2.4, 1.15, 1.14]} s={[0.7, 0.18, 0.02]} c="#1c1c1e" />
+      <B p={[2.4, 0.75, 1.14]} s={[0.55, 0.12, 0.02]} c="#e03131" />
+    </group>
+  )
+}
+
+/** The couturier works out front: the table, the sewing machine, a pagne on the mannequin. */
+function Couture({ seed }: { seed: number }) {
+  const pagnes = ['#f08c00', '#7048e8', '#2b8a3e', '#e03131', '#1971c2']
+  return (
+    <group position={[0, 0, 1.4]}>
+      <B p={[-1.8, 0.75, 0]} s={[1.5, 0.08, 0.8]} c="#8a5a32" />
+      {[-2.45, -1.15].map((x) => (
+        <B key={x} p={[x, 0.37, 0]} s={[0.08, 0.75, 0.7]} c="#5c3d22" />
+      ))}
+      <B p={[-1.8, 0.95, 0]} s={[0.55, 0.3, 0.25]} c="#1c1c1e" />
+      <B p={[2.2, 0.6, 0]} s={[0.12, 1.2, 0.12]} c="#5c3d22" />
+      <B p={[2.2, 1.5, 0]} s={[0.6, 0.8, 0.35]} c={pagnes[seed % pagnes.length]} />
+      <B p={[2.2, 1.95, 0]} s={[0.25, 0.15, 0.25]} c="#d9c3a5" />
     </group>
   )
 }

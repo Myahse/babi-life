@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place } from './types'
 import { useSession } from '../store/session'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
@@ -47,6 +47,9 @@ export type NewSim = {
 
 export const api = {
   world: () => request<World>('/world'),
+  /** A commune's places from the map (OpenStreetMap) within r km of a point. */
+  mapPlace: (commune: string, id: string) => request<{ places: Place[]; total: number }>(`/places?commune=${encodeURIComponent(commune)}&id=${encodeURIComponent(id)}`),
+  mapPlaces: (commune: string, lat: number, lng: number, r = 1.2) => request<{ places: Place[]; total: number }>(`/places?commune=${encodeURIComponent(commune)}&lat=${lat.toFixed(5)}&lng=${lng.toFixed(5)}&r=${r}`),
   news: () => request<{ items: NewsItem[]; updated: string }>('/news'),
   happening: (city: string, commune: string, gameMinutes: number) => request<HappeningNow>(`/happening?city=${encodeURIComponent(city)}&commune=${encodeURIComponent(commune)}&t=${Math.floor(gameMinutes)}`),
   googleLogin: (credential: string) => post<Session>('/auth/google', { credential }),
@@ -67,6 +70,7 @@ export const api = {
   career: (id: string, career: string) => post<ActionResult>(`/sims/${id}/career`, { career }),
   move: (id: string, housing: string) => post<ActionResult>(`/sims/${id}/move`, { housing }),
   repay: (id: string, what: 'loan' | 'rent', amount: number) => post<ActionResult>(`/sims/${id}/repay`, { what, amount }),
+  changeLook: (id: string, look: Look) => post<ActionResult>(`/sims/${id}/look`, look),
   setApp: (id: string, app: string, install: boolean) => post<ActionResult>(`/sims/${id}/apps`, { app, install }),
   send: (id: string, to: string, amount: number) => post<ActionResult>(`/sims/${id}/send`, { to, amount }),
   friend: (id: string, friend: string, action: string) => post<ActionResult>(`/sims/${id}/friend`, { friend, action }),
@@ -74,7 +78,7 @@ export const api = {
   order: (id: string, place: string, dish: string) => post<ActionResult>(`/sims/${id}/order`, { place, dish }),
   /** Buy alloco from the tantie's stall in the street (she may have none left). */
   /** Talk to a passer-by: what they answer comes back as the outcome. */
-  chat: (id: string, npc: { id: string; name: string; gender: string; seed: number }, topic: string) => post<ActionResult>(`/sims/${id}/chat`, { with: npc, topic }),
+  chat: (id: string, npc: { id: string; name: string; gender: string; seed: number }, topic: string, said?: string) => post<ActionResult>(`/sims/${id}/chat`, { with: npc, topic, said: said ?? '' }),
   street: (id: string, vendor: string) => post<ActionResult>(`/sims/${id}/street`, { vendor }),
   stop: (id: string) => post<ActionResult>(`/sims/${id}/stop`, {}),
   /** Other players: who's in the commune, invitations, player friends. */

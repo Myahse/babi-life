@@ -346,6 +346,19 @@ export function roomStyle(kind: string, housing: string): RoomStyle {
           </>
         ),
       }
+    case 'couture':
+      return {
+        floorType: 'tiles',
+        lower: '#8d5a2b',
+        openings: [W1],
+        lamps: [[-3, -2.5], [0.5, -2.5], [3, 1]],
+        decor: () => (
+          <>
+            <Board p={[1.5, 2.55, BACK]} wall="back" text="COUTURE" bg="#7b2d26" w={2} />
+            <Plant p={[5.4, 0, 3.6]} />
+          </>
+        ),
+      }
     case 'hotel':
       return {
         floorType: 'marble',

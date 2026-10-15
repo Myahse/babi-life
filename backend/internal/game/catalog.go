@@ -122,6 +122,10 @@ var Kinds = map[string]PlaceKind{
 			{ID: "drink-with-friends", Ages: Adults, Label: "Prendre un pot avec les amis", Icon: "beer", Minutes: 90, Cost: 2000, Effect: Needs{Social: 40, Fun: 30, Energy: -10}, MinHour: 17},
 			Gbairai,
 			{ID: "dance-coupe-decale", Ages: Adults, Label: "Danser le coupé-décalé", Icon: "music", Minutes: 60, Effect: Needs{Fun: 40, Social: 20, Energy: -15, Hygiene: -10}, MinHour: 19},
+			// The travaillement: banknotes rained on the dancers, the more the louder.
+			{ID: "petit-travaillement", Ages: Adults, Label: "Petit « travaillement »", Icon: "banknote", Minutes: 30, Cost: 5000, Effect: Needs{Fun: 20, Social: 25}, MinHour: 19, MaxHour: 4},
+			{ID: "travaillement", Ages: Adults, Label: "Faire le « travaillement »", Icon: "banknote", Minutes: 60, Cost: 20000, Effect: Needs{Fun: 40, Social: 50}, MinHour: 19, MaxHour: 4},
+			{ID: "grand-travaillement", Ages: Adults, Label: "Grand « travaillement » : tout le monde crie ton nom", Icon: "banknote", Minutes: 60, Cost: 100000, Effect: Needs{Fun: 70, Social: 80}, MinHour: 19, MaxHour: 4},
 		},
 		Events: []RandomEvent{
 			{Text: "Un grand-frère « travaillement » paie la tournée pour toute la table !", Effect: Needs{Fun: 15, Social: 15}},
@@ -187,7 +191,10 @@ var Kinds = map[string]PlaceKind{
 		ID: "club", Label: "Boîte de nuit", Icon: "disc-3",
 		Interactions: []Interaction{
 			{ID: "party", Ages: Adults, Label: "Faire la fête jusqu'au matin", Icon: "party-popper", Minutes: 4 * 60, Cost: 5000, Effect: Needs{Fun: 60, Social: 40, Energy: -40, Hygiene: -25}, MinHour: 21, MaxHour: 4},
+			// The travaillement: banknotes rained on the dancers, the more the louder.
+			{ID: "petit-travaillement", Ages: Adults, Label: "Petit « travaillement »", Icon: "banknote", Minutes: 30, Cost: 5000, Effect: Needs{Fun: 20, Social: 25}, MinHour: 21, MaxHour: 4},
 			{ID: "travaillement", Ages: Adults, Label: "Faire le « travaillement »", Icon: "banknote", Minutes: 60, Cost: 20000, Effect: Needs{Fun: 40, Social: 50}, MinHour: 21, MaxHour: 4},
+			{ID: "grand-travaillement", Ages: Adults, Label: "Grand « travaillement » : tout le monde crie ton nom", Icon: "banknote", Minutes: 60, Cost: 100000, Effect: Needs{Fun: 70, Social: 80}, MinHour: 21, MaxHour: 4},
 		},
 		Events: []RandomEvent{
 			{Text: "Ton artiste préféré passe en showcase surprise !", Effect: Needs{Fun: 30}},
@@ -287,6 +294,8 @@ var Kinds = map[string]PlaceKind{
 		Interactions: []Interaction{
 			{ID: "degrade", Label: "Se faire un dégradé", Icon: "scissors", Minutes: 40, Cost: 1000, Effect: Needs{Hygiene: 20, Fun: 15, Social: 10}, MinHour: 8, MaxHour: 22},
 			{ID: "boule-a-zero", Label: "Se faire raser la tête", Icon: "scissors", Minutes: 25, Cost: 1000, Effect: Needs{Hygiene: 25, Fun: 5}, MinHour: 8, MaxHour: 22},
+			{ID: "coupe-courte", Label: "Se faire une coupe courte", Icon: "scissors", Minutes: 30, Cost: 1000, Effect: Needs{Hygiene: 20, Fun: 10}, MinHour: 8, MaxHour: 22},
+			{ID: "iroquoise", Ages: TeensUp, Label: "Se faire une iroquoise", Icon: "scissors", Minutes: 45, Cost: 1500, Effect: Needs{Hygiene: 15, Fun: 25, Social: 10}, MinHour: 8, MaxHour: 22},
 			{ID: "taille-barbe", Ages: Adults, Label: "Se faire tailler la barbe", Icon: "scissors", Minutes: 20, Cost: 500, Effect: Needs{Hygiene: 15, Fun: 5}, MinHour: 8, MaxHour: 22},
 			Gbairai,
 		},
@@ -296,12 +305,53 @@ var Kinds = map[string]PlaceKind{
 			{Text: "Coupure de courant au milieu de la coupe : on attend le groupe électrogène.", Effect: Needs{Fun: -10}},
 		},
 	},
+	// The boutiques of the quarter: the kiosk, the shop on the corner, the
+	// clothes, the phones (thousands of them on the map, in Yopougon alone).
+	"boutique": {
+		ID: "boutique", Label: "Boutique", Icon: "store",
+		Interactions: []Interaction{
+			{ID: "credit", Label: "Acheter du crédit", Icon: "smartphone", Minutes: 5, Cost: 500, Effect: Needs{Social: 5}, MinHour: 7, MaxHour: 22},
+			{ID: "courses", Label: "Faire quelques courses", Icon: "shopping-bag", Minutes: 20, Cost: 2500, Effect: Needs{Hunger: 15, Fun: 5}, MinHour: 7, MaxHour: 22},
+			{ID: "sucrerie", Label: "Prendre une sucrerie bien fraîche", Icon: "cup-soda", Minutes: 10, Cost: 300, Effect: Needs{Hunger: 5, Fun: 10}, MinHour: 7, MaxHour: 23},
+			Gbairai,
+		},
+		Events: []RandomEvent{
+			{Text: "Le boutiquier n'a pas la monnaie : tu repars avec des bonbons à la place.", Effect: Needs{Fun: 5}},
+			{Text: "Le boutiquier te fait crédit : « Tu me donnes ça demain. »", Money: 200, Effect: Needs{Social: 10}},
+		},
+	},
+	"couture": {
+		ID: "couture", Label: "Couturier", Icon: "shirt",
+		Interactions: []Interaction{
+			{ID: "coudre-pagne", Label: "Faire coudre une tenue en pagne", Icon: "shirt", Minutes: 60, Cost: 7000, Effect: Needs{Fun: 20, Social: 15}, MinHour: 8, MaxHour: 20},
+			{ID: "retouche", Label: "Faire une retouche", Icon: "scissors", Minutes: 20, Cost: 1000, Effect: Needs{Fun: 5, Social: 5}, MinHour: 8, MaxHour: 20},
+			Gbairai,
+		},
+		Events: []RandomEvent{
+			{Text: "« Revenez demain, c'est presque fini » : le couturier, fidèle à sa réputation.", Effect: Needs{Fun: -10}},
+			{Text: "La tenue tombe parfaitement : tout le quartier te demande l'adresse du couturier.", Effect: Needs{Fun: 15, Social: 15}},
+		},
+	},
+	"pharmacie": {
+		ID: "pharmacie", Label: "Pharmacie", Icon: "stethoscope",
+		Interactions: []Interaction{
+			{ID: "medicaments", Label: "Acheter des médicaments", Icon: "stethoscope", Minutes: 15, Cost: 3000, Effect: Needs{Energy: 15}, MinHour: 7, MaxHour: 23},
+			{ID: "conseil", Label: "Demander conseil au pharmacien", Icon: "users", Minutes: 10, Cost: 0, Effect: Needs{Social: 5, Energy: 5}, MinHour: 7, MaxHour: 23},
+		},
+		Events: []RandomEvent{
+			{Text: "Pharmacie de garde : la file d'attente déborde sur le trottoir.", Effect: Needs{Energy: -5}},
+		},
+	},
 	"salon": {
 		ID: "salon", Label: "Salon de coiffure", Icon: "flower-2",
 		Interactions: []Interaction{
 			{ID: "tresses", Label: "Se faire tresser", Icon: "flower-2", Minutes: 3 * 60, Cost: 5000, Effect: Needs{Fun: 10, Social: 30, Energy: -10, Hygiene: 15}, MinHour: 8, MaxHour: 20},
 			{ID: "tissage", Ages: TeensUp, Label: "Se faire poser un tissage", Icon: "flower-2", Minutes: 2 * 60, Cost: 15000, Effect: Needs{Fun: 25, Social: 20, Hygiene: 15}, MinHour: 8, MaxHour: 20},
 			{ID: "chignon", Label: "Se faire un chignon", Icon: "flower-2", Minutes: 45, Cost: 2000, Effect: Needs{Fun: 15, Hygiene: 10}, MinHour: 8, MaxHour: 20},
+			{ID: "nattes", Label: "Se faire des nattes collées", Icon: "flower-2", Minutes: 90, Cost: 3000, Effect: Needs{Fun: 10, Social: 20, Hygiene: 15}, MinHour: 8, MaxHour: 20},
+			{ID: "vanilles", Label: "Se faire des vanilles", Icon: "flower-2", Minutes: 2 * 60, Cost: 4000, Effect: Needs{Fun: 15, Social: 25, Energy: -5, Hygiene: 15}, MinHour: 8, MaxHour: 20},
+			{ID: "macarons", Label: "Se faire des macarons", Icon: "flower-2", Minutes: 40, Cost: 1500, Effect: Needs{Fun: 15, Hygiene: 10}, MinHour: 8, MaxHour: 20},
+			{ID: "carre", Ages: TeensUp, Label: "Se faire un carré", Icon: "flower-2", Minutes: 60, Cost: 5000, Effect: Needs{Fun: 20, Social: 10, Hygiene: 15}, MinHour: 8, MaxHour: 20},
 			{ID: "manucure", Ages: TeensUp, Label: "Se faire les ongles", Icon: "sparkles", Minutes: 45, Cost: 3000, Effect: Needs{Fun: 20, Social: 10}, MinHour: 8, MaxHour: 20},
 			Gbairai,
 		},
@@ -376,7 +426,13 @@ var Gbairai = Interaction{ID: "gbairai", Ages: TeensUp, Label: "Faire le gbairai
 
 // Hairdos: what a visit to the barbier or the salon does to the Sim's look.
 var Hairdos = map[string]struct{ Hair, Beard string }{
-	"degrade":      {Hair: "short"},
+	"degrade":      {Hair: "degrade"},
+	"coupe-courte": {Hair: "short"},
+	"iroquoise":    {Hair: "mohawk"},
+	"nattes":       {Hair: "cornrows"},
+	"vanilles":     {Hair: "twists"},
+	"macarons":     {Hair: "puffs"},
+	"carre":        {Hair: "bob"},
 	"boule-a-zero": {Hair: "bald"},
 	"taille-barbe": {Beard: "bouc"},
 	"tresses":      {Hair: "braids"},

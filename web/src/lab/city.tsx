@@ -9,13 +9,45 @@ import { buildChunk } from '../world3d/open/meshes'
 import { makeTextures } from '../world3d/open/textures'
 import { blockRing } from '../world3d/open/voxel'
 import { Vehicle, type VehicleKind } from '../world3d/vehicles'
+import { Landmark } from '../world3d/open/landmarks'
+import { Arena } from '../world3d/interior/Arena'
+import { fetchChunk } from '../world3d/open/tiles'
+import { CHUNK_ZOOM, tileOf, type Origin } from '../world3d/open/geo'
+import { Apprenti, Forest, Palms, Trees, legProfile, makeWorldMaterials, type GbakaLeg } from '../world3d/open/OpenWorld'
+import { useFrame } from '@react-three/fiber'
+import { worldTime } from '../lib/worldClock'
+import { useEffect, useRef, useState } from 'react'
+import { Interior } from '../world3d/Interior'
+import { Character } from '../world3d/Character'
+import { OutdoorAction, outdoorLook, outdoorPose } from '../world3d/OutdoorAction'
+import { Dressing } from '../world3d/open/dressing'
+import { PolicePost } from '../world3d/open/streetlife'
+import { BridgeSights } from '../world3d/open/bridges'
+import { BridgeLife } from '../world3d/open/bridgeLife'
+import { randomLook } from '../avatar/options'
+import type { Sim } from '../lib/types'
 
 // Dev-only lab (/city.html): made-up map buildings (turned, L-shaped, round,
 // tiny) put through the real chunk builder, as the open world draws them, and
-// the street's vehicles; ?view=cars for the vehicles up close.
+// the street's vehicles; ?view=cars for the vehicles up close;
+// ?view=landmark&id=yop-rue-princesse (&night) for one landmark;
+// ?view=map&lat=5.345&lng=-4.082&n=1 for the real map's chunks there
+// (OpenFreeMap, no key), n chunks each way, seen from &cam;
+// ?view=gbaka&t=… the apprenti's chase down a straight street (t: seconds
+// into the cycle, frozen; without t it plays);
+// ?view=interior&kind=home&id=sleep (&housing=villa &g=homme &stage=bebe
+// &seed=3 &night) the inside of a place, the Sim doing that activity;
+// (&kind=arena: the Palais des Sports, id=play-basket|watch-match);
+// ?view=outdoor&id=play-football an outdoor activity's scene around the Sim;
+// ?view=dressing&kind=maquis (&name=…) the front of a place, its workers;
+// ?view=police the checkpoint on a big road's shoulder;
+// ?view=bridge&kind=fhb|cdg|hkb|yop|ado one of the big bridges over a lagoon
+// (&cam, &look, &night).
+// The interior takes &career=sante&level=1 for a Sim at work (&id=work).
 
 const q = new URLSearchParams(location.search)
 const view = q.get('view') ?? 'city'
+const night = q.has('night')
 
 const rect = (x: number, z: number, w: number, d: number, a = 0): XZ[] =>
   [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]].map(([u, v]) => [x + u * Math.cos(a) - v * Math.sin(a), z + u * Math.sin(a) + v * Math.cos(a)] as XZ)
@@ -111,7 +143,252 @@ function Cars({ z = 0, spread = 6.5 }: { z?: number; spread?: number }) {
   )
 }
 
+function LandmarkLab() {
+  const cam = (q.get('cam') ?? '45,30,60').split(',').map(Number) as [number, number, number]
+  const look = (q.get('look') ?? '0,2,0').split(',').map(Number) as [number, number, number]
+  return (
+    <Canvas shadows dpr={[1, 2]} camera={{ position: cam, fov: 45 }} style={{ width: '100vw', height: '100vh' }}>
+      <color attach="background" args={[night ? '#0d1030' : '#a9d3f0']} />
+      <hemisphereLight args={[night ? '#3a4a8a' : '#ffffff', '#b8a27c', night ? 0.35 : 1.2]} />
+      <directionalLight position={[40, 80, 30]} intensity={night ? 0.15 : 1.8} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-50} shadow-camera-right={50} shadow-camera-top={50} shadow-camera-bottom={-50} />
+      <Landmark id={q.get('id') ?? 'yop-rue-princesse'} night={night} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[140, 140]} />
+        <meshLambertMaterial color="#cbb38c" />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 32]} receiveShadow>
+        <planeGeometry args={[140, 10]} />
+        <meshLambertMaterial color="#55585e" />
+      </mesh>
+      <OrbitControls target={look} />
+    </Canvas>
+  )
+}
+
+function MapLab() {
+  const lat = Number(q.get('lat') ?? 5.345)
+  const lng = Number(q.get('lng') ?? -4.082)
+  const n = Number(q.get('n') ?? 1)
+  const origin: Origin = { lat, lng }
+  const mats = useMemo(makeWorldMaterials, [])
+  const [chunks, setChunks] = useState<{ key: string; meshes: ReturnType<typeof buildChunk>; data: ChunkData }[]>([])
+  useEffect(() => {
+    const [tx, ty] = tileOf(lat, lng, CHUNK_ZOOM)
+    for (let dx = -n; dx <= n; dx++)
+      for (let dy = -n; dy <= n; dy++)
+        fetchChunk(origin, tx + dx, ty + dy, '').then((data) => {
+          const t0 = performance.now()
+          const meshes = buildChunk(data, () => false)
+          ;(data as unknown as { ms: number }).ms = Math.round(performance.now() - t0)
+          ;(window as unknown as { stats: unknown[] }).stats = [...((window as unknown as { stats?: unknown[] }).stats ?? []), { key: data.key, buildings: data.buildings.length, roads: data.roads.length, trees: data.trees.length, forest: data.forest?.length ?? 0, areas: data.areas.length, meshMs: (data as unknown as { ms: number }).ms }]
+          setChunks((c) => [...c, { key: data.key, meshes, data }])
+        })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  const cam = (q.get('cam') ?? '600,700,900').split(',').map(Number) as [number, number, number]
+  const look = (q.get('look') ?? '0,0,0').split(',').map(Number) as [number, number, number]
+  return (
+    <Canvas dpr={[1, 1.5]} camera={{ position: cam, fov: 45, far: 8000 }} style={{ width: '100vw', height: '100vh' }}>
+      <color attach="background" args={['#a9d3f0']} />
+      <hemisphereLight args={['#ffffff', '#b8a27c', 1.3]} />
+      <directionalLight position={[300, 600, 200]} intensity={1.7} />
+      {chunks.map((c) => (
+        <group key={c.key}>
+          {Object.entries(c.meshes).map(([name, g]) => {
+            const m = (mats as Record<string, THREE.Material>)[name]
+            return g && m ? <mesh key={name} geometry={g} material={m} /> : null
+          })}
+          <Trees pts={c.data.trees} bark={mats.bark} leaves={mats.leaves} />
+          <Forest pts={c.data.forest ?? []} bark={mats.bark} />
+          <Palms pts={c.data.palms} bark={mats.bark} leaves={mats.leaves} />
+        </group>
+      ))}
+      <BridgeSights chunks={chunks.map((c) => c.data)} night={false} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
+        <planeGeometry args={[8000, 8000]} />
+        <meshLambertMaterial color="#cbb38c" />
+      </mesh>
+      <OrbitControls target={look} />
+    </Canvas>
+  )
+}
+
+/** One gbaka down a straight street: 5 s at the stop, 14 s to go 110 m, and again. */
+function GbakaRun() {
+  const car = useRef<THREE.Group>(null)
+  const leg = useRef<GbakaLeg>({ moving: false, since: 0, go: 14 })
+  const [STOP, GO, L] = [5, 14, 110]
+  const dist = useMemo(() => legProfile(GO, L), [])
+  useFrame(() => {
+    const fixed = q.get('t')
+    const k = (fixed !== null ? Number(fixed) : worldTime()) % (STOP + GO)
+    const l = leg.current
+    l.go = GO
+    l.d = dist
+    l.moving = k >= STOP
+    l.since = l.moving ? k - STOP : k
+    if (car.current) car.current.position.x = l.moving ? dist(k - STOP) - 40 : -40
+  })
+  return (
+    <group ref={car}>
+      <Vehicle p={[0, 0, 0]} kind="gbaka" crew={false} />
+      <Apprenti leg={leg} seed={0.3} />
+    </group>
+  )
+}
+
+function GbakaLab() {
+  const cam = (q.get('cam') ?? '-30,6,14').split(',').map(Number) as [number, number, number]
+  const look = (q.get('look') ?? '-34,1,0').split(',').map(Number) as [number, number, number]
+  return (
+    <Canvas shadows dpr={[1, 2]} camera={{ position: cam, fov: 45 }} style={{ width: '100vw', height: '100vh' }}>
+      <color attach="background" args={['#a9d3f0']} />
+      <hemisphereLight args={['#ffffff', '#b8a27c', 1.2]} />
+      <directionalLight position={[20, 40, 20]} intensity={1.8} castShadow />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[300, 60]} />
+        <meshLambertMaterial color="#cbb38c" />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} receiveShadow>
+        <planeGeometry args={[300, 9]} />
+        <meshLambertMaterial color="#55585e" />
+      </mesh>
+      <GbakaRun />
+      <OrbitControls target={look} />
+    </Canvas>
+  )
+}
+
+function InteriorLab() {
+  const gender = (q.get('g') ?? 'femme') as Sim['gender']
+  const sim = useMemo(() => {
+    let n = Number(q.get('seed') ?? 3)
+    const r = () => ((n = (n * 16807) % 2147483647) / 2147483647)
+    return { id: 'lab', firstName: 'Awa', lastName: 'Koné', gender, look: randomLook(gender, r), career: q.get('career') ?? '', careerLevel: Number(q.get('level') ?? 0) } as unknown as Sim
+  }, [gender])
+  return (
+    <div style={{ width: '100vw', height: '100vh' }}>
+      {q.get('kind') === 'arena' ? (
+        <Arena sim={sim} placeId="treich-palais" interactionId={q.get('id') ?? undefined} stage="adulte" />
+      ) : (
+        <Interior sim={sim} kind={q.get('kind') ?? 'home'} placeId={q.get('place') ?? 'lab-place'} interactionId={q.get('id') ?? undefined} housing={q.get('housing') ?? 'cour'} night={night} stage={q.get('stage') ?? 'adulte'} />
+      )}
+    </div>
+  )
+}
+
+function OutdoorLab() {
+  const id = q.get('id') ?? 'play-football'
+  const look = useMemo(() => {
+    let n = Number(q.get('seed') ?? 3)
+    return randomLook('femme', () => ((n = (n * 16807) % 2147483647) / 2147483647))
+  }, [])
+  return (
+    <Canvas shadows dpr={[1, 2]} camera={{ position: [5, 3.2, -4.5], fov: 45 }} style={{ width: '100vw', height: '100vh' }}>
+      <color attach="background" args={['#cfe9f8']} />
+      <hemisphereLight args={['#ffffff', '#b8a27c', 1.2]} />
+      <directionalLight position={[10, 20, 8]} intensity={1.8} castShadow />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[40, 40]} />
+        <meshLambertMaterial color={/swim|sand|fish/.test(id) ? '#e8d5a3' : /foot|basket|match/.test(id) ? '#4e9a4e' : '#b8b2a3'} />
+      </mesh>
+      <Character look={outdoorLook(look, id)} gender={(q.get('g') ?? 'femme') as 'femme' | 'homme'} busy pose={outdoorPose(id)} />
+      <OutdoorAction id={id} />
+      <OrbitControls target={[0, 0.9, 1.2]} />
+    </Canvas>
+  )
+}
+
+function FrontLab() {
+  const police = view === 'police'
+  return (
+    <Canvas shadows dpr={[1, 2]} camera={{ position: police ? [-9, 5, 9] : [2, 4, 13], fov: 45 }} style={{ width: '100vw', height: '100vh' }}>
+      <color attach="background" args={['#cfe9f8']} />
+      <hemisphereLight args={['#ffffff', '#b8a27c', 1.2]} />
+      <directionalLight position={[10, 20, 8]} intensity={1.8} castShadow />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[60, 60]} />
+        <meshLambertMaterial color="#b8b2a3" />
+      </mesh>
+      {police ? (
+        <PolicePost spot={{ id: 'lab', at: [0, 0], rot: 0, seed: 0.3 }} />
+      ) : (
+        <>
+          <mesh position={[0, 2, -2.5]}>
+            <boxGeometry args={[12, 4, 5]} />
+            <meshLambertMaterial color="#e3c9a3" />
+          </mesh>
+          <Dressing kind={q.get('kind') ?? 'maquis'} name={q.get('name') ?? ''} seed={Number(q.get('seed') ?? 0.37)} night={night} />
+        </>
+      )}
+      <OrbitControls target={police ? [0, 0.8, 0] : [1.5, 1, 1.5]} />
+    </Canvas>
+  )
+}
+
+const BRIDGE_NAMES: Record<string, string> = {
+  fhb: 'Pont Félix Houphouët-Boigny',
+  cdg: 'Pont Charles de Gaulle',
+  hkb: 'Pont Henri Konan Bédié',
+  yop: '4e pont',
+  ado: 'Pont Alassane Ouattara',
+  plain: 'Pont',
+}
+
+function BridgeLab() {
+  const kind = q.get('kind') ?? 'fhb'
+  const mats = useMemo(() => makeWorldMaterials(), [])
+  const chunk = useMemo<ChunkData>(
+    () => ({
+      key: 'bridge',
+      tx: 0,
+      ty: 0,
+      box: { x0: -420, z0: -120, x1: 420, z1: 120 },
+      roads: [
+        { cls: 'trunk', pts: [[-420, 0], [-330, 0]], width: 14, paved: true, bridge: false },
+        { cls: 'trunk', pts: [[330, 0], [420, 0]], width: 14, paved: true, bridge: false },
+        // A point every 10 m, as the map loader does (tiles.ts), so the deck can climb.
+        { cls: 'trunk', pts: [...Array(67)].map((_, i) => [-330 + i * 10, 0] as XZ), width: 14, paved: true, bridge: true, name: BRIDGE_NAMES[kind] },
+      ],
+      buildings: [],
+      areas: [{ kind: 'water', rings: [[[-260, -120], [260, -120], [260, 120], [-260, 120]]] }],
+      trees: [],
+      palms: [],
+      aeroways: [],
+      pois: [],
+    }),
+    [kind],
+  )
+  const meshes = useMemo(() => buildChunk(chunk, () => false), [chunk])
+  const cam = (q.get('cam') ?? '120,60,160').split(',').map(Number) as [number, number, number]
+  const look = (q.get('look') ?? '0,6,0').split(',').map(Number) as [number, number, number]
+  return (
+    <Canvas dpr={[1, 1.5]} camera={{ position: cam, fov: 45, far: 8000 }} style={{ width: '100vw', height: '100vh' }}>
+      <color attach="background" args={[night ? '#0b1030' : '#a9d3f0']} />
+      <hemisphereLight args={['#ffffff', '#b8a27c', night ? 0.3 : 1.3]} />
+      <directionalLight position={[300, 600, 200]} intensity={night ? 0.2 : 1.7} />
+      {Object.entries(meshes).map(([name, g]) => {
+        const m = (mats as Record<string, THREE.Material>)[name]
+        return g && m ? <mesh key={name} geometry={g} material={m} /> : null
+      })}
+      <BridgeSights chunks={[chunk]} night={night} />
+      <BridgeLife chunks={[chunk]} night={night} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
+        <planeGeometry args={[8000, 8000]} />
+        <meshLambertMaterial color="#cbb38c" />
+      </mesh>
+      <OrbitControls target={look} />
+    </Canvas>
+  )
+}
+
 function Lab() {
+  if (view === 'bridge') return <BridgeLab />
+  if (view === 'dressing' || view === 'police') return <FrontLab />
+  if (view === 'outdoor') return <OutdoorLab />
+  if (view === 'interior') return <InteriorLab />
+  if (view === 'gbaka') return <GbakaLab />
+  if (view === 'landmark') return <LandmarkLab />
+  if (view === 'map') return <MapLab />
   const cars = view === 'cars'
   return (
     <Canvas shadows dpr={[1, 2]} camera={cars ? { position: [4, 6, 30], fov: 40 } : view === 'street' ? { position: [-18, 9, 26], fov: 50 } : { position: [55, 60, 70], fov: 45 }} style={{ width: '100vw', height: '100vh' }}>

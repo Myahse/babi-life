@@ -280,7 +280,7 @@ function Checkpoint({ seed }: { seed: string }) {
     () =>
       [0, 1].map((i) => {
         const gender = i ? 'femme' : 'homme'
-        return { gender, look: { ...randomLook(gender, rng(`cop${seed}${i}`)), outfit: 'suit', outfitColor: '#14213d', accessory: 'cap', hair: 'short', beard: 'none' }, seed: i * 7 } as Person
+        return { gender, look: { ...randomLook(gender, rng(`cop${seed}${i}`)), outfit: 'policier', accessory: 'none', hair: 'short', beard: 'none' }, seed: i * 7 } as Person
       }),
     [seed],
   )

@@ -130,10 +130,12 @@ function Car4({ type, body, trim, roofSign }: { type: 'saloon' | 'suv'; body: st
 
 // The gbaka's apprenti hangs out of the sliding door, calling the stops and
 // waving at people on the sidewalk.
-const APPRENTI = { ...randomLook('homme', () => 0.37), outfit: 'jersey', outfitColor: '#ff8200', hair: 'short', accessory: 'capback' }
+/** Where the apprenti stands on the gbaka's step, outside the open door (the gbaka's frame: +x forward, +z its right). */
+export const GBAKA_DOOR: [number, number, number] = [1.0, 0.42, 1.9 / 2 + 0.3]
+export const APPRENTI = { ...randomLook('homme', () => 0.37), outfit: 'jersey', outfitColor: '#ff8200', hair: 'short', accessory: 'capback' }
 
 /** The gbaka, a Hiace-type minibus: one tall block, its windows, the open door, a loaded roof rack. */
-function Gbaka({ body, stripe }: { body: string; stripe: string }) {
+function Gbaka({ body, stripe, crew }: { body: string; stripe: string; crew: boolean }) {
   const [len, wide] = [5.3, 1.9]
   const p = paint(body)
   return (
@@ -158,11 +160,13 @@ function Gbaka({ body, stripe }: { body: string; stripe: string }) {
       ))}
       <Wheels x={[-1.75, 1.75]} r={0.36} wide={wide} />
       <Ends len={len} wide={wide} y={0.82} mirror={[2.2, 1.3]} />
-      <NoShadows>
-        <group position={[1.0, 0.55, wide / 2 + 0.32]} rotation={[0, Math.PI / 2, -0.22]}>
-          <Human look={APPRENTI} gender="homme" pose="wave" seed={2} />
-        </group>
-      </NoShadows>
+      {crew && (
+        <NoShadows>
+          <group position={[GBAKA_DOOR[0], GBAKA_DOOR[1], GBAKA_DOOR[2]]} rotation={[0, Math.PI / 2, 0]}>
+            <Human look={APPRENTI} gender="homme" pose="hang" seed={2} />
+          </group>
+        </NoShadows>
+      )}
     </group>
   )
 }
@@ -198,7 +202,7 @@ function Moto({ color }: { color: string }) {
 }
 
 /** Abidjan's traffic: orange taxi compteur, woro-woro, gbaka, cars and motos. */
-type VehicleProps = { p: [number, number, number]; r?: number; kind?: VehicleKind; color?: string; trim?: string; seed?: number }
+type VehicleProps = { p: [number, number, number]; r?: number; kind?: VehicleKind; color?: string; trim?: string; seed?: number; /** The gbaka's apprenti at the door (false: someone else moves him, see OpenWorld's Gbaka). */ crew?: boolean }
 
 /**
  * A vehicle in full detail up close; past FAR metres, a simple shape in the
@@ -239,13 +243,13 @@ function FarVehicle({ p, r = 0, kind = 'taxi', color }: VehicleProps) {
   )
 }
 
-function NearVehicle({ p, r = 0, kind = 'taxi', color, trim, seed = 0 }: VehicleProps) {
+function NearVehicle({ p, r = 0, kind = 'taxi', color, trim, seed = 0, crew = true }: VehicleProps) {
   return (
     <group position={p} rotation={[0, r, 0]}>
       {kind === 'moto' ? (
         <Moto color={color ?? '#c92a2a'} />
       ) : kind === 'gbaka' ? (
-        <Gbaka body={color ?? '#f4c430'} stripe={trim ?? '#00a862'} />
+        <Gbaka body={color ?? '#f4c430'} stripe={trim ?? '#00a862'} crew={crew} />
       ) : kind === 'car' ? (
         <Car4 type={seed % 3 === 0 ? 'suv' : 'saloon'} body={color ?? '#e9ecef'} />
       ) : (

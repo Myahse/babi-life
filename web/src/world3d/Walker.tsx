@@ -7,6 +7,8 @@ import type { Sim } from '../lib/types'
 import { iconFor, kindColors } from '../components/icons'
 import { IconTile } from '../components/ui'
 import { Character } from './Character'
+import { workLook } from '../avatar/options'
+import { OutdoorAction, outdoorLook, outdoorPose } from './OutdoorAction'
 import { HOME_ID, SIDEWALK, type Lot } from './layout'
 import { cameraTurn, moveInput, running } from './input'
 import { whereabouts } from './whereabouts'
@@ -56,7 +58,7 @@ type Props = {
   moodColor: string
   goTo: { placeId: string; nonce: number } | null
   onArrive: (placeId: string) => void
-  busy: { icon: string; kind: string } | null
+  busy: { icon: string; kind: string; /** The activity, to show it (outdoors). */ id?: string } | null
   stationAt: string | null
   nameTag?: string
   labels: boolean
@@ -88,8 +90,14 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   // once: the place list changes later (a happening starts, an activity
   // ends) and the Sim must never teleport.
   const placed = useRef(false)
+  const born = useRef(performance.now())
   useEffect(() => {
     if (placed.current || !controls) return
+    // Busy at a place from the map: it comes a moment later. Wait for it a
+    // little; past that, start at home for now and go there once it comes.
+    const mapStation = !!stationAt && stationAt.includes('-osm-') && !lots.some((l) => l.id === stationAt)
+    if (mapStation && performance.now() - born.current < 4000) return
+    provisional.current = mapStation
     const at = lots.find((l) => l.id === stationAt) ?? lots.find((l) => l.id === HOME_ID)
     const [x, z] = at?.door ?? nav.start ?? [0, SIDEWALK]
     group.current!.position.set(x, 0, z)
@@ -103,6 +111,23 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     if (at) group.current!.rotation.y = at.z < 0 ? Math.PI : 0
     placed.current = true
   }, [lots, stationAt, controls]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const provisional = useRef(false)
+  useEffect(() => {
+    if (!provisional.current || !stationAt || started.current || path.current.length) return
+    const at = lots.find((l) => l.id === stationAt)
+    if (!at) return
+    provisional.current = false
+    const [x, z] = at.door
+    const g = group.current!
+    if (controls) {
+      const d = new THREE.Vector3(x - g.position.x, 0, z - g.position.z)
+      controls.target.add(d)
+      camera.position.add(d)
+      controls.update()
+    }
+    g.position.set(x, 0, z)
+  }, [lots, stationAt]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // The camera follows the Sim, unless the player dragged it away to look
   // around; walking (or the recentre button) brings it back.
@@ -147,10 +172,15 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     return () => (controls.removeEventListener('start', start), controls.removeEventListener('end', end))
   }, [controls]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Each order to go somewhere starts one walk: the place list changing on
+  // the way (places from the map coming in) must not start it again, or
+  // the Sim would slow down forever, never arriving.
+  const started = useRef<Props['goTo']>(null)
   useEffect(() => {
-    if (!goTo) return
+    if (!goTo || started.current === goTo) return
     const lot = lots.find((l) => l.id === goTo.placeId)
     if (!lot) return
+    started.current = goTo
     const p = group.current!.position
     const way = nav.route([p.x, p.z], lot.door, true)
     if (way) path.current = way.slice(1)
@@ -383,7 +413,9 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       </mesh>
       {route && <RouteDots route={route} from={group} heightAt={nav.heightAt} />}
       <group ref={group}>
-        <Character look={sim.look} gender={sim.gender} walking={walking} running={run} busy={!!busy} pose={busy?.kind === 'chat' ? 'talk' : undefined} moodColor={moodColor} stage={stage} speed={run ? RUN : SPEED} />
+        <Character look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking} running={run} busy={!!busy} pose={busy?.kind === 'chat' ? 'talk' : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={run ? RUN : SPEED} />
+        {/* Outdoors, what the Sim is doing is set around it (the ball, the towel, the bus stop…) */}
+        {busy && !walking && <OutdoorAction id={busy.id} />}
         {labels && nameTag && (
           <Html position={[0, 2.45, 0]} center zIndexRange={[28, 20]}>
             <span className="pointer-events-none rounded-md bg-[#0f1230]/80 px-1.5 py-0.5 text-[11px] font-extrabold whitespace-nowrap text-white">{nameTag}</span>

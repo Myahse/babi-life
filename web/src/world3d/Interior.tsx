@@ -1,14 +1,16 @@
 import { lazy, Suspense, useMemo, useRef } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import { Shell } from './interior/Shell'
+import { NoteShower } from './money'
 import { useRoomStyle } from './interior/Decor'
 import * as THREE from 'three'
 import type { Player, Sim } from '../lib/types'
 import { Human, NoShadows, type Pose } from '../avatar/Human'
-import { randomLook } from '../avatar/options'
+import { randomLook, workLook } from '../avatar/options'
 import { Box } from './props'
 import { Character } from './Character'
+import { ActionProps, Pot, SewingTable, TvScreen, Zzz } from './interior/ActionProps'
 import { rng } from './themes'
 import { worldTime } from '../lib/worldClock'
 
@@ -22,11 +24,11 @@ const AmbientOcclusion = lazy(() => import('./effects'))
 
 type V3 = [number, number, number]
 /** Where someone is and what they're doing. */
-type Spot = { p: V3; r?: number; pose: Pose; lying?: boolean; g?: 'femme' | 'homme' }
+type Spot = { p: V3; r?: number; pose: Pose; lying?: boolean; g?: 'femme' | 'homme'; /** What they wear there (the swimsuit in the pool). */ outfit?: string }
 type Person = Spot & { gender: 'femme' | 'homme'; look: ReturnType<typeof randomLook>; seed: number }
 
 /** Kinds of places that have an inside (the beach or the football pitch don't). */
-export const INDOOR = new Set(['police', 'home', 'maquis', 'club', 'restaurant', 'market', 'office', 'mairie', 'school', 'health', 'worship', 'mall', 'culture', 'barbier', 'salon', 'hotel', 'universite'])
+export const INDOOR = new Set(['boutique', 'couture', 'pharmacie', 'police', 'home', 'maquis', 'club', 'restaurant', 'market', 'office', 'mairie', 'school', 'health', 'worship', 'mall', 'culture', 'barbier', 'salon', 'hotel', 'universite'])
 
 /** Ambient occlusion where the device can afford it. */
 const RICH = typeof navigator === 'undefined' || (navigator.hardwareConcurrency ?? 4) > 4
@@ -37,21 +39,33 @@ type Room = { floor: string; wall: string; dark?: boolean; furniture: React.Reac
 /** What the Sim does there: where it goes and how it moves. */
 function action(kind: string, id: string | undefined): { spot: string; pose: Pose } {
   if (!id) return { spot: 'entrance', pose: 'idle' }
+  // At work: where the job is done there, and how.
+  if (id === 'work') {
+    if (kind === 'maquis' || kind === 'restaurant') return { spot: 'counter', pose: 'cook' }
+    if (kind === 'office' || kind === 'mairie') return { spot: 'desk', pose: 'write' }
+    if (kind === 'school' || kind === 'universite') return { spot: 'counter', pose: 'talk' }
+    if (kind === 'club') return { spot: 'floor', pose: 'dance' }
+    if (kind === 'market' || kind === 'mall' || kind === 'boutique') return { spot: 'stall', pose: 'busy' }
+    return { spot: 'counter', pose: 'busy' }
+  }
   if (id === 'garde-a-vue') return { spot: 'seat', pose: 'sit' }
-  if (/^(degrade|boule-a-zero|taille-barbe|tresses|tissage|chignon|manucure)$/.test(id)) return { spot: 'chair', pose: 'sit' }
+  if (/^(degrade|boule-a-zero|taille-barbe|tresses|tissage|chignon|manucure|coupe-courte|iroquoise|nattes|vanilles|macarons|carre|coudre-pagne|retouche)$/.test(id)) return { spot: 'chair', pose: 'sit' }
   // Gbairai: telling the quarter's news, with the hands.
   if (id === 'gbairai') return { spot: kind === 'barbier' || kind === 'salon' ? 'bench' : 'table', pose: 'rant' }
   if (id === 'piscine-hotel') return { spot: 'pool', pose: 'idle' }
   if (id === 'nuit-hotel') return { spot: 'bed', pose: 'idle' }
   if (id === 'brunch-lagune' || id === 'resto-u') return { spot: 'table', pose: 'eat' }
   if (id === 'bar-hotel') return { spot: 'table', pose: 'drink' }
-  if (/^(sleep|nap)$/.test(id)) return { spot: 'bed', pose: 'idle' }
+  if (/^(sleep|nap)$/.test(id)) return { spot: 'bed', pose: 'sleep' }
   if (/^(biberon|bouillie|hochet|calin)$/.test(id)) return { spot: 'mat', pose: 'busy' }
-  if (id === 'bain-bebe' || id === 'shower') return { spot: 'shower', pose: 'idle' }
-  if (id === 'cook-attieke') return { spot: 'stove', pose: 'busy' }
+  if (id === 'shower') return { spot: 'shower', pose: 'wash' }
+  if (id === 'bain-bebe') return { spot: 'shower', pose: 'busy' }
+  if (id === 'pray') return { spot: 'seat', pose: 'pray' }
+  if (/^(medicaments|conseil|credit|courses|sucrerie)$/.test(id)) return { spot: kind === 'boutique' ? 'stall' : 'counter', pose: id === 'sucrerie' ? 'drink' : 'idle' }
+  if (id === 'cook-attieke') return { spot: 'stove', pose: 'cook' }
   if (id === 'watch-tv' || id === 'call-family') return { spot: 'sofa', pose: 'sit' }
   if (id === 'devoirs' || id === 'jouer-cour') return { spot: 'table', pose: id === 'devoirs' ? 'write' : 'dance' }
-  if (id === 'travaillement') return { spot: 'floor', pose: 'throw' }
+  if (id.endsWith('travaillement')) return { spot: 'floor', pose: 'throw' }
   if (/dance|party|coupe/.test(id)) return { spot: 'floor', pose: 'dance' }
   if (/^(drink|milkshake|coffee)/.test(id) || id.includes('drink')) return { spot: 'table', pose: 'drink' }
   if (/^(eat|burger|glace|anniversaire)/.test(id) || id.startsWith('golvo-')) return { spot: 'table', pose: 'eat' }
@@ -60,6 +74,28 @@ function action(kind: string, id: string | undefined): { spot: string; pose: Pos
   if (id === 'consultation') return { spot: 'bed', pose: 'idle' }
   if (kind === 'market' || kind === 'mall') return { spot: 'stall', pose: 'busy' }
   return { spot: 'counter', pose: 'idle' }
+}
+
+/** Brings the camera close to the Sim doing something (once: then it's the player's). */
+function FocusOn({ at, lying, facing }: { at: V3; lying: boolean; facing: number }) {
+  const controls = useThree((st) => st.controls) as unknown as { target: THREE.Vector3; update: () => void } | null
+  const camera = useThree((st) => st.camera)
+  const done = useRef(false)
+  useFrame((_, dt) => {
+    if (done.current || !controls) return
+    const target = new THREE.Vector3(at[0], at[1] + (lying ? 0.4 : 0.85), at[2])
+    // From the side the Sim faces (its face, its plate), as far round as the
+    // open side of the room lets the camera go.
+    const az = Math.min(1.3, Math.max(0.25, ((facing % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) > Math.PI ? 0.25 : facing))
+    const [dist, pol] = [lying ? 4.2 : 3.6, 1.0]
+    const want = target.clone().add(new THREE.Vector3(Math.sin(az) * Math.sin(pol) * dist, Math.cos(pol) * dist, Math.cos(az) * Math.sin(pol) * dist))
+    const k = 1 - Math.exp(-3 * Math.min(dt, 0.1))
+    controls.target.lerp(target, k)
+    camera.position.lerp(want, k)
+    controls.update()
+    if (camera.position.distanceTo(want) < 0.05) done.current = true
+  })
+  return null
 }
 
 /* ---------- Furniture ---------- */
@@ -153,47 +189,18 @@ function DiscoLights() {
   )
 }
 
-/** Banknotes flying from the Sim's hand onto the dancers in front: the travaillement. */
-function NoteRain({ from }: { from: V3 }) {
-  const COUNT = 60
-  const ref = useRef<THREE.InstancedMesh>(null)
-  const notes = useMemo(() => [...Array(COUNT)].map((_, i) => ({ x: 0, y: -1, z: 0, vx: 0, vy: 0, vz: 0, rot: 0, delay: i * 0.12 })), [])
-  const m = useMemo(() => new THREE.Object3D(), [])
-  useFrame((_, dt) => {
-    const mesh = ref.current
-    if (!mesh) return
-    const t = worldTime()
-    notes.forEach((n, i) => {
-      if (n.y <= 0.02) {
-        if (t < n.delay) return
-        // Thrown again from the hand, up and out over the dancers.
-        Object.assign(n, { x: from[0] + 0.1, y: from[1] + 1.9, z: from[2] - 0.3, vx: (Math.random() - 0.4) * 1.6, vy: 1.5 + Math.random(), vz: -(0.8 + Math.random() * 1.6), delay: t + 4 + Math.random() * 3 })
-      }
-      n.vy -= 3 * dt
-      n.vx *= 0.98
-      n.vz *= 0.98
-      n.x += n.vx * dt
-      n.y = Math.max(0.01, n.y + n.vy * dt * 0.6)
-      n.z += n.vz * dt
-      n.rot += dt * 6
-      m.position.set(n.x, n.y, n.z)
-      m.rotation.set(n.rot, n.rot * 0.7, 0)
-      m.updateMatrix()
-      mesh.setMatrixAt(i, m.matrix)
-    })
-    mesh.instanceMatrix.needsUpdate = true
-  })
-  return (
-    <instancedMesh ref={ref} args={[undefined, undefined, COUNT]}>
-      <planeGeometry args={[0.16, 0.08]} />
-      <meshBasicMaterial color="#4caf50" side={THREE.DoubleSide} />
-    </instancedMesh>
-  )
+/** How many notes fly: a petit travaillement drizzles, the grand one pours. */
+function shower(id?: string) {
+  return id === 'grand-travaillement' ? { rate: 4.5, fan: 5 } : id === 'petit-travaillement' ? { rate: 1.4, fan: 3 } : { rate: 2.6, fan: 4 }
 }
 
 /* ---------- Rooms ---------- */
 
-function room(kind: string, housing: string): Room {
+/** The new kinds of places furnished like their nearest one. */
+const ROOM_LIKE: Record<string, string> = { boutique: 'market', pharmacie: 'market' }
+
+function room(kindIn: string, housing: string): Room {
+  const kind = ROOM_LIKE[kindIn] ?? kindIn
   switch (kind) {
     case 'home': {
       const rich = housing === 'villa' || housing === 'appart'
@@ -220,7 +227,7 @@ function room(kind: string, housing: string): Room {
           </>
         ),
         spots: {
-          bed: { p: [-4, 0.62, -2.4], pose: 'idle', lying: true },
+          bed: { p: [-4, 0.74, -1.75], pose: 'idle', lying: true },
           sofa: { p: [1.5, 0.05, -3.2], pose: 'sit' },
           stove: { p: [5.2, 0, -2.6], r: Math.PI, pose: 'busy' },
           shower: { p: [-5.2, 0.06, 2.8], r: Math.PI / 2, pose: 'idle' },
@@ -454,6 +461,61 @@ function room(kind: string, housing: string): Room {
           { p: [-4.6, 0.06, -3.6], pose: 'sit' },
         ],
       }
+    case 'couture': {
+      // The tailor's workshop: the machines on their tables, the fabric on
+      // the shelves, a wax dress on the mannequin, finished clothes on the rail.
+      return {
+        floor: '#c9b08a',
+        wall: '#f1e2c6',
+        furniture: (
+          <>
+            {[-3, 0.5].map((x, i) => (
+              <group key={x} position={[x, 0, -3.05]}>
+                <SewingTable seed={i} />
+                <Box p={[0, 0.23, 0.75]} s={[0.4, 0.46, 0.4]} c="#6b4423" />
+              </group>
+            ))}
+            {/* The shelves of fabric along the back wall */}
+            <Box p={[-4.9, 1.2, -4.2]} s={[1.4, 2.4, 0.45]} c="#7a5230" />
+            {[0.35, 0.95, 1.55, 2.15].map((y, row) =>
+              [-5.35, -5.05, -4.75, -4.45].map((x, k) => <Box key={`${row}${k}`} p={[x, y, -4.0]} s={[0.24, 0.32, 0.38]} c={['#e8432f', '#f2a81d', '#1f6fb5', '#2e8b57', '#8e44ad', '#ffffff', '#d6336c', '#14213d'][(row * 3 + k) % 8]} />),
+            )}
+            {/* The mannequin in a wax dress */}
+            <group position={[4.3, 0, -3.3]}>
+              <Box p={[0, 0.5, 0]} s={[0.06, 1, 0.06]} c="#2b2b2b" />
+              <Box p={[0, 1.25, 0]} s={[0.44, 0.6, 0.26]} c="#f08c00" />
+              <Box p={[0, 1.25, 0.135]} s={[0.3, 0.45, 0.01]} c="#7b2d26" />
+              <Box p={[0, 0.85, 0]} s={[0.56, 0.3, 0.34]} c="#f08c00" />
+              <Box p={[0, 1.62, 0]} s={[0.12, 0.14, 0.12]} c="#c9b27a" />
+            </group>
+            {/* The rail of finished clothes, waiting for their owners */}
+            <Box p={[5.5, 1.85, 0.3]} s={[0.05, 0.05, 2.8]} c="#adb5bd" />
+            {['#2a6cf0', '#f4efe6', '#7b5cff', '#e8432f', '#2e8b57', '#f2b705'].map((c, k) => (
+              <Box key={c} p={[5.5, 1.35, -0.9 + k * 0.45]} s={[0.08, 0.9, 0.4]} c={c} />
+            ))}
+            {/* The ironing board and the coal iron */}
+            <Box p={[-4.4, 0.85, 1.8]} s={[0.4, 0.05, 1.3]} c="#e9ecef" />
+            <Box p={[-4.4, 0.42, 1.8]} s={[0.05, 0.84, 0.05]} c="#495057" />
+            <Box p={[-4.4, 0.95, 1.5]} s={[0.16, 0.14, 0.26]} c="#343a40" />
+            {/* The bench for those who wait */}
+            <Box p={[4.8, 0.45, 2.1]} s={[0.6, 0.1, 2.2]} c="#8a6a3d" />
+          </>
+        ),
+        spots: {
+          // Next to the master tailor, watching the pagne being sewn.
+          chair: { p: [1.75, 0.06, -2.85], r: -Math.PI / 2, pose: 'sit' },
+          entrance: { p: [0, 0, 3.6], r: Math.PI, pose: 'idle' },
+          counter: { p: [2.2, 0, 0.4], r: Math.PI, pose: 'idle' },
+          bench: { p: [4.55, 0.05, 2.1], r: -Math.PI / 2, pose: 'rant' },
+        },
+        crowd: [
+          { p: [0.5, 0.06, -2.3], r: Math.PI, pose: 'write', g: 'homme' },
+          { p: [-3, 0.06, -2.3], r: Math.PI, pose: 'write' },
+          { p: [-4.4, 0, 2.35], r: Math.PI, pose: 'busy' },
+          { p: [4.55, 0.05, 1.4], r: -Math.PI / 2, pose: 'sit', g: 'femme' },
+        ],
+      }
+    }
     case 'barbier':
     case 'salon': {
       // Chairs facing the mirrors, the bench where people wait and talk.
@@ -493,8 +555,10 @@ function room(kind: string, housing: string): Room {
         },
         crowd: [
           { p: [-3.5, 0.06, -3.15], r: Math.PI, pose: 'sit', g: salon ? 'femme' : 'homme' },
-          { p: [-2.8, 0, -2.4], r: Math.PI * 0.85, pose: 'busy', g: salon ? 'femme' : 'homme' },
-          { p: [0.8, 0, -2.5], r: Math.PI * 0.8, pose: 'busy', g: salon ? 'femme' : 'homme' },
+          // Each client has someone working behind the chair (the Sim's, the middle one, too: see ActionProps).
+          { p: [-3.35, 0, -2.45], r: Math.PI, pose: 'busy', g: salon ? 'femme' : 'homme' },
+          { p: [3.5, 0.06, -3.15], r: Math.PI, pose: 'sit', g: salon ? 'femme' : 'homme' },
+          { p: [3.65, 0, -2.45], r: Math.PI, pose: 'busy', g: salon ? 'femme' : 'homme' },
           { p: [4.55, 0.05, 0.3], r: -Math.PI / 2, pose: 'sit' },
           { p: [4.55, 0.05, 2.3], r: -Math.PI / 2, pose: 'cheer' },
         ],
@@ -518,7 +582,8 @@ function room(kind: string, housing: string): Room {
           </>
         ),
         spots: {
-          pool: { p: [1.6, 0.05, 0.9], r: 0.4, pose: 'idle' },
+          // In the water up to the waist (the floor hides the legs).
+          pool: { p: [1.6, -0.8, 0.9], r: 0.4, pose: 'wave' },
           bed: { p: [4.4, 0.62, -3.1], pose: 'idle', lying: true },
           table: { p: [-2.2, 0, 3.45], r: Math.PI, pose: 'eat' },
           entrance: { p: [0, 0, 3.8], r: Math.PI, pose: 'idle' },
@@ -526,7 +591,7 @@ function room(kind: string, housing: string): Room {
         },
         crowd: [
           { p: [-3, 0, -4.2], pose: 'busy' },
-          { p: [2.6, 0.05, 0], r: -0.6, pose: 'wave' },
+          { p: [2.9, -0.8, -0.2], r: -0.6, pose: 'wave', outfit: 'maillot' },
           { p: [-4.6, 0.05, 1.2], r: Math.PI / 2, pose: 'sit' },
           { p: [-2.2, 0, 1.75], pose: 'drink' },
         ],
@@ -595,16 +660,38 @@ export function Interior({ sim, kind, placeId, interactionId, housing, night, st
   const r = room(kind, housing)
   const style = useRoomStyle(kind, housing)
   const act = action(kind, interactionId)
-  const me = r.spots[act.spot] ?? r.spots.entrance
+  const me = r.spots[act.spot] ?? r.spots.counter ?? r.spots.entrance
   const people = useMemo<Person[]>(() => {
     const rand = rng(`inside${placeId}`)
     return r.crowd.map((s) => {
       // The club's dance floor is the women's; elsewhere anyone.
       const gender: Person['gender'] = s.g ?? (kind === 'club' && s.pose === 'dance' ? 'femme' : kind === 'salon' && rand() < 0.8 ? 'femme' : rand() < 0.5 ? 'femme' : 'homme')
-      return { ...s, gender, look: randomLook(gender, rand), seed: rand() * 100 }
+      const look = randomLook(gender, rand)
+      return { ...s, gender, look: s.outfit ? { ...look, outfit: s.outfit, accessory: 'none' } : look, seed: rand() * 100 }
     })
   }, [placeId, kind]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Doing the travaillement: face the dancers; they cheer as the notes fall.
+  const throwing = act.pose === 'throw'
+  const faceDancers = useMemo(() => {
+    const d = r.crowd.filter((c) => c.pose === 'dance' || c.pose === 'cheer')
+    if (!d.length) return me.r ?? 0
+    const [cx, cz] = [d.reduce((t, c) => t + c.p[0], 0) / d.length, d.reduce((t, c) => t + c.p[2], 0) / d.length]
+    return Math.atan2(cx - me.p[0], cz - me.p[2])
+  }, [r, me])
   const dark = r.dark || night
+  // In the shower: in a towel.
+  // At the hairdresser's: the cap comes off.
+  // At work: in the job's uniform.
+  const look =
+    act.spot === 'shower' && interactionId === 'shower'
+      ? { ...sim.look, outfit: 'serviette', accessory: 'none' }
+      : act.spot === 'chair' && (kind === 'barbier' || kind === 'salon')
+        ? { ...sim.look, accessory: 'none' }
+        : interactionId === 'piscine-hotel'
+          ? { ...sim.look, outfit: 'maillot', accessory: 'none' }
+          : interactionId === 'work'
+            ? workLook(sim.look, sim.career, sim.careerLevel)
+            : sim.look
   return (
     <Canvas shadows dpr={[1, 2]} camera={{ position: [8.4, 8.6, 10.8], fov: 42 }} style={{ background: dark ? '#0b0d1f' : '#2a2340' }}>
       <Suspense fallback={null}>
@@ -617,16 +704,23 @@ export function Interior({ sim, kind, placeId, interactionId, housing, night, st
         <NoShadows>
           {people.map((p, i) => (
             <group key={i} position={p.p} rotation={p.lying ? [-Math.PI / 2, 0, 0] : [0, p.r ?? 0, 0]}>
-              <Human look={p.look} gender={p.gender} pose={p.pose} seed={p.seed} />
+              <Human look={p.look} gender={p.gender} pose={throwing && p.pose === 'dance' && i % 2 ? 'cheer' : p.pose} seed={p.seed} />
             </group>
           ))}
         </NoShadows>
-        <group position={me.p} rotation={me.lying ? [-Math.PI / 2, 0, 0] : [0, me.r ?? 0, 0]}>
-          <Character look={sim.look} gender={sim.gender} stage={stage} plumbob={!me.lying} busy={act.pose === 'busy'} pose={act.pose} />
+        <group position={me.p} rotation={me.lying ? [-Math.PI / 2, 0, 0] : [0, throwing ? faceDancers : (me.r ?? 0), 0]}>
+          <Character look={look} gender={sim.gender} stage={stage} plumbob={!me.lying} busy={act.pose === 'busy'} pose={act.pose} />
+          <ActionProps id={interactionId} kind={kind} lying={!!me.lying} />
+          {/* The travaillement: notes off the wad, over the dancers in front */}
+          {throwing && <NoteShower from={[0.3, 1.72, 0.3]} toward={[0, 0.35, 1]} {...shower(interactionId)} seed={placeId.length} />}
         </group>
-        {act.pose === 'throw' && <NoteRain from={me.p} />}
+        {interactionId === 'watch-tv' && kind === 'home' && <TvScreen />}
+        {interactionId === 'cook-attieke' && kind === 'home' && <Pot />}
+        {me.lying && /^(sleep|nap)$/.test(interactionId ?? '') && <Zzz at={[me.p[0], me.p[1] + 0.6, me.p[2] - 0.6]} />}
         {/* Turn around the room and zoom, within the cut-away side */}
-        <OrbitControls target={[0, 0.8, 0]} enablePan={false} minDistance={7} maxDistance={24} minPolarAngle={0.35} maxPolarAngle={1.25} minAzimuthAngle={0.15} maxAzimuthAngle={1.4} enableDamping />
+        <OrbitControls makeDefault target={[0, 0.8, 0]} enablePan={false} minDistance={interactionId ? 2.6 : 7} maxDistance={24} minPolarAngle={0.35} maxPolarAngle={1.25} minAzimuthAngle={0.15} maxAzimuthAngle={1.4} enableDamping />
+        {/* Doing something: the camera comes close to see it */}
+        {interactionId && <FocusOn at={me.p} lying={!!me.lying} facing={throwing ? faceDancers : (me.r ?? 0)} key={`${interactionId}${act.spot}`} />}
         {RICH && (
           <Suspense fallback={null}>
             <AmbientOcclusion radius={1.2} falloff={0.6} intensity={2.2} />
@@ -640,6 +734,7 @@ export function Interior({ sim, kind, placeId, interactionId, housing, night, st
           return (
             <group key={o.id} position={[at.p[0] + dx, at.p[1], at.p[2]]} rotation={[0, at.r ?? 0, 0]}>
               <Character look={o.look} gender={o.gender} stage={o.stage} pose={a.pose} moodColor="#3b82f6" />
+              {a.pose === 'throw' && <NoteShower from={[0.3, 1.72, 0.3]} toward={[0, 0.35, 1]} {...shower(o.activity?.interactionId)} seed={i + 7} />}
             </group>
           )
         })}

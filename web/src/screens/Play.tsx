@@ -1,8 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BadgeCheck, Cake, Hammer, Eye, LocateFixed, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, Cake, Hammer, Eye, LocateFixed, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
-import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World, Ride } from '../lib/types'
+import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World, Ride, Place } from '../lib/types'
 import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
 import { useLive } from '../lib/live'
@@ -22,6 +22,7 @@ import { HomeApp, JobsApp, type Act } from './phoneApps'
 import { NewsApp, topicOf } from './NewsApp'
 import { RideFlow, type FlowRequest } from '../components/RideFlow'
 import { INDOOR, Interior } from '../world3d/Interior'
+import { ARENAS, Arena } from '../world3d/interior/Arena'
 import { AppLogo } from '../components/AppLogo'
 import { GolvoApp, deliveryState, type Delivery } from './GolvoApp'
 import { WayeApp } from './WayeApp'
@@ -55,6 +56,24 @@ function useIsDesktop() {
 const HOUR_OVERRIDE = import.meta.env.DEV && new URLSearchParams(location.search).get('hour') ? Number(new URLSearchParams(location.search).get('hour')) : undefined
 const MAP_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
 
+/**
+ * The commune with its places from the map added (for the menus, names and
+ * kinds of what the Sim walks to), the same object while neither changes.
+ */
+const withMap = new WeakMap<Commune, { list: Place[]; merged: Commune }>()
+function withMapPlaces(c: Commune, list: Place[]): Commune {
+  if (!list.length) return c
+  const had = withMap.get(c)
+  if (had?.list === list) return had.merged
+  const merged = { ...c, places: [...c.places, ...list] }
+  withMap.set(c, { list, merged })
+  own.set(merged, c)
+  return merged
+}
+/** The commune as the server sends it, without the map's places (the world adds its own). */
+const own = new WeakMap<Commune, Commune>()
+const ownPlaces = (c: Commune) => own.get(c) ?? c
+
 const streetPose = () => ({ heading: whereabouts.heading, polar: whereabouts.polar })
 
 export function Play() {
@@ -87,8 +106,11 @@ export function Play() {
   // The camera dragged away from the Sim, and the way back.
   const [freeCam, setFreeCam] = useState(false)
   const [recenter, setRecenter] = useState(0)
-  // The real streets (open world) when a map token is set and they load; else the classic street.
-  const [classic, setClassic] = useState(!MAP_TOKEN)
+  // The real streets (open world): from Mapbox with a token, else from
+  // OpenFreeMap (no key). The classic street if they don't load, or ?classic.
+  const [classic, setClassic] = useState(() => new URLSearchParams(location.search).has('classic'))
+  // The commune's places from the map, as the open world loads them around the Sim.
+  const [mapPlaces, setMapPlaces] = useState<Place[]>([])
   const [closeView, setCloseView] = useState(false)
   const [whereTo, setWhereTo] = useState(false)
   const announced = useRef('')
@@ -222,12 +244,12 @@ export function Play() {
     return () => clearTimeout(t)
   }, [calling])
   const talkedTo = useRef<string | null>(null)
-  const say = async (topic: string, label: string) => {
+  const say = async (topic: string, label: string, phrase?: string) => {
     const npc = chat!
     talkedTo.current = npc.id
     let said: string | null = null
     await run(label, 'messages-square', 'social', async () => {
-      const res = await api.chat(sim!.id, { id: npc.id, name: npc.name, gender: npc.gender, seed: npc.seed }, topic)
+      const res = await api.chat(sim!.id, { id: npc.id, name: npc.name, gender: npc.gender, seed: npc.seed }, topic, phrase)
       said = res.outcome.text
       return res
     })
@@ -310,7 +332,7 @@ export function Play() {
   const doing = sim.activity?.kind === 'do' ? sim.activity : null
   const stop = () => run('Arrêter', 'x', '', () => api.stop(sim.id))
   const city = world.cities.find((x) => x.id === sim.city)!
-  const commune = city.communes.find((x) => x.id === sim.commune)!
+  const commune = withMapPlaces(city.communes.find((x) => x.id === sim.commune)!, classic ? [] : mapPlaces)
   const unseen = journal.filter((e) => e.id > seen).length
   const placeName = (id: string) => (id === 'home' ? 'Chez toi' : id === 'happening' ? (street?.happening?.label ?? 'En ce moment') : (commune.places.find((p) => p.id === id)?.name ?? ''))
   // Inside a place: while doing something there, or looking at what it offers.
@@ -318,12 +340,14 @@ export function Play() {
   const inside = (() => {
     if (doing) {
       if (doing.placeId === 'golvo') return atHomeNow ? { id: 'home', kind: 'home', it: doing.interaction.id } : null
-      const kind = doing.placeId === 'home' ? 'home' : (doing.placeKind ?? '')
-      return INDOOR.has(kind) && doing.placeId ? { id: doing.placeId, kind, it: doing.interaction.id } : null
+      if (!doing.placeId) return null
+      const kind = doing.placeId === 'home' ? 'home' : ARENAS.has(doing.placeId) ? 'arena' : (doing.placeKind ?? '')
+      return INDOOR.has(kind) || kind === 'arena' ? { id: doing.placeId, kind, it: doing.interaction.id } : null
     }
     if (placeId && placeId !== 'happening') {
-      const kind = placeId === 'home' ? 'home' : commune.places.find((p) => p.id === placeId)?.kind
-      return kind && INDOOR.has(kind) ? { id: placeId, kind, it: undefined } : null
+      // A covered hall (the Palais des Sports) has its own inside.
+      const kind = placeId === 'home' ? 'home' : ARENAS.has(placeId) ? 'arena' : commune.places.find((p) => p.id === placeId)?.kind
+      return kind && (INDOOR.has(kind) || kind === 'arena') ? { id: placeId, kind, it: undefined } : null
     }
     return null
   })()
@@ -350,7 +374,11 @@ export function Play() {
     <div className="relative h-full overflow-hidden bg-[var(--color-night)] select-none">
       {showInside && (
         <div className="absolute inset-0 z-[1]">
-          <Interior sim={sim} kind={inside!.kind} placeId={inside!.id} interactionId={inside!.it} housing={sim.housing} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id && inside!.id !== 'home')} />
+          {inside!.kind === 'arena' ? (
+            <Arena sim={sim} placeId={inside!.id} interactionId={inside!.it} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id)} />
+          ) : (
+            <Interior sim={sim} kind={inside!.kind} placeId={inside!.id} interactionId={inside!.it} housing={sim.housing} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id && inside!.id !== 'home')} />
+          )}
         </div>
       )}
       {inside && (
@@ -369,7 +397,7 @@ export function Play() {
             goTo,
             onPick: walkTo,
             onArrive: (id: string) => (setOutside(false), setPlaceId(id)),
-            busy: doing ? { icon: doing.interaction.icon, kind: doing.placeKind ?? '' } : pending,
+            busy: doing ? { icon: doing.interaction.icon, kind: doing.placeKind ?? '', id: doing.interaction.id } : pending,
             stationAt: doing?.placeId ?? null,
             nameTag: user?.username ? `@${user.username}` : sim.firstName,
             happening,
@@ -394,7 +422,7 @@ export function Play() {
               return said
             },
           }
-          return classic ? <Neighbourhood key={commune.id} {...street} /> : <OpenWorld key={commune.id} {...street} token={MAP_TOKEN!} onFail={() => setClassic(true)} />
+          return classic ? <Neighbourhood key={commune.id} {...street} /> : <OpenWorld key={commune.id} {...street} commune={ownPlaces(commune)} token={MAP_TOKEN ?? ''} onFail={() => setClassic(true)} onMapPlaces={setMapPlaces} />
         })()}
       </div>
 
@@ -558,7 +586,7 @@ export function Play() {
         <Phone
           world={world}
           sim={sim}
-          commune={commune}
+          commune={ownPlaces(commune)}
           journal={journal}
           time={c.time}
           act={run}
@@ -588,7 +616,7 @@ export function Play() {
           </div>
         </div>
       )}
-      {chat && <ChatSheet npc={chat} onSay={say} onClose={() => setChat(null)} />}
+      {chat && <ChatSheet npc={chat} simGender={sim.gender} onSay={say} onClose={() => setChat(null)} />}
       {flow && <RideFlow world={world} req={flow} gameMinutes={sim.gameMinutes} onBoard={board} onClose={() => setFlow(null)} />}
     </div>
   )
@@ -747,6 +775,7 @@ type MenuProps = {
 
 function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose, onPick, onTravel, onStop, onBuild }: MenuProps) {
   const place = placeId === 'home' ? { name: 'Chez toi', kind: 'home' } : commune.places.find((p) => p.id === placeId)!
+  const navigate = useNavigate()
   const kind = world.kinds[place.kind]
   const colors = kindColors(place.kind)
   const here = sim.city === city.id && sim.commune === commune.id
@@ -767,6 +796,17 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
       </span>
     </button>
   )
+  // The wardrobe at home and at the couturier; a new hairdo at the barber or the salon.
+  const lookTab = { home: 'tenue', couture: 'tenue', boutique: 'tenue', salon: 'coiffure', barbier: 'coiffure' }[place.kind]
+  const restyle = lookTab && here && (
+    <button disabled={busy} onClick={() => navigate(`/look?tab=${lookTab}`, { viewTransition: true })} className={`flex w-full items-center gap-3 rounded-[20px] bg-[#fff4e8] p-2.5 text-left transition active:scale-[0.98] ${busy ? 'opacity-55 grayscale-[0.6]' : ''}`}>
+      <IconTile icon={lookTab === 'coiffure' ? Scissors : Shirt} colors={colors} size={44} />
+      <span className="min-w-0 flex-1">
+        <span className="block font-display text-[15px] leading-tight font-extrabold">Changer de look</span>
+        <span className="mt-0.5 block text-xs font-bold text-[var(--color-ink-soft)]">{lookTab === 'coiffure' ? 'Coupe, couleur, barbe · 2 000 F' : 'Tenue, pagne, couleurs, accessoire · gratuit'}</span>
+      </span>
+    </button>
+  )
   const state = (it: Interaction) => ({ open: openAt(it, sim.gameMinutes), broke: it.cost > 0 && sim.money < it.cost, busy, reason: ageBlock(it, life.stage?.id) ?? blockedBy(it, sim, city.id, commune.id) })
 
   // Desktop: the Sims radial menu around the place.
@@ -780,7 +820,12 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
             <IconTile icon={iconFor(kind.icon)} colors={colors} size={96} radius={34} />
             <span className="mt-2 rounded-full bg-white px-4 py-1.5 font-display text-lg font-extrabold shadow-lg">{place.name}</span>
           </button>
-          {build && <div className="absolute top-full left-1/2 mt-[200px] w-64 -translate-x-1/2">{build}</div>}
+          {(build || restyle) && (
+            <div className="absolute top-full left-1/2 mt-[200px] grid w-64 -translate-x-1/2 gap-2">
+              {build}
+              {restyle}
+            </div>
+          )}
           {items.map((it, i) => {
             const a = (i / items.length) * Math.PI * 2 - Math.PI / 2
             return (
@@ -826,6 +871,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
         {here ? (
           <div className="motion-stagger grid gap-2">
             {build}
+            {restyle}
             {items.map((it) => (
               <ActionButton key={it.id} it={it} colors={colors} {...state(it)} onPick={() => onPick(it, place.kind)} />
             ))}

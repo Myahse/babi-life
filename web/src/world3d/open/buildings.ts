@@ -23,6 +23,7 @@ export type Style = 'default' | 'institution' | 'hospital' | 'civic' | 'hotel' |
 export const STYLE_OF_KIND: Record<string, Style> = {
   universite: 'institution', school: 'institution', health: 'hospital', mairie: 'civic', office: 'civic', culture: 'civic', worship: 'civic', police: 'civic',
   hotel: 'hotel', mall: 'commerce', market: 'commerce', restaurant: 'commerce', maquis: 'commerce', club: 'commerce', barbier: 'commerce', salon: 'commerce', transport: 'commerce', home: 'home',
+  boutique: 'commerce', couture: 'commerce', pharmacie: 'commerce',
 }
 
 export type BuildingBuilders = {
@@ -187,7 +188,7 @@ export function addBuilding(B: BuildingBuilders, bd: Building, style: Style = 'd
   const area = Math.abs(signedArea(ring))
   const rect = orientedRect(ring)
   const rectLike = area / Math.max(1, rect.w * rect.d) > 0.86
-  const pitched = (style === 'default' || style === 'home') && H <= 2 * BLOCK && rectLike && Math.min(rect.w, rect.d) < 20 && r1 < 0.8
+  const pitched = (style === 'default' || style === 'home') && H <= 2 * BLOCK && (bd.tin || (rectLike && r1 < 0.8)) && Math.min(rect.w, rect.d) < 20
   const shops = style === 'commerce' || (style === 'default' && H >= 2 * BLOCK && r2 < 0.5)
 
   // Plinth, ground floor, upper storeys.
@@ -232,8 +233,11 @@ export function addBuilding(B: BuildingBuilders, bd: Building, style: Style = 'd
     const step = CELL / 2
     const o = step
     const tin = new THREE.Color('#ffffff')
+    // The game's houses in the quarters (fill.ts) have the low roofs of
+    // the cours: the same steps, a third as high (about 18°).
+    const rise = bd.tin ? step / 3 : step
     for (let k = 0, depth = d + 2 * o; depth > step / 2; k++, depth -= 2 * step) {
-      B.tin.box(rect.cx, H + k * step + step / 2, rect.cz, w + 2 * o, step, depth, angle, tin)
+      B.tin.box(rect.cx, H + k * rise + rise / 2, rect.cz, w + 2 * o, rise, depth, angle, tin)
     }
     // The gable ends, in the wall's colour, under the steps.
     B.trim.flat([ring], H, 1, tint.clone().multiplyScalar(0.6))

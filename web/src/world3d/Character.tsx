@@ -5,7 +5,7 @@ import type { Look, Sim } from '../lib/types'
 import { Baby, Human, type Pose } from '../avatar/Human'
 import { worldTime } from '../lib/worldClock'
 
-// The player's Sim in the 3D neighbourhood: the same cartoon Sim as in the
+// The player's Sim in the 3D neighbourhood: the same blocky Sim as in the
 // creator, with a shadow and the mood losange floating above.
 
 type Props = { look: Look; gender: Sim['gender']; walking?: boolean; /** Running rather than walking. */ running?: boolean; busy?: boolean; moodColor?: string; plumbob?: boolean; seed?: number; /** Stage of life: a baby crawls, children are small with big heads. */ stage?: string; /** A pose to act out (eating, dancing…); otherwise walking, busy or idle. */ pose?: Pose }
