@@ -22,6 +22,7 @@ import { HomeApp, JobsApp, type Act } from './phoneApps'
 import { NewsApp, topicOf } from './NewsApp'
 import { RideFlow, type FlowRequest } from '../components/RideFlow'
 import { INDOOR, Interior } from '../world3d/Interior'
+import { ARENAS, Arena } from '../world3d/interior/Arena'
 import { AppLogo } from '../components/AppLogo'
 import { GolvoApp, deliveryState, type Delivery } from './GolvoApp'
 import { WayeApp } from './WayeApp'
@@ -339,12 +340,14 @@ export function Play() {
   const inside = (() => {
     if (doing) {
       if (doing.placeId === 'golvo') return atHomeNow ? { id: 'home', kind: 'home', it: doing.interaction.id } : null
-      const kind = doing.placeId === 'home' ? 'home' : (doing.placeKind ?? '')
-      return INDOOR.has(kind) && doing.placeId ? { id: doing.placeId, kind, it: doing.interaction.id } : null
+      if (!doing.placeId) return null
+      const kind = doing.placeId === 'home' ? 'home' : ARENAS.has(doing.placeId) ? 'arena' : (doing.placeKind ?? '')
+      return INDOOR.has(kind) || kind === 'arena' ? { id: doing.placeId, kind, it: doing.interaction.id } : null
     }
     if (placeId && placeId !== 'happening') {
-      const kind = placeId === 'home' ? 'home' : commune.places.find((p) => p.id === placeId)?.kind
-      return kind && INDOOR.has(kind) ? { id: placeId, kind, it: undefined } : null
+      // A covered hall (the Palais des Sports) has its own inside.
+      const kind = placeId === 'home' ? 'home' : ARENAS.has(placeId) ? 'arena' : commune.places.find((p) => p.id === placeId)?.kind
+      return kind && (INDOOR.has(kind) || kind === 'arena') ? { id: placeId, kind, it: undefined } : null
     }
     return null
   })()
@@ -371,7 +374,11 @@ export function Play() {
     <div className="relative h-full overflow-hidden bg-[var(--color-night)] select-none">
       {showInside && (
         <div className="absolute inset-0 z-[1]">
-          <Interior sim={sim} kind={inside!.kind} placeId={inside!.id} interactionId={inside!.it} housing={sim.housing} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id && inside!.id !== 'home')} />
+          {inside!.kind === 'arena' ? (
+            <Arena sim={sim} placeId={inside!.id} interactionId={inside!.it} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id)} />
+          ) : (
+            <Interior sim={sim} kind={inside!.kind} placeId={inside!.id} interactionId={inside!.it} housing={sim.housing} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id && inside!.id !== 'home')} />
+          )}
         </div>
       )}
       {inside && (

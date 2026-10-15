@@ -10,6 +10,7 @@ import { makeTextures } from '../world3d/open/textures'
 import { blockRing } from '../world3d/open/voxel'
 import { Vehicle, type VehicleKind } from '../world3d/vehicles'
 import { Landmark } from '../world3d/open/landmarks'
+import { Arena } from '../world3d/interior/Arena'
 import { fetchChunk } from '../world3d/open/tiles'
 import { CHUNK_ZOOM, tileOf, type Origin } from '../world3d/open/geo'
 import { Apprenti, Forest, Palms, Trees, legProfile, makeWorldMaterials, type GbakaLeg } from '../world3d/open/OpenWorld'
@@ -36,6 +37,7 @@ import type { Sim } from '../lib/types'
 // into the cycle, frozen; without t it plays);
 // ?view=interior&kind=home&id=sleep (&housing=villa &g=homme &stage=bebe
 // &seed=3 &night) the inside of a place, the Sim doing that activity;
+// (&kind=arena: the Palais des Sports, id=play-basket|watch-match);
 // ?view=outdoor&id=play-football an outdoor activity's scene around the Sim;
 // ?view=dressing&kind=maquis (&name=…) the front of a place, its workers;
 // ?view=police the checkpoint on a big road's shoulder;
@@ -265,7 +267,11 @@ function InteriorLab() {
   }, [gender])
   return (
     <div style={{ width: '100vw', height: '100vh' }}>
-      <Interior sim={sim} kind={q.get('kind') ?? 'home'} placeId={q.get('place') ?? 'lab-place'} interactionId={q.get('id') ?? undefined} housing={q.get('housing') ?? 'cour'} night={night} stage={q.get('stage') ?? 'adulte'} />
+      {q.get('kind') === 'arena' ? (
+        <Arena sim={sim} placeId="treich-palais" interactionId={q.get('id') ?? undefined} stage="adulte" />
+      ) : (
+        <Interior sim={sim} kind={q.get('kind') ?? 'home'} placeId={q.get('place') ?? 'lab-place'} interactionId={q.get('id') ?? undefined} housing={q.get('housing') ?? 'cour'} night={night} stage={q.get('stage') ?? 'adulte'} />
+      )}
     </div>
   )
 }
