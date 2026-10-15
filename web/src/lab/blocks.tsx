@@ -2,7 +2,8 @@ import { createRoot } from 'react-dom/client'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import type { Look } from '../lib/types'
-import { BlockHuman } from '../avatar/BlockHuman'
+import { BlockBaby, BlockHuman } from '../avatar/BlockHuman'
+import { LowHuman } from '../avatar/LowHuman'
 import type { Pose } from '../avatar/Human'
 import { DEFAULT_LOOK } from '../avatar/options'
 import { NoteShower } from '../world3d/money'
@@ -10,12 +11,15 @@ import { NoteShower } from '../world3d/money'
 // Dev-only lab (/lab.html): a row of blocky Sims, one per outfit, hair and
 // accessory, to check them side by side. ?pose=walk sets everyone's pose,
 // ?face zooms on the heads, ?row=2 shows the second row of looks;
-// ?pose=throw shows the travaillement, notes and all.
+// ?pose=throw shows the travaillement, notes and all; ?far shows the
+// low-detail Sims seen from afar, ?baby the babies in the same looks.
 
 const q = new URLSearchParams(location.search)
 const pose = (q.get('pose') ?? 'idle') as Pose
 const face = q.has('face')
 const row = Number(q.get('row') ?? 0)
+const far = q.has('far')
+const baby = q.has('baby')
 
 type Sample = { look: Partial<Look>; gender: 'femme' | 'homme'; headScale?: number; scale?: number }
 const L = (look: Partial<Look>, gender: 'femme' | 'homme' = 'homme', extra: Partial<Sample> = {}): Sample => ({ look, gender, ...extra })
@@ -56,7 +60,13 @@ function Lab() {
       </mesh>
       {samples.map((s, i) => (
         <group key={i} position={[x0 + i * gap, 0, 0]} scale={s.scale ?? 1}>
-          <BlockHuman look={{ ...DEFAULT_LOOK, ...s.look }} gender={s.gender} pose={pose} seed={i} headScale={s.headScale} speed={pose === 'run' ? 6 : 1.4} />
+          {baby ? (
+            <BlockBaby look={{ ...DEFAULT_LOOK, ...s.look }} gender={s.gender} pose={pose} seed={i} />
+          ) : far ? (
+            <LowHuman look={{ ...DEFAULT_LOOK, ...s.look }} gender={s.gender} pose={pose} seed={i} speed={pose === 'run' ? 6 : 1.4} />
+          ) : (
+            <BlockHuman look={{ ...DEFAULT_LOOK, ...s.look }} gender={s.gender} pose={pose} seed={i} headScale={s.headScale} speed={pose === 'run' ? 6 : 1.4} />
+          )}
           {pose === 'throw' && <NoteShower from={[0.3, 1.72, 0.3]} toward={[0, 0.35, 1]} seed={i} />}
         </group>
       ))}
