@@ -11,6 +11,7 @@ import { iconFor } from '../components/icons'
 import { Chip, Coin, IconTile, MotiveRing, Plumbob, needColor } from '../components/ui'
 import { NEEDS, amount, clock, mood } from '../game/rules'
 import { Journal } from './Play'
+import { share as shareText } from '../lib/native'
 
 export function Profile() {
   const world = useWorld((s) => s.world)!
@@ -38,8 +39,7 @@ export function Profile() {
   async function share() {
     const text = `Je vis à ${home.commune?.name} dans Babi Life ! Mon Sim s'appelle ${sim!.firstName} ${sim!.lastName}.`
     try {
-      if (navigator.share) await navigator.share({ title: 'Babi Life', text, url: location.origin })
-      else {
+      if (!(await shareText(text, location.origin))) {
         await navigator.clipboard.writeText(`${text} ${location.origin}`)
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)

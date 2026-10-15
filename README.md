@@ -36,6 +36,10 @@ Une démo vidéo de 3 minutes (inscription, création du Sim, mariage dans la ru
 - **Ce que le jeu télécharge** : chaque écran est un téléchargement à part (l'écran titre ne charge plus le code du jeu). Le cache hors ligne ne précharge plus la carte (1,9 Mo), les effets d'écran ni les polices d'alphabets inutiles : 4,8 Mo → 2,3 Mo à la première visite ; ils sont gardés une fois utilisés. L'ombre et le flou lumineux (`postprocessing`) ne se chargent que sur les téléphones qui les affichent. Dans la rue classique, l'ombre portée est recalculée dix fois par seconde au lieu de chaque image.
 - **La carte hors-ligne est un vrai plateau de jeu** : frontières, fleuves, lacs et routes de Natural Earth, savane au nord et forêt au sud, lagune Ébrié dessinée à la main. Les étiquettes s'écartent automatiquement pour ne pas se chevaucher. Avec un token, Mapbox prend le relais (relief 3D dans les villes, mode nuit qui suit l'horloge du jeu).
 
+## L'appli mobile (Flutter)
+
+`mobile/` est l'appli Android et iOS : le jeu web en plein écran dans une vue web, avec en plus la connexion Google du téléphone (Google refuse de s'ouvrir dans une vue web), la feuille de partage, la position pour « naître là où tu es », le bouton retour, les liens ouverts dans leur appli et un écran « Pas de connexion ». Le jeu reconnaît l'appli (`web/src/lib/native.ts`). Voir `mobile/README.md` pour construire l'APK et publier.
+
 ## Lancer en local
 
 ```bash

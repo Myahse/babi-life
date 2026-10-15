@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { GoogleLogin } from '@react-oauth/google'
+import { inApp, nativeGoogleSignIn } from '../lib/native'
 import { useNavigate } from 'react-router-dom'
 import { InstallButton } from '../components/InstallButton'
 import { useOnline } from '../lib/pwa'
@@ -149,7 +150,22 @@ export function Title() {
           </div>
 
           <div className="flex flex-col gap-3">
-            {GOOGLE_ENABLED ? (
+            {GOOGLE_ENABLED && inApp() ? (
+              // In the app, Google's sign-in is the phone's own (it won't open in a web view).
+              <button
+                className="btn btn-white w-full"
+                onClick={async () => {
+                  try {
+                    const token = await nativeGoogleSignIn()
+                    if (token) finish(api.googleLogin(token))
+                  } catch {
+                    setError('Connexion Google impossible')
+                  }
+                }}
+              >
+                <GoogleIcon /> {mode === 'login' ? 'Continuer avec Google' : "S'inscrire avec Google"}
+              </button>
+            ) : GOOGLE_ENABLED ? (
               <div className="flex h-[50px] justify-center [&>div]:w-full">
                 <GoogleLogin
                   onSuccess={(r) => r.credential && finish(api.googleLogin(r.credential))}
