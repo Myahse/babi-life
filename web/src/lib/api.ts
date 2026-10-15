@@ -77,7 +77,7 @@ export const api = {
   order: (id: string, place: string, dish: string) => post<ActionResult>(`/sims/${id}/order`, { place, dish }),
   /** Buy alloco from the tantie's stall in the street (she may have none left). */
   /** Talk to a passer-by: what they answer comes back as the outcome. */
-  chat: (id: string, npc: { id: string; name: string; gender: string; seed: number }, topic: string) => post<ActionResult>(`/sims/${id}/chat`, { with: npc, topic }),
+  chat: (id: string, npc: { id: string; name: string; gender: string; seed: number }, topic: string, said?: string) => post<ActionResult>(`/sims/${id}/chat`, { with: npc, topic, said: said ?? '' }),
   street: (id: string, vendor: string) => post<ActionResult>(`/sims/${id}/street`, { vendor }),
   stop: (id: string) => post<ActionResult>(`/sims/${id}/stop`, {}),
   /** Other players: who's in the commune, invitations, player friends. */

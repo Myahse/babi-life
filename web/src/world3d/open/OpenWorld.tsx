@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { PerformanceMonitor } from '@react-three/drei'
 import { Human, NoShadows, type Pose } from '../../avatar/Human'
+import { callsFor } from '../../lib/nouchi'
 import { randomLook } from '../../avatar/options'
 import { lifeOf } from '../../game/rules'
 import { HAPPENING_DOOR, HAPPENING_X, HappeningMarker, HappeningScene, STOPS_TRAFFIC } from '../Happenings'
@@ -721,7 +722,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
           </div>
         </Html>
       ))}
-      {nav.nodes.length > 0 && <Passersby nav={nav} focus={focus} seed={commune.id} onTalk={onTalk} onCall={onCall} talkingTo={talkingTo} />}
+      {nav.nodes.length > 0 && <Passersby nav={nav} focus={focus} seed={commune.id} onTalk={onTalk} onCall={onCall} talkingTo={talkingTo} simGender={sim.gender} gameHour={Math.floor((sim.gameMinutes % 1440) / 60)} />}
       {players && players.length > 0 && <OtherPlayers players={players} lots={walkLots} labels={labels} onPick={(id) => onPickPlayer?.(id)} />}
 
       {ready && (
@@ -1163,7 +1164,6 @@ const NPC_NAMES = {
   femme: ['Awa', 'Aya', 'Mariam', 'Adjoua', 'Fatou', 'Akissi', 'Ruth', 'Affoué', 'Grâce', 'Nadège', 'Salimata', 'Ange', 'Tatiana', 'Bintou', 'Prisca', 'Clarisse'],
   homme: ['Kouadio', 'Yao', 'Moussa', 'Koffi', 'Serge', 'Ibrahim', 'Didier', 'Konan', 'Junior', 'Lassina', 'Arouna', 'Fabrice', 'Brice', 'Seydou', 'Hervé', 'Wilfried'],
 }
-const CALLS = ['Eh, on dit quoi ?', 'Bonne arrivée !', 'Toi là, ça va un peu ?', 'Viens on cause !', 'Y a quoi de neuf ?', 'Ma copine, ça dit quoi ?']
 
 const WALK_CELL = 150
 const WALKERS_PER_CELL = 2
@@ -1176,7 +1176,7 @@ type Walk = { id: string; name: string; gender: 'femme' | 'homme'; look: ReturnT
  * spot on every screen (see shared.ts). Each has a first name; tap one to
  * talk (they stop and turn to you). Now and then, one nearby calls out.
  */
-function Passersby({ nav, focus, seed, onTalk, onCall, talkingTo }: { nav: Nav; focus: React.RefObject<XZ>; seed: string; onTalk?: (npc: Npc) => void; onCall?: (npc: Npc, text: string) => void; talkingTo?: string | null }) {
+function Passersby({ nav, focus, seed, onTalk, onCall, talkingTo, simGender, gameHour }: { nav: Nav; focus: React.RefObject<XZ>; seed: string; onTalk?: (npc: Npc) => void; onCall?: (npc: Npc, text: string) => void; talkingTo?: string | null; simGender: 'femme' | 'homme'; gameHour: number }) {
   const cells = useCellsAround(focus, WALK_CELL)
   const routes = useRoutes(nav)
   const people = useMemo<Walk[]>(
@@ -1220,7 +1220,8 @@ function Passersby({ nav, focus, seed, onTalk, onCall, talkingTo }: { nav: Nav; 
       if (d < bd) [best, bd] = [p, d]
     }
     if (best) {
-      const text = CALLS[Math.floor(Math.random() * CALLS.length)]
+      const calls = callsFor(simGender, gameHour)
+      const text = calls[Math.floor(Math.random() * calls.length)]
       setSaid({ id: best.id, text })
       onCall?.({ id: best.id, name: best.name, gender: best.gender, seed: Math.floor(best.seed * 1000), look: best.look }, text)
     }

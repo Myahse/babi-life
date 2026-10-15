@@ -243,12 +243,12 @@ export function Play() {
     return () => clearTimeout(t)
   }, [calling])
   const talkedTo = useRef<string | null>(null)
-  const say = async (topic: string, label: string) => {
+  const say = async (topic: string, label: string, phrase?: string) => {
     const npc = chat!
     talkedTo.current = npc.id
     let said: string | null = null
     await run(label, 'messages-square', 'social', async () => {
-      const res = await api.chat(sim!.id, { id: npc.id, name: npc.name, gender: npc.gender, seed: npc.seed }, topic)
+      const res = await api.chat(sim!.id, { id: npc.id, name: npc.name, gender: npc.gender, seed: npc.seed }, topic, phrase)
       said = res.outcome.text
       return res
     })
@@ -609,7 +609,7 @@ export function Play() {
           </div>
         </div>
       )}
-      {chat && <ChatSheet npc={chat} onSay={say} onClose={() => setChat(null)} />}
+      {chat && <ChatSheet npc={chat} simGender={sim.gender} onSay={say} onClose={() => setChat(null)} />}
       {flow && <RideFlow world={world} req={flow} gameMinutes={sim.gameMinutes} onBoard={board} onClose={() => setFlow(null)} />}
     </div>
   )
