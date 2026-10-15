@@ -10,7 +10,7 @@ import { Human, NoShadows, type Pose } from '../avatar/Human'
 import { randomLook } from '../avatar/options'
 import { Box } from './props'
 import { Character } from './Character'
-import { ActionProps, Pot, TvScreen, Zzz } from './interior/ActionProps'
+import { ActionProps, Pot, SewingTable, TvScreen, Zzz } from './interior/ActionProps'
 import { rng } from './themes'
 import { worldTime } from '../lib/worldClock'
 
@@ -188,7 +188,7 @@ function shower(id?: string) {
 /* ---------- Rooms ---------- */
 
 /** The new kinds of places furnished like their nearest one. */
-const ROOM_LIKE: Record<string, string> = { boutique: 'market', pharmacie: 'market', couture: 'salon' }
+const ROOM_LIKE: Record<string, string> = { boutique: 'market', pharmacie: 'market' }
 
 function room(kindIn: string, housing: string): Room {
   const kind = ROOM_LIKE[kindIn] ?? kindIn
@@ -452,6 +452,61 @@ function room(kindIn: string, housing: string): Room {
           { p: [-4.6, 0.06, -3.6], pose: 'sit' },
         ],
       }
+    case 'couture': {
+      // The tailor's workshop: the machines on their tables, the fabric on
+      // the shelves, a wax dress on the mannequin, finished clothes on the rail.
+      return {
+        floor: '#c9b08a',
+        wall: '#f1e2c6',
+        furniture: (
+          <>
+            {[-3, 0.5].map((x, i) => (
+              <group key={x} position={[x, 0, -3.05]}>
+                <SewingTable seed={i} />
+                <Box p={[0, 0.23, 0.75]} s={[0.4, 0.46, 0.4]} c="#6b4423" />
+              </group>
+            ))}
+            {/* The shelves of fabric along the back wall */}
+            <Box p={[-4.9, 1.2, -4.2]} s={[1.4, 2.4, 0.45]} c="#7a5230" />
+            {[0.35, 0.95, 1.55, 2.15].map((y, row) =>
+              [-5.35, -5.05, -4.75, -4.45].map((x, k) => <Box key={`${row}${k}`} p={[x, y, -4.0]} s={[0.24, 0.32, 0.38]} c={['#e8432f', '#f2a81d', '#1f6fb5', '#2e8b57', '#8e44ad', '#ffffff', '#d6336c', '#14213d'][(row * 3 + k) % 8]} />),
+            )}
+            {/* The mannequin in a wax dress */}
+            <group position={[4.3, 0, -3.3]}>
+              <Box p={[0, 0.5, 0]} s={[0.06, 1, 0.06]} c="#2b2b2b" />
+              <Box p={[0, 1.25, 0]} s={[0.44, 0.6, 0.26]} c="#f08c00" />
+              <Box p={[0, 1.25, 0.135]} s={[0.3, 0.45, 0.01]} c="#7b2d26" />
+              <Box p={[0, 0.85, 0]} s={[0.56, 0.3, 0.34]} c="#f08c00" />
+              <Box p={[0, 1.62, 0]} s={[0.12, 0.14, 0.12]} c="#c9b27a" />
+            </group>
+            {/* The rail of finished clothes, waiting for their owners */}
+            <Box p={[5.5, 1.85, 0.3]} s={[0.05, 0.05, 2.8]} c="#adb5bd" />
+            {['#2a6cf0', '#f4efe6', '#7b5cff', '#e8432f', '#2e8b57', '#f2b705'].map((c, k) => (
+              <Box key={c} p={[5.5, 1.35, -0.9 + k * 0.45]} s={[0.08, 0.9, 0.4]} c={c} />
+            ))}
+            {/* The ironing board and the coal iron */}
+            <Box p={[-4.4, 0.85, 1.8]} s={[0.4, 0.05, 1.3]} c="#e9ecef" />
+            <Box p={[-4.4, 0.42, 1.8]} s={[0.05, 0.84, 0.05]} c="#495057" />
+            <Box p={[-4.4, 0.95, 1.5]} s={[0.16, 0.14, 0.26]} c="#343a40" />
+            {/* The bench for those who wait */}
+            <Box p={[4.8, 0.45, 2.1]} s={[0.6, 0.1, 2.2]} c="#8a6a3d" />
+          </>
+        ),
+        spots: {
+          // Next to the master tailor, watching the pagne being sewn.
+          chair: { p: [1.75, 0.06, -2.85], r: -Math.PI / 2, pose: 'sit' },
+          entrance: { p: [0, 0, 3.6], r: Math.PI, pose: 'idle' },
+          counter: { p: [2.2, 0, 0.4], r: Math.PI, pose: 'idle' },
+          bench: { p: [4.55, 0.05, 2.1], r: -Math.PI / 2, pose: 'rant' },
+        },
+        crowd: [
+          { p: [0.5, 0.06, -2.3], r: Math.PI, pose: 'write', g: 'homme' },
+          { p: [-3, 0.06, -2.3], r: Math.PI, pose: 'write' },
+          { p: [-4.4, 0, 2.35], r: Math.PI, pose: 'busy' },
+          { p: [4.55, 0.05, 1.4], r: -Math.PI / 2, pose: 'sit', g: 'femme' },
+        ],
+      }
+    }
     case 'barbier':
     case 'salon': {
       // Chairs facing the mirrors, the bench where people wait and talk.
@@ -491,8 +546,10 @@ function room(kindIn: string, housing: string): Room {
         },
         crowd: [
           { p: [-3.5, 0.06, -3.15], r: Math.PI, pose: 'sit', g: salon ? 'femme' : 'homme' },
-          { p: [-2.8, 0, -2.4], r: Math.PI * 0.85, pose: 'busy', g: salon ? 'femme' : 'homme' },
-          { p: [0.8, 0, -2.5], r: Math.PI * 0.8, pose: 'busy', g: salon ? 'femme' : 'homme' },
+          // Each client has someone working behind the chair (the Sim's, the middle one, too: see ActionProps).
+          { p: [-3.35, 0, -2.45], r: Math.PI, pose: 'busy', g: salon ? 'femme' : 'homme' },
+          { p: [3.5, 0.06, -3.15], r: Math.PI, pose: 'sit', g: salon ? 'femme' : 'homme' },
+          { p: [3.65, 0, -2.45], r: Math.PI, pose: 'busy', g: salon ? 'femme' : 'homme' },
           { p: [4.55, 0.05, 0.3], r: -Math.PI / 2, pose: 'sit' },
           { p: [4.55, 0.05, 2.3], r: -Math.PI / 2, pose: 'cheer' },
         ],
@@ -612,7 +669,8 @@ export function Interior({ sim, kind, placeId, interactionId, housing, night, st
   }, [r, me])
   const dark = r.dark || night
   // In the shower: in a towel.
-  const look = act.spot === 'shower' && interactionId === 'shower' ? { ...sim.look, outfit: 'serviette', accessory: 'none' } : sim.look
+  // At the hairdresser's: the cap comes off.
+  const look = act.spot === 'shower' && interactionId === 'shower' ? { ...sim.look, outfit: 'serviette', accessory: 'none' } : act.spot === 'chair' && (kind === 'barbier' || kind === 'salon') ? { ...sim.look, accessory: 'none' } : sim.look
   return (
     <Canvas shadows dpr={[1, 2]} camera={{ position: [8.4, 8.6, 10.8], fov: 42 }} style={{ background: dark ? '#0b0d1f' : '#2a2340' }}>
       <Suspense fallback={null}>

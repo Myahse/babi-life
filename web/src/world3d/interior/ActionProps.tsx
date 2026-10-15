@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { Box } from '../props'
 import { worldTime } from '../../lib/worldClock'
-import { Baby } from '../../avatar/Human'
+import { Baby, Human } from '../../avatar/Human'
 import { randomLook } from '../../avatar/options'
 
 // What shows what the Sim is doing, around it: the water of the shower, the
@@ -18,8 +18,12 @@ const steam = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true,
 /** The table top, in front of a Sim sitting at it. */
 const TABLE: [number, number, number] = [0, 0.77, 0.52]
 
+/** Hairdressing, at the barbier's or the salon. */
+const HAIR = /^(degrade|boule-a-zero|taille-barbe|tresses|tissage|chignon|coupe-courte|iroquoise|nattes|vanilles|macarons|carre)$/
+
 export function ActionProps({ id, kind, lying }: { id?: string; kind: string; lying: boolean }) {
   if (!id) return null
+  if (HAIR.test(id) && (kind === 'barbier' || kind === 'salon')) return <Hairdresser salon={kind === 'salon'} braid={/tresses|tissage|nattes|vanilles|macarons|chignon/.test(id)} />
   if (id === 'shower') return <Shower />
   if (id === 'bain-bebe') return <Tub />
   if (lying && /^(sleep|nap)$/.test(id)) return <Blanket />
@@ -98,6 +102,72 @@ function Tub() {
       {[[-0.15, 0.08], [0.1, -0.1], [0.2, 0.12]].map(([x, z], i) => (
         <Box key={i} p={[x, 0.39, z]} s={[0.07, 0.06, 0.07]} c="#ffffff" />
       ))}
+    </group>
+  )
+}
+
+/* ---------- The hairdresser, the tailor ---------- */
+
+/**
+ * Behind the Sim in the chair (it faces the mirror, +z): the barber with
+ * the clippers going over the head, or the hairdresser braiding, comb in hand.
+ */
+function Hairdresser({ salon, braid }: { salon: boolean; braid: boolean }) {
+  const look = useMemo(() => {
+    let n = salon ? 41 : 17
+    return randomLook(salon ? 'femme' : 'homme', () => ((n = (n * 16807) % 2147483647) / 2147483647))
+  }, [salon])
+  const tool = useRef<THREE.Group>(null)
+  useFrame(() => {
+    const t = worldTime()
+    if (!tool.current) return
+    // Clippers: up and over the head in short strokes; braiding: small quick twists.
+    if (braid) tool.current.position.set(0.05 + Math.sin(t * 6) * 0.03, 1.22 + Math.sin(t * 12) * 0.015, -0.2)
+    else tool.current.position.set(Math.sin(t * 1.3) * 0.1, 1.25 + Math.abs(Math.sin(t * 5)) * 0.05, -0.17 + Math.sin(t * 0.7) * 0.06)
+  })
+  return (
+    <group>
+      <group position={[0.1, -0.06, -0.62]}>
+        <Human look={look} gender={salon ? 'femme' : 'homme'} pose="busy" seed={5} />
+      </group>
+      <group ref={tool}>
+        {braid ? <Box p={[0, 0, 0]} s={[0.03, 0.12, 0.012]} c="#141416" /> : <Box p={[0, 0, 0]} s={[0.05, 0.035, 0.1]} c={salon ? '#f783ac' : '#1d1d1f'} />}
+      </group>
+      {/* The cape over the client */}
+      <Box p={[0, 0.85, 0.05]} s={[0.62, 0.55, 0.36]} c={salon ? '#f783ac' : '#2b2f3a'} />
+    </group>
+  )
+}
+
+/** A sewing machine on its table, the needle going, the wax going under it. */
+export function SewingTable({ seed = 0 }: { seed?: number }) {
+  const needle = useRef<THREE.Mesh>(null)
+  const cloth = useRef<THREE.Mesh>(null)
+  useFrame(() => {
+    const t = worldTime() + seed * 3.1
+    if (needle.current) needle.current.position.y = 0.97 + Math.abs(Math.sin(t * 14)) * 0.035
+    if (cloth.current) cloth.current.position.x = -0.1 + ((t * 0.05) % 0.2)
+  })
+  return (
+    <group>
+      <Box p={[0, 0.74, 0]} s={[1.3, 0.05, 0.7]} c="#8a5a32" />
+      {[-0.6, 0.6].map((x) => (
+        <Box key={x} p={[x, 0.36, 0]} s={[0.06, 0.72, 0.6]} c="#3b2a1a" />
+      ))}
+      {/* The machine: its base, the column, the arm, the wheel */}
+      <Box p={[0, 0.8, 0]} s={[0.5, 0.07, 0.22]} c="#1b1b1f" />
+      <Box p={[0.18, 0.93, 0]} s={[0.1, 0.22, 0.14]} c="#1b1b1f" />
+      <Box p={[0.02, 1.05, 0]} s={[0.38, 0.08, 0.12]} c="#1b1b1f" />
+      <Box p={[0.26, 0.97, 0.08]} s={[0.04, 0.14, 0.14]} c="#c9a227" />
+      <mesh ref={needle} position={[-0.14, 0.97, 0]}>
+        <boxGeometry args={[0.012, 0.08, 0.012]} />
+        <meshLambertMaterial color="#c3c7cf" />
+      </mesh>
+      {/* The wax under the needle, going through little by little */}
+      <mesh ref={cloth} position={[-0.1, 0.775, 0.12]}>
+        <boxGeometry args={[0.6, 0.008, 0.4]} />
+        <meshLambertMaterial color={seed % 2 ? '#2a6cf0' : '#f08c00'} />
+      </mesh>
     </group>
   )
 }
