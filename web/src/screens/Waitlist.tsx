@@ -6,7 +6,7 @@ import { Portrait } from '../avatar/portrait'
 import { IconTile, Logo } from '../components/ui'
 import { useWorld } from '../store/world'
 import { CROWD } from './Title'
-import { Share } from '../components/WaitlistShare'
+import { Community, Share } from '../components/WaitlistShare'
 import { firebaseConfigured, googleCancelled, signInWithGoogle } from '../lib/google'
 
 // The wish list (/liste): before the game opens, people leave a first name
@@ -202,6 +202,7 @@ export function Waitlist() {
                 {busy ? 'Un instant…' : "M'inscrire sur la liste"} <ArrowRight size={18} strokeWidth={2.6} />
               </button>
               <p className="text-center text-xs font-semibold text-[var(--color-ink-soft)]">Ton contact sert seulement à te prévenir de l'ouverture. Pas de pub, pas de revente.</p>
+              <Community />
             </form>
           )}
         </section>
