@@ -16,6 +16,13 @@ import { Vehicle } from '../world3d/vehicles'
 import { Dressing } from '../world3d/open/dressing'
 import { Sign, TableSet } from '../world3d/props'
 import { AppLogo } from '../components/AppLogo'
+import { FamilyGroup } from '../avatar/Family'
+import { ArenaWorld } from '../world3d/interior/Arena'
+import { Landmark } from '../world3d/open/landmarks'
+import { NoteShower } from '../world3d/money'
+import { OUTFITS, OUTFIT_DEFAULT_COLOR } from '../avatar/options'
+import type { Sim } from '../lib/types'
+import { Map as MapIcon, MessageCircle, Newspaper } from 'lucide-react'
 
 // Dev-only (/poster.html): the game's own blocky Sims for the flyer and the
 // video (marketing/). Stills: ?scene=crew|house|dance&t=2 (&alpha for a
@@ -26,9 +33,14 @@ import { AppLogo } from '../components/AppLogo'
 const q = new URLSearchParams(location.search)
 const VIDEO = q.has('video')
 const ALPHA = q.has('alpha')
-type SceneId = 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'princesse'
-/** Which film: ?video (the launch) or ?video=bouger (getting about: gbaka, Gnango, Rue Princesse). */
-const FILM = (q.get('video') || 'lancement') as 'lancement' | 'bouger'
+type SceneId = 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'princesse' | 'famille-gnambro' | 'famille-debout' | 'palais' | 'basket' | 'fete' | 'cause' | 'look' | 'siporex' | 'phone'
+/**
+ * Which film: ?video (the launch), ?video=bouger (getting about: gbaka,
+ * Gnango, Rue Princesse), ?video=bande-annonce (the trailer: gnambro or
+ * laté?) or ?video=decouverte (everything there is to do, one by one).
+ */
+type FilmId = 'lancement' | 'bouger' | 'bande-annonce' | 'decouverte'
+const FILM = (q.get('video') || 'lancement') as FilmId
 
 /** The materials as the server has them (game/build.go). */
 const MATERIALS = [
@@ -73,6 +85,9 @@ const CREW: { look: Look; gender: 'femme' | 'homme'; pose: Pose }[] = [
   { gender: 'homme', pose: 'talk', look: L({ skin: '#3f2210', hair: 'afro', outfit: 'jersey', outfitColor: '#ff8200', accessory: 'glasses' }) },
 ]
 
+/** The Sim on the court of the Palais des Sports. */
+const LAB_SIM = { id: 'poster', firstName: 'Awa', lastName: 'Koné', gender: 'femme', look: CREW[3].look } as unknown as Sim
+
 const EPOCH = 1_000_000 // a fixed instant on the shared clock: every render is the same
 
 /** Where each of the five stands: in a row on a wide picture, in two rows on a tall one. */
@@ -92,7 +107,7 @@ function Camera({ at, look }: { at: [number, number, number]; look: [number, num
 
 /** One scene of the video (or a still), at t seconds into it. */
 function World({ scene, t }: { scene: SceneId; t: number }) {
-  const night = scene === 'dance'
+  const night = scene === 'dance' || scene === 'fete'
   const spots = useSpots()
   const wide = useThree((s) => s.size.width >= s.size.height)
   const grass = useMemo(() => {
@@ -127,7 +142,91 @@ function World({ scene, t }: { scene: SceneId; t: number }) {
       <ambientLight intensity={night ? 0.35 : 0.4} />
     </>
   )
-  if (scene === 'crew') {
+  if (scene === 'famille-gnambro' || scene === 'famille-debout') {
+    // The birth: the family at home, the camera coming slowly closer.
+    return (
+      <>
+        {lights}
+        <Camera at={[Math.sin(t * 0.12) * 0.7, 1.55, (wide ? 4.8 : 6.6) - t * 0.12]} look={[0, 0.95, 0]} />
+        <FamilyGroup familyId={scene === 'famille-gnambro' ? 'gnambro' : 'debout'} look={CREW[3].look} gender="femme" />
+      </>
+    )
+  }
+  if (scene === 'palais' || scene === 'siporex') {
+    // A landmark, the camera turning round it.
+    const palais = scene === 'palais'
+    const a = (palais ? -0.5 : 0.35) + t * 0.035
+    const r = palais ? (wide ? 92 : 128) : wide ? 40 : 54
+    return (
+      <>
+        <hemisphereLight args={['#fff4e6', '#c0704f', 1.2]} />
+        <directionalLight position={[40, 80, 50]} intensity={2.2} />
+        <ambientLight intensity={0.4} />
+        <Camera at={[Math.sin(a) * r, palais ? 16 : 14, Math.cos(a) * r]} look={[0, palais ? 11 : 1, palais ? 0 : -4]} />
+        <mesh rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[600, 600]} />
+          <meshLambertMaterial map={grass} />
+        </mesh>
+        <Landmark id={palais ? 'treich-palais' : 'yop-gare-siporex'} night={false} />
+      </>
+    )
+  }
+  if (scene === 'basket') {
+    // On the court of the Palais des Sports, behind the Sim dribbling toward the hoop.
+    return (
+      <>
+        <Camera at={[2.7 - t * 0.2, 2.6, 2.4]} look={[9.2, 1.7, 0.3]} />
+        <ArenaWorld sim={LAB_SIM} placeId="treich-palais" interactionId="play-basket" stage="adulte" />
+      </>
+    )
+  }
+  if (scene === 'fete') {
+    // A night at the maquis: the dancers, and the Sim raining banknotes on them.
+    const bulbs = [...Array(14)].map((_, i) => [-5 + i * (10 / 13), 3.2 - Math.sin((i / 13) * Math.PI) * 0.6, -1.5] as [number, number, number])
+    return (
+      <>
+        {lights}
+        <Camera at={[2.6 + Math.sin(t * 0.2) * 0.6, 2, wide ? 6.4 : 8.2]} look={[0, 1, 0.3]} />
+        {ground}
+        {bulbs.map((p, i) => (
+          <mesh key={i} position={p}>
+            <boxGeometry args={[0.14, 0.14, 0.14]} />
+            <meshBasicMaterial color={['#ffc233', '#ff7a00', '#00b86b', '#ffffff'][i % 4]} />
+          </mesh>
+        ))}
+        <pointLight position={[0, 3, 1.5]} intensity={16} distance={12} color="#ffc27a" />
+        {[CREW[1], CREW[3], CREW[4]].map((c, i) => (
+          <group key={i} position={[(i - 1) * 1.1, 0, -0.6 + Math.abs(i - 1) * 0.3]} rotation={[0, (1 - i) * 0.25, 0]}>
+            <BlockHuman look={c.look} gender={c.gender} pose={i === 1 ? 'cheer' : 'dance'} seed={i * 2.3} />
+          </group>
+        ))}
+        <group position={[0.3, 0, 1.7]} rotation={[0, Math.PI, 0]}>
+          <BlockHuman look={CREW[2].look} gender="homme" pose="throw" seed={7} />
+          <NoteShower from={[0.3, 1.72, 0.3]} toward={[0, 0.35, 1]} seed={3} />
+        </group>
+      </>
+    )
+  }
+  if (scene === 'look') {
+    // The wardrobe: the same Sim, a new outfit every second.
+    const outfits = ['pagne', 'boubou', 'survet', 'bazin', 'jersey', 'chemise-pagne', 'kaba', 'basket']
+    const outfit = outfits[Math.floor(t / 0.9) % outfits.length]
+    const known = OUTFITS.some((o) => o.id === outfit) ? outfit : 'pagne'
+    const look = { ...CREW[1].look, outfit: known, outfitColor: OUTFIT_DEFAULT_COLOR[known] ?? ['#ff7a00', '#00a862', '#7b5cff', '#f2c94c'][Math.floor(t / 0.9) % 4], hair: ['headwrap', 'braids', 'puffs', 'bun'][Math.floor(t / 1.8) % 4] }
+    return (
+      <>
+        {lights}
+        <Camera at={[Math.sin(t * 0.5) * (wide ? 3.3 : 5.6), 1.4, Math.cos(t * 0.5) * (wide ? 3.3 : 5.6)]} look={[0, 1.05, 0]} />
+        <BlockHuman look={look} gender="femme" pose="hero" seed={2} />
+        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+          <circleGeometry args={[0.9, 40]} />
+          <meshLambertMaterial color="#ffffff" />
+        </mesh>
+      </>
+    )
+  }
+  if (scene === 'cause') return <Street scene="cause" t={t} />
+  if (scene === 'crew' || scene === 'phone') {
     return (
       <>
         {lights}
@@ -197,7 +296,8 @@ const ease = (k: number) => k * k * (3 - 2 * k)
 const clamp01 = (k: number) => Math.max(0, Math.min(1, k))
 
 /** A street seen from the pavement: the road, the far side's shops, and what's going on. */
-function Street({ scene, t }: { scene: 'gbaka' | 'gnango' | 'princesse'; t: number }) {
+function Street({ scene, t }: { scene: 'gbaka' | 'gnango' | 'princesse' | 'cause'; t: number }) {
+  const wide = useThree((s) => s.size.width >= s.size.height)
   const night = scene === 'princesse'
   const facades: [number, number, string][] = [[-6.4, 7, '#e9a23b'], [0, 9, night ? '#2f2a5e' : '#5aa0d8'], [6.4, 6.5, night ? '#7b3fa0' : '#f2c94c']]
   // The gbaka: comes in, stops at the gare while people climb in, goes.
@@ -217,7 +317,7 @@ function Street({ scene, t }: { scene: 'gbaka' | 'gnango' | 'princesse'; t: numb
           <pointLight position={[0, 3, 5]} intensity={14} distance={12} color="#ffc27a" />
         </>
       )}
-      <Camera at={scene === 'princesse' ? [Math.sin(t * 0.18) * 1.2, 1.5, 15.5] : [0.6, 1.4, 17.5]} look={[0.4, scene === 'princesse' ? 2.9 : 3.1, 0]} />
+      <Camera at={scene === 'princesse' ? [Math.sin(t * 0.18) * 1.2, 1.5, 15.5] : scene === 'cause' ? [0.4 + t * 0.06, 2.0, wide ? 9.5 : 14.5] : [0.6, 1.4, 17.5]} look={scene === 'cause' ? [0.4, 1.8, 3.6] : [0.4, scene === 'princesse' ? 2.9 : 3.1, 0]} />
       {/* Road, its dashed line, the pavements */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, -0.4]} receiveShadow>
         <planeGeometry args={[60, 7.6]} />
@@ -273,6 +373,25 @@ function Street({ scene, t }: { scene: 'gbaka' | 'gnango' | 'princesse'; t: numb
           </group>
         </>
       )}
+      {scene === 'cause' && (
+        <>
+          <Sign p={[0, 5.2, -7.9]} w={4.4} text="ADJAMÉ" bg="#e8590c" />
+          {/* Two who meet on the pavement, and the grin round the teapot */}
+          <group position={[-0.9, 0.18, 4.4]} rotation={[0, Math.PI / 2 - 0.3, 0]}>
+            <BlockHuman look={CREW[0].look} gender="homme" pose={Math.floor(t / 1.6) % 2 ? 'wave' : 'talk'} seed={1} />
+          </group>
+          <group position={[0.9, 0.18, 4.4]} rotation={[0, -Math.PI / 2 + 0.3, 0]}>
+            <BlockHuman look={CREW[4].look} gender="homme" pose={Math.floor(t / 1.6) % 2 ? 'talk' : 'cheer'} seed={2} />
+          </group>
+          <TableSet p={[3.6, 0.18, 5.4]} c="#2a6cf0" />
+          <group position={[4.65, 0.18, 5.4]} rotation={[0, -Math.PI / 2, 0]}>
+            <BlockHuman look={CREW[2].look} gender="homme" pose="drink" seed={3} />
+          </group>
+          <group position={[-3.8 + t * 1.1, 0.18, 3.2]} rotation={[0, Math.PI / 2, 0]}>
+            <BlockHuman look={CREW[3].look} gender="femme" pose="walk" seed={4} />
+          </group>
+        </>
+      )}
       {scene === 'princesse' && (
         <>
           <Sign p={[0, 5.1, -7.9]} w={6} text="RUE PRINCESSE" bg="#ff2d95" />
@@ -306,9 +425,9 @@ function Street({ scene, t }: { scene: 'gbaka' | 'gnango' | 'princesse'; t: numb
 
 /* ---------- The video: 25 seconds, scene after scene ---------- */
 
-type Shot = { from: number; to: number; scene: SceneId; title?: string; sub?: string }
+type Shot = { from: number; to: number; scene: SceneId; title?: string; sub?: string; /** Its number, in the film that goes through everything. */ n?: number }
 /** Each film: its shots, when the intro ends and the outro starts, its length (marketing/video.mjs reads it). */
-const FILMS: Record<'lancement' | 'bouger', { shots: Shot[]; intro: number; outro: number; length: number; hook: [string, string, string] }> = {
+const FILMS: Record<FilmId, { shots: Shot[]; intro: number; outro: number; length: number; hook: [string, string, string] }> = {
   lancement: {
     shots: [
       { from: 0, to: 3.2, scene: 'crew' },
@@ -335,6 +454,93 @@ const FILMS: Record<'lancement' | 'bouger', { shots: Shot[]; intro: number; outr
     length: 31,
     hook: ['À Babi,', 'on bouge', 'comment ?'],
   },
+  // The trailer: you don't choose where you're born, but your life is yours.
+  'bande-annonce': {
+    shots: [
+      { from: 0, to: 3.4, scene: 'famille-gnambro' },
+      { from: 3.4, to: 8.6, scene: 'famille-gnambro', title: 'Tu ne choisis pas ta famille', sub: 'Gnambro, coulé, poignon… tiré au sort' },
+      { from: 8.6, to: 12.8, scene: 'famille-debout', title: 'Ou alors… laté !', sub: 'Villa, piscine, papa qui paie' },
+      { from: 12.8, to: 17, scene: 'build', title: 'Ta vie, tu la construis', sub: 'Bloc par bloc, comme tu veux' },
+      { from: 17, to: 21.2, scene: 'fete', title: 'Tu fais le travaillement', sub: 'Maquis, coupé-décalé, billets qui tombent' },
+      { from: 21.2, to: 25.4, scene: 'basket', title: 'Tu joues au Palais', sub: 'Basket au Palais des Sports de Treichville' },
+      { from: 25.4, to: 30, scene: 'palais' },
+    ],
+    intro: 3.4,
+    outro: 25.4,
+    length: 30,
+    hook: ['Tu nais', 'gnambro', 'ou laté ?'],
+  },
+  // Everything there is to do, one by one.
+  decouverte: {
+    shots: [
+      { from: 0, to: 3.4, scene: 'crew' },
+      { from: 3.4, to: 9, scene: 'crew', n: 1, title: 'Crée ton Sim', sub: 'Teint, coiffure, pagne wax, boubou, survêt…' },
+      { from: 9, to: 14, scene: 'look', n: 2, title: 'Change de look', sub: "Ton armoire gratuite, le coiffeur à 2\u00a0000\u00a0F" },
+      { from: 14, to: 20, scene: 'famille-gnambro', n: 3, title: 'Nais dans une famille', sub: 'Tirée au sort : de gnambro à laté' },
+      { from: 20, to: 26, scene: 'build', n: 4, title: 'Construis ta maison', sub: 'Banco, parpaing, tôle… bloc par bloc' },
+      { from: 26, to: 32, scene: 'gbaka', n: 5, title: 'Monte dans le gbaka', sub: "L'apprenti crie « Adjamé ! », on y va" },
+      { from: 32, to: 37.5, scene: 'gnango', n: 6, title: 'Ou commande un Gnango', sub: 'Ton chauffeur, prix fixé, sur ton téléphone' },
+      { from: 37.5, to: 43, scene: 'cause', n: 7, title: 'Cause avec les gens', sub: 'Saluer, gbairai, foot, « tombe sur moi »…' },
+      { from: 43, to: 49, scene: 'fete', n: 8, title: 'Fais la fête', sub: 'Maquis, coupé-décalé, travaillement' },
+      { from: 49, to: 55, scene: 'basket', n: 9, title: 'Fais du sport', sub: 'Basket au Palais des Sports, foot au quartier' },
+      { from: 55, to: 61, scene: 'siporex', n: 10, title: "Les vrais lieux d'Abidjan", sub: 'Gare de Siporex, Rue Princesse, les ponts…' },
+      { from: 61, to: 66.5, scene: 'phone', n: 11, title: 'Ton téléphone', sub: 'Waye, Gnango, Golvo, Store, les infos du pays' },
+      { from: 66.5, to: 71, scene: 'crew' },
+    ],
+    intro: 3.4,
+    outro: 66.5,
+    length: 71,
+    hook: ['Tout ce que', 'tu peux faire', 'à Babi'],
+  },
+}
+
+/** What people say to each other in the street, two by two. */
+const TALK: [string, string][] = [
+  ["C'est comment famille ?", 'Y a fohi, on est là !'],
+  ['Eh fiscalité !', 'Tombe sur moi un peu…'],
+  ['On dit quoi ?', 'Asec ou Africa ce soir ?'],
+]
+
+/** The phone's home screen: the game's apps come up one after the other. */
+function PhoneApps({ t }: { t: number }) {
+  const up = ease(clamp01(t / 0.6))
+  const apps: { id?: string; icon?: typeof MapIcon; bg?: string; label: string }[] = [
+    { id: 'waye', label: 'Waye' },
+    { id: 'gnango', label: 'Gnango' },
+    { id: 'golvo', label: 'Golvo' },
+    { id: 'store', label: 'Store' },
+    { id: 'idrive', label: 'iDrive' },
+    { icon: Newspaper, bg: '#d6336c', label: 'Infos' },
+    { icon: MapIcon, bg: '#00a862', label: 'Carte' },
+    { icon: MessageCircle, bg: '#7b5cff', label: 'Messages' },
+  ]
+  return (
+    <div className="absolute inset-x-0 bottom-[7%] flex justify-center" style={{ transform: `translateY(${(1 - up) * 110}%)`, opacity: up }}>
+      <div className="w-[320px] rounded-[44px] bg-[#141416] p-3 shadow-[0_30px_60px_-20px_rgba(0,0,0,0.7)]">
+        <div className="rounded-[34px] bg-[linear-gradient(170deg,#2a2f6a,#ff7a59)] px-5 pt-8 pb-7">
+          <div className="text-center font-sans text-[15px] font-extrabold text-white/85">Mon téléphone</div>
+          <div className="mt-5 grid grid-cols-4 gap-x-3 gap-y-5">
+            {apps.map((a, i) => {
+              const k = ease(clamp01((t - 0.5 - i * 0.22) / 0.4))
+              const I = a.icon
+              return (
+                <div key={a.label} className="flex flex-col items-center gap-1.5" style={{ opacity: k, transform: `scale(${0.6 + 0.4 * k})` }}>
+                  {a.id ? (
+                    <AppLogo id={a.id} size={56} radius={17} />
+                  ) : (
+                    <span className="grid h-14 w-14 place-items-center rounded-[17px] text-white" style={{ background: a.bg }}>
+                      {I && <I size={28} strokeWidth={2.4} />}
+                    </span>
+                  )}
+                  <span className="font-sans text-[13px] font-extrabold text-white">{a.label}</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 const { shots: SHOTS, length: VIDEO_LENGTH } = FILMS[FILM]
 
@@ -410,7 +616,7 @@ function Video({ t, qr, url, placeholder }: { t: number; qr: string; url: string
   }
   return (
     <div className="relative h-full w-full overflow-hidden bg-[var(--color-night)] font-display text-white">
-      <div className="absolute inset-0" style={{ opacity: shot.scene === 'dance' || shot.scene === 'princesse' ? 0.25 : 1 }}>
+      <div className="absolute inset-0" style={{ opacity: shot.scene === 'dance' || shot.scene === 'princesse' || shot.scene === 'fete' ? 0.25 : 1 }}>
         <Scene className="h-full w-full" />
       </div>
       <div className="absolute inset-0" style={{ opacity: intro ? 0 : outro ? 0.35 : 1 }}>
@@ -424,12 +630,29 @@ function Video({ t, qr, url, placeholder }: { t: number; qr: string; url: string
           {CALLS[Math.floor((local - 1.6) / 1.25) % CALLS.length]}
         </div>
       )}
+      {/* Two people meeting in the street, and what they say */}
+      {shot.scene === 'cause' && !intro && local > 1.2 && (() => {
+        const [a, b] = TALK[Math.floor((local - 1.2) / 1.7) % TALK.length]
+        const k = (local - 1.2) % 1.7
+        return (
+          <>
+            <div className="absolute top-[43%] left-[8%] max-w-[44%] rounded-3xl rounded-br-md bg-white px-4 py-2.5 text-[26px] leading-tight font-extrabold text-[var(--color-ink)] shadow-[0_12px_30px_-10px_rgba(0,0,0,0.5)]" style={{ opacity: clamp01(k / 0.25) }}>
+              {a}
+            </div>
+            <div className="absolute top-[52%] right-[8%] max-w-[44%] rounded-3xl rounded-bl-md bg-[var(--color-orange)] px-4 py-2.5 text-[26px] leading-tight font-extrabold text-white shadow-[0_12px_30px_-10px_rgba(0,0,0,0.5)]" style={{ opacity: clamp01((k - 0.6) / 0.25) }}>
+              {b}
+            </div>
+          </>
+        )
+      })()}
+      {shot.scene === 'phone' && !outro && <PhoneApps t={local} />}
       {/* Booking on Gnango: the phone comes up, finds a driver, goes */}
       {shot.scene === 'gnango' && local < 4.2 && <GnangoPhone t={local} />}
       {/* Captions */}
       {shot.title && (
         <div className="absolute inset-x-0 top-[9%] flex flex-col items-center px-8 text-center">
-          <div className="rounded-full bg-[var(--color-orange)] px-6 py-2 text-[40px] leading-tight font-extrabold shadow-[0_10px_30px_-10px_rgba(0,0,0,0.6)]" style={pop(shot.from + 0.3)}>
+          <div className="flex items-center gap-3 rounded-full bg-[var(--color-orange)] px-6 py-2 text-[40px] leading-tight font-extrabold shadow-[0_10px_30px_-10px_rgba(0,0,0,0.6)]" style={pop(shot.from + 0.3)}>
+            {shot.n && <span className="-ml-3 grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white text-[28px] text-[var(--color-orange)]">{shot.n}</span>}
             {shot.title}
           </div>
           <div className="mt-4 rounded-2xl bg-[#0f1230]/70 px-5 py-2 font-sans text-[24px] font-extrabold backdrop-blur" style={pop(shot.from + 0.7)}>

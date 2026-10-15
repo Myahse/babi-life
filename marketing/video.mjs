@@ -1,4 +1,5 @@
-// The videos (FILM=lancement, 25 s; FILM=bouger, 31 s), 1080 × 1920 (WhatsApp status, TikTok, Reels), drawn frame
+// The videos (FILM=lancement, 25 s; FILM=bouger, 31 s; FILM=bande-annonce,
+// the trailer, 30 s; FILM=decouverte, everything there is to do, 71 s), 1080 × 1920 (WhatsApp status, TikTok, Reels), drawn frame
 // by frame from the game's own Sims (web/src/lab/poster.tsx) so it's smooth
 // even on a slow machine, then put together by ffmpeg into an MP4.
 //
@@ -11,11 +12,12 @@ import QRCode from 'qrcode'
 import { HERE, OUT, SHORT, URL, browser } from './shared.mjs'
 
 const FPS = Number(process.env.FPS ?? 24)
-/** Which film: lancement (the launch) or bouger (gbaka, Gnango, Rue Princesse). */
+/** Which film: lancement (the launch), bouger (gbaka, Gnango, Rue Princesse), bande-annonce (the trailer) or decouverte (the tour). */
 const FILM = process.env.FILM ?? 'lancement'
+const PORTS = { lancement: 5233, bouger: 5235, 'bande-annonce': 5236, decouverte: 5237 }
 const NAME = FILM === 'lancement' ? 'babi-life-video' : `babi-life-video-${FILM}`
 const SRC = FILM === 'lancement' ? 'video' : `video-${FILM}`
-const PORT = FILM === 'lancement' ? 5233 : 5235
+const PORT = PORTS[FILM] ?? 5238
 const frames = path.join(OUT, 'video-frames', FILM)
 fs.rmSync(frames, { recursive: true, force: true })
 fs.mkdirSync(frames, { recursive: true })

@@ -327,7 +327,23 @@ function seat(row: number, a: number): V3 {
   return [Math.sin(a) * rad, 0.6 + row * ROW_H, Math.cos(a) * rad]
 }
 
-export function Arena({ sim, placeId, interactionId, stage, others = [] }: { sim: Sim; placeId: string; interactionId?: string; stage: string; others?: Player[] }) {
+/** Where the Sim is: on the free-throw line facing the hoop, in the stands for a match, or by the court. */
+function mePlace(interactionId?: string): { p: V3; ry: number; pose: Pose } {
+  const playing = interactionId === 'play-basket' || interactionId === 'play-football'
+  const watching = interactionId === 'watch-match'
+  return playing
+    ? {
+        p: [RING_X - 5.2, 0, 0.4],
+        ry: Math.PI / 2,
+        pose: interactionId === 'play-football' ? 'kick' : 'dribble',
+      }
+    : watching
+      ? { p: seat(2, 0.25), ry: Math.PI + 0.25, pose: 'cheer' }
+      : { p: [2, 0, COURT[1] / 2 + 1.4], ry: Math.PI, pose: 'idle' }
+}
+
+/** The hall and everyone in it (no camera): for the inside view and the videos. */
+export function ArenaWorld({ sim, placeId, interactionId, stage, others = [] }: { sim: Sim; placeId: string; interactionId?: string; stage: string; others?: Player[] }) {
   const court = useMemo(courtTexture, [])
   const parts = useMemo(bowl, [])
   const stepMat = useMemo(() => new THREE.MeshLambertMaterial({ color: '#ffffff' }), [])
@@ -371,18 +387,82 @@ export function Arena({ sim, placeId, interactionId, stage, others = [] }: { sim
     })
   }, [placeId])
 
-  // Where the Sim is: on the free-throw line facing the hoop, in the stands for a match, or by the court.
   const playing = interactionId === 'play-basket' || interactionId === 'play-football'
   const watching = interactionId === 'watch-match'
-  const me: { p: V3; ry: number; pose: Pose } = playing
-    ? {
-        p: [RING_X - 5.2, 0, 0.4],
-        ry: Math.PI / 2,
-        pose: interactionId === 'play-football' ? 'kick' : 'dribble',
-      }
-    : watching
-      ? { p: seat(2, 0.25), ry: Math.PI + 0.25, pose: 'cheer' }
-      : { p: [2, 0, COURT[1] / 2 + 1.4], ry: Math.PI, pose: 'idle' }
+  const me = mePlace(interactionId)
+  return (
+    <>
+      <hemisphereLight args={['#fff6e8', '#7a6a55', 1.1]} />
+      <ambientLight intensity={0.35} />
+      <directionalLight position={[0, 20, 0]} intensity={0.9} castShadow shadow-mapSize={[1024, 1024]} shadow-camera-left={-20} shadow-camera-right={20} shadow-camera-top={20} shadow-camera-bottom={-20} />
+
+      {/* The floor: the blue apron round the court, then the court */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <circleGeometry args={[BOWL_IN, 48]} />
+        <meshLambertMaterial color="#2b62c4" />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} material={court} receiveShadow>
+        <planeGeometry args={[COURT[0] + 4, COURT[1] + 4]} />
+      </mesh>
+      <Hoop side={1} />
+      <Hoop side={-1} />
+      {/* The scorers' table on the side */}
+      <mesh position={[0, 0.5, -(COURT[1] / 2 + 2.2)]} scale={[7, 1, 0.9]} geometry={box}>
+        <meshLambertMaterial color="#1f3f8a" />
+      </mesh>
+
+      <primitive object={steps} />
+      <primitive object={seats} />
+      <primitive object={rails} />
+      {/* The ring of offices, the big screen over the far stand */}
+      <mesh position={[0, (0.6 + ROWS * ROW_H + SPRING) / 2, 0]} material={wall}>
+        <cylinderGeometry args={[WALL, WALL, SPRING - 0.6 - ROWS * ROW_H, 64, 1, true]} />
+      </mesh>
+      <mesh position={[0, 8.8, -(WALL - 0.6)]} scale={[6.5, 3, 0.6]} geometry={box}>
+        <meshLambertMaterial color="#15171a" />
+      </mesh>
+      <mesh position={[0, 8.8, -(WALL - 0.95)]} rotation={[0, 0, 0]}>
+        <planeGeometry args={[5.8, 2.4]} />
+        <meshBasicMaterial color="#3c79d8" />
+      </mesh>
+
+      {/* The dome of wooden ribs, the lamps */}
+      <mesh geometry={shell}>
+        <meshLambertMaterial color="#b98552" side={THREE.BackSide} />
+      </mesh>
+      <Ribs ribs={ribs} />
+      <Crown at={[-10, 14.5, -3]} />
+      <Crown at={[0, 15.5, -3]} />
+      <Crown at={[10, 14.5, -3]} />
+
+      <NoShadows>
+        {crowd.map((c, i) => (
+          <group key={i} position={c.p} rotation={[0, c.ry, 0]}>
+            <Human look={c.look} gender={c.gender} pose={c.pose} seed={c.seed} />
+          </group>
+        ))}
+      </NoShadows>
+      {watching && <Match seed={placeId} />}
+
+      <group position={me.p} rotation={[0, me.ry, 0]}>
+        <Character look={playing ? { ...sim.look, outfit: 'basket' } : sim.look} gender={sim.gender} stage={stage} pose={me.pose} />
+      </group>
+      {playing && interactionId === 'play-basket' && <Dribble at={me.p} ry={me.ry} />}
+      {/* Other players here: on the court beside the Sim */}
+      {others.slice(0, 3).map((o, i) => (
+        <group key={o.id} position={[me.p[0] + [-1.5, 1.2, -0.8][i], me.p[1], me.p[2] + [2.2, -2.4, -4][i]]} rotation={[0, me.ry, 0]}>
+          <Character look={o.look} gender={o.gender} stage={o.stage} pose={playing ? 'run' : me.pose} moodColor="#3b82f6" />
+        </group>
+      ))}
+    </>
+  )
+}
+
+export function Arena(props: { sim: Sim; placeId: string; interactionId?: string; stage: string; others?: Player[] }) {
+  const { interactionId } = props
+  const playing = interactionId === 'play-basket' || interactionId === 'play-football'
+  const watching = interactionId === 'watch-match'
+  const me = mePlace(interactionId)
   // The camera: behind the Sim toward the hoop on court; in the stands, over its shoulder from higher up the bowl.
   const back = Math.hypot(me.p[0], me.p[2]) + 5
   const target: V3 = playing ? [me.p[0] + 2.5, 2, me.p[2]] : watching ? [me.p[0] * 0.6, 1.5, me.p[2] * 0.6] : [me.p[0], me.p[1] + 1, me.p[2]]
@@ -391,69 +471,7 @@ export function Arena({ sim, placeId, interactionId, stage, others = [] }: { sim
   return (
     <Canvas shadows dpr={[1, 2]} camera={{ position: camAt, fov: 60 }} style={{ background: '#2a2d33' }}>
       <Suspense fallback={null}>
-        <hemisphereLight args={['#fff6e8', '#7a6a55', 1.1]} />
-        <ambientLight intensity={0.35} />
-        <directionalLight position={[0, 20, 0]} intensity={0.9} castShadow shadow-mapSize={[1024, 1024]} shadow-camera-left={-20} shadow-camera-right={20} shadow-camera-top={20} shadow-camera-bottom={-20} />
-
-        {/* The floor: the blue apron round the court, then the court */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-          <circleGeometry args={[BOWL_IN, 48]} />
-          <meshLambertMaterial color="#2b62c4" />
-        </mesh>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} material={court} receiveShadow>
-          <planeGeometry args={[COURT[0] + 4, COURT[1] + 4]} />
-        </mesh>
-        <Hoop side={1} />
-        <Hoop side={-1} />
-        {/* The scorers' table on the side */}
-        <mesh position={[0, 0.5, -(COURT[1] / 2 + 2.2)]} scale={[7, 1, 0.9]} geometry={box}>
-          <meshLambertMaterial color="#1f3f8a" />
-        </mesh>
-
-        <primitive object={steps} />
-        <primitive object={seats} />
-        <primitive object={rails} />
-        {/* The ring of offices, the big screen over the far stand */}
-        <mesh position={[0, (0.6 + ROWS * ROW_H + SPRING) / 2, 0]} material={wall}>
-          <cylinderGeometry args={[WALL, WALL, SPRING - 0.6 - ROWS * ROW_H, 64, 1, true]} />
-        </mesh>
-        <mesh position={[0, 8.8, -(WALL - 0.6)]} scale={[6.5, 3, 0.6]} geometry={box}>
-          <meshLambertMaterial color="#15171a" />
-        </mesh>
-        <mesh position={[0, 8.8, -(WALL - 0.95)]} rotation={[0, 0, 0]}>
-          <planeGeometry args={[5.8, 2.4]} />
-          <meshBasicMaterial color="#3c79d8" />
-        </mesh>
-
-        {/* The dome of wooden ribs, the lamps */}
-        <mesh geometry={shell}>
-          <meshLambertMaterial color="#b98552" side={THREE.BackSide} />
-        </mesh>
-        <Ribs ribs={ribs} />
-        <Crown at={[-10, 14.5, -3]} />
-        <Crown at={[0, 15.5, -3]} />
-        <Crown at={[10, 14.5, -3]} />
-
-        <NoShadows>
-          {crowd.map((c, i) => (
-            <group key={i} position={c.p} rotation={[0, c.ry, 0]}>
-              <Human look={c.look} gender={c.gender} pose={c.pose} seed={c.seed} />
-            </group>
-          ))}
-        </NoShadows>
-        {watching && <Match seed={placeId} />}
-
-        <group position={me.p} rotation={[0, me.ry, 0]}>
-          <Character look={playing ? { ...sim.look, outfit: 'basket' } : sim.look} gender={sim.gender} stage={stage} pose={me.pose} />
-        </group>
-        {playing && interactionId === 'play-basket' && <Dribble at={me.p} ry={me.ry} />}
-        {/* Other players here: on the court beside the Sim */}
-        {others.slice(0, 3).map((o, i) => (
-          <group key={o.id} position={[me.p[0] + [-1.5, 1.2, -0.8][i], me.p[1], me.p[2] + [2.2, -2.4, -4][i]]} rotation={[0, me.ry, 0]}>
-            <Character look={o.look} gender={o.gender} stage={o.stage} pose={playing ? 'run' : me.pose} moodColor="#3b82f6" />
-          </group>
-        ))}
-
+        <ArenaWorld {...props} />
         <OrbitControls makeDefault target={target} enablePan={false} minDistance={3} maxDistance={30} minPolarAngle={0.3} maxPolarAngle={1.55} enableDamping />
       </Suspense>
     </Canvas>

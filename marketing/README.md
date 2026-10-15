@@ -21,8 +21,14 @@ Everything for the launch of the wish list (**lifeinbabi.com/liste**), made from
 | `babi-life-video-cover.png` | The video's last frame (QR code), as a cover |
 | `babi-life-video-bouger-1080x1920.mp4` | The second video, 31 s: « À Babi, on bouge comment ? » — the gbaka and its apprenti calling « Adjamé ! Yop ! », a Gnango ride booked on the phone, a night at the Rue Princesse |
 | `babi-life-video-bouger-cover.png` | Its last frame, as a cover |
+| `babi-life-video-bande-annonce-1080x1920.mp4` | **The trailer**, 30 s: « Tu nais gnambro ou laté ? » — a gnambro family (torn clothes, flies) then a laté one (villa, gold), building the house, the travaillement at the maquis, basket at the Palais des Sports |
+| `babi-life-video-bande-annonce-cover.png` | Its last frame, as a cover |
+| `babi-life-video-decouverte-1080x1920.mp4` | **Everything you can do**, 71 s, eleven numbered shots: create your Sim, change your look, be born into a family, build your house, the gbaka, Gnango, talk with people (« C'est comment famille ? »), party, sport, the real places, the phone and its apps |
+| `babi-life-video-decouverte-cover.png` | Its last frame, as a cover |
+| `babi-life-flyer-famille-*` | The trailer's flyer: « Tu nais gnambro ou laté ? », the two families side by side (A5 PDF and 300 dpi PNG, post 1080 × 1350, status 1080 × 1920) |
+| `babi-life-flyer-decouverte-*` | « Tout ce que tu peux faire à Babi »: nine pictures from the game (same sizes) |
 
-The SVGs have the name in outlines: they open anywhere without the font. The QR codes lead to `lifeinbabi.com/liste?src=flyer` (flyer), `?src=video` (the launch video) and `?src=video-bouger` (the second one), so the export of the list says where each sign-up came from.
+The SVGs have the name in outlines: they open anywhere without the font. The QR codes lead to `lifeinbabi.com/liste?src=flyer` (flyer), `?src=video` (the launch video), `?src=video-bouger` (the second one), `?src=video-bande-annonce`, `?src=video-decouverte`, `?src=flyer-famille` and `?src=flyer-decouverte`, so the export of the list says where each sign-up came from.
 
 ## Making them again
 
@@ -32,6 +38,9 @@ npm run logos   # out/logos/
 npm run flyer   # the flyer (needs out/logos/ first)
 npm run video          # the launch video (a few minutes: drawn frame by frame; needs ffmpeg)
 npm run video:bouger   # the second video (gbaka, Gnango, Rue Princesse)
+npm run video:bande-annonce   # the trailer
+npm run video:decouverte      # everything you can do (about an hour to draw)
+node flyer-jeu.mjs            # the « famille » and « découverte » flyers
 ```
 
 Another address: `WAITLIST_URL=https://… npm run all`. Chromium is found where Playwright puts it, or set `CHROMIUM=/path/to/chrome`.

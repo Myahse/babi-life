@@ -8,7 +8,10 @@
     "flyer": "node flyer.mjs",
     "video": "node video.mjs",
     "video:bouger": "FILM=bouger node video.mjs",
-    "all": "node logos.mjs && node flyer.mjs && node video.mjs && FILM=bouger node video.mjs"
+    "video:bande-annonce": "FILM=bande-annonce node video.mjs",
+    "video:decouverte": "FILM=decouverte node video.mjs",
+    "flyer:jeu": "node flyer-jeu.mjs",
+    "all": "node logos.mjs && node flyer.mjs && node flyer-jeu.mjs && node video.mjs && FILM=bouger node video.mjs && FILM=bande-annonce node video.mjs && FILM=decouverte node video.mjs"
   },
   "dependencies": {
     "opentype.js": "^1.3.4",

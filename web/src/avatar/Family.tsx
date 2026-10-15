@@ -236,20 +236,16 @@ function Home({ familyId }: { familyId: string }) {
   )
 }
 
-/** The birth: the family in front of their home, the baby in the middle with its losange. */
-export function FamilyScene({ familyId, look, gender, className = '' }: { familyId: string; look: Look; gender: Sim['gender']; className?: string }) {
+/** The family in front of their home, the baby in the middle with its losange (no camera: for any scene). */
+export function FamilyGroup({ familyId, look, gender }: { familyId: string; look: Look; gender: Sim['gender'] }) {
   const cast = useMemo(() => familyCast(familyId, look), [familyId, look])
   const people: { at: [number, number, number]; who: Parent }[] = [
     { at: [-0.75, 0, 0.1], who: cast.papa },
     { at: [0.75, 0, 0.1], who: cast.maman },
   ]
   return (
-    <Canvas className={className} shadows dpr={[1, 2]} camera={{ position: [0, 1.35, 4.4], fov: 38 }} gl={{ antialias: true, alpha: true }}>
-      <hemisphereLight args={['#fff4e6', '#8a6a48', 1.1]} />
-      <directionalLight position={[2.5, 5, 4]} intensity={2.1} castShadow shadow-mapSize={[1024, 1024]} />
-      <ambientLight intensity={0.4} />
+    <>
       <Home familyId={familyId} />
-      <ContactShadows position={[0, 0.002, 0]} opacity={0.3} scale={6} blur={2.4} far={2} />
       {people.map(({ at, who }, i) => (
         <group key={i} position={at} rotation={[0, i ? -0.25 : 0.25, 0]}>
           <Character look={who.look} gender={who.gender} pose={who.pose} plumbob={false} seed={i * 3.3} />
@@ -271,6 +267,19 @@ export function FamilyScene({ familyId, look, gender, className = '' }: { family
           <Sparkles at={[0.75, 0, 0.1]} seed={2} />
         </>
       )}
+    </>
+  )
+}
+
+/** The birth: the family at home, seen from the front; drag to look round a little. */
+export function FamilyScene({ familyId, look, gender, className = '' }: { familyId: string; look: Look; gender: Sim['gender']; className?: string }) {
+  return (
+    <Canvas className={className} shadows dpr={[1, 2]} camera={{ position: [0, 1.35, 4.4], fov: 38 }} gl={{ antialias: true, alpha: true }}>
+      <hemisphereLight args={['#fff4e6', '#8a6a48', 1.1]} />
+      <directionalLight position={[2.5, 5, 4]} intensity={2.1} castShadow shadow-mapSize={[1024, 1024]} />
+      <ambientLight intensity={0.4} />
+      <FamilyGroup familyId={familyId} look={look} gender={gender} />
+      <ContactShadows position={[0, 0.002, 0]} opacity={0.3} scale={6} blur={2.4} far={2} />
       <OrbitControls target={[0, 0.85, 0]} enablePan={false} enableZoom={false} minPolarAngle={1.1} maxPolarAngle={1.5} minAzimuthAngle={-0.6} maxAzimuthAngle={0.6} rotateSpeed={0.6} />
     </Canvas>
   )
