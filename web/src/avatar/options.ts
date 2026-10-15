@@ -92,6 +92,12 @@ export const OUTFITS: Choice[] = [
   { id: 'abaya', label: 'Abaya & voile' },
   { id: 'blouse', label: 'Blouse blanche' },
   { id: 'bleu', label: 'Bleu de travail' },
+  { id: 'policier', label: 'Uniforme de policier' },
+  { id: 'gendarme', label: 'Uniforme de gendarme' },
+  { id: 'cuisinier', label: 'Tenue de cuisinier' },
+  { id: 'infirmier', label: "Tenue d'infirmier" },
+  { id: 'vigile', label: 'Tenue de vigile' },
+  { id: 'soeur', label: 'Habit de religieuse' },
 ]
 
 export const MARKS: Choice[] = [
@@ -116,13 +122,15 @@ export const PATTERNS: Choice[] = [
 /** Outfits that use the wax pattern. */
 export const WAX_OUTFITS = new Set(['pagne', 'boubou', 'robe', 'chemise-pagne', 'kaba'])
 /** Outfits only women wear (a man who picks one gets the nearest men's outfit). */
-export const FEMME_OUTFITS = new Set(['robe', 'kaba', 'jupe', 'abaya'])
+export const FEMME_OUTFITS = new Set(['robe', 'kaba', 'jupe', 'abaya', 'soeur'])
 /** Hairdos a cap or a hat goes over: they're drawn short under it. */
 export const TALL_HAIR = new Set(['afro', 'bun', 'headwrap', 'puffs', 'mohawk', 'ponytail'])
 /** Accessories worn on the head (a hat, a cap…). */
 export const HEADWEAR = new Set(['cap', 'capback', 'beanie', 'hat', 'buckethat', 'bandana', 'headphones', 'kufi'])
 /** Outfits that cover the hair (the veil): no hairdo shows. */
-export const VEILED = new Set(['abaya'])
+export const VEILED = new Set(['abaya', 'soeur'])
+/** Uniforms that come with their own headwear (unless something else is on the head). */
+export const UNIFORM_HATS: Record<string, string> = { policier: 'kepi', gendarme: 'beret', cuisinier: 'toque', vigile: 'cap' }
 
 export const DEFAULT_LOOK: Look = {
   skin: SKIN_TONES[5],
@@ -150,7 +158,7 @@ export const metres = (scale: number, gender: 'femme' | 'homme') => BASE_HEIGHT[
 export const scaleFor = (m: number, gender: 'femme' | 'homme') => m / BASE_HEIGHT[gender]
 
 /** Colours an outfit starts with when it's picked: the kit of the Éléphants is orange. */
-export const OUTFIT_DEFAULT_COLOR: Record<string, string> = { jersey: '#ff8200', suit: '#1f2a44', debardeur: '#f8f9fa', basket: '#1d428a', uniforme: '#c8b07a', chemise: '#74c0fc', bazin: '#0f9d8a', blouson: '#3d64a8', salopette: '#3d64a8', souscorps: '#f4f4f4', jogging: '#f4efe6', sweat: '#6c7280', soutane: '#17171a', pasteur: '#17171a', imam: '#f8f9fa', abaya: '#14213d', blouse: '#f8f9fa', bleu: '#1d4ed8' }
+export const OUTFIT_DEFAULT_COLOR: Record<string, string> = { jersey: '#ff8200', suit: '#1f2a44', debardeur: '#f8f9fa', basket: '#1d428a', uniforme: '#c8b07a', chemise: '#74c0fc', bazin: '#0f9d8a', blouson: '#3d64a8', salopette: '#3d64a8', souscorps: '#f4f4f4', jogging: '#f4efe6', sweat: '#6c7280', soutane: '#17171a', pasteur: '#17171a', imam: '#f8f9fa', abaya: '#14213d', blouse: '#f8f9fa', bleu: '#1d4ed8', policier: '#8ec5ee', gendarme: '#6b7a4a', cuisinier: '#f8f9fa', infirmier: '#e7f5ff', vigile: '#17171a', soeur: '#5b6470' }
 
 /** Sims made before the creator grew: fill the new fields. */
 export function fullLook(look: Look): Required<Look> {
@@ -192,9 +200,9 @@ export const ACCESSORY_COLORS = ['#e8b93c', '#d8d8de', '#17171a', '#b02e0c', '#2
 
 /** The colours an outfit's parts have when the player hasn't picked one. */
 export function defaultColors(l: Required<Look>, femme: boolean) {
-  const bottom: Record<string, string> = { pagne: femme ? l.outfitColor : '#2b2f45', jersey: '#f8f9fa', casual: '#3d64a8', debardeur: '#1f2a44', basket: l.outfitColor, 'chemise-pagne': '#2b2f45', chemise: '#2b2f45', uniforme: femme ? '#1d4ed8' : '#a08850', jupe: '#2b2f45', blouson: '#3d64a8', salopette: l.outfitColor, kaba: l.outfitColor, bazin: l.outfitColor, souscorps: '#3d64a8', jogging: '#6c7280', sweat: '#6c7280', soutane: l.outfitColor, pasteur: '#17171a', imam: '#f8f9fa', abaya: '#2b2f45', blouse: '#2b2f45', bleu: l.outfitColor }
-  const shoe: Record<string, string> = { souscorps: '#141416', jogging: '#f4f4f4', sweat: '#141416', soutane: '#141416', pasteur: '#141416', imam: '#e8d9b5', abaya: '#141416', blouse: '#f4f4f4', bleu: '#141416', 'chemise-pagne': '#6b4423', kaba: '#8a5a2b', bazin: '#e8d9b5', chemise: '#141416', uniforme: '#141416', jupe: '#f4f4f4', blouson: '#f4f4f4', salopette: '#f4f4f4', debardeur: '#141416', basket: '#f8f9fa', survet: '#f4f4f4', pagne: femme ? '#8a5a2b' : '#6b4423', boubou: '#e8d9b5', robe: '#1c1c22', suit: '#141416', jersey: '#141416', casual: '#f4f4f4' }
-  const outfit = !femme && FEMME_OUTFITS.has(l.outfit) ? (l.outfit === 'kaba' ? 'boubou' : l.outfit === 'abaya' ? 'imam' : 'casual') : l.outfit
+  const bottom: Record<string, string> = { pagne: femme ? l.outfitColor : '#2b2f45', jersey: '#f8f9fa', casual: '#3d64a8', debardeur: '#1f2a44', basket: l.outfitColor, 'chemise-pagne': '#2b2f45', chemise: '#2b2f45', uniforme: femme ? '#1d4ed8' : '#a08850', jupe: '#2b2f45', blouson: '#3d64a8', salopette: l.outfitColor, kaba: l.outfitColor, bazin: l.outfitColor, souscorps: '#3d64a8', jogging: '#6c7280', sweat: '#6c7280', soutane: l.outfitColor, pasteur: '#17171a', imam: '#f8f9fa', abaya: '#2b2f45', blouse: '#2b2f45', bleu: l.outfitColor, policier: '#1f2a44', gendarme: '#4f5b36', cuisinier: '#2b2f45', infirmier: l.outfitColor, vigile: '#17171a', soeur: l.outfitColor }
+  const shoe: Record<string, string> = { policier: '#141416', gendarme: '#141416', cuisinier: '#141416', infirmier: '#f4f4f4', vigile: '#141416', soeur: '#141416', souscorps: '#141416', jogging: '#f4f4f4', sweat: '#141416', soutane: '#141416', pasteur: '#141416', imam: '#e8d9b5', abaya: '#141416', blouse: '#f4f4f4', bleu: '#141416', 'chemise-pagne': '#6b4423', kaba: '#8a5a2b', bazin: '#e8d9b5', chemise: '#141416', uniforme: '#141416', jupe: '#f4f4f4', blouson: '#f4f4f4', salopette: '#f4f4f4', debardeur: '#141416', basket: '#f8f9fa', survet: '#f4f4f4', pagne: femme ? '#8a5a2b' : '#6b4423', boubou: '#e8d9b5', robe: '#1c1c22', suit: '#141416', jersey: '#141416', casual: '#f4f4f4' }
+  const outfit = !femme && FEMME_OUTFITS.has(l.outfit) ? (l.outfit === 'kaba' ? 'boubou' : l.outfit === 'abaya' ? 'imam' : l.outfit === 'soeur' ? 'soutane' : 'casual') : l.outfit
   return {
     bottom: bottom[outfit] ?? l.outfitColor,
     shoe: shoe[outfit] ?? '#f4f4f4',

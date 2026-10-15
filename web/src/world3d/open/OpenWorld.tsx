@@ -3,7 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { PerformanceMonitor } from '@react-three/drei'
-import { Human, NoShadows } from '../../avatar/Human'
+import { Human, NoShadows, type Pose } from '../../avatar/Human'
 import { randomLook } from '../../avatar/options'
 import { lifeOf } from '../../game/rules'
 import { HAPPENING_DOOR, HAPPENING_X, HappeningMarker, HappeningScene, STOPS_TRAFFIC } from '../Happenings'
@@ -19,12 +19,12 @@ import { Html } from '@react-three/drei'
 import { Bande } from '../Nightlife'
 import { OtherPlayers } from '../Players'
 import { rng } from '../themes'
-import { Vehicle, type VehicleKind } from '../vehicles'
+import { APPRENTI, GBAKA_DOOR, Vehicle, type VehicleKind } from '../vehicles'
 import { Walker, type WalkNav } from '../Walker'
 import { whereabouts } from '../whereabouts'
 import { CHUNK_ZOOM, hash, tileBox, tileOf, toLatLng, toLocal, type Origin, type XZ } from './geo'
 import { Nav } from './nav'
-import { along, anchorNode, round, routeLength, turnTo, useCellsAround } from './shared'
+import { along, anchorNode, round, routeLength, turnTo, useCellsAround, type Round } from './shared'
 import { inTheWay, resolvePlaces, type PlaceSpot, type Resolved } from './places'
 import { LANDMARKS, Landmark } from './landmarks'
 import { Boats } from './boats'
@@ -1019,6 +1019,9 @@ function RoadTraffic({ nav, focus, seed, woro }: { nav: Nav; focus: React.RefObj
 function Car({ car, nav, routes }: { car: { id: string; kind: VehicleKind; color?: string; trim?: string; seed: number; near: XZ; speed: number; offset: number }; nav: Nav; routes: Map<string, XZ[]> }) {
   const ref = useRef<THREE.Group>(null)
   const anchor = useMemo(() => anchorNode(nav, car.near, 7), [nav, car.near])
+  const gbaka = car.kind === 'gbaka'
+  // The gbaka's leg, for its apprenti: seconds since it left (or since it stopped).
+  const leg = useRef<GbakaLeg>({ moving: false, since: 99, go: 0 })
   useFrame((_, dt) => {
     const g = ref.current
     if (!g) return
@@ -1028,7 +1031,10 @@ function Car({ car, nav, routes }: { car: { id: string; kind: VehicleKind; color
     const way = path(at.n)
     g.visible = way.length > 1
     if (!g.visible) return
-    const p = along(way, at.d)
+    // A gbaka pulls away and pulls in (an apprenti has to be able to run
+    // after it): the same leg in the same time, eased at both ends.
+    const d = gbaka ? eased(at, routeLength(way), car.speed, CAR_ROUND, car.offset, leg.current) : at.d
+    const p = along(way, d)
     const heading = at.forward ? p.r : p.r + Math.PI
     // Drive on the right: shift to the right of the way it goes.
     const off = 2
@@ -1038,8 +1044,116 @@ function Car({ car, nav, routes }: { car: { id: string; kind: VehicleKind; color
   })
   return (
     <group ref={ref}>
-      <Vehicle p={[0, 0, 0]} kind={car.kind} color={car.color} trim={car.trim} seed={car.seed} />
+      <Vehicle p={[0, 0, 0]} kind={car.kind} color={car.color} trim={car.trim} seed={car.seed} crew={!gbaka} />
+      {gbaka && <Apprenti leg={leg} seed={car.seed} />}
     </group>
+  )
+}
+
+/** Where a gbaka is in its leg: moving or stopped, for how long, and how long the leg takes. */
+export type GbakaLeg = { moving: boolean; since: number; go: number; d?: (s: number) => number }
+
+/** Distance after s seconds of a leg of L metres in go seconds: speeding up, cruising, slowing down. */
+export function legProfile(go: number, L: number) {
+  const ta = Math.min(GBAKA_EASE, go / 3)
+  const v = L / (go - ta)
+  return (s: number) => (s <= ta ? (v * s * s) / (2 * ta) : s >= go - ta ? L - (v * (go - s) ** 2) / (2 * ta) : v * (s - ta / 2))
+}
+
+/** Seconds to get up to speed, and to slow down. */
+const GBAKA_EASE = 5
+
+/**
+ * The gbaka's distance along its leg: the same leg as round()'s, in the
+ * same time, but pulling away slowly and pulling in slowly (a trapezoid of
+ * speed), so the apprenti left on the sidewalk can catch it. Fills `leg`.
+ */
+function eased(at: Round, len: number, speed: number, cycle: number, offset: number, leg: GbakaLeg) {
+  const u = worldTime() + offset
+  const k = u - Math.floor(u / cycle) * cycle
+  const go = Math.min(len / speed, cycle * 0.42)
+  const wait = (cycle - 2 * go) / 2
+  const L = go * speed
+  const dist = legProfile(go, L)
+  leg.go = go
+  leg.d = dist
+  if (at.moving) {
+    const s = at.forward ? k : k - go - wait
+    leg.moving = true
+    leg.since = s
+    const d = dist(Math.max(0, Math.min(go, s)))
+    return at.forward ? d : L - d
+  }
+  leg.moving = false
+  leg.since = at.forward ? k - go : k - 2 * go - wait
+  return at.d
+}
+
+/**
+ * The gbaka's apprenti. At the stop he's down on the sidewalk, calling the
+ * destination. The gbaka pulls away without him; he sees it a beat late,
+ * sprints after it, catches up with the door and leaps for it, and rides
+ * hanging out of it, a hand on the frame, a foot on the step, waving at
+ * people. Coming into the next stop he hops off before it has stopped.
+ * All from the gbaka's own clock: the same chase on every screen.
+ */
+export function Apprenti({ leg, seed }: { leg: React.RefObject<GbakaLeg>; seed: number }) {
+  const g = useRef<THREE.Group>(null)
+  const [pose, setPose] = useState<Pose>('hang')
+  const [runSpeed, setRunSpeed] = useState(6)
+  const [dx, dy, dz] = GBAKA_DOOR
+  const SIDE = dz + 1.1 // standing on the sidewalk, by the gbaka
+  const BACK = -2.0 // at the back of it, taking the fares, calling
+  const REACT = 1.0 + (seed % 1) * 0.4 // he notices it's leaving
+  const CATCH = 3.2 // he has the door frame
+  const LEAP = 0.55 // the jump, before he has it
+  const OFF = 0.6 // hopping off, before the stop
+  useFrame(() => {
+    const o = g.current
+    const l = leg.current
+    if (!o || !l?.d) return
+    const set = (x: number, y: number, z: number, ry: number, p: Pose) => {
+      o.position.set(x, y, z)
+      o.rotation.y = ry
+      if (p !== pose) setPose(p)
+    }
+    const short = l.go < CATCH + 3 // too short a hop to get off
+    if (short) return set(dx, dy, dz, Math.PI / 2, 'hang')
+    if (!l.moving) {
+      // Stopped: on the sidewalk by the door, turned to the people, calling.
+      return set(BACK, 0, SIDE, 0, 'wave')
+    }
+    const s = l.since
+    if (s >= l.go - OFF) {
+      // Hopping off as it slows: from the step down onto the sidewalk.
+      const j = Math.min(1, (s - (l.go - OFF)) / OFF)
+      return set(dx + (BACK - dx) * j, dy * (1 - j) + Math.sin(Math.PI * j) * 0.35, dz + (SIDE - dz) * j, Math.PI / 2 - (Math.PI / 2) * j, j < 1 ? 'leap' : 'wave')
+    }
+    if (s < REACT) {
+      // Still calling: the gbaka is already going (he stays where he is, it moves on).
+      return set(BACK - l.d(s), 0, SIDE, 0, 'wave')
+    }
+    if (s < CATCH) {
+      // Running after it: from where he stood to the door, while it pulls away.
+      const k = (s - REACT) / (CATCH - REACT)
+      const start = BACK - l.d(REACT)
+      const speed = (dx - start + 0.1) / (CATCH - REACT) // how fast he gains on it
+      if (Math.abs(speed + (l.d(CATCH) - l.d(REACT)) / (CATCH - REACT) - runSpeed) > 0.5) setRunSpeed(speed + (l.d(CATCH) - l.d(REACT)) / (CATCH - REACT))
+      const x = start + (dx - start) * k
+      const z = SIDE + (dz - SIDE) * Math.max(0, (k - 0.5) / 0.5)
+      const jump = s > CATCH - LEAP ? (s - (CATCH - LEAP)) / LEAP : -1
+      if (jump >= 0) return set(x, dy * jump + Math.sin(Math.PI * jump) * 0.45, z, Math.PI / 2, 'leap')
+      return set(x, 0, z, Math.PI / 2, 'run')
+    }
+    // On board: hanging out of the door.
+    set(dx, dy, dz, Math.PI / 2, 'hang')
+  })
+  return (
+    <NoShadows>
+      <group ref={g}>
+        <Human look={APPRENTI} gender="homme" pose={pose} seed={seed} speed={pose === 'run' ? runSpeed : undefined} />
+      </group>
+    </NoShadows>
   )
 }
 

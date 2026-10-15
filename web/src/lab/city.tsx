@@ -12,15 +12,19 @@ import { Vehicle, type VehicleKind } from '../world3d/vehicles'
 import { Landmark } from '../world3d/open/landmarks'
 import { fetchChunk } from '../world3d/open/tiles'
 import { CHUNK_ZOOM, tileOf, type Origin } from '../world3d/open/geo'
-import { Forest, Palms, Trees, makeWorldMaterials } from '../world3d/open/OpenWorld'
-import { useEffect, useState } from 'react'
+import { Apprenti, Forest, Palms, Trees, legProfile, makeWorldMaterials, type GbakaLeg } from '../world3d/open/OpenWorld'
+import { useFrame } from '@react-three/fiber'
+import { worldTime } from '../lib/worldClock'
+import { useEffect, useRef, useState } from 'react'
 
 // Dev-only lab (/city.html): made-up map buildings (turned, L-shaped, round,
 // tiny) put through the real chunk builder, as the open world draws them, and
 // the street's vehicles; ?view=cars for the vehicles up close;
 // ?view=landmark&id=yop-rue-princesse (&night) for one landmark;
 // ?view=map&lat=5.345&lng=-4.082&n=1 for the real map's chunks there
-// (OpenFreeMap, no key), n chunks each way, seen from &cam.
+// (OpenFreeMap, no key), n chunks each way, seen from &cam;
+// ?view=gbaka&t=… the apprenti's chase down a straight street (t: seconds
+// into the cycle, frozen; without t it plays).
 
 const q = new URLSearchParams(location.search)
 const view = q.get('view') ?? 'city'
@@ -188,7 +192,54 @@ function MapLab() {
   )
 }
 
+/** One gbaka down a straight street: 5 s at the stop, 14 s to go 110 m, and again. */
+function GbakaRun() {
+  const car = useRef<THREE.Group>(null)
+  const leg = useRef<GbakaLeg>({ moving: false, since: 0, go: 14 })
+  const [STOP, GO, L] = [5, 14, 110]
+  const dist = useMemo(() => legProfile(GO, L), [])
+  useFrame(() => {
+    const fixed = q.get('t')
+    const k = (fixed !== null ? Number(fixed) : worldTime()) % (STOP + GO)
+    const l = leg.current
+    l.go = GO
+    l.d = dist
+    l.moving = k >= STOP
+    l.since = l.moving ? k - STOP : k
+    if (car.current) car.current.position.x = l.moving ? dist(k - STOP) - 40 : -40
+  })
+  return (
+    <group ref={car}>
+      <Vehicle p={[0, 0, 0]} kind="gbaka" crew={false} />
+      <Apprenti leg={leg} seed={0.3} />
+    </group>
+  )
+}
+
+function GbakaLab() {
+  const cam = (q.get('cam') ?? '-30,6,14').split(',').map(Number) as [number, number, number]
+  const look = (q.get('look') ?? '-34,1,0').split(',').map(Number) as [number, number, number]
+  return (
+    <Canvas shadows dpr={[1, 2]} camera={{ position: cam, fov: 45 }} style={{ width: '100vw', height: '100vh' }}>
+      <color attach="background" args={['#a9d3f0']} />
+      <hemisphereLight args={['#ffffff', '#b8a27c', 1.2]} />
+      <directionalLight position={[20, 40, 20]} intensity={1.8} castShadow />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[300, 60]} />
+        <meshLambertMaterial color="#cbb38c" />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} receiveShadow>
+        <planeGeometry args={[300, 9]} />
+        <meshLambertMaterial color="#55585e" />
+      </mesh>
+      <GbakaRun />
+      <OrbitControls target={look} />
+    </Canvas>
+  )
+}
+
 function Lab() {
+  if (view === 'gbaka') return <GbakaLab />
   if (view === 'landmark') return <LandmarkLab />
   if (view === 'map') return <MapLab />
   const cars = view === 'cars'

@@ -35,11 +35,11 @@ const mat = (c: string) => {
   return m
 }
 
-const LONG = new Set(['pagne', 'boubou', 'robe', 'kaba', 'jupe', 'bazin', 'uniforme', 'abaya', 'blouse'])
+const LONG = new Set(['pagne', 'boubou', 'robe', 'kaba', 'jupe', 'bazin', 'uniforme', 'abaya', 'blouse', 'soeur'])
 /** Long robes, men's and women's alike. */
 const ROBES = new Set(['boubou', 'bazin', 'soutane', 'imam'])
 /** Outfits whose sleeves cover the whole arm. */
-const LONG_SLEEVES = new Set(['suit', 'survet', 'boubou', 'bazin', 'chemise', 'blouson', 'sweat', 'soutane', 'pasteur', 'imam', 'abaya', 'blouse', 'bleu'])
+const LONG_SLEEVES = new Set(['suit', 'survet', 'boubou', 'bazin', 'chemise', 'blouson', 'sweat', 'soutane', 'pasteur', 'imam', 'abaya', 'blouse', 'bleu', 'cuisinier', 'vigile', 'soeur'])
 
 export function LowHuman({ look, gender, pose = 'idle', seed = 0, speed }: { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; speed?: number }) {
   const l = fullLook(look)
@@ -76,7 +76,7 @@ export function LowHuman({ look, gender, pose = 'idle', seed = 0, speed }: { loo
   const seatDrop = pose === 'sit' || pose === 'eat' || pose === 'drink' || pose === 'write' ? -0.41 : 0
   const sleeve = LONG_SLEEVES.has(l.outfit) ? 1 : l.outfit === 'debardeur' || l.outfit === 'basket' || l.outfit === 'souscorps' ? 0 : 0.35
   // The veil, the imam's cap: they're what shows on the head from afar.
-  const veiled = femme && l.outfit === 'abaya'
+  const veiled = femme && (l.outfit === 'abaya' || l.outfit === 'soeur')
   const capped = l.accessory === 'kufi' || l.outfit === 'imam' || (!femme && l.outfit === 'abaya')
   const hair = veiled ? l.bottomColor || top : capped ? '#f8f9fa' : l.hair === 'headwrap' ? top : l.hairColor
   const shape = veiled ? 'headwrap' : l.hair
