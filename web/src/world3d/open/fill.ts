@@ -32,7 +32,7 @@ const MAX_FILL = 1100
  * Builds the empty blocks of a chunk. `neighbours` are the real buildings
  * just over its edges (they belong to the next chunk but take room here).
  */
-export function fillQuarters(chunk: ChunkData, neighbours: XZ[][] = []) {
+export function fillQuarters(chunk: ChunkData, neighbours: XZ[][] = [], keepClear: { at: XZ; r: number }[] = []) {
   const { box } = chunk
   const nx = Math.ceil((box.x1 - box.x0) / CELL)
   const nz = Math.ceil((box.z1 - box.z0) / CELL)
@@ -75,6 +75,10 @@ export function fillQuarters(chunk: ChunkData, neighbours: XZ[][] = []) {
     }
   }
   for (const a of chunk.aeroways) for (const p of a.pts) mark(p[0], p[1])
+  // Ground the game builds on itself (a toll plaza): nothing there.
+  for (const { at: [cx, cz], r } of keepClear)
+    for (let x = cx - r; x <= cx + r; x += CELL)
+      for (let z = cz - r; z <= cz + r; z += CELL) if (Math.hypot(x - cx, z - cz) <= r) mark(x, z)
 
   /** A lot along the street: free, and wholly inside this chunk. */
   const free = (c: XZ, u: XZ, n: XZ, w: number, d: number) => {

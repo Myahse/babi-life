@@ -3,10 +3,29 @@
 
 export type BridgeKind = 'fhb' | 'cdg' | 'hkb' | 'yop' | 'ado'
 
+/** Lower case, no accents, « 4ᵉ » read as « 4e ». */
+const fold = (name: string) => name.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+
+/**
+ * The map sometimes names a big bridge's roadway after the boulevard it
+ * carries (« Boulevard Aimé Henri Konan Bédié » for the 3e pont's deck),
+ * the bridge's name going to its footway. A long bridge (250 m and more,
+ * no small bridge over a drain) named after one of the big bridges' men is
+ * that bridge: it gets the bridge's own name. Only seen for the 3e pont.
+ */
+export function bigBridgeName(name: string | undefined, length: number): string | undefined {
+  if (!name || bridgeKind(name) || length < 250) return name
+  const n = fold(name)
+  if (n.includes('konan bedie') || n.includes('konan-bedie')) return 'Pont Henri-Konan-Bédié'
+  // Not the other boulevards: the one named after Houphouët-Boigny crosses
+  // viaducts that aren't the 1er pont.
+  return name
+}
+
 /** Which of the big bridges a road's map name is, if any. */
 export function bridgeKind(name?: string): BridgeKind | null {
   if (!name) return null
-  const n = name.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+  const n = fold(name)
   // A bridge, not the boulevard named after the same man: the name says « pont ».
   if (!/\bpont\b/.test(n) && !/\bhkb\b/.test(n)) return null
   if (n.includes('konan bedie') || n.includes('konan-bedie') || /\bhkb\b/.test(n)) return 'hkb'

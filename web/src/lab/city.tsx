@@ -200,6 +200,7 @@ function MapLab() {
           <Palms pts={c.data.palms} bark={mats.bark} leaves={mats.leaves} />
         </group>
       ))}
+      <BridgeSights chunks={chunks.map((c) => c.data)} night={false} />
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
         <planeGeometry args={[8000, 8000]} />
         <meshLambertMaterial color="#cbb38c" />

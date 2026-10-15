@@ -4,6 +4,7 @@ import type { Poi } from './poiMatch'
 import { CHUNK_ZOOM, centroid, clipLine, clipRing, hash, pointInRing, tileBox, tilePoint, toLocal, type Box, type Origin, type XZ } from './geo'
 import { blockRing } from './voxel'
 import { fillQuarters } from './fill'
+import { bigBridgeName, bridgeKind } from './bridgeNames'
 
 // A chunk of the open world: one map tile of real Abidjan (OpenStreetMap data
 // served by Mapbox), turned into game metres. Roads keep their class (a
@@ -74,7 +75,7 @@ export function decodeChunk(o: Origin, tx: number, ty: number, data: Uint8Array,
         // A bridge drawn as its two ends gets points along it, so its deck
         // can climb from the banks and stay up over the water.
         if (bridge) pts = densify(pts, 10)
-        chunk.roads.push({ cls, pts, width, paved: !UNPAVED.has(cls) && f.properties.surface !== 'unpaved', bridge, name: bridge && f.properties.name ? String(f.properties.name) : undefined })
+        chunk.roads.push({ cls, pts, width, paved: !UNPAVED.has(cls) && f.properties.surface !== 'unpaved', bridge, name: bridge && f.properties.name ? bigBridgeName(String(f.properties.name), lineLength(line.map(xz))) : undefined })
       }
     }
   }
@@ -157,6 +158,8 @@ export function decodeChunk(o: Origin, tx: number, ty: number, data: Uint8Array,
   }
   areas('landuse_overlay', (cls) => (cls.startsWith('wetland') ? 'green' : null))
 
+  nameTwins(chunk)
+  dropOverRoads(chunk)
   if (!far) fillQuarters(chunk, neighbours)
   plant(chunk, far)
   return chunk
@@ -227,6 +230,107 @@ function nearRoad(roads: Road[], [x, z]: XZ, margin: number) {
       if (Math.hypot(ax + (bx - ax) * t - x, az + (bz - az) * t - z) < r.width / 2 + margin) return true
     }
   return false
+}
+
+/**
+ * A big bridge drawn as two roadways often has a name on one only, and the
+ * map may name only part of a long deck: an unnamed bridge piece running
+ * alongside a named big bridge (within 45 m, the same way), or carrying on
+ * from its end, is the same bridge.
+ */
+function nameTwins(chunk: ChunkData) {
+  nameLines(chunk.roads)
+}
+
+/** The same, on any lines (a whole tile's bridges, before they're cut into chunks). */
+function nameLines(roads: { pts: XZ[]; name?: string; cls: string; bridge: boolean }[]) {
+  const dir = (pts: XZ[]) => Math.atan2(pts[pts.length - 1][1] - pts[0][1], pts[pts.length - 1][0] - pts[0][0])
+  const same = (a: XZ[], b: XZ[]) => Math.abs(Math.sin(dir(a) - dir(b))) < 0.3
+  // Alongside (the other roadway), or end to end (the rest of the deck the
+  // map left unnamed): again until nothing changes, the name runs along.
+  for (let pass = 0; pass < 6; pass++) {
+    const big = roads.filter((r) => r.bridge && bridgeKind(r.name))
+    if (!big.length) return
+    let changed = false
+    for (const r of roads) {
+      if (!r.bridge || bridgeKind(r.name) || r.cls === 'path' || lineLength(r.pts) < 30) continue
+      const m = r.pts[Math.floor(r.pts.length / 2)]
+      const ends = [r.pts[0], r.pts[r.pts.length - 1]]
+      for (const b of big) {
+        const beside = b.pts.some((p) => Math.hypot(p[0] - m[0], p[1] - m[1]) < 45)
+        const bEnds = [b.pts[0], b.pts[b.pts.length - 1]]
+        // End to end, or across a short gap the map didn't mark as bridge,
+        // as long as the gap runs the same way as the deck.
+        const touching = ends.some((e) =>
+          bEnds.some((f) => {
+            const d = Math.hypot(e[0] - f[0], e[1] - f[1])
+            return d < 15 || (d < 160 && Math.abs(Math.sin(Math.atan2(e[1] - f[1], e[0] - f[0]) - dir(b.pts))) < 0.2)
+          }),
+        )
+        if ((beside || touching) && same(r.pts, b.pts)) {
+          r.name = b.name
+          changed = true
+          break
+        }
+      }
+    }
+    if (!changed) return
+  }
+}
+
+/**
+ * Where the toll plazas go (bridges.tsx puts one at each big bridge's toll
+ * booth on the map): kept clear of the game's houses, from the whole tile
+ * so a plaza on a chunk's edge is clear on both sides. The 3e pont's is 21
+ * lanes wide, the 4e pont's smaller.
+ */
+function tollGrounds(tile: VectorTile, toXZ: (extent: number) => (p: { x: number; y: number }) => XZ) {
+  const out: { at: XZ; r: number }[] = []
+  const l = tile.layers.poi
+  for (let i = 0; i < (l?.length ?? 0); i++) {
+    const f = l!.feature(i)
+    const n = String(f.properties['name:fr'] ?? f.properties.name ?? '')
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+    if (!/peage|toll/.test(n)) continue
+    const r = /hkb|konan/.test(n) ? 48 : 28
+    const xz = toXZ(f.extent)
+    for (const pts of f.loadGeometry()) for (const p of pts) out.push({ at: xz(p), r })
+  }
+  return out
+}
+
+/**
+ * Buildings a big road runs through aren't houses: the map draws toll
+ * canopies, petrol-station roofs over a road, gantries as buildings. Drawn
+ * as solid blocks they'd wall the road off; they're left out (the game
+ * draws the toll plazas itself, bridges.tsx).
+ */
+const THROUGH = new Set(['motorway', 'trunk', 'primary', 'motorway_link', 'trunk_link', 'primary_link', 'secondary'])
+function dropOverRoads(chunk: ChunkData) {
+  const big = chunk.roads.filter((r) => THROUGH.has(r.cls) && !r.bridge)
+  if (!big.length) return
+  chunk.buildings = chunk.buildings.filter((b) => {
+    let [x0, z0, x1, z1] = [Infinity, Infinity, -Infinity, -Infinity]
+    for (const [x, z] of b.ring) [x0, z0, x1, z1] = [Math.min(x0, x), Math.min(z0, z), Math.max(x1, x), Math.max(z1, z)]
+    for (const r of big)
+      for (let i = 1; i < r.pts.length; i++) {
+        const [ax, az] = r.pts[i - 1]
+        const [bx, bz] = r.pts[i]
+        if (Math.max(ax, bx) < x0 || Math.min(ax, bx) > x1 || Math.max(az, bz) < z0 || Math.min(az, bz) > z1) continue
+        const n = Math.ceil(Math.hypot(bx - ax, bz - az) / 3)
+        for (let k = 0; k <= n; k++) if (pointInRing([ax + ((bx - ax) * k) / n, az + ((bz - az) * k) / n], b.ring)) return false
+      }
+    return true
+  })
+}
+
+/** A line's length, in metres. */
+function lineLength(pts: XZ[]) {
+  let l = 0
+  for (let i = 1; i < pts.length; i++) l += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1])
+  return l
 }
 
 /** A line with extra points so no stretch is longer than `step` metres. */
@@ -311,27 +415,63 @@ function decodeOpenChunk(o: Origin, tx: number, ty: number, z: number, tile: Vec
   const inBox = ([x, zz]: XZ) => x >= box.x0 && x < box.x1 && zz >= box.z0 && zz < box.z1
 
   // Street names, for the big bridges (the road layer has no names here).
-  const names: { name: string; pts: XZ[] }[] = []
+  const names: { name: string; cls: string; pts: XZ[] }[] = []
   const nl = tile.layers.transportation_name
   for (let i = 0; i < (nl?.length ?? 0); i++) {
     const f = nl!.feature(i)
     const name = String(f.properties['name:fr'] ?? f.properties.name ?? '')
     if (f.type !== 2 || !name) continue
     const xz = toXZ(f.extent)
-    for (const line of f.loadGeometry()) names.push({ name, pts: line.map(xz) })
+    for (const line of f.loadGeometry()) names.push({ name, cls: String(f.properties.class ?? ''), pts: line.map(xz) })
   }
-  const nameNear = (pts: XZ[]) => {
-    const m = pts[Math.floor(pts.length / 2)]
+  // A bridge piece takes the name of the street line that runs along it
+  // (the same way, the same class): measured at three points along it, not
+  // the nearest name around (a footway beside the deck has its own).
+  const segDist = ([x, z]: XZ, line: XZ[]) => {
+    let best = Infinity
+    for (let k = 1; k < line.length; k++) {
+      const [ax, az] = line[k - 1]
+      const [bx, bz] = line[k]
+      const l2 = (bx - ax) ** 2 + (bz - az) ** 2
+      const t = l2 ? Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (z - az) * (bz - az)) / l2)) : 0
+      best = Math.min(best, Math.hypot(ax + (bx - ax) * t - x, az + (bz - az) * t - z))
+    }
+    return best
+  }
+  const nameNear = (pts: XZ[], cls: string) => {
+    const at = (k: number) => {
+      const i = Math.min(pts.length - 2, Math.max(0, Math.floor((pts.length - 1) * k)))
+      return [(pts[i][0] + pts[i + 1][0]) / 2, (pts[i][1] + pts[i + 1][1]) / 2] as XZ
+    }
+    const samples = pts.length > 1 ? [at(0.25), at(0.5), at(0.75)] : pts
     let best: { name: string; d: number } | null = null
-    for (const n of names)
-      for (const p of n.pts) {
-        const d = Math.hypot(p[0] - m[0], p[1] - m[1])
-        if (d < 60 && (!best || d < best.d)) best = { name: n.name, d }
-      }
+    for (const n of names) {
+      const d = samples.reduce((sum, p) => sum + segDist(p, n.pts), 0) / samples.length + (n.cls === cls ? 0 : 6)
+      if (d < 12 && (!best || d < best.d)) best = { name: n.name, d }
+    }
     return best?.name
   }
 
   const roads = tile.layers.transportation
+  // The tile's bridges first, whole: their names, then the names running on
+  // to their other roadway and the rest of their deck (nameLines).
+  const bridgeNames = new Map<string, string | undefined>()
+  {
+    const lines: { key: string; pts: XZ[]; name?: string; cls: string; bridge: boolean }[] = []
+    for (let i = 0; i < (roads?.length ?? 0); i++) {
+      const f = roads!.feature(i)
+      if (f.type !== 2 || f.properties.brunnel !== 'bridge') continue
+      const cls = OMT_ROAD[String(f.properties.class ?? '')]
+      if (!cls) continue
+      const xz = toXZ(f.extent)
+      f.loadGeometry().forEach((line, k) => {
+        const all = line.map(xz)
+        lines.push({ key: `${i}:${k}`, pts: all, cls, bridge: true, name: bigBridgeName(nameNear(all, String(f.properties.class ?? '')), lineLength(all)) })
+      })
+    }
+    nameLines(lines)
+    for (const l of lines) bridgeNames.set(l.key, l.name)
+  }
   for (let i = 0; i < (roads?.length ?? 0); i++) {
     const f = roads!.feature(i)
     if (f.type !== 2 || f.properties.brunnel === 'tunnel') continue
@@ -342,14 +482,14 @@ function decodeOpenChunk(o: Origin, tx: number, ty: number, z: number, tile: Vec
     const bridge = f.properties.brunnel === 'bridge'
     if (far && !FAR_ROADS.has(cls) && !bridge) continue
     const xz = toXZ(f.extent)
-    for (const line of f.loadGeometry()) {
+    f.loadGeometry().forEach((line, k) => {
       const all = line.map(xz)
       for (let pts of clipLine(all, box)) {
         if (bridge) pts = densify(pts, 10)
         const surface = String(f.properties.surface ?? '')
-        chunk.roads.push({ cls, pts, width, paved: !UNPAVED.has(cls) && surface !== 'unpaved', bridge, name: bridge ? nameNear(all) : undefined })
+        chunk.roads.push({ cls, pts, width, paved: !UNPAVED.has(cls) && surface !== 'unpaved', bridge, name: bridge ? bridgeNames.get(`${i}:${k}`) : undefined })
       }
-    }
+    })
   }
 
   const pois = tile.layers.poi
@@ -428,7 +568,9 @@ function decodeOpenChunk(o: Origin, tx: number, ty: number, z: number, tile: Vec
   areas('landcover', (cls, sub) => (OMT_FOREST.has(cls) || OMT_FOREST.has(sub) ? 'forest' : cls === 'sand' || sub === 'beach' ? 'sand' : OMT_GREEN.has(cls) || OMT_GREEN.has(sub) ? 'green' : null))
   areas('park', (cls) => (OMT_FOREST.has(cls) ? 'forest' : cls === 'park' ? 'green' : null))
   areas('landuse', (cls) => (cls === 'pitch' || cls === 'stadium' ? 'pitch' : ['school', 'university', 'college', 'kindergarten'].includes(cls) ? 'campus' : cls === 'hospital' ? 'hospital' : OMT_GREEN.has(cls) ? 'green' : null))
-  if (!far) fillQuarters(chunk, neighbours)
+  nameTwins(chunk)
+  dropOverRoads(chunk)
+  if (!far) fillQuarters(chunk, neighbours, tollGrounds(tile, toXZ))
   plant(chunk, far, forests)
   return chunk
 }
