@@ -87,8 +87,9 @@ export function Play() {
   // The camera dragged away from the Sim, and the way back.
   const [freeCam, setFreeCam] = useState(false)
   const [recenter, setRecenter] = useState(0)
-  // The real streets (open world) when a map token is set and they load; else the classic street.
-  const [classic, setClassic] = useState(!MAP_TOKEN)
+  // The real streets (open world): from Mapbox with a token, else from
+  // OpenFreeMap (no key). The classic street if they don't load, or ?classic.
+  const [classic, setClassic] = useState(() => new URLSearchParams(location.search).has('classic'))
   const [closeView, setCloseView] = useState(false)
   const [whereTo, setWhereTo] = useState(false)
   const announced = useRef('')
@@ -394,7 +395,7 @@ export function Play() {
               return said
             },
           }
-          return classic ? <Neighbourhood key={commune.id} {...street} /> : <OpenWorld key={commune.id} {...street} token={MAP_TOKEN!} onFail={() => setClassic(true)} />
+          return classic ? <Neighbourhood key={commune.id} {...street} /> : <OpenWorld key={commune.id} {...street} token={MAP_TOKEN ?? ''} onFail={() => setClassic(true)} />
         })()}
       </div>
 

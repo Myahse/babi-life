@@ -10,11 +10,17 @@ import { makeTextures } from '../world3d/open/textures'
 import { blockRing } from '../world3d/open/voxel'
 import { Vehicle, type VehicleKind } from '../world3d/vehicles'
 import { Landmark } from '../world3d/open/landmarks'
+import { fetchChunk } from '../world3d/open/tiles'
+import { CHUNK_ZOOM, tileOf, type Origin } from '../world3d/open/geo'
+import { Forest, Palms, Trees, makeWorldMaterials } from '../world3d/open/OpenWorld'
+import { useEffect, useState } from 'react'
 
 // Dev-only lab (/city.html): made-up map buildings (turned, L-shaped, round,
 // tiny) put through the real chunk builder, as the open world draws them, and
 // the street's vehicles; ?view=cars for the vehicles up close;
-// ?view=landmark&id=yop-rue-princesse (&night) for one landmark.
+// ?view=landmark&id=yop-rue-princesse (&night) for one landmark;
+// ?view=map&lat=5.345&lng=-4.082&n=1 for the real map's chunks there
+// (OpenFreeMap, no key), n chunks each way, seen from &cam.
 
 const q = new URLSearchParams(location.search)
 const view = q.get('view') ?? 'city'
@@ -136,8 +142,55 @@ function LandmarkLab() {
   )
 }
 
+function MapLab() {
+  const lat = Number(q.get('lat') ?? 5.345)
+  const lng = Number(q.get('lng') ?? -4.082)
+  const n = Number(q.get('n') ?? 1)
+  const origin: Origin = { lat, lng }
+  const mats = useMemo(makeWorldMaterials, [])
+  const [chunks, setChunks] = useState<{ key: string; meshes: ReturnType<typeof buildChunk>; data: ChunkData }[]>([])
+  useEffect(() => {
+    const [tx, ty] = tileOf(lat, lng, CHUNK_ZOOM)
+    for (let dx = -n; dx <= n; dx++)
+      for (let dy = -n; dy <= n; dy++)
+        fetchChunk(origin, tx + dx, ty + dy, '').then((data) => {
+          const t0 = performance.now()
+          const meshes = buildChunk(data, () => false)
+          ;(data as unknown as { ms: number }).ms = Math.round(performance.now() - t0)
+          ;(window as unknown as { stats: unknown[] }).stats = [...((window as unknown as { stats?: unknown[] }).stats ?? []), { key: data.key, buildings: data.buildings.length, roads: data.roads.length, trees: data.trees.length, forest: data.forest?.length ?? 0, areas: data.areas.length, meshMs: (data as unknown as { ms: number }).ms }]
+          setChunks((c) => [...c, { key: data.key, meshes, data }])
+        })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  const cam = (q.get('cam') ?? '600,700,900').split(',').map(Number) as [number, number, number]
+  const look = (q.get('look') ?? '0,0,0').split(',').map(Number) as [number, number, number]
+  return (
+    <Canvas dpr={[1, 1.5]} camera={{ position: cam, fov: 45, far: 8000 }} style={{ width: '100vw', height: '100vh' }}>
+      <color attach="background" args={['#a9d3f0']} />
+      <hemisphereLight args={['#ffffff', '#b8a27c', 1.3]} />
+      <directionalLight position={[300, 600, 200]} intensity={1.7} />
+      {chunks.map((c) => (
+        <group key={c.key}>
+          {Object.entries(c.meshes).map(([name, g]) => {
+            const m = (mats as Record<string, THREE.Material>)[name]
+            return g && m ? <mesh key={name} geometry={g} material={m} /> : null
+          })}
+          <Trees pts={c.data.trees} bark={mats.bark} leaves={mats.leaves} />
+          <Forest pts={c.data.forest ?? []} bark={mats.bark} />
+          <Palms pts={c.data.palms} bark={mats.bark} leaves={mats.leaves} />
+        </group>
+      ))}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
+        <planeGeometry args={[8000, 8000]} />
+        <meshLambertMaterial color="#cbb38c" />
+      </mesh>
+      <OrbitControls target={look} />
+    </Canvas>
+  )
+}
+
 function Lab() {
   if (view === 'landmark') return <LandmarkLab />
+  if (view === 'map') return <MapLab />
   const cars = view === 'cars'
   return (
     <Canvas shadows dpr={[1, 2]} camera={cars ? { position: [4, 6, 30], fov: 40 } : view === 'street' ? { position: [-18, 9, 26], fov: 50 } : { position: [55, 60, 70], fov: 45 }} style={{ width: '100vw', height: '100vh' }}>

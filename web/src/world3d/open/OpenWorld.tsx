@@ -22,7 +22,7 @@ import { rng } from '../themes'
 import { Vehicle, type VehicleKind } from '../vehicles'
 import { Walker, type WalkNav } from '../Walker'
 import { whereabouts } from '../whereabouts'
-import { CHUNK_ZOOM, tileBox, tileOf, toLatLng, toLocal, type Origin, type XZ } from './geo'
+import { CHUNK_ZOOM, hash, tileBox, tileOf, toLatLng, toLocal, type Origin, type XZ } from './geo'
 import { Nav } from './nav'
 import { along, anchorNode, round, routeLength, turnTo, useCellsAround } from './shared'
 import { inTheWay, resolvePlaces, type PlaceSpot, type Resolved } from './places'
@@ -132,6 +132,37 @@ function Sun({ night, dusk }: { night: boolean; dusk: boolean }) {
   )
 }
 
+/** The open world's materials: walls, roofs, roads, water, grass, trees. */
+export function makeWorldMaterials() {
+  const t = makeTextures()
+  const lambert = (map: THREE.Texture, extra: THREE.MeshLambertMaterialParameters = {}) => new THREE.MeshLambertMaterial({ map, ...extra })
+  return {
+    walls: lambert(t.wall, { vertexColors: true, emissiveMap: t.lights, emissive: new THREE.Color('#ffffff'), emissiveIntensity: 0 }),
+    inst: lambert(t.inst, { vertexColors: true }),
+    entrance: lambert(t.entrance, { vertexColors: true }),
+    shop: lambert(t.shop, { vertexColors: true, emissiveMap: t.shopLights, emissive: new THREE.Color('#ffffff'), emissiveIntensity: 0 }),
+    house: lambert(t.house, { vertexColors: true }),
+    trim: lambert(t.plaster, { vertexColors: true, side: THREE.DoubleSide }),
+    kerb: lambert(t.plaster, { vertexColors: true }),
+    roofs: lambert(t.roof),
+    tin: lambert(t.tin, { side: THREE.DoubleSide }),
+    contact: new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }),
+    asphalt: lambert(t.asphalt, { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
+    laterite: lambert(t.laterite, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
+    pavement: lambert(t.pavement, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
+    // Glossy water: the sun glints on ripples that drift (a normal map).
+    water: new THREE.MeshPhongMaterial({ map: t.water, normalMap: rippleNormals(), normalScale: new THREE.Vector2(0.55, 0.55), shininess: 80, specular: new THREE.Color('#d8ecff'), transparent: true, opacity: 0.9 }),
+    paint: new THREE.MeshLambertMaterial({ color: '#f4f4f0', polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }),
+    foam: new THREE.MeshBasicMaterial({ map: t.foam, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
+    green: lambert(t.grass),
+    sand: lambert(t.sand),
+    pitch: lambert(t.pitch),
+    ground: new THREE.MeshLambertMaterial({ color: '#cbb38c' }),
+    bark: lambert(t.bark),
+    leaves: lambert(t.leaves),
+  }
+}
+
 export function OpenWorld(props: Props & { token: string; onFail: () => void }) {
   const night = props.hour < 6 || props.hour >= 19
   const dusk = props.hour >= 17 && props.hour < 19
@@ -150,35 +181,7 @@ export function OpenWorld(props: Props & { token: string; onFail: () => void }) 
 }
 
 function useMaterials(night: boolean) {
-  const mats = useMemo(() => {
-    const t = makeTextures()
-    const lambert = (map: THREE.Texture, extra: THREE.MeshLambertMaterialParameters = {}) => new THREE.MeshLambertMaterial({ map, ...extra })
-    return {
-      walls: lambert(t.wall, { vertexColors: true, emissiveMap: t.lights, emissive: new THREE.Color('#ffffff'), emissiveIntensity: 0 }),
-      inst: lambert(t.inst, { vertexColors: true }),
-      entrance: lambert(t.entrance, { vertexColors: true }),
-      shop: lambert(t.shop, { vertexColors: true, emissiveMap: t.shopLights, emissive: new THREE.Color('#ffffff'), emissiveIntensity: 0 }),
-      house: lambert(t.house, { vertexColors: true }),
-      trim: lambert(t.plaster, { vertexColors: true, side: THREE.DoubleSide }),
-      kerb: lambert(t.plaster, { vertexColors: true }),
-      roofs: lambert(t.roof),
-      tin: lambert(t.tin, { side: THREE.DoubleSide }),
-      contact: new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }),
-      asphalt: lambert(t.asphalt, { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
-      laterite: lambert(t.laterite, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
-      pavement: lambert(t.pavement, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
-      // Glossy water: the sun glints on ripples that drift (a normal map).
-      water: new THREE.MeshPhongMaterial({ map: t.water, normalMap: rippleNormals(), normalScale: new THREE.Vector2(0.55, 0.55), shininess: 80, specular: new THREE.Color('#d8ecff'), transparent: true, opacity: 0.9 }),
-      paint: new THREE.MeshLambertMaterial({ color: '#f4f4f0', polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }),
-      foam: new THREE.MeshBasicMaterial({ map: t.foam, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
-      green: lambert(t.grass),
-      sand: lambert(t.sand),
-      pitch: lambert(t.pitch),
-      ground: new THREE.MeshLambertMaterial({ color: '#cbb38c' }),
-      bark: lambert(t.bark),
-      leaves: lambert(t.leaves),
-    }
-  }, [])
+  const mats = useMemo(makeWorldMaterials, [])
   useEffect(() => {
     mats.walls.emissiveIntensity = night ? 0.85 : 0
     mats.shop.emissiveIntensity = night ? 0.7 : 0
@@ -579,6 +582,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
             <mesh key={name} name={name} geometry={g} material={mats[name as keyof typeof mats]} castShadow={!far && SOLID.has(name)} receiveShadow={!far && name !== 'contact'} />
           ))}
           <Trees pts={c.data.trees} bark={mats.bark} leaves={mats.leaves} />
+          <Forest pts={c.data.forest ?? []} bark={mats.bark} />
           <Palms pts={c.data.palms ?? []} bark={mats.bark} leaves={mats.leaves} />
         </group>
         )
@@ -760,7 +764,7 @@ function LotLabel({ lot, world, label, onPick, y }: { lot: Lot; world: World; la
 }
 
 /** Minecraft trees: a trunk of blocks and a cube of leaves, instanced. */
-function Trees({ pts, bark, leaves }: { pts: XZ[]; bark: THREE.Material; leaves: THREE.Material }) {
+export function Trees({ pts, bark, leaves }: { pts: XZ[]; bark: THREE.Material; leaves: THREE.Material }) {
   const trunks = useRef<THREE.InstancedMesh>(null)
   const tops = useRef<THREE.InstancedMesh>(null)
   useEffect(() => {
@@ -786,11 +790,53 @@ function Trees({ pts, bark, leaves }: { pts: XZ[]; bark: THREE.Material; leaves:
   )
 }
 
+const FOREST_GREENS = ['#1f5f2a', '#2a6e2f', '#276b3a', '#33783a', '#1d5426', '#3b7f33'].map((c) => new THREE.Color(c))
+
+/**
+ * The forest (the Banco): tall trunks of blocks under a broad canopy, close
+ * together, in several greens, a few giants standing out above the rest.
+ * Thousands of them: no shadows of their own, the canopy does the shade.
+ */
+export function Forest({ pts, bark }: { pts: XZ[]; bark: THREE.Material }) {
+  const trunks = useRef<THREE.InstancedMesh>(null)
+  const crowns = useRef<THREE.InstancedMesh>(null)
+  const leaves = useMemo(() => new THREE.MeshLambertMaterial({ color: '#ffffff' }), [])
+  useEffect(() => {
+    const m = new THREE.Matrix4()
+    const q = new THREE.Quaternion()
+    pts.forEach(([x, z], i) => {
+      const r = hash(x, z, 11)
+      const giant = r > 0.9
+      const h = giant ? 16 + r * 6 : 7 + r * 6
+      const w = giant ? 9 : 5 + (i % 3)
+      trunks.current?.setMatrixAt(i, m.compose(new THREE.Vector3(x, h / 2, z), q, new THREE.Vector3(giant ? 1.5 : 1, h, giant ? 1.5 : 1)))
+      crowns.current?.setMatrixAt(i, m.compose(new THREE.Vector3(x, h + 1.5, z), q, new THREE.Vector3(w, giant ? 4.5 : 3 + (i % 2) * 1.5, w)))
+      crowns.current?.setColorAt(i, FOREST_GREENS[Math.floor(hash(z, x, 5) * FOREST_GREENS.length)])
+    })
+    if (trunks.current) trunks.current.instanceMatrix.needsUpdate = true
+    if (crowns.current) {
+      crowns.current.instanceMatrix.needsUpdate = true
+      if (crowns.current.instanceColor) crowns.current.instanceColor.needsUpdate = true
+    }
+  }, [pts])
+  if (!pts.length) return null
+  return (
+    <>
+      <instancedMesh ref={trunks} args={[undefined, bark, pts.length]}>
+        <boxGeometry args={[1, 1, 1]} />
+      </instancedMesh>
+      <instancedMesh ref={crowns} args={[undefined, leaves, pts.length]} receiveShadow>
+        <boxGeometry args={[1, 1, 1]} />
+      </instancedMesh>
+    </>
+  )
+}
+
 /**
  * Coconut palms, Minecraft style: a leaning trunk of blocks, a crown of
  * long drooping leaves and a bunch of coconuts.
  */
-function Palms({ pts, bark, leaves }: { pts: XZ[]; bark: THREE.Material; leaves: THREE.Material }) {
+export function Palms({ pts, bark, leaves }: { pts: XZ[]; bark: THREE.Material; leaves: THREE.Material }) {
   const trunks = useRef<THREE.InstancedMesh>(null)
   const fronds = useRef<THREE.InstancedMesh>(null)
   const nuts = useRef<THREE.InstancedMesh>(null)

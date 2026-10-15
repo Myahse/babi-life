@@ -7,6 +7,8 @@ export type BridgeKind = 'fhb' | 'cdg' | 'hkb' | 'yop' | 'ado'
 export function bridgeKind(name?: string): BridgeKind | null {
   if (!name) return null
   const n = name.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+  // A bridge, not the boulevard named after the same man: the name says « pont ».
+  if (!/\bpont\b/.test(n) && !/\bhkb\b/.test(n)) return null
   if (n.includes('konan bedie') || n.includes('konan-bedie') || /\bhkb\b/.test(n)) return 'hkb'
   if (n.includes('alassane ouattara') || n.includes('alassane-ouattara')) return 'ado'
   if (n.includes('gaulle')) return 'cdg'
