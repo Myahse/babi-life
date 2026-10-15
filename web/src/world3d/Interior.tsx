@@ -2,6 +2,7 @@ import { lazy, Suspense, useMemo, useRef } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import { Shell } from './interior/Shell'
+import { NoteShower } from './money'
 import { useRoomStyle } from './interior/Decor'
 import * as THREE from 'three'
 import type { Player, Sim } from '../lib/types'
@@ -51,7 +52,7 @@ function action(kind: string, id: string | undefined): { spot: string; pose: Pos
   if (id === 'cook-attieke') return { spot: 'stove', pose: 'busy' }
   if (id === 'watch-tv' || id === 'call-family') return { spot: 'sofa', pose: 'sit' }
   if (id === 'devoirs' || id === 'jouer-cour') return { spot: 'table', pose: id === 'devoirs' ? 'write' : 'dance' }
-  if (id === 'travaillement') return { spot: 'floor', pose: 'throw' }
+  if (id.endsWith('travaillement')) return { spot: 'floor', pose: 'throw' }
   if (/dance|party|coupe/.test(id)) return { spot: 'floor', pose: 'dance' }
   if (/^(drink|milkshake|coffee)/.test(id) || id.includes('drink')) return { spot: 'table', pose: 'drink' }
   if (/^(eat|burger|glace|anniversaire)/.test(id) || id.startsWith('golvo-')) return { spot: 'table', pose: 'eat' }
@@ -153,42 +154,9 @@ function DiscoLights() {
   )
 }
 
-/** Banknotes flying from the Sim's hand onto the dancers in front: the travaillement. */
-function NoteRain({ from }: { from: V3 }) {
-  const COUNT = 60
-  const ref = useRef<THREE.InstancedMesh>(null)
-  const notes = useMemo(() => [...Array(COUNT)].map((_, i) => ({ x: 0, y: -1, z: 0, vx: 0, vy: 0, vz: 0, rot: 0, delay: i * 0.12 })), [])
-  const m = useMemo(() => new THREE.Object3D(), [])
-  useFrame((_, dt) => {
-    const mesh = ref.current
-    if (!mesh) return
-    const t = worldTime()
-    notes.forEach((n, i) => {
-      if (n.y <= 0.02) {
-        if (t < n.delay) return
-        // Thrown again from the hand, up and out over the dancers.
-        Object.assign(n, { x: from[0] + 0.1, y: from[1] + 1.9, z: from[2] - 0.3, vx: (Math.random() - 0.4) * 1.6, vy: 1.5 + Math.random(), vz: -(0.8 + Math.random() * 1.6), delay: t + 4 + Math.random() * 3 })
-      }
-      n.vy -= 3 * dt
-      n.vx *= 0.98
-      n.vz *= 0.98
-      n.x += n.vx * dt
-      n.y = Math.max(0.01, n.y + n.vy * dt * 0.6)
-      n.z += n.vz * dt
-      n.rot += dt * 6
-      m.position.set(n.x, n.y, n.z)
-      m.rotation.set(n.rot, n.rot * 0.7, 0)
-      m.updateMatrix()
-      mesh.setMatrixAt(i, m.matrix)
-    })
-    mesh.instanceMatrix.needsUpdate = true
-  })
-  return (
-    <instancedMesh ref={ref} args={[undefined, undefined, COUNT]}>
-      <planeGeometry args={[0.16, 0.08]} />
-      <meshBasicMaterial color="#4caf50" side={THREE.DoubleSide} />
-    </instancedMesh>
-  )
+/** How many notes fly: a petit travaillement drizzles, the grand one pours. */
+function shower(id?: string) {
+  return id === 'grand-travaillement' ? { rate: 4.5, fan: 5 } : id === 'petit-travaillement' ? { rate: 1.4, fan: 3 } : { rate: 2.6, fan: 4 }
 }
 
 /* ---------- Rooms ---------- */
@@ -604,6 +572,14 @@ export function Interior({ sim, kind, placeId, interactionId, housing, night, st
       return { ...s, gender, look: randomLook(gender, rand), seed: rand() * 100 }
     })
   }, [placeId, kind]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Doing the travaillement: face the dancers; they cheer as the notes fall.
+  const throwing = act.pose === 'throw'
+  const faceDancers = useMemo(() => {
+    const d = r.crowd.filter((c) => c.pose === 'dance' || c.pose === 'cheer')
+    if (!d.length) return me.r ?? 0
+    const [cx, cz] = [d.reduce((t, c) => t + c.p[0], 0) / d.length, d.reduce((t, c) => t + c.p[2], 0) / d.length]
+    return Math.atan2(cx - me.p[0], cz - me.p[2])
+  }, [r, me])
   const dark = r.dark || night
   return (
     <Canvas shadows dpr={[1, 2]} camera={{ position: [8.4, 8.6, 10.8], fov: 42 }} style={{ background: dark ? '#0b0d1f' : '#2a2340' }}>
@@ -617,14 +593,15 @@ export function Interior({ sim, kind, placeId, interactionId, housing, night, st
         <NoShadows>
           {people.map((p, i) => (
             <group key={i} position={p.p} rotation={p.lying ? [-Math.PI / 2, 0, 0] : [0, p.r ?? 0, 0]}>
-              <Human look={p.look} gender={p.gender} pose={p.pose} seed={p.seed} />
+              <Human look={p.look} gender={p.gender} pose={throwing && p.pose === 'dance' && i % 2 ? 'cheer' : p.pose} seed={p.seed} />
             </group>
           ))}
         </NoShadows>
-        <group position={me.p} rotation={me.lying ? [-Math.PI / 2, 0, 0] : [0, me.r ?? 0, 0]}>
+        <group position={me.p} rotation={me.lying ? [-Math.PI / 2, 0, 0] : [0, throwing ? faceDancers : (me.r ?? 0), 0]}>
           <Character look={sim.look} gender={sim.gender} stage={stage} plumbob={!me.lying} busy={act.pose === 'busy'} pose={act.pose} />
+          {/* The travaillement: notes off the wad, over the dancers in front */}
+          {throwing && <NoteShower from={[0.3, 1.72, 0.3]} toward={[0, 0.35, 1]} {...shower(interactionId)} seed={placeId.length} />}
         </group>
-        {act.pose === 'throw' && <NoteRain from={me.p} />}
         {/* Turn around the room and zoom, within the cut-away side */}
         <OrbitControls target={[0, 0.8, 0]} enablePan={false} minDistance={7} maxDistance={24} minPolarAngle={0.35} maxPolarAngle={1.25} minAzimuthAngle={0.15} maxAzimuthAngle={1.4} enableDamping />
         {RICH && (
@@ -640,6 +617,7 @@ export function Interior({ sim, kind, placeId, interactionId, housing, night, st
           return (
             <group key={o.id} position={[at.p[0] + dx, at.p[1], at.p[2]]} rotation={[0, at.r ?? 0, 0]}>
               <Character look={o.look} gender={o.gender} stage={o.stage} pose={a.pose} moodColor="#3b82f6" />
+              {a.pose === 'throw' && <NoteShower from={[0.3, 1.72, 0.3]} toward={[0, 0.35, 1]} {...shower(o.activity?.interactionId)} seed={i + 7} />}
             </group>
           )
         })}

@@ -7,6 +7,7 @@ import { randomLook } from '../../avatar/options'
 import type { Look } from '../../lib/types'
 import { rng } from '../themes'
 import { whereabouts } from '../whereabouts'
+import { NoteShower } from '../money'
 import { hash, type XZ } from './geo'
 import type { Nav } from './nav'
 import { worldTime } from '../../lib/worldClock'
@@ -84,7 +85,7 @@ export function StreetLife({ nav, seed, night }: { nav: Nav; seed: string; night
       <NoShadows>
         {shown.map((s) => (
           <group key={s.id} position={[s.at[0], 0, s.at[1]]} rotation={[0, s.rot, 0]}>
-            {s.kind === 'grin' ? <Grin seed={s.id} /> : s.kind === 'foot' ? <Foot seed={s.id} /> : <Causerie seed={s.id} />}
+            {s.kind === 'grin' ? <Grin seed={s.id} /> : s.kind === 'foot' ? <Foot seed={s.id} /> : night ? <Travail seed={s.id} /> : <Causerie seed={s.id} />}
           </group>
         ))}
       </NoShadows>
@@ -252,6 +253,53 @@ function Causerie({ seed }: { seed: string }) {
           </group>
         )
       })}
+    </group>
+  )
+}
+
+/**
+ * At night, a corner turns into a little party: a sound system, three
+ * dancing, and a grand-frère doing the travaillement on them, notes
+ * fluttering down while the others cheer. The same notes for every player.
+ */
+function Travail({ seed }: { seed: string }) {
+  const cast = useCast(`${seed}travail`, 6)
+  const offset = useMemo(() => rng(`${seed}tr`)() * 50, [seed])
+  return (
+    <group>
+      {/* The sound system: two speakers on crates */}
+      {[-1, 1].map((s) => (
+        <group key={s} position={[s * 1.7, 0, -1.6]}>
+          <mesh position={[0, 0.25, 0]} material={wood}>
+            <boxGeometry args={[0.6, 0.5, 0.5]} />
+          </mesh>
+          <mesh position={[0, 1.0, 0]}>
+            <boxGeometry args={[0.55, 1.0, 0.45]} />
+            <meshLambertMaterial color="#17171a" />
+          </mesh>
+          <mesh position={[0, 1.05, 0.23]}>
+            <boxGeometry args={[0.32, 0.32, 0.02]} />
+            <meshLambertMaterial color="#3a3f4b" />
+          </mesh>
+        </group>
+      ))}
+      {/* Three dancing */}
+      {cast.slice(0, 3).map((p, i) => (
+        <group key={i} position={[(i - 1) * 0.95, 0, -0.5 + Math.abs(i - 1) * 0.3]} rotation={[0, (1 - i) * 0.3, 0]}>
+          <Human look={p.look} gender={p.gender} pose={i === 1 ? 'cheer' : 'dance'} seed={p.seed + offset} />
+        </group>
+      ))}
+      {/* The grand-frère, facing them, notes flying from his hand */}
+      <group position={[0.2, 0, 1.9]} rotation={[0, Math.PI, 0]}>
+        <Human look={{ ...cast[3].look, outfit: 'boubou', accessory: 'chain' }} gender="homme" pose="throw" seed={cast[3].seed} />
+        <NoteShower from={[0.3, 1.72, 0.3]} toward={[0, 0.35, 1]} rate={2.4} fan={4} seed={offset} />
+      </group>
+      {/* And the ones who watch and shout */}
+      {cast.slice(4).map((p, i) => (
+        <group key={i} position={[(i ? 1 : -1) * 1.9, 0, 1.2]} rotation={[0, (i ? 1 : -1) * 2.2, 0]}>
+          <Human look={p.look} gender={p.gender} pose="cheer" seed={p.seed} />
+        </group>
+      ))}
     </group>
   )
 }

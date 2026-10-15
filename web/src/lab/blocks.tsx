@@ -5,10 +5,12 @@ import type { Look } from '../lib/types'
 import { BlockHuman } from '../avatar/BlockHuman'
 import type { Pose } from '../avatar/Human'
 import { DEFAULT_LOOK } from '../avatar/options'
+import { NoteShower } from '../world3d/money'
 
 // Dev-only lab (/lab.html): a row of blocky Sims, one per outfit, hair and
 // accessory, to check them side by side. ?pose=walk sets everyone's pose,
-// ?face zooms on the heads, ?row=2 shows the second row of looks.
+// ?face zooms on the heads, ?row=2 shows the second row of looks;
+// ?pose=throw shows the travaillement, notes and all.
 
 const q = new URLSearchParams(location.search)
 const pose = (q.get('pose') ?? 'idle') as Pose
@@ -55,6 +57,7 @@ function Lab() {
       {samples.map((s, i) => (
         <group key={i} position={[x0 + i * gap, 0, 0]} scale={s.scale ?? 1}>
           <BlockHuman look={{ ...DEFAULT_LOOK, ...s.look }} gender={s.gender} pose={pose} seed={i} headScale={s.headScale} speed={pose === 'run' ? 6 : 1.4} />
+          {pose === 'throw' && <NoteShower from={[0.3, 1.72, 0.3]} toward={[0, 0.35, 1]} seed={i} />}
         </group>
       ))}
       <OrbitControls target={face ? [0, 1.5, 0] : [0, 0.9, 0]} />

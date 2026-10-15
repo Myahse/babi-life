@@ -6,6 +6,7 @@ import { defaultColors, fullLook } from './options'
 import { tint } from './textures'
 import { useCastShadows, usePoseRig, type Pose, type RigStyle } from './Human'
 import { worldTime } from '../lib/worldClock'
+import { Wad } from '../world3d/money'
 
 // A blocky Sim, Roblox / Minecraft style: a cube head, a box torso, and arms
 // and legs split at the elbows and knees. Everything that is just colour (the
@@ -40,7 +41,8 @@ const BODY: Record<string, { w: number; limb: number; depth: number }> = {
   rond: { w: 1.2, limb: 1.12, depth: 1.28 },
 }
 
-const BLOCK_STYLE: RigStyle = { snap: 1.6, swing: 1.15, elbow: 0.3, knee: 0.55, headBob: 1 }
+/** Block bodies, natural motion: a real stride, knees and elbows that bend, the head steady. */
+const BLOCK_STYLE: RigStyle = { snap: 1.1, swing: 1, elbow: 1, knee: 1, headBob: 0.4 }
 
 /* ---------- The sheet: where each box is painted (Minecraft-style layout) ---------- */
 
@@ -653,8 +655,7 @@ export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 
   const knee = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
   const shoulder = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
   const elbow = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
-  // Minecraft-style motion: snappier joints, a wider swing with straight
-  // arms, knees that barely bend, the head nodding with each step.
+  // Minecraft bodies, but they move like people (usePoseRig's gait, dance, travaillement).
   usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }, pose, seed, speed, BLOCK_STYLE)
 
   // A squash when landing from a jump (cheering, dancing), and back.
@@ -759,6 +760,12 @@ export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 
                 <group ref={elbow[i]} position={[0, -UPPER_ARM, 0]}>
                   {mesh(box(aw * 0.98, FOREARM + 0.02, aw * 0.98, R.arm[i], 6, 6), [0, (0.02 - FOREARM) / 2, 0])}
                   {bell && mesh(cube(aw * 1.9, 0.17, aw * 1.9), [0, -0.075, 0], clothMat(bell))}
+                  {/* The travaillement: the wad of notes in the left hand */}
+                  {pose === 'throw' && i === 0 && (
+                    <group position={[0, -FOREARM + 0.02, aw / 2 + 0.03]} rotation={[0.3, 0, 0]}>
+                      <Wad />
+                    </group>
+                  )}
                 </group>
               </group>
             )
