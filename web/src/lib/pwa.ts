@@ -5,6 +5,9 @@ import { registerSW } from 'virtual:pwa-register'
 // these hooks offer installation and tell when the network is gone.
 
 registerSW({ immediate: true })
+// The old 3D body models (gone with the old avatars) were kept in their own
+// cache: free that space on phones that still have it.
+if ('caches' in window) caches.delete('models').catch(() => {})
 
 type InstallEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }> }
 

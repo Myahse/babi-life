@@ -11,7 +11,7 @@ import { ACCESSORIES, ACCESSORY_COLORS, MARKS, BEARDS, BODIES, BOTTOM_COLORS, DE
 import { ColorPicker } from '../components/ColorPicker'
 import { Stage, type Focus } from '../avatar/Stage'
 import { Portrait, type Framing } from '../avatar/portrait'
-import { waxTexture } from '../avatar/textures'
+import { waxSwatch } from '../avatar/BlockHuman'
 import { iconFor } from '../components/icons'
 import { Chip, IconTile } from '../components/ui'
 import { amount } from '../game/rules'
@@ -261,7 +261,7 @@ export function CreateSim() {
                   <div className="grid grid-cols-4 gap-2.5">
                     {PATTERNS.map((p) => (
                       <button key={p.id} className="tile flex flex-col items-center gap-1 p-1.5 pb-2" aria-pressed={sim.look.pattern === p.id} onClick={() => setLook({ pattern: p.id })}>
-                        <span className="block aspect-square w-full rounded-xl bg-cover" style={{ backgroundImage: `url(${waxTexture(sim.look.outfitColor, p.id).image.toDataURL()})`, backgroundSize: '200%' }} />
+                        <span className="block aspect-square w-full rounded-xl bg-cover" style={{ backgroundImage: `url(${waxSwatch(sim.look.outfitColor, p.id)})`, backgroundSize: '100%', imageRendering: 'pixelated' }} />
                         <span className="text-[11px] font-extrabold">{p.label}</span>
                       </button>
                     ))}

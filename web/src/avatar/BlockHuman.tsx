@@ -507,6 +507,25 @@ function paintSheet(l: Required<Look>, femme: boolean, young: boolean) {
   return { texture: t, cut, hair }
 }
 
+const swatchCache = new Map<string, string>()
+/** A wax print as the Sims wear it, for the creator's swatches: a data URL, two repeats a side. */
+export function waxSwatch(color: string, motif: string) {
+  const key = `${color}|${motif}`
+  let url = swatchCache.get(key)
+  if (!url) {
+    const c = document.createElement('canvas')
+    c.width = c.height = 12
+    const g = c.getContext('2d')!
+    for (let y = 0; y < 12; y++)
+      for (let x = 0; x < 12; x++) {
+        g.fillStyle = waxPx(color, motif, x, y)
+        g.fillRect(x, y, 1, 1)
+      }
+    swatchCache.set(key, (url = c.toDataURL()))
+  }
+  return url
+}
+
 /* ---------- Materials, shared ---------- */
 
 type Sheet = ReturnType<typeof paintSheet> & { material: THREE.Material }
@@ -771,6 +790,83 @@ export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 
             )
           })}
         </group>
+      </group>
+    </group>
+  )
+}
+
+/* ---------- A baby ---------- */
+
+const BABY_COLORS = ['#bde0fe', '#ffc8dd', '#cdeac0', '#fff1a8', '#e2cfea']
+
+/**
+ * A baby in blocks: a big cube head with the face of the Sim it will grow
+ * into, a onesie and a nappy, short arms and legs. Sits and babbles when
+ * still, crawls when it moves, claps when busy.
+ */
+export function BlockBaby({ look, gender, pose = 'idle', seed = 0 }: Props) {
+  const full = fullLook(look)
+  const l: Required<Look> = { ...full, hair: full.hair === 'bald' ? 'bald' : 'short', beard: 'none', accessory: 'none', marks: 'none' }
+  const cast = useCastShadows()
+  const sheet = sheetFor(l, gender === 'femme', true)
+  const onesie = clothMat(BABY_COLORS[Math.abs(Math.round(seed * 7)) % BABY_COLORS.length] ?? '#bde0fe')
+  const nappy = lambert('#f8f9fa')
+  const skin = lambert(l.skin)
+  const root = useRef<THREE.Group>(null)
+  const head = useRef<THREE.Group>(null)
+  const arms = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
+  const legs = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
+  useFrame(() => {
+    const t = worldTime() + seed
+    const crawl = pose === 'walk'
+    // On all fours to crawl; sitting up otherwise.
+    root.current!.rotation.x = crawl ? 1.05 : 0
+    root.current!.position.y = crawl ? 0.17 + Math.abs(Math.sin(t * 6)) * 0.01 : 0
+    root.current!.position.z = crawl ? -0.12 : 0
+    head.current!.rotation.x = crawl ? -0.9 : Math.sin(t * 1.3) * 0.08
+    head.current!.rotation.z = crawl ? 0 : Math.sin(t * 0.9) * 0.1
+    for (const i of [0, 1]) {
+      const out = i === 0 ? -1 : 1
+      const a = arms[i].current!
+      const g = legs[i].current!
+      if (crawl) {
+        const step = Math.sin(t * 6 + i * Math.PI)
+        a.rotation.set(-1.25 + step * 0.35, 0, 0)
+        g.rotation.set(-0.25 - step * 0.3, 0, 0)
+      } else if (pose === 'busy') {
+        a.rotation.set(-1.2, 0, -out * (0.45 + Math.max(0, Math.sin(t * 9)) * 0.35))
+        g.rotation.set(-1.45, 0, out * 0.25)
+      } else {
+        a.rotation.set(-0.5 + Math.sin(t * 2 + i * 2) * 0.35, 0, out * 0.25)
+        g.rotation.set(-1.45, 0, out * 0.3)
+      }
+    }
+  })
+  const H = 0.22 // the head cube
+  const b = (s: V3, p: V3, m: THREE.Material) => <mesh geometry={cube(...s)} material={m} position={p} castShadow={cast} />
+  return (
+    <group ref={root}>
+      {/* Body in a onesie, and the nappy */}
+      {b([0.2, 0.2, 0.15], [0, 0.25, 0], onesie)}
+      {b([0.21, 0.09, 0.16], [0, 0.12, 0], nappy)}
+      {/* Legs: short, sticking out in front when sitting */}
+      {[0, 1].map((i) => (
+        <group key={i} ref={legs[i]} position={[(i ? 1 : -1) * 0.055, 0.1, 0]}>
+          {b([0.08, 0.17, 0.08], [0, -0.085, 0], onesie)}
+          {b([0.075, 0.05, 0.09], [0, -0.185, 0.01], skin)}
+        </group>
+      ))}
+      {/* Arms */}
+      {[0, 1].map((i) => (
+        <group key={i} ref={arms[i]} position={[(i ? 1 : -1) * 0.13, 0.33, 0]}>
+          {b([0.065, 0.15, 0.065], [0, -0.075, 0], onesie)}
+          {b([0.06, 0.05, 0.06], [0, -0.175, 0], skin)}
+        </group>
+      ))}
+      {/* A big head: the cube and the hair layer, painted like the grown-up Sim's */}
+      <group ref={head} position={[0, 0.35, 0.01]}>
+        <mesh geometry={box(H, H, H, R.head)} material={sheet.material} position={[0, H / 2, 0]} castShadow={cast} />
+        {sheet.hair !== 'bald' && <mesh geometry={box(H * HAT, H * HAT, H * HAT, R.hat)} material={sheet.material} position={[0, H / 2, 0]} />}
       </group>
     </group>
   )
