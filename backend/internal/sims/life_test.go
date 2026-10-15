@@ -16,9 +16,9 @@ func newBaby(family string) Sim {
 	return s
 }
 
-// years later, in real time.
+// The time it takes, in real time, to reach n years old (from birth).
 func years(n float64) time.Duration {
-	return time.Duration(n * game.YearMinutes * float64(time.Minute))
+	return time.Duration(game.MinutesToAge(n)) * time.Minute
 }
 
 func TestABabyStaysABaby(t *testing.T) {
@@ -47,15 +47,32 @@ func TestABabyStaysABaby(t *testing.T) {
 	}
 }
 
+func TestChildhoodGoesFast(t *testing.T) {
+	// A baby for ten minutes, a child for an hour, a teenager for two; then a year is YearMinutes.
+	for _, c := range []struct {
+		min int64
+		age int
+	}{{0, 0}, {9, 2}, {10, 3}, {40, 7}, {70, 12}, {189, 17}, {190, 18}, {190 + game.YearMinutes, 19}} {
+		if got := game.AgeAt(1, 1+c.min); got != c.age {
+			t.Errorf("after %d minutes: %d years old, want %d", c.min, got, c.age)
+		}
+	}
+	for _, age := range []float64{0, 3, 7.5, 12, 18, 25} {
+		if back := game.AgeAt(1, 1+game.MinutesToAge(age)); back != int(age) {
+			t.Errorf("MinutesToAge(%v) gives back %d", age, back)
+		}
+	}
+}
+
 func TestGrowingUp(t *testing.T) {
 	s := newBaby("poignon")
 	ev := s.advance(noon.Add(years(3.2)), noLuck())
 	if s.stage().ID != game.StageEnfant || !hasText(ev, "3 ans") {
 		t.Fatalf("at 3: stage %s, events %v", s.stage().ID, ev)
 	}
-	ev = s.advance(noon.Add(years(8)), noLuck()) // past Saturday
-	if s.Money <= 0 || !hasText(ev, "Argent de poche") {
-		t.Errorf("a child gets pocket money on Saturdays: %d", s.Money)
+	ev = s.advance(noon.Add(years(8)), noLuck()) // birthdays 3 to 8 (3 came with the first step)
+	if f, _ := game.FindFamily("poignon"); s.Money != 6*f.Pocket || !hasText(ev, "Argent de poche") {
+		t.Errorf("a child gets pocket money on its birthdays: %d", s.Money)
 	}
 	// Class counts for the bac.
 	school, _ := game.Kinds["home"].Interaction("devoirs")

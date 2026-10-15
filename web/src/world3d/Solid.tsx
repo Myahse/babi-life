@@ -31,7 +31,7 @@ export function Solid({ children, pad = 0 }: { children: React.ReactNode; pad?: 
       const size = box.getSize(new THREE.Vector3())
       const at = g.localToWorld(c.clone())
       const rot = new THREE.Euler().setFromQuaternion(g.getWorldQuaternion(new THREE.Quaternion()), 'YXZ').y
-      setObstacles(key, [{ x: at.x, z: at.z, hw: size.x / 2 + pad, hd: size.z / 2 + pad, rot }])
+      setObstacles(key, [{ x: at.x, z: at.z, hw: size.x / 2 + pad, hd: size.z / 2 + pad, rot, top: at.y + size.y / 2 }])
     })
     return () => {
       cancelAnimationFrame(id)

@@ -14,7 +14,7 @@ import { cameraTurn, moveInput, running } from './input'
 import { whereabouts } from './whereabouts'
 import { worldTime } from '../lib/worldClock'
 import { SIM_SLOT, matchFor, onField, worldFacing } from './open/match'
-import { blocked } from './obstacles'
+import { blocked, topAt } from './obstacles'
 import type { Pose } from '../avatar/Human'
 
 type XZ = [number, number]
@@ -23,6 +23,8 @@ const SPEED = 3.2 // metres per second: a brisk walk (long ways are run: autoRun
 const RUN = 8.5 // running
 /** Further than this, the Sim runs there by itself. */
 const RUN_FROM = 90
+const UP = new THREE.Vector3(0, 1, 0)
+const EAVES: XZ[] = [[0, 0], [1.1, 0], [-1.1, 0], [0, 1.1], [0, -1.1]]
 /** A walk never takes longer than this many seconds: far away, the Sim hurries. */
 const LONGEST_WALK = 40
 
@@ -110,11 +112,18 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     const at = lots.find((l) => l.id === stationAt) ?? lots.find((l) => l.id === HOME_ID)
     const [x, z] = at?.door ?? nav.start ?? [0, SIDEWALK]
     group.current!.position.set(x, 0, z)
-    // The camera starts right over the Sim.
+    // The camera starts right over the Sim, out in the street, looking at it
+    // with the place behind (never from inside the house).
     if (controls) {
-      const d = new THREE.Vector3(x - controls.target.x, 0, z - controls.target.z)
-      controls.target.add(d)
-      camera.position.add(d)
+      const off = camera.position.clone().sub(controls.target)
+      const out = at ? new THREE.Vector2(x - at.x, z - at.z) : new THREE.Vector2()
+      if (out.lengthSq() > 0.25) {
+        out.normalize()
+        const flat = Math.hypot(off.x, off.z)
+        off.set(out.x * flat, off.y, out.y * flat)
+      }
+      controls.target.set(x, controls.target.y, z)
+      camera.position.copy(controls.target).add(off)
       controls.update()
     }
     if (at) group.current!.rotation.y = at.z < 0 ? Math.PI : 0
@@ -359,6 +368,15 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       const delta = want.sub(controls.target).multiplyScalar(1 - Math.exp(-5 * Math.min(dt, 0.25)))
       controls.target.add(delta)
       camera.position.add(delta)
+      // Close up, walking ahead with the pad: the camera swings slowly round
+      // behind the Sim, so "up" on the pad keeps meaning "where I'm looking".
+      if (close && padWalking.current && moveInput().y > 0.3) {
+        const off = camera.position.clone().sub(controls.target)
+        let d = g.rotation.y + Math.PI - Math.atan2(off.x, off.z)
+        d = Math.atan2(Math.sin(d), Math.cos(d))
+        off.applyAxisAngle(UP, d * (1 - Math.exp(-1.2 * Math.min(dt, 0.25))))
+        camera.position.copy(controls.target).add(off)
+      }
       controls.update()
     }
     // Close behind the Sim, the camera never goes through a wall: it comes in
@@ -369,11 +387,18 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       const dist = off.length()
       if (dist > 0.01) {
         off.divideScalar(dist)
+        // How high the buildings go here, a metre round (roofs overhang their walls).
+        const roofNear = (x: number, z: number) => {
+          let h = 0
+          for (const [a, b] of EAVES) h = Math.max(h, nav.roofAt!(x + a, z + b), topAt(x + a, z + b))
+          return h
+        }
         // How far the camera can go back along `dir` before meeting a building.
         const room = (dir: THREE.Vector3) => {
           for (let s = 1; s <= 24; s++) {
             const d = (wantDist.current * s) / 24
-            if (nav.roofAt!(t.x + dir.x * d, t.z + dir.z * d) > t.y + dir.y * d - 0.4) return d - 0.6
+            const [x, z] = [t.x + dir.x * d, t.z + dir.z * d]
+            if (roofNear(x, z) > t.y + dir.y * d - 0.4) return d - 0.6
           }
           return wantDist.current
         }

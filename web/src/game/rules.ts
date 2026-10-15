@@ -194,9 +194,27 @@ export function hours(it: { minHour?: number; maxHour?: number }) {
 }
 
 /** A Sim's age in years and stage of life (mirrors game.AgeAt / StageOf). */
+/**
+ * A Sim's age in years (mirrors game.AgeAt): childhood goes fast, along the
+ * world's growUp points (minutes of play at each age); then a year is yearMinutes.
+ */
+export function ageOf(world: World, bornAt: number, gameMinutes: number) {
+  if (!bornAt) return 25
+  const t = Math.max(0, gameMinutes - bornAt)
+  const pts = world.growUp ?? [[0, 0], [18, 0]]
+  const [lastAge, lastAt] = pts[pts.length - 1]
+  if (t >= lastAt) return lastAge + Math.floor((t - lastAt) / (world.yearMinutes ?? 480))
+  for (let i = pts.length - 2; i >= 0; i--) {
+    const [a, at] = pts[i]
+    const [b, bt] = pts[i + 1]
+    if (t >= at) return Math.floor(a + ((t - at) * (b - a)) / (bt - at))
+  }
+  return 0
+}
+
 export function lifeOf(world: World, sim: Pick<Sim, 'bornAt' | 'gameMinutes'>) {
   const stages = world.stages ?? []
-  const age = sim.bornAt ? Math.floor(Math.max(0, sim.gameMinutes - sim.bornAt) / (world.yearMinutes ?? 480)) : 25
+  const age = ageOf(world, sim.bornAt ?? 0, sim.gameMinutes)
   const stage = [...stages].reverse().find((s) => age >= s.from) ?? stages[stages.length - 1]
   return { age, stage, minor: age < 18 }
 }

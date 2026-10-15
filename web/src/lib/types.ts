@@ -122,6 +122,8 @@ export type World = {
   stages?: LifeStage[]
   /** Real minutes in a year of game life. */
   yearMinutes?: number
+  /** Minutes of play at each age of childhood ([age, minute]): childhood goes fast. */
+  growUp?: [number, number][]
   compteur?: { color: string; cities: string[]; source: Source }
   roads?: Record<string, RoadNet>
   /** What a house can be built with (game/build.go), and the plot's size in blocks. */

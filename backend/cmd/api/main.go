@@ -95,6 +95,7 @@ func main() {
 				"families":      game.Families,
 				"stages":        game.Stages,
 				"yearMinutes":   game.YearMinutes,
+				"growUp":        game.GrowUp,
 				"friendActions": game.FriendActions,
 				"holidays":      game.Holidays,
 				"materials":     game.Materials,

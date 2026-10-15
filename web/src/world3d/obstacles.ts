@@ -6,8 +6,9 @@
 //
 // A thing is a circle (a trunk, a post) or a box turned about the vertical
 // (a building, a car): half-sizes hw along its own x, hd along its own z.
+// A building also says how high it goes (top), for the close camera.
 
-export type Obstacle = { x: number; z: number; r: number } | { x: number; z: number; hw: number; hd: number; rot: number }
+export type Obstacle = { x: number; z: number; r: number } | { x: number; z: number; hw: number; hd: number; rot: number; top?: number }
 
 const CELL = 8
 const fixed = new Map<string, Obstacle[]>()
@@ -63,4 +64,11 @@ export function blocked(x: number, z: number, r = 0.35) {
   for (const o of index().get(`${Math.floor(x / CELL)},${Math.floor(z / CELL)}`) ?? []) if (hits(o, x, z, r)) return true
   for (const o of moving.values()) if (Math.abs(o.x - x) < 6 && Math.abs(o.z - z) < 6 && hits(o, x, z, r)) return true
   return false
+}
+
+/** How high the game's building standing here goes (0 if none): the close camera stays out of it. */
+export function topAt(x: number, z: number) {
+  let h = 0
+  for (const o of index().get(`${Math.floor(x / CELL)},${Math.floor(z / CELL)}`) ?? []) if ('top' in o && o.top && hits(o, x, z, 0)) h = Math.max(h, o.top)
+  return h
 }

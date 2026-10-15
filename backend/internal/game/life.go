@@ -7,10 +7,16 @@ import (
 	"slices"
 )
 
-// A Sim is born a baby and grows up: baby, child, teenager, adult. A year of
-// game life lasts YearMinutes real minutes, so a childhood is a few days of
-// play. Sims created before this have no birth date and are adults.
+// A Sim is born a baby and grows up: baby, child, teenager, adult. Childhood
+// goes fast, so a new player soon has the run of the city: a baby for ten
+// minutes of play, a child for an hour, a teenager for two (GrowUp). From 18,
+// a year of game life lasts YearMinutes real minutes. Sims created before
+// birth dates have none and are adults.
 const YearMinutes = 8 * 60
+
+// GrowUp: the minutes of play (since birth) at which a Sim reaches each age
+// of childhood; in between, the years go by evenly.
+var GrowUp = [][2]int64{{0, 0}, {3, 10}, {12, 70}, {AdultAge, 190}}
 
 const (
 	StageBebe   = "bebe"
@@ -45,7 +51,33 @@ func AgeAt(born, now int64) int {
 	if born == 0 {
 		return legacyAge
 	}
-	return int(max(0, now-born) / YearMinutes)
+	t := max(0, now-born)
+	last := GrowUp[len(GrowUp)-1]
+	if t >= last[1] {
+		return int(last[0] + (t-last[1])/YearMinutes)
+	}
+	for i := len(GrowUp) - 2; i >= 0; i-- {
+		a, b := GrowUp[i], GrowUp[i+1]
+		if t >= a[1] {
+			return int(a[0] + (t-a[1])*(b[0]-a[0])/(b[1]-a[1]))
+		}
+	}
+	return 0
+}
+
+// MinutesToAge: how long after birth a Sim turns `age` (years, may be a fraction).
+func MinutesToAge(age float64) int64 {
+	last := GrowUp[len(GrowUp)-1]
+	if age >= float64(last[0]) {
+		return last[1] + int64((age-float64(last[0]))*YearMinutes)
+	}
+	for i := 1; i < len(GrowUp); i++ {
+		a, b := GrowUp[i-1], GrowUp[i]
+		if age <= float64(b[0]) {
+			return a[1] + int64((age-float64(a[0]))*float64(b[1]-a[1])/float64(b[0]-a[0]))
+		}
+	}
+	return 0
 }
 
 func StageOf(age int) Stage {

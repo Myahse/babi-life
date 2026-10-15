@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ArrowRight, Bus, Car, CarTaxiFront, Clock3, Hand, HandCoins, Minus, Plus, UserRound } from 'lucide-react'
 import type { Ride, Sim, World } from '../lib/types'
-import { amount, duration, rideQuote, trip } from '../game/rules'
+import { ageOf, amount, duration, rideQuote, trip } from '../game/rules'
 import { compteurQuote, inkOn } from '../game/rides'
 import { Chip, Coin, IconTile } from './ui'
 
@@ -49,7 +49,7 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
   const missing = bus ? [] : (world.rideApps ?? []).filter((a) => a.cities.includes(cityId) && !sim.apps?.includes(a.id)).map((a) => a.name)
   // Babies and children don't take the road alone.
   const small = (() => {
-    const age = sim.bornAt ? Math.floor((sim.gameMinutes - sim.bornAt) / (world.yearMinutes ?? 480)) : 25
+    const age = ageOf(world, sim.bornAt ?? 0, sim.gameMinutes)
     return age < 12
   })()
   const broke = sim.money < c.fare

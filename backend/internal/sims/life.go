@@ -35,7 +35,7 @@ func (s *Sim) growUp(from, to int64) []Event {
 	}
 	var events []Event
 	for _, st := range game.Stages[1:] {
-		at := s.BornAt + int64(st.From)*game.YearMinutes
+		at := s.BornAt + game.MinutesToAge(float64(st.From))
 		if at <= from || at > to {
 			continue
 		}
@@ -74,16 +74,25 @@ func (s *Sim) comeOfAge(at int64) []Event {
 	return events
 }
 
-// pocketMoney: while living with the family, Saturdays bring pocket money
-// instead of rent.
+// pocketMoney: while living with the family, each birthday from 3 to 17
+// brings the family's pocket money (childhood goes fast: game.GrowUp).
 func (s *Sim) pocketMoney(from, to int64) []Event {
 	f := s.family()
-	n := game.Saturdays(from, to)
-	if n == 0 || f.Pocket == 0 || game.AgeAt(s.BornAt, to) < 3 {
+	if f.Pocket == 0 {
+		return nil
+	}
+	n := 0
+	for age := 3; age < game.AdultAge; age++ {
+		at := s.BornAt + game.MinutesToAge(float64(age))
+		if at > from && at <= to {
+			n++
+		}
+	}
+	if n == 0 {
 		return nil
 	}
 	s.Money += n * f.Pocket
-	return []Event{{Kind: "life", Text: fmt.Sprintf("Argent de poche du samedi : %s.", game.FCFA(f.Pocket)), Money: n * f.Pocket, GameTime: to}}
+	return []Event{{Kind: "life", Text: fmt.Sprintf("Argent de poche pour l'anniversaire : %s.", game.FCFA(n*f.Pocket)), Money: n * f.Pocket, GameTime: to}}
 }
 
 // schoolMark: class and homework count towards the bac.

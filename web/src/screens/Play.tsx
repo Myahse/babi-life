@@ -11,6 +11,7 @@ import { Joystick, RunButton } from '../components/Joystick'
 import { cameraTurn } from '../world3d/input'
 import { whereabouts } from '../world3d/whereabouts'
 import { OrbitGizmo } from '../components/OrbitGizmo'
+import { FirstSteps } from '../components/FirstSteps'
 import { TravelCTA, type OnTravel } from '../components/TravelCTA'
 import { Portrait } from '../avatar/portrait'
 import { Neighbourhood } from '../world3d/Neighbourhood'
@@ -111,7 +112,21 @@ export function Play() {
   const [classic, setClassic] = useState(() => new URLSearchParams(location.search).has('classic'))
   // The commune's places from the map, as the open world loads them around the Sim.
   const [mapPlaces, setMapPlaces] = useState<Place[]>([])
-  const [closeView, setCloseView] = useState(false)
+  // Close behind the Sim by default (it stays on screen); the choice is remembered.
+  const [closeView, setCloseView] = useState(() => {
+    try {
+      return localStorage.getItem('babi.closeView') !== 'false'
+    } catch {
+      return true
+    }
+  })
+  useEffect(() => {
+    try {
+      localStorage.setItem('babi.closeView', String(closeView))
+    } catch {
+      /* private window */
+    }
+  }, [closeView])
   const [whereTo, setWhereTo] = useState(false)
   const announced = useRef('')
 
@@ -381,11 +396,6 @@ export function Play() {
           )}
         </div>
       )}
-      {inside && (
-        <button className="hud absolute top-[5.5rem] right-3 z-30 rounded-full px-4 py-2 text-sm font-extrabold lg:right-5" onClick={() => setOutside((o) => !o)}>
-          {outside ? `Entrer · ${placeName(inside.id) || 'Chez toi'}` : 'Voir la rue'}
-        </button>
-      )}
       <div className={`absolute inset-0 ${showInside ? 'invisible' : ''}`}>
         {(() => {
           const street = {
@@ -443,22 +453,46 @@ export function Play() {
           </span>
         </Link>
 
-        <div className="pointer-events-auto flex flex-wrap items-center justify-end gap-2">
-          <SoundToggle />
-          <PlayersChip count={around.players.length} invites={around.invites.length} onOpen={() => setPlayers({ focus: null })} />
-          <div className="hud flex h-11 items-center gap-1.5 rounded-full pr-4 pl-1.5">
-            <span key={sim.money} className="motion-coin">
-              <Coin size={30} />
-            </span>
-            <span className="tnum font-display text-lg font-extrabold">{amount(sim.money)}</span>
+        {/* The money and the hour, then the camera's controls under them (in the flow, so a wrapped row on a phone pushes them down instead of hiding them). */}
+        <div className="flex flex-col items-end gap-2">
+          <div className="pointer-events-auto flex flex-wrap items-center justify-end gap-2">
+            <SoundToggle />
+            <PlayersChip count={around.players.length} invites={around.invites.length} onOpen={() => setPlayers({ focus: null })} />
+            <div className="hud flex h-11 items-center gap-1.5 rounded-full pr-4 pl-1.5">
+              <span key={sim.money} className="motion-coin">
+                <Coin size={30} />
+              </span>
+              <span className="tnum font-display text-lg font-extrabold">{amount(sim.money)}</span>
+            </div>
+            <div className="hud flex h-11 items-center gap-1.5 rounded-full px-3">
+              <DayNight night={c.isNight} />
+              <span className="tnum font-display text-lg font-extrabold">{c.time}</span>
+              <span className="text-xs font-extrabold text-[var(--color-ink-soft)] max-sm:hidden">
+                {c.weekday} {c.date}
+              </span>
+            </div>
           </div>
-          <div className="hud flex h-11 items-center gap-1.5 rounded-full px-3">
-            <DayNight night={c.isNight} />
-            <span className="tnum font-display text-lg font-extrabold">{c.time}</span>
-            <span className="text-xs font-extrabold text-[var(--color-ink-soft)] max-sm:hidden">
-              {c.weekday} {c.date}
-            </span>
-          </div>
+          {inside && (
+            <button className="hud pointer-events-auto rounded-full px-4 py-2 text-sm font-extrabold" onClick={() => setOutside((o) => !o)}>
+              {outside ? `Entrer · ${placeName(inside.id) || 'Chez toi'}` : 'Voir la rue'}
+            </button>
+          )}
+          {!showInside && !placeId && !overlay && (
+            <div className="pointer-events-auto flex flex-col items-end gap-2">
+              {!classic && (
+                <button className="hud flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={() => setCloseView((v) => !v)}>
+                  {closeView ? <Mountain size={17} strokeWidth={2.6} className="text-[var(--color-emerald)]" /> : <Eye size={17} strokeWidth={2.6} className="text-[var(--color-emerald)]" />}
+                  {closeView ? 'Vue de haut' : 'Vue de près'}
+                </button>
+              )}
+              <OrbitGizmo
+                read={streetPose}
+                onYaw={(d) => (cameraTurn.yaw += d)}
+                onPitch={(d) => (cameraTurn.pitch += d)}
+                onNorth={() => (cameraTurn.snap = true)}
+              />
+            </div>
+          )}
         </div>
       </header>
 
@@ -494,28 +528,13 @@ export function Play() {
         </div>
       )}
       {whereTo && <WhereTo world={world} onWalk={(id) => (setWhereTo(false), walkTo(id))} onClose={() => setWhereTo(false)} />}
-      {!showInside && !placeId && !overlay && (
-        <div className="absolute top-[5.5rem] right-3 z-20 flex flex-col items-end gap-2 lg:right-5">
-          {!classic && (
-            <button className="hud flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={() => setCloseView((v) => !v)}>
-              {closeView ? <Mountain size={17} strokeWidth={2.6} className="text-[var(--color-emerald)]" /> : <Eye size={17} strokeWidth={2.6} className="text-[var(--color-emerald)]" />}
-              {closeView ? 'Vue de haut' : 'Vue de près'}
-            </button>
-          )}
-          <OrbitGizmo
-            read={streetPose}
-            onYaw={(d) => (cameraTurn.yaw += d)}
-            onPitch={(d) => (cameraTurn.pitch += d)}
-            onNorth={() => (cameraTurn.snap = true)}
-          />
-        </div>
-      )}
       {freeCam && !placeId && !overlay && (
         <button className="hud motion-pop absolute right-3 bottom-[6.25rem] z-20 flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-extrabold lg:right-5 lg:bottom-[7.5rem]" onClick={() => setRecenter((n) => n + 1)}>
           <LocateFixed size={18} strokeWidth={2.6} className="text-[var(--color-orange)]" /> Revenir à moi
         </button>
       )}
 
+      {!classic && <FirstSteps hidden={showInside || !!placeId || !!overlay || !!players || whereTo || !!sim.activity || !!pending} />}
       {/* The pad: walk the Sim freely (arrow keys / WASD work too) */}
       {!placeId && !overlay && !sim.activity && (
         <div className="pointer-events-none absolute bottom-[6.25rem] left-3 z-20 lg:bottom-[7.5rem] lg:left-5">

@@ -29,7 +29,7 @@ import { along, anchorNode, round, routeLength, turnTo, useCellsAround, type Rou
 import { inTheWay, resolvePlaces, type PlaceSpot, type Resolved } from './places'
 import { SportField } from './field'
 import { FuelStation } from './station'
-import { clearObstacles, moveObstacle, setObstacles } from '../obstacles'
+import { clearObstacles, moveObstacle, setObstacles, type Obstacle } from '../obstacles'
 import { LANDMARKS, Landmark } from './landmarks'
 import { Boats } from './boats'
 import { AllocoStalls } from './alloco'
@@ -63,6 +63,8 @@ const NightBloom = lazy(() => import('../effects').then((m) => ({ default: m.Nig
 export const isMapPlace = (id: string) => id.includes('-osm-')
 /** Metres around the Sim within which the map's places show their sign. */
 const MAP_SIGNS = 90
+/** How many places, the nearest, show their name over the street. */
+const NAMED = 6
 const LOAD_RADIUS = 700 // metres around the Sim (or where the camera looks)
 const DROP_RADIUS = 1500
 const FAR_RADIUS = 4500 // the horizon, in plain big tiles
@@ -127,7 +129,7 @@ function Sun({ night, dusk }: { night: boolean; dusk: boolean }) {
     <directionalLight
       ref={light}
       castShadow
-      intensity={night ? 0.3 : dusk ? 1.1 : 1.7}
+      intensity={night ? 0.6 : dusk ? 1.1 : 1.7}
       color={night ? '#8fa8ff' : dusk ? '#ffb38a' : '#fff4e0'}
       shadow-mapSize={[2048, 2048]}
       shadow-camera-left={-90}
@@ -573,6 +575,23 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
   )
   // Drawn: the game's places, and the map's thousands only near the Sim.
   const shown = useMemo(() => lots.filter((l) => !isMapPlace(l.id) || Math.hypot(l.x - here[0], l.z - here[1]) < MAP_SIGNS), [lots, here])
+  // Not a wall of names over the street: the nearest places have their name,
+  // the others round the Sim an icon, the rest nothing (the mini-map and
+  // « Où aller ? » list them all). Home, and where the Sim is busy, always.
+  const labelOf = useMemo(() => {
+    const out = new Map<string, 'full' | 'icon'>()
+    shown
+      .map((l) => ({ id: l.id, d: Math.hypot(l.x - here[0], l.z - here[1]) }))
+      .sort((a, b) => a.d - b.d)
+      .forEach((l, i) => {
+        if (i < NAMED && l.d < 80) out.set(l.id, 'full')
+        else if (l.d < 45) out.set(l.id, 'icon')
+      })
+    out.set(HOME_ID, 'full')
+    if (stationAt) out.set(stationAt, 'full')
+    return out
+  }, [shown, here, stationAt])
+  const named = (id: string) => labels && labelOf.get(id) === 'full'
   const spot = resolved.get(HAPPENING_KEY)
   const happeningLot = useMemo<Lot | null>(() => {
     if (!happening || !spot) return null
@@ -620,6 +639,26 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
     setObstacles('landmarks', lots.flatMap((l) => (SOLID_LANDMARKS[l.id] ? [{ x: l.x, z: l.z, r: SOLID_LANDMARKS[l.id] }] : [])))
     return () => clearObstacles('landmarks')
   }, [lots])
+  // Nor the houses players built: each wall column (two blocks high or more), with its height for the close camera.
+  useEffect(() => {
+    const [w, d] = [world.plot?.w ?? 12, world.plot?.d ?? 12]
+    const list: Obstacle[] = []
+    for (const r of resolved.values()) {
+      const owner = r.id === HOME_ID ? myPlot : r.id.startsWith('plot:') ? plots?.find((p) => `plot:${p.simId}` === r.id) : undefined
+      if (!owner) continue
+      const top = new Map<string, number>()
+      for (const [x, y, z] of owner.blocks) top.set(`${x},${z}`, Math.max(top.get(`${x},${z}`) ?? 0, y + 1))
+      const [c, s] = [Math.cos(r.rot), Math.sin(r.rot)]
+      for (const [k, h] of top) {
+        if (h < 2) continue
+        const [lx, lz] = k.split(',').map(Number)
+        const [u, v] = [lx + 0.5 - w / 2, lz + 0.5 - d / 2]
+        list.push({ x: r.center[0] + u * c + v * s, z: r.center[1] - u * s + v * c, hw: 0.5, hd: 0.5, rot: r.rot, top: h })
+      }
+    }
+    setObstacles('plots', list)
+    return () => clearObstacles('plots')
+  }, [resolved, myPlot, plots, world.plot])
 
   const homeLot = lots.find((l) => l.id === HOME_ID)
   const walkNav = useMemo<WalkNav>(
@@ -645,7 +684,8 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
   const stopsTraffic = !!happening && STOPS_TRAFFIC.has(happening.id)
   return (
     <>
-      <hemisphereLight args={[night ? '#4a5a9a' : '#ffffff', night ? '#2a2a3e' : '#b8a27c', night ? 0.95 : 1.2]} />
+      {/* Nights are blue but readable: the Sim and the streets stay visible on a phone. */}
+      <hemisphereLight args={[night ? '#7484c4' : '#ffffff', night ? '#3a3a56' : '#b8a27c', night ? 1.3 : 1.2]} />
       <Sun night={night} dusk={dusk} />
       {/* The haze at the edge of the loaded world: Minecraft's render distance */}
       <fog attach="fog" args={[skyTone(night, dusk).horizon, 400, 5200]} />
@@ -688,25 +728,25 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
       })}
       {shown.map((lot) =>
         lot.id === HOME_ID && myPlot ? (
-          <LotLabel key={lot.id} lot={lot} world={world} label={labels} onPick={onPick} y={4} />
+          <LotLabel key={lot.id} lot={lot} world={world} label={labels && labelOf.get(lot.id)} onPick={onPick} y={4} />
         ) : lot.station ? (
-          <LotLabel key={lot.id} lot={lot} world={world} label={labels} onPick={onPick} y={7} />
+          <LotLabel key={lot.id} lot={lot} world={world} label={labels && labelOf.get(lot.id)} onPick={onPick} y={7} />
         ) : lot.field ? (
           <group key={lot.id}>
             <SportField field={lot.field} seed={lot.id} night={night} withSim={stationAt === lot.id && !!busy?.id && /^play-/.test(busy.id)} onPick={() => onPick(lot.id)} />
-            <LotLabel lot={lot} world={world} label={labels} onPick={onPick} y={5} />
+            <LotLabel lot={lot} world={world} label={labels && labelOf.get(lot.id)} onPick={onPick} y={5} />
           </group>
         ) : LANDMARKS[lot.id] ? (
           <group key={lot.id}>
             <group position={[lot.x, 0, lot.z]} rotation={[0, lot.rot, 0]} onClick={(e) => (e.stopPropagation(), onPick(lot.id))}>
               <Landmark id={lot.id} night={night} />
             </group>
-            <LotLabel lot={lot} world={world} label={labels} onPick={onPick} y={30} />
+            <LotLabel lot={lot} world={world} label={labels && labelOf.get(lot.id)} onPick={onPick} y={30} />
           </group>
         ) : lot.height ? (
-          <PlaceSign key={lot.id} lot={lot} world={world} night={night} label={labels} onPick={onPick} />
+          <PlaceSign key={lot.id} lot={lot} world={world} night={night} label={named(lot.id)} onPick={onPick} />
         ) : (
-          <LotView key={lot.id} lot={lot} world={world} night={night} label={labels} onPick={onPick} />
+          <LotView key={lot.id} lot={lot} world={world} night={night} label={named(lot.id)} onPick={onPick} />
         ),
       )}
       {shown.map((lot) => {
@@ -845,15 +885,21 @@ function CampusGate({ name, kind, at, rot, width, night }: { name: string; kind:
 }
 
 /** A place's name floating over it. */
-function LotLabel({ lot, world, label, onPick, y }: { lot: Lot; world: World; label: boolean; onPick: (id: string) => void; y: number }) {
+function LotLabel({ lot, world, label, onPick, y }: { lot: Lot; world: World; label: false | 'full' | 'icon' | undefined; onPick: (id: string) => void; y: number }) {
   if (!label) return null
   const kind = world.kinds[lot.kind]
   return (
     <Html position={[lot.x, y, lot.z]} center zIndexRange={[20, 0]}>
-      <button onClick={() => onPick(lot.id)} className="flex items-center gap-1.5 rounded-xl border border-black/5 bg-white py-1 pr-2.5 pl-1 text-[12.5px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_4px_12px_-6px_rgba(0,0,0,0.45)] transition duration-200 hover:scale-110 active:scale-95">
-        <IconTile icon={iconFor(kind?.icon ?? '')} colors={kindColors(lot.kind)} size={24} radius={8} />
-        {lot.name}
-      </button>
+      {label === 'icon' ? (
+        <button onClick={() => onPick(lot.id)} aria-label={lot.name} title={lot.name} className="block rounded-[10px] border border-white/70 shadow-[0_3px_8px_-4px_rgba(0,0,0,0.5)] transition active:scale-95">
+          <IconTile icon={iconFor(kind?.icon ?? '')} colors={kindColors(lot.kind)} size={22} radius={8} />
+        </button>
+      ) : (
+        <button onClick={() => onPick(lot.id)} className="flex items-center gap-1.5 rounded-xl border border-black/5 bg-white py-1 pr-2.5 pl-1 text-[12.5px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_4px_12px_-6px_rgba(0,0,0,0.45)] transition duration-200 hover:scale-110 active:scale-95">
+          <IconTile icon={iconFor(kind?.icon ?? '')} colors={kindColors(lot.kind)} size={24} radius={8} />
+          {lot.name}
+        </button>
+      )}
     </Html>
   )
 }

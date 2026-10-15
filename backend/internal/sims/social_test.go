@@ -56,7 +56,7 @@ func TestMeetingFriends(t *testing.T) {
 func TestTheStreetGang(t *testing.T) {
 	// A teenager from a poor family, hanging around.
 	teen := func(family string) func() *Sim {
-		return func() *Sim { x := newBaby(family); x.GameMinutes = x.BornAt + 14*game.YearMinutes; return &x }
+		return func() *Sim { x := newBaby(family); x.GameMinutes = x.BornAt + game.MinutesToAge(14); return &x }
 	}
 	foot, _ := game.Kinds["sport"].Interaction("play-football")
 	s := until(t, teen("coule"), func(s *Sim, r *rand.Rand) { s.socialize(foot, r) }, func(s *Sim) bool { return s.Gang == "invited" })
