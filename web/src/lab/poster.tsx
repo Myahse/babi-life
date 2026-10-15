@@ -12,6 +12,10 @@ import { House } from '../world3d/build/House'
 import { Scene } from '../components/Scene'
 import { Logo } from '../components/ui'
 import { freezeWorldTime } from '../lib/worldClock'
+import { Vehicle } from '../world3d/vehicles'
+import { Dressing } from '../world3d/open/dressing'
+import { Sign, TableSet } from '../world3d/props'
+import { AppLogo } from '../components/AppLogo'
 
 // Dev-only (/poster.html): the game's own blocky Sims for the flyer and the
 // video (marketing/). Stills: ?scene=crew|house|dance&t=2 (&alpha for a
@@ -22,7 +26,9 @@ import { freezeWorldTime } from '../lib/worldClock'
 const q = new URLSearchParams(location.search)
 const VIDEO = q.has('video')
 const ALPHA = q.has('alpha')
-type SceneId = 'crew' | 'house' | 'build' | 'dance'
+type SceneId = 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'princesse'
+/** Which film: ?video (the launch) or ?video=bouger (getting about: gbaka, Gnango, Rue Princesse). */
+const FILM = (q.get('video') || 'lancement') as 'lancement' | 'bouger'
 
 /** The materials as the server has them (game/build.go). */
 const MATERIALS = [
@@ -161,6 +167,7 @@ function World({ scene, t }: { scene: SceneId; t: number }) {
       </>
     )
   }
+  if (scene === 'gbaka' || scene === 'gnango' || scene === 'princesse') return <Street scene={scene} t={t} />
   // Dance: a night in the courtyard, string lights, everyone doing the coupé-décalé.
   const bulbs = [...Array(14)].map((_, i) => [-5 + i * (10 / 13), 3.2 - Math.sin((i / 13) * Math.PI) * 0.6, -1.5] as [number, number, number])
   return (
@@ -184,32 +191,226 @@ function World({ scene, t }: { scene: SceneId; t: number }) {
   )
 }
 
+/* ---------- Getting about: the gbaka, Gnango, the Rue Princesse ---------- */
+
+const ease = (k: number) => k * k * (3 - 2 * k)
+const clamp01 = (k: number) => Math.max(0, Math.min(1, k))
+
+/** A street seen from the pavement: the road, the far side's shops, and what's going on. */
+function Street({ scene, t }: { scene: 'gbaka' | 'gnango' | 'princesse'; t: number }) {
+  const night = scene === 'princesse'
+  const facades: [number, number, string][] = [[-6.4, 7, '#e9a23b'], [0, 9, night ? '#2f2a5e' : '#5aa0d8'], [6.4, 6.5, night ? '#7b3fa0' : '#f2c94c']]
+  // The gbaka: comes in, stops at the gare while people climb in, goes.
+  const gbakaX = t < 2.2 ? -22 + 22 * ease(clamp01(t / 2.2)) : t < 6 ? 0 : 0 + 25 * clamp01((t - 6) / 2.2) ** 2
+  // The Gnango car: comes in once booked, stops in front of the Sim.
+  const carX = 22 * (1 - ease(clamp01((t - 3.6) / 2.4)))
+  const boarding = clamp01((t - 4.4) / 0.8)
+  return (
+    <>
+      <hemisphereLight args={[night ? '#a9b4ff' : '#fff4e6', night ? '#3a2a5e' : '#c0704f', night ? 1.0 : 1.2]} />
+      <directionalLight position={[4, 9, 8]} intensity={night ? 0.35 : 2.1} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-14} shadow-camera-right={14} shadow-camera-top={10} shadow-camera-bottom={-10} />
+      <ambientLight intensity={night ? 0.5 : 0.4} />
+      {night && (
+        <>
+          <pointLight position={[-3, 3.5, 2]} intensity={22} distance={14} color="#ff2d95" />
+          <pointLight position={[3, 3.5, 2]} intensity={22} distance={14} color="#2de2ff" />
+          <pointLight position={[0, 3, 5]} intensity={14} distance={12} color="#ffc27a" />
+        </>
+      )}
+      <Camera at={scene === 'princesse' ? [Math.sin(t * 0.18) * 1.2, 1.5, 15.5] : [0.6, 1.4, 17.5]} look={[0.4, scene === 'princesse' ? 2.9 : 3.1, 0]} />
+      {/* Road, its dashed line, the pavements */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, -0.4]} receiveShadow>
+        <planeGeometry args={[60, 7.6]} />
+        <meshLambertMaterial color={night ? '#2b2d3a' : '#5b5f6b'} />
+      </mesh>
+      {[...Array(14)].map((_, i) => (
+        <mesh key={i} position={[-26 + i * 4, 0.01, -0.4]}>
+          <boxGeometry args={[2, 0.02, 0.18]} />
+          <meshLambertMaterial color="#f4f4f0" />
+        </mesh>
+      ))}
+      {[[3.9, 0.9], [-4.9, 0.9]].map(([z, d]) => (
+        <mesh key={z} position={[0, 0.09, z + (z > 0 ? 1.2 : -1.2)]} receiveShadow>
+          <boxGeometry args={[60, 0.18, 2.4 + d]} />
+          <meshLambertMaterial color={night ? '#6b6478' : '#cfc5b4'} />
+        </mesh>
+      ))}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 10]} receiveShadow>
+        <planeGeometry args={[60, 10]} />
+        <meshLambertMaterial color={night ? '#3a3448' : '#cbb38c'} />
+      </mesh>
+      {/* The far side: shops and their signs */}
+      {facades.map(([x, h, c]) => (
+        <mesh key={x} position={[x, h / 2, -9.5]} castShadow receiveShadow>
+          <boxGeometry args={[6.2, h, 3]} />
+          <meshLambertMaterial color={c} />
+        </mesh>
+      ))}
+      {scene === 'gbaka' && (
+        <>
+          <Sign p={[0, 5.2, -7.9]} w={5.6} text="GARE D'ADJAMÉ" bg="#00a862" />
+          <Sign p={[0, 3.6, -7.9]} w={3.4} text="YOP · 300 F" bg="#ff7a00" />
+          <group position={[gbakaX, 0, 1.4]}>
+            <Vehicle p={[0, 0, 0]} kind="gbaka" color="#f4c430" trim="#00a862" />
+          </group>
+          {/* Two waiting at the stop, who climb in */}
+          {boarding < 1 &&
+            [0, 1].map((i) => (
+              <group key={i} position={[-1.3 - i * 0.9 + boarding * (2.2 + i * 0.9), 0.18, 4.3 - boarding * 1.6]} rotation={[0, t > 4.4 ? -Math.PI * 0.75 : Math.PI * 0.9, 0]}>
+                <BlockHuman look={CREW[i * 3].look} gender={CREW[i * 3].gender} pose={t > 4.4 ? 'walk' : i ? 'idle' : 'wave'} seed={i * 4} />
+              </group>
+            ))}
+        </>
+      )}
+      {scene === 'gnango' && (
+        <>
+          <Sign p={[0, 5.2, -7.9]} w={4.4} text="COCODY" bg="#7b5cff" />
+          <group position={[carX, 0, 1.4]}>
+            <Vehicle p={[0, 0, 0]} kind="car" color="#212529" seed={1} />
+          </group>
+          <group position={[1.1, 0.18, 4.4]} rotation={[0, Math.PI * 0.85, 0]}>
+            <BlockHuman look={CREW[1].look} gender="femme" pose={t > 6.2 ? 'cheer' : t > 3.4 ? 'wave' : 'talk'} seed={6} />
+          </group>
+        </>
+      )}
+      {scene === 'princesse' && (
+        <>
+          <Sign p={[0, 5.1, -7.9]} w={6} text="RUE PRINCESSE" bg="#ff2d95" />
+          <group position={[0, 0, -8]}>
+            <Dressing kind="club" seed={1} night />
+          </group>
+          {/* The maquis on the pavement: tables, and a string of bulbs over the street */}
+          <TableSet p={[2.3, 0.18, 5.2]} c="#e8432f" />
+          {[0, 1].map((i) => (
+            <group key={i} position={[2.3 + (i ? 1.05 : -1.05), 0.18, 5.2]} rotation={[0, i ? -Math.PI / 2 : Math.PI / 2, 0]}>
+              <BlockHuman look={CREW[i ? 4 : 0].look} gender="homme" pose={i ? 'drink' : 'sit'} seed={i * 3} />
+            </group>
+          ))}
+          {[...Array(16)].map((_, i) => (
+            <mesh key={i} position={[-7 + i * 0.95, 3.6 - Math.sin((i / 15) * Math.PI) * 0.7, 2.5]}>
+              <boxGeometry args={[0.16, 0.16, 0.16]} />
+              <meshBasicMaterial color={['#ffd36b', '#ff6b6b', '#6bd3ff', '#7cf08a'][i % 4]} />
+            </mesh>
+          ))}
+          {/* Coupé-décalé in the street */}
+          {[CREW[1], CREW[2], CREW[3]].map((c, i) => (
+            <group key={i} position={[-2.2 + i * 1.15, 0, 2.2 - Math.abs(i - 1) * 0.5]} rotation={[0, (1 - i) * 0.25, 0]}>
+              <BlockHuman look={c.look} gender={c.gender} pose={i === 1 ? 'cheer' : 'dance'} seed={i * 2.1 + 1} />
+            </group>
+          ))}
+        </>
+      )}
+    </>
+  )
+}
+
 /* ---------- The video: 25 seconds, scene after scene ---------- */
 
-const SHOTS: { from: number; to: number; scene: SceneId; title?: string; sub?: string }[] = [
-  { from: 0, to: 3.2, scene: 'crew' },
-  { from: 3.2, to: 9, scene: 'crew', title: 'Crée ton Sim', sub: 'Pagne wax, boubou, survêt… à ton style' },
-  { from: 9, to: 15.5, scene: 'build', title: 'Construis ta maison', sub: 'Bloc par bloc : banco, parpaing, tôle…' },
-  { from: 15.5, to: 20.5, scene: 'dance', title: 'Vis Abidjan avec tes amis', sub: 'Les vrais quartiers, au même moment' },
-  { from: 20.5, to: 25, scene: 'house' },
-]
-const VIDEO_LENGTH = 25 // seconds (marketing/video.mjs reads the same)
+type Shot = { from: number; to: number; scene: SceneId; title?: string; sub?: string }
+/** Each film: its shots, when the intro ends and the outro starts, its length (marketing/video.mjs reads it). */
+const FILMS: Record<'lancement' | 'bouger', { shots: Shot[]; intro: number; outro: number; length: number; hook: [string, string, string] }> = {
+  lancement: {
+    shots: [
+      { from: 0, to: 3.2, scene: 'crew' },
+      { from: 3.2, to: 9, scene: 'crew', title: 'Crée ton Sim', sub: 'Pagne wax, boubou, survêt… à ton style' },
+      { from: 9, to: 15.5, scene: 'build', title: 'Construis ta maison', sub: 'Bloc par bloc : banco, parpaing, tôle…' },
+      { from: 15.5, to: 20.5, scene: 'dance', title: 'Vis Abidjan avec tes amis', sub: 'Les vrais quartiers, au même moment' },
+      { from: 20.5, to: 25, scene: 'house' },
+    ],
+    intro: 3.2,
+    outro: 20.5,
+    length: 25,
+    hook: ['Ta vie.', 'Ton quartier.', 'Ton Babi.'],
+  },
+  bouger: {
+    shots: [
+      { from: 0, to: 3.4, scene: 'gbaka' },
+      { from: 3.4, to: 11.6, scene: 'gbaka', title: 'Le gbaka', sub: "L'apprenti crie, on monte, on est serré… on arrive !" },
+      { from: 11.6, to: 19.4, scene: 'gnango', title: 'Gnango', sub: 'Ton chauffeur, prix fixé, devant chez toi' },
+      { from: 19.4, to: 26.6, scene: 'princesse', title: 'La Rue Princesse', sub: 'Yop by night : maquis et coupé-décalé' },
+      { from: 26.6, to: 31, scene: 'princesse' },
+    ],
+    intro: 3.4,
+    outro: 26.6,
+    length: 31,
+    hook: ['À Babi,', 'on bouge', 'comment ?'],
+  },
+}
+const { shots: SHOTS, length: VIDEO_LENGTH } = FILMS[FILM]
+
+/** What the apprenti calls out, one after the other. */
+const CALLS = ['Adjamé ! Adjamé !', 'Yop ! Yop ! On y va !', 'Monte, y a place !', 'Serre-toi un peu !']
 
 const fade = (t: number, a: number, b: number, d = 0.45) => Math.max(0, Math.min(1, (t - a) / d, (b - t) / d))
+
+/** The Gnango app on a phone: looking for a driver, then found, at a fixed price. */
+function GnangoPhone({ t }: { t: number }) {
+  const up = t < 3.4 ? ease(clamp01((t - 0.2) / 0.6)) : 1 - ease(clamp01((t - 3.4) / 0.6))
+  const found = t > 1.8
+  return (
+    <div className="absolute inset-x-0 bottom-[6%] flex justify-center" style={{ transform: `translateY(${(1 - up) * 110}%)`, opacity: up }}>
+      <div className="w-[300px] rounded-[44px] bg-[#141416] p-3 shadow-[0_30px_60px_-20px_rgba(0,0,0,0.7)]">
+        <div className="overflow-hidden rounded-[34px] bg-[#f4f4f6] text-[var(--color-ink)]">
+          <div className="flex items-center gap-3 bg-[#1b1d2a] px-4 pt-6 pb-4 text-white">
+            <AppLogo id="gnango" size={46} radius={14} />
+            <div>
+              <div className="text-[22px] leading-none font-extrabold">Gnango</div>
+              <div className="font-sans text-[13px] font-bold text-[#ffd166]">Un chauffeur, prix fixé</div>
+            </div>
+          </div>
+          {/* The map: a few streets and the car coming */}
+          <div className="relative h-[150px] bg-[#e8e4d8]">
+            {[30, 80, 120].map((y) => (
+              <i key={y} className="absolute inset-x-0 block h-[8px] bg-white" style={{ top: y }} />
+            ))}
+            {[70, 190].map((x) => (
+              <i key={x} className="absolute inset-y-0 block w-[8px] bg-white" style={{ left: x }} />
+            ))}
+            <i className="absolute block h-4 w-4 rounded-full border-4 border-white bg-[var(--color-orange)]" style={{ left: 180, top: 112 }} />
+            <i className="absolute block h-5 w-7 rounded-md bg-[#212529]" style={{ left: 60 + clamp01((t - 1.8) / 1.6) * 110, top: 72 }} />
+          </div>
+          <div className="p-4 font-sans">
+            {found ? (
+              <>
+                <div className="text-[13px] font-extrabold text-[var(--color-emerald-deep)]">Chauffeur trouvé</div>
+                <div className="mt-1 font-display text-[20px] leading-tight font-extrabold">Koffi · Toyota noire</div>
+                <div className="mt-1 text-[14px] font-bold text-[var(--color-ink-soft)]">Arrive dans 3 min</div>
+                <div className="mt-3 flex items-center justify-between rounded-2xl bg-white px-3 py-2">
+                  <span className="text-[13px] font-bold text-[var(--color-ink-soft)]">Prix fixé</span>
+                  <span className="font-display text-[22px] font-extrabold">2 500 F</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="font-display text-[20px] font-extrabold">Riviera → Plateau</div>
+                <div className="mt-1 text-[14px] font-bold text-[var(--color-ink-soft)]">Recherche d'un chauffeur…</div>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
+                  <i className="block h-full rounded-full bg-[#ffd166]" style={{ width: `${clamp01(t / 1.8) * 100}%` }} />
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function Video({ t, qr, url, placeholder }: { t: number; qr: string; url: string; placeholder: boolean }) {
   const shot = SHOTS.find((s) => t >= s.from && t < s.to) ?? SHOTS[SHOTS.length - 1]
   const local = t - shot.from
   const black = 1 - Math.min(1, fade(t, shot.from, shot.to, 0.35) + (shot.from === 0 ? 1 : 0))
-  const intro = t < 3.2
-  const outro = t >= 20.5
+  const film = FILMS[FILM]
+  const intro = t < film.intro
+  const outro = t >= film.outro
+  const O = film.outro
   const pop = (start: number) => {
     const k = Math.max(0, Math.min(1, (t - start) / 0.5))
     return { opacity: k, transform: `translateY(${(1 - k) * 30}px) scale(${0.85 + 0.15 * k})` }
   }
   return (
     <div className="relative h-full w-full overflow-hidden bg-[var(--color-night)] font-display text-white">
-      <div className="absolute inset-0" style={{ opacity: shot.scene === 'dance' ? 0.25 : 1 }}>
+      <div className="absolute inset-0" style={{ opacity: shot.scene === 'dance' || shot.scene === 'princesse' ? 0.25 : 1 }}>
         <Scene className="h-full w-full" />
       </div>
       <div className="absolute inset-0" style={{ opacity: intro ? 0 : outro ? 0.35 : 1 }}>
@@ -217,6 +418,14 @@ function Video({ t, qr, url, placeholder }: { t: number; qr: string; url: string
           <World scene={shot.scene} t={local} />
         </Canvas>
       </div>
+      {/* The apprenti calling out */}
+      {shot.scene === 'gbaka' && !intro && local > 1.6 && local < 6.4 && (
+        <div className="absolute top-[47%] left-[50%] max-w-[48%] rounded-3xl rounded-bl-md bg-white px-5 py-3 text-[30px] leading-tight font-extrabold text-[var(--color-ink)] shadow-[0_12px_30px_-10px_rgba(0,0,0,0.5)]" style={pop(shot.from + 1.6)}>
+          {CALLS[Math.floor((local - 1.6) / 1.25) % CALLS.length]}
+        </div>
+      )}
+      {/* Booking on Gnango: the phone comes up, finds a driver, goes */}
+      {shot.scene === 'gnango' && local < 4.2 && <GnangoPhone t={local} />}
       {/* Captions */}
       {shot.title && (
         <div className="absolute inset-x-0 top-[9%] flex flex-col items-center px-8 text-center">
@@ -234,29 +443,29 @@ function Video({ t, qr, url, placeholder }: { t: number; qr: string; url: string
             <Logo size={84} />
           </div>
           <h1 className="text-[64px] leading-[0.95] font-extrabold tracking-[-0.02em]">
-            <span className="block" style={pop(0.8)}>Ta vie.</span>
-            <span className="block" style={pop(1.3)}>Ton quartier.</span>
-            <span className="block text-[var(--color-orange)]" style={pop(1.8)}>Ton Babi.</span>
+            <span className="block" style={pop(0.8)}>{film.hook[0]}</span>
+            <span className="block" style={pop(1.3)}>{film.hook[1]}</span>
+            <span className="block text-[var(--color-orange)]" style={pop(1.8)}>{film.hook[2]}</span>
           </h1>
         </div>
       )}
       {outro && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 px-8 text-center">
-          <div style={pop(20.7)}>
+          <div style={pop(O + 0.2)}>
             <Logo size={72} />
           </div>
-          <div className="text-[52px] leading-[1] font-extrabold" style={pop(21.1)}>
+          <div className="text-[52px] leading-[1] font-extrabold" style={pop(O + 0.6)}>
             Bientôt sur
             <br />
             ton téléphone
           </div>
-          <div className="flex flex-col items-center gap-4 rounded-[32px] bg-white p-6 text-[var(--color-ink)] shadow-[0_20px_50px_-15px_rgba(0,0,0,0.6)]" style={pop(21.6)}>
+          <div className="flex flex-col items-center gap-4 rounded-[32px] bg-white p-6 text-[var(--color-ink)] shadow-[0_20px_50px_-15px_rgba(0,0,0,0.6)]" style={pop(O + 1.1)}>
             <div className="text-[30px] leading-tight font-extrabold">Inscris-toi sur la liste</div>
             {qr && <img src={qr} alt="" className="h-[220px] w-[220px] [image-rendering:pixelated]" />}
             <div className="font-sans text-[24px] font-extrabold text-[var(--color-orange)]">{url}</div>
             {placeholder && <div className="rounded-lg bg-[#ffeef1] px-3 py-1 font-sans text-[16px] font-extrabold text-[#d81b3f]">ADRESSE PROVISOIRE</div>}
           </div>
-          <div className="font-sans text-[22px] font-extrabold text-white/85" style={pop(22.1)}>
+          <div className="font-sans text-[22px] font-extrabold text-white/85" style={pop(O + 1.6)}>
             Gratuit · 100 % ivoirien
           </div>
         </div>

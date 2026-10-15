@@ -1,4 +1,4 @@
-// The video: 25 s, 1080 × 1920 (WhatsApp status, TikTok, Reels), drawn frame
+// The videos (FILM=lancement, 25 s; FILM=bouger, 31 s), 1080 × 1920 (WhatsApp status, TikTok, Reels), drawn frame
 // by frame from the game's own Sims (web/src/lab/poster.tsx) so it's smooth
 // even on a slow machine, then put together by ffmpeg into an MP4.
 //
@@ -11,8 +11,12 @@ import QRCode from 'qrcode'
 import { HERE, OUT, SHORT, URL, browser } from './shared.mjs'
 
 const FPS = Number(process.env.FPS ?? 24)
-const PORT = 5233
-const frames = path.join(OUT, 'video-frames')
+/** Which film: lancement (the launch) or bouger (gbaka, Gnango, Rue Princesse). */
+const FILM = process.env.FILM ?? 'lancement'
+const NAME = FILM === 'lancement' ? 'babi-life-video' : `babi-life-video-${FILM}`
+const SRC = FILM === 'lancement' ? 'video' : `video-${FILM}`
+const PORT = FILM === 'lancement' ? 5233 : 5235
+const frames = path.join(OUT, 'video-frames', FILM)
 fs.rmSync(frames, { recursive: true, force: true })
 fs.mkdirSync(frames, { recursive: true })
 
@@ -27,11 +31,11 @@ for (let i = 0; i < 60; i++) {
   await new Promise((r) => setTimeout(r, 500))
 }
 
-const qr = await QRCode.toDataURL(`${URL}?src=video`, { margin: 1, width: 440, color: { dark: '#161a2b', light: '#ffffff' } })
+const qr = await QRCode.toDataURL(`${URL}?src=${SRC}`, { margin: 1, width: 440, color: { dark: '#161a2b', light: '#ffffff' } })
 const b = await browser()
 const page = await b.newPage({ viewport: { width: 540, height: 960 }, deviceScaleFactor: 2 })
 page.on('pageerror', (e) => console.error('page:', String(e)))
-await page.goto(`http://127.0.0.1:${PORT}/poster.html?video&t=0`, { waitUntil: 'networkidle' })
+await page.goto(`http://127.0.0.1:${PORT}/poster.html?video=${FILM}&t=0`, { waitUntil: 'networkidle' })
 await page.waitForFunction(() => !!window.__frame && !!window.__length)
 await page.evaluate(([qr, url]) => window.__setOutro(qr, url, false), [qr, SHORT])
 const length = await page.evaluate(() => window.__length)
@@ -45,9 +49,9 @@ for (let i = 0; i < total; i++) {
 await b.close()
 stop()
 
-const mp4 = path.join(OUT, 'babi-life-video-1080x1920.mp4')
+const mp4 = path.join(OUT, `${NAME}-1080x1920.mp4`)
 execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', path.join(frames, '%05d.png'), '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '20', '-preset', 'slow', '-movflags', '+faststart', mp4])
 // A poster frame for the link preview (the outro, with the QR code).
-fs.copyFileSync(path.join(frames, `${String(total - 12).padStart(5, '0')}.png`), path.join(OUT, 'babi-life-video-cover.png'))
+fs.copyFileSync(path.join(frames, `${String(total - 12).padStart(5, '0')}.png`), path.join(OUT, `${NAME}-cover.png`))
 fs.rmSync(frames, { recursive: true, force: true })
 console.log('video →', mp4)

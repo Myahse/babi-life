@@ -19,8 +19,10 @@ Everything for the launch of the wish list (**lifeinbabi.com/liste**), made from
 | `babi-life-flyer-status-1080x1920.png` | WhatsApp status, story |
 | `babi-life-video-1080x1920.mp4` | The video, 25 s, vertical, no sound (add music in CapCut/InShot) |
 | `babi-life-video-cover.png` | The video's last frame (QR code), as a cover |
+| `babi-life-video-bouger-1080x1920.mp4` | The second video, 31 s: « À Babi, on bouge comment ? » — the gbaka and its apprenti calling « Adjamé ! Yop ! », a Gnango ride booked on the phone, a night at the Rue Princesse |
+| `babi-life-video-bouger-cover.png` | Its last frame, as a cover |
 
-The SVGs have the name in outlines: they open anywhere without the font. The QR codes lead to `lifeinbabi.com/liste?src=flyer` (flyer) and `?src=video` (video), so the export of the list says where each sign-up came from.
+The SVGs have the name in outlines: they open anywhere without the font. The QR codes lead to `lifeinbabi.com/liste?src=flyer` (flyer), `?src=video` (the launch video) and `?src=video-bouger` (the second one), so the export of the list says where each sign-up came from.
 
 ## Making them again
 
@@ -28,7 +30,8 @@ The SVGs have the name in outlines: they open anywhere without the font. The QR 
 cd web && npm ci && cd ../marketing && npm ci
 npm run logos   # out/logos/
 npm run flyer   # the flyer (needs out/logos/ first)
-npm run video   # the video (a few minutes: drawn frame by frame; needs ffmpeg)
+npm run video          # the launch video (a few minutes: drawn frame by frame; needs ffmpeg)
+npm run video:bouger   # the second video (gbaka, Gnango, Rue Princesse)
 ```
 
 Another address: `WAITLIST_URL=https://… npm run all`. Chromium is found where Playwright puts it, or set `CHROMIUM=/path/to/chrome`.
