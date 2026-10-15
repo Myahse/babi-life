@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowRight, Check, Copy, Hammer, MapPinned, MessageCircle, Shirt, Smartphone, UserRound, type LucideIcon } from 'lucide-react'
+import { ArrowRight, Check, Copy, Hammer, MapPinned, MessageCircle, Shirt, Smartphone, UserRound, Users, type LucideIcon } from 'lucide-react'
 import { Scene } from '../components/Scene'
 import { Portrait } from '../avatar/portrait'
 import { IconTile, Logo } from '../components/ui'
@@ -64,17 +64,17 @@ export function Waitlist() {
     <div className="relative min-h-full overflow-x-hidden bg-[var(--color-night)] text-white">
       <div className="pointer-events-none fixed inset-0">
         <Scene className="h-full w-full" />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0f1230]/55 via-[#0f1230]/20 to-[#0f1230]/90" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0f1230]/70 via-[#0f1230]/35 to-[#0f1230]/95" />
+        {/* On a wide screen the words are on the left: shade that side */}
+        <div className="absolute inset-0 hidden bg-gradient-to-r from-[#0f1230]/90 via-[#0f1230]/45 to-transparent lg:block" />
       </div>
 
       <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-2 lg:px-8 lg:pt-6">
         <Logo size={36} />
-        {count !== null && count > 0 && (
-          <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-extrabold backdrop-blur">{count.toLocaleString('fr-FR')} inscrit·e·s</span>
-        )}
+        <span className="text-xs font-extrabold text-white/70">Gratuit · 100 % ivoirien</span>
       </header>
 
-      <main className="relative z-10 mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] gap-8 px-5 pb-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-center lg:gap-12 lg:px-8 lg:pt-10">
+      <main className="relative z-10 mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] gap-8 px-5 pb-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-center lg:gap-x-12 lg:gap-y-14 lg:px-8 lg:pt-10">
         {/* ---------- Hero ---------- */}
         <section className="motion-stagger flex flex-col items-center text-center lg:items-start lg:text-left">
           <span className="mt-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-extrabold backdrop-blur lg:mt-0">
@@ -96,7 +96,7 @@ export function Waitlist() {
             Babi Life arrive : crée ton Sim, construis ta maison et vis Abidjan avec tes amis. Inscris-toi pour être prévenu·e en premier.
           </p>
           <button
-            className="btn mt-6 w-full max-w-sm lg:hidden"
+            className="btn mt-6 w-full max-w-sm lg:!hidden"
             onClick={() => {
               document.getElementById('liste')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
               setTimeout(() => document.querySelector<HTMLInputElement>('#liste input')?.focus({ preventScroll: true }), 450)
@@ -104,20 +104,11 @@ export function Waitlist() {
           >
             Je m'inscris <ArrowRight size={18} strokeWidth={2.6} />
           </button>
-          <ul className="mt-6 grid w-full max-w-md gap-2.5 text-left">
-            {PROMISES.map((p) => (
-              <li key={p.title} className="flex items-center gap-3 rounded-[20px] border border-white/15 bg-white/10 p-2.5 backdrop-blur">
-                <IconTile icon={p.icon} colors={p.colors} size={44} />
-                <span className="min-w-0">
-                  <span className="block font-display text-[15px] leading-tight font-extrabold">{p.title}</span>
-                  <span className="block text-sm leading-snug font-semibold text-white/75">{p.text}</span>
-                </span>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-6 flex items-end justify-center lg:justify-start" aria-hidden>
+          {/* The cast, standing on a warm glow */}
+          <div className="relative mt-8 flex items-end justify-center lg:mt-10 lg:justify-start" aria-hidden>
+            <span className="absolute -bottom-3 left-1/2 h-10 w-[115%] -translate-x-1/2 rounded-[50%] bg-[radial-gradient(closest-side,rgba(255,138,26,0.55),rgba(255,138,26,0))] lg:left-[45%]" />
             {CROWD.map((c, i) => (
-              <span key={i} className="-mx-2 block" style={{ width: `min(${c.size}px, ${Math.round(c.size / 4.9)}vw)`, aspectRatio: '1 / 1.35' }}>
+              <span key={i} className="relative -mx-2 block" style={{ width: `min(${c.size * 1.15}px, ${Math.round(c.size / 4.2)}vw)`, aspectRatio: '1 / 1.35' }}>
                 <Portrait look={c.look} gender={c.gender} framing="full" />
               </span>
             ))}
@@ -140,6 +131,11 @@ export function Waitlist() {
             </div>
           ) : (
             <form className="flex flex-col gap-2.5" onSubmit={join}>
+              {count !== null && count > 0 && (
+                <span className="mb-1 inline-flex w-fit items-center gap-1.5 rounded-full bg-[#e6f8ef] px-3 py-1 text-xs font-extrabold text-[var(--color-emerald-deep)]">
+                  <Users size={14} strokeWidth={2.6} /> Déjà {count.toLocaleString('fr-FR')} inscrit·e{count > 1 ? '·s' : ''}
+                </span>
+              )}
               <h2 className="font-display text-2xl leading-tight font-extrabold">Je m'inscris</h2>
               <p className="-mt-1 mb-1 text-sm font-semibold text-[var(--color-ink-soft)]">Gratuit. Juste pour être prévenu·e quand ça ouvre.</p>
               <label className="relative">
@@ -173,7 +169,30 @@ export function Waitlist() {
             </form>
           )}
         </section>
+
+        {/* ---------- What's coming ---------- */}
+        <ul className="grid gap-3 sm:grid-cols-3 lg:col-span-2">
+          {PROMISES.map((p) => (
+            <li key={p.title} className="flex items-start gap-3 rounded-[24px] border border-white/10 bg-[#171a42]/90 p-4 backdrop-blur">
+              <IconTile icon={p.icon} colors={p.colors} size={48} />
+              <span className="min-w-0">
+                <span className="block font-display text-[17px] leading-tight font-extrabold">{p.title}</span>
+                <span className="mt-1 block text-sm leading-snug font-semibold text-white/75">{p.text}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
       </main>
+
+      <footer className="relative z-10 mx-auto flex max-w-6xl flex-col items-center gap-3 px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-center lg:flex-row lg:justify-between lg:px-8 lg:text-left">
+        <Logo size={28} />
+        <span className="text-xs font-bold text-white/60">lifeinbabi.com · Fait à Abidjan</span>
+      </footer>
+      <div className="relative z-10 flex h-1.5" aria-hidden>
+        <i className="flex-1 bg-[#ff8200]" />
+        <i className="flex-1 bg-white" />
+        <i className="flex-1 bg-[#009a44]" />
+      </div>
     </div>
   )
 }
