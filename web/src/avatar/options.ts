@@ -209,3 +209,26 @@ export function defaultColors(l: Required<Look>, femme: boolean) {
     accessory: l.accessory === 'glasses' || l.accessory === 'sunglasses' || l.accessory === 'headphones' ? '#17171a' : l.accessory === 'hat' ? '#c9a227' : l.accessory === 'beads' ? '#d6336c' : l.accessory === 'kufi' ? '#f8f9fa' : l.accessory === 'croix' ? '#e8b93c' : l.accessory === 'chapelet' ? '#6b4423' : l.accessory === 'bag' ? '#6b4423' : l.accessory === 'watch' ? '#d8d8de' : HEADWEAR.has(l.accessory) ? (l.outfitColor === '#f4efe6' ? '#14213d' : l.outfitColor) : '#e8b93c',
   }
 }
+
+/**
+ * What a Sim wears at work, during a shift (the interaction "work"): the
+ * nurse's outfit, the white coat for a doctor, the cook's whites at the
+ * maquis, a shirt or a suit at the office and the mairie. Jobs without a
+ * uniform (market, transport, DJ, hairdresser) keep the Sim's own clothes.
+ * `level` counts from 0 (the first rung of the career).
+ */
+export function workLook(look: Look, career: string, level: number): Look {
+  const outfit: string | undefined = (
+    {
+      sante: level >= 3 ? 'blouse' : 'infirmier',
+      maquis: 'cuisinier',
+      bureau: level >= 2 ? 'suit' : 'chemise',
+      mairie: level >= 4 ? 'suit' : 'chemise',
+      enseignement: 'chemise',
+    } as Record<string, string>
+  )[career]
+  if (!outfit) return look
+  // Office clothes are office colours: a dark suit, a white shirt over dark trousers.
+  const colours = outfit === 'suit' ? { outfitColor: '#1f2a44', bottomColor: '#1f2a44' } : outfit === 'chemise' ? { outfitColor: '#f4f4f4', bottomColor: '#2b2f45' } : {}
+  return { ...look, outfit, ...colours, accessory: look.accessory === 'cap' || look.accessory === 'capback' ? 'none' : look.accessory }
+}

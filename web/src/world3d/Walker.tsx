@@ -7,6 +7,7 @@ import type { Sim } from '../lib/types'
 import { iconFor, kindColors } from '../components/icons'
 import { IconTile } from '../components/ui'
 import { Character } from './Character'
+import { workLook } from '../avatar/options'
 import { OutdoorAction, outdoorPose } from './OutdoorAction'
 import { HOME_ID, SIDEWALK, type Lot } from './layout'
 import { cameraTurn, moveInput, running } from './input'
@@ -412,7 +413,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       </mesh>
       {route && <RouteDots route={route} from={group} heightAt={nav.heightAt} />}
       <group ref={group}>
-        <Character look={sim.look} gender={sim.gender} walking={walking} running={run} busy={!!busy} pose={busy?.kind === 'chat' ? 'talk' : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={run ? RUN : SPEED} />
+        <Character look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : sim.look} gender={sim.gender} walking={walking} running={run} busy={!!busy} pose={busy?.kind === 'chat' ? 'talk' : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={run ? RUN : SPEED} />
         {/* Outdoors, what the Sim is doing is set around it (the ball, the towel, the bus stop…) */}
         {busy && !walking && <OutdoorAction id={busy.id} />}
         {labels && nameTag && (

@@ -51,6 +51,23 @@ export function StreetLife({ nav, seed, night }: { nav: Nav; seed: string; night
     }
     return out
   }, [nav, seed])
+  // Police checkpoints on the big roads: a patrol car on the shoulder, cones, two officers.
+  const posts = useMemo(() => {
+    const out: Spot[] = []
+    for (const e of nav.edges) {
+      if (e.width < 9 || e.len < 40 || nav.ys[e.a] || nav.ys[e.b]) continue
+      const [a, b] = [nav.nodes[e.a], nav.nodes[e.b]]
+      const m: XZ = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]
+      const h = hash(Math.round(m[0]), Math.round(m[1]), 613)
+      if (h > 0.12) continue
+      const [ux, uz] = [(b[0] - a[0]) / e.len, (b[1] - a[1]) / e.len]
+      // On the right-hand shoulder (traffic drives on the right).
+      const off = e.width / 2 + 1.2
+      out.push({ id: `police:${Math.round(m[0])}:${Math.round(m[1])}`, at: [m[0] + uz * off, m[1] - ux * off], rot: Math.atan2(ux, uz), seed: h })
+    }
+    return out
+  }, [nav])
+  const [post, setPost] = useState<Spot | null>(null)
   const courts = useMemo(() => spotsOf(nav, 41, 36, false), [nav])
   const stalls = useMemo(() => spotsOf(nav, 19, 24, true), [nav])
   const [shown, setShown] = useState<Scene[]>([])
@@ -70,6 +87,8 @@ export function StreetLife({ nav, seed, night }: { nav: Nav; seed: string; night
       .slice(0, SCENE_MAX)
       .map((x) => x.s)
     if (near.map((s) => s.id).join() !== shown.map((s) => s.id).join()) setShown(near)
+    const nextPost = posts.map((s) => ({ s, d: Math.hypot(s.at[0] - sx, s.at[1] - sz) })).filter((x) => x.d < 320).sort((a, b) => a.d - b.d)[0]?.s ?? null
+    if (nextPost?.id !== post?.id) setPost(nextPost)
     const play = nearest(courts, 6)
     const nextFoot = play[0] ?? null
     const close = play.find((s) => nextFoot && s !== nextFoot && Math.hypot(s.at[0] - nextFoot.at[0], s.at[1] - nextFoot.at[1]) < 220)
@@ -89,6 +108,7 @@ export function StreetLife({ nav, seed, night }: { nav: Nav; seed: string; night
           </group>
         ))}
       </NoShadows>
+      {post && <PolicePost spot={post} />}
       {foot && <Pitch spot={foot} night={night} />}
       {basket && <Court spot={basket} night={night} />}
       {vendors.map((v) => (
@@ -465,6 +485,58 @@ function Marchand({ vendor }: { vendor: Vendor }) {
           Marchand · {vendor.goods.label}
         </div>
       </Html>
+    </group>
+  )
+}
+
+/**
+ * A police checkpoint on the shoulder of a big road: the patrol car, its
+ * light going, the cones, one officer waving drivers over, the other by the car.
+ */
+export function PolicePost({ spot }: { spot: Spot }) {
+  const officers = useMemo(() => people(`police${spot.id}`, 2, { outfit: 'policier', accessory: 'none', beard: 'none' }), [spot.id])
+  const lamp = useRef<THREE.MeshBasicMaterial>(null)
+  useFrame(() => lamp.current?.color.set(Math.floor(worldTime() * 3) % 2 ? '#e03131' : '#1c7ed6'))
+  return (
+    <group position={[spot.at[0], 0, spot.at[1]]} rotation={[0, spot.rot, 0]}>
+      {/* The patrol car, along the road */}
+      <group position={[1.2, 0, -3]}>
+        <mesh position={[0, 0.55, 0]}>
+          <boxGeometry args={[1.7, 0.7, 4.1]} />
+          <meshLambertMaterial color="#1f2a44" />
+        </mesh>
+        <mesh position={[0, 1.15, -0.2]}>
+          <boxGeometry args={[1.5, 0.55, 2.1]} />
+          <meshLambertMaterial color="#f4f4f4" />
+        </mesh>
+        <mesh position={[0, 1.5, -0.2]}>
+          <boxGeometry args={[1, 0.16, 0.3]} />
+          <meshBasicMaterial ref={lamp} color="#e03131" />
+        </mesh>
+        {[-1.3, 1.3].map((z) =>
+          [-0.85, 0.85].map((x) => (
+            <mesh key={`${x}${z}`} position={[x, 0.32, z]} rotation={[0, 0, Math.PI / 2]}>
+              <cylinderGeometry args={[0.32, 0.32, 0.22, 10]} />
+              <meshLambertMaterial color="#141414" />
+            </mesh>
+          )),
+        )}
+      </group>
+      {/* Cones out into the lane */}
+      {[0, 1, 2, 3].map((k) => (
+        <mesh key={k} position={[-0.8 - k * 0.35, 0.35, 2 + k * 1.6]}>
+          <coneGeometry args={[0.22, 0.7, 10]} />
+          <meshLambertMaterial color={k % 2 ? '#ffffff' : '#ff6a00'} />
+        </mesh>
+      ))}
+      <NoShadows>
+        <group position={[-1.6, 0, 1]} rotation={[0, -Math.PI / 2, 0]}>
+          <Human look={officers[0].look} gender={officers[0].gender} pose="wave" seed={officers[0].seed} />
+        </group>
+        <group position={[0.1, 0, -0.6]} rotation={[0, -2.2, 0]}>
+          <Human look={officers[1].look} gender={officers[1].gender} pose="idle" seed={officers[1].seed} />
+        </group>
+      </NoShadows>
     </group>
   )
 }

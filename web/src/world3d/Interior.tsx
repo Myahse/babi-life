@@ -7,7 +7,7 @@ import { useRoomStyle } from './interior/Decor'
 import * as THREE from 'three'
 import type { Player, Sim } from '../lib/types'
 import { Human, NoShadows, type Pose } from '../avatar/Human'
-import { randomLook } from '../avatar/options'
+import { randomLook, workLook } from '../avatar/options'
 import { Box } from './props'
 import { Character } from './Character'
 import { ActionProps, Pot, SewingTable, TvScreen, Zzz } from './interior/ActionProps'
@@ -39,6 +39,15 @@ type Room = { floor: string; wall: string; dark?: boolean; furniture: React.Reac
 /** What the Sim does there: where it goes and how it moves. */
 function action(kind: string, id: string | undefined): { spot: string; pose: Pose } {
   if (!id) return { spot: 'entrance', pose: 'idle' }
+  // At work: where the job is done there, and how.
+  if (id === 'work') {
+    if (kind === 'maquis' || kind === 'restaurant') return { spot: 'counter', pose: 'cook' }
+    if (kind === 'office' || kind === 'mairie') return { spot: 'desk', pose: 'write' }
+    if (kind === 'school' || kind === 'universite') return { spot: 'counter', pose: 'talk' }
+    if (kind === 'club') return { spot: 'floor', pose: 'dance' }
+    if (kind === 'market' || kind === 'mall' || kind === 'boutique') return { spot: 'stall', pose: 'busy' }
+    return { spot: 'counter', pose: 'busy' }
+  }
   if (id === 'garde-a-vue') return { spot: 'seat', pose: 'sit' }
   if (/^(degrade|boule-a-zero|taille-barbe|tresses|tissage|chignon|manucure|coupe-courte|iroquoise|nattes|vanilles|macarons|carre|coudre-pagne|retouche)$/.test(id)) return { spot: 'chair', pose: 'sit' }
   // Gbairai: telling the quarter's news, with the hands.
@@ -650,7 +659,7 @@ export function Interior({ sim, kind, placeId, interactionId, housing, night, st
   const r = room(kind, housing)
   const style = useRoomStyle(kind, housing)
   const act = action(kind, interactionId)
-  const me = r.spots[act.spot] ?? r.spots.entrance
+  const me = r.spots[act.spot] ?? r.spots.counter ?? r.spots.entrance
   const people = useMemo<Person[]>(() => {
     const rand = rng(`inside${placeId}`)
     return r.crowd.map((s) => {
@@ -670,7 +679,15 @@ export function Interior({ sim, kind, placeId, interactionId, housing, night, st
   const dark = r.dark || night
   // In the shower: in a towel.
   // At the hairdresser's: the cap comes off.
-  const look = act.spot === 'shower' && interactionId === 'shower' ? { ...sim.look, outfit: 'serviette', accessory: 'none' } : act.spot === 'chair' && (kind === 'barbier' || kind === 'salon') ? { ...sim.look, accessory: 'none' } : sim.look
+  // At work: in the job's uniform.
+  const look =
+    act.spot === 'shower' && interactionId === 'shower'
+      ? { ...sim.look, outfit: 'serviette', accessory: 'none' }
+      : act.spot === 'chair' && (kind === 'barbier' || kind === 'salon')
+        ? { ...sim.look, accessory: 'none' }
+        : interactionId === 'work'
+          ? workLook(sim.look, sim.career, sim.careerLevel)
+          : sim.look
   return (
     <Canvas shadows dpr={[1, 2]} camera={{ position: [8.4, 8.6, 10.8], fov: 42 }} style={{ background: dark ? '#0b0d1f' : '#2a2340' }}>
       <Suspense fallback={null}>

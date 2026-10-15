@@ -19,6 +19,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Interior } from '../world3d/Interior'
 import { Character } from '../world3d/Character'
 import { OutdoorAction, outdoorPose } from '../world3d/OutdoorAction'
+import { Dressing } from '../world3d/open/dressing'
+import { PolicePost } from '../world3d/open/streetlife'
 import { randomLook } from '../avatar/options'
 import type { Sim } from '../lib/types'
 
@@ -32,7 +34,10 @@ import type { Sim } from '../lib/types'
 // into the cycle, frozen; without t it plays);
 // ?view=interior&kind=home&id=sleep (&housing=villa &g=homme &stage=bebe
 // &seed=3 &night) the inside of a place, the Sim doing that activity;
-// ?view=outdoor&id=play-football an outdoor activity's scene around the Sim.
+// ?view=outdoor&id=play-football an outdoor activity's scene around the Sim;
+// ?view=dressing&kind=maquis (&name=…) the front of a place, its workers;
+// ?view=police the checkpoint on a big road's shoulder.
+// The interior takes &career=sante&level=1 for a Sim at work (&id=work).
 
 const q = new URLSearchParams(location.search)
 const view = q.get('view') ?? 'city'
@@ -251,7 +256,7 @@ function InteriorLab() {
   const sim = useMemo(() => {
     let n = Number(q.get('seed') ?? 3)
     const r = () => ((n = (n * 16807) % 2147483647) / 2147483647)
-    return { id: 'lab', firstName: 'Awa', lastName: 'Koné', gender, look: randomLook(gender, r) } as unknown as Sim
+    return { id: 'lab', firstName: 'Awa', lastName: 'Koné', gender, look: randomLook(gender, r), career: q.get('career') ?? '', careerLevel: Number(q.get('level') ?? 0) } as unknown as Sim
   }, [gender])
   return (
     <div style={{ width: '100vw', height: '100vh' }}>
@@ -282,7 +287,35 @@ function OutdoorLab() {
   )
 }
 
+function FrontLab() {
+  const police = view === 'police'
+  return (
+    <Canvas shadows dpr={[1, 2]} camera={{ position: police ? [-9, 5, 9] : [2, 4, 13], fov: 45 }} style={{ width: '100vw', height: '100vh' }}>
+      <color attach="background" args={['#cfe9f8']} />
+      <hemisphereLight args={['#ffffff', '#b8a27c', 1.2]} />
+      <directionalLight position={[10, 20, 8]} intensity={1.8} castShadow />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[60, 60]} />
+        <meshLambertMaterial color="#b8b2a3" />
+      </mesh>
+      {police ? (
+        <PolicePost spot={{ id: 'lab', at: [0, 0], rot: 0, seed: 0.3 }} />
+      ) : (
+        <>
+          <mesh position={[0, 2, -2.5]}>
+            <boxGeometry args={[12, 4, 5]} />
+            <meshLambertMaterial color="#e3c9a3" />
+          </mesh>
+          <Dressing kind={q.get('kind') ?? 'maquis'} name={q.get('name') ?? ''} seed={Number(q.get('seed') ?? 0.37)} night={night} />
+        </>
+      )}
+      <OrbitControls target={police ? [0, 0.8, 0] : [1.5, 1, 1.5]} />
+    </Canvas>
+  )
+}
+
 function Lab() {
+  if (view === 'dressing' || view === 'police') return <FrontLab />
   if (view === 'outdoor') return <OutdoorLab />
   if (view === 'interior') return <InteriorLab />
   if (view === 'gbaka') return <GbakaLab />
