@@ -1,5 +1,5 @@
 import { lazy, Suspense, useMemo, useRef } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import { Shell } from './interior/Shell'
 import { NoteShower } from './money'
@@ -10,6 +10,7 @@ import { Human, NoShadows, type Pose } from '../avatar/Human'
 import { randomLook } from '../avatar/options'
 import { Box } from './props'
 import { Character } from './Character'
+import { ActionProps, Pot, TvScreen, Zzz } from './interior/ActionProps'
 import { rng } from './themes'
 import { worldTime } from '../lib/worldClock'
 
@@ -27,7 +28,7 @@ type Spot = { p: V3; r?: number; pose: Pose; lying?: boolean; g?: 'femme' | 'hom
 type Person = Spot & { gender: 'femme' | 'homme'; look: ReturnType<typeof randomLook>; seed: number }
 
 /** Kinds of places that have an inside (the beach or the football pitch don't). */
-export const INDOOR = new Set(['police', 'home', 'maquis', 'club', 'restaurant', 'market', 'office', 'mairie', 'school', 'health', 'worship', 'mall', 'culture', 'barbier', 'salon', 'hotel', 'universite'])
+export const INDOOR = new Set(['boutique', 'couture', 'pharmacie', 'police', 'home', 'maquis', 'club', 'restaurant', 'market', 'office', 'mairie', 'school', 'health', 'worship', 'mall', 'culture', 'barbier', 'salon', 'hotel', 'universite'])
 
 /** Ambient occlusion where the device can afford it. */
 const RICH = typeof navigator === 'undefined' || (navigator.hardwareConcurrency ?? 4) > 4
@@ -39,17 +40,20 @@ type Room = { floor: string; wall: string; dark?: boolean; furniture: React.Reac
 function action(kind: string, id: string | undefined): { spot: string; pose: Pose } {
   if (!id) return { spot: 'entrance', pose: 'idle' }
   if (id === 'garde-a-vue') return { spot: 'seat', pose: 'sit' }
-  if (/^(degrade|boule-a-zero|taille-barbe|tresses|tissage|chignon|manucure)$/.test(id)) return { spot: 'chair', pose: 'sit' }
+  if (/^(degrade|boule-a-zero|taille-barbe|tresses|tissage|chignon|manucure|coupe-courte|iroquoise|nattes|vanilles|macarons|carre|coudre-pagne|retouche)$/.test(id)) return { spot: 'chair', pose: 'sit' }
   // Gbairai: telling the quarter's news, with the hands.
   if (id === 'gbairai') return { spot: kind === 'barbier' || kind === 'salon' ? 'bench' : 'table', pose: 'rant' }
   if (id === 'piscine-hotel') return { spot: 'pool', pose: 'idle' }
   if (id === 'nuit-hotel') return { spot: 'bed', pose: 'idle' }
   if (id === 'brunch-lagune' || id === 'resto-u') return { spot: 'table', pose: 'eat' }
   if (id === 'bar-hotel') return { spot: 'table', pose: 'drink' }
-  if (/^(sleep|nap)$/.test(id)) return { spot: 'bed', pose: 'idle' }
+  if (/^(sleep|nap)$/.test(id)) return { spot: 'bed', pose: 'sleep' }
   if (/^(biberon|bouillie|hochet|calin)$/.test(id)) return { spot: 'mat', pose: 'busy' }
-  if (id === 'bain-bebe' || id === 'shower') return { spot: 'shower', pose: 'idle' }
-  if (id === 'cook-attieke') return { spot: 'stove', pose: 'busy' }
+  if (id === 'shower') return { spot: 'shower', pose: 'wash' }
+  if (id === 'bain-bebe') return { spot: 'shower', pose: 'busy' }
+  if (id === 'pray') return { spot: 'seat', pose: 'pray' }
+  if (/^(medicaments|conseil|credit|courses|sucrerie)$/.test(id)) return { spot: kind === 'boutique' ? 'stall' : 'counter', pose: id === 'sucrerie' ? 'drink' : 'idle' }
+  if (id === 'cook-attieke') return { spot: 'stove', pose: 'cook' }
   if (id === 'watch-tv' || id === 'call-family') return { spot: 'sofa', pose: 'sit' }
   if (id === 'devoirs' || id === 'jouer-cour') return { spot: 'table', pose: id === 'devoirs' ? 'write' : 'dance' }
   if (id.endsWith('travaillement')) return { spot: 'floor', pose: 'throw' }
@@ -61,6 +65,28 @@ function action(kind: string, id: string | undefined): { spot: string; pose: Pos
   if (id === 'consultation') return { spot: 'bed', pose: 'idle' }
   if (kind === 'market' || kind === 'mall') return { spot: 'stall', pose: 'busy' }
   return { spot: 'counter', pose: 'idle' }
+}
+
+/** Brings the camera close to the Sim doing something (once: then it's the player's). */
+function FocusOn({ at, lying, facing }: { at: V3; lying: boolean; facing: number }) {
+  const controls = useThree((st) => st.controls) as unknown as { target: THREE.Vector3; update: () => void } | null
+  const camera = useThree((st) => st.camera)
+  const done = useRef(false)
+  useFrame((_, dt) => {
+    if (done.current || !controls) return
+    const target = new THREE.Vector3(at[0], at[1] + (lying ? 0.4 : 0.85), at[2])
+    // From the side the Sim faces (its face, its plate), as far round as the
+    // open side of the room lets the camera go.
+    const az = Math.min(1.3, Math.max(0.25, ((facing % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) > Math.PI ? 0.25 : facing))
+    const [dist, pol] = [lying ? 4.2 : 3.6, 1.0]
+    const want = target.clone().add(new THREE.Vector3(Math.sin(az) * Math.sin(pol) * dist, Math.cos(pol) * dist, Math.cos(az) * Math.sin(pol) * dist))
+    const k = 1 - Math.exp(-3 * Math.min(dt, 0.1))
+    controls.target.lerp(target, k)
+    camera.position.lerp(want, k)
+    controls.update()
+    if (camera.position.distanceTo(want) < 0.05) done.current = true
+  })
+  return null
 }
 
 /* ---------- Furniture ---------- */
@@ -161,7 +187,11 @@ function shower(id?: string) {
 
 /* ---------- Rooms ---------- */
 
-function room(kind: string, housing: string): Room {
+/** The new kinds of places furnished like their nearest one. */
+const ROOM_LIKE: Record<string, string> = { boutique: 'market', pharmacie: 'market', couture: 'salon' }
+
+function room(kindIn: string, housing: string): Room {
+  const kind = ROOM_LIKE[kindIn] ?? kindIn
   switch (kind) {
     case 'home': {
       const rich = housing === 'villa' || housing === 'appart'
@@ -581,6 +611,8 @@ export function Interior({ sim, kind, placeId, interactionId, housing, night, st
     return Math.atan2(cx - me.p[0], cz - me.p[2])
   }, [r, me])
   const dark = r.dark || night
+  // In the shower: in a towel.
+  const look = act.spot === 'shower' && interactionId === 'shower' ? { ...sim.look, outfit: 'serviette', accessory: 'none' } : sim.look
   return (
     <Canvas shadows dpr={[1, 2]} camera={{ position: [8.4, 8.6, 10.8], fov: 42 }} style={{ background: dark ? '#0b0d1f' : '#2a2340' }}>
       <Suspense fallback={null}>
@@ -598,12 +630,18 @@ export function Interior({ sim, kind, placeId, interactionId, housing, night, st
           ))}
         </NoShadows>
         <group position={me.p} rotation={me.lying ? [-Math.PI / 2, 0, 0] : [0, throwing ? faceDancers : (me.r ?? 0), 0]}>
-          <Character look={sim.look} gender={sim.gender} stage={stage} plumbob={!me.lying} busy={act.pose === 'busy'} pose={act.pose} />
+          <Character look={look} gender={sim.gender} stage={stage} plumbob={!me.lying} busy={act.pose === 'busy'} pose={act.pose} />
+          <ActionProps id={interactionId} kind={kind} lying={!!me.lying} />
           {/* The travaillement: notes off the wad, over the dancers in front */}
           {throwing && <NoteShower from={[0.3, 1.72, 0.3]} toward={[0, 0.35, 1]} {...shower(interactionId)} seed={placeId.length} />}
         </group>
+        {interactionId === 'watch-tv' && kind === 'home' && <TvScreen />}
+        {interactionId === 'cook-attieke' && kind === 'home' && <Pot />}
+        {me.lying && /^(sleep|nap)$/.test(interactionId ?? '') && <Zzz at={[me.p[0], me.p[1] + 0.6, me.p[2] - 0.6]} />}
         {/* Turn around the room and zoom, within the cut-away side */}
-        <OrbitControls target={[0, 0.8, 0]} enablePan={false} minDistance={7} maxDistance={24} minPolarAngle={0.35} maxPolarAngle={1.25} minAzimuthAngle={0.15} maxAzimuthAngle={1.4} enableDamping />
+        <OrbitControls makeDefault target={[0, 0.8, 0]} enablePan={false} minDistance={interactionId ? 2.6 : 7} maxDistance={24} minPolarAngle={0.35} maxPolarAngle={1.25} minAzimuthAngle={0.15} maxAzimuthAngle={1.4} enableDamping />
+        {/* Doing something: the camera comes close to see it */}
+        {interactionId && <FocusOn at={me.p} lying={!!me.lying} facing={throwing ? faceDancers : (me.r ?? 0)} key={`${interactionId}${act.spot}`} />}
         {RICH && (
           <Suspense fallback={null}>
             <AmbientOcclusion radius={1.2} falloff={0.6} intensity={2.2} />

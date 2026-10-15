@@ -746,6 +746,21 @@ function paintSheet(l: Required<Look>, femme: boolean, young: boolean) {
       shoes('sneaker')
       break
     }
+    case 'serviette': {
+      // Out of the shower (or in it): wrapped in a towel, barefoot.
+      const towel = (x: number, y: number) => (y % 6 === 0 ? '#74c0fc' : grain('#f8f9fa', x, y, 0.04))
+      if (femme) {
+        shirt(12, towel)
+        p.rows(b, 0, 2, skin)
+        p.top(b, skin)
+        cut.skirt = { paint: towel, w: 1.08, d: 1.2, hem: 0.5 }
+      } else {
+        p.rows(b, 10, 12, towel)
+        p.bottom(b, towel)
+        cut.skirt = { paint: towel, w: 1.08, d: 1.2, hem: 0.45 }
+      }
+      break
+    }
     case 'policier':
     case 'gendarme':
     case 'vigile': {
