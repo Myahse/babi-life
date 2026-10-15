@@ -70,6 +70,7 @@ export const api = {
   career: (id: string, career: string) => post<ActionResult>(`/sims/${id}/career`, { career }),
   move: (id: string, housing: string) => post<ActionResult>(`/sims/${id}/move`, { housing }),
   repay: (id: string, what: 'loan' | 'rent', amount: number) => post<ActionResult>(`/sims/${id}/repay`, { what, amount }),
+  changeLook: (id: string, look: Look) => post<ActionResult>(`/sims/${id}/look`, look),
   setApp: (id: string, app: string, install: boolean) => post<ActionResult>(`/sims/${id}/apps`, { app, install }),
   send: (id: string, to: string, amount: number) => post<ActionResult>(`/sims/${id}/send`, { to, amount }),
   friend: (id: string, friend: string, action: string) => post<ActionResult>(`/sims/${id}/friend`, { friend, action }),

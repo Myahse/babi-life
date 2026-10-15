@@ -7,10 +7,11 @@ import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
 import { UsernameField } from '../components/UsernameField'
 import { USERNAME, suggestFrom } from '../lib/username'
-import { FEMME_OUTFITS, ACCESSORIES, ACCESSORY_COLORS, MARKS, BEARDS, BODIES, BOTTOM_COLORS, DEFAULT_LOOK, EYE_COLORS, HAIR_COLORS, HAIRS, HEIGHT_RANGE, OUTFIT_COLORS, OUTFIT_DEFAULT_COLOR, OUTFITS, PATTERNS, SHOE_COLORS, SKIN_TONES, WAX_OUTFITS, defaultColors, metres, randomLook, scaleFor, type Choice } from '../avatar/options'
+import { FEMME_OUTFITS, ACCESSORIES, ACCESSORY_COLORS, MARKS, BEARDS, BODIES, BOTTOM_COLORS, DEFAULT_LOOK, EYE_COLORS, HAIR_COLORS, HAIRS, HEIGHT_RANGE, OUTFIT_COLORS, OUTFIT_DEFAULT_COLOR, OUTFITS, PATTERNS, SHOE_COLORS, SKIN_TONES, WAX_OUTFITS, defaultColors, metres, randomLook, scaleFor } from '../avatar/options'
 import { ColorPicker } from '../components/ColorPicker'
 import { Stage, type Focus } from '../avatar/Stage'
-import { Portrait, type Framing } from '../avatar/portrait'
+import { Portrait } from '../avatar/portrait'
+import { Options, Section } from '../components/LookOptions'
 import { waxSwatch } from '../avatar/BlockHuman'
 import { iconFor } from '../components/icons'
 import { Chip, IconTile } from '../components/ui'
@@ -392,37 +393,6 @@ function Stepper({ step, onStep }: { step: number; onStep: (i: number) => void }
         })}
       </ol>
     </nav>
-  )
-}
-
-function Section({ title, right, icon: Icon, children }: { title: string; right?: React.ReactNode; icon?: LucideIcon; children: React.ReactNode }) {
-  return (
-    <section>
-      <div className="mb-2 flex items-center justify-between">
-        <span className="label flex items-center gap-1.5">
-          {Icon && <Icon size={13} />}
-          {title}
-        </span>
-        {right}
-      </div>
-      {children}
-    </section>
-  )
-}
-
-/** A grid of options, each shown as a picture of the Sim wearing it. */
-function Options({ choices, value, onPick, look, gender, field, framing }: { choices: Choice[]; value: string; onPick: (id: string) => void; look: Required<Look>; gender: NewSim['gender']; field: keyof Look; framing: Framing }) {
-  return (
-    <div className={`grid gap-2.5 ${framing === 'full' ? 'grid-cols-3 sm:grid-cols-4' : 'grid-cols-4'}`}>
-      {choices.map((c) => (
-        <button key={c.id} className="tile flex flex-col items-center overflow-hidden pb-1.5" aria-pressed={value === c.id} onClick={() => onPick(c.id)}>
-          <span className={`block w-full ${framing === 'full' ? 'aspect-[3/4]' : 'aspect-square'}`}>
-            <Portrait look={{ ...look, [field]: c.id }} gender={gender} framing={framing} />
-          </span>
-          <span className="px-1 text-center text-[11px] leading-tight font-extrabold">{c.label}</span>
-        </button>
-      ))}
-    </div>
   )
 }
 

@@ -9,6 +9,7 @@ import { Plumbob } from './components/ui'
 // game, and the game without the creator.
 const CreateSim = lazy(() => import('./screens/CreateSim').then((m) => ({ default: m.CreateSim })))
 const Play = lazy(() => import('./screens/Play').then((m) => ({ default: m.Play })))
+const LookEditor = lazy(() => import('./screens/LookEditor').then((m) => ({ default: m.LookEditor })))
 const Profile = lazy(() => import('./screens/Profile').then((m) => ({ default: m.Profile })))
 
 const Loading = () => (
@@ -41,6 +42,7 @@ export function App() {
         <Route path="/creer" element={<CreateSim />} />
         <Route path="/jeu" element={<Play />} />
         <Route path="/profil" element={<Profile />} />
+        <Route path="/look" element={<LookEditor />} />
         <Route path="*" element={<Navigate to="/jeu" replace />} />
       </Routes>
     </Suspense>

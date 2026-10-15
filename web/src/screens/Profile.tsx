@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { InstallButton } from '../components/InstallButton'
-import { Briefcase, CalendarDays, ChevronLeft, House, LogOut, MapPin, Share2, Sparkles, Trash2, TrendingDown, TrendingUp, type LucideIcon } from 'lucide-react'
+import { Briefcase, CalendarDays, ChevronLeft, House, LogOut, MapPin, Shirt, Share2, Sparkles, Trash2, TrendingDown, TrendingUp, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import type { JournalEvent, Sim } from '../lib/types'
 import { useSession } from '../store/session'
@@ -79,6 +79,9 @@ export function Profile() {
               {sim.firstName} {sim.lastName}
             </h1>
             {user?.username && <div className="mt-1 font-display text-lg font-extrabold opacity-90">@{user.username}</div>}
+            <Link to="/look" viewTransition className="mt-3 inline-flex h-10 items-center gap-2 rounded-full bg-white/90 px-4 font-display font-extrabold text-[var(--color-ink)] shadow-lg active:scale-95">
+              <Shirt size={18} strokeWidth={2.6} /> Changer de look
+            </Link>
             <div className="mt-3 flex flex-wrap justify-center gap-1.5 sm:justify-start">
               {origin && <Chip tone="dark">{origin.label}</Chip>}
               {asp && (

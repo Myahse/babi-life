@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BadgeCheck, Cake, Hammer, Eye, LocateFixed, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, Cake, Hammer, Eye, LocateFixed, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World, Ride, Place } from '../lib/types'
 import { useWorld } from '../store/world'
@@ -768,6 +768,7 @@ type MenuProps = {
 
 function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose, onPick, onTravel, onStop, onBuild }: MenuProps) {
   const place = placeId === 'home' ? { name: 'Chez toi', kind: 'home' } : commune.places.find((p) => p.id === placeId)!
+  const navigate = useNavigate()
   const kind = world.kinds[place.kind]
   const colors = kindColors(place.kind)
   const here = sim.city === city.id && sim.commune === commune.id
@@ -788,6 +789,17 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
       </span>
     </button>
   )
+  // The wardrobe at home and at the couturier; a new hairdo at the barber or the salon.
+  const lookTab = { home: 'tenue', couture: 'tenue', boutique: 'tenue', salon: 'coiffure', barbier: 'coiffure' }[place.kind]
+  const restyle = lookTab && here && (
+    <button disabled={busy} onClick={() => navigate(`/look?tab=${lookTab}`, { viewTransition: true })} className={`flex w-full items-center gap-3 rounded-[20px] bg-[#fff4e8] p-2.5 text-left transition active:scale-[0.98] ${busy ? 'opacity-55 grayscale-[0.6]' : ''}`}>
+      <IconTile icon={lookTab === 'coiffure' ? Scissors : Shirt} colors={colors} size={44} />
+      <span className="min-w-0 flex-1">
+        <span className="block font-display text-[15px] leading-tight font-extrabold">Changer de look</span>
+        <span className="mt-0.5 block text-xs font-bold text-[var(--color-ink-soft)]">{lookTab === 'coiffure' ? 'Coupe, couleur, barbe · 2 000 F' : 'Tenue, pagne, couleurs, accessoire · gratuit'}</span>
+      </span>
+    </button>
+  )
   const state = (it: Interaction) => ({ open: openAt(it, sim.gameMinutes), broke: it.cost > 0 && sim.money < it.cost, busy, reason: ageBlock(it, life.stage?.id) ?? blockedBy(it, sim, city.id, commune.id) })
 
   // Desktop: the Sims radial menu around the place.
@@ -801,7 +813,12 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
             <IconTile icon={iconFor(kind.icon)} colors={colors} size={96} radius={34} />
             <span className="mt-2 rounded-full bg-white px-4 py-1.5 font-display text-lg font-extrabold shadow-lg">{place.name}</span>
           </button>
-          {build && <div className="absolute top-full left-1/2 mt-[200px] w-64 -translate-x-1/2">{build}</div>}
+          {(build || restyle) && (
+            <div className="absolute top-full left-1/2 mt-[200px] grid w-64 -translate-x-1/2 gap-2">
+              {build}
+              {restyle}
+            </div>
+          )}
           {items.map((it, i) => {
             const a = (i / items.length) * Math.PI * 2 - Math.PI / 2
             return (
@@ -847,6 +864,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
         {here ? (
           <div className="motion-stagger grid gap-2">
             {build}
+            {restyle}
             {items.map((it) => (
               <ActionButton key={it.id} it={it} colors={colors} {...state(it)} onPick={() => onPick(it, place.kind)} />
             ))}
