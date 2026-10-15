@@ -11,6 +11,11 @@ import { Box } from './props'
 // view: the ball, the towel and the parasol, the bus stop, the railing…
 // In the Sim's own frame: it faces +z, towards the place.
 
+/** What the Sim wears for it: a swimsuit for the sea and the sand, nothing to carry. */
+export function outdoorLook<L extends { outfit: string; accessory?: string }>(look: L, id?: string): L {
+  return id === 'swim' || id === 'chill-sand' ? { ...look, outfit: 'maillot', accessory: 'none' } : look
+}
+
 /** How the Sim stands (or sits) for an outdoor activity; undefined if there's no scene for it. */
 export function outdoorPose(id?: string): Pose | undefined {
   switch (id) {
@@ -95,6 +100,17 @@ function Football() {
   })
   return (
     <group>
+      {/* The pitch: the grass, its lines, the centre circle */}
+      <mesh position={[0, 0.015, 1.5]}>
+        <boxGeometry args={[10, 0.03, 7]} />
+        <meshLambertMaterial color="#3a9a4a" />
+      </mesh>
+      <Line a={[0, -2]} b={[0, 5]} />
+      <Line a={[-5, -2]} b={[5, -2]} />
+      <Line a={[-5, 5]} b={[5, 5]} />
+      <mesh material={paint} position={[0, 0.035, 1.5]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[1.2, 1.27, 32]} />
+      </mesh>
       <mesh ref={ball} material={ballMat}>
         <sphereGeometry args={[0.11, 10, 8]} />
       </mesh>
@@ -121,24 +137,76 @@ function Football() {
   )
 }
 
-/** Dribbling at the hoop: the ball bounces from the hand. */
+const courtMat = new THREE.MeshLambertMaterial({ color: '#c9c2b4' })
+const keyMat = new THREE.MeshLambertMaterial({ color: '#b5523b' })
+const paint = new THREE.MeshBasicMaterial({ color: '#f8f9fa' })
+
+/** A painted line on the ground, from a to b (x, z). */
+function Line({ a, b, y = 0.035 }: { a: [number, number]; b: [number, number]; y?: number }) {
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1])
+  return (
+    <mesh material={paint} position={[(a[0] + b[0]) / 2, y, (a[1] + b[1]) / 2]} rotation={[0, Math.atan2(b[0] - a[0], b[1] - a[1]), 0]}>
+      <boxGeometry args={[0.06, 0.005, len]} />
+    </mesh>
+  )
+}
+
+/**
+ * On a half-court: the concrete, its lines (the key, the free-throw circle,
+ * the three-point arc), the hoop on its post. The Sim dribbles at the
+ * free-throw line, the ball bouncing from the hand; two others call for it.
+ */
 function Basket() {
   const ball = useRef<THREE.Mesh>(null)
+  const others = useLooks(2, 29)
   useFrame(() => {
     const k = Math.abs(Math.sin(worldTime() * 7))
     ball.current?.position.set(0.32, 0.13 + k * 0.7, 0.28)
   })
+  const RING = 4.8 // the hoop, from the free-throw line where the Sim stands
   return (
     <group>
+      <mesh material={courtMat} position={[0, 0.015, 2.2]}>
+        <boxGeometry args={[9.4, 0.03, 9.6]} />
+      </mesh>
+      <mesh material={keyMat} position={[0, 0.025, RING - 1.3]}>
+        <boxGeometry args={[3.6, 0.01, 5.4]} />
+      </mesh>
+      {/* The lines */}
+      <Line a={[-4.6, 6.9]} b={[4.6, 6.9]} />
+      <Line a={[-1.8, 0.6]} b={[1.8, 0.6]} />
+      <Line a={[-1.8, 0.6]} b={[-1.8, 6.9]} />
+      <Line a={[1.8, 0.6]} b={[1.8, 6.9]} />
+      <mesh material={paint} position={[0, 0.035, 0.6]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[1.77, 1.83, 32, 1, Math.PI, Math.PI]} />
+      </mesh>
+      <mesh material={paint} position={[0, 0.035, RING]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[5.97, 6.03, 48, 1, Math.PI * 1.02, Math.PI * 0.96]} />
+      </mesh>
+      {/* The hoop: post behind the baseline, the arm, the board, the ring and its net */}
+      <Box p={[0, 1.65, 7.4]} s={[0.14, 3.3, 0.14]} c="#2b2b2b" />
+      <Box p={[0, 3.25, 6.85]} s={[0.1, 0.1, 1.1]} c="#2b2b2b" />
+      <Box p={[0, 3.35, RING + 0.4]} s={[1.8, 1.05, 0.05]} c="#f8f9fa" />
+      <Box p={[0, 3.25, RING + 0.38]} s={[0.6, 0.45, 0.02]} c="#d62828" />
+      <mesh position={[0, 3.05, RING]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.23, 0.02, 6, 16]} />
+        <meshLambertMaterial color="#e85d04" />
+      </mesh>
+      <mesh position={[0, 2.85, RING]}>
+        <cylinderGeometry args={[0.22, 0.14, 0.38, 10, 2, true]} />
+        <meshBasicMaterial color="#ffffff" wireframe transparent opacity={0.7} />
+      </mesh>
       <mesh ref={ball} material={orange}>
         <sphereGeometry args={[0.12, 10, 8]} />
       </mesh>
-      <group position={[0, 0, 4.2]}>
-        <Box p={[0, 1.6, 0.4]} s={[0.12, 3.2, 0.12]} c="#2b2b2b" />
-        <Box p={[0, 3.25, 0.2]} s={[0.1, 0.1, 0.5]} c="#2b2b2b" />
-        <Box p={[0, 3.3, 0]} s={[1.8, 1.05, 0.05]} c="#f8f9fa" />
-        <Box p={[0, 3.05, -0.25]} s={[0.46, 0.03, 0.46]} c="#e85d04" />
-      </group>
+      <NoShadows>
+        <group position={[3.2, 0, 3.4]} rotation={[0, -2.4, 0]}>
+          <Human look={{ ...others[0].look, outfit: 'basket' }} gender={others[0].gender} pose="wave" seed={others[0].seed} />
+        </group>
+        <group position={[-2.6, 0, 4.6]} rotation={[0, 2.6, 0]}>
+          <Human look={{ ...others[1].look, outfit: 'debardeur' }} gender={others[1].gender} pose="idle" seed={others[1].seed} />
+        </group>
+      </NoShadows>
     </group>
   )
 }

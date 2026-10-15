@@ -746,6 +746,27 @@ function paintSheet(l: Required<Look>, femme: boolean, young: boolean) {
       shoes('sneaker')
       break
     }
+    case 'maillot': {
+      // For the sea and the pool: swim trunks, or a one-piece swimsuit; barefoot.
+      const suit = (x: number, y: number) => grain(top, x, y, 0.05)
+      if (femme) {
+        shirt(12, suit)
+        p.rows(b, 0, 3, skin, ['L', 'R']) // high-cut armholes
+        for (let x = 1; x < 7; x++) p.at(b, 'F', x, 0, skin) // scoop neck, front
+        for (let x = 2; x < 6; x++) {
+          p.at(b, 'F', x, 1, skin)
+          p.at(b, 'B', x, 0, skin)
+          p.at(b, 'B', x, 1, skin)
+        }
+        p.top(b, skin)
+        p.bottom(b, suit)
+      } else {
+        p.rows(b, 10, 12, suit)
+        p.rows(b, 10, 11, tint(top, -0.25), ['F']) // the waistband
+        trousers(2, suit, false)
+      }
+      break
+    }
     case 'serviette': {
       // Out of the shower (or in it): wrapped in a towel, barefoot.
       const towel = (x: number, y: number) => (y % 6 === 0 ? '#74c0fc' : grain('#f8f9fa', x, y, 0.04))

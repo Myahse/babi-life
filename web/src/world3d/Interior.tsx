@@ -24,7 +24,7 @@ const AmbientOcclusion = lazy(() => import('./effects'))
 
 type V3 = [number, number, number]
 /** Where someone is and what they're doing. */
-type Spot = { p: V3; r?: number; pose: Pose; lying?: boolean; g?: 'femme' | 'homme' }
+type Spot = { p: V3; r?: number; pose: Pose; lying?: boolean; g?: 'femme' | 'homme'; /** What they wear there (the swimsuit in the pool). */ outfit?: string }
 type Person = Spot & { gender: 'femme' | 'homme'; look: ReturnType<typeof randomLook>; seed: number }
 
 /** Kinds of places that have an inside (the beach or the football pitch don't). */
@@ -582,7 +582,8 @@ function room(kindIn: string, housing: string): Room {
           </>
         ),
         spots: {
-          pool: { p: [1.6, 0.05, 0.9], r: 0.4, pose: 'idle' },
+          // In the water up to the waist (the floor hides the legs).
+          pool: { p: [1.6, -0.8, 0.9], r: 0.4, pose: 'wave' },
           bed: { p: [4.4, 0.62, -3.1], pose: 'idle', lying: true },
           table: { p: [-2.2, 0, 3.45], r: Math.PI, pose: 'eat' },
           entrance: { p: [0, 0, 3.8], r: Math.PI, pose: 'idle' },
@@ -590,7 +591,7 @@ function room(kindIn: string, housing: string): Room {
         },
         crowd: [
           { p: [-3, 0, -4.2], pose: 'busy' },
-          { p: [2.6, 0.05, 0], r: -0.6, pose: 'wave' },
+          { p: [2.9, -0.8, -0.2], r: -0.6, pose: 'wave', outfit: 'maillot' },
           { p: [-4.6, 0.05, 1.2], r: Math.PI / 2, pose: 'sit' },
           { p: [-2.2, 0, 1.75], pose: 'drink' },
         ],
@@ -665,7 +666,8 @@ export function Interior({ sim, kind, placeId, interactionId, housing, night, st
     return r.crowd.map((s) => {
       // The club's dance floor is the women's; elsewhere anyone.
       const gender: Person['gender'] = s.g ?? (kind === 'club' && s.pose === 'dance' ? 'femme' : kind === 'salon' && rand() < 0.8 ? 'femme' : rand() < 0.5 ? 'femme' : 'homme')
-      return { ...s, gender, look: randomLook(gender, rand), seed: rand() * 100 }
+      const look = randomLook(gender, rand)
+      return { ...s, gender, look: s.outfit ? { ...look, outfit: s.outfit, accessory: 'none' } : look, seed: rand() * 100 }
     })
   }, [placeId, kind]) // eslint-disable-line react-hooks/exhaustive-deps
   // Doing the travaillement: face the dancers; they cheer as the notes fall.
@@ -685,9 +687,11 @@ export function Interior({ sim, kind, placeId, interactionId, housing, night, st
       ? { ...sim.look, outfit: 'serviette', accessory: 'none' }
       : act.spot === 'chair' && (kind === 'barbier' || kind === 'salon')
         ? { ...sim.look, accessory: 'none' }
-        : interactionId === 'work'
-          ? workLook(sim.look, sim.career, sim.careerLevel)
-          : sim.look
+        : interactionId === 'piscine-hotel'
+          ? { ...sim.look, outfit: 'maillot', accessory: 'none' }
+          : interactionId === 'work'
+            ? workLook(sim.look, sim.career, sim.careerLevel)
+            : sim.look
   return (
     <Canvas shadows dpr={[1, 2]} camera={{ position: [8.4, 8.6, 10.8], fov: 42 }} style={{ background: dark ? '#0b0d1f' : '#2a2340' }}>
       <Suspense fallback={null}>

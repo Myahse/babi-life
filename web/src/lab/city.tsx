@@ -18,7 +18,7 @@ import { worldTime } from '../lib/worldClock'
 import { useEffect, useRef, useState } from 'react'
 import { Interior } from '../world3d/Interior'
 import { Character } from '../world3d/Character'
-import { OutdoorAction, outdoorPose } from '../world3d/OutdoorAction'
+import { OutdoorAction, outdoorLook, outdoorPose } from '../world3d/OutdoorAction'
 import { Dressing } from '../world3d/open/dressing'
 import { PolicePost } from '../world3d/open/streetlife'
 import { randomLook } from '../avatar/options'
@@ -280,7 +280,7 @@ function OutdoorLab() {
         <planeGeometry args={[40, 40]} />
         <meshLambertMaterial color={/swim|sand|fish/.test(id) ? '#e8d5a3' : /foot|basket|match/.test(id) ? '#4e9a4e' : '#b8b2a3'} />
       </mesh>
-      <Character look={look} gender="femme" busy pose={outdoorPose(id)} />
+      <Character look={outdoorLook(look, id)} gender={(q.get('g') ?? 'femme') as 'femme' | 'homme'} busy pose={outdoorPose(id)} />
       <OutdoorAction id={id} />
       <OrbitControls target={[0, 0.9, 1.2]} />
     </Canvas>

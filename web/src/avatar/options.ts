@@ -98,6 +98,7 @@ export const OUTFITS: Choice[] = [
   { id: 'infirmier', label: "Tenue d'infirmier" },
   { id: 'vigile', label: 'Tenue de vigile' },
   { id: 'soeur', label: 'Habit de religieuse' },
+  { id: 'maillot', label: 'Maillot de bain' },
 ]
 
 export const MARKS: Choice[] = [
