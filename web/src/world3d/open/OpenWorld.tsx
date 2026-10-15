@@ -10,7 +10,7 @@ import { HAPPENING_DOOR, HAPPENING_X, HappeningMarker, HappeningScene, STOPS_TRA
 import { HOME_ID, type Lot } from '../layout'
 import { LotView, type Props } from '../Neighbourhood'
 import { useSignTexture } from '../props'
-import type { Plot, World } from '../../lib/types'
+import type { Place, Plot, World } from '../../lib/types'
 import { api } from '../../lib/api'
 import { House } from '../build/House'
 import { iconFor, kindColors } from '../../components/icons'
@@ -54,6 +54,10 @@ const NightBloom = lazy(() => import('../effects').then((m) => ({ default: m.Nig
 // (through Mapbox); the game's places stand on the real streets nearest to
 // where they really are.
 
+/** A place from the map (world/osm.go on the server), not one of the game's own. */
+export const isMapPlace = (id: string) => id.includes('-osm-')
+/** Metres around the Sim within which the map's places show their sign. */
+const MAP_SIGNS = 90
 const LOAD_RADIUS = 700 // metres around the Sim (or where the camera looks)
 const DROP_RADIUS = 1500
 const FAR_RADIUS = 4500 // the horizon, in plain big tiles
@@ -163,7 +167,7 @@ export function makeWorldMaterials() {
   }
 }
 
-export function OpenWorld(props: Props & { token: string; onFail: () => void }) {
+export function OpenWorld(props: Props & { token: string; onFail: () => void; onMapPlaces?: (places: Place[]) => void }) {
   const night = props.hour < 6 || props.hour >= 19
   const dusk = props.hour >= 17 && props.hour < 19
   const sky = night ? '#141a3d' : dusk ? '#f7a072' : '#8ec9f0'
@@ -201,7 +205,7 @@ function useMaterials(night: boolean) {
   return mats
 }
 
-function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, nameTag, onNear, frozen, players, onPickPlayer, recenter, onFreeCamera, closeView, token, onFail, onStreetBuy, onTalk, onCall, talkingTo, plotsVersion }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void }) {
+function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, nameTag, onNear, frozen, players, onPickPlayer, recenter, onFreeCamera, closeView, token, onFail, onStreetBuy, onTalk, onCall, talkingTo, plotsVersion, onMapPlaces }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void; onMapPlaces?: (places: Place[]) => void }) {
   const origin = useMemo<Origin>(() => ({ lat: commune.lat, lng: commune.lng }), [commune.lat, commune.lng])
   const mats = useMaterials(night)
   const home = sim.homeCity === sim.city && sim.homeCommune === commune.id
@@ -233,10 +237,16 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
   const plotKey = (plots ?? []).map((p) => p.simId).sort().join()
   const myPlot = plots?.find((p) => p.simId === sim.id && p.blocks.length)
 
+  // The commune's places from the map (OpenStreetMap: thousands in Yopougon),
+  // asked for around the Sim as it goes (see askMap below).
+  const [mapList, setMapList] = useState<Place[]>([])
+  useEffect(() => onMapPlaces?.(mapList), [mapList]) // eslint-disable-line react-hooks/exhaustive-deps
+  const places = useMemo(() => (mapList.length ? [...commune.places, ...mapList] : commune.places), [commune.places, mapList])
+
   const spots = useMemo<(PlaceSpot & { kind: string; name: string })[]>(() => {
     const [a, d] = homeSpot(sim.id)
     // A real place found on the map (by its name) stands where the map has it.
-    const list: (PlaceSpot & { kind: string; name: string })[] = commune.places.map((p) => ({ id: p.id, kind: p.kind, name: p.name, at: snaps.get(p.id) ?? toLocal(origin, p.lat, p.lng), landmark: LANDMARKS[p.id] }))
+    const list: (PlaceSpot & { kind: string; name: string })[] = places.map((p) => ({ id: p.id, kind: p.kind, name: p.name, at: snaps.get(p.id) ?? toLocal(origin, p.lat, p.lng), landmark: LANDMARKS[p.id] }))
     // A home with a house built on it clears its ground: the game draws the house.
     if (home) list.unshift({ id: HOME_ID, kind: 'home', name: 'Chez toi', at: [Math.cos(a) * d, Math.sin(a) * d], landmark: myPlot ? PLOT_CLEAR : undefined })
     for (const id of plotKey ? plotKey.split(',') : []) {
@@ -246,7 +256,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
     }
     list.push({ id: HAPPENING_KEY, kind: 'happening', name: '', at: [35, -20] })
     return list
-  }, [commune.places, origin, home, sim.id, snaps, plotKey, !!myPlot]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [places, origin, home, sim.id, snaps, plotKey, !!myPlot]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const plotsRef = useRef(plots)
   plotsRef.current = plots
@@ -339,7 +349,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
     let changed = false
     const next = new Map(snapsRef.current)
     for (const p of commune.places) {
-      if (!p.real) continue
+      if (!p.real || isMapPlace(p.id)) continue
       const poi = matchPoi({ name: p.name, kind: p.kind, at: toLocal(origin, p.lat, p.lng) }, pois)
       const was = next.get(p.id)
       if (poi && (!was || Math.hypot(was[0] - poi.at[0], was[1] - poi.at[1]) > 1)) {
@@ -353,7 +363,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
     const stale = new Set<string>()
     for (const [id, at] of next) {
       if (snapsRef.current.get(id) === at) continue
-      const p = commune.places.find((x) => x.id === id)
+      const p = places.find((x) => x.id === id)
       for (const pt of [at, p ? toLocal(origin, p.lat, p.lng) : null]) {
         if (!pt) continue
         const c = [...chunks.values()].find(({ data: { key, box } }) => !key.includes(':') && pt[0] >= box.x0 && pt[0] < box.x1 && pt[1] >= box.z0 && pt[1] < box.z1)
@@ -378,7 +388,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
         const r = out.get(id)
         if (r && Math.hypot(r.center[0] - at[0], r.center[1] - at[1]) < 60) continue
         const c = [...chunks.values()].find(({ data: { key, box } }) => !key.includes(':') && at[0] >= box.x0 && at[0] < box.x1 && at[1] >= box.z0 && at[1] < box.z1)
-        const p = commune.places.find((x) => x.id === id)
+        const p = places.find((x) => x.id === id)
         if (!c || !p) {
           out.delete(id)
           continue
@@ -387,7 +397,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
       }
       return out
     })
-  }, [chunks, commune.places, origin])
+  }, [chunks, places, origin])
   chunksRef.current = chunks
   const stream = () => {
     const w = worker.current
@@ -424,7 +434,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
       const id = nextId.current++
       pending.current.set(id, c.key)
       const far = c.key.includes(':')
-      const req: ChunkRequest = { id, origin, tx: c.tx, ty: c.ty, token, places: far ? [] : spots.map(({ id, at, kind, landmark }) => ({ id, at, kind, landmark })), z: far ? FAR_ZOOM : undefined }
+      const req: ChunkRequest = { id, origin, tx: c.tx, ty: c.ty, token, places: far ? [] : spots.filter((x) => !isMapPlace(x.id)).map(({ id, at, kind, landmark }) => ({ id, at, kind, landmark })), z: far ? FAR_ZOOM : undefined }
       w.postMessage(req)
     }
     // Chunks too far are let go, like Minecraft's render distance.
@@ -474,7 +484,69 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
     if (away.current) focus.current = away.current
     else if (controls) focus.current = [controls.target.x, controls.target.z]
     stream()
+    askMap()
+    const [hx, hz] = focus.current
+    if (Math.hypot(hx - here[0], hz - here[1]) > 15) setHere([hx, hz])
   })
+
+  // The map's places around the Sim: asked again every 400 m, kept (up to a
+  // few thousand) so they don't vanish behind it.
+  const mapAsked = useRef<XZ | null>(null)
+  const askMap = () => {
+    const at = focus.current
+    if (mapAsked.current && Math.hypot(at[0] - mapAsked.current[0], at[1] - mapAsked.current[1]) < 400) return
+    mapAsked.current = at
+    const ll = toLatLng(origin, at)
+    api
+      .mapPlaces(commune.id, ll.lat, ll.lng)
+      .then(({ places: got }) => {
+        if (!got.length) return
+        setMapList((was) => {
+          const m = new Map(was.map((p) => [p.id, p]))
+          for (const p of got) m.set(p.id, { ...p, real: true })
+          const all = [...m.values()]
+          return all.length > 5000 ? all.slice(all.length - 5000) : all
+        })
+      })
+      .catch(() => (mapAsked.current = null))
+  }
+  // Busy at a place from the map: that one first, wherever it is, and the
+  // world loads around it.
+  useEffect(() => {
+    if (!stationAt || !isMapPlace(stationAt) || mapList.some((p) => p.id === stationAt)) return
+    api
+      .mapPlace(commune.id, stationAt)
+      .then(({ places: got }) => got.length && setMapList((was) => [...was, ...got.map((p) => ({ ...p, real: true }))]))
+      .catch(() => {})
+  }, [stationAt]) // eslint-disable-line react-hooks/exhaustive-deps
+  const toStation = useRef(false)
+  useEffect(() => {
+    if (toStation.current || !stationAt || !isMapPlace(stationAt) || performance.now() - mounted.current > 15000) return
+    const s = spots.find((x) => x.id === stationAt)
+    if (!s) return
+    toStation.current = true
+    focus.current = s.at
+    stream()
+  }, [spots]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Where the Sim is (to the nearest 15 m): the map's places show their sign up close only.
+  const [here, setHere] = useState<XZ>(() => focus.current)
+
+  // The map's places are put on their building here, on the main thread, in
+  // the chunks already loaded: a real building (or one the game built in
+  // the quarter) within 30 m, or nothing; they don't get a lot of their own.
+  useEffect(() => {
+    const todo = spots.filter((x) => isMapPlace(x.id) && !resolved.has(x.id))
+    if (!todo.length) return
+    const found: Resolved[] = []
+    for (const c of chunks.values()) {
+      if (c.data.key.includes(':')) continue
+      const { box } = c.data
+      const inside = todo.filter(({ at: [x, z] }) => x >= box.x0 && x < box.x1 && z >= box.z0 && z < box.z1)
+      if (!inside.length) continue
+      for (const r of resolvePlaces(c.data, inside.map(({ id, at, kind }) => ({ id, at, kind })))) if (r.real) found.push(r)
+    }
+    if (found.length) setResolved((m) => new Map([...m, ...found.map((r) => [r.id, r] as const)]))
+  }, [spots, chunks]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // The few real buildings in the way of a game-made one don't block the way.
   const clears = useMemo(() => new Map(spots.filter((x) => x.landmark).map((x) => [x.id, x.landmark!])), [spots])
@@ -493,6 +565,8 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
         }),
     [spots, resolved],
   )
+  // Drawn: the game's places, and the map's thousands only near the Sim.
+  const shown = useMemo(() => lots.filter((l) => !isMapPlace(l.id) || Math.hypot(l.x - here[0], l.z - here[1]) < MAP_SIGNS), [lots, here])
   const spot = resolved.get(HAPPENING_KEY)
   const happeningLot = useMemo<Lot | null>(() => {
     if (!happening || !spot) return null
@@ -599,7 +673,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
           </group>
         ) : null
       })}
-      {lots.map((lot) =>
+      {shown.map((lot) =>
         lot.id === HOME_ID && myPlot ? (
           <LotLabel key={lot.id} lot={lot} world={world} label={labels} onPick={onPick} y={4} />
         ) : LANDMARKS[lot.id] ? (
@@ -615,7 +689,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
           <LotView key={lot.id} lot={lot} world={world} night={night} label={labels} onPick={onPick} />
         ),
       )}
-      {lots.map((lot) => {
+      {shown.map((lot) => {
         const g = resolved.get(lot.id)?.gate
         return g ? <CampusGate key={`gate${lot.id}`} name={lot.name} kind={lot.kind} at={g.at} rot={g.rot} width={g.width} night={night} /> : null
       })}

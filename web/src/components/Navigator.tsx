@@ -125,6 +125,10 @@ export function MiniMap({ onWalk }: { onWalk: (id: string) => void }) {
   return <canvas ref={canvas} onPointerUp={tap} className="pointer-events-auto rounded-full border-[3px] border-white shadow-[0_8px_20px_-10px_rgba(0,0,0,0.6)]" style={{ width: SIZE, height: SIZE }} aria-label="Mini-carte" />
 }
 
+const LIST_MAX = 60
+/** Lower case, without accents: « Pharmacie Sainte-Thérèse » → « pharmacie sainte-therese ». */
+const fold = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+
 /** The places of the quarter, the nearest first, with the way to each. */
 export function WhereTo({ world, onWalk, onClose }: { world: World; onWalk: (id: string) => void; onClose: () => void }) {
   const [, tick] = useState(0)
@@ -132,7 +136,13 @@ export function WhereTo({ world, onWalk, onClose }: { world: World; onWalk: (id:
     const t = setInterval(() => tick((n) => n + 1), 1000)
     return () => clearInterval(t)
   }, [])
-  const list = [...whereabouts.places].filter((p) => p.name).sort((a, b) => distanceTo(a.door) - distanceTo(b.door))
+  // Thousands of places around in a quarter like Yopougon: the nearest
+  // first, a few dozen of them, and a search over all (name, kind, quarter).
+  const [q, setQ] = useState('')
+  const words = fold(q).split(/\s+/).filter(Boolean)
+  const all = [...whereabouts.places].filter((p) => p.name)
+  const hits = words.length ? all.filter((p) => words.every((w) => fold(`${p.name} ${world.kinds[p.kind]?.label ?? ''}`).includes(w))) : all
+  const list = hits.sort((a, b) => distanceTo(a.door) - distanceTo(b.door)).slice(0, LIST_MAX)
   return (
     <div className="absolute inset-0 z-30 flex flex-col justify-end bg-[#0f1230]/55 backdrop-blur-[3px] lg:items-center lg:justify-center" onClick={onClose}>
       <div className="sheet animate-up flex max-h-[78vh] w-full flex-col overflow-hidden rounded-t-[28px] pb-[max(1rem,env(safe-area-inset-bottom))] lg:w-[440px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
@@ -146,7 +156,19 @@ export function WhereTo({ world, onWalk, onClose }: { world: World; onWalk: (id:
             <X size={22} strokeWidth={2.6} />
           </button>
         </div>
+        {all.length > 12 && (
+          <div className="px-4 pb-2">
+            <input
+              className="w-full rounded-2xl border-2 border-[var(--color-line)] bg-[var(--color-canvas)] px-4 py-2.5 text-[15px] font-bold outline-none focus:border-[var(--color-orange)]"
+              placeholder={`Chercher parmi ${all.length} lieux : maquis, pharmacie…`}
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              aria-label="Chercher un lieu"
+            />
+          </div>
+        )}
         <ul className="space-y-1.5 overflow-y-auto px-4 pb-2">
+          {!list.length && <li className="p-3 text-center text-sm font-bold text-[var(--color-ink-soft)]">Rien de ce nom par ici.</li>}
           {list.map((p) => {
             const kind = world.kinds[p.kind]
             return (

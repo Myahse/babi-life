@@ -509,7 +509,8 @@ func FindPlace(id string) (City, Commune, Place, bool) {
 			}
 		}
 	}
-	return City{}, Commune{}, Place{}, false
+	// Not a hand-made place: one of the commune's places from the map?
+	return mapPlace(id)
 }
 
 // Trip returns the game minutes and FCFA fare to go from one commune to

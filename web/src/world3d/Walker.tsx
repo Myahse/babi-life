@@ -88,8 +88,14 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   // once: the place list changes later (a happening starts, an activity
   // ends) and the Sim must never teleport.
   const placed = useRef(false)
+  const born = useRef(performance.now())
   useEffect(() => {
     if (placed.current || !controls) return
+    // Busy at a place from the map: it comes a moment later. Wait for it a
+    // little; past that, start at home for now and go there once it comes.
+    const mapStation = !!stationAt && stationAt.includes('-osm-') && !lots.some((l) => l.id === stationAt)
+    if (mapStation && performance.now() - born.current < 4000) return
+    provisional.current = mapStation
     const at = lots.find((l) => l.id === stationAt) ?? lots.find((l) => l.id === HOME_ID)
     const [x, z] = at?.door ?? nav.start ?? [0, SIDEWALK]
     group.current!.position.set(x, 0, z)
@@ -103,6 +109,23 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     if (at) group.current!.rotation.y = at.z < 0 ? Math.PI : 0
     placed.current = true
   }, [lots, stationAt, controls]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const provisional = useRef(false)
+  useEffect(() => {
+    if (!provisional.current || !stationAt || started.current || path.current.length) return
+    const at = lots.find((l) => l.id === stationAt)
+    if (!at) return
+    provisional.current = false
+    const [x, z] = at.door
+    const g = group.current!
+    if (controls) {
+      const d = new THREE.Vector3(x - g.position.x, 0, z - g.position.z)
+      controls.target.add(d)
+      camera.position.add(d)
+      controls.update()
+    }
+    g.position.set(x, 0, z)
+  }, [lots, stationAt]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // The camera follows the Sim, unless the player dragged it away to look
   // around; walking (or the recentre button) brings it back.
@@ -147,10 +170,15 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     return () => (controls.removeEventListener('start', start), controls.removeEventListener('end', end))
   }, [controls]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Each order to go somewhere starts one walk: the place list changing on
+  // the way (places from the map coming in) must not start it again, or
+  // the Sim would slow down forever, never arriving.
+  const started = useRef<Props['goTo']>(null)
   useEffect(() => {
-    if (!goTo) return
+    if (!goTo || started.current === goTo) return
     const lot = lots.find((l) => l.id === goTo.placeId)
     if (!lot) return
+    started.current = goTo
     const p = group.current!.position
     const way = nav.route([p.x, p.z], lot.door, true)
     if (way) path.current = way.slice(1)

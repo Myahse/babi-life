@@ -303,6 +303,43 @@ var Kinds = map[string]PlaceKind{
 			{Text: "Coupure de courant au milieu de la coupe : on attend le groupe électrogène.", Effect: Needs{Fun: -10}},
 		},
 	},
+	// The boutiques of the quarter: the kiosk, the shop on the corner, the
+	// clothes, the phones (thousands of them on the map, in Yopougon alone).
+	"boutique": {
+		ID: "boutique", Label: "Boutique", Icon: "store",
+		Interactions: []Interaction{
+			{ID: "credit", Label: "Acheter du crédit", Icon: "smartphone", Minutes: 5, Cost: 500, Effect: Needs{Social: 5}, MinHour: 7, MaxHour: 22},
+			{ID: "courses", Label: "Faire quelques courses", Icon: "shopping-bag", Minutes: 20, Cost: 2500, Effect: Needs{Hunger: 15, Fun: 5}, MinHour: 7, MaxHour: 22},
+			{ID: "sucrerie", Label: "Prendre une sucrerie bien fraîche", Icon: "cup-soda", Minutes: 10, Cost: 300, Effect: Needs{Hunger: 5, Fun: 10}, MinHour: 7, MaxHour: 23},
+			Gbairai,
+		},
+		Events: []RandomEvent{
+			{Text: "Le boutiquier n'a pas la monnaie : tu repars avec des bonbons à la place.", Effect: Needs{Fun: 5}},
+			{Text: "Le boutiquier te fait crédit : « Tu me donnes ça demain. »", Money: 200, Effect: Needs{Social: 10}},
+		},
+	},
+	"couture": {
+		ID: "couture", Label: "Couturier", Icon: "shirt",
+		Interactions: []Interaction{
+			{ID: "coudre-pagne", Label: "Faire coudre une tenue en pagne", Icon: "shirt", Minutes: 60, Cost: 7000, Effect: Needs{Fun: 20, Social: 15}, MinHour: 8, MaxHour: 20},
+			{ID: "retouche", Label: "Faire une retouche", Icon: "scissors", Minutes: 20, Cost: 1000, Effect: Needs{Fun: 5, Social: 5}, MinHour: 8, MaxHour: 20},
+			Gbairai,
+		},
+		Events: []RandomEvent{
+			{Text: "« Revenez demain, c'est presque fini » : le couturier, fidèle à sa réputation.", Effect: Needs{Fun: -10}},
+			{Text: "La tenue tombe parfaitement : tout le quartier te demande l'adresse du couturier.", Effect: Needs{Fun: 15, Social: 15}},
+		},
+	},
+	"pharmacie": {
+		ID: "pharmacie", Label: "Pharmacie", Icon: "stethoscope",
+		Interactions: []Interaction{
+			{ID: "medicaments", Label: "Acheter des médicaments", Icon: "stethoscope", Minutes: 15, Cost: 3000, Effect: Needs{Energy: 15}, MinHour: 7, MaxHour: 23},
+			{ID: "conseil", Label: "Demander conseil au pharmacien", Icon: "users", Minutes: 10, Cost: 0, Effect: Needs{Social: 5, Energy: 5}, MinHour: 7, MaxHour: 23},
+		},
+		Events: []RandomEvent{
+			{Text: "Pharmacie de garde : la file d'attente déborde sur le trottoir.", Effect: Needs{Energy: -5}},
+		},
+	},
 	"salon": {
 		ID: "salon", Label: "Salon de coiffure", Icon: "flower-2",
 		Interactions: []Interaction{

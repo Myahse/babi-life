@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -70,7 +72,7 @@ func main() {
 	})
 
 	r.Route("/api/v1", func(r chi.Router) {
-		r.Get("/world", func(w http.ResponseWriter, r *http.Request) {
+		r.With(middleware.Compress(5, "application/json")).Get("/world", func(w http.ResponseWriter, r *http.Request) {
 			httpx.JSON(w, http.StatusOK, map[string]any{
 				"cities":        world.Cities,
 				"kinds":         game.Kinds,
@@ -95,6 +97,32 @@ func main() {
 				"plot":          map[string]int{"w": game.PlotW, "d": game.PlotD, "h": game.PlotH},
 				"config":        map[string]any{"devLogin": cfg.DevLogin, "googleLogin": authH.Verifier != nil},
 			})
+		})
+		// A commune's places from the map (world/osm.go): those near a point
+		// (?lat=&lng=&r=km, nearest first), those matching ?q= (search), or one (?id=).
+		r.With(middleware.Compress(5, "application/json")).Get("/places", func(w http.ResponseWriter, r *http.Request) {
+			q := r.URL.Query()
+			commune := q.Get("commune")
+			num := func(k string, def float64) float64 {
+				if v, err := strconv.ParseFloat(q.Get(k), 64); err == nil {
+					return v
+				}
+				return def
+			}
+			var places []world.MapPlace
+			if id := q.Get("id"); id != "" {
+				if p, ok := world.MapPlaceByID(id); ok {
+					places = []world.MapPlace{p}
+				}
+			} else if s := strings.TrimSpace(q.Get("q")); s != "" {
+				places = world.SearchMapPlaces(commune, s, 40)
+			} else {
+				places = world.MapPlacesNear(commune, num("lat", 0), num("lng", 0), math.Min(num("r", 1.2), 3), 1500)
+			}
+			if places == nil {
+				places = []world.MapPlace{}
+			}
+			httpx.JSON(w, http.StatusOK, map[string]any{"places": places, "total": world.MapPlaceCount(commune), "source": world.OSMSource})
 		})
 		// The "Look to fix" list of the world data (see world.Audit).
 		r.Get("/world/issues", func(w http.ResponseWriter, r *http.Request) {

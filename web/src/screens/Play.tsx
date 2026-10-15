@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import { Link, useNavigate } from 'react-router-dom'
 import { BadgeCheck, Cake, Hammer, Eye, LocateFixed, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
-import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World, Ride } from '../lib/types'
+import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World, Ride, Place } from '../lib/types'
 import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
 import { useLive } from '../lib/live'
@@ -55,6 +55,24 @@ function useIsDesktop() {
 const HOUR_OVERRIDE = import.meta.env.DEV && new URLSearchParams(location.search).get('hour') ? Number(new URLSearchParams(location.search).get('hour')) : undefined
 const MAP_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
 
+/**
+ * The commune with its places from the map added (for the menus, names and
+ * kinds of what the Sim walks to), the same object while neither changes.
+ */
+const withMap = new WeakMap<Commune, { list: Place[]; merged: Commune }>()
+function withMapPlaces(c: Commune, list: Place[]): Commune {
+  if (!list.length) return c
+  const had = withMap.get(c)
+  if (had?.list === list) return had.merged
+  const merged = { ...c, places: [...c.places, ...list] }
+  withMap.set(c, { list, merged })
+  own.set(merged, c)
+  return merged
+}
+/** The commune as the server sends it, without the map's places (the world adds its own). */
+const own = new WeakMap<Commune, Commune>()
+const ownPlaces = (c: Commune) => own.get(c) ?? c
+
 const streetPose = () => ({ heading: whereabouts.heading, polar: whereabouts.polar })
 
 export function Play() {
@@ -90,6 +108,8 @@ export function Play() {
   // The real streets (open world): from Mapbox with a token, else from
   // OpenFreeMap (no key). The classic street if they don't load, or ?classic.
   const [classic, setClassic] = useState(() => new URLSearchParams(location.search).has('classic'))
+  // The commune's places from the map, as the open world loads them around the Sim.
+  const [mapPlaces, setMapPlaces] = useState<Place[]>([])
   const [closeView, setCloseView] = useState(false)
   const [whereTo, setWhereTo] = useState(false)
   const announced = useRef('')
@@ -311,7 +331,7 @@ export function Play() {
   const doing = sim.activity?.kind === 'do' ? sim.activity : null
   const stop = () => run('Arrêter', 'x', '', () => api.stop(sim.id))
   const city = world.cities.find((x) => x.id === sim.city)!
-  const commune = city.communes.find((x) => x.id === sim.commune)!
+  const commune = withMapPlaces(city.communes.find((x) => x.id === sim.commune)!, classic ? [] : mapPlaces)
   const unseen = journal.filter((e) => e.id > seen).length
   const placeName = (id: string) => (id === 'home' ? 'Chez toi' : id === 'happening' ? (street?.happening?.label ?? 'En ce moment') : (commune.places.find((p) => p.id === id)?.name ?? ''))
   // Inside a place: while doing something there, or looking at what it offers.
@@ -395,7 +415,7 @@ export function Play() {
               return said
             },
           }
-          return classic ? <Neighbourhood key={commune.id} {...street} /> : <OpenWorld key={commune.id} {...street} token={MAP_TOKEN ?? ''} onFail={() => setClassic(true)} />
+          return classic ? <Neighbourhood key={commune.id} {...street} /> : <OpenWorld key={commune.id} {...street} commune={ownPlaces(commune)} token={MAP_TOKEN ?? ''} onFail={() => setClassic(true)} onMapPlaces={setMapPlaces} />
         })()}
       </div>
 
@@ -559,7 +579,7 @@ export function Play() {
         <Phone
           world={world}
           sim={sim}
-          commune={commune}
+          commune={ownPlaces(commune)}
           journal={journal}
           time={c.time}
           act={run}

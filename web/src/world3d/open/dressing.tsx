@@ -25,7 +25,7 @@ const B = ({ p, s, c, glow = 0, r = 0 }: { p: [number, number, number]; s: [numb
 const rnd = (seed: number) => () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
 
 // These stay open after dark. Everything else pulls a shutter down over the door.
-const OPEN_AT_NIGHT = new Set(['maquis', 'restaurant', 'club', 'hotel', 'health', 'transport', 'home', 'beach', 'lagune', 'nature', 'village', 'sport'])
+const OPEN_AT_NIGHT = new Set(['pharmacie', 'maquis', 'restaurant', 'club', 'hotel', 'health', 'transport', 'home', 'beach', 'lagune', 'nature', 'village', 'sport'])
 
 export function Dressing({ kind, name = '', seed, night }: { kind: string; name?: string; seed: number; night: boolean }) {
   const front = (() => {
@@ -65,6 +65,12 @@ export function Dressing({ kind, name = '', seed, night }: { kind: string; name?
         return <Home night={night} />
       case 'village':
         return <Compound />
+      case 'pharmacie':
+        return <Pharmacie night={night} />
+      case 'boutique':
+        return <Boutique seed={seed} />
+      case 'couture':
+        return <Couture seed={seed} />
       default:
         return null
     }
@@ -312,6 +318,52 @@ function Hospital() {
       <group position={[5, 0, 3.4]} rotation={[0, Math.PI, 0]}>
         <Vehicle p={[0, 0, 0]} kind="gbaka" color="#f4f4f4" trim="#d62828" />
       </group>
+    </group>
+  )
+}
+
+/** The pharmacy's green cross on its pole, lit at night (on duty). */
+function Pharmacie({ night }: { night: boolean }) {
+  const green = night ? '#69ff7a' : '#2f9e44'
+  return (
+    <group position={[3.6, 0, 2.2]}>
+      <mesh geometry={POLE} material={mat('#d9d9d9')} position={[0, 2, 0]} scale={[1, 4, 1]} />
+      <group position={[0, 4.3, 0]}>
+        <B p={[0, 0, 0]} s={[1.5, 0.5, 0.25]} c={green} glow={night ? 1 : 0} />
+        <B p={[0, 0, 0]} s={[0.5, 1.5, 0.25]} c={green} glow={night ? 1 : 0} />
+      </group>
+    </group>
+  )
+}
+
+/** The boutique on the corner: crates of drinks out front, the CRÉDIT board. */
+function Boutique({ seed }: { seed: number }) {
+  const crates = ['#c92a2a', '#1971c2', '#f08c00', '#2b8a3e']
+  return (
+    <group>
+      {[0, 1, 2].map((i) => (
+        <B key={i} p={[-2.2 + (i % 2) * 0.6, 0.25 + Math.floor(i / 2) * 0.5, 1.2]} s={[0.6, 0.5, 0.45]} c={crates[(seed + i) % crates.length]} />
+      ))}
+      <B p={[2.4, 0.8, 1.1]} s={[0.9, 1.6, 0.06]} c="#ffd43b" />
+      <B p={[2.4, 1.15, 1.14]} s={[0.7, 0.18, 0.02]} c="#1c1c1e" />
+      <B p={[2.4, 0.75, 1.14]} s={[0.55, 0.12, 0.02]} c="#e03131" />
+    </group>
+  )
+}
+
+/** The couturier works out front: the table, the sewing machine, a pagne on the mannequin. */
+function Couture({ seed }: { seed: number }) {
+  const pagnes = ['#f08c00', '#7048e8', '#2b8a3e', '#e03131', '#1971c2']
+  return (
+    <group position={[0, 0, 1.4]}>
+      <B p={[-1.8, 0.75, 0]} s={[1.5, 0.08, 0.8]} c="#8a5a32" />
+      {[-2.45, -1.15].map((x) => (
+        <B key={x} p={[x, 0.37, 0]} s={[0.08, 0.75, 0.7]} c="#5c3d22" />
+      ))}
+      <B p={[-1.8, 0.95, 0]} s={[0.55, 0.3, 0.25]} c="#1c1c1e" />
+      <B p={[2.2, 0.6, 0]} s={[0.12, 1.2, 0.12]} c="#5c3d22" />
+      <B p={[2.2, 1.5, 0]} s={[0.6, 0.8, 0.35]} c={pagnes[seed % pagnes.length]} />
+      <B p={[2.2, 1.95, 0]} s={[0.25, 0.15, 0.25]} c="#d9c3a5" />
     </group>
   )
 }
