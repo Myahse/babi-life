@@ -240,6 +240,8 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ) => boolean, styleOf: 
   const OLD = new Three.Color('#a9a49a')
   const RAILING = new Three.Color('#e9ecef')
   const GALLERY = new Three.Color('#2c2a28')
+  const STUD = new Three.Color('#fff3bf')
+  const LAMP = new Three.Color('#8d939b')
   const waters = chunk.areas.filter((a) => a.kind === 'water')
   const inWater = (x: number, z: number) => waters.some((a) => pointInRing([x, z], a.rings[0]) && !a.rings.slice(1).some((h) => pointInRing([x, z], h)))
   const bridge = (pts: XZ[], w: number, ys: number[], kind: BridgeKind | null) => {
@@ -274,14 +276,45 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ) => boolean, styleOf: 
         B.trim.box(mx + nx * s * (w / 2 - 0.1), ym + 0.55, mz + nz * s * (w / 2 - 0.1), len, 0.12, 0.12, rot, RAILING)
         B.trim.box(mx + nx * s * (w / 2 - 0.1), ym + 0.3, mz + nz * s * (w / 2 - 0.1), len, 0.5, 0.05, rot, stone)
       }
+      const under = stone.clone().multiplyScalar(0.8)
       if (how.twin) {
         // Two box girders side by side, a gap between them (the HKB).
-        for (const s of [1, -1]) B.trim.box(mx + nx * s * (w / 4), ym - 0.9 - g / 2, mz + nz * s * (w / 4), len, g, w / 2 - 1.4, rot, stone.clone().multiplyScalar(0.8))
+        for (const s of [1, -1]) B.trim.box(mx + nx * s * (w / 4), ym - 0.9 - g / 2, mz + nz * s * (w / 4), len, g, w / 2 - 1.4, rot, under)
+      } else if (how.beams) {
+        // Precast prestressed beams side by side under a thin slab (the 2e pont).
+        B.trim.box(mx, ym - 1.1, mz, len, 0.4, w - 0.6, rot, under)
+        for (let k = -2; k <= 2; k++) B.trim.box(mx + nx * k * (w / 5.5), ym - 1.3 - (g - 0.4) / 2, mz + nz * k * (w / 5.5), len, g - 0.4, 0.5, rot, under)
+      } else if (how.rail && g > 1.6) {
+        // The FHB: the road on the top slab, the railway on the bottom one,
+        // the gallery between them open to the lagoon (the train shows).
+        B.trim.box(mx, ym - 1.2, mz, len, 0.6, w - 0.6, rot, under)
+        B.trim.box(mx, ym - 0.9 - g + 0.3, mz, len, 0.6, w - 0.6, rot, under)
+        // The track on the bottom slab: ballast and rails.
+        B.trim.box(mx, ym - 0.9 - g + 0.65, mz, len, 0.1, 2.6, rot, GALLERY)
+        for (let d = 3; d < len; d += 6) {
+          const [px, pz] = [x1 + ((x2 - x1) * d) / len, z1 + ((z2 - z1) * d) / len]
+          for (const s of [1, -1]) B.trim.box(px + nx * s * (w / 2 - 0.5), ym - 0.9 - g / 2, pz + nz * s * (w / 2 - 0.5), 0.6, g - 1.2, 0.6, rot, under)
+        }
       } else {
-        B.trim.box(mx, ym - 0.9 - g / 2, mz, len, g, w - 0.6, rot, stone.clone().multiplyScalar(0.8))
-        // The FHB's lower level: the railway runs in the girder, under the road.
-        if (how.rail && g > 1.6) for (const s of [1, -1]) B.trim.box(mx + nx * s * (w / 2 - 0.25), ym - 0.9 - g / 2, mz + nz * s * (w / 2 - 0.25), len, g * 0.45, 0.1, rot, GALLERY)
+        B.trim.box(mx, ym - 0.9 - g / 2, mz, len, g, w - 0.6, rot, under)
       }
+      // A concrete barrier down the middle, between the two directions.
+      if (how.median) B.trim.box(mx, ym + 0.4, mz, len, 0.8, 0.5, rot, RAILING.clone().multiplyScalar(0.92))
+      // Light studs along both edges, every 4 m.
+      if (how.studs)
+        for (let d = 2; d < len; d += 4) {
+          const [px, pz] = [x1 + ((x2 - x1) * d) / len, z1 + ((z2 - z1) * d) / len]
+          for (const s of [1, -1]) B.trim.box(px + nx * s * (w / 2 - 2.2), ym + 0.1, pz + nz * s * (w / 2 - 2.2), 0.3, 0.12, 0.3, rot, STUD)
+        }
+      // Lamp posts, alternating sides (on the median when there is one).
+      if (how.lamps)
+        for (let d = Math.ceil(run / how.lamps) * how.lamps - run; d < len; d += how.lamps) {
+          const [px, pz] = [x1 + ((x2 - x1) * d) / len, z1 + ((z2 - z1) * d) / len]
+          const side = how.median ? 0 : Math.round((run + d) / how.lamps) % 2 ? 1 : -1
+          const [lx, lz] = [px + nx * side * (w / 2 - 0.4), pz + nz * side * (w / 2 - 0.4)]
+          B.trim.box(lx, ym + 4.8, lz, 0.25, 9.6, 0.25, rot, LAMP)
+          for (const arm of how.median ? [1, -1] : [-side]) B.trim.box(lx + nx * arm * 1.3, ym + 9.5, lz + nz * arm * 1.3, 0.35, 0.2, 2.6, rot, LAMP)
+        }
       // The piers, every span, down into the lagoon.
       for (let d = Math.ceil(run / how.span) * how.span - run; d < len; d += how.span) {
         const t = d / len
@@ -312,10 +345,10 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ) => boolean, styleOf: 
     const ys = r.bridge ? bridgeHeights(r.pts, chunk.box) : undefined
     if (r.paved) {
       // A pavement on each side of the bigger streets (and on bridges).
-      if (rank >= 4 || ys) strip(pavement, r.pts, r.width + 3.2, 0.03, 2, ys)
+      if (rank >= 4 || ys) strip(pavement, r.pts, ys ? Math.max(r.width + 3.2, BRIDGE_BUILD[bridgeKind(r.name) ?? 'default'].width ?? 0) : r.width + 3.2, 0.03, 2, ys)
       strip(asphalt, r.pts, r.width, 0.05 + rank * 0.002, 4, ys)
     } else strip(laterite, r.pts, r.width, 0.04, 3, ys)
-    if (ys) bridge(r.pts, r.width + 3.2, ys, bridgeKind(r.name))
+    if (ys) bridge(r.pts, Math.max(r.width + 3.2, BRIDGE_BUILD[bridgeKind(r.name) ?? 'default'].width ?? 0), ys, bridgeKind(r.name))
   }
   const kerbs = new Builder()
   markings(chunk, paint, kerbs)

@@ -1,4 +1,7 @@
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
+import { useFrame } from '@react-three/fiber'
+import { worldTime } from '../../lib/worldClock'
+import { Vehicle, type VehicleKind } from '../vehicles'
 import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { BRIDGE_HEIGHT, type XZ } from './geo'
@@ -142,10 +145,12 @@ function TollPlaza({ ends: [a, b], night }: { ends: [XZ, XZ]; night: boolean }) 
                   <boxGeometry args={[0.7, 0.9, 0.05]} />
                   <meshLambertMaterial color="#35506e" />
                 </mesh>
-                <mesh position={[1.75, 1, -2.5]}>
-                  <boxGeometry args={[2.9, 0.12, 0.12]} />
-                  <meshLambertMaterial color={i % 2 ? '#e8432f' : '#ffffff'} />
-                </mesh>
+                {!TOLL_BUSY.includes(i) && (
+                  <mesh position={[1.75, 1, -2.5]}>
+                    <boxGeometry args={[2.9, 0.12, 0.12]} />
+                    <meshLambertMaterial color={i % 2 ? '#e8432f' : '#ffffff'} />
+                  </mesh>
+                )}
               </>
             )}
             {/* The pillars holding the canopy, every few lanes */}
@@ -157,9 +162,61 @@ function TollPlaza({ ends: [a, b], night }: { ends: [XZ, XZ]; night: boolean }) 
           </group>
         )
       })}
+      <TollTraffic lanes={LANES} />
       <Html position={[0, 10, 0]} center zIndexRange={[15, 0]}>
         <div className="rounded-xl border border-black/5 bg-[#f08a24] px-2.5 py-1 text-[12.5px] font-extrabold whitespace-nowrap text-white shadow-[0_4px_12px_-6px_rgba(0,0,0,0.45)]">Péage du 3e pont · 500 F</div>
       </Html>
+    </group>
+  )
+}
+
+/**
+ * The toll at work: in the busy lanes a car comes up, stops at the booth to
+ * pay (500 F), the barrier lifts, it drives on, the barrier comes down for
+ * the next one. Both ways (the lanes left of the middle go the other way).
+ * From the shared clock.
+ */
+const TOLL_KINDS: VehicleKind[] = ['taxi', 'car', 'gbaka', 'car', 'woro', 'car']
+/** The lanes open with traffic in them (the others have their barrier down, nobody). */
+const TOLL_BUSY = [2, 4, 6, 8, 12, 14, 16, 18]
+function TollTraffic({ lanes }: { lanes: number }) {
+  const busy = useMemo(() => TOLL_BUSY.filter((i) => i < lanes), [lanes])
+  const cars = useRef<(THREE.Group | null)[]>([])
+  const bars = useRef<(THREE.Group | null)[]>([])
+  const CYCLE = 14
+  useFrame(() => {
+    const t = worldTime()
+    busy.forEach((lane, k) => {
+      const u = ((t + k * 3.7) % CYCLE) / CYCLE
+      const dir = lane < lanes / 2 ? -1 : 1
+      // Coming up (0–0.4), paying (0.4–0.65), the barrier up and off (0.65–1).
+      const z = u < 0.4 ? -45 + (u / 0.4) * 41 : u < 0.65 ? -4 : -4 + ((u - 0.65) / 0.35) ** 1.6 * 70
+      const g = cars.current[k]
+      if (g) {
+        g.position.set(-((lanes * 3.6) / 2) + lane * 3.6 + 1.8, 0, z * dir)
+        g.rotation.y = dir > 0 ? -Math.PI / 2 : Math.PI / 2
+      }
+      const b = bars.current[k]
+      const up = u < 0.6 ? 0 : u < 0.7 ? (u - 0.6) / 0.1 : u < 0.85 ? 1 : Math.max(0, 1 - (u - 0.85) / 0.1)
+      if (b) b.rotation.z = up * 1.35
+    })
+  })
+  return (
+    <group>
+      {busy.map((lane, k) => (
+        <group key={lane}>
+          <group ref={(g) => void (cars.current[k] = g)}>
+            <Vehicle p={[0, 0, 0]} kind={TOLL_KINDS[k % TOLL_KINDS.length]} seed={k * 11} />
+          </group>
+          {/* The barrier arm, hinged at the booth */}
+          <group ref={(g) => void (bars.current[k] = g)} position={[-((lanes * 3.6) / 2) + lane * 3.6 + 0.3, 1, lane < lanes / 2 ? 2.5 : -2.5]}>
+            <mesh position={[1.45, 0, 0]}>
+              <boxGeometry args={[2.9, 0.12, 0.12]} />
+              <meshLambertMaterial color={k % 2 ? '#e8432f' : '#ffffff'} />
+            </mesh>
+          </group>
+        </group>
+      ))}
     </group>
   )
 }

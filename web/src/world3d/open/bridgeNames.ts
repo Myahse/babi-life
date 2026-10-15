@@ -34,11 +34,40 @@ export const BRIDGE_LABEL: Record<BridgeKind, string> = {
  * The 5e pont's viaducts and the 2e and 4e ponts: no published detail found,
  * so their spans and piers are estimates.
  */
-export const BRIDGE_BUILD: Record<BridgeKind | 'default', { span: number; pier: 'wall' | 'twin-round' | 'twin-square' | 'round'; girder: number; rail?: boolean; twin?: boolean }> = {
-  default: { span: 30, pier: 'wall', girder: 0.9 },
-  fhb: { span: 46.5, pier: 'wall', girder: 2.6, rail: true },
-  cdg: { span: 40, pier: 'twin-square', girder: 1.8 },
-  hkb: { span: 50, pier: 'twin-round', girder: 2.2, twin: true },
-  yop: { span: 40, pier: 'round', girder: 1.8 },
-  ado: { span: 40, pier: 'round', girder: 1.6 },
+export type BridgeBuild = {
+  span: number
+  pier: 'wall' | 'twin-round' | 'twin-square' | 'round'
+  girder: number
+  /** The FHB: the railway on a lower level, inside the girder. */
+  rail?: boolean
+  /** The HKB: two box girders side by side. */
+  twin?: boolean
+  /** Precast beams under the deck (the 2e pont), not one box. */
+  beams?: boolean
+  /** A barrier down the middle between the two directions. */
+  median?: boolean
+  /** Lamp posts along the deck, every so many metres. */
+  lamps?: number
+  /** Light studs along the edges (the 2e pont and the FHB). */
+  studs?: boolean
+  /** The deck's width (m), when it's known (else the road's). */
+  width?: number
+  /** Lanes each way. */
+  lanes: number
+}
+
+/**
+ * FHB: 24.85 m wide, 14 m of road and two 4 m pavements (Structurae); light
+ * studs added on it and on the 2e pont (Abidjan.net). HKB: 28 m, 2×3 lanes
+ * (Burkina24). 4e pont: 2×3 lanes (afrique-sur7). Lamp spacing, the medians
+ * and the 2e and 5e ponts' widths are estimates.
+ */
+export const BRIDGE_BUILD: Record<BridgeKind | 'default', BridgeBuild> = {
+  default: { span: 30, pier: 'wall', girder: 0.9, lanes: 1 },
+  // The box must hold the train: its depth here is an estimate.
+  fhb: { span: 46.5, pier: 'wall', girder: 5.4, rail: true, studs: true, lamps: 31, width: 24.85, lanes: 2 },
+  cdg: { span: 40, pier: 'twin-square', girder: 1.8, beams: true, studs: true, lamps: 30, width: 21, lanes: 2 },
+  hkb: { span: 50, pier: 'twin-round', girder: 2.2, twin: true, median: true, lamps: 40, width: 28, lanes: 3 },
+  yop: { span: 40, pier: 'round', girder: 1.8, median: true, lamps: 36, width: 27, lanes: 3 },
+  ado: { span: 40, pier: 'round', girder: 1.6, median: true, lamps: 36, width: 26, lanes: 3 },
 }

@@ -21,6 +21,8 @@ import { Character } from '../world3d/Character'
 import { OutdoorAction, outdoorLook, outdoorPose } from '../world3d/OutdoorAction'
 import { Dressing } from '../world3d/open/dressing'
 import { PolicePost } from '../world3d/open/streetlife'
+import { BridgeSights } from '../world3d/open/bridges'
+import { BridgeLife } from '../world3d/open/bridgeLife'
 import { randomLook } from '../avatar/options'
 import type { Sim } from '../lib/types'
 
@@ -36,7 +38,9 @@ import type { Sim } from '../lib/types'
 // &seed=3 &night) the inside of a place, the Sim doing that activity;
 // ?view=outdoor&id=play-football an outdoor activity's scene around the Sim;
 // ?view=dressing&kind=maquis (&name=…) the front of a place, its workers;
-// ?view=police the checkpoint on a big road's shoulder.
+// ?view=police the checkpoint on a big road's shoulder;
+// ?view=bridge&kind=fhb|cdg|hkb|yop|ado one of the big bridges over a lagoon
+// (&cam, &look, &night).
 // The interior takes &career=sante&level=1 for a Sim at work (&id=work).
 
 const q = new URLSearchParams(location.search)
@@ -314,7 +318,64 @@ function FrontLab() {
   )
 }
 
+const BRIDGE_NAMES: Record<string, string> = {
+  fhb: 'Pont Félix Houphouët-Boigny',
+  cdg: 'Pont Charles de Gaulle',
+  hkb: 'Pont Henri Konan Bédié',
+  yop: '4e pont',
+  ado: 'Pont Alassane Ouattara',
+  plain: 'Pont',
+}
+
+function BridgeLab() {
+  const kind = q.get('kind') ?? 'fhb'
+  const mats = useMemo(() => makeWorldMaterials(), [])
+  const chunk = useMemo<ChunkData>(
+    () => ({
+      key: 'bridge',
+      tx: 0,
+      ty: 0,
+      box: { x0: -420, z0: -120, x1: 420, z1: 120 },
+      roads: [
+        { cls: 'trunk', pts: [[-420, 0], [-330, 0]], width: 14, paved: true, bridge: false },
+        { cls: 'trunk', pts: [[330, 0], [420, 0]], width: 14, paved: true, bridge: false },
+        // A point every 10 m, as the map loader does (tiles.ts), so the deck can climb.
+        { cls: 'trunk', pts: [...Array(67)].map((_, i) => [-330 + i * 10, 0] as XZ), width: 14, paved: true, bridge: true, name: BRIDGE_NAMES[kind] },
+      ],
+      buildings: [],
+      areas: [{ kind: 'water', rings: [[[-260, -120], [260, -120], [260, 120], [-260, 120]]] }],
+      trees: [],
+      palms: [],
+      aeroways: [],
+      pois: [],
+    }),
+    [kind],
+  )
+  const meshes = useMemo(() => buildChunk(chunk, () => false), [chunk])
+  const cam = (q.get('cam') ?? '120,60,160').split(',').map(Number) as [number, number, number]
+  const look = (q.get('look') ?? '0,6,0').split(',').map(Number) as [number, number, number]
+  return (
+    <Canvas dpr={[1, 1.5]} camera={{ position: cam, fov: 45, far: 8000 }} style={{ width: '100vw', height: '100vh' }}>
+      <color attach="background" args={[night ? '#0b1030' : '#a9d3f0']} />
+      <hemisphereLight args={['#ffffff', '#b8a27c', night ? 0.3 : 1.3]} />
+      <directionalLight position={[300, 600, 200]} intensity={night ? 0.2 : 1.7} />
+      {Object.entries(meshes).map(([name, g]) => {
+        const m = (mats as Record<string, THREE.Material>)[name]
+        return g && m ? <mesh key={name} geometry={g} material={m} /> : null
+      })}
+      <BridgeSights chunks={[chunk]} night={night} />
+      <BridgeLife chunks={[chunk]} night={night} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
+        <planeGeometry args={[8000, 8000]} />
+        <meshLambertMaterial color="#cbb38c" />
+      </mesh>
+      <OrbitControls target={look} />
+    </Canvas>
+  )
+}
+
 function Lab() {
+  if (view === 'bridge') return <BridgeLab />
   if (view === 'dressing' || view === 'police') return <FrontLab />
   if (view === 'outdoor') return <OutdoorLab />
   if (view === 'interior') return <InteriorLab />

@@ -35,6 +35,7 @@ import { TakeOff } from './airport'
 import { StreetLights } from './streetlights'
 import { BRIDGE_LABEL, bridgeKind } from './bridgeNames'
 import { BridgeSights } from './bridges'
+import { BridgeLife } from './bridgeLife'
 import { matchPoi } from './poiMatch'
 import { Dressing } from './dressing'
 import { SkyDome, skyTone } from './sky'
@@ -715,6 +716,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
       {nav.nodes.length > 0 && <AllocoStalls nav={nav} seed={commune.id} onBuy={onStreetBuy} />}
       <TakeOff runways={runways} />
       <BridgeSights chunks={[...chunks.values()].map((c) => c.data)} night={night} />
+      <BridgeLife chunks={[...chunks.values()].map((c) => c.data)} night={night} />
       {bridgeLabels.map((b) => (
         <Html key={b.name} position={[b.at[0], 12, b.at[1]]} center zIndexRange={[15, 0]}>
           <div className="flex items-center gap-1.5 rounded-xl border border-black/5 bg-white/95 px-2.5 py-1 text-[12.5px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_4px_12px_-6px_rgba(0,0,0,0.45)]">
