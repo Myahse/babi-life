@@ -7,7 +7,7 @@ L'appli Android et iOS de Babi Life. Le jeu lui-même est le jeu web (`web/`), a
 | | |
 | --- | --- |
 | **Écran d'accueil** | La nuit sur Abidjan, le logo, « Ta vie. Ton quartier. Ton Babi. », le temps que le jeu se charge (`lib/game_screen.dart`, `Splash`). |
-| **Le jeu** | `https://www.lifeinbabi.com` en plein écran (`InAppWebView`, WebGL, son sans toucher l'écran). |
+| **Le jeu** | `https://www.lifeinbabi.com` en plein écran (`webview_flutter`, WebGL, son sans toucher l'écran ; les fenêtres « confirmer » du jeu deviennent celles du téléphone). |
 | **Connexion Google** | Google refuse d'ouvrir sa connexion dans une vue web : dans l'appli, le bouton « Continuer avec Google » passe par la connexion Google du téléphone, qui rend un jeton ; le jeu l'envoie à l'API (`/auth/google`) comme sur le web (`lib/bridge.dart`, `web/src/lib/native.ts`). |
 | **Partager** | Le partage (Profil) ouvre la feuille de partage du téléphone : WhatsApp d'abord. |
 | **Position** | « Naître là où tu es » : le téléphone demande l'autorisation une fois (seule la commune est gardée). |
@@ -15,7 +15,7 @@ L'appli Android et iOS de Babi Life. Le jeu lui-même est le jeu web (`web/`), a
 | **Liens** | WhatsApp, les articles des infos, un numéro de téléphone : ouverts dans leur appli, pas dans le jeu. |
 | **Hors connexion** | « Pas de connexion », avec « Réessayer » ; le jeu revient tout seul quand le réseau revient. |
 
-Le jeu sait qu'il est dans l'appli : son agent utilisateur contient `BabiLifeApp/1.0` (`web/src/lib/native.ts`, `inApp()`), et il appelle l'appli par `window.flutter_inappwebview.callHandler('googleSignIn' | 'share')`. Les achats intégrés passeront par ce même pont.
+Le jeu sait qu'il est dans l'appli : son agent utilisateur contient `BabiLifeApp/1.0` (`web/src/lib/native.ts`, `inApp()`). Il appelle l'appli par le canal `BabiApp` (`{ id, name: 'googleSignIn' | 'share', arg }`), et l'appli répond par `window.__babiAnswer(id, résultat, erreur)`. Les achats intégrés passeront par ce même pont.
 
 ## Construire
 

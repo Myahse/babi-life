@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -22,7 +24,7 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> {
-  InAppWebViewController? _web;
+  late final WebViewController _web;
   bool _loaded = false;
   bool _offline = false;
   DateTime? _lastBack;
@@ -36,8 +38,88 @@ class _GameScreenState extends State<GameScreen> {
       statusBarIconBrightness: Brightness.light,
       systemNavigationBarColor: Color(Config.night),
     ));
+    _web = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(const Color(Config.night))
+      ..enableZoom(false)
+      // The game asks the app for things (web/src/lib/native.ts): {id, name, arg}.
+      ..addJavaScriptChannel('BabiApp', onMessageReceived: (m) => _onCall(m.message))
+      ..setNavigationDelegate(NavigationDelegate(
+        onNavigationRequest: (r) async {
+          final uri = Uri.tryParse(r.url);
+          if (uri == null) return NavigationDecision.navigate;
+          final web = uri.scheme == 'http' || uri.scheme == 'https';
+          if ((web && Config.isGame(uri)) || uri.scheme == 'about' || uri.scheme == 'data' || uri.scheme == 'blob') return NavigationDecision.navigate;
+          // WhatsApp, the news, a phone number…: in their own app.
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          return NavigationDecision.prevent;
+        },
+        onPageFinished: (_) => setState(() => _loaded = true),
+        onWebResourceError: (e) {
+          if (e.isForMainFrame ?? false) setState(() => _offline = true);
+        },
+      ))
+      ..setOnJavaScriptAlertDialog((r) => _dialog(r.message, cancel: false))
+      ..setOnJavaScriptConfirmDialog((r) => _dialog(r.message, cancel: true));
+    final platform = _web.platform;
+    if (platform is AndroidWebViewController) {
+      platform.setMediaPlaybackRequiresUserGesture(false);
+      // « Naître là où tu es »: the phone asks, once.
+      platform.setGeolocationPermissionsPromptCallbacks(onShowPrompt: (request) async {
+        final ok = (await Permission.locationWhenInUse.request()).isGranted;
+        return GeolocationPermissionsResponse(allow: ok, retain: true);
+      });
+    }
+    _start();
     Connectivity().checkConnectivity().then(_onNetwork);
     _net = Connectivity().onConnectivityChanged.listen(_onNetwork);
+  }
+
+  /// The game tells it's in the app by its user agent (web/src/lib/native.ts), then loads.
+  Future<void> _start() async {
+    final ua = await _web.getUserAgent();
+    await _web.setUserAgent('${ua ?? ''} BabiLifeApp/1.0'.trim());
+    await _web.loadRequest(Uri.parse(Config.gameUrl));
+  }
+
+  /// A call from the game: do it, and answer by its id.
+  Future<void> _onCall(String raw) async {
+    Map<String, dynamic> call;
+    try {
+      call = jsonDecode(raw) as Map<String, dynamic>;
+    } catch (_) {
+      return;
+    }
+    Object? result;
+    String? error;
+    try {
+      switch (call['name']) {
+        case 'googleSignIn':
+          result = await Bridge.googleSignIn();
+        case 'share':
+          await Bridge.share('${call['arg'] ?? ''}');
+          result = true;
+        default:
+          error = 'unknown call';
+      }
+    } catch (e) {
+      error = '$e';
+    }
+    await _web.runJavaScript('window.__babiAnswer && window.__babiAnswer(${jsonEncode(call['id'])}, ${jsonEncode(result)}, ${jsonEncode(error)})');
+  }
+
+  Future<bool> _dialog(String message, {required bool cancel}) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        content: Text(message),
+        actions: [
+          if (cancel) TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Annuler')),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('OK')),
+        ],
+      ),
+    );
+    return ok ?? false;
   }
 
   @override
@@ -55,13 +137,13 @@ class _GameScreenState extends State<GameScreen> {
 
   void _retry() {
     setState(() => _offline = false);
-    _web?.loadUrl(urlRequest: URLRequest(url: WebUri(Config.gameUrl)));
+    _web.loadRequest(Uri.parse(Config.gameUrl));
   }
 
   /// Back: back in the game; at its start, a second press within 2 s leaves.
   Future<void> _back() async {
-    if (_web != null && await _web!.canGoBack()) {
-      await _web!.goBack();
+    if (await _web.canGoBack()) {
+      await _web.goBack();
       return;
     }
     final now = DateTime.now();
@@ -85,50 +167,7 @@ class _GameScreenState extends State<GameScreen> {
       child: Scaffold(
         backgroundColor: const Color(Config.night),
         body: Stack(children: [
-          InAppWebView(
-            initialUrlRequest: URLRequest(url: WebUri(Config.gameUrl)),
-            initialSettings: InAppWebViewSettings(
-              javaScriptEnabled: true,
-              // The app tells the game it's inside it (web/src/lib/native.ts).
-              applicationNameForUserAgent: 'BabiLifeApp/1.0',
-              mediaPlaybackRequiresUserGesture: false,
-              allowsInlineMediaPlayback: true,
-              geolocationEnabled: true,
-              supportZoom: false,
-              transparentBackground: true,
-              useShouldOverrideUrlLoading: true,
-              disableContextMenu: true,
-            ),
-            onWebViewCreated: (c) {
-              _web = c;
-              c.addJavaScriptHandler(handlerName: 'googleSignIn', callback: (_) => Bridge.googleSignIn());
-              c.addJavaScriptHandler(
-                  handlerName: 'share',
-                  callback: (args) async {
-                    if (args.isNotEmpty) await Bridge.share(args.first.toString());
-                    return true;
-                  });
-            },
-            shouldOverrideUrlLoading: (c, action) async {
-              final uri = action.request.url;
-              if (uri == null) return NavigationActionPolicy.ALLOW;
-              final web = uri.scheme == 'http' || uri.scheme == 'https';
-              if (web && Config.isGame(uri)) return NavigationActionPolicy.ALLOW;
-              // WhatsApp, the news, a phone number…: in their own app.
-              await launchUrl(uri, mode: LaunchMode.externalApplication);
-              return NavigationActionPolicy.CANCEL;
-            },
-            onGeolocationPermissionsShowPrompt: (c, origin) async {
-              // « Naître là où tu es »: the phone asks, once.
-              final ok = (await Permission.locationWhenInUse.request()).isGranted;
-              return GeolocationPermissionShowPromptResponse(origin: origin, allow: ok, retain: true);
-            },
-            onPermissionRequest: (c, request) async => PermissionResponse(resources: request.resources, action: PermissionResponseAction.GRANT),
-            onLoadStop: (c, url) => setState(() => _loaded = true),
-            onReceivedError: (c, request, error) {
-              if (request.isForMainFrame ?? false) setState(() => _offline = true);
-            },
-          ),
+          WebViewWidget(controller: _web),
           // The splash, until the game has drawn its first screen.
           IgnorePointer(
             ignoring: _loaded,
