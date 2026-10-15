@@ -409,7 +409,7 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
       </section>
       {born && registered === null && <FamilyReveal family={born.family} commune={born.commune} located={born.located} name={sim.firstName} look={sim.look} gender={sim.gender} housing={world.housings.find((h) => h.id === born.family.housing)?.label ?? ''} onGo={() => navigate('/jeu', { viewTransition: true })} />}
       {born && registered !== null && (
-        <FamilyReveal family={born.family} commune={born.commune} located name={sim.firstName} look={sim.look} gender={sim.gender} housing={world.housings.find((h) => h.id === born.family.housing)?.label ?? ''} go="Entrer dans Babi" onGo={() => setEntering(true)} />
+        <FamilyReveal family={born.family} commune={born.commune} located name={sim.firstName} look={sim.look} gender={sim.gender} housing={world.housings.find((h) => h.id === born.family.housing)?.label ?? ''} go="C'est noté" onGo={() => setEntering(true)} />
       )}
       {/* Wanting in: the game isn't open yet, they're on the list */}
       {entering && <Registered name={sim.firstName} contact={contact} count={registered ?? 0} onBack={() => navigate('/liste')} />}

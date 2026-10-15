@@ -13,6 +13,7 @@ import { Portrait } from '../avatar/portrait'
 import { IconTile, Logo, LogoMark } from '../components/ui'
 import { UsernameField } from '../components/UsernameField'
 import { suggestFrom } from '../lib/username'
+import { gameOpen } from '../lib/launch'
 import { firebaseConfigured, googleCancelled, signInWithGoogle } from '../lib/google'
 
 const GOOGLE_ENABLED = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID)
@@ -73,7 +74,7 @@ export function Title() {
     try {
       const { token, user } = await p
       signIn(token, user)
-      navigate('/jeu', { viewTransition: true })
+      navigate(gameOpen ? '/jeu' : '/liste', { viewTransition: true })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Connexion impossible')
     } finally {

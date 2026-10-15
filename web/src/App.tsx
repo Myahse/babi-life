@@ -4,6 +4,7 @@ import { useSession } from './store/session'
 import { useWorld } from './store/world'
 import { Title } from './screens/Title'
 import { Plumbob } from './components/ui'
+import { gameOpen } from './lib/launch'
 
 // Each screen is its own download: the title screen opens without the 3D
 // game, and the game without the creator.
@@ -41,6 +42,9 @@ export function App() {
     if (!world && !error) return <Loading />
     return <Suspense fallback={<Loading />}>{world ? <CreateSim waitlist /> : <Waitlist />}</Suspense>
   }
+
+  // Born on the wish list: the game is not open, so a signed-in player stays on the list.
+  if (token && !gameOpen) return <Navigate to="/liste" replace />
 
   if (!world && !error) return <Loading />
 

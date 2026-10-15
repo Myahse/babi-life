@@ -172,7 +172,11 @@ function stripUndefined<T extends object>(o: T): Partial<T> {
 }
 
 export function randomLook(gender: 'femme' | 'homme', random: () => number = Math.random): Required<Look> {
-  const pick = <T,>(a: readonly T[]) => a[Math.floor(random() * a.length)]
+  const pick = <T,>(a: readonly T[]) => {
+    const n = random()
+    const u = Number.isFinite(n) ? n - Math.floor(n) : 0
+    return a[Math.min(Math.floor(u * a.length), a.length - 1)]
+  }
   const femme = gender === 'femme'
   const hairs = femme ? ['braids', 'afro', 'bun', 'weave', 'headwrap', 'locks', 'short', 'cornrows', 'twists', 'ponytail', 'puffs', 'bob'] : ['short', 'bald', 'afro', 'locks', 'short', 'degrade', 'cornrows', 'twists', 'mohawk']
   const outfits = femme ? ['pagne', 'boubou', 'casual', 'robe', 'jersey', 'debardeur', 'survet', 'kaba', 'jupe', 'chemise-pagne', 'blouson', 'salopette', 'bazin', 'jogging', 'sweat', 'abaya', 'souscorps'] : ['pagne', 'boubou', 'casual', 'suit', 'jersey', 'debardeur', 'survet', 'basket', 'chemise-pagne', 'bazin', 'chemise', 'blouson', 'salopette', 'souscorps', 'souscorps', 'jogging', 'sweat', 'imam', 'bleu']
