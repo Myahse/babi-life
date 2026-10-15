@@ -16,3 +16,5 @@ services:
         sync: false
       - key: JWT_SECRET
         generateValue: true
+      - key: WAITLIST_ADMIN_KEY # to download the wish list (GET /api/v1/waitlist/export, header X-Admin-Key)
+        generateValue: true

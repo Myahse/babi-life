@@ -5,3 +5,5 @@ web/dist/
 backend/bin/
 *.tsbuildinfo
 .env.local*
+marketing/out/art/
+marketing/out/video-frames/

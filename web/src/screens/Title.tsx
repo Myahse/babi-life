@@ -16,7 +16,7 @@ import { suggestFrom } from '../lib/username'
 
 const GOOGLE_ENABLED = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID)
 
-const CROWD: { look: Look; gender: 'femme' | 'homme'; size: number }[] = [
+export const CROWD: { look: Look; gender: 'femme' | 'homme'; size: number }[] = [
   { gender: 'homme', size: 112, look: { skin: '#6e4024', hair: 'short', hairColor: '#141010', outfit: 'debardeur', outfitColor: '#f8f9fa', accessory: 'capback', accessoryColor: '#ff7a00', marks: 'pansement' } },
   { gender: 'femme', size: 128, look: { skin: '#8a5532', hair: 'headwrap', hairColor: '#141010', outfit: 'pagne', outfitColor: '#ff7a00', accessory: 'earrings', pattern: 'cercles' } },
   { gender: 'homme', size: 118, look: { skin: '#a46c42', hair: 'locks', hairColor: '#2e1b12', outfit: 'boubou', outfitColor: '#00a862', accessory: 'chain' } },

@@ -45,6 +45,8 @@ export type NewSim = {
   lng?: number
 }
 
+export type WaitlistJoin = { firstName: string; contact: string; commune: string; beta: boolean; source: string; website: string; sim?: { lastName: string; gender: 'femme' | 'homme'; look: Look; traits: string[]; aspiration: string } }
+
 export const api = {
   world: () => request<World>('/world'),
   /** A commune's places from the map (OpenStreetMap) within r km of a point. */
@@ -70,6 +72,8 @@ export const api = {
   career: (id: string, career: string) => post<ActionResult>(`/sims/${id}/career`, { career }),
   move: (id: string, housing: string) => post<ActionResult>(`/sims/${id}/move`, { housing }),
   repay: (id: string, what: 'loan' | 'rent', amount: number) => post<ActionResult>(`/sims/${id}/repay`, { what, amount }),
+  /** The wish list; with a Sim, it is born there (the family is drawn by the server). */
+  joinWaitlist: (body: WaitlistJoin) => post<{ ok: boolean; already: boolean; count: number; birth?: { family: string; commune: string } }>('/waitlist', body),
   changeLook: (id: string, look: Look) => post<ActionResult>(`/sims/${id}/look`, look),
   setApp: (id: string, app: string, install: boolean) => post<ActionResult>(`/sims/${id}/apps`, { app, install }),
   send: (id: string, to: string, amount: number) => post<ActionResult>(`/sims/${id}/send`, { to, amount }),

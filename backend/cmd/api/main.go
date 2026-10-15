@@ -25,6 +25,7 @@ import (
 	"github.com/myahse/babi-life/backend/internal/live"
 	"github.com/myahse/babi-life/backend/internal/news"
 	"github.com/myahse/babi-life/backend/internal/sims"
+	"github.com/myahse/babi-life/backend/internal/waitlist"
 	"github.com/myahse/babi-life/backend/internal/world"
 )
 
@@ -149,6 +150,11 @@ func main() {
 			httpx.JSON(w, http.StatusOK, map[string]int64{"now": time.Now().UnixMilli()})
 		})
 		r.Get("/live", players.ServeHTTP)
+		// The wish list: sign up before the game opens (export with WAITLIST_ADMIN_KEY).
+		wish := &waitlist.Handler{DB: pool, AdminKey: os.Getenv("WAITLIST_ADMIN_KEY")}
+		r.Post("/waitlist", wish.Join)
+		r.Get("/waitlist/count", wish.Count)
+		r.Get("/waitlist/export", wish.Export)
 		r.Get("/news", headlines.Handler)
 		r.Post("/auth/google", authH.Google)
 		r.Post("/auth/register", authH.Register)

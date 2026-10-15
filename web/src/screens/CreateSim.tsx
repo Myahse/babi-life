@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BadgeCheck, Bandage, Check, ChevronLeft, ChevronRight, Dices, Baby, Glasses, Heart, IdCard, PersonStanding, Scissors, Shirt, Smile, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, Bandage, Check, ChevronLeft, ChevronRight, Dices, Baby, Glasses, Heart, IdCard, PersonStanding, Scissors, Shirt, Smile, X, type LucideIcon } from 'lucide-react'
 import { api, type NewSim } from '../lib/api'
 import type { Family, Look } from '../lib/types'
 import { useWorld } from '../store/world'
@@ -12,6 +12,8 @@ import { ColorPicker } from '../components/ColorPicker'
 import { Stage, type Focus } from '../avatar/Stage'
 import { Portrait } from '../avatar/portrait'
 import { Options, Section } from '../components/LookOptions'
+import { FamilyScene } from '../avatar/Family'
+import { Share } from '../components/WaitlistShare'
 import { waxSwatch } from '../avatar/BlockHuman'
 import { iconFor } from '../components/icons'
 import { Chip, IconTile } from '../components/ui'
@@ -39,17 +41,25 @@ const LAST = ['Koné', 'Kouassi', 'Traoré', 'Yao', 'Ouattara', 'Bamba', "N'Gues
 const pick = <T,>(a: readonly T[]) => a[Math.floor(Math.random() * a.length)]
 const showMetres = (m: number) => `${m.toFixed(2).replace('.', ',')} m`
 
-export function CreateSim() {
+/** waitlist: before the game opens, made from the wish list (/liste/creer): no account, the Sim is kept for the opening. */
+export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
   const world = useWorld((s) => s.world)
   const { user, signIn, token } = useSession()
   const navigate = useNavigate()
   // Google sign-ups have no username yet: they choose it here.
-  const needsUsername = !user?.username
+  const needsUsername = !waitlist && !user?.username
   const [username, setUsername] = useState(() => suggestFrom(user?.firstName ?? '', user?.lastName ?? ''))
   const [step, setStep] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [born, setBorn] = useState<{ family: Family; commune: string; located: boolean } | null>(null)
+  // The wish list: where to tell them it's open, and that they're on it.
+  const [contact, setContact] = useState('')
+  const [commune, setCommune] = useState('')
+  const [beta, setBeta] = useState(true)
+  const [website, setWebsite] = useState('') // unseen: only bots fill it
+  const [registered, setRegistered] = useState<number | null>(null) // how many are on the list
+  const [entering, setEntering] = useState(false)
   const [sim, setSim] = useState<NewSim & { look: Required<Look> }>({
     // Taken from the account; the player only corrects them if needed.
     firstName: user?.firstName || user?.name.split(' ')[0] || 'Awa',
@@ -67,7 +77,7 @@ export function CreateSim() {
   const set = (patch: Partial<Draft>) => setSim((s) => ({ ...s, ...patch }))
   const setLook = (patch: Partial<Look>) => setSim((s) => ({ ...s, look: { ...s.look, ...patch } }))
   const femme = sim.gender === 'femme'
-  const valid = sim.firstName.trim() && sim.lastName.trim() && sim.traits.length > 0 && (!needsUsername || USERNAME.test(username))
+  const valid = sim.firstName.trim() && sim.lastName.trim() && sim.traits.length > 0 && (!needsUsername || USERNAME.test(username)) && (!waitlist || contact.trim())
   const current = STEPS[step]
   const height = metres(sim.look.height, sim.gender)
   const defaults = defaultColors(sim.look, femme)
@@ -99,6 +109,15 @@ export function CreateSim() {
     setBusy(true)
     setError(null)
     try {
+      if (waitlist) {
+        const source = new URLSearchParams(location.search).get('src') ?? ''
+        const res = await api.joinWaitlist({ firstName: sim.firstName, contact, commune, beta, source, website, sim: { lastName: sim.lastName, gender: sim.gender, look: sim.look, traits: sim.traits, aspiration: sim.aspiration } })
+        const drawn = world!.families?.find((f) => f.id === res.birth?.family)
+        const cm = world!.cities.flatMap((c) => c.communes).find((c) => c.id === res.birth?.commune)
+        setRegistered(res.count)
+        if (drawn) setBorn({ family: drawn, commune: cm?.name ?? 'Abidjan', located: true })
+        return
+      }
       if (needsUsername) {
         const u = await api.setUsername(username)
         signIn(token!, u)
@@ -133,9 +152,16 @@ export function CreateSim() {
             </div>
             <div className="font-display text-xl leading-tight font-extrabold">{current.label}</div>
           </div>
-          <button className="icon-btn pointer-events-auto bg-white text-[var(--color-orange)] shadow-lg" onClick={randomize} aria-label="Sim au hasard" title="Au hasard">
-            <Dices size={24} strokeWidth={2.4} />
-          </button>
+          <div className="pointer-events-auto flex gap-2">
+            <button className="icon-btn bg-white text-[var(--color-orange)] shadow-lg" onClick={randomize} aria-label="Sim au hasard" title="Au hasard">
+              <Dices size={24} strokeWidth={2.4} />
+            </button>
+            {waitlist && (
+              <button className="icon-btn bg-white/90 shadow-lg" onClick={() => navigate('/liste')} aria-label="Retour à la liste d'attente">
+                <X size={22} strokeWidth={2.6} />
+              </button>
+            )}
+          </div>
         </header>
 
         <div className="pointer-events-none relative z-10 mt-auto p-3 text-center text-white lg:pb-8">
@@ -321,7 +347,28 @@ export function CreateSim() {
             </div>
           )}
 
-          {current.id === 'home' && (
+          {current.id === 'home' && waitlist && (
+            <div className="space-y-2.5">
+              <p className="text-sm font-bold text-[var(--color-ink-soft)]">
+                Babi Life n'est pas encore ouvert, mais {sim.firstName || 'ton Sim'} peut déjà naître : la famille est tirée au sort, comme dans la vraie vie. Laisse un contact pour que ton Sim t'attende à l'ouverture : on te prévient là, et nulle part ailleurs.
+              </p>
+              <input className="input text-base" placeholder="E-mail ou numéro WhatsApp" autoComplete="email" inputMode="email" value={contact} onChange={(e) => setContact(e.target.value)} aria-label="E-mail ou numéro WhatsApp" />
+              <input className="input text-base" placeholder="Ta commune (facultatif)" list="communes-creer" value={commune} onChange={(e) => setCommune(e.target.value)} aria-label="Ta commune" maxLength={60} />
+              <datalist id="communes-creer">
+                {[...new Set(world.cities.flatMap((c) => c.communes.map((x) => x.name)))].sort((a, b) => a.localeCompare(b, 'fr')).map((c) => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
+              <label className="flex cursor-pointer items-center gap-3 rounded-xl bg-[var(--color-canvas)] px-3 py-2.5 text-sm font-bold">
+                <input type="checkbox" className="h-5 w-5 shrink-0 accent-[var(--color-orange)]" checked={beta} onChange={(e) => setBeta(e.target.checked)} />
+                Je veux tester le jeu avant tout le monde
+              </label>
+              <input className="hidden" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} aria-hidden />
+              <p className="text-xs font-semibold text-[var(--color-ink-soft)]">Dans ta commune si tu la donnes, sinon quelque part à Abidjan. Ton contact sert seulement à te prévenir de l'ouverture.</p>
+            </div>
+          )}
+
+          {current.id === 'home' && !waitlist && (
             <div className="space-y-3">
               <p className="text-sm font-bold text-[var(--color-ink-soft)]">
                 {sim.firstName || 'Ton Sim'} naît bébé <b>là où tu es</b> : à la naissance, le jeu demande ta position et choisit la commune la plus proche (seule la commune est gardée, jamais ta position). Sans position, ou loin des villes du jeu, c'est quelque part à Abidjan. Puis {sim.firstName || 'ton Sim'} grandit : enfant à 3 ans, ado à 12, adulte à 18 (une année de jeu dure 8 heures). La famille est tirée au sort, comme dans la vraie vie, et chaque commune a ses quartiers riches et pauvres.
@@ -360,7 +407,12 @@ export function CreateSim() {
           )}
         </footer>
       </section>
-      {born && <FamilyReveal family={born.family} commune={born.commune} located={born.located} name={sim.firstName} housing={world.housings.find((h) => h.id === born.family.housing)?.label ?? ''} onGo={() => navigate('/jeu', { viewTransition: true })} />}
+      {born && registered === null && <FamilyReveal family={born.family} commune={born.commune} located={born.located} name={sim.firstName} look={sim.look} gender={sim.gender} housing={world.housings.find((h) => h.id === born.family.housing)?.label ?? ''} onGo={() => navigate('/jeu', { viewTransition: true })} />}
+      {born && registered !== null && (
+        <FamilyReveal family={born.family} commune={born.commune} located name={sim.firstName} look={sim.look} gender={sim.gender} housing={world.housings.find((h) => h.id === born.family.housing)?.label ?? ''} go="Entrer dans Babi" onGo={() => setEntering(true)} />
+      )}
+      {/* Wanting in: the game isn't open yet, they're on the list */}
+      {entering && <Registered name={sim.firstName} contact={contact} count={registered ?? 0} onBack={() => navigate('/liste')} />}
     </div>
   )
 }
@@ -418,19 +470,23 @@ function whereAmI(): Promise<{ lat: number; lng: number } | null> {
   })
 }
 
-function FamilyReveal({ family, commune, located, name, housing, onGo }: { family: Family; commune: string; located: boolean; name: string; housing: string; onGo: () => void }) {
+function FamilyReveal({ family, commune, located, name, look, gender, housing, go, onGo }: { family: Family; commune: string; located: boolean; name: string; look: Look; gender: NewSim['gender']; housing: string; go?: string; onGo: () => void }) {
   const colors = FAMILY_COLORS[family.id] ?? ['#ffa040', '#ff6a00']
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-[#0f1230]/70 p-4 backdrop-blur-[4px]">
-      <div className="card animate-pop w-full max-w-sm overflow-hidden text-center">
-        <div className="relative px-5 pt-6 pb-5 text-white" style={{ background: `radial-gradient(120% 100% at 50% 0%, ${colors[0]}, ${colors[1]})` }}>
-          <div className="label !text-white/85">C'est un bébé !</div>
-          <div className="mt-3 flex justify-center">
-            <IconTile icon={iconFor(family.icon)} colors={['#ffffff55', '#ffffff22']} size={84} radius={28} />
+    <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-[#0f1230]/70 p-4 backdrop-blur-[4px]">
+      <div className="card animate-pop w-full max-w-md overflow-hidden text-center">
+        {/* The family at home: papa, maman and the baby */}
+        <div className="relative h-[290px] text-white" style={{ background: `radial-gradient(120% 100% at 50% 0%, ${colors[0]}, ${colors[1]})` }}>
+          <FamilyScene familyId={family.id} look={look} gender={gender} className="!absolute inset-0" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-black/45 to-transparent px-5 pt-4 pb-8">
+            <div className="label !text-white/90">C'est un bébé !</div>
+            <div className="mt-1 flex items-center justify-center gap-2 font-display text-[28px] leading-none font-extrabold [text-shadow:0_2px_0_rgba(0,0,0,0.25)]">
+              <IconTile icon={iconFor(family.icon)} colors={['#ffffff55', '#ffffff22']} size={34} radius={12} />
+              Famille {family.label.toLowerCase()}
+            </div>
           </div>
-          <div className="mt-3 font-display text-[30px] leading-none font-extrabold">Famille {family.label.toLowerCase()}</div>
-          <p className="mt-2 text-sm leading-snug font-bold text-white/95">{family.hint}</p>
         </div>
+        <p className="px-5 pt-4 text-sm leading-snug font-bold text-[var(--color-ink-soft)]">{family.hint}</p>
         <ul className="space-y-2 p-4 text-left">
           <Fact label="Né·e à" value={commune} />
           {!located && <li className="px-1 text-xs font-bold text-[var(--color-ink-soft)]">Position non partagée : naissance quelque part à Abidjan.</li>}
@@ -441,9 +497,33 @@ function FamilyReveal({ family, commune, located, name, housing, onGo }: { famil
         </ul>
         <div className="px-4 pb-4">
           <button className="btn w-full" onClick={onGo}>
-            Bienvenue au monde, {name} !
+            {go ?? `Bienvenue au monde, ${name} !`}
           </button>
         </div>
+      </div>
+    </div>
+  )
+}
+
+/** The game isn't open yet: they're on the list, and their Sim will be waiting. */
+function Registered({ name, contact, count, onBack }: { name: string; contact: string; count: number; onBack: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[60] grid place-items-center bg-[#0f1230]/80 p-4 backdrop-blur-[6px]" role="dialog" aria-modal="true" aria-labelledby="registered-title">
+      <div className="card animate-pop motion-stagger flex w-full max-w-sm flex-col items-center gap-3 p-5 text-center">
+        <span className="grid h-16 w-16 place-items-center rounded-full bg-[var(--color-emerald)] text-white">
+          <Check size={34} strokeWidth={3} />
+        </span>
+        <h2 id="registered-title" className="font-display text-2xl leading-tight font-extrabold">
+          Tu es inscrit·e, {name} !
+        </h2>
+        <p className="text-sm font-semibold text-[var(--color-ink-soft)]">
+          Babi Life n'est pas encore ouvert. On te prévient sur <b className="text-[var(--color-ink)]">{contact.trim()}</b> dès que le jeu est prêt : ton Sim et sa famille t'attendront.
+          {count > 1 && ` Vous êtes déjà ${count.toLocaleString('fr-FR')} sur la liste.`}
+        </p>
+        <Share />
+        <button className="text-sm font-extrabold text-[var(--color-ink-soft)] hover:underline" onClick={onBack}>
+          Retour à l'accueil
+        </button>
       </div>
     </div>
   )

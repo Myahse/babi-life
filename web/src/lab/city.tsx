@@ -13,6 +13,7 @@ import { Landmark } from '../world3d/open/landmarks'
 import { SportField } from '../world3d/open/field'
 import { FuelStation } from '../world3d/open/station'
 import { freezeWorldTime } from '../lib/worldClock'
+import { FamilyScene } from '../avatar/Family'
 import { Arena } from '../world3d/interior/Arena'
 import { fetchChunk } from '../world3d/open/tiles'
 import { CHUNK_ZOOM, tileOf, type Origin } from '../world3d/open/geo'
@@ -30,6 +31,8 @@ import { BridgeLife } from '../world3d/open/bridgeLife'
 import { randomLook } from '../avatar/options'
 import type { Sim } from '../lib/types'
 
+const seededLab = (n: number) => () => ((n = (n * 16807) % 2147483647) / 2147483647)
+
 // Dev-only lab (/city.html): made-up map buildings (turned, L-shaped, round,
 // tiny) put through the real chunk builder, as the open world draws them, and
 // the street's vehicles; ?view=cars for the vehicles up close;
@@ -39,6 +42,7 @@ import type { Sim } from '../lib/types'
 // ?view=gbaka&t=… the apprenti's chase down a straight street (t: seconds
 // into the cycle, frozen; without t it plays);
 // ?view=field&sport=foot|basket (&len=40&wid=20 &night &t=) a pitch or a court and its match;
+// ?view=family&f=gnambro (&g=homme &seed=3) a family at the birth, in front of its home;
 // ?view=interior&kind=home&id=sleep (&housing=villa &g=homme &stage=bebe
 // &seed=3 &night) the inside of a place, the Sim doing that activity;
 // (&kind=arena: the Palais des Sports, id=play-basket|watch-match);
@@ -391,6 +395,7 @@ function Lab() {
   if (view === 'dressing' || view === 'police') return <FrontLab />
   if (view === 'outdoor') return <OutdoorLab />
   if (view === 'field') return <FieldLab />
+  if (view === 'family') return <FamilyScene familyId={q.get('f') ?? 'gnambro'} look={randomLook((q.get('g') ?? 'femme') as 'femme', seededLab(Number(q.get('seed') ?? 3)))} gender={(q.get('g') ?? 'femme') as 'femme'} className="!h-screen !w-screen" />
   if (view === 'interior') return <InteriorLab />
   if (view === 'gbaka') return <GbakaLab />
   if (view === 'landmark') return <LandmarkLab />

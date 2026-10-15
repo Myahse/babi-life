@@ -149,6 +149,7 @@ export const DEFAULT_LOOK: Look = {
   shoeColor: '',
   accessoryColor: '',
   marks: 'none',
+  wear: 'neuf',
 }
 
 /** The model's height at scale 1, in metres. */
@@ -192,6 +193,7 @@ export function randomLook(gender: 'femme' | 'homme', random: () => number = Mat
     shoeColor: '',
     accessoryColor: '',
     marks: random() < 0.12 ? pick(MARKS.slice(1)).id : 'none',
+    wear: 'neuf',
   }
 }
 
