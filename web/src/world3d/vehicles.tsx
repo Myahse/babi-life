@@ -3,21 +3,15 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { Human, NoShadows } from '../avatar/Human'
 import { randomLook } from '../avatar/options'
-import { Mat } from './props'
 
 // Abidjan's traffic, modelled on what drives there: the woro-woro and the
 // orange taxi compteur are small saloons (Corolla-style), the gbaka a Hiace-
 // type minibus with its roof rack and its apprenti at the open door, private
 // cars are saloons or SUVs, and the motos the cheap Chinese bikes, with their
-// rider. Bodies are side profiles extruded across the width. Real size, in
-// metres, nose towards +x.
+// rider. All in blocks, like the Sims and the buildings: Minecraft style.
+// Real size, in metres, nose towards +x.
 
 export type VehicleKind = 'taxi' | 'woro' | 'gbaka' | 'car' | 'moto'
-
-type Pt = [number, number]
-type Model = { body: THREE.BufferGeometry; glass: THREE.BufferGeometry; len: number; wide: number; wheelX: number; wheelR: number; pillars: number[] }
-
-const cache = new Map<string, Model>()
 
 // Shared by every vehicle: their lights come on at night (setVehicleNight),
 // with a pool of light on the road ahead.
@@ -38,77 +32,47 @@ export function setVehicleNight(night: boolean) {
   BEAM.visible = night
 }
 
-/** Car paint: smooth and a little glossy, it catches the sun. */
-function Paint({ color }: { color: string }) {
-  return <meshPhongMaterial color={color} shininess={60} specular="#7a7a7a" />
-}
+/* ---------- Everything in blocks, like Minecraft ---------- */
 
-function extrude(points: Pt[], depth: number, bevel = 0.05) {
-  const shape = new THREE.Shape(points.map(([x, y]) => new THREE.Vector2(x, y)))
-  const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: bevel > 0, bevelSize: bevel, bevelThickness: bevel, bevelSegments: 2, curveSegments: 4 })
-  g.translate(0, 0, -depth / 2)
-  g.computeVertexNormals()
-  return g
-}
-
-function model(type: 'saloon' | 'suv' | 'minibus'): Model {
-  const hit = cache.get(type)
-  if (hit) return hit
-  let m: Model
-  if (type === 'saloon') {
-    // Boot, rear window, roof, windscreen, bonnet.
-    const wide = 1.66
-    m = {
-      len: 4.4,
-      wide,
-      wheelX: 1.32,
-      wheelR: 0.31,
-      pillars: [-0.28],
-      body: extrude([[-2.2, 0.32], [-2.2, 0.82], [-2.08, 0.95], [-1.35, 1.0], [-0.85, 1.42], [0.32, 1.44], [0.98, 1.0], [2.04, 0.86], [2.2, 0.66], [2.2, 0.32]], wide),
-      glass: extrude([[-1.28, 1.02], [-0.82, 1.38], [0.3, 1.4], [0.93, 1.02]], wide + 0.2, 0),
+const UNIT = new THREE.BoxGeometry(1, 1, 1)
+/** A little pixel grain on the paint, so a flat colour reads as a block. */
+const GRAIN = (() => {
+  const c = document.createElement('canvas')
+  c.width = c.height = 8
+  const g = c.getContext('2d')!
+  for (let y = 0; y < 8; y++)
+    for (let x = 0; x < 8; x++) {
+      const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453
+      const v = 225 + Math.floor((n - Math.floor(n)) * 30)
+      g.fillStyle = `rgb(${v},${v},${v})`
+      g.fillRect(x, y, 1, 1)
     }
-  } else if (type === 'suv') {
-    const wide = 1.82
-    m = {
-      len: 4.6,
-      wide,
-      wheelX: 1.45,
-      wheelR: 0.37,
-      pillars: [-1.0, 0.05],
-      body: extrude([[-2.3, 0.42], [-2.3, 1.05], [-2.22, 1.78], [0.62, 1.8], [1.25, 1.12], [2.24, 0.98], [2.3, 0.78], [2.3, 0.42]], wide),
-      glass: extrude([[-2.15, 1.18], [-2.1, 1.7], [0.58, 1.72], [1.15, 1.14]], wide + 0.2, 0),
-    }
-  } else {
-    // A Hiace-type minibus: box body, short sloping nose.
-    const wide = 1.9
-    m = {
-      len: 5.3,
-      wide,
-      wheelX: 1.75,
-      wheelR: 0.34,
-      pillars: [-1.6, -0.5, 0.6],
-      body: extrude([[-2.65, 0.38], [-2.65, 2.0], [1.9, 2.02], [2.55, 1.2], [2.65, 0.95], [2.65, 0.38]], wide, 0.06),
-      glass: extrude([[-2.5, 1.28], [-2.5, 1.86], [1.84, 1.88], [2.42, 1.28]], wide + 0.2, 0),
-    }
-  }
-  cache.set(type, m)
+  const t = new THREE.CanvasTexture(c)
+  t.magFilter = t.minFilter = THREE.NearestFilter
+  t.generateMipmaps = false
+  t.colorSpace = THREE.SRGBColorSpace
+  return t
+})()
+const paints = new Map<string, THREE.Material>()
+/** Paint for a colour, shared by every vehicle of that colour. */
+const paint = (color: string) => {
+  let m = paints.get(color)
+  if (!m) paints.set(color, (m = new THREE.MeshLambertMaterial({ color, map: GRAIN })))
   return m
 }
+type V3 = [number, number, number]
+/** One block: centre and size, in metres. */
+const K = ({ p, s, m, cast = true }: { p: V3; s: V3; m: THREE.Material; cast?: boolean }) => <mesh geometry={UNIT} material={m} position={p} scale={s} castShadow={cast} />
 
-function Wheels({ x, r, wide }: { x: number; r: number; wide: number }) {
+/** Square wheels, a lighter hub on the outside. */
+function Wheels({ x, r, wide }: { x: number[]; r: number; wide: number }) {
   return (
     <>
-      {[-1, 1].flatMap((sx) =>
+      {x.flatMap((wx) =>
         [-1, 1].map((sz) => (
-          <group key={`${sx}${sz}`} position={[sx * x, r, sz * (wide / 2 - 0.06)]} rotation={[Math.PI / 2, 0, 0]}>
-            <mesh>
-              <cylinderGeometry args={[r, r, 0.22, 14]} />
-              <Mat color="#1b1b20" />
-            </mesh>
-            <mesh position={[0, sz * -0.115, 0]}>
-              <cylinderGeometry args={[r * 0.55, r * 0.55, 0.02, 12]} />
-              <Mat color="#c3c7cf" />
-            </mesh>
+          <group key={`${wx}${sz}`} position={[wx, r, sz * (wide / 2 - 0.1)]}>
+            <K p={[0, 0, 0]} s={[r * 2, r * 2, 0.3]} m={paint('#1b1b20')} cast={false} />
+            <K p={[0, 0, sz * 0.16]} s={[r, r, 0.02]} m={paint('#c3c7cf')} cast={false} />
           </group>
         )),
       )}
@@ -116,82 +80,50 @@ function Wheels({ x, r, wide }: { x: number; r: number; wide: number }) {
   )
 }
 
-/** Lights, bumpers, plates and mirrors, at both ends. */
-function Trim({ len, wide, y, mirrorX, mirrorY }: { len: number; wide: number; y: number; mirrorX: number; mirrorY: number }) {
+/** Lights, bumpers and plates at both ends, mirrors, the beam at night. */
+function Ends({ len, wide, y, mirror }: { len: number; wide: number; y: number; mirror: [number, number] }) {
   const h = len / 2
   return (
     <>
-      {/* Bumpers */}
       {[-1, 1].map((s) => (
-        <mesh key={s} position={[s * (h + 0.04), 0.42, 0]}>
-          <boxGeometry args={[0.1, 0.2, wide - 0.08]} />
-          <Mat color="#2b2f36" />
-        </mesh>
-      ))}
-      {/* Headlights and tail lights */}
-      {[-1, 1].map((sz) => (
-        <group key={sz}>
-          <mesh position={[h + 0.03, y, sz * (wide / 2 - 0.25)]} material={HEAD}>
-            <boxGeometry args={[0.06, 0.13, 0.3]} />
-          </mesh>
-          <mesh position={[-h - 0.03, y, sz * (wide / 2 - 0.22)]} material={TAIL}>
-            <boxGeometry args={[0.06, 0.12, 0.26]} />
-          </mesh>
-          {/* Mirrors */}
-          <mesh position={[mirrorX, mirrorY, sz * (wide / 2 + 0.1)]}>
-            <boxGeometry args={[0.12, 0.1, 0.12]} />
-            <Mat color="#1b1b20" />
-          </mesh>
+        <group key={s}>
+          <K p={[s * (h + 0.05), 0.42, 0]} s={[0.1, 0.2, wide]} m={paint('#2b2f36')} cast={false} />
+          <K p={[s * (h + 0.11), 0.42, 0]} s={[0.02, 0.12, 0.42]} m={paint('#f4f4f4')} cast={false} />
+          <K p={[h + 0.03, y, s * (wide / 2 - 0.25)]} s={[0.06, 0.16, 0.3]} m={HEAD} cast={false} />
+          <K p={[-h - 0.03, y, s * (wide / 2 - 0.22)]} s={[0.06, 0.16, 0.28]} m={TAIL} cast={false} />
+          <K p={[mirror[0], mirror[1], s * (wide / 2 + 0.1)]} s={[0.14, 0.12, 0.14]} m={paint('#1b1b20')} cast={false} />
         </group>
       ))}
-      {/* At night, the headlights' pool of light on the road ahead */}
+      <K p={[h + 0.035, y - 0.05, 0]} s={[0.04, 0.18, 0.6]} m={paint('#1b1b20')} cast={false} />
       <mesh geometry={BEAM_GEO} material={BEAM} position={[h + 0.2, 0.08, 0]} />
-      {/* Grille and plates (white, black letters) */}
-      <mesh position={[h + 0.035, y - 0.05, 0]}>
-        <boxGeometry args={[0.04, 0.16, 0.6]} />
-        <Mat color="#1b1b20" />
-      </mesh>
-      {[-1, 1].map((s) => (
-        <mesh key={s} position={[s * (h + 0.1), 0.42, 0]}>
-          <boxGeometry args={[0.02, 0.11, 0.42]} />
-          <Mat color="#f4f4f4" />
-        </mesh>
-      ))}
     </>
   )
 }
 
+/** A saloon (taxi, woro-woro) or an SUV: a chassis block, a cabin block, glass all round. */
 function Car4({ type, body, trim, roofSign }: { type: 'saloon' | 'suv'; body: string; trim?: string; roofSign?: boolean }) {
-  const m = model(type)
+  const suv = type === 'suv'
+  const [len, wide, r] = suv ? [4.6, 1.82, 0.38] : [4.4, 1.66, 0.32]
+  const [c0, c1] = suv ? [0.4, 1.1] : [0.32, 0.88] // chassis, bottom and top
+  const [cabLen, cabX, cabTop] = suv ? [3.0, -0.55, 1.8] : [2.2, -0.25, 1.44]
+  const p = paint(body)
   return (
     <group>
-      <mesh geometry={m.body} castShadow>
-        <Paint color={body} />
-      </mesh>
-      <mesh geometry={m.glass} material={GLASS} />
-      {/* Door pillars over the glass */}
-      {m.pillars.map((x) => (
-        <mesh key={x} position={[x, type === 'suv' ? 1.44 : 1.2, 0]}>
-          <boxGeometry args={[0.1, type === 'suv' ? 0.56 : 0.4, m.wide + 0.22]} />
-          <Mat color={body} />
-        </mesh>
+      <K p={[0, (c0 + c1) / 2, 0]} s={[len, c1 - c0, wide]} m={p} />
+      <K p={[cabX, (c1 + cabTop) / 2, 0]} s={[cabLen, cabTop - c1, wide - 0.16]} m={p} />
+      {/* Glass: the sides, the windscreen, the rear window, and the pillars between */}
+      <K p={[cabX, (c1 + cabTop) / 2 + 0.01, 0]} s={[cabLen - 0.3, (cabTop - c1) * 0.72, wide - 0.12]} m={GLASS} cast={false} />
+      <K p={[cabX + cabLen / 2 + 0.005, (c1 + cabTop) / 2 + 0.01, 0]} s={[0.02, (cabTop - c1) * 0.72, wide - 0.4]} m={GLASS} cast={false} />
+      {!suv && <K p={[cabX - cabLen / 2 - 0.005, (c1 + cabTop) / 2 + 0.01, 0]} s={[0.02, (cabTop - c1) * 0.72, wide - 0.4]} m={GLASS} cast={false} />}
+      {(suv ? [-1.15, 0.05] : [-0.28]).map((x) => (
+        <K key={x} p={[cabX + x + (suv ? 0.55 : 0.25), (c1 + cabTop) / 2, 0]} s={[0.14, cabTop - c1, wide - 0.1]} m={p} cast={false} />
       ))}
       {/* A woro-woro's lower band in a second colour (Abobo, Port-Bouët) */}
-      {trim && (
-        <mesh position={[0, 0.42, 0]}>
-          <boxGeometry args={[m.len - 0.15, 0.2, m.wide + 0.16]} />
-          <Mat color={trim} />
-        </mesh>
-      )}
+      {trim && <K p={[0, c0 + 0.12, 0]} s={[len + 0.02, 0.2, wide + 0.02]} m={paint(trim)} cast={false} />}
       {/* The taxi compteur's sign */}
-      {roofSign && (
-        <mesh position={[-0.25, 1.57, 0]}>
-          <boxGeometry args={[0.55, 0.18, 0.3]} />
-          <Mat color="#ffe066" emissive="#ffe066" intensity={0.3} />
-        </mesh>
-      )}
-      <Wheels x={m.wheelX} r={m.wheelR} wide={m.wide} />
-      <Trim len={m.len} wide={m.wide} y={type === 'suv' ? 0.85 : 0.72} mirrorX={type === 'suv' ? 1.1 : 0.9} mirrorY={type === 'suv' ? 1.18 : 1.02} />
+      {roofSign && <K p={[cabX, cabTop + 0.1, 0]} s={[0.55, 0.2, 0.32]} m={HEAD} cast={false} />}
+      <Wheels x={suv ? [-1.45, 1.45] : [-1.32, 1.32]} r={r} wide={wide} />
+      <Ends len={len} wide={wide} y={suv ? 0.85 : 0.68} mirror={suv ? [1.0, 1.2] : [0.85, 1.0]} />
     </group>
   )
 }
@@ -200,47 +132,34 @@ function Car4({ type, body, trim, roofSign }: { type: 'saloon' | 'suv'; body: st
 // waving at people on the sidewalk.
 const APPRENTI = { ...randomLook('homme', () => 0.37), outfit: 'jersey', outfitColor: '#ff8200', hair: 'short', accessory: 'capback' }
 
+/** The gbaka, a Hiace-type minibus: one tall block, its windows, the open door, a loaded roof rack. */
 function Gbaka({ body, stripe }: { body: string; stripe: string }) {
-  const m = model('minibus')
+  const [len, wide] = [5.3, 1.9]
+  const p = paint(body)
   return (
     <group>
-      <mesh geometry={m.body} castShadow>
-        <Paint color={body} />
-      </mesh>
-      <mesh geometry={m.glass} material={GLASS} />
-      {m.pillars.map((x) => (
-        <mesh key={x} position={[x, 1.57, 0]}>
-          <boxGeometry args={[0.1, 0.6, m.wide + 0.22]} />
-          <Mat color={body} />
-        </mesh>
+      <K p={[0, 1.2, 0]} s={[len, 1.6, wide]} m={p} />
+      {/* The windows down both sides and the windscreen, the pillars between */}
+      <K p={[-0.3, 1.6, 0]} s={[len - 1.1, 0.55, wide + 0.02]} m={GLASS} cast={false} />
+      <K p={[len / 2 + 0.005, 1.6, 0]} s={[0.02, 0.55, wide - 0.3]} m={GLASS} cast={false} />
+      {[-1.6, -0.5].map((x) => (
+        <K key={x} p={[x, 1.6, 0]} s={[0.14, 0.6, wide + 0.04]} m={p} cast={false} />
       ))}
       {/* The painted band along the side */}
-      <mesh position={[-0.2, 1.08, 0]}>
-        <boxGeometry args={[m.len - 0.5, 0.18, m.wide + 0.16]} />
-        <Mat color={stripe} />
-      </mesh>
+      <K p={[-0.2, 1.08, 0]} s={[len - 0.5, 0.18, wide + 0.04]} m={paint(stripe)} cast={false} />
       {/* The sliding door, always open */}
-      <mesh position={[0.95, 1.1, m.wide / 2 + 0.08]}>
-        <boxGeometry args={[0.95, 1.45, 0.04]} />
-        <Mat color="#151820" />
-      </mesh>
+      <K p={[0.95, 1.12, wide / 2 + 0.01]} s={[0.95, 1.45, 0.04]} m={paint('#151820')} cast={false} />
       {/* Roof rack and luggage */}
       {[-1, 1].map((s) => (
-        <mesh key={s} position={[-0.4, 2.12, s * 0.8]}>
-          <boxGeometry args={[3.6, 0.06, 0.06]} />
-          <Mat color="#3a3f4b" />
-        </mesh>
+        <K key={s} p={[-0.4, 2.06, s * 0.8]} s={[3.6, 0.08, 0.08]} m={paint('#3a3f4b')} cast={false} />
       ))}
-      {[[-1.5, '#7a5230', 0.5], [-0.6, '#2a6cf0', 0.35], [0.4, '#c92a2a', 0.45]].map(([x, c, h]) => (
-        <mesh key={x as number} position={[x as number, 2.08 + (h as number) / 2, 0]}>
-          <boxGeometry args={[0.8, h as number, 1.2]} />
-          <Mat color={c as string} />
-        </mesh>
+      {([[-1.5, '#7a5230', 0.5], [-0.6, '#2a6cf0', 0.35], [0.4, '#c92a2a', 0.45]] as const).map(([x, c, h]) => (
+        <K key={x} p={[x, 2.1 + h / 2, 0]} s={[0.8, h, 1.2]} m={paint(c)} />
       ))}
-      <Wheels x={m.wheelX} r={m.wheelR} wide={m.wide} />
-      <Trim len={m.len} wide={m.wide} y={0.82} mirrorX={2.2} mirrorY={1.3} />
+      <Wheels x={[-1.75, 1.75]} r={0.36} wide={wide} />
+      <Ends len={len} wide={wide} y={0.82} mirror={[2.2, 1.3]} />
       <NoShadows>
-        <group position={[1.0, 0.55, m.wide / 2 + 0.32]} rotation={[0, Math.PI / 2, -0.22]}>
+        <group position={[1.0, 0.55, wide / 2 + 0.32]} rotation={[0, Math.PI / 2, -0.22]}>
           <Human look={APPRENTI} gender="homme" pose="wave" seed={2} />
         </group>
       </NoShadows>
@@ -250,46 +169,24 @@ function Gbaka({ body, stripe }: { body: string; stripe: string }) {
 
 const RIDER = { ...randomLook('homme', () => 0.81), outfit: 'casual', accessory: 'cap' }
 
+/** A moto: square wheels, a frame, the tank, the seat, the bars, and its rider. */
 function Moto({ color }: { color: string }) {
+  const dark = paint('#1b1b20')
+  const metal = paint('#c3c7cf')
   return (
     <group>
       {[-0.62, 0.62].map((x) => (
-        <group key={x} position={[x, 0.3, 0]} rotation={[Math.PI / 2, 0, 0]}>
-          <mesh>
-            <cylinderGeometry args={[0.3, 0.3, 0.1, 14]} />
-            <Mat color="#1b1b20" />
-          </mesh>
-          <mesh>
-            <cylinderGeometry args={[0.12, 0.12, 0.11, 8]} />
-            <Mat color="#c3c7cf" />
-          </mesh>
+        <group key={x} position={[x, 0.3, 0]}>
+          <K p={[0, 0, 0]} s={[0.6, 0.6, 0.12]} m={dark} />
+          <K p={[0, 0, 0]} s={[0.26, 0.26, 0.14]} m={metal} cast={false} />
         </group>
       ))}
-      {/* Frame, tank, seat, fork, handlebar, headlight */}
-      <mesh position={[0, 0.55, 0]} rotation={[0, 0, 0.12]}>
-        <boxGeometry args={[1.05, 0.12, 0.12]} />
-        <Mat color="#3a3f4b" />
-      </mesh>
-      <mesh position={[0.18, 0.78, 0]}>
-        <boxGeometry args={[0.45, 0.22, 0.3]} />
-        <Mat color={color} />
-      </mesh>
-      <mesh position={[-0.32, 0.8, 0]}>
-        <boxGeometry args={[0.6, 0.1, 0.28]} />
-        <Mat color="#1b1b20" />
-      </mesh>
-      <mesh position={[0.56, 0.72, 0]} rotation={[0, 0, -0.35]}>
-        <boxGeometry args={[0.06, 0.8, 0.06]} />
-        <Mat color="#c3c7cf" />
-      </mesh>
-      <mesh position={[0.68, 1.08, 0]}>
-        <boxGeometry args={[0.06, 0.05, 0.66]} />
-        <Mat color="#1b1b20" />
-      </mesh>
-      <mesh position={[0.74, 0.92, 0]}>
-        <boxGeometry args={[0.08, 0.12, 0.16]} />
-        <Mat color="#fff6cc" emissive="#fff6cc" intensity={0.6} />
-      </mesh>
+      <K p={[0, 0.55, 0]} s={[1.05, 0.14, 0.14]} m={paint('#3a3f4b')} />
+      <K p={[0.18, 0.78, 0]} s={[0.45, 0.24, 0.32]} m={paint(color)} />
+      <K p={[-0.32, 0.8, 0]} s={[0.6, 0.12, 0.3]} m={dark} />
+      <K p={[0.56, 0.72, 0]} s={[0.08, 0.8, 0.08]} m={metal} cast={false} />
+      <K p={[0.68, 1.1, 0]} s={[0.08, 0.06, 0.66]} m={dark} cast={false} />
+      <K p={[0.74, 0.92, 0]} s={[0.1, 0.14, 0.18]} m={HEAD} cast={false} />
       {/* The rider, seated, hands on the bars */}
       <NoShadows>
         <group position={[-0.25, 0.42, 0]} rotation={[0, Math.PI / 2, 0]}>
