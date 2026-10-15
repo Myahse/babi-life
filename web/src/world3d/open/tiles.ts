@@ -2,6 +2,7 @@ import { VectorTile, classifyRings } from '@mapbox/vector-tile'
 import Pbf from 'pbf'
 import type { Poi } from './poiMatch'
 import { CHUNK_ZOOM, centroid, clipLine, clipRing, hash, pointInRing, tileBox, tilePoint, toLocal, type Box, type Origin, type XZ } from './geo'
+import { blockRing } from './voxel'
 
 // A chunk of the open world: one map tile of real Abidjan (OpenStreetMap data
 // served by Mapbox), turned into game metres. Roads keep their class (a
@@ -114,7 +115,8 @@ export function decodeChunk(o: Origin, tx: number, ty: number, data: Uint8Array,
       if (c[0] < box.x0 || c[0] >= box.x1 || c[1] < box.z0 || c[1] >= box.z1) continue
       const h = Number(f.properties.height) || 0
       const height = Math.max(BLOCK, Math.round((h || BLOCK * (1 + Math.floor(hash(c[0], c[1]) * 3))) / BLOCK) * BLOCK)
-      chunk.buildings.push({ ring: open(ring), holes: poly.slice(1).map((r) => open(r.map(xz))), height, c, tint: hash(c[1], c[0]) })
+      // In blocks, like Minecraft: the outline laid on the world's grid (voxel.ts).
+      chunk.buildings.push({ ring: blockRing(open(ring), poly.slice(1).map((r) => open(r.map(xz))), c), holes: [], height, c, tint: hash(c[1], c[0]) })
     }
   }
 

@@ -3,6 +3,7 @@ import { Builder } from './builder'
 import { hash, pointInRing, type XZ } from './geo'
 import { BLOCK, type Building } from './tiles'
 import { ATLAS } from './textures'
+import { CELL } from './voxel'
 
 // A real building made to read as a building: a darker plinth, a ground
 // floor of shops (metal shutters) or of a house (door, window), storeys
@@ -221,42 +222,20 @@ export function addBuilding(B: BuildingBuilders, bd: Building, style: Style = 'd
   for (let y = BLOCK; y < H; y += BLOCK) band(B.trim, ring, y - 0.12, y + 0.1, 0.14, ledge, false)
 
   if (pitched) {
-    // A sloping tin roof along the long side, with its gables.
+    // A tin roof in steps, like Minecraft's stairs: each layer half a block
+    // up and half a block in from both long sides, overhanging the walls.
     let { w, d, angle } = rect
     if (d > w) {
       ;[w, d] = [d, w]
       angle += Math.PI / 2
     }
-    const [c, s] = [Math.cos(angle), Math.sin(angle)]
-    const at = (u: number, v: number): XZ => [rect.cx + u * c - v * s, rect.cz + u * s + v * c]
-    const rise = Math.max(0.8, Math.min(2.4, d * 0.3))
-    const o = 0.45
-    const drop = (o * rise) / (d / 2)
-    for (const side of [1, -1]) {
-      const [e1, e2, r1p, r2p] = [at(-w / 2 - o, side * (d / 2 + o)), at(w / 2 + o, side * (d / 2 + o)), at(w / 2 + o, 0), at(-w / 2 - o, 0)]
-      const slope = Math.hypot(d / 2 + o, rise + drop)
-      const ny = (d / 2) / Math.hypot(d / 2, rise)
-      const nh = rise / Math.hypot(d / 2, rise)
-      const n: [number, number, number] = [-s * side * nh, ny, c * side * nh]
-      const ids = [
-        B.tin.vertex(e1[0], H - drop, e1[1], 0, 0, n),
-        B.tin.vertex(e2[0], H - drop, e2[1], (w + 2 * o) / 2, 0, n),
-        B.tin.vertex(r1p[0], H + rise, r1p[1], (w + 2 * o) / 2, slope / 2, n),
-        B.tin.vertex(r2p[0], H + rise, r2p[1], 0, slope / 2, n),
-      ]
-      B.tin.facing(n, ids[0], ids[1], ids[2])
-      B.tin.facing(n, ids[0], ids[2], ids[3])
+    const step = CELL / 2
+    const o = step
+    const tin = new THREE.Color('#ffffff')
+    for (let k = 0, depth = d + 2 * o; depth > step / 2; k++, depth -= 2 * step) {
+      B.tin.box(rect.cx, H + k * step + step / 2, rect.cz, w + 2 * o, step, depth, angle, tin)
     }
-    for (const end of [1, -1]) {
-      const [a, b, top] = [at(end * w / 2, -d / 2), at(end * w / 2, d / 2), at(end * w / 2, 0)]
-      const n: [number, number, number] = [c * end, 0, s * end]
-      const g = tint.clone().multiplyScalar(0.95)
-      const ia = B.trim.vertex(a[0], H, a[1], 0, 0, n, g)
-      const ib = B.trim.vertex(b[0], H, b[1], 1, 0, n, g)
-      const it = B.trim.vertex(top[0], H + rise, top[1], 0.5, 1, n, g)
-      B.trim.facing(n, ia, ib, it)
-    }
-    // Under the eaves, a flat ceiling keeps the house closed.
+    // The gable ends, in the wall's colour, under the steps.
     B.trim.flat([ring], H, 1, tint.clone().multiplyScalar(0.6))
   } else {
     // Flat roof behind a parapet.
@@ -371,11 +350,11 @@ function rooftop(b: Builder, inner: XZ[], H: number, c: XZ, size: number) {
   const rot = hash(c[1], c[0]) * Math.PI
   if (t1) {
     b.box(t1[0], H + 0.25, t1[1], 1.5, 0.5, 1.5, rot, SLAB)
-    b.cylinder(t1[0], H + 0.5, t1[1], 0.62, 1.3, hash(c[0], 9) < 0.8 ? TANK : TANK_BLUE)
+    b.cylinder(t1[0], H + 0.5, t1[1], 0.62, 1.3, hash(c[0], 9) < 0.8 ? TANK : TANK_BLUE, 4)
   }
   if (t2 && size > 14) {
     b.box(t2[0], H + 0.25, t2[1], 1.5, 0.5, 1.5, rot, SLAB)
-    b.cylinder(t2[0], H + 0.5, t2[1], 0.62, 1.3, TANK)
+    b.cylinder(t2[0], H + 0.5, t2[1], 0.62, 1.3, TANK, 4)
   }
   if (a1) b.box(a1[0], H + 0.35, a1[1], 0.9, 0.7, 0.6, rot, AC)
   if (a2 && size > 18) b.box(a2[0], H + 0.35, a2[1], 0.9, 0.7, 0.6, rot + 0.3, AC)
