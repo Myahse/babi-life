@@ -17,6 +17,8 @@ import { useFrame } from '@react-three/fiber'
 import { worldTime } from '../lib/worldClock'
 import { useEffect, useRef, useState } from 'react'
 import { Interior } from '../world3d/Interior'
+import { Character } from '../world3d/Character'
+import { OutdoorAction, outdoorPose } from '../world3d/OutdoorAction'
 import { randomLook } from '../avatar/options'
 import type { Sim } from '../lib/types'
 
@@ -29,7 +31,8 @@ import type { Sim } from '../lib/types'
 // ?view=gbaka&t=… the apprenti's chase down a straight street (t: seconds
 // into the cycle, frozen; without t it plays);
 // ?view=interior&kind=home&id=sleep (&housing=villa &g=homme &stage=bebe
-// &seed=3 &night) the inside of a place, the Sim doing that activity.
+// &seed=3 &night) the inside of a place, the Sim doing that activity;
+// ?view=outdoor&id=play-football an outdoor activity's scene around the Sim.
 
 const q = new URLSearchParams(location.search)
 const view = q.get('view') ?? 'city'
@@ -257,7 +260,30 @@ function InteriorLab() {
   )
 }
 
+function OutdoorLab() {
+  const id = q.get('id') ?? 'play-football'
+  const look = useMemo(() => {
+    let n = Number(q.get('seed') ?? 3)
+    return randomLook('femme', () => ((n = (n * 16807) % 2147483647) / 2147483647))
+  }, [])
+  return (
+    <Canvas shadows dpr={[1, 2]} camera={{ position: [5, 3.2, -4.5], fov: 45 }} style={{ width: '100vw', height: '100vh' }}>
+      <color attach="background" args={['#cfe9f8']} />
+      <hemisphereLight args={['#ffffff', '#b8a27c', 1.2]} />
+      <directionalLight position={[10, 20, 8]} intensity={1.8} castShadow />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[40, 40]} />
+        <meshLambertMaterial color={/swim|sand|fish/.test(id) ? '#e8d5a3' : /foot|basket|match/.test(id) ? '#4e9a4e' : '#b8b2a3'} />
+      </mesh>
+      <Character look={look} gender="femme" busy pose={outdoorPose(id)} />
+      <OutdoorAction id={id} />
+      <OrbitControls target={[0, 0.9, 1.2]} />
+    </Canvas>
+  )
+}
+
 function Lab() {
+  if (view === 'outdoor') return <OutdoorLab />
   if (view === 'interior') return <InteriorLab />
   if (view === 'gbaka') return <GbakaLab />
   if (view === 'landmark') return <LandmarkLab />

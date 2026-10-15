@@ -33,7 +33,7 @@ export type Props = {
   goTo: { placeId: string; nonce: number } | null
   onArrive: (placeId: string) => void
   onPick: (placeId: string) => void
-  busy: { icon: string; kind: string } | null
+  busy: { icon: string; kind: string; /** The activity, to show it (outdoors). */ id?: string } | null
   /** What is going on in the street right now. */
   happening: { id: string; icon: string; label: string } | null
   /** The place the Sim is busy at when the scene opens (it starts there). */

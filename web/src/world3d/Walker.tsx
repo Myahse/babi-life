@@ -7,6 +7,7 @@ import type { Sim } from '../lib/types'
 import { iconFor, kindColors } from '../components/icons'
 import { IconTile } from '../components/ui'
 import { Character } from './Character'
+import { OutdoorAction, outdoorPose } from './OutdoorAction'
 import { HOME_ID, SIDEWALK, type Lot } from './layout'
 import { cameraTurn, moveInput, running } from './input'
 import { whereabouts } from './whereabouts'
@@ -56,7 +57,7 @@ type Props = {
   moodColor: string
   goTo: { placeId: string; nonce: number } | null
   onArrive: (placeId: string) => void
-  busy: { icon: string; kind: string } | null
+  busy: { icon: string; kind: string; /** The activity, to show it (outdoors). */ id?: string } | null
   stationAt: string | null
   nameTag?: string
   labels: boolean
@@ -411,7 +412,9 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       </mesh>
       {route && <RouteDots route={route} from={group} heightAt={nav.heightAt} />}
       <group ref={group}>
-        <Character look={sim.look} gender={sim.gender} walking={walking} running={run} busy={!!busy} pose={busy?.kind === 'chat' ? 'talk' : undefined} moodColor={moodColor} stage={stage} speed={run ? RUN : SPEED} />
+        <Character look={sim.look} gender={sim.gender} walking={walking} running={run} busy={!!busy} pose={busy?.kind === 'chat' ? 'talk' : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={run ? RUN : SPEED} />
+        {/* Outdoors, what the Sim is doing is set around it (the ball, the towel, the bus stop…) */}
+        {busy && !walking && <OutdoorAction id={busy.id} />}
         {labels && nameTag && (
           <Html position={[0, 2.45, 0]} center zIndexRange={[28, 20]}>
             <span className="pointer-events-none rounded-md bg-[#0f1230]/80 px-1.5 py-0.5 text-[11px] font-extrabold whitespace-nowrap text-white">{nameTag}</span>

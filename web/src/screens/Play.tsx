@@ -390,7 +390,7 @@ export function Play() {
             goTo,
             onPick: walkTo,
             onArrive: (id: string) => (setOutside(false), setPlaceId(id)),
-            busy: doing ? { icon: doing.interaction.icon, kind: doing.placeKind ?? '' } : pending,
+            busy: doing ? { icon: doing.interaction.icon, kind: doing.placeKind ?? '', id: doing.interaction.id } : pending,
             stationAt: doing?.placeId ?? null,
             nameTag: user?.username ? `@${user.username}` : sim.firstName,
             happening,
