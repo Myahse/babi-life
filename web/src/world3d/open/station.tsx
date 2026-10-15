@@ -66,7 +66,7 @@ export function FuelStation({ s, night }: { s: Station; night: boolean }) {
   return (
     <group position={[s.at[0], 0, s.at[1]]} rotation={[0, -s.angle, 0]}>
       {/* The forecourt */}
-      <mesh geometry={BOX} material={concrete} position={[0, 0.03, z(3)]} scale={[22, 0.04, 17]} receiveShadow />
+      <mesh geometry={BOX} material={concrete} position={[0, 0.03, z(s.shop ? 3.5 : 0)]} scale={[15, 0.04, s.shop ? 18 : 11]} receiveShadow />
       {/* The canopy: four pillars, the roof with its band in the brand's colours, lit underneath */}
       {[-5, 5].map((x) =>
         [-2.8, 2.8].map((v) => (
@@ -115,7 +115,7 @@ export function FuelStation({ s, night }: { s: Station; night: boolean }) {
         </group>
       )}
       {/* The price board at the roadside */}
-      <group position={[8.5, 0, z(-5)]}>
+      <group position={[6.6, 0, z(-4.8)]}>
         <mesh geometry={BOX} material={grey} position={[0, 3, 0]} scale={[0.25, 6, 0.25]} castShadow />
         <mesh geometry={BOX} material={mats.main} position={[0, 6.4, 0]} scale={[1.8, 1.4, 0.3]} castShadow />
         {[1, -1].map((f) => (

@@ -461,22 +461,52 @@ function layStations(chunk: ChunkData): { at: XZ; r: number }[] {
     }
     if (!best || best.d > 70) continue
     const [nx, nz] = [-Math.sin(best.angle), Math.cos(best.angle)]
-    const side: 1 | -1 = (p.at[0] - best.at[0]) * nx + (p.at[1] - best.at[1]) * nz >= 0 ? 1 : -1
-    const back = best.width / 2 + 7
-    const at: XZ = [best.at[0] + nx * side * back, best.at[1] + nz * side * back]
-    // The shop goes 10 m behind the canopy, if no map building is there.
     const [ux, uz] = [Math.cos(best.angle), Math.sin(best.angle)]
-    const inShop = (q: XZ) => {
-      const [dx, dz] = [q[0] - (at[0] + nx * side * 10), q[1] - (at[1] + nz * side * 10)]
-      return Math.abs(dx * ux + dz * uz) < 5.5 && Math.abs(dx * nx + dz * nz) < 3.5
+    const side: 1 | -1 = (p.at[0] - best.at[0]) * nx + (p.at[1] - best.at[1]) * nz >= 0 ? 1 : -1
+    // The map often draws the station's own canopy as a building, right at its point: that one goes.
+    chunk.buildings = chunk.buildings.filter((b) => Math.hypot(b.c[0] - p.at[0], b.c[1] - p.at[1]) > 10 || ringArea(b.ring) > 400)
+    const near = chunk.buildings.filter((b) => Math.hypot(b.c[0] - p.at[0], b.c[1] - p.at[1]) < 90)
+    const otherRoads = chunk.roads.filter((r) => r.pts.some((q) => Math.hypot(q[0] - p.at[0], q[1] - p.at[1]) < 120))
+    /** A rectangle (along the street du, away from it dv, from `at`) with nothing in it. */
+    const clear = (at: XZ, du: number, dv0: number, dv1: number) => {
+      const inRect = (q: XZ) => {
+        const [dx, dz] = [q[0] - at[0], q[1] - at[1]]
+        const v = (dx * nx + dz * nz) * side
+        return Math.abs(dx * ux + dz * uz) < du && v > dv0 && v < dv1
+      }
+      if (near.some((b) => inRect(b.c) || b.ring.some(inRect))) return false
+      // Corners and middle of the rectangle not inside a house either.
+      for (const i of [-1, 0, 1])
+        for (const j of [0, 0.5, 1]) {
+          const v = dv0 + (dv1 - dv0) * j
+          const q: XZ = [at[0] + ux * du * i + nx * side * v, at[1] + uz * du * i + nz * side * v]
+          if (near.some((b) => pointInRing(q, b.ring))) return false
+        }
+      // No other street through it (its own runs in front).
+      for (const r of otherRoads)
+        for (const q of r.pts) {
+          const [dx, dz] = [q[0] - at[0], q[1] - at[1]]
+          const v = (dx * nx + dz * nz) * side
+          if (Math.abs(dx * ux + dz * uz) < du && v > dv0 + 1 && v < dv1) return false
+        }
+      return true
     }
-    const shop = !chunk.buildings.some((b) => Math.hypot(b.c[0] - at[0], b.c[1] - at[1]) < 40 && (b.ring.some(inShop) || inShop(b.c)))
+    // The canopy and its forecourt (15 × 11 m) on free ground, as close to the map's point as can be.
+    let at: XZ | null = null
+    for (const along of [0, -6, 6, -12, 12, -18, 18])
+      for (const extra of [0, 3, 6]) {
+        if (at) break
+        const back = best.width / 2 + 7 + extra
+        const c: XZ = [best.at[0] + ux * along + nx * side * back, best.at[1] + uz * along + nz * side * back]
+        if (clear(c, 7.5, -5.5, 5.5)) at = c
+      }
+    if (!at) continue
+    // The shop goes 10 m behind the canopy, if the ground is free there too.
+    const shop = clear(at, 5.5, 6.5, 13.5)
     out.push({ at, angle: best.angle, side, name: p.name, shop })
   }
   chunk.stations = out
   if (!out.length) return []
-  // A map "building" under the canopy is the canopy: the game draws its own.
-  chunk.buildings = chunk.buildings.filter((b) => !out.some((s) => Math.hypot(b.c[0] - s.at[0], b.c[1] - s.at[1]) < 8))
   return out.flatMap((s) => {
     const [nx, nz] = [-Math.sin(s.angle), Math.cos(s.angle)]
     return [
