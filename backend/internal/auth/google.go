@@ -31,15 +31,25 @@ type GoogleIdentity struct {
 // published signing keys, which it caches for an hour.
 type GoogleVerifier struct {
 	clientID string
-	client   *http.Client
+	keys     *keySet
+}
+
+func NewGoogleVerifier(clientID string) *GoogleVerifier {
+	return &GoogleVerifier{clientID: clientID, keys: newKeySet(googleCertsURL)}
+}
+
+// keySet caches an issuer's RSA public keys for an hour.
+type keySet struct {
+	url    string
+	client *http.Client
 
 	mu      sync.Mutex
 	keys    map[string]*rsa.PublicKey
 	fetched time.Time
 }
 
-func NewGoogleVerifier(clientID string) *GoogleVerifier {
-	return &GoogleVerifier{clientID: clientID, client: &http.Client{Timeout: 10 * time.Second}}
+func newKeySet(url string) *keySet {
+	return &keySet{url: url, client: &http.Client{Timeout: 10 * time.Second}}
 }
 
 type googleClaims struct {
@@ -56,7 +66,7 @@ func (v *GoogleVerifier) Verify(ctx context.Context, idToken string) (GoogleIden
 	var claims googleClaims
 	_, err := jwt.ParseWithClaims(idToken, &claims, func(t *jwt.Token) (any, error) {
 		kid, _ := t.Header["kid"].(string)
-		return v.key(ctx, kid)
+		return v.keys.key(ctx, kid)
 	},
 		jwt.WithValidMethods([]string{"RS256"}),
 		jwt.WithAudience(v.clientID),
@@ -74,28 +84,28 @@ func (v *GoogleVerifier) Verify(ctx context.Context, idToken string) (GoogleIden
 	return GoogleIdentity{Sub: claims.Subject, Email: claims.Email, Name: claims.Name, FirstName: claims.GivenName, LastName: claims.FamilyName, Picture: claims.Picture}, nil
 }
 
-func (v *GoogleVerifier) key(ctx context.Context, kid string) (*rsa.PublicKey, error) {
-	v.mu.Lock()
-	defer v.mu.Unlock()
+func (s *keySet) key(ctx context.Context, kid string) (*rsa.PublicKey, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	if k, ok := v.keys[kid]; ok && time.Since(v.fetched) < time.Hour {
+	if k, ok := s.keys[kid]; ok && time.Since(s.fetched) < time.Hour {
 		return k, nil
 	}
-	if err := v.refresh(ctx); err != nil {
+	if err := s.refresh(ctx); err != nil {
 		return nil, err
 	}
-	if k, ok := v.keys[kid]; ok {
+	if k, ok := s.keys[kid]; ok {
 		return k, nil
 	}
 	return nil, fmt.Errorf("unknown key id %q", kid)
 }
 
-func (v *GoogleVerifier) refresh(ctx context.Context) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, googleCertsURL, nil)
+func (s *keySet) refresh(ctx context.Context) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.url, nil)
 	if err != nil {
 		return err
 	}
-	resp, err := v.client.Do(req)
+	resp, err := s.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("fetch google certs: %w", err)
 	}
@@ -127,6 +137,6 @@ func (v *GoogleVerifier) refresh(ctx context.Context) error {
 		}
 		keys[k.Kid] = &rsa.PublicKey{N: new(big.Int).SetBytes(n), E: int(new(big.Int).SetBytes(e).Int64())}
 	}
-	v.keys, v.fetched = keys, time.Now()
+	s.keys, s.fetched = keys, time.Now()
 	return nil
 }

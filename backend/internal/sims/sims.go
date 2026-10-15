@@ -3,6 +3,7 @@ package sims
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand/v2"
@@ -47,6 +48,21 @@ type Look struct {
 	AccessoryColor string `json:"accessoryColor,omitempty"`
 	// Bumps and bruises: none, pansement, griffures, genou, bagarre.
 	Marks string `json:"marks,omitempty"`
+	// How worn the clothes are: neuf, use (faded), dechire (torn).
+	Wear string `json:"wear,omitempty"`
+}
+
+// UnmarshalJSON keeps a look the creator sends. New parts (wear, and whatever
+// comes next) must not make Naître fail: unknown keys are kept out of the
+// strict request decoder, which would otherwise answer "requête invalide".
+func (l *Look) UnmarshalJSON(b []byte) error {
+	type plain Look
+	var p plain
+	if err := json.Unmarshal(b, &p); err != nil {
+		return err
+	}
+	*l = Look(p)
+	return nil
 }
 
 var hexColor = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
@@ -72,6 +88,11 @@ func (l Look) validate(gender string) error {
 		if c != "" && !hexColor.MatchString(c) {
 			return errors.New("couleur invalide")
 		}
+	}
+	switch l.Wear {
+	case "", "neuf", "use", "dechire":
+	default:
+		return errors.New("usure invalide")
 	}
 	return nil
 }

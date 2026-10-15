@@ -52,6 +52,9 @@ func main() {
 	if cfg.GoogleClientID != "" {
 		authH.Verifier = auth.NewGoogleVerifier(cfg.GoogleClientID)
 	}
+	if cfg.FirebaseProjectID != "" {
+		authH.Firebase = auth.NewFirebaseVerifier(cfg.FirebaseProjectID)
+	}
 	simsH := &sims.Handler{DB: pool}
 	headlines := news.New(cfg.NewsFeeds)
 	go headlines.Run(ctx)
@@ -96,7 +99,7 @@ func main() {
 				"holidays":      game.Holidays,
 				"materials":     game.Materials,
 				"plot":          map[string]int{"w": game.PlotW, "d": game.PlotD, "h": game.PlotH},
-				"config":        map[string]any{"devLogin": cfg.DevLogin, "googleLogin": authH.Verifier != nil},
+				"config":        map[string]any{"devLogin": cfg.DevLogin, "googleLogin": authH.Verifier != nil || authH.Firebase != nil},
 			})
 		})
 		// A commune's places from the map (world/osm.go): those near a point
@@ -151,7 +154,17 @@ func main() {
 		})
 		r.Get("/live", players.ServeHTTP)
 		// The wish list: sign up before the game opens (export with WAITLIST_ADMIN_KEY).
-		wish := &waitlist.Handler{DB: pool, AdminKey: os.Getenv("WAITLIST_ADMIN_KEY")}
+		wish := &waitlist.Handler{DB: pool, AdminKey: os.Getenv("WAITLIST_ADMIN_KEY"), Verify: func(ctx context.Context, token string) (string, string, error) {
+			id, err := authH.Identify(ctx, token)
+			if err != nil {
+				return "", "", err
+			}
+			name := id.FirstName
+			if name == "" {
+				name = id.Name
+			}
+			return id.Email, name, nil
+		}}
 		r.Post("/waitlist", wish.Join)
 		r.Get("/waitlist/count", wish.Count)
 		r.Get("/waitlist/export", wish.Export)

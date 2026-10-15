@@ -45,7 +45,7 @@ export type NewSim = {
   lng?: number
 }
 
-export type WaitlistJoin = { firstName: string; contact: string; commune: string; beta: boolean; source: string; website: string; sim?: { lastName: string; gender: 'femme' | 'homme'; look: Look; traits: string[]; aspiration: string } }
+export type WaitlistJoin = { firstName: string; contact: string; commune: string; beta: boolean; source: string; website: string; terms: boolean; privacy: boolean; sim?: { lastName: string; gender: 'femme' | 'homme'; look: Look; traits: string[]; aspiration: string } }
 
 export const api = {
   world: () => request<World>('/world'),

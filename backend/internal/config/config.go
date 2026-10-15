@@ -9,11 +9,12 @@ import (
 )
 
 type Config struct {
-	Port           string
-	DatabaseURL    string
-	JWTSecret      string
-	GoogleClientID string
-	AllowedOrigins []string
+	Port              string
+	DatabaseURL       string
+	JWTSecret         string
+	GoogleClientID    string
+	FirebaseProjectID string
+	AllowedOrigins    []string
 	// DevLogin enables POST /api/v1/auth/dev so the game can be played locally
 	// without a Google client ID. Never enable it in production.
 	DevLogin bool
@@ -26,13 +27,14 @@ func Load() (Config, error) {
 	_ = godotenv.Load()
 
 	cfg := Config{
-		Port:           getenv("PORT", "8080"),
-		DatabaseURL:    os.Getenv("DATABASE_URL"),
-		JWTSecret:      os.Getenv("JWT_SECRET"),
-		GoogleClientID: os.Getenv("GOOGLE_CLIENT_ID"),
-		AllowedOrigins: splitList(getenv("ALLOWED_ORIGINS", "http://localhost:5173")),
-		DevLogin:       os.Getenv("DEV_LOGIN") == "true",
-		NewsFeeds:      splitList(os.Getenv("NEWS_FEEDS")),
+		Port:              getenv("PORT", "8080"),
+		DatabaseURL:       os.Getenv("DATABASE_URL"),
+		JWTSecret:         os.Getenv("JWT_SECRET"),
+		GoogleClientID:    os.Getenv("GOOGLE_CLIENT_ID"),
+		FirebaseProjectID: os.Getenv("FIREBASE_PROJECT_ID"),
+		AllowedOrigins:    splitList(getenv("ALLOWED_ORIGINS", "http://localhost:5173")),
+		DevLogin:          os.Getenv("DEV_LOGIN") == "true",
+		NewsFeeds:         splitList(os.Getenv("NEWS_FEEDS")),
 	}
 
 	if cfg.DatabaseURL == "" {

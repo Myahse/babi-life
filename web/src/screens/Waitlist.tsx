@@ -6,7 +6,9 @@ import { Portrait } from '../avatar/portrait'
 import { IconTile, Logo } from '../components/ui'
 import { useWorld } from '../store/world'
 import { CROWD } from './Title'
-import { Share } from '../components/WaitlistShare'
+import { Community, Share } from '../components/WaitlistShare'
+import { Consent } from '../components/Consent'
+import { firebaseConfigured, googleCancelled, signInWithGoogle } from '../lib/google'
 
 // The wish list (/liste): before the game opens, people leave a first name
 // and an e-mail or a WhatsApp number to hear when it does. The flyer's QR
@@ -34,6 +36,8 @@ export function Waitlist() {
   const [commune, setCommune] = useState('')
   const [beta, setBeta] = useState(true)
   const [website, setWebsite] = useState('') // unseen: only bots fill it
+  const [terms, setTerms] = useState(false)
+  const [privacy, setPrivacy] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState<Done | null>(null)
@@ -46,19 +50,44 @@ export function Waitlist() {
       .catch(() => undefined)
   }, [])
 
-  async function join(e: React.FormEvent) {
-    e.preventDefault()
+  async function send(body: { firstName: string; contact: string; idToken?: string }) {
     setBusy(true)
     setError(null)
     try {
-      const res = await fetch(`${BASE}/waitlist`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ firstName: first, contact, commune, beta, source, website }) })
-      const body = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(body.error ?? 'Inscription impossible pour le moment')
-      setDone({ name: first.trim(), count: body.count ?? 0, already: !!body.already })
+      const res = await fetch(`${BASE}/waitlist`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...body, commune, beta, source, website, terms, privacy }) })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error ?? 'Inscription impossible pour le moment')
+      setDone({ name: body.firstName.trim(), count: data.count ?? 0, already: !!data.already })
     } catch (err) {
       setError(err instanceof Error && err.message !== 'Failed to fetch' ? err.message : 'Pas de réseau : réessaie dans un instant.')
     } finally {
       setBusy(false)
+    }
+  }
+
+  function join(e: React.FormEvent) {
+    e.preventDefault()
+    if (!terms || !privacy) {
+      setError('Coche les conditions et la confidentialité.')
+      return
+    }
+    void send({ firstName: first, contact })
+  }
+
+  async function google() {
+    setError(null)
+    if (!terms || !privacy) {
+      setError('Coche les conditions et la confidentialité.')
+      return
+    }
+    try {
+      const account = await signInWithGoogle()
+      setFirst(account.firstName)
+      setContact(account.email)
+      await send({ firstName: account.firstName, contact: account.email, idToken: account.token })
+    } catch (err) {
+      if (googleCancelled(err)) setError('Connexion Google annulée')
+      else setError('Connexion Google impossible')
     }
   }
 
@@ -144,6 +173,19 @@ export function Waitlist() {
               )}
               <h2 className="font-display text-2xl leading-tight font-extrabold">Je m'inscris</h2>
               <p className="-mt-1 mb-1 text-sm font-semibold text-[var(--color-ink-soft)]">Gratuit. Juste pour être prévenu·e quand ça ouvre.</p>
+              <Consent terms={terms} privacy={privacy} onTerms={setTerms} onPrivacy={setPrivacy} />
+              {firebaseConfigured && (
+                <>
+                  <button type="button" className="btn btn-white w-full" disabled={busy || !terms || !privacy} onClick={() => void google()}>
+                    <GoogleMark /> Continuer avec Google
+                  </button>
+                  <div className="flex items-center gap-3 text-xs font-extrabold text-[var(--color-ink-soft)]">
+                    <span className="h-px flex-1 bg-[var(--color-line)]" />
+                    ou avec ton e-mail
+                    <span className="h-px flex-1 bg-[var(--color-line)]" />
+                  </div>
+                </>
+              )}
               <label className="relative">
                 <UserRound size={18} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[var(--color-ink-soft)]" />
                 <input className="input !pl-11 text-base" placeholder="Prénom" autoComplete="given-name" value={first} onChange={(e) => setFirst(e.target.value)} aria-label="Prénom" required maxLength={60} />
@@ -168,10 +210,11 @@ export function Waitlist() {
               {/* Not for people: bots fill every field they find */}
               <input className="hidden" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} aria-hidden />
               {error && <p className="animate-pop rounded-xl bg-[#ffeef1] px-3 py-2 text-sm font-bold text-[#d81b3f]" role="alert">{error}</p>}
-              <button className="btn mt-1 w-full" disabled={busy}>
+              <button className="btn mt-1 w-full" disabled={busy || !terms || !privacy}>
                 {busy ? 'Un instant…' : "M'inscrire sur la liste"} <ArrowRight size={18} strokeWidth={2.6} />
               </button>
               <p className="text-center text-xs font-semibold text-[var(--color-ink-soft)]">Ton contact sert seulement à te prévenir de l'ouverture. Pas de pub, pas de revente.</p>
+              <Community />
             </form>
           )}
         </section>
@@ -192,7 +235,11 @@ export function Waitlist() {
 
       <footer className="relative z-10 mx-auto flex max-w-6xl flex-col items-center gap-3 px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-center lg:flex-row lg:justify-between lg:px-8 lg:text-left">
         <Logo size={28} />
-        <span className="text-xs font-bold text-white/60">lifeinbabi.com · Fait à Abidjan</span>
+        <span className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs font-bold text-white/60 lg:justify-end">
+          <Link to="/conditions" className="underline">Conditions</Link>
+          <Link to="/confidentialite" className="underline">Confidentialité</Link>
+          <span>lifeinbabi.com · Fait à Abidjan</span>
+        </span>
       </footer>
       <div className="relative z-10 flex h-1.5" aria-hidden>
         <i className="flex-1 bg-[#ff8200]" />
@@ -200,5 +247,16 @@ export function Waitlist() {
         <i className="flex-1 bg-[#009a44]" />
       </div>
     </div>
+  )
+}
+
+function GoogleMark() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden>
+      <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z" />
+      <path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" />
+      <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z" />
+      <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z" />
+    </svg>
   )
 }

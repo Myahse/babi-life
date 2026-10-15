@@ -14,6 +14,8 @@ import { Portrait } from '../avatar/portrait'
 import { IconTile, Logo, LogoMark } from '../components/ui'
 import { UsernameField } from '../components/UsernameField'
 import { suggestFrom } from '../lib/username'
+import { gameOpen } from '../lib/launch'
+import { firebaseConfigured, googleCancelled, signInWithGoogle } from '../lib/google'
 
 const GOOGLE_ENABLED = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID)
 
@@ -56,13 +58,24 @@ export function Title() {
     if (!usernameTouched) setUsername(suggestFrom(f, l))
   }
 
+  async function google() {
+    setError(null)
+    try {
+      const account = await signInWithGoogle()
+      await finish(api.googleLogin(account.token))
+    } catch (err) {
+      if (googleCancelled(err)) setError('Connexion Google annulée')
+      else setError('Connexion Google impossible')
+    }
+  }
+
   async function finish(p: Promise<{ token: string; user: User }>) {
     setBusy(true)
     setError(null)
     try {
       const { token, user } = await p
       signIn(token, user)
-      navigate('/jeu', { viewTransition: true })
+      navigate(gameOpen ? '/jeu' : '/liste', { viewTransition: true })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Connexion impossible')
     } finally {
@@ -150,7 +163,7 @@ export function Title() {
           </div>
 
           <div className="flex flex-col gap-3">
-            {GOOGLE_ENABLED && inApp() ? (
+            {(GOOGLE_ENABLED || firebaseConfigured) && inApp() ? (
               // In the app, Google's sign-in is the phone's own (it won't open in a web view).
               <button
                 className="btn btn-white w-full"
@@ -163,6 +176,10 @@ export function Title() {
                   }
                 }}
               >
+                <GoogleIcon /> {mode === 'login' ? 'Continuer avec Google' : "S'inscrire avec Google"}
+              </button>
+            ) : firebaseConfigured ? (
+              <button type="button" className="btn btn-white w-full" disabled={busy} onClick={() => void google()}>
                 <GoogleIcon /> {mode === 'login' ? 'Continuer avec Google' : "S'inscrire avec Google"}
               </button>
             ) : GOOGLE_ENABLED ? (

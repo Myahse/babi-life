@@ -1,5 +1,16 @@
 import { useState } from 'react'
-import { Check, Copy, MessageCircle } from 'lucide-react'
+import { Check, Copy, MessageCircle, Users } from 'lucide-react'
+
+/** The Babi Life group on WhatsApp. */
+export const WHATSAPP_COMMUNITY = 'https://chat.whatsapp.com/Lg3fgekmf6z6fS3J5jPZPi'
+
+export function Community({ className = 'btn btn-soft w-full' }: { className?: string }) {
+  return (
+    <a className={className} href={WHATSAPP_COMMUNITY} target="_blank" rel="noreferrer">
+      <Users size={18} strokeWidth={2.6} /> Rejoindre la communauté
+    </a>
+  )
+}
 
 /** Tell the others: WhatsApp first (that's where Babi talks), or copy the link. */
 export function Share() {
@@ -8,6 +19,7 @@ export function Share() {
   const text = `Babi Life arrive : crée ton Sim, construis ta maison et vis Abidjan avec nous. Inscris-toi : ${link}`
   return (
     <div className="mt-1 flex w-full flex-col gap-2">
+      <Community />
       <a className="btn btn-emerald w-full" href={`https://wa.me/?text=${encodeURIComponent(text)}`} target="_blank" rel="noreferrer">
         <MessageCircle size={18} strokeWidth={2.6} /> Partager sur WhatsApp
       </a>
