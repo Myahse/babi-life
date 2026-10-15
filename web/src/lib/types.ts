@@ -17,6 +17,8 @@ export type Place = {
   operator?: string
   closed?: string
   source?: Source
+  /** What the map calls it (pitch, basketball, swimming_pool…), for places from the map. */
+  type?: string
 }
 export type Commune = {
   id: string

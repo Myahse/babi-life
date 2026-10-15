@@ -342,6 +342,21 @@ var Kinds = map[string]PlaceKind{
 			{Text: "Pharmacie de garde : la file d'attente déborde sur le trottoir.", Effect: Needs{Energy: -5}},
 		},
 	},
+	// The fuel station: its shop and café, the gas bottle for cooking at home,
+	// the phone credit, the air for the tyres. Prices are game rules.
+	"station": {
+		ID: "station", Label: "Station-service", Icon: "fuel",
+		Interactions: []Interaction{
+			{ID: "boutique-station", Label: "Petit-déj à la boutique (café, croissant)", Icon: "coffee", Minutes: 20, Cost: 1500, Effect: Needs{Hunger: 25, Energy: 10}},
+			{ID: "gaz-bouteille", Label: "Recharger la bouteille de gaz", Icon: "flame", Minutes: 15, Cost: 2000, Effect: Needs{Energy: -5, Hunger: 5}},
+			{ID: "credit-station", Label: "Recharger son crédit téléphone", Icon: "smartphone", Minutes: 5, Cost: 1000, Effect: Needs{Social: 10}},
+			{ID: "gonfler-pneus", Label: "Faire gonfler les pneus du vélo", Icon: "bike", Minutes: 10, Cost: 200, Effect: Needs{Fun: 5}},
+		},
+		Events: []RandomEvent{
+			{Text: "Rupture de gaz : la file des bouteilles fait le tour de la station.", Effect: Needs{Energy: -5}},
+			{Text: "Le pompiste te reconnaît et t'offre un café.", Effect: Needs{Social: 10, Energy: 5}},
+		},
+	},
 	"salon": {
 		ID: "salon", Label: "Salon de coiffure", Icon: "flower-2",
 		Interactions: []Interaction{

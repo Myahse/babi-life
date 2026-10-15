@@ -18,7 +18,12 @@ export const whereabouts = {
   /** Street segments: from, to, width. */
   roads: [] as [XZ, XZ, number][],
   water: [] as XZ[][],
+  /** Is there room for the Sim's body here (Walker.tsx)? */
+  roomAt: (_x: number, _z: number) => true,
 }
+
+// In development, for tests in the browser.
+if (import.meta.env.DEV) (globalThis as unknown as { whereabouts: typeof whereabouts }).whereabouts = whereabouts
 
 export const distanceTo = (p: XZ) => Math.hypot(p[0] - whereabouts.sim[0], p[1] - whereabouts.sim[1])
 

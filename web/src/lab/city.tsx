@@ -10,6 +10,9 @@ import { makeTextures } from '../world3d/open/textures'
 import { blockRing } from '../world3d/open/voxel'
 import { Vehicle, type VehicleKind } from '../world3d/vehicles'
 import { Landmark } from '../world3d/open/landmarks'
+import { SportField } from '../world3d/open/field'
+import { FuelStation } from '../world3d/open/station'
+import { freezeWorldTime } from '../lib/worldClock'
 import { Arena } from '../world3d/interior/Arena'
 import { fetchChunk } from '../world3d/open/tiles'
 import { CHUNK_ZOOM, tileOf, type Origin } from '../world3d/open/geo'
@@ -35,6 +38,7 @@ import type { Sim } from '../lib/types'
 // (OpenFreeMap, no key), n chunks each way, seen from &cam;
 // ?view=gbaka&t=… the apprenti's chase down a straight street (t: seconds
 // into the cycle, frozen; without t it plays);
+// ?view=field&sport=foot|basket (&len=40&wid=20 &night &t=) a pitch or a court and its match;
 // ?view=interior&kind=home&id=sleep (&housing=villa &g=homme &stage=bebe
 // &seed=3 &night) the inside of a place, the Sim doing that activity;
 // (&kind=arena: the Palais des Sports, id=play-basket|watch-match);
@@ -198,6 +202,7 @@ function MapLab() {
             return g && m ? <mesh key={name} geometry={g} material={m} /> : null
           })}
           <Trees pts={c.data.trees} bark={mats.bark} leaves={mats.leaves} />
+          {c.data.stations?.map((st, i) => <FuelStation key={i} s={st} night={night} />)}
           <Forest pts={c.data.forest ?? []} bark={mats.bark} />
           <Palms pts={c.data.palms} bark={mats.bark} leaves={mats.leaves} />
         </group>
@@ -385,6 +390,7 @@ function Lab() {
   if (view === 'bridge') return <BridgeLab />
   if (view === 'dressing' || view === 'police') return <FrontLab />
   if (view === 'outdoor') return <OutdoorLab />
+  if (view === 'field') return <FieldLab />
   if (view === 'interior') return <InteriorLab />
   if (view === 'gbaka') return <GbakaLab />
   if (view === 'landmark') return <LandmarkLab />
@@ -414,3 +420,28 @@ function Lab() {
 }
 
 createRoot(document.getElementById('root')!).render(<Lab />)
+
+/** A pitch or a court on its own, and the match on it; ?t= holds the clock. */
+function FieldLab() {
+  const sport = (q.get('sport') ?? 'foot') as 'foot' | 'basket'
+  const [len, wid] = [Number(q.get('len') ?? (sport === 'foot' ? 40 : 28)), Number(q.get('wid') ?? (sport === 'foot' ? 20 : 15))]
+  const field = useMemo(() => ({ at: [0, 0] as [number, number], angle: 0, len, wid, sport, map: false }), [len, wid, sport])
+  const fixed = q.get('t')
+  useEffect(() => {
+    if (fixed !== null) freezeWorldTime(Number(fixed))
+  }, [fixed])
+  const cam = (q.get('cam') ?? `${len * 0.1},${len * 0.55},${len * 0.75}`).split(',').map(Number) as [number, number, number]
+  return (
+    <Canvas shadows dpr={[1, 1.5]} camera={{ position: cam, fov: 45 }} style={{ width: '100vw', height: '100vh' }}>
+      <color attach="background" args={[night ? '#0d1030' : '#a9d3f0']} />
+      <hemisphereLight args={[night ? '#3a4a8a' : '#ffffff', '#b8a27c', night ? 0.5 : 1.2]} />
+      <directionalLight position={[20, 40, 15]} intensity={night ? 0.2 : 1.8} castShadow />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[200, 200]} />
+        <meshLambertMaterial color="#cbb38c" />
+      </mesh>
+      <SportField field={field} seed={q.get('seed') ?? 'lab-field'} night={night} withSim={false} />
+      <OrbitControls />
+    </Canvas>
+  )
+}

@@ -2,7 +2,7 @@
 import { buildChunk } from './meshes'
 import { fetchChunk } from './tiles'
 import type { Origin } from './geo'
-import { inTheWay, resolvePlaces, type PlaceSpot } from './places'
+import { inTheWay, onFieldGround, resolvePlaces, type PlaceSpot } from './places'
 import { STYLE_OF_KIND, type Style } from './buildings'
 import { pointInRing } from './geo'
 import type { Building } from './tiles'
@@ -22,7 +22,9 @@ self.onmessage = async (e: MessageEvent<ChunkRequest>) => {
     const styles = new Map<Building, Style>()
     const resolved = resolvePlaces(data, places, (b, kind) => styles.set(b, STYLE_OF_KIND[kind] ?? 'default'))
     const marks = new Set(places.filter((p) => p.landmark).map((p) => p.id))
-    const made = resolved.filter((r) => !r.real && !marks.has(r.id)).map((r) => r.center)
+    const made = resolved.filter((r) => !r.real && !r.field && !r.station && !marks.has(r.id)).map((r) => r.center)
+    // A pitch the game lays out, or the map's: no house stands on it.
+    const fields = resolved.flatMap((r) => (r.field ? [r.field] : []))
     // A landmark clears its ground in every chunk it reaches, not only its own.
     const landmarks = places.filter((p) => p.landmark).map((p) => ({ at: resolved.find((r) => r.id === p.id)?.center ?? p.at, r: p.landmark! }))
     // A building in a campus or a hospital's grounds looks the part.
@@ -33,7 +35,7 @@ self.onmessage = async (e: MessageEvent<ChunkRequest>) => {
       const g = grounds.find((a) => pointInRing(b.c, a.rings[0]))
       return g ? (g.kind === 'campus' ? 'institution' : 'hospital') : 'default'
     }
-    const meshes = buildChunk(data, (c) => inTheWay(made, c, landmarks), styleOf)
+    const meshes = buildChunk(data, (c) => inTheWay(made, c, landmarks) || fields.some((f) => onFieldGround(f, c)), styleOf)
     const out: Record<string, Arrays> = {}
     const transfer: ArrayBuffer[] = []
     for (const [name, g] of Object.entries(meshes)) {

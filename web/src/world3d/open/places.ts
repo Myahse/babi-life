@@ -7,7 +7,10 @@ import type { Building, ChunkData } from './tiles'
 // Only where the map has no building at all does the game put up its own,
 // on empty ground beside the street, without removing anything real.
 
-export type PlaceSpot = { id: string; at: XZ; kind?: string; /** a landmark the game draws itself, clearing this many metres */ landmark?: number }
+export type PlaceSpot = { id: string; at: XZ; kind?: string; /** a landmark the game draws itself, clearing this many metres */ landmark?: number; /** for a sports place: its name and what the map calls it */ name?: string; type?: string }
+
+/** A pitch or a court: its middle, the direction of its length (radians from +x), its size. */
+export type Field = { at: XZ; angle: number; len: number; wid: number; sport: 'foot' | 'basket'; /** the map's own pitch (drawn by the map), or one the game lays out */ map: boolean }
 export type Resolved = {
   id: string
   door: XZ
@@ -20,6 +23,10 @@ export type Resolved = {
   real?: { height: number }
   /** A campus's gate on the street, when the place stands in one. */
   gate?: { at: XZ; rot: number; width: number }
+  /** A sports place played on a pitch or a court. */
+  field?: Field
+  /** A fuel station the map lays out (tiles.ts): drawn with its chunk. */
+  station?: boolean
 }
 
 /** How far the map's position may be from a building and still mean it. */
@@ -102,6 +109,28 @@ export function resolvePlaces(chunk: ChunkData, spots: PlaceSpot[], onReal?: (b:
       out.push({ id: s.id, door, center, rot: Math.atan2(door[0] - center[0], door[1] - center[1]), roadAngle: road.angle })
       continue
     }
+    // A sports ground: played on its pitch, not in a house.
+    const sport = s.kind === 'sport' ? sportOf(s.name ?? '', s.type) : null
+    const field = sport && road ? (mapPitch(chunk, s.at, sport) ?? layOut(chunk, s.at, sport, road)) : null
+    if (field) {
+      // The door: the middle of the touchline on the street's side.
+      const [nx, nz] = [-Math.sin(field.angle), Math.cos(field.angle)]
+      const side = (road!.at[0] - field.at[0]) * nx + (road!.at[1] - field.at[1]) * nz >= 0 ? 1 : -1
+      const door: XZ = [field.at[0] + nx * side * (field.wid / 2 + 1.5), field.at[1] + nz * side * (field.wid / 2 + 1.5)]
+      out.push({ id: s.id, door, center: field.at, rot: Math.atan2(door[0] - field.at[0], door[1] - field.at[1]), roadAngle: road!.angle, field })
+      continue
+    }
+    // A fuel station: at the one the map lays out nearby, its door at the shop.
+    if (s.kind === 'station') {
+      const st = (chunk.stations ?? []).find((q) => Math.hypot(q.at[0] - x, q.at[1] - z) < 60)
+      if (st) {
+        const [nx, nz] = [-Math.sin(st.angle), Math.cos(st.angle)]
+        const shop: XZ = [st.at[0] + nx * st.side * 10, st.at[1] + nz * st.side * 10]
+        const door: XZ = [st.at[0] + nx * st.side * 5.8, st.at[1] + nz * st.side * 5.8]
+        out.push({ id: s.id, door, center: shop, rot: Math.atan2(door[0] - shop[0], door[1] - shop[1]), roadAngle: st.angle, station: true })
+        continue
+      }
+    }
     // The real building there, unless it's a street event.
     if (s.kind !== 'happening') {
       let found: { b: Building; d: number } | null = null
@@ -169,4 +198,122 @@ function campusGate(chunk: ChunkData, c: XZ): Resolved['gate'] {
   }
   if (!best || best.d > 40) return undefined
   return { at: best.at, rot: Math.atan2(best.road[0] - best.at[0], best.road[1] - best.at[1]), width: 9 }
+}
+
+/**
+ * What is played at a sports place, from its name and the map's type: a
+ * maracana (football, five a side) or basketball; nothing for a pool, a gym
+ * or a club house, which are buildings.
+ */
+export function sportOf(name: string, type = ''): Field['sport'] | null {
+  const n = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  if (/swimming|fitness|tennis|golf|horse|equestrian/.test(type) || /piscine|natation|fitness|gym|salle|tennis|golf|palais/.test(n)) return null
+  if (type === 'basketball' || /basket|agora/.test(n)) return 'basket'
+  if (/pitch|soccer|stadium|football|multi/.test(type) || /maracana|terrain|foot|stade|calcio|five|city ?stade/.test(n)) return 'foot'
+  return null
+}
+
+/** The smallest rectangle round a ring (tried along each of its sides). */
+function rectOf(ring: XZ[]): { at: XZ; angle: number; len: number; wid: number } {
+  let best = { at: centroid(ring), angle: 0, len: 0, wid: 0, area: Infinity }
+  for (let i = 0; i < ring.length; i++) {
+    const [ax, az] = ring[i]
+    const [bx, bz] = ring[(i + 1) % ring.length]
+    const a = Math.atan2(bz - az, bx - ax)
+    const [c, s] = [Math.cos(a), Math.sin(a)]
+    let [u0, v0, u1, v1] = [Infinity, Infinity, -Infinity, -Infinity]
+    for (const [x, z] of ring) {
+      const u = x * c + z * s
+      const v = -x * s + z * c
+      ;[u0, v0, u1, v1] = [Math.min(u0, u), Math.min(v0, v), Math.max(u1, u), Math.max(v1, v)]
+    }
+    const area = (u1 - u0) * (v1 - v0)
+    if (area > 0 && area < best.area) {
+      const [mu, mv] = [(u0 + u1) / 2, (v0 + v1) / 2]
+      const long = u1 - u0 >= v1 - v0
+      best = { at: [mu * c - mv * s, mu * s + mv * c], angle: long ? a : a + Math.PI / 2, len: Math.max(u1 - u0, v1 - v0), wid: Math.min(u1 - u0, v1 - v0), area }
+    }
+  }
+  return best
+}
+
+/** The map's pitch at the place (or within 40 m of it), when there is one big enough to play on. */
+function mapPitch(chunk: ChunkData, p: XZ, sport: Field['sport']): Field | null {
+  let found: { f: Field; d: number } | null = null
+  for (const a of chunk.areas) {
+    if (a.kind !== 'pitch') continue
+    const d = closestOnRing(a.rings[0], p).d
+    if (d > 40 || (found && d >= found.d)) continue
+    const r = rectOf(a.rings[0])
+    // The map's outline is rarely a true rectangle, and houses can stand at its
+    // edge: the lines go in from it until none is in the way.
+    const blocks = chunk.buildings.filter((b) => Math.abs(b.c[0] - r.at[0]) < r.len && Math.abs(b.c[1] - r.at[1]) < r.len)
+    let k = 0.96
+    const clear = (f: Field) => !blocks.some((b) => onFieldGround(f, b.c, 0.5) || b.ring.some((q) => onFieldGround(f, q, 0.3)))
+    while (k > 0.6 && !clear({ ...r, len: r.len * k, wid: r.wid * k, sport, map: true })) k -= 0.04
+    const f: Field = { ...r, len: r.len * k, wid: r.wid * k, sport, map: true }
+    if (f.len < 12 || f.wid < 7 || !clear(f)) continue
+    found = { f, d }
+  }
+  return found?.f ?? null
+}
+
+const SIZES: Record<Field['sport'], [number, number][]> = {
+  // A maracana: about 40 × 20 m, or smaller where the quarter is tight.
+  foot: [
+    [40, 20],
+    [30, 16],
+    [22, 13],
+  ],
+  // A basketball court is 28 × 15 m; a half-court where there's no room.
+  basket: [
+    [28, 15],
+    [15, 14],
+  ],
+}
+
+/**
+ * Where the map has no pitch, the game lays one out on free ground near
+ * the place: never on a road, a building or water, lined up with the
+ * street. Nothing if there's no room (then the place is a building).
+ */
+function layOut(chunk: ChunkData, p: XZ, sport: Field['sport'], road: Road): Field | null {
+  const [ux, uz] = [Math.cos(road.angle), Math.sin(road.angle)]
+  const [nx, nz] = [-uz, ux]
+  const side = (p[0] - road.at[0]) * nx + (p[1] - road.at[1]) * nz >= 0 ? 1 : -1
+  const near = chunk.roads.filter((r) => r.pts.some(([x, z]) => Math.abs(x - p[0]) < 120 && Math.abs(z - p[1]) < 120))
+  const blocks = chunk.buildings.filter((b) => Math.abs(b.c[0] - p[0]) < 120 && Math.abs(b.c[1] - p[1]) < 120)
+  const blocked = (q: XZ) => {
+    for (const r of near)
+      for (let i = 1; i < r.pts.length; i++) {
+        const [ax, az] = r.pts[i - 1]
+        const [bx, bz] = r.pts[i]
+        const l2 = (bx - ax) ** 2 + (bz - az) ** 2
+        const t = l2 ? Math.max(0, Math.min(1, ((q[0] - ax) * (bx - ax) + (q[1] - az) * (bz - az)) / l2)) : 0
+        if (Math.hypot(ax + (bx - ax) * t - q[0], az + (bz - az) * t - q[1]) < r.width / 2 + 1.5) return true
+      }
+    if (blocks.some((b) => pointInRing(q, b.ring))) return true
+    return chunk.areas.some((a) => (a.kind === 'water' || a.kind === 'campus' || a.kind === 'hospital') && pointInRing(q, a.rings[0]))
+  }
+  for (const [len, wid] of SIZES[sport])
+    // Back from the street on the place's side, then a little along it either way.
+    for (const along of [0, -12, 12, -24, 24])
+      for (const back of [road.width / 2 + 2 + wid / 2, road.width / 2 + 8 + wid / 2]) {
+        const at: XZ = [road.at[0] + ux * along + nx * side * back, road.at[1] + uz * along + nz * side * back]
+        let free = true
+        for (let i = -1; i <= 1 && free; i += 0.25)
+          for (let j = -1; j <= 1 && free; j += 0.5) {
+            const q: XZ = [at[0] + ux * (len / 2 + 1) * i + nx * (wid / 2 + 1) * j, at[1] + uz * (len / 2 + 1) * i + nz * (wid / 2 + 1) * j]
+            if (blocked(q)) free = false
+          }
+        if (free) return { at, angle: road.angle, len, wid, sport, map: false }
+      }
+  return null
+}
+
+/** Is this point on a field's ground (its lines, and a step round them)? */
+export function onFieldGround(f: Field, [x, z]: XZ, pad = 1.5) {
+  const [dx, dz] = [x - f.at[0], z - f.at[1]]
+  const [c, s] = [Math.cos(f.angle), Math.sin(f.angle)]
+  return Math.abs(dx * c + dz * s) <= f.len / 2 + pad && Math.abs(-dx * s + dz * c) <= f.wid / 2 + pad
 }

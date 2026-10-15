@@ -1,0 +1,66 @@
+// What a Sim walking freely can't go through, besides the map's buildings
+// and the water (open/nav.ts): the game's own buildings and landmarks, the
+// trees, lamp posts and street stalls, and the cars, taxis, gbakas and motos
+// on the move. Things register themselves when they're drawn and leave when
+// they go; the moving ones update their place every frame.
+//
+// A thing is a circle (a trunk, a post) or a box turned about the vertical
+// (a building, a car): half-sizes hw along its own x, hd along its own z.
+
+export type Obstacle = { x: number; z: number; r: number } | { x: number; z: number; hw: number; hd: number; rot: number }
+
+const CELL = 8
+const fixed = new Map<string, Obstacle[]>()
+const moving = new Map<string, Obstacle>()
+let grid: Map<string, Obstacle[]> | null = null
+
+/** Something that doesn't move: put down (or replaced) under a key. */
+export function setObstacles(key: string, list: Obstacle[]) {
+  if (list.length) fixed.set(key, list)
+  else fixed.delete(key)
+  grid = null
+}
+export function clearObstacles(key: string) {
+  if (fixed.delete(key)) grid = null
+}
+/** Something on the move, where it is now (null: gone, or not on screen). */
+export function moveObstacle(key: string, o: Obstacle | null) {
+  if (o) moving.set(key, o)
+  else moving.delete(key)
+}
+
+const reach = (o: Obstacle) => ('r' in o ? o.r : Math.hypot(o.hw, o.hd))
+
+function index() {
+  if (grid) return grid
+  grid = new Map()
+  for (const list of fixed.values())
+    for (const o of list) {
+      const e = reach(o)
+      for (let i = Math.floor((o.x - e) / CELL); i <= Math.floor((o.x + e) / CELL); i++)
+        for (let j = Math.floor((o.z - e) / CELL); j <= Math.floor((o.z + e) / CELL); j++) {
+          const k = `${i},${j}`
+          const cell = grid.get(k)
+          if (cell) cell.push(o)
+          else grid.set(k, [o])
+        }
+    }
+  return grid
+}
+
+function hits(o: Obstacle, x: number, z: number, r: number) {
+  if ('r' in o) return Math.hypot(x - o.x, z - o.z) < o.r + r
+  // Into the box's own frame (a Three.js turn about y: x' = x cos + z sin).
+  const [dx, dz] = [x - o.x, z - o.z]
+  const [c, s] = [Math.cos(o.rot), Math.sin(o.rot)]
+  const u = dx * c - dz * s
+  const v = dx * s + dz * c
+  return Math.abs(u) < o.hw + r && Math.abs(v) < o.hd + r
+}
+
+/** Is a body of radius r at (x, z) inside something? */
+export function blocked(x: number, z: number, r = 0.35) {
+  for (const o of index().get(`${Math.floor(x / CELL)},${Math.floor(z / CELL)}`) ?? []) if (hits(o, x, z, r)) return true
+  for (const o of moving.values()) if (Math.abs(o.x - x) < 6 && Math.abs(o.z - z) < 6 && hits(o, x, z, r)) return true
+  return false
+}

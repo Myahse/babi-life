@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
+import { clearObstacles, setObstacles } from '../obstacles'
 import * as THREE from 'three'
 import { whereabouts } from '../whereabouts'
 import { hash, type XZ } from './geo'
@@ -41,6 +42,11 @@ export function StreetLights({ nav, night }: { nav: Nav; night: boolean }) {
     })
     return out
   }, [nav])
+  // A Sim walks round the posts.
+  useEffect(() => {
+    setObstacles('lamps', all.map((l) => ({ x: l.x, z: l.z, r: 0.25 })))
+    return () => clearObstacles('lamps')
+  }, [all])
 
   // The nearest to the Sim, refreshed as it walks.
   const [shown, setShown] = useState<Lamp[]>([])

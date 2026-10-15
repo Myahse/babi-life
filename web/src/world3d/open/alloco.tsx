@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
+import { clearObstacles, setObstacles } from '../obstacles'
 import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { Human } from '../../avatar/Human'
@@ -42,6 +43,11 @@ export function AllocoStalls({ nav, seed, onBuy }: { nav: Nav; seed: string; onB
     }
     return out
   }, [nav, seed])
+  // The stall (table, basin, stove) is in the way.
+  useEffect(() => {
+    setObstacles('alloco', all.map((s) => ({ x: s.at[0], z: s.at[1], r: 1.1 })))
+    return () => clearObstacles('alloco')
+  }, [all])
 
   // The few nearest the Sim, rechecked as it walks.
   const [shown, setShown] = useState<Stall[]>([])

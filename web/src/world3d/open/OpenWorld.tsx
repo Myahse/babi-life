@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
@@ -27,6 +27,9 @@ import { CHUNK_ZOOM, hash, tileBox, tileOf, toLatLng, toLocal, type Origin, type
 import { Nav } from './nav'
 import { along, anchorNode, round, routeLength, turnTo, useCellsAround, type Round } from './shared'
 import { inTheWay, resolvePlaces, type PlaceSpot, type Resolved } from './places'
+import { SportField } from './field'
+import { FuelStation } from './station'
+import { clearObstacles, moveObstacle, setObstacles } from '../obstacles'
 import { LANDMARKS, Landmark } from './landmarks'
 import { Boats } from './boats'
 import { AllocoStalls } from './alloco'
@@ -248,7 +251,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
   const spots = useMemo<(PlaceSpot & { kind: string; name: string })[]>(() => {
     const [a, d] = homeSpot(sim.id)
     // A real place found on the map (by its name) stands where the map has it.
-    const list: (PlaceSpot & { kind: string; name: string })[] = places.map((p) => ({ id: p.id, kind: p.kind, name: p.name, at: snaps.get(p.id) ?? toLocal(origin, p.lat, p.lng), landmark: LANDMARKS[p.id] }))
+    const list: (PlaceSpot & { kind: string; name: string })[] = places.map((p) => ({ id: p.id, kind: p.kind, name: p.name, type: p.type, at: snaps.get(p.id) ?? toLocal(origin, p.lat, p.lng), landmark: LANDMARKS[p.id] }))
     // A home with a house built on it clears its ground: the game draws the house.
     if (home) list.unshift({ id: HOME_ID, kind: 'home', name: 'Chez toi', at: [Math.cos(a) * d, Math.sin(a) * d], landmark: myPlot ? PLOT_CLEAR : undefined })
     for (const id of plotKey ? plotKey.split(',') : []) {
@@ -395,7 +398,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
           out.delete(id)
           continue
         }
-        for (const x of resolvePlaces(c.data, [{ id, at, kind: p.kind, landmark: LANDMARKS[id] }])) out.set(x.id, x)
+        for (const x of resolvePlaces(c.data, [{ id, at, kind: p.kind, landmark: LANDMARKS[id], name: p.name, type: p.type }])) out.set(x.id, x)
       }
       return out
     })
@@ -436,7 +439,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
       const id = nextId.current++
       pending.current.set(id, c.key)
       const far = c.key.includes(':')
-      const req: ChunkRequest = { id, origin, tx: c.tx, ty: c.ty, token, places: far ? [] : spots.filter((x) => !isMapPlace(x.id)).map(({ id, at, kind, landmark }) => ({ id, at, kind, landmark })), z: far ? FAR_ZOOM : undefined }
+      const req: ChunkRequest = { id, origin, tx: c.tx, ty: c.ty, token, places: far ? [] : spots.filter((x) => !isMapPlace(x.id)).map(({ id, at, kind, landmark, name, type }) => ({ id, at, kind, landmark, name, type })), z: far ? FAR_ZOOM : undefined }
       w.postMessage(req)
     }
     // Chunks too far are let go, like Minecraft's render distance.
@@ -545,14 +548,15 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
       const { box } = c.data
       const inside = todo.filter(({ at: [x, z] }) => x >= box.x0 && x < box.x1 && z >= box.z0 && z < box.z1)
       if (!inside.length) continue
-      for (const r of resolvePlaces(c.data, inside.map(({ id, at, kind }) => ({ id, at, kind })))) if (r.real) found.push(r)
+      // A map place stands in a real building, or plays on its pitch.
+      for (const r of resolvePlaces(c.data, inside.map(({ id, at, kind, name, type }) => ({ id, at, kind, name, type })))) if (r.real || r.field || r.station) found.push(r)
     }
     if (found.length) setResolved((m) => new Map([...m, ...found.map((r) => [r.id, r] as const)]))
   }, [spots, chunks]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // The few real buildings in the way of a game-made one don't block the way.
   const clears = useMemo(() => new Map(spots.filter((x) => x.landmark).map((x) => [x.id, x.landmark!])), [spots])
-  const made = useMemo<XZ[]>(() => [...resolved.values()].filter((r) => !r.real && !clears.has(r.id)).map((r) => r.center), [resolved, clears])
+  const made = useMemo<XZ[]>(() => [...resolved.values()].filter((r) => !r.real && !r.field && !r.station && !clears.has(r.id)).map((r) => r.center), [resolved, clears])
   const marks = useMemo(() => [...resolved.values()].filter((r) => clears.has(r.id)).map((r) => ({ at: r.center, r: clears.get(r.id)! })), [resolved, clears])
   const nav = useMemo(() => new Nav([...chunks.values()].filter((c) => !c.data.key.includes(':')).map((c) => c.data), (c) => inTheWay(made, c, marks)), [chunks, made, marks])
 
@@ -563,7 +567,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
         .filter((s) => s.id !== HAPPENING_KEY && s.kind !== 'plot' && resolved.has(s.id))
         .map((s, i) => {
           const r = resolved.get(s.id)!
-          return { id: s.id, kind: s.kind, name: s.name, x: r.center[0], z: r.center[1], rot: r.rot, door: r.door, seed: i, height: r.real?.height }
+          return { id: s.id, kind: s.kind, name: s.name, x: r.center[0], z: r.center[1], rot: r.rot, door: r.door, seed: i, height: r.real?.height, field: r.field, station: r.station }
         }),
     [spots, resolved],
   )
@@ -610,6 +614,12 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
     return [...best].map(([name, { at }]) => ({ name, at }))
   }, [chunks])
   const nearWater = useMemo(() => [...chunks.values()].filter((c) => !c.data.key.includes(':')).flatMap((c) => c.data.areas.filter((a) => a.kind === 'water').map((a) => a.rings)), [chunks])
+
+  // The big landmarks can't be walked through (the Rue Princesse, the gares, the squares can).
+  useEffect(() => {
+    setObstacles('landmarks', lots.flatMap((l) => (SOLID_LANDMARKS[l.id] ? [{ x: l.x, z: l.z, r: SOLID_LANDMARKS[l.id] }] : [])))
+    return () => clearObstacles('landmarks')
+  }, [lots])
 
   const homeLot = lots.find((l) => l.id === HOME_ID)
   const walkNav = useMemo<WalkNav>(
@@ -660,6 +670,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
           <Trees pts={c.data.trees} bark={mats.bark} leaves={mats.leaves} />
           <Forest pts={c.data.forest ?? []} bark={mats.bark} />
           <Palms pts={c.data.palms ?? []} bark={mats.bark} leaves={mats.leaves} />
+          {c.data.stations?.map((st, i) => <FuelStation key={i} s={st} night={night} />)}
         </group>
         )
       })}
@@ -678,6 +689,13 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
       {shown.map((lot) =>
         lot.id === HOME_ID && myPlot ? (
           <LotLabel key={lot.id} lot={lot} world={world} label={labels} onPick={onPick} y={4} />
+        ) : lot.station ? (
+          <LotLabel key={lot.id} lot={lot} world={world} label={labels} onPick={onPick} y={7} />
+        ) : lot.field ? (
+          <group key={lot.id}>
+            <SportField field={lot.field} seed={lot.id} night={night} withSim={stationAt === lot.id && !!busy?.id && /^play-/.test(busy.id)} onPick={() => onPick(lot.id)} />
+            <LotLabel lot={lot} world={world} label={labels} onPick={onPick} y={5} />
+          </group>
         ) : LANDMARKS[lot.id] ? (
           <group key={lot.id}>
             <group position={[lot.x, 0, lot.z]} rotation={[0, lot.rot, 0]} onClick={(e) => (e.stopPropagation(), onPick(lot.id))}>
@@ -841,7 +859,17 @@ function LotLabel({ lot, world, label, onPick, y }: { lot: Lot; world: World; la
 }
 
 /** Minecraft trees: a trunk of blocks and a cube of leaves, instanced. */
+/** Tree trunks are in the way of a Sim walking freely. */
+function useSolidTrunks(pts: XZ[], r: number) {
+  const key = useId()
+  useEffect(() => {
+    setObstacles(key, pts.map(([x, z]) => ({ x, z, r })))
+    return () => clearObstacles(key)
+  }, [key, pts, r])
+}
+
 export function Trees({ pts, bark, leaves }: { pts: XZ[]; bark: THREE.Material; leaves: THREE.Material }) {
+  useSolidTrunks(pts, 0.6)
   const trunks = useRef<THREE.InstancedMesh>(null)
   const tops = useRef<THREE.InstancedMesh>(null)
   useEffect(() => {
@@ -875,6 +903,7 @@ const FOREST_GREENS = ['#1f5f2a', '#2a6e2f', '#276b3a', '#33783a', '#1d5426', '#
  * Thousands of them: no shadows of their own, the canopy does the shade.
  */
 export function Forest({ pts, bark }: { pts: XZ[]; bark: THREE.Material }) {
+  useSolidTrunks(pts, 0.7)
   const trunks = useRef<THREE.InstancedMesh>(null)
   const crowns = useRef<THREE.InstancedMesh>(null)
   const leaves = useMemo(() => new THREE.MeshLambertMaterial({ color: '#ffffff' }), [])
@@ -914,6 +943,7 @@ export function Forest({ pts, bark }: { pts: XZ[]; bark: THREE.Material }) {
  * long drooping leaves and a bunch of coconuts.
  */
 export function Palms({ pts, bark, leaves }: { pts: XZ[]; bark: THREE.Material; leaves: THREE.Material }) {
+  useSolidTrunks(pts, 0.45)
   const trunks = useRef<THREE.InstancedMesh>(null)
   const fronds = useRef<THREE.InstancedMesh>(null)
   const nuts = useRef<THREE.InstancedMesh>(null)
@@ -1019,6 +1049,12 @@ function RoadTraffic({ nav, focus, seed, woro }: { nav: Nav; focus: React.RefObj
   )
 }
 
+/** Landmarks that are one solid building: how far round their middle they stand (metres). */
+const SOLID_LANDMARKS: Record<string, number> = { 'treich-palais': 34, 'plateau-pyramide': 28, 'plateau-cathedrale': 20, 'cocody-oranjo': 34, 'yakro-basilique': 55 }
+
+/** A vehicle's length and width, for what it blocks. */
+const CAR_SIZE: Record<VehicleKind, [number, number]> = { taxi: [4.4, 1.7], woro: [4.4, 1.7], car: [4.5, 1.8], gbaka: [5.3, 1.9], moto: [1.9, 0.6] }
+
 function Car({ car, nav, routes }: { car: { id: string; kind: VehicleKind; color?: string; trim?: string; seed: number; near: XZ; speed: number; offset: number }; nav: Nav; routes: Map<string, XZ[]> }) {
   const ref = useRef<THREE.Group>(null)
   const anchor = useMemo(() => anchorNode(nav, car.near, 7), [nav, car.near])
@@ -1044,7 +1080,11 @@ function Car({ car, nav, routes }: { car: { id: string; kind: VehicleKind; color
     g.position.set(p.x + Math.cos(heading) * -off, nav.heightAt(p.x, p.z), p.z - Math.sin(heading) * -off)
     // A U-turn at each end, eased so it isn't a snap.
     g.rotation.y = turnTo(g.rotation.y, heading - Math.PI / 2, 1 - Math.exp(-6 * Math.min(dt, 0.1)))
+    // Nobody walks through it.
+    const [l, w] = CAR_SIZE[car.kind]
+    moveObstacle(car.id, { x: g.position.x, z: g.position.z, hw: l / 2, hd: w / 2, rot: g.rotation.y })
   })
+  useEffect(() => () => moveObstacle(car.id, null), [car.id])
   return (
     <group ref={ref}>
       <Vehicle p={[0, 0, 0]} kind={car.kind} color={car.color} trim={car.trim} seed={car.seed} crew={!gbaka} />

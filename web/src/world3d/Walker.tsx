@@ -13,6 +13,9 @@ import { HOME_ID, SIDEWALK, type Lot } from './layout'
 import { cameraTurn, moveInput, running } from './input'
 import { whereabouts } from './whereabouts'
 import { worldTime } from '../lib/worldClock'
+import { SIM_SLOT, matchFor, onField, worldFacing } from './open/match'
+import { blocked } from './obstacles'
+import type { Pose } from '../avatar/Human'
 
 type XZ = [number, number]
 
@@ -85,6 +88,12 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   const [route, setRoute] = useState<XZ[] | null>(null)
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null
   const camera = useThree((s) => s.camera)
+  // Busy on a pitch or a court: playing takes a place in the match there;
+  // watching, the Sim stands on the touchline.
+  const fieldLot = busy && stationAt ? lots.find((l) => l.id === stationAt && l.field) : undefined
+  const inMatch = !!fieldLot && !!busy?.id && /^play-/.test(busy.id)
+  const onTouchline = !!fieldLot && /^(play-|watch-match)/.test(busy?.id ?? '')
+  const [matchPose, setMatchPose] = useState<Pose>('idle')
 
   // Start where the Sim is busy, else at home, else on the sidewalk. Only
   // once: the place list changes later (a happening starts, an activity
@@ -214,6 +223,16 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     setWalking(true)
   }
 
+  /**
+   * Room for the Sim's body here: not in a building (its walls all round,
+   * not just its middle), nor in a car, a tree, a post, a stall.
+   */
+  const roomAt = (x: number, z: number) => {
+    const R = 0.35
+    if (!nav.walkable(x, z) || !nav.walkable(x + R, z) || !nav.walkable(x - R, z) || !nav.walkable(x, z + R) || !nav.walkable(x, z - R)) return false
+    return !blocked(x, z, R)
+  }
+  whereabouts.roomAt = roomAt
   const near = useRef<string | null>(null)
   const padWalking = useRef(false)
   const orbit = useRef({ sph: new THREE.Spherical(), offset: new THREE.Vector3() })
@@ -254,9 +273,10 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       const step = (running() ? RUN : SPEED) * strength * Math.min(dt, 0.25)
       const [x, z] = [g.position.x + dir.x * step, g.position.z + dir.z * step]
       // Slide along walls: try the full step, then each axis on its own.
-      if (nav.walkable(x, z)) g.position.set(x, 0, z)
-      else if (nav.walkable(x, g.position.z)) g.position.x = x
-      else if (nav.walkable(g.position.x, z)) g.position.z = z
+      // (Caught inside something, a car that stopped on it say: it may step out.)
+      if (roomAt(x, z) || !roomAt(g.position.x, g.position.z)) g.position.set(x, 0, z)
+      else if (roomAt(x, g.position.z)) g.position.x = x
+      else if (roomAt(g.position.x, z)) g.position.z = z
       g.rotation.y = Math.atan2(dir.x, dir.z)
       if (!padWalking.current) {
         padWalking.current = true
@@ -266,6 +286,16 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       padWalking.current = false
       setWalking(false)
     }
+    // In the match: where the Sim's place in it is, now.
+    if (inMatch && fieldLot?.field && !path.current.length && !padWalking.current) {
+      const f = fieldLot.field
+      const m = matchFor(fieldLot.id, f)
+      const s = m.player(0, SIM_SLOT[f.sport], worldTime())
+      const [x, z] = onField(f, s.u, s.v)
+      g.position.set(x, 0, z)
+      g.rotation.y = worldFacing(f, s.face)
+      if (s.pose !== matchPose) setMatchPose(s.pose)
+    } else if (onTouchline && fieldLot && !path.current.length && !padWalking.current) g.rotation.y = Math.atan2(fieldLot.x - g.position.x, fieldLot.z - g.position.z)
     // Standing at a door: offer to go in.
     if (onNear) {
       let best: Lot | null = null
@@ -413,9 +443,9 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       </mesh>
       {route && <RouteDots route={route} from={group} heightAt={nav.heightAt} />}
       <group ref={group}>
-        <Character look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking} running={run} busy={!!busy} pose={busy?.kind === 'chat' ? 'talk' : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={run ? RUN : SPEED} />
+        <Character look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking} running={run} busy={!!busy} pose={busy?.kind === 'chat' ? 'talk' : inMatch && !walking ? matchPose : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={run ? RUN : SPEED} />
         {/* Outdoors, what the Sim is doing is set around it (the ball, the towel, the bus stop…) */}
-        {busy && !walking && <OutdoorAction id={busy.id} />}
+        {busy && !walking && !onTouchline && <OutdoorAction id={busy.id} />}
         {labels && nameTag && (
           <Html position={[0, 2.45, 0]} center zIndexRange={[28, 20]}>
             <span className="pointer-events-none rounded-md bg-[#0f1230]/80 px-1.5 py-0.5 text-[11px] font-extrabold whitespace-nowrap text-white">{nameTag}</span>

@@ -6,6 +6,7 @@ import type { Commune, Player, Sim, World } from '../lib/types'
 import { iconFor, kindColors } from '../components/icons'
 import { IconTile } from '../components/ui'
 import { Building } from './Buildings'
+import { Solid } from './Solid'
 import { BACK_STREET_Z, CROSS_X, EXTENT_X, FAR_CROSS_X, LOT_XS, SIDEWALK, STREET_HALF, layoutCommune, route, type Lot } from './layout'
 import { Box, Lamp, Mat, Palm, Tree } from './props'
 import { FillerBuilding } from './Fillers'
@@ -402,7 +403,9 @@ export function LotView({ lot, world, night, label, onPick }: { lot: Lot; world:
         onPointerOut={() => (setHover(false), (document.body.style.cursor = ''))}
         scale={hover ? 1.03 : 1}
       >
-        <Building kind={lot.kind} name={lot.name} night={night} />
+        <Solid>
+          <Building kind={lot.kind} name={lot.name} night={night} />
+        </Solid>
       </group>
       {label && (
         <Html position={[0, tall, 0]} center zIndexRange={[20, 0]}>

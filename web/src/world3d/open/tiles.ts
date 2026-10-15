@@ -16,7 +16,9 @@ export type Road = { cls: string; pts: XZ[]; width: number; paved: boolean; brid
 export type Aeroway = { cls: 'runway' | 'taxiway'; pts: XZ[] }
 export type Building = { ring: XZ[]; holes: XZ[][]; height: number; c: XZ; tint: number; /** a house the game built (fill.ts): under tin */ tin?: boolean }
 export type Area = { kind: 'water' | 'green' | 'sand' | 'pitch' | 'campus' | 'hospital' | 'apron'; rings: XZ[][] }
-export type ChunkData = { key: string; tx: number; ty: number; box: Box; roads: Road[]; buildings: Building[]; areas: Area[]; trees: XZ[]; palms: XZ[]; aeroways: Aeroway[]; pois: Poi[]; /** big rainforest trees, close together (the Banco) */ forest?: XZ[] }
+export type ChunkData = { key: string; tx: number; ty: number; box: Box; roads: Road[]; buildings: Building[]; areas: Area[]; trees: XZ[]; palms: XZ[]; aeroways: Aeroway[]; pois: Poi[]; /** big rainforest trees, close together (the Banco) */ forest?: XZ[]; /** fuel stations, laid out by their street */ stations?: Station[] }
+/** A fuel station: its canopy's middle by the street, the street's direction, which side of it, its name. */
+export type Station = { at: XZ; angle: number; side: 1 | -1; name: string; /** room for the game's shop behind (else a map building stands there) */ shop: boolean }
 
 export const BLOCK = 3 // metres: one storey, one block
 
@@ -160,7 +162,9 @@ export function decodeChunk(o: Origin, tx: number, ty: number, data: Uint8Array,
 
   nameTwins(chunk)
   dropOverRoads(chunk)
-  if (!far) fillQuarters(chunk, neighbours)
+  dropOverlaps(chunk)
+  trimPaths(chunk)
+  if (!far) fillQuarters(chunk, neighbours, layStations(chunk))
   plant(chunk, far)
   return chunk
 }
@@ -323,6 +327,162 @@ function dropOverRoads(chunk: ChunkData) {
         for (let k = 0; k <= n; k++) if (pointInRing([ax + ((bx - ax) * k) / n, az + ((bz - az) * k) / n], b.ring)) return false
       }
     return true
+  })
+}
+
+function ringArea(ring: XZ[]) {
+  let a = 0
+  for (let i = 0; i < ring.length; i++) {
+    const [x1, z1] = ring[i]
+    const [x2, z2] = ring[(i + 1) % ring.length]
+    a += x1 * z2 - x2 * z1
+  }
+  return Math.abs(a / 2)
+}
+
+/** The buildings of a chunk, by 24 m cell, for quick neighbourhood checks. */
+function buildingGrid(buildings: Building[]) {
+  const grid = new Map<string, Building[]>()
+  for (const b of buildings) {
+    let [x0, z0, x1, z1] = [Infinity, Infinity, -Infinity, -Infinity]
+    for (const [x, z] of b.ring) [x0, z0, x1, z1] = [Math.min(x0, x), Math.min(z0, z), Math.max(x1, x), Math.max(z1, z)]
+    for (let i = Math.floor(x0 / 24); i <= Math.floor(x1 / 24); i++)
+      for (let j = Math.floor(z0 / 24); j <= Math.floor(z1 / 24); j++) {
+        const k = `${i},${j}`
+        const list = grid.get(k)
+        if (list) list.push(b)
+        else grid.set(k, [b])
+      }
+  }
+  return (x: number, z: number) => grid.get(`${Math.floor(x / 24)},${Math.floor(z / 24)}`) ?? []
+}
+
+/**
+ * Buildings drawn over each other on the map: the outline of a whole
+ * compound over the houses in it (drawn as one big block it would bury
+ * them under a roof), or the same house twice. The houses stay; the
+ * compound, or the second copy, goes.
+ */
+function dropOverlaps(chunk: ChunkData) {
+  const near = buildingGrid(chunk.buildings)
+  const area = new Map(chunk.buildings.map((b) => [b, ringArea(b.ring)]))
+  const gone = new Set<Building>()
+  for (const a of chunk.buildings) {
+    if (gone.has(a)) continue
+    // The others whose middle is inside this one.
+    const within: Building[] = []
+    let [x0, z0, x1, z1] = [Infinity, Infinity, -Infinity, -Infinity]
+    for (const [x, z] of a.ring) [x0, z0, x1, z1] = [Math.min(x0, x), Math.min(z0, z), Math.max(x1, x), Math.max(z1, z)]
+    const seen = new Set<Building>()
+    for (let x = x0; x <= x1 + 24; x += 24)
+      for (let z = z0; z <= z1 + 24; z += 24)
+        for (const b of near(Math.min(x, x1), Math.min(z, z1))) {
+          if (b === a || seen.has(b) || gone.has(b)) continue
+          seen.add(b)
+          if (pointInRing(b.c, a.ring)) within.push(b)
+        }
+    if (!within.length) continue
+    const big = area.get(a)!
+    // A compound round houses: it goes. One house inside another: the smaller goes.
+    if (within.length >= 2 || within.every((b) => area.get(b)! * 2.5 < big)) gone.add(a)
+    else for (const b of within) gone.add(area.get(b)! <= big ? b : a)
+  }
+  if (gone.size) chunk.buildings = chunk.buildings.filter((b) => !gone.has(b))
+}
+
+/**
+ * The quarters' footpaths, cleaned up: the map's scraps (a few metres of
+ * path on their own) are left out, and a path stops at a house's wall
+ * instead of running through it.
+ */
+function trimPaths(chunk: ChunkData) {
+  const near = buildingGrid(chunk.buildings)
+  const inHouse = (p: XZ) => near(p[0], p[1]).some((b) => pointInRing(p, b.ring))
+  const out: Road[] = []
+  for (const r of chunk.roads) {
+    if (r.paved || r.bridge) {
+      out.push(r)
+      continue
+    }
+    // Cut the path into the pieces that run between houses.
+    let piece: XZ[] = []
+    const flush = () => {
+      if (piece.length >= 2 && lineLength(piece) >= 8) out.push({ ...r, pts: piece })
+      piece = []
+    }
+    // Keep the map's own points; add one only where the path meets a wall.
+    let inside = inHouse(r.pts[0])
+    if (!inside) piece.push(r.pts[0])
+    for (let i = 1; i < r.pts.length; i++) {
+      const [a, p] = [r.pts[i - 1], r.pts[i]]
+      const n = Math.max(1, Math.ceil(Math.hypot(p[0] - a[0], p[1] - a[1]) / 2))
+      let last: XZ = a
+      for (let k = 1; k <= n; k++) {
+        const q: XZ = k === n ? p : [a[0] + ((p[0] - a[0]) * k) / n, a[1] + ((p[1] - a[1]) * k) / n]
+        const now = inHouse(q)
+        if (now && !inside) {
+          piece.push(last)
+          flush()
+        } else if (!now && inside) piece.push(q)
+        inside = now
+        last = q
+      }
+      if (!inside && piece[piece.length - 1] !== p) piece.push(p)
+    }
+    flush()
+  }
+  chunk.roads = out
+}
+
+/**
+ * The map's fuel stations, laid out by their street: the canopy over the
+ * pumps right by the road, the shop behind it. Their ground is kept clear
+ * of the houses the game builds, and a map building standing where the
+ * canopy goes (often the canopy itself, drawn as a building) is left out.
+ */
+function layStations(chunk: ChunkData): { at: XZ; r: number }[] {
+  const out: Station[] = []
+  for (const p of chunk.pois) {
+    if (p.cls !== 'fuel' && p.maki !== 'fuel') continue
+    if (out.some((s) => Math.hypot(s.at[0] - p.at[0], s.at[1] - p.at[1]) < 30)) continue
+    // The street it's on: the nearest paved one.
+    let best: { at: XZ; d: number; angle: number; width: number } | null = null
+    for (const r of chunk.roads) {
+      if (!r.paved || r.bridge || r.width < 6) continue
+      for (let i = 1; i < r.pts.length; i++) {
+        const [ax, az] = r.pts[i - 1]
+        const [bx, bz] = r.pts[i]
+        const l2 = (bx - ax) ** 2 + (bz - az) ** 2
+        const t = l2 ? Math.max(0, Math.min(1, ((p.at[0] - ax) * (bx - ax) + (p.at[1] - az) * (bz - az)) / l2)) : 0
+        const at: XZ = [ax + (bx - ax) * t, az + (bz - az) * t]
+        const d = Math.hypot(at[0] - p.at[0], at[1] - p.at[1])
+        if (!best || d < best.d) best = { at, d, angle: Math.atan2(bz - az, bx - ax), width: r.width }
+      }
+    }
+    if (!best || best.d > 70) continue
+    const [nx, nz] = [-Math.sin(best.angle), Math.cos(best.angle)]
+    const side: 1 | -1 = (p.at[0] - best.at[0]) * nx + (p.at[1] - best.at[1]) * nz >= 0 ? 1 : -1
+    const back = best.width / 2 + 7
+    const at: XZ = [best.at[0] + nx * side * back, best.at[1] + nz * side * back]
+    // The shop goes 10 m behind the canopy, if no map building is there.
+    const [ux, uz] = [Math.cos(best.angle), Math.sin(best.angle)]
+    const inShop = (q: XZ) => {
+      const [dx, dz] = [q[0] - (at[0] + nx * side * 10), q[1] - (at[1] + nz * side * 10)]
+      return Math.abs(dx * ux + dz * uz) < 5.5 && Math.abs(dx * nx + dz * nz) < 3.5
+    }
+    const shop = !chunk.buildings.some((b) => Math.hypot(b.c[0] - at[0], b.c[1] - at[1]) < 40 && (b.ring.some(inShop) || inShop(b.c)))
+    out.push({ at, angle: best.angle, side, name: p.name, shop })
+  }
+  chunk.stations = out
+  if (!out.length) return []
+  // A map "building" under the canopy is the canopy: the game draws its own.
+  chunk.buildings = chunk.buildings.filter((b) => !out.some((s) => Math.hypot(b.c[0] - s.at[0], b.c[1] - s.at[1]) < 8))
+  return out.flatMap((s) => {
+    const [nx, nz] = [-Math.sin(s.angle), Math.cos(s.angle)]
+    return [
+      { at: s.at, r: 11 },
+      ...(s.shop ? [{ at: [s.at[0] + nx * s.side * 10, s.at[1] + nz * s.side * 10] as XZ, r: 7 }] : []),
+    ]
   })
 }
 
@@ -570,7 +730,9 @@ function decodeOpenChunk(o: Origin, tx: number, ty: number, z: number, tile: Vec
   areas('landuse', (cls) => (cls === 'pitch' || cls === 'stadium' ? 'pitch' : ['school', 'university', 'college', 'kindergarten'].includes(cls) ? 'campus' : cls === 'hospital' ? 'hospital' : OMT_GREEN.has(cls) ? 'green' : null))
   nameTwins(chunk)
   dropOverRoads(chunk)
-  if (!far) fillQuarters(chunk, neighbours, tollGrounds(tile, toXZ))
+  dropOverlaps(chunk)
+  trimPaths(chunk)
+  if (!far) fillQuarters(chunk, neighbours, [...tollGrounds(tile, toXZ), ...layStations(chunk)])
   plant(chunk, far, forests)
   return chunk
 }

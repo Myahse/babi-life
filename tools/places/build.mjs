@@ -6,7 +6,7 @@
 //   node tools/places/build.mjs yopougon "Yopougon, Abidjan"
 //   → backend/internal/world/osm/yopougon.json
 //
-// Bus stops, ATMs, toilets, car parks, fuel and car garages are left out:
+// Bus stops, ATMs, toilets, car parks and car garages are left out:
 // nobody goes there to do something. Data © OpenStreetMap contributors (ODbL).
 
 import fs from 'node:fs'
@@ -79,6 +79,8 @@ function kindOf(cls, sub, name) {
     case 'garden':
     case 'park':
       return 'nature'
+    case 'fuel':
+      return 'station'
     case 'bus':
       return sub === 'bus_station' ? 'transport' : null
     case 'ferry_terminal':
@@ -92,7 +94,7 @@ function kindOf(cls, sub, name) {
     case 'hackerspace':
       return sub === 'post_box' ? null : 'office'
     default:
-      return null // bus stops, ATMs, toilets, parking, fuel, garages, laundries, vets…
+      return null // bus stops, ATMs, toilets, parking, garages, laundries, vets…
   }
 }
 

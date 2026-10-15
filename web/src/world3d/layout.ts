@@ -1,3 +1,4 @@
+import type { Field } from './open/places'
 import type { Commune } from '../lib/types'
 import { rng, themeFor, weighted, type Filler } from './themes'
 
@@ -19,6 +20,10 @@ export type Lot = {
   seed: number
   /** A real building from the map (the open world): its height. */
   height?: number
+  /** A pitch or a court (the open world): the place is played on it. */
+  field?: Field
+  /** A fuel station drawn with the map (open/station.tsx): only its label here. */
+  station?: boolean
 }
 
 export const HOME_ID = 'home'
