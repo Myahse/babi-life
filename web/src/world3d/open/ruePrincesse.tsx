@@ -29,7 +29,7 @@ const MAQUIS: Maquis[] = [
 ]
 
 /** Lettering in pixels: a small canvas drawn once, shown with hard edges. */
-function lettering(text: string, bg: string, ink: string, border = ink) {
+export function lettering(text: string, bg: string, ink: string, border = ink) {
   const h = 14
   const c = document.createElement('canvas')
   c.width = Math.max(48, text.length * 7 + 10)
@@ -54,15 +54,15 @@ function lettering(text: string, bg: string, ink: string, border = ink) {
 }
 
 /** A sign that glows at night: its own picture, lit from inside. */
-function signMaterial(t: THREE.Texture) {
+export function signMaterial(t: THREE.Texture) {
   return new THREE.MeshLambertMaterial({ map: t, emissiveMap: t, emissive: '#ffffff', emissiveIntensity: 0 })
 }
 
-const BOX = new THREE.BoxGeometry(1, 1, 1)
-const PLANE = new THREE.PlaneGeometry(1, 1)
+export const BOX = new THREE.BoxGeometry(1, 1, 1)
+export const PLANE = new THREE.PlaneGeometry(1, 1)
 
 /** Many of the same block, placed once: one draw for all of them. */
-function Blocks({ at, material, color }: { at: { p: [number, number, number]; s: [number, number, number]; ry?: number; c?: string }[]; material: THREE.Material; color?: boolean }) {
+export function Blocks({ at, material, color }: { at: { p: [number, number, number]; s: [number, number, number]; ry?: number; c?: string }[]; material: THREE.Material; color?: boolean }) {
   const mesh = useMemo(() => {
     const m = new THREE.InstancedMesh(BOX, material, at.length)
     const o = new THREE.Object3D()
