@@ -147,6 +147,8 @@ export type Look = {
   shoeColor?: string
   accessoryColor?: string
   marks?: string // bumps and bruises: none, pansement, griffures, genou, bagarre
+  /** How worn the clothes are: neuf, use (faded, stained), dechire (torn, dirty). */
+  wear?: string
 }
 
 export type Sim = {

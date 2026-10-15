@@ -1,6 +1,11 @@
 package waitlist
 
-import "testing"
+import (
+	"math/rand/v2"
+	"testing"
+
+	"github.com/myahse/babi-life/backend/internal/game"
+)
 
 func TestContact(t *testing.T) {
 	ok := map[string][2]string{
@@ -35,5 +40,29 @@ func TestAllow(t *testing.T) {
 	}
 	if !h.allow("5.6.7.8") {
 		t.Fatal("another network is not limited")
+	}
+}
+
+func TestBorn(t *testing.T) {
+	rng := rand.New(rand.NewPCG(1, 2))
+	if b := born("Yopougon", rng); b.Commune != "yopougon" {
+		t.Fatalf("born in %q, want yopougon", b.Commune)
+	}
+	seen := map[string]bool{}
+	for i := 0; i < 400; i++ {
+		b := born("", rng)
+		if _, ok := game.FindFamily(b.Family); !ok || b.Commune == "" {
+			t.Fatalf("bad birth %+v", b)
+		}
+		seen[b.Family] = true
+	}
+	if len(seen) != len(game.Families) {
+		t.Fatalf("only %d families drawn in 400 births", len(seen))
+	}
+	if (&Sim{Gender: "homme", Look: []byte(`{"skin":"#6e4024"}`)}).validate() != nil {
+		t.Fatal("a good Sim refused")
+	}
+	if (&Sim{Gender: "x", Look: []byte(`{}`)}).validate() == nil || (&Sim{Gender: "femme", Look: []byte(`nope`)}).validate() == nil {
+		t.Fatal("a bad Sim accepted")
 	}
 }

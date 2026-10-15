@@ -36,6 +36,12 @@ export function App() {
       </Suspense>
     )
 
+  // Making one's Sim from the wish list, before the game opens (it needs the world's data).
+  if (path === '/liste/creer') {
+    if (!world && !error) return <Loading />
+    return <Suspense fallback={<Loading />}>{world ? <CreateSim waitlist /> : <Waitlist />}</Suspense>
+  }
+
   if (!world && !error) return <Loading />
 
   if (!token || !world) {

@@ -392,6 +392,8 @@ function paintSheet(l: Required<Look>, femme: boolean, young: boolean) {
   }
 
   /* The outfit. */
+  // What is bare before the clothes go on: worn clothes leave the skin alone.
+  const bare = l.wear === 'use' || l.wear === 'dechire' ? p.g.getImageData(0, 0, SHEET, SHEET).data : null
   const b = R.body
   const cut: Cut = { legRows: 0, armRows: 0 }
   const sleeves = (n: number, col: Paint, cuff?: string) => {
@@ -866,6 +868,8 @@ function paintSheet(l: Required<Look>, femme: boolean, young: boolean) {
     p.all(R.skirtLeg, cut.skirt.paint)
     if (cut.skirt.band) p.rows(R.skirtTop, 0, 1, cut.skirt.band)
   }
+  /* Worn clothes: faded and stained, or torn and dirty, holes showing the skin. */
+  if (bare) wearOut(p.g, l.wear === 'dechire', skin, bare, [R.body, ...R.leg, ...R.arm, ...(cut.skirt ? [R.skirtTop, R.skirtLeg] : [])])
   if (!young && l.accessory === 'chain') {
     const gold = l.accessoryColor || '#e8b93c'
     for (const [x, y] of [[1, 0], [6, 0], [2, 1], [5, 1], [3, 2], [4, 2]]) p.at(b, 'F', x, y, gold)
@@ -908,6 +912,36 @@ function paintSheet(l: Required<Look>, femme: boolean, young: boolean) {
   return { texture: t, cut, hair }
 }
 
+/**
+ * Wears the clothes out, pixel by pixel (what was bare before the clothes stays as it is): a muddy
+ * fade, brown stains, and when torn, holes where the skin shows through.
+ */
+function wearOut(g: CanvasRenderingContext2D, torn: boolean, skin: string, bare: Uint8ClampedArray, regions: Region[]) {
+  const sk = new THREE.Color(skin)
+  const [sr, sg, sb] = [sk.r * 255, sk.g * 255, sk.b * 255]
+  const mud = [122, 104, 80]
+  const img = g.getImageData(0, 0, SHEET, SHEET)
+  const d = img.data
+  for (const r of regions) {
+    for (let y = r.v; y < r.v + r.D + r.H; y++)
+      for (let x = r.u; x < r.u + 2 * (r.D + r.W); x++) {
+        const i = (y * SHEET + x) * 4
+        if (d[i + 3] === 0 || (d[i] === bare[i] && d[i + 1] === bare[i + 1] && d[i + 2] === bare[i + 2])) continue // still bare skin
+        const k = torn ? 0.42 : 0.22
+        for (let c = 0; c < 3; c++) d[i + c] = d[i + c] * (1 - k) + mud[c] * k
+        const h = hash(x * 3.1 + 7, y * 1.7)
+        if (h < (torn ? 0.14 : 0.07)) for (let c = 0; c < 3; c++) d[i + c] *= 0.62 // a stain
+        else if (torn && h > 0.93) {
+          // A hole: the skin, a little in shadow.
+          d[i] = sr * 0.88
+          d[i + 1] = sg * 0.88
+          d[i + 2] = sb * 0.88
+        }
+      }
+  }
+  g.putImageData(img, 0, 0)
+}
+
 const swatchCache = new Map<string, string>()
 /** A wax print as the Sims wear it, for the creator's swatches: a data URL, two repeats a side. */
 export function waxSwatch(color: string, motif: string) {
@@ -933,7 +967,7 @@ type Sheet = ReturnType<typeof paintSheet> & { material: THREE.Material }
 const sheetCache = new Map<string, Sheet>()
 /** One sheet per look: every Sim dressed the same shares it. */
 function sheetFor(l: Required<Look>, femme: boolean, young: boolean) {
-  const key = JSON.stringify([l.skin, l.hair, l.hairColor, l.outfit, l.outfitColor, l.eyes, l.beard, l.accessory, l.pattern, l.bottomColor, l.shoeColor, l.accessoryColor, l.marks, femme, young])
+  const key = JSON.stringify([l.skin, l.hair, l.hairColor, l.outfit, l.outfitColor, l.eyes, l.beard, l.accessory, l.pattern, l.bottomColor, l.shoeColor, l.accessoryColor, l.marks, l.wear, femme, young])
   let s = sheetCache.get(key)
   if (!s) {
     const painted = paintSheet(l, femme, young)
@@ -1327,8 +1361,10 @@ export function BlockBaby({ look, gender, pose = 'idle', seed = 0 }: Props) {
   const l: Required<Look> = { ...full, hair: full.hair === 'bald' ? 'bald' : 'short', beard: 'none', accessory: 'none', marks: 'none' }
   const cast = useCastShadows()
   const sheet = sheetFor(l, gender === 'femme', true)
-  const onesie = clothMat(BABY_COLORS[Math.abs(Math.round(seed * 7)) % BABY_COLORS.length] ?? '#bde0fe')
-  const nappy = lambert('#f8f9fa')
+  const fresh = BABY_COLORS[Math.abs(Math.round(seed * 7)) % BABY_COLORS.length] ?? '#bde0fe'
+  // The poorest babies' onesie has seen better days.
+  const onesie = clothMat(full.wear === 'dechire' ? '#a39478' : full.wear === 'use' ? tint(fresh, -0.18) : fresh)
+  const nappy = lambert(full.wear === 'dechire' ? '#cfc4ad' : '#f8f9fa')
   const skin = lambert(l.skin)
   const root = useRef<THREE.Group>(null)
   const head = useRef<THREE.Group>(null)

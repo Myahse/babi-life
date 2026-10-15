@@ -5,7 +5,9 @@ package waitlist
 import (
 	"crypto/subtle"
 	"encoding/csv"
+	"encoding/json"
 	"errors"
+	"math/rand/v2"
 	"net"
 	"net/http"
 	"net/mail"
@@ -18,7 +20,9 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
+	"github.com/myahse/babi-life/backend/internal/world"
 )
 
 type Handler struct {
@@ -76,7 +80,52 @@ func (h *Handler) allow(ip string) bool {
 	return true
 }
 
-// Join: POST /api/v1/waitlist {firstName, contact, commune, beta, source}.
+// Sim is the character made on the wish list: who it is and how it looks.
+// The look is kept as sent (the game checks it again when it opens).
+type Sim struct {
+	FirstName  string          `json:"firstName"`
+	LastName   string          `json:"lastName"`
+	Gender     string          `json:"gender"`
+	Look       json.RawMessage `json:"look"`
+	Traits     []string        `json:"traits"`
+	Aspiration string          `json:"aspiration"`
+}
+
+func (s *Sim) validate() error {
+	switch {
+	case s.Gender != "femme" && s.Gender != "homme":
+		return errors.New("genre invalide")
+	case len(s.Look) < 2 || len(s.Look) > 2048 || !json.Valid(s.Look):
+		return errors.New("apparence invalide")
+	case utf8.RuneCountInString(strings.TrimSpace(s.LastName)) > 40 || len(s.Traits) > game.MaxTraits:
+		return errors.New("Sim invalide")
+	}
+	return nil
+}
+
+// Birth: the family drawn like in the game, nobody chooses it, and the
+// commune: the one people gave if it's in the game, else one of Abidjan's.
+type Birth struct {
+	Family  string `json:"family"`
+	Commune string `json:"commune"` // id
+}
+
+func born(commune string, rng *rand.Rand) Birth {
+	f := game.BornInto(rng)
+	want := strings.ToLower(strings.TrimSpace(commune))
+	for _, c := range world.Cities {
+		for _, cm := range c.Communes {
+			if want != "" && strings.ToLower(cm.Name) == want {
+				return Birth{Family: f.ID, Commune: cm.ID}
+			}
+		}
+	}
+	abj, _ := world.FindCity("abidjan")
+	return Birth{Family: f.ID, Commune: abj.Communes[rng.IntN(len(abj.Communes))].ID}
+}
+
+// Join: POST /api/v1/waitlist {firstName, contact, commune, beta, source, sim?}.
+// With a Sim, it is born: the answer says into which family and where.
 func (h *Handler) Join(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		FirstName string `json:"firstName"`
@@ -85,6 +134,7 @@ func (h *Handler) Join(w http.ResponseWriter, r *http.Request) {
 		Beta      bool   `json:"beta"`
 		Source    string `json:"source"`
 		Website   string `json:"website"` // a field people don't see: bots fill it
+		Sim       *Sim   `json:"sim"`
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
@@ -99,6 +149,13 @@ func (h *Handler) Join(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		httpx.Error(w, http.StatusUnprocessableEntity, err.Error())
 		return
+	}
+	if req.Sim != nil {
+		if err := req.Sim.validate(); err != nil {
+			httpx.Error(w, http.StatusUnprocessableEntity, err.Error())
+			return
+		}
+		req.Sim.FirstName = name
 	}
 	if req.Website != "" {
 		httpx.JSON(w, http.StatusCreated, map[string]any{"ok": true}) // a bot: say yes, keep nothing
@@ -119,17 +176,40 @@ func (h *Handler) Join(w http.ResponseWriter, r *http.Request) {
 		}
 		return s
 	}
-	_, err = h.DB.Exec(r.Context(), `INSERT INTO waitlist (first_name, contact, kind, commune, beta, source) VALUES ($1, $2, $3, $4, $5, $6)`,
-		name, contact, kind, clip(req.Commune, 60), req.Beta, clip(req.Source, 40))
+	var simJSON []byte
+	var birth Birth
+	if req.Sim != nil {
+		simJSON, _ = json.Marshal(req.Sim)
+		birth = born(req.Commune, rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), 0)))
+	}
+	_, err = h.DB.Exec(r.Context(), `INSERT INTO waitlist (first_name, contact, kind, commune, beta, source, sim, family, born_in) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+		name, contact, kind, clip(req.Commune, 60), req.Beta, clip(req.Source, 40), simJSON, birth.Family, birth.Commune)
 	var pg *pgconn.PgError
 	already := errors.As(err, &pg) && pg.Code == "23505"
 	if err != nil && !already {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 		return
 	}
+	if already && req.Sim != nil {
+		// Already on the list: the new Sim replaces the old one, but a family
+		// once drawn stays (no drawing again for a richer one).
+		err = h.DB.QueryRow(r.Context(), `
+			UPDATE waitlist SET sim = $2,
+			       family = CASE WHEN family = '' THEN $3 ELSE family END,
+			       born_in = CASE WHEN born_in = '' THEN $4 ELSE born_in END
+			 WHERE contact = $1 RETURNING family, born_in`, contact, simJSON, birth.Family, birth.Commune).Scan(&birth.Family, &birth.Commune)
+		if err != nil {
+			httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+			return
+		}
+	}
 	var count int
 	_ = h.DB.QueryRow(r.Context(), `SELECT count(*) FROM waitlist`).Scan(&count)
-	httpx.JSON(w, http.StatusCreated, map[string]any{"ok": true, "already": already, "count": count})
+	out := map[string]any{"ok": true, "already": already, "count": count}
+	if req.Sim != nil {
+		out["birth"] = birth
+	}
+	httpx.JSON(w, http.StatusCreated, out)
 }
 
 // Count: GET /api/v1/waitlist/count — how many are on the list (shown on the page).
@@ -149,7 +229,7 @@ func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusUnauthorized, "clé invalide")
 		return
 	}
-	rows, err := h.DB.Query(r.Context(), `SELECT first_name, contact, kind, commune, beta, source, created_at FROM waitlist ORDER BY created_at`)
+	rows, err := h.DB.Query(r.Context(), `SELECT first_name, contact, kind, commune, beta, source, family, born_in, created_at FROM waitlist ORDER BY created_at`)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 		return
@@ -158,17 +238,17 @@ func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 	w.Header().Set("Content-Disposition", `attachment; filename="babi-life-liste.csv"`)
 	out := csv.NewWriter(w)
-	_ = out.Write([]string{"prenom", "contact", "type", "commune", "beta", "source", "inscrit_le"})
+	_ = out.Write([]string{"prenom", "contact", "type", "commune", "beta", "source", "famille", "ne_a", "inscrit_le"})
 	for rows.Next() {
-		var name, contact, kind, commune, source string
+		var name, contact, kind, commune, source, family, bornIn string
 		var beta bool
 		var at time.Time
-		if rows.Scan(&name, &contact, &kind, &commune, &beta, &source, &at) == nil {
+		if rows.Scan(&name, &contact, &kind, &commune, &beta, &source, &family, &bornIn, &at) == nil {
 			b := "non"
 			if beta {
 				b = "oui"
 			}
-			_ = out.Write([]string{name, contact, kind, commune, b, source, at.Format(time.RFC3339)})
+			_ = out.Write([]string{name, contact, kind, commune, b, source, family, bornIn, at.Format(time.RFC3339)})
 		}
 	}
 	out.Flush()

@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
-import { ArrowRight, Check, Copy, Hammer, MapPinned, MessageCircle, Shirt, Smartphone, UserRound, Users, type LucideIcon } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { ArrowRight, Baby, Check, Hammer, MapPinned, Shirt, Smartphone, UserRound, Users, type LucideIcon } from 'lucide-react'
 import { Scene } from '../components/Scene'
 import { Portrait } from '../avatar/portrait'
 import { IconTile, Logo } from '../components/ui'
 import { useWorld } from '../store/world'
 import { CROWD } from './Title'
+import { Share } from '../components/WaitlistShare'
 
 // The wish list (/liste): before the game opens, people leave a first name
 // and an e-mail or a WhatsApp number to hear when it does. The flyer's QR
@@ -93,16 +95,20 @@ export function Waitlist() {
             <span className="text-[var(--color-orange)]">Ton Babi.</span>
           </h1>
           <p className="mt-4 max-w-md text-base leading-relaxed font-semibold text-white/85 lg:text-lg">
-            Babi Life arrive : crée ton Sim, construis ta maison et vis Abidjan avec tes amis. Inscris-toi pour être prévenu·e en premier.
+            Babi Life arrive : crée ton Sim dès maintenant et découvre dans quelle famille il naît, des plus gnambro aux plus laté. On te prévient en premier à l'ouverture.
           </p>
+          {/* Make one's Sim now and be born into a family: kept for the opening */}
+          <Link to={`/liste/creer${location.search}`} className="btn mt-6 w-full max-w-sm">
+            <Baby size={20} strokeWidth={2.6} /> Crée ton Sim, découvre ta famille
+          </Link>
           <button
-            className="btn mt-6 w-full max-w-sm lg:!hidden"
+            className="mt-3 text-sm font-extrabold text-white/80 underline-offset-4 hover:underline lg:hidden"
             onClick={() => {
               document.getElementById('liste')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
               setTimeout(() => document.querySelector<HTMLInputElement>('#liste input')?.focus({ preventScroll: true }), 450)
             }}
           >
-            Je m'inscris <ArrowRight size={18} strokeWidth={2.6} />
+            Ou juste m'inscrire <ArrowRight size={14} strokeWidth={2.6} className="inline" />
           </button>
           {/* The cast, standing on a warm glow */}
           <div className="relative mt-8 flex items-end justify-center lg:mt-10 lg:justify-start" aria-hidden>
@@ -193,23 +199,6 @@ export function Waitlist() {
         <i className="flex-1 bg-white" />
         <i className="flex-1 bg-[#009a44]" />
       </div>
-    </div>
-  )
-}
-
-/** Tell the others: WhatsApp first (that's where Babi talks), or copy the link. */
-function Share() {
-  const [copied, setCopied] = useState(false)
-  const link = `${location.origin}/liste`
-  const text = `Babi Life arrive : crée ton Sim, construis ta maison et vis Abidjan avec nous. Inscris-toi : ${link}`
-  return (
-    <div className="mt-1 flex w-full flex-col gap-2">
-      <a className="btn btn-emerald w-full" href={`https://wa.me/?text=${encodeURIComponent(text)}`} target="_blank" rel="noreferrer">
-        <MessageCircle size={18} strokeWidth={2.6} /> Partager sur WhatsApp
-      </a>
-      <button className="btn btn-soft w-full" onClick={() => navigator.clipboard?.writeText(link).then(() => setCopied(true))}>
-        {copied ? <Check size={18} strokeWidth={2.6} /> : <Copy size={18} strokeWidth={2.6} />} {copied ? 'Lien copié' : 'Copier le lien'}
-      </button>
     </div>
   )
 }
