@@ -44,6 +44,10 @@ Options au moment de construire :
 
 L'icône vient du kit de lancement (`marketing/out/logos/babi-life-app-icon.png`) : `dart run flutter_launcher_icons` la refait.
 
+## Sur GitHub
+
+À chaque changement de `mobile/` sur `main` (ou à la main : *Actions → Mobile app → Run workflow*), GitHub vérifie l'appli (`flutter analyze`, `flutter test`) et construit les APK Android : on les télécharge dans l'onglet **Actions**, sur la dernière exécution, sous **babi-life-apk** (`app-arm64-v8a-release.apk` pour presque tous les téléphones récents). L'identifiant Google Web se met dans les variables du dépôt : *Settings → Secrets and variables → Actions → Variables → `GOOGLE_WEB_CLIENT_ID`*.
+
 ## Publier
 
 - **Play Store** : créer une clé de signature (`keytool -genkey -v -keystore babi-life.jks -keyalg RSA -keysize 2048 -validity 10000 -alias babi-life`), la déclarer dans `android/key.properties` (jamais dans git) et `android/app/build.gradle.kts`, puis `flutter build appbundle`. Pour l'instant, le build *release* est signé avec la clé de débogage : bon pour essayer, pas pour le Play Store.
