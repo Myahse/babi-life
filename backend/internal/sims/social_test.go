@@ -107,8 +107,18 @@ func TestHairdos(t *testing.T) {
 	s := newSim()
 	s.Look.Hair, s.Look.Beard = "afro", "none"
 	s.restyle("degrade")
-	if s.Look.Hair != "short" || s.Look.Beard != "none" {
-		t.Errorf("a dégradé cuts the hair short: %+v", s.Look)
+	if s.Look.Hair != "degrade" || s.Look.Beard != "none" {
+		t.Errorf("a dégradé, with its line: %+v", s.Look)
+	}
+	s.restyle("coupe-courte")
+	if s.Look.Hair != "short" {
+		t.Errorf("a short cut: %+v", s.Look)
+	}
+	for id, hair := range map[string]string{"iroquoise": "mohawk", "nattes": "cornrows", "vanilles": "twists", "macarons": "puffs", "carre": "bob"} {
+		s.restyle(id)
+		if s.Look.Hair != hair {
+			t.Errorf("%s gives %s, not %s", id, s.Look.Hair, hair)
+		}
 	}
 	s.restyle("tresses")
 	s.restyle("taille-barbe")
@@ -118,6 +128,14 @@ func TestHairdos(t *testing.T) {
 	s.restyle("play-football")
 	if s.Look.Hair != "braids" {
 		t.Error("only the barbier and the salon change the look")
+	}
+	// Every hairdo is one the barbier or the salon offers.
+	for id := range game.Hairdos {
+		if _, ok := game.Kinds["barbier"].Interaction(id); !ok {
+			if _, ok := game.Kinds["salon"].Interaction(id); !ok {
+				t.Errorf("hairdo %s is offered nowhere", id)
+			}
+		}
 	}
 	// Anyone can sit at the barbier or the salon.
 	for _, k := range []string{"barbier", "salon"} {

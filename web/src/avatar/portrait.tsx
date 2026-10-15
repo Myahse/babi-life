@@ -11,8 +11,8 @@ import { Human } from './Human'
 export type Framing = 'head' | 'bust' | 'full'
 
 const FRAMES: Record<Framing, { y: number; dist: number }> = {
-  head: { y: 1.5, dist: 1.05 },
-  bust: { y: 1.32, dist: 1.9 },
+  head: { y: 1.53, dist: 1.3 },
+  bust: { y: 1.3, dist: 2.4 },
   full: { y: 0.86, dist: 4.7 },
 }
 const SIZE = 320

@@ -294,6 +294,8 @@ var Kinds = map[string]PlaceKind{
 		Interactions: []Interaction{
 			{ID: "degrade", Label: "Se faire un dégradé", Icon: "scissors", Minutes: 40, Cost: 1000, Effect: Needs{Hygiene: 20, Fun: 15, Social: 10}, MinHour: 8, MaxHour: 22},
 			{ID: "boule-a-zero", Label: "Se faire raser la tête", Icon: "scissors", Minutes: 25, Cost: 1000, Effect: Needs{Hygiene: 25, Fun: 5}, MinHour: 8, MaxHour: 22},
+			{ID: "coupe-courte", Label: "Se faire une coupe courte", Icon: "scissors", Minutes: 30, Cost: 1000, Effect: Needs{Hygiene: 20, Fun: 10}, MinHour: 8, MaxHour: 22},
+			{ID: "iroquoise", Ages: TeensUp, Label: "Se faire une iroquoise", Icon: "scissors", Minutes: 45, Cost: 1500, Effect: Needs{Hygiene: 15, Fun: 25, Social: 10}, MinHour: 8, MaxHour: 22},
 			{ID: "taille-barbe", Ages: Adults, Label: "Se faire tailler la barbe", Icon: "scissors", Minutes: 20, Cost: 500, Effect: Needs{Hygiene: 15, Fun: 5}, MinHour: 8, MaxHour: 22},
 			Gbairai,
 		},
@@ -346,6 +348,10 @@ var Kinds = map[string]PlaceKind{
 			{ID: "tresses", Label: "Se faire tresser", Icon: "flower-2", Minutes: 3 * 60, Cost: 5000, Effect: Needs{Fun: 10, Social: 30, Energy: -10, Hygiene: 15}, MinHour: 8, MaxHour: 20},
 			{ID: "tissage", Ages: TeensUp, Label: "Se faire poser un tissage", Icon: "flower-2", Minutes: 2 * 60, Cost: 15000, Effect: Needs{Fun: 25, Social: 20, Hygiene: 15}, MinHour: 8, MaxHour: 20},
 			{ID: "chignon", Label: "Se faire un chignon", Icon: "flower-2", Minutes: 45, Cost: 2000, Effect: Needs{Fun: 15, Hygiene: 10}, MinHour: 8, MaxHour: 20},
+			{ID: "nattes", Label: "Se faire des nattes collées", Icon: "flower-2", Minutes: 90, Cost: 3000, Effect: Needs{Fun: 10, Social: 20, Hygiene: 15}, MinHour: 8, MaxHour: 20},
+			{ID: "vanilles", Label: "Se faire des vanilles", Icon: "flower-2", Minutes: 2 * 60, Cost: 4000, Effect: Needs{Fun: 15, Social: 25, Energy: -5, Hygiene: 15}, MinHour: 8, MaxHour: 20},
+			{ID: "macarons", Label: "Se faire des macarons", Icon: "flower-2", Minutes: 40, Cost: 1500, Effect: Needs{Fun: 15, Hygiene: 10}, MinHour: 8, MaxHour: 20},
+			{ID: "carre", Ages: TeensUp, Label: "Se faire un carré", Icon: "flower-2", Minutes: 60, Cost: 5000, Effect: Needs{Fun: 20, Social: 10, Hygiene: 15}, MinHour: 8, MaxHour: 20},
 			{ID: "manucure", Ages: TeensUp, Label: "Se faire les ongles", Icon: "sparkles", Minutes: 45, Cost: 3000, Effect: Needs{Fun: 20, Social: 10}, MinHour: 8, MaxHour: 20},
 			Gbairai,
 		},
@@ -420,7 +426,13 @@ var Gbairai = Interaction{ID: "gbairai", Ages: TeensUp, Label: "Faire le gbairai
 
 // Hairdos: what a visit to the barbier or the salon does to the Sim's look.
 var Hairdos = map[string]struct{ Hair, Beard string }{
-	"degrade":      {Hair: "short"},
+	"degrade":      {Hair: "degrade"},
+	"coupe-courte": {Hair: "short"},
+	"iroquoise":    {Hair: "mohawk"},
+	"nattes":       {Hair: "cornrows"},
+	"vanilles":     {Hair: "twists"},
+	"macarons":     {Hair: "puffs"},
+	"carre":        {Hair: "bob"},
 	"boule-a-zero": {Hair: "bald"},
 	"taille-barbe": {Beard: "bouc"},
 	"tresses":      {Hair: "braids"},

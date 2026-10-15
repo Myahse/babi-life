@@ -7,7 +7,7 @@ import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
 import { UsernameField } from '../components/UsernameField'
 import { USERNAME, suggestFrom } from '../lib/username'
-import { ACCESSORIES, ACCESSORY_COLORS, MARKS, BEARDS, BODIES, BOTTOM_COLORS, DEFAULT_LOOK, EYE_COLORS, HAIR_COLORS, HAIRS, HEIGHT_RANGE, OUTFIT_COLORS, OUTFIT_DEFAULT_COLOR, OUTFITS, PATTERNS, SHOE_COLORS, SKIN_TONES, WAX_OUTFITS, defaultColors, metres, randomLook, scaleFor, type Choice } from '../avatar/options'
+import { FEMME_OUTFITS, ACCESSORIES, ACCESSORY_COLORS, MARKS, BEARDS, BODIES, BOTTOM_COLORS, DEFAULT_LOOK, EYE_COLORS, HAIR_COLORS, HAIRS, HEIGHT_RANGE, OUTFIT_COLORS, OUTFIT_DEFAULT_COLOR, OUTFITS, PATTERNS, SHOE_COLORS, SKIN_TONES, WAX_OUTFITS, defaultColors, metres, randomLook, scaleFor, type Choice } from '../avatar/options'
 import { ColorPicker } from '../components/ColorPicker'
 import { Stage, type Focus } from '../avatar/Stage'
 import { Portrait, type Framing } from '../avatar/portrait'
@@ -230,7 +230,7 @@ export function CreateSim() {
                 <Options choices={MARKS} value={sim.look.marks} onPick={(marks) => setLook({ marks })} look={sim.look} gender={sim.gender} field="marks" framing="head" />
               </Section>
               <Section title="Accessoire" icon={Glasses}>
-                <Options choices={ACCESSORIES} value={sim.look.accessory} onPick={(accessory) => setLook({ accessory })} look={sim.look} gender={sim.gender} field="accessory" framing="head" />
+                <Options choices={ACCESSORIES} value={sim.look.accessory} onPick={(accessory) => setLook({ accessory })} look={sim.look} gender={sim.gender} field="accessory" framing="bust" />
               </Section>
               {sim.look.accessory !== 'none' && (
                 <Section title="Couleur de l'accessoire">
@@ -254,7 +254,7 @@ export function CreateSim() {
           {current.id === 'outfit' && (
             <div className="space-y-5">
               <Section title="Style">
-                <Options choices={OUTFITS.filter((o) => femme || o.id !== 'robe')} value={sim.look.outfit} onPick={(outfit) => setLook({ outfit, ...(OUTFIT_DEFAULT_COLOR[outfit] && { outfitColor: OUTFIT_DEFAULT_COLOR[outfit] }) })} look={sim.look} gender={sim.gender} field="outfit" framing="full" />
+                <Options choices={OUTFITS.filter((o) => femme || !FEMME_OUTFITS.has(o.id))} value={sim.look.outfit} onPick={(outfit) => setLook({ outfit, ...(OUTFIT_DEFAULT_COLOR[outfit] && { outfitColor: OUTFIT_DEFAULT_COLOR[outfit] }) })} look={sim.look} gender={sim.gender} field="outfit" framing="full" />
               </Section>
               {(WAX_OUTFITS.has(sim.look.outfit) || sim.look.hair === 'headwrap') && (
                 <Section title="Motif du pagne">
@@ -429,7 +429,7 @@ function Options({ choices, value, onPick, look, gender, field, framing }: { cho
 /** The other gender's picture keeps your colours. */
 function randomLookFor(gender: NewSim['gender'], look: Required<Look>): Required<Look> {
   return gender === 'homme'
-    ? { ...look, hair: ['headwrap', 'weave', 'bun'].includes(look.hair) ? 'short' : look.hair, outfit: look.outfit === 'robe' ? 'casual' : look.outfit, accessory: look.accessory === 'earrings' ? 'none' : look.accessory }
+    ? { ...look, hair: ['headwrap', 'weave', 'bun', 'puffs', 'bob', 'ponytail'].includes(look.hair) ? 'short' : look.hair, outfit: FEMME_OUTFITS.has(look.outfit) ? 'casual' : look.outfit, accessory: look.accessory === 'earrings' || look.accessory === 'beads' ? 'none' : look.accessory }
     : { ...look, beard: 'none' }
 }
 

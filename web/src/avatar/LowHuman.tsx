@@ -35,9 +35,9 @@ const mat = (c: string) => {
   return m
 }
 
-const LONG = new Set(['pagne', 'boubou', 'robe'])
+const LONG = new Set(['pagne', 'boubou', 'robe', 'kaba', 'jupe', 'bazin', 'uniforme'])
 /** Outfits whose sleeves cover the whole arm. */
-const LONG_SLEEVES = new Set(['suit', 'survet', 'boubou'])
+const LONG_SLEEVES = new Set(['suit', 'survet', 'boubou', 'bazin', 'chemise', 'blouson'])
 
 export function LowHuman({ look, gender, pose = 'idle', seed = 0, speed }: { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; speed?: number }) {
   const l = fullLook(look)
@@ -46,7 +46,7 @@ export function LowHuman({ look, gender, pose = 'idle', seed = 0, speed }: { loo
   const top = l.outfitColor
   const bottom = l.bottomColor || dc.bottom
   const shoe = l.shoeColor || dc.shoe
-  const long = (femme && LONG.has(l.outfit)) || l.outfit === 'boubou'
+  const long = (femme && LONG.has(l.outfit)) || l.outfit === 'boubou' || l.outfit === 'bazin'
   const { w, limb, depth } = BODY[l.body] ?? BODY.moyen
   const tw = 0.34 * w * (femme ? 0.92 : 1)
   const td = 0.18 * depth
