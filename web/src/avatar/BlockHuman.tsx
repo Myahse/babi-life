@@ -1191,7 +1191,8 @@ export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 
     const t = worldTime() + seed * 7.3
     const period = 3.2 + (Math.abs(seed) % 3)
     const k = (t % period) / period
-    const shut = k > 0.955 ? Math.sin(((k - 0.955) / 0.045) * Math.PI) : 0
+    // Asleep (or praying, eyes down): the eyes stay shut.
+    const shut = pose === 'sleep' || pose === 'pray' ? 1 : k > 0.955 ? Math.sin(((k - 0.955) / 0.045) * Math.PI) : 0
     if (lids.current) {
       lids.current.visible = shut > 0.05
       for (const c of lids.current.children) c.scale.y = Math.max(0.01, shut)

@@ -218,7 +218,7 @@ function room(kindIn: string, housing: string): Room {
           </>
         ),
         spots: {
-          bed: { p: [-4, 0.62, -2.4], pose: 'idle', lying: true },
+          bed: { p: [-4, 0.74, -1.75], pose: 'idle', lying: true },
           sofa: { p: [1.5, 0.05, -3.2], pose: 'sit' },
           stove: { p: [5.2, 0, -2.6], r: Math.PI, pose: 'busy' },
           shower: { p: [-5.2, 0.06, 2.8], r: Math.PI / 2, pose: 'idle' },

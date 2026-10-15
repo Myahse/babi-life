@@ -3,6 +3,8 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { Box } from '../props'
 import { worldTime } from '../../lib/worldClock'
+import { Baby } from '../../avatar/Human'
+import { randomLook } from '../../avatar/options'
 
 // What shows what the Sim is doing, around it: the water of the shower, the
 // plate of garba, the bottle, the blanket, the notebook, the prayer mat…
@@ -81,8 +83,16 @@ function Shower() {
 
 /** The baby's bath: the basin of water, the bubbles. */
 function Tub() {
+  // The baby sitting in the water, splashing a little, facing the parent.
+  const baby = useMemo(() => {
+    let n = 7
+    return randomLook('femme', () => ((n = (n * 16807) % 2147483647) / 2147483647))
+  }, [])
   return (
     <group position={[0, 0, 0.55]}>
+      <group position={[0, 0.06, 0.02]} rotation={[0, Math.PI, 0]}>
+        <Baby look={baby} gender="femme" pose="busy" seed={3} />
+      </group>
       <Box p={[0, 0.18, 0]} s={[0.7, 0.36, 0.5]} c="#f08c00" />
       <Box p={[0, 0.34, 0]} s={[0.62, 0.04, 0.42]} c="#9fd8ff" />
       {[[-0.15, 0.08], [0.1, -0.1], [0.2, 0.12]].map(([x, z], i) => (
@@ -96,7 +106,7 @@ function Tub() {
 
 /** The pagne over the sleeper, from the feet to the chest. */
 function Blanket() {
-  return <Box p={[0, 0.6, 0.15]} s={[0.66, 1.15, 0.14]} c="#e8590c" />
+  return <Box p={[0, 0.52, 0.07]} s={[0.66, 0.98, 0.1]} c="#e8590c" />
 }
 
 /** The prayer mat under the one praying. */

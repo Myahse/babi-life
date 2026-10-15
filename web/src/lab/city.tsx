@@ -16,6 +16,9 @@ import { Apprenti, Forest, Palms, Trees, legProfile, makeWorldMaterials, type Gb
 import { useFrame } from '@react-three/fiber'
 import { worldTime } from '../lib/worldClock'
 import { useEffect, useRef, useState } from 'react'
+import { Interior } from '../world3d/Interior'
+import { randomLook } from '../avatar/options'
+import type { Sim } from '../lib/types'
 
 // Dev-only lab (/city.html): made-up map buildings (turned, L-shaped, round,
 // tiny) put through the real chunk builder, as the open world draws them, and
@@ -24,7 +27,9 @@ import { useEffect, useRef, useState } from 'react'
 // ?view=map&lat=5.345&lng=-4.082&n=1 for the real map's chunks there
 // (OpenFreeMap, no key), n chunks each way, seen from &cam;
 // ?view=gbaka&t=… the apprenti's chase down a straight street (t: seconds
-// into the cycle, frozen; without t it plays).
+// into the cycle, frozen; without t it plays);
+// ?view=interior&kind=home&id=sleep (&housing=villa &g=homme &stage=bebe
+// &seed=3 &night) the inside of a place, the Sim doing that activity.
 
 const q = new URLSearchParams(location.search)
 const view = q.get('view') ?? 'city'
@@ -238,7 +243,22 @@ function GbakaLab() {
   )
 }
 
+function InteriorLab() {
+  const gender = (q.get('g') ?? 'femme') as Sim['gender']
+  const sim = useMemo(() => {
+    let n = Number(q.get('seed') ?? 3)
+    const r = () => ((n = (n * 16807) % 2147483647) / 2147483647)
+    return { id: 'lab', firstName: 'Awa', lastName: 'Koné', gender, look: randomLook(gender, r) } as unknown as Sim
+  }, [gender])
+  return (
+    <div style={{ width: '100vw', height: '100vh' }}>
+      <Interior sim={sim} kind={q.get('kind') ?? 'home'} placeId={q.get('place') ?? 'lab-place'} interactionId={q.get('id') ?? undefined} housing={q.get('housing') ?? 'cour'} night={night} stage={q.get('stage') ?? 'adulte'} />
+    </div>
+  )
+}
+
 function Lab() {
+  if (view === 'interior') return <InteriorLab />
   if (view === 'gbaka') return <GbakaLab />
   if (view === 'landmark') return <LandmarkLab />
   if (view === 'map') return <MapLab />

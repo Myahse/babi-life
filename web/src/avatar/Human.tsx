@@ -266,7 +266,7 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
     const hd = head.current!
     to(hd.rotation, 'y', pose === 'sleep' || pose === 'pray' ? 0 : walk ? -s * stride * 0.1 : pose === 'rant' ? Math.sin(t * 2.3) * 0.45 : pose === 'talk' ? Math.sin(t * 0.9) * 0.12 : g.y)
     to(hd.rotation, 'z', pose === 'phone' ? 0.12 : pose === 'sleep' ? 0.25 : pose === 'wave' ? 0.08 : pose === 'talk' ? Math.sin(t * 1.3) * 0.05 : 0)
-    to(hd.rotation, 'x', pose === 'sleep' ? 0 : pose === 'pray' || pose === 'cook' ? 0.3 : pose === 'wash' ? -0.25 : pose === 'busy' || pose === 'write' ? 0.25 : pose === 'eat' ? 0.1 : pose === 'drink' ? -0.15 : pose === 'hug' ? 0.15 : pose === 'beg' ? 0.12 : pose === 'dance' ? bounce * 0.12 - 0.05 : pose === 'cheer' ? -0.2 : walk ? (run ? -0.12 : -0.02) + Math.sin(ph * 2) * 0.03 * headBob : g.x + Math.sin(t * 0.7) * 0.02)
+    to(hd.rotation, 'x', pose === 'sleep' ? 0.35 : pose === 'pray' || pose === 'cook' ? 0.3 : pose === 'wash' ? -0.25 : pose === 'busy' || pose === 'write' ? 0.25 : pose === 'eat' ? 0.1 : pose === 'drink' ? -0.15 : pose === 'hug' ? 0.15 : pose === 'beg' ? 0.12 : pose === 'dance' ? bounce * 0.12 - 0.05 : pose === 'cheer' ? -0.2 : walk ? (run ? -0.12 : -0.02) + Math.sin(ph * 2) * 0.03 * headBob : g.x + Math.sin(t * 0.7) * 0.02)
   })
 }
 
