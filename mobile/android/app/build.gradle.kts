@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.lifeinbabi.babi_life"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 37 // permission_handler compiles against Android 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
