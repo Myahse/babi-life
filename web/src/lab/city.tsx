@@ -9,13 +9,16 @@ import { buildChunk } from '../world3d/open/meshes'
 import { makeTextures } from '../world3d/open/textures'
 import { blockRing } from '../world3d/open/voxel'
 import { Vehicle, type VehicleKind } from '../world3d/vehicles'
+import { Landmark } from '../world3d/open/landmarks'
 
 // Dev-only lab (/city.html): made-up map buildings (turned, L-shaped, round,
 // tiny) put through the real chunk builder, as the open world draws them, and
-// the street's vehicles; ?view=cars for the vehicles up close.
+// the street's vehicles; ?view=cars for the vehicles up close;
+// ?view=landmark&id=yop-rue-princesse (&night) for one landmark.
 
 const q = new URLSearchParams(location.search)
 const view = q.get('view') ?? 'city'
+const night = q.has('night')
 
 const rect = (x: number, z: number, w: number, d: number, a = 0): XZ[] =>
   [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]].map(([u, v]) => [x + u * Math.cos(a) - v * Math.sin(a), z + u * Math.sin(a) + v * Math.cos(a)] as XZ)
@@ -111,7 +114,30 @@ function Cars({ z = 0, spread = 6.5 }: { z?: number; spread?: number }) {
   )
 }
 
+function LandmarkLab() {
+  const cam = (q.get('cam') ?? '45,30,60').split(',').map(Number) as [number, number, number]
+  const look = (q.get('look') ?? '0,2,0').split(',').map(Number) as [number, number, number]
+  return (
+    <Canvas shadows dpr={[1, 2]} camera={{ position: cam, fov: 45 }} style={{ width: '100vw', height: '100vh' }}>
+      <color attach="background" args={[night ? '#0d1030' : '#a9d3f0']} />
+      <hemisphereLight args={[night ? '#3a4a8a' : '#ffffff', '#b8a27c', night ? 0.35 : 1.2]} />
+      <directionalLight position={[40, 80, 30]} intensity={night ? 0.15 : 1.8} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-50} shadow-camera-right={50} shadow-camera-top={50} shadow-camera-bottom={-50} />
+      <Landmark id={q.get('id') ?? 'yop-rue-princesse'} night={night} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[140, 140]} />
+        <meshLambertMaterial color="#cbb38c" />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 32]} receiveShadow>
+        <planeGeometry args={[140, 10]} />
+        <meshLambertMaterial color="#55585e" />
+      </mesh>
+      <OrbitControls target={look} />
+    </Canvas>
+  )
+}
+
 function Lab() {
+  if (view === 'landmark') return <LandmarkLab />
   const cars = view === 'cars'
   return (
     <Canvas shadows dpr={[1, 2]} camera={cars ? { position: [4, 6, 30], fov: 40 } : view === 'street' ? { position: [-18, 9, 26], fov: 50 } : { position: [55, 60, 70], fov: 45 }} style={{ width: '100vw', height: '100vh' }}>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { Airport } from './airport'
+import { RuePrincesse } from './ruePrincesse'
 
 // Landmarks the map alone can't draw: their shape is what people know them
 // by. Built from published descriptions; sizes are estimates for the game.
@@ -14,6 +15,7 @@ export const LANDMARKS: Record<string, number> = {
   'yakro-basilique': 130,
   'pb-aeroport': 150,
   'cocody-oranjo': 42,
+  'yop-rue-princesse': 32,
 }
 
 /** The landmark's model, by place. */
@@ -33,6 +35,8 @@ export function Landmark({ id, night }: { id: string; night: boolean }) {
       return <Airport night={night} />
     case 'cocody-oranjo':
       return <OranjoVillage night={night} />
+    case 'yop-rue-princesse':
+      return <RuePrincesse night={night} />
     default:
       return null
   }
