@@ -2,7 +2,7 @@ import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { Look, Sim } from '../lib/types'
-import { FEMME_OUTFITS, HEADWEAR, TALL_HAIR, defaultColors, fullLook } from './options'
+import { FEMME_OUTFITS, HEADWEAR, TALL_HAIR, VEILED, defaultColors, fullLook } from './options'
 import { tint } from './textures'
 import { useCastShadows, usePoseRig, type Pose, type RigStyle } from './Human'
 import { worldTime } from '../lib/worldClock'
@@ -106,6 +106,11 @@ const cube = (sx: number, sy: number, sz: number) => {
 }
 
 /* ---------- Pixels ---------- */
+
+/** The outfit as worn: a man who picked a women's outfit gets the nearest men's one. */
+function outfitOf(l: Required<Look>, femme: boolean) {
+  return !femme && FEMME_OUTFITS.has(l.outfit) ? (l.outfit === 'kaba' ? 'boubou' : l.outfit === 'abaya' ? 'imam' : 'casual') : l.outfit
+}
 
 /** A stable 0..1 value per pixel, for the grain of hair and cloth. */
 function hash(x: number, y: number) {
@@ -243,7 +248,7 @@ function paintSheet(l: Required<Look>, femme: boolean, young: boolean) {
   const top = l.outfitColor
   const bottom = l.bottomColor || dc.bottom
   const shoe = l.shoeColor || dc.shoe
-  const outfit = !femme && FEMME_OUTFITS.has(l.outfit) ? (l.outfit === 'kaba' ? 'boubou' : 'casual') : l.outfit
+  const outfit = outfitOf(l, femme)
   const cloth = (col: string) => (x: number, y: number) => grain(col, x, y, 0.06)
   const wax = (col: string) => (x: number, y: number) => waxPx(col, l.pattern, x, y)
 
@@ -317,7 +322,9 @@ function paintSheet(l: Required<Look>, femme: boolean, young: boolean) {
 
   /* The hairline, on the second head layer (transparent elsewhere). */
   const capOn = !young && HEADWEAR.has(l.accessory) && l.accessory !== 'headphones' && l.accessory !== 'bandana'
-  const hair = capOn && TALL_HAIR.has(l.hair) ? 'short' : l.hair
+  const veiled = femme && VEILED.has(l.outfit)
+  const kufiOn = !young && (l.accessory === 'kufi' || (outfitOf(l, femme) === 'imam' && !HEADWEAR.has(l.accessory)))
+  const hair = veiled ? 'covered' : (capOn || kufiOn) && TALL_HAIR.has(l.hair) ? 'short' : l.hair
   const hairC = tint(l.hairColor, 0.08)
   const hairPx = (x: number, y: number) =>
     hair === 'braids' || hair === 'cornrows'
@@ -644,6 +651,112 @@ function paintSheet(l: Required<Look>, femme: boolean, young: boolean) {
       shoes('sneaker')
       break
     }
+    case 'souscorps': {
+      // The sous-corps (the thin ribbed undershirt) and a culotte, claquettes.
+      shirt(10, (x, y) => (x % 2 ? tint(top, -0.07) : grain(top, x, y, 0.03)))
+      p.rows(b, 0, 3, skin, ['L', 'R'])
+      for (let x = 0; x < 8; x++) if (x !== 1 && x !== 6) p.at(b, 'F', x, 0, skin)
+      for (let x = 2; x < 6; x++) {
+        p.at(b, 'F', x, 1, skin)
+        p.at(b, 'B', x, 0, skin)
+      }
+      p.top(b, (x) => (x === 16 + 4 + 1 || x === 16 + 4 + 6 ? top : skin))
+      trousers(4, cloth(bottom))
+      p.rows(b, 9, 10, tint(bottom, -0.2))
+      shoes('slide')
+      break
+    }
+    case 'jogging': {
+      // A tee-shirt and the jogging: cuffed at the ankle, the drawstring.
+      shirt(9, cloth(top))
+      sleeves(3, cloth(top))
+      trousers(10, cloth(bottom))
+      p.rows(b, 9, 10, tint(bottom, -0.15))
+      for (const x of [3, 4]) p.at(b, 'F', x, 10, '#f4f1ea')
+      for (const g of R.leg) p.rows(g, 9, 10, tint(bottom, -0.25))
+      shoes('sneaker')
+      break
+    }
+    case 'sweat': {
+      // The hoodie (its hood is a block behind the neck) and the jogging.
+      shirt(12, cloth(top))
+      sleeves(10, cloth(top), tint(top, -0.2))
+      p.rows(b, 11, 12, tint(top, -0.2))
+      for (let row = 7; row < 10; row++) for (let x = 2; x < 6; x++) p.at(b, 'F', x, row, tint(top, -0.1)) // the pocket
+      for (const x of [3, 4]) for (const row of [1, 2, 3]) p.at(b, 'F', x, row, row === 3 ? '#f4f1ea' : x === 3 ? '#f4f1ea' : null)
+      trousers(10, cloth(bottom))
+      for (const g of R.leg) p.rows(g, 9, 10, tint(bottom, -0.25))
+      shoes('sneaker')
+      break
+    }
+    case 'soutane': {
+      // The priest's cassock: to the feet, the white collar, a row of buttons.
+      shirt(12, cloth(top))
+      sleeves(10, cloth(top))
+      trousers(10, cloth(top))
+      p.rows(b, 0, 1, '#f8f9fa', ['F', 'L', 'R'])
+      for (let row = 1; row < 12; row += 2) p.at(b, 'F', 3, row, tint(top, 0.3))
+      cut.skirt = { paint: cloth(top), w: 1.12, d: 1.3, hem: 0.04 }
+      shoes('dress')
+      break
+    }
+    case 'pasteur': {
+      // The pastor: black shirt and suit, the white tab at the throat.
+      shirt(12, cloth(top))
+      sleeves(10, cloth(top), tint(top, 0.12))
+      trousers(10, cloth(bottom))
+      for (let row = 0; row < 10; row++) for (const x of [2, 5]) p.at(b, 'F', x, row, tint(top, 0.14)) // the lapels
+      for (const x of [3, 4]) p.at(b, 'F', x, 0, '#f8f9fa')
+      shoes('dress')
+      break
+    }
+    case 'imam': {
+      // The long white boubou, embroidered at the neck, over trousers.
+      const thread = luminance(top) > 0.6 ? tint(top, -0.35) : tint(top, 0.45)
+      shirt(12, cloth(top))
+      sleeves(10, cloth(top))
+      trousers(10, cloth(bottom))
+      for (let x = 2; x < 6; x++) p.at(b, 'F', x, 0, thread)
+      for (let row = 1; row < 6; row++) p.at(b, 'F', row % 2 ? 3 : 4, row, thread)
+      cut.skirt = { paint: cloth(top), w: 1.2, d: 1.4, hem: 0.05 }
+      shoes('slide')
+      break
+    }
+    case 'abaya': {
+      // The long, plain abaya; the veil is built round the head (HeadBoxes).
+      shirt(12, cloth(top))
+      sleeves(10, cloth(top))
+      cut.skirt = { paint: cloth(top), w: 1.16, d: 1.34, hem: 0.03 }
+      shoes('dress')
+      break
+    }
+    case 'blouse': {
+      // The doctor's (or nurse's) white coat, open on the clothes, to the knee;
+      // the stethoscope round the neck.
+      const under = l.bottomColor || '#74c0fc'
+      shirt(12, cloth(top))
+      sleeves(10, cloth(top))
+      for (let row = 0; row < 12; row++) for (const x of [3, 4]) p.at(b, 'F', x, row, cloth(under))
+      for (const [x, y] of [[2, 0], [2, 1], [2, 2], [5, 0], [5, 1], [5, 2], [2, 3], [5, 3]]) p.at(b, 'F', x, y, '#3a3d42')
+      p.at(b, 'F', 6, 6, tint(top, -0.15)) // the pocket and its pen
+      p.at(b, 'F', 6, 5, '#2a6cf0')
+      trousers(10, cloth(l.bottomColor || '#2b2f45'))
+      cut.skirt = { paint: cloth(top), w: 1.08, d: 1.15, hem: 0.5 }
+      shoes('sneaker')
+      break
+    }
+    case 'bleu': {
+      // The mechanic's boiler suit, one colour from neck to ankle, a grey band.
+      shirt(12, cloth(top))
+      sleeves(10, cloth(top), tint(top, -0.2))
+      trousers(10, cloth(top))
+      for (let row = 0; row < 12; row++) p.at(b, 'F', 4, row, tint(top, -0.25)) // the zip
+      p.rows(b, 8, 9, '#b8bec7')
+      for (const g of R.leg) p.rows(g, 7, 8, '#b8bec7')
+      for (const x of [1, 2]) p.at(b, 'F', x, 3, tint(top, -0.2))
+      shoes('boot')
+      break
+    }
     default: {
       // Jeans and a tee-shirt, with a belt.
       shirt(9, cloth(top))
@@ -675,6 +788,15 @@ function paintSheet(l: Required<Look>, femme: boolean, young: boolean) {
   if (!young && l.accessory === 'beads') {
     const beads = [acc, '#f2b705', '#00a862', '#f4f1ea']
     ;[[1, 0], [2, 1], [3, 2], [4, 2], [5, 1], [6, 0]].forEach(([x, y], k) => p.at(b, 'F', x, y, beads[k % beads.length]))
+  }
+  if (!young && l.accessory === 'croix') {
+    // A cross on a thin chain.
+    for (const [x, y] of [[2, 0], [5, 0], [3, 1], [4, 1]]) p.at(b, 'F', x, y, tint(acc, -0.2))
+    for (const [x, y] of [[3, 2], [3, 3], [3, 4], [2, 3], [4, 3]]) p.at(b, 'F', x, y, acc)
+  }
+  if (!young && l.accessory === 'chapelet') {
+    // Prayer beads hanging from the right hand.
+    for (let row = 8; row < 12; row++) p.at(R.arm[1], 'F', 1 + (row % 2), row, row % 2 ? acc : tint(acc, 0.3))
   }
   if (!young && l.accessory === 'watch') {
     // On the left wrist, all the way round; the face on top.
@@ -772,7 +894,9 @@ const clothMat = (color: string) => lambert('#fff', pixelTex(`cloth|${color}`, 8
 
 /* ---------- Hair, caps, earrings: extra boxes on the head ---------- */
 
-function HeadBoxes({ l, hair, young, cast }: { l: Required<Look>; hair: string; young: boolean; cast: boolean }) {
+function HeadBoxes({ l, hair, young, cast, femme }: { l: Required<Look>; hair: string; young: boolean; cast: boolean; femme: boolean }) {
+  const veil = l.bottomColor || tint(l.outfitColor, 0.12)
+  const kufi = !young && (l.accessory === 'kufi' || (outfitOf(l, femme) === 'imam' && !HEADWEAR.has(l.accessory)))
   const H = HEAD
   const hc = tint(l.hairColor, 0.08)
   const m = hairMat(hc, hair)
@@ -872,6 +996,18 @@ function HeadBoxes({ l, hair, young, cast }: { l: Required<Look>; hair: string; 
         </group>
       )}
       {!young && l.beard === 'longue' && <B s={[H * 0.62, H * 0.36, H * 0.2]} p={[0, -H * 0.14, H * 0.42]} mat={hairMat(tint(l.hairColor, 0.06), 'beard')} />}
+      {hair === 'covered' && (
+        // The veil: over the head, round the face, down onto the shoulders.
+        <group>
+          <B s={[H * 1.2, H * 0.32, H * 1.2]} p={[0, H * 1.0, -H * 0.02]} mat={clothMat(veil)} />
+          {[-1, 1].map((s) => (
+            <B key={s} s={[H * 0.14, H * 1.1, H * 1.1]} p={[s * H * 0.6, H * 0.36, -H * 0.06]} mat={clothMat(veil)} />
+          ))}
+          <B s={[H * 1.2, H * 1.15, H * 0.14]} p={[0, H * 0.38, -H * 0.62]} mat={clothMat(veil)} />
+          <B s={[H * 1.2, H * 0.22, H * 1.2]} p={[0, -H * 0.12, 0]} mat={clothMat(tint(veil, -0.08))} />
+        </group>
+      )}
+      {kufi && <B s={[H * 1.08, H * 0.24, H * 1.08]} p={[0, H * 1.0, 0]} mat={knitMat(l.accessory === 'kufi' ? acc : '#f8f9fa')} />}
       {!young && l.accessory === 'beanie' && (
         <group>
           <B s={[H * 1.16, H * 0.46, H * 1.16]} p={[0, H * 0.93, 0]} mat={knitMat(acc)} />
@@ -1002,6 +1138,8 @@ export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 
           {/* Torso */}
           <group ref={chest}>
             {mesh(box(tw, NECK_Y - TORSO_BOTTOM, td, R.body), [0, (NECK_Y + TORSO_BOTTOM) / 2, 0])}
+            {/* The hoodie's hood, down behind the neck */}
+            {outfitOf(l, femme) === 'sweat' && mesh(cube(tw * 0.8, 0.12, 0.09), [0, NECK_Y - 0.05, -td / 2 - 0.04], clothMat(tint(l.outfitColor, -0.1)))}
             {/* The shoulder bag, at the left hip */}
             {!young && l.accessory === 'bag' && mesh(cube(0.15, 0.13, 0.07), [-tw / 2 - 0.02, TORSO_BOTTOM + 0.08, td / 2 - 0.02], clothMat(l.accessoryColor || defaultColors(l, femme).accessory))}
           </group>
@@ -1010,7 +1148,7 @@ export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 
           {/* Head: the cube, the hair layer over it, eyelids, the mouth, hair and caps */}
           <group ref={head} position={[0, NECK_Y, 0]} scale={headScale}>
             {mesh(box(HEAD, HEAD, HEAD, R.head), [0, HEAD / 2, 0])}
-            {sheet.hair !== 'bald' && mesh(box(HEAD * HAT, HEAD * HAT, HEAD * HAT, R.hat), [0, HEAD / 2, 0])}
+            {sheet.hair !== 'bald' && sheet.hair !== 'covered' && mesh(box(HEAD * HAT, HEAD * HAT, HEAD * HAT, R.hat), [0, HEAD / 2, 0])}
             <group ref={lids} position={[0, HEAD - 3 * P, HEAD / 2 + 0.002]} visible={false}>
               {[-1, 1].map((s) => (
                 <mesh key={s} geometry={cube(2 * P, P, 0.004)} material={lambert(tint(l.skin, -0.06))} position={[s * 2 * P, -P / 2, 0]} />
@@ -1019,7 +1157,7 @@ export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 
             <group ref={mouth} position={[0, HEAD - 6 * P, HEAD / 2 + 0.002]} visible={false}>
               <mesh geometry={cube(2.4 * P, P, 0.004)} material={lambert('#3b1612')} position={[0, -P / 2, 0]} />
             </group>
-            <HeadBoxes l={l} hair={sheet.hair} young={young} cast={cast} />
+            <HeadBoxes l={l} hair={sheet.hair} young={young} cast={cast} femme={femme} />
           </group>
 
           {/* Legs: hip → knee, the skirt's two halves swinging with them */}

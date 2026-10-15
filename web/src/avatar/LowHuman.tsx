@@ -35,9 +35,11 @@ const mat = (c: string) => {
   return m
 }
 
-const LONG = new Set(['pagne', 'boubou', 'robe', 'kaba', 'jupe', 'bazin', 'uniforme'])
+const LONG = new Set(['pagne', 'boubou', 'robe', 'kaba', 'jupe', 'bazin', 'uniforme', 'abaya', 'blouse'])
+/** Long robes, men's and women's alike. */
+const ROBES = new Set(['boubou', 'bazin', 'soutane', 'imam'])
 /** Outfits whose sleeves cover the whole arm. */
-const LONG_SLEEVES = new Set(['suit', 'survet', 'boubou', 'bazin', 'chemise', 'blouson'])
+const LONG_SLEEVES = new Set(['suit', 'survet', 'boubou', 'bazin', 'chemise', 'blouson', 'sweat', 'soutane', 'pasteur', 'imam', 'abaya', 'blouse', 'bleu'])
 
 export function LowHuman({ look, gender, pose = 'idle', seed = 0, speed }: { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; speed?: number }) {
   const l = fullLook(look)
@@ -46,7 +48,7 @@ export function LowHuman({ look, gender, pose = 'idle', seed = 0, speed }: { loo
   const top = l.outfitColor
   const bottom = l.bottomColor || dc.bottom
   const shoe = l.shoeColor || dc.shoe
-  const long = (femme && LONG.has(l.outfit)) || l.outfit === 'boubou' || l.outfit === 'bazin'
+  const long = (femme && LONG.has(l.outfit)) || ROBES.has(l.outfit) || (!femme && l.outfit === 'abaya')
   const { w, limb, depth } = BODY[l.body] ?? BODY.moyen
   const tw = 0.34 * w * (femme ? 0.92 : 1)
   const td = 0.18 * depth
@@ -72,8 +74,12 @@ export function LowHuman({ look, gender, pose = 'idle', seed = 0, speed }: { loo
     }
   })
   const seatDrop = pose === 'sit' || pose === 'eat' || pose === 'drink' || pose === 'write' ? -0.41 : 0
-  const sleeve = LONG_SLEEVES.has(l.outfit) ? 1 : l.outfit === 'debardeur' || l.outfit === 'basket' ? 0 : 0.35
-  const hair = l.hair === 'headwrap' ? top : l.hairColor
+  const sleeve = LONG_SLEEVES.has(l.outfit) ? 1 : l.outfit === 'debardeur' || l.outfit === 'basket' || l.outfit === 'souscorps' ? 0 : 0.35
+  // The veil, the imam's cap: they're what shows on the head from afar.
+  const veiled = femme && l.outfit === 'abaya'
+  const capped = l.accessory === 'kufi' || l.outfit === 'imam' || (!femme && l.outfit === 'abaya')
+  const hair = veiled ? l.bottomColor || top : capped ? '#f8f9fa' : l.hair === 'headwrap' ? top : l.hairColor
+  const shape = veiled ? 'headwrap' : l.hair
   return (
     <group scale={l.height * (femme ? 0.96 : 1)} position={[0, seatDrop, 0]}>
       {/* Legs: trousers or bare legs, the shoe at the bottom */}
@@ -99,12 +105,12 @@ export function LowHuman({ look, gender, pose = 'idle', seed = 0, speed }: { loo
       ))}
       {/* The cube head, and the hair (or the headwrap) as a slightly bigger cap */}
       <mesh geometry={centred} material={mat(l.skin)} position={[0, NECK_Y + HEAD / 2, 0]} scale={HEAD} castShadow />
-      {l.hair !== 'bald' && (
+      {(shape !== 'bald' || capped) && (
         <mesh
           geometry={centred}
           material={mat(hair)}
-          position={[0, NECK_Y + HEAD * (l.hair === 'afro' || l.hair === 'headwrap' ? 1.05 : 0.86), -0.012]}
-          scale={l.hair === 'afro' ? [HEAD * 1.4, HEAD * 0.6, HEAD * 1.3] : l.hair === 'headwrap' ? [HEAD * 1.15, HEAD * 0.5, HEAD * 1.15] : [HEAD * 1.08, HEAD * 0.32, HEAD * 1.08]}
+          position={[0, NECK_Y + HEAD * (veiled ? 0.7 : shape === 'afro' || shape === 'headwrap' ? 1.05 : 0.86), -0.012]}
+          scale={veiled ? [HEAD * 1.18, HEAD * 1.2, HEAD * 1.18] : shape === 'afro' ? [HEAD * 1.4, HEAD * 0.6, HEAD * 1.3] : shape === 'headwrap' ? [HEAD * 1.15, HEAD * 0.5, HEAD * 1.15] : [HEAD * 1.08, HEAD * 0.32, HEAD * 1.08]}
         />
       )}
     </group>

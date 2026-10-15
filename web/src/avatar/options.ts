@@ -60,6 +60,9 @@ export const ACCESSORIES: Choice[] = [
   { id: 'watch', label: 'Montre' },
   { id: 'bag', label: 'Sac en bandoulière' },
   { id: 'beads', label: 'Collier de perles' },
+  { id: 'kufi', label: 'Bonnet de prière' },
+  { id: 'croix', label: 'Croix' },
+  { id: 'chapelet', label: 'Chapelet' },
 ]
 
 export const OUTFITS: Choice[] = [
@@ -80,6 +83,15 @@ export const OUTFITS: Choice[] = [
   { id: 'jupe', label: 'Top & jupe' },
   { id: 'blouson', label: 'Blouson & jean' },
   { id: 'salopette', label: 'Salopette' },
+  { id: 'souscorps', label: 'Sous-corps & culotte' },
+  { id: 'jogging', label: 'Jogging & tee-shirt' },
+  { id: 'sweat', label: 'Sweat à capuche & jogging' },
+  { id: 'soutane', label: 'Soutane de prêtre' },
+  { id: 'pasteur', label: 'Tenue de pasteur' },
+  { id: 'imam', label: "Tenue d'imam" },
+  { id: 'abaya', label: 'Abaya & voile' },
+  { id: 'blouse', label: 'Blouse blanche' },
+  { id: 'bleu', label: 'Bleu de travail' },
 ]
 
 export const MARKS: Choice[] = [
@@ -104,11 +116,13 @@ export const PATTERNS: Choice[] = [
 /** Outfits that use the wax pattern. */
 export const WAX_OUTFITS = new Set(['pagne', 'boubou', 'robe', 'chemise-pagne', 'kaba'])
 /** Outfits only women wear (a man who picks one gets the nearest men's outfit). */
-export const FEMME_OUTFITS = new Set(['robe', 'kaba', 'jupe'])
+export const FEMME_OUTFITS = new Set(['robe', 'kaba', 'jupe', 'abaya'])
 /** Hairdos a cap or a hat goes over: they're drawn short under it. */
 export const TALL_HAIR = new Set(['afro', 'bun', 'headwrap', 'puffs', 'mohawk', 'ponytail'])
 /** Accessories worn on the head (a hat, a cap…). */
-export const HEADWEAR = new Set(['cap', 'capback', 'beanie', 'hat', 'buckethat', 'bandana', 'headphones'])
+export const HEADWEAR = new Set(['cap', 'capback', 'beanie', 'hat', 'buckethat', 'bandana', 'headphones', 'kufi'])
+/** Outfits that cover the hair (the veil): no hairdo shows. */
+export const VEILED = new Set(['abaya'])
 
 export const DEFAULT_LOOK: Look = {
   skin: SKIN_TONES[5],
@@ -136,7 +150,7 @@ export const metres = (scale: number, gender: 'femme' | 'homme') => BASE_HEIGHT[
 export const scaleFor = (m: number, gender: 'femme' | 'homme') => m / BASE_HEIGHT[gender]
 
 /** Colours an outfit starts with when it's picked: the kit of the Éléphants is orange. */
-export const OUTFIT_DEFAULT_COLOR: Record<string, string> = { jersey: '#ff8200', suit: '#1f2a44', debardeur: '#f8f9fa', basket: '#1d428a', uniforme: '#c8b07a', chemise: '#74c0fc', bazin: '#0f9d8a', blouson: '#3d64a8', salopette: '#3d64a8' }
+export const OUTFIT_DEFAULT_COLOR: Record<string, string> = { jersey: '#ff8200', suit: '#1f2a44', debardeur: '#f8f9fa', basket: '#1d428a', uniforme: '#c8b07a', chemise: '#74c0fc', bazin: '#0f9d8a', blouson: '#3d64a8', salopette: '#3d64a8', souscorps: '#f4f4f4', jogging: '#f4efe6', sweat: '#6c7280', soutane: '#17171a', pasteur: '#17171a', imam: '#f8f9fa', abaya: '#14213d', blouse: '#f8f9fa', bleu: '#1d4ed8' }
 
 /** Sims made before the creator grew: fill the new fields. */
 export function fullLook(look: Look): Required<Look> {
@@ -151,7 +165,7 @@ export function randomLook(gender: 'femme' | 'homme', random: () => number = Mat
   const pick = <T,>(a: readonly T[]) => a[Math.floor(random() * a.length)]
   const femme = gender === 'femme'
   const hairs = femme ? ['braids', 'afro', 'bun', 'weave', 'headwrap', 'locks', 'short', 'cornrows', 'twists', 'ponytail', 'puffs', 'bob'] : ['short', 'bald', 'afro', 'locks', 'short', 'degrade', 'cornrows', 'twists', 'mohawk']
-  const outfits = femme ? ['pagne', 'boubou', 'casual', 'robe', 'jersey', 'debardeur', 'survet', 'kaba', 'jupe', 'chemise-pagne', 'blouson', 'salopette', 'bazin'] : ['pagne', 'boubou', 'casual', 'suit', 'jersey', 'debardeur', 'survet', 'basket', 'chemise-pagne', 'bazin', 'chemise', 'blouson', 'salopette']
+  const outfits = femme ? ['pagne', 'boubou', 'casual', 'robe', 'jersey', 'debardeur', 'survet', 'kaba', 'jupe', 'chemise-pagne', 'blouson', 'salopette', 'bazin', 'jogging', 'sweat', 'abaya', 'souscorps'] : ['pagne', 'boubou', 'casual', 'suit', 'jersey', 'debardeur', 'survet', 'basket', 'chemise-pagne', 'bazin', 'chemise', 'blouson', 'salopette', 'souscorps', 'souscorps', 'jogging', 'sweat', 'imam', 'bleu']
   const outfit = pick(outfits)
   return {
     skin: pick(SKIN_TONES.slice(2)),
@@ -178,12 +192,12 @@ export const ACCESSORY_COLORS = ['#e8b93c', '#d8d8de', '#17171a', '#b02e0c', '#2
 
 /** The colours an outfit's parts have when the player hasn't picked one. */
 export function defaultColors(l: Required<Look>, femme: boolean) {
-  const bottom: Record<string, string> = { pagne: femme ? l.outfitColor : '#2b2f45', jersey: '#f8f9fa', casual: '#3d64a8', debardeur: '#1f2a44', basket: l.outfitColor, 'chemise-pagne': '#2b2f45', chemise: '#2b2f45', uniforme: femme ? '#1d4ed8' : '#a08850', jupe: '#2b2f45', blouson: '#3d64a8', salopette: l.outfitColor, kaba: l.outfitColor, bazin: l.outfitColor }
-  const shoe: Record<string, string> = { 'chemise-pagne': '#6b4423', kaba: '#8a5a2b', bazin: '#e8d9b5', chemise: '#141416', uniforme: '#141416', jupe: '#f4f4f4', blouson: '#f4f4f4', salopette: '#f4f4f4', debardeur: '#141416', basket: '#f8f9fa', survet: '#f4f4f4', pagne: femme ? '#8a5a2b' : '#6b4423', boubou: '#e8d9b5', robe: '#1c1c22', suit: '#141416', jersey: '#141416', casual: '#f4f4f4' }
-  const outfit = !femme && FEMME_OUTFITS.has(l.outfit) ? (l.outfit === 'kaba' ? 'boubou' : 'casual') : l.outfit
+  const bottom: Record<string, string> = { pagne: femme ? l.outfitColor : '#2b2f45', jersey: '#f8f9fa', casual: '#3d64a8', debardeur: '#1f2a44', basket: l.outfitColor, 'chemise-pagne': '#2b2f45', chemise: '#2b2f45', uniforme: femme ? '#1d4ed8' : '#a08850', jupe: '#2b2f45', blouson: '#3d64a8', salopette: l.outfitColor, kaba: l.outfitColor, bazin: l.outfitColor, souscorps: '#3d64a8', jogging: '#6c7280', sweat: '#6c7280', soutane: l.outfitColor, pasteur: '#17171a', imam: '#f8f9fa', abaya: '#2b2f45', blouse: '#2b2f45', bleu: l.outfitColor }
+  const shoe: Record<string, string> = { souscorps: '#141416', jogging: '#f4f4f4', sweat: '#141416', soutane: '#141416', pasteur: '#141416', imam: '#e8d9b5', abaya: '#141416', blouse: '#f4f4f4', bleu: '#141416', 'chemise-pagne': '#6b4423', kaba: '#8a5a2b', bazin: '#e8d9b5', chemise: '#141416', uniforme: '#141416', jupe: '#f4f4f4', blouson: '#f4f4f4', salopette: '#f4f4f4', debardeur: '#141416', basket: '#f8f9fa', survet: '#f4f4f4', pagne: femme ? '#8a5a2b' : '#6b4423', boubou: '#e8d9b5', robe: '#1c1c22', suit: '#141416', jersey: '#141416', casual: '#f4f4f4' }
+  const outfit = !femme && FEMME_OUTFITS.has(l.outfit) ? (l.outfit === 'kaba' ? 'boubou' : l.outfit === 'abaya' ? 'imam' : 'casual') : l.outfit
   return {
     bottom: bottom[outfit] ?? l.outfitColor,
     shoe: shoe[outfit] ?? '#f4f4f4',
-    accessory: l.accessory === 'glasses' || l.accessory === 'sunglasses' || l.accessory === 'headphones' ? '#17171a' : l.accessory === 'hat' ? '#c9a227' : l.accessory === 'beads' ? '#d6336c' : l.accessory === 'bag' ? '#6b4423' : l.accessory === 'watch' ? '#d8d8de' : HEADWEAR.has(l.accessory) ? (l.outfitColor === '#f4efe6' ? '#14213d' : l.outfitColor) : '#e8b93c',
+    accessory: l.accessory === 'glasses' || l.accessory === 'sunglasses' || l.accessory === 'headphones' ? '#17171a' : l.accessory === 'hat' ? '#c9a227' : l.accessory === 'beads' ? '#d6336c' : l.accessory === 'kufi' ? '#f8f9fa' : l.accessory === 'croix' ? '#e8b93c' : l.accessory === 'chapelet' ? '#6b4423' : l.accessory === 'bag' ? '#6b4423' : l.accessory === 'watch' ? '#d8d8de' : HEADWEAR.has(l.accessory) ? (l.outfitColor === '#f4efe6' ? '#14213d' : l.outfitColor) : '#e8b93c',
   }
 }
