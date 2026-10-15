@@ -7,6 +7,7 @@ import { IconTile, Logo } from '../components/ui'
 import { useWorld } from '../store/world'
 import { CROWD } from './Title'
 import { Community, Share } from '../components/WaitlistShare'
+import { Consent } from '../components/Consent'
 import { firebaseConfigured, googleCancelled, signInWithGoogle } from '../lib/google'
 
 // The wish list (/liste): before the game opens, people leave a first name
@@ -35,6 +36,8 @@ export function Waitlist() {
   const [commune, setCommune] = useState('')
   const [beta, setBeta] = useState(true)
   const [website, setWebsite] = useState('') // unseen: only bots fill it
+  const [terms, setTerms] = useState(false)
+  const [privacy, setPrivacy] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState<Done | null>(null)
@@ -51,7 +54,7 @@ export function Waitlist() {
     setBusy(true)
     setError(null)
     try {
-      const res = await fetch(`${BASE}/waitlist`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...body, commune, beta, source, website }) })
+      const res = await fetch(`${BASE}/waitlist`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...body, commune, beta, source, website, terms, privacy }) })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error ?? 'Inscription impossible pour le moment')
       setDone({ name: body.firstName.trim(), count: data.count ?? 0, already: !!data.already })
@@ -64,11 +67,19 @@ export function Waitlist() {
 
   function join(e: React.FormEvent) {
     e.preventDefault()
+    if (!terms || !privacy) {
+      setError('Coche les conditions et la confidentialité.')
+      return
+    }
     void send({ firstName: first, contact })
   }
 
   async function google() {
     setError(null)
+    if (!terms || !privacy) {
+      setError('Coche les conditions et la confidentialité.')
+      return
+    }
     try {
       const account = await signInWithGoogle()
       setFirst(account.firstName)
@@ -162,9 +173,10 @@ export function Waitlist() {
               )}
               <h2 className="font-display text-2xl leading-tight font-extrabold">Je m'inscris</h2>
               <p className="-mt-1 mb-1 text-sm font-semibold text-[var(--color-ink-soft)]">Gratuit. Juste pour être prévenu·e quand ça ouvre.</p>
+              <Consent terms={terms} privacy={privacy} onTerms={setTerms} onPrivacy={setPrivacy} />
               {firebaseConfigured && (
                 <>
-                  <button type="button" className="btn btn-white w-full" disabled={busy} onClick={() => void google()}>
+                  <button type="button" className="btn btn-white w-full" disabled={busy || !terms || !privacy} onClick={() => void google()}>
                     <GoogleMark /> Continuer avec Google
                   </button>
                   <div className="flex items-center gap-3 text-xs font-extrabold text-[var(--color-ink-soft)]">
@@ -198,7 +210,7 @@ export function Waitlist() {
               {/* Not for people: bots fill every field they find */}
               <input className="hidden" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} aria-hidden />
               {error && <p className="animate-pop rounded-xl bg-[#ffeef1] px-3 py-2 text-sm font-bold text-[#d81b3f]" role="alert">{error}</p>}
-              <button className="btn mt-1 w-full" disabled={busy}>
+              <button className="btn mt-1 w-full" disabled={busy || !terms || !privacy}>
                 {busy ? 'Un instant…' : "M'inscrire sur la liste"} <ArrowRight size={18} strokeWidth={2.6} />
               </button>
               <p className="text-center text-xs font-semibold text-[var(--color-ink-soft)]">Ton contact sert seulement à te prévenir de l'ouverture. Pas de pub, pas de revente.</p>
@@ -223,7 +235,11 @@ export function Waitlist() {
 
       <footer className="relative z-10 mx-auto flex max-w-6xl flex-col items-center gap-3 px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-center lg:flex-row lg:justify-between lg:px-8 lg:text-left">
         <Logo size={28} />
-        <span className="text-xs font-bold text-white/60">lifeinbabi.com · Fait à Abidjan</span>
+        <span className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs font-bold text-white/60 lg:justify-end">
+          <Link to="/conditions" className="underline">Conditions</Link>
+          <Link to="/confidentialite" className="underline">Confidentialité</Link>
+          <span>lifeinbabi.com · Fait à Abidjan</span>
+        </span>
       </footer>
       <div className="relative z-10 flex h-1.5" aria-hidden>
         <i className="flex-1 bg-[#ff8200]" />

@@ -139,6 +139,8 @@ func (h *Handler) Join(w http.ResponseWriter, r *http.Request) {
 		Source    string `json:"source"`
 		Website   string `json:"website"` // a field people don't see: bots fill it
 		IDToken   string `json:"idToken"` // Firebase ID token, when they used Google
+		Terms     bool   `json:"terms"`   // accepted the terms of use
+		Privacy   bool   `json:"privacy"` // accepted that the contact is kept
 		Sim       *Sim   `json:"sim"`
 	}
 	if err := httpx.Decode(r, &req); err != nil {
@@ -182,6 +184,10 @@ func (h *Handler) Join(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Website != "" {
 		httpx.JSON(w, http.StatusCreated, map[string]any{"ok": true}) // a bot: say yes, keep nothing
+		return
+	}
+	if !req.Terms || !req.Privacy {
+		httpx.Error(w, http.StatusUnprocessableEntity, "accepte les conditions et la confidentialité pour t'inscrire")
 		return
 	}
 	ip := r.RemoteAddr

@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useSession } from './store/session'
 import { useWorld } from './store/world'
 import { Title } from './screens/Title'
+import { Legal } from './screens/Legal'
 import { Plumbob } from './components/ui'
 import { gameOpen } from './lib/launch'
 
@@ -23,7 +24,7 @@ const Loading = () => (
 export function App() {
   const token = useSession((s) => s.token)
   const { world, error, load } = useWorld()
-  const path = useLocation().pathname
+  const { pathname: path, search } = useLocation()
 
   useEffect(() => {
     load()
@@ -37,14 +38,16 @@ export function App() {
       </Suspense>
     )
 
+  if (path === '/conditions' || path === '/confidentialite') return <Legal />
+
   // Making one's Sim from the wish list, before the game opens (it needs the world's data).
   if (path === '/liste/creer') {
     if (!world && !error) return <Loading />
     return <Suspense fallback={<Loading />}>{world ? <CreateSim waitlist /> : <Waitlist />}</Suspense>
   }
 
-  // Born on the wish list: the game is not open, so a signed-in player stays on the list.
-  if (token && !gameOpen) return <Navigate to="/liste" replace />
+  // The streets are shut for everyone: the home page, a saved /jeu, an old install.
+  if (!gameOpen) return <Navigate to={{ pathname: '/liste', search }} replace />
 
   if (!world && !error) return <Loading />
 

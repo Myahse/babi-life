@@ -14,6 +14,7 @@ import { Portrait } from '../avatar/portrait'
 import { Options, Section } from '../components/LookOptions'
 import { FamilyScene } from '../avatar/Family'
 import { Share } from '../components/WaitlistShare'
+import { Consent } from '../components/Consent'
 import { waxSwatch } from '../avatar/BlockHuman'
 import { iconFor } from '../components/icons'
 import { Chip, IconTile } from '../components/ui'
@@ -58,6 +59,8 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
   const [commune, setCommune] = useState('')
   const [beta, setBeta] = useState(true)
   const [website, setWebsite] = useState('') // unseen: only bots fill it
+  const [terms, setTerms] = useState(false)
+  const [privacy, setPrivacy] = useState(false)
   const [registered, setRegistered] = useState<number | null>(null) // how many are on the list
   const [entering, setEntering] = useState(false)
   const [sim, setSim] = useState<NewSim & { look: Required<Look> }>({
@@ -77,7 +80,7 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
   const set = (patch: Partial<Draft>) => setSim((s) => ({ ...s, ...patch }))
   const setLook = (patch: Partial<Look>) => setSim((s) => ({ ...s, look: { ...s.look, ...patch } }))
   const femme = sim.gender === 'femme'
-  const valid = sim.firstName.trim() && sim.lastName.trim() && sim.traits.length > 0 && (!needsUsername || USERNAME.test(username)) && (!waitlist || contact.trim())
+  const valid = sim.firstName.trim() && sim.lastName.trim() && sim.traits.length > 0 && (!needsUsername || USERNAME.test(username)) && (!waitlist || (contact.trim() && terms && privacy))
   const current = STEPS[step]
   const height = metres(sim.look.height, sim.gender)
   const defaults = defaultColors(sim.look, femme)
@@ -111,7 +114,7 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
     try {
       if (waitlist) {
         const source = new URLSearchParams(location.search).get('src') ?? ''
-        const res = await api.joinWaitlist({ firstName: sim.firstName, contact, commune, beta, source, website, sim: { lastName: sim.lastName, gender: sim.gender, look: sim.look, traits: sim.traits, aspiration: sim.aspiration } })
+        const res = await api.joinWaitlist({ firstName: sim.firstName, contact, commune, beta, source, website, terms, privacy, sim: { lastName: sim.lastName, gender: sim.gender, look: sim.look, traits: sim.traits, aspiration: sim.aspiration } })
         const drawn = world!.families?.find((f) => f.id === res.birth?.family)
         const cm = world!.cities.flatMap((c) => c.communes).find((c) => c.id === res.birth?.commune)
         setRegistered(res.count)
@@ -363,6 +366,7 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
                 <input type="checkbox" className="h-5 w-5 shrink-0 accent-[var(--color-orange)]" checked={beta} onChange={(e) => setBeta(e.target.checked)} />
                 Je veux tester le jeu avant tout le monde
               </label>
+              <Consent terms={terms} privacy={privacy} onTerms={setTerms} onPrivacy={setPrivacy} />
               <input className="hidden" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} aria-hidden />
               <p className="text-xs font-semibold text-[var(--color-ink-soft)]">Dans ta commune si tu la donnes, sinon quelque part à Abidjan. Ton contact sert seulement à te prévenir de l'ouverture.</p>
             </div>

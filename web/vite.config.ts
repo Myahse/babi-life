@@ -20,7 +20,7 @@ export default defineConfig({
         description: "Ta vie. Ton quartier. Ton Babi. Une vie à la Sims en Côte d'Ivoire.",
         lang: 'fr',
         dir: 'ltr',
-        start_url: '/',
+        start_url: '/liste',
         scope: '/',
         display: 'standalone',
         orientation: 'portrait',
