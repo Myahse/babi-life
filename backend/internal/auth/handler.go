@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -32,7 +33,8 @@ func scanUser(row interface{ Scan(...any) error }, u *User) error {
 type Handler struct {
 	DB       *pgxpool.Pool
 	Tokens   Tokens
-	Verifier *GoogleVerifier // nil when Google sign-in is not configured
+	Verifier *GoogleVerifier   // nil when the Google client id is not set
+	Firebase *FirebaseVerifier // nil when FIREBASE_PROJECT_ID is not set
 	DevLogin bool
 }
 
@@ -41,9 +43,10 @@ type session struct {
 	User  User   `json:"user"`
 }
 
-// Google exchanges a Google ID token (from the Sign-In button) for a session.
+// Google exchanges a Google ID token for a session. The token may come from
+// the Google button or from Firebase Auth.
 func (h *Handler) Google(w http.ResponseWriter, r *http.Request) {
-	if h.Verifier == nil {
+	if h.Verifier == nil && h.Firebase == nil {
 		httpx.Error(w, http.StatusNotImplemented, "google sign-in is not configured")
 		return
 	}
@@ -54,12 +57,31 @@ func (h *Handler) Google(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, "credential is required")
 		return
 	}
-	id, err := h.Verifier.Verify(r.Context(), body.Credential)
+	id, err := h.Identify(r.Context(), body.Credential)
 	if err != nil {
 		httpx.Error(w, http.StatusUnauthorized, "invalid google credential")
 		return
 	}
 	h.signIn(w, r.Context(), id)
+}
+
+// Identify checks a token from either Google Sign-In or Firebase Auth.
+func (h *Handler) Identify(ctx context.Context, token string) (GoogleIdentity, error) {
+	var first error
+	if h.Verifier != nil {
+		id, err := h.Verifier.Verify(ctx, token)
+		if err == nil {
+			return id, nil
+		}
+		first = err
+	}
+	if h.Firebase != nil {
+		return h.Firebase.Verify(ctx, token)
+	}
+	if first != nil {
+		return GoogleIdentity{}, first
+	}
+	return GoogleIdentity{}, errors.New("google sign-in is not configured")
 }
 
 // Dev signs in as a local test player. Only mounted when DEV_LOGIN=true.

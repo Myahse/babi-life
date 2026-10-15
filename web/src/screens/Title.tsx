@@ -13,6 +13,7 @@ import { Portrait } from '../avatar/portrait'
 import { IconTile, Logo, LogoMark } from '../components/ui'
 import { UsernameField } from '../components/UsernameField'
 import { suggestFrom } from '../lib/username'
+import { firebaseConfigured, googleCancelled, signInWithGoogle } from '../lib/google'
 
 const GOOGLE_ENABLED = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID)
 
@@ -53,6 +54,17 @@ export function Title() {
     setFirst(f)
     setLast(l)
     if (!usernameTouched) setUsername(suggestFrom(f, l))
+  }
+
+  async function google() {
+    setError(null)
+    try {
+      const account = await signInWithGoogle()
+      await finish(api.googleLogin(account.token))
+    } catch (err) {
+      if (googleCancelled(err)) setError('Connexion Google annulée')
+      else setError('Connexion Google impossible')
+    }
   }
 
   async function finish(p: Promise<{ token: string; user: User }>) {
@@ -149,7 +161,11 @@ export function Title() {
           </div>
 
           <div className="flex flex-col gap-3">
-            {GOOGLE_ENABLED ? (
+            {firebaseConfigured ? (
+              <button type="button" className="btn btn-white w-full" disabled={busy} onClick={() => void google()}>
+                <GoogleIcon /> {mode === 'login' ? 'Continuer avec Google' : "S'inscrire avec Google"}
+              </button>
+            ) : GOOGLE_ENABLED ? (
               <div className="flex h-[50px] justify-center [&>div]:w-full">
                 <GoogleLogin
                   onSuccess={(r) => r.credential && finish(api.googleLogin(r.credential))}

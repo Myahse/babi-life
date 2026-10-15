@@ -3,6 +3,7 @@
 package waitlist
 
 import (
+	"context"
 	"crypto/subtle"
 	"encoding/csv"
 	"encoding/json"
@@ -29,6 +30,9 @@ type Handler struct {
 	DB *pgxpool.Pool
 	// AdminKey unlocks the export (WAITLIST_ADMIN_KEY); empty: no export.
 	AdminKey string
+	// Verify checks a Firebase (or Google) ID token and returns the e-mail and
+	// a display name. Nil until Google sign-in is configured.
+	Verify func(ctx context.Context, token string) (email, name string, err error)
 
 	mu   sync.Mutex
 	seen map[string][]time.Time // sign-ups per IP, for the last hour
@@ -134,6 +138,7 @@ func (h *Handler) Join(w http.ResponseWriter, r *http.Request) {
 		Beta      bool   `json:"beta"`
 		Source    string `json:"source"`
 		Website   string `json:"website"` // a field people don't see: bots fill it
+		IDToken   string `json:"idToken"` // Firebase ID token, when they used Google
 		Sim       *Sim   `json:"sim"`
 	}
 	if err := httpx.Decode(r, &req); err != nil {
@@ -141,13 +146,31 @@ func (h *Handler) Join(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	name := strings.TrimSpace(req.FirstName)
+	var contact, kind string
+	var err error
+	if req.IDToken != "" {
+		if h.Verify == nil {
+			httpx.Error(w, http.StatusNotImplemented, "connexion Google pas encore configurée")
+			return
+		}
+		email, gname, err := h.Verify(r.Context(), req.IDToken)
+		if err != nil || email == "" {
+			httpx.Error(w, http.StatusUnauthorized, "connexion Google refusée")
+			return
+		}
+		contact, kind = email, "email"
+		if name == "" {
+			name = strings.TrimSpace(gname)
+		}
+	} else {
+		contact, kind, err = Contact(req.Contact)
+		if err != nil {
+			httpx.Error(w, http.StatusUnprocessableEntity, err.Error())
+			return
+		}
+	}
 	if n := utf8.RuneCountInString(name); n < 1 || n > 60 {
 		httpx.Error(w, http.StatusUnprocessableEntity, "dis-nous ton prénom")
-		return
-	}
-	contact, kind, err := Contact(req.Contact)
-	if err != nil {
-		httpx.Error(w, http.StatusUnprocessableEntity, err.Error())
 		return
 	}
 	if req.Sim != nil {
