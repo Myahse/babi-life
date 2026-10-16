@@ -72,6 +72,21 @@ func TestStreetSellers(t *testing.T) {
 			t.Errorf("%s: paid %d", c.prefix, money-s.Money)
 		}
 	}
+	// The pain brochette is for the evening: none at noon, some at 20 h.
+	if hasStock("brochette:x", game.MinuteOf(noon)) {
+		t.Error("pain brochette at noon")
+	}
+	s := newSim()
+	s.GameMinutes += 8 * 60
+	var had string
+	for i := 0; i < 80 && had == ""; i++ {
+		if v := "brochette:" + string(rune('a'+i%26)) + string(rune('a'+i/26)); hasStock(v, s.GameMinutes) {
+			had = v
+		}
+	}
+	if said, err := s.buyStreet(had); err != nil || s.Activity == nil || s.Activity.Interaction.ID != "street-brochette" {
+		t.Fatalf("brochette at 20 h: %q %v", said, err)
+	}
 	// Porc au four isn't sold in the morning.
 	if hasStock("porc:x", game.MinuteOf(noon)-12*60+9*60) {
 		t.Error("porc au four at 9 a.m.")

@@ -84,6 +84,7 @@ const STREET_SELLERS: Record<string, [string, string]> = {
   cafe: ['Le café du pousse-pousse', 'coffee'],
   the: ['Le thé avec les gars', 'cup-soda'],
   garba: ['Le garba du garbadrome', 'fish'],
+  brochette: ['Le pain brochette', 'sandwich'],
 }
 
 export function Play() {

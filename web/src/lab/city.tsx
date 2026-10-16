@@ -475,7 +475,9 @@ function FieldLab() {
 /** The street sellers side by side, with their customers at an hour (?hour=19). */
 function StallsLab() {
   const hour = Number(q.get('hour') ?? 19)
-  const kinds: StallKind[] = ['alloco', 'porc', 'cafe', 'the', 'garba']
+  // ?only=brochette: just that one, in the middle.
+  const only = q.get('only') as StallKind | null
+  const kinds: StallKind[] = only ? [only] : ['alloco', 'porc', 'cafe', 'the', 'garba', 'brochette']
   const cam = (q.get('cam') ?? '0,7,16').split(',').map(Number) as [number, number, number]
   return (
     <Canvas shadows dpr={[1, 1.5]} camera={{ position: cam, fov: 45 }} style={{ width: '100vw', height: '100vh' }}>
@@ -487,7 +489,7 @@ function StallsLab() {
         <meshLambertMaterial color="#b98b5c" />
       </mesh>
       {kinds.map((kind, i) => (
-        <StreetStall key={kind} stall={{ id: `${kind}:lab:${i}`, kind, at: [(i - 1.5) * 7, -2], rot: 0, seed: 0.3 + i * 0.17 }} hour={hour} crowd />
+        <StreetStall key={kind} stall={{ id: `${kind}:lab:${i}`, kind, at: [only ? 0 : (i - 1.5) * 7, -2], rot: 0, seed: (0.3 + i * 0.17) % 1 }} hour={hour} crowd />
       ))}
       {/* A SITRA stop, and a bus pulled in */}
       <BusStop stop={{ id: 'sotra:lab', at: [0, 7], rot: 0, seed: 0.42, lines: ['11', '19', '44'] }} hour={hour} night={false} />

@@ -23,13 +23,17 @@ import type { Nav } from './nav'
 //   the gas, the glass box of fried thon, the attiéké and the piment, and the
 //   crowd pressing at the front, everyone pointing at their fish: « Donne-moi
 //   une grosse queue là-bas ! », « Donne-moi milieu là ! ». Tap the seller to
-//   choose: the piece, and from the hot oil or from the box.
+//   choose: the piece, and from the hot oil or from the box;
+// - the pain brochette man, from the late afternoon into the night: the long
+//   charcoal grill on its legs, the skewers of beef smoking, the glass box of
+//   baguettes, the onions, tomato and the bottle of mayonnaise, a bulb hung
+//   over it all; the bread split, the meat slid off the skewers into it.
 // Around each, the customers: on the bench eating, waiting, chatting; more at
 // the busy hours (lunch and evening for the food, morning for coffee), none in
 // the dead of night. Tap the seller to buy (backend sims/street.go: the id's
 // prefix says what); often it's sold out: « Ya pas banane oh ! ».
 
-export type StallKind = 'alloco' | 'porc' | 'cafe' | 'the' | 'garba'
+export type StallKind = 'alloco' | 'porc' | 'cafe' | 'the' | 'garba' | 'brochette'
 export type Stall = { id: string; kind: StallKind; at: XZ; rot: number; seed: number }
 
 const NEAR = 320 // metres: stalls drawn around the Sim
@@ -43,6 +47,7 @@ const SELLER: Record<StallKind, { shout: string; ask: string; out: string; busy:
   porc: { shout: 'Porc au four, viens goûter !', ask: 'Porc au four, 1500 F !', out: 'Le porc est fini, reviens demain !', busy: (h) => (h < 11 ? 0 : h >= 18 ? 1 : h >= 12 && h < 14 ? 0.8 : 0.4), r: 2.6 },
   cafe: { shout: 'Café ! Café chaud !', ask: 'Café, 150 F !', out: 'Le thermos est vide, attends un peu !', busy: (h) => (h < 5 || h >= 23 ? 0 : h < 9 ? 1 : h >= 17 && h < 20 ? 0.6 : 0.3), r: 1 },
   garba: { shout: 'Garba chaud ! Garba !', ask: 'Garba ? Viens choisir ton poisson !', out: 'Y a plus poisson oh !', busy: (h) => (h >= 2 && h < 9 ? 0 : (h >= 12 && h < 14) || (h >= 19 && h < 23) ? 1 : 0.6), r: 2.4 },
+  brochette: { shout: 'Pain brochette ! Ça sort du feu !', ask: 'Pain brochette, 500 F !', out: 'Y a plus pain oh, attends le livreur !', busy: (h) => (h >= 2 && h < 16 ? 0 : h >= 19 && h < 23 ? 1 : 0.55), r: 1.6 },
   the: { shout: 'Thé bien mousseux !', ask: 'Thé, 100 F, assieds-toi !', out: "Le thé n'est pas encore prêt !", busy: (h) => (h < 6 ? 0 : h >= 17 ? 1 : 0.4), r: 1 },
 }
 
@@ -59,7 +64,7 @@ export function StreetStalls({ nav, seed, hour, onBuy }: { nav: Nav; seed: strin
       const [a, b] = [nav.nodes[e.a], nav.nodes[e.b]]
       const m: XZ = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]
       const h = hash(Math.round(m[0]), Math.round(m[1]), 77)
-      const kind: StallKind | null = h < 0.07 ? 'alloco' : h < 0.115 ? 'garba' : h < (yop ? 0.235 : 0.14) ? 'porc' : h > 0.955 ? (hash(Math.round(m[1]), Math.round(m[0]), 5) < 0.55 ? 'cafe' : 'the') : null
+      const kind: StallKind | null = h < 0.07 ? 'alloco' : h < 0.115 ? 'garba' : h < (yop ? 0.235 : 0.14) ? 'porc' : h > 0.93 && h <= 0.955 ? 'brochette' : h > 0.955 ? (hash(Math.round(m[1]), Math.round(m[0]), 5) < 0.55 ? 'cafe' : 'the') : null
       if (!kind) continue
       const side = hash(Math.round(m[1]), 3) < 0.5 ? 1 : -1
       const [ux, uz] = [(b[0] - a[0]) / e.len, (b[1] - a[1]) / e.len]
@@ -297,6 +302,90 @@ function PorcStand() {
 }
 
 /**
+ * The pain brochette: the long, narrow charcoal grill on its iron legs, the
+ * skewers of beef in a row over the embers, smoking; beside it the table with
+ * the glass box of baguettes, the basins of onion and tomato, the mayonnaise
+ * and the piment; a bare bulb hung on a pole over it all for the night.
+ */
+function BrochetteStand({ night }: { night: boolean }) {
+  return (
+    <group>
+      {/* The grill: a long trough on legs, the embers, the grid, the skewers */}
+      <group position={[0.1, 0, 0.75]}>
+        <Box s={[1.5, 0.18, 0.36]} p={[0, 0.82, 0]} m={M.rust} />
+        {[-0.65, 0.65].map((x) => (
+          <Box key={x} s={[0.05, 0.74, 0.3]} p={[x, 0.37, 0]} m={M.iron} />
+        ))}
+        <Box s={[1.4, 0.03, 0.28]} p={[0, 0.9, 0]} m={M.coal} />
+        <Box s={[1.45, 0.015, 0.32]} p={[0, 0.95, 0]} m={M.net} />
+        {[...Array(9)].map((_, i) => (
+          <group key={i} position={[-0.6 + i * 0.15, 0.98, 0]}>
+            <Box s={[0.012, 0.012, 0.46]} p={[0, 0, 0.04]} m={M.darkWood} />
+            {[-0.09, 0, 0.09].map((z) => (
+              <Box key={z} s={[0.06, 0.05, 0.07]} p={[0, 0.02, z]} r={[0, i + z * 9, 0]} m={i % 3 === 1 ? M.porkFat : M.pork} />
+            ))}
+          </group>
+        ))}
+        <Smoke p={[0, 1.0, 0]} n={7} />
+      </group>
+      {/* The table: the glass box of baguettes, onion and tomato, the mayonnaise and the piment */}
+      <group position={[1.55, 0, 0.6]}>
+        <Box s={[1.0, 0.07, 0.7]} p={[0, 0.85, 0]} m={M.wood} />
+        {[
+          [-0.42, -0.28],
+          [0.42, -0.28],
+          [-0.42, 0.28],
+          [0.42, 0.28],
+        ].map(([x, z]) => (
+          <Box key={`${x}${z}`} s={[0.06, 0.84, 0.06]} p={[x, 0.42, z]} m={M.darkWood} />
+        ))}
+        <Box s={[0.85, 0.32, 0.3]} p={[0, 1.05, -0.15]} m={BR.glass} />
+        {[0, 1, 2, 3].map((i) => (
+          <Box key={i} s={[0.75, 0.07, 0.07]} p={[0, 0.94 + Math.floor(i / 2) * 0.08, -0.22 + (i % 2) * 0.12]} r={[0, 0.04 * i, 0]} m={BR.bread} />
+        ))}
+        <mesh position={[-0.25, 0.94, 0.2]} material={M.basin}>
+          <cylinderGeometry args={[0.13, 0.1, 0.1, 10]} />
+        </mesh>
+        <mesh position={[-0.25, 0.995, 0.2]} material={BR.onion}>
+          <cylinderGeometry args={[0.11, 0.11, 0.01, 10]} />
+        </mesh>
+        <mesh position={[0.05, 0.94, 0.2]} material={M.basin}>
+          <cylinderGeometry args={[0.12, 0.09, 0.1, 10]} />
+        </mesh>
+        <mesh position={[0.05, 0.995, 0.2]} material={M.red}>
+          <cylinderGeometry args={[0.1, 0.1, 0.01, 10]} />
+        </mesh>
+        <mesh position={[0.3, 1.0, 0.2]} material={BR.mayo}>
+          <cylinderGeometry args={[0.04, 0.045, 0.22, 8]} />
+        </mesh>
+        <mesh position={[0.4, 0.93, 0.25]} material={M.red}>
+          <cylinderGeometry args={[0.05, 0.05, 0.08, 8]} />
+        </mesh>
+        {/* A bread open on its paper, the meat going in */}
+        <Box s={[0.3, 0.01, 0.2]} p={[0.25, 0.89, -0.05 + 0.35]} m={M.board} />
+        <Box s={[0.26, 0.06, 0.08]} p={[0.25, 0.92, 0.3]} m={BR.bread} />
+        <Box s={[0.2, 0.03, 0.04]} p={[0.25, 0.96, 0.3]} m={M.pork} />
+      </group>
+      {/* The pole and the bulb */}
+      <Box s={[0.05, 2.5, 0.05]} p={[-0.85, 1.25, 0.4]} m={M.iron} />
+      <Box s={[1.0, 0.04, 0.04]} p={[-0.4, 2.48, 0.4]} m={M.iron} />
+      <mesh position={[0.05, 2.3, 0.45]}>
+        <sphereGeometry args={[0.07, 8, 6]} />
+        <meshLambertMaterial color={night ? '#fff2c2' : '#d8d8d0'} emissive={night ? '#fff2c2' : '#000000'} emissiveIntensity={night ? 1.2 : 0} />
+      </mesh>
+      {night && <pointLight position={[0.05, 2.2, 0.6]} color="#ffd89a" intensity={6} distance={7} decay={2} />}
+    </group>
+  )
+}
+
+const BR = {
+  bread: lambert('#d9a35a'),
+  onion: lambert('#e9d3e6'),
+  mayo: lambert('#f4ecc4'),
+  glass: new THREE.MeshLambertMaterial({ color: '#cfe8f2', transparent: true, opacity: 0.3, depthWrite: false }),
+}
+
+/**
  * The pousse-pousse of the café and thé sellers, as on Abidjan's streets: a
  * red metal frame on two spoked wheels, long handles behind, a tall red box
  * with white stars and the price painted on, the board of sachets hung in rows
@@ -461,6 +550,9 @@ function customerSpots(kind: StallKind, seed: number): Customer[] {
         stand(-0.95, 2.4, 'idle'),
         stand(0.15, 3.0, 'talk'),
       ]
+    case 'brochette':
+      // Waiting round the grill for their bread; one eating on the bench at the side.
+      return [stand(0.4, 1.9, 'idle'), stand(-0.4, 2.1, 'talk'), sit(-2.0, 1.6, Math.PI / 2), stand(1.2, 2.2, 'phone'), stand(-0.2, 2.9, 'talk'), sit(-2.0, 0.9, Math.PI / 2, 'drink')]
     case 'cafe':
     case 'the':
       return [stand(0.3, 2.2, 'idle'), stand(-0.6, 2.4), sit(-1.6, 2.4, Math.PI * 0.75, 'drink'), stand(-1.5, 1.7), stand(1.2, 2.9, 'phone')]
@@ -491,6 +583,7 @@ function Crowd({ stall, hour }: { stall: Stall; hour: number }) {
       {/* The seats some of them sit on (the porc au four has its own) */}
       {stall.kind === 'alloco' && <Bench p={[-0.05, 0, 2.8]} />}
       {stall.kind === 'garba' && <Bench p={[2.75, 0, 1.25]} r={Math.PI / 2} w={1.5} />}
+      {stall.kind === 'brochette' && <Bench p={[-2.0, 0, 1.25]} r={Math.PI / 2} w={1.5} />}
       {(stall.kind === 'cafe' || stall.kind === 'the') && <Bench p={[-1.6, 0, 2.4]} r={Math.PI * 0.75 - Math.PI / 2} w={0.8} />}
     </NoShadows>
   )
@@ -501,7 +594,7 @@ function Crowd({ stall, hour }: { stall: Stall; hour: number }) {
 /** One stall and its seller. Local +z faces the street. */
 export function StreetStall({ stall, hour, crowd, onBuy }: { stall: Stall; hour: number; crowd: boolean; onBuy?: Buy }) {
   const sl = SELLER[stall.kind]
-  const man = ((stall.kind === 'cafe' || stall.kind === 'the') && stall.seed < 0.85) || stall.kind === 'garba'
+  const man = ((stall.kind === 'cafe' || stall.kind === 'the') && stall.seed < 0.85) || stall.kind === 'garba' || stall.kind === 'brochette'
   const look = useMemo(() => randomLook(man ? 'homme' : 'femme', rng(stall.id)), [stall.id, man])
   const helper = useMemo(() => (stall.kind === 'porc' ? randomLook('femme', rng(`${stall.id}h`)) : stall.kind === 'garba' ? randomLook('homme', rng(`${stall.id}h`)) : null), [stall.id, stall.kind])
   const parasol = useMemo(() => ['#e8432f', '#1f9a4a', '#f2a81d', '#2f7fd0'][Math.floor(stall.seed * 4)], [stall.seed])
@@ -546,12 +639,13 @@ export function StreetStall({ stall, hour, crowd, onBuy }: { stall: Stall; hour:
   }
   // Where the seller stands, and doing what.
   // The café/thé seller sits on his stool beside the cart (as in the street), turned to the passers-by.
-  const [sellerAt, sellerPose]: [[number, number, number], Pose] = stall.kind === 'porc' ? [[-1.3, 0, -0.1], 'cook'] : stall.kind === 'garba' ? [[0.75, 0, 0.1], 'cook'] : stall.kind === 'alloco' ? [[0, 0, 0], 'idle'] : [[0.95, 0, 1.08], 'sit']
+  const [sellerAt, sellerPose]: [[number, number, number], Pose] = stall.kind === 'porc' ? [[-1.3, 0, -0.1], 'cook'] : stall.kind === 'garba' ? [[0.75, 0, 0.1], 'cook'] : stall.kind === 'brochette' ? [[0.1, 0, -0.1], 'cook'] : stall.kind === 'alloco' ? [[0, 0, 0], 'idle'] : [[0.95, 0, 1.08], 'sit']
   return (
     <group position={[stall.at[0], 0, stall.at[1]]} rotation={[0, stall.rot, 0]} onClick={(e) => (e.stopPropagation(), void tap())}>
       {stall.kind === 'alloco' && <AllocoStand parasol={parasol} />}
       {stall.kind === 'porc' && <PorcStand />}
       {stall.kind === 'garba' && <GarbaStand />}
+      {stall.kind === 'brochette' && <BrochetteStand night={hour >= 18 || hour < 6} />}
       {(stall.kind === 'cafe' || stall.kind === 'the') && <Cart tea={stall.kind === 'the'} price={stall.kind === 'the' ? 100 : 150} />}
       <group position={sellerAt}>
         <Human look={look} gender={man ? 'homme' : 'femme'} pose={sellerPose} seed={stall.seed * 100} />

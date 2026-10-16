@@ -12,8 +12,9 @@ import (
 
 // The sellers of the street. The alloco tantie at the corner (300 F of fried
 // plantain, eaten standing), the women grilling porc au four in Yopougon,
-// the café and thé sellers with their pousse-pousse. The vendor id says which
-// (« porc:… », « cafe:… », « the:… »; anything else is an alloco stall). Each
+// the café and thé sellers with their pousse-pousse, the pain brochette man
+// at his grill in the evening. The vendor id says which (« porc:… »,
+// « cafe:… », « the:… », « brochette:… »; anything else is an alloco stall). Each
 // is often sold out: « Ya pas banane oh ! ». Whether there's some is the same
 // for everyone at the same stall in the same game hour, so asking again
 // straight away doesn't change the answer.
@@ -38,6 +39,8 @@ var streetSellers = map[string]streetSeller{
 		"Porc au four", "Le porc est fini, reviens demain !", "Porc au four bien grillé, avec l'attiéké. Bon appétit !", 4},
 	"cafe": {game.Interaction{ID: "street-cafe", Label: "Boire un café du pousse-pousse", Icon: "coffee", Minutes: 10, Cost: 150, Effect: game.Needs{Energy: 15, Hunger: 3}, MinHour: 5, MaxHour: 23},
 		"Café du pousse-pousse", "Le thermos est vide, attends un peu !", "Café bien chaud, bien sucré !", 5},
+	"brochette": {game.Interaction{ID: "street-brochette", Label: "Manger un pain brochette", Icon: "sandwich", Minutes: 15, Cost: 500, Effect: game.Needs{Hunger: 35, Fun: 3}, MinHour: 16, MaxHour: 24},
+		"Pain brochette", "Y a plus pain oh, attends le livreur !", "Pain brochette bien chaud : oignon, mayo, un peu de piment. Bon appétit !", 4},
 	"the": {game.Interaction{ID: "street-the", Label: "Boire un thé avec les gars", Icon: "cup-soda", Minutes: 20, Cost: 100, Effect: game.Needs{Energy: 8, Social: 10, Fun: 4}, MinHour: 6, MaxHour: 24},
 		"Thé du pousse-pousse", "Le thé n'est pas encore prêt, assieds-toi d'abord !", "Premier thé, bien mousseux. On cause !", 5},
 }
