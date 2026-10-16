@@ -315,20 +315,27 @@ function Cart({ tea, price }: { tea: boolean; price: number }) {
         <Box key={z} s={[1.15, 0.045, 0.045]} p={[-0.95, 0.72, z]} r={[0, 0, 0.32]} m={M.redFrame} />
       ))}
       <Box s={[0.05, 0.48, 0.05]} p={[0.4, 0.24, 0]} m={M.redFrame} />
-      {/* Two spoked wheels: the tyre, the red rim, spokes */}
+      {/* Two spoked wheels, upright on the axle (along z): the black tyre, the red rim, the spokes, the hub */}
       {[-0.36, 0.36].map((z) => (
-        <group key={z} position={[0, 0.36, z]} rotation={[Math.PI / 2, 0, 0]}>
-          <mesh material={M.wheel}>
-            <torusGeometry args={[0.33, 0.035, 6, 18]} />
+        <group key={z} position={[0, 0.36, z]}>
+          <mesh material={M.wheel} castShadow>
+            <torusGeometry args={[0.32, 0.04, 8, 24]} />
           </mesh>
           <mesh material={M.redFrame}>
-            <torusGeometry args={[0.29, 0.015, 4, 18]} />
+            <torusGeometry args={[0.275, 0.018, 6, 24]} />
           </mesh>
-          {[0, 1, 2, 3, 4, 5].map((k) => (
-            <Box key={k} s={[0.012, 0.01, 0.58]} p={[0, 0, 0]} r={[0, (k * Math.PI) / 6, 0]} m={M.iron} />
+          {[0, 1, 2, 3, 4, 5, 6, 7].map((k) => (
+            <Box key={k} s={[0.55, 0.012, 0.012]} p={[0, 0, 0]} r={[0, 0, (k * Math.PI) / 8]} m={M.iron} />
           ))}
+          <mesh rotation={[Math.PI / 2, 0, 0]} material={M.redFrame}>
+            <cylinderGeometry args={[0.045, 0.045, 0.1, 8]} />
+          </mesh>
         </group>
       ))}
+      {/* The axle under the box */}
+      <mesh position={[0, 0.36, 0]} rotation={[Math.PI / 2, 0, 0]} material={M.iron}>
+        <cylinderGeometry args={[0.02, 0.02, 0.8, 6]} />
+      </mesh>
       {/* The tall red box: stars, the price, the name of what's sold */}
       <Box s={[0.7, 0.85, 0.55]} p={[0, 0.95, 0]} m={M.red} />
       <mesh position={[0, 1.18, 0.281]} scale={[0.55, 0.55 / sign.aspect, 1]} material={mats.sign}>
