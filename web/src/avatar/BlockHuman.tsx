@@ -4,7 +4,7 @@ import * as THREE from 'three'
 import type { Look, Sim } from '../lib/types'
 import { FEMME_OUTFITS, HEADWEAR, TALL_HAIR, UNIFORM_HATS, VEILED, defaultColors, fullLook } from './options'
 import { tint } from './textures'
-import { useCastShadows, usePoseRig, type Pose, type RigStyle } from './Human'
+import { fidgetAt, useCastShadows, usePoseRig, type Pose, type RigStyle } from './Human'
 import { worldTime } from '../lib/worldClock'
 import { Wad } from '../world3d/money'
 
@@ -50,6 +50,12 @@ const BLOCK_STYLE: RigStyle = { snap: 1.1, swing: 1, elbow: 1, knee: 1, headBob:
 // rows, then one strip going round the sides: -x, front (+z), +x, back (-z).
 type Region = { u: number; v: number; W: number; D: number; H: number }
 const SHEET = 64
+/**
+ * The sheet is painted at twice its size: everything is drawn in sheet pixels
+ * as before (2×2 on the canvas), then finer features on half pixels (the
+ * lids and catchlights, nostrils, the lips, fingers, laces, seams).
+ */
+const FINE = 2
 const R = {
   head: { u: 0, v: 0, W: 8, D: 8, H: 8 },
   hat: { u: 32, v: 0, W: 8, D: 8, H: 8 },
@@ -199,6 +205,12 @@ class Painter {
     const [x0] = this.face(r, f)
     this.px(r.u + x0 + col, r.v + r.D + row, c)
   }
+  /** A half pixel of a side face: fcol, frow in half pixels (a face W wide has 2W). */
+  fine(r: Region, f: Face, fcol: number, frow: number, c: string) {
+    const [x0] = this.face(r, f)
+    this.g.fillStyle = c
+    this.g.fillRect(r.u + x0 + fcol / FINE, r.v + r.D + frow / FINE, 1 / FINE, 1 / FINE)
+  }
   /** Rows [r0, r1) all the way round. */
   rows(r: Region, r0: number, r1: number, c: Paint, faces: Face[] = ['L', 'F', 'R', 'B']) {
     for (const f of faces) {
@@ -233,6 +245,10 @@ type Cut = {
   legRows: number
   /** Arm rows covered by sleeves. */
   armRows: number
+  /** The shoes, for their laces and soles. */
+  shoe?: 'sneaker' | 'dress' | 'sandal' | 'boot' | 'heel' | 'slide'
+  /** Trousers up to the waist: a belt. */
+  belt?: boolean
 }
 
 const DIGITS: Record<string, string[]> = { '2': ['111', '001', '111', '100', '111'], '3': ['111', '001', '111', '001', '111'] }
@@ -240,8 +256,9 @@ const DIGITS: Record<string, string[]> = { '2': ['111', '001', '111', '100', '11
 /** Everything painted for one look: the face, the outfit, glasses, the chain, bobos, the hairline. */
 function paintSheet(l: Required<Look>, femme: boolean, young: boolean) {
   const c = document.createElement('canvas')
-  c.width = c.height = SHEET
+  c.width = c.height = SHEET * FINE
   const p = new Painter(c.getContext('2d')!)
+  p.g.scale(FINE, FINE)
   const dc = defaultColors(l, femme)
   const skin = l.skin
   const shade = tint(skin, -0.12)
@@ -391,9 +408,43 @@ function paintSheet(l: Required<Look>, femme: boolean, young: boolean) {
     }
   }
 
+  /* Finer features, on half pixels: lids and catchlights, slimmer brows, nostrils, the lips, the ears. */
+  {
+    const F = 'F' as Face
+    const shades = !young && l.accessory === 'sunglasses'
+    const framed = !young && l.accessory === 'glasses'
+    if (!shades) {
+      // The upper lid shades the top of each eye; a catchlight in each iris (light from the upper left).
+      const lid = tint(skin, -0.34)
+      for (const x0 of [2, 10]) for (let fx = x0; fx < x0 + 4; fx++) p.fine(h, F, fx, 6, lid)
+      for (const fx of [4, 10]) p.fine(h, F, fx, 7, '#ffffff')
+      p.fine(h, F, 5, 7, tint(l.eyes, -0.35))
+      p.fine(h, F, 11, 7, tint(l.eyes, -0.35))
+      // Brows: an arch, thinner at the ends.
+      if (!framed) for (const fx of [2, 5, 10, 13]) p.fine(h, F, fx, 4, skin)
+    }
+    // The nose: the bridge catching the light, two nostrils.
+    p.fine(h, F, 7, 8, tint(skin, 0.05))
+    p.fine(h, F, 8, 8, tint(skin, 0.05))
+    p.fine(h, F, 6, 9, tint(skin, -0.32))
+    p.fine(h, F, 9, 9, tint(skin, -0.32))
+    // The lips: the line between them darker, the corners in shadow.
+    for (let fx = 6; fx < 10; fx++) p.fine(h, F, fx, 12, tint(skin, -0.48))
+    if (young || l.beard === 'none' || l.beard === 'collier' || l.beard === 'moustache') {
+      for (const fx of [5, 10]) p.fine(h, F, fx, 12, tint(skin, -0.2))
+      // Under the lower lip and along the jaw, a little shadow.
+      for (let fx = 3; fx < 13; fx++) p.fine(h, F, fx, 15, tint(skin, -0.07))
+    }
+    // Inside the ears.
+    for (const fy of [7, 8]) {
+      p.fine(h, 'L', 9, fy, tint(skin, -0.26))
+      p.fine(h, 'R', 6, fy, tint(skin, -0.26))
+    }
+  }
+
   /* The outfit. */
   // What is bare before the clothes go on: worn clothes leave the skin alone.
-  const bare = l.wear === 'use' || l.wear === 'dechire' ? p.g.getImageData(0, 0, SHEET, SHEET).data : null
+  const bare = l.wear === 'use' || l.wear === 'dechire' ? p.g.getImageData(0, 0, SHEET * FINE, SHEET * FINE).data : null
   const b = R.body
   const cut: Cut = { legRows: 0, armRows: 0 }
   const sleeves = (n: number, col: Paint, cuff?: string) => {
@@ -412,9 +463,11 @@ function paintSheet(l: Required<Look>, femme: boolean, young: boolean) {
     if (hips) p.rows(b, 10, 12, col)
     p.bottom(b, col)
     cut.legRows = n
+    cut.belt = hips
   }
   const shoes = (kind: 'sneaker' | 'dress' | 'sandal' | 'boot' | 'heel' | 'slide') => {
     const sole = kind === 'sneaker' || kind === 'boot' ? '#f4f4f4' : kind === 'slide' ? tint(shoe, -0.15) : '#2a1c12'
+    cut.shoe = kind
     R.leg.forEach((g, i) => {
       p.bottom(g, sole)
       p.rows(g, 11, 12, kind === 'heel' || kind === 'sandal' ? shoe : sole)
@@ -868,6 +921,53 @@ function paintSheet(l: Required<Look>, femme: boolean, young: boolean) {
     p.all(R.skirtLeg, cut.skirt.paint)
     if (cut.skirt.band) p.rows(R.skirtTop, 0, 1, cut.skirt.band)
   }
+  /* Finer details on the body: folds in shadow, the collar, cuffs, a belt, buttons, fingers, laces and soles. */
+  {
+    const dark = (a: number) => `rgba(20,12,8,${a})`
+    // The sides of the torso and the shadow under the chin.
+    for (const f of ['F', 'B'] as Face[])
+      for (let fy = 0; fy < 24; fy++) {
+        p.fine(b, f, 0, fy, dark(0.1))
+        p.fine(b, f, 15, fy, dark(0.1))
+      }
+    for (let fx = 5; fx < 11; fx++) p.fine(b, 'F', fx, 0, dark(0.16))
+    // Where the sleeves end.
+    if (cut.armRows > 0 && cut.armRows < 10 && !cut.bell) for (const a of R.arm) for (const f of ['L', 'F', 'R', 'B'] as Face[]) for (let fx = 0; fx < 8; fx++) p.fine(a, f, fx, cut.armRows * 2, dark(0.22))
+    // A belt and its buckle.
+    if (cut.belt && !cut.skirt) {
+      for (const f of ['L', 'F', 'R', 'B'] as Face[]) {
+        const w = f === 'F' || f === 'B' ? 16 : 8
+        for (let fx = 0; fx < w; fx++) p.fine(b, f, fx, 20, '#2a1d14')
+      }
+      p.fine(b, 'F', 7, 20, '#d4b052')
+      p.fine(b, 'F', 8, 20, '#d4b052')
+    }
+    // Buttons down a shirt's front.
+    if (['chemise', 'chemise-pagne', 'uniforme', 'policier', 'gendarme', 'vigile', 'blouse', 'infirmier', 'cuisinier', 'bleu'].includes(outfit))
+      for (const fy of [4, 8, 12, 16]) p.fine(b, 'F', 8, fy, luminance(top) > 0.55 ? tint(top, -0.4) : tint(top, 0.45))
+    // A crease down the front of trousers.
+    if (cut.legRows > 0 && !cut.skirt) for (const g of R.leg) for (let fy = 0; fy < cut.legRows * 2; fy++) p.fine(g, 'F', 3, fy, dark(0.07))
+    // Fingers: the hands' last row, split in four.
+    R.arm.forEach((a, i) => {
+      if (i === 1 && !young && l.accessory === 'chapelet') return
+      for (const fx of [2, 4, 6]) p.fine(a, 'F', fx, 23, tint(skin, -0.22))
+      p.fine(a, 'F', 1, 23, tint(skin, -0.1))
+    })
+    // Shoes: laces on the front, a line along the sole, a shine on dress shoes.
+    for (const g of R.leg) {
+      if (cut.shoe === 'sneaker' || cut.shoe === 'boot') {
+        const lace = cut.shoe === 'sneaker' ? '#ffffff' : tint(shoe, 0.35)
+        for (const [fx, fy] of [[3, 20], [4, 20], [3, 18], [4, 18]]) if (cut.shoe === 'boot' || fy === 20) p.fine(g, 'F', fx, fy, lace)
+        for (const f of ['L', 'F', 'R', 'B'] as Face[]) for (let fx = 0; fx < 8; fx++) p.fine(g, f, fx, 22, '#c9c9c9')
+      } else if (cut.shoe === 'dress') {
+        p.fine(g, 'F', 2, 20, tint(shoe, 0.3))
+        for (const f of ['L', 'F', 'R', 'B'] as Face[]) for (let fx = 0; fx < 8; fx++) p.fine(g, f, fx, 23, '#120c08')
+      } else if (cut.shoe === 'sandal' || cut.shoe === 'slide') {
+        // The toes, out under the strap.
+        for (let fx = 0; fx < 8; fx++) p.fine(g, 'F', fx, 21, fx % 2 ? skin : tint(skin, -0.16))
+      }
+    }
+  }
   /* Worn clothes: faded and stained, or torn and dirty, holes showing the skin. */
   if (bare) wearOut(p.g, l.wear === 'dechire', skin, bare, [R.body, ...R.leg, ...R.arm, ...(cut.skirt ? [R.skirtTop, R.skirtLeg] : [])])
   if (!young && l.accessory === 'chain') {
@@ -920,16 +1020,17 @@ function wearOut(g: CanvasRenderingContext2D, torn: boolean, skin: string, bare:
   const sk = new THREE.Color(skin)
   const [sr, sg, sb] = [sk.r * 255, sk.g * 255, sk.b * 255]
   const mud = [122, 104, 80]
-  const img = g.getImageData(0, 0, SHEET, SHEET)
+  const N = SHEET * FINE
+  const img = g.getImageData(0, 0, N, N)
   const d = img.data
   for (const r of regions) {
-    for (let y = r.v; y < r.v + r.D + r.H; y++)
-      for (let x = r.u; x < r.u + 2 * (r.D + r.W); x++) {
-        const i = (y * SHEET + x) * 4
+    for (let y = r.v * FINE; y < (r.v + r.D + r.H) * FINE; y++)
+      for (let x = r.u * FINE; x < (r.u + 2 * (r.D + r.W)) * FINE; x++) {
+        const i = (y * N + x) * 4
         if (d[i + 3] === 0 || (d[i] === bare[i] && d[i + 1] === bare[i + 1] && d[i + 2] === bare[i + 2])) continue // still bare skin
         const k = torn ? 0.42 : 0.22
         for (let c = 0; c < 3; c++) d[i + c] = d[i + c] * (1 - k) + mud[c] * k
-        const h = hash(x * 3.1 + 7, y * 1.7)
+        const h = hash((x / FINE) * 3.1 + 7, (y / FINE) * 1.7)
         if (h < (torn ? 0.14 : 0.07)) for (let c = 0; c < 3; c++) d[i + c] *= 0.62 // a stain
         else if (torn && h > 0.93) {
           // A hole: the skin, a little in shadow.
@@ -1252,8 +1353,11 @@ export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 
       lids.current.visible = shut > 0.05
       for (const c of lids.current.children) c.scale.y = Math.max(0.01, shut)
     }
-    const talk = pose === 'talk' || pose === 'rant' || pose === 'cheer'
-    const open = talk ? Math.max(0, Math.sin(t * 9 + seed)) * (pose === 'cheer' ? 1.6 : 1) : 0
+    const talk = pose === 'talk' || pose === 'rant' || pose === 'cheer' || pose === 'phone'
+    // A yawn with the stretch (the same clock as the arms: fidgetAt).
+    const fid = pose === 'idle' ? fidgetAt(worldTime() + seed, seed) : null
+    const yawn = fid?.kind === 'stretch' ? fid.e * 1.8 : 0
+    const open = Math.max(yawn, talk ? Math.max(0, Math.sin(t * 9 + seed)) * (pose === 'cheer' ? 1.6 : pose === 'phone' ? 0.8 : 1) : 0)
     if (mouth.current) {
       mouth.current.visible = open > 0.08
       mouth.current.scale.y = Math.max(0.01, open)

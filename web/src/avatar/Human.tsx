@@ -49,6 +49,41 @@ export type RigStyle = {
   headBob?: number
 }
 
+/** What a Sim standing about does with itself now and then. */
+export type Fidget = 'scratch' | 'watch' | 'cross' | 'hips' | 'wipe' | 'stretch' | 'phone'
+const FIDGETS: { kind: Fidget; len: number }[] = [
+  { kind: 'scratch', len: 2.4 },
+  { kind: 'watch', len: 2.2 },
+  { kind: 'cross', len: 5 },
+  { kind: 'hips', len: 4.5 },
+  { kind: 'wipe', len: 2 },
+  { kind: 'stretch', len: 3 },
+  { kind: 'phone', len: 4.5 },
+]
+/** In development, the lab can hold one gesture to look at it (globalThis.fidget.kind = 'hips'). */
+const FORCED: { kind?: Fidget } = {}
+if (import.meta.env.DEV) (globalThis as unknown as { fidget: typeof FORCED }).fidget = FORCED
+const FIDGET_EVERY = 8 // seconds: one chance of a gesture in each
+/**
+ * The gesture a Sim standing about is making at time t (null most of the
+ * time), and how far into it (e: 0 → 1 → 0, eased). Each Sim has its own
+ * rhythm (seed); every screen sees the same, from the shared clock.
+ */
+export function fidgetAt(t: number, seed: number): { kind: Fidget; e: number } | null {
+  if (import.meta.env.DEV && FORCED.kind) return { kind: FORCED.kind, e: 1 }
+  const u = t + seed * 13.7
+  const slot = Math.floor(u / FIDGET_EVERY)
+  const n = Math.sin(slot * 91.17 + seed * 47.3) * 43758.5453
+  const r = n - Math.floor(n)
+  if (r < 0.45) return null
+  const f = FIDGETS[Math.floor(((r - 0.45) / 0.55) * FIDGETS.length) % FIDGETS.length]
+  const at = u - slot * FIDGET_EVERY - 0.8
+  if (at < 0 || at > f.len) return null
+  // In over 0.45 s, held, out over 0.5 s.
+  const k = Math.min(1, at / 0.45, (f.len - at) / 0.5)
+  return { kind: f.kind, e: k * k * (3 - 2 * k) }
+}
+
 /**
  * Moves a rig for a pose, every frame: index 0 of each pair is the side at -x.
  * Rotations are about the rest pose's axes (the person faces +z): x swings a
@@ -83,6 +118,8 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
     const to = (o: THREE.Euler | THREE.Vector3, k: 'x' | 'y' | 'z', target: number) => void (o[k] += (target - o[k]) * a)
     // Standing: the weight goes from one leg to the other, slowly.
     const shift = Math.sin(t * 0.35 + seed)
+    // Standing about: now and then a gesture (scratching the head, the watch…).
+    const fid = pose === 'idle' ? fidgetAt(t, seed) : null
     // Dancing: the beat of coupé-décalé, about 126 a minute.
     const beat = t * 2.1 * Math.PI * 2
     const bounce = Math.max(0, Math.sin(beat)) // knees give on each beat
@@ -210,6 +247,25 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
       } else {
         // Standing: arms hanging loose, breathing.
         ;[sx, sz, ex] = [Math.sin(t * 1.2 + i) * 0.03, out * (0.1 + Math.max(0, out * shift) * 0.03), -0.14]
+        if (fid) {
+          const right = out > 0
+          // [shoulder x, shoulder z, elbow x, elbow z]
+          const gest: [number, number, number, number] | null =
+            fid.kind === 'scratch' && right ? [-2.5, 0.75, -1.75 + Math.sin(t * 15) * 0.18, 0]
+            : fid.kind === 'watch' && !right ? [-1.05, -0.3, -1.55, 0]
+            : fid.kind === 'watch' ? [-0.45, -0.12, -0.85, 0] // the other hand comes up a little
+            : fid.kind === 'cross' ? [-0.75, out * -0.42, -1.95, 0]
+            : fid.kind === 'hips' ? [0.12, out * 0.75, -0.2, -out * 1.55] // elbows out, hands back on the hips
+            : fid.kind === 'wipe' && right ? [-2.35, 0.35 + Math.sin(t * 5) * 0.25, -2.05, 0]
+            : fid.kind === 'stretch' ? [-0.15, out * (2.75 + Math.sin(t * 2) * 0.05), -0.25, 0]
+            : fid.kind === 'phone' && right ? [-0.95, 0.12, -1.45, 0]
+            : fid.kind === 'phone' ? [-0.75, -0.1, -1.3, 0]
+            : null
+          if (gest) {
+            ;[sx, sz, ex] = [sx + (gest[0] - sx) * fid.e, sz + (gest[1] - sz) * fid.e, ex + (gest[2] - ex) * fid.e]
+            ez += (gest[3] - ez) * fid.e
+          }
+        }
       }
       to(sh.rotation, 'x', sx)
       to(sh.rotation, 'y', sy)
@@ -265,9 +321,10 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
       g.next = t + 1.5 + rnd * 3.5
     }
     const hd = head.current!
-    to(hd.rotation, 'y', pose === 'sleep' || pose === 'pray' ? 0 : walk ? -s * stride * 0.1 : pose === 'rant' ? Math.sin(t * 2.3) * 0.45 : pose === 'talk' ? Math.sin(t * 0.9) * 0.12 : g.y)
-    to(hd.rotation, 'z', pose === 'phone' ? 0.12 : pose === 'sleep' ? 0.25 : pose === 'wave' ? 0.08 : pose === 'talk' ? Math.sin(t * 1.3) * 0.05 : 0)
-    to(hd.rotation, 'x', pose === 'sleep' ? 0.35 : pose === 'pray' || pose === 'cook' ? 0.3 : pose === 'wash' ? -0.25 : pose === 'busy' || pose === 'write' ? 0.25 : pose === 'eat' ? 0.1 : pose === 'drink' ? -0.15 : pose === 'hug' ? 0.15 : pose === 'beg' ? 0.12 : pose === 'dance' ? bounce * 0.12 - 0.05 : pose === 'cheer' ? -0.2 : walk ? (run ? -0.12 : -0.02) + Math.sin(ph * 2) * 0.03 * headBob : g.x + Math.sin(t * 0.7) * 0.02)
+    const look = fid && (fid.kind === 'watch' || fid.kind === 'phone') ? fid.e : 0
+    to(hd.rotation, 'y', fid?.kind === 'watch' ? -0.35 * fid.e : pose === 'sleep' || pose === 'pray' ? 0 : walk ? -s * stride * 0.1 : pose === 'rant' ? Math.sin(t * 2.3) * 0.45 : pose === 'talk' ? Math.sin(t * 0.9) * 0.12 : g.y)
+    to(hd.rotation, 'z', fid?.kind === 'scratch' ? -0.14 * fid.e : pose === 'phone' ? 0.12 : pose === 'sleep' ? 0.25 : pose === 'wave' ? 0.08 : pose === 'talk' ? Math.sin(t * 1.3) * 0.05 : 0)
+    to(hd.rotation, 'x', pose === 'sleep' ? 0.35 : pose === 'pray' || pose === 'cook' ? 0.3 : pose === 'wash' ? -0.25 : pose === 'busy' || pose === 'write' ? 0.25 : pose === 'eat' ? 0.1 : pose === 'drink' ? -0.15 : pose === 'hug' ? 0.15 : pose === 'beg' ? 0.12 : pose === 'dance' ? bounce * 0.12 - 0.05 : pose === 'cheer' ? -0.2 : walk ? (run ? -0.12 : -0.02) + Math.sin(ph * 2) * 0.03 * headBob : g.x + Math.sin(t * 0.7) * 0.02 + look * 0.42 - (fid?.kind === 'stretch' ? fid.e * 0.3 : 0))
   })
 }
 

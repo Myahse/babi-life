@@ -33,7 +33,7 @@ import { Map as MapIcon, MessageCircle, Newspaper } from 'lucide-react'
 const q = new URLSearchParams(location.search)
 const VIDEO = q.has('video')
 const ALPHA = q.has('alpha')
-type SceneId = 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'princesse' | `famille-${string}` | 'palais' | 'basket' | 'fete' | 'cause' | 'look' | 'siporex' | 'phone'
+type SceneId = 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'princesse' | `famille-${string}` | 'palais' | 'basket' | 'fete' | 'cause' | 'look' | 'siporex' | 'phone' | 'visages'
 /**
  * Which film: ?video (the launch), ?video=bouger (getting about: gbaka,
  * Gnango, Rue Princesse), ?video=bande-annonce (the trailer: gnambro or
@@ -226,6 +226,20 @@ function World({ scene, t }: { scene: SceneId; t: number }) {
     )
   }
   if (scene === 'cause') return <Street scene="cause" t={t} />
+  if (scene === 'visages') {
+    // Up close: the crew's faces and hands, standing about (their gestures: fidgetAt).
+    return (
+      <>
+        {lights}
+        <Camera at={[0, 1.45, wide ? 2.6 : 3.4]} look={[0, 1.3, 0]} />
+        {CREW.slice(0, 4).map((c, i) => (
+          <group key={i} position={[(i - 1.5) * 0.62, 0, 0]}>
+            <BlockHuman look={c.look} gender={c.gender} pose="idle" seed={i * 1.7 + 0.4} />
+          </group>
+        ))}
+      </>
+    )
+  }
   if (scene === 'crew' || scene === 'phone') {
     return (
       <>
