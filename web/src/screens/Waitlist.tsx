@@ -8,6 +8,7 @@ import { useWorld } from '../store/world'
 import { CROWD } from './Title'
 import { Community, Share } from '../components/WaitlistShare'
 import { Consent } from '../components/Consent'
+import { InstallButton } from '../components/InstallButton'
 import { firebaseConfigured, googleCancelled, signInWithGoogle } from '../lib/google'
 
 // The wish list (/liste): before the game opens, people leave a first name
@@ -130,6 +131,8 @@ export function Waitlist() {
           <Link to={`/liste/creer${location.search}`} className="btn mt-6 w-full max-w-sm">
             <Baby size={20} strokeWidth={2.6} /> Crée ton Sim, découvre ta famille
           </Link>
+          {/* The app on the home screen (PWA): it opens right here, full screen. Only shown when the phone can install it. */}
+          <InstallButton className="mt-3 max-w-sm" />
           <button
             className="mt-3 text-sm font-extrabold text-white/80 underline-offset-4 hover:underline lg:hidden"
             onClick={() => {
@@ -163,6 +166,7 @@ export function Waitlist() {
                 {done.count > 1 && ` Vous êtes déjà ${done.count.toLocaleString('fr-FR')} sur la liste.`}
               </p>
               <Share />
+              <InstallButton className="mt-1" />
             </div>
           ) : (
             <form className="flex flex-col gap-2.5" onSubmit={join}>
