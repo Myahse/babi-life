@@ -37,7 +37,7 @@ function pixelMark() {
   // Lit windows
   for (const [x, y] of [[1, 12], [2, 14], [11, 11], [12, 13], [14, 13]]) put(x, y, '#ffc233')
   // The pin: white, a green dot in its head, the point down
-  const rows = [[6, 9], [5, 10], [5, 10], [5, 10], [5, 10], [6, 9], [6, 9], [7, 8], [7, 8]]
+  const rows = [[6, 9], [5, 10], [5, 10], [5, 10], [6, 9], [6, 9], [7, 8]]
   rows.forEach(([a, b], i) => {
     for (let x = a; x <= b; x++) put(x, i + 1, (i === 2 || i === 3) && (x === 7 || x === 8) ? '#00a862' : x < 7.5 ? '#e9e9ef' : '#ffffff')
   })

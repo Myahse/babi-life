@@ -14,11 +14,10 @@
       <rect x="70" y="352" width="56" height="400"/><rect x="132" y="300" width="44" height="400"/><rect x="182" y="388" width="40" height="400"/>
       <rect x="292" y="370" width="40" height="400"/><rect x="338" y="282" width="52" height="400"/><rect x="396" y="340" width="46" height="400"/>
     </g>
-    <g transform="translate(256 210)">
-      <path d="M0 -140 88 0 0 140 -88 0Z" fill="#00b86b"/>
-      <path d="M0 -140 88 0H0Z" fill="#fff" opacity="0.38"/>
-      <path d="M0 -140 -88 0H0Z" fill="#fff" opacity="0.14"/>
-      <path d="M-88 0H0V140Z" fill="#000" opacity="0.18"/>
+    <g>
+      <path d="M256 362C216 306 160 254 160 186a96 96 0 0 1 192 0c0 68-56 120-96 176Z" fill="#fff"/>
+      <path d="M256 362C216 306 160 254 160 186A96 96 0 0 1 256 90Z" fill="#000" opacity="0.08"/>
+      <circle cx="256" cy="186" r="40" fill="#00a862"/>
     </g>
   </g>
 </svg>

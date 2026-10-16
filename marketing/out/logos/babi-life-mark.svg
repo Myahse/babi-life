@@ -2,6 +2,6 @@
 <rect width="64" height="64" rx="16" fill="url(#sky)"/>
 <circle cx="32" cy="42" r="18" fill="#ff8a1a"/>
 <path d="M8 64V46h7v-6h6v24M43 64V40h7v6h6v18" fill="#0f1230" opacity="0.9"/>
-<path d="M32 9 43 26 32 43 21 26Z" fill="#00b86b"/>
-<path d="M32 9 43 26H32Z" fill="#fff" opacity="0.38"/>
-<path d="M21 26h11v17Z" fill="#000" opacity="0.18"/></svg>
+<path d="M32 44C27 37 20 30.5 20 22a12 12 0 0 1 24 0c0 8.5-7 15-12 22Z" fill="#fff"/>
+<path d="M32 44C27 37 20 30.5 20 22A12 12 0 0 1 32 10Z" fill="#000" opacity="0.08"/>
+<circle cx="32" cy="22" r="5" fill="#00a862"/></svg>
