@@ -234,6 +234,9 @@ var Kinds = map[string]PlaceKind{
 		Interactions: []Interaction{
 			{ID: "musculation", Ages: TeensUp, Label: "Séance de musculation", Icon: "dumbbell", Minutes: 60, Cost: GymSession, Effect: Needs{Fun: 10, Social: 5, Energy: -30, Hygiene: -30, Hunger: -15}, MinHour: 6, MaxHour: 22},
 			{ID: "cardio", Ages: TeensUp, Label: "Cardio : tapis et vélo", Icon: "heart", Minutes: 45, Cost: GymSession, Effect: Needs{Fun: 10, Energy: -25, Hygiene: -25, Hunger: -10}, MinHour: 6, MaxHour: 22},
+			{ID: "tractions", Ages: TeensUp, Label: "Tractions à la barre", Icon: "dumbbell", Minutes: 30, Cost: GymSession, Effect: Needs{Fun: 10, Energy: -25, Hygiene: -20, Hunger: -10}, MinHour: 6, MaxHour: 22},
+			{ID: "boxe-sac", Ages: TeensUp, Label: "Boxe pieds-poings au sac de frappe", Icon: "dumbbell", Minutes: 40, Cost: GymSession, Effect: Needs{Fun: 20, Energy: -30, Hygiene: -25, Hunger: -10}, MinHour: 6, MaxHour: 22},
+			{ID: "corde-a-sauter", Ages: TeensUp, Label: "Corde à sauter", Icon: "heart", Minutes: 20, Cost: GymSession, Effect: Needs{Fun: 10, Energy: -20, Hygiene: -20}, MinHour: 6, MaxHour: 22},
 			{ID: "cours-collectif", Ages: TeensUp, Label: "Cours collectif (aérobic, zumba)", Icon: "music", Minutes: 60, Cost: GymClass, Effect: Needs{Fun: 25, Social: 20, Energy: -25, Hygiene: -25}, MinHour: 17, MaxHour: 21},
 			{ID: GymMembershipID, Ages: TeensUp, Label: "Prendre l'abonnement du mois (séances gratuites)", Icon: "id-card", Minutes: 10, Cost: GymMonth, Effect: Needs{Fun: 5}, MinHour: 6, MaxHour: 22},
 			{ID: "douche-vestiaire", Ages: TeensUp, Label: "Prendre une douche au vestiaire", Icon: "shower-head", Minutes: 15, Effect: Needs{Hygiene: 50}, MinHour: 6, MaxHour: 22},

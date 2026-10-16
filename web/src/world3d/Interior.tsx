@@ -54,6 +54,9 @@ function action(kind: string, id: string | undefined): { spot: string; pose: Pos
   if (id === 'musculation') return { spot: 'bench', pose: 'busy' }
   if (id === 'cardio') return { spot: 'treadmill', pose: 'run' }
   if (id === 'cours-collectif') return { spot: 'floor', pose: 'dance' }
+  if (id === 'tractions') return { spot: 'pullup', pose: 'hang' }
+  if (id === 'boxe-sac') return { spot: 'punch', pose: 'kick' }
+  if (id === 'corde-a-sauter') return { spot: 'rope', pose: 'leap' }
   if (id === 'douche-vestiaire') return { spot: 'shower', pose: 'wash' }
   if (/^(degrade|boule-a-zero|taille-barbe|tresses|tissage|chignon|manucure|coupe-courte|iroquoise|nattes|vanilles|macarons|carre|coudre-pagne|retouche)$/.test(id)) return { spot: 'chair', pose: 'sit' }
   // Gbairai: telling the quarter's news, with the hands.
@@ -476,6 +479,13 @@ function room(kindIn: string, housing: string): Room {
               <meshLambertMaterial color="#c92a2a" />
             </mesh>
             <Box p={[4.6, 2.5, -0.6]} s={[0.04, 0.7, 0.04]} c="#9aa3ad" />
+            {/* The pull-up bar: two posts and the bar */}
+            {[-2.1, -0.3].map((x) => (
+              <Box key={x} p={[x, 1.25, -3.9]} s={[0.12, 2.5, 0.12]} c="#2b2f3a" />
+            ))}
+            <Box p={[-1.2, 2.45, -3.9]} s={[1.9, 0.07, 0.07]} c="#9aa3ad" />
+            {/* The mat for the rope and the floor work */}
+            <Box p={[-1.2, 0.02, 1.4]} s={[2.4, 0.04, 1.6]} c="#2f6fbf" />
             <Box p={[-5, 1.3, 2.4]} s={[1.2, 2.6, 1.2]} c="#d0ebff" />
             <Box p={[3, 0.55, 2.6]} s={[2.2, 1.1, 0.7]} c="#e03131" />
           </>
@@ -485,6 +495,9 @@ function room(kindIn: string, housing: string): Room {
           bench: { p: [4.2, 0, -2.8], r: Math.PI, pose: 'busy' },
           treadmill: { p: [-3, 0.22, -2.4], r: Math.PI, pose: 'run' },
           floor: { p: [-1, 0, 1], r: Math.PI, pose: 'dance' },
+          pullup: { p: [-1.2, 0, -3.65], r: Math.PI, pose: 'hang' },
+          punch: { p: [3.45, 0, -0.6], r: Math.PI / 2, pose: 'kick' },
+          rope: { p: [-1.2, 0.04, 1.4], r: Math.PI, pose: 'leap' },
           shower: { p: [-5, 0, 2.4], pose: 'wash' },
           entrance: { p: [0, 0, 3.6], r: Math.PI, pose: 'idle' },
           counter: { p: [3, 0, 2], r: Math.PI, pose: 'idle' },
@@ -492,7 +505,6 @@ function room(kindIn: string, housing: string): Room {
         crowd: [
           { p: [-4.6, 0.22, -2.4], r: Math.PI, pose: 'run' },
           { p: [1.6, 0, -1.1], r: -Math.PI / 2, pose: 'talk' },
-          { p: [3.8, 0, -0.6], r: -Math.PI / 2, pose: 'throw' },
           { p: [3, 0, 3.2], r: Math.PI, pose: 'talk' },
         ],
       }
