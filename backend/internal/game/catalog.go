@@ -195,9 +195,15 @@ var Kinds = map[string]PlaceKind{
 			{ID: "petit-travaillement", Ages: Adults, Label: "Petit « travaillement »", Icon: "banknote", Minutes: 30, Cost: 5000, Effect: Needs{Fun: 20, Social: 25}, MinHour: 21, MaxHour: 4},
 			{ID: "travaillement", Ages: Adults, Label: "Faire le « travaillement »", Icon: "banknote", Minutes: 60, Cost: 20000, Effect: Needs{Fun: 40, Social: 50}, MinHour: 21, MaxHour: 4},
 			{ID: "grand-travaillement", Ages: Adults, Label: "Grand « travaillement » : tout le monde crie ton nom", Icon: "banknote", Minutes: 60, Cost: 100000, Effect: Needs{Fun: 70, Social: 80}, MinHour: 21, MaxHour: 4},
+			// The bottles: whisky at the table, champagne in the VIP corner with the sparklers,
+			// and on Friday night (into Saturday morning) the round for the whole club.
+			{ID: "bouteille-whisky", Ages: Adults, Label: "Prendre une bouteille de whisky à table", Icon: "beer", Minutes: 60, Cost: 40000, Effect: Needs{Fun: 30, Social: 35}, MinHour: 21, MaxHour: 4},
+			{ID: "champagne-vip", Ages: Adults, Label: "Champagne au carré VIP, avec les cierges magiques", Icon: "sparkles", Minutes: 90, Cost: 150000, Effect: Needs{Fun: 55, Social: 65}, MinHour: 21, MaxHour: 4},
+			{ID: "tournee-vendredi", Ages: Adults, Label: "Vendredi soir : le champagne pour toute la boîte", Icon: "crown", Minutes: 120, Cost: 500000, Effect: Needs{Fun: 85, Social: 100}, MinHour: 22, MaxHour: 4, Days: []int{Vendredi, Samedi}},
 		},
 		Events: []RandomEvent{
 			{Text: "Ton artiste préféré passe en showcase surprise !", Effect: Needs{Fun: 30}},
+			{Text: "C'est vendredi : la boîte est pleine à craquer, la file dépasse le parking !", Effect: Needs{Social: 15, Fun: 10}},
 		},
 	},
 	"sport": {

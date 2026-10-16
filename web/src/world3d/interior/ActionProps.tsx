@@ -5,6 +5,7 @@ import { Box } from '../props'
 import { worldTime } from '../../lib/worldClock'
 import { Baby, Human } from '../../avatar/Human'
 import { randomLook } from '../../avatar/options'
+import { Bottle, Sparkler } from '../clubNight'
 
 // What shows what the Sim is doing, around it: the water of the shower, the
 // plate of garba, the bottle, the blanket, the notebook, the prayer mat…
@@ -29,6 +30,15 @@ export function ActionProps({ id, kind, lying }: { id?: string; kind: string; ly
   if (lying && /^(sleep|nap)$/.test(id)) return <Blanket />
   if (id === 'pray') return <PrayerMat />
   if (id === 'devoirs' || (/cours|biblio|write/.test(id) && kind !== 'office')) return <Notebook />
+  // The bottles on the club's VIP table (in front of the sofa): whisky, or champagne with its sparkler.
+  if (id === 'bouteille-whisky') return <Bottle p={[0.25, 0.44, 0.9]} whisky />
+  if (id === 'champagne-vip' || id === 'tournee-vendredi')
+    return (
+      <>
+        <Bottle p={[0.2, 0.44, 0.9]} />
+        <Sparkler p={[0.2, 0.79, 0.9]} />
+      </>
+    )
   const dish = dishFor(id)
   if (dish) return <Dish kind={dish} />
   if (/^(drink|milkshake|coffee|sucrerie)/.test(id) || id.includes('drink') || id === 'bar-hotel') return <Drinks milk={id === 'milkshake'} />

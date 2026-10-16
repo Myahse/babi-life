@@ -275,6 +275,7 @@ function GbakaLab() {
 }
 
 function InteriorLab() {
+  if (q.get('t') !== null) freezeWorldTime(Number(q.get('t')))
   const gender = (q.get('g') ?? 'femme') as Sim['gender']
   const sim = useMemo(() => {
     let n = Number(q.get('seed') ?? 3)

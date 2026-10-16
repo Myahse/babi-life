@@ -5,6 +5,7 @@ import { worldTime } from '../../lib/worldClock'
 import { whereabouts } from '../whereabouts'
 import * as THREE from 'three'
 import { Vehicle } from '../vehicles'
+import { ClubFront, useClubFill } from '../clubNight'
 import { Human, NoShadows, type Pose } from '../../avatar/Human'
 import { randomLook } from '../../avatar/options'
 
@@ -42,7 +43,7 @@ export function Dressing({ kind, name = '', seed, night }: { kind: string; name?
       case 'restaurant':
         return <Terrace seed={seed} night={night} />
       case 'club':
-        return <Neon night={night} />
+        return <Club night={night} seed={seed} />
       case 'health':
         return <Hospital seed={seed} />
       case 'mairie':
@@ -549,6 +550,30 @@ function MaquisCrowd({ tables, seed }: { tables: { x: number; z: number; chair: 
           </>
         )}
       </NoShadows>
+    </group>
+  )
+}
+
+/** A club: its neon, and on the big nights the queue, the vigiles and the cars in front (drawn near the Sim). */
+function Club({ night, seed }: { night: boolean; seed: number }) {
+  const anchor = useRef<THREE.Group>(null)
+  const at = useMemo(() => new THREE.Vector3(), [])
+  const [near, setNear] = useState(false)
+  const tick = useRef(10)
+  useFrame((_, dt) => {
+    tick.current += dt
+    if (tick.current < 1) return
+    tick.current = 0
+    if (!anchor.current) return
+    anchor.current.getWorldPosition(at)
+    const n = Math.hypot(at.x - whereabouts.sim[0], at.z - whereabouts.sim[1]) < NEAR_MAQUIS
+    if (n !== near) setNear(n)
+  })
+  const fill = useClubFill()
+  return (
+    <group ref={anchor}>
+      <Neon night={night} />
+      <ClubFront seed={seed} fill={fill} near={near} />
     </group>
   )
 }

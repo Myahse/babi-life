@@ -3,6 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import { Shell } from './interior/Shell'
 import { NoteShower } from './money'
+import { ClubCrowd } from './clubNight'
 import { useRoomStyle } from './interior/Decor'
 import * as THREE from 'three'
 import type { Player, Sim } from '../lib/types'
@@ -66,6 +67,9 @@ function action(kind: string, id: string | undefined): { spot: string; pose: Pos
   if (id === 'watch-tv' || id === 'call-family') return { spot: 'sofa', pose: 'sit' }
   if (id === 'devoirs' || id === 'jouer-cour') return { spot: 'table', pose: id === 'devoirs' ? 'write' : 'dance' }
   if (id.endsWith('travaillement')) return { spot: 'floor', pose: 'throw' }
+  // The bottles, at the VIP table; the Friday round, standing at it, glass up.
+  if (id === 'bouteille-whisky' || id === 'champagne-vip') return { spot: 'table', pose: 'drink' }
+  if (id === 'tournee-vendredi') return { spot: 'table', pose: 'cheer' }
   if (/dance|party|coupe/.test(id)) return { spot: 'floor', pose: 'dance' }
   if (/^(drink|milkshake|coffee)/.test(id) || id.includes('drink')) return { spot: 'table', pose: 'drink' }
   if (/^(eat|burger|glace|anniversaire)/.test(id) || id.startsWith('golvo-')) return { spot: 'table', pose: 'eat' }
@@ -701,6 +705,7 @@ export function Interior({ sim, kind, placeId, interactionId, housing, night, st
         <Shell floor={r.floor} floorType={style.floorType} wall={r.wall} lower={style.lower} openings={style.openings} night={night} dark={r.dark} lamps={style.lamps} fan={style.fan} />
         {style.decor(dark)}
         {r.furniture}
+        {kind === 'club' && <ClubCrowd placeId={placeId} />}
         <NoShadows>
           {people.map((p, i) => (
             <group key={i} position={p.p} rotation={p.lying ? [-Math.PI / 2, 0, 0] : [0, p.r ?? 0, 0]}>
