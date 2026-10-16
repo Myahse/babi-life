@@ -33,15 +33,15 @@ const colorsOf = (club = '') => (COLORS[club] ??= PALETTE[[...club].reduce((a, c
 
 const minuteNow = () => worldTime() / 60
 
-export function StadiumLive({ place, night }: { place: string; night: boolean }) {
-  const agenda = useStadium(place)
+export function StadiumLive({ place, night, demo }: { place: string; night: boolean; demo?: StadiumEvent }) {
+  const agenda = useStadium(demo ? null : place)
   const [on, setOn] = useState<StadiumEvent | null>(null)
   const tick = useRef(10)
   useFrame((_, dt) => {
     tick.current += dt
     if (tick.current < 2) return
     tick.current = 0
-    const e = eventAt(agenda, minuteNow())
+    const e = demo ?? eventAt(agenda, minuteNow())
     if (e?.start !== on?.start) setOn(e)
   })
   if (!on) return null

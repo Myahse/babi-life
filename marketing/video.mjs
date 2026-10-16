@@ -1,5 +1,6 @@
 // The videos (FILM=lancement, 25 s; FILM=bouger, 31 s; FILM=bande-annonce,
-// the trailer, 30 s; FILM=decouverte, everything there is to do, 71 s), 1080 × 1920 (WhatsApp status, TikTok, Reels), drawn frame
+// the trailer, 30 s; FILM=decouverte, everything there is to do, 71 s; FILM=live,
+// Awa streaming the game on her voice, out/voix-live.mp3, 96 s), 1080 × 1920 (WhatsApp status, TikTok, Reels), drawn frame
 // by frame from the game's own persos (web/src/lab/poster.tsx) so it's smooth
 // even on a slow machine, then put together by ffmpeg into an MP4.
 //
@@ -14,7 +15,7 @@ import { HERE, OUT, SHORT, URL, browser } from './shared.mjs'
 const FPS = Number(process.env.FPS ?? 24)
 /** Which film: lancement (the launch), bouger (gbaka, Gnango, Rue Princesse), bande-annonce (the trailer) or decouverte (the tour). */
 const FILM = process.env.FILM ?? 'lancement'
-const PORTS = { lancement: 5233, bouger: 5235, 'bande-annonce': 5236, decouverte: 5237 }
+const PORTS = { lancement: 5233, bouger: 5235, 'bande-annonce': 5236, decouverte: 5237, live: 5239 }
 const NAME = FILM === 'lancement' ? 'babi-life-video' : `babi-life-video-${FILM}`
 const SRC = FILM === 'lancement' ? 'video' : `video-${FILM}`
 const PORT = PORTS[FILM] ?? 5238
@@ -52,7 +53,10 @@ await b.close()
 stop()
 
 const mp4 = path.join(OUT, `${NAME}-1080x1920.mp4`)
-execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', path.join(frames, '%05d.png'), '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '20', '-preset', 'slow', '-movflags', '+faststart', mp4])
+// The live has its voice (the others are silent: music is added in CapCut or InShot).
+const voice = path.join(OUT, `voix-${FILM}.mp3`)
+const sound = fs.existsSync(voice) ? ['-i', voice, '-c:a', 'aac', '-b:a', '160k', '-shortest'] : []
+execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', path.join(frames, '%05d.png'), ...sound, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '20', '-preset', 'slow', '-movflags', '+faststart', mp4])
 // A poster frame for the link preview (the outro, with the QR code).
 fs.copyFileSync(path.join(frames, `${String(total - 12).padStart(5, '0')}.png`), path.join(OUT, `${NAME}-cover.png`))
 fs.rmSync(frames, { recursive: true, force: true })

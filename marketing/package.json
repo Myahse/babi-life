@@ -9,6 +9,7 @@
     "video": "node video.mjs",
     "video:bouger": "FILM=bouger node video.mjs",
     "video:bande-annonce": "FILM=bande-annonce node video.mjs",
+    "video:live": "FILM=live node video.mjs",
     "video:decouverte": "FILM=decouverte node video.mjs",
     "flyer:jeu": "node flyer-jeu.mjs",
     "flyer:commentaire": "node flyer-commentaire.mjs",

@@ -22,7 +22,10 @@ import { Landmark } from '../world3d/open/landmarks'
 import { NoteShower } from '../world3d/money'
 import { OUTFITS, OUTFIT_DEFAULT_COLOR } from '../avatar/options'
 import type { Sim } from '../lib/types'
-import { Map as MapIcon, MessageCircle, Newspaper } from 'lucide-react'
+import { Map as MapIcon, MessageCircle, Newspaper, Eye, Heart, Check } from 'lucide-react'
+import { StreetStall } from '../world3d/open/stalls'
+import { StreetSpot } from '../world3d/open/streetPeople'
+import { NouchiCorner } from '../world3d/open/nouchis'
 
 // Dev-only (/poster.html): the game's own blocky Sims for the flyer and the
 // video (marketing/). Stills: ?scene=crew|house|dance&t=2 (&alpha for a
@@ -33,13 +36,15 @@ import { Map as MapIcon, MessageCircle, Newspaper } from 'lucide-react'
 const q = new URLSearchParams(location.search)
 const VIDEO = q.has('video')
 const ALPHA = q.has('alpha')
-type SceneId = 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'princesse' | `famille-${string}` | 'palais' | 'basket' | 'fete' | 'cause' | 'look' | 'siporex' | 'phone' | 'visages' | 'coiffures'
+type SceneId = 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'princesse' | `famille-${string}` | 'palais' | 'basket' | 'fete' | 'cause' | 'look' | 'siporex' | 'phone' | 'visages' | 'coiffures' | 'selfie' | 'yop' | 'garba' | 'brochette' | 'plateau' | 'stade' | 'concert' | 'couloir' | 'amis'
 /**
  * Which film: ?video (the launch), ?video=bouger (getting about: gbaka,
  * Gnango, Rue Princesse), ?video=bande-annonce (the trailer: gnambro or
- * laté?) or ?video=decouverte (everything there is to do, one by one).
+ * laté?), ?video=decouverte (everything there is to do, one by one) or
+ * ?video=live (Awa streams from her phone and shows the game, on her voice:
+ * marketing/out/voix-live.mp3).
  */
-type FilmId = 'lancement' | 'bouger' | 'bande-annonce' | 'decouverte'
+type FilmId = 'lancement' | 'bouger' | 'bande-annonce' | 'decouverte' | 'live'
 const FILM = (q.get('video') || 'lancement') as FilmId
 
 /** The materials as the server has them (game/build.go). */
@@ -84,6 +89,9 @@ const CREW: { look: Look; gender: 'femme' | 'homme'; pose: Pose }[] = [
   { gender: 'femme', pose: 'dance', look: L({ skin: '#583119', hair: 'braids', outfit: 'survet', outfitColor: '#7b5cff', accessory: 'none' }) },
   { gender: 'homme', pose: 'talk', look: L({ skin: '#3f2210', hair: 'afro', outfit: 'jersey', outfitColor: '#ff8200', accessory: 'glasses' }) },
 ]
+
+/** Awa, who streams the game (the wish list's guide): orange kaba, headwrap, earrings. */
+const AWA = L({ skin: '#8a5532', hair: 'headwrap', outfit: 'kaba', outfitColor: '#ff7a00', pattern: 'cercles', accessory: 'earrings' })
 
 /** The Sim on the court of the Palais des Sports. */
 const LAB_SIM = { id: 'poster', firstName: 'Awa', lastName: 'Koné', gender: 'femme', look: CREW[3].look } as unknown as Sim
@@ -225,7 +233,9 @@ function World({ scene, t }: { scene: SceneId; t: number }) {
       </>
     )
   }
-  if (scene === 'cause') return <Street scene="cause" t={t} />
+  if (scene === 'cause' || scene === 'selfie' || scene === 'yop' || scene === 'plateau' || scene === 'amis' || scene === 'couloir') return <Street scene={scene} t={t} />
+  if (scene === 'garba' || scene === 'brochette') return <Stalls scene={scene} t={t} />
+  if (scene === 'stade' || scene === 'concert') return <Stade scene={scene} t={t} />
   if (scene === 'coiffures') {
     // Every hairstyle, seven at a time (t < 5 or 10–15: the first seven), turning slowly; from behind after t = 10.
     const first = t < 5 || (t >= 10 && t < 15)
@@ -326,9 +336,10 @@ const ease = (k: number) => k * k * (3 - 2 * k)
 const clamp01 = (k: number) => Math.max(0, Math.min(1, k))
 
 /** A street seen from the pavement: the road, the far side's shops, and what's going on. */
-function Street({ scene, t }: { scene: 'gbaka' | 'gnango' | 'princesse' | 'cause'; t: number }) {
+function Street({ scene, t }: { scene: 'gbaka' | 'gnango' | 'princesse' | 'cause' | 'selfie' | 'yop' | 'plateau' | 'amis' | 'couloir'; t: number }) {
   const wide = useThree((s) => s.size.width >= s.size.height)
-  const night = scene === 'princesse'
+  const night = scene === 'princesse' || scene === 'couloir'
+  if (scene === 'selfie' || scene === 'yop' || scene === 'plateau' || scene === 'amis' || scene === 'couloir') return <LiveStreet scene={scene} t={t} />
   const facades: [number, number, string][] = [[-6.4, 7, '#e9a23b'], [0, 9, night ? '#2f2a5e' : '#5aa0d8'], [6.4, 6.5, night ? '#7b3fa0' : '#f2c94c']]
   // The gbaka: comes in, stops at the gare while people climb in, goes.
   const gbakaX = t < 2.2 ? -22 + 22 * ease(clamp01(t / 2.2)) : t < 6 ? 0 : 0 + 25 * clamp01((t - 6) / 2.2) ** 2
@@ -453,9 +464,326 @@ function Street({ scene, t }: { scene: 'gbaka' | 'gnango' | 'princesse' | 'cause
   )
 }
 
+/* ---------- The live: Awa streams the game from her phone ---------- */
+
+/** A street of the live: Awa filming herself (selfie), Yopougon by day, the Plateau's offices, two friends, the couloir at night. */
+function LiveStreet({ scene, t }: { scene: 'selfie' | 'yop' | 'plateau' | 'amis' | 'couloir'; t: number }) {
+  const wide = useThree((s) => s.size.width >= s.size.height)
+  const night = scene === 'couloir'
+  const plateau = scene === 'plateau'
+  // The phone in her hand moves a little: the image too.
+  const shake: [number, number] = [Math.sin(t * 2.3) * 0.03 + Math.sin(t * 5.1) * 0.012, Math.cos(t * 1.9) * 0.025]
+  const facades: [number, number, string][] = plateau
+    ? [[-9, 30, '#9fb4c8'], [-2.5, 42, '#c9d3dd'], [4.5, 26, '#7f93a8'], [11, 36, '#b5c2cf']]
+    : [[-6.4, 7, '#e9a23b'], [0, 9, night ? '#2f2a5e' : '#5aa0d8'], [6.4, 6.5, night ? '#5b3f7a' : '#f2c94c'], [12.8, 8, night ? '#3a3f5e' : '#e8796b'], [-12.8, 6, night ? '#3d3550' : '#7cc28a']]
+  const cam: [number, number, number] =
+    scene === 'selfie' ? [0.15 + shake[0], 2.0 + shake[1], 7.3] : scene === 'plateau' ? [-19 + t * 0.25, 2.1, -1.2] : scene === 'couloir' ? [0.5 + t * 0.05, 1.6, 9.5 - t * 0.25] : [-1 + t * 0.25 + shake[0], 1.75 + shake[1], wide ? 10 : 13]
+  const look: [number, number, number] = scene === 'selfie' ? [0, 1.72, 4.4] : scene === 'plateau' ? [2, 2.4, -6.5] : scene === 'couloir' ? [-1, 1.2, -6] : [0.5 + t * 0.25, 1.8, 2]
+  return (
+    <>
+      <hemisphereLight args={[night ? '#8f9cff' : '#fff4e6', night ? '#2a2a4e' : '#c0704f', night ? 0.7 : 1.2]} />
+      <directionalLight position={[4, 9, 8]} intensity={night ? 0.25 : 2.1} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-14} shadow-camera-right={14} shadow-camera-top={10} shadow-camera-bottom={-10} />
+      <ambientLight intensity={night ? 0.4 : 0.4} />
+      {night && <pointLight position={[1.5, 3.4, 3]} intensity={18} distance={14} color="#ffc27a" />}
+      <Camera at={cam} look={look} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, -0.4]} receiveShadow>
+        <planeGeometry args={[80, 7.6]} />
+        <meshLambertMaterial color={night ? '#2b2d3a' : '#5b5f6b'} />
+      </mesh>
+      {[...Array(18)].map((_, i) => (
+        <mesh key={i} position={[-34 + i * 4, 0.01, -0.4]}>
+          <boxGeometry args={[2, 0.02, 0.18]} />
+          <meshLambertMaterial color="#f4f4f0" />
+        </mesh>
+      ))}
+      {[[3.9, 0.9], [-4.9, 0.9]].map(([z, d]) => (
+        <mesh key={z} position={[0, 0.09, z + (z > 0 ? 1.2 : -1.2)]} receiveShadow>
+          <boxGeometry args={[80, 0.18, 2.4 + d]} />
+          <meshLambertMaterial color={night ? '#5b5468' : plateau ? '#d9d6cf' : '#cfc5b4'} />
+        </mesh>
+      ))}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 10]} receiveShadow>
+        <planeGeometry args={[80, 10]} />
+        <meshLambertMaterial color={night ? '#3a3448' : '#cbb38c'} />
+      </mesh>
+      {facades.map(([x, h, c]) => (
+        <mesh key={x} position={[x, h / 2, plateau ? -13 : -9.5]} castShadow receiveShadow>
+          <boxGeometry args={[plateau ? 6 : 6.2, h, plateau ? 8 : 3]} />
+          <meshLambertMaterial color={c} />
+        </mesh>
+      ))}
+      {/* The towers' windows, in rows */}
+      {plateau &&
+        facades.flatMap(([x, h], k) =>
+          [...Array(Math.floor(h / 2.2))].map((_, i) => (
+            <mesh key={`${k}-${i}`} position={[x, 1.6 + i * 2.2, -8.95]}>
+              <boxGeometry args={[5.4, 0.9, 0.05]} />
+              <meshLambertMaterial color="#3d5a7a" />
+            </mesh>
+          )),
+        )}
+      {scene === 'yop' && <Sign p={[0, 5.2, -7.9]} w={4.8} text="YOPOUGON" bg="#ff7a00" />}
+      {scene === 'yop' && <Sign p={[6.4, 4.2, -7.9]} w={3.6} text="PHARMACIE" bg="#00a862" />}
+      {scene === 'yop' && <Sign p={[-6.4, 4.2, -7.9]} w={3.6} text="MAQUIS" bg="#d6202a" />}
+      {plateau && <Sign p={[-2.5, 4.5, -8.9]} w={6} text="CITÉ ADMINISTRATIVE" bg="#1f4fa0" />}
+      {(scene === 'selfie' || scene === 'amis') && <Sign p={[0, 5.2, -7.9]} w={4.8} text="YOPOUGON" bg="#ff7a00" />}
+      {/* Awa, filming herself: the phone held up at arm's length */}
+      {scene === 'selfie' && (
+        <group position={[0, 0.18, 4.4]} rotation={[0, 0.08 + Math.sin(t * 0.7) * 0.08, 0]}>
+          <BlockHuman look={AWA} gender="femme" pose={Math.floor(t / 1.4) % 3 === 2 ? 'wave' : 'talk'} seed={11} />
+        </group>
+      )}
+      {scene === 'selfie' &&
+        [CREW[0], CREW[4]].map((c, i) => (
+          <group key={i} position={[-5 + ((t * 1.1 + i * 6) % 12), 0.18, 2.6 - i * 4.4]} rotation={[0, Math.PI / 2, 0]}>
+            <BlockHuman look={c.look} gender={c.gender} pose="walk" seed={i + 20} />
+          </group>
+        ))}
+      {/* Yop: people about, the pastor's corner, the pupils */}
+      {scene === 'yop' && (
+        <>
+          <StreetSpot spot={{ id: 'pasteur:live:1', kind: 'pasteur', at: [5, 0], rot: 0, w: 8, len: 30, seed: 0.7 }} />
+          <StreetSpot spot={{ id: 'ecole:live:1', kind: 'ecole', at: [-2, 0], rot: 0, w: 8, len: 30, seed: 0.3 }} />
+        </>
+      )}
+      {/* The Plateau: the fonctionnaires going home (« la descente ») */}
+      {plateau && <StreetSpot spot={{ id: 'bureau:live:2', kind: 'bureau', at: [-2, 0], rot: 0, w: 8, len: 34, seed: 0.7 }} />}
+      {/* Two players meeting: a wave, then the phones */}
+      {scene === 'amis' && (
+        <>
+          <group position={[-0.5, 0.18, 4.4]} rotation={[0, Math.PI / 2 - 0.4, 0]}>
+            <BlockHuman look={AWA} gender="femme" pose={t < 2.5 ? 'wave' : 'phone'} seed={11} />
+          </group>
+          <group position={[1.1, 0.18, 4.4]} rotation={[0, -Math.PI / 2 + 0.4, 0]}>
+            <BlockHuman look={CREW[3].look} gender="femme" pose={t < 2.5 ? 'cheer' : 'phone'} seed={2} />
+          </group>
+        </>
+      )}
+      {/* The couloir, at night: the nouchis come out */}
+      {scene === 'couloir' && <NouchiCorner spot={{ id: 'nouchi:live:1', at: [-1, -7], rot: Math.PI / 2, w: 3, len: 10, seed: 0.3 }} close={16} />}
+      {scene === 'couloir' && (
+        <group position={[0.6, 0.18, 4.6]} rotation={[0, Math.PI + 0.3, 0]}>
+          <BlockHuman look={AWA} gender="femme" pose="walk" seed={11} />
+        </group>
+      )}
+    </>
+  )
+}
+
+/** The street food: the garbadrome and the alloco tantie at noon; the pain brochette at night. */
+function Stalls({ scene, t }: { scene: 'garba' | 'brochette'; t: number }) {
+  const night = scene === 'brochette'
+  return (
+    <>
+      <hemisphereLight args={[night ? '#8f9cff' : '#fff4e6', night ? '#2a2a4e' : '#c0704f', night ? 0.6 : 1.2]} />
+      <directionalLight position={[4, 9, 8]} intensity={night ? 0.2 : 2.1} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-10} shadow-camera-right={10} shadow-camera-top={10} shadow-camera-bottom={-10} />
+      <ambientLight intensity={0.4} />
+      <Camera at={night ? [1.6 + Math.sin(t * 0.3) * 0.8, 2.1, 6.4 - t * 0.12] : [-0.5 + t * 0.62, 2.3, 7]} look={night ? [0.4, 1.1, 0.5] : [-0.5 + t * 0.62, 1.2, 0]} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[80, 40]} />
+        <meshLambertMaterial color={night ? '#4a4258' : '#c9a77a'} />
+      </mesh>
+      {night ? (
+        <StreetStall stall={{ id: 'brochette:live:1', kind: 'brochette', at: [0, 0], rot: 0, seed: 0.62 }} hour={21} crowd />
+      ) : (
+        <>
+          <StreetStall stall={{ id: 'garba:live:1', kind: 'garba', at: [0, 0], rot: 0, seed: 0.4 }} hour={12} crowd />
+          <StreetStall stall={{ id: 'alloco:live:1', kind: 'alloco', at: [6.5, 0.4], rot: -0.2, seed: 0.55 }} hour={12} crowd />
+        </>
+      )}
+    </>
+  )
+}
+
+/** The match at the stadium, then the concert, seen from the stands. */
+function Stade({ scene, t }: { scene: 'stade' | 'concert'; t: number }) {
+  const concert = scene === 'concert'
+  // A made-up event under way, the same at every frame: a goal 2 s into the shot.
+  const demo = useMemo(() => {
+    const now = (EPOCH + 63.3) / 60
+    return concert
+      ? { kind: 'concert' as const, title: 'DJ Garba Chaud en concert', detail: '', start: now - 30, end: now + 180, artist: 'DJ Garba Chaud', genre: 'coupé-décalé' }
+      : { kind: 'match' as const, title: 'Babi Sporting – Yop City FC', detail: '', start: now - 30, end: now + 90, home: 'Babi Sporting', away: 'Yop City FC', homeGoals: [12, 30.035], awayGoals: [21] }
+  }, [concert])
+  const a = (concert ? 0.9 : -0.6) + t * 0.05
+  return (
+    <>
+      <hemisphereLight args={[concert ? '#8f9cff' : '#fff4e6', concert ? '#2a2a4e' : '#c0704f', concert ? 0.5 : 1.2]} />
+      <directionalLight position={[40, 80, 50]} intensity={concert ? 0.2 : 2} />
+      <ambientLight intensity={0.35} />
+      <Camera at={concert ? [8 - t * 0.6, 17, 22] : [Math.sin(a) * 62, 30, Math.cos(a) * 50]} look={concert ? [-44, 7, 0] : [0, 1, 0]} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[600, 600]} />
+        <meshLambertMaterial color={concert ? '#3a3448' : '#b98b5c'} />
+      </mesh>
+      <Landmark id="plateau-stade" night={concert} demo={demo} />
+    </>
+  )
+}
+
+/** What Awa's followers write, as the live goes. */
+const LIVE_COMMENTS: [number, string, string][] = [
+  [1.5, 'koffi_225', 'Awa on est là 🔥'],
+  [3.2, 'mariam.yop', 'On te voit bien !'],
+  [5, 'le_vrai_bk', 'Bonsoir Babi 🇨🇮'],
+  [8, 'aya.k', 'Montre-nous !'],
+  [12, 'fanta.d', 'Ton pagne là est joli dèh'],
+  [16, 'ibou', 'Moi je veux les lunettes 😎'],
+  [21, 'kader.abobo', 'Yop c’est chez moi !!'],
+  [25, 'mamie.c', 'C’est Yopougon vraiment ?'],
+  [29, 'koffi_225', 'Donne-moi milieu là 😂😂'],
+  [33, 'awa.fan', 'Waye même ? Ça c’est fort'],
+  [39, 'le_vrai_bk', 'Pain brochette c’est la vie'],
+  [45, 'aya.k', 'Le woro-woro 😭'],
+  [49, 'ibou', 'Gnango c’est rapide'],
+  [53, 'serge.plateau', 'Je suis fonctionnaire, c’est faux 😤'],
+  [56.5, 'mariam.yop', '15 h la descente 😂😂😂'],
+  [61, 'kader.abobo', 'Je vais construire ma villa'],
+  [64.5, 'fanta.d', 'ALLEZ BABI SPORTING ⚽'],
+  [66.5, 'koffi_225', 'BUUUT 🔥🔥🔥'],
+  [68.5, 'mamie.c', 'DJ Garba Chaud 🎶'],
+  [72, 'aya.k', 'Ajoute-moi Awa !'],
+  [76, 'ibou', 'Gbairai c’est mieux que WhatsApp'],
+  [82, 'le_vrai_bk', 'Les nouchis de mon quartier là 😂'],
+  [85, 'serge.plateau', 'Téléphone dans la poche !'],
+  [88, 'fanta.d', 'Bisous Awa 😘'],
+]
+
+/** The live's frame: « EN DIRECT », the viewers, Awa's name, the comments, the hearts, her face in a bubble. */
+function LiveOverlay({ t, shot }: { t: number; shot: Shot }) {
+  const viewers = Math.round(230 + 12000 * (1 - Math.exp(-t / 35)) + Math.sin(t * 3) * 25)
+  const shown = LIVE_COMMENTS.filter(([at]) => at <= t).slice(-3)
+  const hearts = [...Array(9)].map((_, i) => {
+    const k = ((t * 0.55 + i * 0.37) % 1 + 1) % 1
+    return { k, x: Math.sin(i * 2.7 + t) * 22, c: ['#ff3d6e', '#ff7a00', '#ffd43b', '#ff3d6e', '#ffffff'][i % 5] }
+  })
+  return (
+    <>
+      <div className="absolute inset-x-0 top-0 flex items-center gap-3 bg-gradient-to-b from-black/55 to-transparent px-6 pt-8 pb-12 font-sans">
+        <span className="block h-14 w-14 overflow-hidden rounded-full border-[3px] border-[#ff7a00] bg-[#ffd8a8]">
+          <AwaFace t={t} size={56} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="text-[26px] leading-none font-extrabold">awa.babi</div>
+          <div className="mt-1 text-[18px] font-bold text-white/80">Yopougon · Babi Life</div>
+        </div>
+        <span className="rounded-lg bg-[#ff2d55] px-3 py-1.5 text-[20px] font-extrabold tracking-wide">● EN DIRECT</span>
+        <span className="flex items-center gap-1.5 rounded-lg bg-black/45 px-3 py-1.5 text-[20px] font-extrabold">
+          <Eye size={20} /> {viewers.toLocaleString('fr-FR')}
+        </span>
+      </div>
+      {shot.title && (
+        <div className="absolute inset-x-0 top-[10.5%] flex justify-center px-8">
+          <div className="rounded-full bg-[var(--color-orange)] px-6 py-2 text-[34px] leading-tight font-extrabold shadow-[0_10px_30px_-10px_rgba(0,0,0,0.6)]" key={shot.from} style={{ animation: 'none', opacity: Math.min(1, (t - shot.from) / 0.4) }}>
+            {shot.title}
+          </div>
+        </div>
+      )}
+      {/* Awa's face, filming herself (not in the selfie: there she's the whole picture) */}
+      {shot.scene !== 'selfie' && (
+        <div className="absolute top-[17%] right-6 h-[210px] w-[160px] overflow-hidden rounded-[28px] border-[4px] border-white/90 bg-[#ffb37a] shadow-[0_16px_40px_-14px_rgba(0,0,0,0.7)]">
+          <AwaFace t={t} size={210} talking />
+        </div>
+      )}
+      {/* The comments, bottom left */}
+      <div className="absolute bottom-[19%] left-6 flex w-[62%] flex-col gap-2.5 font-sans">
+        {shown.map(([at, who, text]) => (
+          <div key={at} className="flex items-start gap-2.5 rounded-2xl bg-black/40 px-3.5 py-2" style={{ opacity: Math.min(1, (t - at) / 0.3) }}>
+            <span className="text-[20px] leading-snug font-extrabold text-[#ffd43b]">{who}</span>
+            <span className="text-[20px] leading-snug font-bold">{text}</span>
+          </div>
+        ))}
+      </div>
+      {/* The hearts going up on the right */}
+      <div className="absolute right-10 bottom-[19%] h-[420px] w-20">
+        {hearts.map((h, i) => (
+          <Heart key={i} size={34} className="absolute bottom-0 left-1/2" style={{ transform: `translate(${h.x - 17}px, ${-h.k * 400}px) scale(${0.7 + h.k * 0.5})`, opacity: 1 - h.k, color: h.c, fill: h.c }} />
+        ))}
+      </div>
+      {/* What she says, as subtitles */}
+      {shot.cap && (
+        <div className="absolute inset-x-0 bottom-[8%] flex justify-center px-10">
+          <div className="rounded-2xl bg-white px-5 py-2.5 text-center text-[34px] leading-tight font-extrabold text-[var(--color-ink)] shadow-[0_12px_30px_-10px_rgba(0,0,0,0.6)]">{shot.cap}</div>
+        </div>
+      )}
+    </>
+  )
+}
+
+/** Awa's face, as the phone's front camera sees it: talking, now and then smiling. */
+function AwaFace({ t, size, talking }: { t: number; size: number; talking?: boolean }) {
+  return (
+    <div style={{ width: '100%', height: '100%' }}>
+      <Canvas frameloop="never" gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }} dpr={2} camera={{ fov: 30, near: 0.1, far: 20, position: [0, 1.66, size > 100 ? 1.55 : 1.1] }} onCreated={({ camera }) => camera.lookAt(0, 1.6, 0)}>
+        <hemisphereLight args={['#fff4e6', '#c0704f', 1.3]} />
+        <directionalLight position={[1, 3, 3]} intensity={1.6} />
+        <group rotation={[0, Math.sin(t * 0.9) * 0.15, 0]}>
+          <BlockHuman look={AWA} gender="femme" pose={talking && Math.floor(t / 2.2) % 4 === 3 ? 'cheer' : 'talk'} seed={11} />
+        </group>
+      </Canvas>
+    </div>
+  )
+}
+
+/** Paying the alloco with Waye, on the phone. */
+function WayePay({ t }: { t: number }) {
+  const up = ease(clamp01(t / 0.5))
+  const paid = t > 1.4
+  return (
+    <div className="absolute inset-x-0 bottom-[25%] flex justify-center font-sans" style={{ transform: `translateY(${(1 - up) * 80}%)`, opacity: up }}>
+      <div className="w-[300px] rounded-[40px] bg-[#141416] p-2.5 shadow-[0_30px_60px_-20px_rgba(0,0,0,0.7)]">
+        <div className="rounded-[32px] bg-white px-5 pt-5 pb-6 text-[var(--color-ink)]">
+          <div className="flex items-center gap-3">
+            <AppLogo id="waye" size={46} radius={14} />
+            <span className="font-display text-[26px] font-extrabold">Waye</span>
+          </div>
+          <div className="mt-4 text-[17px] font-bold text-[var(--color-ink-soft)]">Payer · Tantie alloco</div>
+          <div className="font-display text-[46px] leading-none font-extrabold">300 F</div>
+          <div className={`mt-4 flex items-center justify-center gap-2 rounded-full py-2.5 text-[20px] font-extrabold ${paid ? 'bg-[#e6f8ef] text-[var(--color-emerald-deep)]' : 'bg-[#1aa6e6] text-white'}`}>{paid ? <><Check size={22} strokeWidth={3} /> Payé</> : 'Payer'}</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Gbairai: two friends writing to each other. */
+function GbairaiChat({ t }: { t: number }) {
+  const up = ease(clamp01(t / 0.5))
+  const lines: [number, boolean, string][] = [
+    [0.6, false, 'Awa ! On va au stade samedi ?'],
+    [1.8, true, 'Oui oh ! Babi Sporting contre Yop City 🔥'],
+    [3.1, false, 'On se retrouve devant le garbadrome à 15 h'],
+    [4.3, true, 'Ok, à samedi ! 😘'],
+  ]
+  return (
+    <div className="absolute inset-x-0 bottom-[22%] flex justify-center font-sans" style={{ transform: `translateY(${(1 - up) * 80}%)`, opacity: up }}>
+      <div className="w-[360px] rounded-[44px] bg-[#141416] p-2.5 shadow-[0_30px_60px_-20px_rgba(0,0,0,0.7)]">
+        <div className="overflow-hidden rounded-[36px] bg-white text-[var(--color-ink)]">
+          <div className="flex items-center gap-3 border-b border-black/5 px-5 pt-5 pb-3">
+            <AppLogo id="gbairai" size={42} radius={13} />
+            <div>
+              <div className="font-display text-[22px] leading-none font-extrabold">Fanta</div>
+              <div className="text-[14px] font-bold text-[#2fb344]">En ligne</div>
+            </div>
+          </div>
+          <div className="flex min-h-[250px] flex-col gap-2 p-4">
+            {lines.map(([at, mine, text]) =>
+              t >= at ? (
+                <div key={at} className={`max-w-[80%] rounded-2xl px-3.5 py-2 text-[18px] leading-snug font-bold ${mine ? 'self-end rounded-br-sm bg-[#ffe0c7] text-[#4a2200]' : 'self-start rounded-bl-sm bg-[#f1f2f6]'}`} style={{ opacity: clamp01((t - at) / 0.25) }}>
+                  {text}
+                </div>
+              ) : null,
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ---------- The video: 25 seconds, scene after scene ---------- */
 
-type Shot = { from: number; to: number; scene: SceneId; title?: string; sub?: string; /** Its number, in the film that goes through everything. */ n?: number }
+type Shot = { from: number; to: number; scene: SceneId; title?: string; sub?: string; /** Its number, in the film that goes through everything. */ n?: number; /** The live: what Awa says, as a subtitle. */ cap?: string }
 /** Each film: its shots, when the intro ends and the outro starts, its length (marketing/video.mjs reads it). */
 const FILMS: Record<FilmId, { shots: Shot[]; intro: number; outro: number; length: number; hook: [string, string, string] }> = {
   lancement: {
@@ -521,6 +849,31 @@ const FILMS: Record<FilmId, { shots: Shot[]; intro: number; outro: number; lengt
     outro: 66.5,
     length: 71,
     hook: ['Tout ce que', 'tu peux faire', 'à Babi'],
+  },
+  // Awa's live: her voice (marketing/out/voix-live.mp3, 96 s) over the game, shot by shot.
+  live: {
+    shots: [
+      { from: 0, to: 6.1, scene: 'selfie', cap: 'Allô allô ! Vous me voyez ?' },
+      { from: 6.1, to: 10.3, scene: 'selfie', cap: 'Suivez-moi, on marche ensemble !' },
+      { from: 10.3, to: 19.1, scene: 'look', title: 'Ton perso', cap: 'Visage, coiffure, pagne, lunettes, sac…' },
+      { from: 19.1, to: 27.1, scene: 'yop', title: 'Ton vrai quartier', cap: 'Ça, c’est Yopougon, le vrai Yop !' },
+      { from: 27.1, to: 37.5, scene: 'garba', title: 'Le garbadrome', cap: '« Donne-moi grosse queue là-bas ! »' },
+      { from: 37.5, to: 44.2, scene: 'brochette', title: 'Le pain brochette', cap: 'Celui-là, c’est mon péché !' },
+      { from: 44.2, to: 48, scene: 'gbaka', title: 'Pour bouger', cap: 'Woro-woro, gbaka, bus SITRA…' },
+      { from: 48, to: 51.2, scene: 'gnango', title: 'Gnango', cap: 'Le prix est fixé avant' },
+      { from: 51.2, to: 60.3, scene: 'plateau', title: 'Le Plateau', cap: '15 h… c’est déjà la descente !' },
+      { from: 60.3, to: 63.3, scene: 'house', title: 'Ta maison', cap: 'Bloc par bloc' },
+      { from: 63.3, to: 67.3, scene: 'stade', title: 'Le stade', cap: 'Toute la tribune chante… BUUUT !' },
+      { from: 67.3, to: 70.3, scene: 'concert', title: 'Le concert', cap: 'Les mains en l’air, Babi !' },
+      { from: 70.3, to: 81, scene: 'amis', title: 'Tes amis, en vrai', cap: 'Tu leur écris sur Gbairai' },
+      { from: 81, to: 86.8, scene: 'couloir', title: 'La nuit…', cap: 'Téléphone dans la poche, les yeux ouverts !' },
+      { from: 86.8, to: 89.6, scene: 'selfie', cap: 'Bon, je vous laisse, mon gbaka arrive !' },
+      { from: 89.6, to: 96.5, scene: 'crew' },
+    ],
+    intro: 0,
+    outro: 89.6,
+    length: 96.5,
+    hook: ['', '', ''],
   },
 }
 
@@ -678,8 +1031,12 @@ function Video({ t, qr, url, placeholder }: { t: number; qr: string; url: string
       {shot.scene === 'phone' && !outro && <PhoneApps t={local} />}
       {/* Booking on Gnango: the phone comes up, finds a driver, goes */}
       {shot.scene === 'gnango' && local < 4.2 && <GnangoPhone t={local} />}
+      {/* The live: its frame, the Waye payment, the friends' chat */}
+      {FILM === 'live' && !outro && <LiveOverlay t={t} shot={shot} />}
+      {FILM === 'live' && shot.scene === 'garba' && local > 5.6 && local < 10.2 && <WayePay t={local - 5.6} />}
+      {FILM === 'live' && shot.scene === 'amis' && local > 3 && <GbairaiChat t={local - 3} />}
       {/* Captions */}
-      {shot.title && (
+      {shot.title && FILM !== 'live' && (
         <div className="absolute inset-x-0 top-[9%] flex flex-col items-center px-8 text-center">
           <div className="flex items-center gap-3 rounded-full bg-[var(--color-orange)] px-6 py-2 text-[40px] leading-tight font-extrabold shadow-[0_10px_30px_-10px_rgba(0,0,0,0.6)]" style={pop(shot.from + 0.3)}>
             {shot.n && <span className="-ml-3 grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white text-[28px] text-[var(--color-orange)]">{shot.n}</span>}

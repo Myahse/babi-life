@@ -25,6 +25,8 @@ Everything for the launch of the wish list (**lifeinbabi.com/liste**), made from
 | `babi-life-video-bande-annonce-cover.png` | Its last frame, as a cover |
 | `babi-life-video-decouverte-1080x1920.mp4` | **Everything you can do**, 71 s, eleven numbered shots: create your perso, change your look, be born into a family, build your house, the gbaka, Gnango, talk with people (« C'est comment famille ? »), party, sport, the real places, the phone and its apps |
 | `babi-life-video-decouverte-cover.png` | Its last frame, as a cover |
+| `babi-life-video-live-1080x1920.mp4` | **Le live d'Awa**, 96 s, **avec la voix** (`voix-live.mp3`, ElevenLabs) : Awa se filme en direct avec son téléphone (« Allô allô ! Vous me voyez ? ») puis montre le jeu, dans un cadre de live (EN DIRECT, les vues qui montent, les commentaires, les cœurs, son visage dans une bulle, ses mots en sous-titres) : son perso, Yopougon, le garbadrome et Waye, le pain brochette, le gbaka et Gnango, les fonctionnaires du Plateau (la descente), la maison, le match et le concert au stade, Gbairai entre amis, les couloirs la nuit, puis le QR code |
+| `babi-life-video-live-cover.png` | Its last frame, as a cover |
 | `babi-life-flyer-famille-*` | The trailer's flyer: « Tu nais gnambro ou laté ? », the two families side by side (A5 PDF and 300 dpi PNG, post 1080 × 1350, status 1080 × 1920) |
 | `babi-life-flyer-commentaire-*` | For the comments: « Tu es tombé·e dans quelle famille ? », the six families with their odds (debout 4 %, laté 8 %, lagnon 15 %, poignon 33 %, coulé 25 %, gnambro 15 %), « Écris ta famille en commentaire » and two example comments (A5 PDF and 300 dpi PNG, post 1080 × 1350, status 1080 × 1920) |
 | `babi-life-flyer-decouverte-*` | « Tout ce que tu peux faire à Babi »: nine pictures from the game (same sizes) |
@@ -41,6 +43,7 @@ npm run video          # the launch video (a few minutes: drawn frame by frame; 
 npm run video:bouger   # the second video (gbaka, Gnango, Rue Princesse)
 npm run video:bande-annonce   # the trailer
 npm run video:decouverte      # everything you can do (about an hour to draw)
+npm run video:live            # Awa's live, with out/voix-live.mp3 as its sound (about 40 min)
 node flyer-jeu.mjs            # the « famille » and « découverte » flyers
 node flyer-commentaire.mjs    # « Tu es tombé·e dans quelle famille ? », for the comments
 ```

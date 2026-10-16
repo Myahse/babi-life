@@ -7,6 +7,7 @@ import { PalaisDesSports } from './treichville'
 import { MarcheAdjame } from './adjame'
 import { HotelIvoire } from './hotelIvoire'
 import { StadiumLive } from './stadiumLive'
+import type { StadiumEvent } from '../../lib/stadium'
 
 // Landmarks the map alone can't draw: their shape is what people know them
 // by. Built from published descriptions; sizes are estimates for the game.
@@ -28,14 +29,14 @@ export const LANDMARKS: Record<string, number> = {
 }
 
 /** The landmark's model, by place. */
-export function Landmark({ id, night }: { id: string; night: boolean }) {
+export function Landmark({ id, night, demo }: { id: string; night: boolean; /** The stadium: a made-up match or concert (the videos), instead of the agenda. */ demo?: StadiumEvent }) {
   switch (id) {
     case 'plateau-cathedrale':
       return <Cathedral />
     case 'plateau-pyramide':
       return <Pyramide night={night} />
     case 'plateau-stade':
-      return <Stadium place={id} night={night} />
+      return <Stadium place={id} night={night} demo={demo} />
     case 'cocody-hotel-ivoire':
       return <HotelIvoire night={night} />
     case 'yakro-basilique':
@@ -161,7 +162,7 @@ function Pyramide({ night }: { night: boolean }) {
  * a closed oval bowl under a roof ring held by 40 cantilevered beams. The
  * dimensions are estimates.
  */
-function Stadium({ place, night }: { place: string; night: boolean }) {
+function Stadium({ place, night, demo }: { place: string; night: boolean; demo?: StadiumEvent }) {
   const SX = 1.25 // the oval: stretched along the pitch
   const seats = useMemo(() => {
     const t = pixels(1, 12, (g) => {
@@ -239,7 +240,7 @@ function Stadium({ place, night }: { place: string; night: boolean }) {
       <mesh geometry={outer} material={shell} castShadow receiveShadow />
       <mesh geometry={ring} material={roof} castShadow />
       {/* A match or a concert, when one is on */}
-      <StadiumLive place={place} night={night} />
+      <StadiumLive place={place} night={night} demo={demo} />
       {beams.map(({ foot, tip }, i) => {
         const a = new THREE.Vector3(foot[0], 0, foot[1])
         const top = new THREE.Vector3(foot[0], 30, foot[1])
