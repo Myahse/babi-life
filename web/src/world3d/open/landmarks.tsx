@@ -5,6 +5,7 @@ import { RuePrincesse } from './ruePrincesse'
 import { GareSiporex, PlaceFicgayo } from './yopougon'
 import { PalaisDesSports } from './treichville'
 import { MarcheAdjame } from './adjame'
+import { HotelIvoire } from './hotelIvoire'
 
 // Landmarks the map alone can't draw: their shape is what people know them
 // by. Built from published descriptions; sizes are estimates for the game.
@@ -92,71 +93,6 @@ function facade(t: ReturnType<typeof floorsTexture>) {
   return new THREE.MeshLambertMaterial({ map: t.map, emissiveMap: t.lights, emissive: '#ffd27a', emissiveIntensity: 0 })
 }
 
-/**
- * Hôtel Ivoire (Cocody, architects Heinz Fenchel and Thomas Leitersdorf): the low main
- * building of 1963 along the lagoon and the tower of 1969–70, about 100 m,
- * with Le Toit d'Abidjan, its restaurant, at the top. The floor count and
- * the plan here are estimates.
- */
-function HotelIvoire({ night }: { night: boolean }) {
-  const white = useMemo(() => new THREE.MeshLambertMaterial({ color: '#f1eee6' }), [])
-  const tower = useMemo(() => {
-    return facade(floorsTexture('#35506e', '#ece8de', '#d9d3c4', 26, 12))
-  }, [])
-  const side = useMemo(() => {
-    return facade(floorsTexture('#35506e', '#ece8de', '#d9d3c4', 26, 5))
-  }, [])
-  const wing = useMemo(() => {
-    return facade(floorsTexture('#3c5a78', '#f3efe6', '#c9b9a0', 5, 28))
-  }, [])
-  const crown = useMemo(() => new THREE.MeshLambertMaterial({ color: '#1d2b3c', emissive: '#ffcf6a', emissiveIntensity: 0 }), [])
-  const pool = useMemo(() => new THREE.MeshLambertMaterial({ color: '#3fb6e0' }), [])
-  for (const m of [tower, side, wing]) m.emissiveIntensity = night ? 0.6 : 0
-  crown.emissiveIntensity = night ? 0.5 : 0
-  const H = 94
-  return (
-    <group>
-      {/* The tower: a slab, its long faces to the lagoon and the street */}
-      <group position={[18, 0, -10]}>
-        <mesh position={[0, H / 2, 0]} castShadow receiveShadow material={[side, side, white, white, tower, tower]}>
-          <boxGeometry args={[42, H, 16]} />
-        </mesh>
-        {/* Le Toit d'Abidjan: the restaurant on the roof, glazed all round */}
-        <mesh position={[0, H + 3, 0]} material={crown} castShadow>
-          <boxGeometry args={[38, 5, 14]} />
-        </mesh>
-        <mesh position={[0, H + 5.8, 0]} material={white}>
-          <boxGeometry args={[44, 0.8, 18]} />
-        </mesh>
-        <mesh position={[14, H + 10, 0]} material={white}>
-          <cylinderGeometry args={[0.3, 0.3, 8, 6]} />
-        </mesh>
-      </group>
-      {/* The main building of 1963: long and low, by the water */}
-      <mesh position={[-20, 9, -30]} castShadow receiveShadow material={[white, white, white, white, wing, wing]}>
-        <boxGeometry args={[100, 18, 18]} />
-      </mesh>
-      <mesh position={[-20, 18.4, -30]} material={white}>
-        <boxGeometry args={[103, 0.8, 21]} />
-      </mesh>
-      {/* The entrance canopy on the street side, and the pool */}
-      <mesh position={[18, 4.2, 4]} material={white} castShadow>
-        <boxGeometry args={[24, 0.6, 12]} />
-      </mesh>
-      {[-10, 10].map((x) => (
-        <mesh key={x} position={[18 + x, 2, 9]} material={white}>
-          <boxGeometry args={[0.6, 4, 0.6]} />
-        </mesh>
-      ))}
-      <mesh position={[-30, 0.08, -2]} rotation={[-Math.PI / 2, 0, 0]} material={pool}>
-        <planeGeometry args={[34, 14]} />
-      </mesh>
-      <mesh position={[-30, 0.04, -2]} rotation={[-Math.PI / 2, 0, 0]} material={white}>
-        <planeGeometry args={[40, 20]} />
-      </mesh>
-    </group>
-  )
-}
 
 /**
  * La Pyramide (Plateau, Rinaldo Olivieri, 1973): fifteen storeys stepping
