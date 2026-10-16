@@ -8,6 +8,7 @@ import { clearObstacles, setObstacles } from '../obstacles'
 import { rng } from '../themes'
 import { whereabouts } from '../whereabouts'
 import { hash, type XZ } from './geo'
+import { lettering } from './ruePrincesse'
 import type { Nav } from './nav'
 
 // The sellers of the street, at the edge of the real streets around the Sim,
@@ -122,6 +123,14 @@ const M = {
   wheel: lambert('#1c1c1c'),
   thermos: ['#d62828', '#1f9a4a', '#2f7fd0', '#f2a81d'].map((c) => lambert(c)),
   cup: lambert('#f4f1ea'),
+  red: lambert('#d6202a'),
+  redFrame: lambert('#e0282f'),
+  board: lambert('#f4f1ea'),
+  tarp2: lambert('#1c1d22'),
+  net: new THREE.MeshLambertMaterial({ color: '#2a2a2a', transparent: true, opacity: 0.55 }),
+  bag: lambert('#141416'),
+  slate: lambert('#3d4a45'),
+  sachet: Object.fromEntries(['#f4f1ea', '#d9a53a', '#2f7fd0'].map((c) => [c, lambert(c)])) as Record<string, THREE.MeshLambertMaterial>,
 }
 const BOX = new THREE.BoxGeometry(1, 1, 1)
 const Box = ({ s, p, r, m }: { s: [number, number, number]; p: [number, number, number]; r?: [number, number, number]; m: THREE.Material }) => <mesh geometry={BOX} material={m} scale={s} position={p} rotation={r} castShadow receiveShadow />
@@ -279,47 +288,120 @@ function PorcStand() {
   )
 }
 
-/** The pousse-pousse of the café or thé seller: a wooden box on two big wheels, the thermoses and cups on it. */
-function Cart({ tea }: { tea: boolean }) {
+/**
+ * The pousse-pousse of the café and thé sellers, as on Abidjan's streets: a
+ * red metal frame on two spoked wheels, long handles behind, a tall red box
+ * with white stars and the price painted on, the board of sachets hung in rows
+ * above it, a black tarp tied over the top, a net bag and a plastic bag
+ * hanging; the red parasol; beside it the seller's low stool and the
+ * chalkboard where the regulars' credit is kept.
+ */
+function Cart({ tea, price }: { tea: boolean; price: number }) {
+  const sign = useMemo(() => lettering('THÉ · CAFÉ', '#d6202a', '#ffffff', '#ffffff'), [])
+  const tag = useMemo(() => lettering(`${price}F`, '#d6202a', '#ffffff', '#d6202a'), [price])
+  const mats = useMemo(() => ({ sign: new THREE.MeshLambertMaterial({ map: sign.t }), tag: new THREE.MeshLambertMaterial({ map: tag.t }) }), [sign, tag])
+  // The sachets, in rows on their board: blue and gold packets, a few white.
+  const sachets = useMemo(() => {
+    const out: { p: [number, number, number]; s: [number, number, number]; c: string }[] = []
+    for (let row = 0; row < 9; row++)
+      for (let col = 0; col < 6; col++) out.push({ p: [-0.25 + col * 0.1, 1.48 + row * 0.085, 0.31], s: [0.085, 0.075, 0.02], c: (row + col) % 4 === 0 ? '#f4f1ea' : row % 3 === 1 ? '#d9a53a' : '#2f7fd0' })
+    return out
+  }, [])
   return (
-    <group position={[0, 0, 0.95]}>
-      <Box s={[1.2, 0.45, 0.7]} p={[0, 0.75, 0]} m={M.wood} />
-      <Box s={[1.24, 0.05, 0.74]} p={[0, 0.99, 0]} m={M.darkWood} />
-      {/* The handles, to push it */}
-      {[-0.28, 0.28].map((z) => (
-        <Box key={z} s={[0.9, 0.04, 0.04]} p={[-1.0, 0.82, z]} r={[0, 0, 0.18]} m={M.darkWood} />
+    <group position={[0, 0, 0.9]}>
+      {/* The frame: the bed over the axle, the handles going back, the leg in front */}
+      <Box s={[0.9, 0.05, 0.6]} p={[0, 0.5, 0]} m={M.redFrame} />
+      {[-0.27, 0.27].map((z) => (
+        <Box key={z} s={[1.15, 0.045, 0.045]} p={[-0.95, 0.72, z]} r={[0, 0, 0.32]} m={M.redFrame} />
       ))}
-      {/* Two big wheels and a leg */}
-      {[-0.4, 0.4].map((z) => (
-        <mesh key={z} position={[0.25, 0.42, z]} rotation={[Math.PI / 2, 0, 0]} material={M.wheel}>
-          <cylinderGeometry args={[0.42, 0.42, 0.06, 14]} />
-        </mesh>
+      <Box s={[0.05, 0.48, 0.05]} p={[0.4, 0.24, 0]} m={M.redFrame} />
+      {/* Two spoked wheels: the tyre, the red rim, spokes */}
+      {[-0.36, 0.36].map((z) => (
+        <group key={z} position={[0, 0.36, z]} rotation={[Math.PI / 2, 0, 0]}>
+          <mesh material={M.wheel}>
+            <torusGeometry args={[0.33, 0.035, 6, 18]} />
+          </mesh>
+          <mesh material={M.redFrame}>
+            <torusGeometry args={[0.29, 0.015, 4, 18]} />
+          </mesh>
+          {[0, 1, 2, 3, 4, 5].map((k) => (
+            <Box key={k} s={[0.012, 0.01, 0.58]} p={[0, 0, 0]} r={[0, (k * Math.PI) / 6, 0]} m={M.iron} />
+          ))}
+        </group>
       ))}
-      <Box s={[0.05, 0.55, 0.05]} p={[-0.5, 0.27, 0]} m={M.iron} />
-      {/* The thermoses, flowered, and the cups; for tea, the kettle on its little stove */}
-      {[0, 1, 2].map((i) => (
-        <mesh key={i} position={[-0.35 + i * 0.3, 1.2, -0.12]} material={M.thermos[i]}>
-          <cylinderGeometry args={[0.1, 0.1, 0.38, 10]} />
-        </mesh>
+      {/* The tall red box: stars, the price, the name of what's sold */}
+      <Box s={[0.7, 0.85, 0.55]} p={[0, 0.95, 0]} m={M.red} />
+      <mesh position={[0, 1.18, 0.281]} scale={[0.55, 0.55 / sign.aspect, 1]} material={mats.sign}>
+        <planeGeometry />
+      </mesh>
+      <mesh position={[-0.15, 0.82, 0.281]} scale={[0.28, 0.28 / tag.aspect, 1]} material={mats.tag}>
+        <planeGeometry />
+      </mesh>
+      {[
+        [0.14, 0.86],
+        [0.24, 0.72],
+        [0.12, 0.62],
+      ].map(([x, y]) => (
+        <group key={`${x}${y}`} position={[x, y, 0.282]}>
+          <Box s={[0.07, 0.02, 0.005]} p={[0, 0, 0]} m={M.cup} />
+          <Box s={[0.02, 0.07, 0.005]} p={[0, 0, 0]} m={M.cup} />
+        </group>
       ))}
-      {[0, 1, 2, 3].map((i) => (
-        <mesh key={`c${i}`} position={[-0.3 + i * 0.16, 1.06, 0.2]} material={M.cup}>
-          <cylinderGeometry args={[0.045, 0.035, 0.09, 8]} />
-        </mesh>
+      {/* The rack above: the board of sachets, the black tarp over the stock, the net, the bags */}
+      <Box s={[0.04, 1.0, 0.04]} p={[-0.32, 1.85, 0.25]} m={M.redFrame} />
+      <Box s={[0.04, 1.0, 0.04]} p={[0.32, 1.85, 0.25]} m={M.redFrame} />
+      <Box s={[0.62, 0.82, 0.02]} p={[0, 1.8, 0.29]} m={M.board} />
+      {sachets.map((b, i) => (
+        <Box key={i} s={b.s} p={b.p} m={M.sachet[b.c]} />
       ))}
+      <Box s={[0.95, 0.42, 0.65]} p={[0, 2.42, -0.02]} r={[0, 0, 0.04]} m={M.tarp2} />
+      <Box s={[1.05, 0.06, 0.08]} p={[0, 2.66, 0.3]} m={M.red} />
+      <Box s={[0.18, 0.55, 0.3]} p={[-0.45, 1.9, -0.15]} m={M.net} />
+      <Box s={[0.2, 0.3, 0.06]} p={[0.25, 1.1, 0.33]} m={M.bag} />
+      {/* For coffee, the big thermos on the box; for tea, the kettle on its little stove by the stool */}
       {tea ? (
-        <group position={[0.42, 1.0, 0.18]}>
-          <mesh position={[0, 0.08, 0]} material={M.iron}>
-            <cylinderGeometry args={[0.12, 0.1, 0.16, 8]} />
+        <group position={[1.15, 0, -0.1]}>
+          <mesh position={[0, 0.12, 0]} material={M.iron}>
+            <cylinderGeometry args={[0.14, 0.11, 0.24, 8]} />
           </mesh>
-          <mesh position={[0, 0.25, 0]} material={M.thermos[1]}>
-            <cylinderGeometry args={[0.08, 0.11, 0.16, 8]} />
+          <mesh position={[0, 0.25, 0]} material={M.coal}>
+            <cylinderGeometry args={[0.12, 0.12, 0.02, 8]} />
           </mesh>
-          <Smoke p={[0, 0.35, 0]} n={3} />
+          <mesh position={[0, 0.36, 0]} material={M.thermos[1]}>
+            <cylinderGeometry args={[0.07, 0.1, 0.18, 8]} />
+          </mesh>
+          <Smoke p={[0, 0.48, 0]} n={3} />
         </group>
       ) : (
-        <Box s={[0.22, 0.14, 0.14]} p={[0.42, 1.08, 0.18]} m={M.plantain} />
+        <mesh position={[0.22, 1.5, -0.1]} material={M.thermos[0]}>
+          <cylinderGeometry args={[0.11, 0.11, 0.42, 10]} />
+        </mesh>
       )}
+      {/* The red parasol, behind */}
+      <mesh position={[0.6, 1.4, -0.7]} material={M.iron}>
+        <cylinderGeometry args={[0.025, 0.025, 2.8, 5]} />
+      </mesh>
+      <mesh position={[0.6, 2.8, -0.7]} castShadow>
+        <coneGeometry args={[1.5, 0.45, 8, 1, true]} />
+        <meshLambertMaterial color="#e8432f" side={THREE.DoubleSide} />
+      </mesh>
+      {/* The stool, and the chalkboard of credit leaning on its stand */}
+      <Box s={[0.32, 0.05, 0.32]} p={[0.95, 0.42, 0.25]} m={M.wood} />
+      {[
+        [-0.12, -0.12],
+        [0.12, -0.12],
+        [-0.12, 0.12],
+        [0.12, 0.12],
+      ].map(([x, z]) => (
+        <Box key={`${x}${z}`} s={[0.04, 0.42, 0.04]} p={[0.95 + x, 0.21, 0.25 + z]} m={M.darkWood} />
+      ))}
+      <group position={[1.6, 0, -0.5]} rotation={[-0.15, -0.5, 0]}>
+        <Box s={[0.8, 1.0, 0.03]} p={[0, 0.85, 0]} m={M.slate} />
+        {[0, 1, 2, 3, 4, 5].map((k) => (
+          <Box key={k} s={[0.5 + ((k * 37) % 5) * 0.04, 0.02, 0.005]} p={[-0.05, 1.2 - k * 0.12, 0.02]} m={M.cup} />
+        ))}
+        <Box s={[0.04, 0.9, 0.04]} p={[0, 0.45, -0.25]} r={[0.5, 0, 0]} m={M.darkWood} />
+      </group>
     </group>
   )
 }
@@ -353,7 +435,7 @@ function customerSpots(kind: StallKind, seed: number): Customer[] {
       ]
     case 'cafe':
     case 'the':
-      return [stand(0.3, 2.1, 'idle'), stand(-0.6, 2.3), sit(1.3, 2.2, -2.2, 'drink'), stand(-1.4, 1.9), stand(0.9, 2.9, 'phone')]
+      return [stand(0.3, 2.2, 'idle'), stand(-0.6, 2.4), sit(-1.6, 2.4, Math.PI * 0.75, 'drink'), stand(-1.5, 1.7), stand(1.2, 2.9, 'phone')]
   }
 }
 
@@ -372,7 +454,7 @@ function Crowd({ stall, hour }: { stall: Stall; hour: number }) {
       ))}
       {/* The seats some of them sit on (the porc au four has its own) */}
       {stall.kind === 'alloco' && <Bench p={[-0.05, 0, 2.8]} />}
-      {(stall.kind === 'cafe' || stall.kind === 'the') && <Bench p={[1.3, 0, 2.2]} r={-2.2 + Math.PI / 2} w={0.8} />}
+      {(stall.kind === 'cafe' || stall.kind === 'the') && <Bench p={[-1.6, 0, 2.4]} r={Math.PI * 0.75 - Math.PI / 2} w={0.8} />}
     </NoShadows>
   )
 }
@@ -382,7 +464,7 @@ function Crowd({ stall, hour }: { stall: Stall; hour: number }) {
 /** One stall and its seller. Local +z faces the street. */
 export function StreetStall({ stall, hour, crowd, onBuy }: { stall: Stall; hour: number; crowd: boolean; onBuy?: (vendor: string) => Promise<string | null> }) {
   const sl = SELLER[stall.kind]
-  const man = (stall.kind === 'cafe' || stall.kind === 'the') && stall.seed < 0.7
+  const man = (stall.kind === 'cafe' || stall.kind === 'the') && stall.seed < 0.85
   const look = useMemo(() => randomLook(man ? 'homme' : 'femme', rng(stall.id)), [stall.id, man])
   const helper = useMemo(() => (stall.kind === 'porc' ? randomLook('femme', rng(`${stall.id}h`)) : null), [stall.id, stall.kind])
   const parasol = useMemo(() => ['#e8432f', '#1f9a4a', '#f2a81d', '#2f7fd0'][Math.floor(stall.seed * 4)], [stall.seed])
@@ -416,12 +498,13 @@ export function StreetStall({ stall, hour, crowd, onBuy }: { stall: Stall; hour:
     else setSaid(null)
   }
   // Where the seller stands, and doing what.
-  const [sellerAt, sellerPose]: [[number, number, number], Pose] = stall.kind === 'porc' ? [[-1.3, 0, -0.1], 'cook'] : stall.kind === 'alloco' ? [[0, 0, 0], 'idle'] : [[0.2, 0, 0.1], 'busy']
+  // The café/thé seller sits on his stool beside the cart (as in the street), turned to the passers-by.
+  const [sellerAt, sellerPose]: [[number, number, number], Pose] = stall.kind === 'porc' ? [[-1.3, 0, -0.1], 'cook'] : stall.kind === 'alloco' ? [[0, 0, 0], 'idle'] : [[0.95, 0, 1.08], 'sit']
   return (
     <group position={[stall.at[0], 0, stall.at[1]]} rotation={[0, stall.rot, 0]} onClick={(e) => (e.stopPropagation(), void tap())}>
       {stall.kind === 'alloco' && <AllocoStand parasol={parasol} />}
       {stall.kind === 'porc' && <PorcStand />}
-      {(stall.kind === 'cafe' || stall.kind === 'the') && <Cart tea={stall.kind === 'the'} />}
+      {(stall.kind === 'cafe' || stall.kind === 'the') && <Cart tea={stall.kind === 'the'} price={stall.kind === 'the' ? 100 : 150} />}
       <group position={sellerAt}>
         <Human look={look} gender={man ? 'homme' : 'femme'} pose={sellerPose} seed={stall.seed * 100} />
       </group>
