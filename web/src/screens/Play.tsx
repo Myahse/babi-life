@@ -19,6 +19,7 @@ import { OpenWorld } from '../world3d/open/OpenWorld'
 import { iconFor, kindColors } from '../components/icons'
 import { Chip, Coin, DayNight, IconTile, MotiveRing, MoodPin, Row, needColor } from '../components/ui'
 import { NEEDS, ageBlock, amount, atHome, blockedBy, lifeOf, clock, duration, mood, openAt, openingLabel, predict, shift } from '../game/rules'
+import { DOORS_OPEN, eventAt, useStadium, when } from '../lib/stadium'
 import { HomeApp, JobsApp, type Act } from './phoneApps'
 import { NewsApp, topicOf } from './NewsApp'
 import { RideFlow, type FlowRequest } from '../components/RideFlow'
@@ -837,6 +838,41 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
   const busy = !!sim.activity
   const canBuild = placeId === 'home' && here && !!world.materials?.length
   const tooYoung = life.stage?.id === 'bebe' || life.stage?.id === 'enfant'
+  // At the stadium: what's on, and the match or the concert only while it's on.
+  const agenda = useStadium(place.kind === 'stade' ? placeId : null)
+  const on = eventAt(agenda, sim.gameMinutes)
+  const stadiumBlock = (it: Interaction) => {
+    const k = it.id === 'stade-match' ? 'match' : it.id === 'stade-concert' ? 'concert' : null
+    if (!k || on?.kind === k) return null
+    const next = agenda?.agenda.find((e) => e.kind === k && e.start - DOORS_OPEN > sim.gameMinutes)
+    return next ? `Prochain : ${when(next.start)}` : k === 'match' ? 'Pas de match' : 'Pas de concert'
+  }
+  const billing = place.kind === 'stade' && (
+    <div className="rounded-[20px] bg-[#fff4e8] p-3">
+      <div className="label">À l'affiche</div>
+      {on ? (
+        <div className="mt-1">
+          <div className="font-display text-[17px] leading-tight font-extrabold">
+            {on.title} {on.score && <span className="ml-1 rounded-full bg-[#141416] px-2 py-0.5 text-[13px] text-[#ffd166]">{on.score}</span>}
+          </div>
+          <div className="text-xs font-bold text-[var(--color-ink-soft)]">{sim.gameMinutes < on.start ? `Les portes sont ouvertes · ${on.detail}` : `En ce moment · ${on.detail}`}</div>
+        </div>
+      ) : (
+        <p className="mt-1 text-xs font-bold text-[var(--color-ink-soft)]">Rien en ce moment.</p>
+      )}
+      <ul className="mt-2 grid gap-1">
+        {agenda?.agenda
+          .filter((e) => e !== on && e.start > sim.gameMinutes)
+          .slice(0, 4)
+          .map((e) => (
+            <li key={e.start} className="flex items-baseline gap-2 text-[13px] font-bold">
+              <span className="w-[118px] shrink-0 text-[var(--color-ink-soft)]">{when(e.start)}</span>
+              <span className="min-w-0 truncate">{e.title}</span>
+            </li>
+          ))}
+      </ul>
+    </div>
+  )
   const build = canBuild && (
     <button disabled={tooYoung} onClick={onBuild} className={`flex w-full items-center gap-3 rounded-[20px] bg-[#fff4e8] p-2.5 text-left transition active:scale-[0.98] ${tooYoung ? 'opacity-55 grayscale-[0.6]' : ''}`}>
       <IconTile icon={tooYoung ? Lock : Hammer} colors={colors} size={44} />
@@ -857,7 +893,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
       </span>
     </button>
   )
-  const state = (it: Interaction) => ({ open: openAt(it, sim.gameMinutes), broke: it.cost > 0 && sim.money < it.cost, busy, reason: ageBlock(it, life.stage?.id) ?? blockedBy(it, sim, city.id, commune.id) })
+  const state = (it: Interaction) => ({ open: openAt(it, sim.gameMinutes), broke: it.cost > 0 && sim.money < it.cost, busy, reason: ageBlock(it, life.stage?.id) ?? stadiumBlock(it) ?? blockedBy(it, sim, city.id, commune.id) })
 
   // Desktop: the Sims radial menu around the place.
   if (desktop && here && !busy) {
@@ -870,8 +906,9 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
             <IconTile icon={iconFor(kind.icon)} colors={colors} size={96} radius={34} />
             <span className="mt-2 rounded-full bg-white px-4 py-1.5 font-display text-lg font-extrabold shadow-lg">{place.name}</span>
           </button>
-          {(build || restyle) && (
+          {(build || restyle || billing) && (
             <div className="absolute top-full left-1/2 mt-[200px] grid w-64 -translate-x-1/2 gap-2">
+              {billing}
               {build}
               {restyle}
             </div>
@@ -920,6 +957,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
         )}
         {here ? (
           <div className="motion-stagger grid gap-2">
+            {billing}
             {build}
             {restyle}
             {items.map((it) => (

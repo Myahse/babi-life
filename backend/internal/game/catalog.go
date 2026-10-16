@@ -225,6 +225,21 @@ var Kinds = map[string]PlaceKind{
 			{Text: "Tu marques le but de la victoire ! On scande ton nom.", Effect: Needs{Fun: 25, Social: 15}},
 		},
 	},
+	// The big stadiums: the match and the concert when they're on (stadium.go),
+	// and the joggers' laps round the outside in the morning and evening.
+	StadiumKind: {
+		ID: StadiumKind, Label: "Stade", Icon: "trophy",
+		Interactions: []Interaction{
+			{ID: StadiumMatchID, Label: "Regarder le match", Icon: "trophy", Minutes: 120, Cost: 2000, Effect: Needs{Fun: 40, Social: 25, Energy: -10}},
+			{ID: StadiumConcertID, Label: "Aller au concert", Icon: "music", Minutes: 180, Cost: 5000, Effect: Needs{Fun: 50, Social: 25, Energy: -15}},
+			{ID: "stade-footing", Label: "Faire des tours de stade en courant", Icon: "footprints", Minutes: 30, Effect: Needs{Fun: 10, Energy: -20, Hygiene: -20}, MinHour: 6, MaxHour: 20},
+		},
+		Events: []RandomEvent{
+			{Text: "Toute la tribune se lève et chante : tu as des frissons.", Effect: Needs{Fun: 10, Social: 10}},
+			{Text: "Ton voisin de tribune partage ses arachides avec toi.", Effect: Needs{Hunger: 5, Social: 10}},
+			{Text: "La ola fait le tour du stade, tu te lèves avec tout le monde.", Effect: Needs{Fun: 10}},
+		},
+	},
 	// The gym (salle de sport): weights, the treadmill and the bike, the evening
 	// class with the music up. A session is paid at the door; the month's
 	// membership makes them free for 30 days (sims/gym.go). Prices are game

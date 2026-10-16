@@ -211,7 +211,7 @@ var Cities = []City{
 					Source: game.Partial("Nom du jeu pour le Pullman Abidjan (5 étoiles, rue Abdoulaye Fadiga, Plateau) ; position placée d'après l'adresse, à relever.", srcHotelsAbj)},
 				Place{ID: "plateau-noum", Name: "Noum Hôtel", Kind: "hotel", Lat: 5.3196, Lng: -4.0208, Real: true, Approx: true,
 					Source: game.Partial("Nom du jeu pour le Noom Hôtel (5 étoiles, boulevard Général-de-Gaulle, Plateau) ; position estimée, à relever.", srcHotelsAbj)},
-				Place{ID: "plateau-stade", Name: "Stade Félix-Houphouët-Boigny", Kind: "sport", Lat: 5.3205, Lng: -4.0170, Real: true, Approx: true,
+				Place{ID: "plateau-stade", Name: "Stade Félix-Houphouët-Boigny", Kind: "stade", Lat: 5.3205, Lng: -4.0170, Real: true, Approx: true,
 					Source: game.Verified("Stade du Plateau, ouvert en 1961 sur le site du stade Géo-André ; capacité variable selon les sources (27 000 à 40 000).", srcVenues, srcStadeFHB)},
 			),
 			abidjanCommune("cocody", "Cocody", "Résidences, université et Riviera.", 5.3480, -3.9870, "nord",
@@ -369,7 +369,7 @@ var Cities = []City{
 				Places: []Place{
 					mairie("bouake-centre", "Bouaké", 7.6930, -5.0330, srcGbeke),
 					{ID: "bouake-marche", Name: "Grand marché de Bouaké", Kind: "market", Lat: 7.6890, Lng: -5.0290, Real: true, Approx: true, Source: game.Unverified("Grand marché ; à confirmer.")},
-					{ID: "bouake-stade", Name: "Stade de la Paix", Kind: "sport", Lat: 7.7050, Lng: -5.0200, Real: true, Approx: true, Source: game.Unverified("Stade de Bouaké ; à confirmer.")},
+					{ID: "bouake-stade", Name: "Stade de la Paix", Kind: "stade", Lat: 7.7050, Lng: -5.0200, Real: true, Approx: true, Source: game.Unverified("Stade de Bouaké ; à confirmer.")},
 					{ID: "bouake-universite", Name: "Université Alassane-Ouattara", Kind: "universite", Lat: 7.6750, Lng: -5.0150, Real: true, Approx: true, Operator: "Université publique",
 						Source: game.Verified("Créée en 2012 à partir de l'Université de Bouaké.", srcUniversities, srcUniversities2)},
 					{ID: "bouake-chu", Name: "CHU de Bouaké", Kind: "health", Lat: 7.6980, Lng: -5.0400, Real: true, Approx: true, Operator: "Établissement public hospitalier national",

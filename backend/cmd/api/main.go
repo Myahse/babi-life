@@ -149,6 +149,21 @@ func main() {
 			}
 			httpx.JSON(w, http.StatusOK, map[string]any{"happening": h, "start": start, "end": start + game.HappeningMinutes})
 		})
+		// A stadium's agenda: what's on now (from the doors opening) and the next seven days.
+		r.Get("/stadium", func(w http.ResponseWriter, r *http.Request) {
+			place := r.URL.Query().Get("place")
+			if _, _, p, ok := world.FindPlace(place); !ok || p.Kind != game.StadiumKind {
+				httpx.Error(w, http.StatusNotFound, "stade inconnu")
+				return
+			}
+			now := game.MinuteOf(time.Now())
+			var on *game.StadiumEvent
+			if e, ok := game.StadiumEventAt(place, now); ok {
+				on = &e
+			}
+			w.Header().Set("Cache-Control", "public, max-age=60")
+			httpx.JSON(w, http.StatusOK, map[string]any{"now": now, "on": on, "agenda": game.StadiumAgenda(place, now, now, now+7*24*60)})
+		})
 		// The server's clock: every player's world runs on it (web/src/lib/worldClock.ts).
 		r.Get("/time", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Cache-Control", "no-store")

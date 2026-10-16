@@ -32,6 +32,7 @@ const FITS: Record<string, string[]> = {
   office: ['building', 'town-hall', 'bank', 'commercial'],
   worship: ['religious-christian', 'religious-muslim', 'place-of-worship', 'religious-jewish'],
   sport: ['stadium', 'pitch', 'soccer', 'basketball', 'fitness-centre', 'swimming'],
+  stade: ['stadium'],
   universite: ['college', 'school', 'library'],
   school: ['school', 'college'],
   hotel: ['lodging'],

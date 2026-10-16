@@ -466,6 +466,12 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 		if home {
 			it = s.housing().AtHome(it)
 		}
+		if kind.ID == game.StadiumKind {
+			var err error
+			if it, err = game.AtStadium(placeID, it, s.GameMinutes); err != nil {
+				return game.Interaction{}, err
+			}
+		}
 		if kind.ID == "gym" {
 			var err error
 			if it, err = s.atGym(it); err != nil {

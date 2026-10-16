@@ -416,6 +416,7 @@ function Lab() {
   if (view === 'tolls') return <TollsLab />
   if (view === 'streetfoot') return <StreetFootLab />
   if (view === 'people') return <PeopleLab />
+  if (view === 'stadium') return <StadiumLab />
   if (view === 'family') return <FamilyScene familyId={q.get('f') ?? 'gnambro'} look={randomLook((q.get('g') ?? 'femme') as 'femme', seededLab(Number(q.get('seed') ?? 3)))} gender={(q.get('g') ?? 'femme') as 'femme'} className="!h-screen !w-screen" />
   if (view === 'interior') return <InteriorLab />
   if (view === 'gbaka') return <GbakaLab />
@@ -650,5 +651,35 @@ function LabCar() {
     <group ref={ref}>
       <Vehicle p={[0, 0, 0]} kind="taxi" seed={3} />
     </group>
+  )
+}
+
+/**
+ * The stadium with a match or a concert on (?view=stadium&kind=match|concert&night&m=40):
+ * the agenda is made up here (the API isn't asked), m minutes after the start.
+ */
+function StadiumLab() {
+  const kind = q.get('kind') === 'concert' ? 'concert' : 'match'
+  const night = q.has('night')
+  const now = Math.floor(worldTime() / 60)
+  const start = now - Number(q.get('m') ?? 40)
+  const e = kind === 'match'
+    ? { kind, title: 'Babi Sporting – Yop City FC', detail: '', start, end: start + 120, home: 'Babi Sporting', away: 'Yop City FC', homeGoals: [12, 38], awayGoals: [Number(q.get('m') ?? 40) - 0.5] }
+    : { kind, title: 'DJ Garba Chaud en concert', detail: '', start, end: start + 210, artist: 'DJ Garba Chaud', genre: 'coupé-décalé' }
+  const real = window.fetch
+  window.fetch = ((url: RequestInfo, init?: RequestInit) => (String(url).includes('/stadium?') ? Promise.resolve(new Response(JSON.stringify({ now, on: e, agenda: [e] }))) : real(url, init))) as typeof fetch
+  const cam = (q.get('cam') ?? '120,70,120').split(',').map(Number) as [number, number, number]
+  return (
+    <Canvas dpr={[1, 1.5]} camera={{ position: cam, fov: 45, far: 2000 }} style={{ width: '100vw', height: '100vh' }}>
+      <color attach="background" args={[night ? '#121530' : '#a9d3f0']} />
+      <hemisphereLight args={['#ffffff', '#b8a27c', night ? 0.5 : 1.2]} />
+      <directionalLight position={[60, 120, 40]} intensity={night ? 0.2 : 1.6} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[600, 600]} />
+        <meshLambertMaterial color="#b98b5c" />
+      </mesh>
+      <Landmark id="plateau-stade" night={night} />
+      <OrbitControls target={[0, 5, 0]} />
+    </Canvas>
   )
 }

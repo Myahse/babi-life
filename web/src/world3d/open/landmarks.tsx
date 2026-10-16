@@ -6,6 +6,7 @@ import { GareSiporex, PlaceFicgayo } from './yopougon'
 import { PalaisDesSports } from './treichville'
 import { MarcheAdjame } from './adjame'
 import { HotelIvoire } from './hotelIvoire'
+import { StadiumLive } from './stadiumLive'
 
 // Landmarks the map alone can't draw: their shape is what people know them
 // by. Built from published descriptions; sizes are estimates for the game.
@@ -34,7 +35,7 @@ export function Landmark({ id, night }: { id: string; night: boolean }) {
     case 'plateau-pyramide':
       return <Pyramide night={night} />
     case 'plateau-stade':
-      return <Stadium />
+      return <Stadium place={id} night={night} />
     case 'cocody-hotel-ivoire':
       return <HotelIvoire night={night} />
     case 'yakro-basilique':
@@ -160,7 +161,7 @@ function Pyramide({ night }: { night: boolean }) {
  * a closed oval bowl under a roof ring held by 40 cantilevered beams. The
  * dimensions are estimates.
  */
-function Stadium() {
+function Stadium({ place, night }: { place: string; night: boolean }) {
   const SX = 1.25 // the oval: stretched along the pitch
   const seats = useMemo(() => {
     const t = pixels(1, 12, (g) => {
@@ -237,6 +238,8 @@ function Stadium() {
       <mesh geometry={bowl} material={seats} receiveShadow castShadow />
       <mesh geometry={outer} material={shell} castShadow receiveShadow />
       <mesh geometry={ring} material={roof} castShadow />
+      {/* A match or a concert, when one is on */}
+      <StadiumLive place={place} night={night} />
       {beams.map(({ foot, tip }, i) => {
         const a = new THREE.Vector3(foot[0], 0, foot[1])
         const top = new THREE.Vector3(foot[0], 30, foot[1])
