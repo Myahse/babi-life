@@ -174,3 +174,4 @@ for (const [name, make] of [
   console.log(`flyer ${name}: done`)
 }
 await b.close()
+process.exit(0) // the Vite server would keep it running
