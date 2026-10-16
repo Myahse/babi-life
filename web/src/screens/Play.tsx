@@ -248,7 +248,8 @@ export function Play() {
     const rest = fresh.filter((e) => !bills.includes(e))
     rest.forEach((e, i) =>
       setTimeout(() => {
-        if (e.kind === 'random') toast({ tone: 'random', title: 'Imprévu !', text: e.text, money: e.money })
+        if (e.kind === 'robbed') toast({ tone: 'random', title: 'Les nouchis du couloir !', text: e.text, money: e.money })
+        else if (e.kind === 'random') toast({ tone: 'random', title: 'Imprévu !', text: e.text, money: e.money })
         else if (e.kind === 'career') toast({ tone: 'promo', title: 'Promotion !', text: e.text.replace(/^Promotion ! /, ''), money: 0 })
         else if (e.kind === 'travel') toast({ tone: 'done', title: 'Bien arrivé·e !', text: e.text, money: e.money, icon: 'car-taxi-front', kind: 'transport' })
         else toast({ tone: 'done', title: 'Terminé', text: e.text, money: e.money })
@@ -440,6 +441,17 @@ export function Play() {
                 return res
               })
               return said
+            },
+            onRobbed: async (spot: string) => {
+              try {
+                const res = await api.robbed(sim.id, spot)
+                apply(res)
+                // Taken: the journal's event says it (announce); nothing taken: say why here.
+                if (!res.outcome.money) toast({ tone: 'random', title: 'Les nouchis du couloir', text: res.outcome.text, money: 0 })
+                return res.outcome.text
+              } catch {
+                return null
+              }
             },
           }
           return classic ? <Neighbourhood key={commune.id} {...street} /> : <OpenWorld key={commune.id} {...street} commune={ownPlaces(commune)} token={MAP_TOKEN ?? ''} onFail={() => setClassic(true)} onMapPlaces={setMapPlaces} />

@@ -36,6 +36,7 @@ import { StreetStalls } from './stalls'
 import { SotraStops } from './sotra'
 import { StreetFootball } from './streetFoot'
 import { StreetPeople } from './streetPeople'
+import { StreetNouchis } from './nouchis'
 import { StreetLife } from './streetlife'
 import { TakeOff } from './airport'
 import { StreetLights } from './streetlights'
@@ -215,7 +216,7 @@ function useMaterials(night: boolean) {
   return mats
 }
 
-function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, nameTag, onNear, frozen, players, onPickPlayer, recenter, onFreeCamera, closeView, token, onFail, onStreetBuy, onTalk, onCall, talkingTo, plotsVersion, onMapPlaces }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void; onMapPlaces?: (places: Place[]) => void }) {
+function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, nameTag, onNear, frozen, players, onPickPlayer, recenter, onFreeCamera, closeView, token, onFail, onStreetBuy, onRobbed, onTalk, onCall, talkingTo, plotsVersion, onMapPlaces }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void; onMapPlaces?: (places: Place[]) => void }) {
   const origin = useMemo<Origin>(() => ({ lat: commune.lat, lng: commune.lng }), [commune.lat, commune.lng])
   const mats = useMaterials(night)
   const home = sim.homeCity === sim.city && sim.homeCommune === commune.id
@@ -778,6 +779,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       {nav.nodes.length > 0 && <SotraStops nav={nav} seed={commune.id} hour={hour} night={night} />}
       {nav.nodes.length > 0 && <StreetFootball nav={nav} seed={commune.id} hour={hour} />}
       {nav.nodes.length > 0 && <StreetPeople nav={nav} seed={commune.id} />}
+      {nav.nodes.length > 0 && <StreetNouchis nav={nav} seed={commune.id} onRobbed={onRobbed} />}
       <TakeOff runways={runways} />
       <BridgeSights chunks={[...chunks.values()].map((c) => c.data)} night={night} />
       <BridgeLife chunks={[...chunks.values()].map((c) => c.data)} night={night} />

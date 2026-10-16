@@ -62,6 +62,8 @@ export type Props = {
   talkingTo?: string | null
   /** Buy from a street vendor; resolves to what she says (null if it failed). */
   onStreetBuy?: (vendor: string) => Promise<string | null>
+  /** The nouchis of a couloir got the Sim (it wasn't vigilant); resolves to what was taken, said. */
+  onRobbed?: (spot: string) => Promise<string | null>
   /** Goes up when the player has been building: the houses are fetched again. */
   plotsVersion?: number
 }

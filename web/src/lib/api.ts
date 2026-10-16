@@ -84,6 +84,8 @@ export const api = {
   /** Talk to a passer-by: what they answer comes back as the outcome. */
   chat: (id: string, npc: { id: string; name: string; gender: string; seed: number }, topic: string, said?: string) => post<ActionResult>(`/sims/${id}/chat`, { with: npc, topic, said: said ?? '' }),
   street: (id: string, vendor: string) => post<ActionResult>(`/sims/${id}/street`, { vendor }),
+  /** The nouchis of a couloir got the Sim: they take what's in its pockets (the API says how much). */
+  robbed: (id: string, spot: string) => post<ActionResult>(`/sims/${id}/robbed`, { spot }),
   stop: (id: string) => post<ActionResult>(`/sims/${id}/stop`, {}),
   /** Other players: who's in the commune, invitations, player friends. */
   around: (id: string) => request<Around>(`/sims/${id}/around`),

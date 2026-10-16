@@ -1,16 +1,18 @@
 import { useMemo, useRef, useState, type MutableRefObject } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { Human, type Pose } from '../avatar/Human'
 import { randomLook } from '../avatar/options'
 import { rng } from '../world3d/themes'
 import { whereabouts } from '../world3d/whereabouts'
 import { moveObstacle } from '../world3d/obstacles'
-import { Vehicle } from '../world3d/vehicles'
+import { Vehicle, type VehicleKind } from '../world3d/vehicles'
 import { StreetStall, type StallKind } from '../world3d/open/stalls'
 import { BusStop } from '../world3d/open/sotra'
 import { StreetGame } from '../world3d/open/streetFoot'
 import { StreetSpot } from '../world3d/open/streetPeople'
+import { NouchiCorner } from '../world3d/open/nouchis'
 import { CHAPTERS, GUIDE } from './StreetStory'
 
 // The street of « Une journée dans ta rue » (StreetStory): one straight street,
@@ -20,9 +22,15 @@ import { CHAPTERS, GUIDE } from './StreetStory'
 
 const GAP = 30
 /** The hour each scene is lived at: how busy the stalls and the stop are. */
-const HOURS = [7, 7, 8, 10, 13, 16, 19, 21]
+const HOURS = [7, 7, 7, 8, 9, 10, 13, 16, 18, 19, 21, 22]
+/** Where things go across the street: the far lane, the near lane, the guide's pavement. */
+const FAR_LANE = -1.2
+const NEAR_LANE = 2.2
+const PAVEMENT = 5.2
+/** From the 10th scene on, the night. */
+const DUSK = 9
 /** The sky through the day, one per scene. */
-const SKY = ['#ffd2a1', '#bfe0f5', '#a9d3f0', '#9fd0f2', '#8ecaf0', '#f7c08a', '#e2794f', '#1d2350'].map((c) => new THREE.Color(c))
+const SKY = ['#ffd2a1', '#cfe3f2', '#bfe0f5', '#a9d3f0', '#9fd0f2', '#9fd0f2', '#8ecaf0', '#f7c08a', '#f0a070', '#e2794f', '#1d2350', '#121530'].map((c) => new THREE.Color(c))
 const WALLS = ['#e9d8b8', '#f2b880', '#c9e4d6', '#f0e3a2', '#d8c6e8', '#f5c9b9', '#b9d7ef', '#efe9df']
 
 export default function StreetScene({ progress, running }: { progress: MutableRefObject<number>; running: boolean }) {
@@ -46,23 +54,26 @@ function Street({ progress }: { progress: MutableRefObject<number> }) {
   useFrame((_, dt) => {
     // Follow the scroll softly.
     const target = progress.current
-    cam.current += (target - cam.current) * Math.min(1, dt * 4)
+    // A soft follow, whatever the frame rate: no jumps when the finger flicks.
+    cam.current += (target - cam.current) * (1 - Math.exp(-dt * 2.6))
     if (Math.abs(target - cam.current) < 1e-4) cam.current = target
     const c = cam.current
     const i = Math.min(SKY.length - 2, Math.floor(c))
     const u = Math.min(1, Math.max(0, c - i))
     sky.copy(SKY[i]).lerp(SKY[i + 1], u)
-    const night = Math.max(0, c - 6) // dusk after the 7th scene
-    if (hemi.current) hemi.current.intensity = 1.25 - night * 0.45
-    if (sun.current) sun.current.intensity = 1.5 - night * 0.9
+    const night = Math.min(2, Math.max(0, c - DUSK))
+    // Night, but the street lamps and the stalls' bulbs: still enough to see.
+    if (hemi.current) hemi.current.intensity = 1.25 - night * 0.28
+    if (sun.current) sun.current.intensity = 1.5 - night * 0.55
     // A phone held upright sees less across: step back.
     const back = size.width < size.height ? 1.35 : 1
     const x = c * GAP
-    camera.position.set(x + 4.2 * back, 3.3 * back, 8.5 * back)
-    look.set(x - 0.3, 0.1, -2.6)
+    camera.position.set(x + 4.2 * back, 3.6 * back, 10.5 * back)
+    look.set(x - 0.3, 0.3, -2.2)
     camera.lookAt(look)
     // The game's people react to « the Sim » being near: here, the guide.
-    whereabouts.sim = [x + 1.2, -1.5]
+    whereabouts.sim = [x + 1.2, PAVEMENT]
+    whereabouts.simPose = 'walk'
     const near = Math.round(c)
     if (near !== at) setAt(near)
   })
@@ -87,8 +98,21 @@ function Street({ progress }: { progress: MutableRefObject<number> }) {
           <meshBasicMaterial color="#e8e2cf" />
         </mesh>
       ))}
+      {[PAVEMENT, -4.2].map((z) => (
+        <mesh key={z} rotation={[-Math.PI / 2, 0, 0]} position={[len / 2 - 30, 0.025, z]}>
+          <planeGeometry args={[len, 2.4]} />
+          <meshLambertMaterial color="#c9bfae" />
+        </mesh>
+      ))}
       <Facades len={len} />
-      {CHAPTERS.map((ch, i) => (Math.abs(i - at) <= 1 ? <Scene key={ch.id} id={ch.id} x={i * GAP} hour={HOURS[i]} night={i >= 7} /> : null))}
+      {/* Built a little ahead (no hitch when the next one comes), shown only near */}
+      {CHAPTERS.map((ch, i) =>
+        Math.abs(i - at) <= 2 ? (
+          <group key={ch.id} visible={Math.abs(i - at) <= 1}>
+            <Scene id={ch.id} x={i * GAP} hour={HOURS[i]} night={i > DUSK} />
+          </group>
+        ) : null,
+      )}
       <Guide progress={cam} />
     </>
   )
@@ -101,6 +125,12 @@ function Facades({ len }: { len: number }) {
     const out: { x: number; w: number; h: number; c: string }[] = []
     for (let x = -30; x < len - 30; ) {
       const w = 6 + r() * 6
+      // The couloir of the last scene: no house over it.
+      const gap = (CHAPTERS.length - 1) * GAP - 1
+      if (x < gap + 2 && x + w > gap - 2) {
+        x = gap + 2
+        continue
+      }
       out.push({ x: x + w / 2, w: w - 0.4, h: 3.5 + r() * 4, c: WALLS[Math.floor(r() * WALLS.length)] })
       x += w
     }
@@ -152,6 +182,15 @@ function Scene({ id, x, hour, night }: { id: (typeof CHAPTERS)[number]['id']; x:
       return <StreetSpot spot={{ id: 'ecole:liste:2', kind: 'ecole', at: [x, 0], rot: 0, w: 8, len: 34, seed: 0.62 }} />
     case 'pasteur':
       return <StreetSpot spot={{ id: 'pasteur:liste:1', kind: 'pasteur', at: [x, 0], rot: 0, w: 8, len: 34, seed: 0.7 }} />
+    case 'gbaka':
+      return <Stopping x={x} kind="gbaka" lane={FAR_LANE} period={19} wait={10} calls={['Adjamé ! Adjamé !', 'Monte, y a place !', 'On y va, on y va !']} riders={2} />
+    case 'woro':
+      return <Stopping x={x} kind="woro" lane={FAR_LANE} period={16} wait={7} calls={['Tu vas où ?', 'Monte, on y va !']} riders={1} hail="Woro ! Adjamé ?" />
+    case 'gnango':
+      return <Stopping x={x + 3} kind="car" lane={NEAR_LANE} period={23} calls={['Bonsoir Awa, c’est Gnango !']} riders={0} wait={14} />
+    case 'couloir':
+      // A couloir between two houses, going back from the street.
+      return <NouchiCorner spot={{ id: 'nouchi:liste:1', at: [x - 1, -8], rot: Math.PI / 2, w: 3, len: 10, seed: 0.3 }} close={16} />
     case 'foot':
       return (
         <>
@@ -170,13 +209,13 @@ function Bus({ x }: { x: number }) {
     // In over 5 s, 9 s at the stop, out over 5 s, then gone.
     const k = t < 5 ? 1 - ease(t / 5) : t < 14 ? 0 : t < 19 ? -ease((t - 14) / 5) : -2
     if (ref.current) {
-      ref.current.position.set(x + 2 + k * 45, 0, -1.4)
+      ref.current.position.set(x + 2 + k * 45, 0, FAR_LANE)
       ref.current.visible = k > -1.5
     }
   })
   return (
     <group ref={ref}>
-      <Vehicle p={[0, 0, 0]} kind="sotra" seed={2} />
+      <Vehicle p={[0, 0, 0]} r={Math.PI} kind="sotra" seed={2} />
     </group>
   )
 }
@@ -187,8 +226,8 @@ function PassingCar({ x }: { x: number }) {
   useFrame(({ clock }) => {
     const t = (clock.elapsedTime + 6) % 18
     const cx = x - 60 + t * 9
-    if (ref.current) ref.current.position.set(cx, 0, 2)
-    moveObstacle('liste:car', { x: cx, z: 2, hw: 2.2, hd: 0.9, rot: 0 })
+    if (ref.current) ref.current.position.set(cx, 0, NEAR_LANE - 0.6)
+    moveObstacle('liste:car', { x: cx, z: NEAR_LANE - 0.6, hw: 2.2, hd: 0.9, rot: 0 })
   })
   return (
     <group ref={ref}>
@@ -197,30 +236,94 @@ function PassingCar({ x }: { x: number }) {
   )
 }
 
-/** The guide: walks down the near pavement with the camera, stops at each scene and talks to you. */
+/** The guide: walks down the near pavement with the camera, stops at each scene and talks to you (or shows her phone). */
 function Guide({ progress }: { progress: MutableRefObject<number> }) {
   // Awa in an orange wax kaba and a headwrap, easy to pick out in the crowd.
   const look = useMemo(() => ({ ...randomLook(GUIDE.gender, rng(GUIDE.seed)), outfit: 'kaba', outfitColor: '#ff7a00', pattern: 'cercles', hair: 'headwrap', accessory: 'earrings', accessoryColor: '', marks: 'none', wear: 'neuf' }), [])
   const ref = useRef<THREE.Group>(null)
-  const last = useRef(0)
+  const st = useRef({ last: 0, speed: 0, walking: false })
   const [pose, setPose] = useState<Pose>('wave')
-  useFrame(() => {
+  useFrame((_, dt) => {
     const c = progress.current
-    const moving = Math.abs(c - last.current) > 0.0015
-    last.current = c
+    const s = st.current
+    // How fast she goes (scenes a second), smoothed; she starts walking and stops with some margin, so the steps don't flicker.
+    const v = dt > 0 ? Math.abs(c - s.last) / dt : 0
+    s.last = c
+    s.speed += (v - s.speed) * (1 - Math.exp(-dt * 6))
+    if (!s.walking && s.speed > 0.06) s.walking = true
+    else if (s.walking && s.speed < 0.02) s.walking = false
     const g = ref.current
     if (g) {
-      g.position.set(c * GAP + 1.2, 0, 2.6)
-      // Walking: down the street. Standing: half turned to you, an arm to the scene.
-      g.rotation.y = moving ? Math.PI / 2 : 0.35
+      g.position.set(c * GAP + 1.2, 0, PAVEMENT)
+      // Walking: down the street. Standing: half turned to you. She turns, she doesn't snap round.
+      const to = s.walking ? Math.PI / 2 : 0.35
+      g.rotation.y += (to - g.rotation.y) * (1 - Math.exp(-dt * 7))
     }
-    const p: Pose = moving ? 'walk' : 'talk'
+    const p: Pose = s.walking ? 'walk' : CHAPTERS[Math.round(c)]?.phone ? 'phone' : 'talk'
     if (p !== pose) setPose(p)
   })
   return (
     <group ref={ref}>
       <Human look={look} gender={GUIDE.gender} pose={pose} seed={11} full />
     </group>
+  )
+}
+
+/**
+ * A gbaka, a woro-woro or a Gnango car: drives in, stops at the scene for a
+ * while, drives off; then again. On the far lane it comes from the right (we
+ * drive on the right), on the near lane from the left. Those waiting wave it
+ * down and climb in; the apprenti (or the driver) says something.
+ */
+function Stopping({ x, kind, lane, period, calls, riders, hail, wait = 8 }: { x: number; kind: VehicleKind; lane: number; period: number; calls: string[]; riders: number; hail?: string; wait?: number }) {
+  const dir = lane < 0 ? -1 : 1
+  const car = useRef<THREE.Group>(null)
+  const people = useRef<(THREE.Group | null)[]>([])
+  const looks = useMemo(() => Array.from({ length: riders }, (_, i) => randomLook(i % 2 ? 'homme' : 'femme', rng(`rider${kind}${i}`))), [riders, kind])
+  const [state, setState] = useState({ call: -1, hailing: false, boarding: false })
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime % period
+    const stop = 4 + wait
+    // In over 4 s, stopped, out over 4 s, then away until the next round.
+    const off = t < 4 ? -(1 - ease(t / 4)) : t < stop ? 0 : t < stop + 4 ? ease((t - stop) / 4) : 2
+    if (car.current) {
+      car.current.position.set(x + dir * off * 40, 0, lane)
+      car.current.visible = off < 1.5
+    }
+    // Those waiting: wave, then walk to the door and get in.
+    const boarding = t > 5 && t < stop + 4
+    const gone = t > 6.5 && t < stop + 4
+    people.current.forEach((g, i) => {
+      if (!g) return
+      const k = boarding ? Math.min(1, (t - 5) / 1.5) : 0
+      g.position.set(x - 1.2 + i * 0.9, 0, -4.2 + k * (lane + 4.2 - 1))
+      g.visible = !gone
+    })
+    const call = t >= 3 && t < stop ? Math.floor((t - 3) / 2.6) % calls.length : -1
+    const hailing = !!hail && t < 4.5
+    if (call !== state.call || hailing !== state.hailing || boarding !== state.boarding) setState({ call, hailing, boarding })
+  })
+  return (
+    <>
+      <group ref={car}>
+        <Vehicle p={[0, 0, 0]} r={dir < 0 ? Math.PI : 0} kind={kind} seed={kind === 'woro' ? 4 : 1} color={kind === 'car' ? '#212529' : undefined} />
+        {state.call >= 0 && <Bubble y={kind === 'gbaka' ? 3.4 : 2.6} text={calls[state.call]} />}
+      </group>
+      {looks.map((l, i) => (
+        <group key={i} ref={(g) => void (people.current[i] = g)} rotation={[0, state.boarding ? 0 : Math.PI, 0]}>
+          <Human look={l} gender={i % 2 ? 'homme' : 'femme'} pose={state.boarding ? 'walk' : i === 0 ? 'wave' : 'idle'} seed={i * 5 + 2} />
+          {i === 0 && state.hailing && hail && <Bubble y={2.3} text={hail} />}
+        </group>
+      ))}
+    </>
+  )
+}
+
+function Bubble({ y, text }: { y: number; text: string }) {
+  return (
+    <Html position={[0, y, 0]} center zIndexRange={[20, 0]}>
+      <div className="rounded-2xl rounded-bl-sm bg-white px-3 py-1.5 text-[13px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_6px_14px_-8px_rgba(0,0,0,0.5)]">{text}</div>
+    </Html>
   )
 }
 
