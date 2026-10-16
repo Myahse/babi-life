@@ -7,7 +7,7 @@ import '../index.css'
 import type { Block, Look } from '../lib/types'
 import { BlockHuman } from '../avatar/BlockHuman'
 import type { Pose } from '../avatar/Human'
-import { DEFAULT_LOOK } from '../avatar/options'
+import { DEFAULT_LOOK, HAIRS } from '../avatar/options'
 import { House } from '../world3d/build/House'
 import { Scene } from '../components/Scene'
 import { Logo } from '../components/ui'
@@ -33,7 +33,7 @@ import { Map as MapIcon, MessageCircle, Newspaper } from 'lucide-react'
 const q = new URLSearchParams(location.search)
 const VIDEO = q.has('video')
 const ALPHA = q.has('alpha')
-type SceneId = 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'princesse' | `famille-${string}` | 'palais' | 'basket' | 'fete' | 'cause' | 'look' | 'siporex' | 'phone' | 'visages'
+type SceneId = 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'princesse' | `famille-${string}` | 'palais' | 'basket' | 'fete' | 'cause' | 'look' | 'siporex' | 'phone' | 'visages' | 'coiffures'
 /**
  * Which film: ?video (the launch), ?video=bouger (getting about: gbaka,
  * Gnango, Rue Princesse), ?video=bande-annonce (the trailer: gnambro or
@@ -226,6 +226,22 @@ function World({ scene, t }: { scene: SceneId; t: number }) {
     )
   }
   if (scene === 'cause') return <Street scene="cause" t={t} />
+  if (scene === 'coiffures') {
+    // Every hairstyle, seven at a time (t < 5 or 10–15: the first seven), turning slowly; from behind after t = 10.
+    const first = t < 5 || (t >= 10 && t < 15)
+    const page = HAIRS.filter((h) => h.id !== 'bald').slice(first ? 0 : 7, first ? 7 : 14)
+    return (
+      <>
+        {lights}
+        <Camera at={[0, 1.66, wide ? 3.4 : 4.4]} look={[0, 1.45, 0]} />
+        {page.map((h, i) => (
+          <group key={h.id} position={[(i - (page.length - 1) / 2) * 0.66, 0, 0]} rotation={[0, (t >= 10 ? Math.PI : 0) + Math.sin(t * 0.6 + i) * 0.5, 0]}>
+            <BlockHuman look={{ ...CREW[i % CREW.length].look, hair: h.id, accessory: 'none', outfit: 'chemise', hairColor: i % 3 ? '#141010' : '#5a3418' }} gender={i % 2 ? 'homme' : 'femme'} pose="idle" seed={i} />
+          </group>
+        ))}
+      </>
+    )
+  }
   if (scene === 'visages') {
     // Up close: the crew's faces and hands, standing about (their gestures: fidgetAt).
     return (

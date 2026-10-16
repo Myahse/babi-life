@@ -211,6 +211,16 @@ class Painter {
     this.g.fillStyle = c
     this.g.fillRect(r.u + x0 + fcol / FINE, r.v + r.D + frow / FINE, 1 / FINE, 1 / FINE)
   }
+  /** A half pixel of the top face. */
+  fineTop(r: Region, fx: number, fy: number, c: string) {
+    this.g.fillStyle = c
+    this.g.fillRect(r.u + r.D + fx / FINE, r.v + fy / FINE, 1 / FINE, 1 / FINE)
+  }
+  /** Makes a half pixel of a side face see-through (the hair layer). */
+  fineClear(r: Region, f: Face, fcol: number, frow: number) {
+    const [x0] = this.face(r, f)
+    this.g.clearRect(r.u + x0 + fcol / FINE, r.v + r.D + frow / FINE, 1 / FINE, 1 / FINE)
+  }
   /** Rows [r0, r1) all the way round. */
   rows(r: Region, r0: number, r1: number, c: Paint, faces: Face[] = ['L', 'F', 'R', 'B']) {
     for (const f of faces) {
@@ -382,6 +392,38 @@ function paintSheet(l: Required<Look>, femme: boolean, young: boolean) {
       for (let row = 0; row < Math.round(back + (side - back) * k); row++) p.at(t, 'L', col, row, hairPx)
       for (let row = 0; row < Math.round(side + (back - side) * k); row++) p.at(t, 'R', col, row, hairPx)
     }
+    // Then the hair again on half pixels, each style its own way: cornrow
+    // lines, the partings between braids, twisted locks, afro coils, the
+    // shine on a weave; and a softer hairline.
+    if (hair !== 'headwrap') {
+      const fineHair = (fx: number, fy: number) => {
+        const n = hash(fx * 0.5 + 101, fy * 0.5 + 37)
+        switch (hair) {
+          case 'cornrows':
+            return fx % 3 === 2 ? tint(hairC, -0.45) : tint(hairC, (fy + Math.floor(fx / 3)) % 2 ? 0.07 : -0.12)
+          case 'braids':
+            return fx % 2 ? tint(hairC, -0.34) : tint(hairC, (fx + fy) % 4 < 2 ? 0.06 : -0.1)
+          case 'locks':
+          case 'twists':
+            return (fx + fy) % 3 === 0 ? tint(hairC, -0.3) : tint(hairC, (n - 0.5) * 0.2)
+          case 'weave':
+          case 'bob':
+            return fx % 3 === 0 ? tint(hairC, -0.16) : fy % 8 === 3 ? tint(hairC, 0.14) : tint(hairC, (n - 0.5) * 0.1)
+          default:
+            // Coils: dark hollows and light tips, tighter for an afro.
+            return n < 0.13 ? tint(hairC, 0.16) : n > (hair === 'afro' ? 0.8 : 0.88) ? tint(hairC, -0.3) : tint(hairC, (n - 0.5) * 0.14)
+        }
+      }
+      for (let fy = 0; fy < 16; fy++) for (let fx = 0; fx < 16; fx++) p.fineTop(t, fx, fy, fineHair(fx, fy))
+      for (const f of ['F', 'B'] as Face[]) for (let fy = 0; fy < (f === 'F' ? front : back) * 2; fy++) for (let fx = 0; fx < 16; fx++) p.fine(t, f, fx, fy, fineHair(fx + (f === 'B' ? 40 : 0), fy + 16))
+      for (let fx = 0; fx < 16; fx++) {
+        const k = Math.floor(fx / 2) / 7
+        for (let fy = 0; fy < Math.round(back + (side - back) * k) * 2; fy++) p.fine(t, 'L', fx, fy, fineHair(fx + 60, fy + 16))
+        for (let fy = 0; fy < Math.round(side + (back - side) * k) * 2; fy++) p.fine(t, 'R', fx, fy, fineHair(fx + 80, fy + 16))
+      }
+      // A softer hairline on the forehead: every other half pixel of the last row.
+      if (!['weave', 'bob'].includes(hair)) for (let fx = 0; fx < 16; fx += 2) p.fineClear(t, 'F', fx + (fx % 4 ? 1 : 0), front * 2 - 1)
+    }
     if (hair === 'weave') p.at(t, 'F', 2, 2, hairPx) // a side parting sweeping down
     if (hair === 'bob') for (const x of [0, 1, 6, 7]) p.at(t, 'F', x, 3, hairPx) // the fringe, curving to the cheeks
     if (hair === 'degrade') {
@@ -390,7 +432,15 @@ function paintSheet(l: Required<Look>, femme: boolean, young: boolean) {
         p.at(t, 'L', col, 1, (x, y) => grain(tint(hairC, 0.25), x, y, 0.2))
         p.at(t, 'R', col, 1, (x, y) => grain(tint(hairC, 0.25), x, y, 0.2))
       }
-      for (const col of [3, 4, 5]) p.clear(t, 'L', col, 1)
+      // The fade on half pixels: lighter going down, the last row sparse.
+      for (const f of ['L', 'R'] as Face[])
+        for (let fx = 0; fx < 16; fx++) {
+          p.fine(t, f, fx, 2, tint(hairC, 0.22))
+          if ((fx + (f === 'L' ? 0 : 1)) % 2) p.fine(t, f, fx, 3, tint(hairC, 0.36))
+          else p.fineClear(t, f, fx, 3)
+        }
+      // The line, shaved in on a slant.
+      for (let k = 0; k < 7; k++) p.fineClear(t, 'L', 5 + k, k < 3 ? 1 : 2)
     }
   } else if (hair === 'bald' || hair === 'mohawk') {
     // Shaved: a shadow of stubble on the scalp.
@@ -1107,15 +1157,53 @@ function lambert(color: string, map?: THREE.Texture) {
   if (!m) matCache.set(key, (m = new THREE.MeshLambertMaterial({ color: map ? '#ffffff' : color, map })))
   return m
 }
+/** Loose hair: each style woven its own way (16 px, crisp). */
 const hairMat = (color: string, kind: string) =>
-  lambert('#fff', pixelTex(`hair|${color}|${kind}`, 8, (x, y) => (kind === 'braids' || kind === 'locks' ? (x % 2 ? tint(color, -0.25) : grain(color, x, y, 0.2)) : grain(color, x, y, 0.3))))
+  lambert(
+    '#fff',
+    pixelTex(`hair|${color}|${kind}`, 16, (x, y) => {
+      const n = hash(x + 3, y + 11)
+      switch (kind) {
+        case 'braids':
+          // A plait: V-shaped crossings down the strand, a dark seam at its edges.
+          return x % 8 === 0 || x % 8 === 7 ? tint(color, -0.38) : tint(color, (y + Math.abs((x % 8) - 3.5)) % 4 < 2 ? 0.1 : -0.14)
+        case 'locks':
+        case 'twists':
+          // Twisted ropes: slanting grooves, a little fuzz.
+          return (x + y) % (kind === 'twists' ? 3 : 4) === 0 ? tint(color, -0.32) : tint(color, (n - 0.5) * 0.24)
+        case 'weave':
+        case 'bob':
+        case 'ponytail':
+          // Long strands down, a band of shine.
+          return x % 3 === 0 ? tint(color, -0.18) : y % 16 >= 4 && y % 16 < 6 ? tint(color, 0.16) : tint(color, (n - 0.5) * 0.12)
+        case 'beard':
+          return grain(color, x, y, 0.3)
+        default:
+          // Coils (afro, puffs, bun, mohawk): light tips, dark hollows.
+          return n < 0.15 ? tint(color, 0.2) : n > 0.8 ? tint(color, -0.32) : tint(color, (n - 0.5) * 0.16)
+      }
+    }),
+  )
 const waxMat = (color: string, motif: string) => lambert('#fff', pixelTex(`wax|${color}|${motif}`, 12, (x, y) => waxPx(color, motif, x, y)))
 const knitMat = (color: string) => lambert('#fff', pixelTex(`knit|${color}`, 8, (x, y) => (x % 2 ? tint(color, -0.12) : grain(color, x, y, 0.08))))
 const clothMat = (color: string) => lambert('#fff', pixelTex(`cloth|${color}`, 8, (x, y) => grain(color, x, y, 0.06)))
 
 /* ---------- Hair, caps, earrings: extra boxes on the head ---------- */
 
-function HeadBoxes({ l, hair, young, cast, femme }: { l: Required<Look>; hair: string; young: boolean; cast: boolean; femme: boolean }) {
+/** Hair that hangs loose, and sways. */
+const LOOSE = new Set(['braids', 'locks', 'twists', 'weave', 'ponytail', 'bob'])
+
+function HeadBoxes({ l, hair, young, cast, femme, pose, seed }: { l: Required<Look>; hair: string; young: boolean; cast: boolean; femme: boolean; pose: Pose; seed: number }) {
+  // Loose hair sways a little, more walking, a lot dancing or running.
+  const sway = useRef<THREE.Group>(null)
+  useFrame(() => {
+    const g = sway.current
+    if (!g) return
+    const t = worldTime() + seed
+    const k = pose === 'run' || pose === 'dance' || pose === 'cheer' ? 1 : pose === 'walk' || pose === 'dribble' ? 0.5 : 0.18
+    g.rotation.x = Math.sin(t * (2.2 + k * 4)) * 0.09 * k + k * 0.06
+    g.rotation.z = Math.sin(t * (1.7 + k * 3) + 1) * 0.06 * k
+  })
   const nun = femme && l.outfit === 'soeur'
   const veil = nun ? tint(l.outfitColor, -0.15) : l.bottomColor || tint(l.outfitColor, 0.12)
   const hat = !young && !HEADWEAR.has(l.accessory) ? UNIFORM_HATS[outfitOf(l, femme)] : undefined
@@ -1124,12 +1212,19 @@ function HeadBoxes({ l, hair, young, cast, femme }: { l: Required<Look>; hair: s
   const hc = tint(l.hairColor, 0.08)
   const m = hairMat(hc, hair)
   const B = ({ s, p, r, mat = m }: { s: V3; p: V3; r?: V3; mat?: THREE.Material }) => <mesh geometry={cube(...s)} material={mat} position={p} rotation={r} castShadow={cast} />
-  const strands = (n: number, w: number, len: number) =>
+  const strands = (n: number, w: number, len: number, ends?: string) =>
     [...Array(n)].map((_, i) => {
-      // Round the back of the head from one ear to the other, behind the ears.
+      // Round the back of the head from one ear to the other, behind the ears;
+      // not all the same length (longer down the back).
       const a = (i / (n - 1) - 0.5) * Math.PI
       const [x, z] = [Math.sin(a) * H * 0.56, Math.min(-Math.cos(a) * H * 0.56, -H * 0.12)]
-      return <B key={i} s={[w, len, w]} p={[x, H * 0.5 - len / 2, z]} />
+      const l = len * (0.86 + Math.cos(a) * 0.14 + (hash(i, 7) - 0.5) * 0.12)
+      return (
+        <group key={i}>
+          <B s={[w, l, w]} p={[x, H * 0.5 - l / 2, z]} />
+          {ends && <B s={[w * 1.25, w * 1.1, w * 1.25]} p={[x, H * 0.5 - l - w * 0.4, z]} mat={lambert(ends)} />}
+        </group>
+      )
     })
   let hairBoxes: React.ReactNode = null
   switch (hair) {
@@ -1147,10 +1242,10 @@ function HeadBoxes({ l, hair, young, cast, femme }: { l: Required<Look>; hair: s
       hairBoxes = <B s={[H * 0.42, H * 0.36, H * 0.42]} p={[0, H * 1.18, -H * 0.22]} />
       break
     case 'braids':
-      hairBoxes = <group>{strands(9, 0.04, 0.44)}</group>
+      hairBoxes = <group>{strands(13, 0.034, 0.44, femme ? '#e8b93c' : undefined)}</group>
       break
     case 'locks':
-      hairBoxes = <group>{strands(7, 0.065, 0.26)}</group>
+      hairBoxes = <group>{strands(10, 0.056, 0.28)}</group>
       break
     case 'weave':
       hairBoxes = (
@@ -1163,7 +1258,7 @@ function HeadBoxes({ l, hair, young, cast, femme }: { l: Required<Look>; hair: s
       )
       break
     case 'twists':
-      hairBoxes = <group>{strands(9, 0.05, 0.16)}</group>
+      hairBoxes = <group>{strands(12, 0.042, 0.17)}</group>
       break
     case 'ponytail':
       hairBoxes = (
@@ -1210,7 +1305,14 @@ function HeadBoxes({ l, hair, young, cast, femme }: { l: Required<Look>; hair: s
   const acc = l.accessoryColor || defaultColors(l, false).accessory
   return (
     <group>
-      {hairBoxes}
+      {LOOSE.has(hair) ? (
+        // Swinging from the top of the head.
+        <group ref={sway} position={[0, H * 0.5, 0]}>
+          <group position={[0, -H * 0.5, 0]}>{hairBoxes}</group>
+        </group>
+      ) : (
+        hairBoxes
+      )}
       {!young && (l.accessory === 'cap' || l.accessory === 'capback') && (
         <group rotation={[0, l.accessory === 'capback' ? Math.PI : 0, 0]}>
           <B s={[H * 1.17, H * 0.3, H * 1.17]} p={[0, H * 0.99, 0]} mat={clothMat(acc)} />
@@ -1406,7 +1508,7 @@ export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 
             <group ref={mouth} position={[0, HEAD - 6 * P, HEAD / 2 + 0.002]} visible={false}>
               <mesh geometry={cube(2.4 * P, P, 0.004)} material={lambert('#3b1612')} position={[0, -P / 2, 0]} />
             </group>
-            <HeadBoxes l={l} hair={sheet.hair} young={young} cast={cast} femme={femme} />
+            <HeadBoxes l={l} hair={sheet.hair} young={young} cast={cast} femme={femme} pose={pose} seed={seed} />
           </group>
 
           {/* Legs: hip → knee, the skirt's two halves swinging with them */}
