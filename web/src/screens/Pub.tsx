@@ -2,11 +2,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeft, Check, Eye, Upload } from 'lucide-react'
 import { useWorld } from '../store/world'
+import { contactLinks } from '../lib/contact'
 
-// Babi Pub (/pub): the ads on the game's billboards. An advertiser sends a
-// poster or a short video, says where (communes) and when; the file goes
-// straight into the bucket (the API signs the upload), the campaign waits for
-// Babi Life to check it and agree the price. A private link follows it:
+// Babi Pub (/pub): the ads on the game's billboards. An advertiser contacts
+// Babi Life first (WhatsApp, e-mail, TikTok, X… : lib/contact.ts) and agrees
+// the price; Babi Life then makes a send link (/pub/envoi/<code>, used once).
+// There the advertiser sends the poster or the short video, says where
+// (communes) and when; the file goes straight into the bucket (the API signs
+// the upload only for a valid link), the campaign waits for Babi Life to
+// check it. A private link follows it:
 // pending, approved, refused, and how often players saw it. The admin page
 // (/pub/admin, with ADS_ADMIN_KEY) approves, refuses, pauses, marks paid.
 // The API: backend/internal/ads.
@@ -74,9 +78,71 @@ function Preview({ type, url, className = '' }: { type: 'image' | 'video'; url: 
   return type === 'video' ? <video className={`w-full bg-[#26332c] object-cover ${className}`} src={url} muted loop playsInline autoPlay controls /> : <img className={`w-full bg-[#26332c] object-cover ${className}`} src={url} alt="" />
 }
 
-/* ---------- Sending an ad ---------- */
+/* ---------- The front page: contact us first ---------- */
 
 export function Pub() {
+  const links = contactLinks()
+  return (
+    <Shell>
+      <h1 className="paint m-0 text-[clamp(44px,11vw,80px)] text-[var(--rust)] [text-shadow:3px_3px_0_var(--ochre)]">Ta pub dans Babi</h1>
+      <p className="mt-3 max-w-xl text-[18px] font-extrabold">Les joueurs passent tous les jours devant les panneaux du jeu, dans leur commune. Mets-y ton affiche ou ta vidéo.</p>
+      <ol className="mt-5 grid gap-3 text-[15px] font-bold sm:grid-cols-2 lg:grid-cols-4">
+        {['Tu nous contactes : dis-nous ce que tu veux montrer, où et quand.', "On s'entend sur le prix et le paiement (Waye, Orange Money…).", "On t'envoie ton lien personnel pour envoyer l'affiche ou la vidéo.", "On vérifie, elle passe sur les panneaux, et ton lien montre les vues."].map((t, i) => (
+          <li key={i} className="bg-[var(--cream)] p-4">
+            <span className="slab text-[30px] text-[var(--turq)]">{i + 1}.</span> {t}
+          </li>
+        ))}
+      </ol>
+      <section className="mt-8 bg-[var(--ochre)] px-6 py-7">
+        <h2 className="paint m-0 text-[clamp(38px,9vw,64px)]">
+          Contacte-<span className="text-[var(--rust)]">nous</span>
+        </h2>
+        <p className="mt-2 max-w-lg text-[17px] font-extrabold">Avant d'envoyer quoi que ce soit, parle-nous de ta pub. On te répond vite.</p>
+        {links.length ? (
+          <div className="mt-5 flex flex-wrap gap-3">
+            {links.map((l) => (
+              <a key={l.id} href={l.href} target="_blank" rel="noreferrer" className={`sign-btn ${l.id === 'whatsapp' ? 'turq' : l.id === 'email' ? '' : 'alt'}`}>
+                {l.label}
+                <span className="font-sans text-[14px] font-bold opacity-85">{l.shown}</span>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <p className="chalk-hand mt-4 text-[28px]">Nos contacts arrivent très bientôt ici.</p>
+        )}
+      </section>
+      <p className="mt-6 text-[14px] font-bold opacity-80">Pas de tabac, pas de paris pour les mineurs, rien de choquant : on refuse ce qui ne passerait pas sur un vrai panneau d'Abidjan.</p>
+    </Shell>
+  )
+}
+
+/* ---------- Sending an ad, with the link Babi Life gave ---------- */
+
+export function PubSend({ code }: { code: string }) {
+  const [invite, setInvite] = useState<{ label: string; ready: boolean } | 'bad' | null>(null)
+  useEffect(() => {
+    call<{ label: string; ready: boolean }>(`/ads/invite/${encodeURIComponent(code)}`).then(setInvite, () => setInvite('bad'))
+  }, [code])
+  if (invite === null)
+    return (
+      <Shell>
+        <p className="text-[18px] font-extrabold">Un instant…</p>
+      </Shell>
+    )
+  if (invite === 'bad')
+    return (
+      <Shell>
+        <h1 className="paint text-[40px]">Ce lien n'est plus valable</h1>
+        <p className="mt-2 max-w-lg text-[17px] font-bold">Un lien d'envoi ne sert qu'une fois. Contacte-nous et on t'en donne un nouveau.</p>
+        <Link to="/pub" className="sign-btn mt-5">
+          Nous contacter
+        </Link>
+      </Shell>
+    )
+  return <SendForm code={code} label={invite.label} />
+}
+
+function SendForm({ code, label }: { code: string; label: string }) {
   const world = useWorld((s) => s.world)
   const communes = useMemo(() => (world ? world.cities.flatMap((c) => c.communes.map((x) => ({ id: x.id, name: x.name, city: c.name }))) : []), [world])
   const [file, setFile] = useState<File | null>(null)
@@ -100,7 +166,7 @@ export function Pub() {
     if (!everywhere && where.length === 0) return setError('Choisis au moins une commune, ou « Partout ».')
     try {
       setProgress(0)
-      const up = await call<{ key: string; url: string }>('/ads/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: file.type, size: file.size }) })
+      const up = await call<{ key: string; url: string }>('/ads/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, type: file.type, size: file.size }) })
       // Straight into the bucket, with the progress shown.
       await new Promise<void>((resolve, reject) => {
         const x = new XMLHttpRequest()
@@ -114,7 +180,7 @@ export function Pub() {
       const c = await call<{ token: string }>('/ads/campaigns', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ advertiser, contact, title, key: up.key, type: file.type, communes: everywhere ? [] : where, starts, ends }),
+        body: JSON.stringify({ code, advertiser, contact, title, key: up.key, type: file.type, communes: everywhere ? [] : where, starts, ends }),
       })
       setSent(c.token)
     } catch (err) {
@@ -133,7 +199,7 @@ export function Pub() {
             <Check size={30} strokeWidth={3} />
           </span>
           <h1 className="paint mt-4 text-[44px]">C'est reçu !</h1>
-          <p className="mt-2 text-[17px] font-bold">On regarde ta pub et on te contacte pour le prix et le paiement (Waye, Orange Money…). Elle passe sur les panneaux du jeu dès qu'elle est acceptée et payée.</p>
+          <p className="mt-2 text-[17px] font-bold">On vérifie ta pub. Elle passe sur les panneaux du jeu dès qu'elle est acceptée et que le paiement convenu est reçu.</p>
           <p className="mt-4 text-[15px] font-extrabold">Garde ce lien : il montre où en est ta pub, et combien de joueurs l'ont vue.</p>
           <p className="mt-2 break-all bg-[var(--wall)] px-3 py-2 font-mono text-[14px]">{link}</p>
           <div className="mt-4 flex flex-wrap gap-3">
@@ -151,16 +217,8 @@ export function Pub() {
 
   return (
     <Shell>
-      <h1 className="paint m-0 text-[clamp(44px,11vw,80px)] text-[var(--rust)] [text-shadow:3px_3px_0_var(--ochre)]">Ta pub dans Babi</h1>
-      <p className="mt-3 max-w-xl text-[18px] font-extrabold">Les joueurs passent tous les jours devant les panneaux du jeu, dans leur commune. Mets-y ton affiche ou ta vidéo.</p>
-      <ol className="mt-5 grid gap-3 text-[15px] font-bold sm:grid-cols-3">
-        {['Tu envoies ton affiche ou ta vidéo, où et quand.', 'On vérifie et on te contacte pour le prix.', "Une fois payée, elle passe sur les panneaux. Ton lien montre les vues."].map((t, i) => (
-          <li key={i} className="bg-[var(--cream)] p-4">
-            <span className="slab text-[30px] text-[var(--turq)]">{i + 1}.</span> {t}
-          </li>
-        ))}
-      </ol>
-
+      <h1 className="paint m-0 text-[clamp(40px,10vw,68px)] text-[var(--rust)] [text-shadow:3px_3px_0_var(--ochre)]">Envoie ta pub</h1>
+      <p className="mt-2 max-w-xl text-[17px] font-extrabold">{label ? `Lien d'envoi pour ${label}. ` : ''}Ce lien ne sert qu'une fois : envoie le bon fichier.</p>
       <form className="mt-8 flex flex-col gap-4 border-2 border-[var(--brown)] bg-[var(--cream)] p-5 sm:p-6" onSubmit={send}>
         <label className="flex flex-col gap-1.5 text-[15px] font-extrabold">
           Ton affiche ou ta vidéo
@@ -331,7 +389,8 @@ export function PubAdmin() {
     )
   return (
     <Shell>
-      <h1 className="paint text-[40px]">Les campagnes ({list.length})</h1>
+      <Invites adminKey={key} />
+      <h1 className="paint mt-10 text-[40px]">Les campagnes ({list.length})</h1>
       {error && <p className="mt-2 text-sm font-bold text-[var(--rust)]">{error}</p>}
       <div className="mt-4 flex flex-col gap-5">
         {list.map((c) => (
@@ -386,3 +445,68 @@ function AdminRow({ c, onChange }: { c: Status; onChange: (change: Partial<Pick<
     </div>
   )
 }
+
+type Invite = { code: string; label: string; createdAt: string; usedAt: string | null; campaign: string | null }
+
+/** The send links: one per advertiser Babi Life agreed with, each used once. */
+function Invites({ adminKey }: { adminKey: string }) {
+  const [list, setList] = useState<Invite[]>([])
+  const [label, setLabel] = useState('')
+  const [made, setMade] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const linkOf = (code: string) => `${location.origin}/pub/envoi/${code}`
+  const load = () => call<Invite[]>('/ads/admin/invites', { headers: { 'X-Admin-Key': adminKey } }).then(setList, (e: Error) => setError(e.message))
+  useEffect(() => {
+    void load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminKey])
+  const make = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    try {
+      const r = await call<{ code: string }>('/ads/admin/invites', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Admin-Key': adminKey }, body: JSON.stringify({ label }) })
+      setMade(linkOf(r.code))
+      setLabel('')
+      void load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur')
+    }
+  }
+  return (
+    <section className="border-2 border-[var(--brown)] bg-[var(--cream)] p-5">
+      <h2 className="paint text-[32px]">Liens d'envoi</h2>
+      <p className="text-[14px] font-bold">Quand le prix est convenu avec un annonceur, crée son lien et envoie-le lui (WhatsApp, e-mail…). Il ne sert qu'une fois.</p>
+      <form className="mt-3 flex flex-wrap gap-2" onSubmit={make}>
+        <input className="input min-w-0 flex-1 text-base" placeholder="Pour qui ? (ex. Garba Chez Tanti, 2 semaines Yop)" value={label} onChange={(e) => setLabel(e.target.value)} maxLength={120} />
+        <button className="sign-btn turq">Créer le lien</button>
+      </form>
+      {error && <p className="mt-2 text-sm font-bold text-[var(--rust)]">{error}</p>}
+      {made && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 bg-[var(--wall)] px-3 py-2">
+          <span className="min-w-0 flex-1 font-mono text-[13px] break-all">{made}</span>
+          <button className="sign-btn alt !px-3 !py-1.5 !text-[13px]" onClick={() => void navigator.clipboard?.writeText(made)}>
+            Copier
+          </button>
+        </div>
+      )}
+      {list.length > 0 && (
+        <ul className="mt-4 flex flex-col gap-1.5 text-[14px] font-bold">
+          {list.map((i) => (
+            <li key={i.code} className="flex flex-wrap items-center gap-x-3 border-t border-[var(--brown)]/15 pt-1.5">
+              <span className="min-w-0 flex-1">{i.label || 'Sans nom'}</span>
+              <span className="opacity-70">{new Date(i.createdAt).toLocaleDateString('fr-FR')}</span>
+              {i.usedAt ? (
+                <span className="text-[var(--ci-green)]">Utilisé</span>
+              ) : (
+                <button className="underline" onClick={() => void navigator.clipboard?.writeText(linkOf(i.code))}>
+                  Copier le lien
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+

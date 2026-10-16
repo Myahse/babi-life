@@ -1,7 +1,9 @@
-// Package ads is Babi Pub: the ads on the game's billboards. Advertisers send
-// their poster or video (straight into the bucket, s3.go) with where and when
-// it should show; Babi Life checks it and agrees the price (paid outside the
-// game: Waye, Orange Money…), then approves it. The game shows the approved,
+// Package ads is Babi Pub: the ads on the game's billboards. An advertiser
+// contacts Babi Life first (WhatsApp, e-mail, social networks) and agrees the
+// price (paid outside the game: Waye, Orange Money…); the admin then makes a
+// send link (an invite, used once). With it, the advertiser sends the poster
+// or video (straight into the bucket, s3.go) with where and when it should
+// show; Babi Life checks it and approves it. The game shows the approved,
 // paid ads of the day on the billboards of each commune, in turn, and counts
 // how often they were seen (by commune and day: nobody is tracked).
 package ads
@@ -116,11 +118,16 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
+		Code string `json:"code"`
 		Type string `json:"type"`
 		Size int64  `json:"size"`
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
+		return
+	}
+	if !h.inviteOpen(r.Context(), req.Code) {
+		httpx.Error(w, http.StatusForbidden, errNoInvite.Error())
 		return
 	}
 	m, ok := media[req.Type]
@@ -142,6 +149,7 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 
 // Campaign is what an advertiser sends.
 type Campaign struct {
+	Code       string   `json:"code"` // the send link's invite
 	Advertiser string   `json:"advertiser"`
 	Contact    string   `json:"contact"`
 	Title      string   `json:"title"`
@@ -224,12 +232,30 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	// The invite is used up with the campaign, both or neither.
+	tx, err := h.DB.Begin(r.Context())
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "enregistrement impossible")
+		return
+	}
+	defer tx.Rollback(r.Context())
+	tag, err := tx.Exec(r.Context(), `UPDATE ad_invites SET used_at = now() WHERE code = $1 AND used_at IS NULL`, c.Code)
+	if err != nil || tag.RowsAffected() != 1 {
+		httpx.Error(w, http.StatusForbidden, errNoInvite.Error())
+		return
+	}
 	token := randomID(18)
 	var id string
-	err = h.DB.QueryRow(r.Context(), `
+	err = tx.QueryRow(r.Context(), `
 		INSERT INTO ad_campaigns (token, advertiser, contact, title, media_key, media_type, communes, starts, ends)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
 		token, c.Advertiser, c.Contact, c.Title, c.Key, media[c.Type].kind, c.Communes, starts, ends).Scan(&id)
+	if err == nil {
+		_, err = tx.Exec(r.Context(), `UPDATE ad_invites SET campaign_id = $2 WHERE code = $1`, c.Code, id)
+	}
+	if err == nil {
+		err = tx.Commit(r.Context())
+	}
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "enregistrement impossible")
 		return
@@ -476,6 +502,82 @@ func (h *Handler) AdminUpdate(w http.ResponseWriter, r *http.Request) {
 	h.live = nil
 	h.mu.Unlock()
 	w.WriteHeader(http.StatusNoContent)
+}
+
+var errNoInvite = errors.New("ce lien d'envoi n'est pas (ou plus) valable : contacte Babi Life")
+
+// inviteOpen: is this a send link that hasn't been used yet?
+func (h *Handler) inviteOpen(ctx context.Context, code string) bool {
+	if len(code) < 12 || len(code) > 64 {
+		return false
+	}
+	var ok bool
+	err := h.DB.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM ad_invites WHERE code = $1 AND used_at IS NULL)`, code).Scan(&ok)
+	return err == nil && ok
+}
+
+// Invite tells the send page whether its link still works, and for whom.
+func (h *Handler) Invite(w http.ResponseWriter, r *http.Request) {
+	code := chi.URLParam(r, "code")
+	if !h.allow(r, "invite", 120) || !h.inviteOpen(r.Context(), code) {
+		httpx.Error(w, http.StatusNotFound, errNoInvite.Error())
+		return
+	}
+	var label string
+	_ = h.DB.QueryRow(r.Context(), `SELECT label FROM ad_invites WHERE code = $1`, code).Scan(&label)
+	httpx.JSON(w, http.StatusOK, map[string]any{"ok": true, "label": label, "ready": h.Bucket.Ready()})
+}
+
+// InviteRow is a send link, as the admin sees it.
+type InviteRow struct {
+	Code      string     `json:"code"`
+	Label     string     `json:"label"`
+	CreatedAt time.Time  `json:"createdAt"`
+	UsedAt    *time.Time `json:"usedAt"`
+	Campaign  *string    `json:"campaign"`
+}
+
+// AdminInvites: the send links, newest first.
+func (h *Handler) AdminInvites(w http.ResponseWriter, r *http.Request) {
+	if !h.admin(w, r) {
+		return
+	}
+	rows, err := h.DB.Query(r.Context(), `SELECT code, label, created_at, used_at, campaign_id::text FROM ad_invites ORDER BY created_at DESC LIMIT 200`)
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "liste indisponible")
+		return
+	}
+	defer rows.Close()
+	list := []InviteRow{}
+	for rows.Next() {
+		var i InviteRow
+		if err := rows.Scan(&i.Code, &i.Label, &i.CreatedAt, &i.UsedAt, &i.Campaign); err != nil {
+			httpx.Error(w, http.StatusInternalServerError, "liste indisponible")
+			return
+		}
+		list = append(list, i)
+	}
+	httpx.JSON(w, http.StatusOK, list)
+}
+
+// AdminInvite makes a send link for an advertiser Babi Life has agreed with.
+func (h *Handler) AdminInvite(w http.ResponseWriter, r *http.Request) {
+	if !h.admin(w, r) {
+		return
+	}
+	var req struct {
+		Label string `json:"label"`
+	}
+	if err := httpx.Decode(r, &req); err != nil || utf8.RuneCountInString(strings.TrimSpace(req.Label)) > 120 {
+		httpx.Error(w, http.StatusBadRequest, "requête invalide")
+		return
+	}
+	code := randomID(15)
+	if _, err := h.DB.Exec(r.Context(), `INSERT INTO ad_invites (code, label) VALUES ($1, $2)`, code, strings.TrimSpace(req.Label)); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "création impossible")
+		return
+	}
+	httpx.JSON(w, http.StatusOK, map[string]string{"code": code})
 }
 
 // HeadHTTP checks a file with a plain HEAD request.

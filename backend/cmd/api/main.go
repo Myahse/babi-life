@@ -175,6 +175,9 @@ func main() {
 			Endpoint: os.Getenv("ADS_S3_ENDPOINT"), Region: os.Getenv("ADS_S3_REGION"), Name: os.Getenv("ADS_S3_BUCKET"),
 			AccessKey: os.Getenv("ADS_S3_ACCESS_KEY"), SecretKey: os.Getenv("ADS_S3_SECRET_KEY"), PublicURL: os.Getenv("ADS_PUBLIC_URL"),
 		}}
+		r.Get("/ads/invite/{code}", pub.Invite)
+		r.Get("/ads/admin/invites", pub.AdminInvites)
+		r.Post("/ads/admin/invites", pub.AdminInvite)
 		r.Post("/ads/upload", pub.Upload)
 		r.Post("/ads/campaigns", pub.Create)
 		r.Get("/ads/campaigns/{token}", pub.Follow)

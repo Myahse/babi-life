@@ -15,6 +15,7 @@ const Waitlist = lazy(() => import('./screens/Waitlist').then((m) => ({ default:
 const LookEditor = lazy(() => import('./screens/LookEditor').then((m) => ({ default: m.LookEditor })))
 const PubPage = lazy(() => import('./screens/Pub').then((m) => ({ default: m.Pub })))
 const PubFollow = lazy(() => import('./screens/Pub').then((m) => ({ default: m.PubFollow })))
+const PubSend = lazy(() => import('./screens/Pub').then((m) => ({ default: m.PubSend })))
 const PubAdmin = lazy(() => import('./screens/Pub').then((m) => ({ default: m.PubAdmin })))
 const Profile = lazy(() => import('./screens/Profile').then((m) => ({ default: m.Profile })))
 
@@ -47,7 +48,7 @@ export function App() {
   if (path === '/pub' || path.startsWith('/pub/'))
     return (
       <Suspense fallback={<Loading />}>
-        {path === '/pub/admin' ? <PubAdmin /> : path.startsWith('/pub/suivi/') ? <PubFollow token={decodeURIComponent(path.slice('/pub/suivi/'.length))} /> : <PubPage />}
+        {path === '/pub/admin' ? <PubAdmin /> : path.startsWith('/pub/envoi/') ? <PubSend code={decodeURIComponent(path.slice('/pub/envoi/'.length))} /> : path.startsWith('/pub/suivi/') ? <PubFollow token={decodeURIComponent(path.slice('/pub/suivi/'.length))} /> : <PubPage />}
       </Suspense>
     )
 
