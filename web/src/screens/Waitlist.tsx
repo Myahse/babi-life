@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { ArrowRight, Baby, Check, Hammer, MapPinned, Shirt, Smartphone, UserRound, Users, type LucideIcon } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { ArrowLeft, ArrowRight, Baby, Check, Hammer, MapPinned, Shirt, Smartphone, UserRound, Users, type LucideIcon } from 'lucide-react'
 import { Scene } from '../components/Scene'
 import { Portrait } from '../avatar/portrait'
 import { IconTile, Logo } from '../components/ui'
@@ -12,8 +12,10 @@ import { InstallButton } from '../components/InstallButton'
 import { Discover } from '../components/Discover'
 import { firebaseConfigured, googleCancelled, signInWithGoogle } from '../lib/google'
 
-// The wish list (/liste): before the game opens, people leave a first name
-// and an e-mail or a WhatsApp number to hear when it does. The flyer's QR
+// The wish list: before the game opens, people leave a first name and an
+// e-mail or a WhatsApp number to hear when it does. /liste is the landing
+// (what the game is, Awa's tour, the clips); the form is on its own page,
+// /liste/inscription, opened from the buttons. The flyer's QR
 // code and the video lead here (?src=flyer, ?src=video say which).
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
@@ -29,7 +31,8 @@ const PROMISES: { icon: LucideIcon; colors: [string, string]; title: string; tex
 
 type Done = { name: string; count: number; already: boolean }
 
-export function Waitlist() {
+export function Waitlist({ form = false }: { form?: boolean }) {
+  const navigate = useNavigate()
   const world = useWorld((s) => s.world)
   const communes = world ? [...new Set(world.cities.flatMap((c) => c.communes.map((x) => x.name)))].sort((a, b) => a.localeCompare(b, 'fr')) : ABIDJAN
   const source = new URLSearchParams(location.search).get('src') ?? ''
@@ -93,11 +96,83 @@ export function Waitlist() {
     }
   }
 
-  /** Up to the sign-up card, the first field ready. */
+  /** To the sign-up page (keeping ?src=, which says where the visitor came from). */
   function toForm() {
-    document.getElementById('liste')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    setTimeout(() => document.querySelector<HTMLInputElement>('#liste input')?.focus({ preventScroll: true }), 450)
+    navigate(`/liste/inscription${location.search}`)
+    scrollTo(0, 0)
   }
+
+  // The form, on its own page (/liste/inscription).
+  const card = (
+    <section className="card w-full p-5 text-[var(--color-ink)] lg:p-6">
+      {done ? (
+        <div className="motion-stagger flex flex-col items-center gap-3 text-center">
+          <span className="grid h-16 w-16 place-items-center rounded-full bg-[var(--color-emerald)] text-white">
+            <Check size={34} strokeWidth={3} />
+          </span>
+          <h2 className="font-display text-2xl font-extrabold">{done.already ? `Tu es déjà sur la liste, ${done.name} !` : `C'est noté, ${done.name} !`}</h2>
+          <p className="text-sm font-semibold text-[var(--color-ink-soft)]">
+            On te prévient dès que Babi Life ouvre{beta ? ', et tu pourras tester avant tout le monde' : ''}.
+            {done.count > 1 && ` Vous êtes déjà ${done.count.toLocaleString('fr-FR')} sur la liste.`}
+          </p>
+          <Share />
+          <InstallButton className="mt-1" />
+        </div>
+      ) : (
+        <form className="flex flex-col gap-2.5" onSubmit={join}>
+          {count !== null && count > 0 && (
+            <span className="mb-1 inline-flex w-fit items-center gap-1.5 rounded-full bg-[#e6f8ef] px-3 py-1 text-xs font-extrabold text-[var(--color-emerald-deep)]">
+              <Users size={14} strokeWidth={2.6} /> Déjà {count.toLocaleString('fr-FR')} inscrit·e{count > 1 ? '·s' : ''}
+            </span>
+          )}
+          <h2 className="font-display text-2xl leading-tight font-extrabold">Je m'inscris</h2>
+          <p className="-mt-1 mb-1 text-sm font-semibold text-[var(--color-ink-soft)]">Gratuit. Juste pour être prévenu·e quand ça ouvre.</p>
+          <Consent terms={terms} privacy={privacy} onTerms={setTerms} onPrivacy={setPrivacy} />
+          {firebaseConfigured && (
+            <>
+              <button type="button" className="btn btn-white w-full" disabled={busy || !terms || !privacy} onClick={() => void google()}>
+                <GoogleMark /> Continuer avec Google
+              </button>
+              <div className="flex items-center gap-3 text-xs font-extrabold text-[var(--color-ink-soft)]">
+                <span className="h-px flex-1 bg-[var(--color-line)]" />
+                ou avec ton e-mail
+                <span className="h-px flex-1 bg-[var(--color-line)]" />
+              </div>
+            </>
+          )}
+          <label className="relative">
+            <UserRound size={18} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[var(--color-ink-soft)]" />
+            <input className="input !pl-11 text-base" placeholder="Prénom" autoComplete="given-name" value={first} onChange={(e) => setFirst(e.target.value)} aria-label="Prénom" required maxLength={60} />
+          </label>
+          <label className="relative">
+            <Smartphone size={18} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[var(--color-ink-soft)]" />
+            <input className="input !pl-11 text-base" placeholder="E-mail ou numéro WhatsApp" autoComplete="email" inputMode="email" value={contact} onChange={(e) => setContact(e.target.value)} aria-label="E-mail ou numéro WhatsApp" required />
+          </label>
+          <label className="relative">
+            <MapPinned size={18} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[var(--color-ink-soft)]" />
+            <input className="input !pl-11 text-base" placeholder="Ta commune (facultatif)" list="communes" value={commune} onChange={(e) => setCommune(e.target.value)} aria-label="Ta commune" maxLength={60} />
+            <datalist id="communes">
+              {communes.map((c) => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
+          </label>
+          <label className="flex cursor-pointer items-center gap-3 rounded-xl bg-[var(--color-canvas)] px-3 py-2.5 text-sm font-bold">
+            <input type="checkbox" className="h-5 w-5 shrink-0 accent-[var(--color-orange)]" checked={beta} onChange={(e) => setBeta(e.target.checked)} />
+            Je veux tester le jeu avant tout le monde
+          </label>
+          {/* Not for people: bots fill every field they find */}
+          <input className="hidden" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} aria-hidden />
+          {error && <p className="animate-pop rounded-xl bg-[#ffeef1] px-3 py-2 text-sm font-bold text-[#d81b3f]" role="alert">{error}</p>}
+          <button className="btn mt-1 w-full" disabled={busy || !terms || !privacy}>
+            {busy ? 'Un instant…' : "M'inscrire sur la liste"} <ArrowRight size={18} strokeWidth={2.6} />
+          </button>
+          <p className="text-center text-xs font-semibold text-[var(--color-ink-soft)]">Ton contact sert seulement à te prévenir de l'ouverture. Pas de pub, pas de revente.</p>
+          <Community />
+        </form>
+      )}
+    </section>
+  )
 
   return (
     <div className="relative min-h-full overflow-x-clip bg-[var(--color-night)] text-white">
@@ -113,6 +188,14 @@ export function Waitlist() {
         <span className="text-xs font-extrabold text-white/70">Gratuit · 100 % ivoirien</span>
       </header>
 
+      {form ? (
+        <main className="relative z-10 mx-auto flex max-w-md flex-col gap-4 px-5 pt-4 pb-10 lg:pt-10">
+          <Link to={`/liste${location.search}`} className="inline-flex w-fit items-center gap-1.5 text-sm font-extrabold text-white/80 hover:text-white">
+            <ArrowLeft size={16} strokeWidth={2.6} /> Découvrir le jeu
+          </Link>
+          {card}
+        </main>
+      ) : (
       <main className="relative z-10 mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] gap-8 px-5 pb-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-center lg:gap-x-12 lg:gap-y-14 lg:px-8 lg:pt-10">
         {/* ---------- Hero ---------- */}
         <section className="motion-stagger flex flex-col items-center text-center lg:items-start lg:text-left">
@@ -141,7 +224,7 @@ export function Waitlist() {
           {/* The app on the home screen (PWA): it opens right here, full screen. Only shown when the phone can install it. */}
           <InstallButton className="mt-3 max-w-sm" />
           <button
-            className="mt-3 text-sm font-extrabold text-white/80 underline-offset-4 hover:underline lg:hidden"
+            className="mt-3 text-sm font-extrabold text-white/80 underline-offset-4 hover:underline"
             onClick={toForm}
           >
             Ou juste m'inscrire <ArrowRight size={14} strokeWidth={2.6} className="inline" />
@@ -157,74 +240,18 @@ export function Waitlist() {
           </div>
         </section>
 
-        {/* ---------- Sign-up card ---------- */}
-        <section id="liste" className="card scroll-mt-6 w-full self-start p-5 text-[var(--color-ink)] lg:p-6">
-          {done ? (
-            <div className="motion-stagger flex flex-col items-center gap-3 text-center">
-              <span className="grid h-16 w-16 place-items-center rounded-full bg-[var(--color-emerald)] text-white">
-                <Check size={34} strokeWidth={3} />
-              </span>
-              <h2 className="font-display text-2xl font-extrabold">{done.already ? `Tu es déjà sur la liste, ${done.name} !` : `C'est noté, ${done.name} !`}</h2>
-              <p className="text-sm font-semibold text-[var(--color-ink-soft)]">
-                On te prévient dès que Babi Life ouvre{beta ? ', et tu pourras tester avant tout le monde' : ''}.
-                {done.count > 1 && ` Vous êtes déjà ${done.count.toLocaleString('fr-FR')} sur la liste.`}
-              </p>
-              <Share />
-              <InstallButton className="mt-1" />
-            </div>
-          ) : (
-            <form className="flex flex-col gap-2.5" onSubmit={join}>
-              {count !== null && count > 0 && (
-                <span className="mb-1 inline-flex w-fit items-center gap-1.5 rounded-full bg-[#e6f8ef] px-3 py-1 text-xs font-extrabold text-[var(--color-emerald-deep)]">
-                  <Users size={14} strokeWidth={2.6} /> Déjà {count.toLocaleString('fr-FR')} inscrit·e{count > 1 ? '·s' : ''}
-                </span>
-              )}
-              <h2 className="font-display text-2xl leading-tight font-extrabold">Je m'inscris</h2>
-              <p className="-mt-1 mb-1 text-sm font-semibold text-[var(--color-ink-soft)]">Gratuit. Juste pour être prévenu·e quand ça ouvre.</p>
-              <Consent terms={terms} privacy={privacy} onTerms={setTerms} onPrivacy={setPrivacy} />
-              {firebaseConfigured && (
-                <>
-                  <button type="button" className="btn btn-white w-full" disabled={busy || !terms || !privacy} onClick={() => void google()}>
-                    <GoogleMark /> Continuer avec Google
-                  </button>
-                  <div className="flex items-center gap-3 text-xs font-extrabold text-[var(--color-ink-soft)]">
-                    <span className="h-px flex-1 bg-[var(--color-line)]" />
-                    ou avec ton e-mail
-                    <span className="h-px flex-1 bg-[var(--color-line)]" />
-                  </div>
-                </>
-              )}
-              <label className="relative">
-                <UserRound size={18} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[var(--color-ink-soft)]" />
-                <input className="input !pl-11 text-base" placeholder="Prénom" autoComplete="given-name" value={first} onChange={(e) => setFirst(e.target.value)} aria-label="Prénom" required maxLength={60} />
-              </label>
-              <label className="relative">
-                <Smartphone size={18} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[var(--color-ink-soft)]" />
-                <input className="input !pl-11 text-base" placeholder="E-mail ou numéro WhatsApp" autoComplete="email" inputMode="email" value={contact} onChange={(e) => setContact(e.target.value)} aria-label="E-mail ou numéro WhatsApp" required />
-              </label>
-              <label className="relative">
-                <MapPinned size={18} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[var(--color-ink-soft)]" />
-                <input className="input !pl-11 text-base" placeholder="Ta commune (facultatif)" list="communes" value={commune} onChange={(e) => setCommune(e.target.value)} aria-label="Ta commune" maxLength={60} />
-                <datalist id="communes">
-                  {communes.map((c) => (
-                    <option key={c} value={c} />
-                  ))}
-                </datalist>
-              </label>
-              <label className="flex cursor-pointer items-center gap-3 rounded-xl bg-[var(--color-canvas)] px-3 py-2.5 text-sm font-bold">
-                <input type="checkbox" className="h-5 w-5 shrink-0 accent-[var(--color-orange)]" checked={beta} onChange={(e) => setBeta(e.target.checked)} />
-                Je veux tester le jeu avant tout le monde
-              </label>
-              {/* Not for people: bots fill every field they find */}
-              <input className="hidden" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} aria-hidden />
-              {error && <p className="animate-pop rounded-xl bg-[#ffeef1] px-3 py-2 text-sm font-bold text-[#d81b3f]" role="alert">{error}</p>}
-              <button className="btn mt-1 w-full" disabled={busy || !terms || !privacy}>
-                {busy ? 'Un instant…' : "M'inscrire sur la liste"} <ArrowRight size={18} strokeWidth={2.6} />
-              </button>
-              <p className="text-center text-xs font-semibold text-[var(--color-ink-soft)]">Ton contact sert seulement à te prévenir de l'ouverture. Pas de pub, pas de revente.</p>
-              <Community />
-            </form>
+        {/* ---------- Join: the form is on its own page ---------- */}
+        <section className="card w-full self-start lg:self-center p-5 text-[var(--color-ink)] lg:p-6">
+          {count !== null && count > 0 && (
+            <span className="mb-2 inline-flex w-fit items-center gap-1.5 rounded-full bg-[#e6f8ef] px-3 py-1 text-xs font-extrabold text-[var(--color-emerald-deep)]">
+              <Users size={14} strokeWidth={2.6} /> Déjà {count.toLocaleString('fr-FR')} inscrit·e{count > 1 ? '·s' : ''}
+            </span>
           )}
+          <h2 className="font-display text-2xl leading-tight font-extrabold">Rejoins la liste d'attente</h2>
+          <p className="mt-1 text-sm font-semibold text-[var(--color-ink-soft)]">Gratuit. On te prévient dès que Babi Life ouvre, et tu peux tester avant tout le monde.</p>
+          <button className="btn mt-4 w-full" onClick={toForm}>
+            M'inscrire <ArrowRight size={18} strokeWidth={2.6} />
+          </button>
         </section>
 
         {/* ---------- What's coming ---------- */}
@@ -243,6 +270,7 @@ export function Waitlist() {
         {/* ---------- The landing: how it works, clips from the game, the trailer, questions ---------- */}
         <Discover onJoin={toForm} />
       </main>
+      )}
 
       <footer className="relative z-10 mx-auto flex max-w-6xl flex-col items-center gap-3 px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-center lg:flex-row lg:justify-between lg:px-8 lg:text-left">
         <Logo size={28} />

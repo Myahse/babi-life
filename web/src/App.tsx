@@ -31,10 +31,10 @@ export function App() {
   }, [load])
 
   // The wish list is open to everyone, signed in or not, even if the API is down.
-  if (path === '/liste')
+  if (path === '/liste' || path === '/liste/inscription')
     return (
       <Suspense fallback={<Loading />}>
-        <Waitlist />
+        <Waitlist form={path === '/liste/inscription'} />
       </Suspense>
     )
 
