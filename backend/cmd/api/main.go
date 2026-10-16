@@ -201,6 +201,10 @@ func main() {
 		r.Get("/ads/admin", pub.AdminList)
 		r.Post("/ads/admin/{id}", pub.AdminUpdate)
 		r.Get("/news", headlines.Handler)
+		// Moderation of Gbairai's reports (MODERATION_KEY).
+		mod := &sims.Moderation{H: simsH, Key: os.Getenv("MODERATION_KEY")}
+		r.Get("/moderation/reports", mod.Reports)
+		r.Post("/moderation/reports/{report}", mod.Resolve)
 		r.Post("/auth/google", authH.Google)
 		r.Post("/auth/register", authH.Register)
 		r.Post("/auth/login", authH.Login)

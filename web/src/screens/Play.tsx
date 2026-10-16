@@ -27,6 +27,7 @@ import { INDOOR, Interior } from '../world3d/Interior'
 import { ARENAS, Arena } from '../world3d/interior/Arena'
 import { AppLogo } from '../components/AppLogo'
 import { GolvoApp, deliveryState, type Delivery } from './GolvoApp'
+import { GbairaiApp } from './GbairaiApp'
 import { WayeApp } from './WayeApp'
 import { StoreApp } from './StoreApp'
 import { FriendsApp } from './FriendsApp'
@@ -675,7 +676,7 @@ export function Play() {
 
 /* ---------- The in-game phone ---------- */
 
-type PhoneAppId = 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends'
+type PhoneAppId = 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai'
 type PhoneProps = {
   world: World
   sim: Sim
@@ -707,6 +708,7 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
   const STORE_APPS: { id: string; label: string; open: () => void }[] = [
     ...(ownPhone ? [{ id: 'store', label: 'Store', open: () => setApp('store') }] : []),
     ...(has('waye') ? [{ id: 'waye', label: 'Waye', open: () => setApp('waye') }] : []),
+    ...(has('gbairai') ? [{ id: 'gbairai', label: 'Gbairai', open: () => setApp('gbairai') }] : []),
     ...(has('golvo') ? [{ id: 'golvo', label: 'Golvo', open: () => setApp('golvo') }] : []),
     ...(has('gnango') ? [{ id: 'gnango', label: 'Gnango', open: onMap }] : []),
     ...(has('idrive') ? [{ id: 'idrive', label: 'iDrive', open: onMap }] : []),
@@ -724,7 +726,7 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
     { id: 'profile', label: 'Profil', icon: UserRound, colors: ['#ff8a9b', '#ff3d57'], open: () => navigate('/profil', { viewTransition: true }) },
     ] as Tile[]
   ).filter((a) => !life.minor || (a.id !== 'jobs' && a.id !== 'home'))
-  const title: Record<PhoneAppId, string> = { here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo', friends: 'Amis' }
+  const title: Record<PhoneAppId, string> = { here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo', friends: 'Amis', gbairai: 'Gbairai' }
 
   return (
     <div className="absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center" onClick={onClose}>
@@ -796,6 +798,7 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
                 {app === 'friends' && <FriendsApp world={world} sim={sim} act={act} />}
                 {app === 'store' && <StoreApp world={world} sim={sim} act={act} onOpen={(id) => (id === 'gnango' || id === 'idrive' ? onMap() : setApp(id as PhoneAppId))} />}
                 {app === 'waye' && <WayeApp world={world} sim={sim} act={act} journal={journal} renderJournal={(events) => <Journal events={events} />} />}
+                {app === 'gbairai' && <GbairaiApp sim={sim} />}
                 {app === 'golvo' && <GolvoApp world={world} sim={sim} delivery={delivery} onOrder={onDelivery} onCancel={() => onDelivery(null)} onCollect={onCollect} />}
               </div>
             </div>

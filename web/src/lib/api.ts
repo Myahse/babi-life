@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage } from './types'
 import { useSession } from '../store/session'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
@@ -92,6 +92,12 @@ export const api = {
   stop: (id: string) => post<ActionResult>(`/sims/${id}/stop`, {}),
   /** Other players: who's in the commune, invitations, player friends. */
   around: (id: string) => request<Around>(`/sims/${id}/around`),
+  /** Gbairai: the chats, a thread (after a message id), writing, blocking, reporting. */
+  chats: (id: string) => request<Chat[]>(`/sims/${id}/gbairai`),
+  thread: (id: string, friend: string, after = 0) => request<ChatMessage[]>(`/sims/${id}/gbairai/${friend}?after=${after}`),
+  write: (id: string, friend: string, body: string) => post<ChatMessage>(`/sims/${id}/gbairai/${friend}`, { body }),
+  block: (id: string, friend: string, blocked: boolean) => post<{ blocked: boolean }>(`/sims/${id}/gbairai/${friend}/block`, { blocked }),
+  report: (id: string, friend: string, reason: string, messageId?: number) => post<{ text: string }>(`/sims/${id}/gbairai/${friend}/report`, { reason, messageId }),
   /** The player's own plot, and the houses built in the commune where the Sim is. */
   plot: (id: string) => request<Plot>(`/sims/${id}/plot`),
   plots: (id: string) => request<Plot[]>(`/sims/${id}/plots`),

@@ -6,7 +6,7 @@ import { AppLogo } from '../components/AppLogo'
 import type { Act } from './phoneApps'
 
 // Made-up store ratings, part of the game's world.
-const RATING: Record<string, number> = { waye: 4.8, gnango: 4.3, idrive: 4.1, golvo: 4.4 }
+const RATING: Record<string, number> = { waye: 4.8, gnango: 4.3, idrive: 4.1, golvo: 4.4, gbairai: 4.6 }
 
 /** The phone's app store: install and remove the apps of the game. */
 export function StoreApp({ world, sim, act, onOpen }: { world: World; sim: Sim; act: Act; onOpen: (id: string) => void }) {

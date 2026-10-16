@@ -86,6 +86,9 @@ export type Player = {
 }
 export type Invite = { id: string; from: string; fromName: string; placeId: string; interactionId: string; label: string; at: string }
 export type Around = { players: Player[]; friends: Player[]; invites: Invite[] }
+/** Gbairai: a message, and a friend's chat in the list. */
+export type ChatMessage = { id: number; mine: boolean; body: string; at: string; readAt?: string }
+export type Chat = { friend: Player; last?: ChatMessage; unread: number; blocked?: boolean }
 export type FriendAction = { id: string; label: string; icon: string; minutes: number; cost: number; friendship: number; phone?: boolean }
 /** A stage of life, from an age in years. */
 export type LifeStage = { id: 'bebe' | 'enfant' | 'ado' | 'adulte'; label: string; from: number; scale: number }

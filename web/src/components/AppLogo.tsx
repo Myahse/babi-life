@@ -1,4 +1,4 @@
-import { Car, ShoppingBag, Bike, HandCoins } from 'lucide-react'
+import { Car, ShoppingBag, Bike, HandCoins, MessageCircleMore } from 'lucide-react'
 
 // Logos of the phone's store apps. Invented brands: their own colours and
 // marks, nodding to the services they are modelled on.
@@ -24,6 +24,7 @@ const LOOK: Record<string, { bg: string; fg: string; mark: (s: number) => React.
   golvo: { bg: 'linear-gradient(160deg,#ffd45c,#ffb703)', fg: '#0b6e4f', mark: (s) => <Bike size={s} strokeWidth={2.4} /> },
   gnango: { bg: 'linear-gradient(160deg,#2b2f45,#141416)', fg: '#ffd166', mark: (s) => <Car size={s} strokeWidth={2.4} /> },
   idrive: { bg: 'linear-gradient(160deg,#d7ff4f,#a6e10f)', fg: '#141416', mark: (s) => <HandCoins size={s} strokeWidth={2.4} /> },
+  gbairai: { bg: 'linear-gradient(160deg,#ff9f43,#f0590c)', fg: '#fff', mark: (s) => <MessageCircleMore size={s} strokeWidth={2.4} /> },
   store: { bg: 'linear-gradient(160deg,#7aa7ff,#3b5bfd)', fg: '#fff', mark: (s) => <ShoppingBag size={s} strokeWidth={2.4} /> },
 }
 
