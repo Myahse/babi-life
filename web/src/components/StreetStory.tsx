@@ -49,11 +49,11 @@ export function StreetStory() {
     const read = () => {
       const r = el.getBoundingClientRect()
       const p = Math.min(1, Math.max(0, -r.top / Math.max(1, r.height - innerHeight)))
-      // Each scene holds for most of its share of the scroll, then the walk to the next.
+      // Each scene holds for a part of its share of the scroll, then the walk to the next (long enough not to rush).
       const c = Math.min(n - 1, p * n)
       const i = Math.floor(c)
       const u = c - i
-      progress.current = i >= n - 1 ? n - 1 : i + smooth(Math.max(0, (u - 0.55) / 0.45))
+      progress.current = i >= n - 1 ? n - 1 : i + smooth(Math.max(0, (u - 0.4) / 0.6))
       setChapter(Math.min(n - 1, Math.round(progress.current)))
       if (p > 0.04) setMoved(true)
     }

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type MutableRefObject } from 'react'
+import { startTransition, useMemo, useRef, useState, type MutableRefObject } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import * as THREE from 'three'
@@ -21,6 +21,8 @@ import { CHAPTERS, GUIDE } from './StreetStory'
 // drawn, so a phone keeps up.
 
 const GAP = 30
+/** The camera's spring (critically damped): higher follows the scroll closer. */
+const SPRING = 3.2
 /** The hour each scene is lived at: how busy the stalls and the stop are. */
 const HOURS = [7, 7, 7, 8, 9, 10, 12, 13, 16, 18, 19, 21, 22]
 /** Where things go across the street: the far lane, the near lane, the guide's pavement. */
@@ -45,6 +47,8 @@ function Street({ progress }: { progress: MutableRefObject<number> }) {
   const { camera, size, scene } = useThree()
   const [at, setAt] = useState(0)
   const cam = useRef(0)
+  /** How fast the camera goes along the street (scenes a second). */
+  const vel = useRef(0)
   const sky = useMemo(() => new THREE.Color(SKY[0]), [])
   const hemi = useRef<THREE.HemisphereLight>(null)
   const sun = useRef<THREE.DirectionalLight>(null)
@@ -52,11 +56,19 @@ function Street({ progress }: { progress: MutableRefObject<number> }) {
   scene.background = sky
 
   useFrame((_, dt) => {
-    // Follow the scroll softly.
+    // Follow the scroll on a spring: it speeds up and slows down gently, so a
+    // flick of the finger or a notch of the wheel never jerks the camera. In
+    // small steps, so a slow frame (or coming back to the tab) doesn't overshoot.
     const target = progress.current
-    // A soft follow, whatever the frame rate: no jumps when the finger flicks.
-    cam.current += (target - cam.current) * (1 - Math.exp(-dt * 2.6))
-    if (Math.abs(target - cam.current) < 1e-4) cam.current = target
+    for (let left = Math.min(dt, 0.25); left > 0; left -= 1 / 120) {
+      const h = Math.min(left, 1 / 120)
+      vel.current += (SPRING * SPRING * (target - cam.current) - 2 * SPRING * vel.current) * h
+      cam.current += vel.current * h
+    }
+    if (Math.abs(target - cam.current) < 1e-4 && Math.abs(vel.current) < 1e-3) {
+      cam.current = target
+      vel.current = 0
+    }
     const c = cam.current
     const i = Math.min(SKY.length - 2, Math.floor(c))
     const u = Math.min(1, Math.max(0, c - i))
@@ -75,7 +87,8 @@ function Street({ progress }: { progress: MutableRefObject<number> }) {
     whereabouts.sim = [x + 1.2, PAVEMENT]
     whereabouts.simPose = 'walk'
     const near = Math.round(c)
-    if (near !== at) setAt(near)
+    // Building the next scene is heavy: let React spread it over a few frames.
+    if (near !== at) startTransition(() => setAt(near))
   })
 
   const len = CHAPTERS.length * GAP + 60
