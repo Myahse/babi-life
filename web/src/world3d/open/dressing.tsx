@@ -451,6 +451,104 @@ function Terrace({ seed, night }: { seed: number; night: boolean }) {
       {/* The string of bulbs, lit at night */}
       {[...Array(9)].map((_, k) => <B key={k} p={[2.5 + k * 0.85, 2.6 - Math.sin((k / 8) * Math.PI) * 0.35, 2.8]} s={[0.12, 0.12, 0.12]} c={['#ffd36b', '#ff6b6b', '#6bd3ff'][k % 3]} glow={night ? 2 : 0.2} />)}
       {[2.4, 10].map((x) => <mesh key={x} geometry={POLE} material={mat('#555')} position={[x, 1.3, 2.8]} scale={[1, 2.6, 1]} />)}
+      <MaquisCrowd tables={tables} seed={seed} />
+    </group>
+  )
+}
+
+/** How full the maquis is at an hour: packed at night, busy in the evening, people eating at lunch, a few regulars otherwise. */
+const maquisFill = (h: number) => (h >= 19 || h < 2 ? 1 : h >= 17 ? 0.55 : h >= 12 && h < 15 ? 0.4 : h >= 2 && h < 9 ? 0 : 0.15)
+const NEAR_MAQUIS = 90
+
+/**
+ * The maquis's customers: round the tables on the plastic chairs, a bottle
+ * or a plate in front of them; at night more tables put out on the street,
+ * people dancing in front of the speakers, the waitress with her tray.
+ * Drawn when the Sim is near.
+ */
+function MaquisCrowd({ tables, seed }: { tables: { x: number; z: number; chair: string }[]; seed: number }) {
+  const anchor = useRef<THREE.Group>(null)
+  const at = useMemo(() => new THREE.Vector3(), [])
+  const hourNow = () => Math.floor((worldTime() / 3600) % 24)
+  const [state, setState] = useState({ near: false, h: hourNow() })
+  const tick = useRef(10)
+  useFrame((_, dt) => {
+    tick.current += dt
+    if (tick.current < 1) return
+    tick.current = 0
+    if (!anchor.current) return
+    anchor.current.getWorldPosition(at)
+    const near = Math.hypot(at.x - whereabouts.sim[0], at.z - whereabouts.sim[1]) < NEAR_MAQUIS
+    const h = hourNow()
+    if (near !== state.near || h !== state.h) setState({ near, h })
+  })
+  const fill = maquisFill(state.h)
+  const night = fill >= 1
+  // The tables put out at night, on the street side.
+  const all = useMemo(() => [...tables, ...[0, 1, 2].map((i) => ({ x: 3 + i * 2.6, z: 6.4, chair: i % 2 ? '#e8432f' : '#f4f4f4' }))], [tables])
+  const people = useMemo(() => {
+    const r = rnd(Math.floor(seed * 1000) + 41)
+    return [...Array(36)].map(() => {
+      const gender: 'femme' | 'homme' = r() < 0.4 ? 'femme' : 'homme'
+      return { gender, look: randomLook(gender, r), seed: r() * 100, eats: r() < 0.35 }
+    })
+  }, [seed])
+  if (!state.near || fill <= 0) return <group ref={anchor} />
+  const shown = night ? all : tables
+  // The seats taken: all of them at night, fewer at other hours.
+  const SEATS: [number, number, number][] = [[-0.7, 0, Math.PI / 2], [0.7, 0, -Math.PI / 2], [0, 0.7, Math.PI]]
+  let who = 0
+  return (
+    <group ref={anchor}>
+      <NoShadows>
+        {shown.map((t, i) => (
+          <group key={i} position={[t.x, 0, t.z]}>
+            {/* The extra tables and chairs brought out at night */}
+            {i >= tables.length && (
+              <>
+                <B p={[0, 0.72, 0]} s={[0.9, 0.05, 0.9]} c="#f4f4f4" />
+                <mesh geometry={POLE} material={mat('#dcdcdc')} position={[0, 0.36, 0]} scale={[1.5, 0.72, 1.5]} />
+                {SEATS.map(([x, z], k) => (
+                  <B key={k} p={[x, 0.42, z]} s={[0.42, 0.05, 0.42]} c={t.chair} />
+                ))}
+              </>
+            )}
+            {/* On the table: bottles, a plate */}
+            {[0, 1].map((k) => (
+              <B key={k} p={[-0.2 + k * 0.3, 0.86, -0.15 + k * 0.1]} s={[0.07, 0.22, 0.07]} c={k ? '#2f6b2a' : '#6b3a12'} />
+            ))}
+            <B p={[0.15, 0.76, 0.2]} s={[0.3, 0.03, 0.3]} c="#f4f1ea" />
+            {SEATS.map(([x, z, ry], k) => {
+              if ((i * 3 + k) % 10 >= Math.round(fill * 10)) return null
+              const p = people[who++ % people.length]
+              return (
+                <group key={k} position={[x, 0, z]} rotation={[0, ry, 0]}>
+                  <Human look={p.look} gender={p.gender} pose={p.eats ? 'eat' : 'drink'} seed={p.seed} />
+                </group>
+              )
+            })}
+          </group>
+        ))}
+        {/* At night: the speakers and the dancers in front of them, the waitress with her tray */}
+        {night && (
+          <>
+            <B p={[10.4, 0.7, 4.4]} s={[0.7, 1.4, 0.6]} c="#141416" />
+            <B p={[10.4, 1.0, 4.72]} s={[0.4, 0.4, 0.02]} c="#3a3a3a" />
+            {[0, 1, 2, 3].map((k) => {
+              const p = people[(30 + k) % people.length]
+              return (
+                <group key={k} position={[8.2 + (k % 2) * 1.2, 0, 4.2 + Math.floor(k / 2) * 1.1]} rotation={[0, -1.2 + k, 0]}>
+                  <Human look={p.look} gender={p.gender} pose="dance" seed={p.seed} />
+                </group>
+              )
+            })}
+            <group position={[6.2, 0, 3.3]} rotation={[0, 2.4, 0]}>
+              <Human look={{ ...people[35].look, outfit: 'pagne' }} gender="femme" pose="busy" seed={people[35].seed} />
+              <B p={[0, 1.15, 0.35]} s={[0.45, 0.03, 0.45]} c="#c0c7cf" />
+            </group>
+          </>
+        )}
+      </NoShadows>
     </group>
   )
 }
