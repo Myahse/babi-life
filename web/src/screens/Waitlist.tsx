@@ -9,6 +9,7 @@ import { CROWD } from './Title'
 import { Community, Share } from '../components/WaitlistShare'
 import { Consent } from '../components/Consent'
 import { InstallButton } from '../components/InstallButton'
+import { Discover } from '../components/Discover'
 import { firebaseConfigured, googleCancelled, signInWithGoogle } from '../lib/google'
 
 // The wish list (/liste): before the game opens, people leave a first name
@@ -92,6 +93,12 @@ export function Waitlist() {
     }
   }
 
+  /** Up to the sign-up card, the first field ready. */
+  function toForm() {
+    document.getElementById('liste')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    setTimeout(() => document.querySelector<HTMLInputElement>('#liste input')?.focus({ preventScroll: true }), 450)
+  }
+
   return (
     <div className="relative min-h-full overflow-x-hidden bg-[var(--color-night)] text-white">
       <div className="pointer-events-none fixed inset-0">
@@ -135,10 +142,7 @@ export function Waitlist() {
           <InstallButton className="mt-3 max-w-sm" />
           <button
             className="mt-3 text-sm font-extrabold text-white/80 underline-offset-4 hover:underline lg:hidden"
-            onClick={() => {
-              document.getElementById('liste')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-              setTimeout(() => document.querySelector<HTMLInputElement>('#liste input')?.focus({ preventScroll: true }), 450)
-            }}
+            onClick={toForm}
           >
             Ou juste m'inscrire <ArrowRight size={14} strokeWidth={2.6} className="inline" />
           </button>
@@ -235,6 +239,9 @@ export function Waitlist() {
             </li>
           ))}
         </ul>
+
+        {/* ---------- The landing: how it works, clips from the game, the trailer, questions ---------- */}
+        <Discover onJoin={toForm} />
       </main>
 
       <footer className="relative z-10 mx-auto flex max-w-6xl flex-col items-center gap-3 px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-center lg:flex-row lg:justify-between lg:px-8 lg:text-left">
