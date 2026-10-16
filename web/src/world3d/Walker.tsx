@@ -286,6 +286,17 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       if (roomAt(x, z) || !roomAt(g.position.x, g.position.z)) g.position.set(x, 0, z)
       else if (roomAt(x, g.position.z)) g.position.x = x
       else if (roomAt(g.position.x, z)) g.position.z = z
+      else {
+        // Straight into a post or a trunk: step round it, a little to one side.
+        for (const a of [0.5, -0.5, 1, -1]) {
+          const [c, s] = [Math.cos(a), Math.sin(a)]
+          const [sx, sz] = [g.position.x + (dir.x * c - dir.z * s) * step, g.position.z + (dir.x * s + dir.z * c) * step]
+          if (roomAt(sx, sz)) {
+            g.position.set(sx, 0, sz)
+            break
+          }
+        }
+      }
       g.rotation.y = Math.atan2(dir.x, dir.z)
       if (!padWalking.current) {
         padWalking.current = true
