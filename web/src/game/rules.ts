@@ -201,7 +201,7 @@ export function hours(it: { minHour?: number; maxHour?: number }) {
 export function ageOf(world: World, bornAt: number, gameMinutes: number) {
   if (!bornAt) return 25
   const t = Math.max(0, gameMinutes - bornAt)
-  const pts = world.growUp ?? [[0, 0], [18, 0]]
+  const pts = world.growUp ?? [[0, 0]] // an older API: a year is yearMinutes from birth
   const [lastAge, lastAt] = pts[pts.length - 1]
   if (t >= lastAt) return lastAge + Math.floor((t - lastAt) / (world.yearMinutes ?? 480))
   for (let i = pts.length - 2; i >= 0; i--) {
