@@ -75,10 +75,12 @@ type Props = {
   perspective?: boolean
   /** Close behind the Sim, like Minecraft's third-person view, rather than high above. */
   close?: boolean
+  /** Closer still: over the shoulder, at head height (the third-person view). */
+  shoulder?: boolean
 }
 
 /** The player's Sim: walks to places, with the pad or by tapping the ground; the camera follows. */
-export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy, stationAt, nameTag, labels, onNear, frozen, recenter, onFreeCamera, perspective, close }: Props) {
+export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy, stationAt, nameTag, labels, onNear, frozen, recenter, onFreeCamera, perspective, close, shoulder }: Props) {
   const group = useRef<THREE.Group>(null)
   const path = useRef<[number, number][]>([])
   const target = useRef<string | null>(null)
@@ -153,6 +155,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   const gesture = useRef(false)
   /** How far behind the Sim the player wants the close camera (walls may bring it in). */
   const wantDist = useRef(9.7)
+  /** Where the camera looks: the Sim's head over the shoulder, its chest close up, the ground from above. */
+  const lookHeight = close ? (shoulder ? 1.75 : 1.4) : 0
   const setFree = (f: boolean) => {
     if (free.current !== f) {
       free.current = f
@@ -168,14 +172,14 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     const flat = new THREE.Vector3(camera.position.x - t.x, 0, camera.position.z - t.z)
     if (flat.lengthSq() < 0.01) flat.set(1, 0, 1)
     flat.normalize()
-    const [back, up] = close ? [9, 4.2] : [62, 56]
+    const [back, up] = close ? (shoulder ? [4.4, 2.5] : [9, 4.2]) : [62, 56]
     const g = group.current.position
-    t.set(g.x, close ? 1.4 : 0, g.z)
+    t.set(g.x, lookHeight, g.z)
     camera.position.set(g.x + flat.x * back, up, g.z + flat.z * back)
-    wantDist.current = Math.hypot(back, up - 1.4)
+    wantDist.current = Math.hypot(back, up - lookHeight)
     controls.update()
     setFree(false)
-  }, [close, controls]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [close, shoulder, controls]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!controls) return
     const start = () => (gesture.current = true)
@@ -374,7 +378,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     whereabouts.simPose = busy ? (busy.kind === 'chat' ? 'talk' : 'busy') : walking ? (run ? 'run' : 'walk') : 'idle'
     // Camera follows the Sim, keeping whatever angle the player chose.
     if (controls && !free.current && !gesture.current) {
-      const want = new THREE.Vector3(g.position.x, close ? 1.4 : 0, g.position.z)
+      const want = new THREE.Vector3(g.position.x, lookHeight, g.position.z)
       // Smooth, and as quick on a slow phone as on a fast computer.
       const delta = want.sub(controls.target).multiplyScalar(1 - Math.exp(-5 * Math.min(dt, 0.25)))
       controls.target.add(delta)

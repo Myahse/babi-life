@@ -121,21 +121,26 @@ export function Play() {
   const [classic, setClassic] = useState(() => new URLSearchParams(location.search).has('classic'))
   // The commune's places from the map, as the open world loads them around the Sim.
   const [mapPlaces, setMapPlaces] = useState<Place[]>([])
-  // Close behind the Sim by default (it stays on screen); the choice is remembered.
-  const [closeView, setCloseView] = useState(() => {
+  // Three views of the street: close behind the perso (the default), over its
+  // shoulder (third person), or from above. The choice is remembered.
+  const [view, setView] = useState<'pres' | 'epaule' | 'haut'>(() => {
     try {
-      return localStorage.getItem('babi.closeView') !== 'false'
+      const v = localStorage.getItem('babi.view')
+      if (v === 'pres' || v === 'epaule' || v === 'haut') return v
+      return localStorage.getItem('babi.closeView') === 'false' ? 'haut' : 'pres'
     } catch {
-      return true
+      return 'pres'
     }
   })
   useEffect(() => {
     try {
-      localStorage.setItem('babi.closeView', String(closeView))
+      localStorage.setItem('babi.view', view)
     } catch {
       /* private window */
     }
-  }, [closeView])
+  }, [view])
+  const closeView = view !== 'haut'
+  const NEXT_VIEW = { pres: 'epaule', epaule: 'haut', haut: 'pres' } as const
   const [whereTo, setWhereTo] = useState(false)
   const announced = useRef('')
 
@@ -428,6 +433,7 @@ export function Play() {
             recenter,
             onFreeCamera: setFreeCam,
             closeView,
+            shoulderView: view === 'epaule',
             onTalk: (npc: Npc) => setChat(npc),
             onCall: (npc: Npc, text: string) => !sim.activity && !chat && setCalling({ npc, text }),
             talkingTo: chat?.id ?? (doing?.placeKind === 'chat' ? talkedTo.current : null),
@@ -503,9 +509,10 @@ export function Play() {
           {!showInside && !placeId && !overlay && (
             <div className="pointer-events-auto flex flex-col items-end gap-2">
               {!classic && (
-                <button className="hud flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={() => setCloseView((v) => !v)}>
-                  {closeView ? <Mountain size={17} strokeWidth={2.6} className="text-[var(--color-emerald)]" /> : <Eye size={17} strokeWidth={2.6} className="text-[var(--color-emerald)]" />}
-                  {closeView ? 'Vue de haut' : 'Vue de près'}
+                <button className="hud flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={() => setView((v) => NEXT_VIEW[v])} title="Changer de vue">
+                  {/* What the next tap gives */}
+                  {view === 'epaule' ? <Mountain size={17} strokeWidth={2.6} className="text-[var(--color-emerald)]" /> : <Eye size={17} strokeWidth={2.6} className="text-[var(--color-emerald)]" />}
+                  {{ pres: 'Vue épaule', epaule: 'Vue de haut', haut: 'Vue de près' }[view]}
                 </button>
               )}
               <OrbitGizmo

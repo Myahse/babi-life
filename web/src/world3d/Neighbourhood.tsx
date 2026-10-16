@@ -54,6 +54,8 @@ export type Props = {
   onPickPlayer?: (id: string) => void
   /** The open world's close, third-person camera. */
   closeView?: boolean
+  /** The over-the-shoulder view (with closeView). */
+  shoulderView?: boolean
   /** Talk to someone in the street (the open world's passers-by). */
   onTalk?: (npc: import('./open/OpenWorld').Npc) => void
   /** Someone in the street calls out to the Sim. */
