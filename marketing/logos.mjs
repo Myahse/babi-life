@@ -65,7 +65,7 @@ function lockup({ babi, life, stacked, mono, id }) {
 
 const files = {
   'babi-life-mark.svg': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${mark('sky')}</svg>`,
-  'babi-life-app-icon.svg': fs.readFileSync(path.join(import.meta.dirname, '../web/public/icon.svg'), 'utf8'),
+  'babi-life-app-icon.svg': fs.readFileSync(path.join(import.meta.dirname, '../web/public/pin-icon.svg'), 'utf8'),
   'babi-life-mark-pixel.svg': pixelMark(),
   'babi-life-logo-on-dark.svg': lockup({ babi: BRAND.white, life: BRAND.orange, id: 'a' }),
   'babi-life-logo-on-light.svg': lockup({ babi: BRAND.ink, life: BRAND.orange, id: 'b' }),

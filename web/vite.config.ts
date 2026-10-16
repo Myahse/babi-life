@@ -13,7 +13,7 @@ export default defineConfig({
     // instantly and offline; game data always comes live from the API.
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icon.svg', 'apple-touch-icon.png', 'favicon-48.png'],
+      includeAssets: ['pin-icon.svg', 'pin-apple-touch-icon.png', 'pin-favicon-48.png', 'favicon.ico'],
       manifest: {
         name: 'Babi Life',
         short_name: 'Babi Life',
@@ -28,9 +28,9 @@ export default defineConfig({
         theme_color: '#0f1230',
         categories: ['games', 'entertainment'],
         icons: [
-          { src: 'pwa-192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'pwa-512.png', sizes: '512x512', type: 'image/png' },
-          { src: 'maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: 'pin-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'pin-512.png', sizes: '512x512', type: 'image/png' },
+          { src: 'pin-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
       workbox: {
