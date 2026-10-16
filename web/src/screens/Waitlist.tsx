@@ -100,7 +100,7 @@ export function Waitlist() {
   }
 
   return (
-    <div className="relative min-h-full overflow-x-hidden bg-[var(--color-night)] text-white">
+    <div className="relative min-h-full overflow-x-clip bg-[var(--color-night)] text-white">
       <div className="pointer-events-none fixed inset-0">
         <Scene className="h-full w-full" />
         <div className="absolute inset-0 bg-gradient-to-b from-[#0f1230]/70 via-[#0f1230]/35 to-[#0f1230]/95" />

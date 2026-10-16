@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArrowRight, Baby, Briefcase, Play, Sparkles, TrendingUp, type LucideIcon } from 'lucide-react'
 import { IconTile } from './ui'
+import { StreetStory } from './StreetStory'
 
 // The landing on the wish list (/liste): what Babi Life is, how it works, and
 // short clips from inside the game. The clips are cut from the « découverte »
@@ -110,6 +111,9 @@ export function Discover({ onJoin }: { onJoin: () => void }) {
           ))}
         </ol>
       </section>
+
+      {/* ---------- The guided walk down a street, driven by the scroll ---------- */}
+      <StreetStory />
 
       {/* ---------- Inside the game ---------- */}
       <section>
