@@ -34,19 +34,23 @@ Options au moment de construire :
 
 ```sh
 --dart-define=GAME_URL=https://www.lifeinbabi.com        # où est le jeu (par défaut)
---dart-define=GOOGLE_WEB_CLIENT_ID=xxxx.apps.googleusercontent.com
+--dart-define=TESTER=true                                # l'appli des testeurs (plus bas)
 ```
 
-`GOOGLE_WEB_CLIENT_ID` est l'identifiant **Web** de Google, le même que `GOOGLE_CLIENT_ID` sur l'API : le jeton de connexion est alors émis pour lui, et l'API l'accepte. Il faut aussi, dans Google Cloud Console :
+### Connexion Google (Firebase)
 
-- **Android** : un identifiant OAuth de type *Android*, avec le nom de paquet `com.lifeinbabi.babi_life` et l'empreinte SHA-1 de la clé de signature (`keytool -list -v -keystore …`) ;
-- **iOS** : un identifiant OAuth de type *iOS* (bundle `com.lifeinbabi.babiLife`), à mettre dans `ios/Runner/Info.plist` (`GIDClientID`, et son schéma d'URL inversé dans `CFBundleURLTypes`).
+Le jeu se connecte avec **Firebase** (projet `babilife-38e39`), et l'API vérifie les jetons Firebase. Dans l'appli, le téléphone fait la connexion Google lui-même, pour le client web que Firebase a créé (`115685300024-jo2j….apps.googleusercontent.com`, public, déjà dans `lib/config.dart`) ; le jeu transforme ce jeton Google en connexion Firebase (`signInWithCredential`, `web/src/lib/google.ts`), puis l'envoie à l'API comme sur le site. Rien à faire dans Google Cloud Console. Il faut seulement, une fois :
+
+1. **Firebase console** → *Paramètres du projet* → *Vos applications* → *Ajouter une application* → **Android** : nom de paquet `com.lifeinbabi.babi_life`, et l'empreinte **SHA-1** de la clé de l'appli (*Ajouter une empreinte*). Firebase crée alors le client Android tout seul. Pas besoin de `google-services.json`.
+2. **GitHub** → *Settings → Secrets and variables → Actions* → *New repository secret* : `ANDROID_KEYSTORE` (la clé `.jks` en base64) et `ANDROID_KEY_PASSWORD`. Chaque build est alors signé avec la même clé, celle dont Firebase connaît le SHA-1. Sans ces secrets, GitHub signe avec une clé de débogage différente à chaque fois, et la connexion Google échoue dans l'appli.
+
+Garde la clé `.jks` et son mot de passe en lieu sûr (hors de git) : elle servira aussi pour le Play Store.
 
 L'icône vient du kit de lancement (`marketing/out/logos/babi-life-app-icon.png`) : `dart run flutter_launcher_icons` la refait.
 
 ## Sur GitHub
 
-À chaque changement de `mobile/` sur `main` (ou à la main : *Actions → Mobile app → Run workflow*), GitHub vérifie l'appli (`flutter analyze`, `flutter test`) et construit les APK Android : on les télécharge dans l'onglet **Actions**, sur la dernière exécution, sous **babi-life-apk** (`app-arm64-v8a-release.apk` pour presque tous les téléphones récents). L'identifiant Google Web se met dans les variables du dépôt : *Settings → Secrets and variables → Actions → Variables → `GOOGLE_WEB_CLIENT_ID`*.
+À chaque changement de `mobile/` sur `main` (ou à la main : *Actions → Mobile app → Run workflow*), GitHub vérifie l'appli (`flutter analyze`, `flutter test`) et construit les APK Android : on les télécharge dans l'onglet **Actions**, sur la dernière exécution, sous **babi-life-apk** (`app-arm64-v8a-release.apk` pour presque tous les téléphones récents). La clé de signature vient des secrets du dépôt (voir *Connexion Google*).
 
 ## L'appli des testeurs
 
@@ -58,5 +62,5 @@ flutter build apk --release --target-platform android-arm64 --dart-define=TESTER
 
 ## Publier
 
-- **Play Store** : créer une clé de signature (`keytool -genkey -v -keystore babi-life.jks -keyalg RSA -keysize 2048 -validity 10000 -alias babi-life`), la déclarer dans `android/key.properties` (jamais dans git) et `android/app/build.gradle.kts`, puis `flutter build appbundle`. Pour l'instant, le build *release* est signé avec la clé de débogage : bon pour essayer, pas pour le Play Store.
+- **Play Store** : la même clé (alias `babi-life`). En local, mettre `babi-life.jks` dans `android/` et un `android/key.properties` (jamais dans git) : `storeFile=babi-life.jks`, `storePassword=…`, `keyAlias=babi-life`, `keyPassword=…`, puis `flutter build appbundle`.
 - **App Store** : ouvrir `ios/Runner.xcworkspace` dans Xcode sur un Mac, choisir l'équipe, puis *Product → Archive*.

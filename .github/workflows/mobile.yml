@@ -1,7 +1,6 @@
 # The Android app (mobile/): checked and built on every change, the APKs
 # kept as the run's artifacts (Actions → this run → « babi-life-apk »).
-# The Google sign-in's web client ID comes from the repository's variables
-# (Settings → Secrets and variables → Actions → Variables: GOOGLE_WEB_CLIENT_ID).
+# Signed with the release key from the repository's secrets (below).
 name: Mobile app
 
 on:
@@ -27,13 +26,24 @@ jobs:
           channel: stable
           flutter-version: '3.47.7'
           cache: true
+      # The release key, from the repository's secrets (ANDROID_KEYSTORE: the
+      # .jks in base64, ANDROID_KEY_PASSWORD): the same SHA-1 every build, as
+      # Firebase needs for Google sign-in on the phone.
+      - name: Release key
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+          PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          [ -n "$KEYSTORE" ] || exit 0
+          echo "$KEYSTORE" | base64 -d > android/babi-life.jks
+          printf 'storeFile=babi-life.jks\nstorePassword=%s\nkeyAlias=babi-life\nkeyPassword=%s\n' "$PASSWORD" "$PASSWORD" > android/key.properties
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test
-      - run: flutter build apk --release --split-per-abi --dart-define=GOOGLE_WEB_CLIENT_ID=${{ vars.GOOGLE_WEB_CLIENT_ID }}
+      - run: flutter build apk --release --split-per-abi
       # The testers' app: the whole game before launch (arm64: most phones).
       - run: |
-          flutter build apk --release --target-platform android-arm64 --dart-define=TESTER=true --dart-define=GOOGLE_WEB_CLIENT_ID=${{ vars.GOOGLE_WEB_CLIENT_ID }}
+          flutter build apk --release --target-platform android-arm64 --dart-define=TESTER=true
           mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/babi-life-testeur.apk
           rm -f build/app/outputs/flutter-apk/app-release.apk.sha1
       - uses: actions/upload-artifact@v4

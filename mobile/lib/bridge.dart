@@ -10,11 +10,11 @@ import 'config.dart';
 class Bridge {
   static bool _ready = false;
 
-  /// The Google ID token for the server's /auth/google, or null if the player cancels.
+  /// The Google ID token (the game makes it a Firebase sign-in), or null if the player cancels.
   static Future<String?> googleSignIn() async {
     final google = GoogleSignIn.instance;
     if (!_ready) {
-      await google.initialize(serverClientId: Config.googleWebClientId.isEmpty ? null : Config.googleWebClientId);
+      await google.initialize(serverClientId: Config.googleWebClientId);
       _ready = true;
     }
     try {

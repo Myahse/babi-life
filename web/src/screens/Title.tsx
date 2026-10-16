@@ -15,7 +15,7 @@ import { IconTile, Logo, LogoMark } from '../components/ui'
 import { UsernameField } from '../components/UsernameField'
 import { suggestFrom } from '../lib/username'
 import { gameOpen } from '../lib/launch'
-import { firebaseConfigured, googleCancelled, signInWithGoogle } from '../lib/google'
+import { firebaseConfigured, firebaseFromGoogle, googleCancelled, signInWithGoogle } from '../lib/google'
 
 const GOOGLE_ENABLED = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID)
 
@@ -170,7 +170,7 @@ export function Title() {
                 onClick={async () => {
                   try {
                     const token = await nativeGoogleSignIn()
-                    if (token) finish(api.googleLogin(token))
+                    if (token) finish(api.googleLogin(firebaseConfigured ? await firebaseFromGoogle(token) : token))
                   } catch {
                     setError('Connexion Google impossible')
                   }

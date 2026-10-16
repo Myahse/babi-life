@@ -1,12 +1,14 @@
-/// Where the game is, and the Google client the server checks sign-ins
-/// against. Both can be changed at build time:
+/// Where the game is, and the Google client of the Firebase project the
+/// game signs in with. Both can be changed at build time:
 ///   flutter build apk --dart-define=GAME_URL=https://… --dart-define=GOOGLE_WEB_CLIENT_ID=….apps.googleusercontent.com
 class Config {
   static const gameUrl = String.fromEnvironment('GAME_URL', defaultValue: 'https://www.lifeinbabi.com');
 
-  /// The web client ID (the server's GOOGLE_CLIENT_ID): Google signs the
-  /// phone's sign-in for it, so the server accepts the token as from the site.
-  static const googleWebClientId = String.fromEnvironment('GOOGLE_WEB_CLIENT_ID');
+  /// The Firebase project's Google web client (« Web client (auto created by
+  /// Google Service) », public: it's in every Firebase sign-in link). The
+  /// phone's Google sign-in is issued for it, and the game turns it into a
+  /// Firebase sign-in (web/src/lib/google.ts), which the server checks.
+  static const googleWebClientId = String.fromEnvironment('GOOGLE_WEB_CLIENT_ID', defaultValue: '115685300024-jo2jvvpg0p1ue1gsv156lcmkjjb99s9t.apps.googleusercontent.com');
 
   /// The testers' build (--dart-define=TESTER=true): the whole game, before
   /// launch, while the site still shows the wish list (web/src/lib/launch.ts).

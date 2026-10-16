@@ -40,3 +40,14 @@ export async function signInWithGoogle(): Promise<GoogleAccount> {
   const first = cred.user.displayName?.trim().split(/\s+/)[0] || email.split('@')[0]
   return { token, email, firstName: first }
 }
+
+/**
+ * In the app (mobile/), the phone signs in with Google itself (Google won't
+ * open in a web view) and hands over a Google ID token: made a Firebase
+ * sign-in here, without any window, for the server's Firebase check.
+ */
+export async function firebaseFromGoogle(googleIdToken: string): Promise<string> {
+  const { GoogleAuthProvider, signInWithCredential } = await import('firebase/auth')
+  const cred = await signInWithCredential(await auth(), GoogleAuthProvider.credential(googleIdToken))
+  return cred.user.getIdToken()
+}
