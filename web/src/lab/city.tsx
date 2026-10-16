@@ -14,6 +14,7 @@ import { SportField } from '../world3d/open/field'
 import { FuelStation } from '../world3d/open/station'
 import { StreetStall, type StallKind } from '../world3d/open/stalls'
 import { BusStop } from '../world3d/open/sotra'
+import { CableStayed, TollPlaza } from '../world3d/open/bridges'
 import { freezeWorldTime } from '../lib/worldClock'
 import { FamilyScene } from '../avatar/Family'
 import { Arena } from '../world3d/interior/Arena'
@@ -398,6 +399,7 @@ function Lab() {
   if (view === 'outdoor') return <OutdoorLab />
   if (view === 'field') return <FieldLab />
   if (view === 'stalls') return <StallsLab />
+  if (view === 'tolls') return <TollsLab />
   if (view === 'family') return <FamilyScene familyId={q.get('f') ?? 'gnambro'} look={randomLook((q.get('g') ?? 'femme') as 'femme', seededLab(Number(q.get('seed') ?? 3)))} gender={(q.get('g') ?? 'femme') as 'femme'} className="!h-screen !w-screen" />
   if (view === 'interior') return <InteriorLab />
   if (view === 'gbaka') return <GbakaLab />
@@ -475,6 +477,32 @@ function StallsLab() {
       <BusStop stop={{ id: 'sotra:lab', at: [0, 7], rot: 0, seed: 0.42, lines: ['11', '19', '44'] }} hour={hour} night={false} />
       <Vehicle p={[-11, 0, 10]} kind="sotra" />
       <OrbitControls target={[0, 1, 0]} />
+    </Canvas>
+  )
+}
+
+/** The two toll plazas side by side, and the 5e pont's pylon (?view=tolls&night). */
+function TollsLab() {
+  const cam = (q.get('cam') ?? '0,30,90').split(',').map(Number) as [number, number, number]
+  return (
+    <Canvas shadows dpr={[1, 1.5]} camera={{ position: cam, fov: 45, far: 3000 }} style={{ width: '100vw', height: '100vh' }}>
+      <color attach="background" args={[night ? '#0d1030' : '#a9d3f0']} />
+      <hemisphereLight args={[night ? '#3a4a8a' : '#ffffff', '#b8a27c', night ? 0.5 : 1.2]} />
+      <directionalLight position={[40, 80, 30]} intensity={night ? 0.2 : 1.6} castShadow />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[800, 800]} />
+        <meshLambertMaterial color="#c9b38c" />
+      </mesh>
+      <TollPlaza at={[-60, 0]} rot={0} lanes={21} label="Péage du 3e pont · 500 F" night={night} look="hkb" />
+      <TollPlaza at={[45, 0]} rot={0} lanes={10} label="Péage du 4e pont" night={night} look="yop" />
+      <group position={[0, 0, -260]}>
+        <mesh position={[0, 7.4, 0]}>
+          <boxGeometry args={[600, 1.2, 24]} />
+          <meshLambertMaterial color="#d8d3c8" />
+        </mesh>
+        <CableStayed ends={[[-300, 0], [300, 0]]} />
+      </group>
+      <OrbitControls target={(q.get('target') ?? '0,5,0').split(',').map(Number) as [number, number, number]} />
     </Canvas>
   )
 }

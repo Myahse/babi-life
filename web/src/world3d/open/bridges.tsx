@@ -39,8 +39,8 @@ export function BridgeSights({ chunks, night }: { chunks: ChunkData[]; night: bo
   return (
     <>
       {ado && <CableStayed ends={ado} />}
-      {hkbToll && <TollPlaza at={hkbToll.at} rot={hkbToll.rot} lanes={Math.max(21, hkbToll.lanes ?? 0)} label="Péage du 3e pont · 500 F" night={night} />}
-      {tolls.yop && <TollPlaza at={tolls.yop.at} rot={tolls.yop.rot} lanes={Math.max(10, tolls.yop.lanes ?? 0)} label="Péage du 4e pont" night={night} />}
+      {hkbToll && <TollPlaza at={hkbToll.at} rot={hkbToll.rot} lanes={Math.max(21, hkbToll.lanes ?? 0)} label="Péage du 3e pont · 500 F" night={night} look="hkb" />}
+      {tolls.yop && <TollPlaza at={tolls.yop.at} rot={tolls.yop.rot} lanes={Math.max(10, tolls.yop.lanes ?? 0)} label="Péage du 4e pont" night={night} look="yop" />}
     </>
   )
 }
@@ -50,44 +50,61 @@ const cableMat = new THREE.MeshLambertMaterial({ color: '#d9dde2' })
 
 /**
  * The 5e pont (Alassane-Ouattara): a 200 m cable-stayed span in the middle,
- * 19 stays on a 108 m tower (Abidjan.net). The sources don't give the tower's
- * shape: here a single mast between the carriageways, its stays fanning out
- * along the deck on both sides.
+ * 19 stays on a 108 m tower (Abidjan.net). As photos show it: one white
+ * pylon, its two legs standing either side of the deck and joining above it
+ * into a single mast that leans back, away from the main span; the stays fan
+ * from the mast down to the middle of the deck on both sides.
  */
-function CableStayed({ ends: [a, b] }: { ends: [XZ, XZ] }) {
+export function CableStayed({ ends: [a, b] }: { ends: [XZ, XZ] }) {
   const mid: XZ = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]
   const len = Math.hypot(b[0] - a[0], b[1] - a[1])
   const [ux, uz] = [(b[0] - a[0]) / len, (b[1] - a[1]) / len]
   const H = 108
+  const LEAN = 0.16 // radians, back along the bridge (towards a)
+  const JOIN = 42 // where the legs meet
+  // A point on the mast at height h: it leans back along -u.
+  const mastAt = (h: number) => new THREE.Vector3(mid[0] - ux * Math.tan(LEAN) * Math.max(0, h - JOIN * 0.6), h, mid[1] - uz * Math.tan(LEAN) * Math.max(0, h - JOIN * 0.6))
   const cables = useMemo(() => {
     const out: { pos: THREE.Vector3; q: THREE.Quaternion; l: number }[] = []
     for (let k = 0; k < 19; k++) {
-      // Alternate sides: 10 one way, 9 the other, the farthest from the top.
+      // Alternate sides: 10 one way (the main span), 9 the other, the farthest from the top.
       const side = k % 2 ? -1 : 1
       const n = Math.floor(k / 2)
-      const d = 14 + n * 9.5
-      const top = new THREE.Vector3(mid[0], H - 6 - n * 4.2, mid[1])
+      const d = 16 + n * (side > 0 ? 10 : 7.5)
+      const top = mastAt(H - 8 - n * 3.6)
       const deck = new THREE.Vector3(mid[0] + ux * d * side, BRIDGE_HEIGHT + 0.6, mid[1] + uz * d * side)
       const dir = top.clone().sub(deck)
       out.push({ pos: deck.clone().add(top).multiplyScalar(0.5), q: new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize()), l: dir.length() })
     }
     return out
   }, [mid[0], mid[1], ux, uz]) // eslint-disable-line react-hooks/exhaustive-deps
-  const rot = Math.atan2(ux, uz)
+  // The pylon's pieces: two legs from the water, either side of the deck, meeting at JOIN; the mast above.
+  const pieces = useMemo(() => {
+    const [vx, vz] = [uz, -ux] // across the bridge
+    const seg = (p: THREE.Vector3, q: THREE.Vector3, w0: number, w1: number) => {
+      const dir = q.clone().sub(p)
+      return { pos: p.clone().add(q).multiplyScalar(0.5), q: new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize()), l: dir.length(), w0, w1 }
+    }
+    const join = mastAt(JOIN)
+    const out = [-1, 1].map((s) => seg(new THREE.Vector3(mid[0] + vx * 13 * s, -2, mid[1] + vz * 13 * s), join, 3.4, 2.6))
+    out.push(seg(join, mastAt(H), 4.2, 1.8))
+    // The cross-beam under the deck, between the legs.
+    return { legs: out, beam: { at: new THREE.Vector3(mid[0], BRIDGE_HEIGHT - 2.2, mid[1]), rot: Math.atan2(vx, vz) } }
+  }, [mid[0], mid[1], ux, uz]) // eslint-disable-line react-hooks/exhaustive-deps
+  const top = mastAt(H)
   return (
     <group>
-      {/* The mast: tapering, from the lagoon floor to 108 m */}
-      <group position={[mid[0], 0, mid[1]]} rotation={[0, rot, 0]}>
-        <mesh position={[0, (H - 4) / 2, 0]} material={white} castShadow>
-          <cylinderGeometry args={[1.6, 2.6, H + 4, 8]} />
+      {pieces.legs.map((p, i) => (
+        <mesh key={i} position={p.pos} quaternion={p.q} material={white} castShadow>
+          <cylinderGeometry args={[p.w1, p.w0, p.l, 4]} />
         </mesh>
-        <mesh position={[0, H + 1, 0]} material={white}>
-          <coneGeometry args={[1.6, 4, 8]} />
-        </mesh>
-        <mesh position={[0, 1.5, 0]} material={white}>
-          <boxGeometry args={[7, 6, 9]} />
-        </mesh>
-      </group>
+      ))}
+      <mesh position={pieces.beam.at} rotation={[0, pieces.beam.rot, 0]} material={white}>
+        <boxGeometry args={[2.5, 2.5, 26]} />
+      </mesh>
+      <mesh position={[top.x, top.y + 2, top.z]} material={white}>
+        <coneGeometry args={[1.8, 5, 4]} />
+      </mesh>
       {cables.map((c, i) => (
         <mesh key={i} position={c.pos} quaternion={c.q} material={cableMat}>
           <cylinderGeometry args={[0.12, 0.12, c.l, 5]} />
@@ -180,50 +197,144 @@ function northApproach([a, b]: [XZ, XZ]): Toll {
 }
 
 /**
- * A toll plaza: lanes under a canopy, booths and barriers, the traffic
- * paying. The 3e pont's has 21 lanes (Bouygues), 500 F a car when it
- * opened; the 4e pont's lanes aren't published (10 here, an estimate).
+ * A toll plaza: lanes, booths on their islands, barriers, the traffic paying.
+ * The 3e pont's has 21 lanes (Bouygues), 500 F a car when it opened; the 4e
+ * pont's lanes aren't published (10 here, an estimate). Each as photos show it:
+ * - the 3e pont's (« hkb »): one long green metal roof over all the lanes on
+ *   round white columns, red booths, the islands' noses striped, the
+ *   offices with their green roofs at the side;
+ * - the 4e pont's (« yop »): a white arch over each island, the orange-red
+ *   gantry across all the lanes with a red cross or a green arrow over each,
+ *   green booths, red-and-white barriers before the islands, lamp masts.
  */
-function TollPlaza({ at, rot, lanes: LANES, label, night }: { at: XZ; rot: number; lanes: number; label: string; night: boolean }) {
+export function TollPlaza({ at, rot, lanes: LANES, label, night, look }: { at: XZ; rot: number; lanes: number; label: string; night: boolean; look: 'hkb' | 'yop' }) {
   const W = LANES * 3.6
-  const glow = useMemo(() => new THREE.MeshLambertMaterial({ color: '#fff4d6', emissive: '#ffe2a0', emissiveIntensity: 0 }), [])
-  glow.emissiveIntensity = night ? 1 : 0
+  const M = useMemo(
+    () => ({
+      glow: new THREE.MeshLambertMaterial({ color: '#fff4d6', emissive: '#ffe2a0', emissiveIntensity: 0 }),
+      green: new THREE.MeshLambertMaterial({ color: '#1f9a5a', side: THREE.DoubleSide }),
+      greenDark: new THREE.MeshLambertMaterial({ color: '#15703f' }),
+      red: new THREE.MeshLambertMaterial({ color: '#d4262d' }),
+      band: new THREE.MeshLambertMaterial({ color: '#e8642c' }),
+      island: new THREE.MeshLambertMaterial({ color: '#d8d3c8' }),
+      apron: new THREE.MeshLambertMaterial({ color: '#8f8e88' }),
+      line: new THREE.MeshLambertMaterial({ color: '#f4f4f4' }),
+      glass: new THREE.MeshLambertMaterial({ color: '#35506e' }),
+      stripeA: new THREE.MeshLambertMaterial({ color: '#e8432f' }),
+      stripeB: new THREE.MeshLambertMaterial({ color: '#ffffff' }),
+      go: new THREE.MeshLambertMaterial({ color: '#20c05a', emissive: '#20c05a', emissiveIntensity: 0.9 }),
+      stop: new THREE.MeshLambertMaterial({ color: '#e8222d', emissive: '#e8222d', emissiveIntensity: 0.9 }),
+    }),
+    [],
+  )
+  M.glow.emissiveIntensity = night ? 1 : 0
+  const hkb = look === 'hkb'
   return (
     <group position={[at[0], 0, at[1]]} rotation={[0, rot, 0]}>
-      {/* The apron of the plaza */}
-      <mesh position={[0, 0.07, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[W + 10, 70]} />
-        <meshLambertMaterial color="#9a9890" />
+      {/* The apron, the lane lines running up to the islands */}
+      <mesh position={[0, 0.07, 0]} rotation={[-Math.PI / 2, 0, 0]} material={M.apron} receiveShadow>
+        <planeGeometry args={[W + 10, 90]} />
       </mesh>
-      {/* The canopy, its orange band, the lights under it */}
-      <mesh position={[0, 7, 0]} material={white} castShadow>
-        <boxGeometry args={[W + 4, 1, 16]} />
-      </mesh>
-      <mesh position={[0, 7.6, 0]}>
-        <boxGeometry args={[W + 4.2, 0.5, 16.2]} />
-        <meshLambertMaterial color="#f08a24" />
-      </mesh>
-      <mesh position={[0, 6.45, 0]} material={glow}>
-        <boxGeometry args={[W, 0.1, 12]} />
-      </mesh>
-      {/* Between the lanes, the booths on their islands, and the barriers */}
+      {[...Array(LANES + 1)].map((_, i) =>
+        [-1, 1].map((s) => <mesh key={`${i}${s}`} position={[-W / 2 + i * 3.6, 0.09, s * 24]} rotation={[-Math.PI / 2, 0, 0]} scale={[0.15, 30, 1]} material={M.line} geometry={PLANE_GEO} />),
+      )}
+
+      {hkb ? (
+        <>
+          {/* One long roof over everything: green metal, a low ridge along it, on round white columns */}
+          {[-1, 1].map((s) => (
+            <mesh key={s} position={[0, 7.4, s * 4.2]} rotation={[s * 0.12, 0, 0]} material={M.green} castShadow>
+              <boxGeometry args={[W + 6, 0.3, 8.6]} />
+            </mesh>
+          ))}
+          <mesh position={[0, 7.0, 0]} material={M.greenDark}>
+            <boxGeometry args={[W + 6, 0.8, 1.2]} />
+          </mesh>
+          {/* The fascia along both eaves, with the lamps under it */}
+          {[-1, 1].map((s) => (
+            <mesh key={s} position={[0, 6.75, s * 8.4]} material={M.greenDark}>
+              <boxGeometry args={[W + 6, 0.5, 0.25]} />
+            </mesh>
+          ))}
+          <mesh position={[0, 6.3, 0]} material={M.glow}>
+            <boxGeometry args={[W, 0.08, 10]} />
+          </mesh>
+          {/* The offices at the side, under their own green roofs */}
+          {[0, 1].map((k) => (
+            <group key={k} position={[W / 2 + 14 + k * 13, 0, -26 + k * 6]}>
+              <mesh position={[0, 3, 0]} castShadow>
+                <boxGeometry args={[11, 6, 8]} />
+                <meshLambertMaterial color="#e9e3cf" />
+              </mesh>
+              <mesh position={[0, 6.6, 0]} material={M.green} castShadow>
+                <coneGeometry args={[8.3, 2.4, 4, 1]} />
+              </mesh>
+              <mesh position={[0, 3, 4.02]} material={M.glass}>
+                <boxGeometry args={[8, 1.6, 0.05]} />
+              </mesh>
+            </group>
+          ))}
+        </>
+      ) : (
+        <>
+          {/* The gantry across all the lanes: orange-red, a signal over each lane */}
+          <mesh position={[0, 6.4, -1.5]} material={M.band} castShadow>
+            <boxGeometry args={[W + 2, 0.9, 0.9]} />
+          </mesh>
+          {[...Array(LANES)].map((_, i) => (
+            <mesh key={i} position={[-W / 2 + i * 3.6 + 1.8, 6.4, -1.0]} material={TOLL_BUSY.includes(i) ? M.go : M.stop}>
+              <boxGeometry args={[0.7, 0.6, 0.1]} />
+            </mesh>
+          ))}
+          {/* Lamp masts beside the plaza */}
+          {[-1, 1].map((s) => (
+            <group key={s} position={[s * (W / 2 + 6), 0, -10]}>
+              <mesh position={[0, 7, 0]} material={white}>
+                <cylinderGeometry args={[0.18, 0.25, 14, 6]} />
+              </mesh>
+              <mesh position={[0, 14.2, 0]} material={M.glow}>
+                <boxGeometry args={[1.6, 0.4, 0.6]} />
+              </mesh>
+            </group>
+          ))}
+        </>
+      )}
+
+      {/* Between the lanes, the islands with their booths; the barriers */}
       {[...Array(LANES + 1)].map((_, i) => {
         const x = -W / 2 + i * 3.6
         return (
           <group key={i} position={[x, 0, 0]}>
-            <mesh position={[0, 0.15, 0]}>
-              <boxGeometry args={[0.9, 0.3, 14]} />
-              <meshLambertMaterial color="#d8d3c8" />
+            <mesh position={[0, 0.15, 0]} material={M.island}>
+              <boxGeometry args={[1.1, 0.3, 16]} />
             </mesh>
+            {/* The island's noses: striped red and white (the 4e pont: a barrier block in front) */}
+            {[-1, 1].map((s) => (
+              <group key={s} position={[0, 0, s * 8.6]}>
+                <mesh position={[0, 0.45, 0]} material={M.stripeB}>
+                  <boxGeometry args={[1.1, 0.6, 1.2]} />
+                </mesh>
+                <mesh position={[0, 0.45, s * 0.2]} material={M.stripeA}>
+                  <boxGeometry args={[1.12, 0.3, 0.5]} />
+                </mesh>
+                {!hkb && (
+                  <mesh position={[0, 0.5, s * 1.6]} material={M.red}>
+                    <boxGeometry args={[1.4, 0.8, 0.5]} />
+                  </mesh>
+                )}
+              </group>
+            ))}
             {i < LANES && (
               <>
-                <mesh position={[0, 1.45, 0]} castShadow>
-                  <boxGeometry args={[0.8, 2.3, 1.8]} />
-                  <meshLambertMaterial color="#e9e6df" />
+                {/* The booth: red (3e pont) or green (4e pont), its window toward the cars */}
+                <mesh position={[0, 1.5, 0]} material={hkb ? M.red : M.green} castShadow>
+                  <boxGeometry args={[0.95, 2.4, 2.0]} />
                 </mesh>
-                <mesh position={[0, 1.7, 0.92]}>
-                  <boxGeometry args={[0.7, 0.9, 0.05]} />
-                  <meshLambertMaterial color="#35506e" />
+                <mesh position={[0, 2.8, 0]} material={hkb ? M.red : M.greenDark}>
+                  <boxGeometry args={[1.1, 0.2, 2.2]} />
+                </mesh>
+                <mesh position={[0.49, 1.8, 0]} material={M.glass}>
+                  <boxGeometry args={[0.04, 0.9, 1.4]} />
                 </mesh>
                 {!TOLL_BUSY.includes(i) && (
                   <mesh position={[1.75, 1, -2.5]}>
@@ -233,10 +344,15 @@ function TollPlaza({ at, rot, lanes: LANES, label, night }: { at: XZ; rot: numbe
                 )}
               </>
             )}
-            {/* The pillars holding the canopy, every few lanes */}
-            {i % 4 === 0 && (
-              <mesh position={[0, 3.5, 5]} material={white}>
-                <boxGeometry args={[0.6, 7, 0.6]} />
+            {/* The 3e pont: a round column every two islands; the 4e pont: an arch over each island */}
+            {hkb && i % 2 === 0 && (
+              <mesh position={[0, 3.5, 3]} material={white}>
+                <cylinderGeometry args={[0.35, 0.35, 7, 10]} />
+              </mesh>
+            )}
+            {!hkb && (
+              <mesh position={[0, 0.3, 0]} rotation={[0, Math.PI / 2, 0]} material={white} castShadow>
+                <torusGeometry args={[6.6, 0.32, 6, 18, Math.PI]} />
               </mesh>
             )}
           </group>
@@ -244,11 +360,12 @@ function TollPlaza({ at, rot, lanes: LANES, label, night }: { at: XZ; rot: numbe
       })}
       <TollTraffic lanes={LANES} />
       <Html position={[0, 10, 0]} center zIndexRange={[15, 0]}>
-        <div className="rounded-xl border border-black/5 bg-[#f08a24] px-2.5 py-1 text-[12.5px] font-extrabold whitespace-nowrap text-white shadow-[0_4px_12px_-6px_rgba(0,0,0,0.45)]">{label}</div>
+        <div className={`rounded-xl border border-black/5 px-2.5 py-1 text-[12.5px] font-extrabold whitespace-nowrap text-white shadow-[0_4px_12px_-6px_rgba(0,0,0,0.45)] ${hkb ? 'bg-[#1f9a5a]' : 'bg-[#e8642c]'}`}>{label}</div>
       </Html>
     </group>
   )
 }
+const PLANE_GEO = new THREE.PlaneGeometry(1, 1)
 
 /**
  * The toll at work: in the busy lanes a car comes up, stops at the booth to
