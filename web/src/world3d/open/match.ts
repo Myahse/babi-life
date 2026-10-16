@@ -12,7 +12,7 @@ import type { Field } from './places'
 //
 // In the field's own frame: u along its length (team 0 attacks +u), v across.
 
-export type Slot = { u: number; v: number; face: number; pose: Pose }
+export type Slot = { u: number; v: number; face: number; pose: Pose; /** m/s, for the strides */ speed: number }
 type P = [number, number]
 type Kind = 'kickoff' | 'dribble' | 'pass' | 'shot' | 'goal' | 'save' | 'hold' | 'out' | 'reset'
 type Ev = {
@@ -325,6 +325,12 @@ export class Match {
     return e.b
   }
 
+  /** What's happening at `time`, for the crowd: the kind of moment and which team has the ball. */
+  moment(time: number): { kind: string; team: 0 | 1 } {
+    const { e } = this.at(time)
+    return { kind: e.kind, team: e.team as 0 | 1 }
+  }
+
   /** Player `i` of `team` at `time`: place, which way he faces, what he's doing. */
   player(team: 0 | 1, i: number, time: number): Slot {
     const here = this.pos(team, i, time)
@@ -336,13 +342,22 @@ export class Match {
     const foot = this.field.sport === 'foot'
     const mine = e.team === team
     let pose: Pose = speed > 3 ? 'run' : speed > 0.7 ? 'walk' : 'idle'
-    const justFrom = local - e.t0 < (foot ? 0.35 : 0.5)
-    if (here.mode === 'cheer') pose = 'cheer'
+    const justFrom = local - e.t0 < (foot ? 0.45 : 0.7)
+    const k = (local - e.t0) / Math.max(0.01, e.t1 - e.t0)
+    const near = dist(here.p, [b.u, b.v]) < (foot ? 4.5 : 3.2)
+    // The scorer runs off with arms out like wings; the others jump with him.
+    if (here.mode === 'cheer') pose = i === e.from ? 'airplane' : 'cheer'
+    // The keeper: down on the grass after diving for a shot, still there as the ball goes in.
+    else if (foot && i === 0 && !mine && ((e.kind === 'shot' && k > 0.45) || (e.kind === 'goal' && local - e.t0 < 1.6))) pose = 'dive'
     else if (here.mode === 'keep' || (foot && i === 0 && !mine && Math.abs(b.u - this.target(team === 0 ? 1 : 0)[0]) < this.L * 0.3)) pose = 'keeper'
-    else if (e.from === i && mine && (e.kind === 'pass' || e.kind === 'shot') && justFrom) pose = foot ? 'kick' : e.kind === 'shot' ? 'shoot' : 'throw'
+    else if (e.from === i && mine && (e.kind === 'pass' || e.kind === 'shot') && justFrom) pose = foot ? 'kick' : e.kind === 'shot' ? 'shoot' : 'pass'
     else if (here.mode === 'ball' && !foot) pose = 'dribble'
     else if (here.mode === 'ball' && foot && e.kind === 'hold') pose = 'keeper'
-    return { u: here.p[0], v: here.p[1], face, pose }
+    // Running with the ball at the feet: little touches, eyes down.
+    else if (here.mode === 'ball' && foot && speed > 0.7) pose = 'touch'
+    // Close to the ball without it: marking (football), guarding (basketball).
+    else if (!mine && here.mode === 'shape' && near && speed < 3 && e.kind !== 'goal' && e.kind !== 'reset') pose = foot ? 'mark' : 'guard'
+    return { u: here.p[0], v: here.p[1], face, pose, speed }
   }
   private pos(team: 0 | 1, i: number, time: number) {
     const { e, prev, local } = this.at(time)

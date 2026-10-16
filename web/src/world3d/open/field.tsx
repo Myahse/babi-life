@@ -173,6 +173,8 @@ function Players({ field, seed, without }: { field: Field; seed: string; without
   const refs = useRef<(THREE.Group | null)[]>([])
   const ball = useRef<THREE.Mesh>(null)
   const poses = useRef<Pose[]>(players.map(() => 'idle'))
+  // How fast each one runs (to the next m/s), so the steps match the ground covered.
+  const speeds = useRef<number[]>(players.map(() => 0))
   const [, redraw] = useState(0)
   useFrame(() => {
     const t = worldTime()
@@ -184,8 +186,10 @@ function Players({ field, seed, without }: { field: Field; seed: string; without
       g.position.set(s.u, 0, s.v)
       // The Sim faces +z at 0: in the field's frame, `face` is from +x towards +z.
       g.rotation.y = Math.atan2(Math.cos(s.face), Math.sin(s.face))
-      if (s.pose !== poses.current[k]) {
+      const v = Math.round(s.speed)
+      if (s.pose !== poses.current[k] || v !== speeds.current[k]) {
         poses.current[k] = s.pose
+        speeds.current[k] = v
         changed = true
       }
     })
@@ -198,7 +202,7 @@ function Players({ field, seed, without }: { field: Field; seed: string; without
       {players.map((p, k) =>
         p.team === 0 && p.i === without ? null : (
           <group key={k} ref={(g) => void (refs.current[k] = g)}>
-            <Human look={p.look} gender={p.gender} pose={poses.current[k]} seed={p.seed} />
+            <Human look={p.look} gender={p.gender} pose={poses.current[k]} seed={p.seed} speed={speeds.current[k] || undefined} />
           </group>
         ),
       )}
@@ -210,21 +214,52 @@ function Players({ field, seed, without }: { field: Field; seed: string; without
   )
 }
 
-/** A few people watching from the touchline. */
+/**
+ * The people watching from both touchlines, each for one team: chatting,
+ * calling out, waving the players on; on their side's goal they jump up,
+ * on the other side's they grumble.
+ */
 function Watchers({ field, seed }: { field: Field; seed: string }) {
+  const match = matchFor(seed, field)
   const people = useMemo(() => {
     const r = rng(`watch${seed}`)
-    return [...Array(4)].map((_, i) => {
+    const n = field.sport === 'foot' ? 14 : 10
+    return [...Array(n)].map((_, i) => {
       const gender: 'femme' | 'homme' = r() < 0.4 ? 'femme' : 'homme'
-      return { gender, look: randomLook(gender, r), seed: r() * 100, x: (i - 1.5) * (field.len / 5) + (r() - 0.5) * 2, pose: (i % 2 ? 'cheer' : 'idle') as Pose }
+      const side = i % 2 ? 1 : -1
+      const along = (Math.floor(i / 2) / Math.max(1, Math.floor(n / 2) - 1) - 0.5) * field.len * 0.85 + (r() - 0.5) * 1.6
+      return { gender, look: randomLook(gender, r), seed: r() * 100, x: along, z: side * (field.wid / 2 + 1.5 + r() * 0.9), team: (r() < 0.5 ? 0 : 1) as 0 | 1, side }
     })
-  }, [seed, field.len])
-  const z = -(field.wid / 2 + 1.6)
+  }, [seed, field.len, field.wid, field.sport])
+  const poses = useRef<Pose[]>(people.map(() => 'idle'))
+  const [, redraw] = useState(0)
+  const last = useRef(0)
+  useFrame(() => {
+    const t = worldTime()
+    if (t - last.current < 0.3) return
+    last.current = t
+    const m = match.moment(t)
+    let changed = false
+    people.forEach((p, k) => {
+      // Between moments, each one's own mood, changing every few seconds.
+      const n = Math.sin(Math.floor((t + p.seed * 3) / 5) * 12.9898 + p.seed * 78.233) * 43758.5453
+      const mood = n - Math.floor(n)
+      const pose: Pose =
+        m.kind === 'goal' ? (m.team === p.team ? 'cheer' : mood < 0.4 ? 'rant' : 'idle')
+        : m.kind === 'shot' ? (m.team === p.team ? 'wave' : 'idle')
+        : mood < 0.45 ? 'idle' : mood < 0.72 ? 'talk' : mood < 0.88 ? 'wave' : 'rant'
+      if (pose !== poses.current[k]) {
+        poses.current[k] = pose
+        changed = true
+      }
+    })
+    if (changed) redraw((x) => x + 1)
+  })
   return (
     <NoShadows>
       {people.map((p, i) => (
-        <group key={i} position={[p.x, 0, z]}>
-          <Human look={p.look} gender={p.gender} pose={p.pose} seed={p.seed} />
+        <group key={i} position={[p.x, 0, p.z]} rotation={[0, p.side > 0 ? Math.PI : 0, 0]}>
+          <Human look={p.look} gender={p.gender} pose={poses.current[i]} seed={p.seed} />
         </group>
       ))}
     </NoShadows>

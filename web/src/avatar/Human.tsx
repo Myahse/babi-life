@@ -10,7 +10,7 @@ import { worldTime } from '../lib/worldClock'
 // simpler blocky figure (avatar/LowHuman.tsx) far away, and the poses that
 // move them both (usePoseRig). Units are metres: feet on y=0, facing +Z.
 
-export type Pose = 'idle' | 'walk' | 'run' | 'leap' | 'hang' | 'wash' | 'sleep' | 'pray' | 'cook' | 'phone' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper'
+export type Pose = 'idle' | 'walk' | 'run' | 'leap' | 'hang' | 'wash' | 'sleep' | 'pray' | 'cook' | 'phone' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper' | 'touch' | 'mark' | 'guard' | 'dive' | 'airplane' | 'pass'
 
 /** Poses done sitting on a chair (hips at seat height). */
 export const SEATED: Pose[] = ['sit', 'eat', 'drink', 'write']
@@ -84,6 +84,105 @@ export function fidgetAt(t: number, seed: number): { kind: Fidget; e: number } |
   return { kind: f.kind, e: k * k * (3 - 2 * k) }
 }
 
+/* ---------- Sport: the moves of a match (open/match.ts picks them) ---------- */
+
+const clamp01 = (x: number) => Math.max(0, Math.min(1, x))
+const ease = (x: number) => x * x * (3 - 2 * x)
+/** Legs for the match's moves: hip x, hip z, knee x; `since`: seconds into the move. */
+function sportLegs(pose: Pose, out: number, t: number, since: number): [number, number, number] | null {
+  switch (pose) {
+    case 'kick': {
+      // The right leg: drawn back, swung through the ball, followed through; the left one planted.
+      if (out < 0) return [-0.1, 0, 0.32]
+      const p = clamp01(since / 0.45)
+      if (p < 0.35) return [0.6 * ease(p / 0.35), 0, 1.35 * ease(p / 0.35)]
+      if (p < 0.6) {
+        const q = ease((p - 0.35) / 0.25)
+        return [0.6 - 1.95 * q, 0, 1.35 * (1 - q) + 0.1 * q]
+      }
+      return [-1.35 + 0.45 * ease((p - 0.6) / 0.4), 0, 0.12]
+    }
+    case 'shoot': {
+      // A jump shot: knees bend, then the jump.
+      const p = clamp01(since / 0.7)
+      return p < 0.3 ? [-0.45 * ease(p / 0.3), 0, 0.8 * ease(p / 0.3)] : [-0.1, 0, p < 0.85 ? 0.12 : 0.3]
+    }
+    case 'pass':
+      return out > 0 ? [-0.38 * ease(clamp01(since / 0.3)), 0, 0.2] : [0.12, 0, 0.25]
+    case 'mark':
+    case 'guard':
+      // Low, knees bent, feet apart, ready to go either way.
+      return [-0.42, out * 0.16 + Math.sin(t * 6) * 0.05, 0.7]
+    case 'dive':
+      return [-0.18, out * 0.08, 0.25]
+    default:
+      return null
+  }
+}
+/** Arms for the match's moves: shoulder x, y, z, elbow x, z. */
+function sportArms(pose: Pose, out: number, t: number, since: number, armSwing: number): [number, number, number, number, number] | null {
+  switch (pose) {
+    case 'kick':
+      // Arms out for balance, the left one forward as the right leg strikes.
+      return [out < 0 ? -0.8 : 0.45, 0, out * 0.75, -0.35, 0]
+    case 'shoot': {
+      // The ball from the chest to over the head, released at the top of the jump; the wrist follows through.
+      const p = clamp01(since / 0.7)
+      const k = ease(clamp01((p - 0.25) / 0.35))
+      return [-1.05 - 1.85 * k, 0, out * (0.28 - 0.16 * k), -1.75 + 1.45 * k, 0]
+    }
+    case 'pass': {
+      // A chest pass: both hands push the ball away, thumbs down.
+      const k = ease(clamp01(since / 0.3))
+      return [-0.9 - 0.55 * k, 0, out * (0.28 - 0.18 * k), -1.85 + 1.7 * k, 0]
+    }
+    case 'touch':
+      // Dribbling: arms out a little for balance, swinging with the stride.
+      return [armSwing * 0.55, 0, out * 0.38, -0.85, 0]
+    case 'mark':
+      return [-0.35 + Math.sin(t * 6 + out) * 0.08, 0, out * 0.55, -0.55, 0]
+    case 'guard':
+      // Arms up and wide, hands reaching for the ball.
+      return [-0.95 + Math.sin(t * 4 + out * 1.3) * 0.25, 0, out * 1.2, -0.3, 0]
+    case 'dive':
+      // Stretched out over the head, for the ball.
+      return [-0.25, 0, out * (2.7 - 0.4 * (1 - clamp01(since / 0.3))), -0.12, 0]
+    case 'airplane':
+      // The scorer's run: arms out like wings.
+      return [0.05, 0, out * 1.45, -0.05, 0]
+    default:
+      return null
+  }
+}
+/** The body as a whole: height, lean forward (rx) and sideways (rz), the head's nod; null where the pose doesn't change it. */
+function sportBody(pose: Pose, t: number, since: number): { y?: number; x?: number; rx?: number; rz?: number; head?: number } | null {
+  switch (pose) {
+    case 'kick':
+      return { rx: since < 0.3 ? 0.08 : -0.12, head: 0.3 }
+    case 'shoot': {
+      const p = clamp01(since / 0.7)
+      return { y: p < 0.3 ? -0.11 * ease(p / 0.3) : p < 0.85 ? Math.sin(((p - 0.3) / 0.55) * Math.PI) * 0.32 : 0, head: -0.25 }
+    }
+    case 'pass':
+      return { rx: 0.12, head: 0 }
+    case 'touch':
+      // Eyes on the ball.
+      return { rx: 0.18, head: 0.3 }
+    case 'mark':
+    case 'guard':
+      return { y: -0.1, x: Math.sin(t * 3) * 0.12, rx: 0.15, head: 0.05 }
+    case 'dive': {
+      // Off the feet and sideways, down onto the grass.
+      const k = ease(clamp01(since / 0.35))
+      return { y: -0.42 * k + Math.sin(k * Math.PI) * 0.25, rz: -1.35 * k, head: 0 }
+    }
+    case 'airplane':
+      return { rz: Math.sin(t * 2.6) * 0.3, rx: 0.05, head: -0.15 }
+    default:
+      return null
+  }
+}
+
 /**
  * Moves a rig for a pose, every frame: index 0 of each pair is the side at -x.
  * Rotations are about the rest pose's axes (the person faces +z): x swings a
@@ -95,11 +194,15 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
   // pace without a jump; where the eyes look, changing now and then.
   const phase = useRef<number | null>(null)
   const glance = useRef({ y: 0, x: 0, next: 0 })
+  // When this pose began: a kick, a shot, a dive move on through their phases.
+  const began = useRef({ pose, t: 0 })
   useFrame((_, dtRaw) => {
     // Never backwards (a video rendered frame by frame can step back), at most 0.1 s.
     const dt = Math.min(Math.max(dtRaw, 0), 0.1)
     const t = worldTime() + seed
-    const run = pose === 'run'
+    if (began.current.pose !== pose) began.current = { pose, t: worldTime() + seed }
+    const since = worldTime() + seed - began.current.t
+    const run = pose === 'run' || pose === 'touch' || pose === 'airplane'
     const walk = pose === 'walk' || run || pose === 'dribble'
     const seated = SEATED.includes(pose)
     // Steps follow the speed: cadence and stride grow with it, so feet don't slide.
@@ -109,7 +212,7 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
     phase.current = (phase.current ?? t * Math.PI * 2 * cadence) + dt * Math.PI * 2 * cadence
     const ph = phase.current
     const s = Math.sin(ph)
-    const stride = (run ? 0.95 : Math.min(0.62, 0.3 + v * 0.09)) * swingK
+    const stride = (run ? (pose === 'touch' ? 0.7 : 0.95) : Math.min(0.62, 0.3 + v * 0.09)) * swingK
     // Every joint eases to where it should be: no jump from one pose to the
     // next. Moving in rhythm (walking, dancing) the joints follow closely, so
     // the swing keeps its shape; changing pose they glide.
@@ -145,15 +248,19 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
       const danceStep = pose === 'dance' ? out * Math.max(0, out * Math.sin(beat / 2)) * 0.14 : 0
       // Hanging off the gbaka: the inner foot on the step, the outer leg dangling, swinging with the road.
       const dangle = Math.sin(t * 3.1 + seed) * 0.12
-      to(h.rotation, 'x', pose === 'pray' ? 0.05 : pose === 'sleep' ? 0 : pose === 'leap' ? -0.95 : pose === 'hang' ? (out > 0 ? -0.35 : 0.3 + dangle) : seated ? -1.5 : kick ? -1.15 : pose === 'keeper' ? -0.45 : walk ? gaitHip : pose === 'dance' || pose === 'throw' ? -0.18 - bounce * 0.16 : pose === 'cheer' ? -Math.max(0, -jump) * 0.4 : 0)
-      to(h.rotation, 'z', pose === 'hang' ? (out < 0 ? -0.35 : 0.05) : pose === 'leap' ? out * 0.08 : walk || seated ? 0 : pose === 'dance' ? danceStep : out * shift * 0.03)
-      to(kn.rotation, 'x', pose === 'pray' ? 1.55 : pose === 'sleep' ? 0.05 : pose === 'leap' ? 1.35 : pose === 'hang' ? (out > 0 ? 0.55 : 0.35 - dangle) : seated ? 1.5 : kick ? 0.15 : pose === 'keeper' ? 0.8 : walk ? gaitKnee : pose === 'dance' || pose === 'throw' ? 0.32 + bounce * 0.32 : pose === 'cheer' ? Math.max(0, -jump) * 0.8 : Math.max(0, -out * shift) * 0.12)
+      const sl = sportLegs(pose, out, t, since)
+      to(h.rotation, 'x', sl ? sl[0] : pose === 'pray' ? 0.05 : pose === 'sleep' ? 0 : pose === 'leap' ? -0.95 : pose === 'hang' ? (out > 0 ? -0.35 : 0.3 + dangle) : seated ? -1.5 : kick ? -1.15 : pose === 'keeper' ? -0.45 : walk ? gaitHip : pose === 'dance' || pose === 'throw' ? -0.18 - bounce * 0.16 : pose === 'cheer' ? -Math.max(0, -jump) * 0.4 : 0)
+      to(h.rotation, 'z', sl ? sl[1] : pose === 'hang' ? (out < 0 ? -0.35 : 0.05) : pose === 'leap' ? out * 0.08 : walk || seated ? 0 : pose === 'dance' ? danceStep : out * shift * 0.03)
+      to(kn.rotation, 'x', sl ? sl[2] : pose === 'pray' ? 1.55 : pose === 'sleep' ? 0.05 : pose === 'leap' ? 1.35 : pose === 'hang' ? (out > 0 ? 0.55 : 0.35 - dangle) : seated ? 1.5 : kick ? 0.15 : pose === 'keeper' ? 0.8 : walk ? gaitKnee : pose === 'dance' || pose === 'throw' ? 0.32 + bounce * 0.32 : pose === 'cheer' ? Math.max(0, -jump) * 0.8 : Math.max(0, -out * shift) * 0.12)
       // The arm on this side swings against this leg.
       const armSwing = stride * Math.cos(u * Math.PI * 2)
       const sh = shoulder[i].current!
       const el = elbow[i].current!
       let [sx, sy, sz, ex, ez] = [0, 0, out * 0.1, -0.12, 0]
-      if (pose === 'wash') {
+      const sa = sportArms(pose, out, t, since, armSwing)
+      if (sa) {
+        ;[sx, sy, sz, ex, ez] = sa
+      } else if (pose === 'wash') {
         // Under the water: one hand scrubbing the head, the other the arms and the chest.
         const k = Math.sin(t * 6 + i * 1.3)
         ;[sx, sz, ex] = out > 0 ? [-2.3 + k * 0.15, 0.5, -1.9 + k * 0.35] : [-0.9 + k * 0.35, -0.25, -1.4 + k * 0.25]
@@ -273,11 +380,14 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
       to(el.rotation, 'x', ex)
       to(el.rotation, 'z', ez)
     }
+    const body = sportBody(pose, t, since)
     const r = root.current!
     to(
       r.position,
       'y',
-      pose === 'pray'
+      body?.y !== undefined
+        ? body.y
+        : pose === 'pray'
         ? -0.4
         : seated
         ? -SEAT_DROP
@@ -299,7 +409,7 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
     )
     // Standing, the hips sit over one leg then the other.
     // The hips over the standing leg: walking, from side to side with each step; dancing, the décalé; standing, slowly.
-    to(r.position, 'x', walk ? Math.sin(ph) * (run ? 0.012 : 0.025) : seated ? 0 : pose === 'dance' ? Math.sin(beat / 2) * 0.09 : shift * 0.018)
+    to(r.position, 'x', body?.x !== undefined ? body.x : walk ? Math.sin(ph) * (run ? 0.012 : 0.025) : seated ? 0 : pose === 'dance' ? Math.sin(beat / 2) * 0.09 : shift * 0.018)
     // Breathing: the chest rises a little (faster after running).
     if (chest.current) {
       const b = Math.sin(t * (pose === 'run' ? 4.5 : 1.7))
@@ -308,8 +418,8 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
       to(chest.current.rotation, 'y', walk ? -s * stride * 0.22 : 0)
     }
     // Leaning into the run; the hips sway with the steps, or with the weight.
-    to(r.rotation, 'x', pose === 'leap' ? 0.3 : pose === 'hang' ? 0.05 : run ? 0.2 : walk ? 0.04 : pose === 'dance' ? 0.06 + bounce * 0.04 : pose === 'throw' ? 0.05 : 0)
-    to(r.rotation, 'z', pose === 'hang' ? 0.28 + Math.sin(t * 3.1 + seed) * 0.03 : walk ? -Math.sin(ph) * 0.03 * stride : seated ? 0 : pose === 'dance' ? -Math.sin(beat / 2) * 0.05 : -shift * 0.02)
+    to(r.rotation, 'x', body?.rx !== undefined ? body.rx : pose === 'leap' ? 0.3 : pose === 'hang' ? 0.05 : run ? 0.2 : walk ? 0.04 : pose === 'dance' ? 0.06 + bounce * 0.04 : pose === 'throw' ? 0.05 : 0)
+    to(r.rotation, 'z', body?.rz !== undefined ? body.rz : pose === 'hang' ? 0.28 + Math.sin(t * 3.1 + seed) * 0.03 : walk ? -Math.sin(ph) * 0.03 * stride : seated ? 0 : pose === 'dance' ? -Math.sin(beat / 2) * 0.05 : -shift * 0.02)
     to(r.rotation, 'y', pose === 'wash' ? Math.sin(t * 0.7) * 0.5 : pose === 'dance' ? Math.sin(beat / 2) * 0.28 + Math.sin(t * 0.4 + seed) * 0.4 : pose === 'throw' ? Math.sin(beat / 4) * 0.1 : pose === 'rant' ? Math.sin(t * 0.9) * 0.5 : pose === 'hug' ? Math.sin(t * 0.8) * 0.06 : walk ? s * stride * 0.12 : 0)
     // The eyes: looking ahead when walking; otherwise a glance here, then there.
     const g = glance.current
@@ -324,7 +434,7 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
     const look = fid && (fid.kind === 'watch' || fid.kind === 'phone') ? fid.e : 0
     to(hd.rotation, 'y', fid?.kind === 'watch' ? -0.35 * fid.e : pose === 'sleep' || pose === 'pray' ? 0 : walk ? -s * stride * 0.1 : pose === 'rant' ? Math.sin(t * 2.3) * 0.45 : pose === 'talk' ? Math.sin(t * 0.9) * 0.12 : g.y)
     to(hd.rotation, 'z', fid?.kind === 'scratch' ? -0.14 * fid.e : pose === 'phone' ? 0.12 : pose === 'sleep' ? 0.25 : pose === 'wave' ? 0.08 : pose === 'talk' ? Math.sin(t * 1.3) * 0.05 : 0)
-    to(hd.rotation, 'x', pose === 'sleep' ? 0.35 : pose === 'pray' || pose === 'cook' ? 0.3 : pose === 'wash' ? -0.25 : pose === 'busy' || pose === 'write' ? 0.25 : pose === 'eat' ? 0.1 : pose === 'drink' ? -0.15 : pose === 'hug' ? 0.15 : pose === 'beg' ? 0.12 : pose === 'dance' ? bounce * 0.12 - 0.05 : pose === 'cheer' ? -0.2 : walk ? (run ? -0.12 : -0.02) + Math.sin(ph * 2) * 0.03 * headBob : g.x + Math.sin(t * 0.7) * 0.02 + look * 0.42 - (fid?.kind === 'stretch' ? fid.e * 0.3 : 0))
+    to(hd.rotation, 'x', body?.head !== undefined ? body.head : pose === 'sleep' ? 0.35 : pose === 'pray' || pose === 'cook' ? 0.3 : pose === 'wash' ? -0.25 : pose === 'busy' || pose === 'write' ? 0.25 : pose === 'eat' ? 0.1 : pose === 'drink' ? -0.15 : pose === 'hug' ? 0.15 : pose === 'beg' ? 0.12 : pose === 'dance' ? bounce * 0.12 - 0.05 : pose === 'cheer' ? -0.2 : walk ? (run ? -0.12 : -0.02) + Math.sin(ph * 2) * 0.03 * headBob : g.x + Math.sin(t * 0.7) * 0.02 + look * 0.42 - (fid?.kind === 'stretch' ? fid.e * 0.3 : 0))
   })
 }
 
