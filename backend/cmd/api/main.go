@@ -13,6 +13,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/myahse/babi-life/backend/internal/admin"
+
 	"github.com/myahse/babi-life/backend/internal/adminkey"
 
 	"github.com/go-chi/chi/v5"
@@ -205,6 +207,8 @@ func main() {
 		r.Get("/ads/admin", pub.AdminList)
 		r.Post("/ads/admin/{id}", pub.AdminUpdate)
 		r.Get("/news", headlines.Handler)
+		// The /admin page's API (ADMIN_KEY): players, log, announcements, WhatsApp.
+		(&admin.Handler{DB: pool, WA: &admin.WhatsApp{Token: os.Getenv("WHATSAPP_TOKEN"), PhoneID: os.Getenv("WHATSAPP_PHONE_ID"), API: os.Getenv("WHATSAPP_API")}}).Routes(r)
 		// Moderation of Gbairai's reports (MODERATION_KEY).
 		mod := &sims.Moderation{H: simsH, Key: os.Getenv("MODERATION_KEY")}
 		r.Get("/moderation/reports", mod.Reports)

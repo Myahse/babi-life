@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BadgeCheck, Cake, Hammer, Eye, LocateFixed, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, Megaphone, Cake, Hammer, Eye, LocateFixed, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World, Ride, Place } from '../lib/types'
 import { useWorld } from '../store/world'
@@ -1139,9 +1139,11 @@ export function Journal({ events }: { events: JournalEvent[] }) {
                     ? [Cake, ['#ff8ad8', '#d63aa8']]
                     : e.kind === 'social'
                       ? [Users, ['#ffa8c5', '#e83e8c']]
+                    : e.kind === 'annonce'
+                      ? [Megaphone, ['#ffb347', '#ea580c']]
                     : [Sparkles, ['#ffa040', '#ff6a00']]
         return (
-          <li key={e.id} className={`flex items-center gap-3 rounded-[20px] p-2.5 ${e.kind === 'random' ? 'bg-[#fff7df]' : 'bg-[var(--color-canvas)]'}`}>
+          <li key={e.id} className={`flex items-center gap-3 rounded-[20px] p-2.5 ${e.kind === 'random' ? 'bg-[#fff7df]' : e.kind === 'annonce' ? 'bg-[#fff1e6]' : 'bg-[var(--color-canvas)]'}`}>
             <IconTile icon={icon} colors={colors} size={38} />
             <div className="min-w-0 flex-1">
               <div className="text-sm leading-snug font-bold">{e.text}</div>

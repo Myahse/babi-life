@@ -22,6 +22,10 @@ services:
         generateValue: true
       - key: ADMIN_KEY # opens /admin: the pub, the reports and the wish list (each part's own key works too)
         generateValue: true
+      - key: WHATSAPP_TOKEN # /admin, WhatsApp tab: Meta Cloud API token (WhatsApp Business), optional
+        sync: false
+      - key: WHATSAPP_PHONE_ID # the business number's Phone number ID in WhatsApp Manager
+        sync: false
       - key: MODERATION_KEY # Gbairai's reports: GET /moderation/reports with X-Admin-Key
         generateValue: true
       # Babi Pub: the bucket where advertisers' posters and videos go (S3-compatible: Cloudflare R2 recommended)

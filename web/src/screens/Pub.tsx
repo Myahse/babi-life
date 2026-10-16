@@ -17,7 +17,7 @@ import { contactLinks } from '../lib/contact'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
 
-type Status = {
+export type Status = {
   id: string
   advertiser: string
   contact?: string
@@ -36,7 +36,7 @@ type Status = {
   createdAt: string
 }
 
-const STATUS: Record<Status['status'], [string, string]> = {
+export const STATUS: Record<Status['status'], [string, string]> = {
   pending: ['En attente de vérification', 'var(--ochre)'],
   approved: ['Acceptée', 'var(--ci-green)'],
   rejected: ['Refusée', 'var(--rust)'],
@@ -74,7 +74,7 @@ function Shell({ children }: { children: React.ReactNode }) {
 }
 
 /** The poster or the video, as it will hang on the billboard. */
-function Preview({ type, url, className = '' }: { type: 'image' | 'video'; url: string; className?: string }) {
+export function Preview({ type, url, className = '' }: { type: 'image' | 'video'; url: string; className?: string }) {
   return type === 'video' ? <video className={`w-full bg-[#26332c] object-cover ${className}`} src={url} muted loop playsInline autoPlay controls /> : <img className={`w-full bg-[#26332c] object-cover ${className}`} src={url} alt="" />
 }
 
@@ -331,154 +331,3 @@ export function PubFollow({ token }: { token: string }) {
     </Shell>
   )
 }
-
-/* ---------- The admin: Babi Life checks, approves, marks paid ---------- */
-
-/** The ads' admin, inside /admin (screens/Admin.tsx): the send links, then the campaigns. */
-export function PubAdminPanel({ adminKey }: { adminKey: string }) {
-  const [list, setList] = useState<Status[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const load = async () => {
-    setError(null)
-    try {
-      setList(await call<Status[]>('/ads/admin', { headers: { 'X-Admin-Key': adminKey } }))
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erreur')
-    }
-  }
-  useEffect(() => {
-    void load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adminKey])
-  const update = async (id: string, change: Partial<Pick<Status, 'status' | 'paid' | 'price' | 'note'>>) => {
-    try {
-      await call<void>(`/ads/admin/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Admin-Key': adminKey }, body: JSON.stringify(change) })
-      await load()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erreur')
-    }
-  }
-  return (
-    <>
-      <Invites adminKey={adminKey} />
-      <h2 className="paint mt-10 text-[40px]">Les campagnes ({list?.length ?? 0})</h2>
-      {error && <p className="mt-2 text-sm font-bold text-[var(--rust)]">{error}</p>}
-      <div className="mt-4 flex flex-col gap-5">
-        {list?.map((c) => (
-          <AdminRow key={c.id} c={c} onChange={(ch) => void update(c.id, ch)} />
-        ))}
-        {list?.length === 0 && <p className="font-bold">Pas encore de campagne.</p>}
-      </div>
-    </>
-  )
-}
-
-function AdminRow({ c, onChange }: { c: Status; onChange: (change: Partial<Pick<Status, 'status' | 'paid' | 'price' | 'note'>>) => void }) {
-  const [price, setPrice] = useState(String(c.price || ''))
-  const [note, setNote] = useState(c.note)
-  return (
-    <div className="grid gap-4 border-2 border-[var(--brown)] bg-[var(--cream)] p-4 md:grid-cols-[260px_1fr]">
-      <div className="bg-[#2b2f3a] p-1.5">{c.url ? <Preview type={c.type} url={c.url} className="aspect-[2/1]" /> : <p className="p-4 text-[var(--cream)]">Bucket non branché</p>}</div>
-      <div className="flex flex-col gap-2 text-[14px] font-bold">
-        <div className="flex flex-wrap items-baseline gap-x-3">
-          <span className="paint text-[26px]">{c.title}</span>
-          <span>{c.advertiser}</span>
-          <span className="opacity-75">{c.contact}</span>
-        </div>
-        <span>
-          {c.starts} → {c.ends} · {c.communes.length ? c.communes.join(', ') : 'partout'} · {c.views.toLocaleString('fr-FR')} vues
-        </span>
-        <span className="slab w-fit px-2 py-1 text-[var(--cream)]" style={{ background: STATUS[c.status][1] }}>
-          {STATUS[c.status][0]}
-          {c.paid ? ' · payée' : ' · non payée'}
-        </span>
-        <div className="flex flex-wrap gap-2">
-          <button className="sign-btn turq !px-3 !py-2 !text-[14px]" onClick={() => onChange({ status: 'approved' })}>
-            Accepter
-          </button>
-          <button className="sign-btn !px-3 !py-2 !text-[14px]" onClick={() => onChange({ status: 'rejected', note })}>
-            Refuser
-          </button>
-          <button className="sign-btn alt !px-3 !py-2 !text-[14px]" onClick={() => onChange({ status: 'paused' })}>
-            Pause
-          </button>
-          <button className="sign-btn alt !px-3 !py-2 !text-[14px]" onClick={() => onChange({ paid: !c.paid })}>
-            {c.paid ? 'Marquer non payée' : 'Marquer payée'}
-          </button>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <input className="input !w-40 text-base" inputMode="numeric" placeholder="Prix (F)" value={price} onChange={(e) => setPrice(e.target.value.replace(/\D/g, ''))} />
-          <input className="input min-w-0 flex-1 text-base" placeholder="Note pour l'annonceur" value={note} onChange={(e) => setNote(e.target.value)} />
-          <button className="sign-btn alt !px-3 !py-2 !text-[14px]" onClick={() => onChange({ price: Number(price || 0), note })}>
-            Enregistrer
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-type Invite = { code: string; label: string; createdAt: string; usedAt: string | null; campaign: string | null }
-
-/** The send links: one per advertiser Babi Life agreed with, each used once. */
-function Invites({ adminKey }: { adminKey: string }) {
-  const [list, setList] = useState<Invite[]>([])
-  const [label, setLabel] = useState('')
-  const [made, setMade] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const linkOf = (code: string) => `${location.origin}/pub/envoi/${code}`
-  const load = () => call<Invite[]>('/ads/admin/invites', { headers: { 'X-Admin-Key': adminKey } }).then(setList, (e: Error) => setError(e.message))
-  useEffect(() => {
-    void load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adminKey])
-  const make = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
-    try {
-      const r = await call<{ code: string }>('/ads/admin/invites', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Admin-Key': adminKey }, body: JSON.stringify({ label }) })
-      setMade(linkOf(r.code))
-      setLabel('')
-      void load()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur')
-    }
-  }
-  return (
-    <section className="border-2 border-[var(--brown)] bg-[var(--cream)] p-5">
-      <h2 className="paint text-[32px]">Liens d'envoi</h2>
-      <p className="text-[14px] font-bold">Quand le prix est convenu avec un annonceur, crée son lien et envoie-le lui (WhatsApp, e-mail…). Il ne sert qu'une fois.</p>
-      <form className="mt-3 flex flex-wrap gap-2" onSubmit={make}>
-        <input className="input min-w-0 flex-1 text-base" placeholder="Pour qui ? (ex. Garba Chez Tanti, 2 semaines Yop)" value={label} onChange={(e) => setLabel(e.target.value)} maxLength={120} />
-        <button className="sign-btn turq">Créer le lien</button>
-      </form>
-      {error && <p className="mt-2 text-sm font-bold text-[var(--rust)]">{error}</p>}
-      {made && (
-        <div className="mt-3 flex flex-wrap items-center gap-2 bg-[var(--wall)] px-3 py-2">
-          <span className="min-w-0 flex-1 font-mono text-[13px] break-all">{made}</span>
-          <button className="sign-btn alt !px-3 !py-1.5 !text-[13px]" onClick={() => void navigator.clipboard?.writeText(made)}>
-            Copier
-          </button>
-        </div>
-      )}
-      {list.length > 0 && (
-        <ul className="mt-4 flex flex-col gap-1.5 text-[14px] font-bold">
-          {list.map((i) => (
-            <li key={i.code} className="flex flex-wrap items-center gap-x-3 border-t border-[var(--brown)]/15 pt-1.5">
-              <span className="min-w-0 flex-1">{i.label || 'Sans nom'}</span>
-              <span className="opacity-70">{new Date(i.createdAt).toLocaleDateString('fr-FR')}</span>
-              {i.usedAt ? (
-                <span className="text-[var(--ci-green)]">Utilisé</span>
-              ) : (
-                <button className="underline" onClick={() => void navigator.clipboard?.writeText(linkOf(i.code))}>
-                  Copier le lien
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-  )
-}
-
