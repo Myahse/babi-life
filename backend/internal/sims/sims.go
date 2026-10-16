@@ -197,6 +197,8 @@ func (s *Sim) housing() game.Housing {
 
 type Handler struct {
 	DB *pgxpool.Pool
+	// RealPhotos: stories may be photos from the phone, not only from the game (STORIES_REAL_PHOTOS).
+	RealPhotos bool
 }
 
 func (h *Handler) Routes(r chi.Router) {
@@ -224,6 +226,19 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/gbairai/{other}", h.write)
 	r.Post("/sims/{id}/gbairai/{other}/block", h.block)
 	r.Post("/sims/{id}/gbairai/{other}/report", h.report)
+	r.Get("/sims/{id}/stories", h.stories)
+	r.Post("/sims/{id}/stories", h.postStory)
+	r.Get("/sims/{id}/stories/{story}/photo", h.storyPhoto)
+	r.Delete("/sims/{id}/stories/{story}", h.deleteStory)
+	r.Post("/sims/{id}/stories/{story}/report", h.reportStory)
+	r.Get("/sims/{id}/tiki", h.tikiFeed)
+	r.Get("/sims/{id}/tiki/me", h.tikiMe)
+	r.Post("/sims/{id}/tiki", h.tikiPost)
+	r.Get("/sims/{id}/tiki/{post}/photo", h.tikiPhoto)
+	r.Post("/sims/{id}/tiki/{post}/like", h.tikiLike)
+	r.Post("/sims/{id}/tiki/{post}/report", h.tikiReport)
+	r.Delete("/sims/{id}/tiki/{post}", h.tikiDelete)
+	r.Post("/sims/{id}/tiki/follow/{other}", h.tikiFollow)
 	r.Get("/sims/{id}/around", h.around)
 	r.Get("/sims/{id}/plot", h.plot)
 	r.Put("/sims/{id}/plot", h.build)

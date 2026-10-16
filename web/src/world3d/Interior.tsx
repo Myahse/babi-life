@@ -1,4 +1,5 @@
 import { lazy, Suspense, useMemo, useRef } from 'react'
+import { Snapper } from './snapshot'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import { Shell } from './interior/Shell'
@@ -770,6 +771,7 @@ export function Interior({ sim, kind, placeId, interactionId, housing, night, st
             : sim.look
   return (
     <Canvas shadows dpr={[1, 2]} camera={{ position: [8.4, 8.6, 10.8], fov: 42 }} style={{ background: dark ? '#0b0d1f' : '#2a2340' }}>
+      <Snapper />
       <Suspense fallback={null}>
         <hemisphereLight args={[dark ? '#7a6ab0' : '#fff6e8', '#3a2a1a', dark ? 0.55 : 0.75]} />
         <ambientLight intensity={dark ? 0.15 : 0.25} />

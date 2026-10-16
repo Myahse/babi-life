@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Ban, ChevronLeft, Flag, Send, ShieldCheck } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
-import type { Chat, ChatMessage, Sim } from '../lib/types'
+import type { Chat, ChatMessage, Sim, World } from '../lib/types'
 import { Portrait } from '../avatar/portrait'
+import { ReportSheet } from '../components/Social'
+import { Stories } from './Stories'
 
 /**
  * Gbairai: write to the players your Sim has made friends with in the game,
@@ -11,15 +13,7 @@ import { Portrait } from '../avatar/portrait'
  * messages every few seconds while it is open, the list every half-minute.
  */
 
-const REASONS = [
-  ['insultes', 'Insultes'],
-  ['harcèlement', 'Harcèlement'],
-  ['contenu choquant', 'Contenu choquant'],
-  ['arnaque', 'Arnaque'],
-  ['autre', 'Autre chose'],
-] as const
-
-export function GbairaiApp({ sim }: { sim: Sim }) {
+export function GbairaiApp({ world, sim }: { world: World; sim: Sim }) {
   const [chats, setChats] = useState<Chat[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState<Chat | null>(null)
@@ -42,6 +36,7 @@ export function GbairaiApp({ sim }: { sim: Sim }) {
   if (open) return <Thread sim={sim} chat={open} onBack={() => setOpen(null)} />
   return (
     <div className="space-y-2">
+      <Stories sim={sim} realPhotos={!!world.config.realPhotos} />
       <p className="flex items-start gap-2 rounded-2xl bg-[#fff4e8] p-3 text-xs leading-snug font-bold text-[var(--color-ink-soft)]">
         <ShieldCheck size={16} className="mt-0.5 shrink-0 text-[#f0590c]" />
         Tu écris seulement aux joueurs devenus tes amis dans le jeu (salue-les dans la rue). Les liens et les numéros sont masqués. Un souci ? Signale le message.
@@ -187,19 +182,8 @@ function Thread({ sim, chat, onBack }: { sim: Sim; chat: Chat; onBack: () => voi
 
       {note && <p className="mb-2 rounded-xl bg-[#fff4e8] px-3 py-2 text-xs font-bold text-[#7a3a00]">{note}</p>}
       {reporting && (
-        <div className="mb-2 rounded-2xl bg-[#1d1d24] p-3 text-white">
-          <p className="text-sm font-extrabold">{reporting === 'friend' ? `Signaler ${chat.friend.firstName}` : 'Signaler ce message'} : qu'est-ce qui ne va pas ?</p>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {REASONS.map(([id, label]) => (
-              <button key={id} className="rounded-full bg-white/15 px-3 py-1.5 text-xs font-extrabold" onClick={() => void report(id)}>
-                {label}
-              </button>
-            ))}
-            <button className="rounded-full px-3 py-1.5 text-xs font-extrabold text-white/70" onClick={() => setReporting(null)}>
-              Annuler
-            </button>
-          </div>
-          <p className="mt-2 text-[11px] font-bold text-white/60">La personne est bloquée tout de suite ; l'équipe regarde le signalement.</p>
+        <div className="mb-2">
+          <ReportSheet title={reporting === 'friend' ? `Signaler ${chat.friend.firstName}` : 'Signaler ce message'} onPick={(r) => void report(r)} onCancel={() => setReporting(null)} note="La personne est bloquée tout de suite ; l'équipe regarde le signalement." />
         </div>
       )}
       <form

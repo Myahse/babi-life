@@ -89,6 +89,12 @@ export type Around = { players: Player[]; friends: Player[]; invites: Invite[] }
 /** Gbairai: a message, and a friend's chat in the list. */
 export type ChatMessage = { id: number; mine: boolean; body: string; at: string; readAt?: string }
 export type Chat = { friend: Player; last?: ChatMessage; unread: number; blocked?: boolean }
+/** Stories (in Gbairai) and Tikitoko. */
+export type Author = { id: string; firstName: string; gender: 'femme' | 'homme'; look: Look }
+export type Story = { id: number; caption: string; source: 'jeu' | 'reel'; at: string; expiresAt: string; seen: boolean; views?: number }
+export type StoryRing = { sim: Author; mine: boolean; stories: Story[] }
+export type TikiPost = { id: number; author: Author; fans: number; tier: string; followed: boolean; mine: boolean; caption: string; theme: string; place: string; views: number; likes: number; liked: boolean; at: string }
+export type TikiMe = { fans: number; players: number; posts: number; views: number; tier: string; next: number; dealFrom: number; themes: { id: string; label: string }[] }
 export type FriendAction = { id: string; label: string; icon: string; minutes: number; cost: number; friendship: number; phone?: boolean }
 /** A stage of life, from an age in years. */
 export type LifeStage = { id: 'bebe' | 'enfant' | 'ado' | 'adulte'; label: string; from: number; scale: number }
@@ -132,7 +138,7 @@ export type World = {
   /** What a house can be built with (game/build.go), and the plot's size in blocks. */
   materials?: Material[]
   plot?: { w: number; d: number; h: number }
-  config: { devLogin: boolean; googleLogin: boolean }
+  config: { devLogin: boolean; googleLogin: boolean; realPhotos?: boolean }
 }
 
 export type User = { id: string; email: string; name: string; firstName: string; lastName: string; username: string; avatarUrl: string; createdAt: string }

@@ -101,7 +101,10 @@ type Chat struct {
 }
 
 // texter: the player's Sim, which must have a phone and Gbairai.
-func (h *Handler) texter(r *http.Request) (string, error) {
+func (h *Handler) texter(r *http.Request) (string, error) { return h.appSim(r, "gbairai") }
+
+// appSim: the player's Sim, which must have a phone and this app.
+func (h *Handler) appSim(r *http.Request, app string) (string, error) {
 	var s Sim
 	err := h.DB.QueryRow(r.Context(), `SELECT id, born_at, apps FROM sims WHERE id = $1 AND user_id = $2`, chi.URLParam(r, "id"), auth.UserID(r.Context())).Scan(&s.ID, &s.BornAt, &s.Apps)
 	if err != nil {
@@ -111,8 +114,11 @@ func (h *Handler) texter(r *http.Request) (string, error) {
 	if !s.hasPhone() {
 		return "", errNoPhoneYet
 	}
-	if !s.hasApp("gbairai") {
-		return "", errNoGbairai
+	if !s.hasApp(app) {
+		if app == "gbairai" {
+			return "", errNoGbairai
+		}
+		return "", needApp(&s, app)
 	}
 	return s.ID, nil
 }
@@ -142,7 +148,7 @@ func (h *Handler) gbairaiFail(w http.ResponseWriter, err error) {
 		httpx.Error(w, http.StatusNotFound, "sim introuvable")
 	case errors.Is(err, errTooFast):
 		httpx.Error(w, http.StatusTooManyRequests, err.Error())
-	case errors.Is(err, errNotFriends), errors.Is(err, errBlocked), errors.Is(err, errNoGbairai), errors.Is(err, errNoPhoneYet):
+	case errors.Is(err, errNotFriends), errors.Is(err, errBlocked), errors.Is(err, errNoGbairai), errors.Is(err, errNoPhoneYet), strings.HasPrefix(err.Error(), "installe d'abord"):
 		httpx.Error(w, http.StatusForbidden, err.Error())
 	case errors.Is(err, errEmpty), errors.Is(err, errTooLong), errors.Is(err, errNoReason), errors.Is(err, errNoSuchMsg):
 		httpx.Error(w, http.StatusBadRequest, err.Error())
@@ -380,7 +386,7 @@ func (m *Moderation) Reports(w http.ResponseWriter, r *http.Request) {
 	if !m.ok(w, r) {
 		return
 	}
-	rows, err := m.H.DB.Query(r.Context(), `SELECT p.id, p.reporter, a.first_name, p.reported, b.first_name, p.message_id, p.excerpt, p.reason, p.created_at
+	rows, err := m.H.DB.Query(r.Context(), `SELECT p.id, p.reporter, a.first_name, p.reported, b.first_name, p.message_id, p.story_id, p.post_id, p.excerpt, p.reason, p.created_at
 		FROM reports p JOIN sims a ON a.id = p.reporter JOIN sims b ON b.id = p.reported
 		WHERE p.status = 'open' ORDER BY p.created_at DESC LIMIT 100`)
 	if err != nil {
@@ -389,20 +395,23 @@ func (m *Moderation) Reports(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 	type report struct {
-		ID           int64     `json:"id"`
-		Reporter     string    `json:"reporter"`
-		ReporterName string    `json:"reporterName"`
-		Reported     string    `json:"reported"`
-		ReportedName string    `json:"reportedName"`
-		MessageID    *int64    `json:"messageId,omitempty"`
-		Excerpt      string    `json:"excerpt"`
-		Reason       string    `json:"reason"`
-		At           time.Time `json:"at"`
+		ID           int64  `json:"id"`
+		Reporter     string `json:"reporter"`
+		ReporterName string `json:"reporterName"`
+		Reported     string `json:"reported"`
+		ReportedName string `json:"reportedName"`
+		MessageID    *int64 `json:"messageId,omitempty"`
+		// A story or a Tikitoko post: its photo at /moderation/photo?story= (or ?post=).
+		StoryID *int64    `json:"storyId,omitempty"`
+		PostID  *int64    `json:"postId,omitempty"`
+		Excerpt string    `json:"excerpt"`
+		Reason  string    `json:"reason"`
+		At      time.Time `json:"at"`
 	}
 	out := []report{}
 	for rows.Next() {
 		var p report
-		if err := rows.Scan(&p.ID, &p.Reporter, &p.ReporterName, &p.Reported, &p.ReportedName, &p.MessageID, &p.Excerpt, &p.Reason, &p.At); err != nil {
+		if err := rows.Scan(&p.ID, &p.Reporter, &p.ReporterName, &p.Reported, &p.ReportedName, &p.MessageID, &p.StoryID, &p.PostID, &p.Excerpt, &p.Reason, &p.At); err != nil {
 			httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 			return
 		}
@@ -411,24 +420,54 @@ func (m *Moderation) Reports(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusOK, out)
 }
 
-// Resolve: close a report; with deleteMessage, the message goes too.
+// Photo: the photo of a reported story or post (?story= or ?post=).
+func (m *Moderation) Photo(w http.ResponseWriter, r *http.Request) {
+	if !m.ok(w, r) {
+		return
+	}
+	var raw []byte
+	var mime string
+	var err error
+	if id, e := strconv.ParseInt(r.URL.Query().Get("story"), 10, 64); e == nil {
+		err = m.H.DB.QueryRow(r.Context(), `SELECT image, mime FROM stories WHERE id = $1`, id).Scan(&raw, &mime)
+	} else {
+		id, _ := strconv.ParseInt(r.URL.Query().Get("post"), 10, 64)
+		err = m.H.DB.QueryRow(r.Context(), `SELECT image, mime FROM tiki_posts WHERE id = $1`, id).Scan(&raw, &mime)
+	}
+	if err != nil {
+		httpx.Error(w, http.StatusNotFound, "photo introuvable")
+		return
+	}
+	servePhoto(w, raw, mime)
+}
+
+// Resolve: close a report; with deleteMessage (or delete), what was reported goes too.
 func (m *Moderation) Resolve(w http.ResponseWriter, r *http.Request) {
 	if !m.ok(w, r) {
 		return
 	}
 	var req struct {
 		DeleteMessage bool `json:"deleteMessage"`
+		Delete        bool `json:"delete"`
 	}
 	_ = httpx.Decode(r, &req)
 	id, _ := strconv.ParseInt(chi.URLParam(r, "report"), 10, 64)
 	ctx := r.Context()
-	var msg *int64
-	if err := m.H.DB.QueryRow(ctx, `UPDATE reports SET status = 'done' WHERE id = $1 RETURNING message_id`, id).Scan(&msg); err != nil {
+	var msg, story, post *int64
+	if err := m.H.DB.QueryRow(ctx, `UPDATE reports SET status = 'done' WHERE id = $1 RETURNING message_id, story_id, post_id`, id).Scan(&msg, &story, &post); err != nil {
 		httpx.Error(w, http.StatusNotFound, "signalement introuvable")
 		return
 	}
-	if req.DeleteMessage && msg != nil {
-		_, _ = m.H.DB.Exec(ctx, `DELETE FROM messages WHERE id = $1`, *msg)
+	if req.DeleteMessage || req.Delete {
+		if msg != nil {
+			_, _ = m.H.DB.Exec(ctx, `DELETE FROM messages WHERE id = $1`, *msg)
+		}
+		if story != nil {
+			_, _ = m.H.DB.Exec(ctx, `DELETE FROM stories WHERE id = $1`, *story)
+		}
+		if post != nil {
+			_, _ = m.H.DB.Exec(ctx, `DELETE FROM tiki_posts WHERE id = $1`, *post)
+		}
 	}
 	httpx.JSON(w, http.StatusOK, map[string]bool{"done": true})
 }

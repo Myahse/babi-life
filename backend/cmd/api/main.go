@@ -56,7 +56,7 @@ func main() {
 	if cfg.FirebaseProjectID != "" {
 		authH.Firebase = auth.NewFirebaseVerifier(cfg.FirebaseProjectID)
 	}
-	simsH := &sims.Handler{DB: pool}
+	simsH := &sims.Handler{DB: pool, RealPhotos: os.Getenv("STORIES_REAL_PHOTOS") == "true"}
 	headlines := news.New(cfg.NewsFeeds)
 	go headlines.Run(ctx)
 	// The players of a commune, live (positions and poses, over a WebSocket).
@@ -101,7 +101,7 @@ func main() {
 				"holidays":      game.Holidays,
 				"materials":     game.Materials,
 				"plot":          map[string]int{"w": game.PlotW, "d": game.PlotD, "h": game.PlotH},
-				"config":        map[string]any{"devLogin": cfg.DevLogin, "googleLogin": authH.Verifier != nil || authH.Firebase != nil},
+				"config":        map[string]any{"realPhotos": simsH.RealPhotos, "devLogin": cfg.DevLogin, "googleLogin": authH.Verifier != nil || authH.Firebase != nil},
 			})
 		})
 		// A commune's places from the map (world/osm.go): those near a point
@@ -205,6 +205,7 @@ func main() {
 		mod := &sims.Moderation{H: simsH, Key: os.Getenv("MODERATION_KEY")}
 		r.Get("/moderation/reports", mod.Reports)
 		r.Post("/moderation/reports/{report}", mod.Resolve)
+		r.Get("/moderation/photo", mod.Photo)
 		r.Post("/auth/google", authH.Google)
 		r.Post("/auth/register", authH.Register)
 		r.Post("/auth/login", authH.Login)

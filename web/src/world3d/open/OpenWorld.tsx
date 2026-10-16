@@ -23,6 +23,7 @@ import { rng } from '../themes'
 import { APPRENTI, GBAKA_DOOR, Vehicle, type VehicleKind } from '../vehicles'
 import { Walker, type WalkNav } from '../Walker'
 import { whereabouts } from '../whereabouts'
+import { Snapper } from '../snapshot'
 import { CHUNK_ZOOM, hash, tileBox, tileOf, toLatLng, toLocal, type Origin, type XZ } from './geo'
 import { Nav } from './nav'
 import { along, anchorNode, round, routeLength, turnTo, useCellsAround, type Round } from './shared'
@@ -187,6 +188,7 @@ export function OpenWorld(props: Props & { token: string; onFail: () => void; on
   const [dpr, setDpr] = useState(Math.min(1.5, maxDpr))
   return (
     <Canvas shadows dpr={dpr} camera={{ position: [45, 48, 45], fov: 45, near: 0.5, far: 9000 }} style={{ background: sky, transition: 'background 1s' }} gl={{ antialias: true }} onCreated={({ gl, scene }) => void (import.meta.env.DEV && Object.assign(window, { __gl: gl, __scene: scene, __where: whereabouts }))}>
+      <Snapper />
       {/* Resolution follows what the device can keep up with */}
       <PerformanceMonitor onDecline={() => setDpr((d) => Math.max(0.75, d - 0.25))} onIncline={() => setDpr((d) => Math.min(maxDpr, d + 0.25))} flipflops={4} onFallback={() => setDpr(1)} />
       <Suspense fallback={null}>

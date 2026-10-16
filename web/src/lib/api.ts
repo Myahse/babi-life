@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe } from './types'
 import { useSession } from '../store/session'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
@@ -7,6 +7,14 @@ export class ApiError extends Error {
   constructor(public status: number, message: string) {
     super(message)
   }
+}
+
+/** A photo behind the login (a story, a post): fetched with the token, as an object URL. */
+export async function photoURL(path: string) {
+  const token = useSession.getState().token
+  const res = await fetch(BASE + path, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+  if (!res.ok) throw new ApiError(res.status, 'photo introuvable')
+  return URL.createObjectURL(await res.blob())
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -98,6 +106,19 @@ export const api = {
   write: (id: string, friend: string, body: string) => post<ChatMessage>(`/sims/${id}/gbairai/${friend}`, { body }),
   block: (id: string, friend: string, blocked: boolean) => post<{ blocked: boolean }>(`/sims/${id}/gbairai/${friend}/block`, { blocked }),
   report: (id: string, friend: string, reason: string, messageId?: number) => post<{ text: string }>(`/sims/${id}/gbairai/${friend}/report`, { reason, messageId }),
+  stories: (id: string) => request<StoryRing[]>(`/sims/${id}/stories`),
+  postStory: (id: string, photo: string, caption: string, source: 'jeu' | 'reel') => post<Story>(`/sims/${id}/stories`, { photo, caption, source }),
+  deleteStory: (id: string, story: number) => request<void>(`/sims/${id}/stories/${story}`, { method: 'DELETE' }),
+  reportStory: (id: string, story: number, reason: string) => post<{ text: string }>(`/sims/${id}/stories/${story}/report`, { reason }),
+  storyPhoto: (id: string, story: number) => `/sims/${id}/stories/${story}/photo`,
+  tikiFeed: (id: string, tab: 'pour-toi' | 'abonnements') => request<TikiPost[]>(`/sims/${id}/tiki?tab=${tab}`),
+  tikiMe: (id: string) => request<TikiMe>(`/sims/${id}/tiki/me`),
+  tikiPost: (id: string, photo: string, caption: string, theme: string, placeId: string) => post<ActionResult>(`/sims/${id}/tiki`, { photo, caption, theme, placeId }),
+  tikiLike: (id: string, postId: number, liked: boolean) => post<{ liked: boolean }>(`/sims/${id}/tiki/${postId}/like`, { liked }),
+  tikiFollow: (id: string, other: string, follow: boolean) => post<{ follow: boolean }>(`/sims/${id}/tiki/follow/${other}`, { follow }),
+  tikiReport: (id: string, postId: number, reason: string) => post<{ text: string }>(`/sims/${id}/tiki/${postId}/report`, { reason }),
+  tikiDelete: (id: string, postId: number) => request<void>(`/sims/${id}/tiki/${postId}`, { method: 'DELETE' }),
+  tikiPhoto: (id: string, postId: number) => `/sims/${id}/tiki/${postId}/photo`,
   /** The player's own plot, and the houses built in the commune where the Sim is. */
   plot: (id: string) => request<Plot>(`/sims/${id}/plot`),
   plots: (id: string) => request<Plot[]>(`/sims/${id}/plots`),
