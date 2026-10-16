@@ -43,6 +43,9 @@ export type NewSim = {
   /** Where the player is, if shared: the Sim is born in the nearest commune. */
   lat?: number
   lng?: number
+  /** From abroad (or no position): the commune the player comes from; none: drawn at random. */
+  fromCity?: string
+  fromCommune?: string
 }
 
 export type WaitlistJoin = { firstName: string; contact: string; commune: string; beta: boolean; source: string; website: string; terms: boolean; privacy: boolean; sim?: { lastName: string; gender: 'femme' | 'homme'; look: Look; traits: string[]; aspiration: string } }

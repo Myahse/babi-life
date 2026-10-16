@@ -57,6 +57,8 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
   // The wish list: where to tell them it's open, and that they're on it.
   const [contact, setContact] = useState('')
   const [commune, setCommune] = useState('')
+  // From abroad: the commune the player comes from (« city/commune »), '' to let the game draw one.
+  const [from, setFrom] = useState('')
   const [beta, setBeta] = useState(true)
   const [website, setWebsite] = useState('') // unseen: only bots fill it
   const [terms, setTerms] = useState(false)
@@ -127,12 +129,13 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
       }
       // Born where the player really is: only the nearest commune is kept.
       const pos = await whereAmI()
-      const created = await api.createSim({ ...sim, ...pos })
+      const [fromCity, fromCommune] = from ? from.split('/') : ['', '']
+      const created = await api.createSim({ ...sim, ...pos, fromCity, fromCommune })
       const drawn = world!.families?.find((f) => f.id === created.family)
       const city = world!.cities.find((c) => c.id === created.homeCity)
       const cm = city?.communes.find((c) => c.id === created.homeCommune)
       const place = cm && city && cm.name !== city.name ? `${cm.name}, ${city.name}` : (cm?.name ?? '')
-      if (drawn) setBorn({ family: drawn, commune: place, located: !!pos })
+      if (drawn) setBorn({ family: drawn, commune: place, located: !!pos || !!from })
       else navigate('/jeu', { viewTransition: true })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erreur')
@@ -375,8 +378,24 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
           {current.id === 'home' && !waitlist && (
             <div className="space-y-3">
               <p className="text-sm font-bold text-[var(--color-ink-soft)]">
-                {sim.firstName || 'Ton perso'} naît bébé <b>là où tu es</b> : à la naissance, le jeu demande ta position et choisit la commune la plus proche (seule la commune est gardée, jamais ta position). Sans position, ou loin des villes du jeu, c'est quelque part à Abidjan. Puis {sim.firstName || 'ton perso'} grandit vite : bébé une dizaine de minutes, enfant pendant une heure de jeu, ado pendant deux, puis adulte à 18 ans (ensuite, une année de jeu dure 8 heures). La famille est tirée au sort, comme dans la vraie vie, et chaque commune a ses quartiers riches et pauvres.
+                {sim.firstName || 'Ton perso'} naît bébé <b>là où tu es</b> : à la naissance, le jeu demande ta position et choisit la commune la plus proche (seule la commune est gardée, jamais ta position). Tu vis hors de Côte d'Ivoire, ou tu ne donnes pas ta position ? Choisis ci-dessous la commune d'où tu viens ; sinon, le jeu t'en tire une au hasard. Puis {sim.firstName || 'ton perso'} grandit vite : bébé une dizaine de minutes, enfant pendant une heure de jeu, ado pendant deux, puis adulte à 18 ans (ensuite, une année de jeu dure 8 heures). La famille est tirée au sort, comme dans la vraie vie, et chaque commune a ses quartiers riches et pauvres.
               </p>
+              {/* From abroad: the commune one comes from (the position wins if the player is in the country) */}
+              <label className="block">
+                <span className="text-sm font-extrabold">Hors du pays ? Ta commune d'origine</span>
+                <select className="input mt-1 text-base" value={from} onChange={(e) => setFrom(e.target.value)}>
+                  <option value="">Je ne sais pas : au hasard</option>
+                  {world.cities.map((c) => (
+                    <optgroup key={c.id} label={c.name}>
+                      {c.communes.map((cm) => (
+                        <option key={cm.id} value={`${c.id}/${cm.id}`}>
+                          {cm.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              </label>
               {(world.families ?? []).map((f) => (
                 <div key={f.id} className="tile flex items-center gap-3 p-3">
                   <IconTile icon={iconFor(f.icon)} colors={FAMILY_COLORS[f.id] ?? ['#ffa040', '#ff6a00']} size={42} />
@@ -493,7 +512,7 @@ function FamilyReveal({ family, commune, located, name, look, gender, housing, g
         <p className="px-5 pt-4 text-sm leading-snug font-bold text-[var(--color-ink-soft)]">{family.hint}</p>
         <ul className="space-y-2 p-4 text-left">
           <Fact label="Né·e à" value={commune} />
-          {!located && <li className="px-1 text-xs font-bold text-[var(--color-ink-soft)]">Position non partagée : naissance quelque part à Abidjan.</li>}
+          {!located && <li className="px-1 text-xs font-bold text-[var(--color-ink-soft)]">Sans position ni commune choisie : une commune tirée au sort.</li>}
           <Fact label="Le quartier" value={family.sector.charAt(0).toUpperCase() + family.sector.slice(1)} />
           <Fact label="La maison familiale" value={housing} />
           <Fact label="Argent de poche" value={family.pocket ? `${amount(family.pocket)} F le samedi` : 'Rien'} />

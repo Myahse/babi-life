@@ -236,22 +236,39 @@ type createRequest struct {
 	// nearest commune. Only that commune is kept, never the coordinates.
 	Lat *float64 `json:"lat,omitempty"`
 	Lng *float64 `json:"lng,omitempty"`
+	// From abroad (or without a position): the commune the player says they
+	// come from (« city »/« commune » ids); none: one is drawn at random.
+	FromCity    string `json:"fromCity,omitempty"`
+	FromCommune string `json:"fromCommune,omitempty"`
 }
 
 // MaxBirthKm: further than this from every commune of the game (abroad, in
 // the bush), the Sim is born somewhere in Abidjan.
 const MaxBirthKm = 30
 
-// birthplace: the commune nearest the player, or anywhere in Abidjan.
-func birthplace(lat, lng *float64, rng *rand.Rand) (city, commune string) {
+// birthplace: where the Sim is born. In the country, the commune nearest
+// the player; from abroad (or without a position), the commune they say
+// they come from; otherwise any commune of the game, drawn at random (each
+// has its villas and its precarious quarters).
+func birthplace(lat, lng *float64, fromCity, fromCommune string, rng *rand.Rand) (city, commune string) {
 	if lat != nil && lng != nil {
 		if c, cm, ok := world.Nearest(*lat, *lng, MaxBirthKm); ok {
 			return c.ID, cm.ID
 		}
 	}
-	// Any commune: each has its villas and its precarious quarters.
-	abj, _ := world.FindCity("abidjan")
-	return abj.ID, abj.Communes[rng.IntN(len(abj.Communes))].ID
+	if c, ok := world.FindCity(fromCity); ok {
+		if _, ok := c.Commune(fromCommune); ok {
+			return c.ID, fromCommune
+		}
+	}
+	var all [][2]string
+	for _, c := range world.Cities {
+		for _, cm := range c.Communes {
+			all = append(all, [2]string{c.ID, cm.ID})
+		}
+	}
+	pick := all[rng.IntN(len(all))]
+	return pick[0], pick[1]
 }
 
 func (req *createRequest) validate() error {
@@ -297,7 +314,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	// family drawn at random, where the player is.
 	rng := newRand()
 	fam := game.BornInto(rng)
-	cityID, commune := birthplace(req.Lat, req.Lng, rng)
+	cityID, commune := birthplace(req.Lat, req.Lng, req.FromCity, req.FromCommune, rng)
 	now := game.MinuteOf(time.Now())
 	s, err := scanSim(h.DB.QueryRow(r.Context(), `
 		INSERT INTO sims (user_id, first_name, last_name, gender, look, traits, aspiration,

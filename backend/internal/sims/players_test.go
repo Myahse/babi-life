@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/myahse/babi-life/backend/internal/game"
+	"github.com/myahse/babi-life/backend/internal/world"
 )
 
 func TestJoinable(t *testing.T) {
@@ -33,14 +34,38 @@ func TestJoinable(t *testing.T) {
 
 func TestBirthplace(t *testing.T) {
 	lat, lng := 5.3950, -3.9850 // Angré
-	if city, cm := birthplace(&lat, &lng, newRand()); city != "abidjan" || cm != "cocody" {
+	if city, cm := birthplace(&lat, &lng, "", "", newRand()); city != "abidjan" || cm != "cocody" {
 		t.Errorf("born near the player: %s %s", city, cm)
 	}
-	lat, lng = 48.85, 2.35
-	if city, _ := birthplace(&lat, &lng, newRand()); city != "abidjan" {
-		t.Errorf("far away: somewhere in Abidjan, got %s", city)
+	// In the country, the position wins over what the player says.
+	if _, cm := birthplace(&lat, &lng, "abidjan", "yopougon", newRand()); cm != "cocody" {
+		t.Errorf("in the country, born where the player is, got %s", cm)
 	}
-	if city, _ := birthplace(nil, nil, newRand()); city != "abidjan" {
-		t.Error("no position: somewhere in Abidjan")
+	// From abroad: the commune the player comes from.
+	lat, lng = 48.85, 2.35 // Paris
+	if city, cm := birthplace(&lat, &lng, "abidjan", "yopougon", newRand()); city != "abidjan" || cm != "yopougon" {
+		t.Errorf("from abroad, born in the chosen commune: %s %s", city, cm)
+	}
+	if city, cm := birthplace(nil, nil, "bouake", "bouake-centre", newRand()); city != "bouake" || cm != "bouake-centre" {
+		t.Errorf("no position, chosen Bouaké: %s %s", city, cm)
+	}
+	// Unknown or nothing chosen: any commune of the game.
+	for range 50 {
+		city, cm := birthplace(&lat, &lng, "paris", "marais", newRand())
+		c, ok := world.FindCity(city)
+		if !ok {
+			t.Fatalf("unknown city %s", city)
+		}
+		if _, ok := c.Commune(cm); !ok {
+			t.Fatalf("unknown commune %s in %s", cm, city)
+		}
+	}
+	cities := map[string]bool{}
+	for range 300 {
+		city, _ := birthplace(nil, nil, "", "", newRand())
+		cities[city] = true
+	}
+	if len(cities) < 2 {
+		t.Errorf("at random, always the same city: %v", cities)
 	}
 }
