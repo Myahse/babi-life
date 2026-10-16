@@ -83,7 +83,7 @@ export const api = {
   /** Buy alloco from the tantie's stall in the street (she may have none left). */
   /** Talk to a passer-by: what they answer comes back as the outcome. */
   chat: (id: string, npc: { id: string; name: string; gender: string; seed: number }, topic: string, said?: string) => post<ActionResult>(`/sims/${id}/chat`, { with: npc, topic, said: said ?? '' }),
-  street: (id: string, vendor: string) => post<ActionResult>(`/sims/${id}/street`, { vendor }),
+  street: (id: string, vendor: string, choice?: string) => post<ActionResult>(`/sims/${id}/street`, { vendor, choice: choice ?? '' }),
   /** The nouchis of a couloir got the Sim: they take what's in its pockets (the API says how much). */
   robbed: (id: string, spot: string) => post<ActionResult>(`/sims/${id}/robbed`, { spot }),
   stop: (id: string) => post<ActionResult>(`/sims/${id}/stop`, {}),

@@ -472,7 +472,7 @@ function FieldLab() {
 /** The street sellers side by side, with their customers at an hour (?hour=19). */
 function StallsLab() {
   const hour = Number(q.get('hour') ?? 19)
-  const kinds: StallKind[] = ['alloco', 'porc', 'cafe', 'the']
+  const kinds: StallKind[] = ['alloco', 'porc', 'cafe', 'the', 'garba']
   const cam = (q.get('cam') ?? '0,7,16').split(',').map(Number) as [number, number, number]
   return (
     <Canvas shadows dpr={[1, 1.5]} camera={{ position: cam, fov: 45 }} style={{ width: '100vw', height: '100vh' }}>

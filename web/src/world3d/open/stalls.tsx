@@ -18,13 +18,18 @@ import type { Nav } from './nav'
 // - the porc au four women, three side by side (many in Yopougon): the drum
 //   oven smoking, the cutting table, a tarp over a table and benches;
 // - the café and thé sellers with their pousse-pousse: thermoses and cups on
-//   a wooden cart with two big wheels.
+//   a wooden cart with two big wheels;
+// - the garbadrome: a shed under a tin roof, the big pan of oil crackling on
+//   the gas, the glass box of fried thon, the attiéké and the piment, and the
+//   crowd pressing at the front, everyone pointing at their fish: « Donne-moi
+//   une grosse queue là-bas ! », « Donne-moi milieu là ! ». Tap the seller to
+//   choose: the piece, and from the hot oil or from the box.
 // Around each, the customers: on the bench eating, waiting, chatting; more at
 // the busy hours (lunch and evening for the food, morning for coffee), none in
 // the dead of night. Tap the seller to buy (backend sims/street.go: the id's
 // prefix says what); often it's sold out: « Ya pas banane oh ! ».
 
-export type StallKind = 'alloco' | 'porc' | 'cafe' | 'the'
+export type StallKind = 'alloco' | 'porc' | 'cafe' | 'the' | 'garba'
 export type Stall = { id: string; kind: StallKind; at: XZ; rot: number; seed: number }
 
 const NEAR = 320 // metres: stalls drawn around the Sim
@@ -37,10 +42,13 @@ const SELLER: Record<StallKind, { shout: string; ask: string; out: string; busy:
   alloco: { shout: 'Alloco chaud, 300 F !', ask: 'Alloco ? Viens prendre !', out: 'Ya pas banane oh !', busy: (h) => (h < 8 || h >= 23 ? 0 : h >= 16 && h < 21 ? 1 : 0.45), r: 1.1 },
   porc: { shout: 'Porc au four, viens goûter !', ask: 'Porc au four, 1500 F !', out: 'Le porc est fini, reviens demain !', busy: (h) => (h < 11 ? 0 : h >= 18 ? 1 : h >= 12 && h < 14 ? 0.8 : 0.4), r: 2.6 },
   cafe: { shout: 'Café ! Café chaud !', ask: 'Café, 150 F !', out: 'Le thermos est vide, attends un peu !', busy: (h) => (h < 5 || h >= 23 ? 0 : h < 9 ? 1 : h >= 17 && h < 20 ? 0.6 : 0.3), r: 1 },
+  garba: { shout: 'Garba chaud ! Garba !', ask: 'Garba ? Viens choisir ton poisson !', out: 'Y a plus poisson oh !', busy: (h) => (h >= 2 && h < 9 ? 0 : (h >= 12 && h < 14) || (h >= 19 && h < 23) ? 1 : 0.6), r: 2.4 },
   the: { shout: 'Thé bien mousseux !', ask: 'Thé, 100 F, assieds-toi !', out: "Le thé n'est pas encore prêt !", busy: (h) => (h < 6 ? 0 : h >= 17 ? 1 : 0.4), r: 1 },
 }
 
-export function StreetStalls({ nav, seed, hour, onBuy }: { nav: Nav; seed: string; hour: number; onBuy?: (vendor: string) => Promise<string | null> }) {
+export type Buy = (vendor: string, choice?: string) => Promise<string | null>
+
+export function StreetStalls({ nav, seed, hour, onBuy }: { nav: Nav; seed: string; hour: number; onBuy?: Buy }) {
   const yop = seed.includes('yopougon')
   // Every possible stall of the loaded streets: a few street sides, chosen by
   // where they are, so a stall is found again at the same place.
@@ -51,7 +59,7 @@ export function StreetStalls({ nav, seed, hour, onBuy }: { nav: Nav; seed: strin
       const [a, b] = [nav.nodes[e.a], nav.nodes[e.b]]
       const m: XZ = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]
       const h = hash(Math.round(m[0]), Math.round(m[1]), 77)
-      const kind: StallKind | null = h < 0.07 ? 'alloco' : h < (yop ? 0.19 : 0.095) ? 'porc' : h > 0.955 ? (hash(Math.round(m[1]), Math.round(m[0]), 5) < 0.55 ? 'cafe' : 'the') : null
+      const kind: StallKind | null = h < 0.07 ? 'alloco' : h < 0.115 ? 'garba' : h < (yop ? 0.235 : 0.14) ? 'porc' : h > 0.955 ? (hash(Math.round(m[1]), Math.round(m[0]), 5) < 0.55 ? 'cafe' : 'the') : null
       if (!kind) continue
       const side = hash(Math.round(m[1]), 3) < 0.5 ? 1 : -1
       const [ux, uz] = [(b[0] - a[0]) / e.len, (b[1] - a[1]) / e.len]
@@ -440,6 +448,19 @@ function customerSpots(kind: StallKind, seed: number): Customer[] {
         stand(-2.3, 2.4, 'phone'),
         sit(0.05, -3.32, 0, 'drink'),
       ]
+    case 'garba':
+      // Pressed at the front, pointing at their fish; two eating on the bench at the side.
+      return [
+        stand(-0.55, 1.75, 'wave'),
+        stand(0.2, 1.7, 'talk'),
+        sit(2.75, 0.9, -Math.PI / 2),
+        stand(0.85, 1.8, 'wave'),
+        stand(-0.15, 2.35, 'talk'),
+        sit(2.75, 1.6, -Math.PI / 2, 'eat'),
+        stand(0.55, 2.45, 'phone'),
+        stand(-0.95, 2.4, 'idle'),
+        stand(0.15, 3.0, 'talk'),
+      ]
     case 'cafe':
     case 'the':
       return [stand(0.3, 2.2, 'idle'), stand(-0.6, 2.4), sit(-1.6, 2.4, Math.PI * 0.75, 'drink'), stand(-1.5, 1.7), stand(1.2, 2.9, 'phone')]
@@ -454,13 +475,22 @@ function Crowd({ stall, hour }: { stall: Stall; hour: number }) {
   const n = busy <= 0 ? 0 : Math.max(2, Math.round(spots.length * busy * (0.75 + stall.seed * 0.25)))
   return (
     <NoShadows>
-      {spots.slice(0, n).map((c, i) => (
-        <group key={i} position={c.at} rotation={[0, c.rot, 0]}>
-          <Human look={looks[i]} gender={c.gender} pose={c.pose} seed={c.seed} />
-        </group>
-      ))}
+      {spots.slice(0, n).map((c, i) =>
+        // At the garbadrome the ones standing push and sway: everyone wants to be served first.
+        stall.kind === 'garba' && c.pose !== 'eat' && c.pose !== 'sit' ? (
+          <Jostle key={i} at={c.at} rot={c.rot} phase={c.seed}>
+            <Human look={looks[i]} gender={c.gender} pose={c.pose} seed={c.seed} />
+          </Jostle>
+        ) : (
+          <group key={i} position={c.at} rotation={[0, c.rot, 0]}>
+            <Human look={looks[i]} gender={c.gender} pose={c.pose} seed={c.seed} />
+          </group>
+        ),
+      )}
+      {stall.kind === 'garba' && n > 0 && <GarbaVoices n={n} />}
       {/* The seats some of them sit on (the porc au four has its own) */}
       {stall.kind === 'alloco' && <Bench p={[-0.05, 0, 2.8]} />}
+      {stall.kind === 'garba' && <Bench p={[2.75, 0, 1.25]} r={Math.PI / 2} w={1.5} />}
       {(stall.kind === 'cafe' || stall.kind === 'the') && <Bench p={[-1.6, 0, 2.4]} r={Math.PI * 0.75 - Math.PI / 2} w={0.8} />}
     </NoShadows>
   )
@@ -469,14 +499,23 @@ function Crowd({ stall, hour }: { stall: Stall; hour: number }) {
 /* ---------- One stall, its seller, the customers ---------- */
 
 /** One stall and its seller. Local +z faces the street. */
-export function StreetStall({ stall, hour, crowd, onBuy }: { stall: Stall; hour: number; crowd: boolean; onBuy?: (vendor: string) => Promise<string | null> }) {
+export function StreetStall({ stall, hour, crowd, onBuy }: { stall: Stall; hour: number; crowd: boolean; onBuy?: Buy }) {
   const sl = SELLER[stall.kind]
-  const man = (stall.kind === 'cafe' || stall.kind === 'the') && stall.seed < 0.85
+  const man = ((stall.kind === 'cafe' || stall.kind === 'the') && stall.seed < 0.85) || stall.kind === 'garba'
   const look = useMemo(() => randomLook(man ? 'homme' : 'femme', rng(stall.id)), [stall.id, man])
-  const helper = useMemo(() => (stall.kind === 'porc' ? randomLook('femme', rng(`${stall.id}h`)) : null), [stall.id, stall.kind])
+  const helper = useMemo(() => (stall.kind === 'porc' ? randomLook('femme', rng(`${stall.id}h`)) : stall.kind === 'garba' ? randomLook('homme', rng(`${stall.id}h`)) : null), [stall.id, stall.kind])
   const parasol = useMemo(() => ['#e8432f', '#1f9a4a', '#f2a81d', '#2f7fd0'][Math.floor(stall.seed * 4)], [stall.seed])
   const [said, setSaid] = useState<string | null>(null)
   const [near, setNear] = useState(false)
+  // At the garbadrome: choosing one's fish.
+  const [choosing, setChoosing] = useState(false)
+  const choose = async (choice: string) => {
+    setChoosing(false)
+    say('…', 20000)
+    const text = await onBuy?.(stall.id, choice)
+    if (text) say(text)
+    else setSaid(null)
+  }
   const shout = useRef(0)
   const clear = useRef<ReturnType<typeof setTimeout>>(undefined)
   useEffect(() => () => clearTimeout(clear.current), [])
@@ -499,6 +538,7 @@ export function StreetStall({ stall, hour, crowd, onBuy }: { stall: Stall; hour:
     const d = Math.hypot(stall.at[0] - whereabouts.sim[0], stall.at[1] - whereabouts.sim[1])
     if (d > REACH) return say('Approche, mon enfant !', 3000)
     if (!onBuy) return
+    if (stall.kind === 'garba') return setChoosing(true)
     say('…', 20000)
     const text = await onBuy(stall.id)
     if (text) say(text)
@@ -506,25 +546,26 @@ export function StreetStall({ stall, hour, crowd, onBuy }: { stall: Stall; hour:
   }
   // Where the seller stands, and doing what.
   // The café/thé seller sits on his stool beside the cart (as in the street), turned to the passers-by.
-  const [sellerAt, sellerPose]: [[number, number, number], Pose] = stall.kind === 'porc' ? [[-1.3, 0, -0.1], 'cook'] : stall.kind === 'alloco' ? [[0, 0, 0], 'idle'] : [[0.95, 0, 1.08], 'sit']
+  const [sellerAt, sellerPose]: [[number, number, number], Pose] = stall.kind === 'porc' ? [[-1.3, 0, -0.1], 'cook'] : stall.kind === 'garba' ? [[0.75, 0, 0.1], 'cook'] : stall.kind === 'alloco' ? [[0, 0, 0], 'idle'] : [[0.95, 0, 1.08], 'sit']
   return (
     <group position={[stall.at[0], 0, stall.at[1]]} rotation={[0, stall.rot, 0]} onClick={(e) => (e.stopPropagation(), void tap())}>
       {stall.kind === 'alloco' && <AllocoStand parasol={parasol} />}
       {stall.kind === 'porc' && <PorcStand />}
+      {stall.kind === 'garba' && <GarbaStand />}
       {(stall.kind === 'cafe' || stall.kind === 'the') && <Cart tea={stall.kind === 'the'} price={stall.kind === 'the' ? 100 : 150} />}
       <group position={sellerAt}>
         <Human look={look} gender={man ? 'homme' : 'femme'} pose={sellerPose} seed={stall.seed * 100} />
       </group>
       {/* At the porc au four, a second woman cuts and serves */}
       {helper && (
-        <group position={[0.7, 0, 0.25]}>
-          <Human look={helper} gender="femme" pose="busy" seed={stall.seed * 100 + 7} />
+        <group position={stall.kind === 'garba' ? [-0.55, 0, 0.15] : [0.7, 0, 0.25]}>
+          <Human look={helper} gender={stall.kind === 'garba' ? 'homme' : 'femme'} pose="busy" seed={stall.seed * 100 + 7} />
         </group>
       )}
       {crowd && <Crowd stall={stall} hour={hour} />}
       {/* What the seller says */}
       {(said || near) && (
-        <Html position={[0, 2.4, 0]} center zIndexRange={[25, 0]}>
+        <Html position={[0, stall.kind === 'garba' ? 3.2 : 2.4, 0]} center zIndexRange={[25, 0]}>
           <button
             onClick={() => void tap()}
             className={`rounded-2xl rounded-bl-sm border border-black/5 px-3 py-1.5 text-[13px] font-extrabold whitespace-nowrap shadow-[0_6px_14px_-8px_rgba(0,0,0,0.5)] transition active:scale-95 ${said === sl.out ? 'bg-[#ffe08a] text-[#5a3a00]' : 'bg-white text-[var(--color-ink)]'}`}
@@ -533,6 +574,180 @@ export function StreetStall({ stall, hour, crowd, onBuy }: { stall: Stall; hour:
           </button>
         </Html>
       )}
+      {choosing && (
+        <Html position={[0, 2.2, 1.2]} center zIndexRange={[30, 0]}>
+          <GarbaMenu onChoose={(c) => void choose(c)} onClose={() => setChoosing(false)} />
+        </Html>
+      )}
     </group>
   )
 }
+
+/* ---------- The garbadrome ---------- */
+
+const G = {
+  roof: lambert('#8d9299'),
+  wall: lambert('#e8590c'),
+  thon: lambert('#7a4520'),
+  thonCut: lambert('#b07a4a'),
+  glass: new THREE.MeshLambertMaterial({ color: '#cfe8f2', transparent: true, opacity: 0.35, depthWrite: false }),
+  frame: lambert('#c9ced4'),
+  piment: lambert('#d6202a'),
+  onion: lambert('#9b5fa8'),
+  tomato: lambert('#e8432f'),
+  gas: lambert('#2f7fd0'),
+}
+
+/** The shed under its tin roof, the sign, the counter with the glass box and the attiéké, the big pan of oil on the gas. Local +z faces the street. */
+function GarbaStand() {
+  const sign = useMemo(() => lettering('GARBADROME', '#e8590c', '#ffffff', '#ffd43b'), [])
+  const signMat = useMemo(() => new THREE.MeshLambertMaterial({ map: sign.t }), [sign])
+  // The pieces in the oil, bobbing as it crackles.
+  const fish = useRef<(THREE.Mesh | null)[]>([])
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime
+    fish.current.forEach((m, i) => {
+      if (m) m.position.y = 0.99 + Math.abs(Math.sin(t * 6 + i * 1.7)) * 0.025
+    })
+  })
+  return (
+    <group>
+      {/* The shed: four poles, the tin roof sloping back, the back wall and its sign */}
+      {[
+        [-1.8, -1.1],
+        [1.8, -1.1],
+        [-1.8, 1.25],
+        [1.8, 1.25],
+      ].map(([x, z]) => (
+        <Box key={`${x}${z}`} s={[0.08, 2.6, 0.08]} p={[x, 1.3, z]} m={M.wood} />
+      ))}
+      <Box s={[4.0, 0.05, 2.9]} p={[0, 2.66, 0.08]} r={[0.07, 0, 0]} m={G.roof} />
+      <Box s={[3.6, 2.4, 0.1]} p={[0, 1.2, -1.15]} m={G.wall} />
+      <mesh position={[0, 2.25, 1.32]} scale={[2.2, 2.2 / sign.aspect, 1]} material={signMat}>
+        <planeGeometry />
+      </mesh>
+      {/* The counter */}
+      <Box s={[2.6, 0.08, 0.7]} p={[-0.35, 0.9, 0.85]} m={M.wood} />
+      <Box s={[2.6, 0.86, 0.06]} p={[-0.35, 0.45, 1.18]} m={M.darkWood} />
+      {/* The glass box of fried thon */}
+      <group position={[-0.95, 0.94, 0.85]}>
+        <Box s={[1.0, 0.04, 0.5]} p={[0, 0.02, 0]} m={G.frame} />
+        <mesh geometry={BOX} material={G.glass} scale={[1.0, 0.42, 0.5]} position={[0, 0.25, 0]} />
+        {[...Array(9)].map((_, i) => (
+          <Box key={i} s={[0.2, 0.08, 0.12]} p={[-0.34 + (i % 3) * 0.34, 0.09 + Math.floor(i / 3) * 0.08, -0.12 + (i % 2) * 0.16]} r={[0, i * 0.5, 0]} m={i % 4 ? G.thon : G.thonCut} />
+        ))}
+      </group>
+      {/* The attiéké in its basin, the piment, onions and tomatoes */}
+      <mesh position={[0.05, 1.02, 0.85]} material={M.basin}>
+        <cylinderGeometry args={[0.28, 0.22, 0.16, 12]} />
+      </mesh>
+      <mesh position={[0.05, 1.12, 0.85]} material={M.attieke}>
+        <sphereGeometry args={[0.24, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2]} />
+      </mesh>
+      <mesh position={[0.5, 0.98, 0.7]} material={G.piment}>
+        <cylinderGeometry args={[0.1, 0.08, 0.08, 10]} />
+      </mesh>
+      {[0, 1, 2].map((i) => (
+        <Box key={i} s={[0.07, 0.07, 0.07]} p={[0.45 + i * 0.1, 0.98, 1.0]} m={i === 1 ? G.tomato : G.onion} />
+      ))}
+      {/* The big pan of oil on the gas, the fish crackling, the bottle beside */}
+      <group position={[1.35, 0, 0.6]}>
+        <mesh position={[0, 0.3, 0]} material={M.iron}>
+          <cylinderGeometry args={[0.32, 0.36, 0.6, 10, 1, true]} />
+        </mesh>
+        <mesh position={[0.55, 0.3, 0.1]} material={G.gas}>
+          <cylinderGeometry args={[0.16, 0.16, 0.6, 10]} />
+        </mesh>
+        <mesh position={[0, 0.82, 0]} material={M.iron}>
+          <cylinderGeometry args={[0.58, 0.3, 0.32, 16, 1, true]} />
+        </mesh>
+        <mesh position={[0, 0.95, 0]} rotation={[-Math.PI / 2, 0, 0]} material={M.oil}>
+          <circleGeometry args={[0.55, 16]} />
+        </mesh>
+        {[...Array(5)].map((_, i) => (
+          <mesh key={i} ref={(m) => void (fish.current[i] = m)} geometry={BOX} material={G.thon} scale={[0.2, 0.07, 0.11]} position={[Math.cos(i * 1.3) * 0.3, 0.99, Math.sin(i * 1.3) * 0.3]} rotation={[0, i, 0]} />
+        ))}
+        <Smoke p={[0, 1.0, 0]} n={6} />
+      </group>
+    </group>
+  )
+}
+
+/** Someone pushing at the front: leaning in, stepping back, swaying side to side. */
+function Jostle({ at, rot, phase, children }: { at: [number, number, number]; rot: number; phase: number; children: React.ReactNode }) {
+  const ref = useRef<THREE.Group>(null)
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime * 1.6 + phase
+    const g = ref.current
+    if (!g) return
+    g.position.set(at[0] + Math.sin(t * 1.3) * 0.13, 0, at[2] + Math.sin(t * 0.9 + 1) * 0.16)
+    g.rotation.set(Math.sin(t * 1.1) * 0.06, rot + Math.sin(t * 0.7) * 0.25, 0)
+  })
+  return <group ref={ref}>{children}</group>
+}
+
+/** What's shouted at the front, one after the other, and the seller's answers. */
+const GARBA_VOICES: [string, [number, number, number]][] = [
+  ['Donne-moi une grosse queue là-bas !', [-0.55, 2.3, 1.75]],
+  ['Donne-moi milieu là !', [0.85, 2.3, 1.8]],
+  ['Doucement, chacun son tour !', [0.75, 2.4, 0.1]],
+  ["Pas celui-là, l'autre dans l'huile !", [0.2, 2.3, 1.7]],
+  ["Moi j'étais là avant hein !", [-0.15, 2.3, 2.35]],
+  ['Mets piment beaucoup !', [-0.55, 2.3, 1.75]],
+  ['Grosse queue est finie, prends milieu !', [0.75, 2.4, 0.1]],
+]
+
+function GarbaVoices({ n }: { n: number }) {
+  const [k, setK] = useState(0)
+  useFrame(({ clock }) => {
+    const i = Math.floor(clock.elapsedTime / 2.8) % GARBA_VOICES.length
+    if (i !== k) setK(i)
+  })
+  // Only the ones there to say it (the front fills first).
+  const [text, p] = GARBA_VOICES[k]
+  if (n < 4 && p[2] > 2) return null
+  return (
+    <Html position={p} center zIndexRange={[22, 0]}>
+      <div className="rounded-2xl rounded-bl-sm bg-white px-3 py-1.5 text-[13px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_6px_14px_-8px_rgba(0,0,0,0.5)]">{text}</div>
+    </Html>
+  )
+}
+
+const PIECES: [string, string, number][] = [
+  ['queue', 'Grosse queue', 1000],
+  ['milieu', 'Milieu', 1000],
+  ['petit', 'Petit morceau', 500],
+]
+
+/** Choosing one's fish: the piece, and from the hot oil or from the box. */
+function GarbaMenu({ onChoose, onClose }: { onChoose: (choice: string) => void; onClose: () => void }) {
+  const [hot, setHot] = useState(false)
+  return (
+    <div className="w-[230px] rounded-[22px] bg-white p-3 text-[var(--color-ink)] shadow-[0_18px_36px_-14px_rgba(0,0,0,0.6)]" onPointerDown={(e) => e.stopPropagation()}>
+      <div className="flex items-center justify-between">
+        <span className="font-display text-[16px] font-extrabold">Ton poisson ?</span>
+        <button className="text-lg font-extrabold text-[var(--color-ink-soft)]" onClick={onClose} aria-label="Fermer">
+          ×
+        </button>
+      </div>
+      <div className="mt-2 grid grid-cols-2 gap-1 rounded-full bg-[var(--color-canvas)] p-1 text-[12px] font-extrabold">
+        <button className={`rounded-full py-1.5 ${!hot ? 'bg-white shadow' : ''}`} onClick={() => setHot(false)}>
+          📦 Dans la boîte
+        </button>
+        <button className={`rounded-full py-1.5 ${hot ? 'bg-white shadow' : ''}`} onClick={() => setHot(true)}>
+          🔥 Dans l'huile
+        </button>
+      </div>
+      <p className="mt-1.5 text-[11px] font-bold text-[var(--color-ink-soft)]">{hot ? "Il sort de l'huile : attends un peu, c'est bien chaud." : 'Déjà frit : servi tout de suite.'}</p>
+      <div className="mt-2 flex flex-col gap-1.5">
+        {PIECES.map(([id, label, price]) => (
+          <button key={id} className="flex items-center justify-between rounded-xl bg-[var(--color-orange)] px-3 py-2 text-[13px] font-extrabold text-white active:scale-95" onClick={() => onChoose(`${id}-${hot ? 'huile' : 'boite'}`)}>
+            <span>{label}</span>
+            <span>{price.toLocaleString('fr-FR')} F</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+

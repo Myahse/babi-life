@@ -83,6 +83,7 @@ const STREET_SELLERS: Record<string, [string, string]> = {
   porc: ['Le porc au four', 'drumstick'],
   cafe: ['Le café du pousse-pousse', 'coffee'],
   the: ['Le thé avec les gars', 'cup-soda'],
+  garba: ['Le garba du garbadrome', 'fish'],
 }
 
 export function Play() {
@@ -431,12 +432,12 @@ export function Play() {
             onCall: (npc: Npc, text: string) => !sim.activity && !chat && setCalling({ npc, text }),
             talkingTo: chat?.id ?? (doing?.placeKind === 'chat' ? talkedTo.current : null),
             plotsVersion,
-            onStreetBuy: async (vendor: string) => {
+            onStreetBuy: async (vendor: string, choice?: string) => {
               let said: string | null = null
               // Which seller (the id's prefix: porc, cafe, the; else alloco), as the API does.
               const [label, icon] = STREET_SELLERS[vendor.split(':')[0]] ?? STREET_SELLERS.alloco
               await run(label, icon, 'market', async () => {
-                const res = await api.street(sim.id, vendor)
+                const res = await api.street(sim.id, vendor, choice)
                 said = res.outcome.text
                 return res
               })

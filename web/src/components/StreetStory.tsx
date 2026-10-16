@@ -10,7 +10,7 @@ import { AppLogo } from './AppLogo'
 
 const StreetScene = lazy(() => import('./StreetScene'))
 
-export type Chapter = { id: 'cafe' | 'ecole' | 'gbaka' | 'sotra' | 'woro' | 'pasteur' | 'alloco' | 'foot' | 'gnango' | 'porc' | 'the' | 'couloir'; time: string; title: string; text: string; /** Awa shows her phone: paying with Waye, ordering a Gnango. */ phone?: 'waye' | 'gnango' }
+export type Chapter = { id: 'cafe' | 'ecole' | 'gbaka' | 'sotra' | 'woro' | 'pasteur' | 'garba' | 'alloco' | 'foot' | 'gnango' | 'porc' | 'the' | 'couloir'; time: string; title: string; text: string; /** Awa shows her phone: paying with Waye, ordering a Gnango. */ phone?: 'waye' | 'gnango' }
 
 /** The guide who walks you down the street, a Sim of the game. */
 export const GUIDE = { name: 'Awa', gender: 'femme' as const, seed: 'guide-awa-3' }
@@ -23,6 +23,7 @@ export const CHAPTERS: Chapter[] = [
   { id: 'sotra', time: '8 h', title: "L'arrêt SOTRA", text: "Ici on attend le bus : le 11, le 19, le 44. Quand il arrive, ça monte, ça descend. Toi aussi tu pourras le prendre." },
   { id: 'woro', time: '9 h', title: 'Le woro-woro', text: "Le woro-woro, c'est le taxi de la commune : tu lèves la main, il s'arrête, tu dis où tu vas. S'il va par là, tu montes." },
   { id: 'pasteur', time: '10 h', title: 'Le pasteur au bord de la route', text: "Lui, c'est le pasteur du coin : Bible en main, petit ampli. Ceux qui passent s'arrêtent un peu : « Amen ! »" },
+  { id: 'garba', time: '12 h', title: 'Le garbadrome', text: "Le garba, c'est sacré ! Tout le monde se presse devant : « Donne-moi une grosse queue là-bas ! », « Donne-moi milieu là ! ». Dans l'huile bien chaud, ou dans la boîte : c'est toi qui choisis." },
   { id: 'alloco', time: '13 h', title: "L'alloco de la tantie", text: "Midi, on a faim ! L'alloco de la tantie, 300 F. Moi je paie avec Waye sur mon téléphone : c'est rapide, pas besoin de monnaie.", phone: 'waye' },
   { id: 'foot', time: '16 h', title: 'Le maracana du quartier', text: "Les gars jouent dans la rue, deux cailloux pour les buts. Une voiture arrive ? On se range… et ça reprend !" },
   { id: 'gnango', time: '18 h', title: 'Un Gnango pour rentrer', text: "Fatiguée de marcher ? Je commande un Gnango sur mon téléphone : le prix est fixé avant, et le chauffeur vient jusqu'à moi.", phone: 'gnango' },

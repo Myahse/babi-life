@@ -95,9 +95,18 @@ func (s *Sim) buyAlloco(vendor string) (string, error) { return s.buyStreet(vend
 func (h *Handler) street(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Vendor string `json:"vendor"`
+		// At the garbadrome: which fish (garba.go).
+		Choice string `json:"choice"`
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
+		return
+	}
+	if strings.HasPrefix(req.Vendor, "garba:") {
+		h.mutate(w, r, func(s *Sim) (game.Outcome, []Event, error) {
+			said, cost, err := s.buyGarba(req.Vendor, req.Choice)
+			return game.Outcome{Text: said, Money: -cost}, nil, err
+		})
 		return
 	}
 	h.mutate(w, r, func(s *Sim) (game.Outcome, []Event, error) {

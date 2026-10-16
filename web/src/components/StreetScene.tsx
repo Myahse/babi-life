@@ -22,15 +22,15 @@ import { CHAPTERS, GUIDE } from './StreetStory'
 
 const GAP = 30
 /** The hour each scene is lived at: how busy the stalls and the stop are. */
-const HOURS = [7, 7, 7, 8, 9, 10, 13, 16, 18, 19, 21, 22]
+const HOURS = [7, 7, 7, 8, 9, 10, 12, 13, 16, 18, 19, 21, 22]
 /** Where things go across the street: the far lane, the near lane, the guide's pavement. */
 const FAR_LANE = -1.2
 const NEAR_LANE = 2.2
 const PAVEMENT = 5.2
-/** From the 10th scene on, the night. */
-const DUSK = 9
+/** After the porc au four, the night. */
+const DUSK = 10
 /** The sky through the day, one per scene. */
-const SKY = ['#ffd2a1', '#cfe3f2', '#bfe0f5', '#a9d3f0', '#9fd0f2', '#9fd0f2', '#8ecaf0', '#f7c08a', '#f0a070', '#e2794f', '#1d2350', '#121530'].map((c) => new THREE.Color(c))
+const SKY = ['#ffd2a1', '#cfe3f2', '#bfe0f5', '#a9d3f0', '#9fd0f2', '#9fd0f2', '#94cdf1', '#8ecaf0', '#f7c08a', '#f0a070', '#e2794f', '#1d2350', '#121530'].map((c) => new THREE.Color(c))
 const WALLS = ['#e9d8b8', '#f2b880', '#c9e4d6', '#f0e3a2', '#d8c6e8', '#f5c9b9', '#b9d7ef', '#efe9df']
 
 export default function StreetScene({ progress, running }: { progress: MutableRefObject<number>; running: boolean }) {
@@ -166,6 +166,8 @@ function Scene({ id, x, hour, night }: { id: (typeof CHAPTERS)[number]['id']; x:
       return stall('cafe')
     case 'the':
       return stall('the', 0, 7)
+    case 'garba':
+      return stall('garba', 0, 9)
     case 'alloco':
       return stall('alloco', 0, 4)
     case 'porc':
