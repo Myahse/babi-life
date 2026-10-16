@@ -408,6 +408,7 @@ function BridgeLab() {
 function Lab() {
   if (view === 'bridge') return <BridgeLab />
   if (view === 'billboard') return <BillboardLab />
+  if (view === 'camera') return <CameraLab />
   if (view === 'dressing' || view === 'police') return <FrontLab />
   if (view === 'outdoor') return <OutdoorLab />
   if (view === 'field') return <FieldLab />
@@ -544,6 +545,52 @@ function StreetFootLab() {
     </Canvas>
   )
 }
+/**
+ * The three street views on a test street (?view=camera&mode=pres|epaule|haut):
+ * the camera where Walker.tsx puts it, behind the perso walking down the
+ * pavement, the garbadrome and the alloco ahead.
+ */
+function CameraLab() {
+  const mode = q.get('mode') ?? 'epaule'
+  // Walker.tsx: [back, up] and the height looked at, per view.
+  const [back, up, look] = mode === 'pres' ? [9, 4.2, 1.4] : mode === 'haut' ? [62, 56, 0] : [4.4, 2.5, 1.75]
+  const me = useMemo(() => randomLook('femme', ((n) => () => ((n = (n * 16807) % 2147483647) / 2147483647))(11)), [])
+  const houses = ['#e9d8b8', '#f2b880', '#c9e4d6', '#f0e3a2', '#d8c6e8', '#f5c9b9', '#b9d7ef', '#efe9df']
+  return (
+    <Canvas dpr={[1, 1.5]} camera={{ position: [0, up, back], fov: 50, far: 2000 }} onCreated={({ camera }) => camera.lookAt(0, look, -6)} style={{ width: '100vw', height: '100vh' }}>
+      <color attach="background" args={['#a9d3f0']} />
+      <hemisphereLight args={['#ffffff', '#b8a27c', 1.2]} />
+      <directionalLight position={[10, 20, 12]} intensity={1.6} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[400, 400]} />
+        <meshLambertMaterial color="#b98b5c" />
+      </mesh>
+      {/* The street going away from the camera, its pavement, the houses either side */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-4, 0.02, -60]}>
+        <planeGeometry args={[7, 200]} />
+        <meshLambertMaterial color="#4a4d55" />
+      </mesh>
+      {Array.from({ length: 24 }, (_, k) => (
+        <group key={k}>
+          {[-11, 6].map((x, side) => (
+            <mesh key={x} position={[x, 2.5 + ((k * 7 + side * 3) % 4), -k * 9 + 10]}>
+              <boxGeometry args={[4, 5 + ((k * 7 + side * 3) % 4) * 2, 8.4]} />
+              <meshLambertMaterial color={houses[(k + side * 3) % houses.length]} />
+            </mesh>
+          ))}
+        </group>
+      ))}
+      <StreetStall stall={{ id: 'garba:lab:1', kind: 'garba', at: [3.2, -14], rot: -Math.PI / 2, seed: 0.4 }} hour={12} crowd />
+      <StreetStall stall={{ id: 'alloco:lab:2', kind: 'alloco', at: [3.2, -30], rot: -Math.PI / 2, seed: 0.6 }} hour={13} crowd />
+      <Vehicle p={[-5, 0, -40]} r={Math.PI / 2} kind="woro" seed={4} />
+      {/* The perso, walking away from the camera */}
+      <group rotation={[0, Math.PI, 0]}>
+        <Character look={me} gender="femme" walking />
+      </group>
+    </Canvas>
+  )
+}
+
 /** Two billboards: an ad (a poster from public/apercu) and an empty one, « TA PUB ICI » (?view=billboard&night). */
 function BillboardLab() {
   const cam = (q.get('cam') ?? '0,4,20').split(',').map(Number) as [number, number, number]
