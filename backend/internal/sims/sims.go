@@ -133,6 +133,8 @@ type Sim struct {
 	Record    int           `json:"record"`
 	CreatedAt time.Time     `json:"createdAt"`
 	lastTick  time.Time
+	// gymUntil: the game minute the gym membership runs out (0: none), read from the journal (gym.go).
+	gymUntil int64
 }
 
 type Event struct {
@@ -350,13 +352,18 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.mutate(w, r, func(s *Sim) (game.Outcome, []Event, error) {
+	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
+		until, err := gymMembership(r.Context(), tx, s.ID)
+		if err != nil {
+			return game.Outcome{}, nil, err
+		}
+		s.gymUntil = until
 		it, err := s.interactAt(req.PlaceID, req.InteractionID)
 		if err != nil {
 			return game.Outcome{}, nil, err
 		}
 		text := fmt.Sprintf("%s : %s (%s)", s.FirstName, it.Label, humanMinutes(it.Minutes))
-		return game.Outcome{Text: text, Money: -max(it.Cost, 0)}, nil, nil
+		return game.Outcome{Text: text, Money: -max(it.Cost, 0)}, gymEvents(s, it), nil
 	})
 }
 
@@ -405,6 +412,12 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 		}
 		if home {
 			it = s.housing().AtHome(it)
+		}
+		if kind.ID == "gym" {
+			var err error
+			if it, err = s.atGym(it); err != nil {
+				return game.Interaction{}, err
+			}
 		}
 	}
 

@@ -29,7 +29,7 @@ type Spot = { p: V3; r?: number; pose: Pose; lying?: boolean; g?: 'femme' | 'hom
 type Person = Spot & { gender: 'femme' | 'homme'; look: ReturnType<typeof randomLook>; seed: number }
 
 /** Kinds of places that have an inside (the beach or the football pitch don't). */
-export const INDOOR = new Set(['boutique', 'couture', 'pharmacie', 'police', 'home', 'maquis', 'club', 'restaurant', 'market', 'office', 'mairie', 'school', 'health', 'worship', 'mall', 'culture', 'barbier', 'salon', 'hotel', 'universite'])
+export const INDOOR = new Set(['gym', 'boutique', 'couture', 'pharmacie', 'police', 'home', 'maquis', 'club', 'restaurant', 'market', 'office', 'mairie', 'school', 'health', 'worship', 'mall', 'culture', 'barbier', 'salon', 'hotel', 'universite'])
 
 /** Ambient occlusion where the device can afford it. */
 const RICH = typeof navigator === 'undefined' || (navigator.hardwareConcurrency ?? 4) > 4
@@ -50,6 +50,11 @@ function action(kind: string, id: string | undefined): { spot: string; pose: Pos
     return { spot: 'counter', pose: 'busy' }
   }
   if (id === 'garde-a-vue') return { spot: 'seat', pose: 'sit' }
+  // The gym: the bench, the treadmill, the class on the floor, the showers.
+  if (id === 'musculation') return { spot: 'bench', pose: 'busy' }
+  if (id === 'cardio') return { spot: 'treadmill', pose: 'run' }
+  if (id === 'cours-collectif') return { spot: 'floor', pose: 'dance' }
+  if (id === 'douche-vestiaire') return { spot: 'shower', pose: 'wash' }
   if (/^(degrade|boule-a-zero|taille-barbe|tresses|tissage|chignon|manucure|coupe-courte|iroquoise|nattes|vanilles|macarons|carre|coudre-pagne|retouche)$/.test(id)) return { spot: 'chair', pose: 'sit' }
   // Gbairai: telling the quarter's news, with the hands.
   if (id === 'gbairai') return { spot: kind === 'barbier' || kind === 'salon' ? 'bench' : 'table', pose: 'rant' }
@@ -435,6 +440,61 @@ function room(kindIn: string, housing: string): Room {
           counter: { p: [0, 0, 0.6], r: Math.PI, pose: 'idle' },
         },
         crowd: [{ p: [-3.5, 0, -2.9], pose: 'busy' }, { p: [3.5, 0, 0.6], pose: 'busy' }, { p: [-3.5, 0, 2.4], r: Math.PI, pose: 'wave' }],
+      }
+    case 'gym':
+      // The salle de sport: the rubber floor, the mirrors along the back
+      // wall, the treadmills, the bench and its bar, the rack of dumbbells,
+      // the punching bag, the shower in the corner, the reception desk.
+      return {
+        floor: '#8a929c',
+        wall: '#f1f3f5',
+        furniture: (
+          <>
+            {[-3, 0, 3].map((x) => (
+              <Box key={x} p={[x, 1.5, -4.45]} s={[2.6, 2, 0.05]} c="#cfe3ef" />
+            ))}
+            {[-4.6, -3].map((x) => (
+              <group key={x} position={[x, 0, -2.6]}>
+                <Box p={[0, 0.12, 0]} s={[0.8, 0.2, 1.8]} c="#1c1c1e" />
+                <Box p={[0, 0.7, -0.85]} s={[0.8, 1.2, 0.08]} c="#2b2f3a" />
+                <Box p={[0, 1.25, -0.8]} s={[0.6, 0.25, 0.2]} c="#495057" />
+              </group>
+            ))}
+            <group position={[1, 0, -1.5]}>
+              <Box p={[0, 0.42, 0]} s={[0.4, 0.08, 1.3]} c="#c92a2a" />
+              <Box p={[0, 1.15, -0.5]} s={[1.6, 0.05, 0.05]} c="#9aa3ad" />
+              {[-0.72, 0.72].map((x) => (
+                <Box key={x} p={[x, 1.15, -0.5]} s={[0.07, 0.36, 0.36]} c="#1c1c1e" />
+              ))}
+            </group>
+            <Box p={[4.2, 0.5, -3.6]} s={[1.6, 0.06, 0.5]} c="#3d4350" />
+            {[...Array(6)].map((_, i) => (
+              <Box key={i} p={[3.6 + i * 0.24, 0.6, -3.6]} s={[0.1, 0.12, 0.3]} c="#1c1c1e" />
+            ))}
+            <mesh position={[4.6, 1.6, -0.6]}>
+              <cylinderGeometry args={[0.25, 0.25, 1.1, 10]} />
+              <meshLambertMaterial color="#c92a2a" />
+            </mesh>
+            <Box p={[4.6, 2.5, -0.6]} s={[0.04, 0.7, 0.04]} c="#9aa3ad" />
+            <Box p={[-5, 1.3, 2.4]} s={[1.2, 2.6, 1.2]} c="#d0ebff" />
+            <Box p={[3, 0.55, 2.6]} s={[2.2, 1.1, 0.7]} c="#e03131" />
+          </>
+        ),
+        spots: {
+          // Weights: standing at the rack, the dumbbells in hand.
+          bench: { p: [4.2, 0, -2.8], r: Math.PI, pose: 'busy' },
+          treadmill: { p: [-3, 0.22, -2.4], r: Math.PI, pose: 'run' },
+          floor: { p: [-1, 0, 1], r: Math.PI, pose: 'dance' },
+          shower: { p: [-5, 0, 2.4], pose: 'wash' },
+          entrance: { p: [0, 0, 3.6], r: Math.PI, pose: 'idle' },
+          counter: { p: [3, 0, 2], r: Math.PI, pose: 'idle' },
+        },
+        crowd: [
+          { p: [-4.6, 0.22, -2.4], r: Math.PI, pose: 'run' },
+          { p: [1.6, 0, -1.1], r: -Math.PI / 2, pose: 'talk' },
+          { p: [3.8, 0, -0.6], r: -Math.PI / 2, pose: 'throw' },
+          { p: [3, 0, 3.2], r: Math.PI, pose: 'talk' },
+        ],
       }
     case 'police':
       // The commissariat: a counter, and the cell behind its bars.

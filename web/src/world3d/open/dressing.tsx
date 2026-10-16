@@ -34,7 +34,7 @@ const B = ({ p, s, c, glow = 0, r = 0 }: { p: [number, number, number]; s: [numb
 const rnd = (seed: number) => () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
 
 // These stay open after dark. Everything else pulls a shutter down over the door.
-const OPEN_AT_NIGHT = new Set(['police', 'pharmacie', 'maquis', 'restaurant', 'club', 'hotel', 'health', 'transport', 'home', 'beach', 'lagune', 'nature', 'village', 'sport'])
+const OPEN_AT_NIGHT = new Set(['gym', 'police', 'pharmacie', 'maquis', 'restaurant', 'club', 'hotel', 'health', 'transport', 'home', 'beach', 'lagune', 'nature', 'village', 'sport'])
 
 export function Dressing({ kind, name = '', seed, night }: { kind: string; name?: string; seed: number; night: boolean }) {
   const front = (() => {
@@ -78,6 +78,8 @@ export function Dressing({ kind, name = '', seed, night }: { kind: string; name?
         return <Pharmacie night={night} seed={seed} />
       case 'police':
         return <Commissariat name={name} night={night} seed={seed} />
+      case 'gym':
+        return <Gym night={night} seed={seed} />
       case 'boutique':
         return <Boutique seed={seed} />
       case 'couture':
@@ -658,6 +660,54 @@ function Commissariat({ name, night, seed }: { name: string; night: boolean; see
       <group position={[-4.6, 0, 3.4]} rotation={[0, Math.PI / 2, 0]}>
         <Vehicle p={[0, 0, 0]} kind="car" color="#1c4f9c" seed={3} />
       </group>
+    </group>
+  )
+}
+
+/**
+ * The salle de sport: the red sign, the rack of dumbbells and the bench out
+ * front where the regulars warm up, the speaker for the music, the coach in
+ * his survêt at the door. Lit late: people train after work.
+ */
+function Gym({ night, seed }: { night: boolean; seed: number }) {
+  const sign = useMemo(() => {
+    const l = lettering('SALLE DE SPORT', '#e03131', '#ffffff', '#ffffff')
+    return { m: new THREE.MeshLambertMaterial({ map: l.t, emissiveMap: l.t, emissive: '#ffffff', emissiveIntensity: night ? 0.6 : 0 }), aspect: l.aspect }
+  }, [night])
+  return (
+    <group>
+      <mesh position={[0, 2.75, 0.2]} scale={[2.6, 2.6 / sign.aspect, 1]} material={sign.m}>
+        <planeGeometry />
+      </mesh>
+      {/* The rack of dumbbells, by size */}
+      <group position={[2.3, 0, 1.1]}>
+        <B p={[0, 0.45, 0]} s={[1.4, 0.06, 0.4]} c="#3d4350" />
+        <B p={[0, 0.22, 0]} s={[1.3, 0.44, 0.06]} c="#2b2f3a" />
+        {[...Array(5)].map((_, i) => (
+          <group key={i} position={[-0.55 + i * 0.27, 0.56, 0]}>
+            <B p={[0, 0, 0]} s={[0.05, 0.05, 0.3]} c="#9aa3ad" />
+            {[-0.13, 0.13].map((z) => (
+              <B key={z} p={[0, 0, z]} s={[0.1 + i * 0.015, 0.1 + i * 0.015, 0.06]} c="#1c1c1e" />
+            ))}
+          </group>
+        ))}
+      </group>
+      {/* The bench with its bar */}
+      <group position={[-2.4, 0, 1.6]}>
+        <B p={[0, 0.42, 0]} s={[0.35, 0.08, 1.2]} c="#c92a2a" />
+        <B p={[0, 0.2, 0]} s={[0.1, 0.4, 0.9]} c="#2b2f3a" />
+        {[-0.3, 0.3].map((x) => (
+          <B key={x} p={[x, 0.6, -0.45]} s={[0.05, 1.2, 0.05]} c="#2b2f3a" />
+        ))}
+        <B p={[0, 1.15, -0.45]} s={[1.5, 0.04, 0.04]} c="#9aa3ad" />
+        {[-0.68, 0.68].map((x) => (
+          <B key={x} p={[x, 1.15, -0.45]} s={[0.06, 0.32, 0.32]} c="#1c1c1e" />
+        ))}
+      </group>
+      {/* The speaker: the music is part of it */}
+      <B p={[1.4, 0.45, 0.6]} s={[0.4, 0.9, 0.35]} c="#1c1c1e" />
+      <B p={[1.4, 0.55, 0.78]} s={[0.24, 0.24, 0.02]} c="#495057" />
+      <Worker p={[-0.9, 0, 1.2]} r={0.4} outfit="survet" pose="talk" seed={seed} />
     </group>
   )
 }

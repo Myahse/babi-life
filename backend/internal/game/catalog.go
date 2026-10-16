@@ -85,6 +85,14 @@ type PlaceKind struct {
 	Events       []RandomEvent `json:"-"`
 }
 
+// The gym's prices (game rules): a session, a class, the month's membership.
+const (
+	GymSession      = 1500
+	GymClass        = 2000
+	GymMonth        = 15000
+	GymMembershipID = "abonnement-salle"
+)
+
 // Kinds is the catalogue of place kinds. Every place in the world references
 // one of these by ID. Add new kinds here as areas get designed.
 var Kinds = map[string]PlaceKind{
@@ -215,6 +223,25 @@ var Kinds = map[string]PlaceKind{
 		},
 		Events: []RandomEvent{
 			{Text: "Tu marques le but de la victoire ! On scande ton nom.", Effect: Needs{Fun: 25, Social: 15}},
+		},
+	},
+	// The gym (salle de sport): weights, the treadmill and the bike, the evening
+	// class with the music up. A session is paid at the door; the month's
+	// membership makes them free for 30 days (sims/gym.go). Prices are game
+	// rules, in the range of Abidjan's neighbourhood gyms.
+	"gym": {
+		ID: "gym", Label: "Salle de sport", Icon: "dumbbell",
+		Interactions: []Interaction{
+			{ID: "musculation", Ages: TeensUp, Label: "Séance de musculation", Icon: "dumbbell", Minutes: 60, Cost: GymSession, Effect: Needs{Fun: 10, Social: 5, Energy: -30, Hygiene: -30, Hunger: -15}, MinHour: 6, MaxHour: 22},
+			{ID: "cardio", Ages: TeensUp, Label: "Cardio : tapis et vélo", Icon: "heart", Minutes: 45, Cost: GymSession, Effect: Needs{Fun: 10, Energy: -25, Hygiene: -25, Hunger: -10}, MinHour: 6, MaxHour: 22},
+			{ID: "cours-collectif", Ages: TeensUp, Label: "Cours collectif (aérobic, zumba)", Icon: "music", Minutes: 60, Cost: GymClass, Effect: Needs{Fun: 25, Social: 20, Energy: -25, Hygiene: -25}, MinHour: 17, MaxHour: 21},
+			{ID: GymMembershipID, Ages: TeensUp, Label: "Prendre l'abonnement du mois (séances gratuites)", Icon: "id-card", Minutes: 10, Cost: GymMonth, Effect: Needs{Fun: 5}, MinHour: 6, MaxHour: 22},
+			{ID: "douche-vestiaire", Ages: TeensUp, Label: "Prendre une douche au vestiaire", Icon: "shower-head", Minutes: 15, Effect: Needs{Hygiene: 50}, MinHour: 6, MaxHour: 22},
+		},
+		Events: []RandomEvent{
+			{Text: "Le coach te corrige la posture : « Dos droit, on respire ! »", Effect: Needs{Fun: 5, Social: 10}},
+			{Text: "Coupure de courant : le tapis s'arrête net. On finit aux haltères.", Effect: Needs{Fun: -10}},
+			{Text: "Un habitué te montre son programme « pour avoir les bras comme lui ».", Effect: Needs{Social: 15}},
 		},
 	},
 	// Public services and culture. Opening days and hours are game rules,

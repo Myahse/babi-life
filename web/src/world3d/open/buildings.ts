@@ -23,7 +23,7 @@ export type Style = 'default' | 'institution' | 'hospital' | 'civic' | 'hotel' |
 export const STYLE_OF_KIND: Record<string, Style> = {
   universite: 'institution', school: 'institution', health: 'hospital', mairie: 'civic', office: 'civic', culture: 'civic', worship: 'civic', police: 'civic',
   hotel: 'hotel', mall: 'commerce', market: 'commerce', restaurant: 'commerce', maquis: 'commerce', club: 'commerce', barbier: 'commerce', salon: 'commerce', transport: 'commerce', home: 'home',
-  boutique: 'commerce', couture: 'commerce', pharmacie: 'commerce',
+  boutique: 'commerce', couture: 'commerce', pharmacie: 'commerce', gym: 'commerce',
 }
 
 export type BuildingBuilders = {

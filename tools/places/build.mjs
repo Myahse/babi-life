@@ -70,10 +70,14 @@ function kindOf(cls, sub, name) {
     case 'theatre':
     case 'museum':
       return 'culture'
+    case 'fitness_centre':
+    case 'fitness':
+    case 'gymnastics':
+      return 'gym' // the salles de sport
     case 'sports_centre':
+      return /\b(gym|fitness|musculation|salle de sport|body ?building)\b/.test(n) ? 'gym' : 'sport'
     case 'pitch':
     case 'stadium':
-    case 'gymnastics':
     case 'swimming_pool':
       return 'sport'
     case 'garden':
