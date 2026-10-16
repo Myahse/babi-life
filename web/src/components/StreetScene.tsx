@@ -22,7 +22,7 @@ import { CHAPTERS, GUIDE } from './StreetStory'
 
 const GAP = 30
 /** The camera's spring (critically damped): higher follows the scroll closer. */
-const SPRING = 3.2
+const SPRING = 2.6
 /** The hour each scene is lived at: how busy the stalls and the stop are. */
 const HOURS = [7, 7, 7, 8, 9, 10, 12, 13, 16, 18, 19, 21, 22]
 /** Where things go across the street: the far lane, the near lane, the guide's pavement. */

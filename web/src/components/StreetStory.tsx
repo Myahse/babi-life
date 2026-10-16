@@ -75,7 +75,7 @@ export function StreetStory() {
 
   const c = CHAPTERS[chapter]
   return (
-    <section ref={box} className="relative -mx-4 sm:mx-0" style={{ height: `${CHAPTERS.length * 70 + 40}svh` }}>
+    <section ref={box} className="relative -mx-4 sm:mx-0" style={{ height: `${CHAPTERS.length * 120 + 40}svh` }}>
       {/* The street in a painted frame; the words on cream signs over it */}
       <div className="sticky top-0 h-[100svh] overflow-hidden sm:top-[5svh] sm:h-[90svh] sm:border-[6px] sm:border-[var(--brown)]">
         <div className="absolute inset-0 bg-[#26332c]" />
