@@ -20,7 +20,7 @@ export const CHAPTERS: Chapter[] = [
   { id: 'cafe', time: '6 h', title: 'Le café au pousse-pousse', text: "On commence tôt ! Le café du matin, 150 F : on le boit debout, on cause un peu, et chacun part au boulot." },
   { id: 'ecole', time: '7 h', title: 'Les élèves en route', text: "Regarde les petits : tenue kaki et bleue, sac au dos. Ils vont à l'école à pied, en groupe." },
   { id: 'gbaka', time: '7 h 30', title: 'Le gbaka', text: "Le gbaka arrive, l'apprenti crie « Adjamé ! Adjamé ! ». Tu montes, tu te serres, tu paies l'apprenti en route." },
-  { id: 'sotra', time: '8 h', title: "L'arrêt SOTRA", text: "Ici on attend le bus : le 11, le 19, le 44. Quand il arrive, ça monte, ça descend. Toi aussi tu pourras le prendre." },
+  { id: 'sotra', time: '8 h', title: "L'arrêt SITRA", text: "Ici on attend le bus : le 11, le 19, le 44. Quand il arrive, ça monte, ça descend. Toi aussi tu pourras le prendre." },
   { id: 'woro', time: '9 h', title: 'Le woro-woro', text: "Le woro-woro, c'est le taxi de la commune : tu lèves la main, il s'arrête, tu dis où tu vas. S'il va par là, tu montes." },
   { id: 'pasteur', time: '10 h', title: 'Le pasteur au bord de la route', text: "Lui, c'est le pasteur du coin : Bible en main, petit ampli. Ceux qui passent s'arrêtent un peu : « Amen ! »" },
   { id: 'garba', time: '12 h', title: 'Le garbadrome', text: "Le garba, c'est sacré ! Tout le monde se presse devant : « Donne-moi une grosse queue là-bas ! », « Donne-moi milieu là ! ». Dans l'huile bien chaud, ou dans la boîte : c'est toi qui choisis." },

@@ -10,9 +10,9 @@ import { hash, type XZ } from './geo'
 import type { Nav } from './nav'
 import { lettering, signMaterial } from './ruePrincesse'
 
-// The SOTRA's bus stops along the big roads (the buses themselves drive in
+// The SITRA's bus stops along the big roads (the buses themselves drive in
 // the traffic, OpenWorld's RoadTraffic): a shelter with its green roof and an
-// ad panel at the back, a bench, the green sign with « SOTRA » and the lines
+// ad panel at the back, a bench, the green sign with « SITRA » and the lines
 // that stop there. People wait: a crowd at the rush hours (early morning and
 // evening), a few the rest of the day, nobody late at night. Always at the
 // same places along the same roads.
@@ -93,7 +93,7 @@ const ADS = ['#ff7a00', '#ffcc00', '#e4002b', '#00a3e0', '#6d28d9']
 
 /** One stop. Local +z faces the road. */
 export function BusStop({ stop, hour, night }: { stop: Stop; hour: number; night: boolean }) {
-  const name = useMemo(() => lettering('SOTRA', '#008f4c', '#ffffff', '#ffd43b'), [])
+  const name = useMemo(() => lettering('SITRA', '#008f4c', '#ffffff', '#ffd43b'), [])
   const sign = useMemo(() => signMaterial(name.t), [name])
   const lines = useMemo(() => lettering(stop.lines.join(' '), '#ffffff', '#0b5f36', '#0b5f36'), [stop.lines])
   const linesMat = useMemo(() => new THREE.MeshLambertMaterial({ map: lines.t }), [lines])
@@ -132,7 +132,7 @@ export function BusStop({ stop, hour, night }: { stop: Stop; hour: number; night
       {[-0.4, 1.4].map((x) => (
         <Box key={x} s={[0.06, 0.42, 0.06]} p={[x, 0.21, -0.2]} m={M.steel} />
       ))}
-      {/* The sign on its pole: SOTRA, and the lines */}
+      {/* The sign on its pole: SITRA, and the lines */}
       <group position={[2.3, 0, 0.9]}>
         <Box s={[0.08, 2.8, 0.08]} p={[0, 1.4, 0]} m={M.steel} />
         <mesh geometry={BOX} material={sign} position={[0, 2.85, 0]} scale={[0.38 * name.aspect, 0.38, 0.06]} />

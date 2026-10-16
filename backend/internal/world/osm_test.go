@@ -58,3 +58,21 @@ func TestCommissariats(t *testing.T) {
 		}
 	}
 }
+
+func TestInGameBrands(t *testing.T) {
+	for in, want := range map[string]string{
+		"KFC Yopougon":                 "CFC Yopougon",
+		"Sofitel Abidjan Hôtel Ivoire": "Softitel Abidjan Hôtel Ivoire",
+		"Gare SOTRA de Yopougon":       "Gare SITRA de Yopougon",
+		"Kfcool":                       "Kfcool",
+	} {
+		if got := InGameName(in); got != want {
+			t.Errorf("InGameName(%q) = %q, want %q", in, got, want)
+		}
+	}
+	for _, p := range mapPlaces["yopougon"] {
+		if strings.Contains(p.Name, "KFC") {
+			t.Errorf("%s still says KFC", p.ID)
+		}
+	}
+}

@@ -4,6 +4,7 @@ import (
 	"embed"
 	"encoding/json"
 	"math"
+	"regexp"
 	"sort"
 	"strings"
 	"unicode"
@@ -76,7 +77,7 @@ func init() {
 			panic("osm/" + e.Name() + ": unknown commune " + f.Commune)
 		}
 		for _, row := range f.Places {
-			p := MapPlace{ID: row[0].(string), Name: row[1].(string), Kind: row[2].(string), Lat: row[3].(float64), Lng: row[4].(float64), Quarter: row[5].(string)}
+			p := MapPlace{ID: row[0].(string), Name: InGameName(row[1].(string)), Kind: row[2].(string), Lat: row[3].(float64), Lng: row[4].(float64), Quarter: row[5].(string)}
 			if t, ok := row[6].(string); ok {
 				p.Type = t
 			}
@@ -92,6 +93,27 @@ func init() {
 		}
 		mapFetched[f.Commune] = f.Fetched
 	}
+}
+
+// The real brands go by their names in the game (« Babi » is a story, not
+// an ad): the bus company is the SITRA, the fried chicken CFC, the big hotel
+// of Cocody the Softitel. Whole words only, whatever the case on the map.
+var brands = []struct {
+	re   *regexp.Regexp
+	name string
+}{
+	{regexp.MustCompile(`(?i)\bSOTRA\b`), "SITRA"},
+	{regexp.MustCompile(`(?i)\bKFC\b`), "CFC"},
+	{regexp.MustCompile(`(?i)\bKentucky Fried Chicken\b`), "CFC"},
+	{regexp.MustCompile(`(?i)\bSofitel\b`), "Softitel"},
+}
+
+// InGameName is a map name with the real brands renamed.
+func InGameName(name string) string {
+	for _, b := range brands {
+		name = b.re.ReplaceAllString(name, b.name)
+	}
+	return name
 }
 
 func communeByID(id string) (Commune, bool) {

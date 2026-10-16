@@ -1071,7 +1071,7 @@ const CAR_CELL = 300
 const CARS_PER_CELL = 2
 const CAR_ROUND = 90 // seconds
 
-/** Woro-woro, taxis, gbakas, motos and SOTRA buses on the big streets around the Sim: the same ones on every screen. */
+/** Woro-woro, taxis, gbakas, motos and SITRA buses on the big streets around the Sim: the same ones on every screen. */
 function RoadTraffic({ nav, focus, seed, woro }: { nav: Nav; focus: React.RefObject<XZ>; seed: string; woro?: { color?: string; trim?: string; none?: boolean } }) {
   const cells = useCellsAround(focus, CAR_CELL)
   const routes = useRoutes(nav)
@@ -1114,7 +1114,7 @@ const CAR_SIZE: Record<VehicleKind, [number, number]> = { taxi: [4.4, 1.7], woro
 
 function Car({ car, nav, routes }: { car: { id: string; kind: VehicleKind; color?: string; trim?: string; seed: number; near: XZ; speed: number; offset: number }; nav: Nav; routes: Map<string, XZ[]> }) {
   const ref = useRef<THREE.Group>(null)
-  // The SOTRA keeps to the big roads.
+  // The SITRA keeps to the big roads.
   const wide = car.kind === 'sotra' ? 12 : 7
   const anchor = useMemo(() => anchorNode(nav, car.near, wide), [nav, car.near, wide])
   const gbaka = car.kind === 'gbaka'

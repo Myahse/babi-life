@@ -8,7 +8,7 @@ import { randomLook } from '../avatar/options'
 // orange taxi compteur are small saloons (Corolla-style), the gbaka a Hiace-
 // type minibus with its roof rack and its apprenti at the open door, private
 // cars are saloons or SUVs, and the motos the cheap Chinese bikes, with their
-// rider; the SOTRA bus, white with its green and orange band. All in blocks, like the Sims and the buildings: Minecraft style.
+// rider; the SITRA bus, white with its green and orange band. All in blocks, like the Sims and the buildings: Minecraft style.
 // Real size, in metres, nose towards +x.
 
 export type VehicleKind = 'taxi' | 'woro' | 'gbaka' | 'car' | 'moto' | 'sotra'
@@ -171,7 +171,7 @@ function Gbaka({ body, stripe, crew }: { body: string; stripe: string; crew: boo
   )
 }
 
-/** The SOTRA bus: 11 m long, white over a green skirt with the orange band, two doors on the right, windows all along, the line on the front. */
+/** The SITRA bus: 11 m long, white over a green skirt with the orange band, two doors on the right, windows all along, the line on the front. */
 function Sotra({ body }: { body: string }) {
   const [len, wide] = [11, 2.5]
   const p = paint(body)
