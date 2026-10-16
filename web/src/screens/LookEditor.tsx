@@ -5,7 +5,7 @@ import { api } from '../lib/api'
 import type { Look, Sim } from '../lib/types'
 import { ACCESSORIES, ACCESSORY_COLORS, BEARDS, BOTTOM_COLORS, FEMME_OUTFITS, HAIR_COLORS, HAIRS, OUTFIT_COLORS, OUTFIT_DEFAULT_COLOR, OUTFITS, PATTERNS, SHOE_COLORS, WAX_OUTFITS, defaultColors, fullLook } from '../avatar/options'
 import { ColorPicker } from '../components/ColorPicker'
-import { Options, Section } from '../components/LookOptions'
+import { AccessoryOptions, Options, Section } from '../components/LookOptions'
 import { Stage, type Focus } from '../avatar/Stage'
 import { waxSwatch } from '../avatar/BlockHuman'
 import { Chip } from '../components/ui'
@@ -139,7 +139,7 @@ export function LookEditor() {
           {tab === 'accessoire' && (
             <div className="space-y-5">
               <Section title="Accessoire" icon={Glasses}>
-                <Options choices={ACCESSORIES} value={look.accessory} onPick={(accessory) => setLook({ accessory })} look={look} gender={sim.gender} field="accessory" framing="bust" />
+                <AccessoryOptions choices={ACCESSORIES} value={look.accessory} onPick={(accessory) => setLook({ accessory })} look={look} gender={sim.gender} />
               </Section>
               {look.accessory !== 'none' && (
                 <Section title="Couleur de l'accessoire">

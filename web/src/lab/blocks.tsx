@@ -13,7 +13,7 @@ import { NoteShower } from '../world3d/money'
 // ?face zooms on the heads, ?row=2 shows the second row of looks;
 // ?pose=throw shows the travaillement, notes and all; ?far shows the
 // low-detail Sims seen from afar, ?baby the babies in the same looks;
-// ?all=outfits|hairs|accessories|beards|patterns&row=n lays out every
+// ?all=outfits|hairs|accessories|stacks|beards|patterns&row=n lays out every
 // choice, six at a time.
 
 const q = new URLSearchParams(location.search)
@@ -34,6 +34,11 @@ function everyChoice(kind: string): Sample[] {
       return HAIRS.map((h, i) => L({ hair: h.id, outfit: 'casual', accessory: 'none', outfitColor: '#2a6cf0', skin: skins[i % 4] }, ['degrade', 'mohawk', 'short', 'bald'].includes(h.id) ? 'homme' : 'femme'))
     case 'accessories':
       return ACCESSORIES.map((a, i) => L({ accessory: a.id, hair: 'short', outfit: 'casual', outfitColor: ['#00a862', '#f4efe6', '#d6336c', '#74c0fc'][i % 4], skin: skins[i % 4] }, a.id === 'earrings' || a.id === 'beads' ? 'femme' : 'homme'))
+    case 'stacks':
+      // Several accessories at once (up to five, one per place on the body).
+      return ['glasses,bag,watch', 'sunglasses,chain,cap', 'earrings,beads,bag', 'glasses,earrings,watch,bag', 'headphones,sunglasses,chain,watch,bag', 'hat,glasses,croix'].map((a, i) =>
+        L({ accessory: a, hair: i === 2 || i === 3 ? 'braids' : 'short', outfit: 'casual', outfitColor: ['#00a862', '#f4efe6', '#d6336c', '#74c0fc', '#ff7a00', '#7b5cff'][i], skin: skins[i % 4] }, i === 2 || i === 3 ? 'femme' : 'homme'),
+      )
     case 'beards':
       return BEARDS.map((b, i) => L({ beard: b.id, hair: 'short', outfit: 'chemise', accessory: 'none', skin: skins[i % 4] }))
     default:

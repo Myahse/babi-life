@@ -128,6 +128,59 @@ export const FEMME_OUTFITS = new Set(['robe', 'kaba', 'jupe', 'abaya', 'soeur'])
 export const TALL_HAIR = new Set(['afro', 'bun', 'headwrap', 'puffs', 'mohawk', 'ponytail'])
 /** Accessories worn on the head (a hat, a cap…). */
 export const HEADWEAR = new Set(['cap', 'capback', 'beanie', 'hat', 'buckethat', 'bandana', 'headphones', 'kufi'])
+
+/*
+ * Several accessories at once: glasses, a bag, a watch, a chain… Look.accessory
+ * holds them as a list, « glasses,bag,watch » (one alone, or « none », as
+ * before). One per place on the body: one thing on the head, one pair of
+ * glasses, earrings, one thing round the neck, a watch, a bag. Five at most.
+ */
+export const MAX_ACCESSORIES = 5
+export const ACCESSORY_SLOT: Record<string, string> = {
+  cap: 'head', capback: 'head', beanie: 'head', hat: 'head', buckethat: 'head', bandana: 'head', headphones: 'head', kufi: 'head',
+  glasses: 'eyes', sunglasses: 'eyes',
+  earrings: 'ears',
+  chain: 'neck', beads: 'neck', croix: 'neck', chapelet: 'hand',
+  watch: 'wrist',
+  bag: 'bag',
+}
+
+/** The accessories worn, in the order they were put on. */
+export function accessoriesOf(l: { accessory?: string }): string[] {
+  return (l.accessory ?? '').split(',').filter((a) => a && a !== 'none')
+}
+
+/** Is this one worn? */
+export const hasAcc = (l: { accessory?: string }, id: string) => accessoriesOf(l).includes(id)
+
+/** What's on the head (or « none »). */
+export const headwearOf = (l: { accessory?: string }) => accessoriesOf(l).find((a) => HEADWEAR.has(a)) ?? 'none'
+
+/** Put one on or take it off: « none » takes everything off; one per place on the body, five at most (the oldest goes). */
+export function toggleAccessory(current: string, id: string): string {
+  if (id === 'none') return 'none'
+  let list = accessoriesOf({ accessory: current })
+  if (list.includes(id)) list = list.filter((a) => a !== id)
+  else {
+    list = list.filter((a) => ACCESSORY_SLOT[a] !== ACCESSORY_SLOT[id] || !ACCESSORY_SLOT[id])
+    list.push(id)
+    if (list.length > MAX_ACCESSORIES) list = list.slice(list.length - MAX_ACCESSORIES)
+  }
+  return list.length ? list.join(',') : 'none'
+}
+
+/** Each accessory's own colour, when the player hasn't chosen one. */
+export function accessoryColor(l: { accessory?: string; accessoryColor?: string; outfitColor?: string }, id: string): string {
+  if (l.accessoryColor) return l.accessoryColor
+  if (id === 'glasses' || id === 'sunglasses' || id === 'headphones') return '#17171a'
+  if (id === 'hat') return '#c9a227'
+  if (id === 'beads') return '#d6336c'
+  if (id === 'kufi') return '#f8f9fa'
+  if (id === 'chapelet' || id === 'bag') return '#6b4423'
+  if (id === 'watch') return '#d8d8de'
+  if (HEADWEAR.has(id)) return l.outfitColor === '#f4efe6' ? '#14213d' : (l.outfitColor ?? '#14213d')
+  return '#e8b93c'
+}
 /** Outfits that cover the hair (the veil): no hairdo shows. */
 export const VEILED = new Set(['abaya', 'soeur'])
 /** Uniforms that come with their own headwear (unless something else is on the head). */
@@ -191,7 +244,14 @@ export function randomLook(gender: 'femme' | 'homme', random: () => number = Mat
     height: Math.round((0.94 + random() * 0.12) * 100) / 100,
     eyes: pick(EYE_COLORS.slice(0, 3)),
     beard: femme ? 'none' : pick(BEARDS).id,
-    accessory: femme ? pick(['earrings', 'earrings', 'glasses', 'chain', 'none', 'sunglasses', 'beads', 'bag', 'watch', 'bandana']) : pick(['none', 'chain', 'glasses', 'cap', 'capback', 'sunglasses', 'watch', 'beanie', 'hat', 'buckethat', 'headphones', 'bag']),
+    // One accessory, sometimes two or three (glasses and a watch, earrings and a bag…).
+    accessory: (() => {
+      const pool = femme ? ['earrings', 'earrings', 'glasses', 'chain', 'none', 'sunglasses', 'beads', 'bag', 'watch', 'bandana'] : ['none', 'chain', 'glasses', 'cap', 'capback', 'sunglasses', 'watch', 'beanie', 'hat', 'buckethat', 'headphones', 'bag']
+      let worn = 'none'
+      const n = random() < 0.55 ? 1 : random() < 0.7 ? 2 : 3
+      for (let k = 0; k < n; k++) worn = toggleAccessory(worn, pick(pool))
+      return worn
+    })(),
     pattern: pick(PATTERNS).id,
     bottomColor: '',
     shoeColor: '',
@@ -213,7 +273,7 @@ export function defaultColors(l: Required<Look>, femme: boolean) {
   return {
     bottom: bottom[outfit] ?? l.outfitColor,
     shoe: shoe[outfit] ?? '#f4f4f4',
-    accessory: l.accessory === 'glasses' || l.accessory === 'sunglasses' || l.accessory === 'headphones' ? '#17171a' : l.accessory === 'hat' ? '#c9a227' : l.accessory === 'beads' ? '#d6336c' : l.accessory === 'kufi' ? '#f8f9fa' : l.accessory === 'croix' ? '#e8b93c' : l.accessory === 'chapelet' ? '#6b4423' : l.accessory === 'bag' ? '#6b4423' : l.accessory === 'watch' ? '#d8d8de' : HEADWEAR.has(l.accessory) ? (l.outfitColor === '#f4efe6' ? '#14213d' : l.outfitColor) : '#e8b93c',
+    accessory: accessoryColor({ ...l, accessoryColor: '' }, accessoriesOf(l)[0] ?? 'none'),
   }
 }
 
@@ -237,5 +297,5 @@ export function workLook(look: Look, career: string, level: number): Look {
   if (!outfit) return look
   // Office clothes are office colours: a dark suit, a white shirt over dark trousers.
   const colours = outfit === 'suit' ? { outfitColor: '#1f2a44', bottomColor: '#1f2a44' } : outfit === 'chemise' ? { outfitColor: '#f4f4f4', bottomColor: '#2b2f45' } : {}
-  return { ...look, outfit, ...colours, accessory: look.accessory === 'cap' || look.accessory === 'capback' ? 'none' : look.accessory }
+  return { ...look, outfit, ...colours, accessory: accessoriesOf(look).filter((a) => a !== 'cap' && a !== 'capback').join(',') || 'none' }
 }

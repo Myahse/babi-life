@@ -71,3 +71,16 @@ func TestChangeLook(t *testing.T) {
 		t.Fatalf("busy: %v", err)
 	}
 }
+
+func TestValidAccessories(t *testing.T) {
+	for _, ok := range []string{"", "none", "glasses", "glasses,bag,watch", "cap,sunglasses,earrings,chain,watch"} {
+		if err := validAccessories(ok); err != nil {
+			t.Errorf("%q refused: %v", ok, err)
+		}
+	}
+	for _, bad := range []string{"crown", "cap,hat", "glasses,sunglasses", "cap,glasses,earrings,chain,watch,bag", "chain,beads"} {
+		if validAccessories(bad) == nil {
+			t.Errorf("%q accepted", bad)
+		}
+	}
+}

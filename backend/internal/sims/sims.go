@@ -94,6 +94,42 @@ func (l Look) validate(gender string) error {
 	default:
 		return errors.New("usure invalide")
 	}
+	return validAccessories(l.Accessory)
+}
+
+// The accessories and where each goes on the body (web/src/avatar/options.ts,
+// ACCESSORY_SLOT): several can be worn, one per place, five at most.
+var accessorySlot = map[string]string{
+	"cap": "head", "capback": "head", "beanie": "head", "hat": "head", "buckethat": "head", "bandana": "head", "headphones": "head", "kufi": "head",
+	"glasses": "eyes", "sunglasses": "eyes",
+	"earrings": "ears",
+	"chain":    "neck", "beads": "neck", "croix": "neck", "chapelet": "hand",
+	"watch": "wrist",
+	"bag":   "bag",
+}
+
+const maxAccessories = 5
+
+// validAccessories: « none », one accessory, or a list « glasses,bag,watch ».
+func validAccessories(s string) error {
+	if s == "" || s == "none" {
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	if len(parts) > maxAccessories {
+		return fmt.Errorf("%d accessoires au plus", maxAccessories)
+	}
+	used := map[string]bool{}
+	for _, a := range parts {
+		slot, ok := accessorySlot[a]
+		if !ok {
+			return errors.New("accessoire inconnu")
+		}
+		if used[slot] {
+			return errors.New("un seul accessoire par endroit (tête, yeux, cou…)")
+		}
+		used[slot] = true
+	}
 	return nil
 }
 

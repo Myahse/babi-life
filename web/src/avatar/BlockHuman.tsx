@@ -2,7 +2,7 @@ import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { Look, Sim } from '../lib/types'
-import { FEMME_OUTFITS, HEADWEAR, TALL_HAIR, UNIFORM_HATS, VEILED, defaultColors, fullLook } from './options'
+import { FEMME_OUTFITS, HEADWEAR, TALL_HAIR, UNIFORM_HATS, VEILED, accessoryColor, defaultColors, fullLook, hasAcc, headwearOf } from './options'
 import { tint } from './textures'
 import { fidgetAt, useCastShadows, usePoseRig, type Pose, type RigStyle } from './Human'
 import { worldTime } from '../lib/worldClock'
@@ -333,25 +333,25 @@ function paintSheet(l: Required<Look>, femme: boolean, young: boolean) {
   if (l.marks === 'griffures' || l.marks === 'bagarre') for (const [x, y] of [[0, 4], [1, 5], [1, 4], [2, 5]]) p.at(h, 'F', x, y, x + y === 5 ? '#a8322a' : null)
 
   /* Glasses: the top of the frame, its sides and the bridge, arms back to the ears. */
-  const acc = l.accessoryColor || dc.accessory
-  if (!young && l.accessory === 'sunglasses') {
-    for (const x of [0, 1, 2, 3, 4, 5, 6, 7]) p.at(h, 'F', x, 3, x === 3 || x === 4 ? acc : x === 0 || x === 7 ? acc : '#121418')
-    for (const x of [1, 2, 5, 6]) p.at(h, 'F', x, 2, acc)
-    for (let col = 4; col < 8; col++) p.at(h, 'L', col, 3, acc)
-    for (let col = 0; col < 4; col++) p.at(h, 'R', col, 3, acc)
+  const accOf = (id: string) => accessoryColor(l, id)
+  if (!young && hasAcc(l, 'sunglasses')) {
+    for (const x of [0, 1, 2, 3, 4, 5, 6, 7]) p.at(h, 'F', x, 3, x === 3 || x === 4 ? accOf('sunglasses') : x === 0 || x === 7 ? accOf('sunglasses') : '#121418')
+    for (const x of [1, 2, 5, 6]) p.at(h, 'F', x, 2, accOf('sunglasses'))
+    for (let col = 4; col < 8; col++) p.at(h, 'L', col, 3, accOf('sunglasses'))
+    for (let col = 0; col < 4; col++) p.at(h, 'R', col, 3, accOf('sunglasses'))
   }
-  if (!young && l.accessory === 'glasses') {
-    for (const x of [1, 2, 5, 6]) p.at(h, 'F', x, 2, acc)
-    for (const x of [0, 3, 4, 7]) p.at(h, 'F', x, 3, acc)
-    for (let col = 4; col < 8; col++) p.at(h, 'L', col, 3, acc)
-    for (let col = 0; col < 4; col++) p.at(h, 'R', col, 3, acc)
+  if (!young && hasAcc(l, 'glasses')) {
+    for (const x of [1, 2, 5, 6]) p.at(h, 'F', x, 2, accOf('glasses'))
+    for (const x of [0, 3, 4, 7]) p.at(h, 'F', x, 3, accOf('glasses'))
+    for (let col = 4; col < 8; col++) p.at(h, 'L', col, 3, accOf('glasses'))
+    for (let col = 0; col < 4; col++) p.at(h, 'R', col, 3, accOf('glasses'))
   }
 
   /* The hairline, on the second head layer (transparent elsewhere). */
-  const capOn = !young && HEADWEAR.has(l.accessory) && l.accessory !== 'headphones' && l.accessory !== 'bandana'
+  const capOn = !young && HEADWEAR.has(headwearOf(l)) && headwearOf(l) !== 'headphones' && headwearOf(l) !== 'bandana'
   const veiled = femme && VEILED.has(l.outfit)
-  const kufiOn = !young && (l.accessory === 'kufi' || (outfitOf(l, femme) === 'imam' && !HEADWEAR.has(l.accessory)))
-  const uniformHat = !young && !HEADWEAR.has(l.accessory) && !!UNIFORM_HATS[outfitOf(l, femme)]
+  const kufiOn = !young && (hasAcc(l, 'kufi') || (outfitOf(l, femme) === 'imam' && !HEADWEAR.has(headwearOf(l))))
+  const uniformHat = !young && !HEADWEAR.has(headwearOf(l)) && !!UNIFORM_HATS[outfitOf(l, femme)]
   const hair = veiled ? 'covered' : (capOn || kufiOn || uniformHat) && TALL_HAIR.has(l.hair) ? 'short' : l.hair
   const hairC = tint(l.hairColor, 0.08)
   const hairPx = (x: number, y: number) =>
@@ -461,8 +461,8 @@ function paintSheet(l: Required<Look>, femme: boolean, young: boolean) {
   /* Finer features, on half pixels: lids and catchlights, slimmer brows, nostrils, the lips, the ears. */
   {
     const F = 'F' as Face
-    const shades = !young && l.accessory === 'sunglasses'
-    const framed = !young && l.accessory === 'glasses'
+    const shades = !young && hasAcc(l, 'sunglasses')
+    const framed = !young && hasAcc(l, 'glasses')
     if (!shades) {
       // The upper lid shades the top of each eye; a catchlight in each iris (light from the upper left).
       const lid = tint(skin, -0.34)
@@ -999,7 +999,7 @@ function paintSheet(l: Required<Look>, femme: boolean, young: boolean) {
     if (cut.legRows > 0 && !cut.skirt) for (const g of R.leg) for (let fy = 0; fy < cut.legRows * 2; fy++) p.fine(g, 'F', 3, fy, dark(0.07))
     // Fingers: the hands' last row, split in four.
     R.arm.forEach((a, i) => {
-      if (i === 1 && !young && l.accessory === 'chapelet') return
+      if (i === 1 && !young && hasAcc(l, 'chapelet')) return
       for (const fx of [2, 4, 6]) p.fine(a, 'F', fx, 23, tint(skin, -0.22))
       p.fine(a, 'F', 1, 23, tint(skin, -0.1))
     })
@@ -1020,36 +1020,36 @@ function paintSheet(l: Required<Look>, femme: boolean, young: boolean) {
   }
   /* Worn clothes: faded and stained, or torn and dirty, holes showing the skin. */
   if (bare) wearOut(p.g, l.wear === 'dechire', skin, bare, [R.body, ...R.leg, ...R.arm, ...(cut.skirt ? [R.skirtTop, R.skirtLeg] : [])])
-  if (!young && l.accessory === 'chain') {
-    const gold = l.accessoryColor || '#e8b93c'
+  if (!young && hasAcc(l, 'chain')) {
+    const gold = accessoryColor(l, 'chain')
     for (const [x, y] of [[1, 0], [6, 0], [2, 1], [5, 1], [3, 2], [4, 2]]) p.at(b, 'F', x, y, gold)
     p.at(b, 'F', 3, 3, gold)
   }
-  if (!young && l.accessory === 'beads') {
-    const beads = [acc, '#f2b705', '#00a862', '#f4f1ea']
+  if (!young && hasAcc(l, 'beads')) {
+    const beads = [accOf('beads'), '#f2b705', '#00a862', '#f4f1ea']
     ;[[1, 0], [2, 1], [3, 2], [4, 2], [5, 1], [6, 0]].forEach(([x, y], k) => p.at(b, 'F', x, y, beads[k % beads.length]))
   }
-  if (!young && l.accessory === 'croix') {
+  if (!young && hasAcc(l, 'croix')) {
     // A cross on a thin chain.
-    for (const [x, y] of [[2, 0], [5, 0], [3, 1], [4, 1]]) p.at(b, 'F', x, y, tint(acc, -0.2))
-    for (const [x, y] of [[3, 2], [3, 3], [3, 4], [2, 3], [4, 3]]) p.at(b, 'F', x, y, acc)
+    for (const [x, y] of [[2, 0], [5, 0], [3, 1], [4, 1]]) p.at(b, 'F', x, y, tint(accOf('croix'), -0.2))
+    for (const [x, y] of [[3, 2], [3, 3], [3, 4], [2, 3], [4, 3]]) p.at(b, 'F', x, y, accOf('croix'))
   }
-  if (!young && l.accessory === 'chapelet') {
+  if (!young && hasAcc(l, 'chapelet')) {
     // Prayer beads hanging from the right hand.
-    for (let row = 8; row < 12; row++) p.at(R.arm[1], 'F', 1 + (row % 2), row, row % 2 ? acc : tint(acc, 0.3))
+    for (let row = 8; row < 12; row++) p.at(R.arm[1], 'F', 1 + (row % 2), row, row % 2 ? accOf('chapelet') : tint(accOf('chapelet'), 0.3))
   }
-  if (!young && l.accessory === 'watch') {
+  if (!young && hasAcc(l, 'watch')) {
     // On the left wrist, all the way round; the face on top.
     p.rows(R.arm[0], 9, 10, '#17171a')
-    p.at(R.arm[0], 'L', 1, 9, acc)
-    p.at(R.arm[0], 'L', 2, 9, acc)
+    p.at(R.arm[0], 'L', 1, 9, accOf('watch'))
+    p.at(R.arm[0], 'L', 2, 9, accOf('watch'))
   }
-  if (!young && l.accessory === 'bag') {
+  if (!young && hasAcc(l, 'bag')) {
     // The strap across the chest and the back, from the right shoulder to the left hip.
     for (let row = 0; row < 10; row++) {
       const x = Math.min(7, Math.max(0, 7 - Math.round(row * 0.75)))
-      p.at(b, 'F', x, row, tint(acc, -0.1))
-      p.at(b, 'B', 7 - x, row, tint(acc, -0.1))
+      p.at(b, 'F', x, row, tint(accOf('bag'), -0.1))
+      p.at(b, 'B', 7 - x, row, tint(accOf('bag'), -0.1))
     }
   }
   if ((l.marks === 'genou' || l.marks === 'bagarre') && cut.legRows < 6 && !cut.skirt) p.rows(R.leg[0], 6, 8, '#f4f1ea')
@@ -1151,6 +1151,13 @@ function pixelTex(key: string, size: number, paint: (x: number, y: number) => st
   return t
 }
 const matCache = new Map<string, THREE.Material>()
+/** Glass: see-through lenses (sunglasses all but black). */
+function glassMat(color: string, opacity: number) {
+  const key = `glass|${color}|${opacity}`
+  let m = matCache.get(key)
+  if (!m) matCache.set(key, (m = new THREE.MeshLambertMaterial({ color, transparent: true, opacity, depthWrite: false })))
+  return m
+}
 function lambert(color: string, map?: THREE.Texture) {
   const key = `${color}|${map?.uuid ?? ''}`
   let m = matCache.get(key)
@@ -1206,8 +1213,8 @@ function HeadBoxes({ l, hair, young, cast, femme, pose, seed }: { l: Required<Lo
   })
   const nun = femme && l.outfit === 'soeur'
   const veil = nun ? tint(l.outfitColor, -0.15) : l.bottomColor || tint(l.outfitColor, 0.12)
-  const hat = !young && !HEADWEAR.has(l.accessory) ? UNIFORM_HATS[outfitOf(l, femme)] : undefined
-  const kufi = !young && (l.accessory === 'kufi' || (outfitOf(l, femme) === 'imam' && !HEADWEAR.has(l.accessory)))
+  const hat = !young && !HEADWEAR.has(headwearOf(l)) ? UNIFORM_HATS[outfitOf(l, femme)] : undefined
+  const kufi = !young && (hasAcc(l, 'kufi') || (outfitOf(l, femme) === 'imam' && !HEADWEAR.has(headwearOf(l))))
   const H = HEAD
   const hc = tint(l.hairColor, 0.08)
   const m = hairMat(hc, hair)
@@ -1302,7 +1309,7 @@ function HeadBoxes({ l, hair, young, cast, femme, pose, seed }: { l: Required<Lo
       break
     }
   }
-  const acc = l.accessoryColor || defaultColors(l, false).accessory
+  const accOf = (id: string) => accessoryColor(l, id)
   return (
     <group>
       {LOOSE.has(hair) ? (
@@ -1313,11 +1320,11 @@ function HeadBoxes({ l, hair, young, cast, femme, pose, seed }: { l: Required<Lo
       ) : (
         hairBoxes
       )}
-      {!young && (l.accessory === 'cap' || l.accessory === 'capback') && (
-        <group rotation={[0, l.accessory === 'capback' ? Math.PI : 0, 0]}>
-          <B s={[H * 1.17, H * 0.3, H * 1.17]} p={[0, H * 0.99, 0]} mat={clothMat(acc)} />
-          <B s={[H * 0.92, H * 0.07, H * 0.46]} p={[0, H * 0.86, H * 0.78]} mat={lambert(tint(acc, -0.25))} />
-          <B s={[H * 0.14, H * 0.05, H * 0.14]} p={[0, H * 1.16, 0]} mat={lambert(tint(acc, -0.25))} />
+      {!young && (hasAcc(l, 'cap') || hasAcc(l, 'capback')) && (
+        <group rotation={[0, hasAcc(l, 'capback') ? Math.PI : 0, 0]}>
+          <B s={[H * 1.17, H * 0.3, H * 1.17]} p={[0, H * 0.99, 0]} mat={clothMat(accOf(headwearOf(l)))} />
+          <B s={[H * 0.92, H * 0.07, H * 0.46]} p={[0, H * 0.86, H * 0.78]} mat={lambert(tint(accOf(headwearOf(l)), -0.25))} />
+          <B s={[H * 0.14, H * 0.05, H * 0.14]} p={[0, H * 1.16, 0]} mat={lambert(tint(accOf(headwearOf(l)), -0.25))} />
         </group>
       )}
       {!young && l.beard === 'longue' && <B s={[H * 0.62, H * 0.36, H * 0.2]} p={[0, -H * 0.14, H * 0.42]} mat={hairMat(tint(l.hairColor, 0.06), 'beard')} />}
@@ -1354,50 +1361,75 @@ function HeadBoxes({ l, hair, young, cast, femme, pose, seed }: { l: Required<Lo
           <B s={[H * 0.92, H * 0.07, H * 0.46]} p={[0, H * 0.86, H * 0.78]} mat={lambert('#0b0b0c')} />
         </group>
       )}
-      {kufi && <B s={[H * 1.08, H * 0.24, H * 1.08]} p={[0, H * 1.0, 0]} mat={knitMat(l.accessory === 'kufi' ? acc : '#f8f9fa')} />}
-      {!young && l.accessory === 'beanie' && (
+      {kufi && <B s={[H * 1.08, H * 0.24, H * 1.08]} p={[0, H * 1.0, 0]} mat={knitMat(hasAcc(l, 'kufi') ? accOf('kufi') : '#f8f9fa')} />}
+      {!young && hasAcc(l, 'beanie') && (
         <group>
-          <B s={[H * 1.16, H * 0.46, H * 1.16]} p={[0, H * 0.93, 0]} mat={knitMat(acc)} />
-          <B s={[H * 1.2, H * 0.14, H * 1.2]} p={[0, H * 0.68, 0]} mat={lambert(tint(acc, -0.2))} />
-          <B s={[H * 0.22, H * 0.18, H * 0.22]} p={[0, H * 1.24, 0]} mat={lambert(tint(acc, 0.3))} />
+          <B s={[H * 1.16, H * 0.46, H * 1.16]} p={[0, H * 0.93, 0]} mat={knitMat(accOf('beanie'))} />
+          <B s={[H * 1.2, H * 0.14, H * 1.2]} p={[0, H * 0.68, 0]} mat={lambert(tint(accOf('beanie'), -0.2))} />
+          <B s={[H * 0.22, H * 0.18, H * 0.22]} p={[0, H * 1.24, 0]} mat={lambert(tint(accOf('beanie'), 0.3))} />
         </group>
       )}
-      {!young && l.accessory === 'hat' && (
+      {!young && hasAcc(l, 'hat') && (
         <group>
-          <B s={[H * 1.9, H * 0.06, H * 1.9]} p={[0, H * 0.98, 0]} mat={lambert(acc)} />
-          <B s={[H * 1.08, H * 0.42, H * 1.08]} p={[0, H * 1.2, 0]} mat={lambert(acc)} />
-          <B s={[H * 1.1, H * 0.1, H * 1.1]} p={[0, H * 1.05, 0]} mat={lambert(tint(acc, -0.45))} />
+          <B s={[H * 1.9, H * 0.06, H * 1.9]} p={[0, H * 0.98, 0]} mat={lambert(accOf('hat'))} />
+          <B s={[H * 1.08, H * 0.42, H * 1.08]} p={[0, H * 1.2, 0]} mat={lambert(accOf('hat'))} />
+          <B s={[H * 1.1, H * 0.1, H * 1.1]} p={[0, H * 1.05, 0]} mat={lambert(tint(accOf('hat'), -0.45))} />
         </group>
       )}
-      {!young && l.accessory === 'buckethat' && (
+      {!young && hasAcc(l, 'buckethat') && (
         <group>
-          <B s={[H * 1.14, H * 0.38, H * 1.14]} p={[0, H * 1.08, 0]} mat={clothMat(acc)} />
-          <B s={[H * 1.5, H * 0.06, H * 1.5]} p={[0, H * 0.86, 0]} mat={clothMat(tint(acc, -0.12))} />
+          <B s={[H * 1.14, H * 0.38, H * 1.14]} p={[0, H * 1.08, 0]} mat={clothMat(accOf('buckethat'))} />
+          <B s={[H * 1.5, H * 0.06, H * 1.5]} p={[0, H * 0.86, 0]} mat={clothMat(tint(accOf('buckethat'), -0.12))} />
         </group>
       )}
-      {!young && l.accessory === 'bandana' && (
+      {!young && hasAcc(l, 'bandana') && (
         <group>
-          <B s={[H * 1.16, H * 0.22, H * 1.16]} p={[0, H * 0.86, 0]} mat={waxMat(acc, 'points')} />
-          <B s={[H * 0.2, H * 0.24, H * 0.16]} p={[0, H * 0.78, -H * 0.62]} mat={waxMat(acc, 'points')} />
+          <B s={[H * 1.16, H * 0.22, H * 1.16]} p={[0, H * 0.86, 0]} mat={waxMat(accOf('bandana'), 'points')} />
+          <B s={[H * 0.2, H * 0.24, H * 0.16]} p={[0, H * 0.78, -H * 0.62]} mat={waxMat(accOf('bandana'), 'points')} />
         </group>
       )}
-      {!young && l.accessory === 'headphones' && (
+      {!young && hasAcc(l, 'headphones') && (
         <group>
-          <B s={[H * 1.2, H * 0.08, H * 0.18]} p={[0, H * 1.2, 0]} mat={lambert(acc)} />
+          <B s={[H * 1.2, H * 0.08, H * 0.18]} p={[0, H * 1.2, 0]} mat={lambert(accOf('headphones'))} />
           {[-1, 1].map((s) => (
             <group key={s}>
-              <B s={[H * 0.08, H * 0.6, H * 0.14]} p={[s * H * 0.6, H * 0.88, 0]} mat={lambert(acc)} />
-              <B s={[H * 0.16, H * 0.36, H * 0.36]} p={[s * H * 0.6, H * 0.46, 0]} mat={lambert(acc)} />
+              <B s={[H * 0.08, H * 0.6, H * 0.14]} p={[s * H * 0.6, H * 0.88, 0]} mat={lambert(accOf('headphones'))} />
+              <B s={[H * 0.16, H * 0.36, H * 0.36]} p={[s * H * 0.6, H * 0.46, 0]} mat={lambert(accOf('headphones'))} />
             </group>
           ))}
         </group>
       )}
+      {/* Glasses in relief over the painted frame: the rims and the lenses (dark for sunglasses) */}
+      {!young && (hasAcc(l, 'glasses') || hasAcc(l, 'sunglasses')) && (
+        <group position={[0, H * 0.585, H * 0.515]}>
+          <B s={[H * 1.02, H * 0.045, H * 0.04]} p={[0, H * 0.085, 0]} mat={lambert(accOf(hasAcc(l, 'sunglasses') ? 'sunglasses' : 'glasses'))} />
+          {[-1, 1].map((s) => (
+            <group key={s} position={[s * H * 0.24, 0, 0]}>
+              <B s={[H * 0.34, H * 0.2, H * 0.02]} p={[0, 0, 0.004]} mat={hasAcc(l, 'sunglasses') ? glassMat('#121418', 0.92) : glassMat('#cfe8f2', 0.28)} />
+              <B s={[H * 0.36, H * 0.03, H * 0.035]} p={[0, -H * 0.105, 0]} mat={lambert(accOf(hasAcc(l, 'sunglasses') ? 'sunglasses' : 'glasses'))} />
+            </group>
+          ))}
+          {[-1, 1].map((s) => (
+            <B key={`arm${s}`} s={[H * 0.03, H * 0.035, H * 0.55]} p={[s * H * 0.505, H * 0.06, -H * 0.27]} mat={lambert(accOf(hasAcc(l, 'sunglasses') ? 'sunglasses' : 'glasses'))} />
+          ))}
+        </group>
+      )}
+      {/* Earrings: a stud and a gold hoop hanging from each ear */}
       {!young &&
-        l.accessory === 'earrings' &&
+        hasAcc(l, 'earrings') &&
         [-1, 1].map((s) => (
           <group key={s} position={[s * (H / 2 + 0.012), H * 0.3, H * 0.04]}>
-            <B s={[0.02, 0.02, 0.02]} p={[0, 0, 0]} mat={lambert(acc)} />
-            <B s={[0.03, 0.03, 0.012]} p={[0, -0.032, 0]} mat={lambert(acc)} />
+            <B s={[0.018, 0.018, 0.018]} p={[0, 0, 0]} mat={lambert(accOf('earrings'))} />
+            {[
+              [0, -0.018, 0.006, 0.03],
+              [0, -0.062, 0.006, 0.03],
+              [0, -0.04, 0.03, 0.006],
+            ].map(([x, y, w, h], k) => (
+              <group key={k}>
+                <B s={[0.008, h, w || 0.006]} p={[x, y, k === 2 ? 0.014 : 0]} mat={lambert(accOf('earrings'))} />
+                {k === 2 && <B s={[0.008, h, 0.006]} p={[x, y, -0.014]} mat={lambert(accOf('earrings'))} />}
+              </group>
+            ))}
           </group>
         ))}
     </group>
@@ -1492,7 +1524,17 @@ export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 
             {/* The hoodie's hood, down behind the neck */}
             {outfitOf(l, femme) === 'sweat' && mesh(cube(tw * 0.8, 0.12, 0.09), [0, NECK_Y - 0.05, -td / 2 - 0.04], clothMat(tint(l.outfitColor, -0.1)))}
             {/* The shoulder bag, at the left hip */}
-            {!young && l.accessory === 'bag' && mesh(cube(0.15, 0.13, 0.07), [-tw / 2 - 0.02, TORSO_BOTTOM + 0.08, td / 2 - 0.02], clothMat(l.accessoryColor || defaultColors(l, femme).accessory))}
+            {!young && hasAcc(l, 'bag') && (
+              <group position={[-tw / 2 - 0.02, TORSO_BOTTOM + 0.08, td / 2 - 0.02]}>
+                {mesh(cube(0.15, 0.13, 0.07), [0, 0, 0], clothMat(accessoryColor(l, 'bag')))}
+                {/* The flap over the top, its buckle, the zip line */}
+                {mesh(cube(0.155, 0.06, 0.075), [0, 0.04, 0.003], clothMat(tint(accessoryColor(l, 'bag'), -0.18)))}
+                {mesh(cube(0.03, 0.025, 0.01), [0, 0.012, 0.042], lambert('#d8c27a'))}
+                {mesh(cube(0.12, 0.006, 0.072), [0, -0.035, 0.001], lambert(tint(accessoryColor(l, 'bag'), -0.32)))}
+                {/* Where the strap meets the bag */}
+                {mesh(cube(0.02, 0.05, 0.075), [0.07, 0.07, 0], clothMat(tint(accessoryColor(l, 'bag'), -0.1)))}
+              </group>
+            )}
           </group>
           {skirt && mesh(box(skW, 0.17, skD, R.skirtTop), [0, 0.885, 0])}
 
@@ -1537,6 +1579,14 @@ export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 
                 <group ref={elbow[i]} position={[0, -UPPER_ARM, 0]}>
                   {mesh(box(aw * 0.98, FOREARM + 0.02, aw * 0.98, R.arm[i], 6, 6), [0, (0.02 - FOREARM) / 2, 0])}
                   {bell && mesh(cube(aw * 1.9, 0.17, aw * 1.9), [0, -0.075, 0], clothMat(bell))}
+                  {/* The watch on the left wrist: the strap all round, the face and its glass on top */}
+                  {!young && i === 0 && hasAcc(l, 'watch') && (
+                    <group position={[0, -FOREARM * 0.82, 0]}>
+                      {mesh(cube(aw * 1.08, 0.022, aw * 1.08), [0, 0, 0], lambert('#17171a'))}
+                      {mesh(cube(0.03, 0.03, 0.012), [-aw / 2 - 0.006, 0, 0], lambert(accessoryColor(l, 'watch')))}
+                      {mesh(cube(0.022, 0.022, 0.004), [-aw / 2 - 0.013, 0, 0], lambert('#e7f5ff'))}
+                    </group>
+                  )}
                   {/* The travaillement: the wad of notes in the left hand */}
                   {pose === 'throw' && i === 0 && (
                     <group position={[0, -FOREARM + 0.02, aw / 2 + 0.03]} rotation={[0.3, 0, 0]}>

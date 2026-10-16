@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { Look, Sim } from '../lib/types'
-import { defaultColors, fullLook } from './options'
+import { defaultColors, fullLook, hasAcc } from './options'
 import type { Pose } from './Human'
 
 // A blocky Sim seen from afar: the same boxes as BlockHuman (a cube head, a
@@ -77,7 +77,7 @@ export function LowHuman({ look, gender, pose = 'idle', seed = 0, speed }: { loo
   const sleeve = LONG_SLEEVES.has(l.outfit) ? 1 : l.outfit === 'debardeur' || l.outfit === 'basket' || l.outfit === 'souscorps' ? 0 : 0.35
   // The veil, the imam's cap: they're what shows on the head from afar.
   const veiled = femme && (l.outfit === 'abaya' || l.outfit === 'soeur')
-  const capped = l.accessory === 'kufi' || l.outfit === 'imam' || (!femme && l.outfit === 'abaya')
+  const capped = hasAcc(l, 'kufi') || l.outfit === 'imam' || (!femme && l.outfit === 'abaya')
   const hair = veiled ? l.bottomColor || top : capped ? '#f8f9fa' : l.hair === 'headwrap' ? top : l.hairColor
   const shape = veiled ? 'headwrap' : l.hair
   return (

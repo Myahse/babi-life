@@ -11,7 +11,7 @@ import { FEMME_OUTFITS, ACCESSORIES, ACCESSORY_COLORS, MARKS, BEARDS, BODIES, BO
 import { ColorPicker } from '../components/ColorPicker'
 import { Stage, type Focus } from '../avatar/Stage'
 import { Portrait } from '../avatar/portrait'
-import { Options, Section } from '../components/LookOptions'
+import { AccessoryOptions, Options, Section } from '../components/LookOptions'
 import { FamilyScene } from '../avatar/Family'
 import { Share } from '../components/WaitlistShare'
 import { Consent } from '../components/Consent'
@@ -263,7 +263,7 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
                 <Options choices={MARKS} value={sim.look.marks} onPick={(marks) => setLook({ marks })} look={sim.look} gender={sim.gender} field="marks" framing="head" />
               </Section>
               <Section title="Accessoire" icon={Glasses}>
-                <Options choices={ACCESSORIES} value={sim.look.accessory} onPick={(accessory) => setLook({ accessory })} look={sim.look} gender={sim.gender} field="accessory" framing="bust" />
+                <AccessoryOptions choices={ACCESSORIES} value={sim.look.accessory} onPick={(accessory) => setLook({ accessory })} look={sim.look} gender={sim.gender} />
               </Section>
               {sim.look.accessory !== 'none' && (
                 <Section title="Couleur de l'accessoire">
