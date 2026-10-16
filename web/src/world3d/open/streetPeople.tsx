@@ -18,10 +18,14 @@ import type { Nav } from './nav'
 //   preaching the good news to whoever passes, a few stopping to listen;
 // - the pupils in their khaki and blue uniforms, bags on their backs, walking
 //   to school in the morning and home at noon and in the evening (school
-//   days: not Wednesday afternoon, not the weekend).
+//   days: not Wednesday afternoon, not the weekend);
+// - at the Plateau, the fonctionnaires: suits, shirts and skirts, the
+//   briefcase or the folder under the arm, coming in late in the morning and
+//   going home well before the offices close (« la descente », from 14 h 30;
+//   from noon on Fridays, in pagne as the offices wear it that day).
 // From the shared clock: the same words and steps on every screen.
 
-type Kind = 'fou' | 'pasteur' | 'ecole'
+type Kind = 'fou' | 'pasteur' | 'ecole' | 'bureau'
 type Spot = { id: string; kind: Kind; at: XZ; rot: number; w: number; len: number; seed: number }
 
 const NEAR = 240 // metres: drawn around the Sim
@@ -37,6 +41,7 @@ const clock = () => {
 function outNow(kind: Kind, day: number, h: number) {
   if (kind === 'fou') return h >= 6 && h < 23
   if (kind === 'pasteur') return (h >= 7 && h < 12) || (h >= 16 && h < 19.5)
+  if (kind === 'bureau') return officeWalk(day, h) !== 0
   return schoolWalk(day, h) > 0
 }
 
@@ -49,16 +54,25 @@ export function schoolWalk(day: number, h: number) {
   return 0
 }
 
+/** The fonctionnaires: 1 going in (7 h 30 – 9 h 30, late), -1 going home (from 14 h 30, from noon on Friday), 0 otherwise. */
+export function officeWalk(day: number, h: number) {
+  if (day > 4) return 0
+  if (h >= 7.5 && h < 9.5) return 1
+  if (day === 4 ? h >= 12 && h < 15 : h >= 14.5 && h < 16.5) return -1
+  return 0
+}
+
 export function StreetPeople({ nav, seed }: { nav: Nav; seed: string }) {
   const all = useMemo(() => {
     const out: Spot[] = []
+    const plateau = seed.includes('plateau')
     for (const e of nav.edges) {
-      if (e.width < 6 || e.width > 14 || e.len < 40 || nav.ys[e.a] || nav.ys[e.b]) continue
+      if (e.width < 6 || e.len < 40 || nav.ys[e.a] || nav.ys[e.b]) continue
       const [a, b] = [nav.nodes[e.a], nav.nodes[e.b]]
       const m: XZ = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]
       const h = hash(Math.round(m[0]), Math.round(m[1]), 377)
-      // Pupils on many streets, a pastor here and there, a fou rarely.
-      const kind: Kind | null = h < 0.012 ? 'fou' : h < 0.03 ? 'pasteur' : h < 0.1 ? 'ecole' : null
+      // Pupils on many streets, a pastor here and there, a fou rarely; at the Plateau, the offices' people on the avenues too.
+      const kind: Kind | null = plateau && h > 0.7 ? 'bureau' : e.width > 14 ? null : h < 0.012 ? 'fou' : h < 0.03 ? 'pasteur' : h < 0.1 ? 'ecole' : null
       if (!kind) continue
       const [ux, uz] = [(b[0] - a[0]) / e.len, (b[1] - a[1]) / e.len]
       out.push({ id: `${kind}:${seed}:${Math.round(m[0])}:${Math.round(m[1])}`, kind, at: m, rot: Math.atan2(-uz, ux), w: e.width, len: e.len, seed: hash(m[0], m[1], 5) })
@@ -94,7 +108,7 @@ export function StreetPeople({ nav, seed }: { nav: Nav; seed: string }) {
 export function StreetSpot({ spot }: { spot: Spot }) {
   return (
     <group position={[spot.at[0], 0, spot.at[1]]} rotation={[0, spot.rot, 0]}>
-      {spot.kind === 'fou' ? <Fou spot={spot} /> : spot.kind === 'pasteur' ? <Pasteur spot={spot} /> : <Pupils spot={spot} />}
+      {spot.kind === 'fou' ? <Fou spot={spot} /> : spot.kind === 'pasteur' ? <Pasteur spot={spot} /> : spot.kind === 'bureau' ? <Fonctionnaires spot={spot} /> : <Pupils spot={spot} />}
     </group>
   )
 }
@@ -179,6 +193,8 @@ const M = {
   page: new THREE.MeshLambertMaterial({ color: '#f4efe6' }),
   red: new THREE.MeshLambertMaterial({ color: '#b42318' }),
   mic: new THREE.MeshLambertMaterial({ color: '#111111' }),
+  briefcase: new THREE.MeshLambertMaterial({ color: '#3a2618' }),
+  folder: new THREE.MeshLambertMaterial({ color: '#d9c38a' }),
   bag: ['#1f6fd0', '#b42318', '#2f9e44', '#6d28d9', '#f08c00', '#17171a'].map((c) => new THREE.MeshLambertMaterial({ color: c })),
 }
 
@@ -307,6 +323,74 @@ function Pupils({ spot }: { spot: Spot }) {
               <Bag m={k.bag} scale={g.scale} />
             </group>
           ))}
+        </group>
+      ))}
+    </NoShadows>
+  )
+}
+
+// ——— Les fonctionnaires du Plateau ———
+
+const GOING_IN = ['On est en retard ou bien ?', 'Le chef est déjà là ?', 'Bonjour bonjour !', 'Faut signer la présence d’abord.']
+const GOING_HOME = ['Bon, on a fini pour aujourd’hui !', 'C’est la descente !', 'Le dossier là, ce sera demain.', 'On se voit demain, hein !', 'Le patron est parti, on bouge !', 'Faut éviter les embouteillages.']
+
+function Fonctionnaires({ spot }: { spot: Spot }) {
+  const friday = clock()[0] === 4
+  const groups = useMemo(() => {
+    const r = rng(spot.id)
+    // Small groups of colleagues, walking together, a few metres apart.
+    const n = 3 + Math.floor(r() * 3)
+    return [...Array(n)].map((_, g) => {
+      const size = 1 + Math.floor(r() * 3)
+      const people = [...Array(size)].map((_, i) => {
+        const gender: 'femme' | 'homme' = r() < 0.45 ? 'femme' : 'homme'
+        const base = randomLook(gender, r)
+        // The office clothes; on Friday the pagne, as the administration wears it.
+        const outfit = friday ? (gender === 'femme' ? (r() < 0.5 ? 'pagne' : 'kaba') : 'chemise-pagne') : gender === 'femme' ? ['jupe', 'suit', 'chemise', 'pagne'][Math.floor(r() * 4)] : ['suit', 'chemise', 'chemise', 'bazin'][Math.floor(r() * 4)]
+        const look = { ...base, outfit, outfitColor: friday ? base.outfitColor : ['#1f2a44', '#2b2f3a', '#f4f1ea', '#bcd4ee', '#5b3a29', '#7a1f2b'][Math.floor(r() * 6)], wear: 'neuf', marks: 'none' } as Required<Look>
+        return { gender, look, seed: r() * 100, across: (i - (size - 1) / 2) * 0.8, behind: (i % 2) * 0.5, carry: r() < 0.6 ? M.briefcase : M.folder }
+      })
+      return { people, offset: g * (8 + r() * 8), speed: 0.9 + r() * 0.3, talk: r() }
+    })
+  }, [spot.id, friday])
+  const refs = useRef<(THREE.Group | null)[]>([])
+  const side = spot.seed < 0.5 ? 1 : -1
+  const span = spot.len - 6
+  const [line, setLine] = useState(-1)
+  useFrame(() => {
+    const t = worldTime()
+    const [day, h] = clock()
+    const d = officeWalk(day, h) || 1
+    groups.forEach((g, i) => {
+      const el = refs.current[i]
+      if (!el) return
+      const run = (t * g.speed + g.offset + spot.seed * span) % span
+      el.position.set(d * (run - span / 2), 0, side * (spot.w / 2 + 1.1))
+      el.rotation.y = d > 0 ? Math.PI / 2 : -Math.PI / 2
+    })
+    // Now and then one of them says something to the others.
+    const k = Math.floor(t / 7)
+    const next = hash(k, spot.seed * 50) < 0.5 ? k : -1
+    if (next !== line) setLine(next)
+  })
+  const [day, h] = clock()
+  const going = officeWalk(day, h)
+  const words = going > 0 ? GOING_IN : GOING_HOME
+  const speaker = line < 0 ? -1 : Math.floor(hash(line, 3) * groups.length)
+  return (
+    <NoShadows>
+      {groups.map((g, i) => (
+        <group key={i} ref={(el) => void (refs.current[i] = el)}>
+          {g.people.map((p, j) => (
+            <group key={j} position={[p.across, 0, -p.behind]}>
+              <Human look={p.look} gender={p.gender} pose="walk" seed={p.seed} />
+              {/* The briefcase in the hand, or the folder under the arm */}
+              <mesh position={p.carry === M.briefcase ? [0.36, 0.72, 0.02] : [0.3, 1.18, 0.05]} material={p.carry} castShadow>
+                <boxGeometry args={p.carry === M.briefcase ? [0.1, 0.32, 0.42] : [0.05, 0.3, 0.24]} />
+              </mesh>
+            </group>
+          ))}
+          {speaker === i && <Say key={line} text={words[Math.floor(hash(line, 11) * words.length)]} y={2.45} />}
         </group>
       ))}
     </NoShadows>
