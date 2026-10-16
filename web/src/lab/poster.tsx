@@ -33,7 +33,7 @@ import { Map as MapIcon, MessageCircle, Newspaper } from 'lucide-react'
 const q = new URLSearchParams(location.search)
 const VIDEO = q.has('video')
 const ALPHA = q.has('alpha')
-type SceneId = 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'princesse' | 'famille-gnambro' | 'famille-debout' | 'palais' | 'basket' | 'fete' | 'cause' | 'look' | 'siporex' | 'phone'
+type SceneId = 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'princesse' | `famille-${string}` | 'palais' | 'basket' | 'fete' | 'cause' | 'look' | 'siporex' | 'phone'
 /**
  * Which film: ?video (the launch), ?video=bouger (getting about: gbaka,
  * Gnango, Rue Princesse), ?video=bande-annonce (the trailer: gnambro or
@@ -142,13 +142,13 @@ function World({ scene, t }: { scene: SceneId; t: number }) {
       <ambientLight intensity={night ? 0.35 : 0.4} />
     </>
   )
-  if (scene === 'famille-gnambro' || scene === 'famille-debout') {
-    // The birth: the family at home, the camera coming slowly closer.
+  if (scene.startsWith('famille-')) {
+    // The birth: the family at home (famille-gnambro … famille-debout), the camera coming slowly closer.
     return (
       <>
         {lights}
         <Camera at={[Math.sin(t * 0.12) * 0.7, 1.55, (wide ? 4.8 : 6.6) - t * 0.12]} look={[0, 0.95, 0]} />
-        <FamilyGroup familyId={scene === 'famille-gnambro' ? 'gnambro' : 'debout'} look={CREW[3].look} gender="femme" />
+        <FamilyGroup familyId={scene.slice('famille-'.length)} look={CREW[3].look} gender="femme" />
       </>
     )
   }

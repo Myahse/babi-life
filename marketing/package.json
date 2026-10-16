@@ -11,7 +11,8 @@
     "video:bande-annonce": "FILM=bande-annonce node video.mjs",
     "video:decouverte": "FILM=decouverte node video.mjs",
     "flyer:jeu": "node flyer-jeu.mjs",
-    "all": "node logos.mjs && node flyer.mjs && node flyer-jeu.mjs && node video.mjs && FILM=bouger node video.mjs && FILM=bande-annonce node video.mjs && FILM=decouverte node video.mjs"
+    "flyer:commentaire": "node flyer-commentaire.mjs",
+    "all": "node logos.mjs && node flyer.mjs && node flyer-jeu.mjs && node flyer-commentaire.mjs && node video.mjs && FILM=bouger node video.mjs && FILM=bande-annonce node video.mjs && FILM=decouverte node video.mjs"
   },
   "dependencies": {
     "opentype.js": "^1.3.4",
