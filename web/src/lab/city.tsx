@@ -13,6 +13,7 @@ import { Landmark } from '../world3d/open/landmarks'
 import { SportField } from '../world3d/open/field'
 import { FuelStation } from '../world3d/open/station'
 import { StreetStall, type StallKind } from '../world3d/open/stalls'
+import { BusStop } from '../world3d/open/sotra'
 import { freezeWorldTime } from '../lib/worldClock'
 import { FamilyScene } from '../avatar/Family'
 import { Arena } from '../world3d/interior/Arena'
@@ -470,6 +471,9 @@ function StallsLab() {
       {kinds.map((kind, i) => (
         <StreetStall key={kind} stall={{ id: `${kind}:lab:${i}`, kind, at: [(i - 1.5) * 7, -2], rot: 0, seed: 0.3 + i * 0.17 }} hour={hour} crowd />
       ))}
+      {/* A SOTRA stop, and a bus pulled in */}
+      <BusStop stop={{ id: 'sotra:lab', at: [0, 7], rot: 0, seed: 0.42, lines: ['11', '19', '44'] }} hour={hour} night={false} />
+      <Vehicle p={[-11, 0, 10]} kind="sotra" />
       <OrbitControls target={[0, 1, 0]} />
     </Canvas>
   )

@@ -8,10 +8,10 @@ import { randomLook } from '../avatar/options'
 // orange taxi compteur are small saloons (Corolla-style), the gbaka a Hiace-
 // type minibus with its roof rack and its apprenti at the open door, private
 // cars are saloons or SUVs, and the motos the cheap Chinese bikes, with their
-// rider. All in blocks, like the Sims and the buildings: Minecraft style.
+// rider; the SOTRA bus, white with its green and orange band. All in blocks, like the Sims and the buildings: Minecraft style.
 // Real size, in metres, nose towards +x.
 
-export type VehicleKind = 'taxi' | 'woro' | 'gbaka' | 'car' | 'moto'
+export type VehicleKind = 'taxi' | 'woro' | 'gbaka' | 'car' | 'moto' | 'sotra'
 
 // Shared by every vehicle: their lights come on at night (setVehicleNight),
 // with a pool of light on the road ahead.
@@ -171,6 +171,39 @@ function Gbaka({ body, stripe, crew }: { body: string; stripe: string; crew: boo
   )
 }
 
+/** The SOTRA bus: 11 m long, white over a green skirt with the orange band, two doors on the right, windows all along, the line on the front. */
+function Sotra({ body }: { body: string }) {
+  const [len, wide] = [11, 2.5]
+  const p = paint(body)
+  const green = paint('#008f4c')
+  return (
+    <group>
+      <K p={[0, 1.75, 0]} s={[len, 2.6, wide]} m={p} />
+      {/* The green skirt and the orange band, round the bus */}
+      <K p={[0, 0.78, 0]} s={[len + 0.02, 0.62, wide + 0.02]} m={green} cast={false} />
+      <K p={[0, 1.16, 0]} s={[len + 0.02, 0.14, wide + 0.02]} m={paint('#ff7a00')} cast={false} />
+      {/* Windows all along, the windscreen, the back window */}
+      <K p={[-0.4, 2.15, 0]} s={[len - 1.6, 0.95, wide + 0.02]} m={GLASS} cast={false} />
+      <K p={[len / 2 + 0.005, 2.0, 0]} s={[0.02, 1.35, wide - 0.25]} m={GLASS} cast={false} />
+      <K p={[-len / 2 - 0.005, 2.25, 0]} s={[0.02, 0.8, wide - 0.6]} m={GLASS} cast={false} />
+      {[-3.6, -1.6, 0.4, 2.4].map((x) => (
+        <K key={x} p={[x, 2.15, 0]} s={[0.14, 1.0, wide + 0.04]} m={p} cast={false} />
+      ))}
+      {/* The two doors, on the kerb side (+z, like the gbaka's) */}
+      {[4.2, -0.6].map((x) => (
+        <K key={x} p={[x, 1.55, wide / 2 + 0.01]} s={[1.1, 2.2, 0.04]} m={GLASS} cast={false} />
+      ))}
+      {/* The line's sign over the windscreen: green, lit */}
+      <K p={[len / 2 + 0.02, 2.88, 0]} s={[0.04, 0.3, wide - 0.5]} m={paint('#0b5f36')} cast={false} />
+      <K p={[len / 2 + 0.04, 2.88, 0]} s={[0.02, 0.16, 0.9]} m={HEAD} cast={false} />
+      {/* The roof's air box */}
+      <K p={[-1, 3.15, 0]} s={[3.2, 0.2, 1.6]} m={paint('#dfe3e8')} cast={false} />
+      <Wheels x={[-3.6, 3.4]} r={0.5} wide={wide} />
+      <Ends len={len} wide={wide} y={0.9} mirror={[4.9, 1.8]} />
+    </group>
+  )
+}
+
 const RIDER = { ...randomLook('homme', () => 0.81), outfit: 'casual', accessory: 'cap' }
 
 /** A moto: square wheels, a frame, the tank, the seat, the bars, and its rider. */
@@ -223,7 +256,7 @@ export function Vehicle(props: VehicleProps) {
   return <group ref={anchor}>{far ? <FarVehicle {...props} /> : <NearVehicle {...props} />}</group>
 }
 
-const FAR_SIZE: Record<VehicleKind, [number, number, number]> = { taxi: [4.4, 1.0, 1.66], woro: [4.4, 1.0, 1.66], car: [4.5, 1.1, 1.75], gbaka: [5.3, 1.7, 1.9], moto: [1.9, 0.9, 0.5] }
+const FAR_SIZE: Record<VehicleKind, [number, number, number]> = { taxi: [4.4, 1.0, 1.66], woro: [4.4, 1.0, 1.66], car: [4.5, 1.1, 1.75], gbaka: [5.3, 1.7, 1.9], moto: [1.9, 0.9, 0.5], sotra: [11, 2.7, 2.5] }
 const farBody = new Map<string, THREE.MeshLambertMaterial>()
 const farMat = (c: string) => {
   let m = farBody.get(c)
@@ -233,7 +266,7 @@ const farMat = (c: string) => {
 const FAR_BOX = new THREE.BoxGeometry(1, 1, 1)
 function FarVehicle({ p, r = 0, kind = 'taxi', color }: VehicleProps) {
   const [l, h, w] = FAR_SIZE[kind]
-  const body = color ?? (kind === 'taxi' ? '#ff7a00' : kind === 'gbaka' ? '#f4c430' : kind === 'moto' ? '#c92a2a' : '#e9ecef')
+  const body = color ?? (kind === 'taxi' ? '#ff7a00' : kind === 'gbaka' ? '#f4c430' : kind === 'moto' ? '#c92a2a' : kind === 'sotra' ? '#f4f6f5' : '#e9ecef')
   return (
     <group position={p} rotation={[0, r, 0]}>
       <mesh geometry={FAR_BOX} material={farMat(body)} position={[0, 0.3 + h / 2, 0]} scale={[l, h, w]} />
@@ -248,6 +281,8 @@ function NearVehicle({ p, r = 0, kind = 'taxi', color, trim, seed = 0, crew = tr
     <group position={p} rotation={[0, r, 0]}>
       {kind === 'moto' ? (
         <Moto color={color ?? '#c92a2a'} />
+      ) : kind === 'sotra' ? (
+        <Sotra body={color ?? '#f4f6f5'} />
       ) : kind === 'gbaka' ? (
         <Gbaka body={color ?? '#f4c430'} stripe={trim ?? '#00a862'} crew={crew} />
       ) : kind === 'car' ? (

@@ -33,6 +33,7 @@ import { clearObstacles, moveObstacle, setObstacles, type Obstacle } from '../ob
 import { LANDMARKS, Landmark } from './landmarks'
 import { Boats } from './boats'
 import { StreetStalls } from './stalls'
+import { SotraStops } from './sotra'
 import { StreetLife } from './streetlife'
 import { TakeOff } from './airport'
 import { StreetLights } from './streetlights'
@@ -772,6 +773,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       {nav.nodes.length > 0 && <StreetLights nav={nav} night={night} />}
       {nav.nodes.length > 0 && <StreetLife nav={nav} seed={commune.id} night={night} />}
       {nav.nodes.length > 0 && <StreetStalls nav={nav} seed={commune.id} hour={hour} onBuy={onStreetBuy} />}
+      {nav.nodes.length > 0 && <SotraStops nav={nav} seed={commune.id} hour={hour} night={night} />}
       <TakeOff runways={runways} />
       <BridgeSights chunks={[...chunks.values()].map((c) => c.data)} night={night} />
       <BridgeLife chunks={[...chunks.values()].map((c) => c.data)} night={night} />
@@ -1060,7 +1062,7 @@ const CAR_CELL = 300
 const CARS_PER_CELL = 2
 const CAR_ROUND = 90 // seconds
 
-/** Woro-woro, taxis, gbakas and motos on the big streets around the Sim: the same ones on every screen. */
+/** Woro-woro, taxis, gbakas, motos and SOTRA buses on the big streets around the Sim: the same ones on every screen. */
 function RoadTraffic({ nav, focus, seed, woro }: { nav: Nav; focus: React.RefObject<XZ>; seed: string; woro?: { color?: string; trim?: string; none?: boolean } }) {
   const cells = useCellsAround(focus, CAR_CELL)
   const routes = useRoutes(nav)
@@ -1069,7 +1071,7 @@ function RoadTraffic({ nav, focus, seed, woro }: { nav: Nav; focus: React.RefObj
       cells.flatMap((cell) =>
         [...Array(CARS_PER_CELL)].map((_, k) => {
           const r = rng(`otraffic${seed}|${cell.key}|${k}`)
-          const kinds: VehicleKind[] = ['taxi', 'woro', 'woro', 'gbaka', 'car', 'car', 'moto']
+          const kinds: VehicleKind[] = ['taxi', 'woro', 'woro', 'gbaka', 'car', 'car', 'moto', 'sotra']
           const drawn = kinds[Math.floor(r() * kinds.length)]
           const kind: VehicleKind = drawn === 'woro' && woro?.none ? 'taxi' : drawn
           return {
@@ -1079,7 +1081,7 @@ function RoadTraffic({ nav, focus, seed, woro }: { nav: Nav; focus: React.RefObj
             trim: kind === 'woro' ? woro?.trim : undefined,
             seed: r() * 100,
             near: [cell.x0 + r() * CAR_CELL, cell.z0 + r() * CAR_CELL] as XZ,
-            speed: kind === 'gbaka' ? 8 : kind === 'moto' ? 11 : 9.5,
+            speed: kind === 'gbaka' ? 8 : kind === 'sotra' ? 7.5 : kind === 'moto' ? 11 : 9.5,
             offset: r() * CAR_ROUND,
           }
         }),
@@ -1099,26 +1101,30 @@ function RoadTraffic({ nav, focus, seed, woro }: { nav: Nav; focus: React.RefObj
 const SOLID_LANDMARKS: Record<string, number> = { 'treich-palais': 34, 'plateau-pyramide': 28, 'plateau-cathedrale': 20, 'cocody-oranjo': 34, 'yakro-basilique': 55 }
 
 /** A vehicle's length and width, for what it blocks. */
-const CAR_SIZE: Record<VehicleKind, [number, number]> = { taxi: [4.4, 1.7], woro: [4.4, 1.7], car: [4.5, 1.8], gbaka: [5.3, 1.9], moto: [1.9, 0.6] }
+const CAR_SIZE: Record<VehicleKind, [number, number]> = { taxi: [4.4, 1.7], woro: [4.4, 1.7], car: [4.5, 1.8], gbaka: [5.3, 1.9], moto: [1.9, 0.6], sotra: [11, 2.5] }
 
 function Car({ car, nav, routes }: { car: { id: string; kind: VehicleKind; color?: string; trim?: string; seed: number; near: XZ; speed: number; offset: number }; nav: Nav; routes: Map<string, XZ[]> }) {
   const ref = useRef<THREE.Group>(null)
-  const anchor = useMemo(() => anchorNode(nav, car.near, 7), [nav, car.near])
+  // The SOTRA keeps to the big roads.
+  const wide = car.kind === 'sotra' ? 12 : 7
+  const anchor = useMemo(() => anchorNode(nav, car.near, wide), [nav, car.near, wide])
   const gbaka = car.kind === 'gbaka'
+  // The gbaka and the bus stop and go (at the stops); the others drive on.
+  const stops = gbaka || car.kind === 'sotra'
   // The gbaka's leg, for its apprenti: seconds since it left (or since it stopped).
   const leg = useRef<GbakaLeg>({ moving: false, since: 99, go: 0 })
   useFrame((_, dt) => {
     const g = ref.current
     if (!g) return
     const reach = CAR_ROUND * 0.42 * car.speed
-    const path = (n: number) => routeFor(routes, nav, `${car.id}|${n}`, anchor, 14, 7, reach)
+    const path = (n: number) => routeFor(routes, nav, `${car.id}|${n}`, anchor, 14, wide, reach)
     const at = round(worldTime(), CAR_ROUND, car.offset, (n) => routeLength(path(n)), car.speed)
     const way = path(at.n)
     g.visible = way.length > 1
     if (!g.visible) return
     // A gbaka pulls away and pulls in (an apprenti has to be able to run
     // after it): the same leg in the same time, eased at both ends.
-    const d = gbaka ? eased(at, routeLength(way), car.speed, CAR_ROUND, car.offset, leg.current) : at.d
+    const d = stops ? eased(at, routeLength(way), car.speed, CAR_ROUND, car.offset, leg.current) : at.d
     const p = along(way, d)
     const heading = at.forward ? p.r : p.r + Math.PI
     // Drive on the right: shift to the right of the way it goes.
