@@ -13,6 +13,9 @@ const CreateSim = lazy(() => import('./screens/CreateSim').then((m) => ({ defaul
 const Play = lazy(() => import('./screens/Play').then((m) => ({ default: m.Play })))
 const Waitlist = lazy(() => import('./screens/Waitlist').then((m) => ({ default: m.Waitlist })))
 const LookEditor = lazy(() => import('./screens/LookEditor').then((m) => ({ default: m.LookEditor })))
+const PubPage = lazy(() => import('./screens/Pub').then((m) => ({ default: m.Pub })))
+const PubFollow = lazy(() => import('./screens/Pub').then((m) => ({ default: m.PubFollow })))
+const PubAdmin = lazy(() => import('./screens/Pub').then((m) => ({ default: m.PubAdmin })))
 const Profile = lazy(() => import('./screens/Profile').then((m) => ({ default: m.Profile })))
 
 const Loading = () => (
@@ -39,6 +42,14 @@ export function App() {
     )
 
   if (path === '/conditions' || path === '/confidentialite') return <Legal />
+
+  // Babi Pub: advertisers send their ads for the game's billboards, open to everyone even before the game.
+  if (path === '/pub' || path.startsWith('/pub/'))
+    return (
+      <Suspense fallback={<Loading />}>
+        {path === '/pub/admin' ? <PubAdmin /> : path.startsWith('/pub/suivi/') ? <PubFollow token={decodeURIComponent(path.slice('/pub/suivi/'.length))} /> : <PubPage />}
+      </Suspense>
+    )
 
   // Making one's Sim from the wish list, before the game opens (it needs the world's data).
   if (path === '/liste/creer') {

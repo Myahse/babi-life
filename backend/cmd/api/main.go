@@ -17,6 +17,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 
+	"github.com/myahse/babi-life/backend/internal/ads"
 	"github.com/myahse/babi-life/backend/internal/auth"
 	"github.com/myahse/babi-life/backend/internal/config"
 	"github.com/myahse/babi-life/backend/internal/db"
@@ -67,7 +68,7 @@ func main() {
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins: cfg.AllowedOrigins,
 		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders: []string{"Authorization", "Content-Type"},
+		AllowedHeaders: []string{"Authorization", "Content-Type", "X-Admin-Key"},
 		MaxAge:         600,
 	}))
 
@@ -169,6 +170,18 @@ func main() {
 		r.Post("/waitlist", wish.Join)
 		r.Get("/waitlist/count", wish.Count)
 		r.Get("/waitlist/export", wish.Export)
+		// Babi Pub: the billboards' ads (files in an S3-compatible bucket; admin with ADS_ADMIN_KEY).
+		pub := &ads.Handler{DB: pool, AdminKey: os.Getenv("ADS_ADMIN_KEY"), Head: ads.HeadHTTP, Bucket: &ads.Bucket{
+			Endpoint: os.Getenv("ADS_S3_ENDPOINT"), Region: os.Getenv("ADS_S3_REGION"), Name: os.Getenv("ADS_S3_BUCKET"),
+			AccessKey: os.Getenv("ADS_S3_ACCESS_KEY"), SecretKey: os.Getenv("ADS_S3_SECRET_KEY"), PublicURL: os.Getenv("ADS_PUBLIC_URL"),
+		}}
+		r.Post("/ads/upload", pub.Upload)
+		r.Post("/ads/campaigns", pub.Create)
+		r.Get("/ads/campaigns/{token}", pub.Follow)
+		r.Get("/ads/live", pub.Live)
+		r.Post("/ads/views", pub.Viewed)
+		r.Get("/ads/admin", pub.AdminList)
+		r.Post("/ads/admin/{id}", pub.AdminUpdate)
 		r.Get("/news", headlines.Handler)
 		r.Post("/auth/google", authH.Google)
 		r.Post("/auth/register", authH.Register)

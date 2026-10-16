@@ -250,3 +250,14 @@ func mapPlace(id string) (City, Commune, Place, bool) {
 	}
 	return City{}, Commune{}, Place{}, false
 }
+
+// CommuneIDs: every commune of the game, by id (« yopougon », « cocody »…).
+func CommuneIDs() map[string]bool {
+	out := map[string]bool{}
+	for _, c := range Cities {
+		for _, cm := range c.Communes {
+			out[cm.ID] = true
+		}
+	}
+	return out
+}

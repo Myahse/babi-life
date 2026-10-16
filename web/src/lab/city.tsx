@@ -34,6 +34,7 @@ import { Dressing } from '../world3d/open/dressing'
 import { PolicePost } from '../world3d/open/streetlife'
 import { BridgeSights } from '../world3d/open/bridges'
 import { BridgeLife } from '../world3d/open/bridgeLife'
+import { Billboard } from '../world3d/open/billboards'
 import { randomLook } from '../avatar/options'
 import type { Sim } from '../lib/types'
 
@@ -406,6 +407,7 @@ function BridgeLab() {
 
 function Lab() {
   if (view === 'bridge') return <BridgeLab />
+  if (view === 'billboard') return <BillboardLab />
   if (view === 'dressing' || view === 'police') return <FrontLab />
   if (view === 'outdoor') return <OutdoorLab />
   if (view === 'field') return <FieldLab />
@@ -542,6 +544,26 @@ function StreetFootLab() {
     </Canvas>
   )
 }
+/** Two billboards: an ad (a poster from public/apercu) and an empty one, « TA PUB ICI » (?view=billboard&night). */
+function BillboardLab() {
+  const cam = (q.get('cam') ?? '0,4,20').split(',').map(Number) as [number, number, number]
+  const ad = [{ id: 'lab', advertiser: 'Babi Life', title: 'Labo', type: 'image' as const, url: '/apercu/fete.jpg' }]
+  return (
+    <Canvas dpr={[1, 1.5]} camera={{ position: cam, fov: 50 }} style={{ width: '100vw', height: '100vh' }}>
+      <color attach="background" args={[night ? '#141836' : '#a9d3f0']} />
+      <hemisphereLight args={[night ? '#3a4a8a' : '#ffffff', '#b8a27c', night ? 0.6 : 1.2]} />
+      <directionalLight position={[10, 20, 12]} intensity={night ? 0.3 : 1.6} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[200, 200]} />
+        <meshLambertMaterial color="#b98b5c" />
+      </mesh>
+      <Billboard board={{ id: 'a', at: [-5, 0], rot: 0, seed: 0.1 }} ads={ad} night={night} onSeen={() => undefined} />
+      <Billboard board={{ id: 'b', at: [5, 0], rot: 0, seed: 0.5 }} ads={[]} night={night} onSeen={() => undefined} />
+      <OrbitControls target={[0, 5, 0]} />
+    </Canvas>
+  )
+}
+
 /** Le fou, the pastor and the pupils on a street (?view=people&kind=fou|pasteur|ecole&t=&cam=). */
 function PeopleLab() {
   const cam = (q.get('cam') ?? '0,7,14').split(',').map(Number) as [number, number, number]
