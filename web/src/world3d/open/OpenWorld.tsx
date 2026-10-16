@@ -32,7 +32,7 @@ import { FuelStation } from './station'
 import { clearObstacles, moveObstacle, setObstacles, type Obstacle } from '../obstacles'
 import { LANDMARKS, Landmark } from './landmarks'
 import { Boats } from './boats'
-import { AllocoStalls } from './alloco'
+import { StreetStalls } from './stalls'
 import { StreetLife } from './streetlife'
 import { TakeOff } from './airport'
 import { StreetLights } from './streetlights'
@@ -212,7 +212,7 @@ function useMaterials(night: boolean) {
   return mats
 }
 
-function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, nameTag, onNear, frozen, players, onPickPlayer, recenter, onFreeCamera, closeView, token, onFail, onStreetBuy, onTalk, onCall, talkingTo, plotsVersion, onMapPlaces }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void; onMapPlaces?: (places: Place[]) => void }) {
+function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, nameTag, onNear, frozen, players, onPickPlayer, recenter, onFreeCamera, closeView, token, onFail, onStreetBuy, onTalk, onCall, talkingTo, plotsVersion, onMapPlaces }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void; onMapPlaces?: (places: Place[]) => void }) {
   const origin = useMemo<Origin>(() => ({ lat: commune.lat, lng: commune.lng }), [commune.lat, commune.lng])
   const mats = useMaterials(night)
   const home = sim.homeCity === sim.city && sim.homeCommune === commune.id
@@ -771,7 +771,7 @@ function World({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, n
       <Boats water={nearWater} focus={focus} />
       {nav.nodes.length > 0 && <StreetLights nav={nav} night={night} />}
       {nav.nodes.length > 0 && <StreetLife nav={nav} seed={commune.id} night={night} />}
-      {nav.nodes.length > 0 && <AllocoStalls nav={nav} seed={commune.id} onBuy={onStreetBuy} />}
+      {nav.nodes.length > 0 && <StreetStalls nav={nav} seed={commune.id} hour={hour} onBuy={onStreetBuy} />}
       <TakeOff runways={runways} />
       <BridgeSights chunks={[...chunks.values()].map((c) => c.data)} night={night} />
       <BridgeLife chunks={[...chunks.values()].map((c) => c.data)} night={night} />

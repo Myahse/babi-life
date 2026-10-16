@@ -43,3 +43,37 @@ func TestAllocoTantie(t *testing.T) {
 		t.Error("open at 2 a.m.")
 	}
 }
+
+func TestStreetSellers(t *testing.T) {
+	for _, c := range []struct {
+		prefix string
+		cost   int
+	}{{"porc", 1500}, {"cafe", 150}, {"the", 100}} {
+		s := newSim() // at noon
+		var had string
+		for i := 0; i < 80 && had == ""; i++ {
+			v := c.prefix + ":" + string(rune('a'+i%26)) + string(rune('a'+i/26))
+			if hasStock(v, s.GameMinutes) {
+				had = v
+			}
+		}
+		if had == "" {
+			t.Fatalf("%s: never in stock at noon", c.prefix)
+		}
+		money := s.Money
+		said, err := s.buyStreet(had)
+		if err != nil || said == sellerOf(had).soldOut || s.Activity == nil {
+			t.Fatalf("%s: %q %v", c.prefix, said, err)
+		}
+		if s.Activity.Interaction.ID != "street-"+c.prefix {
+			t.Errorf("%s: doing %s", c.prefix, s.Activity.Interaction.ID)
+		}
+		if s.Money != money-c.cost {
+			t.Errorf("%s: paid %d", c.prefix, money-s.Money)
+		}
+	}
+	// Porc au four isn't sold in the morning.
+	if hasStock("porc:x", game.MinuteOf(noon)-12*60+9*60) {
+		t.Error("porc au four at 9 a.m.")
+	}
+}

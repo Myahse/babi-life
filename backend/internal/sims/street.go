@@ -4,53 +4,93 @@ import (
 	"errors"
 	"hash/fnv"
 	"net/http"
+	"strings"
 
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
 )
 
-// The tantie's alloco stall at the street corner: 300 F of fried plantain,
-// eaten standing, when she has some left. Often she hasn't: « Ya pas banane
-// oh ! ». Whether she has is the same for everyone at the same stall in the
-// same game hour, so asking again straight away doesn't change her answer.
+// The sellers of the street. The alloco tantie at the corner (300 F of fried
+// plantain, eaten standing), the women grilling porc au four in Yopougon,
+// the café and thé sellers with their pousse-pousse. The vendor id says which
+// (« porc:… », « cafe:… », « the:… »; anything else is an alloco stall). Each
+// is often sold out: « Ya pas banane oh ! ». Whether there's some is the same
+// for everyone at the same stall in the same game hour, so asking again
+// straight away doesn't change the answer.
 
 var streetAlloco = game.Interaction{ID: "street-alloco", Label: "Manger l'alloco de la tantie", Icon: "banana", Minutes: 15, Cost: 300, Effect: game.Needs{Hunger: 25}, MinHour: 8, MaxHour: 23}
 
 // NoBanana is what she says when there's none left.
 const NoBanana = "Ya pas banane oh !"
 
+// A kind of street seller: what one buys, when, and what's said.
+type streetSeller struct {
+	it      game.Interaction
+	place   string // the activity's place name
+	soldOut string
+	enjoy   string
+	oneIn   uint32 // sold out about one hour in this many
+}
+
+var streetSellers = map[string]streetSeller{
+	"alloco": {streetAlloco, "Alloco de la tantie", NoBanana, "Alloco chaud, bon appétit !", 3},
+	"porc": {game.Interaction{ID: "street-porc", Label: "Manger le porc au four", Icon: "drumstick", Minutes: 30, Cost: 1500, Effect: game.Needs{Hunger: 50, Fun: 6, Social: 4}, MinHour: 11, MaxHour: 24},
+		"Porc au four", "Le porc est fini, reviens demain !", "Porc au four bien grillé, avec l'attiéké. Bon appétit !", 4},
+	"cafe": {game.Interaction{ID: "street-cafe", Label: "Boire un café du pousse-pousse", Icon: "coffee", Minutes: 10, Cost: 150, Effect: game.Needs{Energy: 15, Hunger: 3}, MinHour: 5, MaxHour: 23},
+		"Café du pousse-pousse", "Le thermos est vide, attends un peu !", "Café bien chaud, bien sucré !", 5},
+	"the": {game.Interaction{ID: "street-the", Label: "Boire un thé avec les gars", Icon: "cup-soda", Minutes: 20, Cost: 100, Effect: game.Needs{Energy: 8, Social: 10, Fun: 4}, MinHour: 6, MaxHour: 24},
+		"Thé du pousse-pousse", "Le thé n'est pas encore prêt, assieds-toi d'abord !", "Premier thé, bien mousseux. On cause !", 5},
+}
+
+// sellerOf: the kind of seller a vendor id names (alloco by default).
+func sellerOf(vendor string) streetSeller {
+	kind, _, found := strings.Cut(vendor, ":")
+	if sl, ok := streetSellers[kind]; found && ok {
+		return sl
+	}
+	return streetSellers["alloco"]
+}
+
 var errUnknownVendor = errors.New("vendeuse inconnue")
 
-// hasBanana: does this stall still have plantain at this game minute?
-// Never before 8 h or after 23 h; otherwise about two hours in three.
-func hasBanana(vendor string, gameMinutes int64) bool {
+// hasStock: does this seller still have some at this game minute? Never
+// outside the seller's hours; otherwise most hours.
+func hasStock(vendor string, gameMinutes int64) bool {
+	sl := sellerOf(vendor)
 	h := game.HourOf(gameMinutes)
-	if h < streetAlloco.MinHour || h >= streetAlloco.MaxHour {
+	if h < sl.it.MinHour || h >= sl.it.MaxHour {
 		return false
 	}
 	f := fnv.New32a()
 	_, _ = f.Write([]byte(vendor))
 	hour := uint32(gameMinutes / 60)
 	f.Write([]byte{byte(hour), byte(hour >> 8), byte(hour >> 16), byte(hour >> 24)})
-	return f.Sum32()%3 != 0
+	return f.Sum32()%sl.oneIn != 0
 }
 
-// buyAlloco starts eating at the stall, or returns her answer when there's none.
-func (s *Sim) buyAlloco(vendor string) (string, error) {
+// hasBanana: the alloco stall's stock (kept for its own tests).
+func hasBanana(vendor string, gameMinutes int64) bool { return hasStock(vendor, gameMinutes) }
+
+// buyStreet starts eating (or drinking) at the seller's, or returns their answer when there's none.
+func (s *Sim) buyStreet(vendor string) (string, error) {
 	if vendor == "" || len(vendor) > 80 {
 		return "", errUnknownVendor
 	}
 	if s.Activity != nil {
 		return "", game.ErrBusy
 	}
-	if !hasBanana(vendor, s.GameMinutes) {
-		return NoBanana, nil
+	sl := sellerOf(vendor)
+	if !hasStock(vendor, s.GameMinutes) {
+		return sl.soldOut, nil
 	}
-	if err := s.start(streetAlloco, "", "market", "Alloco de la tantie", nil, ""); err != nil {
+	if err := s.start(sl.it, "", "market", sl.place, nil, ""); err != nil {
 		return "", err
 	}
-	return "Alloco chaud, bon appétit !", nil
+	return sl.enjoy, nil
 }
+
+// buyAlloco: buying at an alloco stall.
+func (s *Sim) buyAlloco(vendor string) (string, error) { return s.buyStreet(vendor) }
 
 func (h *Handler) street(w http.ResponseWriter, r *http.Request) {
 	var req struct {
@@ -61,13 +101,14 @@ func (h *Handler) street(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.mutate(w, r, func(s *Sim) (game.Outcome, []Event, error) {
-		said, err := s.buyAlloco(req.Vendor)
+		said, err := s.buyStreet(req.Vendor)
 		if err != nil {
 			return game.Outcome{}, nil, err
 		}
-		if said == NoBanana {
+		sl := sellerOf(req.Vendor)
+		if said == sl.soldOut {
 			return game.Outcome{Text: said}, nil, nil
 		}
-		return game.Outcome{Text: said, Money: -streetAlloco.Cost}, nil, nil
+		return game.Outcome{Text: said, Money: -sl.it.Cost}, nil, nil
 	})
 }

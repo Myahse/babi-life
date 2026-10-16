@@ -77,6 +77,14 @@ const ownPlaces = (c: Commune) => own.get(c) ?? c
 
 const streetPose = () => ({ heading: whereabouts.heading, polar: whereabouts.polar })
 
+/** The street sellers (world3d/open/stalls.tsx; backend sims/street.go): what buying from each is called. */
+const STREET_SELLERS: Record<string, [string, string]> = {
+  alloco: ["L'alloco de la tantie", 'banana'],
+  porc: ['Le porc au four', 'drumstick'],
+  cafe: ['Le café du pousse-pousse', 'coffee'],
+  the: ['Le thé avec les gars', 'cup-soda'],
+}
+
 export function Play() {
   const world = useWorld((s) => s.world)!
   const user = useSession((s) => s.user)
@@ -424,7 +432,9 @@ export function Play() {
             plotsVersion,
             onStreetBuy: async (vendor: string) => {
               let said: string | null = null
-              await run("L'alloco de la tantie", 'banana', 'market', async () => {
+              // Which seller (the id's prefix: porc, cafe, the; else alloco), as the API does.
+              const [label, icon] = STREET_SELLERS[vendor.split(':')[0]] ?? STREET_SELLERS.alloco
+              await run(label, icon, 'market', async () => {
                 const res = await api.street(sim.id, vendor)
                 said = res.outcome.text
                 return res

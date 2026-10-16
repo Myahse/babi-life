@@ -12,6 +12,7 @@ import { Vehicle, type VehicleKind } from '../world3d/vehicles'
 import { Landmark } from '../world3d/open/landmarks'
 import { SportField } from '../world3d/open/field'
 import { FuelStation } from '../world3d/open/station'
+import { StreetStall, type StallKind } from '../world3d/open/stalls'
 import { freezeWorldTime } from '../lib/worldClock'
 import { FamilyScene } from '../avatar/Family'
 import { Arena } from '../world3d/interior/Arena'
@@ -395,6 +396,7 @@ function Lab() {
   if (view === 'dressing' || view === 'police') return <FrontLab />
   if (view === 'outdoor') return <OutdoorLab />
   if (view === 'field') return <FieldLab />
+  if (view === 'stalls') return <StallsLab />
   if (view === 'family') return <FamilyScene familyId={q.get('f') ?? 'gnambro'} look={randomLook((q.get('g') ?? 'femme') as 'femme', seededLab(Number(q.get('seed') ?? 3)))} gender={(q.get('g') ?? 'femme') as 'femme'} className="!h-screen !w-screen" />
   if (view === 'interior') return <InteriorLab />
   if (view === 'gbaka') return <GbakaLab />
@@ -447,6 +449,28 @@ function FieldLab() {
       </mesh>
       <SportField field={field} seed={q.get('seed') ?? 'lab-field'} night={night} withSim={false} />
       <OrbitControls />
+    </Canvas>
+  )
+}
+
+/** The street sellers side by side, with their customers at an hour (?hour=19). */
+function StallsLab() {
+  const hour = Number(q.get('hour') ?? 19)
+  const kinds: StallKind[] = ['alloco', 'porc', 'cafe', 'the']
+  const cam = (q.get('cam') ?? '0,7,16').split(',').map(Number) as [number, number, number]
+  return (
+    <Canvas shadows dpr={[1, 1.5]} camera={{ position: cam, fov: 45 }} style={{ width: '100vw', height: '100vh' }}>
+      <color attach="background" args={['#a9d3f0']} />
+      <hemisphereLight args={['#ffffff', '#b8a27c', 1.2]} />
+      <directionalLight position={[10, 20, 12]} intensity={1.6} castShadow />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[80, 80]} />
+        <meshLambertMaterial color="#b98b5c" />
+      </mesh>
+      {kinds.map((kind, i) => (
+        <StreetStall key={kind} stall={{ id: `${kind}:lab:${i}`, kind, at: [(i - 1.5) * 7, -2], rot: 0, seed: 0.3 + i * 0.17 }} hour={hour} crowd />
+      ))}
+      <OrbitControls target={[0, 1, 0]} />
     </Canvas>
   )
 }
