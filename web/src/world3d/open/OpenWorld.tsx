@@ -34,6 +34,7 @@ import { LANDMARKS, Landmark } from './landmarks'
 import { Boats } from './boats'
 import { StreetStalls } from './stalls'
 import { SotraStops } from './sotra'
+import { StreetFootball } from './streetFoot'
 import { StreetLife } from './streetlife'
 import { TakeOff } from './airport'
 import { StreetLights } from './streetlights'
@@ -774,6 +775,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       {nav.nodes.length > 0 && <StreetLife nav={nav} seed={commune.id} night={night} />}
       {nav.nodes.length > 0 && <StreetStalls nav={nav} seed={commune.id} hour={hour} onBuy={onStreetBuy} />}
       {nav.nodes.length > 0 && <SotraStops nav={nav} seed={commune.id} hour={hour} night={night} />}
+      {nav.nodes.length > 0 && <StreetFootball nav={nav} seed={commune.id} hour={hour} />}
       <TakeOff runways={runways} />
       <BridgeSights chunks={[...chunks.values()].map((c) => c.data)} night={night} />
       <BridgeLife chunks={[...chunks.values()].map((c) => c.data)} night={night} />

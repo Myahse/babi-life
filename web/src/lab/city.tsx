@@ -15,6 +15,8 @@ import { FuelStation } from '../world3d/open/station'
 import { StreetStall, type StallKind } from '../world3d/open/stalls'
 import { BusStop } from '../world3d/open/sotra'
 import { CableStayed, TollPlaza } from '../world3d/open/bridges'
+import { StreetGame } from '../world3d/open/streetFoot'
+import { moveObstacle } from '../world3d/obstacles'
 import { freezeWorldTime } from '../lib/worldClock'
 import { FamilyScene } from '../avatar/Family'
 import { Arena } from '../world3d/interior/Arena'
@@ -401,6 +403,7 @@ function Lab() {
   if (view === 'field') return <FieldLab />
   if (view === 'stalls') return <StallsLab />
   if (view === 'tolls') return <TollsLab />
+  if (view === 'streetfoot') return <StreetFootLab />
   if (view === 'family') return <FamilyScene familyId={q.get('f') ?? 'gnambro'} look={randomLook((q.get('g') ?? 'femme') as 'femme', seededLab(Number(q.get('seed') ?? 3)))} gender={(q.get('g') ?? 'femme') as 'femme'} className="!h-screen !w-screen" />
   if (view === 'interior') return <InteriorLab />
   if (view === 'gbaka') return <GbakaLab />
@@ -505,5 +508,43 @@ function TollsLab() {
       </group>
       <OrbitControls target={(q.get('target') ?? '0,5,0').split(',').map(Number) as [number, number, number]} />
     </Canvas>
+  )
+}
+
+/** The little maracana in a street, and a car coming through now and then (?view=streetfoot&cam=). */
+function StreetFootLab() {
+  const cam = (q.get('cam') ?? '0,9,16').split(',').map(Number) as [number, number, number]
+  return (
+    <Canvas shadows dpr={[1, 1.5]} camera={{ position: cam, fov: 50 }} style={{ width: '100vw', height: '100vh' }}>
+      <color attach="background" args={['#a9d3f0']} />
+      <hemisphereLight args={['#ffffff', '#b8a27c', 1.2]} />
+      <directionalLight position={[10, 20, 12]} intensity={1.6} castShadow />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[200, 200]} />
+        <meshLambertMaterial color="#b98b5c" />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} receiveShadow>
+        <planeGeometry args={[200, 8]} />
+        <meshLambertMaterial color="#4a4d55" />
+      </mesh>
+      <StreetGame game={{ id: 'foot:lab:1', at: [0, 0], rot: 0, w: 8, seed: 0.37 }} />
+      <LabCar />
+      <OrbitControls target={[0, 1, 0]} />
+    </Canvas>
+  )
+}
+/** A car down the street every 20 s, registered as moving (as the traffic's are). */
+function LabCar() {
+  const ref = useRef<THREE.Group>(null)
+  useFrame(() => {
+    const t = worldTime() % 20
+    const x = -90 + t * 9
+    if (ref.current) ref.current.position.set(x, 0, 2)
+    moveObstacle('labcar', { x, z: 2, hw: 2.2, hd: 0.9, rot: 0 })
+  })
+  return (
+    <group ref={ref}>
+      <Vehicle p={[0, 0, 0]} kind="taxi" seed={3} />
+    </group>
   )
 }

@@ -72,3 +72,9 @@ export function topAt(x: number, z: number) {
   for (const o of index().get(`${Math.floor(x / CELL)},${Math.floor(z / CELL)}`) ?? []) if ('top' in o && o.top && hits(o, x, z, 0)) h = Math.max(h, o.top)
   return h
 }
+
+/** Is a vehicle on the move within r metres of (x, z)? (The kids playing in the street look out for cars.) */
+export function vehicleNear(x: number, z: number, r: number) {
+  for (const o of moving.values()) if (Math.hypot(o.x - x, o.z - z) < r) return true
+  return false
+}
