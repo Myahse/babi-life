@@ -5,6 +5,10 @@
 @import '@fontsource/nunito/600.css';
 @import '@fontsource/nunito/700.css';
 @import '@fontsource/nunito/800.css';
+/* The wish list's painted signs (Abidjan shop lettering, the maquis board) */
+@import '@fontsource/anton/400.css';
+@import '@fontsource/alfa-slab-one/400.css';
+@import '@fontsource/caveat/700.css';
 
 /*
  * Babi Life design tokens.
@@ -423,4 +427,109 @@ button {
 }
 .no-scrollbar::-webkit-scrollbar {
   display: none;
+}
+
+/* ---------- The wish list: Abidjan street signs ----------
+   Paint straight on a lime-washed wall: tall shop lettering (Anton), slab
+   letters on the signs (Alfa Slab One), the maquis board in chalk (Caveat).
+   Faded paint colours, never pure black, no gradients, no glass. */
+.street {
+  --wall: #efe4cc;
+  --turq: #1f8f88;
+  --rust: #b5432c;
+  --ochre: #dda233;
+  --mint: #9ccfb4;
+  --ci-orange: #f07a12;
+  --ci-green: #0b6b3d;
+  --brown: #2b1d14;
+  --cream: #fbf5e6;
+  background-color: var(--wall);
+  color: var(--brown);
+  /* The game's own boxes and fields (Consent, the inputs, the community button) take the wall's colours here */
+  --color-canvas: #e9dcc0;
+  --color-line: rgba(43, 29, 20, 0.22);
+  --color-ink: #2b1d14;
+  --color-ink-soft: #6b5a4c;
+}
+.street .input,
+.street .btn {
+  border-radius: 4px;
+}
+.street .rounded-xl {
+  border-radius: 4px;
+}
+.street .worn,
+.street.worn {
+  background-image: radial-gradient(rgba(90, 60, 30, 0.06) 1px, transparent 1.5px), radial-gradient(rgba(255, 255, 255, 0.2) 1px, transparent 1.6px);
+  background-size: 6px 6px, 9px 9px;
+  background-position: 0 0, 3px 4px;
+}
+.paint {
+  font-family: 'Anton', system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  line-height: 0.92;
+  font-weight: 400;
+}
+.slab {
+  font-family: 'Alfa Slab One', Georgia, serif;
+  font-weight: 400;
+}
+.chalk-hand {
+  font-family: 'Caveat', cursive;
+  font-weight: 700;
+}
+.ci-stripe {
+  height: 8px;
+  background: linear-gradient(90deg, #f07a12 0 33.3%, #fbf5e6 0 66.6%, #0b6b3d 0);
+}
+.sign-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: 'Alfa Slab One', Georgia, serif;
+  font-size: 18px;
+  color: #fbf5e6;
+  background: #b5432c;
+  padding: 14px 20px;
+  border-radius: 3px;
+  transition: transform 0.1s;
+}
+.sign-btn:active {
+  transform: translateY(2px);
+}
+.sign-btn:disabled {
+  opacity: 0.55;
+}
+.sign-btn.alt {
+  background: transparent;
+  color: #2b1d14;
+  box-shadow: inset 0 0 0 2px #2b1d14;
+}
+.sign-btn.turq {
+  background: #1f8f88;
+}
+.taped {
+  background: #fff;
+  padding: 7px 7px 30px;
+  position: relative;
+  box-shadow: 0 1px 3px rgba(43, 29, 20, 0.25);
+}
+.taped .cap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 2px;
+  text-align: center;
+  font-family: 'Caveat', cursive;
+  font-weight: 700;
+  font-size: 22px;
+  color: #2b1d14;
+}
+.ardoise {
+  background: #26332c;
+  color: #f1eee4;
+  border: 9px solid #7a5534;
+  border-radius: 4px;
 }

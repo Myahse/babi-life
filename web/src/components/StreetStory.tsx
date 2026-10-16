@@ -75,53 +75,53 @@ export function StreetStory() {
 
   const c = CHAPTERS[chapter]
   return (
-    <section ref={box} className="relative -mx-5 lg:col-span-2 lg:mx-0" style={{ height: `${CHAPTERS.length * 70 + 40}svh` }}>
-      <div className="sticky top-0 h-[100svh] overflow-hidden lg:top-[5svh] lg:h-[90svh] lg:rounded-[32px] lg:border lg:border-white/10">
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,#2a2f6a,#0f1230)]" />
+    <section ref={box} className="relative -mx-4 sm:mx-0" style={{ height: `${CHAPTERS.length * 70 + 40}svh` }}>
+      {/* The street in a painted frame; the words on cream signs over it */}
+      <div className="sticky top-0 h-[100svh] overflow-hidden sm:top-[5svh] sm:h-[90svh] sm:border-[6px] sm:border-[var(--brown)]">
+        <div className="absolute inset-0 bg-[#26332c]" />
         {seen && (
           <Suspense fallback={null}>
             <StreetScene progress={progress} running={near} />
           </Suspense>
         )}
         {/* The heading, at the top */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-[#0f1230]/85 to-transparent px-5 pt-5 pb-10 lg:px-8 lg:pt-7">
-          <p className="text-xs font-extrabold tracking-[0.14em] text-[var(--color-orange)] uppercase">Visite guidée · Une journée dans ta rue</p>
-          <p className="mt-1 font-display text-2xl leading-tight font-extrabold sm:text-3xl">{GUIDE.name} te fait visiter son quartier.</p>
-          <p className="mt-1 text-sm font-semibold text-white/75">Fais défiler : vous marchez ensemble, la journée avance.</p>
+        <div className="pointer-events-none absolute top-3 left-3 max-w-[calc(100%-1.5rem)] bg-[var(--cream)] px-4 py-3 sm:top-5 sm:left-5">
+          <p className="chalk-hand text-[22px] leading-none text-[var(--rust)]">Visite guidée</p>
+          <p className="paint mt-1 text-[26px] sm:text-[32px]">{GUIDE.name} te fait visiter son quartier</p>
+          <p className="mt-1 text-[13px] font-extrabold">Fais défiler : vous marchez ensemble, la journée avance.</p>
         </div>
         {/* Awa's phone, when she uses it */}
         {c.phone && <Phone key={c.phone} app={c.phone} />}
         {/* How it works, until the visitor scrolls */}
         {!moved && (
-          <div className="pointer-events-none absolute inset-x-0 top-[21%] flex justify-center lg:top-[26%]">
-            <span className="flex flex-col items-center gap-1 rounded-[22px] bg-[#0f1230]/80 px-5 py-3 text-center font-extrabold backdrop-blur">
-              <span className="text-[15px]">Fais défiler pour avancer</span>
-              <ChevronsDown size={28} strokeWidth={2.6} className="animate-bounce text-[var(--color-orange)]" />
+          <div className="pointer-events-none absolute inset-x-0 top-[34%] flex justify-center">
+            <span className="flex flex-col items-center gap-1 bg-[var(--brown)] px-5 py-3 text-center text-[var(--cream)]">
+              <span className="slab text-[16px]">Fais défiler pour avancer</span>
+              <ChevronsDown size={28} strokeWidth={2.6} className="animate-bounce text-[var(--ochre)]" />
             </span>
           </div>
         )}
-        {/* What's going on, at the bottom */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#0f1230]/95 via-[#0f1230]/70 to-transparent px-5 pt-16 pb-[max(1.25rem,env(safe-area-inset-bottom))] lg:px-8 lg:pb-8">
-          <div key={c.id} className="animate-pop max-w-lg">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center rounded-full bg-[var(--color-orange)] px-3 py-1 text-sm font-extrabold">{c.time}</span>
-              <h3 className="font-display text-xl leading-tight font-extrabold sm:text-2xl">{c.title}</h3>
+        {/* What's going on, at the bottom: what Awa says, on a cream sign */}
+        <div className="pointer-events-none absolute inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] sm:inset-x-5 sm:bottom-5">
+          <div key={c.id} className="animate-pop max-w-xl bg-[var(--cream)] px-4 pt-3 pb-3.5">
+            <div className="flex items-center gap-2.5">
+              <span className="slab bg-[var(--rust)] px-2.5 py-1 text-[15px] text-[var(--cream)]">{c.time}</span>
+              <h3 className="paint text-[24px] sm:text-[28px]">{c.title}</h3>
             </div>
-            {/* The guide talking */}
-            <p className="mt-2.5 rounded-[20px] rounded-tl-md bg-white px-4 py-3 text-[15px] leading-snug font-bold text-[var(--color-ink)] shadow-[0_10px_24px_-12px_rgba(0,0,0,0.6)] sm:text-base">
-              <span className="mb-0.5 block text-xs font-extrabold text-[var(--color-orange)]">{GUIDE.name}, ta guide</span>
+            <p className="mt-2 text-[15px] leading-snug font-bold sm:text-base">
+              <span className="chalk-hand mr-1 text-[22px] leading-none text-[var(--turq)]">{GUIDE.name} :</span>
               {c.text}
             </p>
-          </div>
-          {chapter < CHAPTERS.length - 1 && (
-            <p className="mt-2 flex items-center gap-1 text-xs font-extrabold text-white/70">
-              <ChevronsDown size={14} strokeWidth={2.8} className="animate-bounce" /> Continue à défiler : la suite de la journée
-            </p>
-          )}
-          <div className="mt-3 flex gap-1.5" aria-hidden>
-            {CHAPTERS.map((x, i) => (
-              <i key={x.id} className={`h-1.5 flex-1 rounded-full transition-colors ${i <= chapter ? 'bg-[var(--color-orange)]' : 'bg-white/20'}`} />
-            ))}
+            {chapter < CHAPTERS.length - 1 && (
+              <p className="mt-2 flex items-center gap-1 text-[12px] font-extrabold opacity-70">
+                <ChevronsDown size={14} strokeWidth={2.8} className="animate-bounce" /> Continue à défiler : la suite de la journée
+              </p>
+            )}
+            <div className="mt-2.5 flex gap-1" aria-hidden>
+              {CHAPTERS.map((x, i) => (
+                <i key={x.id} className={`h-1.5 flex-1 transition-colors ${i <= chapter ? 'bg-[var(--ochre)]' : 'bg-[var(--brown)]/15'}`} />
+              ))}
+            </div>
           </div>
         </div>
       </div>

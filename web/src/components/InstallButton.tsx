@@ -3,13 +3,13 @@ import { Download, Share, SquarePlus, WifiOff, X } from 'lucide-react'
 import { useInstall, useOnline } from '../lib/pwa'
 
 /** "Installer l'app": the browser's install dialog, or the steps on iPhone. */
-export function InstallButton({ className = '' }: { className?: string }) {
+export function InstallButton({ className = '', sign = false }: { className?: string; /** Painted like the wish list's signs. */ sign?: boolean }) {
   const { mode, install } = useInstall()
   const [steps, setSteps] = useState(false)
   if (!mode) return null
   return (
     <>
-      <button className={`btn btn-white w-full ${className}`} onClick={() => (mode === 'prompt' ? install() : setSteps(true))}>
+      <button className={`${sign ? 'sign-btn turq' : 'btn btn-white'} w-full ${className}`} onClick={() => (mode === 'prompt' ? install() : setSteps(true))}>
         <Download size={18} strokeWidth={2.6} /> Installer l'app
       </button>
       {steps && (
