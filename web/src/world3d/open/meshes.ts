@@ -8,7 +8,7 @@ import * as Three from 'three'
 
 import { Builder } from './builder'
 import { addBuilding, newBuildingBuilders, type Style } from './buildings'
-import { BRIDGE_BUILD, bridgeKind, type BridgeKind } from './bridgeNames'
+import { BRIDGE_BUILD, bridgeKind, deckTop, type BridgeKind } from './bridgeNames'
 
 // Roads draw in order, the bigger on top where they meet.
 const RANK: Record<string, number> = { motorway: 9, trunk: 8, primary: 7, secondary: 6, tertiary: 5, street: 4, street_limited: 3, service: 2, pedestrian: 2, track: 1, path: 0 }
@@ -138,7 +138,7 @@ function markings(chunk: ChunkData, paint: Builder, trim: Builder) {
   for (const r of chunk.roads) {
     const rank = RANK[r.cls] ?? 0
     if (!r.paved || rank < 4 || r.width < 6) continue
-    const ys = r.bridge ? bridgeHeights(r.pts, chunk.box) : undefined
+    const ys = r.bridge ? bridgeHeights(r.pts, chunk.box, deckTop(r.cls, r.name)) : undefined
     const base = 0.065 + rank * 0.002
     const lines: { off: number; w: number; dash: number; gap: number }[] =
       rank >= 7
@@ -247,6 +247,7 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ) => boolean, styleOf: 
   const bridge = (pts: XZ[], w: number, ys: number[], kind: BridgeKind | null) => {
     const how = BRIDGE_BUILD[kind ?? 'default']
     const stone = kind === 'fhb' ? OLD : CONCRETE
+    const top = Math.max(...ys) // the deck's height (a flyover's is higher)
     let run = 0
     for (let i = 1; i < pts.length; i++) {
       const [x1, z1] = pts[i - 1]
@@ -263,7 +264,7 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ) => boolean, styleOf: 
       const [mx, mz] = [(x1 + x2) / 2, (z1 + z2) / 2]
       // Over land, the low end of a ramp stands on an embankment (higher up it
       // stays on piers: a flyover crosses a road there).
-      if (ym < BRIDGE_HEIGHT * 0.7 && !inWater(mx, mz)) {
+      if (ym < Math.min(top, BRIDGE_HEIGHT) * 0.7 && !inWater(mx, mz)) {
         B.trim.box(mx, (ym - 0.9) / 2, mz, len + 0.05, ym - 0.9, w - 0.2, rot, stone.clone().multiplyScalar(0.92))
         run += len
         continue
@@ -342,7 +343,7 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ) => boolean, styleOf: 
   const paint = new Builder()
   for (const r of [...chunk.roads].sort((a, b) => (RANK[a.cls] ?? 0) - (RANK[b.cls] ?? 0))) {
     const rank = RANK[r.cls] ?? 0
-    const ys = r.bridge ? bridgeHeights(r.pts, chunk.box) : undefined
+    const ys = r.bridge ? bridgeHeights(r.pts, chunk.box, deckTop(r.cls, r.name)) : undefined
     if (r.paved) {
       // A pavement on each side of the bigger streets (and on bridges).
       if (rank >= 4 || ys) strip(pavement, r.pts, ys ? Math.max(r.width + 3.2, BRIDGE_BUILD[bridgeKind(r.name) ?? 'default'].width ?? 0) : r.width + 3.2, 0.03, 2, ys)

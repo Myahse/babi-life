@@ -162,7 +162,9 @@ const RAMP = 60 // metres to climb from the bank to the deck
  * (where it meets the road on the bank) and stays up over the water. An end
  * cut by the chunk's edge isn't a real end: the deck stays up there.
  */
-export function bridgeHeights(pts: XZ[], b: Box): number[] {
+/** A deck `top` metres up (default: a lagoon bridge's), its ramps the longer the higher it goes. */
+export function bridgeHeights(pts: XZ[], b: Box, top = BRIDGE_HEIGHT): number[] {
+  const ramp = Math.max(RAMP, top * 7)
   const d: number[] = [0]
   for (let i = 1; i < pts.length; i++) d.push(d[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]))
   const total = d[d.length - 1]
@@ -172,8 +174,8 @@ export function bridgeHeights(pts: XZ[], b: Box): number[] {
   const ease = (t: number) => t * t * (3 - 2 * t)
   return d.map((s) => {
     let k = 1
-    if (startReal) k = Math.min(k, s / RAMP)
-    if (endReal) k = Math.min(k, (total - s) / RAMP)
-    return BRIDGE_HEIGHT * ease(Math.max(0, Math.min(1, k)))
+    if (startReal) k = Math.min(k, s / ramp)
+    if (endReal) k = Math.min(k, (total - s) / ramp)
+    return top * ease(Math.max(0, Math.min(1, k)))
   })
 }

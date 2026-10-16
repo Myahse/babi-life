@@ -192,6 +192,7 @@ function MapLab() {
           const meshes = buildChunk(data, () => false)
           ;(data as unknown as { ms: number }).ms = Math.round(performance.now() - t0)
           ;(window as unknown as { stats: unknown[] }).stats = [...((window as unknown as { stats?: unknown[] }).stats ?? []), { key: data.key, buildings: data.buildings.length, roads: data.roads.length, trees: data.trees.length, forest: data.forest?.length ?? 0, areas: data.areas.length, meshMs: (data as unknown as { ms: number }).ms }]
+          ;(window as unknown as { chunks: ChunkData[] }).chunks = [...((window as unknown as { chunks?: ChunkData[] }).chunks ?? []), data]
           setChunks((c) => [...c, { key: data.key, meshes, data }])
         })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps

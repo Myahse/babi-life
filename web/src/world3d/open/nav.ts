@@ -1,4 +1,5 @@
 import { bridgeHeights, pointInRing, type XZ } from './geo'
+import { deckTop } from './bridgeNames'
 import type { ChunkData } from './tiles'
 
 // Getting around the open world: a graph of the real streets of the loaded
@@ -25,7 +26,7 @@ export class Nav {
   constructor(chunks: ChunkData[], skipBuilding: (c: XZ) => boolean = () => false) {
     for (const ch of chunks) {
       for (const r of ch.roads) {
-        const ys = r.bridge ? bridgeHeights(r.pts, ch.box) : undefined
+        const ys = r.bridge ? bridgeHeights(r.pts, ch.box, deckTop(r.cls, r.name)) : undefined
         let prev = this.node(r.pts[0], ys?.[0])
         for (let i = 1; i < r.pts.length; i++) {
           const cur = this.node(r.pts[i], ys?.[i])

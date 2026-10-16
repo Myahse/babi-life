@@ -36,6 +36,18 @@ export function bridgeKind(name?: string): BridgeKind | null {
   return null
 }
 
+/**
+ * How high a bridge's deck goes. The big lagoon bridges and the small ones:
+ * 8 m. A big road's bridge that isn't one of them is a flyover over a
+ * crossroads, like the Solibra interchange (Shinzo Abe, 17 to 20 m, AIP /
+ * Fratmat): 14 m here, so the roads under it pass with room to spare. From
+ * the road's class and name only, so every piece of it agrees.
+ */
+export const FLYOVER_HEIGHT = 14
+export function deckTop(cls: string, name?: string) {
+  return !bridgeKind(name) && ['motorway', 'trunk', 'primary'].includes(cls) ? FLYOVER_HEIGHT : 8
+}
+
 /** The name on the bridge's label. */
 export const BRIDGE_LABEL: Record<BridgeKind, string> = {
   fhb: '1er pont · FHB',
