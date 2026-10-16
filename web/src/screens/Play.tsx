@@ -17,7 +17,7 @@ import { Portrait } from '../avatar/portrait'
 import { Neighbourhood } from '../world3d/Neighbourhood'
 import { OpenWorld } from '../world3d/open/OpenWorld'
 import { iconFor, kindColors } from '../components/icons'
-import { Chip, Coin, DayNight, IconTile, MotiveRing, Plumbob, Row, needColor } from '../components/ui'
+import { Chip, Coin, DayNight, IconTile, MotiveRing, MoodPin, Row, needColor } from '../components/ui'
 import { NEEDS, ageBlock, amount, atHome, blockedBy, lifeOf, clock, duration, mood, openAt, openingLabel, predict, shift } from '../game/rules'
 import { HomeApp, JobsApp, type Act } from './phoneApps'
 import { NewsApp, topicOf } from './NewsApp'
@@ -344,7 +344,7 @@ export function Play() {
     return (
       <div className="grid h-full place-items-center bg-[var(--color-night)] text-white">
         <div className="flex flex-col items-center gap-3">
-          <Plumbob size={22} />
+          <MoodPin size={22} />
           <span className="font-display text-xl font-bold">Chargement de Babi…</span>
         </div>
       </div>

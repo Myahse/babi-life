@@ -248,7 +248,7 @@ export function FamilyGroup({ familyId, look, gender }: { familyId: string; look
       <Home familyId={familyId} />
       {people.map(({ at, who }, i) => (
         <group key={i} position={at} rotation={[0, i ? -0.25 : 0.25, 0]}>
-          <Character look={who.look} gender={who.gender} pose={who.pose} plumbob={false} seed={i * 3.3} />
+          <Character look={who.look} gender={who.gender} pose={who.pose} marker={false} seed={i * 3.3} />
         </group>
       ))}
       <group position={[0, 0, 0.75]}>

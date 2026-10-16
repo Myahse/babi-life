@@ -44,7 +44,7 @@ export function Joystick({ disabled = false, className = '' }: { disabled?: bool
     <div
       ref={base}
       role="slider"
-      aria-label="Déplacer le Sim"
+      aria-label="Déplacer le perso"
       aria-valuetext={active ? 'en marche' : 'à l’arrêt'}
       className={`hud relative grid h-[132px] w-[132px] touch-none place-items-center rounded-full transition-opacity select-none ${disabled ? 'pointer-events-none opacity-40' : ''} ${className}`}
       onPointerDown={(e) => {

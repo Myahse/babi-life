@@ -10,7 +10,7 @@ import { sampleLive, type LivePose } from '../lib/live'
 
 // The other players in the commune, live: where they really are (lib/live.ts),
 // or, until their position arrives, at the door of the place where they're
-// busy or strolling along the sidewalk. Their plumbob is blue, so
+// busy or strolling along the sidewalk. Their marker (the pin) is blue, so
 // real people stand out from the street's passers-by; tap their name to meet.
 
 const PLAYER_BLUE = '#3b82f6'

@@ -156,7 +156,7 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
             <div className="font-display text-xl leading-tight font-extrabold">{current.label}</div>
           </div>
           <div className="pointer-events-auto flex gap-2">
-            <button className="icon-btn bg-white text-[var(--color-orange)] shadow-lg" onClick={randomize} aria-label="Sim au hasard" title="Au hasard">
+            <button className="icon-btn bg-white text-[var(--color-orange)] shadow-lg" onClick={randomize} aria-label="Perso au hasard" title="Au hasard">
               <Dices size={24} strokeWidth={2.4} />
             </button>
             {waitlist && (
@@ -171,7 +171,7 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
           <div className="font-display text-[26px] leading-none font-extrabold [text-shadow:0_2px_0_rgba(0,0,0,0.15)] lg:text-4xl">
             {sim.firstName || '…'} {sim.lastName}
           </div>
-          <div className="mt-1 text-xs font-bold opacity-90">Fais glisser pour tourner ton Sim</div>
+          <div className="mt-1 text-xs font-bold opacity-90">Fais glisser pour tourner ton perso</div>
         </div>
       </section>
 
@@ -353,7 +353,7 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
           {current.id === 'home' && waitlist && (
             <div className="space-y-2.5">
               <p className="text-sm font-bold text-[var(--color-ink-soft)]">
-                Babi Life n'est pas encore ouvert, mais {sim.firstName || 'ton Sim'} peut déjà naître : la famille est tirée au sort, comme dans la vraie vie. Laisse un contact pour que ton Sim t'attende à l'ouverture : on te prévient là, et nulle part ailleurs.
+                Babi Life n'est pas encore ouvert, mais {sim.firstName || 'ton perso'} peut déjà naître : la famille est tirée au sort, comme dans la vraie vie. Laisse un contact pour que ton perso t'attende à l'ouverture : on te prévient là, et nulle part ailleurs.
               </p>
               <input className="input text-base" placeholder="E-mail ou numéro WhatsApp" autoComplete="email" inputMode="email" value={contact} onChange={(e) => setContact(e.target.value)} aria-label="E-mail ou numéro WhatsApp" />
               <input className="input text-base" placeholder="Ta commune (facultatif)" list="communes-creer" value={commune} onChange={(e) => setCommune(e.target.value)} aria-label="Ta commune" maxLength={60} />
@@ -375,7 +375,7 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
           {current.id === 'home' && !waitlist && (
             <div className="space-y-3">
               <p className="text-sm font-bold text-[var(--color-ink-soft)]">
-                {sim.firstName || 'Ton Sim'} naît bébé <b>là où tu es</b> : à la naissance, le jeu demande ta position et choisit la commune la plus proche (seule la commune est gardée, jamais ta position). Sans position, ou loin des villes du jeu, c'est quelque part à Abidjan. Puis {sim.firstName || 'ton Sim'} grandit vite : bébé une dizaine de minutes, enfant pendant une heure de jeu, ado pendant deux, puis adulte à 18 ans (ensuite, une année de jeu dure 8 heures). La famille est tirée au sort, comme dans la vraie vie, et chaque commune a ses quartiers riches et pauvres.
+                {sim.firstName || 'Ton perso'} naît bébé <b>là où tu es</b> : à la naissance, le jeu demande ta position et choisit la commune la plus proche (seule la commune est gardée, jamais ta position). Sans position, ou loin des villes du jeu, c'est quelque part à Abidjan. Puis {sim.firstName || 'ton perso'} grandit vite : bébé une dizaine de minutes, enfant pendant une heure de jeu, ado pendant deux, puis adulte à 18 ans (ensuite, une année de jeu dure 8 heures). La famille est tirée au sort, comme dans la vraie vie, et chaque commune a ses quartiers riches et pauvres.
               </p>
               {(world.families ?? []).map((f) => (
                 <div key={f.id} className="tile flex items-center gap-3 p-3">
@@ -521,7 +521,7 @@ function Registered({ name, contact, count, onBack }: { name: string; contact: s
           Tu es inscrit·e, {name} !
         </h2>
         <p className="text-sm font-semibold text-[var(--color-ink-soft)]">
-          Babi Life n'est pas encore ouvert. On te prévient sur <b className="text-[var(--color-ink)]">{contact.trim()}</b> dès que le jeu est prêt : ton Sim et sa famille t'attendront.
+          Babi Life n'est pas encore ouvert. On te prévient sur <b className="text-[var(--color-ink)]">{contact.trim()}</b> dès que le jeu est prêt : ton perso et sa famille t'attendront.
           {count > 1 && ` Vous êtes déjà ${count.toLocaleString('fr-FR')} sur la liste.`}
         </p>
         <Share />

@@ -1,6 +1,6 @@
-// The logos: the app's mark (a green plumbob over the Abidjan sun), the app
+// The logos: the app's mark (a map pin over the Abidjan sun), the app
 // icon, the wordmark « Babi Life » beside or under it, single-colour
-// versions, and a pixel mark in the blocky style of the Sims. Every file is
+// versions, and a pixel mark in the blocky style of the game. Every file is
 // an SVG with the text in outlines, plus PNGs with a transparent background.
 
 import fs from 'node:fs'
@@ -14,16 +14,17 @@ fs.mkdirSync(dir, { recursive: true })
 const mark = (id, mono) =>
   mono
     ? `<rect width="64" height="64" rx="16" fill="${mono}"/>
-<path d="M32 9 43 26 32 43 21 26Z" fill="${mono === '#ffffff' ? BRAND.night : '#ffffff'}"/>`
+<path d="M32 44C27 37 20 30.5 20 22a12 12 0 0 1 24 0c0 8.5-7 15-12 22Z" fill="${mono === '#ffffff' ? BRAND.night : '#ffffff'}"/>
+<circle cx="32" cy="22" r="5" fill="${mono}"/>`
     : `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b1f4b"/><stop offset="1" stop-color="#7a2f6e"/></linearGradient></defs>
 <rect width="64" height="64" rx="16" fill="url(#${id})"/>
 <circle cx="32" cy="42" r="18" fill="#ff8a1a"/>
 <path d="M8 64V46h7v-6h6v24M43 64V40h7v6h6v18" fill="#0f1230" opacity="0.9"/>
-<path d="M32 9 43 26 32 43 21 26Z" fill="#00b86b"/>
-<path d="M32 9 43 26H32Z" fill="#fff" opacity="0.38"/>
-<path d="M21 26h11v17Z" fill="#000" opacity="0.18"/>`
+<path d="M32 44C27 37 20 30.5 20 22a12 12 0 0 1 24 0c0 8.5-7 15-12 22Z" fill="#fff"/>
+<path d="M32 44C27 37 20 30.5 20 22A12 12 0 0 1 32 10Z" fill="#000" opacity="0.08"/>
+<circle cx="32" cy="22" r="5" fill="#00a862"/>`
 
-/** The same mark in pixels, 16 × 16: the blocky Sims' world. */
+/** The same mark in pixels, 16 × 16: the game's blocky world. */
 function pixelMark() {
   const px = []
   const put = (x, y, c) => px.push(`<rect x="${x}" y="${y}" width="1" height="1" fill="${c}"/>`)
@@ -35,10 +36,10 @@ function pixelMark() {
   for (const [x, top] of [[0, 13], [1, 11], [2, 11], [3, 14], [4, 15], [5, 15], [6, 14], [7, 15], [8, 15], [9, 14], [10, 15], [11, 10], [12, 10], [13, 12], [14, 12], [15, 14]]) for (let y = top; y < 16; y++) put(x, y, '#0f1230')
   // Lit windows
   for (const [x, y] of [[1, 12], [2, 14], [11, 11], [12, 13], [14, 13]]) put(x, y, '#ffc233')
-  // The plumbob: a diamond, light on the top right, shade below left
-  const rows = [[7, 8], [6, 9], [5, 10], [4, 11], [5, 10], [6, 9], [7, 8]]
+  // The pin: white, a green dot in its head, the point down
+  const rows = [[6, 9], [5, 10], [5, 10], [5, 10], [5, 10], [6, 9], [6, 9], [7, 8], [7, 8]]
   rows.forEach(([a, b], i) => {
-    for (let x = a; x <= b; x++) put(x, i + 1, i < 4 ? (x >= 8 ? '#6ff0b0' : '#00b86b') : x < 8 ? '#00894f' : '#00a862')
+    for (let x = a; x <= b; x++) put(x, i + 1, (i === 2 || i === 3) && (x === 7 || x === 8) ? '#00a862' : x < 7.5 ? '#e9e9ef' : '#ffffff')
   })
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges"><clipPath id="r"><rect width="16" height="16" rx="3"/></clipPath><g clip-path="url(#r)">${px.join('')}</g></svg>`
 }

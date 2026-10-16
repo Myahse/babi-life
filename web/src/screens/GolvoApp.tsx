@@ -71,7 +71,7 @@ export function GolvoApp({ world, sim, delivery, onOrder, onCancel, onCollect }:
         </div>
         {st.stage === 'here' ? (
           <button className="btn btn-emerald w-full" disabled={!!sim.activity} onClick={onCollect}>
-            {sim.activity ? 'Ton Sim est occupé·e' : `Récupérer et manger · ${amount(delivery.dish.price + delivery.fee)} F`}
+            {sim.activity ? 'Ton perso est occupé·e' : `Récupérer et manger · ${amount(delivery.dish.price + delivery.fee)} F`}
           </button>
         ) : (
           st.stage === 'kitchen' && (

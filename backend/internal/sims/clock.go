@@ -80,7 +80,7 @@ func (s *Sim) stop() (Event, error) {
 	a := s.Activity
 	switch {
 	case a == nil:
-		return Event{}, fmt.Errorf("ton Sim ne fait rien")
+		return Event{}, fmt.Errorf("ton perso ne fait rien")
 	case a.Kind == "travel":
 		return Event{}, fmt.Errorf("tu es en route : attends d'arriver")
 	case a.PlaceID == custodyPlace:

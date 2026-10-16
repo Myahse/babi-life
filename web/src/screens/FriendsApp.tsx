@@ -136,7 +136,7 @@ function PlayerFriends({ world, sim }: { world: World; sim: Sim }) {
     <>
       <div className="label">Tes amis joueurs</div>
       {friends.length === 0 ? (
-        <p className="text-sm font-bold text-[var(--color-ink-soft)]">Les Sims en bleu dans la rue sont d'autres joueurs : salue-les, rejoins-les, invite-les, et vous deviendrez amis.</p>
+        <p className="text-sm font-bold text-[var(--color-ink-soft)]">Les persos en bleu dans la rue sont d'autres joueurs : salue-les, rejoins-les, invite-les, et vous deviendrez amis.</p>
       ) : (
         <ul className="space-y-2">
           {friends.map((p) => (

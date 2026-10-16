@@ -8,7 +8,7 @@ import { useSession } from '../store/session'
 import { findCommune, useWorld } from '../store/world'
 import { Portrait } from '../avatar/portrait'
 import { iconFor } from '../components/icons'
-import { Chip, Coin, IconTile, MotiveRing, Plumbob, needColor } from '../components/ui'
+import { Chip, Coin, IconTile, MotiveRing, MoodPin, needColor } from '../components/ui'
 import { NEEDS, amount, clock, mood } from '../game/rules'
 import { Journal } from './Play'
 import { share as shareText } from '../lib/native'
@@ -37,7 +37,7 @@ export function Profile() {
   const spent = Math.abs(sim.journal.reduce((s, e) => s + Math.min(0, e.money), 0))
 
   async function share() {
-    const text = `Je vis à ${home.commune?.name} dans Babi Life ! Mon Sim s'appelle ${sim!.firstName} ${sim!.lastName}.`
+    const text = `Je vis à ${home.commune?.name} dans Babi Life ! Mon perso s'appelle ${sim!.firstName} ${sim!.lastName}.`
     try {
       if (!(await shareText(text, location.origin))) {
         await navigator.clipboard.writeText(`${text} ${location.origin}`)
@@ -69,7 +69,7 @@ export function Profile() {
         </div>
         <div className="mx-auto flex max-w-3xl flex-col items-center px-4 text-center text-white sm:flex-row sm:items-end sm:gap-6 sm:text-left">
           <div className="flex flex-col items-center">
-            <Plumbob size={16} color={needColor(mood(sim.needs))} />
+            <MoodPin size={16} color={needColor(mood(sim.needs))} />
             <span className="block h-[220px] w-[165px]">
               <Portrait look={sim.look} gender={sim.gender} framing="full" />
             </span>
@@ -156,7 +156,7 @@ export function Profile() {
         <InstallButton />
 
         <button className="mx-auto flex items-center gap-1.5 text-sm font-extrabold text-[#d81b3f] hover:underline" onClick={removeSim}>
-          <Trash2 size={15} /> Supprimer ce Sim
+          <Trash2 size={15} /> Supprimer ce perso
         </button>
       </div>
     </div>

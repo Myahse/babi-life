@@ -1,6 +1,6 @@
 // The videos (FILM=lancement, 25 s; FILM=bouger, 31 s; FILM=bande-annonce,
 // the trailer, 30 s; FILM=decouverte, everything there is to do, 71 s), 1080 × 1920 (WhatsApp status, TikTok, Reels), drawn frame
-// by frame from the game's own Sims (web/src/lab/poster.tsx) so it's smooth
+// by frame from the game's own persos (web/src/lab/poster.tsx) so it's smooth
 // even on a slow machine, then put together by ffmpeg into an MP4.
 //
 // Needs the web app's dependencies (cd web && npm ci) and ffmpeg.

@@ -61,7 +61,7 @@ export function FirstSteps({ hidden }: { hidden: boolean }) {
     <div className="hud motion-pop pointer-events-auto absolute right-3 bottom-[14.75rem] left-[8.25rem] z-30 flex max-w-[17rem] items-start gap-2 rounded-[18px] p-2.5 lg:bottom-[16.25rem] lg:left-[9rem]">
       <Navigation size={20} strokeWidth={2.4} className="mt-0.5 shrink-0 text-[var(--color-orange)]" />
       <div className="text-sm leading-snug font-bold">
-        <p className="font-display text-[15px] font-extrabold">Ou laisse ton Sim y aller</p>
+        <p className="font-display text-[15px] font-extrabold">Ou laisse ton perso y aller</p>
         <p className="text-[13px] text-[var(--color-ink-soft)]">{desk ? 'Clique un lieu' : 'Touche un lieu'}, ou « Où aller ? » en haut.</p>
         <button className="mt-1 text-sm font-extrabold text-[var(--color-orange)]" onClick={() => setStep(2)}>
           C'est parti

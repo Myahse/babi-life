@@ -27,10 +27,10 @@ export const CROWD: { look: Look; gender: 'femme' | 'homme'; size: number }[] = 
 ]
 
 const FEATURES: { icon: LucideIcon; colors: [string, string]; title: string; text: string }[] = [
-  { icon: Clock3, colors: ['#ffa040', '#ff7a00'], title: "À l'heure d'Abidjan", text: 'Le jour, la nuit, le samedi du loyer : ton Sim vit en temps réel, même quand tu fermes l’app.' },
+  { icon: Clock3, colors: ['#ffa040', '#ff7a00'], title: "À l'heure d'Abidjan", text: 'Le jour, la nuit, le samedi du loyer : ton perso vit en temps réel, même quand tu fermes l’app.' },
   { icon: MapPinned, colors: ['#69e2a0', '#00a862'], title: 'Tout le pays', text: 'Plateau, Yopougon, Cocody, Bouaké, Grand-Bassam… Prends un taxi ou le car pour bouger.' },
   { icon: Shirt, colors: ['#b39dff', '#7b5cff'], title: 'Ton style', text: 'Pagne wax, boubou, survêt, débardeur, coiffures, couleurs libres et même les bobos.' },
-  { icon: Newspaper, colors: ['#64b5ff', '#2a6cf0'], title: 'La vraie actu', text: 'Les infos du pays arrivent sur le téléphone de ton Sim, et la rue a sa vie : mariages, matchs, maquis.' },
+  { icon: Newspaper, colors: ['#64b5ff', '#2a6cf0'], title: 'La vraie actu', text: 'Les infos du pays arrivent sur le téléphone de ton perso, et la rue a sa vie : mariages, matchs, maquis.' },
 ]
 
 export function Title() {
@@ -125,11 +125,11 @@ export function Title() {
             <span className="text-[var(--color-orange)]">Ton Babi.</span>
           </h1>
           <p className="mt-4 max-w-md text-base leading-relaxed font-semibold text-white/85 lg:text-lg">
-            Crée ton Sim, choisis ton quartier et vis la Côte d'Ivoire à l'heure d'Abidjan : boulot, maquis, taxi, mariages dans la rue et vraie actu.
+            Crée ton perso, choisis ton quartier et vis la Côte d'Ivoire à l'heure d'Abidjan : boulot, maquis, taxi, mariages dans la rue et vraie actu.
           </p>
           <div className="mt-6 flex w-full max-w-sm flex-col gap-2.5 sm:flex-row lg:max-w-none">
             <button className="btn sm:flex-1 lg:flex-none lg:px-7" onClick={() => openCard('register')}>
-              Créer mon Sim <ArrowRight size={18} strokeWidth={2.6} />
+              Créer mon perso <ArrowRight size={18} strokeWidth={2.6} />
             </button>
             <button className="btn btn-white !border-white/25 !bg-white/10 !text-white backdrop-blur hover:!bg-white/20 sm:flex-1 lg:flex-none lg:px-7" onClick={() => openCard('login')}>
               J'ai déjà un compte

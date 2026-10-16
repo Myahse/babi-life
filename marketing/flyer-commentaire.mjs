@@ -102,7 +102,7 @@ ${short ? '.c.r{display:none}' : ''}
 <div class="page">
   <img class="logo" src="${logo}" alt="Babi Life">
   <h1>Tu es tombé·e dans<br>quelle <em>famille</em> ?</h1>
-  <p class="lead">Crée ton Sim : ta famille est tirée au sort.<br>Laté ou gnambro, dis-le-nous en commentaire !</p>
+  <p class="lead">Crée ton perso : ta famille est tirée au sort.<br>Laté ou gnambro, dis-le-nous en commentaire !</p>
   <div class="grid">${FAMILIES.map((f) => `<div class="fam${f.rich ? ' rich' : ''}"><img src="${f.img}" alt=""><i class="odds">${f.odds}</i><div class="cap"><b>${f.label}</b><span>${f.text}</span></div></div>`).join('')}</div>
   <div class="talk">
     <div class="ask"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/></svg>Écris ta famille en commentaire</div>
@@ -110,7 +110,7 @@ ${short ? '.c.r{display:none}' : ''}
   </div>
   <div class="cta">
     <img src="${qr}" alt="QR code vers ${SHORT}">
-    <div><h2>Crée ton Sim et découvre ta famille</h2><div class="url">${SHORT}</div><p>Gratuit, sur la liste d'attente.<br>Puis reviens commenter !</p></div>
+    <div><h2>Crée ton perso et découvre ta famille</h2><div class="url">${SHORT}</div><p>Gratuit, sur la liste d'attente.<br>Puis reviens commenter !</p></div>
   </div>
 </div>
 <div class="stripe"><i style="background:#ff8200"></i><i style="background:#fff"></i><i style="background:#009a44"></i></div>

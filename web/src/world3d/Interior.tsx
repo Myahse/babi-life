@@ -714,7 +714,7 @@ export function Interior({ sim, kind, placeId, interactionId, housing, night, st
           ))}
         </NoShadows>
         <group position={me.p} rotation={me.lying ? [-Math.PI / 2, 0, 0] : [0, throwing ? faceDancers : (me.r ?? 0), 0]}>
-          <Character look={look} gender={sim.gender} stage={stage} plumbob={!me.lying} busy={act.pose === 'busy'} pose={act.pose} />
+          <Character look={look} gender={sim.gender} stage={stage} marker={!me.lying} busy={act.pose === 'busy'} pose={act.pose} />
           <ActionProps id={interactionId} kind={kind} lying={!!me.lying} />
           {/* The travaillement: notes off the wad, over the dancers in front */}
           {throwing && <NoteShower from={[0.3, 1.72, 0.3]} toward={[0, 0.35, 1]} {...shower(interactionId)} seed={placeId.length} />}
@@ -731,7 +731,7 @@ export function Interior({ sim, kind, placeId, interactionId, housing, night, st
             <AmbientOcclusion radius={1.2} falloff={0.6} intensity={2.2} />
           </Suspense>
         )}
-        {/* Other players here, side by side with the Sim (blue plumbob) */}
+        {/* Other players here, side by side with the Sim (blue pin) */}
         {others.slice(0, 3).map((o, i) => {
           const a = action(kind, o.activity?.interactionId)
           const at = r.spots[a.spot] ?? r.spots.entrance

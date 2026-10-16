@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Ton Sim naît dans la commune où tu es : seule la commune est gardée, jamais ta position.</string>
+	<string>Ton perso naît dans la commune où tu es : seule la commune est gardée, jamais ta position.</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>https</string>

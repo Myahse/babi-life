@@ -1,14 +1,14 @@
 # Babi Life: logos, flyer and video
 
-Everything for the launch of the wish list (**lifeinbabi.com/liste**), made from the game itself: the Sims and the house are the real blocky Sims, rendered by `web/src/lab/poster.tsx`.
+Everything for the launch of the wish list (**lifeinbabi.com/liste**), made from the game itself: the persos and the house are the game's real blocky persos, rendered by `web/src/lab/poster.tsx`.
 
 ## The files (`out/`)
 
 | File | For |
 | --- | --- |
-| `logos/babi-life-mark.svg/.png` | The mark (plumbob over the Abidjan sun), rounded square |
+| `logos/babi-life-mark.svg/.png` | The mark (map pin over the Abidjan sun), rounded square |
 | `logos/babi-life-app-icon.svg/.png` | The app icon, full bleed (stores, home screen) |
-| `logos/babi-life-mark-pixel.svg/.png` | The mark in pixels, in the style of the blocky Sims |
+| `logos/babi-life-mark-pixel.svg/.png` | The mark in pixels, in the blocky style of the game |
 | `logos/babi-life-logo-on-dark.*`, `-on-light.*` | Mark + « Babi Life », on one line |
 | `logos/babi-life-logo-stacked-on-dark.*`, `-on-light.*` | Mark above the name |
 | `logos/babi-life-logo-white.*`, `-black.*` | One colour (on a photo, a T-shirt, a stamp) |
@@ -23,7 +23,7 @@ Everything for the launch of the wish list (**lifeinbabi.com/liste**), made from
 | `babi-life-video-bouger-cover.png` | Its last frame, as a cover |
 | `babi-life-video-bande-annonce-1080x1920.mp4` | **The trailer**, 30 s: « Tu nais gnambro ou laté ? » — a gnambro family (torn clothes, flies) then a laté one (villa, gold), building the house, the travaillement at the maquis, basket at the Palais des Sports |
 | `babi-life-video-bande-annonce-cover.png` | Its last frame, as a cover |
-| `babi-life-video-decouverte-1080x1920.mp4` | **Everything you can do**, 71 s, eleven numbered shots: create your Sim, change your look, be born into a family, build your house, the gbaka, Gnango, talk with people (« C'est comment famille ? »), party, sport, the real places, the phone and its apps |
+| `babi-life-video-decouverte-1080x1920.mp4` | **Everything you can do**, 71 s, eleven numbered shots: create your perso, change your look, be born into a family, build your house, the gbaka, Gnango, talk with people (« C'est comment famille ? »), party, sport, the real places, the phone and its apps |
 | `babi-life-video-decouverte-cover.png` | Its last frame, as a cover |
 | `babi-life-flyer-famille-*` | The trailer's flyer: « Tu nais gnambro ou laté ? », the two families side by side (A5 PDF and 300 dpi PNG, post 1080 × 1350, status 1080 × 1920) |
 | `babi-life-flyer-commentaire-*` | For the comments: « Tu es tombé·e dans quelle famille ? », the six families with their odds (debout 4 %, laté 8 %, lagnon 15 %, poignon 33 %, coulé 25 %, gnambro 15 %), « Écris ta famille en commentaire » and two example comments (A5 PDF and 300 dpi PNG, post 1080 × 1350, status 1080 × 1920) |

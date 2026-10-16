@@ -148,7 +148,7 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
       )}
 
       <button className="btn w-full" disabled={small || broke || !!sim.activity || chance <= 0} onClick={go}>
-        {small ? 'Trop petit·e pour y aller seul·e' : broke ? 'Pas assez de francs' : sim.activity ? 'Ton Sim est occupé·e' : c.id === 'street' ? 'Aller au bord de la route' : c.app ? (c.app === 'offer' ? 'Proposer' : 'Commander') : 'Y aller'}
+        {small ? 'Trop petit·e pour y aller seul·e' : broke ? 'Pas assez de francs' : sim.activity ? 'Ton perso est occupé·e' : c.id === 'street' ? 'Aller au bord de la route' : c.app ? (c.app === 'offer' ? 'Proposer' : 'Commander') : 'Y aller'}
         {c.id !== 'street' && (
           <>
             {' '}

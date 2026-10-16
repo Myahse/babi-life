@@ -29,10 +29,10 @@ function Terms() {
   return (
     <>
       <h1 className="font-display text-3xl leading-tight font-extrabold">Conditions d'utilisation</h1>
-      <p>Babi Life est un jeu en préparation, sur la vie à Abidjan et en Côte d'Ivoire. Il n'est pas encore ouvert. La liste d'attente sert à être prévenu·e le jour où il l'est, et à faire naître un Sim qui attendra ce jour-là.</p>
+      <p>Babi Life est un jeu en préparation, sur la vie à Abidjan et en Côte d'Ivoire. Il n'est pas encore ouvert. La liste d'attente sert à être prévenu·e le jour où il l'est, et à faire naître un perso qui attendra ce jour-là.</p>
       <p>L'inscription est gratuite. Tu laisses un prénom et un contact qui est le tien : un e-mail ou un numéro WhatsApp. Une inscription par contact. La commune est facultative.</p>
-      <p>Si tu crées un Sim, sa famille est tirée au sort, comme dans le jeu. Ce Sim est gardé pour l'ouverture. Le créer ne donne pas accès au jeu tant qu'il n'est pas ouvert.</p>
-      <p>Tu peux demander à être retiré·e de la liste. On efface alors le prénom, le contact et le Sim gardé. La demande se fait depuis le contact que tu as laissé.</p>
+      <p>Si tu crées un perso, sa famille est tirée au sort, comme dans le jeu. Ce perso est gardé pour l'ouverture. Le créer ne donne pas accès au jeu tant qu'il n'est pas ouvert.</p>
+      <p>Tu peux demander à être retiré·e de la liste. On efface alors le prénom, le contact et le perso gardé. La demande se fait depuis le contact que tu as laissé.</p>
       <p>On peut refuser ou retirer une inscription dont le contact est faux, ou qui sert à remplir la liste automatiquement.</p>
       <p>
         Le détail de ce qui est gardé est dans la <Link to="/confidentialite" className="underline">politique de confidentialité</Link>.
@@ -45,13 +45,13 @@ function Privacy() {
   return (
     <>
       <h1 className="font-display text-3xl leading-tight font-extrabold">Politique de confidentialité</h1>
-      <p>Babi Life (lifeinbabi.com) garde uniquement ce qu'il faut pour te prévenir de l'ouverture, et pour retrouver ton Sim ce jour-là.</p>
+      <p>Babi Life (lifeinbabi.com) garde uniquement ce qu'il faut pour te prévenir de l'ouverture, et pour retrouver ton perso ce jour-là.</p>
       <ul className="list-disc space-y-2 pl-5">
         <li>Ton prénom.</li>
         <li>Ton e-mail ou ton numéro WhatsApp.</li>
         <li>Ta commune, si tu la donnes, et si tu veux tester le jeu avant tout le monde.</li>
         <li>D'où vient l'inscription, quand le lien le dit (une affiche, une vidéo).</li>
-        <li>Si tu crées un Sim : son nom, son apparence, ses traits, son rêve, la famille tirée au sort et la commune de naissance.</li>
+        <li>Si tu crées un perso : son nom, son apparence, ses traits, son rêve, la famille tirée au sort et la commune de naissance.</li>
         <li>Si tu continues avec Google : l'e-mail et le prénom de ce compte, pour remplir l'inscription.</li>
       </ul>
       <p>Ces informations ne sont pas vendues et ne servent pas à de la publicité. Elles ne sont pas montrées aux autres personnes inscrites.</p>

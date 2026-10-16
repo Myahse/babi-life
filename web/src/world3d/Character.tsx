@@ -8,7 +8,7 @@ import { worldTime } from '../lib/worldClock'
 // The player's Sim in the 3D neighbourhood: the same blocky Sim as in the
 // creator, with a shadow and the mood losange floating above.
 
-type Props = { look: Look; gender: Sim['gender']; walking?: boolean; /** Running rather than walking. */ running?: boolean; busy?: boolean; moodColor?: string; plumbob?: boolean; seed?: number; /** Stage of life: a baby crawls, children are small with big heads. */ stage?: string; /** A pose to act out (eating, dancing…); otherwise walking, busy or idle. */ pose?: Pose }
+type Props = { look: Look; gender: Sim['gender']; walking?: boolean; /** Running rather than walking. */ running?: boolean; busy?: boolean; moodColor?: string; marker?: boolean; seed?: number; /** Stage of life: a baby crawls, children are small with big heads. */ stage?: string; /** A pose to act out (eating, dancing…); otherwise walking, busy or idle. */ pose?: Pose }
 
 // Size and head for each stage of life (adults are 1).
 const SIZE: Record<string, { scale: number; head: number; top: number }> = {
@@ -17,10 +17,10 @@ const SIZE: Record<string, { scale: number; head: number; top: number }> = {
   ado: { scale: 0.9, head: 1.08, top: 2.05 },
 }
 
-export function Character({ look, gender, walking, running, busy, moodColor = '#00b86b', plumbob = true, seed = 0, stage = 'adulte', pose, speed }: Props & { /** How fast it moves (m/s): the steps follow. */ speed?: number }) {
+export function Character({ look, gender, walking, running, busy, moodColor = '#00b86b', marker = true, seed = 0, stage = 'adulte', pose, speed }: Props & { /** How fast it moves (m/s): the steps follow. */ speed?: number }) {
   const doing: Pose = pose ?? (busy ? 'busy' : walking ? (running ? 'run' : 'walk') : 'idle')
   const size = SIZE[stage] ?? { scale: 1, head: 1, top: 2.15 }
-  const gem = useRef<THREE.Mesh>(null)
+  const gem = useRef<THREE.Group>(null)
   useFrame(() => {
     if (!gem.current) return
     const t = worldTime()
@@ -40,11 +40,22 @@ export function Character({ look, gender, walking, running, busy, moodColor = '#
           <Human look={look} gender={gender} pose={doing} seed={seed} headScale={size.head} speed={speed} />
         </group>
       )}
-      {plumbob && (
-        <mesh ref={gem} position={[0, size.top, 0]}>
-          <octahedronGeometry args={[0.14, 0]} />
-          <meshLambertMaterial color={moodColor} emissive={moodColor} emissiveIntensity={0.55} flatShading />
-        </mesh>
+      {marker && (
+        // The game's marker: a little map pin in the colour of the mood, bobbing over the head.
+        <group ref={gem} position={[0, size.top, 0]}>
+          <mesh position={[0, 0.06, 0]}>
+            <sphereGeometry args={[0.11, 14, 10]} />
+            <meshLambertMaterial color={moodColor} emissive={moodColor} emissiveIntensity={0.55} />
+          </mesh>
+          <mesh position={[0, -0.07, 0]} rotation={[Math.PI, 0, 0]}>
+            <coneGeometry args={[0.1, 0.2, 14]} />
+            <meshLambertMaterial color={moodColor} emissive={moodColor} emissiveIntensity={0.55} />
+          </mesh>
+          <mesh position={[0, 0.06, 0.1]}>
+            <sphereGeometry args={[0.04, 10, 8]} />
+            <meshBasicMaterial color="#ffffff" />
+          </mesh>
+        </group>
       )}
     </group>
   )

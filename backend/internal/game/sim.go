@@ -9,7 +9,7 @@ var (
 	ErrClosed         = errors.New("pas disponible à cette heure ou ce jour-là")
 	ErrResidentsOnly  = errors.New("réservé aux habitants de la commune")
 	ErrWrongCareer    = errors.New("réservé aux personnes qui travaillent ici")
-	ErrNotYourThing   = errors.New("ton Sim n'a pas le caractère pour ça")
+	ErrNotYourThing   = errors.New("ton perso n'a pas le caractère pour ça")
 )
 
 // State is the part of a Sim that the rules change.

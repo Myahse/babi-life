@@ -24,7 +24,7 @@ const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
 const ABIDJAN = ['Abobo', 'Adjamé', 'Attécoubé', 'Cocody', 'Koumassi', 'Marcory', 'Plateau', 'Port-Bouët', 'Treichville', 'Yopougon', 'Bingerville', 'Songon', 'Anyama']
 
 const PROMISES: { icon: LucideIcon; colors: [string, string]; title: string; text: string }[] = [
-  { icon: Shirt, colors: ['#b39dff', '#7b5cff'], title: 'Ton Sim en blocs', text: 'Pagne wax, boubou, survêt, coiffures : un Sim carré à ton style.' },
+  { icon: Shirt, colors: ['#b39dff', '#7b5cff'], title: 'Ton perso en blocs', text: 'Pagne wax, boubou, survêt, coiffures : un perso carré à ton style.' },
   { icon: Hammer, colors: ['#ffa040', '#ff7a00'], title: 'Ta maison, bloc par bloc', text: 'Banco, planches, parpaing, tôle… puis brique, carreaux et marbre.' },
   { icon: MapPinned, colors: ['#69e2a0', '#00a862'], title: 'Les vrais quartiers', text: "Abidjan en vrai, avec tes amis dans la même rue, au même moment." },
 ]
@@ -215,11 +215,11 @@ export function Waitlist({ form = false }: { form?: boolean }) {
             <span className="text-[var(--color-orange)]">Ton Babi.</span>
           </h1>
           <p className="mt-4 max-w-md text-base leading-relaxed font-semibold text-white/85 lg:text-lg">
-            Babi Life arrive : crée ton Sim dès maintenant et découvre dans quelle famille il naît, des plus gnambro aux plus laté. On te prévient en premier à l'ouverture.
+            Babi Life arrive : crée ton perso dès maintenant et découvre dans quelle famille il naît, des plus gnambro aux plus laté. On te prévient en premier à l'ouverture.
           </p>
           {/* Make one's Sim now and be born into a family: kept for the opening */}
           <Link to={`/liste/creer${location.search}`} className="btn mt-6 w-full max-w-sm">
-            <Baby size={20} strokeWidth={2.6} /> Crée ton Sim, découvre ta famille
+            <Baby size={20} strokeWidth={2.6} /> Crée ton perso, découvre ta famille
           </Link>
           {/* The app on the home screen (PWA): it opens right here, full screen. Only shown when the phone can install it. */}
           <InstallButton className="mt-3 max-w-sm" />

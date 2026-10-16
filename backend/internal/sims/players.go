@@ -38,7 +38,7 @@ var (
 	errInviteGone    = errors.New("cette invitation n'est plus valable")
 	errAlreadyAsked  = errors.New("tu l'as déjà invité·e, attends sa réponse")
 	errJustGreeted   = errors.New("vous venez de vous saluer")
-	errNotYourPlayer = errors.New("c'est ton propre Sim")
+	errNotYourPlayer = errors.New("c'est ton propre perso")
 )
 
 // Player is what other players see of a Sim.

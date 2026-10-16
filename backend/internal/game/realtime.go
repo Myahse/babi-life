@@ -63,7 +63,7 @@ type Trip struct {
 	Party int `json:"party,omitempty"`
 }
 
-var ErrBusy = fmt.Errorf("ton Sim est occupé·e : arrête d'abord ce qu'il fait")
+var ErrBusy = fmt.Errorf("ton perso est occupé·e : arrête d'abord ce qu'il fait")
 
 // Begin checks an interaction can start now and charges what is paid up front.
 func Begin(st State, it Interaction) (State, error) {

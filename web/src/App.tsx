@@ -4,7 +4,7 @@ import { useSession } from './store/session'
 import { useWorld } from './store/world'
 import { Title } from './screens/Title'
 import { Legal } from './screens/Legal'
-import { Plumbob } from './components/ui'
+import { MoodPin } from './components/ui'
 import { gameOpen } from './lib/launch'
 
 // Each screen is its own download: the title screen opens without the 3D
@@ -17,7 +17,7 @@ const Profile = lazy(() => import('./screens/Profile').then((m) => ({ default: m
 
 const Loading = () => (
   <div className="grid h-full place-items-center bg-[var(--color-night)]">
-    <Plumbob size={24} />
+    <MoodPin size={24} />
   </div>
 )
 

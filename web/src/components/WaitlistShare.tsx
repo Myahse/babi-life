@@ -16,7 +16,7 @@ export function Community({ className = 'btn btn-soft w-full' }: { className?: s
 export function Share() {
   const [copied, setCopied] = useState(false)
   const link = `${location.origin}/liste`
-  const text = `Babi Life arrive : crée ton Sim, construis ta maison et vis Abidjan avec nous. Inscris-toi : ${link}`
+  const text = `Babi Life arrive : crée ton perso, construis ta maison et vis Abidjan avec nous. Inscris-toi : ${link}`
   return (
     <div className="mt-1 flex w-full flex-col gap-2">
       <Community />

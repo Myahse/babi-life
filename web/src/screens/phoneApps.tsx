@@ -108,7 +108,7 @@ function CareerCard({ world, sim, commune, act, onWalk, onMap }: AppProps & { on
             <div className="mt-1 h-2.5 overflow-hidden rounded-full bg-black/20">
               <div className="h-full rounded-full bg-white transition-[width] duration-700" style={{ width: `${(Math.min(sim.performance, need) / need) * 100}%` }} />
             </div>
-            <p className="mt-1.5 text-[11px] font-bold text-white/85">Va au travail de bonne humeur : un Sim content travaille mieux.</p>
+            <p className="mt-1.5 text-[11px] font-bold text-white/85">Va au travail de bonne humeur : un perso content travaille mieux.</p>
           </div>
         ) : (
           <div className="mt-3 flex items-center gap-1.5 text-sm font-extrabold">

@@ -33,21 +33,20 @@ export function Coin({ size = 20 }: { size?: number }) {
   )
 }
 
-/** The losange above every Sim, in the colours of the flag when happy. */
-export function Plumbob({ color = '#00b86b', size = 20, className = '' }: { color?: string; size?: number; className?: string }) {
+/** The pin above every perso (the game's own marker, a map pin), in the colour of its mood. */
+export function MoodPin({ color = '#00b86b', size = 20, className = '' }: { color?: string; size?: number; className?: string }) {
   return (
-    <span className={`inline-block animate-float ${className}`} style={{ perspective: 200 }}>
-      <svg width={size} height={size * 1.6} viewBox="0 0 40 64" className="animate-spin-y drop-shadow-[0_4px_6px_rgba(0,0,0,0.3)]" aria-hidden>
-        <path d="M20 0 40 32 20 64 0 32Z" fill={color} />
-        <path d="M20 0 40 32H20Z" fill="#fff" opacity="0.4" />
-        <path d="M20 0 0 32h20Z" fill="#fff" opacity="0.15" />
-        <path d="M0 32h20v32Z" fill="#000" opacity="0.2" />
+    <span className={`inline-block animate-float ${className}`}>
+      <svg width={size} height={size * 1.4} viewBox="0 0 40 56" className="drop-shadow-[0_4px_6px_rgba(0,0,0,0.3)]" aria-hidden>
+        <path d="M20 54C14 45 4 36 4 20a16 16 0 0 1 32 0c0 16-10 25-16 34Z" fill={color} />
+        <path d="M20 54C14 45 4 36 4 20A16 16 0 0 1 20 4Z" fill="#000" opacity="0.12" />
+        <circle cx="20" cy="20" r="7" fill="#fff" opacity="0.92" />
       </svg>
     </span>
   )
 }
 
-/** Circular motive gauge (Sims-style need indicator). */
+/** Circular motive gauge (a need, as a ring). */
 export function MotiveRing({ value, icon: Icon, label, size = 52 }: { value: number; icon: LucideIcon; label?: string; size?: number }) {
   const color = needColor(value)
   const r = size / 2 - 4
@@ -101,7 +100,7 @@ export function DayNight({ night, size = 18 }: { night: boolean; size?: number }
   return night ? <Moon size={size} className="text-[var(--color-violet)]" fill="currentColor" /> : <Sun size={size} className="text-[var(--color-orange)]" fill="currentColor" />
 }
 
-/** The app mark: a green plumbob over the Abidjan sun, as on the home-screen icon. */
+/** The app mark: a map pin over the Abidjan sun and the Plateau, as on the home-screen icon. */
 export function LogoMark({ size = 40, className = '' }: { size?: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" className={`shrink-0 ${className}`} aria-hidden>
@@ -114,9 +113,9 @@ export function LogoMark({ size = 40, className = '' }: { size?: number; classNa
       <rect width="64" height="64" rx="16" fill="url(#lm-sky)" />
       <circle cx="32" cy="42" r="18" fill="#ff8a1a" />
       <path d="M8 64V46h7v-6h6v24M43 64V40h7v6h6v18" fill="#0f1230" opacity="0.9" />
-      <path d="M32 9 43 26 32 43 21 26Z" fill="#00b86b" />
-      <path d="M32 9 43 26H32Z" fill="#fff" opacity="0.38" />
-      <path d="M21 26h11v17Z" fill="#000" opacity="0.18" />
+      <path d="M32 44C27 37 20 30.5 20 22a12 12 0 0 1 24 0c0 8.5-7 15-12 22Z" fill="#fff" />
+      <path d="M32 44C27 37 20 30.5 20 22A12 12 0 0 1 32 10Z" fill="#000" opacity="0.08" />
+      <circle cx="32" cy="22" r="5" fill="#00a862" />
     </svg>
   )
 }

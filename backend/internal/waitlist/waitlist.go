@@ -102,7 +102,7 @@ func (s *Sim) validate() error {
 	case len(s.Look) < 2 || len(s.Look) > 2048 || !json.Valid(s.Look):
 		return errors.New("apparence invalide")
 	case utf8.RuneCountInString(strings.TrimSpace(s.LastName)) > 40 || len(s.Traits) > game.MaxTraits:
-		return errors.New("Sim invalide")
+		return errors.New("perso invalide")
 	}
 	return nil
 }

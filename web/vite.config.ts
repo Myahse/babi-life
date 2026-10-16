@@ -17,7 +17,7 @@ export default defineConfig({
       manifest: {
         name: 'Babi Life',
         short_name: 'Babi Life',
-        description: "Ta vie. Ton quartier. Ton Babi. Une vie à la Sims en Côte d'Ivoire.",
+        description: "Ta vie. Ton quartier. Ton Babi. Un jeu de vie en Côte d'Ivoire, à l'heure d'Abidjan.",
         lang: 'fr',
         dir: 'ltr',
         start_url: '/liste',

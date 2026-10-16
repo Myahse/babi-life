@@ -461,7 +461,7 @@ const FILMS: Record<FilmId, { shots: Shot[]; intro: number; outro: number; lengt
   lancement: {
     shots: [
       { from: 0, to: 3.2, scene: 'crew' },
-      { from: 3.2, to: 9, scene: 'crew', title: 'Crée ton Sim', sub: 'Pagne wax, boubou, survêt… à ton style' },
+      { from: 3.2, to: 9, scene: 'crew', title: 'Crée ton perso', sub: 'Pagne wax, boubou, survêt… à ton style' },
       { from: 9, to: 15.5, scene: 'build', title: 'Construis ta maison', sub: 'Bloc par bloc : banco, parpaing, tôle…' },
       { from: 15.5, to: 20.5, scene: 'dance', title: 'Vis Abidjan avec tes amis', sub: 'Les vrais quartiers, au même moment' },
       { from: 20.5, to: 25, scene: 'house' },
@@ -504,7 +504,7 @@ const FILMS: Record<FilmId, { shots: Shot[]; intro: number; outro: number; lengt
   decouverte: {
     shots: [
       { from: 0, to: 3.4, scene: 'crew' },
-      { from: 3.4, to: 9, scene: 'crew', n: 1, title: 'Crée ton Sim', sub: 'Teint, coiffure, pagne wax, boubou, survêt…' },
+      { from: 3.4, to: 9, scene: 'crew', n: 1, title: 'Crée ton perso', sub: 'Teint, coiffure, pagne wax, boubou, survêt…' },
       { from: 9, to: 14, scene: 'look', n: 2, title: 'Change de look', sub: "Ton armoire gratuite, le coiffeur à 2\u00a0000\u00a0F" },
       { from: 14, to: 20, scene: 'famille-gnambro', n: 3, title: 'Nais dans une famille', sub: 'Tirée au sort : de gnambro à laté' },
       { from: 20, to: 26, scene: 'build', n: 4, title: 'Construis ta maison', sub: 'Banco, parpaing, tôle… bloc par bloc' },

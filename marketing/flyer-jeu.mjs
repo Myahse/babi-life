@@ -47,7 +47,7 @@ const qrFor = (src) => QRCode.toDataURL(`${URL}?src=${src}`, { margin: 1, width:
 const gnambro = await shot('famille-gnambro', 2, 480, 600)
 const debout = await shot('famille-debout', 2, 480, 600)
 const TILES = [
-  { scene: 'crew', t: 2.2, title: 'Crée ton Sim', text: 'Teint, coiffure, pagne, boubou' },
+  { scene: 'crew', t: 2.2, title: 'Crée ton perso', text: 'Teint, coiffure, pagne, boubou' },
   { scene: 'look', t: 2, title: 'Change de look', text: "L'armoire, le coiffeur" },
   { scene: 'famille-gnambro', t: 2, title: 'Nais dans une famille', text: 'De gnambro à laté' },
   { scene: 'house', t: 2, title: 'Construis ta maison', text: 'Banco, parpaing, tôle' },
@@ -113,13 +113,13 @@ const famille = (size) => {
 .vs{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:calc(var(--u)*10);height:calc(var(--u)*10);border-radius:50%;display:grid;place-items:center;background:${BRAND.orange};font-family:'Baloo 2';font-weight:800;font-size:calc(var(--u)*4);box-shadow:0 0 0 calc(var(--u)*.8) #fff}
 .duo{position:relative}`,
       html: `<h1>Tu nais <em>gnambro</em><br>ou laté ?</h1>
-  <p class="lead">Crée ton Sim : ta famille est tirée au sort.<br>Ta vie à Abidjan, c'est toi qui la fais.</p>
+  <p class="lead">Crée ton perso : ta famille est tirée au sort.<br>Ta vie à Abidjan, c'est toi qui la fais.</p>
   <div class="duo">
     <div class="fam"><img src="${gnambro}" alt=""><b>Famille gnambro</b></div>
     <div class="fam rich"><img src="${debout}" alt=""><b>Famille laté</b></div>
     <div class="vs">ou</div>
   </div>`,
-      cta: 'Crée ton Sim sur la liste d’attente',
+      cta: 'Crée ton perso sur la liste d’attente',
     },
     qrFamille,
   )

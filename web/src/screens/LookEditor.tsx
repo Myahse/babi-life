@@ -83,7 +83,7 @@ export function LookEditor() {
             <X size={24} strokeWidth={2.6} />
           </button>
         </header>
-        <div className="pointer-events-none relative z-10 mt-auto p-3 text-center text-xs font-bold text-white opacity-90 lg:pb-8">Fais glisser pour tourner ton Sim</div>
+        <div className="pointer-events-none relative z-10 mt-auto p-3 text-center text-xs font-bold text-white opacity-90 lg:pb-8">Fais glisser pour tourner ton perso</div>
       </section>
 
       <section className="sheet relative z-10 -mt-6 flex max-h-[60%] flex-col rounded-t-[28px] lg:mt-0 lg:max-h-none lg:w-[540px] lg:rounded-none">

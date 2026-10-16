@@ -8,14 +8,14 @@ import { StreetStory } from './StreetStory'
 // video (marketing/out), 360 × 640 and muted, in public/apercu/.
 
 const STEPS: { icon: LucideIcon; colors: [string, string]; title: string; text: string }[] = [
-  { icon: Sparkles, colors: ['#b39dff', '#7b5cff'], title: 'Crée ton Sim', text: 'Teint, visage, coiffure, et des habits de chez nous : pagne wax, boubou, survêt, maillot.' },
+  { icon: Sparkles, colors: ['#b39dff', '#7b5cff'], title: 'Crée ton perso', text: 'Teint, visage, coiffure, et des habits de chez nous : pagne wax, boubou, survêt, maillot.' },
   { icon: Baby, colors: ['#ffa040', '#ff7a00'], title: 'Nais dans une famille', text: "Tu ne choisis pas : gnambro, coulé, poignon, lagnon, laté ou debout. C'est tiré au sort, comme dans la vie." },
   { icon: Briefcase, colors: ['#69e2a0', '#00a862'], title: 'Vis ta vie à Babi', text: "Travaille, bouge en gbaka ou en Gnango, mange au maquis, cause avec les gens, fais la fête, fais du sport." },
   { icon: TrendingUp, colors: ['#7cc8ff', '#2f7cff'], title: 'Monte petit à petit', text: "Gagne ton argent, construis ta maison bloc par bloc, de la tôle jusqu'au marbre. Né gnambro, tu peux finir laté." },
 ]
 
 const CLIPS: { id: string; title: string }[] = [
-  { id: 'sim', title: 'Crée ton Sim' },
+  { id: 'sim', title: 'Crée ton perso' },
   { id: 'look', title: 'Change de look' },
   { id: 'famille', title: 'Nais dans une famille' },
   { id: 'maison', title: 'Construis ta maison' },
@@ -29,11 +29,11 @@ const CLIPS: { id: string; title: string }[] = [
 ]
 
 const QUESTIONS: [string, string][] = [
-  ["C'est quoi, Babi Life ?", "Un jeu de vie, comme les Sims, mais à Abidjan : les vraies communes, les vrais lieux, les gbakas, les maquis, notre façon de parler. Ton Sim naît, grandit, travaille et se débrouille, en même temps que toi, à l'heure d'Abidjan."],
+  ["C'est quoi, Babi Life ?", "Un jeu de vie à Abidjan : les vraies communes, les vrais lieux, les gbakas, les maquis, notre façon de parler. Ton perso naît, grandit, travaille et se débrouille, en même temps que toi, à l'heure d'Abidjan."],
   ["C'est gratuit ?", "Oui. Le jeu est gratuit, et l'inscription sur la liste aussi."],
   ['Ça marche sur quel téléphone ?', "Sur ton téléphone, dans le navigateur, sans passer par un store. Tu peux aussi l'installer sur ton écran d'accueil avec le bouton « Installer l'app »."],
   ["Ça ouvre quand ?", "Bientôt. Inscris-toi : on te prévient en premier, et si tu le veux, tu testes avant tout le monde."],
-  ['Mon Sim créé maintenant, je le garde ?', "Oui. Le Sim que tu crées aujourd'hui, et la famille où il est né, t'attendent à l'ouverture."],
+  ['Mon perso créé maintenant, je le garde ?', "Oui. Le perso que tu crées aujourd'hui, et la famille où il est né, t'attendent à l'ouverture."],
 ]
 
 /** Plays while on screen, stops when scrolled away (saves the battery and the data). */
@@ -119,7 +119,7 @@ export function Discover({ onJoin }: { onJoin: () => void }) {
       <section>
         <p className={KICKER}>Dans le jeu</p>
         <h2 className={`mt-2 ${H2}`}>Regarde ce qui t'attend</h2>
-        <p className="mt-2 max-w-xl text-sm font-semibold text-white/75 sm:text-base">Des scènes faites avec les Sims et les lieux du jeu. Glisse pour tout voir.</p>
+        <p className="mt-2 max-w-xl text-sm font-semibold text-white/75 sm:text-base">Des scènes faites avec les persos et les lieux du jeu. Glisse pour tout voir.</p>
         <div className="-mx-5 mt-6 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-3 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 lg:grid-cols-4">
           {CLIPS.map((c) => (
             <Clip key={c.id} {...c} />

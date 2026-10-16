@@ -1,5 +1,5 @@
 // The flyer: A5 to print (PDF, and PNG at 300 dpi), and the same for phones —
-// a post (1080 × 1350) and a WhatsApp status (1080 × 1920). The Sims and the
+// a post (1080 × 1350) and a WhatsApp status (1080 × 1920). The persos and the
 // house are the game's own (web/src/lab/poster.tsx); the QR code leads to the
 // wish list, marked ?src=flyer so the sign-ups it brings can be counted.
 //
@@ -110,7 +110,7 @@ ${tall ? '' : `.cards{grid-template-columns:repeat(3,1fr)}
   <h1>Ta vie. Ton quartier.<br><em>Ton Babi.</em></h1>
   <img class="crew" src="${crew}" alt="">
   <div class="cards">
-    <div class="card"><div class="n">1</div><div><b>Crée ton Sim en blocs</b><span>Pagne wax, boubou, survêt, coiffures</span></div></div>
+    <div class="card"><div class="n">1</div><div><b>Crée ton perso en blocs</b><span>Pagne wax, boubou, survêt, coiffures</span></div></div>
     <div class="card"><div class="n">2</div><div><b>Construis ta maison</b><span>Banco, parpaing, tôle…</span></div><img src="${house}" alt=""></div>
     <div class="card"><div class="n">3</div><div><b>Vis Abidjan avec tes amis</b><span>Les vrais quartiers, au même moment</span></div></div>
   </div>

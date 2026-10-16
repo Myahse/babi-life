@@ -1,7 +1,7 @@
 import { Building2, House, Landmark } from 'lucide-react'
 import type { Sim, World } from '../../lib/types'
 import { Portrait } from '../../avatar/portrait'
-import { Plumbob, needColor } from '../ui'
+import { MoodPin, needColor } from '../ui'
 import { iconFor, kindColors } from '../icons'
 import { mood } from '../../game/rules'
 
@@ -208,7 +208,7 @@ export function Pin({ pin, sim }: { pin: PinData; sim: Sim | null }) {
   if (pin.variant === 'sim' && sim) {
     return (
       <div className="pointer-events-none relative flex flex-col items-center">
-        <Plumbob size={14} color={moodHex} />
+        <MoodPin size={14} color={moodHex} />
         <span className="relative z-10 rounded-full bg-white p-[3px] shadow-[0_8px_20px_-6px_rgba(0,0,0,0.5)]">
           <span className="block overflow-hidden rounded-full bg-gradient-to-b from-[#ffe7c7] to-[#ffb27a]" style={{ width: 54, height: 54 }}>
             <Portrait look={sim.look} gender={sim.gender} framing="head" />
@@ -234,7 +234,7 @@ export function Pin({ pin, sim }: { pin: PinData; sim: Sim | null }) {
     const dot = big ? 26 : city ? 22 : 22
     return (
       <button type="button" onClick={pin.onClick} className="group flex flex-col items-center">
-        {pin.hasSim && sim && <Plumbob size={12} color={moodHex} className="mb-0.5" />}
+        {pin.hasSim && sim && <MoodPin size={12} color={moodHex} className="mb-0.5" />}
         <span
           className={`flex items-center gap-1.5 rounded-full py-1 pr-3.5 pl-1 font-display ${pin.align === 'start' ? 'translate-x-[calc(50%-14px)]' : pin.align === 'end' ? '-translate-x-[calc(50%-14px)]' : ''} font-extrabold whitespace-nowrap shadow-[0_8px_18px_-6px_rgba(0,0,0,0.45)] transition group-hover:scale-105 ${pin.active ? 'scale-110 ring-2 ring-[var(--color-orange)]' : ''} ${city ? 'bg-[var(--color-ink)] text-white' : 'bg-white text-[var(--color-ink)]'}`}
           style={{ fontSize: big ? 15 : city ? 13 : 12.5 }}
