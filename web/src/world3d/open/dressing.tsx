@@ -1,4 +1,8 @@
-import { useMemo } from 'react'
+import { useMemo, useRef, useState } from 'react'
+import { useFrame } from '@react-three/fiber'
+import { Html } from '@react-three/drei'
+import { worldTime } from '../../lib/worldClock'
+import { whereabouts } from '../whereabouts'
 import * as THREE from 'three'
 import { Vehicle } from '../vehicles'
 import { Human, NoShadows, type Pose } from '../../avatar/Human'
@@ -169,6 +173,129 @@ function Worship({ name }: { name: string }) {
       {[-1.6, 1.6].map((x) => (
         <B key={x} p={[x, 0.4, 2.2]} s={[1.3, 0.12, 0.4]} c="#8a5a32" />
       ))}
+      {mosque && <Prayers name={name} />}
+    </group>
+  )
+}
+
+/* ---------- The prayers in front of the mosque ---------- */
+
+/** The five prayers in Abidjan, minutes after midnight (approximate, through the year). */
+const SALAT = [
+  { name: 'fajr', at: 5 * 60 + 10 },
+  { name: 'dhuhr', at: 12 * 60 + 35 },
+  { name: 'asr', at: 15 * 60 + 50 },
+  { name: 'maghrib', at: 18 * 60 + 30 },
+  { name: 'isha', at: 19 * 60 + 45 },
+]
+const NEAR_MOSQUE = 120 // metres: the crowd is drawn when the Sim is this close
+
+/**
+ * Where the mosque is in its day: before a prayer people arrive and sit
+ * (the call from the minaret first), during it they pray in rows behind
+ * the imam, after it they talk a moment and go. Friday's midday prayer
+ * (jumu'a, at 13:30) fills the street. From the shared clock (the game's
+ * epoch is a Monday; Abidjan is on UTC).
+ */
+function mosqueMoment() {
+  const t = worldTime()
+  const day = Math.floor(t / 86400) % 7 // 0 Monday … 4 Friday
+  const min = (t / 60) % 1440
+  for (const p of SALAT) {
+    const at = p.name === 'dhuhr' && day === 4 ? 13 * 60 + 30 : p.at
+    const d = min - at
+    const big = p.name === 'dhuhr' && day === 4
+    if (d >= -10 && d < -6) return { phase: 'call' as const, big, fajr: p.name === 'fajr' }
+    if (d >= -6 && d < 0) return { phase: 'gather' as const, big, fajr: p.name === 'fajr' }
+    if (d >= 0 && d < 12) return { phase: 'pray' as const, big, fajr: p.name === 'fajr' }
+    if (d >= 12 && d < 18) return { phase: 'leave' as const, big, fajr: p.name === 'fajr' }
+  }
+  return { phase: 'none' as const, big: false, fajr: false }
+}
+
+function Prayers({ name }: { name: string }) {
+  const anchor = useRef<THREE.Group>(null)
+  const [state, setState] = useState<{ near: boolean; m: ReturnType<typeof mosqueMoment> }>({ near: false, m: mosqueMoment() })
+  const tick = useRef(10)
+  const at = useMemo(() => new THREE.Vector3(), [])
+  useFrame((_, dt) => {
+    tick.current += dt
+    if (tick.current < 1) return
+    tick.current = 0
+    if (!anchor.current) return
+    anchor.current.getWorldPosition(at)
+    const near = Math.hypot(at.x - whereabouts.sim[0], at.z - whereabouts.sim[1]) < NEAR_MOSQUE
+    const m = mosqueMoment()
+    if (near !== state.near || m.phase !== state.m.phase || m.big !== state.m.big) setState({ near, m })
+  })
+  // The faithful: men in boubou or kufi, women in abaya; the imam in white.
+  const people = useMemo(() => {
+    const r = rnd(name.length * 977 + 13)
+    return [...Array(64)].map((_, i) => {
+      const femme = i % 7 === 6
+      const look = randomLook(femme ? 'femme' : 'homme', r)
+      return {
+        gender: (femme ? 'femme' : 'homme') as 'femme' | 'homme',
+        look: femme ? { ...look, outfit: 'abaya', outfitColor: ['#14213d', '#5b2a86', '#1f6f5c', '#6b2c2c'][i % 4] } : { ...look, outfit: r() < 0.6 ? 'boubou' : 'imam', outfitColor: ['#f8f9fa', '#e9e2cf', '#9ac1e8', '#cfe8d0'][i % 4], accessory: r() < 0.7 ? 'kufi' : look.accessory },
+        seed: r() * 100,
+      }
+    })
+  }, [name])
+  const { near, m } = state
+  // How many: a few at dawn, more at the others, the street full on Friday.
+  const [rows, perRow] = m.big ? [6, 10] : m.fajr ? [1, 6] : [2, 8]
+  const men = people.filter((p) => p.gender === 'homme')
+  const women = people.filter((p) => p.gender === 'femme')
+  const praying = m.phase === 'pray'
+  return (
+    <group ref={anchor}>
+      {near && m.phase !== 'none' && m.phase !== 'call' && (
+        <NoShadows>
+          {/* The mats, row after row toward the street */}
+          {[...Array(rows)].map((_, row) => (
+            <B key={`mat${row}`} p={[0, 0.03, 3 + row * 1.5]} s={[perRow * 0.9, 0.04, 1.2]} c={row % 2 ? '#2e7d4f' : '#a8323a'} />
+          ))}
+          {/* The imam in front, facing the same way as everyone */}
+          {praying && (
+            <group position={[0, 0, 2]} rotation={[0, Math.PI, 0]}>
+              <Human look={{ ...people[0].look, outfit: 'imam', outfitColor: '#f8f9fa', accessory: 'kufi' }} gender="homme" pose="salat" seed={1} />
+            </group>
+          )}
+          {[...Array(rows)].flatMap((_, row) =>
+            [...Array(perRow)].map((_, k) => {
+              const p = men[(row * perRow + k + 1) % men.length]
+              const pose: Pose = praying ? 'salat' : m.phase === 'gather' ? (k % 3 ? 'pray' : 'idle') : k % 2 ? 'talk' : 'idle'
+              return (
+                <group key={`${row}-${k}`} position={[(k - (perRow - 1) / 2) * 0.85, 0, 3.3 + row * 1.5]} rotation={[0, Math.PI, 0]}>
+                  <Human look={p.look} gender="homme" pose={pose} seed={p.seed} />
+                </group>
+              )
+            }),
+          )}
+          {/* The women's row, at the back on one side */}
+          {[...Array(Math.min(women.length, m.big ? 8 : 3))].map((_, k) => (
+            <group key={`w${k}`} position={[(k - 1) * 0.85 + perRow * 0.2, 0, 3.6 + rows * 1.5]} rotation={[0, Math.PI, 0]}>
+              <Human look={women[k].look} gender="femme" pose={praying ? 'salat' : 'idle'} seed={women[k].seed} />
+            </group>
+          ))}
+        </NoShadows>
+      )}
+      {/* Out of prayer time, one or two sitting by the door */}
+      {near && m.phase === 'none' && (
+        <NoShadows>
+          {[-1.6, 1.6].map((x, i) => (
+            <group key={x} position={[x, 0, 2.15]} rotation={[0, Math.PI, 0]}>
+              <Human look={men[i].look} gender="homme" pose={i ? 'sit' : 'phone'} seed={men[i].seed} />
+            </group>
+          ))}
+        </NoShadows>
+      )}
+      {/* The call to prayer, from the minaret */}
+      {near && m.phase === 'call' && (
+        <Html position={[0, 5.6, 0.3]} center zIndexRange={[20, 0]}>
+          <div className="rounded-2xl rounded-bl-sm bg-white px-3 py-1.5 text-[13px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_6px_14px_-8px_rgba(0,0,0,0.5)]">Allahou akbar, Allahou akbar… 🕌</div>
+        </Html>
+      )}
     </group>
   )
 }

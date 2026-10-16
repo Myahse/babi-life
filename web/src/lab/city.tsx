@@ -315,8 +315,14 @@ function OutdoorLab() {
 
 function FrontLab() {
   const police = view === 'police'
+  // &t=seconds since the game's epoch (a Monday, UTC): the hour of the scene (prayers, the maquis at night).
+  const fixed = q.get('t')
+  useEffect(() => {
+    if (fixed !== null) freezeWorldTime(Number(fixed))
+  }, [fixed])
+  const cam = (q.get('cam') ?? (police ? '-9,5,9' : '2,4,13')).split(',').map(Number) as [number, number, number]
   return (
-    <Canvas shadows dpr={[1, 2]} camera={{ position: police ? [-9, 5, 9] : [2, 4, 13], fov: 45 }} style={{ width: '100vw', height: '100vh' }}>
+    <Canvas shadows dpr={[1, 2]} camera={{ position: cam, fov: 45 }} style={{ width: '100vw', height: '100vh' }}>
       <color attach="background" args={['#cfe9f8']} />
       <hemisphereLight args={['#ffffff', '#b8a27c', 1.2]} />
       <directionalLight position={[10, 20, 8]} intensity={1.8} castShadow />

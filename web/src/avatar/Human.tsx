@@ -10,7 +10,7 @@ import { worldTime } from '../lib/worldClock'
 // simpler blocky figure (avatar/LowHuman.tsx) far away, and the poses that
 // move them both (usePoseRig). Units are metres: feet on y=0, facing +Z.
 
-export type Pose = 'idle' | 'walk' | 'run' | 'leap' | 'hang' | 'wash' | 'sleep' | 'pray' | 'cook' | 'phone' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper' | 'touch' | 'mark' | 'guard' | 'dive' | 'airplane' | 'pass'
+export type Pose = 'idle' | 'walk' | 'run' | 'leap' | 'hang' | 'wash' | 'sleep' | 'pray' | 'cook' | 'phone' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper' | 'touch' | 'mark' | 'guard' | 'dive' | 'airplane' | 'pass' | 'salat'
 
 /** Poses done sitting on a chair (hips at seat height). */
 export const SEATED: Pose[] = ['sit', 'eat', 'drink', 'write']
@@ -84,6 +84,21 @@ export function fidgetAt(t: number, seed: number): { kind: Fidget; e: number } |
   return { kind: f.kind, e: k * k * (3 - 2 * k) }
 }
 
+/* ---------- The salat: everyone at the mosque moves together ---------- */
+
+/**
+ * Where the prayer is (from the shared clock, not the Sim's: the rows move
+ * as one): 0 standing, arms folded; 1 bowing; 2 standing again; 3
+ * prostrated; 4 sitting back on the heels. A rak'a every 30 s.
+ */
+export function salatStep(): { step: 0 | 1 | 2 | 3 | 4; k: number } {
+  const u = (worldTime() % 30) / 30
+  const bounds = [0.36, 0.5, 0.6, 0.8, 1]
+  const i = bounds.findIndex((b) => u < b)
+  const start = i ? bounds[i - 1] : 0
+  return { step: i as 0 | 1 | 2 | 3 | 4, k: (u - start) / (bounds[i] - start) }
+}
+
 /* ---------- Sport: the moves of a match (open/match.ts picks them) ---------- */
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x))
@@ -115,6 +130,11 @@ function sportLegs(pose: Pose, out: number, t: number, since: number): [number, 
       return [-0.42, out * 0.16 + Math.sin(t * 6) * 0.05, 0.7]
     case 'dive':
       return [-0.18, out * 0.08, 0.25]
+    case 'salat': {
+      const { step } = salatStep()
+      // Bowing: the body leans, the legs stay upright. Prostrated: kneeling, the thighs forward a little, the shins flat behind. Sitting: on the heels.
+      return step === 1 ? [-1.35, 0, 0.05] : step === 3 ? [-2.1, out * 0.05, 2.17] : step === 4 ? [0.05, out * 0.05, 1.55] : [0, out * 0.04, 0.02]
+    }
     default:
       return null
   }
@@ -150,12 +170,17 @@ function sportArms(pose: Pose, out: number, t: number, since: number, armSwing: 
     case 'airplane':
       // The scorer's run: arms out like wings.
       return [0.05, 0, out * 1.45, -0.05, 0]
+    case 'salat': {
+      const { step } = salatStep()
+      // Standing: the right hand over the left on the chest; bowing: hands on the knees; prostrated: palms on the ground ahead; sitting: hands on the thighs.
+      return step === 0 ? [-0.5, 0, -out * 0.42, -1.75, 0] : step === 1 ? [-1.1, 0, out * 0.1, -0.1, 0] : step === 3 ? [-2.2, 0, out * 0.3, -0.3, 0] : step === 4 ? [-0.45, 0, out * 0.08, -0.9, 0] : [0, 0, out * 0.06, -0.05, 0]
+    }
     default:
       return null
   }
 }
 /** The body as a whole: height, lean forward (rx) and sideways (rz), the head's nod; null where the pose doesn't change it. */
-function sportBody(pose: Pose, t: number, since: number): { y?: number; x?: number; rx?: number; rz?: number; head?: number } | null {
+function sportBody(pose: Pose, t: number, since: number): { y?: number; x?: number; z?: number; rx?: number; rz?: number; head?: number } | null {
   switch (pose) {
     case 'kick':
       return { rx: since < 0.3 ? 0.08 : -0.12, head: 0.3 }
@@ -178,6 +203,12 @@ function sportBody(pose: Pose, t: number, since: number): { y?: number; x?: numb
     }
     case 'airplane':
       return { rz: Math.sin(t * 2.6) * 0.3, rx: 0.05, head: -0.15 }
+    case 'salat': {
+      const { step } = salatStep()
+      // The body turns about the feet: moved so the hips stay where they should be (the hip is 0.84 m up the body).
+      const lean = (rx: number, hip: number) => ({ y: hip - 0.84 * Math.cos(rx), z: -0.84 * Math.sin(rx), rx })
+      return step === 1 ? { ...lean(1.35, 0.84), head: -0.2, x: 0 } : step === 3 ? { ...lean(1.5, 0.4), head: -0.3, x: 0 } : step === 4 ? { y: -0.4, z: 0, rx: 0, head: 0.25, x: 0 } : { y: 0, z: 0, rx: 0, head: 0.2, x: 0 }
+    }
     default:
       return null
   }
@@ -409,6 +440,8 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
     )
     // Standing, the hips sit over one leg then the other.
     // The hips over the standing leg: walking, from side to side with each step; dancing, the décalé; standing, slowly.
+    // Forward or back (only the prayer's bow and prostration move it).
+    to(r.position, 'z', body?.z ?? 0)
     to(r.position, 'x', body?.x !== undefined ? body.x : walk ? Math.sin(ph) * (run ? 0.012 : 0.025) : seated ? 0 : pose === 'dance' ? Math.sin(beat / 2) * 0.09 : shift * 0.018)
     // Breathing: the chest rises a little (faster after running).
     if (chest.current) {
