@@ -20,6 +20,8 @@ services:
         generateValue: true
       - key: WAITLIST_ADMIN_KEY # to download the wish list (GET /api/v1/waitlist/export, header X-Admin-Key)
         generateValue: true
+      - key: ADMIN_KEY # opens /admin: the pub, the reports and the wish list (each part's own key works too)
+        generateValue: true
       - key: MODERATION_KEY # Gbairai's reports: GET /moderation/reports with X-Admin-Key
         generateValue: true
       # Babi Pub: the bucket where advertisers' posters and videos go (S3-compatible: Cloudflare R2 recommended)

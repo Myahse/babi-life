@@ -13,6 +13,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/myahse/babi-life/backend/internal/adminkey"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -56,6 +58,8 @@ func main() {
 	if cfg.FirebaseProjectID != "" {
 		authH.Firebase = auth.NewFirebaseVerifier(cfg.FirebaseProjectID)
 	}
+	// ADMIN_KEY opens every admin part at once (the /admin page).
+	adminkey.Master = os.Getenv("ADMIN_KEY")
 	simsH := &sims.Handler{DB: pool, RealPhotos: os.Getenv("STORIES_REAL_PHOTOS") == "true"}
 	headlines := news.New(cfg.NewsFeeds)
 	go headlines.Run(ctx)

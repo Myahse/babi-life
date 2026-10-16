@@ -2,7 +2,6 @@ package sims
 
 import (
 	"context"
-	"crypto/subtle"
 	"errors"
 	"net/http"
 	"regexp"
@@ -10,6 +9,8 @@ import (
 	"strings"
 	"time"
 	"unicode"
+
+	"github.com/myahse/babi-life/backend/internal/adminkey"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
@@ -374,7 +375,7 @@ type Moderation struct {
 }
 
 func (m *Moderation) ok(w http.ResponseWriter, r *http.Request) bool {
-	if m.Key == "" || subtle.ConstantTimeCompare([]byte(r.Header.Get("X-Admin-Key")), []byte(m.Key)) != 1 {
+	if !adminkey.OK(r, m.Key) {
 		httpx.Error(w, http.StatusUnauthorized, "clé admin requise")
 		return false
 	}

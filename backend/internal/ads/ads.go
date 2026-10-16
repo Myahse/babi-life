@@ -11,7 +11,6 @@ package ads
 import (
 	"context"
 	"crypto/rand"
-	"crypto/subtle"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -22,6 +21,8 @@ import (
 	"sync"
 	"time"
 	"unicode/utf8"
+
+	"github.com/myahse/babi-life/backend/internal/adminkey"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
@@ -432,7 +433,7 @@ func (h *Handler) Viewed(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) admin(w http.ResponseWriter, r *http.Request) bool {
-	if h.AdminKey == "" || subtle.ConstantTimeCompare([]byte(r.Header.Get("X-Admin-Key")), []byte(h.AdminKey)) != 1 {
+	if !adminkey.OK(r, h.AdminKey) {
 		httpx.Error(w, http.StatusUnauthorized, "clé admin invalide")
 		return false
 	}

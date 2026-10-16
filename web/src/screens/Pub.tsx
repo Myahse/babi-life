@@ -11,8 +11,8 @@ import { contactLinks } from '../lib/contact'
 // (communes) and when; the file goes straight into the bucket (the API signs
 // the upload only for a valid link), the campaign waits for Babi Life to
 // check it. A private link follows it:
-// pending, approved, refused, and how often players saw it. The admin page
-// (/pub/admin, with ADS_ADMIN_KEY) approves, refuses, pauses, marks paid.
+// pending, approved, refused, and how often players saw it. The admin
+// (/admin, tab Pub: screens/Admin.tsx) approves, refuses, pauses, marks paid.
 // The API: backend/internal/ads.
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
@@ -334,70 +334,42 @@ export function PubFollow({ token }: { token: string }) {
 
 /* ---------- The admin: Babi Life checks, approves, marks paid ---------- */
 
-export function PubAdmin() {
-  const [key, setKey] = useState(() => {
-    try {
-      return sessionStorage.getItem('babi.adsKey') ?? ''
-    } catch {
-      return ''
-    }
-  })
+/** The ads' admin, inside /admin (screens/Admin.tsx): the send links, then the campaigns. */
+export function PubAdminPanel({ adminKey }: { adminKey: string }) {
   const [list, setList] = useState<Status[] | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const load = async (k = key) => {
+  const load = async () => {
     setError(null)
     try {
-      setList(await call<Status[]>('/ads/admin', { headers: { 'X-Admin-Key': k } }))
-      try {
-        sessionStorage.setItem('babi.adsKey', k)
-      } catch {
-        /* private mode: ask again next time */
-      }
+      setList(await call<Status[]>('/ads/admin', { headers: { 'X-Admin-Key': adminKey } }))
     } catch (e) {
-      setList(null)
       setError(e instanceof Error ? e.message : 'Erreur')
     }
   }
   useEffect(() => {
-    if (key) void load(key)
+    void load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [adminKey])
   const update = async (id: string, change: Partial<Pick<Status, 'status' | 'paid' | 'price' | 'note'>>) => {
     try {
-      await call<void>(`/ads/admin/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Admin-Key': key }, body: JSON.stringify(change) })
+      await call<void>(`/ads/admin/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Admin-Key': adminKey }, body: JSON.stringify(change) })
       await load()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erreur')
     }
   }
-  if (!list)
-    return (
-      <Shell>
-        <form
-          className="mx-auto flex max-w-sm flex-col gap-3 border-2 border-[var(--brown)] bg-[var(--cream)] p-5"
-          onSubmit={(e) => {
-            e.preventDefault()
-            void load()
-          }}
-        >
-          <h1 className="paint text-[34px]">Admin Babi Pub</h1>
-          <input className="input text-base" type="password" placeholder="Clé admin (ADS_ADMIN_KEY)" value={key} onChange={(e) => setKey(e.target.value)} />
-          {error && <p className="text-sm font-bold text-[var(--rust)]">{error}</p>}
-          <button className="sign-btn">Ouvrir</button>
-        </form>
-      </Shell>
-    )
   return (
-    <Shell>
-      <Invites adminKey={key} />
-      <h1 className="paint mt-10 text-[40px]">Les campagnes ({list.length})</h1>
+    <>
+      <Invites adminKey={adminKey} />
+      <h2 className="paint mt-10 text-[40px]">Les campagnes ({list?.length ?? 0})</h2>
       {error && <p className="mt-2 text-sm font-bold text-[var(--rust)]">{error}</p>}
       <div className="mt-4 flex flex-col gap-5">
-        {list.map((c) => (
+        {list?.map((c) => (
           <AdminRow key={c.id} c={c} onChange={(ch) => void update(c.id, ch)} />
         ))}
+        {list?.length === 0 && <p className="font-bold">Pas encore de campagne.</p>}
       </div>
-    </Shell>
+    </>
   )
 }
 

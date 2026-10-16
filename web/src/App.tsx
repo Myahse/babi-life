@@ -16,7 +16,7 @@ const LookEditor = lazy(() => import('./screens/LookEditor').then((m) => ({ defa
 const PubPage = lazy(() => import('./screens/Pub').then((m) => ({ default: m.Pub })))
 const PubFollow = lazy(() => import('./screens/Pub').then((m) => ({ default: m.PubFollow })))
 const PubSend = lazy(() => import('./screens/Pub').then((m) => ({ default: m.PubSend })))
-const PubAdmin = lazy(() => import('./screens/Pub').then((m) => ({ default: m.PubAdmin })))
+const Admin = lazy(() => import('./screens/Admin').then((m) => ({ default: m.Admin })))
 const Profile = lazy(() => import('./screens/Profile').then((m) => ({ default: m.Profile })))
 
 const Loading = () => (
@@ -44,11 +44,20 @@ export function App() {
 
   if (path === '/conditions' || path === '/confidentialite') return <Legal />
 
+  // The team's admin (pub, reports, wish list), open even before the game; the old /pub/admin leads there.
+  if (path === '/pub/admin') return <Navigate to="/admin?tab=pub" replace />
+  if (path === '/admin')
+    return (
+      <Suspense fallback={<Loading />}>
+        <Admin />
+      </Suspense>
+    )
+
   // Babi Pub: advertisers send their ads for the game's billboards, open to everyone even before the game.
   if (path === '/pub' || path.startsWith('/pub/'))
     return (
       <Suspense fallback={<Loading />}>
-        {path === '/pub/admin' ? <PubAdmin /> : path.startsWith('/pub/envoi/') ? <PubSend code={decodeURIComponent(path.slice('/pub/envoi/'.length))} /> : path.startsWith('/pub/suivi/') ? <PubFollow token={decodeURIComponent(path.slice('/pub/suivi/'.length))} /> : <PubPage />}
+        {path.startsWith('/pub/envoi/') ? <PubSend code={decodeURIComponent(path.slice('/pub/envoi/'.length))} /> : path.startsWith('/pub/suivi/') ? <PubFollow token={decodeURIComponent(path.slice('/pub/suivi/'.length))} /> : <PubPage />}
       </Suspense>
     )
 

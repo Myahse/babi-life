@@ -4,7 +4,6 @@ package waitlist
 
 import (
 	"context"
-	"crypto/subtle"
 	"encoding/csv"
 	"encoding/json"
 	"errors"
@@ -17,6 +16,8 @@ import (
 	"sync"
 	"time"
 	"unicode/utf8"
+
+	"github.com/myahse/babi-life/backend/internal/adminkey"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -253,8 +254,7 @@ func (h *Handler) Count(w http.ResponseWriter, r *http.Request) {
 
 // Export: GET /api/v1/waitlist/export with header X-Admin-Key — the list, as CSV.
 func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
-	key := r.Header.Get("X-Admin-Key")
-	if h.AdminKey == "" || subtle.ConstantTimeCompare([]byte(key), []byte(h.AdminKey)) != 1 {
+	if !adminkey.OK(r, h.AdminKey) {
 		httpx.Error(w, http.StatusUnauthorized, "clé invalide")
 		return
 	}
