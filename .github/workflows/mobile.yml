@@ -31,6 +31,11 @@ jobs:
       - run: flutter analyze
       - run: flutter test
       - run: flutter build apk --release --split-per-abi --dart-define=GOOGLE_WEB_CLIENT_ID=${{ vars.GOOGLE_WEB_CLIENT_ID }}
+      # The testers' app: the whole game before launch (arm64: most phones).
+      - run: |
+          flutter build apk --release --target-platform android-arm64 --dart-define=TESTER=true --dart-define=GOOGLE_WEB_CLIENT_ID=${{ vars.GOOGLE_WEB_CLIENT_ID }}
+          mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/babi-life-testeur.apk
+          rm -f build/app/outputs/flutter-apk/app-release.apk.sha1
       - uses: actions/upload-artifact@v4
         with:
           name: babi-life-apk

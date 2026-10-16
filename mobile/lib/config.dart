@@ -8,6 +8,10 @@ class Config {
   /// phone's sign-in for it, so the server accepts the token as from the site.
   static const googleWebClientId = String.fromEnvironment('GOOGLE_WEB_CLIENT_ID');
 
+  /// The testers' build (--dart-define=TESTER=true): the whole game, before
+  /// launch, while the site still shows the wish list (web/src/lib/launch.ts).
+  static const tester = bool.fromEnvironment('TESTER');
+
   /// Hosts that are the game itself; any other link opens outside the app.
   static bool isGame(Uri uri) {
     final game = Uri.parse(gameUrl).host.replaceFirst('www.', '');

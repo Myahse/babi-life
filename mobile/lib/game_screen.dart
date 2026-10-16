@@ -75,10 +75,11 @@ class _GameScreenState extends State<GameScreen> {
     _net = Connectivity().onConnectivityChanged.listen(_onNetwork);
   }
 
-  /// The game tells it's in the app by its user agent (web/src/lib/native.ts), then loads.
+  /// The game tells it's in the app (and the testers' build) by its user agent
+  /// (web/src/lib/native.ts, launch.ts), then loads.
   Future<void> _start() async {
     final ua = await _web.getUserAgent();
-    await _web.setUserAgent('${ua ?? ''} BabiLifeApp/1.0'.trim());
+    await _web.setUserAgent('${ua ?? ''} BabiLifeApp/1.0${Config.tester ? ' BabiTest' : ''}'.trim());
     await _web.loadRequest(Uri.parse(Config.gameUrl));
   }
 

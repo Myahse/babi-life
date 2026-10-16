@@ -48,6 +48,14 @@ L'icône vient du kit de lancement (`marketing/out/logos/babi-life-app-icon.png`
 
 À chaque changement de `mobile/` sur `main` (ou à la main : *Actions → Mobile app → Run workflow*), GitHub vérifie l'appli (`flutter analyze`, `flutter test`) et construit les APK Android : on les télécharge dans l'onglet **Actions**, sur la dernière exécution, sous **babi-life-apk** (`app-arm64-v8a-release.apk` pour presque tous les téléphones récents). L'identifiant Google Web se met dans les variables du dépôt : *Settings → Secrets and variables → Actions → Variables → `GOOGLE_WEB_CLIENT_ID`*.
 
+## L'appli des testeurs
+
+Tant que le site affiche la liste d'attente, l'appli normale l'affiche aussi. L'**appli des testeurs** ouvre tout le jeu : construite avec `--dart-define=TESTER=true`, elle ajoute `BabiTest` à son agent utilisateur, et le jeu s'ouvre pour elle (`web/src/lib/launch.ts`). GitHub la construit à chaque fois, avec les autres : **`babi-life-testeur.apk`** dans **babi-life-apk** (téléphones arm64, presque tous). À ne donner qu'aux testeurs : ce n'est pas un secret fort, juste une porte discrète.
+
+```sh
+flutter build apk --release --target-platform android-arm64 --dart-define=TESTER=true
+```
+
 ## Publier
 
 - **Play Store** : créer une clé de signature (`keytool -genkey -v -keystore babi-life.jks -keyalg RSA -keysize 2048 -validity 10000 -alias babi-life`), la déclarer dans `android/key.properties` (jamais dans git) et `android/app/build.gradle.kts`, puis `flutter build appbundle`. Pour l'instant, le build *release* est signé avec la clé de débogage : bon pour essayer, pas pour le Play Store.
