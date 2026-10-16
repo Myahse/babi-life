@@ -338,6 +338,22 @@ var Kinds = map[string]PlaceKind{
 			{Text: "La tenue tombe parfaitement : tout le quartier te demande l'adresse du couturier.", Effect: Needs{Fun: 15, Social: 15}},
 		},
 	},
+	// The commissariat of an arrondissement (« Commissariat du 16ᵉ
+	// Arrondissement »), open day and night: a complaint after a theft or an
+	// attack, a declaration of loss for a lost ID or phone, a question at the
+	// desk. Free at the counter, as in life; the wait is long.
+	"police": {
+		ID: "police", Label: "Commissariat", Icon: "shield",
+		Interactions: []Interaction{
+			{ID: "porter-plainte", Ages: TeensUp, Label: "Porter plainte (vol, agression)", Icon: "file-text", Minutes: 90, Effect: Needs{Fun: -10, Energy: -10, Social: 5}},
+			{ID: "declaration-perte", Ages: TeensUp, Label: "Faire une déclaration de perte (pièce, téléphone)", Icon: "id-card", Minutes: 60, Effect: Needs{Fun: -10, Energy: -5}},
+			{ID: "renseignement", Label: "Demander un renseignement à l'accueil", Icon: "shield", Minutes: 15, Effect: Needs{Social: 5}},
+		},
+		Events: []RandomEvent{
+			{Text: "« Le chef n'est pas là, asseyez-vous sur le banc. » Tu patientes longtemps.", Effect: Needs{Fun: -10, Energy: -5}},
+			{Text: "L'agent prend ta déposition avec sérieux et note tout dans le registre.", Effect: Needs{Fun: 5, Social: 10}},
+		},
+	},
 	"pharmacie": {
 		ID: "pharmacie", Label: "Pharmacie", Icon: "stethoscope",
 		Interactions: []Interaction{

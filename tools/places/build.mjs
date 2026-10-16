@@ -86,9 +86,10 @@ function kindOf(cls, sub, name) {
     case 'ferry_terminal':
       return 'transport'
     case 'bank':
+    case 'police':
+      return 'police' // the commissariats (and the gendarmeries) by their own name
     case 'office':
     case 'post':
-    case 'police':
     case 'town_hall':
     case 'fire_station':
     case 'hackerspace':

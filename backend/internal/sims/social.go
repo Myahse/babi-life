@@ -3,12 +3,15 @@ package sims
 import (
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"math/rand/v2"
 	"net/http"
 	"slices"
+	"strings"
 
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
+	"github.com/myahse/babi-life/backend/internal/world"
 )
 
 // Friends, the street gang and the police.
@@ -139,8 +142,9 @@ func (s *Sim) gangAction(action string, rng *rand.Rand) (string, int, error) {
 			s.Record++
 			s.Needs = s.Needs.Add(game.Needs{Fun: -30, Social: -20, Energy: -20})
 			it := game.Interaction{ID: "garde-a-vue", Label: "Garde à vue", Icon: "shield", Minutes: game.CustodyMinutes, Ages: game.Everyone}
-			_ = s.start(it, custodyPlace, "police", "Commissariat", nil, "")
-			return "La police t'a attrapé·e ! Garde à vue au commissariat, et ça reste sur ton casier.", 0, nil
+			where := custodyName(s)
+			_ = s.start(it, custodyPlace, "police", where, nil, "")
+			return fmt.Sprintf("La police t'a attrapé·e ! Garde à vue au %s, et ça reste sur ton casier.", lowerFirst(where)), 0, nil
 		}
 		it := game.Interaction{ID: "bande-coup", Label: "Un coup avec la bande", Icon: "zap", Minutes: game.CoupMinutes, Effect: game.Needs{Fun: 15, Energy: -15}, Ages: game.TeensUp}
 		if err := s.start(it, "bande", "social", "La bande", nil, ""); err != nil {
@@ -185,4 +189,26 @@ func (h *Handler) gang(w http.ResponseWriter, r *http.Request) {
 		}
 		return game.Outcome{Text: text, Money: money}, []Event{{Kind: "social", Text: text, Money: money, GameTime: s.GameMinutes}}, nil
 	})
+}
+
+// custodyName: where the police take the Sim, a real commissariat of its
+// commune on the map (« Commissariat du 16ᵉ Arrondissement »), always the same
+// one for the same Sim; « Commissariat » where the map has none.
+func custodyName(s *Sim) string {
+	list := world.Commissariats(s.Commune)
+	if len(list) == 0 {
+		return "Commissariat"
+	}
+	f := fnv.New32a()
+	_, _ = f.Write([]byte(s.ID))
+	return list[f.Sum32()%uint32(len(list))].Name
+}
+
+// lowerFirst: « Commissariat du 16ᵉ… » inside a sentence.
+func lowerFirst(s string) string {
+	if s == "" {
+		return s
+	}
+	r := []rune(s)
+	return strings.ToLower(string(r[0])) + string(r[1:])
 }

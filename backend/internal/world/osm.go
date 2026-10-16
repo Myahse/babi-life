@@ -214,6 +214,19 @@ func SearchMapPlaces(commune, q string, limit int) []MapPlace {
 }
 
 // MapPlaceByID: one map place.
+// Commissariats: the commune's police stations on the map (« Commissariat
+// du 16ᵉ Arrondissement »…), gendarmeries left out, by name.
+func Commissariats(commune string) []MapPlace {
+	var out []MapPlace
+	for _, p := range mapPlaces[commune] {
+		if p.Kind == "police" && strings.Contains(strings.ToLower(p.Name), "commissariat") {
+			out = append(out, p)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out
+}
+
 func MapPlaceByID(id string) (MapPlace, bool) {
 	p, ok := mapByID[id]
 	return p, ok

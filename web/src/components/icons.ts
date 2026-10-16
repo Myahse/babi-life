@@ -60,6 +60,7 @@ export const KIND_COLORS: Record<string, [string, string]> = {
   boutique: ['#ffd8a8', '#f08c00'],
   couture: ['#d0bfff', '#7048e8'],
   pharmacie: ['#8ce99a', '#2b8a3e'],
+  police: ['#a5d8ff', '#1c4f9c'],
   station: ['#ff8a65', '#d62828'],
 }
 export const kindColors = (kind: string) => KIND_COLORS[kind] ?? ['#c3c8dc', '#7a8099']

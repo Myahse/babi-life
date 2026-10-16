@@ -7,13 +7,15 @@ import * as THREE from 'three'
 import { Vehicle } from '../vehicles'
 import { ClubFront, useClubFill } from '../clubNight'
 import { Human, NoShadows, type Pose } from '../../avatar/Human'
-import { randomLook } from '../../avatar/options'
+import { OUTFIT_DEFAULT_COLOR, randomLook } from '../../avatar/options'
+import { lettering } from './ruePrincesse'
 
 // What stands in front of a place and tells what it is, before you read its
 // sign: the market's stalls and parasols, the maquis's terrace (plastic
 // chairs, tables, a string of bulbs at night), the club's neon, the town
 // hall's flag, the hospital's cross and its ambulance, the gare's gbakas, a
-// hotel's flags. Local frame: the door at the origin, +z towards the street,
+// hotel's flags, the commissariat's blue band and its officers at the door.
+// Local frame: the door at the origin, +z towards the street,
 // x along the façade.
 
 const mats = new Map<string, THREE.MeshLambertMaterial>()
@@ -32,7 +34,7 @@ const B = ({ p, s, c, glow = 0, r = 0 }: { p: [number, number, number]; s: [numb
 const rnd = (seed: number) => () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
 
 // These stay open after dark. Everything else pulls a shutter down over the door.
-const OPEN_AT_NIGHT = new Set(['pharmacie', 'maquis', 'restaurant', 'club', 'hotel', 'health', 'transport', 'home', 'beach', 'lagune', 'nature', 'village', 'sport'])
+const OPEN_AT_NIGHT = new Set(['police', 'pharmacie', 'maquis', 'restaurant', 'club', 'hotel', 'health', 'transport', 'home', 'beach', 'lagune', 'nature', 'village', 'sport'])
 
 export function Dressing({ kind, name = '', seed, night }: { kind: string; name?: string; seed: number; night: boolean }) {
   const front = (() => {
@@ -74,6 +76,8 @@ export function Dressing({ kind, name = '', seed, night }: { kind: string; name?
         return <Compound />
       case 'pharmacie':
         return <Pharmacie night={night} seed={seed} />
+      case 'police':
+        return <Commissariat name={name} night={night} seed={seed} />
       case 'boutique':
         return <Boutique seed={seed} />
       case 'couture':
@@ -103,7 +107,9 @@ function Worker({ p, r = 0, outfit, pose = 'idle', seed }: { p: [number, number,
   const person = useMemo(() => {
     const rand = rnd(Math.floor(seed * 1000) + outfit.length * 97 + 3)
     const gender: 'femme' | 'homme' = outfit === 'vigile' ? (rand() < 0.85 ? 'homme' : 'femme') : rand() < 0.5 ? 'femme' : 'homme'
-    return { gender, look: { ...randomLook(gender, rand), outfit, accessory: 'none' }, seed: rand() * 100 }
+    // The uniform in its own colour (the police's light blue, the vigile's black), not a random one.
+    const look = randomLook(gender, rand)
+    return { gender, look: { ...look, outfit, outfitColor: OUTFIT_DEFAULT_COLOR[outfit] ?? look.outfitColor, accessory: 'none' }, seed: rand() * 100 }
   }, [seed, outfit])
   return (
     <NoShadows>
@@ -618,6 +624,39 @@ function Pharmacie({ night, seed }: { night: boolean; seed: number }) {
       <group position={[0, 4.3, 0]}>
         <B p={[0, 0, 0]} s={[1.5, 0.5, 0.25]} c={green} glow={night ? 1 : 0} />
         <B p={[0, 0, 0]} s={[0.5, 1.5, 0.25]} c={green} glow={night ? 1 : 0} />
+      </group>
+    </group>
+  )
+}
+
+/**
+ * The commissariat (or the gendarmerie): the white front with its blue band
+ * and « POLICE NATIONALE » (« GENDARMERIE NATIONALE »), the flag, two officers
+ * at the door in their uniforms, the blue-and-white patrol pickup parked in
+ * front. Open day and night: the lamp over the door stays lit.
+ */
+function Commissariat({ name, night, seed }: { name: string; night: boolean; seed: number }) {
+  const gendarmerie = /gendarmerie/i.test(name)
+  const sign = useMemo(() => {
+    const l = lettering(gendarmerie ? 'GENDARMERIE NATIONALE' : 'POLICE NATIONALE', '#1c4f9c', '#ffffff', '#ffffff')
+    return { m: new THREE.MeshLambertMaterial({ map: l.t }), aspect: l.aspect }
+  }, [gendarmerie])
+  const uniform = gendarmerie ? 'gendarme' : 'policier'
+  return (
+    <group>
+      {/* The white wall around the door, the blue band, the sign */}
+      <B p={[0, 1.6, 0.12]} s={[5.2, 3.2, 0.08]} c="#f4f1ea" />
+      <B p={[0, 2.85, 0.18]} s={[5.2, 0.5, 0.06]} c="#1c4f9c" />
+      <mesh position={[0, 2.85, 0.22]} scale={[2.6, 2.6 / sign.aspect, 1]} material={sign.m}>
+        <planeGeometry />
+      </mesh>
+      {/* The lamp over the door, lit at night */}
+      <B p={[0, 2.35, 0.25]} s={[0.4, 0.14, 0.14]} c={night ? '#fff2c2' : '#d9d9d9'} glow={night ? 1 : 0} />
+      <Flags n={1} />
+      <Worker p={[-1.3, 0, 1.1]} r={0.3} outfit={uniform} seed={seed} />
+      <Worker p={[1.3, 0, 1.2]} r={-0.4} outfit={uniform} pose="talk" seed={seed + 0.37} />
+      <group position={[-4.6, 0, 3.4]} rotation={[0, Math.PI / 2, 0]}>
+        <Vehicle p={[0, 0, 0]} kind="car" color="#1c4f9c" seed={3} />
       </group>
     </group>
   )

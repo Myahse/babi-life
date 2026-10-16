@@ -1,6 +1,9 @@
 package world
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestMapPlacesYopougon(t *testing.T) {
 	if n := MapPlaceCount("yopougon"); n < 5000 {
@@ -32,5 +35,26 @@ func TestMapPlacesYopougon(t *testing.T) {
 	}
 	if got := SearchMapPlaces("yopougon", "pharmacie", 5); len(got) == 0 {
 		t.Fatal("searching « pharmacie » finds nothing")
+	}
+}
+
+func TestCommissariats(t *testing.T) {
+	list := Commissariats("yopougon")
+	names := map[string]bool{}
+	for _, p := range list {
+		names[p.Name] = true
+		if p.Kind != "police" {
+			t.Fatalf("%s is a %s", p.Name, p.Kind)
+		}
+	}
+	for _, want := range []string{"Commissariat du 16ᵉ Arrondissement", "Commissariat du 23ᵉ Arrondissement", "Commissariat de Police du 19ᵉ Arrondissement"} {
+		if !names[want] {
+			t.Fatalf("missing %q in %v", want, names)
+		}
+	}
+	for n := range names {
+		if strings.Contains(strings.ToLower(n), "gendarmerie") {
+			t.Fatalf("a gendarmerie counted as a commissariat: %s", n)
+		}
 	}
 }
