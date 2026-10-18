@@ -8,7 +8,7 @@ export function callsFor(simGender: 'femme' | 'homme', hour: number): string[] {
   const t = toi[Math.floor(Math.random() * toi.length)]
   const time = hour < 12 ? ['Bonjour ! Tu as bien dormi ?', 'On a bien dormi ?', 'Bonne journée hein !'] : hour < 18 ? ['Bon après-midi !', 'Il fait chaud dèh !'] : ['Bonsoir !', 'Tu rentres déjà ?', 'On sort ce soir ou bien ?']
   return [
-    'On dit quoi ?',
+    'Ça dit quoi ?',
     "C'est comment ?",
     "C'est comment famille ?",
     'Eh fiscalité !',
@@ -32,7 +32,7 @@ export function callsFor(simGender: 'femme' | 'homme', hour: number): string[] {
 /** What the passer-by says when you stop to talk (from their seed: always the same for them). */
 export function helloFrom(seed: number, simGender: 'femme' | 'homme'): string {
   const all = [
-    'On dit quoi ?',
+    'On est là ou bien ?',
     "C'est comment ?",
     'Y a fohi ?',
     'Ça va un peu ?',
@@ -49,5 +49,5 @@ export function helloFrom(seed: number, simGender: 'femme' | 'homme'): string {
 
 /** The greetings the player can say back. */
 export function greetingsFor(npcGender: 'femme' | 'homme'): string[] {
-  return ["C'est comment ?", 'On dit quoi ?', "C'est comment famille ?", 'Eh fiscalité !', 'Y a fohi ?', npcGender === 'femme' ? 'Bonjour tantie !' : 'Bonjour tonton !', 'Ça dit quoi ?', 'Bonne arrivée !']
+  return ["C'est comment ?", 'Ça dit quoi ?', "C'est comment famille ?", 'Eh fiscalité !', 'Y a fohi ?', npcGender === 'femme' ? 'Bonjour tantie !' : 'Bonjour tonton !', 'Ça dit quoi ?', 'Bonne arrivée !']
 }

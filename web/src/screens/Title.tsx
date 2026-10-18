@@ -118,14 +118,14 @@ export function Title() {
             Gratuit · 100 % ivoirien
           </span>
           <h1 className="mt-4 font-display text-[44px] leading-[0.95] font-extrabold tracking-[-0.02em] sm:text-6xl lg:text-7xl">
-            Ta vie.
+            Gnambro
             <br />
-            Ton quartier.
+            ou laté ?
             <br />
-            <span className="text-[var(--color-orange)]">Ton Babi.</span>
+            <span className="text-[var(--color-orange)]">Le sort décide.</span>
           </h1>
           <p className="mt-4 max-w-md text-base leading-relaxed font-semibold text-white/85 lg:text-lg">
-            Crée ton perso, choisis ton quartier et vis la Côte d'Ivoire à l'heure d'Abidjan : boulot, maquis, taxi, mariages dans la rue et vraie actu.
+            Ta famille est tirée au sort à ta naissance. Ensuite, vis la Côte d'Ivoire sur la vraie carte, à l'heure d'Abidjan : boulot, maquis, taxi, mariages dans la rue et vraie actu.
           </p>
           <div className="mt-6 flex w-full max-w-sm flex-col gap-2.5 sm:flex-row lg:max-w-none">
             <button className="btn sm:flex-1 lg:flex-none lg:px-7" onClick={() => openCard('register')}>

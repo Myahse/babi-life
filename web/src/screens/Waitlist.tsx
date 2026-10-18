@@ -191,13 +191,13 @@ export function Waitlist({ form = false }: { form?: boolean }) {
           <section className="mx-auto grid max-w-5xl items-center gap-8 px-4 pt-8 pb-6 md:grid-cols-[1.3fr_0.7fr] md:pt-14">
             <div>
               <h1 className="paint m-0 text-[clamp(56px,15vw,124px)] text-[var(--rust)] [text-shadow:3px_3px_0_var(--ochre)]">
-                Ta vie.
+                Gnambro
                 <br />
-                Ton quartier.
+                ou laté ?
                 <br />
-                <span className="text-[var(--turq)] [text-shadow:3px_3px_0_var(--mint)]">Ton Babi.</span>
+                <span className="text-[var(--turq)] [text-shadow:3px_3px_0_var(--mint)]">Le sort décide.</span>
               </h1>
-              <p className="mt-5 max-w-md text-[19px] font-extrabold">Le jeu de vie d'Abidjan. Crée ton perso dès maintenant : tu découvres dans quelle famille il naît, gnambro ou laté. Après, c'est toi qui te débrouilles.</p>
+              <p className="mt-5 max-w-md text-[19px] font-extrabold">Tu ne choisis pas ta famille : elle est tirée au sort à ta naissance. Ensuite, ta vie se joue sur la vraie carte d'Abidjan, avec ton téléphone dans le jeu : Waye, Gnango, Gbairai, Tikitoko… À toi de jouer.</p>
               <p className="chalk-hand mt-1 text-[30px] text-[var(--ci-green)]">Fait ici, pour nous.</p>
               <div className="mt-5 flex flex-wrap gap-3">
                 {/* Make one's perso now and be born into a family: kept for the opening */}

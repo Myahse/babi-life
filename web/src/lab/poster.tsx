@@ -881,7 +881,7 @@ const FILMS: Record<FilmId, { shots: Shot[]; intro: number; outro: number; lengt
 const TALK: [string, string][] = [
   ["C'est comment famille ?", 'Y a fohi, on est là !'],
   ['Eh fiscalité !', 'Tombe sur moi un peu…'],
-  ['On dit quoi ?', 'Asec ou Africa ce soir ?'],
+  ['Ça dit quoi ?', 'Asec ou Africa ce soir ?'],
 ]
 
 /** The phone's home screen: the game's apps come up one after the other. */
