@@ -48,11 +48,11 @@ func TestABabyStaysABaby(t *testing.T) {
 }
 
 func TestChildhoodGoesFast(t *testing.T) {
-	// A baby for ten minutes, a child for an hour, a teenager for two; then a year is YearMinutes.
+	// A baby for three minutes, a child for twenty, a teenager for thirty; then a year is YearMinutes.
 	for _, c := range []struct {
 		min int64
 		age int
-	}{{0, 0}, {9, 2}, {10, 3}, {40, 7}, {70, 12}, {189, 17}, {190, 18}, {190 + game.YearMinutes, 19}} {
+	}{{0, 0}, {2, 2}, {3, 3}, {13, 7}, {23, 12}, {52, 17}, {53, 18}, {53 + game.YearMinutes, 19}} {
 		if got := game.AgeAt(1, 1+c.min); got != c.age {
 			t.Errorf("after %d minutes: %d years old, want %d", c.min, got, c.age)
 		}
