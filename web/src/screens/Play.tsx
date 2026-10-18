@@ -899,7 +899,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
       <IconTile icon={lookTab === 'coiffure' ? Scissors : Shirt} colors={colors} size={44} />
       <span className="min-w-0 flex-1">
         <span className="block font-display text-[15px] leading-tight font-extrabold">Changer de look</span>
-        <span className="mt-0.5 block text-xs font-bold text-[var(--color-ink-soft)]">{lookTab === 'coiffure' ? 'Coupe, couleur, barbe · 2 000 F' : 'Tenue, pagne, couleurs, accessoire · gratuit'}</span>
+        <span className="mt-0.5 block text-xs font-bold text-[var(--color-ink-soft)]">{lookTab === 'coiffure' ? 'Coupe, couleur, barbe · 2 000 Djai' : 'Tenue, pagne, couleurs, accessoire · gratuit'}</span>
       </span>
     </button>
   )
@@ -1006,7 +1006,7 @@ function ActionButton({ it, colors, open, broke, busy, reason, onPick, compact }
           {it.cost !== 0 && (
             <Chip tone={it.cost < 0 ? 'good' : 'gold'}>
               {it.cost < 0 ? '+' : '−'}
-              {amount(Math.abs(it.cost))} F
+              {amount(Math.abs(it.cost))} Djai
             </Chip>
           )}
           {!open && <Chip tone="bad">{openingLabel(it)}</Chip>}

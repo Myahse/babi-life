@@ -206,7 +206,7 @@ function Roadside({ world, req, gameMinutes, onBoard, onClose }: { world: World;
               Laisser passer
             </button>
             <button className="btn btn-emerald text-[15px] whitespace-nowrap" onClick={board}>
-              Monter · {amount(car?.kind === 'woro' ? woroFare : estimateMeter(req.fare, toll))} F
+              Monter · {amount(car?.kind === 'woro' ? woroFare : estimateMeter(req.fare, toll))} Djai
             </button>
           </div>
         ) : (
@@ -217,7 +217,7 @@ function Roadside({ world, req, gameMinutes, onBoard, onClose }: { world: World;
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
           <Party party={party} setParty={setParty} />
           <span className="text-[11px] font-extrabold text-[var(--color-ink-soft)]">
-            {woroHere ? `Woro ${amount(req.fare)} F/place · ` : ''}compteur ~{amount(estimateMeter(req.fare, toll))} F
+            {woroHere ? `Woro ${amount(req.fare)} Djai/place · ` : ''}compteur ~{amount(estimateMeter(req.fare, toll))} Djai
           </span>
         </div>
       </div>
@@ -358,7 +358,7 @@ function AppBooking({ world, req, onBoard, onClose }: { world: World; req: FlowR
         </div>
       )}
 
-      {stage === 'refused' && <p className="mt-3 text-sm font-bold text-[var(--color-ink-soft)]">{app.model === 'offer' ? `Aucun chauffeur n'a pris ${amount(fare)} F. Propose un peu plus, ou réessaie.` : 'Aucun chauffeur disponible pour l\'instant.'}</p>}
+      {stage === 'refused' && <p className="mt-3 text-sm font-bold text-[var(--color-ink-soft)]">{app.model === 'offer' ? `Aucun chauffeur n'a pris ${amount(fare)} Djai. Propose un peu plus, ou réessaie.` : 'Aucun chauffeur disponible pour l\'instant.'}</p>}
 
       {stage === 'coming' && call && (
         <div className="mt-4 grid gap-2">
@@ -388,7 +388,7 @@ function AppBooking({ world, req, onBoard, onClose }: { world: World; req: FlowR
               Annuler
             </button>
             <button className="btn btn-emerald text-[15px] whitespace-nowrap" onClick={() => onBoard({ app: app.id, offer: req.offer, party: req.party }, `En ${app.name} vers ${req.to.name}`)}>
-              Monter · {amount(fare)} F
+              Monter · {amount(fare)} Djai
             </button>
           </>
         ) : stage === 'refused' || stage === 'cancelled' ? (

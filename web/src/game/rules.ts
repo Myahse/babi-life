@@ -97,13 +97,13 @@ export function blockedBy(it: Interaction, sim: Sim, cityId: string, communeId: 
   const r = it.requires
   if (!r) return null
   if (r.resident && !(sim.homeCity === cityId && sim.homeCommune === communeId && sim.city === cityId && sim.commune === communeId)) return 'Habitants seulement'
-  if (r.minMoney && sim.money < r.minMoney) return `Il faut ${amount(r.minMoney)} F`
+  if (r.minMoney && sim.money < r.minMoney) return `Il faut ${amount(r.minMoney)} Djai`
   if (r.career && sim.career !== r.career) return 'Réservé au personnel'
   if (r.anyTrait?.length && !r.anyTrait.some((t) => sim.traits.includes(t))) return 'Pas ton caractère'
   return null
 }
 
-export const fcfa = (n: number) => `${n.toLocaleString('fr-FR')} F`
+export const fcfa = (n: number) => `${n.toLocaleString('fr-FR')} Djai`
 export const amount = (n: number) => n.toLocaleString('fr-FR')
 
 export function duration(minutes: number) {

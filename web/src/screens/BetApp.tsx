@@ -98,7 +98,7 @@ export function BetApp({ sim, act, app }: { sim: Sim; act: Act; app: 'bet225' | 
         <span className="font-display text-xl font-extrabold" style={{ color: b.accent }}>
           {b.name}
         </span>
-        <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-extrabold tabular-nums">{nf(sim.money)} F</span>
+        <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-extrabold tabular-nums">{nf(sim.money)} Djai</span>
       </div>
       <div className="mt-2 flex gap-1 rounded-full bg-white/10 p-1">
         {(
@@ -182,7 +182,7 @@ export function BetApp({ sim, act, app }: { sim: Sim; act: Act; app: 'bet225' | 
                 <span className="text-white/60">
                   {x.legs.length > 1 ? `Combiné · ${x.legs.length} matchs` : 'Simple'} · {x.app === 'bet225' ? 'Bet225' : 'ParisFoot'}
                 </span>
-                <span className={`rounded-full px-2 py-0.5 ${x.status === 'won' ? 'bg-[#16a34a]' : x.status === 'lost' ? 'bg-[#7f1d1d]' : 'bg-white/15'}`}>{x.status === 'won' ? `Gagné +${nf(x.payout)} F` : x.status === 'lost' ? 'Perdu' : 'En cours'}</span>
+                <span className={`rounded-full px-2 py-0.5 ${x.status === 'won' ? 'bg-[#16a34a]' : x.status === 'lost' ? 'bg-[#7f1d1d]' : 'bg-white/15'}`}>{x.status === 'won' ? `Gagné +${nf(x.payout)} Djai` : x.status === 'lost' ? 'Perdu' : 'En cours'}</span>
               </div>
               <ul className="mt-2 space-y-1 text-[12px] font-bold">
                 {x.legs.map((l) => (
@@ -198,7 +198,7 @@ export function BetApp({ sim, act, app }: { sim: Sim; act: Act; app: 'bet225' | 
                 ))}
               </ul>
               <div className="mt-2 flex justify-between text-xs font-extrabold text-white/70">
-                <span>Mise {nf(x.stake)} F</span>
+                <span>Mise {nf(x.stake)} Djai</span>
                 <span>Cote {x.odds.toFixed(2)}</span>
               </div>
             </div>
@@ -241,7 +241,7 @@ export function BetApp({ sim, act, app }: { sim: Sim; act: Act; app: 'bet225' | 
               className="w-24 rounded-lg bg-white/10 px-2 py-2 text-sm font-extrabold text-white outline-none"
             />
             <div className="min-w-0 flex-1 text-[11px] font-bold text-white/70">
-              Cote <b className="text-white">{odds.toFixed(2)}</b> · gain <b style={{ color: b.accent }}>{nf(Math.floor(stake * odds))} F</b>
+              Cote <b className="text-white">{odds.toFixed(2)}</b> · gain <b style={{ color: b.accent }}>{nf(Math.floor(stake * odds))} Djai</b>
             </div>
             <button disabled={stake < 100 || stake > sim.money} onClick={() => void place()} className="rounded-lg px-4 py-2 text-sm font-extrabold disabled:opacity-40" style={{ background: b.accent, color: b.ink }}>
               Parier

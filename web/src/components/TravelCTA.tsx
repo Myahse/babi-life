@@ -81,7 +81,7 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
 
       {t.path && (
         <p className="mb-2 text-xs font-bold text-[var(--color-ink-soft)]">
-          {t.path.km.toLocaleString('fr-FR')} km{t.path.bridges.length ? ` · par le ${t.path.bridges.join(' puis le ')}` : ''}{t.toll ? ` · péage ${amount(t.toll)} F compris` : ''}
+          {t.path.km.toLocaleString('fr-FR')} km{t.path.bridges.length ? ` · par le ${t.path.bridges.join(' puis le ')}` : ''}{t.toll ? ` · péage ${amount(t.toll)} Djai compris` : ''}
         </p>
       )}
 
@@ -106,7 +106,7 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
 
       {c.id === 'street' && (
         <p className="mb-2.5 text-xs font-bold text-[var(--color-ink-soft)]">
-          {woro ? `Attends au bord de la route : woro-woro ${woro.label} (${amount(t.fare)} F la place, s'il va à ${to.name} et a de la place) ou taxi compteur libre (~${amount(meter.fare)} F).` : `Pas de woro-woro à ${from.name} : attends un taxi compteur libre (~${amount(meter.fare)} F).`}
+          {woro ? `Attends au bord de la route : woro-woro ${woro.label} (${amount(t.fare)} Djai la place, s'il va à ${to.name} et a de la place) ou taxi compteur libre (~${amount(meter.fare)} Djai).` : `Pas de woro-woro à ${from.name} : attends un taxi compteur libre (~${amount(meter.fare)} Djai).`}
         </p>
       )}
 

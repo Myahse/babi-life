@@ -49,11 +49,11 @@ export function WayeApp({ world, sim, act, journal, renderJournal }: { world: Wo
         <div className="rounded-2xl bg-[var(--color-canvas)] p-3 text-sm font-bold">
           <div className="flex justify-between">
             <span>Frais (1 %)</span>
-            <span className="tnum">{amount(fee)} F</span>
+            <span className="tnum">{amount(fee)} Djai</span>
           </div>
           <div className="mt-1 flex justify-between font-extrabold">
             <span>Total débité</span>
-            <span className="tnum">{amount(sum + fee)} F</span>
+            <span className="tnum">{amount(sum + fee)} Djai</span>
           </div>
         </div>
         <button
@@ -61,7 +61,7 @@ export function WayeApp({ world, sim, act, journal, renderJournal }: { world: Wo
           disabled={sum < 100 || sim.money < sum + fee}
           onClick={() => act(`Envoyer à ${contact.name}`, 'send', 'social', () => api.send(sim.id, contact.id, sum)).then((ok) => ok && setTo(null))}
         >
-          <Send size={18} /> {sim.money < sum + fee ? 'Solde insuffisant' : `Envoyer ${amount(sum)} F`}
+          <Send size={18} /> {sim.money < sum + fee ? 'Solde insuffisant' : `Envoyer ${amount(sum)} Djai`}
         </button>
       </div>
     )
@@ -76,13 +76,13 @@ export function WayeApp({ world, sim, act, journal, renderJournal }: { world: Wo
             {hidden ? <Eye size={18} /> : <EyeOff size={18} />}
           </button>
         </div>
-        <div className="tnum font-display text-4xl leading-tight font-extrabold">{hidden ? '•••••• F' : `${amount(sim.money)} F`}</div>
+        <div className="tnum font-display text-4xl leading-tight font-extrabold">{hidden ? '•••••• Djai' : `${amount(sim.money)} Djai`}</div>
         <div className="mt-3 flex gap-4 text-xs font-extrabold opacity-90">
           <span className="flex items-center gap-1">
-            <ArrowDownLeft size={14} strokeWidth={3} /> {amount(earned)} F reçus
+            <ArrowDownLeft size={14} strokeWidth={3} /> {amount(earned)} Djai reçus
           </span>
           <span className="flex items-center gap-1">
-            <ArrowUpRight size={14} strokeWidth={3} /> {amount(spent)} F dépensés
+            <ArrowUpRight size={14} strokeWidth={3} /> {amount(spent)} Djai dépensés
           </span>
         </div>
         <div className="mt-3 flex items-center gap-3 rounded-2xl bg-white/95 p-2.5 text-[var(--color-ink)]">
@@ -115,21 +115,21 @@ export function WayeApp({ world, sim, act, journal, renderJournal }: { world: Wo
               <Receipt size={12} className="mr-1 inline" />
               Payer sans frais
             </div>
-            {sim.loan > 0 && <Chip tone="bad">−{amount(LOAN_INSTALLMENT)} F chaque samedi</Chip>}
+            {sim.loan > 0 && <Chip tone="bad">−{amount(LOAN_INSTALLMENT)} Djai chaque samedi</Chip>}
           </div>
           {sim.loan > 0 && (
             <div className="mt-2 grid grid-cols-2 gap-2">
               <button className="btn btn-soft !py-2 !text-sm" disabled={sim.money < installment} onClick={() => act('Rembourser le microcrédit', 'hand-coins', 'market', () => api.repay(sim.id, 'loan', installment))}>
-                <HandCoins size={16} /> {amount(installment)} F
+                <HandCoins size={16} /> {amount(installment)} Djai
               </button>
               <button className="btn !py-2 !text-sm" disabled={sim.money < sim.loan} onClick={() => act('Solder le microcrédit', 'hand-coins', 'market', () => api.repay(sim.id, 'loan', sim.loan))}>
-                Solder {amount(sim.loan)} F
+                Solder {amount(sim.loan)} Djai
               </button>
             </div>
           )}
           {sim.rentArrears > 0 && (
             <button className="btn mt-2 w-full !py-2 !text-sm" disabled={sim.money < sim.rentArrears} onClick={() => act('Payer le loyer en retard', 'house', 'market', () => api.repay(sim.id, 'rent', sim.rentArrears))}>
-              Loyer en retard : {amount(sim.rentArrears)} F
+              Loyer en retard : {amount(sim.rentArrears)} Djai
             </button>
           )}
         </div>

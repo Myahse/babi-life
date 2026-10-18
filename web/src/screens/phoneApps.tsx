@@ -44,7 +44,7 @@ export function JobsApp({ world, sim, commune, act, onWalk, onMap }: AppProps & 
                 sub={`${c.levels[0].title} · ${hours(c)} · jusqu'à ${c.levels.at(-1)!.title}`}
                 onClick={() => act(`Postuler en ${c.label.toLowerCase()}`, c.icon, c.kind, () => api.career(sim.id, c.id))}
               >
-                <Chip tone="good">+{amount(c.levels[0].pay)} F</Chip>
+                <Chip tone="good">+{amount(c.levels[0].pay)} Djai</Chip>
               </Row>
             ))}
         </ul>
@@ -56,7 +56,7 @@ export function JobsApp({ world, sim, commune, act, onWalk, onMap }: AppProps & 
           <ul className="motion-stagger space-y-2">
             {gigs.map(({ place, commune: cm, it }) => (
               <Row key={place.id + it.id} icon={iconFor(it.icon)} colors={kindColors(place.kind)} title={it.label} sub={`${place.name} · ${cm.name}`} onClick={() => (cm.id === commune.id ? onWalk(place.id) : onMap())}>
-                <Chip tone="good">+{amount(-it.cost)} F</Chip>
+                <Chip tone="good">+{amount(-it.cost)} Djai</Chip>
               </Row>
             ))}
           </ul>
@@ -89,7 +89,7 @@ function CareerCard({ world, sim, commune, act, onWalk, onMap }: AppProps & { on
         </div>
         <div className="mt-3 flex flex-wrap gap-1.5">
           <Chip tone="dark">
-            <Coin size={13} /> {amount(level.pay)} F / service
+            <Coin size={13} /> {amount(level.pay)} Djai / service
           </Chip>
           <Chip tone="dark">
             <Clock3 size={12} /> {hours(c)} · {duration(c.minutes)}
@@ -160,7 +160,7 @@ export function HomeApp({ world, sim, commune, act }: AppProps) {
         <p className="mt-2 text-sm leading-snug font-bold text-white/90">{home.hint}</p>
         <div className="mt-3 flex flex-wrap gap-1.5">
           <Chip tone="dark">
-            <Coin size={13} /> {amount(home.rent)} F / semaine
+            <Coin size={13} /> {amount(home.rent)} Djai / semaine
           </Chip>
           <Chip tone="dark">
             <CalendarClock size={12} /> Loyer samedi · dans {duration(due)}
@@ -173,7 +173,7 @@ export function HomeApp({ world, sim, commune, act }: AppProps) {
         <div className="flex items-center gap-3 rounded-[20px] bg-[#ffe8ec] p-3">
           <TriangleAlert className="shrink-0 text-[#d81b3f]" />
           <div className="min-w-0 flex-1 text-sm leading-snug font-bold text-[#a3122f]">
-            Tu dois {amount(sim.rentArrears)} F au propriétaire. Encore un samedi sans payer et c'est l'expulsion.
+            Tu dois {amount(sim.rentArrears)} Djai au propriétaire. Encore un samedi sans payer et c'est l'expulsion.
           </div>
           <button className="btn shrink-0 !px-3 !py-2 !text-sm" disabled={sim.money < sim.rentArrears} onClick={() => act('Payer le propriétaire', 'house', 'home', () => api.repay(sim.id, 'rent', sim.rentArrears))}>
             Payer
@@ -195,7 +195,7 @@ export function HomeApp({ world, sim, commune, act }: AppProps) {
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-display text-[16px] leading-tight font-extrabold">{h.label}</span>
                   <span className="block text-xs font-semibold text-[var(--color-ink-soft)]">
-                    {amount(h.rent)} F/sem · confort {Math.round(h.comfort * 100)} %
+                    {amount(h.rent)} Djai/sem · confort {Math.round(h.comfort * 100)} %
                   </span>
                 </span>
                 {current ? (

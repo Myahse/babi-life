@@ -30,7 +30,7 @@ type PhoneApp struct {
 
 var PhoneApps = []PhoneApp{
 	{ID: "waye", Name: "Waye", Tagline: "L'argent mobile, simple", Category: "Finance", SizeMB: 38, Preinstalled: true,
-		About:  "Ton porte-monnaie : envoie de l'argent (1 % de frais, plafonnés à 5 000 F), paie sans frais.",
+		About:  "Ton porte-monnaie : envoie de l'argent (1 % de frais, plafonnés à 5 000 Djai), paie sans frais.",
 		Source: inspired("Appli du jeu inspirée de Wave : envoi facturé 1 % (frais plafonnés à 5 000 F), dépôt, retrait et paiements gratuits selon les comparatifs.", srcWaveFees, srcWaveFees2)},
 	{ID: "gnango", Name: "Gnango", Tagline: "Un chauffeur, prix fixé", Category: "Transport", SizeMB: 64,
 		About: "Commande une voiture à Abidjan ou Bouaké. Le prix est fixé à la commande.", Source: RideApps[0].Source},
@@ -67,7 +67,7 @@ type Contact struct {
 	ID     string     `json:"id"`
 	Name   string     `json:"name"`
 	Note   string     `json:"note"`
-	Effect game.Needs `json:"effect"` // for a 5 000 F transfer; scaled with the amount
+	Effect game.Needs `json:"effect"` // for a 5 000 Djai transfer; scaled with the amount
 }
 
 var Contacts = []Contact{

@@ -202,7 +202,7 @@ function MaterialTile({ m, picked, locked, toGo, onPick }: { m: Material; picked
         {locked && <Lock size={16} strokeWidth={2.8} className="absolute inset-0 m-auto text-white drop-shadow" />}
       </span>
       <span className="w-full truncate text-center text-[11px] leading-tight font-extrabold">{m.label}</span>
-      <span className="text-[10px] leading-none font-bold text-[var(--color-ink-soft)]">{locked ? `à ${toGo} blocs` : `${amount(m.price)} F`}</span>
+      <span className="text-[10px] leading-none font-bold text-[var(--color-ink-soft)]">{locked ? `à ${toGo} blocs` : `${amount(m.price)} Djai`}</span>
     </button>
   )
 }

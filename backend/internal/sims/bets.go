@@ -46,7 +46,7 @@ const (
 var (
 	errBetApp      = errors.New("appli de paris inconnue")
 	errTooYoung    = errors.New("les paris, c'est à partir de 18 ans")
-	errStake       = fmt.Errorf("mise entre %d et %d F", MinStake, MaxStake)
+	errStake       = fmt.Errorf("mise entre %d et %d Djai", MinStake, MaxStake)
 	errNoLegs      = fmt.Errorf("choisis entre 1 et %d matchs", MaxLegs)
 	errSameMatch   = errors.New("un seul pari par match dans un combiné")
 	errBetClosed   = errors.New("ce match a déjà commencé : les paris sont fermés")
@@ -173,7 +173,7 @@ func (h *Handler) placeBet(w http.ResponseWriter, r *http.Request) {
 		if len(legs) > 1 {
 			kind = fmt.Sprintf("Combiné de %d matchs", len(legs))
 		}
-		text := fmt.Sprintf("%s sur %s : %s F à la cote %.2f. Gain possible : %s F.", kind, a.Name, money(req.Stake), odds, money(int(float64(req.Stake)*odds)))
+		text := fmt.Sprintf("%s sur %s : %s Djai à la cote %.2f. Gain possible : %s Djai.", kind, a.Name, money(req.Stake), odds, money(int(float64(req.Stake)*odds)))
 		return game.Outcome{Text: text, Money: -req.Stake}, []Event{{Kind: "money", Text: text, Money: -req.Stake, GameTime: s.GameMinutes}}, nil
 	})
 }
@@ -253,7 +253,7 @@ func (h *Handler) settleBets(w http.ResponseWriter, r *http.Request) {
 				if _, err := tx.Exec(ctx, `UPDATE bets SET status = 'lost' WHERE id = $1`, id); err != nil {
 					return game.Outcome{}, nil, err
 				}
-				events = append(events, Event{Kind: "money", Text: fmt.Sprintf("%s : pari perdu (%s F). La prochaine fois !", name, money(b.stake)), GameTime: s.GameMinutes})
+				events = append(events, Event{Kind: "money", Text: fmt.Sprintf("%s : pari perdu (%s Djai). La prochaine fois !", name, money(b.stake)), GameTime: s.GameMinutes})
 				continue
 			}
 			pay := int(math.Round(float64(b.stake) * b.odds))
@@ -262,11 +262,11 @@ func (h *Handler) settleBets(w http.ResponseWriter, r *http.Request) {
 			}
 			s.Money += pay
 			total += pay
-			events = append(events, Event{Kind: "money", Text: fmt.Sprintf("%s : pari gagné ! +%s F (cote %.2f).", name, money(pay), b.odds), Money: pay, GameTime: s.GameMinutes})
+			events = append(events, Event{Kind: "money", Text: fmt.Sprintf("%s : pari gagné ! +%s Djai (cote %.2f).", name, money(pay), b.odds), Money: pay, GameTime: s.GameMinutes})
 		}
 		text := ""
 		if total > 0 {
-			text = fmt.Sprintf("Paris gagnés : +%s F", money(total))
+			text = fmt.Sprintf("Paris gagnés : +%s Djai", money(total))
 		}
 		return game.Outcome{Text: text, Money: total}, events, nil
 	})

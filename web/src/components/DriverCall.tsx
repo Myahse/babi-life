@@ -22,7 +22,7 @@ function line(c: Call) {
     case 'compteur':
       return `Allô, c'est ${c.driver}, ton taxi compteur. Je suis à ${eta} de toi. Cherche le taxi orange, plaque ${c.plate}.`
     case 'idrive':
-      return `Allô, c'est ${c.driver} d'iDrive. J'ai accepté ton prix de ${amount(c.fare)} F. J'arrive dans ${eta}, plaque ${c.plate}.`
+      return `Allô, c'est ${c.driver} d'iDrive. J'ai accepté ton prix de ${amount(c.fare)} Djai. J'arrive dans ${eta}, plaque ${c.plate}.`
     default:
       return `Allô, bonjour ! C'est ${c.driver}, ton chauffeur ${c.look.name}. Je suis en route, j'arrive dans ${eta}. Plaque ${c.plate}.`
   }

@@ -71,7 +71,7 @@ export function GolvoApp({ world, sim, delivery, onOrder, onCancel, onCollect }:
         </div>
         {st.stage === 'here' ? (
           <button className="btn btn-emerald w-full" disabled={!!sim.activity} onClick={onCollect}>
-            {sim.activity ? 'Ton perso est occupé·e' : `Récupérer et manger · ${amount(delivery.dish.price + delivery.fee)} F`}
+            {sim.activity ? 'Ton perso est occupé·e' : `Récupérer et manger · ${amount(delivery.dish.price + delivery.fee)} Djai`}
           </button>
         ) : (
           st.stage === 'kitchen' && (
@@ -80,7 +80,7 @@ export function GolvoApp({ world, sim, delivery, onOrder, onCancel, onCollect }:
             </button>
           )
         )}
-        <p className="text-xs font-bold text-[var(--color-ink-soft)]">Tu paies à la livraison : {amount(delivery.dish.price)} F + {amount(delivery.fee)} F de livraison.</p>
+        <p className="text-xs font-bold text-[var(--color-ink-soft)]">Tu paies à la livraison : {amount(delivery.dish.price)} Djai + {amount(delivery.fee)} Djai de livraison.</p>
       </div>
     )
   }
@@ -95,7 +95,7 @@ export function GolvoApp({ world, sim, delivery, onOrder, onCancel, onCollect }:
         <div>
           <div className="font-display text-2xl leading-tight font-extrabold">{shop.place.name}</div>
           <div className="text-xs font-bold text-[var(--color-ink-soft)]">
-            {shop.commune.name} · livraison {amount(q.fee)} F · ~{q.minutes} min
+            {shop.commune.name} · livraison {amount(q.fee)} Djai · ~{q.minutes} min
           </div>
         </div>
         <ul className="space-y-2">
@@ -107,7 +107,7 @@ export function GolvoApp({ world, sim, delivery, onOrder, onCancel, onCollect }:
                 <IconTile icon={iconFor(d.icon)} colors={['#ffd45c', '#ffb703']} size={44} style={{ color: '#0b6e4f' }} />
                 <div className="min-w-0 flex-1">
                   <div className="font-extrabold leading-tight">{d.label}</div>
-                  <div className="text-xs font-bold text-[var(--color-ink-soft)]">{open ? `${amount(d.price)} F` : `Fermé · ${openingLabel({ minHour: d.minHour, maxHour: d.maxHour } as never)}`}</div>
+                  <div className="text-xs font-bold text-[var(--color-ink-soft)]">{open ? `${amount(d.price)} Djai` : `Fermé · ${openingLabel({ minHour: d.minHour, maxHour: d.maxHour } as never)}`}</div>
                 </div>
                 <button className="btn !bg-[#0b6e4f] !px-3 !py-2 !text-sm" disabled={!open || sim.money < total || !!sim.activity} onClick={() => onOrder(newDelivery(world, sim, shop.place, shop.commune, d))}>
                   {sim.money < total ? 'Trop cher' : 'Commander'}
@@ -139,7 +139,7 @@ export function GolvoApp({ world, sim, delivery, onOrder, onCancel, onCollect }:
                     <span className="flex items-center gap-0.5">
                       <Clock3 size={11} /> {q.minutes} min
                     </span>
-                    <span>{amount(q.fee)} F</span>
+                    <span>{amount(q.fee)} Djai</span>
                   </div>
                 </div>
                 <span className={`text-[11px] font-extrabold ${open ? 'text-[#0b6e4f]' : 'text-[var(--color-ink-soft)]'}`}>{open ? 'Ouvert' : 'Fermé'}</span>

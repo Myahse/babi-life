@@ -39,7 +39,7 @@ export function BridgeSights({ chunks, night }: { chunks: ChunkData[]; night: bo
   return (
     <>
       {ado && <CableStayed ends={ado} />}
-      {hkbToll && <TollPlaza at={hkbToll.at} rot={hkbToll.rot} lanes={Math.max(21, hkbToll.lanes ?? 0)} label="Péage du 3e pont · 500 F" night={night} look="hkb" />}
+      {hkbToll && <TollPlaza at={hkbToll.at} rot={hkbToll.rot} lanes={Math.max(21, hkbToll.lanes ?? 0)} label="Péage du 3e pont · 500 Djai" night={night} look="hkb" />}
       {tolls.yop && <TollPlaza at={tolls.yop.at} rot={tolls.yop.rot} lanes={Math.max(10, tolls.yop.lanes ?? 0)} label="Péage du 4e pont" night={night} look="yop" />}
     </>
   )

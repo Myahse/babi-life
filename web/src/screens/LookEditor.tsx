@@ -101,7 +101,7 @@ export function LookEditor() {
           })}
         </nav>
         <p className="px-4 pb-1 text-sm font-bold text-[var(--color-ink-soft)]">
-          {tab === 'coiffure' ? `Chez le coiffeur : ${amount(HAIR_PRICE)} F la nouvelle coiffure. Ton corps, lui, ne change pas.` : 'Dans ton armoire : gratuit.'}
+          {tab === 'coiffure' ? `Chez le coiffeur : ${amount(HAIR_PRICE)} Djai la nouvelle coiffure. Ton corps, lui, ne change pas.` : 'Dans ton armoire : gratuit.'}
         </p>
 
         <div key={tab} className="animate-up flex-1 overflow-y-auto px-4 pt-2 pb-4">
@@ -151,7 +151,7 @@ export function LookEditor() {
 
           {tab === 'coiffure' && (
             <div className="space-y-5">
-              <Section title="Coupe" right={<Chip tone="gold">{amount(HAIR_PRICE)} F</Chip>}>
+              <Section title="Coupe" right={<Chip tone="gold">{amount(HAIR_PRICE)} Djai</Chip>}>
                 <Options choices={HAIRS} value={look.hair} onPick={(hair) => setLook({ hair })} look={look} gender={sim.gender} field="hair" framing="head" />
               </Section>
               <Section title="Couleur">
@@ -166,14 +166,14 @@ export function LookEditor() {
           )}
         </div>
 
-        {sim.money < cost && <p className="mx-3 mb-2 text-xs font-extrabold text-[#d81b3f]">Pas assez d'argent pour le coiffeur ({amount(sim.money)} F).</p>}
+        {sim.money < cost && <p className="mx-3 mb-2 text-xs font-extrabold text-[#d81b3f]">Pas assez d'argent pour le coiffeur ({amount(sim.money)} Djai).</p>}
         {error && <p className="motion-shake mx-3 mb-2 rounded-xl bg-[#ffeef1] px-3 py-2 text-sm font-bold text-[#d81b3f]">{error}</p>}
         <footer className="flex gap-2 border-t border-[var(--color-line)] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <button className="btn btn-soft shrink-0 px-4" onClick={back}>
             Annuler
           </button>
           <button className="btn btn-emerald flex-1" disabled={busy || !changed || sim.money < cost} onClick={save}>
-            {cost ? `Valider · ${amount(cost)} F` : 'Valider'}
+            {cost ? `Valider · ${amount(cost)} Djai` : 'Valider'}
           </button>
         </footer>
       </section>

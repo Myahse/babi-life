@@ -43,12 +43,12 @@ const REACH = 25 // metres: close enough to buy
 
 /** What each calls out, what the bubble says, and the busy hours (crowd 0..1 by hour). */
 const SELLER: Record<StallKind, { shout: string; ask: string; out: string; busy: (h: number) => number; r: number }> = {
-  alloco: { shout: 'Alloco chaud, 300 F !', ask: 'Alloco ? Viens prendre !', out: 'Ya pas banane oh !', busy: (h) => (h < 8 || h >= 23 ? 0 : h >= 16 && h < 21 ? 1 : 0.45), r: 1.1 },
-  porc: { shout: 'Porc au four, viens goûter !', ask: 'Porc au four, 1500 F !', out: 'Le porc est fini, reviens demain !', busy: (h) => (h < 11 ? 0 : h >= 18 ? 1 : h >= 12 && h < 14 ? 0.8 : 0.4), r: 2.6 },
-  cafe: { shout: 'Café ! Café chaud !', ask: 'Café, 150 F !', out: 'Le thermos est vide, attends un peu !', busy: (h) => (h < 5 || h >= 23 ? 0 : h < 9 ? 1 : h >= 17 && h < 20 ? 0.6 : 0.3), r: 1 },
+  alloco: { shout: 'Alloco chaud, 300 Djai !', ask: 'Alloco ? Viens prendre !', out: 'Ya pas banane oh !', busy: (h) => (h < 8 || h >= 23 ? 0 : h >= 16 && h < 21 ? 1 : 0.45), r: 1.1 },
+  porc: { shout: 'Porc au four, viens goûter !', ask: 'Porc au four, 1500 Djai !', out: 'Le porc est fini, reviens demain !', busy: (h) => (h < 11 ? 0 : h >= 18 ? 1 : h >= 12 && h < 14 ? 0.8 : 0.4), r: 2.6 },
+  cafe: { shout: 'Café ! Café chaud !', ask: 'Café, 150 Djai !', out: 'Le thermos est vide, attends un peu !', busy: (h) => (h < 5 || h >= 23 ? 0 : h < 9 ? 1 : h >= 17 && h < 20 ? 0.6 : 0.3), r: 1 },
   garba: { shout: 'Garba chaud ! Garba !', ask: 'Garba ? Viens choisir ton poisson !', out: 'Y a plus poisson oh !', busy: (h) => (h >= 2 && h < 9 ? 0 : (h >= 12 && h < 14) || (h >= 19 && h < 23) ? 1 : 0.6), r: 2.4 },
-  brochette: { shout: 'Pain brochette ! Ça sort du feu !', ask: 'Pain brochette, 500 F !', out: 'Y a plus pain oh, attends le livreur !', busy: (h) => (h >= 2 && h < 16 ? 0 : h >= 19 && h < 23 ? 1 : 0.55), r: 1.6 },
-  the: { shout: 'Thé bien mousseux !', ask: 'Thé, 100 F, assieds-toi !', out: "Le thé n'est pas encore prêt !", busy: (h) => (h < 6 ? 0 : h >= 17 ? 1 : 0.4), r: 1 },
+  brochette: { shout: 'Pain brochette ! Ça sort du feu !', ask: 'Pain brochette, 500 Djai !', out: 'Y a plus pain oh, attends le livreur !', busy: (h) => (h >= 2 && h < 16 ? 0 : h >= 19 && h < 23 ? 1 : 0.55), r: 1.6 },
+  the: { shout: 'Thé bien mousseux !', ask: 'Thé, 100 Djai, assieds-toi !', out: "Le thé n'est pas encore prêt !", busy: (h) => (h < 6 ? 0 : h >= 17 ? 1 : 0.4), r: 1 },
 }
 
 export type Buy = (vendor: string, choice?: string) => Promise<string | null>
@@ -395,7 +395,7 @@ const BR = {
  */
 function Cart({ tea, price }: { tea: boolean; price: number }) {
   const sign = useMemo(() => lettering('THÉ · CAFÉ', '#d6202a', '#ffffff', '#ffffff'), [])
-  const tag = useMemo(() => lettering(`${price}F`, '#d6202a', '#ffffff', '#d6202a'), [price])
+  const tag = useMemo(() => lettering(`${price} Djai`, '#d6202a', '#ffffff', '#d6202a'), [price])
   const mats = useMemo(() => ({ sign: new THREE.MeshLambertMaterial({ map: sign.t }), tag: new THREE.MeshLambertMaterial({ map: tag.t }) }), [sign, tag])
   // The sachets, in rows on their board: blue and gold packets, a few white.
   const sachets = useMemo(() => {
@@ -837,7 +837,7 @@ function GarbaMenu({ onChoose, onClose }: { onChoose: (choice: string) => void; 
         {PIECES.map(([id, label, price]) => (
           <button key={id} className="flex items-center justify-between rounded-xl bg-[var(--color-orange)] px-3 py-2 text-[13px] font-extrabold text-white active:scale-95" onClick={() => onChoose(`${id}-${hot ? 'huile' : 'boite'}`)}>
             <span>{label}</span>
-            <span>{price.toLocaleString('fr-FR')} F</span>
+            <span>{price.toLocaleString('fr-FR')} Djai</span>
           </button>
         ))}
       </div>

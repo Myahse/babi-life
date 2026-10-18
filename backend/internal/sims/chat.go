@@ -182,9 +182,9 @@ var (
 
 // Surprises at the end of a chat in the street.
 var chatSurprises = []game.RandomEvent{
-	{Text: "En causant, on te présente quelqu'un qui cherche un coup de main : 1 500 F pour l'après-midi.", Money: 1500, Effect: game.Needs{Energy: -10}},
+	{Text: "En causant, on te présente quelqu'un qui cherche un coup de main : 1 500 Djai pour l'après-midi.", Money: 1500, Effect: game.Needs{Energy: -10}},
 	{Text: "On t'a offert un sachet d'eau glacée. Ça fait du bien !", Effect: game.Needs{Hunger: 5, Fun: 5}},
-	{Text: "Pendant que vous causiez, un pickpocket t'a soulagé·e de 500 F.", Money: -500},
+	{Text: "Pendant que vous causiez, un pickpocket t'a soulagé·e de 500 Djai.", Money: -500},
 	{Text: "On t'invite au baptême de samedi : « Faut venir, y aura à manger ! »", Effect: game.Needs{Social: 10, Fun: 10}},
 	{Text: "Un vieux du quartier passe et te donne des conseils de la vie. Tu repars motivé·e.", Effect: game.Needs{Fun: 8}},
 	{Text: "Une moto passe dans une flaque : vous voilà tous les deux trempés. Fou rire.", Effect: game.Needs{Hygiene: -10, Fun: 8}},

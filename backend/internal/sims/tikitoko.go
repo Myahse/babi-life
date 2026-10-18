@@ -178,7 +178,7 @@ func (h *Handler) tikiPost(w http.ResponseWriter, r *http.Request) {
 		text := fmt.Sprintf("Vidéo postée sur Tikitoko : %s. Elle va faire environ %s vues, +%d fans.", th.Label, compact(views), newFans)
 		events := []Event{{Kind: "social", Text: text, GameTime: s.GameMinutes}}
 		if pay > 0 {
-			events = append(events, Event{Kind: "money", Text: fmt.Sprintf("Partenariat : une marque te paie %d F pour cette vidéo.", pay), Money: pay, GameTime: s.GameMinutes})
+			events = append(events, Event{Kind: "money", Text: fmt.Sprintf("Partenariat : une marque te paie %d Djai pour cette vidéo.", pay), Money: pay, GameTime: s.GameMinutes})
 		}
 		before, after := tikiTier(fans), tikiTier(fans+newFans)
 		if after != before {

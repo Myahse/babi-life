@@ -45,7 +45,7 @@ const GROUPS: { id: string; label: string; colors: [string, string]; topics: Top
     colors: ['#ffd54f', '#ffa000'],
     topics: [
       { id: 'grin', label: 'Proposer le thé au grin', icon: Coffee, hint: '30 min · on refait le monde' },
-      { id: 'maquis', label: 'Inviter au maquis', icon: Beer, hint: 'Adultes · 2 000 à 3 000 F si on dit oui' },
+      { id: 'maquis', label: 'Inviter au maquis', icon: Beer, hint: 'Adultes · 2 000 à 3 000 Djai si on dit oui' },
       { id: 'numero', label: 'Échanger les numéros', icon: Smartphone, hint: 'Peut devenir un·e ami·e' },
     ],
   },

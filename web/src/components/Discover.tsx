@@ -11,12 +11,12 @@ import { StreetStory } from './StreetStory'
 
 /** What things cost in the game, on the maquis board (the game's own prices). */
 const MENU: [string, string][] = [
-  ['Café du pousse-pousse', '150 F'],
-  ['Alloco de la tantie', '300 F'],
-  ['Garba, grosse queue', '1 000 F'],
-  ['Gbaka pour Adjamé', '300 F'],
-  ['Porc au four', '1 500 F'],
-  ['Thé bien mousseux', '100 F'],
+  ['Café du pousse-pousse', '150 Djai'],
+  ['Alloco de la tantie', '300 Djai'],
+  ['Garba, grosse queue', '1 000 Djai'],
+  ['Gbaka pour Adjamé', '300 Djai'],
+  ['Porc au four', '1 500 Djai'],
+  ['Thé bien mousseux', '100 Djai'],
 ]
 
 const STEPS: [string, string][] = [

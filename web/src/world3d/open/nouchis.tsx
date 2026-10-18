@@ -75,7 +75,7 @@ export function StreetNouchis({ nav, seed, onRobbed }: { nav: Nav; seed: string;
 const OUTFITS = ['debardeur', 'survet', 'jersey', 'basket', 'jogging', 'sweat']
 const HATS = ['cap', 'capback', 'bandana', 'chain', 'headphones', 'none']
 
-const COME = ['Grand frère, on dit quoi ?', 'Eh mon vieux, viens on cause…', 'Petit, tu as 100 F sur toi ?', 'Viens un peu, on va parler…']
+const COME = ['Grand frère, on dit quoi ?', 'Eh mon vieux, viens on cause…', 'Petit, tu as 100 Djai sur toi ?', 'Viens un peu, on va parler…']
 const BACK_OFF = ["Hum, ça c'est quelqu'un d'éveillé… Laisse.", "Tchrr, on peut pas l'avoir, celui-là.", 'On a rien dit hein, on cause seulement !']
 const RAN = ['Tchrr… cours seulement !', 'Hé, on voulait causer seulement !']
 

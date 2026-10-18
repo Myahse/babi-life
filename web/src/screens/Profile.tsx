@@ -113,8 +113,8 @@ export function Profile() {
           <Stat icon={House} colors={['#ffa040', '#ff6a00']} label="Habite à" value={home.commune?.name ?? '—'} sub={housing?.label} />
           <Stat icon={MapPin} colors={['#69e2a0', '#00a862']} label="Est à" value={here.commune?.name ?? '—'} sub={here.city?.name} />
           <Stat icon={CalendarDays} colors={['#b39dff', '#6c47ff']} label="Aujourd'hui" value={c.date} sub={`${c.weekday} · ${c.time}`} />
-          <Stat icon={TrendingUp} colors={['#69e2a0', '#00a862']} label="Gagné" value={`${amount(earned)} F`} />
-          <Stat icon={TrendingDown} colors={['#ff8a9b', '#ff3d57']} label="Dépensé" value={`${amount(spent)} F`} />
+          <Stat icon={TrendingUp} colors={['#69e2a0', '#00a862']} label="Gagné" value={`${amount(earned)} Djai`} />
+          <Stat icon={TrendingDown} colors={['#ff8a9b', '#ff3d57']} label="Dépensé" value={`${amount(spent)} Djai`} />
           <Stat icon={Briefcase} colors={['#64b5ff', '#2a6cf0']} label="Métier" value={career ? career.levels[sim.careerLevel].title : 'Au chômage'} sub={career?.label} />
         </section>
 
@@ -122,8 +122,8 @@ export function Profile() {
           <Coin size={44} />
           <div className="flex-1">
             <div className="label">Porte-monnaie</div>
-            <div className="tnum font-display text-3xl leading-none font-extrabold">{amount(sim.money)} F</div>
-            {sim.loan > 0 && <div className="text-xs font-extrabold text-[#d81b3f]">Microcrédit : {amount(sim.loan)} F à rembourser</div>}
+            <div className="tnum font-display text-3xl leading-none font-extrabold">{amount(sim.money)} Djai</div>
+            {sim.loan > 0 && <div className="text-xs font-extrabold text-[#d81b3f]">Microcrédit : {amount(sim.loan)} Djai à rembourser</div>}
           </div>
           <Link to="/jeu" viewTransition className="btn btn-emerald px-5">
             Jouer

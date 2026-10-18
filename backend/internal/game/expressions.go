@@ -61,7 +61,7 @@ var Expressions = []Expression{
 		Example: "Ça va ? — Ya fohi !", Context: "Les sources divergent : « rien à signaler » ou « ce n'est pas gratuit ».",
 		Source: Unverified("Sens contradictoires selon les sources.", SrcNouchiAnnuaire)},
 	{ID: "gnambro", Text: "gnambro", Lang: "nouchi", Meaning: "Homme qui fait payer les passagers et les chauffeurs aux gares.",
-		Example: "Le gnambro réclame 100 F de plus.",
+		Example: "Le gnambro réclame 100 Djai de plus.",
 		Source:  Unverified("Utilisé dans le jeu ; aucune source trouvée.")},
 	{ID: "travaillement", Text: "travaillement", Lang: "nouchi", Meaning: "Faire pleuvoir des billets sur un artiste ou des danseurs pour montrer sa générosité.",
 		Example: "Le grand-frère fait le travaillement sur la piste.", Context: "Lié au coupé-décalé.",

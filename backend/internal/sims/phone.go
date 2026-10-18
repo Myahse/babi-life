@@ -60,7 +60,7 @@ func (s *Sim) send(to string, amount int) (Event, error) {
 	}
 	c := world.Contacts[i]
 	if amount < 100 {
-		return Event{}, errors.New("100 F minimum")
+		return Event{}, errors.New("100 Djai minimum")
 	}
 	fee := world.SendFee(amount)
 	if s.Money < amount+fee {
