@@ -10,6 +10,7 @@ import { TikitokoApp } from '../screens/TikitokoApp'
 import { BetApp } from '../screens/BetApp'
 import { StreetStall } from '../world3d/open/stalls'
 import { Snapper } from '../world3d/snapshot'
+import { RideFlow } from '../components/RideFlow'
 
 // The phone's social apps on their own (?app=gbairai|tikitoko&token=…&sim=…),
 // against a running API (VITE_API_URL), with a street stall in 3D behind for
@@ -19,8 +20,24 @@ const q = new URLSearchParams(location.search)
 const token = q.get('token')
 if (token) useSession.setState({ token })
 
+/** Booking a Gnango (?app=gnango&money=…): the kinds of car, then the driver. Needs only the world. */
+function RideLab() {
+  const [world, setWorld] = useState<World | null>(null)
+  useEffect(() => {
+    void api.world().then(setWorld)
+  }, [])
+  if (!world) return <>Chargement…</>
+  const abj = world.cities.find((c) => c.id === 'abidjan')!
+  const from = abj.communes.find((c) => c.id === 'yopougon')!
+  const to = abj.communes.find((c) => c.id === 'cocody')!
+  return <RideFlow world={world} req={{ cityId: 'abidjan', from, to, kind: 'gnango', fare: Number(q.get('fare') ?? 1500), party: 1, money: q.has('money') ? Number(q.get('money')) : undefined }} gameMinutes={12 * 60} onBoard={(r, l) => alert(`${l} ${JSON.stringify(r)}`)} onClose={() => undefined} />
+}
+
 function Lab() {
+  if (q.get('app') === 'gnango') return <RideLab />
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const [sim, setSim] = useState<Sim | null>(null)
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
     void api.sim(q.get('sim')!).then((r) => setSim('sim' in r ? (r as { sim: Sim }).sim : (r as unknown as Sim)))
   }, [])

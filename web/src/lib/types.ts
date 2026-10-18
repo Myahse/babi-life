@@ -40,9 +40,11 @@ export type Dish = { id: string; label: string; icon: string; price: number; min
 export type Woro = { color?: string; trim?: string; label?: string; none?: boolean; source: Source }
 export type City = { id: string; name: string; blurb: string; lat: number; lng: number; zoom: number; admin?: { type: string; region?: string; source?: Source }; communes: Commune[] }
 /** A ride-hailing app: "fixed" sets the price, "offer" lets you propose it. */
-export type RideApp = { id: string; name: string; model: 'fixed' | 'offer'; cities: string[]; source: Source }
-/** Booking a ride app instead of the shared taxi; offer = the fare proposed. */
-export type Ride = { app?: string; offer?: number; party?: number }
+export type RideApp = { id: string; name: string; model: 'fixed' | 'offer'; cities: string[]; source: Source; classes?: RideClass[] }
+/** A kind of car on an app (Éco, Confort, Confort+): dearer and longer to come as it gets better. */
+export type RideClass = { id: string; name: string; factor: number; wait: number; cars: string; perks: string; effect: Partial<Record<'hunger' | 'energy' | 'hygiene' | 'social' | 'fun', number>> }
+/** Booking a ride app instead of the shared taxi; offer = the fare proposed; class = the kind of car. */
+export type Ride = { app?: string; class?: string; offer?: number; party?: number }
 /** taxi = a town's taxi (or an older trip); yango/indrive = older trips. */
 export type TripMode = 'woro' | 'compteur' | 'taxi' | 'car' | 'gnango' | 'idrive' | 'yango' | 'indrive'
 export type Expression = { id: string; text: string; lang: string; meaning: string; example: string; context?: string; source: Source }
@@ -220,7 +222,7 @@ export type Activity = {
   end: number
   applied: number
   career?: string
-  trip?: { fromCity: string; fromCommune: string; city: string; commune: string; mode: TripMode; fare: number; label: string; incident?: string; path?: [number, number][]; bridges?: string[]; party?: number }
+  trip?: { fromCity: string; fromCommune: string; city: string; commune: string; mode: TripMode; class?: string; fare: number; label: string; incident?: string; path?: [number, number][]; bridges?: string[]; party?: number }
 }
 
 export type JournalEvent = {

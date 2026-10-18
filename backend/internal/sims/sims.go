@@ -579,6 +579,7 @@ func (h *Handler) travel(w http.ResponseWriter, r *http.Request) {
 		// App: "woro", "compteur" or a ride app ("gnango", "idrive"); empty = the
 		// usual street taxi, or the car between cities.
 		App   string `json:"app,omitempty"`
+		Class string `json:"class,omitempty"` // the kind of car, on an app that has them
 		Offer int    `json:"offer,omitempty"`
 		Party int    `json:"party,omitempty"` // the Sim plus friends riding along
 	}
@@ -601,7 +602,7 @@ func (h *Handler) travel(w http.ResponseWriter, r *http.Request) {
 		if app, ok := world.FindRideApp(req.App); ok && !s.hasApp(app.ID) {
 			return game.Outcome{}, nil, fmt.Errorf("installe d'abord %s depuis le Store", app.Name)
 		}
-		if err := s.leaveWith(toCity, toCommune, Ride{App: req.App, Offer: req.Offer, Party: req.Party}, newRand()); err != nil {
+		if err := s.leaveWith(toCity, toCommune, Ride{App: req.App, Class: req.Class, Offer: req.Offer, Party: req.Party}, newRand()); err != nil {
 			return game.Outcome{}, nil, err
 		}
 		t := s.Activity.Trip

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ArrowRight, Bus, Car, CarTaxiFront, Clock3, Hand, HandCoins, Minus, Plus, UserRound } from 'lucide-react'
 import type { Ride, Sim, World } from '../lib/types'
 import { ageOf, amount, duration, rideQuote, trip } from '../game/rules'
-import { compteurQuote, inkOn } from '../game/rides'
+import { classFare, compteurQuote, inkOn } from '../game/rides'
 import { Chip, Coin, IconTile } from './ui'
 
 /** fare: the price shown (per seat at the roadside, the quote for an app). */
@@ -11,7 +11,7 @@ export type OnTravel = (cityId: string, communeId: string, label: string, ride?:
 // How likely a driver takes an offer on a "propose your price" app (mirrors world.OfferChance).
 const offerChance = (offer: number, quote: number) => Math.max(0, Math.min(1, (offer / quote - 0.6) / 0.4))
 
-type Choice = { id: string; name: string; colors: string[]; minutes: number; fare: number; app?: 'fixed' | 'offer' }
+type Choice = { id: string; name: string; colors: string[]; minutes: number; fare: number; app?: 'fixed' | 'offer'; classes?: boolean }
 
 /**
  * "Go there". In Abidjan: wait at the roadside for a woro-woro (your
@@ -39,7 +39,8 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
     else choices.push({ id: 'taxi', name: 'Taxi', colors: ['#ff7a00'], minutes: t.minutes, fare: t.fare })
     for (const a of world.rideApps ?? []) {
       if (!a.cities.includes(cityId) || !sim.apps?.includes(a.id)) continue
-      choices.push({ id: a.id, name: a.name, colors: ['#161a2b'], minutes: quote.minutes, fare: a.model === 'offer' ? offer : quote.fare, app: a.model })
+      // An app with kinds of car: the cheapest here, the choice in the app.
+      choices.push({ id: a.id, name: a.name, colors: ['#161a2b'], minutes: quote.minutes, fare: a.model === 'offer' ? offer : classFare(quote.fare, a.classes?.[0]), app: a.model, classes: !!a.classes?.length })
     }
   }
   const [pick, setPick] = useState(choices[0].id)
@@ -148,11 +149,12 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
       )}
 
       <button className="btn w-full" disabled={small || broke || !!sim.activity || chance <= 0} onClick={go}>
-        {small ? 'Trop petit·e pour y aller seul·e' : broke ? 'Pas assez de francs' : sim.activity ? 'Ton perso est occupé·e' : c.id === 'street' ? 'Aller au bord de la route' : c.app ? (c.app === 'offer' ? 'Proposer' : 'Commander') : 'Y aller'}
+        {small ? 'Trop petit·e pour y aller seul·e' : broke ? 'Pas assez de francs' : sim.activity ? 'Ton perso est occupé·e' : c.id === 'street' ? 'Aller au bord de la route' : c.classes ? `Ouvrir ${c.name}` : c.app ? (c.app === 'offer' ? 'Proposer' : 'Commander') : 'Y aller'}
         {c.id !== 'street' && (
           <>
             {' '}
-            · <Coin size={20} /> {amount(c.fare)}
+            · {c.classes ? 'dès ' : ''}
+            <Coin size={20} /> {amount(c.fare)}
           </>
         )}
       </button>

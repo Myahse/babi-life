@@ -1,5 +1,5 @@
 import { withToll } from './rules'
-import type { Commune, TripMode, World } from '../lib/types'
+import type { Commune, RideClass, TripMode, World } from '../lib/types'
 
 /** How a ride looks: its name, the "En …" line, the car's colours. */
 export type RideLook = { name: string; how: string; color: string; trim?: string; app: boolean }
@@ -13,15 +13,27 @@ const INK = '#161a2b'
  * Yopougon, yellow in Cocody…), the taxi compteur is orange. The apps' cars
  * are drawn dark. Mirrors backend/internal/world/taxis.go.
  */
-export function rideLook(world: World, mode: TripMode | string, from?: Commune): RideLook {
+export function rideLook(world: World, mode: TripMode | string, from?: Commune, cls?: string): RideLook {
   const app = world.rideApps?.find((a) => a.id === ({ yango: 'gnango', indrive: 'idrive' } as Record<string, string>)[mode] || a.id === mode)
-  if (app) return { name: app.name, how: `En ${app.name}`, color: INK, app: true }
+  if (app) {
+    const c = app.classes?.find((x) => x.id === cls)
+    const name = c ? `${app.name} ${c.name}` : app.name
+    return { name, how: `En ${name}`, color: c ? CLASS_COLOR[c.id] ?? INK : INK, app: true }
+  }
   if (mode === 'car') return { name: 'Car', how: 'En car', color: '#00b86b', app: false }
   if (mode === 'compteur') return { name: 'Taxi compteur', how: 'En taxi compteur', color: world.compteur?.color ?? ORANGE, app: false }
   if (mode === 'woro' || (mode === 'taxi' && from?.woro && !from.woro.none)) {
     return { name: 'Woro-woro', how: 'En woro-woro', color: from?.woro?.color ?? WHITE, trim: from?.woro?.trim, app: false }
   }
   return { name: 'Taxi', how: 'En taxi', color: ORANGE, app: false }
+}
+
+/** The colour the app's car shows on the map, by class. */
+const CLASS_COLOR: Record<string, string> = { eco: '#868e96', confort: '#f1f3f5', confortplus: '#161a2b' }
+
+/** Mirrors world.ClassFare: the fare in that class, rounded to 50 Djai. */
+export function classFare(fare: number, c?: RideClass) {
+  return c && c.factor > 0 ? Math.round((fare * c.factor) / 50) * 50 : fare
 }
 
 /** Mirrors world.CompteurQuote: a bit quicker than the woro-woro, about twice the fare. */

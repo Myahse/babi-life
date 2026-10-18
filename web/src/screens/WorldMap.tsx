@@ -290,7 +290,7 @@ function useTrip(world: World, sim: Sim): Route | null {
     if (!a || !base) return null
     const { t, from, to, toCity, path, ends } = base
     const progress = Math.min(1, Math.max(0, ((now - EPOCH) / 60000 - a.start) / Math.max(1, a.end - a.start)))
-    const look = rideLook(world, t.mode, from)
+    const look = rideLook(world, t.mode, from, t.class)
     return { from: ends[0], to: ends[1], path: streets ?? path, progress, mode: t.mode, color: look.color, how: look.how, toId: `${t.city}/${t.commune}`, label: t.city === t.fromCity ? to.name : `${to.name}, ${toCity.name}` }
   }, [a, base, streets, now, world])
 }

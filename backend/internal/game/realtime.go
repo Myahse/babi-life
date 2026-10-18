@@ -52,8 +52,10 @@ type Trip struct {
 	City        string `json:"city"`
 	Commune     string `json:"commune"`
 	Mode        string `json:"mode"` // "woro" | "compteur" | "taxi" | "car" | a ride app ID
-	Fare        int    `json:"fare"`
-	Label       string `json:"label"`
+	// Class: the kind of car ordered on the app ("eco", "confort", "confortplus").
+	Class string `json:"class,omitempty"`
+	Fare  int    `json:"fare"`
+	Label string `json:"label"`
 	// Incident is what slowed the trip down, if anything (see TripIncidents).
 	Incident string `json:"incident,omitempty"`
 	// Path is the way it goes, [lng, lat] points, over these bridges.

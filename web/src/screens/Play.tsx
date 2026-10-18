@@ -328,7 +328,7 @@ export function Play() {
     const fromCity = world.cities.find((x) => x.id === sim!.city)!
     const from = fromCity.communes.find((x) => x.id === sim!.commune)!
     const to = world.cities.find((x) => x.id === cityId)?.communes.find((x) => x.id === communeId)
-    if (ride?.app && to) return setFlow({ cityId, from, to, kind: ride.app, offer: ride.offer, fare, party: ride.party ?? 1 })
+    if (ride?.app && to) return setFlow({ cityId, from, to, kind: ride.app, offer: ride.offer, fare, party: ride.party ?? 1, money: sim!.money })
     run(label, 'bus', 'transport', () => api.travel(sim!.id, cityId, communeId, ride))
   }
   const board = (ride: Ride, label: string) => {

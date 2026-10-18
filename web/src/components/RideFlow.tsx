@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { Car, Hand, MessageCircle, Minus, Plus, UserRound, X } from 'lucide-react'
-import type { Commune, Ride, World } from '../lib/types'
+import { ArrowRight, Car, Clock3, Gem, Hand, MessageCircle, Minus, PiggyBank, Plus, Snowflake, UserRound, X } from 'lucide-react'
+import type { Commune, Ride, RideApp, RideClass, World } from '../lib/types'
 import { amount, clock, tollOf, withToll } from '../game/rules'
 import { routeIn } from '../game/roads'
-import { inkOn, rideLook } from '../game/rides'
+import { classFare, inkOn, rideLook } from '../game/rides'
+import { AppLogo } from './AppLogo'
 import { DriverCall, newCall, type Call } from './DriverCall'
 
 /** A ride being arranged in town: hailing at the roadside, or booking an app. */
-export type FlowRequest = { cityId: string; from: Commune; to: Commune; kind: 'street' | string; offer?: number; fare: number; party: number }
+export type FlowRequest = { cityId: string; from: Commune; to: Commune; kind: 'street' | string; offer?: number; fare: number; party: number; money?: number }
 
 export function RideFlow({ world, req, gameMinutes, onBoard, onClose }: { world: World; req: FlowRequest; gameMinutes: number; onBoard: (ride: Ride, label: string) => void; onClose: () => void }) {
   return (
@@ -275,14 +276,21 @@ function VehicleSide({ kind, color, trim, taken }: { kind: Kind; color: string; 
 
 /* ---------------- Booking an app ---------------- */
 
-type Stage = 'search' | 'refused' | 'call' | 'coming' | 'cancelled' | 'arrived'
+type Stage = 'choose' | 'search' | 'refused' | 'call' | 'coming' | 'cancelled' | 'arrived'
 const SECONDS_PER_MIN = 5 // the driver's minutes go by quickly
-const APP_CARS = [
+const APP_CARS: [string, string][] = [
   ['#f1f3f5', 'blanche'],
   ['#adb5bd', 'grise'],
   ['#212529', 'noire'],
   ['#1c7ed6', 'bleue'],
-] as const
+]
+/** The cars that come in each class: older and smaller in Éco, big and dark in Confort+. */
+const CLASS_CARS: Record<string, { cars: [string, string][]; kind: string; eta: [number, number]; drop: number }> = {
+  eco: { cars: [['#adb5bd', 'grise'], ['#f1f3f5', 'blanche'], ['#c92a2a', 'rouge'], ['#1c7ed6', 'bleue']], kind: 'Petite berline', eta: [2, 4], drop: 0.18 },
+  confort: { cars: [['#f1f3f5', 'blanche'], ['#868e96', 'gris métal'], ['#212529', 'noire']], kind: 'Berline récente', eta: [3, 6], drop: 0.1 },
+  confortplus: { cars: [['#141416', 'noire'], ['#2b2d42', 'gris anthracite'], ['#f8f9fa', 'blanc nacré']], kind: 'SUV haut de gamme', eta: [6, 10], drop: 0.04 },
+}
+const CLASS_ICON: Record<string, typeof Car> = { eco: PiggyBank, confort: Snowflake, confortplus: Gem }
 
 /**
  * Booking Gnango or iDrive: looking for a driver (on iDrive, one has to take
@@ -291,9 +299,12 @@ const APP_CARS = [
  */
 function AppBooking({ world, req, onBoard, onClose }: { world: World; req: FlowRequest; onBoard: (ride: Ride, label: string) => void; onClose: () => void }) {
   const app = world.rideApps!.find((a) => a.id === req.kind)!
-  const [stage, setStage] = useState<Stage>('search')
+  const classes = app.classes ?? []
+  const [cls, setCls] = useState<RideClass | undefined>(classes[0])
+  const [stage, setStage] = useState<Stage>(classes.length ? 'choose' : 'search')
   const [call, setCall] = useState<Call | null>(null)
-  const [car, setCar] = useState<(typeof APP_CARS)[number]>(APP_CARS[0])
+  const [car, setCar] = useState<[string, string]>(APP_CARS[0])
+  const kind = cls ? CLASS_CARS[cls.id] : undefined
   const [left, setLeft] = useState(0)
   const [drop, setDrop] = useState<number | null>(null) // seconds left when the driver gives up
   const [tries, setTries] = useState(0)
@@ -305,12 +316,14 @@ function AppBooking({ world, req, onBoard, onClose }: { world: World; req: FlowR
       () => {
         const p = app.model === 'offer' ? offerChance(req.offer ?? 0, quoteOf(req)) : 0.96
         if (!chance(p)) return setStage('refused')
-        const c = newCall(rideLook(world, app.id), app.id, req.offer ?? req.fare, req.from.name)
+        const c = newCall(rideLook(world, app.id, undefined, cls?.id), app.id, req.offer ?? fareOf(cls), req.from.name)
+        // The better the class, the fewer cars about: they come from further away, but rarely let you down.
+        if (kind) c.eta = kind.eta[0] + Math.floor(Math.random() * (kind.eta[1] - kind.eta[0] + 1))
         setCall(c)
-        setCar(pick([...APP_CARS]))
+        setCar(pick(kind ? kind.cars : APP_CARS))
         setLeft(c.eta * SECONDS_PER_MIN)
         // Some drivers accept and then don't come.
-        setDrop(chance(app.model === 'offer' ? 0.22 : 0.15) ? Math.floor(Math.random() * c.eta * SECONDS_PER_MIN * 0.8) + 2 : null)
+        setDrop(chance(kind ? kind.drop : app.model === 'offer' ? 0.22 : 0.15) ? Math.floor(Math.random() * c.eta * SECONDS_PER_MIN * 0.8) + 2 : null)
         setStage('call')
       },
       1800 + Math.random() * 2500,
@@ -334,7 +347,12 @@ function AppBooking({ world, req, onBoard, onClose }: { world: World; req: FlowR
 
   const retry = () => (setTries((n) => n + 1), setStage('search'))
   const mins = Math.max(1, Math.ceil(left / SECONDS_PER_MIN))
-  const fare = req.offer ?? req.fare
+  const fareOf = (c?: RideClass) => classFare(req.fare, c)
+  const fare = req.offer ?? fareOf(cls)
+  const name = cls ? `${app.name} ${cls.name}` : app.name
+
+  if (stage === 'choose')
+    return <ClassPicker app={app} req={req} classes={classes} cls={cls} setCls={setCls} fareOf={fareOf} onOrder={() => setStage('search')} onClose={onClose} />
 
   return (
     <div className="animate-pop w-full max-w-[380px] rounded-[28px] bg-[var(--color-surface)] p-5 shadow-2xl">
@@ -344,7 +362,7 @@ function AppBooking({ world, req, onBoard, onClose }: { world: World; req: FlowR
         </span>
         <div className="min-w-0 flex-1">
           <div className="label">
-            {app.name} · {req.from.name} → {req.to.name}
+            {name} · {req.from.name} → {req.to.name}
           </div>
           <div className="font-display text-xl leading-tight font-extrabold">
             {stage === 'search' ? 'Recherche d\'un chauffeur…' : stage === 'refused' ? 'Personne n\'a accepté' : stage === 'cancelled' ? `${call?.driver} a annulé` : stage === 'arrived' ? `${call?.driver} est là !` : `${call?.driver} arrive`}
@@ -364,7 +382,7 @@ function AppBooking({ world, req, onBoard, onClose }: { world: World; req: FlowR
         <div className="mt-4 grid gap-2">
           <div className="flex items-center justify-between rounded-2xl bg-[var(--color-canvas)] px-3 py-2 text-sm font-extrabold">
             <span>
-              Voiture {car[1]} · {call.plate}
+              {kind ? kind.kind : 'Voiture'} {car[1]} · {call.plate}
             </span>
             <span className="tabular-nums">dans {mins} min</span>
           </div>
@@ -387,7 +405,7 @@ function AppBooking({ world, req, onBoard, onClose }: { world: World; req: FlowR
             <button className="btn btn-soft" onClick={onClose}>
               Annuler
             </button>
-            <button className="btn btn-emerald text-[15px] whitespace-nowrap" onClick={() => onBoard({ app: app.id, offer: req.offer, party: req.party }, `En ${app.name} vers ${req.to.name}`)}>
+            <button className="btn btn-emerald text-[15px] whitespace-nowrap" onClick={() => onBoard({ app: app.id, class: cls?.id, offer: req.offer, party: req.party }, `En ${name} vers ${req.to.name}`)}>
               Monter · {amount(fare)} Djai
             </button>
           </>
@@ -413,3 +431,74 @@ function AppBooking({ world, req, onBoard, onClose }: { world: World; req: FlowR
 const quoteOf = (req: FlowRequest) => req.fare
 // Mirrors world.OfferChance.
 const offerChance = (offer: number, quote: number) => Math.max(0, Math.min(1, (offer / quote - 0.6) / 0.4))
+
+/**
+ * The app opens on the trip and its kinds of car, as in the real apps: Éco
+ * (the cheapest, a small car that is often a bit tired), Confort (newer, air
+ * conditioning guaranteed), Confort+ (a big saloon or an SUV, the best-rated
+ * drivers, water on the seat). Each shows its price and how soon it can come.
+ */
+function ClassPicker({ app, req, classes, cls, setCls, fareOf, onOrder, onClose }: { app: RideApp; req: FlowRequest; classes: RideClass[]; cls?: RideClass; setCls: (c: RideClass) => void; fareOf: (c?: RideClass) => number; onOrder: () => void; onClose: () => void }) {
+  const chosen = cls ?? classes[0]
+  return (
+    <div className="animate-pop w-full max-w-[380px] overflow-hidden rounded-[28px] bg-[var(--color-surface)] shadow-2xl">
+      {/* The app's header: its logo, the trip */}
+      <div className="flex items-center gap-3 bg-[#141416] px-4 py-3.5 text-white">
+        <AppLogo id={app.id} size={40} />
+        <div className="min-w-0 flex-1">
+          <div className="font-display text-lg leading-tight font-extrabold text-[#ffd166]">{app.name}</div>
+          <div className="flex min-w-0 items-center gap-1 text-xs font-bold text-white/75">
+            <span className="truncate">{req.from.name}</span>
+            <ArrowRight size={12} strokeWidth={3} className="shrink-0" />
+            <span className="truncate">{req.to.name}</span>
+          </div>
+        </div>
+        <button className="icon-btn h-9 w-9 bg-white/10 text-white" onClick={onClose} aria-label="Fermer">
+          <X size={18} />
+        </button>
+      </div>
+      <div className="grid gap-2 p-3" role="radiogroup" aria-label="Catégorie de voiture">
+        {classes.map((c) => {
+          const look = CLASS_CARS[c.id]
+          const Icon = CLASS_ICON[c.id] ?? Car
+          const on = c.id === chosen.id
+          const [col] = look?.cars[0] ?? ['#adb5bd']
+          const short = req.money !== undefined && req.money < fareOf(c)
+          return (
+            <button
+              key={c.id}
+              role="radio"
+              aria-checked={on}
+              disabled={short}
+              onClick={() => setCls(c)}
+              className={`flex items-center gap-3 rounded-2xl border-2 p-2.5 text-left transition disabled:opacity-45 ${on ? 'border-[#ffd166] bg-[#fff8e1]' : 'border-transparent bg-[var(--color-canvas)]'}`}
+            >
+              <span className="relative grid h-12 w-14 shrink-0 place-items-center rounded-xl" style={{ background: col, color: inkOn(col), boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.12)' }}>
+                <Car size={c.id === 'confortplus' ? 30 : c.id === 'confort' ? 26 : 22} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center gap-1.5 font-display text-base leading-tight font-extrabold">
+                  {c.name}
+                  <Icon size={14} className="text-[var(--color-ink-soft)]" />
+                </span>
+                <span className="block truncate text-[11.5px] font-bold text-[var(--color-ink-soft)]">{c.cars}</span>
+                <span className="block truncate text-[11.5px] font-bold text-[var(--color-ink-soft)]">{short ? 'Pas assez de Djai' : c.perks}</span>
+              </span>
+              <span className="shrink-0 text-right">
+                <span className="block font-display text-[15px] font-extrabold tabular-nums">{amount(fareOf(c))}</span>
+                <span className="flex items-center justify-end gap-0.5 text-[11px] font-bold text-[var(--color-ink-soft)]">
+                  <Clock3 size={11} /> {look ? `${look.eta[0]}-${look.eta[1]} min` : ''}
+                </span>
+              </span>
+            </button>
+          )
+        })}
+      </div>
+      <div className="px-3 pb-3">
+        <button className="btn w-full text-[15px]" style={{ background: '#ffd166', color: '#141416' }} onClick={onOrder} disabled={req.money !== undefined && req.money < fareOf(chosen)}>
+          Commander {app.name} {chosen.name} · {amount(fareOf(chosen))} Djai
+        </button>
+      </div>
+    </div>
+  )
+}

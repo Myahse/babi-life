@@ -131,6 +131,27 @@ func TestRideApps(t *testing.T) {
 		t.Errorf("Gnango should be dearer and not slower: %+v, %d min vs taxi %d", tr, s.Activity.End-s.Activity.Start, taxiMin)
 	}
 
+	// The classes: dearer as the car gets better; an unknown class is refused.
+	eco := s.Activity.Trip.Fare
+	if s.Activity.Trip.Class != "eco" {
+		t.Errorf("no class picked should be Éco: %+v", s.Activity.Trip)
+	}
+	var plus int
+	for _, c := range []string{"confort", "confortplus"} {
+		s = newSim()
+		if err := s.leaveWith(abj, cocody, Ride{App: "gnango", Class: c}, rand.New(alwaysSource{})); err != nil {
+			t.Fatal(err)
+		}
+		if tr := s.Activity.Trip; tr.Class != c || tr.Fare <= eco || tr.Fare <= plus || !strings.Contains(tr.Label, "Confort") {
+			t.Errorf("%s should cost more than the class below: %+v (éco %d)", c, tr, eco)
+		}
+		plus = s.Activity.Trip.Fare
+	}
+	s = newSim()
+	if err := s.leaveWith(abj, cocody, Ride{App: "gnango", Class: "limousine"}, rand.New(alwaysSource{})); err == nil {
+		t.Error("an unknown class should be refused")
+	}
+
 	s = newSim()
 	if err := s.leaveWith(abj, cocody, Ride{App: "idrive", Offer: 100}, rand.New(alwaysSource{})); err == nil {
 		t.Error("a 100 F offer should find no driver")

@@ -23,8 +23,11 @@ function line(c: Call) {
       return `Allô, c'est ${c.driver}, ton taxi compteur. Je suis à ${eta} de toi. Cherche le taxi orange, plaque ${c.plate}.`
     case 'idrive':
       return `Allô, c'est ${c.driver} d'iDrive. J'ai accepté ton prix de ${amount(c.fare)} Djai. J'arrive dans ${eta}, plaque ${c.plate}.`
-    default:
-      return `Allô, bonjour ! C'est ${c.driver}, ton chauffeur ${c.look.name}. Je suis en route, j'arrive dans ${eta}. Plaque ${c.plate}.`
+    default: {
+      // In the better classes, the driver mentions what's waiting in the car.
+      const extra = c.look.name.endsWith('Confort+') ? ' La clim est allumée et une bouteille d\'eau vous attend.' : c.look.name.endsWith('Confort') ? ' La clim marche bien, vous allez être à l\'aise.' : ''
+      return `Allô, bonjour ! C'est ${c.driver}, ton chauffeur ${c.look.name}. Je suis en route, j'arrive dans ${eta}. Plaque ${c.plate}.${extra}`
+    }
   }
 }
 

@@ -142,6 +142,7 @@ func (s *Sim) leave(toCity world.City, toCommune world.Commune) error {
 // Offer is the fare proposed on an app where the passenger sets the price.
 type Ride struct {
 	App   string
+	Class string // on an app with classes: the kind of car
 	Offer int
 	// Party: the Sim plus friends riding along (1 when empty). A woro-woro
 	// charges each seat; a taxi compteur or an app car takes the group.
@@ -153,6 +154,7 @@ const MaxParty = 4
 
 var (
 	errNoRideHere   = errors.New("cette appli ne fait pas ce trajet")
+	errNoRideClass  = errors.New("cette catégorie de voiture n'existe pas sur l'appli")
 	errOfferRefused = errors.New("aucun chauffeur n'a accepté ton prix : propose un peu plus")
 	errNoWoro       = errors.New("pas de woro-woro ici : prends un taxi compteur")
 	errTooMany      = errors.New("pas plus de quatre passagers par voiture")
@@ -183,6 +185,7 @@ func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, ride Ride, r
 	mode, label := "taxi", fmt.Sprintf("Trajet %s → %s en taxi", fromCommune.Name, toCommune.Name)
 	street := fromCity.ID == toCity.ID && fromCity.ID == "abidjan"
 	app := ride.App
+	var class world.RideClass
 	if street && app == "" {
 		app = "woro"
 		if !fromCommune.HasWoro() {
@@ -225,6 +228,15 @@ func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, ride Ride, r
 			fare = ride.Offer
 		}
 		mode, label = a.ID, fmt.Sprintf("Trajet %s → %s en %s", fromCommune.Name, toCommune.Name, a.Name)
+		if len(a.Classes) > 0 {
+			c, ok := a.Class(ride.Class)
+			if !ok {
+				return errNoRideClass
+			}
+			fare = world.ClassFare(fare, c)
+			class = c
+			label = fmt.Sprintf("Trajet %s → %s en %s %s", fromCommune.Name, toCommune.Name, a.Name, c.Name)
+		}
 	}
 	if street && world.TollOf(path.Bridges) > 0 {
 		label += " (péage du 3e pont compris)"
@@ -233,7 +245,9 @@ func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, ride Ride, r
 		return game.ErrNotEnoughMoney
 	}
 	s.Money -= fare
-	trip := &game.Trip{FromCity: fromCity.ID, FromCommune: fromCommune.ID, City: toCity.ID, Commune: toCommune.ID, Mode: mode, Fare: fare, Label: label, Path: path.Points, Bridges: path.Bridges}
+	trip := &game.Trip{FromCity: fromCity.ID, FromCommune: fromCommune.ID, City: toCity.ID, Commune: toCommune.ID, Mode: mode, Class: class.ID, Fare: fare, Label: label, Path: path.Points, Bridges: path.Bridges}
+	// The car's comfort shows on arrival: hot and cramped in Éco, rested in Confort+.
+	s.Needs = s.Needs.Add(class.Effect)
 	if party > 1 {
 		trip.Party = party
 	}
