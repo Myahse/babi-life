@@ -11,7 +11,9 @@ import { BOX, Blocks, PLANE } from './ruePrincesse'
 // window, and along the alleys the enclosures people come for: the
 // elephants behind their ditch and low wall, the hippos' pool, the
 // crocodiles on their sand bank, the chimpanzees' cage, the lions on their
-// rocks. Reopened in December 2021 after its renovation. The layout is the
+// rocks; and since, the leopard in its cage, the hyenas pacing their fence,
+// the zebras brought from South Africa, the peacocks loose on the lawns.
+// Reopened in December 2021 after its renovation. The layout is the
 // game's: the real enclosures are not mapped. The animals are drawn at the
 // game's scale (its people stand 2.5 m tall). Frame: +z toward the road.
 
@@ -243,6 +245,182 @@ function Lion({ male, lying, phase = 0 }: { male?: boolean; lying?: boolean; pha
   )
 }
 
+/** A zebra, facing +x: the white body ringed with black stripes; it grazes, lifts its head, flicks its tail. */
+function Zebra({ phase = 0 }: { phase?: number }) {
+  const neck = useRef<THREE.Group>(null)
+  const tail = useRef<THREE.Group>(null)
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime + phase
+    // Head down to graze most of the time, up now and then to look round.
+    const up = Math.sin(t * 0.25) > 0.4
+    if (neck.current) neck.current.rotation.z = THREE.MathUtils.lerp(neck.current.rotation.z, up ? 0.15 : -1.0, 0.04)
+    if (tail.current) tail.current.rotation.x = Math.sin(t * 2.5) * 0.35
+  })
+  const W = '#f4f1ea'
+  const K = '#1c1b1a'
+  return (
+    <group>
+      <B p={[0, 1.55, 0]} s={[2.0, 0.85, 0.75]} c={W} />
+      {[-0.75, -0.4, -0.05, 0.3, 0.65].map((x) => <B key={x} p={[x, 1.55, 0]} s={[0.12, 0.87, 0.77]} c={K} />)}
+      {[-0.75, 0.75].flatMap((x) => [-0.25, 0.25].map((z) => (
+        <group key={`${x}${z}`}>
+          <B p={[x, 0.6, z]} s={[0.2, 1.2, 0.2]} c={W} />
+          <B p={[x, 0.75, z]} s={[0.22, 0.1, 0.22]} c={K} />
+          <B p={[x, 0.45, z]} s={[0.22, 0.1, 0.22]} c={K} />
+          <B p={[x, 0.05, z]} s={[0.24, 0.1, 0.24]} c={K} />
+        </group>
+      )))}
+      <group position={[0.85, 1.75, 0]} ref={neck}>
+        <B p={[0.35, 0.4, 0]} s={[0.4, 1.0, 0.36]} c={W} r={[0, 0, -0.5]} />
+        <B p={[0.3, 0.45, 0]} s={[0.42, 0.1, 0.38]} c={K} r={[0, 0, -0.5]} />
+        <B p={[0.5, 0.2, 0]} s={[0.42, 0.1, 0.38]} c={K} r={[0, 0, -0.5]} />
+        <B p={[0.2, 0.62, 0]} s={[0.5, 0.95, 0.1]} c={K} r={[0, 0, -0.5]} />
+        <B p={[0.85, 0.8, 0]} s={[0.75, 0.36, 0.34]} c={W} />
+        <B p={[1.2, 0.76, 0]} s={[0.2, 0.3, 0.3]} c={K} />
+        <B p={[0.65, 1.05, 0.1]} s={[0.1, 0.25, 0.1]} c={W} />
+        <B p={[0.65, 1.05, -0.1]} s={[0.1, 0.25, 0.1]} c={W} />
+      </group>
+      <group position={[-1.0, 1.85, 0]} ref={tail}>
+        <B p={[-0.05, -0.4, 0]} s={[0.08, 0.8, 0.08]} c={W} />
+        <B p={[-0.05, -0.85, 0]} s={[0.14, 0.2, 0.14]} c={K} />
+      </group>
+    </group>
+  )
+}
+
+/** The leopard, facing +x, stretched along its branch: the tail hangs and swings, the head turns. */
+function Leopard({ phase = 0 }: { phase?: number }) {
+  const head = useRef<THREE.Group>(null)
+  const tail = useRef<THREE.Group>(null)
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime + phase
+    if (head.current) head.current.rotation.y = Math.sin(t * 0.4) * 0.5
+    if (tail.current) tail.current.rotation.x = Math.sin(t * 1.1) * 0.3
+  })
+  const F = '#d9a640'
+  const spots = useMemo(() => {
+    const r = rng('leopard-taches')
+    return [...Array(22)].map(() => [(r() - 0.5) * 1.8, 0.2 + r() * 0.12, (r() < 0.5 ? -1 : 1) * (0.2 + r() * 0.15)] as [number, number, number])
+  }, [])
+  return (
+    <group>
+      <B p={[0, 0, 0]} s={[2.0, 0.55, 0.65]} c={F} />
+      {spots.map((p, i) => <B key={i} p={[p[0], p[1], p[2] > 0 ? 0.33 : -0.33]} s={[0.12, 0.12, 0.02]} c="#3a2a18" />)}
+      {spots.slice(0, 10).map((p, i) => <B key={`t${i}`} p={[p[0], 0.28, p[2] * 0.6]} s={[0.12, 0.02, 0.12]} c="#3a2a18" />)}
+      {/* The legs hang either side of the branch */}
+      {[-0.7, 0.7].flatMap((x) => [-1, 1].map((z) => <B key={`${x}${z}`} p={[x, -0.45, z * 0.3]} s={[0.18, 0.55, 0.18]} c={F} />))}
+      <group position={[1.15, 0.15, 0]} ref={head}>
+        <B p={[0.15, 0, 0]} s={[0.5, 0.45, 0.48]} c={F} />
+        <B p={[0.45, -0.07, 0]} s={[0.18, 0.22, 0.28]} c="#ead2a0" />
+        <B p={[0.41, 0.08, 0.13]} s={[0.04, 0.07, 0.07]} c="#1d1b1a" />
+        <B p={[0.41, 0.08, -0.13]} s={[0.04, 0.07, 0.07]} c="#1d1b1a" />
+        <B p={[0.0, 0.28, 0.18]} s={[0.1, 0.12, 0.1]} c={F} />
+        <B p={[0.0, 0.28, -0.18]} s={[0.1, 0.12, 0.1]} c={F} />
+      </group>
+      <group position={[-1.0, 0, 0]} ref={tail}>
+        <B p={[-0.15, -0.6, 0]} s={[0.1, 1.2, 0.1]} c={F} />
+        <B p={[-0.15, -1.25, 0]} s={[0.12, 0.2, 0.12]} c="#3a2a18" />
+      </group>
+    </group>
+  )
+}
+
+/** A spotted hyena, facing +x, the back sloping down to the rear; it paces up and down its fence. */
+function Hyena({ phase = 0, pace = 0 }: { phase?: number; pace?: number }) {
+  const root = useRef<THREE.Group>(null)
+  const legs = useRef<(THREE.Group | null)[]>([])
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime + phase
+    if (root.current && pace) {
+      // Back and forth along the fence, turning at each end.
+      const u = (t * 0.12) % 2
+      const x = u < 1 ? -pace + u * 2 * pace : pace - (u - 1) * 2 * pace
+      root.current.position.x = x
+      root.current.rotation.y = u < 1 ? 0 : Math.PI
+    }
+    legs.current.forEach((l, i) => {
+      if (l) l.rotation.z = pace ? Math.sin(t * 7 + (i % 2) * Math.PI) * 0.4 : 0
+    })
+  })
+  const F = '#a8916a'
+  return (
+    <group ref={root}>
+      <B p={[0, 1.15, 0]} s={[1.8, 0.75, 0.7]} c={F} r={[0, 0, 0.15]} />
+      {[[-0.4, 1.1, 0.36], [0.1, 1.25, -0.36], [0.4, 1.0, 0.36], [-0.6, 0.95, -0.36], [0.5, 1.35, 0.36]].map((p, i) => <B key={i} p={p as [number, number, number]} s={[0.15, 0.15, 0.02]} c="#4a3a28" />)}
+      <B p={[0.3, 1.6, 0]} s={[1.0, 0.18, 0.12]} c="#4a3a28" r={[0, 0, 0.15]} />
+      {[[0.65, 0.4], [0.65, -0.4], [-0.65, 0.4], [-0.65, -0.4]].map(([x, z], i) => (
+        <group key={i} position={[x, x > 0 ? 1.0 : 0.8, z * 0.6]} ref={(g) => { legs.current[i] = g }}>
+          <B p={[0, x > 0 ? -0.5 : -0.4, 0]} s={[0.2, x > 0 ? 1.0 : 0.8, 0.2]} c={F} />
+        </group>
+      ))}
+      <B p={[1.15, 1.45, 0]} s={[0.55, 0.5, 0.5]} c={F} />
+      <B p={[1.5, 1.35, 0]} s={[0.3, 0.26, 0.32]} c="#3a2e22" />
+      <B p={[1.0, 1.78, 0.18]} s={[0.12, 0.2, 0.16]} c="#4a3a28" />
+      <B p={[1.0, 1.78, -0.18]} s={[0.12, 0.2, 0.16]} c="#4a3a28" />
+      <B p={[1.4, 1.52, 0.18]} s={[0.04, 0.07, 0.07]} c="#1d1b1a" />
+      <B p={[1.4, 1.52, -0.18]} s={[0.04, 0.07, 0.07]} c="#1d1b1a" />
+      <B p={[-1.0, 0.85, 0]} s={[0.1, 0.5, 0.1]} c="#4a3a28" r={[0, 0, -0.3]} />
+    </group>
+  )
+}
+
+/** A peacock, facing +x, loose on the lawn: it walks a slow circle; one of them fans its tail now and then. */
+function Peacock({ phase = 0, radius = 0, fan = false }: { phase?: number; radius?: number; fan?: boolean }) {
+  const root = useRef<THREE.Group>(null)
+  const tailOpen = useRef<THREE.Group>(null)
+  const tailShut = useRef<THREE.Group>(null)
+  const head = useRef<THREE.Group>(null)
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime + phase
+    if (root.current && radius) {
+      const a = t * 0.12
+      root.current.position.set(Math.cos(a) * radius, 0, Math.sin(a) * radius)
+      root.current.rotation.y = -a - Math.PI
+    }
+    if (head.current) head.current.position.y = 1.5 + Math.max(0, Math.sin(t * 3)) * -0.25
+    // The fan opens for a while, then folds back.
+    const open = fan ? THREE.MathUtils.clamp(Math.sin(t * 0.3) * 3, 0, 1) : 0
+    if (tailOpen.current) tailOpen.current.scale.setScalar(Math.max(0.001, open))
+    if (tailShut.current) tailShut.current.visible = open < 0.3
+  })
+  const fanBlocks = useMemo(() => {
+    const out: { p: [number, number, number]; r: number; c: string }[] = []
+    for (let ring = 0; ring < 3; ring++)
+      for (let i = 0; i <= 8; i++) {
+        const a = -Math.PI / 2 + (i / 8) * Math.PI
+        const R = 0.6 + ring * 0.55
+        out.push({ p: [0, Math.cos(a) * R, Math.sin(a) * R], r: a, c: ring === 2 ? '#2e8b57' : ring === 1 ? '#3fa66a' : '#1f6b45' })
+      }
+    return out
+  }, [])
+  return (
+    <group ref={root}>
+      <B p={[0, 0.85, 0]} s={[0.6, 0.45, 0.4]} c="#1f4fa8" />
+      <B p={[-0.1, 0.4, 0.1]} s={[0.06, 0.6, 0.06]} c="#8a7a6a" />
+      <B p={[-0.1, 0.4, -0.1]} s={[0.06, 0.6, 0.06]} c="#8a7a6a" />
+      <B p={[0.28, 1.2, 0]} s={[0.14, 0.6, 0.14]} c="#1f5fc8" />
+      <group ref={head} position={[0.32, 1.5, 0]}>
+        <B p={[0, 0, 0]} s={[0.2, 0.16, 0.14]} c="#1f5fc8" />
+        <B p={[0.14, -0.02, 0]} s={[0.1, 0.05, 0.05]} c="#cbb79a" />
+        <B p={[0, 0.16, 0]} s={[0.03, 0.16, 0.03]} c="#1f5fc8" />
+        <B p={[0, 0.25, 0]} s={[0.08, 0.05, 0.08]} c="#2a7fd8" />
+      </group>
+      <group ref={tailShut}>
+        <B p={[-0.85, 0.72, 0]} s={[1.3, 0.12, 0.35]} c="#2e8b57" r={[0, 0, 0.12]} />
+      </group>
+      <group ref={tailOpen} position={[-0.3, 0.9, 0]}>
+        {fanBlocks.map((b, i) => (
+          <group key={i} position={b.p} rotation={[b.r, 0, 0]}>
+            <B p={[0, 0, 0]} s={[0.04, 0.5, 0.32]} c={b.c} />
+            {i % 2 === 0 && <B p={[0.03, 0.08, 0]} s={[0.02, 0.14, 0.14]} c="#1b2f7a" />}
+            {i % 2 === 0 && <B p={[0.04, 0.08, 0]} s={[0.02, 0.07, 0.07]} c="#d4b052" />}
+          </group>
+        ))}
+      </group>
+    </group>
+  )
+}
+
 /** A low wall round an enclosure, with the railing people lean on. */
 function rail(cx: number, cz: number, w: number, d: number, h = 1.1, gap?: 'n' | 's' | 'e' | 'w'): { walls: Block[]; rails: Block[] } {
   const walls: Block[] = []
@@ -319,6 +497,9 @@ export function Zoo({ night }: { night: boolean }) {
       croc: board(['CROCODILES', 'Défense de grimper'], '#f3ead0', '#2c3a22', 256, 96),
       chimp: board(['CHIMPANZÉS', 'Ne pas donner à manger'], '#f3ead0', '#2c3a22', 256, 96),
       lion: board(['LIONS', 'Danger · reculez'], '#f3ead0', '#8a1c1c', 256, 96),
+      leopard: board(['LÉOPARD', 'Ne pas approcher'], '#f3ead0', '#8a1c1c', 256, 96),
+      hyena: board(['HYÈNES', 'Ne pas passer la main'], '#f3ead0', '#8a1c1c', 256, 96),
+      zebra: board(['ZÈBRES', "Venus d'Afrique du Sud"], '#f3ead0', '#2c3a22', 256, 96),
     }),
     [],
   )
@@ -327,10 +508,12 @@ export function Zoo({ night }: { night: boolean }) {
     const e = rail(-26, -14, 30, 26, 1.2, undefined)
     const h = rail(26, -16, 26, 20, 1.0)
     const c = rail(26, 14, 20, 14, 1.0)
+    const hy = rail(30, -42, 18, 12, 1.0)
+    const zb = rail(37, 31, 24, 12, 1.0)
     return {
-      walls: [...e.walls, ...h.walls, ...c.walls],
-      rails: [...e.rails, ...h.rails, ...c.rails],
-      cages: [...cage(-24, 17, 16, 12, 8, true), ...cage(0, -42, 32, 16, 4.2, false), ...cage(26, 14, 20, 14, 3.0, false)],
+      walls: [...e.walls, ...h.walls, ...c.walls, ...hy.walls, ...zb.walls],
+      rails: [...e.rails, ...h.rails, ...c.rails, ...hy.rails, ...zb.rails],
+      cages: [...cage(-24, 17, 16, 12, 8, true), ...cage(0, -42, 32, 16, 4.2, false), ...cage(26, 14, 20, 14, 3.0, false), ...cage(-30, -42, 14, 10, 6, true), ...cage(30, -42, 18, 12, 3.2, false)],
     }
   }, [])
 
@@ -345,6 +528,10 @@ export function Zoo({ night }: { night: boolean }) {
       (x > 12 && x < 40 && z > -27 && z < 22) ||
       (x > -33 && x < -15 && z > 10 && z < 24) ||
       (x > -17 && x < 17 && z < -33) ||
+      (x > -39 && x < -21 && z > -50 && z < -34) ||
+      (x > 19 && x < 41 && z > -50 && z < -33) ||
+      (x > 23 && x < 51 && z > 21 && z < 39) ||
+      (z > 20 && z < 25 && x > 0 && x < 50) ||
       (z > 36 && Math.abs(x) < 14)
     let n = 0
     while (n < 46) {
@@ -386,6 +573,9 @@ export function Zoo({ night }: { night: boolean }) {
     { p: [-24, 5.8, 15], s: [8.4, 0.35, 0.35] }, { p: [-28, 4.2, 17.5], s: [0.35, 0.35, 5.4] },
     { p: [-26.5, 4.2, 17.5], s: [3, 0.25, 3], c: '#9a7a52' },
     { p: [-22, 3.2, 15], s: [0.06, 5.2, 0.06], c: '#c9b08a' }, { p: [-25, 3.4, 15], s: [0.06, 4.8, 0.06], c: '#c9b08a' },
+    // The leopard's dead tree: a trunk, the long branch it lies on, a sleeping shelf.
+    { p: [-34, 2.2, -43], s: [0.6, 4.4, 0.6] }, { p: [-30.5, 3.3, -43], s: [7, 0.45, 0.5], c: '#6e5640' },
+    { p: [-25, 1.2, -45.5], s: [3, 0.3, 2], c: '#9a7a52' }, { p: [-25, 0.6, -45.5], s: [0.3, 1.2, 0.3] },
   ], [])
 
   const people = useMemo(() => {
@@ -405,6 +595,10 @@ export function Zoo({ night }: { night: boolean }) {
       one([-24, 0, 24.6], Math.PI, 'wave', true), one([-21, 0, 24.6], Math.PI, 'phone'), one([-26.5, 0, 24.6], Math.PI, 'talk'),
       // The lions: everyone keeps a step back.
       one([-6, 0, -32.4], Math.PI, 'phone'), one([-3, 0, -32.6], Math.PI, 'touch', true), one([4, 0, -32.4], Math.PI, 'idle'), one([7, 0, -32.6], Math.PI, 'talk'),
+      // The leopard, the hyenas, the zebras.
+      one([-28, 0, -35.4], Math.PI, 'phone'), one([-31, 0, -35.6], Math.PI, 'touch', true),
+      one([28, 0, -34.6], Math.PI, 'idle'), one([31, 0, -34.6], Math.PI, 'wave', true), one([33, 0, -34.4], Math.PI, 'talk'),
+      one([34, 0, 23.8], 0, 'cheer', true), one([36.5, 0, 23.6], 0, 'phone'), one([40, 0, 23.8], 0, 'touch', true),
       // At the gate: the ticket window, the vendor, the couple taking a selfie.
       one([-8, 0, 44.5], -Math.PI / 2, 'talk'), one([-6.4, 0, 45.5], -Math.PI / 2, 'idle', true), one([10, 0, 46], 0.2, 'busy'), one([3, 0, 48], 0.3, 'phone'), one([4.2, 0, 48.3], -0.3, 'hug'),
       // A family picnicking on the lawn.
@@ -433,7 +627,11 @@ export function Zoo({ night }: { night: boolean }) {
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} scale={[120, 112, 1]} geometry={PLANE} material={lawn} receiveShadow />
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, 4]} scale={[7, 80, 1]} geometry={PLANE} material={laterite} receiveShadow />
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, 3]} scale={[60, 5, 1]} geometry={PLANE} material={laterite} receiveShadow />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, -31]} scale={[36, 4, 1]} geometry={PLANE} material={laterite} receiveShadow />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, -31]} scale={[80, 4, 1]} geometry={PLANE} material={laterite} receiveShadow />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[24, 0.04, 22.5]} scale={[50, 3.5, 1]} geometry={PLANE} material={laterite} receiveShadow />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-30, 0.05, -42]} scale={[13.5, 9.5, 1]} geometry={PLANE} material={dirt} receiveShadow />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[30, 0.05, -42]} scale={[17.5, 11.5, 1]} geometry={PLANE} material={dirt} receiveShadow />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[37, 0.05, 31]} scale={[23.5, 11.5, 1]} geometry={PLANE} material={sand} receiveShadow />
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-24, 0.04, 26]} scale={[40, 4, 1]} geometry={PLANE} material={laterite} receiveShadow />
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, 46]} scale={[30, 8, 1]} geometry={PLANE} material={laterite} receiveShadow />
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-26, 0.05, -14]} scale={[29, 25, 1]} geometry={PLANE} material={dirt} receiveShadow />
@@ -460,7 +658,6 @@ export function Zoo({ night }: { night: boolean }) {
 
       {/* The animals */}
       <group position={[-28, 0, -12]} rotation={[0, 0.4, 0]}><Elephant /></group>
-      <group position={[-20, 0, -18]} rotation={[0, 2.6, 0]} scale={0.7}><Elephant phase={2} /></group>
       <group position={[24, -0.15, -14]} rotation={[0, Math.PI, 0]}><Hippo /></group>
       <group position={[31, -0.3, -20]} rotation={[0, 2.2, 0]} scale={0.9}><Hippo phase={4} /></group>
       <group position={[20, 0.1, 12.5]} rotation={[0, 0.5, 0]}><Croc /></group>
@@ -472,6 +669,20 @@ export function Zoo({ night }: { night: boolean }) {
       <group position={[-4, 2.4, -44]} rotation={[0, Math.PI / 2, 0]} scale={1.3}><Lion male /></group>
       <group position={[6, 0, -40]} rotation={[0, 2.4, 0]} scale={1.3}><Lion lying phase={2} /></group>
       <group position={[-11, 0, -39]} rotation={[0, 1.2, 0]} scale={1.3}><Lion lying phase={5} /></group>
+      <group position={[-30.5, 3.85, -43]} rotation={[0, Math.PI, 0]}><Leopard /></group>
+      <group position={[30, 0, -38.5]}><Hyena pace={6} /></group>
+      <group position={[33, 0, -45]} rotation={[0, 2.6, 0]}><Hyena phase={3} /></group>
+      <group position={[26, 0, -44]} rotation={[0, -0.5, 0]} scale={0.8}><Hyena phase={5} /></group>
+      <group position={[31, 0, 29]} rotation={[0, 0.3, 0]}><Zebra /></group>
+      <group position={[36, 0, 33]} rotation={[0, 2.8, 0]}><Zebra phase={4} /></group>
+      <group position={[42, 0, 29]} rotation={[0, -2.0, 0]}><Zebra phase={8} /></group>
+      <group position={[45, 0, 33.5]} rotation={[0, 0.9, 0]} scale={0.85}><Zebra phase={11} /></group>
+      {/* The peacocks go where they like */}
+      <group position={[-40, 0, 6]}><Peacock radius={4} /></group>
+      <group position={[8, 0, 32]} rotation={[0, -1.2, 0]}><Peacock fan /></group>
+      <group position={[-10, 0, -26]}><Peacock radius={3} phase={20} /></group>
+      <group position={[46, 0, -2]}><Peacock radius={5} phase={40} /></group>
+      <group position={[-8, 0, 8]} rotation={[0, 2.2, 0]}><Peacock fan phase={6} /></group>
 
       {/* The plaques on each enclosure */}
       {([
@@ -480,6 +691,9 @@ export function Zoo({ night }: { night: boolean }) {
         [signs.croc, [16, 1.6, 8], Math.PI / 2],
         [signs.chimp, [-18, 1.8, 24], 0],
         [signs.lion, [10, 1.8, -33.6], 0],
+        [signs.leopard, [-24, 1.8, -36.4], 0],
+        [signs.hyena, [36, 1.8, -35.4], 0],
+        [signs.zebra, [28, 1.8, 24.6], 0],
       ] as const).map(([m, p, ry], i) => (
         <group key={i} position={p} rotation={[0, ry, 0]}>
           <mesh position={[0, 0, 0.06]} scale={[2.6, 1.0, 1]} geometry={PLANE} material={m} />

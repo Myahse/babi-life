@@ -494,8 +494,8 @@ var Kinds = map[string]PlaceKind{
 		},
 	},
 	// The Zoo national d'Abidjan (Cocody, toward Abobo): the walk under the big
-	// trees past the elephants, the hippos' pool, the crocodiles, the
-	// chimpanzees and the lions. Open in the day; the adult ticket is 1 000 F
+	// trees past the elephant, the hippos' pool, the crocodiles, the
+	// chimpanzees, the lions, the leopard, the hyenas, the zebras, the peacocks. Open in the day; the adult ticket is 1 000 F
 	// since the 2021 reopening (500 and 1 500 F for the other rates).
 	"zoo": {
 		ID: "zoo", Label: "Zoo", Icon: "paw-print",
@@ -509,6 +509,8 @@ var Kinds = map[string]PlaceKind{
 			{Text: "Un chimpanzé t'imite derrière la vitre. Les enfants sont morts de rire.", Effect: Needs{Fun: 10, Social: 5}},
 			{Text: "Le lion se réveille et rugit : ton cœur a failli sortir.", Effect: Needs{Fun: 10, Energy: -5}},
 			{Text: "L'hippopotame ouvre la bouche en grand, juste au moment de ta photo.", Effect: Needs{Fun: 10}},
+			{Text: "Un paon fait la roue juste devant toi. Tout le monde sort son téléphone.", Effect: Needs{Fun: 10, Social: 5}},
+			{Text: "La hyène fait les cent pas derrière le grillage sans te quitter des yeux.", Effect: Needs{Fun: 5}},
 		},
 	},
 	"nature": {
