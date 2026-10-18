@@ -7,6 +7,7 @@ import { PalaisDesSports } from './treichville'
 import { MarcheAdjame } from './adjame'
 import { HotelIvoire } from './hotelIvoire'
 import { StadiumLive } from './stadiumLive'
+import { Zoo } from './zoo'
 import type { StadiumEvent } from '../../lib/stadium'
 
 // Landmarks the map alone can't draw: their shape is what people know them
@@ -26,6 +27,7 @@ export const LANDMARKS: Record<string, number> = {
   'yop-ficgayo': 46,
   'treich-palais': 45,
   'adjame-forum': 52,
+  'cocody-zoo': 62,
 }
 
 /** The landmark's model, by place. */
@@ -55,6 +57,8 @@ export function Landmark({ id, night, demo }: { id: string; night: boolean; /** 
       return <PalaisDesSports night={night} />
     case 'adjame-forum':
       return <MarcheAdjame night={night} />
+    case 'cocody-zoo':
+      return <Zoo night={night} />
     default:
       return null
   }

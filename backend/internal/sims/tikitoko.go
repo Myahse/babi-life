@@ -41,6 +41,7 @@ var tikiThemes = []tikiTheme{
 	{"garba", "Dégustation : ce qu'on mange à Babi", 1.0, []string{"maquis", "restaurant", "market"}},
 	{"stade", "L'ambiance au stade", 1.3, []string{game.StadiumKind, "sport"}},
 	{"vlog", "Vlog dans mon quartier", 0.8, nil},
+	{"zoo", "Les animaux du zoo", 1.1, []string{"zoo"}},
 	{"humour", "Sketch humour", 1.1, nil},
 	{"mode", "Mon look du jour", 0.9, []string{"boutique", "couture", "salon", "barbier", "mall"}},
 	{"sport", "Ma séance de sport", 0.9, []string{"gym", "sport", "beach"}},

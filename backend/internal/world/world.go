@@ -130,6 +130,9 @@ const (
 	srcUCAO            = "https://annuaireci.com/entreprises/ucao-uua-universite-catholique-de-lafrique-de-louest-unite-universitaire-a-abidjan-abidjan-cote-divoire/"
 	srcUCAO2           = "https://www.goafricaonline.com/ci/62662-ucao-uua-enseignement-superieur-universite-abidjan-cote-ivoire"
 	srcIUA             = "https://timeshighereducation.com/cn/node/720903"
+	srcZoo             = "https://news.abidjan.net/articles/702208/cote-divoire-le-zoo-national-dabidjan-fait-peau-neuve"
+	srcZoo2            = "https://www.koaci.com/article/2021/12/20/cote-divoire/societe/cote-divoire-reouverture-officielle-du-zoo-grace-au-concours-de-la-premiere-dame-augmentation-du-prix-du-ticket-annoncee_156315.html"
+	srcZoo3            = "https://afrique.le360.ma/cote-divoire/societe/2020/09/09/31815-cote-divoire-le-zoo-dabidjan-ferme-apres-une-serie-de-scandales-31815/"
 )
 
 var (
@@ -239,6 +242,8 @@ var Cities = []City{
 					Source: game.Partial("Village ébrié de Cocody (avec Cocody village, M'badon, M'pouto, Anono, Akouédo), où l'on produit l'attiéké ; position sur la carte à relever.", srcBlockhauss, srcCocodyVillages)},
 				Place{ID: "cocody-ucao", Name: "UCAO-UUA", Kind: "universite", Lat: 5.3470, Lng: -3.9960, Real: true, Approx: true, Operator: "Université catholique de l'Afrique de l'Ouest (privée)",
 					Source: game.Partial("Université catholique de l'Afrique de l'Ouest, unité universitaire d'Abidjan, rue Sainte-Marie à Cocody ; position placée d'après l'adresse, à relever.", srcUCAO, srcUCAO2)},
+				Place{ID: "cocody-zoo", Name: "Zoo national d'Abidjan", Kind: "zoo", Lat: 5.3790, Lng: -4.0100, Real: true, Approx: true, Operator: "Ministère des Eaux et Forêts",
+					Source: game.Partial("Zoo public entre Cocody et Abobo ; fermé le 8 septembre 2020 pour audit, rouvert le 20 décembre 2021 après rénovation, avec des tickets à 500, 1 000 et 1 500 F selon le public. Éléphants, lions, hippopotames, crocodiles et chimpanzés ; les enclos du jeu sont dessinés pour le jeu et la position est à relever.", srcZoo, srcZoo2, srcZoo3)},
 				Place{ID: "cocody-iua", Name: "Institut universitaire d'Abidjan (IUA)", Kind: "universite", Lat: 5.3620, Lng: -3.9820, Real: true, Approx: true, Operator: "Établissement privé",
 					Source: game.Unverified("Université privée fondée en 2004 ; adresse non trouvée : la commune et la position sont à confirmer.", srcIUA)},
 			),

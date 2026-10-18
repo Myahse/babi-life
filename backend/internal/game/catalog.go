@@ -493,6 +493,24 @@ var Kinds = map[string]PlaceKind{
 			{Text: "Une pinasse passe, les passagers te font signe.", Effect: Needs{Fun: 10}},
 		},
 	},
+	// The Zoo national d'Abidjan (Cocody, toward Abobo): the walk under the big
+	// trees past the elephants, the hippos' pool, the crocodiles, the
+	// chimpanzees and the lions. Open in the day; the adult ticket is 1 000 F
+	// since the 2021 reopening (500 and 1 500 F for the other rates).
+	"zoo": {
+		ID: "zoo", Label: "Zoo", Icon: "paw-print",
+		Interactions: []Interaction{
+			{ID: "zoo-visite", Label: "Visiter le zoo", Icon: "paw-print", Minutes: 2 * 60, Cost: 1000, Effect: Needs{Fun: 35, Social: 10, Energy: -15, Hunger: -10}, MinHour: 8, MaxHour: 17},
+			{ID: "zoo-photos", Label: "Faire des selfies devant les lions", Icon: "camera", Minutes: 30, Effect: Needs{Fun: 15, Social: 5}, MinHour: 8, MaxHour: 17},
+			{ID: "zoo-pique-nique", Label: "Pique-niquer sous les arbres", Icon: "sandwich", Minutes: 60, Cost: 500, Effect: Needs{Hunger: 30, Social: 20, Fun: 10}, MinHour: 8, MaxHour: 17},
+		},
+		Events: []RandomEvent{
+			{Text: "L'éléphant s'arrose avec sa trompe : tout le monde recule en riant.", Effect: Needs{Fun: 10}},
+			{Text: "Un chimpanzé t'imite derrière la vitre. Les enfants sont morts de rire.", Effect: Needs{Fun: 10, Social: 5}},
+			{Text: "Le lion se réveille et rugit : ton cœur a failli sortir.", Effect: Needs{Fun: 10, Energy: -5}},
+			{Text: "L'hippopotame ouvre la bouche en grand, juste au moment de ta photo.", Effect: Needs{Fun: 10}},
+		},
+	},
 	"nature": {
 		ID: "nature", Label: "Site naturel", Icon: "mountain",
 		Interactions: []Interaction{

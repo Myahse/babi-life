@@ -182,7 +182,7 @@ export function TikitokoApp({ sim, act }: { sim: Sim; act: Act }) {
   )
 }
 
-const THEME: Record<string, string> = { danse: '💃 Danse', garba: '🍽️ Dégustation', stade: '🏟️ Stade', vlog: '📍 Vlog', humour: '😂 Humour', mode: '👗 Look', sport: '💪 Sport' }
+const THEME: Record<string, string> = { danse: '💃 Danse', garba: '🍽️ Dégustation', stade: '🏟️ Stade', vlog: '📍 Vlog', zoo: '🦁 Zoo', humour: '😂 Humour', mode: '👗 Look', sport: '💪 Sport' }
 
 /** Filming: what it's about, the picture from the game, a caption; half an hour of the Sim's time. */
 function Film({ sim, me, act, onClose, onPosted }: { sim: Sim; me: TikiMe; act: Act; onClose: () => void; onPosted: () => void }) {
