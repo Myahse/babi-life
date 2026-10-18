@@ -661,7 +661,7 @@ function LabCar() {
 function StadiumLab() {
   const kind = q.get('kind') === 'concert' ? 'concert' : 'match'
   const night = q.has('night')
-  const now = Math.floor(worldTime() / 60)
+  const now = worldTime() / 60
   const start = now - Number(q.get('m') ?? 40)
   const e = kind === 'match'
     ? { kind, title: 'Babi Sporting – Yop City FC', detail: '', start, end: start + 120, home: 'Babi Sporting', away: 'Yop City FC', homeGoals: [12, 38], awayGoals: [Number(q.get('m') ?? 40) - 0.5] }
@@ -679,7 +679,7 @@ function StadiumLab() {
         <meshLambertMaterial color="#b98b5c" />
       </mesh>
       <Landmark id="plateau-stade" night={night} />
-      <OrbitControls target={[0, 5, 0]} />
+      <OrbitControls target={(q.get('look') ?? '0,5,0').split(',').map(Number) as [number, number, number]} />
     </Canvas>
   )
 }
