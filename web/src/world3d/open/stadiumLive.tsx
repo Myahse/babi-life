@@ -6,6 +6,7 @@ import { worldTime } from '../../lib/worldClock'
 import { DOORS_OPEN, eventAt, useStadium, type StadiumEvent } from '../../lib/stadium'
 import { whereabouts } from '../whereabouts'
 import { lettering } from './ruePrincesse'
+import { AR1, AR2, CAPTAIN, COACH, FOURTH, KID, BEARER, MEDIC, NF, NUMBERS, REF, SUB, SUB_NUMBERS, announce, clockText, ease, hash, hypeAt, matchFrame, playerName, scorerName, type Target } from './stadiumMatch'
 
 // The stadium when something's on (lib/stadium.ts, backend game/stadium.go):
 // the stands filling from the doors opening, the fans in their club's
@@ -132,13 +133,14 @@ function Live({ e, night }: { e: StadiumEvent; night: boolean }) {
     }
     // The goals as they come; at a concert, the artist calls out now and then.
     if (match) {
-      const k = Math.max(0, now - e.start)
+      // The goals, with the scorer's name; otherwise what the announcer says (the walk-out, the cards, the breaks…).
+      const k = now - e.start
       const hs = (e.homeGoals ?? []).filter((x) => x <= k).length
       const as = (e.awayGoals ?? []).filter((x) => x <= k).length
-      if (lastGoals.current >= 0 && hs + as > lastGoals.current) setShout(`BUUUT ! ${e.home} ${hs} – ${as} ${e.away}`)
+      const goal = [...(e.homeGoals ?? []), ...(e.awayGoals ?? [])].find((x) => k - x >= 0 && k - x < 1.5)
+      const say = goal !== undefined ? `BUUUT ! ${scorerName(e, goal) ?? ''} ! ${e.home} ${hs} – ${as} ${e.away}` : announce(e, k)
+      if (say !== shout) setShout(say)
       if (lastGoals.current !== hs + as) lastGoals.current = hs + as
-      const recent = [...(e.homeGoals ?? []), ...(e.awayGoals ?? [])].some((x) => k - x >= 0 && k - x < 1.5)
-      if (!recent && shout?.startsWith('BUUUT')) setShout(null)
     } else if (now >= e.start) {
       const lines = ['Les mains en l’air !!', 'Babi, vous êtes là ?!', 'Tout le monde chante avec moi !', 'On fait du bruit pour Babi !']
       const k = Math.floor(t / 9)
@@ -155,7 +157,8 @@ function Live({ e, night }: { e: StadiumEvent; night: boolean }) {
     const k = now - e.start
     const homeUp = match && (e.homeGoals ?? []).some((x) => k - x >= 0 && k - x < 1.5)
     const awayUp = match && (e.awayGoals ?? []).some((x) => k - x >= 0 && k - x < 1.5)
-    const base = match ? 0.25 : now >= e.start ? 0.8 : 0.2
+    const hype = match ? hypeAt(now - e.start) : -1
+    const base = hype >= 0 ? hype : match ? 0.25 : now >= e.start ? 0.8 : 0.2
     const ola = (t * 0.6) % (Math.PI * 2)
     const cm = crowd.current
     const hm = heads.current
@@ -335,568 +338,627 @@ function Live({ e, night }: { e: StadiumEvent; night: boolean }) {
 // the play pushes up to the goal and the shot goes in; then the scorers run
 // to the corner flag, arms up, and the others walk back for the kick-off.
 
-const PASS = 2.2 // seconds between passes
-const BUILD = 0.35 // minutes of build-up before a goal
-const SHOT = 0.06 // the shot itself (≈ 4 s)
-const PARTY = 1.2 // minutes of celebrating after it
-const FOUL = 0.3 // minutes a foul stops the play
-const FULL = 105 // the final whistle (game.FullTime); half-time from 45 to 60
-const WALK = 0.5 // minutes to walk on or off the pitch
-const REF = 22
-const COACH = [23, 24] // the home coach, the away coach
-const N = 25 // two teams of eleven, the referee, the two coaches
+// ——— The match: the people on the pitch ———
+//
+// stadiumMatch.ts says where everyone wants to be and what they're doing;
+// here they walk or run there at their own pace (never faster than a
+// sprint, so no one jumps), turn, and move their limbs: hips and knees,
+// shoulders and elbows, the body leaning and rolling.
 
-// team -1 is home, 1 away; each keeps its goal at x = -team·half·52.5 and attacks the other one.
-type Goal = { at: number; team: -1 | 1 }
-type Spot = { x: number; z: number; party: boolean }
-type Foul = { at: number; red: boolean }
-
-const hash = (n: number) => {
-  const x = Math.sin(n * 127.1) * 43758.5453
-  return x - Math.floor(x)
+/** The figure's pose this frame, in radians: forward swings, out to the side, bends; the body's lean, roll and height. */
+type Act = {
+  hipL: number; kneeL: number; hipR: number; kneeR: number
+  shL: number; outL: number; elL: number; shR: number; outR: number; elR: number
+  lean: number; roll: number; lift: number
 }
-const ease = (u: number) => (u <= 0 ? 0 : u >= 1 ? 1 : u * u * (3 - 2 * u))
-
-/** Where everyone is at clock time t (seconds), k minutes into the match. */
-function layout(t: number, k: number, goals: Goal[], out: Spot[]) {
-  // Ends change during the break, so they walk back out to their new side.
-  const half = k >= 52 ? -1 : 1
-  const playing = k >= 0 && k < FULL && !(k >= 45 && k < 60)
-  // The play's centre, wandering; at the kick-off, the centre spot.
-  let fx = Math.sin(t * 0.21) * 34 + Math.sin(t * 0.53) * 9
-  let fz = Math.sin(t * 0.17 + 1) * 20 + Math.cos(t * 0.41) * 6
-  // Before a goal the scorers push up; after it they celebrate.
-  const next = goals.find((g) => g.at >= k && g.at - k < BUILD)
-  const last = [...goals].reverse().find((g) => k >= g.at && k - g.at < PARTY)
-  if (next) {
-    const goalX = next.team * half * 52.5
-    const u = Math.min(1, 1 - (next.at - k) / BUILD)
-    fx += (goalX * 0.62 - fx) * u
-    fz *= 1 - u * 0.7
-  }
-  // After a goal the play drifts from the goalmouth back to the centre spot for the
-  // kick-off, then picks up again: no one jumps from one place to another.
-  const scored = [...goals].reverse().find((g) => k >= g.at && k - g.at < PARTY + WALK)
-  if (scored) {
-    const since = k - scored.at
-    const goalX = scored.team * (scored.at >= 60 ? -1 : 1) * 52.5
-    if (since < PARTY) {
-      const v = ease(since / PARTY)
-      fx = goalX * 0.62 * (1 - v)
-      fz *= 0.3 * (1 - v)
-    } else {
-      const w = ease((since - PARTY) / WALK)
-      fx *= w
-      fz *= w
-    }
-  }
-  // The walk on and off: from the line-up (or the tunnel) into the 4-4-2, and back.
-  const into = k < 0 ? 0 : k < WALK ? ease(k / WALK) : k >= 45 && k < 45 + WALK ? 1 - ease((k - 45) / WALK) : k >= 45 && k < 60 ? (k >= 60 - WALK ? ease((k - 60 + WALK) / WALK) : 0) : 1
-  // How free the play is: none around the kick-offs, fading at the whistles, so the play opens and closes smoothly.
-  const free =
-    k < 45 ? ease((k - WALK) / WALK) : k < 60 ? 1 - ease((k - 45) / WALK) : k < FULL ? ease((k - 60) / WALK) : 1 - ease((k - FULL) / WALK)
-  fx *= free
-  fz *= free
-  for (let i = 0; i < N; i++) {
-    const p = (out[i] ??= { x: 0, z: 0, party: false })
-    p.party = false
-    if (i === REF) {
-      // The referee follows the play from a little way off.
-      p.x = playing ? fx - 8 : 0
-      p.z = playing ? fz + 10 : k >= 45 && k < 60 ? -40 : -31
-      continue
-    }
-    if (i === COACH[0] || i === COACH[1]) {
-      // The coaches pace their box on the touchline.
-      const s = i === COACH[0] ? -1 : 1
-      p.x = s * 11 + Math.sin(t * 0.23 + i) * 3.5
-      p.z = -36.5
-      continue
-    }
-    const side = i < 11 ? -1 : 1
-    const j = i % 11
-    // Off the play: warming up in their half, then the line-up facing the main stand; the tunnel at half-time.
-    let lx = side * (3 + j * 2.2)
-    let lz = k >= 45 && k < 60 ? -40 : -31
-    if (k < -4) {
-      // Warming up, then jogging over to the line-up.
-      const w = ease((k + 4 + WALK) / WALK)
-      lx += (side * (12 + (j % 4) * 9) + Math.sin(t * 0.7 + i) * 3 - lx) * (1 - w)
-      lz += (-18 + Math.floor(j / 4) * 14 + Math.cos(t * 0.7 + i) * 3 - lz) * (1 - w)
-    }
-    // In the play: the 4-4-2, pulled towards the ball.
-    const [ox, oz] = j === 0 ? [-48, 0] : j < 5 ? [-30, -24 + (j - 1) * 16] : j < 9 ? [-8, -24 + (j - 5) * 16] : [12, j === 9 ? -8 : 8]
-    const hx = ox * side * half
-    let px: number
-    let pz: number
-    if (j === 0) {
-      // The keeper on his line, following the ball across.
-      px = hx + (fx - hx) * 0.04
-      pz = Math.max(-5, Math.min(5, fz * 0.25))
-    } else {
-      px = hx + (fx - hx) * 0.35 + Math.sin(t * 1.3 + i) * 1.5 * free
-      pz = oz + (fz - oz) * 0.35 + Math.cos(t * 1.1 + i) * 1.5 * free
-    }
-    p.x = lx + (px - lx) * into
-    p.z = lz + (pz - lz) * into
-    if (last && playing) {
-      const goalX = last.team * half * 52.5
-      // Out to the corner, and back for the kick-off at the end.
-      const u = Math.max(0, Math.min(1, (k - last.at) / 0.25, (PARTY - (k - last.at)) / 0.25))
-      if (side === last.team && j > 0) {
-        // The scorers race to the corner flag and pile in.
-        const cx = goalX * 0.96 + Math.sin(i * 2.1) * 2.5
-        const cz = 31 + Math.cos(i * 1.7) * 2.5
-        p.x += (cx - p.x) * u
-        p.z += (cz - p.z) * u
-        p.party = true
-      } else if (j > 0) {
-        // The others drift back to their half, heads down.
-        p.x += (hx * 0.6 - p.x) * u * 0.6
-      }
-    }
-    // After the final whistle the winners gather in the middle to dance.
-    if (k >= FULL) {
-      const hs = goals.filter((g) => g.team === -1).length
-      const as = goals.length - hs
-      const won = hs === as ? 0 : hs > as ? -1 : 1
-      if (side === won) {
-        const u = ease((k - FULL) / 0.4)
-        p.x += (Math.sin(i * 2.4) * 5 - p.x) * u
-        p.z += (Math.cos(i * 2.4) * 5 - p.z) * u
-        p.party = true
-      }
-    }
-  }
-  return { fx, fz, playing, next, last, half }
-}
-
-/** Who has the ball in pass number s: one of the three players nearest the play (not the keepers; of one side, if given). */
-function holder(s: number, spots: Spot[], fx: number, fz: number, team = 0) {
-  const near = spots
-    .slice(0, 22)
-    .map((p, i) => ({ i, d: Math.hypot(p.x - fx, p.z - fz) }))
-    .filter((p) => p.i % 11 !== 0 && (team === 0 || (p.i < 11 ? -1 : 1) === team))
-    .sort((a, b) => a.d - b.d)
-    .slice(0, 3)
-  return near[Math.floor(hash(s) * near.length)].i
-}
-
-/** How a figure stands this frame: the limbs' swings (radians), the body's tilt, how high it is. */
-type Act = { legL: number; legR: number; armL: number; armR: number; outL: number; outR: number; lean: number; roll: number; lift: number }
 const still = (a: Act) => {
-  a.legL = a.legR = a.armL = a.armR = a.outL = a.outR = a.lean = a.roll = a.lift = 0
+  a.hipL = a.kneeL = a.hipR = a.kneeR = a.shL = a.outL = a.elL = a.shR = a.outR = a.elR = a.lean = a.roll = a.lift = 0
   return a
 }
 
-function Teams({ e }: { e: StadiumEvent }) {
-  const goals = useMemo<Goal[]>(
-    () =>
-      [...(e.homeGoals ?? []).map((at) => ({ at, team: -1 as const })), ...(e.awayGoals ?? []).map((at) => ({ at, team: 1 as const }))].sort((a, b) => a.at - b.at),
-    [e],
-  )
-  // The fouls: one every five minutes or so, never too near a goal or out of play; now and then a red card.
-  const fouls = useMemo<Foul[]>(() => {
-    const out: Foul[] = []
-    for (let f = 0; f < 24; f++) {
-      const at = f * 5 + 1 + hash(f + e.start) * 3.5
-      const live = (at > 1 && at + FOUL < 45) || (at > 61 && at + FOUL < FULL)
-      if (live && !goals.some((g) => Math.abs(g.at - at) < 0.7)) out.push({ at, red: hash(f * 3 + e.start) > 0.93 })
+/** From what someone is doing (and how fast they're going) to their limbs. */
+function pose(a: Act, g: Target, t: number, speed: number, stride: number, i: number) {
+  still(a)
+  // Running or walking: the legs swing with the knees bending on the way back, the arms bent and swinging opposite.
+  const str = Math.min(1, speed / 7)
+  const swing = Math.sin(stride)
+  a.hipL = swing * (0.35 + 0.45 * str)
+  a.hipR = -a.hipL
+  a.kneeL = (0.15 + Math.max(0, Math.sin(stride + 1.6)) * (0.5 + 0.7 * str)) * Math.min(1, speed / 1.2)
+  a.kneeR = (0.15 + Math.max(0, Math.sin(stride + 1.6 + Math.PI)) * (0.5 + 0.7 * str)) * Math.min(1, speed / 1.2)
+  a.shL = -swing * (0.25 + 0.4 * str)
+  a.shR = swing * (0.25 + 0.4 * str)
+  a.elL = a.elR = 0.25 + 0.9 * str
+  a.outL = a.outR = 0.08
+  a.lean = 0.16 * str
+  a.lift = Math.abs(Math.sin(stride)) * 0.07 * str + (speed < 0.3 ? Math.sin(t * 2 + i) * 0.008 : 0)
+  const p = g.p
+  const beat = Math.sin(t * 7 + i)
+  const both = (sh: number, out: number, el: number) => {
+    a.shL = a.shR = sh
+    a.outL = a.outR = out
+    a.elL = a.elR = el
+  }
+  switch (g.pose) {
+    case 'kick': {
+      // The kicking leg back, knee bent, then through the ball and up; the other arm out for balance.
+      const u = Math.max(0, Math.min(1, p))
+      a.hipR = u < 0.4 ? -0.9 * (u / 0.4) : -0.9 + 2.3 * ((u - 0.4) / 0.6)
+      a.kneeR = u < 0.4 ? 1.4 * (u / 0.4) : 1.4 * (1 - (u - 0.4) / 0.6) + 0.1
+      a.hipL = 0.1
+      a.kneeL = 0.25
+      a.shL = 0.4
+      a.outL = 0.9
+      a.lean = -0.12
+      break
     }
-    return out
-  }, [e.start, goals])
+    case 'header': {
+      const u = Math.max(0, Math.min(1, p))
+      a.lift = Math.sin(u * Math.PI) * 0.75
+      a.kneeL = a.kneeR = 0.9 * Math.sin(u * Math.PI)
+      both(0.5, 0.8, 0.6)
+      a.lean = -0.35 + u * 0.7
+      break
+    }
+    case 'throwin':
+      // The ball held behind the head, then thrown: elbows straighten, the body comes through.
+      if (p < 0) both(Math.PI * 0.92, 0.15, 1.7)
+      else both(Math.PI * 0.92 - p * 1.2, 0.15, 1.7 * (1 - p))
+      a.lean = p < 0 ? -0.25 : -0.25 + p * 0.5
+      a.hipL = 0.25
+      a.hipR = -0.2
+      break
+    case 'gkReady':
+      a.hipL = a.hipR = 0.45
+      a.kneeL = a.kneeR = 0.8
+      a.lift = -0.16
+      both(0.7, 0.55, 0.5)
+      a.lean = 0.25
+      break
+    case 'gkDive': {
+      const dir = p >= 0 ? 1 : -1
+      const u = Math.abs(p)
+      a.roll = dir * 1.45 * ease(u * 1.3)
+      a.lift = Math.sin(Math.min(1, u * 1.3) * Math.PI) * 0.9 - 0.8 * ease(u * 1.3)
+      both(Math.PI * 0.9, 0.1, 0.1)
+      a.hipL = 0.3
+      a.kneeR = 0.4
+      break
+    }
+    case 'gkHold':
+      both(1.3, -0.25, 1.3)
+      a.lean = -0.05
+      break
+    case 'gkThrow':
+      a.shR = Math.PI * 0.95 - Math.max(0, p) * 2.0
+      a.elR = 0.3
+      a.shL = 0.9
+      a.outL = 0.4
+      a.lean = -0.2 + p * 0.45
+      a.hipL = 0.4
+      break
+    case 'party':
+      if (p % 4 === 0) {
+        both(Math.PI * 0.95, 0.15, 0)
+        a.lift = Math.max(0, Math.sin(t * 9 + i)) * 0.6
+      } else if (p % 4 === 1) {
+        // Coupé-décalé: shoulders rolling, one arm up then the other, knees going.
+        a.roll = beat * 0.25
+        a.shL = beat > 0 ? Math.PI * 0.85 : 0.6
+        a.shR = beat > 0 ? 0.6 : Math.PI * 0.85
+        a.elL = a.elR = 0.6
+        a.hipL = Math.max(0, beat) * 0.7
+        a.kneeL = Math.max(0, beat) * 1.1
+        a.hipR = Math.max(0, -beat) * 0.7
+        a.kneeR = Math.max(0, -beat) * 1.1
+      } else if (p % 4 === 2) {
+        // The aeroplane, banking.
+        both(0, Math.PI / 2, 0)
+        a.roll = Math.sin(t * 2 + i) * 0.35
+      } else {
+        // Both fingers to the sky.
+        both(Math.PI * 0.97, 0.05, 0.05)
+        a.lean = -0.15
+      }
+      break
+    case 'slide':
+      // On his knees across the grass, arms wide, head back.
+      a.lift = -0.5
+      a.hipL = a.hipR = 0.1
+      a.kneeL = a.kneeR = 1.55
+      both(0.2, 2.2, 0.1)
+      a.lean = -0.4
+      break
+    case 'knees':
+      a.lift = -0.5
+      a.kneeL = a.kneeR = 1.55
+      both(Math.PI * 0.75, -0.55, 1.6)
+      a.lean = 0.15
+      break
+    case 'down': {
+      // On the grass, rolling, holding his leg.
+      const dir = p >= 0 ? 1 : -1
+      a.roll = dir * (1.45 + Math.sin(t * 6) * 0.15)
+      a.lift = -0.82
+      a.hipL = 1.0
+      a.kneeL = 1.6
+      both(1.1, -0.2, 1.0)
+      break
+    }
+    case 'protest':
+      both(0.5, 0.95 + Math.sin(t * 5) * 0.15, 0.4)
+      a.lean = -0.1
+      break
+    case 'heart':
+      a.shR = 0.9
+      a.outR = -0.35
+      a.elR = 1.9
+      a.shL = 0
+      break
+    case 'wave':
+      a.shR = Math.PI * 0.85
+      a.outR = 0.25 + Math.sin(t * 8 + i) * 0.35
+      a.elR = 0.3
+      break
+    case 'shake':
+      a.shR = 1.2
+      a.elR = 0.35 + Math.sin(t * 9 + i) * 0.1
+      a.outR = -0.1
+      break
+    case 'photoBack':
+      both(0.55, -0.45, 2.1)
+      break
+    case 'photoFront':
+      a.lift = -0.62
+      a.hipL = a.hipR = 1.5
+      a.kneeL = a.kneeR = 2.4
+      both(1.0, 0.1, 0.4)
+      a.lean = 0.25
+      break
+    case 'huddle':
+      both(1.6, 1.25, 0.3)
+      a.lean = 0.45
+      a.lift = Math.max(0, Math.sin(t * 6)) * 0.12
+      break
+    case 'toss':
+      a.shR = 1.4 + Math.max(0, Math.sin(t * 8)) * 0.6
+      a.elR = 0.6
+      break
+    case 'drink':
+      a.shR = 2.5
+      a.elR = 2.2
+      a.outR = -0.2
+      a.lean = -0.18
+      break
+    case 'clap':
+      both(1.25, -0.3 + Math.max(0, Math.sin(t * 12 + i)) * 0.3, 0.5)
+      break
+    case 'sit':
+      a.lift = -0.62
+      a.hipL = a.hipR = 1.5
+      a.kneeL = a.kneeR = 0.4
+      both(-0.5, 0.2, 0)
+      a.lean = -0.3
+      break
+    case 'point':
+      a.shR = Math.PI / 2
+      a.elR = 0
+      break
+    case 'card':
+      a.shR = Math.PI * 0.95
+      a.elR = 0.05
+      a.outR = 0.1
+      break
+    case 'whistle':
+      a.shR = 2.3
+      a.elR = 2.3
+      a.outR = -0.3
+      a.shL = Math.PI * 0.6
+      break
+    case 'flag':
+      a.shR = Math.PI * 0.95
+      a.elR = 0
+      break
+    case 'board':
+      both(Math.PI * 0.9, 0.12, 0.2)
+      break
+    case 'shout':
+      a.shR = Math.PI / 2 + Math.sin(t * 2.3) * 0.5
+      a.outR = 0.3
+      a.shL = 0.6
+      a.elL = 1.2
+      break
+    case 'despair':
+      both(Math.PI * 0.78, -0.5, 1.7)
+      a.lean = 0.1
+      break
+    case 'jump':
+      both(Math.PI * 0.95, 0.2, 0)
+      a.lift = Math.max(0, Math.sin(t * 8 + i)) * 0.5
+      break
+    case 'carry':
+      both(2.6, 0.25, 0.35)
+      break
+    case 'camera':
+      both(2.1, -0.35, 2.4)
+      break
+    case 'kid':
+      // Holding the player's hand, up beside him.
+      a.shR = 0.5
+      a.outR = 0.55
+      a.elR = 0.1
+      break
+    case 'tactics':
+      both(1.15, -0.2, 0.9)
+      a.lean = 0.05
+      break
+    case 'hips':
+      both(-0.2, 0.55, 1.2)
+      break
+    case 'stretch':
+      if (p % 3 === 0) {
+        // Holding a foot behind: the quad.
+        a.hipR = -0.25
+        a.kneeR = 2.5
+        a.shR = -0.4
+        a.elR = 0.4
+      } else if (p % 3 === 1) {
+        // Arms up, leaning to the side.
+        both(Math.PI * 0.95, 0.1, 0.1)
+        a.roll = Math.sin(t * 0.8 + i) * 0.35
+      } else {
+        // A lunge.
+        a.hipL = 0.9
+        a.kneeL = 0.9
+        a.hipR = -0.6
+        a.lift = -0.3
+        both(-0.1, 0.4, 0.1)
+      }
+      break
+    case 'kneesUp':
+      a.hipL = Math.max(0, Math.sin(t * 9 + i)) * 1.4
+      a.kneeL = a.hipL * 1.3
+      a.hipR = Math.max(0, -Math.sin(t * 9 + i)) * 1.4
+      a.kneeR = a.hipR * 1.3
+      a.shL = a.hipR * 0.6
+      a.shR = a.hipL * 0.6
+      a.elL = a.elR = 1.2
+      a.lift = 0.08
+      break
+    case 'bench':
+      a.lift = -0.48
+      a.hipL = a.hipR = 1.55
+      a.kneeL = a.kneeR = 1.5
+      both(0.7, 0.15, 0.8)
+      a.hipL += Math.max(0, Math.sin(t * 6 + i)) * 0.06
+      break
+    case 'wall':
+      both(0.35, -0.45, 0.25)
+      break
+    case 'treat':
+      a.lift = -0.5
+      a.kneeL = a.kneeR = 1.55
+      both(1.3, -0.1, 0.4)
+      a.lean = 0.45
+      break
+  }
+}
+
+const SKIN_TONES = ['#3b2414', '#4a2c1a', '#5c3820', '#6e4428', '#7f5233', '#8f6240']
+const BOOTS = ['#141416', '#ff7a00', '#f4f1ea', '#ffd43b', '#3dd5ff', '#e8432f', '#7c3dff']
+
+/** One part of the body: what it hangs from (a joint chain), its size and offset, and its colour per person. */
+type Part = { chain: ('hipL' | 'kneeL' | 'hipR' | 'kneeR' | 'shL' | 'elL' | 'shR' | 'elR')[]; at: [number, number, number]; size: [number, number, number]; color: (i: number) => string; show?: (i: number) => [number, number, number] | null }
+
+function Teams({ e }: { e: StadiumEvent }) {
+  const frame = useMemo(() => matchFrame(e, minuteNow() - e.start), [e])
+  // Who wears what: the kits, the officials in yellow, the coaches in suits, the medics in orange, the kids and the flag bearers.
+  const looks = useMemo(() => {
+    const [h1, h2] = colorsOf(e.home)
+    const [a1, a2] = colorsOf(e.away)
+    return [...Array(NF)].map((_, i) => {
+      const r = (n: number) => hash(i * 13.7 + e.start * 0.01 + n)
+      const skin = SKIN_TONES[Math.floor(r(1) * SKIN_TONES.length)]
+      const hair = Math.floor(r(2) * 5)
+      const blond = r(3) > 0.82
+      const player = i < 22 || i === SUB[0] || i === SUB[1]
+      const team = i < 11 || i === SUB[0] ? -1 : i < 22 || i === SUB[1] ? 1 : 0
+      let shirt = '#ffffff'
+      let shorts = '#141416'
+      let socks = '#141416'
+      let legs = skin // thighs
+      let sleeves = shirt
+      let arms = skin
+      let hands = skin
+      let boots = BOOTS[Math.floor(r(4) * BOOTS.length)]
+      if (player) {
+        const keeper = i % 11 === 0 && i < 22
+        shirt = keeper ? (team === -1 ? '#7c3dff' : '#0ca678') : team === -1 ? h1 : a1
+        shorts = team === -1 ? h2 : a2
+        socks = shirt
+        sleeves = shirt
+        if (keeper) hands = '#e9f5c8'
+        if (keeper) arms = shirt
+      } else if (i === REF || i === AR1 || i === AR2 || i === FOURTH) {
+        shirt = sleeves = '#ffd43b'
+        shorts = socks = '#141416'
+        boots = '#141416'
+      } else if (i === COACH[0] || i === COACH[1]) {
+        shirt = sleeves = arms = i === COACH[0] ? '#2b2d42' : '#3b3f4a'
+        shorts = socks = legs = '#22242e'
+        boots = '#141416'
+      } else if (i === MEDIC[0] || i === MEDIC[1]) {
+        shirt = sleeves = '#ff6b00'
+        shorts = socks = legs = '#f4f1ea'
+      } else if (i >= KID && i < KID + 22) {
+        shirt = sleeves = '#ffffff'
+        shorts = (i - KID) < 11 ? h1 : a1
+        socks = '#ffffff'
+      } else if (i >= BEARER) {
+        shirt = sleeves = arms = '#f4f1ea'
+        shorts = socks = legs = '#2f9a4a'
+      }
+      return { skin, hair, hairColor: blond ? '#e8c46a' : '#141416', shirt, shorts, socks, legs, sleeves, arms, hands, boots, scale: i >= KID && i < KID + 22 ? 0.62 : 1, captain: i % 11 === CAPTAIN && i < 22 }
+    })
+  }, [e])
+
+  const PARTS = useMemo<Part[]>(() => {
+    const L = looks
+    const hairSize = (i: number): [number, number, number] | null =>
+      L[i].hair === 3 ? null : L[i].hair === 1 ? [0.36, 0.3, 0.36] : L[i].hair === 4 ? [0.4, 0.18, 0.4] : [0.39, 0.11, 0.39]
+    return [
+      { chain: [], at: [0, 1.47, 0], size: [0.6, 0.64, 0.34], color: (i) => L[i].shirt },
+      { chain: [], at: [0, 1.03, 0], size: [0.6, 0.3, 0.36], color: (i) => L[i].shorts },
+      { chain: ['hipL'], at: [0, -0.24, 0], size: [0.21, 0.5, 0.23], color: (i) => L[i].legs },
+      { chain: ['hipL', 'kneeL'], at: [0, -0.24, 0], size: [0.19, 0.5, 0.21], color: (i) => L[i].socks },
+      { chain: ['hipL', 'kneeL'], at: [0, -0.53, 0.06], size: [0.22, 0.12, 0.34], color: (i) => L[i].boots },
+      { chain: ['hipR'], at: [0, -0.24, 0], size: [0.21, 0.5, 0.23], color: (i) => L[i].legs },
+      { chain: ['hipR', 'kneeR'], at: [0, -0.24, 0], size: [0.19, 0.5, 0.21], color: (i) => L[i].socks },
+      { chain: ['hipR', 'kneeR'], at: [0, -0.53, 0.06], size: [0.22, 0.12, 0.34], color: (i) => L[i].boots },
+      { chain: ['shL'], at: [0, -0.17, 0], size: [0.18, 0.36, 0.18], color: (i) => L[i].sleeves },
+      { chain: ['shL', 'elL'], at: [0, -0.16, 0], size: [0.15, 0.33, 0.15], color: (i) => L[i].arms },
+      { chain: ['shL', 'elL'], at: [0, -0.38, 0], size: [0.15, 0.14, 0.15], color: (i) => L[i].hands },
+      { chain: ['shR'], at: [0, -0.17, 0], size: [0.18, 0.36, 0.18], color: (i) => L[i].sleeves },
+      { chain: ['shR', 'elR'], at: [0, -0.16, 0], size: [0.15, 0.33, 0.15], color: (i) => L[i].arms },
+      { chain: ['shR', 'elR'], at: [0, -0.38, 0], size: [0.15, 0.14, 0.15], color: (i) => L[i].hands },
+      { chain: [], at: [0, 1.83, 0], size: [0.17, 0.1, 0.17], color: (i) => L[i].skin },
+      { chain: [], at: [0, 2.06, 0], size: [0.36, 0.4, 0.36], color: (i) => L[i].skin },
+      { chain: [], at: [0, 2.28, 0], size: [0.39, 0.11, 0.39], color: (i) => L[i].hairColor, show: hairSize },
+      { chain: [], at: [0, 1.98, -0.17], size: [0.38, 0.42, 0.12], color: (i) => L[i].hairColor, show: (i) => (L[i].hair === 2 ? [0.38, 0.42, 0.12] : null) },
+      { chain: [], at: [-0.08, 2.1, 0.181], size: [0.06, 0.06, 0.02], color: () => '#141416' },
+      { chain: [], at: [0.08, 2.1, 0.181], size: [0.06, 0.06, 0.02], color: () => '#141416' },
+      { chain: ['shL'], at: [0, -0.1, 0], size: [0.2, 0.08, 0.2], color: () => '#ffd43b', show: (i) => (L[i].captain ? [0.2, 0.08, 0.2] : null) },
+    ]
+  }, [looks])
+  // Where each joint sits on the body.
+  const JOINTS: Record<string, [number, number, number]> = { hipL: [-0.15, 0.99, 0], hipR: [0.15, 0.99, 0], kneeL: [0, -0.49, 0], kneeR: [0, -0.49, 0], shL: [-0.39, 1.74, 0], shR: [0.39, 1.74, 0], elL: [0, -0.35, 0], elR: [0, -0.35, 0] }
+
   const parts = useRef<(THREE.InstancedMesh | null)[]>([])
+  const backs = useRef<(THREE.Mesh | null)[]>([])
   const ball = useRef<THREE.Mesh>(null)
-  const card = useRef<THREE.Mesh>(null)
-  const now = useMemo(() => [] as Spot[], [])
-  const before = useMemo(() => [] as Spot[], [])
-  const scratch = useMemo(() => [] as Spot[], [])
-  const facing = useMemo(() => new Float32Array(N), [])
-  const lastBall = useMemo(() => new THREE.Vector3(), [])
-  const act = useMemo<Act>(() => still({} as Act), [])
-  const tmp = useMemo(
+  const warm = useRef<THREE.InstancedMesh>(null)
+  const props = useRef<Record<string, THREE.Object3D | null>>({})
+  const flagGeo = useMemo(() => new THREE.PlaneGeometry(12, 8, 24, 16), [])
+  const state = useMemo(
     () => ({
-      base: new THREE.Matrix4(), tilt: new THREE.Matrix4(), local: new THREE.Matrix4(), out: new THREE.Matrix4(), hand: new THREE.Vector3(),
-      q: new THREE.Quaternion(), r: new THREE.Quaternion(), rz: new THREE.Quaternion(), e: new THREE.Euler(),
-      v: new THREE.Vector3(), s: new THREE.Vector3(), up: new THREE.Vector3(0, 1, 0), x: new THREE.Vector3(1, 0, 0), z: new THREE.Vector3(0, 0, 1), one: new THREE.Vector3(1, 1, 1),
+      x: new Float32Array(NF), z: new Float32Array(NF), face: new Float32Array(NF), stride: new Float32Array(NF), speed: new Float32Array(NF), seen: new Uint8Array(NF),
+      init: false, last: 0, ballPrev: new THREE.Vector3(),
+      handL: [...Array(NF)].map(() => new THREE.Vector3()), handR: [...Array(NF)].map(() => new THREE.Vector3()), torso: [...Array(NF)].map(() => new THREE.Matrix4()),
     }),
     [],
   )
-
-  // The kit: shirts in the club's first colour (the keeper and the referee apart), shorts and socks in the second; the coaches in suits.
-  const kit = useMemo(() => {
-    const [h1, h2] = colorsOf(e.home)
-    const [a1, a2] = colorsOf(e.away)
-    const shirt: string[] = []
-    const shorts: string[] = []
-    for (let i = 0; i < N; i++) {
-      if (i === REF) {
-        shirt.push('#ffd43b')
-        shorts.push('#141416')
-      } else if (i === COACH[0] || i === COACH[1]) {
-        shirt.push(i === COACH[0] ? '#2b2d42' : '#f4f1ea')
-        shorts.push('#2b2d42')
-      } else {
-        const home = i < 11
-        shirt.push(i % 11 === 0 ? (home ? '#7c3dff' : '#0ca678') : home ? h1 : a1)
-        shorts.push(home ? h2 : a2)
-      }
-    }
-    const skin = [...Array(N)].map((_, i) => SKIN[Math.floor(hash(i + e.start) * SKIN.length)])
-    return { shirt, shorts, skin }
-  }, [e])
-
-  // The figure's parts: colours, size, pivot, offset from the pivot, and which limb it is (1/-1 legs, 2/-2 arms).
-  const PARTS = useMemo(
-    () =>
-      [
-        { c: kit.shirt, s: [0.6, 0.72, 0.34], p: [0, 1.5, 0], o: [0, 0, 0], limb: 0 },
-        { c: kit.shorts, s: [0.58, 0.34, 0.34], p: [0, 1.0, 0], o: [0, 0, 0], limb: 0 },
-        { c: kit.shorts, s: [0.22, 0.95, 0.24], p: [-0.15, 1.05, 0], o: [0, -0.5, 0], limb: 1 },
-        { c: kit.shorts, s: [0.22, 0.95, 0.24], p: [0.15, 1.05, 0], o: [0, -0.5, 0], limb: -1 },
-        { c: kit.skin, s: [0.16, 0.7, 0.16], p: [-0.39, 1.82, 0], o: [0, -0.34, 0], limb: 2 },
-        { c: kit.skin, s: [0.16, 0.7, 0.16], p: [0.39, 1.82, 0], o: [0, -0.34, 0], limb: -2 },
-        { c: kit.skin, s: [0.38, 0.4, 0.38], p: [0, 2.08, 0], o: [0, 0, 0], limb: 0 },
-        { c: kit.skin.map(() => '#141416'), s: [0.4, 0.12, 0.4], p: [0, 2.32, 0], o: [0, 0, 0], limb: 0 },
-        { c: kit.skin.map(() => '#141416'), s: [0.24, 0.1, 0.34], p: [-0.15, 1.05, 0], o: [0, -1.0, 0.05], limb: 1 },
-        { c: kit.skin.map(() => '#141416'), s: [0.24, 0.1, 0.34], p: [0.15, 1.05, 0], o: [0, -1.0, 0.05], limb: -1 },
-      ] as const,
-    [kit],
+  const tmp = useMemo(
+    () => ({ base: new THREE.Matrix4(), body: new THREE.Matrix4(), m: new THREE.Matrix4(), j: new THREE.Matrix4(), q: new THREE.Quaternion(), qz: new THREE.Quaternion(), e: new THREE.Euler(), v: new THREE.Vector3(), s: new THREE.Vector3(), one: new THREE.Vector3(1, 1, 1), up: new THREE.Vector3(0, 1, 0), ax: new THREE.Vector3(1, 0, 0), az: new THREE.Vector3(0, 0, 1), zero: new THREE.Vector3(0, 0, 0) }),
+    [],
   )
+  const act = useMemo(() => still({} as Act), [])
 
-  useFrame(() => {
+  useFrame((_, delta) => {
     const t = worldTime()
     const k = t / 60 - e.start
-    const { playing, next, last, half } = layout(t, k, goals, now)
-    layout(t - 0.15, k - 0.0025, goals, before)
-    // Who gets pass s is settled when it's played, from where everyone was then.
-    const holderAt = (s: number) => {
-      const at = layout(s * PASS, (s * PASS) / 60 - e.start, goals, scratch)
-      return holder(s, scratch, at.fx, at.fz)
-    }
-    // The scorer: one of his side's players nearest the play when the shot goes.
-    const shooterOf = (g: Goal) => {
-      const s = Math.floor(((g.at - SHOT + e.start) * 60) / PASS)
-      const at = layout(s * PASS, (s * PASS) / 60 - e.start, goals, scratch)
-      return holder(s, scratch, at.fx, at.fz, g.team)
-    }
-    const keeperFacing = (team: number) => (team === -1 ? 11 : 0) // the keeper of the goal that team attacks
-    const foul = fouls.find((f) => k >= f.at && k < f.at + FOUL)
-
-    // The ball: passed from player to player; shot into the net before a goal and left there; still while a foul is dealt with.
-    let bx = 0
-    let by = 0.25
-    let bz = 0
-    let owner = -1
-    let passer = -1
-    let kick = 0 // 0→1 through the passer's kick
-    let header = -1
-    let jump = 0
-    let shooter = -1
-    let shotU = 0
-    let victim = -1
-    let fouler = -1
-    if (!playing) {
-      bx = 0
-      bz = 0
-    } else if (last && k - last.at < PARTY) {
-      bx = last.team * half * 54
-      bz = 1.5
-    } else if (next && next.at - k < SHOT) {
-      // The shot: the ball flies in past the keeper.
-      const goalX = next.team * half * 52.5
-      shooter = shooterOf(next)
-      shotU = Math.min(1, 1 - (next.at - k) / SHOT)
-      const a = now[shooter]
-      bx = a.x + (goalX + Math.sign(goalX) * 1.2 - a.x) * shotU
-      bz = a.z + (1.2 - a.z) * shotU
-      by = 0.25 + Math.sin(shotU * Math.PI) * 2.2
-    } else if (foul) {
-      const fs = Math.floor(((foul.at + e.start) * 60) / PASS)
-      victim = holderAt(fs)
-      // The one who brought him down: the nearest player of the other side.
-      let best = Infinity
-      for (let i = 0; i < 22; i++) {
-        if (i % 11 === 0 || i < 11 === victim < 11) continue
-        const d = Math.hypot(now[i].x - now[victim].x, now[i].z - now[victim].z)
-        if (d < best) [best, fouler] = [d, i]
+    const f = matchFrame(e, k, frame)
+    const dt = Math.min(0.1, delta)
+    const st = state
+    // Walk everyone towards where they want to be.
+    for (let i = 0; i < NF; i++) {
+      const g = f.figs[i]
+      if (g.hidden) {
+        st.seen[i] = 0
+        continue
       }
-      bx = now[victim].x + 1
-      bz = now[victim].z + 0.6
-    } else {
-      const s = Math.floor(t / PASS)
-      const u = (t - s * PASS) / 0.7
-      owner = holderAt(s)
-      const o = now[owner]
-      // Where the ball sits at his feet, a step ahead of him.
-      const ahead = (p: Spot, f: number) => [p.x + Math.sin(f) * 0.7, p.z + Math.cos(f) * 0.7]
-      const [tx, tz] = ahead(o, facing[owner])
-      if (u < 1) {
-        passer = holderAt(s - 1)
-        kick = Math.min(1, u / 0.35)
-        const [sx, sz] = ahead(now[passer], facing[passer])
-        const lofted = hash(s) > 0.7
-        bx = sx + (tx - sx) * u
-        bz = sz + (tz - sz) * u
-        by = 0.25 + Math.sin(u * Math.PI) * (lofted ? 3 : 0.4)
-        if (lofted && u > 0.6) {
-          // A long ball: the receiver goes up to head it down.
-          header = owner
-          jump = Math.sin(((u - 0.6) / 0.4) * Math.PI)
-          by = Math.max(by, 2.0 * jump)
-        }
-      } else {
-        bx = tx
-        bz = tz
+      if (!st.init || !st.seen[i]) {
+        // Joining mid-match everyone is in place; someone appearing comes out of the tunnel.
+        const fromTunnel = st.init
+        st.x[i] = fromTunnel ? 0 : g.x
+        st.z[i] = fromTunnel ? -41.5 : g.z
+        st.face[i] = g.face ?? 0
+        st.seen[i] = 1
+      }
+      const dx = g.x - st.x[i]
+      const dz = g.z - st.z[i]
+      const d = Math.hypot(dx, dz)
+      const step = Math.min(d, g.run * dt)
+      if (d > 1e-4) {
+        st.x[i] += (dx / d) * step
+        st.z[i] += (dz / d) * step
+      }
+      st.speed[i] += (step / Math.max(dt, 1e-3) - st.speed[i]) * Math.min(1, dt * 8)
+      st.stride[i] += st.speed[i] * dt * 1.9
+      const want = st.speed[i] > 0.8 && d > 0.3 ? Math.atan2(dx, dz) : g.face
+      if (want !== null) {
+        let df = want - st.face[i]
+        df = Math.atan2(Math.sin(df), Math.cos(df))
+        st.face[i] += df * Math.min(1, dt * 7)
       }
     }
-    if (ball.current) {
-      // The ball spins as it rolls.
-      const dx = bx - lastBall.x
-      const dz = bz - lastBall.z
-      if (Math.abs(dx) + Math.abs(dz) < 10) {
-        ball.current.rotation.x += dz / 0.35
-        ball.current.rotation.z -= dx / 0.35
-      }
-      lastBall.set(bx, by, bz)
-      ball.current.position.set(bx, by + 0.7, bz)
-    }
+    st.init = true
 
-    const { base, tilt, local, out, hand, q, r, rz, v, s: sc, up, x: ax, z: az, one } = tmp
-    const hs = goals.filter((g) => g.team === -1 && g.at <= k).length
-    const as = goals.filter((g) => g.team === 1 && g.at <= k).length
-    let cardAt: THREE.Vector3 | null = null
-    const scorer = last && playing && k - last.at < 0.12 ? shooterOf(last) : -1
-    for (let i = 0; i < N; i++) {
-      const p = now[i]
-      const b = before[i]
-      const side = i < 11 ? -1 : i < 22 ? 1 : i === COACH[0] ? -1 : i === COACH[1] ? 1 : 0
-      const speed = Math.hypot(p.x - b.x, p.z - b.z) / 0.15
-      // Face where they're going when running; otherwise the ball, the main stand before the match, the pitch for the coaches.
-      const want = speed > 0.8 ? Math.atan2(p.x - b.x, p.z - b.z) : !playing || side === 0 || i >= 23 ? 0 : Math.atan2(bx - p.x, bz - p.z)
-      let d = want - facing[i]
-      d = Math.atan2(Math.sin(d), Math.cos(d))
-      facing[i] += d * 0.15
-      const stride = Math.min(1, speed / 6)
-      const phase = t * (6 + speed * 1.2) + i
-      const leg = Math.sin(phase) * 0.9 * stride
-      const a = still(act)
-      a.legL = leg
-      a.legR = -leg
-      a.armL = -leg * 0.8
-      a.armR = leg * 0.8
-      a.lean = 0.14 * stride
-      a.lift = Math.abs(Math.sin(phase)) * 0.08 * stride
-      const style = Math.floor(hash(i * 7 + e.start) * 3)
-      const beat = Math.sin(t * 7 + i)
-
-      if (k < 0 && i < 22) {
-        if (k >= -4) {
-          if (k >= -2.5 && k < -1) {
-            // The anthem: a hand on the heart.
-            a.armR = 1.3
-            a.outR = -0.6
-          } else if (hash(i) > 0.45) {
-            // Waving up at the stands.
-            a.armR = Math.PI * 0.85
-            a.outR = 0.3 + Math.sin(t * 8 + i) * 0.35
-          }
-        } else if (speed < 0.8) {
-          // The warm-up: knees up on the spot.
-          a.legL = Math.max(0, Math.sin(t * 9 + i)) * 1.3
-          a.legR = Math.max(0, -Math.sin(t * 9 + i)) * 1.3
-          a.lift = 0.1
-        }
-      }
-      if (i === passer && kick < 1) {
-        // The pass: the kicking leg back, then through the ball; the other arm out for balance.
-        a.legR = -0.9 + 2.0 * Math.sin(kick * Math.PI * 0.5)
-        a.legL = 0.15
-        a.armL = 0.5
-        a.outL = 0.7
-        a.lean = -0.08
-      }
-      if (i === header) {
-        a.lift = jump * 0.9
-        a.legL = a.legR = -0.5 * jump
-        a.outL = a.outR = 1.1 * jump
-        a.lean = -0.2 * jump
-      }
-      if (i === shooter && shotU < 0.3) {
-        // The shot: the full swing of the leg.
-        const u = shotU / 0.3
-        a.legR = -1.3 + 2.8 * Math.sin(u * Math.PI * 0.5)
-        a.legL = 0.2
-        a.outL = a.outR = 0.9
-        a.lean = -0.25
-      }
-      if (next && i === keeperFacing(next.team) && shooter >= 0 && shotU > 0.35) {
-        // The keeper flies across his goal… too late.
-        const u = Math.min(1, (shotU - 0.35) / 0.5)
-        a.roll = (hash(next.at) > 0.5 ? 1 : -1) * 1.45 * ease(u)
-        a.lift = Math.sin(u * Math.PI) * 1.0 - 0.8 * ease(u)
-        a.armL = a.armR = Math.PI * 0.9
-        a.legL = a.legR = 0
-      }
-      if (last && playing && k - last.at < PARTY) {
-        const since = k - last.at
-        if (i === keeperFacing(last.team)) {
-          if (since < 0.25) {
-            // Beaten: flat on the grass…
-            a.roll = (hash(last.at) > 0.5 ? 1 : -1) * 1.45
-            a.lift = -0.8
-            a.armL = a.armR = Math.PI * 0.9
-            a.legL = a.legR = 0
-          } else {
-            // …then on his knees, hands on his head.
-            a.lift = -0.5
-            a.legL = a.legR = -1.5
-            a.armL = a.armR = Math.PI * 0.8
-            a.outL = a.outR = -0.5
-            a.lean = 0.1
-          }
-        } else if (i === scorer) {
-          // The scorer slides on his knees towards the corner, arms wide.
-          a.lift = -0.5
-          a.legL = a.legR = -1.5
-          a.outL = a.outR = 2.3
-          a.armL = a.armR = 0
-          a.lean = -0.35
-        } else if (p.party) {
-          if (style === 0) {
-            a.armL = a.armR = Math.PI * 0.95
-            a.lift = Math.max(0, Math.sin(t * 9 + i)) * 0.6
-          } else if (style === 1) {
-            // Coupé-décalé: shoulders rolling, one arm up then the other.
-            a.roll = beat * 0.25
-            a.armL = beat > 0 ? Math.PI * 0.9 : 0.4
-            a.armR = beat > 0 ? 0.4 : Math.PI * 0.9
-            a.legL = Math.max(0, beat) * 0.6
-            a.legR = Math.max(0, -beat) * 0.6
-          } else {
-            // The aeroplane, banking.
-            a.outL = a.outR = Math.PI / 2
-            a.armL = a.armR = 0
-            a.roll = Math.sin(t * 2 + i) * 0.35
-          }
-        } else if (side === -last.team && i % 11 !== 0) {
-          // The other side: heads down, hands on hips.
-          a.lean = 0.3
-          a.outL = a.outR = 0.5
-          a.armL = a.armR = -0.3
-        }
-      }
-      if (k >= FULL && i < 22) {
-        const won = hs === as ? 0 : hs > as ? -1 : 1
-        if (p.party) {
-          // The final whistle: the winners dance in the middle.
-          a.roll = beat * 0.25
-          a.armL = beat > 0 ? Math.PI * 0.9 : 0.4
-          a.armR = beat > 0 ? 0.4 : Math.PI * 0.9
-          a.lift = Math.max(0, Math.sin(t * 9 + i)) * 0.4
-        } else if (won !== 0 && side === -won) {
-          // The losers sit down on the grass.
-          a.lift = -0.62
-          a.legL = a.legR = 1.45
-          a.armL = a.armR = -0.5
-          a.lean = -0.25
-        } else if (won === 0) {
-          // A draw: everyone claps the crowd.
-          a.armL = a.armR = 1.3
-          a.outL = a.outR = -0.35 + Math.max(0, Math.sin(t * 12 + i)) * 0.3
-        }
-      }
-      if (foul && i === victim) {
-        // Down, rolling and holding his leg; then up again.
-        const u = (k - foul.at) / FOUL
-        const down = u < 0.6 ? 1 : 1 - ease((u - 0.6) / 0.3)
-        a.roll = (1.45 + Math.sin(t * 6) * 0.15) * down
-        a.lift = -0.8 * down
-        a.legL = 1.2 * down
-        a.armL = a.armR = 1.2 * down
-      }
-      if (foul && i === fouler) {
-        // « Il a plongé ! »: arms out, palms up.
-        a.outL = a.outR = 0.9 + Math.sin(t * 5) * 0.15
-        a.armL = a.armR = 0.5
-        a.lean = -0.1
-      }
-      if (i === REF) {
-        if (foul) {
-          const u = (k - foul.at) / FOUL
-          const spot = now[victim]
-          if (spot) {
-            // He runs over, then holds up the card.
-            const w = ease(u * 3)
-            p.x += (spot.x + 2 - p.x) * w
-            p.z += (spot.z + 2 - p.z) * w
-          }
-          if (u > 0.3 && u < 0.85) {
-            a.armR = Math.PI
-            a.outR = 0.1
-          }
-        } else if (last && playing && k - last.at < 0.5) {
-          // The goal stands: he points to the centre spot.
-          a.armR = Math.PI / 2
-        } else if ((k >= 0 && k < 0.05) || (k >= 60 && k < 60.05) || (k >= 45 && k < 45.05) || (k >= FULL && k < FULL + 0.08)) {
-          // The whistle: an arm up.
-          a.armR = Math.PI
-        }
-      }
-      if (i === COACH[0] || i === COACH[1]) {
-        const recent = last && playing && k - last.at < PARTY
-        if (recent && side === last.team) {
-          a.armL = a.armR = Math.PI * 0.95
-          a.lift = Math.max(0, Math.sin(t * 8)) * 0.5
-        } else if (recent) {
-          a.armL = a.armR = Math.PI * 0.8
-          a.outL = a.outR = -0.5
-        } else if (hash(Math.floor(t / 4) + i) > 0.5) {
-          // Shouting at his players, pointing the way.
-          a.armR = Math.PI / 2 + Math.sin(t * 2.3) * 0.5
-          a.outR = 0.3
-        }
-      }
-
-      // The body: where he stands, which way, then the tilt about the hips.
-      base.compose(v.set(p.x, 0.7 + a.lift, p.z), q.setFromAxisAngle(up, facing[i]), one)
-      tmp.e.set(a.lean, 0, a.roll)
-      tilt.compose(v.set(0, 1, 0), r.setFromEuler(tmp.e), one)
-      base.multiply(tilt)
-      local.makeTranslation(0, -1, 0)
-      base.multiply(local)
+    // The bodies.
+    const { base, body, m, j, q, qz, v, s: sc, one, up, ax, az, zero } = tmp
+    for (let i = 0; i < NF; i++) {
+      const g = f.figs[i]
+      const hidden = g.hidden
+      const L = looks[i]
+      pose(act, g, t, hidden ? 0 : st.speed[i], st.stride[i], i)
+      base.compose(v.set(st.x[i], 0.7 + act.lift * L.scale, st.z[i]), q.setFromAxisAngle(up, st.face[i]), sc.setScalar(hidden ? 0.0001 : L.scale))
+      tmp.e.set(act.lean, 0, act.roll)
+      body.compose(v.set(0, 1.0, 0), q.setFromEuler(tmp.e), one)
+      base.multiply(body)
+      body.makeTranslation(0, -1.0, 0)
+      base.multiply(body)
       PARTS.forEach((part, n) => {
         const mesh = parts.current[n]
         if (!mesh) return
-        let swing = 0
-        let outw = 0
-        if (part.limb === 1) swing = a.legL
-        if (part.limb === -1) swing = a.legR
-        if (part.limb === 2) [swing, outw] = [a.armL, -a.outL]
-        if (part.limb === -2) [swing, outw] = [a.armR, a.outR]
-        // The pivot, the swing (out to the side, then forward), then the part hanging from it.
-        rz.setFromAxisAngle(az, outw)
-        r.setFromAxisAngle(ax, -swing)
-        local.compose(v.set(part.p[0], part.p[1], part.p[2]), rz.multiply(r), one)
-        out.multiplyMatrices(base, local)
-        if (i === REF && part.limb === -2 && foul) {
-          hand.set(0, -0.75, 0).applyMatrix4(out)
-          cardAt = hand
+        m.copy(base)
+        for (const jn of part.chain) {
+          const p = JOINTS[jn]
+          let fwd = 0
+          let out = 0
+          if (jn === 'hipL') fwd = act.hipL
+          else if (jn === 'hipR') fwd = act.hipR
+          else if (jn === 'kneeL') fwd = -act.kneeL
+          else if (jn === 'kneeR') fwd = -act.kneeR
+          else if (jn === 'shL') [fwd, out] = [act.shL, -act.outL]
+          else if (jn === 'shR') [fwd, out] = [act.shR, act.outR]
+          else if (jn === 'elL') fwd = act.elL
+          else if (jn === 'elR') fwd = act.elR
+          qz.setFromAxisAngle(az, out)
+          q.setFromAxisAngle(ax, -fwd)
+          j.compose(v.set(p[0], p[1], p[2]), qz.multiply(q), one)
+          m.multiply(j)
         }
-        local.compose(v.set(part.o[0], part.o[1], part.o[2]), r.identity(), sc.set(part.s[0], part.s[1], part.s[2]))
-        out.multiply(local)
-        mesh.setMatrixAt(i, out)
+        if (n === 13) st.handR[i].copy(zero).applyMatrix4(j.compose(v.set(0, -0.4, 0), q.identity(), one).premultiply(m))
+        if (n === 10) st.handL[i].copy(zero).applyMatrix4(j.compose(v.set(0, -0.4, 0), q.identity(), one).premultiply(m))
+        if (n === 0) st.torso[i].copy(m)
+        const size = part.show ? part.show(i) : part.size
+        j.compose(v.set(part.at[0], part.at[1], part.at[2]), q.identity(), size ? sc.set(size[0], size[1], size[2]) : sc.setScalar(0.0001))
+        m.multiply(j)
+        mesh.setMatrixAt(i, m)
       })
+      const back = backs.current[i]
+      if (back) {
+        back.visible = !hidden
+        back.matrix.copy(st.torso[i]).multiply(j.compose(v.set(0, 1.47, -0.176), q.setFromAxisAngle(up, Math.PI), sc.set(0.46, 0.5, 1)))
+      }
     }
     for (const mesh of parts.current) if (mesh) mesh.instanceMatrix.needsUpdate = true
-    // The card in the referee's hand: yellow, or red.
-    if (card.current) {
-      const shown = !!foul && (k - foul.at) / FOUL > 0.3 && (k - foul.at) / FOUL < 0.85 && cardAt
-      card.current.visible = !!shown
-      if (shown && cardAt) {
-        card.current.position.copy(cardAt)
-        ;(card.current.material as THREE.MeshBasicMaterial).color.set(foul.red ? '#e03131' : '#ffd43b')
+
+    // The ball, spinning as it rolls; in a hand when it's held.
+    const b = ball.current
+    if (b) {
+      b.visible = !f.ball.hidden
+      const held = f.figs[REF] && f.ball.y > 1.3 && f.ball.y < 3.2
+      const [x, y, z] = [f.ball.x, f.ball.y + 0.7, f.ball.z]
+      const dx = x - st.ballPrev.x
+      const dz = z - st.ballPrev.z
+      if (Math.abs(dx) + Math.abs(dz) < 8 && !held) {
+        b.rotation.x += dz / 0.35
+        b.rotation.z -= dx / 0.35
       }
+      st.ballPrev.set(x, y, z)
+      b.position.set(x, y, z)
+    }
+    // The warm-up balls.
+    const w = warm.current
+    if (w) {
+      for (let n = 0; n < 12; n++) {
+        const p = f.warm[n]
+        m.compose(v.set(p?.x ?? 0, (p?.y ?? 0) + 0.7, p?.z ?? 0), q.identity(), sc.setScalar(p ? 1 : 0.0001))
+        w.setMatrixAt(n, m)
+      }
+      w.instanceMatrix.needsUpdate = true
+    }
+
+    // What people hold: the referee's card, the fourth official's board, the assistants' flags, bottles, the coaches' boards, cameras, the coin.
+    const P = props.current
+    const showAt = (o: THREE.Object3D | null, on: boolean, at?: THREE.Vector3, face = 0) => {
+      if (!o) return
+      o.visible = on
+      if (on && at) {
+        o.position.copy(at)
+        o.rotation.set(0, face, 0)
+      }
+    }
+    showAt(P.card, !!f.card, st.handR[REF], st.face[REF])
+    if (P.card && f.card) ((P.card as THREE.Mesh).material as THREE.MeshBasicMaterial).color.set(f.card === 'red' ? '#e03131' : '#ffd43b')
+    const mid = v.copy(st.handL[FOURTH]).add(st.handR[FOURTH]).multiplyScalar(0.5)
+    showAt(P.board, !!f.board && !f.figs[FOURTH].hidden, mid.clone().add(new THREE.Vector3(0, 0.35, 0)), st.face[FOURTH])
+    if (f.board && P.board) boardText(P.board as THREE.Group, f.board)
+    showAt(P.flag1, !f.figs[AR1].hidden, st.handR[AR1], st.face[AR1])
+    showAt(P.flag2, !f.figs[AR2].hidden, st.handR[AR2], st.face[AR2])
+    showAt(P.coin, !!f.coin, f.coin ? new THREE.Vector3(f.coin.x, f.coin.y + 0.7, f.coin.z) : undefined)
+    if (P.coin) P.coin.rotation.x = t * 20
+    // Bottles in the drinkers' hands, boards in the coaches', cameras in the photographers' (with a flash now and then).
+    const bottles = P.bottles as THREE.InstancedMesh | null
+    const cams = P.cams as THREE.InstancedMesh | null
+    const flashes = P.flashes as THREE.InstancedMesh | null
+    let nb = 0
+    let nc = 0
+    for (let i = 0; i < NF; i++) {
+      const g = f.figs[i]
+      if (g.hidden) continue
+      if (g.pose === 'drink' && bottles && nb < 40) {
+        m.compose(st.handR[i], q.setFromAxisAngle(up, st.face[i]), one)
+        bottles.setMatrixAt(nb++, m)
+      }
+      if ((g.pose === 'camera' || g.pose === 'tactics') && cams && nc < 12) {
+        const at = v.copy(st.handL[i]).add(st.handR[i]).multiplyScalar(0.5)
+        m.compose(at, q.setFromAxisAngle(up, st.face[i]), g.pose === 'tactics' ? sc.set(2.2, 3, 0.3) : one)
+        cams.setMatrixAt(nc, m)
+        if (flashes) {
+          const on = g.pose === 'camera' && hash(Math.floor(t * 3) + i) > 0.7
+          m.compose(at.add(v.set(Math.sin(st.face[i]) * 0.2, 0.15, Math.cos(st.face[i]) * 0.2)), q.identity(), sc.setScalar(on ? 1 : 0.0001))
+          flashes.setMatrixAt(nc, m)
+        }
+        nc++
+      }
+    }
+    if (bottles) {
+      bottles.count = nb
+      bottles.instanceMatrix.needsUpdate = true
+    }
+    if (cams) {
+      cams.count = nc
+      cams.instanceMatrix.needsUpdate = true
+    }
+    if (flashes) {
+      flashes.count = nc
+      flashes.instanceMatrix.needsUpdate = true
+    }
+    // The big flag, rippling.
+    const fl = P.bigFlag as THREE.Mesh | null
+    if (fl) {
+      fl.visible = !!f.flag
+      if (f.flag) {
+        fl.position.set(f.flag.x, f.flag.y + 0.7, f.flag.z)
+        const pos = flagGeo.attributes.position as THREE.BufferAttribute
+        for (let n = 0; n < pos.count; n++) {
+          const x = pos.getX(n)
+          const y = pos.getY(n)
+          pos.setZ(n, Math.sin(x * 0.7 + t * 4) * 0.25 + Math.cos(y * 0.9 + t * 3) * 0.18)
+        }
+        pos.needsUpdate = true
+        flagGeo.computeVertexNormals()
+      }
+    }
+    showAt(P.tunnel, f.tunnel)
+    // Fireworks at the tunnel, confetti over the pitch.
+    const pyro = P.pyro as THREE.Group | null
+    if (pyro) {
+      pyro.visible = f.pyro > 0
+      pyro.children.forEach((c, n) => c.scale.set(1, 0.5 + Math.abs(Math.sin(t * 13 + n * 2.1)) * 0.9, 1))
+    }
+    const conf = P.confetti as THREE.InstancedMesh | null
+    if (conf) {
+      for (let n = 0; n < CONFETTI; n++) {
+        const fall = (t * (1.6 + hash(n) * 1.2) + hash(n * 3) * 26) % 26
+        const x = (hash(n * 7) - 0.5) * 70 + Math.sin(t + n) * 1.5
+        const z = (hash(n * 11) - 0.5) * 50 - 8
+        q.setFromEuler(tmp.e.set(t * 3 + n, t * 2 + n * 0.5, 0))
+        m.compose(v.set(x, 26 - fall, z), q, sc.setScalar(f.confetti > hash(n * 5) ? 1 : 0.0001))
+        conf.setMatrixAt(n, m)
+      }
+      conf.instanceMatrix.needsUpdate = true
     }
   })
 
@@ -915,6 +977,69 @@ function Teams({ e }: { e: StadiumEvent }) {
     t.colorSpace = THREE.SRGBColorSpace
     return t
   }, [])
+  // The number and the name on each player's back.
+  const backTex = useMemo(
+    () =>
+      [...Array(NF)].map((_, i) => {
+        const player = i < 22 || i === SUB[0] || i === SUB[1]
+        if (!player) return null
+        const team = i < 11 || i === SUB[0] ? -1 : 1
+        const num = i === SUB[0] ? SUB_NUMBERS[0] : i === SUB[1] ? SUB_NUMBERS[1] : NUMBERS[i % 11]
+        const club = team === -1 ? e.home ?? '' : e.away ?? ''
+        const c = document.createElement('canvas')
+        c.width = 64
+        c.height = 70
+        const g = c.getContext('2d')!
+        g.clearRect(0, 0, 64, 70)
+        g.fillStyle = looks[i].shorts
+        g.textAlign = 'center'
+        g.font = 'bold 13px sans-serif'
+        g.fillText(playerName(club, num), 32, 13, 62)
+        g.font = 'bold 46px sans-serif'
+        g.fillText(String(num), 32, 58)
+        const t = new THREE.CanvasTexture(c)
+        t.colorSpace = THREE.SRGBColorSpace
+        return t
+      }),
+    [e, looks],
+  )
+  const flagTex = useMemo(() => {
+    const c = document.createElement('canvas')
+    c.width = 192
+    c.height = 128
+    const g = c.getContext('2d')!
+    ;['#f08a24', '#ffffff', '#2f9a4a'].forEach((col, n) => {
+      g.fillStyle = col
+      g.fillRect(n * 64, 0, 64, 128)
+    })
+    g.fillStyle = '#141416'
+    g.font = 'bold 26px sans-serif'
+    g.textAlign = 'center'
+    g.fillText('BABI LEAGUE', 96, 72)
+    const t = new THREE.CanvasTexture(c)
+    t.colorSpace = THREE.SRGBColorSpace
+    return t
+  }, [])
+  const tunnelTex = useMemo(() => {
+    const c = document.createElement('canvas')
+    c.width = 256
+    c.height = 64
+    const g = c.getContext('2d')!
+    g.fillStyle = '#f08a24'
+    g.fillRect(0, 0, 256, 64)
+    g.fillStyle = '#2f9a4a'
+    g.fillRect(0, 50, 256, 14)
+    g.fillStyle = '#ffffff'
+    g.font = 'bold 28px sans-serif'
+    g.textAlign = 'center'
+    g.fillText('BABI LEAGUE', 128, 38)
+    const t = new THREE.CanvasTexture(c)
+    t.colorSpace = THREE.SRGBColorSpace
+    return t
+  }, [])
+  const reg = (name: string) => (o: THREE.Object3D | null) => {
+    props.current[name] = o
+  }
 
   return (
     <>
@@ -925,27 +1050,132 @@ function Teams({ e }: { e: StadiumEvent }) {
             parts.current[n] = m
             if (m && !m.userData.painted) {
               const c = new THREE.Color()
-              for (let i = 0; i < N; i++) m.setColorAt(i, c.set(part.c[i]))
+              for (let i = 0; i < NF; i++) m.setColorAt(i, c.set(part.color(i)))
               if (m.instanceColor) m.instanceColor.needsUpdate = true
               ;(m.material as THREE.Material).needsUpdate = true
               m.userData.painted = true
             }
           }}
-          args={[undefined, undefined, N]}
+          args={[undefined, undefined, NF]}
           frustumCulled={false}
         >
           <boxGeometry />
           <meshLambertMaterial />
         </instancedMesh>
       ))}
+      {backTex.map((tex, i) =>
+        tex ? (
+          <mesh key={i} ref={(m) => { backs.current[i] = m; if (m) m.matrixAutoUpdate = false }} frustumCulled={false}>
+            <planeGeometry />
+            <meshBasicMaterial map={tex} transparent toneMapped={false} />
+          </mesh>
+        ) : null,
+      )}
       <mesh ref={ball}>
         <sphereGeometry args={[0.35, 12, 8]} />
         <meshLambertMaterial map={ballTex} emissive="#ffffff" emissiveIntensity={0.15} />
       </mesh>
-      <mesh ref={card} visible={false}>
-        <boxGeometry args={[0.32, 0.45, 0.04]} />
+      <instancedMesh ref={warm} args={[undefined, undefined, 12]} frustumCulled={false}>
+        <sphereGeometry args={[0.35, 10, 8]} />
+        <meshLambertMaterial color="#ffffff" />
+      </instancedMesh>
+      <mesh ref={reg('card')} visible={false}>
+        <boxGeometry args={[0.3, 0.42, 0.04]} />
         <meshBasicMaterial color="#ffd43b" />
       </mesh>
+      <group ref={reg('board')} visible={false}>
+        <mesh>
+          <boxGeometry args={[1.3, 0.75, 0.06]} />
+          <meshBasicMaterial color="#141416" />
+        </mesh>
+        <mesh position={[0, 0, 0.04]} name="face">
+          <planeGeometry args={[1.2, 0.66]} />
+          <meshBasicMaterial toneMapped={false} />
+        </mesh>
+        <mesh position={[0, 0, -0.04]} rotation={[0, Math.PI, 0]} name="face2">
+          <planeGeometry args={[1.2, 0.66]} />
+          <meshBasicMaterial toneMapped={false} />
+        </mesh>
+      </group>
+      {['flag1', 'flag2'].map((n) => (
+        <group key={n} ref={reg(n)}>
+          <mesh position={[0, 0.25, 0]}>
+            <boxGeometry args={[0.04, 0.75, 0.04]} />
+            <meshLambertMaterial color="#222" />
+          </mesh>
+          <mesh position={[0, 0.5, 0.2]}>
+            <boxGeometry args={[0.02, 0.3, 0.38]} />
+            <meshLambertMaterial color="#ff3b1f" />
+          </mesh>
+        </group>
+      ))}
+      <mesh ref={reg('coin')} visible={false}>
+        <cylinderGeometry args={[0.12, 0.12, 0.02, 12]} />
+        <meshLambertMaterial color="#e3b341" emissive="#e3b341" emissiveIntensity={0.3} />
+      </mesh>
+      <instancedMesh ref={reg('bottles')} args={[undefined, undefined, 40]} frustumCulled={false}>
+        <boxGeometry args={[0.09, 0.26, 0.09]} />
+        <meshLambertMaterial color="#9fd8ff" />
+      </instancedMesh>
+      <instancedMesh ref={reg('cams')} args={[undefined, undefined, 12]} frustumCulled={false}>
+        <boxGeometry args={[0.24, 0.16, 0.16]} />
+        <meshLambertMaterial color="#202226" />
+      </instancedMesh>
+      <instancedMesh ref={reg('flashes')} args={[undefined, undefined, 12]} frustumCulled={false}>
+        <boxGeometry args={[0.18, 0.12, 0.05]} />
+        <meshBasicMaterial color="#ffffff" toneMapped={false} />
+      </instancedMesh>
+      <mesh ref={reg('bigFlag')} geometry={flagGeo} rotation={[-Math.PI / 2, 0, 0]} visible={false}>
+        <meshLambertMaterial map={flagTex} side={THREE.DoubleSide} />
+      </mesh>
+      {/* The inflatable tunnel the teams walk out through */}
+      <group ref={reg('tunnel')} position={[0, 0.7, -39.8]} visible={false}>
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[2.6, 2.6, 6.4, 20, 1, true, Math.PI / 2, Math.PI]} />
+          <meshLambertMaterial map={tunnelTex} side={THREE.DoubleSide} />
+        </mesh>
+        {[-3.2, 3.2].map((z) => (
+          <mesh key={z} position={[0, 0, z]} rotation={[0, 0, 0]}>
+            <torusGeometry args={[2.6, 0.28, 8, 20, Math.PI]} />
+            <meshLambertMaterial color="#2f9a4a" />
+          </mesh>
+        ))}
+      </group>
+      <group ref={reg('pyro')} visible={false}>
+        {[-4.5, 4.5].flatMap((x) => [-37.5, -33.5].map((z) => (
+          <group key={`${x}${z}`} position={[x, 0.7, z]}>
+            {/* The flame jet on its black box: orange outside, yellow at the heart */}
+            <mesh position={[0, 0.3, 0]}>
+              <boxGeometry args={[0.7, 0.6, 0.7]} />
+              <meshLambertMaterial color="#202226" />
+            </mesh>
+            <mesh position={[0, 2.6, 0]}>
+              <coneGeometry args={[0.32, 4.2, 7]} />
+              <meshBasicMaterial color="#ff6a00" toneMapped={false} transparent opacity={0.8} depthWrite={false} />
+            </mesh>
+            <mesh position={[0, 2.0, 0]}>
+              <coneGeometry args={[0.16, 2.8, 6]} />
+              <meshBasicMaterial color="#ffe066" toneMapped={false} />
+            </mesh>
+          </group>
+        )))}
+      </group>
+      <instancedMesh
+        ref={(m) => {
+          props.current.confetti = m
+          if (m && !m.userData.painted) {
+            const c = new THREE.Color()
+            const cols = ['#f08a24', '#ffffff', '#2f9a4a', '#ffd43b']
+            for (let n = 0; n < CONFETTI; n++) m.setColorAt(n, c.set(cols[n % 4]))
+            m.userData.painted = true
+          }
+        }}
+        args={[undefined, undefined, CONFETTI]}
+        frustumCulled={false}
+      >
+        <planeGeometry args={[0.25, 0.18]} />
+        <meshBasicMaterial side={THREE.DoubleSide} toneMapped={false} />
+      </instancedMesh>
       {/* The nets behind the goal mouths */}
       {[-1, 1].map((s) => (
         <mesh key={s} position={[s * 53.6, 1.92, 0]}>
@@ -969,6 +1199,36 @@ function Teams({ e }: { e: StadiumEvent }) {
       <Dugouts home={e.home ?? ''} away={e.away ?? ''} />
     </>
   )
+}
+
+const CONFETTI = 360
+
+/** The fourth official's board: the text in red and green lights. */
+function boardText(g: THREE.Group, text: string) {
+  if (g.userData.text === text) return
+  g.userData.text = text
+  const c = document.createElement('canvas')
+  c.width = 128
+  c.height = 70
+  const x = c.getContext('2d')!
+  x.fillStyle = '#0b0d14'
+  x.fillRect(0, 0, 128, 70)
+  x.textAlign = 'center'
+  x.textBaseline = 'middle'
+  x.font = 'bold 34px monospace'
+  x.fillStyle = text.startsWith('+') ? '#3dff8a' : '#ff5a3d'
+  x.fillText(text, 64, 36, 120)
+  const t = new THREE.CanvasTexture(c)
+  t.colorSpace = THREE.SRGBColorSpace
+  for (const n of ['face', 'face2']) {
+    const m = g.getObjectByName(n) as THREE.Mesh | undefined
+    if (m) {
+      const mat = m.material as THREE.MeshBasicMaterial
+      mat.map?.dispose()
+      mat.map = t
+      mat.needsUpdate = true
+    }
+  }
 }
 
 /** The two dugouts on the touchline, the substitutes sitting in their tracksuits, legs jiggling. */
@@ -1075,7 +1335,7 @@ function Scoreboard({ e }: { e: StadiumEvent }) {
     const k = minuteNow() - e.start
     const hs = (e.homeGoals ?? []).filter((x) => x <= k).length
     const as = (e.awayGoals ?? []).filter((x) => x <= k).length
-    const clock = k < 0 ? 'Bientôt' : k >= FULL ? 'Terminé' : k >= 45 && k < 60 ? 'Mi-temps' : `${Math.floor(k < 45 ? k : k - 15) + 1}'`
+    const clock = clockText(k)
     const text = `${hs}-${as}|${clock}`
     if (text === shown.current) return
     shown.current = text

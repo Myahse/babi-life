@@ -664,6 +664,8 @@ function StadiumLab() {
   const now = worldTime() / 60
   // &m= minutes into the event, or &start= its exact start (game minutes).
   const start = q.has('start') ? Number(q.get('start')) : now - Number(q.get('m') ?? 40)
+  // &k= freezes the clock at that minute of the match: the same instant on every reload, for screenshots.
+  if (q.has('start') && q.has('k')) freezeWorldTime((start + Number(q.get('k'))) * 60)
   const e = kind === 'match'
     ? { kind, title: 'Babi Sporting – Yop City FC', detail: '', start, end: start + 120, home: 'Babi Sporting', away: 'Yop City FC', homeGoals: [12, 38], awayGoals: [q.has('start') ? 70 : Number(q.get('m') ?? 40) - 0.5] }
     : { kind, title: 'DJ Garba Chaud en concert', detail: '', start, end: start + 210, artist: 'DJ Garba Chaud', genre: 'coupé-décalé' }
