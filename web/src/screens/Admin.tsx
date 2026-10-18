@@ -806,7 +806,7 @@ function Campaign({ c, onChange }: { c: Status; onChange: (change: Partial<Pick<
 
 /* ---------- Signalements ---------- */
 
-type Report = { id: number; reporter: string; reporterName: string; reported: string; reportedName: string; messageId?: number; storyId?: number; postId?: number; excerpt: string; reason: string; at: string }
+type Report = { id: number; reporter: string; reporterName: string; reported: string; reportedName: string; messageId?: number; storyId?: number; postId?: number; grinId?: number; excerpt: string; reason: string; at: string }
 
 function Reports({ k }: { k: string }) {
   const [list, setList] = useState<Report[] | null>(null)
@@ -834,11 +834,11 @@ function Reports({ k }: { k: string }) {
             <div className="space-y-2 text-sm">
               <span className="inline-block rounded bg-[#fee2e2] px-2 py-0.5 text-xs font-semibold text-[#b91c1c]">{r.reason}</span>
               <p>
-                {r.storyId ? 'Story' : r.postId ? 'Vidéo Tikitoko' : r.messageId ? 'Message Gbairai' : 'Personne'} de <b>{r.reportedName}</b>, signalé par {r.reporterName} · <span className="text-[#6b7280]">{when(r.at)}</span>
+                {r.storyId ? 'Story' : r.postId ? 'Vidéo Tikitoko' : r.grinId ? 'Message du grin' : r.messageId ? 'Message Gbairai' : 'Personne'} de <b>{r.reportedName}</b>, signalé par {r.reporterName} · <span className="text-[#6b7280]">{when(r.at)}</span>
               </p>
               {(r.storyId || r.postId) && r.excerpt && <p className="text-[#374151]">Légende : « {r.excerpt} »</p>}
               <div className="flex gap-2 pt-1">
-                {(r.messageId || r.storyId || r.postId) && (
+                {(r.messageId || r.storyId || r.postId || r.grinId) && (
                   <Btn tone="red" onClick={() => void resolve(r, true)}>
                     Supprimer
                   </Btn>

@@ -23,7 +23,7 @@ function Lab() {
   useEffect(() => {
     void api.sim(q.get('sim')!).then((r) => setSim('sim' in r ? (r as { sim: Sim }).sim : (r as unknown as Sim)))
   }, [])
-  const world = { config: { realPhotos: q.has('real') } } as unknown as World
+  const world = { config: { realPhotos: q.has('real') }, cities: [] } as unknown as World
   const app = q.get('app') ?? 'gbairai'
   return (
     <div style={{ display: 'flex', height: '100vh' }}>

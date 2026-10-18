@@ -387,7 +387,7 @@ func (m *Moderation) Reports(w http.ResponseWriter, r *http.Request) {
 	if !m.ok(w, r) {
 		return
 	}
-	rows, err := m.H.DB.Query(r.Context(), `SELECT p.id, p.reporter, a.first_name, p.reported, b.first_name, p.message_id, p.story_id, p.post_id, p.excerpt, p.reason, p.created_at
+	rows, err := m.H.DB.Query(r.Context(), `SELECT p.id, p.reporter, a.first_name, p.reported, b.first_name, p.message_id, p.story_id, p.post_id, p.grin_id, p.excerpt, p.reason, p.created_at
 		FROM reports p JOIN sims a ON a.id = p.reporter JOIN sims b ON b.id = p.reported
 		WHERE p.status = 'open' ORDER BY p.created_at DESC LIMIT 100`)
 	if err != nil {
@@ -403,8 +403,10 @@ func (m *Moderation) Reports(w http.ResponseWriter, r *http.Request) {
 		ReportedName string `json:"reportedName"`
 		MessageID    *int64 `json:"messageId,omitempty"`
 		// A story or a Tikitoko post: its photo at /moderation/photo?story= (or ?post=).
-		StoryID *int64    `json:"storyId,omitempty"`
-		PostID  *int64    `json:"postId,omitempty"`
+		StoryID *int64 `json:"storyId,omitempty"`
+		PostID  *int64 `json:"postId,omitempty"`
+		// A message of the grin (the public chat).
+		GrinID  *int64    `json:"grinId,omitempty"`
 		Excerpt string    `json:"excerpt"`
 		Reason  string    `json:"reason"`
 		At      time.Time `json:"at"`
@@ -412,7 +414,7 @@ func (m *Moderation) Reports(w http.ResponseWriter, r *http.Request) {
 	out := []report{}
 	for rows.Next() {
 		var p report
-		if err := rows.Scan(&p.ID, &p.Reporter, &p.ReporterName, &p.Reported, &p.ReportedName, &p.MessageID, &p.StoryID, &p.PostID, &p.Excerpt, &p.Reason, &p.At); err != nil {
+		if err := rows.Scan(&p.ID, &p.Reporter, &p.ReporterName, &p.Reported, &p.ReportedName, &p.MessageID, &p.StoryID, &p.PostID, &p.GrinID, &p.Excerpt, &p.Reason, &p.At); err != nil {
 			httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 			return
 		}
@@ -454,8 +456,8 @@ func (m *Moderation) Resolve(w http.ResponseWriter, r *http.Request) {
 	_ = httpx.Decode(r, &req)
 	id, _ := strconv.ParseInt(chi.URLParam(r, "report"), 10, 64)
 	ctx := r.Context()
-	var msg, story, post *int64
-	if err := m.H.DB.QueryRow(ctx, `UPDATE reports SET status = 'done' WHERE id = $1 RETURNING message_id, story_id, post_id`, id).Scan(&msg, &story, &post); err != nil {
+	var msg, story, post, grin *int64
+	if err := m.H.DB.QueryRow(ctx, `UPDATE reports SET status = 'done' WHERE id = $1 RETURNING message_id, story_id, post_id, grin_id`, id).Scan(&msg, &story, &post, &grin); err != nil {
 		httpx.Error(w, http.StatusNotFound, "signalement introuvable")
 		return
 	}
@@ -468,6 +470,9 @@ func (m *Moderation) Resolve(w http.ResponseWriter, r *http.Request) {
 		}
 		if post != nil {
 			_, _ = m.H.DB.Exec(ctx, `DELETE FROM tiki_posts WHERE id = $1`, *post)
+		}
+		if grin != nil {
+			_, _ = m.H.DB.Exec(ctx, `UPDATE grin SET hidden = true WHERE id = $1`, *grin)
 		}
 	}
 	httpx.JSON(w, http.StatusOK, map[string]bool{"done": true})

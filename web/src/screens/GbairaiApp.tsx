@@ -5,6 +5,7 @@ import type { Chat, ChatMessage, Sim, World } from '../lib/types'
 import { Portrait } from '../avatar/portrait'
 import { ReportSheet } from '../components/Social'
 import { Stories } from './Stories'
+import { Grin } from './Grin'
 
 /**
  * Gbairai: write to the players your Sim has made friends with in the game,
@@ -13,7 +14,29 @@ import { Stories } from './Stories'
  * messages every few seconds while it is open, the list every half-minute.
  */
 
+/** Gbairai: the friends' chats, and the grin (the public chat). */
 export function GbairaiApp({ world, sim }: { world: World; sim: Sim }) {
+  const [tab, setTab] = useState<'amis' | 'grin'>('amis')
+  return (
+    <div className="flex h-full flex-col">
+      <div className="mb-3 flex gap-1 border-b border-black/5">
+        {(
+          [
+            ['amis', 'Discussions'],
+            ['grin', 'Le grin'],
+          ] as const
+        ).map(([id, label]) => (
+          <button key={id} onClick={() => setTab(id)} className={`flex-1 border-b-2 py-2 text-sm font-extrabold ${tab === id ? 'border-[#f0590c] text-[#f0590c]' : 'border-transparent text-[var(--color-ink-soft)]'}`}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {tab === 'grin' ? <Grin world={world} sim={sim} /> : <Chats world={world} sim={sim} />}
+    </div>
+  )
+}
+
+function Chats({ world, sim }: { world: World; sim: Sim }) {
   const [chats, setChats] = useState<Chat[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState<Chat | null>(null)
