@@ -56,6 +56,25 @@ func TestAtStadium(t *testing.T) {
 		t.Errorf("score before kick-off: %q", s)
 	}
 	h, a := MatchGoals(e)
+	// Goals only while the ball is in play, never at half-time or after the whistle.
+	for st := sat; st < sat+7*24*60*4; st += 24 * 60 {
+		ev, ok := StadiumEventAt("plateau-stade", st+10)
+		if !ok || ev.Kind != "match" {
+			continue
+		}
+		hh, aa := MatchGoals(ev)
+		all := append(hh, aa...)
+		for i, g := range all {
+			if g < 0 || (g >= HalfTime && g < SecondHalf) || g >= FullTime {
+				t.Errorf("goal at minute %d", g)
+			}
+			for _, o := range all[i+1:] {
+				if g-o < 3 && o-g < 3 {
+					t.Errorf("goals %d and %d too close", g, o)
+				}
+			}
+		}
+	}
 	if end := withScore(e, e.End).Score; end != strings.Join([]string{itoa(len(h)), itoa(len(a))}, " – ") {
 		t.Errorf("final score %q, goals %v %v", end, h, a)
 	}

@@ -118,8 +118,17 @@ func clockOf(m int64) string {
 	return fmt.Sprintf("%d h %02d", h, mn)
 }
 
-// MatchGoals: the minutes (of the game's 120 real minutes, half-time
-// included) when each side scores, the same for everyone. Home first.
+// The match's clock, in minutes from the kick-off: the first half to 45,
+// half-time to 60, the second half to FullTime; then the players celebrate
+// or sit on the grass until the event ends (120).
+const (
+	HalfTime   = 45
+	SecondHalf = 60
+	FullTime   = 105
+)
+
+// MatchGoals: the minutes when each side scores, always while the ball is
+// in play, the same for everyone. Home first.
 func MatchGoals(e StadiumEvent) (home, away []int64) {
 	n := draw(e.Home, e.Away, e.Start)
 	for k := uint32(0); k < 6; k++ {
@@ -127,7 +136,15 @@ func MatchGoals(e StadiumEvent) (home, away []int64) {
 		if r%3 != 0 {
 			continue
 		}
-		at := int64(5 + r/7%105)
+		// 3 to 86 minutes of play, put on the clock: past 45, after the break.
+		at := int64(3 + r/7%84)
+		if at >= HalfTime {
+			at += SecondHalf - HalfTime
+		}
+		// Room for the build-up, the celebration and the kick-off between two goals.
+		if near(at, home) || near(at, away) {
+			continue
+		}
 		if r/1000%2 == 0 {
 			home = append(home, at)
 		} else {
@@ -135,6 +152,15 @@ func MatchGoals(e StadiumEvent) (home, away []int64) {
 		}
 	}
 	return home, away
+}
+
+func near(at int64, goals []int64) bool {
+	for _, g := range goals {
+		if at-g < 3 && g-at < 3 {
+			return true
+		}
+	}
+	return false
 }
 
 // withScore: the score at game minute now (none before kick-off).
