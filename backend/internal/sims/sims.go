@@ -227,6 +227,9 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/gbairai/{other}/block", h.block)
 	r.Post("/sims/{id}/gbairai/{other}/report", h.report)
 	r.Get("/bets/rounds", h.betRounds)
+	r.Get("/loto/draws", h.lotoDraws)
+	r.Post("/sims/{id}/loto", h.buyLoto)
+	r.Get("/sims/{id}/loto", h.myLoto)
 	r.Post("/sims/{id}/bets", h.placeBet)
 	r.Post("/sims/{id}/bets/settle", h.settleBets)
 	r.Get("/sims/{id}/bets", h.myBets)
@@ -639,6 +642,13 @@ func (h *Handler) mutateTx(w http.ResponseWriter, r *http.Request, fn func(*Sim,
 	}
 	// Real time passes first, so the action sees the real state.
 	fresh := s.advance(time.Now(), newRand())
+	// Bets and loto tickets that are over pay out.
+	won, err := settle(ctx, tx, &s)
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+		return
+	}
+	fresh = append(fresh, won...)
 	var out game.Outcome
 	if fn != nil {
 		var events []Event

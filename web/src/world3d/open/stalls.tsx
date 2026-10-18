@@ -9,6 +9,7 @@ import { rng } from '../themes'
 import { whereabouts } from '../whereabouts'
 import { hash, type XZ } from './geo'
 import { lettering } from './ruePrincesse'
+import { api } from '../../lib/api'
 import type { Nav } from './nav'
 
 // The sellers of the street, at the edge of the real streets around the Sim,
@@ -27,13 +28,17 @@ import type { Nav } from './nav'
 // - the pain brochette man, from the late afternoon into the night: the long
 //   charcoal grill on its legs, the skewers of beef smoking, the glass box of
 //   baguettes, the onions, tomato and the bottle of mayonnaise, a bulb hung
-//   over it all; the bread split, the meat slid off the skewers into it.
+//   over it all; the bread split, the meat slid off the skewers into it;
+// - the loto kiosk (« Loto Chance », the game's own loto: game/loto.go): the
+//   big square orange parasol, the seller at his table with the orange box,
+//   the chalkboard of the last numbers on its stand, the long bench where the
+//   regulars sit and talk about their numbers. Tap him to play a ticket.
 // Around each, the customers: on the bench eating, waiting, chatting; more at
 // the busy hours (lunch and evening for the food, morning for coffee), none in
 // the dead of night. Tap the seller to buy (backend sims/street.go: the id's
 // prefix says what); often it's sold out: « Ya pas banane oh ! ».
 
-export type StallKind = 'alloco' | 'porc' | 'cafe' | 'the' | 'garba' | 'brochette'
+export type StallKind = 'alloco' | 'porc' | 'cafe' | 'the' | 'garba' | 'brochette' | 'loto'
 export type Stall = { id: string; kind: StallKind; at: XZ; rot: number; seed: number }
 
 const NEAR = 320 // metres: stalls drawn around the Sim
@@ -48,6 +53,7 @@ const SELLER: Record<StallKind, { shout: string; ask: string; out: string; busy:
   cafe: { shout: 'Café ! Café chaud !', ask: 'Café, 150 Djai !', out: 'Le thermos est vide, attends un peu !', busy: (h) => (h < 5 || h >= 23 ? 0 : h < 9 ? 1 : h >= 17 && h < 20 ? 0.6 : 0.3), r: 1 },
   garba: { shout: 'Garba chaud ! Garba !', ask: 'Garba ? Viens choisir ton poisson !', out: 'Y a plus poisson oh !', busy: (h) => (h >= 2 && h < 9 ? 0 : (h >= 12 && h < 14) || (h >= 19 && h < 23) ? 1 : 0.6), r: 2.4 },
   brochette: { shout: 'Pain brochette ! Ça sort du feu !', ask: 'Pain brochette, 500 Djai !', out: 'Y a plus pain oh, attends le livreur !', busy: (h) => (h >= 2 && h < 16 ? 0 : h >= 19 && h < 23 ? 1 : 0.55), r: 1.6 },
+  loto: { shout: 'Loto Chance ! Le prochain tirage arrive !', ask: 'Loto ? Viens jouer tes numéros !', out: 'Le tirage est en cours, attends un peu !', busy: (h) => (h < 8 || h >= 22 ? 0 : h % 2 === 0 ? 1 : 0.6), r: 2.2 },
   the: { shout: 'Thé bien mousseux !', ask: 'Thé, 100 Djai, assieds-toi !', out: "Le thé n'est pas encore prêt !", busy: (h) => (h < 6 ? 0 : h >= 17 ? 1 : 0.4), r: 1 },
 }
 
@@ -64,7 +70,7 @@ export function StreetStalls({ nav, seed, hour, onBuy }: { nav: Nav; seed: strin
       const [a, b] = [nav.nodes[e.a], nav.nodes[e.b]]
       const m: XZ = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]
       const h = hash(Math.round(m[0]), Math.round(m[1]), 77)
-      const kind: StallKind | null = h < 0.07 ? 'alloco' : h < 0.115 ? 'garba' : h < (yop ? 0.235 : 0.14) ? 'porc' : h > 0.93 && h <= 0.955 ? 'brochette' : h > 0.955 ? (hash(Math.round(m[1]), Math.round(m[0]), 5) < 0.55 ? 'cafe' : 'the') : null
+      const kind: StallKind | null = h < 0.07 ? 'alloco' : h < 0.115 ? 'garba' : h < (yop ? 0.235 : 0.14) ? 'porc' : h > 0.93 && h <= 0.955 ? 'brochette' : h > 0.915 && h <= 0.93 ? 'loto' : h > 0.955 ? (hash(Math.round(m[1]), Math.round(m[0]), 5) < 0.55 ? 'cafe' : 'the') : null
       if (!kind) continue
       const side = hash(Math.round(m[1]), 3) < 0.5 ? 1 : -1
       const [ux, uz] = [(b[0] - a[0]) / e.len, (b[1] - a[1]) / e.len]
@@ -298,6 +304,138 @@ function PorcStand() {
         <Bench p={[0, 0, 0.62]} w={2.2} />
       </group>
     </group>
+  )
+}
+
+/**
+ * The loto kiosk: a big square orange parasol on its pole, « LOTO CHANCE » on
+ * its flaps; under it the seller's table with the orange box and the
+ * tickets, his plastic chair, and the chalkboard of the last numbers on its
+ * stand by the road.
+ */
+function LotoStand({ seed }: { seed: number }) {
+  const sign = useMemo(() => lettering('LOTO CHANCE', '#f26b1d', '#ffffff', '#ffffff'), [])
+  const mats = useMemo(() => ({ sign: new THREE.MeshLambertMaterial({ map: sign.t, side: THREE.DoubleSide }) }), [sign])
+  // The board: five rows of numbers in chalk (as in the street, the last draws).
+  const rows = useMemo(() => {
+    const r = rng(`loto${seed}`)
+    return [...Array(5)].map(() => [...Array(5)].map(() => 1 + Math.floor(r() * 90)))
+  }, [seed])
+  return (
+    <group>
+      {/* The parasol: a square canopy on a pole, the flaps all round */}
+      <mesh position={[0, 1.3, -0.1]} material={M.iron}>
+        <cylinderGeometry args={[0.04, 0.04, 2.6, 6]} />
+      </mesh>
+      <mesh position={[0, 2.75, -0.1]} rotation={[0, Math.PI / 4, 0]} castShadow>
+        <coneGeometry args={[2.4, 0.5, 4, 1, true]} />
+        <meshLambertMaterial color="#f26b1d" side={THREE.DoubleSide} />
+      </mesh>
+      {[0, 1, 2, 3].map((k) => (
+        <mesh key={k} position={[Math.sin((k * Math.PI) / 2) * 1.7, 2.38, -0.1 + Math.cos((k * Math.PI) / 2) * 1.7]} rotation={[0, (k * Math.PI) / 2, 0]} scale={[3.3, 3.3 / sign.aspect, 1]} material={mats.sign}>
+          <planeGeometry />
+        </mesh>
+      ))}
+      {/* The seller's table, the orange box, the tickets */}
+      <Box s={[1.2, 0.06, 0.6]} p={[0, 0.74, 0.25]} m={M.wood} />
+      {[
+        [-0.55, 0],
+        [0.55, 0],
+        [-0.55, 0.5],
+        [0.55, 0.5],
+      ].map(([x, z]) => (
+        <Box key={`${x}${z}`} s={[0.05, 0.72, 0.05]} p={[x, 0.36, z]} m={M.darkWood} />
+      ))}
+      <Box s={[0.5, 0.35, 0.35]} p={[0.25, 0.95, 0.2]} m={LT.box} />
+      <Box s={[0.3, 0.01, 0.2]} p={[-0.3, 0.78, 0.3]} m={M.board} />
+      <Box s={[0.25, 0.01, 0.16]} p={[-0.25, 0.79, 0.25]} r={[0, 0.3, 0]} m={LT.ticket} />
+      {/* His plastic chair */}
+      <Box s={[0.45, 0.05, 0.45]} p={[0, 0.42, -0.35]} m={LT.chair} />
+      <Box s={[0.45, 0.45, 0.05]} p={[0, 0.66, -0.57]} m={LT.chair} />
+      {/* The chalkboard on its stand, by the road */}
+      <group position={[-1.7, 0, 0.7]} rotation={[-0.12, 0.35, 0]}>
+        <Box s={[0.75, 0.95, 0.04]} p={[0, 0.75, 0]} m={M.slate} />
+        {rows.map((row, i) => (
+          <group key={i}>
+            {row.map((n, j) => (
+              <Box key={j} s={[0.08 + (n % 3) * 0.015, 0.05, 0.005]} p={[-0.26 + j * 0.13, 1.08 - i * 0.15, 0.025]} m={M.cup} />
+            ))}
+          </group>
+        ))}
+        <Box s={[0.04, 0.9, 0.04]} p={[0, 0.45, -0.28]} r={[0.55, 0, 0]} m={M.darkWood} />
+      </group>
+    </group>
+  )
+}
+
+const LT = {
+  box: lambert('#f26b1d'),
+  ticket: lambert('#ffe08a'),
+  chair: lambert('#f2c230'),
+}
+
+/** The loto ticket: which draw, 1 to 3 numbers out of 90, the stake (game/loto.go). */
+function LotoMenu({ onChoose, onClose }: { onChoose: (choice: string) => void; onClose: () => void }) {
+  const [draws, setDraws] = useState<{ id: number; name: string; at: number; numbers?: number[] }[]>([])
+  const [pays, setPays] = useState<Record<number, number>>({ 1: 15, 2: 250, 3: 2500 })
+  const [draw, setDraw] = useState<number | null>(null)
+  const [picked, setPicked] = useState<number[]>([])
+  const [stake, setStake] = useState(200)
+  useEffect(() => {
+    void api.lotoDraws().then((d) => {
+      setPays(d.pays)
+      setDraws(d.draws)
+      setDraw(d.draws.find((x) => x.at > d.now)?.id ?? null)
+    }, () => undefined)
+  }, [])
+  const now = Date.now() / 1000
+  const next = draws.filter((d) => d.at > now).slice(0, 3)
+  const last = [...draws].reverse().find((d) => d.numbers)
+  const toggle = (n: number) => setPicked((p) => (p.includes(n) ? p.filter((x) => x !== n) : p.length < 3 ? [...p, n] : p))
+  const hour = (at: number) => new Date(at * 1000).toISOString().slice(11, 13) + ' h'
+  return (
+    <div className="w-[300px] rounded-[22px] bg-white p-3 text-[var(--color-ink)] shadow-[0_18px_36px_-14px_rgba(0,0,0,0.6)]" onPointerDown={(e) => e.stopPropagation()}>
+      <div className="flex items-center justify-between">
+        <span className="font-display text-[16px] font-extrabold text-[#f26b1d]">Loto Chance</span>
+        <button className="text-lg font-extrabold text-[var(--color-ink-soft)]" onClick={onClose} aria-label="Fermer">
+          ×
+        </button>
+      </div>
+      {last && (
+        <p className="mt-1 text-[11px] font-bold text-[var(--color-ink-soft)]">
+          Dernier tirage « {last.name} » : <b className="text-[var(--color-ink)]">{last.numbers!.join(' - ')}</b>
+        </p>
+      )}
+      <div className="mt-2 flex gap-1">
+        {next.map((d) => (
+          <button key={d.id} onClick={() => setDraw(d.id)} className={`min-w-0 flex-1 truncate rounded-full px-2 py-1 text-[11px] font-extrabold ${draw === d.id ? 'bg-[#f26b1d] text-white' : 'bg-[var(--color-canvas)]'}`}>
+            {hour(d.at)} · {d.name}
+          </button>
+        ))}
+      </div>
+      <p className="mt-2 text-[11px] font-bold text-[var(--color-ink-soft)]">Choisis 1 à 3 numéros : ils doivent tous sortir parmi les 5.</p>
+      <div className="mt-1 grid grid-cols-10 gap-0.5">
+        {[...Array(90)].map((_, i) => (
+          <button key={i} onClick={() => toggle(i + 1)} className={`rounded py-0.5 text-[11px] font-extrabold tabular-nums ${picked.includes(i + 1) ? 'bg-[#f26b1d] text-white' : 'bg-[var(--color-canvas)]'}`}>
+            {i + 1}
+          </button>
+        ))}
+      </div>
+      <div className="mt-2 flex gap-1">
+        {[100, 200, 500, 1000, 2000].map((v) => (
+          <button key={v} onClick={() => setStake(v)} className={`flex-1 rounded-full py-1 text-[11px] font-extrabold ${stake === v ? 'bg-[var(--color-ink)] text-white' : 'bg-[var(--color-canvas)]'}`}>
+            {v}
+          </button>
+        ))}
+      </div>
+      <button
+        disabled={!draw || picked.length === 0}
+        onClick={() => onChoose(JSON.stringify({ draw, numbers: picked, stake }))}
+        className="mt-2 w-full rounded-xl bg-[#f26b1d] py-2 text-[13px] font-extrabold text-white disabled:opacity-40"
+      >
+        {picked.length ? `Jouer ${picked.join('-')} · ${stake} Djai → ${(stake * (pays[picked.length] ?? 0)).toLocaleString('fr-FR')} Djai` : 'Choisis tes numéros'}
+      </button>
+    </div>
   )
 }
 
@@ -553,6 +691,9 @@ function customerSpots(kind: StallKind, seed: number): Customer[] {
     case 'brochette':
       // Waiting round the grill for their bread; one eating on the bench at the side.
       return [stand(0.4, 1.9, 'idle'), stand(-0.4, 2.1, 'talk'), sit(-2.0, 1.6, Math.PI / 2), stand(1.2, 2.2, 'phone'), stand(-0.2, 2.9, 'talk'), sit(-2.0, 0.9, Math.PI / 2, 'drink')]
+    case 'loto':
+      // On the long bench, and standing round the table, looking at the board.
+      return [sit(-1.6, 1.9, Math.PI, 'sit'), stand(0.2, 1.5, 'talk'), sit(-0.6, 1.9, Math.PI, 'sit'), stand(0.9, 1.6, 'idle'), sit(0.6, 1.9, Math.PI, 'phone'), stand(-0.5, 1.2, 'talk'), sit(1.6, 1.9, Math.PI, 'sit')]
     case 'cafe':
     case 'the':
       return [stand(0.3, 2.2, 'idle'), stand(-0.6, 2.4), sit(-1.6, 2.4, Math.PI * 0.75, 'drink'), stand(-1.5, 1.7), stand(1.2, 2.9, 'phone')]
@@ -584,6 +725,7 @@ function Crowd({ stall, hour }: { stall: Stall; hour: number }) {
       {stall.kind === 'alloco' && <Bench p={[-0.05, 0, 2.8]} />}
       {stall.kind === 'garba' && <Bench p={[2.75, 0, 1.25]} r={Math.PI / 2} w={1.5} />}
       {stall.kind === 'brochette' && <Bench p={[-2.0, 0, 1.25]} r={Math.PI / 2} w={1.5} />}
+      {stall.kind === 'loto' && <Bench p={[0, 0, 1.9]} w={4.2} />}
       {(stall.kind === 'cafe' || stall.kind === 'the') && <Bench p={[-1.6, 0, 2.4]} r={Math.PI * 0.75 - Math.PI / 2} w={0.8} />}
     </NoShadows>
   )
@@ -631,7 +773,7 @@ export function StreetStall({ stall, hour, crowd, onBuy }: { stall: Stall; hour:
     const d = Math.hypot(stall.at[0] - whereabouts.sim[0], stall.at[1] - whereabouts.sim[1])
     if (d > REACH) return say('Approche, mon enfant !', 3000)
     if (!onBuy) return
-    if (stall.kind === 'garba') return setChoosing(true)
+    if (stall.kind === 'garba' || stall.kind === 'loto') return setChoosing(true)
     say('…', 20000)
     const text = await onBuy(stall.id)
     if (text) say(text)
@@ -639,13 +781,14 @@ export function StreetStall({ stall, hour, crowd, onBuy }: { stall: Stall; hour:
   }
   // Where the seller stands, and doing what.
   // The café/thé seller sits on his stool beside the cart (as in the street), turned to the passers-by.
-  const [sellerAt, sellerPose]: [[number, number, number], Pose] = stall.kind === 'porc' ? [[-1.3, 0, -0.1], 'cook'] : stall.kind === 'garba' ? [[0.75, 0, 0.1], 'cook'] : stall.kind === 'brochette' ? [[0.1, 0, -0.1], 'cook'] : stall.kind === 'alloco' ? [[0, 0, 0], 'idle'] : [[0.95, 0, 1.08], 'sit']
+  const [sellerAt, sellerPose]: [[number, number, number], Pose] = stall.kind === 'porc' ? [[-1.3, 0, -0.1], 'cook'] : stall.kind === 'garba' ? [[0.75, 0, 0.1], 'cook'] : stall.kind === 'brochette' ? [[0.1, 0, -0.1], 'cook'] : stall.kind === 'loto' ? [[0, 0, -0.35], 'sit'] : stall.kind === 'alloco' ? [[0, 0, 0], 'idle'] : [[0.95, 0, 1.08], 'sit']
   return (
     <group position={[stall.at[0], 0, stall.at[1]]} rotation={[0, stall.rot, 0]} onClick={(e) => (e.stopPropagation(), void tap())}>
       {stall.kind === 'alloco' && <AllocoStand parasol={parasol} />}
       {stall.kind === 'porc' && <PorcStand />}
       {stall.kind === 'garba' && <GarbaStand />}
       {stall.kind === 'brochette' && <BrochetteStand night={hour >= 18 || hour < 6} />}
+      {stall.kind === 'loto' && <LotoStand seed={stall.seed} />}
       {(stall.kind === 'cafe' || stall.kind === 'the') && <Cart tea={stall.kind === 'the'} price={stall.kind === 'the' ? 100 : 150} />}
       <group position={sellerAt}>
         <Human look={look} gender={man ? 'homme' : 'femme'} pose={sellerPose} seed={stall.seed * 100} />
@@ -670,7 +813,7 @@ export function StreetStall({ stall, hour, crowd, onBuy }: { stall: Stall; hour:
       )}
       {choosing && (
         <Html position={[0, 2.2, 1.2]} center zIndexRange={[30, 0]}>
-          <GarbaMenu onChoose={(c) => void choose(c)} onClose={() => setChoosing(false)} />
+          {stall.kind === 'loto' ? <LotoMenu onChoose={(c) => void choose(c)} onClose={() => setChoosing(false)} /> : <GarbaMenu onChoose={(c) => void choose(c)} onClose={() => setChoosing(false)} />}
         </Html>
       )}
     </group>

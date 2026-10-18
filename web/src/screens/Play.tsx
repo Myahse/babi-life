@@ -89,6 +89,7 @@ const STREET_SELLERS: Record<string, [string, string]> = {
   the: ['Le thé avec les gars', 'cup-soda'],
   garba: ['Le garba du garbadrome', 'fish'],
   brochette: ['Le pain brochette', 'sandwich'],
+  loto: ['Un ticket de Loto Chance', 'ticket'],
 }
 
 export function Play() {
@@ -448,7 +449,9 @@ export function Play() {
               // Which seller (the id's prefix: porc, cafe, the; else alloco), as the API does.
               const [label, icon] = STREET_SELLERS[vendor.split(':')[0]] ?? STREET_SELLERS.alloco
               await run(label, icon, 'market', async () => {
-                const res = await api.street(sim.id, vendor, choice)
+                // The loto kiosk: the ticket (draw, numbers, stake) comes as JSON.
+                const ticket = vendor.startsWith('loto:') && choice ? (JSON.parse(choice) as { draw: number; numbers: number[]; stake: number }) : null
+                const res = ticket ? await api.buyLoto(sim.id, vendor, ticket.draw, ticket.numbers, ticket.stake) : await api.street(sim.id, vendor, choice)
                 said = res.outcome.text
                 return res
               })

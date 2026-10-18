@@ -1,6 +1,7 @@
 package sims
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math"
@@ -203,73 +204,68 @@ func money(n int) string {
 	return string(out)
 }
 
-// settleBets: the open bets whose last match is over are won or lost; the winnings are paid.
-func (h *Handler) settleBets(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
-		now := time.Now().Unix()
-		rows, err := tx.Query(ctx, `SELECT b.id, b.app, b.stake, b.odds::float8, l.match, l.pick FROM bets b JOIN bet_legs l ON l.bet = b.id
-			WHERE b.sim = $1 AND b.status = 'open' AND b.settles_at <= $2 ORDER BY b.id`, s.ID, now)
+// settleBets: settles the bets and tickets that are over (every refresh of
+// the Sim does it too: mutateTx), and says what was won.
+func (h *Handler) settleBets(w http.ResponseWriter, r *http.Request) { h.mutate(w, r, nil) }
+
+// settleBetsTx: the open bets whose last match is over are won or lost; the winnings are paid.
+func settleBetsTx(ctx context.Context, tx pgx.Tx, s *Sim) ([]Event, error) {
+	now := time.Now().Unix()
+	rows, err := tx.Query(ctx, `SELECT b.id, b.app, b.stake, b.odds::float8, l.match, l.pick FROM bets b JOIN bet_legs l ON l.bet = b.id
+		WHERE b.sim = $1 AND b.status = 'open' AND b.settles_at <= $2 ORDER BY b.id`, s.ID, now)
+	if err != nil {
+		return nil, err
+	}
+	type open struct {
+		app   string
+		stake int
+		odds  float64
+		lost  bool
+	}
+	bets := map[int64]*open{}
+	order := []int64{}
+	for rows.Next() {
+		var id int64
+		var o open
+		var key, pick string
+		if err := rows.Scan(&id, &o.app, &o.stake, &o.odds, &key, &pick); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		if bets[id] == nil {
+			bets[id] = &open{app: o.app, stake: o.stake, odds: o.odds}
+			order = append(order, id)
+		}
+		round, i, err := parseMatch(key)
 		if err != nil {
-			return game.Outcome{}, nil, err
+			bets[id].lost = true
+			continue
 		}
-		type open struct {
-			app   string
-			stake int
-			odds  float64
-			lost  bool
+		m, _ := game.Match(round, i, now, 0)
+		if won, ok := game.Won(m, pick, now); ok && !won {
+			bets[id].lost = true
 		}
-		bets := map[int64]*open{}
-		order := []int64{}
-		for rows.Next() {
-			var id int64
-			var o open
-			var key, pick string
-			if err := rows.Scan(&id, &o.app, &o.stake, &o.odds, &key, &pick); err != nil {
-				rows.Close()
-				return game.Outcome{}, nil, err
+	}
+	rows.Close()
+	var events []Event
+	for _, id := range order {
+		b := bets[id]
+		name := betApps[b.app].Name
+		if b.lost {
+			if _, err := tx.Exec(ctx, `UPDATE bets SET status = 'lost' WHERE id = $1`, id); err != nil {
+				return nil, err
 			}
-			if bets[id] == nil {
-				bets[id] = &open{app: o.app, stake: o.stake, odds: o.odds}
-				order = append(order, id)
-			}
-			round, i, err := parseMatch(key)
-			if err != nil {
-				bets[id].lost = true
-				continue
-			}
-			m, _ := game.Match(round, i, now, 0)
-			if won, ok := game.Won(m, pick, now); ok && !won {
-				bets[id].lost = true
-			}
+			events = append(events, Event{Kind: "money", Text: fmt.Sprintf("%s : pari perdu (%s Djai). La prochaine fois !", name, money(b.stake)), GameTime: s.GameMinutes})
+			continue
 		}
-		rows.Close()
-		var events []Event
-		total := 0
-		for _, id := range order {
-			b := bets[id]
-			name := betApps[b.app].Name
-			if b.lost {
-				if _, err := tx.Exec(ctx, `UPDATE bets SET status = 'lost' WHERE id = $1`, id); err != nil {
-					return game.Outcome{}, nil, err
-				}
-				events = append(events, Event{Kind: "money", Text: fmt.Sprintf("%s : pari perdu (%s Djai). La prochaine fois !", name, money(b.stake)), GameTime: s.GameMinutes})
-				continue
-			}
-			pay := int(math.Round(float64(b.stake) * b.odds))
-			if _, err := tx.Exec(ctx, `UPDATE bets SET status = 'won', payout = $2 WHERE id = $1`, id, pay); err != nil {
-				return game.Outcome{}, nil, err
-			}
-			s.Money += pay
-			total += pay
-			events = append(events, Event{Kind: "money", Text: fmt.Sprintf("%s : pari gagné ! +%s Djai (cote %.2f).", name, money(pay), b.odds), Money: pay, GameTime: s.GameMinutes})
+		pay := int(math.Round(float64(b.stake) * b.odds))
+		if _, err := tx.Exec(ctx, `UPDATE bets SET status = 'won', payout = $2 WHERE id = $1`, id, pay); err != nil {
+			return nil, err
 		}
-		text := ""
-		if total > 0 {
-			text = fmt.Sprintf("Paris gagnés : +%s Djai", money(total))
-		}
-		return game.Outcome{Text: text, Money: total}, events, nil
-	})
+		s.Money += pay
+		events = append(events, Event{Kind: "money", Text: fmt.Sprintf("%s : pari gagné ! +%s Djai (cote %.2f).", name, money(pay), b.odds), Money: pay, GameTime: s.GameMinutes})
+	}
+	return events, nil
 }
 
 // BetView is a bet as the app shows it.
