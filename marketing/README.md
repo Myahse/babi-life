@@ -45,6 +45,7 @@ npm run video:bande-annonce   # the trailer
 npm run video:decouverte      # everything you can do (about an hour to draw)
 npm run video:live            # Awa's live, with out/voix-live.mp3 as its sound (about 40 min)
 node flyer-jeu.mjs            # the « famille » and « découverte » flyers
+node flyer-tout.mjs           # « Tout ce que tu peux faire à Babi » (pictures in out/art/tout/)
 node flyer-commentaire.mjs    # « Tu es tombé·e dans quelle famille ? », for the comments
 ```
 
