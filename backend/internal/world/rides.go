@@ -28,7 +28,7 @@ type RideClass struct {
 	ID     string  `json:"id"`
 	Name   string  `json:"name"`
 	Factor float64 `json:"factor"` // the fare, against the cheapest class
-	// Wait: the extra minutes before a car of this class reaches you.
+	// Wait: the extra minutes before a car of this class reaches you (-1: it's already there).
 	Wait  int    `json:"wait"`
 	Cars  string `json:"cars"`  // what kind of car comes
 	Perks string `json:"perks"` // what you get in it
@@ -36,12 +36,15 @@ type RideClass struct {
 	Effect game.Needs `json:"effect"`
 }
 
-// Gnango's classes, like Yango's Économie, Confort and Confort+. The fares
+// Gnango's classes, like Yango's Économie, Confort and Confort+, and above them Goyave. The fares
 // against each other and the cars are the game's.
 var gnangoClasses = []RideClass{
 	{ID: "eco", Name: "Éco", Factor: 1, Wait: 0, Cars: "Petite berline, souvent un peu usée", Perks: "Le moins cher", Effect: game.Needs{Energy: -2, Hygiene: -3}},
 	{ID: "confort", Name: "Confort", Factor: 1.3, Wait: 2, Cars: "Berline récente et propre", Perks: "Clim garantie, plus de place", Effect: game.Needs{Energy: 3}},
 	{ID: "confortplus", Name: "Confort+", Factor: 1.75, Wait: 5, Cars: "Grande berline ou SUV haut de gamme", Perks: "Chauffeurs les mieux notés, eau offerte, silence", Effect: game.Needs{Energy: 6, Fun: 4}},
+	// Goyave: the top of the range, and instant: a luxury car is always
+	// waiting nearby, its driver in a suit, so it's there as soon as you order.
+	{ID: "goyave", Name: "Goyave", Factor: 3.5, Wait: -1, Cars: "Luxe, chauffeur en costume", Perks: "Instantané : déjà devant toi", Effect: game.Needs{Energy: 10, Fun: 8, Social: 4}},
 }
 
 // The in-game apps carry their own names; they work like the real apps

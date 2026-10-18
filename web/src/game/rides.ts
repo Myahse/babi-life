@@ -29,7 +29,7 @@ export function rideLook(world: World, mode: TripMode | string, from?: Commune, 
 }
 
 /** The colour the app's car shows on the map, by class. */
-const CLASS_COLOR: Record<string, string> = { eco: '#868e96', confort: '#f1f3f5', confortplus: '#161a2b' }
+const CLASS_COLOR: Record<string, string> = { eco: '#868e96', confort: '#f1f3f5', confortplus: '#161a2b', goyave: '#d4b052' }
 
 /** Mirrors world.ClassFare: the fare in that class, rounded to 50 Djai. */
 export function classFare(fare: number, c?: RideClass) {

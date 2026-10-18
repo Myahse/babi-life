@@ -137,12 +137,12 @@ func TestRideApps(t *testing.T) {
 		t.Errorf("no class picked should be Éco: %+v", s.Activity.Trip)
 	}
 	var plus int
-	for _, c := range []string{"confort", "confortplus"} {
+	for _, c := range []string{"confort", "confortplus", "goyave"} {
 		s = newSim()
 		if err := s.leaveWith(abj, cocody, Ride{App: "gnango", Class: c}, rand.New(alwaysSource{})); err != nil {
 			t.Fatal(err)
 		}
-		if tr := s.Activity.Trip; tr.Class != c || tr.Fare <= eco || tr.Fare <= plus || !strings.Contains(tr.Label, "Confort") {
+		if tr := s.Activity.Trip; tr.Class != c || tr.Fare <= eco || tr.Fare <= plus || !strings.Contains(tr.Label, map[string]string{"confort": "Confort", "confortplus": "Confort+", "goyave": "Goyave"}[c]) {
 			t.Errorf("%s should cost more than the class below: %+v (éco %d)", c, tr, eco)
 		}
 		plus = s.Activity.Trip.Fare

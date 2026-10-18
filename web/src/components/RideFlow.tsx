@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowRight, Car, Clock3, Gem, Hand, MessageCircle, Minus, PiggyBank, Plus, Snowflake, UserRound, X } from 'lucide-react'
+import { ArrowRight, Car, Clock3, Crown, Gem, Hand, MessageCircle, Minus, PiggyBank, Plus, Snowflake, UserRound, X } from 'lucide-react'
 import type { Commune, Ride, RideApp, RideClass, World } from '../lib/types'
 import { amount, clock, tollOf, withToll } from '../game/rules'
 import { routeIn } from '../game/roads'
@@ -289,8 +289,11 @@ const CLASS_CARS: Record<string, { cars: [string, string][]; kind: string; eta: 
   eco: { cars: [['#adb5bd', 'grise'], ['#f1f3f5', 'blanche'], ['#c92a2a', 'rouge'], ['#1c7ed6', 'bleue']], kind: 'Petite berline', eta: [2, 4], drop: 0.18 },
   confort: { cars: [['#f1f3f5', 'blanche'], ['#868e96', 'gris métal'], ['#212529', 'noire']], kind: 'Berline récente', eta: [3, 6], drop: 0.1 },
   confortplus: { cars: [['#141416', 'noire'], ['#2b2d42', 'gris anthracite'], ['#f8f9fa', 'blanc nacré']], kind: 'SUV haut de gamme', eta: [6, 10], drop: 0.04 },
+  goyave: { cars: [['#0b0b0f', 'noire laquée'], ['#e9e3d5', 'champagne']], kind: 'Berline de luxe', eta: [0, 0], drop: 0 },
 }
-const CLASS_ICON: Record<string, typeof Car> = { eco: PiggyBank, confort: Snowflake, confortplus: Gem }
+const CLASS_ICON: Record<string, typeof Car> = { eco: PiggyBank, confort: Snowflake, confortplus: Gem, goyave: Crown }
+/** Goyave: the car is already there, no search, no wait. */
+const instant = (c?: RideClass) => c?.id === 'goyave'
 
 /**
  * Booking Gnango or iDrive: looking for a driver (on iDrive, one has to take
@@ -351,8 +354,19 @@ function AppBooking({ world, req, onBoard, onClose }: { world: World; req: FlowR
   const fare = req.offer ?? fareOf(cls)
   const name = cls ? `${app.name} ${cls.name}` : app.name
 
+  // Ordering: a driver is looked for, except in Goyave where one is already waiting at the door.
+  function order() {
+    if (!instant(cls)) return setStage('search')
+    const c = newCall(rideLook(world, app.id, undefined, cls?.id), app.id, fareOf(cls), req.from.name)
+    c.eta = 0
+    setCall(c)
+    setCar(pick(CLASS_CARS.goyave.cars))
+    setDrop(null)
+    setStage('arrived')
+  }
+
   if (stage === 'choose')
-    return <ClassPicker app={app} req={req} classes={classes} cls={cls} setCls={setCls} fareOf={fareOf} onOrder={() => setStage('search')} onClose={onClose} />
+    return <ClassPicker app={app} req={req} classes={classes} cls={cls} setCls={setCls} fareOf={fareOf} onOrder={order} onClose={onClose} />
 
   return (
     <div className="animate-pop w-full max-w-[380px] rounded-[28px] bg-[var(--color-surface)] p-5 shadow-2xl">
@@ -389,6 +403,13 @@ function AppBooking({ world, req, onBoard, onClose }: { world: World; req: FlowR
           <div className="h-2 overflow-hidden rounded-full bg-[var(--color-canvas)]">
             <div className="h-full rounded-full bg-[var(--color-emerald)] transition-[width] duration-1000 ease-linear" style={{ width: `${100 - (left / (call.eta * SECONDS_PER_MIN)) * 100}%` }} />
           </div>
+        </div>
+      )}
+
+      {stage === 'arrived' && instant(cls) && call && (
+        <div className="mt-3 flex items-start gap-2 rounded-2xl bg-[#141416] p-3 text-sm font-bold text-[#f3e6c4]">
+          <Crown size={16} className="mt-0.5 shrink-0 text-[#d4b052]" />
+          {`${kind?.kind} ${car[1]} devant toi, plaque ${call.plate}. ${call.driver}, en costume, t'ouvre la portière : « Bonjour, bienvenue à bord. Rafraîchissement ? »`}
         </div>
       )}
 
@@ -457,7 +478,7 @@ function ClassPicker({ app, req, classes, cls, setCls, fareOf, onOrder, onClose 
           <X size={18} />
         </button>
       </div>
-      <div className="grid gap-2 p-3" role="radiogroup" aria-label="Catégorie de voiture">
+      <div className="grid grid-cols-1 gap-2 p-3" role="radiogroup" aria-label="Catégorie de voiture">
         {classes.map((c) => {
           const look = CLASS_CARS[c.id]
           const Icon = CLASS_ICON[c.id] ?? Car
@@ -471,10 +492,10 @@ function ClassPicker({ app, req, classes, cls, setCls, fareOf, onOrder, onClose 
               aria-checked={on}
               disabled={short}
               onClick={() => setCls(c)}
-              className={`flex items-center gap-3 rounded-2xl border-2 p-2.5 text-left transition disabled:opacity-45 ${on ? 'border-[#ffd166] bg-[#fff8e1]' : 'border-transparent bg-[var(--color-canvas)]'}`}
+              className={`flex w-full min-w-0 items-center gap-3 rounded-2xl border-2 p-2.5 text-left transition disabled:opacity-45 ${on ? 'border-[#ffd166] bg-[#fff8e1]' : instant(c) ? 'border-[#d4b052]/40 bg-[#fbf6ea]' : 'border-transparent bg-[var(--color-canvas)]'}`}
             >
-              <span className="relative grid h-12 w-14 shrink-0 place-items-center rounded-xl" style={{ background: col, color: inkOn(col), boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.12)' }}>
-                <Car size={c.id === 'confortplus' ? 30 : c.id === 'confort' ? 26 : 22} />
+              <span className="relative grid h-12 w-12 shrink-0 place-items-center rounded-xl" style={{ background: col, color: inkOn(col), boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.12)' }}>
+                <Car size={c.id === 'goyave' ? 32 : c.id === 'confortplus' ? 30 : c.id === 'confort' ? 26 : 22} className={instant(c) ? 'text-[#d4b052]' : undefined} />
               </span>
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-1.5 font-display text-base leading-tight font-extrabold">
@@ -484,10 +505,10 @@ function ClassPicker({ app, req, classes, cls, setCls, fareOf, onOrder, onClose 
                 <span className="block truncate text-[11.5px] font-bold text-[var(--color-ink-soft)]">{c.cars}</span>
                 <span className="block truncate text-[11.5px] font-bold text-[var(--color-ink-soft)]">{short ? 'Pas assez de Djai' : c.perks}</span>
               </span>
-              <span className="shrink-0 text-right">
+              <span className="w-[68px] shrink-0 text-right">
                 <span className="block font-display text-[15px] font-extrabold tabular-nums">{amount(fareOf(c))}</span>
                 <span className="flex items-center justify-end gap-0.5 text-[11px] font-bold text-[var(--color-ink-soft)]">
-                  <Clock3 size={11} /> {look ? `${look.eta[0]}-${look.eta[1]} min` : ''}
+                  <Clock3 size={11} /> {instant(c) ? 'Immédiat' : look ? `${look.eta[0]}-${look.eta[1]} min` : ''}
                 </span>
               </span>
             </button>
