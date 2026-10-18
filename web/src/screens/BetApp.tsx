@@ -93,7 +93,7 @@ export function BetApp({ sim, act, app }: { sim: Sim; act: Act; app: 'bet225' | 
   }
 
   return (
-    <div className="-mx-3 -mt-1 min-h-full px-3 pt-2 pb-40 text-white" style={{ background: b.bg }}>
+    <div className="-mx-3 -mt-1 min-h-full px-3 pt-2 pb-4 text-white" style={{ background: b.bg }}>
       <div className="flex items-center justify-between">
         <span className="font-display text-xl font-extrabold" style={{ color: b.accent }}>
           {b.name}
@@ -210,7 +210,7 @@ export function BetApp({ sim, act, app }: { sim: Sim; act: Act; app: 'bet225' | 
 
       {/* The bet slip */}
       {slip.length > 0 && (
-        <div className="fixed inset-x-3 bottom-3 z-10 mx-auto max-w-[356px] rounded-2xl p-3 shadow-[0_-10px_30px_-10px_rgba(0,0,0,0.6)]" style={{ background: b.card, border: `1px solid ${b.accent}55` }}>
+        <div className="sticky bottom-2 z-10 mt-4 rounded-2xl p-3 shadow-[0_-10px_30px_-10px_rgba(0,0,0,0.6)]" style={{ background: b.card, border: `1px solid ${b.accent}55` }}>
           <div className="flex items-center justify-between text-xs font-extrabold">
             <span>{slip.length > 1 ? `Combiné · ${slip.length} matchs` : 'Pari simple'}</span>
             <button className="flex items-center gap-1 text-white/60" onClick={() => setSlip([])}>
