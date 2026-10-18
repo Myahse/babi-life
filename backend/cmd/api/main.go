@@ -60,6 +60,12 @@ func main() {
 	if cfg.FirebaseProjectID != "" {
 		authH.Firebase = auth.NewFirebaseVerifier(cfg.FirebaseProjectID)
 	}
+	// The virtual football's results are keyed by a secret nobody else has.
+	if v := os.Getenv("BET_SECRET"); v != "" {
+		game.BetSecret = v
+	} else {
+		game.BetSecret = cfg.JWTSecret
+	}
 	// ADMIN_KEY opens every admin part at once (the /admin page).
 	adminkey.Master = os.Getenv("ADMIN_KEY")
 	simsH := &sims.Handler{DB: pool, RealPhotos: os.Getenv("STORIES_REAL_PHOTOS") == "true"}

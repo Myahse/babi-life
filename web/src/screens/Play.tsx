@@ -29,6 +29,7 @@ import { AppLogo } from '../components/AppLogo'
 import { GolvoApp, deliveryState, type Delivery } from './GolvoApp'
 import { GbairaiApp } from './GbairaiApp'
 import { TikitokoApp } from './TikitokoApp'
+import { BetApp } from './BetApp'
 import { WayeApp } from './WayeApp'
 import { StoreApp } from './StoreApp'
 import { FriendsApp } from './FriendsApp'
@@ -677,7 +678,7 @@ export function Play() {
 
 /* ---------- The in-game phone ---------- */
 
-type PhoneAppId = 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko'
+type PhoneAppId = 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'bet225' | 'parisfoot'
 type PhoneProps = {
   world: World
   sim: Sim
@@ -711,6 +712,8 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
     ...(has('waye') ? [{ id: 'waye', label: 'Waye', open: () => setApp('waye') }] : []),
     ...(has('gbairai') ? [{ id: 'gbairai', label: 'Gbairai', open: () => setApp('gbairai') }] : []),
     ...(has('tikitoko') ? [{ id: 'tikitoko', label: 'Tikitoko', open: () => setApp('tikitoko') }] : []),
+    ...(has('bet225') ? [{ id: 'bet225', label: 'Bet225', open: () => setApp('bet225') }] : []),
+    ...(has('parisfoot') ? [{ id: 'parisfoot', label: 'ParisFoot', open: () => setApp('parisfoot') }] : []),
     ...(has('golvo') ? [{ id: 'golvo', label: 'Golvo', open: () => setApp('golvo') }] : []),
     ...(has('gnango') ? [{ id: 'gnango', label: 'Gnango', open: onMap }] : []),
     ...(has('idrive') ? [{ id: 'idrive', label: 'iDrive', open: onMap }] : []),
@@ -728,7 +731,7 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
     { id: 'profile', label: 'Profil', icon: UserRound, colors: ['#ff8a9b', '#ff3d57'], open: () => navigate('/profil', { viewTransition: true }) },
     ] as Tile[]
   ).filter((a) => !life.minor || (a.id !== 'jobs' && a.id !== 'home'))
-  const title: Record<PhoneAppId, string> = { here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko' }
+  const title: Record<PhoneAppId, string> = { here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', bet225: 'Bet225', parisfoot: 'ParisFoot' }
 
   return (
     <div className="absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center" onClick={onClose}>
@@ -802,6 +805,7 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
                 {app === 'waye' && <WayeApp world={world} sim={sim} act={act} journal={journal} renderJournal={(events) => <Journal events={events} />} />}
                 {app === 'gbairai' && <GbairaiApp world={world} sim={sim} />}
                 {app === 'tikitoko' && <TikitokoApp sim={sim} act={act} />}
+                {(app === 'bet225' || app === 'parisfoot') && <BetApp sim={sim} act={act} app={app} />}
                 {app === 'golvo' && <GolvoApp world={world} sim={sim} delivery={delivery} onOrder={onDelivery} onCancel={() => onDelivery(null)} onCollect={onCollect} />}
               </div>
             </div>

@@ -1,4 +1,4 @@
-import { Car, ShoppingBag, Bike, HandCoins, MessageCircleMore } from 'lucide-react'
+import { Car, ShoppingBag, Bike, HandCoins, MessageCircleMore, Trophy } from 'lucide-react'
 
 // Logos of the phone's store apps. Invented brands: their own colours and
 // marks, nodding to the services they are modelled on.
@@ -37,6 +37,8 @@ const LOOK: Record<string, { bg: string; fg: string; mark: (s: number) => React.
   gnango: { bg: 'linear-gradient(160deg,#2b2f45,#141416)', fg: '#ffd166', mark: (s) => <Car size={s} strokeWidth={2.4} /> },
   idrive: { bg: 'linear-gradient(160deg,#d7ff4f,#a6e10f)', fg: '#141416', mark: (s) => <HandCoins size={s} strokeWidth={2.4} /> },
   tikitoko: { bg: 'linear-gradient(160deg,#23232d,#101015)', fg: '#ff7a00', mark: (s) => <TikiNote size={s} /> },
+  bet225: { bg: 'linear-gradient(160deg,#17291f,#0e1a14)', fg: '#22c55e', mark: (s) => <span style={{ fontSize: s * 0.42, fontWeight: 900, letterSpacing: -1 }}>225</span> },
+  parisfoot: { bg: 'linear-gradient(160deg,#a78bfa,#6d28d9)', fg: '#fff', mark: (s) => <Trophy size={s} strokeWidth={2.4} /> },
   gbairai: { bg: 'linear-gradient(160deg,#ff9f43,#f0590c)', fg: '#fff', mark: (s) => <MessageCircleMore size={s} strokeWidth={2.4} /> },
   store: { bg: 'linear-gradient(160deg,#7aa7ff,#3b5bfd)', fg: '#fff', mark: (s) => <ShoppingBag size={s} strokeWidth={2.4} /> },
 }

@@ -89,6 +89,12 @@ export type Around = { players: Player[]; friends: Player[]; invites: Invite[] }
 /** Gbairai: a message, and a friend's chat in the list. */
 export type ChatMessage = { id: number; mine: boolean; body: string; at: string; readAt?: string }
 export type Chat = { friend: Player; last?: ChatMessage; unread: number; blocked?: boolean }
+/** The betting apps (Bet225, ParisFoot): the virtual football and the bets. */
+export type BetOdds = Record<'1' | 'N' | '2' | 'plus' | 'moins' | 'btsOui' | 'btsNon', number>
+export type VirtualMatch = { key: string; round: number; home: string; away: string; kickoff: number; end: number; odds: BetOdds; minute: number; score?: [number, number]; goals?: string[] }
+export type BetRounds = { now: number; app: string; boost: number; rounds: { round: number; kickoff: number; matches: VirtualMatch[] }[] }
+export type BetLeg = { match: string; label: string; pick: string; odds: number; won: boolean | null; score?: [number, number] }
+export type BetView = { id: number; app: string; stake: number; odds: number; status: 'open' | 'won' | 'lost'; payout: number; at: string; legs: BetLeg[] }
 /** Le grin: the public chat (all of Babi, or the commune). */
 export type GrinMessage = { id: number; sim: string; firstName: string; gender: 'femme' | 'homme'; look: Look; commune: string; mine: boolean; friend: boolean; body: string; at: string }
 /** Stories (in Gbairai) and Tikitoko. */
