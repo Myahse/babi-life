@@ -42,6 +42,8 @@ export default defineConfig({
         globIgnores: ['**/MapboxMap-*', '**/effects-*', '**/*-{devanagari,cyrillic,cyrillic-ext,greek,vietnamese}-*.woff2'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         navigateFallback: '/index.html',
+        // The testers' door always comes from the network, never from an old copy.
+        navigateFallbackDenylist: [/^\/testeur/],
         cleanupOutdatedCaches: true,
         runtimeCaching: [
           // Hashed file names never change: once fetched, kept.

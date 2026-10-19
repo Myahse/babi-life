@@ -4,6 +4,19 @@ import { isTester, setTester } from '../lib/launch'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
 
+/** Drops the offline copy of the site (service worker and its caches), then opens the page. */
+async function freshStart(to: string) {
+  try {
+    const regs = (await navigator.serviceWorker?.getRegistrations()) ?? []
+    await Promise.all(regs.map((r) => r.unregister()))
+    const keys = (await window.caches?.keys()) ?? []
+    await Promise.all(keys.map((k) => caches.delete(k)))
+  } catch {
+    /* no service worker here: nothing to drop */
+  }
+  location.replace(to)
+}
+
 /**
  * /testeur: the team's way into the game before launch, on any browser.
  * The admin key is checked by the server (as on /admin); then this browser
@@ -33,8 +46,9 @@ export default function Tester() {
       const res = await fetch(`${BASE}/admin/stats`, { headers: { 'X-Admin-Key': key.trim() } })
       if (!res.ok) throw new Error(res.status === 401 || res.status === 403 ? 'Clé incorrecte.' : 'Le serveur ne répond pas : réessaie.')
       setTester(true)
-      // A fresh load, so the whole game opens.
-      location.replace('/jeu')
+      // A fresh load of a fresh copy: the offline cache may still hold the
+      // version from before this page existed, which only knows the wish list.
+      await freshStart('/jeu')
     } catch (x) {
       setError(x instanceof Error ? x.message : 'Pas de réseau.')
     } finally {
@@ -43,7 +57,7 @@ export default function Tester() {
   }
   const leave = () => {
     setTester(false)
-    location.replace('/')
+    void freshStart('/')
   }
 
   return (
@@ -62,7 +76,7 @@ export default function Tester() {
           <>
             <p className="mt-4 text-sm font-bold text-[var(--color-ink-soft)]">Ce navigateur est en mode testeur : tout le jeu est ouvert ici. Les autres voient toujours la liste d'attente.</p>
             <div className="mt-4 grid gap-2">
-              <button className="btn" onClick={() => location.replace('/jeu')}>
+              <button className="btn" onClick={() => void freshStart('/jeu')}>
                 <Play size={18} /> Jouer
               </button>
               <button className="btn btn-soft" onClick={leave}>
