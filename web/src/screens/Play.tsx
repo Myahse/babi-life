@@ -16,7 +16,7 @@ import { TravelCTA, type OnTravel } from '../components/TravelCTA'
 import { Portrait } from '../avatar/portrait'
 import { Neighbourhood } from '../world3d/Neighbourhood'
 import { OpenWorld } from '../world3d/open/OpenWorld'
-import { GROUNDS } from '../world3d/open/landmarks'
+import { GROUNDS, LANDMARKS } from '../world3d/open/landmarks'
 import { iconFor, kindColors } from '../components/icons'
 import { Chip, Coin, DayNight, IconTile, MotiveRing, MoodPin, Row, needColor } from '../components/ui'
 import { NEEDS, actionLength, ageBlock, amount, atHome, blockedBy, homeLacks, housingOf, lifeOf, minutesToAge, clock, duration, mood, openAt, openingLabel, predict, shift } from '../game/rules'
@@ -113,6 +113,15 @@ export function Play() {
   const [menuOpen, setMenuOpen] = useState(false)
   useEffect(() => {
     setMenuOpen(false)
+  }, [placeId])
+  // Walking round the zoo or the hotel's grounds: gone well past them, the visit is over.
+  useEffect(() => {
+    if (!placeId || !GROUNDS.has(placeId)) return
+    const t = setInterval(() => {
+      const door = whereabouts.places.find((p) => p.id === placeId)?.door
+      if (door && Math.hypot(door[0] - whereabouts.sim[0], door[1] - whereabouts.sim[1]) > (LANDMARKS[placeId] ?? 40) * 2 + 20) setPlaceId(null)
+    }, 1000)
+    return () => clearInterval(t)
   }, [placeId])
   const [goTo, setGoTo] = useState<{ placeId: string; nonce: number } | null>(null)
   const [overlay, setOverlay] = useState<'phone' | 'map' | null>(null)
