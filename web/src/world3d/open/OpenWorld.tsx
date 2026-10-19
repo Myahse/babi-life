@@ -198,7 +198,7 @@ export function makeWorldMaterials() {
   }
 }
 
-export function OpenWorld(props: Props & { token: string; onFail: () => void; onLoaded?: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void }) {
+export function OpenWorld(props: Props & { token: string; onFail: () => void; onLoaded?: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void; onHomePlot?: (plot: Plot | undefined) => void }) {
   const night = props.hour < 6 || props.hour >= 19
   const dusk = props.hour >= 17 && props.hour < 19
   const sky = night ? '#141a3d' : dusk ? '#f7a072' : '#8ec9f0'
@@ -237,7 +237,7 @@ function useMaterials(night: boolean) {
   return mats
 }
 
-function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, indoors, nameTag, onNear, frozen, players, onPickPlayer, recenter, onFreeCamera, closeView, shoulderView, token, onFail, onLoaded, onStreetBuy, onRobbed, onTalk, onCall, talkingTo, plotsVersion, onMapPlaces, onHomeSpots }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void; onLoaded?: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void }) {
+function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, indoors, nameTag, onNear, frozen, players, onPickPlayer, recenter, onFreeCamera, closeView, shoulderView, token, onFail, onLoaded, onStreetBuy, onRobbed, onTalk, onCall, talkingTo, plotsVersion, onMapPlaces, onHomeSpots, onHomePlot }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void; onLoaded?: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void; onHomePlot?: (plot: Plot | undefined) => void }) {
   const origin = useMemo<Origin>(() => ({ lat: commune.lat, lng: commune.lng }), [commune.lat, commune.lng])
   const mats = useMaterials(night)
   const home = sim.homeCity === sim.city && sim.homeCommune === commune.id
@@ -770,6 +770,10 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   useEffect(() => {
     onHomeSpots?.(homeIds ? homeIds.split(',') : myPlot?.blocks.length ? [''] : [])
   }, [homeIds, !!myPlot?.blocks.length]) // eslint-disable-line react-hooks/exhaustive-deps
+  // The house itself, for the screen inside it (world3d/HomeInside).
+  useEffect(() => {
+    onHomePlot?.(myPlot)
+  }, [myPlot]) // eslint-disable-line react-hooks/exhaustive-deps
   const cutBlocks = useMemo(() => (myPlot ? myPlot.blocks.filter((b) => b[1] < CUT_HEIGHT) : []), [myPlot])
 
   const homeLot = lots.find((l) => l.id === HOME_ID)

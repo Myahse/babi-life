@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import { Link, useNavigate } from 'react-router-dom'
 import { BadgeCheck, Megaphone, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
-import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World, Ride, Place } from '../lib/types'
+import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World, Ride, Place, Plot } from '../lib/types'
 import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
 import { useLive } from '../lib/live'
@@ -24,6 +24,7 @@ import { HomeApp, JobsApp, type Act } from './phoneApps'
 import { NewsApp, topicOf } from './NewsApp'
 import { RideFlow, type FlowRequest } from '../components/RideFlow'
 import { INDOOR, Interior } from '../world3d/Interior'
+import { HomeInside } from '../world3d/HomeInside'
 import { ARENAS, Arena } from '../world3d/interior/Arena'
 import { AppLogo } from '../components/AppLogo'
 import { TesterTools } from '../components/TesterTools'
@@ -367,7 +368,9 @@ export function Play() {
   const [building, setBuilding] = useState(false)
   const [plotsVersion, setPlotsVersion] = useState(0)
   // The home actions done on the furniture of one's own built house (OpenWorld says which); none: no house.
-  const [homeSpots, setHomeSpots] = useState<string[]>([])
+  const [, setHomeSpots] = useState<string[]>([])
+  // That house itself: going home opens it on a screen of its own (world3d/HomeInside).
+  const [homePlot, setHomePlot] = useState<Plot | undefined>(undefined)
 
   // Live: the other players in the commune, every few seconds.
   const [around, refreshPlayers] = usePlayers(base?.sim.id, `${sim?.city}/${sim?.commune}`)
@@ -410,15 +413,11 @@ export function Play() {
   const atHomeNow = sim.city === sim.homeCity && sim.commune === sim.homeCommune
   const inside = (() => {
     if (doing) {
-      if (doing.placeId === 'golvo') return atHomeNow && !(homeSpots.includes('golvo') && !classic) ? { id: 'home', kind: 'home', it: doing.interaction.id } : null
+      if (doing.placeId === 'golvo') return atHomeNow ? { id: 'home', kind: 'home', it: doing.interaction.id } : null
       if (!doing.placeId) return null
-      // In one's own house, sleeping, the shower, cooking, the TV happen there, in the street's world.
-      if (doing.placeId === 'home' && !classic && homeSpots.includes(doing.interaction.id)) return null
       const kind = doing.placeId === 'home' ? 'home' : ARENAS.has(doing.placeId) ? 'arena' : (doing.placeKind ?? '')
       return INDOOR.has(kind) || kind === 'arena' ? { id: doing.placeId, kind, it: doing.interaction.id } : null
     }
-    // Choosing what to do at home, in front of one's own house: stay out there.
-    if (placeId === 'home' && !classic && homeSpots.length) return null
     if (placeId && placeId !== 'happening') {
       // A covered hall (the Palais des Sports) has its own inside.
       const kind = placeId === 'home' ? 'home' : ARENAS.has(placeId) ? 'arena' : commune.places.find((p) => p.id === placeId)?.kind
@@ -474,7 +473,9 @@ export function Play() {
       )}
       {showInside && (
         <div className="absolute inset-0 z-[1]">
-          {inside!.kind === 'arena' ? (
+          {inside!.kind === 'home' && homePlot && !classic ? (
+            <HomeInside sim={sim} world={world} plot={homePlot} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
+          ) : inside!.kind === 'arena' ? (
             <Arena sim={sim} placeId={inside!.id} interactionId={inside!.it} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id)} />
           ) : (
             <Interior sim={sim} kind={inside!.kind} placeId={inside!.id} interactionId={inside!.it} roam={visiting && !menuOpen} housing={sim.housing} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id && inside!.id !== 'home')} />
@@ -535,7 +536,7 @@ export function Play() {
               }
             },
           }
-          return classic ? <Neighbourhood key={commune.id} {...street} /> : <OpenWorld key={commune.id} {...street} commune={ownPlaces(commune)} token={MAP_TOKEN ?? ''} onFail={() => setMapSlow(true)} onLoaded={() => setMapSlow(false)} onMapPlaces={setMapPlaces} onHomeSpots={setHomeSpots} />
+          return classic ? <Neighbourhood key={commune.id} {...street} /> : <OpenWorld key={commune.id} {...street} commune={ownPlaces(commune)} token={MAP_TOKEN ?? ''} onFail={() => setMapSlow(true)} onLoaded={() => setMapSlow(false)} onMapPlaces={setMapPlaces} onHomeSpots={setHomeSpots} onHomePlot={setHomePlot} />
         })()}
       </div>
       {!showInside && !overlay && <NotifyPrompt />}

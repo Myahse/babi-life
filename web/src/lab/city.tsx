@@ -23,6 +23,7 @@ import { StreetSpot, type StreetPeopleSpot } from '../world3d/open/streetPeople'
 import { homeSpotsOf } from '../world3d/homeSpots'
 import KartRace from '../kart/KartRace'
 import { House } from '../world3d/build/House'
+import { HomeInside } from '../world3d/HomeInside'
 import { FurnitureSet, downstairs } from '../world3d/build/Furniture'
 import { Zones } from '../world3d/build/Zones'
 import { FamilyScene } from '../avatar/Family'
@@ -433,6 +434,7 @@ function Lab() {
   if (view === 'ride') return <RideLab />
   if (view === 'home') return <HomeLab />
   if (view === 'plan') return <PlanLab />
+  if (view === 'inside') return <InsideLab />
   if (view === 'kart') return <KartRace name="Awa" look={randomLook('femme', seededLab(5))} gender="femme" onExit={() => location.reload()} />
   if (view === 'stadium') return <StadiumLab />
   if (view === 'family') return <FamilyScene familyId={q.get('f') ?? 'gnambro'} look={randomLook((q.get('g') ?? 'femme') as 'femme', seededLab(Number(q.get('seed') ?? 3)))} gender={(q.get('g') ?? 'femme') as 'femme'} className="!h-screen !w-screen" />
@@ -836,5 +838,27 @@ function PlanLab() {
       </group>
       <OrbitControls target={[0, 0, 0]} />
     </Canvas>
+  )
+}
+
+/**
+ * Inside a house, on its own screen (world3d/HomeInside): ?view=inside&id=villa-grande
+ * (a home plan) or &id=lot:duplex, &act=sleep|shower|cook-attieke|watch-tv|devoirs to
+ * see the Sim walk there and do it, &night.
+ */
+function InsideLab() {
+  const id = q.get('id') ?? 'maison'
+  const [world, setWorld] = useState<World | null>(null)
+  useEffect(() => {
+    void fetch(`${import.meta.env.VITE_API_URL ?? 'http://localhost:8099/api/v1'}/world`).then((r) => r.json()).then(setWorld)
+  }, [])
+  const sim = useMemo(() => ({ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', () => 0.37) }) as unknown as Sim, [])
+  const plan: HousePlan | undefined = world ? (id.startsWith('lot:') ? world.lotPlans?.find((p) => p.id === id.slice(4)) : world.homePlans?.[id]) : undefined
+  const plot = useMemo<Plot | undefined>(() => (plan ? { simId: 'lab', blocks: plan.blocks, furniture: plan.furniture, zones: plan.zones, built: 0, lot: { w: plan.w, d: plan.d, area: plan.w * plan.d, city: '', commune: '', paid: 0 }, livable: true } : undefined), [plan])
+  if (!world || !plot) return <p style={{ padding: 20 }}>{world ? `Plan inconnu : ${id}` : 'Chargement…'}</p>
+  return (
+    <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
+      <HomeInside sim={sim} world={world} plot={plot} interactionId={q.get('act') ?? undefined} roam night={q.has('night')} stage="adulte" />
+    </div>
   )
 }
