@@ -1595,12 +1595,38 @@ export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 
                       <Wad />
                     </group>
                   )}
+                  {/* Filming: the phone held up in the right hand, its screen lit */}
+                  {pose === 'film' && i === 1 && <FilmingPhone y={-FOREARM - 0.03} />}
                 </group>
               </group>
             )
           })}
         </group>
       </group>
+    </group>
+  )
+}
+
+/* ---------- The phone held up to film ---------- */
+
+const PHONE_BOX = new THREE.BoxGeometry(0.075, 0.15, 0.012)
+const PHONE_SCREEN = new THREE.PlaneGeometry(0.062, 0.13)
+const PHONE_DOT = new THREE.PlaneGeometry(0.018, 0.018)
+const phoneBody = new THREE.MeshLambertMaterial({ color: '#17171b' })
+const phoneLit = new THREE.MeshBasicMaterial({ color: '#a8e6ff', toneMapped: false })
+const phoneLamp = new THREE.MeshBasicMaterial({ color: '#fff7d6', toneMapped: false })
+
+/**
+ * A phone upright in the hand of someone filming (pose 'film'): the screen,
+ * lit, towards the face; on the back the little lamp, towards what's filmed.
+ * Turned for the film pose's forearm, which points forward and up.
+ */
+export function FilmingPhone({ y }: { y: number }) {
+  return (
+    <group position={[0, y, 0.02]} rotation={[2.3, 0, 0]}>
+      <mesh geometry={PHONE_BOX} material={phoneBody} />
+      <mesh geometry={PHONE_SCREEN} material={phoneLit} position={[0, 0, -0.0065]} rotation={[0, Math.PI, 0]} />
+      <mesh geometry={PHONE_DOT} material={phoneLamp} position={[0.02, 0.055, 0.0065]} />
     </group>
   )
 }

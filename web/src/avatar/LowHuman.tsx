@@ -5,6 +5,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import type { Look, Sim } from '../lib/types'
 import { defaultColors, fullLook, hasAcc } from './options'
 import type { Pose } from './Human'
+import { FilmingPhone } from './BlockHuman'
 
 // A blocky Sim seen from afar: the same boxes as BlockHuman (a cube head, a
 // box torso, arms and legs), the same colours (skin, hair, outfit, shoes), the
@@ -99,7 +100,8 @@ export function LowHuman({ look, gender, pose = 'idle', seed = 0, speed }: { loo
       const leg = legs[i].current
       const arm = arms[i].current
       if (leg) leg.rotation.x = seated ? -1.5 : walk ? s * (run ? 0.95 : 0.5) * out : 0
-      if (arm) arm.rotation.x = pose === 'wave' && i ? -2.6 + s * 0.3 : walk ? -s * (run ? 0.9 : 0.45) * out : 0
+      // Arms up to cheer; the phone held up to film.
+      if (arm) arm.rotation.x = pose === 'wave' && i ? -2.6 + s * 0.3 : pose === 'cheer' ? -2.8 + Math.sin(phase.current * 2 + i) * 0.15 : pose === 'film' ? (i ? -1.85 : -1.45) : walk ? -s * (run ? 0.9 : 0.45) * out : 0
     }
   })
   const seatDrop = pose === 'sit' || pose === 'eat' || pose === 'drink' || pose === 'write' ? -0.41 : 0
@@ -140,6 +142,7 @@ export function LowHuman({ look, gender, pose = 'idle', seed = 0, speed }: { loo
       {[0, 1].map((i) => (
         <group key={i} ref={arms[i]} position={[(i ? 1 : -1) * (tw / 2 + aw / 2 + 0.006), SHOULDER_Y, 0]}>
           <mesh geometry={arm} material={material} />
+          {pose === 'film' && i === 1 && <FilmingPhone y={-0.56} />}
         </group>
       ))}
     </group>

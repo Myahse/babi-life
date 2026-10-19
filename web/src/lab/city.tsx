@@ -28,6 +28,7 @@ import { freezeWorldTime } from '../lib/worldClock'
 import { StreetSpot, type StreetPeopleSpot } from '../world3d/open/streetPeople'
 import { homeSpotsOf } from '../world3d/homeSpots'
 import KartRace from '../kart/KartRace'
+import StreetMatch from '../streetball/StreetMatch'
 import { House } from '../world3d/build/House'
 import { HomeInside } from '../world3d/HomeInside'
 import { FurnitureSet, downstairs } from '../world3d/build/Furniture'
@@ -61,7 +62,8 @@ const seededLab = (n: number) => () => ((n = (n * 16807) % 2147483647) / 2147483
 // (OpenFreeMap, no key), n chunks each way, seen from &cam;
 // ?view=gbaka&t=… the apprenti's chase down a straight street (t: seconds
 // into the cycle, frozen; without t it plays);
-// ?view=field&sport=foot|basket (&len=40&wid=20 &night &t=) a pitch or a court and its match;
+// ?view=field&sport=foot|basket (&len=40&wid=20 &night &t= &cam= &target=) a pitch or a court and its match;
+// ?view=hoops the playable 3 against 3 under one basket, ?view=foot5 the 5 against 5 (&seed=);
 // ?view=family&f=gnambro (&g=homme &seed=3) a family at the birth, in front of its home;
 // ?view=interior&kind=home&id=sleep (&housing=villa &g=homme &stage=bebe
 // &seed=3 &night) the inside of a place, the Sim doing that activity;
@@ -457,6 +459,7 @@ function Lab() {
   if (view === 'home') return <HomeLab />
   if (view === 'plan') return <PlanLab />
   if (view === 'inside') return <InsideLab />
+  if (view === 'hoops' || view === 'foot5') return <StreetMatch sport={view === 'hoops' ? 'basket' : 'foot'} name="Awa" look={randomLook('femme', seededLab(5))} gender="femme" seed={Number(q.get('seed') ?? 7)} onExit={() => location.reload()} />
   if (view === 'kart') return <KartRace name="Awa" look={randomLook('femme', seededLab(5))} gender="femme" onExit={() => location.reload()} />
   if (view === 'stadium') return <StadiumLab />
   if (view === 'family') return <FamilyScene familyId={q.get('f') ?? 'gnambro'} look={randomLook((q.get('g') ?? 'femme') as 'femme', seededLab(Number(q.get('seed') ?? 3)))} gender={(q.get('g') ?? 'femme') as 'femme'} className="!h-screen !w-screen" />
@@ -510,7 +513,7 @@ function FieldLab() {
         <meshLambertMaterial color="#cbb38c" />
       </mesh>
       <SportField field={field} seed={q.get('seed') ?? 'lab-field'} night={night} withSim={false} />
-      <OrbitControls />
+      <OrbitControls target={(q.get('target') ?? '0,0,0').split(',').map(Number) as [number, number, number]} />
     </Canvas>
   )
 }

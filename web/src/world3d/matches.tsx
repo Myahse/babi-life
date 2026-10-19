@@ -8,6 +8,7 @@ import type { Look } from '../lib/types'
 import { rng } from './themes'
 import { Box } from './props'
 import { worldTime } from '../lib/worldClock'
+import { PostedBubble, likesFor } from './fans'
 
 // The two street matches, played for real: the ball goes from foot to foot
 // (or hand to hand), each player has a part (keeper, defender, the one who
@@ -558,6 +559,8 @@ export function Football({ seed }: { seed: string }) {
   const ballTex = useBallTexture('#f6f6f6', '#222222', false)
   const [score, setScore] = useState<[number, number]>([0, 0])
   const [shout, setShout] = useState({ text: '', side: 1 })
+  // When the last goal went in: the fans filming it post the clip.
+  const goalAt = useRef(-1e9)
   const { view, push } = useView(10)
   useFrame((_, dtRaw) => {
     const dt = Math.min(dtRaw, 0.05)
@@ -565,6 +568,7 @@ export function Football({ seed }: { seed: string }) {
     footStep(s, dt, (team) => {
       setScore((x) => (team ? [x[0], x[1] + 1] : [x[0] + 1, x[1]]))
       setShout({ text: 'BUUUT !', side: dirOf(team) })
+      goalAt.current = worldTime()
     })
     if (s.phase === 'play' && shout.text) setShout({ text: '', side: 1 })
     s.ps.forEach((p, i) => {
@@ -635,7 +639,9 @@ export function Football({ seed }: { seed: string }) {
           const z = (i % 2 ? 1 : -1) * (FZ + 1.1)
           return (
             <group key={i} position={[x, 0, z]} rotation={[0, z > 0 ? Math.PI : 0, 0]} scale={i % 3 ? 1 : KIDS}>
-              <Human look={p.look} gender={p.gender} pose={shout.text ? 'cheer' : i % 4 === 1 ? 'talk' : 'idle'} seed={p.seed} headScale={i % 3 ? 1 : 1.2} />
+              {/* Every third one films the match on the phone, and posts the goals */}
+              <Human look={p.look} gender={p.gender} pose={i % 3 === 2 ? 'film' : shout.text ? 'cheer' : i % 4 === 1 ? 'talk' : 'idle'} seed={p.seed} headScale={i % 3 ? 1 : 1.2} />
+              {i % 3 === 2 && <PostedBubble likes={likesFor(p.seed)} since={() => worldTime() - goalAt.current - 1 - i * 0.2} />}
             </group>
           )
         })}
@@ -950,6 +956,8 @@ export function Basket({ seed }: { seed: string }) {
   const ballTex = useBallTexture('#d8641f', '#2a1a10', true)
   const [score, setScore] = useState<[number, number]>([0, 0])
   const [line, setLine] = useState({ text: 'Le tournoi commence !', at: 0 })
+  // When the last basket went in: the fans filming it post the clip.
+  const scoredAt = useRef(-1e9)
   const { view, push } = useView(6)
   useFrame((_, dtRaw) => {
     const dt = Math.min(dtRaw, 0.05)
@@ -958,7 +966,10 @@ export function Basket({ seed }: { seed: string }) {
       s,
       dt,
       (text) => setLine({ text, at: worldTime() }),
-      (team, pts) => setScore((x) => (team ? [x[0], x[1] + pts] : [x[0] + pts, x[1]])),
+      (team, pts) => {
+        setScore((x) => (team ? [x[0], x[1] + pts] : [x[0] + pts, x[1]]))
+        scoredAt.current = worldTime()
+      },
     )
     if (line.text && worldTime() - line.at > 2.2 && line.at >= 0) setLine({ text: '', at: -1 })
     s.ps.forEach((p, i) => {
@@ -1058,7 +1069,8 @@ export function Basket({ seed }: { seed: string }) {
           const z = BZ + 1.2 + (i % 2) * 0.7
           return (
             <group key={i} position={[-1 + i * 1.1, 0, z]} rotation={[0, Math.PI, 0]}>
-              <Human look={p.look} gender={p.gender} pose={line.text && i % 3 !== 2 ? 'cheer' : i % 3 === 1 ? 'talk' : 'idle'} seed={p.seed} />
+              <Human look={p.look} gender={p.gender} pose={i % 3 === 2 ? 'film' : line.text ? 'cheer' : i % 3 === 1 ? 'talk' : 'idle'} seed={p.seed} />
+              {i % 3 === 2 && <PostedBubble likes={likesFor(p.seed)} since={() => worldTime() - scoredAt.current - 0.8 - i * 0.15} />}
             </group>
           )
         })}

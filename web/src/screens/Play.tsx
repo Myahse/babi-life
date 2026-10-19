@@ -49,6 +49,7 @@ import { NotifyPrompt } from '../components/NotifyPrompt'
 /** Building one's house: its own screen, downloaded when opened. */
 const BuildMode = lazy(() => import('../components/BuildMode'))
 const KartRace = lazy(() => import('../kart/KartRace'))
+const StreetMatch = lazy(() => import('../streetball/StreetMatch'))
 
 type Toast = { id: number; title: string; text?: string; money: number; tone: 'random' | 'done' | 'error' | 'promo' | 'event'; kind?: string; icon?: string }
 
@@ -398,6 +399,12 @@ export function Play() {
     if (raceKey && raceKey !== raced) setRacing(raceKey)
   }, [raceKey, raced])
 
+  // Playing basketball or football (on a court, a pitch, or with the quarter's match): the player plays the match, once per activity.
+  const ballAct = sim?.activity?.kind === 'do' ? sim.activity : null
+  const ballSport = !ballAct ? null : ballAct.interaction.id === 'play-basket' || (ballAct.placeId === 'happening' && ballAct.interaction.id === 'join' && street?.happening?.id === 'basket') ? 'basket' : ballAct.interaction.id === 'play-football' || (ballAct.placeId === 'happening' && ballAct.interaction.id === 'join' && street?.happening?.id === 'foot') ? 'foot' : null
+  const ballKey = ballAct && ballSport ? `${ballSport}:${ballAct.placeId}:${ballAct.start}` : null
+  const [played, setPlayed] = useState<string | null>(null)
+
   if (!sim) {
     return (
       <div className="grid h-full place-items-center bg-[var(--color-night)] text-white">
@@ -484,6 +491,11 @@ export function Play() {
               return run('Faire une course de karting', 'car', 'karting', () => api.interact(sim.id, kartAct?.placeId ?? 'marcory-karting', 'course-kart'))
             }}
           />
+        </Suspense>
+      )}
+      {ballKey && ballKey !== played && !racing && (
+        <Suspense fallback={<div className="fixed inset-0 z-50 grid place-items-center bg-[#9fd3f2] font-display text-2xl font-extrabold text-white">{ballSport === 'basket' ? 'Sur le terrain…' : 'Au maracana…'}</div>}>
+          <StreetMatch key={ballKey} sport={ballSport!} name={sim.firstName} look={sim.look} gender={sim.gender} onExit={() => setPlayed(ballKey)} />
         </Suspense>
       )}
       {showInside && (

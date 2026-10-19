@@ -10,7 +10,7 @@ import { worldTime } from '../lib/worldClock'
 // simpler blocky figure (avatar/LowHuman.tsx) far away, and the poses that
 // move them both (usePoseRig). Units are metres: feet on y=0, facing +Z.
 
-export type Pose = 'idle' | 'walk' | 'run' | 'leap' | 'hang' | 'wash' | 'sleep' | 'pray' | 'cook' | 'phone' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper' | 'touch' | 'mark' | 'guard' | 'dive' | 'airplane' | 'pass' | 'salat' | 'swim'
+export type Pose = 'idle' | 'walk' | 'run' | 'leap' | 'hang' | 'wash' | 'sleep' | 'pray' | 'cook' | 'phone' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper' | 'touch' | 'mark' | 'guard' | 'dive' | 'airplane' | 'pass' | 'salat' | 'swim' | 'dunk' | 'layup' | 'crossover' | 'block' | 'steal' | 'slide' | 'stumble' | 'bouncepass' | 'film'
 
 /** Poses done sitting on a chair (hips at seat height). */
 export const SEATED: Pose[] = ['sit', 'eat', 'drink', 'write']
@@ -133,6 +133,41 @@ function sportLegs(pose: Pose, out: number, t: number, since: number): [number, 
       return [-0.42, out * 0.16 + Math.sin(t * 6) * 0.05, 0.7]
     case 'dive':
       return [-0.18, out * 0.08, 0.25]
+    case 'dunk': {
+      // Gather (knees bent), the take-off with the right knee driven up, hanging on the rim legs dangling, the landing.
+      if (since < 0.25) return [-0.5 * ease(since / 0.25), 0, 0.95 * ease(since / 0.25)]
+      if (since < 0.55) return out > 0 ? [-1.15, 0.05, 1.45] : [0.25, -0.05, 0.55]
+      if (since < 1.15) return [-0.25 + Math.sin(since * 7 + out) * 0.15, out * 0.06, 0.55 + Math.sin(since * 7) * 0.1]
+      if (since < 1.45) return [-0.45, out * 0.1, 0.9]
+      return [-0.15, out * 0.05, 0.3]
+    }
+    case 'layup': {
+      // Two steps, then up off the left foot, the right knee high.
+      if (since < 0.2) return [out > 0 ? -0.45 : 0.3, 0, 0.5]
+      if (since < 0.75) return out > 0 ? [-1.05, 0, 1.3] : [0.15, 0, 0.35]
+      return [-0.3, 0, 0.6]
+    }
+    case 'crossover': {
+      // Low, a wide step across as the ball changes hands.
+      const k = Math.sin(clamp01(since / 0.45) * Math.PI)
+      return [-0.5 - (out > 0 ? k * 0.35 : 0), out * (0.22 + k * 0.18), 0.85 + k * 0.2]
+    }
+    case 'block':
+      // Up off both feet, toes pointed.
+      return since < 0.15 ? [-0.5, 0, 1] : since < 0.65 ? [-0.1, out * 0.05, 0.25] : [-0.4, 0, 0.75]
+    case 'steal':
+      // A lunge: the right foot forward, the left behind.
+      return out > 0 ? [-0.85, 0.05, 0.95] : [0.35, -0.05, 0.25]
+    case 'slide':
+      // On the ground: the leading leg out straight at the ball, the other folded under.
+      return out > 0 ? [-0.75, 0.05, 0.05] : [-0.2, -0.1, 1.5]
+    case 'stumble': {
+      // Beaten: the feet crossed, a step to catch the balance.
+      const k = clamp01(since / 0.3)
+      return [out * 0.3 * k - 0.2, -out * 0.2 * k, 0.5]
+    }
+    case 'bouncepass':
+      return out > 0 ? [-0.5, 0, 0.6] : [0.2, 0, 0.35]
     case 'salat': {
       const { step } = salatStep()
       // Bowing: the body leans, the legs stay upright. Prostrated: kneeling, the thighs forward a little, the shins flat behind. Sitting: on the heels.
@@ -179,6 +214,49 @@ function sportArms(pose: Pose, out: number, t: number, since: number, armSwing: 
     case 'airplane':
       // The scorer's run: arms out like wings.
       return [0.05, 0, out * 1.45, -0.05, 0]
+    case 'dunk': {
+      // The ball at the chest, carried up over the head, thrown down through the ring; then both hands on the rim.
+      if (since < 0.25) return [-1.0, 0, out * 0.28, -1.7, 0]
+      if (since < 0.55) {
+        const k = ease((since - 0.25) / 0.3)
+        return [-1.0 - 2.0 * k, 0, out * (0.28 - 0.12 * k), -1.7 + 1.55 * k, 0]
+      }
+      if (since < 1.15) return [-3.0 + Math.sin(since * 7) * 0.04, 0, out * 0.2, -0.05, 0]
+      if (since < 1.45) return [-1.4, 0, out * 0.5, -0.4, 0]
+      return [-0.2, 0, out * 0.25, -0.3, 0]
+    }
+    case 'layup':
+      // The right hand lays the ball up off the board; the left arm shields it.
+      if (since < 0.2) return [-1.0, 0, out * 0.28, -1.6, 0]
+      return out > 0 ? [-2.75, 0, 0.18, -0.15, 0] : [-1.0, 0, -0.35, -1.1, 0]
+    case 'crossover': {
+      // The dribbling hand pushes the ball across low in front, the other takes it.
+      const k = clamp01(since / 0.45)
+      const right = k < 0.5 ? out > 0 : out < 0
+      return right ? [-0.75, 0, out * (0.05 - Math.sin(k * Math.PI) * 0.45), -0.55, 0] : [-0.45, 0, out * 0.55, -0.6, 0]
+    }
+    case 'block':
+      // Both arms straight up, hands high for the ball.
+      return [-2.95 + (since < 0.15 ? 1.2 : 0), 0, out * 0.12, -0.05, 0]
+    case 'steal':
+      // The right hand reaching in low for the ball; the left out for balance.
+      return out > 0 ? [-1.25, 0, 0.05, -0.1, 0] : [0.35, 0, -0.6, -0.4, 0]
+    case 'slide':
+      // Hands back on the ground, for the slide.
+      return [0.75, 0, out * 0.45, -0.15, 0]
+    case 'stumble': {
+      // Arms flung out, the balance gone.
+      const w = Math.sin(t * 9 + out) * 0.3
+      return [-0.4 + w, 0, out * (1.25 + w), -0.4, 0]
+    }
+    case 'bouncepass': {
+      // Both hands push the ball down at the floor between the defenders.
+      const k = ease(clamp01(since / 0.3))
+      return [-1.0 + 0.35 * k, 0, out * (0.3 - 0.15 * k), -1.8 + 1.7 * k, 0]
+    }
+    case 'film':
+      // The phone held up at eye height, both hands round it, filming.
+      return out > 0 ? [-1.55 + Math.sin(t * 1.3) * 0.05, 0, 0.12, -0.75, 0] : [-1.35, 0, -0.35, -1.05, 0]
     case 'salat': {
       const { step } = salatStep()
       // Standing: the right hand over the left on the chest; bowing: hands on the knees; prostrated: palms on the ground ahead; sitting: hands on the thighs.
@@ -212,6 +290,41 @@ function sportBody(pose: Pose, t: number, since: number): { y?: number; x?: numb
     }
     case 'airplane':
       return { rz: Math.sin(t * 2.6) * 0.3, rx: 0.05, head: -0.15 }
+    case 'dunk': {
+      // Up to the ring (the hands on the iron, 3.05 m up), hanging there a moment, swaying, then down.
+      if (since < 0.25) return { y: -0.13 * ease(since / 0.25), rx: 0.15, head: -0.1 }
+      if (since < 0.55) return { y: -0.13 + 1.25 * ease((since - 0.25) / 0.3), rx: 0, head: -0.35 }
+      if (since < 1.15) return { y: 1.12 + Math.sin(since * 7) * 0.025, rx: -0.1 + Math.sin(since * 7) * 0.06, head: -0.2 }
+      if (since < 1.45) return { y: 1.12 * (1 - ease((since - 1.15) / 0.3)) - 0.1 * ease((since - 1.15) / 0.3), rx: 0.1, head: 0 }
+      return { y: -0.1 * (1 - clamp01((since - 1.45) / 0.3)), rx: 0, head: 0 }
+    }
+    case 'layup': {
+      const p = clamp01((since - 0.2) / 0.55)
+      return { y: since < 0.2 ? -0.06 : Math.sin(p * Math.PI) * 0.55, rx: 0.05, head: -0.3 }
+    }
+    case 'crossover': {
+      // The weight thrown one way, then the other.
+      const k = clamp01(since / 0.45)
+      return { y: -0.12, x: Math.cos(k * Math.PI) * 0.16, rx: 0.25, rz: -Math.sin(k * Math.PI * 2) * 0.12, head: 0.1 }
+    }
+    case 'block':
+      return { y: since < 0.15 ? -0.1 : since < 0.65 ? Math.sin(((since - 0.15) / 0.5) * Math.PI) * 0.5 : -0.05, head: -0.35 }
+    case 'steal':
+      return { y: -0.14, rx: 0.4, head: 0.25 }
+    case 'slide': {
+      // Down on the ground, leaning back, sliding in feet first.
+      const k = ease(clamp01(since / 0.2))
+      return { y: -0.42 * k, rx: -0.95 * k, head: 0.45 * k }
+    }
+    case 'stumble': {
+      // Off balance: leaning one way, nearly down.
+      const k = ease(clamp01(since / 0.35))
+      return { y: -0.18 * k, rz: 0.45 * k + Math.sin(t * 7) * 0.05, rx: -0.15 * k, head: -0.1 }
+    }
+    case 'bouncepass':
+      return { y: -0.06, rx: 0.25, head: 0.1 }
+    case 'film':
+      return { head: -0.06 }
     case 'salat': {
       const { step } = salatStep()
       // The body turns about the feet: moved so the hips stay where they should be (the hip is 0.84 m up the body).
@@ -222,6 +335,9 @@ function sportBody(pose: Pose, t: number, since: number): { y?: number; x?: numb
       return null
   }
 }
+
+/** Quick moves: the joints follow closely, or the jump would be over before the body got there. */
+const SNAPPY = new Set<Pose>(['dunk', 'layup', 'crossover', 'block', 'steal', 'slide', 'stumble', 'bouncepass'])
 
 /**
  * Moves a rig for a pose, every frame: index 0 of each pair is the side at -x.
@@ -256,7 +372,7 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
     // Every joint eases to where it should be: no jump from one pose to the
     // next. Moving in rhythm (walking, dancing) the joints follow closely, so
     // the swing keeps its shape; changing pose they glide.
-    const rhythmic = walk || pose === 'dance' || pose === 'throw' || pose === 'cheer' || pose === 'leap' || pose === 'hang' || pose === 'wash' || pose === 'cook'
+    const rhythmic = walk || SNAPPY.has(pose) || pose === 'dance' || pose === 'throw' || pose === 'cheer' || pose === 'leap' || pose === 'hang' || pose === 'wash' || pose === 'cook'
     const a = 1 - Math.exp(-(rhythmic ? 30 : 13) * snap * dt)
     const to = (o: THREE.Euler | THREE.Vector3, k: 'x' | 'y' | 'z', target: number) => void (o[k] += (target - o[k]) * a)
     // Standing: the weight goes from one leg to the other, slowly.

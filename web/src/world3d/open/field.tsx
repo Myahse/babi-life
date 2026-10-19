@@ -9,6 +9,7 @@ import type { Field } from './places'
 import { PER_TEAM, SIM_SLOT, matchFor } from './match'
 import { FieldFence } from './fieldFence'
 import { StaticMerge } from '../staticMerge'
+import { PostedBubble, likesFor } from '../fans'
 
 // A maracana or a basketball court on the map, and the match always being
 // played on it (open/match.ts): the surface and its lines, the goals or the
@@ -60,10 +61,29 @@ function Hoop({ x, side }: { x: number; side: 1 | -1 }) {
       <mesh geometry={BOX} material={steel} position={[side * 1.2, 1.6, 0]} scale={[0.16, 3.2, 0.16]} castShadow />
       <mesh geometry={BOX} material={steel} position={[side * 0.75, 3.2, 0]} scale={[0.9, 0.1, 0.1]} />
       <mesh geometry={BOX} material={board} position={[side * 0.3, 3.4, 0]} scale={[0.05, 1.05, 1.8]} castShadow />
-      <mesh position={[0, 3.05, 0]} rotation={[Math.PI / 2, 0, 0]} material={rim}>
+    </group>
+  )
+}
+
+/**
+ * The ring and its net, apart from the merged stand: they move. After a
+ * dunk the ring is pulled down by the one hanging on it and shakes back up;
+ * a shot off the iron rattles it. Hinged at the board.
+ */
+function Rim({ x, side, match }: { x: number; side: 1 | -1; match: ReturnType<typeof matchFor> }) {
+  const hinge = useRef<THREE.Group>(null)
+  useFrame(() => {
+    const h = hinge.current
+    if (!h) return
+    const s = match.rimShake(worldTime())
+    h.rotation.z = s && Math.abs(s.u - x) < 1 ? side * s.amp : 0
+  })
+  return (
+    <group ref={hinge} position={[x + side * 0.27, 3.05, 0]}>
+      <mesh position={[-side * 0.27, 0, 0]} rotation={[Math.PI / 2, 0, 0]} material={rim}>
         <torusGeometry args={[0.23, 0.02, 6, 16]} />
       </mesh>
-      <mesh position={[0, 2.85, 0]} material={net}>
+      <mesh position={[-side * 0.27, -0.2, 0]} material={net}>
         <cylinderGeometry args={[0.22, 0.14, 0.38, 10, 2, true]} />
       </mesh>
     </group>
@@ -173,6 +193,8 @@ function Players({ field, seed, without }: { field: Field; seed: string; without
     return out
   }, [seed, foot])
   const refs = useRef<(THREE.Group | null)[]>([])
+  // Inside each: mirrored for the keeper's dive the other way.
+  const inner = useRef<(THREE.Group | null)[]>([])
   const ball = useRef<THREE.Mesh>(null)
   const poses = useRef<Pose[]>(players.map(() => 'idle'))
   // How fast each one runs (to the next m/s), so the steps match the ground covered.
@@ -188,6 +210,7 @@ function Players({ field, seed, without }: { field: Field; seed: string; without
       g.position.set(s.u, 0, s.v)
       // The Sim faces +z at 0: in the field's frame, `face` is from +x towards +z.
       g.rotation.y = Math.atan2(Math.cos(s.face), Math.sin(s.face))
+      inner.current[k]?.scale.set(s.flip ? -1 : 1, 1, 1)
       const v = Math.round(s.speed)
       if (s.pose !== poses.current[k] || v !== speeds.current[k]) {
         poses.current[k] = s.pose
@@ -204,10 +227,13 @@ function Players({ field, seed, without }: { field: Field; seed: string; without
       {players.map((p, k) =>
         p.team === 0 && p.i === without ? null : (
           <group key={k} ref={(g) => void (refs.current[k] = g)}>
-            <Human look={p.look} gender={p.gender} pose={poses.current[k]} seed={p.seed} speed={speeds.current[k] || undefined} />
+            <group ref={(g) => void (inner.current[k] = g)}>
+              <Human look={p.look} gender={p.gender} pose={poses.current[k]} seed={p.seed} speed={speeds.current[k] || undefined} />
+            </group>
           </group>
         ),
       )}
+      {!foot && (field.len >= 20 ? [-1, 1] : [1]).map((s) => <Rim key={s} x={s * (field.len / 2 - 1.575)} side={s as 1 | -1} match={match} />)}
       <mesh ref={ball} castShadow>
         <sphereGeometry args={[foot ? 0.11 : 0.12, 10, 8]} />
         <meshLambertMaterial color={foot ? '#f4f4f4' : '#e8590c'} />
@@ -219,35 +245,49 @@ function Players({ field, seed, without }: { field: Field; seed: string; without
 /**
  * The people watching from both touchlines, each for one team: chatting,
  * calling out, waving the players on; on their side's goal they jump up,
- * on the other side's they grumble.
+ * on the other side's they grumble. A good few have their phone up,
+ * filming whenever it gets hot near a goal; after a goal or a dunk some of
+ * them post the clip (a bubble over their head: « Posté sur Tikitoko »).
  */
 function Watchers({ field, seed }: { field: Field; seed: string }) {
   const match = matchFor(seed, field)
+  const foot = field.sport === 'foot'
   const people = useMemo(() => {
     const r = rng(`watch${seed}`)
-    const n = field.sport === 'foot' ? 14 : 10
+    const n = foot ? 14 : 10
     return [...Array(n)].map((_, i) => {
       const gender: 'femme' | 'homme' = r() < 0.4 ? 'femme' : 'homme'
       const side = i % 2 ? 1 : -1
       const along = (Math.floor(i / 2) / Math.max(1, Math.floor(n / 2) - 1) - 0.5) * field.len * 0.85 + (r() - 0.5) * 1.6
-      return { gender, look: randomLook(gender, r), seed: r() * 100, x: along, z: side * (field.wid / 2 + 1.5 + r() * 0.9), team: (r() < 0.5 ? 0 : 1) as 0 | 1, side }
+      const s = r() * 100
+      return { gender, look: randomLook(gender, r), seed: s, x: along, z: side * (field.wid / 2 + 1.5 + r() * 0.9), team: (r() < 0.5 ? 0 : 1) as 0 | 1, side, filmer: r() < 0.4, posts: r() < 0.6, delay: 0.5 + r() * 1.6, likes: likesFor(s) }
     })
-  }, [seed, field.len, field.wid, field.sport])
+  }, [seed, field.len, field.wid, foot])
   const poses = useRef<Pose[]>(people.map(() => 'idle'))
   const [, redraw] = useState(0)
   const last = useRef(0)
+  // A goal (or a dunk) worth posting: how long since it went in, or null.
+  const big = (t: number) => {
+    const m = match.moment(t)
+    if (m.kind === 'goal' && (foot || m.after === 'dunk')) return m.since
+    if (m.kind === 'dunk') return m.since - 1.7
+    return null
+  }
   useFrame(() => {
     const t = worldTime()
     if (t - last.current < 0.3) return
     last.current = t
     const m = match.moment(t)
+    const hot = m.kind === 'shot' || m.kind === 'dunk' || m.kind === 'layup' || m.kind === 'cross' || m.kind === 'goal' || m.kind === 'block'
     let changed = false
     people.forEach((p, k) => {
       // Between moments, each one's own mood, changing every few seconds.
       const n = Math.sin(Math.floor((t + p.seed * 3) / 5) * 12.9898 + p.seed * 78.233) * 43758.5453
       const mood = n - Math.floor(n)
+      const cheers = m.kind === 'goal' || m.kind === 'dunk'
       const pose: Pose =
-        m.kind === 'goal' ? (m.team === p.team ? 'cheer' : mood < 0.4 ? 'rant' : 'idle')
+        p.filmer && (hot || mood < 0.35) ? 'film'
+        : cheers ? (m.team === p.team || m.kind === 'dunk' ? 'cheer' : mood < 0.4 ? 'rant' : 'idle')
         : m.kind === 'shot' ? (m.team === p.team ? 'wave' : 'idle')
         : mood < 0.45 ? 'idle' : mood < 0.72 ? 'talk' : mood < 0.88 ? 'wave' : 'rant'
       if (pose !== poses.current[k]) {
@@ -262,6 +302,15 @@ function Watchers({ field, seed }: { field: Field; seed: string }) {
       {people.map((p, i) => (
         <group key={i} position={[p.x, 0, p.z]} rotation={[0, p.side > 0 ? Math.PI : 0, 0]}>
           <Human look={p.look} gender={p.gender} pose={poses.current[i]} seed={p.seed} />
+          {p.filmer && p.posts && (
+            <PostedBubble
+              likes={p.likes}
+              since={() => {
+                const s = big(worldTime())
+                return s === null ? null : s - p.delay
+              }}
+            />
+          )}
         </group>
       ))}
     </NoShadows>

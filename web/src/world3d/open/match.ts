@@ -9,31 +9,53 @@ import type { Field } from './places'
 // the one it's passed to runs to meet it, the others keep their shape
 // round the ball (a maracana's keeper, defender, wingers and striker; the
 // five of a basketball team, each defender on his man).
+// The moves are the real ones: in basketball the ball bounced from the hand
+// to the floor at the dribbler's side, crossovers that leave the man
+// guarding off balance, chest and bounce passes, jump shots, layups, dunks
+// (up to the ring, hanging on it, the ring shaking), blocks and rebounds;
+// in football little touches, passes along the ground and into space, slide
+// tackles, the keeper diving one way or the other, the scorer's celebration.
 //
 // In the field's own frame: u along its length (team 0 attacks +u), v across.
 
-export type Slot = { u: number; v: number; face: number; pose: Pose; /** m/s, for the strides */ speed: number }
+export type Slot = {
+  u: number
+  v: number
+  face: number
+  pose: Pose
+  /** m/s, for the strides */ speed: number
+  /** The keeper's dive the other way: the body mirrored (the 'dive' pose goes to one side). */
+  flip?: boolean
+}
 type P = [number, number]
-type Kind = 'kickoff' | 'dribble' | 'pass' | 'shot' | 'goal' | 'save' | 'hold' | 'out' | 'reset'
+type Kind = 'kickoff' | 'dribble' | 'pass' | 'shot' | 'goal' | 'save' | 'hold' | 'out' | 'reset' | 'cross' | 'dunk' | 'layup' | 'block' | 'tackle'
 type Ev = {
   kind: Kind
   t0: number
   t1: number
   /** Team with the ball during the event. */
   team: 0 | 1
-  /** Who has (or kicks) the ball, who it goes to (-1: nobody). */
+  /** Who has (or kicks) the ball, who it goes to (-1: nobody). A crossover: `to` is the man beaten; a tackle: the one tackled; a block: the one who blocks. */
   from: number
   to: number
   a: P
   b: P
   /** A shot: in or not. */
   scored?: boolean
+  /** Basketball: the dribbling hand (1 right, -1 left); a crossover ends in this hand. */
+  side?: number
+  /** A bounce pass (basketball), a ball played into space (football). */
+  bounce?: boolean
 }
+type Mode = 'ball' | 'run' | 'keep' | 'cheer' | 'shape' | 'beaten'
 
 /** How long a written stretch of play lasts, in seconds. */
 const CYCLE = 180
 /** Players per team: a maracana is five a side, basketball too. */
 export const PER_TEAM = 5
+/** A dunk: when the ball goes through, and when the dunker lets go of the rim (s into the move, as the 'dunk' pose). */
+const DUNK_THROUGH = 0.55
+const DUNK_LET_GO = 1.15
 
 const rand = (seed: number) => () => {
   seed = (seed + 0x6d2b79f5) | 0
@@ -47,6 +69,7 @@ const hashStr = (s: string) => {
   return h >>> 0
 }
 const smooth = (k: number) => (k <= 0 ? 0 : k >= 1 ? 1 : k * k * (3 - 2 * k))
+const clamp01 = (k: number) => Math.max(0, Math.min(1, k))
 const lerp = (a: P, b: P, k: number): P => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k]
 const dist = (a: P, b: P) => Math.hypot(a[0] - b[0], a[1] - b[1])
 
@@ -79,6 +102,11 @@ export class Match {
   }
   private clamp([u, v]: P, m = 1): P {
     return [Math.max(-this.L / 2 + m, Math.min(this.L / 2 - m, u)), Math.max(-this.W / 2 + m, Math.min(this.W / 2 - m, v))]
+  }
+  /** Where a dunker hangs: just in front of the ring. */
+  private rimFront(team: 0 | 1): P {
+    const g = this.target(team)
+    return [g[0] - this.dir(team) * 0.3, 0]
   }
 
   /**
@@ -148,22 +176,98 @@ export class Match {
     const kick = foot ? 4 : 0 // who starts: the striker; in basketball the point guard
     let owner = kick
     let ball: P = [0, 0]
+    // Basketball: the hand the ball is in.
+    let hand = 1
     const push = (e: Omit<Ev, 't0' | 't1'>, d: number) => {
       evs.push({ ...e, t0: t, t1: t + d })
       t += d
+    }
+    // After a basket or a goal: back to the middle, the others kick off (in basketball: inbound under the basket).
+    const restartAfter = (aim: P, d: number) => {
+      const other: 0 | 1 = team === 0 ? 1 : 0
+      const goal = this.target(team)
+      const restart: P = foot ? [0, 0] : this.clamp([goal[0] + d * 0.5, 0], 0.5)
+      push({ kind: 'reset', team: other, from: foot ? 4 : 0, to: -1, a: aim, b: restart }, foot ? 3 : 1.5)
+      team = other
+      owner = foot ? 4 : 0
+      ball = restart
+      hand = 1
+      if (foot) push({ kind: 'kickoff', team, from: owner, to: -1, a: ball, b: ball }, 1)
+    }
+    // Off the rim: the rebound, one side or the other.
+    const rebound = (from: P, d: number) => {
+      const other: 0 | 1 = team === 0 ? 1 : 0
+      const goal = this.target(team)
+      const reb: P = this.clamp([goal[0] - d * (1 + r() * 2.5), (r() - 0.5) * 5], 0.8)
+      const side: 0 | 1 = r() < 0.35 ? team : other
+      const who = 3 + Math.floor(r() * 2)
+      push({ kind: 'pass', team: side, from: -1, to: who, a: from, b: reb }, 0.9)
+      team = side
+      owner = who
+      ball = reb
+      hand = 1
     }
     push({ kind: 'kickoff', team, from: owner, to: -1, a: ball, b: ball }, 1.2)
     let passes = 0
     while (t < CYCLE - 14) {
       const d = this.dir(team)
       const goal = this.target(team)
+      const other: 0 | 1 = team === 0 ? 1 : 0
+      // Football: now and then a defender slides in and wins it.
+      if (foot && owner !== 0 && r() < 0.13) {
+        let thief = 1
+        let best = Infinity
+        for (let i = 1; i < PER_TEAM; i++) {
+          const dd = dist(this.shape(other, i, ball, false), ball)
+          if (dd < best) [best, thief] = [dd, i]
+        }
+        const to = this.clamp([ball[0] - d * (1.5 + r() * 1.5), ball[1] + (r() - 0.5) * 3], 1.5)
+        push({ kind: 'tackle', team: other, from: thief, to: owner, a: ball, b: to }, 1.2)
+        team = other
+        owner = thief
+        ball = to
+        passes = 0
+        continue
+      }
+      // Basketball: the man in front beaten with a crossover, the ball from one hand to the other.
+      if (!foot && r() < 0.3) {
+        const side = -hand
+        const to = this.clamp([ball[0] + d * (0.8 + r()), ball[1] + side * (1.2 + r() * 0.8)], 1)
+        push({ kind: 'cross', team, from: owner, to: owner, a: ball, b: to, side }, 0.6)
+        hand = side
+        ball = to
+      }
       // Run with the ball, forward and a little across.
       const fwd = foot ? 3 + r() * 6 : 2 + r() * 4
       const to = this.clamp([ball[0] + d * fwd, ball[1] + (r() - 0.5) * (foot ? 6 : 4)], foot ? 1.5 : 1)
-      push({ kind: 'dribble', team, from: owner, to: -1, a: ball, b: to }, (foot ? 0.9 : 1.2) + r() * 1.3)
+      push({ kind: 'dribble', team, from: owner, to: -1, a: ball, b: to, side: hand }, (foot ? 0.9 : 1.2) + r() * 1.3)
       ball = to
       const near = dist(ball, goal) < (foot ? this.L * 0.32 : 6.8)
       if (near && (r() < 0.6 || passes > 3)) {
+        passes = 0
+        if (!foot && (dist(ball, goal) < 3 || r() < 0.32)) {
+          // The drive to the basket: a dunk, or a layup off the board; now and then the man guarding him gets a hand to it.
+          const by: P = this.clamp([goal[0] - d * 1.7, (r() - 0.5) * 1.4], 0.8)
+          push({ kind: 'dribble', team, from: owner, to: -1, a: ball, b: by, side: hand }, 0.7)
+          ball = by
+          if (r() < 0.12) {
+            const away: P = this.clamp([by[0] - d * (2 + r() * 2), (r() < 0.5 ? -1 : 1) * (2 + r() * 2)], 0.8)
+            push({ kind: 'block', team, from: owner, to: owner, a: by, b: away }, 1.1)
+            // The one who blocked it picks it up.
+            team = other
+            ball = away
+            hand = 1
+            continue
+          }
+          const dunk = r() < 0.45
+          const scored = dunk || r() < 0.65
+          push({ kind: dunk ? 'dunk' : 'layup', team, from: owner, to: -1, a: by, b: dunk ? this.rimFront(team) : goal, scored }, dunk ? 1.7 : 1)
+          if (scored) {
+            push({ kind: 'goal', team, from: owner, to: -1, a: goal, b: goal }, dunk ? 3.2 : 2)
+            restartAfter(goal, d)
+          } else rebound(goal, d)
+          continue
+        }
         // The shot.
         const roll = r()
         const scored = roll < (foot ? 0.34 : 0.48)
@@ -173,18 +277,10 @@ export class Match {
           : saved
             ? [goal[0] - d * 0.9, (r() - 0.5) * 1.6]
             : [goal[0] + d * (foot ? 1.5 : 0.6), (r() < 0.5 ? -1 : 1) * (foot ? 2.6 : 1.2)]
-        const other: 0 | 1 = team === 0 ? 1 : 0
         push({ kind: 'shot', team, from: owner, to: saved ? 0 : -1, a: ball, b: aim, scored }, foot ? 0.55 : 1.1)
-        passes = 0
         if (scored) {
-          push({ kind: 'goal', team, from: owner, to: -1, a: aim, b: aim }, 4)
-          // Back to the middle; the others kick off (in basketball: inbound under the basket).
-          const restart: P = foot ? [0, 0] : this.clamp([goal[0] + d * 0.5, 0], 0.5)
-          push({ kind: 'reset', team: other, from: foot ? 4 : 0, to: -1, a: aim, b: restart }, foot ? 3 : 1.5)
-          team = other
-          owner = foot ? 4 : 0
-          ball = restart
-          if (foot) push({ kind: 'kickoff', team, from: owner, to: -1, a: ball, b: ball }, 1)
+          push({ kind: 'goal', team, from: owner, to: -1, a: aim, b: aim }, foot ? 4 : 2)
+          restartAfter(aim, d)
         } else if (saved) {
           // The keeper holds it, then throws it out to a team-mate.
           push({ kind: 'hold', team: other, from: 0, to: -1, a: aim, b: aim }, 1.4)
@@ -196,17 +292,7 @@ export class Match {
           team = other
           owner = 0
           ball = this.clamp([goal[0] - d * 1.5, 0], 1)
-        } else {
-          // Off the rim: the rebound, one side or the other.
-          const reb: P = this.clamp([goal[0] - d * (1 + r() * 2.5), (r() - 0.5) * 5], 0.8)
-          const keep = r() < 0.35
-          const side: 0 | 1 = keep ? team : other
-          const who = 3 + Math.floor(r() * 2)
-          push({ kind: 'pass', team: side, from: -1, to: who, a: aim, b: reb }, 0.9)
-          team = side
-          owner = who
-          ball = reb
-        }
+        } else rebound(aim, d)
         continue
       }
       // The pass: to a team-mate (not the keeper), sometimes cut out.
@@ -214,9 +300,10 @@ export class Match {
       if (mate === owner) mate = mate === PER_TEAM - 1 ? 1 : mate + 1
       if (!foot && mate === owner) mate = (owner + 1) % PER_TEAM
       const spot = this.shape(team, mate, ball, true)
-      const q = this.clamp([spot[0] + d * (foot ? 2 : 1), spot[1]], foot ? 1.2 : 0.8)
+      // Football: a ball played into space ahead of a team-mate further up, who runs onto it.
+      const through = foot && (spot[0] - ball[0]) * d > 2 && r() < 0.35
+      const q = this.clamp([spot[0] + d * (foot ? (through ? 6 : 2) : 1), spot[1]], foot ? 1.2 : 0.8)
       const cut = r() < (foot ? 0.22 : 0.15)
-      const other: 0 | 1 = team === 0 ? 1 : 0
       // Cut out: the opponent closest to where it's going.
       let thief = 1
       if (cut) {
@@ -228,11 +315,13 @@ export class Match {
       }
       const len = dist(ball, q)
       const where: P = cut ? lerp(ball, q, 0.6 + r() * 0.3) : q
-      push({ kind: 'pass', team: cut ? other : team, from: owner, to: cut ? thief : mate, a: ball, b: where }, Math.max(0.45, len / (foot ? 13 : 10)))
+      // Basketball: a bounce pass under the hands now and then.
+      push({ kind: 'pass', team: cut ? other : team, from: owner, to: cut ? thief : mate, a: ball, b: where, bounce: foot ? through : r() < 0.35 }, Math.max(0.45, len / (foot ? 13 : 10)))
       passes = cut ? 0 : passes + 1
       if (cut) team = other
       owner = cut ? thief : mate
       ball = where
+      hand = 1
     }
     // The end of the stretch: back to the middle, team 0 to kick off (as the next one starts).
     push({ kind: 'reset', team: 0, from: kick, to: -1, a: ball, b: [0, 0] }, CYCLE - t)
@@ -259,42 +348,113 @@ export class Match {
   /** Where the ball is, and how high (metres). */
   ball(time: number): { u: number; v: number; y: number } {
     const { e, local } = this.at(time)
-    const k = Math.max(0, Math.min(1, (local - e.t0) / (e.t1 - e.t0)))
+    const k = clamp01((local - e.t0) / (e.t1 - e.t0))
+    const s = local - e.t0
     const foot = this.field.sport === 'foot'
-    const [u, v] =
-      e.kind === 'dribble' || e.kind === 'pass' || e.kind === 'shot' || e.kind === 'reset' || e.kind === 'out' ? lerp(e.a, e.b, e.kind === 'reset' || e.kind === 'out' ? smooth(Math.min(1, k * 1.6)) : k) : e.b
+    let [u, v] = this.ballAt(e, local)
     let y = foot ? 0.12 : 0.15
     if (foot) {
+      if (e.kind === 'dribble') {
+        // Little touches: pushed a stride ahead, the player catching up with it, again.
+        const [du, dv] = [e.b[0] - e.a[0], e.b[1] - e.a[1]]
+        const l = Math.hypot(du, dv) || 1
+        const push = 0.42 * ((s * 1.7) % 1) - 0.12
+        u += (du / l) * push
+        v += (dv / l) * push
+      }
       if (e.kind === 'shot') y += Math.sin(k * Math.PI) * 0.9
-      if (e.kind === 'pass') y += Math.sin(k * Math.PI) * Math.min(1.4, dist(e.a, e.b) / 12)
+      // Passes along the ground; only the long ones in the air.
+      if (e.kind === 'pass' && dist(e.a, e.b) > 14) y += Math.sin(k * Math.PI) * Math.min(1.6, dist(e.a, e.b) / 10)
+      if (e.kind === 'tackle') y += Math.abs(Math.sin(k * Math.PI * 2)) * 0.3 * (1 - k)
       if (e.kind === 'hold') y = 1.1
       if (e.kind === 'goal') y = 0.4
-    } else {
-      // Basketball: bounced while dribbling, chest passes, the arc to the basket, through the net.
-      if (e.kind === 'dribble' || e.kind === 'kickoff') y = 0.15 + Math.abs(Math.sin(local * 7)) * 0.85
-      else if (e.kind === 'pass') y = 1.2 + Math.sin(k * Math.PI) * 0.3
-      else if (e.kind === 'shot') y = 2.1 + (3.35 - 2.1) * k + Math.sin(k * Math.PI) * 1.6
-      else if (e.kind === 'goal') y = Math.max(0.15, 3.05 - (local - e.t0) * 4)
-      else if (e.kind === 'reset') y = 1.1
+      return { u, v, y }
     }
+    // Basketball: bounced from the hand to the floor at the dribbler's side.
+    if (e.kind === 'dribble' || e.kind === 'cross' || e.kind === 'kickoff') {
+      const [du, dv] = e.kind === 'kickoff' ? [this.dir(e.team), 0] : [e.b[0] - e.a[0], e.b[1] - e.a[1]]
+      const l = Math.hypot(du, dv) || 1
+      // The right of the way he runs is (dv, -du); a crossover takes the ball across in front, low and quick.
+      const hand = e.kind === 'cross' ? -(e.side ?? 1) * Math.cos(k * Math.PI) : (e.side ?? 1)
+      u += (dv / l) * hand * 0.32 + (du / l) * 0.18
+      v += (-du / l) * hand * 0.32 + (dv / l) * 0.18
+      y = e.kind === 'cross' ? 0.12 + Math.abs(Math.sin(s * 11)) * 0.45 : 0.15 + Math.abs(Math.sin(s * 7)) * 0.8
+    } else if (e.kind === 'pass') {
+      // A chest pass straight across, or a bounce pass off the floor two-thirds of the way.
+      y = e.bounce ? (k < 0.62 ? 1.1 - (1.0 * k) / 0.62 : 0.1 + ((k - 0.62) / 0.38) * 1.0) : 1.2 + Math.sin(k * Math.PI) * 0.3
+    } else if (e.kind === 'shot') y = 2.1 + (3.35 - 2.1) * k + Math.sin(k * Math.PI) * 1.6
+    else if (e.kind === 'layup') {
+      const f = clamp01((s - 0.45) / 0.35)
+      y = s < 0.45 ? 1.1 + (s / 0.45) * 1.3 : 2.4 + 0.8 * f + Math.sin(f * Math.PI) * 0.4
+    } else if (e.kind === 'dunk') {
+      // Carried up in the hands, thrown down through the ring, then onto the floor, bouncing.
+      if (s < DUNK_THROUGH) y = 1.2 + 2.1 * smooth(s / DUNK_THROUGH)
+      else {
+        const f = s - DUNK_THROUGH
+        y = Math.max(0.12, 3.25 - f * 5 - f * f * 6)
+        if (y <= 0.12) y = 0.12 + Math.abs(Math.sin((f - 0.45) * 7)) * 0.6 * Math.exp(-(f - 0.45) * 2)
+      }
+    } else if (e.kind === 'block') {
+      // Up from the shooter's hands, swatted away, down and bouncing.
+      y = k < 0.25 ? 2.1 + k * 2 : Math.max(0.12, 2.6 - (k - 0.25) * 4) + (k > 0.6 ? Math.abs(Math.sin(k * 14)) * 0.5 * (1 - k) : 0)
+    } else if (e.kind === 'goal') y = Math.max(0.15, 3.05 - s * 4)
+    else if (e.kind === 'reset') y = 1.1
     return { u, v, y }
   }
 
+  /** The ring of the basket shaking after a dunk (or a shot off the iron): which end, and how much (radians). */
+  rimShake(time: number): { u: number; amp: number } | null {
+    if (this.field.sport !== 'basket') return null
+    const { e, prev, local } = this.at(time)
+    const s = local - e.t0
+    if (e.kind === 'dunk' && s > DUNK_THROUGH - 0.05) {
+      const f = s - DUNK_THROUGH + 0.05
+      // Pulled down while he hangs on it, then shaking back up.
+      const amp = s < DUNK_LET_GO ? 0.12 + Math.sin(f * 30) * 0.04 : Math.sin(f * 34) * 0.14 * Math.exp(-(s - DUNK_LET_GO) * 4)
+      return { u: this.target(e.team)[0], amp }
+    }
+    if (e.kind === 'goal' && prev.kind === 'dunk' && s < 1) return { u: this.target(e.team)[0], amp: Math.sin(s * 34) * 0.05 * Math.exp(-s * 4) }
+    // Off the iron: the rebound starts at the ring.
+    if (e.kind === 'pass' && e.from === -1 && s < 0.6) return { u: e.a[0] > 0 ? this.L / 2 - 1.575 : -this.L / 2 + 1.575, amp: Math.sin(s * 40) * 0.05 * (1 - s / 0.6) }
+    return null
+  }
+
   /** Where player `i` of `team` is in an event's way of seeing things, at `local`. */
-  private place(e: Ev, team: 0 | 1, i: number, local: number): { p: P; mode: 'ball' | 'run' | 'keep' | 'cheer' | 'shape' } {
-    const k = Math.max(0, Math.min(1, (local - e.t0) / (e.t1 - e.t0)))
+  private place(e: Ev, team: 0 | 1, i: number, local: number): { p: P; mode: Mode } {
+    const k = clamp01((local - e.t0) / (e.t1 - e.t0))
+    const s = local - e.t0
     const mine = e.team === team
     const foot = this.field.sport === 'foot'
     const ballNow = this.ballAt(e, local)
     // The one with the ball runs with it, just behind it.
-    if (mine && i === e.from && (e.kind === 'dribble' || e.kind === 'kickoff' || e.kind === 'hold')) {
+    if (mine && i === e.from && (e.kind === 'dribble' || e.kind === 'kickoff' || e.kind === 'hold' || e.kind === 'cross')) {
       const [du, dv] = [e.b[0] - e.a[0], e.b[1] - e.a[1]]
       const l = Math.hypot(du, dv) || 1
       const back = foot && e.kind !== 'hold' ? 0.55 : 0.3
       const d = this.dir(team)
-      const [bu, bv] = e.kind === 'dribble' ? [du / l, dv / l] : [d, 0]
+      const [bu, bv] = e.kind === 'dribble' || e.kind === 'cross' ? [du / l, dv / l] : [d, 0]
       return { p: [ballNow[0] - bu * back, ballNow[1] - bv * back], mode: 'ball' }
     }
+    // The dunker up to the ring (and hanging there), the layup off the last steps.
+    if (mine && i === e.from && (e.kind === 'dunk' || e.kind === 'layup')) {
+      const spot = e.kind === 'dunk' ? e.b : lerp(e.a, this.rimFront(team), 0.7)
+      return { p: lerp(e.a, spot, smooth(s / (e.kind === 'dunk' ? 0.5 : 0.6))), mode: 'ball' }
+    }
+    // A block: the shooter where he went up, the man guarding him right in front, between him and the ring.
+    if (e.kind === 'block' && i === e.from && mine) return { p: e.a, mode: 'ball' }
+    if (e.kind === 'block' && !mine && i === e.to) {
+      const hoop = this.target(e.team)
+      const l = dist(hoop, e.a) || 1
+      return { p: [e.a[0] + ((hoop[0] - e.a[0]) / l) * 0.75, e.a[1] + ((hoop[1] - e.a[1]) / l) * 0.75], mode: 'shape' }
+    }
+    // A slide tackle: in from his place, feet first through the ball; the one tackled left there.
+    if (e.kind === 'tackle' && mine && i === e.from) {
+      const was = this.shape(team, i, e.a, false)
+      return { p: k < 0.35 ? lerp(was, e.a, smooth(k / 0.35)) : lerp(e.a, e.b, smooth((k - 0.35) / 0.65) * 0.8), mode: 'ball' }
+    }
+    if (e.kind === 'tackle' && !mine && i === e.to) return { p: e.a, mode: 'beaten' }
+    // Crossed over: the man guarding stays where he was, wrong-footed.
+    if (e.kind === 'cross' && !mine && i === e.to) return { p: this.shape(team, i, e.a, false), mode: 'beaten' }
     // The one it's passed to runs to meet it.
     if (mine && i === e.to && e.kind === 'pass') {
       const from = this.shape(team, i, e.a, true)
@@ -319,16 +479,21 @@ export class Match {
     return { p: this.shape(team, i, ballNow, mine), mode: 'shape' }
   }
   private ballAt(e: Ev, local: number): P {
-    const k = Math.max(0, Math.min(1, (local - e.t0) / (e.t1 - e.t0)))
-    if (e.kind === 'dribble' || e.kind === 'pass' || e.kind === 'shot') return lerp(e.a, e.b, k)
+    const k = clamp01((local - e.t0) / (e.t1 - e.t0))
+    if (e.kind === 'dribble' || e.kind === 'pass' || e.kind === 'shot' || e.kind === 'cross') return lerp(e.a, e.b, k)
+    if (e.kind === 'layup') return lerp(e.a, e.b, smooth(k * 1.25))
+    // The dunk: in the hands up to the ring, then down through it.
+    if (e.kind === 'dunk') return lerp(e.a, this.target(e.team), smooth((local - e.t0) / DUNK_THROUGH))
+    if (e.kind === 'block') return lerp(e.a, e.b, k < 0.25 ? 0 : smooth((k - 0.25) / 0.75))
+    if (e.kind === 'tackle') return lerp(e.a, e.b, k < 0.3 ? 0 : smooth((k - 0.3) / 0.7))
     if (e.kind === 'reset' || e.kind === 'out') return lerp(e.a, e.b, smooth(Math.min(1, k * 1.6)))
     return e.b
   }
 
-  /** What's happening at `time`, for the crowd: the kind of moment and which team has the ball. */
-  moment(time: number): { kind: string; team: 0 | 1 } {
-    const { e } = this.at(time)
-    return { kind: e.kind, team: e.team as 0 | 1 }
+  /** What's happening at `time`, for the crowd: the kind of moment, which team has the ball, and since when (s). */
+  moment(time: number): { kind: string; team: 0 | 1; since: number; after: string } {
+    const { e, prev, local } = this.at(time)
+    return { kind: e.kind, team: e.team as 0 | 1, since: local - e.t0, after: prev.kind }
   }
 
   /** Player `i` of `team` at `time`: place, which way he faces, what he's doing. */
@@ -341,23 +506,37 @@ export class Match {
     const { e, local } = this.at(time)
     const foot = this.field.sport === 'foot'
     const mine = e.team === team
+    const s = local - e.t0
     let pose: Pose = speed > 3 ? 'run' : speed > 0.7 ? 'walk' : 'idle'
-    const justFrom = local - e.t0 < (foot ? 0.45 : 0.7)
-    const k = (local - e.t0) / Math.max(0.01, e.t1 - e.t0)
+    let flip = false
+    const justFrom = s < (foot ? 0.45 : 0.7)
+    const k = s / Math.max(0.01, e.t1 - e.t0)
     const near = dist(here.p, [b.u, b.v]) < (foot ? 4.5 : 3.2)
     // The scorer runs off with arms out like wings; the others jump with him.
     if (here.mode === 'cheer') pose = i === e.from ? 'airplane' : 'cheer'
     // The keeper: down on the grass after diving for a shot, still there as the ball goes in.
-    else if (foot && i === 0 && !mine && ((e.kind === 'shot' && k > 0.45) || (e.kind === 'goal' && local - e.t0 < 1.6))) pose = 'dive'
-    else if (here.mode === 'keep' || (foot && i === 0 && !mine && Math.abs(b.u - this.target(team === 0 ? 1 : 0)[0]) < this.L * 0.3)) pose = 'keeper'
-    else if (e.from === i && mine && (e.kind === 'pass' || e.kind === 'shot') && justFrom) pose = foot ? 'kick' : e.kind === 'shot' ? 'shoot' : 'pass'
+    else if (foot && i === 0 && !mine && ((e.kind === 'shot' && k > 0.45) || (e.kind === 'goal' && s < 1.6))) {
+      pose = 'dive'
+      // The dive goes to his own +x side; the other way, the body is mirrored. His +x is (sin face, -cos face).
+      const aim = e.kind === 'shot' ? e.b : e.a
+      flip = (aim[0] - here.p[0]) * Math.sin(face) - (aim[1] - here.p[1]) * Math.cos(face) < 0
+    } else if (here.mode === 'keep' || (foot && i === 0 && !mine && Math.abs(b.u - this.target(team === 0 ? 1 : 0)[0]) < this.L * 0.3)) pose = 'keeper'
+    else if (mine && i === e.from && (e.kind === 'dunk' || e.kind === 'layup')) pose = e.kind
+    else if (mine && i === e.from && e.kind === 'cross') pose = 'crossover'
+    else if (e.kind === 'block' && mine && i === e.from) pose = 'shoot'
+    else if (e.kind === 'block' && !mine && i === e.to) pose = 'block'
+    else if (e.kind === 'tackle' && mine && i === e.from && k > 0.2 && k < 0.8) pose = 'slide'
+    else if (here.mode === 'beaten') pose = s > 0.15 ? 'stumble' : foot ? 'mark' : 'guard'
+    else if (e.from === i && mine && (e.kind === 'pass' || e.kind === 'shot') && justFrom) pose = foot ? 'kick' : e.kind === 'shot' ? 'shoot' : e.bounce ? 'bouncepass' : 'pass'
     else if (here.mode === 'ball' && !foot) pose = 'dribble'
     else if (here.mode === 'ball' && foot && e.kind === 'hold') pose = 'keeper'
     // Running with the ball at the feet: little touches, eyes down.
     else if (here.mode === 'ball' && foot && speed > 0.7) pose = 'touch'
+    // Off the rim: the ones under it go up for the rebound.
+    else if (!foot && e.kind === 'pass' && e.from === -1 && s < 0.55 && dist(here.p, e.a) < 3) pose = 'block'
     // Close to the ball without it: marking (football), guarding (basketball).
     else if (!mine && here.mode === 'shape' && near && speed < 3 && e.kind !== 'goal' && e.kind !== 'reset') pose = foot ? 'mark' : 'guard'
-    return { u: here.p[0], v: here.p[1], face, pose, speed }
+    return { u: here.p[0], v: here.p[1], face, pose, speed, flip }
   }
   private pos(team: 0 | 1, i: number, time: number) {
     const { e, prev, local } = this.at(time)
