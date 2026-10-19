@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Ban, ChevronLeft, Flag, Send, ShieldCheck } from 'lucide-react'
+import { Ban, ChevronLeft, Flag, Keyboard, Send, ShieldCheck } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
 import type { Chat, ChatMessage, Sim, World } from '../lib/types'
 import { Portrait } from '../avatar/portrait'
@@ -7,6 +7,7 @@ import { ReportSheet } from '../components/Social'
 import { Stories } from './Stories'
 import { Grin } from './Grin'
 import { NotifyBanner } from '../components/NotifyPrompt'
+import { EmojiPanel, StickerView, previewOf, stickerOf, type Sticker } from '../components/Stickers'
 
 /**
  * Gbairai: write to the players your Sim has made friends with in the game,
@@ -83,7 +84,7 @@ function Chats({ world, sim }: { world: World; sim: Sim }) {
                   {c.last && <span className="shrink-0 text-[11px] font-bold text-[var(--color-ink-soft)]">{stamp(c.last.at)}</span>}
                 </span>
                 <span className="flex items-center justify-between gap-2">
-                  <span className="truncate text-[13px] font-bold text-[var(--color-ink-soft)]">{c.blocked ? 'Bloqué·e' : c.last ? `${c.last.mine ? 'Toi : ' : ''}${c.last.body}` : 'Dis-lui bonjour !'}</span>
+                  <span className="truncate text-[13px] font-bold text-[var(--color-ink-soft)]">{c.blocked ? 'Bloqué·e' : c.last ? `${c.last.mine ? 'Toi : ' : ''}${previewOf(c.last.body)}` : 'Dis-lui bonjour !'}</span>
                   {c.unread > 0 && <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-[#f0590c] px-1.5 text-[11px] font-extrabold text-white">{c.unread}</span>}
                 </span>
               </span>
@@ -102,6 +103,8 @@ function Thread({ sim, chat, onBack }: { sim: Sim; chat: Chat; onBack: () => voi
   const [note, setNote] = useState<string | null>(null)
   const [reporting, setReporting] = useState<ChatMessage | 'friend' | null>(null)
   const [sending, setSending] = useState(false)
+  // The emoji and stickers panel under the message box.
+  const [panel, setPanel] = useState<'emoji' | 'stickers' | null>(null)
   const end = useRef<HTMLDivElement>(null)
   const last = useRef(0)
 
@@ -128,13 +131,14 @@ function Thread({ sim, chat, onBack }: { sim: Sim; chat: Chat; onBack: () => voi
     end.current?.scrollIntoView({ block: 'end' })
   }, [msgs.length])
 
-  const send = async () => {
-    const body = text.trim()
+  const send = async (sticker?: Sticker) => {
+    const body = sticker ? `[sticker:${sticker.id}]` : text.trim()
     if (!body || sending) return
     setSending(true)
     try {
       const m = await api.write(sim.id, chat.friend.id, body)
-      setText('')
+      if (sticker) setPanel(null)
+      else setText('')
       last.current = Math.max(last.current, m.id)
       setMsgs((old) => [...old, m])
       setNote(null)
@@ -190,8 +194,8 @@ function Thread({ sim, chat, onBack }: { sim: Sim; chat: Chat; onBack: () => voi
         {msgs.length === 0 && <p className="py-6 text-center text-sm font-bold text-[var(--color-ink-soft)]">Écris le premier message à {chat.friend.firstName}.</p>}
         {msgs.map((m) => (
           <div key={m.id} className={`flex ${m.mine ? 'justify-end' : 'justify-start'}`}>
-            <div className={`group relative max-w-[80%] rounded-2xl px-3 py-2 text-[14px] leading-snug font-bold whitespace-pre-wrap ${m.mine ? 'rounded-br-sm bg-[#ffe0c7] text-[#4a2200]' : 'rounded-bl-sm bg-[var(--color-canvas)]'}`}>
-              {m.body}
+            <div className={`group relative max-w-[80%] rounded-2xl px-3 py-2 text-[14px] leading-snug font-bold whitespace-pre-wrap ${stickerOf(m.body) || bigEmoji(m.body) ? 'bg-transparent' : m.mine ? 'rounded-br-sm bg-[#ffe0c7] text-[#4a2200]' : 'rounded-bl-sm bg-[var(--color-canvas)]'} ${bigEmoji(m.body) ? 'text-[40px] leading-none' : ''}`}>
+              {stickerOf(m.body) ? <StickerView s={stickerOf(m.body)!} /> : m.body}
               <span className="mt-0.5 flex items-center justify-end gap-2 text-[10px] font-bold opacity-60">
                 {!m.mine && (
                   <button className="underline" onClick={() => setReporting(m)}>
@@ -213,6 +217,7 @@ function Thread({ sim, chat, onBack }: { sim: Sim; chat: Chat; onBack: () => voi
           <ReportSheet title={reporting === 'friend' ? `Signaler ${chat.friend.firstName}` : 'Signaler ce message'} onPick={(r) => void report(r)} onCancel={() => setReporting(null)} note="La personne est bloquée tout de suite ; l'équipe regarde le signalement." />
         </div>
       )}
+      {panel && !blocked && <EmojiPanel tab={panel} onTab={setPanel} onEmoji={(e) => setText((t) => (t + e).slice(0, 500))} onSticker={(st) => void send(st)} />}
       <form
         className="flex items-end gap-2"
         onSubmit={(e) => {
@@ -220,6 +225,9 @@ function Thread({ sim, chat, onBack }: { sim: Sim; chat: Chat; onBack: () => voi
           void send()
         }}
       >
+        <button type="button" disabled={blocked} onClick={() => setPanel((p) => (p ? null : 'emoji'))} className={`grid h-11 w-11 shrink-0 place-items-center rounded-full text-[22px] disabled:opacity-40 ${panel ? 'bg-[#ffe0c7]' : 'bg-[var(--color-canvas)]'}`} aria-label="Emoji et stickers">
+          {panel ? <Keyboard size={20} /> : '😊'}
+        </button>
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value.slice(0, 500))}
@@ -242,6 +250,8 @@ function Thread({ sim, chat, onBack }: { sim: Sim; chat: Chat; onBack: () => voi
   )
 }
 
+/** A message of one to three emoji alone: drawn big, as on WhatsApp. */
+const bigEmoji = (body: string) => /^(\p{Extended_Pictographic}|\p{Regional_Indicator}|\u200d|\ufe0f|\p{Emoji_Modifier}){1,8}$/u.test(body.trim()) && [...body.trim()].length <= 8
 const time = (at: string) => new Date(at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 function stamp(at: string) {
   const d = new Date(at)

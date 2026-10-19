@@ -49,6 +49,7 @@ var (
 	errNotFound   = errors.New("sim introuvable")
 	reLink        = regexp.MustCompile(`(?i)\b((https?://|www\.)\S+|[a-z0-9-]+\.(com|net|org|ci|fr|io|me|app|link|ly|gg|tv)\b(/\S*)?)`)
 	rePhone       = regexp.MustCompile(`(\+?\d[\d .-]{6,}\d)`)
+	reSticker     = regexp.MustCompile(`^\[sticker:[a-z0-9-]+\]$`)
 	reportReasons = []string{"insultes", "harcèlement", "contenu choquant", "arnaque", "autre"}
 )
 
@@ -294,7 +295,11 @@ func (h *Handler) write(w http.ResponseWriter, r *http.Request) {
 	// On the other's phone: who wrote, and what (the latest from the same friend replaces the one before).
 	var name string
 	_ = h.DB.QueryRow(ctx, `SELECT first_name FROM sims WHERE id = $1`, me).Scan(&name)
-	h.Push.ToSim(to, push.Message{Title: name + " · Gbairai", Body: body, URL: "/jeu?app=gbairai", Tag: "gbairai-" + me})
+	preview := body
+	if reSticker.MatchString(body) {
+		preview = "a envoyé un sticker"
+	}
+	h.Push.ToSim(to, push.Message{Title: name + " · Gbairai", Body: preview, URL: "/jeu?app=gbairai", Tag: "gbairai-" + me})
 	httpx.JSON(w, http.StatusOK, m)
 }
 
