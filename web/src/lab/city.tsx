@@ -519,7 +519,7 @@ function TollsLab() {
           <boxGeometry args={[600, 1.2, 24]} />
           <meshLambertMaterial color="#d8d3c8" />
         </mesh>
-        <CableStayed ends={[[-300, 0], [300, 0]]} />
+        <CableStayed way={{ pts: [{ x: -300, y: 8, z: 0 }, { x: 300, y: 8, z: 0 }], cum: [0, 600], len: 600 }} />
       </group>
       <OrbitControls target={(q.get('target') ?? '0,5,0').split(',').map(Number) as [number, number, number]} />
     </Canvas>

@@ -1,6 +1,7 @@
 import { centroid, hash, pointInRing, type XZ } from './geo'
 import type { Building, ChunkData } from './tiles'
 import { blockRing } from './voxel'
+import { deckWidth } from './bridgeLine'
 
 // The map has the streets of every quarter, but not always their houses:
 // in much of Abidjan (whole blocks of Yopougon, Abobo…) OpenStreetMap draws
@@ -64,7 +65,8 @@ export function fillQuarters(chunk: ChunkData, neighbours: XZ[][] = [], keepClea
   for (const r of neighbours) fillRing(r, CELL)
   for (const a of chunk.areas) fillRing(a.rings[0], 0)
   for (const r of chunk.roads) {
-    const half = r.width / 2 + 1
+    // A bridge's deck (and the embankment of its ramps) is wider than its roadway.
+    const half = (r.bridge ? deckWidth(r, 0) : r.width) / 2 + 1
     for (let i = 1; i < r.pts.length; i++) {
       const [ax, az] = r.pts[i - 1]
       const [bx, bz] = r.pts[i]

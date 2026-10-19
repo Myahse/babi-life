@@ -25,6 +25,9 @@ self.onmessage = async (e: MessageEvent<ChunkRequest>) => {
     const made = resolved.filter((r) => !r.real && !r.field && !r.station && !marks.has(r.id)).map((r) => r.center)
     // A pitch the game lays out, or the map's: no house stands on it.
     const fields = resolved.flatMap((r) => (r.field ? [r.field] : []))
+    // Not a corner of a house on it either (only its middle was looked at): gone from the
+    // drawing and from the ways on foot, which use these buildings too.
+    if (fields.length) data.buildings = data.buildings.filter((b) => !fields.some((f) => onFieldGround(f, b.c) || b.ring.some((p) => onFieldGround(f, p, 0.5))))
     // A landmark clears its ground in every chunk it reaches, not only its own.
     const landmarks = places.filter((p) => p.landmark).map((p) => ({ at: resolved.find((r) => r.id === p.id)?.center ?? p.at, r: p.landmark! }))
     // A building in a campus or a hospital's grounds looks the part.

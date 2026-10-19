@@ -1,5 +1,6 @@
 import { bridgeHeights, pointInRing, type XZ } from './geo'
 import { deckTop } from './bridgeNames'
+import { deckWidth, joinedEnds } from './bridgeLine'
 import type { ChunkData } from './tiles'
 
 // Getting around the open world: a graph of the real streets of the loaded
@@ -9,7 +10,7 @@ import type { ChunkData } from './tiles'
 const SNAP = 1.5 // metres: ends of a street cut by two chunks join up
 const CELL = 24 // metres: spatial index cell
 
-type Edge = { a: number; b: number; len: number; width: number }
+type Edge = { a: number; b: number; len: number; width: number; /** a bridge's deck, wider than its roadway */ deck?: number }
 
 export class Nav {
   nodes: XZ[] = []
@@ -25,12 +26,13 @@ export class Nav {
 
   constructor(chunks: ChunkData[], skipBuilding: (c: XZ) => boolean = () => false) {
     for (const ch of chunks) {
+      const joined = joinedEnds(ch.roads)
       for (const r of ch.roads) {
-        const ys = r.bridge ? bridgeHeights(r.pts, ch.box, deckTop(r.cls, r.name)) : undefined
+        const ys = r.bridge ? bridgeHeights(r.pts, ch.box, deckTop(r.cls, r.name), joined) : undefined
         let prev = this.node(r.pts[0], ys?.[0])
         for (let i = 1; i < r.pts.length; i++) {
           const cur = this.node(r.pts[i], ys?.[i])
-          if (cur !== prev) this.edge(prev, cur, r.width)
+          if (cur !== prev) this.edge(prev, cur, r.width, r.bridge ? deckWidth(r, 0) : undefined)
           prev = cur
         }
       }
@@ -66,9 +68,9 @@ export class Nav {
     else this.nodeGrid.set(k, [i])
     return i
   }
-  private edge(a: number, b: number, width: number) {
+  private edge(a: number, b: number, width: number, deck?: number) {
     const len = Math.hypot(this.nodes[a][0] - this.nodes[b][0], this.nodes[a][1] - this.nodes[b][1])
-    const e = this.edges.push({ a, b, len, width }) - 1
+    const e = this.edges.push({ a, b, len, width, deck }) - 1
     this.adj[a].push({ to: b, len, width })
     this.adj[b].push({ to: a, len, width })
     for (const k of this.cellsOf([this.nodes[a], this.nodes[b]])) {
@@ -116,7 +118,7 @@ export class Nav {
     const n = this.nearest([x, z], 14)
     if (!n) return 0
     const e = this.edges[n.edge]
-    if (n.dist > e.width / 2 + 2) return 0
+    if (n.dist > (e.deck ?? e.width) / 2 + 2) return 0
     const [ya, yb] = [this.ys[e.a], this.ys[e.b]]
     return ya || yb ? ya + (yb - ya) * n.t : 0
   }
@@ -124,7 +126,8 @@ export class Nav {
   /** On a street (or a bridge): always walkable, even over water. */
   onRoad(p: XZ) {
     const n = this.nearest(p, 20)
-    return !!n && n.dist <= this.edges[n.edge].width / 2 + 1.5
+    const e = n && this.edges[n.edge]
+    return !!e && n.dist <= (e.deck ? e.deck / 2 - 0.4 : e.width / 2 + 1.5)
   }
 
   /** How high the building standing here goes (its roof and parapet), 0 in the open. */

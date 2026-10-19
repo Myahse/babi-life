@@ -5,6 +5,7 @@ import { CHUNK_ZOOM, centroid, clipLine, clipRing, hash, pointInRing, tileBox, t
 import { blockRing } from './voxel'
 import { fillQuarters } from './fill'
 import { bigBridgeName, bridgeKind } from './bridgeNames'
+import { deckWidth } from './bridgeLine'
 
 // A chunk of the open world: one map tile of real Abidjan (OpenStreetMap data
 // served by Mapbox), turned into game metres. Roads keep their class (a
@@ -313,6 +314,14 @@ function tollGrounds(tile: VectorTile, toXZ: (extent: number) => (p: { x: number
  */
 const THROUGH = new Set(['motorway', 'trunk', 'primary', 'motorway_link', 'trunk_link', 'primary_link', 'secondary'])
 function dropOverRoads(chunk: ChunkData) {
+  // Nothing stands on a bridge's deck or its ramps, nor on a pitch or a playground's ground.
+  const decks = chunk.roads.filter((r) => r.bridge).map((r) => ({ pts: r.pts, half: deckWidth(r, 0) / 2 + 1 }))
+  const pitches = chunk.areas.filter((a) => a.kind === 'pitch')
+  if (decks.length || pitches.length)
+    chunk.buildings = chunk.buildings.filter((b) => {
+      if (pitches.some((a) => pointInRing(b.c, a.rings[0]))) return false
+      return !decks.some((d) => b.ring.concat([b.c]).some((p) => nearLine(p, d.pts, d.half)))
+    })
   const big = chunk.roads.filter((r) => THROUGH.has(r.cls) && !r.bridge)
   if (!big.length) return
   chunk.buildings = chunk.buildings.filter((b) => {
@@ -328,6 +337,18 @@ function dropOverRoads(chunk: ChunkData) {
       }
     return true
   })
+}
+
+/** Is p within `d` metres of the line? */
+function nearLine([x, z]: XZ, pts: XZ[], d: number) {
+  for (let i = 1; i < pts.length; i++) {
+    const [ax, az] = pts[i - 1]
+    const [bx, bz] = pts[i]
+    const l2 = (bx - ax) ** 2 + (bz - az) ** 2
+    const t = l2 ? Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (z - az) * (bz - az)) / l2)) : 0
+    if (Math.hypot(x - (ax + (bx - ax) * t), z - (az + (bz - az) * t)) < d) return true
+  }
+  return false
 }
 
 function ringArea(ring: XZ[]) {

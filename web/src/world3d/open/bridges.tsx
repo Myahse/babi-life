@@ -7,6 +7,7 @@ import * as THREE from 'three'
 import { BRIDGE_HEIGHT, type XZ } from './geo'
 import { bridgeKind, type BridgeKind } from './bridgeNames'
 import type { ChunkData } from './tiles'
+import { bridgeWay, wayAt, type Way } from './bridgeLine'
 
 // What stands on Abidjan's bridges besides the deck: the 5e pont's tower
 // and its cables, and the 3e pont's toll plaza. Both are found from the map:
@@ -30,7 +31,12 @@ function ends(chunks: ChunkData[], kind: BridgeKind): [XZ, XZ] | null {
 export function BridgeSights({ chunks, night }: { chunks: ChunkData[]; night: boolean }) {
   // Keyed on the pieces found, so it's only worked out again when they change.
   const key = chunks.map((c) => c.key).join()
-  const ado = useMemo(() => ends(chunks, 'ado'), [key]) // eslint-disable-line react-hooks/exhaustive-deps
+  // The 5e pont's pylon on its deck's middle line: from the near chunks when they have it (the far
+  // horizon's coarser pieces only when it's out of reach), so it stands on the deck drawn up close.
+  const ado = useMemo(() => {
+    const near = chunks.filter((c) => !c.key.includes(':'))
+    return bridgeWay(near, 'ado') ?? bridgeWay(chunks, 'ado')
+  }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
   const hkb = useMemo(() => ends(chunks, 'hkb'), [key]) // eslint-disable-line react-hooks/exhaustive-deps
   const tolls = useMemo(() => tollsOnMap(chunks), [key]) // eslint-disable-line react-hooks/exhaustive-deps
   // The 3e pont's plaza where the map has its toll booth; without it (the map
@@ -38,7 +44,7 @@ export function BridgeSights({ chunks, night }: { chunks: ChunkData[]; night: bo
   const hkbToll = tolls.hkb ?? (hkb ? northApproach(hkb) : null)
   return (
     <>
-      {ado && <CableStayed ends={ado} />}
+      {ado && <CableStayed way={ado} />}
       {hkbToll && <TollPlaza at={hkbToll.at} rot={hkbToll.rot} lanes={Math.max(21, hkbToll.lanes ?? 0)} label="Péage du 3e pont · 500 Djai" night={night} look="hkb" />}
       {tolls.yop && <TollPlaza at={tolls.yop.at} rot={tolls.yop.rot} lanes={Math.max(10, tolls.yop.lanes ?? 0)} label="Péage du 4e pont" night={night} look="yop" />}
     </>
@@ -55,10 +61,12 @@ const cableMat = new THREE.MeshLambertMaterial({ color: '#d9dde2' })
  * into a single mast that leans back, away from the main span; the stays fan
  * from the mast down to the middle of the deck on both sides.
  */
-export function CableStayed({ ends: [a, b] }: { ends: [XZ, XZ] }) {
-  const mid: XZ = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]
-  const len = Math.hypot(b[0] - a[0], b[1] - a[1])
-  const [ux, uz] = [(b[0] - a[0]) / len, (b[1] - a[1]) / len]
+export function CableStayed({ way }: { way: Way }) {
+  // In the middle of the bridge, on its deck, turned the way it runs there.
+  const m = wayAt(way, way.len / 2)
+  const mid: XZ = [m.x, m.z]
+  const [ux, uz] = [m.dx, m.dz]
+  const deckY = m.y > 1 ? m.y : BRIDGE_HEIGHT
   const H = 108
   const LEAN = 0.16 // radians, back along the bridge (towards a)
   const JOIN = 42 // where the legs meet
@@ -72,7 +80,7 @@ export function CableStayed({ ends: [a, b] }: { ends: [XZ, XZ] }) {
       const n = Math.floor(k / 2)
       const d = 16 + n * (side > 0 ? 10 : 7.5)
       const top = mastAt(H - 8 - n * 3.6)
-      const deck = new THREE.Vector3(mid[0] + ux * d * side, BRIDGE_HEIGHT + 0.6, mid[1] + uz * d * side)
+      const deck = new THREE.Vector3(mid[0] + ux * d * side, deckY + 0.6, mid[1] + uz * d * side)
       const dir = top.clone().sub(deck)
       out.push({ pos: deck.clone().add(top).multiplyScalar(0.5), q: new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize()), l: dir.length() })
     }
@@ -89,7 +97,7 @@ export function CableStayed({ ends: [a, b] }: { ends: [XZ, XZ] }) {
     const out = [-1, 1].map((s) => seg(new THREE.Vector3(mid[0] + vx * 13 * s, -2, mid[1] + vz * 13 * s), join, 3.4, 2.6))
     out.push(seg(join, mastAt(H), 4.2, 1.8))
     // The cross-beam under the deck, between the legs.
-    return { legs: out, beam: { at: new THREE.Vector3(mid[0], BRIDGE_HEIGHT - 2.2, mid[1]), rot: Math.atan2(vx, vz) } }
+    return { legs: out, beam: { at: new THREE.Vector3(mid[0], deckY - 2.2, mid[1]), rot: Math.atan2(vx, vz) } }
   }, [mid[0], mid[1], ux, uz]) // eslint-disable-line react-hooks/exhaustive-deps
   const top = mastAt(H)
   return (

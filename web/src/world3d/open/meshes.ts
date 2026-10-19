@@ -9,6 +9,7 @@ import * as Three from 'three'
 import { Builder } from './builder'
 import { addBuilding, newBuildingBuilders, type Style } from './buildings'
 import { BRIDGE_BUILD, bridgeKind, deckTop, type BridgeKind } from './bridgeNames'
+import { deckWidth, joinedEnds, twinOffset } from './bridgeLine'
 
 // Roads draw in order, the bigger on top where they meet.
 const RANK: Record<string, number> = { motorway: 9, trunk: 8, primary: 7, secondary: 6, tertiary: 5, street: 4, street_limited: 3, service: 2, pedestrian: 2, track: 1, path: 0 }
@@ -244,7 +245,8 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ) => boolean, styleOf: 
   const LAMP = new Three.Color('#8d939b')
   const waters = chunk.areas.filter((a) => a.kind === 'water')
   const inWater = (x: number, z: number) => waters.some((a) => pointInRing([x, z], a.rings[0]) && !a.rings.slice(1).some((h) => pointInRing([x, z], h)))
-  const bridge = (pts: XZ[], w: number, ys: number[], kind: BridgeKind | null) => {
+  /** twin: which side the other carriageway is (+1 left, -1 right), 0 when the deck is all one. */
+  const bridge = (pts: XZ[], w: number, ys: number[], kind: BridgeKind | null, twin = 0) => {
     const how = BRIDGE_BUILD[kind ?? 'default']
     const stone = kind === 'fhb' ? OLD : CONCRETE
     const top = Math.max(...ys) // the deck's height (a flyover's is higher)
@@ -299,8 +301,9 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ) => boolean, styleOf: 
       } else {
         B.trim.box(mx, ym - 0.9 - g / 2, mz, len, g, w - 0.6, rot, under)
       }
-      // A concrete barrier down the middle, between the two directions.
-      if (how.median) B.trim.box(mx, ym + 0.4, mz, len, 0.8, 0.5, rot, RAILING.clone().multiplyScalar(0.92))
+      // A concrete barrier down the middle, between the two directions (with two carriageways: on the inner edge).
+      const mid = twin * (w / 2 - 0.3)
+      if (how.median) B.trim.box(mx + nx * mid, ym + 0.4, mz + nz * mid, len, 0.8, 0.5, rot, RAILING.clone().multiplyScalar(0.92))
       // Light studs along both edges, every 4 m.
       if (how.studs)
         for (let d = 2; d < len; d += 4) {
@@ -311,10 +314,10 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ) => boolean, styleOf: 
       if (how.lamps)
         for (let d = Math.ceil(run / how.lamps) * how.lamps - run; d < len; d += how.lamps) {
           const [px, pz] = [x1 + ((x2 - x1) * d) / len, z1 + ((z2 - z1) * d) / len]
-          const side = how.median ? 0 : Math.round((run + d) / how.lamps) % 2 ? 1 : -1
+          const side = twin || (how.median ? 0 : Math.round((run + d) / how.lamps) % 2 ? 1 : -1)
           const [lx, lz] = [px + nx * side * (w / 2 - 0.4), pz + nz * side * (w / 2 - 0.4)]
           B.trim.box(lx, ym + 4.8, lz, 0.25, 9.6, 0.25, rot, LAMP)
-          for (const arm of how.median ? [1, -1] : [-side]) B.trim.box(lx + nx * arm * 1.3, ym + 9.5, lz + nz * arm * 1.3, 0.35, 0.2, 2.6, rot, LAMP)
+          for (const arm of how.median && !twin ? [1, -1] : [-side]) B.trim.box(lx + nx * arm * 1.3, ym + 9.5, lz + nz * arm * 1.3, 0.35, 0.2, 2.6, rot, LAMP)
         }
       // The piers, every span, down into the lagoon.
       for (let d = Math.ceil(run / how.span) * how.span - run; d < len; d += how.span) {
@@ -341,15 +344,21 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ) => boolean, styleOf: 
     }
   }
   const paint = new Builder()
+  // Where two bridge pieces meet mid-lagoon the deck goes on (it doesn't ramp down to the water).
+  const joined = joinedEnds(chunk.roads)
   for (const r of [...chunk.roads].sort((a, b) => (RANK[a.cls] ?? 0) - (RANK[b.cls] ?? 0))) {
     const rank = RANK[r.cls] ?? 0
-    const ys = r.bridge ? bridgeHeights(r.pts, chunk.box, deckTop(r.cls, r.name)) : undefined
+    const ys = r.bridge ? bridgeHeights(r.pts, chunk.box, deckTop(r.cls, r.name), joined) : undefined
+    // One of a big bridge's two one-way carriageways: half the deck each, side by side.
+    const kind = r.bridge ? bridgeKind(r.name) : null
+    const twin = kind && BRIDGE_BUILD[kind].median ? Math.sign(twinOffset(r.pts, chunk.roads.filter((o) => o !== r && o.bridge && bridgeKind(o.name) === kind).map((o) => o.pts))) : 0
+    const deck = ys ? deckWidth(r, twin) : 0
     if (r.paved) {
       // A pavement on each side of the bigger streets (and on bridges).
-      if (rank >= 4 || ys) strip(pavement, r.pts, ys ? Math.max(r.width + 3.2, BRIDGE_BUILD[bridgeKind(r.name) ?? 'default'].width ?? 0) : r.width + 3.2, 0.03, 2, ys)
+      if (rank >= 4 || ys) strip(pavement, r.pts, ys ? deck : r.width + 3.2, 0.03, 2, ys)
       strip(asphalt, r.pts, r.width, 0.05 + rank * 0.002, 4, ys)
     } else strip(laterite, r.pts, r.width, 0.04, 3, ys)
-    if (ys) bridge(r.pts, Math.max(r.width + 3.2, BRIDGE_BUILD[bridgeKind(r.name) ?? 'default'].width ?? 0), ys, bridgeKind(r.name))
+    if (ys) bridge(r.pts, deck, ys, kind, twin)
   }
   const kerbs = new Builder()
   markings(chunk, paint, kerbs)

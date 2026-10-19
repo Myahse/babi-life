@@ -801,7 +801,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       {nav.nodes.length > 0 && <Billboards nav={nav} seed={commune.id} night={night} />}
       <TakeOff runways={runways} />
       <BridgeSights chunks={[...chunks.values()].map((c) => c.data)} night={night} />
-      <BridgeLife chunks={[...chunks.values()].map((c) => c.data)} night={night} />
+      {/* The traffic on the near chunks' deck only: the far horizon's coarser pieces would set it beside the deck. */}
+      <BridgeLife chunks={[...chunks.values()].filter((c) => !c.data.key.includes(':')).map((c) => c.data)} night={night} />
       {bridgeLabels.map((b) => (
         <Html key={b.name} position={[b.at[0], 12, b.at[1]]} center zIndexRange={[15, 0]}>
           <div className="flex items-center gap-1.5 rounded-xl border border-black/5 bg-white/95 px-2.5 py-1 text-[12.5px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_4px_12px_-6px_rgba(0,0,0,0.45)]">

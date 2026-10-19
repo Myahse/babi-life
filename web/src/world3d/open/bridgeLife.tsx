@@ -5,8 +5,8 @@ import { Human, NoShadows } from '../../avatar/Human'
 import { randomLook } from '../../avatar/options'
 import { serverNow, worldTime } from '../../lib/worldClock'
 import { Vehicle, type VehicleKind } from '../vehicles'
-import { BRIDGE_BUILD, bridgeKind, type BridgeKind } from './bridgeNames'
-import { bridgeHeights } from './geo'
+import { BRIDGE_BUILD, type BridgeKind } from './bridgeNames'
+import { bridgeWay as wayOf, wayAt as at, type Way } from './bridgeLine'
 import { whereabouts } from '../whereabouts'
 import type { ChunkData } from './tiles'
 
@@ -15,61 +15,6 @@ import type { ChunkData } from './tiles'
 // (gbakas, woro-woro, taxis, cars, motos), free-flowing most of the day,
 // bumper to bumper at the morning and evening rush; people walking on the
 // pavements; on the 1er pont, the train crossing on the lower level.
-
-type P = { x: number; y: number; z: number }
-type Way = { pts: P[]; cum: number[]; len: number }
-
-/** The bridge's line, pieced together from every loaded chunk, with its deck's height. */
-function wayOf(chunks: ChunkData[], kind: BridgeKind): Way | null {
-  const pieces: P[][] = []
-  for (const c of chunks)
-    for (const r of c.roads)
-      if (r.bridge && bridgeKind(r.name) === kind) {
-        const ys = bridgeHeights(r.pts, c.box)
-        pieces.push(r.pts.map(([x, z], i) => ({ x, y: ys[i], z })))
-      }
-  if (!pieces.length) return null
-  // Chain the pieces end to end, starting from the longest; the other
-  // carriageway (a parallel piece) is left out: lanes are offset from one line.
-  const length = (p: P[]) => p.reduce((s, q, i) => (i ? s + Math.hypot(q.x - p[i - 1].x, q.z - p[i - 1].z) : 0), 0)
-  pieces.sort((a, b) => length(b) - length(a))
-  let line = pieces.shift()!
-  const close = (a: P, b: P) => Math.hypot(a.x - b.x, a.z - b.z) < 2.5
-  for (let grew = true; grew; ) {
-    grew = false
-    for (let i = 0; i < pieces.length; i++) {
-      const q = pieces[i]
-      const [h, t] = [line[0], line[line.length - 1]]
-      let add: P[] | null = null
-      if (close(t, q[0])) add = [...line, ...q.slice(1)]
-      else if (close(t, q[q.length - 1])) add = [...line, ...[...q].reverse().slice(1)]
-      else if (close(h, q[q.length - 1])) add = [...q, ...line.slice(1)]
-      else if (close(h, q[0])) add = [...[...q].reverse(), ...line.slice(1)]
-      if (add) {
-        line = add
-        pieces.splice(i, 1)
-        grew = true
-        break
-      }
-    }
-  }
-  const cum = [0]
-  for (let i = 1; i < line.length; i++) cum.push(cum[i - 1] + Math.hypot(line[i].x - line[i - 1].x, line[i].z - line[i - 1].z))
-  const len = cum[cum.length - 1]
-  return len > 80 ? { pts: line, cum, len } : null
-}
-
-/** Where s metres along the way is, and which way it runs there. */
-function at(w: Way, s: number) {
-  s = Math.max(0, Math.min(w.len - 0.01, s))
-  let i = 1
-  while (i < w.cum.length - 1 && w.cum[i] < s) i++
-  const [a, b] = [w.pts[i - 1], w.pts[i]]
-  const seg = w.cum[i] - w.cum[i - 1] || 1
-  const t = (s - w.cum[i - 1]) / seg
-  const [dx, dz] = [(b.x - a.x) / seg, (b.z - a.z) / seg]
-  return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: a.z + (b.z - a.z) * t, dx, dz }
-}
 
 /** Abidjan's hour (UTC+0, no daylight saving), on the shared clock. */
 const HOUR = import.meta.env.DEV && typeof location !== 'undefined' ? new URLSearchParams(location.search).get('hour') : null
