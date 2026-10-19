@@ -286,12 +286,20 @@ function InteriorLab() {
     const r = () => ((n = (n * 16807) % 2147483647) / 2147483647)
     return { id: 'lab', firstName: 'Awa', lastName: 'Koné', gender, look: randomLook(gender, r), career: q.get('career') ?? '', careerLevel: Number(q.get('level') ?? 0) } as unknown as Sim
   }, [gender])
+  // &after=<action>: the room first, then the action picked a moment later (the Sim walks over).
+  const [id, setId] = useState<string | undefined>(q.get('id') ?? undefined)
+  useEffect(() => {
+    const later = q.get('after')
+    if (!later) return
+    const t = setTimeout(() => setId(later), 1500)
+    return () => clearTimeout(t)
+  }, [])
   return (
     <div style={{ width: '100vw', height: '100vh' }}>
       {q.get('kind') === 'arena' ? (
         <Arena sim={sim} placeId="treich-palais" interactionId={q.get('id') ?? undefined} stage="adulte" />
       ) : (
-        <Interior sim={sim} kind={q.get('kind') ?? 'home'} placeId={q.get('place') ?? 'lab-place'} interactionId={q.get('id') ?? undefined} housing={q.get('housing') ?? 'cour'} night={night} stage={q.get('stage') ?? 'adulte'} />
+        <Interior sim={sim} kind={q.get('kind') ?? 'home'} placeId={q.get('place') ?? 'lab-place'} interactionId={id} housing={q.get('housing') ?? 'cour'} night={night} stage={q.get('stage') ?? 'adulte'} />
       )}
     </div>
   )

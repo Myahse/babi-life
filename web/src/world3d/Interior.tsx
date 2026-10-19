@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useRef } from 'react'
+import { lazy, Suspense, useMemo, useRef, useState } from 'react'
 import { Snapper } from './snapshot'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
@@ -95,6 +95,65 @@ function action(kind: string, id: string | undefined): { spot: string; pose: Pos
   if (id === 'consultation') return { spot: 'bed', pose: 'idle' }
   if (kind === 'market' || kind === 'mall') return { spot: 'stall', pose: 'busy' }
   return { spot: 'counter', pose: 'idle' }
+}
+
+/** How fast the Sim crosses a room (m/s): an unhurried walk. */
+const WALK_IN = 1.5
+
+/**
+ * The Sim going to where something is done in the room: it walks there from
+ * where it stood (the door when it has just picked something), turns to face
+ * the right way, and only then sits, lies down or starts; when it's over, it
+ * walks back to the door. On the floor while walking; up onto the sofa or
+ * the bed, and over onto its back, eased at the end.
+ */
+function WalkTo({ to, facing, lying, onThere, children }: { to: V3; facing: number; lying: boolean; onThere?: (there: boolean) => void; children: (there: boolean) => React.ReactNode }) {
+  const outer = useRef<THREE.Group>(null)
+  const inner = useRef<THREE.Group>(null)
+  // Where the Sim is now; it starts where it should be (a place opened mid-action).
+  const at = useRef({ x: to[0], z: to[2], rot: lying ? 0 : facing, settle: 1 })
+  const [there, setThere] = useState(true)
+  const key = `${to.join()},${facing.toFixed(2)},${lying}`
+  const was = useRef(key)
+  useFrame((_, dtRaw) => {
+    const dt = Math.min(dtRaw, 0.1)
+    const a = at.current
+    if (was.current !== key) {
+      was.current = key
+      a.settle = 0
+      if (there) setThere(false)
+      onThere?.(false)
+    }
+    const [dx, dz] = [to[0] - a.x, to[2] - a.z]
+    const d = Math.hypot(dx, dz)
+    if (a.settle === 0 && d > 0.04) {
+      // Walking over, facing the way it goes.
+      const step = Math.min(d, WALK_IN * dt)
+      a.x += (dx / d) * step
+      a.z += (dz / d) * step
+      const want = Math.atan2(dx, dz)
+      a.rot += Math.atan2(Math.sin(want - a.rot), Math.cos(want - a.rot)) * Math.min(1, dt * 10)
+    } else if (a.settle < 1) {
+      // There: turn to face the right way, then up onto the seat or down onto the bed.
+      if (!there) {
+        setThere(true)
+        onThere?.(true)
+      }
+      a.settle = Math.min(1, a.settle + dt / 0.5)
+      const want = lying ? 0 : facing
+      a.rot += Math.atan2(Math.sin(want - a.rot), Math.cos(want - a.rot)) * Math.min(1, dt * 8)
+      if (a.settle >= 1) a.rot = want
+    }
+    const e = a.settle * a.settle * (3 - 2 * a.settle)
+    outer.current?.position.set(a.x, to[1] * e, a.z)
+    if (outer.current) outer.current.rotation.y = a.rot
+    if (inner.current) inner.current.rotation.x = lying ? (-Math.PI / 2) * e : 0
+  })
+  return (
+    <group ref={outer}>
+      <group ref={inner}>{children(there)}</group>
+    </group>
+  )
 }
 
 /** Brings the camera close to the Sim doing something (once: then it's the player's). */
@@ -808,6 +867,8 @@ export function Interior({ sim, kind, placeId, interactionId, housing, night, st
     return Math.atan2(cx - me.p[0], cz - me.p[2])
   }, [r, me])
   const dark = r.dark || night
+  // The camera comes close once the Sim has got there (it watches it cross the room first).
+  const [arrived, setArrived] = useState(true)
   // In the shower: in a towel.
   // At the hairdresser's: the cap comes off.
   // At work: in the job's uniform.
@@ -839,19 +900,27 @@ export function Interior({ sim, kind, placeId, interactionId, housing, night, st
             </group>
           ))}
         </NoShadows>
-        <group position={me.p} rotation={me.lying ? [-Math.PI / 2, 0, 0] : [0, throwing ? faceDancers : (me.r ?? 0), 0]}>
-          <Character look={look} gender={sim.gender} stage={stage} marker={!me.lying} busy={act.pose === 'busy'} pose={act.pose} />
-          <ActionProps id={interactionId} kind={kind} lying={!!me.lying} />
-          {/* The travaillement: notes off the wad, over the dancers in front */}
-          {throwing && <NoteShower from={[0.3, 1.72, 0.3]} toward={[0, 0.35, 1]} {...shower(interactionId)} seed={placeId.length} />}
-        </group>
-        {interactionId === 'watch-tv' && kind === 'home' && <TvScreen />}
-        {interactionId === 'cook-attieke' && kind === 'home' && <Pot />}
-        {me.lying && /^(sleep|nap|nuit-hotel)$/.test(interactionId ?? '') && <Zzz at={[me.p[0], me.p[1] + 0.6, me.p[2] - 0.6]} />}
+        <WalkTo to={me.p} facing={throwing ? faceDancers : (me.r ?? 0)} lying={!!me.lying} onThere={setArrived}>
+          {(there) =>
+            there ? (
+              <>
+                <Character look={look} gender={sim.gender} stage={stage} marker={!me.lying} busy={act.pose === 'busy'} pose={act.pose} />
+                <ActionProps id={interactionId} kind={kind} lying={!!me.lying} />
+                {/* The travaillement: notes off the wad, over the dancers in front */}
+                {throwing && <NoteShower from={[0.3, 1.72, 0.3]} toward={[0, 0.35, 1]} {...shower(interactionId)} seed={placeId.length} />}
+              </>
+            ) : (
+              <Character look={look} gender={sim.gender} stage={stage} walking speed={WALK_IN} />
+            )
+          }
+        </WalkTo>
+        {arrived && interactionId === 'watch-tv' && kind === 'home' && <TvScreen />}
+        {arrived && interactionId === 'cook-attieke' && kind === 'home' && <Pot />}
+        {arrived && me.lying && /^(sleep|nap|nuit-hotel)$/.test(interactionId ?? '') && <Zzz at={[me.p[0], me.p[1] + 0.6, me.p[2] - 0.6]} />}
         {/* Turn around the room and zoom, within the cut-away side */}
         <OrbitControls makeDefault target={[0, 0.8, 0]} enablePan={false} minDistance={interactionId ? 2.6 : 7} maxDistance={24} minPolarAngle={0.35} maxPolarAngle={1.25} minAzimuthAngle={0.15} maxAzimuthAngle={1.4} enableDamping />
         {/* Doing something: the camera comes close to see it */}
-        {interactionId && <FocusOn at={me.p} lying={!!me.lying} facing={throwing ? faceDancers : (me.r ?? 0)} key={`${interactionId}${act.spot}`} />}
+        {interactionId && arrived && <FocusOn at={me.p} lying={!!me.lying} facing={throwing ? faceDancers : (me.r ?? 0)} key={`${interactionId}${act.spot}`} />}
         {RICH && (
           <Suspense fallback={null}>
             <AmbientOcclusion radius={1.2} falloff={0.6} intensity={2.2} />
