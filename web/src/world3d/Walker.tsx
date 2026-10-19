@@ -14,7 +14,8 @@ import { cameraTurn, moveInput, running } from './input'
 import { whereabouts } from './whereabouts'
 import { worldTime } from '../lib/worldClock'
 import { SIM_SLOT, matchFor, onField, worldFacing } from './open/match'
-import { blocked, topAt } from './obstacles'
+import { blocked, blockedFixed, topAt, vehicleAt } from './obstacles'
+import { gridWay } from './gridPath'
 import type { Pose } from '../avatar/Human'
 
 type XZ = [number, number]
@@ -27,6 +28,8 @@ const UP = new THREE.Vector3(0, 1, 0)
 const EAVES: XZ[] = [[0, 0], [1.1, 0], [-1.1, 0], [0, 1.1], [0, -1.1]]
 /** A walk never takes longer than this many seconds: far away, the Sim hurries. */
 const LONGEST_WALK = 40
+/** Closer than this, a walk goes straight round what's in the way (gridWay), not by the streets. */
+const NEAR_WALK = 110
 
 function pathLength(pts: XZ[], from: XZ) {
   let t = 0
@@ -204,7 +207,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     if (!lot) return
     started.current = goTo
     const p = group.current!.position
-    const way = nav.route([p.x, p.z], lot.door, true)
+    const way = findWay([p.x, p.z], lot.door, true)
     if (way) path.current = way.slice(1)
     else {
       // No way through (too far, not loaded yet): straight there, as by moto-taxi.
@@ -220,11 +223,11 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     setWalking(true)
   }, [goTo, lots]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  /** Tap the ground: the Sim walks there, along the streets. */
+  /** Tap the ground: the Sim walks there, the shortest way round what's in the way. */
   const walkToPoint = (x: number, z: number) => {
     if (frozen || !nav.walkable(x, z)) return
     const p = group.current!.position
-    const way = nav.route([p.x, p.z], [x, z], false)
+    const way = findWay([p.x, p.z], [x, z], false)
     if (!way) return
     path.current = way.slice(1)
     const far = pathLength(path.current, [p.x, p.z])
@@ -246,6 +249,31 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     return !blocked(x, z, R)
   }
   whereabouts.roomAt = roomAt
+  /** Room for the body, the cars aside (they'll have moved on): for planning a way. */
+  const roomFixed = (x: number, z: number) => {
+    const R = 0.35
+    if (!nav.walkable(x, z) || !nav.walkable(x + R, z) || !nav.walkable(x - R, z) || !nav.walkable(x, z + R) || !nav.walkable(x, z - R)) return false
+    return !blockedFixed(x, z, R)
+  }
+  /**
+   * The way from a to b: close by, straight round the walls, trees and
+   * stalls (never the long way by the streets); further, along the streets,
+   * with the bits from the Sim to the street and from the street to b found
+   * the same way round.
+   */
+  const findWay = (a: XZ, b: XZ, door: boolean): XZ[] | null => {
+    if (Math.hypot(b[0] - a[0], b[1] - a[1]) < NEAR_WALK) {
+      const near = gridWay(a, b, roomFixed)
+      if (near) return near
+    }
+    const way = nav.route(a, b, door)
+    if (!way || way.length < 3) return way
+    const first = gridWay(a, way[1], roomFixed) ?? [a, way[1]]
+    const n = way.length
+    const last = gridWay(way[n - 2], b, roomFixed) ?? [way[n - 2], b]
+    return [...first, ...way.slice(2, n - 2), ...last]
+  }
+  const waited = useRef(0)
   const near = useRef<string | null>(null)
   const padWalking = useRef(false)
   const orbit = useRef({ sph: new THREE.Spherical(), offset: new THREE.Vector3() })
@@ -352,9 +380,26 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
           if (target.current) onArrive(target.current)
         }
       } else {
-        g.position.x += (dx / dist) * step
-        g.position.z += (dz / dist) * step
+        const nx = g.position.x + (dx / dist) * step
+        const nz = g.position.z + (dz / dist) * step
         g.rotation.y = Math.atan2(dx, dz)
+        // A car in the way: wait for it to pass; still there after a while, find another way round it.
+        if (vehicleAt(nx, nz) && !vehicleAt(g.position.x, g.position.z)) {
+          waited.current += dt
+          if (waited.current > 2.5) {
+            waited.current = 0
+            const end = path.current[path.current.length - 1]
+            const round = gridWay([g.position.x, g.position.z], end, roomAt)
+            if (round) {
+              path.current = round.slice(1)
+              setRoute([...path.current])
+            }
+          }
+        } else {
+          waited.current = 0
+          g.position.x = nx
+          g.position.z = nz
+        }
       }
     }
     // Running with the pad (Shift, the button), or on a long way.

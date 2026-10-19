@@ -139,10 +139,31 @@ export class Nav {
   walkable(x: number, z: number) {
     const p: XZ = [x, z]
     for (const ring of this.blockGrid.get(this.key(x, z)) ?? []) if (pointInRing(p, ring)) return false
-    for (const rings of this.water) {
-      if (pointInRing(p, rings[0]) && !rings.slice(1).some((h) => pointInRing(p, h))) return this.onRoad(p)
+    return !this.wet(x, z)
+  }
+
+  /**
+   * In the water (and not on a bridge over it)? Known by half-metre squares:
+   * the lagoon's outline is long, and a way on foot asks about thousands of
+   * points next to each other.
+   */
+  private wetAt = new Map<number, boolean>()
+  private wet(x: number, z: number) {
+    const k = Math.round(x * 2) * 1e6 + Math.round(z * 2)
+    let w = this.wetAt.get(k)
+    if (w === undefined) {
+      const p: XZ = [x, z]
+      w = false
+      for (const rings of this.water) {
+        if (pointInRing(p, rings[0]) && !rings.slice(1).some((h) => pointInRing(p, h))) {
+          w = !this.onRoad(p)
+          break
+        }
+      }
+      if (this.wetAt.size > 400000) this.wetAt.clear()
+      this.wetAt.set(k, w)
     }
-    return true
+    return w
   }
 
   /** The shortest walk along the streets from a to b (A*), or null. */

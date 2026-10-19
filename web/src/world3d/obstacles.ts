@@ -59,6 +59,18 @@ function hits(o: Obstacle, x: number, z: number, r: number) {
   return Math.abs(u) < o.hw + r && Math.abs(v) < o.hd + r
 }
 
+/** Is a body of radius r at (x, z) inside something that doesn't move (a wall, a trunk, a stall)? */
+export function blockedFixed(x: number, z: number, r = 0.35) {
+  for (const o of index().get(`${Math.floor(x / CELL)},${Math.floor(z / CELL)}`) ?? []) if (hits(o, x, z, r)) return true
+  return false
+}
+
+/** Is a car, a gbaka or a moto right there (r: the body's radius)? */
+export function vehicleAt(x: number, z: number, r = 0.35) {
+  for (const o of moving.values()) if (Math.abs(o.x - x) < 6 && Math.abs(o.z - z) < 6 && hits(o, x, z, r)) return true
+  return false
+}
+
 /** Is a body of radius r at (x, z) inside something? */
 export function blocked(x: number, z: number, r = 0.35) {
   for (const o of index().get(`${Math.floor(x / CELL)},${Math.floor(z / CELL)}`) ?? []) if (hits(o, x, z, r)) return true
