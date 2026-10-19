@@ -56,7 +56,8 @@ stop()
 const mp4 = path.join(OUT, `${NAME}-1080x1920.mp4`)
 // The live and « merci » have a voice when its file is there (the others are silent: music is added in CapCut or InShot).
 const voice = path.join(OUT, `voix-${FILM}.mp3`)
-const sound = fs.existsSync(voice) ? ['-i', voice, '-c:a', 'aac', '-b:a', '160k', '-shortest'] : []
+// (padded with silence: the film runs to its end even when the voice is shorter)
+const sound = fs.existsSync(voice) ? ['-i', voice, '-af', 'apad', '-c:a', 'aac', '-b:a', '160k', '-shortest'] : []
 execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', path.join(frames, '%05d.png'), ...sound, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '20', '-preset', 'slow', '-movflags', '+faststart', mp4])
 // A poster frame for the link preview (the outro, with the QR code).
 fs.copyFileSync(path.join(frames, `${String(total - 12).padStart(5, '0')}.png`), path.join(OUT, `${NAME}-cover.png`))

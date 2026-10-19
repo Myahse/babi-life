@@ -1,4 +1,4 @@
-# « Merci la famille » — 1 500 sur TikTok (vidéo de 52 s)
+# « Merci la famille » — 1 500 sur TikTok (vidéo de 36 s)
 
 Awa parle à la communauté **depuis chez elle** (son salon : le canapé, la télé, le ventilateur, la photo de famille au mur), face caméra, mais avec **un nouveau look** : tresses longues, haut et jupe en kente vert émeraude, boucles d'oreilles, collier de perles, montre et sac en bandoulière (au lieu du foulard et du kaba orange). Ton : chaleureux, souriant, comme à des grands frères et petites sœurs du quartier. Débit posé : chaque ligne doit tenir dans son créneau (la colonne « Temps »). Pour la voix (ElevenLabs ou enregistrée au téléphone) : un seul fichier, `marketing/out/voix-merci.mp3`, puis `npm run video:merci` pour la vidéo avec le son.
 
@@ -72,3 +72,7 @@ Abonnez-vous, partagez avec vos amis. Babi Laïf, c'est pour nous. Bisous !
 ### Après
 
 Télécharger en MP3, le mettre dans `marketing/out/voix-merci.mp3`, puis `npm run video:merci` : la vidéo ressort avec la voix. Elle doit durer environ 50 secondes ; si elle est plus longue, monter la vitesse à 1,0 ou raccourcir les pauses ; plus courte, les allonger.
+
+## La voix enregistrée
+
+`out/voix-merci.mp3` : ElevenLabs, voix « Lea - UGC creator », 35 s. La vidéo est calée sur elle (`FILMS.merci` dans `web/src/lab/poster.tsx`) : le bonjour 0 – 3,7 s, les 1 500 3,7 – 8,5 s (le compteur arrive à 1 500 sur « Mille cinq cents ! »), le merci 8,5 – 13 s, le week-end 13 – 21,1 s (maquis, stade, concert), le lundi 21,1 – 26 s, les bonnes nouvelles 26 – 30,6 s, la fin 30,6 – 36,5 s. Avec une autre voix, recaler ces temps sur ses pauses.

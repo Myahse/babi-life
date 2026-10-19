@@ -992,20 +992,21 @@ const FILMS: Record<FilmId, { shots: Shot[]; intro: number; outro: number; lengt
   },
   // « Merci la famille »: 1 500 followers, the weekend, a good week, good news ahead (marketing/scripts/merci-1500.md).
   merci: {
+    // Timed on Awa's voice (marketing/out/voix-merci.mp3, 35 s): each shot starts with its sentence.
     shots: [
-      { from: 0, to: 5, scene: 'salon', cap: 'La famille ! Bonjour bonjour, c’est Awa !' },
-      { from: 5, to: 12, scene: 'salon', counter: true, cap: 'On est 1 500 sur TikTok !' },
-      { from: 12, to: 17, scene: 'salon', cap: 'Merci ! C’est vous qui nous portez ❤️' },
-      { from: 17, to: 23, scene: 'fete', title: 'Votre week-end ?', cap: 'Maquis, coupé-décalé…' },
-      { from: 23, to: 27, scene: 'stade', title: 'Votre week-end ?', cap: '… le match au stade…' },
-      { from: 27, to: 32, scene: 'concert', title: 'Votre week-end ?', cap: '… ou dodo à la maison ? Dites-nous !' },
-      { from: 32, to: 39, scene: 'gbaka', title: 'Bonne semaine !', cap: 'Lundi : on se lève, on se met au travail 💪' },
-      { from: 39, to: 46, scene: 'salon', tease: true, cap: 'De bonnes nouvelles arrivent… 🤫' },
-      { from: 46, to: 52, scene: 'crew' },
+      { from: 0, to: 3.7, scene: 'salon', cap: 'La famille ! Bonjour bonjour, c’est Awa !' },
+      { from: 3.7, to: 8.5, scene: 'salon', counter: true, cap: 'On est 1 500 sur TikTok !' },
+      { from: 8.5, to: 13, scene: 'salon', cap: 'Merci ! C’est vous qui nous portez ❤️' },
+      { from: 13, to: 16.5, scene: 'fete', title: 'Votre week-end ?', cap: 'Maquis, coupé-décalé…' },
+      { from: 16.5, to: 17.9, scene: 'stade', title: 'Votre week-end ?', cap: '… le match au stade…' },
+      { from: 17.9, to: 21.1, scene: 'concert', title: 'Votre week-end ?', cap: '… ou dodo à la maison ? Dites-nous !' },
+      { from: 21.1, to: 26, scene: 'gbaka', title: 'Bonne semaine !', cap: 'Lundi : on se lève, on se met au travail 💪' },
+      { from: 26, to: 30.6, scene: 'salon', tease: true, cap: 'De bonnes nouvelles arrivent… 🤫' },
+      { from: 30.6, to: 36.5, scene: 'crew' },
     ],
     intro: 0,
-    outro: 46,
-    length: 52,
+    outro: 30.6,
+    length: 36.5,
     hook: ['', '', ''],
   },
 }
@@ -1014,34 +1015,35 @@ const FILMS: Record<FilmId, { shots: Shot[]; intro: number; outro: number; lengt
 const FOLLOWERS = 1500
 /** What the community answers in « Merci ». */
 const MERCI_COMMENTS: [number, string, string][] = [
-  [2, 'koffi_225', 'Awaaa 🔥'],
-  [6.5, 'mariam.yop', '1 500 déjà ?? 😍'],
-  [9, 'le_vrai_bk', 'On est ensemble 🇨🇮'],
-  [13, 'fanta.d', 'C’est mérité !'],
-  [18.5, 'kader.abobo', 'Moi j’étais à Yop, Rue Princesse 😂'],
-  [21.5, 'aya.k', 'Maquis jusqu’au matin 🕺'],
-  [24, 'ibou', 'Babi Sporting a gagné !!'],
-  [28, 'mamie.c', 'Moi dodo seulement 😴'],
-  [30.5, 'serge.plateau', 'Église le matin, maquis le soir 😇'],
-  [33.5, 'koffi_225', 'Lundi est dur 😭'],
-  [36.5, 'fanta.d', 'Bonne semaine Awa !'],
-  [40.5, 'mariam.yop', 'Dis-nous un peu 👀'],
-  [43, 'le_vrai_bk', 'Le jeu sort bientôt ??'],
+  [1.2, 'koffi_225', 'Awaaa 🔥'],
+  [5, 'mariam.yop', '1 500 déjà ?? 😍'],
+  [7.2, 'le_vrai_bk', 'On est ensemble 🇨🇮'],
+  [9.6, 'fanta.d', 'C’est mérité !'],
+  [13.8, 'kader.abobo', 'Moi j’étais à Yop, Rue Princesse 😂'],
+  [15.6, 'aya.k', 'Maquis jusqu’au matin 🕺'],
+  [17, 'ibou', 'Babi Sporting a gagné !!'],
+  [18.8, 'mamie.c', 'Moi dodo seulement 😴'],
+  [20.2, 'serge.plateau', 'Église le matin, maquis le soir 😇'],
+  [22.2, 'koffi_225', 'Lundi est dur 😭'],
+  [24.2, 'fanta.d', 'Bonne semaine Awa !'],
+  [27, 'mariam.yop', 'Dis-nous un peu 👀'],
+  [28.8, 'le_vrai_bk', 'Le jeu sort bientôt ??'],
 ]
 
 /** « Merci »: Awa talking to the community, the counter, the comments, the hearts, her words. */
 function MerciOverlay({ t, shot }: { t: number; shot: Shot }) {
   const shown = MERCI_COMMENTS.filter(([at]) => at <= t).slice(-3)
   const local = t - shot.from
-  const hearts = [...Array(t > 12 && t < 17 ? 16 : 9)].map((_, i) => {
+  const hearts = [...Array(t > 8.5 && t < 13 ? 16 : 9)].map((_, i) => {
     const k = ((t * 0.55 + i * 0.37) % 1 + 1) % 1
     return { k, x: Math.sin(i * 2.7 + t) * 22, c: ['#ff3d6e', '#ff7a00', '#ffd43b', '#ff3d6e', '#ffffff'][i % 5] }
   })
   // The counter: from 1 200 to 1 500, then it stays; confetti when it gets there.
   // (on the film's clock, so it stays at 1 500 afterwards)
-  const k = ease(clamp01((t - 5.6) / 3.2))
+  const k = ease(clamp01((t - 4.6) / 2.4))
   const count = Math.round(1200 + (FOLLOWERS - 1200) * k)
-  const done = shot.counter && local > 3.8
+  // At 1 500 just as she says « Mille cinq cents ! »
+  const done = shot.counter && t > 7
   return (
     <>
       <div className="absolute inset-x-0 top-0 flex items-center gap-3 bg-gradient-to-b from-black/55 to-transparent px-6 pt-8 pb-12 font-sans">
@@ -1065,7 +1067,7 @@ function MerciOverlay({ t, shot }: { t: number; shot: Shot }) {
       )}
       {/* The counter, big in the middle */}
       {shot.counter && (
-        <div className="absolute inset-x-0 top-[27%] flex flex-col items-center font-display" style={{ opacity: clamp01(local / 0.4), transform: `scale(${done ? 1 + Math.max(0, 0.18 - (local - 3.8) * 0.4) : 1})` }}>
+        <div className="absolute inset-x-0 top-[27%] flex flex-col items-center font-display" style={{ opacity: clamp01(local / 0.4), transform: `scale(${done ? 1 + Math.max(0, 0.18 - (t - 7) * 0.4) : 1})` }}>
           <div className="rounded-[40px] bg-white/95 px-10 py-6 text-center text-[var(--color-ink)] shadow-[0_24px_60px_-20px_rgba(0,0,0,0.7)]">
             <div className="text-[150px] leading-none font-extrabold tabular-nums">{count.toLocaleString('fr-FR')}</div>
             <div className="mt-2 text-[36px] font-extrabold text-[var(--color-orange)]">abonnés sur TikTok</div>
@@ -1073,7 +1075,7 @@ function MerciOverlay({ t, shot }: { t: number; shot: Shot }) {
           {done && <div className="mt-6 rounded-full bg-[#ff2d55] px-7 py-2 text-[40px] font-extrabold">MERCI LA FAMILLE !</div>}
         </div>
       )}
-      {done && <Confetti t={local - 3.8} />}
+      {done && <Confetti t={t - 7} />}
       {/* Good news ahead: a gift, wrapped, shaking */}
       {shot.tease && (
         <div className="absolute inset-x-0 top-[14%] flex flex-col items-center font-display" style={{ opacity: clamp01(local / 0.5) }}>
