@@ -37,9 +37,28 @@ export function outdoorPose(id?: string): Pose | undefined {
     case 'photo-plateau':
     case 'photos':
       return 'phone'
+    // At the fuel station, the village, the zoo.
+    case 'boutique-station':
+    case 'attieke-frais':
+    case 'zoo-pique-nique':
+      return 'eat'
+    case 'credit-station':
+    case 'zoo-photos':
+      return 'phone'
+    case 'gaz-bouteille':
+    case 'gonfler-pneus':
+      return 'busy'
+    case 'preparer-attieke':
+      return 'cook'
+    case 'anciens':
+      return 'sit'
+    // Walks and the stadium laps: the Sim goes along a way (see Walker's LOOPS).
     case 'balade-lagune':
     case 'hike':
-      return 'idle'
+    case 'zoo-visite':
+      return 'walk'
+    case 'stade-footing':
+      return 'run'
     default:
       return undefined
   }
@@ -74,12 +93,23 @@ export function OutdoorAction({ id }: { id?: string }) {
       return <Grill />
     case 'wait-gbaka':
       return <BusStop />
-    case 'balade-lagune':
     case 'coucher-soleil':
     case 'photo-plateau':
       return <Railing seated={id === 'coucher-soleil'} />
     case 'hike':
       return <Hiker />
+    case 'boutique-station':
+    case 'attieke-frais':
+    case 'zoo-pique-nique':
+      return <FishTable />
+    case 'anciens':
+      return <Anciens />
+    case 'preparer-attieke':
+      return <Attieke />
+    case 'gaz-bouteille':
+      return <GasBottle />
+    case 'gonfler-pneus':
+      return <Bike />
     default:
       return null
   }
@@ -355,6 +385,86 @@ function Railing({ seated }: { seated: boolean }) {
           <Box key={x} p={[x, 0.5, 0]} s={[0.06, 1, 0.06]} c="#dfe3e8" />
         ))}
       </group>
+    </group>
+  )
+}
+
+/** Under the tree in the village: the old ones on their stools, the Sim on a stool facing them, listening. */
+function Anciens() {
+  const elders = useLooks(3, 71)
+  return (
+    <group>
+      <Box p={[0, 0.12, -0.05]} s={[0.4, 0.24, 0.4]} c="#7a5233" />
+      <NoShadows>
+        {elders.map((p, i) => {
+          const a = (i - 1) * 0.7
+          return (
+            <group key={i} position={[Math.sin(a) * 1.8, 0, 1.6 + Math.cos(a) * 0.3]} rotation={[0, Math.PI + a, 0]}>
+              <Box p={[0, 0.12, -0.05]} s={[0.4, 0.24, 0.4]} c="#7a5233" />
+              <Human look={{ ...p.look, hair: 'bald', beard: 'full', hairColor: '#d8d8d8', outfit: i === 1 ? 'boubou' : 'chemise-pagne' }} gender="homme" pose="sit" seed={p.seed} />
+            </group>
+          )
+        })}
+      </NoShadows>
+    </group>
+  )
+}
+
+/** Making attiéké: the big basin of grated cassava, the women at it with the Sim. */
+function Attieke() {
+  const women = useLooks(2, 83)
+  return (
+    <group>
+      <mesh position={[0, 0.2, 0.6]}>
+        <cylinderGeometry args={[0.45, 0.32, 0.4, 14]} />
+        <meshLambertMaterial color="#b8b8be" />
+      </mesh>
+      <mesh position={[0, 0.39, 0.6]}>
+        <cylinderGeometry args={[0.42, 0.42, 0.02, 14]} />
+        <meshLambertMaterial color="#f3ecd2" />
+      </mesh>
+      <NoShadows>
+        {women.map((p, i) => (
+          <group key={i} position={[(i ? 1 : -1) * 0.75, 0, 0.95]} rotation={[0, (i ? -1 : 1) * 2.2, 0]}>
+            <Human look={{ ...p.look, outfit: 'pagne', hair: 'headwrap' }} gender="femme" pose="cook" seed={p.seed} />
+          </group>
+        ))}
+      </NoShadows>
+    </group>
+  )
+}
+
+/** The gas bottle being filled: the green bottle at the Sim's feet. */
+function GasBottle() {
+  return (
+    <group position={[0.1, 0, 0.45]}>
+      <mesh position={[0, 0.25, 0]}>
+        <cylinderGeometry args={[0.16, 0.16, 0.45, 12]} />
+        <meshLambertMaterial color="#2f9e44" />
+      </mesh>
+      <mesh position={[0, 0.5, 0]}>
+        <cylinderGeometry args={[0.06, 0.08, 0.08, 8]} />
+        <meshLambertMaterial color="#9aa3ad" />
+      </mesh>
+    </group>
+  )
+}
+
+/** The bike at the air pump. */
+function Bike() {
+  return (
+    <group position={[0, 0, 0.6]} rotation={[0, Math.PI / 2, 0]}>
+      {[-0.5, 0.5].map((x) => (
+        <mesh key={x} position={[x, 0.33, 0]}>
+          <torusGeometry args={[0.3, 0.035, 6, 18]} />
+          <meshLambertMaterial color="#1b1b20" />
+        </mesh>
+      ))}
+      <Box p={[0, 0.55, 0]} s={[1, 0.05, 0.05]} c="#1f6fd0" />
+      <Box p={[-0.15, 0.75, 0]} s={[0.05, 0.4, 0.05]} c="#1f6fd0" />
+      <Box p={[-0.15, 0.96, 0]} s={[0.25, 0.05, 0.1]} c="#1b1b20" />
+      <Box p={[0.45, 0.85, 0]} s={[0.05, 0.6, 0.05]} c="#9aa3ad" />
+      <Box p={[0.45, 1.15, 0]} s={[0.05, 0.05, 0.5]} c="#1b1b20" />
     </group>
   )
 }

@@ -28,6 +28,13 @@ const RUN_FROM = 90
 /** Further than this, the Sim hails a moto-taxi and rides there behind the driver. */
 const RIDE_FROM = 220
 const RIDE = 9 // a moto-taxi in town: about 32 km/h
+/** Busy doing these, the Sim goes up and down a way by the place: a stroll, a hike, the zoo, laps of the stadium. */
+const LOOPS: Record<string, { speed: number; run?: boolean; len: number }> = {
+  'balade-lagune': { speed: 1.2, len: 14 },
+  hike: { speed: 1.4, len: 18 },
+  'zoo-visite': { speed: 1.0, len: 12 },
+  'stade-footing': { speed: 3.2, run: true, len: 26 },
+}
 const UP = new THREE.Vector3(0, 1, 0)
 const EAVES: XZ[] = [[0, 0], [1.1, 0], [-1.1, 0], [0, 1.1], [0, -1.1]]
 /** Closer than this, a walk goes straight round what's in the way (gridWay), not by the streets. */
@@ -112,6 +119,10 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   const fieldLot = busy && stationAt ? lots.find((l) => l.id === stationAt && l.field) : undefined
   const inMatch = !!fieldLot && !!busy?.id && /^play-/.test(busy.id)
   const onTouchline = !!fieldLot && /^(play-|watch-match)/.test(busy?.id ?? '')
+  // Strolling (LOOPS): the way's start, its direction and length, and when it began.
+  const loop = useRef<{ x: number; z: number; fx: number; fz: number; len: number; t0: number } | null>(null)
+  const [looping, setLooping] = useState(false)
+  const loopKind = busy?.id ? LOOPS[busy.id] : undefined
   const [matchPose, setMatchPose] = useState<Pose>('idle')
 
   // Start where the Sim is busy, else at home, else on the sidewalk. Only
@@ -346,6 +357,33 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       padWalking.current = false
       setWalking(false)
     }
+    // Strolling: along the way and back, again and again, as far as there's room.
+    if (loopKind && !path.current.length && !padWalking.current) {
+      if (!loop.current) {
+        const [x, z] = [g.position.x, g.position.z]
+        // Across the way the Sim faces (that's the building), then the other way if there's no room.
+        const ways: XZ[] = [[Math.cos(g.rotation.y), -Math.sin(g.rotation.y)], [-Math.cos(g.rotation.y), Math.sin(g.rotation.y)], [-Math.sin(g.rotation.y), -Math.cos(g.rotation.y)]]
+        let best = { fx: 0, fz: 1, len: 0 }
+        for (const [fx, fz] of ways) {
+          let len = 0
+          while (len < loopKind.len && roomAt(x + fx * (len + 0.5), z + fz * (len + 0.5))) len += 0.5
+          if (len > best.len) best = { fx, fz, len }
+        }
+        loop.current = { x, z, ...best, t0: worldTime() }
+      }
+      const l = loop.current
+      if (l.len >= 2) {
+        const s = ((worldTime() - l.t0) * loopKind.speed) % (2 * l.len)
+        const back = s > l.len
+        const d = back ? 2 * l.len - s : s
+        g.position.set(l.x + l.fx * d, 0, l.z + l.fz * d)
+        g.rotation.y = Math.atan2(back ? -l.fx : l.fx, back ? -l.fz : l.fz)
+        if (!looping) setLooping(true)
+      }
+    } else if (loop.current) {
+      loop.current = null
+      setLooping(false)
+    }
     // In the match: where the Sim's place in it is, now.
     if (inMatch && fieldLot?.field && !path.current.length && !padWalking.current) {
       const f = fieldLot.field
@@ -551,7 +589,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
             </group>
           </>
         ) : (
-          <Character look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking} running={run} busy={!!busy} pose={busy?.kind === 'chat' ? 'talk' : inMatch && !walking ? matchPose : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={run ? RUN : SPEED} />
+          <Character look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking || looping} running={run || (looping && !!loopKind?.run)} busy={!!busy && !looping} pose={busy?.kind === 'chat' ? 'talk' : inMatch && !walking ? matchPose : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={looping && loopKind ? loopKind.speed : run ? RUN : SPEED} />
         )}
         {/* Outdoors, what the Sim is doing is set around it (the ball, the towel, the bus stop…) */}
         {busy && !walking && !onTouchline && <OutdoorAction id={busy.id} />}

@@ -9,7 +9,7 @@ import { useRoomStyle } from './interior/Decor'
 import * as THREE from 'three'
 import type { Player, Sim } from '../lib/types'
 import { Human, NoShadows, type Pose } from '../avatar/Human'
-import { randomLook, workLook } from '../avatar/options'
+import { OUTFIT_DEFAULT_COLOR, randomLook, workLook } from '../avatar/options'
 import { Box } from './props'
 import { Character } from './Character'
 import { ActionProps, Pot, SewingTable, TvScreen, Zzz } from './interior/ActionProps'
@@ -63,7 +63,7 @@ function action(kind: string, id: string | undefined): { spot: string; pose: Pos
   // Gbairai: telling the quarter's news, with the hands.
   if (id === 'gbairai') return { spot: kind === 'barbier' || kind === 'salon' ? 'bench' : 'table', pose: 'rant' }
   if (id === 'piscine-hotel') return { spot: 'pool', pose: 'idle' }
-  if (id === 'nuit-hotel') return { spot: 'bed', pose: 'idle' }
+  if (id === 'nuit-hotel') return { spot: 'bed', pose: 'sleep' }
   if (id === 'brunch-lagune' || id === 'resto-u') return { spot: 'table', pose: 'eat' }
   if (id === 'bar-hotel') return { spot: 'table', pose: 'drink' }
   if (/^(sleep|nap)$/.test(id)) return { spot: 'bed', pose: 'sleep' }
@@ -71,6 +71,14 @@ function action(kind: string, id: string | undefined): { spot: string; pose: Pos
   if (id === 'shower') return { spot: 'shower', pose: 'wash' }
   if (id === 'bain-bebe') return { spot: 'shower', pose: 'busy' }
   if (id === 'pray') return { spot: 'seat', pose: 'pray' }
+  // At a counter: asking, explaining, filling in the papers; the shopping picked off the shelves.
+  if (id === 'courses') return { spot: 'stall', pose: 'busy' }
+  if (id === 'credit') return { spot: kind === 'boutique' ? 'stall' : 'counter', pose: 'phone' }
+  if (id === 'conseil' && kind === 'mairie') return { spot: 'desk', pose: 'write' }
+  if (id === 'porter-plainte') return { spot: 'counter', pose: 'rant' }
+  if (/^(medicaments|conseil|etat-civil|legalisation|renseignement|declaration-perte|abonnement-salle)$/.test(id)) return { spot: 'counter', pose: 'talk' }
+  if (id === 'mariage-civil') return { spot: 'counter', pose: 'cheer' }
+  if (id === 'aller-ecole') return { spot: 'entrance', pose: 'wave' }
   if (/^(medicaments|conseil|credit|courses|sucrerie)$/.test(id)) return { spot: kind === 'boutique' ? 'stall' : 'counter', pose: id === 'sucrerie' ? 'drink' : 'idle' }
   if (id === 'cook-attieke') return { spot: 'stove', pose: 'cook' }
   if (id === 'watch-tv' || id === 'call-family') return { spot: 'sofa', pose: 'sit' }
@@ -210,7 +218,7 @@ function shower(id?: string) {
 /* ---------- Rooms ---------- */
 
 /** The new kinds of places furnished like their nearest one. */
-const ROOM_LIKE: Record<string, string> = { boutique: 'market', pharmacie: 'market' }
+const ROOM_LIKE: Record<string, string> = { boutique: 'market' }
 
 function room(kindIn: string, housing: string): Room {
   const kind = ROOM_LIKE[kindIn] ?? kindIn
@@ -444,6 +452,50 @@ function room(kindIn: string, housing: string): Room {
           counter: { p: [0, 0, 0.6], r: Math.PI, pose: 'idle' },
         },
         crowd: [{ p: [-3.5, 0, -2.9], pose: 'busy' }, { p: [3.5, 0, 0.6], pose: 'busy' }, { p: [-3.5, 0, 2.4], r: Math.PI, pose: 'wave' }],
+      }
+    case 'pharmacie':
+      // The pharmacy: white and clean, the green cross on the back wall, the
+      // shelves of boxes behind the long counter, the pharmacist in her blouse.
+      return {
+        floor: '#eef1f3',
+        wall: '#ffffff',
+        furniture: (
+          <>
+            {[-3, 0, 3].map((x) => (
+              <group key={x} position={[x, 0, -4.2]}>
+                <Box p={[0, 1.2, 0]} s={[2.6, 2.4, 0.5]} c="#dfe6ea" />
+                {[0.5, 1.1, 1.7].flatMap((y, row) =>
+                  [...Array(6)].map((_, i) => <Box key={`${row}${i}`} p={[-1.05 + i * 0.42, y, 0.28]} s={[0.3, 0.32, 0.06]} c={['#ffffff', '#4dabf7', '#ff8787', '#69db7c', '#ffd43b', '#e599f7'][(i + row * 2 + x + 6) % 6]} />),
+                )}
+              </group>
+            ))}
+            {/* The green cross, lit */}
+            <group position={[0, 3.05, -3.9]}>
+              <Box p={[0, 0, 0]} s={[0.9, 0.3, 0.06]} c="#2f9e44" glow={0.8} />
+              <Box p={[0, 0, 0]} s={[0.3, 0.9, 0.06]} c="#2f9e44" glow={0.8} />
+            </group>
+            {/* The counter, its till, a few boxes on it */}
+            <Box p={[0, 0.55, -1.6]} s={[6.5, 1.1, 0.7]} c="#f8f9fa" />
+            <Box p={[0, 1.1, -1.6]} s={[6.6, 0.05, 0.8]} c="#2f9e44" />
+            <Box p={[1.8, 1.25, -1.7]} s={[0.4, 0.25, 0.3]} c="#343a40" />
+            <Box p={[-0.6, 1.18, -1.5]} s={[0.25, 0.12, 0.18]} c="#4dabf7" />
+            {/* The chairs for those who wait */}
+            {[-4, -3.2].map((x) => (
+              <Box key={x} p={[x, 0.42, 2.6]} s={[0.55, 0.06, 0.55]} c="#adb5bd" />
+            ))}
+          </>
+        ),
+        spots: {
+          counter: { p: [-0.6, 0, -0.85], r: Math.PI, pose: 'talk' },
+          stall: { p: [-0.6, 0, -0.85], r: Math.PI, pose: 'talk' },
+          entrance: { p: [0, 0, 3.6], r: Math.PI, pose: 'idle' },
+          seat: { p: [-3.2, 0.05, 2.6], pose: 'sit' },
+        },
+        crowd: [
+          { p: [-0.6, 0, -2.4], pose: 'busy', outfit: 'blouse', g: 'femme' },
+          { p: [2.2, 0, -2.4], r: 0.3, pose: 'talk', outfit: 'blouse' },
+          { p: [-4, 0.05, 2.6], pose: 'sit' },
+        ],
       }
     case 'gym':
       // The salle de sport: the rubber floor, the mirrors along the back
@@ -744,7 +796,7 @@ export function Interior({ sim, kind, placeId, interactionId, housing, night, st
       // The club's dance floor is the women's; elsewhere anyone.
       const gender: Person['gender'] = s.g ?? (kind === 'club' && s.pose === 'dance' ? 'femme' : kind === 'salon' && rand() < 0.8 ? 'femme' : rand() < 0.5 ? 'femme' : 'homme')
       const look = randomLook(gender, rand)
-      return { ...s, gender, look: s.outfit ? { ...look, outfit: s.outfit, accessory: 'none' } : look, seed: rand() * 100 }
+      return { ...s, gender, look: s.outfit ? { ...look, outfit: s.outfit, outfitColor: OUTFIT_DEFAULT_COLOR[s.outfit] ?? look.outfitColor, accessory: 'none' } : look, seed: rand() * 100 }
     })
   }, [placeId, kind]) // eslint-disable-line react-hooks/exhaustive-deps
   // Doing the travaillement: face the dancers; they cheer as the notes fall.
@@ -795,7 +847,7 @@ export function Interior({ sim, kind, placeId, interactionId, housing, night, st
         </group>
         {interactionId === 'watch-tv' && kind === 'home' && <TvScreen />}
         {interactionId === 'cook-attieke' && kind === 'home' && <Pot />}
-        {me.lying && /^(sleep|nap)$/.test(interactionId ?? '') && <Zzz at={[me.p[0], me.p[1] + 0.6, me.p[2] - 0.6]} />}
+        {me.lying && /^(sleep|nap|nuit-hotel)$/.test(interactionId ?? '') && <Zzz at={[me.p[0], me.p[1] + 0.6, me.p[2] - 0.6]} />}
         {/* Turn around the room and zoom, within the cut-away side */}
         <OrbitControls makeDefault target={[0, 0.8, 0]} enablePan={false} minDistance={interactionId ? 2.6 : 7} maxDistance={24} minPolarAngle={0.35} maxPolarAngle={1.25} minAzimuthAngle={0.15} maxAzimuthAngle={1.4} enableDamping />
         {/* Doing something: the camera comes close to see it */}

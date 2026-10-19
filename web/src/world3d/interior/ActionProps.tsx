@@ -27,7 +27,7 @@ export function ActionProps({ id, kind, lying }: { id?: string; kind: string; ly
   if (HAIR.test(id) && (kind === 'barbier' || kind === 'salon')) return <Hairdresser salon={kind === 'salon'} braid={/tresses|tissage|nattes|vanilles|macarons|chignon/.test(id)} />
   if (id === 'shower') return <Shower />
   if (id === 'bain-bebe') return <Tub />
-  if (lying && /^(sleep|nap)$/.test(id)) return <Blanket />
+  if (lying && /^(sleep|nap|nuit-hotel)$/.test(id)) return <Blanket />
   if (id === 'pray') return <PrayerMat />
   if (id === 'devoirs' || (/cours|biblio|write/.test(id) && kind !== 'office')) return <Notebook />
   // The bottles on the club's VIP table (in front of the sofa): whisky, or champagne with its sparkler.
