@@ -2,15 +2,19 @@ import type { Road } from './tiles'
 
 type XZ = [number, number]
 
+/** How much further a jam goes to sit on a big road rather than a small street (metres added to the distance). */
+const DETOUR: Record<string, number> = { motorway: 0, trunk: 0, primary: 0, secondary: 60, tertiary: 160, motorway_link: 200, trunk_link: 200, primary_link: 200, secondary_link: 260 }
+
 /**
- * A traffic jam laid along the real street: from the point of the street
- * nearest `at`, both ways along it (and on into the street that carries on
+ * A traffic jam laid along a real street: the big road nearest `at` (a jam
+ * is on the boulevards, not in a lane: a small street only when there's no
+ * big one within a few hundred metres), from there both ways along it (and on into the street that carries on
  * where a piece of the map ends), a car every `gap` metres on each side of
  * the middle line. Each car: where it stands and its heading (radians from +x).
  */
-export function jamAlong(roads: Road[], at: XZ, gap: number, each: number): { p: XZ; angle: number; lane: 1 | -1; width: number }[] {
-  const ok = roads.filter((r) => r.cls !== 'path' && r.cls !== 'motorway' && !r.bridge && r.pts.length > 1)
-  let best: { r: Road; i: number; p: XZ; d: number } | null = null
+export function jamAlong(roads: Road[], at: XZ, gap: number, each: number): { cars: { p: XZ; angle: number; lane: 1 | -1; width: number }[]; at: XZ } {
+  const ok = roads.filter((r) => !['path', 'pedestrian', 'track', 'service', 'construction'].includes(r.cls) && !r.bridge && r.pts.length > 1)
+  let best: { r: Road; i: number; p: XZ; d: number; score: number } | null = null
   for (const r of ok)
     for (let i = 1; i < r.pts.length; i++) {
       const [a, b] = [r.pts[i - 1], r.pts[i]]
@@ -18,9 +22,10 @@ export function jamAlong(roads: Road[], at: XZ, gap: number, each: number): { p:
       const t = Math.max(0, Math.min(1, ((at[0] - a[0]) * dx + (at[1] - a[1]) * dz) / (dx * dx + dz * dz || 1)))
       const p: XZ = [a[0] + dx * t, a[1] + dz * t]
       const d = Math.hypot(p[0] - at[0], p[1] - at[1])
-      if (!best || d < best.d) best = { r, i, p, d }
+      const score = d + (DETOUR[r.cls] ?? 400)
+      if (!best || score < best.score) best = { r, i, p, d, score }
     }
-  if (!best || best.d > 40) return []
+  if (!best || best.d > 600) return { cars: [], at }
   const width = best.r.width
   // The street ahead from the start, as a list of points (dir 1: toward the polyline's end).
   const ahead = (dir: 1 | -1): XZ[] => {
@@ -59,7 +64,7 @@ export function jamAlong(roads: Road[], at: XZ, gap: number, each: number): { p:
       walked += len
     }
   }
-  return cars
+  return { cars, at: best.p }
 }
 
 const near = (a: XZ, b: XZ) => Math.abs(a[0] - b[0]) < 1.5 && Math.abs(a[1] - b[1]) < 1.5

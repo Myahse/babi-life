@@ -365,6 +365,29 @@ export function TvScreen() {
   )
 }
 
+/** The TV of one's own house on (build/Furniture.tsx 'tele'): its picture changing, a glow on the room. Placed at the screen, facing out. */
+export function TvOn() {
+  const mat = useMemo(() => new THREE.MeshBasicMaterial({ color: '#4dabf7' }), [])
+  const light = useRef<THREE.PointLight>(null)
+  useFrame(() => {
+    const t = worldTime()
+    const k = Math.floor(t * 1.3)
+    mat.color.setHSL(((k * 0.37) % 1 + 1) % 1, 0.6, 0.5 + Math.sin(t * 9) * 0.05)
+    if (light.current) {
+      light.current.color.copy(mat.color)
+      light.current.intensity = 2.2 + Math.sin(t * 7) * 0.4
+    }
+  })
+  return (
+    <group>
+      <mesh position={[0, 0.85, 0.008]} material={mat}>
+        <planeGeometry args={[0.84, 0.46]} />
+      </mesh>
+      <pointLight ref={light} position={[0, 0.9, 0.6]} distance={4} decay={2} />
+    </group>
+  )
+}
+
 /** The pot on the stove, the steam. */
 export function Pot() {
   const puffs = useRef<THREE.InstancedMesh>(null)

@@ -636,9 +636,9 @@ function CameraLab() {
   )
 }
 
-/** Two billboards: an ad (a poster from public/apercu) and an empty one, « TA PUB ICI » (?view=billboard&night). */
+/** The ad boards in each format: empty (« TA PUB ICI »), or with an ad (a poster from public/apercu) (?view=billboard&night). */
 function BillboardLab() {
-  const cam = (q.get('cam') ?? '0,4,20').split(',').map(Number) as [number, number, number]
+  const cam = (q.get('cam') ?? '0,8,42').split(',').map(Number) as [number, number, number]
   const ad = [{ id: 'lab', advertiser: 'Babi Life', title: 'Labo', type: 'image' as const, url: '/apercu/fete.jpg' }]
   return (
     <Canvas dpr={[1, 1.5]} camera={{ position: cam, fov: 50 }} style={{ width: '100vw', height: '100vh' }}>
@@ -649,9 +649,15 @@ function BillboardLab() {
         <planeGeometry args={[200, 200]} />
         <meshLambertMaterial color="#b98b5c" />
       </mesh>
-      <Billboard board={{ id: 'a', at: [-5, 0], rot: 0, seed: 0.1 }} ads={ad} night={night} onSeen={() => undefined} />
-      <Billboard board={{ id: 'b', at: [5, 0], rot: 0, seed: 0.5 }} ads={[]} night={night} onSeen={() => undefined} />
-      <OrbitControls target={[0, 5, 0]} />
+      {/* Every format, empty (« TA PUB ICI »), and the 4×3 with an ad */}
+      <Billboard board={{ id: 'a', at: [-22, -6], rot: 0, seed: 0.1, format: '4x3' }} ads={ad} night={night} onSeen={() => undefined} />
+      <Billboard board={{ id: 'b', at: [-8, -6], rot: 0, seed: 0.5, format: '4x3' }} ads={[]} night={night} onSeen={() => undefined} />
+      <Billboard board={{ id: 'c', at: [14, -14], rot: 0, seed: 0.3, format: 'geant' }} ads={[]} night={night} onSeen={() => undefined} />
+      <Billboard board={{ id: 'd', at: [-4, 8], rot: 0, seed: 0.2, format: 'sucette' }} ads={[]} night={night} onSeen={() => undefined} />
+      <Billboard board={{ id: 'e', at: [3, 8], rot: 0, seed: 0.6, format: 'sucette' }} ads={ad} night={night} onSeen={() => undefined} />
+      <Billboard board={{ id: 'f', at: [0, 2], rot: 0, seed: 0.7, format: 'banderole', span: 11 }} ads={[]} night={night} onSeen={() => undefined} />
+      <Billboard board={{ id: 'g', at: [24, 2], rot: -0.5, seed: 0.9, format: 'led' }} ads={[]} night={night} onSeen={() => undefined} />
+      <OrbitControls target={[0, 6, 0]} />
     </Canvas>
   )
 }

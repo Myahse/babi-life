@@ -18,6 +18,9 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
   // The walls: a block at body height in the cell (lot coordinates, from its middle).
   const walls = new Set(plot.blocks.filter((b) => b[1] === 1).map((b) => `${b[0]},${b[2]}`))
   const wallAt = (u: number, v: number) => walls.has(`${Math.floor(u + w / 2)},${Math.floor(v + d / 2)}`)
+  // The TV and the seats one could watch it from (chosen after: the one turned most towards it).
+  let tv: { at: XZ; rot: number } | null = null
+  const seats: HomeSpot[] = []
   for (const piece of plot.furniture ?? []) {
     const f = catalog.find((x) => x.id === piece[4])
     // Upstairs (a duplex's bedrooms): the Sim walks on the ground floor, so the pieces down there.
@@ -29,7 +32,7 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
     const rot = rot0 + turn
     const [lc, ls] = [Math.cos(turn), Math.sin(turn)]
     const half = f.d / 2
-    const at = (x: number, y: number, z: number, face: number, pose: HomeSpot['pose'], lying = false, ids: string[] = [], stool = false): void => {
+    const at = (x: number, y: number, z: number, face: number, pose: HomeSpot['pose'], lying = false, ids: string[] = [], stool = false): HomeSpot => {
       const place = (sx: number, sz: number, sface: number, front: number): HomeSpot => {
         const [u, v] = [pu + sx * lc + sz * ls, pv - sx * ls + sz * lc]
         // Where the Sim walks to first: just in front of the piece (or behind, turned round).
@@ -43,6 +46,7 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
         if (!other.wall) spot = other
       }
       for (const id of ids) out[id] ??= spot
+      return spot
     }
     switch (f.id) {
       case 'lit':
@@ -52,10 +56,14 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
         at(0, 0.16, half - 0.1, 0, 'sleep', true, ['sleep', 'nap'])
         break
       case 'canape':
-        at(-0.45, 0.05, 0.15, 0, 'sit', false, ['watch-tv', 'call-family'])
+        seats.push(at(-0.45, 0.05, 0.15, 0, 'sit', false, ['watch-tv', 'call-family']), at(0.45, 0.05, 0.15, 0, 'sit'))
         break
       case 'chaises':
-        at(0, 0.05, 0.05, 0, 'sit', false, ['watch-tv', 'call-family'])
+        seats.push(at(0, 0.05, 0.05, 0, 'sit', false, ['watch-tv', 'call-family']))
+        break
+      case 'tele':
+        // The screen, on the piece's front (+z).
+        tv = { at: toWorld(pu + 0.05 * ls, pv + 0.05 * lc), rot }
         break
       case 'gaziniere':
         at(0, 0, half + 0.45, Math.PI, 'cook', false, ['cook-attieke'])
@@ -69,6 +77,17 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
         at(0, 0.08, 0, 0, 'wash', false, ['shower'])
         break
     }
+  }
+  // Watching TV: from the seat that faces it best (and not too far), turned to the screen; the screen comes on.
+  if (tv && seats.length) {
+    const t = tv as { at: XZ; rot: number }
+    const score = (s: HomeSpot) => {
+      const [dx, dz] = [t.at[0] - s.at[0], t.at[1] - s.at[1]]
+      const len = Math.hypot(dx, dz) || 1
+      return (Math.sin(s.rot) * dx + Math.cos(s.rot) * dz) / len - len * 0.04
+    }
+    const seat = seats.reduce((a, b) => (score(b) > score(a) ? b : a))
+    out['watch-tv'] = { ...seat, rot: Math.atan2(t.at[0] - seat.at[0], t.at[1] - seat.at[1]), screen: t }
   }
   // The pool (a raised basin, build/Zones.tsx): in from its rim, then lengths along it.
   for (const z of plot.zones ?? []) {

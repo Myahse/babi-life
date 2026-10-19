@@ -646,22 +646,27 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   }, [shown, here, stationAt])
   const named = (id: string) => labels && labelOf.get(id) === 'full'
   const spot = resolved.get(HAPPENING_KEY)
+  // A jam follows the real street (its bends, where it ends), not a straight line over the grass.
+  const jam = useMemo(() => {
+    if (happening?.id !== 'embouteillage' || !spot) return null
+    const roads = [...chunks.values()].filter((c) => !c.data.key.includes(':')).flatMap((c) => c.data.roads)
+    const found = jamAlong(roads, spot.door, 7.5, 6)
+    return found.cars.length ? found : null
+  }, [happening?.id, spot, chunks])
   const happeningLot = useMemo<Lot | null>(() => {
     if (!happening || !spot) return null
+    // A jam: the Sim goes to the side of the big road it's on.
+    if (jam) {
+      const door: XZ = [jam.at[0] + 6, jam.at[1] + 6]
+      return { id: 'happening', kind: 'happening', name: happening.label, x: door[0], z: door[1], rot: 0, door, seed: 0 }
+    }
     // The scene is staged along a street: turn it to the real one.
     const [dx, dz] = [HAPPENING_DOOR[0] - HAPPENING_X, HAPPENING_DOOR[1]]
     const [c, s] = [Math.cos(spot.roadAngle), Math.sin(spot.roadAngle)]
     const door: XZ = [spot.door[0] + dx * c - dz * s, spot.door[1] + dx * s + dz * c]
     return { id: 'happening', kind: 'happening', name: happening.label, x: door[0], z: door[1], rot: 0, door, seed: 0 }
-  }, [happening, spot])
+  }, [happening, spot, jam])
   const walkLots = useMemo(() => (happeningLot ? [...lots, happeningLot] : lots), [lots, happeningLot])
-  // A jam follows the real street (its bends, where it ends), not a straight line over the grass.
-  const jam = useMemo(() => {
-    if (happening?.id !== 'embouteillage' || !spot) return null
-    const roads = [...chunks.values()].filter((c) => !c.data.key.includes(':')).flatMap((c) => c.data.roads)
-    const cars = jamAlong(roads, spot.door, 7.5, 5)
-    return cars.length ? cars : null
-  }, [happening?.id, spot, chunks])
 
   // For the mini-map and the « Où aller ? » list.
   useEffect(() => {
@@ -896,9 +901,9 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         const g = resolved.get(lot.id)?.gate
         return g ? <CampusGate key={`gate${lot.id}`} name={lot.name} kind={lot.kind} at={g.at} rot={g.rot} width={g.width} night={night} /> : null
       })}
-      {jam && <JamOnRoad cars={jam} />}
+      {jam && <JamOnRoad cars={jam.cars} />}
       {happening && spot && (
-        <group position={[spot.door[0], 0, spot.door[1]]} rotation={[0, -spot.roadAngle, 0]}>
+        <group position={jam ? [jam.at[0] + HAPPENING_X, 0, jam.at[1]] : [spot.door[0], 0, spot.door[1]]} rotation={[0, jam ? 0 : -spot.roadAngle, 0]}>
           <group position={[-HAPPENING_X, 0, 0]}>
             <HappeningScene id={happening.id} seed={commune.id} night={night} jam={!jam} />
             {labels && <HappeningMarker happening={happening} onPick={() => onPick('happening')} />}

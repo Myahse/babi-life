@@ -6,42 +6,73 @@ import { whereabouts } from '../whereabouts'
 import { hash, type XZ } from './geo'
 import type { Nav } from './nav'
 
-// The billboards along the big roads (« les panneaux 4×3 »): two steel legs,
-// the frame, the lamps on top for the night. They show the ads of Babi Pub
-// (backend/internal/ads, web/src/screens/Pub.tsx): the approved, paid ads of
-// the day for the commune, a poster or a video, in turn, the same one at the
-// same moment on every screen (the shared clock). With none, « TA PUB ICI ».
-// Passing in front counts a view: by commune and day, nobody is tracked.
+// The ad boards of the streets, in the formats one sees in Abidjan:
+// - the 4×3 (here 12 × 6 m) on its two legs along the big roads;
+// - the giant (« unipole », 20 × 7 m, both faces) on one pole by the boulevards;
+// - the sucettes (backlit panels on the sidewalks, both faces), many of them;
+// - the banderoles stretched across a street between two poles;
+// - the LED screens at the big crossroads.
+// They show the ads of Babi Pub (backend/internal/ads, web/src/screens/Pub.tsx):
+// the approved, paid ads of the day for the commune, a poster or a video, in
+// turn, the same one at the same moment on every screen (the shared clock).
+// With none, a bright « TA PUB ICI » in the board's own format: the boards are
+// for sale, and they should be seen. Passing in front counts a view: by
+// commune and day, nobody is tracked.
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
 
-type Board = { id: string; at: XZ; rot: number; seed: number }
+export type BoardFormat = '4x3' | 'geant' | 'sucette' | 'banderole' | 'led'
+type Board = { id: string; at: XZ; rot: number; seed: number; format?: BoardFormat; /** A banderole: the street's width between its poles. */ span?: number }
 type Ad = { id: string; advertiser: string; title: string; type: 'image' | 'video'; url: string }
 
-const NEAR = 380 // metres: boards drawn around the Sim
-const MAX = 5
+const NEAR = 450 // metres: boards drawn around the Sim
+const MAX = 16
 const TURN = 12 // seconds each ad stays up
-const SEEN = 45 // metres: close enough to count a view
-const W = 7 // the panel, metres
-const H = 3.5
-const TOP = 7.6
+const SEEN = 60 // metres: close enough to count a view
+/** Each format's panel (metres): width, height, the panel's middle above the ground; both faces or one; how far it's seen from. */
+const FORMATS: Record<BoardFormat, { w: number; h: number; y: number; both: boolean; far: number; label: string; size: string }> = {
+  '4x3': { w: 12, h: 6, y: 9, both: false, far: NEAR, label: 'Panneau', size: '12 × 6 m' },
+  geant: { w: 20, h: 7, y: 17, both: true, far: NEAR, label: 'Géant', size: '20 × 7 m' },
+  sucette: { w: 1.4, h: 2, y: 1.6, both: true, far: 160, label: 'Sucette', size: '1,2 × 1,8 m' },
+  banderole: { w: 10, h: 1.6, y: 6, both: true, far: 260, label: 'Banderole', size: 'en travers de la rue' },
+  led: { w: 9, h: 5, y: 8.5, both: true, far: NEAR, label: 'Écran LED', size: '9 × 5 m' },
+}
 
 export function Billboards({ nav, seed, night }: { nav: Nav; seed: string; night: boolean }) {
-  // Always at the same spots: along the wide, long roads, set back from the edge, facing the traffic.
+  // Always at the same spots: along the roads by their size (the more road, the more boards), set back from the edge, facing the traffic.
   const all = useMemo(() => {
     const out: Board[] = []
+    const add = (format: BoardFormat, at: XZ, rot: number, span?: number) => {
+      if (!nav.walkable(at[0], at[1])) return
+      // Not two boards on top of each other.
+      if (out.some((o) => Math.hypot(o.at[0] - at[0], o.at[1] - at[1]) < (format === 'sucette' ? 12 : 30))) return
+      out.push({ id: `pub:${format}:${Math.round(at[0])}:${Math.round(at[1])}`, at, rot, seed: hash(at[0], at[1], 9), format, span })
+    }
     for (const e of nav.edges) {
-      if (e.width < 10 || e.len < 70 || nav.ys[e.a] || nav.ys[e.b]) continue
+      if (e.len < 12 || nav.ys[e.a] || nav.ys[e.b]) continue
       const [a, b] = [nav.nodes[e.a], nav.nodes[e.b]]
       const m: XZ = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]
-      if (hash(Math.round(m[0]), Math.round(m[1]), 4242) > 0.12) continue
       const [ux, uz] = [(b[0] - a[0]) / e.len, (b[1] - a[1]) / e.len]
       const side = hash(Math.round(m[1]), 17) < 0.5 ? 1 : -1
-      const off = e.width / 2 + 4
-      const at: XZ = [m[0] - uz * off * side, m[1] + ux * off * side]
-      if (!nav.walkable(at[0], at[1])) continue
-      out.push({ id: `pub:${Math.round(at[0])}:${Math.round(at[1])}`, at, rot: Math.atan2(uz * side, -ux * side), seed: hash(at[0], at[1], 9) })
+      const roll = hash(Math.round(m[0]), Math.round(m[1]), 4242)
+      // A chance by the metre: a long stretch gets more.
+      const per = (k: number) => roll < Math.min(0.9, (k * e.len) / 100)
+      const beside = (off: number, s = side): XZ => [m[0] - uz * off * s, m[1] + ux * off * s]
+      const facing = (s = side) => Math.atan2(uz * s, -ux * s)
+      if (e.width >= 12 && per(0.1)) add('geant', beside(e.width / 2 + 7), facing())
+      else if (e.width >= 9 && per(0.35)) add('4x3', beside(e.width / 2 + 5), facing())
+      else if (e.width >= 6 && e.width < 12 && per(0.05)) add('banderole', m, facing() + Math.PI / 2, e.width + 3)
+      else if (e.width >= 6 && per(0.45)) add('sucette', beside(e.width / 2 + 1.6, -side), facing(-side) + Math.PI / 2)
     }
+    // The LED screens: on a corner of a crossroads of wide roads.
+    nav.adj.forEach((links, i) => {
+      if (links.length < 3 || nav.ys[i] || Math.max(...links.map((l) => l.width)) < 10) return
+      const [x, z] = nav.nodes[i]
+      if (hash(Math.round(x), Math.round(z), 777) > 0.25) return
+      const w = Math.max(...links.map((l) => l.width))
+      const a = hash(Math.round(z), Math.round(x), 31) * Math.PI * 2
+      add('led', [x + Math.cos(a) * (w / 2 + 8), z + Math.sin(a) * (w / 2 + 8)], Math.atan2(-Math.cos(a), -Math.sin(a)))
+    })
     return out
   }, [nav])
 
@@ -87,7 +118,7 @@ export function Billboards({ nav, seed, night }: { nav: Nav; seed: string; night
     const [sx, sz] = whereabouts.sim
     const near = all
       .map((b) => ({ b, d: Math.hypot(b.at[0] - sx, b.at[1] - sz) }))
-      .filter((x) => x.d < NEAR)
+      .filter((x) => x.d < FORMATS[x.b.format ?? '4x3'].far)
       .sort((p, q) => p.d - q.d)
       .slice(0, MAX)
       .map((x) => x.b)
@@ -133,34 +164,102 @@ function textureOf(ad: Ad) {
   return t
 }
 
-/** « TA PUB ICI », painted like the wish list's signs: what an empty board says. */
-let house: THREE.Texture | null = null
-function houseAd() {
-  if (house) return house
+/** What an empty board says, in its own format: « TA PUB ICI », bright, the format and the address. */
+const placeholders = new Map<BoardFormat, THREE.Texture>()
+function houseAd(format: BoardFormat) {
+  const had = placeholders.get(format)
+  if (had) return had
+  const f = FORMATS[format]
   const c = document.createElement('canvas')
-  c.width = 512
-  c.height = 256
+  const k = 1024 / Math.max(f.w, f.h)
+  c.width = Math.round(f.w * k)
+  c.height = Math.round(f.h * k)
   const g = c.getContext('2d')!
-  g.fillStyle = '#dda233'
-  g.fillRect(0, 0, 512, 256)
-  g.fillStyle = '#1f8f88'
-  g.fillRect(0, 196, 512, 60)
-  g.fillStyle = '#2b1d14'
-  g.font = 'bold 92px Anton, Impact, sans-serif'
+  const [W, H] = [c.width, c.height]
+  const tall = H > W
+  // The colours of the game: orange, white, green, a dark ink.
+  g.fillStyle = '#ff8200'
+  g.fillRect(0, 0, W, H)
+  g.fillStyle = '#009a44'
+  g.fillRect(0, H * (tall ? 0.82 : 0.78), W, H)
+  g.fillStyle = '#ffffff'
+  g.fillRect(0, H * (tall ? 0.8 : 0.75), W, H * 0.03)
+  // A dashed white frame: the space to fill.
+  g.setLineDash([W * 0.03, W * 0.02])
+  g.lineWidth = Math.max(4, Math.min(W, H) * 0.025)
+  g.strokeStyle = '#ffffff'
+  g.strokeRect(g.lineWidth * 2, g.lineWidth * 2, W - g.lineWidth * 4, H * (tall ? 0.8 : 0.75) - g.lineWidth * 3)
   g.textAlign = 'center'
-  g.fillText('TA PUB', 256, 104)
-  g.fillStyle = '#b5432c'
-  g.fillText('ICI', 256, 184)
-  g.fillStyle = '#fbf5e6'
-  g.font = 'bold 34px sans-serif'
-  g.fillText('lifeinbabi.com/pub', 256, 238)
-  house = new THREE.CanvasTexture(c)
-  house.colorSpace = THREE.SRGBColorSpace
-  return house
+  g.textBaseline = 'middle'
+  const fit = (text: string, size: number, max: number) => {
+    g.font = `900 ${size}px Anton, Impact, sans-serif`
+    const w = g.measureText(text).width
+    if (w > max) g.font = `900 ${(size * max) / w}px Anton, Impact, sans-serif`
+  }
+  g.fillStyle = '#1b1b2f'
+  if (format === 'banderole') {
+    fit('TA PUB ICI · lifeinbabi.com/pub', H * 0.55, W * 0.92)
+    g.fillText('TA PUB ICI · lifeinbabi.com/pub', W / 2, H * 0.4)
+  } else {
+    fit('TA PUB', H * (tall ? 0.16 : 0.3), W * 0.86)
+    g.fillText('TA PUB', W / 2, H * (tall ? 0.22 : 0.24))
+    g.fillStyle = '#ffffff'
+    fit('ICI', H * (tall ? 0.2 : 0.3), W * 0.86)
+    g.fillText('ICI', W / 2, H * (tall ? 0.42 : 0.52))
+    g.fillStyle = '#1b1b2f'
+    fit(`${f.label} · ${f.size}`, H * (tall ? 0.06 : 0.08), W * 0.86)
+    g.fillText(`${f.label} · ${f.size}`, W / 2, H * (tall ? 0.62 : 0.68))
+    g.fillStyle = '#ffffff'
+    fit('lifeinbabi.com/pub', H * (tall ? 0.065 : 0.1), W * 0.9)
+    g.fillText('lifeinbabi.com/pub', W / 2, H * (tall ? 0.91 : 0.885))
+  }
+  const tex = new THREE.CanvasTexture(c)
+  tex.colorSpace = THREE.SRGBColorSpace
+  tex.anisotropy = 4
+  placeholders.set(format, tex)
+  return tex
+}
+
+/** An ad's picture fitted to a panel (cropped to fill it, as a printed poster would be), shared by the boards of one shape. */
+const fitted = new Map<string, THREE.Texture>()
+function fittedTexture(ad: Ad, aspect: number) {
+  const key = `${ad.url}|${aspect.toFixed(2)}`
+  let t = fitted.get(key)
+  if (!t) {
+    const base = textureOf(ad).tex
+    const tex = base.clone()
+    tex.source = base.source
+    const fit = () => {
+      const img = tex.image as { width?: number; height?: number; videoWidth?: number; videoHeight?: number } | undefined
+      const [iw, ih] = [img?.videoWidth || img?.width || 0, img?.videoHeight || img?.height || 0]
+      if (!iw || !ih) return false
+      const a = iw / ih
+      if (a > aspect) {
+        tex.repeat.set(aspect / a, 1)
+        tex.offset.set((1 - aspect / a) / 2, 0)
+      } else {
+        tex.repeat.set(1, a / aspect)
+        tex.offset.set(0, (1 - a / aspect) / 2)
+      }
+      tex.needsUpdate = true
+      return true
+    }
+    if (!fit()) {
+      const timer = setInterval(() => fit() && clearInterval(timer), 500)
+      setTimeout(() => clearInterval(timer), 30_000)
+    }
+    fitted.set(key, tex)
+    t = tex
+  }
+  return t
 }
 
 export function Billboard({ board, ads, night, onSeen }: { board: Board; ads: Ad[]; night: boolean; onSeen: (id: string) => void }) {
+  const format = board.format ?? '4x3'
+  const f = format === 'banderole' && board.span ? { ...FORMATS.banderole, w: board.span } : FORMATS[format]
   const panel = useRef<THREE.MeshLambertMaterial>(null)
+  const back = useRef<THREE.MeshLambertMaterial>(null)
+  const cloth = useRef<THREE.Group>(null)
   const [ad, setAd] = useState<Ad | null>(null)
   const counted = useRef(new Map<string, number>())
   useFrame(() => {
@@ -172,8 +271,8 @@ export function Billboard({ board, ads, night, onSeen }: { board: Board; ads: Ad
     // A video plays only while someone is near enough to see it.
     if (current?.type === 'video') {
       const v = textureOf(current).video
-      if (v && d < 120 && v.paused) void v.play().catch(() => undefined)
-      if (v && d > 160 && !v.paused) v.pause()
+      if (v && d < 140 && v.paused) void v.play().catch(() => undefined)
+      if (v && d > 180 && !v.paused) v.pause()
     }
     // A view: passing in front while it's up, once per ad and per half-minute.
     if (current && d < SEEN) {
@@ -183,38 +282,110 @@ export function Billboard({ board, ads, night, onSeen }: { board: Board; ads: Ad
         onSeen(current.id)
       }
     }
+    // The banderole moves in the wind; the LED screen flickers a little.
+    if (cloth.current) cloth.current.rotation.x = Math.sin(now * 1.7 + board.seed * 9) * 0.08
+    if (format === 'led' && panel.current) panel.current.emissiveIntensity = (night ? 1.1 : 0.75) + Math.sin(now * 40) * 0.03
   })
-  const tex = ad ? textureOf(ad).tex : houseAd()
+  const tex = ad ? fittedTexture(ad, f.w / f.h) : houseAd(format)
   useEffect(() => {
-    if (panel.current) {
-      panel.current.map = tex
-      panel.current.emissiveMap = tex
-      panel.current.needsUpdate = true
+    for (const m of [panel.current, back.current]) {
+      if (!m) continue
+      m.map = tex
+      m.emissiveMap = tex
+      m.needsUpdate = true
     }
   }, [tex])
+  // Lit from inside (the sucette, the LED screen) or by lamps at night (the others).
+  const glow = format === 'led' ? (night ? 1.1 : 0.75) : format === 'sucette' ? (night ? 0.9 : 0.35) : night ? 0.55 : 0.18
+  const face = (ref: React.RefObject<THREE.MeshLambertMaterial | null>, z: number, turn: number) => (
+    <mesh position={[0, 0, z]} rotation={[0, turn, 0]}>
+      <planeGeometry args={[f.w, f.h]} />
+      <meshLambertMaterial ref={ref} map={tex} emissiveMap={tex} emissive="#ffffff" emissiveIntensity={glow} side={format === 'banderole' ? THREE.DoubleSide : THREE.FrontSide} />
+    </mesh>
+  )
   return (
     <group position={[board.at[0], 0, board.at[1]]} rotation={[0, board.rot, 0]}>
-      {/* Two steel legs, the frame, the panel facing the road (+z), the lamps on top */}
-      {[-W / 3, W / 3].map((x) => (
-        <mesh key={x} geometry={BOX} material={steel} position={[x, TOP / 2 - H / 2, -0.2]} scale={[0.35, TOP - H / 2, 0.35]} />
-      ))}
-      <mesh geometry={BOX} material={frame} position={[0, TOP - H / 2, -0.12]} scale={[W + 0.4, H + 0.4, 0.2]} />
-      <mesh position={[0, TOP - H / 2, 0.0]}>
-        <planeGeometry args={[W, H]} />
-        <meshLambertMaterial ref={panel} map={tex} emissiveMap={tex} emissive="#ffffff" emissiveIntensity={night ? 0.55 : 0.12} />
-      </mesh>
-      {[-W / 3, 0, W / 3].map((x) => (
-        <group key={x} position={[x, TOP + 0.35, 0.35]}>
-          <mesh geometry={BOX} material={frame} scale={[0.08, 0.08, 0.7]} position={[0, 0, -0.3]} />
-          <mesh geometry={BOX} position={[0, 0, 0]} scale={[0.5, 0.12, 0.2]}>
-            <meshLambertMaterial color={night ? '#fff2c2' : '#b0b4ba'} emissive={night ? '#fff2c2' : '#000000'} emissiveIntensity={night ? 1 : 0} />
-          </mesh>
-        </group>
-      ))}
+      {format === '4x3' && (
+        <>
+          {/* Two steel legs, a walkway, the frame, the panel facing the road (+z), the lamps on top */}
+          {[-f.w / 3, f.w / 3].map((x) => (
+            <mesh key={x} geometry={BOX} material={steel} position={[x, (f.y - f.h / 2) / 2, -0.3]} scale={[0.5, f.y - f.h / 2, 0.5]} />
+          ))}
+          <mesh geometry={BOX} material={frame} position={[0, f.y - f.h / 2 - 0.4, 0.4]} scale={[f.w, 0.12, 1]} />
+          <mesh geometry={BOX} material={frame} position={[0, f.y, -0.15]} scale={[f.w + 0.5, f.h + 0.5, 0.25]} />
+          <group position={[0, f.y, 0.01]}>{face(panel, 0, 0)}</group>
+          {[-f.w / 3, 0, f.w / 3].map((x) => (
+            <Lamp key={x} at={[x, f.y + f.h / 2 + 0.4, 0.5]} night={night} />
+          ))}
+        </>
+      )}
+      {format === 'geant' && (
+        <>
+          {/* One thick pole, the double panel high above the boulevard */}
+          <mesh geometry={BOX} material={steel} position={[0, (f.y - f.h / 2) / 2, 0]} scale={[1.2, f.y - f.h / 2, 1.2]} />
+          <mesh geometry={BOX} material={frame} position={[0, f.y, 0]} scale={[f.w + 0.6, f.h + 0.6, 0.6]} />
+          <group position={[0, f.y, 0]}>
+            {face(panel, 0.31, 0)}
+            {face(back, -0.31, Math.PI)}
+          </group>
+          {[-f.w / 3, 0, f.w / 3].map((x) => (
+            <Lamp key={x} at={[x, f.y + f.h / 2 + 0.5, 0.9]} night={night} />
+          ))}
+        </>
+      )}
+      {format === 'sucette' && (
+        <>
+          {/* The backlit box on its foot, a poster each side */}
+          <mesh geometry={BOX} material={frame} position={[0, 0.3, 0]} scale={[0.5, 0.6, 0.3]} />
+          <mesh geometry={BOX} material={frame} position={[0, f.y, 0]} scale={[f.w + 0.2, f.h + 0.2, 0.3]} />
+          <group position={[0, f.y, 0]}>
+            {face(panel, 0.16, 0)}
+            {face(back, -0.16, Math.PI)}
+          </group>
+        </>
+      )}
+      {format === 'banderole' && (
+        <>
+          {/* Two poles either side of the street, the cloth stretched between, moving in the wind */}
+          {[-f.w / 2, f.w / 2].map((x) => (
+            <mesh key={x} geometry={BOX} material={steel} position={[x, (f.y + 1) / 2, 0]} scale={[0.18, f.y + 1, 0.18]} />
+          ))}
+          <mesh geometry={BOX} material={steel} position={[0, f.y + f.h / 2 + 0.05, 0]} scale={[f.w, 0.04, 0.04]} />
+          <group ref={cloth} position={[0, f.y + f.h / 2, 0]}>
+            <group position={[0, -f.h / 2, 0]}>{face(panel, 0, 0)}</group>
+          </group>
+        </>
+      )}
+      {format === 'led' && (
+        <>
+          {/* The screen at the crossroads: a pylon, a black frame, the picture lit bright */}
+          <mesh geometry={BOX} material={steel} position={[0, (f.y - f.h / 2) / 2, 0]} scale={[0.9, f.y - f.h / 2, 0.9]} />
+          <mesh geometry={BOX} material={black} position={[0, f.y, 0]} scale={[f.w + 0.5, f.h + 0.5, 0.7]} />
+          <group position={[0, f.y, 0]}>
+            {face(panel, 0.36, 0)}
+            {face(back, -0.36, Math.PI)}
+          </group>
+        </>
+      )}
       {/* The small « PUB » plate under the panel: an ad is an ad */}
-      <mesh position={[W / 2 - 0.45, TOP - H - 0.32, 0.02]}>
-        <planeGeometry args={[0.7, 0.32]} />
-        <meshBasicMaterial color="#2b1d14" />
+      {(format === '4x3' || format === 'geant') && (
+        <mesh position={[f.w / 2 - 0.6, f.y - f.h / 2 - 0.5, format === 'geant' ? 0.32 : 0.02]}>
+          <planeGeometry args={[1, 0.45]} />
+          <meshBasicMaterial color="#2b1d14" />
+        </mesh>
+      )}
+    </group>
+  )
+}
+
+const black = new THREE.MeshLambertMaterial({ color: '#111216' })
+
+function Lamp({ at, night }: { at: [number, number, number]; night: boolean }) {
+  return (
+    <group position={at}>
+      <mesh geometry={BOX} material={frame} scale={[0.1, 0.1, 0.9]} position={[0, 0, -0.4]} />
+      <mesh geometry={BOX} scale={[0.7, 0.16, 0.26]}>
+        <meshLambertMaterial color={night ? '#fff2c2' : '#b0b4ba'} emissive={night ? '#fff2c2' : '#000000'} emissiveIntensity={night ? 1 : 0} />
       </mesh>
     </group>
   )

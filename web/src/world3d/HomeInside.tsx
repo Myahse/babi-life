@@ -11,7 +11,8 @@ import { LotFence, ownerColor } from './build/Fence'
 import { homeSpotsOf } from './homeSpots'
 import { gridWay } from './gridPath'
 import type { HomeSpot } from './Walker'
-import { Pot, Zzz } from './interior/ActionProps'
+import { Pot, TvOn, Zzz } from './interior/ActionProps'
+import { Hammer } from 'lucide-react'
 import { Snapper } from './snapshot'
 import { Swimmer } from './Swimmer'
 import { listenKeys, moveInput } from './input'
@@ -199,7 +200,7 @@ function Focus({ on, span }: { on: [number, number, number] | null; span: number
   return null
 }
 
-export function HomeInside({ sim, world, plot, interactionId, roam, night, stage }: { sim: Sim; world: World; plot: Plot; interactionId?: string; /** Just come in: tap the ground to walk. */ roam?: boolean; night: boolean; stage: string }) {
+export function HomeInside({ sim, world, plot, interactionId, roam, night, stage, onBuild }: { sim: Sim; world: World; plot: Plot; interactionId?: string; /** Just come in: tap the ground to walk. */ roam?: boolean; night: boolean; stage: string; /** Change the house: walls, furniture (components/BuildMode). */ onBuild?: () => void }) {
   const [w, d] = [plot.lot?.w ?? 12, plot.lot?.d ?? 12]
   const span = Math.max(w, d)
   const floors = useMemo(() => {
@@ -282,11 +283,21 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
               <Pot />
             </group>
           )}
+          {there && spot?.screen && (
+            <group position={[spot.screen.at[0], 0, spot.screen.at[1]]} rotation={[0, spot.screen.rot, 0]}>
+              <TvOn />
+            </group>
+          )}
           {there && spot?.lying && /^(sleep|nap)$/.test(interactionId ?? '') && <Zzz at={[spot.at[0], spot.y + 0.8, spot.at[1]]} />}
           <OrbitControls makeDefault target={[0, 0, 0]} enablePan={false} minDistance={4} maxDistance={span * 2.2} minPolarAngle={0.3} maxPolarAngle={1.2} enableDamping />
           <Focus on={there && spot ? [spot.at[0], 0, spot.at[1]] : null} span={span} />
         </Suspense>
       </Canvas>
+      {onBuild && (
+        <button className="hud absolute top-[max(5rem,calc(env(safe-area-inset-top)+4.5rem))] left-3 z-10 flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={onBuild}>
+          <Hammer size={17} strokeWidth={2.6} className="text-[var(--color-orange)]" /> Modifier la maison
+        </button>
+      )}
       {floors > 1 && (
         <div className="absolute top-1/2 right-3 z-10 flex -translate-y-1/2 flex-col gap-1.5">
           {[...Array(floors)].map((_, i) => floors - 1 - i).map((f) => (
