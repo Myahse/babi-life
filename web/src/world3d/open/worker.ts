@@ -30,6 +30,9 @@ self.onmessage = async (e: MessageEvent<ChunkRequest>) => {
     if (fields.length) data.buildings = data.buildings.filter((b) => !fields.some((f) => onFieldGround(f, b.c) || b.ring.some((p) => onFieldGround(f, p, 0.5))))
     // A landmark clears its ground in every chunk it reaches, not only its own.
     const landmarks = places.filter((p) => p.landmark).map((p) => ({ at: resolved.find((r) => r.id === p.id)?.center ?? p.at, r: p.landmark! }))
+    // Not only the buildings whose middle is on it: a big one whose corner reaches in
+    // (a block of flats beside a house's lot) would stand across its walls.
+    if (landmarks.length) data.buildings = data.buildings.filter((b) => !landmarks.some((l) => b.ring.some((q) => Math.hypot(q[0] - l.at[0], q[1] - l.at[1]) < l.r)))
     // A building in a campus or a hospital's grounds looks the part.
     const grounds = data.areas.filter((a) => a.kind === 'campus' || a.kind === 'hospital')
     const styleOf = (b: Building): Style => {

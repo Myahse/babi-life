@@ -186,10 +186,13 @@ export function makeWorldMaterials() {
     water: new THREE.MeshPhongMaterial({ map: t.water, normalMap: rippleNormals(), normalScale: new THREE.Vector2(0.55, 0.55), shininess: 80, specular: new THREE.Color('#d8ecff'), transparent: true, opacity: 0.9 }),
     paint: new THREE.MeshLambertMaterial({ color: '#f4f4f0', polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }),
     foam: new THREE.MeshBasicMaterial({ map: t.foam, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
-    green: lambert(t.grass),
-    sand: lambert(t.sand),
-    pitch: lambert(t.pitch),
-    ground: new THREE.MeshLambertMaterial({ color: '#cbb38c' }),
+    // The map's grass, sand and pitches lie over the ground, under a garden laid on them.
+    green: lambert(t.grass, { polygonOffset: true, polygonOffsetFactor: 3, polygonOffsetUnits: 3 }),
+    sand: lambert(t.sand, { polygonOffset: true, polygonOffsetFactor: 3, polygonOffsetUnits: 3 }),
+    pitch: lambert(t.pitch, { polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 }),
+    // Pushed back in the depth test: from afar, a few centimetres are too little to tell
+    // the ground from the grass, the parks or a garden laid on it, and it showed through.
+    ground: new THREE.MeshLambertMaterial({ color: '#cbb38c', polygonOffset: true, polygonOffsetFactor: 6, polygonOffsetUnits: 6 }),
     bark: lambert(t.bark),
     leaves: lambert(t.leaves),
   }
@@ -805,7 +808,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
           <NightBloom />
         </Suspense>
       )}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]} material={mats.ground} receiveShadow>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} material={mats.ground} receiveShadow>
         <planeGeometry args={[30000, 30000]} />
       </mesh>
 

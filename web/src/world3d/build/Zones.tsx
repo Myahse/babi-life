@@ -56,7 +56,8 @@ function groundTexture(kind: string) {
   return t
 }
 
-/** The order the kinds lie in, from the bottom: a room's floor on the yard or the lawn. */
+/** The order the kinds lie in, from the bottom: a room's floor on the yard or the lawn. A few
+ * centimetres apart, or the far camera can't tell them apart and the lower one shows through. */
 const LAYER: Record<string, number> = { jardin: 0, cour: 0, terrasse: 1, beton: 2, sol: 2, piscine: 3 }
 
 function Ground({ zone }: { zone: Zone }) {
@@ -68,7 +69,7 @@ function Ground({ zone }: { zone: Zone }) {
     return t
   }, [kind, w, d])
   return (
-    <mesh position={[x + w / 2, 0.01 + (LAYER[kind] ?? 0) * 0.01, z + d / 2]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+    <mesh position={[x + w / 2, 0.02 + (LAYER[kind] ?? 0) * 0.025, z + d / 2]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
       <planeGeometry args={[w, d]} />
       <meshLambertMaterial map={tex} />
     </mesh>
@@ -109,7 +110,7 @@ export function Pool({ x, z, w, d }: { x: number; z: number; w: number; d: numbe
         <boxGeometry args={[T, H, d - 2 * T]} />
       </mesh>
       {/* The basin's blue floor and the water */}
-      <mesh position={[cx, 0.03, cz]} rotation={[-Math.PI / 2, 0, 0]} material={inner}>
+      <mesh position={[cx, 0.1, cz]} rotation={[-Math.PI / 2, 0, 0]} material={inner}>
         <planeGeometry args={[w - 2 * T, d - 2 * T]} />
       </mesh>
       <mesh position={[cx, H - 0.12, cz]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -213,7 +214,7 @@ export function LotGround({ w, d }: { w: number; d: number }) {
   }, [w, d])
   return (
     <group>
-      <mesh position={[w / 2, 0.01, d / 2]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <mesh position={[w / 2, 0.02, d / 2]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[w, d]} />
         <meshLambertMaterial map={tex} />
       </mesh>
