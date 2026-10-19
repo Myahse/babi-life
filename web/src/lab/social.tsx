@@ -58,7 +58,7 @@ function Lab() {
         </Canvas>
       </div>
       <div className="relative m-4 flex w-[380px] flex-col overflow-hidden rounded-[36px] bg-white">
-        <div className="flex-1 overflow-y-auto px-3 pt-3 pb-6">{sim ? app === 'bet225' || app === 'parisfoot' ? <BetApp sim={sim} act={async (_l, _i, _k, call) => (await call(), true)} app={app} /> : app === 'tikitoko' ? <TikitokoApp sim={sim} act={async (_l, _i, _k, call) => (await call(), true)} /> : <GbairaiApp world={world} sim={sim} /> : 'Chargement…'}</div>
+        <div className="flex-1 overflow-y-auto px-3 pt-3 pb-6">{sim ? app === 'bet225' || app === 'parisfoot' ? <BetApp sim={sim} act={async (_l, _i, _k, call) => (await call(), true)} app={app} /> : app === 'tikitoko' ? <TikitokoApp sim={sim} act={async (_l, _i, _k, call) => (await call(), true)} onClose={() => history.back()} /> : <GbairaiApp world={world} sim={sim} /> : 'Chargement…'}</div>
       </div>
     </div>
   )

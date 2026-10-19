@@ -200,9 +200,11 @@ func compact(n int) string {
 	return strconv.Itoa(n)
 }
 
+// TikiPost is a video in a feed.
 type TikiPost struct {
 	ID       int64       `json:"id"`
 	Author   StoryAuthor `json:"author"`
+	Handle   string      `json:"handle"` // @pseudo
 	Fans     int         `json:"fans"`
 	Tier     string      `json:"tier"`
 	Followed bool        `json:"followed"`
@@ -213,34 +215,57 @@ type TikiPost struct {
 	Views    int         `json:"views"`
 	Likes    int         `json:"likes"`
 	Liked    bool        `json:"liked"`
+	Comments int         `json:"comments"`
+	Saves    int         `json:"saves"`
+	Saved    bool        `json:"saved"`
+	Shares   int         `json:"shares"`
 	At       time.Time   `json:"at"`
 }
 
-// grown: the game's audience comes over six hours, not all at once.
+// The game's audience comes over six hours, not at once.
 func grown(n int, at, now time.Time) int {
 	k := min(1, now.Sub(at).Hours()/6)
 	return int(float64(n) * (0.08 + 0.92*k))
 }
 
-// tikiFeed: « Pour toi » (everyone's, newest first) or « Abonnements » (?tab=abonnements).
+// tikiFeed: ?tab=pour-toi (every player's videos, the liked and fresh ones
+// first, as TikTok ranks them), abonnements (the creators one follows),
+// favoris (the videos one saved), auteur&author= (one creator's videos).
 func (h *Handler) tikiFeed(w http.ResponseWriter, r *http.Request) {
 	me, err := h.appSim(r, "tikitoko")
 	if err != nil {
 		h.gbairaiFail(w, err)
 		return
 	}
-	only := r.URL.Query().Get("tab") == "abonnements"
+	tab, author := r.URL.Query().Get("tab"), r.URL.Query().Get("author")
+	switch tab {
+	case "abonnements", "favoris", "auteur":
+	default:
+		tab = "pour-toi"
+	}
 	ctx := r.Context()
 	rows, err := h.DB.Query(ctx, `
-		SELECT p.id, o.id, o.first_name, o.gender, o.look,
+		SELECT p.id, o.id, o.first_name, o.gender, o.look, COALESCE(u.username, ''),
 			o.tiki_fans + (SELECT count(*) FROM tiki_follows f WHERE f.followed = o.id),
 			EXISTS(SELECT 1 FROM tiki_follows f WHERE f.follower = $1 AND f.followed = o.id),
 			p.caption, p.theme, p.place, p.views, p.likes, (SELECT count(*) FROM tiki_likes l WHERE l.post = p.id),
-			EXISTS(SELECT 1 FROM tiki_likes l WHERE l.post = p.id AND l.sim = $1), p.created_at
-		FROM tiki_posts p JOIN sims o ON o.id = p.sim
+			EXISTS(SELECT 1 FROM tiki_likes l WHERE l.post = p.id AND l.sim = $1),
+			(SELECT count(*) FROM tiki_comments c WHERE c.post = p.id),
+			(SELECT count(*) FROM tiki_saves v WHERE v.post = p.id),
+			EXISTS(SELECT 1 FROM tiki_saves v WHERE v.post = p.id AND v.sim = $1),
+			p.shares, p.created_at
+		FROM tiki_posts p JOIN sims o ON o.id = p.sim JOIN users u ON u.id = o.user_id
 		WHERE NOT EXISTS(SELECT 1 FROM blocks k WHERE (k.sim = $1 AND k.blocked = p.sim) OR (k.sim = p.sim AND k.blocked = $1))
-			AND ($2 = false OR p.sim = $1 OR EXISTS(SELECT 1 FROM tiki_follows f WHERE f.follower = $1 AND f.followed = p.sim))
-		ORDER BY p.created_at DESC LIMIT 40`, me, only)
+			AND CASE $2::text
+				WHEN 'abonnements' THEN EXISTS(SELECT 1 FROM tiki_follows f WHERE f.follower = $1 AND f.followed = p.sim)
+				WHEN 'favoris' THEN EXISTS(SELECT 1 FROM tiki_saves v WHERE v.post = p.id AND v.sim = $1)
+				WHEN 'auteur' THEN p.sim::text = $3
+				ELSE true END
+		ORDER BY CASE WHEN $2::text = 'pour-toi'
+				THEN (p.likes + 1 + 5 * (SELECT count(*) FROM tiki_likes l WHERE l.post = p.id)) / power(extract(epoch FROM now() - p.created_at) / 3600 + 2, 1.3)
+				ELSE 0 END DESC,
+			p.created_at DESC
+		LIMIT 60`, me, tab, author)
 	if err != nil {
 		h.gbairaiFail(w, err)
 		return
@@ -251,20 +276,24 @@ func (h *Handler) tikiFeed(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var p TikiPost
 		var players int
-		if err := rows.Scan(&p.ID, &p.Author.ID, &p.Author.FirstName, &p.Author.Gender, &p.Author.Look, &p.Fans, &p.Followed, &p.Caption, &p.Theme, &p.Place, &p.Views, &p.Likes, &players, &p.Liked, &p.At); err != nil {
+		if err := rows.Scan(&p.ID, &p.Author.ID, &p.Author.FirstName, &p.Author.Gender, &p.Author.Look, &p.Handle, &p.Fans, &p.Followed,
+			&p.Caption, &p.Theme, &p.Place, &p.Views, &p.Likes, &players, &p.Liked, &p.Comments, &p.Saves, &p.Saved, &p.Shares, &p.At); err != nil {
 			h.gbairaiFail(w, err)
 			return
 		}
 		p.Mine = p.Author.ID == me
 		p.Tier = tikiTier(p.Fans)
-		// The game's audience comes over hours; the players' likes count at once.
+		p.Handle = tikiHandle(p.Handle, p.Author.FirstName)
 		p.Views, p.Likes = grown(p.Views, p.At, now)+players, grown(p.Likes, p.At, now)+players
+		// The game's audience comments too (tikisocial.go).
+		p.Comments += npcComments(p.Views)
+		p.Saves += p.Likes / 25
+		p.Shares += p.Likes / 40
 		out = append(out, p)
 	}
 	httpx.JSON(w, http.StatusOK, out)
 }
 
-// tikiMe: the Sim's audience and its level.
 func (h *Handler) tikiMe(w http.ResponseWriter, r *http.Request) {
 	me, err := h.appSim(r, "tikitoko")
 	if err != nil {

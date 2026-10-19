@@ -103,7 +103,10 @@ export type GrinMessage = { id: number; sim: string; firstName: string; gender: 
 export type Author = { id: string; firstName: string; gender: 'femme' | 'homme'; look: Look }
 export type Story = { id: number; caption: string; source: 'jeu' | 'reel'; at: string; expiresAt: string; seen: boolean; views?: number }
 export type StoryRing = { sim: Author; mine: boolean; stories: Story[] }
-export type TikiPost = { id: number; author: Author; fans: number; tier: string; followed: boolean; mine: boolean; caption: string; theme: string; place: string; views: number; likes: number; liked: boolean; at: string }
+export type TikiPost = { id: number; author: Author; handle: string; fans: number; tier: string; followed: boolean; mine: boolean; caption: string; theme: string; place: string; views: number; likes: number; liked: boolean; comments: number; saves: number; saved: boolean; shares: number; at: string }
+/** A comment under a video; no author: the game's audience. */
+export type TikiComment = { id: string; author?: Author; name: string; handle: string; body: string; likes: number; liked: boolean; mine: boolean; byCreator: boolean; canDelete: boolean; at: string }
+export type TikiProfile = { author: Author; handle: string; tier: string; following: number; fans: number; likes: number; posts: number; followed: boolean; mine: boolean }
 export type TikiMe = { fans: number; players: number; posts: number; views: number; tier: string; next: number; dealFrom: number; themes: { id: string; label: string }[] }
 export type FriendAction = { id: string; label: string; icon: string; minutes: number; cost: number; friendship: number; phone?: boolean }
 /** A stage of life, from an age in years. */

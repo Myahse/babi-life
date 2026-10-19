@@ -542,3 +542,85 @@ button {
   border: 9px solid #7a5534;
   border-radius: 4px;
 }
+
+/* ---------- Tikitoko: a picture played like a video ---------- */
+.tiki-pan,
+.tiki-disc,
+.tiki-marquee,
+.tiki-progress {
+  animation-play-state: var(--run, running);
+}
+.tiki-pan {
+  animation: tiki-pan 9s ease-in-out infinite alternate;
+  transform-origin: 50% 50%;
+}
+@keyframes tiki-pan {
+  from {
+    transform: scale(1.08) translate3d(-3%, 1%, 0);
+  }
+  to {
+    transform: scale(1.22) translate3d(3%, -2%, 0);
+  }
+}
+.tiki-disc {
+  animation: tiki-spin 4s linear infinite;
+}
+@keyframes tiki-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.tiki-marquee {
+  animation: tiki-marquee 7s linear infinite;
+}
+@keyframes tiki-marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+.tiki-progress {
+  width: 100%;
+  transform-origin: left;
+  animation: tiki-progress 9s linear infinite;
+}
+@keyframes tiki-progress {
+  from {
+    transform: scaleX(0);
+  }
+}
+.tiki-heart {
+  animation: tiki-heart 0.9s ease-out forwards;
+}
+@keyframes tiki-heart {
+  0% {
+    transform: scale(0.3) rotate(-15deg);
+    opacity: 0;
+  }
+  20% {
+    transform: scale(1.15) rotate(-8deg);
+    opacity: 1;
+  }
+  70% {
+    transform: scale(1) rotate(-8deg) translateY(-10px);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.4) rotate(-8deg) translateY(-60px);
+    opacity: 0;
+  }
+}
+.tiki-pop {
+  animation: tiki-pop 0.35s ease-out;
+}
+@keyframes tiki-pop {
+  50% {
+    transform: scale(1.3);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tiki-pan,
+  .tiki-disc,
+  .tiki-marquee {
+    animation: none;
+  }
+}

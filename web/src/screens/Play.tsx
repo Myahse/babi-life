@@ -845,7 +845,7 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
                 {app === 'store' && ownPhone && <StoreApp world={world} sim={sim} act={act} onOpen={(id) => (id === 'gnango' || id === 'idrive' ? onMap() : setApp(id as PhoneAppId))} />}
                 {app === 'waye' && <WayeApp world={world} sim={sim} act={act} journal={journal} renderJournal={(events) => <Journal events={events} />} />}
                 {app === 'gbairai' && <GbairaiApp world={world} sim={sim} />}
-                {app === 'tikitoko' && <TikitokoApp sim={sim} act={act} />}
+                {app === 'tikitoko' && <TikitokoApp sim={sim} act={act} onClose={() => setApp(null)} />}
                 {(app === 'bet225' || app === 'parisfoot') && <BetApp sim={sim} act={act} app={app} />}
                 {app === 'golvo' && <GolvoApp world={world} sim={sim} delivery={delivery} onOrder={onDelivery} onCancel={() => onDelivery(null)} onCollect={onCollect} />}
               </div>

@@ -81,3 +81,17 @@ func TestCaption(t *testing.T) {
 		t.Errorf("caption %q", c)
 	}
 }
+
+func TestTikiAudienceComments(t *testing.T) {
+	at := time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC)
+	a, b := npcCommentList(7, "garba", 5, at), npcCommentList(7, "garba", 5, at)
+	if len(a) != 5 || a[2].Body != b[2].Body || a[2].Handle != b[2].Handle {
+		t.Error("a post's audience comments are always the same")
+	}
+	if npcComments(100) != 0 || npcComments(10_000_000) != tikiNPCMax {
+		t.Error("audience comments come with the views, up to a cap")
+	}
+	if tikiHandle("", "Awa Grâce") != "awagrâce" || tikiHandle("awa225", "Awa") != "awa225" {
+		t.Error("handle")
+	}
+}

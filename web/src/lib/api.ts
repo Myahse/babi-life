@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, GrinMessage, BetRounds, BetView } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, TikiComment, TikiProfile, GrinMessage, BetRounds, BetView } from './types'
 import { useSession } from '../store/session'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
@@ -125,7 +125,15 @@ export const api = {
   deleteStory: (id: string, story: number) => request<void>(`/sims/${id}/stories/${story}`, { method: 'DELETE' }),
   reportStory: (id: string, story: number, reason: string) => post<{ text: string }>(`/sims/${id}/stories/${story}/report`, { reason }),
   storyPhoto: (id: string, story: number) => `/sims/${id}/stories/${story}/photo`,
-  tikiFeed: (id: string, tab: 'pour-toi' | 'abonnements') => request<TikiPost[]>(`/sims/${id}/tiki?tab=${tab}`),
+  tikiFeed: (id: string, tab: 'pour-toi' | 'abonnements' | 'favoris' | 'auteur', author = '') => request<TikiPost[]>(`/sims/${id}/tiki?tab=${tab}&author=${encodeURIComponent(author)}`),
+  tikiProfile: (id: string, other: string) => request<TikiProfile>(`/sims/${id}/tiki/profile/${other}`),
+  tikiComments: (id: string, postId: number) => request<TikiComment[]>(`/sims/${id}/tiki/${postId}/comments`),
+  tikiComment: (id: string, postId: number, body: string) => post<{ id: string; body: string }>(`/sims/${id}/tiki/${postId}/comments`, { body }),
+  tikiUncomment: (id: string, comment: string) => request<void>(`/sims/${id}/tiki/comments/${comment}`, { method: 'DELETE' }),
+  tikiCommentLike: (id: string, comment: string, liked: boolean) => post<{ liked: boolean }>(`/sims/${id}/tiki/comments/${comment}/like`, { liked }),
+  tikiCommentReport: (id: string, comment: string, reason: string) => post<{ text: string }>(`/sims/${id}/tiki/comments/${comment}/report`, { reason }),
+  tikiSave: (id: string, postId: number, saved: boolean) => post<{ saved: boolean }>(`/sims/${id}/tiki/${postId}/save`, { saved }),
+  tikiShare: (id: string, postId: number) => post<void>(`/sims/${id}/tiki/${postId}/share`, {}),
   tikiMe: (id: string) => request<TikiMe>(`/sims/${id}/tiki/me`),
   tikiPost: (id: string, photo: string, caption: string, theme: string, placeId: string) => post<ActionResult>(`/sims/${id}/tiki`, { photo, caption, theme, placeId }),
   tikiLike: (id: string, postId: number, liked: boolean) => post<{ liked: boolean }>(`/sims/${id}/tiki/${postId}/like`, { liked }),
