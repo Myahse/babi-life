@@ -272,6 +272,9 @@ function FarVehicle({ p, r = 0, kind = 'taxi', color }: VehicleProps) {
       <mesh geometry={FAR_BOX} material={farMat(body)} position={[0, 0.3 + h / 2, 0]} scale={[l, h, w]} />
       {kind !== 'moto' && <mesh geometry={FAR_BOX} material={GLASS} position={[kind === 'gbaka' ? 0 : -0.25, 0.3 + h + 0.22, 0]} scale={[kind === 'gbaka' ? l * 0.95 : l * 0.5, 0.42, w * 0.96]} />}
       <mesh geometry={FAR_BOX} material={farMat('#1b1b20')} position={[0, 0.17, 0]} scale={[l * 0.8, 0.34, w * 1.02]} />
+      {/* Headlights and tail lights even far off: at night the streets are lines of white and red */}
+      <mesh geometry={FAR_BOX} material={HEAD} position={[l / 2 + 0.03, 0.62, 0]} scale={[0.08, 0.16, w * 0.8]} />
+      <mesh geometry={FAR_BOX} material={TAIL} position={[-l / 2 - 0.03, 0.62, 0]} scale={[0.08, 0.14, w * 0.8]} />
     </group>
   )
 }

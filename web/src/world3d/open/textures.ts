@@ -288,3 +288,39 @@ export function rippleNormals() {
   t.wrapS = t.wrapT = THREE.RepeatWrapping
   return t
 }
+
+/**
+ * How many of the windows that can be lit are lit, by the hour: nearly all in
+ * the evening, fewer as people go to bed, a few all night (the night-light,
+ * the TV left on), some again before dawn.
+ */
+export function litShare(hour: number) {
+  const h = ((Math.floor(hour) % 24) + 24) % 24
+  return h >= 19 && h < 22 ? 1 : h === 22 ? 0.85 : h === 23 ? 0.7 : h === 0 ? 0.55 : h < 4 ? 0.32 : h < 6 ? 0.5 : 0.75
+}
+
+/**
+ * Lets the walls' night lights go out window by window: each window (a 3 m
+ * tile of the façade, told apart by its place in the atlas and the 40 m patch
+ * of the city it stands in) has its own number, and is lit while that number
+ * is under `share`. Returns the uniform to set (0 to 1).
+ */
+export function windowsByHour(m: THREE.MeshLambertMaterial) {
+  const share = { value: 1 }
+  m.onBeforeCompile = (s) => {
+    s.uniforms.uLitShare = share
+    s.vertexShader = s.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vLitWorld;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvLitWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;')
+    s.fragmentShader = s.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform float uLitShare;\nvarying vec3 vLitWorld;')
+      .replace(
+        '#include <emissivemap_fragment>',
+        `#include <emissivemap_fragment>
+        vec2 litTile = floor(vMapUv * ${ATLAS}.0 + 0.001);
+        vec2 litPatch = floor(vLitWorld.xz / 40.0);
+        float litN = fract(sin(dot(vec4(litTile, litPatch), vec4(12.9898, 78.233, 37.719, 4.581))) * 43758.5453);
+        totalEmissiveRadiance *= step(litN, uLitShare);`,
+      )
+  }
+  m.customProgramCacheKey = () => 'windowsByHour'
+  return share
+}

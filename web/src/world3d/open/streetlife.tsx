@@ -108,7 +108,13 @@ export function StreetLife({ nav, seed, night }: { nav: Nav; seed: string; night
       <NoShadows>
         {shown.map((s) => (
           <group key={s.id} position={[s.at[0], 0, s.at[1]]} rotation={[0, s.rot, 0]}>
-            {s.kind === 'grin' ? <Grin seed={s.id} /> : s.kind === 'foot' ? <Foot seed={s.id} /> : night ? <Travail seed={s.id} /> : <Causerie seed={s.id} />}
+            {s.kind === 'grin' ? <Grin seed={s.id} /> : s.kind === 'foot' ? (
+              <>
+                <Foot seed={s.id} />
+                {/* After dark the children play on under a lamp */}
+                {night && <Lights night w={8} d={6} />}
+              </>
+            ) : night ? <Travail seed={s.id} /> : <Causerie seed={s.id} />}
           </group>
         ))}
       </NoShadows>

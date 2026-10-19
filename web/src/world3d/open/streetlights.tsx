@@ -9,13 +9,21 @@ import type { Nav } from './nav'
 // Street lights (lampadaires) along the real streets: a grey pole at the
 // edge of the pavement, an arm over the road and its lamp, every 30-odd
 // metres, one side then the other. At night the lamps glow and each throws
-// a warm pool of light on the street. Only the ones around the Sim are drawn.
+// a pool of light on the street (most the old sodium orange, some the new
+// white LEDs), a halo round the lamp that shows from far down the street,
+// and up close a faint cone of light in the night air. No real lights: all
+// of it is glowing, additive shapes, a few draws for the whole street. Only
+// the ones around the Sim are drawn.
 
 const SPACING = 32 // metres between two lamps along a street
 const NEAR = 450 // metres: lamps drawn around the Sim
 const MAX = 420
+/** The nearest lamps also get their cone of light. */
+const CONES = 70
+const SODIUM = new THREE.Color('#ffb54d')
+const LED = new THREE.Color('#e8f0ff')
 
-type Lamp = { x: number; y: number; z: number; rot: number }
+type Lamp = { x: number; y: number; z: number; rot: number; led: boolean }
 
 export function StreetLights({ nav, night }: { nav: Nav; night: boolean }) {
   // Every lamp of the loaded streets (not on paths and tracks).
@@ -37,7 +45,7 @@ export function StreetLights({ nav, night }: { nav: Nav; night: boolean }) {
         // Not inside a building, nor in the water (unless on a bridge).
         if (!y && !nav.walkable(x, z)) continue
         // The arm reaches over the road: it points back toward the middle.
-        out.push({ x, y, z, rot: Math.atan2(-nx, -nz) })
+        out.push({ x, y, z, rot: Math.atan2(-nx, -nz), led: hash(Math.round(x), Math.round(z), 77) < 0.3 })
       }
     })
     return out
@@ -77,6 +85,14 @@ export function StreetLights({ nav, night }: { nav: Nav; night: boolean }) {
   const arms = useRef<THREE.InstancedMesh>(null)
   const heads = useRef<THREE.InstancedMesh>(null)
   const pools = useRef<THREE.InstancedMesh>(null)
+  const cones = useRef<THREE.InstancedMesh>(null)
+  const halos = useMemo(() => {
+    const g = new THREE.BufferGeometry()
+    g.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(MAX * 3), 3))
+    g.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(MAX * 3), 3))
+    g.setDrawRange(0, 0)
+    return g
+  }, [])
   useEffect(() => {
     const m = new THREE.Matrix4()
     const q = new THREE.Quaternion()
@@ -88,19 +104,36 @@ export function StreetLights({ nav, night }: { nav: Nav; night: boolean }) {
       arms.current?.setMatrixAt(i, m.compose(new THREE.Vector3(l.x + fwd.x * 0.9, l.y + 7.1, l.z + fwd.z * 0.9), q, new THREE.Vector3(1, 1, 1)))
       heads.current?.setMatrixAt(i, m.compose(new THREE.Vector3(l.x + fwd.x * 1.75, l.y + 6.95, l.z + fwd.z * 1.75), q, new THREE.Vector3(1, 1, 1)))
       pools.current?.setMatrixAt(i, m.compose(new THREE.Vector3(l.x + fwd.x * 2.4, l.y + 0.08, l.z + fwd.z * 2.4), new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0)), new THREE.Vector3(1, 1, 1)))
+      pools.current?.setColorAt(i, l.led ? LED : SODIUM)
+      // The halo, just under the lamp head.
+      const [hx, hy, hz] = [l.x + fwd.x * 1.75, l.y + 6.8, l.z + fwd.z * 1.75]
+      halos.attributes.position.setXYZ(i, hx, hy, hz)
+      const c = l.led ? LED : SODIUM
+      halos.attributes.color.setXYZ(i, c.r, c.g, c.b)
+      if (i < CONES) {
+        cones.current?.setMatrixAt(i, m.compose(new THREE.Vector3(hx, l.y + 3.45, hz), new THREE.Quaternion(), new THREE.Vector3(1, 1, 1)))
+        cones.current?.setColorAt(i, c)
+      }
     })
-    for (const r of [poles, arms, heads, pools]) {
+    for (const r of [poles, arms, heads, pools, cones]) {
       if (!r.current) continue
-      r.current.count = shown.length
+      r.current.count = r === cones ? Math.min(CONES, shown.length) : shown.length
       r.current.instanceMatrix.needsUpdate = true
+      if (r.current.instanceColor) r.current.instanceColor.needsUpdate = true
     }
-  }, [shown])
+    halos.attributes.position.needsUpdate = true
+    halos.attributes.color.needsUpdate = true
+    halos.setDrawRange(0, shown.length)
+    halos.computeBoundingSphere()
+  }, [shown, halos])
 
   const mats = useMemo(
     () => ({
       pole: new THREE.MeshLambertMaterial({ color: '#7b8088' }),
       head: new THREE.MeshLambertMaterial({ color: '#d9dde2', emissive: '#ffd27a', emissiveIntensity: 0 }),
-      pool: new THREE.MeshBasicMaterial({ map: poolTexture(), color: '#ffcf7a', transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -6 }),
+      pool: new THREE.MeshBasicMaterial({ map: poolTexture(), color: '#ffffff', transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -6 }),
+      halo: new THREE.PointsMaterial({ map: poolTexture(), size: 4.2, sizeAttenuation: true, vertexColors: true, transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending }),
+      cone: new THREE.MeshBasicMaterial({ map: coneTexture(), transparent: true, opacity: 0.16, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false }),
     }),
     [],
   )
@@ -123,6 +156,10 @@ export function StreetLights({ nav, night }: { nav: Nav; night: boolean }) {
       <instancedMesh ref={pools} args={[undefined, mats.pool, MAX]} visible={night} frustumCulled={false}>
         <circleGeometry args={[5.5, 20]} />
       </instancedMesh>
+      <points geometry={halos} material={mats.halo} visible={night} frustumCulled={false} />
+      <instancedMesh ref={cones} args={[undefined, mats.cone, CONES]} visible={night} frustumCulled={false}>
+        <cylinderGeometry args={[0.15, 3.4, 6.9, 14, 1, true]} />
+      </instancedMesh>
     </>
   )
 }
@@ -138,5 +175,19 @@ function poolTexture() {
   grad.addColorStop(1, 'rgba(255,255,255,0)')
   g.fillStyle = grad
   g.fillRect(0, 0, 64, 64)
+  return new THREE.CanvasTexture(c)
+}
+
+/** The cone of light under a lamp: faint at the top, a little brighter where it reaches the ground. */
+function coneTexture() {
+  const c = document.createElement('canvas')
+  c.width = 4
+  c.height = 64
+  const g = c.getContext('2d')!
+  const grad = g.createLinearGradient(0, 0, 0, 64)
+  grad.addColorStop(0, 'rgba(255,255,255,0.15)')
+  grad.addColorStop(1, 'rgba(255,255,255,0.7)')
+  g.fillStyle = grad
+  g.fillRect(0, 0, 4, 64)
   return new THREE.CanvasTexture(c)
 }

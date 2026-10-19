@@ -34,6 +34,34 @@ const POLE = new THREE.CylinderGeometry(0.04, 0.05, 1, 6)
 const B = ({ p, s, c, glow = 0, r = 0 }: { p: [number, number, number]; s: [number, number, number]; c: string; glow?: number; r?: number }) => <mesh geometry={BOX} material={mat(c, glow)} position={p} scale={s} rotation={[0, r, 0]} />
 const rnd = (seed: number) => () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
 
+// At night a lit sign throws a glow round it, and a terrace's bulbs a pool on
+// the ground: soft additive discs (no real lights), by colour, shared.
+const softDisc = (() => {
+  if (typeof document === 'undefined') return null
+  const c = document.createElement('canvas')
+  c.width = c.height = 64
+  const g = c.getContext('2d')!
+  const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32)
+  grad.addColorStop(0, 'rgba(255,255,255,0.85)')
+  grad.addColorStop(0.45, 'rgba(255,255,255,0.3)')
+  grad.addColorStop(1, 'rgba(255,255,255,0)')
+  g.fillStyle = grad
+  g.fillRect(0, 0, 64, 64)
+  return new THREE.CanvasTexture(c)
+})()
+const glows = new Map<string, THREE.MeshBasicMaterial>()
+const glowMat = (c: string, opacity: number) => {
+  const k = `${c}|${opacity}`
+  let m = glows.get(k)
+  if (!m) glows.set(k, (m = new THREE.MeshBasicMaterial({ map: softDisc, color: c, transparent: true, opacity, depthWrite: false, blending: THREE.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -6 })))
+  return m
+}
+const DISC = new THREE.PlaneGeometry(1, 1)
+/** A glow, upright (a halo behind a sign) or flat on the ground (a pool of light). */
+const Glow = ({ p, size, c, opacity = 0.6, flat = false }: { p: [number, number, number]; size: number | [number, number]; c: string; opacity?: number; flat?: boolean }) => (
+  <mesh geometry={DISC} material={glowMat(c, opacity)} position={p} rotation={flat ? [-Math.PI / 2, 0, 0] : [0, 0, 0]} scale={typeof size === 'number' ? [size, size, 1] : [size[0], size[1], 1]} />
+)
+
 // These stay open after dark. Everything else pulls a shutter down over the door.
 const OPEN_AT_NIGHT = new Set(['gym', 'police', 'pharmacie', 'maquis', 'restaurant', 'club', 'hotel', 'health', 'transport', 'home', 'beach', 'lagune', 'nature', 'village', 'sport'])
 
@@ -463,6 +491,8 @@ function Terrace({ seed, night }: { seed: number; night: boolean }) {
       {/* The string of bulbs, lit at night */}
       {[...Array(9)].map((_, k) => <B key={k} p={[2.5 + k * 0.85, 2.6 - Math.sin((k / 8) * Math.PI) * 0.35, 2.8]} s={[0.12, 0.12, 0.12]} c={['#ffd36b', '#ff6b6b', '#6bd3ff'][k % 3]} glow={night ? 2 : 0.2} />)}
       {[2.4, 10].map((x) => <mesh key={x} geometry={POLE} material={mat('#555')} position={[x, 1.3, 2.8]} scale={[1, 2.6, 1]} />)}
+      {night && <Glow p={[6.2, 0.06, 2.6]} size={[11, 7]} c="#ffc36b" opacity={0.45} flat />}
+      {night && <Glow p={[0.4, 0.07, 1.9]} size={3.2} c="#ff6a2a" opacity={0.5} flat />}
       <MaquisCrowd tables={tables} seed={seed} />
     </group>
   )
@@ -584,6 +614,8 @@ function Club({ night, seed }: { night: boolean; seed: number }) {
   return (
     <group ref={anchor}>
       <Neon night={night} />
+      {night && <Glow p={[0, 3.25, 0.3]} size={[8, 4.4]} c="#d24bff" opacity={0.45} />}
+      {night && <Glow p={[0, 0.06, 2.2]} size={[8, 5]} c="#ff2d95" opacity={0.35} flat />}
       <ClubFront seed={seed} fill={fill} near={near} />
     </group>
   )
@@ -627,9 +659,13 @@ function Pharmacie({ night, seed }: { night: boolean; seed: number }) {
       <Worker p={[-5, 0, -1.3]} outfit="vigile" seed={seed} />
       <mesh geometry={POLE} material={mat('#d9d9d9')} position={[0, 2, 0]} scale={[1, 4, 1]} />
       <group position={[0, 4.3, 0]}>
-        <B p={[0, 0, 0]} s={[1.5, 0.5, 0.25]} c={green} glow={night ? 1 : 0} />
-        <B p={[0, 0, 0]} s={[0.5, 1.5, 0.25]} c={green} glow={night ? 1 : 0} />
+        <B p={[0, 0, 0]} s={[1.5, 0.5, 0.25]} c={green} glow={night ? 1.6 : 0} />
+        <B p={[0, 0, 0]} s={[0.5, 1.5, 0.25]} c={green} glow={night ? 1.6 : 0} />
+        {/* On duty at night: the cross glows green, seen from down the street, both sides */}
+        {night && <Glow p={[0, 0, 0.16]} size={4.2} c="#4dff6a" opacity={0.6} />}
+        {night && <group rotation={[0, Math.PI, 0]}><Glow p={[0, 0, 0.16]} size={4.2} c="#4dff6a" opacity={0.6} /></group>}
       </group>
+      {night && <Glow p={[0, 0.06, 0]} size={7} c="#4dff6a" opacity={0.3} flat />}
     </group>
   )
 }

@@ -85,6 +85,7 @@ const (
 	srcRegions         = "https://loidici.biz/?p=13626"
 	srcSudComoe        = "https://economie-ivoirienne.ci/pole-competitif/region-du-sud-comoe.html"
 	srcOSM             = "https://www.openstreetmap.org/"
+	srcOSMBlockhauss   = "https://www.openstreetmap.org/relation/4525193"
 	srcKarting         = "https://www.openstreetmap.org/way/333399974"
 	srcKarting2        = "https://abidjan4you.com/en/kids-activities/karting"
 	srcYopougon        = "https://fr.wikipedia.org/wiki/Yopougon"
@@ -240,8 +241,10 @@ var Cities = []City{
 					Source: game.Partial("Nom du jeu pour Orange Village, siège d'Orange Côte d'Ivoire inauguré le 14 janvier 2022 à la Riviera Golf, au bord de la lagune (Koffi & Diabaté Architectes : sept niveaux en anneaux de 68 m de diamètre, double peau en balle de golf). Position estimée, à relever.", srcOrangeVillage, srcOrangeVillage2)},
 				Place{ID: "cocody-baie", Name: "Baie de Cocody", Kind: "lagune", Lat: 5.3345, Lng: -4.0028, Real: true, Approx: true,
 					Source: game.Partial("Baie de la lagune Ébrié entre Cocody et le Plateau, que domine l'Hôtel Ivoire ; promenade placée pour le jeu.", srcHotelIvoire)},
-				Place{ID: "cocody-blockhauss", Name: "Village de Blockhauss", Kind: "village", Quarter: "Blockhauss", Lat: 5.3300, Lng: -3.9930, Real: true, Approx: true,
-					Source: game.Partial("Village ébrié de Cocody (avec Cocody village, M'badon, M'pouto, Anono, Akouédo), où l'on produit l'attiéké ; position sur la carte à relever.", srcBlockhauss, srcCocodyVillages)},
+				Place{ID: "cocody-blockhauss", Name: "Village de Blockhauss", Kind: "village", Quarter: "Blockhauss", Lat: 5.32322, Lng: -4.00183, Real: true, Approx: true,
+					Source: game.Partial("Village ébrié de Cocody (avec Cocody village, M'badon, M'pouto, Anono, Akouédo), où l'on produit l'attiéké ; position : le quartier « Blockauss » d'OpenStreetMap (relation 4525193), entre la rue Zouzoua Robert Séri et la lagune.", srcBlockhauss, srcCocodyVillages, srcOSMBlockhauss)},
+				Place{ID: "cocody-blockhauss-maquis", Name: "Les maquis de Blockhauss", Kind: "maquis", Quarter: "Blockhauss", Lat: 5.32120, Lng: -4.00290, Real: true, Approx: true,
+					Source: game.Partial("Les maquis du village de Blockhauss, au bord de la lagune Ébrié, connus pour le poisson braisé et l'ambiance des soirs de week-end. Un lieu d'ambiance, pas un établissement : le nom est celui du jeu. Placé au sud du quartier « Blockauss » d'OpenStreetMap, côté lagune ; à relever.", srcBlockhauss, srcOSMBlockhauss)},
 				Place{ID: "cocody-ucao", Name: "UCAO-UUA", Kind: "universite", Lat: 5.3470, Lng: -3.9960, Real: true, Approx: true, Operator: "Université catholique de l'Afrique de l'Ouest (privée)",
 					Source: game.Partial("Université catholique de l'Afrique de l'Ouest, unité universitaire d'Abidjan, rue Sainte-Marie à Cocody ; position placée d'après l'adresse, à relever.", srcUCAO, srcUCAO2)},
 				Place{ID: "cocody-zoo", Name: "Zoo national d'Abidjan", Kind: "zoo", Lat: 5.3790, Lng: -4.0100, Real: true, Approx: true, Operator: "Ministère des Eaux et Forêts",

@@ -40,6 +40,7 @@ import { CameraView } from './CameraView'
 import { GalleryApp } from './GalleryApp'
 import { InviteBanner, PlayersChip, PlayersSheet, usePlayers } from '../components/Players'
 import { SoundToggle, Soundtrack } from '../components/Soundtrack'
+import { usePartySound } from '../world3d/open/party'
 import { MiniMap, WhereTo } from '../components/Navigator'
 import { ChatSheet } from '../components/ChatSheet'
 import type { Npc } from '../world3d/open/OpenWorld'
@@ -406,6 +407,8 @@ export function Play() {
   const ballSport = !ballAct ? null : ballAct.interaction.id === 'play-basket' || (ballAct.placeId === 'happening' && ballAct.interaction.id === 'join' && street?.happening?.id === 'basket') ? 'basket' : ballAct.interaction.id === 'play-football' || (ballAct.placeId === 'happening' && ballAct.interaction.id === 'join' && street?.happening?.id === 'foot') ? 'foot' : null
   const ballKey = ballAct && ballSport ? `${ballSport}:${ballAct.placeId}:${ballAct.start}` : null
   const [played, setPlayed] = useState<string | null>(null)
+  // The party heard from the street at night (world3d/open/party.tsx).
+  const party = usePartySound()
 
   if (!sim) {
     return (
@@ -468,7 +471,9 @@ export function Play() {
         : happeningId === 'anniversaire' || happeningId === 'bapteme'
           ? 'maquis'
           : null
-  const trackSeed = showInside ? inside!.id : `${commune.id}${happeningId ?? ''}`
+  // Out in the street at night, the party at the Rue Princesse or Blockhauss is heard from down the road, louder as one comes near.
+  const partyHeard = !track && !showInside && party.id !== null && party.level > 0
+  const trackSeed = partyHeard ? `party${party.id}` : showInside ? inside!.id : `${commune.id}${happeningId ?? ''}`
 
   return (
     <div className="relative h-full overflow-hidden bg-[var(--color-night)] select-none">
@@ -675,7 +680,7 @@ export function Play() {
         </button>
       </footer>
 
-      <Soundtrack track={track} seed={trackSeed} />
+      <Soundtrack track={partyHeard ? 'club' : track} seed={trackSeed} level={partyHeard ? party.level : 1} />
       {/* Finding the way: the mini-map, and every place of the quarter */}
       {!showInside && !placeId && !overlay && !players && (
         <div className="pointer-events-none absolute top-[4.5rem] left-3 z-20 flex flex-col items-start gap-2 sm:top-[5.5rem] lg:left-5">

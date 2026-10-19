@@ -49,6 +49,8 @@ import { Billboards } from './billboards'
 import { StreetLife } from './streetlife'
 import { TakeOff } from './airport'
 import { StreetLights } from './streetlights'
+import { PARTIES, Party } from './party'
+import { NightStreet } from './nightStreet'
 import { BRIDGE_LABEL, bridgeKind } from './bridgeNames'
 import { BridgeSights } from './bridges'
 import { BridgeLife } from './bridgeLife'
@@ -58,7 +60,7 @@ import { SkyDome, skyTone } from './sky'
 import { setVehicleNight } from '../vehicles'
 
 const RICH = typeof navigator === 'undefined' || (navigator.hardwareConcurrency ?? 4) > 4
-import { makeTextures, rippleNormals } from './textures'
+import { litShare, makeTextures, rippleNormals, windowsByHour } from './textures'
 import { FAR_ZOOM, type ChunkData } from './tiles'
 import type { Arrays, ChunkRequest } from './worker'
 import { worldTime } from '../../lib/worldClock'
@@ -171,7 +173,7 @@ function Sun({ night, dusk }: { night: boolean; dusk: boolean }) {
 export function makeWorldMaterials() {
   const t = makeTextures()
   const lambert = (map: THREE.Texture, extra: THREE.MeshLambertMaterialParameters = {}) => new THREE.MeshLambertMaterial({ map, ...extra })
-  return {
+  const m = {
     walls: lambert(t.wall, { vertexColors: true, emissiveMap: t.lights, emissive: new THREE.Color('#ffffff'), emissiveIntensity: 0 }),
     inst: lambert(t.inst, { vertexColors: true }),
     entrance: lambert(t.entrance, { vertexColors: true }),
@@ -199,6 +201,8 @@ export function makeWorldMaterials() {
     bark: lambert(t.bark),
     leaves: lambert(t.leaves),
   }
+  m.walls.userData.litShare = windowsByHour(m.walls)
+  return m
 }
 
 export function OpenWorld(props: Props & { token: string; onFail: () => void; onLoaded?: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void; onHomePlot?: (plot: Plot | undefined) => void }) {
@@ -219,15 +223,22 @@ export function OpenWorld(props: Props & { token: string; onFail: () => void; on
   )
 }
 
-function useMaterials(night: boolean) {
+function useMaterials(night: boolean, hour: number) {
   const mats = useMemo(makeWorldMaterials, [])
   useEffect(() => {
-    mats.walls.emissiveIntensity = night ? 0.85 : 0
-    mats.shop.emissiveIntensity = night ? 0.7 : 0
+    mats.walls.emissiveIntensity = night ? 0.95 : 0
+    mats.shop.emissiveIntensity = night ? 0.8 : 0
     setVehicleNight(night)
     mats.foam.color.set(night ? '#8fa3c8' : '#ffffff')
-    mats.water.specular.set(night ? '#4a5a80' : '#d8ecff')
+    // At night the lagoon is dark and glossy: the moon and the lights glint on its ripples.
+    mats.water.specular.set(night ? '#8a9ccc' : '#d8ecff')
+    mats.water.shininess = night ? 140 : 80
+    mats.water.color.set(night ? '#5a6a90' : '#ffffff')
   }, [night, mats])
+  // The windows go out one by one as the night goes on.
+  useEffect(() => {
+    mats.walls.userData.litShare.value = litShare(hour)
+  }, [hour, mats])
   // The water moves: its ripples drift, and the foam comes and goes on the shore.
   useFrame(() => {
     const t = worldTime()
@@ -242,7 +253,7 @@ function useMaterials(night: boolean) {
 
 function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, indoors, nameTag, onNear, frozen, players, onPickPlayer, recenter, onFreeCamera, closeView, shoulderView, token, onFail, onLoaded, onStreetBuy, onRobbed, onTalk, onCall, talkingTo, plotsVersion, onMapPlaces, onHomeSpots, onHomePlot }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void; onLoaded?: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void; onHomePlot?: (plot: Plot | undefined) => void }) {
   const origin = useMemo<Origin>(() => ({ lat: commune.lat, lng: commune.lng }), [commune.lat, commune.lng])
-  const mats = useMaterials(night)
+  const mats = useMaterials(night, hour)
   const home = sim.homeCity === sim.city && sim.homeCommune === commune.id
 
   // The real places found on the map's points of interest, by name.
@@ -888,6 +899,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
           <group key={lot.id}>
             <group position={[lot.x, 0, lot.z]} rotation={[0, lot.rot, 0]} onClick={(e) => (e.stopPropagation(), onPick(lot.id))}>
               <Landmark id={lot.id} night={night} />
+              {PARTIES[lot.id] && <Party id={lot.id} night={night} simGender={sim.gender} onTalk={onTalk} onCall={onCall} />}
             </group>
             <LotLabel lot={lot} world={world} label={labels && labelOf.get(lot.id)} onPick={onPick} y={30} />
           </group>
@@ -920,6 +932,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       <Boats water={nearWater} focus={focus} />
       {nav.nodes.length > 0 && <StreetLights nav={nav} night={night} />}
       {nav.nodes.length > 0 && <StreetLife nav={nav} seed={commune.id} night={night} />}
+      {nav.nodes.length > 0 && night && <NightStreet nav={nav} seed={commune.id} />}
       {nav.nodes.length > 0 && <StreetStalls nav={nav} seed={commune.id} hour={hour} onBuy={onStreetBuy} />}
       {nav.nodes.length > 0 && <SotraStops nav={nav} seed={commune.id} hour={hour} night={night} />}
       {nav.nodes.length > 0 && <StreetFootball nav={nav} seed={commune.id} hour={hour} />}

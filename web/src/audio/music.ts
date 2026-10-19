@@ -16,6 +16,9 @@ let master: GainNode | null = null
 let current: { track: Track; seed: string } | null = null
 let timer: number | null = null
 let bus: GainNode | null = null
+/** How near the music is (1: where it plays; less: a party heard from down the street). */
+let level = 1
+let near: GainNode | null = null
 let muted = (() => {
   try {
     return localStorage.getItem(KEY) === 'off'
@@ -272,6 +275,9 @@ function ensure() {
   // A touch of compression keeps it even on phone speakers.
   const comp = ctx.createDynamicsCompressor()
   master.connect(comp).connect(ctx.destination)
+  near = ctx.createGain()
+  near.gain.value = level
+  near.connect(master)
   return ctx
 }
 
@@ -306,7 +312,7 @@ function start(track: Track, seed: string) {
   const out = c.createGain()
   out.gain.setValueAtTime(0, c.currentTime)
   out.gain.linearRampToValueAtTime(1, c.currentTime + 1.2)
-  out.connect(master)
+  out.connect(near ?? master)
   bus = out
   const dur = 60 / style.bpm / style.steps
   let step = 0
@@ -335,6 +341,11 @@ export const music = {
     if (current && current.track === track && current.seed === seed && timer) return
     current = { track, seed }
     start(track, seed)
+  },
+  /** How loud, from 0 to 1: a party far down the street is heard softly, louder as one comes near. */
+  setLevel(v: number) {
+    level = Math.max(0, Math.min(1, v))
+    if (near && ctx) near.gain.setTargetAtTime(level, ctx.currentTime, 0.4)
   },
   get muted() {
     return muted

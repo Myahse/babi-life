@@ -89,6 +89,9 @@ const SLOTS = MAQUIS.map((m, i) => {
   return { m, side, z: 19.5 - k * 13.5 }
 })
 
+/** The tables out in the lane (x, z), two in front of each maquis: the party nights seat people at them (party.tsx). */
+export const RP_TABLES: [number, number][] = SLOTS.flatMap(({ side, z }) => [-3, 3].map((dz): [number, number] => [-side * (LANE / 2 - 1.5), z + dz]))
+
 /** One maquis, built facing +z (the lane); the caller turns it. */
 function MaquisFront({ m, night, seed }: { m: Maquis; night: boolean; seed: number }) {
   const h = m.storeys * 3

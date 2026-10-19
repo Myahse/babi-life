@@ -8,6 +8,7 @@ import { MarcheAdjame } from './adjame'
 import { HotelIvoire } from './hotelIvoire'
 import { StadiumLive } from './stadiumLive'
 import { Zoo } from './zoo'
+import { BlockhaussMaquis } from './blockhauss'
 import type { StadiumEvent } from '../../lib/stadium'
 
 // Landmarks the map alone can't draw: their shape is what people know them
@@ -28,10 +29,11 @@ export const LANDMARKS: Record<string, number> = {
   'treich-palais': 45,
   'adjame-forum': 52,
   'cocody-zoo': 62,
+  'cocody-blockhauss-maquis': 27,
 }
 
 /** The landmarks one walks round freely on arriving (the park, the hotel's grounds, the street, the forecourts), before picking what to do. */
-export const GROUNDS = new Set(['cocody-zoo', 'cocody-hotel-ivoire', 'yop-rue-princesse', 'adjame-forum', 'yop-ficgayo', 'yop-gare-siporex'])
+export const GROUNDS = new Set(['cocody-zoo', 'cocody-hotel-ivoire', 'yop-rue-princesse', 'adjame-forum', 'yop-ficgayo', 'yop-gare-siporex', 'cocody-blockhauss-maquis'])
 
 /** The landmark's model, by place. */
 export function Landmark({ id, night, demo }: { id: string; night: boolean; /** The stadium: a made-up match or concert (the videos), instead of the agenda. */ demo?: StadiumEvent }) {
@@ -62,6 +64,8 @@ export function Landmark({ id, night, demo }: { id: string; night: boolean; /** 
       return <MarcheAdjame night={night} />
     case 'cocody-zoo':
       return <Zoo night={night} />
+    case 'cocody-blockhauss-maquis':
+      return <BlockhaussMaquis night={night} />
     default:
       return null
   }

@@ -51,6 +51,7 @@ import { BridgeSights } from '../world3d/open/bridges'
 import { BridgeLife } from '../world3d/open/bridgeLife'
 import { Billboard } from '../world3d/open/billboards'
 import { randomLook } from '../avatar/options'
+import { NightCityLab, NightStreetLab, PartyLab } from './night'
 import type { Block, Furniture, HousePlan, Material, Piece, Plot, Sim, World } from '../lib/types'
 
 const seededLab = (n: number) => () => ((n = (n * 16807) % 2147483647) / 2147483647)
@@ -73,7 +74,8 @@ const seededLab = (n: number) => () => ((n = (n * 16807) % 2147483647) / 2147483
 // ?view=dressing&kind=maquis (&name=…) the front of a place, its workers;
 // ?view=police the checkpoint on a big road's shoulder;
 // ?view=bridge&kind=fhb|cdg|hkb|yop|ado one of the big bridges over a lagoon
-// (&cam, &look, &night).
+// (&cam, &look, &night);
+// ?view=party|nightstreet|nightcity: the nights (see night.tsx).
 // The interior takes &career=sante&level=1 for a Sim at work (&id=work).
 
 const q = new URLSearchParams(location.search)
@@ -445,6 +447,9 @@ function BridgeLab() {
 }
 
 function Lab() {
+  if (view === 'party') return <PartyLab />
+  if (view === 'nightstreet') return <NightStreetLab />
+  if (view === 'nightcity') return <NightCityLab />
   if (view === 'bridge') return <BridgeLab />
   if (view === 'billboard') return <BillboardLab />
   if (view === 'camera') return <CameraLab />
