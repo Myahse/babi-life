@@ -351,7 +351,8 @@ func (h *Handler) buildPlan(w http.ResponseWriter, r *http.Request) {
 			return game.Outcome{}, nil, err
 		}
 		text := fmt.Sprintf("%s : les maçons ont tout bâti, les meubles sont posés. Tu peux emménager !", pl.Label)
-		return game.Outcome{Text: text, Money: -pl.Cost}, []Event{{Kind: "bill", Text: text, Money: -pl.Cost, GameTime: s.GameMinutes}}, nil
+		m := houseMoment(s, false, p.Lot.City, p.Lot.Commune)
+		return game.Outcome{Text: text, Money: -pl.Cost}, []Event{{Kind: "bill", Text: text, Money: -pl.Cost, GameTime: s.GameMinutes, moment: &m}}, nil
 	})
 }
 
@@ -381,7 +382,8 @@ func (h *Handler) moveIn(w http.ResponseWriter, r *http.Request) {
 			name = cm.Name
 		}
 		text := fmt.Sprintf("Tu emménages dans ta maison à %s ! Plus de loyer : tu es chez toi.", name)
-		return game.Outcome{Text: text}, []Event{{Kind: "life", Text: text, GameTime: s.GameMinutes}}, nil
+		m := houseMoment(s, true, p.Lot.City, p.Lot.Commune)
+		return game.Outcome{Text: text}, []Event{{Kind: "life", Text: text, GameTime: s.GameMinutes, moment: &m}}, nil
 	})
 }
 

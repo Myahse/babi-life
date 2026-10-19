@@ -185,6 +185,8 @@ type Event struct {
 	Money    int       `json:"money"`
 	GameTime int64     `json:"gameTime"`
 	At       time.Time `json:"at"`
+	// moment: a big moment for Babi Direct (babidirect.go), posted once it's saved.
+	moment *directItem
 }
 
 func (s *Sim) state() game.State {
@@ -259,6 +261,8 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Get("/sims/{id}/grin", h.grin)
 	r.Post("/sims/{id}/grin", h.sayGrin)
 	r.Post("/sims/{id}/grin/{msg}/report", h.reportGrin)
+	r.Get("/sims/{id}/grin/direct", h.directFeed)
+	r.Post("/sims/{id}/grin/direct/{post}/react", h.reactDirect)
 	r.Get("/sims/{id}/stories", h.stories)
 	r.Post("/sims/{id}/stories", h.postStory)
 	r.Get("/sims/{id}/stories/{story}/photo", h.storyPhoto)
@@ -441,6 +445,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	city, _ := world.FindCity(s.HomeCity)
 	cm, _ := city.Commune(s.HomeCommune)
 	_ = insertEvent(r.Context(), h.DB, s.ID, "random", fmt.Sprintf("%s est né·e à %s, dans %s, d'une famille %s. %s", s.FirstName, cm.Name, fam.Sector, strings.ToLower(fam.Label), fam.Hint), 0, s.GameMinutes)
+	h.postMoments(r.Context(), []directItem{birthMoment(s)})
 	httpx.JSON(w, http.StatusCreated, s)
 }
 
@@ -737,6 +742,13 @@ func (h *Handler) mutateTx(w http.ResponseWriter, r *http.Request, fn func(*Sim,
 		httpx.Error(w, http.StatusInternalServerError, "could not save sim")
 		return
 	}
+	var moments []directItem
+	for _, ev := range fresh {
+		if ev.moment != nil {
+			moments = append(moments, *ev.moment)
+		}
+	}
+	h.postMoments(ctx, moments)
 
 	journal, _ := h.journal(ctx, s.ID)
 	if fresh == nil {

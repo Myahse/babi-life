@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, Lot, LotOffer, GrinMessage, BetRounds, BetView } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, Lot, LotOffer, GrinMessage, DirectPost, BetRounds, BetView } from './types'
 import { useSession } from '../store/session'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
@@ -124,6 +124,8 @@ export const api = {
   grin: (id: string, room: 'babi' | 'commune', after = 0) => request<{ room: string; messages: GrinMessage[] }>(`/sims/${id}/grin?room=${room}&after=${after}`),
   sayGrin: (id: string, room: 'babi' | 'commune', body: string) => post<{ id: number; body: string }>(`/sims/${id}/grin`, { room, body }),
   reportGrin: (id: string, msg: number, reason: string) => post<{ text: string }>(`/sims/${id}/grin/${msg}/report`, { reason }),
+  direct: (id: string, after = 0) => request<{ name: string; reactions: string[]; posts: DirectPost[] }>(`/sims/${id}/grin/direct?after=${after}`),
+  reactDirect: (id: string, postId: number, emoji: string) => post<{ reactions: Record<string, number>; mine: string }>(`/sims/${id}/grin/direct/${postId}/react`, { emoji }),
   stories: (id: string) => request<StoryRing[]>(`/sims/${id}/stories`),
   postStory: (id: string, photo: string, caption: string, source: 'jeu' | 'reel') => post<Story>(`/sims/${id}/stories`, { photo, caption, source }),
   deleteStory: (id: string, story: number) => request<void>(`/sims/${id}/stories/${story}`, { method: 'DELETE' }),

@@ -12,7 +12,9 @@ type Gender = Sim['gender']
 // their tail (theirs white on the left, mine on the right), the time and the
 // ticks in the corner of each bubble (blue once read), and at the bottom the
 // round message box with the emoji inside and the round send button. Used by
-// Gbairai's chats with a friend and by the grin's two group chats.
+// Gbairai's chats with a friend and by the grin's two group chats. A post of
+// the game (Babi Direct, in « Tout Babi ») is a group message with its own
+// round picture and colour, and the reactions under it.
 
 export type ChatLine = {
   id: number
@@ -21,8 +23,10 @@ export type ChatLine = {
   at: string
   /** Mine only: read by the other (blue ticks); undefined in a group. */
   readAt?: string | null
-  /** In a group: who wrote it. */
-  sender?: { key: string; name: string; sub?: string; look: Look; gender: Gender; friend?: boolean }
+  /** In a group: who wrote it (a player's portrait, or an account's own picture and colour). */
+  sender?: { key: string; name: string; sub?: string; look?: Look; gender?: Gender; friend?: boolean; avatar?: ReactNode; color?: string }
+  /** Reactions under the message: how many of each, mine, and those one can give. */
+  reactions?: { counts: Record<string, number>; mine: string; choices: string[] }
 }
 
 export type ChatMenuItem = { label: string; onClick: () => void; danger?: boolean }
@@ -78,6 +82,7 @@ export function ChatScreen({
   locked,
   onSend,
   onReport,
+  onReact,
   note,
   below,
 }: {
@@ -96,6 +101,8 @@ export function ChatScreen({
   /** Send a message; true when it went. */
   onSend: (body: string) => Promise<boolean>
   onReport?: (line: ChatLine) => void
+  /** React to a line that takes reactions ("" takes mine back). */
+  onReact?: (line: ChatLine, emoji: string) => void
   note?: string | null
   below?: ReactNode
 }) {
@@ -171,6 +178,7 @@ export function ChatScreen({
             const big = !st && bigEmoji(m.body)
             const bare = !!st || big
             const group = !!m.sender && !m.mine
+            const reportable = !!onReport && !m.mine && !m.reactions
             const ticks = m.mine && m.readAt !== undefined ? (m.readAt ? <CheckCheck size={15} className="text-[#2b9ce8]" /> : <Check size={15} className="opacity-60" />) : null
             const stamp = (
               <span className="flex items-center gap-0.5 text-[11px] leading-none font-semibold text-[#667781]">
@@ -186,15 +194,15 @@ export function ChatScreen({
                   </div>
                 )}
                 <div className={`flex items-start gap-1.5 ${m.mine ? 'justify-end' : 'justify-start'} ${first ? 'mt-2' : 'mt-0.5'}`}>
-                  {group && (first ? <ChatAvatar look={m.sender!.look} gender={m.sender!.gender} size={30} /> : <span className="w-[30px] shrink-0" />)}
-                  <div className={`relative max-w-[78%] ${bare ? '' : 'rounded-lg px-2 pt-1.5 pb-1 shadow-[0_1px_0.5px_rgba(0,0,0,0.13)]'} ${!bare && first ? (m.mine ? 'rounded-tr-none' : 'rounded-tl-none') : ''}`} style={bare ? undefined : { background: m.mine ? MINE : THEIRS }} onClick={(e) => (e.stopPropagation(), onReport && !m.mine && setPicked((p) => (p === m.id ? null : m.id)))} onContextMenu={(e) => (e.preventDefault(), onReport && !m.mine && setPicked(m.id))}>
+                  {group && (first ? (m.sender!.avatar ?? (m.sender!.look && m.sender!.gender ? <ChatAvatar look={m.sender!.look} gender={m.sender!.gender} size={30} /> : <span className="w-[30px] shrink-0" />)) : <span className="w-[30px] shrink-0" />)}
+                  <div className={`relative max-w-[78%] ${bare ? '' : 'rounded-lg px-2 pt-1.5 pb-1 shadow-[0_1px_0.5px_rgba(0,0,0,0.13)]'} ${!bare && first ? (m.mine ? 'rounded-tr-none' : 'rounded-tl-none') : ''}`} style={bare ? undefined : { background: m.mine ? MINE : THEIRS }} onClick={(e) => (e.stopPropagation(), reportable && setPicked((p) => (p === m.id ? null : m.id)))} onContextMenu={(e) => (e.preventDefault(), reportable && setPicked(m.id))}>
                     {!bare && first && (
                       <svg viewBox="0 0 8 13" className={`absolute top-0 h-[13px] w-2 ${m.mine ? '-right-2' : '-left-2'}`} aria-hidden>
                         <path d={m.mine ? 'M0 0H8L0 13z' : 'M8 0H0L8 13z'} fill={m.mine ? MINE : THEIRS} />
                       </svg>
                     )}
                     {group && first && (
-                      <div className="mb-0.5 flex items-center gap-1 text-[13px] font-extrabold" style={{ color: nameColor(m.sender!.key) }}>
+                      <div className="mb-0.5 flex items-center gap-1 text-[13px] font-extrabold" style={{ color: m.sender!.color ?? nameColor(m.sender!.key) }}>
                         {m.sender!.name}
                         {m.sender!.friend && <UserCheck size={12} aria-label="ami" />}
                         {m.sender!.sub && <span className="font-semibold text-[#8696a0]">· {m.sender!.sub}</span>}
@@ -210,6 +218,23 @@ export function ChatScreen({
                         <span className="text-[44px] leading-none">{m.body}</span>
                         <span className="rounded-full bg-white/85 px-1.5 py-0.5 shadow-sm">{stamp}</span>
                       </div>
+                    ) : m.reactions ? (
+                      <>
+                        <p className="text-[14.5px] leading-[1.35] font-medium break-words whitespace-pre-wrap text-[#111b21]">{m.body}</p>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                          {m.reactions.choices.map((e) => {
+                            const n = m.reactions!.counts[e] ?? 0
+                            const on = m.reactions!.mine === e
+                            return (
+                              <button key={e} disabled={!onReact} onClick={(ev) => (ev.stopPropagation(), onReact?.(m, on ? '' : e))} className={`flex h-7 items-center gap-0.5 rounded-full px-2 text-[14px] leading-none ${on ? 'bg-[#ffe2c4] ring-1 ring-[#c2410c]' : 'bg-[#f0ebe4]'}`} aria-label={on ? `Retirer ${e}` : `Réagir ${e}`} aria-pressed={on}>
+                                {e}
+                                {n > 0 && <span className={`text-[12px] font-extrabold ${on ? 'text-[#c2410c]' : 'text-[#54656f]'}`}>{n}</span>}
+                              </button>
+                            )
+                          })}
+                          <span className="ml-auto pl-1">{stamp}</span>
+                        </div>
+                      </>
                     ) : (
                       <p className="text-[14.5px] leading-[1.35] font-medium break-words whitespace-pre-wrap text-[#111b21]">
                         {m.body}
@@ -218,7 +243,7 @@ export function ChatScreen({
                         <span className="absolute right-2 bottom-1">{stamp}</span>
                       </p>
                     )}
-                    {picked === m.id && onReport && (
+                    {picked === m.id && onReport && reportable && (
                       <button className="absolute top-full left-0 z-10 mt-1 rounded-lg bg-white px-3 py-1.5 text-[13px] font-bold whitespace-nowrap text-[#c92a2a] shadow-lg" onClick={(e) => (e.stopPropagation(), setPicked(null), onReport(m))}>
                         Signaler ce message
                       </button>

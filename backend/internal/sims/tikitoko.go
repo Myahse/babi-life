@@ -201,7 +201,8 @@ func (h *Handler) tikiPost(w http.ResponseWriter, r *http.Request) {
 		}
 		before, after := tikiTier(fans), tikiTier(fans+newFans)
 		if after != before {
-			events = append(events, Event{Kind: "social", Text: fmt.Sprintf("Sur Tikitoko, tu passes « %s » !", after), GameTime: s.GameMinutes})
+			m := tikiMoment(s, after)
+			events = append(events, Event{Kind: "social", Text: fmt.Sprintf("Sur Tikitoko, tu passes « %s » !", after), GameTime: s.GameMinutes, moment: &m})
 		}
 		return game.Outcome{Text: text, Money: pay}, events, nil
 	})

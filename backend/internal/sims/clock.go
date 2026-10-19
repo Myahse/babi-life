@@ -62,7 +62,11 @@ func (s *Sim) finish(rng *rand.Rand) []Event {
 	if a.Career != "" {
 		if c, ok := game.FindCareer(a.Career); ok && a.Career == s.Career {
 			if promo := s.work(c, s.Needs.Mood()); promo != "" {
-				events = append(events, Event{Kind: "career", Text: promo, GameTime: a.End})
+				ev := Event{Kind: "career", Text: promo, GameTime: a.End}
+				if m, ok := promotionMoment(s); ok {
+					ev.moment = &m
+				}
+				events = append(events, ev)
 			}
 		}
 	}
