@@ -267,7 +267,8 @@ const DIGITS: Record<string, string[]> = { '2': ['111', '001', '111', '100', '11
 function paintSheet(l: Required<Look>, femme: boolean, young: boolean) {
   const c = document.createElement('canvas')
   c.width = c.height = SHEET * FINE
-  const p = new Painter(c.getContext('2d')!)
+  // Worn clothes read the sheet back (wearOut): tell the browser, for those only.
+  const p = new Painter(c.getContext('2d', { willReadFrequently: l.wear === 'use' || l.wear === 'dechire' })!)
   p.g.scale(FINE, FINE)
   const dc = defaultColors(l, femme)
   const skin = l.skin
@@ -1161,7 +1162,8 @@ function glassMat(color: string, opacity: number) {
 function lambert(color: string, map?: THREE.Texture) {
   const key = `${color}|${map?.uuid ?? ''}`
   let m = matCache.get(key)
-  if (!m) matCache.set(key, (m = new THREE.MeshLambertMaterial({ color: map ? '#ffffff' : color, map })))
+  // No `map: undefined` (three.js warns about it on every body part).
+  if (!m) matCache.set(key, (m = new THREE.MeshLambertMaterial(map ? { color: '#ffffff', map } : { color })))
   return m
 }
 /** Loose hair: each style woven its own way (16 px, crisp). */
