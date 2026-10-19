@@ -8,7 +8,9 @@ import type { Block, Look } from '../lib/types'
 import { BlockHuman } from '../avatar/BlockHuman'
 import type { Pose } from '../avatar/Human'
 import { DEFAULT_LOOK, HAIRS } from '../avatar/options'
-import { House } from '../world3d/build/House'
+import { House, materialTexture } from '../world3d/build/House'
+import { FurnitureSet } from '../world3d/build/Furniture'
+import type { Furniture, Piece } from '../lib/types'
 import { Scene } from '../components/Scene'
 import { Logo } from '../components/ui'
 import { freezeWorldTime } from '../lib/worldClock'
@@ -36,7 +38,7 @@ import { NouchiCorner } from '../world3d/open/nouchis'
 const q = new URLSearchParams(location.search)
 const VIDEO = q.has('video')
 const ALPHA = q.has('alpha')
-type SceneId = 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'princesse' | `famille-${string}` | 'palais' | 'basket' | 'fete' | 'cause' | 'look' | 'siporex' | 'phone' | 'visages' | 'coiffures' | 'selfie' | 'yop' | 'garba' | 'brochette' | 'plateau' | 'stade' | 'concert' | 'couloir' | 'amis'
+type SceneId = 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'princesse' | `famille-${string}` | 'palais' | 'basket' | 'fete' | 'cause' | 'look' | 'siporex' | 'phone' | 'visages' | 'coiffures' | 'selfie' | 'yop' | 'garba' | 'brochette' | 'plateau' | 'stade' | 'concert' | 'couloir' | 'amis' | 'salon'
 /**
  * Which film: ?video (the launch), ?video=bouger (getting about: gbaka,
  * Gnango, Rue Princesse), ?video=bande-annonce (the trailer: gnambro or
@@ -112,6 +114,112 @@ function useSpots() {
     : ([[-0.55, 0.55, 0.15], [0.55, 0.55, -0.15], [-1.05, -0.45, 0.3], [0, -0.6, 0], [1.05, -0.45, -0.3]] as [number, number, number][])
 }
 
+/** Awa's living room (« Merci »): the game's own furniture, the morning light through the window. */
+const SALON_FURNITURE: Furniture[] = [
+  { id: 'canape', label: 'Canapé', icon: 'sofa', w: 2, d: 1, h: 1, price: 0, comfort: 0, color: '#7a4a8a' },
+  { id: 'tele', label: 'Télé', icon: 'tv', w: 1, d: 1, h: 1, price: 0, comfort: 0, color: '#222222' },
+  { id: 'ventilo', label: 'Ventilateur', icon: 'fan', w: 1, d: 1, h: 2, price: 0, comfort: 0, color: '#3a8fd8' },
+  { id: 'table', label: 'Table', icon: 'utensils', w: 1, d: 2, h: 1, price: 0, comfort: 0, color: '#8a5a32' },
+  { id: 'chaises', label: 'Chaises', icon: 'armchair', w: 1, d: 1, h: 1, price: 0, comfort: 0, color: '#e8e3d6' },
+]
+// Corners in the room's own metres (x from -6, z from 0 at the back wall).
+const SALON_PIECES: Piece[] = [
+  [-1, 0, 0.6, 0, 'canape'],
+  [-3.2, 0, 0.5, 0, 'tele'],
+  [1.7, 0, 1.2, 0, 'ventilo'],
+  [3.6, 0, 2.2, 0, 'table'],
+  [2.5, 0, 2.6, 0, 'chaises'],
+]
+
+function Salon({ t, gift }: { t: number; gift?: boolean }) {
+  const tiles = useMemo(() => {
+    const tx = materialTexture({ id: 'carreau', label: '', color: '#e9e4d8', price: 0, unlock: 0 }).clone()
+    tx.wrapS = tx.wrapT = THREE.RepeatWrapping
+    tx.repeat.set(12, 8)
+    tx.needsUpdate = true
+    return tx
+  }, [])
+  // The phone in her hand moves a little: the image too.
+  const shake: [number, number] = [Math.sin(t * 2.3) * 0.03 + Math.sin(t * 5.1) * 0.012, Math.cos(t * 1.9) * 0.025]
+  const wall = '#f3e2a9'
+  return (
+    <>
+      <hemisphereLight args={['#fff6e6', '#b98a5a', 1.15]} />
+      <directionalLight position={[3, 6, 9]} intensity={1.5} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-8} shadow-camera-right={8} shadow-camera-top={6} shadow-camera-bottom={-6} />
+      <pointLight position={[2.6, 2.2, 1.6]} intensity={6} distance={6} color="#fff1c9" />
+      <ambientLight intensity={0.45} />
+      <Camera at={[0.4 + shake[0], 2.1 + shake[1], 9.6]} look={[0.2, 1.45, 3.6]} />
+      {/* The tiled floor, the walls painted pale yellow, a skirting */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 4]} receiveShadow>
+        <planeGeometry args={[12, 8]} />
+        <meshLambertMaterial map={tiles} />
+      </mesh>
+      <mesh position={[0, 1.6, -0.05]} receiveShadow>
+        <boxGeometry args={[12, 3.2, 0.1]} />
+        <meshLambertMaterial color={wall} />
+      </mesh>
+      {[-6, 6].map((x) => (
+        <mesh key={x} position={[x, 1.6, 4]} receiveShadow>
+          <boxGeometry args={[0.1, 3.2, 8]} />
+          <meshLambertMaterial color={wall} />
+        </mesh>
+      ))}
+      <mesh position={[0, 0.06, 0.02]}>
+        <boxGeometry args={[12, 0.12, 0.04]} />
+        <meshLambertMaterial color="#8a5a32" />
+      </mesh>
+      {/* The window, its burglar bars and the morning sky */}
+      <mesh position={[2.6, 1.7, 0.01]}>
+        <boxGeometry args={[1.8, 1.2, 0.02]} />
+        <meshBasicMaterial color="#bfe6ff" />
+      </mesh>
+      {[-0.6, 0, 0.6].map((dx) => (
+        <mesh key={dx} position={[2.6 + dx, 1.7, 0.03]}>
+          <boxGeometry args={[0.05, 1.2, 0.03]} />
+          <meshLambertMaterial color="#444" />
+        </mesh>
+      ))}
+      <mesh position={[2.6, 1.7, 0.02]}>
+        <boxGeometry args={[1.95, 1.35, 0.01]} />
+        <meshLambertMaterial color="#ffffff" />
+      </mesh>
+      {/* The family photo and the calendar */}
+      <mesh position={[-1.6, 2.35, 0.03]}>
+        <boxGeometry args={[0.9, 0.65, 0.03]} />
+        <meshLambertMaterial color="#6b4426" />
+      </mesh>
+      <mesh position={[-1.6, 2.35, 0.05]}>
+        <boxGeometry args={[0.76, 0.52, 0.01]} />
+        <meshLambertMaterial color="#e7b98a" />
+      </mesh>
+      <mesh position={[0.6, 2.3, 0.03]}>
+        <boxGeometry args={[0.55, 0.75, 0.01]} />
+        <meshLambertMaterial color="#ffffff" />
+      </mesh>
+      <mesh position={[0.6, 2.55, 0.04]}>
+        <boxGeometry args={[0.55, 0.22, 0.01]} />
+        <meshLambertMaterial color="#d6202a" />
+      </mesh>
+      {/* A plant in its pot */}
+      <mesh position={[-4.2, 0.25, 1.2]} castShadow>
+        <cylinderGeometry args={[0.25, 0.2, 0.5, 10]} />
+        <meshLambertMaterial color="#b4492f" />
+      </mesh>
+      <mesh position={[-4.2, 0.85, 1.2]} castShadow>
+        <boxGeometry args={[0.6, 0.8, 0.6]} />
+        <meshLambertMaterial color="#3f9a4a" />
+      </mesh>
+      <group position={[-6, 0, 0]}>
+        <FurnitureSet pieces={SALON_PIECES.map((p) => [p[0] + 6, p[1], p[2], p[3], p[4]] as Piece)} catalog={SALON_FURNITURE} />
+      </group>
+      {/* Awa in her living room, talking to her phone */}
+      <group position={[0, 0, 4.4]} rotation={[0, 0.08 + Math.sin(t * 0.7) * 0.08, 0]}>
+        <BlockHuman look={AWA} gender="femme" pose={gift ? 'talk' : Math.floor(t / 1.4) % 3 === 2 ? 'wave' : 'talk'} seed={11} />
+      </group>
+    </>
+  )
+}
+
 function Camera({ at, look }: { at: [number, number, number]; look: [number, number, number] }) {
   const camera = useThree((s) => s.camera)
   camera.position.set(...at)
@@ -121,6 +229,7 @@ function Camera({ at, look }: { at: [number, number, number]; look: [number, num
 
 /** One scene of the video (or a still), at t seconds into it. */
 function World({ scene, t }: { scene: SceneId; t: number }) {
+  if (scene === 'salon') return <Salon t={t} />
   const night = scene === 'dance' || scene === 'fete'
   const spots = useSpots()
   const wide = useThree((s) => s.size.width >= s.size.height)
@@ -884,14 +993,14 @@ const FILMS: Record<FilmId, { shots: Shot[]; intro: number; outro: number; lengt
   // « Merci la famille »: 1 500 followers, the weekend, a good week, good news ahead (marketing/scripts/merci-1500.md).
   merci: {
     shots: [
-      { from: 0, to: 5, scene: 'selfie', cap: 'La famille ! Bonjour bonjour, c’est Awa !' },
-      { from: 5, to: 12, scene: 'selfie', counter: true, cap: 'On est 1 500 sur TikTok !' },
-      { from: 12, to: 17, scene: 'selfie', cap: 'Merci ! C’est vous qui nous portez ❤️' },
+      { from: 0, to: 5, scene: 'salon', cap: 'La famille ! Bonjour bonjour, c’est Awa !' },
+      { from: 5, to: 12, scene: 'salon', counter: true, cap: 'On est 1 500 sur TikTok !' },
+      { from: 12, to: 17, scene: 'salon', cap: 'Merci ! C’est vous qui nous portez ❤️' },
       { from: 17, to: 23, scene: 'fete', title: 'Votre week-end ?', cap: 'Maquis, coupé-décalé…' },
       { from: 23, to: 27, scene: 'stade', title: 'Votre week-end ?', cap: '… le match au stade…' },
       { from: 27, to: 32, scene: 'concert', title: 'Votre week-end ?', cap: '… ou dodo à la maison ? Dites-nous !' },
       { from: 32, to: 39, scene: 'gbaka', title: 'Bonne semaine !', cap: 'Lundi : on se lève, on se met au travail 💪' },
-      { from: 39, to: 46, scene: 'selfie', tease: true, cap: 'De bonnes nouvelles arrivent… 🤫' },
+      { from: 39, to: 46, scene: 'salon', tease: true, cap: 'De bonnes nouvelles arrivent… 🤫' },
       { from: 46, to: 52, scene: 'crew' },
     ],
     intro: 0,
@@ -941,7 +1050,7 @@ function MerciOverlay({ t, shot }: { t: number; shot: Shot }) {
         </span>
         <div className="min-w-0 flex-1">
           <div className="text-[26px] leading-none font-extrabold">awa.babi</div>
-          <div className="mt-1 text-[18px] font-bold text-white/80">Message à la famille ❤️</div>
+          <div className="mt-1 text-[18px] font-bold text-white/80">À la maison · Message à la famille</div>
         </div>
         <span className="flex items-center gap-1.5 rounded-lg bg-black/45 px-3 py-1.5 text-[20px] font-extrabold">
           <Heart size={20} className="fill-[#ff3d6e] text-[#ff3d6e]" /> {count.toLocaleString('fr-FR')}
@@ -974,8 +1083,8 @@ function MerciOverlay({ t, shot }: { t: number; shot: Shot }) {
           <div className="mt-4 rounded-full bg-[#0f1230]/80 px-7 py-2.5 text-[38px] font-extrabold">Bientôt…</div>
         </div>
       )}
-      {/* Awa's face, filming herself (not in the selfie: there she's the whole picture) */}
-      {shot.scene !== 'selfie' && (
+      {/* Awa's face, filming herself (not at home: there she's the whole picture) */}
+      {shot.scene !== 'salon' && (
         <div className="absolute top-[17%] right-6 h-[210px] w-[160px] overflow-hidden rounded-[28px] border-[4px] border-white/90 bg-[#ffb37a] shadow-[0_16px_40px_-14px_rgba(0,0,0,0.7)]">
           <AwaFace t={t} size={210} talking />
         </div>

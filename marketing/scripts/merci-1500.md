@@ -1,10 +1,10 @@
 # « Merci la famille » — 1 500 sur TikTok (vidéo de 52 s)
 
-Awa parle à la communauté, face caméra, comme dans son live, mais avec **un nouveau look** : tresses longues, haut et jupe en kente vert émeraude, boucles d'oreilles, collier de perles, montre et sac en bandoulière (au lieu du foulard et du kaba orange). Ton : chaleureux, souriant, comme à des grands frères et petites sœurs du quartier. Débit posé : chaque ligne doit tenir dans son créneau (la colonne « Temps »). Pour la voix (ElevenLabs ou enregistrée au téléphone) : un seul fichier, `marketing/out/voix-merci.mp3`, puis `npm run video:merci` pour la vidéo avec le son.
+Awa parle à la communauté **depuis chez elle** (son salon : le canapé, la télé, le ventilateur, la photo de famille au mur), face caméra, mais avec **un nouveau look** : tresses longues, haut et jupe en kente vert émeraude, boucles d'oreilles, collier de perles, montre et sac en bandoulière (au lieu du foulard et du kaba orange). Ton : chaleureux, souriant, comme à des grands frères et petites sœurs du quartier. Débit posé : chaque ligne doit tenir dans son créneau (la colonne « Temps »). Pour la voix (ElevenLabs ou enregistrée au téléphone) : un seul fichier, `marketing/out/voix-merci.mp3`, puis `npm run video:merci` pour la vidéo avec le son.
 
 | Temps | À l'image | Awa dit |
 | --- | --- | --- |
-| 0 – 5 s | Awa se filme, elle fait coucou | « La famille ! Bonjour bonjour, c'est Awa de Babi Life ! » |
+| 0 – 5 s | Awa dans son salon, elle fait coucou | « La famille ! Bonjour bonjour, c'est Awa de Babi Life ! » |
 | 5 – 12 s | Le compteur d'abonnés monte jusqu'à **1 500**, les confettis | « Vous savez quoi ? On est maintenant **mille cinq cents** sur TikTok ! Mille cinq cents ! » |
 | 12 – 17 s | Awa, les cœurs qui montent | « Merci, merci, merci ! C'est vous qui nous portez. On est ensemble ! » |
 | 17 – 23 s | Le maquis, le coupé-décalé | « Et votre week-end, c'était comment ? Maquis, coupé-décalé… » |
