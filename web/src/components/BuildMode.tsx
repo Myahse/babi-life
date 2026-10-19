@@ -8,7 +8,7 @@ import type { ActionResult, Block, Furniture, HousePlan, Material, Piece, Plot, 
 import { amount } from '../game/rules'
 import { Character } from '../world3d/Character'
 import { House, materialTexture } from '../world3d/build/House'
-import { FurnitureSet } from '../world3d/build/Furniture'
+import { FurnitureSet, downstairs } from '../world3d/build/Furniture'
 import { Zones } from '../world3d/build/Zones'
 import { LotFence, ownerColor } from '../world3d/build/Fence'
 import { LotOffers } from './Lots'
@@ -285,12 +285,12 @@ export default function BuildMode({ world, sim, onResult, onClose }: { world: Wo
             {preview && empty && world.furniture && (
               <group position={[planAt(preview)[0], 0, planAt(preview)[1]]}>
                 <House blocks={cut ? preview.blocks.filter((b) => b[1] < 2) : preview.blocks} materials={materials} />
-                <FurnitureSet pieces={preview.furniture} catalog={catalog} />
+                <FurnitureSet pieces={cut ? downstairs(preview.furniture) : preview.furniture} catalog={catalog} />
                 <Zones zones={preview.zones} blocks={preview.blocks} furniture={preview.furniture} w={preview.w} d={preview.d} />
               </group>
             )}
             {blocks && <House blocks={cut ? blocks.filter((b) => b[1] < 2) : blocks} materials={materials} onBlock={onBlock} onHover={(c, n) => setHover(c && n && mode === 'place' ? [c[0] + n[0], c[1] + n[1], c[2] + n[2]] : c)} />}
-            <FurnitureSet pieces={pieces} catalog={catalog} onPiece={onPiece} />
+            <FurnitureSet pieces={cut ? downstairs(pieces) : pieces} catalog={catalog} onPiece={onPiece} />
             {ghostPiece ? (
               <FurnitureSet pieces={[ghostPiece]} catalog={catalog} ghost />
             ) : (

@@ -159,6 +159,9 @@ function Model({ id, color, w, d }: { id: string; color: string; w: number; d: n
   return <B at={[cx, 0.4, cz]} size={[w * 0.9, 0.8, d * 0.9]} c={color} />
 }
 
+/** With the roof off (the cutaway), the ground floor's pieces only: the floors above are hidden. */
+export const downstairs = (pieces: Piece[], cut = 2) => pieces.filter((p) => p[1] < cut)
+
 /** Every piece of a house, on the plot's grid (x, z from its corner, y up). */
 export function FurnitureSet({ pieces, catalog, onPiece, ghost }: { pieces: Piece[]; catalog: Furniture[]; onPiece?: (p: Piece, e: ThreeEvent<MouseEvent>) => void; ghost?: boolean }) {
   const byId = useMemo(() => new Map(catalog.map((f) => [f.id, f])), [catalog])

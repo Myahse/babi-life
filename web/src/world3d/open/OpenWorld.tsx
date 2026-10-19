@@ -14,7 +14,7 @@ import { useSignTexture } from '../props'
 import type { Place, Plot, World } from '../../lib/types'
 import { api } from '../../lib/api'
 import { House } from '../build/House'
-import { FurnitureSet } from '../build/Furniture'
+import { FurnitureSet, downstairs } from '../build/Furniture'
 import { iconFor, kindColors } from '../../components/icons'
 import { IconTile } from '../../components/ui'
 import { Html } from '@react-three/drei'
@@ -831,7 +831,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
           <group key={`house${r.id}`} position={[r.center[0], 0, r.center[1]]} rotation={[0, r.rot, 0]}>
             <group position={[-lotSize(owner)[0] / 2, 0, -lotSize(owner)[1] / 2]} onClick={r.id === HOME_ID ? (e) => (e.stopPropagation(), onPick(HOME_ID)) : undefined}>
               <House blocks={r.id === HOME_ID && inside ? cutBlocks : owner.blocks} materials={world.materials} />
-              {owner.furniture?.length > 0 && world.furniture && <FurnitureSet pieces={owner.furniture} catalog={world.furniture} />}
+              {owner.furniture?.length > 0 && world.furniture && <FurnitureSet pieces={r.id === HOME_ID && inside ? downstairs(owner.furniture, CUT_HEIGHT) : owner.furniture} catalog={world.furniture} />}
               {/* The ground: the rooms' floors, the yard or the lawn, the pool; a bare lot, its lawn and its corner posts */}
               {/* A lot a player owns: its clôture, in its owner's colour, the name over the gate */}
               {(r.id !== HOME_ID || livesOnLot) && <LotFence w={lotSize(owner)[0]} d={lotSize(owner)[1]} color={ownerColor(owner.simId)} name={`Chez ${owner.simId === sim.id ? sim.firstName : owner.firstName ?? ''}`} />}

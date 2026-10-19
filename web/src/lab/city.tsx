@@ -23,7 +23,7 @@ import { StreetSpot, type StreetPeopleSpot } from '../world3d/open/streetPeople'
 import { homeSpotsOf } from '../world3d/homeSpots'
 import KartRace from '../kart/KartRace'
 import { House } from '../world3d/build/House'
-import { FurnitureSet } from '../world3d/build/Furniture'
+import { FurnitureSet, downstairs } from '../world3d/build/Furniture'
 import { Zones } from '../world3d/build/Zones'
 import { FamilyScene } from '../avatar/Family'
 import { Arena } from '../world3d/interior/Arena'
@@ -831,7 +831,7 @@ function PlanLab() {
       </mesh>
       <group position={[-plan.w / 2, 0, -plan.d / 2]}>
         <House blocks={blocks} materials={world.materials ?? []} />
-        {world.furniture && <FurnitureSet pieces={plan.furniture} catalog={world.furniture} />}
+        {world.furniture && <FurnitureSet pieces={cut ? downstairs(plan.furniture) : plan.furniture} catalog={world.furniture} />}
         <Zones zones={plan.zones} blocks={plan.blocks} furniture={plan.furniture} w={plan.w} d={plan.d} />
       </group>
       <OrbitControls target={[0, 0, 0]} />
