@@ -476,39 +476,49 @@ export function Play() {
 
       {/* ---------- Top HUD ---------- */}
       <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:p-5">
-        <Link to="/profil" viewTransition className="hud pointer-events-auto flex items-center gap-2.5 rounded-full py-1 pr-4 pl-1 transition active:scale-95">
-          <span className="block rounded-full p-[3px]" style={{ background: `conic-gradient(${moodHex} ${mood(sim.needs) * 3.6}deg, #e7e9f2 0)` }}>
-            <span className="block h-11 w-11 overflow-hidden rounded-full border-2 border-white bg-gradient-to-b from-[#ffe7c7] to-[#ffb27a]">
+        <Link to="/profil" viewTransition className="hud pointer-events-auto flex min-w-0 items-center gap-2 rounded-full py-1 pr-3 pl-1 transition active:scale-95 max-sm:max-w-[52vw] sm:gap-2.5 sm:pr-4">
+          <span className="block shrink-0 rounded-full p-[3px]" style={{ background: `conic-gradient(${moodHex} ${mood(sim.needs) * 3.6}deg, #e7e9f2 0)` }}>
+            <span className="block h-9 w-9 overflow-hidden rounded-full border-2 border-white bg-gradient-to-b sm:h-11 sm:w-11 from-[#ffe7c7] to-[#ffb27a]">
               <Portrait look={sim.look} gender={sim.gender} framing="head" />
             </span>
           </span>
-          <span className="leading-tight">
-            <span className="block font-display text-[17px] font-extrabold">{user?.username ? `@${user.username}` : sim.firstName}</span>
-            <span className="flex items-center gap-1 text-[11px] font-extrabold text-[var(--color-ink-soft)]">
-              <MapPin size={11} strokeWidth={3} />
-              {commune.name} · {lifeOf(world, sim).stage?.label ?? ''}, {lifeOf(world, sim).age < 1 ? "moins d'un an" : `${lifeOf(world, sim).age} an${lifeOf(world, sim).age > 1 ? 's' : ''}`}
+          <span className="min-w-0 leading-tight">
+            <span className="block truncate font-display text-[15px] font-extrabold sm:text-[17px]">{user?.username ? `@${user.username}` : sim.firstName}</span>
+            <span className="flex min-w-0 items-center gap-1 text-[11px] font-extrabold text-[var(--color-ink-soft)]">
+              <MapPin size={11} strokeWidth={3} className="shrink-0" />
+              <span className="truncate">
+                {commune.name} · <span className="max-sm:hidden">{lifeOf(world, sim).stage?.label ?? ''}, </span>
+                {lifeOf(world, sim).age < 1 ? "moins d'un an" : `${lifeOf(world, sim).age} an${lifeOf(world, sim).age > 1 ? 's' : ''}`}
+              </span>
             </span>
           </span>
         </Link>
 
         {/* The money and the hour, then the camera's controls under them (in the flow, so a wrapped row on a phone pushes them down instead of hiding them). */}
-        <div className="flex flex-col items-end gap-2">
-          <div className="pointer-events-auto flex flex-wrap items-center justify-end gap-2">
-            <SoundToggle />
-            <TesterTools sim={sim} act={run} />
-            <PlayersChip count={around.players.length} invites={around.invites.length} onOpen={() => setPlayers({ focus: null })} />
-            <div className="hud flex h-11 items-center gap-1.5 rounded-full pr-4 pl-1.5">
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          {/* On a phone: the money and the hour, the small buttons under them; wider, one row. */}
+          <div className="pointer-events-auto flex flex-col items-end gap-1.5 sm:flex-row-reverse sm:items-center sm:gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="hud flex h-10 items-center gap-1.5 rounded-full pr-3 pl-1 sm:h-11 sm:pr-4 sm:pl-1.5">
               <span key={sim.money} className="motion-coin">
-                <Coin size={30} />
+                <Coin size={26} />
               </span>
-              <span className="tnum font-display text-lg font-extrabold">{amount(sim.money)}</span>
+              <span className="tnum font-display text-base font-extrabold sm:text-lg">{amount(sim.money)}</span>
             </div>
-            <div className="hud flex h-11 items-center gap-1.5 rounded-full px-3">
-              <DayNight night={c.isNight} />
-              <span className="tnum font-display text-lg font-extrabold">{c.time}</span>
+            <div className="hud flex h-10 items-center gap-1.5 rounded-full px-3 sm:h-11">
+              <span className="max-sm:hidden">
+                <DayNight night={c.isNight} size={16} />
+              </span>
+              <span className="tnum font-display text-base font-extrabold sm:text-lg">{c.time}</span>
               <span className="text-xs font-extrabold text-[var(--color-ink-soft)] max-sm:hidden">
                 {c.weekday} {c.date}
               </span>
+            </div>
+            </div>
+            <div className="flex items-center gap-1.5 max-sm:[&>*]:h-9 max-sm:[&>*]:w-auto max-sm:[&>*]:min-w-9 max-sm:[&>*]:px-2.5 sm:gap-2">
+              <SoundToggle />
+              <TesterTools sim={sim} act={run} />
+              <PlayersChip count={around.players.length} invites={around.invites.length} onOpen={() => setPlayers({ focus: null })} />
             </div>
           </div>
           {inside && (
@@ -522,15 +532,18 @@ export function Play() {
                 <button className="hud flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={() => setView((v) => NEXT_VIEW[v])} title="Changer de vue">
                   {/* What the next tap gives */}
                   {view === 'epaule' ? <Mountain size={17} strokeWidth={2.6} className="text-[var(--color-emerald)]" /> : <Eye size={17} strokeWidth={2.6} className="text-[var(--color-emerald)]" />}
-                  {{ pres: 'Vue épaule', epaule: 'Vue de haut', haut: 'Vue de près' }[view]}
+                  <span className="max-sm:hidden">{{ pres: 'Vue épaule', epaule: 'Vue de haut', haut: 'Vue de près' }[view]}</span>
                 </button>
               )}
+              {/* On a phone, a finger drag on the street turns the view: no compass to crowd the screen */}
+              <div className="max-sm:hidden">
               <OrbitGizmo
                 read={streetPose}
                 onYaw={(d) => (cameraTurn.yaw += d)}
                 onPitch={(d) => (cameraTurn.pitch += d)}
                 onNorth={() => (cameraTurn.snap = true)}
               />
+              </div>
             </div>
           )}
         </div>
@@ -560,8 +573,11 @@ export function Play() {
       <Soundtrack track={track} seed={trackSeed} />
       {/* Finding the way: the mini-map, and every place of the quarter */}
       {!showInside && !placeId && !overlay && !players && (
-        <div className="pointer-events-none absolute top-[5.5rem] left-3 z-20 flex flex-col items-start gap-2 lg:left-5">
-          <MiniMap onWalk={walkTo} />
+        <div className="pointer-events-none absolute top-[4.5rem] left-3 z-20 flex flex-col items-start gap-2 sm:top-[5.5rem] lg:left-5">
+          {/* A smaller map on a phone (scaled: the canvas keeps its sharpness) */}
+          <div className="max-sm:-mr-[33px] max-sm:-mb-[33px] max-sm:origin-top-left max-sm:scale-75">
+            <MiniMap onWalk={walkTo} />
+          </div>
           <button className="hud pointer-events-auto flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={() => setWhereTo(true)}>
             <Navigation size={17} strokeWidth={2.6} className="text-[var(--color-orange)]" /> Où aller ?
           </button>
@@ -584,7 +600,7 @@ export function Play() {
       )}
       {near && !placeId && !pending && !sim.activity && (
         <button
-          className="motion-pop absolute bottom-[6.5rem] left-[152px] z-30 flex max-w-[calc(100vw-164px)] items-center lg:left-1/2 lg:max-w-sm lg:-translate-x-1/2 gap-2 rounded-2xl bg-[var(--color-ink)] py-2 pr-4 pl-2 text-left text-white shadow-[0_10px_24px_-10px_rgba(0,0,0,0.6)] lg:bottom-[7.5rem]"
+          className="motion-pop absolute bottom-[6.5rem] left-[132px] z-30 flex max-w-[calc(100vw-144px)] sm:left-[152px] sm:max-w-[calc(100vw-164px)] items-center lg:left-1/2 lg:max-w-sm lg:-translate-x-1/2 gap-2 rounded-2xl bg-[var(--color-ink)] py-2 pr-4 pl-2 text-left text-white shadow-[0_10px_24px_-10px_rgba(0,0,0,0.6)] lg:bottom-[7.5rem]"
           onClick={() => setPlaceId(near)}
         >
           <IconTile icon={DoorOpen} colors={['#ffa040', '#ff6a00']} size={32} radius={10} />
@@ -597,7 +613,7 @@ export function Play() {
 
       {street?.happening && !near && !placeId && !pending && !sim.activity && (
         <button
-          className="animate-pop absolute bottom-[6.5rem] left-[152px] z-20 flex max-w-[calc(100vw-164px)] items-center lg:left-1/2 lg:max-w-md lg:-translate-x-1/2 gap-2 rounded-full bg-[var(--color-gold)] py-1.5 pr-4 pl-1.5 text-left text-[#5a3a00] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.6)] lg:bottom-[7.5rem]"
+          className="animate-pop absolute bottom-[6.5rem] left-[132px] z-20 flex max-w-[calc(100vw-144px)] sm:left-[152px] sm:max-w-[calc(100vw-164px)] items-center lg:left-1/2 lg:max-w-md lg:-translate-x-1/2 gap-2 rounded-full bg-[var(--color-gold)] py-1.5 pr-4 pl-1.5 text-left text-[#5a3a00] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.6)] lg:bottom-[7.5rem]"
           onClick={() => walkTo('happening')}
         >
           <IconTile icon={iconFor(street.happening.icon)} colors={['#ffd54f', '#ffa000']} size={36} radius={18} />

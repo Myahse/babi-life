@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Zap } from 'lucide-react'
 import { listenKeys, pad, sprint } from '../world3d/input'
 
-const RADIUS = 52 // how far the knob travels, px
+// How far the knob travels: 52 px on the full pad, less on a phone's smaller one.
+const reach = (width: number) => (width * 52) / 132
 
 /** The on-screen pad: drag the knob to walk the Sim; it springs back on release. */
 export function Joystick({ disabled = false, className = '' }: { disabled?: boolean; className?: string }) {
@@ -27,6 +28,7 @@ export function Joystick({ disabled = false, className = '' }: { disabled?: bool
     const r = base.current!.getBoundingClientRect()
     let dx = e.clientX - (r.left + r.width / 2)
     let dy = e.clientY - (r.top + r.height / 2)
+    const RADIUS = reach(r.width)
     const d = Math.hypot(dx, dy)
     if (d > RADIUS) {
       dx = (dx / d) * RADIUS
@@ -46,7 +48,7 @@ export function Joystick({ disabled = false, className = '' }: { disabled?: bool
       role="slider"
       aria-label="Déplacer le perso"
       aria-valuetext={active ? 'en marche' : 'à l’arrêt'}
-      className={`hud relative grid h-[132px] w-[132px] touch-none place-items-center rounded-full transition-opacity select-none ${disabled ? 'pointer-events-none opacity-40' : ''} ${className}`}
+      className={`hud relative grid h-[112px] w-[112px] touch-none sm:h-[132px] sm:w-[132px] place-items-center rounded-full transition-opacity select-none ${disabled ? 'pointer-events-none opacity-40' : ''} ${className}`}
       onPointerDown={(e) => {
         e.currentTarget.setPointerCapture(e.pointerId)
         setActive(true)
@@ -61,7 +63,7 @@ export function Joystick({ disabled = false, className = '' }: { disabled?: bool
         <span key={a} className="absolute h-2 w-2 rounded-full bg-[var(--color-ink)]/15" style={{ transform: `rotate(${a}deg) translateY(-52px)` }} />
       ))}
       <span
-        className={`block h-14 w-14 rounded-full bg-[var(--color-orange)] shadow-[0_6px_16px_-6px_rgba(224,90,0,0.9)] ${active ? '' : 'transition-transform duration-200 ease-[var(--ease-spring)]'}`}
+        className={`block h-12 w-12 rounded-full bg-[var(--color-orange)] sm:h-14 sm:w-14 shadow-[0_6px_16px_-6px_rgba(224,90,0,0.9)] ${active ? '' : 'transition-transform duration-200 ease-[var(--ease-spring)]'}`}
         style={{ transform: `translate(${knob.x}px, ${knob.y}px) scale(${active ? 1.06 : 1})` }}
       />
     </div>
@@ -74,7 +76,7 @@ export function RunButton() {
   useEffect(() => () => void (sprint.on = false), [])
   return (
     <button
-      className={`pointer-events-auto mb-2 ml-1 flex h-12 items-center gap-1.5 rounded-full px-4 text-sm font-extrabold shadow-[0_8px_20px_-10px_rgba(0,0,0,0.6)] transition active:scale-95 ${on ? 'bg-[var(--color-orange)] text-white' : 'hud'}`}
+      className={`pointer-events-auto mb-2 ml-1 flex h-10 items-center gap-1.5 rounded-full px-3.5 sm:h-12 sm:px-4 text-sm font-extrabold shadow-[0_8px_20px_-10px_rgba(0,0,0,0.6)] transition active:scale-95 ${on ? 'bg-[var(--color-orange)] text-white' : 'hud'}`}
       onClick={() => {
         sprint.on = !on
         setOn(!on)
