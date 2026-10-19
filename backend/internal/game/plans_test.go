@@ -130,6 +130,9 @@ func TestPlansCanBeWalked(t *testing.T) {
 		}
 		owner := map[xz]int{}
 		for i, f := range pl.Furniture {
+			if f.Y > 0 {
+				continue // upstairs: reached by the stairs, not walked to on the ground
+			}
 			for _, c := range f.cells() {
 				owner[xz{c.x, c.z}] = i + 1
 			}
@@ -170,7 +173,7 @@ func TestPlansCanBeWalked(t *testing.T) {
 			}
 		}
 		for i, f := range pl.Furniture {
-			if !reached[i+1] {
+			if f.Y == 0 && !reached[i+1] {
 				t.Errorf("%s: can't walk to the %s at %d,%d", pl.ID, f.ID, f.X, f.Z)
 			}
 		}

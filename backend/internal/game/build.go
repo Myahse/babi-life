@@ -13,7 +13,7 @@ import (
 const (
 	PlotW = 12
 	PlotD = 12
-	PlotH = 8
+	PlotH = 12 // three storeys of four blocks: a triplex
 	// MaxEdit: blocks placed or removed in one save.
 	MaxEdit = 400
 )

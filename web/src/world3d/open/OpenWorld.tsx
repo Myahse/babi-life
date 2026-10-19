@@ -25,6 +25,7 @@ import { APPRENTI, GBAKA_DOOR, Vehicle, type VehicleKind } from '../vehicles'
 import { Walker, type WalkNav } from '../Walker'
 import { homeSpotsOf } from '../homeSpots'
 import { LotGround, Zones } from '../build/Zones'
+import { LotFence, fenceRuns, ownerColor } from '../build/Fence'
 import { whereabouts } from '../whereabouts'
 import { Snapper } from '../snapshot'
 import { CHUNK_ZOOM, hash, tileBox, tileOf, toLatLng, toLocal, type Origin, type XZ } from './geo'
@@ -710,6 +711,12 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         const [x, z] = at(lx + 0.5 - w / 2, lz + 0.5 - d / 2)
         list.push({ x, z, hw: 0.5, hd: 0.5, rot: r.rot, top: h })
       }
+      // A player's clôture, the gate left open.
+      if (r.id !== HOME_ID || livesOnLot)
+        for (const f of fenceRuns(w, d)) {
+          const [x, z] = at(f.x - w / 2, f.z - d / 2)
+          list.push({ x, z, hw: f.along === 'x' ? f.len / 2 : 0.15, hd: f.along === 'x' ? 0.15 : f.len / 2, rot: r.rot, top: 1.4 })
+        }
       // A pool is in the way (one doesn't walk into the water).
       for (const [zx, zz, zw, zd, k] of owner.zones ?? []) {
         if (k !== 'piscine') continue
@@ -728,7 +735,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     }
     setObstacles('plots', list)
     return () => clearObstacles('plots')
-  }, [resolved, myPlot, plots, world.plot, world.furniture])
+  }, [resolved, myPlot, plots, world.plot, world.furniture, livesOnLot])
 
   // The Sim inside its own house: the roof and the top of the walls come off, as in the Sims.
   const [inside, setInside] = useState(false)
@@ -826,6 +833,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
               <House blocks={r.id === HOME_ID && inside ? cutBlocks : owner.blocks} materials={world.materials} />
               {owner.furniture?.length > 0 && world.furniture && <FurnitureSet pieces={owner.furniture} catalog={world.furniture} />}
               {/* The ground: the rooms' floors, the yard or the lawn, the pool; a bare lot, its lawn and its corner posts */}
+              {/* A lot a player owns: its clôture, in its owner's colour, the name over the gate */}
+              {(r.id !== HOME_ID || livesOnLot) && <LotFence w={lotSize(owner)[0]} d={lotSize(owner)[1]} color={ownerColor(owner.simId)} name={`Chez ${owner.simId === sim.id ? sim.firstName : owner.firstName ?? ''}`} />}
               {owner.zones?.length ? <Zones zones={owner.zones} blocks={owner.blocks} furniture={owner.furniture ?? []} w={lotSize(owner)[0]} d={lotSize(owner)[1]} /> : owner.lot && <LotGround w={lotSize(owner)[0]} d={lotSize(owner)[1]} />}
             </group>
           </group>

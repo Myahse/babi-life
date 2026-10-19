@@ -153,6 +153,76 @@ func (p *planner) room(x0, z0, x1, z1 int, k, label string) {
 	p.zone(x0+1, z0+1, x1-x0-1, z1-z0-1, k, label)
 }
 
+// Storey: the height of one floor (three blocks of wall and the slab over them).
+const Storey = 4
+
+// upstairs: a floor over a house whose outline is x0..x1 × z0..z1, at storey
+// n (1: a duplex's first floor, 2: a triplex's second), its bedrooms in a row
+// at the back and one at the front, a bathroom, and its own slab or roof over
+// it. The ground floor's roof is its floor.
+func (p *planner) upstairs(x0, z0, x1, z1, n, bedrooms int, wall, roof string) {
+	y0 := n * Storey
+	for y := y0; y < y0+3; y++ {
+		for x := x0; x <= x1; x++ {
+			p.set(x, y, z0, wall)
+			p.set(x, y, z1, wall)
+		}
+		for z := z0; z <= z1; z++ {
+			p.set(x0, y, z, wall)
+			p.set(x1, y, z, wall)
+		}
+		// The landing in the middle, the rooms either side.
+		mid := (z0 + z1) / 2
+		for x := x0; x <= x1; x++ {
+			p.set(x, y, mid, wall)
+		}
+	}
+	mid := (z0 + z1) / 2
+	w := x1 - x0
+	n2 := bedrooms + 1
+	step := w / n2
+	for i := 0; i < n2; i++ {
+		a := x0 + i*step
+		b := x0 + (i+1)*step
+		if i == n2-1 {
+			b = x1
+		}
+		if i > 0 {
+			for y := y0; y < y0+3; y++ {
+				for z := z0; z <= mid; z++ {
+					p.set(a, y, z, wall)
+				}
+			}
+		}
+		// The doors onto the landing, the windows outside.
+		for y := y0; y < y0+2; y++ {
+			delete(p.g, cell{a + 2, y, mid})
+		}
+		p.set(a+2, y0+1, z0, "verre")
+		if i == n2-1 {
+			p.furn = append(p.furn, Piece{X: b - 1, Y: y0, Z: z0 + 1, ID: "douche"}, Piece{X: b - 1, Y: y0, Z: mid - 1, ID: "wc"})
+			continue
+		}
+		p.furn = append(p.furn, Piece{X: a + 1, Y: y0, Z: z0 + 1, ID: "lit"}, Piece{X: b - 1, Y: y0, Z: z0 + 1, ID: "armoire"})
+	}
+	// The front: a family room with its sofa and TV, big windows.
+	p.furn = append(p.furn, Piece{X: x0 + 2, Y: y0, Z: z1 - 2, ID: "canape"}, Piece{X: x0 + 3, Y: y0, Z: mid + 1, ID: "tele"}, Piece{X: x1 - 2, Y: y0, Z: mid + 2, ID: "lit"})
+	for x := x0 + 2; x < x1-1; x += 2 {
+		p.set(x, y0+1, z1, "verre")
+	}
+	p.roof(x0, z0, x1, z1, y0+3, roof)
+}
+
+// stairs: the outside staircase up to the first floor, as on Abidjan's
+// houses: at x, from z (its foot) back towards -z, a step higher each metre.
+func (p *planner) stairs(x, z int, m string) {
+	for k := 0; k < Storey; k++ {
+		for y := 0; y <= k; y++ {
+			p.set(x, y, z-k, m)
+		}
+	}
+}
+
 // fence: a compound wall round the lot, 2 m, the gate (w wide) in the middle of the street side.
 func (p *planner) fence(m string, gate int) {
 	p.walls(0, 0, p.w-1, p.d-1, 2, m)
@@ -485,12 +555,14 @@ func villa() Plan {
 	p.zone(0, 0, 22, 28, ZoneGarden, "Jardin")
 	p.fence("jaune", 4)
 	villaHouse(p, 2, 1, 18, 3, "jaune")
+	p.upstairs(2, 1, 19, 12, 1, 3, "jaune", "parpaing")
+	p.stairs(20, 10, "parpaing")
 	p.zone(2, 13, 18, 2, ZoneTerrace, "Terrasse")
 	p.pool(4, 17, 9, 5)
 	p.put("transat", 14, 17, 0)
 	p.put("transat", 16, 17, 0)
 	p.guard(17, 23)
-	return p.plan("villa", "La villa avec piscine", "Trois chambres, deux salles de bain, le salon, la cuisine, le jardin, la piscine et le gardien.", 3, false)
+	return p.plan("villa", "La villa duplex avec piscine", "Un étage : six chambres, trois salles de bain, deux salons, la cuisine, le jardin, la piscine et le gardien.", 6, false)
 }
 
 func villaGrande() Plan {
@@ -498,13 +570,16 @@ func villaGrande() Plan {
 	p.zone(0, 0, 28, 34, ZoneGarden, "Jardin")
 	p.fence("marbre", 5)
 	villaHouse(p, 2, 1, 24, 4, "marbre")
+	p.upstairs(2, 1, 25, 12, 1, 4, "marbre", "marbre")
+	p.upstairs(2, 1, 25, 12, 2, 4, "marbre", "marbre")
+	p.stairs(26, 10, "marbre")
 	p.zone(2, 13, 24, 3, ZoneTerrace, "Terrasse")
 	p.pool(4, 18, 14, 6)
 	for _, x := range []int{19, 21, 23} {
 		p.put("transat", x, 18, 0)
 	}
 	p.guard(22, 29)
-	return p.plan("villa-grande", "La grande villa", "Quatre chambres, deux salles de bain, le grand salon, la terrasse, la grande piscine, le jardin et le gardien.", 4, false)
+	return p.plan("villa-grande", "La grande villa triplex", "Deux étages : douze chambres, des salles de bain partout, les salons, la terrasse, la grande piscine, le jardin et le gardien.", 12, false)
 }
 
 /* ---------- The plans to build on a bought lot ---------- */
@@ -546,6 +621,33 @@ func lotGrandeVilla() Plan {
 	return p.plan("villa", "Villa avec piscine", "Trois chambres, deux salles de bain, le grand salon, la cuisine, la terrasse, la piscine, le jardin. Pour 600 m².", 3, true)
 }
 
+func lotDuplex() Plan {
+	p := newPlanner(20, 25)
+	p.zone(0, 0, 20, 25, ZoneGarden, "Jardin")
+	villaHouse(p, 0, 1, 18, 3, "vert")
+	p.upstairs(0, 1, 17, 12, 1, 3, "vert", "parpaing")
+	p.stairs(18, 10, "parpaing")
+	p.zone(0, 13, 18, 2, ZoneTerrace, "Terrasse")
+	p.pool(3, 17, 8, 4)
+	p.put("transat", 13, 17, 0)
+	p.put("transat", 15, 17, 0)
+	return p.plan("duplex", "Villa duplex avec piscine", "Un étage : six chambres, trois salles de bain, deux salons, la cuisine, la piscine, le jardin. Pour 500 m².", 6, true)
+}
+
+func lotTriplex() Plan {
+	p := newPlanner(20, 30)
+	p.zone(0, 0, 20, 30, ZoneGarden, "Jardin")
+	villaHouse(p, 0, 1, 18, 3, "marbre")
+	p.upstairs(0, 1, 17, 12, 1, 3, "marbre", "marbre")
+	p.upstairs(0, 1, 17, 12, 2, 3, "marbre", "marbre")
+	p.stairs(18, 10, "marbre")
+	p.zone(0, 13, 18, 2, ZoneTerrace, "Terrasse")
+	p.pool(3, 17, 10, 6)
+	p.put("transat", 15, 17, 0)
+	p.put("transat", 17, 17, 0)
+	return p.plan("triplex", "Villa triplex avec piscine", "Deux étages : neuf chambres, les salles de bain, trois salons, la grande piscine, le jardin. Pour 600 m².", 9, true)
+}
+
 // HomePlans: the homes Sims are born in, by plan id.
 var HomePlans = map[string]Plan{}
 
@@ -562,7 +664,7 @@ func init() {
 	for _, pl := range []Plan{baraque(), cour(), studio(), appart(), maison(), villa(), villaGrande()} {
 		HomePlans[pl.ID] = pl
 	}
-	LotPlans = []Plan{lotMaisonnette(), lotMaison(), lotVilla(), lotGrandeVilla()}
+	LotPlans = []Plan{lotMaisonnette(), lotMaison(), lotVilla(), lotGrandeVilla(), lotDuplex(), lotTriplex()}
 }
 
 // HomePlanFor: the home a Sim lives in (its family's while it has the family's housing), "" in its own house.

@@ -10,6 +10,7 @@ import { Character } from '../world3d/Character'
 import { House, materialTexture } from '../world3d/build/House'
 import { FurnitureSet } from '../world3d/build/Furniture'
 import { Zones } from '../world3d/build/Zones'
+import { LotFence, ownerColor } from '../world3d/build/Fence'
 import { LotOffers } from './Lots'
 import { Coin } from './ui'
 
@@ -278,6 +279,7 @@ export default function BuildMode({ world, sim, onResult, onClose }: { world: Wo
             <meshLambertMaterial color="#cbb38c" />
           </mesh>
           <group position={[-W / 2, 0, -D / 2]}>
+            <LotFence w={W} d={D} color={ownerColor(sim.id)} name={`Chez ${sim.firstName}`} />
             {zones.length > 0 && blocks && <Zones zones={zones} blocks={blocks} furniture={pieces} w={W} d={D} />}
             {/* A plan looked at, on the empty lot where it would stand */}
             {preview && empty && world.furniture && (

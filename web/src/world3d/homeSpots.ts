@@ -20,7 +20,8 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
   const wallAt = (u: number, v: number) => walls.has(`${Math.floor(u + w / 2)},${Math.floor(v + d / 2)}`)
   for (const piece of plot.furniture ?? []) {
     const f = catalog.find((x) => x.id === piece[4])
-    if (!f) continue
+    // Upstairs (a duplex's bedrooms): the Sim walks on the ground floor, so the pieces down there.
+    if (!f || piece[1] > 0) continue
     const [fw, fd] = piece[3] % 2 ? [f.d, f.w] : [f.w, f.d]
     const [pu, pv] = [piece[0] + fw / 2 - w / 2, piece[2] + fd / 2 - d / 2]
     // The piece's own frame (as FurnitureSet turns it): its front is +z.
