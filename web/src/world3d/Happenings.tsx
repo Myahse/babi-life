@@ -273,6 +273,21 @@ function Jam() {
   )
 }
 
+/** The jam laid along the real street (open/jam.ts), in the world's own frame: each side of the street heads its own way. */
+export function JamOnRoad({ cars }: { cars: { p: [number, number]; angle: number; lane: 1 | -1; width: number }[] }) {
+  const kinds = ['gbaka', 'taxi', 'woro', 'car', 'gbaka', 'taxi', 'car', 'woro', 'moto', 'taxi'] as const
+  return (
+    <group>
+      {cars.map((c, i) => {
+        const k = kinds[i % kinds.length]
+        const off = c.lane * Math.max(1.6, Math.min(2.4, c.width / 4))
+        const [nx, nz] = [-Math.sin(c.angle), Math.cos(c.angle)]
+        return <Vehicle key={i} p={[c.p[0] + nx * off, 0, c.p[1] + nz * off]} r={-c.angle + (c.lane === 1 ? 0 : Math.PI)} kind={k} color={k === 'woro' ? '#2a6cf0' : k === 'car' ? ['#f8f9fa', '#c92a2a', '#212529'][i % 3] : undefined} />
+      })}
+    </group>
+  )
+}
+
 /* ---------- Police checkpoint ---------- */
 
 function Checkpoint({ seed }: { seed: string }) {
@@ -314,7 +329,7 @@ function Checkpoint({ seed }: { seed: string }) {
 
 /* ---------- Marker and dispatcher ---------- */
 
-export function HappeningScene({ id, seed, night }: { id: string; seed: string; night: boolean }) {
+export function HappeningScene({ id, seed, night, jam = true }: { id: string; seed: string; night: boolean; /** The jam's cars here (false: they're laid along the real street instead). */ jam?: boolean }) {
   return (
     <group>
       {id === 'mariage' && <Wedding seed={seed} />}
@@ -322,7 +337,7 @@ export function HappeningScene({ id, seed, night }: { id: string; seed: string; 
       {id === 'concert' && <Concert seed={seed} night={night} />}
       {id === 'pluie' && <Rain />}
       {id === 'delestage' && <Blackout seed={seed} />}
-      {id === 'embouteillage' && <Jam />}
+      {id === 'embouteillage' && jam && <Jam />}
       {id === 'controle' && <Checkpoint seed={seed} />}
       {id === 'foot' && (
         <group position={[HAPPENING_X, 0, 0]}>

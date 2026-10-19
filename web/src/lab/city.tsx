@@ -11,6 +11,8 @@ import { makeTextures } from '../world3d/open/textures'
 import { blockRing } from '../world3d/open/voxel'
 import { Vehicle, type VehicleKind } from '../world3d/vehicles'
 import { Landmark } from '../world3d/open/landmarks'
+import { ZOO_SOLID } from '../world3d/open/zoo'
+import { IVOIRE_SOLID } from '../world3d/open/hotelIvoire'
 import { SportField } from '../world3d/open/field'
 import { FuelStation } from '../world3d/open/station'
 import { StreetStall, type StallKind } from '../world3d/open/stalls'
@@ -174,6 +176,21 @@ function LandmarkLab() {
       <hemisphereLight args={[night ? '#3a4a8a' : '#ffffff', '#b8a27c', night ? 0.35 : 1.2]} />
       <directionalLight position={[40, 80, 30]} intensity={night ? 0.15 : 1.8} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-50} shadow-camera-right={50} shadow-camera-top={50} shadow-camera-bottom={-50} />
       <Landmark id={q.get('id') ?? 'yop-rue-princesse'} night={night} />
+      {/* &solid: what a walker can't go through, in red */}
+      {q.has('solid') &&
+        ({ 'cocody-zoo': ZOO_SOLID, 'cocody-hotel-ivoire': IVOIRE_SOLID }[q.get('id') ?? ''] ?? []).map((o, i) =>
+          'r' in o ? (
+            <mesh key={i} position={[o.x, 1.5, o.z]}>
+              <cylinderGeometry args={[o.r, o.r, 3, 24]} />
+              <meshBasicMaterial color="red" transparent opacity={0.45} />
+            </mesh>
+          ) : (
+            <mesh key={i} position={[o.x, 1.5, o.z]} rotation={[0, o.rot, 0]}>
+              <boxGeometry args={[o.hw * 2, 3, o.hd * 2]} />
+              <meshBasicMaterial color="red" transparent opacity={0.45} />
+            </mesh>
+          ),
+        )}
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[140, 140]} />
         <meshLambertMaterial color="#cbb38c" />

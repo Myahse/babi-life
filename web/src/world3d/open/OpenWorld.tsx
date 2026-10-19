@@ -7,7 +7,8 @@ import { Human, NoShadows, type Pose } from '../../avatar/Human'
 import { callsFor } from '../../lib/nouchi'
 import { randomLook } from '../../avatar/options'
 import { OWN_HOUSE, homePlanFor, lifeOf } from '../../game/rules'
-import { HAPPENING_DOOR, HAPPENING_X, HappeningMarker, HappeningScene, STOPS_TRAFFIC } from '../Happenings'
+import { HAPPENING_DOOR, HAPPENING_X, HappeningMarker, HappeningScene, JamOnRoad, STOPS_TRAFFIC } from '../Happenings'
+import { jamAlong } from './jam'
 import { HOME_ID, type Lot } from '../layout'
 import { LotView, type Props } from '../Neighbourhood'
 import { useSignTexture } from '../props'
@@ -34,6 +35,8 @@ import { along, anchorNode, round, routeLength, turnTo, useCellsAround, type Rou
 import { inTheWay, resolvePlaces, spaceFields, type PlaceSpot, type Resolved } from './places'
 import { SportField } from './field'
 import { FuelStation } from './station'
+import { ZOO_SOLID } from './zoo'
+import { IVOIRE_SOLID } from './hotelIvoire'
 import { clearObstacles, moveObstacle, setObstacles, type Obstacle } from '../obstacles'
 import { LANDMARKS, Landmark } from './landmarks'
 import { Boats } from './boats'
@@ -652,6 +655,13 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     return { id: 'happening', kind: 'happening', name: happening.label, x: door[0], z: door[1], rot: 0, door, seed: 0 }
   }, [happening, spot])
   const walkLots = useMemo(() => (happeningLot ? [...lots, happeningLot] : lots), [lots, happeningLot])
+  // A jam follows the real street (its bends, where it ends), not a straight line over the grass.
+  const jam = useMemo(() => {
+    if (happening?.id !== 'embouteillage' || !spot) return null
+    const roads = [...chunks.values()].filter((c) => !c.data.key.includes(':')).flatMap((c) => c.data.roads)
+    const cars = jamAlong(roads, spot.door, 7.5, 5)
+    return cars.length ? cars : null
+  }, [happening?.id, spot, chunks])
 
   // For the mini-map and the « Où aller ? » list.
   useEffect(() => {
@@ -686,7 +696,18 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
 
   // The big landmarks can't be walked through (the Rue Princesse, the gares, the squares can).
   useEffect(() => {
-    setObstacles('landmarks', lots.flatMap((l) => (SOLID_LANDMARKS[l.id] ? [{ x: l.x, z: l.z, r: SOLID_LANDMARKS[l.id] }] : [])))
+    setObstacles(
+      'landmarks',
+      lots.flatMap((l) => {
+        if (SOLID_LANDMARKS[l.id]) return [{ x: l.x, z: l.z, r: SOLID_LANDMARKS[l.id] }]
+        // The grounds one walks through: their buildings, walls and cages, turned with the lot.
+        const [c, s] = [Math.cos(l.rot), Math.sin(l.rot)]
+        return (GROUNDS[l.id] ?? []).map((o): Obstacle => {
+          const at = { x: l.x + o.x * c + o.z * s, z: l.z - o.x * s + o.z * c }
+          return 'r' in o ? { ...at, r: o.r } : { ...o, ...at, rot: o.rot + l.rot }
+        })
+      }),
+    )
     return () => clearObstacles('landmarks')
   }, [lots])
   // Nor the houses players built: each wall column (two blocks high or more), with its height for the close camera.
@@ -875,10 +896,11 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         const g = resolved.get(lot.id)?.gate
         return g ? <CampusGate key={`gate${lot.id}`} name={lot.name} kind={lot.kind} at={g.at} rot={g.rot} width={g.width} night={night} /> : null
       })}
+      {jam && <JamOnRoad cars={jam} />}
       {happening && spot && (
         <group position={[spot.door[0], 0, spot.door[1]]} rotation={[0, -spot.roadAngle, 0]}>
           <group position={[-HAPPENING_X, 0, 0]}>
-            <HappeningScene id={happening.id} seed={commune.id} night={night} />
+            <HappeningScene id={happening.id} seed={commune.id} night={night} jam={!jam} />
             {labels && <HappeningMarker happening={happening} onPick={() => onPick('happening')} />}
           </group>
         </group>
@@ -1227,6 +1249,8 @@ function RoadTraffic({ nav, focus, seed, woro }: { nav: Nav; focus: React.RefObj
 }
 
 /** Landmarks that are one solid building: how far round their middle they stand (metres). */
+/** Landmarks one walks into, and what stands in the way there (in their own frame). */
+const GROUNDS: Record<string, Obstacle[]> = { 'cocody-zoo': ZOO_SOLID, 'cocody-hotel-ivoire': IVOIRE_SOLID }
 const SOLID_LANDMARKS: Record<string, number> = { 'treich-palais': 34, 'plateau-pyramide': 28, 'plateau-cathedrale': 20, 'cocody-oranjo': 34, 'yakro-basilique': 55 }
 
 /** A vehicle's length and width, for what it blocks. */

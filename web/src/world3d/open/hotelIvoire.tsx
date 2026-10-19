@@ -126,6 +126,18 @@ const LAMPS = (() => {
     }
   return { posts, heads }
 })()
+/** What a guest walking the grounds can't go through (the grounds' own frame):
+ * the tower and its lobby, the main block on its podium, the Palais des
+ * Congrès, the pools (their middles: the edges and the footbridges stay
+ * walkable), the pavilions, the hedges, the lagoon wall. */
+export const IVOIRE_SOLID: ({ x: number; z: number; r: number } | { x: number; z: number; hw: number; hd: number; rot: number; top?: number })[] = [
+  { x: 10, z: -6, hw: 10.5, hd: 8.5, rot: 0, top: 100 },
+  { x: -30, z: -36, hw: 35, hd: 15, rot: 0, top: 6.2 },
+  { x: -42, z: 14, r: 21.5 },
+  ...POOLS.map((p) => ({ x: p.at[0], z: p.at[1], hw: p.r[0] * 0.7, hd: p.r[1] * 0.7, rot: p.rot })),
+  ...[[60, -12], [63, 2], [56, -38]].map(([x, z]) => ({ x, z, r: 4.2 })),
+  { x: 0, z: -66, hw: 70, hd: 0.3, rot: 0, top: 1 },
+]
 const HEDGES: Block[] = [
   { p: [31, 0.5, 21.5], s: [48, 1, 0.8] },
   { p: [31, 0.5, 50.5], s: [48, 1, 0.8] },
@@ -133,6 +145,7 @@ const HEDGES: Block[] = [
   { p: [55, 0.5, 36], s: [0.8, 1, 28] },
   { p: [-12, 0.5, 40], s: [0.8, 1, 18] },
 ]
+IVOIRE_SOLID.push(...HEDGES.map((h) => ({ x: h.p[0], z: h.p[2], hw: h.s[0] / 2, hd: h.s[2] / 2, rot: 0, top: 1 })))
 const FLOWERS: Block[] = (() => {
   const r = rng('ivoire-fleurs')
   const out: Block[] = []

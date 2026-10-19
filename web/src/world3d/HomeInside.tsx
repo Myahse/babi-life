@@ -13,6 +13,7 @@ import { gridWay } from './gridPath'
 import type { HomeSpot } from './Walker'
 import { Pot, Zzz } from './interior/ActionProps'
 import { Snapper } from './snapshot'
+import { listenKeys, moveInput } from './input'
 
 // Inside one's own house, on a screen of its own: the house itself (the one
 // of the family's plan, or the one built on a bought lot), its rooms, its
@@ -52,8 +53,11 @@ function useBlocked(plot: Plot, w: number, d: number, world: World) {
 }
 
 /** The Sim: walks its way, then settles on the spot (lying, sitting…). */
-function Walking({ sim, stage, way, spot, onThere }: { sim: Sim; stage: string; way: XZ[]; spot: HomeSpot | null; onThere: (there: boolean) => void }) {
+function Walking({ sim, stage, way, spot, onThere, steer, onMoved }: { sim: Sim; stage: string; way: XZ[]; spot: HomeSpot | null; onThere: (there: boolean) => void; /** Walking about: the keys or the pad move the Sim, where the ground is free. */ steer?: (x: number, z: number) => boolean; onMoved?: (at: XZ) => void }) {
   const g = useRef<THREE.Group>(null)
+  const camera = useThree((st) => st.camera)
+  const controls = useThree((st) => st.controls) as unknown as { target: THREE.Vector3; update: () => void } | null
+  const manual = useRef(false)
   const at = useRef<{ x: number; z: number; rot: number }>({ x: way[0]?.[0] ?? 0, z: way[0]?.[1] ?? 0, rot: Math.PI })
   const step = useRef(1)
   const settle = useRef(0)
@@ -71,6 +75,44 @@ function Walking({ sim, stage, way, spot, onThere }: { sim: Sim; stage: string; 
     if (!o) return
     const dt = Math.min(dtIn, 0.05)
     const a = at.current
+    // The keys or the pad, as seen from the camera: forward is away from it.
+    const m = steer && !spot ? moveInput() : null
+    if (m && Math.hypot(m.x, m.y) > 0.15) {
+      const f = new THREE.Vector3()
+      camera.getWorldDirection(f)
+      const fl = Math.hypot(f.x, f.z) || 1
+      const [fx, fz] = [f.x / fl, f.z / fl]
+      const [mx, mz] = [fx * m.y - fz * m.x, fz * m.y + fx * m.x]
+      // Along each axis on its own, so the Sim slides along a wall instead of sticking to it.
+      const nx = a.x + mx * SPEED * dt
+      if (steer!(nx, a.z)) a.x = nx
+      const nz = a.z + mz * SPEED * dt
+      if (steer!(a.x, nz)) a.z = nz
+      const want = Math.atan2(mx, mz)
+      a.rot += Math.atan2(Math.sin(want - a.rot), Math.cos(want - a.rot)) * Math.min(1, dt * 10)
+      step.current = way.length
+      // The camera comes along, at the same distance and angle.
+      if (controls) {
+        const [ox, oz] = [(a.x - controls.target.x) * Math.min(1, dt * 4), (a.z - controls.target.z) * Math.min(1, dt * 4)]
+        controls.target.x += ox
+        controls.target.z += oz
+        camera.position.x += ox
+        camera.position.z += oz
+        controls.update()
+      }
+      if (!manual.current) {
+        manual.current = true
+        setWalking(true)
+      }
+      o.position.set(a.x, 0, a.z)
+      o.rotation.set(0, a.rot, 0)
+      return
+    }
+    if (manual.current) {
+      manual.current = false
+      setWalking(false)
+      onMoved?.([a.x, a.z])
+    }
     if (step.current < way.length) {
       const [tx, tz] = way[step.current]
       const [dx, dz] = [tx - a.x, tz - a.z]
@@ -167,6 +209,8 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
     if (interactionId) setFloor(0)
   }, [interactionId])
   const free = useBlocked(plot, w, d, world)
+  // The arrow keys and WASD walk the Sim about the house.
+  useEffect(() => (roam && !interactionId ? listenKeys() : undefined), [roam, interactionId])
   // Where each thing is done, in the lot's metres from its middle.
   const spots = useMemo(() => (world.furniture ? homeSpotsOf(plot, [w, d], [0, 0], 0, world.furniture) : {}), [plot, w, d, world.furniture])
   const spot = interactionId ? (spots[interactionId === 'golvo' ? 'golvo' : interactionId] ?? null) : null
@@ -229,7 +273,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
               <meshBasicMaterial transparent opacity={0} depthWrite={false} />
             </mesh>
           )}
-          <Walking sim={sim} stage={stage} way={way} spot={spot} onThere={setThere} />
+          <Walking sim={sim} stage={stage} way={way} spot={spot} onThere={setThere} steer={roam && !interactionId ? free : undefined} onMoved={(p) => ((where.current = p), setTapped(null))} />
           {there && interactionId === 'cook-attieke' && spot && (
             <group position={[spot.at[0] + Math.sin(spot.rot) * 0.6, 0, spot.at[1] + Math.cos(spot.rot) * 0.6]}>
               <Pot />

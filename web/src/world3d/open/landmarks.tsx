@@ -30,6 +30,9 @@ export const LANDMARKS: Record<string, number> = {
   'cocody-zoo': 62,
 }
 
+/** The landmarks one walks round freely on arriving (the park, the hotel's grounds, the street, the forecourts), before picking what to do. */
+export const GROUNDS = new Set(['cocody-zoo', 'cocody-hotel-ivoire', 'yop-rue-princesse', 'adjame-forum', 'yop-ficgayo', 'yop-gare-siporex'])
+
 /** The landmark's model, by place. */
 export function Landmark({ id, night, demo }: { id: string; night: boolean; /** The stadium: a made-up match or concert (the videos), instead of the agenda. */ demo?: StadiumEvent }) {
   switch (id) {

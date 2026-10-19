@@ -16,6 +16,7 @@ import { TravelCTA, type OnTravel } from '../components/TravelCTA'
 import { Portrait } from '../avatar/portrait'
 import { Neighbourhood } from '../world3d/Neighbourhood'
 import { OpenWorld } from '../world3d/open/OpenWorld'
+import { GROUNDS } from '../world3d/open/landmarks'
 import { iconFor, kindColors } from '../components/icons'
 import { Chip, Coin, DayNight, IconTile, MotiveRing, MoodPin, Row, needColor } from '../components/ui'
 import { NEEDS, actionLength, ageBlock, amount, atHome, blockedBy, homeLacks, housingOf, lifeOf, minutesToAge, clock, duration, mood, openAt, openingLabel, predict, shift } from '../game/rules'
@@ -428,6 +429,9 @@ export function Play() {
   const showInside = !!inside && !outside
   // Just come in (nothing being done yet): the Sim can walk about the room.
   const visiting = !!placeId && placeId !== 'happening' && showInside && !doing && sim.city === city.id && sim.commune === commune.id
+  // Come to the zoo, the hotel's grounds, a known street: the Sim walks round it in the street view.
+  const strolling = !!placeId && GROUNDS.has(placeId) && !inside && !doing && sim.city === city.id && sim.commune === commune.id && !classic
+  const roaming = visiting || strolling
   // The music of where the Sim is: the club and the maquis inside, and in
   // the street, the fanfare of a wedding cortège or a concert.
   const happeningId = street?.happening?.id
@@ -666,8 +670,8 @@ export function Play() {
       {/* Walking: the keys always (arrows / WASD); the pad on screen only in the shoulder view (the third-person
           view, chosen with the view button), so the other views stay clear. There, one walks with « Où aller ? »,
           the mini-map and the places' signs. The classic street has no views: the pad stays. */}
-      {!placeId && !overlay && !sim.activity && <WalkKeys />}
-      {!placeId && !overlay && !sim.activity && padShown && (
+      {(!placeId || (strolling && !menuOpen)) && !overlay && !sim.activity && <WalkKeys />}
+      {(!placeId ? padShown : roaming && !menuOpen && (strolling || !desktop)) && !overlay && !sim.activity && (
         <div className="pointer-events-none absolute bottom-[6.25rem] left-3 z-20 lg:bottom-[7.5rem] lg:left-5">
           <RunButton />
           <Joystick disabled={!!sim.activity || !!pending} className="pointer-events-auto" />
@@ -703,11 +707,11 @@ export function Play() {
       {placeId === 'happening' && street?.happening && (
         <HappeningSheet now={street} sim={sim} commune={commune} onClose={() => setPlaceId(null)} onJoin={(it) => (setPlaceId(null), run(it.label, it.icon, 'happening', () => api.interact(sim.id, 'happening', it.id)))} />
       )}
-      {placeId && placeId !== 'happening' && (!visiting || menuOpen) && (
-        <InteractionMenu world={world} sim={sim} city={city} commune={commune} placeId={placeId} desktop={desktop} onClose={() => (visiting ? setMenuOpen(false) : setPlaceId(null))} onPick={interact} onTravel={travel} onStop={stop} onBuild={() => (setPlaceId(null), setBuilding(true))} />
+      {placeId && placeId !== 'happening' && (!roaming || menuOpen) && (
+        <InteractionMenu world={world} sim={sim} city={city} commune={commune} placeId={placeId} desktop={desktop} onClose={() => (roaming ? setMenuOpen(false) : setPlaceId(null))} onPick={interact} onTravel={travel} onStop={stop} onBuild={() => (setPlaceId(null), setBuilding(true))} />
       )}
-      {visiting && !menuOpen && (
-        // Walking about inside: the place's name, what to do here, the way out.
+      {roaming && !menuOpen && (
+        // Walking about inside (or round the grounds): the place's name, what to do here, the way out.
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <div className="hud pointer-events-auto flex w-full max-w-md items-center gap-2 rounded-[26px] p-2">
             <button className="btn btn-soft !px-3 !py-2.5 !text-sm" onClick={() => setPlaceId(null)}>
@@ -715,7 +719,7 @@ export function Play() {
             </button>
             <div className="min-w-0 flex-1 px-1 text-center leading-tight">
               <div className="truncate font-display text-[15px] font-extrabold">{placeName(placeId!)}</div>
-              <div className="text-[11px] font-bold text-[var(--color-ink-soft)]">{desktop ? 'Clique au sol ou flèches pour marcher' : 'Touche le sol pour marcher'}</div>
+              <div className="text-[11px] font-bold text-[var(--color-ink-soft)]">{strolling ? (desktop ? 'Flèches ou WASD pour visiter' : 'Le joystick pour visiter') : desktop ? 'Clique au sol ou flèches pour marcher' : 'Touche le sol pour marcher'}</div>
             </div>
             <button className="btn !px-3 !py-2.5 !text-sm" onClick={() => setMenuOpen(true)}>
               <Sparkles size={18} /> Que faire ?
