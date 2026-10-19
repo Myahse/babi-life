@@ -89,10 +89,9 @@ export function StreetLife({ nav, seed, night }: { nav: Nav; seed: string; night
     if (near.map((s) => s.id).join() !== shown.map((s) => s.id).join()) setShown(near)
     const nextPost = posts.map((s) => ({ s, d: Math.hypot(s.at[0] - sx, s.at[1] - sz) })).filter((x) => x.d < 320).sort((a, b) => a.d - b.d)[0]?.s ?? null
     if (nextPost?.id !== post?.id) setPost(nextPost)
-    const play = nearest(courts, 6)
-    const nextFoot = play[0] ?? null
-    const close = play.find((s) => nextFoot && s !== nextFoot && Math.hypot(s.at[0] - nextFoot.at[0], s.at[1] - nextFoot.at[1]) < 220)
-    const nextBasket = close ?? (nextFoot ? { ...nextFoot, id: `${nextFoot.id}:panier`, at: [nextFoot.at[0] + 38, nextFoot.at[1] + 6] as XZ } : null)
+    // Each spot is always the same game (a pitch or a court), whether seen from afar or up close.
+    const nextFoot = nearest(courts.filter((s) => !isCourt(s)), 1)[0] ?? null
+    const nextBasket = nearest(courts.filter(isCourt), 1, nextFoot ? [nextFoot.at] : [])[0] ?? null
     if (nextFoot?.id !== foot?.id) setFoot(nextFoot)
     if (nextBasket?.id !== basket?.id) setBasket(nextBasket)
     const avoid = [nextFoot, nextBasket].flatMap((s) => (s ? [s.at] : []))
@@ -166,6 +165,9 @@ function spotsOf(nav: Nav, salt: number, minLen: number, sparse: boolean): Spot[
   }
   return out
 }
+
+/** A street spot for basketball (a court) rather than football (a pitch): fixed by its seed. */
+const isCourt = (s: Spot) => s.seed < 0.4
 
 function nearest(all: Spot[], n: number, avoid: XZ[] = []) {
   const [sx, sz] = whereabouts.sim

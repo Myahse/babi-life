@@ -1,31 +1,57 @@
-import { useEffect, useRef, useState } from 'react'
-import { Send, UserCheck } from 'lucide-react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { MapPin, Users } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
 import type { GrinMessage, Sim, World } from '../lib/types'
-import { Portrait } from '../avatar/portrait'
 import { ReportSheet } from '../components/Social'
+import { ChatScreen } from '../components/ChatScreen'
 
 /**
  * Le grin, in Gbairai (backend sims/grin.go): the public chat, where people
- * sit and talk, like round the teapot. « Tout Babi » for everyone, « Ma
- * commune » for those of the commune the Sim is in. New messages every 4 s
- * while it's open. Links and numbers are masked; a message can be reported.
+ * sit and talk, like round the teapot. Two group chats: « Tout Babi » for
+ * everyone, « Ma commune » for those of the commune the Sim is in, each
+ * opened full screen like a group on the phone (the names in colour). New
+ * messages every 4 s while it's open. Links and numbers are masked; a
+ * message can be reported.
  */
 export function Grin({ world, sim }: { world: World; sim: Sim }) {
-  const [room, setRoom] = useState<'babi' | 'commune'>('babi')
+  const [room, setRoom] = useState<'babi' | 'commune' | null>(null)
+  const communeName = (id: string) => world.cities.flatMap((c) => c.communes).find((c) => c.id === id)?.name ?? id
+  const rooms = [
+    { id: 'babi' as const, name: 'Tout Babi', sub: 'Le grin de tous les joueurs', icon: <Users size={24} />, bg: '#c2410c' },
+    { id: 'commune' as const, name: `Ma commune · ${communeName(sim.commune)}`, sub: `Ceux qui sont à ${communeName(sim.commune)}`, icon: <MapPin size={24} />, bg: '#2f9e44' },
+  ]
+  return (
+    <div>
+      <ul>
+        {rooms.map((r) => (
+          <li key={r.id}>
+            <button className="flex w-full items-center gap-3 px-1 py-2 text-left active:bg-black/[0.04]" onClick={() => setRoom(r.id)}>
+              <span className="grid h-[50px] w-[50px] shrink-0 place-items-center rounded-full text-white" style={{ background: r.bg }}>
+                {r.icon}
+              </span>
+              <span className="min-w-0 flex-1 border-b border-black/[0.06] pb-2.5">
+                <span className="block truncate text-[16px] font-extrabold text-[#111b21]">{r.name}</span>
+                <span className="mt-0.5 block truncate text-[14px] font-medium text-[#667781]">{r.sub}</span>
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-3 text-center text-[12px] font-semibold text-[var(--color-ink-soft)]">Public : tout le monde peut lire. Liens et numéros masqués.</p>
+      {room && <Room sim={sim} room={room} title={rooms.find((r) => r.id === room)!.name} icon={rooms.find((r) => r.id === room)!} communeName={communeName} onBack={() => setRoom(null)} />}
+    </div>
+  )
+}
+
+function Room({ sim, room, title, icon, communeName, onBack }: { sim: Sim; room: 'babi' | 'commune'; title: string; icon: { icon: ReactNode; bg: string }; communeName: (id: string) => string; onBack: () => void }) {
   const [msgs, setMsgs] = useState<GrinMessage[]>([])
-  const [text, setText] = useState('')
   const [note, setNote] = useState<string | null>(null)
   const [reporting, setReporting] = useState<GrinMessage | null>(null)
-  const [sending, setSending] = useState(false)
-  const end = useRef<HTMLDivElement>(null)
   const last = useRef(0)
-  const communeName = (id: string) => world.cities.flatMap((c) => c.communes).find((c) => c.id === id)?.name ?? id
 
   useEffect(() => {
     let stop = false
     last.current = 0
-    setMsgs([])
     const poll = () =>
       api
         .grin(sim.id, room, last.current)
@@ -42,117 +68,59 @@ export function Grin({ world, sim }: { world: World; sim: Sim }) {
       clearInterval(t)
     }
   }, [sim.id, room])
-  useEffect(() => {
-    end.current?.scrollIntoView({ block: 'end' })
-  }, [msgs.length])
 
-  const send = async () => {
-    const body = text.trim()
-    if (!body || sending) return
-    setSending(true)
+  const send = async (body: string) => {
     try {
       const r = await api.sayGrin(sim.id, room, body)
-      setText('')
       setNote(null)
       last.current = Math.max(last.current, r.id)
       setMsgs((old) => [...old, { id: r.id, sim: sim.id, firstName: sim.firstName, gender: sim.gender, look: sim.look, commune: sim.commune, mine: true, friend: false, body: r.body, at: new Date().toISOString() }])
+      return true
     } catch (e) {
       setNote(e instanceof ApiError ? e.message : 'Pas de réseau, réessaie.')
-    } finally {
-      setSending(false)
+      return false
     }
   }
 
+  const people = new Set(msgs.filter((m) => !m.mine).map((m) => m.firstName))
   return (
-    <div className="flex h-full min-h-[440px] flex-col">
-      <div className="flex gap-1 rounded-full bg-[var(--color-canvas)] p-1">
-        {(
-          [
-            ['babi', 'Tout Babi'],
-            ['commune', `Ma commune · ${communeName(sim.commune)}`],
-          ] as const
-        ).map(([id, label]) => (
-          <button key={id} onClick={() => setRoom(id)} className={`min-w-0 flex-1 truncate rounded-full px-2 py-1.5 text-xs font-extrabold ${room === id ? 'bg-white shadow-sm' : 'text-[var(--color-ink-soft)]'}`}>
-            {label}
-          </button>
-        ))}
-      </div>
-      <div className="flex-1 space-y-2 overflow-y-auto py-3">
-        {msgs.length === 0 && <p className="py-6 text-center text-sm font-bold text-[var(--color-ink-soft)]">C'est calme au grin. Lance la discussion !</p>}
-        {msgs.map((m) => (
-          <div key={m.id} className={`flex items-end gap-2 ${m.mine ? 'flex-row-reverse' : ''}`}>
-            {!m.mine && (
-              <span className="block h-8 w-8 shrink-0 overflow-hidden rounded-full bg-[var(--color-canvas)]">
-                <Portrait look={m.look} gender={m.gender} framing="head" />
-              </span>
-            )}
-            <div className={`max-w-[78%] rounded-2xl px-3 py-2 ${m.mine ? 'rounded-br-sm bg-[#ffe0c7] text-[#4a2200]' : 'rounded-bl-sm bg-[var(--color-canvas)]'}`}>
-              {!m.mine && (
-                <div className="flex items-center gap-1 text-[11px] font-extrabold text-[#f0590c]">
-                  {m.firstName}
-                  {m.friend && <UserCheck size={11} aria-label="ami" />}
-                  <span className="font-bold text-[var(--color-ink-soft)]">· {communeName(m.commune)}</span>
-                </div>
-              )}
-              <p className="text-[14px] leading-snug font-bold whitespace-pre-wrap">{m.body}</p>
-              <div className="mt-0.5 flex justify-end gap-2 text-[10px] font-bold opacity-60">
-                {!m.mine && (
-                  <button className="underline" onClick={() => setReporting(m)}>
-                    signaler
-                  </button>
-                )}
-                {new Date(m.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-              </div>
-            </div>
+    <ChatScreen
+      title={title}
+      subtitle={people.size ? [...people].slice(0, 4).join(', ') + (people.size > 4 ? '…' : '') + ', toi' : 'Public'}
+      avatar={
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-white ring-2 ring-white/30" style={{ background: icon.bg }}>
+          {icon.icon}
+        </span>
+      }
+      onBack={onBack}
+      lines={msgs.map((m) => ({ id: m.id, mine: m.mine, body: m.body, at: m.at, sender: { key: m.sim, name: m.firstName, sub: communeName(m.commune), look: m.look, gender: m.gender, friend: m.friend } }))}
+      notice="Le grin est public : tout le monde peut lire. Les liens et les numéros sont masqués. Touche un message pour le signaler."
+      empty="C'est calme au grin. Lance la discussion !"
+      placeholder={room === 'babi' ? 'Écris à tout Babi' : `Écris à ${communeName(sim.commune)}`}
+      onSend={send}
+      onReport={(l) => setReporting(msgs.find((m) => m.id === l.id) ?? null)}
+      note={note}
+      below={
+        reporting && (
+          <div className="mb-2">
+            <ReportSheet
+              title={`Signaler le message de ${reporting.firstName}`}
+              onCancel={() => setReporting(null)}
+              onPick={(reason) =>
+                void api
+                  .reportGrin(sim.id, reporting.id, reason)
+                  .then((r) => {
+                    setMsgs((old) => old.filter((x) => x.sim !== reporting.sim))
+                    setReporting(null)
+                    setNote(r.text)
+                  })
+                  .catch((e) => setNote(e instanceof ApiError ? e.message : 'Pas de réseau, réessaie.'))
+              }
+              note="Tu ne verras plus ses messages ; l'équipe regarde le signalement."
+            />
           </div>
-        ))}
-        <div ref={end} />
-      </div>
-      {note && <p className="mb-2 rounded-xl bg-[#fff4e8] px-3 py-2 text-xs font-bold text-[#7a3a00]">{note}</p>}
-      {reporting && (
-        <div className="mb-2">
-          <ReportSheet
-            title={`Signaler le message de ${reporting.firstName}`}
-            onCancel={() => setReporting(null)}
-            onPick={(reason) =>
-              void api
-                .reportGrin(sim.id, reporting.id, reason)
-                .then((r) => {
-                  setMsgs((old) => old.filter((x) => x.sim !== reporting.sim))
-                  setReporting(null)
-                  setNote(r.text)
-                })
-                .catch((e) => setNote(e instanceof ApiError ? e.message : 'Pas de réseau, réessaie.'))
-            }
-            note="Tu ne verras plus ses messages ; l'équipe regarde le signalement."
-          />
-        </div>
-      )}
-      <form
-        className="flex items-end gap-2"
-        onSubmit={(e) => {
-          e.preventDefault()
-          void send()
-        }}
-      >
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value.slice(0, 500))}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault()
-              void send()
-            }
-          }}
-          rows={1}
-          placeholder={room === 'babi' ? 'Écris à tout Babi…' : `Écris à ${communeName(sim.commune)}…`}
-          className="field max-h-28 min-h-[44px] flex-1 resize-none !rounded-2xl !py-2.5"
-        />
-        <button type="submit" disabled={sending || !text.trim()} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#f0590c] text-white disabled:opacity-40" aria-label="Envoyer">
-          <Send size={18} strokeWidth={2.6} />
-        </button>
-      </form>
-      <p className="mt-1.5 text-center text-[10px] font-bold text-[var(--color-ink-soft)]">Public : tout le monde peut lire. Liens et numéros masqués.</p>
-    </div>
+        )
+      }
+    />
   )
 }

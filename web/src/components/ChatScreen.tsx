@@ -1,0 +1,274 @@
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { ArrowLeft, Check, CheckCheck, EllipsisVertical, Keyboard, Lock, Send, Smile, UserCheck } from 'lucide-react'
+import type { Look, Sim } from '../lib/types'
+import { Portrait } from '../avatar/portrait'
+import { EmojiPanel, StickerView, stickerOf } from './Stickers'
+
+type Gender = Sim['gender']
+
+// A conversation laid out the way everybody knows from their phone's
+// messaging app: full screen, a coloured bar on top (back, photo, name, the
+// menu), the patterned wallpaper, the days in little pills, bubbles with
+// their tail (theirs white on the left, mine on the right), the time and the
+// ticks in the corner of each bubble (blue once read), and at the bottom the
+// round message box with the emoji inside and the round send button. Used by
+// Gbairai's chats with a friend and by the grin's two group chats.
+
+export type ChatLine = {
+  id: number
+  mine: boolean
+  body: string
+  at: string
+  /** Mine only: read by the other (blue ticks); undefined in a group. */
+  readAt?: string | null
+  /** In a group: who wrote it. */
+  sender?: { key: string; name: string; sub?: string; look: Look; gender: Gender; friend?: boolean }
+}
+
+export type ChatMenuItem = { label: string; onClick: () => void; danger?: boolean }
+
+const HEADER = '#c2410c'
+const MINE = '#ffe2c4'
+const THEIRS = '#ffffff'
+// The names in a group, each person always the same colour.
+const NAME_COLORS = ['#c2410c', '#1971c2', '#2f9e44', '#9c36b5', '#e8590c', '#0c8599', '#d6336c', '#5f3dc4', '#a61e4d', '#087f5b']
+// The wallpaper: little doodles, faint, over the warm beige.
+const WALLPAPER = `url("data:image/svg+xml,${encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120" fill="none" stroke="#d8cbb9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="20" r="7"/><path d="M60 12l3 6 6 1-4.5 4 1 6-5.5-3-5.5 3 1-6-4.5-4 6-1z"/><path d="M98 18c-4-5-11-1-8 5l8 8 8-8c3-6-4-10-8-5z"/><path d="M14 64h16M22 56v16"/><rect x="52" y="54" width="18" height="14" rx="3"/><path d="M90 70c6-10 14-10 20 0"/><circle cx="20" cy="102" r="3"/><circle cx="32" cy="98" r="2"/><path d="M56 98q8-10 16 0t16 0"/><path d="M100 94l8 12h-16z"/></svg>`,
+)}")`
+
+/** A message of one to a few emoji alone: drawn big, as on the phone. */
+export const bigEmoji = (body: string) => /^(\p{Extended_Pictographic}|\p{Regional_Indicator}|‍|️|\p{Emoji_Modifier}){1,8}$/u.test(body.trim()) && [...body.trim()].length <= 8
+export const clock = (at: string) => new Date(at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+const dayOf = (at: string) => new Date(at).toDateString()
+function dayLabel(at: string) {
+  const d = new Date(at)
+  const today = new Date()
+  const yesterday = new Date(Date.now() - 86_400_000)
+  if (d.toDateString() === today.toDateString()) return 'Aujourd’hui'
+  if (d.toDateString() === yesterday.toDateString()) return 'Hier'
+  return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+}
+function nameColor(key: string) {
+  let h = 0
+  for (const c of key) h = (h * 31 + c.charCodeAt(0)) >>> 0
+  return NAME_COLORS[h % NAME_COLORS.length]
+}
+
+/** The round photo in the bar or beside a group message. */
+export function ChatAvatar({ look, gender, size = 40, children }: { look: Look; gender: Gender; size?: number; children?: ReactNode }) {
+  return (
+    <span className="relative block shrink-0 overflow-hidden rounded-full bg-[#e9e3da]" style={{ width: size, height: size }}>
+      <Portrait look={look} gender={gender} framing="head" />
+      {children}
+    </span>
+  )
+}
+
+export function ChatScreen({
+  title,
+  subtitle,
+  avatar,
+  onBack,
+  menu,
+  lines,
+  notice,
+  empty,
+  placeholder,
+  locked,
+  onSend,
+  onReport,
+  note,
+  below,
+}: {
+  title: string
+  subtitle?: string
+  avatar: ReactNode
+  onBack: () => void
+  menu?: ChatMenuItem[]
+  lines: ChatLine[]
+  /** The yellow note at the top of the conversation. */
+  notice: string
+  empty?: string
+  placeholder: string
+  /** Writing closed (blocked): the box says why. */
+  locked?: string
+  /** Send a message; true when it went. */
+  onSend: (body: string) => Promise<boolean>
+  onReport?: (line: ChatLine) => void
+  note?: string | null
+  below?: ReactNode
+}) {
+  const [text, setText] = useState('')
+  const [panel, setPanel] = useState<'emoji' | 'stickers' | null>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [picked, setPicked] = useState<number | null>(null)
+  const [sending, setSending] = useState(false)
+  const end = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    end.current?.scrollIntoView({ block: 'end' })
+  }, [lines.length])
+
+  const send = async (body: string, sticker = false) => {
+    if (!body.trim() || sending || locked) return
+    setSending(true)
+    try {
+      if (await onSend(body.trim())) {
+        if (sticker) setPanel(null)
+        else setText('')
+      }
+    } finally {
+      setSending(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[70] flex justify-center bg-black/60">
+      <div className="flex h-full w-full max-w-[480px] flex-col" style={{ background: '#efe6da' }}>
+        {/* The bar */}
+        <div className="flex items-center gap-2 px-2 pt-[max(env(safe-area-inset-top),8px)] pb-2 text-white shadow-md" style={{ background: HEADER }}>
+          <button className="grid h-10 w-9 place-items-center rounded-full active:bg-white/15" onClick={onBack} aria-label="Retour">
+            <ArrowLeft size={22} strokeWidth={2.4} />
+          </button>
+          {avatar}
+          <span className="min-w-0 flex-1 pl-1">
+            <span className="block truncate text-[16px] leading-tight font-extrabold">{title}</span>
+            {subtitle && <span className="block truncate text-[12px] font-semibold opacity-85">{subtitle}</span>}
+          </span>
+          {menu && menu.length > 0 && (
+            <span className="relative">
+              <button className="grid h-10 w-10 place-items-center rounded-full active:bg-white/15" onClick={() => setMenuOpen((o) => !o)} aria-label="Menu">
+                <EllipsisVertical size={22} />
+              </button>
+              {menuOpen && (
+                <>
+                  <button className="fixed inset-0 z-10 cursor-default" aria-label="Fermer le menu" onClick={() => setMenuOpen(false)} />
+                  <div className="absolute top-11 right-0 z-20 min-w-[190px] overflow-hidden rounded-xl bg-white py-1 text-[15px] font-semibold text-[#1f2328] shadow-xl">
+                    {menu.map((m) => (
+                      <button key={m.label} className={`block w-full px-4 py-3 text-left active:bg-black/5 ${m.danger ? 'text-[#c92a2a]' : ''}`} onClick={() => (setMenuOpen(false), m.onClick())}>
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </span>
+          )}
+        </div>
+
+        {/* The conversation */}
+        <div className="flex-1 overflow-y-auto px-3 py-2" style={{ backgroundImage: WALLPAPER }} onClick={() => setPicked(null)}>
+          <p className="mx-auto my-2 flex max-w-[330px] items-start gap-1.5 rounded-lg bg-[#fff3c4] px-3 py-2 text-center text-[12px] leading-snug font-semibold text-[#5c4a00] shadow-sm">
+            <Lock size={12} className="mt-0.5 shrink-0" />
+            <span>{notice}</span>
+          </p>
+          {lines.length === 0 && empty && <p className="mx-auto my-6 w-fit rounded-lg bg-white/85 px-3 py-1.5 text-center text-[13px] font-semibold text-[#54656f] shadow-sm">{empty}</p>}
+          {lines.map((m, i) => {
+            const prev = lines[i - 1]
+            const newDay = !prev || dayOf(prev.at) !== dayOf(m.at)
+            const first = newDay || !prev || prev.mine !== m.mine || prev.sender?.key !== m.sender?.key
+            const st = stickerOf(m.body)
+            const big = !st && bigEmoji(m.body)
+            const bare = !!st || big
+            const group = !!m.sender && !m.mine
+            const ticks = m.mine && m.readAt !== undefined ? (m.readAt ? <CheckCheck size={15} className="text-[#2b9ce8]" /> : <Check size={15} className="opacity-60" />) : null
+            const stamp = (
+              <span className="flex items-center gap-0.5 text-[11px] leading-none font-semibold text-[#667781]">
+                {clock(m.at)}
+                {ticks}
+              </span>
+            )
+            return (
+              <div key={m.id}>
+                {newDay && (
+                  <div className="my-2 flex justify-center">
+                    <span className="rounded-lg bg-white/90 px-2.5 py-1 text-[12px] font-semibold text-[#54656f] shadow-sm first-letter:uppercase">{dayLabel(m.at)}</span>
+                  </div>
+                )}
+                <div className={`flex items-start gap-1.5 ${m.mine ? 'justify-end' : 'justify-start'} ${first ? 'mt-2' : 'mt-0.5'}`}>
+                  {group && (first ? <ChatAvatar look={m.sender!.look} gender={m.sender!.gender} size={30} /> : <span className="w-[30px] shrink-0" />)}
+                  <div className={`relative max-w-[78%] ${bare ? '' : 'rounded-lg px-2 pt-1.5 pb-1 shadow-[0_1px_0.5px_rgba(0,0,0,0.13)]'} ${!bare && first ? (m.mine ? 'rounded-tr-none' : 'rounded-tl-none') : ''}`} style={bare ? undefined : { background: m.mine ? MINE : THEIRS }} onClick={(e) => (e.stopPropagation(), onReport && !m.mine && setPicked((p) => (p === m.id ? null : m.id)))} onContextMenu={(e) => (e.preventDefault(), onReport && !m.mine && setPicked(m.id))}>
+                    {!bare && first && (
+                      <svg viewBox="0 0 8 13" className={`absolute top-0 h-[13px] w-2 ${m.mine ? '-right-2' : '-left-2'}`} aria-hidden>
+                        <path d={m.mine ? 'M0 0H8L0 13z' : 'M8 0H0L8 13z'} fill={m.mine ? MINE : THEIRS} />
+                      </svg>
+                    )}
+                    {group && first && (
+                      <div className="mb-0.5 flex items-center gap-1 text-[13px] font-extrabold" style={{ color: nameColor(m.sender!.key) }}>
+                        {m.sender!.name}
+                        {m.sender!.friend && <UserCheck size={12} aria-label="ami" />}
+                        {m.sender!.sub && <span className="font-semibold text-[#8696a0]">· {m.sender!.sub}</span>}
+                      </div>
+                    )}
+                    {st ? (
+                      <div className="flex flex-col items-end gap-1">
+                        <StickerView s={st} />
+                        <span className="rounded-full bg-white/85 px-1.5 py-0.5 shadow-sm">{stamp}</span>
+                      </div>
+                    ) : big ? (
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="text-[44px] leading-none">{m.body}</span>
+                        <span className="rounded-full bg-white/85 px-1.5 py-0.5 shadow-sm">{stamp}</span>
+                      </div>
+                    ) : (
+                      <p className="text-[14.5px] leading-[1.35] font-medium break-words whitespace-pre-wrap text-[#111b21]">
+                        {m.body}
+                        {/* Room for the time, so the last line doesn't run under it */}
+                        <span className={`inline-block ${ticks ? 'w-[62px]' : 'w-[42px]'}`} />
+                        <span className="absolute right-2 bottom-1">{stamp}</span>
+                      </p>
+                    )}
+                    {picked === m.id && onReport && (
+                      <button className="absolute top-full left-0 z-10 mt-1 rounded-lg bg-white px-3 py-1.5 text-[13px] font-bold whitespace-nowrap text-[#c92a2a] shadow-lg" onClick={(e) => (e.stopPropagation(), setPicked(null), onReport(m))}>
+                        Signaler ce message
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+          <div ref={end} className="h-1" />
+        </div>
+
+        {/* The box */}
+        <div className="bg-[#f0ebe4] px-2 pt-1.5 pb-[max(env(safe-area-inset-bottom),8px)]">
+          {note && <p className="mb-1.5 rounded-lg bg-[#fff3c4] px-3 py-2 text-xs font-bold text-[#5c4a00]">{note}</p>}
+          {below}
+          {panel && !locked && <EmojiPanel tab={panel} onTab={setPanel} onEmoji={(e) => setText((t) => (t + e).slice(0, 500))} onSticker={(s) => void send(`[sticker:${s.id}]`, true)} />}
+          <form
+            className="flex items-end gap-1.5"
+            onSubmit={(e) => {
+              e.preventDefault()
+              void send(text)
+            }}
+          >
+            <div className="flex min-h-[46px] flex-1 items-end rounded-[24px] bg-white pr-3 shadow-sm">
+              <button type="button" disabled={!!locked} onClick={() => setPanel((p) => (p ? null : 'emoji'))} className="grid h-[46px] w-11 shrink-0 place-items-center text-[#54656f] disabled:opacity-40" aria-label={panel ? 'Clavier' : 'Emoji et stickers'}>
+                {panel ? <Keyboard size={22} /> : <Smile size={23} />}
+              </button>
+              <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value.slice(0, 500))}
+                onFocus={() => setPanel(null)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    void send(text)
+                  }
+                }}
+                disabled={!!locked}
+                rows={1}
+                placeholder={locked ?? placeholder}
+                className="max-h-28 min-h-[46px] flex-1 resize-none bg-transparent py-3 text-[15px] font-medium text-[#111b21] outline-none placeholder:text-[#8696a0]"
+              />
+            </div>
+            <button type="submit" disabled={!!locked || sending || !text.trim()} className="grid h-[46px] w-[46px] shrink-0 place-items-center rounded-full text-white shadow-sm disabled:opacity-50" style={{ background: HEADER }} aria-label="Envoyer">
+              <Send size={20} strokeWidth={2.4} className="-mr-0.5" />
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  )
+}

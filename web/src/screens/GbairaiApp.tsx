@@ -1,19 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
-import { Ban, ChevronLeft, Flag, Keyboard, Send, ShieldCheck } from 'lucide-react'
+import { Check, CheckCheck } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
 import type { Chat, ChatMessage, Sim, World } from '../lib/types'
-import { Portrait } from '../avatar/portrait'
 import { ReportSheet } from '../components/Social'
 import { Stories } from './Stories'
 import { Grin } from './Grin'
 import { NotifyBanner } from '../components/NotifyPrompt'
-import { EmojiPanel, StickerView, previewOf, stickerOf, type Sticker } from '../components/Stickers'
+import { previewOf } from '../components/Stickers'
+import { ChatAvatar, ChatScreen, clock } from '../components/ChatScreen'
 
 /**
  * Gbairai: write to the players your Sim has made friends with in the game,
  * and only to them (backend sims/gbairai.go). Links and phone numbers are
  * masked; a friend can be blocked, a message reported. The chat asks for new
  * messages every few seconds while it is open, the list every half-minute.
+ * Laid out like the messaging app everybody has on their phone: the list of
+ * chats, and each chat full screen (components/ChatScreen).
  */
 
 /** Gbairai: the friends' chats, and the grin (the public chat). */
@@ -21,14 +23,14 @@ export function GbairaiApp({ world, sim }: { world: World; sim: Sim }) {
   const [tab, setTab] = useState<'amis' | 'grin'>('amis')
   return (
     <div className="flex h-full flex-col">
-      <div className="mb-3 flex gap-1 border-b border-black/5">
+      <div className="mb-2 flex gap-1 border-b border-black/5">
         {(
           [
             ['amis', 'Discussions'],
             ['grin', 'Le grin'],
           ] as const
         ).map(([id, label]) => (
-          <button key={id} onClick={() => setTab(id)} className={`flex-1 border-b-2 py-2 text-sm font-extrabold ${tab === id ? 'border-[#f0590c] text-[#f0590c]' : 'border-transparent text-[var(--color-ink-soft)]'}`}>
+          <button key={id} onClick={() => setTab(id)} className={`flex-1 border-b-[3px] py-2.5 text-[15px] font-extrabold ${tab === id ? 'border-[#c2410c] text-[#c2410c]' : 'border-transparent text-[var(--color-ink-soft)]'}`}>
             {label}
           </button>
         ))}
@@ -59,53 +61,46 @@ function Chats({ world, sim }: { world: World; sim: Sim }) {
     }
   }, [sim.id, open])
 
-  if (open) return <Thread sim={sim} chat={open} onBack={() => setOpen(null)} />
   return (
-    <div className="space-y-2">
+    <div>
       <Stories sim={sim} realPhotos={!!world.config.realPhotos} />
-      <p className="flex items-start gap-2 rounded-2xl bg-[#fff4e8] p-3 text-xs leading-snug font-bold text-[var(--color-ink-soft)]">
-        <ShieldCheck size={16} className="mt-0.5 shrink-0 text-[#f0590c]" />
-        Tu écris seulement aux joueurs devenus tes amis dans le jeu (salue-les dans la rue). Les liens et les numéros sont masqués. Un souci ? Signale le message.
-      </p>
       {error && <p className="rounded-2xl bg-[#ffe3e3] p-3 text-sm font-bold text-[#c92a2a]">{error}</p>}
       {chats === null && !error && <p className="p-3 text-sm font-bold text-[var(--color-ink-soft)]">Chargement…</p>}
       {chats?.length === 0 && <p className="p-3 text-sm font-bold text-[var(--color-ink-soft)]">Pas encore d'amis à qui écrire. Va saluer les joueurs de ta commune : ils apparaîtront ici.</p>}
-      <ul className="space-y-1.5">
+      <ul>
         {chats?.map((c) => (
           <li key={c.friend.id}>
-            <button className="flex w-full items-center gap-3 rounded-2xl bg-[var(--color-canvas)] p-2.5 text-left active:scale-[0.98]" onClick={() => setOpen(c)}>
-              <span className="relative block h-12 w-12 shrink-0 overflow-hidden rounded-full bg-white">
-                <Portrait look={c.friend.look} gender={c.friend.gender} framing="head" />
+            <button className="flex w-full items-center gap-3 px-1 py-2 text-left active:bg-black/[0.04]" onClick={() => setOpen(c)}>
+              <ChatAvatar look={c.friend.look} gender={c.friend.gender} size={50}>
                 {c.friend.online && <span className="absolute right-0.5 bottom-0.5 h-3 w-3 rounded-full bg-[#2fb344] ring-2 ring-white" />}
-              </span>
-              <span className="min-w-0 flex-1">
+              </ChatAvatar>
+              <span className="min-w-0 flex-1 border-b border-black/[0.06] pb-2.5">
                 <span className="flex items-baseline justify-between gap-2">
-                  <span className="truncate font-display text-[15px] font-extrabold">{c.friend.firstName}</span>
-                  {c.last && <span className="shrink-0 text-[11px] font-bold text-[var(--color-ink-soft)]">{stamp(c.last.at)}</span>}
+                  <span className="truncate text-[16px] font-extrabold text-[#111b21]">{c.friend.firstName}</span>
+                  {c.last && <span className={`shrink-0 text-[12px] font-semibold ${c.unread > 0 ? 'text-[#c2410c]' : 'text-[#667781]'}`}>{stamp(c.last.at)}</span>}
                 </span>
-                <span className="flex items-center justify-between gap-2">
-                  <span className="truncate text-[13px] font-bold text-[var(--color-ink-soft)]">{c.blocked ? 'Bloqué·e' : c.last ? `${c.last.mine ? 'Toi : ' : ''}${previewOf(c.last.body)}` : 'Dis-lui bonjour !'}</span>
-                  {c.unread > 0 && <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-[#f0590c] px-1.5 text-[11px] font-extrabold text-white">{c.unread}</span>}
+                <span className="mt-0.5 flex items-center justify-between gap-2">
+                  <span className="flex min-w-0 items-center gap-1 text-[14px] font-medium text-[#667781]">
+                    {c.last?.mine && !c.blocked && (c.last.readAt ? <CheckCheck size={16} className="shrink-0 text-[#2b9ce8]" /> : <Check size={16} className="shrink-0" />)}
+                    <span className="truncate">{c.blocked ? 'Bloqué·e' : c.last ? previewOf(c.last.body) : 'Dis-lui bonjour !'}</span>
+                  </span>
+                  {c.unread > 0 && <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-[#c2410c] px-1.5 text-[11px] font-extrabold text-white">{c.unread}</span>}
                 </span>
               </span>
             </button>
           </li>
         ))}
       </ul>
+      {open && <Thread sim={sim} chat={open} onBack={() => setOpen(null)} />}
     </div>
   )
 }
 
 function Thread({ sim, chat, onBack }: { sim: Sim; chat: Chat; onBack: () => void }) {
   const [msgs, setMsgs] = useState<ChatMessage[]>([])
-  const [text, setText] = useState('')
   const [blocked, setBlocked] = useState(!!chat.blocked)
   const [note, setNote] = useState<string | null>(null)
   const [reporting, setReporting] = useState<ChatMessage | 'friend' | null>(null)
-  const [sending, setSending] = useState(false)
-  // The emoji and stickers panel under the message box.
-  const [panel, setPanel] = useState<'emoji' | 'stickers' | null>(null)
-  const end = useRef<HTMLDivElement>(null)
   const last = useRef(0)
 
   // The thread, then the new ones every 4 s.
@@ -117,7 +112,7 @@ function Thread({ sim, chat, onBack }: { sim: Sim; chat: Chat; onBack: () => voi
         .then((m) => {
           if (stop || !m.length) return
           last.current = m[m.length - 1].id
-          setMsgs((old) => [...old, ...m.filter((x) => !old.some((o) => o.id === x.id))])
+          setMsgs((old) => [...old.map((o) => m.find((x) => x.id === o.id) ?? o), ...m.filter((x) => !old.some((o) => o.id === x.id))])
         })
         .catch(() => undefined)
     void poll()
@@ -127,25 +122,17 @@ function Thread({ sim, chat, onBack }: { sim: Sim; chat: Chat; onBack: () => voi
       clearInterval(t)
     }
   }, [sim.id, chat.friend.id])
-  useEffect(() => {
-    end.current?.scrollIntoView({ block: 'end' })
-  }, [msgs.length])
 
-  const send = async (sticker?: Sticker) => {
-    const body = sticker ? `[sticker:${sticker.id}]` : text.trim()
-    if (!body || sending) return
-    setSending(true)
+  const send = async (body: string) => {
     try {
       const m = await api.write(sim.id, chat.friend.id, body)
-      if (sticker) setPanel(null)
-      else setText('')
       last.current = Math.max(last.current, m.id)
       setMsgs((old) => [...old, m])
       setNote(null)
+      return true
     } catch (e) {
       setNote(e instanceof ApiError ? e.message : 'Pas de réseau, réessaie.')
-    } finally {
-      setSending(false)
+      return false
     }
   }
   const toggleBlock = async () => {
@@ -170,90 +157,37 @@ function Thread({ sim, chat, onBack }: { sim: Sim; chat: Chat; onBack: () => voi
   }
 
   return (
-    <div className="flex h-full min-h-[420px] flex-col">
-      <div className="flex items-center gap-2 border-b border-black/5 pb-2">
-        <button className="icon-btn bg-[var(--color-canvas)]" onClick={onBack} aria-label="Retour aux discussions">
-          <ChevronLeft size={20} strokeWidth={2.6} />
-        </button>
-        <span className="block h-9 w-9 shrink-0 overflow-hidden rounded-full bg-[var(--color-canvas)]">
-          <Portrait look={chat.friend.look} gender={chat.friend.gender} framing="head" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate font-display text-[15px] font-extrabold">{chat.friend.firstName}</span>
-          <span className="block text-[11px] font-bold text-[var(--color-ink-soft)]">{chat.friend.online ? 'En ligne' : 'Hors ligne'}</span>
-        </span>
-        <button className="icon-btn bg-[var(--color-canvas)]" onClick={() => setReporting('friend')} aria-label="Signaler">
-          <Flag size={18} />
-        </button>
-        <button className={`icon-btn ${blocked ? 'bg-[#ffe3e3] text-[#c92a2a]' : 'bg-[var(--color-canvas)]'}`} onClick={() => void toggleBlock()} aria-label={blocked ? 'Débloquer' : 'Bloquer'}>
-          <Ban size={18} />
-        </button>
-      </div>
-
-      <div className="flex-1 space-y-1.5 overflow-y-auto py-3">
-        {msgs.length === 0 && <p className="py-6 text-center text-sm font-bold text-[var(--color-ink-soft)]">Écris le premier message à {chat.friend.firstName}.</p>}
-        {msgs.map((m) => (
-          <div key={m.id} className={`flex ${m.mine ? 'justify-end' : 'justify-start'}`}>
-            <div className={`group relative max-w-[80%] rounded-2xl px-3 py-2 text-[14px] leading-snug font-bold whitespace-pre-wrap ${stickerOf(m.body) || bigEmoji(m.body) ? 'bg-transparent' : m.mine ? 'rounded-br-sm bg-[#ffe0c7] text-[#4a2200]' : 'rounded-bl-sm bg-[var(--color-canvas)]'} ${bigEmoji(m.body) ? 'text-[40px] leading-none' : ''}`}>
-              {stickerOf(m.body) ? <StickerView s={stickerOf(m.body)!} /> : m.body}
-              <span className="mt-0.5 flex items-center justify-end gap-2 text-[10px] font-bold opacity-60">
-                {!m.mine && (
-                  <button className="underline" onClick={() => setReporting(m)}>
-                    signaler
-                  </button>
-                )}
-                {time(m.at)}
-                {m.mine && (m.readAt ? ' · lu' : '')}
-              </span>
-            </div>
+    <ChatScreen
+      title={chat.friend.firstName}
+      subtitle={blocked ? 'Bloqué·e' : chat.friend.online ? 'en ligne' : 'hors ligne'}
+      avatar={<ChatAvatar look={chat.friend.look} gender={chat.friend.gender} size={40} />}
+      onBack={onBack}
+      menu={[
+        { label: blocked ? 'Débloquer' : 'Bloquer', onClick: () => void toggleBlock(), danger: !blocked },
+        { label: `Signaler ${chat.friend.firstName}`, onClick: () => setReporting('friend'), danger: true },
+      ]}
+      lines={msgs.map((m) => ({ ...m, readAt: m.mine ? (m.readAt ?? null) : undefined }))}
+      notice="Tu écris seulement à tes amis du jeu. Les liens et les numéros sont masqués. Un souci ? Touche le message pour le signaler."
+      empty={`Écris le premier message à ${chat.friend.firstName}.`}
+      placeholder="Message"
+      locked={blocked ? 'Bloqué·e' : undefined}
+      onSend={send}
+      onReport={(m) => setReporting(msgs.find((x) => x.id === m.id) ?? null)}
+      note={note}
+      below={
+        reporting && (
+          <div className="mb-2">
+            <ReportSheet title={reporting === 'friend' ? `Signaler ${chat.friend.firstName}` : 'Signaler ce message'} onPick={(r) => void report(r)} onCancel={() => setReporting(null)} note="La personne est bloquée tout de suite ; l'équipe regarde le signalement." />
           </div>
-        ))}
-        <div ref={end} />
-      </div>
-
-      {note && <p className="mb-2 rounded-xl bg-[#fff4e8] px-3 py-2 text-xs font-bold text-[#7a3a00]">{note}</p>}
-      {reporting && (
-        <div className="mb-2">
-          <ReportSheet title={reporting === 'friend' ? `Signaler ${chat.friend.firstName}` : 'Signaler ce message'} onPick={(r) => void report(r)} onCancel={() => setReporting(null)} note="La personne est bloquée tout de suite ; l'équipe regarde le signalement." />
-        </div>
-      )}
-      {panel && !blocked && <EmojiPanel tab={panel} onTab={setPanel} onEmoji={(e) => setText((t) => (t + e).slice(0, 500))} onSticker={(st) => void send(st)} />}
-      <form
-        className="flex items-end gap-2"
-        onSubmit={(e) => {
-          e.preventDefault()
-          void send()
-        }}
-      >
-        <button type="button" disabled={blocked} onClick={() => setPanel((p) => (p ? null : 'emoji'))} className={`grid h-11 w-11 shrink-0 place-items-center rounded-full text-[22px] disabled:opacity-40 ${panel ? 'bg-[#ffe0c7]' : 'bg-[var(--color-canvas)]'}`} aria-label="Emoji et stickers">
-          {panel ? <Keyboard size={20} /> : '😊'}
-        </button>
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value.slice(0, 500))}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault()
-              void send()
-            }
-          }}
-          disabled={blocked}
-          rows={1}
-          placeholder={blocked ? 'Bloqué·e' : 'Écris un message…'}
-          className="field max-h-28 min-h-[44px] flex-1 resize-none !rounded-2xl !py-2.5"
-        />
-        <button type="submit" disabled={blocked || sending || !text.trim()} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#f0590c] text-white disabled:opacity-40" aria-label="Envoyer">
-          <Send size={18} strokeWidth={2.6} />
-        </button>
-      </form>
-    </div>
+        )
+      }
+    />
   )
 }
 
-/** A message of one to three emoji alone: drawn big, as on WhatsApp. */
-const bigEmoji = (body: string) => /^(\p{Extended_Pictographic}|\p{Regional_Indicator}|\u200d|\ufe0f|\p{Emoji_Modifier}){1,8}$/u.test(body.trim()) && [...body.trim()].length <= 8
-const time = (at: string) => new Date(at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 function stamp(at: string) {
   const d = new Date(at)
-  return Date.now() - d.getTime() < 20 * 3600_000 ? time(at) : d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+  if (d.toDateString() === new Date().toDateString()) return clock(at)
+  if (d.toDateString() === new Date(Date.now() - 86_400_000).toDateString()) return 'Hier'
+  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' })
 }
