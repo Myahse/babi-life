@@ -1065,6 +1065,8 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
   )
   // In one's own house, sleeping takes a bed, cooking a stove, the TV a TV.
   const furnitureBlock = (it: Interaction) => {
+    // Swimming: a pool in the house one built, or the villa one rents (game.CanSwimAtHome).
+    if (placeId === 'home' && it.id === 'nager' && !(sim.housing === 'maison' ? sim.furnished?.includes('piscine') : sim.housing === 'villa')) return 'Il te faut une piscine'
     const lack = placeId === 'home' ? homeLacks(world, sim, it.id) : ''
     return lack ? `Il te faut : ${lack}` : null
   }

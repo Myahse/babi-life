@@ -70,5 +70,16 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
         break
     }
   }
+  // The pool (a raised basin, build/Zones.tsx): in from its rim, then lengths along it.
+  for (const z of plot.zones ?? []) {
+    if (z[4] !== 'piscine' || out.nager) continue
+    const [cu, cv] = [z[0] + z[2] / 2 - w / 2, z[1] + z[3] / 2 - d / 2]
+    const along = z[2] >= z[3]
+    const long = Math.max(z[2], z[3])
+    // The Sim's front is its +z: turned a quarter to swim along the lot's x.
+    const rot = rot0 + (along ? Math.PI / 2 : 0)
+    const from: XZ = along ? toWorld(cu, cv + z[3] / 2 + 0.6) : toWorld(cu + z[2] / 2 + 0.6, cv)
+    out.nager = { at: toWorld(cu, cv), y: 0.42, rot, pose: 'swim', lying: false, from, swim: Math.max(0.5, long / 2 - 1.3) }
+  }
   return out
 }

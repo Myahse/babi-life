@@ -538,6 +538,11 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 		}
 		if home {
 			// In one's own house, sleeping takes a bed, cooking a stove…
+			if it.ID == game.SwimID {
+				if why := game.CanSwimAtHome(s.Housing, s.Furnished); why != "" {
+					return game.Interaction{}, errors.New(why)
+				}
+			}
 			if s.Housing == game.OwnHouse {
 				if need := game.HomeNeeds(it.ID, s.Furnished); need != "" {
 					return game.Interaction{}, fmt.Errorf("il te manque : %s (à poser chez toi : appli Logement, Ma maison)", need)

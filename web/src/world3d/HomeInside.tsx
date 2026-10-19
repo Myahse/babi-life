@@ -13,6 +13,7 @@ import { gridWay } from './gridPath'
 import type { HomeSpot } from './Walker'
 import { Pot, Zzz } from './interior/ActionProps'
 import { Snapper } from './snapshot'
+import { Swimmer } from './Swimmer'
 import { listenKeys, moveInput } from './input'
 
 // Inside one's own house, on a screen of its own: the house itself (the one
@@ -154,7 +155,9 @@ function Walking({ sim, stage, way, spot, onThere, steer, onMoved }: { sim: Sim;
   const look = spot?.pose === 'wash' ? { ...sim.look, outfit: 'serviette', accessory: 'none' } : sim.look
   return (
     <group ref={g}>
-      {settled && spot ? (
+      {settled && spot?.swim ? (
+        <Swimmer len={spot.swim} look={{ ...sim.look, outfit: 'maillot', accessory: 'none' }} gender={sim.gender} stage={stage} />
+      ) : settled && spot ? (
         <group rotation={spot.lying ? [-Math.PI / 2, 0, 0] : [0, 0, 0]}>
           {spot.stool && (
             <mesh position={[0, 0.2 - spot.y, -0.05]}>

@@ -17,6 +17,7 @@ import { SIM_SLOT, matchFor, onField, worldFacing } from './open/match'
 import { blocked, blockedFixed, topAt, vehicleAt } from './obstacles'
 import { gridWay } from './gridPath'
 import { usePhotoMode } from './photoCam'
+import { Swimmer } from './Swimmer'
 import { Vehicle } from './vehicles'
 import type { Pose } from '../avatar/Human'
 
@@ -69,7 +70,7 @@ export type WalkNav = {
 }
 
 /** Where the Sim does a home action on its own furniture: walked to from `from`, then settled `at` (y up), turned `rot`. */
-export type HomeSpot = { at: XZ; y: number; rot: number; pose: Pose; lying: boolean; from: XZ; /** A stool under the Sim (at the table). */ stool?: boolean; /** The spot is in a wall (the piece is against one on both sides). */ wall?: boolean }
+export type HomeSpot = { at: XZ; y: number; rot: number; pose: Pose; lying: boolean; from: XZ; /** A stool under the Sim (at the table). */ stool?: boolean; /** The spot is in a wall (the piece is against one on both sides). */ wall?: boolean; /** Swimming lengths of the pool: half the length (m). */ swim?: number }
 
 type Props = {
   sim: Sim
@@ -641,6 +642,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
               <Character look={sim.look} gender={sim.gender} walking={false} running={false} busy={false} pose="sit" moodColor={moodColor} stage={stage} />
             </group>
           </>
+        ) : settled?.swim ? (
+          <Swimmer len={settled.swim} look={{ ...sim.look, outfit: 'maillot', accessory: 'none' }} gender={sim.gender} stage={stage} />
         ) : settled ? (
           // On the furniture at home: lying in the bed (the head towards its head), sitting, at the stove, in the shower.
           <group rotation={settled.lying ? [-Math.PI / 2, 0, 0] : [0, 0, 0]}>

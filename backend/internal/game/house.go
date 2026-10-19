@@ -314,7 +314,30 @@ func (h House) Has() []string {
 			ids = append(ids, p.ID)
 		}
 	}
+	// A pool counts as a piece: one swims in it (HasPool).
+	for _, z := range h.Zones {
+		if z.K == ZonePool && !slices.Contains(ids, ZonePool) {
+			ids = append(ids, ZonePool)
+		}
+	}
 	return ids
+}
+
+// SwimID: swimming in one's own pool (the home's activity).
+const SwimID = "nager"
+
+// CanSwimAtHome: a pool in the house one built, or in the villa one rents ("" when fine, else why not).
+func CanSwimAtHome(housing string, furnished []string) string {
+	if housing == OwnHouse {
+		if slices.Contains(furnished, ZonePool) {
+			return ""
+		}
+		return "il te faut une piscine chez toi (appli Logement, Ma maison)"
+	}
+	if housing == "villa" {
+		return ""
+	}
+	return "pas de piscine dans ton logement : il faut une villa avec piscine"
 }
 
 // Livable: a bed (or a mat) with a roof over it, and toilets.

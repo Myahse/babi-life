@@ -10,7 +10,7 @@ import { worldTime } from '../lib/worldClock'
 // simpler blocky figure (avatar/LowHuman.tsx) far away, and the poses that
 // move them both (usePoseRig). Units are metres: feet on y=0, facing +Z.
 
-export type Pose = 'idle' | 'walk' | 'run' | 'leap' | 'hang' | 'wash' | 'sleep' | 'pray' | 'cook' | 'phone' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper' | 'touch' | 'mark' | 'guard' | 'dive' | 'airplane' | 'pass' | 'salat'
+export type Pose = 'idle' | 'walk' | 'run' | 'leap' | 'hang' | 'wash' | 'sleep' | 'pray' | 'cook' | 'phone' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper' | 'touch' | 'mark' | 'guard' | 'dive' | 'airplane' | 'pass' | 'salat' | 'swim'
 
 /** Poses done sitting on a chair (hips at seat height). */
 export const SEATED: Pose[] = ['sit', 'eat', 'drink', 'write']
@@ -106,6 +106,9 @@ const ease = (x: number) => x * x * (3 - 2 * x)
 /** Legs for the match's moves: hip x, hip z, knee x; `since`: seconds into the move. */
 function sportLegs(pose: Pose, out: number, t: number, since: number): [number, number, number] | null {
   switch (pose) {
+    case 'swim':
+      // The flutter kick: legs straight from the hip, one up as the other goes down.
+      return [Math.sin(t * 9 + (out > 0 ? 0 : Math.PI)) * 0.32, 0, 0.18 + Math.max(0, Math.sin(t * 9 + (out > 0 ? 0.6 : Math.PI + 0.6))) * 0.3]
     case 'kick': {
       // The right leg: drawn back, swung through the ball, followed through; the left one planted.
       if (out < 0) return [-0.1, 0, 0.32]
@@ -142,6 +145,12 @@ function sportLegs(pose: Pose, out: number, t: number, since: number): [number, 
 /** Arms for the match's moves: shoulder x, y, z, elbow x, z. */
 function sportArms(pose: Pose, out: number, t: number, since: number, armSwing: number): [number, number, number, number, number] | null {
   switch (pose) {
+    case 'swim': {
+      // The crawl (the body lies face down, head first): each arm reaches far ahead, pulls down
+      // under the body to the hip, then comes back over the water, elbow high; one after the other.
+      const a = t * 2.6 + (out > 0 ? 0 : Math.PI)
+      return [-1.55 - 1.55 * Math.cos(a), 0, out * 0.18, Math.sin(a) > 0 ? -0.9 : -0.12, 0]
+    }
     case 'kick':
       // Arms out for balance, the left one forward as the right leg strikes.
       return [out < 0 ? -0.8 : 0.45, 0, out * 0.75, -0.35, 0]
