@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { FlaskConical, KeyRound, LogOut, Play } from 'lucide-react'
-import { isTester, setTester } from '../lib/launch'
+import { isTester, isTesterCode, setTester } from '../lib/launch'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
 
@@ -43,6 +43,12 @@ export default function Tester() {
     setError(null)
     setBusy(true)
     try {
+      // The testers' code is checked right here; the admin key goes to the server.
+      if (await isTesterCode(key)) {
+        setTester(true)
+        await freshStart('/jeu')
+        return
+      }
       let res: Response
       try {
         res = await fetch(`${BASE}/admin/stats`, { headers: { 'X-Admin-Key': key.trim() } })
@@ -50,7 +56,7 @@ export default function Tester() {
         // No answer at all: the server is waking up (Render), or it doesn't accept this site (ALLOWED_ORIGINS).
         throw new Error(`Le serveur ne répond pas (${new URL(BASE).host}). S'il dormait, réessaie dans une minute ; sinon ${location.origin} doit être dans ALLOWED_ORIGINS sur Render.`)
       }
-      if (res.status === 401) throw new Error("Clé refusée par le serveur : ce n'est pas la valeur d'ADMIN_KEY sur Render (ou ADMIN_KEY n'y est pas défini).")
+      if (res.status === 401) throw new Error("Code incorrect.")
       if (!res.ok) throw new Error(`Le serveur a répondu ${res.status} : réessaie dans un instant.`)
       setTester(true)
       // A fresh load of a fresh copy: the offline cache may still hold the
@@ -93,12 +99,12 @@ export default function Tester() {
           </>
         ) : (
           <form onSubmit={enter} className="mt-4 grid gap-3">
-            <p className="text-sm font-bold text-[var(--color-ink-soft)]">Entre la clé d'administration pour ouvrir tout le jeu sur ce navigateur.</p>
+            <p className="text-sm font-bold text-[var(--color-ink-soft)]">Entre le code testeur (ou la clé d'administration) pour ouvrir tout le jeu sur ce navigateur.</p>
             <label className="grid gap-1">
-              <span className="label">Clé</span>
+              <span className="label">Code</span>
               <span className="flex items-center gap-2 rounded-2xl bg-[var(--color-canvas)] px-3">
                 <KeyRound size={16} className="text-[var(--color-ink-soft)]" />
-                <input className="min-w-0 flex-1 bg-transparent py-3 text-[15px] font-bold outline-none" type="password" autoComplete="off" value={key} onChange={(e) => setKey(e.target.value)} aria-label="Clé d'administration" />
+                <input className="min-w-0 flex-1 bg-transparent py-3 text-[15px] font-bold outline-none" type="password" autoComplete="off" value={key} onChange={(e) => setKey(e.target.value)} aria-label="Code testeur" />
               </span>
             </label>
             {error && <p className="text-sm font-bold text-[#d81b3f]">{error}</p>}
