@@ -36,3 +36,39 @@ Bon début de semaine à tous… et restez connectés : de bonnes nouvelles arri
 
 - Pas lundi : « Aujourd'hui, c'est lundi » devient « Cette semaine, on se donne à fond ».
 - Le nombre change : remplacer les deux « mille cinq cents » du texte, et le compteur de la vidéo (`FOLLOWERS` dans `web/src/lab/poster.tsx`).
+
+## Pour ElevenLabs
+
+Une voix de femme jeune, chaleureuse, francophone d'Afrique de l'Ouest (dans la bibliothèque de voix : chercher « Ivorian », « West African French » ou « African French female »). « Babi Life » est écrit « Babi Laïf » pour que la voix le dise à l'anglaise. Les nombres sont en lettres.
+
+### Modèle Eleven v3 (avec les émotions entre crochets)
+
+Réglages : Stability « Natural », vitesse normale. Coller tel quel :
+
+```
+[excited] La famille ! Bonjour bonjour, c'est Awa de Babi Laïf !
+[curious] Vous savez quoi ? [excited] On est maintenant mille cinq cents sur TikTok ! [laughs] Mille cinq cents !
+[warmly] Merci, merci, merci ! C'est vous qui nous portez. On est ensemble !
+[curious] Et votre week-end, c'était comment ? Maquis, coupé-décalé… le match au stade… [laughs] ou bien vous étiez couchés à la maison ? Dites-nous ça en commentaire !
+[happy] Aujourd'hui, c'est lundi : on se lève, on se met au travail. Bon début de semaine à tous !
+[whispers] Et restez bien connectés… de bonnes nouvelles arrivent très bientôt. [mischievously] Je ne dis rien !
+[warmly] Abonnez-vous, partagez avec vos amis. Babi Laïf, c'est pour nous. Bisous !
+```
+
+### Modèle Multilingual v2 (avec les pauses chronométrées)
+
+Réglages : Stability 45 %, Similarity 75 %, Style 30 %, Speaker boost activé, vitesse 0,95. Les pauses calent chaque phrase sur son moment de la vidéo :
+
+```
+La famille ! Bonjour bonjour, c'est Awa de Babi Laïf ! <break time="1.0s" />
+Vous savez quoi ? On est maintenant mille cinq cents sur TikTok ! Mille cinq cents ! <break time="1.2s" />
+Merci, merci, merci ! C'est vous qui nous portez. On est ensemble ! <break time="1.0s" />
+Et votre week-end, c'était comment ? Maquis, coupé-décalé… <break time="0.8s" /> le match au stade… <break time="0.8s" /> ou bien vous étiez couchés à la maison ? Dites-nous ça en commentaire ! <break time="1.0s" />
+Aujourd'hui, c'est lundi : on se lève, on se met au travail. Bon début de semaine à tous ! <break time="1.2s" />
+Et restez bien connectés… de bonnes nouvelles arrivent très bientôt. Je ne dis rien ! <break time="1.0s" />
+Abonnez-vous, partagez avec vos amis. Babi Laïf, c'est pour nous. Bisous !
+```
+
+### Après
+
+Télécharger en MP3, le mettre dans `marketing/out/voix-merci.mp3`, puis `npm run video:merci` : la vidéo ressort avec la voix. Elle doit durer environ 50 secondes ; si elle est plus longue, monter la vitesse à 1,0 ou raccourcir les pauses ; plus courte, les allonger.
