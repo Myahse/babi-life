@@ -28,7 +28,7 @@ import { Snapper } from '../snapshot'
 import { CHUNK_ZOOM, hash, tileBox, tileOf, toLatLng, toLocal, type Origin, type XZ } from './geo'
 import { Nav } from './nav'
 import { along, anchorNode, round, routeLength, turnTo, useCellsAround, type Round } from './shared'
-import { inTheWay, resolvePlaces, type PlaceSpot, type Resolved } from './places'
+import { inTheWay, resolvePlaces, spaceFields, type PlaceSpot, type Resolved } from './places'
 import { SportField } from './field'
 import { FuelStation } from './station'
 import { clearObstacles, moveObstacle, setObstacles, type Obstacle } from '../obstacles'
@@ -329,6 +329,10 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const loadedOnce = useRef(false)
   const worker = useRef<Worker | null>(null)
   const nextId = useRef(1)
+  // Sports places too close to another: no pitch laid out for them (only the map's own).
+  const tight = useMemo(() => new Set(spaceFields(spots).filter((s) => s.noLayout).map((s) => s.id)), [spots])
+  const tightRef = useRef(tight)
+  tightRef.current = tight
   const focus = useRef<XZ>(spots.find((s) => s.id === stationAt)?.at ?? spots.find((s) => s.id === HOME_ID)?.at ?? [0, 0])
 
   useEffect(() => {
@@ -421,7 +425,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
           out.delete(id)
           continue
         }
-        for (const x of resolvePlaces(c.data, [{ id, at, kind: p.kind, landmark: LANDMARKS[id], name: p.name, type: p.type }])) out.set(x.id, x)
+        for (const x of resolvePlaces(c.data, [{ id, at, kind: p.kind, landmark: LANDMARKS[id], name: p.name, type: p.type, noLayout: tightRef.current.has(id) }])) out.set(x.id, x)
       }
       return out
     })
@@ -462,7 +466,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       const id = nextId.current++
       pending.current.set(id, c.key)
       const far = c.key.includes(':')
-      const req: ChunkRequest = { id, origin, tx: c.tx, ty: c.ty, token, places: far ? [] : spots.filter((x) => !isMapPlace(x.id)).map(({ id, at, kind, landmark, name, type }) => ({ id, at, kind, landmark, name, type })), z: far ? FAR_ZOOM : undefined }
+      const req: ChunkRequest = { id, origin, tx: c.tx, ty: c.ty, token, places: far ? [] : spots.filter((x) => !isMapPlace(x.id)).map(({ id, at, kind, landmark, name, type }) => ({ id, at, kind, landmark, name, type, noLayout: tight.has(id) })), z: far ? FAR_ZOOM : undefined }
       w.postMessage(req)
     }
     // Chunks too far are let go, like Minecraft's render distance.
@@ -572,7 +576,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       const inside = todo.filter(({ at: [x, z] }) => x >= box.x0 && x < box.x1 && z >= box.z0 && z < box.z1)
       if (!inside.length) continue
       // A map place stands in a real building, or plays on its pitch.
-      for (const r of resolvePlaces(c.data, inside.map(({ id, at, kind, name, type }) => ({ id, at, kind, name, type })))) if (r.real || r.field || r.station) found.push(r)
+      for (const r of resolvePlaces(c.data, inside.map(({ id, at, kind, name, type }) => ({ id, at, kind, name, type, noLayout: tight.has(id) })))) if (r.real || r.field || r.station) found.push(r)
     }
     if (found.length) setResolved((m) => new Map([...m, ...found.map((r) => [r.id, r] as const)]))
   }, [spots, chunks]) // eslint-disable-line react-hooks/exhaustive-deps
