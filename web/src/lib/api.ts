@@ -30,7 +30,8 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (res.status === 401 && token) useSession.getState().signOut()
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
-    throw new ApiError(res.status, body.error ?? res.statusText)
+    // A 404 with no message of ours: the server doesn't know this address yet (an older version is running).
+    throw new ApiError(res.status, body.error ?? (res.status === 404 ? "Le serveur n'a pas encore cette fonction : il doit être mis à jour." : res.statusText))
   }
   return res.status === 204 ? (undefined as T) : res.json()
 }
