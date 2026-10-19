@@ -63,6 +63,8 @@ export type Interaction = {
   requires?: { resident?: boolean; minMoney?: number; anyTrait?: string[]; career?: string }
   /** Life stages that can do it; empty = from childhood up. */
   ages?: string[]
+  /** Only at these places of the kind (the Hôtel Ivoire's ice rink…). */
+  places?: string[]
 }
 export type PlaceKind = { id: string; label: string; icon: string; interactions: Interaction[] }
 export type Option = { id: string; label: string; icon: string; hint: string }

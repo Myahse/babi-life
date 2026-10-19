@@ -28,6 +28,9 @@ const ROAD_WIDTH: Record<string, number> = {
   tertiary: 9, tertiary_link: 6, street: 7, street_limited: 6, pedestrian: 4, service: 4.5, track: 4, path: 2.2, construction: 5,
 }
 const UNPAVED = new Set(['track', 'path'])
+/** Water areas smaller than this (m²) are pools and basins, not drawn. */
+const SMALL_WATER = 1200
+
 
 const GREEN = new Set(['park', 'grass', 'wood', 'scrub', 'agriculture', 'cemetery', 'garden', 'golf_course', 'wetland', 'wetland_noveg'])
 const SAND = new Set(['sand', 'beach'])
@@ -139,6 +142,8 @@ export function decodeChunk(o: Origin, tx: number, ty: number, data: Uint8Array,
       if (!kind) continue
       const xz = toXZ(f.extent)
       for (const poly of classifyRings(f.loadGeometry())) {
+        // A little water on its own in the town (a villa's pool, a basin, a fountain the map has): not drawn as a pond on the ground.
+        if (kind === 'water' && ringArea(open(poly[0].map(xz))) < SMALL_WATER) continue
         const rings = poly.map((r) => clipRing(open(r.map(xz)), box)).filter((r) => r.length >= 3)
         if (rings.length && rings[0].length >= 3) chunk.areas.push({ kind, rings })
       }

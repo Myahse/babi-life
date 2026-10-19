@@ -49,6 +49,8 @@ import { NotifyPrompt } from '../components/NotifyPrompt'
 /** Building one's house: its own screen, downloaded when opened. */
 const BuildMode = lazy(() => import('../components/BuildMode'))
 const KartRace = lazy(() => import('../kart/KartRace'))
+// The Hôtel Ivoire's own inside: its hall, ice rink, cinema, casino, terrace.
+const IvoireInside = lazy(() => import('../world3d/interior/IvoireInside').then((m) => ({ default: m.IvoireInside })))
 const StreetMatch = lazy(() => import('../streetball/StreetMatch'))
 
 type Toast = { id: number; title: string; text?: string; money: number; tone: 'random' | 'done' | 'error' | 'promo' | 'event'; kind?: string; icon?: string }
@@ -502,6 +504,10 @@ export function Play() {
         <div className="absolute inset-0 z-[1]">
           {inside!.kind === 'home' && homePlot && !classic ? (
             <HomeInside sim={sim} world={world} plot={homePlot} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} onBuild={() => setBuilding(true)} />
+          ) : inside!.id === 'cocody-hotel-ivoire' ? (
+            <Suspense fallback={null}>
+              <IvoireInside sim={sim} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
+            </Suspense>
           ) : inside!.kind === 'arena' ? (
             <Arena sim={sim} placeId={inside!.id} interactionId={inside!.it} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id)} />
           ) : (
@@ -1015,7 +1021,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
   const career = world.careers.find((c) => c.id === sim.career && (c.kind === place.kind || c.also?.includes(place.kind)))
   const life = lifeOf(world, sim)
   // Things past this age (the biberon for an adult) don't show; things for later do, greyed.
-  const items = [...(career ? [shift(career, sim.careerLevel)] : []), ...kind.interactions.map((it) => (placeId === 'home' ? atHome(it, home) : it))].filter((it) => ageBlock(it, life.stage?.id) !== 'Plus de ton âge')
+  const items = [...(career ? [shift(career, sim.careerLevel)] : []), ...kind.interactions.map((it) => (placeId === 'home' ? atHome(it, home) : it))].filter((it) => ageBlock(it, life.stage?.id) !== 'Plus de ton âge' && (!it.places || it.places.includes(placeId)))
   const busy = !!sim.activity
   const canBuild = placeId === 'home' && here && !!world.materials?.length
   // Building is on one's own lot, bought from 18.

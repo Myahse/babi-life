@@ -12,6 +12,7 @@ import { blockRing } from '../world3d/open/voxel'
 import { Vehicle, type VehicleKind } from '../world3d/vehicles'
 import { Landmark } from '../world3d/open/landmarks'
 import { CameraView } from '../screens/CameraView'
+import { IvoireInside } from '../world3d/interior/IvoireInside'
 import { Snapper } from '../world3d/snapshot'
 import { usePhotoMode } from '../world3d/photoCam'
 import { whereabouts } from '../world3d/whereabouts'
@@ -456,6 +457,7 @@ function Lab() {
   if (view === 'people') return <PeopleLab />
   if (view === 'ride') return <RideLab />
   if (view === 'phonecam') return <PhoneCamLab />
+  if (view === 'ivoire') return <IvoireInside sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)) } as unknown as Sim} interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" />
   if (view === 'home') return <HomeLab />
   if (view === 'plan') return <PlanLab />
   if (view === 'inside') return <InsideLab />

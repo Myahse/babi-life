@@ -9,6 +9,7 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -540,6 +541,9 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 		var ok bool
 		if it, ok = kind.Interaction(interactionID); !ok {
 			return game.Interaction{}, errors.New("action inconnue")
+		}
+		if len(it.Places) > 0 && !slices.Contains(it.Places, placeID) {
+			return game.Interaction{}, errors.New("pas possible ici")
 		}
 		if home {
 			// In one's own house, sleeping takes a bed, cooking a stove…

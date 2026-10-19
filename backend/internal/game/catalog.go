@@ -19,6 +19,8 @@ type Interaction struct {
 	Requires *Requirement `json:"requires,omitempty"`
 	// Ages: the life stages that can do it; empty = from childhood up (KidsUp).
 	Ages []string `json:"ages,omitempty"`
+	// Places: only at these places of the kind (the Hôtel Ivoire's ice rink…); empty = at every one.
+	Places []string `json:"places,omitempty"`
 }
 
 // A Requirement limits an interaction to some Sims.
@@ -451,6 +453,11 @@ var Kinds = map[string]PlaceKind{
 			{ID: "brunch-lagune", Label: "Bruncher face à la lagune", Icon: "utensils", Minutes: 90, Cost: 20000, Effect: Needs{Hunger: 60, Fun: 20, Social: 15}, MinHour: 10, MaxHour: 15},
 			{ID: "bar-hotel", Ages: Adults, Label: "Prendre un verre au bar de l'hôtel", Icon: "beer", Minutes: 60, Cost: 6000, Effect: Needs{Social: 20, Fun: 25}, MinHour: 17},
 			{ID: "nuit-hotel", Ages: Adults, Label: "Passer la nuit à l'hôtel", Icon: "bed-double", Minutes: 8 * 60, Cost: 60000, Effect: Needs{Energy: 100, Hygiene: 40, Fun: 20}, MinHour: 20, MaxHour: 2},
+			// The Hôtel Ivoire's own: its ice rink, its cinema and its casino (world3d/interior/IvoireInside.tsx).
+			{ID: "patinoire", Label: "Patiner à la patinoire", Icon: "snowflake", Minutes: 60, Cost: 5000, Effect: Needs{Fun: 40, Social: 10, Energy: -15}, MinHour: 10, MaxHour: 22, Places: []string{HotelIvoireID}},
+			{ID: "cinema-ivoire", Label: "Voir un film au Ciné Ivoire", Icon: "clapperboard", Minutes: 2 * 60, Cost: 3500, Effect: Needs{Fun: 40, Energy: -5}, MinHour: 12, MaxHour: 2, Places: []string{HotelIvoireID}},
+			{ID: "casino-ivoire", Ages: Adults, Label: "Passer la soirée au casino", Icon: "dice-5", Minutes: 90, Cost: 15000, Effect: Needs{Fun: 45, Social: 15, Energy: -10}, MinHour: 18, MaxHour: 4, Places: []string{HotelIvoireID}},
+			{ID: "lobby-ivoire", Label: "Flâner dans le grand hall", Icon: "sparkles", Minutes: 30, Effect: Needs{Fun: 15, Social: 5}, Places: []string{HotelIvoireID}},
 		},
 		Events: []RandomEvent{
 			{Text: "Une star du coupé-décalé traverse le hall, entourée de gardes du corps.", Effect: Needs{Fun: 20}},
@@ -575,3 +582,6 @@ var GenericEvents = []RandomEvent{
 	{Text: "Tu as gagné 2 000 Djai au pari du match. La chance est avec toi !", Money: 2000, Effect: Needs{Fun: 12}},
 	{Text: "Un vendeur ambulant t'a eu avec ses lunettes « originales » : 1 500 Djai.", Money: -1500, Effect: Needs{Fun: 3}},
 }
+
+// HotelIvoireID: the Hôtel Ivoire (world/world.go), whose ice rink, cinema and casino are its own.
+const HotelIvoireID = "cocody-hotel-ivoire"
