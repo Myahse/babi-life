@@ -5,7 +5,7 @@ import { LotOffers } from '../components/Lots'
 import type { ActionResult, Commune, Lot, Sim, World } from '../lib/types'
 import { iconFor, kindColors } from '../components/icons'
 import { Chip, Coin, IconTile, Row } from '../components/ui'
-import { DEPOSIT_WEEKS, OWN_HOUSE, amount, duration, hours, housingOf, neededToPromote, untilSaturday } from '../game/rules'
+import { DEPOSIT_WEEKS, OWN_HOUSE, actionLength, amount, duration, hours, housingOf, neededToPromote, untilSaturday } from '../game/rules'
 import { useState } from 'react'
 
 export type Act = (label: string, icon: string, kind: string, call: () => Promise<ActionResult>) => Promise<boolean>
@@ -94,7 +94,7 @@ function CareerCard({ world, sim, commune, act, onWalk, onMap }: AppProps & { on
             <Coin size={13} /> {amount(level.pay)} Djai / service
           </Chip>
           <Chip tone="dark">
-            <Clock3 size={12} /> {hours(c)} · {duration(c.minutes)}
+            <Clock3 size={12} /> {hours(c)} · {duration(actionLength(c.minutes))}
           </Chip>
         </div>
         {next ? (

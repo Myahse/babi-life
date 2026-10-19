@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ArrowRight, Bus, Car, CarTaxiFront, Clock3, Hand, HandCoins, Minus, Plus, UserRound } from 'lucide-react'
 import type { Ride, Sim, World } from '../lib/types'
-import { ageOf, amount, duration, rideQuote, trip } from '../game/rules'
+import { actionLength, ageOf, amount, duration, rideQuote, trip } from '../game/rules'
 import { classFare, compteurQuote, inkOn } from '../game/rides'
 import { Chip, Coin, IconTile } from './ui'
 
@@ -76,7 +76,7 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
           </div>
         </div>
         <Chip>
-          <Clock3 size={12} /> {duration(c.minutes)}
+          <Clock3 size={12} /> {duration(actionLength(c.minutes))}
         </Chip>
       </div>
 

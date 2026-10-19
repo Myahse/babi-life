@@ -106,6 +106,15 @@ export function blockedBy(it: Interaction, sim: Sim, cityId: string, communeId: 
 export const fcfa = (n: number) => `${n.toLocaleString('fr-FR')} Djai`
 export const amount = (n: number) => n.toLocaleString('fr-FR')
 
+/** The longest an action takes, in real minutes (game/realtime.go MaxAction). */
+export const MAX_ACTION = 15
+/**
+ * How many real minutes an action takes, from its length in the catalog
+ * (game/realtime.go Length): a shower of 20 min takes 2, the zoo's 2 h take
+ * 6, a shift or a night's sleep 15.
+ */
+export const actionLength = (m: number) => (m <= 30 ? Math.max(1, Math.ceil(m / 10)) : Math.min(MAX_ACTION, 3 + Math.floor((m - 30 + 15) / 30)))
+
 export function duration(minutes: number) {
   if (minutes < 60) return `${minutes} min`
   if (minutes >= 24 * 60) {

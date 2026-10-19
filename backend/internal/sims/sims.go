@@ -470,7 +470,7 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return game.Outcome{}, nil, err
 		}
-		text := fmt.Sprintf("%s : %s (%s)", s.FirstName, it.Label, humanMinutes(it.Minutes))
+		text := fmt.Sprintf("%s : %s (%s)", s.FirstName, it.Label, humanMinutes(game.Length(it.Minutes)))
 		return game.Outcome{Text: text, Money: -max(it.Cost, 0)}, gymEvents(s, it), nil
 	})
 }

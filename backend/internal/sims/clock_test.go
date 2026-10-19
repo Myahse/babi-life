@@ -22,16 +22,16 @@ func newSim() Sim {
 
 func TestActivityEndsWhileAway(t *testing.T) {
 	s := newSim()
-	sell, _ := game.Kinds["market"].Interaction("sell-goods") // 4 h, earns 4 000F
+	sell, _ := game.Kinds["market"].Interaction("sell-goods") // 4 h (10 real minutes), earns 4 000F
 	if err := s.start(sell, "yop-marche", "market", "Marché de Siporex", nil, ""); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.start(sell, "yop-marche", "market", "Marché de Siporex", nil, ""); err != game.ErrBusy {
 		t.Fatalf("a busy Sim can't start something else, got %v", err)
 	}
-	ev := s.advance(noon.Add(time.Hour), noLuck())
+	ev := s.advance(noon.Add(5*time.Minute), noLuck())
 	if s.Activity == nil || len(ev) != 0 || s.Money != 10000 {
-		t.Fatalf("after 1 h it is still selling: %+v %v %d", s.Activity, ev, s.Money)
+		t.Fatalf("after 5 min it is still selling: %+v %v %d", s.Activity, ev, s.Money)
 	}
 	ev = s.advance(noon.Add(6*time.Hour), noLuck())
 	if s.Activity != nil || s.Money < 14000 || len(ev) == 0 || !strings.Contains(ev[0].Text, "Vendre") {
@@ -46,10 +46,10 @@ func TestStopPaysProRata(t *testing.T) {
 	s := newSim()
 	sell, _ := game.Kinds["market"].Interaction("sell-goods")
 	_ = s.start(sell, "yop-marche", "market", "Marché de Siporex", nil, "")
-	s.advance(noon.Add(time.Hour), noLuck())
+	s.advance(noon.Add(5*time.Minute), noLuck())
 	ev, err := s.stop()
-	if err != nil || s.Activity != nil || s.Money != 11000 || ev.Money != 1000 {
-		t.Fatalf("1 h of 4: money %d ev %+v err %v", s.Money, ev, err)
+	if err != nil || s.Activity != nil || s.Money != 12000 || ev.Money != 2000 {
+		t.Fatalf("5 min of 10: money %d ev %+v err %v", s.Money, ev, err)
 	}
 }
 
@@ -112,8 +112,8 @@ func TestCrossingTheLagoonAtRushHourCanJam(t *testing.T) {
 		t.Fatal(err)
 	}
 	a := s.Activity
-	if a.Trip.Incident == "" || a.End-a.Start <= base {
-		t.Fatalf("a jam should slow the trip: incident %q, %d min vs %d", a.Trip.Incident, a.End-a.Start, base)
+	if a.Trip.Incident == "" || a.End-a.Start <= game.Length(base) {
+		t.Fatalf("a jam should slow the trip: incident %q, %d min vs %d", a.Trip.Incident, a.End-a.Start, game.Length(base))
 	}
 }
 

@@ -126,6 +126,7 @@ func (s *Sim) start(it game.Interaction, placeID, placeKind, placeName string, s
 		return err
 	}
 	s.setState(st)
+	it.Minutes = game.Length(it.Minutes)
 	s.Activity = &game.Activity{
 		Kind: "do", PlaceID: placeID, PlaceKind: placeKind, PlaceName: placeName, Interaction: it,
 		Start: s.GameMinutes, End: s.GameMinutes + max(it.Minutes, 1), Career: career, Surprises: slices.Clone(surprises),
@@ -259,6 +260,8 @@ func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, ride Ride, r
 		trip.Incident = inc.Text
 		s.Needs = s.Needs.Add(inc.Effect)
 	}
+	// The way takes real minutes too, the long ones shortened like actions.
+	minutes = game.Length(minutes)
 	s.Activity = &game.Activity{
 		Kind: "travel", Interaction: game.Interaction{ID: "travel", Label: label, Icon: "car-taxi-front", Minutes: minutes},
 		Start: s.GameMinutes, End: s.GameMinutes + minutes,

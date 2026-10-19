@@ -18,7 +18,7 @@ import { Neighbourhood } from '../world3d/Neighbourhood'
 import { OpenWorld } from '../world3d/open/OpenWorld'
 import { iconFor, kindColors } from '../components/icons'
 import { Chip, Coin, DayNight, IconTile, MotiveRing, MoodPin, Row, needColor } from '../components/ui'
-import { NEEDS, ageBlock, amount, atHome, blockedBy, homeLacks, housingOf, lifeOf, minutesToAge, clock, duration, mood, openAt, openingLabel, predict, shift } from '../game/rules'
+import { NEEDS, actionLength, ageBlock, amount, atHome, blockedBy, homeLacks, housingOf, lifeOf, minutesToAge, clock, duration, mood, openAt, openingLabel, predict, shift } from '../game/rules'
 import { DOORS_OPEN, eventAt, useStadium, when } from '../lib/stadium'
 import { HomeApp, JobsApp, type Act } from './phoneApps'
 import { NewsApp, topicOf } from './NewsApp'
@@ -1050,7 +1050,7 @@ function ActionButton({ it, colors, open, broke, busy, reason, onPick, compact }
         <span className="block font-display text-[15px] leading-tight font-extrabold">{it.label}</span>
         <span className="mt-1 flex flex-wrap items-center gap-1">
           <Chip>
-            <Clock3 size={11} /> {duration(it.minutes)}
+            <Clock3 size={11} /> {duration(actionLength(it.minutes))}
           </Chip>
           {it.cost !== 0 && (
             <Chip tone={it.cost < 0 ? 'good' : 'gold'}>
