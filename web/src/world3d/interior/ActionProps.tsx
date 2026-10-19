@@ -32,7 +32,15 @@ export function ActionProps({ id, kind, lying }: { id?: string; kind: string; ly
   if (id === 'devoirs' || (/cours|biblio|write/.test(id) && kind !== 'office')) return <Notebook />
   // The bottles on the club's VIP table (in front of the sofa): whisky, or champagne with its sparkler.
   if (id === 'bouteille-whisky') return <Bottle p={[0.25, 0.44, 0.9]} whisky />
-  if (id === 'champagne-vip' || id === 'tournee-vendredi')
+  // The round for the whole club: the bottle held up high, its sparkler lit, on the dance floor.
+  if (id === 'tournee-vendredi')
+    return (
+      <>
+        <Bottle p={[0.32, 1.95, 0.1]} />
+        <Sparkler p={[0.32, 2.3, 0.1]} />
+      </>
+    )
+  if (id === 'champagne-vip')
     return (
       <>
         <Bottle p={[0.2, 0.44, 0.9]} />

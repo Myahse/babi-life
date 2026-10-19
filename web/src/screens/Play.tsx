@@ -470,6 +470,8 @@ export function Play() {
             onArrive: (id: string) => (setOutside(false), setPlaceId(id)),
             busy: doing ? { icon: doing.interaction.icon, kind: doing.placeKind ?? '', id: doing.interaction.id } : pending,
             stationAt: doing?.placeId ?? null,
+            // Busy inside (the street seen through « Voir la rue »): the Sim is in there, not at the door.
+            indoors: !!inside && !!doing,
             nameTag: user?.username ? `@${user.username}` : sim.firstName,
             happening,
             onNear: setNear,

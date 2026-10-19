@@ -39,6 +39,8 @@ export type Props = {
   happening: { id: string; icon: string; label: string } | null
   /** The place the Sim is busy at when the scene opens (it starts there). */
   stationAt?: string | null
+  /** Busy inside a place (the bar, the bed, the counter): the Sim isn't seen out in the street. */
+  indoors?: boolean
   /** Shown above the player's Sim (their username). */
   nameTag?: string
   /** The place whose door the Sim is standing at after walking with the pad (null when none). */
@@ -123,7 +125,7 @@ function NightLights({ night }: { night: boolean }) {
   return null
 }
 
-function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, nameTag, onNear, frozen, hour, players, onPickPlayer, recenter, onFreeCamera }: Props & { night: boolean; dusk: boolean }) {
+function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, indoors, nameTag, onNear, frozen, hour, players, onPickPlayer, recenter, onFreeCamera }: Props & { night: boolean; dusk: boolean }) {
   const rain = happening?.id === 'pluie'
   const blackout = night && happening?.id === 'delestage'
   const lit = night && !blackout // street lamps and windows
@@ -223,7 +225,7 @@ function World3D({ world, commune, sim, moodColor, goTo, onArrive, onPick, busy,
       )}
 
       {players && players.length > 0 && <OtherPlayers players={players} lots={places} labels={labels} onPick={(id) => onPickPlayer?.(id)} />}
-      <Walker stage={lifeOf(world, sim).stage?.id ?? 'adulte'} nameTag={nameTag} labels={labels} stationAt={stationAt ?? null} sim={sim} lots={places} nav={nav} moodColor={moodColor} goTo={goTo} onArrive={onArrive} busy={busy} onNear={onNear} frozen={!!frozen} recenter={recenter ?? 0} onFreeCamera={onFreeCamera} />
+      <Walker stage={lifeOf(world, sim).stage?.id ?? 'adulte'} nameTag={nameTag} labels={labels} stationAt={stationAt ?? null} hidden={indoors} sim={sim} lots={places} nav={nav} moodColor={moodColor} goTo={goTo} onArrive={onArrive} busy={busy} onNear={onNear} frozen={!!frozen} recenter={recenter ?? 0} onFreeCamera={onFreeCamera} />
     </>
   )
 }

@@ -94,10 +94,12 @@ type Props = {
   shoulder?: boolean
   /** Busy at home, in one's own house: the piece of furniture it's done on. */
   homeSpot?: HomeSpot
+  /** Inside a place (doing something there): not drawn in the street. */
+  hidden?: boolean
 }
 
 /** The player's Sim: walks to places, with the pad or by tapping the ground; the camera follows. */
-export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy, stationAt, nameTag, labels, onNear, frozen, recenter, onFreeCamera, perspective, close, shoulder, homeSpot }: Props) {
+export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy, stationAt, nameTag, labels, onNear, frozen, recenter, onFreeCamera, perspective, close, shoulder, homeSpot, hidden }: Props) {
   const group = useRef<THREE.Group>(null)
   const path = useRef<[number, number][]>([])
   const target = useRef<string | null>(null)
@@ -625,7 +627,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
       {route && <RouteDots route={route} from={group} heightAt={nav.heightAt} />}
-      <group ref={group}>
+      <group ref={group} visible={!hidden}>
         {ride ? (
           // On the moto-taxi, behind the driver (the moto's front is its +x: turned to face the way).
           <>
@@ -652,7 +654,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         )}
         {/* Outdoors, what the Sim is doing is set around it (the ball, the towel, the bus stop…) */}
         {busy && !walking && !onTouchline && <OutdoorAction id={busy.id} />}
-        {labels && nameTag && (
+        {labels && nameTag && !hidden && (
           <Html position={[0, 2.45, 0]} center zIndexRange={[28, 20]}>
             <span className="pointer-events-none rounded-md bg-[#0f1230]/80 px-1.5 py-0.5 text-[11px] font-extrabold whitespace-nowrap text-white">{nameTag}</span>
           </Html>

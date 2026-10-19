@@ -232,7 +232,7 @@ function useMaterials(night: boolean) {
   return mats
 }
 
-function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, nameTag, onNear, frozen, players, onPickPlayer, recenter, onFreeCamera, closeView, shoulderView, token, onFail, onStreetBuy, onRobbed, onTalk, onCall, talkingTo, plotsVersion, onMapPlaces, onHomeSpots }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void }) {
+function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, indoors, nameTag, onNear, frozen, players, onPickPlayer, recenter, onFreeCamera, closeView, shoulderView, token, onFail, onStreetBuy, onRobbed, onTalk, onCall, talkingTo, plotsVersion, onMapPlaces, onHomeSpots }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void }) {
   const origin = useMemo<Origin>(() => ({ lat: commune.lat, lng: commune.lng }), [commune.lat, commune.lng])
   const mats = useMaterials(night)
   const home = sim.homeCity === sim.city && sim.homeCommune === commune.id
@@ -874,6 +874,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
 
       {ready && (
         <Walker
+          hidden={indoors}
           perspective
           close={!!closeView}
           shoulder={!!shoulderView}

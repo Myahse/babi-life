@@ -40,7 +40,7 @@ const RICH = typeof navigator === 'undefined' || (navigator.hardwareConcurrency 
 type Room = { floor: string; wall: string; dark?: boolean; furniture: React.ReactNode; spots: Record<string, Spot>; crowd: Spot[] }
 
 /** What the Sim does there: where it goes and how it moves. */
-function action(kind: string, id: string | undefined): { spot: string; pose: Pose } {
+export function action(kind: string, id: string | undefined): { spot: string; pose: Pose } {
   if (!id) return { spot: 'entrance', pose: 'idle' }
   // At work: where the job is done there, and how.
   if (id === 'work') {
@@ -62,7 +62,9 @@ function action(kind: string, id: string | undefined): { spot: string; pose: Pos
   if (id === 'douche-vestiaire') return { spot: 'shower', pose: 'wash' }
   if (/^(degrade|boule-a-zero|taille-barbe|tresses|tissage|chignon|manucure|coupe-courte|iroquoise|nattes|vanilles|macarons|carre|coudre-pagne|retouche)$/.test(id)) return { spot: 'chair', pose: 'sit' }
   // Gbairai: telling the quarter's news, with the hands.
-  if (id === 'gbairai') return { spot: kind === 'barbier' || kind === 'salon' ? 'bench' : 'table', pose: 'rant' }
+  if (id === 'gbairai') return kind === 'couture' ? { spot: 'chair', pose: 'sit' } : { spot: kind === 'barbier' || kind === 'salon' ? 'bench' : 'table', pose: 'rant' }
+  // The coffee break at the office: a cup at one's desk.
+  if (id === 'coffee-break') return { spot: 'desk', pose: 'drink' }
   if (id === 'piscine-hotel') return { spot: 'pool', pose: 'idle' }
   if (id === 'nuit-hotel') return { spot: 'bed', pose: 'sleep' }
   if (id === 'brunch-lagune' || id === 'resto-u') return { spot: 'table', pose: 'eat' }
@@ -80,14 +82,16 @@ function action(kind: string, id: string | undefined): { spot: string; pose: Pos
   if (/^(medicaments|conseil|etat-civil|legalisation|renseignement|declaration-perte|abonnement-salle)$/.test(id)) return { spot: 'counter', pose: 'talk' }
   if (id === 'mariage-civil') return { spot: 'counter', pose: 'cheer' }
   if (id === 'aller-ecole') return { spot: 'entrance', pose: 'wave' }
-  if (/^(medicaments|conseil|credit|courses|sucrerie)$/.test(id)) return { spot: kind === 'boutique' ? 'stall' : 'counter', pose: id === 'sucrerie' ? 'drink' : 'idle' }
+  // The cold drink bought at the boutique, drunk sitting at its little table.
+  if (id === 'sucrerie') return { spot: 'table', pose: 'drink' }
+  if (/^(medicaments|conseil|credit|courses)$/.test(id)) return { spot: kind === 'boutique' ? 'stall' : 'counter', pose: 'idle' }
   if (id === 'cook-attieke') return { spot: 'stove', pose: 'cook' }
   if (id === 'watch-tv' || id === 'call-family') return { spot: 'sofa', pose: 'sit' }
   if (id === 'devoirs' || id === 'jouer-cour') return { spot: 'table', pose: id === 'devoirs' ? 'write' : 'dance' }
   if (id.endsWith('travaillement')) return { spot: 'floor', pose: 'throw' }
   // The bottles, at the VIP table; the Friday round, standing at it, glass up.
   if (id === 'bouteille-whisky' || id === 'champagne-vip') return { spot: 'table', pose: 'drink' }
-  if (id === 'tournee-vendredi') return { spot: 'table', pose: 'cheer' }
+  if (id === 'tournee-vendredi') return { spot: 'floor', pose: 'cheer' }
   if (/dance|party|coupe/.test(id)) return { spot: 'floor', pose: 'dance' }
   if (/^(drink|milkshake|coffee)/.test(id) || id.includes('drink')) return { spot: 'table', pose: 'drink' }
   if (/^(eat|burger|glace|anniversaire)/.test(id) || id.startsWith('golvo-')) return { spot: 'table', pose: 'eat' }
@@ -303,7 +307,7 @@ function shower(id?: string) {
 /** The new kinds of places furnished like their nearest one. */
 const ROOM_LIKE: Record<string, string> = { boutique: 'market' }
 
-function room(kindIn: string, housing: string): Room {
+export function room(kindIn: string, housing: string): Room {
   const kind = ROOM_LIKE[kindIn] ?? kindIn
   switch (kind) {
     case 'home': {
@@ -513,6 +517,8 @@ function room(kindIn: string, housing: string): Room {
         wall: kind === 'mall' ? '#ffffff' : '#c9a46b',
         furniture: (
           <>
+            {/* A little table by the wall, to eat or drink what was bought */}
+            <Table p={[4, 0, 3.3]} c={kind === 'mall' ? '#f4f4f4' : '#f4f1ea'} chairs={kind === 'mall' ? '#2a6f97' : '#d62828'} />
             {[-3.5, 0, 3.5].flatMap((x) =>
               [-2, 1.5].map((z) => (
                 <group key={`${x}${z}`} position={[x, 0, z]}>
@@ -530,7 +536,8 @@ function room(kindIn: string, housing: string): Room {
         ),
         spots: {
           stall: { p: [0, 0, 0.6], r: Math.PI, pose: 'busy' },
-          table: { p: [0, 0, 3], pose: 'eat' },
+          // On the chair at the little table, facing it.
+          table: { p: [4, 0, 4.15], r: Math.PI, pose: 'eat' },
           entrance: { p: [0, 0, 3.6], r: Math.PI, pose: 'idle' },
           counter: { p: [0, 0, 0.6], r: Math.PI, pose: 'idle' },
         },
