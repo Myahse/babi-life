@@ -513,6 +513,19 @@ var Kinds = map[string]PlaceKind{
 			{Text: "La hyène fait les cent pas derrière le grillage sans te quitter des yeux.", Effect: Needs{Fun: 5}},
 		},
 	},
+	// Babi Karting (invented for the game): the circuit, the karts, the races of
+	// three laps against the quarter's drivers that the player drives (the web's kart game).
+	"karting": {
+		ID: "karting", Label: "Karting", Icon: "car",
+		Interactions: []Interaction{
+			{ID: "course-kart", Ages: TeensUp, Label: "Faire une course de karting (3 tours)", Icon: "car", Minutes: 20, Cost: 3000, Effect: Needs{Fun: 45, Social: 10, Energy: -10}, MinHour: 10, MaxHour: 23},
+			{ID: "regarder-kart", Label: "Regarder les courses depuis la tribune", Icon: "flag", Minutes: 30, Effect: Needs{Fun: 15, Social: 10}, MinHour: 10, MaxHour: 23},
+		},
+		Events: []RandomEvent{
+			{Text: "Tu doubles deux karts dans le dernier virage : la tribune se lève.", Effect: Needs{Fun: 10, Social: 5}},
+			{Text: "Une banane plantain sur la piste, et tu fais un tête-à-queue devant tout le monde.", Effect: Needs{Fun: 5}},
+		},
+	},
 	"nature": {
 		ID: "nature", Label: "Site naturel", Icon: "mountain",
 		Interactions: []Interaction{

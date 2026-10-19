@@ -43,6 +43,7 @@ import type { Track } from '../audio/music'
 
 /** Building one's house: its own screen, downloaded when opened. */
 const BuildMode = lazy(() => import('../components/BuildMode'))
+const KartRace = lazy(() => import('../kart/KartRace'))
 
 type Toast = { id: number; title: string; text?: string; money: number; tone: 'random' | 'done' | 'error' | 'promo' | 'event'; kind?: string; icon?: string }
 
@@ -354,6 +355,15 @@ export function Play() {
   // …and where they are in the street, a few times a second.
   useLive(base?.sim.id, classic ? 'street' : 'open', `${sim?.city}/${sim?.commune}`)
 
+  // At Babi Karting: the race opens when the Sim starts one, and stays until the player leaves it.
+  const kartAct = sim?.activity?.kind === 'do' && sim.activity.interaction.id === 'course-kart' ? sim.activity : null
+  const raceKey = kartAct ? `${kartAct.placeId}:${kartAct.start}` : null
+  const [racing, setRacing] = useState<string | null>(null)
+  const [raced, setRaced] = useState<string | null>(null)
+  useEffect(() => {
+    if (raceKey && raceKey !== raced) setRacing(raceKey)
+  }, [raceKey, raced])
+
   if (!sim) {
     return (
       <div className="grid h-full place-items-center bg-[var(--color-night)] text-white">
@@ -418,6 +428,19 @@ export function Play() {
 
   return (
     <div className="relative h-full overflow-hidden bg-[var(--color-night)] select-none">
+      {racing && (
+        <Suspense fallback={<div className="fixed inset-0 z-50 grid place-items-center bg-[#87c5ef] font-display text-2xl font-extrabold text-white">Babi Karting…</div>}>
+          <KartRace
+            name={sim.firstName}
+            look={sim.look}
+            gender={sim.gender}
+            onExit={() => {
+              setRaced(racing)
+              setRacing(null)
+            }}
+          />
+        </Suspense>
+      )}
       {showInside && (
         <div className="absolute inset-0 z-[1]">
           {inside!.kind === 'arena' ? (

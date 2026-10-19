@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { createRoot } from 'react-dom/client'
+import '../index.css'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
@@ -20,6 +21,7 @@ import { moveObstacle } from '../world3d/obstacles'
 import { freezeWorldTime } from '../lib/worldClock'
 import { StreetSpot, type StreetPeopleSpot } from '../world3d/open/streetPeople'
 import { homeSpotsOf } from '../world3d/homeSpots'
+import KartRace from '../kart/KartRace'
 import { House } from '../world3d/build/House'
 import { FurnitureSet } from '../world3d/build/Furniture'
 import { FamilyScene } from '../avatar/Family'
@@ -429,6 +431,7 @@ function Lab() {
   if (view === 'people') return <PeopleLab />
   if (view === 'ride') return <RideLab />
   if (view === 'home') return <HomeLab />
+  if (view === 'kart') return <KartRace name="Awa" look={randomLook('femme', seededLab(5))} gender="femme" onExit={() => location.reload()} />
   if (view === 'stadium') return <StadiumLab />
   if (view === 'family') return <FamilyScene familyId={q.get('f') ?? 'gnambro'} look={randomLook((q.get('g') ?? 'femme') as 'femme', seededLab(Number(q.get('seed') ?? 3)))} gender={(q.get('g') ?? 'femme') as 'femme'} className="!h-screen !w-screen" />
   if (view === 'interior') return <InteriorLab />

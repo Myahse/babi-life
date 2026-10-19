@@ -307,6 +307,7 @@ var Cities = []City{
 				Place{ID: "marcory-burger-king", Name: "Burger King", Kind: "restaurant", Lat: 5.2972, Lng: -3.9874, Real: true, Approx: true,
 					Operator: "Servair Abidjan (franchise, 2015)",
 					Source:   game.Partial("Premier Burger King du pays, ouvert en 2015 dans PlaYce Marcory, en franchise avec Servair Abidjan ; activité actuelle à confirmer.", srcBurgerKing)},
+				fictional("marcory-karting", "Babi Karting", "karting", "Zone 4", 5.2905, -3.9935),
 			),
 			abidjanCommune("koumassi", "Koumassi", "Populaire, vivante, au bord de la lagune.", 5.2930, -3.9500, "sud",
 				Place{ID: "koumassi-marche", Name: "Marché de Koumassi", Kind: "market", Lat: 5.2960, Lng: -3.9520, Real: true, Approx: true, Source: game.Unverified("Marché de Koumassi ; à confirmer.")},
