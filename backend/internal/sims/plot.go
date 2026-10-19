@@ -3,42 +3,107 @@ package sims
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/jackc/pgx/v5"
 
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
+	"github.com/myahse/babi-life/backend/internal/world"
 )
 
-var errTooYoungToBuild = errors.New("trop petit pour construire : attends d'être ado")
+var (
+	errTooYoungForLot = errors.New("on achète un terrain à 18 ans : d'ici là, tu vis chez tes parents")
+	errLotNotBigger   = errors.New("choisis un terrain plus grand que le tien")
+	errNoSuchLot      = errors.New("terrain inconnu")
+	errMoveInArrears  = errors.New("règle d'abord tes arriérés de loyer avant de déménager")
+	errAlreadyHome    = errors.New("tu habites déjà ta maison")
+)
 
-// The Sim's plot: the house the player builds, block by block (game/build.go).
-// Others in the commune see it where the Sim lives.
+// One's own house (game/house.go): from 18 the Sim buys a lot in the commune
+// where it is, builds on it block by block, furnishes it, and moves in. Others
+// in the commune see the house on its lot.
+
+// Lot is the land a Sim owns.
+type Lot struct {
+	W       int    `json:"w"`
+	D       int    `json:"d"`
+	Area    int    `json:"area"`
+	City    string `json:"city"`
+	Commune string `json:"commune"`
+	Paid    int    `json:"paid"`
+}
 
 type Plot struct {
 	SimID     string       `json:"simId"`
 	FirstName string       `json:"firstName,omitempty"`
 	Blocks    []game.Block `json:"blocks"`
+	Furniture []game.Piece `json:"furniture"`
 	Built     int          `json:"built"`
+	Lot       *Lot         `json:"lot"`
+	// Livable: a covered bed and toilets; Home: the Sim lives there.
+	Livable bool `json:"livable"`
+	Home    bool `json:"home"`
+}
+
+func (p Plot) house() game.House {
+	h := game.House{Blocks: p.Blocks, Furniture: p.Furniture, Built: p.Built}
+	if p.Lot != nil {
+		h.W, h.D = p.Lot.W, p.Lot.D
+	}
+	return h
+}
+
+const plotColumns = `p.sim_id, p.blocks, p.built, p.furniture, p.lot_w, p.lot_d, p.lot_city, p.lot_commune, p.lot_paid`
+
+func scanPlot(row pgx.Row, extra ...any) (Plot, error) {
+	var p Plot
+	var l Lot
+	err := row.Scan(append([]any{&p.SimID, &p.Blocks, &p.Built, &p.Furniture, &l.W, &l.D, &l.City, &l.Commune, &l.Paid}, extra...)...)
+	if err == nil && l.W > 0 {
+		l.Area = l.W * l.D
+		p.Lot = &l
+	}
+	p.Livable = p.house().Livable()
+	return p, err
 }
 
 func loadPlot(ctx context.Context, q interface {
 	QueryRow(context.Context, string, ...any) pgx.Row
 }, simID string, lock bool) (Plot, error) {
-	p := Plot{SimID: simID, Blocks: []game.Block{}}
-	query := `SELECT blocks, built FROM plots WHERE sim_id = $1`
+	query := `SELECT ` + plotColumns + ` FROM plots p WHERE p.sim_id = $1`
 	if lock {
 		query += ` FOR UPDATE`
 	}
-	err := q.QueryRow(ctx, query, simID).Scan(&p.Blocks, &p.Built)
+	p, err := scanPlot(q.QueryRow(ctx, query, simID))
 	if errors.Is(err, pgx.ErrNoRows) {
-		return p, nil
+		return Plot{SimID: simID, Blocks: []game.Block{}, Furniture: []game.Piece{}}, nil
 	}
 	return p, err
 }
 
-// plot: GET /sims/{id}/plot — the player's own plot.
+func savePlot(ctx context.Context, tx pgx.Tx, p Plot) error {
+	l := p.Lot
+	if l == nil {
+		l = &Lot{}
+	}
+	if p.Blocks == nil {
+		p.Blocks = []game.Block{}
+	}
+	if p.Furniture == nil {
+		p.Furniture = []game.Piece{}
+	}
+	_, err := tx.Exec(ctx, `
+		INSERT INTO plots (sim_id, blocks, built, furniture, lot_w, lot_d, lot_city, lot_commune, lot_paid, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now())
+		ON CONFLICT (sim_id) DO UPDATE SET blocks = $2, built = $3, furniture = $4, lot_w = $5, lot_d = $6,
+			lot_city = $7, lot_commune = $8, lot_paid = $9, updated_at = now()`,
+		p.SimID, p.Blocks, p.Built, p.Furniture, l.W, l.D, l.City, l.Commune, l.Paid)
+	return err
+}
+
+// plot: GET /sims/{id}/plot — the player's own lot and house.
 func (h *Handler) plot(w http.ResponseWriter, r *http.Request) {
 	id, _, _, err := h.mySim(r)
 	if err != nil {
@@ -50,29 +115,161 @@ func (h *Handler) plot(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 		return
 	}
+	var housing string
+	_ = h.DB.QueryRow(r.Context(), `SELECT housing FROM sims WHERE id = $1`, id).Scan(&housing)
+	p.Home = housing == game.OwnHouse
 	httpx.JSON(w, http.StatusOK, p)
 }
 
-// build: PUT /sims/{id}/plot — blocks placed and taken down, paid from the Sim's money.
+// LotOffer is a lot for sale in the commune where the Sim is.
+type LotOffer struct {
+	game.LotSize
+	Area     int    `json:"area"`
+	Price    int    `json:"price"`
+	PerM2    int    `json:"perM2"`
+	Commune  string `json:"commune"`
+	Name     string `json:"name"`
+	Upgrade  bool   `json:"upgrade"` // bigger than the lot one has, here
+	Payable  int    `json:"payable"` // what it costs now (the old lot counted)
+	Possible bool   `json:"possible"`
+}
+
+func offers(s *Sim, p Plot) []LotOffer {
+	name := s.Commune
+	if _, cm, ok := world.FindCommune(s.City, s.Commune); ok {
+		name = cm.Name
+	}
+	perM2, ok := game.LotPricePerM2[s.Commune]
+	if !ok {
+		perM2 = game.DefaultLotPrice
+	}
+	out := make([]LotOffer, 0, len(game.LotSizes))
+	for _, l := range game.LotSizes {
+		o := LotOffer{LotSize: l, Area: l.Area(), Price: game.LotPrice(s.Commune, l), PerM2: perM2, Commune: s.Commune, Name: name}
+		o.Payable, o.Possible = o.Price, true
+		if p.Lot != nil {
+			here := p.Lot.City == s.City && p.Lot.Commune == s.Commune
+			o.Upgrade = here && l.Area() > p.Lot.Area
+			switch {
+			case here && !o.Upgrade:
+				o.Possible = false
+			case here:
+				o.Payable = max(0, o.Price-p.Lot.Paid)
+			}
+		}
+		out = append(out, o)
+	}
+	return out
+}
+
+// lotOffers: GET /sims/{id}/lots — the lots for sale where the Sim is, and its own.
+func (h *Handler) lotOffers(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id, _, _, err := h.mySim(r)
+	if err != nil {
+		httpx.Error(w, http.StatusNotFound, "sim introuvable")
+		return
+	}
+	s, err := scanSim(h.DB.QueryRow(ctx, `SELECT `+simColumns+` FROM sims WHERE id = $1`, id))
+	if err != nil {
+		httpx.Error(w, http.StatusNotFound, "sim introuvable")
+		return
+	}
+	p, err := loadPlot(ctx, h.DB, id, false)
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+		return
+	}
+	httpx.JSON(w, http.StatusOK, map[string]any{"offers": offers(&s, p), "lot": p.Lot, "fees": game.LotFees, "adult": !s.minor()})
+}
+
+// buyLot: POST /sims/{id}/lot — buys a lot where the Sim is. A bigger lot in
+// the same commune keeps the house (what was paid counts); a lot elsewhere
+// needs the old one cleared, and the old one is sold back at 90 %.
+func (h *Handler) buyLot(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Size string `json:"size"`
+	}
+	if err := httpx.Decode(r, &req); err != nil {
+		httpx.Error(w, http.StatusBadRequest, "requête invalide")
+		return
+	}
+	size, ok := game.FindLotSize(req.Size)
+	if !ok {
+		httpx.Error(w, http.StatusBadRequest, errNoSuchLot.Error())
+		return
+	}
+	ctx := r.Context()
+	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
+		if s.minor() {
+			return game.Outcome{}, nil, errTooYoungForLot
+		}
+		p, err := loadPlot(ctx, tx, s.ID, true)
+		if err != nil {
+			return game.Outcome{}, nil, err
+		}
+		var offer LotOffer
+		for _, o := range offers(s, p) {
+			if o.ID == size.ID {
+				offer = o
+			}
+		}
+		if !offer.Possible {
+			return game.Outcome{}, nil, errLotNotBigger
+		}
+		cost, refund := offer.Payable, 0
+		if p.Lot != nil && !offer.Upgrade {
+			// Elsewhere: the old lot must be bare, and is sold back.
+			if len(p.Blocks) > 0 || len(p.Furniture) > 0 || s.Housing == game.OwnHouse {
+				return game.Outcome{}, nil, game.ErrLotElsewhere
+			}
+			refund = p.Lot.Paid * 9 / 10
+		}
+		if cost > s.Money+refund {
+			return game.Outcome{}, nil, game.ErrNotEnoughMoney
+		}
+		if offer.Upgrade && !p.house().Fits(size.W, size.D) {
+			return game.Outcome{}, nil, game.ErrLotTooSmall
+		}
+		s.Money += refund - cost
+		paid := offer.Price
+		p.Lot = &Lot{W: size.W, D: size.D, Area: size.Area(), City: s.City, Commune: s.Commune, Paid: paid}
+		if err := savePlot(ctx, tx, p); err != nil {
+			return game.Outcome{}, nil, err
+		}
+		text := fmt.Sprintf("Terrain acheté à %s : %s de %d m² (%d × %d m), ACD et notaire compris. À toi de bâtir !", offer.Name, game.LowerFirst(size.Label), size.Area(), size.W, size.D)
+		if offer.Upgrade {
+			text = fmt.Sprintf("Ton terrain s'agrandit : %d m² à %s. Ta maison reste debout.", size.Area(), offer.Name)
+		}
+		if refund > 0 {
+			text += fmt.Sprintf(" L'ancien terrain est revendu %s.", game.FCFA(refund))
+		}
+		return game.Outcome{Text: text, Money: refund - cost}, []Event{{Kind: "bill", Text: text, Money: refund - cost, GameTime: s.GameMinutes}}, nil
+	})
+}
+
+// build: PUT /sims/{id}/plot — blocks and furniture put in and taken out, paid from the Sim's money.
 func (h *Handler) build(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Place  []game.Block `json:"place"`
-		Remove []game.Block `json:"remove"`
+		Place     []game.Block `json:"place"`
+		Remove    []game.Block `json:"remove"`
+		Furnish   []game.Piece `json:"furnish"`
+		Unfurnish []game.Piece `json:"unfurnish"`
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
 		return
 	}
 	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
-		if st := s.stage().ID; st == game.StageBebe || st == game.StageEnfant {
-			return game.Outcome{}, nil, errTooYoungToBuild
+		if s.minor() {
+			return game.Outcome{}, nil, errTooYoungForLot
 		}
 		ctx := r.Context()
 		p, err := loadPlot(ctx, tx, s.ID, true)
 		if err != nil {
 			return game.Outcome{}, nil, err
 		}
-		blocks, placed, cost, err := game.Edit(p.Blocks, p.Built, req.Place, req.Remove)
+		house, placed, cost, err := p.house().Edit(req.Place, req.Remove, req.Furnish, req.Unfurnish)
 		if err != nil {
 			return game.Outcome{}, nil, err
 		}
@@ -80,21 +277,54 @@ func (h *Handler) build(w http.ResponseWriter, r *http.Request) {
 			return game.Outcome{}, nil, game.ErrNotEnoughMoney
 		}
 		s.Money -= cost
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO plots (sim_id, blocks, built, updated_at) VALUES ($1, $2, $3, now())
-			ON CONFLICT (sim_id) DO UPDATE SET blocks = $2, built = $3, updated_at = now()`, s.ID, blocks, p.Built+placed); err != nil {
+		p.Blocks, p.Furniture, p.Built = house.Blocks, house.Furniture, house.Built
+		if err := savePlot(ctx, tx, p); err != nil {
 			return game.Outcome{}, nil, err
 		}
+		s.Furnished = house.Has()
 		text := "Le chantier avance."
-		if placed == 0 {
-			text = "Démoli : la moitié des matériaux revendue."
+		switch {
+		case len(req.Furnish) > 0 && placed == 0:
+			text = "Les meubles sont installés."
+		case placed == 0 && cost < 0:
+			text = "Démoli : la moitié revendue."
 		}
 		return game.Outcome{Text: text, Money: -cost}, nil, nil
 	})
 }
 
-// plots: GET /sims/{id}/plots — the houses built by the Sims who live in the
-// commune where this Sim is now (the player's own included).
+// moveIn: POST /sims/{id}/plot/movein — the Sim leaves its rented room for the house it built.
+func (h *Handler) moveIn(w http.ResponseWriter, r *http.Request) {
+	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
+		p, err := loadPlot(r.Context(), tx, s.ID, false)
+		if err != nil {
+			return game.Outcome{}, nil, err
+		}
+		switch {
+		case p.Lot == nil:
+			return game.Outcome{}, nil, game.ErrNoLot
+		case s.Housing == game.OwnHouse:
+			return game.Outcome{}, nil, errAlreadyHome
+		case !p.house().Livable():
+			return game.Outcome{}, nil, game.ErrNotLivable
+		case s.RentArrears > 0:
+			return game.Outcome{}, nil, errMoveInArrears
+		case s.Activity != nil:
+			return game.Outcome{}, nil, game.ErrBusy
+		}
+		s.Housing, s.HomeCity, s.HomeCommune = game.OwnHouse, p.Lot.City, p.Lot.Commune
+		s.Furnished = p.house().Has()
+		name := p.Lot.Commune
+		if _, cm, ok := world.FindCommune(p.Lot.City, p.Lot.Commune); ok {
+			name = cm.Name
+		}
+		text := fmt.Sprintf("Tu emménages dans ta maison à %s ! Plus de loyer : tu es chez toi.", name)
+		return game.Outcome{Text: text}, []Event{{Kind: "life", Text: text, GameTime: s.GameMinutes}}, nil
+	})
+}
+
+// plots: GET /sims/{id}/plots — the houses on the lots of the commune where
+// this Sim is now (the player's own included).
 func (h *Handler) plots(w http.ResponseWriter, r *http.Request) {
 	_, city, commune, err := h.mySim(r)
 	if err != nil {
@@ -102,8 +332,8 @@ func (h *Handler) plots(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rows, err := h.DB.Query(r.Context(), `
-		SELECT p.sim_id, s.first_name, p.blocks, p.built FROM plots p JOIN sims s ON s.id = p.sim_id
-		WHERE s.home_city = $1 AND s.home_commune = $2 AND jsonb_array_length(p.blocks) > 0
+		SELECT `+plotColumns+`, s.first_name FROM plots p JOIN sims s ON s.id = p.sim_id
+		WHERE p.lot_city = $1 AND p.lot_commune = $2 AND (jsonb_array_length(p.blocks) > 0 OR jsonb_array_length(p.furniture) > 0)
 		ORDER BY p.updated_at DESC LIMIT 40`, city, commune)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
@@ -112,8 +342,9 @@ func (h *Handler) plots(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 	out := []Plot{}
 	for rows.Next() {
-		var p Plot
-		if rows.Scan(&p.SimID, &p.FirstName, &p.Blocks, &p.Built) == nil {
+		var name string
+		if p, err := scanPlot(rows, &name); err == nil {
+			p.FirstName = name
 			out = append(out, p)
 		}
 	}

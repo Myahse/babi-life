@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, TikiComment, TikiProfile, GrinMessage, BetRounds, BetView } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, TikiComment, TikiProfile, Piece, Lot, LotOffer, GrinMessage, BetRounds, BetView } from './types'
 import { useSession } from '../store/session'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
@@ -145,7 +145,11 @@ export const api = {
   plot: (id: string) => request<Plot>(`/sims/${id}/plot`),
   plots: (id: string) => request<Plot[]>(`/sims/${id}/plots`),
   /** Blocks placed and taken down; paid from the Sim's money. */
-  build: (id: string, place: Block[], remove: [number, number, number][]) => request<ActionResult>(`/sims/${id}/plot`, { method: 'PUT', body: JSON.stringify({ place, remove }) }),
+  build: (id: string, place: Block[], remove: [number, number, number][], furnish: Piece[] = [], unfurnish: [number, number, number][] = []) => request<ActionResult>(`/sims/${id}/plot`, { method: 'PUT', body: JSON.stringify({ place, remove, furnish, unfurnish }) }),
+  /** Lots for sale where the Sim is, and the one it owns. */
+  lots: (id: string) => request<{ offers: LotOffer[]; lot: Lot | null; fees: number; adult: boolean }>(`/sims/${id}/lots`),
+  buyLot: (id: string, size: string) => post<ActionResult>(`/sims/${id}/lot`, { size }),
+  moveIn: (id: string) => post<ActionResult>(`/sims/${id}/plot/movein`, {}),
   meet: (id: string, to: string, action: 'saluer' | 'inviter' | 'rejoindre') => post<ActionResult>(`/sims/${id}/meet`, { to, action }),
   answerInvite: (id: string, invite: string, answer: 'accepter' | 'refuser') => post<ActionResult>(`/sims/${id}/invites/${invite}`, { answer }),
 }

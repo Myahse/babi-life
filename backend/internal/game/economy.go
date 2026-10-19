@@ -228,7 +228,9 @@ func WeekEnd(l Ledger) (Ledger, []Charge) {
 	h, _ := FindHousing(l.Housing)
 
 	due := h.Rent + l.RentArrears
-	if l.Money >= due {
+	if l.Housing == OwnHouse && l.RentArrears == 0 {
+		// One's own house: no landlord on Saturday.
+	} else if l.Money >= due {
 		l.Money -= due
 		l.RentArrears = 0
 		out = append(out, Charge{fmt.Sprintf("Samedi : loyer de ton %s payé.", LowerFirst(h.Label)), -due})

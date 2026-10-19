@@ -18,7 +18,7 @@ import { Neighbourhood } from '../world3d/Neighbourhood'
 import { OpenWorld } from '../world3d/open/OpenWorld'
 import { iconFor, kindColors } from '../components/icons'
 import { Chip, Coin, DayNight, IconTile, MotiveRing, MoodPin, Row, needColor } from '../components/ui'
-import { NEEDS, ageBlock, amount, atHome, blockedBy, lifeOf, minutesToAge, clock, duration, mood, openAt, openingLabel, predict, shift } from '../game/rules'
+import { NEEDS, ageBlock, amount, atHome, blockedBy, homeLacks, housingOf, lifeOf, minutesToAge, clock, duration, mood, openAt, openingLabel, predict, shift } from '../game/rules'
 import { DOORS_OPEN, eventAt, useStadium, when } from '../lib/stadium'
 import { HomeApp, JobsApp, type Act } from './phoneApps'
 import { NewsApp, topicOf } from './NewsApp'
@@ -678,6 +678,7 @@ export function Play() {
           onClose={() => (setOverlay(null), setPhoneApp(null))}
           onMap={() => setOverlay('map')}
           onWalk={walkTo}
+          onBuild={() => (setOverlay(null), setBuilding(true))}
         />
       )}
       {overlay === 'map' && <WorldMap world={world} sim={sim} night={c.isNight} desktop={desktop} onClose={() => setOverlay(null)} onTravel={travel} onWalk={(id) => (setOverlay(null), walkTo(id))} />}
@@ -720,9 +721,10 @@ type PhoneProps = {
   onClose: () => void
   onMap: () => void
   onWalk: (id: string) => void
+  onBuild: () => void
 }
 
-function Phone({ world, sim, commune, journal, time, act, startApp, delivery, onDelivery, onCollect, onClose, onMap, onWalk }: PhoneProps) {
+function Phone({ world, sim, commune, journal, time, act, startApp, delivery, onDelivery, onCollect, onClose, onMap, onWalk, onBuild }: PhoneProps) {
   const [app, setApp] = useState<PhoneAppId | null>(startApp)
   const navigate = useNavigate()
   const home = sim.homeCity === sim.city && sim.homeCommune === commune.id
@@ -825,7 +827,7 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
                   </ul>
                 )}
                 {app === 'jobs' && <JobsApp world={world} sim={sim} commune={commune} act={act} onWalk={onWalk} onMap={onMap} />}
-                {app === 'home' && <HomeApp world={world} sim={sim} commune={commune} act={act} />}
+                {app === 'home' && <HomeApp world={world} sim={sim} commune={commune} act={act} onBuild={onBuild} />}
                 {app === 'messages' && <Journal events={journal} />}
                 {app === 'news' && <NewsApp />}
                 {app === 'friends' && <FriendsApp world={world} sim={sim} act={act} />}
@@ -881,14 +883,15 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
   const kind = world.kinds[place.kind]
   const colors = kindColors(place.kind)
   const here = sim.city === city.id && sim.commune === commune.id
-  const home = world.housings.find((h) => h.id === sim.housing)!
+  const home = housingOf(world, sim)
   const career = world.careers.find((c) => c.id === sim.career && (c.kind === place.kind || c.also?.includes(place.kind)))
   const life = lifeOf(world, sim)
   // Things past this age (the biberon for an adult) don't show; things for later do, greyed.
   const items = [...(career ? [shift(career, sim.careerLevel)] : []), ...kind.interactions.map((it) => (placeId === 'home' ? atHome(it, home) : it))].filter((it) => ageBlock(it, life.stage?.id) !== 'Plus de ton âge')
   const busy = !!sim.activity
   const canBuild = placeId === 'home' && here && !!world.materials?.length
-  const tooYoung = life.stage?.id === 'bebe' || life.stage?.id === 'enfant'
+  // Building is on one's own lot, bought from 18.
+  const tooYoung = life.minor
   // At the stadium: what's on, and the match or the concert only while it's on.
   const agenda = useStadium(place.kind === 'stade' ? placeId : null)
   const on = eventAt(agenda, sim.gameMinutes)
@@ -929,7 +932,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
       <IconTile icon={tooYoung ? Lock : Hammer} colors={colors} size={44} />
       <span className="min-w-0 flex-1">
         <span className="block font-display text-[15px] leading-tight font-extrabold">Construire ma maison</span>
-        <span className="mt-0.5 block text-xs font-bold text-[var(--color-ink-soft)]">{tooYoung ? "Quand tu seras ado" : 'Banco, planches, parpaing, tôle… bloc par bloc'}</span>
+        <span className="mt-0.5 block text-xs font-bold text-[var(--color-ink-soft)]">{tooYoung ? 'À 18 ans : ton terrain, puis ta maison' : 'Ton terrain, tes murs, tes meubles'}</span>
       </span>
     </button>
   )
@@ -944,7 +947,12 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
       </span>
     </button>
   )
-  const state = (it: Interaction) => ({ open: openAt(it, sim.gameMinutes), broke: it.cost > 0 && sim.money < it.cost, busy, reason: ageBlock(it, life.stage?.id) ?? stadiumBlock(it) ?? blockedBy(it, sim, city.id, commune.id) })
+  // In one's own house, sleeping takes a bed, cooking a stove, the TV a TV.
+  const furnitureBlock = (it: Interaction) => {
+    const lack = placeId === 'home' ? homeLacks(world, sim, it.id) : ''
+    return lack ? `Il te faut : ${lack}` : null
+  }
+  const state = (it: Interaction) => ({ open: openAt(it, sim.gameMinutes), broke: it.cost > 0 && sim.money < it.cost, busy, reason: ageBlock(it, life.stage?.id) ?? stadiumBlock(it) ?? blockedBy(it, sim, city.id, commune.id) ?? furnitureBlock(it) })
 
   // Desktop: the Sims radial menu around the place.
   if (desktop && here && !busy) {

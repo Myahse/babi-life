@@ -3,7 +3,6 @@ package game
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 )
 
 // Building one's own house, Minecraft-style: a plot of PlotW × PlotD blocks of
@@ -89,58 +88,12 @@ var (
 	ErrNoMaterial = errors.New("matériau inconnu")
 )
 
-// Edit applies removals then placements to a plot. It returns the new
-// blocks, how many were placed, and what it costs (negative: money back).
+// Edit applies removals then placements to a plot of the old fixed size
+// (PlotW × PlotD), with no furniture. It returns the new blocks, how many
+// were placed, and what it costs (negative: money back).
 func Edit(blocks []Block, built int, place []Block, remove []Block) ([]Block, int, int, error) {
-	if len(place)+len(remove) > MaxEdit {
-		return nil, 0, 0, ErrTooMuch
-	}
-	grid := make(map[cell]string, len(blocks))
-	for _, b := range blocks {
-		grid[b.at()] = b.M
-	}
-	cost := 0
-	for _, r := range remove {
-		m, ok := grid[r.at()]
-		if !ok {
-			return nil, 0, 0, ErrEmpty
-		}
-		mat, _ := FindMaterial(m)
-		cost -= mat.Price / 2
-		delete(grid, r.at())
-	}
-	for _, p := range place {
-		if p.X < 0 || p.X >= PlotW || p.Z < 0 || p.Z >= PlotD || p.Y < 0 || p.Y >= PlotH {
-			return nil, 0, 0, ErrOutOfPlot
-		}
-		if _, ok := grid[p.at()]; ok {
-			return nil, 0, 0, ErrTaken
-		}
-		mat, ok := FindMaterial(p.M)
-		if !ok {
-			return nil, 0, 0, ErrNoMaterial
-		}
-		if mat.Unlock > built {
-			return nil, 0, 0, fmt.Errorf("%s : construis encore %d blocs pour le débloquer", mat.Label, mat.Unlock-built)
-		}
-		if p.Y > 0 && !touches(grid, p.at()) {
-			return nil, 0, 0, ErrFloating
-		}
-		grid[p.at()] = p.M
-		cost += mat.Price
-	}
-	out := make([]Block, 0, len(grid))
-	// In a stable order: by height, then rows.
-	for y := 0; y < PlotH; y++ {
-		for z := 0; z < PlotD; z++ {
-			for x := 0; x < PlotW; x++ {
-				if m, ok := grid[cell{x, y, z}]; ok {
-					out = append(out, Block{x, y, z, m})
-				}
-			}
-		}
-	}
-	return out, len(place), cost, nil
+	h, placed, cost, err := House{W: PlotW, D: PlotD, Blocks: blocks, Built: built}.Edit(place, remove, nil, nil)
+	return h.Blocks, placed, cost, err
 }
 
 func touches(grid map[cell]string, c cell) bool {

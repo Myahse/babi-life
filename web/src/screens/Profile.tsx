@@ -9,7 +9,7 @@ import { findCommune, useWorld } from '../store/world'
 import { Portrait } from '../avatar/portrait'
 import { iconFor } from '../components/icons'
 import { Chip, Coin, IconTile, MotiveRing, MoodPin, needColor } from '../components/ui'
-import { NEEDS, amount, clock, mood } from '../game/rules'
+import { NEEDS, amount, clock, housingOf, mood } from '../game/rules'
 import { Journal } from './Play'
 import { share as shareText } from '../lib/native'
 
@@ -31,7 +31,7 @@ export function Profile() {
   const c = clock(sim.gameMinutes)
   const asp = world.aspirations.find((a) => a.id === sim.aspiration)
   const origin = world.origins.find((o) => o.id === sim.origin)
-  const housing = world.housings.find((h) => h.id === sim.housing)
+  const housing = housingOf(world, sim)
   const career = world.careers.find((x) => x.id === sim.career)
   const earned = sim.journal.reduce((s, e) => s + Math.max(0, e.money), 0)
   const spent = Math.abs(sim.journal.reduce((s, e) => s + Math.min(0, e.money), 0))

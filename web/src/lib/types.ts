@@ -151,6 +151,8 @@ export type World = {
   /** What a house can be built with (game/build.go), and the plot's size in blocks. */
   materials?: Material[]
   plot?: { w: number; d: number; h: number }
+  furniture?: Furniture[]
+  lotSizes?: { id: string; label: string; w: number; d: number }[]
   config: { devLogin: boolean; googleLogin: boolean; realPhotos?: boolean }
 }
 
@@ -194,6 +196,8 @@ export type Sim = {
   gameMinutes: number
   origin: string
   housing: string
+  /** The furniture in the house the Sim built (for when it lives there). */
+  furnished?: string[]
   loan: number
   rentArrears: number
   career: string
@@ -243,7 +247,13 @@ export type Outcome = { text: string; money: number }
 export type Material = { id: string; label: string; color: string; price: number; unlock: number; glass?: boolean }
 /** One block of a house: x, y (up), z on the plot, and its material. */
 export type Block = [number, number, number, string]
-export type Plot = { simId: string; firstName?: string; blocks: Block[]; built: number }
+/** A piece of furniture in a house: corner cell, turned a quarter (1) or not, which piece. */
+export type Piece = [number, number, number, number, string]
+/** Furniture one can put in one's house (game/house.go). */
+export type Furniture = { id: string; label: string; icon: string; w: number; d: number; h: number; price: number; comfort: number; unlocks?: string[]; color: string }
+export type Lot = { w: number; d: number; area: number; city: string; commune: string; paid: number }
+export type LotOffer = { id: string; label: string; w: number; d: number; area: number; price: number; perM2: number; commune: string; name: string; upgrade: boolean; payable: number; possible: boolean }
+export type Plot = { simId: string; firstName?: string; blocks: Block[]; built: number; furniture: Piece[]; lot: Lot | null; livable: boolean; home?: boolean }
 
 export type ActionResult = { sim: Sim; outcome: Outcome; journal: JournalEvent[]; fresh: JournalEvent[] }
 

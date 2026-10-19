@@ -504,6 +504,20 @@ func (c City) Commune(id string) (Commune, bool) {
 }
 
 // FindPlace looks a place up across the whole map.
+// FindCommune: a commune of a city.
+func FindCommune(city, commune string) (City, Commune, bool) {
+	c, ok := FindCity(city)
+	if !ok {
+		return City{}, Commune{}, false
+	}
+	for _, m := range c.Communes {
+		if m.ID == commune {
+			return c, m, true
+		}
+	}
+	return c, Commune{}, false
+}
+
 func FindPlace(id string) (City, Commune, Place, bool) {
 	for _, c := range Cities {
 		for _, cm := range c.Communes {

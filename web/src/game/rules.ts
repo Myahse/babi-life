@@ -240,3 +240,21 @@ export function ageBlock(it: Interaction, stage?: string) {
   if (ages.includes(stage)) return null
   return AGE_ORDER.indexOf(stage) < AGE_ORDER.indexOf(ages[0]) ? 'Trop jeune pour ça' : "Plus de ton âge"
 }
+
+/** One's own house (game/house.go): no rent, as comfortable as what is in it. */
+export const OWN_HOUSE = 'maison'
+export function homeComfort(world: World, furnished: string[] = []) {
+  const c = 0.75 + furnished.reduce((t, id) => t + (world.furniture?.find((f) => f.id === id)?.comfort ?? 0), 0)
+  return Math.min(1.35, Math.round(c * 100) / 100)
+}
+/** Where the Sim lives: a rented tier, or the house it built. */
+export function housingOf(world: World, sim: Pick<Sim, 'housing' | 'furnished'>): Housing {
+  if (sim.housing === OWN_HOUSE) return { id: OWN_HOUSE, label: 'Ma maison', icon: 'house', hint: 'La maison que tu as bâtie sur ton terrain. Pas de loyer : tu es chez toi.', rent: 0, comfort: homeComfort(world, sim.furnished) }
+  return world.housings.find((h) => h.id === sim.housing) ?? world.housings[0]
+}
+/** In one's own house, the furniture a home activity needs and is missing ('' when nothing). */
+export function homeLacks(world: World, sim: Pick<Sim, 'housing' | 'furnished'>, interaction: string) {
+  if (sim.housing !== OWN_HOUSE) return ''
+  const pieces = (world.furniture ?? []).filter((f) => f.unlocks?.includes(interaction))
+  return pieces.length && !pieces.some((f) => sim.furnished?.includes(f.id)) ? pieces[pieces.length - 1].label : ''
+}

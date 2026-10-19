@@ -1,10 +1,12 @@
 // The economy apps of the in-game phone: Boulot and Logement (money is in Waye).
-import { BadgeCheck, CalendarClock, Clock3, Footprints, House, Map as MapIcon, TrendingUp, TriangleAlert } from 'lucide-react'
+import { BadgeCheck, CalendarClock, Hammer, LandPlot, Clock3, Footprints, House, Map as MapIcon, TrendingUp, TriangleAlert } from 'lucide-react'
 import { api } from '../lib/api'
-import type { ActionResult, Commune, Sim, World } from '../lib/types'
+import { LotOffers } from '../components/Lots'
+import type { ActionResult, Commune, Lot, Sim, World } from '../lib/types'
 import { iconFor, kindColors } from '../components/icons'
 import { Chip, Coin, IconTile, Row } from '../components/ui'
-import { DEPOSIT_WEEKS, amount, duration, hours, neededToPromote, untilSaturday } from '../game/rules'
+import { DEPOSIT_WEEKS, OWN_HOUSE, amount, duration, hours, housingOf, neededToPromote, untilSaturday } from '../game/rules'
+import { useState } from 'react'
 
 export type Act = (label: string, icon: string, kind: string, call: () => Promise<ActionResult>) => Promise<boolean>
 
@@ -138,8 +140,8 @@ function CareerCard({ world, sim, commune, act, onWalk, onMap }: AppProps & { on
 
 /* ---------- Logement ---------- */
 
-export function HomeApp({ world, sim, commune, act }: AppProps) {
-  const home = world.housings.find((h) => h.id === sim.housing)!
+export function HomeApp({ world, sim, commune, act, onBuild }: AppProps & { onBuild?: () => void }) {
+  const home = housingOf(world, sim)
   const homeCity = world.cities.find((c) => c.id === sim.homeCity)!
   const homeCommune = homeCity.communes.find((c) => c.id === sim.homeCommune)!
   const livesHere = sim.city === sim.homeCity && sim.commune === sim.homeCommune
@@ -159,15 +161,23 @@ export function HomeApp({ world, sim, commune, act }: AppProps) {
         </div>
         <p className="mt-2 text-sm leading-snug font-bold text-white/90">{home.hint}</p>
         <div className="mt-3 flex flex-wrap gap-1.5">
-          <Chip tone="dark">
-            <Coin size={13} /> {amount(home.rent)} Djai / semaine
-          </Chip>
-          <Chip tone="dark">
-            <CalendarClock size={12} /> Loyer samedi · dans {duration(due)}
-          </Chip>
+          {home.id === OWN_HOUSE ? (
+            <Chip tone="dark">Propriétaire · pas de loyer</Chip>
+          ) : (
+            <>
+              <Chip tone="dark">
+                <Coin size={13} /> {amount(home.rent)} Djai / semaine
+              </Chip>
+              <Chip tone="dark">
+                <CalendarClock size={12} /> Loyer samedi · dans {duration(due)}
+              </Chip>
+            </>
+          )}
           <Chip tone="dark">Confort {Math.round(home.comfort * 100)} %</Chip>
         </div>
       </div>
+
+      <MyLot sim={sim} act={act} onBuild={onBuild} />
 
       {sim.rentArrears > 0 && (
         <div className="flex items-center gap-3 rounded-[20px] bg-[#ffe8ec] p-3">
@@ -213,5 +223,39 @@ export function HomeApp({ world, sim, commune, act }: AppProps) {
         </ul>
       </section>
     </div>
+  )
+}
+
+/** Ton terrain: buy a lot (from 18), build on it, move in (sims/plot.go). */
+function MyLot({ sim, act, onBuild }: { sim: Sim; act: Act; onBuild?: () => void }) {
+  const [lot, setLot] = useState<Lot | null | undefined>(undefined)
+  const [more, setMore] = useState(false)
+  const own = sim.housing === OWN_HOUSE
+  const buy = (size: string, label: string) => act(label, 'land-plot', 'home', () => api.buyLot(sim.id, size))
+  return (
+    <section className="rounded-[20px] bg-[#eef8f1] p-3">
+      <h4 className="label mb-2 flex items-center gap-1.5">
+        <LandPlot size={14} /> Ton terrain
+      </h4>
+      {lot && (
+        <div className="mb-2">
+          <p className="font-display text-[17px] leading-tight font-extrabold">
+            {lot.area} m² ({lot.w} × {lot.d} m)
+          </p>
+          <p className="text-xs font-semibold text-[var(--color-ink-soft)]">{own ? 'Tu y habites : pas de loyer.' : 'Bâtis ta maison, meuble-la, puis emménage : fini le loyer.'}</p>
+          {onBuild && (
+            <button className="btn mt-2 w-full !py-2.5 !text-sm" onClick={onBuild}>
+              <Hammer size={16} /> {own ? 'Modifier ma maison' : 'Construire et meubler'}
+            </button>
+          )}
+          <button className="mt-2 text-xs font-extrabold text-[var(--color-orange)]" onClick={() => setMore((m) => !m)}>
+            {more ? 'Masquer' : 'Un terrain plus grand ?'}
+          </button>
+        </div>
+      )}
+      <div className={lot && !more ? 'hidden' : ''}>
+        <LotOffers sim={sim} buy={buy} onLoaded={setLot} />
+      </div>
+    </section>
   )
 }

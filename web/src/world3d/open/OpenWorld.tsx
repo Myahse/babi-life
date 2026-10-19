@@ -6,7 +6,7 @@ import { PerformanceMonitor } from '@react-three/drei'
 import { Human, NoShadows, type Pose } from '../../avatar/Human'
 import { callsFor } from '../../lib/nouchi'
 import { randomLook } from '../../avatar/options'
-import { lifeOf } from '../../game/rules'
+import { OWN_HOUSE, lifeOf } from '../../game/rules'
 import { HAPPENING_DOOR, HAPPENING_X, HappeningMarker, HappeningScene, STOPS_TRAFFIC } from '../Happenings'
 import { HOME_ID, type Lot } from '../layout'
 import { LotView, type Props } from '../Neighbourhood'
@@ -14,6 +14,7 @@ import { useSignTexture } from '../props'
 import type { Place, Plot, World } from '../../lib/types'
 import { api } from '../../lib/api'
 import { House } from '../build/House'
+import { FurnitureSet } from '../build/Furniture'
 import { iconFor, kindColors } from '../../components/icons'
 import { IconTile } from '../../components/ui'
 import { Html } from '@react-three/drei'
@@ -87,6 +88,15 @@ function homeSpot(simId: string): [number, number] {
   const r = rng(`home${simId}`)
   return [r() * Math.PI * 2, 120 + r() * 260]
 }
+/** Where a Sim's lot is in the commune it bought it in: the same on every phone. */
+function lotSpot(simId: string): [number, number] {
+  const r = rng(`lot${simId}`)
+  return [r() * Math.PI * 2, 140 + r() * 300]
+}
+/** A lot's size (the plots from before lots are 12 × 12). */
+const lotSize = (p: Plot): [number, number] => [p.lot?.w ?? 12, p.lot?.d ?? 12]
+/** How far a lot clears the map's buildings round it. */
+const lotClear = (p: Plot) => Math.max(PLOT_CLEAR, Math.hypot(...lotSize(p)) / 2 + 3)
 
 /** What casts a shadow: the buildings, not the roads. */
 const SOLID = new Set(['walls', 'inst', 'entrance', 'shop', 'house', 'trim', 'roofs', 'tin'])
@@ -249,7 +259,10 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     }
   }, [sim.id, commune.id, plotsVersion])
   const plotKey = (plots ?? []).map((p) => p.simId).sort().join()
-  const myPlot = plots?.find((p) => p.simId === sim.id && p.blocks.length)
+  const mine = plots?.find((p) => p.simId === sim.id && (p.blocks.length || p.furniture?.length))
+  // Living in the house one built: it is « Chez toi ». Otherwise the house stands on its lot, apart.
+  const livesOnLot = sim.housing === OWN_HOUSE
+  const myPlot = livesOnLot ? mine : undefined
 
   // The commune's places from the map (OpenStreetMap: thousands in Yopougon),
   // asked for around the Sim as it goes (see askMap below).
@@ -258,19 +271,20 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const places = useMemo(() => (mapList.length ? [...commune.places, ...mapList] : commune.places), [commune.places, mapList])
 
   const spots = useMemo<(PlaceSpot & { kind: string; name: string })[]>(() => {
-    const [a, d] = homeSpot(sim.id)
+    const [a, d] = livesOnLot ? lotSpot(sim.id) : homeSpot(sim.id)
     // A real place found on the map (by its name) stands where the map has it.
     const list: (PlaceSpot & { kind: string; name: string })[] = places.map((p) => ({ id: p.id, kind: p.kind, name: p.name, type: p.type, at: snaps.get(p.id) ?? toLocal(origin, p.lat, p.lng), landmark: LANDMARKS[p.id] }))
     // A home with a house built on it clears its ground: the game draws the house.
-    if (home) list.unshift({ id: HOME_ID, kind: 'home', name: 'Chez toi', at: [Math.cos(a) * d, Math.sin(a) * d], landmark: myPlot ? PLOT_CLEAR : undefined })
+    if (home) list.unshift({ id: HOME_ID, kind: 'home', name: 'Chez toi', at: [Math.cos(a) * d, Math.sin(a) * d], landmark: myPlot ? lotClear(myPlot) : undefined })
     for (const id of plotKey ? plotKey.split(',') : []) {
-      if (id === sim.id) continue
-      const [pa, pd] = homeSpot(id)
-      list.push({ id: `plot:${id}`, kind: 'plot', name: '', at: [Math.cos(pa) * pd, Math.sin(pa) * pd], landmark: PLOT_CLEAR })
+      if (id === sim.id && home && myPlot) continue
+      const [pa, pd] = lotSpot(id)
+      const p = plots?.find((x) => x.simId === id)
+      list.push({ id: `plot:${id}`, kind: 'plot', name: '', at: [Math.cos(pa) * pd, Math.sin(pa) * pd], landmark: p ? lotClear(p) : PLOT_CLEAR })
     }
     list.push({ id: HAPPENING_KEY, kind: 'happening', name: '', at: [35, -20] })
     return list
-  }, [places, origin, home, sim.id, snaps, plotKey, !!myPlot]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [places, origin, home, sim.id, snaps, plotKey, !!myPlot, livesOnLot]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const plotsRef = useRef(plots)
   plotsRef.current = plots
@@ -648,11 +662,11 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   }, [lots])
   // Nor the houses players built: each wall column (two blocks high or more), with its height for the close camera.
   useEffect(() => {
-    const [w, d] = [world.plot?.w ?? 12, world.plot?.d ?? 12]
     const list: Obstacle[] = []
     for (const r of resolved.values()) {
       const owner = r.id === HOME_ID ? myPlot : r.id.startsWith('plot:') ? plots?.find((p) => `plot:${p.simId}` === r.id) : undefined
       if (!owner) continue
+      const [w, d] = lotSize(owner)
       const top = new Map<string, number>()
       for (const [x, y, z] of owner.blocks) top.set(`${x},${z}`, Math.max(top.get(`${x},${z}`) ?? 0, y + 1))
       const [c, s] = [Math.cos(r.rot), Math.sin(r.rot)]
@@ -727,8 +741,9 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         const owner = r.id === HOME_ID ? myPlot : r.id.startsWith('plot:') ? plots?.find((p) => `plot:${p.simId}` === r.id) : undefined
         return owner && world.materials ? (
           <group key={`house${r.id}`} position={[r.center[0], 0, r.center[1]]} rotation={[0, r.rot, 0]}>
-            <group position={[-(world.plot?.w ?? 12) / 2, 0, -(world.plot?.d ?? 12) / 2]} onClick={r.id === HOME_ID ? (e) => (e.stopPropagation(), onPick(HOME_ID)) : undefined}>
+            <group position={[-lotSize(owner)[0] / 2, 0, -lotSize(owner)[1] / 2]} onClick={r.id === HOME_ID ? (e) => (e.stopPropagation(), onPick(HOME_ID)) : undefined}>
               <House blocks={owner.blocks} materials={world.materials} />
+              {owner.furniture?.length > 0 && world.furniture && <FurnitureSet pieces={owner.furniture} catalog={world.furniture} />}
             </group>
           </group>
         ) : null

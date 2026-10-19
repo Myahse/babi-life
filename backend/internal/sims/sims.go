@@ -150,11 +150,13 @@ type Sim struct {
 	GameMinutes int64      `json:"gameMinutes"`
 	Origin      string     `json:"origin"`
 	Housing     string     `json:"housing"`
-	Loan        int        `json:"loan"`
-	RentArrears int        `json:"rentArrears"`
-	Career      string     `json:"career"`
-	CareerLevel int        `json:"careerLevel"`
-	Performance int        `json:"performance"`
+	// Furnished: the furniture in the house the Sim built (game.Furnitures), for when it lives there.
+	Furnished   []string `json:"furnished"`
+	Loan        int      `json:"loan"`
+	RentArrears int      `json:"rentArrears"`
+	Career      string   `json:"career"`
+	CareerLevel int      `json:"careerLevel"`
+	Performance int      `json:"performance"`
 	// Activity is what the Sim is busy with right now; nil when free.
 	Activity *game.Activity `json:"activity"`
 	// Apps installed on the phone (world.PhoneApps).
@@ -191,8 +193,19 @@ func (s *Sim) setState(st game.State) {
 }
 
 func (s *Sim) housing() game.Housing {
+	if s.Housing == game.OwnHouse {
+		// One's own house: no rent, as comfortable as what is in it.
+		return game.Housing{ID: game.OwnHouse, Label: "Ma maison", Icon: "house", Comfort: game.HomeComfort(s.Furnished)}
+	}
 	h, _ := game.FindHousing(s.Housing)
 	return h
+}
+
+func furnishedOrEmpty(f []string) []string {
+	if f == nil {
+		return []string{}
+	}
+	return f
 }
 
 type Handler struct {
@@ -262,19 +275,22 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Get("/sims/{id}/plot", h.plot)
 	r.Put("/sims/{id}/plot", h.build)
 	r.Get("/sims/{id}/plots", h.plots)
+	r.Get("/sims/{id}/lots", h.lotOffers)
+	r.Post("/sims/{id}/lot", h.buyLot)
+	r.Post("/sims/{id}/plot/movein", h.moveIn)
 	r.Post("/sims/{id}/meet", h.meet)
 	r.Post("/sims/{id}/invites/{invite}", h.answerInvite)
 }
 
 const simColumns = `id, first_name, last_name, gender, look, traits, aspiration,
 	home_city, home_commune, city, commune, needs, money, game_minutes,
-	origin, housing, loan, rent_arrears, career, career_level, performance, activity, apps, born_at, family, friends, gang, record, created_at, last_tick`
+	origin, housing, loan, rent_arrears, career, career_level, performance, activity, apps, born_at, family, friends, gang, record, created_at, last_tick, furnished`
 
 func scanSim(row pgx.Row) (Sim, error) {
 	var s Sim
 	err := row.Scan(&s.ID, &s.FirstName, &s.LastName, &s.Gender, &s.Look, &s.Traits, &s.Aspiration,
 		&s.HomeCity, &s.HomeCommune, &s.City, &s.Commune, &s.Needs, &s.Money, &s.GameMinutes,
-		&s.Origin, &s.Housing, &s.Loan, &s.RentArrears, &s.Career, &s.CareerLevel, &s.Performance, &s.Activity, &s.Apps, &s.BornAt, &s.Family, &s.Friends, &s.Gang, &s.Record, &s.CreatedAt, &s.lastTick)
+		&s.Origin, &s.Housing, &s.Loan, &s.RentArrears, &s.Career, &s.CareerLevel, &s.Performance, &s.Activity, &s.Apps, &s.BornAt, &s.Family, &s.Friends, &s.Gang, &s.Record, &s.CreatedAt, &s.lastTick, &s.Furnished)
 	return s, err
 }
 
@@ -503,6 +519,12 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 			return game.Interaction{}, errors.New("action inconnue")
 		}
 		if home {
+			// In one's own house, sleeping takes a bed, cooking a stove…
+			if s.Housing == game.OwnHouse {
+				if need := game.HomeNeeds(it.ID, s.Furnished); need != "" {
+					return game.Interaction{}, fmt.Errorf("il te manque : %s (à poser chez toi : appli Logement, Ma maison)", need)
+				}
+			}
 			it = s.housing().AtHome(it)
 		}
 		if kind.ID == game.StadiumKind {
@@ -674,10 +696,10 @@ func (h *Handler) mutateTx(w http.ResponseWriter, r *http.Request, fn func(*Sim,
 		UPDATE sims SET city = $2, commune = $3, needs = $4, money = $5, game_minutes = $6, last_tick = $7,
 		       home_city = $8, home_commune = $9, housing = $10, loan = $11, rent_arrears = $12,
 		       career = $13, career_level = $14, performance = $15, activity = $16, apps = $17,
-		       friends = $18, gang = $19, record = $20, look = $21, born_at = $22, family = $23
+		       friends = $18, gang = $19, record = $20, look = $21, born_at = $22, family = $23, furnished = $24
 		WHERE id = $1`, s.ID, s.City, s.Commune, s.Needs, s.Money, s.GameMinutes, s.lastTick,
 		s.HomeCity, s.HomeCommune, s.Housing, s.Loan, s.RentArrears, s.Career, s.CareerLevel, s.Performance, s.Activity, s.Apps,
-		friendsOrEmpty(s.Friends), s.Gang, s.Record, s.Look, s.BornAt, s.Family); err != nil {
+		friendsOrEmpty(s.Friends), s.Gang, s.Record, s.Look, s.BornAt, s.Family, furnishedOrEmpty(s.Furnished)); err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "could not save sim")
 		return
 	}
