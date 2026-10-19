@@ -5,6 +5,7 @@ import { worldTime } from '../../lib/worldClock'
 import { whereabouts } from '../whereabouts'
 import { hash, type XZ } from './geo'
 import type { Nav } from './nav'
+import { LANDMARKS } from './landmarks'
 
 // The ad boards of the streets, in the formats one sees in Abidjan:
 // - the 4×3 (here 12 × 6 m) on its two legs along the big roads;
@@ -22,7 +23,7 @@ import type { Nav } from './nav'
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
 
 export type BoardFormat = '4x3' | 'geant' | 'sucette' | 'banderole' | 'led'
-type Board = { id: string; at: XZ; rot: number; seed: number; format?: BoardFormat; /** A banderole: the street's width between its poles. */ span?: number }
+type Board = { id: string; at: XZ; rot: number; seed: number; format?: BoardFormat; /** A banderole: the street's width between its poles. */ span?: number; /** At a particular place: shown before the others. */ featured?: boolean }
 type Ad = { id: string; advertiser: string; title: string; type: 'image' | 'video'; url: string }
 
 const NEAR = 450 // metres: boards drawn around the Sim
@@ -38,15 +39,38 @@ const FORMATS: Record<BoardFormat, { w: number; h: number; y: number; both: bool
   led: { w: 9, h: 5, y: 8.5, both: true, far: NEAR, label: 'Écran LED', size: '9 × 5 m' },
 }
 
-export function Billboards({ nav, seed, night }: { nav: Nav; seed: string; night: boolean }) {
+/** The places that get their own big board at the door: where crowds go. */
+const FEATURED: Record<string, BoardFormat> = { stade: 'led', club: 'led', mall: 'led', transport: 'led', karting: 'led', market: 'geant', station: 'geant', zoo: 'geant', hotel: 'geant', universite: 'geant', beach: 'geant', culture: 'led' }
+
+export function Billboards({ nav, seed, night, places = [] }: { nav: Nav; seed: string; night: boolean; /** The places of the quarter: the big ones get a board of their own. */ places?: { id: string; kind: string; x: number; z: number; door: XZ }[] }) {
   // Always at the same spots: along the roads by their size (the more road, the more boards), set back from the edge, facing the traffic.
   const all = useMemo(() => {
     const out: Board[] = []
-    const add = (format: BoardFormat, at: XZ, rot: number, span?: number) => {
+    const add = (format: BoardFormat, at: XZ, rot: number, span?: number, featured?: boolean) => {
       if (!nav.walkable(at[0], at[1])) return
       // Not two boards on top of each other.
       if (out.some((o) => Math.hypot(o.at[0] - at[0], o.at[1] - at[1]) < (format === 'sucette' ? 12 : 30))) return
-      out.push({ id: `pub:${format}:${Math.round(at[0])}:${Math.round(at[1])}`, at, rot, seed: hash(at[0], at[1], 9), format, span })
+      out.push({ id: `pub:${format}:${Math.round(at[0])}:${Math.round(at[1])}`, at, rot, seed: hash(at[0], at[1], 9), format, span, featured })
+    }
+    // First the particular places: the landmarks (a giant and an LED screen), the stadiums, markets, malls, gares, clubs… (one at the door).
+    for (const p of places) {
+      const big = LANDMARKS[p.id]
+      const format = big ? 'led' : FEATURED[p.kind]
+      if (!format) continue
+      // Outwards from the place, through its door; the board beside the door, turned to the street.
+      const [ox, oz] = [p.door[0] - p.x, p.door[1] - p.z]
+      const ol = Math.hypot(ox, oz) || 1
+      const [ux, uz] = [ox / ol, oz / ol]
+      const turn = Math.atan2(ux, uz)
+      for (const [side, f] of (big ? [[1, 'led'], [-1, 'geant']] : [[hash(p.x, p.z, 5) < 0.5 ? 1 : -1, format]]) as [number, BoardFormat][]) {
+        const aside = big ? Math.min(big, 40) * 0.6 : 9
+        for (const back of [2, -4, 6]) {
+          const at: XZ = [p.door[0] + uz * aside * side - ux * back, p.door[1] - ux * aside * side - uz * back]
+          const n = out.length
+          add(f, at, turn, undefined, true)
+          if (out.length > n) break
+        }
+      }
     }
     for (const e of nav.edges) {
       if (e.len < 12 || nav.ys[e.a] || nav.ys[e.b]) continue
@@ -119,7 +143,7 @@ export function Billboards({ nav, seed, night }: { nav: Nav; seed: string; night
     const near = all
       .map((b) => ({ b, d: Math.hypot(b.at[0] - sx, b.at[1] - sz) }))
       .filter((x) => x.d < FORMATS[x.b.format ?? '4x3'].far)
-      .sort((p, q) => p.d - q.d)
+      .sort((p, q) => p.d - (p.b.featured ? 200 : 0) - (q.d - (q.b.featured ? 200 : 0)))
       .slice(0, MAX)
       .map((x) => x.b)
     if (near.map((b) => b.id).join() !== shown.map((b) => b.id).join()) setShown(near)

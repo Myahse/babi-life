@@ -925,7 +925,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       {nav.nodes.length > 0 && <StreetFootball nav={nav} seed={commune.id} hour={hour} />}
       {nav.nodes.length > 0 && <StreetPeople nav={nav} seed={commune.id} />}
       {nav.nodes.length > 0 && <StreetNouchis nav={nav} seed={commune.id} onRobbed={onRobbed} />}
-      {nav.nodes.length > 0 && <Billboards nav={nav} seed={commune.id} night={night} />}
+      {nav.nodes.length > 0 && <Billboards nav={nav} seed={commune.id} night={night} places={lots} />}
       <TakeOff runways={runways} />
       <BridgeSights chunks={[...chunks.values()].map((c) => c.data)} night={night} />
       {/* The traffic on the near chunks' deck only: the far horizon's coarser pieces would set it beside the deck. */}
