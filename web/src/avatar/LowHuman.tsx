@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import type { Look, Sim } from '../lib/types'
 import { defaultColors, fullLook, hasAcc } from './options'
 import type { Pose } from './Human'
@@ -25,14 +26,42 @@ const BODY: Record<string, { w: number; limb: number; depth: number }> = {
   rond: { w: 1.2, limb: 1.12, depth: 1.28 },
 }
 
-/** A unit box hanging from its top face (limbs), and a centred one. */
-const hanging = new THREE.BoxGeometry(1, 1, 1).translate(0, -0.5, 0)
-const centred = new THREE.BoxGeometry(1, 1, 1)
-const mats = new Map<string, THREE.MeshLambertMaterial>()
-const mat = (c: string) => {
-  let m = mats.get(c)
-  if (!m) mats.set(c, (m = new THREE.MeshLambertMaterial({ color: c })))
-  return m
+// Each part's boxes are baked into one geometry with their colours painted on
+// the vertices: a person is five meshes (the body, two legs, two arms) of one
+// shared material, and people who look alike share the geometries too.
+const material = new THREE.MeshLambertMaterial({ vertexColors: true })
+type Box = { c: string; s: [number, number, number]; p?: [number, number, number]; hang?: boolean }
+const baked = new Map<string, THREE.BufferGeometry>()
+function part(boxes: Box[]) {
+  const key = JSON.stringify(boxes)
+  let g = baked.get(key)
+  if (g) return g
+  const parts = boxes.map((b) => {
+    const box = new THREE.BoxGeometry(1, 1, 1)
+    if (b.hang) box.translate(0, -0.5, 0)
+    box.scale(...b.s)
+    if (b.p) box.translate(...b.p)
+    const flat = box.toNonIndexed()
+    box.dispose()
+    const col = new THREE.Color(b.c)
+    const n = flat.attributes.position.count
+    const colors = new Float32Array(n * 3)
+    for (let i = 0; i < n; i++) colors.set([col.r, col.g, col.b], i * 3)
+    flat.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+    return flat
+  })
+  g = mergeGeometries(parts, false) ?? parts[0]
+  for (const x of parts) if (x !== g) x.dispose()
+  // A crowd has only so many looks; past that, the oldest go.
+  if (baked.size > 600) {
+    const first = baked.keys().next().value
+    if (first !== undefined) {
+      baked.get(first)?.dispose()
+      baked.delete(first)
+    }
+  }
+  baked.set(key, g)
+  return g
 }
 
 const LONG = new Set(['pagne', 'boubou', 'robe', 'kaba', 'jupe', 'bazin', 'uniforme', 'abaya', 'blouse', 'soeur'])
@@ -80,39 +109,39 @@ export function LowHuman({ look, gender, pose = 'idle', seed = 0, speed }: { loo
   const capped = hasAcc(l, 'kufi') || l.outfit === 'imam' || (!femme && l.outfit === 'abaya')
   const hair = veiled ? l.bottomColor || top : capped ? '#f8f9fa' : l.hair === 'headwrap' ? top : l.hairColor
   const shape = veiled ? 'headwrap' : l.hair
+  const r3 = (n: number) => Math.round(n * 1000) / 1000
+  const hairScale: [number, number, number] = veiled ? [HEAD * 1.18, HEAD * 1.2, HEAD * 1.18] : shape === 'afro' ? [HEAD * 1.4, HEAD * 0.6, HEAD * 1.3] : shape === 'headwrap' ? [HEAD * 1.15, HEAD * 0.5, HEAD * 1.15] : [HEAD * 1.08, HEAD * 0.32, HEAD * 1.08]
+  const body = part([
+    // Torso, with the bottom's colour at the waist, or a long skirt or robe
+    { c: top, s: [r3(tw), r3(NECK_Y - TORSO_BOTTOM - 0.1), r3(td)], p: [0, r3((NECK_Y + TORSO_BOTTOM) / 2 + 0.05), 0] },
+    long ? { c: bottom, s: [r3(tw * 1.12), 0.7, r3(td * 1.25)], p: [0, 0.97, 0], hang: true } : { c: bottom, s: [r3(tw), 0.1, r3(td)], p: [0, r3(TORSO_BOTTOM + 0.05), 0] },
+    // The cube head, and the hair (or the headwrap) as a slightly bigger cap
+    { c: l.skin, s: [HEAD, HEAD, HEAD], p: [0, NECK_Y + HEAD / 2, 0] },
+    ...(shape !== 'bald' || capped ? [{ c: hair, s: hairScale.map(r3) as [number, number, number], p: [0, r3(NECK_Y + HEAD * (veiled ? 0.7 : shape === 'afro' || shape === 'headwrap' ? 1.05 : 0.86)), -0.012] as [number, number, number] }] : []),
+  ])
+  // Legs: trousers or bare legs, the shoe at the bottom
+  const leg = part([
+    { c: long ? l.skin : bottom, s: [r3(lw), LEG - 0.08, r3(ld)], hang: true },
+    { c: shoe, s: [r3(lw * 1.04), 0.08, r3(ld * 1.15)], p: [0, -(LEG - 0.08), 0.01], hang: true },
+  ])
+  // Arms: the sleeve, then skin down to the hand
+  const arm = part([
+    { c: l.skin, s: [r3(aw * 0.98), ARM + 0.03, r3(aw * 0.98)], p: [0, 0.03, 0], hang: true },
+    ...(sleeve > 0 ? [{ c: top, s: [r3(aw), r3((ARM + 0.03) * sleeve), r3(aw)] as [number, number, number], p: [0, 0.03, 0] as [number, number, number], hang: true }] : []),
+  ])
   return (
     <group scale={l.height * (femme ? 0.96 : 1)} position={[0, seatDrop, 0]}>
-      {/* Legs: trousers or bare legs, the shoe at the bottom */}
       {[0, 1].map((i) => (
         <group key={i} ref={legs[i]} position={[(i ? 1 : -1) * (tw / 4), HIP_Y, 0]}>
-          <mesh geometry={hanging} material={mat(long ? l.skin : bottom)} scale={[lw, LEG - 0.08, ld]} />
-          <mesh geometry={hanging} material={mat(shoe)} position={[0, -(LEG - 0.08), 0.01]} scale={[lw * 1.04, 0.08, ld * 1.15]} />
+          <mesh geometry={leg} material={material} />
         </group>
       ))}
-      {/* Torso, with the bottom's colour at the waist, or a long skirt or robe */}
-      <mesh geometry={centred} material={mat(top)} position={[0, (NECK_Y + TORSO_BOTTOM) / 2 + 0.05, 0]} scale={[tw, NECK_Y - TORSO_BOTTOM - 0.1, td]} castShadow />
-      {long ? (
-        <mesh geometry={hanging} material={mat(bottom)} position={[0, 0.97, 0]} scale={[tw * 1.12, 0.7, td * 1.25]} />
-      ) : (
-        <mesh geometry={centred} material={mat(bottom)} position={[0, TORSO_BOTTOM + 0.05, 0]} scale={[tw, 0.1, td]} />
-      )}
-      {/* Arms: the sleeve, then skin down to the hand */}
+      <mesh geometry={body} material={material} />
       {[0, 1].map((i) => (
         <group key={i} ref={arms[i]} position={[(i ? 1 : -1) * (tw / 2 + aw / 2 + 0.006), SHOULDER_Y, 0]}>
-          <mesh geometry={hanging} material={mat(l.skin)} position={[0, 0.03, 0]} scale={[aw * 0.98, ARM + 0.03, aw * 0.98]} />
-          {sleeve > 0 && <mesh geometry={hanging} material={mat(top)} position={[0, 0.03, 0]} scale={[aw, (ARM + 0.03) * sleeve, aw]} />}
+          <mesh geometry={arm} material={material} />
         </group>
       ))}
-      {/* The cube head, and the hair (or the headwrap) as a slightly bigger cap */}
-      <mesh geometry={centred} material={mat(l.skin)} position={[0, NECK_Y + HEAD / 2, 0]} scale={HEAD} castShadow />
-      {(shape !== 'bald' || capped) && (
-        <mesh
-          geometry={centred}
-          material={mat(hair)}
-          position={[0, NECK_Y + HEAD * (veiled ? 0.7 : shape === 'afro' || shape === 'headwrap' ? 1.05 : 0.86), -0.012]}
-          scale={veiled ? [HEAD * 1.18, HEAD * 1.2, HEAD * 1.18] : shape === 'afro' ? [HEAD * 1.4, HEAD * 0.6, HEAD * 1.3] : shape === 'headwrap' ? [HEAD * 1.15, HEAD * 0.5, HEAD * 1.15] : [HEAD * 1.08, HEAD * 0.32, HEAD * 1.08]}
-        />
-      )}
     </group>
   )
 }

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { clearObstacles, setObstacles, setZone, type Obstacle } from '../obstacles'
 
 // The grillage round a pitch or a court, as round every terrain in Abidjan:
@@ -53,16 +54,6 @@ function runsOf(hl: number, hw: number): Run[] {
 export function FieldFence({ hl, hw, id }: { hl: number; hw: number; id: string }) {
   const g = useRef<THREE.Group>(null)
   const runs = useMemo(() => runsOf(hl, hw), [hl, hw])
-  const panels = useMemo(() => {
-    const m = wire()
-    return runs.map((r) => {
-      const mat = m.clone()
-      mat.map = m.map!.clone()
-      mat.map.repeat.set(r.len / 0.5, HEIGHT / 0.5)
-      mat.map.needsUpdate = true
-      return mat
-    })
-  }, [runs])
   const posts = useMemo(() => {
     const out: [number, number][] = []
     for (const r of runs) {
@@ -74,6 +65,25 @@ export function FieldFence({ hl, hw, id }: { hl: number; hw: number; id: string 
     }
     return out
   }, [runs])
+  // One mesh for all the wire (its diamonds repeat every half-metre), one for the posts and rails.
+  const { wireGeo, frameGeo } = useMemo(() => {
+    const panels = runs.map((r) => {
+      const g = new THREE.PlaneGeometry(r.len, HEIGHT)
+      const uv = g.attributes.uv as THREE.BufferAttribute
+      for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * (r.len / 0.5), uv.getY(i) * (HEIGHT / 0.5))
+      if (r.along === 'z') g.rotateY(Math.PI / 2)
+      return g.translate(r.cx, HEIGHT / 2, r.cz).toNonIndexed()
+    })
+    const bars = [
+      ...runs.map((r) => new THREE.BoxGeometry(r.along === 'x' ? r.len : 0.07, 0.07, r.along === 'x' ? 0.07 : r.len).translate(r.cx, HEIGHT, r.cz)),
+      ...posts.map(([x, z]) => new THREE.BoxGeometry(0.1, HEIGHT + 0.1, 0.1).translate(x, HEIGHT / 2 + 0.05, z)),
+    ].map((g) => g.toNonIndexed())
+    const wireGeo = mergeGeometries(panels, false)
+    const frameGeo = mergeGeometries(bars, false)
+    for (const g of [...panels, ...bars]) g.dispose()
+    return { wireGeo, frameGeo }
+  }, [runs, posts])
+  useEffect(() => () => void (wireGeo?.dispose(), frameGeo?.dispose()), [wireGeo, frameGeo])
   useEffect(() => {
     const o = g.current
     if (!o) return
@@ -97,21 +107,8 @@ export function FieldFence({ hl, hw, id }: { hl: number; hw: number; id: string 
   }, [runs, hl, hw, id])
   return (
     <group ref={g}>
-      {runs.map((r, i) => (
-        <group key={i}>
-          <mesh position={[r.cx, HEIGHT / 2, r.cz]} rotation={[0, r.along === 'x' ? 0 : Math.PI / 2, 0]} material={panels[i]}>
-            <planeGeometry args={[r.len, HEIGHT]} />
-          </mesh>
-          <mesh position={[r.cx, HEIGHT, r.cz]} material={post}>
-            <boxGeometry args={r.along === 'x' ? [r.len, 0.07, 0.07] : [0.07, 0.07, r.len]} />
-          </mesh>
-        </group>
-      ))}
-      {posts.map(([x, z], i) => (
-        <mesh key={i} position={[x, HEIGHT / 2 + 0.05, z]} material={post}>
-          <boxGeometry args={[0.1, HEIGHT + 0.1, 0.1]} />
-        </mesh>
-      ))}
+      {wireGeo && <mesh geometry={wireGeo} material={wire()} />}
+      {frameGeo && <mesh geometry={frameGeo} material={post} castShadow />}
     </group>
   )
 }

@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { FieldFence } from './fieldFence'
+import { StaticMerge } from '../staticMerge'
 import { inZone } from '../obstacles'
 import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
@@ -369,6 +370,7 @@ function Pitch({ spot, night }: { spot: Spot; night: boolean }) {
     ball.current?.position.set(Math.sin(t * 0.7) * 7, 0.28 + Math.abs(Math.sin(t * 2.4)) * 0.55, Math.cos(t * 0.55) * 2.2)
   })
   return (
+    <StaticMerge version={night ? 1 : 0}>
     <group position={[spot.at[0], 0, spot.at[1]]} rotation={[0, spot.rot, 0]}>
       <mesh position={[0, 0.03, 0]} material={grass} receiveShadow>
         <boxGeometry args={[22, 0.06, 13]} />
@@ -396,7 +398,7 @@ function Pitch({ spot, night }: { spot: Spot; night: boolean }) {
           </mesh>
         </group>
       ))}
-      <mesh ref={ball} material={white}>
+      <mesh ref={ball} material={white} userData={{ live: true }}>
         <sphereGeometry args={[0.22, 10, 8]} />
       </mesh>
       <FieldFence hl={11.3} hw={6.8} id={spot.id} />
@@ -414,6 +416,7 @@ function Pitch({ spot, night }: { spot: Spot; night: boolean }) {
         ))}
       </NoShadows>
     </group>
+    </StaticMerge>
   )
 }
 
@@ -426,6 +429,7 @@ function Court({ spot, night }: { spot: Spot; night: boolean }) {
     ball.current?.position.set(-5 + k * 10, 0.45 + Math.sin(k * Math.PI) * 3.1, Math.sin(k * Math.PI * 2) * 0.6)
   })
   return (
+    <StaticMerge version={night ? 1 : 0}>
     <group position={[spot.at[0], 0, spot.at[1]]} rotation={[0, spot.rot, 0]}>
       <mesh position={[0, 0.03, 0]} material={concrete} receiveShadow>
         <boxGeometry args={[16, 0.06, 9]} />
@@ -443,7 +447,7 @@ function Court({ spot, night }: { spot: Spot; night: boolean }) {
           </mesh>
         </group>
       ))}
-      <mesh ref={ball} material={hoop}>
+      <mesh ref={ball} material={hoop} userData={{ live: true }}>
         <sphereGeometry args={[0.2, 10, 8]} />
       </mesh>
       <FieldFence hl={8.3} hw={4.8} id={spot.id} />
@@ -461,6 +465,7 @@ function Court({ spot, night }: { spot: Spot; night: boolean }) {
         ))}
       </NoShadows>
     </group>
+    </StaticMerge>
   )
 }
 

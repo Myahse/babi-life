@@ -15,7 +15,10 @@ function texture(paint: Painter, seed = 1, w = 16, h = 16) {
   paint((x, y, col) => ((g.fillStyle = col), g.fillRect(x, y, 1, 1)), r)
   const t = new THREE.CanvasTexture(c)
   t.magFilter = THREE.NearestFilter
-  t.minFilter = THREE.NearestMipmapNearestFilter
+  // Blocky up close; far away, the mipmaps blended and filtered at an angle, so
+  // the ground and the walls don't shimmer as the camera moves.
+  t.minFilter = THREE.NearestMipmapLinearFilter
+  t.anisotropy = 8
   t.wrapS = t.wrapT = THREE.RepeatWrapping
   t.colorSpace = THREE.SRGBColorSpace
   return t

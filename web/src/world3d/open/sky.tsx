@@ -114,9 +114,23 @@ function Clouds({ night, dusk }: { night: boolean; dusk: boolean }) {
   })
   return (
     <group ref={spin}>
-      {puffs.map((c, i) => (
-        <mesh key={i} geometry={puff} material={mat} position={c.p} scale={c.s} />
-      ))}
+      {/* All the puffs in one draw (the same sphere, stretched) */}
+      <instancedMesh
+        args={[puff, mat, puffs.length]}
+        frustumCulled={false}
+        ref={(m) => {
+          if (!m || m.userData.set) return
+          const o = new THREE.Object3D()
+          puffs.forEach((c, i) => {
+            o.position.set(...c.p)
+            o.scale.set(...c.s)
+            o.updateMatrix()
+            m.setMatrixAt(i, o.matrix)
+          })
+          m.instanceMatrix.needsUpdate = true
+          m.userData.set = true
+        }}
+      />
     </group>
   )
 }

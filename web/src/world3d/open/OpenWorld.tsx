@@ -205,7 +205,7 @@ export function OpenWorld(props: Props & { token: string; onFail: () => void; on
   const maxDpr = Math.min(1.75, typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1)
   const [dpr, setDpr] = useState(Math.min(1.5, maxDpr))
   return (
-    <Canvas shadows dpr={dpr} camera={{ position: [45, 48, 45], fov: 45, near: 0.5, far: 9000 }} style={{ background: sky, transition: 'background 1s' }} gl={{ antialias: true }} onCreated={({ gl, scene }) => void (import.meta.env.DEV && Object.assign(window, { __gl: gl, __scene: scene, __where: whereabouts }))}>
+    <Canvas shadows dpr={dpr} camera={{ position: [45, 48, 45], fov: 45, near: 0.5, far: 6000 }} style={{ background: sky, transition: 'background 1s' }} gl={{ antialias: true }} onCreated={({ gl, scene }) => void (import.meta.env.DEV && Object.assign(window, { __gl: gl, __scene: scene, __where: whereabouts }))}>
       <Snapper />
       {/* Resolution follows what the device can keep up with */}
       <PerformanceMonitor onDecline={() => setDpr((d) => Math.max(0.75, d - 0.25))} onIncline={() => setDpr((d) => Math.min(maxDpr, d + 0.25))} flipflops={4} onFallback={() => setDpr(1)} />
@@ -805,6 +805,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       <Sun night={night} dusk={dusk} />
       {/* The haze at the edge of the loaded world: Minecraft's render distance */}
       <fog attach="fog" args={[skyTone(night, dusk).horizon, 400, 5200]} />
+      <NearPlane />
       <SkyDome night={night} dusk={dusk} />
       {/* At night, lamps, windows and headlights bloom a little (not on small phones) */}
       {night && RICH && (
@@ -1523,4 +1524,23 @@ function Passerby({ p, nav, routes, held, refs, onClick, bubble }: { p: Walk; na
       {bubble}
     </group>
   )
+}
+
+/**
+ * The camera's near plane follows its height: a few tenths of a metre in the
+ * shoulder view, a few metres when looking down on the city. The depth test's
+ * precision depends on it, and from high up the ground, the grass, the roads
+ * and their paint (a few centimetres apart) would otherwise flicker through
+ * one another.
+ */
+function NearPlane() {
+  useFrame(({ camera }) => {
+    const c = camera as THREE.PerspectiveCamera
+    const near = Math.min(4, Math.max(0.25, camera.position.y * 0.03))
+    if (Math.abs(near - c.near) / c.near > 0.12) {
+      c.near = near
+      c.updateProjectionMatrix()
+    }
+  })
+  return null
 }

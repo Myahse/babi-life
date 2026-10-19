@@ -482,12 +482,15 @@ type Props = { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; /*
  * switch has some slack so nobody flickers between the two at the border.
  */
 const FAR = 24
+/** Past this, nobody is drawn at all: a figure this far is a few pixels, and a crowd costs draws. */
+const GONE = 110
 /** Everyone in full detail, however far (the videos: marketing/). */
 export const FullDetail = createContext(false)
 
 export function Human(props: Props & { /** Always in full detail (the creator, close-ups). */ full?: boolean }) {
   const anchor = useRef<THREE.Group>(null)
   const [far, setFar] = useState(false)
+  const [gone, setGone] = useState(false)
   const at = useRef(new THREE.Vector3())
   const full = useContext(FullDetail) || props.full
   useFrame(({ camera }) => {
@@ -495,10 +498,12 @@ export function Human(props: Props & { /** Always in full detail (the creator, c
     const d = anchor.current.getWorldPosition(at.current).distanceTo(camera.position)
     if (!far && d > FAR + 3) setFar(true)
     else if (far && d < FAR - 3) setFar(false)
+    if (!gone && d > GONE + 5) setGone(true)
+    else if (gone && d < GONE - 5) setGone(false)
   })
   return (
-    <group ref={anchor}>
-      {far && !full ? <LowHuman look={props.look} gender={props.gender} pose={props.pose} seed={props.seed} speed={props.speed} /> : <BlockHuman {...props} />}
+    <group ref={anchor} name="human">
+      {gone && !full ? null : far && !full ? <LowHuman look={props.look} gender={props.gender} pose={props.pose} seed={props.seed} speed={props.speed} /> : <BlockHuman {...props} />}
     </group>
   )
 }

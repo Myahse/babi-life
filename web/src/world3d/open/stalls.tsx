@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import { Human, NoShadows, type Pose } from '../../avatar/Human'
 import { randomLook } from '../../avatar/options'
 import { clearObstacles, inZone, setObstacles } from '../obstacles'
+import { StaticMerge } from '../staticMerge'
 import { rng } from '../themes'
 import { whereabouts } from '../whereabouts'
 import { hash, type XZ } from './geo'
@@ -184,7 +185,7 @@ function Smoke({ p, n = 6 }: { p: [number, number, number]; n?: number }) {
   return (
     <group position={p}>
       {mats.map((m, i) => (
-        <mesh key={i} ref={(x) => void (refs.current[i] = x)} geometry={BOX} material={m} />
+        <mesh key={i} ref={(x) => void (refs.current[i] = x)} geometry={BOX} material={m} userData={{ live: true }} />
       ))}
     </group>
   )
@@ -785,12 +786,15 @@ export function StreetStall({ stall, hour, crowd, onBuy }: { stall: Stall; hour:
   const [sellerAt, sellerPose]: [[number, number, number], Pose] = stall.kind === 'porc' ? [[-1.3, 0, -0.1], 'cook'] : stall.kind === 'garba' ? [[0.75, 0, 0.1], 'cook'] : stall.kind === 'brochette' ? [[0.1, 0, -0.1], 'cook'] : stall.kind === 'loto' ? [[0, 0, -0.35], 'sit'] : stall.kind === 'alloco' ? [[0, 0, 0], 'idle'] : [[0.95, 0, 1.08], 'sit']
   return (
     <group position={[stall.at[0], 0, stall.at[1]]} rotation={[0, stall.rot, 0]} onClick={(e) => (e.stopPropagation(), void tap())}>
-      {stall.kind === 'alloco' && <AllocoStand parasol={parasol} />}
-      {stall.kind === 'porc' && <PorcStand />}
-      {stall.kind === 'garba' && <GarbaStand />}
-      {stall.kind === 'brochette' && <BrochetteStand night={hour >= 18 || hour < 6} />}
-      {stall.kind === 'loto' && <LotoStand seed={stall.seed} />}
-      {(stall.kind === 'cafe' || stall.kind === 'the') && <Cart tea={stall.kind === 'the'} price={stall.kind === 'the' ? 100 : 150} />}
+      {/* The stand drawn in a few meshes (its smoke and frying fish left to move) */}
+      <StaticMerge version={hour >= 18 || hour < 6 ? 1 : 0}>
+        {stall.kind === 'alloco' && <AllocoStand parasol={parasol} />}
+        {stall.kind === 'porc' && <PorcStand />}
+        {stall.kind === 'garba' && <GarbaStand />}
+        {stall.kind === 'brochette' && <BrochetteStand night={hour >= 18 || hour < 6} />}
+        {stall.kind === 'loto' && <LotoStand seed={stall.seed} />}
+        {(stall.kind === 'cafe' || stall.kind === 'the') && <Cart tea={stall.kind === 'the'} price={stall.kind === 'the' ? 100 : 150} />}
+      </StaticMerge>
       <group position={sellerAt}>
         <Human look={look} gender={man ? 'homme' : 'femme'} pose={sellerPose} seed={stall.seed * 100} />
       </group>
@@ -903,7 +907,7 @@ function GarbaStand() {
           <circleGeometry args={[0.55, 16]} />
         </mesh>
         {[...Array(5)].map((_, i) => (
-          <mesh key={i} ref={(m) => void (fish.current[i] = m)} geometry={BOX} material={G.thon} scale={[0.2, 0.07, 0.11]} position={[Math.cos(i * 1.3) * 0.3, 0.99, Math.sin(i * 1.3) * 0.3]} rotation={[0, i, 0]} />
+          <mesh key={i} ref={(m) => void (fish.current[i] = m)} userData={{ live: true }} geometry={BOX} material={G.thon} scale={[0.2, 0.07, 0.11]} position={[Math.cos(i * 1.3) * 0.3, 0.99, Math.sin(i * 1.3) * 0.3]} rotation={[0, i, 0]} />
         ))}
         <Smoke p={[0, 1.0, 0]} n={6} />
       </group>
