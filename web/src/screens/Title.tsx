@@ -1,17 +1,16 @@
 import { useState } from 'react'
 import { GoogleLogin } from '@react-oauth/google'
 import { inApp, nativeGoogleSignIn } from '../lib/native'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { InstallButton } from '../components/InstallButton'
 import { useOnline } from '../lib/pwa'
-import { ArrowRight, Clock3, Eye, EyeOff, Lock, Mail, MapPinned, Newspaper, Shirt, UserRound, type LucideIcon } from 'lucide-react'
+import { Clock3, Eye, EyeOff, Lock, Mail, MapPinned, Newspaper, Shirt, UserRound, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import type { Look, User } from '../lib/types'
 import { useSession } from '../store/session'
 import { useWorld } from '../store/world'
-import { Scene } from '../components/Scene'
 import { Portrait } from '../avatar/portrait'
-import { IconTile, Logo, LogoMark } from '../components/ui'
+import { IconTile } from '../components/ui'
 import { UsernameField } from '../components/UsernameField'
 import { suggestFrom } from '../lib/username'
 import { gameOpen } from '../lib/launch'
@@ -92,52 +91,47 @@ export function Title() {
   }
 
   return (
-    <div className="relative min-h-full overflow-x-hidden bg-[var(--color-night)] text-white">
-      {/* Key art stays behind while the page scrolls */}
-      <div className="pointer-events-none fixed inset-0">
-        <Scene className="h-full w-full" />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0f1230]/55 via-[#0f1230]/20 to-[#0f1230]/90" />
-      </div>
-
-      <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-2 lg:px-8 lg:pt-6">
-        <Logo size={36} />
-        <button className="rounded-xl px-3 py-2 text-sm font-extrabold text-white/90 transition hover:bg-white/10" onClick={() => openCard('login')}>
-          Se connecter
-        </button>
-      </header>
-
-      <main className="relative z-10 mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] gap-8 px-5 pb-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-center lg:gap-12 lg:px-8 lg:pt-10">
-        {/* ---------- Hero ---------- */}
-        <section className="motion-stagger flex flex-col items-center text-center lg:items-start lg:text-left">
-          <span className="mt-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-extrabold backdrop-blur lg:mt-0">
-            <span className="flex overflow-hidden rounded-[3px]" aria-hidden>
-              <i className="block h-3 w-1.5 bg-[#ff8200]" />
-              <i className="block h-3 w-1.5 bg-white" />
-              <i className="block h-3 w-1.5 bg-[#009a44]" />
-            </span>
-            Gratuit · 100 % ivoirien
+    <div className="street worn min-h-full overflow-x-clip">
+      {/* The name over the door, as on the wish list (Waitlist.tsx), and the flag's stripe */}
+      <header className="bg-[var(--turq)] text-[var(--cream)]">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3">
+          <span className="paint flex items-center gap-2.5 text-[26px]" aria-label="Babi Life">
+            <svg width="20" height="28" viewBox="0 0 40 56" aria-hidden>
+              <path d="M20 54C14 45 4 36 4 20a16 16 0 0 1 32 0c0 16-10 25-16 34Z" fill="#fbf5e6" />
+              <circle cx="20" cy="20" r="7" fill="#0b6b3d" />
+            </svg>
+            Babi <span className="text-[var(--ochre)]">Life</span>
           </span>
-          <h1 className="mt-4 font-display text-[44px] leading-[0.95] font-extrabold tracking-[-0.02em] sm:text-6xl lg:text-7xl">
+          <button className="text-[14px] font-extrabold underline-offset-4 hover:underline" onClick={() => openCard('login')}>
+            Se connecter
+          </button>
+        </div>
+      </header>
+      <div className="ci-stripe" aria-hidden />
+
+      <main className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] gap-8 px-4 pt-8 pb-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-start lg:gap-12 lg:pt-14">
+        {/* ---------- Painted straight on the wall ---------- */}
+        <section>
+          <h1 className="paint m-0 text-[clamp(56px,13vw,112px)] text-[var(--rust)] [text-shadow:3px_3px_0_var(--ochre)]">
             Gnambro
             <br />
             ou laté ?
             <br />
-            <span className="text-[var(--color-orange)]">Le sort décide.</span>
+            <span className="text-[var(--turq)] [text-shadow:3px_3px_0_var(--mint)]">Le sort décide.</span>
           </h1>
-          <p className="mt-4 max-w-md text-base leading-relaxed font-semibold text-white/85 lg:text-lg">
-            Ta famille est tirée au sort à ta naissance. Ensuite, vis la Côte d'Ivoire sur la vraie carte, à l'heure d'Abidjan : boulot, maquis, taxi, mariages dans la rue et vraie actu.
-          </p>
-          <div className="mt-6 flex w-full max-w-sm flex-col gap-2.5 sm:flex-row lg:max-w-none">
-            <button className="btn sm:flex-1 lg:flex-none lg:px-7" onClick={() => openCard('register')}>
-              Créer mon perso <ArrowRight size={18} strokeWidth={2.6} />
+          <p className="mt-5 max-w-md text-[19px] font-extrabold">Ta famille est tirée au sort à ta naissance. Ensuite, vis la Côte d'Ivoire sur la vraie carte, à l'heure d'Abidjan : boulot, maquis, taxi, mariages dans la rue et vraie actu.</p>
+          <p className="chalk-hand mt-1 text-[30px] text-[var(--ci-green)]">Fait ici, pour nous.</p>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <button className="sign-btn" onClick={() => openCard('register')}>
+              Créer mon perso
             </button>
-            <button className="btn btn-white !border-white/25 !bg-white/10 !text-white backdrop-blur hover:!bg-white/20 sm:flex-1 lg:flex-none lg:px-7" onClick={() => openCard('login')}>
+            <button className="sign-btn alt" onClick={() => openCard('login')}>
               J'ai déjà un compte
             </button>
           </div>
 
           {/* The cast */}
-          <div className="mt-6 flex items-end justify-center lg:justify-start" aria-hidden>
+          <div className="mt-6 flex items-end" aria-hidden>
             {CROWD.map((c, i) => (
               <span key={i} className="-mx-2 block" style={{ width: `min(${c.size}px, ${Math.round(c.size / 4.9)}vw)`, aspectRatio: '1 / 1.35' }}>
                 <Portrait look={c.look} gender={c.gender} framing="full" />
@@ -146,17 +140,13 @@ export function Title() {
           </div>
         </section>
 
-        {/* ---------- Account card ---------- */}
-        <section id="compte" className="card scroll-mt-6 w-full self-start p-5 text-[var(--color-ink)] lg:p-6">
+        {/* ---------- Account card, a sign on the wall ---------- */}
+        <section id="compte" className="w-full scroll-mt-6 border-2 border-[var(--brown)] bg-[var(--cream)] p-5 sm:p-6">
+          <h2 className="paint mb-3 text-[40px]">{mode === 'login' ? 'Je me connecte' : 'Je crée mon compte'}</h2>
           {/* Se connecter / Créer un compte */}
           <div className="segmented mb-4" role="tablist">
             {(['login', 'register'] as const).map((m) => (
-              <button
-                key={m}
-                role="tab"
-                aria-selected={mode === m}
-                onClick={() => (setMode(m), setError(null))}
-              >
+              <button key={m} role="tab" aria-selected={mode === m} onClick={() => (setMode(m), setError(null))}>
                 {m === 'login' ? 'Se connecter' : 'Créer un compte'}
               </button>
             ))}
@@ -199,10 +189,10 @@ export function Title() {
               </button>
             )}
 
-            <div className="flex items-center gap-3 text-xs font-extrabold text-[var(--color-ink-soft)]">
-              <span className="h-px flex-1 bg-[var(--color-line)]" />
+            <div className="flex items-center gap-3 text-xs font-extrabold">
+              <span className="h-px flex-1 bg-[var(--brown)]/25" />
               ou avec ton e-mail
-              <span className="h-px flex-1 bg-[var(--color-line)]" />
+              <span className="h-px flex-1 bg-[var(--brown)]/25" />
             </div>
 
             <form
@@ -255,22 +245,22 @@ export function Title() {
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </label>
-              {error && <p className="animate-pop rounded-xl bg-[#ffeef1] px-3 py-2 text-sm font-bold text-[#d81b3f]">{error}</p>}
-              <button className="btn w-full" disabled={busy}>
-                {mode === 'login' ? 'Se connecter' : 'Créer mon compte'}
+              {error && <p className="bg-[#f6d9cf] px-3 py-2 text-sm font-bold text-[var(--rust)]" role="alert">{error}</p>}
+              <button className="sign-btn mt-1 w-full" disabled={busy}>
+                {busy ? 'Un instant…' : mode === 'login' ? 'Se connecter' : 'Créer mon compte'}
               </button>
             </form>
 
-            <p className="text-center text-sm font-bold text-[var(--color-ink-soft)]">
+            <p className="text-center text-sm font-bold">
               {mode === 'login' ? 'Pas encore de compte ? ' : 'Déjà un compte ? '}
-              <button className="font-extrabold text-[var(--color-orange)] hover:underline" onClick={() => (setMode(mode === 'login' ? 'register' : 'login'), setError(null))}>
+              <button className="font-extrabold text-[var(--rust)] underline-offset-4 hover:underline" onClick={() => (setMode(mode === 'login' ? 'register' : 'login'), setError(null))}>
                 {mode === 'login' ? 'Inscris-toi' : 'Connecte-toi'}
               </button>
             </p>
 
             {world?.config.devLogin && (
-              <details className="rounded-2xl bg-[var(--color-canvas)] px-3 py-2 text-sm">
-                <summary className="cursor-pointer font-extrabold text-[var(--color-ink-soft)]">Mode test (local)</summary>
+              <details className="bg-[var(--wall)] px-3 py-2 text-sm">
+                <summary className="cursor-pointer font-extrabold">Mode test (local)</summary>
                 <div className="mt-2 flex gap-2">
                   <input className="input h-[44px] min-w-0 flex-1 text-base" value={devName} onChange={(e) => setDevName(e.target.value)} aria-label="Nom du joueur test" />
                   <button className="btn btn-emerald shrink-0 px-4" disabled={busy || !devName.trim()} onClick={() => finish(api.devLogin(devName))}>
@@ -281,28 +271,41 @@ export function Title() {
             )}
           </div>
 
-          <InstallButton className="mt-3" />
-          {worldError && online && <p className="mt-3 rounded-xl bg-[#ffeef1] px-3 py-2 text-sm font-bold text-[#d81b3f]">Serveur injoignable : {worldError}</p>}
+          <InstallButton sign className="mt-3" />
+          {worldError && online && <p className="mt-3 bg-[#f6d9cf] px-3 py-2 text-sm font-bold text-[var(--rust)]">Serveur injoignable : {worldError}</p>}
           <p className="mt-3 text-center text-[11px] font-bold opacity-50">Version {String(import.meta.env.VERCEL_GIT_COMMIT_SHA ?? 'dev').slice(0, 7)}</p>
         </section>
       </main>
 
       {/* ---------- What you'll live ---------- */}
-      <section className="relative z-10 mx-auto max-w-6xl px-5 pb-[max(2rem,env(safe-area-inset-bottom))] lg:px-8 lg:pb-14">
-        <h2 className="mb-4 text-center font-display text-2xl font-extrabold lg:text-left">Ce qui t'attend</h2>
-        <ul className="motion-stagger grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="mx-auto max-w-6xl px-4 pb-12">
+        <h2 className="paint mb-4 text-[44px] text-[var(--turq)]">Ce qui t'attend</h2>
+        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {FEATURES.map((f) => (
-            <li key={f.title} className="rounded-2xl border border-white/12 bg-white/[0.07] p-4 backdrop-blur">
-              <IconTile icon={f.icon} colors={f.colors} size={40} />
-              <h3 className="mt-3 font-display text-lg leading-tight font-extrabold">{f.title}</h3>
-              <p className="mt-1 text-sm leading-snug font-semibold text-white/75">{f.text}</p>
+            <li key={f.title} className="border-2 border-[var(--brown)] bg-[var(--cream)] p-4">
+              <IconTile icon={f.icon} colors={f.colors} size={40} radius={4} />
+              <h3 className="slab mt-3 text-lg leading-tight">{f.title}</h3>
+              <p className="mt-1 text-sm leading-snug font-bold">{f.text}</p>
             </li>
           ))}
         </ul>
-        <p className="mt-8 flex items-center justify-center gap-2 text-xs font-bold text-white/55">
-          <LogoMark size={18} /> Babi Life · fait à Abidjan
-        </p>
       </section>
+
+      <div className="ci-stripe" aria-hidden />
+      <footer className="bg-[var(--brown)] text-[var(--cream)]">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-baseline justify-between gap-x-4 gap-y-2 px-4 pt-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-[14px] font-extrabold">
+          <span className="flex flex-wrap gap-x-4 gap-y-1">
+            <span>Babi Life</span>
+            <Link to="/conditions" className="underline">
+              Conditions
+            </Link>
+            <Link to="/confidentialite" className="underline">
+              Confidentialité
+            </Link>
+          </span>
+          <span className="chalk-hand text-[26px] text-[var(--ochre)]">Fait à Abidjan</span>
+        </div>
+      </footer>
     </div>
   )
 }

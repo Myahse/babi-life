@@ -455,8 +455,17 @@ button {
 .street .btn {
   border-radius: 4px;
 }
-.street .rounded-xl {
+.street .rounded-xl,
+.street .segmented {
   border-radius: 4px;
+}
+.street .segmented > button {
+  border-radius: 3px;
+}
+.street .segmented > button[aria-selected='true'] {
+  background: var(--brown);
+  color: var(--cream);
+  box-shadow: none;
 }
 .street .worn,
 .street.worn {
