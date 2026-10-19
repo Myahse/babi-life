@@ -19,7 +19,14 @@ export const NO_INPUT: Input = { throttle: 0, brake: 0, steer: 0, drift: false, 
 export type Kart = {
   id: number
   name: string
+  /** The one this phone drives. */
   human: boolean
+  /** A real person (this phone's or another player's). */
+  player: boolean
+  /** Driven elsewhere (another player, or the quarter's drivers driven by the host): drawn from the network. */
+  remote: boolean
+  /** The other player's Sim (online). */
+  sim?: string
   color: string
   x: number
   z: number
@@ -60,9 +67,12 @@ export type Kart = {
   sparks: number
   lastInput: Input
   startHeld: number
+  /** How long it has been going the wrong way, or stuck against a wall (s). */
+  wrong: number
+  stuck: number
 }
 
-export type Hazard = { id: number; kind: 'banane' | 'coco'; x: number; z: number; s: number; d: number; ttl: number; owner: number }
+export type Hazard = { id: string; kind: 'banane' | 'coco'; x: number; z: number; s: number; d: number; ttl: number; owner: number; seed: number }
 
 export type Race = {
   track: Track
@@ -75,6 +85,9 @@ export type Race = {
   /** Things to show the player for a moment: "Mini-turbo !", "Banane !"… */
   flash: { text: string; until: number } | null
   nextId: number
+  /** Racing other players: the items thrown here, waiting to be sent to them. */
+  online: boolean
+  outbox: Hazard[]
 }
 
 const MAX = 23 // m/s on the road (about 83 km/h)
@@ -98,23 +111,34 @@ const RIVALS = [
 const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a))
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
 
-export function createRace(track: Track, player: { name: string; color: string }, rng: () => number = Math.random): Race {
-  const drivers = [...RIVALS.slice(0, 5)]
-  // The player starts at the back half of the grid (5th of 6), as in the game it's from.
-  const order = [0, 1, 2, 3, 'me' as const, 4]
-  const karts: Kart[] = order.map((who, slot) => {
+/** Someone on the grid: this phone's player, another player (online), or empty (a driver of the quarter). */
+export type Seat = { kind: 'me' | 'player' | 'bot'; name?: string; color?: string; sim?: string }
+
+/**
+ * A race: the karts on the grid, two by two behind the line. Alone, the
+ * player starts 5th of 6 among the quarter's drivers; online, the grid is the
+ * players in the order they joined, the quarter's drivers after them, and
+ * `botsHere` says whether this phone drives those (the host) or draws them.
+ */
+export function createRace(track: Track, player: { name: string; color: string }, rng: () => number = Math.random, online?: { seats: Seat[]; botsHere: boolean }): Race {
+  const seats: Seat[] = online?.seats ?? [{ kind: 'bot' }, { kind: 'bot' }, { kind: 'bot' }, { kind: 'bot' }, { kind: 'me' }, { kind: 'bot' }]
+  let bot = 0
+  const karts: Kart[] = seats.map((seat, slot) => {
     const row = Math.floor(slot / 2)
     const s = track.n - 6 - row * 5
     const d = slot % 2 ? 2.6 : -2.6
     const [x, z] = pointAt(track, s, d)
     const i = ((s % track.n) + track.n) % track.n
-    const human = who === 'me'
-    const r = human ? null : drivers[who]
+    const human = seat.kind === 'me'
+    const r = seat.kind === 'bot' ? RIVALS[bot++ % RIVALS.length] : null
     return {
       id: slot,
-      name: human ? player.name : r!.name,
+      name: human ? player.name : (seat.name ?? r!.name),
       human,
-      color: human ? player.color : r!.color,
+      player: seat.kind !== 'bot',
+      remote: seat.kind === 'player' || (seat.kind === 'bot' && !!online && !online.botsHere),
+      sim: seat.sim,
+      color: human ? player.color : (seat.color ?? r!.color),
       x,
       z,
       heading: Math.atan2(track.tx[i], track.tz[i]),
@@ -136,13 +160,15 @@ export function createRace(track: Track, player: { name: string; color: string }
       half: false,
       progress: s - track.n,
       finished: null,
-      skill: human ? 1 : 0.9 + rng() * 0.09,
+      skill: seat.kind === 'bot' ? 0.9 + rng() * 0.09 : 1,
       lane: (rng() - 0.5) * 1.2,
       itemTimer: 1 + rng() * 2,
       bump: 0,
       sparks: 0,
       lastInput: NO_INPUT,
       startHeld: 0,
+      wrong: 0,
+      stuck: 0,
     }
   })
   const boxes = track.boxes.map((b) => {
@@ -154,7 +180,35 @@ export function createRace(track: Track, player: { name: string; color: string }
     const i = ((p.s % track.n) + track.n) % track.n
     return { x, z, heading: Math.atan2(track.tx[i], track.tz[i]) }
   })
-  return { track, karts, hazards: [], boxes, pads, time: -COUNTDOWN, flash: null, nextId: 1 }
+  return { track, karts, hazards: [], boxes, pads, time: -COUNTDOWN, flash: null, nextId: 1, online: !!online, outbox: [] }
+}
+
+/* ---------- Over the network: a kart as a row of numbers ---------- */
+
+/** [x, z, heading, speed, steer, drift, boost, spinAngle, progress, finished (−1: racing), lap, sparks, hop, offroad] */
+export function kartVec(k: Kart): number[] {
+  return [k.x, k.z, k.heading, k.speed, k.steer, k.drift, Math.max(0, k.boost), k.spinAngle, k.progress, k.finished ?? -1, k.lap, k.sparks, k.hop, k.offroad ? 1 : 0]
+}
+
+/** A kart driven elsewhere, as last heard. */
+export function applyVec(k: Kart, v: number[]) {
+  ;[k.x, k.z, k.heading, k.speed, k.steer, k.drift, k.boost, k.spinAngle, k.progress] = v
+  k.finished = v[9] >= 0 ? v[9] : null
+  k.lap = v[10]
+  k.sparks = v[11]
+  k.hop = v[12]
+  k.offroad = v[13] === 1
+}
+
+/** This phone takes the wheel of a kart it was only drawing (the host left): from where it is. */
+export function takeOver(race: Race, k: Kart) {
+  k.remote = false
+  const loc = locate(race.track, k.x, k.z)
+  k.i = loc.i
+  k.s = loc.s
+  k.d = loc.d
+  // Past the far side of this lap? From how far round it was (not where it stands: behind the line at the start is the end of a lap).
+  k.half = k.progress - k.lap * race.track.n > race.track.n * 0.5
 }
 
 /** The order now: the finished first (by time), then the furthest along. */
@@ -207,6 +261,8 @@ export function step(race: Race, dtRaw: number, input: Input) {
   const leader = standings(race).find((k) => k.finished === null) ?? player
 
   for (const k of race.karts) {
+    // Driven elsewhere: drawn as heard (KartNet), not moved here.
+    if (k.remote) continue
     const inp = k.finished !== null ? (k.human ? { ...NO_INPUT } : rivalInput(race, k, player)) : k.human ? input : rivalInput(race, k, player)
     k.lastInput = inp
     k.bump = Math.max(0, k.bump - dt)
@@ -237,8 +293,10 @@ export function step(race: Race, dtRaw: number, input: Input) {
       k.spinAngle = 0
       // Rubber band: a rival far ahead eases off, one far behind pushes.
       let skill = k.skill
-      if (!k.human) {
-        const gap = k.progress - player.progress
+      if (!k.player) {
+        // Rubber band, against the best real driver.
+        const best = Math.max(...race.karts.filter((o) => o.player).map((o) => o.progress))
+        const gap = k.progress - best
         skill *= gap > 70 ? 0.92 : gap < -70 ? 1.08 : 1
       }
       const top = (k.boost > 0 ? BOOST_MAX : k.offroad ? OFF_MAX : MAX) * skill
@@ -330,6 +388,25 @@ export function step(race: Race, dtRaw: number, input: Input) {
     k.s = loc.s
     k.progress = k.lap * n + loc.s - (loc.i > n * 0.8 && !k.half ? n : 0)
 
+    // Going the wrong way, or stuck (in the grass against the tyres, turned round):
+    // a warning, then back on the track, facing the right way.
+    const along = fx * tr.tx[loc.i] + fz * tr.tz[loc.i]
+    k.wrong = along < -0.3 && Math.abs(k.speed) > 2 ? k.wrong + dt : 0
+    if (k.wrong > 0.7) say(race, 'Mauvais sens !', k)
+    k.stuck = race.time > 2 && k.spin <= 0 && Math.abs(k.speed) < 2 && (k.offroad || !k.player) ? k.stuck + dt : 0
+    if (k.stuck > (k.player ? 3 : 2) || k.wrong > 6) {
+      const [rx, rz] = pointAt(tr, loc.i, 0)
+      k.x = rx
+      k.z = rz
+      k.d = 0
+      k.heading = Math.atan2(tr.tx[loc.i], tr.tz[loc.i])
+      k.speed = 0
+      k.drift = 0
+      k.stuck = 0
+      k.wrong = 0
+      say(race, 'Remis sur la piste', k)
+    }
+
     // The item boxes.
     if (!k.item && k.rolling <= 0) {
       for (const b of race.boxes) {
@@ -361,10 +438,14 @@ export function step(race: Race, dtRaw: number, input: Input) {
       if (it === 'piment') {
         k.boost = Math.max(k.boost, 1.6)
         say(race, 'Ça pique !', k)
-      } else if (it === 'banane') {
-        race.hazards.push({ id: race.nextId++, kind: 'banane', x: k.x - fx * 2.4, z: k.z - fz * 2.4, s: k.s - 2.4, d: k.d, ttl: 40, owner: k.id })
       } else {
-        race.hazards.push({ id: race.nextId++, kind: 'coco', x: k.x + fx * 2.5, z: k.z + fz * 2.5, s: k.s + 2.5, d: clamp(k.d, -tr.half + 1, tr.half - 1), ttl: 4, owner: k.id })
+        const h: Hazard =
+          it === 'banane'
+            ? { id: `l${race.nextId++}`, kind: 'banane', x: k.x - fx * 2.4, z: k.z - fz * 2.4, s: k.s - 2.4, d: k.d, ttl: 40, owner: k.id, seed: Math.random() * 6 }
+            : { id: `l${race.nextId++}`, kind: 'coco', x: k.x + fx * 2.5, z: k.z + fz * 2.5, s: k.s + 2.5, d: clamp(k.d, -tr.half + 1, tr.half - 1), ttl: 4, owner: k.id, seed: 0 }
+        race.hazards.push(h)
+        // Racing others: they get it on their track too.
+        if (race.online) race.outbox.push(h)
       }
     }
   }
@@ -383,6 +464,8 @@ export function step(race: Race, dtRaw: number, input: Input) {
       if (h.ttl <= 0 || (h.kind === 'coco' && k.id === h.owner && h.ttl > 3.6)) continue
       if ((h.x - k.x) ** 2 + (h.z - k.z) ** 2 < (h.kind === 'coco' ? 2.2 : 1.6)) {
         h.ttl = 0
+        // A kart driven elsewhere spins on its own phone; here the item just goes.
+        if (k.remote) continue
         if (k.boost <= 0.2 || h.kind === 'coco') {
           k.spin = h.kind === 'coco' ? 1.3 : 1.0
           k.item = k.item === 'banane' ? null : k.item
@@ -401,13 +484,18 @@ export function step(race: Race, dtRaw: number, input: Input) {
       const dx = q.x - p.x
       const dz = q.z - p.z
       const d2 = dx * dx + dz * dz
-      if (d2 > 0 && d2 < 1.7 * 1.7) {
+      if (d2 > 0 && d2 < 1.7 * 1.7 && !(p.remote && q.remote)) {
         const d = Math.sqrt(d2)
-        const push = (1.7 - d) / 2
-        p.x -= (dx / d) * push
-        p.z -= (dz / d) * push
-        q.x += (dx / d) * push
-        q.z += (dz / d) * push
+        // Only the karts driven here are pushed (each phone pushes its own).
+        const push = (1.7 - d) / (p.remote || q.remote ? 1 : 2)
+        if (!p.remote) {
+          p.x -= (dx / d) * push
+          p.z -= (dz / d) * push
+        }
+        if (!q.remote) {
+          q.x += (dx / d) * push
+          q.z += (dz / d) * push
+        }
         p.bump = q.bump = 0.2
         const v = (p.speed + q.speed) / 2
         p.speed = p.speed * 0.8 + v * 0.2

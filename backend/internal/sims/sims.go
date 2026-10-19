@@ -19,6 +19,7 @@ import (
 
 	"github.com/myahse/babi-life/backend/internal/auth"
 	"github.com/myahse/babi-life/backend/internal/game"
+	"github.com/myahse/babi-life/backend/internal/kart"
 	"github.com/myahse/babi-life/backend/internal/httpx"
 	"github.com/myahse/babi-life/backend/internal/world"
 )
@@ -210,6 +211,8 @@ func furnishedOrEmpty(f []string) []string {
 
 type Handler struct {
 	DB *pgxpool.Pool
+	// Karts: the grids of Babi Karting (players racing each other).
+	Karts *kart.Lobby
 	// RealPhotos: stories may be photos from the phone, not only from the game (STORIES_REAL_PHOTOS).
 	RealPhotos bool
 }
@@ -279,6 +282,8 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/lot", h.buyLot)
 	r.Post("/sims/{id}/plot/movein", h.moveIn)
 	r.Post("/sims/{id}/meet", h.meet)
+	r.Post("/sims/{id}/kart/join", h.kartJoin)
+	r.Get("/kart/{race}", h.kartRace)
 	r.Post("/sims/{id}/friends/{other}/answer", h.answerFriend)
 	r.Post("/sims/{id}/friends/{other}/invite", h.inviteFriend)
 	r.Post("/sims/{id}/invites/{invite}", h.answerInvite)

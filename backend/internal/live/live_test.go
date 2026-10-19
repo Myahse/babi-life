@@ -20,7 +20,7 @@ func TestRoomSeesItsPlayers(t *testing.T) {
 	now := time.Now()
 	h.update(a, State{ID: "a", X: 1, Z: 2, P: "walk", At: now.UnixMilli()})
 	h.update(other, State{ID: "c", X: 9, P: "idle", At: now.UnixMilli()})
-	h.broadcast(now)
+	h.broadcast(now, true)
 
 	var got struct {
 		T       string  `json:"t"`
@@ -54,7 +54,7 @@ func TestStalePlayersDrop(t *testing.T) {
 	h.join(b)
 	old := time.Now().Add(-2 * Stale)
 	h.update(a, State{ID: "a", P: "idle", At: old.UnixMilli()})
-	h.broadcast(time.Now())
+	h.broadcast(time.Now(), true)
 	if len(b.send) != 0 || len(h.states["r"]) != 0 {
 		t.Fatal("a stale player should be dropped, not sent")
 	}

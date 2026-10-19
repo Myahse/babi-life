@@ -16,6 +16,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -23,11 +24,14 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/myahse/babi-life/backend/internal/auth"
+	"github.com/myahse/babi-life/backend/internal/kart"
 )
 
 const (
-	// Tick: how often the players of a room are sent to everyone in it.
-	Tick = 150 * time.Millisecond
+	// Tick: how often the players of a room are sent to everyone in it
+	// (twice as often in a kart race: KartTick).
+	Tick     = 150 * time.Millisecond
+	KartTick = 75 * time.Millisecond
 	// Stale: a player not heard from for this long is no longer shown.
 	Stale = 10 * time.Second
 	// MaxRoom: players per commune and mode; more simply aren't sent.
@@ -35,7 +39,7 @@ const (
 )
 
 // Poses a player may say it is in (what avatar/Human.tsx can show).
-var poses = map[string]bool{"idle": true, "walk": true, "run": true, "busy": true, "talk": true, "sit": true, "dance": true, "wave": true, "cheer": true}
+var poses = map[string]bool{"idle": true, "walk": true, "run": true, "busy": true, "talk": true, "sit": true, "dance": true, "wave": true, "cheer": true, "kart": true}
 
 // State is one player's Sim: position (metres, in the commune's frame),
 // heading (radians), pose, and when the server heard it (ms).
@@ -47,6 +51,10 @@ type State struct {
 	H  float64 `json:"h"`
 	P  string  `json:"p"`
 	At int64   `json:"at"`
+	// At Babi Karting: the kart (speed, steering, drift, boost, spin, how far round, finish…),
+	// and from the first player on the grid, the quarter's drivers it drives.
+	K []float64   `json:"k,omitempty"`
+	B [][]float64 `json:"b,omitempty"`
 }
 
 type client struct {
@@ -56,7 +64,9 @@ type client struct {
 }
 
 type Hub struct {
-	DB      *pgxpool.Pool
+	DB *pgxpool.Pool
+	// Karts: who races on which grid at Babi Karting (the "kart" rooms).
+	Karts   *kart.Lobby
 	Tokens  auth.Tokens
 	Origins []string
 
@@ -71,22 +81,30 @@ func NewHub(db *pgxpool.Pool, tokens auth.Tokens, origins []string) *Hub {
 
 // Run sends each room its players, every Tick, until ctx ends.
 func (h *Hub) Run(ctx context.Context) {
-	t := time.NewTicker(Tick)
+	t := time.NewTicker(KartTick)
 	defer t.Stop()
+	n := 0
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-t.C:
-			h.broadcast(time.Now())
+			n++
+			h.broadcast(time.Now(), n%2 == 0)
 		}
 	}
 }
 
-func (h *Hub) broadcast(now time.Time) {
+func isKart(room string) bool { return strings.HasPrefix(room, "kart:") }
+
+// broadcast: the kart rooms every KartTick, the streets every other one (Tick).
+func (h *Hub) broadcast(now time.Time, streets bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	for room, clients := range h.rooms {
+		if !streets && !isKart(room) {
+			continue
+		}
 		players := make([]State, 0, len(h.states[room]))
 		for id, s := range h.states[room] {
 			if now.UnixMilli()-s.At > Stale.Milliseconds() {
@@ -156,16 +174,20 @@ func (h *Hub) update(c *client, s State) {
 
 // What a phone sends.
 type message struct {
-	T     string  `json:"t"`
-	Token string  `json:"token"` // hello: the session token (not in the URL, which ends up in logs)
-	Sim   string  `json:"sim"`   // hello
-	Mode  string  `json:"mode"`  // hello: "open" (the real map) or "street"
-	X     float64 `json:"x"`
-	Y     float64 `json:"y"`
-	Z     float64 `json:"z"`
-	H     float64 `json:"h"`
-	P     string  `json:"p"`
-	C     float64 `json:"c"` // ping: the phone's clock, sent back as is
+	T     string          `json:"t"`
+	Token string          `json:"token"` // hello: the session token (not in the URL, which ends up in logs)
+	Sim   string          `json:"sim"`   // hello
+	Mode  string          `json:"mode"`  // hello: "open" (the real map) or "street"
+	X     float64         `json:"x"`
+	Y     float64         `json:"y"`
+	Z     float64         `json:"z"`
+	H     float64         `json:"h"`
+	P     string          `json:"p"`
+	C     float64         `json:"c"`    // ping: the phone's clock, sent back as is
+	Race  string          `json:"race"` // hello, mode "kart": the race's grid (package kart)
+	K     []float64       `json:"k"`
+	B     [][]float64     `json:"b"`
+	D     json.RawMessage `json:"d"` // drop: an item left on the track or thrown (relayed as is)
 }
 
 func finite(v ...float64) bool {
@@ -227,7 +249,7 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	welcome, _ := json.Marshal(map[string]any{"t": "welcome", "now": time.Now().UnixMilli()})
 	c.send <- welcome
 
-	last := time.Time{}
+	last, lastDrop := time.Time{}, time.Time{}
 	for {
 		_, data, err := conn.Read(ctx)
 		if err != nil {
@@ -249,8 +271,52 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if time.Since(last) < 50*time.Millisecond || !finite(m.X, m.Y, m.Z, m.H) || !poses[m.P] {
 				continue
 			}
+			st := State{ID: c.sim, X: m.X, Y: m.Y, Z: m.Z, H: m.H, P: m.P}
+			if isKart(c.room) {
+				if !kartOK(m.K, m.B) {
+					continue
+				}
+				st.K, st.B = m.K, m.B
+			}
 			last = time.Now()
-			h.update(c, State{ID: c.sim, X: m.X, Y: m.Y, Z: m.Z, H: m.H, P: m.P, At: last.UnixMilli()})
+			st.At = last.UnixMilli()
+			h.update(c, st)
+		case "drop":
+			// An item on the track: to the others in the race straight away (a few a second at most).
+			if !isKart(c.room) || len(m.D) == 0 || len(m.D) > 512 || time.Since(lastDrop) < 150*time.Millisecond {
+				continue
+			}
+			lastDrop = time.Now()
+			h.relay(c, m.D)
+		}
+	}
+}
+
+// kartOK: a kart's numbers (and the drivers it drives), sane and not too many.
+func kartOK(k []float64, b [][]float64) bool {
+	if len(k) > 16 || len(b) > kart.Max || !finite(k...) {
+		return false
+	}
+	for _, x := range b {
+		if len(x) > 16 || !finite(x...) {
+			return false
+		}
+	}
+	return true
+}
+
+// relay: something one player did in a race, to the others in it.
+func (h *Hub) relay(from *client, d json.RawMessage) {
+	msg, _ := json.Marshal(map[string]any{"t": "drop", "id": from.sim, "d": d})
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for o := range h.rooms[from.room] {
+		if o == from {
+			continue
+		}
+		select {
+		case o.send <- msg:
+		default:
 		}
 	}
 }
@@ -275,6 +341,14 @@ func (h *Hub) hello(ctx context.Context, conn *websocket.Conn) (*client, error) 
 	var city, commune string
 	if err := h.DB.QueryRow(ctx, `SELECT city, commune FROM sims WHERE id = $1 AND user_id = $2`, m.Sim, user).Scan(&city, &commune); err != nil {
 		return nil, errors.New("sim introuvable")
+	}
+	// A kart race: its own room, for the players on its grid.
+	if m.Mode == "kart" {
+		if h.Karts == nil || !h.Karts.Has(m.Race, m.Sim) {
+			return nil, errors.New("pas sur cette grille")
+		}
+		log.Printf("live: %s joins kart race %s", m.Sim, m.Race)
+		return &client{sim: m.Sim, room: "kart:" + m.Race, send: make(chan []byte, 32)}, nil
 	}
 	mode := "street"
 	if m.Mode == "open" {

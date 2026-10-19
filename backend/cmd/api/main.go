@@ -27,6 +27,7 @@ import (
 	"github.com/myahse/babi-life/backend/internal/db"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
+	"github.com/myahse/babi-life/backend/internal/kart"
 	"github.com/myahse/babi-life/backend/internal/live"
 	"github.com/myahse/babi-life/backend/internal/news"
 	"github.com/myahse/babi-life/backend/internal/sims"
@@ -68,11 +69,13 @@ func main() {
 	}
 	// ADMIN_KEY opens every admin part at once (the /admin page).
 	adminkey.Master = os.Getenv("ADMIN_KEY")
-	simsH := &sims.Handler{DB: pool, RealPhotos: os.Getenv("STORIES_REAL_PHOTOS") == "true"}
+	karts := kart.NewLobby()
+	simsH := &sims.Handler{DB: pool, RealPhotos: os.Getenv("STORIES_REAL_PHOTOS") == "true", Karts: karts}
 	headlines := news.New(cfg.NewsFeeds)
 	go headlines.Run(ctx)
 	// The players of a commune, live (positions and poses, over a WebSocket).
 	players := live.NewHub(pool, tokens, cfg.AllowedOrigins)
+	players.Karts = karts
 	go players.Run(ctx)
 
 	r := chi.NewRouter()

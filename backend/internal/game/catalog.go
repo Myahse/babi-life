@@ -518,7 +518,7 @@ var Kinds = map[string]PlaceKind{
 	"karting": {
 		ID: "karting", Label: "Karting", Icon: "car",
 		Interactions: []Interaction{
-			{ID: "course-kart", Ages: TeensUp, Label: "Faire une course de karting (3 tours)", Icon: "car", Minutes: 20, Cost: 3000, Effect: Needs{Fun: 45, Social: 10, Energy: -10}, MinHour: 10, MaxHour: 23},
+			{ID: "course-kart", Ages: TeensUp, Label: "Faire une course de karting (3 tours)", Icon: "car", Minutes: 30, Cost: 3000, Effect: Needs{Fun: 45, Social: 10, Energy: -10}, MinHour: 10, MaxHour: 23},
 			{ID: "regarder-kart", Label: "Regarder les courses depuis la tribune", Icon: "flag", Minutes: 30, Effect: Needs{Fun: 15, Social: 10}, MinHour: 10, MaxHour: 23},
 		},
 		Events: []RandomEvent{

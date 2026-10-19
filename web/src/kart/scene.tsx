@@ -387,7 +387,7 @@ export function Hazards({ race }: { race: Race }) {
       g.visible = !!h
       if (!h) return
       g.position.set(h.x, h.kind === 'coco' ? 0.35 : 0.12, h.z)
-      g.rotation.y = h.kind === 'coco' ? worldTime() * 8 : h.id
+      g.rotation.y = h.kind === 'coco' ? worldTime() * 8 : h.seed
       ;(g.children[0] as THREE.Mesh).visible = h.kind === 'banane'
       ;(g.children[1] as THREE.Mesh).visible = h.kind === 'coco'
     })

@@ -97,6 +97,7 @@ const STREET_SELLERS: Record<string, [string, string]> = {
 export function Play() {
   const world = useWorld((s) => s.world)!
   const user = useSession((s) => s.user)
+  const token = useSession((s) => s.token)
   const navigate = useNavigate()
   const desktop = useIsDesktop()
 
@@ -438,12 +439,22 @@ export function Play() {
       {racing && (
         <Suspense fallback={<div className="fixed inset-0 z-50 grid place-items-center bg-[#87c5ef] font-display text-2xl font-extrabold text-white">Babi Karting…</div>}>
           <KartRace
+            key={racing}
             name={sim.firstName}
             look={sim.look}
             gender={sim.gender}
+            simId={sim.id}
+            token={token ?? undefined}
             onExit={() => {
               setRaced(racing)
               setRacing(null)
+            }}
+            // Another race is paid for again; the new activity opens the next grid.
+            onReplay={async () => {
+              setRaced(racing)
+              // The last race may still be the Sim's activity: it ends, then the next one is paid.
+              await api.stop(sim.id).catch(() => undefined)
+              return run('Faire une course de karting', 'car', 'karting', () => api.interact(sim.id, kartAct?.placeId ?? 'marcory-karting', 'course-kart'))
             }}
           />
         </Suspense>

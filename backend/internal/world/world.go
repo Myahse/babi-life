@@ -85,6 +85,8 @@ const (
 	srcRegions         = "https://loidici.biz/?p=13626"
 	srcSudComoe        = "https://economie-ivoirienne.ci/pole-competitif/region-du-sud-comoe.html"
 	srcOSM             = "https://www.openstreetmap.org/"
+	srcKarting         = "https://www.openstreetmap.org/way/333399974"
+	srcKarting2        = "https://abidjan4you.com/en/kids-activities/karting"
 	srcYopougon        = "https://fr.wikipedia.org/wiki/Yopougon"
 	srcYopBitume2026   = "https://www.koaci.com/article/2026/07/12/cote-divoire/politique/cote-divoire-independance-a-yopougon-le-gouvernement-accorde-55-kilometres-de-voies-a-bitumer-dans-la-commune_198503.html"
 	srcMarcheSelmer    = "https://news.abidjan.net/articles/426900/inauguration-du-marche-dominique-ouattara-de-selmer-dr-yao-yao-bertin-maire-de-yopougon-le-marche-est-une-expression-de-la-vie"
@@ -307,7 +309,8 @@ var Cities = []City{
 				Place{ID: "marcory-burger-king", Name: "Burger King", Kind: "restaurant", Lat: 5.2972, Lng: -3.9874, Real: true, Approx: true,
 					Operator: "Servair Abidjan (franchise, 2015)",
 					Source:   game.Partial("Premier Burger King du pays, ouvert en 2015 dans PlaYce Marcory, en franchise avec Servair Abidjan ; activité actuelle à confirmer.", srcBurgerKing)},
-				fictional("marcory-karting", "Babi Karting", "karting", "Zone 4", 5.2905, -3.9935),
+				Place{ID: "marcory-karting", Name: "Babi Karting", Kind: "karting", Quarter: "Zone 4", Lat: 5.29471, Lng: -3.99237, Real: true, Approx: true,
+					Source: game.Partial("Nom du jeu pour le karting de Marcory (Abidjan Karting, « Superkart » sur OpenStreetMap), 9 rue du Canal, entre Zone 3 et Zone 4 ; position d'après OpenStreetMap. Le circuit, les tarifs et les horaires du jeu sont dessinés pour le jeu ; l'activité actuelle du lieu est à confirmer.", srcKarting, srcKarting2)},
 			),
 			abidjanCommune("koumassi", "Koumassi", "Populaire, vivante, au bord de la lagune.", 5.2930, -3.9500, "sud",
 				Place{ID: "koumassi-marche", Name: "Marché de Koumassi", Kind: "market", Lat: 5.2960, Lng: -3.9520, Real: true, Approx: true, Source: game.Unverified("Marché de Koumassi ; à confirmer.")},
