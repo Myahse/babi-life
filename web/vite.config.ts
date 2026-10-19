@@ -34,18 +34,21 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // Not the pages themselves: they come from the network when online
+        // (below), so a page never points at program files a newer version
+        // replaced.
+        globPatterns: ['**/*.{js,css,svg,png,woff2}'],
         // Not downloaded ahead on the first visit (that's megabytes on a phone
         // plan): the map (1.9 MB), the screen effects, and fonts for
         // alphabets the game never shows. They're kept once used (see
         // runtimeCaching).
         globIgnores: ['**/MapboxMap-*', '**/effects-*', '**/*-{devanagari,cyrillic,cyrillic-ext,greek,vietnamese}-*.woff2'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
-        navigateFallback: '/index.html',
-        // The testers' door always comes from the network, never from an old copy.
-        navigateFallbackDenylist: [/^\/testeur/],
+        navigateFallback: null,
         cleanupOutdatedCaches: true,
         runtimeCaching: [
+          // The pages: from the network, the last copy only when offline.
+          { urlPattern: ({ request }) => request.mode === 'navigate', handler: 'NetworkFirst', options: { cacheName: 'pages', networkTimeoutSeconds: 5, expiration: { maxEntries: 10 } } },
           // Hashed file names never change: once fetched, kept.
           { urlPattern: /\/assets\/.*\.(js|css|woff2)$/, handler: 'CacheFirst', options: { cacheName: 'assets', expiration: { maxEntries: 80 } } },
         ],

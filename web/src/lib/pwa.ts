@@ -5,6 +5,12 @@ import { registerSW } from 'virtual:pwa-register'
 // these hooks offer installation and tell when the network is gone.
 
 registerSW({ immediate: true })
+// The page loaded fine: a later broken load may repair itself again (index.html).
+try {
+  sessionStorage.removeItem('babi-repair')
+} catch {
+  /* private browsing */
+}
 // The old 3D body models (gone with the old avatars) were kept in their own
 // cache: free that space on phones that still have it.
 if ('caches' in window) caches.delete('models').catch(() => {})

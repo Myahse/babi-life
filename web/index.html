@@ -14,6 +14,28 @@
     <meta name="apple-mobile-web-app-title" content="Babi Life" />
     <meta name="theme-color" content="#0f1230" />
     <title>Babi Life</title>
+    <script>
+      // Self-repair: if a program file of the site fails to load (an old
+      // offline copy pointing at files a newer version replaced), drop the
+      // offline copy and load the page again, once.
+      window.addEventListener(
+        'error',
+        function (e) {
+          var t = e.target
+          if (!t || t.tagName !== 'SCRIPT' || !/\/assets\//.test(t.src || '')) return
+          try {
+            if (sessionStorage.getItem('babi-repair')) return
+            sessionStorage.setItem('babi-repair', '1')
+          } catch (x) {}
+          var again = function () { location.reload() }
+          var jobs = []
+          if (navigator.serviceWorker) jobs.push(navigator.serviceWorker.getRegistrations().then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister() })) }))
+          if (window.caches) jobs.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k) })) }))
+          Promise.all(jobs).then(again, again)
+        },
+        true,
+      )
+    </script>
   </head>
   <body>
     <div id="root"></div>
