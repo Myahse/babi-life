@@ -85,7 +85,12 @@ func main() {
 	}))
 
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		httpx.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
+		// Which version runs (Render sets RENDER_GIT_COMMIT), and which sites may call it.
+		commit := os.Getenv("RENDER_GIT_COMMIT")
+		if len(commit) > 7 {
+			commit = commit[:7]
+		}
+		httpx.JSON(w, http.StatusOK, map[string]any{"status": "ok", "version": commit, "sites": cfg.AllowedOrigins})
 	})
 
 	r.Route("/api/v1", func(r chi.Router) {
