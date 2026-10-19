@@ -1,11 +1,16 @@
 package sims
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
 	"slices"
 	"strings"
+	"time"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/myahse/babi-life/backend/internal/adminkey"
 	"github.com/myahse/babi-life/backend/internal/auth"
@@ -40,12 +45,14 @@ func (h *Handler) tester(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
 		return
 	}
-	var tester bool
-	_ = h.DB.QueryRow(r.Context(), `SELECT tester FROM users WHERE id = $1`, auth.UserID(r.Context())).Scan(&tester)
-	if !tester && !adminkey.Tester(req.Pass) {
+	var tester, off bool
+	_ = h.DB.QueryRow(r.Context(), `SELECT tester, tester_off FROM users WHERE id = $1`, auth.UserID(r.Context())).Scan(&tester, &off)
+	if !tester && (off || !adminkey.Tester(req.Pass)) {
 		httpx.Error(w, http.StatusForbidden, errNotTester.Error())
 		return
 	}
+	// Marked: reset with the testers' accounts before launch (ResetTesters).
+	_, _ = h.DB.Exec(r.Context(), `UPDATE sims SET tested = true WHERE id = $1 AND user_id = $2`, chi.URLParam(r, "id"), auth.UserID(r.Context()))
 	h.mutate(w, r, func(s *Sim) (game.Outcome, []Event, error) {
 		events, err := s.testerDo(req.TesterAction)
 		if err != nil {
@@ -126,4 +133,87 @@ func (s *Sim) testerAge(stage string) ([]Event, error) {
 		text = fmt.Sprintf("Testeur : %s est de nouveau un bébé.", s.FirstName)
 	}
 	return append(events, Event{Kind: "life", Text: text, GameTime: s.GameMinutes}), nil
+}
+
+// ResetTesters puts every tester's Sim back as it was just created: the same
+// person (name, look, traits, aspiration, family, where they were born), a
+// newborn again with no money, an empty journal, no plot, no bets, posts,
+// messages or friends (all of it goes with the Sim: ON DELETE CASCADE), the
+// same id so the game finds it. Testers are the accounts that entered the
+// code (users.tester) and the Sims the toolbox was used on (sims.tested);
+// the accounts stop being testers. Returns how many Sims were reset.
+func ResetTesters(ctx context.Context, db *pgxpool.Pool) (int, error) {
+	tx, err := db.Begin(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+	type born struct {
+		id, user, first, last, gender, aspiration, homeCity, homeCommune, family string
+		look                                                                     []byte
+		traits                                                                   []string
+		created                                                                  time.Time
+	}
+	rows, err := tx.Query(ctx, `
+		SELECT s.id, s.user_id, s.first_name, s.last_name, s.gender, s.aspiration, s.home_city, s.home_commune, s.family, s.look, s.traits, s.created_at
+		FROM sims s JOIN users u ON u.id = s.user_id
+		WHERE u.tester OR s.tested
+		FOR UPDATE OF s`)
+	if err != nil {
+		return 0, err
+	}
+	var all []born
+	for rows.Next() {
+		var b born
+		if err := rows.Scan(&b.id, &b.user, &b.first, &b.last, &b.gender, &b.aspiration, &b.homeCity, &b.homeCommune, &b.family, &b.look, &b.traits, &b.created); err != nil {
+			rows.Close()
+			return 0, err
+		}
+		all = append(all, b)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+	ids := func(bs []born) []string {
+		out := make([]string, len(bs))
+		for i, b := range bs {
+			out[i] = b.id
+		}
+		return out
+	}
+	now := game.MinuteOf(time.Now())
+	for _, b := range all {
+		fam, ok := game.FindFamily(b.family)
+		if !ok {
+			fam = game.Families[0]
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM sims WHERE id = $1`, b.id); err != nil {
+			return 0, err
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO sims (id, user_id, first_name, last_name, gender, look, traits, aspiration,
+			                  home_city, home_commune, city, commune, money, needs, game_minutes,
+			                  origin, housing, loan, born_at, family, apps, created_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $9, $10, 0, $11, $12, '', $13, 0, $12, $14, '{}', $15)`,
+			b.id, b.user, b.first, b.last, b.gender, b.look, b.traits, b.aspiration, b.homeCity, b.homeCommune,
+			game.FreshNeeds(), now, fam.Housing, fam.ID, b.created); err != nil {
+			return 0, err
+		}
+		where := b.homeCommune
+		if city, ok := world.FindCity(b.homeCity); ok {
+			if cm, ok := city.Commune(b.homeCommune); ok {
+				where = cm.Name
+			}
+		}
+		text := fmt.Sprintf("%s est né·e à %s, dans %s, d'une famille %s. %s", b.first, where, fam.Sector, strings.ToLower(fam.Label), fam.Hint)
+		if _, err := tx.Exec(ctx, `INSERT INTO sim_events (sim_id, kind, text, money, game_time) VALUES ($1, 'random', $2, 0, $3)`, b.id, text, now); err != nil {
+			return 0, err
+		}
+	}
+	// Ordinary players now: the code kept in their browser no longer makes them testers again.
+	if _, err := tx.Exec(ctx, `UPDATE users SET tester = false, tester_off = true WHERE tester OR id IN (SELECT user_id FROM sims WHERE id = ANY($1))`, ids(all)); err != nil {
+		return 0, err
+	}
+	return len(all), tx.Commit(ctx)
 }

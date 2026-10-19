@@ -159,6 +159,12 @@ func (h *Handler) BecomeTester(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusForbidden, "code testeur incorrect")
 		return
 	}
+	// After the testers' reset (sims.ResetTesters) the code no longer works for the account: only /admin can.
+	var off bool
+	if err := h.DB.QueryRow(r.Context(), `SELECT tester_off FROM users WHERE id = $1`, UserID(r.Context())).Scan(&off); err == nil && off {
+		httpx.Error(w, http.StatusForbidden, "les tests sont finis : ton compte est un compte joueur")
+		return
+	}
 	var u User
 	if err := scanUser(h.DB.QueryRow(r.Context(), `UPDATE users SET tester = true WHERE id = $1 RETURNING `+userColumns, UserID(r.Context())), &u); err != nil {
 		httpx.Error(w, http.StatusUnauthorized, "user not found")

@@ -17,6 +17,7 @@ import (
 	"github.com/myahse/babi-life/backend/internal/adminkey"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
+	"github.com/myahse/babi-life/backend/internal/sims"
 )
 
 type Handler struct {
@@ -42,6 +43,7 @@ func (h *Handler) Routes(r chi.Router) {
 		r.Post("/announcements", h.announce)
 		r.Post("/money", h.giveMoney)
 		r.Post("/users/{id}/tester", h.setTester)
+		r.Post("/testers/reset", h.resetTesters)
 		r.Get("/whatsapp", h.waStatus)
 		r.Post("/whatsapp", h.waSend)
 		r.Post("/whatsapp/{id}/stop", h.waStop)
@@ -278,7 +280,7 @@ func (h *Handler) setTester(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var name string
-	if err := h.DB.QueryRow(r.Context(), `UPDATE users SET tester = $2 WHERE id::text = $1 RETURNING name`, chi.URLParam(r, "id"), req.Tester).Scan(&name); err != nil {
+	if err := h.DB.QueryRow(r.Context(), `UPDATE users SET tester = $2, tester_off = tester_off AND NOT $2 WHERE id::text = $1 RETURNING name`, chi.URLParam(r, "id"), req.Tester).Scan(&name); err != nil {
 		httpx.Error(w, http.StatusNotFound, "compte introuvable")
 		return
 	}
@@ -288,4 +290,16 @@ func (h *Handler) setTester(w http.ResponseWriter, r *http.Request) {
 	}
 	h.Log(r.Context(), action, name)
 	httpx.JSON(w, http.StatusOK, map[string]bool{"tester": req.Tester})
+}
+
+// resetTesters: before launch, every tester's Sim goes back to just after it
+// was created, and the accounts become ordinary players (sims.ResetTesters).
+func (h *Handler) resetTesters(w http.ResponseWriter, r *http.Request) {
+	n, err := sims.ResetTesters(r.Context(), h.DB)
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "remise à zéro impossible")
+		return
+	}
+	h.Log(r.Context(), "Testeurs remis à zéro", strconv.Itoa(n)+" persos")
+	httpx.JSON(w, http.StatusOK, map[string]int{"reset": n})
 }

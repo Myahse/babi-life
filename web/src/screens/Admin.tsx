@@ -279,6 +279,48 @@ function GiveMoney({ k, onDone }: { k: string; onDone: () => void }) {
   )
 }
 
+/** Before launch: every tester's perso back to just after it was created, the accounts made ordinary players. */
+function ResetTesters({ k, onDone }: { k: string; onDone: () => void }) {
+  const [sure, setSure] = useState(false)
+  const [e, setE] = useState<string | null>(null)
+  const [ok, setOk] = useState<string | null>(null)
+  const reset = async () => {
+    setE(null)
+    try {
+      const r = await call<{ reset: number }>('/admin/testers/reset', k, { method: 'POST' })
+      setOk(`${nf(r.reset)} persos remis à zéro. Les comptes testeurs sont redevenus des joueurs normaux.`)
+      setSure(false)
+      onDone()
+    } catch (x) {
+      setE(x instanceof Error ? x.message : 'Erreur')
+    }
+  }
+  return (
+    <Card title="Remettre les testeurs à zéro" className="mb-6">
+      <p className="mb-3 text-sm text-[#6b7280]">
+        Les persos des comptes qui ont entré le code testeur (et ceux sur qui la boîte à outils a servi) redeviennent comme juste après leur création : même nom, même look, même famille, même lieu de naissance, mais bébés, sans argent, sans terrain, sans paris, sans publications ni amis, le journal vidé. Les comptes perdent la boîte à outils. Ça ne s'annule pas.
+      </p>
+      <Err e={e} />
+      <Ok t={ok} />
+      {sure ? (
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="text-sm text-[#374151]">Tout effacer pour les testeurs ?</span>
+          <Btn tone="light" onClick={() => setSure(false)}>
+            Annuler
+          </Btn>
+          <Btn tone="orange" onClick={() => void reset()}>
+            Oui, remettre à zéro
+          </Btn>
+        </span>
+      ) : (
+        <Btn tone="orange" onClick={() => (setSure(true), setOk(null))}>
+          Remettre les testeurs à zéro
+        </Btn>
+      )}
+    </Card>
+  )
+}
+
 type Player = { id: string; name: string; username: string; email: string; google: boolean; createdAt: string; lastLogin: string; sims: number; sim: string; commune: string; money: number; online: boolean; tester: boolean }
 
 function Players({ k }: { k: string }) {
@@ -296,6 +338,7 @@ function Players({ k }: { k: string }) {
   return (
     <>
       <GiveMoney k={k} onDone={() => setVersion((v) => v + 1)} />
+      <ResetTesters k={k} onDone={() => setVersion((v) => v + 1)} />
       <Card>
         <Err e={e} />
         <div className="mb-4 flex flex-wrap items-center gap-3">

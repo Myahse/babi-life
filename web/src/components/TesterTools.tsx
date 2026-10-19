@@ -41,7 +41,13 @@ export function TesterTools({ sim, act }: { sim: Sim; act: Act }) {
     if (account) {
       if (!isTester()) setTester(true)
     } else if (testerPass()) {
-      become(testerPass()).catch(() => undefined)
+      become(testerPass()).catch((x) => {
+        // The tests are over for this account (the testers' reset): this browser forgets the code.
+        if (x instanceof ApiError && x.status === 403) {
+          setTester(false)
+          location.reload()
+        }
+      })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account])
