@@ -94,6 +94,8 @@ function lotSpot(simId: string): [number, number] {
   return [r() * Math.PI * 2, 140 + r() * 300]
 }
 /** A lot's size (the plots from before lots are 12 × 12). */
+/** Inside the house, its blocks from this height up are hidden (the cutaway). */
+const CUT_HEIGHT = 2
 const lotSize = (p: Plot): [number, number] => [p.lot?.w ?? 12, p.lot?.d ?? 12]
 /** How far a lot clears the map's buildings round it. */
 const lotClear = (p: Plot) => Math.max(PLOT_CLEAR, Math.hypot(...lotSize(p)) / 2 + 3)
@@ -671,19 +673,59 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       const owner = r.id === HOME_ID ? myPlot : r.id.startsWith('plot:') ? plots?.find((p) => `plot:${p.simId}` === r.id) : undefined
       if (!owner) continue
       const [w, d] = lotSize(owner)
-      const top = new Map<string, number>()
-      for (const [x, y, z] of owner.blocks) top.set(`${x},${z}`, Math.max(top.get(`${x},${z}`) ?? 0, y + 1))
+      // A column is a wall where it stands at body height (a block at y 1; a floor tile at
+      // y 0 is walked on). A roof overhead leaves the floor under it free: the Sim walks in.
+      const ys = new Map<string, Set<number>>()
+      for (const [x, y, z] of owner.blocks) {
+        const k = `${x},${z}`
+        if (!ys.has(k)) ys.set(k, new Set())
+        ys.get(k)!.add(y)
+      }
       const [c, s] = [Math.cos(r.rot), Math.sin(r.rot)]
-      for (const [k, h] of top) {
-        if (h < 2) continue
+      const at = (u: number, v: number) => [r.center[0] + u * c + v * s, r.center[1] - u * s + v * c] as const
+      for (const [k, set] of ys) {
+        if (!set.has(1)) continue
+        let h = 1
+        while (set.has(h)) h++
         const [lx, lz] = k.split(',').map(Number)
-        const [u, v] = [lx + 0.5 - w / 2, lz + 0.5 - d / 2]
-        list.push({ x: r.center[0] + u * c + v * s, z: r.center[1] - u * s + v * c, hw: 0.5, hd: 0.5, rot: r.rot, top: h })
+        const [x, z] = at(lx + 0.5 - w / 2, lz + 0.5 - d / 2)
+        list.push({ x, z, hw: 0.5, hd: 0.5, rot: r.rot, top: h })
+      }
+      // The furniture is in the way too (not a rug on the floor).
+      const catalog = new Map((world.furniture ?? []).map((f) => [f.id, f]))
+      for (const piece of owner.furniture ?? []) {
+        const f = catalog.get(piece[4])
+        if (!f || f.h < 0.2) continue
+        const [fw, fd] = piece[3] % 2 ? [f.d, f.w] : [f.w, f.d]
+        const [x, z] = at(piece[0] + fw / 2 - w / 2, piece[2] + fd / 2 - d / 2)
+        list.push({ x, z, hw: fw / 2, hd: fd / 2, rot: r.rot, top: piece[1] + f.h })
       }
     }
     setObstacles('plots', list)
     return () => clearObstacles('plots')
-  }, [resolved, myPlot, plots, world.plot])
+  }, [resolved, myPlot, plots, world.plot, world.furniture])
+
+  // The Sim inside its own house: the roof and the top of the walls come off, as in the Sims.
+  const [inside, setInside] = useState(false)
+  const insideTick = useRef(0)
+  useFrame((_, dt) => {
+    insideTick.current += dt
+    if (insideTick.current < 0.25) return
+    insideTick.current = 0
+    const r = resolved.get(HOME_ID)
+    let now = false
+    if (r && myPlot) {
+      const [w, d] = lotSize(myPlot)
+      const [dx, dz] = [whereabouts.sim[0] - r.center[0], whereabouts.sim[1] - r.center[1]]
+      const [c, s] = [Math.cos(r.rot), Math.sin(r.rot)]
+      const [u, v] = [dx * c - dz * s, dx * s + dz * c]
+      // Under a roof of the house, not just on the lot.
+      const [lx, lz] = [Math.floor(u + w / 2), Math.floor(v + d / 2)]
+      now = Math.abs(u) < w / 2 && Math.abs(v) < d / 2 && myPlot.blocks.some(([x, y, z]) => x === lx && z === lz && y >= 2)
+    }
+    if (now !== inside) setInside(now)
+  })
+  const cutBlocks = useMemo(() => (myPlot ? myPlot.blocks.filter((b) => b[1] < CUT_HEIGHT) : []), [myPlot])
 
   const homeLot = lots.find((l) => l.id === HOME_ID)
   const walkNav = useMemo<WalkNav>(
@@ -746,7 +788,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         return owner && world.materials ? (
           <group key={`house${r.id}`} position={[r.center[0], 0, r.center[1]]} rotation={[0, r.rot, 0]}>
             <group position={[-lotSize(owner)[0] / 2, 0, -lotSize(owner)[1] / 2]} onClick={r.id === HOME_ID ? (e) => (e.stopPropagation(), onPick(HOME_ID)) : undefined}>
-              <House blocks={owner.blocks} materials={world.materials} />
+              <House blocks={r.id === HOME_ID && inside ? cutBlocks : owner.blocks} materials={world.materials} />
               {owner.furniture?.length > 0 && world.furniture && <FurnitureSet pieces={owner.furniture} catalog={world.furniture} />}
             </group>
           </group>

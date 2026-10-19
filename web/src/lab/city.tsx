@@ -416,6 +416,7 @@ function Lab() {
   if (view === 'tolls') return <TollsLab />
   if (view === 'streetfoot') return <StreetFootLab />
   if (view === 'people') return <PeopleLab />
+  if (view === 'ride') return <RideLab />
   if (view === 'stadium') return <StadiumLab />
   if (view === 'family') return <FamilyScene familyId={q.get('f') ?? 'gnambro'} look={randomLook((q.get('g') ?? 'femme') as 'femme', seededLab(Number(q.get('seed') ?? 3)))} gender={(q.get('g') ?? 'femme') as 'femme'} className="!h-screen !w-screen" />
   if (view === 'interior') return <InteriorLab />
@@ -635,6 +636,29 @@ function PeopleLab() {
       </mesh>
       <StreetSpot spot={{ id: `${kind}:lab:${q.get('id') ?? 1}`, kind, at: [0, 0], rot: 0, w: 8, len: 40, seed: 0.7 }} />
       <OrbitControls target={[0, 1, 0]} />
+    </Canvas>
+  )
+}
+/** The Sim on the back of a moto-taxi, as the Walker draws it (?view=ride&cam=). */
+function RideLab() {
+  const cam = (q.get('cam') ?? '3,2,3').split(',').map(Number) as [number, number, number]
+  const look = useMemo(() => randomLook('femme', seededLab(5)), [])
+  return (
+    <Canvas shadows dpr={[1, 1.5]} camera={{ position: cam, fov: 45 }} style={{ width: '100vw', height: '100vh' }}>
+      <color attach="background" args={['#a9d3f0']} />
+      <hemisphereLight args={['#ffffff', '#b8a27c', 1.2]} />
+      <directionalLight position={[10, 20, 12]} intensity={1.6} castShadow />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[40, 40]} />
+        <meshLambertMaterial color="#4a4d55" />
+      </mesh>
+      <group position={[0, 0, 0.45]} rotation={[0, -Math.PI / 2, 0]}>
+        <Vehicle p={[0, 0, 0]} kind="moto" color="#c92a2a" />
+      </group>
+      <group position={[0, 0.42, -0.15]}>
+        <Character look={look} gender="femme" walking={false} running={false} busy={false} pose="sit" stage="adulte" />
+      </group>
+      <OrbitControls target={[0, 0.8, 0]} />
     </Canvas>
   )
 }

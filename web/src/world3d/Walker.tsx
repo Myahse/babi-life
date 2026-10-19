@@ -16,18 +16,20 @@ import { worldTime } from '../lib/worldClock'
 import { SIM_SLOT, matchFor, onField, worldFacing } from './open/match'
 import { blocked, blockedFixed, topAt, vehicleAt } from './obstacles'
 import { gridWay } from './gridPath'
+import { Vehicle } from './vehicles'
 import type { Pose } from '../avatar/Human'
 
 type XZ = [number, number]
 
-const SPEED = 3.2 // metres per second: a brisk walk (long ways are run: autoRun)
-const RUN = 8.5 // running
+const SPEED = 1.9 // metres per second: a brisk walk
+const RUN = 4.6 // running: a real run, nothing like a car
 /** Further than this, the Sim runs there by itself. */
 const RUN_FROM = 90
+/** Further than this, the Sim hails a moto-taxi and rides there behind the driver. */
+const RIDE_FROM = 220
+const RIDE = 9 // a moto-taxi in town: about 32 km/h
 const UP = new THREE.Vector3(0, 1, 0)
 const EAVES: XZ[] = [[0, 0], [1.1, 0], [-1.1, 0], [0, 1.1], [0, -1.1]]
-/** A walk never takes longer than this many seconds: far away, the Sim hurries. */
-const LONGEST_WALK = 40
 /** Closer than this, a walk goes straight round what's in the way (gridWay), not by the streets. */
 const NEAR_WALK = 110
 
@@ -91,6 +93,16 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   const speed = useRef(SPEED)
   const [run, setRun] = useState(false)
   const autoRun = useRef(false)
+  // Far away: on the back of a moto-taxi.
+  const riding = useRef(false)
+  const [ride, setRide] = useState(false)
+  /** How the Sim goes a way this long: walking, running, or by moto-taxi. */
+  const setPace = (far: number) => {
+    riding.current = far > RIDE_FROM
+    autoRun.current = !riding.current && far > RUN_FROM
+    speed.current = riding.current ? RIDE : autoRun.current ? RUN : SPEED
+    setRide(riding.current)
+  }
   // The way the Sim is going, drawn on the ground.
   const [route, setRoute] = useState<XZ[] | null>(null)
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null
@@ -214,9 +226,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       group.current!.position.set(lot.door[0], 0, lot.door[1])
       path.current = [lot.door]
     }
-    const far = pathLength(path.current, [p.x, p.z])
-    autoRun.current = far > RUN_FROM
-    speed.current = Math.max(autoRun.current ? RUN : SPEED, far / LONGEST_WALK)
+    setPace(pathLength(path.current, [p.x, p.z]))
     target.current = lot.id
     setRoute([...path.current])
     setFree(false)
@@ -230,9 +240,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     const way = findWay([p.x, p.z], [x, z], false)
     if (!way) return
     path.current = way.slice(1)
-    const far = pathLength(path.current, [p.x, p.z])
-    autoRun.current = far > RUN_FROM
-    speed.current = Math.max(autoRun.current ? RUN : SPEED, far / LONGEST_WALK)
+    setPace(pathLength(path.current, [p.x, p.z]))
     target.current = null
     setRoute([...path.current])
     setFree(false)
@@ -403,8 +411,12 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       }
     }
     // Running with the pad (Shift, the button), or on a long way.
-    const nowRunning = (padWalking.current && running()) || (path.current.length > 0 && (autoRun.current || running()))
-    if (path.current.length && running() && speed.current < RUN) speed.current = RUN
+    if (riding.current && !path.current.length) {
+      riding.current = false
+      setRide(false)
+    }
+    const nowRunning = !riding.current && ((padWalking.current && running()) || (path.current.length > 0 && (autoRun.current || running())))
+    if (path.current.length && !riding.current && running() && speed.current < RUN) speed.current = RUN
     if (nowRunning !== run) setRun(nowRunning)
     // For the mini-map: where the Sim is, which way the camera looks.
     whereabouts.sim = [g.position.x, g.position.z]
@@ -528,7 +540,19 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       </mesh>
       {route && <RouteDots route={route} from={group} heightAt={nav.heightAt} />}
       <group ref={group}>
-        <Character look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking} running={run} busy={!!busy} pose={busy?.kind === 'chat' ? 'talk' : inMatch && !walking ? matchPose : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={run ? RUN : SPEED} />
+        {ride ? (
+          // On the moto-taxi, behind the driver (the moto's front is its +x: turned to face the way).
+          <>
+            <group position={[0, 0, 0.45]} rotation={[0, -Math.PI / 2, 0]}>
+              <Vehicle p={[0, 0, 0]} kind="moto" color="#c92a2a" />
+            </group>
+            <group position={[0, 0.42, -0.15]}>
+              <Character look={sim.look} gender={sim.gender} walking={false} running={false} busy={false} pose="sit" moodColor={moodColor} stage={stage} />
+            </group>
+          </>
+        ) : (
+          <Character look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking} running={run} busy={!!busy} pose={busy?.kind === 'chat' ? 'talk' : inMatch && !walking ? matchPose : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={run ? RUN : SPEED} />
+        )}
         {/* Outdoors, what the Sim is doing is set around it (the ball, the towel, the bus stop…) */}
         {busy && !walking && !onTouchline && <OutdoorAction id={busy.id} />}
         {labels && nameTag && (

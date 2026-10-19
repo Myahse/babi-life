@@ -249,7 +249,7 @@ function room(kindIn: string, housing: string): Room {
           entrance: { p: [0, 0, 3], r: Math.PI, pose: 'idle' },
           counter: { p: [0, 0, 1], pose: 'idle' },
         },
-        crowd: [{ p: [1.0, 0.05, -3.2], pose: 'sit' }],
+        crowd: [],
       }
     }
     case 'maquis':
