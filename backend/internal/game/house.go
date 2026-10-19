@@ -91,6 +91,7 @@ var Furnitures = []Furniture{
 	{ID: "ventilo", Label: "Ventilateur", Icon: "fan", W: 1, D: 1, H: 2, Price: 10000, Comfort: 0.08, Color: "#3a8fd8"},
 	{ID: "armoire", Label: "Armoire", Icon: "archive", W: 1, D: 1, H: 2, Price: 20000, Comfort: 0.03, Color: "#6b4426"},
 	{ID: "douche", Label: "Douche", Icon: "shower-head", W: 1, D: 1, H: 2, Price: 12000, Comfort: 0.04, Unlocks: []string{"shower"}, Color: "#9fd3e8"},
+	{ID: "transat", Label: "Transat", Icon: "armchair", W: 1, D: 2, H: 1, Price: 15000, Comfort: 0.03, Color: "#f4f1ea"},
 	{ID: "wc", Label: "Toilettes", Icon: "toilet", W: 1, D: 1, H: 1, Price: 15000, Comfort: 0.05, Color: "#ffffff"},
 }
 
@@ -154,7 +155,9 @@ type House struct {
 	W, D      int
 	Blocks    []Block
 	Furniture []Piece
-	Built     int
+	// Zones: the ground (rooms' floors, the garden, the pool), from a plan (plans.go).
+	Zones []Zone
+	Built int
 }
 
 var (
@@ -268,7 +271,7 @@ func (h House) Edit(place, remove []Block, furnish, unfurnish []Piece) (House, i
 		}
 		cost += f.Price
 	}
-	out := House{W: h.W, D: h.D, Built: h.Built + len(place), Furniture: pieces, Blocks: make([]Block, 0, len(grid))}
+	out := House{W: h.W, D: h.D, Built: h.Built + len(place), Furniture: pieces, Zones: h.Zones, Blocks: make([]Block, 0, len(grid))}
 	for y := 0; y < PlotH; y++ {
 		for z := 0; z < h.D; z++ {
 			for x := 0; x < h.W; x++ {
@@ -293,6 +296,11 @@ func (h House) Fits(w, d int) bool {
 			if c.x >= w || c.z >= d {
 				return false
 			}
+		}
+	}
+	for _, z := range h.Zones {
+		if z.X+z.W > w || z.Z+z.D > d {
+			return false
 		}
 	}
 	return true

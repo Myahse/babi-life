@@ -6,7 +6,7 @@ import { PerformanceMonitor } from '@react-three/drei'
 import { Human, NoShadows, type Pose } from '../../avatar/Human'
 import { callsFor } from '../../lib/nouchi'
 import { randomLook } from '../../avatar/options'
-import { OWN_HOUSE, lifeOf } from '../../game/rules'
+import { OWN_HOUSE, homePlanFor, lifeOf } from '../../game/rules'
 import { HAPPENING_DOOR, HAPPENING_X, HappeningMarker, HappeningScene, STOPS_TRAFFIC } from '../Happenings'
 import { HOME_ID, type Lot } from '../layout'
 import { LotView, type Props } from '../Neighbourhood'
@@ -24,6 +24,7 @@ import { rng } from '../themes'
 import { APPRENTI, GBAKA_DOOR, Vehicle, type VehicleKind } from '../vehicles'
 import { Walker, type WalkNav } from '../Walker'
 import { homeSpotsOf } from '../homeSpots'
+import { LotGround, Zones } from '../build/Zones'
 import { whereabouts } from '../whereabouts'
 import { Snapper } from '../snapshot'
 import { CHUNK_ZOOM, hash, tileBox, tileOf, toLatLng, toLocal, type Origin, type XZ } from './geo'
@@ -265,7 +266,14 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const mine = plots?.find((p) => p.simId === sim.id && (p.blocks.length || p.furniture?.length))
   // Living in the house one built: it is « Chez toi ». Otherwise the house stands on its lot, apart.
   const livesOnLot = sim.housing === OWN_HOUSE
-  const myPlot = livesOnLot ? mine : undefined
+  // Not in one's own house: the home of one's family or housing (game/plans.go), a whole
+  // house with its rooms (a shack, a room in a cour commune… a villa with its pool), drawn
+  // like a house one built, so one walks in and does things on its furniture.
+  const familyPlot = useMemo<Plot | undefined>(() => {
+    const plan = homePlanFor(world, sim)
+    return plan ? { simId: sim.id, blocks: plan.blocks, furniture: plan.furniture, zones: plan.zones, built: 0, lot: { w: plan.w, d: plan.d, area: plan.w * plan.d, city: sim.homeCity, commune: sim.homeCommune, paid: 0 }, livable: true } : undefined
+  }, [world, sim.id, sim.housing, sim.family, sim.homeCity, sim.homeCommune]) // eslint-disable-line react-hooks/exhaustive-deps
+  const myPlot = livesOnLot ? mine : home ? familyPlot : undefined
 
   // The commune's places from the map (OpenStreetMap: thousands in Yopougon),
   // asked for around the Sim as it goes (see askMap below).
@@ -282,7 +290,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     // A home with a house built on it clears its ground: the game draws the house.
     if (home) list.unshift({ id: HOME_ID, kind: 'home', name: 'Chez toi', at: [Math.cos(a) * d, Math.sin(a) * d], landmark: myPlot ? lotClear(myPlot) : undefined })
     for (const id of plotKey ? plotKey.split(',') : []) {
-      if (id === sim.id && home && myPlot) continue
+      if (id === sim.id && home && livesOnLot && myPlot) continue
       const [pa, pd] = lotSpot(id)
       const p = plots?.find((x) => x.simId === id)
       list.push({ id: `plot:${id}`, kind: 'plot', name: '', at: [Math.cos(pa) * pd, Math.sin(pa) * pd], landmark: p ? lotClear(p) : PLOT_CLEAR })
@@ -694,6 +702,12 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         const [x, z] = at(lx + 0.5 - w / 2, lz + 0.5 - d / 2)
         list.push({ x, z, hw: 0.5, hd: 0.5, rot: r.rot, top: h })
       }
+      // A pool is in the way (one doesn't walk into the water).
+      for (const [zx, zz, zw, zd, k] of owner.zones ?? []) {
+        if (k !== 'piscine') continue
+        const [x, z] = at(zx + zw / 2 - w / 2, zz + zd / 2 - d / 2)
+        list.push({ x, z, hw: zw / 2, hd: zd / 2, rot: r.rot, top: 0.7 })
+      }
       // The furniture is in the way too (not a rug on the floor).
       const catalog = new Map((world.furniture ?? []).map((f) => [f.id, f]))
       for (const piece of owner.furniture ?? []) {
@@ -803,6 +817,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
             <group position={[-lotSize(owner)[0] / 2, 0, -lotSize(owner)[1] / 2]} onClick={r.id === HOME_ID ? (e) => (e.stopPropagation(), onPick(HOME_ID)) : undefined}>
               <House blocks={r.id === HOME_ID && inside ? cutBlocks : owner.blocks} materials={world.materials} />
               {owner.furniture?.length > 0 && world.furniture && <FurnitureSet pieces={owner.furniture} catalog={world.furniture} />}
+              {/* The ground: the rooms' floors, the yard or the lawn, the pool; a bare lot, its lawn and its corner posts */}
+              {owner.zones?.length ? <Zones zones={owner.zones} blocks={owner.blocks} furniture={owner.furniture ?? []} w={lotSize(owner)[0]} d={lotSize(owner)[1]} /> : owner.lot && <LotGround w={lotSize(owner)[0]} d={lotSize(owner)[1]} />}
             </group>
           </group>
         ) : null

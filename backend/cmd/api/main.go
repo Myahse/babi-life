@@ -123,6 +123,9 @@ func main() {
 				"plot":          map[string]int{"w": game.PlotW, "d": game.PlotD, "h": game.PlotH},
 				"furniture":     game.Furnitures,
 				"lotSizes":      game.LotSizes,
+				"homePlans":     game.HomePlans,
+				"lotPlans":      game.LotPlans,
+				"homeFor":       map[string]any{"housing": game.HousingPlan, "family": game.FamilyPlan},
 				"config":        map[string]any{"realPhotos": simsH.RealPhotos, "devLogin": cfg.DevLogin, "googleLogin": authH.Verifier != nil || authH.Firebase != nil},
 			})
 		})

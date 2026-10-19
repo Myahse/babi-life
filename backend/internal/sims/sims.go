@@ -281,6 +281,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Get("/sims/{id}/lots", h.lotOffers)
 	r.Post("/sims/{id}/lot", h.buyLot)
 	r.Post("/sims/{id}/plot/movein", h.moveIn)
+	r.Post("/sims/{id}/plot/plan", h.buildPlan)
 	r.Post("/sims/{id}/meet", h.meet)
 	r.Post("/sims/{id}/kart/join", h.kartJoin)
 	r.Get("/kart/{race}", h.kartRace)

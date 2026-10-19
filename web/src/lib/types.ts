@@ -156,6 +156,11 @@ export type World = {
   plot?: { w: number; d: number; h: number }
   furniture?: Furniture[]
   lotSizes?: { id: string; label: string; w: number; d: number }[]
+  /** Whole houses (game/plans.go): the homes Sims are born in, and those one can build on a lot. */
+  homePlans?: Record<string, HousePlan>
+  lotPlans?: HousePlan[]
+  /** Which home plan: by housing, and a family's own while the Sim lives with its parents. */
+  homeFor?: { housing: Record<string, string>; family: Record<string, string> }
   config: { devLogin: boolean; googleLogin: boolean; realPhotos?: boolean }
 }
 
@@ -256,7 +261,11 @@ export type Piece = [number, number, number, number, string]
 export type Furniture = { id: string; label: string; icon: string; w: number; d: number; h: number; price: number; comfort: number; unlocks?: string[]; color: string }
 export type Lot = { w: number; d: number; area: number; city: string; commune: string; paid: number }
 export type LotOffer = { id: string; label: string; w: number; d: number; area: number; price: number; perM2: number; commune: string; name: string; upgrade: boolean; payable: number; possible: boolean }
-export type Plot = { simId: string; firstName?: string; blocks: Block[]; built: number; furniture: Piece[]; lot: Lot | null; livable: boolean; home?: boolean }
+export type Plot = { simId: string; firstName?: string; blocks: Block[]; built: number; furniture: Piece[]; zones?: Zone[]; lot: Lot | null; livable: boolean; home?: boolean }
+/** A stretch of ground in a house: x, z of its corner, w × d, its kind (sol, beton, cour, jardin, terrasse, piscine) and a room's name. */
+export type Zone = [number, number, number, number, string, string]
+/** A whole house (game/plans.go): its rooms' walls and furniture, its floors, garden and pool. */
+export type HousePlan = { id: string; label: string; hint: string; w: number; d: number; rooms: number; pool: boolean; blocks: Block[]; furniture: Piece[]; zones: Zone[]; lot: boolean; cost: number }
 
 export type ActionResult = { sim: Sim; outcome: Outcome; journal: JournalEvent[]; fresh: JournalEvent[] }
 

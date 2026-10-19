@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import type { Look, Sim } from '../lib/types'
 import { Character } from '../world3d/Character'
 import { Vehicle } from '../world3d/vehicles'
+import { Pool } from '../world3d/build/Zones'
 import { worldTime } from '../lib/worldClock'
 import { fullLook } from './options'
 import { tint } from './textures'
@@ -224,12 +225,8 @@ function Home({ familyId }: { familyId: string }) {
           <meshLambertMaterial color="#5c4a36" />
         </mesh>
       )}
-      {set.pool && (
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-2.6, 0.01, -0.8]}>
-          <planeGeometry args={[2.2, 1.4]} />
-          <meshLambertMaterial color="#38b6e8" emissive="#1c7fb0" emissiveIntensity={0.25} />
-        </mesh>
-      )}
+      {/* The debout's pool: a real basin, tiled round, its water moving (the same as at the villa) */}
+      {set.pool && <Pool x={-5.6} z={-1.75} w={3.4} d={1.7} />}
       <Blocks list={set.blocks} />
       {set.car && <Vehicle p={[3.1, 0, -0.9]} r={-0.7} kind="car" color={set.car} />}
     </group>

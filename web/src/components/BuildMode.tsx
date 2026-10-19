@@ -4,11 +4,12 @@ import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { Archive, Armchair, BedDouble, Check, CookingPot, Eye, EyeOff, Fan, Hammer, Home as HomeIcon, Lock, Pickaxe, RectangleHorizontal, Refrigerator, RotateCw, ShowerHead, Sofa, Toilet, Tv, Utensils, X, type LucideIcon } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
-import type { ActionResult, Block, Furniture, Material, Piece, Plot, Sim, World } from '../lib/types'
+import type { ActionResult, Block, Furniture, HousePlan, Material, Piece, Plot, Sim, World } from '../lib/types'
 import { amount } from '../game/rules'
 import { Character } from '../world3d/Character'
 import { House, materialTexture } from '../world3d/build/House'
 import { FurnitureSet } from '../world3d/build/Furniture'
+import { Zones } from '../world3d/build/Zones'
 import { LotOffers } from './Lots'
 import { Coin } from './ui'
 
@@ -34,7 +35,10 @@ export default function BuildMode({ world, sim, onResult, onClose }: { world: Wo
   const [blocks, setBlocks] = useState<Block[] | null>(null)
   const [pieces, setPieces] = useState<Piece[]>([])
   const [built, setBuilt] = useState(0)
-  const [tab, setTab] = useState<'materiaux' | 'meubles'>('materiaux')
+  const [tab, setTab] = useState<'plans' | 'materiaux' | 'meubles'>('materiaux')
+  // « Plans »: a whole house in one go on the empty lot (game/plans.go); the one looked at is shown on the lot.
+  const [preview, setPreview] = useState<HousePlan | null>(null)
+  const [busy, setBusy] = useState(false)
   const [pick, setPick] = useState(materials[0]?.id ?? 'banco')
   const [pickF, setPickF] = useState(catalog[0]?.id ?? 'lit')
   const [rot, setRot] = useState(0)
@@ -45,6 +49,38 @@ export default function BuildMode({ world, sim, onResult, onClose }: { world: Wo
   const [cut, setCut] = useState(false)
   const W = plot?.lot?.w ?? 0
   const D = plot?.lot?.d ?? 0
+  const planOpened = useRef(false)
+  const zones = plot?.zones ?? []
+  const empty = !!blocks && !blocks.length && !pieces.length && !zones.length
+  const plans = (world.lotPlans ?? []).filter((p) => p.w <= W && p.d <= D)
+  /** A plan sits on the lot at the street side, in the middle (game/plans.go BuildPlan). */
+  const planAt = (p: HousePlan): [number, number] => [Math.floor((W - p.w) / 2), D - p.d]
+  const buildPlan = async (p: HousePlan) => {
+    setBusy(true)
+    setError(null)
+    try {
+      onResult(await api.buildPlan(sim.id, p.id))
+      setPreview(null)
+      setTab('meubles')
+      await reload()
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Pas de réseau')
+    } finally {
+      setBusy(false)
+    }
+  }
+  const clearLot = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      onResult(await api.clearPlot(sim.id))
+      await reload()
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Pas de réseau')
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const reload = () =>
     api
@@ -54,6 +90,11 @@ export default function BuildMode({ world, sim, onResult, onClose }: { world: Wo
         setBlocks(p.blocks)
         setPieces(p.furniture ?? [])
         setBuilt(p.built)
+        // An empty lot opens on the plans: a house in one go, or the first block by hand.
+        if (!p.blocks.length && !(p.furniture ?? []).length && p.lot && !planOpened.current) {
+          planOpened.current = true
+          setTab('plans')
+        }
       })
       .catch(() => setError('Le terrain ne charge pas. Réessaie.'))
   useEffect(() => void reload(), [sim.id]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -237,6 +278,15 @@ export default function BuildMode({ world, sim, onResult, onClose }: { world: Wo
             <meshLambertMaterial color="#cbb38c" />
           </mesh>
           <group position={[-W / 2, 0, -D / 2]}>
+            {zones.length > 0 && blocks && <Zones zones={zones} blocks={blocks} furniture={pieces} w={W} d={D} />}
+            {/* A plan looked at, on the empty lot where it would stand */}
+            {preview && empty && world.furniture && (
+              <group position={[planAt(preview)[0], 0, planAt(preview)[1]]}>
+                <House blocks={cut ? preview.blocks.filter((b) => b[1] < 2) : preview.blocks} materials={materials} />
+                <FurnitureSet pieces={preview.furniture} catalog={catalog} />
+                <Zones zones={preview.zones} blocks={preview.blocks} furniture={preview.furniture} w={preview.w} d={preview.d} />
+              </group>
+            )}
             {blocks && <House blocks={cut ? blocks.filter((b) => b[1] < 2) : blocks} materials={materials} onBlock={onBlock} onHover={(c, n) => setHover(c && n && mode === 'place' ? [c[0] + n[0], c[1] + n[1], c[2] + n[2]] : c)} />}
             <FurnitureSet pieces={pieces} catalog={catalog} onPiece={onPiece} />
             {ghostPiece ? (
@@ -306,15 +356,51 @@ export default function BuildMode({ world, sim, onResult, onClose }: { world: Wo
           <div className="mb-2 flex gap-1">
             {(
               [
+                ['plans', 'Plans'],
                 ['materiaux', 'Matériaux'],
                 ['meubles', 'Meubles'],
               ] as const
             ).map(([id, label]) => (
-              <button key={id} onClick={() => (setTab(id), setMode('place'), id === 'meubles' && setCut(true))} className={`flex-1 rounded-xl py-1.5 text-sm font-extrabold ${tab === id ? 'bg-[var(--color-orange)] text-white' : 'bg-[var(--color-canvas)]'}`}>
+              <button key={id} onClick={() => (setTab(id), setMode('place'), id === 'meubles' && setCut(true), id !== 'plans' && setPreview(null))} className={`flex-1 rounded-xl py-1.5 text-sm font-extrabold ${tab === id ? 'bg-[var(--color-orange)] text-white' : 'bg-[var(--color-canvas)]'}`}>
                 {label}
               </button>
             ))}
           </div>
+          {tab === 'plans' ? (
+            <div>
+              <p className="mb-2 px-1 text-xs font-bold text-[var(--color-ink-soft)]">
+                {empty
+                  ? 'Choisis un plan : les maçons bâtissent tout, meubles compris, et tu peux encore tout changer bloc par bloc. Ou pars de zéro avec « Matériaux ».'
+                  : 'Un plan se bâtit sur un terrain vide.'}
+              </p>
+              {!empty && !plot?.home && (
+                <button className="btn mb-2 !bg-[var(--color-canvas)] !px-3 !py-2 !text-sm !text-[var(--color-ink)]" disabled={busy} onClick={() => void clearLot()}>
+                  <Pickaxe size={15} /> Tout démolir (la moitié revendue)
+                </button>
+              )}
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {plans.map((p) => (
+                  <div key={p.id} className={`flex w-[230px] shrink-0 flex-col rounded-2xl p-2.5 ${preview?.id === p.id ? 'bg-[#fff4e8] ring-2 ring-[var(--color-orange)]' : 'bg-[var(--color-canvas)]'}`}>
+                    <button className="text-left" onClick={() => setPreview(preview?.id === p.id ? null : p)}>
+                      <span className="block font-display text-[15px] leading-tight font-extrabold">{p.label}</span>
+                      <span className="mt-0.5 block text-[11px] font-bold text-[var(--color-ink-soft)]">
+                        {p.w} × {p.d} m · {p.rooms} chambre{p.rooms > 1 ? 's' : ''}
+                        {p.pool ? ' · piscine' : ''}
+                      </span>
+                      <span className="mt-1 line-clamp-3 block text-[11px] leading-snug font-semibold">{p.hint}</span>
+                    </button>
+                    <div className="mt-auto flex items-center justify-between gap-2 pt-2">
+                      <span className="text-xs font-extrabold">{amount(p.cost)} Djai</span>
+                      <button className="btn !px-3 !py-1.5 !text-xs" disabled={busy || !empty || sim.money < p.cost} onClick={() => void buildPlan(p)}>
+                        {sim.money < p.cost ? 'Trop cher' : 'Bâtir'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {!plans.length && <p className="p-2 text-sm font-bold text-[var(--color-ink-soft)]">Aucun plan ne tient sur ce terrain.</p>}
+              </div>
+            </div>
+          ) : (
           <div className="flex items-stretch gap-2">
             <div className="flex shrink-0 flex-col gap-1">
               {(
@@ -339,6 +425,7 @@ export default function BuildMode({ world, sim, onResult, onClose }: { world: Wo
                 : catalog.map((f) => <FurnitureTile key={f.id} f={f} picked={pickF === f.id && mode === 'place'} onPick={() => (setPickF(f.id), setMode('place'))} />)}
             </div>
           </div>
+          )}
         </div>
       </div>
     </div>

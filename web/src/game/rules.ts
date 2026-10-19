@@ -252,6 +252,18 @@ export function ageBlock(it: Interaction, stage?: string) {
 
 /** One's own house (game/house.go): no rent, as comfortable as what is in it. */
 export const OWN_HOUSE = 'maison'
+
+/**
+ * The home a Sim lives in (game/plans.go HomePlanFor): its family's own while
+ * it still has the family's housing (a shack for the gnambro, the grande villa
+ * for the debout), else its housing's; none in the house it built.
+ */
+export function homePlanFor(world: World, sim: Sim) {
+  if (sim.housing === OWN_HOUSE || !world.homePlans || !world.homeFor) return undefined
+  const fam = world.families?.find((f) => f.id === sim.family)
+  const id = (fam && fam.housing === sim.housing && world.homeFor.family[fam.id]) || world.homeFor.housing[sim.housing]
+  return id ? world.homePlans[id] : undefined
+}
 export function homeComfort(world: World, furnished: string[] = []) {
   const c = 0.75 + furnished.reduce((t, id) => t + (world.furniture?.find((f) => f.id === id)?.comfort ?? 0), 0)
   return Math.min(1.35, Math.round(c * 100) / 100)

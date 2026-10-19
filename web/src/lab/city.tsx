@@ -24,6 +24,7 @@ import { homeSpotsOf } from '../world3d/homeSpots'
 import KartRace from '../kart/KartRace'
 import { House } from '../world3d/build/House'
 import { FurnitureSet } from '../world3d/build/Furniture'
+import { Zones } from '../world3d/build/Zones'
 import { FamilyScene } from '../avatar/Family'
 import { Arena } from '../world3d/interior/Arena'
 import { fetchChunk } from '../world3d/open/tiles'
@@ -41,7 +42,7 @@ import { BridgeSights } from '../world3d/open/bridges'
 import { BridgeLife } from '../world3d/open/bridgeLife'
 import { Billboard } from '../world3d/open/billboards'
 import { randomLook } from '../avatar/options'
-import type { Block, Furniture, Material, Piece, Plot, Sim } from '../lib/types'
+import type { Block, Furniture, HousePlan, Material, Piece, Plot, Sim, World } from '../lib/types'
 
 const seededLab = (n: number) => () => ((n = (n * 16807) % 2147483647) / 2147483647)
 
@@ -431,6 +432,7 @@ function Lab() {
   if (view === 'people') return <PeopleLab />
   if (view === 'ride') return <RideLab />
   if (view === 'home') return <HomeLab />
+  if (view === 'plan') return <PlanLab />
   if (view === 'kart') return <KartRace name="Awa" look={randomLook('femme', seededLab(5))} gender="femme" onExit={() => location.reload()} />
   if (view === 'stadium') return <StadiumLab />
   if (view === 'family') return <FamilyScene familyId={q.get('f') ?? 'gnambro'} look={randomLook((q.get('g') ?? 'femme') as 'femme', seededLab(Number(q.get('seed') ?? 3)))} gender={(q.get('g') ?? 'femme') as 'femme'} className="!h-screen !w-screen" />
@@ -796,6 +798,43 @@ function StadiumLab() {
       </mesh>
       <Landmark id="plateau-stade" night={night} />
       <OrbitControls target={(q.get('look') ?? '0,5,0').split(',').map(Number) as [number, number, number]} />
+    </Canvas>
+  )
+}
+
+/**
+ * A whole house from a plan (game/plans.go), with its floors, garden and
+ * pool: ?view=plan&id=villa-grande (a home) or &id=lot:villa-basse (a lot
+ * plan), &cut to see inside (the roof and the top of the walls off),
+ * &cam=x,y,z. The plans come from the API (VITE_API_URL's /world).
+ */
+function PlanLab() {
+  const id = q.get('id') ?? 'villa'
+  const cut = q.has('cut')
+  const [world, setWorld] = useState<World | null>(null)
+  useEffect(() => {
+    void fetch(`${import.meta.env.VITE_API_URL ?? 'http://localhost:8099/api/v1'}/world`).then((r) => r.json()).then(setWorld)
+  }, [])
+  const plan: HousePlan | undefined = world ? (id.startsWith('lot:') ? world.lotPlans?.find((p) => p.id === id.slice(4)) : world.homePlans?.[id]) : undefined
+  if (!world || !plan) return <p style={{ padding: 20 }}>{world ? `Plan inconnu : ${id}` : 'Chargement…'}</p>
+  const span = Math.max(plan.w, plan.d)
+  const cam = (q.get('cam') ?? `${span * 0.55},${span * 0.95},${span * 1.05}`).split(',').map(Number) as [number, number, number]
+  const blocks = cut ? plan.blocks.filter((b) => b[1] < 2) : plan.blocks
+  return (
+    <Canvas shadows dpr={[1, 1.5]} camera={{ position: cam, fov: 45 }} style={{ width: '100vw', height: '100vh' }}>
+      <color attach="background" args={['#a9d3f0']} />
+      <hemisphereLight args={['#ffffff', '#b8a27c', 1.2]} />
+      <directionalLight position={[20, 40, 25]} intensity={1.7} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-40} shadow-camera-right={40} shadow-camera-top={40} shadow-camera-bottom={-40} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
+        <planeGeometry args={[200, 200]} />
+        <meshLambertMaterial color="#b98b5c" />
+      </mesh>
+      <group position={[-plan.w / 2, 0, -plan.d / 2]}>
+        <House blocks={blocks} materials={world.materials ?? []} />
+        {world.furniture && <FurnitureSet pieces={plan.furniture} catalog={world.furniture} />}
+        <Zones zones={plan.zones} blocks={plan.blocks} furniture={plan.furniture} w={plan.w} d={plan.d} />
+      </group>
+      <OrbitControls target={[0, 0, 0]} />
     </Canvas>
   )
 }
