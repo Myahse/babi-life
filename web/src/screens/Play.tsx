@@ -7,7 +7,7 @@ import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
 import { useLive } from '../lib/live'
 import { WorldMap } from './WorldMap'
-import { Joystick, RunButton } from '../components/Joystick'
+import { Joystick, RunButton, WalkKeys } from '../components/Joystick'
 import { cameraTurn } from '../world3d/input'
 import { whereabouts } from '../world3d/whereabouts'
 import { OrbitGizmo } from '../components/OrbitGizmo'
@@ -368,6 +368,9 @@ export function Play() {
   // The activity the Sim is acting out here, if any (a trip happens on the road).
   const doing = sim.activity?.kind === 'do' ? sim.activity : null
   const stop = () => run('Arrêter', 'x', '', () => api.stop(sim.id))
+  // The pad shows in the shoulder view (and the classic street); the buttons over the street sit beside it, or in the middle.
+  const padShown = classic || view === 'epaule'
+  const padBeside = padShown ? 'left-[132px] max-w-[calc(100vw-144px)] sm:left-[152px] sm:max-w-[calc(100vw-164px)]' : 'left-1/2 max-w-[calc(100vw-24px)] -translate-x-1/2'
   const city = world.cities.find((x) => x.id === sim.city)!
   const commune = withMapPlaces(city.communes.find((x) => x.id === sim.commune)!, classic ? [] : mapPlaces)
   const unseen = journal.filter((e) => e.id > seen).length
@@ -590,9 +593,12 @@ export function Play() {
         </button>
       )}
 
-      {!classic && <FirstSteps hidden={showInside || !!placeId || !!overlay || !!players || whereTo || !!sim.activity || !!pending} />}
-      {/* The pad: walk the Sim freely (arrow keys / WASD work too) */}
-      {!placeId && !overlay && !sim.activity && (
+      {!classic && <FirstSteps pad={padShown} hidden={showInside || !!placeId || !!overlay || !!players || whereTo || !!sim.activity || !!pending} />}
+      {/* Walking: the keys always (arrows / WASD); the pad on screen only in the shoulder view (the third-person
+          view, chosen with the view button), so the other views stay clear. There, one walks with « Où aller ? »,
+          the mini-map and the places' signs. The classic street has no views: the pad stays. */}
+      {!placeId && !overlay && !sim.activity && <WalkKeys />}
+      {!placeId && !overlay && !sim.activity && padShown && (
         <div className="pointer-events-none absolute bottom-[6.25rem] left-3 z-20 lg:bottom-[7.5rem] lg:left-5">
           <RunButton />
           <Joystick disabled={!!sim.activity || !!pending} className="pointer-events-auto" />
@@ -600,7 +606,7 @@ export function Play() {
       )}
       {near && !placeId && !pending && !sim.activity && (
         <button
-          className="motion-pop absolute bottom-[6.5rem] left-[132px] z-30 flex max-w-[calc(100vw-144px)] sm:left-[152px] sm:max-w-[calc(100vw-164px)] items-center lg:left-1/2 lg:max-w-sm lg:-translate-x-1/2 gap-2 rounded-2xl bg-[var(--color-ink)] py-2 pr-4 pl-2 text-left text-white shadow-[0_10px_24px_-10px_rgba(0,0,0,0.6)] lg:bottom-[7.5rem]"
+          className={`motion-pop absolute bottom-[6.5rem] ${padBeside} z-30 flex items-center lg:left-1/2 lg:max-w-sm lg:-translate-x-1/2 gap-2 rounded-2xl bg-[var(--color-ink)] py-2 pr-4 pl-2 text-left text-white shadow-[0_10px_24px_-10px_rgba(0,0,0,0.6)] lg:bottom-[7.5rem]`}
           onClick={() => setPlaceId(near)}
         >
           <IconTile icon={DoorOpen} colors={['#ffa040', '#ff6a00']} size={32} radius={10} />
@@ -613,7 +619,7 @@ export function Play() {
 
       {street?.happening && !near && !placeId && !pending && !sim.activity && (
         <button
-          className="animate-pop absolute bottom-[6.5rem] left-[132px] z-20 flex max-w-[calc(100vw-144px)] sm:left-[152px] sm:max-w-[calc(100vw-164px)] items-center lg:left-1/2 lg:max-w-md lg:-translate-x-1/2 gap-2 rounded-full bg-[var(--color-gold)] py-1.5 pr-4 pl-1.5 text-left text-[#5a3a00] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.6)] lg:bottom-[7.5rem]"
+          className={`animate-pop absolute bottom-[6.5rem] ${padBeside} z-20 flex items-center lg:left-1/2 lg:max-w-md lg:-translate-x-1/2 gap-2 rounded-full bg-[var(--color-gold)] py-1.5 pr-4 pl-1.5 text-left text-[#5a3a00] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.6)] lg:bottom-[7.5rem]`}
           onClick={() => walkTo('happening')}
         >
           <IconTile icon={iconFor(street.happening.icon)} colors={['#ffd54f', '#ffa000']} size={36} radius={18} />

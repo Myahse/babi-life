@@ -5,13 +5,18 @@ import { listenKeys, pad, sprint } from '../world3d/input'
 // How far the knob travels: 52 px on the full pad, less on a phone's smaller one.
 const reach = (width: number) => (width * 52) / 132
 
+/** Walking with the keyboard (arrows / WASD, Shift to run), in every view, pad or not. */
+export function WalkKeys() {
+  useEffect(() => listenKeys(), [])
+  return null
+}
+
 /** The on-screen pad: drag the knob to walk the Sim; it springs back on release. */
 export function Joystick({ disabled = false, className = '' }: { disabled?: boolean; className?: string }) {
   const base = useRef<HTMLDivElement>(null)
   const [knob, setKnob] = useState({ x: 0, y: 0 })
   const [active, setActive] = useState(false)
 
-  useEffect(() => listenKeys(), [])
   useEffect(() => {
     if (disabled) release()
   }, [disabled])
