@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Car, CarTaxiFront, Bus, Footprints, Globe2, Landmark, LocateFixed, MapPin, PartyPopper, TriangleAlert, X } from 'lucide-react'
+import { Car, CarTaxiFront, Bus, Eye, EyeOff, Footprints, Globe2, Landmark, Layers, LocateFixed, MapPin, PartyPopper, TriangleAlert, X } from 'lucide-react'
 import type { City, Commune, Place, Sim, World } from '../lib/types'
 import { GameMap, type Camera } from '../components/map/GameMap'
 import { inkOn, rideLook } from '../game/rides'
@@ -25,6 +25,23 @@ type Props = { world: World; sim: Sim; night: boolean; desktop: boolean; onClose
 export function WorldMap({ world, sim, night, desktop, onClose, onTravel, onWalk }: Props) {
   const [selected, setSelected] = useState<Selection | null>(null)
   const [zoom, setZoom] = useState(0)
+  // The legend: which kinds of places show on the map (none at first: the communes alone).
+  const [kinds, setKinds] = useState<Set<string>>(() => {
+    try {
+      return new Set(JSON.parse(localStorage.getItem(LEGEND_KEY) ?? '[]') as string[])
+    } catch {
+      return new Set()
+    }
+  })
+  const [legend, setLegend] = useState(false)
+  const pickKinds = (next: Set<string>) => {
+    setKinds(next)
+    try {
+      localStorage.setItem(LEGEND_KEY, JSON.stringify([...next]))
+    } catch {
+      // Private mode: the choice lasts until the map closes.
+    }
+  }
   const route = useTrip(world, sim)
   const [arrived, setArrived] = useState<string | null>(null)
   const wasTravelling = useRef(!!route)
@@ -70,8 +87,8 @@ export function WorldMap({ world, sim, night, desktop, onClose, onTravel, onWalk
         const hit = find(id)
         if (hit) setSelected({ kind: 'place', ...hit })
       },
-    }, !!route)
-  }, [world, sim, selected, route, fly])
+    }, !!route, kinds)
+  }, [world, sim, selected, route, fly, kinds])
 
   const padding = useMemo<Padding>(() => (desktop ? { top: 90, bottom: 60, left: 440, right: 80 } : { top: 80, bottom: 270, left: 28, right: 28 }), [desktop])
   const level = zoom >= Z_PLACE ? 'places' : zoom >= Z_TOWN ? 'mairies' : 'pays'
@@ -97,7 +114,12 @@ export function WorldMap({ world, sim, night, desktop, onClose, onTravel, onWalk
         <button className="hud grid h-11 w-11 place-items-center rounded-xl" onClick={() => (setSelected(null), fly(CIV_BOUNDS))} aria-label="Tout le pays" title="Tout le pays">
           <Globe2 size={20} />
         </button>
+        <button className={`hud relative grid h-11 w-11 place-items-center rounded-xl ${legend ? '!bg-[var(--color-orange)] text-white' : ''}`} onClick={() => setLegend((l) => !l)} aria-label="Légende : les lieux à afficher" title="Légende">
+          <Layers size={20} />
+          {kinds.size > 0 && <span className="absolute -top-1 -right-1 grid h-5 min-w-5 place-items-center rounded-full bg-[var(--color-orange)] px-1 text-[10px] font-extrabold text-white ring-2 ring-white">{kinds.size}</span>}
+        </button>
       </div>
+      {legend && <Legend world={world} sim={sim} kinds={kinds} onChange={pickKinds} onClose={() => setLegend(false)} />}
 
       {/* Bottom: the card for what's selected, the trip, or a hint */}
       <div className="absolute inset-x-0 bottom-0 z-20 flex justify-center p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:inset-x-auto lg:top-24 lg:bottom-auto lg:left-5 lg:w-[400px] lg:p-0">
@@ -304,6 +326,64 @@ function PlaceFacts({ place }: { place: Place }) {
       {place.quarter && <Chip>{place.quarter}</Chip>}
       {place.operator && <Chip>{place.operator}</Chip>}
       {place.closed && <Chip tone="bad">Fermé en vrai depuis {place.closed.slice(0, 4)}</Chip>}
+    </div>
+  )
+}
+
+const LEGEND_KEY = 'babi.map.lieux'
+
+/**
+ * The legend: every kind of place there is, with its colour and its icon as
+ * on the map, and how many there are in the Sim's city; each one shown or
+ * hidden with a tap. Nothing at first: the map shows the communes alone.
+ */
+function Legend({ world, sim, kinds, onChange, onClose }: { world: World; sim: Sim; kinds: Set<string>; onChange: (k: Set<string>) => void; onClose: () => void }) {
+  const city = world.cities.find((c) => c.id === sim.city)
+  const count = new Map<string, number>()
+  for (const cm of city?.communes ?? []) for (const p of cm.places) count.set(p.kind, (count.get(p.kind) ?? 0) + 1)
+  const all = Object.keys(world.kinds)
+    .filter((k) => k !== 'home' && world.cities.some((c) => c.communes.some((cm) => cm.places.some((p) => p.kind === k))))
+    .sort((a, b) => (count.get(b) ?? 0) - (count.get(a) ?? 0) || world.kinds[a].label.localeCompare(world.kinds[b].label))
+  const toggle = (k: string) => {
+    const next = new Set(kinds)
+    if (next.has(k)) next.delete(k)
+    else next.add(k)
+    onChange(next)
+  }
+  return (
+    <div className="sheet animate-up absolute right-3 z-30 flex max-h-[60vh] w-[min(300px,calc(100vw-24px))] flex-col overflow-hidden rounded-[22px] lg:right-5" style={{ top: 'max(12.5rem, calc(env(safe-area-inset-top) + 11.75rem))' }}>
+      <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-2">
+        <div>
+          <div className="font-display text-[17px] leading-tight font-extrabold">Légende</div>
+          <div className="text-[11px] font-bold text-[var(--color-ink-soft)]">Les lieux à afficher sur la carte</div>
+        </div>
+        <button className="icon-btn bg-[var(--color-canvas)]" onClick={onClose} aria-label="Fermer la légende">
+          <X size={18} />
+        </button>
+      </div>
+      <div className="flex gap-2 px-4 pb-2">
+        <button className="btn btn-soft flex-1 !py-1.5 !text-xs" onClick={() => onChange(new Set(all))}>
+          <Eye size={14} /> Tout afficher
+        </button>
+        <button className="btn btn-soft flex-1 !py-1.5 !text-xs" onClick={() => onChange(new Set())}>
+          <EyeOff size={14} /> Tout masquer
+        </button>
+      </div>
+      <ul className="overflow-y-auto px-2 pb-2">
+        {all.map((k) => {
+          const on = kinds.has(k)
+          return (
+            <li key={k}>
+              <button className={`flex w-full items-center gap-2.5 rounded-xl px-2 py-1.5 text-left transition ${on ? '' : 'opacity-55'}`} onClick={() => toggle(k)} aria-pressed={on}>
+                <IconTile icon={iconFor(world.kinds[k].icon)} colors={kindColors(k)} size={30} radius={10} />
+                <span className="min-w-0 flex-1 truncate text-sm font-extrabold">{world.kinds[k].label}</span>
+                {count.get(k) ? <span className="text-[11px] font-bold text-[var(--color-ink-soft)] tabular-nums">{count.get(k)}</span> : null}
+                {on ? <Eye size={16} className="text-[var(--color-emerald)]" /> : <EyeOff size={16} className="text-[var(--color-ink-soft)]" />}
+              </button>
+            </li>
+          )
+        })}
+      </ul>
     </div>
   )
 }

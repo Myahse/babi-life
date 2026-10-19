@@ -49,8 +49,12 @@ export const Z_PLACE = 2500
 /** Pixels per degree for a Mapbox zoom level (512 px tiles). */
 export const pxPerDegree = (zoom: number) => (512 * 2 ** zoom) / 360
 
-/** Every pin of the country at once; each shows only in its zoom band. */
-export function allPins(world: World, sim: Sim | null, selected: string | null, h: MapHandlers, travelling = false): PinData[] {
+/**
+ * Every pin of the country at once; each shows only in its zoom band. The
+ * places only for the kinds switched on in the legend (`kinds`; all of them
+ * when it's left out), and the one selected whatever its kind.
+ */
+export function allPins(world: World, sim: Sim | null, selected: string | null, h: MapHandlers, travelling = false, kinds?: Set<string>): PinData[] {
   const pins: PinData[] = []
   for (const c of world.cities) {
     pins.push({ id: c.id, lat: c.lat, lng: c.lng, label: c.name, variant: 'city', zoom: [0, Z_TOWN], home: c.id === sim?.homeCity, hasSim: !travelling && c.id === sim?.city, active: selected === c.id, onClick: () => h.onCity(c.id) })
@@ -61,6 +65,7 @@ export function allPins(world: World, sim: Sim | null, selected: string | null, 
       // On the road, only the town halls, the route and the taxi: places would bury the trip.
       if (travelling) continue
       for (const p of cm.places) {
+        if (kinds && !kinds.has(p.kind) && p.id !== selected) continue
         pins.push({ id: p.id, lat: p.lat, lng: p.lng, label: p.name, kind: p.kind, icon: world.kinds[p.kind]?.icon, variant: 'place', zoom: [Z_PLACE, Infinity], active: selected === p.id, onClick: () => h.onPlace(p.id) })
       }
       if (home) pins.push({ id: 'home', ...homePosition(cm.lat, cm.lng), label: 'Chez toi', kind: 'home', icon: 'house', variant: 'place', zoom: [Z_PLACE, Infinity], active: selected === 'home', onClick: () => h.onPlace('home') })
