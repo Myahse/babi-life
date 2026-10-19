@@ -194,7 +194,7 @@ export function makeWorldMaterials() {
   }
 }
 
-export function OpenWorld(props: Props & { token: string; onFail: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void }) {
+export function OpenWorld(props: Props & { token: string; onFail: () => void; onLoaded?: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void }) {
   const night = props.hour < 6 || props.hour >= 19
   const dusk = props.hour >= 17 && props.hour < 19
   const sky = night ? '#141a3d' : dusk ? '#f7a072' : '#8ec9f0'
@@ -233,7 +233,7 @@ function useMaterials(night: boolean) {
   return mats
 }
 
-function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, indoors, nameTag, onNear, frozen, players, onPickPlayer, recenter, onFreeCamera, closeView, shoulderView, token, onFail, onStreetBuy, onRobbed, onTalk, onCall, talkingTo, plotsVersion, onMapPlaces, onHomeSpots }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void }) {
+function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, indoors, nameTag, onNear, frozen, players, onPickPlayer, recenter, onFreeCamera, closeView, shoulderView, token, onFail, onLoaded, onStreetBuy, onRobbed, onTalk, onCall, talkingTo, plotsVersion, onMapPlaces, onHomeSpots }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void; onLoaded?: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void }) {
   const origin = useMemo<Origin>(() => ({ lat: commune.lat, lng: commune.lng }), [commune.lat, commune.lng])
   const mats = useMaterials(night)
   const home = sim.homeCity === sim.city && sim.homeCommune === commune.id
@@ -339,6 +339,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const [resolved, setResolved] = useState<Map<string, Resolved>>(new Map())
   const pending = useRef(new Map<number, string>())
   const failed = useRef(new Map<string, number>())
+  const failedAt = useRef(new Map<string, number>())
   const loadedOnce = useRef(false)
   const worker = useRef<Worker | null>(null)
   const nextId = useRef(1)
@@ -357,11 +358,14 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       if (!key) return
       if (e.data.error || !e.data.data) {
         failed.current.set(key, (failed.current.get(key) ?? 0) + 1)
-        // Nothing at all loads (no network, a bad token): back to the classic street.
+        failedAt.current.set(key, performance.now())
+        // Nothing loads yet (a bad network): say so, and keep trying (never the old classic street).
         if (!loadedOnce.current && failed.current.size >= 2) onFail()
+        setTimeout(() => streamRef.current(), 4000)
         return
       }
       loadedOnce.current = true
+      onLoaded?.()
       const geos: Record<string, THREE.BufferGeometry> = {}
       for (const [name, a] of Object.entries(e.data.meshes ?? {})) {
         const g = new THREE.BufferGeometry()
@@ -444,6 +448,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     })
   }, [chunks, places, origin])
   chunksRef.current = chunks
+  const streamRef = useRef(() => {})
   const stream = () => {
     const w = worker.current
     if (!w) return
@@ -475,7 +480,9 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     const busy = new Set(pending.current.values())
     for (const c of [...wanted, ...horizon]) {
       if (pending.current.size >= PARALLEL) break
-      if (chunksRef.current.has(c.key) || busy.has(c.key) || (failed.current.get(c.key) ?? 0) >= 3) continue
+      // A piece that failed is asked again a little later each time (up to a minute), never given up on.
+      const tries = failed.current.get(c.key) ?? 0
+      if (chunksRef.current.has(c.key) || busy.has(c.key) || (tries && performance.now() - (failedAt.current.get(c.key) ?? 0) < Math.min(60000, 3000 * tries))) continue
       const id = nextId.current++
       pending.current.set(id, c.key)
       const far = c.key.includes(':')
@@ -493,6 +500,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       })
     }
   }
+  streamRef.current = stream
   useEffect(stream, [spots]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Going to a place that isn't loaded yet: load the chunks there first.

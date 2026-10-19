@@ -131,8 +131,10 @@ export function Play() {
   const [freeCam, setFreeCam] = useState(false)
   const [recenter, setRecenter] = useState(0)
   // The real streets (open world): from Mapbox with a token, else from
-  // OpenFreeMap (no key). The classic street if they don't load, or ?classic.
-  const [classic, setClassic] = useState(() => new URLSearchParams(location.search).has('classic'))
+  // OpenFreeMap (no key). Never the old classic street (only ?classic, for developers): a map that
+  // loads badly says so and keeps trying.
+  const [classic] = useState(() => import.meta.env.DEV && new URLSearchParams(location.search).has('classic'))
+  const [mapSlow, setMapSlow] = useState(false)
   // The commune's places from the map, as the open world loads them around the Sim.
   const [mapPlaces, setMapPlaces] = useState<Place[]>([])
   // Three views of the street: close behind the perso (the default), over its
@@ -522,9 +524,14 @@ export function Play() {
               }
             },
           }
-          return classic ? <Neighbourhood key={commune.id} {...street} /> : <OpenWorld key={commune.id} {...street} commune={ownPlaces(commune)} token={MAP_TOKEN ?? ''} onFail={() => setClassic(true)} onMapPlaces={setMapPlaces} onHomeSpots={setHomeSpots} />
+          return classic ? <Neighbourhood key={commune.id} {...street} /> : <OpenWorld key={commune.id} {...street} commune={ownPlaces(commune)} token={MAP_TOKEN ?? ''} onFail={() => setMapSlow(true)} onLoaded={() => setMapSlow(false)} onMapPlaces={setMapPlaces} onHomeSpots={setHomeSpots} />
         })()}
       </div>
+      {mapSlow && (
+        <div className="pointer-events-none absolute inset-x-0 top-[38%] z-10 flex justify-center px-6">
+          <p className="hud rounded-2xl px-4 py-2.5 text-center text-sm font-extrabold">La carte de Babi charge… Le réseau est lent : on réessaie tout seul.</p>
+        </div>
+      )}
 
       {/* ---------- Top HUD ---------- */}
       <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:p-5">
