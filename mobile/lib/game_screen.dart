@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'bridge.dart';
 import 'config.dart';
+import 'notifications.dart';
 
 /// The game, full screen: the same Babi Life as on the web, in a web view,
 /// with the splash while it loads, a screen when there's no network, the
@@ -71,6 +72,8 @@ class _GameScreenState extends State<GameScreen> {
       });
     }
     _start();
+    // A notification tapped: the game opens where it points (a friend's message, the bet).
+    Notifications.onOpen((url) => _web.loadRequest(Uri.parse(Config.gameUrl).resolve(url)));
     Connectivity().checkConnectivity().then(_onNetwork);
     _net = Connectivity().onConnectivityChanged.listen(_onNetwork);
   }
@@ -100,6 +103,8 @@ class _GameScreenState extends State<GameScreen> {
         case 'share':
           await Bridge.share('${call['arg'] ?? ''}');
           result = true;
+        case 'notifications':
+          result = call['arg'] == 'enable' ? await Notifications.enable() : await Notifications.status();
         default:
           error = 'unknown call';
       }

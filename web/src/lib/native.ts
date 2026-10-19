@@ -51,3 +51,12 @@ export async function share(text: string, url?: string): Promise<boolean> {
   }
   return false
 }
+
+/**
+ * The app's notifications: 'status' (granted, denied or default), or
+ * 'enable': Android asks (or, refused for good, its settings open), then the
+ * app's Firebase token, '' if none, 'denied' if refused.
+ */
+export function nativeNotifications(what: 'status' | 'enable') {
+  return call('notifications', what)
+}

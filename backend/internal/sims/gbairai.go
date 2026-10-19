@@ -18,6 +18,7 @@ import (
 	"github.com/myahse/babi-life/backend/internal/auth"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
+	"github.com/myahse/babi-life/backend/internal/push"
 )
 
 // Gbairai, the phone's messaging app: write to the players your Sim has made
@@ -290,6 +291,10 @@ func (h *Handler) write(w http.ResponseWriter, r *http.Request) {
 		h.gbairaiFail(w, err)
 		return
 	}
+	// On the other's phone: who wrote, and what (the latest from the same friend replaces the one before).
+	var name string
+	_ = h.DB.QueryRow(ctx, `SELECT first_name FROM sims WHERE id = $1`, me).Scan(&name)
+	h.Push.ToSim(to, push.Message{Title: name + " · Gbairai", Body: body, URL: "/jeu?app=gbairai", Tag: "gbairai-" + me})
 	httpx.JSON(w, http.StatusOK, m)
 }
 

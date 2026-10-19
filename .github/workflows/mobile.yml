@@ -40,10 +40,11 @@ jobs:
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test
-      - run: flutter build apk --release --split-per-abi
+      # The notifications' Firebase app (repository variables FCM_APP_ID, FCM_API_KEY; none: no notifications).
+      - run: flutter build apk --release --split-per-abi --dart-define=FCM_APP_ID=${{ vars.FCM_APP_ID }} --dart-define=FCM_API_KEY=${{ vars.FCM_API_KEY }}
       # The testers' app: the whole game before launch (arm64: most phones).
       - run: |
-          flutter build apk --release --target-platform android-arm64 --dart-define=TESTER=true
+          flutter build apk --release --target-platform android-arm64 --dart-define=TESTER=true --dart-define=FCM_APP_ID=${{ vars.FCM_APP_ID }} --dart-define=FCM_API_KEY=${{ vars.FCM_API_KEY }}
           mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/babi-life-testeur.apk
           rm -f build/app/outputs/flutter-apk/app-release.apk.sha1
       - uses: actions/upload-artifact@v4

@@ -14,6 +14,7 @@ import (
 
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
+	"github.com/myahse/babi-life/backend/internal/push"
 )
 
 // The betting apps of the phone, on the Babi virtual football (game/betting.go):
@@ -351,4 +352,73 @@ func (h *Handler) myBets(w http.ResponseWriter, r *http.Request) {
 		cur.Legs = append(cur.Legs, leg)
 	}
 	httpx.JSON(w, http.StatusOK, out)
+}
+
+// WatchBets tells players, on their phone, when a bet's last match is over:
+// won (and how much is waiting) or lost. The money itself is settled when
+// they open the game (settleBetsTx). Every half minute, until ctx ends.
+func (h *Handler) WatchBets(ctx context.Context) {
+	if !h.Push.Enabled() {
+		return
+	}
+	t := time.NewTicker(30 * time.Second)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			h.tellBets(ctx)
+		}
+	}
+}
+
+func (h *Handler) tellBets(ctx context.Context) {
+	now := time.Now().Unix()
+	rows, err := h.DB.Query(ctx, `SELECT b.id, b.sim, b.app, b.stake, b.odds::float8, l.match, l.label, l.pick FROM bets b JOIN bet_legs l ON l.bet = b.id
+		WHERE b.status = 'open' AND NOT b.notified AND b.settles_at <= $1 ORDER BY b.id LIMIT 300`, now)
+	if err != nil {
+		return
+	}
+	type due struct {
+		sim, app string
+		stake    int
+		odds     float64
+		lost     bool
+	}
+	bets := map[int64]*due{}
+	var order []int64
+	for rows.Next() {
+		var id int64
+		var d due
+		var key, label, pick string
+		if rows.Scan(&id, &d.sim, &d.app, &d.stake, &d.odds, &key, &label, &pick) != nil {
+			continue
+		}
+		if bets[id] == nil {
+			bets[id] = &d
+			order = append(order, id)
+		}
+		if round, i, err := parseMatch(key); err == nil {
+			m, _ := game.MatchIn(leagueOf(d.app, round, i, label), round, i, now, 0)
+			if won, ok := game.Won(m, pick, now); ok && !won {
+				bets[id].lost = true
+			}
+		}
+	}
+	rows.Close()
+	for _, id := range order {
+		b := bets[id]
+		tag, err := h.DB.Exec(ctx, `UPDATE bets SET notified = true WHERE id = $1 AND NOT notified`, id)
+		if err != nil || tag.RowsAffected() == 0 {
+			continue
+		}
+		name := betApps[b.app].Name
+		m := push.Message{Title: name + " : pari perdu", Body: "Les matchs sont finis. Pas cette fois… la prochaine !", URL: "/jeu?app=" + b.app, Tag: "bet-" + b.app}
+		if !b.lost {
+			m.Title = name + " : pari gagné !"
+			m.Body = fmt.Sprintf("+%s Djai t'attendent : ouvre %s pour encaisser.", money(int(math.Round(float64(b.stake)*b.odds))), name)
+		}
+		h.Push.ToSim(b.sim, m)
+	}
 }

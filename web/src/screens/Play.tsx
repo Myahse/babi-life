@@ -40,6 +40,7 @@ import { MiniMap, WhereTo } from '../components/Navigator'
 import { ChatSheet } from '../components/ChatSheet'
 import type { Npc } from '../world3d/open/OpenWorld'
 import type { Track } from '../audio/music'
+import { NotifyPrompt } from '../components/NotifyPrompt'
 
 /** Building one's house: its own screen, downloaded when opened. */
 const BuildMode = lazy(() => import('../components/BuildMode'))
@@ -124,6 +125,16 @@ export function Play() {
   // A Golvo order on its way, and the phone app to open.
   const [delivery, setDelivery] = useState<Delivery | null>(null)
   const [phoneApp, setPhoneApp] = useState<PhoneAppId | null>(null)
+  // A notification tapped (/jeu?app=gbairai, ?app=bet225): the phone opens on that app.
+  useEffect(() => {
+    const q = new URLSearchParams(location.search)
+    const want = q.get('app') as PhoneAppId | null
+    if (!want || !['gbairai', 'bet225', 'parisfoot'].includes(want)) return
+    setPhoneApp(want)
+    setOverlay('phone')
+    q.delete('app')
+    history.replaceState(null, '', location.pathname + (q.size ? `?${q}` : ''))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   // The other players in the commune, and the invitations they send.
   const [players, setPlayers] = useState<{ focus: string | null } | null>(null)
   const [dismissed, setDismissed] = useState<string[]>([])
@@ -527,6 +538,7 @@ export function Play() {
           return classic ? <Neighbourhood key={commune.id} {...street} /> : <OpenWorld key={commune.id} {...street} commune={ownPlaces(commune)} token={MAP_TOKEN ?? ''} onFail={() => setMapSlow(true)} onLoaded={() => setMapSlow(false)} onMapPlaces={setMapPlaces} onHomeSpots={setHomeSpots} />
         })()}
       </div>
+      {!showInside && !overlay && <NotifyPrompt />}
       {mapSlow && (
         <div className="pointer-events-none absolute inset-x-0 top-[38%] z-10 flex justify-center px-6">
           <p className="hud rounded-2xl px-4 py-2.5 text-center text-sm font-extrabold">La carte de Babi charge… Le réseau est lent : on réessaie tout seul.</p>

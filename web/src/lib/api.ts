@@ -116,6 +116,8 @@ export const api = {
   betRounds: (app: string) => request<BetRounds>(`/bets/rounds?app=${app}`),
   placeBet: (id: string, app: string, stake: number, legs: { match: string; pick: string }[]) => post<ActionResult>(`/sims/${id}/bets`, { app, stake, legs }),
   settleBets: (id: string) => post<ActionResult>(`/sims/${id}/bets/settle`, {}),
+  pushKey: () => request<{ key: string; web: boolean; app: boolean }>('/push/key'),
+  subscribePush: (sub: unknown) => request<void>('/me/push', { method: 'POST', body: JSON.stringify(sub) }),
   buildPlan: (id: string, plan: string) => post<ActionResult>(`/sims/${id}/plot/plan`, { plan }),
   clearPlot: (id: string) => post<ActionResult>(`/sims/${id}/plot/plan`, { clear: true }),
   myBets: (id: string, app = '') => request<BetView[]>(`/sims/${id}/bets?app=${app}`),

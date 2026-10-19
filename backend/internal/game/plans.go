@@ -142,7 +142,9 @@ func (p *planner) door(x, z int, closed bool) {
 
 func (p *planner) window(x, z int) { p.set(x, 1, z, "verre") }
 
-func (p *planner) put(id string, x, z, r int) { p.furn = append(p.furn, Piece{X: x, Z: z, R: r, ID: id}) }
+func (p *planner) put(id string, x, z, r int) {
+	p.furn = append(p.furn, Piece{X: x, Z: z, R: r, ID: id})
+}
 
 func (p *planner) zone(x, z, w, d int, k, l string) {
 	p.zones = append(p.zones, Zone{X: x, Z: z, W: w, D: d, K: k, L: l})

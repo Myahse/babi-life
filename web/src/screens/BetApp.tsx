@@ -3,6 +3,7 @@ import { Check, Clock3, Radio, Trash2, X } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
 import type { BetRounds, BetView, Sim, VirtualMatch } from '../lib/types'
 import type { Act } from './phoneApps'
+import { NotifyBanner } from '../components/NotifyPrompt'
 
 /**
  * The betting apps (backend game/betting.go, sims/bets.go), on the Babi
@@ -25,7 +26,12 @@ const clockOf = (s: number) => `${Math.floor(Math.max(0, s) / 60)}:${String(Math
 
 export function BetApp({ sim, act, app }: { sim: Sim; act: Act; app: 'bet225' | 'parisfoot' }) {
   const s = useBetting(sim, act, app)
-  return app === 'parisfoot' ? <ParisFoot sim={sim} s={s} /> : <Bet225 sim={sim} s={s} />
+  return (
+    <>
+      <NotifyBanner what="quand les matchs de ton pari sont finis" dark={app === 'bet225'} />
+      {app === 'parisfoot' ? <ParisFoot sim={sim} s={s} /> : <Bet225 sim={sim} s={s} />}
+    </>
+  )
 }
 
 /** What both apps do the same way: the rounds, the bets placed on this app, the slip. */

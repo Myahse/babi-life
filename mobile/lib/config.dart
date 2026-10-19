@@ -21,6 +21,16 @@ class Config {
     return h == game || h.endsWith('.$game') || h.endsWith('onrender.com') || h == 'localhost' || h == '10.0.2.2';
   }
 
+  /// Firebase Cloud Messaging, for the notifications (lib/notifications.dart):
+  /// the Android app of the Firebase project, as the console gives it
+  /// (Project settings → Your apps → the Android app). Public identifiers, not
+  /// secrets; set at build time (GitHub: the repository's variables).
+  static const firebaseProject = 'babilife-38e39';
+  static const fcmSenderId = '115685300024';
+  static const fcmAppId = String.fromEnvironment('FCM_APP_ID');
+  static const fcmApiKey = String.fromEnvironment('FCM_API_KEY');
+  static const fcm = fcmAppId != '' && fcmApiKey != '';
+
   /// Brand colours (web/src/index.css).
   static const night = 0xFF0F1230;
   static const orange = 0xFFFF7A00;

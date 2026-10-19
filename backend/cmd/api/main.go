@@ -30,6 +30,7 @@ import (
 	"github.com/myahse/babi-life/backend/internal/kart"
 	"github.com/myahse/babi-life/backend/internal/live"
 	"github.com/myahse/babi-life/backend/internal/news"
+	"github.com/myahse/babi-life/backend/internal/push"
 	"github.com/myahse/babi-life/backend/internal/sims"
 	"github.com/myahse/babi-life/backend/internal/waitlist"
 	"github.com/myahse/babi-life/backend/internal/world"
@@ -70,7 +71,17 @@ func main() {
 	// ADMIN_KEY opens every admin part at once (the /admin page).
 	adminkey.Master = os.Getenv("ADMIN_KEY")
 	karts := kart.NewLobby()
-	simsH := &sims.Handler{DB: pool, RealPhotos: os.Getenv("STORIES_REAL_PHOTOS") == "true", Karts: karts}
+	// Notifications to the phones (internal/push): the site's Web Push keys, the app's Firebase account.
+	fcm, err := push.NewFCM(os.Getenv("FCM_SERVICE_ACCOUNT"))
+	if err != nil {
+		log.Printf("push: %v (the Android app gets no notifications)", err)
+	}
+	pushes := &push.Service{DB: pool, VAPIDPublic: os.Getenv("VAPID_PUBLIC_KEY"), VAPIDPrivate: os.Getenv("VAPID_PRIVATE_KEY"), Subject: os.Getenv("VAPID_SUBJECT"), FCM: fcm}
+	if pushes.Subject == "" {
+		pushes.Subject = "https://www.lifeinbabi.com"
+	}
+	simsH := &sims.Handler{DB: pool, RealPhotos: os.Getenv("STORIES_REAL_PHOTOS") == "true", Karts: karts, Push: pushes}
+	go simsH.WatchBets(ctx)
 	headlines := news.New(cfg.NewsFeeds)
 	go headlines.Run(ctx)
 	// The players of a commune, live (positions and poses, over a WebSocket).
@@ -97,6 +108,7 @@ func main() {
 	})
 
 	r.Route("/api/v1", func(r chi.Router) {
+		r.Get("/push/key", pushes.Key)
 		r.With(middleware.Compress(5, "application/json")).Get("/world", func(w http.ResponseWriter, r *http.Request) {
 			httpx.JSON(w, http.StatusOK, map[string]any{
 				"cities":        world.Cities,
@@ -247,6 +259,8 @@ func main() {
 			r.Get("/me", authH.Me)
 			r.Put("/me/username", authH.SetUsername)
 			r.Post("/me/tester", authH.BecomeTester)
+			r.Post("/me/push", pushes.Subscribe)
+			r.Delete("/me/push", pushes.Unsubscribe)
 			simsH.Routes(r)
 		})
 	})

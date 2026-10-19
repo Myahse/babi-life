@@ -45,6 +45,8 @@ export default defineConfig({
         globIgnores: ['**/MapboxMap-*', '**/effects-*', '**/*-{devanagari,cyrillic,cyrillic-ext,greek,vietnamese}-*.woff2'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         navigateFallback: null,
+        // The notifications' handlers (public/push-sw.js).
+        importScripts: ['push-sw.js'],
         cleanupOutdatedCaches: true,
         runtimeCaching: [
           // The pages: from the network, the last copy only when offline.

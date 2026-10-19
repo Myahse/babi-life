@@ -19,8 +19,9 @@ import (
 
 	"github.com/myahse/babi-life/backend/internal/auth"
 	"github.com/myahse/babi-life/backend/internal/game"
-	"github.com/myahse/babi-life/backend/internal/kart"
 	"github.com/myahse/babi-life/backend/internal/httpx"
+	"github.com/myahse/babi-life/backend/internal/kart"
+	"github.com/myahse/babi-life/backend/internal/push"
 	"github.com/myahse/babi-life/backend/internal/world"
 )
 
@@ -215,6 +216,8 @@ type Handler struct {
 	Karts *kart.Lobby
 	// RealPhotos: stories may be photos from the phone, not only from the game (STORIES_REAL_PHOTOS).
 	RealPhotos bool
+	// Push: notifications to the players' phones (a Gbairai message, a bet over); nil: none.
+	Push *push.Service
 }
 
 func (h *Handler) Routes(r chi.Router) {

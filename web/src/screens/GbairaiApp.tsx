@@ -6,6 +6,7 @@ import { Portrait } from '../avatar/portrait'
 import { ReportSheet } from '../components/Social'
 import { Stories } from './Stories'
 import { Grin } from './Grin'
+import { NotifyBanner } from '../components/NotifyPrompt'
 
 /**
  * Gbairai: write to the players your Sim has made friends with in the game,
@@ -31,6 +32,7 @@ export function GbairaiApp({ world, sim }: { world: World; sim: Sim }) {
           </button>
         ))}
       </div>
+      <NotifyBanner what="quand un ami t’écrit" />
       {tab === 'grin' ? <Grin world={world} sim={sim} /> : <Chats world={world} sim={sim} />}
     </div>
   )
