@@ -165,7 +165,7 @@ export function decodeChunk(o: Origin, tx: number, ty: number, data: Uint8Array,
   dropOverRoads(chunk)
   dropOverlaps(chunk)
   trimPaths(chunk)
-  if (!far) fillQuarters(chunk, neighbours, layStations(chunk))
+  if (!far) fillQuarters(chunk, neighbours, [...tollGrounds(tile, toXZ), ...layStations(chunk)])
   plant(chunk, far)
   return chunk
 }
@@ -291,10 +291,11 @@ function nameLines(roads: { pts: XZ[]; name?: string; cls: string; bridge: boole
  */
 function tollGrounds(tile: VectorTile, toXZ: (extent: number) => (p: { x: number; y: number }) => XZ) {
   const out: { at: XZ; r: number }[] = []
-  const l = tile.layers.poi
+  // OpenFreeMap's layer is `poi` (name:fr), Mapbox's `poi_label` (name_fr).
+  const l = tile.layers.poi ?? tile.layers.poi_label
   for (let i = 0; i < (l?.length ?? 0); i++) {
     const f = l!.feature(i)
-    const n = String(f.properties['name:fr'] ?? f.properties.name ?? '')
+    const n = String(f.properties['name:fr'] ?? f.properties.name_fr ?? f.properties.name ?? '')
       .normalize('NFKD')
       .replace(/[\u0300-\u036f]/g, '')
       .toLowerCase()
