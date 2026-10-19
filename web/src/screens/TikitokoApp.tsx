@@ -26,8 +26,8 @@ const ago = (at: string) => {
 }
 const THEME: Record<string, string> = { danse: 'danse', garba: 'garba', stade: 'stade', vlog: 'vlog', zoo: 'zoo', humour: 'humour', mode: 'look', sport: 'sport' }
 
-export function TikitokoApp({ sim, act, onClose }: { sim: Sim; act: Act; onClose: () => void }) {
-  const [screen, setScreen] = useState<Screen>({ kind: 'home' })
+export function TikitokoApp({ sim, act, onClose, photo }: { sim: Sim; act: Act; onClose: () => void; /** A photo of the gallery to post (it opens on « + »). */ photo?: { id: number; src: string } }) {
+  const [screen, setScreen] = useState<Screen>({ kind: photo ? 'film' : 'home' })
   const [me, setMe] = useState<TikiMe | null>(null)
   const refreshMe = () => void api.tikiMe(sim.id).then(setMe).catch(() => undefined)
   useEffect(refreshMe, [sim.id]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -44,7 +44,7 @@ export function TikitokoApp({ sim, act, onClose }: { sim: Sim; act: Act; onClose
           {screen.kind === 'player' && <Feed sim={sim} source={{ posts: screen.posts, start: screen.start }} nav={nav} onBack={() => nav(screen.back)} />}
           {screen.kind === 'profile' && <Profile sim={sim} id={screen.id} me={me} nav={nav} onBack={() => nav({ kind: 'home' })} />}
           {screen.kind === 'inbox' && <InboxScreen sim={sim} me={me} nav={nav} />}
-          {screen.kind === 'film' && me && <Film sim={sim} me={me} act={act} onClose={() => nav({ kind: 'home' })} onPosted={() => (refreshMe(), nav({ kind: 'profile', id: sim.id }))} />}
+          {screen.kind === 'film' && me && <Film sim={sim} me={me} act={act} gallery={photo} onClose={() => nav({ kind: 'home' })} onPosted={() => (refreshMe(), nav({ kind: 'profile', id: sim.id }))} />}
         </div>
         {screen.kind !== 'film' && screen.kind !== 'player' && (
           <nav className="flex h-14 shrink-0 items-center justify-around border-t border-white/10 bg-black pb-[env(safe-area-inset-bottom)] text-[10px] font-bold">
@@ -639,16 +639,16 @@ function InboxScreen({ sim, me, nav }: { sim: Sim; me: TikiMe | null; nav: (s: S
 /* ---------- « + »: filming ---------- */
 
 /** What it's about, the picture from the game, a caption; half an hour of the Sim's time. */
-function Film({ sim, me, act, onClose, onPosted }: { sim: Sim; me: TikiMe; act: Act; onClose: () => void; onPosted: () => void }) {
+function Film({ sim, me, act, gallery, onClose, onPosted }: { sim: Sim; me: TikiMe; act: Act; gallery?: { id: number; src: string }; onClose: () => void; onPosted: () => void }) {
   const [theme, setTheme] = useState(me.themes[0]?.id ?? 'vlog')
   const [photo, setPhoto] = useState<string | null>(null)
   const [caption, setCaption] = useState('')
   const [busy, setBusy] = useState(false)
-  useEffect(() => setPhoto(takePhoto()), [])
+  useEffect(() => setPhoto(gallery?.src ?? takePhoto()), [gallery])
   const post = async () => {
     if (!photo || busy) return
     setBusy(true)
-    const ok = await act('Tourner une vidéo Tikitoko', 'camera', 'social', () => api.tikiPost(sim.id, photo, caption, theme, placeHere()))
+    const ok = await act('Tourner une vidéo Tikitoko', 'camera', 'social', () => gallery && photo === gallery.src ? api.tikiPost(sim.id, '', caption, theme, placeHere(), gallery.id) : api.tikiPost(sim.id, photo, caption, theme, placeHere()))
     setBusy(false)
     if (ok) onPosted()
   }

@@ -80,7 +80,12 @@ func main() {
 	if pushes.Subject == "" {
 		pushes.Subject = "https://www.lifeinbabi.com"
 	}
-	simsH := &sims.Handler{DB: pool, RealPhotos: os.Getenv("STORIES_REAL_PHOTOS") == "true", Karts: karts, Push: pushes}
+	// The phone's photos: in the same bucket as Babi Pub's files (under photos/).
+	bucket := &ads.Bucket{
+		Endpoint: os.Getenv("ADS_S3_ENDPOINT"), Region: os.Getenv("ADS_S3_REGION"), Name: os.Getenv("ADS_S3_BUCKET"),
+		AccessKey: os.Getenv("ADS_S3_ACCESS_KEY"), SecretKey: os.Getenv("ADS_S3_SECRET_KEY"), PublicURL: os.Getenv("ADS_PUBLIC_URL"),
+	}
+	simsH := &sims.Handler{DB: pool, RealPhotos: os.Getenv("STORIES_REAL_PHOTOS") == "true", Karts: karts, Push: pushes, Bucket: bucket}
 	go simsH.WatchBets(ctx)
 	headlines := news.New(cfg.NewsFeeds)
 	go headlines.Run(ctx)
@@ -223,10 +228,7 @@ func main() {
 		r.Get("/waitlist/count", wish.Count)
 		r.Get("/waitlist/export", wish.Export)
 		// Babi Pub: the billboards' ads (files in an S3-compatible bucket; admin with ADS_ADMIN_KEY).
-		pub := &ads.Handler{DB: pool, AdminKey: os.Getenv("ADS_ADMIN_KEY"), Head: ads.HeadHTTP, Bucket: &ads.Bucket{
-			Endpoint: os.Getenv("ADS_S3_ENDPOINT"), Region: os.Getenv("ADS_S3_REGION"), Name: os.Getenv("ADS_S3_BUCKET"),
-			AccessKey: os.Getenv("ADS_S3_ACCESS_KEY"), SecretKey: os.Getenv("ADS_S3_SECRET_KEY"), PublicURL: os.Getenv("ADS_PUBLIC_URL"),
-		}}
+		pub := &ads.Handler{DB: pool, AdminKey: os.Getenv("ADS_ADMIN_KEY"), Head: ads.HeadHTTP, Bucket: bucket}
 		r.Get("/ads/invite/{code}", pub.Invite)
 		r.Get("/ads/admin/invites", pub.AdminInvites)
 		r.Post("/ads/admin/invites", pub.AdminInvite)

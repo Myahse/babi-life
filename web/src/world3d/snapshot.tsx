@@ -1,6 +1,8 @@
-import { useEffect } from 'react'
-import { useThree } from '@react-three/fiber'
+import { useEffect, useMemo } from 'react'
+import { useFrame, useThree } from '@react-three/fiber'
+import * as THREE from 'three'
 import { whereabouts } from './whereabouts'
+import { photoCam, usePhotoMode } from './photoCam'
 
 // A photo of the game, for a story or a Tikitoko post: the 3D drawn once
 // more and read straight away (the canvas keeps nothing between frames),
@@ -8,8 +10,9 @@ import { whereabouts } from './whereabouts'
 
 let snap: (() => HTMLCanvasElement | null) | null = null
 
-export function Snapper() {
+export function Snapper({ street }: { /** The open street: the phone's camera can be held anywhere round the Sim. */ street?: boolean }) {
   const { gl, scene, camera } = useThree()
+  const mode = usePhotoMode()
   useEffect(() => {
     snap = () => {
       gl.render(scene, camera)
@@ -17,6 +20,56 @@ export function Snapper() {
     }
     return () => void (snap = null)
   }, [gl, scene, camera])
+  return street && mode ? <PhotoView /> : null
+}
+
+/** Eye height of a grown-up Sim (world3d/Character.tsx: 2.15 m to the top of the head). */
+const HEAD = 1.8
+
+/**
+ * While the camera app is open in the street: the scene is drawn from the
+ * phone (a camera of its own, so the street's camera and its controls are
+ * left as they were), every frame, and that's what a photo takes.
+ */
+function PhotoView() {
+  const { gl, scene, size } = useThree()
+  const cam = useMemo(() => new THREE.PerspectiveCamera(60, 1, 0.1, 4000), [])
+  const place = () => {
+    const [x, z] = whereabouts.sim
+    const y = whereabouts.simY
+    const h = whereabouts.simHeading
+    if (photoCam.mode === 'selfie') {
+      // Held out in front, a little above the head, looking back at the face.
+      const a = h + photoCam.yaw
+      const d = 1.5
+      cam.position.set(x + Math.sin(a) * d, y + HEAD + 0.25 + photoCam.pitch * 1.2, z + Math.cos(a) * d)
+      cam.lookAt(x, y + HEAD - 0.45, z)
+      cam.fov = 62 / photoCam.zoom
+    } else {
+      // From the eyes (a step ahead, out of the head), the way the Sim faces.
+      const a = h + photoCam.yaw
+      cam.position.set(x + Math.sin(h) * 0.45, y + HEAD + 0.05, z + Math.cos(h) * 0.45)
+      const p = Math.max(-0.9, Math.min(0.9, photoCam.pitch))
+      cam.lookAt(cam.position.x + Math.sin(a) * Math.cos(p), cam.position.y - Math.sin(p), cam.position.z + Math.cos(a) * Math.cos(p))
+      cam.fov = 58 / photoCam.zoom
+    }
+    cam.aspect = size.width / Math.max(1, size.height)
+    cam.updateProjectionMatrix()
+  }
+  useEffect(() => {
+    const before = snap
+    snap = () => {
+      place()
+      gl.render(scene, cam)
+      return gl.domElement
+    }
+    return () => void (snap = before)
+  }, [gl, scene, cam]) // eslint-disable-line react-hooks/exhaustive-deps
+  // A priority above 0: this draws the frame (the canvas's own drawing pauses while the camera is open).
+  useFrame(() => {
+    place()
+    gl.render(scene, cam)
+  }, 1)
   return null
 }
 

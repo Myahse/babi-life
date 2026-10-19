@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, TikiComment, TikiProfile, Piece, Lot, LotOffer, GrinMessage, BetRounds, BetView } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, Lot, LotOffer, GrinMessage, BetRounds, BetView } from './types'
 import { useSession } from '../store/session'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
@@ -139,7 +139,11 @@ export const api = {
   tikiSave: (id: string, postId: number, saved: boolean) => post<{ saved: boolean }>(`/sims/${id}/tiki/${postId}/save`, { saved }),
   tikiShare: (id: string, postId: number) => post<void>(`/sims/${id}/tiki/${postId}/share`, {}),
   tikiMe: (id: string) => request<TikiMe>(`/sims/${id}/tiki/me`),
-  tikiPost: (id: string, photo: string, caption: string, theme: string, placeId: string) => post<ActionResult>(`/sims/${id}/tiki`, { photo, caption, theme, placeId }),
+  tikiPost: (id: string, photo: string, caption: string, theme: string, placeId: string, photoId?: number) => post<ActionResult>(`/sims/${id}/tiki`, { photo, caption, theme, placeId, photoId }),
+  /** The phone's gallery (the camera's photos and selfies). */
+  photos: (id: string) => request<{ photos: Photo[] }>(`/sims/${id}/photos`),
+  takePhoto: (id: string, photo: string, kind: 'photo' | 'selfie', placeId: string) => post<{ photo: Photo }>(`/sims/${id}/photos`, { photo, kind, placeId }),
+  deletePhoto: (id: string, photoId: number) => request<void>(`/sims/${id}/photos/${photoId}`, { method: 'DELETE' }),
   tikiLike: (id: string, postId: number, liked: boolean) => post<{ liked: boolean }>(`/sims/${id}/tiki/${postId}/like`, { liked }),
   tikiFollow: (id: string, other: string, follow: boolean) => post<{ follow: boolean }>(`/sims/${id}/tiki/follow/${other}`, { follow }),
   tikiReport: (id: string, postId: number, reason: string) => post<{ text: string }>(`/sims/${id}/tiki/${postId}/report`, { reason }),

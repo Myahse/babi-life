@@ -125,12 +125,30 @@ func (h *Handler) tikiPost(w http.ResponseWriter, r *http.Request) {
 		Caption string `json:"caption"`
 		Theme   string `json:"theme"`
 		PlaceID string `json:"placeId"`
+		// A photo of the phone's gallery (photos.go), instead of Photo.
+		PhotoID int64 `json:"photoId"`
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
 		return
 	}
-	raw, mime, err := decodePhoto(req.Photo)
+	var (
+		raw  []byte
+		mime string
+		err  error
+	)
+	if req.PhotoID > 0 {
+		var sim string
+		if sim, err = h.phoneSim(r); err == nil {
+			raw, mime, err = h.photoBytes(r.Context(), sim, req.PhotoID)
+		}
+		if err != nil {
+			h.photoFail(w, err)
+			return
+		}
+	} else {
+		raw, mime, err = decodePhoto(req.Photo)
+	}
 	if err != nil {
 		httpx.Error(w, http.StatusBadRequest, err.Error())
 		return

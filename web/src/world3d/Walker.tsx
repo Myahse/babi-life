@@ -16,6 +16,7 @@ import { worldTime } from '../lib/worldClock'
 import { SIM_SLOT, matchFor, onField, worldFacing } from './open/match'
 import { blocked, blockedFixed, topAt, vehicleAt } from './obstacles'
 import { gridWay } from './gridPath'
+import { usePhotoMode } from './photoCam'
 import { Vehicle } from './vehicles'
 import type { Pose } from '../avatar/Human'
 
@@ -104,6 +105,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   const path = useRef<[number, number][]>([])
   const target = useRef<string | null>(null)
   const [walking, setWalking] = useState(false)
+  // The phone's camera open: the Sim holds its phone up (snapshot.tsx draws what it sees).
+  const photoMode = usePhotoMode()
   const speed = useRef(SPEED)
   const [run, setRun] = useState(false)
   const autoRun = useRef(false)
@@ -650,7 +653,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
             <Character look={busy?.id === 'shower' ? { ...sim.look, outfit: 'serviette', accessory: 'none' } : sim.look} gender={sim.gender} walking={false} running={false} busy={false} pose={settled.pose} moodColor={moodColor} stage={stage} />
           </group>
         ) : (
-          <Character look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking || looping} running={run || (looping && !!loopKind?.run)} busy={!!busy && !looping} pose={busy?.kind === 'chat' ? 'talk' : inMatch && !walking ? matchPose : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={looping && loopKind ? loopKind.speed : run ? RUN : SPEED} />
+          <Character look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking || looping} running={run || (looping && !!loopKind?.run)} busy={!!busy && !looping} marker={!photoMode} pose={photoMode && !busy && !walking ? 'phone' : busy?.kind === 'chat' ? 'talk' : inMatch && !walking ? matchPose : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={looping && loopKind ? loopKind.speed : run ? RUN : SPEED} />
         )}
         {/* Outdoors, what the Sim is doing is set around it (the ball, the towel, the bus stop…) */}
         {busy && !walking && !onTouchline && <OutdoorAction id={busy.id} />}

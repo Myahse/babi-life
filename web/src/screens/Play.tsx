@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BadgeCheck, Megaphone, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, Camera, Images, Megaphone, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World, Ride, Place, Plot } from '../lib/types'
 import { useWorld } from '../store/world'
@@ -36,6 +36,8 @@ import { BetApp } from './BetApp'
 import { WayeApp } from './WayeApp'
 import { StoreApp } from './StoreApp'
 import { FriendsApp } from './FriendsApp'
+import { CameraView } from './CameraView'
+import { GalleryApp } from './GalleryApp'
 import { InviteBanner, PlayersChip, PlayersSheet, usePlayers } from '../components/Players'
 import { SoundToggle, Soundtrack } from '../components/Soundtrack'
 import { MiniMap, WhereTo } from '../components/Navigator'
@@ -124,7 +126,7 @@ export function Play() {
     return () => clearInterval(t)
   }, [placeId])
   const [goTo, setGoTo] = useState<{ placeId: string; nonce: number } | null>(null)
-  const [overlay, setOverlay] = useState<'phone' | 'map' | null>(null)
+  const [overlay, setOverlay] = useState<'phone' | 'map' | 'camera' | null>(null)
   const [pending, setPending] = useState<{ label: string; icon: string; kind: string } | null>(null)
   // The place whose door the Sim is standing at after walking with the pad.
   const [near, setNear] = useState<string | null>(null)
@@ -776,10 +778,12 @@ export function Play() {
           onCollect={collect}
           onClose={() => (setOverlay(null), setPhoneApp(null))}
           onMap={() => setOverlay('map')}
+          onCamera={() => (setPhoneApp(null), setOverlay('camera'))}
           onWalk={walkTo}
           onBuild={() => (setOverlay(null), setBuilding(true))}
         />
       )}
+      {overlay === 'camera' && <CameraView sim={sim} street={!showInside} onClose={() => setOverlay(null)} onGallery={() => (setPhoneApp('galerie'), setOverlay('phone'))} />}
       {overlay === 'map' && <WorldMap world={world} sim={sim} night={c.isNight} desktop={desktop} onClose={() => setOverlay(null)} onTravel={travel} onWalk={(id) => (setOverlay(null), walkTo(id))} />}
       {delivery && overlay !== 'phone' && <DeliveryPill delivery={delivery} now={now} onOpen={() => (setPhoneApp('golvo'), setOverlay('phone'))} />}
       {calling && !chat && (
@@ -805,7 +809,7 @@ export function Play() {
 
 /* ---------- The in-game phone ---------- */
 
-type PhoneAppId = 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'bet225' | 'parisfoot'
+type PhoneAppId = 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'bet225' | 'parisfoot' | 'galerie'
 type PhoneProps = {
   world: World
   sim: Sim
@@ -819,12 +823,16 @@ type PhoneProps = {
   onCollect: () => void
   onClose: () => void
   onMap: () => void
+  /** The camera, full screen over the game. */
+  onCamera: () => void
   onWalk: (id: string) => void
   onBuild: () => void
 }
 
-function Phone({ world, sim, commune, journal, time, act, startApp, delivery, onDelivery, onCollect, onClose, onMap, onWalk, onBuild }: PhoneProps) {
+function Phone({ world, sim, commune, journal, time, act, startApp, delivery, onDelivery, onCollect, onClose, onMap, onCamera, onWalk, onBuild }: PhoneProps) {
   const [app, setApp] = useState<PhoneAppId | null>(startApp)
+  // A photo of the gallery on its way to Tikitoko.
+  const [tikiPhoto, setTikiPhoto] = useState<{ id: number; src: string } | undefined>()
   // A player friend to send money to, picked in Amis.
   const [wayeTo, setWayeTo] = useState<string | undefined>()
   const navigate = useNavigate()
@@ -859,10 +867,16 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
     { id: 'news', label: 'Infos', icon: Newspaper, colors: ['#ff8a65', '#e8590c'], open: () => setApp('news') },
     { id: 'messages', label: 'Messages', icon: MessageCircle, colors: ['#b39dff', '#6c47ff'], open: () => setApp('messages') },
     { id: 'friends', label: 'Amis', icon: Users, colors: ['#ffa8c5', '#e83e8c'], open: () => setApp('friends') },
+    ...(ownPhone
+      ? [
+          { id: 'camera', label: 'Caméra', icon: Camera, colors: ['#9aa5b8', '#3d4659'], open: onCamera },
+          { id: 'galerie', label: 'Galerie', icon: Images, colors: ['#ffd36e', '#ff8a3d'], open: () => setApp('galerie') },
+        ]
+      : []),
     { id: 'profile', label: 'Profil', icon: UserRound, colors: ['#ff8a9b', '#ff3d57'], open: () => navigate('/profil', { viewTransition: true }) },
     ] as Tile[]
   ).filter((a) => !life.minor || (a.id !== 'jobs' && a.id !== 'home'))
-  const title: Record<PhoneAppId, string> = { here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', bet225: 'Bet225', parisfoot: 'ParisFoot' }
+  const title: Record<PhoneAppId, string> = { here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: 'Galerie' }
 
   return (
     <div className="absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center" onClick={onClose}>
@@ -948,7 +962,8 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
                 {app === 'store' && ownPhone && <StoreApp world={world} sim={sim} act={act} onOpen={(id) => (id === 'gnango' || id === 'idrive' ? onMap() : setApp(id as PhoneAppId))} />}
                 {app === 'waye' && <WayeApp world={world} sim={sim} act={act} journal={journal} renderJournal={(events) => <Journal events={events} />} payTo={wayeTo} />}
                 {app === 'gbairai' && <GbairaiApp world={world} sim={sim} />}
-                {app === 'tikitoko' && <TikitokoApp sim={sim} act={act} onClose={() => setApp(null)} />}
+                {app === 'tikitoko' && <TikitokoApp sim={sim} act={act} photo={tikiPhoto} onClose={() => (setApp(null), setTikiPhoto(undefined))} />}
+                {app === 'galerie' && <GalleryApp sim={sim} onCamera={onCamera} onTiki={has('tikitoko') ? (p, src) => (setTikiPhoto({ id: p.id, src }), setApp('tikitoko')) : null} />}
                 {(app === 'bet225' || app === 'parisfoot') && <BetApp sim={sim} act={act} app={app} />}
                 {app === 'golvo' && <GolvoApp world={world} sim={sim} delivery={delivery} onOrder={onDelivery} onCancel={() => onDelivery(null)} onCollect={onCollect} />}
               </div>

@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/myahse/babi-life/backend/internal/ads"
 	"github.com/myahse/babi-life/backend/internal/auth"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
@@ -218,6 +219,8 @@ type Handler struct {
 	RealPhotos bool
 	// Push: notifications to the players' phones (a Gbairai message, a bet over); nil: none.
 	Push *push.Service
+	// Bucket: where the phone's photos go (photos.go); not set up: in the database.
+	Bucket *ads.Bucket
 }
 
 func (h *Handler) Routes(r chi.Router) {
@@ -261,6 +264,10 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Get("/sims/{id}/stories/{story}/photo", h.storyPhoto)
 	r.Delete("/sims/{id}/stories/{story}", h.deleteStory)
 	r.Post("/sims/{id}/stories/{story}/report", h.reportStory)
+	r.Get("/sims/{id}/photos", h.photoList)
+	r.Post("/sims/{id}/photos", h.photoTake)
+	r.Get("/sims/{id}/photos/{photo}/raw", h.photoRaw)
+	r.Delete("/sims/{id}/photos/{photo}", h.photoDelete)
 	r.Get("/sims/{id}/tiki", h.tikiFeed)
 	r.Get("/sims/{id}/tiki/me", h.tikiMe)
 	r.Post("/sims/{id}/tiki", h.tikiPost)

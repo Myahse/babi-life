@@ -11,6 +11,10 @@ import { makeTextures } from '../world3d/open/textures'
 import { blockRing } from '../world3d/open/voxel'
 import { Vehicle, type VehicleKind } from '../world3d/vehicles'
 import { Landmark } from '../world3d/open/landmarks'
+import { CameraView } from '../screens/CameraView'
+import { Snapper } from '../world3d/snapshot'
+import { usePhotoMode } from '../world3d/photoCam'
+import { whereabouts } from '../world3d/whereabouts'
 import { ZOO_SOLID } from '../world3d/open/zoo'
 import { IVOIRE_SOLID } from '../world3d/open/hotelIvoire'
 import { SportField } from '../world3d/open/field'
@@ -449,6 +453,7 @@ function Lab() {
   if (view === 'streetfoot') return <StreetFootLab />
   if (view === 'people') return <PeopleLab />
   if (view === 'ride') return <RideLab />
+  if (view === 'phonecam') return <PhoneCamLab />
   if (view === 'home') return <HomeLab />
   if (view === 'plan') return <PlanLab />
   if (view === 'inside') return <InsideLab />
@@ -676,6 +681,36 @@ function PeopleLab() {
   )
 }
 /** The Sim on the back of a moto-taxi, as the Walker draws it (?view=ride&cam=). */
+/** The phone's camera in the street (?view=phonecam): the Sim on the Rue Princesse, the viewfinder over it. */
+function PhoneCamLab() {
+  const look = useMemo(() => randomLook('femme', seededLab(5)), [])
+  const sim = useMemo(() => ({ id: 'lab', firstName: 'Awa', gender: 'femme', look }) as unknown as Sim, [look])
+  const mode = usePhotoMode()
+  whereabouts.sim = [0, 20]
+  whereabouts.simY = 0
+  whereabouts.simHeading = Math.PI
+  return (
+    <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
+      <Canvas shadows dpr={[1, 1.5]} camera={{ position: [8, 6, 30], fov: 45 }} style={{ width: '100vw', height: '100vh' }}>
+        <Snapper street />
+        <color attach="background" args={['#a9d3f0']} />
+        <hemisphereLight args={['#ffffff', '#b8a27c', 1.2]} />
+        <directionalLight position={[40, 80, 30]} intensity={1.8} castShadow />
+        <Landmark id="yop-rue-princesse" night={false} />
+        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+          <planeGeometry args={[140, 140]} />
+          <meshLambertMaterial color="#cbb38c" />
+        </mesh>
+        <group position={[0, 0, 20]} rotation={[0, Math.PI, 0]}>
+          <Character look={look} gender="femme" walking={false} running={false} busy={false} pose={mode ? 'phone' : 'idle'} marker={!mode} stage="adulte" />
+        </group>
+        <OrbitControls target={[0, 1, 20]} />
+      </Canvas>
+      <CameraView sim={sim} street onClose={() => location.reload()} onGallery={() => undefined} />
+    </div>
+  )
+}
+
 function RideLab() {
   const cam = (q.get('cam') ?? '3,2,3').split(',').map(Number) as [number, number, number]
   const look = useMemo(() => randomLook('femme', seededLab(5)), [])
