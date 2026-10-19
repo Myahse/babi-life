@@ -1,7 +1,8 @@
-import { useState } from 'react'
-import { FlaskConical, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { FlaskConical, KeyRound, X } from 'lucide-react'
 import { api } from '../lib/api'
-import { testerPass } from '../lib/launch'
+import { isTester, setTester, testerPass } from '../lib/launch'
+import { useSession } from '../store/session'
 import type { Sim } from '../lib/types'
 import type { Act } from '../screens/phoneApps'
 
@@ -14,15 +15,47 @@ const AGES: [string, string][] = [
 const GIFTS = [10_000, 100_000, 1_000_000]
 
 /**
- * The testers' toolbox (only on a browser opened with /testeur): everything
- * at once, without waiting. The server checks the code again
- * (backend/internal/sims/tester.go).
+ * The testers' toolbox: everything at once, without waiting. It belongs to a
+ * tester account (users.tester, set with the testers' code or from /admin),
+ * and shows on a browser opened with /testeur too. The server checks the
+ * account again on each tap (backend/internal/sims/tester.go).
  */
 export function TesterTools({ sim, act }: { sim: Sim; act: Act }) {
+  const token = useSession((s) => s.token)
+  const user = useSession((s) => s.user)
+  const signIn = useSession((s) => s.signIn)
   const [open, setOpen] = useState(false)
-  const pass = testerPass()
-  if (!pass) return null
+  const [typed, setTyped] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const account = !!user?.tester
+
+  const become = async (code: string) => {
+    const u = await api.becomeTester(code)
+    if (token) signIn(token, u)
+    setTester(true, code)
+  }
+  // A browser opened with /testeur makes the account signed in on it a tester's;
+  // a tester account keeps this browser past the wish list.
+  useEffect(() => {
+    if (account) {
+      if (!isTester()) setTester(true)
+    } else if (testerPass()) {
+      become(testerPass()).catch(() => undefined)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account])
+
+  if (!account && !isTester()) return null
   const tap = (label: string, call: () => ReturnType<typeof api.tester>) => void act(label, 'sparkles', '', call)
+  const pass = testerPass()
+  const unlock = async () => {
+    setError(null)
+    try {
+      await become(typed)
+    } catch {
+      setError('Code incorrect.')
+    }
+  }
   return (
     <>
       <button className="hud flex h-11 items-center gap-1.5 rounded-full px-3 text-sm font-extrabold" onClick={() => setOpen(true)} title="Outils testeur">
@@ -34,35 +67,51 @@ export function TesterTools({ sim, act }: { sim: Sim; act: Act }) {
           <div className="w-full max-w-[400px] animate-up rounded-[26px] bg-white p-5 text-[var(--color-ink)] shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <div>
-                <div className="label">Mode testeur</div>
+                <div className="label">{account ? 'Compte testeur' : 'Mode testeur'}</div>
                 <h2 className="font-display text-xl font-extrabold">Tout, tout de suite</h2>
               </div>
               <button className="grid h-9 w-9 place-items-center rounded-full bg-[var(--color-canvas)]" onClick={() => setOpen(false)} aria-label="Fermer">
                 <X size={18} />
               </button>
             </div>
-            <Section title="Âge">
-              {AGES.map(([id, label]) => (
-                <Pill key={id} onClick={() => tap(label, () => api.tester(sim.id, pass, 'age', { stage: id }))}>
-                  {label}
-                </Pill>
-              ))}
-            </Section>
-            <Section title="Djai">
-              {GIFTS.map((n) => (
-                <Pill key={n} onClick={() => tap('Djai', () => api.tester(sim.id, pass, 'money', { amount: n }))}>
-                  + {n.toLocaleString('fr-FR')}
-                </Pill>
-              ))}
-            </Section>
-            <Section title="Le reste">
-              <Pill onClick={() => tap('Besoins au max', () => api.tester(sim.id, pass, 'needs'))}>Besoins au max</Pill>
-              <Pill disabled={!sim.activity} onClick={() => tap('Finir maintenant', () => api.tester(sim.id, pass, 'finish'))}>
-                Finir maintenant
-              </Pill>
-              <Pill onClick={() => tap('Toutes les applis', () => api.tester(sim.id, pass, 'apps'))}>Toutes les applis</Pill>
-            </Section>
-            <p className="mt-4 text-xs font-bold text-[var(--color-ink-soft)]">Seulement sur ce navigateur, ouvert avec /testeur. Les joueurs ne voient pas ces outils.</p>
+            {!account ? (
+              <div className="mt-4 grid gap-2">
+                <p className="text-sm font-bold text-[var(--color-ink-soft)]">Entre le code testeur une fois : ton compte devient un compte testeur, sur tous tes appareils.</p>
+                <span className="flex items-center gap-2 rounded-2xl bg-[var(--color-canvas)] px-3">
+                  <KeyRound size={16} className="text-[var(--color-ink-soft)]" />
+                  <input className="min-w-0 flex-1 bg-transparent py-3 text-[15px] font-bold outline-none" type="password" autoComplete="off" value={typed} onChange={(e) => (setTyped(e.target.value), setError(null))} onKeyDown={(e) => e.key === 'Enter' && void unlock()} aria-label="Code testeur" />
+                </span>
+                {error && <p className="text-sm font-bold text-[#d81b3f]">{error}</p>}
+                <button className="btn" disabled={!typed.trim()} onClick={() => void unlock()}>
+                  Activer le compte testeur
+                </button>
+              </div>
+            ) : (
+              <>
+                <Section title="Âge">
+                  {AGES.map(([id, label]) => (
+                    <Pill key={id} onClick={() => tap(label, () => api.tester(sim.id, pass, 'age', { stage: id }))}>
+                      {label}
+                    </Pill>
+                  ))}
+                </Section>
+                <Section title="Djai">
+                  {GIFTS.map((n) => (
+                    <Pill key={n} onClick={() => tap('Djai', () => api.tester(sim.id, pass, 'money', { amount: n }))}>
+                      + {n.toLocaleString('fr-FR')}
+                    </Pill>
+                  ))}
+                </Section>
+                <Section title="Le reste">
+                  <Pill onClick={() => tap('Besoins au max', () => api.tester(sim.id, pass, 'needs'))}>Besoins au max</Pill>
+                  <Pill disabled={!sim.activity} onClick={() => tap('Finir maintenant', () => api.tester(sim.id, pass, 'finish'))}>
+                    Finir maintenant
+                  </Pill>
+                  <Pill onClick={() => tap('Toutes les applis', () => api.tester(sim.id, pass, 'apps'))}>Toutes les applis</Pill>
+                </Section>
+              </>
+            )}
+            <p className="mt-4 text-xs font-bold text-[var(--color-ink-soft)]">Réservé aux comptes testeurs : les joueurs ne voient pas ces outils.</p>
           </div>
         </div>
       )}

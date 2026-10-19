@@ -279,7 +279,7 @@ function GiveMoney({ k, onDone }: { k: string; onDone: () => void }) {
   )
 }
 
-type Player = { id: string; name: string; username: string; email: string; google: boolean; createdAt: string; lastLogin: string; sims: number; sim: string; commune: string; money: number; online: boolean }
+type Player = { id: string; name: string; username: string; email: string; google: boolean; createdAt: string; lastLogin: string; sims: number; sim: string; commune: string; money: number; online: boolean; tester: boolean }
 
 function Players({ k }: { k: string }) {
   const [q, setQ] = useState('')
@@ -306,7 +306,7 @@ function Players({ k }: { k: string }) {
           <span className="text-sm text-[#6b7280]">{nf(data?.total ?? 0)} comptes</span>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[820px] text-left text-sm">
+          <table className="w-full min-w-[900px] text-left text-sm">
             <thead className="border-b border-[#e5e7eb] text-xs text-[#6b7280] uppercase">
               <tr>
                 <th className="py-2 pr-3 font-medium">Joueur</th>
@@ -315,6 +315,7 @@ function Players({ k }: { k: string }) {
                 <th className="py-2 pr-3 text-right font-medium">Argent</th>
                 <th className="py-2 pr-3 font-medium">Inscrit</th>
                 <th className="py-2 font-medium">Dernière connexion</th>
+                <th className="py-2 pl-3 font-medium">Testeur</th>
               </tr>
             </thead>
             <tbody>
@@ -334,6 +335,15 @@ function Players({ k }: { k: string }) {
                   <td className="py-2.5 pr-3 text-right tabular-nums">{u.sim ? `${nf(u.money)} F` : '—'}</td>
                   <td className="py-2.5 pr-3 text-[#6b7280]">{when(u.createdAt)}</td>
                   <td className="py-2.5 text-[#6b7280]">{when(u.lastLogin)}</td>
+                <td className="py-2.5 pl-3">
+                  <button
+                    className={`rounded-full px-2.5 py-1 text-xs font-semibold ${u.tester ? 'bg-[#ffedd5] text-[#c2410c]' : 'bg-[#f3f4f6] text-[#6b7280] hover:bg-[#e5e7eb]'}`}
+                    title={u.tester ? 'Retirer le compte testeur' : 'En faire un compte testeur (outils dans le jeu)'}
+                    onClick={() => call(`/admin/users/${u.id}/tester`, k, { method: 'POST', body: JSON.stringify({ tester: !u.tester }) }).then(() => setVersion((v) => v + 1), (x: Error) => setE(x.message))}
+                  >
+                    {u.tester ? 'Testeur' : 'Non'}
+                  </button>
+                </td>
                 </tr>
               ))}
             </tbody>

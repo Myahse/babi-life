@@ -41,6 +41,7 @@ func (h *Handler) Routes(r chi.Router) {
 		r.Get("/announcements", h.announcements)
 		r.Post("/announcements", h.announce)
 		r.Post("/money", h.giveMoney)
+		r.Post("/users/{id}/tester", h.setTester)
 		r.Get("/whatsapp", h.waStatus)
 		r.Post("/whatsapp", h.waSend)
 		r.Post("/whatsapp/{id}/stop", h.waStop)
@@ -100,6 +101,7 @@ type User struct {
 	Commune   string    `json:"commune"`
 	Money     int       `json:"money"`
 	Online    bool      `json:"online"`
+	Tester    bool      `json:"tester"`
 }
 
 // users: every account, newest first, 50 a page (?q= searches name, username, e-mail; ?page=).
@@ -110,7 +112,7 @@ func (h *Handler) users(w http.ResponseWriter, r *http.Request) {
 		SELECT u.id, u.name, COALESCE(u.username, ''), u.email, u.google_sub IS NOT NULL, u.created_at, u.last_login_at,
 			(SELECT count(*) FROM sims s WHERE s.user_id = u.id),
 			COALESCE(f.first_name || ' ' || f.last_name, ''), COALESCE(f.commune, ''), COALESCE(f.money, 0),
-			COALESCE(f.last_tick > now() - interval '5 minutes', false),
+			COALESCE(f.last_tick > now() - interval '5 minutes', false), u.tester,
 			count(*) OVER ()
 		FROM users u
 		LEFT JOIN LATERAL (SELECT * FROM sims s WHERE s.user_id = u.id ORDER BY s.created_at LIMIT 1) f ON true
@@ -125,7 +127,7 @@ func (h *Handler) users(w http.ResponseWriter, r *http.Request) {
 	total := 0
 	for rows.Next() {
 		var u User
-		if err := rows.Scan(&u.ID, &u.Name, &u.Username, &u.Email, &u.Google, &u.CreatedAt, &u.LastLogin, &u.Sims, &u.Sim, &u.Commune, &u.Money, &u.Online, &total); err != nil {
+		if err := rows.Scan(&u.ID, &u.Name, &u.Username, &u.Email, &u.Google, &u.CreatedAt, &u.LastLogin, &u.Sims, &u.Sim, &u.Commune, &u.Money, &u.Online, &u.Tester, &total); err != nil {
 			httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 			return
 		}
@@ -264,4 +266,26 @@ func (h *Handler) giveMoney(w http.ResponseWriter, r *http.Request) {
 	}
 	h.Log(ctx, "Djai offerts", game.FCFA(req.Amount)+" à "+who+" ("+strconv.Itoa(n)+" persos)")
 	httpx.JSON(w, http.StatusOK, map[string]int{"reached": n})
+}
+
+// setTester: makes an account a tester's (the toolbox in the game), or not.
+func (h *Handler) setTester(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Tester bool `json:"tester"`
+	}
+	if err := httpx.Decode(r, &req); err != nil {
+		httpx.Error(w, http.StatusBadRequest, "requête invalide")
+		return
+	}
+	var name string
+	if err := h.DB.QueryRow(r.Context(), `UPDATE users SET tester = $2 WHERE id::text = $1 RETURNING name`, chi.URLParam(r, "id"), req.Tester).Scan(&name); err != nil {
+		httpx.Error(w, http.StatusNotFound, "compte introuvable")
+		return
+	}
+	action := "Compte testeur retiré"
+	if req.Tester {
+		action = "Compte testeur ajouté"
+	}
+	h.Log(r.Context(), action, name)
+	httpx.JSON(w, http.StatusOK, map[string]bool{"tester": req.Tester})
 }

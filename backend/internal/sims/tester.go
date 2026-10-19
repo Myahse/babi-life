@@ -1,9 +1,6 @@
 package sims
 
 import (
-	"crypto/sha256"
-	"crypto/subtle"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -11,37 +8,21 @@ import (
 	"strings"
 
 	"github.com/myahse/babi-life/backend/internal/adminkey"
+	"github.com/myahse/babi-life/backend/internal/auth"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
 	"github.com/myahse/babi-life/backend/internal/world"
 )
 
 // The testers' toolbox (web/src/components/TesterTools.tsx): before launch,
-// the team plays everything without waiting. With the testers' code (typed
-// on /testeur) or the admin key, a Sim can jump to any age, get Djai, have
+// the team plays everything without waiting. On a tester account (users.tester),
+// or with the testers' code or the admin key, a Sim can jump to any age, get Djai, have
 // its needs full, finish what it is doing now and get every phone app.
-
-// TesterCodeSHA256: the SHA-256 of the testers' code, as in web/src/lib/launch.ts.
-// The code itself is never in the repository.
-const TesterCodeSHA256 = "92b21e0ee6aa63de70e43ad4d37d005b992d0c44837a0e4f6ad4773123971e4d"
 
 // TesterMaxMoney: the most Djai one tap gives.
 const TesterMaxMoney = 10_000_000
 
-var errNotTester = errors.New("réservé aux testeurs : entre le code sur /testeur")
-
-// testerPass: the testers' code or the admin key.
-func testerPass(pass string) bool {
-	pass = strings.TrimSpace(pass)
-	if pass == "" {
-		return false
-	}
-	sum := sha256.Sum256([]byte(strings.ToLower(pass)))
-	if hex.EncodeToString(sum[:]) == TesterCodeSHA256 {
-		return true
-	}
-	return adminkey.Master != "" && subtle.ConstantTimeCompare([]byte(pass), []byte(adminkey.Master)) == 1
-}
+var errNotTester = errors.New("réservé aux comptes testeurs : entre le code sur /testeur")
 
 // TesterAction is a tap in the toolbox.
 type TesterAction struct {
@@ -59,7 +40,9 @@ func (h *Handler) tester(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
 		return
 	}
-	if !testerPass(req.Pass) {
+	var tester bool
+	_ = h.DB.QueryRow(r.Context(), `SELECT tester FROM users WHERE id = $1`, auth.UserID(r.Context())).Scan(&tester)
+	if !tester && !adminkey.Tester(req.Pass) {
 		httpx.Error(w, http.StatusForbidden, errNotTester.Error())
 		return
 	}

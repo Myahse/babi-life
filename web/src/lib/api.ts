@@ -73,6 +73,8 @@ export const api = {
   usernameAvailable: (u: string) => request<{ available: boolean }>(`/auth/username?u=${encodeURIComponent(u)}`),
   setUsername: (username: string) => request<User>('/me/username', { method: 'PUT', body: JSON.stringify({ username }) }),
   me: () => request<User>('/me'),
+  /** With the testers' code (or the admin key), the account becomes a tester's. */
+  becomeTester: (code: string) => post<User>('/me/tester', { code }),
   sims: () => request<Sim[]>('/sims'),
   sim: (id: string) => request<ActionResult>(`/sims/${id}`),
   createSim: (sim: NewSim) => post<Sim>('/sims', sim),

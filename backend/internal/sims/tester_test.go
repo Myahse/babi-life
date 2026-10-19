@@ -10,7 +10,7 @@ import (
 func TestTesterPass(t *testing.T) {
 	adminkey.Master = "la-cle"
 	defer func() { adminkey.Master = "" }()
-	if testerPass("") || testerPass("nimporte") || !testerPass("la-cle") {
+	if adminkey.Tester("") || adminkey.Tester("nimporte") || !adminkey.Tester("la-cle") {
 		t.Error("only the testers' code or the admin key")
 	}
 }

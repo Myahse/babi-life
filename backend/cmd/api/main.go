@@ -238,6 +238,7 @@ func main() {
 			r.Use(tokens.Require)
 			r.Get("/me", authH.Me)
 			r.Put("/me/username", authH.SetUsername)
+			r.Post("/me/tester", authH.BecomeTester)
 			simsH.Routes(r)
 		})
 	})

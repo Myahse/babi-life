@@ -9,6 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/myahse/babi-life/backend/internal/adminkey"
 	"github.com/myahse/babi-life/backend/internal/httpx"
 )
 
@@ -21,13 +22,15 @@ type User struct {
 	Username  string    `json:"username"` // "" until chosen
 	AvatarURL string    `json:"avatarUrl"`
 	CreatedAt time.Time `json:"createdAt"`
+	// Tester: a team account, with the testers' toolbox (migration 021).
+	Tester bool `json:"tester"`
 }
 
 // userColumns and scanUser read a users row the same way everywhere.
-const userColumns = `id, email, name, first_name, last_name, coalesce(username, ''), avatar_url, created_at`
+const userColumns = `id, email, name, first_name, last_name, coalesce(username, ''), avatar_url, created_at, tester`
 
 func scanUser(row interface{ Scan(...any) error }, u *User) error {
-	return row.Scan(&u.ID, &u.Email, &u.Name, &u.FirstName, &u.LastName, &u.Username, &u.AvatarURL, &u.CreatedAt)
+	return row.Scan(&u.ID, &u.Email, &u.Name, &u.FirstName, &u.LastName, &u.Username, &u.AvatarURL, &u.CreatedAt, &u.Tester)
 }
 
 type Handler struct {
@@ -140,6 +143,24 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 	var u User
 	err := scanUser(h.DB.QueryRow(r.Context(), `SELECT `+userColumns+` FROM users WHERE id = $1`, UserID(r.Context())), &u)
 	if err != nil {
+		httpx.Error(w, http.StatusUnauthorized, "user not found")
+		return
+	}
+	httpx.JSON(w, http.StatusOK, u)
+}
+
+// BecomeTester: with the testers' code (or the admin key), the account is a
+// tester's from now on, on every browser.
+func (h *Handler) BecomeTester(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Code string `json:"code"`
+	}
+	if err := httpx.Decode(r, &body); err != nil || !adminkey.Tester(body.Code) {
+		httpx.Error(w, http.StatusForbidden, "code testeur incorrect")
+		return
+	}
+	var u User
+	if err := scanUser(h.DB.QueryRow(r.Context(), `UPDATE users SET tester = true WHERE id = $1 RETURNING `+userColumns, UserID(r.Context())), &u); err != nil {
 		httpx.Error(w, http.StatusUnauthorized, "user not found")
 		return
 	}

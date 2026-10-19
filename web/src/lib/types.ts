@@ -151,7 +151,7 @@ export type World = {
   config: { devLogin: boolean; googleLogin: boolean; realPhotos?: boolean }
 }
 
-export type User = { id: string; email: string; name: string; firstName: string; lastName: string; username: string; avatarUrl: string; createdAt: string }
+export type User = { id: string; email: string; name: string; firstName: string; lastName: string; username: string; avatarUrl: string; createdAt: string; /** A team account: the testers' toolbox in the game. */ tester?: boolean }
 
 export type Look = {
   skin: string

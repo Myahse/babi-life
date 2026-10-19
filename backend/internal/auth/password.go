@@ -154,7 +154,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	err := h.DB.QueryRow(r.Context(), `
 		UPDATE users SET last_login_at = now() WHERE email = $1 OR lower(username) = $1
 		RETURNING `+userColumns+`, password_hash`, c.Email,
-	).Scan(&u.ID, &u.Email, &u.Name, &u.FirstName, &u.LastName, &u.Username, &u.AvatarURL, &u.CreatedAt, &hash)
+	).Scan(&u.ID, &u.Email, &u.Name, &u.FirstName, &u.LastName, &u.Username, &u.AvatarURL, &u.CreatedAt, &u.Tester, &hash)
 	if errors.Is(err, pgx.ErrNoRows) {
 		httpx.Error(w, http.StatusUnauthorized, "e-mail, pseudo ou mot de passe incorrect")
 		return
