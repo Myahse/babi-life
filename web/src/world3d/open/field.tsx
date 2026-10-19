@@ -7,6 +7,7 @@ import { worldTime } from '../../lib/worldClock'
 import { rng } from '../themes'
 import type { Field } from './places'
 import { PER_TEAM, SIM_SLOT, matchFor } from './match'
+import { FieldFence } from './fieldFence'
 
 // A maracana or a basketball court on the map, and the match always being
 // played on it (open/match.ts): the surface and its lines, the goals or the
@@ -284,6 +285,7 @@ export function SportField({ field, seed, night, withSim, onPick }: { field: Fie
       }
     >
       <Ground field={field} seed={seed} />
+      <FieldFence hl={field.len / 2 + 1.05} hw={field.wid / 2 + 1.05} id={seed} />
       <Lights field={field} night={night} />
       <Players field={field} seed={seed} without={withSim ? SIM_SLOT[field.sport] : null} />
       <Watchers field={field} seed={seed} />

@@ -90,3 +90,16 @@ export function vehicleNear(x: number, z: number, r: number) {
   for (const o of moving.values()) if (Math.hypot(o.x - x, o.z - z) < r) return true
   return false
 }
+
+// The fenced grounds (pitches, courts): nothing is set down on them (a stall,
+// people chatting, a vendor). A box turned about the vertical, like an obstacle.
+const zones = new Map<string, { x: number; z: number; hw: number; hd: number; rot: number }>()
+export function setZone(key: string, z: { x: number; z: number; hw: number; hd: number; rot: number } | null) {
+  if (z) zones.set(key, z)
+  else zones.delete(key)
+}
+/** Is (x, z) on a fenced ground, or within `margin` metres of it? (`except`: not that one, its own.) */
+export function inZone(x: number, z: number, margin = 2, except?: string) {
+  for (const [k, o] of zones) if (k !== except && Math.abs(o.x - x) < o.hw + o.hd + margin + 1 && Math.abs(o.z - z) < o.hw + o.hd + margin + 1 && hits({ ...o }, x, z, margin)) return true
+  return false
+}

@@ -4,7 +4,7 @@ import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { Human, NoShadows, type Pose } from '../../avatar/Human'
 import { randomLook } from '../../avatar/options'
-import { clearObstacles, setObstacles } from '../obstacles'
+import { clearObstacles, inZone, setObstacles } from '../obstacles'
 import { rng } from '../themes'
 import { whereabouts } from '../whereabouts'
 import { hash, type XZ } from './geo'
@@ -103,7 +103,8 @@ export function StreetStalls({ nav, seed, hour, onBuy }: { nav: Nav; seed: strin
     const [sx, sz] = whereabouts.sim
     const near = all
       .map((s) => ({ s, d: Math.hypot(s.at[0] - sx, s.at[1] - sz) }))
-      .filter((x) => x.d < NEAR)
+      // Never on a fenced pitch or court.
+      .filter((x) => x.d < NEAR && !inZone(x.s.at[0], x.s.at[1], 3))
       .sort((a, b) => a.d - b.d)
       .slice(0, MAX)
       .map((x) => ({ s: x.s, crowd: x.d < CROWD_NEAR }))

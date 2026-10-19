@@ -1,4 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
+import { FieldFence } from './fieldFence'
+import { inZone } from '../obstacles'
 import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import * as THREE from 'three'
@@ -82,20 +84,22 @@ export function StreetLife({ nav, seed, night }: { nav: Nav; seed: string; night
     const [sx, sz] = whereabouts.sim
     const near = scenes
       .map((s) => ({ s, d: Math.hypot(s.at[0] - sx, s.at[1] - sz) }))
-      .filter((x) => x.d < SCENE_NEAR)
+      .filter((x) => x.d < SCENE_NEAR && !inZone(x.s.at[0], x.s.at[1], 2))
       .sort((a, b) => a.d - b.d)
       .slice(0, SCENE_MAX)
       .map((x) => x.s)
     if (near.map((s) => s.id).join() !== shown.map((s) => s.id).join()) setShown(near)
-    const nextPost = posts.map((s) => ({ s, d: Math.hypot(s.at[0] - sx, s.at[1] - sz) })).filter((x) => x.d < 320).sort((a, b) => a.d - b.d)[0]?.s ?? null
+    const nextPost = posts.map((s) => ({ s, d: Math.hypot(s.at[0] - sx, s.at[1] - sz) })).filter((x) => x.d < 320 && !inZone(x.s.at[0], x.s.at[1], 2)).sort((a, b) => a.d - b.d)[0]?.s ?? null
     if (nextPost?.id !== post?.id) setPost(nextPost)
     // Each spot is always the same game (a pitch or a court), whether seen from afar or up close.
-    const nextFoot = nearest(courts.filter((s) => !isCourt(s)), 1)[0] ?? null
-    const nextBasket = nearest(courts.filter(isCourt), 1, nextFoot ? [nextFoot.at] : [])[0] ?? null
+    // Not on a match field's fenced ground either (its own fence aside).
+    const playable = courts.filter((s) => !inZone(s.at[0], s.at[1], 12, `fence:${s.id}`))
+    const nextFoot = nearest(playable.filter((s) => !isCourt(s)), 1)[0] ?? null
+    const nextBasket = nearest(playable.filter(isCourt), 1, nextFoot ? [nextFoot.at] : [])[0] ?? null
     if (nextFoot?.id !== foot?.id) setFoot(nextFoot)
     if (nextBasket?.id !== basket?.id) setBasket(nextBasket)
     const avoid = [nextFoot, nextBasket].flatMap((s) => (s ? [s.at] : []))
-    const next = nearest(stalls, 3, avoid).map((s) => ({ ...s, goods: GOODS[Math.floor(s.seed * GOODS.length)] }))
+    const next = nearest(stalls.filter((s) => !inZone(s.at[0], s.at[1], 2)), 3, avoid).map((s) => ({ ...s, goods: GOODS[Math.floor(s.seed * GOODS.length)] }))
     if (next.map((v) => v.id).join() !== vendors.map((v) => v.id).join()) setVendors(next)
   })
   return (
@@ -395,6 +399,7 @@ function Pitch({ spot, night }: { spot: Spot; night: boolean }) {
       <mesh ref={ball} material={white}>
         <sphereGeometry args={[0.22, 10, 8]} />
       </mesh>
+      <FieldFence hl={11.3} hw={6.8} id={spot.id} />
       <Lights night={night} w={22} d={13} />
       <NoShadows>
         {side.map((p, i) => (
@@ -441,6 +446,7 @@ function Court({ spot, night }: { spot: Spot; night: boolean }) {
       <mesh ref={ball} material={hoop}>
         <sphereGeometry args={[0.2, 10, 8]} />
       </mesh>
+      <FieldFence hl={8.3} hw={4.8} id={spot.id} />
       <Lights night={night} w={16} d={9} />
       <NoShadows>
         {side.map((p, i) => (

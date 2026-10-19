@@ -1,4 +1,5 @@
-import { useMemo, useRef, useState } from 'react'
+import { useId, useMemo, useRef, useState } from 'react'
+import { FieldFence } from './fieldFence'
 import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import { worldTime } from '../../lib/worldClock'
@@ -346,11 +347,13 @@ function Office({ bank, seed }: { bank: boolean; seed: number }) {
 
 /** A yard beside the door: a basket court at a hall, a small pitch everywhere else. Lit after dark. */
 function Pitch({ name, night }: { name: string; night: boolean }) {
+  const id = useId()
   // Basketball at an agora, a gymnase, a palais des sports, a basket court.
   const basket = /basket|palais|salle|agora|gymnase/i.test(name)
   return (
     <group position={[4.4, 0, 2.6]}>
       <B p={[0, 0.04, 0]} s={basket ? [8, 0.08, 5] : [9, 0.08, 6]} c={basket ? '#d5d0c6' : '#2f9e4a'} />
+      <FieldFence hl={basket ? 4.2 : 4.7} hw={basket ? 2.7 : 3.2} id={`yard:${id}`} />
       <B p={[0, 0.09, 0]} s={basket ? [0.08, 0.02, 5] : [0.08, 0.02, 6]} c="#ffffff" />
       {basket ? (
         <>
