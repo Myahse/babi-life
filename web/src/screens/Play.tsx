@@ -18,7 +18,7 @@ import { Neighbourhood } from '../world3d/Neighbourhood'
 import { OpenWorld } from '../world3d/open/OpenWorld'
 import { iconFor, kindColors } from '../components/icons'
 import { Chip, Coin, DayNight, IconTile, MotiveRing, MoodPin, Row, needColor } from '../components/ui'
-import { NEEDS, ageBlock, amount, atHome, blockedBy, lifeOf, clock, duration, mood, openAt, openingLabel, predict, shift } from '../game/rules'
+import { NEEDS, ageBlock, amount, atHome, blockedBy, lifeOf, minutesToAge, clock, duration, mood, openAt, openingLabel, predict, shift } from '../game/rules'
 import { DOORS_OPEN, eventAt, useStadium, when } from '../lib/stadium'
 import { HomeApp, JobsApp, type Act } from './phoneApps'
 import { NewsApp, topicOf } from './NewsApp'
@@ -735,7 +735,8 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
   const has = (id: string) => ownPhone && (sim.apps?.includes(id) ?? false)
   // Apps from the store, once installed. The ride apps open the map to pick where to go.
   const STORE_APPS: { id: string; label: string; open: () => void }[] = [
-    ...(ownPhone ? [{ id: 'store', label: 'Store', open: () => setApp('store') }] : []),
+    // Before 12 the Store is there, locked: it says when the phone comes.
+    { id: 'store', label: 'Store', open: () => setApp('store') },
     ...(has('waye') ? [{ id: 'waye', label: 'Waye', open: () => setApp('waye') }] : []),
     ...(has('gbairai') ? [{ id: 'gbairai', label: 'Gbairai', open: () => setApp('gbairai') }] : []),
     ...(has('tikitoko') ? [{ id: 'tikitoko', label: 'Tikitoko', open: () => setApp('tikitoko') }] : []),
@@ -828,7 +829,20 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
                 {app === 'messages' && <Journal events={journal} />}
                 {app === 'news' && <NewsApp />}
                 {app === 'friends' && <FriendsApp world={world} sim={sim} act={act} />}
-                {app === 'store' && <StoreApp world={world} sim={sim} act={act} onOpen={(id) => (id === 'gnango' || id === 'idrive' ? onMap() : setApp(id as PhoneAppId))} />}
+                {app === 'store' && !ownPhone && (
+                  <div className="grid place-items-center gap-3 px-6 py-12 text-center">
+                    <Lock size={34} className="text-[var(--color-ink-soft)]" />
+                    <p className="font-display text-xl font-extrabold">Pas encore de téléphone</p>
+                    <p className="text-sm font-bold text-[var(--color-ink-soft)]">
+                      {sim.firstName} aura son téléphone à 12 ans, avec Waye dessus : le Store s'ouvre alors (Gbairai, Tikitoko, Golvo, Gnango…).
+                      {(() => {
+                        const left = Math.ceil((sim.bornAt ?? 0) + minutesToAge(world, 12) - sim.gameMinutes)
+                        return left > 0 ? ` Encore ${duration(left)}.` : ''
+                      })()}
+                    </p>
+                  </div>
+                )}
+                {app === 'store' && ownPhone && <StoreApp world={world} sim={sim} act={act} onOpen={(id) => (id === 'gnango' || id === 'idrive' ? onMap() : setApp(id as PhoneAppId))} />}
                 {app === 'waye' && <WayeApp world={world} sim={sim} act={act} journal={journal} renderJournal={(events) => <Journal events={events} />} />}
                 {app === 'gbairai' && <GbairaiApp world={world} sim={sim} />}
                 {app === 'tikitoko' && <TikitokoApp sim={sim} act={act} />}

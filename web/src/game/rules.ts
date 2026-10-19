@@ -212,6 +212,19 @@ export function ageOf(world: World, bornAt: number, gameMinutes: number) {
   return 0
 }
 
+/** How many minutes after birth a Sim turns `age` (mirrors game.MinutesToAge). */
+export function minutesToAge(world: World, age: number) {
+  const pts = world.growUp ?? [[0, 0]]
+  const [lastAge, lastAt] = pts[pts.length - 1]
+  if (age >= lastAge) return lastAt + (age - lastAge) * (world.yearMinutes ?? 480)
+  for (let i = 1; i < pts.length; i++) {
+    const [a, at] = pts[i - 1]
+    const [b, bt] = pts[i]
+    if (age <= b) return at + ((age - a) * (bt - at)) / (b - a)
+  }
+  return 0
+}
+
 export function lifeOf(world: World, sim: Pick<Sim, 'bornAt' | 'gameMinutes'>) {
   const stages = world.stages ?? []
   const age = ageOf(world, sim.bornAt ?? 0, sim.gameMinutes)
