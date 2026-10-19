@@ -35,6 +35,19 @@ var ClubLevel = map[string]float64{
 	"Abobo Warriors": 73, "Cocody Olympique": 84, "Plateau United": 78, "Bingerville Athletic": 66, "Marcory Espoir": 69, "Port-Bouët Marine": 68,
 }
 
+// RegionClubs: the second league, ParisFoot's (« Ligue des Régions »): made-up
+// clubs from the country's towns, so the two apps don't show the same matches.
+var RegionClubs = []string{"Bouaké Racing", "Yakro Lions", "San-Pédro Marine", "Korhogo Étoile", "Daloa Sport", "Man Montagne FC", "Gagnoa United", "Abengourou Espoir", "Odienné Savane", "Sassandra Port FC", "Divo Olympique", "Bondoukou Athletic"}
+
+func init() {
+	for i, c := range RegionClubs {
+		ClubLevel[c] = []float64{84, 80, 78, 76, 74, 72, 79, 70, 66, 68, 73, 69}[i]
+	}
+}
+
+// Leagues: which clubs each league plays with ("babi": the Babi league, Bet225's; "regions": ParisFoot's).
+var Leagues = map[string][]string{"babi": Clubs, "regions": RegionClubs}
+
 // VirtualMatch is one match of a round, as the apps show it.
 type VirtualMatch struct {
 	Key     string   `json:"key"` // "round:i"
@@ -69,10 +82,17 @@ func RoundAt(unix int64) int64 { return unix / (RoundMinutes * 60) }
 
 func roundStart(round int64) int64 { return round * RoundMinutes * 60 }
 
-// Pairing: the six matches of a round, every club once, shuffled by the round.
-func Pairing(round int64) [][2]string {
-	clubs := append([]string(nil), Clubs...)
-	r := rand.New(rand.NewPCG(uint64(round), 0x9e3779b97f4a7c15))
+// Pairing: the six matches of a round of the Babi league, every club once, shuffled by the round.
+func Pairing(round int64) [][2]string { return PairingIn("babi", round) }
+
+// PairingIn: the same in a league (each its own shuffle).
+func PairingIn(league string, round int64) [][2]string {
+	clubs := append([]string(nil), Leagues[league]...)
+	seed := uint64(0x9e3779b97f4a7c15)
+	if league != "babi" {
+		seed ^= 0x5bd1e995
+	}
+	r := rand.New(rand.NewPCG(uint64(round), seed))
 	r.Shuffle(len(clubs), func(i, j int) { clubs[i], clubs[j] = clubs[j], clubs[i] })
 	out := make([][2]string, 0, len(clubs)/2)
 	for i := 0; i+1 < len(clubs); i += 2 {
@@ -145,8 +165,11 @@ type goal struct {
 }
 
 // result: the match's goals, keyed by the secret (the same every time it's asked).
-func result(round int64, i int, home, away string) []goal {
+func result(league string, round int64, i int, home, away string) []goal {
 	m := hmac.New(sha256.New, []byte(BetSecret))
+	if league != "babi" {
+		fmt.Fprintf(m, "%s:", league)
+	}
 	fmt.Fprintf(m, "%d:%d:%s:%s", round, i, home, away)
 	sum := m.Sum(nil)
 	r := rand.New(rand.NewPCG(binary.BigEndian.Uint64(sum[:8]), binary.BigEndian.Uint64(sum[8:16])))
@@ -178,9 +201,14 @@ func result(round int64, i int, home, away string) []goal {
 	return out
 }
 
-// Match: one match as it stands at a unix second (no score before kickoff).
+// Match: one match of the Babi league as it stands at a unix second (no score before kickoff).
 func Match(round int64, i int, now int64, margin float64) (VirtualMatch, bool) {
-	pairs := Pairing(round)
+	return MatchIn("babi", round, i, now, margin)
+}
+
+// MatchIn: the same in a league.
+func MatchIn(league string, round int64, i int, now int64, margin float64) (VirtualMatch, bool) {
+	pairs := PairingIn(league, round)
 	if i < 0 || i >= len(pairs) {
 		return VirtualMatch{}, false
 	}
@@ -192,7 +220,7 @@ func Match(round int64, i int, now int64, margin float64) (VirtualMatch, bool) {
 	}
 	m.Minute = min(90, int(float64(now-kick)/float64(PlayMinutes*60)*90))
 	score := [2]int{}
-	for _, g := range result(round, i, home, away) {
+	for _, g := range result(league, round, i, home, away) {
 		if g.Minute > m.Minute {
 			break
 		}
@@ -208,11 +236,11 @@ func Match(round int64, i int, now int64, margin float64) (VirtualMatch, bool) {
 	return m, true
 }
 
-// Round: the round's six matches at a unix second.
-func Round(round, now int64, margin float64) []VirtualMatch {
+// Round: the round's six matches at a unix second, in a league.
+func Round(league string, round, now int64, margin float64) []VirtualMatch {
 	out := []VirtualMatch{}
-	for i := range Pairing(round) {
-		m, _ := Match(round, i, now, margin)
+	for i := range PairingIn(league, round) {
+		m, _ := MatchIn(league, round, i, now, margin)
 		out = append(out, m)
 	}
 	return out

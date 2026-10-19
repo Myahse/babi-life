@@ -91,3 +91,22 @@ func TestNoScoreBeforeKickoff(t *testing.T) {
 		t.Errorf("the secret barely matters: %d/50", differ)
 	}
 }
+
+func TestLeaguesDiffer(t *testing.T) {
+	for r := int64(1000); r < 1010; r++ {
+		a, b := PairingIn("babi", r), PairingIn("regions", r)
+		for i := range a {
+			for _, c := range b[i] {
+				if c == a[i][0] || c == a[i][1] {
+					t.Fatalf("round %d: the two leagues share a club (%v vs %v)", r, a[i], b[i])
+				}
+			}
+		}
+		if len(b) != 6 {
+			t.Fatalf("regions: %d matches", len(b))
+		}
+		if PairingIn("babi", r)[0] != Pairing(r)[0] {
+			t.Fatal("the Babi league must not change (bets already placed)")
+		}
+	}
+}

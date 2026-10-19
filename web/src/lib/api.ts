@@ -116,7 +116,7 @@ export const api = {
   betRounds: (app: string) => request<BetRounds>(`/bets/rounds?app=${app}`),
   placeBet: (id: string, app: string, stake: number, legs: { match: string; pick: string }[]) => post<ActionResult>(`/sims/${id}/bets`, { app, stake, legs }),
   settleBets: (id: string) => post<ActionResult>(`/sims/${id}/bets/settle`, {}),
-  myBets: (id: string) => request<BetView[]>(`/sims/${id}/bets`),
+  myBets: (id: string, app = '') => request<BetView[]>(`/sims/${id}/bets?app=${app}`),
   grin: (id: string, room: 'babi' | 'commune', after = 0) => request<{ room: string; messages: GrinMessage[] }>(`/sims/${id}/grin?room=${room}&after=${after}`),
   sayGrin: (id: string, room: 'babi' | 'commune', body: string) => post<{ id: number; body: string }>(`/sims/${id}/grin`, { room, body }),
   reportGrin: (id: string, msg: number, reason: string) => post<{ text: string }>(`/sims/${id}/grin/${msg}/report`, { reason }),

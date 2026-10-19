@@ -24,6 +24,12 @@ const nf = (n: number) => n.toLocaleString('fr-FR')
 const clockOf = (s: number) => `${Math.floor(Math.max(0, s) / 60)}:${String(Math.max(0, s) % 60).padStart(2, '0')}`
 
 export function BetApp({ sim, act, app }: { sim: Sim; act: Act; app: 'bet225' | 'parisfoot' }) {
+  const s = useBetting(sim, act, app)
+  return app === 'parisfoot' ? <ParisFoot sim={sim} s={s} /> : <Bet225 sim={sim} s={s} />
+}
+
+/** What both apps do the same way: the rounds, the bets placed on this app, the slip. */
+function useBetting(sim: Sim, act: Act, app: 'bet225' | 'parisfoot') {
   const b = BRANDS[app]
   const [tab, setTab] = useState<'matchs' | 'live' | 'paris'>('matchs')
   const [data, setData] = useState<BetRounds | null>(null)
@@ -38,7 +44,7 @@ export function BetApp({ sim, act, app }: { sim: Sim; act: Act; app: 'bet225' | 
     let stop = false
     const load = () => api.betRounds(app).then((d) => !stop && setData(d), () => undefined)
     const settle = () =>
-      void act('Vérifier mes paris', 'trophy', 'money', () => api.settleBets(sim.id)).then(() => api.myBets(sim.id).then((x) => !stop && setBets(x), () => undefined))
+      void act('Vérifier mes paris', 'trophy', 'money', () => api.settleBets(sim.id)).then(() => api.myBets(sim.id, app).then((x) => !stop && setBets(x), () => undefined))
     void load()
     settle()
     const t1 = setInterval(load, 10_000)
@@ -75,13 +81,21 @@ export function BetApp({ sim, act, app }: { sim: Sim; act: Act; app: 'bet225' | 
       if (ok) {
         setSlip([])
         setNote('Pari validé ! Suis-le dans « Mes paris ».')
-        void api.myBets(sim.id).then(setBets, () => undefined)
+        void api.myBets(sim.id, app).then(setBets, () => undefined)
       }
     } catch (e) {
       setNote(e instanceof ApiError ? e.message : 'Pas de réseau')
     }
   }
 
+  return { b, tab, setTab, data, bets, slip, setSlip, stake, setStake, note, now, open, live, odds, toggle, place }
+}
+
+type Betting = ReturnType<typeof useBetting>
+
+/** Bet225: dark, every market, a boost on big combined bets. */
+function Bet225({ sim, s }: { sim: Sim; s: Betting }) {
+  const { b, tab, setTab, data, bets, slip, setSlip, stake, setStake, note, now, open, live, odds, toggle, place } = s
   const Odd = ({ m, pick }: { m: VirtualMatch; pick: Leg['pick'] }) => {
     const on = slip.some((l) => l.match.key === m.key && l.pick === pick)
     return (
@@ -247,6 +261,162 @@ export function BetApp({ sim, act, app }: { sim: Sim; act: Act; app: 'bet225' | 
               Parier
             </button>
           </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+const STAKES = [200, 500, 1000, 2000, 5000]
+
+/**
+ * ParisFoot: light and simple, its own league (the « Ligue des Régions »),
+ * the classic 1 N 2 grid, tickets with a stamp, the stake in a tap.
+ */
+function ParisFoot({ sim, s }: { sim: Sim; s: Betting }) {
+  const { b, tab, setTab, bets, slip, setSlip, stake, setStake, note, now, open, live, odds, toggle, place } = s
+  const next = open[0]
+  const running = bets.filter((x) => x.status === 'open').length
+  const Cell = ({ m, pick }: { m: VirtualMatch; pick: Leg['pick'] }) => {
+    const on = slip.some((l) => l.match.key === m.key && l.pick === pick)
+    return (
+      <button onClick={() => toggle(m, pick)} className="flex h-11 w-12 shrink-0 flex-col items-center justify-center rounded-md border text-[13px] font-extrabold tabular-nums transition active:scale-95" style={on ? { background: b.accent, borderColor: b.accent, color: '#fff' } : { background: '#fff', borderColor: '#ddd6fe', color: '#1b1530' }}>
+        <span className="text-[9px] font-bold opacity-60">{pick}</span>
+        {m.odds[pick].toFixed(2)}
+      </button>
+    )
+  }
+  return (
+    <div className="-mx-3 -mt-1 min-h-full bg-[#f5f3ff] pb-4 text-[#1b1530]">
+      <div className="bg-[#5b21b6] px-4 pt-3 pb-2 text-white">
+        <div className="flex items-center justify-between">
+          <span className="font-display text-xl font-extrabold tracking-tight">
+            Paris<span className="text-[#fde047]">Foot</span>
+          </span>
+          <span className="text-xs font-extrabold tabular-nums">Solde {nf(sim.money)} Djai</span>
+        </div>
+        <div className="text-[11px] font-bold text-white/70">Ligue des Régions · un match toutes les 15 min</div>
+        <div className="mt-2 flex">
+          {(
+            [
+              ['matchs', 'Grille'],
+              ['live', 'Résultats'],
+              ['paris', `Mes tickets${running ? ` · ${running}` : ''}`],
+            ] as const
+          ).map(([id, label]) => (
+            <button key={id} onClick={() => setTab(id)} className="flex-1 border-b-[3px] pb-1.5 text-xs font-extrabold" style={tab === id ? { borderColor: '#fde047' } : { borderColor: 'transparent', color: 'rgba(255,255,255,.65)' }}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="px-3">
+        {note && <p className="mt-2 rounded-lg bg-[#ede9fe] px-3 py-2 text-xs font-bold">{note}</p>}
+
+        {tab === 'matchs' && next && (
+          <section className="mt-3 overflow-hidden rounded-xl bg-white shadow-sm">
+            <div className="flex items-center justify-between bg-[#ede9fe] px-3 py-2 text-[11px] font-extrabold">
+              <span>Journée {(next.round % 38) + 1}</span>
+              <span className="flex items-center gap-1 text-[#5b21b6]">
+                <Clock3 size={12} /> clôture dans {clockOf(next.kickoff - now)}
+              </span>
+            </div>
+            <div className="divide-y divide-[#ede9fe]">
+              {next.matches.map((m) => (
+                <div key={m.key} className="flex items-center gap-1.5 px-3 py-2">
+                  <div className="min-w-0 flex-1 text-[13px] leading-tight font-bold">
+                    <div className="truncate">{m.home}</div>
+                    <div className="truncate text-[#6b6390]">{m.away}</div>
+                  </div>
+                  <Cell m={m} pick="1" />
+                  <Cell m={m} pick="N" />
+                  <Cell m={m} pick="2" />
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+        {tab === 'matchs' && open.length > 1 && <p className="mt-2 text-center text-[11px] font-bold text-[#6b6390]">Journée suivante dans {clockOf(open[1].kickoff - now)}</p>}
+
+        {tab === 'live' &&
+          [...live].reverse().map((r) => (
+            <section key={r.round} className="mt-3 overflow-hidden rounded-xl bg-white shadow-sm">
+              <div className="flex items-center gap-1.5 bg-[#ede9fe] px-3 py-2 text-[11px] font-extrabold">
+                {r.matches[0].minute < 90 ? (
+                  <>
+                    <Radio size={12} className="animate-pulse text-[#dc2626]" /> Journée {(r.round % 38) + 1} · {r.matches[0].minute}'
+                  </>
+                ) : (
+                  <>Journée {(r.round % 38) + 1} · terminé</>
+                )}
+              </div>
+              {r.matches.map((m) => (
+                <div key={m.key} className="border-t border-[#ede9fe] px-3 py-1.5">
+                  <div className="flex items-center text-[13px] font-bold">
+                    <span className="min-w-0 flex-1 truncate">{m.home}</span>
+                    <span className="mx-2 w-12 shrink-0 rounded bg-[#1b1530] py-0.5 text-center font-extrabold text-white tabular-nums">{m.score ? `${m.score[0]} : ${m.score[1]}` : '–'}</span>
+                    <span className="min-w-0 flex-1 truncate text-right">{m.away}</span>
+                  </div>
+                  {!!m.goals?.length && <div className="mt-0.5 truncate text-[10px] font-bold text-[#6b6390]">⚽ {m.goals.join(' · ')}</div>}
+                </div>
+              ))}
+            </section>
+          ))}
+
+        {tab === 'paris' && (
+          <div className="mt-3 space-y-3">
+            {bets.length === 0 && <p className="mt-6 text-center text-sm font-bold text-[#6b6390]">Pas encore de ticket sur ParisFoot.</p>}
+            {bets.map((x) => (
+              <div key={x.id} className="relative rounded-xl border-2 border-dashed border-[#c4b5fd] bg-white p-3">
+                <div className="flex items-center justify-between text-[11px] font-extrabold text-[#6b6390]">
+                  <span>Ticket n° {x.id}</span>
+                  <span>{new Date(x.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+                <ul className="mt-1.5 space-y-1 text-[12px] font-bold">
+                  {x.legs.map((l) => (
+                    <li key={l.match} className="flex items-center gap-2">
+                      <span className="min-w-0 flex-1 truncate">{l.label}</span>
+                      <span className="shrink-0 rounded bg-[#ede9fe] px-1.5">{PICK[l.pick]}</span>
+                      {l.score && <span className="shrink-0 tabular-nums">{l.score.join(':')}</span>}
+                      {l.won === null ? <Clock3 size={13} className="shrink-0 text-[#a78bfa]" /> : l.won ? <Check size={13} className="shrink-0 text-[#16a34a]" /> : <X size={13} className="shrink-0 text-[#dc2626]" />}
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-2 flex items-end justify-between border-t border-dashed border-[#ddd6fe] pt-2 text-xs font-extrabold">
+                  <span>
+                    Mise {nf(x.stake)} · cote {x.odds.toFixed(2)}
+                  </span>
+                  <span className={`-rotate-6 rounded border-2 px-2 py-0.5 text-[11px] tracking-wider ${x.status === 'won' ? 'border-[#16a34a] text-[#16a34a]' : x.status === 'lost' ? 'border-[#dc2626] text-[#dc2626]' : 'border-[#7c3aed] text-[#7c3aed]'}`}>
+                    {x.status === 'won' ? `GAGNANT +${nf(x.payout)}` : x.status === 'lost' ? 'PERDANT' : 'EN JEU'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <p className="mt-6 text-center text-[10px] font-bold text-[#6b6390]">Argent du jeu seulement, dès 18 ans dans le jeu. Dans la vraie vie, les paris peuvent rendre accro.</p>
+      </div>
+
+      {/* The ticket being filled in */}
+      {slip.length > 0 && (
+        <div className="sticky bottom-2 z-10 mx-3 mt-4 rounded-xl border-2 border-[#7c3aed] bg-white p-3 shadow-[0_-10px_30px_-12px_rgba(91,33,182,0.5)]">
+          <div className="flex items-center justify-between text-xs font-extrabold">
+            <span>Mon ticket · {slip.length} match{slip.length > 1 ? 's' : ''}</span>
+            <button className="flex items-center gap-1 text-[#6b6390]" onClick={() => setSlip([])}>
+              <Trash2 size={12} /> Effacer
+            </button>
+          </div>
+          <div className="mt-2 flex gap-1.5">
+            {STAKES.map((v) => (
+              <button key={v} onClick={() => setStake(v)} disabled={v > sim.money} className="flex-1 rounded-md border py-1.5 text-[11px] font-extrabold disabled:opacity-40" style={stake === v ? { background: '#1b1530', color: '#fff', borderColor: '#1b1530' } : { borderColor: '#ddd6fe' }}>
+                {nf(v)}
+              </button>
+            ))}
+          </div>
+          <button disabled={stake < 100 || stake > sim.money} onClick={() => void place()} className="mt-2 w-full rounded-lg bg-[#5b21b6] py-2.5 text-sm font-extrabold text-white disabled:opacity-40">
+            Valider le ticket · gain {nf(Math.floor(stake * odds))} Djai
+          </button>
         </div>
       )}
     </div>

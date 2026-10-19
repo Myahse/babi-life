@@ -26,14 +26,16 @@ import (
 
 type betApp struct {
 	ID, Name string
-	Margin   float64
+	// League: which virtual league its matches are in (game.Leagues).
+	League string
+	Margin float64
 	// Boost: extra winnings on combined bets of 3 matches or more, per match.
 	Boost float64
 }
 
 var betApps = map[string]betApp{
-	"bet225":    {"bet225", "Bet225", 0.08, 0.05},
-	"parisfoot": {"parisfoot", "ParisFoot", 0.06, 0},
+	"bet225":    {"bet225", "Bet225", "babi", 0.08, 0.05},
+	"parisfoot": {"parisfoot", "ParisFoot", "regions", 0.06, 0},
 }
 
 const (
@@ -54,6 +56,18 @@ var (
 	errBadPick     = errors.New("pari inconnu")
 	errTooManyBets = fmt.Errorf("%d paris aujourd'hui, c'est assez : reviens demain", BetsPerDay)
 )
+
+// leagueOf: the league a placed leg is in: its app's, except a ParisFoot bet
+// from before the apps had their own leagues (its label is a Babi match).
+func leagueOf(app string, round int64, i int, label string) string {
+	l := betApps[app].League
+	if l != "babi" {
+		if p := game.Pairing(round); i >= 0 && i < len(p) && label == p[i][0]+" – "+p[i][1] {
+			return "babi"
+		}
+	}
+	return l
+}
 
 // boostOf: the boost a combined bet of n matches gets on an app.
 func boostOf(a betApp, n int) float64 {
@@ -78,7 +92,7 @@ func (h *Handler) betRounds(w http.ResponseWriter, r *http.Request) {
 	}
 	out := []round{}
 	for r := cur - 1; r <= cur+2; r++ {
-		ms := game.Round(r, now, a.Margin)
+		ms := game.Round(a.League, r, now, a.Margin)
 		out = append(out, round{r, ms[0].Kickoff, ms})
 	}
 	httpx.JSON(w, http.StatusOK, map[string]any{"now": now, "app": a.Name, "boost": a.Boost, "rounds": out})
@@ -144,7 +158,7 @@ func (h *Handler) placeBet(w http.ResponseWriter, r *http.Request) {
 				return game.Outcome{}, nil, errSameMatch
 			}
 			seen[l.Match] = true
-			m, ok := game.Match(round, i, now, a.Margin)
+			m, ok := game.MatchIn(a.League, round, i, now, a.Margin)
 			if !ok {
 				return game.Outcome{}, nil, errBadPick
 			}
@@ -211,7 +225,7 @@ func (h *Handler) settleBets(w http.ResponseWriter, r *http.Request) { h.mutate(
 // settleBetsTx: the open bets whose last match is over are won or lost; the winnings are paid.
 func settleBetsTx(ctx context.Context, tx pgx.Tx, s *Sim) ([]Event, error) {
 	now := time.Now().Unix()
-	rows, err := tx.Query(ctx, `SELECT b.id, b.app, b.stake, b.odds::float8, l.match, l.pick FROM bets b JOIN bet_legs l ON l.bet = b.id
+	rows, err := tx.Query(ctx, `SELECT b.id, b.app, b.stake, b.odds::float8, l.match, l.label, l.pick FROM bets b JOIN bet_legs l ON l.bet = b.id
 		WHERE b.sim = $1 AND b.status = 'open' AND b.settles_at <= $2 ORDER BY b.id`, s.ID, now)
 	if err != nil {
 		return nil, err
@@ -227,8 +241,8 @@ func settleBetsTx(ctx context.Context, tx pgx.Tx, s *Sim) ([]Event, error) {
 	for rows.Next() {
 		var id int64
 		var o open
-		var key, pick string
-		if err := rows.Scan(&id, &o.app, &o.stake, &o.odds, &key, &pick); err != nil {
+		var key, label, pick string
+		if err := rows.Scan(&id, &o.app, &o.stake, &o.odds, &key, &label, &pick); err != nil {
 			rows.Close()
 			return nil, err
 		}
@@ -241,7 +255,7 @@ func settleBetsTx(ctx context.Context, tx pgx.Tx, s *Sim) ([]Event, error) {
 			bets[id].lost = true
 			continue
 		}
-		m, _ := game.Match(round, i, now, 0)
+		m, _ := game.MatchIn(leagueOf(o.app, round, i, label), round, i, now, 0)
 		if won, ok := game.Won(m, pick, now); ok && !won {
 			bets[id].lost = true
 		}
@@ -288,7 +302,7 @@ type BetView struct {
 	} `json:"legs"`
 }
 
-// myBets: the Sim's last 30 bets, with each match's score so far.
+// myBets: the Sim's last 30 bets on one app (?app=; each app its own history), with each match's score so far.
 func (h *Handler) myBets(w http.ResponseWriter, r *http.Request) {
 	id, _, _, err := h.mySim(r)
 	if err != nil {
@@ -298,7 +312,7 @@ func (h *Handler) myBets(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	rows, err := h.DB.Query(ctx, `SELECT b.id, b.app, b.stake, b.odds::float8, b.status, b.payout, b.created_at, l.match, l.label, l.pick, l.odds::float8
 		FROM bets b JOIN bet_legs l ON l.bet = b.id
-		WHERE b.id IN (SELECT id FROM bets WHERE sim = $1 ORDER BY id DESC LIMIT 30) ORDER BY b.id DESC, l.match`, id)
+		WHERE b.id IN (SELECT id FROM bets WHERE sim = $1 AND ($2 = '' OR app = $2) ORDER BY id DESC LIMIT 30) ORDER BY b.id DESC, l.match`, id, r.URL.Query().Get("app"))
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 		return
@@ -322,7 +336,7 @@ func (h *Handler) myBets(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if round, i, err := parseMatch(leg.Match); err == nil {
-			m, _ := game.Match(round, i, now, 0)
+			m, _ := game.MatchIn(leagueOf(b.App, round, i, leg.Label), round, i, now, 0)
 			leg.Score = m.Score
 			if won, ok := game.Won(m, leg.Pick, now); ok {
 				leg.Won = &won
