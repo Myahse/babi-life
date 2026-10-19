@@ -17,6 +17,7 @@ const PubPage = lazy(() => import('./screens/Pub').then((m) => ({ default: m.Pub
 const PubFollow = lazy(() => import('./screens/Pub').then((m) => ({ default: m.PubFollow })))
 const PubSend = lazy(() => import('./screens/Pub').then((m) => ({ default: m.PubSend })))
 const Admin = lazy(() => import('./screens/Admin').then((m) => ({ default: m.Admin })))
+const Tester = lazy(() => import('./screens/Tester'))
 const Profile = lazy(() => import('./screens/Profile').then((m) => ({ default: m.Profile })))
 
 const Loading = () => (
@@ -46,6 +47,13 @@ export function App() {
 
   // The team's admin (pub, reports, wish list), open even before the game; the old /pub/admin leads there.
   if (path === '/pub/admin') return <Navigate to="/admin?tab=pub" replace />
+  // Testers open the whole game on their browser with the admin key (lib/launch.ts).
+  if (path === '/testeur')
+    return (
+      <Suspense fallback={<Loading />}>
+        <Tester />
+      </Suspense>
+    )
   if (path === '/admin')
     return (
       <Suspense fallback={<Loading />}>
