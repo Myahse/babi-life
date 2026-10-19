@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { FlaskConical, KeyRound, X } from 'lucide-react'
-import { api } from '../lib/api'
-import { isTester, setTester, testerPass } from '../lib/launch'
+import { api, ApiError } from '../lib/api'
+import { isTester, isTesterCode, setTester, testerPass } from '../lib/launch'
 import { useSession } from '../store/session'
 import type { Sim } from '../lib/types'
 import type { Act } from '../screens/phoneApps'
@@ -29,10 +29,11 @@ export function TesterTools({ sim, act }: { sim: Sim; act: Act }) {
   const [error, setError] = useState<string | null>(null)
   const account = !!user?.tester
 
+  // The code kept on this browser: the tools work with it even before the account is a tester's.
+  const [pass, setPass] = useState(testerPass)
   const become = async (code: string) => {
     const u = await api.becomeTester(code)
     if (token) signIn(token, u)
-    setTester(true, code)
   }
   // A browser opened with /testeur makes the account signed in on it a tester's;
   // a tester account keeps this browser past the wish list.
@@ -47,13 +48,26 @@ export function TesterTools({ sim, act }: { sim: Sim; act: Act }) {
 
   if (!account && !isTester()) return null
   const tap = (label: string, call: () => ReturnType<typeof api.tester>) => void act(label, 'sparkles', '', call)
-  const pass = testerPass()
   const unlock = async () => {
     setError(null)
+    // The code is checked here first, so a server that is asleep or not yet
+    // updated isn't taken for a wrong code.
+    if (!(await isTesterCode(typed))) {
+      setError('Code incorrect.')
+      return
+    }
+    setTester(true, typed)
+    setPass(typed.trim())
     try {
       await become(typed)
-    } catch {
-      setError('Code incorrect.')
+    } catch (x) {
+      setError(
+        x instanceof ApiError && x.status === 404
+          ? "Code bon, outils ouverts sur ce navigateur. Le serveur n'a pas encore la mise à jour des comptes testeurs (Render) : ton compte le deviendra tout seul après."
+          : x instanceof ApiError
+            ? `Code bon, outils ouverts sur ce navigateur. Le serveur a répondu : ${x.message}`
+            : 'Code bon, outils ouverts sur ce navigateur. Le serveur ne répond pas pour le compte : réessaie plus tard.',
+      )
     }
   }
   return (
@@ -74,7 +88,7 @@ export function TesterTools({ sim, act }: { sim: Sim; act: Act }) {
                 <X size={18} />
               </button>
             </div>
-            {!account ? (
+            {!account && !pass ? (
               <div className="mt-4 grid gap-2">
                 <p className="text-sm font-bold text-[var(--color-ink-soft)]">Entre le code testeur une fois : ton compte devient un compte testeur, sur tous tes appareils.</p>
                 <span className="flex items-center gap-2 rounded-2xl bg-[var(--color-canvas)] px-3">
@@ -111,6 +125,7 @@ export function TesterTools({ sim, act }: { sim: Sim; act: Act }) {
                 </Section>
               </>
             )}
+            {error && pass && <p className="mt-3 text-xs font-bold text-[var(--color-ink-soft)]">{error}</p>}
             <p className="mt-4 text-xs font-bold text-[var(--color-ink-soft)]">Réservé aux comptes testeurs : les joueurs ne voient pas ces outils.</p>
           </div>
         </div>
