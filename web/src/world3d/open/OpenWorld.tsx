@@ -23,6 +23,7 @@ import { OtherPlayers } from '../Players'
 import { rng } from '../themes'
 import { APPRENTI, GBAKA_DOOR, Vehicle, type VehicleKind } from '../vehicles'
 import { Walker, type WalkNav } from '../Walker'
+import { homeSpotsOf } from '../homeSpots'
 import { whereabouts } from '../whereabouts'
 import { Snapper } from '../snapshot'
 import { CHUNK_ZOOM, hash, tileBox, tileOf, toLatLng, toLocal, type Origin, type XZ } from './geo'
@@ -192,7 +193,7 @@ export function makeWorldMaterials() {
   }
 }
 
-export function OpenWorld(props: Props & { token: string; onFail: () => void; onMapPlaces?: (places: Place[]) => void }) {
+export function OpenWorld(props: Props & { token: string; onFail: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void }) {
   const night = props.hour < 6 || props.hour >= 19
   const dusk = props.hour >= 17 && props.hour < 19
   const sky = night ? '#141a3d' : dusk ? '#f7a072' : '#8ec9f0'
@@ -231,7 +232,7 @@ function useMaterials(night: boolean) {
   return mats
 }
 
-function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, nameTag, onNear, frozen, players, onPickPlayer, recenter, onFreeCamera, closeView, shoulderView, token, onFail, onStreetBuy, onRobbed, onTalk, onCall, talkingTo, plotsVersion, onMapPlaces }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void; onMapPlaces?: (places: Place[]) => void }) {
+function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, nameTag, onNear, frozen, players, onPickPlayer, recenter, onFreeCamera, closeView, shoulderView, token, onFail, onStreetBuy, onRobbed, onTalk, onCall, talkingTo, plotsVersion, onMapPlaces, onHomeSpots }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void }) {
   const origin = useMemo<Origin>(() => ({ lat: commune.lat, lng: commune.lng }), [commune.lat, commune.lng])
   const mats = useMaterials(night)
   const home = sim.homeCity === sim.city && sim.homeCommune === commune.id
@@ -269,7 +270,9 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   // The commune's places from the map (OpenStreetMap: thousands in Yopougon),
   // asked for around the Sim as it goes (see askMap below).
   const [mapList, setMapList] = useState<Place[]>([])
-  useEffect(() => onMapPlaces?.(mapList), [mapList]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    onMapPlaces?.(mapList)
+  }, [mapList]) // eslint-disable-line react-hooks/exhaustive-deps
   const places = useMemo(() => (mapList.length ? [...commune.places, ...mapList] : commune.places), [commune.places, mapList])
 
   const spots = useMemo<(PlaceSpot & { kind: string; name: string })[]>(() => {
@@ -725,6 +728,16 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     }
     if (now !== inside) setInside(now)
   })
+  // In one's own house, the things done at home are done on its furniture: sleeping
+  // in the bed, the shower, cooking at the gazinière, the TV from the sofa.
+  const homeSpots = useMemo(() => {
+    const r = resolved.get(HOME_ID)
+    return r && myPlot && myPlot.blocks.length && world.furniture ? homeSpotsOf(myPlot, lotSize(myPlot), r.center, r.rot, world.furniture) : {}
+  }, [resolved, myPlot, world.furniture])
+  const homeIds = Object.keys(homeSpots).sort().join()
+  useEffect(() => {
+    onHomeSpots?.(homeIds ? homeIds.split(',') : myPlot?.blocks.length ? [''] : [])
+  }, [homeIds, !!myPlot?.blocks.length]) // eslint-disable-line react-hooks/exhaustive-deps
   const cutBlocks = useMemo(() => (myPlot ? myPlot.blocks.filter((b) => b[1] < CUT_HEIGHT) : []), [myPlot])
 
   const homeLot = lots.find((l) => l.id === HOME_ID)
@@ -875,6 +888,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
           goTo={walkTo}
           onArrive={onArrive}
           busy={busy}
+          homeSpot={stationAt === HOME_ID && busy?.id ? homeSpots[busy.id] : undefined}
           onNear={onNear}
           frozen={!!frozen}
           recenter={recenter ?? 0}

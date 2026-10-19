@@ -19,6 +19,9 @@ import { StreetGame } from '../world3d/open/streetFoot'
 import { moveObstacle } from '../world3d/obstacles'
 import { freezeWorldTime } from '../lib/worldClock'
 import { StreetSpot, type StreetPeopleSpot } from '../world3d/open/streetPeople'
+import { homeSpotsOf } from '../world3d/homeSpots'
+import { House } from '../world3d/build/House'
+import { FurnitureSet } from '../world3d/build/Furniture'
 import { FamilyScene } from '../avatar/Family'
 import { Arena } from '../world3d/interior/Arena'
 import { fetchChunk } from '../world3d/open/tiles'
@@ -36,7 +39,7 @@ import { BridgeSights } from '../world3d/open/bridges'
 import { BridgeLife } from '../world3d/open/bridgeLife'
 import { Billboard } from '../world3d/open/billboards'
 import { randomLook } from '../avatar/options'
-import type { Sim } from '../lib/types'
+import type { Block, Furniture, Material, Piece, Plot, Sim } from '../lib/types'
 
 const seededLab = (n: number) => () => ((n = (n * 16807) % 2147483647) / 2147483647)
 
@@ -417,6 +420,7 @@ function Lab() {
   if (view === 'streetfoot') return <StreetFootLab />
   if (view === 'people') return <PeopleLab />
   if (view === 'ride') return <RideLab />
+  if (view === 'home') return <HomeLab />
   if (view === 'stadium') return <StadiumLab />
   if (view === 'family') return <FamilyScene familyId={q.get('f') ?? 'gnambro'} look={randomLook((q.get('g') ?? 'femme') as 'femme', seededLab(Number(q.get('seed') ?? 3)))} gender={(q.get('g') ?? 'femme') as 'femme'} className="!h-screen !w-screen" />
   if (view === 'interior') return <InteriorLab />
@@ -659,6 +663,72 @@ function RideLab() {
         <Character look={look} gender="femme" walking={false} running={false} busy={false} pose="sit" stage="adulte" />
       </group>
       <OrbitControls target={[0, 0.8, 0]} />
+    </Canvas>
+  )
+}
+/** A built house and its furniture, the Sim on each piece as the open world settles it (?view=home&rot=&cam=). */
+const LAB_MATERIALS: Material[] = [
+  { id: 'parpaing', label: 'Parpaing', color: '#9a9a94', price: 150, unlock: 0 },
+  { id: 'tole', label: 'Tôle', color: '#a9b4bd', price: 120, unlock: 0 },
+]
+const LAB_FURNITURE: Furniture[] = [
+  { id: 'lit', label: 'Lit', icon: 'bed-double', w: 2, d: 2, h: 1, price: 0, comfort: 0, color: '#5a7fbf' },
+  { id: 'canape', label: 'Canapé', icon: 'sofa', w: 2, d: 1, h: 1, price: 0, comfort: 0, color: '#7a4a8a' },
+  { id: 'gaziniere', label: 'Gazinière', icon: 'cooking-pot', w: 1, d: 1, h: 1, price: 0, comfort: 0, color: '#cfd3d6' },
+  { id: 'douche', label: 'Douche', icon: 'shower-head', w: 1, d: 1, h: 2, price: 0, comfort: 0, color: '#9fd3e8' },
+]
+function HomeLab() {
+  const cam = (q.get('cam') ?? '9,14,13').split(',').map(Number) as [number, number, number]
+  const rot = Number(q.get('rot') ?? 0.5)
+  const plot = useMemo(() => {
+    const blocks: Block[] = []
+    // Walls round an 8 × 8 room (a door gap at the front), two high.
+    for (let x = 2; x < 10; x++)
+      for (let z = 2; z < 10; z++) {
+        const edge = x === 2 || x === 9 || z === 2 || z === 9
+        if (edge && !(z === 9 && (x === 5 || x === 6))) for (const y of [0, 1]) blocks.push([x, y, z, 'parpaing'])
+      }
+    const furniture: Piece[] = [
+      [3, 0, 3, 0, 'lit'],
+      [6, 0, 3, 0, 'canape'],
+      [8, 0, 3, 1, 'douche'],
+      [3, 0, 7, 0, 'gaziniere'],
+    ]
+    return { simId: 'lab', blocks, built: 0, furniture, lot: { w: 12, d: 12 }, livable: true } as unknown as Plot
+  }, [])
+  const spots = useMemo(() => homeSpotsOf(plot, [12, 12], [0, 0], rot, LAB_FURNITURE), [plot, rot])
+  const look = useMemo(() => randomLook('femme', seededLab(5)), [])
+  return (
+    <Canvas shadows dpr={[1, 1.5]} camera={{ position: cam, fov: 45 }} style={{ width: '100vw', height: '100vh' }}>
+      <color attach="background" args={['#a9d3f0']} />
+      <hemisphereLight args={['#ffffff', '#b8a27c', 1.2]} />
+      <directionalLight position={[10, 20, 12]} intensity={1.6} castShadow />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[40, 40]} />
+        <meshLambertMaterial color="#b98b5c" />
+      </mesh>
+      <group rotation={[0, rot, 0]}>
+        <group position={[-6, 0, -6]}>
+          <House blocks={plot.blocks} materials={LAB_MATERIALS} />
+          <FurnitureSet pieces={plot.furniture} catalog={LAB_FURNITURE} />
+        </group>
+      </group>
+      {Object.entries(spots)
+        .filter(([id]) => id !== 'nap' && id !== 'call-family')
+        .map(([id, s]) => (
+          <group key={id}>
+            <group position={[s.at[0], s.y, s.at[1]]} rotation={[0, s.rot, 0]}>
+              <group rotation={s.lying ? [-Math.PI / 2, 0, 0] : [0, 0, 0]}>
+                <Character look={id === 'shower' ? { ...look, outfit: 'serviette' } : look} gender="femme" walking={false} running={false} busy={false} pose={s.pose} stage="adulte" />
+              </group>
+            </group>
+            <mesh position={[s.from[0], 0.05, s.from[1]]}>
+              <boxGeometry args={[0.2, 0.1, 0.2]} />
+              <meshBasicMaterial color="#e8432f" />
+            </mesh>
+          </group>
+        ))}
+      <OrbitControls target={[0, 0.5, 0]} />
     </Canvas>
   )
 }

@@ -122,7 +122,9 @@ function Thread({ sim, chat, onBack }: { sim: Sim; chat: Chat; onBack: () => voi
       clearInterval(t)
     }
   }, [sim.id, chat.friend.id])
-  useEffect(() => end.current?.scrollIntoView({ block: 'end' }), [msgs.length])
+  useEffect(() => {
+    end.current?.scrollIntoView({ block: 'end' })
+  }, [msgs.length])
 
   const send = async () => {
     const body = text.trim()

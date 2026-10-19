@@ -67,6 +67,9 @@ export type WalkNav = {
   heightAt?: (x: number, z: number) => number
 }
 
+/** Where the Sim does a home action on its own furniture: walked to from `from`, then settled `at` (y up), turned `rot`. */
+export type HomeSpot = { at: XZ; y: number; rot: number; pose: Pose; lying: boolean; from: XZ }
+
 type Props = {
   sim: Sim
   stage: string
@@ -89,10 +92,12 @@ type Props = {
   close?: boolean
   /** Closer still: over the shoulder, at head height (the third-person view). */
   shoulder?: boolean
+  /** Busy at home, in one's own house: the piece of furniture it's done on. */
+  homeSpot?: HomeSpot
 }
 
 /** The player's Sim: walks to places, with the pad or by tapping the ground; the camera follows. */
-export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy, stationAt, nameTag, labels, onNear, frozen, recenter, onFreeCamera, perspective, close, shoulder }: Props) {
+export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy, stationAt, nameTag, labels, onNear, frozen, recenter, onFreeCamera, perspective, close, shoulder, homeSpot }: Props) {
   const group = useRef<THREE.Group>(null)
   const path = useRef<[number, number][]>([])
   const target = useRef<string | null>(null)
@@ -123,6 +128,9 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   const loop = useRef<{ x: number; z: number; fx: number; fz: number; len: number; t0: number } | null>(null)
   const [looping, setLooping] = useState(false)
   const loopKind = busy?.id ? LOOPS[busy.id] : undefined
+  // At home on the furniture: walking to it, then settled on it.
+  const homeGoing = useRef<HomeSpot | null>(null)
+  const [settled, setSettled] = useState<HomeSpot | null>(null)
   const [matchPose, setMatchPose] = useState<Pose>('idle')
 
   // Start where the Sim is busy, else at home, else on the sidewalk. Only
@@ -357,6 +365,34 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       padWalking.current = false
       setWalking(false)
     }
+    // At home, the action done on its piece of furniture: walk up to it, then onto it.
+    if (homeSpot && !padWalking.current) {
+      if (settled !== homeSpot && !path.current.length) {
+        const [fx, fz] = homeSpot.from
+        if (Math.hypot(g.position.x - fx, g.position.z - fz) > 0.6 && homeGoing.current !== homeSpot) {
+          homeGoing.current = homeSpot
+          const way = findWay([g.position.x, g.position.z], homeSpot.from, false)
+          path.current = way ? way.slice(1) : [homeSpot.from]
+          target.current = null
+          speed.current = SPEED
+          autoRun.current = false
+          setRoute([...path.current])
+          setWalking(true)
+        } else {
+          g.position.set(homeSpot.at[0], homeSpot.y, homeSpot.at[1])
+          g.rotation.y = homeSpot.rot
+          setSettled(homeSpot)
+        }
+      } else if (settled === homeSpot) {
+        g.position.set(homeSpot.at[0], homeSpot.y, homeSpot.at[1])
+        g.rotation.y = homeSpot.rot
+      }
+    } else if (settled) {
+      // Done: up and off the furniture, in front of it.
+      g.position.set(settled.from[0], 0, settled.from[1])
+      homeGoing.current = null
+      setSettled(null)
+    }
     // Strolling: along the way and back, again and again, as far as there's room.
     if (loopKind && !path.current.length && !padWalking.current) {
       if (!loop.current) {
@@ -588,6 +624,11 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
               <Character look={sim.look} gender={sim.gender} walking={false} running={false} busy={false} pose="sit" moodColor={moodColor} stage={stage} />
             </group>
           </>
+        ) : settled ? (
+          // On the furniture at home: lying in the bed (the head towards its head), sitting, at the stove, in the shower.
+          <group rotation={settled.lying ? [-Math.PI / 2, 0, 0] : [0, 0, 0]}>
+            <Character look={busy?.id === 'shower' ? { ...sim.look, outfit: 'serviette', accessory: 'none' } : sim.look} gender={sim.gender} walking={false} running={false} busy={false} pose={settled.pose} moodColor={moodColor} stage={stage} />
+          </group>
         ) : (
           <Character look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking || looping} running={run || (looping && !!loopKind?.run)} busy={!!busy && !looping} pose={busy?.kind === 'chat' ? 'talk' : inMatch && !walking ? matchPose : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={looping && loopKind ? loopKind.speed : run ? RUN : SPEED} />
         )}

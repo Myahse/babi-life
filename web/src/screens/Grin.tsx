@@ -42,7 +42,9 @@ export function Grin({ world, sim }: { world: World; sim: Sim }) {
       clearInterval(t)
     }
   }, [sim.id, room])
-  useEffect(() => end.current?.scrollIntoView({ block: 'end' }), [msgs.length])
+  useEffect(() => {
+    end.current?.scrollIntoView({ block: 'end' })
+  }, [msgs.length])
 
   const send = async () => {
     const body = text.trim()

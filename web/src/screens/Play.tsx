@@ -346,6 +346,8 @@ export function Play() {
   // Building one's house on the plot; the houses are fetched again after.
   const [building, setBuilding] = useState(false)
   const [plotsVersion, setPlotsVersion] = useState(0)
+  // The home actions done on the furniture of one's own built house (OpenWorld says which); none: no house.
+  const [homeSpots, setHomeSpots] = useState<string[]>([])
 
   // Live: the other players in the commune, every few seconds.
   const [around, refreshPlayers] = usePlayers(base?.sim.id, `${sim?.city}/${sim?.commune}`)
@@ -381,9 +383,13 @@ export function Play() {
     if (doing) {
       if (doing.placeId === 'golvo') return atHomeNow ? { id: 'home', kind: 'home', it: doing.interaction.id } : null
       if (!doing.placeId) return null
+      // In one's own house, sleeping, the shower, cooking, the TV happen there, in the street's world.
+      if (doing.placeId === 'home' && !classic && homeSpots.includes(doing.interaction.id)) return null
       const kind = doing.placeId === 'home' ? 'home' : ARENAS.has(doing.placeId) ? 'arena' : (doing.placeKind ?? '')
       return INDOOR.has(kind) || kind === 'arena' ? { id: doing.placeId, kind, it: doing.interaction.id } : null
     }
+    // Choosing what to do at home, in front of one's own house: stay out there.
+    if (placeId === 'home' && !classic && homeSpots.length) return null
     if (placeId && placeId !== 'happening') {
       // A covered hall (the Palais des Sports) has its own inside.
       const kind = placeId === 'home' ? 'home' : ARENAS.has(placeId) ? 'arena' : commune.places.find((p) => p.id === placeId)?.kind
@@ -473,7 +479,7 @@ export function Play() {
               }
             },
           }
-          return classic ? <Neighbourhood key={commune.id} {...street} /> : <OpenWorld key={commune.id} {...street} commune={ownPlaces(commune)} token={MAP_TOKEN ?? ''} onFail={() => setClassic(true)} onMapPlaces={setMapPlaces} />
+          return classic ? <Neighbourhood key={commune.id} {...street} /> : <OpenWorld key={commune.id} {...street} commune={ownPlaces(commune)} token={MAP_TOKEN ?? ''} onFail={() => setClassic(true)} onMapPlaces={setMapPlaces} onHomeSpots={setHomeSpots} />
         })()}
       </div>
 
