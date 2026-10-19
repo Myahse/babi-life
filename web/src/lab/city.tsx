@@ -301,7 +301,7 @@ function InteriorLab() {
       {q.get('kind') === 'arena' ? (
         <Arena sim={sim} placeId="treich-palais" interactionId={q.get('id') ?? undefined} stage="adulte" />
       ) : (
-        <Interior sim={sim} kind={q.get('kind') ?? 'home'} placeId={q.get('place') ?? 'lab-place'} interactionId={id} housing={q.get('housing') ?? 'cour'} night={night} stage={q.get('stage') ?? 'adulte'} />
+        <Interior sim={sim} kind={q.get('kind') ?? 'home'} placeId={q.get('place') ?? 'lab-place'} interactionId={id} roam={q.has('roam') && !id} housing={q.get('housing') ?? 'cour'} night={night} stage={q.get('stage') ?? 'adulte'} />
       )}
     </div>
   )

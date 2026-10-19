@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BadgeCheck, Megaphone, Cake, Hammer, Eye, LocateFixed, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, Megaphone, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World, Ride, Place } from '../lib/types'
 import { useWorld } from '../store/world'
@@ -105,6 +105,11 @@ export function Play() {
   const [seen, setSeen] = useState(0)
   const [now, setNow] = useState(Date.now())
   const [placeId, setPlaceId] = useState<string | null>(null)
+  // Inside a place, the Sim walks about first; the actions open when asked for.
+  const [menuOpen, setMenuOpen] = useState(false)
+  useEffect(() => {
+    setMenuOpen(false)
+  }, [placeId])
   const [goTo, setGoTo] = useState<{ placeId: string; nonce: number } | null>(null)
   const [overlay, setOverlay] = useState<'phone' | 'map' | null>(null)
   const [pending, setPending] = useState<{ label: string; icon: string; kind: string } | null>(null)
@@ -408,6 +413,8 @@ export function Play() {
     return null
   })()
   const showInside = !!inside && !outside
+  // Just come in (nothing being done yet): the Sim can walk about the room.
+  const visiting = !!placeId && placeId !== 'happening' && showInside && !doing && sim.city === city.id && sim.commune === commune.id
   // The music of where the Sim is: the club and the maquis inside, and in
   // the street, the fanfare of a wedding cortège or a concert.
   const happeningId = street?.happening?.id
@@ -446,7 +453,7 @@ export function Play() {
           {inside!.kind === 'arena' ? (
             <Arena sim={sim} placeId={inside!.id} interactionId={inside!.it} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id)} />
           ) : (
-            <Interior sim={sim} kind={inside!.kind} placeId={inside!.id} interactionId={inside!.it} housing={sim.housing} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id && inside!.id !== 'home')} />
+            <Interior sim={sim} kind={inside!.kind} placeId={inside!.id} interactionId={inside!.it} roam={visiting && !menuOpen} housing={sim.housing} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id && inside!.id !== 'home')} />
           )}
         </div>
       )}
@@ -663,8 +670,25 @@ export function Play() {
       {placeId === 'happening' && street?.happening && (
         <HappeningSheet now={street} sim={sim} commune={commune} onClose={() => setPlaceId(null)} onJoin={(it) => (setPlaceId(null), run(it.label, it.icon, 'happening', () => api.interact(sim.id, 'happening', it.id)))} />
       )}
-      {placeId && placeId !== 'happening' && (
-        <InteractionMenu world={world} sim={sim} city={city} commune={commune} placeId={placeId} desktop={desktop} onClose={() => setPlaceId(null)} onPick={interact} onTravel={travel} onStop={stop} onBuild={() => (setPlaceId(null), setBuilding(true))} />
+      {placeId && placeId !== 'happening' && (!visiting || menuOpen) && (
+        <InteractionMenu world={world} sim={sim} city={city} commune={commune} placeId={placeId} desktop={desktop} onClose={() => (visiting ? setMenuOpen(false) : setPlaceId(null))} onPick={interact} onTravel={travel} onStop={stop} onBuild={() => (setPlaceId(null), setBuilding(true))} />
+      )}
+      {visiting && !menuOpen && (
+        // Walking about inside: the place's name, what to do here, the way out.
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <div className="hud pointer-events-auto flex w-full max-w-md items-center gap-2 rounded-[26px] p-2">
+            <button className="btn btn-soft !px-3 !py-2.5 !text-sm" onClick={() => setPlaceId(null)}>
+              <LogOut size={18} /> Sortir
+            </button>
+            <div className="min-w-0 flex-1 px-1 text-center leading-tight">
+              <div className="truncate font-display text-[15px] font-extrabold">{placeName(placeId!)}</div>
+              <div className="text-[11px] font-bold text-[var(--color-ink-soft)]">{desktop ? 'Clique au sol ou flèches pour marcher' : 'Touche le sol pour marcher'}</div>
+            </div>
+            <button className="btn !px-3 !py-2.5 !text-sm" onClick={() => setMenuOpen(true)}>
+              <Sparkles size={18} /> Que faire ?
+            </button>
+          </div>
+        </div>
       )}
       {building && (
         <Suspense fallback={null}>

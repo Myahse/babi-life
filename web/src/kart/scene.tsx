@@ -170,7 +170,7 @@ export function Circuit({ track, race }: { track: Track; race: Race }) {
         <meshLambertMaterial map={tex.road} />
       </mesh>
       {/* The start line, chequered */}
-      <mesh position={[ax, 0.03, az]} rotation={[-Math.PI / 2, 0, ah + Math.PI / 2]}>
+      <mesh position={[ax, 0.03, az]} rotation={[-Math.PI / 2, 0, ah]}>
         <planeGeometry args={[track.half * 2, 1.6]} />
         <meshLambertMaterial map={checker} />
       </mesh>

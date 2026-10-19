@@ -1,8 +1,8 @@
-import { lazy, Suspense, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Snapper } from './snapshot'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
-import { Shell } from './interior/Shell'
+import { ROOM, Shell } from './interior/Shell'
 import { NoteShower } from './money'
 import { ClubCrowd } from './clubNight'
 import { useRoomStyle } from './interior/Decor'
@@ -15,6 +15,7 @@ import { Character } from './Character'
 import { ActionProps, Pot, SewingTable, TvScreen, Zzz } from './interior/ActionProps'
 import { rng } from './themes'
 import { worldTime } from '../lib/worldClock'
+import { listenKeys, moveInput } from './input'
 
 /** Soft shade in the corners, downloaded only on phones that show it. */
 const AmbientOcclusion = lazy(() => import('./effects'))
@@ -107,11 +108,12 @@ const WALK_IN = 1.5
  * walks back to the door. On the floor while walking; up onto the sofa or
  * the bed, and over onto its back, eased at the end.
  */
-function WalkTo({ to, facing, lying, onThere, children }: { to: V3; facing: number; lying: boolean; onThere?: (there: boolean) => void; children: (there: boolean) => React.ReactNode }) {
+function WalkTo({ to, facing, lying, free, onThere, children }: { to: V3; facing: number; lying: boolean; /** Walking about the room: the keys (or the pad) move the Sim too. */ free?: boolean; onThere?: (there: boolean) => void; children: (there: boolean) => React.ReactNode }) {
+  const camera = useThree((st) => st.camera)
   const outer = useRef<THREE.Group>(null)
   const inner = useRef<THREE.Group>(null)
   // Where the Sim is now; it starts where it should be (a place opened mid-action).
-  const at = useRef({ x: to[0], z: to[2], rot: lying ? 0 : facing, settle: 1 })
+  const at = useRef({ x: to[0], z: to[2], rot: lying ? 0 : facing, settle: 1, manual: false })
   const [there, setThere] = useState(true)
   const key = `${to.join()},${facing.toFixed(2)},${lying}`
   const was = useRef(key)
@@ -124,9 +126,31 @@ function WalkTo({ to, facing, lying, onThere, children }: { to: V3; facing: numb
       if (there) setThere(false)
       onThere?.(false)
     }
+    // The keys or the pad, as seen from the camera: forward is away from it.
+    const m = free ? moveInput() : null
+    if (m && Math.hypot(m.x, m.y) > 0.15) {
+      const f = new THREE.Vector3()
+      camera.getWorldDirection(f)
+      const fl = Math.hypot(f.x, f.z) || 1
+      const [fx, fz] = [f.x / fl, f.z / fl]
+      const [mx, mz] = [fx * m.y - fz * m.x, fz * m.y + fx * m.x]
+      a.x = Math.max(-ROOM.W / 2 + 0.6, Math.min(ROOM.W / 2 - 0.6, a.x + mx * WALK_IN * dt))
+      a.z = Math.max(-ROOM.D / 2 + 0.6, Math.min(ROOM.D / 2 - 0.6, a.z + mz * WALK_IN * dt))
+      const want = Math.atan2(mx, mz)
+      a.rot += Math.atan2(Math.sin(want - a.rot), Math.cos(want - a.rot)) * Math.min(1, dt * 10)
+      // Walking under one's own steam: the last tapped spot is forgotten.
+      a.settle = 1
+      a.manual = true
+      if (there) setThere(false)
+    } else if (a.manual) {
+      a.manual = false
+      if (!there) setThere(true)
+    }
     const [dx, dz] = [to[0] - a.x, to[2] - a.z]
     const d = Math.hypot(dx, dz)
-    if (a.settle === 0 && d > 0.04) {
+    if (a.manual) {
+      // Moved by the keys this frame (above).
+    } else if (a.settle === 0 && d > 0.04) {
       // Walking over, facing the way it goes.
       const step = Math.min(d, WALK_IN * dt)
       a.x += (dx / d) * step
@@ -844,7 +868,10 @@ function room(kindIn: string, housing: string): Room {
 
 /* ---------- The scene ---------- */
 
-export function Interior({ sim, kind, placeId, interactionId, housing, night, stage, others = [] }: { sim: Sim; kind: string; placeId: string; interactionId?: string; housing: string; night: boolean; stage: string; others?: Player[] }) {
+export function Interior({ sim, kind, placeId, interactionId, roam, housing, night, stage, others = [] }: { sim: Sim; kind: string; placeId: string; interactionId?: string; /** Just come in: the Sim walks about the room (tap the floor, or the keys). */ roam?: boolean; housing: string; night: boolean; stage: string; others?: Player[] }) {
+  const [roamTo, setRoamTo] = useState<{ p: V3; facing: number } | null>(null)
+  // The arrow keys and WASD walk the Sim about the room.
+  useEffect(() => (roam ? listenKeys() : undefined), [roam])
   const r = room(kind, housing)
   const style = useRoomStyle(kind, housing)
   const act = action(kind, interactionId)
@@ -900,7 +927,27 @@ export function Interior({ sim, kind, placeId, interactionId, housing, night, st
             </group>
           ))}
         </NoShadows>
-        <WalkTo to={me.p} facing={throwing ? faceDancers : (me.r ?? 0)} lying={!!me.lying} onThere={setArrived}>
+        {roam && (
+          // The floor, to tap where to walk (a drag turns the camera instead).
+          <mesh
+            rotation={[-Math.PI / 2, 0, 0]}
+            position={[0, 0.02, 0]}
+            onClick={(e) => {
+              if (e.delta > 6) return
+              e.stopPropagation()
+              const x = Math.max(-ROOM.W / 2 + 0.6, Math.min(ROOM.W / 2 - 0.6, e.point.x))
+              const z = Math.max(-ROOM.D / 2 + 0.6, Math.min(ROOM.D / 2 - 0.6, e.point.z))
+              setRoamTo((r) => {
+                const from = r?.p ?? me.p
+                return { p: [x, 0, z], facing: Math.atan2(x - from[0], z - from[2]) }
+              })
+            }}
+          >
+            <planeGeometry args={[ROOM.W, ROOM.D]} />
+            <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+          </mesh>
+        )}
+        <WalkTo to={!interactionId && roamTo ? roamTo.p : me.p} facing={!interactionId && roamTo ? roamTo.facing : throwing ? faceDancers : (me.r ?? 0)} lying={!interactionId && roamTo ? false : !!me.lying} free={roam} onThere={setArrived}>
           {(there) =>
             there ? (
               <>
