@@ -150,6 +150,9 @@ export const api = {
   lots: (id: string) => request<{ offers: LotOffer[]; lot: Lot | null; fees: number; adult: boolean }>(`/sims/${id}/lots`),
   buyLot: (id: string, size: string) => post<ActionResult>(`/sims/${id}/lot`, { size }),
   moveIn: (id: string) => post<ActionResult>(`/sims/${id}/plot/movein`, {}),
-  meet: (id: string, to: string, action: 'saluer' | 'inviter' | 'rejoindre') => post<ActionResult>(`/sims/${id}/meet`, { to, action }),
+  meet: (id: string, to: string, action: 'saluer' | 'inviter' | 'rejoindre' | 'ajouter') => post<ActionResult>(`/sims/${id}/meet`, { to, action }),
+  /** Friends between players: answer a request; invite a friend, wherever they are, to what the Sim is doing. */
+  answerFriend: (id: string, other: string, answer: 'accepter' | 'refuser') => post<ActionResult>(`/sims/${id}/friends/${other}/answer`, { answer }),
+  inviteFriend: (id: string, other: string) => post<ActionResult>(`/sims/${id}/friends/${other}/invite`, {}),
   answerInvite: (id: string, invite: string, answer: 'accepter' | 'refuser') => post<ActionResult>(`/sims/${id}/invites/${invite}`, { answer }),
 }

@@ -85,9 +85,12 @@ export type Player = {
   city?: string
   commune?: string
   online: boolean
+  /** Friends (asked and accepted), and a friend request between the two. */
+  friend: boolean
+  request?: '' | 'sent' | 'received'
 }
 export type Invite = { id: string; from: string; fromName: string; placeId: string; interactionId: string; label: string; at: string }
-export type Around = { players: Player[]; friends: Player[]; invites: Invite[] }
+export type Around = { players: Player[]; friends: Player[]; invites: Invite[]; /** Friend requests waiting for an answer. */ requests?: Player[] }
 /** Gbairai: a message, and a friend's chat in the list. */
 export type ChatMessage = { id: number; mine: boolean; body: string; at: string; readAt?: string }
 export type Chat = { friend: Player; last?: ChatMessage; unread: number; blocked?: boolean }

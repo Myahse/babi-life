@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"slices"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
 	"github.com/myahse/babi-life/backend/internal/world"
@@ -130,6 +132,13 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
+		return
+	}
+	// To a player friend: their Sim's id, not one of the game's contacts.
+	if !slices.ContainsFunc(world.Contacts, func(c world.Contact) bool { return c.ID == req.To }) {
+		h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
+			return h.sendToFriend(r.Context(), tx, s, req.To, req.Amount)
+		})
 		return
 	}
 	h.mutate(w, r, func(s *Sim) (game.Outcome, []Event, error) {

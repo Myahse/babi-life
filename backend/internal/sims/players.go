@@ -55,6 +55,9 @@ type Player struct {
 	City    string `json:"city,omitempty"`
 	Commune string `json:"commune,omitempty"`
 	Online  bool   `json:"online"`
+	// Friends (asked and accepted), and a friend request between the two: "sent" | "received" | "".
+	Friend  bool   `json:"friend"`
+	Request string `json:"request,omitempty"`
 }
 
 type PlayerActivity struct {
@@ -116,7 +119,8 @@ func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
 	since := time.Now().Add(-OnlineWindow)
 
 	players, err := h.players(ctx, now, `
-		SELECT s.id, s.first_name, COALESCE(u.username, ''), s.gender, s.look, s.born_at, s.activity, COALESCE(b.friendship, 0), s.city, s.commune, s.last_tick > $5
+		SELECT s.id, s.first_name, COALESCE(u.username, ''), s.gender, s.look, s.born_at, s.activity, COALESCE(b.friendship, 0), s.city, s.commune, s.last_tick > $5,
+		       COALESCE(b.friends, false), `+requestState("s.id", "$1::uuid")+`
 		FROM sims s JOIN users u ON u.id = s.user_id
 		LEFT JOIN bonds b ON b.sim_a = LEAST(s.id, $1::uuid) AND b.sim_b = GREATEST(s.id, $1::uuid)
 		WHERE s.city = $2 AND s.commune = $3 AND s.user_id <> $4 AND s.last_tick > $5
@@ -126,12 +130,25 @@ func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	friends, err := h.players(ctx, now, `
-		SELECT o.id, o.first_name, COALESCE(u.username, ''), o.gender, o.look, o.born_at, o.activity, b.friendship, o.city, o.commune, o.last_tick > $2
+		SELECT o.id, o.first_name, COALESCE(u.username, ''), o.gender, o.look, o.born_at, o.activity, b.friendship, o.city, o.commune, o.last_tick > $2, true, ''
 		FROM bonds b
 		JOIN sims o ON o.id = CASE WHEN b.sim_a = $1::uuid THEN b.sim_b ELSE b.sim_a END
 		JOIN users u ON u.id = o.user_id
-		WHERE b.sim_a = $1::uuid OR b.sim_b = $1::uuid
+		WHERE (b.sim_a = $1::uuid OR b.sim_b = $1::uuid) AND b.friends
 		ORDER BY b.friendship DESC LIMIT 50`, id, since)
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+		return
+	}
+	// Friend requests waiting for an answer, from wherever the one asking is.
+	requests, err := h.players(ctx, now, `
+		SELECT o.id, o.first_name, COALESCE(u.username, ''), o.gender, o.look, o.born_at, o.activity, COALESCE(b.friendship, 0), o.city, o.commune, o.last_tick > $2, false, 'received'
+		FROM friend_requests f
+		JOIN sims o ON o.id = f.from_sim
+		JOIN users u ON u.id = o.user_id
+		LEFT JOIN bonds b ON b.sim_a = LEAST(o.id, $1::uuid) AND b.sim_b = GREATEST(o.id, $1::uuid)
+		WHERE f.to_sim = $1::uuid
+		ORDER BY f.created_at DESC LIMIT 20`, id, since)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 		return
@@ -151,7 +168,13 @@ func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
 		}
 		rows.Close()
 	}
-	httpx.JSON(w, http.StatusOK, map[string]any{"players": players, "friends": friends, "invites": invites})
+	httpx.JSON(w, http.StatusOK, map[string]any{"players": players, "friends": friends, "invites": invites, "requests": requests})
+}
+
+// requestState: the SQL for a friend request between `other` and `me`: "sent" (me → other), "received", or "".
+func requestState(other, me string) string {
+	return `CASE WHEN EXISTS(SELECT 1 FROM friend_requests WHERE from_sim = ` + me + ` AND to_sim = ` + other + `) THEN 'sent'
+		WHEN EXISTS(SELECT 1 FROM friend_requests WHERE from_sim = ` + other + ` AND to_sim = ` + me + `) THEN 'received' ELSE '' END`
 }
 
 func (h *Handler) players(ctx context.Context, now int64, query string, args ...any) ([]Player, error) {
@@ -165,7 +188,7 @@ func (h *Handler) players(ctx context.Context, now int64, query string, args ...
 		var p Player
 		var born int64
 		var act *game.Activity
-		if err := rows.Scan(&p.ID, &p.FirstName, &p.Username, &p.Gender, &p.Look, &born, &act, &p.Friendship, &p.City, &p.Commune, &p.Online); err != nil {
+		if err := rows.Scan(&p.ID, &p.FirstName, &p.Username, &p.Gender, &p.Look, &born, &act, &p.Friendship, &p.City, &p.Commune, &p.Online, &p.Friend, &p.Request); err != nil {
 			return nil, err
 		}
 		p.Stage = game.StageOf(game.AgeAt(born, now)).ID
@@ -215,7 +238,7 @@ func befriend(ctx context.Context, tx pgx.Tx, a, b string, gain int) error {
 func (h *Handler) meet(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		To     string `json:"to"`
-		Action string `json:"action"` // "saluer" | "inviter"
+		Action string `json:"action"` // "saluer" | "inviter" | "rejoindre" | "ajouter"
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
@@ -243,30 +266,37 @@ func (h *Handler) meet(w http.ResponseWriter, r *http.Request) {
 			text := fmt.Sprintf("Tu salues %s.", o.FirstName)
 			return game.Outcome{Text: text}, []Event{{Kind: "social", Text: text, GameTime: s.GameMinutes}}, nil
 		case "inviter":
-			if !joinable(s.Activity, s.GameMinutes) {
-				return game.Outcome{}, nil, errNotJoinable
-			}
-			a := s.Activity
-			var pending bool
-			_ = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM invites WHERE from_sim = $1 AND to_sim = $2 AND status = 'pending' AND place_id = $3 AND interaction_id = $4 AND created_at > $5)`,
-				s.ID, o.ID, a.PlaceID, a.Interaction.ID, time.Now().Add(-InviteWindow)).Scan(&pending)
-			if pending {
-				return game.Outcome{}, nil, errAlreadyAsked
-			}
-			label := fmt.Sprintf("%s à %s", a.Interaction.Label, a.PlaceName)
-			if _, err := tx.Exec(ctx, `INSERT INTO invites (from_sim, to_sim, place_id, interaction_id, label) VALUES ($1, $2, $3, $4, $5)`,
-				s.ID, o.ID, a.PlaceID, a.Interaction.ID, label); err != nil {
-				return game.Outcome{}, nil, err
-			}
-			_ = insertEvent(ctx, tx, o.ID, "social", fmt.Sprintf("%s t'invite : %s.", s.FirstName, label), 0, game.MinuteOf(time.Now()))
-			text := fmt.Sprintf("Tu invites %s : %s.", o.FirstName, label)
-			return game.Outcome{Text: text}, []Event{{Kind: "social", Text: text, GameTime: s.GameMinutes}}, nil
+			return h.invite(ctx, tx, s, o)
+		case "ajouter":
+			return h.askFriend(ctx, tx, s, o)
 		case "rejoindre":
 			// Walk up and do the same thing, next to them.
 			return h.join(ctx, tx, s, o, o.Activity)
 		}
 		return game.Outcome{}, nil, errors.New("action inconnue")
 	})
+}
+
+// invite: ask another player to come and do what the Sim is doing.
+func (h *Handler) invite(ctx context.Context, tx pgx.Tx, s *Sim, o other) (game.Outcome, []Event, error) {
+	if !joinable(s.Activity, s.GameMinutes) {
+		return game.Outcome{}, nil, errNotJoinable
+	}
+	a := s.Activity
+	var pending bool
+	_ = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM invites WHERE from_sim = $1 AND to_sim = $2 AND status = 'pending' AND place_id = $3 AND interaction_id = $4 AND created_at > $5)`,
+		s.ID, o.ID, a.PlaceID, a.Interaction.ID, time.Now().Add(-InviteWindow)).Scan(&pending)
+	if pending {
+		return game.Outcome{}, nil, errAlreadyAsked
+	}
+	label := fmt.Sprintf("%s à %s", a.Interaction.Label, a.PlaceName)
+	if _, err := tx.Exec(ctx, `INSERT INTO invites (from_sim, to_sim, place_id, interaction_id, label) VALUES ($1, $2, $3, $4, $5)`,
+		s.ID, o.ID, a.PlaceID, a.Interaction.ID, label); err != nil {
+		return game.Outcome{}, nil, err
+	}
+	_ = insertEvent(ctx, tx, o.ID, "social", fmt.Sprintf("%s t'invite : %s.", s.FirstName, label), 0, game.MinuteOf(time.Now()))
+	text := fmt.Sprintf("Tu invites %s : %s.", o.FirstName, label)
+	return game.Outcome{Text: text}, []Event{{Kind: "social", Text: text, GameTime: s.GameMinutes}}, nil
 }
 
 // join: start the host's activity, at the host's place, side by side.

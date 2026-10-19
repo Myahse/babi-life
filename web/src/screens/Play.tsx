@@ -732,6 +732,8 @@ type PhoneProps = {
 
 function Phone({ world, sim, commune, journal, time, act, startApp, delivery, onDelivery, onCollect, onClose, onMap, onWalk, onBuild }: PhoneProps) {
   const [app, setApp] = useState<PhoneAppId | null>(startApp)
+  // A player friend to send money to, picked in Amis.
+  const [wayeTo, setWayeTo] = useState<string | undefined>()
   const navigate = useNavigate()
   const home = sim.homeCity === sim.city && sim.homeCommune === commune.id
   const places = [...(home ? [{ id: 'home', name: 'Chez toi', kind: 'home' }] : []), ...commune.places]
@@ -836,7 +838,7 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
                 {app === 'home' && <HomeApp world={world} sim={sim} commune={commune} act={act} onBuild={onBuild} />}
                 {app === 'messages' && <Journal events={journal} />}
                 {app === 'news' && <NewsApp />}
-                {app === 'friends' && <FriendsApp world={world} sim={sim} act={act} />}
+                {app === 'friends' && <FriendsApp world={world} sim={sim} act={act} onPay={has('waye') ? (p) => (setWayeTo(p.id), setApp('waye')) : undefined} />}
                 {app === 'store' && !ownPhone && (
                   <div className="grid place-items-center gap-3 px-6 py-12 text-center">
                     <Lock size={34} className="text-[var(--color-ink-soft)]" />
@@ -851,7 +853,7 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
                   </div>
                 )}
                 {app === 'store' && ownPhone && <StoreApp world={world} sim={sim} act={act} onOpen={(id) => (id === 'gnango' || id === 'idrive' ? onMap() : setApp(id as PhoneAppId))} />}
-                {app === 'waye' && <WayeApp world={world} sim={sim} act={act} journal={journal} renderJournal={(events) => <Journal events={events} />} />}
+                {app === 'waye' && <WayeApp world={world} sim={sim} act={act} journal={journal} renderJournal={(events) => <Journal events={events} />} payTo={wayeTo} />}
                 {app === 'gbairai' && <GbairaiApp world={world} sim={sim} />}
                 {app === 'tikitoko' && <TikitokoApp sim={sim} act={act} onClose={() => setApp(null)} />}
                 {(app === 'bet225' || app === 'parisfoot') && <BetApp sim={sim} act={act} app={app} />}

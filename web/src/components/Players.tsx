@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Check, Hand, Send, UserPlus, Users, X } from 'lucide-react'
+import { Check, Hand, Send, UserCheck, UserPlus, Users, X } from 'lucide-react'
 import { api } from '../lib/api'
 import type { Around, Invite, Player, Sim } from '../lib/types'
 import { Portrait } from '../avatar/portrait'
@@ -39,6 +39,27 @@ export function joinableActivity(sim: Sim) {
 }
 
 const tagOf = (p: Player) => (p.username ? `@${p.username}` : p.firstName)
+
+/** Becoming friends: ask (face to face), the request on its way, say yes to theirs, or friends already. */
+function FriendButton({ p, onAsk }: { p: Player; onAsk: () => void }) {
+  if (p.friend)
+    return (
+      <div className="mt-2 flex items-center justify-center gap-1 rounded-xl bg-[#e9f9ef] py-1.5 text-xs font-extrabold text-[#0f9d58]">
+        <UserCheck size={14} /> Vous êtes ami·es
+      </div>
+    )
+  if (p.request === 'sent')
+    return (
+      <div className="mt-2 flex items-center justify-center gap-1 rounded-xl bg-[var(--color-canvas)] py-1.5 text-xs font-extrabold text-[var(--color-ink-soft)]">
+        <UserPlus size={14} /> Demande envoyée, en attente
+      </div>
+    )
+  return (
+    <button className="btn mt-2 w-full !bg-[#0f9d58] !py-1.5 !text-xs" onClick={onAsk}>
+      <UserPlus size={14} /> {p.request === 'received' ? 'Accepter sa demande d’ami·e' : 'Ajouter en ami·e'}
+    </button>
+  )
+}
 
 /** The HUD chip: how many players are in the commune. */
 export function PlayersChip({ count, invites, onOpen }: { count: number; invites: number; onOpen: () => void }) {
@@ -95,6 +116,21 @@ export function PlayersSheet({ sim, around, communeName, focus, act, onClose }: 
           </button>
         </div>
         <div className="space-y-2 overflow-y-auto px-4 pt-1 pb-2">
+          {(around.requests ?? []).map((p) => (
+            <div key={`req${p.id}`} className="rounded-2xl bg-[#e9f9ef] p-3">
+              <div className="flex items-center gap-2 text-sm font-extrabold">
+                <UserPlus size={16} className="shrink-0 text-[#0f9d58]" /> {tagOf(p)} veut être ton ami·e
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <button className="btn btn-soft !py-1.5 !text-xs" onClick={() => act('Refuser', 'x', 'social', () => api.answerFriend(sim.id, p.id, 'refuser'))}>
+                  Non merci
+                </button>
+                <button className="btn !bg-[#0f9d58] !py-1.5 !text-xs" onClick={() => act(`Ami·e avec ${tagOf(p)}`, 'user-plus', 'social', () => api.answerFriend(sim.id, p.id, 'accepter'))}>
+                  Accepter
+                </button>
+              </div>
+            </div>
+          ))}
           {around.invites.map((inv) => (
             <div key={inv.id} className="rounded-2xl bg-[#eaf1ff] p-3">
               <div className="text-sm font-extrabold">
@@ -139,6 +175,7 @@ export function PlayersSheet({ sim, around, communeName, focus, act, onClose }: 
                     )}
                   </div>
                 </div>
+                <FriendButton p={p} onAsk={() => act(p.request === 'received' ? `Ami·e avec ${tagOf(p)}` : `Ajouter ${tagOf(p)}`, 'user-plus', 'social', () => (p.request === 'received' ? api.answerFriend(sim.id, p.id, 'accepter') : api.meet(sim.id, p.id, 'ajouter')))} />
                 <div className="mt-2 grid grid-cols-3 gap-2">
                   <button className="btn btn-soft !px-1 !py-1.5 !text-xs" onClick={() => act(`Saluer ${tagOf(p)}`, 'hand', 'social', () => api.meet(sim.id, p.id, 'saluer'))}>
                     <Hand size={14} /> Saluer
@@ -154,7 +191,7 @@ export function PlayersSheet({ sim, around, communeName, focus, act, onClose }: 
             ))
           )}
           <p className="px-1 pt-1 text-[11px] leading-snug font-bold text-[var(--color-ink-soft)]">
-            {canInvite ? `Inviter, c'est proposer de venir faire « ${sim.activity!.interaction.label} » avec toi.` : "Pour inviter, commence d'abord une activité dans un lieu du quartier."} Rejoindre, c'est faire la même chose au même endroit, à côté de la personne : l'amitié grandit plus vite ensemble.
+            {canInvite ? `Inviter, c'est proposer de venir faire « ${sim.activity!.interaction.label} » avec toi.` : "Pour inviter, commence d'abord une activité dans un lieu du quartier."} Rejoindre, c'est faire la même chose au même endroit, à côté de la personne : l'amitié grandit plus vite ensemble. Entre ami·es, vous pouvez vous écrire sur Gbairai, vous envoyer de l'argent avec Waye et vous inviter de n'importe où.
           </p>
         </div>
       </div>

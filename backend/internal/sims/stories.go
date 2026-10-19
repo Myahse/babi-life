@@ -130,7 +130,7 @@ func (h *Handler) stories(w http.ResponseWriter, r *http.Request) {
 			(SELECT count(*) FROM story_views v WHERE v.story = s.id)
 		FROM stories s JOIN sims o ON o.id = s.sim
 		WHERE s.expires_at > now() AND (s.sim = $1 OR (
-			EXISTS(SELECT 1 FROM bonds b WHERE b.sim_a = LEAST(s.sim, $1::uuid) AND b.sim_b = GREATEST(s.sim, $1::uuid))
+			EXISTS(SELECT 1 FROM bonds b WHERE b.sim_a = LEAST(s.sim, $1::uuid) AND b.sim_b = GREATEST(s.sim, $1::uuid) AND b.friends)
 			AND NOT EXISTS(SELECT 1 FROM blocks k WHERE (k.sim = $1 AND k.blocked = s.sim) OR (k.sim = s.sim AND k.blocked = $1))))
 		ORDER BY s.created_at`, me)
 	if err != nil {

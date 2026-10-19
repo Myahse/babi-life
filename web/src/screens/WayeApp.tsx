@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ArrowDownLeft, ArrowUpRight, ChevronLeft, Eye, EyeOff, HandCoins, QrCode, Receipt, Send } from 'lucide-react'
 import { api } from '../lib/api'
-import type { JournalEvent, Sim, World } from '../lib/types'
+import type { JournalEvent, Player, Sim, World } from '../lib/types'
+import { Portrait } from '../avatar/portrait'
 import { LOAN_INSTALLMENT, amount } from '../game/rules'
 import { Chip } from '../components/ui'
 import type { Act } from './phoneApps'
@@ -14,11 +15,20 @@ const QUICK = [1000, 2000, 5000, 10000, 25000]
  * Waye, the game's mobile money (modelled on Wave): the balance, sending
  * money for 1 %, paying bills for free, and the history.
  */
-export function WayeApp({ world, sim, act, journal, renderJournal }: { world: World; sim: Sim; act: Act; journal: JournalEvent[]; renderJournal: (events: JournalEvent[]) => React.ReactNode }) {
+export function WayeApp({ world, sim, act, journal, renderJournal, payTo }: { world: World; sim: Sim; act: Act; journal: JournalEvent[]; renderJournal: (events: JournalEvent[]) => React.ReactNode; /** A player friend to send to straight away. */ payTo?: string }) {
   const [hidden, setHidden] = useState(false)
-  const [to, setTo] = useState<string | null>(null)
+  const [to, setTo] = useState<string | null>(payTo ?? null)
   const [sum, setSum] = useState(5000)
-  const contact = world.contacts?.find((c) => c.id === to)
+  // The player friends, to send them money too (it lands in their Waye at once).
+  const [friends, setFriends] = useState<Player[]>([])
+  useEffect(() => {
+    api
+      .around(sim.id)
+      .then((a) => setFriends(a.friends))
+      .catch(() => setFriends([]))
+  }, [sim.id])
+  const friend = friends.find((f) => f.id === to)
+  const contact = world.contacts?.find((c) => c.id === to) ?? (friend ? { id: friend.id, name: friend.username ? `@${friend.username}` : friend.firstName, note: `Ton ami·e ${friend.firstName} : l'argent arrive tout de suite sur son Waye.` } : undefined)
   const fee = sendFee(sum)
   const earned = journal.reduce((s, e) => s + Math.max(0, e.money), 0)
   const spent = Math.abs(journal.reduce((s, e) => s + Math.min(0, e.money), 0))
@@ -95,6 +105,22 @@ export function WayeApp({ world, sim, act, journal, renderJournal }: { world: Wo
           </div>
         </div>
       </div>
+
+      {friends.length > 0 && (
+        <div>
+          <div className="label mb-1.5">Tes ami·es joueurs</div>
+          <div className="flex gap-3 overflow-x-auto pb-1">
+            {friends.map((f) => (
+              <button key={f.id} className="flex w-16 shrink-0 flex-col items-center gap-1 text-center text-[11px] font-extrabold active:scale-95" onClick={() => setTo(f.id)}>
+                <span className="relative block h-12 w-12 overflow-hidden rounded-full bg-gradient-to-b from-[#c9f0ff] to-[#5fd3ff] ring-2 ring-[#1aa6e6]">
+                  <Portrait look={f.look} gender={f.gender} framing="head" />
+                </span>
+                <span className="w-full truncate">{f.username ? `@${f.username}` : f.firstName}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div>
         <div className="label mb-1.5">Envoyer de l'argent · 1 % de frais</div>

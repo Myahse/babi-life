@@ -74,7 +74,7 @@ func (h *Handler) grin(w http.ResponseWriter, r *http.Request) {
 	_, _ = h.DB.Exec(ctx, `DELETE FROM grin WHERE created_at < now() - interval '7 days'`)
 	rows, err := h.DB.Query(ctx, `SELECT * FROM (
 		SELECT g.id, g.sim, s.first_name, s.gender, s.look, s.commune, g.body, g.created_at,
-			EXISTS(SELECT 1 FROM bonds b WHERE b.sim_a = LEAST(g.sim, $1::uuid) AND b.sim_b = GREATEST(g.sim, $1::uuid))
+			EXISTS(SELECT 1 FROM bonds b WHERE b.sim_a = LEAST(g.sim, $1::uuid) AND b.sim_b = GREATEST(g.sim, $1::uuid) AND b.friends)
 		FROM grin g JOIN sims s ON s.id = g.sim
 		WHERE g.room = $2 AND g.id > $3 AND NOT g.hidden
 			AND NOT EXISTS(SELECT 1 FROM blocks k WHERE (k.sim = $1 AND k.blocked = g.sim) OR (k.sim = g.sim AND k.blocked = $1))

@@ -130,7 +130,7 @@ func canWrite(ctx context.Context, q interface {
 }, me, to string) error {
 	x, y := pair(me, to)
 	var friends, blocked bool
-	if err := q.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM bonds WHERE sim_a = $1 AND sim_b = $2),
+	if err := q.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM bonds WHERE sim_a = $1 AND sim_b = $2 AND friends),
 		EXISTS(SELECT 1 FROM blocks WHERE (sim = $3 AND blocked = $4) OR (sim = $4 AND blocked = $3))`, x, y, me, to).Scan(&friends, &blocked); err != nil {
 		return err
 	}
@@ -167,11 +167,11 @@ func (h *Handler) chats(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	friends, err := h.players(ctx, game.MinuteOf(time.Now()), `
-		SELECT o.id, o.first_name, COALESCE(u.username, ''), o.gender, o.look, o.born_at, o.activity, b.friendship, o.city, o.commune, o.last_tick > $2
+		SELECT o.id, o.first_name, COALESCE(u.username, ''), o.gender, o.look, o.born_at, o.activity, b.friendship, o.city, o.commune, o.last_tick > $2, true, ''
 		FROM bonds b
 		JOIN sims o ON o.id = CASE WHEN b.sim_a = $1::uuid THEN b.sim_b ELSE b.sim_a END
 		JOIN users u ON u.id = o.user_id
-		WHERE b.sim_a = $1::uuid OR b.sim_b = $1::uuid
+		WHERE (b.sim_a = $1::uuid OR b.sim_b = $1::uuid) AND b.friends
 		LIMIT 200`, me, time.Now().Add(-OnlineWindow))
 	if err != nil {
 		h.gbairaiFail(w, err)
@@ -224,7 +224,7 @@ func (h *Handler) thread(w http.ResponseWriter, r *http.Request) {
 	other := chi.URLParam(r, "other")
 	x, y := pair(me, other)
 	var friends bool
-	if err := h.DB.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM bonds WHERE sim_a = $1 AND sim_b = $2)`, x, y).Scan(&friends); err != nil || !friends {
+	if err := h.DB.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM bonds WHERE sim_a = $1 AND sim_b = $2 AND friends)`, x, y).Scan(&friends); err != nil || !friends {
 		h.gbairaiFail(w, errNotFriends)
 		return
 	}

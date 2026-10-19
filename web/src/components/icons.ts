@@ -5,7 +5,7 @@ import {
   Flame, Footprints, HandHeart, Heart, Hourglass, House, Landmark, MessagesSquare, Moon, Mountain, Music, Palette,
   PartyPopper, PiggyBank, ShoppingBasket, ShowerHead, Smartphone, Sparkles, Store, Sunset, TreePalm, Trophy, Tv, Users,
   Volleyball, Waves, Baby, Bird, BookOpen, BrushCleaning, Cake, CarTaxiFront, Drama, Drum, FileText, Flag, Flower2, Gift, GraduationCap, Hammer,
-  Hospital, Library, Presentation, Shovel, Stamp, Stethoscope, Utensils, ShoppingBag, ShoppingCart, Shirt, IceCreamCone, Hamburger, CupSoda, Scissors, Hotel, Hand, Send, Fuel, Bike, Dumbbell, PawPrint, type LucideIcon,
+  Hospital, Library, Presentation, Shovel, Stamp, Stethoscope, Utensils, ShoppingBag, ShoppingCart, Shirt, IceCreamCone, Hamburger, CupSoda, Scissors, Hotel, Hand, Send, Fuel, Bike, Dumbbell, PawPrint, UserPlus, type LucideIcon,
 } from 'lucide-react'
 
 // Icon names sent by the API (backend/internal/game) → components.
@@ -18,7 +18,7 @@ const REGISTRY: Record<string, LucideIcon> = {
   hourglass: Hourglass, house: House, landmark: Landmark, 'messages-square': MessagesSquare, moon: Moon,
   mountain: Mountain, music: Music, palette: Palette, 'party-popper': PartyPopper, 'piggy-bank': PiggyBank,
   'shopping-basket': ShoppingBasket, 'shower-head': ShowerHead, smartphone: Smartphone, store: Store, sunset: Sunset,
-  'tree-palm': TreePalm, trophy: Trophy, tv: Tv, users: Users, volleyball: Volleyball, waves: Waves,
+  'tree-palm': TreePalm, trophy: Trophy, tv: Tv, users: Users, 'user-plus': UserPlus, volleyball: Volleyball, waves: Waves,
   'bed-single': BedSingle, castle: Castle, 'chef-hat': ChefHat, 'door-open': DoorOpen, gem: Gem, 'hand-coins': HandCoins,
   newspaper: Newspaper, sofa: Sofa,
   car: Car, 'cloud-rain': CloudRain, 'id-card': IdCard, shield: Shield, umbrella: Umbrella, 'zap-off': ZapOff,
