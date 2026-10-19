@@ -96,8 +96,9 @@ export type ChatMessage = { id: number; mine: boolean; body: string; at: string;
 export type Chat = { friend: Player; last?: ChatMessage; unread: number; blocked?: boolean }
 /** The betting apps (Bet225, ParisFoot): the virtual football and the bets. */
 export type BetOdds = Record<'1' | 'N' | '2' | 'plus' | 'moins' | 'btsOui' | 'btsNon', number>
-export type VirtualMatch = { key: string; round: number; home: string; away: string; kickoff: number; end: number; odds: BetOdds; minute: number; score?: [number, number]; goals?: string[] }
-export type BetRounds = { now: number; app: string; boost: number; rounds: { round: number; kickoff: number; matches: VirtualMatch[] }[] }
+export type VirtualMatch = { key: string; round: number; home: string; away: string; kickoff: number; end: number; odds: BetOdds; minute: number; score?: [number, number]; goals?: string[]; /** foot, basket, tennis */ sport?: Sport; /** basketball's points line */ line?: number }
+export type Sport = 'foot' | 'basket' | 'tennis'
+export type BetRounds = { now: number; app: string; boost: number; sport?: Sport; league?: string; rounds: { round: number; kickoff: number; matches: VirtualMatch[] }[] }
 export type BetLeg = { match: string; label: string; pick: string; odds: number; won: boolean | null; score?: [number, number] }
 export type BetView = { id: number; app: string; stake: number; odds: number; status: 'open' | 'won' | 'lost'; payout: number; at: string; legs: BetLeg[] }
 /** Le grin: the public chat (all of Babi, or the commune). */

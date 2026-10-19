@@ -59,7 +59,10 @@ type VirtualMatch struct {
 	Odds    Odds     `json:"odds"`
 	Minute  int      `json:"minute"`          // 0 before kickoff, 90 at the end
 	Score   *[2]int  `json:"score,omitempty"` // from kickoff
-	Goals   []string `json:"goals,omitempty"` // « 23' H », as they come
+	Goals   []string `json:"goals,omitempty"` // « 23' H », as they come; basketball's quarters, tennis's sets
+	// Sport: foot, basket or tennis (sports.go); Line: basketball's points line for plus / moins.
+	Sport string  `json:"sport"`
+	Line  float64 `json:"line,omitempty"`
 }
 
 // Odds: the prices of each market (decimal odds).
@@ -213,8 +216,11 @@ func MatchIn(league string, round int64, i int, now int64, margin float64) (Virt
 		return VirtualMatch{}, false
 	}
 	home, away := pairs[i][0], pairs[i][1]
+	if sport := SportOf(league); sport != SportFoot {
+		return matchSport(sport, league, round, i, home, away, now, margin), true
+	}
 	kick := roundStart(round) + OpenMinutes*60
-	m := VirtualMatch{Key: fmt.Sprintf("%d:%d", round, i), Round: round, Home: home, Away: away, Kickoff: kick, End: kick + PlayMinutes*60, Odds: OddsFor(home, away, margin)}
+	m := VirtualMatch{Key: fmt.Sprintf("%s:%d:%d", league, round, i), Round: round, Home: home, Away: away, Kickoff: kick, End: kick + PlayMinutes*60, Odds: OddsFor(home, away, margin), Sport: SportFoot}
 	if now < kick {
 		return m, true
 	}
@@ -252,6 +258,32 @@ func Won(m VirtualMatch, pick string, now int64) (won, ok bool) {
 		return false, false
 	}
 	h, a := m.Score[0], m.Score[1]
+	switch m.Sport {
+	case SportBasket:
+		switch pick {
+		case "1":
+			return h > a, true
+		case "2":
+			return h < a, true
+		case "plus":
+			return float64(h+a) > m.Line, true
+		case "moins":
+			return float64(h+a) < m.Line, true
+		}
+		return false, true
+	case SportTennis:
+		switch pick {
+		case "1":
+			return h > a, true
+		case "2":
+			return h < a, true
+		case "btsOui": // three sets
+			return h+a == 3, true
+		case "btsNon":
+			return h+a == 2, true
+		}
+		return false, true
+	}
 	switch pick {
 	case "1":
 		return h > a, true
@@ -273,6 +305,12 @@ func Won(m VirtualMatch, pick string, now int64) (won, ok bool) {
 
 // PickOdds: a pick's price on a match.
 func PickOdds(o Odds, pick string) (float64, bool) {
+	p, ok := pickOdds(o, pick)
+	// A market the sport doesn't have (a draw in basketball): no price, no bet.
+	return p, ok && p > 0
+}
+
+func pickOdds(o Odds, pick string) (float64, bool) {
 	switch pick {
 	case "1":
 		return o.Home, true

@@ -113,7 +113,7 @@ export const api = {
   report: (id: string, friend: string, reason: string, messageId?: number) => post<{ text: string }>(`/sims/${id}/gbairai/${friend}/report`, { reason, messageId }),
   lotoDraws: () => request<{ now: number; pays: Record<number, number>; draws: { id: number; name: string; at: number; numbers?: number[] }[] }>('/loto/draws'),
   buyLoto: (id: string, kiosk: string, draw: number, numbers: number[], stake: number) => post<ActionResult>(`/sims/${id}/loto`, { kiosk, draw, numbers, stake }),
-  betRounds: (app: string) => request<BetRounds>(`/bets/rounds?app=${app}`),
+  betRounds: (app: string, sport = 'foot') => request<BetRounds>(`/bets/rounds?app=${app}&sport=${sport}`),
   placeBet: (id: string, app: string, stake: number, legs: { match: string; pick: string }[]) => post<ActionResult>(`/sims/${id}/bets`, { app, stake, legs }),
   settleBets: (id: string) => post<ActionResult>(`/sims/${id}/bets/settle`, {}),
   pushKey: () => request<{ key: string; web: boolean; app: boolean }>('/push/key'),

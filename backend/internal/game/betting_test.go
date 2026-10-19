@@ -110,3 +110,48 @@ func TestLeaguesDiffer(t *testing.T) {
 		}
 	}
 }
+
+func TestBasketAndTennis(t *testing.T) {
+	r := RoundAt(1_800_000_000)
+	end := roundStart(r) + (OpenMinutes+PlayMinutes)*60 + 1
+	for _, league := range []string{"basket-babi", "basket-regions", "tennis-abidjan", "tennis-regions"} {
+		sport := SportOf(league)
+		for i := range PairingIn(league, r) {
+			before, _ := MatchIn(league, r, i, roundStart(r), Margin)
+			if before.Sport != sport || before.Score != nil || before.Odds.Draw != 0 || before.Odds.Home <= 1 || before.Odds.Away <= 1 {
+				t.Fatalf("%s before kickoff: %+v", league, before)
+			}
+			m, _ := MatchIn(league, r, i, end, Margin)
+			again, _ := MatchIn(league, r, i, end, Margin)
+			if m.Score == nil || *m.Score != *again.Score {
+				t.Fatalf("%s: no score, or not the same twice", league)
+			}
+			h, a := m.Score[0], m.Score[1]
+			if h == a {
+				t.Fatalf("%s: a draw %d-%d (none in %s)", league, h, a, sport)
+			}
+			won1, ok := Won(m, "1", end)
+			won2, _ := Won(m, "2", end)
+			if !ok || won1 == won2 {
+				t.Fatalf("%s: exactly one side wins", league)
+			}
+			if _, ok := PickOdds(m.Odds, "N"); ok {
+				t.Fatalf("%s: no draw to bet on", league)
+			}
+			switch sport {
+			case SportBasket:
+				if h < 40 || a < 40 || m.Line < 100 || len(m.Goals) != 4 {
+					t.Fatalf("basketball: %d-%d line %.1f quarters %v", h, a, m.Line, m.Goals)
+				}
+			case SportTennis:
+				if (h != 2 && a != 2) || h+a < 2 || h+a > 3 || len(m.Goals) != h+a {
+					t.Fatalf("tennis: sets %d-%d %v", h, a, m.Goals)
+				}
+				three, _ := Won(m, "btsOui", end)
+				if three != (h+a == 3) {
+					t.Fatal("tennis: three sets")
+				}
+			}
+		}
+	}
+}

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Check, Clock3, Radio, Trash2, X } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
-import type { BetRounds, BetView, Sim, VirtualMatch } from '../lib/types'
+import type { BetRounds, BetView, Sim, Sport, VirtualMatch } from '../lib/types'
 import type { Act } from './phoneApps'
 import { NotifyBanner } from '../components/NotifyPrompt'
 
@@ -20,6 +20,18 @@ export const BRANDS: Record<'bet225' | 'parisfoot', Brand> = {
 }
 
 const PICK: Record<string, string> = { '1': '1', N: 'N', '2': '2', plus: '+2,5 buts', moins: '-2,5 buts', btsOui: 'Les 2 marquent', btsNon: 'Pas les 2' }
+/** A pick's name in its sport: basketball's points line, tennis's three sets. */
+const pickLabel = (m: Pick<VirtualMatch, 'sport' | 'line'> | undefined, pick: string) => {
+  if (m?.sport === 'basket' && (pick === 'plus' || pick === 'moins')) return `${pick === 'plus' ? '+' : '-'}${String(m.line ?? '').replace('.', ',')} pts`
+  if (m?.sport === 'tennis' && pick === 'btsOui') return '3 sets'
+  if (m?.sport === 'tennis' && pick === 'btsNon') return '2 sets'
+  return PICK[pick]
+}
+const SPORTS: { id: Sport; label: string; icon: string }[] = [
+  { id: 'foot', label: 'Foot', icon: '⚽' },
+  { id: 'basket', label: 'Basket', icon: '🏀' },
+  { id: 'tennis', label: 'Tennis', icon: '🎾' },
+]
 type Leg = { match: VirtualMatch; pick: keyof VirtualMatch['odds'] }
 const nf = (n: number) => n.toLocaleString('fr-FR')
 const clockOf = (s: number) => `${Math.floor(Math.max(0, s) / 60)}:${String(Math.max(0, s) % 60).padStart(2, '0')}`
@@ -38,6 +50,7 @@ export function BetApp({ sim, act, app }: { sim: Sim; act: Act; app: 'bet225' | 
 function useBetting(sim: Sim, act: Act, app: 'bet225' | 'parisfoot') {
   const b = BRANDS[app]
   const [tab, setTab] = useState<'matchs' | 'live' | 'paris'>('matchs')
+  const [sport, setSport] = useState<Sport>('foot')
   const [data, setData] = useState<BetRounds | null>(null)
   const [bets, setBets] = useState<BetView[]>([])
   const [slip, setSlip] = useState<Leg[]>([])
@@ -48,7 +61,7 @@ function useBetting(sim: Sim, act: Act, app: 'bet225' | 'parisfoot') {
   // The rounds, every 10 s; the bets settled when the app opens, then every 30 s.
   useEffect(() => {
     let stop = false
-    const load = () => api.betRounds(app).then((d) => !stop && setData(d), () => undefined)
+    const load = () => api.betRounds(app, sport).then((d) => !stop && setData(d), () => undefined)
     const settle = () =>
       void act('Vérifier mes paris', 'trophy', 'money', () => api.settleBets(sim.id)).then(() => api.myBets(sim.id, app).then((x) => !stop && setBets(x), () => undefined))
     void load()
@@ -63,7 +76,7 @@ function useBetting(sim: Sim, act: Act, app: 'bet225' | 'parisfoot') {
       clearInterval(t3)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sim.id, app])
+  }, [sim.id, app, sport])
 
   const open = data?.rounds.filter((r) => r.kickoff > now) ?? []
   const live = data?.rounds.filter((r) => r.kickoff <= now) ?? []
@@ -94,19 +107,21 @@ function useBetting(sim: Sim, act: Act, app: 'bet225' | 'parisfoot') {
     }
   }
 
-  return { b, tab, setTab, data, bets, slip, setSlip, stake, setStake, note, now, open, live, odds, toggle, place }
+  return { b, tab, setTab, sport, setSport, data, bets, slip, setSlip, stake, setStake, note, now, open, live, odds, toggle, place }
 }
 
 type Betting = ReturnType<typeof useBetting>
 
 /** Bet225: dark, every market, a boost on big combined bets. */
 function Bet225({ sim, s }: { sim: Sim; s: Betting }) {
-  const { b, tab, setTab, data, bets, slip, setSlip, stake, setStake, note, now, open, live, odds, toggle, place } = s
+  const { b, tab, setTab, sport, setSport, data, bets, slip, setSlip, stake, setStake, note, now, open, live, odds, toggle, place } = s
   const Odd = ({ m, pick }: { m: VirtualMatch; pick: Leg['pick'] }) => {
     const on = slip.some((l) => l.match.key === m.key && l.pick === pick)
+    // A market the sport doesn't have (no draw in basketball or tennis).
+    if (!m.odds[pick]) return null
     return (
       <button onClick={() => toggle(m, pick)} className="flex min-w-0 flex-1 flex-col items-center rounded-lg py-1.5 text-[11px] font-bold transition active:scale-95" style={{ background: on ? b.accent : 'rgba(255,255,255,.07)', color: on ? b.ink : '#fff' }}>
-        <span className="opacity-70">{PICK[pick]}</span>
+        <span className="opacity-70">{pickLabel(m, pick)}</span>
         <span className="text-[14px] font-extrabold tabular-nums">{m.odds[pick].toFixed(2)}</span>
       </button>
     )
@@ -133,13 +148,21 @@ function Bet225({ sim, s }: { sim: Sim; s: Betting }) {
           </button>
         ))}
       </div>
+      {/* The sports */}
+      <div className="mt-2 flex gap-1.5 overflow-x-auto">
+        {SPORTS.map((x) => (
+          <button key={x.id} onClick={() => setSport(x.id)} className="flex shrink-0 items-center gap-1 rounded-lg px-3 py-1 text-xs font-extrabold" style={sport === x.id ? { background: '#ffffff', color: b.ink } : { background: 'rgba(255,255,255,.08)', color: 'rgba(255,255,255,.75)' }}>
+            {x.icon} {x.label}
+          </button>
+        ))}
+      </div>
       {note && <p className="mt-2 rounded-xl bg-white/10 px-3 py-2 text-xs font-bold">{note}</p>}
 
       {tab === 'matchs' &&
         open.map((r) => (
           <section key={r.round} className="mt-3">
             <div className="mb-1.5 flex items-center justify-between text-[11px] font-extrabold tracking-wide text-white/60 uppercase">
-              <span>Championnat virtuel de Babi</span>
+              <span>{data?.league ?? ''}</span>
               <span className="flex items-center gap-1">
                 <Clock3 size={12} /> coup d'envoi dans {clockOf(r.kickoff - now)}
               </span>
@@ -160,6 +183,7 @@ function Bet225({ sim, s }: { sim: Sim; s: Betting }) {
                       <Odd m={m} pick="plus" />
                       <Odd m={m} pick="moins" />
                       <Odd m={m} pick="btsOui" />
+                      {m.sport === 'tennis' && <Odd m={m} pick="btsNon" />}
                     </div>
                   )}
                 </div>
@@ -209,7 +233,7 @@ function Bet225({ sim, s }: { sim: Sim; s: Betting }) {
                   <li key={l.match} className="flex items-center gap-2">
                     {l.won === null ? <Clock3 size={13} className="shrink-0 text-white/50" /> : l.won ? <Check size={13} className="shrink-0 text-[#22c55e]" /> : <X size={13} className="shrink-0 text-[#ef4444]" />}
                     <span className="min-w-0 flex-1 truncate">{l.label}</span>
-                    <span className="shrink-0 text-white/70">{PICK[l.pick]}</span>
+                    <span className="shrink-0 text-white/70">{pickLabel(undefined, l.pick)}</span>
                     {l.score && <span className="shrink-0 tabular-nums">{l.score.join('-')}</span>}
                     <span className="shrink-0 tabular-nums" style={{ color: b.accent }}>
                       {l.odds.toFixed(2)}
@@ -244,7 +268,7 @@ function Bet225({ sim, s }: { sim: Sim; s: Betting }) {
                   {l.match.home} – {l.match.away}
                 </span>
                 <span className="shrink-0">
-                  {PICK[l.pick]} · {l.match.odds[l.pick].toFixed(2)}
+                  {pickLabel(l.match, l.pick)} · {l.match.odds[l.pick].toFixed(2)}
                 </span>
               </li>
             ))}
@@ -280,11 +304,12 @@ const STAKES = [200, 500, 1000, 2000, 5000]
  * the classic 1 N 2 grid, tickets with a stamp, the stake in a tap.
  */
 function ParisFoot({ sim, s }: { sim: Sim; s: Betting }) {
-  const { b, tab, setTab, bets, slip, setSlip, stake, setStake, note, now, open, live, odds, toggle, place } = s
+  const { b, tab, setTab, sport, setSport, data, bets, slip, setSlip, stake, setStake, note, now, open, live, odds, toggle, place } = s
   const next = open[0]
   const running = bets.filter((x) => x.status === 'open').length
   const Cell = ({ m, pick }: { m: VirtualMatch; pick: Leg['pick'] }) => {
     const on = slip.some((l) => l.match.key === m.key && l.pick === pick)
+    if (!m.odds[pick]) return null
     return (
       <button onClick={() => toggle(m, pick)} className="flex h-11 w-12 shrink-0 flex-col items-center justify-center rounded-md border text-[13px] font-extrabold tabular-nums transition active:scale-95" style={on ? { background: b.accent, borderColor: b.accent, color: '#fff' } : { background: '#fff', borderColor: '#ddd6fe', color: '#1b1530' }}>
         <span className="text-[9px] font-bold opacity-60">{pick}</span>
@@ -301,7 +326,14 @@ function ParisFoot({ sim, s }: { sim: Sim; s: Betting }) {
           </span>
           <span className="text-xs font-extrabold tabular-nums">Solde {nf(sim.money)} Djai</span>
         </div>
-        <div className="text-[11px] font-bold text-white/70">Ligue des Régions · un match toutes les 15 min</div>
+        <div className="text-[11px] font-bold text-white/70">{data?.league ?? ''} · une journée toutes les 15 min</div>
+        <div className="mt-2 flex gap-1.5">
+          {SPORTS.map((x) => (
+            <button key={x.id} onClick={() => setSport(x.id)} className="rounded-full px-3 py-0.5 text-xs font-extrabold" style={sport === x.id ? { background: '#fde047', color: '#1b1530' } : { background: 'rgba(255,255,255,.14)' }}>
+              {x.icon} {x.label}
+            </button>
+          ))}
+        </div>
         <div className="mt-2 flex">
           {(
             [
@@ -382,7 +414,7 @@ function ParisFoot({ sim, s }: { sim: Sim; s: Betting }) {
                   {x.legs.map((l) => (
                     <li key={l.match} className="flex items-center gap-2">
                       <span className="min-w-0 flex-1 truncate">{l.label}</span>
-                      <span className="shrink-0 rounded bg-[#ede9fe] px-1.5">{PICK[l.pick]}</span>
+                      <span className="shrink-0 rounded bg-[#ede9fe] px-1.5">{pickLabel(undefined, l.pick)}</span>
                       {l.score && <span className="shrink-0 tabular-nums">{l.score.join(':')}</span>}
                       {l.won === null ? <Clock3 size={13} className="shrink-0 text-[#a78bfa]" /> : l.won ? <Check size={13} className="shrink-0 text-[#16a34a]" /> : <X size={13} className="shrink-0 text-[#dc2626]" />}
                     </li>

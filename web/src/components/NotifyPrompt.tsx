@@ -73,7 +73,7 @@ export function NotifyBanner({ what, dark }: { what: string; dark?: boolean }) {
   const { state, enable } = usePush()
   if (state !== 'off' && state !== 'denied') return null
   return (
-    <div className={`mb-2 flex items-center gap-2 rounded-2xl px-3 py-2 text-xs font-bold ${dark ? 'bg-white/10 text-white' : 'bg-[#fff4e8] text-[var(--color-ink)]'}`}>
+    <div className={`mb-2 flex items-center gap-2 rounded-2xl px-3 py-2 text-xs font-bold ${dark ? 'bg-[#17291f] text-white' : 'bg-[#fff4e8] text-[var(--color-ink)]'}`}>
       <BellOff size={16} className="shrink-0 text-[var(--color-orange)]" />
       <span className="min-w-0 flex-1">{state === 'denied' ? SETTINGS_HELP : `Active les notifications pour savoir ${what}.`}</span>
       {state === 'off' && (

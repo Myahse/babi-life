@@ -27,16 +27,17 @@ import (
 
 type betApp struct {
 	ID, Name string
-	// League: which virtual league its matches are in (game.Leagues).
-	League string
-	Margin float64
+	// League: its football league; Leagues: its league in each sport (game.LeagueList).
+	League  string
+	Leagues map[string]string
+	Margin  float64
 	// Boost: extra winnings on combined bets of 3 matches or more, per match.
 	Boost float64
 }
 
 var betApps = map[string]betApp{
-	"bet225":    {"bet225", "Bet225", "babi", 0.08, 0.05},
-	"parisfoot": {"parisfoot", "ParisFoot", "regions", 0.06, 0},
+	"bet225":    {"bet225", "Bet225", "babi", map[string]string{game.SportFoot: "babi", game.SportBasket: "basket-babi", game.SportTennis: "tennis-abidjan"}, 0.08, 0.05},
+	"parisfoot": {"parisfoot", "ParisFoot", "regions", map[string]string{game.SportFoot: "regions", game.SportBasket: "basket-regions", game.SportTennis: "tennis-regions"}, 0.06, 0},
 }
 
 const (
@@ -58,9 +59,13 @@ var (
 	errTooManyBets = fmt.Errorf("%d paris aujourd'hui, c'est assez : reviens demain", BetsPerDay)
 )
 
-// leagueOf: the league a placed leg is in: its app's, except a ParisFoot bet
+// leagueOf: the league a placed leg is in: in its key (« league:round:i »), or
+// for an older one (« round:i ») its app's football, except a ParisFoot bet
 // from before the apps had their own leagues (its label is a Babi match).
-func leagueOf(app string, round int64, i int, label string) string {
+func leagueOf(app, league string, round int64, i int, label string) string {
+	if league != "" {
+		return league
+	}
 	l := betApps[app].League
 	if l != "babi" {
 		if p := game.Pairing(round); i >= 0 && i < len(p) && label == p[i][0]+" – "+p[i][1] {
@@ -78,11 +83,22 @@ func boostOf(a betApp, n int) float64 {
 	return 1 + a.Boost*float64(n-2)
 }
 
-// betRounds: the last round's results, the one under way, and the next two (GET /bets/rounds?app=).
+// betRounds: the last round's results, the one under way, and the next two (GET /bets/rounds?app=&sport=).
 func (h *Handler) betRounds(w http.ResponseWriter, r *http.Request) {
 	a, ok := betApps[r.URL.Query().Get("app")]
 	if !ok {
 		a = betApps["parisfoot"]
+	}
+	sport := r.URL.Query().Get("sport")
+	league, ok := a.Leagues[sport]
+	if !ok {
+		sport, league = game.SportFoot, a.League
+	}
+	name := ""
+	for _, l := range game.LeagueList {
+		if l.ID == league {
+			name = l.Name
+		}
 	}
 	now := time.Now().Unix()
 	cur := game.RoundAt(now)
@@ -93,10 +109,10 @@ func (h *Handler) betRounds(w http.ResponseWriter, r *http.Request) {
 	}
 	out := []round{}
 	for r := cur - 1; r <= cur+2; r++ {
-		ms := game.Round(a.League, r, now, a.Margin)
+		ms := game.Round(league, r, now, a.Margin)
 		out = append(out, round{r, ms[0].Kickoff, ms})
 	}
-	httpx.JSON(w, http.StatusOK, map[string]any{"now": now, "app": a.Name, "boost": a.Boost, "rounds": out})
+	httpx.JSON(w, http.StatusOK, map[string]any{"now": now, "app": a.Name, "boost": a.Boost, "rounds": out, "sport": sport, "league": name, "sports": []string{game.SportFoot, game.SportBasket, game.SportTennis}})
 }
 
 type legReq struct {
@@ -151,15 +167,27 @@ func (h *Handler) placeBet(w http.ResponseWriter, r *http.Request) {
 		}
 		legs := []leg{}
 		for _, l := range req.Legs {
-			round, i, err := parseMatch(l.Match)
+			league, round, i, err := parseMatch(l.Match)
 			if err != nil {
 				return game.Outcome{}, nil, errBadPick
 			}
-			if seen[l.Match] {
+			// One of this app's leagues (an older app sends no league: its football).
+			if league == "" {
+				league = a.League
+			}
+			ok := false
+			for _, own := range a.Leagues {
+				ok = ok || own == league
+			}
+			if !ok {
+				return game.Outcome{}, nil, errBadPick
+			}
+			key := fmt.Sprintf("%s:%d:%d", league, round, i)
+			if seen[key] {
 				return game.Outcome{}, nil, errSameMatch
 			}
-			seen[l.Match] = true
-			m, ok := game.MatchIn(a.League, round, i, now, a.Margin)
+			seen[key] = true
+			m, ok := game.MatchIn(league, round, i, now, a.Margin)
 			if !ok {
 				return game.Outcome{}, nil, errBadPick
 			}
@@ -172,7 +200,7 @@ func (h *Handler) placeBet(w http.ResponseWriter, r *http.Request) {
 			}
 			odds *= o
 			settles = max(settles, m.End)
-			legs = append(legs, leg{l.Match, m.Home + " – " + m.Away, l.Pick, o})
+			legs = append(legs, leg{key, m.Home + " – " + m.Away, l.Pick, o})
 		}
 		odds = math.Min(MaxOdds, math.Round(odds*boostOf(a, len(legs))*100)/100)
 		var id int64
@@ -194,17 +222,22 @@ func (h *Handler) placeBet(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func parseMatch(key string) (int64, int, error) {
-	a, b, ok := strings.Cut(key, ":")
-	if !ok {
-		return 0, 0, errBadPick
+// parseMatch: a leg's match, « league:round:i » (or « round:i » for older bets: no league).
+func parseMatch(key string) (string, int64, int, error) {
+	parts := strings.Split(key, ":")
+	league := ""
+	if len(parts) == 3 {
+		league, parts = parts[0], parts[1:]
 	}
-	round, err := strconv.ParseInt(a, 10, 64)
+	if len(parts) != 2 {
+		return "", 0, 0, errBadPick
+	}
+	round, err := strconv.ParseInt(parts[0], 10, 64)
 	if err != nil {
-		return 0, 0, err
+		return "", 0, 0, err
 	}
-	i, err := strconv.Atoi(b)
-	return round, i, err
+	i, err := strconv.Atoi(parts[1])
+	return league, round, i, err
 }
 
 func money(n int) string {
@@ -251,12 +284,12 @@ func settleBetsTx(ctx context.Context, tx pgx.Tx, s *Sim) ([]Event, error) {
 			bets[id] = &open{app: o.app, stake: o.stake, odds: o.odds}
 			order = append(order, id)
 		}
-		round, i, err := parseMatch(key)
+		league, round, i, err := parseMatch(key)
 		if err != nil {
 			bets[id].lost = true
 			continue
 		}
-		m, _ := game.MatchIn(leagueOf(o.app, round, i, label), round, i, now, 0)
+		m, _ := game.MatchIn(leagueOf(o.app, league, round, i, label), round, i, now, 0)
 		if won, ok := game.Won(m, pick, now); ok && !won {
 			bets[id].lost = true
 		}
@@ -336,8 +369,8 @@ func (h *Handler) myBets(w http.ResponseWriter, r *http.Request) {
 			httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 			return
 		}
-		if round, i, err := parseMatch(leg.Match); err == nil {
-			m, _ := game.MatchIn(leagueOf(b.App, round, i, leg.Label), round, i, now, 0)
+		if league, round, i, err := parseMatch(leg.Match); err == nil {
+			m, _ := game.MatchIn(leagueOf(b.App, league, round, i, leg.Label), round, i, now, 0)
 			leg.Score = m.Score
 			if won, ok := game.Won(m, leg.Pick, now); ok {
 				leg.Won = &won
@@ -399,8 +432,8 @@ func (h *Handler) tellBets(ctx context.Context) {
 			bets[id] = &d
 			order = append(order, id)
 		}
-		if round, i, err := parseMatch(key); err == nil {
-			m, _ := game.MatchIn(leagueOf(d.app, round, i, label), round, i, now, 0)
+		if league, round, i, err := parseMatch(key); err == nil {
+			m, _ := game.MatchIn(leagueOf(d.app, league, round, i, label), round, i, now, 0)
 			if won, ok := game.Won(m, pick, now); ok && !won {
 				bets[id].lost = true
 			}
