@@ -43,8 +43,15 @@ export default function Tester() {
     setError(null)
     setBusy(true)
     try {
-      const res = await fetch(`${BASE}/admin/stats`, { headers: { 'X-Admin-Key': key.trim() } })
-      if (!res.ok) throw new Error(res.status === 401 || res.status === 403 ? 'Clé incorrecte.' : 'Le serveur ne répond pas : réessaie.')
+      let res: Response
+      try {
+        res = await fetch(`${BASE}/admin/stats`, { headers: { 'X-Admin-Key': key.trim() } })
+      } catch {
+        // No answer at all: the server is waking up (Render), or it doesn't accept this site (ALLOWED_ORIGINS).
+        throw new Error(`Le serveur ne répond pas (${new URL(BASE).host}). S'il dormait, réessaie dans une minute ; sinon ${location.origin} doit être dans ALLOWED_ORIGINS sur Render.`)
+      }
+      if (res.status === 401) throw new Error("Clé refusée par le serveur : ce n'est pas la valeur d'ADMIN_KEY sur Render (ou ADMIN_KEY n'y est pas défini).")
+      if (!res.ok) throw new Error(`Le serveur a répondu ${res.status} : réessaie dans un instant.`)
       setTester(true)
       // A fresh load of a fresh copy: the offline cache may still hold the
       // version from before this page existed, which only knows the wish list.
