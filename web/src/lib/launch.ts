@@ -6,6 +6,7 @@
  * key, checked by the server), which marks that browser as a tester's.
  */
 const TESTER = 'babi-testeur'
+const TESTER_PASS = 'babi-testeur-code'
 
 /**
  * The SHA-256 of the testers' code, checked in the browser (no server, so
@@ -33,11 +34,25 @@ export function isTester() {
   }
 }
 
-/** Marks (or unmarks) this browser as a tester's; reload for it to apply. */
-export function setTester(on: boolean) {
+/** The code typed on /testeur (the testers' code or the admin key): the server asks for it in the testers' toolbox. */
+export function testerPass() {
   try {
-    if (on) localStorage.setItem(TESTER, '1')
-    else localStorage.removeItem(TESTER)
+    return localStorage.getItem(TESTER_PASS) ?? ''
+  } catch {
+    return ''
+  }
+}
+
+/** Marks (or unmarks) this browser as a tester's, with the code typed; reload for it to apply. */
+export function setTester(on: boolean, pass = '') {
+  try {
+    if (on) {
+      localStorage.setItem(TESTER, '1')
+      if (pass) localStorage.setItem(TESTER_PASS, pass.trim())
+    } else {
+      localStorage.removeItem(TESTER)
+      localStorage.removeItem(TESTER_PASS)
+    }
   } catch {
     /* private browsing: nothing kept */
   }

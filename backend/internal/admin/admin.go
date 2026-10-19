@@ -40,6 +40,7 @@ func (h *Handler) Routes(r chi.Router) {
 		r.Get("/log", h.log)
 		r.Get("/announcements", h.announcements)
 		r.Post("/announcements", h.announce)
+		r.Post("/money", h.giveMoney)
 		r.Get("/whatsapp", h.waStatus)
 		r.Post("/whatsapp", h.waSend)
 		r.Post("/whatsapp/{id}/stop", h.waStop)
@@ -221,5 +222,46 @@ func (h *Handler) announce(w http.ResponseWriter, r *http.Request) {
 	n := int(tag.RowsAffected())
 	_, _ = h.DB.Exec(ctx, `INSERT INTO announcements (text, reached) VALUES ($1, $2)`, text, n)
 	h.Log(ctx, "Annonce envoyée", strconv.Itoa(n)+" persos")
+	httpx.JSON(w, http.StatusOK, map[string]int{"reached": n})
+}
+
+// MaxGift: the most Djai the team gives each Sim at once.
+const MaxGift = 10_000_000
+
+// giveMoney: Djai for every Sim (or one player's Sims, with userId), with a
+// line in each Sim's journal saying who gave it and why.
+func (h *Handler) giveMoney(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Amount int    `json:"amount"`
+		Note   string `json:"note"`
+		UserID string `json:"userId"`
+	}
+	if err := httpx.Decode(r, &req); err != nil {
+		httpx.Error(w, http.StatusBadRequest, "requête invalide")
+		return
+	}
+	note := strings.TrimSpace(req.Note)
+	if req.Amount < 1 || req.Amount > MaxGift || utf8.RuneCountInString(note) > 200 {
+		httpx.Error(w, http.StatusBadRequest, "un montant de 1 à 10 000 000 Djai (et un mot de 200 caractères au plus)")
+		return
+	}
+	text := "Babi Life t'offre " + game.FCFA(req.Amount) + "."
+	if note != "" {
+		text += " " + note
+	}
+	ctx := r.Context()
+	tag, err := h.DB.Exec(ctx, `WITH given AS (UPDATE sims SET money = money + $1 WHERE $2 = '' OR user_id::text = $2 RETURNING id)
+		INSERT INTO sim_events (sim_id, kind, text, money, game_time) SELECT id, 'annonce', $3, $1, $4 FROM given`,
+		req.Amount, req.UserID, text, game.MinuteOf(time.Now()))
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "envoi impossible")
+		return
+	}
+	n := int(tag.RowsAffected())
+	who := "tous les persos"
+	if req.UserID != "" {
+		who = "un joueur"
+	}
+	h.Log(ctx, "Djai offerts", game.FCFA(req.Amount)+" à "+who+" ("+strconv.Itoa(n)+" persos)")
 	httpx.JSON(w, http.StatusOK, map[string]int{"reached": n})
 }

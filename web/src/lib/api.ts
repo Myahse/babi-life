@@ -98,6 +98,8 @@ export const api = {
   /** The nouchis of a couloir got the Sim: they take what's in its pockets (the API says how much). */
   robbed: (id: string, spot: string) => post<ActionResult>(`/sims/${id}/robbed`, { spot }),
   stop: (id: string) => post<ActionResult>(`/sims/${id}/stop`, {}),
+  /** The testers' toolbox (pass: the code typed on /testeur). */
+  tester: (id: string, pass: string, action: 'age' | 'money' | 'needs' | 'finish' | 'apps', extra: { stage?: string; amount?: number } = {}) => post<ActionResult>(`/sims/${id}/tester`, { pass, action, ...extra }),
   /** Other players: who's in the commune, invitations, player friends. */
   around: (id: string) => request<Around>(`/sims/${id}/around`),
   /** Gbairai: the chats, a thread (after a message id), writing, blocking, reporting. */

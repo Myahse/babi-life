@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { FlaskConical, KeyRound, LogOut, Play } from 'lucide-react'
-import { isTester, isTesterCode, setTester } from '../lib/launch'
+import { isTester, isTesterCode, setTester, testerPass } from '../lib/launch'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
 
@@ -27,7 +27,8 @@ export default function Tester() {
   const [key, setKey] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const already = isTester()
+  // A tester from before the toolbox has no code kept: they type it once more.
+  const already = isTester() && !!testerPass()
 
   useEffect(() => {
     const m = document.createElement('meta')
@@ -45,7 +46,7 @@ export default function Tester() {
     try {
       // The testers' code is checked right here; the admin key goes to the server.
       if (await isTesterCode(key)) {
-        setTester(true)
+        setTester(true, key)
         await freshStart('/jeu')
         return
       }
@@ -58,7 +59,7 @@ export default function Tester() {
       }
       if (res.status === 401) throw new Error("Code incorrect.")
       if (!res.ok) throw new Error(`Le serveur a répondu ${res.status} : réessaie dans un instant.`)
-      setTester(true)
+      setTester(true, key)
       // A fresh load of a fresh copy: the offline cache may still hold the
       // version from before this page existed, which only knows the wish list.
       await freshStart('/jeu')
@@ -87,7 +88,7 @@ export default function Tester() {
         </div>
         {already ? (
           <>
-            <p className="mt-4 text-sm font-bold text-[var(--color-ink-soft)]">Ce navigateur est en mode testeur : tout le jeu est ouvert ici. Les autres voient toujours la liste d'attente.</p>
+            <p className="mt-4 text-sm font-bold text-[var(--color-ink-soft)]">Ce navigateur est en mode testeur : tout le jeu est ouvert ici, avec la boîte à outils testeur dans le jeu (bouton « Testeur » en haut : changer d'âge, des Djai, besoins au max, finir tout de suite, toutes les applis). Les autres voient toujours la liste d'attente.</p>
             <div className="mt-4 grid gap-2">
               <button className="btn" onClick={() => void freshStart('/jeu')}>
                 <Play size={18} /> Jouer

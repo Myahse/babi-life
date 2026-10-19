@@ -229,6 +229,56 @@ function Dashboard({ k, go }: { k: string; go: (t: Tab) => void }) {
 
 /* ---------- Joueurs ---------- */
 
+/** Djai for every Sim at once (a gift, a fix after a bug), with a word in each Sim's journal. */
+function GiveMoney({ k, onDone }: { k: string; onDone: () => void }) {
+  const [amount, setAmount] = useState('')
+  const [note, setNote] = useState('')
+  const [sure, setSure] = useState(false)
+  const [e, setE] = useState<string | null>(null)
+  const [ok, setOk] = useState<string | null>(null)
+  const n = Math.floor(Number(amount.replace(/\s/g, '')))
+  const valid = Number.isFinite(n) && n >= 1 && n <= 10_000_000
+  const give = async () => {
+    setE(null)
+    try {
+      const r = await call<{ reached: number }>('/admin/money', k, { method: 'POST', body: JSON.stringify({ amount: n, note }) })
+      setOk(`${nf(n)} Djai donnés à ${nf(r.reached)} persos.`)
+      setAmount('')
+      setNote('')
+      setSure(false)
+      onDone()
+    } catch (x) {
+      setE(x instanceof Error ? x.message : 'Erreur')
+    }
+  }
+  return (
+    <Card title="Donner des Djai à tout le monde" className="mb-6">
+      <p className="mb-3 text-sm text-[#6b7280]">Chaque perso reçoit le montant tout de suite, avec un message « Babi Life t'offre … » dans son téléphone. C'est noté dans le journal.</p>
+      <Err e={e} />
+      <Ok t={ok} />
+      <div className="flex flex-wrap items-center gap-2">
+        <Field className="!w-40" inputMode="numeric" placeholder="Montant (Djai)" value={amount} onChange={(x) => (setAmount(x.target.value), setSure(false), setOk(null))} />
+        <Field className="!w-auto min-w-0 flex-1" placeholder="Un mot (facultatif) : Bonne fête de Tabaski !" maxLength={200} value={note} onChange={(x) => (setNote(x.target.value), setSure(false))} />
+        {sure ? (
+          <span className="flex items-center gap-2">
+            <span className="text-sm text-[#374151]">{nf(n)} Djai à chaque perso ?</span>
+            <Btn tone="light" onClick={() => setSure(false)}>
+              Annuler
+            </Btn>
+            <Btn tone="orange" onClick={() => void give()}>
+              Oui, donner
+            </Btn>
+          </span>
+        ) : (
+          <Btn tone="orange" disabled={!valid} onClick={() => setSure(true)}>
+            Donner à tous
+          </Btn>
+        )}
+      </div>
+    </Card>
+  )
+}
+
 type Player = { id: string; name: string; username: string; email: string; google: boolean; createdAt: string; lastLogin: string; sims: number; sim: string; commune: string; money: number; online: boolean }
 
 function Players({ k }: { k: string }) {
@@ -236,70 +286,75 @@ function Players({ k }: { k: string }) {
   const [page, setPage] = useState(0)
   const [data, setData] = useState<{ users: Player[]; total: number } | null>(null)
   const [e, setE] = useState<string | null>(null)
+  // Bumped after Djai are given, for the new amounts.
+  const [version, setVersion] = useState(0)
   useEffect(() => {
     const t = setTimeout(() => call<{ users: Player[]; total: number }>(`/admin/users?q=${encodeURIComponent(q)}&page=${page}`, k).then(setData, (x: Error) => setE(x.message)), 250)
     return () => clearTimeout(t)
-  }, [k, q, page])
+  }, [k, q, page, version])
   const pages = Math.max(1, Math.ceil((data?.total ?? 0) / 50))
   return (
-    <Card>
-      <Err e={e} />
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="relative min-w-0 flex-1">
-          <Search size={16} className="absolute top-1/2 left-3 -translate-y-1/2 text-[#9ca3af]" />
-          <Field className="!pl-9" placeholder="Chercher un nom, un pseudo, un e-mail…" value={q} onChange={(e) => (setQ(e.target.value), setPage(0))} />
+    <>
+      <GiveMoney k={k} onDone={() => setVersion((v) => v + 1)} />
+      <Card>
+        <Err e={e} />
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <div className="relative min-w-0 flex-1">
+            <Search size={16} className="absolute top-1/2 left-3 -translate-y-1/2 text-[#9ca3af]" />
+            <Field className="!pl-9" placeholder="Chercher un nom, un pseudo, un e-mail…" value={q} onChange={(e) => (setQ(e.target.value), setPage(0))} />
+          </div>
+          <span className="text-sm text-[#6b7280]">{nf(data?.total ?? 0)} comptes</span>
         </div>
-        <span className="text-sm text-[#6b7280]">{nf(data?.total ?? 0)} comptes</span>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[820px] text-left text-sm">
-          <thead className="border-b border-[#e5e7eb] text-xs text-[#6b7280] uppercase">
-            <tr>
-              <th className="py-2 pr-3 font-medium">Joueur</th>
-              <th className="py-2 pr-3 font-medium">E-mail</th>
-              <th className="py-2 pr-3 font-medium">Perso</th>
-              <th className="py-2 pr-3 text-right font-medium">Argent</th>
-              <th className="py-2 pr-3 font-medium">Inscrit</th>
-              <th className="py-2 font-medium">Dernière connexion</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data?.users.map((u) => (
-              <tr key={u.id} className="border-b border-[#f3f4f6] last:border-0">
-                <td className="py-2.5 pr-3">
-                  <div className="flex items-center gap-2 font-medium">
-                    <span className={`h-2 w-2 shrink-0 rounded-full ${u.online ? 'bg-[#22c55e]' : 'bg-[#d1d5db]'}`} title={u.online ? 'En ligne' : 'Hors ligne'} />
-                    {u.name}
-                  </div>
-                  {u.username && <div className="pl-4 text-xs text-[#6b7280]">@{u.username}</div>}
-                </td>
-                <td className="py-2.5 pr-3 text-[#374151]">
-                  {u.email} {u.google && <span className="ml-1 rounded bg-[#eef2ff] px-1.5 py-0.5 text-[10px] font-semibold text-[#4338ca]">Google</span>}
-                </td>
-                <td className="py-2.5 pr-3">{u.sim ? `${u.sim} · ${u.commune}` : <span className="text-[#9ca3af]">pas de perso</span>}</td>
-                <td className="py-2.5 pr-3 text-right tabular-nums">{u.sim ? `${nf(u.money)} F` : '—'}</td>
-                <td className="py-2.5 pr-3 text-[#6b7280]">{when(u.createdAt)}</td>
-                <td className="py-2.5 text-[#6b7280]">{when(u.lastLogin)}</td>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[820px] text-left text-sm">
+            <thead className="border-b border-[#e5e7eb] text-xs text-[#6b7280] uppercase">
+              <tr>
+                <th className="py-2 pr-3 font-medium">Joueur</th>
+                <th className="py-2 pr-3 font-medium">E-mail</th>
+                <th className="py-2 pr-3 font-medium">Perso</th>
+                <th className="py-2 pr-3 text-right font-medium">Argent</th>
+                <th className="py-2 pr-3 font-medium">Inscrit</th>
+                <th className="py-2 font-medium">Dernière connexion</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        {data?.users.length === 0 && <p className="py-6 text-center text-sm text-[#6b7280]">Aucun compte.</p>}
-      </div>
-      {pages > 1 && (
-        <div className="mt-4 flex items-center justify-end gap-2 text-sm">
-          <Btn tone="light" disabled={page === 0} onClick={() => setPage(page - 1)}>
-            Précédent
-          </Btn>
-          <span className="text-[#6b7280]">
-            {page + 1} / {pages}
-          </span>
-          <Btn tone="light" disabled={page + 1 >= pages} onClick={() => setPage(page + 1)}>
-            Suivant
-          </Btn>
+            </thead>
+            <tbody>
+              {data?.users.map((u) => (
+                <tr key={u.id} className="border-b border-[#f3f4f6] last:border-0">
+                  <td className="py-2.5 pr-3">
+                    <div className="flex items-center gap-2 font-medium">
+                      <span className={`h-2 w-2 shrink-0 rounded-full ${u.online ? 'bg-[#22c55e]' : 'bg-[#d1d5db]'}`} title={u.online ? 'En ligne' : 'Hors ligne'} />
+                      {u.name}
+                    </div>
+                    {u.username && <div className="pl-4 text-xs text-[#6b7280]">@{u.username}</div>}
+                  </td>
+                  <td className="py-2.5 pr-3 text-[#374151]">
+                    {u.email} {u.google && <span className="ml-1 rounded bg-[#eef2ff] px-1.5 py-0.5 text-[10px] font-semibold text-[#4338ca]">Google</span>}
+                  </td>
+                  <td className="py-2.5 pr-3">{u.sim ? `${u.sim} · ${u.commune}` : <span className="text-[#9ca3af]">pas de perso</span>}</td>
+                  <td className="py-2.5 pr-3 text-right tabular-nums">{u.sim ? `${nf(u.money)} F` : '—'}</td>
+                  <td className="py-2.5 pr-3 text-[#6b7280]">{when(u.createdAt)}</td>
+                  <td className="py-2.5 text-[#6b7280]">{when(u.lastLogin)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {data?.users.length === 0 && <p className="py-6 text-center text-sm text-[#6b7280]">Aucun compte.</p>}
         </div>
-      )}
-    </Card>
+        {pages > 1 && (
+          <div className="mt-4 flex items-center justify-end gap-2 text-sm">
+            <Btn tone="light" disabled={page === 0} onClick={() => setPage(page - 1)}>
+              Précédent
+            </Btn>
+            <span className="text-[#6b7280]">
+              {page + 1} / {pages}
+            </span>
+            <Btn tone="light" disabled={page + 1 >= pages} onClick={() => setPage(page + 1)}>
+              Suivant
+            </Btn>
+          </div>
+        )}
+      </Card>
+    </>
   )
 }
 

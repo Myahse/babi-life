@@ -26,6 +26,7 @@ import { RideFlow, type FlowRequest } from '../components/RideFlow'
 import { INDOOR, Interior } from '../world3d/Interior'
 import { ARENAS, Arena } from '../world3d/interior/Arena'
 import { AppLogo } from '../components/AppLogo'
+import { TesterTools } from '../components/TesterTools'
 import { GolvoApp, deliveryState, type Delivery } from './GolvoApp'
 import { GbairaiApp } from './GbairaiApp'
 import { TikitokoApp } from './TikitokoApp'
@@ -494,6 +495,7 @@ export function Play() {
         <div className="flex flex-col items-end gap-2">
           <div className="pointer-events-auto flex flex-wrap items-center justify-end gap-2">
             <SoundToggle />
+            <TesterTools sim={sim} act={run} />
             <PlayersChip count={around.players.length} invites={around.invites.length} onOpen={() => setPlayers({ focus: null })} />
             <div className="hud flex h-11 items-center gap-1.5 rounded-full pr-4 pl-1.5">
               <span key={sim.money} className="motion-coin">

@@ -8,7 +8,7 @@ import (
 )
 
 // A Sim is born a baby and grows up: baby, child, teenager, adult. Childhood
-// goes fast, so a new player soon has the run of the city: a baby for three
+// goes fast, so a new player soon has the run of the city: a baby for five
 // minutes of play, a child for twenty, a teenager for half an hour (GrowUp). From 18,
 // a year of game life lasts YearMinutes real minutes. Sims created before
 // birth dates have none and are adults.
@@ -16,7 +16,7 @@ const YearMinutes = 8 * 60
 
 // GrowUp: the minutes of play (since birth) at which a Sim reaches each age
 // of childhood; in between, the years go by evenly.
-var GrowUp = [][2]int64{{0, 0}, {3, 3}, {12, 23}, {AdultAge, 53}}
+var GrowUp = [][2]int64{{0, 0}, {3, 5}, {12, 25}, {AdultAge, 55}}
 
 const (
 	StageBebe   = "bebe"
