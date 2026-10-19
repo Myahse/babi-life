@@ -42,9 +42,11 @@ type SceneId = 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'prin
  * Gnango, Rue Princesse), ?video=bande-annonce (the trailer: gnambro or
  * laté?), ?video=decouverte (everything there is to do, one by one) or
  * ?video=live (Awa streams from her phone and shows the game, on her voice:
- * marketing/out/voix-live.mp3).
+ * marketing/out/voix-live.mp3) or ?video=merci (Awa thanks the community for
+ * 1 500 followers, asks about the weekend, wishes a good week and teases the
+ * good news ahead: marketing/scripts/merci-1500.md, voice voix-merci.mp3).
  */
-type FilmId = 'lancement' | 'bouger' | 'bande-annonce' | 'decouverte' | 'live'
+type FilmId = 'lancement' | 'bouger' | 'bande-annonce' | 'decouverte' | 'live' | 'merci'
 const FILM = (q.get('video') || 'lancement') as FilmId
 
 /** The materials as the server has them (game/build.go). */
@@ -91,7 +93,11 @@ const CREW: { look: Look; gender: 'femme' | 'homme'; pose: Pose }[] = [
 ]
 
 /** Awa, who streams the game (the wish list's guide): orange kaba, headwrap, earrings. */
-const AWA = L({ skin: '#8a5532', hair: 'headwrap', outfit: 'kaba', outfitColor: '#ff7a00', pattern: 'cercles', accessory: 'earrings' })
+// Awa: her kaba and headscarf in the live; a new look for « Merci » (braids, a kente top and skirt, her jewels).
+const AWA =
+  FILM === 'merci'
+    ? L({ skin: '#8a5532', hair: 'braids', hairColor: '#24160e', outfit: 'jupe', outfitColor: '#12a37a', pattern: 'kente', accessory: 'earrings,beads,watch,bag' })
+    : L({ skin: '#8a5532', hair: 'headwrap', outfit: 'kaba', outfitColor: '#ff7a00', pattern: 'cercles', accessory: 'earrings' })
 
 /** The Sim on the court of the Palais des Sports. */
 const LAB_SIM = { id: 'poster', firstName: 'Awa', lastName: 'Koné', gender: 'femme', look: CREW[3].look } as unknown as Sim
@@ -783,7 +789,7 @@ function GbairaiChat({ t }: { t: number }) {
 
 /* ---------- The video: 25 seconds, scene after scene ---------- */
 
-type Shot = { from: number; to: number; scene: SceneId; title?: string; sub?: string; /** Its number, in the film that goes through everything. */ n?: number; /** The live: what Awa says, as a subtitle. */ cap?: string }
+type Shot = { from: number; to: number; scene: SceneId; title?: string; sub?: string; /** Its number, in the film that goes through everything. */ n?: number; /** The live: what Awa says, as a subtitle. */ cap?: string; /** « Merci »: the follower counter, the gift that hides. */ counter?: boolean; tease?: boolean }
 /** Each film: its shots, when the intro ends and the outro starts, its length (marketing/video.mjs reads it). */
 const FILMS: Record<FilmId, { shots: Shot[]; intro: number; outro: number; length: number; hook: [string, string, string] }> = {
   lancement: {
@@ -875,6 +881,142 @@ const FILMS: Record<FilmId, { shots: Shot[]; intro: number; outro: number; lengt
     length: 96.5,
     hook: ['', '', ''],
   },
+  // « Merci la famille »: 1 500 followers, the weekend, a good week, good news ahead (marketing/scripts/merci-1500.md).
+  merci: {
+    shots: [
+      { from: 0, to: 5, scene: 'selfie', cap: 'La famille ! Bonjour bonjour, c’est Awa !' },
+      { from: 5, to: 12, scene: 'selfie', counter: true, cap: 'On est 1 500 sur TikTok !' },
+      { from: 12, to: 17, scene: 'selfie', cap: 'Merci ! C’est vous qui nous portez ❤️' },
+      { from: 17, to: 23, scene: 'fete', title: 'Votre week-end ?', cap: 'Maquis, coupé-décalé…' },
+      { from: 23, to: 27, scene: 'stade', title: 'Votre week-end ?', cap: '… le match au stade…' },
+      { from: 27, to: 32, scene: 'concert', title: 'Votre week-end ?', cap: '… ou dodo à la maison ? Dites-nous !' },
+      { from: 32, to: 39, scene: 'gbaka', title: 'Bonne semaine !', cap: 'Lundi : on se lève, on se met au travail 💪' },
+      { from: 39, to: 46, scene: 'selfie', tease: true, cap: 'De bonnes nouvelles arrivent… 🤫' },
+      { from: 46, to: 52, scene: 'crew' },
+    ],
+    intro: 0,
+    outro: 46,
+    length: 52,
+    hook: ['', '', ''],
+  },
+}
+
+/** « Merci »: the followers reached. */
+const FOLLOWERS = 1500
+/** What the community answers in « Merci ». */
+const MERCI_COMMENTS: [number, string, string][] = [
+  [2, 'koffi_225', 'Awaaa 🔥'],
+  [6.5, 'mariam.yop', '1 500 déjà ?? 😍'],
+  [9, 'le_vrai_bk', 'On est ensemble 🇨🇮'],
+  [13, 'fanta.d', 'C’est mérité !'],
+  [18.5, 'kader.abobo', 'Moi j’étais à Yop, Rue Princesse 😂'],
+  [21.5, 'aya.k', 'Maquis jusqu’au matin 🕺'],
+  [24, 'ibou', 'Babi Sporting a gagné !!'],
+  [28, 'mamie.c', 'Moi dodo seulement 😴'],
+  [30.5, 'serge.plateau', 'Église le matin, maquis le soir 😇'],
+  [33.5, 'koffi_225', 'Lundi est dur 😭'],
+  [36.5, 'fanta.d', 'Bonne semaine Awa !'],
+  [40.5, 'mariam.yop', 'Dis-nous un peu 👀'],
+  [43, 'le_vrai_bk', 'Le jeu sort bientôt ??'],
+]
+
+/** « Merci »: Awa talking to the community, the counter, the comments, the hearts, her words. */
+function MerciOverlay({ t, shot }: { t: number; shot: Shot }) {
+  const shown = MERCI_COMMENTS.filter(([at]) => at <= t).slice(-3)
+  const local = t - shot.from
+  const hearts = [...Array(t > 12 && t < 17 ? 16 : 9)].map((_, i) => {
+    const k = ((t * 0.55 + i * 0.37) % 1 + 1) % 1
+    return { k, x: Math.sin(i * 2.7 + t) * 22, c: ['#ff3d6e', '#ff7a00', '#ffd43b', '#ff3d6e', '#ffffff'][i % 5] }
+  })
+  // The counter: from 1 200 to 1 500, then it stays; confetti when it gets there.
+  // (on the film's clock, so it stays at 1 500 afterwards)
+  const k = ease(clamp01((t - 5.6) / 3.2))
+  const count = Math.round(1200 + (FOLLOWERS - 1200) * k)
+  const done = shot.counter && local > 3.8
+  return (
+    <>
+      <div className="absolute inset-x-0 top-0 flex items-center gap-3 bg-gradient-to-b from-black/55 to-transparent px-6 pt-8 pb-12 font-sans">
+        <span className="block h-14 w-14 overflow-hidden rounded-full border-[3px] border-[#ff7a00] bg-[#ffd8a8]">
+          <AwaFace t={t} size={56} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="text-[26px] leading-none font-extrabold">awa.babi</div>
+          <div className="mt-1 text-[18px] font-bold text-white/80">Message à la famille ❤️</div>
+        </div>
+        <span className="flex items-center gap-1.5 rounded-lg bg-black/45 px-3 py-1.5 text-[20px] font-extrabold">
+          <Heart size={20} className="fill-[#ff3d6e] text-[#ff3d6e]" /> {count.toLocaleString('fr-FR')}
+        </span>
+      </div>
+      {shot.title && (
+        <div className="absolute inset-x-0 top-[10.5%] flex justify-center px-8">
+          <div className="rounded-full bg-[var(--color-orange)] px-6 py-2 text-[38px] leading-tight font-extrabold shadow-[0_10px_30px_-10px_rgba(0,0,0,0.6)]" style={{ opacity: Math.min(1, local / 0.4) }}>
+            {shot.title}
+          </div>
+        </div>
+      )}
+      {/* The counter, big in the middle */}
+      {shot.counter && (
+        <div className="absolute inset-x-0 top-[27%] flex flex-col items-center font-display" style={{ opacity: clamp01(local / 0.4), transform: `scale(${done ? 1 + Math.max(0, 0.18 - (local - 3.8) * 0.4) : 1})` }}>
+          <div className="rounded-[40px] bg-white/95 px-10 py-6 text-center text-[var(--color-ink)] shadow-[0_24px_60px_-20px_rgba(0,0,0,0.7)]">
+            <div className="text-[150px] leading-none font-extrabold tabular-nums">{count.toLocaleString('fr-FR')}</div>
+            <div className="mt-2 text-[36px] font-extrabold text-[var(--color-orange)]">abonnés sur TikTok</div>
+          </div>
+          {done && <div className="mt-6 rounded-full bg-[#ff2d55] px-7 py-2 text-[40px] font-extrabold">MERCI LA FAMILLE !</div>}
+        </div>
+      )}
+      {done && <Confetti t={local - 3.8} />}
+      {/* Good news ahead: a gift, wrapped, shaking */}
+      {shot.tease && (
+        <div className="absolute inset-x-0 top-[14%] flex flex-col items-center font-display" style={{ opacity: clamp01(local / 0.5) }}>
+          <div className="text-[110px] leading-none" style={{ transform: `rotate(${Math.sin(local * 9) * (local > 2 ? 10 : 3)}deg) scale(${1 + Math.sin(local * 4) * 0.04})` }}>
+            🎁
+          </div>
+          <div className="mt-4 rounded-full bg-[#0f1230]/80 px-7 py-2.5 text-[38px] font-extrabold">Bientôt…</div>
+        </div>
+      )}
+      {/* Awa's face, filming herself (not in the selfie: there she's the whole picture) */}
+      {shot.scene !== 'selfie' && (
+        <div className="absolute top-[17%] right-6 h-[210px] w-[160px] overflow-hidden rounded-[28px] border-[4px] border-white/90 bg-[#ffb37a] shadow-[0_16px_40px_-14px_rgba(0,0,0,0.7)]">
+          <AwaFace t={t} size={210} talking />
+        </div>
+      )}
+      <div className="absolute bottom-[19%] left-6 flex w-[62%] flex-col gap-2.5 font-sans">
+        {shown.map(([at, who, text]) => (
+          <div key={at} className="flex items-start gap-2.5 rounded-2xl bg-black/40 px-3.5 py-2" style={{ opacity: Math.min(1, (t - at) / 0.3) }}>
+            <span className="text-[20px] leading-snug font-extrabold text-[#ffd43b]">{who}</span>
+            <span className="text-[20px] leading-snug font-bold">{text}</span>
+          </div>
+        ))}
+      </div>
+      <div className="absolute right-10 bottom-[19%] h-[420px] w-20">
+        {hearts.map((h, i) => (
+          <Heart key={i} size={34} className="absolute bottom-0 left-1/2" style={{ transform: `translate(${h.x - 17}px, ${-h.k * 400}px) scale(${0.7 + h.k * 0.5})`, opacity: 1 - h.k, color: h.c, fill: h.c }} />
+        ))}
+      </div>
+      {shot.cap && (
+        <div className="absolute inset-x-0 bottom-[8%] flex justify-center px-10">
+          <div className="rounded-2xl bg-white px-5 py-2.5 text-center text-[34px] leading-tight font-extrabold text-[var(--color-ink)] shadow-[0_12px_30px_-10px_rgba(0,0,0,0.6)]">{shot.cap}</div>
+        </div>
+      )}
+    </>
+  )
+}
+
+/** Confetti falling from the top, in the flag's colours and the game's. */
+function Confetti({ t }: { t: number }) {
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      {[...Array(70)].map((_, i) => {
+        const r = (n: number) => {
+          const x = Math.sin(i * 12.9898 + n * 78.233) * 43758.5453
+          return x - Math.floor(x)
+        }
+        const y = -60 - r(2) * 500 + t * (180 + r(1) * 160)
+        const x = r(3) * 540 + Math.sin(t * 2 + i) * 20
+        return <i key={i} className="absolute block" style={{ left: x, top: y, width: 9, height: 15, background: ['#ff8200', '#ffffff', '#009a44', '#ff3d6e', '#ffd43b'][i % 5], transform: `rotate(${t * 300 * (r(4) - 0.5) + r(5) * 360}deg)`, opacity: clamp01(3.5 - t * 0.5) }} />
+      })}
+    </div>
+  )
 }
 
 /** What people say to each other in the street, two by two. */
@@ -1033,6 +1175,7 @@ function Video({ t, qr, url, placeholder }: { t: number; qr: string; url: string
       {shot.scene === 'gnango' && local < 4.2 && <GnangoPhone t={local} />}
       {/* The live: its frame, the Waye payment, the friends' chat */}
       {FILM === 'live' && !outro && <LiveOverlay t={t} shot={shot} />}
+      {FILM === 'merci' && !outro && <MerciOverlay t={t} shot={shot} />}
       {FILM === 'live' && shot.scene === 'garba' && local > 5.6 && local < 10.2 && <WayePay t={local - 5.6} />}
       {FILM === 'live' && shot.scene === 'amis' && local > 3 && <GbairaiChat t={local - 3} />}
       {/* Captions */}
@@ -1065,9 +1208,19 @@ function Video({ t, qr, url, placeholder }: { t: number; qr: string; url: string
             <Logo size={72} />
           </div>
           <div className="text-[52px] leading-[1] font-extrabold" style={pop(O + 0.6)}>
-            Bientôt sur
-            <br />
-            ton téléphone
+            {FILM === 'merci' ? (
+              <>
+                Merci la famille !
+                <br />
+                <span className="text-[var(--color-orange)]">Bonne semaine ❤️</span>
+              </>
+            ) : (
+              <>
+                Bientôt sur
+                <br />
+                ton téléphone
+              </>
+            )}
           </div>
           <div className="flex flex-col items-center gap-4 rounded-[32px] bg-white p-6 text-[var(--color-ink)] shadow-[0_20px_50px_-15px_rgba(0,0,0,0.6)]" style={pop(O + 1.1)}>
             <div className="text-[30px] leading-tight font-extrabold">Inscris-toi sur la liste</div>
