@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/joho/godotenv"
@@ -32,9 +33,11 @@ func Load() (Config, error) {
 		JWTSecret:         os.Getenv("JWT_SECRET"),
 		GoogleClientID:    os.Getenv("GOOGLE_CLIENT_ID"),
 		FirebaseProjectID: os.Getenv("FIREBASE_PROJECT_ID"),
-		AllowedOrigins:    splitList(getenv("ALLOWED_ORIGINS", "http://localhost:5173")),
-		DevLogin:          os.Getenv("DEV_LOGIN") == "true",
-		NewsFeeds:         splitList(os.Getenv("NEWS_FEEDS")),
+		// The game's own site is always allowed, whatever ALLOWED_ORIGINS says
+		// (a typo or a setting saved without a restart can't shut it out).
+		AllowedOrigins: withSite(splitList(getenv("ALLOWED_ORIGINS", "http://localhost:5173"))),
+		DevLogin:       os.Getenv("DEV_LOGIN") == "true",
+		NewsFeeds:      splitList(os.Getenv("NEWS_FEEDS")),
 	}
 
 	if cfg.DatabaseURL == "" {
@@ -53,10 +56,23 @@ func getenv(key, fallback string) string {
 	return fallback
 }
 
+// Site: the game's own addresses, always allowed to call the API.
+var Site = []string{"https://www.lifeinbabi.com", "https://lifeinbabi.com"}
+
+func withSite(origins []string) []string {
+	for _, o := range Site {
+		if !slices.Contains(origins, o) {
+			origins = append(origins, o)
+		}
+	}
+	return origins
+}
+
 func splitList(s string) []string {
 	var out []string
 	for _, part := range strings.Split(s, ",") {
-		if p := strings.TrimSpace(part); p != "" {
+		// Forgiving: spaces, quotes and a trailing slash would make an origin never match.
+		if p := strings.TrimRight(strings.Trim(strings.TrimSpace(part), `"'`), "/"); p != "" {
 			out = append(out, p)
 		}
 	}

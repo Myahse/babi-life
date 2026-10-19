@@ -240,6 +240,7 @@ func main() {
 	srv := &http.Server{Addr: ":" + cfg.Port, Handler: r, ReadHeaderTimeout: 10 * time.Second}
 	go func() {
 		log.Printf("Babi Life API listening on :%s", cfg.Port)
+		log.Printf("Sites allowed to call the API: %s", strings.Join(cfg.AllowedOrigins, ", "))
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatal(err)
 		}
