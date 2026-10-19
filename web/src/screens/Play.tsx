@@ -381,7 +381,7 @@ export function Play() {
   const atHomeNow = sim.city === sim.homeCity && sim.commune === sim.homeCommune
   const inside = (() => {
     if (doing) {
-      if (doing.placeId === 'golvo') return atHomeNow ? { id: 'home', kind: 'home', it: doing.interaction.id } : null
+      if (doing.placeId === 'golvo') return atHomeNow && !(homeSpots.includes('golvo') && !classic) ? { id: 'home', kind: 'home', it: doing.interaction.id } : null
       if (!doing.placeId) return null
       // In one's own house, sleeping, the shower, cooking, the TV happen there, in the street's world.
       if (doing.placeId === 'home' && !classic && homeSpots.includes(doing.interaction.id)) return null

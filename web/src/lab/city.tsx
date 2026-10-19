@@ -676,6 +676,7 @@ const LAB_FURNITURE: Furniture[] = [
   { id: 'canape', label: 'Canapé', icon: 'sofa', w: 2, d: 1, h: 1, price: 0, comfort: 0, color: '#7a4a8a' },
   { id: 'gaziniere', label: 'Gazinière', icon: 'cooking-pot', w: 1, d: 1, h: 1, price: 0, comfort: 0, color: '#cfd3d6' },
   { id: 'douche', label: 'Douche', icon: 'shower-head', w: 1, d: 1, h: 2, price: 0, comfort: 0, color: '#9fd3e8' },
+  { id: 'table', label: 'Table', icon: 'utensils', w: 1, d: 2, h: 1, price: 0, comfort: 0, color: '#8a5a32' },
 ]
 function HomeLab() {
   const cam = (q.get('cam') ?? '9,14,13').split(',').map(Number) as [number, number, number]
@@ -692,7 +693,8 @@ function HomeLab() {
       [3, 0, 3, 0, 'lit'],
       [6, 0, 3, 0, 'canape'],
       [8, 0, 3, 1, 'douche'],
-      [3, 0, 7, 0, 'gaziniere'],
+      [3, 0, 7, 1, 'gaziniere'],
+      [6, 0, 6, 0, 'table'],
     ]
     return { simId: 'lab', blocks, built: 0, furniture, lot: { w: 12, d: 12 }, livable: true } as unknown as Plot
   }, [])
@@ -714,11 +716,17 @@ function HomeLab() {
         </group>
       </group>
       {Object.entries(spots)
-        .filter(([id]) => id !== 'nap' && id !== 'call-family')
+        .filter(([id]) => id !== 'nap' && id !== 'call-family' && id !== 'golvo')
         .map(([id, s]) => (
           <group key={id}>
             <group position={[s.at[0], s.y, s.at[1]]} rotation={[0, s.rot, 0]}>
               <group rotation={s.lying ? [-Math.PI / 2, 0, 0] : [0, 0, 0]}>
+                {s.stool && (
+                  <mesh position={[0, 0.2 - s.y, -0.05]}>
+                    <boxGeometry args={[0.38, 0.4, 0.38]} />
+                    <meshLambertMaterial color="#7a5233" />
+                  </mesh>
+                )}
                 <Character look={id === 'shower' ? { ...look, outfit: 'serviette' } : look} gender="femme" walking={false} running={false} busy={false} pose={s.pose} stage="adulte" />
               </group>
             </group>

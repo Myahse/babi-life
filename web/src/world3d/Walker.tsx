@@ -68,7 +68,7 @@ export type WalkNav = {
 }
 
 /** Where the Sim does a home action on its own furniture: walked to from `from`, then settled `at` (y up), turned `rot`. */
-export type HomeSpot = { at: XZ; y: number; rot: number; pose: Pose; lying: boolean; from: XZ }
+export type HomeSpot = { at: XZ; y: number; rot: number; pose: Pose; lying: boolean; from: XZ; /** A stool under the Sim (at the table). */ stool?: boolean; /** The spot is in a wall (the piece is against one on both sides). */ wall?: boolean }
 
 type Props = {
   sim: Sim
@@ -131,6 +131,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   // At home on the furniture: walking to it, then settled on it.
   const homeGoing = useRef<HomeSpot | null>(null)
   const [settled, setSettled] = useState<HomeSpot | null>(null)
+  // Getting onto the furniture takes a moment: from where the Sim stood, eased.
+  const settling = useRef<{ x: number; z: number; rot: number; t: number } | null>(null)
   const [matchPose, setMatchPose] = useState<Pose>('idle')
 
   // Start where the Sim is busy, else at home, else on the sidewalk. Only
@@ -379,13 +381,23 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
           setRoute([...path.current])
           setWalking(true)
         } else {
-          g.position.set(homeSpot.at[0], homeSpot.y, homeSpot.at[1])
-          g.rotation.y = homeSpot.rot
+          settling.current = { x: g.position.x, z: g.position.z, rot: g.rotation.y, t: 0 }
           setSettled(homeSpot)
         }
       } else if (settled === homeSpot) {
-        g.position.set(homeSpot.at[0], homeSpot.y, homeSpot.at[1])
-        g.rotation.y = homeSpot.rot
+        const st = settling.current
+        let k = 1
+        if (st) {
+          st.t += dt
+          k = Math.min(1, st.t / 0.6)
+          if (k >= 1) settling.current = null
+        }
+        const e = k * k * (3 - 2 * k)
+        const from = st ?? { x: homeSpot.at[0], z: homeSpot.at[1], rot: homeSpot.rot }
+        // The shortest way round to the spot's facing.
+        const turn = Math.atan2(Math.sin(homeSpot.rot - from.rot), Math.cos(homeSpot.rot - from.rot))
+        g.position.set(from.x + (homeSpot.at[0] - from.x) * e, homeSpot.y * e, from.z + (homeSpot.at[1] - from.z) * e)
+        g.rotation.y = from.rot + turn * e
       }
     } else if (settled) {
       // Done: up and off the furniture, in front of it.
@@ -627,6 +639,12 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         ) : settled ? (
           // On the furniture at home: lying in the bed (the head towards its head), sitting, at the stove, in the shower.
           <group rotation={settled.lying ? [-Math.PI / 2, 0, 0] : [0, 0, 0]}>
+            {settled.stool && (
+              <mesh position={[0, 0.2 - settled.y, -0.05]}>
+                <boxGeometry args={[0.38, 0.4, 0.38]} />
+                <meshLambertMaterial color="#7a5233" />
+              </mesh>
+            )}
             <Character look={busy?.id === 'shower' ? { ...sim.look, outfit: 'serviette', accessory: 'none' } : sim.look} gender={sim.gender} walking={false} running={false} busy={false} pose={settled.pose} moodColor={moodColor} stage={stage} />
           </group>
         ) : (

@@ -888,7 +888,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
           goTo={walkTo}
           onArrive={onArrive}
           busy={busy}
-          homeSpot={stationAt === HOME_ID && busy?.id ? homeSpots[busy.id] : undefined}
+          homeSpot={busy?.id && stationAt === HOME_ID ? homeSpots[busy.id] : busy?.id?.startsWith('golvo-') && stationAt === 'golvo' ? homeSpots.golvo : undefined}
           onNear={onNear}
           frozen={!!frozen}
           recenter={recenter ?? 0}
