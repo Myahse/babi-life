@@ -1,7 +1,8 @@
 // The videos (FILM=lancement, 25 s; FILM=bouger, 31 s; FILM=bande-annonce,
 // the trailer, 30 s; FILM=decouverte, everything there is to do, 71 s; FILM=live,
 // Awa streaming the game on her voice, out/voix-live.mp3, 96 s; FILM=merci, Awa
-// thanking the community for 1 500 followers, 52 s, voice out/voix-merci.mp3 when there), 1080 × 1920 (WhatsApp status, TikTok, Reels), drawn frame
+// thanking the community for 1 500 followers, 52 s, voice out/voix-merci.mp3 when there;
+// FILM=gameplay, how you play, 39 s, its beat out/son-gameplay.mp3 from beat.py), 1080 × 1920 (WhatsApp status, TikTok, Reels), drawn frame
 // by frame from the game's own persos (web/src/lab/poster.tsx) so it's smooth
 // even on a slow machine, then put together by ffmpeg into an MP4.
 //
@@ -16,7 +17,7 @@ import { HERE, OUT, SHORT, URL, browser } from './shared.mjs'
 const FPS = Number(process.env.FPS ?? 24)
 /** Which film: lancement (the launch), bouger (gbaka, Gnango, Rue Princesse), bande-annonce (the trailer) or decouverte (the tour). */
 const FILM = process.env.FILM ?? 'lancement'
-const PORTS = { lancement: 5233, bouger: 5235, 'bande-annonce': 5236, decouverte: 5237, live: 5239, merci: 5240 }
+const PORTS = { lancement: 5233, bouger: 5235, 'bande-annonce': 5236, decouverte: 5237, live: 5239, merci: 5240, gameplay: 5241 }
 const NAME = FILM === 'lancement' ? 'babi-life-video' : `babi-life-video-${FILM}`
 const SRC = FILM === 'lancement' ? 'video' : `video-${FILM}`
 const PORT = PORTS[FILM] ?? 5238
@@ -54,8 +55,9 @@ await b.close()
 stop()
 
 const mp4 = path.join(OUT, `${NAME}-1080x1920.mp4`)
-// The live and « merci » have a voice when its file is there (the others are silent: music is added in CapCut or InShot).
-const voice = path.join(OUT, `voix-${FILM}.mp3`)
+// The live and « merci » have a voice when its file is there, « gameplay » its beat (beat.py: out/son-gameplay.mp3);
+// the others are silent (music is added in CapCut or InShot).
+const voice = [`voix-${FILM}.mp3`, `son-${FILM}.mp3`].map((f) => path.join(OUT, f)).find((f) => fs.existsSync(f)) ?? ''
 // (padded with silence: the film runs to its end even when the voice is shorter)
 const sound = fs.existsSync(voice) ? ['-i', voice, '-af', 'apad', '-c:a', 'aac', '-b:a', '160k', '-shortest'] : []
 execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', path.join(frames, '%05d.png'), ...sound, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '20', '-preset', 'slow', '-movflags', '+faststart', mp4])

@@ -29,7 +29,7 @@ Everything for the launch of the wish list (**lifeinbabi.com/liste**), made from
 | `babi-life-video-live-cover.png` | Its last frame, as a cover |
 | `babi-life-video-merci-1080x1920.mp4` | **« Merci la famille »**, 36 s, **avec la voix** (`voix-merci.mp3`, ElevenLabs) : Awa, chez elle dans son salon et avec un nouveau look (tresses, haut et jupe en kente vert, ses bijoux), remercie la communauté pour les **1 500 abonnés sur TikTok** (le compteur qui monte, les confettis, « MERCI LA FAMILLE ! »), demande comment s'est passé le week-end (le maquis, le stade, le concert, les commentaires qui répondent), souhaite une bonne semaine (le gbaka du lundi matin) et annonce que de bonnes nouvelles arrivent (le cadeau qui bouge, « Bientôt… »). Script, texte pour la voix et légende du post : `scripts/merci-1500.md` |
 | `babi-life-video-merci-cover.png` | Its last frame, as a cover |
-| `babi-life-video-gameplay-1080x1920.mp4` | **Le gameplay**, 83 s, filmed in the real game (not redrawn): how you start depending on your family (gnambro, poignon, debout), the HUD, the three views (from above, close, over the shoulder) and walking with the pad, home and the shower, dancing with friends at the maquis, the zoo, the loto kiosk, betting on Bet225, Tikitoko, building and furnishing your house, then the QR code (`?src=video-gameplay`) |
+| `babi-life-video-gameplay-1080x1920.mp4` | **How you play**, 39 s, **with its beat** (`son-gameplay.mp3`, made by `beat.py`): « TU NAIS… GNAMBRO », « TON BUT : DEBOUT », then six numbered steps, fast cuts with a flash and a zoom, the goal, the money and the six families' ladder always on top: 1 work (the salary, +150 000 F), 2 take care of yourself (the shower fills the hygiene gauge), 3 go about Babi (the zoo's elephants, the game's three views: from above, close, over the shoulder), 4 try your luck (the loto kiosk, a bet won on Bet225, +45 000 F), 5 party with your friends (the maquis, −20 000 F), 6 build your house (−120 000 F); « petit à petit » the perso climbs to debout, then « Et toi, tu finis gnambro ou debout ? » and the QR code (`?src=video-gameplay`) |
 | `babi-life-video-gameplay-cover.png` | Its last frame, as a cover |
 | `babi-life-flyer-famille-*` | The trailer's flyer: « Tu nais gnambro ou laté ? », the two families side by side (A5 PDF and 300 dpi PNG, post 1080 × 1350, status 1080 × 1920) |
 | `babi-life-flyer-commentaire-*` | For the comments: « Tu es tombé·e dans quelle famille ? », the six families with their odds (debout 4 %, laté 8 %, lagnon 15 %, poignon 33 %, coulé 25 %, gnambro 15 %), « Écris ta famille en commentaire » and two example comments (A5 PDF and 300 dpi PNG, post 1080 × 1350, status 1080 × 1920) |
@@ -49,13 +49,13 @@ npm run video:bande-annonce   # the trailer
 npm run video:decouverte      # everything you can do (about an hour to draw)
 npm run video:live            # Awa's live, with out/voix-live.mp3 as its sound (about 40 min)
 npm run video:merci           # « Merci la famille », 1 500 followers (out/voix-merci.mp3 as its sound when there)
-node gameplay.mjs             # the gameplay, filmed in the running game (see below)
+npm run video:gameplay        # how you play, with its beat (beat.py writes out/son-gameplay.mp3)
 node flyer-jeu.mjs            # the « famille » and « découverte » flyers
 node flyer-tout.mjs           # « Tout ce que tu peux faire à Babi » (pictures in out/art/tout/)
 node flyer-commentaire.mjs    # « Tu es tombé·e dans quelle famille ? », for the comments
 ```
 
-The gameplay video films the real game, not a drawing: `vclock.js` puts the page on a virtual clock (animation frames, timers, `Date`), so each frame is taken exactly 1/24 s after the last, however slow the machine. It needs the web app (`WEB`, default `http://localhost:5173`), an API (`API`), and a logged-in adult perso with a house and its apps: `TOKEN=… SIM=… node gameplay.mjs` (`FPS=3` for a quick test, `ONLY=8,12` for some shots, `MAP_TILES=` a local tile server for the map).
+The gameplay video's sound is made by `beat.py` (Python and numpy, no sample): a coupé-décalé-style beat at 124 BPM, a whoosh and a hit on every cut, a cash register on every money change, on the film's own times.
 
 Another address: `WAITLIST_URL=https://… npm run all`. Chromium is found where Playwright puts it, or set `CHROMIUM=/path/to/chrome`.
 

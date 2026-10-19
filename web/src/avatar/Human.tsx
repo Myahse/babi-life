@@ -482,19 +482,23 @@ type Props = { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; /*
  * switch has some slack so nobody flickers between the two at the border.
  */
 const FAR = 24
+/** Everyone in full detail, however far (the videos: marketing/). */
+export const FullDetail = createContext(false)
+
 export function Human(props: Props & { /** Always in full detail (the creator, close-ups). */ full?: boolean }) {
   const anchor = useRef<THREE.Group>(null)
   const [far, setFar] = useState(false)
   const at = useRef(new THREE.Vector3())
+  const full = useContext(FullDetail) || props.full
   useFrame(({ camera }) => {
-    if (props.full || !anchor.current) return
+    if (full || !anchor.current) return
     const d = anchor.current.getWorldPosition(at.current).distanceTo(camera.position)
     if (!far && d > FAR + 3) setFar(true)
     else if (far && d < FAR - 3) setFar(false)
   })
   return (
     <group ref={anchor}>
-      {far && !props.full ? <LowHuman look={props.look} gender={props.gender} pose={props.pose} seed={props.seed} speed={props.speed} /> : <BlockHuman {...props} />}
+      {far && !full ? <LowHuman look={props.look} gender={props.gender} pose={props.pose} seed={props.seed} speed={props.speed} /> : <BlockHuman {...props} />}
     </group>
   )
 }

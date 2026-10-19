@@ -48,7 +48,7 @@ export function ActionProps({ id, kind, lying }: { id?: string; kind: string; ly
 /* ---------- The shower ---------- */
 
 /** Water falling from the shower head over the Sim, and the steam rising. */
-function Shower() {
+export function Shower() {
   const drops = useRef<THREE.InstancedMesh>(null)
   const puffs = useRef<THREE.InstancedMesh>(null)
   const N = 46
