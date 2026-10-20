@@ -152,7 +152,8 @@ func (h *Handler) log(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.DB.Query(r.Context(), `SELECT kind, text, at FROM (
 		SELECT 'inscription' AS kind, name || ' a créé son compte' || CASE WHEN google_sub IS NOT NULL THEN ' (Google)' ELSE '' END AS text, created_at AS at FROM users
 		UNION ALL SELECT 'connexion', name || ' s''est connecté·e', last_login_at FROM users WHERE last_login_at > created_at + interval '1 minute'
-		UNION ALL SELECT 'perso', s.first_name || ' ' || s.last_name || ' est né·e à ' || s.home_commune || ' (' || u.name || ')', s.created_at FROM sims s JOIN users u ON u.id = s.user_id
+		-- Where the Sim was born is in its birth line (« Awa est née à Cocody, dans… »): its home now may be elsewhere.
+		UNION ALL SELECT 'perso', COALESCE((SELECT split_part(e.text, ',', 1) FROM sim_events e WHERE e.sim_id = s.id AND e.text LIKE s.first_name || ' est n%' ORDER BY e.id LIMIT 1), s.first_name || ' ' || s.last_name || ' a créé son perso') || ' (' || u.name || ')', s.created_at FROM sims s JOIN users u ON u.id = s.user_id
 		UNION ALL SELECT 'liste', first_name || ' s''est inscrit·e sur la liste d''attente' || CASE WHEN commune <> '' THEN ' (' || commune || ')' ELSE '' END || CASE WHEN beta THEN ', veut tester' ELSE '' END, created_at FROM waitlist
 		UNION ALL SELECT 'signalement', 'Signalement : ' || reason, created_at FROM reports
 		UNION ALL SELECT 'pub', 'Campagne de pub reçue : ' || title || ' (' || advertiser || ')', created_at FROM ad_campaigns

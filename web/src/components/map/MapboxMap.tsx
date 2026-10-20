@@ -145,6 +145,8 @@ export function MapboxMap({ token, pins, camera, night, sim, padding, route, onZ
     const created = pins.map((p) => {
       const el = document.createElement('div')
       el.style.zIndex = p.variant === 'sim' ? '30' : p.active ? '20' : '10'
+      // The marker's box is as big as its pin (label and stem): only the pin's label takes taps (Pin).
+      el.style.pointerEvents = 'none'
       const root = createRoot(el)
       const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' }).setLngLat([p.lng, p.lat]).addTo(m)
       return { pin: p, marker, root }

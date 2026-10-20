@@ -8,8 +8,8 @@ import { useDrivingRoute, waypointsOf } from '../components/map/roadRoute'
 import { CIV_BOUNDS, Z_PLACE, Z_TOWN, allPins, boundsFor, routeBounds, type Padding, type Route } from '../components/map/pins'
 import { TravelCTA, type OnTravel } from '../components/TravelCTA'
 import { iconFor, kindColors } from '../components/icons'
-import { Chip, IconTile } from '../components/ui'
-import { EPOCH, clock, duration } from '../game/rules'
+import { Chip, IconTile, needColor } from '../components/ui'
+import { EPOCH, clock, duration, mood } from '../game/rules'
 
 // The whole country on one map. Zoomed out, a badge per city; in a city, a
 // badge per mairie (commune); closer still, the places. Tap one for a card
@@ -64,16 +64,25 @@ export function WorldMap({ world, sim, night, desktop, onClose, onTravel, onWalk
     wasTravelling.current = !!route
   }, [route, sim.city, sim.commune, world, fly])
 
+  // The pins need only where the Sim is, its face and its mood. The game hands a new Sim every
+  // second (its needs tick): without this every pin was rebuilt each second, and a tap on a pin
+  // landing on a rebuild was lost.
+  const pinKey = JSON.stringify([sim.city, sim.commune, sim.homeCity, sim.homeCommune, sim.firstName, sim.gender, sim.look, needColor(mood(sim.needs))])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const pinSim = useMemo(() => sim, [pinKey])
+  // Likewise the trip: its progress moves every second, the pins only need where it goes.
+  const routeTo = route?.toId ?? null
+  const travelling = !!route
   const pins = useMemo(() => {
     const find = (id: string) => {
       for (const city of world.cities)
         for (const commune of city.communes) {
-          if (id === 'home' && city.id === sim.homeCity && commune.id === sim.homeCommune) return { city, commune, place: 'home' as const }
+          if (id === 'home' && city.id === pinSim.homeCity && commune.id === pinSim.homeCommune) return { city, commune, place: 'home' as const }
           const place = commune.places.find((p) => p.id === id)
           if (place) return { city, commune, place }
         }
     }
-    return allPins(world, sim, selectedId(selected) ?? route?.toId ?? null, {
+    return allPins(world, pinSim, selectedId(selected) ?? routeTo, {
       onCity: (id) => {
         const city = world.cities.find((c) => c.id === id)!
         setSelected({ kind: 'city', city })
@@ -87,15 +96,15 @@ export function WorldMap({ world, sim, night, desktop, onClose, onTravel, onWalk
         const hit = find(id)
         if (hit) setSelected({ kind: 'place', ...hit })
       },
-    }, !!route, kinds)
-  }, [world, sim, selected, route, fly, kinds])
+    }, travelling, kinds)
+  }, [world, pinSim, selected, routeTo, travelling, fly, kinds])
 
   const padding = useMemo<Padding>(() => (desktop ? { top: 90, bottom: 60, left: 440, right: 80 } : { top: 80, bottom: 270, left: 28, right: 28 }), [desktop])
   const level = zoom >= Z_PLACE ? 'places' : zoom >= Z_TOWN ? 'mairies' : 'pays'
 
   return (
     <div className="animate-up absolute inset-0 z-50 bg-[var(--color-night)]">
-      <GameMap pins={pins} camera={camera} night={night} sim={sim} padding={padding} route={route} onZoom={setZoom} />
+      <GameMap pins={pins} camera={camera} night={night} sim={pinSim} padding={padding} route={route} onZoom={setZoom} />
 
       {/* Top: what you're looking at, and the way out */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:p-5">

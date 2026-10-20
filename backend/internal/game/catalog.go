@@ -21,6 +21,8 @@ type Interaction struct {
 	Ages []string `json:"ages,omitempty"`
 	// Places: only at these places of the kind (the Hôtel Ivoire's ice rink…); empty = at every one.
 	Places []string `json:"places,omitempty"`
+	// Gender: only Sims of this gender (a beard trim is for men); empty = anyone.
+	Gender string `json:"gender,omitempty"`
 }
 
 // A Requirement limits an interaction to some Sims.
@@ -353,7 +355,7 @@ var Kinds = map[string]PlaceKind{
 			{ID: "boule-a-zero", Label: "Se faire raser la tête", Icon: "scissors", Minutes: 25, Cost: 1000, Effect: Needs{Hygiene: 25, Fun: 5}, MinHour: 8, MaxHour: 22},
 			{ID: "coupe-courte", Label: "Se faire une coupe courte", Icon: "scissors", Minutes: 30, Cost: 1000, Effect: Needs{Hygiene: 20, Fun: 10}, MinHour: 8, MaxHour: 22},
 			{ID: "iroquoise", Ages: TeensUp, Label: "Se faire une iroquoise", Icon: "scissors", Minutes: 45, Cost: 1500, Effect: Needs{Hygiene: 15, Fun: 25, Social: 10}, MinHour: 8, MaxHour: 22},
-			{ID: "taille-barbe", Ages: Adults, Label: "Se faire tailler la barbe", Icon: "scissors", Minutes: 20, Cost: 500, Effect: Needs{Hygiene: 15, Fun: 5}, MinHour: 8, MaxHour: 22},
+			{ID: "taille-barbe", Ages: Adults, Gender: "homme", Label: "Se faire tailler la barbe", Icon: "scissors", Minutes: 20, Cost: 500, Effect: Needs{Hygiene: 15, Fun: 5}, MinHour: 8, MaxHour: 22},
 			Gbairai,
 		},
 		Events: []RandomEvent{

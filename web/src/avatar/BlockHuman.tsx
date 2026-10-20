@@ -1202,6 +1202,11 @@ const clothMat = (color: string) => lambert('#fff', pixelTex(`cloth|${color}`, 8
 /** Hair that hangs loose, and sways. */
 const LOOSE = new Set(['braids', 'locks', 'twists', 'weave', 'ponytail', 'bob'])
 
+/** One box of hair (or headwear): at module level, so a re-render of the head (a new pose) keeps its meshes. */
+function Box({ s, p, r, mat, m, cast }: { s: V3; p: V3; r?: V3; mat?: THREE.Material; m: THREE.Material; cast: boolean }) {
+  return <mesh geometry={cube(...s)} material={mat ?? m} position={p} rotation={r} castShadow={cast} />
+}
+
 function HeadBoxes({ l, hair, young, cast, femme, pose, seed }: { l: Required<Look>; hair: string; young: boolean; cast: boolean; femme: boolean; pose: Pose; seed: number }) {
   // Loose hair sways a little, more walking, a lot dancing or running.
   const sway = useRef<THREE.Group>(null)
@@ -1220,7 +1225,6 @@ function HeadBoxes({ l, hair, young, cast, femme, pose, seed }: { l: Required<Lo
   const H = HEAD
   const hc = tint(l.hairColor, 0.08)
   const m = hairMat(hc, hair)
-  const B = ({ s, p, r, mat = m }: { s: V3; p: V3; r?: V3; mat?: THREE.Material }) => <mesh geometry={cube(...s)} material={mat} position={p} rotation={r} castShadow={cast} />
   const strands = (n: number, w: number, len: number, ends?: string) =>
     [...Array(n)].map((_, i) => {
       // Round the back of the head from one ear to the other, behind the ears;
@@ -1230,8 +1234,8 @@ function HeadBoxes({ l, hair, young, cast, femme, pose, seed }: { l: Required<Lo
       const l = len * (0.86 + Math.cos(a) * 0.14 + (hash(i, 7) - 0.5) * 0.12)
       return (
         <group key={i}>
-          <B s={[w, l, w]} p={[x, H * 0.5 - l / 2, z]} />
-          {ends && <B s={[w * 1.25, w * 1.1, w * 1.25]} p={[x, H * 0.5 - l - w * 0.4, z]} mat={lambert(ends)} />}
+          <Box m={m} cast={cast} s={[w, l, w]} p={[x, H * 0.5 - l / 2, z]} />
+          {ends && <Box m={m} cast={cast} s={[w * 1.25, w * 1.1, w * 1.25]} p={[x, H * 0.5 - l - w * 0.4, z]} mat={lambert(ends)} />}
         </group>
       )
     })
@@ -1240,15 +1244,15 @@ function HeadBoxes({ l, hair, young, cast, femme, pose, seed }: { l: Required<Lo
     case 'afro':
       hairBoxes = (
         <group>
-          <B s={[H * 1.5, H * 0.72, H * 1.38]} p={[0, H * 1.1, -H * 0.12]} />
+          <Box m={m} cast={cast} s={[H * 1.5, H * 0.72, H * 1.38]} p={[0, H * 1.1, -H * 0.12]} />
           {[-1, 1].map((s) => (
-            <B key={s} s={[H * 0.26, H * 0.5, H * 0.9]} p={[s * H * 0.66, H * 0.66, -H * 0.2]} />
+            <Box m={m} cast={cast} key={s} s={[H * 0.26, H * 0.5, H * 0.9]} p={[s * H * 0.66, H * 0.66, -H * 0.2]} />
           ))}
         </group>
       )
       break
     case 'bun':
-      hairBoxes = <B s={[H * 0.42, H * 0.36, H * 0.42]} p={[0, H * 1.18, -H * 0.22]} />
+      hairBoxes = <Box m={m} cast={cast} s={[H * 0.42, H * 0.36, H * 0.42]} p={[0, H * 1.18, -H * 0.22]} />
       break
     case 'braids':
       hairBoxes = <group>{strands(13, 0.034, 0.44, femme ? '#e8b93c' : undefined)}</group>
@@ -1259,9 +1263,9 @@ function HeadBoxes({ l, hair, young, cast, femme, pose, seed }: { l: Required<Lo
     case 'weave':
       hairBoxes = (
         <group>
-          <B s={[H * 1.14, 0.36, 0.06]} p={[0, H * 0.62 - 0.18, -H * 0.56]} />
+          <Box m={m} cast={cast} s={[H * 1.14, 0.36, 0.06]} p={[0, H * 0.62 - 0.18, -H * 0.56]} />
           {[-1, 1].map((s) => (
-            <B key={s} s={[0.06, 0.3, H * 0.7]} p={[s * H * 0.6, H * 0.62 - 0.15, -H * 0.18]} />
+            <Box m={m} cast={cast} key={s} s={[0.06, 0.3, H * 0.7]} p={[s * H * 0.6, H * 0.62 - 0.15, -H * 0.18]} />
           ))}
         </group>
       )
@@ -1272,8 +1276,8 @@ function HeadBoxes({ l, hair, young, cast, femme, pose, seed }: { l: Required<Lo
     case 'ponytail':
       hairBoxes = (
         <group>
-          <B s={[H * 0.3, H * 0.3, H * 0.24]} p={[0, H * 0.82, -H * 0.62]} />
-          <B s={[H * 0.24, H * 0.62, H * 0.22]} p={[0, H * 0.5, -H * 0.72]} r={[0.3, 0, 0]} />
+          <Box m={m} cast={cast} s={[H * 0.3, H * 0.3, H * 0.24]} p={[0, H * 0.82, -H * 0.62]} />
+          <Box m={m} cast={cast} s={[H * 0.24, H * 0.62, H * 0.22]} p={[0, H * 0.5, -H * 0.72]} r={[0.3, 0, 0]} />
         </group>
       )
       break
@@ -1281,7 +1285,7 @@ function HeadBoxes({ l, hair, young, cast, femme, pose, seed }: { l: Required<Lo
       hairBoxes = (
         <group>
           {[-1, 1].map((s) => (
-            <B key={s} s={[H * 0.48, H * 0.44, H * 0.48]} p={[s * H * 0.36, H * 1.18, -H * 0.06]} />
+            <Box m={m} cast={cast} key={s} s={[H * 0.48, H * 0.44, H * 0.48]} p={[s * H * 0.36, H * 1.18, -H * 0.06]} />
           ))}
         </group>
       )
@@ -1289,23 +1293,23 @@ function HeadBoxes({ l, hair, young, cast, femme, pose, seed }: { l: Required<Lo
     case 'bob':
       hairBoxes = (
         <group>
-          <B s={[H * 1.16, H * 0.5, 0.05]} p={[0, H * 0.42, -H * 0.56]} />
+          <Box m={m} cast={cast} s={[H * 1.16, H * 0.5, 0.05]} p={[0, H * 0.42, -H * 0.56]} />
           {[-1, 1].map((s) => (
-            <B key={s} s={[0.05, H * 0.5, H * 0.95]} p={[s * H * 0.58, H * 0.42, -H * 0.04]} />
+            <Box m={m} cast={cast} key={s} s={[0.05, H * 0.5, H * 0.95]} p={[s * H * 0.58, H * 0.42, -H * 0.04]} />
           ))}
         </group>
       )
       break
     case 'mohawk':
-      hairBoxes = <B s={[H * 0.24, H * 0.32, H * 1.02]} p={[0, H * 1.13, -H * 0.04]} />
+      hairBoxes = <Box m={m} cast={cast} s={[H * 0.24, H * 0.32, H * 1.02]} p={[0, H * 1.13, -H * 0.04]} />
       break
     case 'headwrap': {
       const fabric = waxMat(l.outfitColor, l.pattern)
       hairBoxes = (
         <group position={[0, H * 0.95, -H * 0.05]} rotation={[-0.28, 0, 0]}>
-          <B s={[H * 1.18, H * 0.55, H * 1.18]} p={[0, H * 0.2, 0]} mat={fabric} />
-          <B s={[H * 0.42, H * 0.34, H * 0.36]} p={[H * 0.16, H * 0.56, H * 0.26]} r={[0, 0, 0.5]} mat={fabric} />
-          <B s={[H * 0.36, H * 0.3, H * 0.32]} p={[-H * 0.2, H * 0.52, H * 0.3]} r={[0, 0, -0.6]} mat={fabric} />
+          <Box m={m} cast={cast} s={[H * 1.18, H * 0.55, H * 1.18]} p={[0, H * 0.2, 0]} mat={fabric} />
+          <Box m={m} cast={cast} s={[H * 0.42, H * 0.34, H * 0.36]} p={[H * 0.16, H * 0.56, H * 0.26]} r={[0, 0, 0.5]} mat={fabric} />
+          <Box m={m} cast={cast} s={[H * 0.36, H * 0.3, H * 0.32]} p={[-H * 0.2, H * 0.52, H * 0.3]} r={[0, 0, -0.6]} mat={fabric} />
         </group>
       )
       break
@@ -1324,79 +1328,79 @@ function HeadBoxes({ l, hair, young, cast, femme, pose, seed }: { l: Required<Lo
       )}
       {!young && (hasAcc(l, 'cap') || hasAcc(l, 'capback')) && (
         <group rotation={[0, hasAcc(l, 'capback') ? Math.PI : 0, 0]}>
-          <B s={[H * 1.17, H * 0.3, H * 1.17]} p={[0, H * 0.99, 0]} mat={clothMat(accOf(headwearOf(l)))} />
-          <B s={[H * 0.92, H * 0.07, H * 0.46]} p={[0, H * 0.86, H * 0.78]} mat={lambert(tint(accOf(headwearOf(l)), -0.25))} />
-          <B s={[H * 0.14, H * 0.05, H * 0.14]} p={[0, H * 1.16, 0]} mat={lambert(tint(accOf(headwearOf(l)), -0.25))} />
+          <Box m={m} cast={cast} s={[H * 1.17, H * 0.3, H * 1.17]} p={[0, H * 0.99, 0]} mat={clothMat(accOf(headwearOf(l)))} />
+          <Box m={m} cast={cast} s={[H * 0.92, H * 0.07, H * 0.46]} p={[0, H * 0.86, H * 0.78]} mat={lambert(tint(accOf(headwearOf(l)), -0.25))} />
+          <Box m={m} cast={cast} s={[H * 0.14, H * 0.05, H * 0.14]} p={[0, H * 1.16, 0]} mat={lambert(tint(accOf(headwearOf(l)), -0.25))} />
         </group>
       )}
-      {!young && l.beard === 'longue' && <B s={[H * 0.62, H * 0.36, H * 0.2]} p={[0, -H * 0.14, H * 0.42]} mat={hairMat(tint(l.hairColor, 0.06), 'beard')} />}
+      {!young && l.beard === 'longue' && <Box m={m} cast={cast} s={[H * 0.62, H * 0.36, H * 0.2]} p={[0, -H * 0.14, H * 0.42]} mat={hairMat(tint(l.hairColor, 0.06), 'beard')} />}
       {hair === 'covered' && (
         // The veil: over the head, round the face, down onto the shoulders.
         <group>
-          <B s={[H * 1.2, H * 0.32, H * 1.2]} p={[0, H * 1.0, -H * 0.02]} mat={clothMat(veil)} />
+          <Box m={m} cast={cast} s={[H * 1.2, H * 0.32, H * 1.2]} p={[0, H * 1.0, -H * 0.02]} mat={clothMat(veil)} />
           {[-1, 1].map((s) => (
-            <B key={s} s={[H * 0.14, H * 1.1, H * 1.1]} p={[s * H * 0.6, H * 0.36, -H * 0.06]} mat={clothMat(veil)} />
+            <Box m={m} cast={cast} key={s} s={[H * 0.14, H * 1.1, H * 1.1]} p={[s * H * 0.6, H * 0.36, -H * 0.06]} mat={clothMat(veil)} />
           ))}
-          <B s={[H * 1.2, H * 1.15, H * 0.14]} p={[0, H * 0.38, -H * 0.62]} mat={clothMat(veil)} />
-          <B s={[H * 1.2, H * 0.22, H * 1.2]} p={[0, -H * 0.12, 0]} mat={clothMat(tint(veil, -0.08))} />
+          <Box m={m} cast={cast} s={[H * 1.2, H * 1.15, H * 0.14]} p={[0, H * 0.38, -H * 0.62]} mat={clothMat(veil)} />
+          <Box m={m} cast={cast} s={[H * 1.2, H * 0.22, H * 1.2]} p={[0, -H * 0.12, 0]} mat={clothMat(tint(veil, -0.08))} />
         </group>
       )}
-      {nun && <B s={[H * 1.16, H * 0.14, H * 1.16]} p={[0, H * 0.84, 0.004]} mat={lambert('#f8f9fa')} />}
+      {nun && <Box m={m} cast={cast} s={[H * 1.16, H * 0.14, H * 1.16]} p={[0, H * 0.84, 0.004]} mat={lambert('#f8f9fa')} />}
       {hat === 'kepi' && (
         <group>
-          <B s={[H * 1.12, H * 0.34, H * 1.12]} p={[0, H * 1.05, 0]} mat={lambert('#1f2a44')} />
-          <B s={[H * 1.13, H * 0.08, H * 1.13]} p={[0, H * 0.92, 0]} mat={lambert('#c92a2a')} />
-          <B s={[H * 0.9, H * 0.06, H * 0.4]} p={[0, H * 0.88, H * 0.72]} mat={lambert('#141416')} />
-          <B s={[H * 0.14, H * 0.12, H * 0.04]} p={[0, H * 1.08, H * 0.57]} mat={lambert('#e8b93c')} />
+          <Box m={m} cast={cast} s={[H * 1.12, H * 0.34, H * 1.12]} p={[0, H * 1.05, 0]} mat={lambert('#1f2a44')} />
+          <Box m={m} cast={cast} s={[H * 1.13, H * 0.08, H * 1.13]} p={[0, H * 0.92, 0]} mat={lambert('#c92a2a')} />
+          <Box m={m} cast={cast} s={[H * 0.9, H * 0.06, H * 0.4]} p={[0, H * 0.88, H * 0.72]} mat={lambert('#141416')} />
+          <Box m={m} cast={cast} s={[H * 0.14, H * 0.12, H * 0.04]} p={[0, H * 1.08, H * 0.57]} mat={lambert('#e8b93c')} />
         </group>
       )}
-      {hat === 'beret' && <B s={[H * 1.2, H * 0.2, H * 1.2]} p={[H * 0.08, H * 1.02, 0]} r={[0, 0, -0.18]} mat={clothMat('#1f4f2a')} />}
+      {hat === 'beret' && <Box m={m} cast={cast} s={[H * 1.2, H * 0.2, H * 1.2]} p={[H * 0.08, H * 1.02, 0]} r={[0, 0, -0.18]} mat={clothMat('#1f4f2a')} />}
       {hat === 'toque' && (
         <group>
-          <B s={[H * 1.1, H * 0.18, H * 1.1]} p={[0, H * 0.95, 0]} mat={lambert('#f8f9fa')} />
-          <B s={[H * 1.22, H * 0.55, H * 1.22]} p={[0, H * 1.3, 0]} mat={knitMat('#f1f3f5')} />
+          <Box m={m} cast={cast} s={[H * 1.1, H * 0.18, H * 1.1]} p={[0, H * 0.95, 0]} mat={lambert('#f8f9fa')} />
+          <Box m={m} cast={cast} s={[H * 1.22, H * 0.55, H * 1.22]} p={[0, H * 1.3, 0]} mat={knitMat('#f1f3f5')} />
         </group>
       )}
       {hat === 'cap' && (
         <group>
-          <B s={[H * 1.17, H * 0.3, H * 1.17]} p={[0, H * 0.99, 0]} mat={clothMat('#17171a')} />
-          <B s={[H * 0.92, H * 0.07, H * 0.46]} p={[0, H * 0.86, H * 0.78]} mat={lambert('#0b0b0c')} />
+          <Box m={m} cast={cast} s={[H * 1.17, H * 0.3, H * 1.17]} p={[0, H * 0.99, 0]} mat={clothMat('#17171a')} />
+          <Box m={m} cast={cast} s={[H * 0.92, H * 0.07, H * 0.46]} p={[0, H * 0.86, H * 0.78]} mat={lambert('#0b0b0c')} />
         </group>
       )}
-      {kufi && <B s={[H * 1.08, H * 0.24, H * 1.08]} p={[0, H * 1.0, 0]} mat={knitMat(hasAcc(l, 'kufi') ? accOf('kufi') : '#f8f9fa')} />}
+      {kufi && <Box m={m} cast={cast} s={[H * 1.08, H * 0.24, H * 1.08]} p={[0, H * 1.0, 0]} mat={knitMat(hasAcc(l, 'kufi') ? accOf('kufi') : '#f8f9fa')} />}
       {!young && hasAcc(l, 'beanie') && (
         <group>
-          <B s={[H * 1.16, H * 0.46, H * 1.16]} p={[0, H * 0.93, 0]} mat={knitMat(accOf('beanie'))} />
-          <B s={[H * 1.2, H * 0.14, H * 1.2]} p={[0, H * 0.68, 0]} mat={lambert(tint(accOf('beanie'), -0.2))} />
-          <B s={[H * 0.22, H * 0.18, H * 0.22]} p={[0, H * 1.24, 0]} mat={lambert(tint(accOf('beanie'), 0.3))} />
+          <Box m={m} cast={cast} s={[H * 1.16, H * 0.46, H * 1.16]} p={[0, H * 0.93, 0]} mat={knitMat(accOf('beanie'))} />
+          <Box m={m} cast={cast} s={[H * 1.2, H * 0.14, H * 1.2]} p={[0, H * 0.68, 0]} mat={lambert(tint(accOf('beanie'), -0.2))} />
+          <Box m={m} cast={cast} s={[H * 0.22, H * 0.18, H * 0.22]} p={[0, H * 1.24, 0]} mat={lambert(tint(accOf('beanie'), 0.3))} />
         </group>
       )}
       {!young && hasAcc(l, 'hat') && (
         <group>
-          <B s={[H * 1.9, H * 0.06, H * 1.9]} p={[0, H * 0.98, 0]} mat={lambert(accOf('hat'))} />
-          <B s={[H * 1.08, H * 0.42, H * 1.08]} p={[0, H * 1.2, 0]} mat={lambert(accOf('hat'))} />
-          <B s={[H * 1.1, H * 0.1, H * 1.1]} p={[0, H * 1.05, 0]} mat={lambert(tint(accOf('hat'), -0.45))} />
+          <Box m={m} cast={cast} s={[H * 1.9, H * 0.06, H * 1.9]} p={[0, H * 0.98, 0]} mat={lambert(accOf('hat'))} />
+          <Box m={m} cast={cast} s={[H * 1.08, H * 0.42, H * 1.08]} p={[0, H * 1.2, 0]} mat={lambert(accOf('hat'))} />
+          <Box m={m} cast={cast} s={[H * 1.1, H * 0.1, H * 1.1]} p={[0, H * 1.05, 0]} mat={lambert(tint(accOf('hat'), -0.45))} />
         </group>
       )}
       {!young && hasAcc(l, 'buckethat') && (
         <group>
-          <B s={[H * 1.14, H * 0.38, H * 1.14]} p={[0, H * 1.08, 0]} mat={clothMat(accOf('buckethat'))} />
-          <B s={[H * 1.5, H * 0.06, H * 1.5]} p={[0, H * 0.86, 0]} mat={clothMat(tint(accOf('buckethat'), -0.12))} />
+          <Box m={m} cast={cast} s={[H * 1.14, H * 0.38, H * 1.14]} p={[0, H * 1.08, 0]} mat={clothMat(accOf('buckethat'))} />
+          <Box m={m} cast={cast} s={[H * 1.5, H * 0.06, H * 1.5]} p={[0, H * 0.86, 0]} mat={clothMat(tint(accOf('buckethat'), -0.12))} />
         </group>
       )}
       {!young && hasAcc(l, 'bandana') && (
         <group>
-          <B s={[H * 1.16, H * 0.22, H * 1.16]} p={[0, H * 0.86, 0]} mat={waxMat(accOf('bandana'), 'points')} />
-          <B s={[H * 0.2, H * 0.24, H * 0.16]} p={[0, H * 0.78, -H * 0.62]} mat={waxMat(accOf('bandana'), 'points')} />
+          <Box m={m} cast={cast} s={[H * 1.16, H * 0.22, H * 1.16]} p={[0, H * 0.86, 0]} mat={waxMat(accOf('bandana'), 'points')} />
+          <Box m={m} cast={cast} s={[H * 0.2, H * 0.24, H * 0.16]} p={[0, H * 0.78, -H * 0.62]} mat={waxMat(accOf('bandana'), 'points')} />
         </group>
       )}
       {!young && hasAcc(l, 'headphones') && (
         <group>
-          <B s={[H * 1.2, H * 0.08, H * 0.18]} p={[0, H * 1.2, 0]} mat={lambert(accOf('headphones'))} />
+          <Box m={m} cast={cast} s={[H * 1.2, H * 0.08, H * 0.18]} p={[0, H * 1.2, 0]} mat={lambert(accOf('headphones'))} />
           {[-1, 1].map((s) => (
             <group key={s}>
-              <B s={[H * 0.08, H * 0.6, H * 0.14]} p={[s * H * 0.6, H * 0.88, 0]} mat={lambert(accOf('headphones'))} />
-              <B s={[H * 0.16, H * 0.36, H * 0.36]} p={[s * H * 0.6, H * 0.46, 0]} mat={lambert(accOf('headphones'))} />
+              <Box m={m} cast={cast} s={[H * 0.08, H * 0.6, H * 0.14]} p={[s * H * 0.6, H * 0.88, 0]} mat={lambert(accOf('headphones'))} />
+              <Box m={m} cast={cast} s={[H * 0.16, H * 0.36, H * 0.36]} p={[s * H * 0.6, H * 0.46, 0]} mat={lambert(accOf('headphones'))} />
             </group>
           ))}
         </group>
@@ -1404,15 +1408,15 @@ function HeadBoxes({ l, hair, young, cast, femme, pose, seed }: { l: Required<Lo
       {/* Glasses in relief over the painted frame: the rims and the lenses (dark for sunglasses) */}
       {!young && (hasAcc(l, 'glasses') || hasAcc(l, 'sunglasses')) && (
         <group position={[0, H * 0.585, H * 0.515]}>
-          <B s={[H * 1.02, H * 0.045, H * 0.04]} p={[0, H * 0.085, 0]} mat={lambert(accOf(hasAcc(l, 'sunglasses') ? 'sunglasses' : 'glasses'))} />
+          <Box m={m} cast={cast} s={[H * 1.02, H * 0.045, H * 0.04]} p={[0, H * 0.085, 0]} mat={lambert(accOf(hasAcc(l, 'sunglasses') ? 'sunglasses' : 'glasses'))} />
           {[-1, 1].map((s) => (
             <group key={s} position={[s * H * 0.24, 0, 0]}>
-              <B s={[H * 0.34, H * 0.2, H * 0.02]} p={[0, 0, 0.004]} mat={hasAcc(l, 'sunglasses') ? glassMat('#121418', 0.92) : glassMat('#cfe8f2', 0.28)} />
-              <B s={[H * 0.36, H * 0.03, H * 0.035]} p={[0, -H * 0.105, 0]} mat={lambert(accOf(hasAcc(l, 'sunglasses') ? 'sunglasses' : 'glasses'))} />
+              <Box m={m} cast={cast} s={[H * 0.34, H * 0.2, H * 0.02]} p={[0, 0, 0.004]} mat={hasAcc(l, 'sunglasses') ? glassMat('#121418', 0.92) : glassMat('#cfe8f2', 0.28)} />
+              <Box m={m} cast={cast} s={[H * 0.36, H * 0.03, H * 0.035]} p={[0, -H * 0.105, 0]} mat={lambert(accOf(hasAcc(l, 'sunglasses') ? 'sunglasses' : 'glasses'))} />
             </group>
           ))}
           {[-1, 1].map((s) => (
-            <B key={`arm${s}`} s={[H * 0.03, H * 0.035, H * 0.55]} p={[s * H * 0.505, H * 0.06, -H * 0.27]} mat={lambert(accOf(hasAcc(l, 'sunglasses') ? 'sunglasses' : 'glasses'))} />
+            <Box m={m} cast={cast} key={`arm${s}`} s={[H * 0.03, H * 0.035, H * 0.55]} p={[s * H * 0.505, H * 0.06, -H * 0.27]} mat={lambert(accOf(hasAcc(l, 'sunglasses') ? 'sunglasses' : 'glasses'))} />
           ))}
         </group>
       )}
@@ -1421,15 +1425,15 @@ function HeadBoxes({ l, hair, young, cast, femme, pose, seed }: { l: Required<Lo
         hasAcc(l, 'earrings') &&
         [-1, 1].map((s) => (
           <group key={s} position={[s * (H / 2 + 0.012), H * 0.3, H * 0.04]}>
-            <B s={[0.018, 0.018, 0.018]} p={[0, 0, 0]} mat={lambert(accOf('earrings'))} />
+            <Box m={m} cast={cast} s={[0.018, 0.018, 0.018]} p={[0, 0, 0]} mat={lambert(accOf('earrings'))} />
             {[
               [0, -0.018, 0.006, 0.03],
               [0, -0.062, 0.006, 0.03],
               [0, -0.04, 0.03, 0.006],
             ].map(([x, y, w, h], k) => (
               <group key={k}>
-                <B s={[0.008, h, w || 0.006]} p={[x, y, k === 2 ? 0.014 : 0]} mat={lambert(accOf('earrings'))} />
-                {k === 2 && <B s={[0.008, h, 0.006]} p={[x, y, -0.014]} mat={lambert(accOf('earrings'))} />}
+                <Box m={m} cast={cast} s={[0.008, h, w || 0.006]} p={[x, y, k === 2 ? 0.014 : 0]} mat={lambert(accOf('earrings'))} />
+                {k === 2 && <Box m={m} cast={cast} s={[0.008, h, 0.006]} p={[x, y, -0.014]} mat={lambert(accOf('earrings'))} />}
               </group>
             ))}
           </group>

@@ -65,6 +65,8 @@ export type Interaction = {
   ages?: string[]
   /** Only at these places of the kind (the Hôtel Ivoire's ice rink…). */
   places?: string[]
+  /** Only Sims of this gender (a beard trim is for men). */
+  gender?: 'femme' | 'homme'
 }
 export type PlaceKind = { id: string; label: string; icon: string; interactions: Interaction[] }
 export type Option = { id: string; label: string; icon: string; hint: string }

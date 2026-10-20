@@ -99,7 +99,7 @@ function useBetting(sim: Sim, act: Act, app: 'bet225' | 'parisfoot') {
       const ok = await act(slip.length > 1 ? 'Combiné' : 'Pari', 'trophy', 'money', () => api.placeBet(sim.id, app, stake, slip.map((l) => ({ match: l.match.key, pick: l.pick }))))
       if (ok) {
         setSlip([])
-        setNote('Pari validé ! Suis-le dans « Mes paris ».')
+        setNote(app === 'parisfoot' ? 'Ticket validé ! Suis-le dans « Mes tickets ».' : 'Pari validé ! Suis-le dans « Mes paris ».')
         void api.myBets(sim.id, app).then(setBets, () => undefined)
       }
     } catch (e) {
@@ -115,7 +115,9 @@ type Betting = ReturnType<typeof useBetting>
 /** Bet225: dark, every market, a boost on big combined bets. */
 function Bet225({ sim, s }: { sim: Sim; s: Betting }) {
   const { b, tab, setTab, sport, setSport, data, bets, slip, setSlip, stake, setStake, note, now, open, live, odds, toggle, place } = s
-  const Odd = ({ m, pick }: { m: VirtualMatch; pick: Leg['pick'] }) => {
+  // A render function, not a component: declared in here it would be a new component on every
+  // tick of the clock, so every button was remounted each second and a tap could be lost.
+  const odd = (m: VirtualMatch, pick: Leg['pick']) => {
     const on = slip.some((l) => l.match.key === m.key && l.pick === pick)
     // A market the sport doesn't have (no draw in basketball or tennis).
     if (!m.odds[pick]) return null
@@ -174,16 +176,16 @@ function Bet225({ sim, s }: { sim: Sim; s: Betting }) {
                     {m.home} <span className="text-white/50">–</span> {m.away}
                   </div>
                   <div className="flex gap-1.5">
-                    <Odd m={m} pick="1" />
-                    <Odd m={m} pick="N" />
-                    <Odd m={m} pick="2" />
+                    {odd(m, '1')}
+                    {odd(m, 'N')}
+                    {odd(m, '2')}
                   </div>
                   {b.all && (
                     <div className="mt-1.5 flex gap-1.5">
-                      <Odd m={m} pick="plus" />
-                      <Odd m={m} pick="moins" />
-                      <Odd m={m} pick="btsOui" />
-                      {m.sport === 'tennis' && <Odd m={m} pick="btsNon" />}
+                      {odd(m, 'plus')}
+                      {odd(m, 'moins')}
+                      {odd(m, 'btsOui')}
+                      {m.sport === 'tennis' && odd(m, 'btsNon')}
                     </div>
                   )}
                 </div>
@@ -345,7 +347,8 @@ function ParisFoot({ sim, s }: { sim: Sim; s: Betting }) {
   const { b, tab, setTab, sport, setSport, data, bets, slip, setSlip, stake, setStake, note, now, open, live, odds, toggle, place } = s
   const next = open[0]
   const running = bets.filter((x) => x.status === 'open').length
-  const Cell = ({ m, pick }: { m: VirtualMatch; pick: Leg['pick'] }) => {
+  // A render function, not a component (see Bet225's odd).
+  const cell = (m: VirtualMatch, pick: Leg['pick']) => {
     const on = slip.some((l) => l.match.key === m.key && l.pick === pick)
     if (!m.odds[pick]) return null
     return (
@@ -404,9 +407,9 @@ function ParisFoot({ sim, s }: { sim: Sim; s: Betting }) {
                     <div className="truncate">{m.home}</div>
                     <div className="truncate text-[#6b6390]">{m.away}</div>
                   </div>
-                  <Cell m={m} pick="1" />
-                  <Cell m={m} pick="N" />
-                  <Cell m={m} pick="2" />
+                  {cell(m, '1')}
+                  {cell(m, 'N')}
+                  {cell(m, '2')}
                 </div>
               ))}
             </div>

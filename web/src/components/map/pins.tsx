@@ -228,7 +228,7 @@ export function Pin({ pin, sim }: { pin: PinData; sim: Sim | null }) {
   const stem = (color: string, base: number) => (
     <>
       <span className="w-[3px] rounded-b shadow-[0_1px_2px_rgba(0,0,0,0.3)]" style={{ height: base + lift, background: color }} />
-      <span className="h-2.5 w-2.5 rounded-full border-2 border-white shadow" style={{ background: color }} />
+      <span className="pointer-events-auto h-2.5 w-2.5 rounded-full border-2 border-white shadow" style={{ background: color }} />
     </>
   )
 
@@ -238,10 +238,12 @@ export function Pin({ pin, sim }: { pin: PinData; sim: Sim | null }) {
     const color = pin.home ? '#ff7a00' : city ? '#ff7a00' : '#00b86b'
     const dot = big ? 26 : city ? 22 : 22
     return (
-      <button type="button" onClick={pin.onClick} className="group flex flex-col items-center">
+      // Only the label and the dot take taps: the rest of the box (the column the stem runs down,
+      // as wide as the label) lay over the labels of the communes below and took their taps.
+      <button type="button" onClick={pin.onClick} className="group pointer-events-none flex flex-col items-center">
         {pin.hasSim && sim && <MoodPin size={12} color={moodHex} className="mb-0.5" />}
         <span
-          className={`flex items-center gap-1.5 rounded-full py-1 pr-3.5 pl-1 font-display ${pin.align === 'start' ? 'translate-x-[calc(50%-14px)]' : pin.align === 'end' ? '-translate-x-[calc(50%-14px)]' : ''} font-extrabold whitespace-nowrap shadow-[0_8px_18px_-6px_rgba(0,0,0,0.45)] transition group-hover:scale-105 ${pin.active ? 'scale-110 ring-2 ring-[var(--color-orange)]' : ''} ${city ? 'bg-[var(--color-ink)] text-white' : 'bg-white text-[var(--color-ink)]'}`}
+          className={`pointer-events-auto flex items-center gap-1.5 rounded-full py-1 pr-3.5 pl-1 font-display ${pin.align === 'start' ? 'translate-x-[calc(50%-14px)]' : pin.align === 'end' ? '-translate-x-[calc(50%-14px)]' : ''} font-extrabold whitespace-nowrap shadow-[0_8px_18px_-6px_rgba(0,0,0,0.45)] transition group-hover:scale-105 ${pin.active ? 'scale-110 ring-2 ring-[var(--color-orange)]' : ''} ${city ? 'bg-[var(--color-ink)] text-white' : 'bg-white text-[var(--color-ink)]'}`}
           style={{ fontSize: big ? 15 : city ? 13 : 12.5 }}
         >
           {pin.hasSim && sim ? (
@@ -264,8 +266,8 @@ export function Pin({ pin, sim }: { pin: PinData; sim: Sim | null }) {
   const [from, to] = kindColors(pin.kind ?? '')
   const Icon = iconFor(pin.icon ?? '')
   return (
-    <button type="button" onClick={pin.onClick} className="group flex flex-col items-center">
-      <span className="relative">
+    <button type="button" onClick={pin.onClick} className="group pointer-events-none flex flex-col items-center">
+      <span className="pointer-events-auto relative">
         <span
           className="relative grid h-12 w-12 place-items-center rounded-[50%_50%_50%_6px] border-[3px] border-white shadow-[0_8px_16px_-6px_rgba(0,0,0,0.55)] transition-transform group-hover:scale-110"
           style={{ background: `linear-gradient(160deg, ${from}, ${to})`, transform: `rotate(-45deg)${pin.active ? ' scale(1.2)' : ''}` }}
