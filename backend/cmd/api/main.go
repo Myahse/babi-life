@@ -102,7 +102,7 @@ func main() {
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins: cfg.AllowedOrigins,
 		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders: []string{"Authorization", "Content-Type", "X-Admin-Key"},
+		AllowedHeaders: []string{"Authorization", "Content-Type", "X-Admin-Key", "Idempotency-Key"},
 		MaxAge:         600,
 	}))
 
