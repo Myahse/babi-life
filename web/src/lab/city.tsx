@@ -14,6 +14,7 @@ import { Landmark } from '../world3d/open/landmarks'
 import { CameraView } from '../screens/CameraView'
 import { IvoireInside } from '../world3d/interior/IvoireInside'
 import { MallInside } from '../world3d/interior/MallInside'
+import { HotelInside } from '../world3d/interior/HotelInside'
 import { Snapper } from '../world3d/snapshot'
 import { usePhotoMode } from '../world3d/photoCam'
 import { whereabouts } from '../world3d/whereabouts'
@@ -481,6 +482,7 @@ function Lab() {
   if (view === 'emotes') return <EmotesLab />
   if (view === 'talk') return <TalkLab />
   if (view === 'mall') return <MallInside sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)) } as unknown as Sim} name="PlaYce Marcory" interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" />
+  if (view === 'hotel') return <HotelInside sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)) } as unknown as Sim} placeId={q.get('id') ?? 'plateau-poulman'} name={q.get('name') ?? 'Hôtel Poulman'} interactionId={q.get('act') ?? undefined} night={night} stage="adulte" />
   if (view === 'ivoire') return <IvoireInside sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)) } as unknown as Sim} interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" />
   if (view === 'home') return <HomeLab />
   if (view === 'plan') return <PlanLab />

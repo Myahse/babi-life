@@ -57,6 +57,7 @@ const KartRace = lazy(() => import('../kart/KartRace'))
 // The big shopping centres' own inside: the supermarket, the gallery of shops, the food court.
 const MallInside = lazy(() => import('../world3d/interior/MallInside').then((m) => ({ default: m.MallInside })))
 const IvoireInside = lazy(() => import('../world3d/interior/IvoireInside').then((m) => ({ default: m.IvoireInside })))
+const HotelInside = lazy(() => import('../world3d/interior/HotelInside').then((m) => ({ default: m.HotelInside })))
 const StreetMatch = lazy(() => import('../streetball/StreetMatch'))
 
 type Toast = { id: number; title: string; text?: string; money: number; tone: 'random' | 'done' | 'error' | 'promo' | 'event'; kind?: string; icon?: string }
@@ -582,6 +583,11 @@ export function Play() {
           ) : inside!.id === 'cocody-hotel-ivoire' ? (
             <Suspense fallback={null}>
               <IvoireInside sim={sim} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
+            </Suspense>
+          ) : inside!.kind === 'hotel' ? (
+            // The other hotels: the whole hotel too (lobby, restaurant, bar, pool deck, a room), not one small room.
+            <Suspense fallback={null}>
+              <HotelInside sim={sim} placeId={inside!.id} name={placeName(inside!.id)} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
             </Suspense>
           ) : inside!.kind === 'arena' ? (
             <Arena sim={sim} placeId={inside!.id} interactionId={inside!.it} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id)} />
