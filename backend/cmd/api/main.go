@@ -284,6 +284,7 @@ func main() {
 			r.Delete("/me/session", sessions.End)
 			r.Put("/me/username", authH.SetUsername)
 			r.Post("/me/tester", authH.BecomeTester)
+			r.Post("/me/adult", authH.ConfirmAdult)
 			r.Post("/me/push", pushes.Subscribe)
 			r.Delete("/me/push", pushes.Unsubscribe)
 			simsH.Routes(r)

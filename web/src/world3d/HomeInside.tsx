@@ -2,7 +2,9 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
-import type { Plot, Sim, World } from '../lib/types'
+import type { Friend, Plot, Sim, World } from '../lib/types'
+import { randomLook } from '../avatar/options'
+import { rng } from './themes'
 import { Character } from './Character'
 import { CutHouse } from './build/CutHouse'
 import { FurnitureSet } from './build/Furniture'
@@ -278,7 +280,7 @@ function Focus({ on, span }: { on: [number, number, number] | null; span: number
   return null
 }
 
-export function HomeInside({ sim, world, plot, interactionId, roam, night, stage, onBuild }: { sim: Sim; world: World; plot: Plot; interactionId?: string; /** Just come in: tap the ground to walk. */ roam?: boolean; night: boolean; stage: string; /** Change the house: walls, furniture (components/BuildMode). */ onBuild?: () => void }) {
+export function HomeInside({ sim, world, plot, interactionId, roam, night, stage, onBuild, partner }: { sim: Sim; world: World; plot: Plot; interactionId?: string; /** Just come in: tap the ground to walk. */ roam?: boolean; night: boolean; stage: string; /** Change the house: walls, furniture (components/BuildMode). */ onBuild?: () => void; /** The boyfriend or girlfriend living here. */ partner?: Friend }) {
   const [w, d] = [plot.lot?.w ?? 12, plot.lot?.d ?? 12]
   const span = Math.max(w, d)
   const floors = useMemo(() => {
@@ -335,6 +337,14 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
     lvl.current = Math.round(last[2] / STOREY)
   }, [way])
   const [there, setThere] = useState(false)
+  // A night together: once both are in the bed, the screen goes slowly to black.
+  const night2 = interactionId === 'passer-nuit'
+  const [dark, setDark] = useState(false)
+  useEffect(() => {
+    if (!night2 || !there) return setDark(false)
+    const t = setTimeout(() => setDark(true), 1500)
+    return () => clearTimeout(t)
+  }, [night2, there])
   // The floors above the one looked at are off; its own walls full height, but down to one block between the camera and the Sim (build/CutHouse).
   const cut = floor * STOREY + 3
   const pieces = useMemo(() => (plot.furniture ?? []).filter((p) => p[1] < cut), [plot.furniture, cut])
@@ -378,6 +388,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
               <meshBasicMaterial transparent opacity={0} depthWrite={false} />
             </mesh>
           )}
+          {partner && <Partner friend={partner} spots={spots} doing={interactionId} spot={spot} />}
           <Walking sim={sim} stage={stage} way={way} spot={spot} onThere={setThere} steer={roam && !interactionId ? levels(lvl.current) : undefined} onMoved={(p) => ((where.current = p), setTapped(null))} onLevel={setFloor} />
           {there && interactionId === 'cook-attieke' && spot && (
             <group position={[spot.at[0] + Math.sin(spot.rot) * 0.6, 0, spot.at[1] + Math.cos(spot.rot) * 0.6]}>
@@ -394,6 +405,16 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
           <Focus on={there && spot ? [spot.at[0], 0, spot.at[1]] : null} span={span} />
         </Suspense>
       </Canvas>
+      {/* Fade to black: nothing is shown of the night */}
+      {night2 && (
+        <div className={`pointer-events-none absolute inset-0 z-20 grid place-items-center bg-[#05060f] transition-opacity duration-[2500ms] ${dark ? 'opacity-100' : 'opacity-0'}`}>
+          <div className="text-center text-white/85">
+            <div className="text-5xl">🌙</div>
+            <p className="mt-3 font-display text-xl font-extrabold">Bonne nuit…</p>
+            {partner && <p className="mt-1 text-sm font-bold text-white/60">{sim.firstName} et {partner.name} passent la nuit ensemble</p>}
+          </div>
+        </div>
+      )}
       {onBuild && (
         <button className="hud absolute top-[max(5rem,calc(env(safe-area-inset-top)+4.5rem))] left-3 z-10 flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={onBuild}>
           <Hammer size={17} strokeWidth={2.6} className="text-[var(--color-orange)]" /> Modifier la maison
@@ -417,5 +438,27 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
         </div>
       )}
     </div>
+  )
+}
+
+/**
+ * One's partner at home: on the sofa (beside the Sim if it's there too), and
+ * in the bed beside it for a night together. Their look is their own, kept
+ * from their id.
+ */
+function Partner({ friend, spots, doing, spot }: { friend: Friend; spots: Record<string, HomeSpot>; doing?: string; spot: HomeSpot | null }) {
+  const look = useMemo(() => randomLook(friend.gender, rng(`partner${friend.id}`)), [friend.id, friend.gender])
+  // Beside the Sim on the same piece (the other half of the bed, the sofa), or on the sofa.
+  const with_ = doing === 'passer-nuit' || doing === 'watch-tv' ? spot : null
+  const at = with_ ?? spots['watch-tv'] ?? spots.sleep
+  if (!at) return null
+  const side = with_ ? 0.9 : 0
+  const [x, z] = [at.at[0] + Math.cos(at.rot) * side, at.at[1] - Math.sin(at.rot) * side]
+  return (
+    <group position={[x, at.y, z]} rotation={[0, at.rot, 0]}>
+      <group rotation={at.lying ? [-Math.PI / 2, 0, 0] : [0, 0, 0]}>
+        <Character look={look} gender={friend.gender} pose={at.pose} marker={false} moodColor="#e0245e" />
+      </group>
+    </group>
   )
 }

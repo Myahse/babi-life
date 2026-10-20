@@ -492,6 +492,11 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 			return game.Outcome{}, nil, err
 		}
 		s.gymUntil = until
+		if req.InteractionID == game.NightID {
+			if adult, err := accountAdult(r.Context(), tx); err != nil || !adult {
+				return game.Outcome{}, nil, errNotAdult
+			}
+		}
 		it, err := s.interactAt(req.PlaceID, req.InteractionID)
 		if err != nil {
 			return game.Outcome{}, nil, err
@@ -548,6 +553,14 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 			return game.Interaction{}, errors.New("pas possible ici")
 		}
 		if home {
+			if it.ID == game.NightID {
+				p := s.partner()
+				if p == nil || !p.Home {
+					return game.Interaction{}, errors.New("il faut que ta moitié vive avec toi (propose-lui d'emménager)")
+				}
+				it.Label = "Passer la nuit avec " + p.Name
+				p.Friendship = min(100, p.Friendship+5)
+			}
 			// In one's own house, sleeping takes a bed, cooking a stove…
 			if it.ID == game.SwimID {
 				if why := game.CanSwimAtHome(s.Housing, s.Furnished); why != "" {

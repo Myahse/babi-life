@@ -118,6 +118,8 @@ var Kinds = map[string]PlaceKind{
 			{ID: "watch-tv", Label: "Regarder RTI 1", Icon: "tv", Minutes: 60, Effect: Needs{Fun: 25, Energy: -3}},
 			// Only with a pool (CanSwimAtHome): one's own, or the rented villa's.
 			{ID: SwimID, Label: "Nager dans la piscine", Icon: "waves", Minutes: 45, Effect: Needs{Fun: 35, Hygiene: 10, Energy: -12}, Ages: []string{StageEnfant, StageAdo, StageAdulte}},
+			// With one's partner living at home (sims: interactAt checks it), adults only: a fade to black.
+			{ID: NightID, Ages: Adults, Label: "Passer la nuit ensemble", Icon: "moon-star", Minutes: 8 * 60, Effect: Needs{Social: 45, Fun: 40, Energy: 35}},
 			{ID: "call-family", Ages: TeensUp, Label: "Appeler la famille au village", Icon: "smartphone", Minutes: 20, Cost: 200, Effect: Needs{Social: 30}},
 		},
 		Events: []RandomEvent{

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { Beer, BookOpen, Briefcase, Check, Coffee, Hand, HandCoins, HandHelping, Heart, Laugh, Lightbulb, MapPin, MessagesSquare, Scissors, Smartphone, Smile, Sparkles, Trophy, Users, Utensils, X, type LucideIcon } from 'lucide-react'
+import { Beer, BookOpen, Briefcase, Check, Coffee, Hand, HandCoins, HandHelping, Heart, HeartCrack, House, Laugh, Lightbulb, MapPin, MessagesSquare, Scissors, Smartphone, Smile, Sparkles, Trophy, Users, Utensils, X, type LucideIcon } from 'lucide-react'
 import type { Npc } from '../world3d/open/OpenWorld'
+import type { Friend } from '../lib/types'
 import { greetingsFor, helloFrom } from '../lib/nouchi'
 import { IconTile } from './ui'
 
@@ -67,6 +68,18 @@ const GROUPS: { id: string; label: string; colors: [string, string]; topics: Top
   },
 ]
 
+// Romance, between adults only: the Sim grown up, the person met as an adult
+// (their number taken), and the player who said once they're 18 or over.
+const LOVE = { id: 'coeur', label: 'Cœur', colors: ['#ff8fb1', '#e0245e'] as [string, string] }
+function loveTopics(friend: Friend | undefined): Topic[] {
+  if (!friend?.adult) return []
+  if (!friend.partner) return [{ id: 'sortir', label: 'Lui demander de sortir ensemble', icon: Heart, hint: 'Plus vous êtes proches, plus c’est oui' }]
+  return [
+    ...(friend.home ? [] : [{ id: 'emmenager', label: 'Lui proposer de venir vivre chez toi', icon: House, hint: 'Vous vivrez ensemble à la maison' }]),
+    { id: 'rompre', label: 'Rompre', icon: HeartCrack, hint: 'C’est fini entre vous' },
+  ]
+}
+
 /** What they answered, and how they took it. */
 export type Reply = { text: string; mood?: 'good' | 'bad' | 'bye' }
 type Line = { who: 'me' | 'them'; text: string; mood?: Reply['mood'] }
@@ -106,7 +119,19 @@ function greeting(npc: Npc, simGender: 'femme' | 'homme', m: Memory): string {
   return ['Te revoilà !', `On se connaît, ${toi} ! Ça dit quoi ?`, "Ah, c'est toi encore ! Ça va un peu ?"][m.met % 3]
 }
 
-export function ChatSheet({ npc, simGender, onSay, onClose }: { npc: Npc; simGender: 'femme' | 'homme'; onSay: (topic: string, label: string, said?: string) => Promise<Reply | null>; onClose: () => void }) {
+export function ChatSheet({ npc, simGender, onSay, onClose, friend, grownUp, adultAccount, onConfirmAdult }: {
+  npc: Npc
+  simGender: 'femme' | 'homme'
+  onSay: (topic: string, label: string, said?: string) => Promise<Reply | null>
+  onClose: () => void
+  /** Them in the Sim's friends (their number taken), with where you are together. */
+  friend?: Friend
+  /** The Sim is an adult. */
+  grownUp?: boolean
+  /** The player said they're 18 or over. */
+  adultAccount?: boolean
+  onConfirmAdult?: () => Promise<void>
+}) {
   // What you were to them before (for the greeting), and now: met once more.
   const [before] = useState(() => recall(npc.id))
   const [mem, setMem] = useState<Memory>(() => ({ met: before.met + 1, rapport: before.met === 0 ? 1 : before.rapport }))
@@ -134,7 +159,9 @@ export function ChatSheet({ npc, simGender, onSay, onClose }: { npc: Npc; simGen
       setMem((m) => ({ ...m, rapport: Math.min(5, Math.max(0, m.rapport + step)) }))
     }
   }
-  const g = GROUPS.find((x) => x.id === group)!
+  const love = loveTopics(friend)
+  const groups = grownUp ? [...GROUPS, { ...LOVE, topics: love }] : GROUPS
+  const g = groups.find((x) => x.id === group) ?? GROUPS[0]
   return (
     <div className="absolute inset-0 z-30 flex flex-col justify-end bg-[#0f1230]/15 lg:items-center lg:justify-center" onClick={onClose}>
       <div className="sheet animate-up flex max-h-[68vh] w-full flex-col rounded-t-[28px] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:w-[460px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
@@ -189,7 +216,7 @@ export function ChatSheet({ npc, simGender, onSay, onClose }: { npc: Npc; simGen
           <>
             {/* The groups: greet, chat, ask, offer, tease */}
             <div className="-mx-1 mt-3 flex gap-1.5 overflow-x-auto px-1 pb-1" role="tablist">
-              {GROUPS.map((x) => (
+              {groups.map((x) => (
                 <button
                   key={x.id}
                   role="tab"
@@ -212,7 +239,19 @@ export function ChatSheet({ npc, simGender, onSay, onClose }: { npc: Npc; simGen
                   ))}
                 </div>
               )}
-              <ul className="grid gap-1.5">
+              {g.id === 'coeur' && !adultAccount && (
+                <div className="mb-2 rounded-2xl bg-[#fff0f4] p-3 text-sm font-bold">
+                  <p>Les relations amoureuses sont réservées aux joueurs de 18 ans et plus.</p>
+                  <button className="btn mt-2 w-full !py-2" onClick={() => void onConfirmAdult?.()}>
+                    J’ai 18 ans ou plus
+                  </button>
+                </div>
+              )}
+              {g.id === 'coeur' && adultAccount && !love.length && (
+                <p className="mb-2 rounded-2xl bg-[#fff0f4] p-3 text-sm font-bold text-[var(--color-ink-soft)]">Faites d’abord connaissance : échangez vos numéros (Proposer), et causez souvent.</p>
+              )}
+              {g.id === 'coeur' && friend?.partner && <p className="mb-2 text-center text-sm font-extrabold text-[#e0245e]">❤ Vous êtes ensemble{friend.home ? ' · vous vivez ensemble' : ''}</p>}
+              <ul className={`grid gap-1.5 ${g.id === 'coeur' && !adultAccount ? 'hidden' : ''}`}>
                 {g.topics.map((t) => (
                   <li key={t.id}>
                     <button className="tile flex w-full items-center gap-3 p-2.5 text-left disabled:opacity-50" disabled={busy} onClick={() => say(t.id, t.label)}>

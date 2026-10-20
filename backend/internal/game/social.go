@@ -19,8 +19,12 @@ type Friend struct {
 	Commune    string `json:"commune"`
 	Friendship int    `json:"friendship"` // 0..100
 	Gang       bool   `json:"gang,omitempty"`
-	Met        int64  `json:"met"`
-	Seen       int64  `json:"seen"`
+	// Romance, between adults only: met as an adult, then together, then living together.
+	Adult   bool  `json:"adult,omitempty"`
+	Partner bool  `json:"partner,omitempty"`
+	Home    bool  `json:"home,omitempty"`
+	Met     int64 `json:"met"`
+	Seen    int64 `json:"seen"`
 }
 
 const MaxFriends = 12

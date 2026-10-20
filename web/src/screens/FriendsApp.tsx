@@ -104,6 +104,7 @@ function FriendRow({ f, world, canCall, busy, onAct }: { f: Friend; world: World
           <div className="flex items-center gap-1.5 font-display text-base leading-tight font-extrabold">
             {f.name}
             {f.gang && <span className="rounded-full bg-[#1d1d24] px-1.5 py-0.5 text-[9px] text-white">BANDE</span>}
+            {f.partner && <span className="rounded-full bg-[#e0245e] px-1.5 py-0.5 text-[9px] text-white">❤ {f.home ? 'VIT AVEC TOI' : 'ENSEMBLE'}</span>}
           </div>
           <div className="text-[11px] font-bold text-[var(--color-ink-soft)]">{commune}</div>
           <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[var(--color-canvas)]">

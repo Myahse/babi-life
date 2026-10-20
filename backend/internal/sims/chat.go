@@ -1,12 +1,15 @@
 package sims
 
 import (
+	"context"
 	"errors"
 	"math/rand/v2"
 	"net/http"
 	"slices"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/myahse/babi-life/backend/internal/auth"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
 )
@@ -208,6 +211,12 @@ var chatTopics = []chatTopic{
 		"{name} t'a laissé{e} parler seul{e}. Ça arrive.",
 		"{name} : « Mon chéri est jaloux, il est juste derrière toi. »",
 	}, yesEffect: game.Needs{Social: 20, Fun: 15}, noEffect: game.Needs{Social: 2, Fun: -5}},
+	// Romance, between adults only (the Sim, the person met as an adult, and the
+	// player who said they're 18 or over): asked of a friend whose number you
+	// have. The answers are decided in chat (romance), not drawn here.
+	{id: "sortir", label: "Lui demander de sortir ensemble", icon: "heart", minutes: 10, ages: game.Adults, effect: game.Needs{Social: 4}},
+	{id: "emmenager", label: "Lui proposer de venir vivre chez toi", icon: "house-heart", minutes: 15, ages: game.Adults, effect: game.Needs{Social: 4}},
+	{id: "rompre", label: "Rompre", icon: "heart-crack", minutes: 10, ages: game.Adults, effect: game.Needs{Social: -10, Fun: -10}},
 }
 
 var (
@@ -227,6 +236,106 @@ var chatSurprises = []game.RandomEvent{
 }
 
 var errUnknownTopic = errors.New("on ne parle pas de ça")
+
+var (
+	errNotAdult      = errors.New("réservé aux joueurs de 18 ans et plus")
+	errNotAcquainted = errors.New("faites d'abord connaissance : échangez vos numéros")
+	errNotTogether   = errors.New("vous n'êtes pas ensemble")
+
+	sortirYes = []string{
+		"{name} sourit, gêné{e} : « Je croyais que tu allais jamais demander… Oui ! On est ensemble. »",
+		"{name} rigole et te prend la main : « Toi tu es têtu{e} hein. Bon… c'est oui. »",
+		"{name} : « Depuis le temps ! Oui, on se met ensemble. Mais faut pas me fatiguer dèh ! »",
+	}
+	sortirNo = []string{
+		"{name} : « Tu es gentil{e}, mais on est mieux en amis, non ? »",
+		"{name} : « Doucement ! On se connaît à peine. Faut qu'on se voie encore. »",
+		"{name} sourit : « Pas maintenant… On va voir. »",
+	}
+	sortirTaken  = []string{"{name} croise les bras : « Et ta chérie là ? Tu me prends pour qui ? »"}
+	sortirAgain  = []string{"{name} rigole : « Mais on est déjà ensemble, mon cœur ! »"}
+	emmenagerYes = []string{
+		"{name} saute de joie : « Chez toi ? Pour de vrai ? Je fais mes bagages ce soir ! »",
+		"{name} : « On va vivre ensemble… Oui ! Mais c'est moi qui choisis les rideaux. »",
+	}
+	emmenagerNo = []string{
+		"{name} : « C'est trop tôt pour vivre ensemble. Laisse-moi un peu de temps. »",
+		"{name} : « Ma mère va dire quoi ? Attendons encore un peu. »",
+	}
+	emmenagerAgain = []string{"{name} : « Je vis déjà chez toi, tu as oublié ou bien ? »"}
+	rompreLines    = []string{
+		"{name} baisse les yeux : « Ok… Si c'est comme ça. Prends soin de toi. »",
+		"{name} se fâche : « Après tout ce que j'ai fait pour toi ? Va-t'en ! »",
+		"{name} soupire : « Je l'ai vu venir. Bonne chance, {toi}. »",
+	}
+)
+
+// partner: the Sim's boyfriend or girlfriend, if any.
+func (s *Sim) partner() *game.Friend {
+	for i := range s.Friends {
+		if s.Friends[i].Partner {
+			return &s.Friends[i]
+		}
+	}
+	return nil
+}
+
+// romance answers the three adult topics; ok false when topic isn't one of them.
+func (s *Sim) romance(t chatTopic, friend *game.Friend, adult bool, said int, rng *rand.Rand, p Passerby, it *game.Interaction) (ans chatAnswer, ok bool, err error) {
+	if t.id != "sortir" && t.id != "emmenager" && t.id != "rompre" {
+		return chatAnswer{}, false, nil
+	}
+	if !adult {
+		return chatAnswer{}, true, errNotAdult
+	}
+	if friend == nil || !friend.Adult {
+		return chatAnswer{}, true, errNotAcquainted
+	}
+	switch t.id {
+	case "sortir":
+		if friend.Partner {
+			return chatAnswer{Text: say(sortirAgain, p, s, rng), Mood: "good"}, true, nil
+		}
+		if s.partner() != nil {
+			friend.Friendship = max(0, friend.Friendship-5)
+			return chatAnswer{Text: say(sortirTaken, p, s, rng), Mood: "bad"}, true, nil
+		}
+		// The closer you are, the likelier; a good chat first helps a little.
+		chance := min(0.9, max(0.05, float64(friend.Friendship-35)/60+0.02*float64(said)))
+		if rng.Float64() < chance {
+			friend.Partner = true
+			friend.Friendship = min(100, friend.Friendship+10)
+			it.Effect = game.Needs{Social: 25, Fun: 20}
+			return chatAnswer{Text: say(sortirYes, p, s, rng), Mood: "good"}, true, nil
+		}
+		return chatAnswer{Text: say(sortirNo, p, s, rng), Mood: "bad"}, true, nil
+	case "emmenager":
+		if !friend.Partner {
+			return chatAnswer{}, true, errNotTogether
+		}
+		if friend.Home {
+			return chatAnswer{Text: say(emmenagerAgain, p, s, rng), Mood: "good"}, true, nil
+		}
+		chance := 0.2
+		if friend.Friendship >= 70 {
+			chance = 0.85
+		}
+		if rng.Float64() < chance {
+			friend.Home = true
+			friend.Friendship = min(100, friend.Friendship+8)
+			it.Effect = game.Needs{Social: 30, Fun: 20}
+			return chatAnswer{Text: say(emmenagerYes, p, s, rng), Mood: "good"}, true, nil
+		}
+		return chatAnswer{Text: say(emmenagerNo, p, s, rng), Mood: "bad"}, true, nil
+	default: // rompre
+		if !friend.Partner {
+			return chatAnswer{}, true, errNotTogether
+		}
+		friend.Partner, friend.Home = false, false
+		friend.Friendship = max(0, friend.Friendship-35)
+		return chatAnswer{Text: say(rompreLines, p, s, rng), Mood: "bad"}, true, nil
+	}
+}
 
 type Passerby struct {
 	ID     string `json:"id"`
@@ -273,7 +382,7 @@ type chatAnswer struct {
 // picked, if any. Talking on with the same person carries on the same
 // conversation (what's been said is remembered: twice the same thing, and
 // they notice; after a while, they have to go).
-func (s *Sim) chat(p Passerby, topicID, said string, rng *rand.Rand) (chatAnswer, error) {
+func (s *Sim) chat(p Passerby, topicID, said string, adult bool, rng *rand.Rand) (chatAnswer, error) {
 	i := slices.IndexFunc(chatTopics, func(t chatTopic) bool { return t.id == topicID })
 	if i < 0 {
 		return chatAnswer{}, errUnknownTopic
@@ -311,13 +420,19 @@ func (s *Sim) chat(p Passerby, topicID, said string, rng *rand.Rand) (chatAnswer
 		chance = min(0.95, chance+friendBonus)
 	}
 	var ans chatAnswer
+	romantic, isRomance, err := s.romance(t, friend, adult, len(before), rng, p, &it)
+	if err != nil {
+		return chatAnswer{}, err
+	}
 	switch {
+	case isRomance:
+		ans = romantic
 	case it.ID == "chat-again":
 		ans = chatAnswer{Text: say(chatAgain, p, s, rng), Mood: "bad"}
 	case t.id == "numero":
 		if friend == nil && len(s.Friends) < game.MaxFriends && rng.Float64() < 0.6+0.03*float64(len(before)) {
 			ans = chatAnswer{Text: say(numYes, p, s, rng), Mood: "good"}
-			s.Friends = append(s.Friends, game.Friend{ID: "p-" + p.ID, Name: p.Name, Gender: p.Gender, Seed: p.Seed, Commune: s.Commune, Friendship: 25 + 2*len(before), Met: s.GameMinutes, Seen: s.GameMinutes})
+			s.Friends = append(s.Friends, game.Friend{ID: "p-" + p.ID, Name: p.Name, Gender: p.Gender, Seed: p.Seed, Commune: s.Commune, Friendship: 25 + 2*len(before), Met: s.GameMinutes, Seen: s.GameMinutes, Adult: true})
 			friend = nil
 		} else if friend != nil {
 			ans = chatAnswer{Text: say([]string{"{name} : « Tu as déjà mon numéro, {toi} ! Appelle-moi au lieu de demander encore. »"}, p, s, rng), Mood: "good"}
@@ -373,11 +488,22 @@ func (h *Handler) chatHandler(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
 		return
 	}
-	h.mutate(w, r, func(s *Sim) (game.Outcome, []Event, error) {
-		ans, err := s.chat(req.With, req.Topic, req.Said, newRand())
+	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
+		adult, err := accountAdult(r.Context(), tx)
+		if err != nil {
+			return game.Outcome{}, nil, err
+		}
+		ans, err := s.chat(req.With, req.Topic, req.Said, adult, newRand())
 		if err != nil {
 			return game.Outcome{}, nil, err
 		}
 		return game.Outcome{Text: ans.Text, Money: ans.Money, Mood: ans.Mood}, nil, nil
 	})
+}
+
+// accountAdult: the player said they're 18 or over (users.adult_at, migration 035).
+func accountAdult(ctx context.Context, tx pgx.Tx) (bool, error) {
+	var adult bool
+	err := tx.QueryRow(ctx, `SELECT adult_at IS NOT NULL FROM users WHERE id = $1`, auth.UserID(ctx)).Scan(&adult)
+	return adult, err
 }

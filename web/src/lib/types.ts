@@ -73,7 +73,7 @@ export type Origin = Option & { money: number; loan: number; housing: string }
 /** The family a Sim is born into: debout, laté, lagnon, poignon, coulé, gnambro. */
 export type Family = { id: string; label: string; icon: string; hint: string; /** The kind of neighbourhood, found in every commune. */ sector: string; housing: string; pocket: number; start: number; leave: string; bacGift: number; weight: number }
 /** Someone the Sim knows. */
-export type Friend = { id: string; name: string; gender: 'femme' | 'homme'; seed: number; commune: string; friendship: number; gang?: boolean; met: number; seen: number }
+export type Friend = { id: string; name: string; gender: 'femme' | 'homme'; seed: number; commune: string; friendship: number; gang?: boolean; met: number; seen: number; /** Met as an adult: romance possible. */ adult?: boolean; /** Together. */ partner?: boolean; /** Lives at home with the Sim. */ home?: boolean }
 /** Another player's Sim, as others see it. */
 export type Player = {
   id: string
@@ -175,7 +175,7 @@ export type World = {
   config: { devLogin: boolean; googleLogin: boolean; realPhotos?: boolean }
 }
 
-export type User = { id: string; email: string; name: string; firstName: string; lastName: string; username: string; avatarUrl: string; createdAt: string; /** A team account: the testers' toolbox in the game. */ tester?: boolean }
+export type User = { id: string; email: string; name: string; firstName: string; lastName: string; username: string; avatarUrl: string; createdAt: string; /** A team account: the testers' toolbox in the game. */ tester?: boolean; /** Said they are 18 or over: romance in the game. */ adult?: boolean }
 
 export type Look = {
   skin: string

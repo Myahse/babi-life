@@ -42,6 +42,7 @@ func (s *Sim) socialize(it game.Interaction, rng *rand.Rand) []Event {
 	var events []Event
 	if f, isNew := game.Meet(s.Friends, s.Commune, s.GameMinutes, rng); f != nil {
 		if isNew {
+			f.Adult = s.stage().ID == game.StageAdulte
 			s.Friends = append(s.Friends, *f)
 			events = append(events, Event{Kind: "social", Text: fmt.Sprintf("Nouvelle rencontre : %s. Vous avez sympathisé.", f.Name), GameTime: s.GameMinutes})
 		} else {

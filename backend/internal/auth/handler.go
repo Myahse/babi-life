@@ -24,13 +24,15 @@ type User struct {
 	CreatedAt time.Time `json:"createdAt"`
 	// Tester: a team account, with the testers' toolbox (migration 021).
 	Tester bool `json:"tester"`
+	// Adult: the player said they are 18 or over (migration 035); romance needs it.
+	Adult bool `json:"adult"`
 }
 
 // userColumns and scanUser read a users row the same way everywhere.
-const userColumns = `id, email, name, first_name, last_name, coalesce(username, ''), avatar_url, created_at, tester`
+const userColumns = `id, email, name, first_name, last_name, coalesce(username, ''), avatar_url, created_at, tester, adult_at IS NOT NULL`
 
 func scanUser(row interface{ Scan(...any) error }, u *User) error {
-	return row.Scan(&u.ID, &u.Email, &u.Name, &u.FirstName, &u.LastName, &u.Username, &u.AvatarURL, &u.CreatedAt, &u.Tester)
+	return row.Scan(&u.ID, &u.Email, &u.Name, &u.FirstName, &u.LastName, &u.Username, &u.AvatarURL, &u.CreatedAt, &u.Tester, &u.Adult)
 }
 
 type Handler struct {
@@ -155,6 +157,16 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 	var u User
 	err := scanUser(h.DB.QueryRow(r.Context(), `SELECT `+userColumns+` FROM users WHERE id = $1`, UserID(r.Context())), &u)
 	if err != nil {
+		httpx.Error(w, http.StatusUnauthorized, "user not found")
+		return
+	}
+	httpx.JSON(w, http.StatusOK, u)
+}
+
+// ConfirmAdult: the player says once that they are 18 or over (romance in the game).
+func (h *Handler) ConfirmAdult(w http.ResponseWriter, r *http.Request) {
+	var u User
+	if err := scanUser(h.DB.QueryRow(r.Context(), `UPDATE users SET adult_at = coalesce(adult_at, now()) WHERE id = $1 RETURNING `+userColumns, UserID(r.Context())), &u); err != nil {
 		httpx.Error(w, http.StatusUnauthorized, "user not found")
 		return
 	}

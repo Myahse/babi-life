@@ -51,10 +51,10 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
     }
     switch (f.id) {
       case 'lit':
-        at(-0.45, 0.64, half - 0.15, 0, 'sleep', true, ['sleep', 'nap'])
+        at(-0.45, 0.64, half - 0.15, 0, 'sleep', true, ['sleep', 'nap', 'passer-nuit'])
         break
       case 'natte':
-        at(0, 0.16, half - 0.1, 0, 'sleep', true, ['sleep', 'nap'])
+        at(0, 0.16, half - 0.1, 0, 'sleep', true, ['sleep', 'nap', 'passer-nuit'])
         break
       case 'canape':
         seats.push(at(-0.45, 0.05, 0.15, 0, 'sit', false, ['watch-tv', 'call-family']), at(0.45, 0.05, 0.15, 0, 'sit'))

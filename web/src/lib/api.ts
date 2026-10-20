@@ -124,6 +124,8 @@ export const api = {
   me: () => request<User>('/me'),
   /** With the testers' code (or the admin key), the account becomes a tester's. */
   becomeTester: (code: string) => post<User>('/me/tester', { code }),
+  /** The player says once that they are 18 or over (romance). */
+  confirmAdult: () => post<User>('/me/adult', {}),
   sims: () => request<Sim[]>('/sims'),
   sim: (id: string) => request<ActionResult>(`/sims/${id}`),
   createSim: (sim: NewSim) => post<Sim>('/sims', sim),

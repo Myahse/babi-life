@@ -546,7 +546,7 @@ export function Play() {
       {showInside && (
         <div className="absolute inset-0 z-[1]">
           {inside!.kind === 'home' && homePlot && !classic ? (
-            <HomeInside sim={sim} world={world} plot={homePlot} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} onBuild={() => setBuilding(true)} />
+            <HomeInside partner={sim.friends?.find((f) => f.partner && f.home)} sim={sim} world={world} plot={homePlot} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} onBuild={() => setBuilding(true)} />
           ) : inside!.kind === 'mall' ? (
             <Suspense fallback={null}>
               <MallInside sim={sim} name={placeName(inside!.id)} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
@@ -857,7 +857,21 @@ export function Play() {
       {overlay === 'camera' && <CameraView sim={sim} street={!showInside} onClose={() => setOverlay(null)} onGallery={() => (setPhoneApp('galerie'), setOverlay('phone'))} />}
       {overlay === 'map' && <WorldMap world={world} sim={sim} night={c.isNight} desktop={desktop} onClose={() => setOverlay(null)} onTravel={travel} onWalk={(id) => (setOverlay(null), walkTo(id))} />}
       {delivery && overlay !== 'phone' && <DeliveryPill delivery={delivery} now={now} onOpen={() => (setPhoneApp('golvo'), setOverlay('phone'))} />}
-      {chat && <ChatSheet npc={chat} simGender={sim.gender} onSay={say} onClose={() => setChat(null)} />}
+      {chat && (
+        <ChatSheet
+          npc={chat}
+          simGender={sim.gender}
+          onSay={say}
+          onClose={() => setChat(null)}
+          friend={sim.friends?.find((f) => f.id === `p-${chat.id}`)}
+          grownUp={!lifeOf(world, sim).minor}
+          adultAccount={!!user?.adult}
+          onConfirmAdult={async () => {
+            const u = await api.confirmAdult()
+            if (token) useSession.getState().signIn(token, u)
+          }}
+        />
+      )}
       {flow && <RideFlow world={world} req={flow} gameMinutes={sim.gameMinutes} onBoard={board} onClose={() => setFlow(null)} />}
     </div>
   )
@@ -1060,7 +1074,13 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
   const career = world.careers.find((c) => c.id === sim.career && (c.kind === place.kind || c.also?.includes(place.kind)))
   const life = lifeOf(world, sim)
   // Things past this age (the biberon for an adult) don't show; things for later do, greyed.
-  const items = [...(career ? [shift(career, sim.careerLevel)] : []), ...kind.interactions.map((it) => (placeId === 'home' ? atHome(it, home) : it))].filter((it) => ageBlock(it, life.stage?.id) !== 'Plus de ton âge' && (!it.places || it.places.includes(placeId)))
+  // A night together: only with one's partner living at home, and a player who said they're 18 or over.
+  const partner = sim.friends?.find((f) => f.partner && f.home)
+  const adult = !!useSession((s) => s.user?.adult)
+  const items = [...(career ? [shift(career, sim.careerLevel)] : []), ...kind.interactions.map((it) => (placeId === 'home' ? atHome(it, home) : it))]
+    .filter((it) => ageBlock(it, life.stage?.id) !== 'Plus de ton âge' && (!it.places || it.places.includes(placeId)))
+    .filter((it) => it.id !== 'passer-nuit' || (partner && adult && !life.minor))
+    .map((it) => (it.id === 'passer-nuit' && partner ? { ...it, label: `Passer la nuit avec ${partner.name}` } : it))
   const busy = !!sim.activity
   const canBuild = placeId === 'home' && here && !!world.materials?.length
   // Building is on one's own lot, bought from 18.

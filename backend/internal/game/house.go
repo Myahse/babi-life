@@ -80,8 +80,8 @@ type Furniture struct {
 }
 
 var Furnitures = []Furniture{
-	{ID: "natte", Label: "Natte", Icon: "rectangle-horizontal", W: 1, D: 2, H: 1, Price: 2000, Comfort: 0, Unlocks: []string{"sleep", "nap"}, Color: "#d9b26b"},
-	{ID: "lit", Label: "Lit avec matelas", Icon: "bed-double", W: 2, D: 2, H: 1, Price: 25000, Comfort: 0.15, Unlocks: []string{"sleep", "nap"}, Color: "#5a7fbf"},
+	{ID: "natte", Label: "Natte", Icon: "rectangle-horizontal", W: 1, D: 2, H: 1, Price: 2000, Comfort: 0, Unlocks: []string{"sleep", "nap", NightID}, Color: "#d9b26b"},
+	{ID: "lit", Label: "Lit avec matelas", Icon: "bed-double", W: 2, D: 2, H: 1, Price: 25000, Comfort: 0.15, Unlocks: []string{"sleep", "nap", NightID}, Color: "#5a7fbf"},
 	{ID: "chaises", Label: "Chaises en plastique", Icon: "armchair", W: 1, D: 1, H: 1, Price: 3000, Comfort: 0.03, Color: "#e8e3d6"},
 	{ID: "table", Label: "Table à manger", Icon: "utensils", W: 1, D: 2, H: 1, Price: 8000, Comfort: 0.05, Color: "#8a5a32"},
 	{ID: "canape", Label: "Canapé", Icon: "sofa", W: 2, D: 1, H: 1, Price: 40000, Comfort: 0.1, Color: "#7a4a8a"},
@@ -386,6 +386,9 @@ func HomeComfort(furnished []string) float64 {
 }
 
 // HomeNeeds: the furniture a home activity needs in one's own house ("" when none).
+// NightID: « Passer la nuit ensemble », at home with one's partner.
+const NightID = "passer-nuit"
+
 func HomeNeeds(interaction string, furnished []string) string {
 	var need []string
 	for _, f := range Furnitures {

@@ -992,7 +992,7 @@ function InsideLab() {
   if (!world || !plot) return <p style={{ padding: 20 }}>{world ? `Plan inconnu : ${id}` : 'Chargement…'}</p>
   return (
     <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
-      <HomeInside sim={sim} world={world} plot={plot} interactionId={q.get('act') ?? undefined} roam night={q.has('night')} stage="adulte" />
+      <HomeInside sim={sim} world={world} plot={plot} interactionId={q.get('act') ?? undefined} roam night={q.has('night')} stage="adulte" partner={q.has('partner') ? { id: 'p-lab', name: 'Koffi', gender: 'homme', seed: 3, commune: '', friendship: 90, met: 0, seen: 0, adult: true, partner: true, home: true } : undefined} />
     </div>
   )
 }
