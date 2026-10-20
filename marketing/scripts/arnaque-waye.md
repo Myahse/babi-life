@@ -86,3 +86,7 @@ Partagez la vidéo à vos parents, à vos tantes, à vos vieux. On est ensemble 
 ### Après
 
 Télécharger en MP3, le mettre dans `marketing/out/voix-arnaque.mp3`, puis `npm run video:arnaque` : la vidéo ressort avec la voix. Sans voix, elle sort muette, calée sur les temps du tableau. Si la voix dure plus ou moins de 55 s, recaler les temps des plans (`FILMS.arnaque` dans `web/src/lab/poster.tsx`) sur ses phrases.
+
+## La voix enregistrée
+
+`out/voix-arnaque.mp3` : ElevenLabs, voix « Lea - UGC creator » (vitesse 1,08), 50 s. La vidéo est calée sur elle (`FILMS.arnaque` dans `web/src/lab/poster.tsx`), sur les pauses de la voix : la chambre 0 – 5,6 s, le message 5,6 – 11 s, la fausse page 11 – 16 s, le compte vidé 16 – 22,2 s, l'appel à Fanta 22,2 – 25,8 s, la cabine 25,8 – 31 s, les conseils 1 (31 s), 2 (35,1 s) et 3 (40 s), le lien masqué 42,9 – 46,4 s, la fin 46,4 – 51,5 s. Avec une autre voix, recaler ces temps sur ses pauses.
