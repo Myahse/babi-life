@@ -78,6 +78,8 @@ function Boxes({ items, colors, cast = false }: { items: number[][]; colors: str
     })
     m.instanceMatrix.needsUpdate = true
     if (m.instanceColor) m.instanceColor.needsUpdate = true
+    // Its bounds from where its copies stand: else culled when the camera comes close.
+    m.computeBoundingSphere()
   }, [items, colors])
   return <instancedMesh ref={ref} args={[BOX, mat, items.length]} castShadow={cast} receiveShadow />
 }

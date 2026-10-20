@@ -338,8 +338,16 @@ function Basilica() {
     const q = new THREE.Quaternion()
     posts.forEach(([x, z, y, h], i) => columns.current?.setMatrixAt(i, m.compose(new THREE.Vector3(x, y + h / 2, z), q, new THREE.Vector3(1, h, 1))))
     spans.forEach(([x, z, y, a, l], i) => beams.current?.setMatrixAt(i, m.compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), a), new THREE.Vector3(l, 2, 9.5))))
-    if (columns.current) columns.current.instanceMatrix.needsUpdate = true
-    if (beams.current) beams.current.instanceMatrix.needsUpdate = true
+    if (columns.current) {
+      columns.current.instanceMatrix.needsUpdate = true
+      // Its bounds from where its copies stand (not from before they were placed): else it's culled when zoomed in.
+      columns.current.computeBoundingSphere()
+    }
+    if (beams.current) {
+      beams.current.instanceMatrix.needsUpdate = true
+      // Its bounds from where its copies stand (not from before they were placed): else it's culled when zoomed in.
+      beams.current.computeBoundingSphere()
+    }
   }, [posts, spans])
 
   return (

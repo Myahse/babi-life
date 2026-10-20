@@ -1112,8 +1112,16 @@ export function Trees({ pts, bark, leaves }: { pts: XZ[]; bark: THREE.Material; 
       trunks.current?.setMatrixAt(i, m.compose(new THREE.Vector3(x, h / 2, z), new THREE.Quaternion(), new THREE.Vector3(1, h, 1)))
       tops.current?.setMatrixAt(i, m.compose(new THREE.Vector3(x, h + 1.2, z), new THREE.Quaternion(), new THREE.Vector3(4, 3, 4)))
     })
-    if (trunks.current) trunks.current.instanceMatrix.needsUpdate = true
-    if (tops.current) tops.current.instanceMatrix.needsUpdate = true
+    if (trunks.current) {
+      trunks.current.instanceMatrix.needsUpdate = true
+      // Its bounds from where its copies stand (not from before they were placed): else it's culled when zoomed in.
+      trunks.current.computeBoundingSphere()
+    }
+    if (tops.current) {
+      tops.current.instanceMatrix.needsUpdate = true
+      // Its bounds from where its copies stand (not from before they were placed): else it's culled when zoomed in.
+      tops.current.computeBoundingSphere()
+    }
   }, [pts])
   if (!pts.length) return null
   return (
@@ -1152,10 +1160,15 @@ export function Forest({ pts, bark }: { pts: XZ[]; bark: THREE.Material }) {
       crowns.current?.setMatrixAt(i, m.compose(new THREE.Vector3(x, h + 1.5, z), q, new THREE.Vector3(w, giant ? 4.5 : 3 + (i % 2) * 1.5, w)))
       crowns.current?.setColorAt(i, FOREST_GREENS[Math.floor(hash(z, x, 5) * FOREST_GREENS.length)])
     })
-    if (trunks.current) trunks.current.instanceMatrix.needsUpdate = true
+    if (trunks.current) {
+      trunks.current.instanceMatrix.needsUpdate = true
+      // Its bounds from where its copies stand (not from before they were placed): else it's culled when zoomed in.
+      trunks.current.computeBoundingSphere()
+    }
     if (crowns.current) {
       crowns.current.instanceMatrix.needsUpdate = true
       if (crowns.current.instanceColor) crowns.current.instanceColor.needsUpdate = true
+      crowns.current.computeBoundingSphere()
     }
   }, [pts])
   if (!pts.length) return null
@@ -1201,7 +1214,11 @@ export function Palms({ pts, bark, leaves }: { pts: XZ[]; bark: THREE.Material; 
       }
       nuts.current?.setMatrixAt(i, m.compose(top.clone().add(new THREE.Vector3(0, -0.5, 0)), q, new THREE.Vector3(0.9, 0.6, 0.9)))
     })
-    for (const r of [trunks, fronds, nuts]) if (r.current) r.current.instanceMatrix.needsUpdate = true
+    for (const r of [trunks, fronds, nuts]) if (r.current) {
+      r.current.instanceMatrix.needsUpdate = true
+      // Its bounds from where its copies stand (not from before they were placed): else it's culled when zoomed in.
+      r.current.computeBoundingSphere()
+    }
   }, [pts])
   const nut = useMemo(() => new THREE.MeshLambertMaterial({ color: '#6b4a1e' }), [])
   if (!pts.length) return null
