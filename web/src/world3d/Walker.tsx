@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Html, OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
@@ -7,7 +7,8 @@ import type { Sim } from '../lib/types'
 import { iconFor, kindColors } from '../components/icons'
 import { IconTile } from '../components/ui'
 import { Character } from './Character'
-import { workLook } from '../avatar/options'
+import { randomLook, workLook } from '../avatar/options'
+import { rng } from './themes'
 import { OutdoorAction, outdoorLook, outdoorPose } from './OutdoorAction'
 import { HOME_ID, SIDEWALK, type Lot } from './layout'
 import { cameraTurn, moveInput, running } from './input'
@@ -37,6 +38,8 @@ const LOOPS: Record<string, { speed: number; run?: boolean; len: number }> = {
   hike: { speed: 1.4, len: 18 },
   'zoo-visite': { speed: 1.0, len: 12 },
   'stade-footing': { speed: 3.2, run: true, len: 26 },
+  // Hanging out with a friend: a slow walk up and down the street, side by side.
+  'ami-trainer': { speed: 1.1, len: 16 },
 }
 const UP = new THREE.Vector3(0, 1, 0)
 const EAVES: XZ[] = [[0, 0], [1.1, 0], [-1.1, 0], [0, 1.1], [0, -1.1]]
@@ -664,6 +667,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         ) : (
           <Character look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking || looping} running={run || (looping && !!loopKind?.run)} busy={!!busy && !looping} marker={!photoMode} pose={photoMode && !busy && !walking ? 'phone' : emote && !busy && !walking ? emote : busy?.kind === 'chat' ? 'talk' : inMatch && !walking ? matchPose : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={looping && loopKind ? loopKind.speed : run ? RUN : SPEED} />
         )}
+        {/* Hanging out: the friend walks along beside the Sim */}
+        {busy?.id === 'ami-trainer' && <Buddy sim={sim} walking={looping} stage={stage} />}
         {/* Outdoors, what the Sim is doing is set around it (the ball, the towel, the bus stop…) */}
         {busy && !walking && !onTouchline && <OutdoorAction id={busy.id} />}
         {labels && nameTag && !hidden && (
@@ -739,5 +744,18 @@ function RouteDots({ route, from, heightAt }: { route: XZ[]; from: React.RefObje
         </mesh>
       </group>
     </>
+  )
+}
+
+/** The friend one hangs out with (« Traîner ensemble »), walking at the Sim's side. */
+function Buddy({ sim, walking, stage }: { sim: Sim; walking: boolean; stage: string }) {
+  const name = sim.activity?.kind === 'do' ? sim.activity.placeName : undefined
+  const friend = sim.friends?.find((f) => f.name === name)
+  const gender = friend?.gender ?? (sim.gender === 'femme' ? 'femme' : 'homme')
+  const look = useMemo(() => randomLook(gender, rng(`partner${friend?.id ?? name ?? 'ami'}`)), [gender, friend?.id, name])
+  return (
+    <group position={[0.85, 0, 0.1]}>
+      <Character look={look} gender={gender} walking={walking} pose={walking ? undefined : 'talk'} marker={false} moodColor="#3b82f6" stage={stage} speed={1.1} />
+    </group>
   )
 }
