@@ -463,7 +463,7 @@ function cage(cx: number, cz: number, w: number, d: number, h: number, roofed: b
 
 /** What a visitor walking the park can't go through (the park's own frame):
  * the enclosure walls, the cages, the gate's pillars, the ticket window, the
- * vendor's cart, the fence along the road. The 12 m gate stays open. */
+ * vendor's cart, the wall all round the park. The 12 m gate stays open. */
 export const ZOO_SOLID: { x: number; z: number; hw: number; hd: number; rot: number; top?: number }[] = (() => {
   const out: { x: number; z: number; hw: number; hd: number; rot: number; top?: number }[] = []
   const ring = (cx: number, cz: number, w: number, d: number, top: number) => {
@@ -475,6 +475,9 @@ export const ZOO_SOLID: { x: number; z: number; hw: number; hd: number; rot: num
   out.push({ x: -6, z: 42, hw: 0.8, hd: 0.8, rot: 0, top: 7 }, { x: 6, z: 42, hw: 0.8, hd: 0.8, rot: 0, top: 7 })
   out.push({ x: -10, z: 44, hw: 2, hd: 1.5, rot: 0, top: 3.4 }, { x: 10, z: 46, hw: 1.1, hd: 0.6, rot: 0, top: 1.2 })
   out.push({ x: -36, z: 42, hw: 29, hd: 0.35, rot: 0, top: 2.4 }, { x: 36, z: 42, hw: 29, hd: 0.35, rot: 0, top: 2.4 })
+  // The sides and the back, closing the park.
+  out.push({ x: -65, z: -7, hw: 0.35, hd: 49, rot: 0, top: 2.4 }, { x: 65, z: -7, hw: 0.35, hd: 49, rot: 0, top: 2.4 })
+  out.push({ x: 0, z: -56, hw: 65, hd: 0.35, rot: 0, top: 2.4 })
   return out
 })()
 
@@ -747,6 +750,22 @@ export function Zoo({ night, open = true }: { night: boolean; /** Within its hou
         <Blocks at={[-1, 1].map((s) => ({ p: [s * 36, 1.2, 0] as [number, number, number], s: [58, 2.4, 0.5] as [number, number, number] }))} material={mat('#e7dfcf')} />
         <Blocks at={[-1, 1].flatMap((s) => [...Array(12)].map((_, i) => ({ p: [s * (8.5 + i * 4.8), 1.4, 0] as [number, number, number], s: [0.6, 2.8, 0.7] as [number, number, number] })))} material={mat('#2e8b45')} />
       </group>
+
+      {/* The same wall down both sides and across the back: the park is closed all round, the gate the only way in */}
+      <Blocks
+        at={[
+          ...[-1, 1].map((s) => ({ p: [s * 65, 1.2, -7] as [number, number, number], s: [0.5, 2.4, 98] as [number, number, number] })),
+          { p: [0, 1.2, -56] as [number, number, number], s: [130.5, 2.4, 0.5] as [number, number, number] },
+        ]}
+        material={mat('#e7dfcf')}
+      />
+      <Blocks
+        at={[
+          ...[-1, 1].flatMap((s) => [...Array(21)].map((_, i) => ({ p: [s * 65, 1.4, 42 - i * 4.9] as [number, number, number], s: [0.7, 2.8, 0.6] as [number, number, number] }))),
+          ...[...Array(27)].map((_, i) => ({ p: [-65 + i * 5, 1.4, -56] as [number, number, number], s: [0.6, 2.8, 0.7] as [number, number, number] })),
+        ]}
+        material={mat('#2e8b45')}
+      />
 
       <Blocks at={greenery.trunks} material={trunk} />
       <Blocks at={greenery.crowns} material={leaves} color />

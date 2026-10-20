@@ -200,9 +200,9 @@ function markings(chunk: ChunkData, paint: Builder, trim: Builder) {
 }
 
 /** Buildings the game draws itself (its places) are left out of the map's. */
-export function buildChunk(chunk: ChunkData, skip: (c: XZ) => boolean, styleOf: (b: ChunkData['buildings'][number]) => Style = () => 'default'): ChunkMeshes {
+export function buildChunk(chunk: ChunkData, skip: (c: XZ, ring: XZ[]) => boolean, styleOf: (b: ChunkData['buildings'][number]) => Style = () => 'default'): ChunkMeshes {
   const B = newBuildingBuilders()
-  for (const b of chunk.buildings) if (!skip(b.c)) addBuilding(B, b, styleOf(b))
+  for (const b of chunk.buildings) if (!skip(b.c, b.ring)) addBuilding(B, b, styleOf(b))
 
   const asphalt = new Builder()
   const laterite = new Builder()

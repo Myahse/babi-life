@@ -24,7 +24,7 @@ export class Nav {
   private heights = new Map<XZ[], number>()
   private water: XZ[][][] = []
 
-  constructor(chunks: ChunkData[], skipBuilding: (c: XZ) => boolean = () => false) {
+  constructor(chunks: ChunkData[], skipBuilding: (c: XZ, ring: XZ[]) => boolean = () => false) {
     for (const ch of chunks) {
       const joined = joinedEnds(ch.roads)
       for (const r of ch.roads) {
@@ -37,7 +37,7 @@ export class Nav {
         }
       }
       for (const b of ch.buildings) {
-        if (skipBuilding(b.c)) continue
+        if (skipBuilding(b.c, b.ring)) continue
         this.heights.set(b.ring, b.height)
         for (const k of this.cellsOf(b.ring)) {
           const list = this.blockGrid.get(k)

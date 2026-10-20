@@ -392,7 +392,12 @@ export function Play() {
     const id = placeId!
     setPlaceId(null)
     setOutside(false)
-    run(it.label, it.icon, kind, () => api.interact(sim!.id, id, it.id))
+    // Already doing something at the zoo (or the hotel's grounds): it gives way to the new thing.
+    const there = sim!.activity?.kind === 'do' && sim!.activity.placeId === id && GROUNDS.has(id)
+    run(it.label, it.icon, kind, async () => {
+      if (there) await api.stop(sim!.id)
+      return api.interact(sim!.id, id, it.id)
+    })
   }
   // The ride shows on the map: the route, and the taxi moving along it.
   // In town, a ride is arranged first (hailed at the roadside, or an app
@@ -488,6 +493,8 @@ export function Play() {
     return null
   })()
   const showInside = !!inside && !outside
+  // Doing something at the zoo or round the hotel's grounds: the Sim walks about them freely meanwhile.
+  const onGrounds = !!doing?.placeId && GROUNDS.has(doing.placeId) && sim.city === city.id && sim.commune === commune.id && !classic
   // Just come in (nothing being done yet): the Sim can walk about the room.
   const visiting = !!placeId && placeId !== 'happening' && showInside && !doing && sim.city === city.id && sim.commune === commune.id
   // Come to the zoo, the hotel's grounds, a known street: the Sim walks round it in the street view.
@@ -581,7 +588,8 @@ export function Play() {
             nameTag: user?.username ? `@${user.username}` : sim.firstName,
             happening,
             onNear: setNear,
-            frozen: !!sim.activity || !!pending,
+            // Busy at the zoo or the hotel's grounds: still free to walk about them.
+            frozen: (!!sim.activity && !onGrounds) || !!pending,
             players: around.players,
             onPickPlayer: (id: string) => setPlayers({ focus: id }),
             recenter,
@@ -827,7 +835,7 @@ export function Play() {
         ) : null
       })()}
 
-      {sim.activity && !placeId && <ActivityBar sim={sim} onStop={stop} stopping={!!pending} onRoute={() => setOverlay('map')} />}
+      {sim.activity && !placeId && <ActivityBar sim={sim} onStop={stop} stopping={!!pending} onRoute={() => setOverlay('map')} onMore={onGrounds ? () => (setPlaceId(doing!.placeId!), setMenuOpen(true)) : undefined} />}
 
       <div className="pointer-events-none absolute top-[5.5rem] left-1/2 z-40 flex w-[min(400px,calc(100vw-24px))] -translate-x-1/2 flex-col gap-2 lg:top-24">
         {toasts.map((t) => (
@@ -1082,7 +1090,8 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
     .filter((it) => ageBlock(it, life.stage?.id) !== 'Plus de ton âge' && (!it.places || it.places.includes(placeId)))
     .filter((it) => it.id !== 'passer-nuit' || (partner && adult && !life.minor))
     .map((it) => (it.id === 'passer-nuit' && partner ? { ...it, label: `Passer la nuit avec ${partner.name}` } : it))
-  const busy = !!sim.activity
+  // Busy at these grounds (the zoo visit): the other things there can still be picked, they take over.
+  const busy = !!sim.activity && !(sim.activity.kind === 'do' && sim.activity.placeId === placeId && GROUNDS.has(placeId))
   const canBuild = placeId === 'home' && here && !!world.materials?.length
   // Building is on one's own lot, bought from 18.
   const tooYoung = life.minor
@@ -1308,7 +1317,7 @@ function HappeningSheet({ now, sim, commune, onClose, onJoin }: { now: Happening
 /* ---------- Feedback ---------- */
 
 /** What the Sim is busy with, on real time: progress, time left, and a way to stop. */
-function ActivityBar({ sim, onStop, stopping, onRoute }: { sim: Sim; onStop: () => void; stopping: boolean; onRoute: () => void }) {
+function ActivityBar({ sim, onStop, stopping, onRoute, onMore }: { sim: Sim; onStop: () => void; stopping: boolean; onRoute: () => void; /** At the zoo: the other things to do there. */ onMore?: () => void }) {
   const a = sim.activity!
   const span = Math.max(1, a.end - a.start)
   const done = Math.min(1, Math.max(0, (sim.gameMinutes - a.start) / span))
@@ -1331,6 +1340,11 @@ function ActivityBar({ sim, onStop, stopping, onRoute }: { sim: Sim; onStop: () 
         {travel && (
           <button className="icon-btn shrink-0 bg-[var(--color-canvas)]" onClick={onRoute} aria-label="Voir le trajet" title="Voir le trajet">
             <MapIcon size={20} strokeWidth={2.4} />
+          </button>
+        )}
+        {onMore && (
+          <button className="icon-btn shrink-0 bg-[var(--color-orange)] text-white" onClick={onMore} aria-label="Que faire ?" title="Que faire ?">
+            <Sparkles size={18} strokeWidth={2.6} />
           </button>
         )}
         {!travel && (

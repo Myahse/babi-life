@@ -47,7 +47,7 @@ import { StreetFootball } from './streetFoot'
 import { StreetPeople } from './streetPeople'
 import { StreetNouchis } from './nouchis'
 import { Billboards } from './billboards'
-import { StreetLife } from './streetlife'
+import { StreetLife, type Taken } from './streetlife'
 import { TakeOff } from './airport'
 import { StreetLights } from './streetlights'
 import { PARTIES, Party } from './party'
@@ -641,7 +641,17 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const clears = useMemo(() => new Map(spots.filter((x) => x.landmark).map((x) => [x.id, x.landmark!])), [spots])
   const made = useMemo<XZ[]>(() => [...resolved.values()].filter((r) => !r.real && !r.field && !r.station && !clears.has(r.id)).map((r) => r.center), [resolved, clears])
   const marks = useMemo(() => [...resolved.values()].filter((r) => clears.has(r.id)).map((r) => ({ at: r.center, r: clears.get(r.id)! })), [resolved, clears])
-  const nav = useMemo(() => new Nav([...chunks.values()].filter((c) => !c.data.key.includes(':')).map((c) => c.data), (c) => inTheWay(made, c, marks)), [chunks, made, marks])
+  const nav = useMemo(() => new Nav([...chunks.values()].filter((c) => !c.data.key.includes(':')).map((c) => c.data), (c, ring) => inTheWay(made, c, marks, ring)), [chunks, made, marks])
+
+  // The ground the game gave away (its buildings, the landmarks, the fields, the stations, the lots): no street pitch or stall on it.
+  const taken = useMemo<Taken[]>(
+    () =>
+      [...resolved.values()].map((r) => ({
+        at: r.field?.at ?? r.center,
+        r: r.field ? Math.hypot(r.field.len, r.field.wid) / 2 + 3 : clears.has(r.id) ? clears.get(r.id)! : r.id.startsWith('plot:') || r.id === HOME_ID ? 20 : r.station ? 16 : r.real ? 0 : 12,
+      })).filter((t) => t.r > 0),
+    [resolved, clears],
+  )
 
   // The places, once they stand on a loaded street.
   const lots = useMemo<Lot[]>(
@@ -951,7 +961,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       {nav.nodes.length > 0 && !stopsTraffic && <RoadTraffic nav={nav} focus={focus} seed={commune.id} woro={commune.woro} />}
       <Boats water={nearWater} focus={focus} />
       {nav.nodes.length > 0 && <StreetLights nav={nav} night={night} />}
-      {nav.nodes.length > 0 && <StreetLife nav={nav} seed={commune.id} night={night} />}
+      {nav.nodes.length > 0 && <StreetLife nav={nav} seed={commune.id} night={night} taken={taken} />}
       {nav.nodes.length > 0 && night && <NightStreet nav={nav} seed={commune.id} />}
       {nav.nodes.length > 0 && <StreetStalls nav={nav} seed={commune.id} hour={hour} onBuy={onStreetBuy} />}
       {nav.nodes.length > 0 && <SotraStops nav={nav} seed={commune.id} hour={hour} night={night} />}
@@ -1527,6 +1537,7 @@ function Passersby({ nav, focus, seed, onTalk, talkingTo }: { nav: Nav; focus: R
           nav={nav}
           routes={routes}
           held={p.id === talkingTo || said?.id === p.id}
+          talking={p.id === talkingTo}
           react={reaction?.id === p.id ? reaction.pose : undefined}
           refs={refs.current}
           onClick={() => talk(p)}
@@ -1545,7 +1556,7 @@ function Passersby({ nav, focus, seed, onTalk, talkingTo }: { nav: Nav; focus: R
   )
 }
 
-function Passerby({ p, nav, routes, held, react, refs, onClick, bubble }: { p: Walk; nav: Nav; routes: Map<string, XZ[]>; held: boolean; react?: Pose; refs: Map<string, THREE.Group>; onClick: () => void; bubble: React.ReactNode }) {
+function Passerby({ p, nav, routes, held, talking, react, refs, onClick, bubble }: { p: Walk; nav: Nav; routes: Map<string, XZ[]>; held: boolean; /** in a conversation with the Sim: comes up to it, face to face */ talking: boolean; react?: Pose; refs: Map<string, THREE.Group>; onClick: () => void; bubble: React.ReactNode }) {
   const ref = useRef<THREE.Group>(null)
   const anchor = useMemo(() => anchorNode(nav, p.near), [nav, p.near])
   const [moving, setMoving] = useState(true)
@@ -1555,13 +1566,36 @@ function Passerby({ p, nav, routes, held, react, refs, onClick, bubble }: { p: W
     refs.set(p.id, g)
     return () => void refs.delete(p.id)
   }, [refs, p.id])
-  useFrame(() => {
+  // Back from a conversation: from where it stood to its way again, in a second.
+  const back = useRef<{ x: number; z: number; t: number } | null>(null)
+  const [stepping, setStepping] = useState(false)
+  useEffect(() => {
+    if (!talking) return
+    return () => {
+      const g = ref.current
+      if (g) back.current = { x: g.position.x, z: g.position.z, t: 0 }
+      whereabouts.faceTo = null
+    }
+  }, [talking])
+  useFrame((_, dt) => {
     const g = ref.current
     if (!g) return
     if (held) {
-      // The one you talk to (or who calls out to you) stops and turns to you.
+      // The one you talk to (or who calls out to you) stops and turns to you;
+      // in a conversation, comes up to you (a step apart, face to face).
       const [sx, sz] = whereabouts.sim
-      g.rotation.y = turnTo(g.rotation.y, Math.atan2(sx - g.position.x, sz - g.position.z), 0.2)
+      const [dx, dz] = [sx - g.position.x, sz - g.position.z]
+      const d = Math.hypot(dx, dz)
+      const walk = talking && d > 1.15
+      if (walk) {
+        const step = Math.min(d - 1.1, 1.5 * Math.min(dt, 0.1))
+        g.position.x += (dx / d) * step
+        g.position.z += (dz / d) * step
+        g.position.y = nav.heightAt(g.position.x, g.position.z)
+      }
+      if (walk !== stepping) setStepping(walk)
+      g.rotation.y = turnTo(g.rotation.y, Math.atan2(dx, dz), walk ? 0.3 : 0.2)
+      if (talking) whereabouts.faceTo = [g.position.x, g.position.z]
       return
     }
     const reach = WALK_ROUND * 0.42 * p.speed
@@ -1574,12 +1608,20 @@ function Passerby({ p, nav, routes, held, react, refs, onClick, bubble }: { p: W
     // On the pavement, not in the middle of the road: always the same side of the street.
     const off = 4.5 * p.side
     g.position.set(pt.x + Math.cos(pt.r) * off, nav.heightAt(pt.x, pt.z), pt.z - Math.sin(pt.r) * off)
+    const b = back.current
+    if (b) {
+      b.t = Math.min(1, b.t + dt)
+      const k = b.t * b.t * (3 - 2 * b.t)
+      g.position.x = b.x + (g.position.x - b.x) * k
+      g.position.z = b.z + (g.position.z - b.z) * k
+      if (b.t >= 1) back.current = null
+    }
     g.rotation.y = turnTo(g.rotation.y, at.forward ? pt.r : pt.r + Math.PI, 0.25)
     if (at.moving !== moving) setMoving(at.moving)
   })
   return (
     <group ref={ref} onClick={(e) => (e.stopPropagation(), onClick())}>
-      <Human look={p.look} gender={p.gender} pose={held ? (react ?? 'talk') : moving ? 'walk' : 'idle'} seed={p.seed} speed={p.speed} />
+      <Human look={p.look} gender={p.gender} pose={stepping ? 'walk' : held ? (react ?? 'talk') : moving ? 'walk' : 'idle'} seed={p.seed} speed={p.speed} />
       {bubble}
     </group>
   )

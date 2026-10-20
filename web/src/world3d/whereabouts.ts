@@ -20,6 +20,8 @@ export const whereabouts = {
   /** Street segments: from, to, width. */
   roads: [] as [XZ, XZ, number][],
   water: [] as XZ[][],
+  /** Who the Sim is talking to stands here: the Sim turns to face them (Walker.tsx). */
+  faceTo: null as XZ | null,
   /** Is there room for the Sim's body here (Walker.tsx)? */
   roomAt: (_x: number, _z: number) => true,
 }

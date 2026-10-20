@@ -28,7 +28,7 @@ export const LANDMARKS: Record<string, number> = {
   'yop-ficgayo': 46,
   'treich-palais': 45,
   'adjame-forum': 52,
-  'cocody-zoo': 62,
+  'cocody-zoo': 86,
   'cocody-blockhauss-maquis': 27,
 }
 
