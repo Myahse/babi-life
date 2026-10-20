@@ -4,11 +4,14 @@ import { fetchChunk } from './tiles'
 import type { Origin } from './geo'
 import { inTheWay, onFieldGround, resolvePlaces, type PlaceSpot } from './places'
 import { STYLE_OF_KIND, type Style } from './buildings'
-import { pointInRing } from './geo'
+import { pointInRing, tileBox } from './geo'
+import { chunkKey, getChunk, openCache, putChunk } from './chunkCache'
 import type { Building } from './tiles'
 
 // Chunks are fetched, decoded and turned into geometry here, off the main
-// thread, so walking stays smooth while the world loads around the Sim.
+// thread, so walking stays smooth while the world loads around the Sim. A
+// chunk built once is kept in the browser (chunkCache): next time it comes
+// back from there at once, and only the missing ones are fetched and built.
 
 export type ChunkRequest = { id: number; origin: Origin; tx: number; ty: number; token: string; places: PlaceSpot[]; z?: number }
 export type Arrays = { position: Float32Array; uv: Float32Array; normal: Float32Array; color?: Float32Array; colorSize?: number; index: Uint32Array }
@@ -16,6 +19,13 @@ export type Arrays = { position: Float32Array; uv: Float32Array; normal: Float32
 self.onmessage = async (e: MessageEvent<ChunkRequest>) => {
   const { id, origin, tx, ty, token, places, z } = e.data
   try {
+    const key = chunkKey(origin, tx, ty, z ?? 0, z ? tileBox(origin, tx, ty, z) : tileBox(origin, tx, ty), places)
+    const kept = await getChunk(key)
+    if (kept) {
+      const transfer = Object.values(kept.meshes).flatMap((a) => [a.position, a.uv, a.normal, a.color, a.index].flatMap((v) => (v ? [v.buffer as ArrayBuffer] : [])))
+      self.postMessage({ id, data: kept.data, meshes: kept.meshes, resolved: kept.resolved, cached: true }, { transfer })
+      return
+    }
     const data = await fetchChunk(origin, tx, ty, token, undefined, z)
     // Places take the real building where the map puts them; only a place
     // with no building on the map gets one made by the game, on its own lot.
@@ -51,6 +61,8 @@ self.onmessage = async (e: MessageEvent<ChunkRequest>) => {
       out[name] = a
       for (const v of [a.position, a.uv, a.normal, a.color, a.index]) if (v) transfer.push(v.buffer as ArrayBuffer)
     }
+    // Kept for next time: copied right here, before the arrays are handed over.
+    putChunk(await openCache(), key, { data, meshes: out, resolved })
     self.postMessage({ id, data, meshes: out, resolved }, { transfer })
   } catch (err) {
     self.postMessage({ id, error: err instanceof Error ? err.message : String(err) })
