@@ -160,7 +160,10 @@ export type Taken = { at: XZ; r: number }
  * it is looked at, a step round it too: no street, building, water or ground
  * already taken anywhere on it, or the spot isn't one.
  */
-function spotsOf(nav: Nav, salt: number, minLen: number, sparse: boolean, size?: (seed: number) => [number, number], taken: Taken[] = []): Spot[] {
+/** A seller's table, the seller behind it and a step round them (half sizes, m). */
+const STALL_HALF: [number, number] = [1.6, 1.4]
+
+export function spotsOf(nav: Nav, salt: number, minLen: number, sparse: boolean, size?: (seed: number) => [number, number], taken: Taken[] = []): Spot[] {
   const out: Spot[] = []
   const clear = (at: XZ, ux: number, uz: number, [hl, hw]: [number, number]) => {
     if (taken.some((t) => Math.hypot(t.at[0] - at[0], t.at[1] - at[1]) < t.r + Math.hypot(hl, hw))) return false
@@ -189,7 +192,9 @@ function spotsOf(nav: Nav, salt: number, minLen: number, sparse: boolean, size?:
         // A sized one: its near edge `extra` metres from the street's.
         const off = e.width / 2 + extra + (half ? half[0] : 0)
         const p: XZ = [m[0] - uz * off * side, m[1] + ux * off * side]
-        if (half ? clear(p, ux, uz, half) : nav.walkable(p[0], p[1]) && !taken.some((t) => Math.hypot(t.at[0] - p[0], t.at[1] - p[1]) < t.r + 2)) {
+        // A seller's table too is looked at all round (table, seller, a step): set off one street
+        // only, it could stand in the next one (a cross street, a parallel one), in the traffic.
+        if (clear(p, ux, uz, half ?? STALL_HALF)) {
           at = p
           break
         }

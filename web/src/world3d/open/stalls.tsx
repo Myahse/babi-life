@@ -46,6 +46,8 @@ const NEAR = 320 // metres: stalls drawn around the Sim
 const MAX = 9
 const CROWD_NEAR = 110 // metres: customers drawn round the nearest stalls
 const REACH = 25 // metres: close enough to buy
+/** A stall's middle and eight points round it (times its size), checked against the streets. */
+const RING: [number, number][] = [[0, 0], ...Array.from({ length: 8 }, (_, i) => [Math.cos((i * Math.PI) / 4), Math.sin((i * Math.PI) / 4)] as [number, number])]
 
 /** What each calls out, what the bubble says, and the busy hours (crowd 0..1 by hour). */
 const SELLER: Record<StallKind, { shout: string; ask: string; out: string; busy: (h: number) => number; r: number }> = {
@@ -61,33 +63,7 @@ const SELLER: Record<StallKind, { shout: string; ask: string; out: string; busy:
 export type Buy = (vendor: string, choice?: string) => Promise<string | null>
 
 export function StreetStalls({ nav, seed, hour, onBuy }: { nav: Nav; seed: string; hour: number; onBuy?: Buy }) {
-  const yop = seed.includes('yopougon')
-  // Every possible stall of the loaded streets: a few street sides, chosen by
-  // where they are, so a stall is found again at the same place.
-  const all = useMemo(() => {
-    const out: Stall[] = []
-    for (const e of nav.edges) {
-      if (e.width > 10 || e.len < 30 || nav.ys[e.a] || nav.ys[e.b]) continue
-      const [a, b] = [nav.nodes[e.a], nav.nodes[e.b]]
-      const m: XZ = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]
-      const h = hash(Math.round(m[0]), Math.round(m[1]), 77)
-      const kind: StallKind | null = h < 0.07 ? 'alloco' : h < 0.115 ? 'garba' : h < (yop ? 0.235 : 0.14) ? 'porc' : h > 0.93 && h <= 0.955 ? 'brochette' : h > 0.915 && h <= 0.93 ? 'loto' : h > 0.955 ? (hash(Math.round(m[1]), Math.round(m[0]), 5) < 0.55 ? 'cafe' : 'the') : null
-      if (!kind) continue
-      const side = hash(Math.round(m[1]), 3) < 0.5 ? 1 : -1
-      const [ux, uz] = [(b[0] - a[0]) / e.len, (b[1] - a[1]) / e.len]
-      const off = e.width / 2 + 3.2
-      // The porc au four women work side by side, three along the street.
-      const along = kind === 'porc' ? [-6.5, 0, 6.5] : [0]
-      for (const s of along) {
-        const at: XZ = [m[0] - uz * off * side + ux * s, m[1] + ux * off * side + uz * s]
-        if (!nav.walkable(at[0], at[1])) continue
-        // Facing the street (square to it, wherever along it).
-        const rot = Math.atan2(uz * side, -ux * side)
-        out.push({ id: `${kind}:${seed}:${Math.round(at[0])}:${Math.round(at[1])}`, kind, at, rot, seed: hash(at[0], at[1]) })
-      }
-    }
-    return out
-  }, [nav, seed, yop])
+  const all = useMemo(() => stallsOf(nav, seed), [nav, seed])
   // The stalls (tables, ovens, carts) are in the way.
   useEffect(() => {
     setObstacles('stalls', all.map((s) => ({ x: s.at[0], z: s.at[1], r: SELLER[s.kind].r })))
@@ -119,6 +95,37 @@ export function StreetStalls({ nav, seed, hour, onBuy }: { nav: Nav; seed: strin
       ))}
     </>
   )
+}
+
+/** Every possible stall of the loaded streets: a few street sides, chosen by where they are, so a stall is found again at the same place. */
+export function stallsOf(nav: Nav, seed: string): Stall[] {
+  const yop = seed.includes('yopougon')
+  const out: Stall[] = []
+  for (const e of nav.edges) {
+    if (e.width > 10 || e.len < 30 || nav.ys[e.a] || nav.ys[e.b]) continue
+    const [a, b] = [nav.nodes[e.a], nav.nodes[e.b]]
+    const m: XZ = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]
+    const h = hash(Math.round(m[0]), Math.round(m[1]), 77)
+    const kind: StallKind | null = h < 0.07 ? 'alloco' : h < 0.115 ? 'garba' : h < (yop ? 0.235 : 0.14) ? 'porc' : h > 0.93 && h <= 0.955 ? 'brochette' : h > 0.915 && h <= 0.93 ? 'loto' : h > 0.955 ? (hash(Math.round(m[1]), Math.round(m[0]), 5) < 0.55 ? 'cafe' : 'the') : null
+    if (!kind) continue
+    const side = hash(Math.round(m[1]), 3) < 0.5 ? 1 : -1
+    const [ux, uz] = [(b[0] - a[0]) / e.len, (b[1] - a[1]) / e.len]
+    // Back from the kerb by the stall's own size: the big ones (porc, garba) stood with their front on the road.
+    const r = SELLER[kind].r
+    const off = e.width / 2 + Math.max(3.2, 1.8 + r)
+    // The porc au four women work side by side, three along the street.
+    const along = kind === 'porc' ? [-6.5, 0, 6.5] : [0]
+    for (const s of along) {
+      const at: XZ = [m[0] - uz * off * side + ux * s, m[1] + ux * off * side + uz * s]
+      if (!nav.walkable(at[0], at[1])) continue
+      // Off every street all round, not just its own: the next one (a cross street, a parallel one) may pass there.
+      if (RING.some(([dx, dz]) => nav.onRoad([at[0] + dx * r, at[1] + dz * r]))) continue
+      // Facing the street (square to it, wherever along it).
+      const rot = Math.atan2(uz * side, -ux * side)
+      out.push({ id: `${kind}:${seed}:${Math.round(at[0])}:${Math.round(at[1])}`, kind, at, rot, seed: hash(at[0], at[1]) })
+    }
+  }
+  return out
 }
 
 /* ---------- Materials ---------- */
