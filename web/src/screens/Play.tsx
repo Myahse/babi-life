@@ -572,7 +572,8 @@ export function Play() {
             hour: HOUR_OVERRIDE ?? c.hour,
             goTo,
             onPick: walkTo,
-            onArrive: (id: string) => (setOutside(false), setPlaceId(id)),
+            // At one's own lot: building; someone else's lot has nothing to do.
+            onArrive: (id: string) => (id.startsWith('plot:') ? id === `plot:${sim.id}` && setBuilding(true) : (setOutside(false), setPlaceId(id))),
             busy: doing ? { icon: doing.interaction.icon, kind: doing.placeKind ?? '', id: doing.interaction.id } : pending,
             stationAt: doing?.placeId ?? null,
             // Busy inside (the street seen through « Voir la rue »): the Sim is in there, not at the door.
@@ -1013,7 +1014,7 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
                   </ul>
                 )}
                 {app === 'jobs' && <JobsApp world={world} sim={sim} commune={commune} act={act} onWalk={onWalk} onMap={onMap} />}
-                {app === 'home' && <HomeApp world={world} sim={sim} commune={commune} act={act} onBuild={onBuild} />}
+                {app === 'home' && <HomeApp world={world} sim={sim} commune={commune} act={act} onBuild={onBuild} onWalk={onWalk} onMap={onMap} />}
                 {app === 'messages' && <Journal events={journal} />}
                 {app === 'news' && <NewsApp />}
                 {app === 'friends' && <FriendsApp world={world} sim={sim} act={act} onPay={has('waye') ? (p) => (setWayeTo(p.id), setApp('waye')) : undefined} />}

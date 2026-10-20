@@ -140,7 +140,7 @@ function CareerCard({ world, sim, commune, act, onWalk, onMap }: AppProps & { on
 
 /* ---------- Logement ---------- */
 
-export function HomeApp({ world, sim, commune, act, onBuild }: AppProps & { onBuild?: () => void }) {
+export function HomeApp({ world, sim, commune, act, onBuild, onWalk, onMap }: AppProps & { onBuild?: () => void; onWalk?: (id: string) => void; onMap?: () => void }) {
   const home = housingOf(world, sim)
   const homeCity = world.cities.find((c) => c.id === sim.homeCity)!
   const homeCommune = homeCity.communes.find((c) => c.id === sim.homeCommune)!
@@ -177,7 +177,7 @@ export function HomeApp({ world, sim, commune, act, onBuild }: AppProps & { onBu
         </div>
       </div>
 
-      <MyLot sim={sim} act={act} onBuild={onBuild} />
+      <MyLot world={world} sim={sim} act={act} onBuild={onBuild} onWalk={onWalk} onMap={onMap} />
 
       {sim.rentArrears > 0 && (
         <div className="flex items-center gap-3 rounded-[20px] bg-[#ffe8ec] p-3">
@@ -227,7 +227,7 @@ export function HomeApp({ world, sim, commune, act, onBuild }: AppProps & { onBu
 }
 
 /** Ton terrain: buy a lot (from 18), build on it, move in (sims/plot.go). */
-function MyLot({ sim, act, onBuild }: { sim: Sim; act: Act; onBuild?: () => void }) {
+function MyLot({ world, sim, act, onBuild, onWalk, onMap }: { world: World; sim: Sim; act: Act; onBuild?: () => void; onWalk?: (id: string) => void; onMap?: () => void }) {
   const [lot, setLot] = useState<Lot | null | undefined>(undefined)
   const [more, setMore] = useState(false)
   const own = sim.housing === OWN_HOUSE
@@ -242,7 +242,30 @@ function MyLot({ sim, act, onBuild }: { sim: Sim; act: Act; onBuild?: () => void
           <p className="font-display text-[17px] leading-tight font-extrabold">
             {lot.area} m² ({lot.w} × {lot.d} m)
           </p>
-          <p className="text-xs font-semibold text-[var(--color-ink-soft)]">{own ? 'Tu y habites : pas de loyer.' : 'Bâtis ta maison, meuble-la, puis emménage : fini le loyer.'}</p>
+          {(() => {
+            // Where it is: in this commune (walk there), or elsewhere (go there first).
+            const city = world.cities.find((c) => c.id === lot.city)
+            const where = city?.communes.find((c) => c.id === lot.commune)?.name ?? lot.commune
+            const here = sim.city === lot.city && sim.commune === lot.commune
+            return (
+              <div className="mt-1 flex items-center gap-2 rounded-xl bg-white/70 px-2.5 py-2 text-xs font-bold">
+                <MapIcon size={15} className="shrink-0 text-[#1f9a4a]" />
+                <span className="min-w-0 flex-1">
+                  À {where}{city && city.id !== 'abidjan' ? `, ${city.name}` : ''} · clôturé à ta couleur
+                </span>
+                {here && !own && onWalk ? (
+                  <button className="shrink-0 rounded-full bg-[#1f9a4a] px-3 py-1 font-extrabold text-white" onClick={() => onWalk(`plot:${sim.id}`)}>
+                    Voir mon terrain
+                  </button>
+                ) : !here && onMap ? (
+                  <button className="shrink-0 rounded-full bg-[#1f9a4a] px-3 py-1 font-extrabold text-white" onClick={onMap}>
+                    Y aller
+                  </button>
+                ) : null}
+              </div>
+            )
+          })()}
+          <p className="mt-1 text-xs font-semibold text-[var(--color-ink-soft)]">{own ? 'Tu y habites : pas de loyer.' : 'Bâtis ta maison, meuble-la, puis emménage : fini le loyer.'}</p>
           {onBuild && (
             <button className="btn mt-2 w-full !py-2.5 !text-sm" onClick={onBuild}>
               <Hammer size={16} /> {own ? 'Modifier ma maison' : 'Construire et meubler'}

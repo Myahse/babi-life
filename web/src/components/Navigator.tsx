@@ -174,10 +174,10 @@ export function WhereTo({ world, onWalk, onClose }: { world: World; onWalk: (id:
             return (
               <li key={p.id}>
                 <button className="tile flex w-full items-center gap-3 p-2.5 text-left" onClick={() => onWalk(p.id)}>
-                  <IconTile icon={iconFor(p.kind === 'home' ? 'house' : p.kind === 'happening' ? 'sparkles' : (kind?.icon ?? ''))} colors={kindColors(p.kind)} size={40} />
+                  <IconTile icon={iconFor(p.kind === 'home' ? 'house' : p.kind === 'plot' ? 'land-plot' : p.kind === 'happening' ? 'sparkles' : (kind?.icon ?? ''))} colors={kindColors(p.kind)} size={40} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-display text-[15px] leading-tight font-extrabold">{p.name}</span>
-                    <span className="text-xs font-bold text-[var(--color-ink-soft)]">{p.kind === 'home' ? 'Ta maison' : (kind?.label ?? '')}</span>
+                    <span className="text-xs font-bold text-[var(--color-ink-soft)]">{p.kind === 'home' ? 'Ta maison' : p.kind === 'plot' ? 'Ton terrain, clôturé' : (kind?.label ?? '')}</span>
                   </span>
                   <span className="flex shrink-0 items-center gap-1 text-sm font-extrabold text-[var(--color-ink-soft)]">
                     <ArrowUp size={16} strokeWidth={3} style={{ transform: `rotate(${bearingTo(p.door)}rad)` }} className="text-[var(--color-orange)]" />

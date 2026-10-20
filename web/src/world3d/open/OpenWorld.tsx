@@ -317,7 +317,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       if (id === sim.id && home && livesOnLot && myPlot) continue
       const [pa, pd] = lotSpot(id)
       const p = plots?.find((x) => x.simId === id)
-      list.push({ id: `plot:${id}`, kind: 'plot', name: '', at: [Math.cos(pa) * pd, Math.sin(pa) * pd], landmark: p ? lotClear(p) : PLOT_CLEAR })
+      list.push({ id: `plot:${id}`, kind: 'plot', name: id === sim.id ? 'Mon terrain' : '', at: [Math.cos(pa) * pd, Math.sin(pa) * pd], landmark: p ? lotClear(p) : PLOT_CLEAR })
     }
     list.push({ id: HAPPENING_KEY, kind: 'happening', name: '', at: [35, -20] })
     return list
@@ -647,7 +647,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const lots = useMemo<Lot[]>(
     () =>
       spots
-        .filter((s) => s.id !== HAPPENING_KEY && s.kind !== 'plot' && resolved.has(s.id))
+        // Others' lots aren't places; one's own is (« Mon terrain »: on the mini-map, in « Où aller ? »).
+        .filter((s) => s.id !== HAPPENING_KEY && (s.kind !== 'plot' || s.id === `plot:${sim.id}`) && resolved.has(s.id))
         .map((s, i) => {
           const r = resolved.get(s.id)!
           return { id: s.id, kind: s.kind, name: s.name, x: r.center[0], z: r.center[1], rot: r.rot, door: r.door, seed: i, height: r.real?.height, field: r.field, station: r.station }
@@ -902,7 +903,10 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         ) : null
       })}
       {shown.map((lot) =>
-        lot.id === HOME_ID && myPlot ? (
+        lot.kind === 'plot' ? (
+          // One's own lot: its ground and clôture are drawn with the houses above; here only its name.
+          <LotLabel key={lot.id} lot={lot} world={world} label={labels && labelOf.get(lot.id)} onPick={onPick} y={3} />
+        ) : lot.id === HOME_ID && myPlot ? (
           <LotLabel key={lot.id} lot={lot} world={world} label={labels && labelOf.get(lot.id)} onPick={onPick} y={4} />
         ) : lot.station ? (
           <LotLabel key={lot.id} lot={lot} world={world} label={labels && labelOf.get(lot.id)} onPick={onPick} y={7} />
