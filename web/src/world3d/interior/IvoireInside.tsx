@@ -598,22 +598,22 @@ function People({ night }: { night: boolean }) {
     }
     return [
       // At the reception: two receptionists behind the desk, guests checking in, the bellboy.
-      one([-9.5, 0, 13.3], Math.PI, 'busy', 'costume'), one([-6.5, 0, 13.3], Math.PI, 'talk', 'costume'),
-      one([-9.5, 0, 10.6], 0, 'talk'), one([-6.4, 0, 10.6], 0, 'phone'), one([-3.5, 0, 11.5], -0.6, 'idle', 'costume'),
+      one([-9.5, 0, 13.3], Math.PI, 'busy', 'suit'), one([-6.5, 0, 13.3], Math.PI, 'talk', 'suit'),
+      one([-9.5, 0, 10.6], 0, 'talk'), one([-6.4, 0, 10.6], 0, 'phone'), one([-3.5, 0, 11.5], -0.6, 'idle', 'suit'),
       // The lobby: a meeting on the sofas, people waiting, a couple taking a selfie under the chandelier.
       one([5, 0.35, 13], Math.PI, 'sit'), one([7, 0.35, 13], Math.PI, 'sit'), one([6, 0.35, 8], 0, 'sit'),
       one([1, 0, 4], 0.4, 'phone'), one([1.8, 0, 4.2], -0.5, 'hug'), one([-2, 0, 16], 2.6, 'talk'), one([-1.2, 0, 15.4], -0.6, 'talk'),
       // At the bar: the barman, the drinkers.
-      one([0, 0, -7.2], 0, 'busy', 'costume'), one([-3.6, 0, -4.2], Math.PI, 'drink'), one([2.2, 0, -4.2], Math.PI, 'talk'),
+      one([0, 0, -7.2], 0, 'busy', 'suit'), one([-3.6, 0, -4.2], Math.PI, 'drink'), one([2.2, 0, -4.2], Math.PI, 'talk'),
       // The casino: dealers, players round the tables, someone at the slots.
-      one([18, 0, 5.8], 0, 'busy', 'costume'), one([18, 0, 8.4], Math.PI, 'busy'), one([17, 0, 8.4], Math.PI, 'cheer'),
-      one([24, 0, 13.8], 0, 'busy', 'costume'), one([24, 0, 16.4], Math.PI, 'busy'), one([25, 0, 16.4], Math.PI, 'phone'), one([29.6, 0, 9], Math.PI / 2, 'touch'),
+      one([18, 0, 5.8], 0, 'busy', 'suit'), one([18, 0, 8.4], Math.PI, 'busy'), one([17, 0, 8.4], Math.PI, 'cheer'),
+      one([24, 0, 13.8], 0, 'busy', 'suit'), one([24, 0, 16.4], Math.PI, 'busy'), one([25, 0, 16.4], Math.PI, 'phone'), one([29.6, 0, 9], Math.PI / 2, 'touch'),
       // The cinema: people watching.
       ...[[17.85, -3], [20.55, -3], [23.25, -4.6], [24.6, -4.6], [19.2, -6.2], [26, -7.8]].map(([x, z]) => one([x, 0.05, z], Math.PI, 'sit')),
       // The gallery: window-shopping.
       one([-27, 0, -10.2], Math.PI, 'idle'), one([-20, 0, -10.2], Math.PI, 'phone'), one([-19, 0, -9.8], Math.PI, 'talk'),
       // The restaurant: brunch with the lagoon behind the glass; the waiter.
-      one([-10, 0.05, -15.6], Math.PI, 'eat'), one([-10, 0.05, -18.4], 0, 'talk'), one([2, 0.05, -15.6], Math.PI, 'drink'), one([6, 0.05, -18.4], 0, 'eat'), one([8, 0, -14.5], 0.3, 'busy', 'costume'),
+      one([-10, 0.05, -15.6], Math.PI, 'eat'), one([-10, 0.05, -18.4], 0, 'talk'), one([2, 0.05, -15.6], Math.PI, 'drink'), one([6, 0.05, -18.4], 0, 'eat'), one([8, 0, -14.5], 0.3, 'busy', 'suit'),
       // The terrace: sunbathers, someone filming the view.
       one([-14, 0.4, -26], 0, 'sleep', 'maillot'), one([12, 0.4, -31], 0, 'sleep', 'maillot'), one([16, 0, -33], Math.PI, 'phone'),
     ]

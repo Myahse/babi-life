@@ -516,7 +516,7 @@ export function Play() {
           ) : inside!.kind === 'arena' ? (
             <Arena sim={sim} placeId={inside!.id} interactionId={inside!.it} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id)} />
           ) : (
-            <Interior sim={sim} kind={inside!.kind} placeId={inside!.id} interactionId={inside!.it} roam={visiting && !menuOpen} housing={sim.housing} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id && inside!.id !== 'home')} />
+            <Interior open={inside!.kind === 'home' || (world.kinds[inside!.kind]?.interactions.some((it) => openAt(it, sim.gameMinutes)) ?? true)} sim={sim} kind={inside!.kind} placeId={inside!.id} interactionId={inside!.it} roam={visiting && !menuOpen} housing={sim.housing} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id && inside!.id !== 'home')} />
           )}
         </div>
       )}

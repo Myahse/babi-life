@@ -36,7 +36,7 @@ export const LANDMARKS: Record<string, number> = {
 export const GROUNDS = new Set(['cocody-zoo', 'cocody-hotel-ivoire', 'yop-rue-princesse', 'adjame-forum', 'yop-ficgayo', 'yop-gare-siporex', 'cocody-blockhauss-maquis'])
 
 /** The landmark's model, by place. */
-export function Landmark({ id, night, demo }: { id: string; night: boolean; /** The stadium: a made-up match or concert (the videos), instead of the agenda. */ demo?: StadiumEvent }) {
+export function Landmark({ id, night, demo, open = true }: { id: string; night: boolean; /** The stadium: a made-up match or concert (the videos), instead of the agenda. */ demo?: StadiumEvent; /** Open now (its hours): closed, nobody visiting (the zoo). */ open?: boolean }) {
   switch (id) {
     case 'plateau-cathedrale':
       return <Cathedral />
@@ -63,7 +63,7 @@ export function Landmark({ id, night, demo }: { id: string; night: boolean; /** 
     case 'adjame-forum':
       return <MarcheAdjame night={night} />
     case 'cocody-zoo':
-      return <Zoo night={night} />
+      return <Zoo night={night} open={open} />
     case 'cocody-blockhauss-maquis':
       return <BlockhaussMaquis night={night} />
     default:

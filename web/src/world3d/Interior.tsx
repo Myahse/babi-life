@@ -1,5 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Snapper } from './snapshot'
+import { roomGrid } from './interior/roomGrid'
+import { gridWay } from './gridPath'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import { ROOM, Shell } from './interior/Shell'
@@ -112,7 +114,7 @@ const WALK_IN = 1.5
  * walks back to the door. On the floor while walking; up onto the sofa or
  * the bed, and over onto its back, eased at the end.
  */
-function WalkTo({ to, facing, lying, free, onThere, children }: { to: V3; facing: number; lying: boolean; /** Walking about the room: the keys (or the pad) move the Sim too. */ free?: boolean; onThere?: (there: boolean) => void; children: (there: boolean) => React.ReactNode }) {
+function WalkTo({ to, facing, lying, free, room, onThere, children }: { to: V3; facing: number; lying: boolean; /** Walking about the room: the keys (or the pad) move the Sim too. */ free?: boolean; /** Where one can walk (roomGrid): round the furniture and the people, not through them. */ room?: ((x: number, z: number) => boolean) | null; onThere?: (there: boolean) => void; children: (there: boolean) => React.ReactNode }) {
   const camera = useThree((st) => st.camera)
   const outer = useRef<THREE.Group>(null)
   const inner = useRef<THREE.Group>(null)
@@ -121,12 +123,17 @@ function WalkTo({ to, facing, lying, free, onThere, children }: { to: V3; facing
   const [there, setThere] = useState(true)
   const key = `${to.join()},${facing.toFixed(2)},${lying}`
   const was = useRef(key)
+  // The way there, round what's in the room (the last point is where it's going).
+  const path = useRef<[number, number][]>([])
   useFrame((_, dtRaw) => {
     const dt = Math.min(dtRaw, 0.1)
     const a = at.current
     if (was.current !== key) {
       was.current = key
       a.settle = 0
+      const [sx, sz] = [a.x, a.z]
+      const ok = room ? (x: number, z: number) => room(x, z) || Math.hypot(x - to[0], z - to[2]) < 0.75 || Math.hypot(x - sx, z - sz) < 0.5 : null
+      path.current = ok ? (gridWay([sx, sz], [to[0], to[2]], ok, 0.25, 4, 140 * 140) ?? [[to[0], to[2]]]).slice(1) : []
       if (there) setThere(false)
       onThere?.(false)
     }
@@ -138,8 +145,11 @@ function WalkTo({ to, facing, lying, free, onThere, children }: { to: V3; facing
       const fl = Math.hypot(f.x, f.z) || 1
       const [fx, fz] = [f.x / fl, f.z / fl]
       const [mx, mz] = [fx * m.y - fz * m.x, fz * m.y + fx * m.x]
-      a.x = Math.max(-ROOM.W / 2 + 0.6, Math.min(ROOM.W / 2 - 0.6, a.x + mx * WALK_IN * dt))
-      a.z = Math.max(-ROOM.D / 2 + 0.6, Math.min(ROOM.D / 2 - 0.6, a.z + mz * WALK_IN * dt))
+      // Along each axis on its own, so the Sim slides along a counter instead of sticking to it.
+      const nx = Math.max(-ROOM.W / 2 + 0.6, Math.min(ROOM.W / 2 - 0.6, a.x + mx * WALK_IN * dt))
+      if (!room || room(nx, a.z)) a.x = nx
+      const nz = Math.max(-ROOM.D / 2 + 0.6, Math.min(ROOM.D / 2 - 0.6, a.z + mz * WALK_IN * dt))
+      if (!room || room(a.x, nz)) a.z = nz
       const want = Math.atan2(mx, mz)
       a.rot += Math.atan2(Math.sin(want - a.rot), Math.cos(want - a.rot)) * Math.min(1, dt * 10)
       // Walking under one's own steam: the last tapped spot is forgotten.
@@ -150,15 +160,19 @@ function WalkTo({ to, facing, lying, free, onThere, children }: { to: V3; facing
       a.manual = false
       if (!there) setThere(true)
     }
-    const [dx, dz] = [to[0] - a.x, to[2] - a.z]
-    const d = Math.hypot(dx, dz)
+    // The next point of the way round (the last one: where it's going).
+    while (path.current.length > 1 && Math.hypot(path.current[0][0] - a.x, path.current[0][1] - a.z) < 0.08) path.current.shift()
+    const next = path.current.length > 1 ? path.current[0] : [to[0], to[2]]
+    const [dx, dz] = [next[0] - a.x, next[1] - a.z]
+    const d = path.current.length > 1 ? Math.hypot(dx, dz) + 1 : Math.hypot(dx, dz)
     if (a.manual) {
       // Moved by the keys this frame (above).
     } else if (a.settle === 0 && d > 0.04) {
       // Walking over, facing the way it goes.
-      const step = Math.min(d, WALK_IN * dt)
-      a.x += (dx / d) * step
-      a.z += (dz / d) * step
+      const len = Math.hypot(dx, dz) || 1
+      const step = Math.min(len, WALK_IN * dt)
+      a.x += (dx / len) * step
+      a.z += (dz / len) * step
       const want = Math.atan2(dx, dz)
       a.rot += Math.atan2(Math.sin(want - a.rot), Math.cos(want - a.rot)) * Math.min(1, dt * 10)
     } else if (a.settle < 1) {
@@ -182,6 +196,17 @@ function WalkTo({ to, facing, lying, free, onThere, children }: { to: V3; facing
       <group ref={inner}>{children(there)}</group>
     </group>
   )
+}
+
+/** Lays the room's furniture on the walking grid, once it's drawn (a few frames in). */
+function SolidRoom({ root, people, onReady }: { root: React.RefObject<THREE.Group | null>; people: [number, number][]; onReady: (free: (x: number, z: number) => boolean) => void }) {
+  const frames = useRef(0)
+  useFrame(() => {
+    if (frames.current > 3) return
+    frames.current++
+    if (frames.current === 3 && root.current) onReady(roomGrid(root.current, people, ROOM.W, ROOM.D))
+  })
+  return null
 }
 
 /** Brings the camera close to the Sim doing something (once: then it's the player's). */
@@ -875,7 +900,7 @@ export function room(kindIn: string, housing: string): Room {
 
 /* ---------- The scene ---------- */
 
-export function Interior({ sim, kind, placeId, interactionId, roam, housing, night, stage, others = [] }: { sim: Sim; kind: string; placeId: string; interactionId?: string; /** Just come in: the Sim walks about the room (tap the floor, or the keys). */ roam?: boolean; housing: string; night: boolean; stage: string; others?: Player[] }) {
+export function Interior({ sim, kind, placeId, interactionId, roam, housing, night, stage, others = [], open = true }: { sim: Sim; kind: string; placeId: string; interactionId?: string; /** Just come in: the Sim walks about the room (tap the floor, or the keys). */ roam?: boolean; housing: string; night: boolean; stage: string; others?: Player[]; /** Within its hours: closed, nobody's in (no customers, no staff). */ open?: boolean }) {
   const [roamTo, setRoamTo] = useState<{ p: V3; facing: number } | null>(null)
   // The arrow keys and WASD walk the Sim about the room.
   useEffect(() => (roam ? listenKeys() : undefined), [roam])
@@ -901,6 +926,9 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
     return Math.atan2(cx - me.p[0], cz - me.p[2])
   }, [r, me])
   const dark = r.dark || night
+  // What's in the room, solid: made from the furniture once it's drawn (interior/roomGrid).
+  const furniture = useRef<THREE.Group>(null)
+  const [solid, setSolid] = useState<((x: number, z: number) => boolean) | null>(null)
   // The camera comes close once the Sim has got there (it watches it cross the room first).
   const [arrived, setArrived] = useState(true)
   // In the shower: in a towel.
@@ -924,11 +952,14 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
         <ambientLight intensity={dark ? 0.15 : 0.25} />
         {kind === 'club' && <pointLight position={[0, 2.9, 0]} intensity={14} distance={14} color="#b18cff" />}
         <Shell floor={r.floor} floorType={style.floorType} wall={r.wall} lower={style.lower} openings={style.openings} night={night} dark={r.dark} lamps={style.lamps} fan={style.fan} />
-        {style.decor(dark)}
-        {r.furniture}
-        {kind === 'club' && <ClubCrowd placeId={placeId} />}
+        <group ref={furniture}>
+          {style.decor(dark)}
+          {r.furniture}
+        </group>
+        <SolidRoom key={`${kind}:${placeId}:${housing}:${open}`} root={furniture} people={open ? people.map((p) => [p.p[0], p.p[2]] as [number, number]) : []} onReady={(f) => setSolid(() => f)} />
+        {kind === 'club' && open && <ClubCrowd placeId={placeId} />}
         <NoShadows>
-          {people.map((p, i) => (
+          {(open ? people : []).map((p, i) => (
             <group key={i} position={p.p} rotation={p.lying ? [-Math.PI / 2, 0, 0] : [0, p.r ?? 0, 0]}>
               <Human look={p.look} gender={p.gender} pose={throwing && p.pose === 'dance' && i % 2 ? 'cheer' : p.pose} seed={p.seed} />
             </group>
@@ -944,6 +975,8 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
               e.stopPropagation()
               const x = Math.max(-ROOM.W / 2 + 0.6, Math.min(ROOM.W / 2 - 0.6, e.point.x))
               const z = Math.max(-ROOM.D / 2 + 0.6, Math.min(ROOM.D / 2 - 0.6, e.point.z))
+              // Not into a table or a counter.
+              if (solid && !solid(x, z)) return
               setRoamTo((r) => {
                 const from = r?.p ?? me.p
                 return { p: [x, 0, z], facing: Math.atan2(x - from[0], z - from[2]) }
@@ -954,7 +987,7 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
             <meshBasicMaterial transparent opacity={0} depthWrite={false} />
           </mesh>
         )}
-        <WalkTo to={!interactionId && roamTo ? roamTo.p : me.p} facing={!interactionId && roamTo ? roamTo.facing : throwing ? faceDancers : (me.r ?? 0)} lying={!interactionId && roamTo ? false : !!me.lying} free={roam} onThere={setArrived}>
+        <WalkTo to={!interactionId && roamTo ? roamTo.p : me.p} facing={!interactionId && roamTo ? roamTo.facing : throwing ? faceDancers : (me.r ?? 0)} lying={!interactionId && roamTo ? false : !!me.lying} free={roam} room={solid} onThere={setArrived}>
           {(there) =>
             there ? (
               <>

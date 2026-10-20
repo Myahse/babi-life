@@ -184,7 +184,7 @@ function LandmarkLab() {
       <color attach="background" args={[night ? '#0d1030' : '#a9d3f0']} />
       <hemisphereLight args={[night ? '#3a4a8a' : '#ffffff', '#b8a27c', night ? 0.35 : 1.2]} />
       <directionalLight position={[40, 80, 30]} intensity={night ? 0.15 : 1.8} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-50} shadow-camera-right={50} shadow-camera-top={50} shadow-camera-bottom={-50} />
-      <Landmark id={q.get('id') ?? 'yop-rue-princesse'} night={night} />
+      <Landmark id={q.get('id') ?? 'yop-rue-princesse'} night={night} open={!q.has('closed')} />
       {/* &solid: what a walker can't go through, in red */}
       {q.has('solid') &&
         ({ 'cocody-zoo': ZOO_SOLID, 'cocody-hotel-ivoire': IVOIRE_SOLID }[q.get('id') ?? ''] ?? []).map((o, i) =>

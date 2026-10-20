@@ -32,35 +32,105 @@ type XZ = [number, number]
 const STOREY = 4
 const SPEED = 1.7
 
-/** The cells one can't walk through on the ground floor: walls, furniture, the pool. */
-function useBlocked(plot: Plot, w: number, d: number, world: World) {
+/** A point the Sim walks through: x, z (the lot's metres from its middle) and the height of its feet. */
+type P = [number, number, number]
+
+/**
+ * Where one can walk on each level of the house (0 the ground floor, 1 the
+ * first floor…): not where a wall stands at body height, nor furniture, nor
+ * the pool; upstairs, only over the floor's slab. In the lot's metres from
+ * its middle.
+ */
+function useLevels(plot: Plot, w: number, d: number, world: World) {
   return useMemo(() => {
-    const taken = new Set<string>()
-    for (const b of plot.blocks) if (b[1] === 1) taken.add(`${b[0]},${b[2]}`)
-    for (const p of plot.furniture ?? []) {
-      if (p[1] > 0) continue
-      const f = world.furniture?.find((x) => x.id === p[4])
-      if (!f) continue
-      const [fw, fd] = p[3] % 2 ? [f.d, f.w] : [f.w, f.d]
-      for (let i = 0; i < fw; i++) for (let j = 0; j < fd; j++) taken.add(`${p[0] + i},${p[2] + j}`)
-    }
-    for (const z of plot.zones ?? []) if (z[4] === 'piscine') for (let i = 0; i < z[2]; i++) for (let j = 0; j < z[3]; j++) taken.add(`${z[0] + i},${z[1] + j}`)
-    // In the lot's own metres from its middle (as the Sim walks).
-    return (x: number, z: number) => {
-      const [u, v] = [x + w / 2, z + d / 2]
-      if (u < 0.25 || v < 0.25 || u > w - 0.25 || v > d + 2.5) return false
-      return !taken.has(`${Math.floor(u)},${Math.floor(v)}`)
+    const has = new Set(plot.blocks.map((b) => `${b[0]},${b[1]},${b[2]}`))
+    const cache = new Map<number, (x: number, z: number) => boolean>()
+    return (level: number) => {
+      const had = cache.get(level)
+      if (had) return had
+      const base = level * STOREY
+      const taken = new Set<string>()
+      for (const b of plot.blocks) if (b[1] === base + 1) taken.add(`${b[0]},${b[2]}`)
+      for (const p of plot.furniture ?? []) {
+        if (p[1] !== base) continue
+        const f = world.furniture?.find((x) => x.id === p[4])
+        if (!f) continue
+        const [fw, fd] = p[3] % 2 ? [f.d, f.w] : [f.w, f.d]
+        for (let i = 0; i < fw; i++) for (let j = 0; j < fd; j++) taken.add(`${p[0] + i},${p[2] + j}`)
+      }
+      if (level === 0) for (const z of plot.zones ?? []) if (z[4] === 'piscine') for (let i = 0; i < z[2]; i++) for (let j = 0; j < z[3]; j++) taken.add(`${z[0] + i},${z[1] + j}`)
+      const free = (x: number, z: number) => {
+        const [u, v] = [x + w / 2, z + d / 2]
+        if (u < 0.25 || v < 0.25 || u > w - 0.25 || v > (level ? d - 0.25 : d + 2.5)) return false
+        const [cx, cz] = [Math.floor(u), Math.floor(v)]
+        if (taken.has(`${cx},${cz}`)) return false
+        // Upstairs: on the slab (the roof of the floor below).
+        return level === 0 || has.has(`${cx},${base - 1},${cz}`)
+      }
+      cache.set(level, free)
+      return free
     }
   }, [plot, w, d, world.furniture])
 }
 
+/**
+ * The flights of steps up to each floor (game/plans.go stairs: a step higher
+ * each metre, four of them): where one starts (on the ground before the
+ * first step), the steps with the height of each, and where one comes out
+ * upstairs (the nearest free spot of the floor from the top step).
+ */
+function useFlights(plot: Plot, w: number, d: number, levels: (level: number) => (x: number, z: number) => boolean) {
+  return useMemo(() => {
+    const has = new Set(plot.blocks.map((b) => `${b[0]},${b[1]},${b[2]}`))
+    // How many blocks stand one on the other from a height, in a column.
+    const stack = (x: number, z: number, from: number) => {
+      let n = 0
+      while (has.has(`${x},${from + n},${z}`)) n++
+      return n
+    }
+    const at = (cx: number, cz: number, y: number): P => [cx + 0.5 - w / 2, cz + 0.5 - d / 2, y]
+    const out = new Map<number, { start: P; steps: P[]; landing: P }>()
+    for (let level = 1; level * STOREY <= Math.max(0, ...plot.blocks.map((b) => b[1])); level++) {
+      const base = (level - 1) * STOREY
+      search: for (const b of plot.blocks) {
+        if (b[1] !== base || stack(b[0], b[2], base) !== 1) continue
+        for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          let ok = true
+          for (let k = 1; k < STOREY && ok; k++) ok = stack(b[0] + dx * k, b[2] + dz * k, base) === k + 1
+          if (!ok) continue
+          const top = [b[0] + dx * (STOREY - 1), b[2] + dz * (STOREY - 1)]
+          // Out upstairs: the nearest free spot of the floor from the top step.
+          const free = levels(level)
+          let landing: P | null = null
+          let best = Infinity
+          for (let i = -5; i <= 5; i++)
+            for (let j = -5; j <= 5; j++) {
+              const p = at(top[0] + i, top[1] + j, level * STOREY)
+              const dist = Math.hypot(i, j)
+              if (dist > 0 && dist < best && free(p[0], p[1])) [landing, best] = [p, dist]
+            }
+          if (!landing) continue
+          out.set(level, {
+            start: at(b[0] - dx, b[2] - dz, base),
+            steps: [...Array(STOREY)].map((_, k) => at(b[0] + dx * k, b[2] + dz * k, base + k + 1)),
+            landing,
+          })
+          break search
+        }
+      }
+    }
+    return out
+  }, [plot, w, d, levels])
+}
+
 /** The Sim: walks its way, then settles on the spot (lying, sitting…). */
-function Walking({ sim, stage, way, spot, onThere, steer, onMoved }: { sim: Sim; stage: string; way: XZ[]; spot: HomeSpot | null; onThere: (there: boolean) => void; /** Walking about: the keys or the pad move the Sim, where the ground is free. */ steer?: (x: number, z: number) => boolean; onMoved?: (at: XZ) => void }) {
+function Walking({ sim, stage, way, spot, onThere, steer, onMoved, onLevel }: { sim: Sim; stage: string; way: P[]; spot: HomeSpot | null; onThere: (there: boolean) => void; /** Walking about: the keys or the pad move the Sim, where the ground is free. */ steer?: (x: number, z: number) => boolean; onMoved?: (at: XZ) => void; /** The floor the Sim is on now (going up or down the stairs). */ onLevel?: (level: number) => void }) {
   const g = useRef<THREE.Group>(null)
   const camera = useThree((st) => st.camera)
   const controls = useThree((st) => st.controls) as unknown as { target: THREE.Vector3; update: () => void } | null
   const manual = useRef(false)
-  const at = useRef<{ x: number; z: number; rot: number }>({ x: way[0]?.[0] ?? 0, z: way[0]?.[1] ?? 0, rot: Math.PI })
+  const at = useRef<{ x: number; y: number; z: number; rot: number }>({ x: way[0]?.[0] ?? 0, y: way[0]?.[2] ?? 0, z: way[0]?.[1] ?? 0, rot: Math.PI })
+  const level = useRef(0)
   const step = useRef(1)
   const settle = useRef(0)
   const [walking, setWalking] = useState(way.length > 1)
@@ -106,7 +176,7 @@ function Walking({ sim, stage, way, spot, onThere, steer, onMoved }: { sim: Sim;
         manual.current = true
         setWalking(true)
       }
-      o.position.set(a.x, 0, a.z)
+      o.position.set(a.x, a.y, a.z)
       o.rotation.set(0, a.rot, 0)
       return
     }
@@ -116,7 +186,7 @@ function Walking({ sim, stage, way, spot, onThere, steer, onMoved }: { sim: Sim;
       onMoved?.([a.x, a.z])
     }
     if (step.current < way.length) {
-      const [tx, tz] = way[step.current]
+      const [tx, tz, ty] = way[step.current]
       const [dx, dz] = [tx - a.x, tz - a.z]
       const len = Math.hypot(dx, dz)
       if (len < 0.05) {
@@ -127,15 +197,23 @@ function Walking({ sim, stage, way, spot, onThere, steer, onMoved }: { sim: Sim;
         }
       } else {
         const m = Math.min(len, SPEED * dt)
+        // Up or down the steps as it goes.
+        a.y += (ty - a.y) * (m / len)
         a.x += (dx / len) * m
         a.z += (dz / len) * m
         const want = Math.atan2(dx, dz)
         a.rot += Math.atan2(Math.sin(want - a.rot), Math.cos(want - a.rot)) * Math.min(1, dt * 10)
       }
-      o.position.set(a.x, 0, a.z)
+      o.position.set(a.x, a.y, a.z)
       o.rotation.set(0, a.rot, 0)
+      // Up (or down) a floor: the view goes with it.
+      const now = Math.round(a.y / STOREY)
+      if (now !== level.current) {
+        level.current = now
+        onLevel?.(now)
+      }
     } else if (!spot) {
-      o.position.set(a.x, 0, a.z)
+      o.position.set(a.x, a.y, a.z)
       o.rotation.set(0, a.rot, 0)
     } else {
       // From in front of the piece onto it: into the bed, onto the sofa.
@@ -212,25 +290,49 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
   useEffect(() => {
     if (interactionId) setFloor(0)
   }, [interactionId])
-  const free = useBlocked(plot, w, d, world)
+  const levels = useLevels(plot, w, d, world)
+  const flights = useFlights(plot, w, d, levels)
+  // The floor the Sim is on (where it walks); the one looked at follows it.
+  const lvl = useRef(0)
   // The arrow keys and WASD walk the Sim about the house.
   useEffect(() => (roam && !interactionId ? listenKeys() : undefined), [roam, interactionId])
   // Where each thing is done, in the lot's metres from its middle.
   const spots = useMemo(() => (world.furniture ? homeSpotsOf(plot, [w, d], [0, 0], 0, world.furniture) : {}), [plot, w, d, world.furniture])
   const spot = interactionId ? (spots[interactionId === 'golvo' ? 'golvo' : interactionId] ?? null) : null
   const gate: XZ = [0, d / 2 + 1.5]
-  const [tapped, setTapped] = useState<XZ | null>(null)
+  // Where to walk to (a tap on the floor, a floor's button), and on which floor.
+  const [tapped, setTapped] = useState<{ at: XZ; level: number } | null>(null)
   useEffect(() => setTapped(null), [interactionId])
   const where = useRef<XZ>(gate)
-  const way = useMemo<XZ[]>(() => {
-    const to: XZ | null = spot ? spot.from : tapped
+  const way = useMemo<P[]>(() => {
+    const to = spot ? { at: spot.from, level: 0 } : tapped
     const from = where.current
-    if (!to) return [from]
-    const path = gridWay(from, to, free, 0.4, span, 200 * 200) ?? [from, to]
-    return path
+    const fromL = lvl.current
+    const flat = (a: XZ, b: XZ, level: number): P[] => (gridWay(a, b, levels(level), 0.4, span, 200 * 200) ?? [a, b]).map(([x, z]) => [x, z, level * STOREY])
+    if (!to) return [[from[0], from[1], fromL * STOREY]]
+    if (to.level === fromL) return flat(from, to.at, fromL)
+    // Another floor: by the stairs, one floor at a time.
+    const out: P[] = [[from[0], from[1], fromL * STOREY]]
+    let [at, level] = [from, fromL]
+    while (level !== to.level) {
+      const up = to.level > level
+      const f = flights.get(up ? level + 1 : level)
+      if (!f) break
+      if (up) {
+        out.push(...flat(at, [f.start[0], f.start[1]], level), ...f.steps, f.landing)
+        ;[at, level] = [[f.landing[0], f.landing[1]], level + 1]
+      } else {
+        out.push(...flat(at, [f.landing[0], f.landing[1]], level), ...[...f.steps].reverse(), f.start)
+        ;[at, level] = [[f.start[0], f.start[1]], level - 1]
+      }
+    }
+    if (level === to.level) out.push(...flat(at, to.at, level))
+    return out
   }, [spot, tapped]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    where.current = way[way.length - 1]
+    const last = way[way.length - 1]
+    where.current = [last[0], last[1]]
+    lvl.current = Math.round(last[2] / STOREY)
   }, [way])
   const [there, setThere] = useState(false)
   // The floors above the one looked at are off; its own walls full height, but down to one block between the camera and the Sim (build/CutHouse).
@@ -264,19 +366,19 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
             // The ground, to tap where to walk (a drag turns the camera instead).
             <mesh
               rotation={[-Math.PI / 2, 0, 0]}
-              position={[0, 0.09, 0]}
+              position={[0, floor * STOREY + 0.09, 0]}
               onClick={(e) => {
                 if (e.delta > 6) return
                 e.stopPropagation()
                 const p: XZ = [e.point.x, e.point.z]
-                if (free(p[0], p[1])) setTapped(p)
+                if (levels(floor)(p[0], p[1])) setTapped({ at: p, level: floor })
               }}
             >
               <planeGeometry args={[w, d]} />
               <meshBasicMaterial transparent opacity={0} depthWrite={false} />
             </mesh>
           )}
-          <Walking sim={sim} stage={stage} way={way} spot={spot} onThere={setThere} steer={roam && !interactionId ? free : undefined} onMoved={(p) => ((where.current = p), setTapped(null))} />
+          <Walking sim={sim} stage={stage} way={way} spot={spot} onThere={setThere} steer={roam && !interactionId ? levels(lvl.current) : undefined} onMoved={(p) => ((where.current = p), setTapped(null))} onLevel={setFloor} />
           {there && interactionId === 'cook-attieke' && spot && (
             <group position={[spot.at[0] + Math.sin(spot.rot) * 0.6, 0, spot.at[1] + Math.cos(spot.rot) * 0.6]}>
               <Pot />
@@ -300,7 +402,15 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
       {floors > 1 && (
         <div className="absolute top-1/2 right-3 z-10 flex -translate-y-1/2 flex-col gap-1.5">
           {[...Array(floors)].map((_, i) => floors - 1 - i).map((f) => (
-            <button key={f} onClick={() => setFloor(f)} className={`rounded-2xl px-3 py-2 text-xs font-extrabold shadow-md ${floor === f ? 'bg-[var(--color-orange)] text-white' : 'bg-white text-[var(--color-ink)]'}`}>
+            <button
+              key={f}
+              onClick={() => {
+                setFloor(f)
+                // Just come in: the Sim goes up (or down) the stairs to that floor.
+                const flight = flights.get(Math.max(f, 1))
+                if (roam && !interactionId && f !== lvl.current && flight) setTapped({ at: f > 0 ? [flight.landing[0], flight.landing[1]] : [flight.start[0], flight.start[1]], level: f })
+              }}
+              className={`rounded-2xl px-3 py-2 text-xs font-extrabold shadow-md ${floor === f ? 'bg-[var(--color-orange)] text-white' : 'bg-white text-[var(--color-ink)]'}`}>
               {f === 0 ? 'Rez-de-chaussée' : f === 1 ? '1er étage' : `${f}e étage`}
             </button>
           ))}

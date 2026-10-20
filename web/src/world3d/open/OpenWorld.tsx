@@ -6,7 +6,7 @@ import { PerformanceMonitor } from '@react-three/drei'
 import { Human, NoShadows, type Pose } from '../../avatar/Human'
 import { callsFor } from '../../lib/nouchi'
 import { randomLook } from '../../avatar/options'
-import { OWN_HOUSE, homePlanFor, lifeOf } from '../../game/rules'
+import { OWN_HOUSE, homePlanFor, lifeOf, openAt } from '../../game/rules'
 import { HAPPENING_DOOR, HAPPENING_X, HappeningMarker, HappeningScene, JamOnRoad, STOPS_TRAFFIC } from '../Happenings'
 import { jamAlong } from './jam'
 import { HOME_ID, type Lot } from '../layout'
@@ -288,6 +288,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const mine = plots?.find((p) => p.simId === sim.id && (p.blocks.length || p.furniture?.length))
   // Living in the house one built: it is « Chez toi ». Otherwise the house stands on its lot, apart.
   const livesOnLot = sim.housing === OWN_HOUSE
+  // A place is open when something can be done there now (its hours): closed, nobody's there.
+  const openNow = (kind: string) => world.kinds[kind]?.interactions.some((it) => openAt(it, sim.gameMinutes)) ?? true
   // Not in one's own house: the home of one's family or housing (game/plans.go), a whole
   // house with its rooms (a shack, a room in a cour commune… a villa with its pool), drawn
   // like a house one built, so one walks in and does things on its furniture.
@@ -912,7 +914,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         ) : LANDMARKS[lot.id] ? (
           <group key={lot.id}>
             <group position={[lot.x, 0, lot.z]} rotation={[0, lot.rot, 0]} onClick={(e) => (e.stopPropagation(), onPick(lot.id))}>
-              <Landmark id={lot.id} night={night} />
+              <Landmark id={lot.id} night={night} open={openNow(lot.kind)} />
               {PARTIES[lot.id] && <Party id={lot.id} night={night} simGender={sim.gender} onTalk={onTalk} onCall={onCall} />}
             </group>
             <LotLabel lot={lot} world={world} label={labels && labelOf.get(lot.id)} onPick={onPick} y={30} />

@@ -504,7 +504,7 @@ function Strollers({ walkers }: { walkers: { x: number; z0: number; speed: numbe
   )
 }
 
-export function Zoo({ night }: { night: boolean }) {
+export function Zoo({ night, open = true }: { night: boolean; /** Within its hours (8 h–17 h): closed, the gate is shut and nobody visits, only the watchman. */ open?: boolean }) {
   const signs = useMemo(
     () => ({
       gate: board(["ZOO NATIONAL", "D'ABIDJAN"], '#1f7a3a', '#fff6d6', 512, 128),
@@ -517,6 +517,7 @@ export function Zoo({ night }: { night: boolean }) {
       leopard: board(['LÉOPARD', 'Ne pas approcher'], '#f3ead0', '#8a1c1c', 256, 96),
       hyena: board(['HYÈNES', 'Ne pas passer la main'], '#f3ead0', '#8a1c1c', 256, 96),
       zebra: board(['ZÈBRES', "Venus d'Afrique du Sud"], '#f3ead0', '#2c3a22', 256, 96),
+      closed: board(['FERMÉ', 'Ouvert de 8 h à 17 h'], '#8a1c1c', '#ffffff', 256, 96),
     }),
     [],
   )
@@ -751,13 +752,30 @@ export function Zoo({ night }: { night: boolean }) {
       <Blocks at={greenery.crowns} material={leaves} color />
 
       <NoShadows>
-        {people.map((g, i) => (
-          <group key={i} position={g.p} rotation={[0, g.ry, 0]} scale={g.kid ? 0.62 : 1}>
-            <Human look={g.look} gender={g.gender} pose={g.pose} seed={g.seed} />
+        {open ? (
+          <>
+            {people.map((g, i) => (
+              <group key={i} position={g.p} rotation={[0, g.ry, 0]} scale={g.kid ? 0.62 : 1}>
+                <Human look={g.look} gender={g.gender} pose={g.pose} seed={g.seed} />
+              </group>
+            ))}
+            <Strollers walkers={walkers} />
+          </>
+        ) : (
+          // Closed: the watchman on his chair by the shut gate.
+          <group position={[-4.5, 0.05, 44]} rotation={[0, 0.3, 0]}>
+            <Human look={{ ...people[0].look, outfit: 'vigile' }} gender="homme" pose="sit" seed={3} />
           </group>
-        ))}
-        <Strollers walkers={walkers} />
+        )}
       </NoShadows>
+      {!open && (
+        // The gate shut: two leaves of green bars between the pillars, the sign.
+        <group position={[0, 0, 42]}>
+          <Blocks at={[...Array(23)].map((_, i) => ({ p: [-5.5 + i * 0.5, 1.3, 0] as [number, number, number], s: [0.08, 2.6, 0.08] as [number, number, number] }))} material={bars} />
+          <Blocks at={[0.2, 1.3, 2.5].map((y) => ({ p: [0, y, 0] as [number, number, number], s: [11.2, 0.1, 0.1] as [number, number, number] }))} material={bars} />
+          <mesh position={[0, 1.6, 0.12]} scale={[2.4, 0.9, 1]} geometry={PLANE} material={signs.closed} />
+        </group>
+      )}
     </group>
   )
 }
