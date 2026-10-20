@@ -20,6 +20,8 @@ import { usePhotoMode } from '../world3d/photoCam'
 import { whereabouts } from '../world3d/whereabouts'
 import { ZOO_SOLID } from '../world3d/open/zoo'
 import { IVOIRE_SOLID } from '../world3d/open/hotelIvoire'
+import { POULMAN_SOLID } from '../world3d/open/poulman'
+import { NOUM_SOLID } from '../world3d/open/noum'
 import { SportField } from '../world3d/open/field'
 import { FuelStation } from '../world3d/open/station'
 import { StreetStall, type StallKind } from '../world3d/open/stalls'
@@ -204,7 +206,7 @@ function LandmarkLab() {
       <Landmark id={q.get('id') ?? 'yop-rue-princesse'} night={night} open={!q.has('closed')} />
       {/* &solid: what a walker can't go through, in red */}
       {q.has('solid') &&
-        ({ 'cocody-zoo': ZOO_SOLID, 'cocody-hotel-ivoire': IVOIRE_SOLID }[q.get('id') ?? ''] ?? []).map((o, i) =>
+        ({ 'cocody-zoo': ZOO_SOLID, 'cocody-hotel-ivoire': IVOIRE_SOLID, 'plateau-poulman': POULMAN_SOLID, 'plateau-noum': NOUM_SOLID }[q.get('id') ?? ''] ?? []).map((o, i) =>
           'r' in o ? (
             <mesh key={i} position={[o.x, 1.5, o.z]}>
               <cylinderGeometry args={[o.r, o.r, 3, 24]} />
