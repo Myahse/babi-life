@@ -101,6 +101,9 @@ export type WaitlistJoin = { firstName: string; contact: string; commune: string
 
 export const api = {
   /** The devices signed in to the account; sign one out, all the others, or this one. */
+  /** The emotes bought; buying one. */
+  emotes: (id: string) => request<{ owned: string[] }>(`/sims/${id}/emotes`),
+  buyEmote: (id: string, emote: string) => post<ActionResult>(`/sims/${id}/emotes/${emote}`, {}),
   sessions: () => request<{ sessions: Device[]; legacy: boolean }>('/me/sessions'),
   revokeSession: (id: string) => request<void>(`/me/sessions/${id}`, { method: 'DELETE' }),
   revokeOthers: () => post<{ signedOut: number }>('/me/sessions/others', {}),

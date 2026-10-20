@@ -142,6 +142,7 @@ func main() {
 				"materials":     game.Materials,
 				"plot":          map[string]int{"w": game.PlotW, "d": game.PlotD, "h": game.PlotH},
 				"furniture":     game.Furnitures,
+				"emotes":        game.Emotes,
 				"lotSizes":      game.LotSizes,
 				"homePlans":     game.HomePlans,
 				"lotPlans":      game.LotPlans,

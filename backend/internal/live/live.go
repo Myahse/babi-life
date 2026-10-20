@@ -24,6 +24,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/myahse/babi-life/backend/internal/auth"
+	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/kart"
 )
 
@@ -40,6 +41,13 @@ const (
 
 // Poses a player may say it is in (what avatar/Human.tsx can show).
 var poses = map[string]bool{"idle": true, "walk": true, "run": true, "busy": true, "talk": true, "sit": true, "dance": true, "wave": true, "cheer": true, "kart": true}
+
+// And the emotes (game/emotes.go): the others see the Sim play them.
+func init() {
+	for _, e := range game.Emotes {
+		poses[e.ID] = true
+	}
+}
 
 // State is one player's Sim: position (metres, in the commune's frame),
 // heading (radians), pose, and when the server heard it (ms).

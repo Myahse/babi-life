@@ -17,6 +17,7 @@ import { SIM_SLOT, matchFor, onField, worldFacing } from './open/match'
 import { blocked, blockedFixed, topAt, vehicleAt } from './obstacles'
 import { gridWay } from './gridPath'
 import { usePhotoMode } from './photoCam'
+import { stopEmote, useEmote } from './emoteNow'
 import { Swimmer } from './Swimmer'
 import { Vehicle } from './vehicles'
 import type { Pose } from '../avatar/Human'
@@ -108,6 +109,11 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   const [walking, setWalking] = useState(false)
   // The phone's camera open: the Sim holds its phone up (snapshot.tsx draws what it sees).
   const photoMode = usePhotoMode()
+  // An emote played from the sheet: while standing; walking off ends it.
+  const emote = useEmote()
+  useEffect(() => {
+    if (walking || busy) stopEmote()
+  }, [walking, busy])
   const speed = useRef(SPEED)
   const [run, setRun] = useState(false)
   const autoRun = useRef(false)
@@ -524,7 +530,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     // What the other players see of this Sim.
     whereabouts.simY = g.position.y
     whereabouts.simHeading = g.rotation.y
-    whereabouts.simPose = busy ? (busy.kind === 'chat' ? 'talk' : 'busy') : walking ? (run ? 'run' : 'walk') : 'idle'
+    whereabouts.simPose = busy ? (busy.kind === 'chat' ? 'talk' : 'busy') : walking ? (run ? 'run' : 'walk') : (emote ?? 'idle')
     // Camera follows the Sim, keeping whatever angle the player chose.
     if (controls && !free.current && !gesture.current) {
       const want = new THREE.Vector3(g.position.x, lookHeight, g.position.z)
@@ -656,7 +662,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
             <Character look={busy?.id === 'shower' ? { ...sim.look, outfit: 'serviette', accessory: 'none' } : sim.look} gender={sim.gender} walking={false} running={false} busy={false} pose={settled.pose} moodColor={moodColor} stage={stage} />
           </group>
         ) : (
-          <Character look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking || looping} running={run || (looping && !!loopKind?.run)} busy={!!busy && !looping} marker={!photoMode} pose={photoMode && !busy && !walking ? 'phone' : busy?.kind === 'chat' ? 'talk' : inMatch && !walking ? matchPose : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={looping && loopKind ? loopKind.speed : run ? RUN : SPEED} />
+          <Character look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking || looping} running={run || (looping && !!loopKind?.run)} busy={!!busy && !looping} marker={!photoMode} pose={photoMode && !busy && !walking ? 'phone' : emote && !busy && !walking ? emote : busy?.kind === 'chat' ? 'talk' : inMatch && !walking ? matchPose : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={looping && loopKind ? loopKind.speed : run ? RUN : SPEED} />
         )}
         {/* Outdoors, what the Sim is doing is set around it (the ball, the towel, the bus stop…) */}
         {busy && !walking && !onTouchline && <OutdoorAction id={busy.id} />}

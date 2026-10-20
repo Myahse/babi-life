@@ -1,3 +1,5 @@
+import type { Pose } from '../avatar/Human'
+
 // Where things are in the 3D street, shared with the screen around it: the
 // Sim, which way the camera looks, the places and the streets. The 3D scene
 // writes it as it runs; the mini-map and the « Où aller ? » list read it.
@@ -9,7 +11,7 @@ export const whereabouts = {
   /** The Sim's height (up on a bridge), which way it faces, and what it's doing: sent to the other players (lib/live.ts). */
   simY: 0,
   simHeading: 0,
-  simPose: 'idle' as 'idle' | 'walk' | 'run' | 'busy' | 'talk',
+  simPose: 'idle' as Pose,
   /** Camera heading: the angle (radians) of the way the camera looks, on the ground. 0 is north, clockwise. */
   heading: 0,
   /** Angle from straight down (radians). 0 is overhead, π/2 is the horizon. */

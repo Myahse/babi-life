@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { createRoot } from 'react-dom/client'
 import '../index.css'
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls } from '@react-three/drei'
+import { Html, OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import type { XZ } from '../world3d/open/geo'
 import type { ChunkData } from '../world3d/open/tiles'
@@ -463,6 +463,7 @@ function Lab() {
   if (view === 'people') return <PeopleLab />
   if (view === 'ride') return <RideLab />
   if (view === 'phonecam') return <PhoneCamLab />
+  if (view === 'emotes') return <EmotesLab />
   if (view === 'mall') return <MallInside sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)) } as unknown as Sim} name="PlaYce Marcory" interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" />
   if (view === 'ivoire') return <IvoireInside sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)) } as unknown as Sim} interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" />
   if (view === 'home') return <HomeLab />
@@ -699,6 +700,34 @@ function PeopleLab() {
   )
 }
 /** The Sim on the back of a moto-taxi, as the Walker draws it (?view=ride&cam=). */
+/** Every emote at once, each figure with its name (?view=emotes&t=…). */
+const LAB_EMOTES = ['wave', 'clap', 'thumbsup', 'shrug', 'laugh', 'cheer', 'dance', 'film', 'dab', 'heart', 'salute', 'facepalm', 'cry', 'kiss', 'bow', 'flex', 'airplane', 'zouglou', 'gweta', 'robot', 'shout', 'moonwalk', 'meditate', 'kneeslide'] as const
+function EmotesLab() {
+  const fixed = q.get('t')
+  if (fixed !== null) freezeWorldTime(Number(fixed))
+  const looks = useMemo(() => LAB_EMOTES.map((_, i) => randomLook(i % 2 ? 'homme' : 'femme', seededLab(i + 3))), [])
+  return (
+    <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
+      <Canvas shadows dpr={[1, 1.5]} camera={{ position: [0, 9, 17], fov: 45 }} style={{ width: '100vw', height: '100vh' }}>
+        <color attach="background" args={['#a9d3f0']} />
+        <hemisphereLight args={['#ffffff', '#b8a27c', 1.3]} />
+        <directionalLight position={[10, 20, 12]} intensity={1.4} />
+        <mesh rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[60, 40]} />
+          <meshLambertMaterial color="#cbb38c" />
+        </mesh>
+        {LAB_EMOTES.map((p, i) => (
+          <group key={p} position={[(i % 8) * 2.6 - 9.1, 0, Math.floor(i / 8) * 4 - 4]}>
+            <Character look={looks[i]} gender={i % 2 ? 'homme' : 'femme'} pose={p} stage="adulte" marker={false} seed={i} />
+            <Html position={[0, -0.2, 0.9]} center style={{ font: '700 11px sans-serif', background: '#fff', padding: '1px 5px', borderRadius: 6, whiteSpace: 'nowrap' }}>{p}</Html>
+          </group>
+        ))}
+        <OrbitControls target={[0, 1, 0]} />
+      </Canvas>
+    </div>
+  )
+}
+
 /** The phone's camera in the street (?view=phonecam): the Sim on the Rue Princesse, the viewfinder over it. */
 function PhoneCamLab() {
   const look = useMemo(() => randomLook('femme', seededLab(5)), [])

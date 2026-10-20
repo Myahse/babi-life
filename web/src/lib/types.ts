@@ -136,6 +136,8 @@ export type Career = {
   effect: Needs
 }
 
+/** An emote: its pose (the id), name, emoji, price (0: free), how long it plays. */
+export type Emote = { id: string; label: string; emoji: string; price: number; seconds: number }
 export type World = {
   cities: City[]
   kinds: Record<string, PlaceKind>
@@ -162,6 +164,8 @@ export type World = {
   materials?: Material[]
   plot?: { w: number; d: number; h: number }
   furniture?: Furniture[]
+  /** The emotes (game/emotes.go): free ones, and ones bought once with Djai. */
+  emotes?: Emote[]
   lotSizes?: { id: string; label: string; w: number; d: number }[]
   /** Whole houses (game/plans.go): the homes Sims are born in, and those one can build on a lot. */
   homePlans?: Record<string, HousePlan>

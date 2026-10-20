@@ -5,12 +5,13 @@ import type { Look, Sim } from '../lib/types'
 import { LowHuman } from './LowHuman'
 import { BlockBaby, BlockHuman } from './BlockHuman'
 import { worldTime } from '../lib/worldClock'
+import { EMOTE_SNAPPY, emoteArms, emoteBody, emoteLegs, type EmotePose } from './emotes'
 
 // The game's Sims: the blocky avatar (avatar/BlockHuman.tsx) up close, a
 // simpler blocky figure (avatar/LowHuman.tsx) far away, and the poses that
 // move them both (usePoseRig). Units are metres: feet on y=0, facing +Z.
 
-export type Pose = 'idle' | 'walk' | 'run' | 'leap' | 'hang' | 'wash' | 'sleep' | 'pray' | 'cook' | 'phone' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper' | 'touch' | 'mark' | 'guard' | 'dive' | 'airplane' | 'pass' | 'salat' | 'swim' | 'dunk' | 'layup' | 'crossover' | 'block' | 'steal' | 'slide' | 'stumble' | 'bouncepass' | 'film'
+export type Pose = 'idle' | 'walk' | 'run' | 'leap' | 'hang' | 'wash' | 'sleep' | 'pray' | 'cook' | 'phone' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper' | 'touch' | 'mark' | 'guard' | 'dive' | 'airplane' | 'pass' | 'salat' | 'swim' | 'dunk' | 'layup' | 'crossover' | 'block' | 'steal' | 'slide' | 'stumble' | 'bouncepass' | 'film' | EmotePose
 
 /** Poses done sitting on a chair (hips at seat height). */
 export const SEATED: Pose[] = ['sit', 'eat', 'drink', 'write']
@@ -372,7 +373,7 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
     // Every joint eases to where it should be: no jump from one pose to the
     // next. Moving in rhythm (walking, dancing) the joints follow closely, so
     // the swing keeps its shape; changing pose they glide.
-    const rhythmic = walk || SNAPPY.has(pose) || pose === 'dance' || pose === 'throw' || pose === 'cheer' || pose === 'leap' || pose === 'hang' || pose === 'wash' || pose === 'cook'
+    const rhythmic = walk || SNAPPY.has(pose) || EMOTE_SNAPPY.has(pose) || pose === 'dance' || pose === 'throw' || pose === 'cheer' || pose === 'leap' || pose === 'hang' || pose === 'wash' || pose === 'cook'
     const a = 1 - Math.exp(-(rhythmic ? 30 : 13) * snap * dt)
     const to = (o: THREE.Euler | THREE.Vector3, k: 'x' | 'y' | 'z', target: number) => void (o[k] += (target - o[k]) * a)
     // Standing: the weight goes from one leg to the other, slowly.
@@ -404,7 +405,7 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
       const danceStep = pose === 'dance' ? out * Math.max(0, out * Math.sin(beat / 2)) * 0.14 : 0
       // Hanging off the gbaka: the inner foot on the step, the outer leg dangling, swinging with the road.
       const dangle = Math.sin(t * 3.1 + seed) * 0.12
-      const sl = sportLegs(pose, out, t, since)
+      const sl = sportLegs(pose, out, t, since) ?? emoteLegs(pose, out, t)
       to(h.rotation, 'x', sl ? sl[0] : pose === 'pray' ? 0.05 : pose === 'sleep' ? 0 : pose === 'leap' ? -0.95 : pose === 'hang' ? (out > 0 ? -0.35 : 0.3 + dangle) : seated ? -1.5 : kick ? -1.15 : pose === 'keeper' ? -0.45 : walk ? gaitHip : pose === 'dance' || pose === 'throw' ? -0.18 - bounce * 0.16 : pose === 'cheer' ? -Math.max(0, -jump) * 0.4 : 0)
       to(h.rotation, 'z', sl ? sl[1] : pose === 'hang' ? (out < 0 ? -0.35 : 0.05) : pose === 'leap' ? out * 0.08 : walk || seated ? 0 : pose === 'dance' ? danceStep : out * shift * 0.03)
       to(kn.rotation, 'x', sl ? sl[2] : pose === 'pray' ? 1.55 : pose === 'sleep' ? 0.05 : pose === 'leap' ? 1.35 : pose === 'hang' ? (out > 0 ? 0.55 : 0.35 - dangle) : seated ? 1.5 : kick ? 0.15 : pose === 'keeper' ? 0.8 : walk ? gaitKnee : pose === 'dance' || pose === 'throw' ? 0.32 + bounce * 0.32 : pose === 'cheer' ? Math.max(0, -jump) * 0.8 : Math.max(0, -out * shift) * 0.12)
@@ -413,7 +414,7 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
       const sh = shoulder[i].current!
       const el = elbow[i].current!
       let [sx, sy, sz, ex, ez] = [0, 0, out * 0.1, -0.12, 0]
-      const sa = sportArms(pose, out, t, since, armSwing)
+      const sa = sportArms(pose, out, t, since, armSwing) ?? emoteArms(pose, out, t, since)
       if (sa) {
         ;[sx, sy, sz, ex, ez] = sa
       } else if (pose === 'wash') {
@@ -536,7 +537,7 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
       to(el.rotation, 'x', ex)
       to(el.rotation, 'z', ez)
     }
-    const body = sportBody(pose, t, since)
+    const body: { y?: number; x?: number; z?: number; rx?: number; rz?: number; ry?: number; head?: number } | null = sportBody(pose, t, since) ?? emoteBody(pose, t, since)
     const r = root.current!
     to(
       r.position,
@@ -578,7 +579,7 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
     // Leaning into the run; the hips sway with the steps, or with the weight.
     to(r.rotation, 'x', body?.rx !== undefined ? body.rx : pose === 'leap' ? 0.3 : pose === 'hang' ? 0.05 : run ? 0.2 : walk ? 0.04 : pose === 'dance' ? 0.06 + bounce * 0.04 : pose === 'throw' ? 0.05 : 0)
     to(r.rotation, 'z', body?.rz !== undefined ? body.rz : pose === 'hang' ? 0.28 + Math.sin(t * 3.1 + seed) * 0.03 : walk ? -Math.sin(ph) * 0.03 * stride : seated ? 0 : pose === 'dance' ? -Math.sin(beat / 2) * 0.05 : -shift * 0.02)
-    to(r.rotation, 'y', pose === 'wash' ? Math.sin(t * 0.7) * 0.5 : pose === 'dance' ? Math.sin(beat / 2) * 0.28 + Math.sin(t * 0.4 + seed) * 0.4 : pose === 'throw' ? Math.sin(beat / 4) * 0.1 : pose === 'rant' ? Math.sin(t * 0.9) * 0.5 : pose === 'hug' ? Math.sin(t * 0.8) * 0.06 : walk ? s * stride * 0.12 : 0)
+    to(r.rotation, 'y', body?.ry !== undefined ? body.ry : pose === 'wash' ? Math.sin(t * 0.7) * 0.5 : pose === 'dance' ? Math.sin(beat / 2) * 0.28 + Math.sin(t * 0.4 + seed) * 0.4 : pose === 'throw' ? Math.sin(beat / 4) * 0.1 : pose === 'rant' ? Math.sin(t * 0.9) * 0.5 : pose === 'hug' ? Math.sin(t * 0.8) * 0.06 : walk ? s * stride * 0.12 : 0)
     // The eyes: looking ahead when walking; otherwise a glance here, then there.
     const g = glance.current
     if (t > g.next) {

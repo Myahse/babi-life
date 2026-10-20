@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import type { Pose } from '../avatar/Human'
 import { useSession } from '../store/session'
 import { whereabouts } from '../world3d/whereabouts'
 import { clockSample, localNow, serverNow } from './worldClock'
@@ -12,7 +13,8 @@ const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
 /** Draw others this far behind the latest news of them: two updates' worth. */
 const DELAY = 300
 
-export type LivePose = 'idle' | 'walk' | 'run' | 'busy' | 'talk' | 'sit' | 'dance' | 'wave' | 'cheer'
+/** What a player's Sim is doing, as sent live: walking, sitting… or an emote (game/emotes.go). */
+export type LivePose = Pose
 type Snap = { at: number; x: number; y: number; z: number; h: number; p: LivePose }
 export type LiveSample = { x: number; y: number; z: number; h: number; p: LivePose }
 

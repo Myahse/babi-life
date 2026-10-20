@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BadgeCheck, Camera, Images, Megaphone, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, Camera, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World, Ride, Place, Plot } from '../lib/types'
 import { useWorld } from '../store/world'
@@ -37,6 +37,7 @@ import { WayeApp } from './WayeApp'
 import { StoreApp } from './StoreApp'
 import { FriendsApp } from './FriendsApp'
 import { CameraView } from './CameraView'
+import { EmoteSheet } from './EmoteSheet'
 import { GalleryApp } from './GalleryApp'
 import { InviteBanner, PlayersChip, PlayersSheet, usePlayers } from '../components/Players'
 import { SoundToggle, Soundtrack } from '../components/Soundtrack'
@@ -119,6 +120,8 @@ export function Play() {
   const [placeId, setPlaceId] = useState<string | null>(null)
   // Inside a place, the Sim walks about first; the actions open when asked for.
   const [menuOpen, setMenuOpen] = useState(false)
+  // The « Émotes » sheet.
+  const [emotesOpen, setEmotesOpen] = useState(false)
   useEffect(() => {
     setMenuOpen(false)
   }, [placeId])
@@ -685,6 +688,12 @@ export function Play() {
                   <span className="max-sm:hidden">{{ pres: 'Vue épaule', epaule: 'Vue de haut', haut: 'Vue de près' }[view]}</span>
                 </button>
               )}
+              {!sim.activity && (
+                <button className="hud flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={() => setEmotesOpen(true)} title="Émotes">
+                  <Smile size={17} strokeWidth={2.6} className="text-[var(--color-orange)]" />
+                  <span className="max-sm:hidden">Émotes</span>
+                </button>
+              )}
               {/* On a phone, a finger drag on the street turns the view: no compass to crowd the screen */}
               <div className="max-sm:hidden">
               <OrbitGizmo
@@ -846,6 +855,7 @@ export function Play() {
           onBuild={() => (setOverlay(null), setBuilding(true))}
         />
       )}
+      {emotesOpen && <EmoteSheet world={world} sim={sim} onClose={() => setEmotesOpen(false)} onResult={apply} />}
       {overlay === 'camera' && <CameraView sim={sim} street={!showInside} onClose={() => setOverlay(null)} onGallery={() => (setPhoneApp('galerie'), setOverlay('phone'))} />}
       {overlay === 'map' && <WorldMap world={world} sim={sim} night={c.isNight} desktop={desktop} onClose={() => setOverlay(null)} onTravel={travel} onWalk={(id) => (setOverlay(null), walkTo(id))} />}
       {delivery && overlay !== 'phone' && <DeliveryPill delivery={delivery} now={now} onOpen={() => (setPhoneApp('golvo'), setOverlay('phone'))} />}
