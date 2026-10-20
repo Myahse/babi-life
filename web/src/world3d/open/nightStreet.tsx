@@ -52,6 +52,8 @@ export function NightStreet({ nav, seed }: { nav: Nav; seed: string }) {
       const off = kind === 'couple' ? e.width / 2 + 1 : e.width / 2 + 2.6
       const at: XZ = [m[0] - uz * off * side, m[1] + ux * off * side]
       if (kind !== 'couple' && !nav.walkable(at[0], at[1])) continue
+      // Nor in the next street (a cross street, a parallel one): a metre round them off every road.
+      if (kind !== 'couple' && [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dz]) => nav.onRoad([at[0] + dx, at[1] + dz]))) continue
       // Facing the street: +z of the scene points back to the road.
       const rot = kind === 'couple' ? Math.atan2(ux, uz) : Math.atan2(uz * side, -ux * side)
       out.push({ id: `${seed}:night:${Math.round(at[0])}:${Math.round(at[1])}`, kind, at, rot, seed: h * 1000 })
