@@ -150,8 +150,8 @@ export function PlayersSheet({ sim, around, communeName, focus, act, onClose }: 
           {players.length === 0 ? (
             <p className="py-4 text-sm font-bold text-[var(--color-ink-soft)]">Personne d'autre en ligne {aCommune(communeName)} pour l'instant. Les joueurs des autres communes n'apparaissent que si tu vas chez eux.</p>
           ) : (
-            players.map((p) => (
-              <div key={p.id} className={`rounded-2xl border bg-white p-3 ${p.id === focus ? 'border-[#2563eb]' : 'border-[var(--color-line)]'}`}>
+            players.map((p, i) => (
+              <div key={p.id} className={`motion-rise rounded-2xl border bg-white p-3 ${p.id === focus ? 'border-[#2563eb]' : 'border-[var(--color-line)]'}`} style={{ animationDelay: `${Math.min(i, 8) * 50}ms` }}>
                 <div className="flex items-center gap-3">
                   <span className="block h-11 w-11 shrink-0 overflow-hidden rounded-full bg-gradient-to-b from-[#dbeafe] to-[#93c5fd]">
                     <Portrait look={p.look} gender={p.gender} framing="head" />

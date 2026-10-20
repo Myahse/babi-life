@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 
@@ -256,6 +257,44 @@ func (h *Handler) thread(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusOK, msgs)
 }
 
+// Who is writing to whom right now (« from>to » → when last heard), in this process's
+// memory like the live hub: it lasts seconds, and a restart only loses a few dots.
+var writing sync.Map
+
+// TypingFor: how long « … écrit » stays after the last keystroke heard.
+const TypingFor = 5 * time.Second
+
+// typing: ?writing=1 says this player is writing to the friend (anything else: stopped);
+// the answer says whether the friend is writing back. A GET, like the thread marking
+// messages read: a write would tell every device of both players that their Sim changed.
+func (h *Handler) typing(w http.ResponseWriter, r *http.Request) {
+	me, err := h.texter(r)
+	if err != nil {
+		h.gbairaiFail(w, err)
+		return
+	}
+	other := chi.URLParam(r, "other")
+	if r.URL.Query().Get("writing") == "1" {
+		writing.Store(me+">"+other, time.Now())
+	} else {
+		writing.Delete(me + ">" + other)
+	}
+	httpx.JSON(w, http.StatusOK, map[string]bool{"typing": isWriting(other, me)})
+}
+
+// isWriting: from is writing to to (heard within TypingFor); a stale mark is dropped.
+func isWriting(from, to string) bool {
+	v, ok := writing.Load(from + ">" + to)
+	if !ok {
+		return false
+	}
+	if time.Since(v.(time.Time)) > TypingFor {
+		writing.Delete(from + ">" + to)
+		return false
+	}
+	return true
+}
+
 // write: send a message to a friend.
 func (h *Handler) write(w http.ResponseWriter, r *http.Request) {
 	var req struct {
@@ -292,6 +331,8 @@ func (h *Handler) write(w http.ResponseWriter, r *http.Request) {
 		h.gbairaiFail(w, err)
 		return
 	}
+	// Sent: no longer writing.
+	writing.Delete(me + ">" + to)
 	// On the other's phone: who wrote, and what (the latest from the same friend replaces the one before).
 	var name string
 	_ = h.DB.QueryRow(ctx, `SELECT first_name FROM sims WHERE id = $1`, me).Scan(&name)

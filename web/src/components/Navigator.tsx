@@ -167,7 +167,7 @@ export function WhereTo({ world, onWalk, onClose }: { world: World; onWalk: (id:
             />
           </div>
         )}
-        <ul className="space-y-1.5 overflow-y-auto px-4 pb-2">
+        <ul className="motion-stagger space-y-1.5 overflow-y-auto px-4 pb-2">
           {!list.length && <li className="p-3 text-center text-sm font-bold text-[var(--color-ink-soft)]">Rien de ce nom par ici.</li>}
           {list.map((p) => {
             const kind = world.kinds[p.kind]

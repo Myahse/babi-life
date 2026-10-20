@@ -67,6 +67,8 @@ export type Interaction = {
   places?: string[]
   /** Only Sims of this gender (a beard trim is for men). */
   gender?: 'femme' | 'homme'
+  /** At home, the room it's done in: the menu shows the house room by room. */
+  room?: 'salle-de-bain' | 'chambre' | 'cuisine' | 'salon' | 'cour'
 }
 export type PlaceKind = { id: string; label: string; icon: string; interactions: Interaction[] }
 export type Option = { id: string; label: string; icon: string; hint: string }

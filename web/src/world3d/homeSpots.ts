@@ -32,7 +32,7 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
     const rot = rot0 + turn
     const [lc, ls] = [Math.cos(turn), Math.sin(turn)]
     const half = f.d / 2
-    const at = (x: number, y: number, z: number, face: number, pose: HomeSpot['pose'], lying = false, ids: string[] = [], stool = false): HomeSpot => {
+    const at = (x: number, y: number, z: number, face: number, pose: HomeSpot['pose'], lying = false, ids: string[] = [], stool = false, turnable = false): HomeSpot => {
       const place = (sx: number, sz: number, sface: number, front: number): HomeSpot => {
         const [u, v] = [pu + sx * lc + sz * ls, pv - sx * ls + sz * lc]
         // Where the Sim walks to first: just in front of the piece (or behind, turned round).
@@ -41,8 +41,8 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
       }
       // Up against a wall on that side: the other side of the piece, if it's free there.
       let spot = place(x, z, face, half + 0.6)
-      // (Not a seat: sitting on its back would be sitting the wrong way round.)
-      if (spot.wall && !lying && pose !== 'sit') {
+      // (Not a seat: sitting on its back would be sitting the wrong way round; the toilets can turn to the room.)
+      if (spot.wall && !lying && (pose !== 'sit' || turnable)) {
         const other = place(-x, -z, face + Math.PI, -(half + 0.6))
         if (!other.wall) spot = other
       }
@@ -76,6 +76,12 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
         break
       case 'douche':
         at(0, 0.08, 0, 0, 'wash', false, ['shower'])
+        // The teeth, standing at the shower's tap (if there are no toilets to stand by).
+        at(0, 0.08, half + 0.35, Math.PI, 'busy', false, ['dents'])
+        break
+      case 'wc':
+        // Sitting on the toilets, turned to face the room.
+        at(0, 0.05, -0.05, 0, 'sit', false, ['toilettes'], false, true)
         break
     }
   }

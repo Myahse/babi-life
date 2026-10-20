@@ -23,7 +23,18 @@ type Interaction struct {
 	Places []string `json:"places,omitempty"`
 	// Gender: only Sims of this gender (a beard trim is for men); empty = anyone.
 	Gender string `json:"gender,omitempty"`
+	// Room: at home, the room it's done in (RoomBath…): the menu shows the house room by room.
+	Room string `json:"room,omitempty"`
 }
+
+// The rooms of a home, as the menu shows them.
+const (
+	RoomBath    = "salle-de-bain"
+	RoomBed     = "chambre"
+	RoomKitchen = "cuisine"
+	RoomLiving  = "salon"
+	RoomYard    = "cour"
+)
 
 // A Requirement limits an interaction to some Sims.
 type Requirement struct {
@@ -103,26 +114,29 @@ var Kinds = map[string]PlaceKind{
 	"home": {
 		ID: "home", Label: "Chez toi", Icon: "house",
 		Interactions: []Interaction{
-			{ID: "sleep", Label: "Dormir", Icon: "bed-double", Minutes: 7 * 60, Effect: Needs{Energy: 100, Hunger: -10, Hygiene: -10}, Ages: Everyone},
-			{ID: "nap", Label: "Faire la sieste", Icon: "bed", Minutes: 60, Effect: Needs{Energy: 20}, Ages: Everyone},
+			{ID: "sleep", Room: RoomBed, Label: "Dormir", Icon: "bed-double", Minutes: 7 * 60, Effect: Needs{Energy: 100, Hunger: -10, Hygiene: -10}, Ages: Everyone},
+			{ID: "nap", Room: RoomBed, Label: "Faire la sieste", Icon: "bed", Minutes: 60, Effect: Needs{Energy: 20}, Ages: Everyone},
 			// A baby's day, with maman.
-			{ID: "biberon", Label: "Boire le biberon", Icon: "milk", Minutes: 15, Effect: Needs{Hunger: 45}, Ages: Babies},
-			{ID: "bouillie", Label: "Manger la bouillie", Icon: "soup", Minutes: 20, Effect: Needs{Hunger: 55, Fun: 5}, Ages: Babies},
-			{ID: "bain-bebe", Label: "Prendre le bain avec maman", Icon: "bath", Minutes: 20, Effect: Needs{Hygiene: 70, Fun: 10, Social: 10}, Ages: Babies},
-			{ID: "hochet", Label: "Jouer avec le hochet", Icon: "baby", Minutes: 30, Effect: Needs{Fun: 35, Energy: -5}, Ages: Babies},
-			{ID: "calin", Label: "Faire un câlin à maman", Icon: "heart", Minutes: 15, Effect: Needs{Social: 40}, Ages: Babies},
+			{ID: "biberon", Room: RoomKitchen, Label: "Boire le biberon", Icon: "milk", Minutes: 15, Effect: Needs{Hunger: 45}, Ages: Babies},
+			{ID: "bouillie", Room: RoomKitchen, Label: "Manger la bouillie", Icon: "soup", Minutes: 20, Effect: Needs{Hunger: 55, Fun: 5}, Ages: Babies},
+			{ID: "bain-bebe", Room: RoomBath, Label: "Prendre le bain avec maman", Icon: "bath", Minutes: 20, Effect: Needs{Hygiene: 70, Fun: 10, Social: 10}, Ages: Babies},
+			{ID: "hochet", Room: RoomBed, Label: "Jouer avec le hochet", Icon: "baby", Minutes: 30, Effect: Needs{Fun: 35, Energy: -5}, Ages: Babies},
+			{ID: "calin", Room: RoomBed, Label: "Faire un câlin à maman", Icon: "heart", Minutes: 15, Effect: Needs{Social: 40}, Ages: Babies},
 			// School days: class in the morning, homework after. Both count towards the bac.
 			{ID: "aller-ecole", Label: "Aller à l'école", Icon: "school", Minutes: 5 * 60, Effect: Needs{Social: 25, Fun: -10, Energy: -20, Hunger: -15}, MinHour: 7, MaxHour: 9, Days: Weekdays, Ages: Kids},
-			{ID: "devoirs", Label: "Faire ses devoirs", Icon: "notebook-pen", Minutes: 60, Effect: Needs{Fun: -10, Energy: -5}, MinHour: 14, MaxHour: 21, Ages: Kids},
-			{ID: "jouer-cour", Label: "Jouer dans la cour", Icon: "volleyball", Minutes: 45, Effect: Needs{Fun: 35, Social: 15, Hygiene: -15, Energy: -10}, Ages: []string{StageEnfant}},
-			{ID: "shower", Label: "Prendre une douche", Icon: "shower-head", Minutes: 20, Effect: Needs{Hygiene: 60}},
-			{ID: "cook-attieke", Ages: Adults, Label: "Préparer attiéké-poisson", Icon: "cooking-pot", Minutes: 45, Cost: 1500, Effect: Needs{Hunger: 55, Fun: 5}},
-			{ID: "watch-tv", Label: "Regarder RTI 1", Icon: "tv", Minutes: 60, Effect: Needs{Fun: 25, Energy: -3}},
+			{ID: "devoirs", Room: RoomLiving, Label: "Faire ses devoirs", Icon: "notebook-pen", Minutes: 60, Effect: Needs{Fun: -10, Energy: -5}, MinHour: 14, MaxHour: 21, Ages: Kids},
+			{ID: "jouer-cour", Room: RoomYard, Label: "Jouer dans la cour", Icon: "volleyball", Minutes: 45, Effect: Needs{Fun: 35, Social: 15, Hygiene: -15, Energy: -10}, Ages: []string{StageEnfant}},
+			{ID: "shower", Room: RoomBath, Label: "Prendre une douche", Icon: "shower-head", Minutes: 20, Effect: Needs{Hygiene: 60}},
+			// The bathroom's little things: in one's own house, the toilets (and a shower or toilets for the teeth) must be there.
+			{ID: "toilettes", Room: RoomBath, Label: "Aller aux toilettes", Icon: "toilet", Minutes: 10, Effect: Needs{Hygiene: 6, Fun: 3}},
+			{ID: "dents", Room: RoomBath, Label: "Se brosser les dents", Icon: "toothbrush", Minutes: 10, Effect: Needs{Hygiene: 18, Social: 4}},
+			{ID: "cook-attieke", Room: RoomKitchen, Ages: Adults, Label: "Préparer attiéké-poisson", Icon: "cooking-pot", Minutes: 45, Cost: 1500, Effect: Needs{Hunger: 55, Fun: 5}},
+			{ID: "watch-tv", Room: RoomLiving, Label: "Regarder RTI 1", Icon: "tv", Minutes: 60, Effect: Needs{Fun: 25, Energy: -3}},
 			// Only with a pool (CanSwimAtHome): one's own, or the rented villa's.
-			{ID: SwimID, Label: "Nager dans la piscine", Icon: "waves", Minutes: 45, Effect: Needs{Fun: 35, Hygiene: 10, Energy: -12}, Ages: []string{StageEnfant, StageAdo, StageAdulte}},
+			{ID: SwimID, Room: RoomYard, Label: "Nager dans la piscine", Icon: "waves", Minutes: 45, Effect: Needs{Fun: 35, Hygiene: 10, Energy: -12}, Ages: []string{StageEnfant, StageAdo, StageAdulte}},
 			// With one's partner living at home (sims: interactAt checks it), adults only: a fade to black.
-			{ID: NightID, Ages: Adults, Label: "Passer la nuit ensemble", Icon: "moon-star", Minutes: 8 * 60, Effect: Needs{Social: 45, Fun: 40, Energy: 35}},
-			{ID: "call-family", Ages: TeensUp, Label: "Appeler la famille au village", Icon: "smartphone", Minutes: 20, Cost: 200, Effect: Needs{Social: 30}},
+			{ID: NightID, Room: RoomBed, Ages: Adults, Label: "Passer la nuit ensemble", Icon: "moon-star", Minutes: 8 * 60, Effect: Needs{Social: 45, Fun: 40, Energy: 35}},
+			{ID: "call-family", Room: RoomLiving, Ages: TeensUp, Label: "Appeler la famille au village", Icon: "smartphone", Minutes: 20, Cost: 200, Effect: Needs{Social: 30}},
 		},
 		Events: []RandomEvent{
 			{Text: "Coupure de courant ! La CIE a encore frappé.", Effect: Needs{Fun: -10}},

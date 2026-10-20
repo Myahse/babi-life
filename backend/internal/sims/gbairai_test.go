@@ -3,6 +3,7 @@ package sims
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestCleanMessage(t *testing.T) {
@@ -35,5 +36,19 @@ func TestCleanMessage(t *testing.T) {
 func TestReportReasons(t *testing.T) {
 	if !validReason("harcèlement") || validReason("") || validReason("spam !") {
 		t.Error("report reasons")
+	}
+}
+
+func TestIsWriting(t *testing.T) {
+	writing.Store("a>b", time.Now())
+	if !isWriting("a", "b") || isWriting("b", "a") {
+		t.Fatal("a writes to b, not the other way round")
+	}
+	writing.Store("a>b", time.Now().Add(-TypingFor-time.Second))
+	if isWriting("a", "b") {
+		t.Fatal("a stale mark is no longer writing")
+	}
+	if _, ok := writing.Load("a>b"); ok {
+		t.Fatal("a stale mark is dropped")
 	}
 }

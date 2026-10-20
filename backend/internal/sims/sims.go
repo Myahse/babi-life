@@ -249,6 +249,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/gang", h.gang)
 	r.Get("/sims/{id}/gbairai", h.chats)
 	r.Get("/sims/{id}/gbairai/{other}", h.thread)
+	r.Get("/sims/{id}/gbairai/{other}/typing", h.typing)
 	r.Post("/sims/{id}/gbairai/{other}", h.write)
 	r.Post("/sims/{id}/gbairai/{other}/block", h.block)
 	r.Post("/sims/{id}/gbairai/{other}/report", h.report)

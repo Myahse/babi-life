@@ -90,9 +90,9 @@ var Furnitures = []Furniture{
 	{ID: "tele", Label: "Télé", Icon: "tv", W: 1, D: 1, H: 1, Price: 45000, Comfort: 0.05, Unlocks: []string{"watch-tv"}, Color: "#222222"},
 	{ID: "ventilo", Label: "Ventilateur", Icon: "fan", W: 1, D: 1, H: 2, Price: 10000, Comfort: 0.08, Color: "#3a8fd8"},
 	{ID: "armoire", Label: "Armoire", Icon: "archive", W: 1, D: 1, H: 2, Price: 20000, Comfort: 0.03, Color: "#6b4426"},
-	{ID: "douche", Label: "Douche", Icon: "shower-head", W: 1, D: 1, H: 2, Price: 12000, Comfort: 0.04, Unlocks: []string{"shower"}, Color: "#9fd3e8"},
+	{ID: "douche", Label: "Douche", Icon: "shower-head", W: 1, D: 1, H: 2, Price: 12000, Comfort: 0.04, Unlocks: []string{"shower", "dents"}, Color: "#9fd3e8"},
 	{ID: "transat", Label: "Transat", Icon: "armchair", W: 1, D: 2, H: 1, Price: 15000, Comfort: 0.03, Color: "#f4f1ea"},
-	{ID: "wc", Label: "Toilettes", Icon: "toilet", W: 1, D: 1, H: 1, Price: 15000, Comfort: 0.05, Color: "#ffffff"},
+	{ID: "wc", Label: "Toilettes", Icon: "toilet", W: 1, D: 1, H: 1, Price: 15000, Comfort: 0.05, Unlocks: []string{"toilettes", "dents"}, Color: "#ffffff"},
 	// Up one floor (a duplex, a triplex): four steps a metre each, from its front (the foot) to its back (the top).
 	{ID: StairsID, Label: "Escalier (monte d'un étage)", Icon: "chevrons-up", W: 1, D: Storey, H: Storey, Price: 30000, Comfort: 0, Color: "#cfc8bb"},
 }

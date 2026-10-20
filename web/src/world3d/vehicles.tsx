@@ -7,7 +7,7 @@ import { randomLook } from '../avatar/options'
 // Abidjan's traffic, modelled on what drives there: the woro-woro and the
 // orange taxi compteur are small saloons (Corolla-style), the gbaka a Hiace-
 // type minibus with its roof rack and its apprenti at the open door, private
-// cars are saloons or SUVs, and the motos the cheap Chinese bikes, with their
+// cars are saloons, berlines, SUVs, 4x4s and the odd limousine (carModel), and the motos the cheap Chinese bikes, with their
 // rider; the SITRA bus, white with its green and orange band. All in blocks, like the Sims and the buildings: Minecraft style.
 // Real size, in metres, nose towards +x.
 
@@ -127,6 +127,76 @@ function Car4({ type, body, trim, roofSign }: { type: 'saloon' | 'suv'; body: st
     </group>
   )
 }
+
+/* ---------- The people's own cars ---------- */
+
+/**
+ * What a private car is, from its number (the same on every screen): a plain saloon, the big
+ * berline of the Plateau's managers (long, low, chrome), an SUV, the 4x4 of the up-country
+ * roads (tall, bull bar, spare wheel, roof rack) and now and then a limousine (a wedding, a big man).
+ */
+export type CarModel = 'saloon' | 'berline' | 'suv' | '4x4' | 'limo'
+export function carModel(seed: number): CarModel {
+  const u = (Math.abs(Math.sin(seed * 12.9898) * 43758.5453) % 1 + 1) % 1
+  return u < 0.3 ? 'saloon' : u < 0.52 ? 'berline' : u < 0.74 ? 'suv' : u < 0.92 ? '4x4' : 'limo'
+}
+/** Length, width, wheel radius: what the far shape also needs. */
+const CAR_SIZE: Record<CarModel, [number, number, number]> = { saloon: [4.4, 1.66, 0.32], berline: [4.9, 1.82, 0.34], suv: [4.6, 1.82, 0.38], '4x4': [4.8, 1.92, 0.44], limo: [6.4, 1.84, 0.34] }
+const CHROME = new THREE.MeshPhongMaterial({ color: '#d9dee5', shininess: 160, specular: new THREE.Color('#ffffff') })
+/** A limousine's or a big car's tinted glass, darker than the rest. */
+const TINT = new THREE.MeshPhongMaterial({ color: '#0d1117', shininess: 140, specular: new THREE.Color('#8b9bb0') })
+
+function PrivateCar({ model, body }: { model: CarModel; body: string }) {
+  if (model === 'saloon' || model === 'suv') return <Car4 type={model} body={body} />
+  const [len, wide, r] = CAR_SIZE[model]
+  const p = paint(body)
+  const tall = model === '4x4'
+  const [c0, c1] = tall ? [0.5, 1.2] : [0.3, 0.84] // chassis, bottom and top
+  // The cabin: the 4x4's a long box to the tail; the limousine's stretched; the berline's set back, a long bonnet.
+  const [cabLen, cabX, cabTop] = tall ? [3.3, -0.55, 2.02] : model === 'limo' ? [4.3, -0.35, 1.4] : [2.6, -0.4, 1.38]
+  const glass = model === 'limo' ? TINT : GLASS
+  const midY = (c1 + cabTop) / 2
+  // The pillars between the windows: the limousine has four doors' worth down each side.
+  const pillars = model === 'limo' ? [-1.6, -0.5, 0.6] : tall ? [-1.0, 0.2] : [-0.2]
+  const wheels = model === 'limo' ? [-2.35, 2.35] : tall ? [-1.55, 1.55] : [-1.5, 1.5]
+  return (
+    <group>
+      <K p={[0, (c0 + c1) / 2, 0]} s={[len, c1 - c0, wide]} m={p} />
+      <K p={[cabX, midY, 0]} s={[cabLen, cabTop - c1, wide - 0.16]} m={p} />
+      <K p={[cabX, midY + 0.01, 0]} s={[cabLen - 0.3, (cabTop - c1) * 0.72, wide - 0.12]} m={glass} cast={false} />
+      <K p={[cabX + cabLen / 2 + 0.005, midY + 0.01, 0]} s={[0.02, (cabTop - c1) * 0.72, wide - 0.4]} m={GLASS} cast={false} />
+      {!tall && <K p={[cabX - cabLen / 2 - 0.005, midY + 0.01, 0]} s={[0.02, (cabTop - c1) * 0.72, wide - 0.4]} m={glass} cast={false} />}
+      {pillars.map((x) => (
+        <K key={x} p={[cabX + x, midY, 0]} s={[0.14, cabTop - c1, wide - 0.1]} m={p} cast={false} />
+      ))}
+      {/* The chrome: a line along the sides and the grille (a plain bar: no maker's own shape) */}
+      {model !== '4x4' && <K p={[0, c1 - 0.06, 0]} s={[len - 0.4, 0.05, wide + 0.02]} m={CHROME} cast={false} />}
+      <K p={[len / 2 + 0.04, c1 - 0.2, 0]} s={[0.04, 0.16, wide * 0.42]} m={CHROME} cast={false} />
+      {tall && (
+        <>
+          {/* Bull bar, spare wheel on the tailgate, roof rack */}
+          <K p={[len / 2 + 0.22, 0.75, 0]} s={[0.08, 0.5, wide * 0.8]} m={paint('#2b2f36')} cast={false} />
+          <K p={[len / 2 + 0.2, 1.0, 0]} s={[0.3, 0.08, wide * 0.8]} m={paint('#2b2f36')} cast={false} />
+          <group position={[-len / 2 - 0.16, 1.0, 0]}>
+            <K p={[0, 0, 0]} s={[0.26, r * 2, r * 2]} m={paint('#1b1b20')} cast={false} />
+            <K p={[-0.02, 0, 0]} s={[0.24, r, r]} m={paint('#c3c7cf')} cast={false} />
+          </group>
+          {[-1, 1].map((s) => (
+            <K key={s} p={[cabX, cabTop + 0.08, s * (wide / 2 - 0.2)]} s={[cabLen - 0.4, 0.08, 0.08]} m={paint('#3a3f4b')} cast={false} />
+          ))}
+        </>
+      )}
+      <Wheels x={wheels} r={r} wide={wide} />
+      <Ends len={len} wide={wide} y={tall ? 0.95 : 0.66} mirror={[cabX + cabLen / 2 - 0.1, c1 + 0.12]} />
+    </group>
+  )
+}
+
+/** What the people's cars are painted: white and black above all, silver and grey, the navy, the wine red, the champagne. */
+export const CAR_COLORS = ['#f8f9fa', '#f8f9fa', '#212529', '#212529', '#adb5bd', '#6c757d', '#1b2a4a', '#7a1f2b', '#c9b48a', '#1c7ed6', '#c92a2a']
+
+/** The paint of a private car: limousines black or white, the rest the caller's (or a plain one). */
+export const carPaint = (model: CarModel, seed: number, color?: string) => (model === 'limo' ? (Math.floor(seed) % 3 === 0 ? '#f4f4f2' : '#0f1115') : color ?? '#e9ecef')
 
 // The gbaka's apprenti hangs out of the sliding door, calling the stops and
 // waving at people on the sidewalk.
@@ -264,9 +334,11 @@ const farMat = (c: string) => {
   return m
 }
 const FAR_BOX = new THREE.BoxGeometry(1, 1, 1)
-function FarVehicle({ p, r = 0, kind = 'taxi', color }: VehicleProps) {
-  const [l, h, w] = FAR_SIZE[kind]
-  const body = color ?? (kind === 'taxi' ? '#ff7a00' : kind === 'gbaka' ? '#f4c430' : kind === 'moto' ? '#c92a2a' : kind === 'sotra' ? '#f4f6f5' : '#e9ecef')
+function FarVehicle({ p, r = 0, kind = 'taxi', color, seed = 0 }: VehicleProps) {
+  // A private car far off keeps its length and height (a limousine stays long, a 4x4 tall) and its paint.
+  const model = kind === 'car' ? carModel(seed) : null
+  const [l, h, w] = model ? [CAR_SIZE[model][0], model === '4x4' ? 1.5 : model === 'suv' ? 1.3 : 1.05, CAR_SIZE[model][1]] : FAR_SIZE[kind]
+  const body = model ? carPaint(model, seed, color) : (color ?? (kind === 'taxi' ? '#ff7a00' : kind === 'gbaka' ? '#f4c430' : kind === 'moto' ? '#c92a2a' : kind === 'sotra' ? '#f4f6f5' : '#e9ecef'))
   return (
     <group position={p} rotation={[0, r, 0]}>
       <mesh geometry={FAR_BOX} material={farMat(body)} position={[0, 0.3 + h / 2, 0]} scale={[l, h, w]} />
@@ -289,7 +361,7 @@ function NearVehicle({ p, r = 0, kind = 'taxi', color, trim, seed = 0, crew = tr
       ) : kind === 'gbaka' ? (
         <Gbaka body={color ?? '#f4c430'} stripe={trim ?? '#00a862'} crew={crew} />
       ) : kind === 'car' ? (
-        <Car4 type={seed % 3 === 0 ? 'suv' : 'saloon'} body={color ?? '#e9ecef'} />
+        <PrivateCar model={carModel(seed)} body={carPaint(carModel(seed), seed, color)} />
       ) : (
         <Car4 type="saloon" body={color ?? (kind === 'taxi' ? '#ff7a00' : '#e9ecef')} trim={kind === 'woro' ? trim : undefined} roofSign={kind === 'taxi'} />
       )}

@@ -74,6 +74,9 @@ export function action(kind: string, id: string | undefined): { spot: string; po
   if (/^(sleep|nap)$/.test(id)) return { spot: 'bed', pose: 'sleep' }
   if (/^(biberon|bouillie|hochet|calin)$/.test(id)) return { spot: 'mat', pose: 'busy' }
   if (id === 'shower') return { spot: 'shower', pose: 'wash' }
+  // The bathroom corner too: sitting on the toilets, standing at the basin for the teeth.
+  if (id === 'toilettes') return { spot: 'shower', pose: 'sit' }
+  if (id === 'dents') return { spot: 'shower', pose: 'busy' }
   if (id === 'bain-bebe') return { spot: 'shower', pose: 'busy' }
   if (id === 'pray') return { spot: 'seat', pose: 'pray' }
   // At a counter: asking, explaining, filling in the papers; the shopping picked off the shelves.

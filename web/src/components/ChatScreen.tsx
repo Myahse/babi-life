@@ -85,6 +85,8 @@ export function ChatScreen({
   onReact,
   note,
   below,
+  typing,
+  onTyping,
 }: {
   title: string
   subtitle?: string
@@ -105,6 +107,10 @@ export function ChatScreen({
   onReact?: (line: ChatLine, emoji: string) => void
   note?: string | null
   below?: ReactNode
+  /** Who is writing back right now (« Kofi »): the header says so, and a bubble of dots waits at the bottom. */
+  typing?: string
+  /** The text in the box changed: whether there is something being written. */
+  onTyping?: (writing: boolean) => void
 }) {
   const [text, setText] = useState('')
   const [panel, setPanel] = useState<'emoji' | 'stickers' | null>(null)
@@ -114,7 +120,7 @@ export function ChatScreen({
   const end = useRef<HTMLDivElement>(null)
   useEffect(() => {
     end.current?.scrollIntoView({ block: 'end' })
-  }, [lines.length])
+  }, [lines.length, !!typing])
 
   const send = async (body: string, sticker = false) => {
     if (!body.trim() || sending || locked) return
@@ -140,7 +146,7 @@ export function ChatScreen({
           {avatar}
           <span className="min-w-0 flex-1 pl-1">
             <span className="block truncate text-[16px] leading-tight font-extrabold">{title}</span>
-            {subtitle && <span className="block truncate text-[12px] font-semibold opacity-85">{subtitle}</span>}
+            {typing ? <span className="block truncate text-[12px] font-semibold opacity-85">écrit…</span> : subtitle && <span className="block truncate text-[12px] font-semibold opacity-85">{subtitle}</span>}
           </span>
           {menu && menu.length > 0 && (
             <span className="relative">
@@ -253,6 +259,15 @@ export function ChatScreen({
               </div>
             )
           })}
+          {typing && (
+            <div className="motion-pop flex justify-start px-1" aria-live="polite">
+              <div className="flex items-center gap-1 rounded-[10px] rounded-tl-none bg-white px-3.5 py-3 shadow-sm" aria-label={`${typing} écrit…`}>
+                <span className="motion-typing" />
+                <span className="motion-typing [animation-delay:0.15s]" />
+                <span className="motion-typing [animation-delay:0.3s]" />
+              </div>
+            </div>
+          )}
           <div ref={end} className="h-1" />
         </div>
 
@@ -274,7 +289,7 @@ export function ChatScreen({
               </button>
               <textarea
                 value={text}
-                onChange={(e) => setText(e.target.value.slice(0, 500))}
+                onChange={(e) => (setText(e.target.value.slice(0, 500)), onTyping?.(!!e.target.value.trim()))}
                 onFocus={() => setPanel(null)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {

@@ -123,7 +123,28 @@ function Thread({ sim, chat, onBack }: { sim: Sim; chat: Chat; onBack: () => voi
     }
   }, [sim.id, chat.friend.id])
 
+  // « … écrit » both ways: every 2 s, say whether a message is being written (a key pressed in
+  // the last 4 s, something in the box) and hear whether the friend is.
+  const [friendTyping, setFriendTyping] = useState(false)
+  const typed = useRef({ at: 0, text: false })
+  useEffect(() => {
+    let stop = false
+    const tell = () => {
+      const now = typed.current.text && Date.now() - typed.current.at < 4000
+      api.typing(sim.id, chat.friend.id, now).then((r) => !stop && setFriendTyping(r.typing), () => undefined)
+    }
+    const t = setInterval(tell, 2000)
+    return () => {
+      stop = true
+      clearInterval(t)
+    }
+  }, [sim.id, chat.friend.id])
+  // A message from the friend has come: they've stopped writing it.
+  const lastFromFriend = msgs.filter((m) => !m.mine).at(-1)?.id
+  useEffect(() => setFriendTyping(false), [lastFromFriend])
+
   const send = async (body: string) => {
+    typed.current = { at: 0, text: false }
     try {
       const m = await api.write(sim.id, chat.friend.id, body)
       last.current = Math.max(last.current, m.id)
@@ -172,6 +193,8 @@ function Thread({ sim, chat, onBack }: { sim: Sim; chat: Chat; onBack: () => voi
       placeholder="Message"
       locked={blocked ? 'Bloqué·e' : undefined}
       onSend={send}
+      typing={friendTyping && !blocked ? chat.friend.firstName : undefined}
+      onTyping={(text) => (typed.current = { at: Date.now(), text })}
       onReport={(m) => setReporting(msgs.find((x) => x.id === m.id) ?? null)}
       note={note}
       below={

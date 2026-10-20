@@ -23,7 +23,7 @@ import { Html } from '@react-three/drei'
 import { Bande } from '../Nightlife'
 import { OtherPlayers } from '../Players'
 import { rng } from '../themes'
-import { APPRENTI, GBAKA_DOOR, Vehicle, type VehicleKind } from '../vehicles'
+import { APPRENTI, CAR_COLORS, GBAKA_DOOR, Vehicle, type VehicleKind } from '../vehicles'
 import { Walker, type WalkNav } from '../Walker'
 import { homeSpotsOf } from '../homeSpots'
 import { LotGround, Zones } from '../build/Zones'
@@ -1287,13 +1287,14 @@ function RoadTraffic({ nav, focus, seed, woro }: { nav: Nav; focus: React.RefObj
       cells.flatMap((cell) =>
         [...Array(CARS_PER_CELL)].map((_, k) => {
           const r = rng(`otraffic${seed}|${cell.key}|${k}`)
-          const kinds: VehicleKind[] = ['taxi', 'woro', 'woro', 'gbaka', 'car', 'car', 'moto', 'sotra']
+          // The people's own cars are four in ten (saloons, berlines, SUVs, 4x4s, a limousine now and then: vehicles.tsx carModel).
+          const kinds: VehicleKind[] = ['taxi', 'woro', 'woro', 'gbaka', 'car', 'car', 'car', 'car', 'moto', 'sotra']
           const drawn = kinds[Math.floor(r() * kinds.length)]
           const kind: VehicleKind = drawn === 'woro' && woro?.none ? 'taxi' : drawn
           return {
             id: `${seed}|${cell.key}|car${k}`,
             kind,
-            color: kind === 'woro' ? woro?.color : kind === 'car' ? ['#f8f9fa', '#212529', '#adb5bd', '#c92a2a', '#1c7ed6'][Math.floor(r() * 5)] : undefined,
+            color: kind === 'woro' ? woro?.color : kind === 'car' ? CAR_COLORS[Math.floor(r() * CAR_COLORS.length)] : undefined,
             trim: kind === 'woro' ? woro?.trim : undefined,
             seed: r() * 100,
             near: [cell.x0 + r() * CAR_CELL, cell.z0 + r() * CAR_CELL] as XZ,

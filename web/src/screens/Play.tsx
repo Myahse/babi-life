@@ -1,6 +1,6 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BadgeCheck, Camera, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, Camera, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World, Ride, Place, Plot } from '../lib/types'
 import { useWorld } from '../store/world'
@@ -1036,7 +1036,7 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
               </div>
             </div>
           ) : (
-            <div className="mt-2 flex flex-1 flex-col overflow-hidden rounded-t-[28px] bg-white">
+            <div key={app} className="motion-app mt-2 flex flex-1 flex-col overflow-hidden rounded-t-[28px] bg-white">
               <div className="flex items-center gap-2 p-3">
                 <button className="icon-btn bg-[var(--color-canvas)]" onClick={() => setApp(null)} aria-label="Retour">
                   <ChevronLeft size={22} strokeWidth={2.6} />
@@ -1191,8 +1191,8 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
   }
   const state = (it: Interaction) => ({ open: openAt(it, sim.gameMinutes), broke: it.cost > 0 && sim.money < it.cost, busy, reason: ageBlock(it, life.stage?.id) ?? stadiumBlock(it) ?? blockedBy(it, sim, city.id, commune.id) ?? furnitureBlock(it) })
 
-  // Desktop: the Sims radial menu around the place.
-  if (desktop && here && !busy) {
+  // Desktop: the Sims radial menu around the place (at home, the rooms' list: too many things for a ring).
+  if (desktop && here && !busy && !items.some((it) => it.room)) {
     const rx = 250
     const ry = 175
     return (
@@ -1212,8 +1212,9 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
           {items.map((it, i) => {
             const a = (i / items.length) * Math.PI * 2 - Math.PI / 2
             return (
-              <div key={it.id} className="absolute top-1/2 left-1/2" style={{ transform: `translate(calc(-50% + ${Math.cos(a) * rx}px), calc(-50% + ${Math.sin(a) * ry}px))` }}>
-                <div className="animate-pop" style={{ animationDelay: `${60 + i * 45}ms` }}>
+              // Each one flies out from the place in the middle to its spot on the ring.
+              <div key={it.id} className="motion-fan absolute top-1/2 left-1/2" style={{ '--fx': `${Math.cos(a) * rx}px`, '--fy': `${Math.sin(a) * ry}px`, animationDelay: `${40 + i * 40}ms` } as React.CSSProperties}>
+                <div>
                   <ActionButton it={it} colors={colors} {...state(it)} onPick={() => onPick(it, place.kind)} compact />
                 </div>
               </div>
@@ -1256,8 +1257,17 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
             {billing}
             {build}
             {restyle}
-            {items.map((it) => (
-              <ActionButton key={it.id} it={it} colors={colors} {...state(it)} onPick={() => onPick(it, place.kind)} />
+            {byRoom(items).map(([room, list]) => (
+              <Fragment key={room?.id ?? 'any'}>
+                {room && (
+                  <div className="mt-1 flex items-center gap-1.5 text-[11px] font-extrabold tracking-wider text-[var(--color-ink-soft)] uppercase">
+                    <room.icon size={14} strokeWidth={2.6} /> {room.label}
+                  </div>
+                )}
+                {list.map((it) => (
+                  <ActionButton key={it.id} it={it} colors={colors} {...state(it)} onPick={() => onPick(it, place.kind)} />
+                ))}
+              </Fragment>
             ))}
           </div>
         ) : (
@@ -1389,12 +1399,33 @@ function ActivityBar({ sim, onStop, stopping, onRoute, onMore }: { sim: Sim; onS
   )
 }
 
+/** The rooms of a home, in the order the menu shows them. */
+const ROOMS: { id: NonNullable<Interaction['room']>; label: string; icon: LucideIcon }[] = [
+  { id: 'salle-de-bain', label: 'Salle de bain', icon: Bath },
+  { id: 'chambre', label: 'Chambre', icon: BedDouble },
+  { id: 'cuisine', label: 'Cuisine', icon: CookingPot },
+  { id: 'salon', label: 'Salon', icon: Sofa },
+  { id: 'cour', label: 'Cour', icon: Trees },
+]
+/** The actions room by room (those of no room first, without a heading); elsewhere than home, one list. */
+function byRoom(items: Interaction[]): [(typeof ROOMS)[number] | null, Interaction[]][] {
+  if (!items.some((it) => it.room)) return [[null, items]]
+  const out: [(typeof ROOMS)[number] | null, Interaction[]][] = []
+  const none = items.filter((it) => !it.room)
+  if (none.length) out.push([null, none])
+  for (const r of ROOMS) {
+    const list = items.filter((it) => it.room === r.id)
+    if (list.length) out.push([r, list])
+  }
+  return out
+}
+
 function ToastCard({ toast: t }: { toast: Toast }) {
   const icon = t.tone === 'random' ? Dice5 : t.tone === 'promo' ? BadgeCheck : t.tone === 'error' ? TriangleAlert : t.icon ? iconFor(t.icon) : Sparkles
   const colors: [string, string] =
     t.tone === 'random' || t.tone === 'event' ? ['#ffd54f', '#ffa000'] : t.tone === 'promo' ? ['#69e2a0', '#00a862'] : t.tone === 'error' ? ['#ff8a9b', '#ff3d57'] : kindColors(t.kind ?? '')
   return (
-    <div className={`card animate-pop pointer-events-auto flex items-center gap-3 p-3 ${t.tone === 'random' || t.tone === 'event' ? 'ring-2 ring-[var(--color-gold)]' : t.tone === 'promo' ? 'ring-2 ring-[var(--color-emerald)]' : ''}`}>
+    <div className={`card motion-toast pointer-events-auto flex items-center gap-3 p-3 ${t.tone === 'random' || t.tone === 'event' ? 'ring-2 ring-[var(--color-gold)]' : t.tone === 'promo' ? 'ring-2 ring-[var(--color-emerald)]' : ''}`}>
       <IconTile icon={icon} colors={colors} size={44} />
       <div className="min-w-0 flex-1">
         <div className="font-display text-[15px] leading-tight font-extrabold">{t.title}</div>
