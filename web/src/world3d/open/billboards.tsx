@@ -6,6 +6,7 @@ import { whereabouts } from '../whereabouts'
 import { hash, type XZ } from './geo'
 import type { Nav } from './nav'
 import { LANDMARKS } from './landmarks'
+import { onFieldGround, type Field } from './places'
 
 // The ad boards of the streets, in the formats one sees in Abidjan:
 // - the 4×3 (here 12 × 6 m) on its two legs along the big roads;
@@ -42,12 +43,14 @@ const FORMATS: Record<BoardFormat, { w: number; h: number; y: number; both: bool
 /** The places that get their own big board at the door: where crowds go. */
 const FEATURED: Record<string, BoardFormat> = { stade: 'led', club: 'led', mall: 'led', transport: 'led', karting: 'led', market: 'geant', station: 'geant', zoo: 'geant', hotel: 'geant', universite: 'geant', beach: 'geant', culture: 'led' }
 
-export function Billboards({ nav, seed, night, places = [] }: { nav: Nav; seed: string; night: boolean; /** The places of the quarter: the big ones get a board of their own. */ places?: { id: string; kind: string; x: number; z: number; door: XZ }[] }) {
+export function Billboards({ nav, seed, night, places = [] }: { nav: Nav; seed: string; night: boolean; /** The places of the quarter: the big ones get a board of their own. */ places?: { id: string; kind: string; x: number; z: number; door: XZ; field?: Field }[] }) {
   // Always at the same spots: along the roads by their size (the more road, the more boards), set back from the edge, facing the traffic.
   const all = useMemo(() => {
     const out: Board[] = []
     const add = (format: BoardFormat, at: XZ, rot: number, span?: number, featured?: boolean) => {
       if (!nav.walkable(at[0], at[1])) return
+      // Never on a pitch or a court (its fence and a few metres round it).
+      if (places.some((p) => p.field && onFieldGround(p.field, at, FORMATS[format].w / 2 + 3))) return
       // Not two boards on top of each other.
       if (out.some((o) => Math.hypot(o.at[0] - at[0], o.at[1] - at[1]) < (format === 'sucette' ? 12 : 30))) return
       out.push({ id: `pub:${format}:${Math.round(at[0])}:${Math.round(at[1])}`, at, rot, seed: hash(at[0], at[1], 9), format, span, featured })

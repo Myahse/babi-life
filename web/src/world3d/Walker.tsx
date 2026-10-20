@@ -14,7 +14,7 @@ import { HOME_ID, SIDEWALK, type Lot } from './layout'
 import { cameraTurn, moveInput, running } from './input'
 import { whereabouts } from './whereabouts'
 import { worldTime } from '../lib/worldClock'
-import { SIM_SLOT, matchFor, onField, worldFacing } from './open/match'
+import { SIM_SLOT, matchFor, onField, simSeat, toField, worldFacing } from './open/match'
 import { blocked, blockedFixed, topAt, vehicleAt } from './obstacles'
 import { gridWay } from './gridPath'
 import { usePhotoMode } from './photoCam'
@@ -455,7 +455,28 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       g.position.set(x, 0, z)
       g.rotation.y = worldFacing(f, s.face)
       if (s.pose !== matchPose) setMatchPose(s.pose)
-    } else if (onTouchline && fieldLot && !path.current.length && !padWalking.current) g.rotation.y = Math.atan2(fieldLot.x - g.position.x, fieldLot.z - g.position.z)
+    } else if (onTouchline && fieldLot?.field && !path.current.length && !padWalking.current) {
+      // Watching: to the free seat on the bench on the street's side, sitting
+      // there facing the field, up on the feet for a goal or a dunk.
+      const f = fieldLot.field
+      const side = toField(f, fieldLot.door)[1] >= 0 ? 1 : -1
+      const [x, z] = onField(f, ...simSeat(f, side))
+      const [dx, dz] = [x - g.position.x, z - g.position.z]
+      const d = Math.hypot(dx, dz)
+      let pose: Pose
+      if (d > 0.05) {
+        const step = Math.min(d, SPEED * Math.min(dt, 0.25))
+        g.position.x += (dx / d) * step
+        g.position.z += (dz / d) * step
+        g.rotation.y = Math.atan2(dx, dz)
+        pose = 'walk'
+      } else {
+        g.rotation.y = worldFacing(f, side > 0 ? -Math.PI / 2 : Math.PI / 2)
+        const mo = matchFor(fieldLot.id, f).moment(worldTime())
+        pose = mo.kind === 'goal' || mo.kind === 'dunk' ? 'cheer' : 'sit'
+      }
+      if (pose !== matchPose) setMatchPose(pose)
+    }
     // Talking with someone: face them.
     const face = whereabouts.faceTo
     if (face && !path.current.length && !padWalking.current && Math.hypot(face[0] - g.position.x, face[1] - g.position.z) > 0.3) {
@@ -671,7 +692,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
             <Character look={busy?.id === 'shower' ? { ...sim.look, outfit: 'serviette', accessory: 'none' } : sim.look} gender={sim.gender} walking={false} running={false} busy={false} pose={settled.pose} moodColor={moodColor} stage={stage} />
           </group>
         ) : (
-          <Character look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking || looping} running={run || (looping && !!loopKind?.run)} busy={!!busy && !looping} marker={!photoMode} pose={photoMode && !busy && !walking ? 'phone' : emote && !busy && !walking ? emote : busy?.kind === 'chat' ? 'talk' : inMatch && !walking ? matchPose : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={looping && loopKind ? loopKind.speed : run ? RUN : SPEED} />
+          <Character look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking || looping} running={run || (looping && !!loopKind?.run)} busy={!!busy && !looping} marker={!photoMode} pose={photoMode && !busy && !walking ? 'phone' : emote && !busy && !walking ? emote : busy?.kind === 'chat' ? 'talk' : (inMatch || onTouchline) && !walking ? matchPose : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={looping && loopKind ? loopKind.speed : run ? RUN : SPEED} />
         )}
         {/* Hanging out: the friend walks along beside the Sim */}
         {busy?.id === 'ami-trainer' && <Buddy sim={sim} walking={looping} stage={stage} />}

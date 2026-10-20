@@ -491,6 +491,30 @@ export class Match {
   }
 
   /** What's happening at `time`, for the crowd: the kind of moment, which team has the ball, and since when (s). */
+  /**
+   * The score of the match being played (each written stretch is a match:
+   * kick-off at its start), and how far into it: football a goal each, a
+   * basket two points, three from beyond the arc.
+   */
+  score(time: number): { goals: [number, number]; minute: number } {
+    const n = Math.floor(time / CYCLE)
+    const local = time - n * CYCLE
+    const goals: [number, number] = [0, 0]
+    const foot = this.field.sport === 'foot'
+    const evs = this.script(n)
+    for (let i = 0; i < evs.length; i++) {
+      const e = evs[i]
+      if (e.t0 > local) break
+      if (e.kind !== 'goal') continue
+      // The shot that went in, just before: from how far.
+      const shot = evs[i - 1]
+      const three = !foot && !!shot && shot.kind === 'shot' && dist(shot.a, this.target(e.team)) > 6.75
+      goals[e.team] += foot ? 1 : three ? 3 : 2
+    }
+    // Shown as a real match's clock: a maracana's 30 minutes, a basket game's 40.
+    return { goals, minute: Math.floor((local / CYCLE) * (foot ? 30 : 40)) }
+  }
+
   moment(time: number): { kind: string; team: 0 | 1; since: number; after: string } {
     const { e, prev, local } = this.at(time)
     return { kind: e.kind, team: e.team as 0 | 1, since: local - e.t0, after: prev.kind }
@@ -574,3 +598,27 @@ export function worldFacing(field: Field, face: number) {
 
 /** Which player the Sim is, when it plays: a winger, or a guard. */
 export const SIM_SLOT: Record<Field['sport'], number> = { foot: 2, basket: 1 }
+
+/** From the world's (x, z) to the field's frame (u along, v across). */
+export function toField(field: Field, [x, z]: [number, number]): [number, number] {
+  const [c, s] = [Math.cos(field.angle), Math.sin(field.angle)]
+  const [dx, dz] = [x - field.at[0], z - field.at[1]]
+  return [dx * c + dz * s, -dx * s + dz * c]
+}
+
+/** The fence round a field stands this far out from its lines. */
+export const FENCE_OUT = 1.05
+/** The benches along both touchlines, outside the fence (the gate in the middle left clear): 4 m each, four seats. */
+export function benches(field: Field): { u: number; v: number; side: 1 | -1 }[] {
+  const out: { u: number; v: number; side: 1 | -1 }[] = []
+  const v = field.wid / 2 + FENCE_OUT + 1.6
+  for (const side of [1, -1] as const)
+    for (let u = 3.6; u + 2 < field.len / 2 + FENCE_OUT; u += 5.2) for (const k of [1, -1]) out.push({ u: k * u, v: side * v, side })
+  return out
+}
+/** The seats on a bench, from its middle. */
+export const SEATS = [-1.2, -0.4, 0.4, 1.2]
+/** Where the Sim sits to watch: the bench nearest the gate on the street's side, its first seat. */
+export function simSeat(field: Field, side: 1 | -1): [number, number] {
+  return [3.6 - 1.2, side * (field.wid / 2 + FENCE_OUT + 1.6)]
+}
