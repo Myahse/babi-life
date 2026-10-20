@@ -243,9 +243,9 @@ func (h *Handler) buyLot(w http.ResponseWriter, r *http.Request) {
 		if err := savePlot(ctx, tx, p); err != nil {
 			return game.Outcome{}, nil, err
 		}
-		text := fmt.Sprintf("Terrain acheté à %s : %s de %d m² (%d × %d m), ACD et notaire compris. À toi de bâtir !", offer.Name, game.LowerFirst(size.Label), size.Area(), size.W, size.D)
+		text := fmt.Sprintf("Terrain acheté %s : %s de %d m² (%d × %d m), ACD et notaire compris. À toi de bâtir !", inCommune(offer.Name), game.LowerFirst(size.Label), size.Area(), size.W, size.D)
 		if offer.Upgrade {
-			text = fmt.Sprintf("Ton terrain s'agrandit : %d m² à %s. Ta maison reste debout.", size.Area(), offer.Name)
+			text = fmt.Sprintf("Ton terrain s'agrandit : %d m² %s. Ta maison reste debout.", size.Area(), inCommune(offer.Name))
 		}
 		if refund > 0 {
 			text += fmt.Sprintf(" L'ancien terrain est revendu %s.", game.FCFA(refund))
@@ -381,7 +381,7 @@ func (h *Handler) moveIn(w http.ResponseWriter, r *http.Request) {
 		if _, cm, ok := world.FindCommune(p.Lot.City, p.Lot.Commune); ok {
 			name = cm.Name
 		}
-		text := fmt.Sprintf("Tu emménages dans ta maison à %s ! Plus de loyer : tu es chez toi.", name)
+		text := fmt.Sprintf("Tu emménages dans ta maison %s ! Plus de loyer : tu es chez toi.", inCommune(name))
 		m := houseMoment(s, true, p.Lot.City, p.Lot.Commune)
 		return game.Outcome{Text: text}, []Event{{Kind: "life", Text: text, GameTime: s.GameMinutes, moment: &m}}, nil
 	})

@@ -4,6 +4,7 @@ import { api, ApiError } from '../lib/api'
 import type { DirectPost, GrinMessage, Sim, World } from '../lib/types'
 import { ReportSheet } from '../components/Social'
 import { ChatScreen, type ChatLine } from '../components/ChatScreen'
+import { aCommune, deNom } from '../lib/french'
 
 /**
  * Le grin, in Gbairai (backend sims/grin.go): the public chat, where people
@@ -30,7 +31,7 @@ export function Grin({ world, sim }: { world: World; sim: Sim }) {
   const communeName = (id: string) => world.cities.flatMap((c) => c.communes).find((c) => c.id === id)?.name ?? id
   const rooms = [
     { id: 'babi' as const, name: 'Tout Babi', sub: 'Tous les joueurs, et Babi Direct : ce qui se passe dans le jeu', icon: <Users size={24} />, bg: '#c2410c' },
-    { id: 'commune' as const, name: `Ma commune · ${communeName(sim.commune)}`, sub: `Ceux qui sont à ${communeName(sim.commune)}`, icon: <MapPin size={24} />, bg: '#2f9e44' },
+    { id: 'commune' as const, name: `Ma commune · ${communeName(sim.commune)}`, sub: `Ceux qui sont ${aCommune(communeName(sim.commune))}`, icon: <MapPin size={24} />, bg: '#2f9e44' },
   ]
   return (
     <div>
@@ -167,7 +168,7 @@ function Room({ sim, room, title, icon, communeName, onBack }: { sim: Sim; room:
       lines={lines}
       notice={room === 'babi' ? 'Le grin est public : tout le monde peut lire. Les liens et les numéros sont masqués. Babi Direct raconte ce qui se passe dans le jeu : réagis à ses nouvelles ! Touche un message pour le signaler.' : 'Le grin est public : tout le monde peut lire. Les liens et les numéros sont masqués. Touche un message pour le signaler.'}
       empty="C'est calme au grin. Lance la discussion !"
-      placeholder={room === 'babi' ? 'Écris à tout Babi' : `Écris à ${communeName(sim.commune)}`}
+      placeholder={room === 'babi' ? 'Écris à tout Babi' : `Écris ${aCommune(communeName(sim.commune))}`}
       onSend={send}
       onReport={(l) => setReporting(msgs.find((m) => m.id === l.id) ?? null)}
       onReact={react}
@@ -176,7 +177,7 @@ function Room({ sim, room, title, icon, communeName, onBack }: { sim: Sim; room:
         reporting && (
           <div className="mb-2">
             <ReportSheet
-              title={`Signaler le message de ${reporting.firstName}`}
+              title={`Signaler le message ${deNom(reporting.firstName)}`}
               onCancel={() => setReporting(null)}
               onPick={(reason) =>
                 void api

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BadgeCheck, Bandage, Check, ChevronLeft, ChevronRight, Dices, Baby, Glasses, Heart, IdCard, PersonStanding, Scissors, Shirt, Smile, X, type LucideIcon } from 'lucide-react'
 import { api, type NewSim } from '../lib/api'
@@ -42,6 +42,23 @@ const LAST = ['Koné', 'Kouassi', 'Traoré', 'Yao', 'Ouattara', 'Bamba', "N'Gues
 const pick = <T,>(a: readonly T[]) => a[Math.floor(Math.random() * a.length)]
 const showMetres = (m: number) => `${m.toFixed(2).replace('.', ',')} m`
 
+// The Sim being made, kept for this tab until it is born.
+const DRAFT_KEY = 'babi-creer'
+function readDraft(): { sim: NewSim & { look: Required<Look> }; step: number } | null {
+  try {
+    return JSON.parse(sessionStorage.getItem(DRAFT_KEY) ?? 'null')
+  } catch {
+    return null
+  }
+}
+const dropDraft = () => {
+  try {
+    sessionStorage.removeItem(DRAFT_KEY)
+  } catch {
+    /* nothing kept */
+  }
+}
+
 /** waitlist: before the game opens, made from the wish list (/liste/creer): no account, the Sim is kept for the opening. */
 export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
   const world = useWorld((s) => s.world)
@@ -50,7 +67,7 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
   // Google sign-ups have no username yet: they choose it here.
   const needsUsername = !waitlist && !user?.username
   const [username, setUsername] = useState(() => suggestFrom(user?.firstName ?? '', user?.lastName ?? ''))
-  const [step, setStep] = useState(0)
+  const [step, setStep] = useState(() => readDraft()?.step ?? 0)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [born, setBorn] = useState<{ family: Family; commune: string; located: boolean } | null>(null)
@@ -65,7 +82,7 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
   const [privacy, setPrivacy] = useState(false)
   const [registered, setRegistered] = useState<number | null>(null) // how many are on the list
   const [entering, setEntering] = useState(false)
-  const [sim, setSim] = useState<NewSim & { look: Required<Look> }>({
+  const [sim, setSim] = useState<NewSim & { look: Required<Look> }>(() => ({
     // Taken from the account; the player only corrects them if needed.
     firstName: user?.firstName || user?.name.split(' ')[0] || 'Awa',
     lastName: user?.lastName || user?.name.split(' ').slice(1).join(' ') || 'Koné',
@@ -75,7 +92,16 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
     aspiration: 'ambiance',
     homeCity: 'abidjan',
     homeCommune: 'yopougon',
-  })
+    // A reload (or the phone dropping the tab) keeps what was chosen.
+    ...readDraft()?.sim,
+  }))
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ sim, step }))
+    } catch {
+      /* private browsing: the draft lasts as long as the page */
+    }
+  }, [sim, step])
 
   if (!world) return null
   type Draft = NewSim & { look: Required<Look> }
@@ -120,6 +146,7 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
         const drawn = world!.families?.find((f) => f.id === res.birth?.family)
         const cm = world!.cities.flatMap((c) => c.communes).find((c) => c.id === res.birth?.commune)
         setRegistered(res.count)
+        dropDraft()
         if (drawn) setBorn({ family: drawn, commune: cm?.name ?? 'Abidjan', located: true })
         return
       }
@@ -131,6 +158,7 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
       const pos = await whereAmI()
       const [fromCity, fromCommune] = from ? from.split('/') : ['', '']
       const created = await api.createSim({ ...sim, ...pos, fromCity, fromCommune })
+      dropDraft()
       const drawn = world!.families?.find((f) => f.id === created.family)
       const city = world!.cities.find((c) => c.id === created.homeCity)
       const cm = city?.communes.find((c) => c.id === created.homeCommune)

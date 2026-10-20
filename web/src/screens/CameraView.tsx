@@ -12,6 +12,12 @@ import { placeHere, takePhoto } from '../world3d/snapshot'
 
 export function CameraView({ sim, street, onClose, onGallery }: { sim: Sim; /** Out in the street (else inside a place: the view as it is). */ street: boolean; onClose: () => void; onGallery: () => void }) {
   const mode = usePhotoMode()
+  // On a computer, Échap puts the camera away.
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', key)
+    return () => window.removeEventListener('keydown', key)
+  }, [onClose])
   useEffect(() => {
     if (street) setPhotoMode('photo')
     return () => setPhotoMode(null)

@@ -5,6 +5,7 @@ import type { Sim, StoryRing } from '../lib/types'
 import { Portrait } from '../avatar/portrait'
 import { Photo, ReportSheet } from '../components/Social'
 import { readPhoto, takePhoto } from '../world3d/snapshot'
+import { deNom } from '../lib/french'
 
 /**
  * The stories, at the top of Gbairai (backend sims/stories.go): a photo of
@@ -202,7 +203,7 @@ function Viewer({ sim, rings, start, onClose }: { sim: Sim; rings: StoryRing[]; 
         </button>
       </div>
       <div className="relative flex-1">
-        <Photo key={s.id} path={api.storyPhoto(sim.id, s.id)} alt={s.caption || `Story de ${r.sim.firstName}`} className="absolute inset-0 h-full w-full" />
+        <Photo key={s.id} path={api.storyPhoto(sim.id, s.id)} alt={s.caption || `Story ${deNom(r.sim.firstName)}`} className="absolute inset-0 h-full w-full" />
         <button className="absolute inset-y-0 left-0 w-1/3" onClick={prev} aria-label="Précédente" />
         <button className="absolute inset-y-0 right-0 w-2/3" onClick={next} aria-label="Suivante" />
         {s.caption && <p className="pointer-events-none absolute inset-x-3 bottom-4 rounded-xl bg-black/55 px-3 py-2 text-center text-sm font-extrabold">{s.caption}</p>}

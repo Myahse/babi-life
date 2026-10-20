@@ -48,6 +48,7 @@ import { npcReact } from '../world3d/open/npcReact'
 import type { Npc } from '../world3d/open/OpenWorld'
 import type { Track } from '../audio/music'
 import { NotifyPrompt } from '../components/NotifyPrompt'
+import { aCommune } from '../lib/french'
 
 /** Building one's house: its own screen, downloaded when opened. */
 const BuildMode = lazy(() => import('../components/BuildMode'))
@@ -75,6 +76,8 @@ function useIsDesktop() {
 // In development, ?hour=22 shows the street at that hour (to check the night).
 const HOUR_OVERRIDE = import.meta.env.DEV && new URLSearchParams(location.search).get('hour') ? Number(new URLSearchParams(location.search).get('hour')) : undefined
 const MAP_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
+/** The Golvo order on its way, kept on the device. */
+const GOLVO_KEY = 'babi-golvo'
 
 /**
  * The commune with its places from the map added (for the menus, names and
@@ -146,7 +149,22 @@ export function Play() {
   // Looking at the street rather than inside the place the Sim is in.
   const [outside, setOutside] = useState(false)
   // A Golvo order on its way, and the phone app to open.
-  const [delivery, setDelivery] = useState<Delivery | null>(null)
+  // Kept on the device: the phone dropping the tab (or a reload) mid-delivery no longer loses the order.
+  const [delivery, setDelivery] = useState<Delivery | null>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(GOLVO_KEY) ?? 'null')
+    } catch {
+      return null
+    }
+  })
+  useEffect(() => {
+    try {
+      if (delivery) localStorage.setItem(GOLVO_KEY, JSON.stringify(delivery))
+      else localStorage.removeItem(GOLVO_KEY)
+    } catch {
+      /* private browsing: the order lasts as long as the page */
+    }
+  }, [delivery])
   const [phoneApp, setPhoneApp] = useState<PhoneAppId | null>(null)
   // A notification tapped (/jeu?app=gbairai, ?app=bet225): the phone opens on that app.
   useEffect(() => {
@@ -291,7 +309,7 @@ export function Play() {
         if (h && announced.current !== key) {
           announced.current = key
           const name = world.cities.flatMap((c) => c.communes).find((c) => c.id === where)?.name ?? ''
-          setTimeout(() => toast({ tone: 'event', title: `Ça se passe à ${name} !`, text: h.text, money: 0, icon: h.icon }), 300)
+          setTimeout(() => toast({ tone: 'event', title: `Ça se passe ${aCommune(name)} !`, text: h.text, money: 0, icon: h.icon }), 300)
         }
       })
       .catch(() => undefined)
@@ -919,6 +937,16 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
   // A player friend to send money to, picked in Amis.
   const [wayeTo, setWayeTo] = useState<string | undefined>()
   const navigate = useNavigate()
+  // On a computer, Échap goes back: out of the app, then the phone away.
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      if (app) setApp(null)
+      else onClose()
+    }
+    window.addEventListener('keydown', key)
+    return () => window.removeEventListener('keydown', key)
+  }, [app, onClose])
   const home = sim.homeCity === sim.city && sim.homeCommune === commune.id
   const places = [...(home ? [{ id: 'home', name: 'Chez toi', kind: 'home' }] : []), ...commune.places]
   const city = world.cities.find((c) => c.id === sim.city)!
@@ -1150,7 +1178,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
       <IconTile icon={lookTab === 'coiffure' ? Scissors : Shirt} colors={colors} size={44} />
       <span className="min-w-0 flex-1">
         <span className="block font-display text-[15px] leading-tight font-extrabold">Changer de look</span>
-        <span className="mt-0.5 block text-xs font-bold text-[var(--color-ink-soft)]">{lookTab === 'coiffure' ? 'Coupe, couleur, barbe · 2 000 Djai' : 'Tenue, pagne, couleurs, accessoire · gratuit'}</span>
+        <span className="mt-0.5 block text-xs font-bold text-[var(--color-ink-soft)]">{lookTab === 'coiffure' ? (sim.gender === 'homme' ? 'Coupe, couleur, barbe' : 'Coupe, couleur') + ' · 2 000 Djai' : 'Tenue, pagne, couleurs, accessoire · gratuit'}</span>
       </span>
     </button>
   )
@@ -1235,7 +1263,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
         ) : (
           <>
             <p className="mb-3 text-sm font-bold text-[var(--color-ink-soft)]">
-              {sim.firstName} n'est pas à {commune.name}. Vas-y d'abord pour faire une activité ici.
+              {sim.firstName} n'est pas {aCommune(commune.name)}. Vas-y d'abord pour faire une activité ici.
             </p>
             <TravelCTA world={world} sim={sim} cityId={city.id} communeId={commune.id} onTravel={onTravel} />
           </>
@@ -1292,7 +1320,7 @@ function HappeningSheet({ now, sim, commune, onClose, onJoin }: { now: Happening
           <div className="flex items-center gap-3">
             <IconTile icon={iconFor(h.icon)} colors={['#ffffff66', '#ffffff22']} size={52} />
             <div className="min-w-0 flex-1">
-              <div className="label !text-[#7a5200]">En ce moment à {commune.name}</div>
+              <div className="label !text-[#7a5200]">En ce moment {aCommune(commune.name)}</div>
               <div className="font-display text-[22px] leading-tight font-extrabold">{h.label}</div>
             </div>
             <button className="icon-btn bg-white/60" onClick={onClose} aria-label="Fermer">

@@ -206,7 +206,7 @@ func ResetTesters(ctx context.Context, db *pgxpool.Pool) (int, error) {
 				where = cm.Name
 			}
 		}
-		text := fmt.Sprintf("%s est %s à %s, dans %s, d'une famille %s. %s", b.first, bornWord(b.gender, "né", "née"), where, fam.Sector, strings.ToLower(fam.Label), fam.Hint)
+		text := fmt.Sprintf("%s est %s %s, dans %s, d'une famille %s. %s", b.first, bornWord(b.gender, "né", "née"), inCommune(where), fam.Sector, strings.ToLower(fam.Label), fam.Hint)
 		if _, err := tx.Exec(ctx, `INSERT INTO sim_events (sim_id, kind, text, money, game_time) VALUES ($1, 'random', $2, 0, $3)`, b.id, text, now); err != nil {
 			return 0, err
 		}
