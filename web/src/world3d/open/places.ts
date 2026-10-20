@@ -1,5 +1,5 @@
 import { centroid, pointInRing, type XZ } from './geo'
-import type { Building, ChunkData } from './tiles'
+import type { Area, Building, ChunkData } from './tiles'
 
 // The game's places on the real map. A place is the real building standing
 // where the map puts it (or the closest one): the building keeps its real
@@ -92,7 +92,14 @@ export function resolvePlaces(chunk: ChunkData, spots: PlaceSpot[], onReal?: (b:
   const { box } = chunk
   const out: Resolved[] = []
   const taken = new Set<Building>()
-  for (const s of spots) {
+  // The sports grounds first: everything after (a shop the game builds, a
+  // second pitch) keeps off them. A map pitch is one place's only.
+  const fields: Field[] = []
+  const usedPitch = new Set<Area>()
+  // The game's own buildings already set down here: no two on the same ground.
+  const madeHere: XZ[] = []
+  const order = [...spots.filter((s) => s.kind === 'sport'), ...spots.filter((s) => s.kind !== 'sport')]
+  for (const s of order) {
     const [x, z] = s.at
     if (x < box.x0 || x >= box.x1 || z < box.z0 || z >= box.z1) continue
     const road = nearestRoad(chunk, s.at)
@@ -129,7 +136,8 @@ export function resolvePlaces(chunk: ChunkData, spots: PlaceSpot[], onReal?: (b:
     }
     // A sports ground: played on its pitch, not in a house.
     const sport = s.kind === 'sport' ? sportOf(s.name ?? '', s.type) : null
-    const field = sport && road ? (mapPitch(chunk, s.at, sport) ?? (s.noLayout ? null : layOut(chunk, s.at, sport, road))) : null
+    const field = sport && road ? (mapPitch(chunk, s.at, sport, usedPitch) ?? (s.noLayout ? null : layOut(chunk, s.at, sport, road, fields))) : null
+    if (field) fields.push(field)
     if (field) {
       // The door: the middle of the touchline on the street's side.
       const [nx, nz] = [-Math.sin(field.angle), Math.cos(field.angle)]
@@ -193,15 +201,16 @@ export function resolvePlaces(chunk: ChunkData, spots: PlaceSpot[], onReal?: (b:
       return { door, center }
     }
     let lot = lotAt(0, side)
-    search: for (const along of [0, -8, 8, -16, 16])
+    search: for (const along of [0, -8, 8, -16, 16, -24, 24, -32, 32])
       for (const sd of [side, -side]) {
         const c = lotAt(along, sd)
-        if (squareClear(near, c.center, road.angle, MADE_HALF)) {
+        if (squareClear(near, c.center, road.angle, MADE_HALF) && !fields.some((f) => onFieldGround(f, c.center, MADE_HALF * 1.42 + 2)) && !madeHere.some((m) => Math.hypot(m[0] - c.center[0], m[1] - c.center[1]) < MADE_HALF * 2.2)) {
           lot = c
           break search
         }
       }
     const { door, center } = lot
+    madeHere.push(center)
     out.push({ id: s.id, door, center, rot: Math.atan2(door[0] - center[0], door[1] - center[1]), roadAngle: road.angle })
   }
   return out
@@ -325,10 +334,10 @@ function rectOf(ring: XZ[]): { at: XZ; angle: number; len: number; wid: number }
 }
 
 /** The map's pitch at the place (or within 40 m of it), when there is one big enough to play on. */
-function mapPitch(chunk: ChunkData, p: XZ, sport: Field['sport']): Field | null {
-  let found: { f: Field; d: number } | null = null
+function mapPitch(chunk: ChunkData, p: XZ, sport: Field['sport'], used: Set<Area>): Field | null {
+  let found: { f: Field; d: number; a: Area } | null = null
   for (const a of chunk.areas) {
-    if (a.kind !== 'pitch') continue
+    if (a.kind !== 'pitch' || used.has(a)) continue
     const d = closestOnRing(a.rings[0], p).d
     if (d > 40 || (found && d >= found.d)) continue
     const r = rectOf(a.rings[0])
@@ -336,12 +345,24 @@ function mapPitch(chunk: ChunkData, p: XZ, sport: Field['sport']): Field | null 
     // edge: the lines go in from it until none is in the way.
     const blocks = chunk.buildings.filter((b) => Math.abs(b.c[0] - r.at[0]) < r.len && Math.abs(b.c[1] - r.at[1]) < r.len)
     let k = 0.96
-    const clear = (f: Field) => !blocks.some((b) => onFieldGround(f, b.c, 0.5) || b.ring.some((q) => onFieldGround(f, q, 0.3)))
+    // Nor a street or a path across it (the fence and a step round it): looked at every 2 m along each.
+    const ways = chunk.roads.flatMap((w) => {
+      const pts: { q: XZ; pad: number }[] = []
+      for (let i = 1; i < w.pts.length; i++) {
+        const [ax, az] = w.pts[i - 1]
+        const [bx, bz] = w.pts[i]
+        const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az) / 2))
+        for (let k = 0; k <= n; k++) pts.push({ q: [ax + ((bx - ax) * k) / n, az + ((bz - az) * k) / n], pad: w.width / 2 + 2 })
+      }
+      return pts.filter(({ q }) => Math.abs(q[0] - r.at[0]) < r.len && Math.abs(q[1] - r.at[1]) < r.len)
+    })
+    const clear = (f: Field) => !blocks.some((b) => onFieldGround(f, b.c, 0.5) || b.ring.some((q) => onFieldGround(f, q, 0.3))) && !ways.some((w) => onFieldGround(f, w.q, w.pad))
     while (k > 0.6 && !clear({ ...r, len: r.len * k, wid: r.wid * k, sport, map: true })) k -= 0.04
     const f: Field = { ...r, len: r.len * k, wid: r.wid * k, sport, map: true }
     if (f.len < 12 || f.wid < 7 || !clear(f)) continue
-    found = { f, d }
+    found = { f, d, a }
   }
+  if (found) used.add(found.a)
   return found?.f ?? null
 }
 
@@ -364,7 +385,7 @@ const SIZES: Record<Field['sport'], [number, number][]> = {
  * the place: never on a road, a building or water, lined up with the
  * street. Nothing if there's no room (then the place is a building).
  */
-function layOut(chunk: ChunkData, p: XZ, sport: Field['sport'], road: Road): Field | null {
+function layOut(chunk: ChunkData, p: XZ, sport: Field['sport'], road: Road, others: Field[] = []): Field | null {
   const [ux, uz] = [Math.cos(road.angle), Math.sin(road.angle)]
   const [nx, nz] = [-uz, ux]
   const side = (p[0] - road.at[0]) * nx + (p[1] - road.at[1]) * nz >= 0 ? 1 : -1
@@ -380,6 +401,8 @@ function layOut(chunk: ChunkData, p: XZ, sport: Field['sport'], road: Road): Fie
         if (Math.hypot(ax + (bx - ax) * t - q[0], az + (bz - az) * t - q[1]) < r.width / 2 + 2) return true
       }
     if (blocks.some((b) => pointInRing(q, b.ring))) return true
+    // Another pitch: two fences never side by side, a few metres between.
+    if (others.some((f) => onFieldGround(f, q, 4))) return true
     return chunk.areas.some((a) => (a.kind === 'water' || a.kind === 'campus' || a.kind === 'hospital') && pointInRing(q, a.rings[0]))
   }
   for (const [len, wid] of SIZES[sport])

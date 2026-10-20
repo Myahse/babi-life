@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { Human, NoShadows, type Pose } from '../../avatar/Human'
@@ -6,7 +6,7 @@ import { randomLook } from '../../avatar/options'
 import { worldTime } from '../../lib/worldClock'
 import { rng } from '../themes'
 import type { Field } from './places'
-import { PER_TEAM, SIM_SLOT, matchFor } from './match'
+import { FENCE_OUT, PER_TEAM, SEATS, SIM_SLOT, benches, matchFor, simSeat } from './match'
 import { FieldFence } from './fieldFence'
 import { StaticMerge } from '../staticMerge'
 import { PostedBubble, likesFor } from '../fans'
@@ -154,7 +154,102 @@ function Lights({ field, night }: { field: Field; night: boolean }) {
   )
 }
 
+const wood = new THREE.MeshLambertMaterial({ color: '#8a5a32' })
+const iron = new THREE.MeshLambertMaterial({ color: '#3b3f45' })
+
+/** Wooden benches along the touchlines, outside the fence: a plank on two pairs of legs. */
+function Benches({ field }: { field: Field }) {
+  return (
+    <>
+      {benches(field).map((b, i) => (
+        <group key={i} position={[b.u, 0, b.v]}>
+          <mesh geometry={BOX} material={wood} position={[0, 0.45, 0]} scale={[4, 0.07, 0.42]} castShadow receiveShadow />
+          {[-1.7, 1.7].map((x) => (
+            <mesh key={x} geometry={BOX} material={iron} position={[x, 0.22, 0]} scale={[0.08, 0.44, 0.36]} />
+          ))}
+        </group>
+      ))}
+    </>
+  )
+}
+
+/**
+ * The scoreboard behind the fence at one end, facing down the field: the two
+ * teams' colours, the score, the minute (a chalk board on two posts, as on
+ * the neighbourhood grounds). Painted again only when something changes.
+ */
+function Scoreboard({ field, seed }: { field: Field; seed: string }) {
+  const match = matchFor(seed, field)
+  const foot = field.sport === 'foot'
+  const kits = useMemo(() => kitsOf(rng(`players${seed}`), foot), [seed, foot])
+  const { canvas, tex } = useMemo(() => {
+    const c = document.createElement('canvas')
+    c.width = 512
+    c.height = 256
+    const t = new THREE.CanvasTexture(c)
+    t.colorSpace = THREE.SRGBColorSpace
+    t.anisotropy = 4
+    return { canvas: c, tex: t }
+  }, [])
+  useEffect(() => () => tex.dispose(), [tex])
+  const shown = useRef('')
+  useFrame(() => {
+    const { goals, minute } = match.score(worldTime())
+    const key = `${goals[0]}-${goals[1]}-${minute}`
+    if (key === shown.current) return
+    shown.current = key
+    const g = canvas.getContext('2d')!
+    g.fillStyle = '#1f3d2b'
+    g.fillRect(0, 0, 512, 256)
+    g.strokeStyle = '#d9c9a3'
+    g.lineWidth = 8
+    g.strokeRect(6, 6, 500, 244)
+    // Each team: its shirt's colour, then the score in chalk.
+    kits.forEach((k, i) => {
+      g.fillStyle = k
+      g.fillRect(i ? 300 : 40, 34, 172, 40)
+    })
+    g.fillStyle = '#f4f1e8'
+    g.font = 'bold 120px sans-serif'
+    g.textAlign = 'center'
+    g.textBaseline = 'middle'
+    g.fillText(String(goals[0]), 126, 150)
+    g.fillText(String(goals[1]), 386, 150)
+    g.font = 'bold 70px sans-serif'
+    g.fillText('-', 256, 145)
+    g.font = 'bold 34px sans-serif'
+    g.fillText(`${minute}'`, 256, 222)
+    tex.needsUpdate = true
+  })
+  return (
+    <group position={[-(field.len / 2 + FENCE_OUT + 1.2), 0, 0]} rotation={[0, Math.PI / 2, 0]}>
+      {[-1.7, 1.7].map((x) => (
+        <mesh key={x} geometry={BOX} material={wood} position={[x, 1.6, -0.05]} scale={[0.14, 3.2, 0.14]} castShadow />
+      ))}
+      <mesh geometry={BOX} material={wood} position={[0, 2.5, -0.08]} scale={[3.6, 1.9, 0.08]} />
+      <mesh position={[0, 2.5, -0.03]}>
+        <planeGeometry args={[3.4, 1.7]} />
+        <meshBasicMaterial map={tex} toneMapped={false} />
+      </mesh>
+    </group>
+  )
+}
+
 type Player = { team: 0 | 1; i: number; look: ReturnType<typeof randomLook>; gender: 'femme' | 'homme'; seed: number }
+
+/** The two teams' shirts on a field, drawn from it (the same on the scoreboard). */
+function kitsOf(r: () => number, foot: boolean) {
+  return foot
+    ? [
+        ['#ff7a00', '#ffffff'],
+        ['#1d4ed8', '#00a862'],
+        ['#d62828', '#f2c94c'],
+      ][Math.floor(r() * 3)]
+    : [
+        ['#7b5cff', '#f8f9fa'],
+        ['#141416', '#ff7a00'],
+      ][Math.floor(r() * 2)]
+}
 
 /**
  * The match: ten players moved every frame from the match's script, and the
@@ -165,16 +260,7 @@ function Players({ field, seed, without }: { field: Field; seed: string; without
   const foot = field.sport === 'foot'
   const players = useMemo<Player[]>(() => {
     const r = rng(`players${seed}`)
-    const kits = foot
-      ? [
-          ['#ff7a00', '#ffffff'],
-          ['#1d4ed8', '#00a862'],
-          ['#d62828', '#f2c94c'],
-        ][Math.floor(r() * 3)]
-      : [
-          ['#7b5cff', '#f8f9fa'],
-          ['#141416', '#ff7a00'],
-        ][Math.floor(r() * 2)]
+    const kits = kitsOf(r, foot)
     const out: Player[] = []
     for (const team of [0, 1] as const)
       for (let i = 0; i < PER_TEAM; i++) {
@@ -254,15 +340,28 @@ function Watchers({ field, seed }: { field: Field; seed: string }) {
   const foot = field.sport === 'foot'
   const people = useMemo(() => {
     const r = rng(`watch${seed}`)
-    const n = foot ? 14 : 10
-    return [...Array(n)].map((_, i) => {
+    // On the benches (never the Sim's seat, kept free on both sides), and standing at the fence.
+    const keep = simSeat(field, 1)[0]
+    const seats = benches(field)
+      .flatMap((b) => SEATS.map((o) => ({ x: b.u + o, z: b.v, side: b.side })))
+      .filter((p) => Math.abs(p.x - keep) > 0.3)
+      .filter(() => r() < 0.45)
+    const standing = foot ? 8 : 6
+    const spots = [
+      ...seats.map((p) => ({ ...p, seated: true })),
+      ...[...Array(standing)].map((_, i) => {
+        const side = (i % 2 ? 1 : -1) as 1 | -1
+        const along = (Math.floor(i / 2) / Math.max(1, Math.floor(standing / 2) - 1) - 0.5) * field.len * 0.85 + (r() - 0.5) * 1.6
+        // Not in the gate's way.
+        return { x: Math.abs(along) < 2 ? along + 3 * Math.sign(along || 1) : along, z: side * (field.wid / 2 + FENCE_OUT + 0.45 + r() * 0.3), side, seated: false }
+      }),
+    ]
+    return spots.map((p) => {
       const gender: 'femme' | 'homme' = r() < 0.4 ? 'femme' : 'homme'
-      const side = i % 2 ? 1 : -1
-      const along = (Math.floor(i / 2) / Math.max(1, Math.floor(n / 2) - 1) - 0.5) * field.len * 0.85 + (r() - 0.5) * 1.6
       const s = r() * 100
-      return { gender, look: randomLook(gender, r), seed: s, x: along, z: side * (field.wid / 2 + 1.5 + r() * 0.9), team: (r() < 0.5 ? 0 : 1) as 0 | 1, side, filmer: r() < 0.4, posts: r() < 0.6, delay: 0.5 + r() * 1.6, likes: likesFor(s) }
+      return { gender, look: randomLook(gender, r), seed: s, ...p, team: (r() < 0.5 ? 0 : 1) as 0 | 1, filmer: r() < 0.35, posts: r() < 0.6, delay: 0.5 + r() * 1.6, likes: likesFor(s) }
     })
-  }, [seed, field.len, field.wid, foot])
+  }, [seed, field, foot])
   const poses = useRef<Pose[]>(people.map(() => 'idle'))
   const [, redraw] = useState(0)
   const last = useRef(0)
@@ -285,9 +384,11 @@ function Watchers({ field, seed }: { field: Field; seed: string }) {
       const n = Math.sin(Math.floor((t + p.seed * 3) / 5) * 12.9898 + p.seed * 78.233) * 43758.5453
       const mood = n - Math.floor(n)
       const cheers = m.kind === 'goal' || m.kind === 'dunk'
+      // Those on the bench stay sitting, and jump up for their side's goal (or to film it).
       const pose: Pose =
-        p.filmer && (hot || mood < 0.35) ? 'film'
-        : cheers ? (m.team === p.team || m.kind === 'dunk' ? 'cheer' : mood < 0.4 ? 'rant' : 'idle')
+        p.filmer && (hot || (!p.seated && mood < 0.35)) ? 'film'
+        : cheers ? (m.team === p.team || m.kind === 'dunk' ? 'cheer' : p.seated ? 'sit' : mood < 0.4 ? 'rant' : 'idle')
+        : p.seated ? 'sit'
         : m.kind === 'shot' ? (m.team === p.team ? 'wave' : 'idle')
         : mood < 0.45 ? 'idle' : mood < 0.72 ? 'talk' : mood < 0.88 ? 'wave' : 'rant'
       if (pose !== poses.current[k]) {
@@ -300,7 +401,7 @@ function Watchers({ field, seed }: { field: Field; seed: string }) {
   return (
     <NoShadows>
       {people.map((p, i) => (
-        <group key={i} position={[p.x, 0, p.z]} rotation={[0, p.side > 0 ? Math.PI : 0, 0]}>
+        <group key={i} position={[p.x, p.seated ? 0.05 : 0, p.z]} rotation={[0, p.side > 0 ? Math.PI : 0, 0]}>
           <Human look={p.look} gender={p.gender} pose={poses.current[i]} seed={p.seed} />
           {p.filmer && p.posts && (
             <PostedBubble
@@ -337,8 +438,10 @@ export function SportField({ field, seed, night, withSim, onPick }: { field: Fie
       <StaticMerge version={night ? 1 : 0}>
         <Ground field={field} seed={seed} />
         <Lights field={field} night={night} />
+        <Benches field={field} />
       </StaticMerge>
-      <FieldFence hl={field.len / 2 + 1.05} hw={field.wid / 2 + 1.05} id={seed} />
+      <Scoreboard field={field} seed={seed} />
+      <FieldFence hl={field.len / 2 + FENCE_OUT} hw={field.wid / 2 + FENCE_OUT} id={seed} />
       <Players field={field} seed={seed} without={withSim ? SIM_SLOT[field.sport] : null} />
       <Watchers field={field} seed={seed} />
     </group>

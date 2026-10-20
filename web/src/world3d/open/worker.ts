@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 import { buildChunk } from './meshes'
 import { fetchChunk } from './tiles'
-import type { Origin } from './geo'
+import type { Origin, XZ } from './geo'
 import { inTheWay, onFieldGround, resolvePlaces, type PlaceSpot } from './places'
 import { STYLE_OF_KIND, type Style } from './buildings'
 import { pointInRing, tileBox } from './geo'
@@ -51,6 +51,11 @@ self.onmessage = async (e: MessageEvent<ChunkRequest>) => {
       const g = grounds.find((a) => pointInRing(b.c, a.rings[0]))
       return g ? (g.kind === 'campus' ? 'institution' : 'hospital') : 'default'
     }
+    // No tree on a pitch, in a game-made lot or on a landmark's ground (it draws its own).
+    const bare = (q: XZ) => fields.some((f) => onFieldGround(f, q, 2.5)) || inTheWay(made, q, landmarks)
+    data.trees = data.trees.filter((q) => !bare(q))
+    data.palms = data.palms.filter((q) => !bare(q))
+    if (data.forest) data.forest = data.forest.filter((q) => !bare(q))
     const meshes = buildChunk(data, (c, ring) => inTheWay(made, c, landmarks, ring) || fields.some((f) => onFieldGround(f, c) || ring.some((q) => onFieldGround(f, q, 0.3))), styleOf)
     const out: Record<string, Arrays> = {}
     const transfer: ArrayBuffer[] = []
