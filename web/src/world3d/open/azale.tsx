@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import * as THREE from 'three'
 import { Vehicle } from '../vehicles'
 import { BOX, Blocks } from './ruePrincesse'
+import { Bollards, Booth, Lamps, People, RoofKit, Stroller, Trolley, type Staff } from './hotelBits'
 import { Palm } from './noum'
 
 // The Azalé Hôtel in Marcory, as the photos of the real one show it: a slim
@@ -217,9 +218,29 @@ export function HotelAzale({ night }: { night: boolean }) {
       ))}
       <Vehicle p={[-6, 0, 7]} r={Math.PI / 2} kind="car" seed={5} color="#8d8f91" />
       <Vehicle p={[10, 0, 8]} r={0} kind="car" seed={12} color="#212529" />
+      {/* The life at the gate and the door: the guard's booth, the doorman, guests, the trolley */}
+      <People at={AZALE_PEOPLE} seed="azale" />
+      <Booth p={[15.5, 0, 10]} r={Math.PI} night={night} />
+      <Trolley p={[8, 0, 3.8]} r={0.5} />
+      <Stroller from={[-30, 14]} to={[34, 14]} seed="azale-a" />
+      <Stroller from={[12.5, 3]} to={[12.5, 11.5]} seed="azale-b" speed={0.9} bag />
+      <Lamps from={[-28, 11]} to={[32, 11]} step={15} night={night} />
+      <Bollards from={[-6, 3]} to={[6, 3]} />
+      {/* The machines on the tower and on the right wing */}
+      <RoofKit x0={-8} x1={8} z0={-17} z1={-5} y={TOP} />
+      <RoofKit x0={16} x1={29} z0={-15} z1={1} y={WINGS[1].h} seed={2} />
     </group>
   )
 }
+
+/** Who stands at the gate and the door. */
+const AZALE_PEOPLE: Staff[] = [
+  { p: [10.5, 0, 3.6], who: 'portier' },
+  { p: [16, 0, 13], who: 'vigile' },
+  { p: [13, 0, 6], r: -0.5, pose: 'phone' },
+  { p: [-3, 0, 4.5], r: 1.5, pose: 'talk' },
+  { p: [-1.8, 0, 4.5], r: -1.5 },
+]
 
 /** What one can't walk through: the tower and its shafts, the copper block, the wings, the railing. */
 export const AZALE_SOLID: ({ x: number; z: number; r: number } | { x: number; z: number; hw: number; hd: number; rot: number; top?: number })[] = [

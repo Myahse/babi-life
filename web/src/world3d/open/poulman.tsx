@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { Vehicle } from '../vehicles'
 import { sign } from '../interior/bigPlace'
 import { BOX, Blocks } from './ruePrincesse'
+import { Bollards, Booth, Lamps, People, RoofKit, Stroller, Trolley, type Staff } from './hotelBits'
 
 // The Hôtel Poulman, on the Plateau by the lagoon, as the photo of the real one
 // shows it: a slab of ten floors in two wings, the right one stepped forward;
@@ -138,6 +139,18 @@ export function HotelPoulman({ night }: { night: boolean }) {
       <Vehicle p={[9, 0, 10]} r={0} kind="car" seed={7} color="#212529" />
       <Vehicle p={[16, 0, 11]} r={Math.PI} kind="taxi" seed={2} />
       <Vehicle p={[-14, 0, 8]} r={Math.PI / 2} kind="car" seed={11} color="#f8f9fa" />
+      {/* The life at the door: doormen at the revolving door, guests, the bellboy's trolley, the guard at the drive */}
+      <People at={POULMAN_PEOPLE} seed="poulman" />
+      <Trolley p={[15.5, 0, 7.5]} r={0.3} />
+      <Stroller from={[-20, 18.5]} to={[30, 18.5]} seed="poulman-a" />
+      <Stroller from={[12, 6.5]} to={[12, 16]} seed="poulman-b" speed={0.9} bag />
+      <Lamps from={[-28, 21]} to={[34, 21]} step={12} night={night} />
+      <Bollards from={[-16, 23.5]} to={[-2, 23.5]} />
+      <Booth p={[27, 0, 22]} r={Math.PI} night={night} />
+      {/* The machines on both wings' roofs */}
+      {WINGS.map((w, i) => (
+        <RoofKit key={i} x0={w.x0 + 3} x1={w.x1 - 3} z0={w.front - w.depth + 1} z1={w.front - 1} y={TOP + 1} seed={i} />
+      ))}
     </group>
   )
 }
@@ -145,6 +158,16 @@ export function HotelPoulman({ night }: { night: boolean }) {
 const PLANE_GEO = new THREE.PlaneGeometry(1, 1)
 const GLASS = new THREE.MeshLambertMaterial({ color: '#bfe3f2', transparent: true, opacity: 0.35 })
 const COLORED = new THREE.MeshLambertMaterial({ color: '#ffffff' })
+
+/** Who stands at the door: two doormen by the revolving door, guests chatting or on the phone, the guard at the drive. */
+const POULMAN_PEOPLE: Staff[] = [
+  { p: [10, 0, 6.5], who: 'portier' },
+  { p: [14, 0, 6.5], who: 'portier' },
+  { p: [7, 0, 8], r: 0.5, pose: 'phone' },
+  { p: [-6, 0, 9], r: 1.6, pose: 'talk' },
+  { p: [-4.8, 0, 9], r: -1.6 },
+  { p: [30, 0, 20], r: Math.PI, who: 'vigile' },
+]
 
 /** What one can't walk through: the two wings, the canopy's pillars. */
 export const POULMAN_SOLID: ({ x: number; z: number; r: number } | { x: number; z: number; hw: number; hd: number; rot: number; top?: number })[] = [
