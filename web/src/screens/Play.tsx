@@ -947,11 +947,12 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
         className="animate-up relative h-[min(92%,760px)] w-[min(100%,380px)] rounded-[44px] bg-[#14161f] p-2.5 shadow-[0_40px_80px_-20px_rgba(0,0,0,0.7)] max-sm:h-[88%] max-sm:rounded-b-none max-sm:pb-0"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="relative flex h-full flex-col overflow-hidden rounded-[36px] bg-[radial-gradient(120%_80%_at_50%_0%,#ffb27a,#e0306a_55%,#3b1d6e)] max-sm:rounded-b-none">
-          <div className="flex items-center justify-between px-6 pt-3 pb-1 text-xs font-extrabold text-white">
+        <div className="phone-screen relative flex h-full flex-col overflow-hidden rounded-[36px] bg-[radial-gradient(120%_80%_at_50%_0%,#ffb27a,#e0306a_55%,#3b1d6e)] max-sm:rounded-b-none">
+          {/* The status bar: the time, the island in the very middle, the network */}
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-6 pt-3 pb-1 text-xs font-extrabold text-white">
             <span className="tnum">{time}</span>
             <span className="h-5 w-20 rounded-full bg-black" />
-            <span>Oranjo CI · 4G</span>
+            <span className="truncate text-right">Oranjo CI · 4G</span>
           </div>
 
           {app === null ? (
