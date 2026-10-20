@@ -40,7 +40,7 @@ import { Shower } from '../world3d/interior/ActionProps'
 const q = new URLSearchParams(location.search)
 const VIDEO = q.has('video')
 const ALPHA = q.has('alpha')
-type SceneId = 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'princesse' | `famille-${string}` | 'palais' | 'basket' | 'fete' | 'cause' | 'look' | 'siporex' | 'phone' | 'visages' | 'coiffures' | 'selfie' | 'yop' | 'garba' | 'brochette' | 'plateau' | 'stade' | 'concert' | 'couloir' | 'amis' | 'salon' | 'douche' | 'zoo' | 'loto' | 'chambre' | 'chambre-choc' | 'cabine'
+type SceneId = 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'princesse' | `famille-${string}` | 'palais' | 'basket' | 'fete' | 'cause' | 'look' | 'siporex' | 'phone' | 'visages' | 'coiffures' | 'selfie' | 'yop' | 'garba' | 'brochette' | 'plateau' | 'stade' | 'concert' | 'couloir' | 'amis' | 'salon' | 'douche' | 'zoo' | 'loto' | 'chambre' | 'chambre-choc' | 'cabine' | 'keke' | 'mt-yop' | 'mt-gbaka' | 'mt-maquis' | 'mt-stade' | 'mt-village' | 'mt-salon'
 /**
  * Which film: ?video (the launch), ?video=bouger (getting about: gbaka,
  * Gnango, Rue Princesse), ?video=bande-annonce (the trailer: gnambro or
@@ -52,9 +52,11 @@ type SceneId = 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'prin
  * ?video=gameplay (how you play: born gnambro, the goal is debout, six steps
  * to get there, the money going up and down; its beat: marketing/beat.py) or
  * ?video=arnaque (Awa was scammed through a link on Gbairai: her Waye account
- * emptied, what to remember: marketing/scripts/arnaque-waye.md, voice voix-arnaque.mp3).
+ * emptied, what to remember: marketing/scripts/arnaque-waye.md, voice voix-arnaque.mp3) or
+ * ?video=keke (Keke, Awa's friend, asks Babi « what do you want in Babi Life? »:
+ * marketing/scripts/keke-micro-trottoir.md, voice voix-keke.mp3).
  */
-type FilmId = 'lancement' | 'bouger' | 'bande-annonce' | 'decouverte' | 'live' | 'merci' | 'gameplay' | 'arnaque'
+type FilmId = 'lancement' | 'bouger' | 'bande-annonce' | 'decouverte' | 'live' | 'merci' | 'gameplay' | 'arnaque' | 'keke'
 const FILM = (q.get('video') || 'lancement') as FilmId
 
 /** The materials as the server has them (game/build.go). */
@@ -226,6 +228,138 @@ function Salon({ t, gift }: { t: number; gift?: boolean }) {
   )
 }
 
+/** Keke, Awa's friend (« keke »): orange cap backwards, the Éléphants' jersey, his chain. */
+const KEKE = L({ skin: '#6e4024', hair: 'degrade', outfit: 'jersey', outfitColor: '#ff8200', accessory: 'capback,chain', accessoryColor: '#ff7a00' })
+
+/** The people Keke asks, each in their quarter. */
+const MT: Record<string, { name: string; where: string; job: string; wish: string; icon: string; look: Look; gender: 'femme' | 'homme'; pose: Pose; cap: string }> = {
+  'mt-yop': { name: 'Mariam', where: 'Yopougon', job: 'Étudiante', wish: 'Mariage', icon: '💍', gender: 'femme', pose: 'cheer', look: L({ skin: '#7a4a2c', hair: 'braids', outfit: 'robe', outfitColor: '#d6336c', accessory: 'earrings,bag' }), cap: '« Mon mariage ! La dot, le pagne, la fête… »' },
+  'mt-gbaka': { name: 'Moussa', where: 'Adjamé', job: 'Apprenti gbaka', wish: 'Gbaka', icon: '🚐', gender: 'homme', pose: 'wave', look: L({ skin: '#4a2a16', hair: 'short', outfit: 'debardeur', outfitColor: '#f8f9fa', accessory: 'cap', accessoryColor: '#00a862' }), cap: '« Conduire mon gbaka : Adjamé ! Adjamé ! »' },
+  'mt-maquis': { name: 'Tantie Adjoua', where: 'Treichville', job: 'Vendeuse', wish: 'Maquis', icon: '🍗', gender: 'femme', pose: 'talk', look: L({ skin: '#5e3519', hair: 'headwrap', outfit: 'pagne', outfitColor: '#2b8a3e', pattern: 'cercles', accessory: 'earrings' }), cap: '« Ouvrir mon maquis : poisson braisé, attiéké ! »' },
+  'mt-stade': { name: 'Junior', where: 'Cocody', job: 'Élève', wish: 'La CAN', icon: '⚽', gender: 'homme', pose: 'cheer', look: L({ skin: '#8a5532', hair: 'twists', outfit: 'jersey', outfitColor: '#00a862', accessory: 'none' }), cap: '« La CAN ! Jouer avec les Éléphants ! »' },
+  'mt-village': { name: 'Vieux Koffi', where: 'Abobo', job: 'Retraité', wish: 'Village', icon: '🏡', gender: 'homme', pose: 'sit', look: L({ skin: '#5a3420', hair: 'short', hairColor: '#d9d9d9', outfit: 'boubou', outfitColor: '#e9e4d8', beard: 'full', accessory: 'kufi' }), cap: '« Aller au village voir la famille. C’est ça, la vie. »' },
+  'mt-salon': { name: 'Prisca', where: 'Marcory', job: 'Coiffeuse', wish: 'Salon', icon: '💇🏾‍♀️', gender: 'femme', pose: 'talk', look: L({ skin: '#9a6440', hair: 'afro', outfit: 'casual', outfitColor: '#7b5cff', accessory: 'earrings,watch' }), cap: '« Mon salon de coiffure : les tresses à tout Babi ! »' },
+}
+
+/** Keke's street interview: the person in their quarter, Keke at the side filming them with his phone; or Keke alone, to the camera. */
+function MicroTrottoir({ scene, t }: { scene: SceneId; t: number }) {
+  const who = MT[scene]
+  const tree = (x: number, z: number, k = 1) => (
+    <group key={`${x},${z}`} position={[x, 0, z]} scale={k}>
+      <mesh position={[0, 1.2, 0]} castShadow>
+        <boxGeometry args={[0.35, 2.4, 0.35]} />
+        <meshLambertMaterial color="#6b4426" />
+      </mesh>
+      <mesh position={[0, 3.1, 0]} castShadow>
+        <boxGeometry args={[2.4, 1.8, 2.4]} />
+        <meshLambertMaterial color="#2f8a3a" />
+      </mesh>
+    </group>
+  )
+  const wall = (c: string) => (
+    <mesh position={[0, 1.6, -3]} receiveShadow>
+      <boxGeometry args={[30, 3.2, 0.3]} />
+      <meshLambertMaterial color={c} />
+    </mesh>
+  )
+  return (
+    <>
+      <color attach="background" args={['#9fd4f2']} />
+      <hemisphereLight args={['#ffffff', '#b8a27c', 1.2]} />
+      <directionalLight position={[5, 10, 8]} intensity={1.6} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-8} shadow-camera-right={8} shadow-camera-top={8} shadow-camera-bottom={-8} />
+      <Camera at={[0.5 + Math.sin(t * 0.6) * 0.15, 1.85, 7.6]} look={[0.2, 1.3, 0]} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
+        <planeGeometry args={[40, 30]} />
+        <meshLambertMaterial color={scene === 'mt-village' ? '#b9744a' : '#c9b48a'} />
+      </mesh>
+      {scene === 'keke' && (
+        <>
+          {wall('#f2d7a0')}
+          <Sign p={[-1.6, 2.6, -2.8]} w={2.6} text="CARREFOUR" bg="#1f6fd0" fg="#ffffff" />
+          {tree(3.2, -2)}
+        </>
+      )}
+      {scene === 'mt-yop' && (
+        <>
+          {wall('#efe3c8')}
+          {tree(-2.6, -2)}
+          {tree(2.8, -2.2, 0.9)}
+          <mesh position={[1.6, 0.25, -1.4]} castShadow>
+            <boxGeometry args={[1.6, 0.12, 0.45]} />
+            <meshLambertMaterial color="#7a5233" />
+          </mesh>
+        </>
+      )}
+      {scene === 'mt-gbaka' && (
+        <group position={[-1.6, 0, -2.6]} rotation={[0, -0.15, 0]}>
+          <Vehicle p={[0, 0, 0]} kind="gbaka" color="#f4c430" trim="#00a862" />
+        </group>
+      )}
+      {scene === 'mt-maquis' && (
+        <>
+          {wall('#e8590c')}
+          <Sign p={[0, 2.7, -2.8]} w={3} text="MAQUIS CHEZ ADJOUA" bg="#ffd43b" fg="#7a2a00" />
+          <TableSet p={[-2.2, 0.18, -1.2]} c="#2a6cf0" />
+          <TableSet p={[2.3, 0.18, -1.0]} c="#e8432f" />
+          <mesh position={[2.3, 2.4, -1.0]} castShadow>
+            <coneGeometry args={[1.3, 0.5, 10]} />
+            <meshLambertMaterial color="#e8432f" />
+          </mesh>
+        </>
+      )}
+      {scene === 'mt-stade' && (
+        <>
+          {[-1, 0, 1].map((k) => (
+            <mesh key={k} position={[k * 5, 1.6, -3]}>
+              <boxGeometry args={[5, 3.2, 0.3]} />
+              <meshLambertMaterial color={['#ff8200', '#ffffff', '#009a44'][k + 1]} />
+            </mesh>
+          ))}
+          <mesh position={[0.9, 0.2, 0.9]} castShadow>
+            <sphereGeometry args={[0.2, 14, 10]} />
+            <meshLambertMaterial color="#f4f4f4" />
+          </mesh>
+        </>
+      )}
+      {scene === 'mt-village' && (
+        <>
+          {wall('#d9c7a0')}
+          {tree(-0.4, -1.4, 1.5)}
+          <mesh position={[0, 0.22, 0.05]} castShadow>
+            <boxGeometry args={[0.55, 0.44, 0.55]} />
+            <meshLambertMaterial color="#8a5a32" />
+          </mesh>
+        </>
+      )}
+      {scene === 'mt-salon' && (
+        <>
+          {wall('#f7c6d9')}
+          <Sign p={[0, 2.7, -2.8]} w={3} text="SALON PRISCA" bg="#d6336c" fg="#ffffff" />
+          <mesh position={[-2, 1.4, -2.84]}>
+            <boxGeometry args={[1.6, 1.2, 0.02]} />
+            <meshBasicMaterial color="#cfe8f2" />
+          </mesh>
+        </>
+      )}
+      {who ? (
+        <>
+          <group position={[-0.35, 0, 0.3]} rotation={[0, 0.35, 0]}>
+            <BlockHuman look={who.look} gender={who.gender} pose={Math.floor(t / 1.5) % 3 === 2 && who.pose !== 'sit' ? 'talk' : who.pose} seed={7} />
+          </group>
+          {/* Keke at the side, filming them */}
+          <group position={[1.25, 0, 0.9]} rotation={[0, -1.75, 0]}>
+            <BlockHuman look={KEKE} gender="homme" pose="film" seed={5} />
+          </group>
+        </>
+      ) : (
+        <group position={[0, 0, 0.6]} rotation={[0, Math.sin(t * 0.8) * 0.1, 0]}>
+          <BlockHuman look={KEKE} gender="homme" pose={Math.floor(t / 1.6) % 3 === 0 ? 'wave' : 'talk'} seed={5} />
+        </group>
+      )}
+    </>
+  )
+}
+
 /** Awa's bedroom at night (« arnaque »): the bed, the bedside lamp, the night at the window; her phone's light on her face. Shocked: her head in her hands. */
 function Chambre({ t, shock }: { t: number; shock?: boolean }) {
   const wall = '#3d4a73'
@@ -386,6 +520,7 @@ function World({ scene, t }: { scene: SceneId; t: number }) {
   if (scene === 'salon') return <Salon t={t} />
   if (scene === 'chambre' || scene === 'chambre-choc') return <Chambre t={t} shock={scene === 'chambre-choc'} />
   if (scene === 'cabine') return <Cabine t={t} />
+  if (scene === 'keke' || scene.startsWith('mt-')) return <MicroTrottoir scene={scene} t={t} />
   const night = scene === 'dance' || scene === 'fete'
   const spots = useSpots()
   const wide = useThree((s) => s.size.width >= s.size.height)
@@ -1277,6 +1412,26 @@ const FILMS: Record<FilmId, { shots: Shot[]; intro: number; outro: number; lengt
     length: 51.5,
     hook: ['', '', ''],
   },
+  // Keke's street interview (marketing/scripts/keke-micro-trottoir.md): « what do you want in Babi Life? ».
+  keke: {
+    // Timed on the voice (marketing/out/voix-keke.mp3, 61.6 s): each shot starts with its line.
+    shots: [
+      { from: 0, to: 6.5, scene: 'keke', cap: 'Micro-trottoir dans Babi ! 🎤' },
+      { from: 6.5, to: 10.6, scene: 'keke', cap: 'Une seule question…' },
+      { from: 10.6, to: 17.3, scene: 'mt-yop' },
+      { from: 17.3, to: 22.25, scene: 'mt-gbaka' },
+      { from: 22.25, to: 27.25, scene: 'mt-maquis' },
+      { from: 27.25, to: 31.8, scene: 'mt-stade' },
+      { from: 31.8, to: 36.7, scene: 'mt-village' },
+      { from: 36.7, to: 43.0, scene: 'mt-salon' },
+      { from: 43.0, to: 54.85, scene: 'keke', cap: 'Et toi ? Dis-le en commentaire 👇' },
+      { from: 54.85, to: 63, scene: 'crew' },
+    ],
+    intro: 0,
+    outro: 54.85,
+    length: 63,
+    hook: ['', '', ''],
+  },
   // How you play: born gnambro, the goal is debout, six steps, the money that comes and goes.
   gameplay: {
     shots: [
@@ -1848,6 +2003,63 @@ function pop2(local: number, at: number) {
   return { opacity: k, transform: `translateY(${(1 - k) * 30}px) scale(${0.9 + 0.1 * k})` }
 }
 
+/** « Keke »: the question on top, who's speaking, what they say, and the wishes adding up. */
+function KekeOverlay({ t, shot }: { t: number; shot: Shot }) {
+  const local = t - shot.from
+  const who = MT[shot.scene]
+  const shots = FILMS.keke.shots
+  // The wishes said so far (one per person, from the start of their shot).
+  const wishes = shots.filter((s) => MT[s.scene] && t >= s.from + 0.6).map((s) => MT[s.scene])
+  const asked = t >= 6.5
+  return (
+    <>
+      <div className="absolute inset-x-0 top-0 flex items-center gap-3 bg-gradient-to-b from-black/60 to-transparent px-6 pt-8 pb-12 font-sans">
+        <span className="grid h-14 w-14 place-items-center rounded-full border-[3px] border-[#ff8200] bg-[#1b1d2a] font-display text-[28px] font-extrabold">K</span>
+        <div className="min-w-0 flex-1">
+          <div className="text-[26px] leading-none font-extrabold">keke.babi</div>
+          <div className="mt-1 text-[18px] font-bold text-white/80">L’ami d’Awa · Micro-trottoir</div>
+        </div>
+        <span className="rounded-lg bg-[#ff8200] px-3 py-1.5 text-[18px] font-extrabold">🎤 DANS LA RUE</span>
+      </div>
+      {/* The question, big when he asks it, then up top */}
+      {asked && (
+        <div className="absolute inset-x-0 flex justify-center px-6 font-display" style={{ top: t < 10.6 ? '30%' : '11%', transition: 'none' }}>
+          <div className={`rounded-[28px] bg-white text-center font-extrabold text-[var(--color-ink)] shadow-[0_18px_40px_-14px_rgba(0,0,0,0.6)] ${t < 10.6 ? 'px-7 py-5 text-[52px] leading-[1.05]' : 'px-5 py-2.5 text-[28px]'}`} style={t < 10.6 ? slam(t, 6.6) : undefined}>
+            Qu’est-ce que tu veux
+            <br />
+            dans <span className="text-[var(--color-orange)]">Babi Life</span> ?
+          </div>
+        </div>
+      )}
+      {/* Who's answering: name, quarter, job */}
+      {who && (
+        <div className="absolute bottom-[23%] left-6 font-sans" style={pop2(local, 0.2)}>
+          <div className="rounded-t-2xl bg-[#ff8200] px-4 py-1.5 font-display text-[34px] leading-none font-extrabold">{who.name}</div>
+          <div className="rounded-b-2xl rounded-tr-2xl bg-[#0f1230]/85 px-4 py-1.5 text-[20px] font-bold">
+            {who.job} · {who.where}
+          </div>
+        </div>
+      )}
+      {/* The wishes, adding up on the right */}
+      {wishes.length > 0 && (
+        <div className="absolute top-[22%] right-5 flex flex-col items-end gap-2 font-sans">
+          {wishes.map((w) => (
+            <div key={w.wish} className="flex items-center gap-2 rounded-full bg-white/95 py-1.5 pr-4 pl-2 text-[22px] font-extrabold text-[var(--color-ink)] shadow-md">
+              <span className="text-[26px]">{w.icon}</span>
+              {w.wish}
+            </div>
+          ))}
+        </div>
+      )}
+      {(who?.cap ?? shot.cap) && (
+        <div className="absolute inset-x-0 bottom-[8%] flex justify-center px-8">
+          <div className="rounded-2xl bg-white px-5 py-2.5 text-center text-[32px] leading-tight font-extrabold text-[var(--color-ink)] shadow-[0_12px_30px_-10px_rgba(0,0,0,0.6)]">{who?.cap ?? shot.cap}</div>
+        </div>
+      )}
+    </>
+  )
+}
+
 function Confetti({ t }: { t: number }) {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -2029,6 +2241,7 @@ function Video({ t, qr, url, placeholder }: { t: number; qr: string; url: string
       {FILM === 'merci' && !outro && <MerciOverlay t={t} shot={shot} />}
       {FILM === 'gameplay' && !outro && <GameplayOverlay t={t} shot={shot} />}
       {FILM === 'arnaque' && !outro && <ArnaqueOverlay t={t} shot={shot} />}
+      {FILM === 'keke' && !outro && <KekeOverlay t={t} shot={shot} />}
       {FILM === 'live' && shot.scene === 'garba' && local > 5.6 && local < 10.2 && <WayePay t={local - 5.6} />}
       {FILM === 'live' && shot.scene === 'amis' && local > 3 && <GbairaiChat t={local - 3} />}
       {/* Captions */}
@@ -2061,7 +2274,13 @@ function Video({ t, qr, url, placeholder }: { t: number; qr: string; url: string
             <Logo size={72} />
           </div>
           <div className="text-[52px] leading-[1] font-extrabold" style={pop(O + 0.6)}>
-            {FILM === 'arnaque' ? (
+            {FILM === 'keke' ? (
+              <>
+                Et toi, tu veux quoi
+                <br />
+                <span className="text-[var(--color-orange)]">dans Babi Life ? 👇</span>
+              </>
+            ) : FILM === 'arnaque' ? (
               <>
                 Partage pour protéger
                 <br />
