@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import * as THREE from 'three'
 import { Vehicle } from '../vehicles'
 import { BOX, Blocks } from './ruePrincesse'
+import { Bollards, Lamps, Loungers, People, RoofKit, Stroller, Trolley, type Staff } from './hotelBits'
 
 // The Noum Hôtel on the Plateau, as the photos of the real one show it: a wide
 // podium of six floors whose left half is a white screen pierced by thousands
@@ -227,11 +228,37 @@ export function HotelNoum({ night }: { night: boolean }) {
       <Vehicle p={[16, 0, 9]} r={Math.PI / 2} kind="car" seed={4} color="#f8f9fa" />
       <Vehicle p={[-20, 0, 10]} r={Math.PI / 2} kind="car" seed={9} color="#adb5bd" />
       <Vehicle p={[-10, 0, 10]} r={Math.PI / 2} kind="car" seed={13} color="#343a40" />
+      {/* The life at the door: doormen under the awning, the guard by the screen, guests, the trolley */}
+      <People at={NOUM_PEOPLE} seed="noum" />
+      <Trolley p={[21.5, 0, 3.5]} r={-0.4} />
+      <Stroller from={[-28, 11.4]} to={[26, 11.4]} seed="noum-a" />
+      <Stroller from={[16, 2]} to={[16, 11]} seed="noum-b" speed={0.9} bag />
+      <Lamps from={[-30, 17.5]} to={[26, 17.5]} step={14} night={night} />
+      <Bollards from={[-28, 2.5]} to={[0, 2.5]} />
+      {/* On the pool deck: loungers and parasols, swimmers drying off; the machines on the crown */}
+      <Loungers from={[5, -10]} to={[23, -10]} y={POD.h} n={6} />
+      <People at={NOUM_DECK} seed="noum-deck" />
+      <RoofKit x0={-24} x1={4} z0={-17} z1={-1} y={TOWER_TOP + 3} />
     </group>
   )
 }
 
 const COLORED = new THREE.MeshLambertMaterial({ color: '#ffffff' })
+
+/** Who stands at the door and on the deck. */
+const NOUM_PEOPLE: Staff[] = [
+  { p: [15, 0, 4.5], who: 'portier' },
+  { p: [19.5, 0, 4.5], who: 'portier' },
+  { p: [-28, 0, 6], r: 0.4, who: 'vigile' },
+  { p: [-8, 0, 7], r: 1.5, pose: 'talk' },
+  { p: [-6.8, 0, 7], r: -1.5 },
+  { p: [6, 0, 6], r: -0.6, pose: 'phone' },
+]
+const NOUM_DECK: Staff[] = [
+  { p: [9, POD.h, -14], r: 0.3, pose: 'phone' },
+  { p: [18, POD.h, -6], r: Math.PI },
+  { p: [-10, POD.h, -0.6], r: 0, pose: 'wave' },
+]
 
 /** What one can't walk through: the podium (the tower stands on it), the awning's posts. */
 export const NOUM_SOLID: ({ x: number; z: number; r: number } | { x: number; z: number; hw: number; hd: number; rot: number; top?: number })[] = [

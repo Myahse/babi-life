@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { Vehicle } from '../vehicles'
 import { sign } from '../interior/bigPlace'
 import { BOX, Blocks } from './ruePrincesse'
+import { Bays, Booth, Lamps, Loungers, People, RoofKit, Stroller, Trolley, type Staff } from './hotelBits'
 import { Palm } from './noum'
 
 // The Rabisson by the airport, as the photos of the real one show it: a long
@@ -130,7 +131,7 @@ export function HotelRabisson({ night }: { night: boolean }) {
     <group>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 7]} geometry={PLANE_GEO} scale={[W + 6, 14, 1]} material={paving} />
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 15]} geometry={PLANE_GEO} scale={[W + 6, 5, 1]} material={lawn} />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, -DEPTH - 12]} geometry={PLANE_GEO} scale={[W - 4, 24, 1]} material={deck} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, -DEPTH - 15]} geometry={PLANE_GEO} scale={[W - 4, 30, 1]} material={deck} />
       {/* The slab of rooms over the glazed ground floor */}
       <mesh geometry={BOX} position={[0, (TOP + GROUND) / 2, -DEPTH / 2]} scale={[W, TOP - GROUND, DEPTH]} material={mats.side} castShadow receiveShadow />
       <mesh position={[0, (TOP + GROUND) / 2, 0.02]} material={mats.grid}>
@@ -180,9 +181,37 @@ export function HotelRabisson({ night }: { night: boolean }) {
       ))}
       <Vehicle p={[3, 0, 6]} r={Math.PI / 2} kind="car" seed={8} color="#7a1e1e" />
       <Vehicle p={[-20, 0, 8]} r={Math.PI / 2} kind="taxi" seed={3} />
+      {/* The life at the door: doormen, guests, the trolley, the kiosk; the bays of the car park */}
+      <People at={RABISSON_PEOPLE} seed="rabisson" />
+      <Trolley p={[4, 0, 2.2]} r={0.4} />
+      <Booth p={[-14, 0, 10]} night={night} />
+      <Bays x0={-38} z={8} n={8} />
+      <Stroller from={[-40, 11]} to={[40, 11]} seed="rabisson-a" />
+      <Stroller from={[1.5, 1]} to={[1.5, 10]} seed="rabisson-b" speed={0.9} bag />
+      <Lamps from={[-40, 12.2]} to={[40, 12.2]} step={16} night={night} />
+      {/* Behind: the loungers on both sides of the pool, swimmers on its deck; the machines on the roof */}
+      <Loungers from={[-14, -25.5]} to={[14, -25.5]} ry={Math.PI} n={8} />
+      <Loungers from={[-12, -43]} to={[12, -43]} n={6} />
+      <People at={RABISSON_POOL} seed="rabisson-pool" />
+      <RoofKit x0={-40} x1={40} z0={-17} z1={-1} y={TOP + 0.5} />
     </group>
   )
 }
+
+/** Who stands at the door and by the pool. */
+const RABISSON_PEOPLE: Staff[] = [
+  { p: [-2.5, 0, 1.5], who: 'portier' },
+  { p: [2.5, 0, 1.5], who: 'portier' },
+  { p: [5, 0, 5], r: -0.4, pose: 'phone' },
+  { p: [-6, 0, 6], r: 1.5, pose: 'talk' },
+  { p: [-4.8, 0, 6], r: -1.5 },
+  { p: [-15.5, 0, 12], who: 'vigile' },
+]
+const RABISSON_POOL: Staff[] = [
+  { p: [8, 0, -26.8], r: Math.PI },
+  { p: [-10, 0, -27], r: Math.PI, pose: 'phone' },
+  { p: [4, 0, -41.5], r: 0, pose: 'wave' },
+]
 
 /** What one can't walk through: the slab, the colonnade's roof line, the pool, the sign's post. */
 export const RABISSON_SOLID: ({ x: number; z: number; r: number } | { x: number; z: number; hw: number; hd: number; rot: number; top?: number })[] = [
