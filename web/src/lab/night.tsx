@@ -69,7 +69,7 @@ export function PartyLab() {
     <>
       <Night cam={vec('cam', id === 'yop-rue-princesse' ? '22,26,48' : '30,28,46')} look={vec('look', '0,2,0')}>
         <Landmark id={id} night />
-        <Party id={id} night simGender="femme" onCall={(npc: Npc, text) => setCalled(`${npc.name} : « ${text} »`)} onTalk={(npc: Npc) => setCalled(`Tu parles à ${npc.name}`)} />
+        <Party id={id} night simGender="femme" onTalk={(npc: Npc) => setCalled(`Tu parles à ${npc.name}`)} />
         {/* The Sim, a marker where &sim puts it */}
         <mesh position={[sim[0], 0.9, sim[1]]}>
           <cylinderGeometry args={[0.3, 0.3, 1.8, 10]} />

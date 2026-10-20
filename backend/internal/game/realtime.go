@@ -60,6 +60,8 @@ type Activity struct {
 	Career      string        `json:"career,omitempty"`
 	Surprises   []RandomEvent `json:"surprises,omitempty"`
 	Trip        *Trip         `json:"trip,omitempty"`
+	// Said: in a chat in the street, the topics already raised in this conversation.
+	Said []string `json:"said,omitempty"`
 }
 
 type Trip struct {

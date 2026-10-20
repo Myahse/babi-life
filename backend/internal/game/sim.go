@@ -23,6 +23,8 @@ type State struct {
 type Outcome struct {
 	Text  string `json:"text"`
 	Money int    `json:"money"`
+	// Mood: how someone took what was said to them ("good", "bad"), for their face.
+	Mood string `json:"mood,omitempty"`
 }
 
 // RandomEventChance is the probability that something unexpected happens

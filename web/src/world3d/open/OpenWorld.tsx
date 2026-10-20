@@ -4,7 +4,7 @@ import * as THREE from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { PerformanceMonitor } from '@react-three/drei'
 import { Human, NoShadows, type Pose } from '../../avatar/Human'
-import { callsFor } from '../../lib/nouchi'
+import { useNpcReaction } from './npcReact'
 import { randomLook } from '../../avatar/options'
 import { OWN_HOUSE, homePlanFor, lifeOf, openAt } from '../../game/rules'
 import { HAPPENING_DOOR, HAPPENING_X, HappeningMarker, HappeningScene, JamOnRoad, STOPS_TRAFFIC } from '../Happenings'
@@ -255,7 +255,7 @@ function useMaterials(night: boolean, hour: number) {
   return mats
 }
 
-function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, indoors, nameTag, onNear, frozen, players, onPickPlayer, recenter, onFreeCamera, closeView, shoulderView, token, onFail, onLoaded, onStreetBuy, onRobbed, onTalk, onCall, talkingTo, plotsVersion, onMapPlaces, onHomeSpots, onHomePlot }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void; onLoaded?: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void; onHomePlot?: (plot: Plot | undefined) => void }) {
+function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, indoors, nameTag, onNear, frozen, players, onPickPlayer, recenter, onFreeCamera, closeView, shoulderView, token, onFail, onLoaded, onStreetBuy, onRobbed, onTalk, talkingTo, plotsVersion, onMapPlaces, onHomeSpots, onHomePlot }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void; onLoaded?: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void; onHomePlot?: (plot: Plot | undefined) => void }) {
   const origin = useMemo<Origin>(() => ({ lat: commune.lat, lng: commune.lng }), [commune.lat, commune.lng])
   const mats = useMaterials(night, hour)
   const home = sim.homeCity === sim.city && sim.homeCommune === commune.id
@@ -915,7 +915,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
           <group key={lot.id}>
             <group position={[lot.x, 0, lot.z]} rotation={[0, lot.rot, 0]} onClick={(e) => (e.stopPropagation(), onPick(lot.id))}>
               <Landmark id={lot.id} night={night} open={openNow(lot.kind)} />
-              {PARTIES[lot.id] && <Party id={lot.id} night={night} simGender={sim.gender} onTalk={onTalk} onCall={onCall} />}
+              {PARTIES[lot.id] && <Party id={lot.id} night={night} simGender={sim.gender} onTalk={onTalk} />}
             </group>
             <LotLabel lot={lot} world={world} label={labels && labelOf.get(lot.id)} onPick={onPick} y={30} />
           </group>
@@ -966,7 +966,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
           </div>
         </Html>
       ))}
-      {nav.nodes.length > 0 && <Passersby nav={nav} focus={focus} seed={commune.id} onTalk={onTalk} onCall={onCall} talkingTo={talkingTo} simGender={sim.gender} gameHour={Math.floor((sim.gameMinutes % 1440) / 60)} />}
+      {nav.nodes.length > 0 && <Passersby nav={nav} focus={focus} seed={commune.id} onTalk={onTalk} talkingTo={talkingTo} />}
       {players && players.length > 0 && <OtherPlayers players={players} lots={walkLots} labels={labels} onPick={(id) => onPickPlayer?.(id)} />}
 
       {ready && (
@@ -1474,7 +1474,7 @@ type Walk = { id: string; name: string; gender: 'femme' | 'homme'; look: ReturnT
  * spot on every screen (see shared.ts). Each has a first name; tap one to
  * talk (they stop and turn to you). Now and then, one nearby calls out.
  */
-function Passersby({ nav, focus, seed, onTalk, onCall, talkingTo, simGender, gameHour }: { nav: Nav; focus: React.RefObject<XZ>; seed: string; onTalk?: (npc: Npc) => void; onCall?: (npc: Npc, text: string) => void; talkingTo?: string | null; simGender: 'femme' | 'homme'; gameHour: number }) {
+function Passersby({ nav, focus, seed, onTalk, talkingTo }: { nav: Nav; focus: React.RefObject<XZ>; seed: string; onTalk?: (npc: Npc) => void; talkingTo?: string | null }) {
   const cells = useCellsAround(focus, WALK_CELL)
   const routes = useRoutes(nav)
   const people = useMemo<Walk[]>(
@@ -1500,30 +1500,9 @@ function Passersby({ nav, focus, seed, onTalk, onCall, talkingTo, simGender, gam
     [cells, seed],
   )
   const refs = useRef(new Map<string, THREE.Group>())
-  // Who is calling out, and what they say.
+  // A line over someone's head (tapped from too far: « come closer »).
   const [said, setSaid] = useState<{ id: string; text: string } | null>(null)
-  const nextCall = useRef(8)
-  useFrame((_, dt) => {
-    // Now and then someone near the Sim greets it (only on this player's screen: it's to them).
-    nextCall.current -= dt
-    if (nextCall.current > 0) return
-    nextCall.current = 20 + Math.random() * 25
-    const [sx, sz] = whereabouts.sim
-    let best: Walk | null = null
-    let bd = 40
-    for (const p of people) {
-      const g = refs.current.get(p.id)
-      if (!g?.visible || p.id === talkingTo) continue
-      const d = Math.hypot(g.position.x - sx, g.position.z - sz)
-      if (d < bd) [best, bd] = [p, d]
-    }
-    if (best) {
-      const calls = callsFor(simGender, gameHour)
-      const text = calls[Math.floor(Math.random() * calls.length)]
-      setSaid({ id: best.id, text })
-      onCall?.({ id: best.id, name: best.name, gender: best.gender, seed: Math.floor(best.seed * 1000), look: best.look }, text)
-    }
-  })
+  const reaction = useNpcReaction()
   useEffect(() => {
     if (!said) return
     const t = setTimeout(() => setSaid(null), 5000)
@@ -1544,6 +1523,7 @@ function Passersby({ nav, focus, seed, onTalk, onCall, talkingTo, simGender, gam
           nav={nav}
           routes={routes}
           held={p.id === talkingTo || said?.id === p.id}
+          react={reaction?.id === p.id ? reaction.pose : undefined}
           refs={refs.current}
           onClick={() => talk(p)}
           bubble={
@@ -1561,7 +1541,7 @@ function Passersby({ nav, focus, seed, onTalk, onCall, talkingTo, simGender, gam
   )
 }
 
-function Passerby({ p, nav, routes, held, refs, onClick, bubble }: { p: Walk; nav: Nav; routes: Map<string, XZ[]>; held: boolean; refs: Map<string, THREE.Group>; onClick: () => void; bubble: React.ReactNode }) {
+function Passerby({ p, nav, routes, held, react, refs, onClick, bubble }: { p: Walk; nav: Nav; routes: Map<string, XZ[]>; held: boolean; react?: Pose; refs: Map<string, THREE.Group>; onClick: () => void; bubble: React.ReactNode }) {
   const ref = useRef<THREE.Group>(null)
   const anchor = useMemo(() => anchorNode(nav, p.near), [nav, p.near])
   const [moving, setMoving] = useState(true)
@@ -1595,7 +1575,7 @@ function Passerby({ p, nav, routes, held, refs, onClick, bubble }: { p: Walk; na
   })
   return (
     <group ref={ref} onClick={(e) => (e.stopPropagation(), onClick())}>
-      <Human look={p.look} gender={p.gender} pose={held ? 'talk' : moving ? 'walk' : 'idle'} seed={p.seed} speed={p.speed} />
+      <Human look={p.look} gender={p.gender} pose={held ? (react ?? 'talk') : moving ? 'walk' : 'idle'} seed={p.seed} speed={p.speed} />
       {bubble}
     </group>
   )

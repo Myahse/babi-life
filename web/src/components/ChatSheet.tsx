@@ -1,12 +1,15 @@
-import { useState } from 'react'
-import { Beer, Briefcase, Coffee, Hand, HandCoins, Heart, Laugh, Lightbulb, MapPin, MessagesSquare, Smartphone, Smile, Trophy, Users, Utensils, X, type LucideIcon } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Beer, BookOpen, Briefcase, Check, Coffee, Hand, HandCoins, HandHelping, Heart, Laugh, Lightbulb, MapPin, MessagesSquare, Scissors, Smartphone, Smile, Sparkles, Trophy, Users, Utensils, X, type LucideIcon } from 'lucide-react'
 import type { Npc } from '../world3d/open/OpenWorld'
 import { greetingsFor, helloFrom } from '../lib/nouchi'
 import { IconTile } from './ui'
 
-// Talking to someone in the street: their first name, how they greet you,
-// what you can say (in groups: greet, chat, ask, offer, tease), and what they
-// answer (the server decides, and it can go either way).
+// Talking to someone in the street (tap them): their first name, what they
+// do, how well you get on, and a conversation that goes on as long as you
+// like (until they have to go): what you say (in groups: greet, chat, ask,
+// offer, tease) and what they answer, one after the other. The server decides
+// the answers, and they can go either way; on the street they react to it
+// (world3d/open/npcReact.ts). This phone remembers who you've met.
 
 type Topic = { id: string; label: string; icon: LucideIcon; hint: string }
 const GROUPS: { id: string; label: string; colors: [string, string]; topics: Topic[] }[] = [
@@ -25,6 +28,8 @@ const GROUPS: { id: string; label: string; colors: [string, string]; topics: Top
       { id: 'gbairai', label: 'Faire le gbairai', icon: MessagesSquare, hint: '15 min · les nouvelles du quartier' },
       { id: 'foot', label: 'Parler foot', icon: Trophy, hint: 'Éléphants, Asec, Africa… attention aux disputes' },
       { id: 'blague', label: 'Lancer une blague', icon: Laugh, hint: 'Ça fait rire… ou pas' },
+      { id: 'compliment', label: 'Faire un compliment', icon: Sparkles, hint: '3 min · ça fait toujours plaisir… presque' },
+      { id: 'histoire', label: 'Demander une histoire', icon: BookOpen, hint: '10 min · contes et souvenirs du quartier' },
       { id: 'route', label: 'Demander le chemin', icon: MapPin, hint: '4 min' },
     ],
   },
@@ -46,6 +51,7 @@ const GROUPS: { id: string; label: string; colors: [string, string]; topics: Top
     topics: [
       { id: 'grin', label: 'Proposer le thé au grin', icon: Coffee, hint: '30 min · on refait le monde' },
       { id: 'maquis', label: 'Inviter au maquis', icon: Beer, hint: 'Adultes · 2 000 à 3 000 Djai si on dit oui' },
+      { id: 'aide', label: 'Proposer un coup de main', icon: HandHelping, hint: '15 min · un petit billet en retour, parfois' },
       { id: 'numero', label: 'Échanger les numéros', icon: Smartphone, hint: 'Peut devenir un·e ami·e' },
     ],
   },
@@ -55,41 +61,127 @@ const GROUPS: { id: string; label: string; colors: [string, string]; topics: Top
     colors: ['#ff7ad9', '#b02bd6'],
     topics: [
       { id: 'chambrer', label: 'Chambrer', icon: Smile, hint: 'Ça rigole… ou ça vexe' },
+      { id: 'defi', label: 'Pierre-feuille-ciseaux', icon: Scissors, hint: '4 min · le perdant danse' },
       { id: 'drague', label: 'Draguer', icon: Heart, hint: 'Adultes · ça passe ou ça casse' },
     ],
   },
 ]
 
-export function ChatSheet({ npc, simGender, onSay, onClose }: { npc: Npc; simGender: 'femme' | 'homme'; onSay: (topic: string, label: string, said?: string) => Promise<string | null>; onClose: () => void }) {
-  const [reply, setReply] = useState<string | null>(null)
+/** What they answered, and how they took it. */
+export type Reply = { text: string; mood?: 'good' | 'bad' | 'bye' }
+type Line = { who: 'me' | 'them'; text: string; mood?: Reply['mood'] }
+
+// What they do, from their seed (always the same for the same person).
+const JOBS = {
+  femme: ['Vendeuse de garba', 'Couturière', 'Coiffeuse', 'Étudiante', 'Infirmière', "Vendeuse d'attiéké", 'Commerçante au marché', 'Institutrice', 'Caissière', 'Gérante de maquis', 'Esthéticienne', 'Vendeuse de pagnes'],
+  homme: ['Chauffeur de gbaka', 'Apprenti gbaka', 'Mécanicien', 'Étudiant', 'Tailleur', 'Vigile', 'Menuisier', 'Vendeur de crédit', 'Livreur à moto', 'Maçon', 'Instituteur', 'Coiffeur', 'Boutiquier'],
+}
+export const jobOf = (npc: Pick<Npc, 'gender' | 'seed'>) => JOBS[npc.gender][npc.seed % JOBS[npc.gender].length]
+
+// Who you've met: how many times, and how well you get on (0 to 5).
+type Memory = { met: number; rapport: number }
+const memKey = (id: string) => `babi.npc.${id}`
+function recall(id: string): Memory {
+  try {
+    const m = JSON.parse(localStorage.getItem(memKey(id)) ?? '') as Memory
+    return { met: m.met || 0, rapport: Math.min(5, Math.max(0, m.rapport || 0)) }
+  } catch {
+    return { met: 0, rapport: 1 }
+  }
+}
+function remember(id: string, m: Memory) {
+  try {
+    localStorage.setItem(memKey(id), JSON.stringify(m))
+  } catch {
+    // Private browsing: they forget you, that's all.
+  }
+}
+
+/** How they greet you: a first time, or « you again ». */
+function greeting(npc: Npc, simGender: 'femme' | 'homme', m: Memory): string {
+  if (m.met === 0) return helloFrom(npc.seed, simGender)
+  const toi = simGender === 'femme' ? 'ma sœur' : 'mon frère'
+  if (m.rapport >= 4) return `Eh ${toi} ! Mon ami${simGender === 'femme' ? 'e' : ''} ! Viens, viens, on cause !`
+  if (m.rapport <= 0) return 'Encore toi ? Bon… dis vite.'
+  return ['Te revoilà !', `On se connaît, ${toi} ! Ça dit quoi ?`, "Ah, c'est toi encore ! Ça va un peu ?"][m.met % 3]
+}
+
+export function ChatSheet({ npc, simGender, onSay, onClose }: { npc: Npc; simGender: 'femme' | 'homme'; onSay: (topic: string, label: string, said?: string) => Promise<Reply | null>; onClose: () => void }) {
+  // What you were to them before (for the greeting), and now: met once more.
+  const [before] = useState(() => recall(npc.id))
+  const [mem, setMem] = useState<Memory>(() => ({ met: before.met + 1, rapport: before.met === 0 ? 1 : before.rapport }))
+  const [lines, setLines] = useState<Line[]>(() => [{ who: 'them', text: greeting(npc, simGender, before) }])
+  const [used, setUsed] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
+  const [gone, setGone] = useState(false)
   const [group, setGroup] = useState(GROUPS[0].id)
-  const hello = helloFrom(npc.seed, simGender)
+  const log = useRef<HTMLDivElement>(null)
+  useEffect(() => remember(npc.id, mem), [npc.id, mem])
+  useEffect(() => {
+    log.current?.scrollTo({ top: log.current.scrollHeight, behavior: 'smooth' })
+  }, [lines, busy])
   const say = async (id: string, label: string, said?: string) => {
     setBusy(true)
-    const r = await onSay(id, label, said)
+    setLines((l) => [...l, { who: 'me', text: said ? `« ${said} »` : label }])
+    const r = await onSay(id, `${label} avec ${npc.name}`, said)
     setBusy(false)
-    if (r) setReply(r)
+    if (!r) return setLines((l) => l.slice(0, -1))
+    setLines((l) => [...l, { who: 'them', text: r.text, mood: r.mood }])
+    setUsed((u) => (u.includes(id) ? u : [...u, id]))
+    if (r.mood === 'bye') return setGone(true)
+    if (r.mood) {
+      const step = r.mood === 'good' ? 1 : -1
+      setMem((m) => ({ ...m, rapport: Math.min(5, Math.max(0, m.rapport + step)) }))
+    }
   }
   const g = GROUPS.find((x) => x.id === group)!
   return (
-    <div className="absolute inset-0 z-30 flex flex-col justify-end bg-[#0f1230]/40 backdrop-blur-[2px] lg:items-center lg:justify-center" onClick={onClose}>
-      <div className="sheet animate-up flex max-h-[82vh] w-full flex-col rounded-t-[28px] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:w-[460px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
+    <div className="absolute inset-0 z-30 flex flex-col justify-end bg-[#0f1230]/15 lg:items-center lg:justify-center" onClick={onClose}>
+      <div className="sheet animate-up flex max-h-[68vh] w-full flex-col rounded-t-[28px] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:w-[460px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3">
           <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full font-display text-xl font-extrabold text-white" style={{ background: npc.look.outfitColor }}>
             {npc.name[0]}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="label">Dans la rue</div>
-            <div className="font-display text-[22px] leading-tight font-extrabold">{npc.name}</div>
+            <div className="label truncate">
+              {jobOf(npc)} · {mem.met <= 1 ? '1re rencontre' : `Vu·e ${mem.met} fois`}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-display text-[22px] leading-tight font-extrabold">{npc.name}</span>
+              <span className="flex gap-0.5" aria-label={`Entente ${mem.rapport} sur 5`}>
+                {[0, 1, 2, 3, 4].map((k) => (
+                  <Heart key={k} size={13} strokeWidth={2.6} className={k < mem.rapport ? 'fill-[var(--color-rose)] text-[var(--color-rose)]' : 'text-black/15'} />
+                ))}
+              </span>
+            </div>
           </div>
           <button className="icon-btn bg-[var(--color-canvas)]" onClick={onClose} aria-label="Fermer">
             <X size={22} strokeWidth={2.6} />
           </button>
         </div>
-        {/* What they say */}
-        <div className="mt-3 rounded-2xl rounded-tl-sm bg-[var(--color-canvas)] px-3.5 py-2.5 text-[15px] font-bold">{reply ?? `« ${hello} »`}</div>
-        {reply ? (
+        {/* The conversation so far */}
+        <div ref={log} className="mt-3 flex max-h-[24vh] min-h-[64px] flex-col gap-1.5 overflow-y-auto pr-0.5">
+          {lines.map((l, i) => (
+            <div
+              key={i}
+              className={
+                l.who === 'me'
+                  ? 'max-w-[85%] self-end rounded-2xl rounded-br-sm bg-[var(--color-orange)] px-3.5 py-2 text-[14px] font-extrabold text-white'
+                  : `max-w-[90%] self-start rounded-2xl rounded-tl-sm border-2 bg-[var(--color-canvas)] px-3.5 py-2 text-[15px] font-bold ${l.mood === 'good' ? 'border-[var(--color-emerald)]/35' : l.mood === 'bad' ? 'border-[var(--color-rose)]/35' : 'border-transparent'}`
+              }
+            >
+              {l.who === 'them' && !l.text.startsWith('«') && !l.text.includes(npc.name) ? `« ${l.text} »` : l.text}
+            </div>
+          ))}
+          {busy && (
+            <div className="flex gap-1 self-start rounded-2xl rounded-tl-sm bg-[var(--color-canvas)] px-3.5 py-3" aria-label={`${npc.name} répond`}>
+              {[0, 1, 2].map((k) => (
+                <span key={k} className="h-2 w-2 animate-bounce rounded-full bg-[var(--color-ink-soft)]" style={{ animationDelay: `${k * 0.15}s` }} />
+              ))}
+            </div>
+          )}
+        </div>
+        {gone ? (
           <button className="btn mt-3 w-full" onClick={onClose}>
             À plus, {npc.name} !
           </button>
@@ -110,11 +202,11 @@ export function ChatSheet({ npc, simGender, onSay, onClose }: { npc: Npc; simGen
                 </button>
               ))}
             </div>
-            <div className="mt-2 overflow-y-auto">
+            <div className="mt-2 min-h-0 overflow-y-auto">
               {group === 'saluer' && (
                 <div className="mb-2 flex flex-wrap gap-1.5">
-                  {greetingsFor(npc.gender).map((phrase) => (
-                    <button key={phrase} className="tile px-3 py-2 text-[14px] font-extrabold disabled:opacity-50" disabled={busy} onClick={() => say('salut', `« ${phrase} » à ${npc.name}`, phrase)}>
+                  {greetingsFor(npc.gender).map((phrase, i) => (
+                    <button key={phrase + i} className="tile px-3 py-2 text-[14px] font-extrabold disabled:opacity-50" disabled={busy} onClick={() => say('salut', 'Saluer', phrase)}>
                       « {phrase} »
                     </button>
                   ))}
@@ -123,17 +215,21 @@ export function ChatSheet({ npc, simGender, onSay, onClose }: { npc: Npc; simGen
               <ul className="grid gap-1.5">
                 {g.topics.map((t) => (
                   <li key={t.id}>
-                    <button className="tile flex w-full items-center gap-3 p-2.5 text-left disabled:opacity-50" disabled={busy} onClick={() => say(t.id, `${t.label} avec ${npc.name}`)}>
+                    <button className="tile flex w-full items-center gap-3 p-2.5 text-left disabled:opacity-50" disabled={busy} onClick={() => say(t.id, t.label)}>
                       <IconTile icon={t.icon} colors={g.colors} size={38} />
                       <span className="min-w-0 flex-1">
                         <span className="block font-display text-[15px] leading-tight font-extrabold">{t.label}</span>
-                        <span className="text-xs font-bold text-[var(--color-ink-soft)]">{t.hint}</span>
+                        <span className="text-xs font-bold text-[var(--color-ink-soft)]">{used.includes(t.id) ? 'Déjà dit : ça risque de lasser' : t.hint}</span>
                       </span>
+                      {used.includes(t.id) && <Check size={18} strokeWidth={3} className="shrink-0 text-[var(--color-emerald)]" />}
                     </button>
                   </li>
                 ))}
               </ul>
             </div>
+            <button className="mt-3 w-full rounded-2xl bg-[var(--color-canvas)] py-2.5 text-sm font-extrabold text-[var(--color-ink-soft)]" onClick={onClose}>
+              Au revoir, {npc.name}
+            </button>
           </>
         )}
       </div>

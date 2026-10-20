@@ -100,6 +100,24 @@ var chatTopics = []chatTopic{
 		"{name} te regarde sans rire : « C'est fini ? Bon. »",
 		"{name} : « Celle-là, mon grand-père la racontait déjà ! »",
 	}, noEffect: game.Needs{Fun: -4}},
+	{id: "compliment", label: "Faire un compliment", icon: "sparkles", minutes: 3, ages: game.KidsUp, effect: game.Needs{}, chance: 0.85, yes: []string{
+		"{name} sourit jusqu'aux oreilles : « Ah toi, tu sais parler aux gens ! Merci dèh. »",
+		"{name} se redresse : « C'est vrai ? C'est ma tantie qui a cousu ça. Je vais lui dire ! »",
+		"{name} : « Merci {toi} ! Toi aussi tu es frais{e} aujourd'hui, on va pas mentir. »",
+		"{name} rigole, gêné{e} : « Arrête, tu vas me faire gonfler la tête ! »",
+		"{name} : « Ça fait plaisir, la journée était dure. Que Dieu te bénisse ! »",
+	}, no: []string{
+		"{name} plisse les yeux : « Hum… tu veux quoi exactement ? Parle franc ! »",
+		"{name} : « Les compliments là, c'est pour demander l'argent après. Je te connais ! »",
+	}, yesEffect: game.Needs{Social: 10, Fun: 4}, noEffect: game.Needs{Social: 1}},
+	{id: "histoire", label: "Demander une histoire", icon: "book-open", minutes: 10, ages: game.KidsUp, effect: game.Needs{Social: 8, Fun: 12}, yes: []string{
+		"« Un jour, Kacou Ananzè l'araignée a voulu garder toute la sagesse du monde dans une calebasse… Mais il l'a fait tomber. C'est pour ça que tout le monde en a un peu ! »",
+		"« Mon grand-père disait qu'au bord de la lagune, la nuit, Mami Wata peigne ses cheveux. Si tu la vois, faut pas parler ! »",
+		"« Tu connais l'histoire de la reine Abla Pokou ? Elle a traversé le fleuve sur le dos des hippopotames… C'est comme ça que les Baoulé sont arrivés. »",
+		"« Une fois, un gbaka est parti d'Adjamé sans chauffeur. Je te jure ! Le frein à main. Il s'est arrêté dans le garba d'une tantie. »",
+		"« Le lièvre a parié avec l'éléphant qu'il était plus fort. Il a attaché une corde… et l'hippopotame tirait de l'autre côté ! Malin, le lièvre. »",
+		"« Quand j'étais petit{e}, on allait voler les mangues du vieux Koné. Un jour il nous attendait en haut de l'arbre ! »",
+	}},
 	{id: "route", label: "Demander le chemin", icon: "map-pin", minutes: 4, ages: game.KidsUp, effect: game.Needs{Social: 4}, yes: []string{
 		"« Tu descends tout droit, au carrefour là où y a la vendeuse d'alloco, tu prends à gauche. Tu peux pas rater. »",
 		"« C'est pas loin ! Tu prends woro-woro, tu dis au chauffeur de te déposer au feu. »",
@@ -153,6 +171,14 @@ var chatTopics = []chatTopic{
 		"{name} : « Ce soir non, y a match. Garde ton argent ! »",
 		"{name} : « Ma femme va me tuer. Une autre fois ! »",
 	}, yesEffect: game.Needs{Social: 25, Fun: 25, Hunger: 25}, money: [2]int{-3000, -2000}, yesMinutes: 75},
+	{id: "aide", label: "Proposer un coup de main", icon: "hand-helping", minutes: 15, ages: game.KidsUp, effect: game.Needs{}, chance: 0.6, yes: []string{
+		"Tu portes les sacs de {name} jusqu'au gbaka. « Toi tu es un{e} vrai{e} ! Prends ça pour ton sucré. »",
+		"Vous poussez ensemble la moto de {name} qui ne démarre plus. Elle repart enfin ! « Merci {toi} ! »",
+		"Tu aides {name} à monter son étal au marché. « Que Dieu te le rende ! » Et un petit billet en plus.",
+	}, no: []string{
+		"{name} : « Merci, merci, ça va aller. Garde ta force ! »",
+		"{name} serre son sac : « Non non, je me débrouille. » On sait jamais, à Abidjan.",
+	}, yesEffect: game.Needs{Social: 14, Energy: -8, Fun: 4}, noEffect: game.Needs{Social: 3}, money: [2]int{200, 1000}},
 	{id: "numero", label: "Échanger les numéros", icon: "smartphone", minutes: 5, ages: game.TeensUp, effect: game.Needs{Social: 10}},
 	// Taquiner
 	{id: "chambrer", label: "Chambrer", icon: "smile", minutes: 5, ages: game.KidsUp, effect: game.Needs{}, chance: 0.6, yes: []string{
@@ -163,6 +189,15 @@ var chatTopics = []chatTopic{
 		"{name} n'a pas aimé : « Tu me prends pour qui ? Va chambrer ta sœur ! »",
 		"{name} : « Faut respecter les gens dèh. » Et s'en va.",
 	}, yesEffect: game.Needs{Fun: 14, Social: 8}, noEffect: game.Needs{Social: -6, Fun: -3}},
+	{id: "defi", label: "Pierre-feuille-ciseaux", icon: "scissors", minutes: 4, ages: game.KidsUp, effect: game.Needs{}, chance: 0.5, yes: []string{
+		"Tu fais pierre, {name} fait ciseaux. « Encore ! » Pierre contre ciseaux encore. Tu as gagné, {name} tape dans tes mains.",
+		"Feuille contre pierre : gagné ! {name} : « Toi tu triches, je t'ai vu ! »",
+		"Ciseaux contre feuille. {name} : « Deux sur trois ! » … Et tu gagnes encore. Respect.",
+	}, no: []string{
+		"Tu fais pierre, {name} fait feuille. « Ha ha ! Va t'entraîner d'abord ! »",
+		"Ciseaux contre pierre : perdu. {name} fait le tour du carrefour en dansant.",
+		"Trois fois feuille contre ciseaux. {name} : « On va dire quoi ? Je suis trop fort{e} ! »",
+	}, yesEffect: game.Needs{Fun: 12, Social: 6}, noEffect: game.Needs{Fun: 6, Social: 6}},
 	{id: "drague", label: "Draguer", icon: "heart", minutes: 10, ages: game.Adults, effect: game.Needs{}, chance: 0.4, yes: []string{
 		"{name} rigole : « Toi tu es malin{e} hein ! Bon, on peut se voir au maquis. »",
 		"{name} sourit : « Ok, ok… tu as gagné. On s'appelle. »",
@@ -213,15 +248,38 @@ func say(lines []string, p Passerby, sim *Sim, rng *rand.Rand) string {
 	return strings.NewReplacer("{name}", p.Name, "{e}", e, "{toi}", toi, "{go}", gars).Replace(l)
 }
 
-// chat starts a talk with a passer-by and returns what they answer, and
-// money given (or spent). `said` is the greeting the player picked, if any.
-func (s *Sim) chat(p Passerby, topicID, said string, rng *rand.Rand) (string, int, error) {
+// What they say when the same thing comes up twice, and when they have to go.
+var (
+	chatAgain = []string{"{name} : « Tu l'as déjà dit ça ! Tu dors ou bien ? »", "{name} rigole : « Encore ? Change de disque un peu ! »", "{name} : « On a déjà parlé de ça, {toi}. »"}
+	chatBye   = []string{"{name} regarde l'heure : « Eh, on a trop causé ! Je dois y aller. On se voit ! »", "{name} : « Bon, je te laisse, le travail m'attend. À plus ! »", "{name} : « La nuit va tomber, je rentre. Bonne soirée {toi} ! »"}
+)
+
+const (
+	// chatTurns: how many things can be said in one conversation before they have to go.
+	chatTurns = 8
+	// A friend listens better.
+	friendBonus = 0.15
+)
+
+type chatAnswer struct {
+	Text  string
+	Money int
+	// "good" or "bad" (how they took it), "bye" (they're off).
+	Mood string
+}
+
+// chat says something to a passer-by and returns what they answer, money
+// given (or spent), and how they took it. `said` is the greeting the player
+// picked, if any. Talking on with the same person carries on the same
+// conversation (what's been said is remembered: twice the same thing, and
+// they notice; after a while, they have to go).
+func (s *Sim) chat(p Passerby, topicID, said string, rng *rand.Rand) (chatAnswer, error) {
 	i := slices.IndexFunc(chatTopics, func(t chatTopic) bool { return t.id == topicID })
 	if i < 0 {
-		return "", 0, errUnknownTopic
+		return chatAnswer{}, errUnknownTopic
 	}
 	if p.Name == "" || len(p.Name) > 30 || len(p.ID) > 60 || len(said) > 60 {
-		return "", 0, errors.New("personne à qui parler")
+		return chatAnswer{}, errors.New("personne à qui parler")
 	}
 	t := chatTopics[i]
 	label := t.label + " avec " + p.Name
@@ -230,20 +288,44 @@ func (s *Sim) chat(p Passerby, topicID, said string, rng *rand.Rand) (string, in
 	}
 	it := game.Interaction{ID: "chat-" + t.id, Label: label, Icon: t.icon, Minutes: t.minutes, Effect: t.effect, Ages: t.ages}
 	if err := it.AllowedFor(s.stage().ID); err != nil {
-		return "", 0, err
+		return chatAnswer{}, err
 	}
-	var reply string
-	money := 0
-	switch {
-	case t.id == "numero":
-		if s.findFriend("p-"+p.ID) == nil && len(s.Friends) < game.MaxFriends && rng.Float64() < 0.6 {
-			reply = say(numYes, p, s, rng)
-			s.Friends = append(s.Friends, game.Friend{ID: "p-" + p.ID, Name: p.Name, Gender: p.Gender, Seed: p.Seed, Commune: s.Commune, Friendship: 25, Met: s.GameMinutes, Seen: s.GameMinutes})
-		} else {
-			reply = say(numNo, p, s, rng)
+	// Already talking with them: the same conversation goes on.
+	var before []string
+	if a := s.Activity; a != nil && a.Kind == "do" && a.PlaceKind == "chat" && a.PlaceName == p.Name {
+		if len(a.Said) >= chatTurns {
+			return chatAnswer{Text: say(chatBye, p, s, rng), Mood: "bye"}, nil
 		}
-	case t.chance == 0 || rng.Float64() < t.chance:
-		reply = say(t.yes, p, s, rng)
+		before = a.Said
+		if slices.Contains(before, t.id) && t.id != "salut" {
+			// Twice the same: a short « you said that already ».
+			it.ID, it.Minutes, it.Effect = "chat-again", 2, game.Needs{Social: -1}
+		}
+		// What the last exchange was worth, at once, and on to the next.
+		s.Needs = a.Progress(s.Needs, s.GameMinutes, a.End)
+		s.Activity = nil
+	}
+	friend := s.findFriend("p-" + p.ID)
+	chance := t.chance
+	if friend != nil && chance > 0 {
+		chance = min(0.95, chance+friendBonus)
+	}
+	var ans chatAnswer
+	switch {
+	case it.ID == "chat-again":
+		ans = chatAnswer{Text: say(chatAgain, p, s, rng), Mood: "bad"}
+	case t.id == "numero":
+		if friend == nil && len(s.Friends) < game.MaxFriends && rng.Float64() < 0.6+0.03*float64(len(before)) {
+			ans = chatAnswer{Text: say(numYes, p, s, rng), Mood: "good"}
+			s.Friends = append(s.Friends, game.Friend{ID: "p-" + p.ID, Name: p.Name, Gender: p.Gender, Seed: p.Seed, Commune: s.Commune, Friendship: 25 + 2*len(before), Met: s.GameMinutes, Seen: s.GameMinutes})
+			friend = nil
+		} else if friend != nil {
+			ans = chatAnswer{Text: say([]string{"{name} : « Tu as déjà mon numéro, {toi} ! Appelle-moi au lieu de demander encore. »"}, p, s, rng), Mood: "good"}
+		} else {
+			ans = chatAnswer{Text: say(numNo, p, s, rng), Mood: "bad"}
+		}
+	case chance == 0 || rng.Float64() < chance:
+		ans = chatAnswer{Text: say(t.yes, p, s, rng), Mood: "good"}
 		if t.yesEffect != (game.Needs{}) {
 			it.Effect = t.yesEffect
 		}
@@ -252,23 +334,33 @@ func (s *Sim) chat(p Passerby, topicID, said string, rng *rand.Rand) (string, in
 		}
 		if t.money != [2]int{} {
 			// Rounded to 100 F, like any note or coin in the street.
-			money = (t.money[0] + rng.IntN(t.money[1]-t.money[0]+1)) / 100 * 100
-			if money < 0 && s.Money+money < 0 {
+			ans.Money = (t.money[0] + rng.IntN(t.money[1]-t.money[0]+1)) / 100 * 100
+			if ans.Money < 0 && s.Money+ans.Money < 0 {
 				// Inviting someone you can't pay for: they pay, laughing.
-				money = 0
-				reply += " (C'est {name} qui a payé, tu étais à sec.)"
-				reply = say([]string{reply}, p, s, rng)
+				ans.Money = 0
+				ans.Text = say([]string{ans.Text + " (C'est {name} qui a payé, tu étais à sec.)"}, p, s, rng)
 			}
 		}
 	default:
-		reply = say(t.no, p, s, rng)
+		ans = chatAnswer{Text: say(t.no, p, s, rng), Mood: "bad"}
 		it.Effect = t.noEffect
 	}
 	if err := s.start(it, "", "chat", p.Name, chatSurprises, ""); err != nil {
-		return "", 0, err
+		return chatAnswer{}, err
 	}
-	s.Money += money
-	return reply, money, nil
+	s.Activity.Said = append(slices.Clone(before), t.id)
+	s.Money += ans.Money
+	// A friend: seen today, and closer (or not) for how it went.
+	if friend != nil {
+		friend.Seen = s.GameMinutes
+		switch ans.Mood {
+		case "good":
+			friend.Friendship = min(100, friend.Friendship+2)
+		case "bad":
+			friend.Friendship = max(0, friend.Friendship-2)
+		}
+	}
+	return ans, nil
 }
 
 func (h *Handler) chatHandler(w http.ResponseWriter, r *http.Request) {
@@ -282,10 +374,10 @@ func (h *Handler) chatHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.mutate(w, r, func(s *Sim) (game.Outcome, []Event, error) {
-		reply, money, err := s.chat(req.With, req.Topic, req.Said, newRand())
+		ans, err := s.chat(req.With, req.Topic, req.Said, newRand())
 		if err != nil {
 			return game.Outcome{}, nil, err
 		}
-		return game.Outcome{Text: reply, Money: money}, nil, nil
+		return game.Outcome{Text: ans.Text, Money: ans.Money, Mood: ans.Mood}, nil, nil
 	})
 }

@@ -215,7 +215,7 @@ type Said = { key: string; text: string } | null
 const NEAR = 120 // metres: the crowd is drawn when the Sim is this close
 const HEAR = 140 // and heard from this far
 
-export function Party({ id, night, simGender = 'homme', onTalk, onCall }: { id: string; night: boolean; simGender?: 'femme' | 'homme'; onTalk?: (npc: Npc) => void; onCall?: (npc: Npc, text: string) => void }) {
+export function Party({ id, night, simGender = 'homme', onTalk }: { id: string; night: boolean; simGender?: 'femme' | 'homme'; onTalk?: (npc: Npc) => void }) {
   const layout = PARTIES[id]
   const level = usePartyLevel()
   const on = night && level > 0 && !!layout
@@ -273,7 +273,6 @@ export function Party({ id, night, simGender = 'homme', onTalk, onCall }: { id: 
       options.push({ key: 'host', who: cast[86], text: pick(s.onFloor ? lines.floor : lines.table), d: dist(layout.tables[0][0], layout.tables[0][1]) })
       const best = options.sort((a, b) => a.d - b.d)[Math.random() < 0.7 ? 0 : 1] ?? options[0]
       setSaid({ key: best.key, text: best.text })
-      onCall?.(best.who, best.text)
     }
   })
   useEffect(() => {

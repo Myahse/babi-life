@@ -260,7 +260,7 @@ export type JournalEvent = {
   at: string
 }
 
-export type Outcome = { text: string; money: number }
+export type Outcome = { text: string; money: number; mood?: 'good' | 'bad' | 'bye' }
 /** Every read or action on a Sim returns this; `fresh` = journal lines this request produced. */
 /** A building material: basic ones from the start, the others unlocked by building. */
 export type Material = { id: string; label: string; color: string; price: number; unlock: number; glass?: boolean }

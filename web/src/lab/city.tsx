@@ -45,6 +45,9 @@ import { worldTime } from '../lib/worldClock'
 import { useEffect, useRef, useState } from 'react'
 import { Interior } from '../world3d/Interior'
 import { Character } from '../world3d/Character'
+import { Human } from '../avatar/Human'
+import { ChatSheet } from '../components/ChatSheet'
+import { npcReact, useNpcReaction } from '../world3d/open/npcReact'
 import { OutdoorAction, outdoorLook, outdoorPose } from '../world3d/OutdoorAction'
 import { Dressing } from '../world3d/open/dressing'
 import { PolicePost } from '../world3d/open/streetlife'
@@ -464,6 +467,7 @@ function Lab() {
   if (view === 'ride') return <RideLab />
   if (view === 'phonecam') return <PhoneCamLab />
   if (view === 'emotes') return <EmotesLab />
+  if (view === 'talk') return <TalkLab />
   if (view === 'mall') return <MallInside sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)) } as unknown as Sim} name="PlaYce Marcory" interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" />
   if (view === 'ivoire') return <IvoireInside sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)) } as unknown as Sim} interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" />
   if (view === 'home') return <HomeLab />
@@ -729,6 +733,37 @@ function EmotesLab() {
 }
 
 /** The phone's camera in the street (?view=phonecam): the Sim on the Rue Princesse, the viewfinder over it. */
+/** Talking to a passer-by: the chat sheet (answers made up here) and how they react. */
+function TalkLab() {
+  const look = useMemo(() => randomLook('homme', seededLab(9)), [])
+  const npc = useMemo(() => ({ id: 'lab-npc', name: 'Koffi', gender: 'homme' as const, seed: 7, look }), [look])
+  const reaction = useNpcReaction()
+  const turn = useRef(0)
+  const onSay = async () => {
+    await new Promise((r) => setTimeout(r, 500))
+    const k = turn.current++
+    const mood = (['good', 'bad', 'good', 'bye'] as const)[k % 4]
+    npcReact(npc.id, mood)
+    return { text: mood === 'bye' ? 'Koffi : « Bon, je te laisse, le travail m\'attend. À plus ! »' : mood === 'good' ? 'Koffi explose de rire : « Ah toi, tu vas me tuer ! »' : 'Koffi : « Toi tu ne connais rien au foot, va jouer aux billes ! »', mood }
+  }
+  return (
+    <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
+      <Canvas shadows dpr={[1, 1.5]} camera={{ position: [0, 0.6, 5.5], fov: 40 }} style={{ width: '100vw', height: '100vh' }}>
+        <color attach="background" args={['#a9d3f0']} />
+        <hemisphereLight args={['#ffffff', '#b8a27c', 1.2]} />
+        <directionalLight position={[10, 20, 10]} intensity={1.6} />
+        <Human look={look} gender="homme" pose={reaction?.pose ?? 'talk'} seed={7} />
+        <mesh rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[40, 40]} />
+          <meshLambertMaterial color="#cbb38c" />
+        </mesh>
+        <OrbitControls target={[0, -0.4, 0]} />
+      </Canvas>
+      <ChatSheet npc={npc} simGender="femme" onSay={onSay} onClose={() => location.reload()} />
+    </div>
+  )
+}
+
 function PhoneCamLab() {
   const look = useMemo(() => randomLook('femme', seededLab(5)), [])
   const sim = useMemo(() => ({ id: 'lab', firstName: 'Awa', gender: 'femme', look }) as unknown as Sim, [look])

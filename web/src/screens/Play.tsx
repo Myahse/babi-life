@@ -43,7 +43,8 @@ import { InviteBanner, PlayersChip, PlayersSheet, usePlayers } from '../componen
 import { SoundToggle, Soundtrack } from '../components/Soundtrack'
 import { usePartySound } from '../world3d/open/party'
 import { MiniMap, WhereTo } from '../components/Navigator'
-import { ChatSheet } from '../components/ChatSheet'
+import { ChatSheet, type Reply } from '../components/ChatSheet'
+import { npcReact } from '../world3d/open/npcReact'
 import type { Npc } from '../world3d/open/OpenWorld'
 import type { Track } from '../audio/music'
 import { NotifyPrompt } from '../components/NotifyPrompt'
@@ -349,24 +350,22 @@ export function Play() {
 
   // Talking to someone in the street (and who, while the chat lasts).
   const [chat, setChat] = useState<Npc | null>(null)
-  // Someone calling out to the Sim, for a few seconds.
-  const [calling, setCalling] = useState<{ npc: Npc; text: string } | null>(null)
-  useEffect(() => {
-    if (!calling) return
-    const t = setTimeout(() => setCalling(null), 7000)
-    return () => clearTimeout(t)
-  }, [calling])
   const talkedTo = useRef<string | null>(null)
-  const say = async (topic: string, label: string, phrase?: string) => {
+  // What they answer stays in the chat sheet (no toast), and they react to it.
+  const say = async (topic: string, label: string, phrase?: string): Promise<Reply | null> => {
     const npc = chat!
     talkedTo.current = npc.id
-    let said: string | null = null
-    await run(label, 'messages-square', 'social', async () => {
+    try {
       const res = await api.chat(sim!.id, { id: npc.id, name: npc.name, gender: npc.gender, seed: npc.seed }, topic, phrase)
-      said = res.outcome.text
-      return res
-    })
-    return said
+      apply(res)
+      const { text, money, mood } = res.outcome
+      if (mood) npcReact(npc.id, mood, mood === 'bye' ? 2.5 : 3.2)
+      if (money) toast({ tone: 'done', title: label, money, kind: 'social', icon: 'messages-square' })
+      return { text, mood }
+    } catch (e) {
+      toast({ tone: 'error', title: 'Pas possible', text: e instanceof Error ? e.message : 'Erreur', money: 0 })
+      return null
+    }
   }
 
   const run: Act = async (label, icon, kind, call) => {
@@ -588,8 +587,7 @@ export function Play() {
             onFreeCamera: setFreeCam,
             closeView,
             shoulderView: view === 'epaule',
-            onTalk: (npc: Npc) => setChat(npc),
-            onCall: (npc: Npc, text: string) => !sim.activity && !chat && setCalling({ npc, text }),
+            onTalk: (npc: Npc) => (setChat(npc), npcReact(npc.id, 'hello', 1.6)),
             talkingTo: chat?.id ?? (doing?.placeKind === 'chat' ? talkedTo.current : null),
             plotsVersion,
             onStreetBuy: async (vendor: string, choice?: string) => {
@@ -859,21 +857,6 @@ export function Play() {
       {overlay === 'camera' && <CameraView sim={sim} street={!showInside} onClose={() => setOverlay(null)} onGallery={() => (setPhoneApp('galerie'), setOverlay('phone'))} />}
       {overlay === 'map' && <WorldMap world={world} sim={sim} night={c.isNight} desktop={desktop} onClose={() => setOverlay(null)} onTravel={travel} onWalk={(id) => (setOverlay(null), walkTo(id))} />}
       {delivery && overlay !== 'phone' && <DeliveryPill delivery={delivery} now={now} onOpen={() => (setPhoneApp('golvo'), setOverlay('phone'))} />}
-      {calling && !chat && (
-        <div className="absolute top-[max(5.5rem,env(safe-area-inset-top))] left-1/2 z-20 w-[min(92vw,380px)] -translate-x-1/2 animate-up">
-          <div className="hud flex items-center gap-3 rounded-2xl p-2.5 pl-3">
-            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full font-display text-lg font-extrabold text-white" style={{ background: calling.npc.look.outfitColor }}>
-              {calling.npc.name[0]}
-            </div>
-            <div className="min-w-0 flex-1 text-sm font-bold">
-              <span className="font-extrabold text-[var(--color-orange)]">{calling.npc.name}</span> t'appelle : « {calling.text} »
-            </div>
-            <button className="btn shrink-0 px-3 py-2 text-sm" onClick={() => (setChat(calling.npc), setCalling(null))}>
-              Répondre
-            </button>
-          </div>
-        </div>
-      )}
       {chat && <ChatSheet npc={chat} simGender={sim.gender} onSay={say} onClose={() => setChat(null)} />}
       {flow && <RideFlow world={world} req={flow} gameMinutes={sim.gameMinutes} onBoard={board} onClose={() => setFlow(null)} />}
     </div>
