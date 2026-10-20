@@ -274,20 +274,12 @@ function Bet225({ sim, s }: { sim: Sim; s: Betting }) {
             ))}
           </ul>
           {slip.length >= 3 && !!data?.boost && <p className="mt-1 text-[11px] font-extrabold" style={{ color: b.accent }}>Boost combiné : +{Math.round(data.boost * (slip.length - 2) * 100)} % sur la cote</p>}
+          <StakeInput stake={stake} setStake={setStake} money={sim.money} dark accent={b.accent} />
           <div className="mt-2 flex items-center gap-2">
-            <input
-              type="number"
-              min={100}
-              max={50000}
-              step={100}
-              value={stake}
-              onChange={(e) => setStake(Math.max(0, Math.min(50000, Number(e.target.value) || 0)))}
-              className="w-24 rounded-lg bg-white/10 px-2 py-2 text-sm font-extrabold text-white outline-none"
-            />
             <div className="min-w-0 flex-1 text-[11px] font-bold text-white/70">
               Cote <b className="text-white">{odds.toFixed(2)}</b> · gain <b style={{ color: b.accent }}>{nf(Math.floor(stake * odds))} Djai</b>
             </div>
-            <button disabled={stake < 100 || stake > sim.money} onClick={() => void place()} className="rounded-lg px-4 py-2 text-sm font-extrabold disabled:opacity-40" style={{ background: b.accent, color: b.ink }}>
+            <button disabled={stake < MIN_STAKE || stake > MAX_STAKE || stake > sim.money} onClick={() => void place()} className="rounded-lg px-4 py-2 text-sm font-extrabold disabled:opacity-40" style={{ background: b.accent, color: b.ink }}>
               Parier
             </button>
           </div>
@@ -298,6 +290,52 @@ function Bet225({ sim, s }: { sim: Sim; s: Betting }) {
 }
 
 const STAKES = [200, 500, 1000, 2000, 5000]
+/** The bets the API takes (backend/internal/sims/bets.go MinStake, MaxStake). */
+const MIN_STAKE = 100
+const MAX_STAKE = 50000
+
+/**
+ * The stake: any amount typed (from 100 to 50 000 Djai, and no more than
+ * one has), or a tap on a usual amount, or « Max ». What's typed stays as
+ * typed while typing; it's checked, not changed under the fingers.
+ */
+function StakeInput({ stake, setStake, money, dark, accent }: { stake: number; setStake: (v: number) => void; money: number; /** Bet225's dark slip, else ParisFoot's light one. */ dark?: boolean; accent: string }) {
+  const [text, setText] = useState(String(stake))
+  useEffect(() => {
+    if (Number(text.replace(/\D/g, '')) !== stake) setText(String(stake))
+  }, [stake]) // eslint-disable-line react-hooks/exhaustive-deps
+  const max = Math.min(MAX_STAKE, Math.floor(money))
+  const why = stake < MIN_STAKE ? `${nf(MIN_STAKE)} Djai au moins` : stake > MAX_STAKE ? `${nf(MAX_STAKE)} Djai au plus` : stake > money ? "Tu n'as pas assez" : ''
+  const chip = (v: number, label: string) => (
+    <button key={label} onClick={() => setStake(v)} disabled={v > money || v < MIN_STAKE} className={`flex-1 rounded-md border py-1.5 text-[11px] font-extrabold disabled:opacity-40 ${dark ? 'border-white/15' : 'border-[#ddd6fe]'}`} style={stake === v ? { background: accent, color: '#fff', borderColor: accent } : undefined}>
+      {label}
+    </button>
+  )
+  return (
+    <div className="mt-2">
+      <label className={`flex items-center gap-2 rounded-lg px-3 py-2 ${dark ? 'bg-white/10 text-white' : 'border border-[#ddd6fe] bg-white text-[#1b1530]'}`}>
+        <span className={`text-[11px] font-extrabold uppercase ${dark ? 'text-white/60' : 'text-[#6b6390]'}`}>Mise</span>
+        <input
+          inputMode="numeric"
+          value={text}
+          onChange={(e) => {
+            const digits = e.target.value.replace(/\D/g, '').slice(0, 6)
+            setText(digits)
+            setStake(Number(digits) || 0)
+          }}
+          className="min-w-0 flex-1 bg-transparent text-right text-base font-extrabold outline-none"
+          aria-label="Mise en Djai"
+        />
+        <span className={`text-xs font-bold ${dark ? 'text-white/60' : 'text-[#6b6390]'}`}>Djai</span>
+      </label>
+      <div className="mt-1.5 flex gap-1.5">
+        {STAKES.map((v) => chip(v, nf(v)))}
+        {chip(max, 'Max')}
+      </div>
+      {why && <p className="mt-1 text-[11px] font-bold text-[#e03131]">{why}</p>}
+    </div>
+  )
+}
 
 /**
  * ParisFoot: light and simple, its own league (the « Ligue des Régions »),
@@ -445,14 +483,8 @@ function ParisFoot({ sim, s }: { sim: Sim; s: Betting }) {
               <Trash2 size={12} /> Effacer
             </button>
           </div>
-          <div className="mt-2 flex gap-1.5">
-            {STAKES.map((v) => (
-              <button key={v} onClick={() => setStake(v)} disabled={v > sim.money} className="flex-1 rounded-md border py-1.5 text-[11px] font-extrabold disabled:opacity-40" style={stake === v ? { background: '#1b1530', color: '#fff', borderColor: '#1b1530' } : { borderColor: '#ddd6fe' }}>
-                {nf(v)}
-              </button>
-            ))}
-          </div>
-          <button disabled={stake < 100 || stake > sim.money} onClick={() => void place()} className="mt-2 w-full rounded-lg bg-[#5b21b6] py-2.5 text-sm font-extrabold text-white disabled:opacity-40">
+          <StakeInput stake={stake} setStake={setStake} money={sim.money} accent="#5b21b6" />
+          <button disabled={stake < MIN_STAKE || stake > MAX_STAKE || stake > sim.money} onClick={() => void place()} className="mt-2 w-full rounded-lg bg-[#5b21b6] py-2.5 text-sm font-extrabold text-white disabled:opacity-40">
             Valider le ticket · gain {nf(Math.floor(stake * odds))} Djai
           </button>
         </div>

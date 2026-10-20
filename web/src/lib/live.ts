@@ -36,6 +36,9 @@ export function sampleLive(id: string): LiveSample | null {
 }
 
 /** Keeps this player connected while the street is on screen. */
+/** The window event when the Sim changed somewhere (detail: its id). */
+export const SIM_CHANGED = 'babi:sim-changed'
+
 export function useLive(simId: string | undefined, mode: 'open' | 'street', where: string) {
   const token = useSession((s) => s.token)
   useEffect(() => {
@@ -80,6 +83,8 @@ function connect(token: string, sim: string, mode: 'open' | 'street') {
       const m = JSON.parse(e.data as string)
       if (m.t === 'pong') clockSample(m.c, m.s, localNow())
       else if (m.t === 'leave') snaps.delete(m.id)
+      // The Sim changed (on another device of the same account, or here): load it again (screens/Play.tsx).
+      else if (m.t === 'sim') window.dispatchEvent(new CustomEvent(SIM_CHANGED, { detail: m.id }))
       else if (m.t === 'states')
         for (const s of m.players as (Snap & { id: string })[]) {
           if (s.id === sim) continue

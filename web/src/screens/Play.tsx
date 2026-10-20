@@ -5,7 +5,7 @@ import { api } from '../lib/api'
 import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World, Ride, Place, Plot } from '../lib/types'
 import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
-import { useLive } from '../lib/live'
+import { SIM_CHANGED, useLive } from '../lib/live'
 import { WorldMap } from './WorldMap'
 import { Joystick, RunButton, WalkKeys } from '../components/Joystick'
 import { cameraTurn } from '../world3d/input'
@@ -205,6 +205,40 @@ export function Play() {
     const t = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(t)
   }, [])
+
+  // The same account open on another device (or this one): whatever changes there shows here, at once;
+  // and coming back to the game (the phone woken up, the tab shown again), the latest.
+  const simId = base?.sim.id
+  useEffect(() => {
+    if (!simId) return
+    let pending: ReturnType<typeof setTimeout> | null = null
+    const reload = () => {
+      if (pending) return
+      pending = setTimeout(() => {
+        pending = null
+        api
+          .sim(simId)
+          .then((res) => {
+            setBase({ sim: res.sim, at: Date.now() })
+            setJournal(res.journal)
+          })
+          .catch(() => undefined)
+      }, 300)
+    }
+    const changed = (e: Event) => {
+      if ((e as CustomEvent<string>).detail === simId) reload()
+    }
+    const shown = () => {
+      if (document.visibilityState === 'visible') reload()
+    }
+    window.addEventListener(SIM_CHANGED, changed)
+    document.addEventListener('visibilitychange', shown)
+    return () => {
+      window.removeEventListener(SIM_CHANGED, changed)
+      document.removeEventListener('visibilitychange', shown)
+      if (pending) clearTimeout(pending)
+    }
+  }, [simId])
 
   // The game runs on real time; between server round-trips the clock, needs
   // and the current activity advance locally, minute by minute.

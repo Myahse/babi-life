@@ -164,6 +164,31 @@ func (h *Hub) leave(c *client) {
 	}
 }
 
+// Changed: something about the Sim changed (an action started or stopped,
+// money, a bet, a message…). Every device it's open on hears it and loads it
+// again: the same account on a phone and a computer stays the same.
+func (h *Hub) Changed(sims ...string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for _, sim := range sims {
+		if sim == "" {
+			continue
+		}
+		msg, _ := json.Marshal(map[string]any{"t": "sim", "id": sim})
+		for _, clients := range h.rooms {
+			for c := range clients {
+				if c.sim != sim {
+					continue
+				}
+				select {
+				case c.send <- msg:
+				default:
+				}
+			}
+		}
+	}
+}
+
 func (h *Hub) update(c *client, s State) {
 	h.mu.Lock()
 	defer h.mu.Unlock()

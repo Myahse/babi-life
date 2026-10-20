@@ -258,6 +258,19 @@ func main() {
 
 		r.Group(func(r chi.Router) {
 			r.Use(tokens.Require)
+			// A change to a Sim (any write that went through): its other devices hear it (live.Changed).
+			r.Use(func(next http.Handler) http.Handler {
+				return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+					ww := middleware.NewWrapResponseWriter(w, req.ProtoMajor)
+					next.ServeHTTP(ww, req)
+					if req.Method == http.MethodGet || ww.Status() >= 400 {
+						return
+					}
+					if rc := chi.RouteContext(req.Context()); rc != nil {
+						players.Changed(rc.URLParam("id"), rc.URLParam("other"))
+					}
+				})
+			})
 			r.Get("/me", authH.Me)
 			r.Put("/me/username", authH.SetUsername)
 			r.Post("/me/tester", authH.BecomeTester)
