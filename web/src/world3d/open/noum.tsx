@@ -123,7 +123,7 @@ function logo(text: string) {
   return new THREE.MeshLambertMaterial({ map: t, transparent: true, emissive: '#ffffff', emissiveMap: t, emissiveIntensity: 0.6 })
 }
 
-function Palm({ x, y = 0, z, h = 7 }: { x: number; y?: number; z: number; h?: number }) {
+export function Palm({ x, y = 0, z, h = 7 }: { x: number; y?: number; z: number; h?: number }) {
   return (
     <group position={[x, y, z]}>
       <mesh geometry={BOX} position={[0, h / 2, 0]} scale={[0.45, h, 0.45]} material={trunk} />

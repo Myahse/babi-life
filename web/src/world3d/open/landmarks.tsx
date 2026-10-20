@@ -8,6 +8,8 @@ import { MarcheAdjame } from './adjame'
 import { HotelIvoire } from './hotelIvoire'
 import { HotelPoulman } from './poulman'
 import { HotelNoum } from './noum'
+import { HotelAzale } from './azale'
+import { HotelRabisson } from './rabisson'
 import { StadiumLive } from './stadiumLive'
 import { Zoo } from './zoo'
 import { BlockhaussMaquis } from './blockhauss'
@@ -24,6 +26,8 @@ export const LANDMARKS: Record<string, number> = {
   'cocody-hotel-ivoire': 75,
   'plateau-poulman': 42,
   'plateau-noum': 42,
+  'marcory-azale': 40,
+  'pb-rabisson': 56,
   'yakro-basilique': 130,
   'pb-aeroport': 150,
   'cocody-oranjo': 42,
@@ -57,6 +61,10 @@ export function Landmark({ id, night, demo, open = true }: { id: string; night: 
       return <HotelPoulman night={night} />
     case 'plateau-noum':
       return <HotelNoum night={night} />
+    case 'marcory-azale':
+      return <HotelAzale night={night} />
+    case 'pb-rabisson':
+      return <HotelRabisson night={night} />
     case 'yakro-basilique':
       return <Basilica />
     case 'pb-aeroport':
