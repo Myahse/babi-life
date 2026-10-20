@@ -409,7 +409,7 @@ function Terrace({ night }: { night: boolean }) {
       </mesh>
       {/* The pool: a rim, the water */}
       <mesh geometry={BOX} position={[0, 0.3, -28.5]} scale={[21, 0.6, 8]} material={mat('#f3f1ec')} />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.58, -28.5]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.62, -28.5]}>
         <planeGeometry args={[20, 7]} />
         <meshLambertMaterial ref={water} color="#3fb7d8" transparent opacity={0.9} />
       </mesh>
