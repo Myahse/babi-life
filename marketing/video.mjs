@@ -3,7 +3,7 @@
 // Awa streaming the game on her voice, out/voix-live.mp3, 96 s; FILM=merci, Awa
 // thanking the community for 1 500 followers, 52 s, voice out/voix-merci.mp3 when there;
 // FILM=arnaque, Awa scammed through a link on Gbairai, 51 s, voice out/voix-arnaque.mp3 when there;
-// FILM=keke, Keke's street interview « what do you want in Babi Life? », 63 s, voice out/voix-keke.mp3;
+// FILM=keke, Keke's street interview « what do you want in Babi Life? », 58 s, voice out/voix-keke.mp3;
 // FILM=gameplay, how you play, 39 s, its beat out/son-gameplay.mp3 from beat.py), 1080 × 1920 (WhatsApp status, TikTok, Reels), drawn frame
 // by frame from the game's own persos (web/src/lab/poster.tsx) so it's smooth
 // even on a slow machine, then put together by ffmpeg into an MP4.

@@ -1414,22 +1414,22 @@ const FILMS: Record<FilmId, { shots: Shot[]; intro: number; outro: number; lengt
   },
   // Keke's street interview (marketing/scripts/keke-micro-trottoir.md): « what do you want in Babi Life? ».
   keke: {
-    // Timed on the voice (marketing/out/voix-keke.mp3, 61.6 s): each shot starts with its line.
+    // Timed on the voices (marketing/out/voix-keke.mp3, 55.4 s, one file per speaker put end to end): each shot starts with its line.
     shots: [
-      { from: 0, to: 6.5, scene: 'keke', cap: 'Micro-trottoir dans Babi ! 🎤' },
-      { from: 6.5, to: 10.6, scene: 'keke', cap: 'Une seule question…' },
-      { from: 10.6, to: 17.3, scene: 'mt-yop' },
-      { from: 17.3, to: 22.25, scene: 'mt-gbaka' },
-      { from: 22.25, to: 27.25, scene: 'mt-maquis' },
-      { from: 27.25, to: 31.8, scene: 'mt-stade' },
-      { from: 31.8, to: 36.7, scene: 'mt-village' },
-      { from: 36.7, to: 43.0, scene: 'mt-salon' },
-      { from: 43.0, to: 54.85, scene: 'keke', cap: 'Et toi ? Dis-le en commentaire 👇' },
-      { from: 54.85, to: 63, scene: 'crew' },
+      { from: 0, to: 5.6, scene: 'keke', cap: 'Micro-trottoir dans Babi ! 🎤' },
+      { from: 5.6, to: 9.21, scene: 'keke', cap: 'Une seule question…' },
+      { from: 9.21, to: 15.46, scene: 'mt-yop' },
+      { from: 15.46, to: 20.67, scene: 'mt-gbaka' },
+      { from: 20.67, to: 27.58, scene: 'mt-maquis' },
+      { from: 27.58, to: 31.28, scene: 'mt-stade' },
+      { from: 31.28, to: 37.14, scene: 'mt-village' },
+      { from: 37.14, to: 41.57, scene: 'mt-salon' },
+      { from: 41.57, to: 52.07, scene: 'keke', cap: 'Et toi ? Dis-le en commentaire 👇' },
+      { from: 52.07, to: 58.5, scene: 'crew' },
     ],
     intro: 0,
-    outro: 54.85,
-    length: 63,
+    outro: 52.07,
+    length: 58.5,
     hook: ['', '', ''],
   },
   // How you play: born gnambro, the goal is debout, six steps, the money that comes and goes.
@@ -2010,7 +2010,9 @@ function KekeOverlay({ t, shot }: { t: number; shot: Shot }) {
   const shots = FILMS.keke.shots
   // The wishes said so far (one per person, from the start of their shot).
   const wishes = shots.filter((s) => MT[s.scene] && t >= s.from + 0.6).map((s) => MT[s.scene])
-  const asked = t >= 6.5
+  // The question: big while he asks it, then up top.
+  const [ask, first] = [shots[1].from, shots[2].from]
+  const asked = t >= ask + 0.4
   return (
     <>
       <div className="absolute inset-x-0 top-0 flex items-center gap-3 bg-gradient-to-b from-black/60 to-transparent px-6 pt-8 pb-12 font-sans">
@@ -2023,8 +2025,8 @@ function KekeOverlay({ t, shot }: { t: number; shot: Shot }) {
       </div>
       {/* The question, big when he asks it, then up top */}
       {asked && (
-        <div className="absolute inset-x-0 flex justify-center px-6 font-display" style={{ top: t < 10.6 ? '30%' : '11%', transition: 'none' }}>
-          <div className={`rounded-[28px] bg-white text-center font-extrabold text-[var(--color-ink)] shadow-[0_18px_40px_-14px_rgba(0,0,0,0.6)] ${t < 10.6 ? 'px-7 py-5 text-[52px] leading-[1.05]' : 'px-5 py-2.5 text-[28px]'}`} style={t < 10.6 ? slam(t, 6.6) : undefined}>
+        <div className="absolute inset-x-0 flex justify-center px-6 font-display" style={{ top: t < first ? '30%' : '11%' }}>
+          <div className={`rounded-[28px] bg-white text-center font-extrabold text-[var(--color-ink)] shadow-[0_18px_40px_-14px_rgba(0,0,0,0.6)] ${t < first ? 'px-7 py-5 text-[52px] leading-[1.05]' : 'px-5 py-2.5 text-[28px]'}`} style={t < first ? slam(t, ask + 0.4) : undefined}>
             Qu’est-ce que tu veux
             <br />
             dans <span className="text-[var(--color-orange)]">Babi Life</span> ?
