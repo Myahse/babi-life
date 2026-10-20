@@ -70,6 +70,8 @@ func (h *Handler) postStory(w http.ResponseWriter, r *http.Request) {
 		Photo   string `json:"photo"`
 		Caption string `json:"caption"`
 		Source  string `json:"source"`
+		// A photo of the phone's gallery (photos.go), instead of Photo.
+		PhotoID int64 `json:"photoId"`
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
@@ -87,8 +89,18 @@ func (h *Handler) postStory(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusForbidden, errNoRealPhotos.Error())
 		return
 	}
-	raw, mime, err := decodePhoto(req.Photo)
-	if err != nil {
+	var (
+		raw  []byte
+		mime string
+	)
+	if req.PhotoID > 0 {
+		// From the gallery: the game's own picture, the Sim's own photo.
+		req.Source = "jeu"
+		if raw, mime, err = h.photoBytes(r.Context(), me, req.PhotoID); err != nil {
+			h.photoFail(w, err)
+			return
+		}
+	} else if raw, mime, err = decodePhoto(req.Photo); err != nil {
 		httpx.Error(w, http.StatusBadRequest, err.Error())
 		return
 	}

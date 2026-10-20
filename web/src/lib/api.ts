@@ -128,6 +128,8 @@ export const api = {
   reactDirect: (id: string, postId: number, emoji: string) => post<{ reactions: Record<string, number>; mine: string }>(`/sims/${id}/grin/direct/${postId}/react`, { emoji }),
   stories: (id: string) => request<StoryRing[]>(`/sims/${id}/stories`),
   postStory: (id: string, photo: string, caption: string, source: 'jeu' | 'reel') => post<Story>(`/sims/${id}/stories`, { photo, caption, source }),
+  /** A photo of the gallery put in one's story. */
+  storyFromGallery: (id: string, photoId: number, caption: string) => post<Story>(`/sims/${id}/stories`, { photo: '', caption, source: 'jeu', photoId }),
   deleteStory: (id: string, story: number) => request<void>(`/sims/${id}/stories/${story}`, { method: 'DELETE' }),
   reportStory: (id: string, story: number, reason: string) => post<{ text: string }>(`/sims/${id}/stories/${story}/report`, { reason }),
   storyPhoto: (id: string, story: number) => `/sims/${id}/stories/${story}/photo`,
