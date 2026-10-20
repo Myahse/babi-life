@@ -39,6 +39,8 @@ type Handler struct {
 	Verifier *GoogleVerifier   // nil when the Google client id is not set
 	Firebase *FirebaseVerifier // nil when FIREBASE_PROJECT_ID is not set
 	DevLogin bool
+	// Sessions: one per sign-in, the devices of the account (sessions.go); nil: tokens only.
+	Sessions *Sessions
 }
 
 type session struct {
@@ -65,7 +67,7 @@ func (h *Handler) Google(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusUnauthorized, "invalid google credential")
 		return
 	}
-	h.signIn(w, r.Context(), id)
+	h.signIn(w, r, id)
 }
 
 // Identify checks a token from either Google Sign-In or Firebase Auth.
@@ -99,10 +101,11 @@ func (h *Handler) Dev(w http.ResponseWriter, r *http.Request) {
 	}
 	slug := strings.ToLower(strings.Join(strings.Fields(name), "."))
 	first, last, _ := strings.Cut(name, " ")
-	h.signIn(w, r.Context(), GoogleIdentity{Sub: "dev:" + slug, Email: slug + "@dev.local", Name: name, FirstName: first, LastName: last})
+	h.signIn(w, r, GoogleIdentity{Sub: "dev:" + slug, Email: slug + "@dev.local", Name: name, FirstName: first, LastName: last})
 }
 
-func (h *Handler) signIn(w http.ResponseWriter, ctx context.Context, id GoogleIdentity) {
+func (h *Handler) signIn(w http.ResponseWriter, r *http.Request, id GoogleIdentity) {
+	ctx := r.Context()
 	// Someone who registered with this (Google-verified) e-mail gets Google linked to that account.
 	if _, err := h.DB.Exec(ctx, `UPDATE users SET google_sub = $1 WHERE email = $2 AND google_sub IS NULL`, id.Sub, id.Email); err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "could not save user")
@@ -127,11 +130,20 @@ func (h *Handler) signIn(w http.ResponseWriter, ctx context.Context, id GoogleId
 		httpx.Error(w, http.StatusInternalServerError, "could not save user")
 		return
 	}
-	h.issue(w, u)
+	h.issue(w, r, u)
 }
 
-func (h *Handler) issue(w http.ResponseWriter, u User) {
-	token, err := h.Tokens.Issue(u.ID)
+// issue: a new session for this device, and its token.
+func (h *Handler) issue(w http.ResponseWriter, r *http.Request, u User) {
+	sid := ""
+	if h.Sessions != nil {
+		var err error
+		if sid, err = h.Sessions.Start(r.Context(), u.ID, r); err != nil {
+			httpx.Error(w, http.StatusInternalServerError, "could not issue session")
+			return
+		}
+	}
+	token, err := h.Tokens.Issue(u.ID, sid)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "could not issue session")
 		return

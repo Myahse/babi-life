@@ -54,8 +54,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	tokens := auth.NewTokens(cfg.JWTSecret)
-	authH := &auth.Handler{DB: pool, Tokens: tokens, DevLogin: cfg.DevLogin}
+	// One session per sign-in (a device): listed in the profile, signed out from there.
+	sessions := auth.NewSessions(pool)
+	tokens := auth.NewTokens(cfg.JWTSecret).WithSessions(sessions)
+	authH := &auth.Handler{DB: pool, Tokens: tokens, DevLogin: cfg.DevLogin, Sessions: sessions}
 	if cfg.GoogleClientID != "" {
 		authH.Verifier = auth.NewGoogleVerifier(cfg.GoogleClientID)
 	}
@@ -91,6 +93,7 @@ func main() {
 	go headlines.Run(ctx)
 	// The players of a commune, live (positions and poses, over a WebSocket).
 	players := live.NewHub(pool, tokens, cfg.AllowedOrigins)
+	sessions.OnRevoke = players.Kick
 	players.Karts = karts
 	go players.Run(ctx)
 
@@ -258,6 +261,8 @@ func main() {
 
 		r.Group(func(r chi.Router) {
 			r.Use(tokens.Require)
+			// The same write sent twice is done once (Idempotency-Key).
+			r.Use(auth.Idempotent(pool))
 			// A change to a Sim (any write that went through): its other devices hear it (live.Changed).
 			r.Use(func(next http.Handler) http.Handler {
 				return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -272,6 +277,10 @@ func main() {
 				})
 			})
 			r.Get("/me", authH.Me)
+			r.Get("/me/sessions", sessions.List)
+			r.Delete("/me/sessions/{session}", sessions.Revoke)
+			r.Post("/me/sessions/others", sessions.RevokeOthers)
+			r.Delete("/me/session", sessions.End)
 			r.Put("/me/username", authH.SetUsername)
 			r.Post("/me/tester", authH.BecomeTester)
 			r.Post("/me/push", pushes.Subscribe)

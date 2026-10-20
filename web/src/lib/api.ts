@@ -17,13 +17,50 @@ export async function photoURL(path: string) {
   return URL.createObjectURL(await res.blob())
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+/**
+ * The key of a write, for the server to do it once (backend/internal/auth/idempotency.go):
+ * the same write again (same address, same content) while the first is under way or just
+ * done (a double tap, a button pressed twice) carries the same key; a new one otherwise.
+ */
+const writes = new Map<string, { key: string; until: number }>()
+function writeKey(method: string, path: string, body: unknown) {
+  const what = `${method} ${path} ${typeof body === 'string' ? body : ''}`
+  const now = Date.now()
+  for (const [k, v] of writes) if (v.until < now) writes.delete(k)
+  const had = writes.get(what)
+  if (had) {
+    had.until = now + 4000
+    return had.key
+  }
+  const key = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${now}-${Math.random().toString(36).slice(2)}`
+  writes.set(what, { key, until: now + 4000 })
+  return key
+}
+
+/** The writes under way: the same one asked again (a double tap) waits for the first instead of going twice. */
+const inflight = new Map<string, Promise<unknown>>()
+
+function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const method = (init.method ?? 'GET').toUpperCase()
+  if (method === 'GET') return send<T>(path, init)
+  const what = `${method} ${path} ${typeof init.body === 'string' ? init.body : ''}`
+  const had = inflight.get(what)
+  if (had) return had as Promise<T>
+  const p = send<T>(path, init).finally(() => inflight.delete(what))
+  inflight.set(what, p)
+  return p
+}
+
+async function send<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = useSession.getState().token
+  const method = (init.method ?? 'GET').toUpperCase()
+  const key = method !== 'GET' && token ? writeKey(method, path, init.body) : null
   const res = await fetch(BASE + path, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(key ? { 'Idempotency-Key': key } : {}),
       ...init.headers,
     },
   })
@@ -37,6 +74,9 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 const post = <T>(path: string, body: unknown) => request<T>(path, { method: 'POST', body: JSON.stringify(body) })
+
+/** A device signed in to the account (a session). */
+export type Device = { id: string; device: string; createdAt: string; lastSeen: string; current: boolean }
 
 type Session = { token: string; user: User }
 
@@ -60,6 +100,11 @@ export type NewSim = {
 export type WaitlistJoin = { firstName: string; contact: string; commune: string; beta: boolean; source: string; website: string; terms: boolean; privacy: boolean; sim?: { lastName: string; gender: 'femme' | 'homme'; look: Look; traits: string[]; aspiration: string } }
 
 export const api = {
+  /** The devices signed in to the account; sign one out, all the others, or this one. */
+  sessions: () => request<{ sessions: Device[]; legacy: boolean }>('/me/sessions'),
+  revokeSession: (id: string) => request<void>(`/me/sessions/${id}`, { method: 'DELETE' }),
+  revokeOthers: () => post<{ signedOut: number }>('/me/sessions/others', {}),
+  endSession: () => request<void>('/me/session', { method: 'DELETE' }),
   world: () => request<World>('/world'),
   /** A commune's places from the map (OpenStreetMap) within r km of a point. */
   mapPlace: (commune: string, id: string) => request<{ places: Place[]; total: number }>(`/places?commune=${encodeURIComponent(commune)}&id=${encodeURIComponent(id)}`),

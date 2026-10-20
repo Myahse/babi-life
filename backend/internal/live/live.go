@@ -61,6 +61,9 @@ type client struct {
 	sim  string
 	room string
 	send chan []byte
+	// The session (the device) it was opened from, and how to close it when that device is signed out.
+	sid  string
+	kick context.CancelFunc
 }
 
 type Hub struct {
@@ -189,6 +192,23 @@ func (h *Hub) Changed(sims ...string) {
 	}
 }
 
+// Kick: these sessions were signed out (auth.Sessions): their live connections close now.
+func (h *Hub) Kick(sids ...string) {
+	gone := map[string]bool{}
+	for _, s := range sids {
+		gone[s] = true
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for _, clients := range h.rooms {
+		for c := range clients {
+			if c.sid != "" && gone[c.sid] && c.kick != nil {
+				c.kick()
+			}
+		}
+	}
+}
+
 func (h *Hub) update(c *client, s State) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -248,6 +268,7 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		conn.Close(websocket.StatusPolicyViolation, err.Error())
 		return
 	}
+	c.kick = cancel
 	if !h.join(c) {
 		conn.Close(websocket.StatusTryAgainLater, "commune pleine")
 		return
@@ -359,7 +380,7 @@ func (h *Hub) hello(ctx context.Context, conn *websocket.Conn) (*client, error) 
 	if json.Unmarshal(data, &m) != nil || m.T != "hello" {
 		return nil, errHello
 	}
-	user, err := h.Tokens.Parse(m.Token)
+	user, sid, err := h.Tokens.ParseSession(ctx, m.Token)
 	if err != nil {
 		return nil, errors.New("session invalide")
 	}
@@ -373,12 +394,12 @@ func (h *Hub) hello(ctx context.Context, conn *websocket.Conn) (*client, error) 
 			return nil, errors.New("pas sur cette grille")
 		}
 		log.Printf("live: %s joins kart race %s", m.Sim, m.Race)
-		return &client{sim: m.Sim, room: "kart:" + m.Race, send: make(chan []byte, 32)}, nil
+		return &client{sim: m.Sim, room: "kart:" + m.Race, send: make(chan []byte, 32), sid: sid}, nil
 	}
 	mode := "street"
 	if m.Mode == "open" {
 		mode = "open"
 	}
 	log.Printf("live: %s joins %s/%s (%s)", m.Sim, city, commune, mode)
-	return &client{sim: m.Sim, room: city + "|" + commune + "|" + mode, send: make(chan []byte, 16)}, nil
+	return &client{sim: m.Sim, room: city + "|" + commune + "|" + mode, send: make(chan []byte, 16), sid: sid}, nil
 }

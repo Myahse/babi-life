@@ -138,7 +138,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusInternalServerError, "could not create account")
 		return
 	}
-	h.issue(w, u)
+	h.issue(w, r, u)
 }
 
 // Login signs in with email + password.
@@ -171,5 +171,5 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusUnauthorized, "e-mail, pseudo ou mot de passe incorrect")
 		return
 	}
-	h.issue(w, u)
+	h.issue(w, r, u)
 }

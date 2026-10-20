@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { InstallButton } from '../components/InstallButton'
-import { Briefcase, CalendarDays, ChevronLeft, House, LogOut, MapPin, Shirt, Share2, Sparkles, Trash2, TrendingDown, TrendingUp, type LucideIcon } from 'lucide-react'
-import { api } from '../lib/api'
+import { Briefcase, CalendarDays, ChevronLeft, House, LogOut, MapPin, Monitor, MonitorSmartphone, Shirt, Share2, Smartphone, Sparkles, Trash2, TrendingDown, TrendingUp, type LucideIcon } from 'lucide-react'
+import { api, type Device } from '../lib/api'
 import type { JournalEvent, Sim } from '../lib/types'
 import { useSession } from '../store/session'
 import { findCommune, useWorld } from '../store/world'
@@ -148,10 +148,12 @@ export function Profile() {
             <div className="truncate font-display text-lg leading-tight font-extrabold">{user?.name}</div>
             <div className="truncate text-xs font-bold text-[var(--color-ink-soft)]">{user?.email}</div>
           </div>
-          <button className="btn btn-soft px-4" onClick={() => (signOut(), navigate('/'))}>
+          <button className="btn btn-soft px-4" onClick={() => void api.endSession().catch(() => undefined).finally(() => (signOut(), navigate('/')))}>
             <LogOut size={18} /> Sortir
           </button>
         </section>
+
+        <Devices />
 
         <InstallButton />
 
@@ -160,6 +162,87 @@ export function Profile() {
         </button>
       </div>
     </div>
+  )
+}
+
+/**
+ * The devices signed in to the account (a phone, a computer, the app), the one
+ * in hand first: when each was last used, and « Déconnecter » to sign one
+ * out (its game closes there), or all the others at once.
+ */
+function Devices() {
+  const [list, setList] = useState<Device[] | null>(null)
+  const [legacy, setLegacy] = useState(false)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [note, setNote] = useState<string | null>(null)
+  const load = () =>
+    void api
+      .sessions()
+      .then((r) => (setList(r.sessions), setLegacy(r.legacy)))
+      .catch(() => setList([]))
+  useEffect(load, [])
+  const ago = (iso: string) => {
+    const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000)
+    return m < 2 ? 'en ce moment' : m < 60 ? `il y a ${m} min` : m < 60 * 24 ? `il y a ${Math.round(m / 60)} h` : `il y a ${Math.round(m / 1440)} j`
+  }
+  const others = (list ?? []).filter((d) => !d.current)
+  return (
+    <section className="card p-4">
+      <div className="mb-3 flex items-center gap-2">
+        <MonitorSmartphone size={18} className="text-[var(--color-orange)]" />
+        <h2 className="font-display text-xl font-extrabold">Appareils connectés</h2>
+      </div>
+      {!list ? (
+        <p className="text-sm font-bold text-[var(--color-ink-soft)]">Chargement…</p>
+      ) : (
+        <ul className="space-y-2">
+          {legacy && (
+            <li className="rounded-2xl bg-[var(--color-canvas)] p-3 text-xs font-bold text-[var(--color-ink-soft)]">Cet appareil s'est connecté avant la liste des appareils : reconnecte-toi pour qu'il y apparaisse.</li>
+          )}
+          {list.map((d) => (
+            <li key={d.id} className="flex items-center gap-3 rounded-2xl bg-[var(--color-canvas)] p-3">
+              <IconTile icon={/iphone|android|ipad/i.test(d.device) ? Smartphone : Monitor} colors={d.current ? ['#69e2a0', '#00a862'] : ['#b8c1d1', '#7a8599']} size={38} />
+              <div className="min-w-0 flex-1 leading-tight">
+                <div className="truncate text-sm font-extrabold">{d.device || 'Appareil'}</div>
+                <div className="text-xs font-bold text-[var(--color-ink-soft)]">{d.current ? 'Cet appareil' : `Utilisé ${ago(d.lastSeen)}`} · connecté le {new Date(d.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</div>
+              </div>
+              {!d.current && (
+                <button
+                  className="btn btn-soft !px-3 !py-2 !text-xs text-[#d81b3f] disabled:opacity-50"
+                  disabled={busy === d.id}
+                  onClick={async () => {
+                    setBusy(d.id)
+                    await api.revokeSession(d.id).catch(() => undefined)
+                    setBusy(null)
+                    setNote(`${d.device || 'Cet appareil'} est déconnecté.`)
+                    load()
+                  }}
+                >
+                  Déconnecter
+                </button>
+              )}
+            </li>
+          ))}
+          {list.length === 0 && !legacy && <li className="text-sm font-bold text-[var(--color-ink-soft)]">Aucun appareil.</li>}
+        </ul>
+      )}
+      {(others.length > 0 || legacy) && (
+        <button
+          className="mt-3 w-full rounded-2xl border border-[#f3c2cb] py-2.5 text-sm font-extrabold text-[#d81b3f] disabled:opacity-50"
+          disabled={busy === 'all'}
+          onClick={async () => {
+            setBusy('all')
+            const r = await api.revokeOthers().catch(() => null)
+            setBusy(null)
+            setNote(r ? `${r.signedOut} appareil${r.signedOut > 1 ? 's' : ''} déconnecté${r.signedOut > 1 ? 's' : ''}.` : "Ça n'a pas marché, réessaie.")
+            load()
+          }}
+        >
+          Déconnecter tous les autres appareils
+        </button>
+      )}
+      {note && <p className="mt-2 text-xs font-bold text-[var(--color-ink-soft)]">{note}</p>}
+    </section>
   )
 }
 
