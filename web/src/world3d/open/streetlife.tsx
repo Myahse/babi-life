@@ -35,7 +35,7 @@ const GOODS = [
   { label: 'Pain', color: '#e6c48a' },
 ] as const
 
-export function StreetLife({ nav, seed, night }: { nav: Nav; seed: string; night: boolean }) {
+export function StreetLife({ nav, seed, night, taken }: { nav: Nav; seed: string; night: boolean; /** ground already given to a place, a field, a lot */ taken: Taken[] }) {
   const scenes = useMemo(() => {
     const out: Scene[] = []
     for (const e of nav.edges) {
@@ -71,8 +71,8 @@ export function StreetLife({ nav, seed, night }: { nav: Nav; seed: string; night
     return out
   }, [nav])
   const [post, setPost] = useState<Spot | null>(null)
-  const courts = useMemo(() => spotsOf(nav, 41, 36, false), [nav])
-  const stalls = useMemo(() => spotsOf(nav, 19, 24, true), [nav])
+  const courts = useMemo(() => spotsOf(nav, 41, 36, false, (seed) => (seed < 0.4 ? COURT_HALF : PITCH_HALF), taken), [nav, taken])
+  const stalls = useMemo(() => spotsOf(nav, 19, 24, true, undefined, taken), [nav, taken])
   const [shown, setShown] = useState<Scene[]>([])
   const [foot, setFoot] = useState<Spot | null>(null)
   const [basket, setBasket] = useState<Spot | null>(null)
@@ -151,20 +151,45 @@ const goodsMaterial = (c: string) => {
   return m
 }
 
-function spotsOf(nav: Nav, salt: number, minLen: number, sparse: boolean): Spot[] {
+/** Ground the game has already given away (a place it built, a landmark, a field, a player's lot): a circle. */
+export type Taken = { at: XZ; r: number }
+
+/**
+ * Spots beside the streets, set back from them. With a size (half its length
+ * across the street, half its width along it: a pitch, a court), the whole of
+ * it is looked at, a step round it too: no street, building, water or ground
+ * already taken anywhere on it, or the spot isn't one.
+ */
+function spotsOf(nav: Nav, salt: number, minLen: number, sparse: boolean, size?: (seed: number) => [number, number], taken: Taken[] = []): Spot[] {
   const out: Spot[] = []
+  const clear = (at: XZ, ux: number, uz: number, [hl, hw]: [number, number]) => {
+    if (taken.some((t) => Math.hypot(t.at[0] - at[0], t.at[1] - at[1]) < t.r + Math.hypot(hl, hw))) return false
+    for (let a = -hl; a <= hl + 0.01; a += hl / Math.ceil(hl / 2))
+      for (let b = -hw; b <= hw + 0.01; b += hw / Math.ceil(hw / 2)) {
+        // Across the street (a), along it (b).
+        const q: XZ = [at[0] + uz * a + ux * b, at[1] - ux * a + uz * b]
+        if (!nav.walkable(q[0], q[1])) return false
+        const n = nav.nearest(q, 30)
+        if (n && n.dist < nav.edges[n.edge].width / 2 + 1) return false
+      }
+    return true
+  }
   for (const e of nav.edges) {
     if (e.width < 5.5 || e.len < minLen || nav.ys[e.a] || nav.ys[e.b]) continue
     if (sparse && hash(e.a, e.b, salt) > 0.2) continue
     const [a, b] = [nav.nodes[e.a], nav.nodes[e.b]]
     const m: XZ = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]
     const [ux, uz] = [(b[0] - a[0]) / e.len, (b[1] - a[1]) / e.len]
+    // What it is (a pitch or a court) is the street's: its size follows.
+    const seed = hash(Math.round(m[0]), Math.round(m[1]), salt)
+    const half = size?.(seed)
     let at: XZ | null = null
     for (const side of [1, -1]) {
-      for (const extra of [11, 7]) {
-        const off = e.width / 2 + extra
+      for (const extra of half ? [2, 6] : [11, 7]) {
+        // A sized one: its near edge `extra` metres from the street's.
+        const off = e.width / 2 + extra + (half ? half[0] : 0)
         const p: XZ = [m[0] - uz * off * side, m[1] + ux * off * side]
-        if (nav.walkable(p[0], p[1])) {
+        if (half ? clear(p, ux, uz, half) : nav.walkable(p[0], p[1]) && !taken.some((t) => Math.hypot(t.at[0] - p[0], t.at[1] - p[1]) < t.r + 2)) {
           at = p
           break
         }
@@ -172,13 +197,16 @@ function spotsOf(nav: Nav, salt: number, minLen: number, sparse: boolean): Spot[
       if (at) break
     }
     if (!at) continue
-    out.push({ id: `${salt}:${Math.round(at[0])}:${Math.round(at[1])}`, at, rot: Math.atan2(ux, uz), seed: hash(at[0], at[1], salt) })
+    out.push({ id: `${salt}:${Math.round(at[0])}:${Math.round(at[1])}`, at, rot: Math.atan2(ux, uz), seed: half ? seed : hash(at[0], at[1], salt) })
   }
   return out
 }
 
 /** A street spot for basketball (a court) rather than football (a pitch): fixed by its seed. */
 const isCourt = (s: Spot) => s.seed < 0.4
+/** Their half sizes, across the street and along it: the fence and a step round it. */
+const PITCH_HALF: [number, number] = [12.5, 8]
+const COURT_HALF: [number, number] = [9.5, 6]
 
 function nearest(all: Spot[], n: number, avoid: XZ[] = []) {
   const [sx, sz] = whereabouts.sim

@@ -105,8 +105,26 @@ export function resolvePlaces(chunk: ChunkData, spots: PlaceSpot[], onReal?: (b:
       // Off the street if the map point is on it; a big one (a stadium)
       // stands on its point, its own streets running round it.
       const back = Math.min(s.landmark, 40)
-      const center: XZ = d < back ? [road.at[0] + ux * back, road.at[1] + uz * back] : s.at
-      out.push({ id: s.id, door, center, rot: Math.atan2(door[0] - center[0], door[1] - center[1]), roadAngle: road.angle })
+      let center: XZ = d < back ? [road.at[0] + ux * back, road.at[1] + uz * back] : s.at
+      let gate = door
+      // A place by the water (a maquis on the lagoon's edge): the map's point
+      // may fall in it. Its ground goes on the dry side of the street, else
+      // nobody could walk in.
+      const wet = (c: XZ) => {
+        let n = 0
+        for (let a = 0; a < 12; a++)
+          for (const k of [0.3, 0.7]) if (inWater(chunk, [c[0] + Math.cos(a * 0.52) * s.landmark! * k, c[1] + Math.sin(a * 0.52) * s.landmark! * k])) n++
+        return n + (inWater(chunk, c) ? 4 : 0)
+      }
+      if (wet(center) > 2) {
+        const far = s.landmark + road.width / 2
+        const other: XZ = [road.at[0] - ux * far, road.at[1] - uz * far]
+        if (wet(other) < wet(center)) {
+          center = other
+          gate = [road.at[0] - ux * (road.width / 2 + 1.2), road.at[1] - uz * (road.width / 2 + 1.2)]
+        }
+      }
+      out.push({ id: s.id, door: gate, center, rot: Math.atan2(gate[0] - center[0], gate[1] - center[1]), roadAngle: road.angle })
       continue
     }
     // A sports ground: played on its pitch, not in a house.
@@ -161,20 +179,71 @@ export function resolvePlaces(chunk: ChunkData, spots: PlaceSpot[], onReal?: (b:
       continue
     }
     // No building on the map here: the game builds one beside the street,
-    // on the side the map puts the place.
-    const [nx, nz] = [-Math.sin(road.angle), Math.cos(road.angle)]
+    // on the side the map puts the place; if another street runs through
+    // that ground (a corner, a lane behind), a little along it or across.
+    const [ux, uz] = [Math.cos(road.angle), Math.sin(road.angle)]
+    const [nx, nz] = [-uz, ux]
     const side = (x - road.at[0]) * nx + (z - road.at[1]) * nz >= 0 ? 1 : -1
     const off = road.width / 2 + 1.2
-    const door: XZ = [road.at[0] + nx * side * off, road.at[1] + nz * side * off]
-    const center: XZ = [road.at[0] + nx * side * (off + SETBACK - 3), road.at[1] + nz * side * (off + SETBACK - 3)]
+    const near = chunk.roads.filter((r) => r.pts.some(([px, pz]) => Math.abs(px - x) < 80 && Math.abs(pz - z) < 80))
+    const lotAt = (along: number, sd: number) => {
+      const foot: XZ = [road.at[0] + ux * along, road.at[1] + uz * along]
+      const door: XZ = [foot[0] + nx * sd * off, foot[1] + nz * sd * off]
+      const center: XZ = [foot[0] + nx * sd * (off + SETBACK - 3), foot[1] + nz * sd * (off + SETBACK - 3)]
+      return { door, center }
+    }
+    let lot = lotAt(0, side)
+    search: for (const along of [0, -8, 8, -16, 16])
+      for (const sd of [side, -side]) {
+        const c = lotAt(along, sd)
+        if (squareClear(near, c.center, road.angle, MADE_HALF)) {
+          lot = c
+          break search
+        }
+      }
+    const { door, center } = lot
     out.push({ id: s.id, door, center, rot: Math.atan2(door[0] - center[0], door[1] - center[1]), roadAngle: road.angle })
   }
   return out
 }
 
-/** Real buildings in the way of a game-made one (a 14 m lot, or a landmark's ground). */
-export function inTheWay(made: XZ[], c: XZ, landmarks: { at: XZ; r: number }[] = []) {
-  return made.some((p) => Math.abs(p[0] - c[0]) < 9 && Math.abs(p[1] - c[1]) < 9) || landmarks.some((l) => Math.hypot(l.at[0] - c[0], l.at[1] - c[1]) < l.r)
+/** In the chunk's water (a hole in it, an island, is dry)? */
+function inWater(chunk: ChunkData, p: XZ) {
+  return chunk.areas.some((a) => a.kind === 'water' && pointInRing(p, a.rings[0]) && !a.rings.slice(1).some((h) => pointInRing(p, h)))
+}
+
+/** Half the side of the ground a game-made building takes, its yard round it. */
+const MADE_HALF = 8
+
+/** No street on a square of half-side `half` turned by `angle` round `c` (looked at every 2 m, its edges too). */
+function squareClear(roads: ChunkData['roads'], c: XZ, angle: number, half: number) {
+  const [ux, uz] = [Math.cos(angle), Math.sin(angle)]
+  for (let a = -half; a <= half + 0.01; a += half / 4)
+    for (let b = -half; b <= half + 0.01; b += half / 4) {
+      const q: XZ = [c[0] + ux * a - uz * b, c[1] + uz * a + ux * b]
+      for (const r of roads)
+        for (let i = 1; i < r.pts.length; i++) {
+          const [ax, az] = r.pts[i - 1]
+          const [bx, bz] = r.pts[i]
+          const l2 = (bx - ax) ** 2 + (bz - az) ** 2
+          const t = l2 ? Math.max(0, Math.min(1, ((q[0] - ax) * (bx - ax) + (q[1] - az) * (bz - az)) / l2)) : 0
+          if (Math.hypot(ax + (bx - ax) * t - q[0], az + (bz - az) * t - q[1]) < r.width / 2 + 0.5) return false
+        }
+    }
+  return true
+}
+
+/**
+ * Real buildings in the way of a game-made one (its lot, or a landmark's
+ * ground): the ones whose middle is on it, and, when the building's outline
+ * is given, the ones reaching onto it (a long block beside the lot).
+ */
+export function inTheWay(made: XZ[], c: XZ, landmarks: { at: XZ; r: number }[] = [], ring?: XZ[]) {
+  const on = (p: XZ, q: XZ, h: number) => Math.abs(p[0] - q[0]) < h && Math.abs(p[1] - q[1]) < h
+  return (
+    made.some((p) => on(p, c, MADE_HALF + 1) || (!!ring && Math.abs(p[0] - c[0]) < 80 && Math.abs(p[1] - c[1]) < 80 && (ring.some((q) => on(p, q, MADE_HALF)) || pointInRing(p, ring)))) ||
+    landmarks.some((l) => Math.hypot(l.at[0] - c[0], l.at[1] - c[1]) < l.r)
+  )
 }
 
 /**

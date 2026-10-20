@@ -51,7 +51,7 @@ self.onmessage = async (e: MessageEvent<ChunkRequest>) => {
       const g = grounds.find((a) => pointInRing(b.c, a.rings[0]))
       return g ? (g.kind === 'campus' ? 'institution' : 'hospital') : 'default'
     }
-    const meshes = buildChunk(data, (c) => inTheWay(made, c, landmarks) || fields.some((f) => onFieldGround(f, c)), styleOf)
+    const meshes = buildChunk(data, (c, ring) => inTheWay(made, c, landmarks, ring) || fields.some((f) => onFieldGround(f, c) || ring.some((q) => onFieldGround(f, q, 0.3))), styleOf)
     const out: Record<string, Arrays> = {}
     const transfer: ArrayBuffer[] = []
     for (const [name, g] of Object.entries(meshes)) {

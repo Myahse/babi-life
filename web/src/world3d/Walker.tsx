@@ -32,11 +32,10 @@ const RUN_FROM = 90
 /** Further than this, the Sim hails a moto-taxi and rides there behind the driver. */
 const RIDE_FROM = 220
 const RIDE = 9 // a moto-taxi in town: about 32 km/h
-/** Busy doing these, the Sim goes up and down a way by the place: a stroll, a hike, the zoo, laps of the stadium. */
+/** Busy doing these, the Sim goes up and down a way by the place: a stroll, a hike, laps of the stadium. (The zoo: the player walks it freely.) */
 const LOOPS: Record<string, { speed: number; run?: boolean; len: number }> = {
   'balade-lagune': { speed: 1.2, len: 14 },
   hike: { speed: 1.4, len: 18 },
-  'zoo-visite': { speed: 1.0, len: 12 },
   'stade-footing': { speed: 3.2, run: true, len: 26 },
   // Hanging out with a friend: a slow walk up and down the street, side by side.
   'ami-trainer': { speed: 1.1, len: 16 },
@@ -457,6 +456,13 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       g.rotation.y = worldFacing(f, s.face)
       if (s.pose !== matchPose) setMatchPose(s.pose)
     } else if (onTouchline && fieldLot && !path.current.length && !padWalking.current) g.rotation.y = Math.atan2(fieldLot.x - g.position.x, fieldLot.z - g.position.z)
+    // Talking with someone: face them.
+    const face = whereabouts.faceTo
+    if (face && !path.current.length && !padWalking.current && Math.hypot(face[0] - g.position.x, face[1] - g.position.z) > 0.3) {
+      const want = Math.atan2(face[0] - g.position.x, face[1] - g.position.z)
+      const d = Math.atan2(Math.sin(want - g.rotation.y), Math.cos(want - g.rotation.y))
+      g.rotation.y += d * Math.min(1, dt * 8)
+    }
     // Standing at a door: offer to go in.
     if (onNear) {
       let best: Lot | null = null
