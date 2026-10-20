@@ -25,7 +25,7 @@ import { NoteShower } from '../world3d/money'
 import { FullDetail } from '../avatar/Human'
 import { OUTFITS, OUTFIT_DEFAULT_COLOR } from '../avatar/options'
 import type { Sim } from '../lib/types'
-import { Map as MapIcon, MessageCircle, Newspaper, Eye, Heart, Check } from 'lucide-react'
+import { Map as MapIcon, MessageCircle, Newspaper, Eye, Heart, Check, Lock, ShieldCheck, PhoneCall, TriangleAlert } from 'lucide-react'
 import { StreetStall } from '../world3d/open/stalls'
 import { StreetSpot } from '../world3d/open/streetPeople'
 import { NouchiCorner } from '../world3d/open/nouchis'
@@ -40,7 +40,7 @@ import { Shower } from '../world3d/interior/ActionProps'
 const q = new URLSearchParams(location.search)
 const VIDEO = q.has('video')
 const ALPHA = q.has('alpha')
-type SceneId = 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'princesse' | `famille-${string}` | 'palais' | 'basket' | 'fete' | 'cause' | 'look' | 'siporex' | 'phone' | 'visages' | 'coiffures' | 'selfie' | 'yop' | 'garba' | 'brochette' | 'plateau' | 'stade' | 'concert' | 'couloir' | 'amis' | 'salon' | 'douche' | 'zoo' | 'loto'
+type SceneId = 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'princesse' | `famille-${string}` | 'palais' | 'basket' | 'fete' | 'cause' | 'look' | 'siporex' | 'phone' | 'visages' | 'coiffures' | 'selfie' | 'yop' | 'garba' | 'brochette' | 'plateau' | 'stade' | 'concert' | 'couloir' | 'amis' | 'salon' | 'douche' | 'zoo' | 'loto' | 'chambre' | 'chambre-choc' | 'cabine'
 /**
  * Which film: ?video (the launch), ?video=bouger (getting about: gbaka,
  * Gnango, Rue Princesse), ?video=bande-annonce (the trailer: gnambro or
@@ -50,9 +50,11 @@ type SceneId = 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'prin
  * 1 500 followers, asks about the weekend, wishes a good week and teases the
  * good news ahead: marketing/scripts/merci-1500.md, voice voix-merci.mp3) or
  * ?video=gameplay (how you play: born gnambro, the goal is debout, six steps
- * to get there, the money going up and down; its beat: marketing/beat.py).
+ * to get there, the money going up and down; its beat: marketing/beat.py) or
+ * ?video=arnaque (Awa was scammed through a link on Gbairai: her Waye account
+ * emptied, what to remember: marketing/scripts/arnaque-waye.md, voice voix-arnaque.mp3).
  */
-type FilmId = 'lancement' | 'bouger' | 'bande-annonce' | 'decouverte' | 'live' | 'merci' | 'gameplay'
+type FilmId = 'lancement' | 'bouger' | 'bande-annonce' | 'decouverte' | 'live' | 'merci' | 'gameplay' | 'arnaque'
 const FILM = (q.get('video') || 'lancement') as FilmId
 
 /** The materials as the server has them (game/build.go). */
@@ -224,6 +226,154 @@ function Salon({ t, gift }: { t: number; gift?: boolean }) {
   )
 }
 
+/** Awa's bedroom at night (« arnaque »): the bed, the bedside lamp, the night at the window; her phone's light on her face. Shocked: her head in her hands. */
+function Chambre({ t, shock }: { t: number; shock?: boolean }) {
+  const wall = '#3d4a73'
+  const shake: [number, number] = [Math.sin(t * 2.1) * 0.025, Math.cos(t * 1.7) * 0.02]
+  // The screen's glow flickers a little as she scrolls.
+  const glow = shock ? 0 : 2.2 + Math.sin(t * 7) * 0.25
+  return (
+    <>
+      <color attach="background" args={['#0b1026']} />
+      <hemisphereLight args={['#6f7fc0', '#2a2238', 0.55]} />
+      <ambientLight intensity={0.2} />
+      {/* The bedside lamp, warm, and the cold light of the phone */}
+      <pointLight position={[-2.2, 1.3, 1.6]} intensity={5} distance={5} color="#ffbe6b" />
+      <pointLight position={[0.1, 1.45, 4.85]} intensity={glow} distance={1.6} color="#9fd0ff" />
+      <Camera at={[0.9 + shake[0], 2.3 + shake[1], 12.2]} look={[0, 1.25, 3.4]} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 4]} receiveShadow>
+        <planeGeometry args={[12, 8]} />
+        <meshLambertMaterial color="#6b4a33" />
+      </mesh>
+      <mesh position={[0, 1.6, -0.05]}>
+        <boxGeometry args={[12, 3.2, 0.1]} />
+        <meshLambertMaterial color={wall} />
+      </mesh>
+      {[-6, 6].map((x) => (
+        <mesh key={x} position={[x, 1.6, 4]}>
+          <boxGeometry args={[0.1, 3.2, 8]} />
+          <meshLambertMaterial color={wall} />
+        </mesh>
+      ))}
+      {/* The window on the night: the moon, the lights of the next building */}
+      <mesh position={[2.4, 1.8, 0.01]}>
+        <boxGeometry args={[1.6, 1.1, 0.02]} />
+        <meshBasicMaterial color="#14204a" />
+      </mesh>
+      <mesh position={[2.85, 2.1, 0.03]}>
+        <circleGeometry args={[0.13, 20]} />
+        <meshBasicMaterial color="#fff4cf" />
+      </mesh>
+      {[[1.9, 1.5], [2.2, 1.6], [2.6, 1.45], [2.0, 1.75]].map(([x, y], i) => (
+        <mesh key={i} position={[x, y, 0.03]}>
+          <planeGeometry args={[0.1, 0.08]} />
+          <meshBasicMaterial color="#ffd27a" />
+        </mesh>
+      ))}
+      {[-0.55, 0, 0.55].map((dx) => (
+        <mesh key={dx} position={[2.4 + dx, 1.8, 0.04]}>
+          <boxGeometry args={[0.04, 1.1, 0.03]} />
+          <meshLambertMaterial color="#222" />
+        </mesh>
+      ))}
+      {/* The bed, its pagne cover; the bedside table and its lamp */}
+      <mesh position={[0, 0.25, 2.2]} castShadow receiveShadow>
+        <boxGeometry args={[2.1, 0.5, 2.4]} />
+        <meshLambertMaterial color="#5a3820" />
+      </mesh>
+      <mesh position={[0, 0.58, 2.3]}>
+        <boxGeometry args={[2.0, 0.18, 2.2]} />
+        <meshLambertMaterial color="#e86a1f" />
+      </mesh>
+      <mesh position={[0, 0.72, 1.25]}>
+        <boxGeometry args={[1.6, 0.14, 0.4]} />
+        <meshLambertMaterial color="#f4efe6" />
+      </mesh>
+      <mesh position={[0, 0.9, 1.0]}>
+        <boxGeometry args={[2.1, 1.1, 0.12]} />
+        <meshLambertMaterial color="#4a2e1a" />
+      </mesh>
+      <mesh position={[-2.2, 0.35, 1.6]}>
+        <boxGeometry args={[0.7, 0.7, 0.6]} />
+        <meshLambertMaterial color="#6b4426" />
+      </mesh>
+      <mesh position={[-2.2, 0.95, 1.6]}>
+        <cylinderGeometry args={[0.15, 0.22, 0.35, 12]} />
+        <meshBasicMaterial color="#ffd89a" />
+      </mesh>
+      {/* Awa: on her phone, then her head in her hands */}
+      <group position={[0.1, 0, 4.4]} rotation={[0, shock ? Math.sin(t * 3) * 0.12 : 0.1, 0]}>
+        <BlockHuman look={AWA} gender="femme" pose={shock ? (Math.floor(t / 1.1) % 2 ? 'rant' : 'stumble') : Math.floor(t / 2.4) % 3 === 2 ? 'talk' : 'phone'} seed={11} />
+      </group>
+    </>
+  )
+}
+
+/** The Waye kiosk by the road, the next morning (« arnaque »): its parasol, the agent behind his counter shaking his head, Awa telling him. */
+function Cabine({ t }: { t: number }) {
+  const agent = useMemo(() => L({ skin: '#5a3420', hair: 'short', outfit: 'chemise', outfitColor: '#1aa6e6', accessory: 'none', beard: 'bouc' }), [])
+  return (
+    <>
+      <color attach="background" args={['#9fd4f2']} />
+      <hemisphereLight args={['#ffffff', '#b8a27c', 1.25]} />
+      <directionalLight position={[6, 10, 8]} intensity={1.6} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-8} shadow-camera-right={8} shadow-camera-top={8} shadow-camera-bottom={-8} />
+      <Camera at={[2.6 + Math.sin(t * 0.4) * 0.3, 2.6, 12.5]} look={[0.4, 1.5, 1.2]} />
+      {/* The red earth of the roadside, the road behind, a wall */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 2]} receiveShadow>
+        <planeGeometry args={[40, 20]} />
+        <meshLambertMaterial color="#b9744a" />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, -4]}>
+        <planeGeometry args={[40, 5]} />
+        <meshLambertMaterial color="#3d3d42" />
+      </mesh>
+      <mesh position={[0, 1.2, -7]}>
+        <boxGeometry args={[40, 2.4, 0.3]} />
+        <meshLambertMaterial color="#e9d8a6" />
+      </mesh>
+      {/* The kiosk: blue, its counter, its sign, its parasol */}
+      <mesh position={[0, 1.1, 0]} castShadow receiveShadow>
+        <boxGeometry args={[2.6, 2.2, 1.6]} />
+        <meshLambertMaterial color="#1aa6e6" />
+      </mesh>
+      <mesh position={[0, 1.15, 0.82]}>
+        <boxGeometry args={[2.2, 0.9, 0.04]} />
+        <meshLambertMaterial color="#0f2a3d" />
+      </mesh>
+      {/* The counter, out in front, on its blue front panel */}
+      <mesh position={[0, 1.02, 1.75]} castShadow>
+        <boxGeometry args={[2.7, 0.08, 0.5]} />
+        <meshLambertMaterial color="#f4f1ea" />
+      </mesh>
+      <mesh position={[0, 0.5, 1.9]} castShadow receiveShadow>
+        <boxGeometry args={[2.6, 1.0, 0.2]} />
+        <meshLambertMaterial color="#1590c9" />
+      </mesh>
+      <Sign p={[0, 2.55, 0.81]} w={2.4} text="WAYE · DÉPÔT RETRAIT" bg="#ffd43b" fg="#0f2a3d" />
+      <mesh position={[-1.9, 1.3, 0.6]}>
+        <cylinderGeometry args={[0.04, 0.04, 2.6, 8]} />
+        <meshLambertMaterial color="#666" />
+      </mesh>
+      <mesh position={[-1.9, 2.6, 0.6]} castShadow>
+        <coneGeometry args={[1.5, 0.6, 12]} />
+        <meshLambertMaterial color="#1aa6e6" />
+      </mesh>
+      {/* The agent, behind the counter, shaking his head */}
+      <group position={[0, 0, 1.2]} rotation={[0, Math.sin(t * 5) * (Math.floor(t / 1.6) % 2 ? 0.25 : 0.05), 0]}>
+        <BlockHuman look={agent} gender="homme" pose={Math.floor(t / 1.6) % 2 ? 'talk' : 'idle'} seed={4} />
+      </group>
+      {/* Awa, in front, telling him */}
+      <group position={[1.9, 0, 2.7]} rotation={[0, -Math.PI / 2 - 0.6, 0]}>
+        <BlockHuman look={AWA} gender="femme" pose={Math.floor(t / 1.3) % 3 === 1 ? 'rant' : 'talk'} seed={11} />
+      </group>
+      {/* Someone waiting their turn */}
+      <group position={[-1.6, 0, 2.8]} rotation={[0, Math.PI - 0.4, 0]}>
+        <BlockHuman look={CREW[0].look} gender="homme" pose="phone" seed={3} />
+      </group>
+    </>
+  )
+}
+
 function Camera({ at, look }: { at: [number, number, number]; look: [number, number, number] }) {
   const camera = useThree((s) => s.camera)
   camera.position.set(...at)
@@ -234,6 +384,8 @@ function Camera({ at, look }: { at: [number, number, number]; look: [number, num
 /** One scene of the video (or a still), at t seconds into it. */
 function World({ scene, t }: { scene: SceneId; t: number }) {
   if (scene === 'salon') return <Salon t={t} />
+  if (scene === 'chambre' || scene === 'chambre-choc') return <Chambre t={t} shock={scene === 'chambre-choc'} />
+  if (scene === 'cabine') return <Cabine t={t} />
   const night = scene === 'dance' || scene === 'fete'
   const spots = useSpots()
   const wide = useThree((s) => s.size.width >= s.size.height)
@@ -993,7 +1145,7 @@ function GbairaiChat({ t }: { t: number }) {
 
 /* ---------- The video: 25 seconds, scene after scene ---------- */
 
-type Shot = { from: number; to: number; scene: SceneId; title?: string; sub?: string; /** Its number, in the film that goes through everything. */ n?: number; /** The live: what Awa says, as a subtitle. */ cap?: string; /** « Merci »: the follower counter, the gift that hides. */ counter?: boolean; tease?: boolean }
+type Shot = { from: number; to: number; scene: SceneId; title?: string; sub?: string; /** Its number, in the film that goes through everything. */ n?: number; /** The live: what Awa says, as a subtitle. */ cap?: string; /** « Merci »: the follower counter, the gift that hides. */ counter?: boolean; tease?: boolean; /** « Arnaque »: what the phone shows, and the tip. */ phone?: 'msg' | 'page' | 'drain' | 'call' | 'masque'; tip?: number }
 /** Each film: its shots, when the intro ends and the outro starts, its length (marketing/video.mjs reads it). */
 const FILMS: Record<FilmId, { shots: Shot[]; intro: number; outro: number; length: number; hook: [string, string, string] }> = {
   lancement: {
@@ -1102,6 +1254,26 @@ const FILMS: Record<FilmId, { shots: Shot[]; intro: number; outro: number; lengt
     intro: 0,
     outro: 30.6,
     length: 36.5,
+    hook: ['', '', ''],
+  },
+  // « On m'a arnaquée » (marketing/scripts/arnaque-waye.md): the link on Gbairai, the code given, the account emptied, what to remember.
+  arnaque: {
+    shots: [
+      { from: 0, to: 4.5, scene: 'chambre', cap: 'Hier soir, on m’a arnaquée 😭' },
+      { from: 4.5, to: 11, scene: 'chambre', phone: 'msg', cap: 'Un message de « Fanta » sur Gbairai…' },
+      { from: 11, to: 16, scene: 'chambre', phone: 'page', cap: 'Mon numéro… et mon code secret 😬' },
+      { from: 16, to: 22, scene: 'chambre-choc', phone: 'drain', cap: 'Retrait, retrait… 0 F !' },
+      { from: 22, to: 28, scene: 'chambre-choc', phone: 'call', cap: 'Fanta n’a rien envoyé : piratée !' },
+      { from: 28, to: 34, scene: 'cabine', cap: '« Waye ne demande jamais ton code. »' },
+      { from: 34, to: 37.4, scene: 'cabine', tip: 1 },
+      { from: 37.4, to: 41.2, scene: 'chambre', tip: 2 },
+      { from: 41.2, to: 44, scene: 'cabine', tip: 3 },
+      { from: 44, to: 49, scene: 'chambre', phone: 'masque', cap: 'Dans Babi Life, les liens sont masqués 🛡️' },
+      { from: 49, to: 55, scene: 'crew' },
+    ],
+    intro: 0,
+    outro: 49,
+    length: 55,
     hook: ['', '', ''],
   },
   // How you play: born gnambro, the goal is debout, six steps, the money that comes and goes.
@@ -1439,6 +1611,242 @@ function MerciOverlay({ t, shot }: { t: number; shot: Shot }) {
 }
 
 /** Confetti falling from the top, in the flag's colours and the game's. */
+/** « Arnaque »: the phone in Awa's hand, in a frame. */
+function ArnaquePhone({ t, children, shake = 0 }: { t: number; children: React.ReactNode; shake?: number }) {
+  const up = ease(clamp01(t / 0.45))
+  return (
+    <div className="absolute inset-x-0 bottom-[17%] flex justify-center font-sans" style={{ transform: `translate(${shake}px, ${(1 - up) * 80}%)`, opacity: up }}>
+      <div className="w-[380px] rounded-[48px] bg-[#141416] p-2.5 shadow-[0_30px_70px_-20px_rgba(0,0,0,0.8)]">
+        <div className="min-h-[420px] overflow-hidden rounded-[40px] bg-white text-[var(--color-ink)]">{children}</div>
+      </div>
+    </div>
+  )
+}
+
+/** A chat bubble that appears at `at`. */
+function Bubble({ t, at, mine, children }: { t: number; at: number; mine?: boolean; children: React.ReactNode }) {
+  if (t < at) return null
+  return (
+    <div className={`max-w-[84%] rounded-2xl px-3.5 py-2 text-[19px] leading-snug font-bold ${mine ? 'self-end rounded-br-sm bg-[#ffe2c4] text-[#4a2200]' : 'self-start rounded-tl-sm bg-white shadow-sm'}`} style={{ opacity: clamp01((t - at) / 0.25), transform: `translateY(${(1 - clamp01((t - at) / 0.25)) * 10}px)` }}>
+      {children}
+    </div>
+  )
+}
+
+/** Gbairai's conversation with « Fanta »; masked: as it shows in Babi Life, the link hidden. */
+function FakeChat({ t, masked }: { t: number; masked?: boolean }) {
+  const link = masked ? (
+    <span className="inline-flex items-center gap-1 rounded-md bg-[#eceff3] px-2 py-0.5 text-[#667781]">
+      <ShieldCheck size={16} /> [lien masqué]
+    </span>
+  ) : (
+    <span className="text-[#1971c2] underline">waye-bonus.ci/cadeau</span>
+  )
+  // The tap on the link (not when it's masked).
+  const tap = !masked && t > 5.2 && t < 6.2
+  return (
+    <>
+      <div className="flex items-center gap-3 px-5 pt-5 pb-3 text-white" style={{ background: '#c2410c' }}>
+        <AppLogo id="gbairai" size={40} radius={12} />
+        <div>
+          <div className="font-display text-[22px] leading-none font-extrabold">Fanta</div>
+          <div className="text-[14px] font-bold text-white/85">en ligne</div>
+        </div>
+      </div>
+      <div className="relative flex min-h-[330px] flex-col gap-2 bg-[#efe6da] p-4">
+        <Bubble t={t} at={masked ? 0 : 0.5}>Ma chérie !! 😍 Waye offre 50 000 F à ses clients, c’est jusqu’à ce soir seulement !</Bubble>
+        <Bubble t={t} at={masked ? 0.2 : 1.7}>
+          👉 {link}
+        </Bubble>
+        {!masked && <Bubble t={t} at={3.2} mine>C’est vrai ?? 😳</Bubble>}
+        {!masked && <Bubble t={t} at={4.3}>Oui oui ! J’ai déjà reçu les miens, clique vite 🏃🏾‍♀️</Bubble>}
+        {tap && <span className="absolute top-[118px] left-[150px] block h-12 w-12 rounded-full border-4 border-[#ff7a00] bg-[#ff7a00]/30" style={{ transform: `scale(${1 + (t - 5.2) * 0.6})`, opacity: 1 - (t - 5.2) }} />}
+        {masked && (
+          <div className="mt-2 flex items-center gap-2 self-center rounded-xl bg-[#fff3c4] px-3 py-2 text-[16px] font-extrabold text-[#5c4a00]" style={{ opacity: clamp01((t - 1) / 0.4) }}>
+            <ShieldCheck size={18} /> Babi Life masque les liens
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
+
+/** The fake « Waye Bonus » page: the number, then the secret code typed in, then « send ». */
+function FakePage({ t }: { t: number }) {
+  const number = '07 58 •• •• 12'
+  const typed = number.slice(0, Math.round(clamp01((t - 0.6) / 1.4) * number.length))
+  const digits = Math.min(4, Math.max(0, Math.floor((t - 2.4) / 0.4)))
+  const sent = t > 4.3
+  return (
+    <>
+      <div className="flex items-center gap-2 bg-[#f1f3f5] px-4 pt-5 pb-2 text-[15px] font-bold text-[#495057]">
+        <Lock size={14} /> waye-bonus.ci/cadeau
+      </div>
+      <div className="flex flex-col gap-3 p-5">
+        <div className="rounded-2xl bg-[#1aa6e6] p-4 text-center text-white">
+          <div className="text-[40px] leading-none">🎁</div>
+          <div className="mt-1 font-display text-[26px] leading-tight font-extrabold">Waye Bonus</div>
+          <div className="text-[18px] font-bold">50 000 F offerts aujourd’hui</div>
+        </div>
+        <div>
+          <div className="text-[14px] font-extrabold text-[#868e96]">Ton numéro Waye</div>
+          <div className="mt-1 h-12 rounded-xl border-2 border-[#dee2e6] px-3 py-2 text-[22px] font-extrabold">{typed}</div>
+        </div>
+        <div>
+          <div className="text-[14px] font-extrabold text-[#868e96]">Ton code secret</div>
+          <div className="mt-1 flex h-12 items-center gap-3 rounded-xl border-2 px-3 text-[26px] font-extrabold" style={{ borderColor: digits ? '#ff7a00' : '#dee2e6' }}>
+            {[0, 1, 2, 3].map((i) => (
+              <span key={i}>{i < digits ? '●' : '○'}</span>
+            ))}
+          </div>
+        </div>
+        <div className="mt-1 rounded-full py-3 text-center text-[20px] font-extrabold text-white" style={{ background: sent ? '#868e96' : '#2f9e44' }}>
+          {sent ? 'Envoi…' : 'Recevoir mes 50 000 F'}
+        </div>
+      </div>
+    </>
+  )
+}
+
+/** The Waye account emptied: withdrawal after withdrawal, down to 0 F. */
+const DRAIN: [number, number][] = [
+  [1.2, 30000],
+  [2.2, 30000],
+  [3.2, 27500],
+]
+function Drained({ t }: { t: number }) {
+  const balance = 87500 - DRAIN.reduce((sum, [at, d]) => sum + d * ease(clamp01((t - at) / 0.35)), 0)
+  const zero = t > 3.6
+  return (
+    <>
+      <div className="flex items-center gap-3 px-5 pt-5 pb-3">
+        <AppLogo id="waye" size={42} radius={13} />
+        <span className="font-display text-[24px] font-extrabold">Waye</span>
+      </div>
+      <div className="px-5">
+        <div className="text-[16px] font-bold text-[#868e96]">Ton solde</div>
+        <div className="font-display text-[60px] leading-none font-extrabold tabular-nums" style={{ color: zero ? '#e03131' : 'var(--color-ink)' }}>
+          {cfa(balance)}
+        </div>
+      </div>
+      <div className="mt-4 flex flex-col gap-2 px-5">
+        {DRAIN.filter(([at]) => t >= at).map(([at, d], i) => (
+          <div key={i} className="flex items-center justify-between rounded-xl bg-[#fff0f0] px-3 py-2.5 text-[18px] font-extrabold" style={{ opacity: clamp01((t - at) / 0.2) }}>
+            <span>Retrait · numéro inconnu</span>
+            <span className="text-[#e03131]">−{cfa(d)}</span>
+          </div>
+        ))}
+      </div>
+      {zero && (
+        <div className="mt-4 flex justify-center">
+          <span className="rotate-[-8deg] rounded-xl border-[5px] border-[#e03131] px-4 py-1 font-display text-[40px] font-extrabold text-[#e03131]" style={slam(t, 3.6)}>
+            ARNAQUÉE
+          </span>
+        </div>
+      )}
+    </>
+  )
+}
+
+/** Calling Fanta: she sent nothing. */
+function CallFanta({ t }: { t: number }) {
+  return (
+    <div className="flex min-h-[420px] flex-col items-center bg-gradient-to-b from-[#1b1d2a] to-[#2b2f45] px-5 pt-10 text-white">
+      <div className="grid h-24 w-24 place-items-center rounded-full bg-[#ff7a00] font-display text-[44px] font-extrabold">F</div>
+      <div className="mt-3 font-display text-[30px] font-extrabold">Fanta</div>
+      <div className="flex items-center gap-2 text-[18px] font-bold text-white/70">
+        <PhoneCall size={18} /> {t < 1.6 ? 'Appel…' : 'En communication'}
+      </div>
+      {t > 1.8 && (
+        <div className="mt-8 rounded-2xl bg-white px-4 py-3 text-[20px] leading-snug font-extrabold text-[var(--color-ink)]" style={{ opacity: clamp01((t - 1.8) / 0.3) }}>
+          « Moi ? J’ai rien envoyé dèh ! On a piraté mon Gbairai ! »
+        </div>
+      )}
+    </div>
+  )
+}
+
+const TIPS: { icon: typeof Lock; title: string; sub: string; color: string }[] = [
+  { icon: Lock, title: 'On ne te demandera JAMAIS ton code secret', sub: 'Ni Waye, ni l’agent, ni un ami', color: '#e03131' },
+  { icon: TriangleAlert, title: 'Un lien qui promet de l’argent = ARNAQUE', sub: 'Même d’un ami : appelle-le d’abord', color: '#ff7a00' },
+  { icon: PhoneCall, title: 'Arnaqué·e ? Appelle vite pour bloquer ton compte', sub: 'Plus tu vas vite, plus on peut agir', color: '#2f9e44' },
+]
+
+/** « Arnaque »: Awa's story, her phone at each step, the three tips, captions. */
+function ArnaqueOverlay({ t, shot }: { t: number; shot: Shot }) {
+  const local = t - shot.from
+  const shake = shot.phone === 'drain' && local > 1.2 && local < 4.2 ? Math.sin(t * 80) * 7 : 0
+  const tip = shot.tip ? TIPS[shot.tip - 1] : null
+  return (
+    <>
+      <div className="absolute inset-x-0 top-0 flex items-center gap-3 bg-gradient-to-b from-black/60 to-transparent px-6 pt-8 pb-12 font-sans">
+        <span className="block h-14 w-14 overflow-hidden rounded-full border-[3px] border-[#ff7a00] bg-[#ffd8a8]">
+          <AwaFace t={t} size={56} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="text-[26px] leading-none font-extrabold">awa.babi</div>
+          <div className="mt-1 text-[18px] font-bold text-white/80">Story time · On m’a arnaquée</div>
+        </div>
+        <span className="flex items-center gap-1.5 rounded-lg bg-[#e03131] px-3 py-1.5 text-[18px] font-extrabold">
+          <TriangleAlert size={18} /> PRÉVENTION
+        </span>
+      </div>
+      {shot.phone === 'msg' && (
+        <ArnaquePhone t={local}>
+          <FakeChat t={local} />
+        </ArnaquePhone>
+      )}
+      {shot.phone === 'page' && (
+        <ArnaquePhone t={local}>
+          <FakePage t={local} />
+        </ArnaquePhone>
+      )}
+      {shot.phone === 'drain' && (
+        <ArnaquePhone t={local} shake={shake}>
+          <Drained t={local} />
+        </ArnaquePhone>
+      )}
+      {shot.phone === 'call' && (
+        <ArnaquePhone t={local}>
+          <CallFanta t={local} />
+        </ArnaquePhone>
+      )}
+      {shot.phone === 'masque' && (
+        <ArnaquePhone t={local}>
+          <FakeChat t={local} masked />
+        </ArnaquePhone>
+      )}
+      {/* The tips, one by one: big, in the middle */}
+      {tip && (
+        <div className="absolute inset-x-0 top-[24%] flex flex-col items-center px-8 font-display">
+          <div className="rounded-full bg-[#0f1230]/85 px-6 py-2 text-[34px] font-extrabold text-white" style={pop2(local, 0)}>
+            Retenez bien
+          </div>
+          <div className="mt-4 w-full rounded-[36px] bg-white p-6 text-center text-[var(--color-ink)] shadow-[0_24px_60px_-20px_rgba(0,0,0,0.7)]" style={pop2(local, 0.25)}>
+            <div className="mx-auto grid h-20 w-20 place-items-center rounded-full text-white" style={{ background: tip.color }}>
+              <span className="text-[44px] leading-none font-extrabold">{shot.tip}</span>
+            </div>
+            <tip.icon size={44} className="mx-auto mt-4" style={{ color: tip.color }} />
+            <div className="mt-3 text-[40px] leading-[1.05] font-extrabold">{tip.title}</div>
+            <div className="mt-3 font-sans text-[24px] font-bold text-[var(--color-ink-soft)]">{tip.sub}</div>
+          </div>
+        </div>
+      )}
+      {shot.cap && (
+        <div className="absolute inset-x-0 bottom-[7%] flex justify-center px-10">
+          <div className="rounded-2xl bg-white px-5 py-2.5 text-center text-[32px] leading-tight font-extrabold text-[var(--color-ink)] shadow-[0_12px_30px_-10px_rgba(0,0,0,0.6)]">{shot.cap}</div>
+        </div>
+      )}
+    </>
+  )
+}
+
+/** Up into place, from `at` seconds into the shot. */
+function pop2(local: number, at: number) {
+  const k = ease(clamp01((local - at) / 0.4))
+  return { opacity: k, transform: `translateY(${(1 - k) * 30}px) scale(${0.9 + 0.1 * k})` }
+}
+
 function Confetti({ t }: { t: number }) {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -1619,6 +2027,7 @@ function Video({ t, qr, url, placeholder }: { t: number; qr: string; url: string
       {FILM === 'live' && !outro && <LiveOverlay t={t} shot={shot} />}
       {FILM === 'merci' && !outro && <MerciOverlay t={t} shot={shot} />}
       {FILM === 'gameplay' && !outro && <GameplayOverlay t={t} shot={shot} />}
+      {FILM === 'arnaque' && !outro && <ArnaqueOverlay t={t} shot={shot} />}
       {FILM === 'live' && shot.scene === 'garba' && local > 5.6 && local < 10.2 && <WayePay t={local - 5.6} />}
       {FILM === 'live' && shot.scene === 'amis' && local > 3 && <GbairaiChat t={local - 3} />}
       {/* Captions */}
@@ -1651,7 +2060,13 @@ function Video({ t, qr, url, placeholder }: { t: number; qr: string; url: string
             <Logo size={72} />
           </div>
           <div className="text-[52px] leading-[1] font-extrabold" style={pop(O + 0.6)}>
-            {FILM === 'merci' ? (
+            {FILM === 'arnaque' ? (
+              <>
+                Partage pour protéger
+                <br />
+                <span className="text-[var(--color-orange)]">ta famille 🙏🏾</span>
+              </>
+            ) : FILM === 'merci' ? (
               <>
                 Merci la famille !
                 <br />
