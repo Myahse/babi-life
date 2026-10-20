@@ -6,6 +6,10 @@ import { Portrait } from '../avatar/portrait'
 import { Photo, ReportSheet } from '../components/Social'
 import { placeHere, takePhoto } from '../world3d/snapshot'
 import type { Act } from './phoneApps'
+import { actionLength } from '../game/rules'
+
+/** Filming and editing, in game minutes (sims.TikiMinutes); the button says it in real ones. */
+const TIKI_MINUTES = 30
 
 /**
  * Tikitoko (backend sims/tikitoko.go, tikisocial.go) works like TikTok: a
@@ -675,7 +679,7 @@ function Film({ sim, me, act, gallery, onClose, onPosted }: { sim: Sim; me: Tiki
           </p>
           <input value={caption} onChange={(e) => setCaption(e.target.value.slice(0, 150))} placeholder="Décris ta vidéo… #babi" className="mt-2 w-full rounded-lg bg-white/15 px-3 py-2.5 text-sm font-semibold text-white outline-none placeholder:text-white/50" />
           <button className="mt-2 w-full rounded-lg bg-[#ff7a00] py-3 text-sm font-extrabold disabled:opacity-40" disabled={!photo || busy || !!sim.activity} onClick={() => void post()}>
-            {busy ? 'Publication…' : 'Publier (30 min)'}
+            {busy ? 'Publication…' : `Publier (${actionLength(TIKI_MINUTES)} min)`}
           </button>
         </div>
       </div>

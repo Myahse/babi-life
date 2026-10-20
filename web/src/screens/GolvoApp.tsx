@@ -98,6 +98,8 @@ export function GolvoApp({ world, sim, delivery, onOrder, onCancel, onCollect }:
             {shop.commune.name} · livraison {amount(q.fee)} Djai · ~{q.minutes} min
           </div>
         </div>
+        {/* Busy: say why the buttons are grey. */}
+        {sim.activity && <p className="rounded-xl bg-[#fff4e0] px-3 py-2 text-xs font-bold text-[#7a5200]">Finis d'abord : {sim.activity.trip?.label ?? sim.activity.interaction.label}. Tu commanderas après.</p>}
         <ul className="space-y-2">
           {(world.menus?.[shop.place.kind] ?? []).map((d) => {
             const open = dishOpen(d)

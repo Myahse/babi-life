@@ -4,6 +4,7 @@ import type { Ride, Sim, World } from '../lib/types'
 import { actionLength, ageOf, amount, duration, rideQuote, trip } from '../game/rules'
 import { classFare, compteurQuote, inkOn } from '../game/rides'
 import { Chip, Coin, IconTile } from './ui'
+import { aCommune } from '../lib/french'
 
 /** fare: the price shown (per seat at the roadside, the quote for an app). */
 export type OnTravel = (cityId: string, communeId: string, label: string, ride?: Ride, fare?: number) => void
@@ -107,7 +108,7 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
 
       {c.id === 'street' && (
         <p className="mb-2.5 text-xs font-bold text-[var(--color-ink-soft)]">
-          {woro ? `Attends au bord de la route : woro-woro ${woro.label} (${amount(t.fare)} Djai la place, s'il va à ${to.name} et a de la place) ou taxi compteur libre (~${amount(meter.fare)} Djai).` : `Pas de woro-woro à ${from.name} : attends un taxi compteur libre (~${amount(meter.fare)} Djai).`}
+          {woro ? `Attends au bord de la route : woro-woro ${woro.label} (${amount(t.fare)} Djai la place, s'il va ${aCommune(to.name)} et a de la place) ou taxi compteur libre (~${amount(meter.fare)} Djai).` : `Pas de woro-woro ${aCommune(from.name)} : attends un taxi compteur libre (~${amount(meter.fare)} Djai).`}
         </p>
       )}
 

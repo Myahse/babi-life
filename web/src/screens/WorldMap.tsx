@@ -10,6 +10,7 @@ import { TravelCTA, type OnTravel } from '../components/TravelCTA'
 import { iconFor, kindColors } from '../components/icons'
 import { Chip, IconTile, needColor } from '../components/ui'
 import { EPOCH, clock, duration, mood } from '../game/rules'
+import { aCommune } from '../lib/french'
 
 // The whole country on one map. Zoomed out, a badge per city; in a city, a
 // badge per mairie (commune); closer still, the places. Tap one for a card
@@ -24,6 +25,16 @@ type Props = { world: World; sim: Sim; night: boolean; desktop: boolean; onClose
 
 export function WorldMap({ world, sim, night, desktop, onClose, onTravel, onWalk }: Props) {
   const [selected, setSelected] = useState<Selection | null>(null)
+  // On a computer, Échap closes the card shown, then the map.
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      if (selected) setSelected(null)
+      else onClose()
+    }
+    window.addEventListener('keydown', key)
+    return () => window.removeEventListener('keydown', key)
+  }, [selected, onClose])
   const [zoom, setZoom] = useState(0)
   // The legend: which kinds of places show on the map (none at first: the communes alone).
   const [kinds, setKinds] = useState<Set<string>>(() => {
@@ -255,7 +266,7 @@ function SelectionCard({ world, sim, s, onClose, onTravel, onWalk, onZoom }: { w
         ) : (
           <>
             <TravelCTA world={world} sim={sim} cityId={city.id} communeId={commune.id} onTravel={onTravel} />
-            <p className="mt-2 text-center text-xs font-bold text-[var(--color-ink-soft)]">Le taxi te dépose à {commune.name} ; ensuite, c'est à pied.</p>
+            <p className="mt-2 text-center text-xs font-bold text-[var(--color-ink-soft)]">Le taxi te dépose {aCommune(commune.name)} ; ensuite, c'est à pied.</p>
           </>
         )}
       </div>

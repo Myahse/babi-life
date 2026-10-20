@@ -6,6 +6,7 @@ import { routeIn } from '../game/roads'
 import { classFare, inkOn, rideLook } from '../game/rides'
 import { AppLogo } from './AppLogo'
 import { DriverCall, newCall, type Call } from './DriverCall'
+import { aCommune, deCommune } from '../lib/french'
 
 /** A ride being arranged in town: hailing at the roadside, or booking an app. */
 export type FlowRequest = { cityId: string; from: Commune; to: Commune; kind: 'street' | string; offer?: number; fare: number; party: number; money?: number }
@@ -70,7 +71,7 @@ function Roadside({ world, req, gameMinutes, onBoard, onClose }: { world: World;
   const [car, setCar] = useState<Passing | null>(null)
   const [now, setNow] = useState(Date.now())
   const [stopped, setStopped] = useState<{ at: number; yes: boolean | null } | null>(null)
-  const [talk, setTalk] = useState<Talk[]>([{ who: 'info', text: woroHere ? `Les woro-woro ${from.woro!.label}s de ${from.name} et les taxis compteur passent par ici.` : `Pas de woro-woro à ${from.name} : guette un taxi compteur libre.` }])
+  const [talk, setTalk] = useState<Talk[]>([{ who: 'info', text: woroHere ? `Les woro-woro ${from.woro!.label}s ${deCommune(from.name)} et les taxis compteur passent par ici.` : `Pas de woro-woro ${aCommune(from.name)} : guette un taxi compteur libre.` }])
   const [waved, setWaved] = useState(false)
   const nextId = useRef(1)
   const timers = useRef<number[]>([])
@@ -138,7 +139,7 @@ function Roadside({ world, req, gameMinutes, onBoard, onClose }: { world: World;
     later(600, () => say({ who: 'toi', text: `${to.name} ?` }))
     later(1500, () => {
       const yes = c.kind === 'woro' ? c.dest === to.id : !c.refuses
-      say({ who: 'chauffeur', text: yes ? (c.kind === 'woro' ? `${to.name}, oui ! Monte, ${free - party > 0 ? `il reste de la place derrière` : 'on part'}.` : `${to.name} ? Ok, monte.`) : c.kind === 'woro' ? `Non, moi je vais à ${destName(c.dest)}.` : `Non, ${to.name} c'est trop loin avec les bouchons.` })
+      say({ who: 'chauffeur', text: yes ? (c.kind === 'woro' ? `${to.name}, oui ! Monte, ${free - party > 0 ? `il reste de la place derrière` : 'on part'}.` : `${to.name} ? Ok, monte.`) : c.kind === 'woro' ? `Non, moi je vais ${aCommune(destName(c.dest))}.` : `Non, ${to.name} c'est trop loin avec les bouchons.` })
       setStopped({ at: Date.now(), yes })
       if (!yes) later(1400, () => leave(c))
     })

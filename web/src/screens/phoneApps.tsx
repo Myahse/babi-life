@@ -7,6 +7,7 @@ import { iconFor, kindColors } from '../components/icons'
 import { Chip, Coin, IconTile, Row } from '../components/ui'
 import { DEPOSIT_WEEKS, OWN_HOUSE, actionLength, amount, duration, hours, housingOf, neededToPromote, untilSaturday } from '../game/rules'
 import { useState } from 'react'
+import { aCommune, capital } from '../lib/french'
 
 export type Act = (label: string, icon: string, kind: string, call: () => Promise<ActionResult>) => Promise<boolean>
 
@@ -192,8 +193,8 @@ export function HomeApp({ world, sim, commune, act, onBuild, onWalk, onMap }: Ap
       )}
 
       <section>
-        <h4 className="label mb-1">Déménager à {commune.name}</h4>
-        <p className="mb-2 text-xs font-semibold text-[var(--color-ink-soft)]">Caution de {DEPOSIT_WEEKS} semaines de loyer à l'entrée. Ton nouveau chez-toi sera ici, à {commune.name}.</p>
+        <h4 className="label mb-1">Déménager {aCommune(commune.name)}</h4>
+        <p className="mb-2 text-xs font-semibold text-[var(--color-ink-soft)]">Caution de {DEPOSIT_WEEKS} semaines de loyer à l'entrée. Ton nouveau chez-toi sera ici, {aCommune(commune.name)}.</p>
         <ul className="motion-stagger space-y-2">
           {world.housings.map((h) => {
             const current = h.id === sim.housing && livesHere
@@ -251,7 +252,7 @@ function MyLot({ world, sim, act, onBuild, onWalk, onMap }: { world: World; sim:
               <div className="mt-1 flex items-center gap-2 rounded-xl bg-white/70 px-2.5 py-2 text-xs font-bold">
                 <MapIcon size={15} className="shrink-0 text-[#1f9a4a]" />
                 <span className="min-w-0 flex-1">
-                  À {where}{city && city.id !== 'abidjan' ? `, ${city.name}` : ''} · clôturé à ta couleur
+                  {capital(aCommune(where))}{city && city.id !== 'abidjan' ? `, ${city.name}` : ''} · clôturé à ta couleur
                 </span>
                 {here && !own && onWalk ? (
                   <button className="shrink-0 rounded-full bg-[#1f9a4a] px-3 py-1 font-extrabold text-white" onClick={() => onWalk(`plot:${sim.id}`)}>

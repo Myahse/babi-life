@@ -12,6 +12,7 @@ import { Chip, Coin, IconTile, MotiveRing, MoodPin, needColor } from '../compone
 import { NEEDS, amount, clock, housingOf, lifeOf, mood } from '../game/rules'
 import { Journal } from './Play'
 import { share as shareText } from '../lib/native'
+import { aCommune, deNom } from '../lib/french'
 
 export function Profile() {
   const world = useWorld((s) => s.world)!
@@ -40,7 +41,7 @@ export function Profile() {
   const spent = Math.abs(sim.journal.reduce((s, e) => s + Math.min(0, e.money), 0))
 
   async function share() {
-    const text = `Je vis à ${home.commune?.name} dans Babi Life ! Mon perso s'appelle ${sim!.firstName} ${sim!.lastName}.`
+    const text = `Je vis ${aCommune(home.commune?.name ?? '')} dans Babi Life ! Mon perso s'appelle ${sim!.firstName} ${sim!.lastName}.`
     try {
       if (!(await shareText(text, location.origin))) {
         await navigator.clipboard.writeText(`${text} ${location.origin}`)
@@ -136,7 +137,7 @@ export function Profile() {
         <section className="card p-4">
           <div className="mb-3 flex items-center gap-2">
             <Sparkles size={18} className="text-[var(--color-orange)]" />
-            <h2 className="font-display text-xl font-extrabold">La vie {/^[aeiouyhàâéèêîïôû]/i.test(sim.firstName) ? "d'" : 'de '}{sim.firstName}</h2>
+            <h2 className="font-display text-xl font-extrabold">La vie {deNom(sim.firstName)}</h2>
           </div>
           <Journal events={sim.journal} />
         </section>

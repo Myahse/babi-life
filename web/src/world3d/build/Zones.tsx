@@ -134,7 +134,7 @@ const trunk = new THREE.MeshLambertMaterial({ color: '#6b4a2e' })
 const FLOWERS = ['#e8432f', '#f2c94c', '#d6336c', '#ffffff'].map((c) => new THREE.MeshLambertMaterial({ color: c }))
 
 /** The lawn's flower pots along the walls of the lot, and a tree in a free corner. */
-function GardenLife({ zones, blocks, furniture, w, d }: { zones: Zone[]; blocks: Block[]; furniture: Piece[]; w: number; d: number }) {
+function GardenLife({ zones, blocks, furniture, w, d, cut }: { zones: Zone[]; blocks: Block[]; furniture: Piece[]; w: number; d: number; cut?: boolean }) {
   const { pots, trees } = useMemo(() => {
     const busy = new Set<string>()
     for (const [x, y, z] of blocks) if (y <= 1) busy.add(`${x},${z}`)
@@ -179,27 +179,32 @@ function GardenLife({ zones, blocks, furniture, w, d }: { zones: Zone[]; blocks:
       ))}
       {trees.map(([x, z], i) => (
         <group key={`t${i}`} position={[x, 0, z]}>
-          <mesh position={[0, 1.4, 0]} material={trunk} castShadow>
-            <boxGeometry args={[0.45, 2.8, 0.45]} />
+          {/* Looking into the house (its walls cut), the tree would hide it: cut down to the trunk's foot, like the walls. */}
+          <mesh position={[0, cut ? 0.45 : 1.4, 0]} material={trunk} castShadow>
+            <boxGeometry args={[0.45, cut ? 0.9 : 2.8, 0.45]} />
           </mesh>
-          <mesh position={[0, 3.3, 0]} material={leaf} castShadow>
-            <boxGeometry args={[2.8, 1.4, 2.8]} />
-          </mesh>
-          <mesh position={[0.2, 4.2, -0.1]} material={leafDark} castShadow>
-            <boxGeometry args={[1.8, 0.9, 1.8]} />
-          </mesh>
+          {!cut && (
+            <>
+              <mesh position={[0, 3.3, 0]} material={leaf} castShadow>
+                <boxGeometry args={[2.8, 1.4, 2.8]} />
+              </mesh>
+              <mesh position={[0.2, 4.2, -0.1]} material={leafDark} castShadow>
+                <boxGeometry args={[1.8, 0.9, 1.8]} />
+              </mesh>
+            </>
+          )}
         </group>
       ))}
     </group>
   )
 }
 
-/** All the ground of a house: floors, yard, lawn (with its pots and trees), terrace, pool. */
-export function Zones({ zones, blocks, furniture, w, d }: { zones: Zone[]; blocks: Block[]; furniture: Piece[]; w: number; d: number }) {
+/** All the ground of a house: floors, yard, lawn (with its pots and trees), terrace, pool. cut: the house is seen inside. */
+export function Zones({ zones, blocks, furniture, w, d, cut }: { zones: Zone[]; blocks: Block[]; furniture: Piece[]; w: number; d: number; cut?: boolean }) {
   return (
     <group>
       {zones.map((z, i) => (z[4] === 'piscine' ? <Pool key={i} x={z[0]} z={z[1]} w={z[2]} d={z[3]} /> : <Ground key={i} zone={z} />))}
-      <GardenLife zones={zones} blocks={blocks} furniture={furniture} w={w} d={d} />
+      <GardenLife zones={zones} blocks={blocks} furniture={furniture} w={w} d={d} cut={cut} />
     </group>
   )
 }

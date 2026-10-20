@@ -907,7 +907,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
               {/* The ground: the rooms' floors, the yard or the lawn, the pool; a bare lot, its lawn and its corner posts */}
               {/* A lot a player owns: its clôture, in its owner's colour, the name over the gate */}
               {(r.id !== HOME_ID || livesOnLot) && <LotFence w={lotSize(owner)[0]} d={lotSize(owner)[1]} color={ownerColor(owner.simId)} name={`Chez ${owner.simId === sim.id ? sim.firstName : owner.firstName ?? ''}`} />}
-              {owner.zones?.length ? <Zones zones={owner.zones} blocks={owner.blocks} furniture={owner.furniture ?? []} w={lotSize(owner)[0]} d={lotSize(owner)[1]} /> : owner.lot && <LotGround w={lotSize(owner)[0]} d={lotSize(owner)[1]} />}
+              {owner.zones?.length ? <Zones zones={owner.zones} blocks={owner.blocks} furniture={owner.furniture ?? []} w={lotSize(owner)[0]} d={lotSize(owner)[1]} cut={r.id === HOME_ID && inside} /> : owner.lot && <LotGround w={lotSize(owner)[0]} d={lotSize(owner)[1]} />}
             </group>
           </group>
         ) : null

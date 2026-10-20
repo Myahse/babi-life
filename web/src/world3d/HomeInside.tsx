@@ -388,7 +388,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
           <group position={[-w / 2, 0, -d / 2]}>
             {world.materials && <CutHouse blocks={plot.blocks} materials={world.materials} top={cut} base={floor * STOREY} />}
             {world.furniture && <FurnitureSet pieces={pieces} catalog={world.furniture} />}
-            {plot.zones?.length ? <Zones zones={plot.zones} blocks={plot.blocks} furniture={plot.furniture ?? []} w={w} d={d} /> : <LotGround w={w} d={d} />}
+            {plot.zones?.length ? <Zones zones={plot.zones} blocks={plot.blocks} furniture={plot.furniture ?? []} w={w} d={d} cut /> : <LotGround w={w} d={d} />}
             <LotFence w={w} d={d} color={ownerColor(sim.id)} name={`Chez ${name}`} />
           </group>
           {roam && !interactionId && (

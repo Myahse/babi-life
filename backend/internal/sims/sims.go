@@ -447,7 +447,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	}
 	city, _ := world.FindCity(s.HomeCity)
 	cm, _ := city.Commune(s.HomeCommune)
-	_ = insertEvent(r.Context(), h.DB, s.ID, "random", fmt.Sprintf("%s est %s à %s, dans %s, d'une famille %s. %s", s.FirstName, bornWord(s.Gender, "né", "née"), cm.Name, fam.Sector, strings.ToLower(fam.Label), fam.Hint), 0, s.GameMinutes)
+	_ = insertEvent(r.Context(), h.DB, s.ID, "random", fmt.Sprintf("%s est %s %s, dans %s, d'une famille %s. %s", s.FirstName, bornWord(s.Gender, "né", "née"), inCommune(cm.Name), fam.Sector, strings.ToLower(fam.Label), fam.Hint), 0, s.GameMinutes)
 	h.postMoments(r.Context(), []directItem{birthMoment(s)})
 	httpx.JSON(w, http.StatusCreated, s)
 }
@@ -529,7 +529,7 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 			return game.Interaction{}, errors.New("lieu inconnu")
 		}
 		if city.ID != s.City || cm.ID != s.Commune {
-			return game.Interaction{}, fmt.Errorf("va d'abord à %s", cm.Name)
+			return game.Interaction{}, fmt.Errorf("va d'abord %s", inCommune(cm.Name))
 		}
 		kind = game.Kinds[place.Kind]
 	}

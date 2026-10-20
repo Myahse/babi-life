@@ -350,7 +350,7 @@ func (h *Handler) answerInvite(w http.ResponseWriter, r *http.Request) {
 		host, err := otherSim(ctx, tx, s, in.From)
 		if errors.Is(err, errNotHere) {
 			if _, cm, _, ok := world.FindPlace(in.PlaceID); ok {
-				return game.Outcome{}, nil, fmt.Errorf("va d'abord à %s", cm.Name)
+				return game.Outcome{}, nil, fmt.Errorf("va d'abord %s", inCommune(cm.Name))
 			}
 		}
 		if err != nil {

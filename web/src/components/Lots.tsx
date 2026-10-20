@@ -3,6 +3,7 @@ import { LandPlot, Ruler } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
 import type { Lot, LotOffer, Sim } from '../lib/types'
 import { amount } from '../game/rules'
+import { aCommune, capital } from '../lib/french'
 
 /**
  * The lots for sale in the commune where the Sim is (sims/plot.go): 150 to
@@ -28,7 +29,7 @@ export function LotOffers({ sim, buy, onLoaded }: { sim: Sim; buy: (size: string
   return (
     <div>
       <p className="mb-2 text-xs font-semibold text-[var(--color-ink-soft)]">
-        À {name} : {amount(data.offers[0]?.perM2 ?? 0)} Djai le m², plus {Math.round(data.fees * 100)} % pour l'ACD et le notaire.
+        {capital(aCommune(name))} : {amount(data.offers[0]?.perM2 ?? 0)} Djai le m², plus {Math.round(data.fees * 100)} % pour l'ACD et le notaire.
         {data.lot && data.lot.commune === sim.commune ? ' Ton terrain grandit : ta maison reste, tu paies la différence.' : data.lot ? " Ailleurs, l'ancien terrain (vide) est revendu à 90 %." : ''}
       </p>
       {offers.length === 0 && <p className="text-sm font-bold text-[var(--color-ink-soft)]">Tu as déjà le plus grand terrain ici.</p>}

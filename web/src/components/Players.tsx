@@ -6,6 +6,7 @@ import { Portrait } from '../avatar/portrait'
 import { iconFor } from './icons'
 import { IconTile } from './ui'
 import type { Act } from '../screens/phoneApps'
+import { aCommune } from '../lib/french'
 
 // Babi Life is played online: the other players whose Sims are in the same
 // commune show up in the street. Players meet through set gestures only
@@ -108,7 +109,7 @@ export function PlayersSheet({ sim, around, communeName, focus, act, onClose }: 
         <div className="flex items-center gap-3 p-4 pb-2">
           <IconTile icon={Users} colors={['#60a5fa', '#2563eb']} size={48} />
           <div className="min-w-0 flex-1">
-            <div className="label">En ligne à {communeName}</div>
+            <div className="label">En ligne {aCommune(communeName)}</div>
             <div className="font-display text-[22px] leading-tight font-extrabold">Les joueurs ici</div>
           </div>
           <button className="icon-btn bg-[var(--color-canvas)]" onClick={onClose} aria-label="Fermer">
@@ -147,7 +148,7 @@ export function PlayersSheet({ sim, around, communeName, focus, act, onClose }: 
             </div>
           ))}
           {players.length === 0 ? (
-            <p className="py-4 text-sm font-bold text-[var(--color-ink-soft)]">Personne d'autre en ligne à {communeName} pour l'instant. Les joueurs des autres communes n'apparaissent que si tu vas chez eux.</p>
+            <p className="py-4 text-sm font-bold text-[var(--color-ink-soft)]">Personne d'autre en ligne {aCommune(communeName)} pour l'instant. Les joueurs des autres communes n'apparaissent que si tu vas chez eux.</p>
           ) : (
             players.map((p) => (
               <div key={p.id} className={`rounded-2xl border bg-white p-3 ${p.id === focus ? 'border-[#2563eb]' : 'border-[var(--color-line)]'}`}>

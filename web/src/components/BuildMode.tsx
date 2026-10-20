@@ -280,13 +280,13 @@ export default function BuildMode({ world, sim, onResult, onClose }: { world: Wo
           </mesh>
           <group position={[-W / 2, 0, -D / 2]}>
             <LotFence w={W} d={D} color={ownerColor(sim.id)} name={`Chez ${sim.firstName}`} />
-            {zones.length > 0 && blocks && <Zones zones={zones} blocks={blocks} furniture={pieces} w={W} d={D} />}
+            {zones.length > 0 && blocks && <Zones zones={zones} blocks={blocks} furniture={pieces} w={W} d={D} cut={cut} />}
             {/* A plan looked at, on the empty lot where it would stand */}
             {preview && empty && world.furniture && (
               <group position={[planAt(preview)[0], 0, planAt(preview)[1]]}>
                 <House blocks={cut ? preview.blocks.filter((b) => b[1] < 2) : preview.blocks} materials={materials} />
                 <FurnitureSet pieces={cut ? downstairs(preview.furniture) : preview.furniture} catalog={catalog} />
-                <Zones zones={preview.zones} blocks={preview.blocks} furniture={preview.furniture} w={preview.w} d={preview.d} />
+                <Zones zones={preview.zones} blocks={preview.blocks} furniture={preview.furniture} w={preview.w} d={preview.d} cut={cut} />
               </group>
             )}
             {blocks && <House blocks={cut ? blocks.filter((b) => b[1] < 2) : blocks} materials={materials} onBlock={onBlock} onHover={(c, n) => setHover(c && n && mode === 'place' ? [c[0] + n[0], c[1] + n[1], c[2] + n[2]] : c)} />}

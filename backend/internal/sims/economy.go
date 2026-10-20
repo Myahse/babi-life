@@ -92,7 +92,7 @@ func (h *Handler) move(w http.ResponseWriter, r *http.Request) {
 		s.Needs = s.Needs.Add(game.Needs{Energy: -20})
 		s.Housing, s.HomeCity, s.HomeCommune = to.ID, s.City, s.Commune
 
-		text := fmt.Sprintf("Déménagement : %s à %s ! Caution de %d semaines payée.", game.LowerFirst(to.Label), cm.Name, game.DepositWeeks)
+		text := fmt.Sprintf("Déménagement : %s %s ! Caution de %d semaines payée.", game.LowerFirst(to.Label), inCommune(cm.Name), game.DepositWeeks)
 		out := game.Outcome{Text: text, Money: -to.Deposit()}
 		return out, []Event{{Kind: "bill", Text: text, Money: -to.Deposit(), GameTime: before}}, nil
 	})
