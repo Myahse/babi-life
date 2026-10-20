@@ -251,6 +251,9 @@ export function Play() {
     const mins = (now - base.at) / 60000
     return { ...base.sim, gameMinutes: base.sim.gameMinutes + mins, needs: predict(base.sim, mins) }
   }, [base, now])
+  // Another commune, another street: the door one stood at is gone (the new street's walker
+  // starts with nothing near, so it never says so), or « Chez toi » was offered in Plateau.
+  useEffect(() => setNear(null), [sim?.city, sim?.commune])
 
   // When the activity's end comes, ask the server to settle it (pay, surprises).
   const settling = useRef(false)
@@ -762,7 +765,7 @@ export function Play() {
           the mini-map and the places' signs. The classic street has no views: the pad stays. */}
       {(!placeId || (strolling && !menuOpen)) && !overlay && !sim.activity && <WalkKeys />}
       {(!placeId ? padShown : roaming && !menuOpen && (strolling || !desktop)) && !overlay && !sim.activity && (
-        <div className="pointer-events-none absolute bottom-[6.25rem] left-3 z-20 lg:bottom-[7.5rem] lg:left-5">
+        <div className={`pointer-events-none absolute left-3 z-20 lg:left-5 ${placeId ? 'bottom-[11rem] lg:bottom-[12rem]' : 'bottom-[6.25rem] lg:bottom-[7.5rem]'}`}>
           <RunButton />
           <Joystick disabled={!!sim.activity || !!pending} className="pointer-events-auto" />
         </div>
@@ -802,7 +805,8 @@ export function Play() {
       )}
       {roaming && !menuOpen && (
         // Walking about inside (or round the grounds): the place's name, what to do here, the way out.
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        // Above the needs, the map and the phone, which stay in reach (it used to cover them on a phone).
+        <div className="pointer-events-none absolute inset-x-0 bottom-[6.5rem] z-20 flex justify-center px-3 lg:bottom-[7.5rem]">
           <div className="hud pointer-events-auto flex w-full max-w-md items-center gap-2 rounded-[26px] p-2">
             <button className="btn btn-soft !px-3 !py-2.5 !text-sm" onClick={() => setPlaceId(null)}>
               <LogOut size={18} /> Sortir
@@ -1087,7 +1091,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
   const partner = sim.friends?.find((f) => f.partner && f.home)
   const adult = !!useSession((s) => s.user?.adult)
   const items = [...(career ? [shift(career, sim.careerLevel)] : []), ...kind.interactions.map((it) => (placeId === 'home' ? atHome(it, home) : it))]
-    .filter((it) => ageBlock(it, life.stage?.id) !== 'Plus de ton âge' && (!it.places || it.places.includes(placeId)))
+    .filter((it) => ageBlock(it, life.stage?.id) !== 'Plus de ton âge' && (!it.places || it.places.includes(placeId)) && (!it.gender || it.gender === sim.gender))
     .filter((it) => it.id !== 'passer-nuit' || (partner && adult && !life.minor))
     .map((it) => (it.id === 'passer-nuit' && partner ? { ...it, label: `Passer la nuit avec ${partner.name}` } : it))
   // Busy at these grounds (the zoo visit): the other things there can still be picked, they take over.

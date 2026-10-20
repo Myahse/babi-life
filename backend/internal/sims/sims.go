@@ -447,7 +447,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	}
 	city, _ := world.FindCity(s.HomeCity)
 	cm, _ := city.Commune(s.HomeCommune)
-	_ = insertEvent(r.Context(), h.DB, s.ID, "random", fmt.Sprintf("%s est né·e à %s, dans %s, d'une famille %s. %s", s.FirstName, cm.Name, fam.Sector, strings.ToLower(fam.Label), fam.Hint), 0, s.GameMinutes)
+	_ = insertEvent(r.Context(), h.DB, s.ID, "random", fmt.Sprintf("%s est %s à %s, dans %s, d'une famille %s. %s", s.FirstName, bornWord(s.Gender, "né", "née"), cm.Name, fam.Sector, strings.ToLower(fam.Label), fam.Hint), 0, s.GameMinutes)
 	h.postMoments(r.Context(), []directItem{birthMoment(s)})
 	httpx.JSON(w, http.StatusCreated, s)
 }
@@ -591,6 +591,9 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 	// Old enough? Then: residents only, enough money, the right trait or job.
 	if err := it.AllowedFor(s.stage().ID); err != nil {
 		return game.Interaction{}, err
+	}
+	if it.Gender != "" && it.Gender != s.Gender {
+		return game.Interaction{}, errors.New("pas pour toi")
 	}
 	// Who may do it: residents only, enough money, the right trait or job.
 	if err := it.Requires.Check(game.Who{Resident: s.City == s.HomeCity && s.Commune == s.HomeCommune, Money: s.Money, Traits: s.Traits, Career: s.Career}); err != nil {

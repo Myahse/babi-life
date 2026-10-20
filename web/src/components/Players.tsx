@@ -157,7 +157,7 @@ export function PlayersSheet({ sim, around, communeName, focus, act, onClose }: 
                   </span>
                   <div className="min-w-0 flex-1 leading-tight">
                     <div className="font-display text-base font-extrabold">
-                      {tagOf(p)} <span className="text-xs text-[var(--color-ink-soft)]">· {p.firstName}, {STAGES[p.stage] ?? ''}</span>
+                      {tagOf(p)} <span className="text-xs text-[var(--color-ink-soft)]">· {p.username ? `${p.firstName}, ` : ''}{STAGES[p.stage] ?? ''}</span>
                     </div>
                     <div className="flex items-center gap-1 truncate text-xs font-bold text-[var(--color-ink-soft)]">
                       {p.activity ? (

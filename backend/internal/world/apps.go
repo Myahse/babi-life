@@ -40,7 +40,7 @@ var PhoneApps = []PhoneApp{
 		About:  "Discute avec les joueurs devenus tes amis dans le jeu. Liens et numéros masqués ; tu peux bloquer et signaler.",
 		Source: &game.Source{Status: game.StatusFictional, Checked: game.Checked, Note: "Appli du jeu : messagerie entre amis du jeu, sur le modèle des messageries de téléphone. Les règles (amis seulement, liens et numéros masqués, blocage, signalement) sont celles du jeu."}},
 	{ID: "tikitoko", Name: "Tikitoko", Tagline: "Filme, poste, deviens influenceur", Category: "Vidéo", SizeMB: 88,
-		About:  "Filme ce qui se passe dans le jeu : danse, garba, stade, sketch… Gagne des fans ; dès 1 000 fans, les marques te paient. Pas de commentaires : des likes et des abonnés.",
+		About:  "Filme ce qui se passe dans le jeu : danse, garba, stade, sketch… Gagne des fans ; dès 1 000 fans, les marques te paient. Likes, commentaires et abonnés.",
 		Source: &game.Source{Status: game.StatusFictional, Checked: game.Checked, Note: "Appli du jeu sur le modèle des applis de vidéos courtes. Le public, les fans et les partenariats sont des règles du jeu."}},
 	{ID: "bet225", Name: "Bet225", Tagline: "Le foot virtuel, toutes les cotes", Category: "Paris", SizeMB: 74,
 		About:  "Paris sur le foot virtuel de Babi : un tour de 6 matchs tous les quarts d'heure. 1N2, plus ou moins de 2,5 buts, les deux équipes marquent, combinés avec boost. Argent du jeu seulement, dès 18 ans.",

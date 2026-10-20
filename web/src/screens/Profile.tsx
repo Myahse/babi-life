@@ -9,7 +9,7 @@ import { findCommune, useWorld } from '../store/world'
 import { Portrait } from '../avatar/portrait'
 import { iconFor } from '../components/icons'
 import { Chip, Coin, IconTile, MotiveRing, MoodPin, needColor } from '../components/ui'
-import { NEEDS, amount, clock, housingOf, mood } from '../game/rules'
+import { NEEDS, amount, clock, housingOf, lifeOf, mood } from '../game/rules'
 import { Journal } from './Play'
 import { share as shareText } from '../lib/native'
 
@@ -33,6 +33,9 @@ export function Profile() {
   const origin = world.origins.find((o) => o.id === sim.origin)
   const housing = housingOf(world, sim)
   const career = world.careers.find((x) => x.id === sim.career)
+  // A child has no job to lose: at school (a baby, at home).
+  const stage = lifeOf(world, sim).stage?.id ?? 'adulte'
+  const jobless = stage === 'bebe' ? 'Bébé' : stage === 'adulte' ? 'Au chômage' : "À l'école"
   const earned = sim.journal.reduce((s, e) => s + Math.max(0, e.money), 0)
   const spent = Math.abs(sim.journal.reduce((s, e) => s + Math.min(0, e.money), 0))
 
@@ -115,7 +118,7 @@ export function Profile() {
           <Stat icon={CalendarDays} colors={['#b39dff', '#6c47ff']} label="Aujourd'hui" value={c.date} sub={`${c.weekday} · ${c.time}`} />
           <Stat icon={TrendingUp} colors={['#69e2a0', '#00a862']} label="Gagné" value={`${amount(earned)} Djai`} />
           <Stat icon={TrendingDown} colors={['#ff8a9b', '#ff3d57']} label="Dépensé" value={`${amount(spent)} Djai`} />
-          <Stat icon={Briefcase} colors={['#64b5ff', '#2a6cf0']} label="Métier" value={career ? career.levels[sim.careerLevel].title : 'Au chômage'} sub={career?.label} />
+          <Stat icon={Briefcase} colors={['#64b5ff', '#2a6cf0']} label="Métier" value={career ? career.levels[sim.careerLevel].title : jobless} sub={career?.label} />
         </section>
 
         <section className="card flex items-center gap-3 p-4">
@@ -133,7 +136,7 @@ export function Profile() {
         <section className="card p-4">
           <div className="mb-3 flex items-center gap-2">
             <Sparkles size={18} className="text-[var(--color-orange)]" />
-            <h2 className="font-display text-xl font-extrabold">La vie de {sim.firstName}</h2>
+            <h2 className="font-display text-xl font-extrabold">La vie {/^[aeiouyhàâéèêîïôû]/i.test(sim.firstName) ? "d'" : 'de '}{sim.firstName}</h2>
           </div>
           <Journal events={sim.journal} />
         </section>

@@ -188,6 +188,10 @@ func mairie(communeID, communeName string, lat, lng float64, src string) Place {
 
 // de: "de Cocody", "d'Adjamé", "d'Abobo".
 func de(name string) string {
+	// The Plateau takes its article: « la mairie du Plateau ».
+	if name == "Plateau" {
+		return "du Plateau"
+	}
 	switch name[0] {
 	case 'A', 'E', 'I', 'O', 'U':
 		return "d'" + name
@@ -309,9 +313,9 @@ var Cities = []City{
 					Source: game.Partial("Lieu du FEMUA (festival fondé en 2008 par A'Salfo, de Magic System).", game.SrcFEMUA)},
 				Place{ID: "marcory-playce", Name: "PlaYce Marcory", Kind: "mall", Lat: 5.2965, Lng: -3.9880, Real: true, Approx: true, Operator: "CFAO",
 					Source: game.Partial("Centre commercial CFAO de Marcory (cité en 2015) ; position placée dans la commune, à relever.", srcBurgerKing)},
-				Place{ID: "marcory-burger-king", Name: "Burger King", Kind: "restaurant", Lat: 5.2972, Lng: -3.9874, Real: true, Approx: true,
+				Place{ID: "marcory-burger-king", Name: "Babi Burger", Kind: "restaurant", Lat: 5.2972, Lng: -3.9874, Real: true, Approx: true,
 					Operator: "Servair Abidjan (franchise, 2015)",
-					Source:   game.Partial("Premier Burger King du pays, ouvert en 2015 dans PlaYce Marcory, en franchise avec Servair Abidjan ; activité actuelle à confirmer.", srcBurgerKing)},
+					Source:   game.Partial("Nom du jeu pour le premier Burger King du pays, ouvert en 2015 dans PlaYce Marcory, en franchise avec Servair Abidjan ; activité actuelle à confirmer.", srcBurgerKing)},
 				Place{ID: "marcory-karting", Name: "Babi Karting", Kind: "karting", Quarter: "Zone 4", Lat: 5.29471, Lng: -3.99237, Real: true, Approx: true,
 					Source: game.Partial("Nom du jeu pour le karting de Marcory (Abidjan Karting, « Superkart » sur OpenStreetMap), 9 rue du Canal, entre Zone 3 et Zone 4 ; position d'après OpenStreetMap. Le circuit, les tarifs et les horaires du jeu sont dessinés pour le jeu ; l'activité actuelle du lieu est à confirmer.", srcKarting, srcKarting2)},
 			),

@@ -421,7 +421,7 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
           )}
           {last ? (
             <button className="btn btn-emerald flex-1" disabled={busy || !valid} onClick={submit}>
-              Naître
+              {busy ? 'Naissance… (autorise ta position ou patiente)' : 'Naître'}
             </button>
           ) : (
             <button className="btn flex-1" onClick={() => setStep(step + 1)}>
@@ -481,10 +481,13 @@ function randomLookFor(gender: NewSim['gender'], look: Required<Look>): Required
 /** Nobody chooses where they start: the server draws it, we reveal it like a card. */
 const FAMILY_COLORS: Record<string, [string, string]> = { debout: ['#c9a227', '#6d28d9'], late: ['#ffd54f', '#ffa000'], lagnon: ['#7ee0c3', '#0f9d8a'], poignon: ['#64b5ff', '#2a6cf0'], coule: ['#69e2a0', '#00a862'], gnambro: ['#b0a8a0', '#6b625a'] }
 
-/** The player's position, if they share it (null otherwise, or after 10 s). */
+/** The player's position, if they share it (null otherwise, or after 15 s). */
 function whereAmI(): Promise<{ lat: number; lng: number } | null> {
   return new Promise((resolve) => {
     if (!navigator.geolocation) return resolve(null)
+    // The browser's own timeout only starts once the prompt is answered: a prompt left
+    // open (or "Not now", which never answers) would keep the birth waiting for ever.
+    setTimeout(() => resolve(null), 15000)
     navigator.geolocation.getCurrentPosition(
       (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
       () => resolve(null),
@@ -511,7 +514,7 @@ function FamilyReveal({ family, commune, located, name, look, gender, housing, g
         </div>
         <p className="px-5 pt-4 text-sm leading-snug font-bold text-[var(--color-ink-soft)]">{family.hint}</p>
         <ul className="space-y-2 p-4 text-left">
-          <Fact label="Né·e à" value={commune} />
+          <Fact label={gender === 'femme' ? 'Née à' : 'Né à'} value={commune} />
           {!located && <li className="px-1 text-xs font-bold text-[var(--color-ink-soft)]">Sans position ni commune choisie : une commune tirée au sort.</li>}
           <Fact label="Le quartier" value={family.sector.charAt(0).toUpperCase() + family.sector.slice(1)} />
           <Fact label="La maison familiale" value={housing} />
