@@ -35,6 +35,9 @@ export const LANDMARKS: Record<string, number> = {
 /** The landmarks one walks round freely on arriving (the park, the hotel's grounds, the street, the forecourts), before picking what to do. */
 export const GROUNDS = new Set(['cocody-zoo', 'cocody-hotel-ivoire', 'yop-rue-princesse', 'adjame-forum', 'yop-ficgayo', 'yop-gare-siporex', 'cocody-blockhauss-maquis'])
 
+/** The ones under the sky (a maquis by the lagoon, a street of maquis, a square, a gare, a market): one walks there, never into a room. */
+export const OPEN_AIR = new Set([...GROUNDS].filter((id) => id !== 'cocody-hotel-ivoire'))
+
 /** The landmark's model, by place. */
 export function Landmark({ id, night, demo, open = true }: { id: string; night: boolean; /** The stadium: a made-up match or concert (the videos), instead of the agenda. */ demo?: StadiumEvent; /** Open now (its hours): closed, nobody visiting (the zoo). */ open?: boolean }) {
   switch (id) {

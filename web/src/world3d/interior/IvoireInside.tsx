@@ -1,17 +1,14 @@
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { Suspense, useMemo, useRef } from 'react'
+import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import type { Sim } from '../../lib/types'
 import { worldTime } from '../../lib/worldClock'
 import { Human, NoShadows, type Pose } from '../../avatar/Human'
 import { randomLook } from '../../avatar/options'
-import { Character } from '../Character'
-import { Swimmer } from '../Swimmer'
 import { rng } from '../themes'
-import { gridWay } from '../gridPath'
-import { listenKeys, moveInput } from '../input'
 import { Snapper } from '../snapshot'
+import { Guest, mat, sign, useBigWalk, type Spot, type XZ } from './bigPlace'
 import { BOX, Blocks } from '../open/ruePrincesse'
 
 // Inside the Hôtel Ivoire: not a room but a world. The great hall (marble,
@@ -24,26 +21,22 @@ import { BOX, Blocks } from '../open/ruePrincesse'
 // again; the casino is still there. The layout is the game's.
 // Frame: x across, +z toward the entrance (the boulevard), -z the lagoon.
 
-type XZ = [number, number]
 type Block = { p: [number, number, number]; s: [number, number, number]; ry?: number; c?: string }
 
 /** The hall's walls (half-sizes): x from -HW to HW, z from -HD to HD; the terrace beyond, down to TERRACE. */
 const HW = 32
 const HD = 22
 const TERRACE = -36
-const SPEED = 1.9
 
-/** Where each action is done: the spot, the way the Sim faces there, its pose; or swimming, skating. */
-type Spot = { at: XZ; rot: number; pose: Pose; y?: number; lying?: boolean; swim?: number; skate?: boolean }
 const SPOTS: Record<string, Spot> = {
   'lobby-ivoire': { at: [2, 9], rot: Math.PI, pose: 'phone' },
-  patinoire: { at: [-22, 11], rot: 0, pose: 'walk', skate: true },
+  patinoire: { at: [-22, 11], rot: 0, pose: 'walk', from: [-22, 0.8], loop: { c: [-22, 11], r: [6.2, 7.4], speed: 0.32, pose: 'touch', lean: 0.12 } },
   'cinema-ivoire': { at: [22, -6.2], rot: Math.PI, pose: 'sit', y: 0.05 },
   'casino-ivoire': { at: [19.6, 8.4], rot: Math.PI, pose: 'busy' },
   'bar-hotel': { at: [0.7, -4.5], rot: Math.PI, pose: 'drink' },
   'brunch-lagune': { at: [-6, -15.4], rot: Math.PI, pose: 'eat', y: 0.05 },
-  'piscine-hotel': { at: [0, -29], rot: Math.PI / 2, pose: 'swim', y: 0.42, swim: 7.5 },
-  'nuit-hotel': { at: [26, -17.4], rot: 0, pose: 'sleep', y: 0.62, lying: true },
+  'piscine-hotel': { at: [0, -29], rot: Math.PI / 2, pose: 'swim', y: 0.42, swim: 7.5, from: [0, -23.6] },
+  'nuit-hotel': { at: [26, -17.4], rot: 0, pose: 'sleep', y: 0.62, lying: true, from: [26, -15] },
 }
 const ENTRANCE: XZ = [0, HD - 1.5]
 
@@ -75,34 +68,7 @@ function free(x: number, z: number) {
   return true
 }
 
-const mats = new Map<string, THREE.MeshLambertMaterial>()
-const mat = (c: string, emissive?: string) => {
-  const k = c + (emissive ?? '')
-  let m = mats.get(k)
-  if (!m) mats.set(k, (m = new THREE.MeshLambertMaterial({ color: c, emissive: emissive ?? '#000000', emissiveIntensity: emissive ? 1 : 0 })))
-  return m
-}
 const colored = new THREE.MeshLambertMaterial({ color: '#ffffff' })
-
-/** A sign on a canvas: a name over a background. */
-function sign(text: string, bg: string, fg: string, w = 512, h = 128) {
-  const c = document.createElement('canvas')
-  c.width = w
-  c.height = h
-  const g = c.getContext('2d')!
-  g.fillStyle = bg
-  g.fillRect(0, 0, w, h)
-  g.fillStyle = fg
-  g.textAlign = 'center'
-  g.textBaseline = 'middle'
-  g.font = `800 ${h * 0.5}px sans-serif`
-  const k = Math.min(1, (w * 0.9) / g.measureText(text).width)
-  g.font = `800 ${h * 0.5 * k}px sans-serif`
-  g.fillText(text, w / 2, h / 2)
-  const t = new THREE.CanvasTexture(c)
-  t.colorSpace = THREE.SRGBColorSpace
-  return new THREE.MeshBasicMaterial({ map: t })
-}
 
 /** The marble of the hall: big pale tiles, a darker border. */
 function marble() {
@@ -128,21 +94,7 @@ function marble() {
 
 export function IvoireInside({ sim, interactionId, roam, night, stage }: { sim: Sim; interactionId?: string; /** Just come in: walk about (tap the floor, or the keys). */ roam?: boolean; night: boolean; stage: string }) {
   const spot = interactionId ? (SPOTS[interactionId] ?? null) : null
-  const [tapped, setTapped] = useState<XZ | null>(null)
-  useEffect(() => {
-    setTapped(null)
-  }, [interactionId])
-  useEffect(() => (roam && !interactionId ? listenKeys() : undefined), [roam, interactionId])
-  const where = useRef<XZ>(ENTRANCE)
-  const way = useMemo<XZ[]>(() => {
-    const to: XZ | null = spot ? (spot.skate ? [-22, 0.8] : approach(spot)) : tapped
-    const from = where.current
-    if (!to) return [from]
-    return gridWay(from, to, free, 0.5, 12, 260 * 260) ?? [from, to]
-  }, [spot, tapped]) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    where.current = way[way.length - 1]
-  }, [way])
+  const { way, tap, onMoved } = useBigWalk(spot, interactionId, roam, free, ENTRANCE)
   const signs = useMemo(
     () => ({
       rink: sign('PATINOIRE', '#0b6fa4', '#ffffff'),
@@ -179,130 +131,18 @@ export function IvoireInside({ sim, interactionId, roam, night, stage }: { sim: 
               onClick={(e) => {
                 if (e.delta > 6) return
                 e.stopPropagation()
-                const p: XZ = [e.point.x, e.point.z]
-                if (free(p[0], p[1])) setTapped(p)
+                tap([e.point.x, e.point.z])
               }}
             >
               <planeGeometry args={[HW * 2, HD - TERRACE]} />
               <meshBasicMaterial transparent opacity={0} depthWrite={false} />
             </mesh>
           )}
-          <Guest sim={sim} stage={stage} way={way} spot={spot} steer={!!roam && !interactionId} onMoved={(p) => ((where.current = p), setTapped(null))} />
+          <Guest sim={sim} stage={stage} way={way} spot={spot} steer={!!roam && !interactionId} onMoved={onMoved} free={free} entrance={ENTRANCE} />
           <OrbitControls makeDefault target={[0, 1, HD - 6]} enablePan={false} minDistance={6} maxDistance={70} minPolarAngle={0.25} maxPolarAngle={1.25} enableDamping />
         </Suspense>
       </Canvas>
     </div>
-  )
-}
-
-/** Where the Sim walks to before settling on a spot: a step in front of it. */
-function approach(s: Spot): XZ {
-  if (s.swim) return [0, -23.6]
-  if (s.lying) return [26, -15]
-  return [s.at[0] + Math.sin(s.rot) * 0.9, s.at[1] + Math.cos(s.rot) * 0.9]
-}
-
-/** The Sim: walks its way (or where the keys take it), then settles; the camera follows. */
-function Guest({ sim, stage, way, spot, steer, onMoved }: { sim: Sim; stage: string; way: XZ[]; spot: Spot | null; steer: boolean; onMoved: (at: XZ) => void }) {
-  const g = useRef<THREE.Group>(null)
-  const camera = useThree((st) => st.camera)
-  const controls = useThree((st) => st.controls) as unknown as { target: THREE.Vector3; update: () => void } | null
-  const at = useRef({ x: ENTRANCE[0], z: ENTRANCE[1], rot: Math.PI })
-  const step = useRef(1)
-  const settle = useRef(0)
-  const manual = useRef(false)
-  const [walking, setWalking] = useState(false)
-  const [settled, setSettled] = useState(false)
-  useEffect(() => {
-    step.current = 1
-    settle.current = 0
-    setWalking(way.length > 1)
-    setSettled(false)
-  }, [way])
-  useFrame((_, dtIn) => {
-    const o = g.current
-    if (!o) return
-    const dt = Math.min(dtIn, 0.05)
-    const a = at.current
-    const m = steer ? moveInput() : null
-    if (m && Math.hypot(m.x, m.y) > 0.15) {
-      // The keys or the pad, as seen from the camera; along each axis on its own, to slide along what's in the way.
-      const f = new THREE.Vector3()
-      camera.getWorldDirection(f)
-      const fl = Math.hypot(f.x, f.z) || 1
-      const [fx, fz] = [f.x / fl, f.z / fl]
-      const [mx, mz] = [fx * m.y - fz * m.x, fz * m.y + fx * m.x]
-      if (free(a.x + mx * SPEED * dt, a.z)) a.x += mx * SPEED * dt
-      if (free(a.x, a.z + mz * SPEED * dt)) a.z += mz * SPEED * dt
-      const want = Math.atan2(mx, mz)
-      a.rot += Math.atan2(Math.sin(want - a.rot), Math.cos(want - a.rot)) * Math.min(1, dt * 10)
-      step.current = way.length
-      if (!manual.current) {
-        manual.current = true
-        setWalking(true)
-      }
-    } else if (manual.current) {
-      manual.current = false
-      setWalking(false)
-      onMoved([a.x, a.z])
-    } else if (step.current < way.length) {
-      const [tx, tz] = way[step.current]
-      const [dx, dz] = [tx - a.x, tz - a.z]
-      const len = Math.hypot(dx, dz)
-      if (len < 0.05) {
-        step.current++
-        if (step.current >= way.length) setWalking(false)
-      } else {
-        const k = Math.min(len, SPEED * dt)
-        a.x += (dx / len) * k
-        a.z += (dz / len) * k
-        const want = Math.atan2(dx, dz)
-        a.rot += Math.atan2(Math.sin(want - a.rot), Math.cos(want - a.rot)) * Math.min(1, dt * 10)
-      }
-    } else if (spot && !spot.skate && settle.current < 1) {
-      // From in front of the spot onto it: the seat, the bed, into the pool.
-      settle.current = Math.min(1, settle.current + dt * 1.6)
-      if (settle.current >= 1 && !settled) setSettled(true)
-    }
-    const e = spot && !spot.skate ? settle.current : 0
-    if (spot?.skate && step.current >= way.length) {
-      // Skating round the rink with the others.
-      const t = worldTime() * 0.32
-      o.position.set(-22 + Math.cos(t) * 6.2, 0.12, 11 + Math.sin(t) * 7.4)
-      o.rotation.set(0, Math.atan2(-Math.sin(t) * 6.2, Math.cos(t) * 7.4), 0)
-    } else if (spot && e > 0) {
-      o.position.set(a.x + (spot.at[0] - a.x) * e, (spot.y ?? 0) * e, a.z + (spot.at[1] - a.z) * e)
-      o.rotation.set(0, a.rot + Math.atan2(Math.sin(spot.rot - a.rot), Math.cos(spot.rot - a.rot)) * e, 0)
-    } else {
-      o.position.set(a.x, 0, a.z)
-      o.rotation.set(0, a.rot, 0)
-    }
-    // The camera comes along.
-    if (controls) {
-      const k = Math.min(1, dt * 3)
-      const [ox, oz] = [(o.position.x - controls.target.x) * k, (o.position.z - controls.target.z) * k]
-      controls.target.x += ox
-      controls.target.z += oz
-      camera.position.x += ox
-      camera.position.z += oz
-      controls.update()
-    }
-  })
-  const skating = !!spot?.skate && !walking
-  return (
-    <group ref={g}>
-      {settled && spot?.swim ? (
-        <Swimmer len={spot.swim} look={{ ...sim.look, outfit: 'maillot', accessory: 'none' }} gender={sim.gender} stage={stage} />
-      ) : settled && spot ? (
-        <group rotation={spot.lying ? [-Math.PI / 2, 0, 0] : [0, 0, 0]}>
-          <Character look={sim.look} gender={sim.gender} pose={spot.pose} stage={stage} marker={!spot.lying} />
-        </group>
-      ) : (
-        <group rotation={[0, 0, skating ? -0.12 : 0]}>
-          <Character look={sim.look} gender={sim.gender} walking={walking || skating} stage={stage} speed={skating ? 1.1 : SPEED} pose={skating ? 'touch' : undefined} />
-        </group>
-      )}
-    </group>
   )
 }
 

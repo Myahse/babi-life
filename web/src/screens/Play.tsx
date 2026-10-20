@@ -16,7 +16,7 @@ import { TravelCTA, type OnTravel } from '../components/TravelCTA'
 import { Portrait } from '../avatar/portrait'
 import { Neighbourhood } from '../world3d/Neighbourhood'
 import { OpenWorld } from '../world3d/open/OpenWorld'
-import { GROUNDS, LANDMARKS } from '../world3d/open/landmarks'
+import { GROUNDS, LANDMARKS, OPEN_AIR } from '../world3d/open/landmarks'
 import { iconFor, kindColors } from '../components/icons'
 import { Chip, Coin, DayNight, IconTile, MotiveRing, MoodPin, Row, needColor } from '../components/ui'
 import { NEEDS, actionLength, ageBlock, amount, atHome, blockedBy, homeLacks, housingOf, lifeOf, minutesToAge, clock, duration, mood, openAt, openingLabel, predict, shift } from '../game/rules'
@@ -51,6 +51,8 @@ import { NotifyPrompt } from '../components/NotifyPrompt'
 const BuildMode = lazy(() => import('../components/BuildMode'))
 const KartRace = lazy(() => import('../kart/KartRace'))
 // The Hôtel Ivoire's own inside: its hall, ice rink, cinema, casino, terrace.
+// The big shopping centres' own inside: the supermarket, the gallery of shops, the food court.
+const MallInside = lazy(() => import('../world3d/interior/MallInside').then((m) => ({ default: m.MallInside })))
 const IvoireInside = lazy(() => import('../world3d/interior/IvoireInside').then((m) => ({ default: m.IvoireInside })))
 const StreetMatch = lazy(() => import('../streetball/StreetMatch'))
 
@@ -438,11 +440,11 @@ export function Play() {
   const inside = (() => {
     if (doing) {
       if (doing.placeId === 'golvo') return atHomeNow ? { id: 'home', kind: 'home', it: doing.interaction.id } : null
-      if (!doing.placeId) return null
+      if (!doing.placeId || OPEN_AIR.has(doing.placeId)) return null
       const kind = doing.placeId === 'home' ? 'home' : ARENAS.has(doing.placeId) ? 'arena' : (doing.placeKind ?? '')
       return INDOOR.has(kind) || kind === 'arena' ? { id: doing.placeId, kind, it: doing.interaction.id } : null
     }
-    if (placeId && placeId !== 'happening') {
+    if (placeId && placeId !== 'happening' && !OPEN_AIR.has(placeId)) {
       // A covered hall (the Palais des Sports) has its own inside.
       const kind = placeId === 'home' ? 'home' : ARENAS.has(placeId) ? 'arena' : commune.places.find((p) => p.id === placeId)?.kind
       return kind && (INDOOR.has(kind) || kind === 'arena') ? { id: placeId, kind, it: undefined } : null
@@ -509,6 +511,10 @@ export function Play() {
         <div className="absolute inset-0 z-[1]">
           {inside!.kind === 'home' && homePlot && !classic ? (
             <HomeInside sim={sim} world={world} plot={homePlot} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} onBuild={() => setBuilding(true)} />
+          ) : inside!.kind === 'mall' ? (
+            <Suspense fallback={null}>
+              <MallInside sim={sim} name={placeName(inside!.id)} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
+            </Suspense>
           ) : inside!.id === 'cocody-hotel-ivoire' ? (
             <Suspense fallback={null}>
               <IvoireInside sim={sim} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
