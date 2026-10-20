@@ -39,6 +39,7 @@ import { FuelStation } from './station'
 import { ZOO_SOLID } from './zoo'
 import { IVOIRE_SOLID } from './hotelIvoire'
 import { POULMAN_SOLID } from './poulman'
+import { NOUM_SOLID } from './noum'
 import { clearObstacles, moveObstacle, setObstacles, type Obstacle } from '../obstacles'
 import { LANDMARKS, Landmark } from './landmarks'
 import { Boats } from './boats'
@@ -1317,7 +1318,7 @@ function RoadTraffic({ nav, focus, seed, woro }: { nav: Nav; focus: React.RefObj
 
 /** Landmarks that are one solid building: how far round their middle they stand (metres). */
 /** Landmarks one walks into, and what stands in the way there (in their own frame). */
-const GROUNDS: Record<string, Obstacle[]> = { 'cocody-zoo': ZOO_SOLID, 'cocody-hotel-ivoire': IVOIRE_SOLID, 'plateau-poulman': POULMAN_SOLID }
+const GROUNDS: Record<string, Obstacle[]> = { 'cocody-zoo': ZOO_SOLID, 'cocody-hotel-ivoire': IVOIRE_SOLID, 'plateau-poulman': POULMAN_SOLID, 'plateau-noum': NOUM_SOLID }
 const SOLID_LANDMARKS: Record<string, number> = { 'treich-palais': 34, 'plateau-pyramide': 28, 'plateau-cathedrale': 20, 'cocody-oranjo': 34, 'yakro-basilique': 55 }
 
 /** A vehicle's length and width, for what it blocks. */
