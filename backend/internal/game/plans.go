@@ -208,7 +208,7 @@ func (p *planner) upstairs(x0, z0, x1, z1, n, bedrooms int, wall, roof string) {
 		p.furn = append(p.furn, Piece{X: a + 1, Y: y0, Z: z0 + 1, ID: "lit"}, Piece{X: b - 1, Y: y0, Z: z0 + 1, ID: "armoire"})
 	}
 	// The front: a family room with its sofa and TV, big windows.
-	p.furn = append(p.furn, Piece{X: x0 + 2, Y: y0, Z: z1 - 2, ID: "canape"}, Piece{X: x0 + 3, Y: y0, Z: mid + 1, ID: "tele"}, Piece{X: x1 - 2, Y: y0, Z: mid + 2, ID: "lit"})
+	p.furn = append(p.furn, Piece{X: x0 + 2, Y: y0, Z: z1 - 2, R: 2, ID: "canape"}, Piece{X: x0 + 3, Y: y0, Z: mid + 1, ID: "tele"}, Piece{X: x1 - 2, Y: y0, Z: mid + 2, ID: "lit"})
 	for x := x0 + 2; x < x1-1; x += 2 {
 		p.set(x, y0+1, z1, "verre")
 	}
@@ -396,7 +396,7 @@ func familyHouse(p *planner, x0, z0 int, wall, roof string) {
 	p.room(x0+6, z0+4, x1, z1, ZoneFloor, "Salle de bain")
 	// The living room: the TV against the back wall, the sofa facing it; the kitchen corner.
 	p.put("tele", x0+3, z0+1, 0)
-	p.put("canape", x0+2, z0+4, 0)
+	p.put("canape", x0+2, z0+4, 2)
 	p.put("gaziniere", x0+1, z0+1, 0)
 	p.put("frigo", x0+1, z0+2, 0)
 	p.put("table", x0+1, z0+5, 0)
@@ -460,7 +460,7 @@ func bigHouse(p *planner, x0, z0, bedrooms int, wall, roof string) {
 	p.put("frigo", x0+3, z0+5, 0)
 	p.put("table", x0+2, z0+7, 0)
 	p.put("tele", x0+8, z0+5, 0)
-	p.put("canape", x0+7, z0+7, 0)
+	p.put("canape", x0+7, z0+7, 2)
 	p.put("chaises", x0+11, z0+7, 0)
 	p.put("ventilo", x0+12, z0+5, 0)
 	p.door(x0+9, z1, false)
@@ -531,8 +531,8 @@ func villaHouse(p *planner, x0, z0, w, bedrooms int, wall string) {
 	p.put("frigo", x0+3, z0+6, 0)
 	p.put("table", x0+2, z0+8, 0)
 	p.put("tele", x0+9, z0+6, 0)
-	p.put("canape", x0+8, z0+9, 0)
-	p.put("canape", x0+11, z0+9, 0)
+	p.put("canape", x0+8, z0+9, 2)
+	p.put("canape", x0+11, z0+9, 2)
 	p.put("table", x0+14, z0+7, 0)
 	p.put("chaises", x0+13, z0+7, 0)
 	p.door(x0+7, z1, false)

@@ -416,7 +416,7 @@ export default function BuildMode({ world, sim, onResult, onClose }: { world: Wo
                 </button>
               ))}
               {tab === 'meubles' && (
-                <button onClick={() => setRot((r) => (r + 1) % 2)} className="flex h-11 w-[84px] items-center justify-center gap-1.5 rounded-2xl bg-[var(--color-canvas)] text-sm font-extrabold">
+                <button onClick={() => setRot((r) => (r + 1) % 4)} className="flex h-11 w-[84px] items-center justify-center gap-1.5 rounded-2xl bg-[var(--color-canvas)] text-sm font-extrabold">
                   <RotateCw size={16} strokeWidth={2.6} /> Tourner
                 </button>
               )}

@@ -172,7 +172,7 @@ export function FurnitureSet({ pieces, catalog, onPiece, ghost }: { pieces: Piec
         if (!f) return null
         const [w, d] = p[3] % 2 ? [f.d, f.w] : [f.w, f.d]
         return (
-          <group key={`${p[0]},${p[1]},${p[2]},${p[4]}`} position={[p[0] + w / 2, p[1], p[2] + d / 2]} rotation={[0, p[3] % 2 ? -Math.PI / 2 : 0, 0]} onClick={onPiece ? (e) => onPiece(p, e) : undefined}>
+          <group key={`${p[0]},${p[1]},${p[2]},${p[4]}`} position={[p[0] + w / 2, p[1], p[2] + d / 2]} rotation={[0, (-p[3] * Math.PI) / 2, 0]} onClick={onPiece ? (e) => onPiece(p, e) : undefined}>
             <group position={[-f.w / 2, 0, -f.d / 2]}>
               <Model id={f.id} color={f.color} w={f.w} d={f.d} />
             </group>

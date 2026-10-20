@@ -4,7 +4,7 @@ import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import type { Plot, Sim, World } from '../lib/types'
 import { Character } from './Character'
-import { House } from './build/House'
+import { CutHouse } from './build/CutHouse'
 import { FurnitureSet } from './build/Furniture'
 import { Zones, LotGround } from './build/Zones'
 import { LotFence, ownerColor } from './build/Fence'
@@ -233,9 +233,8 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
     where.current = way[way.length - 1]
   }, [way])
   const [there, setThere] = useState(false)
-  // The floors above the one looked at are off; its own walls cut at the height of a door.
-  const cut = floor * STOREY + 2
-  const blocks = useMemo(() => plot.blocks.filter((b) => b[1] < cut), [plot.blocks, cut])
+  // The floors above the one looked at are off; its own walls full height, but down to one block between the camera and the Sim (build/CutHouse).
+  const cut = floor * STOREY + 3
   const pieces = useMemo(() => (plot.furniture ?? []).filter((p) => p[1] < cut), [plot.furniture, cut])
   const name = sim.firstName
   return (
@@ -256,7 +255,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
             <meshLambertMaterial color="#4a4a4f" />
           </mesh>
           <group position={[-w / 2, 0, -d / 2]}>
-            {world.materials && <House blocks={blocks} materials={world.materials} />}
+            {world.materials && <CutHouse blocks={plot.blocks} materials={world.materials} top={cut} base={floor * STOREY} />}
             {world.furniture && <FurnitureSet pieces={pieces} catalog={world.furniture} />}
             {plot.zones?.length ? <Zones zones={plot.zones} blocks={plot.blocks} furniture={plot.furniture ?? []} w={w} d={d} /> : <LotGround w={w} d={d} />}
             <LotFence w={w} d={d} color={ownerColor(sim.id)} name={`Chez ${name}`} />

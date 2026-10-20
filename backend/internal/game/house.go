@@ -248,7 +248,8 @@ func (h House) Edit(place, remove []Block, furnish, unfurnish []Piece) (House, i
 		if !ok {
 			return h, 0, 0, ErrNoFurniture
 		}
-		p.R %= 2
+		// A quarter turn at a time: 0 faces +z, 1 a quarter turn, 2 round (facing -z), 3.
+		p.R = ((p.R % 4) + 4) % 4
 		for _, c := range p.cells() {
 			if !inside(c) {
 				return h, 0, 0, ErrOutOfPlot

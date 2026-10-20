@@ -15,6 +15,7 @@ import { useSignTexture } from '../props'
 import type { Place, Plot, World } from '../../lib/types'
 import { api } from '../../lib/api'
 import { House } from '../build/House'
+import { CutHouse } from '../build/CutHouse'
 import { FurnitureSet, downstairs } from '../build/Furniture'
 import { iconFor, kindColors } from '../../components/icons'
 import { IconTile } from '../../components/ui'
@@ -103,7 +104,10 @@ function lotSpot(simId: string): [number, number] {
 }
 /** A lot's size (the plots from before lots are 12 × 12). */
 /** Inside the house, its blocks from this height up are hidden (the cutaway). */
-const CUT_HEIGHT = 2
+const CUT_HEIGHT = 3
+/** Where the Sim is (for the cutaway: the walls between it and the camera come down). */
+const simVec = new THREE.Vector3()
+const simPoint = () => simVec.set(whereabouts.sim[0], whereabouts.simY, whereabouts.sim[1])
 const lotSize = (p: Plot): [number, number] => [p.lot?.w ?? 12, p.lot?.d ?? 12]
 /** How far a lot clears the map's buildings round it. */
 const lotClear = (p: Plot) => Math.max(PLOT_CLEAR, Math.hypot(...lotSize(p)) / 2 + 3)
@@ -306,7 +310,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     // A real place found on the map (by its name) stands where the map has it.
     const list: (PlaceSpot & { kind: string; name: string })[] = places.map((p) => ({ id: p.id, kind: p.kind, name: p.name, type: p.type, at: snaps.get(p.id) ?? toLocal(origin, p.lat, p.lng), landmark: LANDMARKS[p.id] }))
     // A home with a house built on it clears its ground: the game draws the house.
-    if (home) list.unshift({ id: HOME_ID, kind: 'home', name: 'Chez toi', at: [Math.cos(a) * d, Math.sin(a) * d], landmark: myPlot ? lotClear(myPlot) : undefined })
+    if (home) list.unshift({ id: HOME_ID, kind: 'home', name: 'Chez toi', at: [Math.cos(a) * d, Math.sin(a) * d], landmark: myPlot ? lotClear(myPlot) : livesOnLot ? PLOT_CLEAR : undefined })
     for (const id of plotKey ? plotKey.split(',') : []) {
       if (id === sim.id && home && livesOnLot && myPlot) continue
       const [pa, pd] = lotSpot(id)
@@ -545,6 +549,17 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       setWalkTo({ ...goTo })
     }
   }, [resolved, goTo])
+  // The place walked to moved (the house got its lot once the plots came, the map's building was found):
+  // the walk goes on to where it is now, not where it was.
+  const walkedDoor = useRef<{ id: string; door: XZ } | null>(null)
+  useEffect(() => {
+    if (!walkTo) return
+    const door = resolved.get(walkTo.placeId)?.door
+    if (!door) return
+    const was = walkedDoor.current
+    walkedDoor.current = { id: walkTo.placeId, door }
+    if (was?.id === walkTo.placeId && Math.hypot(was.door[0] - door[0], was.door[1] - door[1]) > 3) setWalkTo({ ...walkTo })
+  }, [resolved, walkTo])
 
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null
   const tick = useRef(0)
@@ -811,7 +826,6 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   useEffect(() => {
     onHomePlot?.(myPlot)
   }, [myPlot]) // eslint-disable-line react-hooks/exhaustive-deps
-  const cutBlocks = useMemo(() => (myPlot ? myPlot.blocks.filter((b) => b[1] < CUT_HEIGHT) : []), [myPlot])
 
   const homeLot = lots.find((l) => l.id === HOME_ID)
   const walkNav = useMemo<WalkNav>(
@@ -875,7 +889,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         return owner && world.materials ? (
           <group key={`house${r.id}`} position={[r.center[0], 0, r.center[1]]} rotation={[0, r.rot, 0]}>
             <group position={[-lotSize(owner)[0] / 2, 0, -lotSize(owner)[1] / 2]} onClick={r.id === HOME_ID ? (e) => (e.stopPropagation(), onPick(HOME_ID)) : undefined}>
-              <House blocks={r.id === HOME_ID && inside ? cutBlocks : owner.blocks} materials={world.materials} />
+              {r.id === HOME_ID && inside ? <CutHouse blocks={owner.blocks} materials={world.materials} top={CUT_HEIGHT} look={simPoint} /> : <House blocks={owner.blocks} materials={world.materials} />}
               {owner.furniture?.length > 0 && world.furniture && <FurnitureSet pieces={r.id === HOME_ID && inside ? downstairs(owner.furniture, CUT_HEIGHT) : owner.furniture} catalog={world.furniture} />}
               {/* The ground: the rooms' floors, the yard or the lawn, the pool; a bare lot, its lawn and its corner posts */}
               {/* A lot a player owns: its clôture, in its owner's colour, the name over the gate */}

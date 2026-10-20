@@ -28,7 +28,7 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
     const [fw, fd] = piece[3] % 2 ? [f.d, f.w] : [f.w, f.d]
     const [pu, pv] = [piece[0] + fw / 2 - w / 2, piece[2] + fd / 2 - d / 2]
     // The piece's own frame (as FurnitureSet turns it): its front is +z.
-    const turn = piece[3] % 2 ? -Math.PI / 2 : 0
+    const turn = (-piece[3] * Math.PI) / 2
     const rot = rot0 + turn
     const [lc, ls] = [Math.cos(turn), Math.sin(turn)]
     const half = f.d / 2
@@ -41,7 +41,8 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
       }
       // Up against a wall on that side: the other side of the piece, if it's free there.
       let spot = place(x, z, face, half + 0.6)
-      if (spot.wall && !lying) {
+      // (Not a seat: sitting on its back would be sitting the wrong way round.)
+      if (spot.wall && !lying && pose !== 'sit') {
         const other = place(-x, -z, face + Math.PI, -(half + 0.6))
         if (!other.wall) spot = other
       }
@@ -87,7 +88,10 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
       return (Math.sin(s.rot) * dx + Math.cos(s.rot) * dz) / len - len * 0.04
     }
     const seat = seats.reduce((a, b) => (score(b) > score(a) ? b : a))
-    out['watch-tv'] = { ...seat, rot: Math.atan2(t.at[0] - seat.at[0], t.at[1] - seat.at[1]), screen: t }
+    // Sitting as the seat faces, the head turned a little towards the screen (never more than a third of a turn round).
+    const toTv = Math.atan2(t.at[0] - seat.at[0], t.at[1] - seat.at[1])
+    const turn = Math.max(-0.5, Math.min(0.5, Math.atan2(Math.sin(toTv - seat.rot), Math.cos(toTv - seat.rot))))
+    out['watch-tv'] = { ...seat, rot: seat.rot + turn, screen: t }
   }
   // The pool (a raised basin, build/Zones.tsx): in from its rim, then lengths along it.
   for (const z of plot.zones ?? []) {
