@@ -33,11 +33,11 @@ type LeagueInfo struct {
 }
 
 var (
-	// The basketball clubs (made up) and the tennis players (made up), each with their level.
+	// The basketball clubs (made up) and the tennis players (made up, full names: the men of the Open d'Abidjan, the women of the Tournoi des Régions), each with their level.
 	BasketClubs       = []string{"Abidjan Lions BC", "Treichville Hoops", "Cocody Stars", "Yopougon Ballers", "Plateau Eagles", "Marcory Thunder", "Port-Bouët Sharks", "Abobo Kings", "Adjamé Flash", "Koumassi Rockets", "Bingerville Titans", "Riviera Warriors"}
 	BasketRegionClubs = []string{"Bouaké Basket", "Yakro Panthers", "San-Pédro Waves", "Korhogo Falcons", "Daloa Bulls", "Man Mountain BC", "Gagnoa Giants", "Abengourou Royals", "Odienné Hawks", "Divo Spurs", "Sassandra Surf", "Bondoukou Jets"}
-	TennisPlayers     = []string{"A. Koné", "M. Traoré", "Y. Kouassi", "F. Bamba", "S. Diabaté", "K. N'Guessan", "I. Coulibaly", "P. Yao", "D. Ouattara", "L. Touré", "E. Kouamé", "B. Gnagne"}
-	TennisPlayers2    = []string{"R. Konan", "H. Cissé", "J. Assi", "N. Fofana", "C. Aka", "T. Dosso", "G. Koffi", "V. Sanogo", "O. Kra", "Z. Doumbia", "A. Tanoh", "M. Kanga"}
+	TennisPlayers     = []string{"Adama Koné", "Moussa Traoré", "Yannick Kouassi", "Fousseni Bamba", "Seydou Diabaté", "Kevin N'Guessan", "Ibrahim Coulibaly", "Patrick Yao", "Drissa Ouattara", "Lamine Touré", "Emmanuel Kouamé", "Brice Gnagne"}
+	TennisPlayers2    = []string{"Rachelle Konan", "Hawa Cissé", "Jocelyne Assi", "Nafissatou Fofana", "Christelle Aka", "Tatiana Dosso", "Grâce Koffi", "Viviane Sanogo", "Odile Kra", "Zénab Doumbia", "Aurélie Tanoh", "Mireille Kanga"}
 )
 
 // LeagueList: every league, by app (game.Leagues has their clubs).
