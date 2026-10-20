@@ -9,7 +9,7 @@ import type { ChunkData } from '../world3d/open/tiles'
 import { buildChunk } from '../world3d/open/meshes'
 import { makeTextures } from '../world3d/open/textures'
 import { blockRing } from '../world3d/open/voxel'
-import { Vehicle, type VehicleKind } from '../world3d/vehicles'
+import { Vehicle, carModel, type CarModel, type VehicleKind } from '../world3d/vehicles'
 import { Landmark } from '../world3d/open/landmarks'
 import { CameraView } from '../screens/CameraView'
 import { IvoireInside } from '../world3d/interior/IvoireInside'
@@ -170,7 +170,19 @@ const CARS: [VehicleKind, string | undefined, string | undefined][] = [
   ['moto', '#c92a2a', undefined],
 ]
 
+/** &private: one of each of the people's own cars (vehicles.tsx carModel), side by side. */
+const MODELS: CarModel[] = ['saloon', 'berline', 'suv', '4x4', 'limo']
+const modelSeed = (m: CarModel) => [...Array(400).keys()].find((n) => carModel(n) === m) ?? 0
+
 function Cars({ z = 0, spread = 6.5 }: { z?: number; spread?: number }) {
+  if (q.has('private'))
+    return (
+      <>
+        {MODELS.map((m, i) => (
+          <Vehicle key={m} p={[(i - 2) * spread - 2, 0, z]} kind="car" color={['#f8f9fa', '#1b2a4a', '#212529', '#c9b48a', undefined][i]} seed={modelSeed(m)} />
+        ))}
+      </>
+    )
   return (
     <>
       {CARS.map(([kind, color, trim], i) => (

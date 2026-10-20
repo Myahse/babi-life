@@ -159,6 +159,8 @@ export const api = {
   chats: (id: string) => request<Chat[]>(`/sims/${id}/gbairai`),
   thread: (id: string, friend: string, after = 0) => request<ChatMessage[]>(`/sims/${id}/gbairai/${friend}?after=${after}`),
   write: (id: string, friend: string, body: string) => post<ChatMessage>(`/sims/${id}/gbairai/${friend}`, { body }),
+  /** Says whether this player is writing to the friend, and answers whether the friend is writing back. */
+  typing: (id: string, friend: string, writing: boolean) => request<{ typing: boolean }>(`/sims/${id}/gbairai/${friend}/typing?writing=${writing ? 1 : 0}`),
   block: (id: string, friend: string, blocked: boolean) => post<{ blocked: boolean }>(`/sims/${id}/gbairai/${friend}/block`, { blocked }),
   report: (id: string, friend: string, reason: string, messageId?: number) => post<{ text: string }>(`/sims/${id}/gbairai/${friend}/report`, { reason, messageId }),
   lotoDraws: () => request<{ now: number; pays: Record<number, number>; draws: { id: number; name: string; at: number; numbers?: number[] }[] }>('/loto/draws'),

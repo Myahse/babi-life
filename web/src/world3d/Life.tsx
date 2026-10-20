@@ -5,7 +5,7 @@ import { Human, NoShadows, type Pose } from '../avatar/Human'
 import { randomLook } from '../avatar/options'
 import { rng, type Theme } from './themes'
 import { BACK_STREET_Z, CROSS_X, EXTENT_X, SIDEWALK, STRETCH, STREET_HALF } from './layout'
-import { Vehicle, type VehicleKind } from './vehicles'
+import { CAR_COLORS, Vehicle, type VehicleKind } from './vehicles'
 import { CHECK_SECONDS, boulevardLight, crossLight, drive, type Light, type Mover, type Track } from './traffic'
 import { worldTime } from '../lib/worldClock'
 
@@ -100,7 +100,7 @@ const STOP_GAP = STREET_HALF + 3.2
 export function Traffic({ theme, seed }: { theme: Theme; seed: string }) {
   const tracks = useMemo<Track[]>(() => {
     const r = rng(`cars${seed}`)
-    const kinds: VehicleKind[] = ['taxi', 'woro', 'woro', 'gbaka', 'car', 'car', 'moto']
+    const kinds: VehicleKind[] = ['taxi', 'woro', 'woro', 'gbaka', 'car', 'car', 'car', 'car', 'moto']
     const vehicle = (): Omit<Mover, 's' | 'v'> => {
       const drawn = kinds[Math.floor(r() * kinds.length)]
       // No woro-woro here (the Plateau): an orange taxi compteur instead.
@@ -109,7 +109,7 @@ export function Traffic({ theme, seed }: { theme: Theme; seed: string }) {
         kind,
         len: lengthOf(kind),
         trim: kind === 'woro' ? theme.woroTrim : undefined,
-        color: kind === 'woro' ? theme.woro : kind === 'car' ? ['#f8f9fa', '#212529', '#adb5bd', '#c92a2a', '#1c7ed6'][Math.floor(r() * 5)] : undefined,
+        color: kind === 'woro' ? theme.woro : kind === 'car' ? CAR_COLORS[Math.floor(r() * CAR_COLORS.length)] : undefined,
         speed: (kind === 'gbaka' ? 7 : kind === 'moto' ? 11 : 9) + r() * 3,
       }
     }

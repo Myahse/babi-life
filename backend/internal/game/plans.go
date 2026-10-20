@@ -350,8 +350,9 @@ func cour() Plan {
 	p.door(12, 11, false)
 	p.room(12, 8, 15, 10, ZoneConcrete, "Douche commune")
 	p.room(12, 10, 15, 12, ZoneConcrete, "Toilettes")
-	p.put("douche", 14, 9, 0)
-	p.put("wc", 14, 11, 0)
+	// Facing their doors (on the yard side, -x): turned the other way they faced a wall, and nobody could get in.
+	p.put("douche", 14, 9, 1)
+	p.put("wc", 14, 11, 1)
 	return p.plan("cour", "La cour commune", "Une pièce dans la cour, les voisins à côté, la douche et les toilettes partagées.", 1, false)
 }
 

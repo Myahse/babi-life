@@ -116,8 +116,8 @@ export const MAX_ACTION = 15
 export const actionLength = (m: number) => (m <= 30 ? Math.max(1, Math.ceil(m / 10)) : Math.min(MAX_ACTION, 3 + Math.floor((m - 30 + 15) / 30)))
 
 export function duration(minutes: number) {
-  // What's left of something under way is fractional: count the minute begun.
-  minutes = Math.ceil(minutes - 1e-6)
+  // What's left of something under way is fractional: to the nearest minute, never « 0 min » while it lasts.
+  minutes = minutes > 0 ? Math.max(1, Math.round(minutes)) : 0
   if (minutes < 60) return `${minutes} min`
   if (minutes >= 24 * 60) {
     const d = Math.floor(minutes / 1440)

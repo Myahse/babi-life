@@ -63,7 +63,7 @@ export function EmoteSheet({ world, sim, onClose, onResult }: { world: World; si
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-4 gap-2">
+          <div className="motion-stagger grid grid-cols-4 gap-2">
             {list.map((e) => {
               const mine = has(e)
               return (

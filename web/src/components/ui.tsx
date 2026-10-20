@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react'
 import { Moon, Sun } from 'lucide-react'
-import type { CSSProperties, ReactNode } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 
 /** A flat rounded-square tile with a white icon: the game's icon language. */
 export function IconTile({ icon: Icon, colors, size = 44, radius, className = '', style }: { icon: LucideIcon; colors: [string, string]; size?: number; radius?: number; className?: string; style?: CSSProperties }) {
@@ -52,9 +52,16 @@ export function MotiveRing({ value, icon: Icon, label, size = 52 }: { value: num
   const r = size / 2 - 4
   const c = 2 * Math.PI * r
   const low = value < 25
+  // A need that just went up (eaten, slept, showered) bounces once.
+  const prev = useRef(value)
+  const [rise, setRise] = useState(false)
+  useEffect(() => {
+    if (value > prev.current + 4) setRise(true)
+    prev.current = value
+  }, [value])
   return (
     <div className="flex flex-col items-center gap-1" title={label ? `${label} : ${Math.round(value)} %` : undefined}>
-      <div className={`relative ${low ? 'animate-pulse' : ''}`} style={{ width: size, height: size }}>
+      <div className={`relative ${low ? 'motion-low' : rise ? 'motion-boing' : ''}`} style={{ width: size, height: size }} onAnimationEnd={() => setRise(false)}>
         <svg width={size} height={size} className="-rotate-90">
           <circle cx={size / 2} cy={size / 2} r={r} fill="#fff" stroke="#eceef6" strokeWidth="5" />
           <circle
