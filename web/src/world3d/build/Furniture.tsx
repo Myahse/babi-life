@@ -26,6 +26,21 @@ function Model({ id, color, w, d }: { id: string; color: string; w: number; d: n
   const cx = w / 2
   const cz = d / 2
   switch (id) {
+    case 'escalier': // four steps up to the floor above, from the front (the foot, +z) to the back, a rail on one side
+      return (
+        <>
+          {[0, 1, 2, 3].map((k) => (
+            <group key={k}>
+              <B at={[cx, (k + 1) / 2, d - 0.5 - k]} size={[0.96, k + 1, 0.98]} c={color} />
+              <B at={[cx, k + 1 + 0.02, d - 0.5 - k]} size={[0.98, 0.05, 1]} c="#8a5a32" />
+            </group>
+          ))}
+          {[0, 1, 2, 3, 4].map((k) => (
+            <B key={`p${k}`} at={[0.06, Math.min(k, 3.5) + 0.55 + 0.45, d - k]} size={[0.06, 1, 0.06]} c="#3d4350" />
+          ))}
+          <mesh position={[0.06, 2.95, d / 2]} rotation={[Math.atan2(4, d), 0, 0]} material={mat('#3d4350')} scale={[0.07, 0.07, Math.hypot(4, d)]} geometry={box} />
+        </>
+      )
     case 'natte': // a woven mat on the floor
       return (
         <>

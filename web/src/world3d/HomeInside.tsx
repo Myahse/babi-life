@@ -121,6 +121,25 @@ function useFlights(plot: Plot, w: number, d: number, levels: (level: number) =>
         }
       }
     }
+    // The staircases put in as furniture (« escalier »): each one goes from its floor to the one above.
+    for (const p of plot.furniture ?? []) {
+      if (p[4] !== 'escalier' || p[1] % STOREY !== 0) continue
+      const level = p[1] / STOREY + 1
+      if (out.has(level)) continue
+      const [L, T] = [STOREY, (-p[3] * Math.PI) / 2]
+      const [fw, fd] = p[3] % 2 ? [L, 1] : [1, L]
+      // From the piece's own frame (x 0..1, z 0..4, its foot at +z) to the lot's, from its middle.
+      const lot = (lx: number, lz: number, y: number): P => {
+        const [u, v] = [lx - 0.5, lz - L / 2]
+        const [x, z] = [u * Math.cos(T) + v * Math.sin(T), -u * Math.sin(T) + v * Math.cos(T)]
+        return [p[0] + fw / 2 + x - w / 2, p[2] + fd / 2 + z - d / 2, y]
+      }
+      out.set(level, {
+        start: lot(0.5, L + 0.5, p[1]),
+        steps: [...Array(STOREY)].map((_, k) => lot(0.5, L - 0.5 - k, p[1] + k + 1)),
+        landing: lot(0.5, -0.5, p[1] + STOREY),
+      })
+    }
     return out
   }, [plot, w, d, levels])
 }

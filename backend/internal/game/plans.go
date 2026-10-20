@@ -225,6 +225,15 @@ func (p *planner) stairs(x, z int, m string) {
 	}
 }
 
+// stairsUp: an indoor staircase (the piece « escalier ») from floor n to the
+// one above, its foot at z and its top at z+3, its well opened in the slab.
+func (p *planner) stairsUp(x, z, n int) {
+	for k := 0; k < Storey; k++ {
+		delete(p.g, cell{x, n*Storey + Storey - 1, z + k})
+	}
+	p.furn = append(p.furn, Piece{X: x, Y: n * Storey, Z: z, R: 2, ID: StairsID})
+}
+
 // fence: a compound wall round the lot, 2 m, the gate (w wide) in the middle of the street side.
 func (p *planner) fence(m string, gate int) {
 	p.walls(0, 0, p.w-1, p.d-1, 2, m)
@@ -575,6 +584,7 @@ func villaGrande() Plan {
 	p.upstairs(2, 1, 25, 12, 1, 4, "marbre", "marbre")
 	p.upstairs(2, 1, 25, 12, 2, 4, "marbre", "marbre")
 	p.stairs(26, 10, "marbre")
+	p.stairsUp(3, 7, 1)
 	p.zone(2, 13, 24, 3, ZoneTerrace, "Terrasse")
 	p.pool(4, 18, 14, 6)
 	for _, x := range []int{19, 21, 23} {
@@ -643,6 +653,7 @@ func lotTriplex() Plan {
 	p.upstairs(0, 1, 17, 12, 1, 3, "marbre", "marbre")
 	p.upstairs(0, 1, 17, 12, 2, 3, "marbre", "marbre")
 	p.stairs(18, 10, "marbre")
+	p.stairsUp(1, 7, 1)
 	p.zone(0, 13, 18, 2, ZoneTerrace, "Terrasse")
 	p.pool(3, 17, 10, 6)
 	p.put("transat", 15, 17, 0)

@@ -93,6 +93,8 @@ var Furnitures = []Furniture{
 	{ID: "douche", Label: "Douche", Icon: "shower-head", W: 1, D: 1, H: 2, Price: 12000, Comfort: 0.04, Unlocks: []string{"shower"}, Color: "#9fd3e8"},
 	{ID: "transat", Label: "Transat", Icon: "armchair", W: 1, D: 2, H: 1, Price: 15000, Comfort: 0.03, Color: "#f4f1ea"},
 	{ID: "wc", Label: "Toilettes", Icon: "toilet", W: 1, D: 1, H: 1, Price: 15000, Comfort: 0.05, Color: "#ffffff"},
+	// Up one floor (a duplex, a triplex): four steps a metre each, from its front (the foot) to its back (the top).
+	{ID: StairsID, Label: "Escalier (monte d'un étage)", Icon: "chevrons-up", W: 1, D: Storey, H: Storey, Price: 30000, Comfort: 0, Color: "#cfc8bb"},
 }
 
 func FindFurniture(id string) (Furniture, bool) {
@@ -250,6 +252,19 @@ func (h House) Edit(place, remove []Block, furnish, unfurnish []Piece) (House, i
 		}
 		// A quarter turn at a time: 0 faces +z, 1 a quarter turn, 2 round (facing -z), 3.
 		p.R = ((p.R % 4) + 4) % 4
+		// A staircase opens its well: the slab over it goes (sold back for half).
+		if f.ID == StairsID {
+			for _, c := range p.cells() {
+				if c.y != p.Y+f.H-1 {
+					continue
+				}
+				if m, ok := grid[c]; ok {
+					mat, _ := FindMaterial(m)
+					cost -= mat.Price / 2
+					delete(grid, c)
+				}
+			}
+		}
 		for _, c := range p.cells() {
 			if !inside(c) {
 				return h, 0, 0, ErrOutOfPlot
@@ -386,6 +401,9 @@ func HomeComfort(furnished []string) float64 {
 }
 
 // HomeNeeds: the furniture a home activity needs in one's own house ("" when none).
+// StairsID: the staircase piece, from a floor to the one above.
+const StairsID = "escalier"
+
 // NightID: « Passer la nuit ensemble », at home with one's partner.
 const NightID = "passer-nuit"
 
