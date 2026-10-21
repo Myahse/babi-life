@@ -14,6 +14,7 @@ import { StadiumLive } from './stadiumLive'
 import { Zoo } from './zoo'
 import { BlockhaussMaquis } from './blockhauss'
 import { Cathedral } from './cathedral'
+import { MosqueM6 } from './mosqueM6'
 import type { StadiumEvent } from '../../lib/stadium'
 import type { Obstacle } from '../obstacles'
 
@@ -23,6 +24,7 @@ import type { Obstacle } from '../obstacles'
 /** The game places drawn as landmarks, and the ground they need cleared (metres). */
 export const LANDMARKS: Record<string, number> = {
   'plateau-cathedrale': 62,
+  'treich-mosquee-m6': 62,
   'plateau-pyramide': 34,
   'plateau-stade': 105,
   'cocody-hotel-ivoire': 75,
@@ -53,6 +55,8 @@ export function Landmark({ id, night, demo, open = true }: { id: string; night: 
   switch (id) {
     case 'plateau-cathedrale':
       return <Cathedral night={night} />
+    case 'treich-mosquee-m6':
+      return <MosqueM6 night={night} />
     case 'plateau-pyramide':
       return <Pyramide night={night} />
     case 'plateau-stade':

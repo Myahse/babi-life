@@ -4,7 +4,7 @@ import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import type { Look, Sim } from '../lib/types'
 import { defaultColors, fullLook, hasAcc } from './options'
-import type { Pose } from './Human'
+import { salatStep, type Pose } from './Human'
 import { FilmingPhone } from './BlockHuman'
 
 // A blocky Sim seen from afar: the same boxes as BlockHuman (a cube head, a
@@ -87,8 +87,23 @@ export function LowHuman({ look, gender, pose = 'idle', seed = 0, speed }: { loo
   const aw = (femme ? 0.115 : 0.13) * limb
   const legs = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
   const arms = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
+  const whole = useRef<THREE.Group>(null)
+  const upper = useRef<THREE.Group>(null)
   const phase = useRef(seed)
   useFrame((_, dt) => {
+    // The salat, on the shared clock like the full-size people (Human): standing, hands folded; bowing;
+    // prostrated (the legs back, the body down along the mat); sitting back on the heels.
+    if (pose === 'salat') {
+      const { step } = salatStep()
+      const [bow, legX, drop, armX] = step === 1 ? [1.35, 0, 0, -1.1] : step === 3 ? [1.45, 1.4, -0.6, -2.2] : step === 4 ? [0, 1.45, -0.55, -0.5] : [0, 0, 0, step === 0 ? -0.55 : 0]
+      if (upper.current) upper.current.rotation.x = bow
+      if (whole.current) whole.current.position.y = drop
+      for (const i of [0, 1]) {
+        if (legs[i].current) legs[i].current!.rotation.x = legX
+        if (arms[i].current) arms[i].current!.rotation.x = armX
+      }
+      return
+    }
     const run = pose === 'run'
     const walk = pose === 'walk' || run || pose === 'dribble'
     const seated = pose === 'sit' || pose === 'eat' || pose === 'drink' || pose === 'write'
@@ -132,19 +147,24 @@ export function LowHuman({ look, gender, pose = 'idle', seed = 0, speed }: { loo
     ...(sleeve > 0 ? [{ c: top, s: [r3(aw), r3((ARM + 0.03) * sleeve), r3(aw)] as [number, number, number], p: [0, 0.03, 0] as [number, number, number], hang: true }] : []),
   ])
   return (
-    <group scale={l.height * (femme ? 0.96 : 1)} position={[0, seatDrop, 0]}>
+    <group ref={whole} scale={l.height * (femme ? 0.96 : 1)} position={[0, seatDrop, 0]}>
       {[0, 1].map((i) => (
         <group key={i} ref={legs[i]} position={[(i ? 1 : -1) * (tw / 4), HIP_Y, 0]}>
           <mesh geometry={leg} material={material} />
         </group>
       ))}
-      <mesh geometry={body} material={material} />
-      {[0, 1].map((i) => (
-        <group key={i} ref={arms[i]} position={[(i ? 1 : -1) * (tw / 2 + aw / 2 + 0.006), SHOULDER_Y, 0]}>
-          <mesh geometry={arm} material={material} />
-          {pose === 'film' && i === 1 && <FilmingPhone y={-0.56} />}
+      {/* Above the hips, turning about them (the salat's bow) */}
+      <group ref={upper} position={[0, HIP_Y, 0]}>
+        <group position={[0, -HIP_Y, 0]}>
+          <mesh geometry={body} material={material} />
+          {[0, 1].map((i) => (
+            <group key={i} ref={arms[i]} position={[(i ? 1 : -1) * (tw / 2 + aw / 2 + 0.006), SHOULDER_Y, 0]}>
+              <mesh geometry={arm} material={material} />
+              {pose === 'film' && i === 1 && <FilmingPhone y={-0.56} />}
+            </group>
+          ))}
         </group>
-      ))}
+      </group>
     </group>
   )
 }

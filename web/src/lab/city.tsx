@@ -12,10 +12,12 @@ import { blockRing } from '../world3d/open/voxel'
 import { Vehicle, carModel, type CarModel, type VehicleKind } from '../world3d/vehicles'
 import { Landmark, STADIUM_SOLID } from '../world3d/open/landmarks'
 import { CATHEDRAL_SOLID } from '../world3d/open/cathedral'
+import { MOSQUE_M6_SOLID } from '../world3d/open/mosqueM6'
 import { CameraView } from '../screens/CameraView'
 import { IvoireInside } from '../world3d/interior/IvoireInside'
 import { MallInside } from '../world3d/interior/MallInside'
 import { CathedralInside } from '../world3d/interior/CathedralInside'
+import { MosqueM6Inside } from '../world3d/interior/MosqueM6Inside'
 import { HotelInside } from '../world3d/interior/HotelInside'
 import { Snapper } from '../world3d/snapshot'
 import { usePhotoMode } from '../world3d/photoCam'
@@ -79,6 +81,7 @@ const seededLab = (n: number) => () => ((n = (n * 16807) % 2147483647) / 2147483
 // ?view=map&lat=5.345&lng=-4.082&n=1 for the real map's chunks there
 // (OpenFreeMap, no key), n chunks each way, seen from &cam; &lm=plateau-stade@5.3283,-4.0185;…
 // draws those landmarks where the game would put them, their ground cleared;
+// ?view=mosquee (&act=pray|priere-vendredi|visit, &m=6510 a Friday at 12:30) the Mosquée Mohammed VI inside;
 // ?view=cathedrale (&act=pray|messe|visit|monter-tour, &m= a game minute: 9240 is a Sunday at 10) the cathedral inside;
 // ?view=gbaka&t=… the apprenti's chase down a straight street (t: seconds
 // into the cycle, frozen; without t it plays);
@@ -217,7 +220,7 @@ function LandmarkLab() {
       <Landmark id={q.get('id') ?? 'yop-rue-princesse'} night={night} open={!q.has('closed')} />
       {/* &solid: what a walker can't go through, in red */}
       {q.has('solid') &&
-        ({ 'cocody-zoo': ZOO_SOLID, 'cocody-hotel-ivoire': IVOIRE_SOLID, 'plateau-poulman': POULMAN_SOLID, 'plateau-noum': NOUM_SOLID, 'marcory-azale': AZALE_SOLID, 'pb-rabisson': RABISSON_SOLID, 'plateau-cathedrale': CATHEDRAL_SOLID, 'plateau-stade': STADIUM_SOLID }[q.get('id') ?? ''] ?? []).map((o, i) =>
+        ({ 'cocody-zoo': ZOO_SOLID, 'cocody-hotel-ivoire': IVOIRE_SOLID, 'plateau-poulman': POULMAN_SOLID, 'plateau-noum': NOUM_SOLID, 'marcory-azale': AZALE_SOLID, 'pb-rabisson': RABISSON_SOLID, 'plateau-cathedrale': CATHEDRAL_SOLID, 'plateau-stade': STADIUM_SOLID, 'treich-mosquee-m6': MOSQUE_M6_SOLID }[q.get('id') ?? ''] ?? []).map((o, i) =>
           'r' in o ? (
             <mesh key={i} position={[o.x, 1.5, o.z]}>
               <cylinderGeometry args={[o.r, o.r, 3, 24]} />
@@ -530,6 +533,7 @@ function Lab() {
   if (view === 'hotel') return <HotelInside sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)) } as unknown as Sim} placeId={q.get('id') ?? 'plateau-poulman'} name={q.get('name') ?? 'Hôtel Poulman'} interactionId={q.get('act') ?? undefined} night={night} stage="adulte" />
   if (view === 'ivoire') return <IvoireInside sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)) } as unknown as Sim} interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" />
   if (view === 'cathedrale') return <CathedralInside sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)), gameMinutes: Number(q.get('m') ?? 0) } as unknown as Sim} interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" />
+  if (view === 'mosquee') return <MosqueM6Inside sim={{ id: 'lab', firstName: 'Awa', gender: 'homme', look: randomLook('homme', seededLab(5)), gameMinutes: Number(q.get('m') ?? 0) } as unknown as Sim} interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" />
   if (view === 'home') return <HomeLab />
   if (view === 'plan') return <PlanLab />
   if (view === 'inside') return <InsideLab />
