@@ -17,6 +17,8 @@ type Interaction struct {
 	Days []int `json:"days,omitempty"`
 	// Requires limits who can do it; nil = anyone.
 	Requires *Requirement `json:"requires,omitempty"`
+	// Stay: only in a room one has rented here (game/hotels.go): sleeping in it, room service…
+	Stay bool `json:"stay,omitempty"`
 	// Ages: the life stages that can do it; empty = from childhood up (KidsUp).
 	Ages []string `json:"ages,omitempty"`
 	// Places: only at these places of the kind (the Hôtel Ivoire's ice rink…); empty = at every one.
@@ -477,6 +479,18 @@ var Kinds = map[string]PlaceKind{
 			{Text: "La coiffeuse t'a tiré les cheveux trop fort : tu as mal à la tête.", Effect: Needs{Fun: -10}},
 		},
 	},
+	// A home booked on Dodo (game/dodo.go): one's own for the nights booked.
+	DodoKind: {
+		ID: DodoKind, Label: "Location Dodo", Icon: "key-round",
+		Interactions: []Interaction{
+			{ID: "logement-dormir", Stay: true, Label: "Dormir dans ta location", Icon: "bed-double", Minutes: 8 * 60, Effect: Needs{Energy: 100, Hygiene: 5}},
+			{ID: "logement-sieste", Stay: true, Label: "Faire la sieste", Icon: "bed", Minutes: 60, Effect: Needs{Energy: 30}},
+			{ID: "logement-douche", Stay: true, Label: "Prendre une douche", Icon: "shower-head", Minutes: 20, Effect: Needs{Hygiene: 65}},
+			{ID: "logement-cuisiner", Stay: true, Label: "Se faire à manger", Icon: "cooking-pot", Minutes: 45, Cost: 2500, Effect: Needs{Hunger: 60, Fun: 5}},
+			{ID: "logement-tele", Stay: true, Label: "Regarder la télé", Icon: "tv", Minutes: 60, Effect: Needs{Fun: 25, Energy: 5}},
+			{ID: "logement-amis", Stay: true, Label: "Recevoir des amis", Icon: "users", Minutes: 90, Cost: 5000, Effect: Needs{Social: 40, Fun: 25, Energy: -10}, MinHour: 12},
+		},
+	},
 	"hotel": {
 		ID: "hotel", Label: "Hôtel", Icon: "hotel",
 		Interactions: []Interaction{
@@ -489,6 +503,17 @@ var Kinds = map[string]PlaceKind{
 			{ID: "cinema-ivoire", Label: "Voir un film au Ciné Ivoire", Icon: "clapperboard", Minutes: 2 * 60, Cost: 3500, Effect: Needs{Fun: 40, Energy: -5}, MinHour: 12, MaxHour: 2, Places: []string{HotelIvoireID}},
 			{ID: "casino-ivoire", Ages: Adults, Label: "Passer la soirée au casino", Icon: "dice-5", Minutes: 90, Cost: 15000, Effect: Needs{Fun: 45, Social: 15, Energy: -10}, MinHour: 18, MaxHour: 4, Places: []string{HotelIvoireID}},
 			{ID: "lobby-ivoire", Label: "Flâner dans le grand hall", Icon: "sparkles", Minutes: 30, Effect: Needs{Fun: 15, Social: 5}, Places: []string{HotelIvoireID}},
+			// In the room one has rented (game/hotels.go): one's own for the stay, room service to the door.
+			{ID: RoomSleepID, Stay: true, Label: "Dormir dans ta chambre", Icon: "bed-double", Minutes: 8 * 60, Effect: Needs{Energy: 100, Hygiene: 5, Fun: 5}},
+			{ID: "chambre-sieste", Stay: true, Label: "Faire la sieste dans ta chambre", Icon: "bed", Minutes: 60, Effect: Needs{Energy: 30}},
+			{ID: "chambre-douche", Stay: true, Label: "Prendre une douche dans ta chambre", Icon: "shower-head", Minutes: 20, Effect: Needs{Hygiene: 70}},
+			{ID: "chambre-bain", Stay: true, Label: "Prendre un bain moussant", Icon: "bath", Minutes: 45, Effect: Needs{Hygiene: 80, Fun: 15, Energy: 10}},
+			{ID: "chambre-tele", Stay: true, Label: "Regarder la télé au lit", Icon: "tv", Minutes: 60, Effect: Needs{Fun: 30, Energy: 5}},
+			{ID: "rs-petitdej", Stay: true, Label: "Room service : petit-déjeuner au lit", Icon: "coffee", Minutes: 30, Cost: 9000, Effect: Needs{Hunger: 45, Fun: 10}, MinHour: 6, MaxHour: 11},
+			{ID: "rs-club", Stay: true, Label: "Room service : club sandwich et frites", Icon: "sandwich", Minutes: 30, Cost: 8000, Effect: Needs{Hunger: 50, Fun: 5}},
+			{ID: "rs-poisson", Stay: true, Label: "Room service : poisson braisé et attiéké", Icon: "fish", Minutes: 40, Cost: 14000, Effect: Needs{Hunger: 70, Fun: 10}, MinHour: 11, MaxHour: 23},
+			{ID: "rs-glace", Stay: true, Label: "Room service : coupe de glace", Icon: "ice-cream-cone", Minutes: 20, Cost: 6000, Effect: Needs{Hunger: 10, Fun: 20}},
+			{ID: "rs-cocktail", Stay: true, Ages: Adults, Label: "Room service : cocktail du bar", Icon: "martini", Minutes: 20, Cost: 7000, Effect: Needs{Fun: 25, Social: 5}, MinHour: 17, MaxHour: 3},
 		},
 		Events: []RandomEvent{
 			{Text: "Une star du coupé-décalé traverse le hall, entourée de gardes du corps.", Effect: Needs{Fun: 20}},
