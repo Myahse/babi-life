@@ -3,7 +3,7 @@
 Babi Life is a life-sim set in Abidjan. The repo is `myahse/babi-life` (GitHub now redirects it to `Myahse/babi-life`).
 
 - `web/`: React 19, Vite, Tailwind v4, react-three-fiber.
-- `backend/`: Go (chi, pgx). Migrations are embedded in `backend/internal/db/migrations/`, up to `037_babigram.sql`.
+- `backend/`: Go (chi, pgx). Migrations are embedded in `backend/internal/db/migrations/`, up to `039_couples.sql`.
 - `mobile/`: a Flutter webview.
 
 Auth is Firebase (project `babilife-38e39`). The web app is on Vercel. The API runs on Render (`render.yaml`, **free plan**) and the database on Neon.
@@ -75,33 +75,17 @@ Never use `pkill` in compound commands; use `fuser -k <port>/tcp`.
 
 ## Done in the last session (all pushed to the branch and to main)
 
-- **Hotel exteriors from the user's photos:** Poulman (`open/poulman.tsx`), Noum (`noum.tsx`), Azalé (`azale.tsx`) and Rabisson (`rabisson.tsx`), registered in `landmarks.tsx` and `GROUNDS` in `OpenWorld.tsx`. Around them, `hotelBits.tsx` adds doormen, guards with their booths, guests walking to and fro, luggage trolleys, lamps, bollards, rooftop machines, and loungers by the pools. The hotel interiors are in `interior/HotelInside.tsx`, with a different layout per hotel.
-- **Server ready for launch** (the user expects 77 players):
-  - `live.go` sends only the states heard since the last tick;
-  - `MaxRoom` is 150;
-  - `db.go` allows 16 DB connections unless `pool_max_conns` is in the URL;
-  - `/world` is cached for 10 minutes.
-- **Fixed courts, playing together:**
-  - Football and basketball are played only at `game.Courts` (`backend/internal/game/courts.go`). That sets the `Places` of `play-football`/`play-basket`. The courts are in `world.go`, and OSM sport places are scenery (`places.ts`).
-  - `backend/internal/court` is the lobby: one match per court, `Cap` 10 for football and 6 for basketball, a 20 s wait, drop-in during play, and newcomers in the last minute go to the next match.
-  - Starting to play takes a place, or fails with « terrain complet » (`sims/court.go`, `courtTake`).
-  - Routes: `/sims/{id}/court/join`, `/court/{match}`, `/sims/{id}/court/{match}/leave`, `/court/at/{place}`. The place card shows « N/cap joueurs » (`CourtCount` in `Play.tsx`).
-  - The match runs over live mode `match` (`web/src/streetball/online.ts`). The first player still connected runs `game.ts` for everyone and sends it as rows of numbers; the others send their stick and counted button presses. `step()` takes `others`, and stats are the local player's only.
-  - Tested with two browsers.
-- **Tikitoko rework** (`TikitokoApp.tsx`, `TikiScene.tsx`, `world3d/clip.ts`, `lib/tikiSounds.ts`, `sims/tikivideo.go`, `tikinpc.go`, migration 036):
-  - real 5–15 s clips through MediaRecorder, with sounds made in WebAudio;
-  - 16 in-game creators shown as live 3D scenes, so the feed is never empty;
-  - TikTok-style playback;
-  - instant posting, 20 a day; brands pay for the first 10.
-  - Tested: record, publish, playback.
-- **Babigram**, the photo app (`BabigramApp.tsx`, `BabigramArt.tsx`, `sims/babigram.go`, migration 037):
-  - feed with stories, Explorer, profile, Activité, comments and reports;
-  - nine filters baked into the JPEG;
-  - 10 in-game accounts.
-  - Tested in the browser.
-- Earlier in the same session: the game-wide test and its fixes, street sellers kept off roads, the Gbairai « écrit… » indicator, private cars in traffic, UI animations (`motion.css`), and actions grouped by room at home (toilets, teeth).
+- **Court matches on phones** (`streetball/`): the « you » ring only on your own player; the upright football camera and stick turn round for team 1; the camera keeps your player above the controls (`Follow`, `lift`); a phone only runs the match once its socket is open (`MatchNet.host`). Tested with 2–3 phones (`/tmp/claude-0/tiles/court-probe.mjs`).
+- **Emotes** (`avatar/emotes.ts`): wrappers add a knee dip, overshoot and settle, breathing and sway; the kiss and moonwalk no longer jump.
+- **Talk to anyone** (`world3d/talk.ts`, `Talkable.tsx`, `TalkHuman`): adults inside maquis, clubs, hotels, the mall, the street's pasteur/fou/office workers and the night street open the chat. **Children are never talkable** (a chat friend is `Adult: true`, so romance could follow). Chatting while busy is an aside (`Activity.ChatWith`). Friends keep their look (`Friend.Look`, `Passerby.Look`); `MaxFriends` is 30.
+- **Friends post**: Tikitoko (`sims/tikifriends.go`, generated, nothing stored; ids below `-friendPostBase`); Babigram (`sims/gramfriends.go`, `gram_people`, migration 038; met people have public accounts `npc:p-…`).
+- **Outings** (`sims/outing.go`, `POST /sims/{id}/outing`, `screens/OutingPlanner.tsx`): up to 4 friends; NPC friends answer at once and come along (`Activity.With`, drawn by `Companions` in `Walker.tsx` and `Along` in `Interior.tsx`); player friends get an invite; the Sim pays for everyone. **Cinema** kind with four invented cinemas.
+- **Romance** (`sims/cheating.go`, `couple.go`, migration 039): dates, two partners at once and getting caught, couples between players (asked and accepted, adults only, one at a time).
 
 ## Open or possible next steps
+
+- **Social:** a player couple isn't drawn together in 3D yet; jealousy only exists with partners met in the game (not between players); Gbairai messages from friends met in the game; outing companions at outdoor places only stand beside the Sim.
+- **Court matches:** players who close the app keep their place (ghost entries); on small phones the ball can leave the top of the screen.
 
 - **Hosting, for the user to do** (they've been told): move Render off the free plan, and use a paid Neon compute size (or wake the DB just before launch). The in-memory hub, kart lobby and court lobby need a **single** API instance.
 - **Court matches:**
