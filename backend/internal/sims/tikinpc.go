@@ -131,6 +131,10 @@ func npcPost(id int64, now time.Time) (TikiPost, bool) {
 		NPC:        &TikiNPC{Look: npcLookSeed(c), Scene: rng.Uint32()},
 		At:         at,
 	}
+	// A caption that names a place is tagged there (« Le Plateau au lever du soleil » isn't in Cocody).
+	if named := namedPlace(p.Caption, places); named != "" {
+		p.Place = named
+	}
 	p.Views, p.Likes = grown(views, at, now), grown(likes, at, now)
 	p.Comments = npcComments(p.Views)
 	p.Saves, p.Shares = p.Likes/25, p.Likes/40
@@ -272,4 +276,17 @@ func npcProfile(handle string, now time.Time) (TikiProfile, bool) {
 		Posts:     len(posts) + c.Fans/2000,
 		NPC:       &TikiNPC{Look: npcLookSeed(c)},
 	}, true
+}
+
+// namedPlace: the place of the list a caption names (by one of its longer words), or "".
+func namedPlace(caption string, places []string) string {
+	low := strings.ToLower(caption)
+	for _, pl := range places {
+		for _, w := range strings.Fields(strings.ToLower(pl)) {
+			if len([]rune(w)) >= 5 && strings.Contains(low, w) {
+				return pl
+			}
+		}
+	}
+	return ""
 }
