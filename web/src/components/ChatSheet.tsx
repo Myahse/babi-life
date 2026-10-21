@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Beer, BookOpen, Briefcase, Check, Coffee, Hand, HandCoins, HandHelping, Heart, HeartCrack, House, Laugh, Lightbulb, MapPin, MessagesSquare, Scissors, Smartphone, Smile, Sparkles, Trophy, Users, Utensils, X, type LucideIcon } from 'lucide-react'
+import { Beer, BookOpen, Briefcase, Check, Coffee, Grid3x3, Hand, HandCoins, HandHelping, Heart, HeartCrack, House, Laugh, Lightbulb, MapPin, MessagesSquare, Scissors, Smartphone, Smile, Sparkles, Trophy, Users, Utensils, X, type LucideIcon } from 'lucide-react'
 import type { Npc } from '../world3d/open/OpenWorld'
 import type { Friend } from '../lib/types'
 import { greetingsFor, helloFrom } from '../lib/nouchi'
@@ -151,13 +151,15 @@ function greeting(npc: Npc, simGender: 'femme' | 'homme', m: Memory): string {
   return ['Te revoilà !', `On se connaît, ${toi} ! Ça dit quoi ?`, "Ah, c'est toi encore ! Ça va un peu ?"][m.met % 3]
 }
 
-export function ChatSheet({ npc, simGender, onSay, onClose, onBye, languages = [], onLanguages, gameMinutes = 0, friend, taken, grownUp, adultAccount, onConfirmAdult }: {
+export function ChatSheet({ npc, simGender, onSay, onClose, onBye, onDames, languages = [], onLanguages, gameMinutes = 0, friend, taken, grownUp, adultAccount, onConfirmAdult }: {
   npc: Npc
   simGender: 'femme' | 'homme'
   onSay: (topic: string, label: string, said?: string, lang?: string) => Promise<Reply | null>
   onClose: () => void
   /** « Au revoir »: the chat is over (not one more thing said). */
   onBye?: () => void
+  /** One of the men of the grin: a game of dames with him. */
+  onDames?: () => void
   /** The languages the player speaks besides French, and saving them. */
   languages?: string[]
   onLanguages?: (langs: string[]) => Promise<void>
@@ -345,6 +347,12 @@ export function ChatSheet({ npc, simGender, onSay, onClose, onBye, languages = [
                 ))}
               </ul>
             </div>
+            {/* One of the men of the grin: sit down at the board with him */}
+            {onDames && (
+              <button className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#7a4a22] py-2.5 text-sm font-extrabold text-white" onClick={onDames}>
+                <Grid3x3 size={16} /> Jouer aux dames avec {npc.name}
+              </button>
+            )}
             {/* Taking leave ends the chat there and then, in a language you share if you have one */}
             <button className="mt-3 w-full rounded-2xl bg-[var(--color-canvas)] py-2.5 text-sm font-extrabold text-[var(--color-ink-soft)]" onClick={onBye ?? onClose}>
               {goodbyeIn(shared, npc.name)}
