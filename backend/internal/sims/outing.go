@@ -26,8 +26,10 @@ const (
 	maxOuting = 4
 	// What each friend who came adds to the outing.
 	outingSocial, outingFun = 8, 4
-	// outingFriendship: how much closer an outing together brings.
+	// outingFriendship: how much closer an outing together brings; a date, more (and more fun).
 	outingFriendship = 6
+	outingDate       = 10
+	outingDateFun    = 6
 )
 
 var (
@@ -50,9 +52,9 @@ var outingNo = []string{"{name} ne peut pas, le travail", "{name} est déjà pri
 
 // goOut starts the outing for the friends met in the game (ids from
 // s.Friends): who came, and what the ones who didn't said.
-func (s *Sim) goOut(placeID, interactionID string, friends []string, rng *rand.Rand) (came []game.Friend, refused []string, err error) {
+func (s *Sim) goOut(placeID, interactionID string, friends []string, rng *rand.Rand) (came []game.Friend, refused []string, news string, err error) {
 	if placeID == HomePlaceID || placeID == HappeningPlaceID || placeID == "ami" || placeID == "bande" || interactionID == game.WorkInteractionID || interactionID == game.NightID {
-		return nil, nil, errOutingWhere
+		return nil, nil, "", errOutingWhere
 	}
 	var asked []*game.Friend
 	for _, id := range friends {
@@ -71,16 +73,16 @@ func (s *Sim) goOut(placeID, interactionID string, friends []string, rng *rand.R
 	}
 	it, err := s.interactAt(placeID, interactionID)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, "", err
 	}
 	if !joinable(s.Activity, s.GameMinutes) {
 		s.Activity = nil
-		return nil, nil, errOutingWhere
+		return nil, nil, "", errOutingWhere
 	}
 	// The guests' share of the bill (the Sim's own was paid on starting).
 	if bill := max(it.Cost, 0) * len(came); bill > 0 {
 		if s.Money < bill {
-			return nil, nil, errOutingBill
+			return nil, nil, "", errOutingBill
 		}
 		s.Money -= bill
 	}
@@ -90,14 +92,29 @@ func (s *Sim) goOut(placeID, interactionID string, friends []string, rng *rand.R
 		names[i] = f.Name
 		a.With = append(a.With, f.ID)
 		g := s.findFriend(f.ID)
-		g.Friendship, g.Seen = min(100, g.Friendship+outingFriendship), s.GameMinutes
+		closer := outingFriendship
+		if g.Partner {
+			closer = outingDate // a date: closer still
+		}
+		g.Friendship, g.Seen = min(100, g.Friendship+closer), s.GameMinutes
 	}
 	if len(came) > 0 {
 		a.Interaction.Label += " avec " + listNames(names)
 		a.Interaction.Effect.Social += float64(outingSocial * len(came))
 		a.Interaction.Effect.Fun += float64(outingFun * len(came))
 	}
-	return came, refused, nil
+	// Just the two of them: a date.
+	if len(came) == 1 && came[0].Partner {
+		a.Interaction.Label += " (en amoureux)"
+		a.Interaction.Effect.Fun += outingDateFun
+	}
+	// Out with one while together with another: seen, maybe (cheating.go).
+	for _, f := range came {
+		if g := s.findFriend(f.ID); g.Partner && news == "" {
+			news = s.caught(g, caughtOuting, rng)
+		}
+	}
+	return came, refused, news, nil
 }
 
 // listNames: « Awa », « Awa et Yao », « Awa, Yao et Koffi ».
@@ -127,7 +144,7 @@ func (h *Handler) outing(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
-		came, refused, err := s.goOut(req.PlaceID, req.InteractionID, req.Friends, newRand())
+		came, refused, news, err := s.goOut(req.PlaceID, req.InteractionID, req.Friends, newRand())
 		if err != nil {
 			return game.Outcome{}, nil, err
 		}
@@ -147,13 +164,11 @@ func (h *Handler) outing(w http.ResponseWriter, r *http.Request) {
 				invited = append(invited, o.FirstName)
 			}
 		}
-		text := fmt.Sprintf("Sortie : %s à %s", strings.TrimSuffix(a.Interaction.Label, " avec "+listNames(names)), a.PlaceName)
-		switch {
-		case len(names) > 0:
-			text += " avec " + listNames(names) + "."
-		case len(invited) == 0:
+		// The label already says with whom (goOut).
+		text := fmt.Sprintf("Sortie : %s à %s", a.Interaction.Label, a.PlaceName)
+		if len(names) == 0 && len(invited) == 0 {
 			text += ", tout·e seul·e finalement."
-		default:
+		} else {
 			text += "."
 		}
 		if len(invited) > 0 {
@@ -161,6 +176,9 @@ func (h *Handler) outing(w http.ResponseWriter, r *http.Request) {
 		}
 		if len(refused) > 0 {
 			text += " " + strings.Join(refused, ". ") + "."
+		}
+		if news != "" {
+			text += " " + news
 		}
 		cost := max(a.Interaction.Cost, 0) * (1 + len(came))
 		return game.Outcome{Text: text, Money: -cost}, []Event{{Kind: "social", Text: text, GameTime: s.GameMinutes}}, nil

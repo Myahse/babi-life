@@ -923,6 +923,7 @@ export function Play() {
           onSay={say}
           onClose={() => setChat(null)}
           friend={sim.friends?.find((f) => f.id === `p-${chat.id}`)}
+          taken={sim.friends?.find((f) => f.partner && f.id !== `p-${chat.id}`)?.name}
           grownUp={!lifeOf(world, sim).minor}
           adultAccount={!!user?.adult}
           onConfirmAdult={async () => {

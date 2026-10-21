@@ -332,6 +332,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Get("/court/at/{place}", h.courtAt)
 	r.Post("/sims/{id}/friends/{other}/answer", h.answerFriend)
 	r.Post("/sims/{id}/friends/{other}/invite", h.inviteFriend)
+	r.Post("/sims/{id}/friends/{other}/couple", h.couple)
 	r.Post("/sims/{id}/invites/{invite}", h.answerInvite)
 }
 

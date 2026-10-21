@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Handshake, LogOut, Phone, Send, ShieldAlert, UserPlus, Users, Wallet, Zap } from 'lucide-react'
+import { Handshake, Heart, HeartCrack, LogOut, Phone, Send, ShieldAlert, UserPlus, Users, Wallet, Zap } from 'lucide-react'
 import { api } from '../lib/api'
 import type { Friend, Player, Sim, World } from '../lib/types'
 import { Portrait } from '../avatar/portrait'
@@ -144,6 +144,7 @@ function PlayerFriends({ world, sim, act, onPay }: { world: World; sim: Sim; act
   const communeName = (p: Player) => world.cities.find((c) => c.id === p.city)?.communes.find((c) => c.id === p.commune)?.name ?? ''
   const tag = (p: Player) => (p.username ? `@${p.username}` : p.firstName)
   const canInvite = joinableActivity(sim)
+  const grown = lifeOf(world, sim).stage?.id === 'adulte'
   const answer = (p: Player, a: 'accepter' | 'refuser') => act(a === 'accepter' ? `Ami·e avec ${tag(p)}` : 'Refuser', a === 'accepter' ? 'user-plus' : 'x', 'social', () => api.answerFriend(sim.id, p.id, a)).then(() => load())
   return (
     <>
@@ -187,7 +188,10 @@ function PlayerFriends({ world, sim, act, onPay }: { world: World; sim: Sim; act
                   <span className={`absolute right-0 bottom-0 h-3 w-3 rounded-full ring-2 ring-white ${p.online ? 'bg-[#00b86b]' : 'bg-[#adb5bd]'}`} />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <div className="font-display text-base leading-tight font-extrabold">{tag(p)}</div>
+                  <div className="flex items-center gap-1.5 font-display text-base leading-tight font-extrabold">
+                    {tag(p)}
+                    {p.couple && <span className="rounded-full bg-[#e0245e] px-1.5 py-0.5 text-[9px] text-white">❤ ENSEMBLE</span>}
+                  </div>
                   <div className="truncate text-[11px] font-bold text-[var(--color-ink-soft)]">
                     {p.online ? (p.activity ? `${p.activity.label} · ${p.activity.placeName}` : `En ligne · ${communeName(p)}`) : `Hors ligne · ${communeName(p)}`}
                   </div>
@@ -204,6 +208,7 @@ function PlayerFriends({ world, sim, act, onPay }: { world: World; sim: Sim; act
                   <Wallet size={14} /> Waye
                 </button>
               </div>
+              <CoupleLine p={p} free={!friends.some((x) => x.couple)} grown={grown && p.stage === 'adulte'} onCouple={(a, label) => act(label, 'heart', 'social', () => api.couple(sim.id, p.id, a)).then(() => load())} />
             </li>
           ))}
         </ul>
@@ -214,5 +219,41 @@ function PlayerFriends({ world, sim, act, onPay }: { world: World; sim: Sim; act
         </p>
       )}
     </>
+  )
+}
+
+/**
+ * Together with a player friend (backend sims/couple.go): their answer to
+ * give, the one sent, breaking it off, or asking, between adults, one couple
+ * of players at a time.
+ */
+function CoupleLine({ p, free, grown, onCouple }: { p: Player; free: boolean; grown: boolean; onCouple: (a: 'proposer' | 'accepter' | 'refuser' | 'rompre', label: string) => void }) {
+  const who = p.username ? `@${p.username}` : p.firstName
+  if (p.coupleRequest === 'received')
+    return (
+      <div className="mt-2 rounded-xl bg-[#ffe3ec] p-2">
+        <div className="text-xs font-extrabold text-[#c2255c]">{who} te demande de sortir ensemble ❤</div>
+        <div className="mt-1.5 grid grid-cols-2 gap-2">
+          <button className="btn btn-soft !py-1.5 !text-xs" onClick={() => onCouple('refuser', 'Rester ami·es')}>
+            Restons ami·es
+          </button>
+          <button className="btn !bg-[#e0245e] !py-1.5 !text-xs" onClick={() => onCouple('accepter', `Ensemble avec ${who}`)}>
+            <Heart size={14} /> Oui
+          </button>
+        </div>
+      </div>
+    )
+  if (p.couple)
+    return (
+      <button className="mt-2 flex items-center gap-1 text-xs font-extrabold text-[#c2255c]" onClick={() => onCouple('rompre', `Rompre avec ${who}`)}>
+        <HeartCrack size={13} /> Rompre
+      </button>
+    )
+  if (p.coupleRequest === 'sent') return <div className="mt-2 text-xs font-bold text-[var(--color-ink-soft)]">Demande ❤ envoyée : en attente de sa réponse.</div>
+  if (!grown || !free) return null
+  return (
+    <button className="btn btn-soft mt-2 w-full !py-1.5 !text-xs !text-[#c2255c]" onClick={() => onCouple('proposer', `Sortir avec ${who}`)}>
+      <Heart size={14} /> Lui proposer de sortir ensemble
+    </button>
   )
 }
