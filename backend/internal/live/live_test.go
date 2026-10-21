@@ -59,3 +59,28 @@ func TestStalePlayersDrop(t *testing.T) {
 		t.Fatal("a stale player should be dropped, not sent")
 	}
 }
+
+func TestOnlyNewStatesAreResent(t *testing.T) {
+	h := NewHub(nil, auth.Tokens{}, nil)
+	a := &client{sim: "a", room: "r", send: make(chan []byte, 4)}
+	b := &client{sim: "b", room: "r", send: make(chan []byte, 4)}
+	h.join(a)
+	h.join(b)
+	now := time.Now()
+	h.update(a, State{ID: "a", P: "idle", At: now.UnixMilli() - 10})
+	h.broadcast(now, true)
+	if len(b.send) != 1 {
+		t.Fatal("b should get a's first state")
+	}
+	<-b.send
+	// Nothing new heard: the next tick sends nothing, b keeps the state it has.
+	h.broadcast(now.Add(Tick), true)
+	if len(b.send) != 0 {
+		t.Fatal("an unchanged state was sent again")
+	}
+	h.update(a, State{ID: "a", P: "walk", At: now.Add(Tick).UnixMilli() + 10})
+	h.broadcast(now.Add(2*Tick), true)
+	if len(b.send) != 1 {
+		t.Fatal("a's new state should be sent")
+	}
+}

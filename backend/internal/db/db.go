@@ -15,7 +15,17 @@ import (
 var migrations embed.FS
 
 func Connect(ctx context.Context, url string) (*pgxpool.Pool, error) {
-	pool, err := pgxpool.New(ctx, url)
+	cfg, err := pgxpool.ParseConfig(url)
+	if err != nil {
+		return nil, fmt.Errorf("connect: %w", err)
+	}
+	// pgx's default is one connection per CPU (at least 4): on a small cloud
+	// box that's 4, and every Sim read holds one in a transaction, so a few
+	// dozen players would queue. ?pool_max_conns= in the URL still wins.
+	if !strings.Contains(url, "pool_max_conns") {
+		cfg.MaxConns = 16
+	}
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("connect: %w", err)
 	}

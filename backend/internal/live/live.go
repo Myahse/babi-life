@@ -35,8 +35,10 @@ const (
 	KartTick = 75 * time.Millisecond
 	// Stale: a player not heard from for this long is no longer shown.
 	Stale = 10 * time.Second
-	// MaxRoom: players per commune and mode; more simply aren't sent.
-	MaxRoom = 60
+	// MaxRoom: players per commune and mode; more simply aren't sent. Each
+	// tick only sends the states heard since the last one (see broadcast), so
+	// a full room costs about what its moving players send, not its square.
+	MaxRoom = 150
 )
 
 // Poses a player may say it is in (what avatar/Human.tsx can show).
@@ -84,10 +86,12 @@ type Hub struct {
 	mu     sync.Mutex
 	rooms  map[string]map[*client]bool
 	states map[string]map[string]State // room → sim → state
+	// sent: when each street room was last sent (ms), to send only what's new since.
+	sent map[string]int64
 }
 
 func NewHub(db *pgxpool.Pool, tokens auth.Tokens, origins []string) *Hub {
-	return &Hub{DB: db, Tokens: tokens, Origins: origins, rooms: map[string]map[*client]bool{}, states: map[string]map[string]State{}}
+	return &Hub{DB: db, Tokens: tokens, Origins: origins, rooms: map[string]map[*client]bool{}, states: map[string]map[string]State{}, sent: map[string]int64{}}
 }
 
 // Run sends each room its players, every Tick, until ctx ends.
@@ -116,14 +120,25 @@ func (h *Hub) broadcast(now time.Time, streets bool) {
 		if !streets && !isKart(room) {
 			continue
 		}
+		// In the streets, only the states heard since the last send: a player
+		// standing still says so once a second, and the phones keep the last
+		// one they had (web/src/lib/live.ts). A kart race sends them all, its
+		// grid driven by the first player's states.
+		since := h.sent[room]
+		if isKart(room) {
+			since = 0
+		}
 		players := make([]State, 0, len(h.states[room]))
 		for id, s := range h.states[room] {
 			if now.UnixMilli()-s.At > Stale.Milliseconds() {
 				delete(h.states[room], id)
 				continue
 			}
-			players = append(players, s)
+			if s.At > since {
+				players = append(players, s)
+			}
 		}
+		h.sent[room] = now.UnixMilli()
 		if len(clients) < 2 || len(players) == 0 {
 			continue
 		}
@@ -172,6 +187,7 @@ func (h *Hub) leave(c *client) {
 	if len(h.rooms[c.room]) == 0 {
 		delete(h.rooms, c.room)
 		delete(h.states, c.room)
+		delete(h.sent, c.room)
 	}
 }
 
