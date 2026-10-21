@@ -6,7 +6,8 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import { ROOM, Shell } from './interior/Shell'
 import { NoteShower } from './money'
-import { ClubCrowd } from './clubNight'
+import { ClubCrowd, useClubFill } from './clubNight'
+import { BilletsBurst, ClubDecor } from './clubDecor'
 import { useRoomStyle } from './interior/Decor'
 import * as THREE from 'three'
 import type { Player, Sim } from '../lib/types'
@@ -16,7 +17,6 @@ import { Box } from './props'
 import { Character } from './Character'
 import { ActionProps, Pot, SewingTable, TvScreen, Zzz } from './interior/ActionProps'
 import { rng } from './themes'
-import { worldTime } from '../lib/worldClock'
 import { Talkable } from './Talkable'
 import { doingOf, nameFor } from './talk'
 import { listenKeys, moveInput } from './input'
@@ -308,22 +308,14 @@ function Speaker({ p }: { p: V3 }) {
   )
 }
 
-/** Disco lights turning over the dance floor. */
-function DiscoLights() {
-  const ref = useRef<THREE.Group>(null)
-  useFrame(() => {
-    if (ref.current) ref.current.rotation.y = worldTime() * 0.8
-  })
+/** The club for the night: its stage, bar and lights (clubDecor), and, while it's open, its crowd. */
+function ClubNight({ placeId, open }: { placeId: string; open: boolean }) {
+  const fill = useClubFill()
   return (
-    <group ref={ref} position={[1.5, 3, 0.5]}>
-      {['#ff2d95', '#2ee6ff', '#ffe600', '#7a5cff'].map((c, i) => (
-        <spotLight key={c} color={c} intensity={30} distance={8} angle={0.5} penumbra={0.6} position={[Math.cos((i * Math.PI) / 2) * 1.5, 0, Math.sin((i * Math.PI) / 2) * 1.5]} target-position={[0, -3, 0]} />
-      ))}
-      <mesh>
-        <sphereGeometry args={[0.25, 12, 8]} />
-        <meshStandardMaterial color="#ddd" metalness={1} roughness={0.15} />
-      </mesh>
-    </group>
+    <>
+      <ClubDecor placeId={placeId} fill={open ? fill : 0} />
+      {open && <ClubCrowd placeId={placeId} />}
+    </>
   )
 }
 
@@ -444,23 +436,24 @@ export function room(kindIn: string, housing: string): Room {
         dark: true,
         furniture: (
           <>
-            {/* The dance floor, the DJ, the sofas of the big spenders */}
+            {/* The dance floor and the sofas of the big spenders; the stage, the bar, the lights: clubDecor.tsx */}
             <Box p={[1.5, 0.02, 0.5]} s={[5, 0.04, 4]} c="#3d2b6b" />
-            <Box p={[1.5, 0.6, -3.6]} s={[2.4, 1.2, 0.9]} c="#141416" />
-            <Box p={[1.5, 1.25, -3.6]} s={[1.2, 0.1, 0.6]} c="#2ee6ff" glow={1} />
-            <Speaker p={[-1.2, 0, -3.8]} />
-            <Speaker p={[4.2, 0, -3.8]} />
+            {/* Unseen: where the stage and the bar stand, so one walks round them (drawn by clubDecor) */}
+            {[[1.5, 0.6, -3.7, 3.8, 1.2, 1.4], [-3.4, 0.55, -3.9, 3.6, 1.1, 1.2]].map(([x, y, z, w, h, d]) => (
+              <mesh key={x} position={[x, y, z]}>
+                <boxGeometry args={[w, h, d]} />
+                <meshBasicMaterial visible={false} />
+              </mesh>
+            ))}
             <Sofa p={[-4.4, 0, -2]} c="#8a1c4a" r={Math.PI / 2} />
             <Sofa p={[-4.4, 0, 2]} c="#8a1c4a" r={Math.PI / 2} />
-            <Box p={[5.2, 0.55, 2.5]} s={[1.2, 1.1, 3]} c="#3a3f4b" />
-            <DiscoLights />
           </>
         ),
         spots: {
           floor: { p: [0.3, 0, 1.6], r: Math.PI * 0.85, pose: 'dance' },
           table: { p: [-4.2, 0.05, -2], r: Math.PI / 2, pose: 'drink' },
           entrance: { p: [0, 0, 3.6], r: Math.PI, pose: 'idle' },
-          counter: { p: [4.4, 0, 2.5], r: Math.PI / 2, pose: 'idle' },
+          counter: { p: [-3.3, 0, -2.95], r: Math.PI, pose: 'idle' },
         },
         crowd: [
           { p: [1.4, 0, 0.2], r: 0.4, pose: 'dance' },
@@ -468,7 +461,6 @@ export function room(kindIn: string, housing: string): Room {
           { p: [1.9, 0, -0.9], r: 0.2, pose: 'dance' },
           { p: [3.4, 0, -0.2], r: -0.9, pose: 'cheer' },
           { p: [0.6, 0, -0.4], r: 0.9, pose: 'dance' },
-          { p: [1.5, 0, -2.9], pose: 'busy' },
           { p: [-4.2, 0.05, 2], r: Math.PI / 2, pose: 'drink' },
         ],
       }
@@ -995,7 +987,7 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
           {r.furniture}
         </group>
         <SolidRoom key={`${kind}:${placeId}:${housing}:${open}`} root={furniture} people={open ? people.map((p) => [p.p[0], p.p[2]] as [number, number]) : []} onReady={(f) => setSolid(() => f)} />
-        {kind === 'club' && open && <ClubCrowd placeId={placeId} />}
+        {kind === 'club' && <ClubNight placeId={placeId} open={open} />}
         <NoShadows>
           {(open ? people : []).map((p, i) => {
             const pose = throwing && p.pose === 'dance' && i % 2 ? 'cheer' : p.pose
@@ -1042,6 +1034,8 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
                 <ActionProps id={interactionId} kind={kind} lying={!!me.lying} />
                 {/* The travaillement: notes off the wad, over the dancers in front */}
                 {throwing && <NoteShower from={[0.3, 1.72, 0.3]} toward={[0, 0.35, 1]} {...shower(interactionId)} seed={placeId.length} />}
+                {/* « Lancer des billets »: a handful at a time, to the dancers on their podiums */}
+                {kind === 'club' && <BilletsBurst />}
               </>
             ) : (
               <Character look={look} gender={sim.gender} stage={stage} walking speed={WALK_IN} />

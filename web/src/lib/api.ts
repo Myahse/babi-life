@@ -261,6 +261,8 @@ export const api = {
   hotel: (id: string, place: string, floor = 0) => request<HotelView>(`/sims/${id}/hotel/${place}${floor ? `?floor=${floor}` : ''}`),
   bookRoom: (id: string, place: string, room: string, length: string) => post<ActionResult>(`/sims/${id}/hotel/${place}/book`, { room, length }),
   endStay: (id: string) => post<ActionResult>(`/sims/${id}/stay/end`, {}),
+  /** A handful of notes over the club's dancers (backend sims/billets.go): a tap, not an activity. */
+  billets: (id: string, place: string, amount: number) => post<ActionResult>(`/sims/${id}/billets`, { place, amount }),
   /** Dodo: homes by the night in a commune; book one; let one's own house, or not. */
   dodo: (id: string, where?: LotWhere) => request<DodoView>(`/sims/${id}/dodo${where ? `?city=${encodeURIComponent(where.city)}&commune=${encodeURIComponent(where.commune)}` : ''}`),
   dodoBook: (id: string, listing: string, length: string) => post<ActionResult>(`/sims/${id}/dodo/book`, { listing, length }),
