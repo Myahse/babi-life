@@ -519,6 +519,8 @@ func (h *Handler) moveIn(w http.ResponseWriter, r *http.Request) {
 		if _, err := tx.Exec(ctx, `UPDATE sims SET home_plot = $2 WHERE id = $1`, s.ID, p.ID); err != nil {
 			return game.Outcome{}, nil, err
 		}
+		// One doesn't let the house one lives in (Dodo).
+		_, _ = tx.Exec(ctx, `DELETE FROM dodo_listings WHERE plot_id = $1`, p.ID)
 		s.Housing, s.HomeCity, s.HomeCommune = game.OwnHouse, p.Lot.City, p.Lot.Commune
 		s.Furnished = p.house().Has()
 		text := fmt.Sprintf("Tu emménages dans ta maison %s ! Plus de loyer : tu es chez toi.", inCommune(communeName(p.Lot.City, p.Lot.Commune)))

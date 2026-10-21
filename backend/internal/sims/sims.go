@@ -156,12 +156,14 @@ type Sim struct {
 	Origin      string     `json:"origin"`
 	Housing     string     `json:"housing"`
 	// Furnished: the furniture in the house the Sim built (game.Furnitures), for when it lives there.
-	Furnished   []string `json:"furnished"`
-	Loan        int      `json:"loan"`
-	RentArrears int      `json:"rentArrears"`
-	Career      string   `json:"career"`
-	CareerLevel int      `json:"careerLevel"`
-	Performance int      `json:"performance"`
+	Furnished []string `json:"furnished"`
+	// Stay: a hotel room or a home rented away from home (sims/hotel.go), while it lasts.
+	Stay        *Stay  `json:"stay,omitempty"`
+	Loan        int    `json:"loan"`
+	RentArrears int    `json:"rentArrears"`
+	Career      string `json:"career"`
+	CareerLevel int    `json:"careerLevel"`
+	Performance int    `json:"performance"`
 	// Activity is what the Sim is busy with right now; nil when free.
 	Activity *game.Activity `json:"activity"`
 	// Apps installed on the phone (world.PhoneApps).
@@ -325,6 +327,13 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Get("/sims/{id}/lots", h.lotOffers)
 	r.Post("/sims/{id}/lot", h.buyLot)
 	r.Post("/sims/{id}/lot/sell", h.sellLot)
+	r.Get("/sims/{id}/hotel/{place}", h.hotel)
+	r.Post("/sims/{id}/hotel/{place}/book", h.bookRoom)
+	r.Post("/sims/{id}/stay/end", h.endStay)
+	r.Get("/sims/{id}/dodo", h.dodo)
+	r.Post("/sims/{id}/dodo/book", h.dodoBook)
+	r.Post("/sims/{id}/dodo/list", h.dodoList)
+	r.Post("/sims/{id}/dodo/unlist", h.dodoUnlist)
 	r.Post("/sims/{id}/plot/movein", h.moveIn)
 	r.Post("/sims/{id}/plot/plan", h.buildPlan)
 	r.Post("/sims/{id}/meet", h.meet)
@@ -342,13 +351,13 @@ func (h *Handler) Routes(r chi.Router) {
 
 const simColumns = `id, first_name, last_name, gender, look, traits, aspiration,
 	home_city, home_commune, city, commune, needs, money, game_minutes,
-	origin, housing, loan, rent_arrears, career, career_level, performance, activity, apps, born_at, family, friends, gang, record, created_at, last_tick, furnished`
+	origin, housing, loan, rent_arrears, career, career_level, performance, activity, apps, born_at, family, friends, gang, record, created_at, last_tick, furnished, stay`
 
 func scanSim(row pgx.Row) (Sim, error) {
 	var s Sim
 	err := row.Scan(&s.ID, &s.FirstName, &s.LastName, &s.Gender, &s.Look, &s.Traits, &s.Aspiration,
 		&s.HomeCity, &s.HomeCommune, &s.City, &s.Commune, &s.Needs, &s.Money, &s.GameMinutes,
-		&s.Origin, &s.Housing, &s.Loan, &s.RentArrears, &s.Career, &s.CareerLevel, &s.Performance, &s.Activity, &s.Apps, &s.BornAt, &s.Family, &s.Friends, &s.Gang, &s.Record, &s.CreatedAt, &s.lastTick, &s.Furnished)
+		&s.Origin, &s.Housing, &s.Loan, &s.RentArrears, &s.Career, &s.CareerLevel, &s.Performance, &s.Activity, &s.Apps, &s.BornAt, &s.Family, &s.Friends, &s.Gang, &s.Record, &s.CreatedAt, &s.lastTick, &s.Furnished, &s.Stay)
 	return s, err
 }
 
@@ -554,6 +563,13 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 		}
 		kind = h.Kind()
 		kind.Interactions = []game.Interaction{*h.Join}
+	} else if placeID == StayPlaceID {
+		// A home booked on Dodo (dodo.go).
+		k, _, err := s.atStay()
+		if err != nil {
+			return game.Interaction{}, err
+		}
+		kind = k
 	} else if home {
 		if s.City != s.HomeCity || s.Commune != s.HomeCommune {
 			return game.Interaction{}, errors.New("rentre d'abord chez toi")
@@ -631,6 +647,10 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 	if it.Gender != "" && it.Gender != s.Gender {
 		return game.Interaction{}, errors.New("pas pour toi")
 	}
+	// In a room one has rented here (hotel.go), and only while the stay lasts.
+	if it.Stay && !s.staysAt(placeID) {
+		return game.Interaction{}, errNoRoom
+	}
 	// Who may do it: residents only, enough money, the right trait or job.
 	if err := it.Requires.Check(game.Who{Resident: s.City == s.HomeCity && s.Commune == s.HomeCommune, Money: s.Money, Traits: s.Traits, Career: s.Career}); err != nil {
 		return game.Interaction{}, err
@@ -642,6 +662,8 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 		placeName = "Chez toi"
 	case placeID == HappeningPlaceID:
 		placeName = kind.Label
+	case placeID == StayPlaceID:
+		_, placeName, _ = s.atStay()
 	default:
 		if _, _, place, ok := world.FindPlace(placeID); ok {
 			placeName = place.Name
@@ -782,10 +804,10 @@ func (h *Handler) mutateTx(w http.ResponseWriter, r *http.Request, fn func(*Sim,
 		UPDATE sims SET city = $2, commune = $3, needs = $4, money = $5, game_minutes = $6, last_tick = $7,
 		       home_city = $8, home_commune = $9, housing = $10, loan = $11, rent_arrears = $12,
 		       career = $13, career_level = $14, performance = $15, activity = $16, apps = $17,
-		       friends = $18, gang = $19, record = $20, look = $21, born_at = $22, family = $23, furnished = $24
+		       friends = $18, gang = $19, record = $20, look = $21, born_at = $22, family = $23, furnished = $24, stay = $25
 		WHERE id = $1`, s.ID, s.City, s.Commune, s.Needs, s.Money, s.GameMinutes, s.lastTick,
 		s.HomeCity, s.HomeCommune, s.Housing, s.Loan, s.RentArrears, s.Career, s.CareerLevel, s.Performance, s.Activity, s.Apps,
-		friendsOrEmpty(s.Friends), s.Gang, s.Record, s.Look, s.BornAt, s.Family, furnishedOrEmpty(s.Furnished)); err != nil {
+		friendsOrEmpty(s.Friends), s.Gang, s.Record, s.Look, s.BornAt, s.Family, furnishedOrEmpty(s.Furnished), s.Stay); err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "could not save sim")
 		return
 	}

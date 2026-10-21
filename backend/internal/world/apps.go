@@ -54,6 +54,9 @@ var PhoneApps = []PhoneApp{
 	{ID: "golvo", Name: "Golvo", Tagline: "Les maquis livrés chez toi", Category: "Repas", SizeMB: 52,
 		About:  "Commande au maquis, au resto ou en boîte : un livreur à moto t'apporte ça où tu es dans Abidjan.",
 		Source: inspired("Appli du jeu inspirée de Glovo, à Abidjan depuis 2019 : livraison de repas par des coursiers à moto, frais de 500 F au lancement.", srcGlovo, srcGlovo2)},
+	{ID: "dodo", Name: "Dodo", Tagline: "Des chez-soi à louer, à la nuit", Category: "Voyage", SizeMB: 61,
+		About:  "Loue un studio, un appartement ou une villa pour quelques nuits, dans toutes les communes et toutes les villes, et réserve d'où tu es. Tu as une maison de plus ? Mets-la en location : les voyageurs te paient la nuit (Dodo garde 10 %).",
+		Source: &game.Source{Status: game.StatusFictional, Checked: game.Checked, Note: "Appli du jeu sur le modèle des plateformes de location entre particuliers. Les logements du jeu, leurs hôtes et leurs prix sont des règles du jeu."}},
 }
 
 func FindPhoneApp(id string) (PhoneApp, bool) {
