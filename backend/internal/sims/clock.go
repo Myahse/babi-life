@@ -18,11 +18,19 @@ func (s *Sim) advance(now time.Time, rng *rand.Rand) []Event {
 	to := game.MinuteOf(now)
 	s.lastTick = now
 	var events []Event
+	var away awayLog
 	for {
 		// An activity whose time is up ends, even when no time passes now.
 		if a := s.Activity; a != nil && a.End <= s.GameMinutes {
 			s.Needs = a.Progress(s.Needs, a.End, a.End)
-			events = append(events, s.finish(rng)...)
+			for _, ev := range s.finish(rng) {
+				// What the Sim did by itself goes in one line at the end (autopilot.go); the surprises and promotions stay.
+				if a.Auto && ev.Kind == "interaction" {
+					away.add(a.Interaction.Label, ev.Money)
+					continue
+				}
+				events = append(events, ev)
+			}
 			continue
 		}
 		if s.GameMinutes >= to {
@@ -36,11 +44,20 @@ func (s *Sim) advance(now time.Time, rng *rand.Rand) []Event {
 			events = append(events, s.settleRange(from, end)...)
 			continue
 		}
-		s.Needs = game.DecayIdle(s.Needs, to-from)
-		s.GameMinutes = to
-		events = append(events, s.settleRange(from, to)...)
+		// Left idle a while: the Sim lives its life (autopilot.go), from the moment it was left.
+		// Nothing needed just now: an hour idle, and it looks again (night falls, hunger comes).
+		next := to
+		if to-from >= autopilotAfter {
+			if s.live() {
+				continue
+			}
+			next = min(to, from+60)
+		}
+		s.Needs = game.DecayIdle(s.Needs, next-from)
+		s.GameMinutes = next
+		events = append(events, s.settleRange(from, next)...)
 	}
-	return events
+	return append(events, away.event(s.FirstName, s.GameMinutes)...)
 }
 
 // finish ends the current activity: pay, move, promote, surprise.
