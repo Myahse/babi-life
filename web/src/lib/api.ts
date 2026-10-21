@@ -100,6 +100,9 @@ export type NewSim = {
 
 export type WaitlistJoin = { firstName: string; contact: string; commune: string; beta: boolean; source: string; website: string; terms: boolean; privacy: boolean; sim?: { lastName: string; gender: 'femme' | 'homme'; look: Look; traits: string[]; aspiration: string } }
 
+/** A commune to buy land in, anywhere in the game. */
+export type LotWhere = { city: string; commune: string }
+
 export const api = {
   /** The devices signed in to the account; sign one out, all the others, or this one. */
   /** The emotes bought; buying one. */
@@ -252,8 +255,9 @@ export const api = {
   /** Blocks placed and taken down; paid from the Sim's money. */
   build: (id: string, place: Block[], remove: [number, number, number][], furnish: Piece[] = [], unfurnish: [number, number, number][] = []) => request<ActionResult>(`/sims/${id}/plot`, { method: 'PUT', body: JSON.stringify({ place, remove, furnish, unfurnish }) }),
   /** Lots for sale where the Sim is, and the one it owns. */
-  lots: (id: string) => request<{ offers: LotOffer[]; lot: Lot | null; fees: number; adult: boolean }>(`/sims/${id}/lots`),
-  buyLot: (id: string, size: string) => post<ActionResult>(`/sims/${id}/lot`, { size }),
+  /** The lots for sale in a commune (where the Sim is when none is given). */
+  lots: (id: string, where?: LotWhere) => request<{ offers: LotOffer[]; lot: Lot | null; fees: number; adult: boolean }>(`/sims/${id}/lots${where ? `?city=${encodeURIComponent(where.city)}&commune=${encodeURIComponent(where.commune)}` : ''}`),
+  buyLot: (id: string, size: string, where?: LotWhere) => post<ActionResult>(`/sims/${id}/lot`, { size, ...where }),
   moveIn: (id: string) => post<ActionResult>(`/sims/${id}/plot/movein`, {}),
   meet: (id: string, to: string, action: 'saluer' | 'inviter' | 'rejoindre' | 'ajouter') => post<ActionResult>(`/sims/${id}/meet`, { to, action }),
   /** Friends between players: answer a request; invite a friend, wherever they are, to what the Sim is doing. */

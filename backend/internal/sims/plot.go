@@ -21,11 +21,13 @@ var (
 	errAlreadyHome    = errors.New("tu habites déjà ta maison")
 	errNoSuchPlan     = errors.New("plan inconnu")
 	errLivesThere     = errors.New("tu habites cette maison : déménage d'abord pour la démolir")
+	errNoSuchCommune  = errors.New("commune inconnue")
 )
 
-// One's own house (game/house.go): from 18 the Sim buys a lot in the commune
-// where it is, builds on it block by block, furnishes it, and moves in. Others
-// in the commune see the house on its lot.
+// One's own house (game/house.go): from 18 the Sim buys a lot in any commune
+// of any town (from the phone, without going there first: one buys land from
+// afar), builds on it block by block, furnishes it, and moves in. Others in
+// the commune see the house on its lot.
 
 // Lot is the land a Sim owns.
 type Lot struct {
@@ -127,12 +129,13 @@ func (h *Handler) plot(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusOK, p)
 }
 
-// LotOffer is a lot for sale in the commune where the Sim is.
+// LotOffer is a lot for sale in a commune.
 type LotOffer struct {
 	game.LotSize
 	Area     int    `json:"area"`
 	Price    int    `json:"price"`
 	PerM2    int    `json:"perM2"`
+	City     string `json:"city"`
 	Commune  string `json:"commune"`
 	Name     string `json:"name"`
 	Upgrade  bool   `json:"upgrade"` // bigger than the lot one has, here
@@ -140,21 +143,32 @@ type LotOffer struct {
 	Possible bool   `json:"possible"`
 }
 
-func offers(s *Sim, p Plot) []LotOffer {
-	name := s.Commune
-	if _, cm, ok := world.FindCommune(s.City, s.Commune); ok {
+// lotsWhere: the commune a lot is looked for in (?city=&commune=, or the body's): where the Sim is when none is given.
+func lotsWhere(s *Sim, city, commune string) (string, string, error) {
+	if city == "" && commune == "" {
+		return s.City, s.Commune, nil
+	}
+	if _, _, ok := world.FindCommune(city, commune); !ok {
+		return "", "", errNoSuchCommune
+	}
+	return city, commune, nil
+}
+
+func offers(p Plot, city, commune string) []LotOffer {
+	name := commune
+	if _, cm, ok := world.FindCommune(city, commune); ok {
 		name = cm.Name
 	}
-	perM2, ok := game.LotPricePerM2[s.Commune]
+	perM2, ok := game.LotPricePerM2[commune]
 	if !ok {
 		perM2 = game.DefaultLotPrice
 	}
 	out := make([]LotOffer, 0, len(game.LotSizes))
 	for _, l := range game.LotSizes {
-		o := LotOffer{LotSize: l, Area: l.Area(), Price: game.LotPrice(s.Commune, l), PerM2: perM2, Commune: s.Commune, Name: name}
+		o := LotOffer{LotSize: l, Area: l.Area(), Price: game.LotPrice(commune, l), PerM2: perM2, City: city, Commune: commune, Name: name}
 		o.Payable, o.Possible = o.Price, true
 		if p.Lot != nil {
-			here := p.Lot.City == s.City && p.Lot.Commune == s.Commune
+			here := p.Lot.City == city && p.Lot.Commune == commune
 			o.Upgrade = here && l.Area() > p.Lot.Area
 			switch {
 			case here && !o.Upgrade:
@@ -168,7 +182,7 @@ func offers(s *Sim, p Plot) []LotOffer {
 	return out
 }
 
-// lotOffers: GET /sims/{id}/lots — the lots for sale where the Sim is, and its own.
+// lotOffers: GET /sims/{id}/lots[?city=&commune=] — the lots for sale in a commune (where the Sim is by default), and its own.
 func (h *Handler) lotOffers(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id, _, _, err := h.mySim(r)
@@ -186,15 +200,22 @@ func (h *Handler) lotOffers(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 		return
 	}
-	httpx.JSON(w, http.StatusOK, map[string]any{"offers": offers(&s, p), "lot": p.Lot, "fees": game.LotFees, "adult": !s.minor()})
+	city, commune, err := lotsWhere(&s, r.URL.Query().Get("city"), r.URL.Query().Get("commune"))
+	if err != nil {
+		httpx.Error(w, http.StatusNotFound, err.Error())
+		return
+	}
+	httpx.JSON(w, http.StatusOK, map[string]any{"offers": offers(p, city, commune), "lot": p.Lot, "fees": game.LotFees, "adult": !s.minor()})
 }
 
-// buyLot: POST /sims/{id}/lot — buys a lot where the Sim is. A bigger lot in
+// buyLot: POST /sims/{id}/lot {size, city, commune} — buys a lot in a commune (where the Sim is by default). A bigger lot in
 // the same commune keeps the house (what was paid counts); a lot elsewhere
 // needs the old one cleared, and the old one is sold back at 90 %.
 func (h *Handler) buyLot(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Size string `json:"size"`
+		Size    string `json:"size"`
+		City    string `json:"city"`
+		Commune string `json:"commune"`
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
@@ -214,8 +235,12 @@ func (h *Handler) buyLot(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return game.Outcome{}, nil, err
 		}
+		city, commune, err := lotsWhere(s, req.City, req.Commune)
+		if err != nil {
+			return game.Outcome{}, nil, err
+		}
 		var offer LotOffer
-		for _, o := range offers(s, p) {
+		for _, o := range offers(p, city, commune) {
 			if o.ID == size.ID {
 				offer = o
 			}
@@ -239,7 +264,7 @@ func (h *Handler) buyLot(w http.ResponseWriter, r *http.Request) {
 		}
 		s.Money += refund - cost
 		paid := offer.Price
-		p.Lot = &Lot{W: size.W, D: size.D, Area: size.Area(), City: s.City, Commune: s.Commune, Paid: paid}
+		p.Lot = &Lot{W: size.W, D: size.D, Area: size.Area(), City: city, Commune: commune, Paid: paid}
 		if err := savePlot(ctx, tx, p); err != nil {
 			return game.Outcome{}, nil, err
 		}
