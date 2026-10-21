@@ -27,6 +27,7 @@ import { DOORS_OPEN, eventAt, useStadium, when } from '../lib/stadium'
 import { HomeApp, JobsApp, type Act } from './phoneApps'
 import { NewsApp, topicOf } from './NewsApp'
 import { GuideApp } from './GuideApp'
+import { DodoApp } from './DodoApp'
 import { RideFlow, type FlowRequest } from '../components/RideFlow'
 import { INDOOR, Interior } from '../world3d/Interior'
 import { HomeInside } from '../world3d/HomeInside'
@@ -59,6 +60,8 @@ import { FlightView } from '../world3d/FlightView'
 import { aCommune } from '../lib/french'
 
 /** Building one's house: its own screen, downloaded when opened. */
+/** What's done in a home booked on Dodo, as the home's inside shows it (backend game/dodo.go « logement »). */
+const DODO_AT_HOME: Record<string, string> = { 'logement-dormir': 'sleep', 'logement-sieste': 'nap', 'logement-douche': 'shower', 'logement-cuisiner': 'cook-attieke', 'logement-tele': 'watch-tv', 'logement-amis': 'call-family' }
 const BuildMode = lazy(() => import('../components/BuildMode'))
 const KartRace = lazy(() => import('../kart/KartRace'))
 // The Hôtel Ivoire's own inside: its hall, ice rink, cinema, casino, terrace.
@@ -546,6 +549,8 @@ export function Play() {
   const inside = (() => {
     if (doing) {
       if (doing.placeId === 'golvo') return atHomeNow ? { id: 'home', kind: 'home', it: doing.interaction.id } : null
+      // In a home booked on Dodo: a home's inside, what's done in it as at home.
+      if (doing.placeId === 'logement') return { id: 'logement', kind: 'home', it: DODO_AT_HOME[doing.interaction.id] ?? 'watch-tv' }
       if (!doing.placeId || OPEN_AIR.has(doing.placeId)) return null
       const kind = doing.placeId === 'home' ? 'home' : ARENAS.has(doing.placeId) ? 'arena' : (doing.placeKind ?? '')
       return INDOOR.has(kind) || kind === 'arena' ? { id: doing.placeId, kind, it: doing.interaction.id } : null
@@ -619,7 +624,7 @@ export function Play() {
       )}
       {showInside && (
         <div className="absolute inset-0 z-[1]">
-          {inside!.kind === 'home' && homePlot && !classic ? (
+          {inside!.kind === 'home' && inside!.id !== 'logement' && homePlot && !classic ? (
             <HomeInside partner={sim.friends?.find((f) => f.partner && f.home)} sim={sim} world={world} plot={homePlot} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} onBuild={() => setBuilding(0)} />
           ) : inside!.kind === 'mall' ? (
             <Suspense fallback={null}>
@@ -645,7 +650,7 @@ export function Play() {
           ) : inside!.kind === 'arena' ? (
             <Arena sim={sim} placeId={inside!.id} interactionId={inside!.it} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id)} />
           ) : (
-            <Interior open={inside!.kind === 'home' || (world.kinds[inside!.kind]?.interactions.some((it) => openAt(it, sim.gameMinutes)) ?? true)} sim={sim} kind={inside!.kind} placeId={inside!.id} interactionId={inside!.it} roam={visiting && !menuOpen} housing={sim.housing} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id && inside!.id !== 'home')} />
+            <Interior open={inside!.kind === 'home' || (world.kinds[inside!.kind]?.interactions.some((it) => openAt(it, sim.gameMinutes)) ?? true)} sim={sim} kind={inside!.kind} placeId={inside!.id} interactionId={inside!.it} roam={visiting && !menuOpen} housing={inside!.id === 'logement' ? 'appart' : sim.housing} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id && inside!.id !== 'home')} />
           )}
         </div>
       )}
@@ -976,7 +981,7 @@ export function Play() {
 
 /* ---------- The in-game phone ---------- */
 
-type PhoneAppId = 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'galerie' | 'guide'
+type PhoneAppId = 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'galerie' | 'guide' | 'dodo'
 type PhoneProps = {
   world: World
   sim: Sim
@@ -1036,6 +1041,7 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
     ...(has('bet225') ? [{ id: 'bet225', label: 'Bet225', open: () => setApp('bet225') }] : []),
     ...(has('parisfoot') ? [{ id: 'parisfoot', label: 'ParisFoot', open: () => setApp('parisfoot') }] : []),
     ...(has('golvo') ? [{ id: 'golvo', label: 'Golvo', open: () => setApp('golvo') }] : []),
+    ...(has('dodo') ? [{ id: 'dodo', label: 'Dodo', open: () => setApp('dodo') }] : []),
     ...(has('gnango') ? [{ id: 'gnango', label: 'Gnango', open: onMap }] : []),
     ...(has('idrive') ? [{ id: 'idrive', label: 'iDrive', open: onMap }] : []),
   ]
@@ -1059,7 +1065,7 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
     { id: 'profile', label: 'Profil', icon: UserRound, colors: ['#ff8a9b', '#ff3d57'], open: () => navigate('/profil', { viewTransition: true }) },
     ] as Tile[]
   ).filter((a) => !life.minor || (a.id !== 'jobs' && a.id !== 'home'))
-  const title: Record<PhoneAppId, string> = { here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', babigram: 'Babigram', bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: 'Galerie', guide: 'Encyclopédie de Babi' }
+  const title: Record<PhoneAppId, string> = { here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', babigram: 'Babigram', bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: 'Galerie', guide: 'Encyclopédie de Babi', dodo: 'Dodo' }
 
   return (
     <div className="absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center" onClick={onClose}>
@@ -1130,6 +1136,7 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
                 {app === 'messages' && <Journal events={journal} />}
                 {app === 'news' && <NewsApp />}
                 {app === 'guide' && <GuideApp world={world} />}
+                {app === 'dodo' && <DodoApp world={world} sim={sim} act={act} onMap={onMap} />}
                 {app === 'friends' && <FriendsApp world={world} sim={sim} act={act} onPay={has('waye') ? (p) => (setWayeTo(p.id), setApp('waye')) : undefined} />}
                 {app === 'store' && !ownPhone && (
                   <div className="grid place-items-center gap-3 px-6 py-12 text-center">

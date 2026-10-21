@@ -46,6 +46,18 @@ function GramPrint({ size }: { size: number }) {
   )
 }
 
+/** Dodo's mark: a little house asleep under the moon. */
+function DodoHouse({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden>
+      <path d="M33 7a8 8 0 1 0 8 10 6.5 6.5 0 1 1-8-10z" fill="#ffe08a" />
+      <path d="M9 25 24 13l15 12v15a2 2 0 0 1-2 2H11a2 2 0 0 1-2-2z" fill="#fff" />
+      <path d="M20 42V32h8v10" fill="#7c3aed" />
+      <path d="M14 26h5M14 30h3" stroke="#c4b5fd" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 const LOOK: Record<string, { bg: string; fg: string; mark: (s: number) => React.ReactNode }> = {
   waye: { bg: 'linear-gradient(160deg,#5fd3ff,#1aa6e6)', fg: '#fff', mark: (s) => <Penguin size={s} /> },
   golvo: { bg: 'linear-gradient(160deg,#ffd45c,#ffb703)', fg: '#0b6e4f', mark: (s) => <Bike size={s} strokeWidth={2.4} /> },
@@ -56,6 +68,7 @@ const LOOK: Record<string, { bg: string; fg: string; mark: (s: number) => React.
   bet225: { bg: 'linear-gradient(160deg,#17291f,#0e1a14)', fg: '#22c55e', mark: (s) => <span style={{ fontSize: s * 0.42, fontWeight: 900, letterSpacing: -1 }}>225</span> },
   parisfoot: { bg: 'linear-gradient(160deg,#a78bfa,#6d28d9)', fg: '#fff', mark: (s) => <Trophy size={s} strokeWidth={2.4} /> },
   gbairai: { bg: 'linear-gradient(160deg,#ff9f43,#f0590c)', fg: '#fff', mark: (s) => <MessageCircleMore size={s} strokeWidth={2.4} /> },
+  dodo: { bg: 'linear-gradient(160deg,#8b5cf6,#4c1d95)', fg: '#7c3aed', mark: (s) => <DodoHouse size={s} /> },
   store: { bg: 'linear-gradient(160deg,#7aa7ff,#3b5bfd)', fg: '#fff', mark: (s) => <ShoppingBag size={s} strokeWidth={2.4} /> },
 }
 
