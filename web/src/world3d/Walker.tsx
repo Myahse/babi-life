@@ -312,18 +312,15 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
    * Room for the Sim's body here: not in a building (its walls all round,
    * not just its middle), nor in a car, a tree, a post, a stall.
    */
-  const roomAt = (x: number, z: number) => {
-    const R = 0.35
-    if (!nav.walkable(x, z) || !nav.walkable(x + R, z) || !nav.walkable(x - R, z) || !nav.walkable(x, z + R) || !nav.walkable(x, z - R)) return false
-    return !blocked(x, z, R)
-  }
+  const R = 0.35
+  const D = R * Math.SQRT1_2
+  // The body's round edge, the diagonals too (a building's corner pokes in there).
+  const clear = (x: number, z: number) =>
+    nav.walkable(x, z) && nav.walkable(x + R, z) && nav.walkable(x - R, z) && nav.walkable(x, z + R) && nav.walkable(x, z - R) && nav.walkable(x + D, z + D) && nav.walkable(x - D, z + D) && nav.walkable(x + D, z - D) && nav.walkable(x - D, z - D)
+  const roomAt = (x: number, z: number) => clear(x, z) && !blocked(x, z, R)
   whereabouts.roomAt = roomAt
   /** Room for the body, the cars aside (they'll have moved on): for planning a way. */
-  const roomFixed = (x: number, z: number) => {
-    const R = 0.35
-    if (!nav.walkable(x, z) || !nav.walkable(x + R, z) || !nav.walkable(x - R, z) || !nav.walkable(x, z + R) || !nav.walkable(x, z - R)) return false
-    return !blockedFixed(x, z, R)
-  }
+  const roomFixed = (x: number, z: number) => clear(x, z) && !blockedFixed(x, z, R)
   /**
    * The way from a to b: close by, straight round the walls, trees and
    * stalls (never the long way by the streets); further, along the streets,
@@ -342,6 +339,33 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     const last = gridWay(way[n - 2], b, roomFixed) ?? [way[n - 2], b]
     return [...first, ...way.slice(2, n - 2), ...last]
   }
+  /**
+   * Something standing on the way ahead (a stall, a table, a car stuck in a
+   * jam: the streets' graph doesn't know them): from here round it to the
+   * first free point past it on the way, then on along the way. Null if
+   * there's none close (the end itself taken: walk on).
+   */
+  const detour = (from: XZ, way: XZ[]): XZ[] | null => {
+    let [px, pz] = from
+    let wasBlocked = false
+    let walked = 0
+    for (let i = 0; i < way.length && walked < 20; i++) {
+      const [tx, tz] = way[i]
+      const len = Math.hypot(tx - px, tz - pz)
+      for (let d = 0.5; d <= len; d += 0.5) {
+        const [x, z] = [px + ((tx - px) * d) / len, pz + ((tz - pz) * d) / len]
+        if (blockedFixed(x, z, R)) wasBlocked = true
+        else if (wasBlocked && roomFixed(x, z)) {
+          const round = gridWay(from, [x, z], roomFixed, 0.5, 6)
+          return round ? [...round.slice(1), ...way.slice(i)] : null
+        }
+      }
+      walked += len
+      ;[px, pz] = [tx, tz]
+    }
+    return null
+  }
+  const noDetour = useRef(0)
   const waited = useRef(0)
   const near = useRef<string | null>(null)
   const padWalking = useRef(false)
@@ -561,15 +585,22 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         const nx = g.position.x + (dx / dist) * step
         const nz = g.position.z + (dz / dist) * step
         g.rotation.y = Math.atan2(dx, dz)
-        // A car in the way: wait for it to pass; still there after a while, find another way round it.
-        if (vehicleAt(nx, nz) && !vehicleAt(g.position.x, g.position.z)) {
+        // Something standing in the way: round it (no way round: on through it, and asked again a little later).
+        const standing = blockedFixed(nx, nz, R) && !blockedFixed(g.position.x, g.position.z, R) && performance.now() > noDetour.current
+        const round = standing ? detour([g.position.x, g.position.z], path.current) : null
+        if (standing && !round) noDetour.current = performance.now() + 1500
+        if (round) {
+          path.current = round
+          setRoute([...path.current])
+        } else if (vehicleAt(nx, nz) && !vehicleAt(g.position.x, g.position.z)) {
+          // A car in the way: wait for it to pass; still there after a while, find another way round it.
           waited.current += dt
           if (waited.current > 2.5) {
             waited.current = 0
             const end = path.current[path.current.length - 1]
-            const round = gridWay([g.position.x, g.position.z], end, roomAt)
-            if (round) {
-              path.current = round.slice(1)
+            const other = gridWay([g.position.x, g.position.z], end, roomAt)
+            if (other) {
+              path.current = other.slice(1)
               setRoute([...path.current])
             }
           }

@@ -93,12 +93,15 @@ export function StaticMerge({ children, version = 0 }: { children: ReactNode; ve
       const mesh = new THREE.Mesh(geo, grp.mat)
       mesh.castShadow = grp.shadow
       mesh.receiveShadow = grp.receive
-      // Taps still land: the hidden blocks stay in place for the raycaster.
+      // Taps still land: the hidden blocks stay in place for the raycaster
+      // (and for what can't be walked through, Solid.tsx: each block, not the whole baked look).
       mesh.raycast = () => {}
+      mesh.userData.merged = true
       out.add(mesh)
       added.push(mesh)
       for (const m of grp.meshes) {
         m.visible = false
+        m.userData.baked = true
         hidden.push(m)
       }
     }
@@ -108,7 +111,10 @@ export function StaticMerge({ children, version = 0 }: { children: ReactNode; ve
         out.remove(m)
         m.geometry.dispose()
       }
-      for (const m of hidden) m.visible = true
+      for (const m of hidden) {
+        m.visible = true
+        delete m.userData.baked
+      }
     }
   }, [version])
   return (

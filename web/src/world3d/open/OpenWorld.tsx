@@ -48,6 +48,7 @@ import { CATHEDRAL_SOLID } from './cathedral'
 import { Courier } from './courier'
 import { MOSQUE_M6_SOLID } from './mosqueM6'
 import { clearObstacles, moveObstacle, setObstacles, type Obstacle } from '../obstacles'
+import { Solid } from '../Solid'
 import { LANDMARKS, Landmark, NO_FILL, STADIUM_SOLID, slotIn } from './landmarks'
 import { RUE_SOLID } from './ruePrincesse'
 import { Boats } from './boats'
@@ -800,7 +801,9 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   // For the mini-map and the « Où aller ? » list.
   useEffect(() => {
     whereabouts.places = walkLots.map((l) => ({ id: l.id, kind: l.kind, name: l.name, door: l.door }))
-  }, [walkLots])
+    // In development, every lot (the landmarks too), for tests in the browser.
+    if (import.meta.env.DEV) Object.assign(window, { __lots: lots.map((l) => ({ id: l.id, kind: l.kind, x: l.x, z: l.z, door: l.door })) })
+  }, [walkLots, lots])
   useEffect(() => {
     whereabouts.roads = nav.edges.map((e) => [nav.nodes[e.a], nav.nodes[e.b], e.width] as [XZ, XZ, number])
     whereabouts.water = [...chunks.values()].flatMap((c) => c.data.areas.filter((a) => a.kind === 'water').map((a) => a.rings[0]))
@@ -1010,7 +1013,14 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
               {/* The ground: the rooms' floors, the yard or the lawn, the pool; a bare lot, its lawn and its corner posts */}
               {/* A lot a player owns: its clôture, in its owner's colour, the name over the gate */}
               {(r.id !== HOME_ID || livesOnLot) && <LotFence w={lotSize(owner)[0]} d={lotSize(owner)[1]} color={ownerColor(owner.simId)} name={`Chez ${owner.simId === sim.id ? sim.firstName : owner.firstName ?? ''}`} />}
-              {owner.zones?.length ? <Zones zones={owner.zones} blocks={owner.blocks} furniture={owner.furniture ?? []} w={lotSize(owner)[0]} d={lotSize(owner)[1]} cut={r.id === HOME_ID && inside} /> : owner.lot && <LotGround w={lotSize(owner)[0]} d={lotSize(owner)[1]} />}
+              {owner.zones?.length ? (
+                // The garden's plants and the pool's edge: not walked through.
+                <Solid parts>
+                  <Zones zones={owner.zones} blocks={owner.blocks} furniture={owner.furniture ?? []} w={lotSize(owner)[0]} d={lotSize(owner)[1]} cut={r.id === HOME_ID && inside} />
+                </Solid>
+              ) : (
+                owner.lot && <LotGround w={lotSize(owner)[0]} d={lotSize(owner)[1]} />
+              )}
             </group>
           </group>
         ) : null
@@ -1034,8 +1044,11 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         ) : LANDMARKS[lot.id] ? (
           <group key={lot.id}>
             <group position={[lot.x, 0, lot.z]} rotation={[0, lot.rot, 0]} onClick={(e) => (e.stopPropagation(), onPick(lot.id))}>
-              <Landmark id={lot.id} night={night} open={openNow(lot.kind)} />
-              {PARTIES[lot.id] && <Party id={lot.id} night={night} simGender={sim.gender} onTalk={onTalk} />}
+              {/* What's on its ground at body height can't be walked through (its own walls are in the landmarks' obstacles too) */}
+              <Solid parts>
+                <Landmark id={lot.id} night={night} open={openNow(lot.kind)} />
+                {PARTIES[lot.id] && <Party id={lot.id} night={night} simGender={sim.gender} onTalk={onTalk} />}
+              </Solid>
             </group>
             <LotLabel lot={lot} world={world} label={labels && labelOf.get(lot.id)} onPick={onPick} y={30} />
           </group>
@@ -1049,11 +1062,20 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         const g = resolved.get(lot.id)?.gate
         return g ? <CampusGate key={`gate${lot.id}`} name={lot.name} kind={lot.kind} at={g.at} rot={g.rot} width={g.width} night={night} /> : null
       })}
-      {jam && <JamOnRoad cars={jam.cars} />}
+      {/* The cars stuck in it: walked round, not through */}
+      {jam && (
+        <Solid parts>
+          <JamOnRoad cars={jam.cars} />
+        </Solid>
+      )}
       {happening && spot && (
         <group position={jam ? [jam.at[0] + HAPPENING_X, 0, jam.at[1]] : [spot.door[0], 0, spot.door[1]]} rotation={[0, jam ? 0 : -spot.roadAngle, 0]}>
           <group position={[-HAPPENING_X, 0, 0]}>
-            {!raining && <HappeningScene id={happening.id} seed={commune.id} night={night} jam={!jam} />}
+            {!raining && (
+              <Solid parts>
+                <HappeningScene id={happening.id} seed={commune.id} night={night} jam={!jam} />
+              </Solid>
+            )}
             {labels && <HappeningMarker happening={happening} onPick={() => onPick('happening')} />}
           </group>
         </group>
@@ -1149,7 +1171,9 @@ function PlaceSign({ lot, world, night, label, onPick }: { lot: Lot & { height?:
           </>
         )}
         {/* What tells what the place is, in front of it */}
-        <Dressing kind={lot.kind} name={lot.name} faith={lot.faith} seed={lot.seed + lot.x * 0.01} night={night} />
+        <Solid parts>
+          <Dressing kind={lot.kind} name={lot.name} faith={lot.faith} seed={lot.seed + lot.x * 0.01} night={night} />
+        </Solid>
         {/* The door */}
         <mesh position={[0, 1.05, 0.06]}>
           <boxGeometry args={[1.2, 2.1, 0.08]} />

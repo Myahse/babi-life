@@ -116,7 +116,9 @@ export function FuelStation({ s, night }: { s: Station; night: boolean }) {
       )}
       {/* The price board at the roadside */}
       <group position={[6.6, 0, z(-4.8)]}>
-        <mesh geometry={BOX} material={grey} position={[0, 3, 0]} scale={[0.25, 6, 0.25]} castShadow />
+        <Solid parts>
+          <mesh geometry={BOX} material={grey} position={[0, 3, 0]} scale={[0.25, 6, 0.25]} castShadow />
+        </Solid>
         <mesh geometry={BOX} material={mats.main} position={[0, 6.4, 0]} scale={[1.8, 1.4, 0.3]} castShadow />
         {[1, -1].map((f) => (
           <mesh key={f} geometry={PLANE} material={mats.price} position={[0, 5.4, f * 0.16]} rotation={[0, f > 0 ? 0 : Math.PI, 0]} scale={[Math.min(3.2, 0.45 * mats.priceAspect), 0.45, 1]} />
