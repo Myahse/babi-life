@@ -223,7 +223,7 @@ export function OpenWorld(props: Props & { token: string; onFail: () => void; on
   const maxDpr = Math.min(1.75, typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1)
   const [dpr, setDpr] = useState(Math.min(1.5, maxDpr))
   return (
-    <Canvas shadows dpr={dpr} camera={{ position: [45, 48, 45], fov: 45, near: 0.5, far: 6000 }} style={{ background: sky, transition: 'background 1s' }} gl={{ antialias: true }} onCreated={({ gl, scene }) => void (import.meta.env.DEV && Object.assign(window, { __gl: gl, __scene: scene, __where: whereabouts }))}>
+    <Canvas shadows dpr={dpr} camera={{ position: [45, 48, 45], fov: 45, near: 0.5, far: 6000 }} style={{ background: sky, transition: 'background 1s' }} gl={{ antialias: true, stencil: true }} onCreated={({ gl, scene }) => void (import.meta.env.DEV && Object.assign(window, { __gl: gl, __scene: scene, __where: whereabouts }))}>
       <Snapper street />
       {/* Resolution follows what the device can keep up with */}
       <PerformanceMonitor onDecline={() => setDpr((d) => Math.max(0.75, d - 0.25))} onIncline={() => setDpr((d) => Math.min(maxDpr, d + 0.25))} flipflops={4} onFallback={() => setDpr(1)} />
@@ -234,8 +234,29 @@ export function OpenWorld(props: Props & { token: string; onFail: () => void; on
   )
 }
 
+/**
+ * The horizon's coarse tiles (zoom 14) lie under the whole world, the near
+ * chunks over them. Where a near chunk is, the horizon must not show: its
+ * simplified coasts run over the land (the narrow strip on the road to
+ * Bassam came out under water, houses and all). Each near chunk marks its
+ * square in the stencil (CHUNK_MASK); the horizon's materials (farOf) are
+ * only drawn where no near chunk is.
+ */
+const CHUNK_MASK = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, depthTest: false, stencilWrite: true, stencilRef: 1, stencilFunc: THREE.AlwaysStencilFunc, stencilZPass: THREE.ReplaceStencilOp })
+function farOf<T extends Record<string, THREE.Material>>(mats: T): T {
+  return Object.fromEntries(
+    Object.entries(mats).map(([k, m]) => {
+      const f = m.clone()
+      Object.assign(f, { stencilWrite: true, stencilRef: 1, stencilFunc: THREE.NotEqualStencilFunc, stencilWriteMask: 0, stencilFail: THREE.KeepStencilOp, stencilZFail: THREE.KeepStencilOp, stencilZPass: THREE.KeepStencilOp })
+      f.userData = m.userData
+      return [k, f]
+    }),
+  ) as T
+}
+
 function useMaterials(night: boolean, hour: number) {
   const mats = useMemo(makeWorldMaterials, [])
+  const far = useMemo(() => farOf(mats), [mats])
   useEffect(() => {
     mats.walls.emissiveIntensity = night ? 0.95 : 0
     mats.shop.emissiveIntensity = night ? 0.8 : 0
@@ -245,7 +266,12 @@ function useMaterials(night: boolean, hour: number) {
     mats.water.specular.set(night ? '#8a9ccc' : '#d8ecff')
     mats.water.shininess = night ? 140 : 80
     mats.water.color.set(night ? '#5a6a90' : '#ffffff')
-  }, [night, mats])
+    // The horizon's water and foam follow the near ones.
+    far.water.specular.copy(mats.water.specular)
+    far.water.shininess = mats.water.shininess
+    far.water.color.copy(mats.water.color)
+    far.foam.color.copy(mats.foam.color)
+  }, [night, mats, far])
   // The windows go out one by one as the night goes on.
   useEffect(() => {
     mats.walls.userData.litShare.value = litShare(hour)
@@ -258,13 +284,14 @@ function useMaterials(night: boolean, hour: number) {
     mats.water.normalMap!.offset.set((t * 0.03) % 1, (t * 0.017) % 1)
     mats.foam.map!.offset.set((t * 0.02) % 1, Math.sin(t * 0.9) * 0.22)
     mats.foam.opacity = 0.55 + Math.sin(t * 0.9) * 0.35
+    far.foam.opacity = mats.foam.opacity
   })
-  return mats
+  return { mats, far }
 }
 
 function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, indoors, nameTag, onNear, frozen, players, onPickPlayer, recenter, onFreeCamera, closeView, shoulderView, token, onFail, onLoaded, onStreetBuy, onRobbed, onTalk, talkingTo, plotsVersion, onMapPlaces, onHomeSpots, onHomePlot }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void; onLoaded?: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void; onHomePlot?: (plot: Plot | undefined) => void }) {
   const origin = useMemo<Origin>(() => ({ lat: commune.lat, lng: commune.lng }), [commune.lat, commune.lng])
-  const mats = useMaterials(night, hour)
+  const { mats, far: farMats } = useMaterials(night, hour)
   const home = sim.homeCity === sim.city && sim.homeCommune === commune.id
 
   // The real places found on the map's points of interest, by name.
@@ -896,8 +923,14 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         const far = c.data.key.includes(':')
         return (
         <group key={c.data.key} position={[0, far ? -0.015 : 0, 0]}>
+          {/* A near chunk's square in the stencil: the horizon isn't drawn under it */}
+          {!far && (
+            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[(c.data.box.x0 + c.data.box.x1) / 2, 0, (c.data.box.z0 + c.data.box.z1) / 2]} material={CHUNK_MASK} renderOrder={-100}>
+              <planeGeometry args={[c.data.box.x1 - c.data.box.x0, c.data.box.z1 - c.data.box.z0]} />
+            </mesh>
+          )}
           {Object.entries(c.geos).map(([name, g]) => (
-            <mesh key={name} name={name} geometry={g} material={mats[name as keyof typeof mats]} castShadow={!far && SOLID.has(name)} receiveShadow={!far && name !== 'contact'} />
+            <mesh key={name} name={name} geometry={g} material={(far ? farMats : mats)[name as keyof typeof mats]} castShadow={!far && SOLID.has(name)} receiveShadow={!far && name !== 'contact'} />
           ))}
           <Trees pts={c.data.trees} bark={mats.bark} leaves={mats.leaves} />
           <Forest pts={c.data.forest ?? []} bark={mats.bark} />
