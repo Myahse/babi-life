@@ -3,11 +3,10 @@ import { Handshake, LogOut, Phone, Send, ShieldAlert, UserPlus, Users, Wallet, Z
 import { api } from '../lib/api'
 import type { Friend, Player, Sim, World } from '../lib/types'
 import { Portrait } from '../avatar/portrait'
-import { randomLook } from '../avatar/options'
-import { rng } from '../world3d/themes'
 import { lifeOf } from '../game/rules'
 import type { Act } from './phoneApps'
 import { joinableActivity } from '../components/Players'
+import { OutingPlanner, friendLook } from './OutingPlanner'
 
 /**
  * Amis: the people the Sim knows, met at school, at football, at the maquis…
@@ -74,6 +73,8 @@ export function FriendsApp({ world, sim, act, onPay }: { world: World; sim: Sim;
         </p>
       )}
 
+      <OutingPlanner world={world} sim={sim} act={act} />
+
       <PlayerFriends world={world} sim={sim} act={act} onPay={onPay} />
 
       <div className="label">Tes amis du quartier</div>
@@ -91,7 +92,7 @@ export function FriendsApp({ world, sim, act, onPay }: { world: World; sim: Sim;
 }
 
 function FriendRow({ f, world, canCall, busy, onAct }: { f: Friend; world: World; canCall: boolean; busy: boolean; onAct: (action: string, label: string) => void }) {
-  const look = useMemo(() => randomLook(f.gender, rng(`friend${f.seed}`)), [f.seed, f.gender])
+  const look = useMemo(() => friendLook(f), [f])
   const commune = world.cities.flatMap((c) => c.communes).find((c) => c.id === f.commune)?.name ?? ''
   const tone = f.friendship >= 60 ? '#00b86b' : f.friendship >= 30 ? '#ffa000' : '#ff4d6d'
   return (

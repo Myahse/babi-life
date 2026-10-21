@@ -3,7 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { Html, OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
-import type { Sim } from '../lib/types'
+import type { Friend, Sim } from '../lib/types'
 import { iconFor, kindColors } from '../components/icons'
 import { IconTile } from '../components/ui'
 import { Character } from './Character'
@@ -696,6 +696,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         )}
         {/* Hanging out: the friend walks along beside the Sim */}
         {busy?.id === 'ami-trainer' && <Buddy sim={sim} walking={looping} stage={stage} />}
+        {/* Out with friends (an outing): they came along, at the Sim's side */}
+        {!!sim.activity?.with?.length && <Companions sim={sim} walking={walking || looping} pose={outdoorPose(busy?.id)} stage={stage} />}
         {/* Outdoors, what the Sim is doing is set around it (the ball, the towel, the bus stop…) */}
         {busy && !walking && !onTouchline && <OutdoorAction id={busy.id} />}
         {labels && nameTag && !hidden && (
@@ -770,6 +772,25 @@ function RouteDots({ route, from, heightAt }: { route: XZ[]; from: React.RefObje
           <meshBasicMaterial color="#ff7a00" />
         </mesh>
       </group>
+    </>
+  )
+}
+
+/** Where the friends of an outing stand round the Sim: either side, then behind. */
+const ALONG: [number, number, number][] = [[0.85, 0, 0.1], [-0.85, 0, 0.1], [0.5, 0, -0.9], [-0.5, 0, -0.9]]
+
+/** The friends out with the Sim (sims/outing.go), with the face they had when met, walking along and doing as it does. */
+function Companions({ sim, walking, pose, stage }: { sim: Sim; walking: boolean; pose?: Pose; stage: string }) {
+  const along = (sim.activity?.with ?? []).map((id) => sim.friends?.find((f) => f.id === id)).filter((f): f is Friend => !!f)
+  const ids = along.map((f) => f.id).join()
+  const looks = useMemo(() => along.map((f) => f.look ?? randomLook(f.gender, rng(`partner${f.id}`))), [ids]) // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <>
+      {along.slice(0, ALONG.length).map((f, i) => (
+        <group key={f.id} position={ALONG[i]}>
+          <Character look={looks[i]} gender={f.gender} walking={walking} pose={walking ? undefined : (pose ?? 'talk')} marker={false} moodColor="#3b82f6" stage={stage} speed={1.1} />
+        </group>
+      ))}
     </>
   )
 }

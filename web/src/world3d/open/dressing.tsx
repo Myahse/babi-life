@@ -96,6 +96,7 @@ export function Dressing({ kind, name = '', seed, night }: { kind: string; name?
         return <Mall night={night} seed={seed} />
       case 'office':
       case 'culture':
+      case 'cinema':
         return <Office bank={BANK.test(name)} seed={seed} />
       case 'sport':
         return <Pitch name={name} night={night} />

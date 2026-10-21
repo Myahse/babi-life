@@ -261,6 +261,8 @@ export type Activity = {
   end: number
   applied: number
   career?: string
+  /** An outing (backend sims/outing.go): the friends met in the game who came along (Friend ids). */
+  with?: string[]
   trip?: { fromCity: string; fromCommune: string; city: string; commune: string; mode: TripMode; class?: string; fare: number; label: string; incident?: string; path?: [number, number][]; bridges?: string[]; party?: number }
 }
 

@@ -35,7 +35,7 @@ type Spot = { p: V3; r?: number; pose: Pose; lying?: boolean; g?: 'femme' | 'hom
 type Person = Spot & { gender: 'femme' | 'homme'; look: ReturnType<typeof randomLook>; seed: number }
 
 /** Kinds of places that have an inside (the beach or the football pitch don't). */
-export const INDOOR = new Set(['gym', 'boutique', 'couture', 'pharmacie', 'police', 'home', 'maquis', 'club', 'restaurant', 'market', 'office', 'mairie', 'school', 'health', 'worship', 'mall', 'culture', 'barbier', 'salon', 'hotel', 'universite'])
+export const INDOOR = new Set(['gym', 'boutique', 'couture', 'pharmacie', 'police', 'home', 'maquis', 'club', 'restaurant', 'market', 'office', 'mairie', 'school', 'health', 'worship', 'mall', 'culture', 'cinema', 'barbier', 'salon', 'hotel', 'universite'])
 
 /** Ambient occlusion where the device can afford it. */
 const RICH = typeof navigator === 'undefined' || (navigator.hardwareConcurrency ?? 4) > 4
@@ -103,7 +103,7 @@ export function action(kind: string, id: string | undefined): { spot: string; po
   if (/^(drink|milkshake|coffee)/.test(id) || id.includes('drink')) return { spot: 'table', pose: 'drink' }
   if (/^(eat|burger|glace|anniversaire)/.test(id) || id.startsWith('golvo-')) return { spot: 'table', pose: 'eat' }
   if (kind === 'school' || kind === 'universite' || kind === 'office' || /cours|biblio|conference|read-ads|work/.test(id)) return { spot: 'desk', pose: 'write' }
-  if (kind === 'culture' || kind === 'worship' || id === 'visite-malade') return { spot: 'seat', pose: 'sit' }
+  if (kind === 'culture' || kind === 'cinema' || kind === 'worship' || id === 'visite-malade') return { spot: 'seat', pose: 'sit' }
   if (id === 'consultation') return { spot: 'bed', pose: 'idle' }
   if (kind === 'market' || kind === 'mall') return { spot: 'stall', pose: 'busy' }
   return { spot: 'counter', pose: 'idle' }
@@ -338,6 +338,21 @@ function shower(id?: string) {
 const ROOM_LIKE: Record<string, string> = { boutique: 'market' }
 
 export function room(kindIn: string, housing: string): Room {
+  // The cinema: the culture hall's rows of seats, in the dark, the film lit on a big screen.
+  if (kindIn === 'cinema') {
+    const hall = room('culture', housing)
+    return {
+      ...hall,
+      dark: true,
+      wall: '#1b1424',
+      furniture: (
+        <>
+          {hall.furniture}
+          <Box p={[0, 2.3, -4.35]} s={[7.2, 3, 0.08]} c="#d7ecff" />
+        </>
+      ),
+    }
+  }
   const kind = ROOM_LIKE[kindIn] ?? kindIn
   switch (kind) {
     case 'home': {
@@ -903,6 +918,24 @@ export function room(kindIn: string, housing: string): Room {
   }
 }
 
+const SEATED_POSES = new Set<Pose>(['sit', 'eat', 'drink', 'write'])
+
+/** The friends out with the Sim (sims/outing.go): either side of it, doing what it does, with the face they had when met. */
+function Along({ sim, pose, stage }: { sim: Sim; pose: Pose; stage: string }) {
+  const along = (sim.activity?.with ?? []).map((id) => sim.friends?.find((f) => f.id === id)).filter((f) => !!f)
+  return (
+    <>
+      {along.slice(0, 4).map((f, i) => (
+        <group key={f.id} position={[(i % 2 ? -1 : 1) * 1.05 * (1 + Math.floor(i / 2)), 0, 0]}>
+          {/* Seated without a chair of the room's: a stool brought over */}
+          {SEATED_POSES.has(pose) && <Box p={[0, 0.22, -0.12]} s={[0.46, 0.44, 0.46]} c="#b5651d" />}
+          <Character look={f.look ?? randomLook(f.gender, rng(`partner${f.id}`))} gender={f.gender} stage={stage} marker={false} busy={pose === 'busy'} pose={pose} />
+        </group>
+      ))}
+    </>
+  )
+}
+
 /* ---------- The scene ---------- */
 
 export function Interior({ sim, kind, placeId, interactionId, roam, housing, night, stage, others = [], open = true }: { sim: Sim; kind: string; placeId: string; interactionId?: string; /** Just come in: the Sim walks about the room (tap the floor, or the keys). */ roam?: boolean; housing: string; night: boolean; stage: string; others?: Player[]; /** Within its hours: closed, nobody's in (no customers, no staff). */ open?: boolean }) {
@@ -1004,6 +1037,8 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
             there ? (
               <>
                 <Character look={look} gender={sim.gender} stage={stage} marker={!me.lying} busy={act.pose === 'busy'} pose={act.pose} />
+                {/* Out with friends: they sit, eat, dance at the Sim's side */}
+                {!me.lying && <Along sim={sim} pose={act.pose} stage={stage} />}
                 <ActionProps id={interactionId} kind={kind} lying={!!me.lying} />
                 {/* The travaillement: notes off the wad, over the dancers in front */}
                 {throwing && <NoteShower from={[0.3, 1.72, 0.3]} toward={[0, 0.35, 1]} {...shower(interactionId)} seed={placeId.length} />}
