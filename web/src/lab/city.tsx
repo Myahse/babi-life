@@ -52,6 +52,8 @@ import { CHUNK_ZOOM, tileOf, toLocal, type Origin } from '../world3d/open/geo'
 import { LANDMARKS } from '../world3d/open/landmarks'
 import { inTheWay, resolvePlaces, type PlaceSpot, type Resolved } from '../world3d/open/places'
 import { Apprenti, Forest, Palms, Trees, legProfile, makeWorldMaterials, type GbakaLeg } from '../world3d/open/OpenWorld'
+import { Nav } from '../world3d/open/nav'
+import { StreetNouchis } from '../world3d/open/nouchis'
 import { useFrame } from '@react-three/fiber'
 import { worldTime } from '../lib/worldClock'
 import { useEffect, useRef, useState } from 'react'
@@ -287,8 +289,12 @@ function MapLab() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const cam = (q.get('cam') ?? '600,700,900').split(',').map(Number) as [number, number, number]
   const look = (q.get('look') ?? '0,0,0').split(',').map(Number) as [number, number, number]
+  // &nouchis: the couloirs' nouchis, once every chunk is in (window.__nouchis lists them; whereabouts.sim says round where).
+  const all = (2 * n + 1) ** 2
+  const nav = useMemo(() => (q.has('nouchis') && chunks.length === all ? new Nav(chunks.map((c) => c.data)) : null), [chunks, all])
   return (
     <Canvas dpr={[1, 1.5]} camera={{ position: cam, fov: 45, far: 8000 }} style={{ width: '100vw', height: '100vh' }}>
+      {nav && <StreetNouchis nav={nav} seed="lab" />}
       <color attach="background" args={['#a9d3f0']} />
       <hemisphereLight args={['#ffffff', '#b8a27c', 1.3]} />
       <directionalLight position={[300, 600, 200]} intensity={1.7} />

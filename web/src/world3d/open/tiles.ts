@@ -18,7 +18,9 @@ export type Aeroway = { cls: 'runway' | 'taxiway'; pts: XZ[] }
 export type Building = { ring: XZ[]; holes: XZ[][]; height: number; c: XZ; tint: number; /** a house the game built (fill.ts): under tin */ tin?: boolean; /** what a building the game put along a big road is (fill.ts): shops, offices, a hotel */ style?: 'commerce' | 'civic' | 'hotel' }
 /** airport: the airfield's grounds (grass round the runways): no game houses there, no trees. */
 export type Area = { kind: 'water' | 'green' | 'sand' | 'pitch' | 'campus' | 'hospital' | 'apron' | 'airport'; rings: XZ[][] }
-export type ChunkData = { key: string; tx: number; ty: number; box: Box; roads: Road[]; buildings: Building[]; areas: Area[]; trees: XZ[]; palms: XZ[]; aeroways: Aeroway[]; pois: Poi[]; /** big rainforest trees, close together (the Banco) */ forest?: XZ[]; /** fuel stations, laid out by their street */ stations?: Station[] }
+export type ChunkData = { key: string; tx: number; ty: number; box: Box; roads: Road[]; buildings: Building[]; areas: Area[]; trees: XZ[]; palms: XZ[]; aeroways: Aeroway[]; pois: Poi[]; /** big rainforest trees, close together (the Banco) */ forest?: XZ[]; /** fuel stations, laid out by their street */ stations?: Station[]; /** the narrow passages left between the game's houses (fill.ts) */ couloirs?: Couloir[] }
+/** A couloir between two houses: where it opens on the street, the way in (unit), its width between the walls and its length. */
+export type Couloir = { mouth: XZ; dir: XZ; w: number; len: number }
 /** A fuel station: its canopy's middle by the street, the street's direction, which side of it, its name. */
 export type Station = { at: XZ; angle: number; side: 1 | -1; name: string; /** room for the game's shop behind (else a map building stands there) */ shop: boolean }
 
