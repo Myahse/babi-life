@@ -244,7 +244,8 @@ function Loop({ game, input, onHud, net, entries, start, simId }: { game: Game; 
     if (net) net.press(inp)
     // At a court, nothing runs before the line to the others is open: alone, this phone would start a match of its own.
     const offline = start > 0 && !net
-    if (waiting <= 0 && boss && !offline) {
+    // boss is null while the court is still finding out who runs it; "" (no court: the street, the labs) is this phone.
+    if (waiting <= 0 && boss !== null && !offline) {
       // Taking over a match no one has run yet (its first player went): on the court's clock, not from the countdown.
       if (host && net && !synced.current) {
         const elapsed = (serverNow() - start) / 1000 - COUNTDOWN

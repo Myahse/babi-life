@@ -71,7 +71,7 @@ func TestGrowingUp(t *testing.T) {
 		t.Fatalf("at 3: stage %s, events %v", s.stage().ID, ev)
 	}
 	ev = s.advance(noon.Add(years(8)), noLuck()) // birthdays 3 to 8 (3 came with the first step)
-	if f, _ := game.FindFamily("poignon"); s.Money != 6*f.Pocket || !hasText(ev, "Argent de poche") {
+	if f, _ := game.FindFamily("poignon"); s.Money != 6*(f.Pocket/birthdayShare/100*100) || !hasText(ev, "Argent de poche") {
 		t.Errorf("a child gets pocket money on its birthdays: %d", s.Money)
 	}
 	// Class counts for the bac.

@@ -480,6 +480,9 @@ export function Follow({ g }: { g: Game }) {
   // How far the camera has slid back towards the player's own Sim, to keep it above the stick and the buttons.
   const lift = useRef(0)
   const feet = useRef(new THREE.Vector3())
+  // How far it has pulled back, when the Sim kept above the buttons would leave the ball off the top.
+  const back = useRef(0)
+  const ballAt = useRef(new THREE.Vector3())
   useFrame((_, dt) => {
     const me = g.ps[g.me]
     // Football, upright: from behind the player's own goal, whichever team the court gave it (team 1 attacks -x).
@@ -511,6 +514,7 @@ export function Follow({ g }: { g: Game }) {
     const down = g.sport === 'foot' && tall ? new THREE.Vector3(-dir, 0, 0) : new THREE.Vector3(0, 0, 1)
     want.addScaledVector(down, lift.current)
     target.addScaledVector(down, lift.current)
+    want.sub(target).multiplyScalar(1 + back.current).add(target)
     const k = first.current ? 1 : 1 - Math.exp(-dt * 4)
     first.current = false
     at.current.lerp(want, k)
@@ -525,6 +529,10 @@ export function Follow({ g }: { g: Game }) {
     const floor = -1 + (2 * 190) / Math.max(size.height, 300)
     if (y < floor) lift.current = Math.min(14, lift.current + dt * 10)
     else if (y > floor + 0.2) lift.current = Math.max(0, lift.current - dt * 4)
+    // The ball high up the screen while the Sim is held low: further back, to see both.
+    const by = ballAt.current.set(b.x, 0.3, b.z).project(camera).y
+    if (by > 0.88 && y < floor + 0.25) back.current = Math.min(0.7, back.current + dt * 0.8)
+    else if (by < 0.7 || y > floor + 0.4) back.current = Math.max(0, back.current - dt * 0.4)
   })
   return null
 }

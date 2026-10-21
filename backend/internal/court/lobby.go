@@ -27,6 +27,9 @@ const (
 	Length = 4 * time.Minute
 	// Late: a match ending sooner than this takes no one new; they're put in the next one, after it.
 	Late = time.Minute
+	// Gone: a player whose phone hasn't asked for the match this long has closed the app
+	// (it asks every 3 s, streetball/StreetMatch.tsx): the place goes back to the AI, and to whoever comes.
+	Gone = 45 * time.Second
 )
 
 // Cap: players a match takes, by sport.
@@ -46,6 +49,7 @@ type Entry struct {
 	Gender string          `json:"gender"`
 	Look   json.RawMessage `json:"look"`
 	Slot   int             `json:"slot"`
+	seen   int64           // unix ms: the last time the player's phone asked for the match
 }
 
 // Match: at which court, which sport, when the whistle goes (unix ms) and who plays.
@@ -147,8 +151,23 @@ func (l *Lobby) Join(place, sport string, e Entry, now time.Time) (Match, error)
 			break
 		}
 	}
+	e.seen = now.UnixMilli()
 	m.Entries = append(m.Entries, e)
 	return copyMatch(m), nil
+}
+
+// Seen: the player's phone asked for the match: still on the court.
+func (l *Lobby) Seen(id, sim string, now time.Time) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if m, ok := l.matches[id]; ok {
+		for i := range m.Entries {
+			if m.Entries[i].Sim == sim {
+				m.Entries[i].seen = now.UnixMilli()
+			}
+		}
+	}
+	l.sweep(now)
 }
 
 // Leave: a player walks off; its place goes back to the AI (and to whoever comes next).
@@ -209,6 +228,12 @@ func (l *Lobby) Has(id, sim string) bool {
 // sweep: a match over frees its court; it's forgotten a while later.
 func (l *Lobby) sweep(now time.Time) {
 	ms := now.UnixMilli()
+	// Those gone (the app closed without leaving) free their place.
+	for _, at := range []map[string]*Match{l.at, l.next} {
+		for _, m := range at {
+			m.Entries = slices.DeleteFunc(m.Entries, func(e Entry) bool { return ms-e.seen > Gone.Milliseconds() })
+		}
+	}
 	for place, m := range l.at {
 		if ms >= m.End || len(m.Entries) == 0 {
 			delete(l.at, place)

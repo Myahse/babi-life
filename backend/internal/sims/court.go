@@ -74,7 +74,18 @@ func (h *Handler) courtJoin(w http.ResponseWriter, r *http.Request) {
 
 // courtMatch: a match as it stands (who has come, who has gone).
 func (h *Handler) courtMatch(w http.ResponseWriter, r *http.Request) {
-	m, ok := h.Courts.Get(chi.URLParam(r, "match"))
+	id := chi.URLParam(r, "match")
+	// Asking for the match is being there (the phone asks every 3 s while the match is open): those who stop asking lose their place (court.Gone).
+	if rows, err := h.DB.Query(r.Context(), `SELECT id FROM sims WHERE user_id = $1`, auth.UserID(r.Context())); err == nil {
+		for rows.Next() {
+			var sim string
+			if rows.Scan(&sim) == nil {
+				h.Courts.Seen(id, sim, time.Now())
+			}
+		}
+		rows.Close()
+	}
+	m, ok := h.Courts.Get(id)
 	if !ok {
 		httpx.Error(w, http.StatusNotFound, "match introuvable")
 		return
