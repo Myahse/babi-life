@@ -132,8 +132,8 @@ export function fillQuarters(chunk: ChunkData, neighbours: XZ[][] = [], keepClea
     if (ring.length < 4) return
     take(rect)
     const b: Building = style
-      ? { ring, holes: [], height, c: centroid(ring), tint: hash(c[1], c[0]), style }
-      : { ring, holes: [], height: storeys * 3, c: centroid(ring), tint: hash(c[1], c[0]), tin: storeys <= 2 && hash(c[0], c[1], 41) < 0.9 }
+      ? { ring, holes: [], height, c: centroid(ring), tint: hash(c[1], c[0]), fill: true, style }
+      : { ring, holes: [], height: storeys * 3, c: centroid(ring), tint: hash(c[1], c[0]), fill: true, tin: storeys <= 2 && hash(c[0], c[1], 41) < 0.9 }
     chunk.buildings.push(b)
     made++
   }

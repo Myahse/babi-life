@@ -15,6 +15,7 @@ import { Zoo } from './zoo'
 import { BlockhaussMaquis } from './blockhauss'
 import { Cathedral } from './cathedral'
 import { MosqueM6 } from './mosqueM6'
+import { ParcExpo } from './parcExpo'
 import type { StadiumEvent } from '../../lib/stadium'
 import type { Obstacle } from '../obstacles'
 
@@ -42,6 +43,12 @@ export const LANDMARKS: Record<string, number> = {
   'adjame-forum': 52,
   'cocody-zoo': 86,
   'cocody-blockhauss-maquis': 27,
+  'portbouet-parc-expo': 60,
+}
+
+/** Grounds where the game builds none of its own houses (the map's buildings stay): a fairground, metres round the place. */
+export const NO_FILL: Record<string, number> = {
+  'portbouet-parc-expo': 290,
 }
 
 /** Where a place inside a landmark is (its door on the landmark's ground, which way it faces), in the landmark's frame. */
@@ -64,6 +71,8 @@ export function Landmark({ id, night, demo, open = true }: { id: string; night: 
       return <MosqueM6 night={night} />
     case 'plateau-pyramide':
       return <Pyramide night={night} />
+    case 'portbouet-parc-expo':
+      return <ParcExpo night={night} />
     case 'plateau-stade':
       return <Stadium place={id} night={night} demo={demo} />
     case 'cocody-hotel-ivoire':

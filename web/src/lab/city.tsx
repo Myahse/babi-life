@@ -10,7 +10,7 @@ import { buildChunk } from '../world3d/open/meshes'
 import { makeTextures } from '../world3d/open/textures'
 import { blockRing } from '../world3d/open/voxel'
 import { Vehicle, carModel, type CarModel, type VehicleKind } from '../world3d/vehicles'
-import { Landmark, STADIUM_SOLID } from '../world3d/open/landmarks'
+import { Landmark, NO_FILL, STADIUM_SOLID } from '../world3d/open/landmarks'
 import { CATHEDRAL_SOLID } from '../world3d/open/cathedral'
 import { MOSQUE_M6_SOLID } from '../world3d/open/mosqueM6'
 import { CameraView } from '../screens/CameraView'
@@ -282,6 +282,9 @@ function MapLab() {
           const found = resolvePlaces(data, spots)
           if (found.length) setMarks((m) => [...m, ...found])
           const cleared = spots.map((s) => ({ at: s.at, r: s.landmark! }))
+          // A fairground's ground: none of the game's own houses (as worker.ts).
+          const fairs = spots.flatMap((s) => (NO_FILL[s.id] ? [{ at: s.at, r: NO_FILL[s.id] }] : []))
+          if (fairs.length) data.buildings = data.buildings.filter((b) => !b.fill || !fairs.some((f) => Math.hypot(b.c[0] - f.at[0], b.c[1] - f.at[1]) < f.r))
           const meshes = buildChunk(data, (c, ring) => inTheWay([], c, cleared, ring) || ring.some((p) => inTheWay([], p, cleared)))
           ;(data as unknown as { ms: number }).ms = Math.round(performance.now() - t0)
           ;(window as unknown as { stats: unknown[] }).stats = [...((window as unknown as { stats?: unknown[] }).stats ?? []), { key: data.key, buildings: data.buildings.length, roads: data.roads.length, trees: data.trees.length, forest: data.forest?.length ?? 0, areas: data.areas.length, meshMs: (data as unknown as { ms: number }).ms }]
