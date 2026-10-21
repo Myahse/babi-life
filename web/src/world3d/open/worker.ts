@@ -49,7 +49,7 @@ self.onmessage = async (e: MessageEvent<ChunkRequest>) => {
       const s = styles.get(b)
       if (s) return s
       const g = grounds.find((a) => pointInRing(b.c, a.rings[0]))
-      return g ? (g.kind === 'campus' ? 'institution' : 'hospital') : 'default'
+      return g ? (g.kind === 'campus' ? 'institution' : 'hospital') : (b.style ?? 'default')
     }
     // No tree on a pitch, in a game-made lot or on a landmark's ground (it draws its own).
     const bare = (q: XZ) => fields.some((f) => onFieldGround(f, q, 2.5)) || inTheWay(made, q, landmarks)
