@@ -23,6 +23,8 @@ type Interaction struct {
 	Ages []string `json:"ages,omitempty"`
 	// Places: only at these places of the kind (the Hôtel Ivoire's ice rink…); empty = at every one.
 	Places []string `json:"places,omitempty"`
+	// Faiths: only at the places of worship of these faiths (faith.go): the mass, the culte, the Friday prayer.
+	Faiths []string `json:"faiths,omitempty"`
 	// Gender: only Sims of this gender (a beard trim is for men); empty = anyone.
 	Gender string `json:"gender,omitempty"`
 	// Room: at home, the room it's done in (RoomBath…): the menu shows the house room by room.
@@ -207,6 +209,12 @@ var Kinds = map[string]PlaceKind{
 		Interactions: []Interaction{
 			{ID: "pray", Label: "Prier / se recueillir", Icon: "hand-heart", Minutes: 60, Effect: Needs{Fun: 10, Social: 15}},
 			{ID: "visit", Label: "Visiter", Icon: "camera", Minutes: 45, Cost: 2000, Effect: Needs{Fun: 25}},
+			// The services, each at its faith's places, on its day and at its hours (0 = lundi … 6 = dimanche).
+			{ID: "messe", Label: "Aller à la messe du dimanche", Icon: "church", Minutes: 120, Effect: Needs{Social: 30, Fun: 10, Energy: -5}, MinHour: 7, MaxHour: 12, Days: []int{6}, Faiths: []string{FaithCatholic}},
+			{ID: "messe-matin", Label: "Messe du matin", Icon: "church", Minutes: 45, Effect: Needs{Social: 10, Fun: 5}, MinHour: 6, MaxHour: 8, Days: Weekdays, Faiths: []string{FaithCatholic}},
+			{ID: "culte", Label: "Aller au culte", Icon: "music", Minutes: 150, Effect: Needs{Social: 35, Fun: 20, Energy: -10}, MinHour: 8, MaxHour: 13, Days: []int{6}, Faiths: []string{FaithProtestant, FaithEvangelic}},
+			{ID: "veillee", Ages: TeensUp, Label: "Veillée de prière", Icon: "moon", Minutes: 180, Effect: Needs{Social: 25, Fun: 10, Energy: -25}, MinHour: 21, MaxHour: 1, Days: []int{4}, Faiths: []string{FaithEvangelic}},
+			{ID: "priere-vendredi", Label: "Grande prière du vendredi", Icon: "hand-heart", Minutes: 90, Effect: Needs{Social: 30, Fun: 5}, MinHour: 12, MaxHour: 15, Days: []int{4}, Faiths: []string{FaithMuslim}},
 			// The cathedral's tower can be climbed: the Plateau and the lagoon from its cross, 50 m up.
 			{ID: "monter-tour", Label: "Monter en haut de la tour", Icon: "mountain", Minutes: 45, Cost: 1000, Effect: Needs{Fun: 35, Energy: -10}, MinHour: 9, MaxHour: 17, Places: []string{CathedraleID}},
 		},

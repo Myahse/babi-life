@@ -20,6 +20,8 @@ export type Lot = {
   seed: number
   /** A real building from the map (the open world): its height. */
   height?: number
+  /** A place of worship's faith: a minaret, a belfry or a cross, and its services. */
+  faith?: string
   /** A pitch or a court (the open world): the place is played on it. */
   field?: Field
   /** A fuel station drawn with the map (open/station.tsx): only its label here. */

@@ -49,6 +49,8 @@ type MapPlace struct {
 	Quarter string  `json:"quarter,omitempty"`
 	// Type is what the map calls it (kiosk, tailor, christian…).
 	Type string `json:"type,omitempty"`
+	// Faith: a place of worship's (game.FaithOf).
+	Faith string `json:"faith,omitempty"`
 }
 
 var (
@@ -59,6 +61,16 @@ var (
 )
 
 func init() {
+	// The hand-made places of worship: their faith from their name.
+	for i := range Cities {
+		for j := range Cities[i].Communes {
+			for k := range Cities[i].Communes[j].Places {
+				if p := &Cities[i].Communes[j].Places[k]; p.Kind == "worship" && p.Faith == "" {
+					p.Faith = game.FaithOf(p.Name, "")
+				}
+			}
+		}
+	}
 	entries, err := osmFiles.ReadDir("osm")
 	if err != nil {
 		panic(err)
@@ -80,6 +92,9 @@ func init() {
 			p := MapPlace{ID: row[0].(string), Name: InGameName(row[1].(string)), Kind: row[2].(string), Lat: row[3].(float64), Lng: row[4].(float64), Quarter: row[5].(string)}
 			if t, ok := row[6].(string); ok {
 				p.Type = t
+			}
+			if p.Kind == "worship" {
+				p.Faith = game.FaithOf(p.Name, p.Type)
 			}
 			if _, ok := game.Kinds[p.Kind]; !ok {
 				panic("osm/" + e.Name() + ": unknown kind " + p.Kind + " for " + p.ID)
@@ -266,7 +281,7 @@ func mapPlace(id string) (City, Commune, Place, bool) {
 	for _, c := range Cities {
 		for _, cm := range c.Communes {
 			if cm.ID == mapCommune[id] {
-				return c, cm, Place{ID: p.ID, Name: p.Name, Kind: p.Kind, Lat: p.Lat, Lng: p.Lng, Quarter: p.Quarter, Real: true, Source: OSMSource}, true
+				return c, cm, Place{ID: p.ID, Name: p.Name, Kind: p.Kind, Lat: p.Lat, Lng: p.Lng, Quarter: p.Quarter, Real: true, Source: OSMSource, Faith: p.Faith}, true
 			}
 		}
 	}

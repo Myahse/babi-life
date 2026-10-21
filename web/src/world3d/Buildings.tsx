@@ -4,7 +4,7 @@ import { Vehicle } from './vehicles'
 // One low-poly building per kind of place. Local space: the lot is 14×14
 // centred on the origin and the front (door) faces +Z, towards the street.
 
-type Props = { name: string; night: boolean }
+type Props = { name: string; night: boolean; /** A place of worship's (lib/types Faith). */ faith?: string }
 
 const PASTELS = ['#f6d7a7', '#f4b6a6', '#b8e0d2', '#d6c2f0', '#fbe39b', '#a9d6f5']
 const pick = (s: string, list: string[]) => list[[...s].reduce((a, c) => a + c.charCodeAt(0), 0) % list.length]
@@ -142,8 +142,8 @@ function Beach({ night }: Props) {
   )
 }
 
-function Worship({ name, night }: Props) {
-  const mosque = /mosqu/i.test(name)
+function Worship({ name, night, faith }: Props) {
+  const mosque = faith ? faith === 'musulman' : /mosqu/i.test(name)
   if (mosque) {
     return (
       <group>

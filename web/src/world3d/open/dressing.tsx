@@ -10,6 +10,7 @@ import { ClubFront, useClubFill } from '../clubNight'
 import { Human, NoShadows, type Pose } from '../../avatar/Human'
 import { OUTFIT_DEFAULT_COLOR, randomLook } from '../../avatar/options'
 import { lettering } from './ruePrincesse'
+import { Belfry, MINARET_TOP, Minaret, Service, TempleCross } from './worshipFront'
 
 // What stands in front of a place and tells what it is, before you read its
 // sign: the market's stalls and parasols, the maquis's terrace (plastic
@@ -65,7 +66,7 @@ const Glow = ({ p, size, c, opacity = 0.6, flat = false }: { p: [number, number,
 // These stay open after dark. Everything else pulls a shutter down over the door.
 const OPEN_AT_NIGHT = new Set(['gym', 'police', 'pharmacie', 'maquis', 'restaurant', 'club', 'hotel', 'health', 'transport', 'home', 'beach', 'lagune', 'nature', 'village', 'sport'])
 
-export function Dressing({ kind, name = '', seed, night }: { kind: string; name?: string; seed: number; night: boolean }) {
+export function Dressing({ kind, name = '', faith, seed, night }: { kind: string; name?: string; /** A place of worship's (lib/types Faith). */ faith?: string; seed: number; night: boolean }) {
   const front = (() => {
     switch (kind) {
       case 'market':
@@ -88,7 +89,7 @@ export function Dressing({ kind, name = '', seed, night }: { kind: string; name?
       case 'salon':
         return <Salon />
       case 'worship':
-        return <Worship name={name} />
+        return <Worship name={name} faith={faith} night={night} />
       case 'school':
       case 'universite':
         return <School />
@@ -192,27 +193,21 @@ function Salon() {
   )
 }
 
-/** A church gets a cross, a mosque a crescent. Benches either way. */
-function Worship({ name }: { name: string }) {
-  const mosque = /mosqu[eé]e/i.test(name)
+/**
+ * A place of worship by its faith (worshipFront.tsx): a mosque its minaret and
+ * its prayers, a parish its belfry, a temple its great cross, and the
+ * churches their masses, cultes and veillées. Benches either way. Without a
+ * faith (an old save), the name tells.
+ */
+function Worship({ name, faith, night }: { name: string; faith?: string; night: boolean }) {
+  const f = faith ?? (/mosqu[eé]e/i.test(name) ? 'musulman' : /paroisse|cath[eé]drale|basilique|saint|notre/i.test(name) ? 'catholique' : 'evangelique')
   return (
     <group>
-      {mosque ? (
-        <group position={[0, 3.6, 0.25]}>
-          <mesh geometry={POLE} material={mat('#f4f1ea')} position={[0, 0, 0]} scale={[1.2, 1.4, 1.2]} />
-          <B p={[0.22, 0.85, 0]} s={[0.55, 0.08, 0.08]} c="#d4a017" />
-          <B p={[0.42, 0.7, 0]} s={[0.08, 0.38, 0.08]} c="#d4a017" />
-        </group>
-      ) : (
-        <group position={[0, 3.5, 0.25]}>
-          <B p={[0, 0.35, 0]} s={[0.16, 1.1, 0.1]} c="#f4f1ea" />
-          <B p={[0, 0.7, 0]} s={[0.7, 0.16, 0.1]} c="#f4f1ea" />
-        </group>
-      )}
+      {f === 'musulman' ? <Minaret /> : f === 'catholique' ? <Belfry /> : <TempleCross />}
       {[-1.6, 1.6].map((x) => (
         <B key={x} p={[x, 0.4, 2.2]} s={[1.3, 0.12, 0.4]} c="#8a5a32" />
       ))}
-      {mosque && <Prayers name={name} />}
+      {f === 'musulman' ? <Prayers name={name} /> : f !== 'autre' && <Service name={name} faith={f} night={night} />}
     </group>
   )
 }
@@ -331,7 +326,7 @@ function Prayers({ name }: { name: string }) {
       )}
       {/* The call to prayer, from the minaret */}
       {near && m.phase === 'call' && (
-        <Html position={[0, 5.6, 0.3]} center zIndexRange={[20, 0]}>
+        <Html position={MINARET_TOP} center zIndexRange={[20, 0]}>
           <div className="rounded-2xl rounded-bl-sm bg-white px-3 py-1.5 text-[13px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_6px_14px_-8px_rgba(0,0,0,0.5)]">Allahou akbar, Allahou akbar… 🕌</div>
         </Html>
       )}

@@ -346,7 +346,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const spots = useMemo<(PlaceSpot & { kind: string; name: string })[]>(() => {
     const [a, d] = livesOnLot ? lotSpot(mine?.key ?? sim.id) : homeSpot(sim.id)
     // A real place found on the map (by its name) stands where the map has it.
-    const list: (PlaceSpot & { kind: string; name: string })[] = places.map((p) => ({ id: p.id, kind: p.kind, name: p.name, type: p.type, at: snaps.get(p.id) ?? toLocal(origin, p.lat, p.lng), landmark: LANDMARKS[p.id] }))
+    const list: (PlaceSpot & { kind: string; name: string })[] = places.map((p) => ({ id: p.id, kind: p.kind, name: p.name, type: p.type, faith: p.faith, at: snaps.get(p.id) ?? toLocal(origin, p.lat, p.lng), landmark: LANDMARKS[p.id] }))
     // A home with a house built on it clears its ground: the game draws the house.
     if (home) list.unshift({ id: HOME_ID, kind: 'home', name: 'Chez toi', at: [Math.cos(a) * d, Math.sin(a) * d], landmark: myPlot ? lotClear(myPlot) : livesOnLot ? PLOT_CLEAR : undefined })
     for (const id of plotKey ? plotKey.split(',') : []) {
@@ -697,7 +697,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         .filter((s) => s.id !== HAPPENING_KEY && (s.kind !== 'plot' || s.id === `plot:${sim.id}` || s.id.startsWith(`plot:${sim.id}:`)) && resolved.has(s.id))
         .map((s, i) => {
           const r = resolved.get(s.id)!
-          return { id: s.id, kind: s.kind, name: s.name, x: r.center[0], z: r.center[1], rot: r.rot, door: r.door, seed: i, height: r.real?.height, field: r.field, station: r.station }
+          return { id: s.id, kind: s.kind, name: s.name, faith: s.faith, x: r.center[0], z: r.center[1], rot: r.rot, door: r.door, seed: i, height: r.real?.height, field: r.field, station: r.station }
         }),
     [spots, resolved],
   )
@@ -1085,7 +1085,7 @@ function PlaceSign({ lot, world, night, label, onPick }: { lot: Lot & { height?:
           </>
         )}
         {/* What tells what the place is, in front of it */}
-        <Dressing kind={lot.kind} name={lot.name} seed={lot.seed + lot.x * 0.01} night={night} />
+        <Dressing kind={lot.kind} name={lot.name} faith={lot.faith} seed={lot.seed + lot.x * 0.01} night={night} />
         {/* The door */}
         <mesh position={[0, 1.05, 0.06]}>
           <boxGeometry args={[1.2, 2.1, 0.08]} />

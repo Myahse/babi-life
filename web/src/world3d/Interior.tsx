@@ -20,6 +20,7 @@ import { rng } from './themes'
 import { Talkable } from './Talkable'
 import { doingOf, nameFor } from './talk'
 import { listenKeys, moveInput } from './input'
+import { SERVICES, worshipAction, worshipRoom } from './interior/worshipRooms'
 
 /** Soft shade in the corners, downloaded only on phones that show it. */
 const AmbientOcclusion = lazy(() => import('./effects'))
@@ -31,7 +32,7 @@ const AmbientOcclusion = lazy(() => import('./effects'))
 
 type V3 = [number, number, number]
 /** Where someone is and what they're doing. */
-type Spot = { p: V3; r?: number; pose: Pose; lying?: boolean; g?: 'femme' | 'homme'; /** What they wear there (the swimsuit in the pool). */ outfit?: string }
+export type Spot = { p: V3; r?: number; pose: Pose; lying?: boolean; g?: 'femme' | 'homme'; /** What they wear there (the swimsuit in the pool). */ outfit?: string }
 type Person = Spot & { gender: 'femme' | 'homme'; look: ReturnType<typeof randomLook>; seed: number }
 
 /** Kinds of places that have an inside (the beach or the football pitch don't). */
@@ -41,7 +42,7 @@ export const INDOOR = new Set(['gym', 'boutique', 'couture', 'pharmacie', 'polic
 const RICH = typeof navigator === 'undefined' || (navigator.hardwareConcurrency ?? 4) > 4
 
 
-type Room = { floor: string; wall: string; dark?: boolean; furniture: React.ReactNode; spots: Record<string, Spot>; crowd: Spot[] }
+export type Room = { floor: string; wall: string; dark?: boolean; furniture: React.ReactNode; spots: Record<string, Spot>; crowd: Spot[] }
 
 /** What the Sim does there: where it goes and how it moves. */
 export function action(kind: string, id: string | undefined): { spot: string; pose: Pose } {
@@ -934,13 +935,14 @@ function Along({ sim, pose, stage }: { sim: Sim; pose: Pose; stage: string }) {
 
 /* ---------- The scene ---------- */
 
-export function Interior({ sim, kind, placeId, interactionId, roam, housing, night, stage, others = [], open = true }: { sim: Sim; kind: string; placeId: string; interactionId?: string; /** Just come in: the Sim walks about the room (tap the floor, or the keys). */ roam?: boolean; housing: string; night: boolean; stage: string; others?: Player[]; /** Within its hours: closed, nobody's in (no customers, no staff). */ open?: boolean }) {
+export function Interior({ sim, kind, placeId, interactionId, roam, housing, night, stage, others = [], open = true, faith }: { sim: Sim; kind: string; placeId: string; interactionId?: string; /** A place of worship's: the mosque, the temple or the parish inside, full for its service. */ faith?: string; /** Just come in: the Sim walks about the room (tap the floor, or the keys). */ roam?: boolean; housing: string; night: boolean; stage: string; others?: Player[]; /** Within its hours: closed, nobody's in (no customers, no staff). */ open?: boolean }) {
   const [roamTo, setRoamTo] = useState<{ p: V3; facing: number } | null>(null)
   // The arrow keys and WASD walk the Sim about the room.
   useEffect(() => (roam ? listenKeys() : undefined), [roam])
-  const r = room(kind, housing)
+  const byFaith = kind === 'worship' && !!faith
+  const r = byFaith ? worshipRoom(faith, SERVICES.has(interactionId ?? '')) : room(kind, housing)
   const style = useRoomStyle(kind, housing)
-  const act = action(kind, interactionId)
+  const act = byFaith ? worshipAction(r, interactionId) : action(kind, interactionId)
   const me = r.spots[act.spot] ?? r.spots.counter ?? r.spots.entrance
   const people = useMemo<Person[]>(() => {
     const rand = rng(`inside${placeId}`)
@@ -950,7 +952,7 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
       const look = randomLook(gender, rand)
       return { ...s, gender, look: s.outfit ? { ...look, outfit: s.outfit, outfitColor: OUTFIT_DEFAULT_COLOR[s.outfit] ?? look.outfitColor, accessory: 'none' } : look, seed: rand() * 100 }
     })
-  }, [placeId, kind]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [placeId, kind, r.crowd.length]) // eslint-disable-line react-hooks/exhaustive-deps
   // Doing the travaillement: face the dancers; they cheer as the notes fall.
   const throwing = act.pose === 'throw'
   const faceDancers = useMemo(() => {
@@ -990,7 +992,7 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
           {style.decor(dark)}
           {r.furniture}
         </group>
-        <SolidRoom key={`${kind}:${placeId}:${housing}:${open}`} root={furniture} people={open ? people.map((p) => [p.p[0], p.p[2]] as [number, number]) : []} onReady={(f) => setSolid(() => f)} />
+        <SolidRoom key={`${kind}:${placeId}:${housing}:${open}:${r.crowd.length}`} root={furniture} people={open ? people.map((p) => [p.p[0], p.p[2]] as [number, number]) : []} onReady={(f) => setSolid(() => f)} />
         {kind === 'club' && <ClubNight placeId={placeId} open={open} />}
         <NoShadows>
           {(open ? people : []).map((p, i) => {

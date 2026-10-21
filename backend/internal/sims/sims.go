@@ -556,6 +556,8 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 // home, or at the happening in the street).
 func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error) {
 	var kind game.PlaceKind
+	// A place of worship's faith: the mass, the culte, the Friday prayer are held at their own.
+	faith := ""
 	home := placeID == HomePlaceID
 	if placeID == HappeningPlaceID {
 		h, _, ok := game.HappeningAt(s.City, s.Commune, s.GameMinutes)
@@ -585,6 +587,7 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 			return game.Interaction{}, fmt.Errorf("va d'abord %s", inCommune(cm.Name))
 		}
 		kind = game.Kinds[place.Kind]
+		faith = place.Faith
 	}
 	var it game.Interaction
 	var job game.Career
@@ -604,6 +607,9 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 		}
 		if len(it.Places) > 0 && !slices.Contains(it.Places, placeID) {
 			return game.Interaction{}, errors.New("pas possible ici")
+		}
+		if len(it.Faiths) > 0 && !slices.Contains(it.Faiths, faith) {
+			return game.Interaction{}, errors.New("ce n'est pas célébré ici")
 		}
 		if home {
 			if it.ID == game.NightID {

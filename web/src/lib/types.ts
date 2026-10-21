@@ -19,7 +19,10 @@ export type Place = {
   source?: Source
   /** What the map calls it (pitch, basketball, swimming_pool…), for places from the map. */
   type?: string
+  /** A place of worship's faith (backend game/faith.go). */
+  faith?: Faith
 }
+export type Faith = 'catholique' | 'protestant' | 'evangelique' | 'musulman' | 'autre'
 export type Commune = {
   id: string
   name: string
@@ -67,6 +70,8 @@ export type Interaction = {
   ages?: string[]
   /** Only at these places of the kind (the Hôtel Ivoire's ice rink…). */
   places?: string[]
+  /** Only at the places of worship of these faiths (the mass, the culte, the Friday prayer). */
+  faiths?: Faith[]
   /** Only Sims of this gender (a beard trim is for men). */
   gender?: 'femme' | 'homme'
   /** At home, the room it's done in: the menu shows the house room by room. */
