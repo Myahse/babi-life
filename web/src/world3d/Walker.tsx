@@ -42,6 +42,15 @@ const LOOPS: Record<string, { speed: number; run?: boolean; len: number; /** a s
   'ami-trainer': { speed: 1.1, len: 16, pause: 9 },
 }
 const UP = new THREE.Vector3(0, 1, 0)
+/** The moto-taxi ride's shots (metres ahead of the moto, to its right, up), each held this many seconds. */
+const RIDE_SHOT = 6
+const RIDE_SHOTS = [
+  { ahead: -7, side: 0.6, up: 3.2 }, // behind, following
+  { ahead: 0.5, side: 3.6, up: 1.6 }, // beside, riding along
+  { ahead: 7, side: -1.2, up: 2.2 }, // ahead, looking back at the two of them
+  { ahead: -6, side: -5, up: 13 }, // from above, the street round them
+  { ahead: -3.2, side: -1.6, up: 0.8 }, // low by the back wheel
+]
 const EAVES: XZ[] = [[0, 0], [1.1, 0], [-1.1, 0], [0, 1.1], [0, -1.1]]
 /** Closer than this, a walk goes straight round what's in the way (gridWay), not by the streets. */
 const NEAR_WALK = 110
@@ -126,6 +135,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   const autoRun = useRef(false)
   // Far away: on the back of a moto-taxi.
   const riding = useRef(false)
+  /** The ride's camera: the player's angle kept for after, when the shots began, until when a touch holds them. */
+  const rideCam = useRef<{ saved: THREE.Vector3 | null; since: number; pause: number }>({ saved: null, since: 0, pause: 0 })
   const [ride, setRide] = useState(false)
   /** How the Sim goes a way this long: walking, or running; a long way, a moto-taxi is offered (it rides once paid, in the frame loop). */
   const setPace = (far: number) => {
@@ -618,9 +629,33 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       }
       controls.update()
     }
+    // On the moto-taxi, the camera films the ride: a new shot every few
+    // seconds (behind, beside, ahead looking back, from above, low by the
+    // wheel), gliding from one to the next; a touch on the view hands it back
+    // for a while. The player's own angle comes back at the end of the ride.
+    const shooting = riding.current && !!controls && !free.current
+    if (controls && (shooting || rideCam.current.saved)) {
+      const now = performance.now() / 1000
+      const rc = rideCam.current
+      if (shooting && !rc.saved) Object.assign(rc, { saved: camera.position.clone().sub(controls.target), since: now, pause: 0 })
+      if (gesture.current) rc.pause = now + 6
+      if (!shooting && rc.saved) {
+        // Off the moto: back to the angle the player had.
+        camera.position.copy(controls.target).add(rc.saved)
+        rc.saved = null
+        controls.update()
+      } else if (now > rc.pause) {
+        const shot = RIDE_SHOTS[Math.floor((now - rc.since) / RIDE_SHOT) % RIDE_SHOTS.length]
+        const h = g.rotation.y
+        const [fx, fz] = [Math.sin(h), Math.cos(h)]
+        const want = new THREE.Vector3(g.position.x + fx * shot.ahead + fz * shot.side, g.position.y + shot.up, g.position.z + fz * shot.ahead - fx * shot.side)
+        camera.position.lerp(want, 1 - Math.exp(-2.2 * Math.min(dt, 0.25)))
+        controls.update()
+      }
+    }
     // Close behind the Sim, the camera never goes through a wall: it comes in
     // front of the building in the way, and goes back out once past it.
-    if (close && controls && nav.roofAt && !gesture.current) {
+    if (close && controls && nav.roofAt && !gesture.current && !shooting) {
       const t = controls.target
       const off = camera.position.clone().sub(t)
       const dist = off.length()
