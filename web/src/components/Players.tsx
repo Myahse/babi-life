@@ -63,12 +63,19 @@ function FriendButton({ p, onAsk }: { p: Player; onAsk: () => void }) {
 }
 
 /** The HUD chip: how many players are in the commune. */
-export function PlayersChip({ count, invites, onOpen }: { count: number; invites: number; onOpen: () => void }) {
+export function PlayersChip({ count, online, invites, onOpen }: { count: number; /** Everyone in the game now. */ online?: number; invites: number; onOpen: () => void }) {
   return (
     <button className="hud pointer-events-auto relative flex h-11 items-center gap-1.5 rounded-full px-3 text-sm font-extrabold transition active:scale-95" onClick={onOpen}>
       <Users size={18} strokeWidth={2.6} className="text-[#2563eb]" />
       <span className="tnum">{count}</span>
       <span className="max-sm:hidden">joueur{count > 1 ? 's' : ''} ici</span>
+      {!!online && (
+        <span className="flex items-center gap-1 border-l border-black/10 pl-1.5 text-[var(--color-ink-soft)]" aria-label={`${online} en ligne dans tout le jeu`}>
+          <span className="h-2 w-2 rounded-full bg-[#00b86b]" />
+          <span className="tnum">{online}</span>
+          <span className="max-sm:hidden">en ligne</span>
+        </span>
+      )}
       {invites > 0 && <span className="absolute -top-1.5 -right-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-[var(--color-rose)] px-1 text-[11px] text-white ring-2 ring-white">{invites}</span>}
     </button>
   )

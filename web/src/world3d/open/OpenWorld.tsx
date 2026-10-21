@@ -69,6 +69,7 @@ import { litShare, makeTextures, rippleNormals, windowsByHour } from './textures
 import { FAR_ZOOM, type ChunkData } from './tiles'
 import type { Arrays, ChunkRequest } from './worker'
 import { worldTime } from '../../lib/worldClock'
+import { RainSky } from './rainSky'
 import { NPC_NAMES, type Npc } from '../talk'
 
 /** Bloom at night, downloaded only on phones that show it. */
@@ -125,7 +126,7 @@ const SOLID = new Set(['walls', 'inst', 'entrance', 'shop', 'house', 'trim', 'ro
 // own shade (darker walls near the ground, a dark band at their foot).
 
 /** The sun, and its shadows, over wherever the camera looks. */
-function Sun({ night, dusk }: { night: boolean; dusk: boolean }) {
+function Sun({ night, dusk, dim = 1 }: { night: boolean; dusk: boolean; /** Under the rain clouds, less sun. */ dim?: number }) {
   const light = useRef<THREE.DirectionalLight>(null)
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null
   const scene = useThree((s) => s.scene)
@@ -164,7 +165,7 @@ function Sun({ night, dusk }: { night: boolean; dusk: boolean }) {
     <directionalLight
       ref={light}
       castShadow
-      intensity={night ? 0.6 : dusk ? 1.1 : 1.7}
+      intensity={(night ? 0.6 : dusk ? 1.1 : 1.7) * dim}
       color={night ? '#8fa8ff' : dusk ? '#ffb38a' : '#fff4e0'}
       shadow-mapSize={[2048, 2048]}
       shadow-camera-left={-90}
@@ -867,13 +868,16 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   }, [])
 
   const stopsTraffic = !!happening && STOPS_TRAFFIC.has(happening.id)
+  const raining = happening?.id === 'pluie'
   return (
     <>
       {/* Nights are blue but readable: the Sim and the streets stay visible on a phone. */}
-      <hemisphereLight args={[night ? '#7484c4' : '#ffffff', night ? '#3a3a56' : '#b8a27c', night ? 1.3 : 1.2]} />
-      <Sun night={night} dusk={dusk} />
-      {/* The haze at the edge of the loaded world: Minecraft's render distance */}
-      <fog attach="fog" args={[skyTone(night, dusk).horizon, 400, 5200]} />
+      <hemisphereLight args={[night ? '#7484c4' : '#ffffff', night ? '#3a3a56' : '#b8a27c', (night ? 1.3 : 1.2) * (raining ? 0.7 : 1)]} />
+      <Sun night={night} dusk={dusk} dim={raining ? 0.35 : 1} />
+      {/* The haze at the edge of the loaded world: Minecraft's render distance (closer and grey in the rain) */}
+      <fog attach="fog" args={[raining ? (night ? '#2c313d' : '#8a96a3') : skyTone(night, dusk).horizon, raining ? 120 : 400, raining ? 1800 : 5200]} />
+      {/* The downpour: over the whole commune, from its clouds */}
+      {raining && <RainSky focus={focus} night={night} />}
       <NearPlane />
       <SkyDome night={night} dusk={dusk} />
       {/* At night, lamps, windows and headlights bloom a little (not on small phones) */}
@@ -952,7 +956,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       {happening && spot && (
         <group position={jam ? [jam.at[0] + HAPPENING_X, 0, jam.at[1]] : [spot.door[0], 0, spot.door[1]]} rotation={[0, jam ? 0 : -spot.roadAngle, 0]}>
           <group position={[-HAPPENING_X, 0, 0]}>
-            <HappeningScene id={happening.id} seed={commune.id} night={night} jam={!jam} />
+            {!raining && <HappeningScene id={happening.id} seed={commune.id} night={night} jam={!jam} />}
             {labels && <HappeningMarker happening={happening} onPick={() => onPick('happening')} />}
           </group>
         </group>

@@ -127,7 +127,8 @@ export function MapboxMap({ token, pins, camera, night, sim, padding, route, onZ
     } else if (taxi.current) {
       const t = taxi.current
       taxi.current = null
-      queueMicrotask(() => (t.root.unmount(), t.marker.remove()))
+      // After React's render, not in it (a microtask can run mid-render: « unmount a root while React was already rendering »).
+      setTimeout(() => (t.root.unmount(), t.marker.remove()), 0)
     }
   }, [route, sim])
 
@@ -179,7 +180,7 @@ export function MapboxMap({ token, pins, camera, night, sim, padding, route, onZ
       m.off('moveend', layout)
       m.off('zoom', show)
       markers.current = []
-      queueMicrotask(() => created.forEach(({ marker, root }) => (root.unmount(), marker.remove())))
+      setTimeout(() => created.forEach(({ marker, root }) => (root.unmount(), marker.remove())), 0)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pins, sim, padding.top])

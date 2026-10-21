@@ -93,6 +93,19 @@ type Hub struct {
 	sent map[string]int64
 }
 
+// Online: how many Sims are connected right now, in any room (the game open on a screen).
+func (h *Hub) Online() int {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	seen := map[string]bool{}
+	for _, clients := range h.rooms {
+		for c := range clients {
+			seen[c.sim] = true
+		}
+	}
+	return len(seen)
+}
+
 func NewHub(db *pgxpool.Pool, tokens auth.Tokens, origins []string) *Hub {
 	return &Hub{DB: db, Tokens: tokens, Origins: origins, rooms: map[string]map[*client]bool{}, states: map[string]map[string]State{}, sent: map[string]int64{}}
 }

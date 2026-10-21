@@ -99,7 +99,7 @@ export type Player = {
   coupleRequest?: '' | 'sent' | 'received'
 }
 export type Invite = { id: string; from: string; fromName: string; placeId: string; interactionId: string; label: string; at: string }
-export type Around = { players: Player[]; friends: Player[]; invites: Invite[]; /** Friend requests waiting for an answer. */ requests?: Player[] }
+export type Around = { players: Player[]; friends: Player[]; invites: Invite[]; /** Friend requests waiting for an answer. */ requests?: Player[]; /** Players in the game right now, everywhere. */ online?: number }
 /** Gbairai: a message, and a friend's chat in the list. */
 export type ChatMessage = { id: number; mine: boolean; body: string; at: string; readAt?: string }
 export type Chat = { friend: Player; last?: ChatMessage; unread: number; blocked?: boolean }

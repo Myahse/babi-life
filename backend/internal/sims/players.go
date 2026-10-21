@@ -172,7 +172,12 @@ func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
 		rows.Close()
 	}
 	h.markCouples(ctx, id, friends)
-	httpx.JSON(w, http.StatusOK, map[string]any{"players": players, "friends": friends, "invites": invites, "requests": requests})
+	// Everyone in the game right now, wherever they are (the chip says « 7 ici · 132 en ligne »).
+	online := len(players) + 1
+	if h.Online != nil {
+		online = max(h.Online(), 1) // connected now (« ici » counts the last 20 minutes); at least the one asking
+	}
+	httpx.JSON(w, http.StatusOK, map[string]any{"players": players, "friends": friends, "invites": invites, "requests": requests, "online": online})
 }
 
 // requestState: the SQL for a friend request between `other` and `me`: "sent" (me → other), "received", or "".
