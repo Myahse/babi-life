@@ -14,7 +14,7 @@ func TestReset(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"Bonjour Awa &lt;3,", `href="https://www.lifeinbabi.com/mot-de-passe?token=abc"`, "30 minutes", "pin-192.png"} {
+	for _, want := range []string{"Bonjour Awa &lt;3,", `href="https://www.lifeinbabi.com/mot-de-passe?token=abc"`, "30 minutes", "mail-pin.png"} {
 		if !strings.Contains(m.HTML, want) {
 			t.Errorf("html lacks %q", want)
 		}
