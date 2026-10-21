@@ -319,6 +319,10 @@ function ClubNight({ placeId, open }: { placeId: string; open: boolean }) {
   )
 }
 
+/** The club seen toward its stage: the LED wall, the DJ and the podiums in the frame, the floor in front. */
+const CLUB_TARGET: V3 = [1.2, 1.1, -1.6]
+const CLUB_CAMERA: V3 = [8.2, 8.4, 8.6]
+
 /** How many notes fly: a petit travaillement drizzles, the grand one pours. */
 function shower(id?: string) {
   return id === 'grand-travaillement' ? { rate: 4.5, fan: 5 } : id === 'petit-travaillement' ? { rate: 1.4, fan: 3 } : { rate: 2.6, fan: 4 }
@@ -975,7 +979,7 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
             ? workLook(sim.look, sim.career, sim.careerLevel)
             : sim.look
   return (
-    <Canvas shadows dpr={[1, 2]} camera={{ position: [8.4, 8.6, 10.8], fov: 42 }} style={{ background: dark ? '#0b0d1f' : '#2a2340' }}>
+    <Canvas shadows dpr={[1, 2]} camera={{ position: kind === 'club' ? CLUB_CAMERA : [8.4, 8.6, 10.8], fov: 42 }} style={{ background: dark ? '#0b0d1f' : '#2a2340' }}>
       <Snapper />
       <Suspense fallback={null}>
         <hemisphereLight args={[dark ? '#7a6ab0' : '#fff6e8', '#3a2a1a', dark ? 0.55 : 0.75]} />
@@ -1046,7 +1050,7 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
         {arrived && interactionId === 'cook-attieke' && kind === 'home' && <Pot />}
         {arrived && me.lying && /^(sleep|nap|nuit-hotel)$/.test(interactionId ?? '') && <Zzz at={[me.p[0], me.p[1] + 0.6, me.p[2] - 0.6]} />}
         {/* Turn around the room and zoom, within the cut-away side */}
-        <OrbitControls makeDefault target={[0, 0.8, 0]} enablePan={false} minDistance={interactionId ? 2.6 : 7} maxDistance={24} minPolarAngle={0.35} maxPolarAngle={1.25} minAzimuthAngle={0.15} maxAzimuthAngle={1.4} enableDamping />
+        <OrbitControls makeDefault target={kind === 'club' ? CLUB_TARGET : [0, 0.8, 0]} enablePan={false} minDistance={interactionId ? 2.6 : 7} maxDistance={24} minPolarAngle={0.35} maxPolarAngle={1.25} minAzimuthAngle={0.15} maxAzimuthAngle={1.4} enableDamping />
         {/* Doing something: the camera comes close to see it */}
         {interactionId && arrived && <FocusOn at={me.p} lying={!!me.lying} facing={throwing ? faceDancers : (me.r ?? 0)} key={`${interactionId}${act.spot}`} />}
         {RICH && (
