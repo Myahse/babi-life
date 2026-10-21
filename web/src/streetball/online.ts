@@ -57,6 +57,7 @@ export class MatchNet {
     this.ws = ws
     ws.onopen = () => {
       this.connected = true
+      this.opened = serverNow()
       ws.send(JSON.stringify({ t: 'hello', token: this.token, sim: this.sim, mode: 'match', race: this.match }))
       const ping = () => ws.readyState === WebSocket.OPEN && ws.send(JSON.stringify({ t: 'ping', c: localNow() }))
       ;[200, 700, 1500].forEach((d) => setTimeout(ping, d))
@@ -91,12 +92,13 @@ export class MatchNet {
   }
 
   /**
-   * Who runs the match: the first player in the list still there. For the
-   * first second on the line nobody: the others haven't been heard yet, and
-   * this phone would think it's alone and start a match of its own.
+   * Who runs the match: the first player in the list still there. Off the
+   * line, and for the first second on it, nobody: the others haven't been
+   * heard yet, and this phone would think it's alone and start a match of
+   * its own (a slow network can take seconds to open the line).
    */
   host(entries: CourtEntry[]): string | null {
-    if (serverNow() - this.opened < 1000) return null
+    if (!this.connected || serverNow() - this.opened < 1000) return null
     return entries.find((e) => e.sim === this.sim || this.here(e.sim))?.sim ?? this.sim
   }
 
