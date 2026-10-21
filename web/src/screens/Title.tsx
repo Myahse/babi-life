@@ -39,7 +39,9 @@ export function Title() {
   const navigate = useNavigate()
   const online = useOnline()
   const [devName, setDevName] = useState('Awa Koné')
-  const [mode, setMode] = useState<'login' | 'register'>('login')
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login')
+  // « Mot de passe oublié » sent: what the server said.
+  const [sent, setSent] = useState<string | null>(null)
   const [first, setFirst] = useState('')
   const [last, setLast] = useState('')
   const [username, setUsername] = useState('')
@@ -142,11 +144,11 @@ export function Title() {
 
         {/* ---------- Account card, a sign on the wall ---------- */}
         <section id="compte" className="w-full scroll-mt-6 border-2 border-[var(--brown)] bg-[var(--cream)] p-5 sm:p-6">
-          <h2 className="paint mb-3 text-[40px]">{mode === 'login' ? 'Je me connecte' : 'Je crée mon compte'}</h2>
+          <h2 className="paint mb-3 text-[40px]">{mode === 'login' ? 'Je me connecte' : mode === 'forgot' ? 'Mot de passe oublié' : 'Je crée mon compte'}</h2>
           {/* Se connecter / Créer un compte */}
           <div className="segmented mb-4" role="tablist">
             {(['login', 'register'] as const).map((m) => (
-              <button key={m} role="tab" aria-selected={mode === m} onClick={() => (setMode(m), setError(null))}>
+              <button key={m} role="tab" aria-selected={mode === m || (m === 'login' && mode === 'forgot')} onClick={() => (setMode(m), setError(null))}>
                 {m === 'login' ? 'Se connecter' : 'Créer un compte'}
               </button>
             ))}
@@ -166,11 +168,11 @@ export function Title() {
                   }
                 }}
               >
-                <GoogleIcon /> {mode === 'login' ? 'Continuer avec Google' : "S'inscrire avec Google"}
+                <GoogleIcon /> {mode !== 'register' ? 'Continuer avec Google' : "S'inscrire avec Google"}
               </button>
             ) : firebaseConfigured ? (
               <button type="button" className="btn btn-white w-full" disabled={busy} onClick={() => void google()}>
-                <GoogleIcon /> {mode === 'login' ? 'Continuer avec Google' : "S'inscrire avec Google"}
+                <GoogleIcon /> {mode !== 'register' ? 'Continuer avec Google' : "S'inscrire avec Google"}
               </button>
             ) : GOOGLE_ENABLED ? (
               <div className="flex h-[50px] justify-center [&>div]:w-full">
@@ -179,13 +181,13 @@ export function Title() {
                   onError={() => setError('Connexion Google annulée')}
                   shape="pill"
                   size="large"
-                  text={mode === 'login' ? 'continue_with' : 'signup_with'}
+                  text={mode !== 'register' ? 'continue_with' : 'signup_with'}
                   width="360"
                 />
               </div>
             ) : (
               <button className="btn btn-white w-full" disabled title="Ajoute VITE_GOOGLE_CLIENT_ID pour activer">
-                <GoogleIcon /> {mode === 'login' ? 'Continuer avec Google' : "S'inscrire avec Google"}
+                <GoogleIcon /> {mode !== 'register' ? 'Continuer avec Google' : "S'inscrire avec Google"}
               </button>
             )}
 
@@ -199,6 +201,15 @@ export function Title() {
               className="flex flex-col gap-2.5"
               onSubmit={(e) => {
                 e.preventDefault()
+                if (mode === 'forgot') {
+                  setBusy(true)
+                  setError(null)
+                  api
+                    .forgotPassword(email)
+                    .then((r) => setSent(r.text), (err) => setError(err instanceof Error ? err.message : 'Réessaie dans un instant'))
+                    .finally(() => setBusy(false))
+                  return
+                }
                 finish(mode === 'login' ? api.login(email, password) : api.register({ firstName: first, lastName: last, username, email, password }))
               }}
             >
@@ -218,41 +229,49 @@ export function Title() {
                 <Mail size={18} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[var(--color-ink-soft)]" />
                 <input
                   className="input !pl-11 text-base"
-                  type={mode === 'login' ? 'text' : 'email'}
-                  placeholder={mode === 'login' ? 'E-mail ou pseudo' : 'E-mail'}
-                  autoComplete={mode === 'login' ? 'username' : 'email'}
+                  type={mode !== 'register' ? 'text' : 'email'}
+                  placeholder={mode !== 'register' ? 'E-mail ou pseudo' : 'E-mail'}
+                  autoComplete={mode !== 'register' ? 'username' : 'email'}
                   autoCapitalize="none"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  aria-label={mode === 'login' ? 'E-mail ou pseudo' : 'E-mail'}
+                  aria-label={mode !== 'register' ? 'E-mail ou pseudo' : 'E-mail'}
                   required
                 />
               </label>
-              <label className="relative">
-                <Lock size={18} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[var(--color-ink-soft)]" />
-                <input
-                  className="input !pr-12 !pl-11 text-base"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder={mode === 'register' ? 'Mot de passe (8 caractères min.)' : 'Mot de passe'}
-                  autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
-                  minLength={mode === 'register' ? 8 : undefined}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  aria-label="Mot de passe"
-                  required
-                />
-                <button type="button" className="absolute top-1/2 right-3 -translate-y-1/2 p-1 text-[var(--color-ink-soft)]" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Cacher le mot de passe' : 'Afficher le mot de passe'}>
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              {mode === 'forgot' && <p className="text-sm font-bold">{sent ?? 'Ton e-mail (ou ton pseudo) : on t’envoie un lien pour choisir un nouveau mot de passe.'}</p>}
+              {mode !== 'forgot' && (
+                <label className="relative">
+                  <Lock size={18} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[var(--color-ink-soft)]" />
+                  <input
+                    className="input !pr-12 !pl-11 text-base"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder={mode === 'register' ? 'Mot de passe (8 caractères min.)' : 'Mot de passe'}
+                    autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+                    minLength={mode === 'register' ? 8 : undefined}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    aria-label="Mot de passe"
+                    required
+                  />
+                  <button type="button" className="absolute top-1/2 right-3 -translate-y-1/2 p-1 text-[var(--color-ink-soft)]" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Cacher le mot de passe' : 'Afficher le mot de passe'}>
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </label>
+              )}
+              {mode === 'login' && (
+                <button type="button" className="self-end text-sm font-extrabold text-[var(--rust)] underline-offset-4 hover:underline" onClick={() => (setMode('forgot'), setError(null), setSent(null))}>
+                  Mot de passe oublié ?
                 </button>
-              </label>
+              )}
               {error && <p className="bg-[#f6d9cf] px-3 py-2 text-sm font-bold text-[var(--rust)]" role="alert">{error}</p>}
               <button className="sign-btn mt-1 w-full" disabled={busy}>
-                {busy ? 'Un instant…' : mode === 'login' ? 'Se connecter' : 'Créer mon compte'}
+                {busy ? 'Un instant…' : mode === 'login' ? 'Se connecter' : mode === 'forgot' ? 'Envoyer le lien' : 'Créer mon compte'}
               </button>
             </form>
 
             <p className="text-center text-sm font-bold">
-              {mode === 'login' ? 'Pas encore de compte ? ' : 'Déjà un compte ? '}
+              {mode === 'login' ? 'Pas encore de compte ? ' : mode === 'forgot' ? 'Ça te revient ? ' : 'Déjà un compte ? '}
               <button className="font-extrabold text-[var(--rust)] underline-offset-4 hover:underline" onClick={() => (setMode(mode === 'login' ? 'register' : 'login'), setError(null))}>
                 {mode === 'login' ? 'Inscris-toi' : 'Connecte-toi'}
               </button>

@@ -30,6 +30,7 @@ import (
 	"github.com/myahse/babi-life/backend/internal/httpx"
 	"github.com/myahse/babi-life/backend/internal/kart"
 	"github.com/myahse/babi-life/backend/internal/live"
+	"github.com/myahse/babi-life/backend/internal/mail"
 	"github.com/myahse/babi-life/backend/internal/news"
 	"github.com/myahse/babi-life/backend/internal/push"
 	"github.com/myahse/babi-life/backend/internal/sims"
@@ -58,7 +59,18 @@ func main() {
 	// One session per sign-in (a device): listed in the profile, signed out from there.
 	sessions := auth.NewSessions(pool)
 	tokens := auth.NewTokens(cfg.JWTSecret).WithSessions(sessions)
-	authH := &auth.Handler{DB: pool, Tokens: tokens, DevLogin: cfg.DevLogin, Sessions: sessions}
+	authH := &auth.Handler{DB: pool, Tokens: tokens, DevLogin: cfg.DevLogin, Sessions: sessions, SiteURL: config.Site[0]}
+	if site := os.Getenv("SITE_URL"); site != "" {
+		authH.SiteURL = site
+	}
+	// « Mot de passe oublié »: e-mails over SMTP (package mail), when it's set up.
+	if m := mail.FromEnv(); m != nil {
+		authH.Mail = m
+	} else if cfg.DevLogin {
+		authH.Mail = mail.Log{}
+	} else {
+		log.Printf("⚠️  SMTP not set (SMTP_HOST, MAIL_FROM): « mot de passe oublié » is off")
+	}
 	if cfg.GoogleClientID != "" {
 		authH.Verifier = auth.NewGoogleVerifier(cfg.GoogleClientID)
 	}
@@ -260,6 +272,8 @@ func main() {
 		r.Post("/auth/google", authH.Google)
 		r.Post("/auth/register", authH.Register)
 		r.Post("/auth/login", authH.Login)
+		r.Post("/auth/forgot", authH.Forgot)
+		r.Post("/auth/reset", authH.Reset)
 		r.Get("/auth/username", authH.UsernameAvailable)
 		if cfg.DevLogin {
 			log.Println("⚠️  DEV_LOGIN is on: anyone can sign in without Google")

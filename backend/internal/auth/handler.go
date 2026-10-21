@@ -43,6 +43,10 @@ type Handler struct {
 	DevLogin bool
 	// Sessions: one per sign-in, the devices of the account (sessions.go); nil: tokens only.
 	Sessions *Sessions
+	// Mail: sends the « mot de passe oublié » links (reset.go); nil: not set up.
+	Mail Mailer
+	// SiteURL: where the game is, for the links in e-mails.
+	SiteURL string
 }
 
 type session struct {

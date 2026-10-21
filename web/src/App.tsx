@@ -5,6 +5,7 @@ import { useWorld } from './store/world'
 import { Title } from './screens/Title'
 import { Legal } from './screens/Legal'
 import { MoodPin } from './components/ui'
+import { ResetPassword } from './screens/ResetPassword'
 import { gameOpen } from './lib/launch'
 
 // Each screen is its own download: the title screen opens without the 3D
@@ -44,6 +45,7 @@ export function App() {
     )
 
   if (path === '/conditions' || path === '/confidentialite') return <Legal />
+  if (path === '/mot-de-passe') return <ResetPassword />
 
   // The team's admin (pub, reports, wish list), open even before the game; the old /pub/admin leads there.
   if (path === '/pub/admin') return <Navigate to="/admin?tab=pub" replace />

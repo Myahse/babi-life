@@ -120,6 +120,9 @@ export const api = {
   register: (u: { firstName: string; lastName: string; username: string; email: string; password: string }) => post<Session>('/auth/register', u),
   /** `login` is an e-mail or a username. */
   login: (login: string, password: string) => post<Session>('/auth/login', { email: login, password }),
+  /** « Mot de passe oublié » (backend auth/reset.go): the e-mail with the link, then the new password. */
+  forgotPassword: (login: string) => post<{ text: string }>('/auth/forgot', { email: login }),
+  resetPassword: (token: string, password: string) => post<{ text: string }>('/auth/reset', { token, password }),
   usernameAvailable: (u: string) => request<{ available: boolean }>(`/auth/username?u=${encodeURIComponent(u)}`),
   setUsername: (username: string) => request<User>('/me/username', { method: 'PUT', body: JSON.stringify({ username }) }),
   me: () => request<User>('/me'),
