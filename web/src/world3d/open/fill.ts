@@ -8,16 +8,21 @@ import { deckWidth } from './bridgeLine'
 // the streets and leaves the blocks empty. Where a street has nothing along
 // it, the game builds what stands along such streets: houses side by side,
 // one storey under tin (the cours communes), a second row behind on the
-// quiet streets, and on the big roads buildings of two or three storeys.
+// quiet streets. Along the big roads (the boulevards, the VGE), not little
+// houses but what lines them: supermarkets and malls, showrooms, office
+// blocks, now and then a hotel, set back behind their car park; buildings of
+// two to four storeys with shops below between them.
 // Never on a real building, a road, water, a forest, a park, a pitch, a
 // campus, a hospital's grounds or an airfield (its runways all along). Everything comes from the place alone
 // (hash of the position), so every player sees the same houses.
 
 /** Occupancy grid: 1.5 m cells, the world's block grid. */
 const CELL = 1.5
-const FILL_ROADS: Record<string, { storeys: number[]; second: boolean }> = {
-  primary: { storeys: [1, 2, 2, 3, 3, 4], second: false },
-  secondary: { storeys: [1, 1, 2, 2, 3], second: false },
+/** `shops`: the share of the frontage given to the big commercial buildings (the rest: buildings of a few storeys). */
+const FILL_ROADS: Record<string, { storeys: number[]; second: boolean; shops?: number }> = {
+  trunk: { storeys: [2, 3, 3, 4], second: false, shops: 0.75 },
+  primary: { storeys: [2, 2, 3, 3, 4], second: false, shops: 0.6 },
+  secondary: { storeys: [1, 2, 2, 3], second: false, shops: 0.3 },
   tertiary: { storeys: [1, 1, 1, 2, 2, 3], second: true },
   street: { storeys: [1, 1, 1, 1, 1, 2], second: true },
   street_limited: { storeys: [1, 1, 1, 2], second: true },
@@ -108,7 +113,7 @@ export function fillQuarters(chunk: ChunkData, neighbours: XZ[][] = [], keepClea
   const take = (ring: XZ[]) => fillRing(ring, 0)
 
   let made = 0
-  const add = (c: XZ, u: XZ, n: XZ, w: number, d: number, storeys: number) => {
+  const add = (c: XZ, u: XZ, n: XZ, w: number, d: number, storeys: number, style?: Building['style'], height = storeys * 3) => {
     const rect: XZ[] = [
       [c[0] - u[0] * w / 2 - n[0] * d / 2, c[1] - u[1] * w / 2 - n[1] * d / 2],
       [c[0] + u[0] * w / 2 - n[0] * d / 2, c[1] + u[1] * w / 2 - n[1] * d / 2],
@@ -118,7 +123,9 @@ export function fillQuarters(chunk: ChunkData, neighbours: XZ[][] = [], keepClea
     const ring = blockRing(rect, [], c)
     if (ring.length < 4) return
     take(rect)
-    const b: Building = { ring, holes: [], height: storeys * 3, c: centroid(ring), tint: hash(c[1], c[0]), tin: hash(c[0], c[1], 41) < 0.9 }
+    const b: Building = style
+      ? { ring, holes: [], height, c: centroid(ring), tint: hash(c[1], c[0]), style }
+      : { ring, holes: [], height: storeys * 3, c: centroid(ring), tint: hash(c[1], c[0]), tin: storeys <= 2 && hash(c[0], c[1], 41) < 0.9 }
     chunk.buildings.push(b)
     made++
   }
@@ -135,6 +142,29 @@ export function fillQuarters(chunk: ChunkData, neighbours: XZ[][] = [], keepClea
       let s = 3
       while (s < len - 3 && made < MAX_FILL) {
         const h = hash(Math.round(ax + u[0] * s), Math.round(az + u[1] * s), 17)
+        // A big road: a commercial building, behind its car park.
+        if (rule.shops && hash(Math.round(ax + u[0] * s), Math.round(az + u[1] * s), 53) < rule.shops) {
+          const w = 18 + Math.floor(h * 17) * 1.5 // 18 to 42 m of frontage
+          let placed = false
+          for (const side of [-1, 1]) {
+            const n: XZ = [-u[1] * side, u[0] * side]
+            const hs = hash(ax + u[0] * (s + w / 2), az + u[1] * (s + w / 2), side + 61)
+            const d = 15 + Math.floor(hs * 11) * 1.5 // 15 to 30 m deep
+            const back = 8 + Math.floor(hash(hs, w, 67) * 5) * 1.5 // the car park
+            const p: XZ = [ax + u[0] * (s + w / 2), az + u[1] * (s + w / 2)]
+            const c: XZ = [p[0] + n[0] * (r.width / 2 + back + d / 2), p[1] + n[1] * (r.width / 2 + back + d / 2)]
+            if (!free(c, u, n, w, d)) continue
+            // What it is: a supermarket or a mall (a tall box), a showroom, an office block, now and then a hotel.
+            const what = hash(c[0], c[1], 71)
+            if (what < 0.4) add(c, u, n, w - 0.5, d, 2, 'commerce', 7.5)
+            else if (what < 0.62) add(c, u, n, w - 0.5, Math.min(d, 18), 1, 'commerce', 5)
+            else if (what < 0.92) add(c, u, n, Math.min(w, 27) - 0.5, Math.min(d, 21), 3 + Math.floor(hash(c[1], c[0], 73) * 4), 'civic')
+            else add(c, u, n, Math.min(w, 30) - 0.5, Math.min(d, 18), 5 + Math.floor(hash(c[1], c[0], 79) * 5), 'hotel')
+            placed = true
+          }
+          s += (placed ? w : 9) + 3
+          continue
+        }
         // A frontage of 6 to 12 m, 7.5 to 10.5 m deep.
         const w = 6 + Math.floor(h * 5) * 1.5
         const p: XZ = [ax + u[0] * (s + w / 2), az + u[1] * (s + w / 2)]

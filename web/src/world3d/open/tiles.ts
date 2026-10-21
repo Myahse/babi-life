@@ -15,7 +15,7 @@ import { deckWidth } from './bridgeLine'
 export type Road = { cls: string; pts: XZ[]; width: number; paved: boolean; bridge: boolean; /** a bridge's name on the map */ name?: string }
 /** An airport's runway or taxiway (not a street: nobody walks there). */
 export type Aeroway = { cls: 'runway' | 'taxiway'; pts: XZ[] }
-export type Building = { ring: XZ[]; holes: XZ[][]; height: number; c: XZ; tint: number; /** a house the game built (fill.ts): under tin */ tin?: boolean }
+export type Building = { ring: XZ[]; holes: XZ[][]; height: number; c: XZ; tint: number; /** a house the game built (fill.ts): under tin */ tin?: boolean; /** what a building the game put along a big road is (fill.ts): shops, offices, a hotel */ style?: 'commerce' | 'civic' | 'hotel' }
 /** airport: the airfield's grounds (grass round the runways): no game houses there, no trees. */
 export type Area = { kind: 'water' | 'green' | 'sand' | 'pitch' | 'campus' | 'hospital' | 'apron' | 'airport'; rings: XZ[][] }
 export type ChunkData = { key: string; tx: number; ty: number; box: Box; roads: Road[]; buildings: Building[]; areas: Area[]; trees: XZ[]; palms: XZ[]; aeroways: Aeroway[]; pois: Poi[]; /** big rainforest trees, close together (the Banco) */ forest?: XZ[]; /** fuel stations, laid out by their street */ stations?: Station[] }
