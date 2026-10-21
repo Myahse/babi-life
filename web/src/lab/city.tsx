@@ -62,6 +62,7 @@ import { Billboard } from '../world3d/open/billboards'
 import { randomLook } from '../avatar/options'
 import { NightCityLab, NightStreetLab, PartyLab } from './night'
 import { RainSky } from '../world3d/open/rainSky'
+import { SkyDome } from '../world3d/open/sky'
 import type { Block, Furniture, HousePlan, Material, Piece, Plot, Sim, World } from '../lib/types'
 
 const seededLab = (n: number) => () => ((n = (n * 16807) % 2147483647) / 2147483647)
@@ -364,7 +365,7 @@ function OutdoorLab() {
     return randomLook('femme', () => ((n = (n * 16807) % 2147483647) / 2147483647))
   }, [])
   return (
-    <Canvas shadows dpr={[1, 2]} camera={{ position: (q.get('cam') ?? '5,3.2,-4.5').split(',').map(Number) as [number, number, number], fov: 45, far: 4000 }} style={{ width: '100vw', height: '100vh' }}>
+    <Canvas shadows dpr={[1, 2]} camera={{ position: (q.get('cam') ?? '5,3.2,-4.5').split(',').map(Number) as [number, number, number], fov: 45, far: 9000 }} style={{ width: '100vw', height: '100vh' }}>
       <color attach="background" args={[q.has('rain') ? '#8a96a3' : '#cfe9f8']} />
       <hemisphereLight args={['#ffffff', '#b8a27c', 1.2]} />
       <directionalLight position={[10, 20, 8]} intensity={1.8} castShadow />
@@ -376,6 +377,8 @@ function OutdoorLab() {
       <OutdoorAction id={id} />
       {/* &rain: the downpour and its clouds (world3d/open/rainSky.tsx); &night */}
       {q.has('rain') && <RainSky focus={{ current: [0, 0] }} night={q.has('night')} />}
+      {/* &sky: the sky's dome and its clouds too (grey when it rains: one ceiling) */}
+      {q.has('sky') && <SkyDome night={q.has('night')} dusk={false} rain={q.has('rain')} />}
       <OrbitControls target={[0, 0.9, 1.2]} />
     </Canvas>
   )

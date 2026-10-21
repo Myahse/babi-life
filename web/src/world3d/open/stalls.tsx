@@ -729,7 +729,7 @@ function Crowd({ stall, hour }: { stall: Stall; hour: number }) {
           </group>
         ),
       )}
-      {stall.kind === 'garba' && n > 0 && <GarbaVoices n={n} />}
+      {stall.kind === 'garba' && n > 0 && <GarbaVoices n={n} seed={stall.seed} />}
       {/* The seats some of them sit on (the porc au four has its own) */}
       {stall.kind === 'alloco' && <Bench p={[-0.05, 0, 2.8]} />}
       {stall.kind === 'garba' && <Bench p={[2.75, 0, 1.25]} r={Math.PI / 2} w={1.5} />}
@@ -946,10 +946,11 @@ const GARBA_VOICES: [string, [number, number, number]][] = [
   ['Grosse queue est finie, prends milieu !', [0.75, 2.4, 0.1]],
 ]
 
-function GarbaVoices({ n }: { n: number }) {
+function GarbaVoices({ n, seed }: { n: number; /** The stall's: two stalls side by side don't shout the same thing at once. */ seed: number }) {
   const [k, setK] = useState(0)
+  const start = Math.floor(seed * GARBA_VOICES.length * 7)
   useFrame(({ clock }) => {
-    const i = Math.floor(clock.elapsedTime / 2.8) % GARBA_VOICES.length
+    const i = (Math.floor(clock.elapsedTime / (2.6 + seed * 0.6) + seed * 3) + start) % GARBA_VOICES.length
     if (i !== k) setK(i)
   })
   // Only the ones there to say it (the front fills first).

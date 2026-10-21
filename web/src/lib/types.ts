@@ -310,7 +310,7 @@ export type HappeningNow = { happening: Happening | null; start: number; end: nu
 export type NewsItem = { id: string; title: string; source: string; link: string; published: string; topic: 'sport' | 'politique' | 'economie' | 'societe' | 'culture' | 'meteo' }
 
 /** A room (or a home) rented away from home, until a game minute (backend sims/hotel.go Stay). */
-export type Stay = { kind: 'hotel' | 'dodo'; place: string; name: string; room?: string; floor?: number; type?: string; city: string; commune: string; from: number; until: number; paid: number; listing?: number; host?: string }
+export type Stay = { kind: 'hotel' | 'dodo'; place: string; name: string; room?: string; floor?: number; type?: string; city: string; commune: string; from: number; until: number; paid: number; listing?: number; host?: string; /** Dodo: a player's house (its plot), or a game home's seed (its plan). */ lot?: number; seed?: number }
 export type RoomType = { id: string; label: string; hint: string; rate: number }
 export type StayLength = { id: string; label: string; minutes: number; rate: number }
 export type HotelInfo = { place: string; floors: number; roomsPerFloor: number; suitesFrom: number; stars: number; night: number; busy: number }

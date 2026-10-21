@@ -1,6 +1,6 @@
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BadgeCheck, BookOpen, KeyRound, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, BookOpen, KeyRound, Volleyball, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World, Ride, Place, Plot } from '../lib/types'
 import { useWorld } from '../store/world'
@@ -60,6 +60,8 @@ import { FlightView } from '../world3d/FlightView'
 import { aCommune } from '../lib/french'
 
 /** Building one's house: its own screen, downloaded when opened. */
+/** A game home on Dodo, by its kind: the house drawn (game/plans.go), two to choose from by its seed. */
+const DODO_PLANS: Record<string, string[]> = { chambre: ['cour', 'baraque'], studio: ['studio'], appart: ['appart'], duplex: ['maison', 'appart'], villa: ['villa', 'villa-grande'] }
 /** What's done in a home booked on Dodo, as the home's inside shows it (backend game/dodo.go « logement »). */
 const DODO_AT_HOME: Record<string, string> = { 'logement-dormir': 'sleep', 'logement-sieste': 'nap', 'logement-douche': 'shower', 'logement-cuisiner': 'cook-attieke', 'logement-tele': 'watch-tv', 'logement-amis': 'call-family' }
 const BuildMode = lazy(() => import('../components/BuildMode'))
@@ -471,6 +473,20 @@ export function Play() {
 
   // Building one's house on the plot; the houses are fetched again after.
   const moto = useMoto()
+  // In a home booked on Dodo: the very house (a player's, as built; else the plan of its kind).
+  const dodoStay = sim?.stay?.kind === 'dodo' ? sim.stay : null
+  const [hostPlot, setHostPlot] = useState<Plot | null>(null)
+  useEffect(() => {
+    if (!dodoStay?.lot || !sim || sim.city !== dodoStay.city || sim.commune !== dodoStay.commune) return setHostPlot(null)
+    void api.plots(sim.id).then((ps) => setHostPlot(ps.find((p) => p.id === dodoStay.lot) ?? null), () => undefined)
+  }, [dodoStay?.lot, sim?.commune]) // eslint-disable-line react-hooks/exhaustive-deps
+  const dodoPlot = useMemo<Plot | null>(() => {
+    if (!dodoStay || !world) return null
+    if (dodoStay.lot) return hostPlot
+    const ids = DODO_PLANS[dodoStay.type ?? ''] ?? ['studio']
+    const plan = world.homePlans?.[ids[(dodoStay.seed ?? 0) % ids.length]]
+    return plan ? { id: 0, key: 'dodo', simId: sim!.id, blocks: plan.blocks, furniture: plan.furniture, zones: plan.zones, built: 0, lot: { w: plan.w, d: plan.d, area: plan.w * plan.d, city: dodoStay.city, commune: dodoStay.commune, paid: 0 }, livable: true } : null
+  }, [dodoStay?.type, dodoStay?.seed, dodoStay?.lot, hostPlot, world]) // eslint-disable-line react-hooks/exhaustive-deps
   // Building on one of the Sim's lots (its id; 0: the one lived in, else the first), or not.
   const [building, setBuilding] = useState<number | false>(false)
   // Arrived at one of one's lots (« plot:<key> »): building on that one; someone else's lot has nothing to do.
@@ -504,6 +520,12 @@ export function Play() {
   const ballSport = !ballAct ? null : ballAct.interaction.id === 'play-basket' || (ballAct.placeId === 'happening' && ballAct.interaction.id === 'join' && street?.happening?.id === 'basket') ? 'basket' : ballAct.interaction.id === 'play-football' || (ballAct.placeId === 'happening' && ballAct.interaction.id === 'join' && street?.happening?.id === 'foot') ? 'foot' : null
   const ballKey = ballAct && ballSport ? `${ballSport}:${ballAct.placeId}:${ballAct.start}` : null
   const [played, setPlayed] = useState<string | null>(null)
+  // Left the match before its end (the activity goes on): back onto the pitch; at a court, into the court's match again.
+  const rejoin = () => {
+    joining.current = null
+    setCourt(null)
+    setPlayed(null)
+  }
   // At a court (not the quarter's street match): the match with the other players there.
   const courtKey = ballKey && ballAct!.placeId !== 'happening' && ballKey !== played ? ballKey : null
   const [court, setCourt] = useState<{ key: string; online: { token: string; simId: string; match: CourtMatch } | null } | null>(null)
@@ -624,7 +646,10 @@ export function Play() {
       )}
       {showInside && (
         <div className="absolute inset-0 z-[1]">
-          {inside!.kind === 'home' && inside!.id !== 'logement' && homePlot && !classic ? (
+          {inside!.id === 'logement' && dodoPlot ? (
+            // A home booked on Dodo: its own house, walked in like one's own.
+            <HomeInside sim={sim} world={world} plot={dodoPlot} interactionId={inside!.it} roam={false} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
+          ) : inside!.kind === 'home' && inside!.id !== 'logement' && homePlot && !classic ? (
             <HomeInside partner={sim.friends?.find((f) => f.partner && f.home)} sim={sim} world={world} plot={homePlot} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} onBuild={() => setBuilding(0)} />
           ) : inside!.kind === 'mall' ? (
             <Suspense fallback={null}>
@@ -713,7 +738,8 @@ export function Play() {
           return classic ? <Neighbourhood key={commune.id} {...street} /> : <OpenWorld key={commune.id} {...street} commune={ownPlaces(commune)} token={MAP_TOKEN ?? ''} onFail={() => setMapSlow(true)} onLoaded={() => setMapSlow(false)} onMapPlaces={setMapPlaces} onHomeSpots={setHomeSpots} onHomePlot={setHomePlot} />
         })()}
       </div>
-      {!showInside && !overlay && building === false && <NotifyPrompt />}
+      {/* Never over a match or a race: it waits till the street */}
+      {!showInside && !overlay && building === false && !(ballKey && ballKey !== played) && !racing && <NotifyPrompt />}
       {mapSlow && (
         <div className="pointer-events-none absolute inset-x-0 top-[38%] z-10 flex justify-center px-6">
           <p className="hud rounded-2xl px-4 py-2.5 text-center text-sm font-extrabold">La carte de Babi charge… Le réseau est lent : on réessaie tout seul.</p>
@@ -912,7 +938,7 @@ export function Play() {
 
       {players && <PlayersSheet sim={sim} around={around} communeName={commune.name} focus={players.focus} act={run} onClose={() => setPlayers(null)} />}
 
-      {sim.activity && !placeId && <ActivityBar sim={sim} onStop={stop} stopping={!!pending} onRoute={() => setOverlay('map')} onMore={onGrounds ? () => (setPlaceId(doing!.placeId!), setMenuOpen(true)) : undefined} />}
+      {sim.activity && !placeId && <ActivityBar onRejoin={ballKey && played === ballKey ? { sport: ballSport!, go: rejoin } : undefined} sim={sim} onStop={stop} stopping={!!pending} onRoute={() => setOverlay('map')} onMore={onGrounds ? () => (setPlaceId(doing!.placeId!), setMenuOpen(true)) : undefined} />}
 
       {/* The invitation and the toasts in one column under the top bar: they stack, never on top of each other */}
       <div className="pointer-events-none absolute top-[5.5rem] left-1/2 z-40 flex w-[min(400px,calc(100vw-24px))] -translate-x-1/2 flex-col gap-2 lg:top-24">
@@ -1456,7 +1482,7 @@ function HappeningSheet({ now, sim, commune, onClose, onJoin }: { now: Happening
 /* ---------- Feedback ---------- */
 
 /** What the Sim is busy with, on real time: progress, time left, and a way to stop. */
-function ActivityBar({ sim, onStop, stopping, onRoute, onMore }: { sim: Sim; onStop: () => void; stopping: boolean; onRoute: () => void; /** At the zoo: the other things to do there. */ onMore?: () => void }) {
+function ActivityBar({ sim, onStop, stopping, onRoute, onMore, onRejoin }: { sim: Sim; onStop: () => void; stopping: boolean; onRoute: () => void; /** At the zoo: the other things to do there. */ onMore?: () => void; /** A match left before its end: back onto the pitch. */ onRejoin?: { sport: 'foot' | 'basket'; go: () => void } }) {
   const a = sim.activity!
   const span = Math.max(1, a.end - a.start)
   const done = Math.min(1, Math.max(0, (sim.gameMinutes - a.start) / span))
@@ -1492,6 +1518,11 @@ function ActivityBar({ sim, onStop, stopping, onRoute, onMore }: { sim: Sim; onS
           </button>
         )}
       </div>
+      {onRejoin && (
+        <button className="btn animate-pop mt-2 w-full !py-2.5" onClick={onRejoin.go}>
+          <Volleyball size={18} /> {onRejoin.sport === 'basket' ? 'Revenir sur le terrain' : 'Revenir au match'}
+        </button>
+      )}
     </div>
   )
 }

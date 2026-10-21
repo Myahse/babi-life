@@ -881,7 +881,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       {/* The downpour: over the whole commune, from its clouds */}
       {raining && <RainSky focus={focus} night={night} />}
       <NearPlane />
-      <SkyDome night={night} dusk={dusk} />
+      <SkyDome night={night} dusk={dusk} rain={raining} />
       {/* At night, lamps, windows and headlights bloom a little (not on small phones) */}
       {night && RICH && (
         <Suspense fallback={null}>

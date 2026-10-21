@@ -10,6 +10,7 @@ import { iconFor } from '../../components/icons'
 import { Snapper } from '../snapshot'
 import { Guest, mat, sign, useBigWalk, type Spot, type XZ } from './bigPlace'
 import { isRoomAct, setLift, useLift } from '../hotelLift'
+import { CorridorDecor, LOOKS, PLAIN, RoomDecor, WindowWall, type Look } from './hotelStyles'
 
 // Every hotel's floors (backend game/hotels.go, sims/hotel.go): its lifts
 // from the hall to each floor, the corridor with its numbered doors (a green
@@ -20,18 +21,6 @@ import { isRoomAct, setLift, useLift } from '../hotelLift'
 // IvoireInside), wrapped in HotelStay.
 
 type Act = (label: string, icon: string, kind: string, call: () => Promise<ActionResult>) => Promise<boolean>
-
-/* ---------- Each hotel's rooms: its colours ---------- */
-
-type Look = { wall: string; carpet: string; wood: string; fabric: string; accent: string; sky: string }
-const LOOKS: Record<string, Look> = {
-  'plateau-poulman': { wall: '#e9e6e1', carpet: '#2e4a52', wood: '#9a7652', fabric: '#1f6f78', accent: '#c9a227', sky: '#8fc3e8' },
-  'plateau-noum': { wall: '#3a383d', carpet: '#4a1820', wood: '#5a3a24', fabric: '#7a1f2b', accent: '#d4af37', sky: '#7fb0de' },
-  'cocody-hotel-ivoire': { wall: '#f3eee4', carpet: '#7a5a2a', wood: '#6b4a2a', fabric: '#b5432c', accent: '#d9b25a', sky: '#9ccbea' },
-  'marcory-azale': { wall: '#f1e4d2', carpet: '#7a3a22', wood: '#8a5a32', fabric: '#c2552e', accent: '#b8862b', sky: '#9ccbea' },
-  'pb-rabisson': { wall: '#f2f4f7', carpet: '#1c3a6b', wood: '#5b6b7d', fabric: '#1c4fa0', accent: '#9fb4cc', sky: '#a9d0f2' },
-}
-const PLAIN: Look = { wall: '#efe9df', carpet: '#3a4a6b', wood: '#7a5233', fabric: '#2c4a6b', accent: '#c9a227', sky: '#9ccbea' }
 
 /* ---------- The corridor ---------- */
 
@@ -57,18 +46,23 @@ function Corridor({ look, floor, rooms, night, onDoor }: { look: Look; floor: nu
         <meshLambertMaterial color={look.accent} transparent opacity={0.35} />
       </mesh>
       {/* The far wall full height; the near one cut low, as in the Sims, so the corridor is seen into */}
-      <mesh position={[len / 2, 1.5, -(CW + 0.1)]} material={mat(look.wall)}>
-        <boxGeometry args={[len, 3, 0.2]} />
-      </mesh>
+      {look.style !== 'banco' && (
+        <mesh position={[len / 2, 1.5, -(CW + 0.1)]} material={mat(look.wall)}>
+          <boxGeometry args={[len, 3, 0.2]} />
+        </mesh>
+      )}
+      <CorridorDecor look={look} len={len} cw={CW} night={night} />
       <mesh position={[len / 2, 0.5, CW + 0.1]} material={mat(look.wall)}>
         <boxGeometry args={[len, 1, 0.2]} />
       </mesh>
       {/* The lights along it, on the far wall */}
       {[...Array(Math.ceil(len / 6))].map((_, i) => (
         <group key={i}>
+          {look.style !== 'banco' && (
           <mesh position={[3 + i * 6, 2.4, -CW + 0.02]} material={mat('#fff6dc', '#fff0c0')}>
             <boxGeometry args={[0.5, 0.25, 0.06]} />
           </mesh>
+          )}
           <pointLight position={[3 + i * 6, 2.3, 0]} intensity={night ? 9 : 6} distance={8} color="#ffe6b8" />
         </group>
       ))}
@@ -156,14 +150,9 @@ function GuestRoom({ type, look, night }: { type: string; look: Look; night: boo
         <planeGeometry args={[hw * 2, hd * 2]} />
         <meshLambertMaterial color={look.carpet} />
       </mesh>
-      {/* The walls, low on the camera's side; the window wall at the back with the view */}
-      <mesh position={[0, 1.5, -hd]} material={mat(look.wall)}>
-        <boxGeometry args={[hw * 2, 3, 0.15]} />
-      </mesh>
-      <mesh position={[0, 1.6, -hd + 0.09]}>
-        <planeGeometry args={[hw * 1.6, 1.9]} />
-        <meshBasicMaterial color={night ? '#14204a' : look.sky} />
-      </mesh>
+      {/* The walls, low on the camera's side; the window wall at the back with the hotel's view */}
+      <WindowWall look={look} night={night} hw={hw} hd={hd} />
+      <RoomDecor look={look} hw={hw} hd={hd} night={night} />
       {[-1, 1].map((s) => (
         <mesh key={s} position={[s * hw, 1.5, 0]} material={mat(look.wall)}>
           <boxGeometry args={[0.15, 3, hd * 2]} />

@@ -18,7 +18,7 @@ export function skyTone(night: boolean, dusk: boolean): SkyTone {
 /** Where the sun is (the light comes from there): matches the Sun light's offset. */
 const SUN = new THREE.Vector3(60, 110, 35).normalize()
 
-export function SkyDome({ night, dusk }: { night: boolean; dusk: boolean }) {
+export function SkyDome({ night, dusk, rain = false }: { night: boolean; dusk: boolean; /** Raining: the sky's clouds go grey, like the rain's own (rainSky.tsx). */ rain?: boolean }) {
   const tone = skyTone(night, dusk)
   const mesh = useRef<THREE.Group>(null)
   const material = useMemo(
@@ -89,19 +89,19 @@ export function SkyDome({ night, dusk }: { night: boolean; dusk: boolean }) {
           </>
         )}
       </group>
-      <Clouds night={night} dusk={dusk} />
+      <Clouds night={night} dusk={dusk} rain={rain} />
     </group>
   )
 }
 
 // Soft banks that drift over the city. They ride with the dome, so they
 // stay overhead wherever the Sim walks, and turn slowly so the sky moves.
-function Clouds({ night, dusk }: { night: boolean; dusk: boolean }) {
+function Clouds({ night, dusk, rain }: { night: boolean; dusk: boolean; rain: boolean }) {
   const spin = useRef<THREE.Group>(null)
   const puff = useMemo(() => new THREE.SphereGeometry(1, 16, 12), [])
   const mat = useMemo(() => new THREE.MeshBasicMaterial({ transparent: true, fog: false, depthWrite: false }), [])
-  mat.color.set(night ? '#5a6890' : dusk ? '#ffe0c2' : '#ffffff')
-  mat.opacity = night ? 0.55 : dusk ? 0.8 : 0.9
+  mat.color.set(rain ? (night ? '#3a3f4f' : '#8d97a3') : night ? '#5a6890' : dusk ? '#ffe0c2' : '#ffffff')
+  mat.opacity = rain ? 0.95 : night ? 0.55 : dusk ? 0.8 : 0.9
   const puffs = useMemo(() => {
     const out: { p: [number, number, number]; s: [number, number, number] }[] = []
     let seed = 11
