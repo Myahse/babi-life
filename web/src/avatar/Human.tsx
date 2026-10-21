@@ -438,7 +438,8 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
     // Every joint eases to where it should be: no jump from one pose to the
     // next. Moving in rhythm (walking, dancing) the joints follow closely, so
     // the swing keeps its shape; changing pose they glide.
-    const rhythmic = walk || SNAPPY.has(pose) || EMOTE_SNAPPY.has(pose) || pose === 'dance' || pose === 'throw' || pose === 'cheer' || pose === 'leap' || pose === 'hang' || pose === 'wash' || pose === 'cook'
+    // A quick emote glides in for its first quarter second all the same: it starts, it doesn't appear.
+    const rhythmic = walk || SNAPPY.has(pose) || (EMOTE_SNAPPY.has(pose) && since > 0.25) || pose === 'dance' || pose === 'throw' || pose === 'cheer' || pose === 'leap' || pose === 'hang' || pose === 'wash' || pose === 'cook'
     const a = 1 - Math.exp(-(rhythmic ? 30 : 13) * snap * dt)
     const to = (o: THREE.Euler | THREE.Vector3, k: 'x' | 'y' | 'z', target: number) => void (o[k] += (target - o[k]) * a)
     // Standing: the weight goes from one leg to the other, slowly.
@@ -474,7 +475,7 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
       const danceStep = pose === 'dance' ? out * Math.max(0, out * Math.sin(beat / 2)) * 0.14 : 0
       // Hanging off the gbaka: the inner foot on the step, the outer leg dangling, swinging with the road.
       const dangle = Math.sin(t * 3.1 + seed) * 0.12
-      const sl = sportLegs(pose, out, t, since) ?? emoteLegs(pose, out, t)
+      const sl = sportLegs(pose, out, t, since) ?? emoteLegs(pose, out, t, since)
       to(h.rotation, 'x', sl ? sl[0] : pose === 'pray' ? 0.05 : pose === 'sleep' ? 0 : pose === 'leap' ? -0.95 : pose === 'hang' ? (out > 0 ? -0.35 : 0.3 + dangle) : seated ? -1.5 : kick ? -1.15 : pose === 'keeper' ? -0.45 : walk ? gaitHip : pose === 'dance' || pose === 'throw' ? -0.18 - bounce * 0.16 : pose === 'cheer' ? -Math.max(0, -jump) * 0.4 : 0)
       to(h.rotation, 'z', sl ? sl[1] : pose === 'hang' ? (out < 0 ? -0.35 : 0.05) : pose === 'leap' ? out * 0.08 : walk || seated ? 0 : pose === 'dance' ? danceStep : out * shift * 0.03)
       to(kn.rotation, 'x', sl ? sl[2] : pose === 'pray' ? 1.55 : pose === 'sleep' ? 0.05 : pose === 'leap' ? 1.35 : pose === 'hang' ? (out > 0 ? 0.55 : 0.35 - dangle) : seated ? 1.5 : kick ? 0.15 : pose === 'keeper' ? 0.8 : walk ? gaitKnee : pose === 'dance' || pose === 'throw' ? 0.32 + bounce * 0.32 : pose === 'cheer' ? Math.max(0, -jump) * 0.8 : fid?.kind === 'tap' && out > 0 ? fid.e * (0.2 + Math.max(0, Math.sin(t * 9)) * 0.25) : tk?.move === 'laugh' ? tk.e * 0.12 : Math.max(0, -out * shift) * 0.12)
