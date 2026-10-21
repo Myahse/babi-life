@@ -7,7 +7,10 @@ import type { LngLat } from '../../game/roads'
 // across blocks and water. With a Mapbox token, the map asks Mapbox's driving
 // directions for the way through the same points (the start, the middle of
 // each bridge the trip takes, the destination) and the taxi follows that.
-// Without a token, or if the request fails, the straight lines stay.
+// Between two far points, the bridges the game picked may not be the short
+// way: Mapbox is also asked for the direct way (with its alternatives), and the
+// shortest of them all is driven. Without a token, or if the request fails,
+// the straight lines stay.
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
 const MAX_WAYPOINTS = 25 // Mapbox's limit for driving directions
@@ -39,7 +42,7 @@ export function drivingRoute(points: LngLat[], token = TOKEN): Promise<LngLat[] 
   const key = keyOf(points)
   const saved = (() => {
     try {
-      return sessionStorage.getItem(`drive:${key}`)
+      return sessionStorage.getItem(`drive2:${key}`)
     } catch {
       return null
     }
@@ -47,13 +50,21 @@ export function drivingRoute(points: LngLat[], token = TOKEN): Promise<LngLat[] 
   if (saved) return Promise.resolve(JSON.parse(saved) as LngLat[])
   let p = cache.get(key)
   if (!p) {
-    p = fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${key}?geometries=geojson&overview=full&access_token=${encodeURIComponent(token)}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        const line = d?.routes?.[0]?.geometry?.coordinates as LngLat[] | undefined
+    type Way = { distance: number; geometry: { coordinates: LngLat[] } }
+    const ask = (via: string, alternatives: boolean) =>
+      fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${via}?geometries=geojson&overview=full${alternatives ? '&alternatives=true' : ''}&access_token=${encodeURIComponent(token)}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => (d?.routes ?? []) as Way[])
+        .catch(() => [] as Way[])
+    const direct = points.length > 2 ? keyOf([points[0], points[points.length - 1]]) : null
+    p = Promise.all([ask(key, !direct), direct ? ask(direct, true) : Promise.resolve([] as Way[])])
+      .then(([through, straight]) => {
+        // The shortest drive of them all.
+        const best = [...through, ...straight].filter((w) => w.geometry?.coordinates?.length > 1).sort((a, b) => a.distance - b.distance)[0]
+        const line = best?.geometry.coordinates
         if (!line || line.length < 2) return null
         try {
-          sessionStorage.setItem(`drive:${key}`, JSON.stringify(line))
+          sessionStorage.setItem(`drive2:${key}`, JSON.stringify(line))
         } catch {
           // Storage full or blocked: the route is only kept for this page.
         }

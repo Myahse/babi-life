@@ -80,7 +80,28 @@ export const visibleAt = (p: PinData, pxPerDeg: number) => !p.zoom || (pxPerDeg 
 /* ---------- Trips ---------- */
 
 export type LngLat = [lng: number, lat: number]
-export type Route = { from: LngLat; to: LngLat; /** The road it follows; a gentle curve when unknown. */ path?: LngLat[]; progress: number; mode: string; label: string; /** The car's colour and the "En …" line. */ color: string; how: string; /** The destination's pin id, highlighted. */ toId: string }
+export type Route = {
+  from: LngLat
+  to: LngLat
+  /** The road it follows; a gentle curve when unknown. */
+  path?: LngLat[]
+  progress: number
+  mode: string
+  label: string
+  /** The car's colour and the "En …" line. */
+  color: string
+  how: string
+  /** The destination's pin id, highlighted. */
+  toId: string
+  /** The driver still on the way to pick the Sim up: from where he comes (by `path`), and how far he's come (0 → 1). */
+  pickup?: { from: LngLat; path?: LngLat[]; k: number }
+}
+
+/** Where the vehicle is: on its way to the Sim, then on the trip with it. */
+export function vehiclePoint(r: Route): LngLat {
+  if (!r.pickup) return routePoint(r, r.progress)
+  return routePoint({ from: r.pickup.from, to: r.from, path: r.pickup.path }, r.pickup.k)
+}
 
 /** A trip drawn as a gentle arc, so it reads as a journey rather than a ruler line. */
 /** Where the trip is at t (0 → 1): along its road path, by distance, or on a curve. */

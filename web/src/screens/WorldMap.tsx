@@ -293,7 +293,7 @@ function TripCard({ sim, route }: { sim: Sim; route: Route }) {
       <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-[var(--color-canvas)]">
         <div className="h-full rounded-full bg-[var(--color-orange)] transition-[width] duration-1000 ease-linear" style={{ width: `${route.progress * 100}%` }} />
       </div>
-      <div className="mt-1.5 text-xs font-extrabold text-[var(--color-ink-soft)]">{left > 0 ? `Encore ${duration(left)} de route` : 'On arrive…'}</div>
+      <div className="mt-1.5 text-xs font-extrabold text-[var(--color-ink-soft)]">{route.pickup ? (car ? 'Le car arrive à l’arrêt…' : 'Le chauffeur arrive te chercher…') : left > 0 ? `Encore ${duration(left)} de route` : 'On arrive…'}</div>
       {a.trip?.incident && (
         <p className="mt-2 flex items-start gap-1.5 rounded-xl bg-[#fff4e5] px-3 py-2 text-xs font-bold text-[#a35200]">
           <TriangleAlert size={14} className="mt-px shrink-0" /> {a.trip.incident}
@@ -302,6 +302,12 @@ function TripCard({ sim, route }: { sim: Sim; route: Route }) {
     </Card>
   )
 }
+
+/**
+ * When this phone first saw each trip (its start is a whole game minute, up to
+ * one before the tap): the driver's coming is counted from then, so it's seen.
+ */
+const tripSeen = new Map<string, number>()
 
 /** The current trip as a route, its progress updated every second. */
 function useTrip(world: World, sim: Sim): Route | null {
@@ -328,13 +334,31 @@ function useTrip(world: World, sim: Sim): Route | null {
   }, [a, world])
   // …then the same way on the real streets, once Mapbox has drawn it.
   const streets = useDrivingRoute(base?.waypoints ?? null)
+  // In town the driver comes to the Sim first, from a few streets away (on the side away from where it's going).
+  const pickFrom = useMemo<LngLat | null>(() => {
+    if (!base || base.t.city !== base.t.fromCity || base.t.mode === 'avion') return null
+    const [[x0, y0], [x1, y1]] = base.ends
+    const d = Math.hypot(x1 - x0, y1 - y0) || 1
+    return [x0 - ((x1 - x0) / d) * 0.006 + ((y1 - y0) / d) * 0.004, y0 - ((y1 - y0) / d) * 0.006 - ((x1 - x0) / d) * 0.004]
+  }, [base])
+  const approach = useDrivingRoute(pickFrom && base ? [pickFrom, base.ends[0]] : null)
   return useMemo(() => {
     if (!a || !base) return null
     const { t, from, to, toCity, path, ends } = base
-    const progress = Math.min(1, Math.max(0, ((now - EPOCH) / 60000 - a.start) / Math.max(1, a.end - a.start)))
+    // The first part of the trip (a third, between 45 seconds and three minutes) is the driver coming; then they go together.
+    const key = `${a.start}/${a.end}`
+    const nowMin = (now - EPOCH) / 60000
+    if (!tripSeen.has(key)) tripSeen.set(key, nowMin)
+    // Seen within its first minute: the trip began then; opened later on, from its start.
+    const seen = tripSeen.get(key)!
+    const begin = seen < a.start + 1 ? Math.min(a.end - 1, Math.max(a.start, seen)) : a.start
+    const pick = pickFrom ? Math.min(3, Math.max(0.75, (a.end - begin) * 0.33)) : 0
+    const at = nowMin - begin
+    const progress = Math.min(1, Math.max(0, (at - pick) / Math.max(0.5, a.end - begin - pick)))
+    const pickup = pickFrom && at < pick ? { from: pickFrom, path: approach, k: Math.max(0, at / pick) } : undefined
     const look = rideLook(world, t.mode, from, t.class)
-    return { from: ends[0], to: ends[1], path: streets ?? path, progress, mode: t.mode, color: look.color, how: look.how, toId: `${t.city}/${t.commune}`, label: t.city === t.fromCity ? to.name : `${to.name}, ${toCity.name}` }
-  }, [a, base, streets, now, world])
+    return { from: ends[0], to: ends[1], path: streets ?? path, progress, mode: t.mode, color: look.color, how: look.how, toId: `${t.city}/${t.commune}`, label: t.city === t.fromCity ? to.name : `${to.name}, ${toCity.name}`, pickup }
+  }, [a, base, streets, approach, pickFrom, now, world])
 }
 
 /** Real or invented, who runs it, and whether it still exists: from the world data's provenance. */
