@@ -294,7 +294,7 @@ function useMaterials(night: boolean, hour: number) {
   return { mats, far }
 }
 
-function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, indoors, nameTag, onNear, frozen, players, onPickPlayer, recenter, onFreeCamera, closeView, shoulderView, token, onFail, onLoaded, onStreetBuy, onRobbed, onTalk, talkingTo, plotsVersion, onMapPlaces, onHomeSpots, onHomePlot }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void; onLoaded?: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void; onHomePlot?: (plot: Plot | undefined) => void }) {
+function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, indoors, nameTag, onNear, frozen, onLeave, players, onPickPlayer, recenter, onFreeCamera, closeView, shoulderView, token, onFail, onLoaded, onStreetBuy, onRobbed, onTalk, talkingTo, plotsVersion, onMapPlaces, onHomeSpots, onHomePlot }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void; onLoaded?: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void; onHomePlot?: (plot: Plot | undefined) => void }) {
   const origin = useMemo<Origin>(() => ({ lat: commune.lat, lng: commune.lng }), [commune.lat, commune.lng])
   const { mats, far: farMats } = useMaterials(night, hour)
   const home = sim.homeCity === sim.city && sim.homeCommune === commune.id
@@ -1075,6 +1075,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
           homeSpot={busy?.id && stationAt === HOME_ID ? homeSpots[busy.id] : busy?.id?.startsWith('golvo-') && stationAt === 'golvo' ? homeSpots.golvo : undefined}
           onNear={onNear}
           frozen={!!frozen}
+          onLeave={onLeave}
           recenter={recenter ?? 0}
           onFreeCamera={onFreeCamera}
         />

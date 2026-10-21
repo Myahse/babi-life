@@ -37,6 +37,7 @@ import { StreetGame } from '../world3d/open/streetFoot'
 import { moveObstacle } from '../world3d/obstacles'
 import { freezeWorldTime } from '../lib/worldClock'
 import { StreetSpot, type StreetPeopleSpot } from '../world3d/open/streetPeople'
+import { Grin } from '../world3d/open/streetlife'
 import { homeSpotsOf } from '../world3d/homeSpots'
 import KartRace from '../kart/KartRace'
 import StreetMatch from '../streetball/StreetMatch'
@@ -83,6 +84,7 @@ const seededLab = (n: number) => () => ((n = (n * 16807) % 2147483647) / 2147483
 // draws those landmarks where the game would put them, their ground cleared;
 // ?view=mosquee (&act=pray|priere-vendredi|visit, &m=6510 a Friday at 12:30) the Mosquée Mohammed VI inside;
 // ?view=cathedrale (&act=pray|messe|visit|monter-tour, &m= a game minute: 9240 is a Sunday at 10) the cathedral inside;
+// ?view=grin the tea at the grin (&t= seconds, frozen);
 // ?view=gbaka&t=… the apprenti's chase down a straight street (t: seconds
 // into the cycle, frozen; without t it plays);
 // ?view=field&sport=foot|basket (&len=40&wid=20 &night &t= &cam= &target=) a pitch or a court and its match;
@@ -525,6 +527,22 @@ function Lab() {
   if (view === 'tolls') return <TollsLab />
   if (view === 'streetfoot') return <StreetFootLab />
   if (view === 'people') return <PeopleLab />
+  if (view === 'grin') {
+    if (q.get('t') !== null) freezeWorldTime(Number(q.get('t')))
+    return (
+      <Canvas dpr={[1, 2]} camera={{ position: [2.6, 2.2, 3.2], fov: 45 }} style={{ width: '100vw', height: '100vh' }}>
+        <color attach="background" args={['#cfe9f8']} />
+        <hemisphereLight args={['#ffffff', '#b8a27c', 1.3]} />
+        <directionalLight position={[5, 8, 4]} intensity={1.6} />
+        <mesh rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[20, 20]} />
+          <meshLambertMaterial color="#c9a77a" />
+        </mesh>
+        <Grin seed={q.get('seed') ?? 'lab'} />
+        <OrbitControls target={[0, 0.6, 0]} />
+      </Canvas>
+    )
+  }
   if (view === 'ride') return <RideLab />
   if (view === 'phonecam') return <PhoneCamLab />
   if (view === 'emotes') return <EmotesLab />

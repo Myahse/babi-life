@@ -45,8 +45,10 @@ export type Props = {
   nameTag?: string
   /** The place whose door the Sim is standing at after walking with the pad (null when none). */
   onNear?: (placeId: string | null) => void
-  /** The pad can't move the Sim (busy doing something). */
+  /** The pad can't move the Sim (on a trip, in a match, a request on its way). */
   frozen?: boolean
+  /** Busy, the Sim walked far from where it's done: the activity stops (Walker). */
+  onLeave?: () => void
   /** Other players in the commune right now. */
   players?: Player[]
   /** Bumped to bring the camera back on the Sim. */

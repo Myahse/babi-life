@@ -131,7 +131,6 @@ export function StreetLife({ nav, seed, night, taken }: { nav: Nav; seed: string
 
 const wood = new THREE.MeshLambertMaterial({ color: '#7a5233' })
 const iron = new THREE.MeshLambertMaterial({ color: '#2a2a2a' })
-const coal = new THREE.MeshLambertMaterial({ color: '#ff5a1a', emissive: '#ff3a00', emissiveIntensity: 0.8 })
 const teapot = new THREE.MeshLambertMaterial({ color: '#3f8fd6' })
 const ballMat = new THREE.MeshLambertMaterial({ color: '#f4f4f4' })
 const grass = new THREE.MeshLambertMaterial({ color: '#2f9e4a' })
@@ -236,20 +235,119 @@ function useCast(seed: string, n: number, men = false) {
   }, [seed, n, men])
 }
 
-/** Le grin: three men on benches around the little stove and its teapot. */
-function Grin({ seed }: { seed: string }) {
-  const cast = useCast(seed, 3, true)
+/**
+ * The tea of the grin (the attaya), on the shared clock: the maker lifts the
+ * teapot high and pours a long stream into the little glasses, pours from
+ * glass to glass for the foam, puts it back on the embers; the steam rises;
+ * a glass goes round to the one whose turn it is.
+ */
+function Tea({ seed }: { seed: string }) {
+  const pot = useRef<THREE.Group>(null)
+  const stream = useRef<THREE.Mesh>(null)
+  const cup = useRef<THREE.Group>(null)
+  const passed = useRef<THREE.Group>(null)
+  const steam = useRef<(THREE.Mesh | null)[]>([])
+  const glow = useMemo(() => new THREE.MeshBasicMaterial({ color: '#ff6a1a' }), [])
+  const offset = useMemo(() => (hash(seed.length, seed.charCodeAt(0) || 1) * 20) | 0, [seed])
+  useFrame(() => {
+    const t = worldTime() + offset
+    const u = (t % 12) / 12
+    // 0–0.15 lift, 0.15–0.45 pour into the glass, 0.45–0.7 glass to glass, 0.7–0.8 back down, then it heats.
+    const up = u < 0.15 ? u / 0.15 : u < 0.7 ? 1 : u < 0.8 ? 1 - (u - 0.7) / 0.1 : 0
+    const e = up * up * (3 - 2 * up)
+    if (pot.current) {
+      pot.current.position.set(0.12 * e, 0.5 + 0.75 * e, 0.42 * e)
+      pot.current.rotation.x = u >= 0.15 && u < 0.45 ? 0.7 : 0
+    }
+    const pouring = u >= 0.15 && u < 0.45
+    const foaming = u >= 0.45 && u < 0.7
+    if (stream.current) {
+      stream.current.visible = pouring || foaming
+      // From the spout (or the glass held high) down to the glass on the tray.
+      const top = pouring ? 1.12 : 0.95
+      stream.current.scale.set(1, top - 0.36, 1)
+      stream.current.position.set(0.12, (top + 0.36) / 2, 0.55)
+    }
+    if (cup.current) {
+      // Glass to glass: one goes up, poured into the other, and back.
+      const k = foaming ? Math.abs(Math.sin(((u - 0.45) / 0.25) * Math.PI * 2)) : 0
+      cup.current.position.set(0.12, 0.33 + k * 0.62, 0.55)
+      cup.current.rotation.x = foaming && k > 0.6 ? 1.1 : 0
+    }
+    // A glass goes round: from the tray to the one whose turn it is, and drunk there.
+    if (passed.current) {
+      const turn = Math.floor(t / 12) % 2
+      const a = ((turn + 1) / 3) * Math.PI * 2
+      const g = u < 0.85 ? 0 : (u - 0.85) / 0.15
+      passed.current.position.set(0.25 * (1 - g) + Math.sin(a) * 1.1 * g, 0.33 + Math.sin(g * Math.PI) * 0.25 + g * 0.5, 0.55 * (1 - g) + Math.cos(a) * 1.1 * g)
+      passed.current.visible = u > 0.8
+    }
+    steam.current.forEach((m, i) => {
+      if (!m) return
+      const k = ((t * 0.45 + i / 3) % 1)
+      m.position.set(Math.sin(t + i) * 0.04, 0.68 + k * 0.6, Math.cos(t * 0.7 + i) * 0.04)
+      m.scale.setScalar(0.05 + k * 0.08)
+      ;(m.material as THREE.MeshBasicMaterial).opacity = 0.5 * (1 - k) * (up < 0.1 ? 1 : 0.2)
+    })
+    glow.color.setHSL(0.05, 1, 0.45 + Math.sin(t * 5) * 0.08)
+  })
   return (
     <group>
       <mesh material={iron} position={[0, 0.18, 0]}>
         <cylinderGeometry args={[0.18, 0.14, 0.36, 8]} />
       </mesh>
-      <mesh material={coal} position={[0, 0.37, 0]}>
+      <mesh material={glow} position={[0, 0.37, 0]}>
         <cylinderGeometry args={[0.14, 0.14, 0.02, 8]} />
       </mesh>
-      <mesh material={teapot} position={[0, 0.5, 0]}>
-        <sphereGeometry args={[0.13, 8, 6]} />
+      <group ref={pot} position={[0, 0.5, 0]}>
+        <mesh material={teapot}>
+          <sphereGeometry args={[0.13, 8, 6]} />
+        </mesh>
+        <mesh material={teapot} position={[0, 0.02, 0.15]} rotation={[0.9, 0, 0]}>
+          <cylinderGeometry args={[0.015, 0.025, 0.16, 5]} />
+        </mesh>
+      </group>
+      {/* The tray and its little glasses; the one being filled */}
+      <mesh material={iron} position={[0.25, 0.29, 0.6]}>
+        <cylinderGeometry args={[0.22, 0.22, 0.02, 12]} />
       </mesh>
+      {[0.36, 0.42].map((x) => (
+        <mesh key={x} material={glassMat} position={[x, 0.33, 0.65]}>
+          <cylinderGeometry args={[0.025, 0.02, 0.07, 6]} />
+        </mesh>
+      ))}
+      <group ref={cup} position={[0.12, 0.33, 0.55]}>
+        <mesh material={glassMat}>
+          <cylinderGeometry args={[0.025, 0.02, 0.07, 6]} />
+        </mesh>
+      </group>
+      <group ref={passed}>
+        <mesh material={glassMat}>
+          <cylinderGeometry args={[0.025, 0.02, 0.07, 6]} />
+        </mesh>
+      </group>
+      {/* The long stream of tea */}
+      <mesh ref={stream} material={teaMat} visible={false}>
+        <cylinderGeometry args={[0.008, 0.008, 1, 4]} />
+      </mesh>
+      {[0, 1, 2].map((i) => (
+        <mesh key={i} ref={(m) => void (steam.current[i] = m)}>
+          <sphereGeometry args={[1, 6, 4]} />
+          <meshBasicMaterial color="#ffffff" transparent opacity={0.4} depthWrite={false} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+const glassMat = new THREE.MeshLambertMaterial({ color: '#e8d5a8', transparent: true, opacity: 0.8 })
+const teaMat = new THREE.MeshBasicMaterial({ color: '#b5651d', transparent: true, opacity: 0.85 })
+
+/** Le grin: three men on benches around the little stove, the tea being made (Tea). */
+export function Grin({ seed }: { seed: string }) {
+  const cast = useCast(seed, 3, true)
+  return (
+    <group>
+      <Tea seed={seed} />
       {cast.map((p, i) => {
         const a = (i / cast.length) * Math.PI * 2
         const [x, z] = [Math.sin(a) * 1.4, Math.cos(a) * 1.4]
@@ -264,7 +362,8 @@ function Grin({ seed }: { seed: string }) {
               </mesh>
             ))}
             <group position={[0, -0.22, 0]}>
-              <TalkHuman id={`grin:${seed}:${i}`} look={p.look} gender={p.gender} pose={i === 1 ? 'drink' : 'sit'} seed={p.seed} />
+              {/* The maker at his teapot, one drinking, one talking */}
+              <TalkHuman id={`grin:${seed}:${i}`} look={p.look} gender={p.gender} pose={i === 0 ? 'cook' : i === 1 ? 'drink' : 'talk'} seed={p.seed} />
             </group>
           </group>
         )
