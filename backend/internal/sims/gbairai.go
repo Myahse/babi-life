@@ -438,7 +438,7 @@ func (m *Moderation) Reports(w http.ResponseWriter, r *http.Request) {
 	if !m.ok(w, r) {
 		return
 	}
-	rows, err := m.H.DB.Query(r.Context(), `SELECT p.id, p.reporter, a.first_name, p.reported, b.first_name, p.message_id, p.story_id, p.post_id, p.grin_id, p.excerpt, p.reason, p.created_at
+	rows, err := m.H.DB.Query(r.Context(), `SELECT p.id, p.reporter, a.first_name, p.reported, b.first_name, p.message_id, p.story_id, p.post_id, p.grin_id, p.gram_post_id, p.gram_comment_id, p.excerpt, p.reason, p.created_at
 		FROM reports p JOIN sims a ON a.id = p.reporter JOIN sims b ON b.id = p.reported
 		WHERE p.status = 'open' ORDER BY p.created_at DESC LIMIT 100`)
 	if err != nil {
@@ -457,15 +457,18 @@ func (m *Moderation) Reports(w http.ResponseWriter, r *http.Request) {
 		StoryID *int64 `json:"storyId,omitempty"`
 		PostID  *int64 `json:"postId,omitempty"`
 		// A message of the grin (the public chat).
-		GrinID  *int64    `json:"grinId,omitempty"`
-		Excerpt string    `json:"excerpt"`
-		Reason  string    `json:"reason"`
-		At      time.Time `json:"at"`
+		GrinID *int64 `json:"grinId,omitempty"`
+		// A Babigram photo (its picture at /moderation/photo?gram=), or a comment under one.
+		GramPostID    *int64    `json:"gramPostId,omitempty"`
+		GramCommentID *int64    `json:"gramCommentId,omitempty"`
+		Excerpt       string    `json:"excerpt"`
+		Reason        string    `json:"reason"`
+		At            time.Time `json:"at"`
 	}
 	out := []report{}
 	for rows.Next() {
 		var p report
-		if err := rows.Scan(&p.ID, &p.Reporter, &p.ReporterName, &p.Reported, &p.ReportedName, &p.MessageID, &p.StoryID, &p.PostID, &p.GrinID, &p.Excerpt, &p.Reason, &p.At); err != nil {
+		if err := rows.Scan(&p.ID, &p.Reporter, &p.ReporterName, &p.Reported, &p.ReportedName, &p.MessageID, &p.StoryID, &p.PostID, &p.GrinID, &p.GramPostID, &p.GramCommentID, &p.Excerpt, &p.Reason, &p.At); err != nil {
 			httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 			return
 		}
@@ -484,6 +487,8 @@ func (m *Moderation) Photo(w http.ResponseWriter, r *http.Request) {
 	var err error
 	if id, e := strconv.ParseInt(r.URL.Query().Get("story"), 10, 64); e == nil {
 		err = m.H.DB.QueryRow(r.Context(), `SELECT image, mime FROM stories WHERE id = $1`, id).Scan(&raw, &mime)
+	} else if id, e := strconv.ParseInt(r.URL.Query().Get("gram"), 10, 64); e == nil {
+		err = m.H.DB.QueryRow(r.Context(), `SELECT image, mime FROM gram_posts WHERE id = $1 AND image IS NOT NULL`, id).Scan(&raw, &mime)
 	} else {
 		id, _ := strconv.ParseInt(r.URL.Query().Get("post"), 10, 64)
 		err = m.H.DB.QueryRow(r.Context(), `SELECT image, mime FROM tiki_posts WHERE id = $1`, id).Scan(&raw, &mime)
@@ -507,8 +512,8 @@ func (m *Moderation) Resolve(w http.ResponseWriter, r *http.Request) {
 	_ = httpx.Decode(r, &req)
 	id, _ := strconv.ParseInt(chi.URLParam(r, "report"), 10, 64)
 	ctx := r.Context()
-	var msg, story, post, grin *int64
-	if err := m.H.DB.QueryRow(ctx, `UPDATE reports SET status = 'done' WHERE id = $1 RETURNING message_id, story_id, post_id, grin_id`, id).Scan(&msg, &story, &post, &grin); err != nil {
+	var msg, story, post, grin, gram, gramComment *int64
+	if err := m.H.DB.QueryRow(ctx, `UPDATE reports SET status = 'done' WHERE id = $1 RETURNING message_id, story_id, post_id, grin_id, gram_post_id, gram_comment_id`, id).Scan(&msg, &story, &post, &grin, &gram, &gramComment); err != nil {
 		httpx.Error(w, http.StatusNotFound, "signalement introuvable")
 		return
 	}
@@ -528,6 +533,12 @@ func (m *Moderation) Resolve(w http.ResponseWriter, r *http.Request) {
 		}
 		if grin != nil {
 			_, _ = m.H.DB.Exec(ctx, `UPDATE grin SET hidden = true WHERE id = $1`, *grin)
+		}
+		// A reported comment goes alone; its photo stays.
+		if gramComment != nil {
+			_, _ = m.H.DB.Exec(ctx, `DELETE FROM gram_comments WHERE id = $1`, *gramComment)
+		} else if gram != nil {
+			_, _ = m.H.DB.Exec(ctx, `DELETE FROM gram_posts WHERE id = $1 AND sim IS NOT NULL`, *gram)
 		}
 	}
 	httpx.JSON(w, http.StatusOK, map[string]bool{"done": true})

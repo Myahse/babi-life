@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, Lot, LotOffer, GrinMessage, DirectPost, BetRounds, BetView } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, Lot, LotOffer, GrinMessage, DirectPost, BetRounds, BetView, GramPost, GramProfile, GramFound, GramActivity } from './types'
 import { useSession } from '../store/session'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
@@ -221,6 +221,24 @@ export const api = {
     f.append('placeId', placeId)
     return request<ActionResult>(`/sims/${id}/tiki`, { method: 'POST', body: f })
   },
+  /** Babigram: the feeds, posting (instant), likes, saves, comments, follows, profiles, search and activity. An account is a Sim's id or « npc:<handle> » (sent as it is: the router reads the path undecoded). */
+  gramFeed: (id: string, tab: 'accueil' | 'explorer' | 'auteur' | 'enregistres', author = '') => request<GramPost[]>(`/sims/${id}/gram?tab=${tab}&author=${encodeURIComponent(author)}`),
+  gramPost: (id: string, p: { photo: string; photoId?: number; caption: string; placeId: string; filter: string; ratio: 'carre' | 'portrait' }) => post<ActionResult>(`/sims/${id}/gram`, p),
+  gramLike: (id: string, postId: number, on: boolean) => post<{ on: boolean }>(`/sims/${id}/gram/${postId}/like`, { on }),
+  gramSave: (id: string, postId: number, on: boolean) => post<{ on: boolean }>(`/sims/${id}/gram/${postId}/save`, { on }),
+  gramShare: (id: string, postId: number) => post<void>(`/sims/${id}/gram/${postId}/share`, {}),
+  gramReport: (id: string, postId: number, reason: string) => post<{ text: string }>(`/sims/${id}/gram/${postId}/report`, { reason }),
+  gramDelete: (id: string, postId: number) => request<void>(`/sims/${id}/gram/${postId}`, { method: 'DELETE' }),
+  gramComments: (id: string, postId: number) => request<TikiComment[]>(`/sims/${id}/gram/${postId}/comments`),
+  gramComment: (id: string, postId: number, body: string) => post<{ id: string; body: string }>(`/sims/${id}/gram/${postId}/comments`, { body }),
+  gramUncomment: (id: string, comment: string) => request<void>(`/sims/${id}/gram/comments/${comment}`, { method: 'DELETE' }),
+  gramCommentLike: (id: string, comment: string, on: boolean) => post<{ on: boolean }>(`/sims/${id}/gram/comments/${comment}/like`, { on }),
+  gramCommentReport: (id: string, comment: string, reason: string) => post<{ text: string }>(`/sims/${id}/gram/comments/${comment}/report`, { reason }),
+  gramFollow: (id: string, other: string, on: boolean) => post<{ on: boolean }>(`/sims/${id}/gram/follow/${other}`, { on }),
+  gramProfile: (id: string, other: string) => request<GramProfile>(`/sims/${id}/gram/profile/${other}`),
+  gramSearch: (id: string, q: string) => request<GramFound[]>(`/sims/${id}/gram/search?q=${encodeURIComponent(q)}`),
+  gramActivity: (id: string) => request<GramActivity[]>(`/sims/${id}/gram/activity`),
+  gramBio: (id: string, bio: string) => request<{ bio: string }>(`/sims/${id}/gram/bio`, { method: 'PUT', body: JSON.stringify({ bio }) }),
   /** The player's own plot, and the houses built in the commune where the Sim is. */
   plot: (id: string) => request<Plot>(`/sims/${id}/plot`),
   plots: (id: string) => request<Plot[]>(`/sims/${id}/plots`),
