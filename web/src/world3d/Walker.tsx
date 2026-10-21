@@ -34,12 +34,12 @@ const RUN_FROM = 90
 const RIDE_FROM = 220
 const RIDE = 9 // a moto-taxi in town: about 32 km/h
 /** Busy doing these, the Sim goes up and down a way by the place: a stroll, a hike, laps of the stadium. (The zoo: the player walks it freely.) */
-const LOOPS: Record<string, { speed: number; run?: boolean; len: number }> = {
+const LOOPS: Record<string, { speed: number; run?: boolean; len: number; /** a stop at each end, side by side, to talk (seconds) */ pause?: number }> = {
   'balade-lagune': { speed: 1.2, len: 14 },
   hike: { speed: 1.4, len: 18 },
   'stade-footing': { speed: 3.2, run: true, len: 26 },
-  // Hanging out with a friend: a slow walk up and down the street, side by side.
-  'ami-trainer': { speed: 1.1, len: 16 },
+  // Hanging out with a friend: a slow walk side by side, a stop to talk and laugh, and on again.
+  'ami-trainer': { speed: 1.1, len: 16, pause: 9 },
 }
 const UP = new THREE.Vector3(0, 1, 0)
 const EAVES: XZ[] = [[0, 0], [1.1, 0], [-1.1, 0], [0, 1.1], [0, -1.1]]
@@ -57,6 +57,8 @@ function pathLength(pts: XZ[], from: XZ) {
 }
 
 const NEAR_DOOR = 2.6 // metres from a door to be "at" a place
+/** Further than this from the place, busy there, the activity stops (the Sim left). */
+const LEAVE = 40
 
 /** How the Sim gets around: where it may stand, and the way to somewhere. */
 export type WalkNav = {
@@ -90,6 +92,8 @@ type Props = {
   labels: boolean
   onNear?: (placeId: string | null) => void
   frozen: boolean
+  /** Busy at a place, the Sim walked far from it: the activity stops there. */
+  onLeave?: () => void
   recenter: number
   onFreeCamera?: (free: boolean) => void
   /** A perspective camera (the open world) rather than the isometric one. */
@@ -105,7 +109,7 @@ type Props = {
 }
 
 /** The player's Sim: walks to places, with the pad or by tapping the ground; the camera follows. */
-export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy, stationAt, nameTag, labels, onNear, frozen, recenter, onFreeCamera, perspective, close, shoulder, homeSpot, hidden }: Props) {
+export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy, stationAt, nameTag, labels, onNear, frozen, onLeave, recenter, onFreeCamera, perspective, close, shoulder, homeSpot, hidden }: Props) {
   const group = useRef<THREE.Group>(null)
   const path = useRef<[number, number][]>([])
   const target = useRef<string | null>(null)
@@ -143,6 +147,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   // Strolling (LOOPS): the way's start, its direction and length, and when it began.
   const loop = useRef<{ x: number; z: number; fx: number; fz: number; len: number; t0: number } | null>(null)
   const [looping, setLooping] = useState(false)
+  // Stopped on the stroll, turned to the friend: talking.
+  const [chatting, setChatting] = useState(false)
   const loopKind = busy?.id ? LOOPS[busy.id] : undefined
   // At home on the furniture: walking to it, then settled on it.
   const homeGoing = useRef<HomeSpot | null>(null)
@@ -150,6 +156,14 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   // Getting onto the furniture takes a moment: from where the Sim stood, eased.
   const settling = useRef<{ x: number; z: number; rot: number; t: number } | null>(null)
   const [matchPose, setMatchPose] = useState<Pose>('idle')
+  // The activity stopped once for walking away (a new one may stop again).
+  const left = useRef(false)
+  // Been at the place during this activity (walking there isn't leaving it).
+  const reached = useRef(false)
+  useEffect(() => {
+    left.current = false
+    reached.current = false
+  }, [busy?.id, stationAt])
 
   // Start where the Sim is busy, else at home, else on the sidewalk. Only
   // once: the place list changes later (a happening starts, an activity
@@ -418,6 +432,16 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       homeGoing.current = null
       setSettled(null)
     }
+    // Busy at a place and walked far from it (the pad, a tap): what was being done there stops,
+    // once. Near it, the Sim does it where it stands.
+    // (Only once it has been there: on its way to it, it isn't leaving.)
+    const station = busy && stationAt ? lots.find((l) => l.id === stationAt) : undefined
+    const away = station ? Math.hypot(g.position.x - station.door[0], g.position.z - station.door[1]) : 0
+    if (station && away < 15) reached.current = true
+    if (station && onLeave && reached.current && !left.current && away > LEAVE) {
+      left.current = true
+      onLeave()
+    }
     // Strolling: along the way and back, again and again, as far as there's room.
     if (loopKind && !path.current.length && !padWalking.current) {
       if (!loop.current) {
@@ -434,16 +458,22 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       }
       const l = loop.current
       if (l.len >= 2) {
-        const s = ((worldTime() - l.t0) * loopKind.speed) % (2 * l.len)
-        const back = s > l.len
-        const d = back ? 2 * l.len - s : s
+        // Out, a stop, back, a stop (no stop: on and on).
+        const walkT = l.len / loopKind.speed
+        const P = loopKind.pause ?? 0
+        const t = (worldTime() - l.t0) % (2 * (walkT + P))
+        const back = t >= walkT + P
+        const still = (t >= walkT && t < walkT + P) || t >= 2 * walkT + P
+        const d = !back ? Math.min(l.len, t * loopKind.speed) : Math.max(0, l.len - (t - walkT - P) * loopKind.speed)
         g.position.set(l.x + l.fx * d, 0, l.z + l.fz * d)
         g.rotation.y = Math.atan2(back ? -l.fx : l.fx, back ? -l.fz : l.fz)
-        if (!looping) setLooping(true)
+        if (looping === still) setLooping(!still)
+        if (chatting !== still) setChatting(still)
       }
     } else if (loop.current) {
       loop.current = null
       setLooping(false)
+      setChatting(false)
     }
     // In the match: where the Sim's place in it is, now.
     if (inMatch && fieldLot?.field && !path.current.length && !padWalking.current) {
@@ -699,10 +729,13 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
             <Character look={busy?.id === 'shower' ? { ...sim.look, outfit: 'serviette', accessory: 'none' } : sim.look} gender={sim.gender} walking={false} running={false} busy={false} pose={settled.pose} moodColor={moodColor} stage={stage} />
           </group>
         ) : (
-          <Character look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking || looping} running={run || (looping && !!loopKind?.run)} busy={!!busy && !looping} marker={!photoMode} pose={photoMode && photoMode !== 'film' && !busy && !walking ? 'phone' : emote && !busy && !walking ? emote : busy?.kind === 'chat' ? 'talk' : (inMatch || onTouchline) && !walking ? matchPose : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={looping && loopKind ? loopKind.speed : run ? RUN : SPEED} />
+          // Stopped on a stroll with a friend: turned to them, talking.
+          <group rotation={[0, chatting && !walking ? 0.9 : 0, 0]}>
+            <Character look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking || looping} running={run || (looping && !!loopKind?.run)} busy={!!busy && !looping && !chatting} marker={!photoMode} pose={photoMode && photoMode !== 'film' && !busy && !walking ? 'phone' : emote && !busy && !walking ? emote : busy?.kind === 'chat' || (chatting && !walking) ? 'talk' : (inMatch || onTouchline) && !walking ? matchPose : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={looping && loopKind ? loopKind.speed : run ? RUN : SPEED} />
+          </group>
         )}
         {/* Hanging out: the friend walks along beside the Sim */}
-        {busy?.id === 'ami-trainer' && <Buddy sim={sim} walking={looping} stage={stage} />}
+        {busy?.id === 'ami-trainer' && <Buddy sim={sim} walking={looping || walking} facing={chatting && !walking} stage={stage} />}
         {/* Out with friends (an outing): they came along, at the Sim's side */}
         {!!sim.activity?.with?.length && <Companions sim={sim} walking={walking || looping} pose={outdoorPose(busy?.id)} stage={stage} />}
         {/* Outdoors, what the Sim is doing is set around it (the ball, the towel, the bus stop…) */}
@@ -803,15 +836,21 @@ function Companions({ sim, walking, pose, stage }: { sim: Sim; walking: boolean;
 }
 
 /** The friend one hangs out with (« Traîner ensemble »), walking at the Sim's side. */
-function Buddy({ sim, walking, stage }: { sim: Sim; walking: boolean; stage: string }) {
+function Buddy({ sim, walking, facing, stage }: { sim: Sim; walking: boolean; /** Stopped to talk: turned to the Sim, talking, laughing now and then. */ facing: boolean; stage: string }) {
   const name = sim.activity?.kind === 'do' ? sim.activity.placeName : undefined
   const friend = sim.friends?.find((f) => f.name === name)
   const gender = friend?.gender ?? (sim.gender === 'femme' ? 'femme' : 'homme')
   // The face they had when met, if the game knows it (world3d/talk.ts); else one of their own.
   const look = useMemo(() => friend?.look ?? randomLook(gender, rng(`partner${friend?.id ?? name ?? 'ami'}`)), [gender, friend?.id, friend?.look, name])
+  // A laugh every so often while they talk (the shared clock: the same for everyone watching).
+  const [laugh, setLaugh] = useState(false)
+  useFrame(() => {
+    const now = facing && worldTime() % 7 > 4.6
+    if (now !== laugh) setLaugh(now)
+  })
   return (
-    <group position={[0.85, 0, 0.1]}>
-      <Character look={look} gender={gender} walking={walking} pose={walking ? undefined : 'talk'} marker={false} moodColor="#3b82f6" stage={stage} speed={1.1} />
+    <group position={[0.85, 0, 0.1]} rotation={[0, facing ? -0.9 : 0, 0]}>
+      <Character look={look} gender={gender} walking={walking} pose={walking ? undefined : laugh ? 'laugh' : 'talk'} marker={false} moodColor="#3b82f6" stage={stage} speed={1.1} />
     </group>
   )
 }

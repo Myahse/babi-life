@@ -713,8 +713,10 @@ export function Play() {
             nameTag: sim.activity?.trip?.mode === 'avion' ? undefined : user?.username ? `@${user.username}` : sim.firstName,
             happening,
             onNear: setNear,
-            // Busy at the zoo or the hotel's grounds: still free to walk about them.
-            frozen: (!!sim.activity && !onGrounds) || !!pending,
+            // Busy, the Sim isn't frozen: it does what it does where it stands, and walking far
+            // from the place stops it (onLeave). Only on a trip, in a match, or while a request is out.
+            frozen: !!pending || sim.activity?.kind === 'travel' || /^play-/.test(doing?.interaction.id ?? ''),
+            onLeave: () => void run('Activité arrêtée', 'x', '', () => api.stop(sim.id)),
             players: around.players,
             onPickPlayer: (id: string) => setPlayers({ focus: id }),
             recenter,
