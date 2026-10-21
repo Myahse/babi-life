@@ -157,7 +157,8 @@ export const api = {
   moto: (id: string, metres: number) => post<ActionResult>(`/sims/${id}/moto`, { metres }),
   /** An outing (backend sims/outing.go): friends met in the game come at once, player friends are invited. */
   outing: (id: string, o: { placeId: string; interactionId: string; friends: string[]; players: string[] }) => post<ActionResult>(`/sims/${id}/outing`, o),
-  chat: (id: string, npc: { id: string; name: string; gender: string; seed: number; look?: Look }, topic: string, said?: string) => post<ActionResult>(`/sims/${id}/chat`, { with: npc, topic, said: said ?? '' }),
+  chat: (id: string, npc: { id: string; name: string; gender: string; seed: number; look?: Look }, topic: string, said?: string, lang?: string) => post<ActionResult>(`/sims/${id}/chat`, { with: npc, topic, said: said ?? '', lang: lang ?? '' }),
+  setLanguages: (id: string, languages: string[]) => request<{ languages: string[] }>(`/sims/${id}/languages`, { method: 'PUT', body: JSON.stringify({ languages }) }),
   street: (id: string, vendor: string, choice?: string) => post<ActionResult>(`/sims/${id}/street`, { vendor, choice: choice ?? '' }),
   /** The nouchis of a couloir got the Sim: they take what's in its pockets (the API says how much). */
   robbed: (id: string, spot: string) => post<ActionResult>(`/sims/${id}/robbed`, { spot }),
@@ -263,6 +264,7 @@ export const api = {
   endStay: (id: string) => post<ActionResult>(`/sims/${id}/stay/end`, {}),
   /** A handful of notes over the club's dancers (backend sims/billets.go): a tap, not an activity. */
   billets: (id: string, place: string, amount: number) => post<ActionResult>(`/sims/${id}/billets`, { place, amount }),
+  offrande: (id: string, amount: number) => post<ActionResult>(`/sims/${id}/offrande`, { amount }),
   /** Dodo: homes by the night in a commune; book one; let one's own house, or not. */
   dodo: (id: string, where?: LotWhere) => request<DodoView>(`/sims/${id}/dodo${where ? `?city=${encodeURIComponent(where.city)}&commune=${encodeURIComponent(where.commune)}` : ''}`),
   dodoBook: (id: string, listing: string, length: string) => post<ActionResult>(`/sims/${id}/dodo/book`, { listing, length }),

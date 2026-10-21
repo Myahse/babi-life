@@ -3,7 +3,8 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { worldTime } from '../../lib/worldClock'
 import { whereabouts } from '../whereabouts'
-import { Human, NoShadows, type Pose } from '../../avatar/Human'
+import { NoShadows, type Pose } from '../../avatar/Human'
+import { TalkHuman } from '../Talkable'
 import { LowHuman } from '../../avatar/LowHuman'
 import { randomLook } from '../../avatar/options'
 
@@ -219,7 +220,7 @@ function Culte({ people, veillee, night }: { people: { gender: 'femme' | 'homme'
       ))}
       {/* The pastor and his microphone, the drum and the keyboard by the door */}
       <group position={[0, 0, 1.6]}>
-        <Human look={{ ...people[1].look, outfit: 'suit', outfitColor: '#1d2b44' }} gender="homme" pose={veillee ? 'cheer' : 'rant'} seed={2} />
+        <TalkHuman id={`worshipFront:222:${Math.round((2) * 1000)}`} look={{ ...people[1].look, outfit: 'suit', outfitColor: '#1d2b44' }} gender="homme" pose={veillee ? 'cheer' : 'rant'} seed={2} />
       </group>
       <B p={[-2.6, 0.45, 1.4]} s={[0.6, 0.9, 0.6]} c="#7a3b1c" />
       <B p={[2.6, 0.8, 1.4]} s={[1.3, 0.1, 0.45]} c="#1b1b1f" />

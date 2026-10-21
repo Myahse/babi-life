@@ -8,6 +8,7 @@ import { NoShadows, type Pose } from '../../avatar/Human'
 import { randomLook } from '../../avatar/options'
 import { rng } from '../themes'
 import { Snapper } from '../snapshot'
+import { ChatFraming } from '../chatFraming'
 import { Guest, mat, sign, useBigWalk, type Spot, type XZ } from './bigPlace'
 import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
@@ -149,6 +150,7 @@ export function HotelInside({ sim, placeId, name, interactionId, roam, night, st
     <div className="absolute inset-0">
       <Canvas shadows dpr={[1, 1.75]} camera={{ position: [0, 30, HD + 14], fov: 45, near: 0.3, far: 900 }} style={{ background: night ? '#0b1026' : '#9ccbea' }}>
         <Snapper />
+        <ChatFraming />
         <Suspense fallback={null}>
           <hemisphereLight args={[night ? '#8090d0' : '#ffffff', '#c9b48c', night ? 0.75 : 1.2]} />
           <directionalLight position={[25, 45, 20]} intensity={night ? 0.25 : 1.3} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-40} shadow-camera-right={40} shadow-camera-top={40} shadow-camera-bottom={-40} />

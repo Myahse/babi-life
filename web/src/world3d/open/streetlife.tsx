@@ -10,6 +10,7 @@ import { randomLook } from '../../avatar/options'
 import type { Look } from '../../lib/types'
 import { rng } from '../themes'
 import { whereabouts } from '../whereabouts'
+import { TalkHuman } from '../Talkable'
 import { NoteShower } from '../money'
 import { hash, type XZ } from './geo'
 import type { Nav } from './nav'
@@ -263,7 +264,7 @@ function Grin({ seed }: { seed: string }) {
               </mesh>
             ))}
             <group position={[0, -0.22, 0]}>
-              <Human look={p.look} gender={p.gender} pose={i === 1 ? 'drink' : 'sit'} seed={p.seed} />
+              <TalkHuman id={`grin:${seed}:${i}`} look={p.look} gender={p.gender} pose={i === 1 ? 'drink' : 'sit'} seed={p.seed} />
             </group>
           </group>
         )
@@ -315,7 +316,7 @@ function Causerie({ seed }: { seed: string }) {
         const [x, z] = [Math.sin(a) * 0.85, Math.cos(a) * 0.85]
         return (
           <group key={i} position={[x, 0, z]} rotation={[0, a + Math.PI, 0]}>
-            <Human look={p.look} gender={p.gender} pose={i === 0 ? 'talk' : i === 1 ? 'idle' : 'talk'} seed={p.seed + 7} />
+            <TalkHuman id={`causerie:${seed}:${i}`} look={p.look} gender={p.gender} pose={i === 0 ? 'talk' : i === 1 ? 'idle' : 'talk'} seed={p.seed + 7} />
           </group>
         )
       })}
@@ -352,18 +353,18 @@ function Travail({ seed }: { seed: string }) {
       {/* Three dancing */}
       {cast.slice(0, 3).map((p, i) => (
         <group key={i} position={[(i - 1) * 0.95, 0, -0.5 + Math.abs(i - 1) * 0.3]} rotation={[0, (1 - i) * 0.3, 0]}>
-          <Human look={p.look} gender={p.gender} pose={i === 1 ? 'cheer' : 'dance'} seed={p.seed + offset} />
+          <TalkHuman id={`travail:${seed}:${i}`} look={p.look} gender={p.gender} pose={i === 1 ? 'cheer' : 'dance'} seed={p.seed + offset} />
         </group>
       ))}
       {/* The grand-frère, facing them, notes flying from his hand */}
       <group position={[0.2, 0, 1.9]} rotation={[0, Math.PI, 0]}>
-        <Human look={{ ...cast[3].look, outfit: 'boubou', accessory: 'chain' }} gender="homme" pose="throw" seed={cast[3].seed} />
+        <TalkHuman id={`travail:${seed}:boss`} look={{ ...cast[3].look, outfit: 'boubou', accessory: 'chain' }} gender="homme" pose="throw" seed={cast[3].seed} />
         <NoteShower from={[0.3, 1.72, 0.3]} toward={[0, 0.35, 1]} rate={2.4} fan={4} seed={offset} />
       </group>
       {/* And the ones who watch and shout */}
       {cast.slice(4).map((p, i) => (
         <group key={i} position={[(i ? 1 : -1) * 1.9, 0, 1.2]} rotation={[0, (i ? 1 : -1) * 2.2, 0]}>
-          <Human look={p.look} gender={p.gender} pose="cheer" seed={p.seed} />
+          <TalkHuman id={`travail:${seed}:c${i}`} look={p.look} gender={p.gender} pose="cheer" seed={p.seed} />
         </group>
       ))}
     </group>
@@ -450,7 +451,7 @@ function Pitch({ spot, night }: { spot: Spot; night: boolean }) {
         ))}
         {watch.map((p, i) => (
           <group key={i} position={[-8 + i * 3.2, 0, 8]} rotation={[0, Math.PI, 0]}>
-            <Human look={p.look} gender={p.gender} pose={i % 2 ? 'cheer' : 'idle'} seed={p.seed} />
+            <TalkHuman id={`pitch:${spot.id}:${i}`} look={p.look} gender={p.gender} pose={i % 2 ? 'cheer' : 'idle'} seed={p.seed} />
           </group>
         ))}
       </NoShadows>
@@ -499,7 +500,7 @@ function Court({ spot, night }: { spot: Spot; night: boolean }) {
         ))}
         {watch.map((p, i) => (
           <group key={i} position={[-4.5 + i * 3, 0, 6.2]} rotation={[0, Math.PI, 0]}>
-            <Human look={p.look} gender={p.gender} pose={i % 2 ? 'cheer' : 'wave'} seed={p.seed} />
+            <TalkHuman id={`court:${spot.id}:${i}`} look={p.look} gender={p.gender} pose={i % 2 ? 'cheer' : 'wave'} seed={p.seed} />
           </group>
         ))}
       </NoShadows>
@@ -529,7 +530,7 @@ function Marchand({ vendor }: { vendor: Vendor }) {
       ))}
       <NoShadows>
         <group position={[0, 0, -0.4]}>
-          <Human look={look} gender={vendor.seed < 0.5 ? 'femme' : 'homme'} pose="idle" seed={vendor.seed * 80} />
+          <TalkHuman id={`marchand:${vendor.id}`} look={look} gender={vendor.seed < 0.5 ? 'femme' : 'homme'} pose="idle" seed={vendor.seed * 80} />
         </group>
       </NoShadows>
       <Html position={[0, 2.3, 0]} center zIndexRange={[12, 0]} distanceFactor={18}>
@@ -583,10 +584,10 @@ export function PolicePost({ spot }: { spot: Spot }) {
       ))}
       <NoShadows>
         <group position={[-1.6, 0, 1]} rotation={[0, -Math.PI / 2, 0]}>
-          <Human look={officers[0].look} gender={officers[0].gender} pose="wave" seed={officers[0].seed} />
+          <TalkHuman id={`police:${spot.id}:0`} look={officers[0].look} gender={officers[0].gender} pose="wave" seed={officers[0].seed} />
         </group>
         <group position={[0.1, 0, -0.6]} rotation={[0, -2.2, 0]}>
-          <Human look={officers[1].look} gender={officers[1].gender} pose="idle" seed={officers[1].seed} />
+          <TalkHuman id={`police:${spot.id}:1`} look={officers[1].look} gender={officers[1].gender} pose="idle" seed={officers[1].seed} />
         </group>
       </NoShadows>
     </group>

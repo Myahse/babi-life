@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { Human, type Pose } from '../../avatar/Human'
+import { TalkHuman } from '../Talkable'
 import { randomLook } from '../../avatar/options'
 import type { Look } from '../../lib/types'
 import { Lamp } from '../props'
@@ -35,7 +36,7 @@ export function People({ at, seed }: { at: Staff[]; seed: string }) {
     <>
       {crowd.map((c, i) => (
         <group key={i} position={c.p} rotation={[0, c.r ?? 0, 0]}>
-          <Human look={c.look} gender={c.gender as 'homme' | 'femme'} pose={c.pose ?? 'idle'} seed={c.seed} />
+          <TalkHuman id={`hotelBits:38:${Math.round((c.seed) * 1000)}`} look={c.look} gender={c.gender as 'homme' | 'femme'} pose={c.pose ?? 'idle'} seed={c.seed} />
         </group>
       ))}
     </>

@@ -8,6 +8,7 @@ import { Human, NoShadows, type Pose } from '../../avatar/Human'
 import { randomLook } from '../../avatar/options'
 import { rng } from '../themes'
 import { Snapper } from '../snapshot'
+import { ChatFraming } from '../chatFraming'
 import { Vehicle } from '../vehicles'
 import { BOX, Blocks } from '../open/ruePrincesse'
 import { TalkHuman } from '../Talkable'
@@ -115,6 +116,7 @@ export function MallInside({ sim, name, interactionId, roam, night, stage }: { s
     <div className="absolute inset-0">
       <Canvas shadows dpr={[1, 1.75]} camera={{ position: [12, 22, HD + 26], fov: 45, near: 0.3, far: 900 }} style={{ background: night ? '#0b1026' : '#9ccbea' }}>
         <Snapper />
+        <ChatFraming />
         <Suspense fallback={null}>
           <hemisphereLight args={[night ? '#9aa8e0' : '#ffffff', '#c9b48c', night ? 0.9 : 1.25]} />
           <directionalLight position={[30, 50, 25]} intensity={night ? 0.25 : 1.2} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-50} shadow-camera-right={50} shadow-camera-top={50} shadow-camera-bottom={-50} />

@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
-import { Human, type Pose } from '../../avatar/Human'
+import type { Pose } from '../../avatar/Human'
+import { TalkHuman } from '../Talkable'
 import { randomLook } from '../../avatar/options'
 import { rng } from '../themes'
 import { BOX, Blocks, PLANE, lettering, signMaterial } from './ruePrincesse'
@@ -240,7 +241,7 @@ export function PalaisDesSports({ night }: { night: boolean }) {
 
       {people.map(([x, z, ry, pose], i) => (
         <group key={i} position={[x, 0, z]} rotation={[0, ry, 0]}>
-          <Human look={cast[i].look} gender={cast[i].gender} pose={pose} seed={cast[i].seed} />
+          <TalkHuman id={`treichville:243:${Math.round((cast[i].seed) * 1000)}`} look={cast[i].look} gender={cast[i].gender} pose={pose} seed={cast[i].seed} />
         </group>
       ))}
     </group>

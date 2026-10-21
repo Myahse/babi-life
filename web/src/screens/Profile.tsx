@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { InstallButton } from '../components/InstallButton'
-import { Briefcase, CalendarDays, ChevronLeft, House, LogOut, MapPin, Monitor, MonitorSmartphone, Shirt, Share2, Smartphone, Sparkles, Trash2, TrendingDown, TrendingUp, type LucideIcon } from 'lucide-react'
+import { Briefcase, CalendarDays, Languages, ChevronLeft, House, LogOut, MapPin, Monitor, MonitorSmartphone, Shirt, Share2, Smartphone, Sparkles, Trash2, TrendingDown, TrendingUp, type LucideIcon } from 'lucide-react'
 import { api, type Device } from '../lib/api'
 import type { JournalEvent, Sim } from '../lib/types'
 import { useSession } from '../store/session'
@@ -13,6 +13,7 @@ import { NEEDS, amount, clock, housingOf, lifeOf, mood } from '../game/rules'
 import { Journal } from './Play'
 import { share as shareText } from '../lib/native'
 import { aCommune, deNom } from '../lib/french'
+import { LANGUAGES } from '../lib/languages'
 
 export function Profile() {
   const world = useWorld((s) => s.world)!
@@ -134,6 +135,8 @@ export function Profile() {
           </Link>
         </section>
 
+        <Spoken sim={sim} onChange={(languages) => setSim({ ...sim, languages })} />
+
         <section className="card p-4">
           <div className="mb-3 flex items-center gap-2">
             <Sparkles size={18} className="text-[var(--color-orange)]" />
@@ -166,6 +169,39 @@ export function Profile() {
         </button>
       </div>
     </div>
+  )
+}
+
+/**
+ * The languages the player speaks besides French: in the street, a passer-by
+ * who speaks one of them answers a greeting in it (backend game/languages.go).
+ * A tap adds or removes one, saved at once.
+ */
+function Spoken({ sim, onChange }: { sim: Sim; onChange: (languages: string[]) => void }) {
+  const mine = sim.languages ?? []
+  const [saving, setSaving] = useState(false)
+  async function toggle(id: string) {
+    const next = mine.includes(id) ? mine.filter((l) => l !== id) : mine.length < 6 ? [...mine, id] : mine
+    setSaving(true)
+    const r = await api.setLanguages(sim.id, next).catch(() => null)
+    setSaving(false)
+    if (r) onChange(r.languages)
+  }
+  return (
+    <section className="card p-4">
+      <div className="mb-1 flex items-center gap-2">
+        <Languages size={18} className="text-[var(--color-orange)]" />
+        <h2 className="font-display text-xl font-extrabold">Langues parlées</h2>
+      </div>
+      <p className="mb-3 text-sm font-bold text-[var(--color-ink-soft)]">Le français, et quoi d’autre ? Dans la rue, ceux qui parlent ta langue te répondent dedans.</p>
+      <div className="flex flex-wrap gap-1.5">
+        {LANGUAGES.map((l) => (
+          <button key={l.id} disabled={saving} className={`rounded-full px-3 py-1.5 text-sm font-extrabold transition-colors disabled:opacity-60 ${mine.includes(l.id) ? 'bg-[var(--color-orange)] text-white' : 'bg-[var(--color-canvas)] text-[var(--color-ink-soft)]'}`} onClick={() => void toggle(l.id)}>
+            {l.label}
+          </button>
+        ))}
+      </div>
+    </section>
   )
 }
 

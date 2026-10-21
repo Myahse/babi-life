@@ -3,6 +3,7 @@ import { Beer, BookOpen, Briefcase, Check, Coffee, Hand, HandCoins, HandHelping,
 import type { Npc } from '../world3d/open/OpenWorld'
 import type { Friend } from '../lib/types'
 import { greetingsFor, helloFrom } from '../lib/nouchi'
+import { LANGUAGES, goodbyeIn, greetingIn, languageLabel, npcLanguages } from '../lib/languages'
 import { IconTile } from './ui'
 
 // Talking to someone in the street (tap them): their first name, what they
@@ -12,26 +13,28 @@ import { IconTile } from './ui'
 // the answers, and they can go either way; on the street they react to it
 // (world3d/open/npcReact.ts). This phone remembers who you've met.
 
-type Topic = { id: string; label: string; icon: LucideIcon; hint: string }
+/** `says`: what the Sim says for it (one picked each time), shown in its bubble. `lang`: a greeting in that language. */
+type Topic = { id: string; label: string; icon: LucideIcon; hint: string; says?: string[]; lang?: string }
 const GROUPS: { id: string; label: string; colors: [string, string]; topics: Topic[] }[] = [
   {
     id: 'saluer',
     label: 'Saluer',
     colors: ['#ffa040', '#ff6a00'],
-    topics: [{ id: 'dioula', label: 'Saluer en dioula', icon: Hand, hint: '« I ni sɔgɔma ! » · ça fait plaisir' }],
+    // The greetings in the player's languages are added when the sheet opens.
+    topics: [],
   },
   {
     id: 'causer',
     label: 'Causer',
     colors: ['#64b5ff', '#2a6cf0'],
     topics: [
-      { id: 'famille', label: 'Demander la famille', icon: Users, hint: '8 min · les nouvelles de chez eux' },
-      { id: 'gbairai', label: 'Faire le gbairai', icon: MessagesSquare, hint: '15 min · les nouvelles du quartier' },
-      { id: 'foot', label: 'Parler foot', icon: Trophy, hint: 'Éléphants, Asec, Africa… attention aux disputes' },
-      { id: 'blague', label: 'Lancer une blague', icon: Laugh, hint: 'Ça fait rire… ou pas' },
-      { id: 'compliment', label: 'Faire un compliment', icon: Sparkles, hint: '3 min · ça fait toujours plaisir… presque' },
-      { id: 'histoire', label: 'Demander une histoire', icon: BookOpen, hint: '10 min · contes et souvenirs du quartier' },
-      { id: 'route', label: 'Demander le chemin', icon: MapPin, hint: '4 min' },
+      { id: 'famille', label: 'Demander la famille', icon: Users, hint: '8 min · les nouvelles de chez eux', says: ['Et la famille, ça va ?', 'Comment va la maison ?', 'Les enfants vont bien ?'] },
+      { id: 'gbairai', label: 'Faire le gbairai', icon: MessagesSquare, hint: '15 min · les nouvelles du quartier', says: ['Y a quoi comme gbairai ?', 'Raconte, ça dit quoi au quartier ?', 'Quoi de neuf dans le quartier ?'] },
+      { id: 'foot', label: 'Parler foot', icon: Trophy, hint: 'Éléphants, Asec, Africa… attention aux disputes', says: ['Tu as vu le match d\'hier ?', 'Les Éléphants vont gagner samedi ?', 'Asec ou Africa, toi tu es où ?'] },
+      { id: 'blague', label: 'Lancer une blague', icon: Laugh, hint: 'Ça fait rire… ou pas', says: ['J\'ai une blague pour toi, écoute !', 'Tu connais celle du gbaka sans chauffeur ?'] },
+      { id: 'compliment', label: 'Faire un compliment', icon: Sparkles, hint: '3 min · ça fait toujours plaisir… presque', says: ['Ton habit là est joli dèh !', 'Tu as la classe aujourd\'hui !', 'Tu as un beau sourire, toi !'] },
+      { id: 'histoire', label: 'Demander une histoire', icon: BookOpen, hint: '10 min · contes et souvenirs du quartier', says: ['Tu connais un conte ? Raconte !', 'Raconte-moi une histoire de chez toi.'] },
+      { id: 'route', label: 'Demander le chemin', icon: MapPin, hint: '4 min', says: ['Pardon, c\'est par où le marché ?', 'Je cherche la pharmacie, c\'est où ?'] },
     ],
   },
   {
@@ -39,10 +42,10 @@ const GROUPS: { id: string; label: string; colors: [string, string]; topics: Top
     label: 'Demander',
     colors: ['#69e2a0', '#00a862'],
     topics: [
-      { id: 'tombe', label: '« Tombe sur moi ! »', icon: Utensils, hint: 'Un garba offert… peut-être' },
-      { id: 'djai', label: 'Demander un petit djai', icon: HandCoins, hint: 'Un petit prêt… peut-être' },
-      { id: 'boulot', label: 'Demander un petit boulot', icon: Briefcase, hint: "Une heure de travail, s'il y en a" },
-      { id: 'conseil', label: 'Demander conseil', icon: Lightbulb, hint: 'La sagesse des anciens' },
+      { id: 'tombe', label: '« Tombe sur moi ! »', icon: Utensils, hint: 'Un garba offert… peut-être', says: ['Tombe sur moi, je suis fauché !', 'Eh, tombe sur moi un peu !'] },
+      { id: 'djai', label: 'Demander un petit djai', icon: HandCoins, hint: 'Un petit prêt… peut-être', says: ['Tu peux me dépanner un petit djai ?', 'Prête-moi un peu, je rembourse demain !'] },
+      { id: 'boulot', label: 'Demander un petit boulot', icon: Briefcase, hint: "Une heure de travail, s'il y en a", says: ['Y a pas un petit boulot pour moi ?', 'Si tu as un petit travail, je suis là !'] },
+      { id: 'conseil', label: 'Demander conseil', icon: Lightbulb, hint: 'La sagesse des anciens', says: ['Je peux te demander un conseil ?', 'Toi qui connais la vie, dis-moi…'] },
     ],
   },
   {
@@ -50,10 +53,10 @@ const GROUPS: { id: string; label: string; colors: [string, string]; topics: Top
     label: 'Proposer',
     colors: ['#ffd54f', '#ffa000'],
     topics: [
-      { id: 'grin', label: 'Proposer le thé au grin', icon: Coffee, hint: '30 min · on refait le monde' },
-      { id: 'maquis', label: 'Inviter au maquis', icon: Beer, hint: 'Adultes · 2 000 à 3 000 Djai si on dit oui' },
-      { id: 'aide', label: 'Proposer un coup de main', icon: HandHelping, hint: '15 min · un petit billet en retour, parfois' },
-      { id: 'numero', label: 'Échanger les numéros', icon: Smartphone, hint: 'Peut devenir un·e ami·e' },
+      { id: 'grin', label: 'Proposer le thé au grin', icon: Coffee, hint: '30 min · on refait le monde', says: ['On va au grin prendre le thé ?', 'Viens, on va boire le thé au grin !'] },
+      { id: 'maquis', label: 'Inviter au maquis', icon: Beer, hint: 'Adultes · 2 000 à 3 000 Djai si on dit oui', says: ['On va au maquis ? C\'est moi qui paie !', 'Viens, on va s\'asseoir au maquis !'] },
+      { id: 'aide', label: 'Proposer un coup de main', icon: HandHelping, hint: '15 min · un petit billet en retour, parfois', says: ['Je peux t\'aider ?', 'Donne, je vais t\'aider avec ça !'] },
+      { id: 'numero', label: 'Échanger les numéros', icon: Smartphone, hint: 'Peut devenir un·e ami·e', says: ['On peut échanger les numéros ?', 'Donne ton numéro, on va se bipper !'] },
     ],
   },
   {
@@ -61,9 +64,9 @@ const GROUPS: { id: string; label: string; colors: [string, string]; topics: Top
     label: 'Taquiner',
     colors: ['#ff7ad9', '#b02bd6'],
     topics: [
-      { id: 'chambrer', label: 'Chambrer', icon: Smile, hint: 'Ça rigole… ou ça vexe' },
-      { id: 'defi', label: 'Pierre-feuille-ciseaux', icon: Scissors, hint: '4 min · le perdant danse' },
-      { id: 'drague', label: 'Draguer', icon: Heart, hint: 'Adultes · ça passe ou ça casse' },
+      { id: 'chambrer', label: 'Chambrer', icon: Smile, hint: 'Ça rigole… ou ça vexe', says: ['Toi tu marches comme un gbaka en panne !', 'Eh, c\'est ta tête de dimanche ça ?'] },
+      { id: 'defi', label: 'Pierre-feuille-ciseaux', icon: Scissors, hint: '4 min · le perdant danse', says: ['Pierre-feuille-ciseaux ! Le perdant danse !'] },
+      { id: 'drague', label: 'Draguer', icon: Heart, hint: 'Adultes · ça passe ou ça casse', says: ['Toi tu as un charme hein !', 'On peut se connaître un peu ?'] },
     ],
   },
 ]
@@ -74,10 +77,10 @@ const LOVE = { id: 'coeur', label: 'Cœur', colors: ['#ff8fb1', '#e0245e'] as [s
 function loveTopics(friend: Friend | undefined, taken?: string): Topic[] {
   if (!friend?.adult) return []
   // Already with someone else: it's cheating, and the quarter talks (backend sims/cheating.go).
-  if (!friend.partner) return [{ id: 'sortir', label: 'Lui demander de sortir ensemble', icon: Heart, hint: taken ? `Tu es avec ${taken} : si ça se sait…` : 'Plus vous êtes proches, plus c’est oui' }]
+  if (!friend.partner) return [{ id: 'sortir', label: 'Lui demander de sortir ensemble', icon: Heart, hint: taken ? `Tu es avec ${taken} : si ça se sait…` : 'Plus vous êtes proches, plus c’est oui', says: ['Et si on sortait ensemble, toi et moi ?'] }]
   return [
-    ...(friend.home ? [] : [{ id: 'emmenager', label: 'Lui proposer de venir vivre chez toi', icon: House, hint: 'Vous vivrez ensemble à la maison' }]),
-    { id: 'rompre', label: 'Rompre', icon: HeartCrack, hint: 'C’est fini entre vous' },
+    ...(friend.home ? [] : [{ id: 'emmenager', label: 'Lui proposer de venir vivre chez toi', icon: House, hint: 'Vous vivrez ensemble à la maison', says: ['Viens vivre avec moi à la maison !'] }]),
+    { id: 'rompre', label: 'Rompre', icon: HeartCrack, hint: 'C’est fini entre vous', says: ['Il faut qu’on parle… c’est fini entre nous.'] },
   ]
 }
 
@@ -90,7 +93,12 @@ const JOBS = {
   femme: ['Vendeuse de garba', 'Couturière', 'Coiffeuse', 'Étudiante', 'Infirmière', "Vendeuse d'attiéké", 'Commerçante au marché', 'Institutrice', 'Caissière', 'Gérante de maquis', 'Esthéticienne', 'Vendeuse de pagnes'],
   homme: ['Chauffeur de gbaka', 'Apprenti gbaka', 'Mécanicien', 'Étudiant', 'Tailleur', 'Vigile', 'Menuisier', 'Vendeur de crédit', 'Livreur à moto', 'Maçon', 'Instituteur', 'Coiffeur', 'Boutiquier'],
 }
-export const jobOf = (npc: Pick<Npc, 'gender' | 'seed'>) => JOBS[npc.gender][npc.seed % JOBS[npc.gender].length]
+/** Those in uniform are what their uniform says: the officer, the vigile, the priest. */
+const UNIFORMS: Record<string, [string, string]> = { policier: ['Policier', 'Policière'], vigile: ['Vigile', 'Vigile'], soutane: ['Prêtre', 'Religieuse'], soeur: ['Religieuse', 'Religieuse'], imam: ['Fidèle de la mosquée', 'Fidèle de la mosquée'] }
+export const jobOf = (npc: Pick<Npc, 'gender' | 'seed'> & { look?: { outfit?: string } }) => {
+  const u = npc.look?.outfit ? UNIFORMS[npc.look.outfit] : undefined
+  return u ? u[npc.gender === 'femme' ? 1 : 0] : JOBS[npc.gender][npc.seed % JOBS[npc.gender].length]
+}
 
 // Who you've met: how many times, and how well you get on (0 to 5).
 type Memory = { met: number; rapport: number }
@@ -143,11 +151,18 @@ function greeting(npc: Npc, simGender: 'femme' | 'homme', m: Memory): string {
   return ['Te revoilà !', `On se connaît, ${toi} ! Ça dit quoi ?`, "Ah, c'est toi encore ! Ça va un peu ?"][m.met % 3]
 }
 
-export function ChatSheet({ npc, simGender, onSay, onClose, friend, taken, grownUp, adultAccount, onConfirmAdult }: {
+export function ChatSheet({ npc, simGender, onSay, onClose, onBye, languages = [], onLanguages, gameMinutes = 0, friend, taken, grownUp, adultAccount, onConfirmAdult }: {
   npc: Npc
   simGender: 'femme' | 'homme'
-  onSay: (topic: string, label: string, said?: string) => Promise<Reply | null>
+  onSay: (topic: string, label: string, said?: string, lang?: string) => Promise<Reply | null>
   onClose: () => void
+  /** « Au revoir »: the chat is over (not one more thing said). */
+  onBye?: () => void
+  /** The languages the player speaks besides French, and saving them. */
+  languages?: string[]
+  onLanguages?: (langs: string[]) => Promise<void>
+  /** The game's clock: the greeting of the hour. */
+  gameMinutes?: number
   /** Them in the Sim's friends (their number taken), with where you are together. */
   friend?: Friend
   /** The name of who the Sim is already together with, if anyone else. */
@@ -171,10 +186,11 @@ export function ChatSheet({ npc, simGender, onSay, onClose, friend, taken, grown
   useEffect(() => {
     log.current?.scrollTo({ top: log.current.scrollHeight, behavior: 'smooth' })
   }, [lines, busy])
-  const say = async (id: string, label: string, said?: string) => {
+  const say = async (id: string, label: string, said?: string, lang?: string) => {
     setBusy(true)
-    setLines((l) => [...l, { who: 'me', text: said ? `« ${said} »` : label }])
-    const r = await onSay(id, `${label} avec ${npc.name}`, said)
+    // What the Sim says, word for word (a greeting in a language the game has no words for: what it does).
+    setLines((l) => [...l, { who: 'me', text: !said ? label : said.startsWith('(') ? said : `« ${said} »` }])
+    const r = await onSay(id, `${label} avec ${npc.name}`, said, lang)
     setBusy(false)
     if (!r) return setLines((l) => l.slice(0, -1))
     setLines((l) => [...l, { who: 'them', text: r.text, mood: r.mood }])
@@ -186,8 +202,22 @@ export function ChatSheet({ npc, simGender, onSay, onClose, friend, taken, grown
     }
   }
   const love = loveTopics(friend, taken)
-  const groups = grownUp ? [...GROUPS, { ...LOVE, topics: love }] : GROUPS
-  const g = groups.find((x) => x.id === group) ?? GROUPS[0]
+  // What they speak besides French; the greetings in the player's own languages.
+  const theirs = npcLanguages(npc.seed)
+  const shared = languages.find((l) => theirs.includes(l))
+  const [picking, setPicking] = useState(false)
+  const [picked, setPicked] = useState<string[]>(languages)
+  const greetings: Topic[] = languages.length
+    ? languages.map((l) => ({ id: 'langue', lang: l, label: `Saluer en ${languageLabel(l).toLowerCase()}`, icon: Hand, hint: theirs.includes(l) ? `${greetingIn(l, gameMinutes, npc.gender)} · ${npc.name} le parle` : greetingIn(l, gameMinutes, npc.gender), says: [greetingIn(l, gameMinutes, npc.gender)] }))
+    : [{ id: 'langues', label: 'Tu parles d’autres langues ?', icon: Hand, hint: 'Dioula, baoulé, bété… choisis les tiennes' }]
+  const base = GROUPS.map((x) => (x.id === 'saluer' ? { ...x, topics: greetings } : x))
+  const groups = grownUp ? [...base, { ...LOVE, topics: love }] : base
+  const g = groups.find((x) => x.id === group) ?? groups[0]
+  const pick = (t: Topic) => {
+    if (t.id === 'langues') return setPicking(true)
+    const line = t.says?.length ? t.says[(used.length + mem.met) % t.says.length] : undefined
+    void say(t.id, t.label, line, t.lang)
+  }
   return (
     <div className="absolute inset-0 z-30 flex flex-col justify-end bg-[#0f1230]/15 lg:items-center lg:justify-center" onClick={onClose}>
       <div className="sheet animate-up flex max-h-[68vh] w-full flex-col rounded-t-[28px] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:w-[460px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
@@ -207,6 +237,8 @@ export function ChatSheet({ npc, simGender, onSay, onClose, friend, taken, grown
                 ))}
               </span>
             </div>
+            {/* What they speak besides French: a greeting in it pleases them */}
+            <div className="truncate text-xs font-bold text-[var(--color-ink-soft)]">Parle {theirs.map((l) => languageLabel(l).toLowerCase()).join(', ')}{shared ? ' · comme toi' : ''}</div>
           </div>
           <button className="icon-btn bg-[var(--color-canvas)]" onClick={onClose} aria-label="Fermer">
             <X size={22} strokeWidth={2.6} />
@@ -277,23 +309,45 @@ export function ChatSheet({ npc, simGender, onSay, onClose, friend, taken, grown
                 <p className="mb-2 rounded-2xl bg-[#fff0f4] p-3 text-sm font-bold text-[var(--color-ink-soft)]">Faites d’abord connaissance : échangez vos numéros (Proposer), et causez souvent.</p>
               )}
               {g.id === 'coeur' && friend?.partner && <p className="mb-2 text-center text-sm font-extrabold text-[#e0245e]">❤ Vous êtes ensemble{friend.home ? ' · vous vivez ensemble' : ''}</p>}
+              {/* The languages the player speaks, chosen here or in the profile */}
+              {g.id === 'saluer' && picking && (
+                <div className="mb-2 rounded-2xl bg-[var(--color-canvas)] p-3">
+                  <p className="mb-2 text-sm font-extrabold">Tu parles quelles langues, à part le français ?</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {LANGUAGES.map((l) => (
+                      <button key={l.id} className={`rounded-full px-3 py-1.5 text-sm font-extrabold ${picked.includes(l.id) ? 'bg-[var(--color-orange)] text-white' : 'bg-white text-[var(--color-ink-soft)]'}`} onClick={() => setPicked((p) => (p.includes(l.id) ? p.filter((x) => x !== l.id) : p.length < 6 ? [...p, l.id] : p))}>
+                        {l.label}
+                      </button>
+                    ))}
+                  </div>
+                  <button className="btn mt-2 w-full !py-2" onClick={() => void onLanguages?.(picked).then(() => setPicking(false))}>
+                    C’est noté
+                  </button>
+                </div>
+              )}
+              {g.id === 'saluer' && languages.length > 0 && !picking && (
+                <button className="mb-2 text-xs font-extrabold text-[var(--color-ink-soft)] underline" onClick={() => setPicking(true)}>
+                  Mes langues
+                </button>
+              )}
               <ul className={`grid gap-1.5 ${g.id === 'coeur' && !adultAccount ? 'hidden' : ''}`}>
                 {g.topics.map((t) => (
-                  <li key={t.id}>
-                    <button className="tile flex w-full items-center gap-3 p-2.5 text-left disabled:opacity-50" disabled={busy} onClick={() => say(t.id, t.label)}>
+                  <li key={t.id + (t.lang ?? '')}>
+                    <button className="tile flex w-full items-center gap-3 p-2.5 text-left disabled:opacity-50" disabled={busy} onClick={() => pick(t)}>
                       <IconTile icon={t.icon} colors={g.colors} size={38} />
                       <span className="min-w-0 flex-1">
                         <span className="block font-display text-[15px] leading-tight font-extrabold">{t.label}</span>
-                        <span className="text-xs font-bold text-[var(--color-ink-soft)]">{used.includes(t.id) ? 'Déjà dit : ça risque de lasser' : t.hint}</span>
+                        <span className="text-xs font-bold text-[var(--color-ink-soft)]">{used.includes(t.id) && t.id !== 'langue' ? 'Déjà dit : ça risque de lasser' : t.hint}</span>
                       </span>
-                      {used.includes(t.id) && <Check size={18} strokeWidth={3} className="shrink-0 text-[var(--color-emerald)]" />}
+                      {used.includes(t.id) && t.id !== 'langue' && <Check size={18} strokeWidth={3} className="shrink-0 text-[var(--color-emerald)]" />}
                     </button>
                   </li>
                 ))}
               </ul>
             </div>
-            <button className="mt-3 w-full rounded-2xl bg-[var(--color-canvas)] py-2.5 text-sm font-extrabold text-[var(--color-ink-soft)]" onClick={onClose}>
-              Au revoir, {npc.name}
+            {/* Taking leave ends the chat there and then, in a language you share if you have one */}
+            <button className="mt-3 w-full rounded-2xl bg-[var(--color-canvas)] py-2.5 text-sm font-extrabold text-[var(--color-ink-soft)]" onClick={onBye ?? onClose}>
+              {goodbyeIn(shared, npc.name)}
             </button>
           </>
         )}

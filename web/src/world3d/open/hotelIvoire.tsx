@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
-import { Human, NoShadows, type Pose } from '../../avatar/Human'
+import { NoShadows, type Pose } from '../../avatar/Human'
+import { TalkHuman } from '../Talkable'
 import { randomLook } from '../../avatar/options'
 import { rng } from '../themes'
 import { Vehicle } from '../vehicles'
@@ -400,7 +401,7 @@ export function HotelIvoire({ night }: { night: boolean }) {
       <NoShadows>
         {people.map((g, i) => (
           <group key={i} position={g.p} rotation={g.lie ? [-Math.PI / 2, 0, g.ry] : [0, g.ry, 0]}>
-            <Human look={g.look} gender={g.gender} pose={g.pose} seed={g.seed} />
+            <TalkHuman id={`hotelIvoire:403:${Math.round((g.seed) * 1000)}`} look={g.look} gender={g.gender} pose={g.pose} seed={g.seed} />
           </group>
         ))}
       </NoShadows>

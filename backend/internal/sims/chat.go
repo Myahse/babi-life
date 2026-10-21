@@ -58,6 +58,8 @@ var chatTopics = []chatTopic{
 		"« Eh fiscalité ! C'est comment ? Ça va un peu ? »",
 		"« On est là ou bien ? Rien ne va, mais tout va ! »",
 	}},
+	// A greeting in one of the player's languages (game/languages.go): what they say comes from the phone, the answer from the passer-by's languages.
+	{id: "langue", label: "Saluer dans sa langue", icon: "hand", minutes: 3, ages: game.KidsUp, effect: game.Needs{Social: 3}},
 	{id: "dioula", label: "Saluer en dioula", icon: "hand", minutes: 3, ages: game.KidsUp, effect: game.Needs{Social: 8, Fun: 4}, yes: []string{
 		"« I ni sɔgɔma ! » — « Nba ! Hɛrɛ sira wa ? » — « Hɛrɛ dɔrɔn ! » {name} rigole : « Toi tu parles bien dèh ! »",
 		"« I ni ce ! » — « Nse ! I ka kɛnɛ wa ? » — « Tɔɔrɔ si tɛ ! » Vous vous serrez la main en riant.",
@@ -404,6 +406,11 @@ type chatAnswer struct {
 // conversation (what's been said is remembered: twice the same thing, and
 // they notice; after a while, they have to go).
 func (s *Sim) chat(p Passerby, topicID, said string, adult bool, rng *rand.Rand) (chatAnswer, error) {
+	return s.chatIn(p, topicID, said, "", adult, rng)
+}
+
+// chatIn is chat, with the language a greeting is said in (topic « langue »).
+func (s *Sim) chatIn(p Passerby, topicID, said, lang string, adult bool, rng *rand.Rand) (chatAnswer, error) {
 	i := slices.IndexFunc(chatTopics, func(t chatTopic) bool { return t.id == topicID })
 	if i < 0 {
 		return chatAnswer{}, errUnknownTopic
@@ -467,6 +474,12 @@ func (s *Sim) chat(p Passerby, topicID, said string, adult bool, rng *rand.Rand)
 	switch {
 	case isRomance:
 		ans = romantic
+	case t.id == "langue" && it.ID != "chat-again":
+		a, effect, err := s.greetIn(lang, p, rng)
+		if err != nil {
+			return chatAnswer{}, err
+		}
+		ans, it.Effect = a, effect
 	case it.ID == "chat-again":
 		ans = chatAnswer{Text: say(chatAgain, p, s, rng), Mood: "bad"}
 	case t.id == "numero":
@@ -539,6 +552,7 @@ func (h *Handler) chatHandler(w http.ResponseWriter, r *http.Request) {
 		With  Passerby `json:"with"`
 		Topic string   `json:"topic"`
 		Said  string   `json:"said"`
+		Lang  string   `json:"lang"`
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
@@ -552,7 +566,7 @@ func (h *Handler) chatHandler(w http.ResponseWriter, r *http.Request) {
 		before := s.findFriend("p-" + req.With.ID)
 		wasPartner := before != nil && before.Partner
 		rng := newRand()
-		ans, err := s.chat(req.With, req.Topic, req.Said, adult, rng)
+		ans, err := s.chatIn(req.With, req.Topic, req.Said, req.Lang, adult, rng)
 		if err != nil {
 			return game.Outcome{}, nil, err
 		}

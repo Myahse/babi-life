@@ -65,8 +65,8 @@ func newSimPtr() *Sim { s := newSim(); return &s }
 func TestEveryChatTopic(t *testing.T) {
 	p := Passerby{ID: "x2", Name: "Koffi", Gender: "homme", Seed: 5}
 	for _, topic := range chatTopics {
-		if romantic(topic.id) {
-			continue // TestRomance
+		if romantic(topic.id) || topic.id == "langue" {
+			continue // TestRomance, TestGreetIn
 		}
 		if len(topic.yes) == 0 && topic.id != "numero" {
 			t.Errorf("%s has nothing to answer", topic.id)
@@ -195,5 +195,41 @@ func TestChatAside(t *testing.T) {
 	// Someone else there: a new aside.
 	if _, err := s.chat(Passerby{ID: "in-yop-maquis-5", Name: "Awa", Gender: "femme"}, "salut", "", true, rand.New(rand.NewPCG(1, 2))); err != nil || len(s.Activity.Said) != 1 {
 		t.Errorf("someone else: %v %+v", err, s.Activity)
+	}
+}
+
+// A greeting in one of the player's languages: answered in it by those who speak it, else in French.
+func TestGreetIn(t *testing.T) {
+	s := newSim()
+	s.Gender = "femme"
+	s.GameMinutes = 9 * 60 // a Monday, at 9
+	rng := rand.New(rand.NewPCG(1, 2))
+	baoule := Passerby{ID: "b1", Name: "Yao", Gender: "homme", Seed: 0} // npcMother[0]: baoulé
+	if _, err := s.chatIn(baoule, "langue", "Nja anyin o !", "baoule", true, rng); err != errNotSpoken {
+		t.Fatalf("not spoken: %v", err)
+	}
+	s.Languages = []string{"baoule", "dioula"}
+	ans, err := s.chatIn(baoule, "langue", "Nja anyin o !", "baoule", true, rng)
+	if err != nil || ans.Mood != "good" || !strings.Contains(ans.Text, "Yoo, mmo arɛ o") {
+		t.Fatalf("baoulé: %+v %v", ans, err)
+	}
+	s.Activity = nil
+	dioula := Passerby{ID: "d1", Name: "Moussa", Gender: "homme", Seed: 5} // npcMother[5]: dioula
+	ans, err = s.chatIn(dioula, "langue", "Nja anyin o !", "baoule", true, rng)
+	if err != nil || ans.Mood != "" || !strings.Contains(ans.Text, "le dioula") {
+		t.Fatalf("not shared: %+v %v", ans, err)
+	}
+	for _, l := range game.Languages {
+		for _, femme := range []bool{false, true} {
+			line, _ := game.GreetReply(l.ID, 20, femme, !femme)
+			if strings.Contains(say([]string{line}, baoule, &s, rng), "{") {
+				t.Fatalf("%s: unfilled %q", l.ID, line)
+			}
+		}
+	}
+	for seed := 0; seed < 400; seed++ {
+		if langs := game.NpcLanguages(seed); game.LanguageLabel(langs[0]) == "" {
+			t.Fatalf("seed %d: %v", seed, langs)
+		}
 	}
 }
