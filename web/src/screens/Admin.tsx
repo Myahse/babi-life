@@ -914,7 +914,7 @@ function Campaign({ c, onChange }: { c: Status; onChange: (change: Partial<Pick<
 
 /* ---------- Signalements ---------- */
 
-type Report = { id: number; reporter: string; reporterName: string; reported: string; reportedName: string; messageId?: number; storyId?: number; postId?: number; grinId?: number; excerpt: string; reason: string; at: string }
+type Report = { id: number; reporter: string; reporterName: string; reported: string; reportedName: string; messageId?: number; storyId?: number; postId?: number; grinId?: number; gramPostId?: number; gramCommentId?: number; excerpt: string; reason: string; at: string }
 
 function Reports({ k }: { k: string }) {
   const [list, setList] = useState<Report[] | null>(null)
@@ -930,23 +930,23 @@ function Reports({ k }: { k: string }) {
   }
   return (
     <div className="space-y-4">
-      <p className="text-sm text-[#6b7280]">Ce que les joueurs ont signalé dans Gbairai, les stories et Tikitoko. Celui qui signale a déjà bloqué l'autre. « Supprimer » retire le contenu pour tout le monde ; « Classer » ferme le signalement.</p>
+      <p className="text-sm text-[#6b7280]">Ce que les joueurs ont signalé dans Gbairai, les stories, Tikitoko et Babigram. Celui qui signale a déjà bloqué l'autre. « Supprimer » retire le contenu pour tout le monde ; « Classer » ferme le signalement.</p>
       <Err e={e} />
       {list?.length === 0 && <Card>Rien à traiter.</Card>}
       {list?.map((r) => (
         <Card key={r.id}>
           <div className="grid gap-4 md:grid-cols-[200px_1fr]">
             <div className="overflow-hidden rounded-md bg-[#111827]">
-              {r.storyId || r.postId ? <AdminPhoto k={k} query={r.storyId ? `story=${r.storyId}` : `post=${r.postId}`} /> : <p className="p-4 text-sm whitespace-pre-wrap text-white">« {r.excerpt || '(pas de texte)'} »</p>}
+              {r.storyId || r.postId || (r.gramPostId && !r.gramCommentId) ? <AdminPhoto k={k} query={r.storyId ? `story=${r.storyId}` : r.postId ? `post=${r.postId}` : `gram=${r.gramPostId}`} /> : <p className="p-4 text-sm whitespace-pre-wrap text-white">« {r.excerpt || '(pas de texte)'} »</p>}
             </div>
             <div className="space-y-2 text-sm">
               <span className="inline-block rounded bg-[#fee2e2] px-2 py-0.5 text-xs font-semibold text-[#b91c1c]">{r.reason}</span>
               <p>
-                {r.storyId ? 'Story' : r.postId ? 'Vidéo Tikitoko' : r.grinId ? 'Message du grin' : r.messageId ? 'Message Gbairai' : 'Personne'} de <b>{r.reportedName}</b>, signalé par {r.reporterName} · <span className="text-[#6b7280]">{when(r.at)}</span>
+                {r.storyId ? 'Story' : r.postId ? 'Vidéo Tikitoko' : r.gramCommentId ? 'Commentaire Babigram' : r.gramPostId ? 'Photo Babigram' : r.grinId ? 'Message du grin' : r.messageId ? 'Message Gbairai' : 'Personne'} de <b>{r.reportedName}</b>, signalé par {r.reporterName} · <span className="text-[#6b7280]">{when(r.at)}</span>
               </p>
-              {(r.storyId || r.postId) && r.excerpt && <p className="text-[#374151]">Légende : « {r.excerpt} »</p>}
+              {(r.storyId || r.postId || (r.gramPostId && !r.gramCommentId)) && r.excerpt && <p className="text-[#374151]">Légende : « {r.excerpt} »</p>}
               <div className="flex gap-2 pt-1">
-                {(r.messageId || r.storyId || r.postId || r.grinId) && (
+                {(r.messageId || r.storyId || r.postId || r.grinId || r.gramPostId) && (
                   <Btn tone="red" onClick={() => void resolve(r, true)}>
                     Supprimer
                   </Btn>

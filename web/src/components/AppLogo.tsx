@@ -31,11 +31,27 @@ function TikiNote({ size }: { size: number }) {
   )
 }
 
+/** Babigram's mark: a little print, tilted, with the sun going down on the lagoon, and the shutter's dot. */
+function GramPrint({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden>
+      <g transform="rotate(-8 24 24)">
+        <rect x="9" y="8" width="30" height="33" rx="4" fill="#fff" />
+        <rect x="12.5" y="11.5" width="23" height="20" rx="2" fill="#ffb347" />
+        <circle cx="24" cy="24" r="5" fill="#fff4c2" />
+        <path d="M12.5 25.5q3-2 5.75 0t5.75 0 5.75 0 5.75 0V29.5a2 2 0 0 1-2 2h-19a2 2 0 0 1-2-2z" fill="#0f9d8a" />
+        <circle cx="33.5" cy="36" r="1.8" fill="#0f9d8a" />
+      </g>
+    </svg>
+  )
+}
+
 const LOOK: Record<string, { bg: string; fg: string; mark: (s: number) => React.ReactNode }> = {
   waye: { bg: 'linear-gradient(160deg,#5fd3ff,#1aa6e6)', fg: '#fff', mark: (s) => <Penguin size={s} /> },
   golvo: { bg: 'linear-gradient(160deg,#ffd45c,#ffb703)', fg: '#0b6e4f', mark: (s) => <Bike size={s} strokeWidth={2.4} /> },
   gnango: { bg: 'linear-gradient(160deg,#2b2f45,#141416)', fg: '#ffd166', mark: (s) => <Car size={s} strokeWidth={2.4} /> },
   idrive: { bg: 'linear-gradient(160deg,#d7ff4f,#a6e10f)', fg: '#141416', mark: (s) => <HandCoins size={s} strokeWidth={2.4} /> },
+  babigram: { bg: 'linear-gradient(160deg,#2ec4b6,#0f9d8a 55%,#14532d)', fg: '#0f9d8a', mark: (s) => <GramPrint size={s} /> },
   tikitoko: { bg: 'linear-gradient(160deg,#23232d,#101015)', fg: '#ff7a00', mark: (s) => <TikiNote size={s} /> },
   bet225: { bg: 'linear-gradient(160deg,#17291f,#0e1a14)', fg: '#22c55e', mark: (s) => <span style={{ fontSize: s * 0.42, fontWeight: 900, letterSpacing: -1 }}>225</span> },
   parisfoot: { bg: 'linear-gradient(160deg,#a78bfa,#6d28d9)', fg: '#fff', mark: (s) => <Trophy size={s} strokeWidth={2.4} /> },
@@ -49,7 +65,7 @@ export function AppLogo({ id, size = 60, radius = 18 }: { id: string; size?: num
   const l = LOOK[id] ?? LOOK.store
   return (
     <span className="relative inline-grid shrink-0 place-items-center shadow-[0_6px_14px_-6px_rgba(0,0,0,0.35)]" style={{ width: size, height: size, borderRadius: radius, background: l.bg, color: l.fg }}>
-      {l.mark(Math.round(size * (id === 'waye' || id === 'tikitoko' ? 0.78 : 0.5)))}
+      {l.mark(Math.round(size * (id === 'waye' || id === 'tikitoko' || id === 'babigram' ? 0.78 : 0.5)))}
     </span>
   )
 }

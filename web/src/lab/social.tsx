@@ -8,6 +8,7 @@ import type { Sim, World } from '../lib/types'
 import { GbairaiApp } from '../screens/GbairaiApp'
 import { TikitokoApp } from '../screens/TikitokoApp'
 import { BetApp } from '../screens/BetApp'
+import { BabigramApp } from '../screens/BabigramApp'
 import { StreetStall } from '../world3d/open/stalls'
 import { Snapper } from '../world3d/snapshot'
 import { RideFlow } from '../components/RideFlow'
@@ -60,6 +61,8 @@ function Lab() {
       <div className="relative m-4 flex w-[380px] flex-col overflow-hidden rounded-[36px] bg-white">
         <div className="flex-1 overflow-y-auto px-3 pt-3 pb-6">{sim ? app === 'bet225' || app === 'parisfoot' ? <BetApp sim={sim} act={async (_l, _i, _k, call) => (await call(), true)} app={app} /> : app === 'tikitoko' ? <TikitokoApp sim={sim} act={async (_l, _i, _k, call) => (await call(), true)} onClose={() => history.back()} /> : <GbairaiApp world={world} sim={sim} /> : 'Chargement…'}</div>
       </div>
+      {/* ?app=babigram: full screen over the lab, the 3D still behind it for « Photo du jeu ». */}
+      {sim && app === 'babigram' && <BabigramApp sim={sim} act={async (_l, _i, _k, call) => (await call(), true)} stories onClose={() => history.back()} />}
     </div>
   )
 }

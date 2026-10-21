@@ -3,12 +3,13 @@ import { Camera, ChevronLeft, CircleDashed, Download, Trash2 } from 'lucide-reac
 import { api } from '../lib/api'
 import type { Photo, Sim } from '../lib/types'
 import { usePhotoSrc } from './CameraView'
+import { keepPicture } from './BabigramArt'
 
 // The phone's gallery: the photos and selfies taken with its camera, newest
-// first. One opens big; from there it goes on Tikitoko, to the player's own
+// first. One opens big; from there it goes on Tikitoko or Babigram, to the player's own
 // device, or away.
 
-export function GalleryApp({ sim, onCamera, onTiki, story }: { sim: Sim; onCamera: () => void; /** Post it on Tikitoko (null: the app isn't installed). */ onTiki: ((p: Photo, src: string) => void) | null; /** Stories (Gbairai) can be posted to. */ story: boolean }) {
+export function GalleryApp({ sim, onCamera, onTiki, onGram = null, story }: { sim: Sim; onCamera: () => void; /** Post it on Tikitoko (null: the app isn't installed). */ onTiki: ((p: Photo, src: string) => void) | null; /** Post it on Babigram (null: the app isn't installed). */ onGram?: ((p: Photo, src: string) => void) | null; /** Stories (Gbairai) can be posted to. */ story: boolean }) {
   const [photos, setPhotos] = useState<Photo[] | null>(null)
   const [open, setOpen] = useState<Photo | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -16,7 +17,7 @@ export function GalleryApp({ sim, onCamera, onTiki, story }: { sim: Sim; onCamer
     void api.photos(sim.id).then((r) => setPhotos(r.photos)).catch((e) => setError(e instanceof Error ? e.message : 'La galerie ne répond pas'))
   }, [sim.id])
 
-  if (open) return <Viewer photo={open} onBack={() => setOpen(null)} onTiki={onTiki} onStory={story ? (caption) => api.storyFromGallery(sim.id, open.id, caption).then(() => undefined) : null} onDelete={async () => {
+  if (open) return <Viewer photo={open} onBack={() => setOpen(null)} onTiki={onTiki} onGram={onGram} onStory={story ? (caption) => api.storyFromGallery(sim.id, open.id, caption).then(() => undefined) : null} onDelete={async () => {
     await api.deletePhoto(sim.id, open.id).catch(() => undefined)
     setPhotos((l) => l?.filter((p) => p.id !== open.id) ?? null)
     setOpen(null)
@@ -50,7 +51,7 @@ function Thumb({ photo, onClick }: { photo: Photo; onClick: () => void }) {
   )
 }
 
-function Viewer({ photo, onBack, onTiki, onStory, onDelete }: { photo: Photo; onBack: () => void; onTiki: ((p: Photo, src: string) => void) | null; onStory: ((caption: string) => Promise<void>) | null; onDelete: () => void }) {
+function Viewer({ photo, onBack, onTiki, onGram, onStory, onDelete }: { photo: Photo; onBack: () => void; onTiki: ((p: Photo, src: string) => void) | null; onGram: ((p: Photo, src: string) => void) | null; onStory: ((caption: string) => Promise<void>) | null; onDelete: () => void }) {
   const src = usePhotoSrc(photo)
   // In one's story (24 hours, seen by one's friends): a caption, then « Partager ».
   const [caption, setCaption] = useState('')
@@ -84,9 +85,13 @@ function Viewer({ photo, onBack, onTiki, onStory, onDelete }: { photo: Photo; on
         </div>
       )}
       {story !== 'idle' && story !== 'busy' && story !== 'done' && <p className="text-xs font-bold text-[var(--color-rose)]">{story}</p>}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-4 gap-2">
         <button className="btn !px-2 !text-sm disabled:opacity-40" disabled={!onTiki || !src} onClick={() => src && onTiki?.(photo, src)} title={onTiki ? '' : 'Installe Tikitoko depuis le Store'}>
           Tikitoko
+        </button>
+        {/* The picture is copied first: its object URL goes with this screen. */}
+        <button className="btn !px-2 !text-sm disabled:opacity-40" disabled={!onGram || !src} onClick={() => src && void keepPicture(src).then((kept) => onGram?.(photo, kept))} title={onGram ? '' : 'Installe Babigram depuis le Store'}>
+          Babigram
         </button>
         <a className={`btn btn-soft !px-2 !text-sm ${src ? '' : 'pointer-events-none opacity-40'}`} href={src ?? undefined} download={`babi-${photo.id}.jpg`} target="_blank" rel="noreferrer">
           <Download size={16} />

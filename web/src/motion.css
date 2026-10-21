@@ -170,6 +170,36 @@
   70% { transform: translateY(1px) rotate(4deg); }
 }
 
+/* Babigram: a photo fading in once painted or loaded */
+.motion-gram-in {
+  animation: motion-gram-in 0.4s var(--ease-out) both;
+}
+@keyframes motion-gram-in {
+  from { opacity: 0; filter: blur(6px); }
+}
+
+/* Babigram: the big heart of a double tap, in the middle of the photo */
+.motion-gram-heart {
+  animation: motion-gram-heart 0.9s var(--ease-spring) forwards;
+}
+@keyframes motion-gram-heart {
+  0% { transform: scale(0); opacity: 0; }
+  15% { transform: scale(1.2); opacity: 1; }
+  30% { transform: scale(0.95); }
+  45%, 75% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(0.6) translateY(-30px); opacity: 0; }
+}
+
+/* Babigram: the little heart (or the bookmark) taking its colour */
+.motion-gram-like {
+  animation: motion-gram-like 0.45s var(--ease-spring);
+}
+@keyframes motion-gram-like {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.35); }
+  70% { transform: scale(0.9); }
+}
+
 /* Screens: a soft cross-fade with a little rise */
 ::view-transition-old(root) {
   animation: motion-vt-out 0.22s ease-out both;

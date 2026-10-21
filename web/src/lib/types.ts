@@ -124,6 +124,13 @@ export type TikiProfile = { author: Author; handle: string; tier: string; follow
 /** A photo of the phone's gallery: in the bucket (url), or from the API with the token (path). */
 export type Photo = { id: number; url?: string; path?: string; kind: 'photo' | 'selfie'; place: string; at: string }
 export type TikiMe = { fans: number; players: number; posts: number; views: number; tier: string; next: number; dealFrom: number; themes: { id: string; label: string }[] }
+/** Babigram: an account is a player's (author) or one of the game's (npc, its look drawn from its handle). */
+export type GramAccount = { id: string; author?: Author; npc?: boolean; name: string; gender: 'femme' | 'homme'; handle: string }
+/** A photo in a feed: a player's (photo: its API path) or the game's (painted by the app from scene and seed). */
+export type GramPost = { id: number; account: GramAccount; followed: boolean; mine: boolean; photo?: string; scene?: string; seed?: number; ratio: 'carre' | 'portrait'; filter?: string; caption: string; place: string; likes: number; liked: boolean; likedBy?: string; comments: number; saved: boolean; shares: number; at: string }
+export type GramProfile = { account: GramAccount; bio: string; posts: number; fans: number; following: number; followed: boolean; mine: boolean; left?: number }
+export type GramFound = { account: GramAccount; bio: string; fans: number; followed: boolean }
+export type GramActivity = { kind: 'like' | 'comment' | 'follow' | 'audience' | 'audience-comments' | 'fans'; who?: GramAccount; others?: number; post?: number; photo?: string; text?: string; at: string }
 export type FriendAction = { id: string; label: string; icon: string; minutes: number; cost: number; friendship: number; phone?: boolean }
 /** A stage of life, from an age in years. */
 export type LifeStage = { id: 'bebe' | 'enfant' | 'ado' | 'adulte'; label: string; from: number; scale: number }
