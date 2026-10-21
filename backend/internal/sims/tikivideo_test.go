@@ -111,3 +111,15 @@ func TestInterleave(t *testing.T) {
 		t.Error("one side empty")
 	}
 }
+
+func TestNPCCaptionNamesItsPlace(t *testing.T) {
+	if got := namedPlace("Le Plateau au lever du soleil ☀️", tikiNPCPlaces["vlog"]); got != "Le Plateau" {
+		t.Fatalf("got %q", got)
+	}
+	if got := namedPlace("Footing sur la corniche à 6 h 💪", tikiNPCPlaces["sport"]); got != "Corniche" {
+		t.Fatalf("got %q", got)
+	}
+	if got := namedPlace("Je vous fais visiter mon quartier", tikiNPCPlaces["vlog"]); got != "" {
+		t.Fatalf("got %q", got)
+	}
+}
