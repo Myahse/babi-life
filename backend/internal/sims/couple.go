@@ -142,30 +142,38 @@ func (h *Handler) couple(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// markCouples: on the friends list, who the Sim is together with, and the couple requests either way.
-func (h *Handler) markCouples(ctx context.Context, me string, friends []Player) {
-	if len(friends) == 0 {
-		return
-	}
-	with := inCouple(ctx, h.DB, me)
-	state := map[string]string{}
-	rows, err := h.DB.Query(ctx, `SELECT from_sim, to_sim FROM couple_requests WHERE from_sim = $1 OR to_sim = $1`, me)
-	if err == nil {
+// couples: who the Sim is together with, and the couple requests either way
+// (queued on a batch, then marked on the lists of players).
+type couples struct {
+	with  string
+	state map[string]string
+}
+
+func (c *couples) queue(b *pgx.Batch, me string) {
+	c.state = map[string]string{}
+	b.Queue(`SELECT CASE WHEN sim_a = $1::uuid THEN sim_b ELSE sim_a END FROM bonds WHERE (sim_a = $1::uuid OR sim_b = $1::uuid) AND couple LIMIT 1`, me).QueryRow(func(row pgx.Row) error {
+		_ = row.Scan(&c.with) // no row: single
+		return nil
+	})
+	b.Queue(`SELECT from_sim, to_sim FROM couple_requests WHERE from_sim = $1 OR to_sim = $1`, me).Query(func(rows pgx.Rows) error {
 		for rows.Next() {
 			var from, to string
 			if rows.Scan(&from, &to) == nil {
 				if from == me {
-					state[to] = "sent"
+					c.state[to] = "sent"
 				} else {
-					state[from] = "received"
+					c.state[from] = "received"
 				}
 			}
 		}
-		rows.Close()
-	}
-	for i := range friends {
-		friends[i].Couple = friends[i].ID == with
-		friends[i].CoupleRequest = state[friends[i].ID]
+		return nil
+	})
+}
+
+func (c couples) mark(list []Player) {
+	for i := range list {
+		list[i].Couple = list[i].ID == c.with
+		list[i].CoupleRequest = c.state[list[i].ID]
 	}
 }
 
