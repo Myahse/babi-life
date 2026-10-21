@@ -6,7 +6,7 @@ import { Community, Share } from '../components/WaitlistShare'
 import { Consent } from '../components/Consent'
 import { InstallButton } from '../components/InstallButton'
 import { Discover, Trailer } from '../components/Discover'
-import { firebaseConfigured, googleCancelled, signInWithGoogle } from '../lib/google'
+import { firebaseConfigured, googleBlocked, googleCancelled, googleRedirectResult, preloadGoogle, signInWithGoogle } from '../lib/google'
 
 // The wish list: before the game opens, people leave a first name and an
 // e-mail or a WhatsApp number to hear when it does. /liste is the landing
@@ -70,6 +70,17 @@ export function Waitlist({ form = false }: { form?: boolean }) {
     void send({ firstName: first, contact })
   }
 
+  // Firebase ready before the tap (Safari opens Google's window only straight from it); back from Google (the
+  // home-screen app's way, the boxes were ticked before going), the sign-up sent.
+  useEffect(() => {
+    if (!firebaseConfigured) return
+    preloadGoogle()
+    googleRedirectResult().then(
+      (account) => account && (setFirst(account.firstName), setContact(account.email), void send({ firstName: account.firstName, contact: account.email, idToken: account.token })),
+      () => setError('Connexion Google impossible'),
+    )
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   async function google() {
     setError(null)
     if (!terms || !privacy) {
@@ -83,6 +94,7 @@ export function Waitlist({ form = false }: { form?: boolean }) {
       await send({ firstName: account.firstName, contact: account.email, idToken: account.token })
     } catch (err) {
       if (googleCancelled(err)) setError('Connexion Google annulée')
+      else if (googleBlocked(err)) setError('Le navigateur a bloqué la fenêtre Google : touche encore le bouton')
       else setError('Connexion Google impossible')
     }
   }
