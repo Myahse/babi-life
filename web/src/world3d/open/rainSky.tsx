@@ -6,9 +6,10 @@ import { worldTime } from '../../lib/worldClock'
 import type { XZ } from './geo'
 
 // The downpour over the commune (the « pluie » happening): the rain where the
-// Sim is, wherever it walks, and the clouds it falls from, a low ceiling of
-// dark blocks drifting with the wind over the whole quarter, seen from
-// afar. Now and then, lightning.
+// Sim is, wherever it walks, and the clouds it falls from, soft grey banks
+// drifting with the wind over the whole quarter, at the height of the sky's
+// own clouds (greyed meanwhile, sky.tsx): one ceiling, not two layers. Now
+// and then, lightning.
 
 const DROPS = 1600
 const DROP_BOX = 70 // metres each way round the Sim
@@ -18,7 +19,7 @@ const CLOUD_SPREAD = 900 // metres each way: the commune
 const WIND: XZ = [3.2, 1.4] // m/s
 
 const dropGeo = new THREE.BoxGeometry(0.035, 1.1, 0.035)
-const cloudGeo = new THREE.BoxGeometry(1, 1, 1)
+const cloudGeo = new THREE.SphereGeometry(1, 16, 12)
 
 export function RainSky({ focus, night }: { focus: React.RefObject<XZ>; night: boolean }) {
   const drops = useRef<THREE.InstancedMesh>(null)
@@ -35,13 +36,16 @@ export function RainSky({ focus, night }: { focus: React.RefObject<XZ>; night: b
     for (let c = 0; c < CLOUDS; c++) {
       const cx = (r() * 2 - 1) * CLOUD_SPREAD
       const cz = (r() * 2 - 1) * CLOUD_SPREAD
-      const cy = 55 + r() * 25
-      const n = 3 + Math.floor(r() * 4)
-      for (let k = 0; k < n; k++) out.push({ x: cx + (r() - 0.5) * 70, z: cz + (r() - 0.5) * 50, y: cy + (r() - 0.3) * 8, w: 40 + r() * 70, h: 8 + r() * 10, d: 30 + r() * 50 })
+      const cy = 380 + r() * 200
+      const n = 4 + Math.floor(r() * 3)
+      for (let k = 0; k < n; k++) {
+        const size = 70 + r() * 70
+        out.push({ x: cx + (r() - 0.5) * 120, z: cz + (r() - 0.5) * 70, y: cy + (r() - 0.35) * 20, w: size, h: size * 0.42, d: size * 0.7 })
+      }
     }
     return out
   }, [])
-  const cloudMat = useMemo(() => new THREE.MeshLambertMaterial({ color: night ? '#3a3f4f' : '#7d8794', transparent: true, opacity: 0.94 }), [night])
+  const cloudMat = useMemo(() => new THREE.MeshBasicMaterial({ color: night ? '#3a3f4f' : '#8d97a3', transparent: true, opacity: 0.95, fog: false, depthWrite: false }), [night])
   const dropMat = useMemo(() => new THREE.MeshBasicMaterial({ color: '#cfe8ff', transparent: true, opacity: 0.5 }), [])
   const m = useMemo(() => new THREE.Matrix4(), [])
   const q = useMemo(() => new THREE.Quaternion(), [])

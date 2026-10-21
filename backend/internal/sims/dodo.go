@@ -163,7 +163,7 @@ func (h *Handler) dodoBook(w http.ResponseWriter, r *http.Request) {
 			return game.Outcome{}, nil, fmt.Errorf("tu as déjà %s %s : libère-la d'abord", stayName(st), untilLabel(st.Until))
 		}
 		var l game.DodoListing
-		var listing int64
+		var listing, lot int64
 		switch {
 		case strings.HasPrefix(req.Listing, "g:"):
 			parts := strings.Split(req.Listing, ":")
@@ -177,14 +177,14 @@ func (h *Handler) dodoBook(w http.ResponseWriter, r *http.Request) {
 			}
 		case strings.HasPrefix(req.Listing, "p:"):
 			listing, _ = strconv.ParseInt(strings.TrimPrefix(req.Listing, "p:"), 10, 64)
-			err := tx.QueryRow(ctx, `SELECT d.title, d.night, d.sim_id, s.first_name, p.lot_city, p.lot_commune,
+			err := tx.QueryRow(ctx, `SELECT d.title, d.night, d.sim_id, s.first_name, p.lot_city, p.lot_commune, d.plot_id,
 				EXISTS (SELECT 1 FROM sims g WHERE g.stay->>'kind' = 'dodo' AND (g.stay->>'listing')::bigint = d.id AND (g.stay->>'until')::bigint > $2)
 				FROM dodo_listings d JOIN plots p ON p.id = d.plot_id JOIN sims s ON s.id = d.sim_id WHERE d.id = $1 FOR UPDATE OF d`, listing, s.GameMinutes).
-				Scan(&l.Title, &l.Night, &l.HostSim, &l.Host, &l.City, &l.Commune, &l.Full)
+				Scan(&l.Title, &l.Night, &l.HostSim, &l.Host, &l.City, &l.Commune, &lot, &l.Full)
 			if err != nil {
 				return game.Outcome{}, nil, errNoListing
 			}
-			l.ID = req.Listing
+			l.ID, l.Type = req.Listing, "maison"
 		}
 		switch {
 		case l.ID == "":
@@ -199,7 +199,7 @@ func (h *Handler) dodoBook(w http.ResponseWriter, r *http.Request) {
 			return game.Outcome{}, nil, game.ErrNotEnoughMoney
 		}
 		s.Money -= price
-		s.Stay = &Stay{Kind: "dodo", Place: StayPlaceID, Name: l.Title, Room: l.ID, City: l.City, Commune: l.Commune, From: s.GameMinutes, Until: s.GameMinutes + length.Minutes, Paid: price, Listing: listing, Host: l.HostSim}
+		s.Stay = &Stay{Kind: "dodo", Place: StayPlaceID, Name: l.Title, Room: l.ID, City: l.City, Commune: l.Commune, From: s.GameMinutes, Until: s.GameMinutes + length.Minutes, Paid: price, Listing: listing, Host: l.HostSim, Type: l.Type, Lot: lot, Seed: l.Seed}
 		where := inCommune(communeName(l.City, l.Commune))
 		if l.HostSim != "" {
 			// The host is paid, Dodo keeps its share.

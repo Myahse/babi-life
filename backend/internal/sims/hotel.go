@@ -51,6 +51,9 @@ type Stay struct {
 	// Dodo: the listing, and the player who lets it (when it's a player's house).
 	Listing int64  `json:"listing,omitempty"`
 	Host    string `json:"host,omitempty"`
+	// Lot: a player's house let on Dodo (its plot, drawn as it is built); Seed: a game home's (its plan).
+	Lot  int64 `json:"lot,omitempty"`
+	Seed int   `json:"seed,omitempty"`
 }
 
 // stay: the Sim's stay while it lasts (nil once it's over).
