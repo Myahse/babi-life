@@ -63,13 +63,13 @@ func main() {
 	if site := os.Getenv("SITE_URL"); site != "" {
 		authH.SiteURL = site
 	}
-	// « Mot de passe oublié »: e-mails over SMTP (package mail), when it's set up.
+	// « Mot de passe oublié »: e-mails through Brevo's API or SMTP (package mail), when it's set up.
 	if m := mail.FromEnv(); m != nil {
 		authH.Mail = m
 	} else if cfg.DevLogin {
 		authH.Mail = mail.Log{}
 	} else {
-		log.Printf("⚠️  SMTP not set (SMTP_HOST, MAIL_FROM): « mot de passe oublié » is off")
+		log.Printf("⚠️  e-mail not set (MAIL_FROM with BREVO_API_KEY or SMTP_HOST): « mot de passe oublié » is off")
 	}
 	if cfg.GoogleClientID != "" {
 		authH.Verifier = auth.NewGoogleVerifier(cfg.GoogleClientID)
