@@ -289,6 +289,8 @@ export type Activity = {
   /** An outing (backend sims/outing.go): the friends met in the game who came along (Friend ids). */
   with?: string[]
   trip?: { fromCity: string; fromCommune: string; city: string; commune: string; mode: TripMode; class?: string; fare: number; label: string; incident?: string; path?: [number, number][]; bridges?: string[]; party?: number }
+  /** A film seen with a Kinéo ticket: which, the screen, the seats. */
+  seance?: { film: string; salle: number; seats: string[]; vip?: boolean }
 }
 
 export type JournalEvent = {
@@ -336,3 +338,11 @@ export type HotelView = { hotel: HotelInfo; name: string; types: RoomType[]; len
 export type DodoListing = { id: string; title: string; type: string; typeName: string; host: string; hostSim?: string; city: string; commune: string; night: number; rating: number; reviews: number; guests: number; has: string[]; seed: number; full: boolean; mine?: boolean }
 export type DodoMine = { id: number; lot: number; title: string; night: number; stays: number; earned: number; city: string; commune: string; busy: boolean }
 export type DodoView = { listings: DodoListing[]; stay: Stay | null; mine: DodoMine[]; lettable: Plot[]; lengths: StayLength[]; fee: number; studio: number; adult: boolean }
+
+/** Kinéo, the game's cinemas (backend game/cinema.go, sims/cinema.go). */
+export type CinemaFilm = { id: string; title: string; genre: string; minutes: number; rating: string; tagline: string; colors: [string, string] }
+export type CinemaSalle = { n: number; rows: number; cols: number; aisles: number[]; vip?: boolean; price: number; name: string }
+export type CinemaSession = { film: string; salle: number; at: number; price: number; vip?: boolean; left: number }
+export type CinemaProgram = { cinema: { id: string; name: string; salles: CinemaSalle[] }; day: number; today: number; now: number; films: CinemaFilm[]; sessions: CinemaSession[] }
+export type CinemaSeats = { salle: CinemaSalle; session: Omit<CinemaSession, 'left'>; film: CinemaFilm; taken: string[] }
+export type CinemaTicket = { id: number; cinema: string; cinemaName: string; salle: number; salleName: string; film: string; title: string; at: number; seats: string[]; price: number; code: string; used: boolean; vip?: boolean }

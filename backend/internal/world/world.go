@@ -138,6 +138,10 @@ const (
 	srcMosqueeM62      = "https://fr.hespress.com/361344-en-images-la-mosquee-mohammed-vi-un-chef-doeuvre-architectural-au-coeur-dabidjan.html"
 	srcPyramide2       = "https://structurae.net/en/structures/la-pyramide"
 	srcBoulay          = "https://en.wikipedia.org/wiki/%C3%8Ele_Boulay"
+	srcCinemas2024     = "https://connectionivoirienne.net/2024/06/24/les-abidjanais-redecouvrent-les-plaisirs-des-salles-de-cinema/"
+	srcPatheAbj        = "https://www.aip.ci/cote-divoire-aip-le-groupe-pathe-souvre-aux-cinephiles-abidjanais/"
+	srcCapSudOSM       = "https://www.openstreetmap.org/way/331986589"
+	srcSococeOSM       = "https://www.openstreetmap.org/way/329764129"
 	srcParcExpo        = "https://www.fratmat.info/article/230674/economie/inauguration-du-parc-des-expositions-un-reve-dhouphouet-boigny-depuis-1985-qui-se-realise"
 	srcParcExpo2       = "https://news.abidjan.net/articles/717535/parc-dexposition-dabidjan-un-edifice-devenementiels-dote-dequipements-de-pointe"
 	srcParcExpoOSM     = "https://www.openstreetmap.org/way/1026355392"
@@ -258,8 +262,11 @@ var Cities = []City{
 					Source: game.Verified("Transformé en établissement public hospitalier national en 2022.", srcCHUStatus)},
 				Place{ID: "cocody-chu-angre", Name: "CHU d'Angré", Kind: "health", Quarter: "Angré", Lat: 5.3900, Lng: -3.9850, Real: true, Approx: true, Operator: "Établissement public hospitalier national",
 					Source: game.Partial("4e CHU d'Abidjan, 250 lits ; quartier d'Angré (Cocody) à confirmer par une source officielle.", srcCHUAngre, srcCHUStatus)},
-				Place{ID: "cocody-sococe", Name: "Sococé", Kind: "mall", Quarter: "Deux-Plateaux", Lat: 5.3605, Lng: -3.9985, Real: true, Approx: true,
-					Source: game.Partial("Centre commercial sur le boulevard Latrille, aux Deux-Plateaux (repère d'annuaires) ; position placée d'après l'adresse, à relever.", srcSococe, srcSococePharma)},
+				Place{ID: "cocody-sococe", Name: "Sococé", Kind: "mall", Quarter: "Deux-Plateaux", Lat: 5.37286, Lng: -3.99925, Real: true,
+					Source: game.Partial("Centre commercial des Deux-Plateaux, près du boulevard Latrille (repère d'annuaires) ; position d'après OpenStreetMap.", srcSococe, srcSococePharma, srcSococeOSM)},
+				// Its cinema, of the game's chain (game/cinema.go): one screen of 180 seats, like the real one.
+				Place{ID: "cocody-kineo", Name: "Kinéo Sococé", Kind: "cinema", Quarter: "Deux-Plateaux", Lat: 5.37252, Lng: -3.99895, Real: true, Approx: true,
+					Source: game.Partial("Nom du jeu pour la salle de cinéma du centre commercial Sococé (180 places), aux Deux-Plateaux ; placée au bord du centre, à relever.", srcCinemas2024, srcSococeOSM)},
 				Place{ID: "cocody-playce", Name: "PlaYce Palmeraie", Kind: "mall", Quarter: "Riviera Palmeraie", Lat: 5.3668, Lng: -3.9560, Real: true, Approx: true,
 					Operator: "CFAO (CFAO Consumer Retail)",
 					Source:   game.Verified("Centre commercial ouvert le 29 juin 2017 à Cocody-Riviera Palmeraie (Génie 2000) : 29 000 m², Carrefour Market, 24 enseignes ; exploité par CFAO. Position placée d'après l'adresse, à relever.", srcPlayceToyota, srcPlayceFA, srcCFAORetail)},
@@ -349,6 +356,11 @@ var Cities = []City{
 				Place{ID: "marcory-bietry", Name: "Maquis de Biétry", Kind: "maquis", Quarter: "Biétry", Lat: 5.2860, Lng: -3.9770, Approx: true, Source: invented},
 				Place{ID: "marcory-anoumabo", Name: "Village d'Anoumabo", Kind: "culture", Quarter: "Anoumabo", Lat: 5.2980, Lng: -3.9750, Real: true, Approx: true,
 					Source: game.Partial("Lieu du FEMUA (festival fondé en 2008 par A'Salfo, de Magic System).", game.SrcFEMUA)},
+				Place{ID: "marcory-capsud", Name: "Cap Sud", Kind: "mall", Quarter: "Zone 4", Lat: 5.29827, Lng: -3.98677, Real: true,
+					Source: game.Partial("Centre commercial Cap Sud, au bord du boulevard VGE à Marcory ; position d'après OpenStreetMap.", srcCapSudOSM)},
+				// The multiplex at Cap Sud, of the game's chain (game/cinema.go): six screens, two of them VIP.
+				Place{ID: "marcory-kineo", Name: "Kinéo Cap Sud", Kind: "cinema", Quarter: "Zone 4", Lat: 5.29790, Lng: -3.98640, Real: true, Approx: true,
+					Source: game.Partial("Nom du jeu pour le multiplexe ouvert en avril 2024 au centre commercial Cap Sud (six salles dont deux VIP, environ 1 000 fauteuils) ; placé au bord du centre, à relever.", srcCinemas2024, srcPatheAbj, srcCapSudOSM)},
 				Place{ID: "marcory-playce", Name: "PlaYce Marcory", Kind: "mall", Lat: 5.2965, Lng: -3.9880, Real: true, Approx: true, Operator: "CFAO",
 					Source: game.Partial("Centre commercial CFAO de Marcory (cité en 2015) ; position placée dans la commune, à relever.", srcBurgerKing)},
 				Place{ID: "marcory-burger-king", Name: "Babi Burger", Kind: "restaurant", Lat: 5.2972, Lng: -3.9874, Real: true, Approx: true,

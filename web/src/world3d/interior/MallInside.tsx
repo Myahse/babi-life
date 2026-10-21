@@ -100,17 +100,20 @@ function tiles() {
   return t
 }
 
-export function MallInside({ sim, name, interactionId, roam, night, stage }: { sim: Sim; /** The centre's name, over the doors. */ name: string; interactionId?: string; /** Just come in: walk about (tap the floor, or the keys). */ roam?: boolean; night: boolean; stage: string }) {
+/** What a centre is made of when it isn't the default: its supermarket's name, its shops, its cinema in the gallery (a Kinéo, game/cinema.go). */
+export type MallLayout = { market?: string; back?: string[]; front?: string[]; kineo?: boolean }
+
+export function MallInside({ sim, name, interactionId, roam, night, stage, layout }: { sim: Sim; /** The centre's name, over the doors. */ name: string; interactionId?: string; /** Just come in: walk about (tap the floor, or the keys). */ roam?: boolean; night: boolean; stage: string; layout?: MallLayout }) {
   const spot = interactionId ? (SPOTS[interactionId] ?? null) : null
   const { way, tap, onMoved } = useBigWalk(spot, interactionId, roam, free, ENTRANCE)
   const floor = useMemo(() => tiles(), [])
   const signs = useMemo(
     () => ({
       mall: sign(name.toUpperCase(), '#1f2a44', '#ffffff', 1024, 160),
-      market: sign('BABI MARKET', '#c8102e', '#ffffff', 1024, 160),
+      market: sign(layout?.market ?? 'BABI MARKET', '#c8102e', '#ffffff', 1024, 160),
       food: sign('FOOD COURT', '#ff8200', '#ffffff', 512, 128),
     }),
-    [name],
+    [name, layout?.market],
   )
   return (
     <div className="absolute inset-0">
@@ -124,7 +127,7 @@ export function MallInside({ sim, name, interactionId, roam, night, stage }: { s
           <pointLight position={[-24, 8, -6]} intensity={night ? 60 : 20} distance={40} color="#ffffff" />
           <Building floor={floor} night={night} signs={signs} />
           <Supermarket night={night} />
-          <Shops night={night} />
+          <Shops night={night} layout={layout} />
           <Atrium />
           <Outside night={night} />
           <People />
@@ -251,13 +254,16 @@ function Supermarket({ night }: { night: boolean }) {
 
 const SHOP_COLORS = { back: ['#f3e0e3', '#e8e8e8', '#e3eef7', '#e6f4ea', '#ece6f3'], front: ['#f3ebe0', '#fbe4ee', '#fbe9dc', '#e0f3f1'] }
 
-function Shops({ night }: { night: boolean }) {
+/** The front row's shop that is the cinema, when the centre has one. */
+const KINEO_AT = 2
+
+function Shops({ night, layout }: { night: boolean; layout?: MallLayout }) {
   const signs = useMemo(
     () => ({
-      back: ['MODE WAX', 'BABI SNEAKERS', 'PHONE 225', 'PHARMACIE DU MALL', 'BIJOUX D’ÉBÈNE'].map((t, i) => sign(t, ['#7a1f2b', '#111111', '#1f5f8b', '#0f7a3a', '#3d2b5a'][i], '#ffffff', 512, 96)),
-      front: ['LIBRAIRIE', 'BEAUTÉ & CO', 'BURGER 225', 'GLACIER COCO'].map((t, i) => sign(t, ['#5a3a1a', '#d6336c', '#b5432c', '#2a9d8f'][i], '#ffffff', 512, 96)),
+      back: (layout?.back ?? ['MODE WAX', 'BABI SNEAKERS', 'PHONE 225', 'PHARMACIE DU MALL', 'BIJOUX D’ÉBÈNE']).map((t, i) => sign(t, ['#7a1f2b', '#111111', '#1f5f8b', '#0f7a3a', '#3d2b5a'][i], '#ffffff', 512, 96)),
+      front: (layout?.front ?? ['LIBRAIRIE', 'BEAUTÉ & CO', 'BURGER 225', 'GLACIER COCO']).map((t, i) => (layout?.kineo && i === KINEO_AT ? sign('KINÉO', '#c8102e', '#ffffff', 512, 96) : sign(t, ['#5a3a1a', '#d6336c', '#b5432c', '#2a9d8f'][i], '#ffffff', 512, 96))),
     }),
-    [],
+    [layout],
   )
   const parts = useMemo(() => {
     const walls: Block[] = []
@@ -268,7 +274,15 @@ function Shops({ night }: { night: boolean }) {
       const back = z0 < 0 ? z0 : z1
       row.forEach((x, i) => {
         walls.push({ p: [x - SHOP_W / 2, 2, (z0 + z1) / 2], s: [0.3, 4, z1 - z0], c: '#f3f1ec' }, { p: [x + SHOP_W / 2, 2, (z0 + z1) / 2], s: [0.3, 4, z1 - z0], c: '#f3f1ec' })
-        walls.push({ p: [x, 2, back], s: [SHOP_W, 4, 0.3], c: SHOP_COLORS[k][i] })
+        const cinema = layout?.kineo && k === 'front' && i === KINEO_AT
+        walls.push({ p: [x, 2, back], s: [SHOP_W, 4, 0.3], c: cinema ? '#7a1020' : SHOP_COLORS[k][i] })
+        if (cinema) {
+          // The cinema: this week's posters in its windows, the doors to the screens at the back, no counter of goods.
+          for (const dx of [-SHOP_W / 2 + 1, SHOP_W / 2 - 1]) inside.push({ p: [x + dx, 1.3, front + 0.12], s: [1.4, 1.9, 0.05], c: dx < 0 ? '#ff7a00' : '#d6336c' })
+          inside.push({ p: [x, 1.2, back - 0.2], s: [2.4, 2.4, 0.1], c: '#2b2230' })
+          walls.push({ p: [x, 3.4, front], s: [SHOP_W, 1.2, 0.3], c: '#2b2f3a' })
+          return
+        }
         // The shop window either side of the door; the band over the front.
         walls.push({ p: [x - SHOP_W / 2 + 1, 1.2, front], s: [2, 2.4, 0.1], c: '#cfe8f2' }, { p: [x + SHOP_W / 2 - 1, 1.2, front], s: [2, 2.4, 0.1], c: '#cfe8f2' })
         walls.push({ p: [x, 3.4, front], s: [SHOP_W, 1.2, 0.3], c: '#2b2f3a' })
@@ -282,7 +296,7 @@ function Shops({ night }: { night: boolean }) {
       })
     }
     return { walls, inside }
-  }, [])
+  }, [layout])
   return (
     <group>
       <Blocks at={parts.walls} material={mat('#ffffff')} color />

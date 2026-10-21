@@ -57,6 +57,9 @@ var PhoneApps = []PhoneApp{
 	{ID: "dodo", Name: "Dodo", Tagline: "Des chez-soi à louer, à la nuit", Category: "Voyage", SizeMB: 61,
 		About:  "Loue un studio, un appartement ou une villa pour quelques nuits, dans toutes les communes et toutes les villes, et réserve d'où tu es. Tu as une maison de plus ? Mets-la en location : les voyageurs te paient la nuit (Dodo garde 10 %).",
 		Source: &game.Source{Status: game.StatusFictional, Checked: game.Checked, Note: "Appli du jeu sur le modèle des plateformes de location entre particuliers. Les logements du jeu, leurs hôtes et leurs prix sont des règles du jeu."}},
+	{ID: "kineo", Name: "Kinéo", Tagline: "Ton film, ta place", Category: "Loisirs", SizeMB: 57,
+		About:  "Les films à l'affiche de Kinéo Cap Sud (six salles dont deux VIP) et de Kinéo Sococé : les séances de la semaine, ta place sur le plan de la salle, le billet dans ton téléphone. Le jour J, montre-le à l'entrée.",
+		Source: &game.Source{Status: game.StatusFictional, Checked: game.Checked, Note: "Appli et chaîne de cinémas du jeu, sur le modèle des applis des exploitants de salles d'Abidjan (programme, choix des places, billet électronique). Les films, les séances et les prix sont des règles du jeu."}},
 }
 
 func FindPhoneApp(id string) (PhoneApp, bool) {
