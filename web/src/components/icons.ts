@@ -1,7 +1,7 @@
 import {
   Crown,
   Milk, Soup, Bath, NotebookPen, Egg, Beef,
-  Banana, Banknote, Car, CloudRain, IdCard, Shield, Umbrella, ZapOff, Beer, Bed, BedDouble, BedSingle, Castle, ChefHat, DoorOpen, Gem, HandCoins, Newspaper, Sofa, Briefcase, Building2, Bus, Camera, Coffee, CookingPot, Disc3, Drumstick, Fish, Sandwich, Ticket,
+  Banana, Banknote, Martini, KeyRound, Car, CloudRain, IdCard, Shield, Umbrella, ZapOff, Beer, Bed, BedDouble, BedSingle, Castle, ChefHat, DoorOpen, Gem, HandCoins, Newspaper, Sofa, Briefcase, Building2, Bus, Camera, Coffee, CookingPot, Disc3, Drumstick, Fish, Sandwich, Ticket,
   Flame, Footprints, HandHeart, Heart, Hourglass, House, LandPlot, Landmark, MessagesSquare, Moon, Mountain, Music, Palette,
   PartyPopper, PiggyBank, ShoppingBasket, ShowerHead, Smartphone, Sparkles, Store, Sunset, TreePalm, Trophy, Tv, Users,
   Volleyball, Waves, Baby, Bird, BookOpen, BrushCleaning, Cake, CarTaxiFront, Drama, Drum, FileText, Flag, Flower2, Gift, GraduationCap, Hammer,
@@ -20,6 +20,7 @@ const REGISTRY: Record<string, LucideIcon> = {
   hourglass: Hourglass, house: House, 'land-plot': LandPlot, landmark: Landmark, 'messages-square': MessagesSquare, moon: Moon,
   mountain: Mountain, music: Music, palette: Palette, 'party-popper': PartyPopper, 'piggy-bank': PiggyBank,
   'shopping-basket': ShoppingBasket, 'shower-head': ShowerHead, smartphone: Smartphone, store: Store, sunset: Sunset,
+  martini: Martini, 'key-round': KeyRound,
   'tree-palm': TreePalm, trophy: Trophy, tv: Tv, users: Users, 'user-plus': UserPlus, volleyball: Volleyball, waves: Waves,
   'bed-single': BedSingle, castle: Castle, 'chef-hat': ChefHat, 'door-open': DoorOpen, gem: Gem, 'hand-coins': HandCoins,
   newspaper: Newspaper, sofa: Sofa,

@@ -1,6 +1,6 @@
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BadgeCheck, BookOpen, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, BookOpen, KeyRound, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World, Ride, Place, Plot } from '../lib/types'
 import { useWorld } from '../store/world'
@@ -12,6 +12,7 @@ import { WorldMap } from './WorldMap'
 import { Joystick, RunButton, WalkKeys } from '../components/Joystick'
 import { cameraTurn } from '../world3d/input'
 import { whereabouts } from '../world3d/whereabouts'
+import { isRoomAct, openLift } from '../world3d/hotelLift'
 import { OrbitGizmo } from '../components/OrbitGizmo'
 import { FirstSteps } from '../components/FirstSteps'
 import { TravelCTA, type OnTravel } from '../components/TravelCTA'
@@ -65,6 +66,7 @@ const KartRace = lazy(() => import('../kart/KartRace'))
 const MallInside = lazy(() => import('../world3d/interior/MallInside').then((m) => ({ default: m.MallInside })))
 const IvoireInside = lazy(() => import('../world3d/interior/IvoireInside').then((m) => ({ default: m.IvoireInside })))
 const HotelInside = lazy(() => import('../world3d/interior/HotelInside').then((m) => ({ default: m.HotelInside })))
+const HotelStay = lazy(() => import('../world3d/interior/HotelFloors').then((m) => ({ default: m.HotelStay })))
 const StreetMatch = lazy(() => import('../streetball/StreetMatch'))
 
 type Toast = { id: number; title: string; text?: string; money: number; tone: 'random' | 'done' | 'error' | 'promo' | 'event'; kind?: string; icon?: string }
@@ -174,6 +176,11 @@ export function Play() {
     }
   }, [delivery])
   const [phoneApp, setPhoneApp] = useState<PhoneAppId | null>(null)
+  // Development only (tests): /jeu?place=<id> opens a place of the commune where the Sim is, as if walked to.
+  useEffect(() => {
+    const want = import.meta.env.DEV ? new URLSearchParams(location.search).get('place') : null
+    if (want) setPlaceId(want)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   // A notification tapped (/jeu?app=gbairai, ?app=bet225): the phone opens on that app.
   useEffect(() => {
     const q = new URLSearchParams(location.search)
@@ -460,6 +467,7 @@ export function Play() {
   }
 
   // Building one's house on the plot; the houses are fetched again after.
+  const moto = useMoto()
   // Building on one of the Sim's lots (its id; 0: the one lived in, else the first), or not.
   const [building, setBuilding] = useState<number | false>(false)
   // Arrived at one of one's lots (« plot:<key> »): building on that one; someone else's lot has nothing to do.
@@ -557,6 +565,8 @@ export function Play() {
   // Come to the zoo, the hotel's grounds, a known street: the Sim walks round it in the street view.
   const strolling = !!placeId && GROUNDS.has(placeId) && !inside && !doing && sim.city === city.id && sim.commune === commune.id && !classic
   const roaming = visiting || strolling
+  // A long way ahead, a moto-taxi offered: its card takes the place of « En ce moment » (they sat on each other).
+  const motoAsking = !!moto.offer && !moto.paid
   // The music of where the Sim is: the club and the maquis inside, and in
   // the street, the fanfare of a wedding cortège or a concert.
   const happeningId = street?.happening?.id
@@ -615,14 +625,22 @@ export function Play() {
             <Suspense fallback={null}>
               <MallInside sim={sim} name={placeName(inside!.id)} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
             </Suspense>
-          ) : inside!.id === 'cocody-hotel-ivoire' ? (
-            <Suspense fallback={null}>
-              <IvoireInside sim={sim} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
-            </Suspense>
           ) : inside!.kind === 'hotel' ? (
-            // The other hotels: the whole hotel too (lobby, restaurant, bar, pool deck, a room), not one small room.
+            // Every hotel: the whole hotel (lobby, restaurant, bar, pool deck) and, by its lifts, its floors and rooms (HotelFloors).
             <Suspense fallback={null}>
-              <HotelInside sim={sim} placeId={inside!.id} name={placeName(inside!.id)} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
+              <HotelStay world={world} sim={sim} placeId={inside!.id} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} night={c.isNight} interactionId={inside!.it} act={run} onAct={(it) => {
+                const id = inside!.id
+                // As from the place's menu: the menu closes, the room shows what's done in it.
+                setPlaceId(null)
+                setOutside(false)
+                void run(it.label, it.icon, 'home', () => api.interact(sim.id, id, it.id))
+              }}>
+                {inside!.id === 'cocody-hotel-ivoire' ? (
+                  <IvoireInside sim={sim} interactionId={isRoomAct(inside!.it) ? undefined : inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
+                ) : (
+                  <HotelInside sim={sim} placeId={inside!.id} name={placeName(inside!.id)} interactionId={isRoomAct(inside!.it) ? undefined : inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
+                )}
+              </HotelStay>
             </Suspense>
           ) : inside!.kind === 'arena' ? (
             <Arena sim={sim} placeId={inside!.id} interactionId={inside!.it} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id)} />
@@ -843,7 +861,7 @@ export function Play() {
         </button>
       )}
 
-      {street?.happening && !near && !placeId && !pending && !sim.activity && (
+      {street?.happening && !near && !placeId && !pending && !sim.activity && !motoAsking && (
         <button
           className={`animate-pop absolute bottom-[6.5rem] ${padBeside} z-20 flex items-center lg:left-1/2 lg:max-w-md lg:-translate-x-1/2 gap-2 rounded-full bg-[var(--color-gold)] py-1.5 pr-4 pl-1.5 text-left text-[#5a3a00] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.6)] lg:bottom-[7.5rem]`}
           onClick={() => walkTo('happening')}
@@ -1174,7 +1192,9 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
   // A night together: only with one's partner living at home, and a player who said they're 18 or over.
   const partner = sim.friends?.find((f) => f.partner && f.home)
   const adult = !!useSession((s) => s.user?.adult)
-  const items = [...(career ? [shift(career, sim.careerLevel)] : []), ...kind.interactions.map((it) => (placeId === 'home' ? atHome(it, home) : it))]
+  // What's done in a rented room only shows with the room (backend sims/hotel.go): else the lift's « Les chambres ».
+  const roomHere = !!sim.stay && sim.stay.place === placeId && sim.stay.until > sim.gameMinutes
+  const items = [...(career ? [shift(career, sim.careerLevel)] : []), ...kind.interactions.map((it) => (placeId === 'home' ? atHome(it, home) : it))].filter((it) => !it.stay || roomHere)
     .filter((it) => ageBlock(it, life.stage?.id) !== 'Plus de ton âge' && (!it.places || it.places.includes(placeId)) && (!it.gender || it.gender === sim.gender))
     .filter((it) => it.id !== 'passer-nuit' || (partner && adult && !life.minor))
     .map((it) => (it.id === 'passer-nuit' && partner ? { ...it, label: `Passer la nuit avec ${partner.name}` } : it))
@@ -1238,6 +1258,16 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
       </span>
     </button>
   )
+  // A hotel's floors and rooms: up by the lift (world3d/interior/HotelFloors), to visit and rent one.
+  const rooms = place.kind === 'hotel' && here && !life.minor && (
+    <button disabled={busy} onClick={() => (onClose(), openLift())} className={`flex w-full items-center gap-3 rounded-[20px] bg-[#fff6d6] p-2.5 text-left transition active:scale-[0.98] ${busy ? 'opacity-55 grayscale-[0.6]' : ''}`}>
+      <IconTile icon={KeyRound} colors={['#ffd36e', '#e0a100']} size={44} />
+      <span className="min-w-0 flex-1">
+        <span className="block font-display text-[15px] leading-tight font-extrabold">{roomHere ? `Ta chambre ${sim.stay!.room}` : 'Les chambres'}</span>
+        <span className="mt-0.5 block text-xs font-bold text-[var(--color-ink-soft)]">{roomHere ? 'L’ascenseur, ta clé, le room service' : 'L’ascenseur : visite les étages, loue une chambre'}</span>
+      </span>
+    </button>
+  )
   // In one's own house, sleeping takes a bed, cooking a stove, the TV a TV.
   const furnitureBlock = (it: Interaction) => {
     // Swimming: a pool in the house one built, or the villa one rents (game.CanSwimAtHome).
@@ -1258,11 +1288,12 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
             <IconTile icon={iconFor(kind.icon)} colors={colors} size={96} radius={34} />
             <span className="mt-2 rounded-full bg-white px-4 py-1.5 font-display text-lg font-extrabold shadow-lg">{place.name}</span>
           </button>
-          {(build || restyle || billing) && (
+          {(build || restyle || billing || rooms) && (
             <div className="absolute top-full left-1/2 mt-[200px] grid w-64 -translate-x-1/2 gap-2">
               {billing}
               {build}
               {restyle}
+              {rooms}
             </div>
           )}
           {items.map((it, i) => {
@@ -1315,6 +1346,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
             {billing}
             {build}
             {restyle}
+            {rooms}
             {byRoom(items).map(([room, list]) => (
               <Fragment key={room?.id ?? 'any'}>
                 {room && (

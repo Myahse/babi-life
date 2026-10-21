@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, GrinMessage, DirectPost, BetRounds, BetView, GramPost, GramProfile, GramFound, GramActivity } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, GramPost, GramProfile, GramFound, GramActivity } from './types'
 import { useSession } from '../store/session'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
@@ -257,6 +257,15 @@ export const api = {
   /** The lots for sale in a commune (where the Sim is when none is given), and the Sim's own (two at most a commune). */
   lots: (id: string, where?: LotWhere) => request<{ offers: LotOffer[]; lots: Plot[]; fees: number; adult: boolean; perCommune: number; max: number }>(`/sims/${id}/lots${where ? `?city=${encodeURIComponent(where.city)}&commune=${encodeURIComponent(where.commune)}` : ''}`),
   buyLot: (id: string, size: string, where?: LotWhere, upgrade = 0) => post<ActionResult>(`/sims/${id}/lot`, { size, ...where, upgrade }),
+  /** A hotel's floors and prices, one floor's rooms, the Sim's stay; a room rented; the key handed back. */
+  hotel: (id: string, place: string, floor = 0) => request<HotelView>(`/sims/${id}/hotel/${place}${floor ? `?floor=${floor}` : ''}`),
+  bookRoom: (id: string, place: string, room: string, length: string) => post<ActionResult>(`/sims/${id}/hotel/${place}/book`, { room, length }),
+  endStay: (id: string) => post<ActionResult>(`/sims/${id}/stay/end`, {}),
+  /** Dodo: homes by the night in a commune; book one; let one's own house, or not. */
+  dodo: (id: string, where?: LotWhere) => request<DodoView>(`/sims/${id}/dodo${where ? `?city=${encodeURIComponent(where.city)}&commune=${encodeURIComponent(where.commune)}` : ''}`),
+  dodoBook: (id: string, listing: string, length: string) => post<ActionResult>(`/sims/${id}/dodo/book`, { listing, length }),
+  dodoList: (id: string, lot: number, night: number, title = '') => post<ActionResult>(`/sims/${id}/dodo/list`, { lot, night, title }),
+  dodoUnlist: (id: string, lot: number) => post<ActionResult>(`/sims/${id}/dodo/unlist`, { lot }),
   sellLot: (id: string, lot: number) => post<ActionResult>(`/sims/${id}/lot/sell`, { lot }),
   moveIn: (id: string, lot = 0) => post<ActionResult>(`/sims/${id}/plot/movein`, { lot }),
   meet: (id: string, to: string, action: 'saluer' | 'inviter' | 'rejoindre' | 'ajouter') => post<ActionResult>(`/sims/${id}/meet`, { to, action }),

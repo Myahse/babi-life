@@ -61,6 +61,8 @@ export type Interaction = {
   /** Opening days, 0 = lundi … 6 = dimanche; absent = every day. */
   days?: number[]
   requires?: { resident?: boolean; minMoney?: number; anyTrait?: string[]; career?: string }
+  /** Only in a room (or a home) one has rented there. */
+  stay?: boolean
   /** Life stages that can do it; empty = from childhood up. */
   ages?: string[]
   /** Only at these places of the kind (the Hôtel Ivoire's ice rink…). */
@@ -235,6 +237,8 @@ export type Sim = {
   housing: string
   /** The furniture in the house the Sim built (for when it lives there). */
   furnished?: string[]
+  /** A hotel room or a home booked on Dodo, while it lasts (backend sims/hotel.go). */
+  stay?: Stay
   loan: number
   rentArrears: number
   career: string
@@ -304,3 +308,15 @@ export type Happening = { id: string; label: string; icon: string; text: string;
 export type HappeningNow = { happening: Happening | null; start: number; end: number }
 
 export type NewsItem = { id: string; title: string; source: string; link: string; published: string; topic: 'sport' | 'politique' | 'economie' | 'societe' | 'culture' | 'meteo' }
+
+/** A room (or a home) rented away from home, until a game minute (backend sims/hotel.go Stay). */
+export type Stay = { kind: 'hotel' | 'dodo'; place: string; name: string; room?: string; floor?: number; type?: string; city: string; commune: string; from: number; until: number; paid: number; listing?: number; host?: string }
+export type RoomType = { id: string; label: string; hint: string; rate: number }
+export type StayLength = { id: string; label: string; minutes: number; rate: number }
+export type HotelInfo = { place: string; floors: number; roomsPerFloor: number; suitesFrom: number; stars: number; night: number; busy: number }
+export type HotelRoom = { room: string; type: string; taken: boolean; mine: boolean }
+export type HotelView = { hotel: HotelInfo; name: string; types: RoomType[]; lengths: StayLength[]; prices: Record<string, Record<string, number>>; stay: Stay | null; floor?: number; rooms?: HotelRoom[] }
+/** A home on Dodo (backend game/dodo.go): the game's own, or a player's house. */
+export type DodoListing = { id: string; title: string; type: string; typeName: string; host: string; hostSim?: string; city: string; commune: string; night: number; rating: number; reviews: number; guests: number; has: string[]; seed: number; full: boolean; mine?: boolean }
+export type DodoMine = { id: number; lot: number; title: string; night: number; stays: number; earned: number; city: string; commune: string; busy: boolean }
+export type DodoView = { listings: DodoListing[]; stay: Stay | null; mine: DodoMine[]; lettable: Plot[]; lengths: StayLength[]; fee: number; studio: number; adult: boolean }
