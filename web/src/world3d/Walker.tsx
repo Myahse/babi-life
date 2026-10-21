@@ -178,7 +178,9 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     if (mapStation && performance.now() - born.current < 4000) return
     provisional.current = mapStation
     const at = lots.find((l) => l.id === stationAt) ?? lots.find((l) => l.id === HOME_ID)
-    const [x, z] = at?.door ?? nav.start ?? [0, SIDEWALK]
+    // Development only (tests): /jeu?at=x,z starts the Sim there, in the street's metres.
+    const dev = import.meta.env.DEV ? new URLSearchParams(location.search).get('at')?.split(',').map(Number) : undefined
+    const [x, z] = dev?.length === 2 ? (dev as XZ) : (at?.door ?? nav.start ?? [0, SIDEWALK])
     group.current!.position.set(x, 0, z)
     // The camera starts right over the Sim, out in the street, looking at it
     // with the place behind (never from inside the house).

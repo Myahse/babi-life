@@ -11,16 +11,17 @@ import { whereabouts } from '../whereabouts'
 import { hash, type XZ } from './geo'
 import type { Nav } from './nav'
 
-// The nouchis of the couloirs: in some of the narrow alleys between the cours,
-// two or three young guys hang about, leaning on the wall, on the phone,
-// chatting. Most of them come out in the evening and at night; in a few
+// The nouchis of the couloirs: in some of the narrow passages between the
+// cours (a couloir between two houses, or a real alley of the map with walls
+// close on both sides; never out on a street), two or three young guys hang
+// about a few steps in, leaning on the wall, on the phone, chatting. Most of them come out in the evening and at night; in a few
 // couloirs they're there all day. When the Sim walks by close, one comes up:
 // « Grand frère, on dit quoi ? ». The player has a few seconds to tap « Je
 // suis vigilant » (or to run off); otherwise they take what's in the pockets
 // (the API, POST /sims/{id}/robbed, decides how much) and run off down the
-// alley. The same couloirs for everyone; the robbery is the Sim's own.
+// couloir. The same couloirs for everyone; the robbery is the Sim's own.
 
-export type NouchiSpot = { id: string; at: XZ; rot: number; w: number; len: number; seed: number }
+export type NouchiSpot = { id: string; at: XZ; rot: number; w: number; len: number; seed: number; /** where the couloir opens on the street: they watch it from inside */ mouth?: XZ }
 
 const NEAR = 200 // metres: couloirs drawn around the Sim
 const MAX = 3
@@ -31,18 +32,35 @@ const WAIT = 3.5 // seconds to stay vigilant
 /** Out at this hour? In the evening and the night everywhere they hang about; in the daytime, only in some couloirs. */
 const outNow = (s: NouchiSpot, h: number) => h >= 17 || h < 3 || (s.seed < 0.35 && h >= 10)
 
+/** Between two walls here: a building a step off each side, and room to stand in the middle. */
+function walled(nav: Nav, c: XZ, u: XZ, half: number) {
+  const [px, pz] = [-u[1] * (half + 0.7), u[0] * (half + 0.7)]
+  return nav.walkable(c[0], c[1]) && !nav.walkable(c[0] + px, c[1] + pz) && !nav.walkable(c[0] - px, c[1] - pz)
+}
+
 export function StreetNouchis({ nav, seed, onRobbed }: { nav: Nav; seed: string; onRobbed?: (spot: string) => Promise<string | null> }) {
   const all = useMemo(() => {
     const out: NouchiSpot[] = []
+    // The couloirs between the game's houses: those that did end up between two walls, all along their front part.
+    for (const c of nav.couloirs) {
+      const { mouth: m, dir: u } = c
+      if (hash(Math.round(m[0]), Math.round(m[1]), 911) > 0.4) continue
+      if (![1.5, 3.5, 5.5].every((k) => walled(nav, [m[0] + u[0] * k, m[1] + u[1] * k], u, c.w / 2))) continue
+      const at: XZ = [m[0] + u[0] * 2.8, m[1] + u[1] * 2.8]
+      out.push({ id: `nouchi:${seed}:${Math.round(m[0])}:${Math.round(m[1])}`, at, rot: Math.atan2(-u[1], u[0]), w: c.w, len: c.len, seed: hash(m[0], m[1], 13), mouth: m })
+    }
+    // The map's own alleys: a footpath with real buildings close on both sides (a street with houses set back is no couloir).
     for (const e of nav.edges) {
-      // The couloirs: the narrow ways between the cours, not too short.
-      if (e.width > 4.5 || e.len < 15 || e.len > 140 || nav.ys[e.a] || nav.ys[e.b]) continue
+      if (e.width > 2.5 || e.len < 15 || e.len > 140 || nav.ys[e.a] || nav.ys[e.b]) continue
       const [a, b] = [nav.nodes[e.a], nav.nodes[e.b]]
       const m: XZ = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]
-      if (hash(Math.round(m[0]), Math.round(m[1]), 911) > 0.09) continue
-      const [ux, uz] = [(b[0] - a[0]) / e.len, (b[1] - a[1]) / e.len]
-      out.push({ id: `nouchi:${seed}:${Math.round(m[0])}:${Math.round(m[1])}`, at: m, rot: Math.atan2(-uz, ux), w: e.width, len: e.len, seed: hash(m[0], m[1], 13) })
+      if (hash(Math.round(m[0]), Math.round(m[1]), 911) > 0.25) continue
+      const u: XZ = [(b[0] - a[0]) / e.len, (b[1] - a[1]) / e.len]
+      if (![0.3, 0.5, 0.7].every((k) => walled(nav, [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k], u, e.width / 2))) continue
+      out.push({ id: `nouchi:${seed}:${Math.round(m[0])}:${Math.round(m[1])}`, at: m, rot: Math.atan2(-u[1], u[0]), w: e.width, len: e.len, seed: hash(m[0], m[1], 13) })
     }
+    // In development, for tests in the browser.
+    if (import.meta.env.DEV) Object.assign(globalThis, { __nouchis: out, __couloirs: nav.couloirs.length })
     return out
   }, [nav, seed])
   const [shown, setShown] = useState<NouchiSpot[]>([])
@@ -119,12 +137,14 @@ export function NouchiCorner({ spot, onRobbed, close = CLOSE }: { spot: NouchiSp
     s.t += dt
     s.cool = Math.max(0, s.cool - dt)
     const [sx, sz] = whereabouts.sim
-    const d = Math.hypot(home[0][0] - sx, home[0][1] - sz)
+    // In a couloir they watch its opening: who passes by in the street, close to it.
+    const watch = spot.mouth ?? home[0]
+    const d = Math.hypot(watch[0] - sx, watch[1] - sz)
     const p = pos.current
     let target: XZ = home[0]
     let pose: Pose = crew[0].pose
     if (s.phase === 'wait') {
-      if (d < close && s.cool <= 0 && whereabouts.simPose !== 'run') {
+      if (d < close + (spot.mouth ? 2 : 0) && s.cool <= 0 && whereabouts.simPose !== 'run') {
         s.tapped = false
         go('come', COME[Math.floor(spot.seed * 97) % COME.length])
       }
@@ -152,8 +172,9 @@ export function NouchiCorner({ spot, onRobbed, close = CLOSE }: { spot: NouchiSp
       pose = Math.hypot(home[0][0] - p.x, home[0][1] - p.y) > 0.3 ? 'walk' : crew[0].pose
       if (s.t > 5) go('wait', null)
     } else {
-      // Off down the couloir at a run, back a while later.
-      const end: XZ = [spot.at[0] + (spot.len / 2) * cos, spot.at[1] - (spot.len / 2) * sin]
+      // Off down the couloir at a run (to its far end, the back of the cours), back a while later.
+      const run = spot.mouth ? spot.len - 4 : spot.len / 2
+      const end: XZ = [spot.at[0] + run * cos, spot.at[1] - run * sin]
       target = s.t < 6 ? end : home[0]
       pose = s.t < 6 ? 'run' : 'walk'
       if (s.t > 14) go('wait', null)
@@ -173,13 +194,20 @@ export function NouchiCorner({ spot, onRobbed, close = CLOSE }: { spot: NouchiSp
       // Facing where he walks, or the Sim when close.
       if (dist > 0.3) g.rotation.y = Math.atan2(dx, dz)
       else if (s.phase === 'come') g.rotation.y = Math.atan2(sx - p.x, sz - p.y)
-      else g.rotation.y = spot.rot + Math.PI / 2
+      else g.rotation.y = spot.rot + (spot.mouth ? -Math.PI / 2 : Math.PI / 2)
     }
     if (pose !== leadPose) setLeadPose(pose)
   })
 
   return (
     <NoShadows>
+      {/* A bare bulb on the wall over them */}
+      {spot.mouth && (
+        <mesh position={[home[0][0] + (spot.w / 2 - 0.08) * sin, 2.6, home[0][1] + (spot.w / 2 - 0.08) * cos]}>
+          <sphereGeometry args={[0.09, 8, 6]} />
+          <meshBasicMaterial color="#ffe3a0" />
+        </mesh>
+      )}
       {crew.slice(1).map((c, i) => (
         <group key={i} position={[home[i + 1][0], 0, home[i + 1][1]]} rotation={[0, spot.rot + (i % 2 ? -Math.PI / 2 : Math.PI / 2), 0]}>
           <Human look={c.look} gender="homme" pose={phase === 'took' ? 'run' : c.pose} seed={spot.seed * 100 + i} />

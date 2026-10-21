@@ -12,6 +12,9 @@ import { deckWidth } from './bridgeLine'
 // houses but what lines them: supermarkets and malls, showrooms, office
 // blocks, now and then a hotel, set back behind their car park; buildings of
 // two to four storeys with shops below between them.
+// Now and then, on the quarters' streets, a couloir between two houses: a
+// passage two or three metres wide from the street to the back of the cours
+// (the nouchis hang about in some of them, nouchis.tsx).
 // Never on a real building, a road, water, a forest, a park, a pitch, a
 // campus, a hospital's grounds or an airfield (its runways all along). Everything comes from the place alone
 // (hash of the position), so every player sees the same houses.
@@ -111,6 +114,11 @@ export function fillQuarters(chunk: ChunkData, neighbours: XZ[][] = [], keepClea
     return true
   }
   const take = (ring: XZ[]) => fillRing(ring, 0)
+  /** Keeps a narrow strip free: sampled along its own sides (a strip thinner than a cell slips between the grid's points). */
+  const keep = (c: XZ, u: XZ, n: XZ, w: number, d: number) => {
+    for (let a = -w / 2; a <= w / 2; a += CELL / 3) for (let b = -d / 2; b <= d / 2; b += CELL / 3) mark(c[0] + u[0] * a + n[0] * b, c[1] + u[1] * a + n[1] * b)
+  }
+  const couloirs: NonNullable<ChunkData['couloirs']> = (chunk.couloirs = [])
 
   let made = 0
   const add = (c: XZ, u: XZ, n: XZ, w: number, d: number, storeys: number, style?: Building['style'], height = storeys * 3) => {
@@ -133,6 +141,7 @@ export function fillQuarters(chunk: ChunkData, neighbours: XZ[][] = [], keepClea
   for (const r of chunk.roads) {
     const rule = FILL_ROADS[r.cls]
     if (!rule || r.bridge) continue
+    const later: (() => void)[] = []
     for (let i = 1; i < r.pts.length && made < MAX_FILL; i++) {
       const [ax, az] = r.pts[i - 1]
       const [bx, bz] = r.pts[i]
@@ -165,6 +174,26 @@ export function fillQuarters(chunk: ChunkData, neighbours: XZ[][] = [], keepClea
           s += (placed ? w : 9) + 3
           continue
         }
+        // A couloir: a gap of 2.4 to 3 m between the last house's wall and the next one's (the eaves leave the middle open to the
+        // sky), through both rows. Kept free once
+        // the street is done (its houses side by side would find the coarse grid taken); whether it really ends up between two
+        // walls, the street knows when it's drawn (nouchis.tsx).
+        if (rule.second && s > 6 && hash(Math.round(ax + u[0] * s), Math.round(az + u[1] * s), 89) < 0.07) {
+          const g = 2.4 + Math.floor(h * 3) * 0.3
+          const s0 = s - 0.75
+          const p: XZ = [ax + u[0] * (s0 + g / 2), az + u[1] * (s0 + g / 2)]
+          const len = 17
+          const off = r.width / 2 + 2.5
+          for (const side of [-1, 1]) {
+            const n: XZ = [-u[1] * side, u[0] * side]
+            const c: XZ = [p[0] + n[0] * (off + len / 2), p[1] + n[1] * (off + len / 2)]
+            if (cellOf(c[0], c[1]) < 0) continue
+            later.push(() => keep(c, u, n, g - 0.6, len))
+            couloirs.push({ mouth: [p[0] + n[0] * off, p[1] + n[1] * off], dir: n, w: g, len })
+          }
+          s = s0 + g - 0.25
+          continue
+        }
         // A frontage of 6 to 12 m, 7.5 to 10.5 m deep.
         const w = 6 + Math.floor(h * 5) * 1.5
         const p: XZ = [ax + u[0] * (s + w / 2), az + u[1] * (s + w / 2)]
@@ -188,6 +217,7 @@ export function fillQuarters(chunk: ChunkData, neighbours: XZ[][] = [], keepClea
         s += w + 0.5
       }
     }
+    for (const f of later) f()
   }
 }
 

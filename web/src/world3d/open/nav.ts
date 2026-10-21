@@ -1,7 +1,7 @@
 import { bridgeHeights, pointInRing, type XZ } from './geo'
 import { deckTop } from './bridgeNames'
 import { deckWidth, joinedEnds } from './bridgeLine'
-import type { ChunkData } from './tiles'
+import type { ChunkData, Couloir } from './tiles'
 
 // Getting around the open world: a graph of the real streets of the loaded
 // chunks (Sims walk along them to a place, by the shortest way), and what
@@ -18,6 +18,8 @@ export class Nav {
   ys: number[] = []
   adj: { to: number; len: number; width: number }[][] = []
   edges: Edge[] = []
+  /** The couloirs between the game's houses (not all between two walls: see nouchis.tsx). */
+  couloirs: Couloir[] = []
   private nodeGrid = new Map<string, number[]>()
   private edgeGrid = new Map<string, number[]>()
   private blockGrid = new Map<string, XZ[][]>()
@@ -46,6 +48,7 @@ export class Nav {
         }
       }
       for (const a of ch.areas) if (a.kind === 'water') this.water.push(a.rings)
+      if (ch.couloirs) this.couloirs.push(...ch.couloirs)
     }
   }
 
