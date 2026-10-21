@@ -29,7 +29,10 @@ type Place struct {
 	// Closed: a real venue that no longer runs as such (YYYY-MM), kept for the game.
 	Closed string `json:"closed,omitempty"`
 	// Faith: a place of worship's (game.FaithOf): catholique, protestant, evangelique, musulman.
-	Faith  string       `json:"faith,omitempty"`
+	Faith string `json:"faith,omitempty"`
+	// Parent: a place inside another (a club in the Rue Princesse), drawn by it at its Slot.
+	Parent string       `json:"parent,omitempty"`
+	Slot   int          `json:"slot,omitempty"`
 	Source *game.Source `json:"source,omitempty"`
 }
 
@@ -208,6 +211,11 @@ func de(name string) string {
 	return "de " + name
 }
 
+// inRue: a club of the game in the Rue Princesse, at one of its slots (the lane's buildings, from the arch).
+func inRue(id, name string, slot int) Place {
+	return Place{ID: id, Name: name, Kind: "club", Lat: 5.34787, Lng: -4.07777, Quarter: "Selmer", Approx: true, Parent: "yop-rue-princesse", Slot: slot, Source: invented}
+}
+
 func fictional(id, name, kind, quarter string, lat, lng float64) Place {
 	return Place{ID: id, Name: name, Kind: kind, Lat: lat, Lng: lng, Quarter: quarter, Approx: true, Source: invented}
 }
@@ -268,8 +276,12 @@ var Cities = []City{
 					Source: game.Unverified("Université privée fondée en 2004 ; adresse non trouvée : la commune et la position sont à confirmer.", srcIUA)},
 			),
 			withMairie(abidjanCommune("yopougon", "Yopougon", "Yop City, capitale de l'ambiance.", 5.3450, -4.0820, "nord",
-				Place{ID: "yop-rue-princesse", Name: "Rue Princesse", Kind: "club", Lat: 5.34787, Lng: -4.07777, Real: true, Approx: true, Closed: "2011-08",
+				Place{ID: "yop-rue-princesse", Name: "Rue Princesse", Kind: "rue", Lat: 5.34787, Lng: -4.07777, Real: true, Approx: true, Closed: "2011-08",
 					Source: game.Partial("Rue des maquis et boîtes de nuit (« Rue Princesse / Rue P60 » sur OpenStreetMap), rasée en août 2011 pendant l'opération « Pays propre », bitumée en juillet 2026 avant la fête de l'Indépendance à Yopougon. Le jeu garde un lieu d'ambiance à cet endroit ; le tronçon exact des maquis est à confirmer.", game.SrcRuePrincesse2011, srcYopBitume2026, srcOSM)},
+				// The clubs of the street, between its maquis (web/src/world3d/open/ruePrincesse.tsx draws them at their slot).
+				inRue("yop-rp-saphir", "Le Saphir", 3),
+				inRue("yop-rp-225", "Club 225", 4),
+				inRue("yop-rp-nuit", "Nuit de Yop", 7),
 				fictional("yop-terrain", "Terrain de Selmer", "sport", "Selmer", 5.3420, -4.0710),
 				fictional("yop-basket", "Terrain de basket de Niangon", "sport", "Niangon", 5.3380, -4.0900),
 				fictional("yop-cine", "Ciné Princesse", "cinema", "Selmer", 5.3400, -4.0740),

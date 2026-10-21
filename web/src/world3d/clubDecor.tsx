@@ -17,12 +17,15 @@ import { TalkHuman } from './Talkable'
 // dancers on their two podiums by the stage, a woman and a man, dressed for
 // the show, who answer the notes thrown at them (the « Lancer des billets »
 // button: clubBillets.ts). Each club its own: Zone 4 black and gold, the
-// Rue Princesse a street club in the flag's colours with its garlands.
+// Rue Princesse's three each theirs (one in the flag's colours with its garlands).
 
 type Style = { name: string; colors: string[]; bar: string; barTop: string; carpet: string; rope: string; trim: string; bunting: boolean }
 const STYLES: Record<string, Style> = {
   'marcory-zone4': { name: 'ZONE 4', colors: ['#d4af37', '#ff2d95', '#7a5cff', '#ffffff'], bar: '#141217', barTop: '#d4af37', carpet: '#5a0f1a', rope: '#b3122e', trim: '#d4af37', bunting: false },
-  'yop-rue-princesse': { name: 'RUE PRINCESSE', colors: ['#f07a12', '#ffffff', '#0b9a52', '#ffe600'], bar: '#6b3a1e', barTop: '#c9883a', carpet: '#7a3a22', rope: '#f07a12', trim: '#0b9a52', bunting: true },
+  // The clubs of the Rue Princesse: a street club in the flag's colours with its garlands, a sapphire blue, a pink, a violet.
+  'yop-rp-saphir': { name: 'LE SAPHIR', colors: ['#4dabf7', '#ffffff', '#1c7ed6', '#d4af37'], bar: '#0f1a2e', barTop: '#4dabf7', carpet: '#123a6b', rope: '#1c7ed6', trim: '#d4af37', bunting: false },
+  'yop-rp-225': { name: 'CLUB 225', colors: ['#f07a12', '#ffffff', '#0b9a52', '#f783ac'], bar: '#6b3a1e', barTop: '#c9883a', carpet: '#7a3a22', rope: '#f07a12', trim: '#0b9a52', bunting: true },
+  'yop-rp-nuit': { name: 'NUIT DE YOP', colors: ['#b197fc', '#ff2d95', '#ffe600', '#ffffff'], bar: '#1b1530', barTop: '#b197fc', carpet: '#3d1b4a', rope: '#7a5cff', trim: '#ffe600', bunting: false },
 }
 const PLAIN: Style = { name: 'BABI NIGHT', colors: ['#ff2d95', '#2ee6ff', '#ffe600', '#7a5cff'], bar: '#1b1530', barTop: '#2ee6ff', carpet: '#3d1b4a', rope: '#b3122e', trim: '#2ee6ff', bunting: false }
 export const clubStyle = (placeId: string) => STYLES[placeId] ?? PLAIN

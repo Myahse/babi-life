@@ -22,6 +22,8 @@ export type Lot = {
   height?: number
   /** A place of worship's faith: a minaret, a belfry or a cross, and its services. */
   faith?: string
+  /** Inside a landmark that draws it (a club in the Rue Princesse): only its name here. */
+  child?: boolean
   /** A pitch or a court (the open world): the place is played on it. */
   field?: Field
   /** A fuel station drawn with the map (open/station.tsx): only its label here. */

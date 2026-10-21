@@ -21,6 +21,9 @@ export type Place = {
   type?: string
   /** A place of worship's faith (backend game/faith.go). */
   faith?: Faith
+  /** A place inside another (a club in the Rue Princesse), drawn by it at its slot. */
+  parent?: string
+  slot?: number
 }
 export type Faith = 'catholique' | 'protestant' | 'evangelique' | 'musulman' | 'autre'
 export type Commune = {

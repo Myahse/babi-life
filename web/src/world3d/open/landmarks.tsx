@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { Airport } from './airport'
-import { RuePrincesse } from './ruePrincesse'
+import { RuePrincesse, rueSlot } from './ruePrincesse'
 import { GareSiporex, PlaceFicgayo } from './yopougon'
 import { PalaisDesSports } from './treichville'
 import { MarcheAdjame } from './adjame'
@@ -42,6 +42,11 @@ export const LANDMARKS: Record<string, number> = {
   'adjame-forum': 52,
   'cocody-zoo': 86,
   'cocody-blockhauss-maquis': 27,
+}
+
+/** Where a place inside a landmark is (its door on the landmark's ground, which way it faces), in the landmark's frame. */
+export function slotIn(parent: string, slot: number): { door: [number, number]; rot: number } | null {
+  return parent === 'yop-rue-princesse' ? rueSlot(slot) : null
 }
 
 /** The landmarks one walks round freely on arriving (the park, the hotel's grounds, the street, the forecourts), before picking what to do. */
