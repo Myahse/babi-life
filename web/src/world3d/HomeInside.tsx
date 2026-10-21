@@ -466,7 +466,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
  * from their id.
  */
 function Partner({ friend, spots, doing, spot }: { friend: Friend; spots: Record<string, HomeSpot>; doing?: string; spot: HomeSpot | null }) {
-  const look = useMemo(() => randomLook(friend.gender, rng(`partner${friend.id}`)), [friend.id, friend.gender])
+  const look = useMemo(() => friend.look ?? randomLook(friend.gender, rng(`partner${friend.id}`)), [friend.id, friend.gender, friend.look])
   // Beside the Sim on the same piece (the other half of the bed, the sofa), or on the sofa.
   const with_ = doing === 'passer-nuit' || doing === 'watch-tv' ? spot : null
   const at = with_ ?? spots['watch-tv'] ?? spots.sleep

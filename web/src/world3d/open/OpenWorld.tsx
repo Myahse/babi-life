@@ -69,6 +69,7 @@ import { litShare, makeTextures, rippleNormals, windowsByHour } from './textures
 import { FAR_ZOOM, type ChunkData } from './tiles'
 import type { Arrays, ChunkRequest } from './worker'
 import { worldTime } from '../../lib/worldClock'
+import { NPC_NAMES, type Npc } from '../talk'
 
 /** Bloom at night, downloaded only on phones that show it. */
 const NightBloom = lazy(() => import('../effects').then((m) => ({ default: m.NightBloom })))
@@ -1475,12 +1476,7 @@ export function Apprenti({ leg, seed }: { leg: React.RefObject<GbakaLeg>; seed: 
   )
 }
 
-/** Someone in the street you can talk to. */
-export type Npc = { id: string; name: string; gender: 'femme' | 'homme'; seed: number; look: ReturnType<typeof randomLook> }
-const NPC_NAMES = {
-  femme: ['Awa', 'Aya', 'Mariam', 'Adjoua', 'Fatou', 'Akissi', 'Ruth', 'Affoué', 'Grâce', 'Nadège', 'Salimata', 'Ange', 'Tatiana', 'Bintou', 'Prisca', 'Clarisse'],
-  homme: ['Kouadio', 'Yao', 'Moussa', 'Koffi', 'Serge', 'Ibrahim', 'Didier', 'Konan', 'Junior', 'Lassina', 'Arouna', 'Fabrice', 'Brice', 'Seydou', 'Hervé', 'Wilfried'],
-}
+export type { Npc } from '../talk'
 
 const WALK_CELL = 150
 const WALKERS_PER_CELL = 2
@@ -1531,7 +1527,7 @@ function Passersby({ nav, focus, seed, onTalk, talkingTo }: { nav: Nav; focus: R
     const g = refs.current.get(p.id)
     if (!g || !onTalk) return
     if (Math.hypot(g.position.x - whereabouts.sim[0], g.position.z - whereabouts.sim[1]) > 40) return setSaid({ id: p.id, text: 'Approche, on va causer !' })
-    onTalk({ id: p.id, name: p.name, gender: p.gender, seed: Math.floor(p.seed * 1000), look: p.look })
+    onTalk({ id: p.id, name: p.name, gender: p.gender, seed: Math.floor(p.seed * 1000), look: p.look, doing: 'en train de marcher' })
   }
   return (
     <NoShadows>

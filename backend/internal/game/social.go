@@ -1,6 +1,7 @@
 package game
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand/v2"
 )
@@ -25,9 +26,12 @@ type Friend struct {
 	Home    bool  `json:"home,omitempty"`
 	Met     int64 `json:"met"`
 	Seen    int64 `json:"seen"`
+	// Look: met in the street (or a maquis, a club…), the face they had there (sims.Passerby).
+	Look json.RawMessage `json:"look,omitempty"`
 }
 
-const MaxFriends = 12
+// MaxFriends: anyone met can become a friend, in the street, the maquis, the club…
+const MaxFriends = 30
 
 // Social places: doing these, a Sim may meet someone or see a friend again.
 var SocialInteractions = []string{

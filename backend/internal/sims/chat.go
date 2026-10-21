@@ -2,6 +2,7 @@ package sims
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"math/rand/v2"
 	"net/http"
@@ -342,7 +343,13 @@ type Passerby struct {
 	Name   string `json:"name"`
 	Gender string `json:"gender"`
 	Seed   int    `json:"seed"`
+	// Look: their face and clothes as the phone drew them, kept with them once
+	// they're a friend, so they look the same at the Sim's side and at home.
+	Look json.RawMessage `json:"look,omitempty"`
 }
+
+// maxLook: a look is a dozen short fields; anything bigger isn't one.
+const maxLook = 1024
 
 func say(lines []string, p Passerby, sim *Sim, rng *rand.Rand) string {
 	l := lines[rng.IntN(len(lines))]
@@ -390,6 +397,9 @@ func (s *Sim) chat(p Passerby, topicID, said string, adult bool, rng *rand.Rand)
 	if p.Name == "" || len(p.Name) > 30 || len(p.ID) > 60 || len(said) > 60 {
 		return chatAnswer{}, errors.New("personne à qui parler")
 	}
+	if len(p.Look) > maxLook || (len(p.Look) > 0 && !json.Valid(p.Look)) {
+		p.Look = nil
+	}
 	t := chatTopics[i]
 	label := t.label + " avec " + p.Name
 	if said != "" {
@@ -401,7 +411,23 @@ func (s *Sim) chat(p Passerby, topicID, said string, adult bool, rng *rand.Rand)
 	}
 	// Already talking with them: the same conversation goes on.
 	var before []string
-	if a := s.Activity; a != nil && a.Kind == "do" && a.PlaceKind == "chat" && a.PlaceName == p.Name {
+	// Busy at something else (dancing at the maquis, eating, at the club):
+	// one talks with the people around all the same. An aside: what's done
+	// goes on, the exchange counts at once (needs, money, friendship).
+	aside := false
+	if a := s.Activity; a != nil && a.Kind == "do" && a.PlaceKind != "chat" {
+		aside = true
+		if a.ChatWith == p.ID {
+			if len(a.Said) >= chatTurns {
+				return chatAnswer{Text: say(chatBye, p, s, rng), Mood: "bye"}, nil
+			}
+			before = a.Said
+			if slices.Contains(before, t.id) && t.id != "salut" {
+				it.ID, it.Minutes, it.Effect = "chat-again", 2, game.Needs{Social: -1}
+			}
+		}
+	}
+	if a := s.Activity; !aside && a != nil && a.Kind == "do" && a.PlaceKind == "chat" && a.PlaceName == p.Name {
 		if len(a.Said) >= chatTurns {
 			return chatAnswer{Text: say(chatBye, p, s, rng), Mood: "bye"}, nil
 		}
@@ -432,7 +458,7 @@ func (s *Sim) chat(p Passerby, topicID, said string, adult bool, rng *rand.Rand)
 	case t.id == "numero":
 		if friend == nil && len(s.Friends) < game.MaxFriends && rng.Float64() < 0.6+0.03*float64(len(before)) {
 			ans = chatAnswer{Text: say(numYes, p, s, rng), Mood: "good"}
-			s.Friends = append(s.Friends, game.Friend{ID: "p-" + p.ID, Name: p.Name, Gender: p.Gender, Seed: p.Seed, Commune: s.Commune, Friendship: 25 + 2*len(before), Met: s.GameMinutes, Seen: s.GameMinutes, Adult: true})
+			s.Friends = append(s.Friends, game.Friend{ID: "p-" + p.ID, Name: p.Name, Gender: p.Gender, Seed: p.Seed, Commune: s.Commune, Friendship: 25 + 2*len(before), Met: s.GameMinutes, Seen: s.GameMinutes, Adult: true, Look: p.Look})
 			friend = nil
 		} else if friend != nil {
 			ans = chatAnswer{Text: say([]string{"{name} : « Tu as déjà mon numéro, {toi} ! Appelle-moi au lieu de demander encore. »"}, p, s, rng), Mood: "good"}
@@ -460,14 +486,23 @@ func (s *Sim) chat(p Passerby, topicID, said string, adult bool, rng *rand.Rand)
 		ans = chatAnswer{Text: say(t.no, p, s, rng), Mood: "bad"}
 		it.Effect = t.noEffect
 	}
-	if err := s.start(it, "", "chat", p.Name, chatSurprises, ""); err != nil {
-		return chatAnswer{}, err
+	if aside {
+		s.Needs = s.Needs.Add(it.Effect)
+		s.Activity.ChatWith, s.Activity.Said = p.ID, append(slices.Clone(before), t.id)
+	} else {
+		if err := s.start(it, "", "chat", p.Name, chatSurprises, ""); err != nil {
+			return chatAnswer{}, err
+		}
+		s.Activity.Said = append(slices.Clone(before), t.id)
 	}
-	s.Activity.Said = append(slices.Clone(before), t.id)
 	s.Money += ans.Money
 	// A friend: seen today, and closer (or not) for how it went.
 	if friend != nil {
 		friend.Seen = s.GameMinutes
+		// A friend made before looks were kept: from now on, the face they have.
+		if len(friend.Look) == 0 {
+			friend.Look = p.Look
+		}
 		switch ans.Mood {
 		case "good":
 			friend.Friendship = min(100, friend.Friendship+2)

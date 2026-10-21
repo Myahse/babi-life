@@ -779,7 +779,8 @@ function Buddy({ sim, walking, stage }: { sim: Sim; walking: boolean; stage: str
   const name = sim.activity?.kind === 'do' ? sim.activity.placeName : undefined
   const friend = sim.friends?.find((f) => f.name === name)
   const gender = friend?.gender ?? (sim.gender === 'femme' ? 'femme' : 'homme')
-  const look = useMemo(() => randomLook(gender, rng(`partner${friend?.id ?? name ?? 'ami'}`)), [gender, friend?.id, name])
+  // The face they had when met, if the game knows it (world3d/talk.ts); else one of their own.
+  const look = useMemo(() => friend?.look ?? randomLook(gender, rng(`partner${friend?.id ?? name ?? 'ami'}`)), [gender, friend?.id, friend?.look, name])
   return (
     <group position={[0.85, 0, 0.1]}>
       <Character look={look} gender={gender} walking={walking} pose={walking ? undefined : 'talk'} marker={false} moodColor="#3b82f6" stage={stage} speed={1.1} />

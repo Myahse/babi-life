@@ -17,6 +17,8 @@ import { Character } from './Character'
 import { ActionProps, Pot, SewingTable, TvScreen, Zzz } from './interior/ActionProps'
 import { rng } from './themes'
 import { worldTime } from '../lib/worldClock'
+import { Talkable } from './Talkable'
+import { doingOf, nameFor } from './talk'
 import { listenKeys, moveInput } from './input'
 
 /** Soft shade in the corners, downloaded only on phones that show it. */
@@ -962,11 +964,18 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
         <SolidRoom key={`${kind}:${placeId}:${housing}:${open}`} root={furniture} people={open ? people.map((p) => [p.p[0], p.p[2]] as [number, number]) : []} onReady={(f) => setSolid(() => f)} />
         {kind === 'club' && open && <ClubCrowd placeId={placeId} />}
         <NoShadows>
-          {(open ? people : []).map((p, i) => (
-            <group key={i} position={p.p} rotation={p.lying ? [-Math.PI / 2, 0, 0] : [0, p.r ?? 0, 0]}>
-              <Human look={p.look} gender={p.gender} pose={throwing && p.pose === 'dance' && i % 2 ? 'cheer' : p.pose} seed={p.seed} />
-            </group>
-          ))}
+          {(open ? people : []).map((p, i) => {
+            const pose = throwing && p.pose === 'dance' && i % 2 ? 'cheer' : p.pose
+            // Everyone in the room can be talked to: the same person every visit (the place's seed).
+            const npc = { id: `in-${placeId}-${i}`, name: nameFor(p.gender, p.seed * 1000), gender: p.gender, seed: Math.floor(p.seed * 1000), look: p.look, doing: doingOf(pose) }
+            return (
+              <group key={i} position={p.p} rotation={p.lying ? [-Math.PI / 2, 0, 0] : [0, p.r ?? 0, 0]}>
+                <Talkable npc={npc} pose={pose}>
+                  {(shown) => <Human look={p.look} gender={p.gender} pose={shown} seed={p.seed} />}
+                </Talkable>
+              </group>
+            )
+          })}
         </NoShadows>
         {roam && (
           // The floor, to tap where to walk (a drag turns the camera instead).

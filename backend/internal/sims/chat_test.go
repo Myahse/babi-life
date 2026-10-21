@@ -1,6 +1,7 @@
 package sims
 
 import (
+	"encoding/json"
 	"math/rand/v2"
 	"strings"
 	"testing"
@@ -140,5 +141,59 @@ func TestRomance(t *testing.T) {
 	s.Activity = nil
 	if ans, _ := s.chat(p, "sortir", "", true, rand.New(rand.NewPCG(1, 6))); ans.Mood != "bad" {
 		t.Fatal("asked out while already together")
+	}
+}
+
+// Met in a maquis or the street: the friend keeps the face they had there,
+// and a look that isn't one (too big, not JSON) is dropped.
+func TestFriendKeepsLook(t *testing.T) {
+	look := json.RawMessage(`{"skin":"#5a3a22","hair":"short","outfit":"tshirt","outfitColor":"#ff0000"}`)
+	for _, c := range []struct {
+		look json.RawMessage
+		keep bool
+	}{{look, true}, {json.RawMessage(`{"skin":`), false}, {json.RawMessage(`"` + strings.Repeat("a", maxLook) + `"`), false}} {
+		var f *game.Friend
+		for seed := uint64(0); seed < 20 && f == nil; seed++ {
+			s := newSim()
+			if _, err := s.chat(Passerby{ID: "in-maquis-3", Name: "Awa", Gender: "femme", Seed: 3, Look: c.look}, "numero", "", true, rand.New(rand.NewPCG(seed, 9))); err != nil {
+				t.Fatal(err)
+			}
+			f = s.findFriend("p-in-maquis-3")
+		}
+		if f == nil {
+			t.Fatal("no friend made in 20 tries")
+		}
+		if got := string(f.Look) == string(c.look); got != c.keep {
+			t.Errorf("look %.20s… kept %v, want %v", c.look, got, c.keep)
+		}
+	}
+}
+
+// Dancing at the maquis, one talks with the people there all the same: the
+// dance goes on, the conversation is remembered, and after a while they go.
+func TestChatAside(t *testing.T) {
+	s := newSim()
+	if err := s.start(game.Interaction{ID: "dance-coupe-decale", Label: "Danser", Minutes: 60}, "yop-maquis", "maquis", "Maquis de Sideci", nil, ""); err != nil {
+		t.Fatal(err)
+	}
+	p := Passerby{ID: "in-yop-maquis-3", Name: "Ibrahim", Gender: "homme", Seed: 3}
+	if _, err := s.chat(p, "salut", "", true, rand.New(rand.NewPCG(1, 2))); err != nil {
+		t.Fatalf("aside refused: %v", err)
+	}
+	if s.Activity.Interaction.ID != "dance-coupe-decale" || s.Activity.ChatWith != p.ID || len(s.Activity.Said) != 1 {
+		t.Fatalf("the dance should go on, with the aside noted: %+v", s.Activity)
+	}
+	if ans, _ := s.chat(p, "salut", "", true, rand.New(rand.NewPCG(1, 2))); ans.Text == "" || len(s.Activity.Said) != 2 {
+		t.Errorf("chained aside: %+v %+v", ans, s.Activity)
+	}
+	for range chatTurns {
+		s.chat(p, "salut", "", true, rand.New(rand.NewPCG(1, 2)))
+	}
+	if ans, _ := s.chat(p, "salut", "", true, rand.New(rand.NewPCG(1, 2))); ans.Mood != "bye" || s.Activity.Interaction.ID != "dance-coupe-decale" {
+		t.Errorf("never leaves, or stopped the dance: %+v %+v", ans, s.Activity)
+	}
+	// Someone else there: a new aside.
+	if _, err := s.chat(Passerby{ID: "in-yop-maquis-5", Name: "Awa", Gender: "femme"}, "salut", "", true, rand.New(rand.NewPCG(1, 2))); err != nil || len(s.Activity.Said) != 1 {
+		t.Errorf("someone else: %v %+v", err, s.Activity)
 	}
 }

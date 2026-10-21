@@ -62,6 +62,9 @@ type Activity struct {
 	Trip        *Trip         `json:"trip,omitempty"`
 	// Said: in a chat in the street, the topics already raised in this conversation.
 	Said []string `json:"said,omitempty"`
+	// ChatWith: busy with something else (at the maquis, the club, a meal),
+	// talking all the same with someone there: who. Said is then that aside's.
+	ChatWith string `json:"chatWith,omitempty"`
 }
 
 type Trip struct {
