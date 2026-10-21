@@ -142,7 +142,7 @@ function facade(t: ReturnType<typeof floorsTexture>) {
  * back toward the top, about 62 m, around a hollow core. Here every face
  * steps back alike, a simplification of the real plan.
  */
-function Pyramide({ night }: { night: boolean }) {
+export function Pyramide({ night }: { night: boolean }) {
   const concrete = useMemo(() => new THREE.MeshLambertMaterial({ color: '#cfc6b5' }), [])
   const glass = useMemo(() => {
     return facade(floorsTexture('#2d3f52', '#2d3f52', '#b8ad98', 1, 10))

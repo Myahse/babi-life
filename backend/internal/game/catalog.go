@@ -186,6 +186,9 @@ var Kinds = map[string]PlaceKind{
 		Interactions: []Interaction{
 			{ID: "read-ads", Ages: Adults, Label: "Lire les offres d'emploi", Icon: "newspaper", Minutes: 30, Effect: Needs{Fun: -5, Social: 5}},
 			{ID: "coffee-break", Ages: Adults, Label: "Pause café avec les collègues", Icon: "coffee", Minutes: 20, Cost: 300, Effect: Needs{Energy: 10, Social: 15}},
+			// La Pyramide's own: its gallery of shops round the open well, and its roof over the Plateau.
+			{ID: "visiter-pyramide", Label: "Faire le tour de la galerie", Icon: "store", Minutes: 30, Effect: Needs{Fun: 15, Social: 5}, MinHour: 8, MaxHour: 19, Places: []string{PyramideID}},
+			{ID: "terrasse-pyramide", Label: "Monter sur le toit de la Pyramide", Icon: "mountain", Minutes: 40, Cost: 500, Effect: Needs{Fun: 30, Energy: -5}, MinHour: 9, MaxHour: 18, Places: []string{PyramideID}},
 		},
 		Events: []RandomEvent{
 			{Text: "Le patron t'a félicité devant tout le monde. Prime !", Money: 10000, Effect: Needs{Fun: 15}},
@@ -669,6 +672,9 @@ var GenericEvents = []RandomEvent{
 
 // CathedraleID: the Cathédrale Saint-Paul of the Plateau (world/world.go), whose tower is climbed.
 const CathedraleID = "plateau-cathedrale"
+
+// PyramideID: La Pyramide of the Plateau (world/world.go), its gallery and its roof.
+const PyramideID = "plateau-pyramide"
 
 // HotelIvoireID: the Hôtel Ivoire (world/world.go), whose ice rink, cinema and casino are its own.
 const HotelIvoireID = "cocody-hotel-ivoire"
