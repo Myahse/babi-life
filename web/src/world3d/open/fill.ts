@@ -10,7 +10,7 @@ import { deckWidth } from './bridgeLine'
 // one storey under tin (the cours communes), a second row behind on the
 // quiet streets, and on the big roads buildings of two or three storeys.
 // Never on a real building, a road, water, a forest, a park, a pitch, a
-// campus or a hospital's grounds. Everything comes from the place alone
+// campus, a hospital's grounds or an airfield (its runways all along). Everything comes from the place alone
 // (hash of the position), so every player sees the same houses.
 
 /** Occupancy grid: 1.5 m cells, the world's block grid. */
@@ -76,7 +76,18 @@ export function fillQuarters(chunk: ChunkData, neighbours: XZ[][] = [], keepClea
         for (let w = -half; w <= half; w += CELL / 2) mark(ax + ux * s - uz * w, az + uz * s + ux * w)
     }
   }
-  for (const a of chunk.aeroways) for (const p of a.pts) mark(p[0], p[1])
+  // Runways and taxiways all along, with their shoulders (the map has them as lines, two points for a runway).
+  for (const a of chunk.aeroways) {
+    const half = a.cls === 'runway' ? 40 : 18
+    for (let i = 1; i < a.pts.length; i++) {
+      const [ax, az] = a.pts[i - 1]
+      const [bx, bz] = a.pts[i]
+      const len = Math.hypot(bx - ax, bz - az)
+      const [ux, uz] = len ? [(bx - ax) / len, (bz - az) / len] : [1, 0]
+      for (let s = 0; s <= len; s += CELL)
+        for (let w = -half; w <= half; w += CELL) mark(ax + ux * s - uz * w, az + uz * s + ux * w)
+    }
+  }
   // Ground the game builds on itself (a toll plaza): nothing there.
   for (const { at: [cx, cz], r } of keepClear)
     for (let x = cx - r; x <= cx + r; x += CELL)
