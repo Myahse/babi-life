@@ -2,12 +2,12 @@
 import { BadgeCheck, CalendarClock, Hammer, LandPlot, Clock3, Footprints, House, Map as MapIcon, TrendingUp, TriangleAlert } from 'lucide-react'
 import { api, type LotWhere } from '../lib/api'
 import { CommunePicker, LotOffers } from '../components/Lots'
-import type { ActionResult, Commune, Lot, Sim, World } from '../lib/types'
+import type { ActionResult, Commune, Plot, Sim, World } from '../lib/types'
 import { iconFor, kindColors } from '../components/icons'
 import { Chip, Coin, IconTile, Row } from '../components/ui'
 import { DEPOSIT_WEEKS, OWN_HOUSE, actionLength, amount, duration, hours, housingOf, neededToPromote, untilSaturday } from '../game/rules'
 import { useState } from 'react'
-import { aCommune, capital } from '../lib/french'
+import { aCommune } from '../lib/french'
 
 export type Act = (label: string, icon: string, kind: string, call: () => Promise<ActionResult>) => Promise<boolean>
 
@@ -141,7 +141,7 @@ function CareerCard({ world, sim, commune, act, onWalk, onMap }: AppProps & { on
 
 /* ---------- Logement ---------- */
 
-export function HomeApp({ world, sim, commune, act, onBuild, onWalk, onMap }: AppProps & { onBuild?: () => void; onWalk?: (id: string) => void; onMap?: () => void }) {
+export function HomeApp({ world, sim, commune, act, onBuild, onWalk, onMap }: AppProps & { onBuild?: (lot: number) => void; onWalk?: (id: string) => void; onMap?: () => void }) {
   const home = housingOf(world, sim)
   const homeCity = world.cities.find((c) => c.id === sim.homeCity)!
   const homeCommune = homeCity.communes.find((c) => c.id === sim.homeCommune)!
@@ -231,58 +231,86 @@ export function HomeApp({ world, sim, commune, act, onBuild, onWalk, onMap }: Ap
   )
 }
 
-/** Ton terrain: buy a lot (from 18), build on it, move in (sims/plot.go). */
-function MyLot({ world, sim, act, onBuild, onWalk, onMap }: { world: World; sim: Sim; act: Act; onBuild?: () => void; onWalk?: (id: string) => void; onMap?: () => void }) {
-  const [lot, setLot] = useState<Lot | null | undefined>(undefined)
+/** Tes terrains: buy lots (from 18; two at most a commune), build on each, move into one, sell the others (sims/plot.go). */
+function MyLot({ world, sim, act, onBuild, onWalk, onMap }: { world: World; sim: Sim; act: Act; onBuild?: (lot: number) => void; onWalk?: (id: string) => void; onMap?: () => void }) {
+  const [lots, setLots] = useState<Plot[] | undefined>(undefined)
   const [more, setMore] = useState(false)
-  const own = sim.housing === OWN_HOUSE
-  const buy = (size: string, label: string, where: LotWhere) => act(label, 'land-plot', 'home', () => api.buyLot(sim.id, size, where))
+  const [version, setVersion] = useState(0)
+  const [selling, setSelling] = useState<number | null>(null)
+  const done = async (p: Promise<boolean>) => (await p) && setVersion((v) => v + 1)
+  const buy = (size: string, label: string, where: LotWhere, upgrade?: number) => act(label, 'land-plot', 'home', () => api.buyLot(sim.id, size, where, upgrade))
+  const has = !!lots?.length
   return (
     <section className="rounded-[20px] bg-[#eef8f1] p-3">
       <h4 className="label mb-2 flex items-center gap-1.5">
-        <LandPlot size={14} /> Ton terrain
+        <LandPlot size={14} /> {lots && lots.length > 1 ? `Tes terrains (${lots.length})` : 'Ton terrain'}
       </h4>
-      {lot && (
-        <div className="mb-2">
-          <p className="font-display text-[17px] leading-tight font-extrabold">
-            {lot.area} m² ({lot.w} × {lot.d} m)
-          </p>
-          {(() => {
-            // Where it is: in this commune (walk there), or elsewhere (go there first).
-            const city = world.cities.find((c) => c.id === lot.city)
-            const where = city?.communes.find((c) => c.id === lot.commune)?.name ?? lot.commune
-            const here = sim.city === lot.city && sim.commune === lot.commune
-            return (
-              <div className="mt-1 flex items-center gap-2 rounded-xl bg-white/70 px-2.5 py-2 text-xs font-bold">
-                <MapIcon size={15} className="shrink-0 text-[#1f9a4a]" />
-                <span className="min-w-0 flex-1">
-                  {capital(aCommune(where))}{city && city.id !== 'abidjan' ? `, ${city.name}` : ''} · clôturé à ta couleur
+      {lots?.map((p) => {
+        const lot = p.lot!
+        // Where it is: in this commune (walk there), or elsewhere (go there first).
+        const city = world.cities.find((c) => c.id === lot.city)
+        const where = city?.communes.find((c) => c.id === lot.commune)?.name ?? lot.commune
+        const here = sim.city === lot.city && sim.commune === lot.commune
+        const built = p.blocks.length > 0 || p.furniture.length > 0
+        return (
+          <div key={p.id} className="mb-2 rounded-2xl bg-white/70 p-2.5">
+            <div className="flex items-center gap-2">
+              <span className="min-w-0 flex-1 leading-tight">
+                <span className="block font-display text-[16px] font-extrabold">
+                  {lot.area} m² {aCommune(where)}
+                  {city && city.id !== 'abidjan' ? `, ${city.name}` : ''}
                 </span>
-                {here && !own && onWalk ? (
-                  <button className="shrink-0 rounded-full bg-[#1f9a4a] px-3 py-1 font-extrabold text-white" onClick={() => onWalk(`plot:${sim.id}`)}>
-                    Voir mon terrain
+                <span className="block text-xs font-semibold text-[var(--color-ink-soft)]">
+                  {lot.w} × {lot.d} m · {p.home ? 'tu y habites : pas de loyer' : p.livable ? 'maison prête : tu peux emménager' : built ? 'chantier en cours' : 'terrain nu'}
+                </span>
+              </span>
+              {p.home && (
+                <Chip tone="good">
+                  <House size={12} /> Chez toi
+                </Chip>
+              )}
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {here && !p.home && onWalk ? (
+                <button className="rounded-full bg-[#1f9a4a] px-3 py-1.5 text-xs font-extrabold text-white" onClick={() => onWalk(`plot:${p.key}`)}>
+                  <MapIcon size={13} className="mr-1 inline" /> Y aller
+                </button>
+              ) : !here && onMap ? (
+                <button className="rounded-full bg-[#1f9a4a] px-3 py-1.5 text-xs font-extrabold text-white" onClick={onMap}>
+                  <MapIcon size={13} className="mr-1 inline" /> Y aller
+                </button>
+              ) : null}
+              {onBuild && (
+                <button className="rounded-full bg-[var(--color-orange)] px-3 py-1.5 text-xs font-extrabold text-white" onClick={() => onBuild(p.id)}>
+                  <Hammer size={13} className="mr-1 inline" /> {p.home ? 'Modifier' : built ? 'Continuer' : 'Construire'}
+                </button>
+              )}
+              {p.livable && !p.home && (
+                <button className="rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-xs font-extrabold text-white" onClick={() => void done(act('Emménager', 'house', 'home', () => api.moveIn(sim.id, p.id)))}>
+                  Emménager
+                </button>
+              )}
+              {!p.home &&
+                (selling === p.id ? (
+                  <button className="rounded-full bg-[#d81b3f] px-3 py-1.5 text-xs font-extrabold text-white" onClick={() => (setSelling(null), void done(act('Vendre le terrain', 'land-plot', 'home', () => api.sellLot(sim.id, p.id))))}>
+                    Vendre pour de bon ?
                   </button>
-                ) : !here && onMap ? (
-                  <button className="shrink-0 rounded-full bg-[#1f9a4a] px-3 py-1 font-extrabold text-white" onClick={onMap}>
-                    Y aller
+                ) : (
+                  <button className="rounded-full bg-[var(--color-canvas)] px-3 py-1.5 text-xs font-extrabold" onClick={() => setSelling(p.id)}>
+                    Vendre
                   </button>
-                ) : null}
-              </div>
-            )
-          })()}
-          <p className="mt-1 text-xs font-semibold text-[var(--color-ink-soft)]">{own ? 'Tu y habites : pas de loyer.' : 'Bâtis ta maison, meuble-la, puis emménage : fini le loyer.'}</p>
-          {onBuild && (
-            <button className="btn mt-2 w-full !py-2.5 !text-sm" onClick={onBuild}>
-              <Hammer size={16} /> {own ? 'Modifier ma maison' : 'Construire et meubler'}
-            </button>
-          )}
-          <button className="mt-2 text-xs font-extrabold text-[var(--color-orange)]" onClick={() => setMore((m) => !m)}>
-            {more ? 'Masquer' : 'Un terrain plus grand ?'}
-          </button>
-        </div>
+                ))}
+            </div>
+          </div>
+        )
+      })}
+      {has && (
+        <button className="mb-1 text-xs font-extrabold text-[var(--color-orange)]" onClick={() => setMore((m) => !m)}>
+          {more ? 'Masquer' : 'Acheter un autre terrain, ou agrandir ?'}
+        </button>
       )}
-      <div className={lot && !more ? 'hidden' : ''}>
-        <LotOffers sim={sim} buy={buy} onLoaded={setLot} />
+      <div className={has && !more ? 'hidden' : ''}>
+        <LotOffers sim={sim} buy={buy} onLoaded={setLots} version={version} />
       </div>
     </section>
   )

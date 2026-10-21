@@ -1009,7 +1009,7 @@ function InsideLab() {
   }, [])
   const sim = useMemo(() => ({ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', () => 0.37) }) as unknown as Sim, [])
   const plan: HousePlan | undefined = world ? (id.startsWith('lot:') ? world.lotPlans?.find((p) => p.id === id.slice(4)) : world.homePlans?.[id]) : undefined
-  const plot = useMemo<Plot | undefined>(() => (plan ? { simId: 'lab', blocks: plan.blocks, furniture: plan.furniture, zones: plan.zones, built: 0, lot: { w: plan.w, d: plan.d, area: plan.w * plan.d, city: '', commune: '', paid: 0 }, livable: true } : undefined), [plan])
+  const plot = useMemo<Plot | undefined>(() => (plan ? { id: 0, key: 'lab', simId: 'lab', blocks: plan.blocks, furniture: plan.furniture, zones: plan.zones, built: 0, lot: { w: plan.w, d: plan.d, area: plan.w * plan.d, city: '', commune: '', paid: 0 }, livable: true } : undefined), [plan])
   if (!world || !plot) return <p style={{ padding: 20 }}>{world ? `Plan inconnu : ${id}` : 'Chargement…'}</p>
   return (
     <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>

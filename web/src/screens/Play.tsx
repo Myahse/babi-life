@@ -460,7 +460,14 @@ export function Play() {
   }
 
   // Building one's house on the plot; the houses are fetched again after.
-  const [building, setBuilding] = useState(false)
+  // Building on one of the Sim's lots (its id; 0: the one lived in, else the first), or not.
+  const [building, setBuilding] = useState<number | false>(false)
+  // Arrived at one of one's lots (« plot:<key> »): building on that one; someone else's lot has nothing to do.
+  const buildAt = async (key: string) => {
+    if (key !== sim?.id && !key.startsWith(`${sim?.id}:`)) return
+    const lots = await api.lots(sim!.id).then((d) => d.lots, () => [])
+    setBuilding(lots.find((l) => l.key === key)?.id ?? 0)
+  }
   const [plotsVersion, setPlotsVersion] = useState(0)
   // The home actions done on the furniture of one's own built house (OpenWorld says which); none: no house.
   const [, setHomeSpots] = useState<string[]>([])
@@ -603,7 +610,7 @@ export function Play() {
       {showInside && (
         <div className="absolute inset-0 z-[1]">
           {inside!.kind === 'home' && homePlot && !classic ? (
-            <HomeInside partner={sim.friends?.find((f) => f.partner && f.home)} sim={sim} world={world} plot={homePlot} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} onBuild={() => setBuilding(true)} />
+            <HomeInside partner={sim.friends?.find((f) => f.partner && f.home)} sim={sim} world={world} plot={homePlot} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} onBuild={() => setBuilding(0)} />
           ) : inside!.kind === 'mall' ? (
             <Suspense fallback={null}>
               <MallInside sim={sim} name={placeName(inside!.id)} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
@@ -635,7 +642,7 @@ export function Play() {
             goTo,
             onPick: walkTo,
             // At one's own lot: building; someone else's lot has nothing to do.
-            onArrive: (id: string) => (id.startsWith('plot:') ? id === `plot:${sim.id}` && setBuilding(true) : (setOutside(false), setPlaceId(id))),
+            onArrive: (id: string) => (id.startsWith('plot:') ? void buildAt(id.slice(5)) : (setOutside(false), setPlaceId(id))),
             busy: doing ? { icon: doing.interaction.icon, kind: doing.placeKind ?? '', id: doing.interaction.id } : pending,
             stationAt: doing?.placeId ?? null,
             // Busy inside (the street seen through « Voir la rue »): the Sim is in there, not at the door.
@@ -683,7 +690,7 @@ export function Play() {
           return classic ? <Neighbourhood key={commune.id} {...street} /> : <OpenWorld key={commune.id} {...street} commune={ownPlaces(commune)} token={MAP_TOKEN ?? ''} onFail={() => setMapSlow(true)} onLoaded={() => setMapSlow(false)} onMapPlaces={setMapPlaces} onHomeSpots={setHomeSpots} onHomePlot={setHomePlot} />
         })()}
       </div>
-      {!showInside && !overlay && <NotifyPrompt />}
+      {!showInside && !overlay && building === false && <NotifyPrompt />}
       {mapSlow && (
         <div className="pointer-events-none absolute inset-x-0 top-[38%] z-10 flex justify-center px-6">
           <p className="hud rounded-2xl px-4 py-2.5 text-center text-sm font-extrabold">La carte de Babi charge… Le réseau est lent : on réessaie tout seul.</p>
@@ -854,7 +861,7 @@ export function Play() {
         <HappeningSheet now={street} sim={sim} commune={commune} onClose={() => setPlaceId(null)} onJoin={(it) => (setPlaceId(null), run(it.label, it.icon, 'happening', () => api.interact(sim.id, 'happening', it.id)))} />
       )}
       {placeId && placeId !== 'happening' && (!roaming || menuOpen) && (
-        <InteractionMenu world={world} sim={sim} city={city} commune={commune} placeId={placeId} desktop={desktop} onClose={() => (roaming ? setMenuOpen(false) : setPlaceId(null))} onPick={interact} onTravel={travel} onStop={stop} onBuild={() => (setPlaceId(null), setBuilding(true))} />
+        <InteractionMenu world={world} sim={sim} city={city} commune={commune} placeId={placeId} desktop={desktop} onClose={() => (roaming ? setMenuOpen(false) : setPlaceId(null))} onPick={interact} onTravel={travel} onStop={stop} onBuild={() => (setPlaceId(null), setBuilding(0))} />
       )}
       {roaming && !menuOpen && (
         // Walking about inside (or round the grounds): the place's name, what to do here, the way out.
@@ -874,9 +881,9 @@ export function Play() {
           </div>
         </div>
       )}
-      {building && (
+      {building !== false && (
         <Suspense fallback={null}>
-          <BuildMode world={world} sim={sim} onResult={apply} onClose={() => (setBuilding(false), setPlotsVersion((v) => v + 1))} />
+          <BuildMode world={world} sim={sim} lot={building || 0} onResult={apply} onClose={() => (setBuilding(false), setPlotsVersion((v) => v + 1))} />
         </Suspense>
       )}
 
@@ -918,7 +925,7 @@ export function Play() {
           onCamera={() => (setPhoneApp(null), setOverlay('camera'))}
           street={!showInside}
           onWalk={walkTo}
-          onBuild={() => (setOverlay(null), setBuilding(true))}
+          onBuild={(lot) => (setOverlay(null), setBuilding(lot ?? 0))}
         />
       )}
       {emotesOpen && <EmoteSheet world={world} sim={sim} onClose={() => setEmotesOpen(false)} onResult={apply} />}
@@ -970,7 +977,7 @@ type PhoneProps = {
   /** Out in the street (else in a room): what Tikitoko films. */
   street: boolean
   onWalk: (id: string) => void
-  onBuild: () => void
+  onBuild: (lot?: number) => void
 }
 
 function Phone({ world, sim, commune, journal, time, act, startApp, delivery, onDelivery, onCollect, onClose, onMap, onCamera, street, onWalk, onBuild }: PhoneProps) {

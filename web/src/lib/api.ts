@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, Lot, LotOffer, GrinMessage, DirectPost, BetRounds, BetView, GramPost, GramProfile, GramFound, GramActivity } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, GrinMessage, DirectPost, BetRounds, BetView, GramPost, GramProfile, GramFound, GramActivity } from './types'
 import { useSession } from '../store/session'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
@@ -183,8 +183,8 @@ export const api = {
   settleBets: (id: string) => post<ActionResult>(`/sims/${id}/bets/settle`, {}),
   pushKey: () => request<{ key: string; web: boolean; app: boolean }>('/push/key'),
   subscribePush: (sub: unknown) => request<void>('/me/push', { method: 'POST', body: JSON.stringify(sub) }),
-  buildPlan: (id: string, plan: string) => post<ActionResult>(`/sims/${id}/plot/plan`, { plan }),
-  clearPlot: (id: string) => post<ActionResult>(`/sims/${id}/plot/plan`, { clear: true }),
+  buildPlan: (id: string, plan: string, lot = 0) => post<ActionResult>(`/sims/${id}/plot/plan`, { plan, lot }),
+  clearPlot: (id: string, lot = 0) => post<ActionResult>(`/sims/${id}/plot/plan`, { clear: true, lot }),
   myBets: (id: string, app = '') => request<BetView[]>(`/sims/${id}/bets?app=${app}`),
   grin: (id: string, room: 'babi' | 'commune', after = 0) => request<{ room: string; messages: GrinMessage[] }>(`/sims/${id}/grin?room=${room}&after=${after}`),
   sayGrin: (id: string, room: 'babi' | 'commune', body: string) => post<{ id: number; body: string }>(`/sims/${id}/grin`, { room, body }),
@@ -249,16 +249,16 @@ export const api = {
   gramSearch: (id: string, q: string) => request<GramFound[]>(`/sims/${id}/gram/search?q=${encodeURIComponent(q)}`),
   gramActivity: (id: string) => request<GramActivity[]>(`/sims/${id}/gram/activity`),
   gramBio: (id: string, bio: string) => request<{ bio: string }>(`/sims/${id}/gram/bio`, { method: 'PUT', body: JSON.stringify({ bio }) }),
-  /** The player's own plot, and the houses built in the commune where the Sim is. */
-  plot: (id: string) => request<Plot>(`/sims/${id}/plot`),
+  /** One of the player's lots (0: the one lived in, else the first), and the houses built in the commune where the Sim is. */
+  plot: (id: string, lot = 0) => request<Plot>(`/sims/${id}/plot${lot ? `?lot=${lot}` : ''}`),
   plots: (id: string) => request<Plot[]>(`/sims/${id}/plots`),
   /** Blocks placed and taken down; paid from the Sim's money. */
-  build: (id: string, place: Block[], remove: [number, number, number][], furnish: Piece[] = [], unfurnish: [number, number, number][] = []) => request<ActionResult>(`/sims/${id}/plot`, { method: 'PUT', body: JSON.stringify({ place, remove, furnish, unfurnish }) }),
-  /** Lots for sale where the Sim is, and the one it owns. */
-  /** The lots for sale in a commune (where the Sim is when none is given). */
-  lots: (id: string, where?: LotWhere) => request<{ offers: LotOffer[]; lot: Lot | null; fees: number; adult: boolean }>(`/sims/${id}/lots${where ? `?city=${encodeURIComponent(where.city)}&commune=${encodeURIComponent(where.commune)}` : ''}`),
-  buyLot: (id: string, size: string, where?: LotWhere) => post<ActionResult>(`/sims/${id}/lot`, { size, ...where }),
-  moveIn: (id: string) => post<ActionResult>(`/sims/${id}/plot/movein`, {}),
+  build: (id: string, place: Block[], remove: [number, number, number][], furnish: Piece[] = [], unfurnish: [number, number, number][] = [], lot = 0) => request<ActionResult>(`/sims/${id}/plot`, { method: 'PUT', body: JSON.stringify({ place, remove, furnish, unfurnish, lot }) }),
+  /** The lots for sale in a commune (where the Sim is when none is given), and the Sim's own (two at most a commune). */
+  lots: (id: string, where?: LotWhere) => request<{ offers: LotOffer[]; lots: Plot[]; fees: number; adult: boolean; perCommune: number; max: number }>(`/sims/${id}/lots${where ? `?city=${encodeURIComponent(where.city)}&commune=${encodeURIComponent(where.commune)}` : ''}`),
+  buyLot: (id: string, size: string, where?: LotWhere, upgrade = 0) => post<ActionResult>(`/sims/${id}/lot`, { size, ...where, upgrade }),
+  sellLot: (id: string, lot: number) => post<ActionResult>(`/sims/${id}/lot/sell`, { lot }),
+  moveIn: (id: string, lot = 0) => post<ActionResult>(`/sims/${id}/plot/movein`, { lot }),
   meet: (id: string, to: string, action: 'saluer' | 'inviter' | 'rejoindre' | 'ajouter') => post<ActionResult>(`/sims/${id}/meet`, { to, action }),
   /** Friends between players: answer a request; invite a friend, wherever they are, to what the Sim is doing. */
   /** Two players together (backend sims/couple.go): ask, answer, or break it off. */

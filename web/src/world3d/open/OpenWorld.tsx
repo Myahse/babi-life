@@ -104,9 +104,9 @@ function homeSpot(simId: string): [number, number] {
   const r = rng(`home${simId}`)
   return [r() * Math.PI * 2, 120 + r() * 260]
 }
-/** Where a Sim's lot is in the commune it bought it in: the same on every phone. */
-function lotSpot(simId: string): [number, number] {
-  const r = rng(`lot${simId}`)
+/** Where a lot is in the commune it was bought in, by its key (backend Plot.Key: the Sim's id for its first lot): the same on every phone. */
+function lotSpot(key: string): [number, number] {
+  const r = rng(`lot${key}`)
   return [r() * Math.PI * 2, 140 + r() * 300]
 }
 /** A lot's size (the plots from before lots are 12 × 12). */
@@ -291,8 +291,9 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       clearInterval(t)
     }
   }, [sim.id, commune.id, plotsVersion])
-  const plotKey = (plots ?? []).map((p) => p.simId).sort().join()
-  const mine = plots?.find((p) => p.simId === sim.id && (p.blocks.length || p.furniture?.length))
+  const plotKey = (plots ?? []).map((p) => p.key).sort().join()
+  // The house the Sim lives in (one of its lots, here).
+  const mine = plots?.find((p) => p.simId === sim.id && p.home && (p.blocks.length || p.furniture?.length))
   // Living in the house one built: it is « Chez toi ». Otherwise the house stands on its lot, apart.
   const livesOnLot = sim.housing === OWN_HOUSE
   // A place is open when something can be done there now (its hours): closed, nobody's there.
@@ -302,7 +303,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   // like a house one built, so one walks in and does things on its furniture.
   const familyPlot = useMemo<Plot | undefined>(() => {
     const plan = homePlanFor(world, sim)
-    return plan ? { simId: sim.id, blocks: plan.blocks, furniture: plan.furniture, zones: plan.zones, built: 0, lot: { w: plan.w, d: plan.d, area: plan.w * plan.d, city: sim.homeCity, commune: sim.homeCommune, paid: 0 }, livable: true } : undefined
+    return plan ? { id: 0, key: sim.id, simId: sim.id, blocks: plan.blocks, furniture: plan.furniture, zones: plan.zones, built: 0, lot: { w: plan.w, d: plan.d, area: plan.w * plan.d, city: sim.homeCity, commune: sim.homeCommune, paid: 0 }, livable: true } : undefined
   }, [world, sim.id, sim.housing, sim.family, sim.homeCity, sim.homeCommune]) // eslint-disable-line react-hooks/exhaustive-deps
   const myPlot = livesOnLot ? mine : home ? familyPlot : undefined
 
@@ -315,16 +316,16 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const places = useMemo(() => (mapList.length ? [...commune.places, ...mapList] : commune.places), [commune.places, mapList])
 
   const spots = useMemo<(PlaceSpot & { kind: string; name: string })[]>(() => {
-    const [a, d] = livesOnLot ? lotSpot(sim.id) : homeSpot(sim.id)
+    const [a, d] = livesOnLot ? lotSpot(mine?.key ?? sim.id) : homeSpot(sim.id)
     // A real place found on the map (by its name) stands where the map has it.
     const list: (PlaceSpot & { kind: string; name: string })[] = places.map((p) => ({ id: p.id, kind: p.kind, name: p.name, type: p.type, at: snaps.get(p.id) ?? toLocal(origin, p.lat, p.lng), landmark: LANDMARKS[p.id] }))
     // A home with a house built on it clears its ground: the game draws the house.
     if (home) list.unshift({ id: HOME_ID, kind: 'home', name: 'Chez toi', at: [Math.cos(a) * d, Math.sin(a) * d], landmark: myPlot ? lotClear(myPlot) : livesOnLot ? PLOT_CLEAR : undefined })
     for (const id of plotKey ? plotKey.split(',') : []) {
-      if (id === sim.id && home && livesOnLot && myPlot) continue
+      if (id === myPlot?.key && home && livesOnLot) continue
       const [pa, pd] = lotSpot(id)
-      const p = plots?.find((x) => x.simId === id)
-      list.push({ id: `plot:${id}`, kind: 'plot', name: id === sim.id ? 'Mon terrain' : '', at: [Math.cos(pa) * pd, Math.sin(pa) * pd], landmark: p ? lotClear(p) : PLOT_CLEAR })
+      const p = plots?.find((x) => x.key === id)
+      list.push({ id: `plot:${id}`, kind: 'plot', name: p?.simId === sim.id ? 'Mon terrain' : '', at: [Math.cos(pa) * pd, Math.sin(pa) * pd], landmark: p ? lotClear(p) : PLOT_CLEAR })
     }
     list.push({ id: HAPPENING_KEY, kind: 'happening', name: '', at: [35, -20] })
     return list
@@ -665,7 +666,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     () =>
       spots
         // Others' lots aren't places; one's own is (« Mon terrain »: on the mini-map, in « Où aller ? »).
-        .filter((s) => s.id !== HAPPENING_KEY && (s.kind !== 'plot' || s.id === `plot:${sim.id}`) && resolved.has(s.id))
+        .filter((s) => s.id !== HAPPENING_KEY && (s.kind !== 'plot' || s.id === `plot:${sim.id}` || s.id.startsWith(`plot:${sim.id}:`)) && resolved.has(s.id))
         .map((s, i) => {
           const r = resolved.get(s.id)!
           return { id: s.id, kind: s.kind, name: s.name, x: r.center[0], z: r.center[1], rot: r.rot, door: r.door, seed: i, height: r.real?.height, field: r.field, station: r.station }
@@ -765,7 +766,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   useEffect(() => {
     const list: Obstacle[] = []
     for (const r of resolved.values()) {
-      const owner = r.id === HOME_ID ? myPlot : r.id.startsWith('plot:') ? plots?.find((p) => `plot:${p.simId}` === r.id) : undefined
+      const owner = r.id === HOME_ID ? myPlot : r.id.startsWith('plot:') ? plots?.find((p) => `plot:${p.key}` === r.id) : undefined
       if (!owner) continue
       const [w, d] = lotSize(owner)
       // A column is a wall where it stands at body height (a block at y 1; a floor tile at
@@ -908,7 +909,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
 
       {/* Houses built by players: this one's at home, the others' where they live */}
       {[...resolved.values()].map((r) => {
-        const owner = r.id === HOME_ID ? myPlot : r.id.startsWith('plot:') ? plots?.find((p) => `plot:${p.simId}` === r.id) : undefined
+        const owner = r.id === HOME_ID ? myPlot : r.id.startsWith('plot:') ? plots?.find((p) => `plot:${p.key}` === r.id) : undefined
         return owner && world.materials ? (
           <group key={`house${r.id}`} position={[r.center[0], 0, r.center[1]]} rotation={[0, r.rot, 0]}>
             <group position={[-lotSize(owner)[0] / 2, 0, -lotSize(owner)[1] / 2]} onClick={r.id === HOME_ID ? (e) => (e.stopPropagation(), onPick(HOME_ID)) : undefined}>
