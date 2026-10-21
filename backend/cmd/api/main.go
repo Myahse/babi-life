@@ -118,6 +118,8 @@ func main() {
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/push/key", pushes.Key)
 		r.With(middleware.Compress(5, "application/json")).Get("/world", func(w http.ResponseWriter, r *http.Request) {
+			// The same for everyone until the next deploy: let browsers keep it a while.
+			w.Header().Set("Cache-Control", "public, max-age=600")
 			httpx.JSON(w, http.StatusOK, map[string]any{
 				"cities":        world.Cities,
 				"kinds":         game.Kinds,
