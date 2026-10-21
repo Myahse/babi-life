@@ -172,6 +172,7 @@ func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
 		rows.Close()
 	}
 	h.markCouples(ctx, id, friends)
+	h.markCouples(ctx, id, players) // in the street too: a heart over one's partner
 	// Everyone in the game right now, wherever they are (the chip says « 7 ici · 132 en ligne »).
 	online := len(players) + 1
 	if h.Online != nil {

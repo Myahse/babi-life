@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand/v2"
 	"net/http"
 	"time"
 
@@ -166,4 +167,19 @@ func (h *Handler) markCouples(ctx context.Context, me string, friends []Player) 
 		friends[i].Couple = friends[i].ID == with
 		friends[i].CoupleRequest = state[friends[i].ID]
 	}
+}
+
+// gossip: a player together with another player who starts something with
+// someone met in the game (getting together, a date): word may reach the
+// partner. It's theirs to decide (rompre, in Amis): they're told, the
+// friendship takes a blow, nothing more is done for them.
+func (h *Handler) gossip(ctx context.Context, tx pgx.Tx, s *Sim, lover string, chance float64, rng *rand.Rand) string {
+	other := inCouple(ctx, tx, s.ID)
+	if other == "" || rng.Float64() >= chance {
+		return ""
+	}
+	x, y := pair(s.ID, other)
+	_, _ = tx.Exec(ctx, `UPDATE bonds SET friendship = GREATEST(0, friendship - 20) WHERE sim_a = $1 AND sim_b = $2`, x, y)
+	_ = insertEvent(ctx, tx, other, "social", fmt.Sprintf("On t'a raconté que %s s'affiche avec %s… À toi de voir : tu peux lui parler sur Gbairai, ou rompre dans l'appli Amis.", s.FirstName, lover), 0, game.MinuteOf(time.Now()))
+	return fmt.Sprintf("Le quartier parle : ton ou ta partenaire a appris pour %s.", lover)
 }

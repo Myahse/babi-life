@@ -8,6 +8,7 @@ import { EXTENT_X, SIDEWALK, type Lot } from './layout'
 import { rng } from './themes'
 import { sampleLive, type LivePose } from '../lib/live'
 import { INDOOR } from './Interior'
+import { whereabouts } from './whereabouts'
 
 // The other players in the commune, live: where they really are (lib/live.ts),
 // or, until their position arrives, at the door of the place where they're
@@ -76,17 +77,61 @@ function OtherPlayer({ player, at, labels, onPick }: { player: Player; at: [numb
     }
     g.position.set(me.x, 0, me.z)
   })
+  // One's partner close by (a few steps): hearts rise over them.
+  const [close, setClose] = useState(false)
+  const wp = useMemo(() => new THREE.Vector3(), [])
+  useFrame(() => {
+    if (!player.couple || !ref.current) return
+    ref.current.getWorldPosition(wp)
+    const near = Math.hypot(wp.x - whereabouts.sim[0], wp.z - whereabouts.sim[1]) < 6
+    if (near !== close) setClose(near)
+  })
   const tag = player.username ? `@${player.username}` : player.firstName
   return (
     <group ref={ref}>
       <Character look={player.look} gender={player.gender} stage={player.stage} walking={walking} busy={!!at} pose={livePose ?? undefined} moodColor={PLAYER_BLUE} seed={player.id.charCodeAt(0)} speed={livePose === 'run' ? 8.5 : 3.2} />
+      {close && <Hearts />}
       {labels && (
         <Html position={[0, 2.45, 0]} center zIndexRange={[27, 20]}>
-          <button className="rounded-md bg-[#2563eb] px-1.5 py-0.5 text-[11px] font-extrabold whitespace-nowrap text-white shadow-[0_4px_10px_-4px_rgba(0,0,0,0.5)] active:scale-95" onClick={() => onPick(player.id)}>
-            {tag}
+          {/* One's partner (backend sims/couple.go): in pink, a heart */}
+          <button className={`rounded-md px-1.5 py-0.5 text-[11px] font-extrabold whitespace-nowrap text-white shadow-[0_4px_10px_-4px_rgba(0,0,0,0.5)] active:scale-95 ${player.couple ? 'bg-[#e0245e]' : 'bg-[#2563eb]'}`} onClick={() => onPick(player.id)}>
+            {player.couple ? `❤ ${tag}` : tag}
           </button>
         </Html>
       )}
+    </group>
+  )
+}
+
+const heartMat = new THREE.MeshBasicMaterial({ color: '#ff3d77', transparent: true })
+const heartGeo = (() => {
+  const h = new THREE.Shape()
+  h.moveTo(0, -0.12)
+  h.bezierCurveTo(-0.02, -0.06, -0.16, 0.0, -0.12, 0.08)
+  h.bezierCurveTo(-0.09, 0.14, -0.02, 0.13, 0, 0.07)
+  h.bezierCurveTo(0.02, 0.13, 0.09, 0.14, 0.12, 0.08)
+  h.bezierCurveTo(0.16, 0.0, 0.02, -0.06, 0, -0.12)
+  return new THREE.ShapeGeometry(h)
+})()
+
+/** A few hearts rising and fading over a player's partner, close by. */
+function Hearts() {
+  const g = useRef<THREE.Group>(null)
+  useFrame(({ clock, camera }) => {
+    const grp = g.current
+    if (!grp) return
+    grp.children.forEach((m, i) => {
+      const k = (clock.elapsedTime * 0.5 + i / 3) % 1
+      m.position.set(Math.sin(k * 6 + i * 2) * 0.25, 2.2 + k * 1.1, 0)
+      m.scale.setScalar(1.2 + k)
+      m.quaternion.copy(camera.quaternion)
+    })
+  })
+  return (
+    <group ref={g}>
+      {[0, 1, 2].map((i) => (
+        <mesh key={i} geometry={heartGeo} material={heartMat} />
+      ))}
     </group>
   )
 }
