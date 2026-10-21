@@ -127,6 +127,8 @@ const (
 	srcOrangeVillage   = "https://worldarchitecture.org/architecture-news/enhnz/the-new-headquarters-of-orange-village-in-abidjan-c%C3%B4te-d-ivoire-by-koffi-diabat-architects.html"
 	srcOrangeVillage2  = "https://www.koaci.com/article/2022/01/14/cote-divoire/economie/orange-cote-divoire-inaugure-orange-village-son-nouveau-siege-a-abidjan-et-confirme-son-attachement-et-ses-ambitions-pour-la-cote-divoire_156877.html"
 	srcPyramide        = "https://en.wikipedia.org/wiki/La_Pyramide_(building)"
+	srcCathedrale      = "https://fr.wikipedia.org/wiki/Cath%C3%A9drale_Saint-Paul_d%27Abidjan"
+	srcCathedrale2     = "https://en.wikipedia.org/wiki/St._Paul%27s_Cathedral,_Abidjan"
 	srcPyramide2       = "https://structurae.net/en/structures/la-pyramide"
 	srcBlockhauss      = "https://news.abidjan.net/articles/374315/le-chef-de-letat-aux-populations-de-blockhauss-hier-on-ne-doit-pas-vous-deposseder-totalement-de-vos-terres"
 	srcCocodyVillages  = "https://participate.oidp.net/processes/award2024/f/288/proposals/3254"
@@ -216,7 +218,8 @@ var Cities = []City{
 				fictional("plateau-basket", "Terrain de basket du Plateau", "sport", "", 5.3250, -4.0150),
 				fictional("plateau-cine", "Ciné du Plateau", "cinema", "", 5.3220, -4.0180),
 				Place{ID: "plateau-tours", Name: "Cité administrative", Kind: "office", Lat: 5.3262, Lng: -4.0178, Real: true, Approx: true, Source: game.Unverified("Bureaux de l'administration au Plateau ; nom et position à confirmer.")},
-				Place{ID: "plateau-cathedrale", Name: "Cathédrale Saint-Paul", Kind: "worship", Lat: 5.3330, Lng: -4.0201, Real: true, Approx: true, Source: game.Unverified("Cathédrale du Plateau ; à confirmer avec une source.")},
+				Place{ID: "plateau-cathedrale", Name: "Cathédrale Saint-Paul", Kind: "worship", Lat: 5.3330, Lng: -4.0201, Real: true, Approx: true,
+					Source: game.Verified("Cathédrale du Plateau (Aldo Spirito, consacrée en 1985) : un triangle de 4 200 m², 4 500 places assises en gradins autour de l'autel, une tour en croix de 70 m tenue par 7 haubans, les vitraux de Roberto Franzosi (370 m²). Face au Palais de justice ; position d'après OpenStreetMap.", srcCathedrale, srcCathedrale2)},
 				Place{ID: "plateau-pyramide", Name: "La Pyramide", Kind: "office", Lat: 5.3223, Lng: -4.0165, Real: true, Approx: true,
 					Source: game.Verified("Immeuble de bureaux du Plateau (Rinaldo Olivieri, 1973) : pyramide à gradins de 15 niveaux, environ 62 m. Position placée d'après la carte, à relever.", srcPyramide, srcPyramide2)},
 				Place{ID: "plateau-poulman", Name: "Hôtel Poulman", Kind: "hotel", Lat: 5.3222, Lng: -4.0138, Real: true, Approx: true,

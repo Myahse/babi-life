@@ -94,7 +94,7 @@ export function useBigWalk(spot: Spot | null, interactionId: string | undefined,
 }
 
 /** The Sim: walks its way (or where the keys take it), then settles, swims or goes round its loop; the camera follows. */
-export function Guest({ sim, stage, way, spot, steer, onMoved, free, entrance }: { sim: Sim; stage: string; way: XZ[]; spot: Spot | null; steer: boolean; onMoved: (at: XZ) => void; free: (x: number, z: number) => boolean; entrance: XZ }) {
+export function Guest({ sim, stage, way, spot, steer, onMoved, free, entrance, ground }: { sim: Sim; stage: string; way: XZ[]; spot: Spot | null; steer: boolean; onMoved: (at: XZ) => void; free: (x: number, z: number) => boolean; entrance: XZ; /** The floor's height where it walks (tiers, steps); flat at 0 without it. A spot's y is then its own height, not over the floor. */ ground?: (x: number, z: number) => number }) {
   const g = useRef<THREE.Group>(null)
   const camera = useThree((st) => st.camera)
   const controls = useThree((st) => st.controls) as unknown as { target: THREE.Vector3; update: () => void } | null
@@ -164,19 +164,25 @@ export function Guest({ sim, stage, way, spot, steer, onMoved, free, entrance }:
       o.rotation.set(0, Math.atan2(-Math.sin(t) * loop.r[0], Math.cos(t) * loop.r[1]), 0)
       ;[a.x, a.z] = [o.position.x, o.position.z]
     } else if (spot && e > 0) {
-      o.position.set(a.x + (spot.at[0] - a.x) * e, (spot.y ?? 0) * e, a.z + (spot.at[1] - a.z) * e)
+      const g0 = ground ? ground(a.x, a.z) : 0
+      o.position.set(a.x + (spot.at[0] - a.x) * e, g0 + ((spot.y ?? (ground ? g0 : 0)) - g0) * e, a.z + (spot.at[1] - a.z) * e)
       o.rotation.set(0, a.rot + Math.atan2(Math.sin(spot.rot - a.rot), Math.cos(spot.rot - a.rot)) * e, 0)
     } else {
-      o.position.set(a.x, 0, a.z)
+      // Up and down the steps, eased so a tier isn't a jump.
+      const y = ground ? o.position.y + (ground(a.x, a.z) - o.position.y) * Math.min(1, dt * 12) : 0
+      o.position.set(a.x, y, a.z)
       o.rotation.set(0, a.rot, 0)
     }
-    // The camera comes along.
+    // The camera comes along (up and down too, on tiers).
     if (controls) {
       const k = Math.min(1, dt * 3)
       const [ox, oz] = [(o.position.x - controls.target.x) * k, (o.position.z - controls.target.z) * k]
+      const oy = ground ? (o.position.y + 1 - controls.target.y) * k : 0
       controls.target.x += ox
+      controls.target.y += oy
       controls.target.z += oz
       camera.position.x += ox
+      camera.position.y += oy
       camera.position.z += oz
       controls.update()
     }

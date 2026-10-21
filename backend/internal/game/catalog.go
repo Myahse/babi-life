@@ -207,6 +207,8 @@ var Kinds = map[string]PlaceKind{
 		Interactions: []Interaction{
 			{ID: "pray", Label: "Prier / se recueillir", Icon: "hand-heart", Minutes: 60, Effect: Needs{Fun: 10, Social: 15}},
 			{ID: "visit", Label: "Visiter", Icon: "camera", Minutes: 45, Cost: 2000, Effect: Needs{Fun: 25}},
+			// The cathedral's tower can be climbed: the Plateau and the lagoon from its cross, 50 m up.
+			{ID: "monter-tour", Label: "Monter en haut de la tour", Icon: "mountain", Minutes: 45, Cost: 1000, Effect: Needs{Fun: 35, Energy: -10}, MinHour: 9, MaxHour: 17, Places: []string{CathedraleID}},
 		},
 	},
 	"transport": {
@@ -638,6 +640,9 @@ var GenericEvents = []RandomEvent{
 	{Text: "Tu as gagné 2 000 Djai au pari du match. La chance est avec toi !", Money: 2000, Effect: Needs{Fun: 12}},
 	{Text: "Un vendeur ambulant t'a eu avec ses lunettes « originales » : 1 500 Djai.", Money: -1500, Effect: Needs{Fun: 3}},
 }
+
+// CathedraleID: the Cathédrale Saint-Paul of the Plateau (world/world.go), whose tower is climbed.
+const CathedraleID = "plateau-cathedrale"
 
 // HotelIvoireID: the Hôtel Ivoire (world/world.go), whose ice rink, cinema and casino are its own.
 const HotelIvoireID = "cocody-hotel-ivoire"

@@ -43,8 +43,9 @@ import { POULMAN_SOLID } from './poulman'
 import { NOUM_SOLID } from './noum'
 import { AZALE_SOLID } from './azale'
 import { RABISSON_SOLID } from './rabisson'
+import { CATHEDRAL_SOLID } from './cathedral'
 import { clearObstacles, moveObstacle, setObstacles, type Obstacle } from '../obstacles'
-import { LANDMARKS, Landmark } from './landmarks'
+import { LANDMARKS, Landmark, STADIUM_SOLID } from './landmarks'
 import { Boats } from './boats'
 import { StreetStalls } from './stalls'
 import { SotraStops } from './sotra'
@@ -1377,8 +1378,8 @@ function RoadTraffic({ nav, focus, seed, woro }: { nav: Nav; focus: React.RefObj
 
 /** Landmarks that are one solid building: how far round their middle they stand (metres). */
 /** Landmarks one walks into, and what stands in the way there (in their own frame). */
-const GROUNDS: Record<string, Obstacle[]> = { 'cocody-zoo': ZOO_SOLID, 'cocody-hotel-ivoire': IVOIRE_SOLID, 'plateau-poulman': POULMAN_SOLID, 'plateau-noum': NOUM_SOLID, 'marcory-azale': AZALE_SOLID, 'pb-rabisson': RABISSON_SOLID }
-const SOLID_LANDMARKS: Record<string, number> = { 'treich-palais': 34, 'plateau-pyramide': 28, 'plateau-cathedrale': 20, 'cocody-oranjo': 34, 'yakro-basilique': 55 }
+const GROUNDS: Record<string, Obstacle[]> = { 'cocody-zoo': ZOO_SOLID, 'cocody-hotel-ivoire': IVOIRE_SOLID, 'plateau-poulman': POULMAN_SOLID, 'plateau-noum': NOUM_SOLID, 'marcory-azale': AZALE_SOLID, 'pb-rabisson': RABISSON_SOLID, 'plateau-cathedrale': CATHEDRAL_SOLID, 'plateau-stade': STADIUM_SOLID }
+const SOLID_LANDMARKS: Record<string, number> = { 'treich-palais': 34, 'plateau-pyramide': 28, 'cocody-oranjo': 34, 'yakro-basilique': 55 }
 
 /** A vehicle's length and width, for what it blocks. */
 const CAR_SIZE: Record<VehicleKind, [number, number]> = { taxi: [4.4, 1.7], woro: [4.4, 1.7], car: [4.5, 1.8], gbaka: [5.3, 1.9], moto: [1.9, 0.6], sotra: [11, 2.5] }
