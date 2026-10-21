@@ -28,7 +28,7 @@ const FURNITURE_ICON: Record<string, LucideIcon> = { natte: RectangleHorizontal,
 type Cell = [number, number, number]
 const key = ([x, y, z]: Cell) => `${x},${y},${z}`
 
-export default function BuildMode({ world, sim, onResult, onClose }: { world: World; sim: Sim; onResult: (res: ActionResult) => void; onClose: () => void }) {
+export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClose }: { world: World; sim: Sim; /** Which of the Sim's lots (0: the one lived in, else the first). */ lot?: number; onResult: (res: ActionResult) => void; onClose: () => void }) {
   const H = world.plot?.h ?? 8
   const materials = world.materials ?? []
   const catalog = world.furniture ?? []
@@ -48,6 +48,8 @@ export default function BuildMode({ world, sim, onResult, onClose }: { world: Wo
   const [hover, setHover] = useState<Cell | null>(null)
   // « Voir dedans »: the roof and the top of the walls hidden, to furnish (as in a builder game).
   const [cut, setCut] = useState(false)
+  // The lot being built on: the one asked for, then the one loaded (a lot just bought gets its id).
+  const lotId = plot?.id || wanted
   const W = plot?.lot?.w ?? 0
   const D = plot?.lot?.d ?? 0
   const planOpened = useRef(false)
@@ -60,7 +62,7 @@ export default function BuildMode({ world, sim, onResult, onClose }: { world: Wo
     setBusy(true)
     setError(null)
     try {
-      onResult(await api.buildPlan(sim.id, p.id))
+      onResult(await api.buildPlan(sim.id, p.id, lotId))
       setPreview(null)
       setTab('meubles')
       await reload()
@@ -74,7 +76,7 @@ export default function BuildMode({ world, sim, onResult, onClose }: { world: Wo
     setBusy(true)
     setError(null)
     try {
-      onResult(await api.clearPlot(sim.id))
+      onResult(await api.clearPlot(sim.id, lotId))
       await reload()
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Pas de réseau')
@@ -85,7 +87,7 @@ export default function BuildMode({ world, sim, onResult, onClose }: { world: Wo
 
   const reload = () =>
     api
-      .plot(sim.id)
+      .plot(sim.id, lotId)
       .then((p) => {
         setPlot(p)
         setBlocks(p.blocks)
@@ -98,7 +100,7 @@ export default function BuildMode({ world, sim, onResult, onClose }: { world: Wo
         }
       })
       .catch(() => setError('Le terrain ne charge pas. Réessaie.'))
-  useEffect(() => void reload(), [sim.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => void reload(), [sim.id, wanted]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Edits waiting to be saved: sent together a moment after the last tap.
   type Queue = { place: Map<string, Block>; remove: Map<string, Cell>; furnish: Map<string, Piece>; unfurnish: Map<string, Cell> }
@@ -116,7 +118,7 @@ export default function BuildMode({ world, sim, onResult, onClose }: { world: Wo
     const place = [...q.place.values()]
     setPendingCost(0)
     api
-      .build(sim.id, place, [...q.remove.values()], [...q.furnish.values()], [...q.unfurnish.values()])
+      .build(sim.id, place, [...q.remove.values()], [...q.furnish.values()], [...q.unfurnish.values()], lotId)
       .then((res) => {
         onResult(res)
         void reload() // the new state, and whether one can move in now
@@ -222,7 +224,7 @@ export default function BuildMode({ world, sim, onResult, onClose }: { world: Wo
 
   const moveIn = async () => {
     try {
-      onResult(await api.moveIn(sim.id))
+      onResult(await api.moveIn(sim.id, lotId))
       void reload()
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Pas de réseau')
@@ -245,9 +247,9 @@ export default function BuildMode({ world, sim, onResult, onClose }: { world: Wo
           <p className="mb-3 text-sm font-bold text-[var(--color-ink-soft)]">Pour bâtir ta maison, il te faut d'abord un terrain à toi. Sa taille, c'est la place que tu as pour construire.</p>
           <LotOffers
             sim={sim}
-            buy={async (size, _label, where) => {
+            buy={async (size, _label, where, upgrade) => {
               try {
-                onResult(await api.buyLot(sim.id, size, where))
+                onResult(await api.buyLot(sim.id, size, where, upgrade))
                 await reload()
                 return true
               } catch (e) {
