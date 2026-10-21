@@ -1,6 +1,6 @@
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BadgeCheck, Bike, Camera, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World, Ride, Place, Plot } from '../lib/types'
 import { useWorld } from '../store/world'
@@ -53,6 +53,7 @@ import { setTalkHandler, setTalking } from '../world3d/talk'
 import type { Track } from '../audio/music'
 import { NotifyPrompt } from '../components/NotifyPrompt'
 import { motoFare, motoPaid, useMoto } from '../world3d/moto'
+import { FlightView } from '../world3d/FlightView'
 import { aCommune } from '../lib/french'
 
 /** Building one's house: its own screen, downloaded when opened. */
@@ -441,6 +442,8 @@ export function Play() {
     const fromCity = world.cities.find((x) => x.id === sim!.city)!
     const from = fromCity.communes.find((x) => x.id === sim!.commune)!
     const to = world.cities.find((x) => x.id === cityId)?.communes.find((x) => x.id === communeId)
+    // A flight is booked at the airport (Flights): no driver to find, straight on board.
+    if (ride?.app === 'avion') return void (setOverlay(null), run(label, 'plane', 'transport', () => api.travel(sim!.id, cityId, communeId, ride)))
     if (ride?.app && to) return setFlow({ cityId, from, to, kind: ride.app, offer: ride.offer, fare, party: ride.party ?? 1, money: sim!.money })
     run(label, 'bus', 'transport', () => api.travel(sim!.id, cityId, communeId, ride))
   }
@@ -636,7 +639,8 @@ export function Play() {
             stationAt: doing?.placeId ?? null,
             // Busy inside (the street seen through « Voir la rue »): the Sim is in there, not at the door.
             indoors: !!inside && !!doing,
-            nameTag: user?.username ? `@${user.username}` : sim.firstName,
+            // In the air (FlightView over the street), no name floating over the clouds.
+            nameTag: sim.activity?.trip?.mode === 'avion' ? undefined : user?.username ? `@${user.username}` : sim.firstName,
             happening,
             onNear: setNear,
             // Busy at the zoo or the hotel's grounds: still free to walk about them.
@@ -920,6 +924,8 @@ export function Play() {
       {overlay === 'map' && <WorldMap world={world} sim={sim} night={c.isNight} desktop={desktop} onClose={() => setOverlay(null)} onTravel={travel} onWalk={(id) => (setOverlay(null), walkTo(id))} />}
       {delivery && overlay !== 'phone' && <DeliveryPill delivery={delivery} now={now} onOpen={() => (setPhoneApp('golvo'), setOverlay('phone'))} />}
       {!overlay && <MotoOffer sim={sim} act={run} />}
+      {/* On a flight: the plane over the clouds (the map is a tap away) */}
+      {!overlay && sim.activity?.kind === 'travel' && sim.activity.trip?.mode === 'avion' && <FlightView sim={sim} night={c.isNight} onMap={() => setOverlay('map')} />}
       {chat && (
         <ChatSheet
           npc={chat}
@@ -1279,6 +1285,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
           </button>
         </div>
         {kind.id === 'sport' && 'id' in place && <CourtCount placeId={place.id} />}
+        {'id' in place && <Flights world={world} sim={sim} placeId={place.id} busy={busy} onTravel={onTravel} />}
         {busy && (
           <div className="mb-3 flex items-center gap-3 rounded-[20px] bg-[#fff4e8] p-3">
             <Hourglass className="shrink-0 text-[var(--color-orange)]" size={22} />
@@ -1582,6 +1589,37 @@ function DeliveryPill({ delivery, now, onOpen }: { delivery: Delivery; now: numb
       <AppLogo id="golvo" size={30} radius={15} />
       {st.stage === 'here' ? `${delivery.courier} est là avec ta commande !` : st.stage === 'kitchen' ? `${delivery.place.name} prépare ta commande` : `${delivery.courier} arrive · ${st.minutesLeft} min`}
     </button>
+  )
+}
+
+/**
+ * At an airport: the flights out (backend game/flights.go, the game's own
+ * airline): where to, how long, how much a seat. Booked, the Sim boards.
+ */
+function Flights({ world, sim, placeId, busy, onTravel }: { world: World; sim: Sim; placeId: string; busy: boolean; onTravel: OnTravel }) {
+  const flights = (world.flights ?? []).filter((f) => f.place === placeId && f.from === sim.city)
+  if (!flights.length) return null
+  return (
+    <div className="mb-3 rounded-[20px] bg-[#eef4ff] p-3">
+      <div className="mb-2 flex items-center gap-2 text-sm font-extrabold text-[#1d4ed8]">
+        <Plane size={18} /> Envols · {flights[0].airline}
+      </div>
+      <ul className="space-y-1.5">
+        {flights.map((f) => (
+          <li key={f.to} className="flex items-center gap-2 rounded-xl bg-white px-3 py-2">
+            <span className="min-w-0 flex-1">
+              <span className="block font-extrabold">{f.toName}</span>
+              <span className="block text-xs font-bold text-[var(--color-ink-soft)]">
+                {f.km} km · {f.minutes} min de vol
+              </span>
+            </span>
+            <button className="btn !bg-[#1d4ed8] !px-3 !py-2 !text-xs" disabled={busy || sim.money < f.fare} onClick={() => onTravel(f.to, f.commune, `Vol pour ${f.toName}`, { app: 'avion' }, f.fare)}>
+              {fcfa(f.fare)}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }
 

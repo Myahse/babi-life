@@ -52,7 +52,7 @@ import { StreetPeople } from './streetPeople'
 import { StreetNouchis } from './nouchis'
 import { Billboards } from './billboards'
 import { StreetLife, type Taken } from './streetlife'
-import { TakeOff } from './airport'
+import { Landing, SkyPlanes, TakeOff } from './airport'
 import { StreetLights } from './streetlights'
 import { PARTIES, Party } from './party'
 import { NightStreet } from './nightStreet'
@@ -979,6 +979,9 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       {nav.nodes.length > 0 && <StreetNouchis nav={nav} seed={commune.id} onRobbed={onRobbed} />}
       {nav.nodes.length > 0 && <Billboards nav={nav} seed={commune.id} night={night} places={lots} />}
       <TakeOff runways={runways} />
+      <Landing runways={runways} />
+      {/* Airliners high over the town, wherever the Sim is */}
+      <SkyPlanes focus={focus} />
       <BridgeSights chunks={[...chunks.values()].map((c) => c.data)} night={night} />
       {/* The traffic on the near chunks' deck only: the far horizon's coarser pieces would set it beside the deck. */}
       <BridgeLife chunks={[...chunks.values()].filter((c) => !c.data.key.includes(':')).map((c) => c.data)} night={night} />

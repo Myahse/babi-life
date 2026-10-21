@@ -163,6 +163,8 @@ var (
 	errOfferRefused = errors.New("aucun chauffeur n'a accepté ton prix : propose un peu plus")
 	errNoWoro       = errors.New("pas de woro-woro ici : prends un taxi compteur")
 	errTooMany      = errors.New("pas plus de quatre passagers par voiture")
+	errNoFlight     = errors.New("pas de vol pour cette ville")
+	errNotAtAirport = errors.New("les vols partent de l'aéroport : vas-y d'abord")
 )
 
 // leaveWith starts a trip; rng draws the incident that may slow it down (and,
@@ -198,11 +200,27 @@ func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, ride Ride, r
 		}
 	}
 	switch {
+	case app == "avion":
+		// A flight (game/flights.go): from the airport's commune, landing in the other city's.
+		a := game.Airports[fromCity.ID]
+		km, flight, landIn, ok := world.FlightPath(fromCity.ID, toCity.ID)
+		if !ok {
+			return errNoFlight
+		}
+		if fromCommune.ID != a.Commune {
+			return errNotAtAirport
+		}
+		toCommune, path = landIn, flight
+		minutes, fare = game.FlightQuote(km)
+		fare *= party // one seat each
+		mode, label = "avion", fmt.Sprintf("Vol %s → %s (%s)", fromCity.Name, toCity.Name, game.Airline)
+		s.Needs = s.Needs.Add(game.FlightEffect)
 	case fromCity.ID != toCity.ID:
 		if app != "" {
 			return errNoRideHere
 		}
 		mode, label = "car", fmt.Sprintf("Trajet %s → %s en car", fromCity.Name, toCity.Name)
+		s.Needs = s.Needs.Add(game.RoadEffect)
 	case app == "":
 	case app == "woro":
 		if !street || !fromCommune.HasWoro() {
@@ -259,7 +277,7 @@ func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, ride Ride, r
 	// Only incidents that fit this route can happen: a jam on the bridges for
 	// a trip across the lagoon, a roadblock on an intercity road…
 	route := game.Route{FromCity: fromCity.ID, FromCommune: fromCommune.ID, ToCity: toCity.ID, ToCommune: toCommune.ID, FromBank: fromCommune.Admin.Bank, ToBank: toCommune.Admin.Bank, Bridges: path.Bridges, Mode: mode}
-	if inc := game.IncidentFor(route, s.GameMinutes, rng); inc != nil {
+	if inc := game.IncidentFor(route, s.GameMinutes, rng); inc != nil && mode != "avion" {
 		minutes += inc.Extra
 		trip.Incident = inc.Text
 		s.Needs = s.Needs.Add(inc.Effect)
@@ -267,11 +285,19 @@ func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, ride Ride, r
 	// The way takes real minutes too, the long ones shortened like actions.
 	minutes = game.Length(minutes)
 	s.Activity = &game.Activity{
-		Kind: "travel", Interaction: game.Interaction{ID: "travel", Label: label, Icon: "car-taxi-front", Minutes: minutes},
+		Kind: "travel", Interaction: game.Interaction{ID: "travel", Label: label, Icon: tripIcon(mode), Minutes: minutes},
 		Start: s.GameMinutes, End: s.GameMinutes + minutes,
 		Trip: trip,
 	}
 	return nil
+}
+
+// tripIcon: the trip's icon in the app (a plane for a flight).
+func tripIcon(mode string) string {
+	if mode == "avion" {
+		return "plane"
+	}
+	return "car-taxi-front"
 }
 
 func newRand() *rand.Rand { return rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), 0)) }
