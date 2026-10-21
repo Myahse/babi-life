@@ -520,7 +520,11 @@ func (m *Moderation) Resolve(w http.ResponseWriter, r *http.Request) {
 			_, _ = m.H.DB.Exec(ctx, `DELETE FROM stories WHERE id = $1`, *story)
 		}
 		if post != nil {
-			_, _ = m.H.DB.Exec(ctx, `DELETE FROM tiki_posts WHERE id = $1`, *post)
+			// A Tikitoko clip in the bucket goes with its post.
+			var key string
+			if m.H.DB.QueryRow(ctx, `DELETE FROM tiki_posts WHERE id = $1 RETURNING video_key`, *post).Scan(&key) == nil && key != "" {
+				_ = m.H.bucketDelete(ctx, key)
+			}
 		}
 		if grin != nil {
 			_, _ = m.H.DB.Exec(ctx, `UPDATE grin SET hidden = true WHERE id = $1`, *grin)

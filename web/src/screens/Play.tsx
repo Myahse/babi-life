@@ -902,6 +902,7 @@ export function Play() {
           onClose={() => (setOverlay(null), setPhoneApp(null))}
           onMap={() => setOverlay('map')}
           onCamera={() => (setPhoneApp(null), setOverlay('camera'))}
+          street={!showInside}
           onWalk={walkTo}
           onBuild={() => (setOverlay(null), setBuilding(true))}
         />
@@ -948,11 +949,13 @@ type PhoneProps = {
   onMap: () => void
   /** The camera, full screen over the game. */
   onCamera: () => void
+  /** Out in the street (else in a room): what Tikitoko films. */
+  street: boolean
   onWalk: (id: string) => void
   onBuild: () => void
 }
 
-function Phone({ world, sim, commune, journal, time, act, startApp, delivery, onDelivery, onCollect, onClose, onMap, onCamera, onWalk, onBuild }: PhoneProps) {
+function Phone({ world, sim, commune, journal, time, act, startApp, delivery, onDelivery, onCollect, onClose, onMap, onCamera, street, onWalk, onBuild }: PhoneProps) {
   const [app, setApp] = useState<PhoneAppId | null>(startApp)
   // A photo of the gallery on its way to Tikitoko.
   const [tikiPhoto, setTikiPhoto] = useState<{ id: number; src: string } | undefined>()
@@ -1096,7 +1099,7 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
                 {app === 'store' && ownPhone && <StoreApp world={world} sim={sim} act={act} onOpen={(id) => (id === 'gnango' || id === 'idrive' ? onMap() : setApp(id as PhoneAppId))} />}
                 {app === 'waye' && <WayeApp world={world} sim={sim} act={act} journal={journal} renderJournal={(events) => <Journal events={events} />} payTo={wayeTo} />}
                 {app === 'gbairai' && <GbairaiApp world={world} sim={sim} />}
-                {app === 'tikitoko' && <TikitokoApp sim={sim} act={act} photo={tikiPhoto} onClose={() => (setApp(null), setTikiPhoto(undefined))} />}
+                {app === 'tikitoko' && <TikitokoApp sim={sim} act={act} photo={tikiPhoto} street={street} onClose={() => (setApp(null), setTikiPhoto(undefined))} />}
                 {app === 'galerie' && <GalleryApp sim={sim} onCamera={onCamera} story={has('gbairai')} onTiki={has('tikitoko') ? (p, src) => (setTikiPhoto({ id: p.id, src }), setApp('tikitoko')) : null} />}
                 {(app === 'bet225' || app === 'parisfoot') && <BetApp sim={sim} act={act} app={app} />}
                 {app === 'golvo' && <GolvoApp world={world} sim={sim} delivery={delivery} onOrder={onDelivery} onCancel={() => onDelivery(null)} onCollect={onCollect} />}

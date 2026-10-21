@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef, useSyncExternalStore } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { whereabouts } from './whereabouts'
@@ -10,9 +10,25 @@ import { photoCam, usePhotoMode } from './photoCam'
 
 let snap: (() => HTMLCanvasElement | null) | null = null
 
+/**
+ * A Tikitoko clip being filmed (world3d/clip.ts): each frame the 3D draws is
+ * handed over right after it's drawn (the canvas keeps nothing after that).
+ * street: which scene it wants, the street or the room the Sim is in (both
+ * can be mounted, the street hidden under the room).
+ */
+type FrameTap = { street: boolean; frame: (c: HTMLCanvasElement) => void }
+let tap: FrameTap | null = null
+const tapListeners = new Set<() => void>()
+export function setFrameTap(t: FrameTap | null) {
+  tap = t
+  tapListeners.forEach((f) => f())
+}
+const useFrameTap = () => useSyncExternalStore((f) => (tapListeners.add(f), () => void tapListeners.delete(f)), () => tap)
+
 export function Snapper({ street }: { /** The open street: the phone's camera can be held anywhere round the Sim. */ street?: boolean }) {
   const { gl, scene, camera } = useThree()
   const mode = usePhotoMode()
+  const tapping = useFrameTap()
   useEffect(() => {
     snap = () => {
       gl.render(scene, camera)
@@ -20,7 +36,28 @@ export function Snapper({ street }: { /** The open street: the phone's camera ca
     }
     return () => void (snap = null)
   }, [gl, scene, camera])
-  return street && mode ? <PhotoView /> : null
+  return (
+    <>
+      {street && mode && <PhotoView />}
+      {tapping && tapping.street === !!street && <Tap />}
+    </>
+  )
+}
+
+/**
+ * Hands each frame to the clip. With a priority above 0 here, the canvas no
+ * longer draws itself: when nobody else drew this frame (the phone's camera,
+ * the screen effects), it's drawn here first.
+ */
+function Tap() {
+  const { gl, scene, camera } = useThree()
+  const last = useRef(-1)
+  useFrame(() => {
+    if (gl.info.render.frame === last.current) gl.render(scene, camera)
+    last.current = gl.info.render.frame
+    tap?.frame(gl.domElement)
+  }, 2)
+  return null
 }
 
 /** Eye height of a grown-up Sim (world3d/Character.tsx: 2.15 m to the top of the head). */
@@ -38,7 +75,14 @@ function PhotoView() {
     const [x, z] = whereabouts.sim
     const y = whereabouts.simY
     const h = whereabouts.simHeading
-    if (photoCam.mode === 'selfie') {
+    if (photoCam.mode === 'film') {
+      // On a stand a few steps ahead at chest height, the Sim whole in the frame (a Tikitoko clip).
+      const a = h + photoCam.yaw
+      const d = 3.4
+      cam.position.set(x + Math.sin(a) * d, y + 1.25, z + Math.cos(a) * d)
+      cam.lookAt(x, y + 1.05, z)
+      cam.fov = 50
+    } else if (photoCam.mode === 'selfie') {
       // Held out in front, a little above the head, looking back at the face.
       const a = h + photoCam.yaw
       const d = 1.5

@@ -58,7 +58,8 @@ async function send<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(BASE + path, {
     ...init,
     headers: {
-      'Content-Type': 'application/json',
+      // A form (a Tikitoko clip) sets its own multipart type, with the boundary.
+      ...(init.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(key ? { 'Idempotency-Key': key } : {}),
       ...init.headers,
@@ -207,6 +208,19 @@ export const api = {
   tikiReport: (id: string, postId: number, reason: string) => post<{ text: string }>(`/sims/${id}/tiki/${postId}/report`, { reason }),
   tikiDelete: (id: string, postId: number) => request<void>(`/sims/${id}/tiki/${postId}`, { method: 'DELETE' }),
   tikiPhoto: (id: string, postId: number) => `/sims/${id}/tiki/${postId}/photo`,
+  tikiVideo: (id: string, postId: number) => `/sims/${id}/tiki/${postId}/video`,
+  /** A recorded clip, with its first frame as the poster (a multipart form: the clip is too big for JSON). */
+  tikiPostVideo: (id: string, clip: { video: Blob; poster: string; durationMs: number; sound: string }, caption: string, theme: string, placeId: string) => {
+    const f = new FormData()
+    f.append('video', clip.video, clip.video.type.includes('mp4') ? 'clip.mp4' : 'clip.webm')
+    f.append('poster', clip.poster)
+    f.append('durationMs', String(clip.durationMs))
+    f.append('sound', clip.sound)
+    f.append('caption', caption)
+    f.append('theme', theme)
+    f.append('placeId', placeId)
+    return request<ActionResult>(`/sims/${id}/tiki`, { method: 'POST', body: f })
+  },
   /** The player's own plot, and the houses built in the commune where the Sim is. */
   plot: (id: string) => request<Plot>(`/sims/${id}/plot`),
   plots: (id: string) => request<Plot[]>(`/sims/${id}/plots`),
