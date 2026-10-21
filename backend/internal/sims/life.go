@@ -74,11 +74,18 @@ func (s *Sim) comeOfAge(at int64) []Event {
 	return events
 }
 
+// birthdayShare: a birthday's pocket money is the family's Pocket divided by this.
+const birthdayShare = 5
+
 // pocketMoney: while living with the family, each birthday from 3 to 17
-// brings the family's pocket money (childhood goes fast: game.GrowUp).
+// brings a little pocket money. Childhood goes fast (game.GrowUp: a birthday
+// every two minutes of play or so), so a birthday is a fifth of the family's
+// weekly sum: the whole of it was a fortune by 18, and seemed to come with
+// every shower.
 func (s *Sim) pocketMoney(from, to int64) []Event {
 	f := s.family()
-	if f.Pocket == 0 {
+	gift := f.Pocket / birthdayShare / 100 * 100
+	if gift == 0 {
 		return nil
 	}
 	n := 0
@@ -91,8 +98,8 @@ func (s *Sim) pocketMoney(from, to int64) []Event {
 	if n == 0 {
 		return nil
 	}
-	s.Money += n * f.Pocket
-	return []Event{{Kind: "life", Text: fmt.Sprintf("Argent de poche pour l'anniversaire : %s.", game.FCFA(n*f.Pocket)), Money: n * f.Pocket, GameTime: to}}
+	s.Money += n * gift
+	return []Event{{Kind: "life", Text: fmt.Sprintf("Argent de poche pour l'anniversaire : %s.", game.FCFA(n*gift)), Money: n * gift, GameTime: to}}
 }
 
 // schoolMark: class and homework count towards the bac.

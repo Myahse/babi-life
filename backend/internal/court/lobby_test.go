@@ -103,3 +103,23 @@ func TestLateComersWaitForTheNextMatch(t *testing.T) {
 		t.Fatal("the next match should take the court")
 	}
 }
+
+// A player who closed the app (their phone stops asking for the match) loses
+// their place; one still asking keeps it.
+func TestGoneFreesThePlace(t *testing.T) {
+	l := NewLobby()
+	now := time.Unix(1_700_000_000, 0)
+	m, _ := l.Join("court", "basket", Entry{Sim: "a"}, now)
+	l.Join("court", "basket", Entry{Sim: "b"}, now)
+	later := now.Add(Gone / 2)
+	l.Seen(m.ID, "a", later)
+	l.Seen(m.ID, "a", now.Add(Gone+time.Second))
+	got, _ := l.Get(m.ID)
+	if len(got.Entries) != 1 || got.Entries[0].Sim != "a" {
+		t.Fatalf("after b went quiet: %+v", got.Entries)
+	}
+	// b comes back: a new place.
+	if again, err := l.Join("court", "basket", Entry{Sim: "b"}, now.Add(Gone+2*time.Second)); err != nil || len(again.Entries) != 2 {
+		t.Fatalf("b back: %+v %v", again.Entries, err)
+	}
+}

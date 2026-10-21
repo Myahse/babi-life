@@ -134,7 +134,7 @@ type Family struct {
 	// the big villas to the precarious quarters.
 	Sector  string  `json:"sector"`
 	Housing string  `json:"housing"` // the family home
-	Pocket  int     `json:"pocket"`  // FCFA every Saturday, from childhood
+	Pocket  int     `json:"pocket"`  // FCFA a week; a birthday brings a share of it (sims.pocketMoney)
 	Start   int     `json:"start"`   // FCFA the family gives at 18
 	Leave   string  `json:"leave"`   // the first home of one's own
 	BacGift int     `json:"bacGift"` // for passing the bac

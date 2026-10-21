@@ -368,6 +368,8 @@ export function Play() {
         else if (e.kind === 'random') toast({ tone: 'random', title: 'Imprévu !', text: e.text, money: e.money })
         else if (e.kind === 'career') toast({ tone: 'promo', title: 'Promotion !', text: e.text.replace(/^Promotion ! /, ''), money: 0 })
         else if (e.kind === 'travel') toast({ tone: 'done', title: 'Bien arrivé·e !', text: e.text, money: e.money, icon: 'car-taxi-front', kind: 'transport' })
+        // Life news (a birthday's pocket money, coming of age): its own toast, not the activity that just ended.
+        else if (e.kind === 'life') toast({ tone: 'event', title: /anniversaire/i.test(e.text) ? 'Joyeux anniversaire !' : 'Dans ta vie', text: e.text, money: e.money, icon: 'cake' })
         else toast({ tone: 'done', title: 'Terminé', text: e.text, money: e.money })
       }, 300 + i * 700),
     )
