@@ -67,16 +67,20 @@ export function matchPoi(place: { name: string; kind: string; at: XZ }, pois: Po
   const game = words(place.name)
   if (!game.length) return null
   const fits = FITS[place.kind] ?? []
-  let best: { poi: Poi; score: number; d: number } | null = null
+  let best: { poi: Poi; score: number; fit: boolean; d: number } | null = null
   for (const poi of pois) {
     const d = Math.hypot(poi.at[0] - place.at[0], poi.at[1] - place.at[1])
     if (d > 3000) continue
+    // A bus stop named after the place (« Stade Félix Houphouët-Boigny ») is
+    // on the boulevard: a stadium moved onto it would stand across the road.
+    if (poi.maki === 'bus' && !fits.includes('bus')) continue
     const score = nameScore(game, new Set(words(poi.name)))
     const fit = fits.includes(poi.maki)
     const ok = (score >= 0.85 && (fit || score === 1)) || (score >= 0.6 && fit) || (score >= 0.4 && fit && d < 1200)
     if (!ok) continue
-    // The best name first; between equals, the nearest.
-    if (!best || score > best.score + 0.01 || (Math.abs(score - best.score) <= 0.01 && d < best.d)) best = { poi, score, d }
+    // The best name first; between equals, the right kind of place, then the nearest.
+    const same = best && Math.abs(score - best.score) <= 0.01
+    if (!best || score > best.score + 0.01 || (same && fit && !best.fit) || (same && fit === best.fit && d < best.d)) best = { poi, score, fit, d }
   }
   return best?.poi ?? null
 }

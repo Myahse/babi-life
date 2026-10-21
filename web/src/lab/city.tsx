@@ -43,7 +43,9 @@ import { Zones } from '../world3d/build/Zones'
 import { FamilyScene } from '../avatar/Family'
 import { Arena } from '../world3d/interior/Arena'
 import { fetchChunk } from '../world3d/open/tiles'
-import { CHUNK_ZOOM, tileOf, type Origin } from '../world3d/open/geo'
+import { CHUNK_ZOOM, tileOf, toLocal, type Origin } from '../world3d/open/geo'
+import { LANDMARKS } from '../world3d/open/landmarks'
+import { inTheWay, resolvePlaces, type PlaceSpot, type Resolved } from '../world3d/open/places'
 import { Apprenti, Forest, Palms, Trees, legProfile, makeWorldMaterials, type GbakaLeg } from '../world3d/open/OpenWorld'
 import { useFrame } from '@react-three/fiber'
 import { worldTime } from '../lib/worldClock'
@@ -73,7 +75,8 @@ const seededLab = (n: number) => () => ((n = (n * 16807) % 2147483647) / 2147483
 // the street's vehicles; ?view=cars for the vehicles up close;
 // ?view=landmark&id=yop-rue-princesse (&night) for one landmark;
 // ?view=map&lat=5.345&lng=-4.082&n=1 for the real map's chunks there
-// (OpenFreeMap, no key), n chunks each way, seen from &cam;
+// (OpenFreeMap, no key), n chunks each way, seen from &cam; &lm=plateau-stade@5.3283,-4.0185;…
+// draws those landmarks where the game would put them, their ground cleared;
 // ?view=gbaka&t=… the apprenti's chase down a straight street (t: seconds
 // into the cycle, frozen; without t it plays);
 // ?view=field&sport=foot|basket (&len=40&wid=20 &night &t= &cam= &target=) a pitch or a court and its match;
@@ -244,13 +247,30 @@ function MapLab() {
   const origin: Origin = { lat, lng }
   const mats = useMemo(makeWorldMaterials, [])
   const [chunks, setChunks] = useState<{ key: string; meshes: ReturnType<typeof buildChunk>; data: ChunkData }[]>([])
+  // The landmarks asked for (&lm=id@lat,lng;…), placed as the game places them.
+  const spots = useMemo<PlaceSpot[]>(
+    () =>
+      (q.get('lm') ?? '')
+        .split(';')
+        .filter(Boolean)
+        .map((x) => {
+          const [id, ll] = x.split('@')
+          const [la, ln] = ll.split(',').map(Number)
+          return { id, at: toLocal(origin, la, ln), kind: 'landmark', landmark: LANDMARKS[id] ?? 40, name: id }
+        }),
+    [], // eslint-disable-line react-hooks/exhaustive-deps
+  )
+  const [marks, setMarks] = useState<Resolved[]>([])
   useEffect(() => {
     const [tx, ty] = tileOf(lat, lng, CHUNK_ZOOM)
     for (let dx = -n; dx <= n; dx++)
       for (let dy = -n; dy <= n; dy++)
         fetchChunk(origin, tx + dx, ty + dy, '').then((data) => {
           const t0 = performance.now()
-          const meshes = buildChunk(data, () => false)
+          const found = resolvePlaces(data, spots)
+          if (found.length) setMarks((m) => [...m, ...found])
+          const cleared = spots.map((s) => ({ at: s.at, r: s.landmark! }))
+          const meshes = buildChunk(data, (c, ring) => inTheWay([], c, cleared, ring) || ring.some((p) => inTheWay([], p, cleared)))
           ;(data as unknown as { ms: number }).ms = Math.round(performance.now() - t0)
           ;(window as unknown as { stats: unknown[] }).stats = [...((window as unknown as { stats?: unknown[] }).stats ?? []), { key: data.key, buildings: data.buildings.length, roads: data.roads.length, trees: data.trees.length, forest: data.forest?.length ?? 0, areas: data.areas.length, meshMs: (data as unknown as { ms: number }).ms }]
           ;(window as unknown as { chunks: ChunkData[] }).chunks = [...((window as unknown as { chunks?: ChunkData[] }).chunks ?? []), data]
@@ -277,6 +297,11 @@ function MapLab() {
         </group>
       ))}
       <BridgeSights chunks={chunks.map((c) => c.data)} night={false} />
+      {marks.map((m) => (
+        <group key={m.id} position={[m.center[0], 0, m.center[1]]} rotation={[0, m.rot, 0]}>
+          <Landmark id={m.id} night={false} />
+        </group>
+      ))}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
         <planeGeometry args={[8000, 8000]} />
         <meshLambertMaterial color="#cbb38c" />
