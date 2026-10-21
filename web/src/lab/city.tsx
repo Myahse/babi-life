@@ -19,6 +19,7 @@ import { MallInside } from '../world3d/interior/MallInside'
 import { CathedralInside } from '../world3d/interior/CathedralInside'
 import { MosqueM6Inside } from '../world3d/interior/MosqueM6Inside'
 import { PyramideInside } from '../world3d/interior/PyramideInside'
+import { BoulayScene } from '../world3d/interior/BoulayScene'
 import { HotelInside } from '../world3d/interior/HotelInside'
 import { Snapper } from '../world3d/snapshot'
 import { usePhotoMode } from '../world3d/photoCam'
@@ -560,6 +561,7 @@ function Lab() {
   if (view === 'cathedrale') return <CathedralInside sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)), gameMinutes: Number(q.get('m') ?? 0) } as unknown as Sim} interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" />
   if (view === 'mosquee') return <MosqueM6Inside sim={{ id: 'lab', firstName: 'Awa', gender: 'homme', look: randomLook('homme', seededLab(5)), gameMinutes: Number(q.get('m') ?? 0) } as unknown as Sim} interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" />
   if (view === 'pyramide') return <PyramideInside sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)), gameMinutes: Number(q.get('m') ?? 600) } as unknown as Sim} interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" />
+  if (view === 'boulay') return <BoulayScene sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)), gameMinutes: 600 } as unknown as Sim} interactionId={q.get('act') ?? 'traversee-boulay'} night={night} stage="adulte" />
   if (view === 'home') return <HomeLab />
   if (view === 'plan') return <PlanLab />
   if (view === 'inside') return <InsideLab />

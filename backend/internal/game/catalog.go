@@ -584,6 +584,9 @@ var Kinds = map[string]PlaceKind{
 			{ID: "balade-lagune", Label: "Se promener au bord de la lagune", Icon: "footprints", Minutes: 45, Effect: Needs{Fun: 20, Energy: -5, Social: 5}},
 			{ID: "photo-plateau", Label: "Prendre les tours du Plateau en photo", Icon: "camera", Minutes: 20, Effect: Needs{Fun: 15}},
 			{ID: "coucher-soleil", Label: "Regarder le soleil se coucher sur la lagune", Icon: "sunset", Minutes: 30, Effect: Needs{Fun: 25, Energy: 5}, MinHour: 17, MaxHour: 20},
+			// From the landing at Azito, the pinasse across to Île Boulay: its village, its beach, its forest; water-skiing off it.
+			{ID: "traversee-boulay", Label: "Passer la journée sur l'île Boulay", Icon: "sailboat", Minutes: 180, Cost: 2000, Effect: Needs{Fun: 35, Energy: -15, Social: 10}, MinHour: 7, MaxHour: 16, Places: []string{BoulayID}},
+			{ID: "ski-boulay", Label: "Faire du ski nautique au large de l'île", Icon: "waves", Minutes: 60, Cost: 15000, Effect: Needs{Fun: 45, Energy: -20, Hygiene: -10}, MinHour: 8, MaxHour: 17, Places: []string{BoulayID}},
 		},
 		Events: []RandomEvent{
 			{Text: "Une pinasse passe, les passagers te font signe.", Effect: Needs{Fun: 10}},
@@ -675,6 +678,9 @@ const CathedraleID = "plateau-cathedrale"
 
 // PyramideID: La Pyramide of the Plateau (world/world.go), its gallery and its roof.
 const PyramideID = "plateau-pyramide"
+
+// BoulayID: the landing on the Azito shore (world/world.go), where the pinasse leaves for Île Boulay.
+const BoulayID = "yop-ile-boulay"
 
 // HotelIvoireID: the Hôtel Ivoire (world/world.go), whose ice rink, cinema and casino are its own.
 const HotelIvoireID = "cocody-hotel-ivoire"
