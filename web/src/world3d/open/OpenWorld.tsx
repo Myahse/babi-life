@@ -47,7 +47,8 @@ import { RABISSON_SOLID } from './rabisson'
 import { CATHEDRAL_SOLID } from './cathedral'
 import { MOSQUE_M6_SOLID } from './mosqueM6'
 import { clearObstacles, moveObstacle, setObstacles, type Obstacle } from '../obstacles'
-import { LANDMARKS, Landmark, STADIUM_SOLID } from './landmarks'
+import { LANDMARKS, Landmark, STADIUM_SOLID, slotIn } from './landmarks'
+import { RUE_SOLID } from './ruePrincesse'
 import { Boats } from './boats'
 import { StreetStalls } from './stalls'
 import { SotraStops } from './sotra'
@@ -349,7 +350,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const spots = useMemo<(PlaceSpot & { kind: string; name: string })[]>(() => {
     const [a, d] = livesOnLot ? lotSpot(mine?.key ?? sim.id) : homeSpot(sim.id)
     // A real place found on the map (by its name) stands where the map has it.
-    const list: (PlaceSpot & { kind: string; name: string })[] = places.map((p) => ({ id: p.id, kind: p.kind, name: p.name, type: p.type, faith: p.faith, at: snaps.get(p.id) ?? toLocal(origin, p.lat, p.lng), landmark: LANDMARKS[p.id] }))
+    const list: (PlaceSpot & { kind: string; name: string })[] = places.map((p) => ({ id: p.id, kind: p.kind, name: p.name, type: p.type, faith: p.faith, parent: p.parent, slot: p.slot, at: snaps.get(p.id) ?? toLocal(origin, p.lat, p.lng), landmark: LANDMARKS[p.id] }))
     // A home with a house built on it clears its ground: the game draws the house.
     if (home) list.unshift({ id: HOME_ID, kind: 'home', name: 'Chez toi', at: [Math.cos(a) * d, Math.sin(a) * d], landmark: myPlot ? lotClear(myPlot) : livesOnLot ? PLOT_CLEAR : undefined })
     for (const id of plotKey ? plotKey.split(',') : []) {
@@ -549,7 +550,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       const id = nextId.current++
       pending.current.set(id, c.key)
       const far = c.key.includes(':')
-      const req: ChunkRequest = { id, origin, tx: c.tx, ty: c.ty, token, places: far ? [] : spots.filter((x) => !isMapPlace(x.id)).map(({ id, at, kind, landmark, name, type }) => ({ id, at, kind, landmark, name, type, noLayout: tight.has(id) })), z: far ? FAR_ZOOM : undefined }
+      const req: ChunkRequest = { id, origin, tx: c.tx, ty: c.ty, token, places: far ? [] : spots.filter((x) => !isMapPlace(x.id) && !x.parent).map(({ id, at, kind, landmark, name, type }) => ({ id, at, kind, landmark, name, type, noLayout: tight.has(id) })), z: far ? FAR_ZOOM : undefined }
       w.postMessage(req)
     }
     // Chunks too far are let go, like Minecraft's render distance.
@@ -692,17 +693,34 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     [resolved, clears],
   )
 
+  // The places inside a landmark (the clubs of the Rue Princesse): at their slot on its ground, once it stands.
+  const placed = useMemo(() => {
+    const out = new Map(resolved)
+    for (const s of spots) {
+      const p = s.parent ? resolved.get(s.parent) : undefined
+      const at = p && slotIn(s.parent!, s.slot ?? 0)
+      if (!p || !at) continue
+      const [c, n] = [Math.cos(p.rot), Math.sin(p.rot)]
+      const world = ([x, z]: XZ): XZ => [p.center[0] + x * c + z * n, p.center[1] - x * n + z * c]
+      const rot = at.rot + p.rot
+      const [dx, dz] = [Math.sin(rot), Math.cos(rot)]
+      const door = world(at.door)
+      out.set(s.id, { id: s.id, door: [door[0] + dx * 1.2, door[1] + dz * 1.2], center: [door[0] - dx * 4, door[1] - dz * 4], rot, roadAngle: p.roadAngle })
+    }
+    return out
+  }, [resolved, spots])
+
   // The places, once they stand on a loaded street.
   const lots = useMemo<Lot[]>(
     () =>
       spots
         // Others' lots aren't places; one's own is (« Mon terrain »: on the mini-map, in « Où aller ? »).
-        .filter((s) => s.id !== HAPPENING_KEY && (s.kind !== 'plot' || s.id === `plot:${sim.id}` || s.id.startsWith(`plot:${sim.id}:`)) && resolved.has(s.id))
+        .filter((s) => s.id !== HAPPENING_KEY && (s.kind !== 'plot' || s.id === `plot:${sim.id}` || s.id.startsWith(`plot:${sim.id}:`)) && placed.has(s.id))
         .map((s, i) => {
-          const r = resolved.get(s.id)!
-          return { id: s.id, kind: s.kind, name: s.name, faith: s.faith, x: r.center[0], z: r.center[1], rot: r.rot, door: r.door, seed: i, height: r.real?.height, field: r.field, station: r.station }
+          const r = placed.get(s.id)!
+          return { id: s.id, kind: s.kind, name: s.name, faith: s.faith, child: !!s.parent, x: r.center[0], z: r.center[1], rot: r.rot, door: r.door, seed: i, height: r.real?.height, field: r.field, station: r.station }
         }),
-    [spots, resolved],
+    [spots, placed],
   )
   // Drawn: the game's places, and the map's thousands only near the Sim.
   const shown = useMemo(() => lots.filter((l) => !isMapPlace(l.id) || Math.hypot(l.x - here[0], l.z - here[1]) < MAP_SIGNS), [lots, here])
@@ -966,6 +984,9 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
           <LotLabel key={lot.id} lot={lot} world={world} label={labels && labelOf.get(lot.id)} onPick={onPick} y={3} />
         ) : lot.id === HOME_ID && myPlot ? (
           <LotLabel key={lot.id} lot={lot} world={world} label={labels && labelOf.get(lot.id)} onPick={onPick} y={4} />
+        ) : lot.child ? (
+          // A club of the Rue Princesse: the street draws its front; here, its name.
+          <LotLabel key={lot.id} lot={lot} world={world} label={labels && labelOf.get(lot.id)} onPick={onPick} y={7} />
         ) : lot.station ? (
           <LotLabel key={lot.id} lot={lot} world={world} label={labels && labelOf.get(lot.id)} onPick={onPick} y={7} />
         ) : lot.field ? (
@@ -1381,7 +1402,7 @@ function RoadTraffic({ nav, focus, seed, woro }: { nav: Nav; focus: React.RefObj
 
 /** Landmarks that are one solid building: how far round their middle they stand (metres). */
 /** Landmarks one walks into, and what stands in the way there (in their own frame). */
-const GROUNDS: Record<string, Obstacle[]> = { 'cocody-zoo': ZOO_SOLID, 'cocody-hotel-ivoire': IVOIRE_SOLID, 'plateau-poulman': POULMAN_SOLID, 'plateau-noum': NOUM_SOLID, 'marcory-azale': AZALE_SOLID, 'pb-rabisson': RABISSON_SOLID, 'plateau-cathedrale': CATHEDRAL_SOLID, 'plateau-stade': STADIUM_SOLID, 'treich-mosquee-m6': MOSQUE_M6_SOLID }
+const GROUNDS: Record<string, Obstacle[]> = { 'cocody-zoo': ZOO_SOLID, 'cocody-hotel-ivoire': IVOIRE_SOLID, 'plateau-poulman': POULMAN_SOLID, 'plateau-noum': NOUM_SOLID, 'marcory-azale': AZALE_SOLID, 'pb-rabisson': RABISSON_SOLID, 'plateau-cathedrale': CATHEDRAL_SOLID, 'plateau-stade': STADIUM_SOLID, 'treich-mosquee-m6': MOSQUE_M6_SOLID, 'yop-rue-princesse': RUE_SOLID }
 const SOLID_LANDMARKS: Record<string, number> = { 'treich-palais': 34, 'plateau-pyramide': 28, 'cocody-oranjo': 34, 'yakro-basilique': 55 }
 
 /** A vehicle's length and width, for what it blocks. */

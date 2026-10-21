@@ -70,5 +70,6 @@ export const KIND_COLORS: Record<string, [string, string]> = {
   station: ['#ff8a65', '#d62828'],
   zoo: ['#c0eb75', '#5c940d'],
   karting: ['#ffb36b', '#e8432f'],
+  rue: ['#ffb36b', '#f77f00'],
 }
 export const kindColors = (kind: string) => KIND_COLORS[kind] ?? ['#c3c8dc', '#7a8099']

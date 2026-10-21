@@ -229,6 +229,24 @@ var Kinds = map[string]PlaceKind{
 			{Text: "Un « gnambro » te fait payer 100F de plus. C'est comme ça.", Money: -100},
 		},
 	},
+	// A street of maquis and clubs (the Rue Princesse): one strolls it, sits at a terrace, eats in it, dances in it on party
+	// nights; its clubs are places of their own (world.Place.Parent).
+	"rue": {
+		ID: "rue", Label: "Rue d'ambiance", Icon: "music",
+		Interactions: []Interaction{
+			{ID: "flaner-rue", Label: "Flâner dans la rue", Icon: "footprints", Minutes: 30, Effect: Needs{Fun: 15, Social: 10}},
+			{ID: "brochettes-rue", Label: "Manger brochettes et alloco", Icon: "drumstick", Minutes: 30, Cost: 1500, Effect: Needs{Hunger: 45, Fun: 8}},
+			{ID: "pot-terrasse", Ages: Adults, Label: "Prendre un pot à une terrasse", Icon: "beer", Minutes: 60, Cost: 2000, Effect: Needs{Social: 35, Fun: 25, Energy: -5}, MinHour: 16, MaxHour: 4},
+			Gbairai,
+			{ID: "danser-rue", Ages: TeensUp, Label: "Danser dans la rue", Icon: "music", Minutes: 60, Effect: Needs{Fun: 40, Social: 25, Energy: -15, Hygiene: -10}, MinHour: 20, MaxHour: 4},
+			{ID: "petit-travaillement", Ages: Adults, Label: "Petit « travaillement » devant les maquis", Icon: "banknote", Minutes: 30, Cost: 5000, Effect: Needs{Fun: 20, Social: 25}, MinHour: 19, MaxHour: 4},
+		},
+		Events: []RandomEvent{
+			{Text: "Un DJ installe ses enceintes au milieu de la rue : tout le monde danse !", Effect: Needs{Fun: 20, Social: 10}},
+			{Text: "Une vendeuse de brochettes t'offre un bout pour goûter.", Effect: Needs{Hunger: 8, Fun: 5}},
+			{Text: "On te reconnaît : « Eh, c'est toi qui dansais l'autre soir ! »", Effect: Needs{Social: 12}},
+		},
+	},
 	"club": {
 		ID: "club", Label: "Boîte de nuit", Icon: "disc-3",
 		Interactions: []Interaction{
