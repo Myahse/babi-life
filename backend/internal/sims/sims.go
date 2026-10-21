@@ -20,6 +20,7 @@ import (
 
 	"github.com/myahse/babi-life/backend/internal/ads"
 	"github.com/myahse/babi-life/backend/internal/auth"
+	"github.com/myahse/babi-life/backend/internal/court"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
 	"github.com/myahse/babi-life/backend/internal/kart"
@@ -218,6 +219,8 @@ type Handler struct {
 	DB *pgxpool.Pool
 	// Karts: the grids of Babi Karting (players racing each other).
 	Karts *kart.Lobby
+	// Courts: the matches at the football pitches and basketball courts (players together).
+	Courts *court.Lobby
 	// RealPhotos: stories may be photos from the phone, not only from the game (STORIES_REAL_PHOTOS).
 	RealPhotos bool
 	// Push: notifications to the players' phones (a Gbairai message, a bet over); nil: none.
@@ -303,6 +306,10 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/meet", h.meet)
 	r.Post("/sims/{id}/kart/join", h.kartJoin)
 	r.Get("/kart/{race}", h.kartRace)
+	r.Post("/sims/{id}/court/join", h.courtJoin)
+	r.Get("/court/{match}", h.courtMatch)
+	r.Post("/sims/{id}/court/{match}/leave", h.courtLeave)
+	r.Get("/court/at/{place}", h.courtAt)
 	r.Post("/sims/{id}/friends/{other}/answer", h.answerFriend)
 	r.Post("/sims/{id}/friends/{other}/invite", h.inviteFriend)
 	r.Post("/sims/{id}/invites/{invite}", h.answerInvite)
@@ -500,6 +507,9 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 		}
 		it, err := s.interactAt(req.PlaceID, req.InteractionID)
 		if err != nil {
+			return game.Outcome{}, nil, err
+		}
+		if err := h.courtTake(s, req.PlaceID, it); err != nil {
 			return game.Outcome{}, nil, err
 		}
 		text := fmt.Sprintf("%s : %s (%s)", s.FirstName, it.Label, humanMinutes(game.Length(it.Minutes)))

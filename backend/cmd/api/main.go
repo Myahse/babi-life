@@ -24,6 +24,7 @@ import (
 	"github.com/myahse/babi-life/backend/internal/ads"
 	"github.com/myahse/babi-life/backend/internal/auth"
 	"github.com/myahse/babi-life/backend/internal/config"
+	"github.com/myahse/babi-life/backend/internal/court"
 	"github.com/myahse/babi-life/backend/internal/db"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
@@ -73,6 +74,7 @@ func main() {
 	// ADMIN_KEY opens every admin part at once (the /admin page).
 	adminkey.Master = os.Getenv("ADMIN_KEY")
 	karts := kart.NewLobby()
+	courts := court.NewLobby()
 	// Notifications to the phones (internal/push): the site's Web Push keys, the app's Firebase account.
 	fcm, err := push.NewFCM(os.Getenv("FCM_SERVICE_ACCOUNT"))
 	if err != nil {
@@ -87,7 +89,7 @@ func main() {
 		Endpoint: os.Getenv("ADS_S3_ENDPOINT"), Region: os.Getenv("ADS_S3_REGION"), Name: os.Getenv("ADS_S3_BUCKET"),
 		AccessKey: os.Getenv("ADS_S3_ACCESS_KEY"), SecretKey: os.Getenv("ADS_S3_SECRET_KEY"), PublicURL: os.Getenv("ADS_PUBLIC_URL"),
 	}
-	simsH := &sims.Handler{DB: pool, RealPhotos: os.Getenv("STORIES_REAL_PHOTOS") == "true", Karts: karts, Push: pushes, Bucket: bucket}
+	simsH := &sims.Handler{DB: pool, RealPhotos: os.Getenv("STORIES_REAL_PHOTOS") == "true", Karts: karts, Courts: courts, Push: pushes, Bucket: bucket}
 	go simsH.WatchBets(ctx)
 	headlines := news.New(cfg.NewsFeeds)
 	go headlines.Run(ctx)
@@ -95,6 +97,7 @@ func main() {
 	players := live.NewHub(pool, tokens, cfg.AllowedOrigins)
 	sessions.OnRevoke = players.Kick
 	players.Karts = karts
+	players.Courts = courts
 	go players.Run(ctx)
 
 	r := chi.NewRouter()
