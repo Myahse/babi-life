@@ -74,6 +74,7 @@ const MallInside = lazy(() => import('../world3d/interior/MallInside').then((m) 
 const IvoireInside = lazy(() => import('../world3d/interior/IvoireInside').then((m) => ({ default: m.IvoireInside })))
 const CathedralInside = lazy(() => import('../world3d/interior/CathedralInside').then((m) => ({ default: m.CathedralInside })))
 const MosqueM6Inside = lazy(() => import('../world3d/interior/MosqueM6Inside').then((m) => ({ default: m.MosqueM6Inside })))
+const PyramideInside = lazy(() => import('../world3d/interior/PyramideInside').then((m) => ({ default: m.PyramideInside })))
 const HotelInside = lazy(() => import('../world3d/interior/HotelInside').then((m) => ({ default: m.HotelInside })))
 const HotelStay = lazy(() => import('../world3d/interior/HotelFloors').then((m) => ({ default: m.HotelStay })))
 const StreetMatch = lazy(() => import('../streetball/StreetMatch'))
@@ -685,6 +686,11 @@ export function Play() {
             // The Mosquée Mohammed VI: its great hall under the arcades, full and praying as one on Friday.
             <Suspense fallback={null}>
               <MosqueM6Inside sim={sim} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
+            </Suspense>
+          ) : inside!.id === 'plateau-pyramide' ? (
+            // La Pyramide: its gallery of shops round the open well, the lifts to the offices; its roof over the Plateau.
+            <Suspense fallback={null}>
+              <PyramideInside sim={sim} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
             </Suspense>
           ) : inside!.kind === 'arena' ? (
             <Arena sim={sim} placeId={inside!.id} interactionId={inside!.it} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id)} />
