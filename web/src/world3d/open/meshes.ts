@@ -368,7 +368,7 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ, ring: XZ[]) => boolea
   const sand = new Builder()
   const pitch = new Builder()
   for (const a of chunk.areas) {
-    const [to, y, scale] = a.kind === 'water' ? [water, 0.02, 4] : a.kind === 'green' || a.kind === 'campus' ? [green, a.kind === 'campus' ? 0.008 : 0.012, 2] : a.kind === 'sand' ? [sand, 0.014, 2] : a.kind === 'hospital' ? [pavement, 0.009, 2] : a.kind === 'apron' ? [pavement, 0.018, 3] : [pitch, 0.016, 2]
+    const [to, y, scale] = a.kind === 'water' ? [water, 0.02, 4] : a.kind === 'green' || a.kind === 'campus' || a.kind === 'airport' ? [green, a.kind === 'campus' ? 0.008 : a.kind === 'airport' ? 0.006 : 0.012, 2] : a.kind === 'sand' ? [sand, 0.014, 2] : a.kind === 'hospital' ? [pavement, 0.009, 2] : a.kind === 'apron' ? [pavement, 0.018, 3] : [pitch, 0.016, 2]
     to.flat(a.rings, y as number, scale as number)
   }
 

@@ -16,7 +16,8 @@ export type Road = { cls: string; pts: XZ[]; width: number; paved: boolean; brid
 /** An airport's runway or taxiway (not a street: nobody walks there). */
 export type Aeroway = { cls: 'runway' | 'taxiway'; pts: XZ[] }
 export type Building = { ring: XZ[]; holes: XZ[][]; height: number; c: XZ; tint: number; /** a house the game built (fill.ts): under tin */ tin?: boolean }
-export type Area = { kind: 'water' | 'green' | 'sand' | 'pitch' | 'campus' | 'hospital' | 'apron'; rings: XZ[][] }
+/** airport: the airfield's grounds (grass round the runways): no game houses there, no trees. */
+export type Area = { kind: 'water' | 'green' | 'sand' | 'pitch' | 'campus' | 'hospital' | 'apron' | 'airport'; rings: XZ[][] }
 export type ChunkData = { key: string; tx: number; ty: number; box: Box; roads: Road[]; buildings: Building[]; areas: Area[]; trees: XZ[]; palms: XZ[]; aeroways: Aeroway[]; pois: Poi[]; /** big rainforest trees, close together (the Banco) */ forest?: XZ[]; /** fuel stations, laid out by their street */ stations?: Station[] }
 /** A fuel station: its canopy's middle by the street, the street's direction, which side of it, its name. */
 export type Station = { at: XZ; angle: number; side: 1 | -1; name: string; /** room for the game's shop behind (else a map building stands there) */ shop: boolean }
@@ -151,7 +152,7 @@ export function decodeChunk(o: Origin, tx: number, ty: number, data: Uint8Array,
   }
   areas('water', () => 'water')
   // Schools and universities, hospitals: their grounds, as the map draws them.
-  areas('landuse', (cls) => (GREEN.has(cls) ? 'green' : SAND.has(cls) ? 'sand' : cls === 'pitch' ? 'pitch' : cls === 'school' ? 'campus' : cls === 'hospital' ? 'hospital' : null))
+  areas('landuse', (cls) => (GREEN.has(cls) ? 'green' : SAND.has(cls) ? 'sand' : cls === 'pitch' ? 'pitch' : cls === 'school' ? 'campus' : cls === 'hospital' ? 'hospital' : cls === 'airport' ? 'airport' : null))
   if (tile.layers.aeroway) {
     const l = tile.layers.aeroway
     for (let i = 0; i < l.length; i++) {
@@ -731,10 +732,10 @@ function decodeOpenChunk(o: Origin, tx: number, ty: number, z: number, tile: Vec
     const xz = toXZ(f.extent)
     if (f.type === 2 && (cls === 'runway' || cls === 'taxiway') && !(far && cls !== 'runway')) {
       for (const line of f.loadGeometry()) for (const pts of clipLine(line.map(xz), box)) chunk.aeroways.push({ cls, pts })
-    } else if (f.type === 3 && ['apron', 'runway', 'taxiway'].includes(cls)) {
+    } else if (f.type === 3 && ['apron', 'runway', 'taxiway', 'aerodrome'].includes(cls)) {
       for (const poly of classifyRings(f.loadGeometry())) {
         const rings = poly.map((r) => clipRing(open(r.map(xz)), box)).filter((r) => r.length >= 3)
-        if (rings.length && rings[0].length >= 3) chunk.areas.push({ kind: 'apron', rings })
+        if (rings.length && rings[0].length >= 3) chunk.areas.push({ kind: cls === 'aerodrome' ? 'airport' : 'apron', rings })
       }
     }
   }
