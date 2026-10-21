@@ -49,6 +49,7 @@ import { MiniMap, WhereTo } from '../components/Navigator'
 import { ChatSheet, type Reply } from '../components/ChatSheet'
 import { npcReact } from '../world3d/open/npcReact'
 import type { Npc } from '../world3d/open/OpenWorld'
+import { setTalkHandler, setTalking } from '../world3d/talk'
 import type { Track } from '../audio/music'
 import { NotifyPrompt } from '../components/NotifyPrompt'
 import { aCommune } from '../lib/french'
@@ -376,12 +377,15 @@ export function Play() {
   // Talking to someone in the street (and who, while the chat lasts).
   const [chat, setChat] = useState<Npc | null>(null)
   const talkedTo = useRef<string | null>(null)
+  // Anyone tapped anywhere (a maquis, a club, a hotel lobby: world3d/talk.ts) opens the same chat.
+  useEffect(() => setTalkHandler((npc) => (setChat(npc), npcReact(npc.id, 'hello', 1.6))), [])
+  useEffect(() => setTalking(chat?.id ?? null), [chat?.id])
   // What they answer stays in the chat sheet (no toast), and they react to it.
   const say = async (topic: string, label: string, phrase?: string): Promise<Reply | null> => {
     const npc = chat!
     talkedTo.current = npc.id
     try {
-      const res = await api.chat(sim!.id, { id: npc.id, name: npc.name, gender: npc.gender, seed: npc.seed }, topic, phrase)
+      const res = await api.chat(sim!.id, { id: npc.id, name: npc.name, gender: npc.gender, seed: npc.seed, look: npc.look }, topic, phrase)
       apply(res)
       const { text, money, mood } = res.outcome
       if (mood) npcReact(npc.id, mood, mood === 'bye' ? 2.5 : 3.2)

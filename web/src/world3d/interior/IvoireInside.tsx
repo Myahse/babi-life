@@ -9,6 +9,7 @@ import { randomLook } from '../../avatar/options'
 import { rng } from '../themes'
 import { Snapper } from '../snapshot'
 import { Guest, mat, sign, useBigWalk, type Spot, type XZ } from './bigPlace'
+import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
 
 // Inside the Hôtel Ivoire: not a room but a world. The great hall (marble,
@@ -483,12 +484,12 @@ function People({ night }: { night: boolean }) {
     <NoShadows>
       {list.map((g, i) => (
         <group key={i} position={g.p} rotation={g.pose === 'sleep' ? [-Math.PI / 2, 0, g.ry] : [0, g.ry, 0]}>
-          <Human look={g.look} gender={g.gender} pose={g.pose} seed={g.seed} />
+          <TalkHuman id={`ivoire-${i}`} look={g.look} gender={g.gender} pose={g.pose} seed={g.seed} />
         </group>
       ))}
       {walkers.map((w, i) => (
         <group key={`w${i}`} ref={(g) => { wr.current[i] = g }}>
-          <Human look={w.look} gender={w.gender} pose="walk" speed={w.speed} seed={i * 7} />
+          <TalkHuman id={`ivoire-w${i}`} look={w.look} gender={w.gender} pose="walk" speed={w.speed} seed={i * 7 + 0.5} />
         </group>
       ))}
       {night && <pointLight position={[0, 3, -28]} intensity={10} distance={18} color="#7fd6ff" />}

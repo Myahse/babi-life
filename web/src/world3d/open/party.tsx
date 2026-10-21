@@ -12,6 +12,7 @@ import { turnTo } from './shared'
 import { RP_TABLES } from './ruePrincesse'
 import { BLOCKHAUSS_TABLES } from './blockhauss'
 import type { XZ } from './geo'
+import { doingOf } from '../talk'
 import type { Npc } from './OpenWorld'
 
 // The party nights at the famous spots: the Rue Princesse in Yopougon and
@@ -515,7 +516,7 @@ function Person({ who, p, r = 0, pose, sense, react, bubble, onTalk }: { who: Wh
     g.rotation.y = turnTo(g.rotation.y, on && d > 0.3 ? Math.atan2(s.x - p[0], s.z - p[1]) : r, 0.15)
   })
   return (
-    <group ref={ref} position={[p[0], 0, p[1]]} rotation={[0, r, 0]} onClick={(e) => (e.stopPropagation(), onTalk(who))}>
+    <group ref={ref} position={[p[0], 0, p[1]]} rotation={[0, r, 0]} onClick={(e) => (e.stopPropagation(), onTalk({ ...who, doing: doingOf(pose) }))}>
       <Human look={who.look} gender={who.gender} pose={turned && react ? react.pose : pose} seed={who.seed % 100} />
       {bubble}
     </group>

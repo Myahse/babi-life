@@ -6,6 +6,7 @@ import { randomLook } from '../avatar/options'
 import { worldTime } from '../lib/worldClock'
 import { NoteShower } from './money'
 import { rng } from './themes'
+import { TalkHuman } from './Talkable'
 import { Vehicle } from './vehicles'
 
 // Friday night at the club: every club in town is full. Outside, the queue
@@ -190,13 +191,13 @@ export function ClubCrowd({ placeId }: { placeId: string }) {
           .filter((g) => g.at <= fill)
           .map((g, i) => (
             <group key={i} position={g.p} rotation={[0, g.r, 0]}>
-              <Human look={g.look} gender={g.gender} pose={big && g.pose === 'dance' && i % 3 === 0 ? 'cheer' : g.pose} seed={g.seed} />
+              <TalkHuman id={`club-${placeId}-${i}`} look={g.look} gender={g.gender} pose={big && g.pose === 'dance' && i % 3 === 0 ? 'cheer' : g.pose} seed={g.seed} />
             </group>
           ))}
         {big &&
           throwers.map((t, i) => (
             <group key={`t${i}`} position={t.p} rotation={[0, t.r, 0]}>
-              <Human look={t.look} gender="homme" pose="throw" seed={t.seed} />
+              <TalkHuman id={`club-${placeId}-t${i}`} look={t.look} gender="homme" pose="throw" seed={t.seed} />
               <NoteShower from={[0.3, 1.72, 0.3]} toward={[0, 0.35, 1]} rate={i ? 2.6 : 3.6} fan={4} seed={i + 21} />
             </group>
           ))}
@@ -242,7 +243,7 @@ export function ClubFront({ seed, fill, near }: { seed: number; fill: number; ne
           {/* The vigiles at the door */}
           {[-1.2, 1.2].map((x) => (
             <group key={x} position={[x, 0, 0.8]}>
-              <Human look={vigile} gender="homme" pose="idle" seed={seed * 10 + x} />
+              <TalkHuman id={`clubdoor-${seed}-${x}`} look={vigile} gender="homme" pose="idle" seed={seed * 10 + x} />
             </group>
           ))}
           {/* The queue: longer the fuller */}
@@ -250,13 +251,13 @@ export function ClubFront({ seed, fill, near }: { seed: number; fill: number; ne
             .filter((p) => p.at <= fill)
             .map((p, i) => (
               <group key={i} position={[2.4 + i * 0.75, 0, 0.35 + p.jitter]} rotation={[0, -Math.PI / 2 + p.jitter, 0]}>
-                <Human look={p.look} gender={p.gender} pose={p.pose} seed={p.seed} />
+                <TalkHuman id={`clubqueue-${seed}-${i}`} look={p.look} gender={p.gender} pose={p.pose} seed={p.seed} />
               </group>
             ))}
           {/* A grand-frère at the door, the notes already flying */}
           {big && (
             <group position={[-0.4, 0, 2.6]} rotation={[0, Math.PI * 0.8, 0]}>
-              <Human look={boss} gender="homme" pose="throw" seed={seed} />
+              <TalkHuman id={`clubboss-${seed}`} look={boss} gender="homme" pose="throw" seed={seed} />
               <NoteShower from={[0.3, 1.72, 0.3]} toward={[0, 0.35, 1]} rate={2} fan={3} keep={6} seed={Math.floor(seed * 100)} />
             </group>
           )}

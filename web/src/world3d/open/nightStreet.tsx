@@ -9,6 +9,7 @@ import { rng } from '../themes'
 import { whereabouts } from '../whereabouts'
 import { lettering, signMaterial } from './ruePrincesse'
 import { hash, type XZ } from './geo'
+import { TalkHuman } from '../Talkable'
 import type { Nav } from './nav'
 
 // The quarters after dark, away from the party: in front of the houses the
@@ -158,9 +159,10 @@ function useCast(seed: string, n: number) {
   }, [seed, n])
 }
 type Cast = ReturnType<typeof useCast>[number]
-const P = ({ c, p, r = 0, pose, lie = false }: { c: Cast; p: [number, number, number]; r?: number; pose: Pose; lie?: boolean }) => (
+/** One of them, who can be talked to (a child can't: world3d/talk.ts). */
+const P = ({ c, p, r = 0, pose, lie = false, kid = false }: { c: Cast; p: [number, number, number]; r?: number; pose: Pose; lie?: boolean; kid?: boolean }) => (
   <group position={p} rotation={lie ? [-Math.PI / 2, 0, r] : [0, r, 0]}>
-    <Human look={c.look} gender={c.gender} pose={pose} seed={c.seed} />
+    {kid ? <Human look={c.look} gender={c.gender} pose={pose} seed={c.seed} /> : <TalkHuman id={`night-${Math.round(c.seed * 1e6)}`} look={c.look} gender={c.gender} pose={pose} seed={c.seed} />}
   </group>
 )
 const Chair = ({ p, r = 0, c = '#f4f4f4' }: { p: [number, number, number]; r?: number; c?: string }) => (
@@ -192,7 +194,7 @@ function Porch({ seed }: { seed: string }) {
       <P c={cast[2]} p={[0.9, 0, 0.1]} r={-0.5} pose="drink" />
       <P c={cast[3]} p={[2.2, 0, 0.9]} r={-1.2} pose="phone" />
       <group scale={0.62}>
-        <P c={cast[4]} p={[-0.6, 0, 3.1]} r={Math.PI + 0.4} pose="talk" />
+        <P c={cast[4]} p={[-0.6, 0, 3.1]} r={Math.PI + 0.4} pose="talk" kid />
       </group>
     </group>
   )

@@ -10,6 +10,7 @@ import { rng } from '../themes'
 import { Snapper } from '../snapshot'
 import { Vehicle } from '../vehicles'
 import { BOX, Blocks } from '../open/ruePrincesse'
+import { TalkHuman } from '../Talkable'
 import { Guest, mat, sign, useBigWalk, type Spot, type XZ } from './bigPlace'
 
 // Inside a big shopping centre (PlaYce and the others, kind « mall »): not a
@@ -452,12 +453,12 @@ function People() {
     <NoShadows>
       {list.map((g, i) => (
         <group key={i} position={g.p} rotation={[0, g.ry, 0]} scale={g.kid ? 0.62 : 1}>
-          <Human look={g.look} gender={g.gender} pose={g.pose} seed={g.seed} />
+          {g.kid ? <Human look={g.look} gender={g.gender} pose={g.pose} seed={g.seed} /> : <TalkHuman id={`mall-${i}`} look={g.look} gender={g.gender} pose={g.pose} seed={g.seed} />}
         </group>
       ))}
       {walkers.map((w, i) => (
         <group key={`w${i}`} ref={(g) => { wr.current[i] = g }} scale={w.kid ? 0.62 : 1}>
-          <Human look={w.look} gender={w.gender} pose="walk" speed={w.speed} seed={i * 7} />
+          {w.kid ? <Human look={w.look} gender={w.gender} pose="walk" speed={w.speed} seed={i * 7} /> : <TalkHuman id={`mall-w${i}`} look={w.look} gender={w.gender} pose="walk" speed={w.speed} seed={i * 7 + 0.5} />}
         </group>
       ))}
     </NoShadows>

@@ -9,6 +9,7 @@ import { worldTime } from '../../lib/worldClock'
 import { rng } from '../themes'
 import { whereabouts } from '../whereabouts'
 import { hash, type XZ } from './geo'
+import { TalkHuman } from '../Talkable'
 import type { Nav } from './nav'
 
 // The people of the street, each at their own street, always the same:
@@ -174,7 +175,7 @@ function Fou({ spot }: { spot: Spot }) {
   return (
     <group ref={ref}>
       <NoShadows>
-        <Human look={who.look} gender={who.gender} pose={state.pose} seed={who.seed} />
+        <TalkHuman id={`fou-${spot.id}`} look={who.look} gender={who.gender} pose={state.pose} seed={who.seed} />
       </NoShadows>
       {state.say && <Say text={state.say} />}
     </group>
@@ -226,12 +227,12 @@ function Pasteur({ spot }: { spot: Spot }) {
     <group position={[0, 0, side * (spot.w / 2 + 1.6)]} rotation={[0, side > 0 ? Math.PI : 0, 0]}>
       <NoShadows>
         <group>
-          <Human look={cast.pastor.look} gender="homme" pose="rant" seed={cast.pastor.seed} />
+          <TalkHuman id={`pasteur-${spot.id}`} look={cast.pastor.look} gender="homme" pose="rant" seed={cast.pastor.seed} />
           <Say key={state.line} text={`${words} 📖`} y={2.45} tone="gold" />
         </group>
         {cast.listeners.slice(0, state.listen).map((l, i) => (
           <group key={i} position={l.at} rotation={[0, l.rot, 0]}>
-            <Human look={l.look} gender={l.gender} pose={state.amen === i ? 'cheer' : 'idle'} seed={l.seed} />
+            <TalkHuman id={`amen-${spot.id}-${i}`} look={l.look} gender={l.gender} pose={state.amen === i ? 'cheer' : 'idle'} seed={l.seed} />
             {state.amen === i && <Say text={LISTENER_WORDS[i % LISTENER_WORDS.length]} y={2.1} />}
           </group>
         ))}
@@ -383,7 +384,7 @@ function Fonctionnaires({ spot }: { spot: Spot }) {
         <group key={i} ref={(el) => void (refs.current[i] = el)}>
           {g.people.map((p, j) => (
             <group key={j} position={[p.across, 0, -p.behind]}>
-              <Human look={p.look} gender={p.gender} pose="walk" seed={p.seed} />
+              <TalkHuman id={`bureau-${Math.round(p.seed * 1e6)}`} look={p.look} gender={p.gender} pose="walk" seed={p.seed} />
               {/* The briefcase in the hand, or the folder under the arm */}
               <mesh position={p.carry === M.briefcase ? [0.36, 0.72, 0.02] : [0.3, 1.18, 0.05]} material={p.carry} castShadow>
                 <boxGeometry args={p.carry === M.briefcase ? [0.1, 0.32, 0.42] : [0.05, 0.3, 0.24]} />

@@ -4,11 +4,12 @@ import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import type { Sim } from '../../lib/types'
 import { worldTime } from '../../lib/worldClock'
-import { Human, NoShadows, type Pose } from '../../avatar/Human'
+import { NoShadows, type Pose } from '../../avatar/Human'
 import { randomLook } from '../../avatar/options'
 import { rng } from '../themes'
 import { Snapper } from '../snapshot'
 import { Guest, mat, sign, useBigWalk, type Spot, type XZ } from './bigPlace'
+import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
 
 // Inside a business hotel of Abidjan (the Plateau's, Marcory's): not one room
@@ -706,12 +707,12 @@ function People({ placeId, night }: { placeId: string; night: boolean }) {
     <NoShadows>
       {list.map((g, i) => (
         <group key={i} position={g.p} rotation={g.pose === 'sleep' ? [-Math.PI / 2, 0, g.ry] : [0, g.ry, 0]}>
-          <Human look={g.look} gender={g.gender} pose={g.pose} seed={g.seed} />
+          <TalkHuman id={`hotel-${placeId}-${i}`} look={g.look} gender={g.gender} pose={g.pose} seed={g.seed} />
         </group>
       ))}
       {walkers.map((w, i) => (
         <group key={`w${i}`} ref={(g) => { wr.current[i] = g }}>
-          <Human look={w.look} gender={w.gender} pose="walk" speed={w.speed} seed={i * 7} />
+          <TalkHuman id={`hotel-${placeId}-w${i}`} look={w.look} gender={w.gender} pose="walk" speed={w.speed} seed={i * 7 + 0.5} />
         </group>
       ))}
       {night && <pointLight position={[0, 4, 4]} intensity={10} distance={16} color="#ffe2b0" />}

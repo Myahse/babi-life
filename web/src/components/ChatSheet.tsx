@@ -110,8 +110,31 @@ function remember(id: string, m: Memory) {
   }
 }
 
-/** How they greet you: a first time, or « you again ». */
+/** A light colour (a white shirt, a yellow pagne): the initial on it goes dark. */
+function light(c?: string) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(c ?? '')
+  if (!m) return false
+  const n = parseInt(m[1], 16)
+  return 0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255) > 170
+}
+
+// Caught in the middle of something, a first time: they answer from there.
+const BUSY_HELLO: Record<string, string[]> = {
+  'en train de danser': ['Tu danses avec moi ou tu regardes seulement ?', 'Eh, laisse-moi finir ce pas, après on cause !'],
+  'en train de boire un verre': ['Assieds-toi, on boit un coup ! Ça dit quoi ?', "Tu prends quoi ? Ici la bière est bien glacée."],
+  'en train de manger': ['Tu viens manger ? Bon appétit à toi aussi !', 'Pardon, la bouche est pleine… Ça va ?'],
+  'en prière': ['Amen… Oui, je t’écoute.'],
+  'en train de parler tout seul': ['Toi aussi tu les entends ? Non ? Bon…', 'Eh, ils m’ont volé mon pays ! … Pardon, tu disais ?'],
+  'au téléphone': ['Attends, je raccroche… Voilà, ça dit quoi ?', 'Je te rappelle ! … Oui, bonjour ?'],
+  'au travail': ['Dis vite, le patron regarde !', 'Je suis au boulot là, mais on peut causer un peu.'],
+  "en train d'ambiancer": ['Ehhh, c’est chaud ici ! Tu es venu·e ambiancer aussi ?'],
+  'en train de travailler les billets': ['Approche ! Le travaillement, c’est pour les vrais !'],
+}
+
+/** How they greet you: a first time (from what they're doing, if they're busy), or « you again ». */
 function greeting(npc: Npc, simGender: 'femme' | 'homme', m: Memory): string {
+  const busy = npc.doing ? BUSY_HELLO[npc.doing] : undefined
+  if (m.met === 0 && busy) return busy[npc.seed % busy.length]
   if (m.met === 0) return helloFrom(npc.seed, simGender)
   const toi = simGender === 'femme' ? 'ma sœur' : 'mon frère'
   if (m.rapport >= 4) return `Eh ${toi} ! Mon ami${simGender === 'femme' ? 'e' : ''} ! Viens, viens, on cause !`
@@ -166,12 +189,12 @@ export function ChatSheet({ npc, simGender, onSay, onClose, friend, grownUp, adu
     <div className="absolute inset-0 z-30 flex flex-col justify-end bg-[#0f1230]/15 lg:items-center lg:justify-center" onClick={onClose}>
       <div className="sheet animate-up flex max-h-[68vh] w-full flex-col rounded-t-[28px] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:w-[460px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3">
-          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full font-display text-xl font-extrabold text-white" style={{ background: npc.look.outfitColor }}>
+          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full font-display text-xl font-extrabold" style={{ background: npc.look.outfitColor ?? '#ff7a00', color: light(npc.look.outfitColor) ? '#141416' : '#ffffff' }}>
             {npc.name[0]}
           </div>
           <div className="min-w-0 flex-1">
             <div className="label truncate">
-              {jobOf(npc)} · {mem.met <= 1 ? '1re rencontre' : `Vu·e ${mem.met} fois`}
+              {jobOf(npc)} · {npc.doing ? `${npc.doing} · ` : ''}{mem.met <= 1 ? '1re rencontre' : `Vu·e ${mem.met} fois`}
             </div>
             <div className="flex items-center gap-2">
               <span className="font-display text-[22px] leading-tight font-extrabold">{npc.name}</span>
