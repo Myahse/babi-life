@@ -24,7 +24,7 @@ func TestOuting(t *testing.T) {
 		s := newSim()
 		s.Money = 50000
 		s.Friends = friends()
-		came, refused, err := s.goOut("yop-maquis", "eat-poulet-braise", []string{"p-in-yop-maquis-6", "p-x-2", "p-x-3", "p-x-3", "nobody"}, rand.New(rand.NewPCG(seed, 1)))
+		came, refused, _, err := s.goOut("yop-maquis", "eat-poulet-braise", []string{"p-in-yop-maquis-6", "p-x-2", "p-x-3", "p-x-3", "nobody"}, rand.New(rand.NewPCG(seed, 1)))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -44,7 +44,7 @@ func TestOuting(t *testing.T) {
 				t.Errorf("an outing with friends: %q %+v", a.Interaction.Label, a.Interaction.Effect)
 			}
 			for _, before := range friends() {
-				if f := s.findFriend(before.ID); f.ID == came[0].ID && f.Friendship != min(100, before.Friendship+outingFriendship) {
+				if f := s.findFriend(before.ID); f.ID == came[0].ID && f.Friendship != min(100, before.Friendship+map[bool]int{false: outingFriendship, true: outingDate}[before.Partner]) {
 					t.Errorf("not closer: %d → %d", before.Friendship, f.Friendship)
 				}
 			}
@@ -56,7 +56,7 @@ func TestOuting(t *testing.T) {
 	// Not an outing: home, work.
 	s := newSim()
 	s.Friends = friends()
-	if _, _, err := s.goOut(HomePlaceID, "sleep", []string{"p-x-2"}, rand.New(rand.NewPCG(1, 1))); err != errOutingWhere {
+	if _, _, _, err := s.goOut(HomePlaceID, "sleep", []string{"p-x-2"}, rand.New(rand.NewPCG(1, 1))); err != errOutingWhere {
 		t.Errorf("home: %v", err)
 	}
 	// Not enough for everyone's bill: nothing starts.
@@ -67,7 +67,7 @@ func TestOuting(t *testing.T) {
 	for seed := uint64(0); seed < 10 && err == nil; seed++ {
 		t2 := newSim()
 		t2.Money, t2.Friends = s.Money, s.Friends
-		_, _, err = t2.goOut("yop-maquis", "eat-poulet-braise", []string{"p-a"}, rand.New(rand.NewPCG(seed, 1)))
+		_, _, _, err = t2.goOut("yop-maquis", "eat-poulet-braise", []string{"p-a"}, rand.New(rand.NewPCG(seed, 1)))
 	}
 	if err != errOutingBill {
 		t.Errorf("short of money: %v", err)

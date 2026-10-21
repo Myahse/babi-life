@@ -71,9 +71,10 @@ const GROUPS: { id: string; label: string; colors: [string, string]; topics: Top
 // Romance, between adults only: the Sim grown up, the person met as an adult
 // (their number taken), and the player who said once they're 18 or over.
 const LOVE = { id: 'coeur', label: 'Cœur', colors: ['#ff8fb1', '#e0245e'] as [string, string] }
-function loveTopics(friend: Friend | undefined): Topic[] {
+function loveTopics(friend: Friend | undefined, taken?: string): Topic[] {
   if (!friend?.adult) return []
-  if (!friend.partner) return [{ id: 'sortir', label: 'Lui demander de sortir ensemble', icon: Heart, hint: 'Plus vous êtes proches, plus c’est oui' }]
+  // Already with someone else: it's cheating, and the quarter talks (backend sims/cheating.go).
+  if (!friend.partner) return [{ id: 'sortir', label: 'Lui demander de sortir ensemble', icon: Heart, hint: taken ? `Tu es avec ${taken} : si ça se sait…` : 'Plus vous êtes proches, plus c’est oui' }]
   return [
     ...(friend.home ? [] : [{ id: 'emmenager', label: 'Lui proposer de venir vivre chez toi', icon: House, hint: 'Vous vivrez ensemble à la maison' }]),
     { id: 'rompre', label: 'Rompre', icon: HeartCrack, hint: 'C’est fini entre vous' },
@@ -142,13 +143,15 @@ function greeting(npc: Npc, simGender: 'femme' | 'homme', m: Memory): string {
   return ['Te revoilà !', `On se connaît, ${toi} ! Ça dit quoi ?`, "Ah, c'est toi encore ! Ça va un peu ?"][m.met % 3]
 }
 
-export function ChatSheet({ npc, simGender, onSay, onClose, friend, grownUp, adultAccount, onConfirmAdult }: {
+export function ChatSheet({ npc, simGender, onSay, onClose, friend, taken, grownUp, adultAccount, onConfirmAdult }: {
   npc: Npc
   simGender: 'femme' | 'homme'
   onSay: (topic: string, label: string, said?: string) => Promise<Reply | null>
   onClose: () => void
   /** Them in the Sim's friends (their number taken), with where you are together. */
   friend?: Friend
+  /** The name of who the Sim is already together with, if anyone else. */
+  taken?: string
   /** The Sim is an adult. */
   grownUp?: boolean
   /** The player said they're 18 or over. */
@@ -182,7 +185,7 @@ export function ChatSheet({ npc, simGender, onSay, onClose, friend, grownUp, adu
       setMem((m) => ({ ...m, rapport: Math.min(5, Math.max(0, m.rapport + step)) }))
     }
   }
-  const love = loveTopics(friend)
+  const love = loveTopics(friend, taken)
   const groups = grownUp ? [...GROUPS, { ...LOVE, topics: love }] : GROUPS
   const g = groups.find((x) => x.id === group) ?? GROUPS[0]
   return (

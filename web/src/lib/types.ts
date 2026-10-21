@@ -94,6 +94,9 @@ export type Player = {
   /** Friends (asked and accepted), and a friend request between the two. */
   friend: boolean
   request?: '' | 'sent' | 'received'
+  /** Together (backend sims/couple.go), and a couple request between the two. */
+  couple?: boolean
+  coupleRequest?: '' | 'sent' | 'received'
 }
 export type Invite = { id: string; from: string; fromName: string; placeId: string; interactionId: string; label: string; at: string }
 export type Around = { players: Player[]; friends: Player[]; invites: Invite[]; /** Friend requests waiting for an answer. */ requests?: Player[] }

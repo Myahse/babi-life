@@ -264,7 +264,10 @@ var (
 		"{name} : « Ma mère va dire quoi ? Attendons encore un peu. »",
 	}
 	emmenagerAgain = []string{"{name} : « Je vis déjà chez toi, tu as oublié ou bien ? »"}
-	rompreLines    = []string{
+	emmenagerTaken = []string{"{name} : « Chez toi ? Et la personne qui dort déjà là-bas, on la met où ? »"}
+	// flirtHeard: the partner hears the Sim was flirting.
+	flirtHeard  = []string{"Quelqu'un est allé raconter à {name} que tu draguais. {Pronoun} te fait la tête.", "{name} a su que tu draguais encore. Ça va chauffer à la maison."}
+	rompreLines = []string{
 		"{name} baisse les yeux : « Ok… Si c'est comme ça. Prends soin de toi. »",
 		"{name} se fâche : « Après tout ce que j'ai fait pour toi ? Va-t'en ! »",
 		"{name} soupire : « Je l'ai vu venir. Bonne chance, {toi}. »",
@@ -297,7 +300,8 @@ func (s *Sim) romance(t chatTopic, friend *game.Friend, adult bool, said int, rn
 		if friend.Partner {
 			return chatAnswer{Text: say(sortirAgain, p, s, rng), Mood: "good"}, true, nil
 		}
-		if s.partner() != nil {
+		// Already with someone: half the time they know (the quarter talks), else they may say yes, and it's cheating (cheating.go).
+		if s.partner() != nil && rng.Float64() < 0.5 {
 			friend.Friendship = max(0, friend.Friendship-5)
 			return chatAnswer{Text: say(sortirTaken, p, s, rng), Mood: "bad"}, true, nil
 		}
@@ -307,7 +311,11 @@ func (s *Sim) romance(t chatTopic, friend *game.Friend, adult bool, said int, rn
 			friend.Partner = true
 			friend.Friendship = min(100, friend.Friendship+10)
 			it.Effect = game.Needs{Social: 25, Fun: 20}
-			return chatAnswer{Text: say(sortirYes, p, s, rng), Mood: "good"}, true, nil
+			ans := chatAnswer{Text: say(sortirYes, p, s, rng), Mood: "good"}
+			if news := s.caught(friend, caughtNew, rng); news != "" {
+				ans.Text += " " + news
+			}
+			return ans, true, nil
 		}
 		return chatAnswer{Text: say(sortirNo, p, s, rng), Mood: "bad"}, true, nil
 	case "emmenager":
@@ -316,6 +324,12 @@ func (s *Sim) romance(t chatTopic, friend *game.Friend, adult bool, said int, rn
 		}
 		if friend.Home {
 			return chatAnswer{Text: say(emmenagerAgain, p, s, rng), Mood: "good"}, true, nil
+		}
+		// Someone else already lives there.
+		for _, o := range s.partners() {
+			if o.Home && o.ID != friend.ID {
+				return chatAnswer{Text: say(emmenagerTaken, p, s, rng), Mood: "bad"}, true, nil
+			}
 		}
 		chance := 0.2
 		if friend.Friendship >= 70 {
@@ -485,6 +499,13 @@ func (s *Sim) chat(p Passerby, topicID, said string, adult bool, rng *rand.Rand)
 	default:
 		ans = chatAnswer{Text: say(t.no, p, s, rng), Mood: "bad"}
 		it.Effect = t.noEffect
+	}
+	// Flirting while together with someone: word may get back to them.
+	if t.id == "drague" && ans.Mood == "good" {
+		if mine := s.partner(); mine != nil && rng.Float64() < caughtFlirt {
+			mine.Friendship = max(0, mine.Friendship-15)
+			ans.Text += " " + strings.NewReplacer("{name}", mine.Name, "{Pronoun}", pronoun(mine)).Replace(flirtHeard[rng.IntN(len(flirtHeard))])
+		}
 	}
 	if aside {
 		s.Needs = s.Needs.Add(it.Effect)

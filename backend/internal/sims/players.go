@@ -58,6 +58,9 @@ type Player struct {
 	// Friends (asked and accepted), and a friend request between the two: "sent" | "received" | "".
 	Friend  bool   `json:"friend"`
 	Request string `json:"request,omitempty"`
+	// Together (couple.go), and a couple request between the two: "sent" | "received" | "".
+	Couple        bool   `json:"couple,omitempty"`
+	CoupleRequest string `json:"coupleRequest,omitempty"`
 }
 
 type PlayerActivity struct {
@@ -168,6 +171,7 @@ func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
 		}
 		rows.Close()
 	}
+	h.markCouples(ctx, id, friends)
 	httpx.JSON(w, http.StatusOK, map[string]any{"players": players, "friends": friends, "invites": invites, "requests": requests})
 }
 
