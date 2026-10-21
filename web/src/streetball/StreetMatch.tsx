@@ -229,17 +229,22 @@ function Loop({ game, input, onHud, net, entries, start, simId }: { game: Game; 
     const total = Math.min(Math.max(dtRaw, 0), 0.25)
     const steps = Math.max(1, Math.ceil(total / (1 / 60)))
     const dt = total / steps
-    // Football on a phone held upright: the camera looks up the pitch, so up the screen is +x and right is +z.
+    // Football on a phone held upright: the camera looks up the pitch from
+    // behind the player's own goal, so up the screen is the way its team
+    // attacks (+x for team 0, -x for team 1) and right is +z (or -z).
     const inp = input.current
     const turned = game.sport === 'foot' && upright(size)
-    const mine = turned ? { ...inp, mx: -inp.mz, mz: inp.mx } : { ...inp }
+    const away = game.ps[game.me].team === 1
+    const mine = turned ? (away ? { ...inp, mx: inp.mz, mz: -inp.mx } : { ...inp, mx: -inp.mz, mz: inp.mx }) : { ...inp }
     // At a court: nothing moves before the whistle; then the first player
     // there runs the match, the others draw what it sends.
-    const waiting = net ? Math.max(0, (start - serverNow()) / 1000) : 0
+    const waiting = start > 0 ? Math.max(0, (start - serverNow()) / 1000) : 0
     const boss = net ? net.host(entries) : simId
     const host = boss === simId
     if (net) net.press(inp)
-    if (waiting <= 0 && boss) {
+    // At a court, nothing runs before the line to the others is open: alone, this phone would start a match of its own.
+    const offline = start > 0 && !net
+    if (waiting <= 0 && boss && !offline) {
       // Taking over a match no one has run yet (its first player went): on the court's clock, not from the countdown.
       if (host && net && !synced.current) {
         const elapsed = (serverNow() - start) / 1000 - COUNTDOWN

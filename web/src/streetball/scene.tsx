@@ -273,7 +273,8 @@ export function PlayerView({ g, i, look, gender }: { g: Game; i: number; look: L
     const speed = Math.round(Math.hypot(p.vx, p.vz))
     if (p.pose !== view.pose || speed !== view.speed) setView({ pose: p.pose, speed })
   })
-  const me = g.ps[i].human
+  // Only the phone's own player: at a court the other humans are players too, and a ring on each hid which one was yours.
+  const me = i === g.me
   return (
     <group ref={root}>
       <group ref={inner}>
@@ -476,8 +477,13 @@ export function Follow({ g }: { g: Game }) {
   const at = useRef(new THREE.Vector3())
   const look = useRef(new THREE.Vector3())
   const first = useRef(true)
+  // How far the camera has slid back towards the player's own Sim, to keep it above the stick and the buttons.
+  const lift = useRef(0)
+  const feet = useRef(new THREE.Vector3())
   useFrame((_, dt) => {
     const me = g.ps[g.me]
+    // Football, upright: from behind the player's own goal, whichever team the court gave it (team 1 attacks -x).
+    const dir = me.team === 0 ? 1 : -1
     const b = g.ball
     // On a phone held upright, further back so the width fits.
     const tall = upright(size)
@@ -491,22 +497,34 @@ export function Follow({ g }: { g: Game }) {
       target = new THREE.Vector3(fx * 0.6, 1.2, Math.min(zz - 3, -1.5))
     } else if (tall) {
       // A phone held upright: from behind the player's own goal, the attack going up the screen.
-      const xx = Math.max(-PITCH.x + 4, Math.min(PITCH.x - 6, fx))
+      const xx = dir * Math.max(-PITCH.x + 4, Math.min(PITCH.x - 6, dir * fx))
       const zz = Math.max(-7, Math.min(7, me.z * 0.75 + b.z * 0.25))
-      want = new THREE.Vector3(xx - 13, 12, zz)
-      target = new THREE.Vector3(xx + 5, 0, zz)
+      want = new THREE.Vector3(xx - 13 * dir, 12, zz)
+      target = new THREE.Vector3(xx + 5 * dir, 0, zz)
     } else {
       const xx = Math.max(-PITCH.x + 9, Math.min(PITCH.x - 9, fx))
       const zz = Math.max(-4, Math.min(4, fz * 0.5))
       want = new THREE.Vector3(xx, 10.5, zz + 12.5)
       target = new THREE.Vector3(xx, 0, zz - 0.5)
     }
+    // Down the screen: towards the camera along the pitch.
+    const down = g.sport === 'foot' && tall ? new THREE.Vector3(-dir, 0, 0) : new THREE.Vector3(0, 0, 1)
+    want.addScaledVector(down, lift.current)
+    target.addScaledVector(down, lift.current)
     const k = first.current ? 1 : 1 - Math.exp(-dt * 4)
     first.current = false
     at.current.lerp(want, k)
     look.current.lerp(target, k)
     camera.position.copy(at.current)
     camera.lookAt(look.current)
+    // The stick and the buttons cover about the bottom 190 px of any phone
+    // (StreetMatch's Pad): a Sim standing back from the play, or a small
+    // screen, put it under them. Its feet stay above that line.
+    camera.updateMatrixWorld()
+    const y = feet.current.set(me.x, 0, me.z).project(camera).y
+    const floor = -1 + (2 * 190) / Math.max(size.height, 300)
+    if (y < floor) lift.current = Math.min(14, lift.current + dt * 10)
+    else if (y > floor + 0.2) lift.current = Math.max(0, lift.current - dt * 4)
   })
   return null
 }
