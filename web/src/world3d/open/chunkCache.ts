@@ -66,7 +66,7 @@ export function chunkKey(origin: { lat: number; lng: number }, tx: number, ty: n
   const reach = 200
   const near = places
     .filter((p) => p.at[0] > box.x0 - reach && p.at[0] < box.x1 + reach && p.at[1] > box.z0 - reach && p.at[1] < box.z1 + reach)
-    .map((p) => [p.id, Math.round(p.at[0] * 10), Math.round(p.at[1] * 10), p.kind ?? '', p.landmark ?? 0, p.name ?? '', p.type ?? '', p.noLayout ? 1 : 0].join(','))
+    .map((p) => [p.id, Math.round(p.at[0] * 10), Math.round(p.at[1] * 10), p.kind ?? '', p.landmark ?? 0, p.noFill ?? 0, p.name ?? '', p.type ?? '', p.noLayout ? 1 : 0].join(','))
     .sort()
     .join(';')
   return `${VERSION}|${origin.lat.toFixed(6)},${origin.lng.toFixed(6)}|${z}|${tx}/${ty}|${hash(near)}`

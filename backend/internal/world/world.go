@@ -138,6 +138,9 @@ const (
 	srcMosqueeM62      = "https://fr.hespress.com/361344-en-images-la-mosquee-mohammed-vi-un-chef-doeuvre-architectural-au-coeur-dabidjan.html"
 	srcPyramide2       = "https://structurae.net/en/structures/la-pyramide"
 	srcBoulay          = "https://en.wikipedia.org/wiki/%C3%8Ele_Boulay"
+	srcParcExpo        = "https://www.fratmat.info/article/230674/economie/inauguration-du-parc-des-expositions-un-reve-dhouphouet-boigny-depuis-1985-qui-se-realise"
+	srcParcExpo2       = "https://news.abidjan.net/articles/717535/parc-dexposition-dabidjan-un-edifice-devenementiels-dote-dequipements-de-pointe"
+	srcParcExpoOSM     = "https://www.openstreetmap.org/way/1026355392"
 	srcBoulayAIP       = "https://www.aip.ci/?p=338986"
 	srcBlockhauss      = "https://news.abidjan.net/articles/374315/le-chef-de-letat-aux-populations-de-blockhauss-hier-on-ne-doit-pas-vous-deposseder-totalement-de-vos-terres"
 	srcCocodyVillages  = "https://participate.oidp.net/processes/award2024/f/288/proposals/3254"
@@ -369,6 +372,9 @@ var Cities = []City{
 				Place{ID: "pb-aeroport", Name: "Aéroport Félix-Houphouët-Boigny", Kind: "transport", Lat: 5.2521, Lng: -3.9334, Real: true, Approx: true,
 					Owner: "État de Côte d'Ivoire (concédant)", Operator: "AERIA (concession depuis 1996)",
 					Source: game.Verified("Aéroport de Port-Bouët géré par AERIA depuis mai 1996 ; concession renouvelée par l'État en 2010 pour vingt ans.", srcAirport, srcAirport2)},
+				// Its central building under the dome (web/src/world3d/open/parcExpo.tsx); no game houses on its grounds.
+				Place{ID: "portbouet-parc-expo", Name: "Parc des Expositions d'Abidjan", Kind: "culture", Lat: 5.26465, Lng: -3.94603, Real: true, Approx: true,
+					Source: game.Partial("Parc des Expositions d'Abidjan, boulevard de l'Aéroport à Port-Bouët, inauguré en juillet 2023 : 16 ha en première phase, un hall d'exposition de 7 200 m², le Convention Center sous son dôme (plus de 5 000 places assises, environ 10 000 debout), un écran LED de 250 m², 800 places de parking. Le dôme est posé sur le grand bâtiment central d'OpenStreetMap ; ses dimensions sont celles du jeu.", srcParcExpo, srcParcExpo2, srcParcExpoOSM)},
 			),
 			abidjanCommune("attecoube", "Attécoubé", "Entre lagune et forêt du Banco.", 5.3350, -4.0400, "nord",
 				Place{ID: "attecoube-banco", Name: "Forêt du Banco", Kind: "nature", Lat: 5.3945, Lng: -4.0520, Real: true, Approx: true,

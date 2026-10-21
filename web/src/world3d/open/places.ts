@@ -7,7 +7,7 @@ import type { Area, Building, ChunkData } from './tiles'
 // Only where the map has no building at all does the game put up its own,
 // on empty ground beside the street, without removing anything real.
 
-export type PlaceSpot = { id: string; at: XZ; kind?: string; /** a place of worship's faith (drawn on the main thread, not in the chunks) */ faith?: string; /** a place inside a landmark, at one of its slots (never sent to the chunks) */ parent?: string; slot?: number; /** a landmark the game draws itself, clearing this many metres */ landmark?: number; /** for a sports place: its name and what the map calls it */ name?: string; type?: string; /** a sports place too close to another: played on the map's own pitch if it has one, never on one the game lays out */ noLayout?: boolean }
+export type PlaceSpot = { id: string; at: XZ; kind?: string; /** a place of worship's faith (drawn on the main thread, not in the chunks) */ faith?: string; /** a place inside a landmark, at one of its slots (never sent to the chunks) */ parent?: string; slot?: number; /** a landmark the game draws itself, clearing this many metres */ landmark?: number; /** grounds round it where the game builds no houses of its own (metres) */ noFill?: number; /** for a sports place: its name and what the map calls it */ name?: string; type?: string; /** a sports place too close to another: played on the map's own pitch if it has one, never on one the game lays out */ noLayout?: boolean }
 
 /** A pitch or a court: its middle, the direction of its length (radians from +x), its size. */
 export type Field = { at: XZ; angle: number; len: number; wid: number; sport: 'foot' | 'basket'; /** the map's own pitch (drawn by the map), or one the game lays out */ map: boolean }

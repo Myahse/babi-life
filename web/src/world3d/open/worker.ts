@@ -43,6 +43,9 @@ self.onmessage = async (e: MessageEvent<ChunkRequest>) => {
     // Not only the buildings whose middle is on it: a big one whose corner reaches in
     // (a block of flats beside a house's lot) would stand across its walls.
     if (landmarks.length) data.buildings = data.buildings.filter((b) => !landmarks.some((l) => b.ring.some((q) => Math.hypot(q[0] - l.at[0], q[1] - l.at[1]) < l.r)))
+    // A fairground: the map's halls stay, the game's own houses don't line its inner roads.
+    const fairs = places.filter((p) => p.noFill).map((p) => ({ at: resolved.find((r) => r.id === p.id)?.center ?? p.at, r: p.noFill! }))
+    if (fairs.length) data.buildings = data.buildings.filter((b) => !b.fill || !fairs.some((f) => Math.hypot(b.c[0] - f.at[0], b.c[1] - f.at[1]) < f.r))
     // A building in a campus or a hospital's grounds looks the part.
     const grounds = data.areas.filter((a) => a.kind === 'campus' || a.kind === 'hospital')
     const styleOf = (b: Building): Style => {
