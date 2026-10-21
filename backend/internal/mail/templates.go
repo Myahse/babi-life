@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// The e-mails' look: one layout (templates/layout.html), the game's colours,
+// The e-mails' look: one layout (templates/layout.html), painted like the wish list,
 // tables and inline styles because mail apps ignore the rest; each e-mail
 // fills it with its words, and gets the same words as plain text.
 
@@ -20,8 +20,10 @@ var layout = template.Must(template.ParseFS(files, "templates/layout.html"))
 // Page: what goes in the layout.
 type Page struct {
 	Site, Subject, Preheader, Title string
-	Paragraphs                      []string
-	Button, Link, Note              string
+	// Tagline: the words on the right of the sign (« Ton compte »).
+	Tagline            string
+	Paragraphs         []string
+	Button, Link, Note string
 }
 
 // Render: the HTML and the plain text of a page.
@@ -55,7 +57,8 @@ func Reset(site, to, firstName, link string, minutes int) (Message, error) {
 		Site:       site,
 		Subject:    "Babi Life : ton nouveau mot de passe",
 		Preheader:  fmt.Sprintf("Ton lien pour choisir un nouveau mot de passe (valable %d minutes).", minutes),
-		Title:      "Un nouveau mot de passe",
+		Title:      "Nouveau mot de passe",
+		Tagline:    "Ton compte",
 		Paragraphs: []string{hello, "Quelqu'un (toi, on espère) a demandé un nouveau mot de passe pour ton compte Babi Life.", fmt.Sprintf("Touche le bouton pour en choisir un. Le lien marche une seule fois, pendant %d minutes.", minutes)},
 		Button:     "Choisir mon mot de passe",
 		Link:       link,

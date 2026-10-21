@@ -4,38 +4,59 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light only">
+<meta name="supported-color-schemes" content="light">
 <title>{{.Subject}}</title>
+<!-- The wish list's letters (web/src/index.css, .street): mail apps that load web fonts show them, the others fall back on look-alikes -->
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Alfa+Slab+One&family=Caveat:wght@700&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
 </head>
-<body style="margin:0;padding:0;background:#f3eef8;-webkit-text-size-adjust:100%;">
+<body style="margin:0;padding:0;background:#efe4cc;-webkit-text-size-adjust:100%;">
 <!-- The line mail apps show next to the subject, hidden in the e-mail itself -->
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">{{.Preheader}}&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f3eef8;">
-<tr><td align="center" style="padding:24px 12px;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;">
-    <!-- Header: the game's sunset, as on the phone's home screen -->
-    <tr><td align="center" bgcolor="#e0306a" style="background:#e0306a;background-image:linear-gradient(160deg,#ffb27a 0%,#e0306a 55%,#3b1d6e 100%);border-radius:28px 28px 0 0;padding:32px 24px 26px;">
-      <img src="{{.Site}}/pin-192.png" width="72" height="72" alt="" style="display:block;border:0;border-radius:20px;margin:0 auto 12px;">
-      <div style="font-family:'Baloo 2','Trebuchet MS',Arial,sans-serif;font-size:28px;line-height:1.1;font-weight:800;color:#ffffff;">Babi Life</div>
-      <div style="font-family:Nunito,'Segoe UI',Arial,sans-serif;font-size:14px;font-weight:700;color:#ffe9dc;margin-top:4px;">Ta vie à Abidjan</div>
+<!-- Painted like the wish list: a lime-washed wall, the name over the door on turquoise, the flag's stripe, faded paint, no gradients -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#efe4cc" style="background:#efe4cc;">
+<tr><td align="center" style="padding:0;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
+    <tr><td bgcolor="#1f8f88" style="background:#1f8f88;padding:16px 22px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td valign="middle" style="width:24px;padding-right:10px;"><img src="{{.Site}}/mail-pin.png" width="20" height="28" alt="" style="display:block;border:0;"></td>
+        <td valign="middle" style="font-family:Anton,Impact,'Arial Narrow Bold','Arial Black',sans-serif;font-size:28px;line-height:1;letter-spacing:0.01em;text-transform:uppercase;color:#fbf5e6;">Babi <span style="color:#dda233;">Life</span></td>
+        <td valign="middle" align="right" style="font-family:Nunito,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:800;color:#fbf5e6;">{{.Tagline}}</td>
+      </tr></table>
     </td></tr>
-    <!-- The card -->
-    <tr><td bgcolor="#ffffff" style="background:#ffffff;border-radius:0 0 28px 28px;padding:30px 28px 28px;font-family:Nunito,'Segoe UI',Arial,sans-serif;color:#1d1f33;">
-      <h1 style="margin:0 0 14px;font-family:'Baloo 2','Trebuchet MS',Arial,sans-serif;font-size:24px;line-height:1.2;font-weight:800;color:#1d1f33;">{{.Title}}</h1>
-      {{range .Paragraphs}}<p style="margin:0 0 14px;font-size:16px;line-height:1.55;color:#3c3f5c;">{{.}}</p>
+    <tr><td style="padding:0;line-height:0;font-size:0;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td width="33%" height="8" bgcolor="#f07a12" style="background:#f07a12;height:8px;line-height:8px;font-size:0;">&nbsp;</td>
+        <td width="34%" height="8" bgcolor="#fbf5e6" style="background:#fbf5e6;height:8px;line-height:8px;font-size:0;">&nbsp;</td>
+        <td width="33%" height="8" bgcolor="#0b6b3d" style="background:#0b6b3d;height:8px;line-height:8px;font-size:0;">&nbsp;</td>
+      </tr></table>
+    </td></tr>
+    <tr><td style="padding:30px 22px 8px;font-family:Nunito,'Segoe UI',Arial,sans-serif;color:#2b1d14;">
+      <h1 style="margin:0 0 18px;font-family:Anton,Impact,'Arial Narrow Bold','Arial Black',sans-serif;font-size:42px;line-height:0.95;font-weight:400;letter-spacing:0.01em;text-transform:uppercase;color:#b5432c;text-shadow:3px 3px 0 #dda233;">{{.Title}}</h1>
+      {{range .Paragraphs}}<p style="margin:0 0 14px;font-size:17px;line-height:1.5;font-weight:800;color:#2b1d14;">{{.}}</p>
       {{end}}
       {{if .Button}}
-      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:22px auto 22px;">
-        <tr><td align="center" bgcolor="#ff6a00" style="border-radius:999px;background:#ff6a00;background-image:linear-gradient(90deg,#ffa040,#ff6a00);">
-          <a href="{{.Link}}" target="_blank" style="display:inline-block;padding:15px 30px;font-family:'Baloo 2','Trebuchet MS',Arial,sans-serif;font-size:18px;font-weight:800;color:#ffffff;text-decoration:none;border-radius:999px;">{{.Button}}</a>
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 24px;">
+        <tr><td bgcolor="#b5432c" style="background:#b5432c;border-radius:3px;">
+          <a href="{{.Link}}" target="_blank" style="display:inline-block;padding:15px 24px;font-family:'Alfa Slab One',Rockwell,Georgia,serif;font-size:19px;color:#fbf5e6;text-decoration:none;border-radius:3px;">{{.Button}}</a>
         </td></tr>
       </table>
       {{end}}
-      {{if .Note}}<p style="margin:0 0 14px;padding:12px 14px;background:#f6f4fb;border-radius:14px;font-size:14px;line-height:1.5;color:#5b5f7d;">{{.Note}}</p>{{end}}
-      {{if .Link}}<p style="margin:18px 0 0;font-size:12px;line-height:1.5;color:#8a8ea8;">Le bouton ne marche pas ? Copie ce lien dans ton navigateur :<br><a href="{{.Link}}" style="color:#6c47ff;word-break:break-all;">{{.Link}}</a></p>{{end}}
+      {{if .Note}}
+      <!-- The maquis' slate (.ardoise): what to do if it wasn't you -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 18px;">
+        <tr><td bgcolor="#7a5534" style="background:#7a5534;padding:7px;border-radius:4px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+            <td bgcolor="#26332c" style="background:#26332c;padding:14px 16px;font-family:Caveat,'Segoe Print','Comic Sans MS',cursive;font-size:22px;line-height:1.25;font-weight:700;color:#f1eee4;">{{.Note}}</td>
+          </tr></table>
+        </td></tr>
+      </table>
+      {{end}}
+      <p style="margin:6px 0 0;font-family:Caveat,'Segoe Print','Comic Sans MS',cursive;font-size:28px;line-height:1.1;font-weight:700;color:#0b6b3d;">À tout de suite à Babi !</p>
+      {{if .Link}}<p style="margin:22px 0 0;font-size:12px;line-height:1.5;font-weight:600;color:#6b5a4c;">Le bouton ne marche pas ? Copie ce lien dans ton navigateur :<br><a href="{{.Link}}" style="color:#1f8f88;word-break:break-all;">{{.Link}}</a></p>{{end}}
     </td></tr>
-    <tr><td align="center" style="padding:18px 12px 0;font-family:Nunito,'Segoe UI',Arial,sans-serif;font-size:12px;line-height:1.5;color:#8a8ea8;">
+    <tr><td style="padding:22px 22px 30px;font-family:Nunito,'Segoe UI',Arial,sans-serif;font-size:12px;line-height:1.5;font-weight:600;color:#6b5a4c;border-top:1px solid #d9c9a8;">
       Tu reçois cet e-mail parce qu'il concerne ton compte Babi Life.<br>
-      <a href="{{.Site}}" style="color:#8a8ea8;">lifeinbabi.com</a>
+      <a href="{{.Site}}" style="color:#6b5a4c;">lifeinbabi.com</a> · Fait ici, pour nous.
     </td></tr>
   </table>
 </td></tr>
