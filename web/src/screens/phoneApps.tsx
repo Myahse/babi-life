@@ -1,6 +1,6 @@
 // The economy apps of the in-game phone: Boulot and Logement (money is in Waye).
 import { BadgeCheck, CalendarClock, Hammer, LandPlot, Clock3, Footprints, House, Map as MapIcon, TrendingUp, TriangleAlert } from 'lucide-react'
-import { api } from '../lib/api'
+import { api, type LotWhere } from '../lib/api'
 import { LotOffers } from '../components/Lots'
 import type { ActionResult, Commune, Lot, Sim, World } from '../lib/types'
 import { iconFor, kindColors } from '../components/icons'
@@ -232,7 +232,7 @@ function MyLot({ world, sim, act, onBuild, onWalk, onMap }: { world: World; sim:
   const [lot, setLot] = useState<Lot | null | undefined>(undefined)
   const [more, setMore] = useState(false)
   const own = sim.housing === OWN_HOUSE
-  const buy = (size: string, label: string) => act(label, 'land-plot', 'home', () => api.buyLot(sim.id, size))
+  const buy = (size: string, label: string, where: LotWhere) => act(label, 'land-plot', 'home', () => api.buyLot(sim.id, size, where))
   return (
     <section className="rounded-[20px] bg-[#eef8f1] p-3">
       <h4 className="label mb-2 flex items-center gap-1.5">
