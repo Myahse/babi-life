@@ -323,6 +323,19 @@ var Kinds = map[string]PlaceKind{
 			{Text: "L'infirmière te donne de bons conseils pour ta santé.", Effect: Needs{Energy: 10}},
 		},
 	},
+	// The town's cinemas (world/world.go, invented names): a film, alone or
+	// with friends (an outing, sims/outing.go), a date.
+	"cinema": {
+		ID: "cinema", Label: "Cinéma", Icon: "clapperboard",
+		Interactions: []Interaction{
+			{ID: "film", Label: "Voir un film", Icon: "clapperboard", Minutes: 2 * 60, Cost: 2500, Effect: Needs{Fun: 45, Social: 5, Energy: -5}, MinHour: 11, MaxHour: 1},
+			{ID: "film-popcorn", Label: "Voir un film avec pop-corn et soda", Icon: "popcorn", Minutes: 2 * 60, Cost: 4000, Effect: Needs{Fun: 50, Hunger: 15, Social: 5, Energy: -5}, MinHour: 11, MaxHour: 1},
+		},
+		Events: []RandomEvent{
+			{Text: "Toute la salle a crié au moment du but du héros : quelle ambiance !", Effect: Needs{Fun: 15, Social: 10}},
+			{Text: "Ton voisin a commenté tout le film à voix haute…", Effect: Needs{Fun: -5}},
+		},
+	},
 	"culture": {
 		ID: "culture", Label: "Culture", Icon: "drama",
 		Interactions: []Interaction{

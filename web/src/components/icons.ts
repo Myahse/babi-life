@@ -5,12 +5,12 @@ import {
   Flame, Footprints, HandHeart, Heart, Hourglass, House, LandPlot, Landmark, MessagesSquare, Moon, Mountain, Music, Palette,
   PartyPopper, PiggyBank, ShoppingBasket, ShowerHead, Smartphone, Sparkles, Store, Sunset, TreePalm, Trophy, Tv, Users,
   Volleyball, Waves, Baby, Bird, BookOpen, BrushCleaning, Cake, CarTaxiFront, Drama, Drum, FileText, Flag, Flower2, Gift, GraduationCap, Hammer,
-  Hospital, Library, Presentation, Shovel, Stamp, Stethoscope, Utensils, ShoppingBag, ShoppingCart, Shirt, IceCreamCone, Hamburger, CupSoda, Scissors, Hotel, Hand, Send, Fuel, Bike, Dumbbell, PawPrint, UserPlus, Snowflake, Clapperboard, Dice5, Toilet, Toothbrush, type LucideIcon,
+  Hospital, Library, Presentation, Shovel, Stamp, Stethoscope, Utensils, ShoppingBag, ShoppingCart, Shirt, IceCreamCone, Hamburger, CupSoda, Scissors, Hotel, Hand, Send, Fuel, Bike, Dumbbell, PawPrint, UserPlus, Snowflake, Clapperboard, Popcorn, Dice5, Toilet, Toothbrush, type LucideIcon,
 } from 'lucide-react'
 
 // Icon names sent by the API (backend/internal/game) → components.
 const REGISTRY: Record<string, LucideIcon> = {
-  snowflake: Snowflake, clapperboard: Clapperboard, 'dice-5': Dice5,
+  snowflake: Snowflake, clapperboard: Clapperboard, popcorn: Popcorn, 'dice-5': Dice5,
   crown: Crown,
   toilet: Toilet, toothbrush: Toothbrush,
   'milk': Milk, 'soup': Soup, 'bath': Bath, 'notebook-pen': NotebookPen, 'egg': Egg, 'beef': Beef,
@@ -52,6 +52,7 @@ export const KIND_COLORS: Record<string, [string, string]> = {
   school: ['#7fd3ff', '#1e88e5'],
   health: ['#ff9aa8', '#e53950'],
   culture: ['#ffb07a', '#d9480f'],
+  cinema: ['#ff8787', '#c92a2a'],
   mall: ['#f8a5c2', '#c2255c'],
   restaurant: ['#ffc078', '#e8590c'],
   barbier: ['#74c0fc', '#1d3557'],

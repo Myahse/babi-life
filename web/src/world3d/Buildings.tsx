@@ -538,6 +538,7 @@ const BY_KIND: Record<string, (p: Props) => React.ReactElement> = {
   school: School,
   health: Health,
   culture: Culture,
+  cinema: Culture,
   mall: Mall,
   restaurant: Restaurant,
   barbier: Barbier,
