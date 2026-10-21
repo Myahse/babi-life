@@ -38,7 +38,7 @@ const HOME_AREA: [number, number] = [35, 400]
 
 type Road = { at: XZ; d: number; angle: number; width: number }
 
-function nearestRoad(chunk: ChunkData, [x, z]: XZ): Road | null {
+function nearestRoad(chunk: ChunkData, [x, z]: XZ, facing?: number): Road | null {
   let best: Road | null = null
   for (const r of chunk.roads) {
     if (r.cls === 'path' || r.cls === 'motorway') continue
@@ -49,11 +49,24 @@ function nearestRoad(chunk: ChunkData, [x, z]: XZ): Road | null {
       const t = l2 ? Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (z - az) * (bz - az)) / l2)) : 0
       const at: XZ = [ax + (bx - ax) * t, az + (bz - az) * t]
       const d = Math.hypot(at[0] - x, at[1] - z)
+      // Only a street on that side (within 45°), when the place faces one way.
+      if (facing !== undefined && d > 1) {
+        const off = Math.atan2(at[0] - x, at[1] - z) - facing
+        if (Math.abs(Math.atan2(Math.sin(off), Math.cos(off))) > Math.PI / 4) continue
+      }
       if (!best || d < best.d) best = { at, d, angle: Math.atan2(bz - az, bx - ax), width: r.width }
     }
   }
   return best
 }
+
+/**
+ * The landmarks whose front is known, and which way it looks (the game's
+ * convention: 0 = +z, south): their door goes on the street on that side, not
+ * on the nearest one. The Cathédrale Saint-Paul faces the Palais de justice,
+ * across the boulevard to the south; its tower leans the other way, over the lagoon.
+ */
+const FACING: Record<string, number> = { 'plateau-cathedrale': 0 }
 
 /** The point of a ring closest to p, and the outward normal of that side. */
 function closestOnRing(ring: XZ[], p: XZ): { at: XZ; d: number; n: XZ } {
@@ -102,7 +115,7 @@ export function resolvePlaces(chunk: ChunkData, spots: PlaceSpot[], onReal?: (b:
   for (const s of order) {
     const [x, z] = s.at
     if (x < box.x0 || x >= box.x1 || z < box.z0 || z >= box.z1) continue
-    const road = nearestRoad(chunk, s.at)
+    const road = (s.landmark && FACING[s.id] !== undefined && nearestRoad(chunk, s.at, FACING[s.id])) || nearestRoad(chunk, s.at)
 
     // A landmark stands where the map says, facing its street.
     if (s.landmark && road) {
