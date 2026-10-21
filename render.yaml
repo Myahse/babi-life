@@ -43,3 +43,13 @@ services:
         sync: false
       - key: ADS_PUBLIC_URL # where players read the files: the bucket's public address (r2.dev or a custom domain)
         sync: false
+      - key: SMTP_HOST # « mot de passe oublié » e-mails (any SMTP provider: Brevo, Mailjet, Gmail app password…); unset: resets are off
+        sync: false
+      - key: SMTP_PORT # usually 587
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: MAIL_FROM # e.g. Babi Life <noreply@lifeinbabi.com>
+        sync: false
