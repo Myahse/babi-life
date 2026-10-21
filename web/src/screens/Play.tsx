@@ -2,7 +2,7 @@ import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useS
 import { Link, useNavigate } from 'react-router-dom'
 import { BadgeCheck, BookOpen, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
-import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World, Ride, Place, Plot } from '../lib/types'
+import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Player, Sim, World, Ride, Place, Plot } from '../lib/types'
 import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
 import { joinMatch, type CourtMatch } from '../streetball/online'
@@ -47,6 +47,7 @@ import { CameraView } from './CameraView'
 import { EmoteSheet } from './EmoteSheet'
 import { GalleryApp } from './GalleryApp'
 import { InviteBanner, PlayersChip, PlayersSheet, usePlayers } from '../components/Players'
+import { DamesBanner, DamesSheet, DamesStake } from '../components/Dames'
 import { SoundToggle, Soundtrack } from '../components/Soundtrack'
 import { usePartySound } from '../world3d/open/party'
 import { MiniMap, WhereTo } from '../components/Navigator'
@@ -369,6 +370,10 @@ export function Play() {
     return () => clearTimeout(t)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Les dames: who's asked (a man of the grin, a friend) and for how much; the board open.
+  const [damesAsk, setDamesAsk] = useState<{ with: string; name: string; max: number } | null>(null)
+  const [damesOpen, setDamesOpen] = useState(false)
+  const [damesSeen, setDamesSeen] = useState<number[]>([])
   const toast = useCallback((t: Omit<Toast, 'id'>) => {
     const id = Date.now() + Math.random()
     setToasts((ts) => [...ts.slice(-1), { ...t, id }])
@@ -438,6 +443,12 @@ export function Play() {
     }
   }
 
+  /** A game of dames: against a man of the grin (`with` 'npc', his name) or a friend, for the stake picked. */
+  const startDames = async (ask: { with: string; name: string }, stake: number) => {
+    setDamesAsk(null)
+    const ok = await run('Une partie de dames', 'crown', 'social', () => api.damesStart(sim!.id, ask.with === 'npc' ? { with: 'npc', npc: ask.name, stake } : { with: ask.with, stake }))
+    if (ok) setDamesOpen(true)
+  }
   const walkTo = (id: string) => {
     setOverlay(null)
     setGoTo({ placeId: id, nonce: Date.now() })
@@ -985,6 +996,21 @@ export function Play() {
 
       {/* The invitation and the toasts in one column under the top bar: they stack, never on top of each other */}
       <div className="pointer-events-none absolute top-[5.5rem] left-1/2 z-40 flex w-[min(400px,calc(100vw-24px))] -translate-x-1/2 flex-col gap-2 lg:top-24">
+        {!players && !placeId && !overlay && !damesOpen && around.dames && !damesSeen.includes(around.dames.id) && (
+          <DamesBanner
+            dame={around.dames}
+            onOpen={() => setDamesOpen(true)}
+            onDecline={() => {
+              const d = around.dames!
+              setDamesSeen((s) => [...s, d.id])
+              void api.damesAct(sim.id, d.id, 'decline').then(refreshPlayers, () => undefined)
+            }}
+            onAccept={() => {
+              const d = around.dames!
+              void run('Une partie de dames', 'crown', 'social', () => api.damesAccept(sim.id, d.id)).then((ok) => ok && setDamesOpen(true))
+            }}
+          />
+        )}
         {!players && !placeId && !overlay && (() => {
           const inv = around.invites.find((i) => !dismissed.includes(i.id))
           return inv ? (
@@ -1018,9 +1044,19 @@ export function Play() {
           street={!showInside}
           onWalk={walkTo}
           onBuild={(lot) => (setOverlay(null), setBuilding(lot ?? 0))}
+          onDames={(p) => (setOverlay(null), setPhoneApp(null), setDamesAsk({ with: p.id, name: p.firstName, max: 50000 }))}
         />
       )}
       {emotesOpen && <EmoteSheet world={world} sim={sim} onClose={() => setEmotesOpen(false)} onResult={apply} />}
+      {damesAsk && <DamesStake against={damesAsk.name} max={damesAsk.max} money={sim.money} onClose={() => setDamesAsk(null)} onPick={(stake) => void startDames(damesAsk, stake)} />}
+      {damesOpen && (
+        <DamesSheet
+          simId={sim.id}
+          onClose={() => (setDamesOpen(false), refreshPlayers())}
+          onAgain={(npc) => (setDamesOpen(false), setDamesAsk({ with: 'npc', name: npc, max: 5000 }))}
+          onMoney={() => void api.sim(sim.id).then(apply, () => undefined)}
+        />
+      )}
       {overlay === 'camera' && <CameraView sim={sim} street={!showInside} onClose={() => setOverlay(null)} onGallery={() => (setPhoneApp('galerie'), setOverlay('phone'))} />}
       {overlay === 'map' && <WorldMap world={world} sim={sim} night={c.isNight} desktop={desktop} onClose={() => setOverlay(null)} onTravel={travel} onWalk={(id) => (setOverlay(null), walkTo(id))} />}
       {delivery && overlay !== 'phone' && <DeliveryPill delivery={delivery} now={now} onOpen={() => (setPhoneApp('golvo'), setOverlay('phone'))} />}
@@ -1033,6 +1069,7 @@ export function Play() {
           simGender={sim.gender}
           onSay={say}
           onClose={() => setChat(null)}
+          onDames={/^(grin:|dames-)/.test(chat.id) && lifeOf(world, sim).stage?.id !== 'enfant' ? () => (setChat(null), setDamesAsk({ with: 'npc', name: chat.name, max: 5000 })) : undefined}
           onBye={() => {
             // « Au revoir » is the end: the chat stops there, nothing more is said or done.
             const a = sim.activity
@@ -1083,9 +1120,11 @@ type PhoneProps = {
   street: boolean
   onWalk: (id: string) => void
   onBuild: (lot?: number) => void
+  /** Challenge a player friend to a game of dames. */
+  onDames: (p: Player) => void
 }
 
-function Phone({ world, sim, commune, journal, time, act, startApp, delivery, onDelivery, onCollect, onClose, onMap, onCamera, street, onWalk, onBuild }: PhoneProps) {
+function Phone({ world, sim, commune, journal, time, act, startApp, delivery, onDelivery, onCollect, onClose, onMap, onCamera, street, onWalk, onBuild, onDames }: PhoneProps) {
   const [app, setApp] = useState<PhoneAppId | null>(startApp)
   // A photo of the gallery on its way to Tikitoko.
   const [tikiPhoto, setTikiPhoto] = useState<{ id: number; src: string } | undefined>()
@@ -1219,7 +1258,7 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
                 {app === 'news' && <NewsApp />}
                 {app === 'guide' && <GuideApp world={world} />}
                 {app === 'dodo' && <DodoApp world={world} sim={sim} act={act} onMap={onMap} />}
-                {app === 'friends' && <FriendsApp world={world} sim={sim} act={act} onPay={has('waye') ? (p) => (setWayeTo(p.id), setApp('waye')) : undefined} />}
+                {app === 'friends' && <FriendsApp world={world} sim={sim} act={act} onPay={has('waye') ? (p) => (setWayeTo(p.id), setApp('waye')) : undefined} onDames={onDames} />}
                 {app === 'store' && !ownPhone && (
                   <div className="grid place-items-center gap-3 px-6 py-12 text-center">
                     <Lock size={34} className="text-[var(--color-ink-soft)]" />

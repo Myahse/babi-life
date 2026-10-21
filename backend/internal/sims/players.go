@@ -178,7 +178,7 @@ func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
 	if h.Online != nil {
 		online = max(h.Online(), 1) // connected now (« ici » counts the last 20 minutes); at least the one asking
 	}
-	httpx.JSON(w, http.StatusOK, map[string]any{"players": players, "friends": friends, "invites": invites, "requests": requests, "online": online})
+	httpx.JSON(w, http.StatusOK, map[string]any{"players": players, "friends": friends, "invites": invites, "requests": requests, "online": online, "dames": h.pendingDame(ctx, id)})
 }
 
 // requestState: the SQL for a friend request between `other` and `me`: "sent" (me → other), "received", or "".

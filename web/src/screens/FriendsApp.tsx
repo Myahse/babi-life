@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Handshake, Heart, HeartCrack, LogOut, Phone, Send, ShieldAlert, UserPlus, Users, Wallet, Zap } from 'lucide-react'
+import { Grid3x3, Handshake, Heart, HeartCrack, LogOut, Phone, Send, ShieldAlert, UserPlus, Users, Wallet, Zap } from 'lucide-react'
 import { api } from '../lib/api'
 import type { Friend, Player, Sim, World } from '../lib/types'
 import { Portrait } from '../avatar/portrait'
@@ -12,7 +12,7 @@ import { OutingPlanner, friendLook } from './OutingPlanner'
  * Amis: the people the Sim knows, met at school, at football, at the maquis…
  * and, for some teenagers, the bande of the quarter and what it leads to.
  */
-export function FriendsApp({ world, sim, act, onPay }: { world: World; sim: Sim; act: Act; /** Send money to a player friend (opens Waye). */ onPay?: (p: Player) => void }) {
+export function FriendsApp({ world, sim, act, onPay, onDames }: { world: World; sim: Sim; act: Act; /** Send money to a player friend (opens Waye). */ onPay?: (p: Player) => void; /** Challenge a player friend to a game of dames. */ onDames?: (p: Player) => void }) {
   const friends = [...(sim.friends ?? [])].sort((a, b) => b.friendship - a.friendship)
   const life = lifeOf(world, sim)
   const ownPhone = !life.minor || life.age >= 12
@@ -75,7 +75,7 @@ export function FriendsApp({ world, sim, act, onPay }: { world: World; sim: Sim;
 
       <OutingPlanner world={world} sim={sim} act={act} />
 
-      <PlayerFriends world={world} sim={sim} act={act} onPay={onPay} />
+      <PlayerFriends world={world} sim={sim} act={act} onPay={onPay} onDames={onDames} />
 
       <div className="label">Tes amis du quartier</div>
       {friends.length === 0 ? (
@@ -129,7 +129,7 @@ function FriendRow({ f, world, canCall, busy, onAct }: { f: Friend; world: World
  * where; invite them over to what the Sim is doing, wherever they are, or
  * send them money with Waye.
  */
-function PlayerFriends({ world, sim, act, onPay }: { world: World; sim: Sim; act: Act; onPay?: (p: Player) => void }) {
+function PlayerFriends({ world, sim, act, onPay, onDames }: { world: World; sim: Sim; act: Act; onPay?: (p: Player) => void; onDames?: (p: Player) => void }) {
   const [around, setAround] = useState<{ friends: Player[]; requests: Player[] } | null>(null)
   const load = () =>
     api
@@ -200,12 +200,15 @@ function PlayerFriends({ world, sim, act, onPay }: { world: World; sim: Sim; act
                   </div>
                 </div>
               </div>
-              <div className="mt-2 grid grid-cols-2 gap-2">
+              <div className="mt-2 grid grid-cols-3 gap-2">
                 <button className="btn !bg-[#2563eb] !py-1.5 !text-xs" disabled={!canInvite} onClick={() => act(`Inviter ${tag(p)}`, 'send', 'social', () => api.inviteFriend(sim.id, p.id))}>
                   <Send size={14} /> Inviter
                 </button>
                 <button className="btn !bg-[#1aa6e6] !py-1.5 !text-xs" disabled={!onPay} onClick={() => onPay?.(p)}>
                   <Wallet size={14} /> Waye
+                </button>
+                <button className="btn !bg-[#7a4a22] !py-1.5 !text-xs" disabled={!onDames || p.stage === 'enfant'} onClick={() => onDames?.(p)}>
+                  <Grid3x3 size={14} /> Dames
                 </button>
               </div>
               <CoupleLine p={p} free={!friends.some((x) => x.couple)} grown={grown && p.stage === 'adulte'} onCouple={(a, label) => act(label, 'heart', 'social', () => api.couple(sim.id, p.id, a)).then(() => load())} />

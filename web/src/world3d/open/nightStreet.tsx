@@ -160,9 +160,9 @@ function useCast(seed: string, n: number) {
 }
 type Cast = ReturnType<typeof useCast>[number]
 /** One of them, who can be talked to (a child can't: world3d/talk.ts). */
-const P = ({ c, p, r = 0, pose, lie = false, kid = false }: { c: Cast; p: [number, number, number]; r?: number; pose: Pose; lie?: boolean; kid?: boolean }) => (
+const P = ({ c, p, r = 0, pose, lie = false, kid = false, tag = 'night' }: { c: Cast; p: [number, number, number]; r?: number; pose: Pose; lie?: boolean; kid?: boolean; /** What they're at (the dames: they'll play a game, ChatSheet) */ tag?: string }) => (
   <group position={p} rotation={lie ? [-Math.PI / 2, 0, r] : [0, r, 0]}>
-    {kid ? <Human look={c.look} gender={c.gender} pose={pose} seed={c.seed} /> : <TalkHuman id={`night-${Math.round(c.seed * 1e6)}`} look={c.look} gender={c.gender} pose={pose} seed={c.seed} />}
+    {kid ? <Human look={c.look} gender={c.gender} pose={pose} seed={c.seed} /> : <TalkHuman id={`${tag}-${Math.round(c.seed * 1e6)}`} look={c.look} gender={c.gender} pose={pose} seed={c.seed} />}
   </group>
 )
 const Chair = ({ p, r = 0, c = '#f4f4f4' }: { p: [number, number, number]; r?: number; c?: string }) => (
@@ -262,10 +262,10 @@ function Dames({ seed }: { seed: string }) {
       <mesh geometry={PLANE} material={board} position={[0, 0.61, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[0.62, 0.62, 1]} />
       <B p={[-0.75, 0.2, 0]} s={[0.4, 0.4, 0.4]} c="#3f8fd6" />
       <B p={[0.75, 0.2, 0]} s={[0.4, 0.4, 0.4]} c="#3f8fd6" />
-      <P c={{ ...cast[0], gender: 'homme', look: randomLook('homme', rng(`${seed}p1`)) }} p={[-0.75, -0.02, 0]} r={Math.PI / 2} pose="sit" />
-      <P c={{ ...cast[1], gender: 'homme', look: randomLook('homme', rng(`${seed}p2`)) }} p={[0.75, -0.02, 0]} r={-Math.PI / 2} pose="sit" />
-      <P c={cast[2]} p={[-0.5, 0, 1.1]} r={Math.PI} pose={hot ? 'cheer' : 'idle'} />
-      <P c={cast[3]} p={[0.4, 0, 1.2]} r={Math.PI + 0.3} pose={hot ? 'rant' : 'talk'} />
+      <P c={{ ...cast[0], gender: 'homme', look: randomLook('homme', rng(`${seed}p1`)) }} p={[-0.75, -0.02, 0]} r={Math.PI / 2} pose="sit" tag="dames" />
+      <P c={{ ...cast[1], gender: 'homme', look: randomLook('homme', rng(`${seed}p2`)) }} p={[0.75, -0.02, 0]} r={-Math.PI / 2} pose="sit" tag="dames" />
+      <P c={cast[2]} p={[-0.5, 0, 1.1]} r={Math.PI} pose={hot ? 'cheer' : 'idle'} tag="dames" />
+      <P c={cast[3]} p={[0.4, 0, 1.2]} r={Math.PI + 0.3} pose={hot ? 'rant' : 'talk'} tag="dames" />
       <P c={cast[4]} p={[0.2, 0, -1.1]} r={0} pose="idle" />
       <P c={cast[5]} p={[1.4, 0, 0.9]} r={-2.4} pose={hot ? 'cheer' : 'idle'} />
     </group>

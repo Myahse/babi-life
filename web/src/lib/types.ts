@@ -109,7 +109,13 @@ export type Player = {
   coupleRequest?: '' | 'sent' | 'received'
 }
 export type Invite = { id: string; from: string; fromName: string; placeId: string; interactionId: string; label: string; at: string }
-export type Around = { players: Player[]; friends: Player[]; invites: Invite[]; /** Friend requests waiting for an answer. */ requests?: Player[]; /** Players in the game right now, everywhere. */ online?: number }
+export type Around = { players: Player[]; friends: Player[]; invites: Invite[]; /** Friend requests waiting for an answer. */ requests?: Player[]; /** Players in the game right now, everywhere. */ online?: number; /** A game of dames waiting for an answer, or going on. */ dames?: DameInvite | null }
+/** Les dames (backend sims/dames.go): a move, the squares (0–49) it goes through and the pieces it takes. */
+export type DamesMove = { path: number[]; taken?: number[] }
+export type DameSide = { id?: string; name: string; npc?: boolean }
+/** A game seen from one side: `you` 1 white (plays first, from the bottom), -1 black; the board's 50 dark squares (1 a man, 2 a dame, negative black). */
+export type DameGame = { id: number; you: 1 | -1; white: DameSide; black: DameSide; stake: number; board: number[]; turn: 1 | -1; status: 'invited' | 'playing' | 'done' | 'declined' | 'expired'; winner: number; last?: DamesMove; legal?: DamesMove[]; text?: string }
+export type DameInvite = { id: number; status: 'invited' | 'playing'; fromName: string; stake: number; mine: boolean }
 /** Gbairai: a message, and a friend's chat in the list. */
 export type ChatMessage = { id: number; mine: boolean; body: string; at: string; readAt?: string }
 export type Chat = { friend: Player; last?: ChatMessage; unread: number; blocked?: boolean }

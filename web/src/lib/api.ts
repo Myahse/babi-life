@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, GramPost, GramProfile, GramFound, GramActivity } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, GramPost, GramProfile, GramFound, GramActivity, DameGame } from './types'
 import { useSession } from '../store/session'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
@@ -278,5 +278,10 @@ export const api = {
   couple: (id: string, other: string, action: 'proposer' | 'accepter' | 'refuser' | 'rompre') => post<ActionResult>(`/sims/${id}/friends/${other}/couple`, { action }),
   answerFriend: (id: string, other: string, answer: 'accepter' | 'refuser') => post<ActionResult>(`/sims/${id}/friends/${other}/answer`, { answer }),
   inviteFriend: (id: string, other: string) => post<ActionResult>(`/sims/${id}/friends/${other}/invite`, {}),
+  /** Les dames (backend sims/dames.go): the game going on, a game against a man of the grin or a friend challenged, the answer, the moves. */
+  dames: (id: string) => request<{ game: DameGame | null }>(`/sims/${id}/dames`),
+  damesStart: (id: string, o: { with: string; npc?: string; stake: number }) => post<ActionResult>(`/sims/${id}/dames`, o),
+  damesAccept: (id: string, game: number) => post<ActionResult>(`/sims/${id}/dames/${game}/accept`, {}),
+  damesAct: (id: string, game: number, action: 'move' | 'resign' | 'decline', path?: number[]) => post<{ game: DameGame }>(`/sims/${id}/dames/${game}/${action}`, path ? { path } : {}),
   answerInvite: (id: string, invite: string, answer: 'accepter' | 'refuser') => post<ActionResult>(`/sims/${id}/invites/${invite}`, { answer }),
 }
