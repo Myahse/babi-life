@@ -137,6 +137,8 @@ const (
 	srcMosqueeM6       = "https://fr.allafrica.com/stories/202404050438.html"
 	srcMosqueeM62      = "https://fr.hespress.com/361344-en-images-la-mosquee-mohammed-vi-un-chef-doeuvre-architectural-au-coeur-dabidjan.html"
 	srcPyramide2       = "https://structurae.net/en/structures/la-pyramide"
+	srcBoulay          = "https://en.wikipedia.org/wiki/%C3%8Ele_Boulay"
+	srcBoulayAIP       = "https://www.aip.ci/?p=338986"
 	srcBlockhauss      = "https://news.abidjan.net/articles/374315/le-chef-de-letat-aux-populations-de-blockhauss-hier-on-ne-doit-pas-vous-deposseder-totalement-de-vos-terres"
 	srcCocodyVillages  = "https://participate.oidp.net/processes/award2024/f/288/proposals/3254"
 	srcUCAO            = "https://annuaireci.com/entreprises/ucao-uua-universite-catholique-de-lafrique-de-louest-unite-universitaire-a-abidjan-abidjan-cote-divoire/"
@@ -276,6 +278,9 @@ var Cities = []City{
 					Source: game.Unverified("Université privée fondée en 2004 ; adresse non trouvée : la commune et la position sont à confirmer.", srcIUA)},
 			),
 			withMairie(abidjanCommune("yopougon", "Yopougon", "Yop City, capitale de l'ambiance.", 5.3450, -4.0820, "nord",
+				// The island across the water from Azito: reached by pinasse from the shore (web/src/world3d/interior/BoulayScene.tsx).
+				Place{ID: "yop-ile-boulay", Name: "Embarcadère de l'île Boulay", Kind: "lagune", Lat: 5.3005, Lng: -4.0825, Real: true, Approx: true,
+					Source: game.Partial("Île Boulay, dans la lagune Ébrié au sud de Yopougon : environ 2 000 ha, les villages N'gandikro et Jeankouamékro (terres des villages de Yopougon Santé, Yopougon Kouté, Azito et Béago), des résidences de week-end, le ski nautique au large ; à 15 minutes en bateau du centre ; déclarée d'utilité publique en 2010 pour l'extension du port. L'embarcadère est placé par le jeu sur la rive d'Azito, en face de l'île ; à relever.", srcBoulay, srcBoulayAIP)},
 				Place{ID: "yop-rue-princesse", Name: "Rue Princesse", Kind: "rue", Lat: 5.34787, Lng: -4.07777, Real: true, Approx: true, Closed: "2011-08",
 					Source: game.Partial("Rue des maquis et boîtes de nuit (« Rue Princesse / Rue P60 » sur OpenStreetMap), rasée en août 2011 pendant l'opération « Pays propre », bitumée en juillet 2026 avant la fête de l'Indépendance à Yopougon. Le jeu garde un lieu d'ambiance à cet endroit ; le tronçon exact des maquis est à confirmer.", game.SrcRuePrincesse2011, srcYopBitume2026, srcOSM)},
 				// The clubs of the street, between its maquis (web/src/world3d/open/ruePrincesse.tsx draws them at their slot).
