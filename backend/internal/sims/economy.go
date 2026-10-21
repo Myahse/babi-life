@@ -62,12 +62,19 @@ func (h *Handler) career(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) move(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Housing string `json:"housing"`
+		// Where to (any commune of any town, found on the phone); where the Sim is when not given.
+		City    string `json:"city"`
+		Commune string `json:"commune"`
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
 		return
 	}
 	h.mutate(w, r, func(s *Sim) (game.Outcome, []Event, error) {
+		cityID, communeID, err := lotsWhere(s, req.City, req.Commune)
+		if err != nil {
+			return game.Outcome{}, nil, err
+		}
 		if s.Activity != nil {
 			return game.Outcome{}, nil, game.ErrBusy
 		}
@@ -75,7 +82,7 @@ func (h *Handler) move(w http.ResponseWriter, r *http.Request) {
 		if !ok {
 			return game.Outcome{}, nil, errors.New("logement inconnu")
 		}
-		if to.ID == s.Housing && s.City == s.HomeCity && s.Commune == s.HomeCommune {
+		if to.ID == s.Housing && cityID == s.HomeCity && communeID == s.HomeCommune {
 			return game.Outcome{}, nil, errors.New("tu habites déjà ici")
 		}
 		if s.RentArrears > 0 {
@@ -84,13 +91,12 @@ func (h *Handler) move(w http.ResponseWriter, r *http.Request) {
 		if s.Money < to.Deposit() {
 			return game.Outcome{}, nil, game.ErrNotEnoughMoney
 		}
-		city, _ := world.FindCity(s.City)
-		cm, _ := city.Commune(s.Commune)
+		_, cm, _ := world.FindCommune(cityID, communeID)
 
 		before := s.GameMinutes
 		s.Money -= to.Deposit()
 		s.Needs = s.Needs.Add(game.Needs{Energy: -20})
-		s.Housing, s.HomeCity, s.HomeCommune = to.ID, s.City, s.Commune
+		s.Housing, s.HomeCity, s.HomeCommune = to.ID, cityID, communeID
 
 		text := fmt.Sprintf("Déménagement : %s %s ! Caution de %d semaines payée.", game.LowerFirst(to.Label), inCommune(cm.Name), game.DepositWeeks)
 		out := game.Outcome{Text: text, Money: -to.Deposit()}

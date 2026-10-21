@@ -1,7 +1,7 @@
 // The economy apps of the in-game phone: Boulot and Logement (money is in Waye).
 import { BadgeCheck, CalendarClock, Hammer, LandPlot, Clock3, Footprints, House, Map as MapIcon, TrendingUp, TriangleAlert } from 'lucide-react'
 import { api, type LotWhere } from '../lib/api'
-import { LotOffers } from '../components/Lots'
+import { CommunePicker, LotOffers } from '../components/Lots'
 import type { ActionResult, Commune, Lot, Sim, World } from '../lib/types'
 import { iconFor, kindColors } from '../components/icons'
 import { Chip, Coin, IconTile, Row } from '../components/ui'
@@ -145,7 +145,10 @@ export function HomeApp({ world, sim, commune, act, onBuild, onWalk, onMap }: Ap
   const home = housingOf(world, sim)
   const homeCity = world.cities.find((c) => c.id === sim.homeCity)!
   const homeCommune = homeCity.communes.find((c) => c.id === sim.homeCommune)!
-  const livesHere = sim.city === sim.homeCity && sim.commune === sim.homeCommune
+  // Where to rent: any commune of any town (where the Sim is at first).
+  const [to, setTo] = useState<LotWhere>({ city: sim.city, commune: sim.commune })
+  const toName = world.cities.find((c) => c.id === to.city)?.communes.find((c) => c.id === to.commune)?.name ?? commune.name
+  const livesThere = to.city === sim.homeCity && to.commune === sim.homeCommune
   const due = untilSaturday(sim.gameMinutes)
 
   return (
@@ -193,11 +196,12 @@ export function HomeApp({ world, sim, commune, act, onBuild, onWalk, onMap }: Ap
       )}
 
       <section>
-        <h4 className="label mb-1">Déménager {aCommune(commune.name)}</h4>
-        <p className="mb-2 text-xs font-semibold text-[var(--color-ink-soft)]">Caution de {DEPOSIT_WEEKS} semaines de loyer à l'entrée. Ton nouveau chez-toi sera ici, {aCommune(commune.name)}.</p>
+        <h4 className="label mb-1">Déménager</h4>
+        <CommunePicker label="Où ?" sim={sim} where={to} onChange={setTo} mark={(c, cm) => (c === sim.homeCity && cm === sim.homeCommune ? 'chez toi' : '')} />
+        <p className="mb-2 text-xs font-semibold text-[var(--color-ink-soft)]">Caution de {DEPOSIT_WEEKS} semaines de loyer à l'entrée. Ton nouveau chez-toi sera {aCommune(toName)}.</p>
         <ul className="motion-stagger space-y-2">
           {world.housings.map((h) => {
-            const current = h.id === sim.housing && livesHere
+            const current = h.id === sim.housing && livesThere
             const deposit = h.rent * DEPOSIT_WEEKS
             const blocked = current || sim.rentArrears > 0 || sim.money < deposit
             return (
@@ -214,7 +218,7 @@ export function HomeApp({ world, sim, commune, act, onBuild, onWalk, onMap }: Ap
                     <House size={12} /> Chez toi
                   </Chip>
                 ) : (
-                  <button className="btn shrink-0 !px-3 !py-2 !text-sm" disabled={blocked} onClick={() => act(`Emménager : ${h.label}`, h.icon, 'home', () => api.move(sim.id, h.id))}>
+                  <button className="btn shrink-0 !px-3 !py-2 !text-sm" disabled={blocked} onClick={() => act(`Emménager : ${h.label}`, h.icon, 'home', () => api.move(sim.id, h.id, to))}>
                     <Coin size={16} /> {amount(deposit)}
                   </button>
                 )}
