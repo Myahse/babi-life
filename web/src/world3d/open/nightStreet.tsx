@@ -5,6 +5,7 @@ import { Human, NoShadows, type Pose } from '../../avatar/Human'
 import { randomLook } from '../../avatar/options'
 import { worldTime } from '../../lib/worldClock'
 import { inZone } from '../obstacles'
+import { Solid } from '../Solid'
 import { rng } from '../themes'
 import { whereabouts } from '../whereabouts'
 import { lettering, signMaterial } from './ruePrincesse'
@@ -82,7 +83,9 @@ export function NightStreet({ nav, seed }: { nav: Nav; seed: string }) {
     <NoShadows>
       {shown.map((s) => (
         <group key={s.id} position={[s.at[0], 0, s.at[1]]} rotation={[0, s.rot, 0]}>
-          <NightScene kind={s.kind} seed={s.id} />
+          <Solid parts>
+            <NightScene kind={s.kind} seed={s.id} />
+          </Solid>
         </group>
       ))}
     </NoShadows>

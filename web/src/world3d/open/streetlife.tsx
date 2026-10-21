@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { FieldFence } from './fieldFence'
 import { StaticMerge } from '../staticMerge'
 import { inZone } from '../obstacles'
+import { Solid } from '../Solid'
 import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import * as THREE from 'three'
@@ -109,21 +110,34 @@ export function StreetLife({ nav, seed, night, taken }: { nav: Nav; seed: string
       <NoShadows>
         {shown.map((s) => (
           <group key={s.id} position={[s.at[0], 0, s.at[1]]} rotation={[0, s.rot, 0]}>
-            {s.kind === 'grin' ? <Grin seed={s.id} /> : s.kind === 'foot' ? (
+            {s.kind === 'grin' ? (
+              <Solid parts>
+                <Grin seed={s.id} />
+              </Solid>
+            ) : s.kind === 'foot' ? (
               <>
                 <Foot seed={s.id} />
-                {/* After dark the children play on under a lamp */}
-                {night && <Lights night w={8} d={6} />}
+                {/* After dark the children play on under a lamp (its poles not walked through) */}
+                <Solid parts>{night && <Lights night w={8} d={6} />}</Solid>
               </>
-            ) : night ? <Travail seed={s.id} /> : <Causerie seed={s.id} />}
+            ) : night ? (
+              <Solid parts>
+                <Travail seed={s.id} />
+              </Solid>
+            ) : (
+              <Causerie seed={s.id} />
+            )}
           </group>
         ))}
       </NoShadows>
-      {post && <PolicePost spot={post} />}
-      {foot && <Pitch spot={foot} night={night} />}
-      {basket && <Court spot={basket} night={night} />}
+      {/* Their tables, benches, posts and hoops: not walked through */}
+      <Solid parts>{post && <PolicePost spot={post} />}</Solid>
+      <Solid parts>{foot && <Pitch spot={foot} night={night} />}</Solid>
+      <Solid parts>{basket && <Court spot={basket} night={night} />}</Solid>
       {vendors.map((v) => (
-        <Marchand key={v.id} vendor={v} />
+        <Solid key={v.id} parts>
+          <Marchand vendor={v} />
+        </Solid>
       ))}
     </>
   )

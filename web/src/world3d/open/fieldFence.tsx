@@ -106,7 +106,8 @@ export function FieldFence({ hl, hw, id }: { hl: number; hw: number; id: string 
     }
   }, [runs, hl, hw, id])
   return (
-    <group ref={g}>
+    // Its walls are its own obstacles (above, gates open): not measured again by a Solid round it.
+    <group ref={g} userData={{ walkThrough: true }}>
       {wireGeo && <mesh geometry={wireGeo} material={wire()} />}
       {frameGeo && <mesh geometry={frameGeo} material={post} castShadow />}
     </group>

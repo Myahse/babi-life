@@ -7,6 +7,7 @@ import { hash, type XZ } from './geo'
 import type { Nav } from './nav'
 import { LANDMARKS } from './landmarks'
 import { onFieldGround, type Field } from './places'
+import { Solid } from '../Solid'
 
 // The ad boards of the streets, in the formats one sees in Abidjan:
 // - the 4×3 (here 12 × 6 m) on its two legs along the big roads;
@@ -332,75 +333,78 @@ export function Billboard({ board, ads, night, onSeen }: { board: Board; ads: Ad
   )
   return (
     <group position={[board.at[0], 0, board.at[1]]} rotation={[0, board.rot, 0]}>
-      {format === '4x3' && (
-        <>
-          {/* Two steel legs, a walkway, the frame, the panel facing the road (+z), the lamps on top */}
-          {[-f.w / 3, f.w / 3].map((x) => (
-            <mesh key={x} geometry={BOX} material={steel} position={[x, (f.y - f.h / 2) / 2, -0.3]} scale={[0.5, f.y - f.h / 2, 0.5]} />
-          ))}
-          <mesh geometry={BOX} material={frame} position={[0, f.y - f.h / 2 - 0.4, 0.4]} scale={[f.w, 0.12, 1]} />
-          <mesh geometry={BOX} material={frame} position={[0, f.y, -0.15]} scale={[f.w + 0.5, f.h + 0.5, 0.25]} />
-          <group position={[0, f.y, 0.01]}>{face(panel, 0, 0)}</group>
-          {[-f.w / 3, 0, f.w / 3].map((x) => (
-            <Lamp key={x} at={[x, f.y + f.h / 2 + 0.4, 0.5]} night={night} />
-          ))}
-        </>
-      )}
-      {format === 'geant' && (
-        <>
-          {/* One thick pole, the double panel high above the boulevard */}
-          <mesh geometry={BOX} material={steel} position={[0, (f.y - f.h / 2) / 2, 0]} scale={[1.2, f.y - f.h / 2, 1.2]} />
-          <mesh geometry={BOX} material={frame} position={[0, f.y, 0]} scale={[f.w + 0.6, f.h + 0.6, 0.6]} />
-          <group position={[0, f.y, 0]}>
-            {face(panel, 0.31, 0)}
-            {face(back, -0.31, Math.PI)}
-          </group>
-          {[-f.w / 3, 0, f.w / 3].map((x) => (
-            <Lamp key={x} at={[x, f.y + f.h / 2 + 0.5, 0.9]} night={night} />
-          ))}
-        </>
-      )}
-      {format === 'sucette' && (
-        <>
-          {/* The backlit box on its foot, a poster each side */}
-          <mesh geometry={BOX} material={frame} position={[0, 0.3, 0]} scale={[0.5, 0.6, 0.3]} />
-          <mesh geometry={BOX} material={frame} position={[0, f.y, 0]} scale={[f.w + 0.2, f.h + 0.2, 0.3]} />
-          <group position={[0, f.y, 0]}>
-            {face(panel, 0.16, 0)}
-            {face(back, -0.16, Math.PI)}
-          </group>
-        </>
-      )}
-      {format === 'banderole' && (
-        <>
-          {/* Two poles either side of the street, the cloth stretched between, moving in the wind */}
-          {[-f.w / 2, f.w / 2].map((x) => (
-            <mesh key={x} geometry={BOX} material={steel} position={[x, (f.y + 1) / 2, 0]} scale={[0.18, f.y + 1, 0.18]} />
-          ))}
-          <mesh geometry={BOX} material={steel} position={[0, f.y + f.h / 2 + 0.05, 0]} scale={[f.w, 0.04, 0.04]} />
-          <group ref={cloth} position={[0, f.y + f.h / 2, 0]}>
-            <group position={[0, -f.h / 2, 0]}>{face(panel, 0, 0)}</group>
-          </group>
-        </>
-      )}
-      {format === 'led' && (
-        <>
-          {/* The screen at the crossroads: a pylon, a black frame, the picture lit bright */}
-          <mesh geometry={BOX} material={steel} position={[0, (f.y - f.h / 2) / 2, 0]} scale={[0.9, f.y - f.h / 2, 0.9]} />
-          <mesh geometry={BOX} material={black} position={[0, f.y, 0]} scale={[f.w + 0.5, f.h + 0.5, 0.7]} />
-          <group position={[0, f.y, 0]}>
-            {face(panel, 0.36, 0)}
-            {face(back, -0.36, Math.PI)}
-          </group>
-        </>
-      )}
-      {/* The small « PUB » plate under the panel: an ad is an ad */}
-      {(format === '4x3' || format === 'geant') && (
-        <mesh position={[f.w / 2 - 0.6, f.y - f.h / 2 - 0.5, format === 'geant' ? 0.32 : 0.02]}>
-          <planeGeometry args={[1, 0.45]} />
-          <meshBasicMaterial color="#2b1d14" />
-        </mesh>
-      )}
+      {/* Its legs, its pole, a sucette's box: not walked through */}
+      <Solid parts>
+        {format === '4x3' && (
+          <>
+            {/* Two steel legs, a walkway, the frame, the panel facing the road (+z), the lamps on top */}
+            {[-f.w / 3, f.w / 3].map((x) => (
+              <mesh key={x} geometry={BOX} material={steel} position={[x, (f.y - f.h / 2) / 2, -0.3]} scale={[0.5, f.y - f.h / 2, 0.5]} />
+            ))}
+            <mesh geometry={BOX} material={frame} position={[0, f.y - f.h / 2 - 0.4, 0.4]} scale={[f.w, 0.12, 1]} />
+            <mesh geometry={BOX} material={frame} position={[0, f.y, -0.15]} scale={[f.w + 0.5, f.h + 0.5, 0.25]} />
+            <group position={[0, f.y, 0.01]}>{face(panel, 0, 0)}</group>
+            {[-f.w / 3, 0, f.w / 3].map((x) => (
+              <Lamp key={x} at={[x, f.y + f.h / 2 + 0.4, 0.5]} night={night} />
+            ))}
+          </>
+        )}
+        {format === 'geant' && (
+          <>
+            {/* One thick pole, the double panel high above the boulevard */}
+            <mesh geometry={BOX} material={steel} position={[0, (f.y - f.h / 2) / 2, 0]} scale={[1.2, f.y - f.h / 2, 1.2]} />
+            <mesh geometry={BOX} material={frame} position={[0, f.y, 0]} scale={[f.w + 0.6, f.h + 0.6, 0.6]} />
+            <group position={[0, f.y, 0]}>
+              {face(panel, 0.31, 0)}
+              {face(back, -0.31, Math.PI)}
+            </group>
+            {[-f.w / 3, 0, f.w / 3].map((x) => (
+              <Lamp key={x} at={[x, f.y + f.h / 2 + 0.5, 0.9]} night={night} />
+            ))}
+          </>
+        )}
+        {format === 'sucette' && (
+          <>
+            {/* The backlit box on its foot, a poster each side */}
+            <mesh geometry={BOX} material={frame} position={[0, 0.3, 0]} scale={[0.5, 0.6, 0.3]} />
+            <mesh geometry={BOX} material={frame} position={[0, f.y, 0]} scale={[f.w + 0.2, f.h + 0.2, 0.3]} />
+            <group position={[0, f.y, 0]}>
+              {face(panel, 0.16, 0)}
+              {face(back, -0.16, Math.PI)}
+            </group>
+          </>
+        )}
+        {format === 'banderole' && (
+          <>
+            {/* Two poles either side of the street, the cloth stretched between, moving in the wind */}
+            {[-f.w / 2, f.w / 2].map((x) => (
+              <mesh key={x} geometry={BOX} material={steel} position={[x, (f.y + 1) / 2, 0]} scale={[0.18, f.y + 1, 0.18]} />
+            ))}
+            <mesh geometry={BOX} material={steel} position={[0, f.y + f.h / 2 + 0.05, 0]} scale={[f.w, 0.04, 0.04]} />
+            <group ref={cloth} position={[0, f.y + f.h / 2, 0]}>
+              <group position={[0, -f.h / 2, 0]}>{face(panel, 0, 0)}</group>
+            </group>
+          </>
+        )}
+        {format === 'led' && (
+          <>
+            {/* The screen at the crossroads: a pylon, a black frame, the picture lit bright */}
+            <mesh geometry={BOX} material={steel} position={[0, (f.y - f.h / 2) / 2, 0]} scale={[0.9, f.y - f.h / 2, 0.9]} />
+            <mesh geometry={BOX} material={black} position={[0, f.y, 0]} scale={[f.w + 0.5, f.h + 0.5, 0.7]} />
+            <group position={[0, f.y, 0]}>
+              {face(panel, 0.36, 0)}
+              {face(back, -0.36, Math.PI)}
+            </group>
+          </>
+        )}
+        {/* The small « PUB » plate under the panel: an ad is an ad */}
+        {(format === '4x3' || format === 'geant') && (
+          <mesh position={[f.w / 2 - 0.6, f.y - f.h / 2 - 0.5, format === 'geant' ? 0.32 : 0.02]}>
+            <planeGeometry args={[1, 0.45]} />
+            <meshBasicMaterial color="#2b1d14" />
+          </mesh>
+        )}
+      </Solid>
     </group>
   )
 }

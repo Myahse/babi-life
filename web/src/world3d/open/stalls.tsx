@@ -6,6 +6,7 @@ import { NoShadows, type Pose } from '../../avatar/Human'
 import { TalkHuman } from '../Talkable'
 import { randomLook } from '../../avatar/options'
 import { clearObstacles, inZone, setObstacles } from '../obstacles'
+import { Solid } from '../Solid'
 import { StaticMerge } from '../staticMerge'
 import { rng } from '../themes'
 import { whereabouts } from '../whereabouts'
@@ -91,8 +92,11 @@ export function StreetStalls({ nav, seed, hour, onBuy }: { nav: Nav; seed: strin
   })
   return (
     <>
+      {/* Near, each part too (a menu board, a bench out in front), beyond the circle round it */}
       {shown.map(({ s, crowd }) => (
-        <StreetStall key={s.id} stall={s} hour={hour} crowd={crowd} onBuy={onBuy} />
+        <Solid key={s.id} parts>
+          <StreetStall stall={s} hour={hour} crowd={crowd} onBuy={onBuy} />
+        </Solid>
       ))}
     </>
   )
