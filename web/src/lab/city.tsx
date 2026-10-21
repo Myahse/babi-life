@@ -61,6 +61,7 @@ import { BridgeLife } from '../world3d/open/bridgeLife'
 import { Billboard } from '../world3d/open/billboards'
 import { randomLook } from '../avatar/options'
 import { NightCityLab, NightStreetLab, PartyLab } from './night'
+import { RainSky } from '../world3d/open/rainSky'
 import type { Block, Furniture, HousePlan, Material, Piece, Plot, Sim, World } from '../lib/types'
 
 const seededLab = (n: number) => () => ((n = (n * 16807) % 2147483647) / 2147483647)
@@ -363,8 +364,8 @@ function OutdoorLab() {
     return randomLook('femme', () => ((n = (n * 16807) % 2147483647) / 2147483647))
   }, [])
   return (
-    <Canvas shadows dpr={[1, 2]} camera={{ position: [5, 3.2, -4.5], fov: 45 }} style={{ width: '100vw', height: '100vh' }}>
-      <color attach="background" args={['#cfe9f8']} />
+    <Canvas shadows dpr={[1, 2]} camera={{ position: (q.get('cam') ?? '5,3.2,-4.5').split(',').map(Number) as [number, number, number], fov: 45, far: 4000 }} style={{ width: '100vw', height: '100vh' }}>
+      <color attach="background" args={[q.has('rain') ? '#8a96a3' : '#cfe9f8']} />
       <hemisphereLight args={['#ffffff', '#b8a27c', 1.2]} />
       <directionalLight position={[10, 20, 8]} intensity={1.8} castShadow />
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
@@ -373,6 +374,8 @@ function OutdoorLab() {
       </mesh>
       <Character look={outdoorLook(look, id)} gender={(q.get('g') ?? 'femme') as 'femme' | 'homme'} busy pose={outdoorPose(id)} />
       <OutdoorAction id={id} />
+      {/* &rain: the downpour and its clouds (world3d/open/rainSky.tsx); &night */}
+      {q.has('rain') && <RainSky focus={{ current: [0, 0] }} night={q.has('night')} />}
       <OrbitControls target={[0, 0.9, 1.2]} />
     </Canvas>
   )

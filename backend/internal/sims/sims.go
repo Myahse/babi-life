@@ -227,6 +227,8 @@ type Handler struct {
 	Push *push.Service
 	// Bucket: where the phone's photos go (photos.go); not set up: in the database.
 	Bucket *ads.Bucket
+	// Online: how many players are connected now (the live hub); nil in tests.
+	Online func() int
 }
 
 func (h *Handler) Routes(r chi.Router) {

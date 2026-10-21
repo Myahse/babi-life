@@ -96,6 +96,7 @@ func main() {
 	// The players of a commune, live (positions and poses, over a WebSocket).
 	players := live.NewHub(pool, tokens, cfg.AllowedOrigins)
 	sessions.OnRevoke = players.Kick
+	simsH.Online = players.Online
 	players.Karts = karts
 	players.Courts = courts
 	go players.Run(ctx)
