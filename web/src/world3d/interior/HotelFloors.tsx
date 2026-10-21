@@ -8,6 +8,7 @@ import type { ActionResult, HotelView, Interaction, Sim, World } from '../../lib
 import { amount, duration, openAt } from '../../game/rules'
 import { iconFor } from '../../components/icons'
 import { Snapper } from '../snapshot'
+import { ChatFraming } from '../chatFraming'
 import { Guest, mat, sign, useBigWalk, type Spot, type XZ } from './bigPlace'
 import { isRoomAct, setLift, useLift } from '../hotelLift'
 import { CorridorDecor, LOOKS, PLAIN, RoomDecor, WindowWall, type Look } from './hotelStyles'
@@ -249,6 +250,7 @@ function Upstairs({ sim, stage, look, view, floor, room, rooms, roomType, intera
   return (
     <Canvas key={`${view}:${floor}:${room}`} shadows dpr={[1, 1.75]} camera={{ position: inRoom ? [0, 11, hd + 9] : [center[0], 8.5, 8.5], fov: 45, near: 0.2, far: 400 }} style={{ background: night ? '#0b1026' : '#d9d2c4' }}>
       <Snapper />
+      <ChatFraming />
       <hemisphereLight args={['#ffffff', '#b9a98c', night ? 1 : 1.4]} />
       <directionalLight position={[8, 14, 6]} intensity={0.9} castShadow />
       <pointLight position={[0, 2.8, 0]} intensity={night ? 22 : 10} distance={14} color="#ffe2b0" />

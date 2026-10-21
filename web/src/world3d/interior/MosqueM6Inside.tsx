@@ -8,6 +8,7 @@ import { LowHuman } from '../../avatar/LowHuman'
 import { randomLook } from '../../avatar/options'
 import { rng } from '../themes'
 import { Snapper } from '../snapshot'
+import { ChatFraming } from '../chatFraming'
 import { Guest, mat, useBigWalk, type Spot, type XZ } from './bigPlace'
 import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
@@ -105,6 +106,7 @@ export function MosqueM6Inside({ sim, interactionId, roam, night, stage }: { sim
     <div className="absolute inset-0">
       <Canvas shadows dpr={[1, 1.75]} camera={{ position: [0, 36, HALL.front + 16], fov: 45, near: 0.3, far: 900 }} style={{ background: night ? '#0b1026' : '#9ccbea' }}>
         <Snapper />
+        <ChatFraming />
         <Suspense fallback={null}>
           <hemisphereLight args={[night ? '#7080c0' : '#ffffff', '#c9b48c', night ? 0.7 : 1.15]} />
           <directionalLight position={[25, 60, 30]} intensity={night ? 0.2 : 1.2} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-50} shadow-camera-right={50} shadow-camera-top={50} shadow-camera-bottom={-50} />

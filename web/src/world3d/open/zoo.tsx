@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { Human, NoShadows, type Pose } from '../../avatar/Human'
+import { TalkHuman } from '../Talkable'
 import { randomLook } from '../../avatar/options'
 import { rng } from '../themes'
 import { BOX, Blocks, PLANE } from './ruePrincesse'
@@ -775,7 +776,7 @@ export function Zoo({ night, open = true }: { night: boolean; /** Within its hou
           <>
             {people.map((g, i) => (
               <group key={i} position={g.p} rotation={[0, g.ry, 0]} scale={g.kid ? 0.62 : 1}>
-                <Human look={g.look} gender={g.gender} pose={g.pose} seed={g.seed} />
+                <TalkHuman id={`zoo:778:${Math.round((g.seed) * 1000)}`} look={g.look} gender={g.gender} pose={g.pose} seed={g.seed} />
               </group>
             ))}
             <Strollers walkers={walkers} />
@@ -783,7 +784,7 @@ export function Zoo({ night, open = true }: { night: boolean; /** Within its hou
         ) : (
           // Closed: the watchman on his chair by the shut gate.
           <group position={[-4.5, 0.05, 44]} rotation={[0, 0.3, 0]}>
-            <Human look={{ ...people[0].look, outfit: 'vigile' }} gender="homme" pose="sit" seed={3} />
+            <TalkHuman id={`zoo:786:${Math.round((3) * 1000)}`} look={{ ...people[0].look, outfit: 'vigile' }} gender="homme" pose="sit" seed={3} />
           </group>
         )}
       </NoShadows>

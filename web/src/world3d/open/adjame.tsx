@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { Human, NoShadows, type Pose } from '../../avatar/Human'
+import { TalkHuman } from '../Talkable'
 import { randomLook } from '../../avatar/options'
 import { worldTime } from '../../lib/worldClock'
 import { rng } from '../themes'
@@ -233,7 +234,7 @@ export function MarcheAdjame({ night }: { night: boolean }) {
           const c = sellerLooks[i]
           return (
             <group key={`s${i}`} position={s.p} rotation={[0, s.ry, 0]}>
-              <Human look={c.look} gender={c.gender} pose={i % 4 === 0 ? 'talk' : 'idle'} seed={c.seed} />
+              <TalkHuman id={`adjame:236:${Math.round((c.seed) * 1000)}`} look={c.look} gender={c.gender} pose={i % 4 === 0 ? 'talk' : 'idle'} seed={c.seed} />
             </group>
           )
         })}
@@ -241,7 +242,7 @@ export function MarcheAdjame({ night }: { night: boolean }) {
           const c = cast[i]
           return (
             <group key={`b${i}`} position={b.p} rotation={[0, b.ry, 0]}>
-              <Human look={c.look} gender={c.gender} pose={b.pose} seed={c.seed} />
+              <TalkHuman id={`adjame:244:${Math.round((c.seed) * 1000)}`} look={c.look} gender={c.gender} pose={b.pose} seed={c.seed} />
             </group>
           )
         })}

@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Snapper } from './snapshot'
+import { ChatFraming } from './chatFraming'
 import { roomGrid } from './interior/roomGrid'
 import { gridWay } from './gridPath'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
@@ -983,6 +984,7 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
   return (
     <Canvas shadows dpr={[1, 2]} camera={{ position: kind === 'club' ? CLUB_CAMERA : [8.4, 8.6, 10.8], fov: 42 }} style={{ background: dark ? '#0b0d1f' : '#2a2340' }}>
       <Snapper />
+      <ChatFraming />
       <Suspense fallback={null}>
         <hemisphereLight args={[dark ? '#7a6ab0' : '#fff6e8', '#3a2a1a', dark ? 0.55 : 0.75]} />
         <ambientLight intensity={dark ? 0.15 : 0.25} />

@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import * as THREE from 'three'
-import { Human, NoShadows, type Pose } from '../../avatar/Human'
+import { NoShadows, type Pose } from '../../avatar/Human'
+import { TalkHuman } from '../Talkable'
 import { randomLook } from '../../avatar/options'
 import { clearObstacles, inZone, setObstacles } from '../obstacles'
 import { StaticMerge } from '../staticMerge'
@@ -721,11 +722,11 @@ function Crowd({ stall, hour }: { stall: Stall; hour: number }) {
         // At the garbadrome the ones standing push and sway: everyone wants to be served first.
         stall.kind === 'garba' && c.pose !== 'eat' && c.pose !== 'sit' ? (
           <Jostle key={i} at={c.at} rot={c.rot} phase={c.seed}>
-            <Human look={looks[i]} gender={c.gender} pose={c.pose} seed={c.seed} />
+            <TalkHuman id={`stalls:724:${Math.round((c.seed) * 1000)}`} look={looks[i]} gender={c.gender} pose={c.pose} seed={c.seed} />
           </Jostle>
         ) : (
           <group key={i} position={c.at} rotation={[0, c.rot, 0]}>
-            <Human look={looks[i]} gender={c.gender} pose={c.pose} seed={c.seed} />
+            <TalkHuman id={`stalls:728:${Math.round((c.seed) * 1000)}`} look={looks[i]} gender={c.gender} pose={c.pose} seed={c.seed} />
           </group>
         ),
       )}
@@ -803,12 +804,12 @@ export function StreetStall({ stall, hour, crowd, onBuy }: { stall: Stall; hour:
         {(stall.kind === 'cafe' || stall.kind === 'the') && <Cart tea={stall.kind === 'the'} price={stall.kind === 'the' ? 100 : 150} />}
       </StaticMerge>
       <group position={sellerAt}>
-        <Human look={look} gender={man ? 'homme' : 'femme'} pose={sellerPose} seed={stall.seed * 100} />
+        <TalkHuman id={`stalls:806:${Math.round((stall.seed * 100) * 1000)}`} look={look} gender={man ? 'homme' : 'femme'} pose={sellerPose} seed={stall.seed * 100} />
       </group>
       {/* At the porc au four, a second woman cuts and serves */}
       {helper && (
         <group position={stall.kind === 'garba' ? [-0.55, 0, 0.15] : [0.7, 0, 0.25]}>
-          <Human look={helper} gender={stall.kind === 'garba' ? 'homme' : 'femme'} pose="busy" seed={stall.seed * 100 + 7} />
+          <TalkHuman id={`stalls:811:${Math.round((stall.seed * 100 + 7) * 1000)}`} look={helper} gender={stall.kind === 'garba' ? 'homme' : 'femme'} pose="busy" seed={stall.seed * 100 + 7} />
         </group>
       )}
       {crowd && <Crowd stall={stall} hour={hour} />}

@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
-import { Human } from '../../avatar/Human'
+import { TalkHuman } from '../Talkable'
 import { randomLook } from '../../avatar/options'
 import { rng } from '../themes'
 import { Vehicle } from '../vehicles'
@@ -101,7 +101,7 @@ export function FuelStation({ s, night }: { s: Station; night: boolean }) {
         <Vehicle p={[0.6, 0, z(-3.4)]} kind="car" color={crew.car} seed={3} />
       </Solid>
       <group position={[-1.2, 0, z(-2.4)]} rotation={[0, s.side > 0 ? Math.PI : 0, 0]}>
-        <Human look={crew.look} gender="homme" pose="busy" seed={crew.seed} />
+        <TalkHuman id={`station:104:${Math.round((crew.seed) * 1000)}`} look={crew.look} gender="homme" pose="busy" seed={crew.seed} />
       </group>
       {/* The shop behind, its glass front to the pumps (unless a map building is there) */}
       {s.shop && (

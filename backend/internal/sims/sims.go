@@ -158,12 +158,14 @@ type Sim struct {
 	// Furnished: the furniture in the house the Sim built (game.Furnitures), for when it lives there.
 	Furnished []string `json:"furnished"`
 	// Stay: a hotel room or a home rented away from home (sims/hotel.go), while it lasts.
-	Stay        *Stay  `json:"stay,omitempty"`
-	Loan        int    `json:"loan"`
-	RentArrears int    `json:"rentArrears"`
-	Career      string `json:"career"`
-	CareerLevel int    `json:"careerLevel"`
-	Performance int    `json:"performance"`
+	Stay *Stay `json:"stay,omitempty"`
+	// Languages: what the player speaks besides French (game.Languages; set apart, sims/languages.go).
+	Languages   []string `json:"languages"`
+	Loan        int      `json:"loan"`
+	RentArrears int      `json:"rentArrears"`
+	Career      string   `json:"career"`
+	CareerLevel int      `json:"careerLevel"`
+	Performance int      `json:"performance"`
 	// Activity is what the Sim is busy with right now; nil when free.
 	Activity *game.Activity `json:"activity"`
 	// Apps installed on the phone (world.PhoneApps).
@@ -254,6 +256,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/street", h.street)
 	r.Post("/sims/{id}/robbed", h.robbed)
 	r.Post("/sims/{id}/chat", h.chatHandler)
+	r.Put("/sims/{id}/languages", h.setLanguages)
 	r.Post("/sims/{id}/friend", h.friend)
 	r.Post("/sims/{id}/gang", h.gang)
 	r.Get("/sims/{id}/gbairai", h.chats)
@@ -331,6 +334,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/hotel/{place}/book", h.bookRoom)
 	r.Post("/sims/{id}/stay/end", h.endStay)
 	r.Post("/sims/{id}/billets", h.billets)
+	r.Post("/sims/{id}/offrande", h.offrande)
 	r.Get("/sims/{id}/dodo", h.dodo)
 	r.Post("/sims/{id}/dodo/book", h.dodoBook)
 	r.Post("/sims/{id}/dodo/list", h.dodoList)
@@ -352,13 +356,13 @@ func (h *Handler) Routes(r chi.Router) {
 
 const simColumns = `id, first_name, last_name, gender, look, traits, aspiration,
 	home_city, home_commune, city, commune, needs, money, game_minutes,
-	origin, housing, loan, rent_arrears, career, career_level, performance, activity, apps, born_at, family, friends, gang, record, created_at, last_tick, furnished, stay`
+	origin, housing, loan, rent_arrears, career, career_level, performance, activity, apps, born_at, family, friends, gang, record, created_at, last_tick, furnished, stay, languages`
 
 func scanSim(row pgx.Row) (Sim, error) {
 	var s Sim
 	err := row.Scan(&s.ID, &s.FirstName, &s.LastName, &s.Gender, &s.Look, &s.Traits, &s.Aspiration,
 		&s.HomeCity, &s.HomeCommune, &s.City, &s.Commune, &s.Needs, &s.Money, &s.GameMinutes,
-		&s.Origin, &s.Housing, &s.Loan, &s.RentArrears, &s.Career, &s.CareerLevel, &s.Performance, &s.Activity, &s.Apps, &s.BornAt, &s.Family, &s.Friends, &s.Gang, &s.Record, &s.CreatedAt, &s.lastTick, &s.Furnished, &s.Stay)
+		&s.Origin, &s.Housing, &s.Loan, &s.RentArrears, &s.Career, &s.CareerLevel, &s.Performance, &s.Activity, &s.Apps, &s.BornAt, &s.Family, &s.Friends, &s.Gang, &s.Record, &s.CreatedAt, &s.lastTick, &s.Furnished, &s.Stay, &s.Languages)
 	return s, err
 }
 

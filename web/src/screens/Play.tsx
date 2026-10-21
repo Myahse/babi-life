@@ -51,6 +51,7 @@ import { SoundToggle, Soundtrack } from '../components/Soundtrack'
 import { usePartySound } from '../world3d/open/party'
 import { MiniMap, WhereTo } from '../components/Navigator'
 import { ChatSheet, type Reply } from '../components/ChatSheet'
+import { SERVICES } from '../world3d/interior/worshipRooms'
 import { npcReact } from '../world3d/open/npcReact'
 import type { Npc } from '../world3d/open/OpenWorld'
 import { setTalkHandler, setTalking } from '../world3d/talk'
@@ -401,11 +402,11 @@ export function Play() {
   useEffect(() => setTalkHandler((npc) => (setChat(npc), npcReact(npc.id, 'hello', 1.6))), [])
   useEffect(() => setTalking(chat?.id ?? null), [chat?.id])
   // What they answer stays in the chat sheet (no toast), and they react to it.
-  const say = async (topic: string, label: string, phrase?: string): Promise<Reply | null> => {
+  const say = async (topic: string, label: string, phrase?: string, lang?: string): Promise<Reply | null> => {
     const npc = chat!
     talkedTo.current = npc.id
     try {
-      const res = await api.chat(sim!.id, { id: npc.id, name: npc.name, gender: npc.gender, seed: npc.seed, look: npc.look }, topic, phrase)
+      const res = await api.chat(sim!.id, { id: npc.id, name: npc.name, gender: npc.gender, seed: npc.seed, look: npc.look }, topic, phrase, lang)
       apply(res)
       const { text, money, mood } = res.outcome
       if (mood) npcReact(npc.id, mood, mood === 'bye' ? 2.5 : 3.2)
@@ -755,6 +756,12 @@ export function Play() {
       {showInside && inside!.kind === 'club' && !lifeOf(world, sim).minor && clubOpenAt(sim.gameMinutes) && sim.city === city.id && sim.commune === commune.id && !overlay && (
         <Billets money={sim.money} onThrow={(amount) => api.billets(sim.id, inside!.id, amount).then((res) => (apply(res), throwBillets(amount), res.outcome.text))} />
       )}
+      {/* At mass, the culte or the Friday prayer: the quête, the offrande, the aumône, a tap at a time (backend sims/offrande.go) */}
+      {sim.activity?.kind === 'do' && SERVICES.has(sim.activity.interaction?.id ?? '') && !overlay && (() => {
+        const faith = commune.places.find((p) => p.id === sim.activity!.placeId)?.faith
+        const label = faith === 'catholique' ? 'Donner à la quête' : faith === 'musulman' ? 'Donner l’aumône' : 'Donner à l’offrande'
+        return <Billets money={sim.money} amounts={[100, 500, 1000, 5000]} label={label} color="#c9a14a" onThrow={(amount) => api.offrande(sim.id, amount).then((res) => (apply(res), res.outcome.text))} />
+      })()}
       {/* Never over a match or a race: it waits till the street */}
       {!showInside && !overlay && building === false && !(ballKey && ballKey !== played) && !racing && <NotifyPrompt />}
       {mapSlow && (
@@ -1007,6 +1014,19 @@ export function Play() {
           simGender={sim.gender}
           onSay={say}
           onClose={() => setChat(null)}
+          onBye={() => {
+            // « Au revoir » is the end: the chat stops there, nothing more is said or done.
+            const a = sim.activity
+            if (a?.kind === 'do' && a.placeKind === 'chat' && a.placeName === chat.name) void api.stop(sim.id).then(apply, () => undefined)
+            npcReact(chat.id, 'bye', 2.5)
+            setChat(null)
+          }}
+          languages={sim.languages ?? []}
+          onLanguages={async (langs) => {
+            const r = await api.setLanguages(sim.id, langs).catch(() => null)
+            if (r) setBase((b) => (b ? { ...b, sim: { ...b.sim, languages: r.languages } } : b))
+          }}
+          gameMinutes={sim.gameMinutes}
           friend={sim.friends?.find((f) => f.id === `p-${chat.id}`)}
           taken={sim.friends?.find((f) => f.partner && f.id !== `p-${chat.id}`)?.name}
           grownUp={!lifeOf(world, sim).minor}
@@ -1757,8 +1777,9 @@ const clubOpenAt = (m: number) => {
  * activity, whatever the Sim is doing. Under the name, where nothing is in a
  * place, on every screen.
  */
-function Billets({ money, onThrow }: { money: number; onThrow: (amount: number) => Promise<string> }) {
-  const [amount, setAmount] = useState(1000)
+/** A gift a tap at a time, not an activity: the notes over the club's dancers, the quête at mass, the offrande at the culte. */
+function Billets({ money, onThrow, amounts = [1000, 5000, 10000], label = 'Lancer des billets', color = '#1f9a4a' }: { money: number; onThrow: (amount: number) => Promise<string>; amounts?: number[]; label?: string; color?: string }) {
+  const [amount, setAmount] = useState(amounts[0])
   const [said, setSaid] = useState<{ text: string; bad?: boolean } | null>(null)
   const [busy, setBusy] = useState(false)
   useEffect(() => {
@@ -1779,14 +1800,14 @@ function Billets({ money, onThrow }: { money: number; onThrow: (amount: number) 
   return (
     <div className="pointer-events-none absolute top-[calc(max(0.75rem,env(safe-area-inset-top))+3.9rem)] left-3 z-20 flex w-[min(15rem,calc(100vw-9rem))] flex-col items-start gap-1.5 lg:top-[6.5rem] lg:left-5">
       <div className="hud pointer-events-auto flex gap-1 rounded-full p-1">
-        {[1000, 5000, 10000].map((a) => (
+        {amounts.map((a) => (
           <button key={a} onClick={() => setAmount(a)} className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${amount === a ? 'bg-[var(--color-ink)] text-white' : ''}`}>
-            {a / 1000} 000
+            {a >= 1000 ? `${a / 1000} 000` : a}
           </button>
         ))}
       </div>
-      <button disabled={busy || money < amount} onClick={() => void go()} className="pointer-events-auto flex items-center gap-2 rounded-full bg-[#1f9a4a] py-2.5 pr-4 pl-3 text-sm font-extrabold text-white shadow-[0_8px_20px_-10px_rgba(0,0,0,0.6)] transition active:scale-95 disabled:opacity-50">
-        <Banknote size={18} /> {money < amount ? 'Pas assez' : 'Lancer des billets'}
+      <button disabled={busy || money < amount} onClick={() => void go()} className="pointer-events-auto flex items-center gap-2 rounded-full py-2.5 pr-4 pl-3 text-sm font-extrabold text-white shadow-[0_8px_20px_-10px_rgba(0,0,0,0.6)] transition active:scale-95 disabled:opacity-50" style={{ background: color }}>
+        <Banknote size={18} /> {money < amount ? 'Pas assez' : label}
       </button>
       {said && <span className={`hud animate-pop rounded-2xl px-3 py-1.5 text-xs font-bold ${said.bad ? 'text-[#d81b3f]' : ''}`}>{said.text}</span>}
     </div>

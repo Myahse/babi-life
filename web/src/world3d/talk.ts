@@ -22,6 +22,8 @@ export function setTalkHandler(f: (npc: Npc) => void) {
 }
 /** Tapped: open the chat with them (nothing in the labs, where no one listens). */
 export const talkTo = (npc: Npc) => handler?.(npc)
+// In development, a test can open a chat without finding someone to tap.
+if (import.meta.env.DEV && typeof window !== 'undefined') Object.assign(window, { __talkTo: talkTo })
 
 // Who the Sim is talking to now: they stop what they're doing to answer.
 let talking: string | null = null

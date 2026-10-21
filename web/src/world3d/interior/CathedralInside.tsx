@@ -8,6 +8,7 @@ import { LowHuman } from '../../avatar/LowHuman'
 import { randomLook } from '../../avatar/options'
 import { rng } from '../themes'
 import { Snapper } from '../snapshot'
+import { ChatFraming } from '../chatFraming'
 import { Character } from '../Character'
 import { Guest, mat, sign, useBigWalk, type Spot, type XZ } from './bigPlace'
 import { TalkHuman } from '../Talkable'
@@ -278,6 +279,7 @@ function Nave({ sim, interactionId, roam, night, stage, mass }: { sim: Sim; inte
     <div className="absolute inset-0">
       <Canvas shadows dpr={[1, 1.75]} camera={{ position: [0, 26, NAVE.F + 10], fov: 45, near: 0.3, far: 900 }} style={{ background: night ? '#0b1026' : '#9ccbea' }}>
         <Snapper />
+        <ChatFraming />
         <Suspense fallback={null}>
           <hemisphereLight args={[night ? '#7080c0' : '#ffffff', '#c9b48c', night ? 0.7 : 1.15]} />
           <directionalLight position={[25, 60, 30]} intensity={night ? 0.2 : 1.2} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-60} shadow-camera-right={60} shadow-camera-top={60} shadow-camera-bottom={-60} />
@@ -519,6 +521,7 @@ function TowerTop({ sim, night, stage }: { sim: Sim; night: boolean; stage: stri
     <div className="absolute inset-0">
       <Canvas shadows dpr={[1, 1.75]} camera={{ position: [7, 6, -10], fov: 50, near: 0.3, far: 3000 }} style={{ background: night ? '#0b1026' : '#9ccbea' }}>
         <Snapper />
+        <ChatFraming />
         <Suspense fallback={null}>
           <hemisphereLight args={[night ? '#5060a0' : '#ffffff', '#b8a27c', night ? 0.5 : 1.2]} />
           <directionalLight position={[60, 120, 80]} intensity={night ? 0.15 : 1.5} />

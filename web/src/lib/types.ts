@@ -244,6 +244,8 @@ export type Sim = {
   furnished?: string[]
   /** A hotel room or a home booked on Dodo, while it lasts (backend sims/hotel.go). */
   stay?: Stay
+  /** The languages the player speaks besides French (lib/languages.ts). */
+  languages?: string[]
   loan: number
   rentArrears: number
   career: string

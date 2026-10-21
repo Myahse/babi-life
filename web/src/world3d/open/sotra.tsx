@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { Human, NoShadows, type Pose } from '../../avatar/Human'
+import { NoShadows, type Pose } from '../../avatar/Human'
+import { TalkHuman } from '../Talkable'
 import { randomLook } from '../../avatar/options'
 import { clearObstacles, setObstacles } from '../obstacles'
 import { rng } from '../themes'
@@ -141,7 +142,7 @@ export function BusStop({ stop, hour, night }: { stop: Stop; hour: number; night
       <NoShadows>
         {people.slice(0, n).map((p, i) => (
           <group key={i} position={p.at} rotation={[0, p.rot, 0]}>
-            <Human look={p.look} gender={p.gender} pose={p.pose} seed={p.seed} />
+            <TalkHuman id={`sotra:144:${Math.round((p.seed) * 1000)}`} look={p.look} gender={p.gender} pose={p.pose} seed={p.seed} />
           </group>
         ))}
       </NoShadows>

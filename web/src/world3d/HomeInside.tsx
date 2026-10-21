@@ -16,6 +16,7 @@ import type { HomeSpot } from './Walker'
 import { Pot, TvOn, Zzz } from './interior/ActionProps'
 import { Hammer } from 'lucide-react'
 import { Snapper } from './snapshot'
+import { ChatFraming } from './chatFraming'
 import { Swimmer } from './Swimmer'
 import { listenKeys, moveInput } from './input'
 
@@ -372,6 +373,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
     <div className="absolute inset-0">
       <Canvas shadows dpr={[1, 2]} camera={{ position: [span * 0.55, span * 0.85, span * 0.95], fov: 42 }} style={{ background: night ? '#0b1026' : '#a9d3f0' }}>
         <Snapper />
+        <ChatFraming />
         <Suspense fallback={null}>
           <hemisphereLight args={[night ? '#5a6ab0' : '#ffffff', '#b8a27c', night ? 0.55 : 1.15]} />
           <directionalLight position={[20, 40, 25]} intensity={night ? 0.35 : 1.6} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-span} shadow-camera-right={span} shadow-camera-top={span} shadow-camera-bottom={-span} />

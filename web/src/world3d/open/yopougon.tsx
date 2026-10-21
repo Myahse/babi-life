@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
 import { Human, type Pose } from '../../avatar/Human'
+import { TalkHuman } from '../Talkable'
 import { randomLook } from '../../avatar/options'
 import { rng } from '../themes'
 import { Vehicle } from '../vehicles'
@@ -117,7 +118,7 @@ export function GareSiporex({ night }: { night: boolean }) {
     const c = cast[who++ % cast.length]
     return (
       <group key={who} position={p} rotation={[0, ry, 0]}>
-        <Human look={c.look} gender={c.gender} pose={pose} seed={c.seed} />
+        <TalkHuman id={`yopougon:120:${Math.round((c.seed) * 1000)}`} look={c.look} gender={c.gender} pose={pose} seed={c.seed} />
       </group>
     )
   }
@@ -277,7 +278,7 @@ export function PlaceFicgayo({ night }: { night: boolean }) {
       <Blocks at={stalls.tables} material={painted} color />
       {cast.slice(14, 20).map((c, i) => (
         <group key={`v${i}`} position={[(i < 3 ? -1 : 1) * (half - 9.2), 0, [-6, 4, 14][i % 3]]} rotation={[0, i < 3 ? Math.PI / 2 : -Math.PI / 2, 0]}>
-          <Human look={c.look} gender={c.gender} pose={i % 2 ? 'talk' : 'idle'} seed={c.seed} />
+          <TalkHuman id={`yopougon:280:${Math.round((c.seed) * 1000)}`} look={c.look} gender={c.gender} pose={i % 2 ? 'talk' : 'idle'} seed={c.seed} />
         </group>
       ))}
       {night && <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.07, -13]} scale={[26, 16, 1]} geometry={PLANE} material={glow} />}
@@ -288,7 +289,7 @@ export function PlaceFicgayo({ night }: { night: boolean }) {
         const r = 2 + Math.sqrt(i) * 2.2
         return (
           <group key={i} position={[Math.cos(a) * r, 0, -12 + Math.sin(a) * r * 0.6]} rotation={[0, Math.PI + (Math.cos(a * 3) * 0.4), 0]}>
-            <Human look={c.look} gender={c.gender} pose={night ? 'dance' : i % 2 ? 'talk' : 'idle'} seed={c.seed} />
+            <TalkHuman id={`yopougon:291:${Math.round((c.seed) * 1000)}`} look={c.look} gender={c.gender} pose={night ? 'dance' : i % 2 ? 'talk' : 'idle'} seed={c.seed} />
           </group>
         )
       })}

@@ -11,6 +11,7 @@ import { Human, NoShadows, type Pose } from '../../avatar/Human'
 import { OUTFIT_DEFAULT_COLOR, randomLook } from '../../avatar/options'
 import { lettering } from './ruePrincesse'
 import { Belfry, MINARET_TOP, Minaret, Service, TempleCross } from './worshipFront'
+import { TalkHuman } from '../Talkable'
 
 // What stands in front of a place and tells what it is, before you read its
 // sign: the market's stalls and parasols, the maquis's terrace (plastic
@@ -147,7 +148,8 @@ function Worker({ p, r = 0, outfit, pose = 'idle', seed }: { p: [number, number,
   return (
     <NoShadows>
       <group position={p} rotation={[0, r, 0]}>
-        <Human look={person.look} gender={person.gender} pose={pose} seed={person.seed} />
+        {/* The officer, the vigile, the shopkeeper at their door: they can be talked to like anyone */}
+        <TalkHuman id={`worker:${outfit}:${Math.round(seed * 1000)}:${p.join(',')}`} look={person.look} gender={person.gender} pose={pose} seed={person.seed} />
       </group>
     </NoShadows>
   )
