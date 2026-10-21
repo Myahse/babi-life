@@ -29,6 +29,7 @@ import { HomeApp, JobsApp, type Act } from './phoneApps'
 import { NewsApp, topicOf } from './NewsApp'
 import { GuideApp } from './GuideApp'
 import { DodoApp } from './DodoApp'
+import { KineoApp } from './KineoApp'
 import { RideFlow, type FlowRequest } from '../components/RideFlow'
 import { INDOOR, Interior } from '../world3d/Interior'
 import { HomeInside } from '../world3d/HomeInside'
@@ -72,11 +73,18 @@ const KartRace = lazy(() => import('../kart/KartRace'))
 // The Hôtel Ivoire's own inside: its hall, ice rink, cinema, casino, terrace.
 // The big shopping centres' own inside: the supermarket, the gallery of shops, the food court.
 const MallInside = lazy(() => import('../world3d/interior/MallInside').then((m) => ({ default: m.MallInside })))
+import type { MallLayout } from '../world3d/interior/MallInside'
 const IvoireInside = lazy(() => import('../world3d/interior/IvoireInside').then((m) => ({ default: m.IvoireInside })))
 const CathedralInside = lazy(() => import('../world3d/interior/CathedralInside').then((m) => ({ default: m.CathedralInside })))
 const MosqueM6Inside = lazy(() => import('../world3d/interior/MosqueM6Inside').then((m) => ({ default: m.MosqueM6Inside })))
 const PyramideInside = lazy(() => import('../world3d/interior/PyramideInside').then((m) => ({ default: m.PyramideInside })))
+const KineoInside = lazy(() => import('../world3d/interior/KineoInside').then((m) => ({ default: m.KineoInside })))
 const BoulayScene = lazy(() => import('../world3d/interior/BoulayScene').then((m) => ({ default: m.BoulayScene })))
+/** The centres that aren't the default mall: Sococé's own supermarket and shops, the Kinéo cinemas in their galleries. */
+const MALLS: Record<string, MallLayout> = {
+  'cocody-sococe': { market: 'SOCOCÉ', back: ['PRESSING DES 2 PLATEAUX', 'BOULANGERIE', 'PHONE 225', 'PHARMACIE', 'MODE WAX'], front: ['LIBRAIRIE', 'BEAUTÉ & CO', '', 'CAFÉ DES PLATEAUX'], kineo: true },
+  'marcory-capsud': { kineo: true },
+}
 /** The landing at Azito: the pinasse over to Île Boulay, its own scene while there. */
 const BOULAY = 'yop-ile-boulay'
 const HotelInside = lazy(() => import('../world3d/interior/HotelInside').then((m) => ({ default: m.HotelInside })))
@@ -673,7 +681,7 @@ export function Play() {
             <HomeInside partner={sim.friends?.find((f) => f.partner && f.home)} sim={sim} world={world} plot={homePlot} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} onBuild={() => setBuilding(0)} />
           ) : inside!.kind === 'mall' ? (
             <Suspense fallback={null}>
-              <MallInside sim={sim} name={placeName(inside!.id)} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
+              <MallInside sim={sim} name={placeName(inside!.id)} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} layout={MALLS[inside!.id]} />
             </Suspense>
           ) : inside!.kind === 'hotel' ? (
             // Every hotel: the whole hotel (lobby, restaurant, bar, pool deck) and, by its lifts, its floors and rooms (HotelFloors).
@@ -706,6 +714,11 @@ export function Play() {
             // La Pyramide: its gallery of shops round the open well, the lifts to the offices; its roof over the Plateau.
             <Suspense fallback={null}>
               <PyramideInside sim={sim} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
+            </Suspense>
+          ) : inside!.id === 'marcory-kineo' || inside!.id === 'cocody-kineo' ? (
+            // A Kinéo cinema: its lobby; with a ticket, the screen's room and the Sim in its seat.
+            <Suspense fallback={null}>
+              <KineoInside sim={sim} placeId={inside!.id} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
             </Suspense>
           ) : inside!.kind === 'boulay' ? (
             // Over on Île Boulay: its village and its beach, or water-skiing off it.
@@ -1100,7 +1113,7 @@ export function Play() {
 
 /* ---------- The in-game phone ---------- */
 
-type PhoneAppId = 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'galerie' | 'guide' | 'dodo'
+type PhoneAppId = 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'galerie' | 'guide' | 'dodo' | 'kineo'
 type PhoneProps = {
   world: World
   sim: Sim
@@ -1163,6 +1176,7 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
     ...(has('parisfoot') ? [{ id: 'parisfoot', label: 'ParisFoot', open: () => setApp('parisfoot') }] : []),
     ...(has('golvo') ? [{ id: 'golvo', label: 'Golvo', open: () => setApp('golvo') }] : []),
     ...(has('dodo') ? [{ id: 'dodo', label: 'Dodo', open: () => setApp('dodo') }] : []),
+    ...(has('kineo') ? [{ id: 'kineo', label: 'Kinéo', open: () => setApp('kineo') }] : []),
     ...(has('gnango') ? [{ id: 'gnango', label: 'Gnango', open: onMap }] : []),
     ...(has('idrive') ? [{ id: 'idrive', label: 'iDrive', open: onMap }] : []),
   ]
@@ -1186,7 +1200,7 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
     { id: 'profile', label: 'Profil', icon: UserRound, colors: ['#ff8a9b', '#ff3d57'], open: () => navigate('/profil', { viewTransition: true }) },
     ] as Tile[]
   ).filter((a) => !life.minor || (a.id !== 'jobs' && a.id !== 'home'))
-  const title: Record<PhoneAppId, string> = { here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', babigram: 'Babigram', bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: 'Galerie', guide: 'Encyclopédie de Babi', dodo: 'Dodo' }
+  const title: Record<PhoneAppId, string> = { here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', babigram: 'Babigram', bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: 'Galerie', guide: 'Encyclopédie de Babi', dodo: 'Dodo', kineo: 'Kinéo' }
 
   return (
     <div className="absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center" onClick={onClose}>
@@ -1258,6 +1272,7 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
                 {app === 'news' && <NewsApp />}
                 {app === 'guide' && <GuideApp world={world} />}
                 {app === 'dodo' && <DodoApp world={world} sim={sim} act={act} onMap={onMap} />}
+                {app === 'kineo' && <KineoApp world={world} sim={sim} act={act} onWalk={onWalk} onMap={onMap} onClose={onClose} />}
                 {app === 'friends' && <FriendsApp world={world} sim={sim} act={act} onPay={has('waye') ? (p) => (setWayeTo(p.id), setApp('waye')) : undefined} onDames={onDames} />}
                 {app === 'store' && !ownPhone && (
                   <div className="grid place-items-center gap-3 px-6 py-12 text-center">

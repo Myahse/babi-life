@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, GramPost, GramProfile, GramFound, GramActivity, DameGame } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, GramPost, GramProfile, GramFound, GramActivity, DameGame, CinemaProgram, CinemaSeats, CinemaTicket } from './types'
 import { useSession } from '../store/session'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
@@ -278,6 +278,12 @@ export const api = {
   couple: (id: string, other: string, action: 'proposer' | 'accepter' | 'refuser' | 'rompre') => post<ActionResult>(`/sims/${id}/friends/${other}/couple`, { action }),
   answerFriend: (id: string, other: string, answer: 'accepter' | 'refuser') => post<ActionResult>(`/sims/${id}/friends/${other}/answer`, { answer }),
   inviteFriend: (id: string, other: string) => post<ActionResult>(`/sims/${id}/friends/${other}/invite`, {}),
+  /** Kinéo (backend sims/cinema.go): a cinema's day, a session's seats, the Sim's tickets, buying, the ticket at the door. */
+  cinemaProgram: (cinema: string, day?: number) => request<CinemaProgram>(`/cinema/${cinema}/program${day !== undefined ? `?day=${day}` : ''}`),
+  cinemaSeats: (cinema: string, salle: number, at: number) => request<CinemaSeats>(`/cinema/${cinema}/seats?salle=${salle}&at=${at}`),
+  cinemaTickets: (id: string) => request<{ tickets: CinemaTicket[]; now: number }>(`/sims/${id}/cinema/tickets`),
+  cinemaBuy: (id: string, o: { cinema: string; salle: number; at: number; seats: string[] }) => post<ActionResult>(`/sims/${id}/cinema/tickets`, o),
+  cinemaUse: (id: string, ticket: number) => post<ActionResult>(`/sims/${id}/cinema/tickets/${ticket}/use`, {}),
   /** Les dames (backend sims/dames.go): the game going on, a game against a man of the grin or a friend challenged, the answer, the moves. */
   dames: (id: string) => request<{ game: DameGame | null }>(`/sims/${id}/dames`),
   damesStart: (id: string, o: { with: string; npc?: string; stake: number }) => post<ActionResult>(`/sims/${id}/dames`, o),

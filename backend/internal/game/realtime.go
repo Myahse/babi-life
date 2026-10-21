@@ -69,6 +69,16 @@ type Activity struct {
 	With []string `json:"with,omitempty"`
 	// Auto: started by the Sim itself while the player was away (sims/autopilot.go).
 	Auto bool `json:"auto,omitempty"`
+	// Seance: a film seen with a Kinéo ticket (sims/cinema.go): which, in which screen, the seats.
+	Seance *Seance `json:"seance,omitempty"`
+}
+
+// Seance: the film being watched, its screen and the ticket's seats.
+type Seance struct {
+	Film  string   `json:"film"`
+	Salle int      `json:"salle"`
+	Seats []string `json:"seats"`
+	VIP   bool     `json:"vip,omitempty"`
 }
 
 type Trip struct {

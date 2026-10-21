@@ -1,4 +1,4 @@
-import { Car, ShoppingBag, Bike, HandCoins, MessageCircleMore, Trophy } from 'lucide-react'
+import { Car, ShoppingBag, Bike, HandCoins, MessageCircleMore, Trophy, Clapperboard } from 'lucide-react'
 
 // Logos of the phone's store apps. Invented brands: their own colours and
 // marks, nodding to the services they are modelled on.
@@ -69,6 +69,7 @@ const LOOK: Record<string, { bg: string; fg: string; mark: (s: number) => React.
   parisfoot: { bg: 'linear-gradient(160deg,#a78bfa,#6d28d9)', fg: '#fff', mark: (s) => <Trophy size={s} strokeWidth={2.4} /> },
   gbairai: { bg: 'linear-gradient(160deg,#ff9f43,#f0590c)', fg: '#fff', mark: (s) => <MessageCircleMore size={s} strokeWidth={2.4} /> },
   dodo: { bg: 'linear-gradient(160deg,#8b5cf6,#4c1d95)', fg: '#7c3aed', mark: (s) => <DodoHouse size={s} /> },
+  kineo: { bg: 'linear-gradient(160deg,#e63946,#6b0716)', fg: '#c8102e', mark: (s) => <Clapperboard size={s} strokeWidth={2.4} color="#fff" /> },
   store: { bg: 'linear-gradient(160deg,#7aa7ff,#3b5bfd)', fg: '#fff', mark: (s) => <ShoppingBag size={s} strokeWidth={2.4} /> },
 }
 
