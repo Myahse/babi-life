@@ -25,6 +25,8 @@ const (
 	Wait = 20 * time.Second
 	// Length: from the whistle to the end, with the countdown and the stops (streetball/game.ts: 180 s of play).
 	Length = 4 * time.Minute
+	// Late: a match ending sooner than this takes no one new; they're put in the next one, after it.
+	Late = time.Minute
 )
 
 // Cap: players a match takes, by sport.
@@ -67,11 +69,14 @@ var ErrSport = errors.New("pas ce sport ici")
 type Lobby struct {
 	mu      sync.Mutex
 	matches map[string]*Match
-	// at: the match going on (or waiting) at each court.
-	at map[string]*Match
+	// at: the match going on (or waiting) at each court; next: the one after it, filling while it ends.
+	at   map[string]*Match
+	next map[string]*Match
 }
 
-func NewLobby() *Lobby { return &Lobby{matches: map[string]*Match{}, at: map[string]*Match{}} }
+func NewLobby() *Lobby {
+	return &Lobby{matches: map[string]*Match{}, at: map[string]*Match{}, next: map[string]*Match{}}
+}
 
 func newID() string {
 	b := make([]byte, 6)
@@ -90,22 +95,38 @@ func (l *Lobby) Join(place, sport string, e Entry, now time.Time) (Match, error)
 	defer l.mu.Unlock()
 	l.sweep(now)
 	// Playing here means not holding a place at another court any more.
-	for p, o := range l.at {
-		if p != place {
-			o.Entries = slices.DeleteFunc(o.Entries, func(x Entry) bool { return x.Sim == e.Sim })
+	for _, at := range []map[string]*Match{l.at, l.next} {
+		for p, o := range at {
+			if p != place {
+				o.Entries = slices.DeleteFunc(o.Entries, func(x Entry) bool { return x.Sim == e.Sim })
+			}
 		}
 	}
 	m := l.at[place]
+	for _, x := range append(entriesOf(m), entriesOf(l.next[place])...) {
+		if x.Sim == e.Sim {
+			if m == nil || !slices.ContainsFunc(m.Entries, func(y Entry) bool { return y.Sim == e.Sim }) {
+				m = l.next[place]
+			}
+			return copyMatch(m), nil
+		}
+	}
+	// The match here is about to end: the newcomer waits for the next one, right after.
+	if m != nil && m.End-now.UnixMilli() < Late.Milliseconds() {
+		n := l.next[place]
+		if n == nil {
+			start := max(now.Add(Wait).UnixMilli(), m.End+(5*time.Second).Milliseconds())
+			n = &Match{ID: newID(), Place: place, Sport: sport, Start: start, End: start + Length.Milliseconds(), Cap: Cap[sport]}
+			l.matches[n.ID] = n
+			l.next[place] = n
+		}
+		m = n
+	}
 	if m != nil && m.Sport != sport {
 		// The court is taken by the other game: wait for it to end.
 		return Match{}, Full{Until: m.End}
 	}
 	if m != nil {
-		for _, x := range m.Entries {
-			if x.Sim == e.Sim {
-				return copyMatch(m), nil
-			}
-		}
 		if len(m.Entries) >= m.Cap {
 			return Match{}, Full{Until: m.End}
 		}
@@ -193,11 +214,25 @@ func (l *Lobby) sweep(now time.Time) {
 			delete(l.at, place)
 		}
 	}
+	// The next match takes the court once the last one is over.
+	for place, n := range l.next {
+		if l.at[place] == nil {
+			l.at[place] = n
+			delete(l.next, place)
+		}
+	}
 	for id, m := range l.matches {
 		if ms-m.End > (10 * time.Minute).Milliseconds() {
 			delete(l.matches, id)
 		}
 	}
+}
+
+func entriesOf(m *Match) []Entry {
+	if m == nil {
+		return nil
+	}
+	return m.Entries
 }
 
 func copyMatch(m *Match) Match {

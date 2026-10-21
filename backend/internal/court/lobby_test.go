@@ -83,3 +83,23 @@ func TestPlayingElsewhereFreesThePlace(t *testing.T) {
 		t.Fatal("a player gone to another court should leave the first")
 	}
 }
+
+func TestLateComersWaitForTheNextMatch(t *testing.T) {
+	l := NewLobby()
+	now := time.Now()
+	m, _ := l.Join("c", "basket", Entry{Sim: "a"}, now)
+	late := time.UnixMilli(m.End - 20_000)
+	n, err := l.Join("c", "basket", Entry{Sim: "b"}, late)
+	if err != nil || n.ID == m.ID || n.Start < m.End {
+		t.Fatalf("a late comer should get the next match after this one, got %+v %v", n, err)
+	}
+	again, _ := l.Join("c", "basket", Entry{Sim: "b"}, late)
+	if again.ID != n.ID {
+		t.Fatal("asking again should give the same next match")
+	}
+	// Once the first is over, the next one is the court's.
+	at, ok := l.At("c", time.UnixMilli(m.End+1))
+	if !ok || at.ID != n.ID {
+		t.Fatal("the next match should take the court")
+	}
+}

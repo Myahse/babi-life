@@ -4,7 +4,7 @@ import { RotateCcw, Trophy, Users, X } from 'lucide-react'
 import type { Look } from '../lib/types'
 import { randomLook } from '../avatar/options'
 import { rng } from '../world3d/themes'
-import { LENGTH, NO_INPUT, buttons, createGame, outcome, step, type Game, type Input, type Sport, type Stats } from './game'
+import { COUNTDOWN, LENGTH, NO_INPUT, buttons, createGame, outcome, step, type Game, type Input, type Sport, type Stats } from './game'
 import { BallView, Crowd, Follow, Ground, PlayerView, upright } from './scene'
 import { likesFor } from '../world3d/fans'
 import { serverNow } from '../lib/worldClock'
@@ -223,6 +223,7 @@ function Loop({ game, input, onHud, net, entries, start, simId }: { game: Game; 
   const acc = useRef(0)
   const sent = useRef(0)
   const said = useRef<string | null>(null)
+  const synced = useRef(false)
   const size = useThree((s) => s.size)
   useFrame((_, dtRaw) => {
     const total = Math.min(Math.max(dtRaw, 0), 0.25)
@@ -239,6 +240,15 @@ function Loop({ game, input, onHud, net, entries, start, simId }: { game: Game; 
     const host = boss === simId
     if (net) net.press(inp)
     if (waiting <= 0 && boss) {
+      // Taking over a match no one has run yet (its first player went): on the court's clock, not from the countdown.
+      if (host && net && !synced.current) {
+        const elapsed = (serverNow() - start) / 1000 - COUNTDOWN
+        if (elapsed > game.time + 1) {
+          game.time = elapsed
+          if (elapsed >= 0) game.phase = 'play'
+        }
+      }
+      if (net) synced.current = true
       if (host) {
         const others = net?.inputs(entries)
         for (let i = 0; i < steps; i++) {
