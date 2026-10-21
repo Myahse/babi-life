@@ -35,11 +35,12 @@ export type BuildingBuilders = {
   trim: Builder // plain plaster: plinth, ledges, parapets, gables, balconies, rooftop things
   roofs: Builder // flat concrete roofs
   tin: Builder // corrugated sheet metal roofs
+  tinLow: Builder // the same roofs as two plain slopes: what's drawn of them further off (a few triangles instead of the steps)
   contact: Builder // the shade on the ground around the walls (RGBA)
 }
 
 export function newBuildingBuilders(): BuildingBuilders {
-  return { walls: new Builder(), inst: new Builder(), entrance: new Builder(), shop: new Builder(), house: new Builder(), trim: new Builder(), roofs: new Builder(), tin: new Builder(), contact: new Builder(true) }
+  return { walls: new Builder(), inst: new Builder(), entrance: new Builder(), shop: new Builder(), house: new Builder(), trim: new Builder(), roofs: new Builder(), tin: new Builder(), tinLow: new Builder(), contact: new Builder(true) }
 }
 
 // Façades of Abidjan: whites and creams, and the painted colours of the
@@ -236,9 +237,11 @@ export function addBuilding(B: BuildingBuilders, bd: Building, style: Style = 'd
     // The game's houses in the quarters (fill.ts) have the low roofs of
     // the cours: the same steps, a third as high (about 18°).
     const rise = bd.tin ? step / 3 : step
-    for (let k = 0, depth = d + 2 * o; depth > step / 2; k++, depth -= 2 * step) {
-      B.tin.box(rect.cx, H + k * rise + rise / 2, rect.cz, w + 2 * o, rise, depth, angle, tin)
+    let steps = 0
+    for (let depth = d + 2 * o; depth > step / 2; steps++, depth -= 2 * step) {
+      B.tin.box(rect.cx, H + steps * rise + rise / 2, rect.cz, w + 2 * o, rise, depth, angle, tin)
     }
+    lowRoof(B.tinLow, rect.cx, rect.cz, (w + 2 * o) / 2, (d + 2 * o) / 2, angle, H, H + steps * rise, tin)
     // The gable ends, in the wall's colour, under the steps.
     B.trim.flat([ring], H, 1, tint.clone().multiplyScalar(0.6))
   } else {
@@ -339,6 +342,26 @@ function awnings(B: BuildingBuilders, ring: XZ[], c: XZ) {
     const jds = [B.trim.vertex(ax, top - 0.02, az, 0, 0, dn, shade), B.trim.vertex(bx, top - 0.02, bz, 1, 0, dn, shade), B.trim.vertex(bx + nx * out, low - 0.02, bz + nz * out, 1, 1, dn, shade), B.trim.vertex(ax + nx * out, low - 0.02, az + nz * out, 0, 1, dn, shade)]
     B.trim.facing(dn, jds[0], jds[1], jds[2])
     B.trim.facing(dn, jds[0], jds[2], jds[3])
+  }
+}
+
+/** A roof of two plain slopes over a rectangle (half-length hw along `rot`, half-depth hd), its ridge along the length, and its gable ends. */
+function lowRoof(b: Builder, cx: number, cz: number, hw: number, hd: number, rot: number, y0: number, y1: number, c: THREE.Color) {
+  const [cs, sn] = [Math.cos(rot), Math.sin(rot)]
+  const at = (x: number, z: number): XZ => [cx + x * cs - z * sn, cz + x * sn + z * cs]
+  const slope = Math.hypot(hd, y1 - y0)
+  for (const side of [-1, 1]) {
+    // The slope's normal: out on its side, and up.
+    const [nx, nz] = [-sn * side * ((y1 - y0) / slope), cs * side * ((y1 - y0) / slope)]
+    const n: [number, number, number] = [nx, hd / slope, nz]
+    const [e1, e2, r1, r2] = [at(-hw, side * hd), at(hw, side * hd), at(hw, 0), at(-hw, 0)]
+    const ids = [b.vertex(e1[0], y0, e1[1], 0, 0, n, c), b.vertex(e2[0], y0, e2[1], hw * 2, 0, n, c), b.vertex(r1[0], y1, r1[1], hw * 2, slope, n, c), b.vertex(r2[0], y1, r2[1], 0, slope, n, c)]
+    b.facing(n, ids[0], ids[1], ids[2])
+    b.facing(n, ids[0], ids[2], ids[3])
+    // The gable end on this side of the length.
+    const g: [number, number, number] = [cs * side, 0, sn * side]
+    const [a, d, t] = [at(side * hw, -hd), at(side * hw, hd), at(side * hw, 0)]
+    b.facing(g, b.vertex(a[0], y0, a[1], 0, 0, g, c), b.vertex(d[0], y0, d[1], hd * 2, 0, g, c), b.vertex(t[0], y1, t[1], hd, y1 - y0, g, c))
   }
 }
 

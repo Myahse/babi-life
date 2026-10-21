@@ -56,6 +56,7 @@ import { SotraStops } from './sotra'
 import { StreetFootball } from './streetFoot'
 import { StreetPeople } from './streetPeople'
 import { StreetNouchis } from './nouchis'
+import { CommuneMarkers } from './communeMarkers'
 import { Billboards } from './billboards'
 import { StreetLife, type Taken } from './streetlife'
 import { Landing, SkyPlanes, TakeOff } from './airport'
@@ -126,6 +127,8 @@ const lotClear = (p: Plot) => Math.max(PLOT_CLEAR, Math.hypot(...lotSize(p)) / 2
 
 /** What casts a shadow: the buildings, not the roads. */
 const SOLID = new Set(['walls', 'inst', 'entrance', 'shop', 'house', 'trim', 'roofs', 'tin'])
+/** Drawn only near the view: the buildings' small parts, the stepped tin roofs (plain slopes, tinLow, further off), the shade at the walls' foot. */
+const NEAR_ONLY = new Set(['trim', 'tin', 'contact'])
 
 // No screen-space ambient occlusion here: over kilometres of view its depth
 // buffer is too coarse and it blackens the ground. The buildings carry their
@@ -228,7 +231,7 @@ export function OpenWorld(props: Props & { token: string; onFail: () => void; on
   const maxDpr = Math.min(1.75, typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1)
   const [dpr, setDpr] = useState(Math.min(1.5, maxDpr))
   return (
-    <Canvas shadows dpr={dpr} camera={{ position: [45, 48, 45], fov: 45, near: 0.5, far: 6000 }} style={{ background: sky, transition: 'background 1s' }} gl={{ antialias: true, stencil: true }} onCreated={({ gl, scene }) => void (import.meta.env.DEV && Object.assign(window, { __gl: gl, __scene: scene, __where: whereabouts }))}>
+    <Canvas shadows dpr={dpr} camera={{ position: [45, 48, 45], fov: 45, near: 0.5, far: 6000 }} style={{ background: sky, transition: 'background 1s' }} gl={{ antialias: true, stencil: true }} onCreated={({ gl, scene, camera }) => void (import.meta.env.DEV && Object.assign(window, { __gl: gl, __scene: scene, __camera: camera, __where: whereabouts }))}>
       <Snapper street />
       <ChatFraming />
       {/* Resolution follows what the device can keep up with */}
@@ -297,6 +300,7 @@ function useMaterials(night: boolean, hour: number) {
 
 function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, indoors, nameTag, onNear, frozen, onLeave, delivery, onCollect, players, onPickPlayer, recenter, onFreeCamera, closeView, shoulderView, token, onFail, onLoaded, onStreetBuy, onRobbed, onTalk, talkingTo, plotsVersion, onMapPlaces, onHomeSpots, onHomePlot }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void; onLoaded?: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void; onHomePlot?: (plot: Plot | undefined) => void }) {
   const origin = useMemo<Origin>(() => ({ lat: commune.lat, lng: commune.lng }), [commune.lat, commune.lng])
+  const cityCommunes = useMemo(() => world.cities.find((c) => c.communes.some((m) => m.id === commune.id))?.communes ?? [commune], [world.cities, commune])
   const { mats, far: farMats } = useMaterials(night, hour)
   const home = sim.homeCity === sim.city && sim.homeCommune === commune.id
 
@@ -401,6 +405,34 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
 
   // Chunk streaming, around the Sim (or wherever the camera is looking).
   const [chunks, setChunks] = useState<Map<string, Loaded>>(new Map())
+  // Only the chunks the sun's shadows reach (the light follows the view's
+  // centre, ±90 m: SunLight) cast them. The shadow map is drawn again as the
+  // Sim walks, and every chunk beyond was drawn into it for nothing: all its
+  // buildings and trees, over a million triangles a time.
+  // Likewise the buildings' small parts (plinths, ledges, parapets, tanks on
+  // the roofs, awnings: the « trim »), the tin roofs' steps and the shade at
+  // the walls' foot: only in the chunks near the view (NEAR_ONLY), too small
+  // to make out from further off, where the roofs are plain slopes.
+  const [shadowed, setShadowed] = useState<Set<string>>(new Set())
+  const [detailed, setDetailed] = useState<Set<string>>(new Set())
+  const [high, setHigh] = useState(false)
+  const shadowTick = useRef(1)
+  const view = useThree((s) => s.controls) as OrbitControlsImpl | null
+  useFrame((_, dt) => {
+    shadowTick.current += dt
+    if (shadowTick.current < 0.5 || !view) return
+    shadowTick.current = 0
+    const { x, z } = view.target
+    const within = (R: number) => [...chunks.values()].filter((c) => !c.data.key.includes(':') && x > c.data.box.x0 - R && x < c.data.box.x1 + R && z > c.data.box.z0 - R && z < c.data.box.z1 + R).map((c) => c.data.key)
+    const same = (a: string[], b: Set<string>) => a.length === b.size && a.every((k) => b.has(k))
+    const near = within(150)
+    if (!same(near, shadowed)) setShadowed(new Set(near))
+    const seen = within(200)
+    if (!same(seen, detailed)) setDetailed(new Set(seen))
+    // High over the city: the commune markers instead of the places' signs and the name tags.
+    const up = view.object.position.y > 320
+    if (up !== high) setHigh(up)
+  })
   const [resolved, setResolved] = useState<Map<string, Resolved>>(new Map())
   const pending = useRef(new Map<number, string>())
   const failed = useRef(new Map<string, number>())
@@ -913,11 +945,12 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const startId = stationAt && lots.some((l) => l.id === stationAt) ? stationAt : HOME_ID
   const ready = lots.some((l) => l.id === startId) || (!home && nav.nodes.length > 0) || (nav.nodes.length > 0 && !spots.some((s) => s.id === startId))
 
-  const [labels, setLabels] = useState(false)
+  const [shownLabels, setLabels] = useState(false)
   useEffect(() => {
     const id = requestAnimationFrame(() => setLabels(true))
     return () => cancelAnimationFrame(id)
   }, [])
+  const labels = shownLabels && !high
 
   const stopsTraffic = !!happening && STOPS_TRAFFIC.has(happening.id)
   const raining = happening?.id === 'pluie'
@@ -941,9 +974,12 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} material={mats.ground} receiveShadow>
         <planeGeometry args={[30000, 30000]} />
       </mesh>
+      {/* Zoomed out: each commune's name on its pin */}
+      <CommuneMarkers communes={cityCommunes} origin={origin} here={commune.id} />
 
       {[...chunks.values()].map((c) => {
         const far = c.data.key.includes(':')
+        const shade = !far && shadowed.has(c.data.key)
         return (
         <group key={c.data.key} position={[0, far ? -0.015 : 0, 0]}>
           {/* A near chunk's square in the stencil: the horizon isn't drawn under it */}
@@ -953,11 +989,11 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
             </mesh>
           )}
           {Object.entries(c.geos).map(([name, g]) => (
-            <mesh key={name} name={name} geometry={g} material={(far ? farMats : mats)[name as keyof typeof mats]} castShadow={!far && SOLID.has(name)} receiveShadow={!far && name !== 'contact'} />
+            <mesh key={name} name={name} geometry={g} material={(far ? farMats : mats)[(name === 'tinLow' ? 'tin' : name) as keyof typeof mats]} castShadow={shade && SOLID.has(name)} receiveShadow={!far && name !== 'contact'} visible={far || (NEAR_ONLY.has(name) ? detailed.has(c.data.key) : name !== 'tinLow' || !detailed.has(c.data.key))} />
           ))}
-          <Trees pts={c.data.trees} bark={mats.bark} leaves={mats.leaves} />
+          <Trees pts={c.data.trees} bark={mats.bark} leaves={mats.leaves} shadows={shade} />
           <Forest pts={c.data.forest ?? []} bark={mats.bark} />
-          <Palms pts={c.data.palms ?? []} bark={mats.bark} leaves={mats.leaves} />
+          <Palms pts={c.data.palms ?? []} bark={mats.bark} leaves={mats.leaves} shadows={shade} />
           {c.data.stations?.map((st, i) => <FuelStation key={i} s={st} night={night} />)}
         </group>
         )
@@ -1205,7 +1241,7 @@ function useSolidTrunks(pts: XZ[], r: number) {
   }, [key, pts, r])
 }
 
-export function Trees({ pts, bark, leaves }: { pts: XZ[]; bark: THREE.Material; leaves: THREE.Material }) {
+export function Trees({ pts, bark, leaves, shadows = true }: { pts: XZ[]; bark: THREE.Material; leaves: THREE.Material; /** Cast shadows (only where the sun's shadows reach) */ shadows?: boolean }) {
   useSolidTrunks(pts, 0.6)
   const trunks = useRef<THREE.InstancedMesh>(null)
   const tops = useRef<THREE.InstancedMesh>(null)
@@ -1230,10 +1266,10 @@ export function Trees({ pts, bark, leaves }: { pts: XZ[]; bark: THREE.Material; 
   if (!pts.length) return null
   return (
     <>
-      <instancedMesh ref={trunks} args={[undefined, bark, pts.length]} castShadow>
+      <instancedMesh ref={trunks} args={[undefined, bark, pts.length]} castShadow={shadows}>
         <boxGeometry args={[1, 1, 1]} />
       </instancedMesh>
-      <instancedMesh ref={tops} args={[undefined, leaves, pts.length]} castShadow receiveShadow>
+      <instancedMesh ref={tops} args={[undefined, leaves, pts.length]} castShadow={shadows} receiveShadow>
         <boxGeometry args={[1, 1, 1]} />
       </instancedMesh>
     </>
@@ -1292,7 +1328,7 @@ export function Forest({ pts, bark }: { pts: XZ[]; bark: THREE.Material }) {
  * Coconut palms, Minecraft style: a leaning trunk of blocks, a crown of
  * long drooping leaves and a bunch of coconuts.
  */
-export function Palms({ pts, bark, leaves }: { pts: XZ[]; bark: THREE.Material; leaves: THREE.Material }) {
+export function Palms({ pts, bark, leaves, shadows = true }: { pts: XZ[]; bark: THREE.Material; leaves: THREE.Material; /** Cast shadows (only where the sun's shadows reach) */ shadows?: boolean }) {
   useSolidTrunks(pts, 0.45)
   const trunks = useRef<THREE.InstancedMesh>(null)
   const fronds = useRef<THREE.InstancedMesh>(null)
@@ -1328,10 +1364,10 @@ export function Palms({ pts, bark, leaves }: { pts: XZ[]; bark: THREE.Material; 
   if (!pts.length) return null
   return (
     <>
-      <instancedMesh ref={trunks} args={[undefined, bark, pts.length]} castShadow>
+      <instancedMesh ref={trunks} args={[undefined, bark, pts.length]} castShadow={shadows}>
         <boxGeometry args={[1, 1, 1]} />
       </instancedMesh>
-      <instancedMesh ref={fronds} args={[undefined, leaves, pts.length * FRONDS]} castShadow>
+      <instancedMesh ref={fronds} args={[undefined, leaves, pts.length * FRONDS]} castShadow={shadows}>
         <boxGeometry args={[1, 1, 1]} />
       </instancedMesh>
       <instancedMesh ref={nuts} args={[undefined, nut, pts.length]}>

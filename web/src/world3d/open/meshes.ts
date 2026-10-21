@@ -23,6 +23,7 @@ export type ChunkMeshes = {
   trim: THREE.BufferGeometry | null
   roofs: THREE.BufferGeometry | null
   tin: THREE.BufferGeometry | null
+  tinLow: THREE.BufferGeometry | null
   contact: THREE.BufferGeometry | null
   asphalt: THREE.BufferGeometry | null
   laterite: THREE.BufferGeometry | null
@@ -436,6 +437,7 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ, ring: XZ[]) => boolea
     trim: B.trim.geometry(),
     roofs: B.roofs.geometry(),
     tin: B.tin.geometry(),
+    tinLow: B.tinLow.geometry(),
     contact: B.contact.geometry(),
     asphalt: asphalt.geometry(),
     laterite: laterite.geometry(),
