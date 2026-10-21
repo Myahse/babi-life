@@ -1,6 +1,6 @@
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BadgeCheck, BookOpen, KeyRound, Volleyball, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, BookOpen, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World, Ride, Place, Plot } from '../lib/types'
 import { useWorld } from '../store/world'
@@ -13,6 +13,7 @@ import { Joystick, RunButton, WalkKeys } from '../components/Joystick'
 import { cameraTurn } from '../world3d/input'
 import { whereabouts } from '../world3d/whereabouts'
 import { isRoomAct, openLift } from '../world3d/hotelLift'
+import { throwBillets } from '../world3d/clubBillets'
 import { OrbitGizmo } from '../components/OrbitGizmo'
 import { FirstSteps } from '../components/FirstSteps'
 import { TravelCTA, type OnTravel } from '../components/TravelCTA'
@@ -738,6 +739,10 @@ export function Play() {
           return classic ? <Neighbourhood key={commune.id} {...street} /> : <OpenWorld key={commune.id} {...street} commune={ownPlaces(commune)} token={MAP_TOKEN ?? ''} onFail={() => setMapSlow(true)} onLoaded={() => setMapSlow(false)} onMapPlaces={setMapPlaces} onHomeSpots={setHomeSpots} onHomePlot={setHomePlot} />
         })()}
       </div>
+      {/* At the club, open, from 18: « Lancer des billets » on the dancers, a tap at a time */}
+      {showInside && inside!.kind === 'club' && !lifeOf(world, sim).minor && clubOpenAt(sim.gameMinutes) && sim.city === city.id && sim.commune === commune.id && !overlay && (
+        <Billets money={sim.money} onThrow={(amount) => api.billets(sim.id, inside!.id, amount).then((res) => (apply(res), throwBillets(amount), res.outcome.text))} />
+      )}
       {/* Never over a match or a race: it waits till the street */}
       {!showInside && !overlay && building === false && !(ballKey && ballKey !== played) && !racing && <NotifyPrompt />}
       {mapSlow && (
@@ -1724,6 +1729,54 @@ function CourtCount({ placeId }: { placeId: string }) {
     <div className={`mb-3 flex items-center gap-2 rounded-[18px] p-3 text-sm font-extrabold ${full ? 'bg-[#ffe3e3] text-[#c92a2a]' : 'bg-[#e6fcf5] text-[#087f5b]'}`}>
       <Users size={18} />
       {full ? `Terrain complet : ${c.players}/${c.cap} joueurs` : c.players ? `${c.players}/${c.cap} joueurs ${on ? 'en plein match' : 'attendent le coup d’envoi'}` : `Terrain libre : ${c.cap} places (${c.sport === 'foot' ? '5 contre 5' : '3 contre 3'})`}
+    </div>
+  )
+}
+
+/** The club's hours (backend sims/billets.go clubOpen): 21 h to 4 h. */
+const clubOpenAt = (m: number) => {
+  const h = Math.floor(m / 60) % 24
+  return h >= 21 || h < 4
+}
+
+/**
+ * « Lancer des billets »: the handful chosen (1 000, 5 000, 10 000 Djai), a
+ * tap throws it over the dancers (world3d/clubDecor BilletsBurst); not an
+ * activity, whatever the Sim is doing. Under the name, where nothing is in a
+ * place, on every screen.
+ */
+function Billets({ money, onThrow }: { money: number; onThrow: (amount: number) => Promise<string> }) {
+  const [amount, setAmount] = useState(1000)
+  const [said, setSaid] = useState<{ text: string; bad?: boolean } | null>(null)
+  const [busy, setBusy] = useState(false)
+  useEffect(() => {
+    if (!said) return
+    const t = setTimeout(() => setSaid(null), 3500)
+    return () => clearTimeout(t)
+  }, [said])
+  const go = async () => {
+    setBusy(true)
+    try {
+      setSaid({ text: await onThrow(amount) })
+    } catch (e) {
+      setSaid({ text: e instanceof Error ? e.message : 'Pas possible', bad: true })
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="pointer-events-none absolute top-[calc(max(0.75rem,env(safe-area-inset-top))+3.9rem)] left-3 z-20 flex w-[min(15rem,calc(100vw-9rem))] flex-col items-start gap-1.5 lg:top-[6.5rem] lg:left-5">
+      <div className="hud pointer-events-auto flex gap-1 rounded-full p-1">
+        {[1000, 5000, 10000].map((a) => (
+          <button key={a} onClick={() => setAmount(a)} className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${amount === a ? 'bg-[var(--color-ink)] text-white' : ''}`}>
+            {a / 1000} 000
+          </button>
+        ))}
+      </div>
+      <button disabled={busy || money < amount} onClick={() => void go()} className="pointer-events-auto flex items-center gap-2 rounded-full bg-[#1f9a4a] py-2.5 pr-4 pl-3 text-sm font-extrabold text-white shadow-[0_8px_20px_-10px_rgba(0,0,0,0.6)] transition active:scale-95 disabled:opacity-50">
+        <Banknote size={18} /> {money < amount ? 'Pas assez' : 'Lancer des billets'}
+      </button>
+      {said && <span className={`hud animate-pop rounded-2xl px-3 py-1.5 text-xs font-bold ${said.bad ? 'text-[#d81b3f]' : ''}`}>{said.text}</span>}
     </div>
   )
 }

@@ -147,7 +147,7 @@ type Guest = { p: [number, number, number]; r: number; pose: Pose; gender: 'femm
  * sofas taken, the bottles with their sparklers, men at the bar, and (on
  * the big nights) grands-frères throwing notes on the dancers. In the club
  * room's frame (Interior's): the floor around (1.5, 0.5), the DJ at the back
- * (z -3.6), the sofas along x -4.4, the bar at x 5.2.
+ * (z -3.7), the sofas along x -4.4, the bar along the back wall at x -3.4 (clubDecor.tsx).
  */
 export function ClubCrowd({ placeId }: { placeId: string }) {
   const fill = useClubFill()
@@ -171,7 +171,7 @@ export function ClubCrowd({ placeId }: { placeId: string }) {
     // (The middle seats are the Sim's and the room's own regular.)
     for (const z of [-2, 2]) for (const k of [-1, 1]) add([-4.2, 0.05, z + k * 0.65], Math.PI / 2, k < 0 ? 'drink' : 'sit', z < 0 ? 0.3 : 0.55, k < 0 ? 'homme' : 'femme')
     // At the bar, standing with a glass.
-    for (let k = 0; k < 3; k++) add([4.3, 0, 1.4 + k * 0.9], Math.PI / 2 + (r() - 0.5) * 0.6, k === 2 ? 'talk' : 'drink', 0.4 + k * 0.2)
+    for (let k = 0; k < 3; k++) add([-1.3 - k * 0.7, 0, -2.85], Math.PI + (r() - 0.5) * 0.6, k === 2 ? 'talk' : 'drink', 0.4 + k * 0.2)
     return out
   }, [placeId])
   // The grands-frères of the night, throwing notes on the floor from its edge.

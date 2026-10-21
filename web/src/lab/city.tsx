@@ -63,6 +63,7 @@ import { randomLook } from '../avatar/options'
 import { NightCityLab, NightStreetLab, PartyLab } from './night'
 import { RainSky } from '../world3d/open/rainSky'
 import { SkyDome } from '../world3d/open/sky'
+import { throwBillets } from '../world3d/clubBillets'
 import type { Block, Furniture, HousePlan, Material, Piece, Plot, Sim, World } from '../lib/types'
 
 const seededLab = (n: number) => () => ((n = (n * 16807) % 2147483647) / 2147483647)
@@ -339,6 +340,12 @@ function InteriorLab() {
     const r = () => ((n = (n * 16807) % 2147483647) / 2147483647)
     return { id: 'lab', firstName: 'Awa', lastName: 'Koné', gender, look: randomLook(gender, r), career: q.get('career') ?? '', careerLevel: Number(q.get('level') ?? 0) } as unknown as Sim
   }, [gender])
+  // &billets: a handful thrown over the club's dancers every few seconds (the « Lancer des billets » button).
+  useEffect(() => {
+    if (!q.has('billets')) return
+    const t = setInterval(() => throwBillets(5000), 2500)
+    return () => clearInterval(t)
+  }, [])
   // &after=<action>: the room first, then the action picked a moment later (the Sim walks over).
   const [id, setId] = useState<string | undefined>(q.get('id') ?? undefined)
   useEffect(() => {
