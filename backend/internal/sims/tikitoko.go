@@ -264,6 +264,8 @@ type TikiPost struct {
 	Sound      string `json:"sound"`
 	// A game creator's post (tikinpc.go), played live from these seeds.
 	NPC *TikiNPC `json:"npc,omitempty"`
+	// Friend: one of the Sim's friends posted it (tikifriends.go).
+	Friend bool `json:"friend,omitempty"`
 }
 
 // The game's audience comes over six hours, not at once.
@@ -293,6 +295,13 @@ func (h *Handler) tikiFeed(w http.ResponseWriter, r *http.Request) {
 	// A game creator's page: their posts only, nothing in the database.
 	if tab == "auteur" && strings.HasPrefix(author, "npc-") {
 		ps := npcPosts(now, strings.TrimPrefix(author, "npc-"))
+		h.npcStats(ctx, me, ps)
+		httpx.JSON(w, http.StatusOK, ps)
+		return
+	}
+	// A friend's page: the same, from the Sim's friends.
+	if tab == "auteur" && strings.HasPrefix(author, "friend-") {
+		ps := friendPosts(me, h.simFriends(ctx, me), now, author)
 		h.npcStats(ctx, me, ps)
 		httpx.JSON(w, http.StatusOK, ps)
 		return
@@ -356,9 +365,19 @@ func (h *Handler) tikiFeed(w http.ResponseWriter, r *http.Request) {
 	switch tab {
 	case "pour-toi":
 		npc := npcPosts(now, "")
+		// The friends' posts: the fresh ones at the top (people you know), the older among the rest.
+		var fresh []TikiPost
+		for _, p := range friendPosts(me, h.simFriends(ctx, me), now, "") {
+			if now.Sub(p.At) < 36*time.Hour {
+				fresh = append(fresh, p)
+			} else {
+				npc = append(npc, p)
+			}
+		}
 		h.npcStats(ctx, me, npc)
+		h.npcStats(ctx, me, fresh)
 		npcRank(npc, now)
-		out = interleave(out, npc)
+		out = append(fresh, interleave(out, npc)...)
 	case "favoris":
 		npc := h.npcSaved(ctx, me, now)
 		h.npcStats(ctx, me, npc)
@@ -508,7 +527,7 @@ func (h *Handler) tikiReport(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id, _ := strconv.ParseInt(chi.URLParam(r, "post"), 10, 64)
 	// The game's own videos: nobody to report, the app just hides it.
-	if _, ok := npcPost(id, time.Now()); ok {
+	if _, ok := h.gamePost(ctx, me, id); ok {
 		httpx.JSON(w, http.StatusOK, map[string]string{"text": "Merci. On te montrera moins de vidéos comme celle-ci."})
 		return
 	}
