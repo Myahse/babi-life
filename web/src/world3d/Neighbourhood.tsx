@@ -7,6 +7,7 @@ import { iconFor, kindColors } from '../components/icons'
 import { IconTile } from '../components/ui'
 import { Building } from './Buildings'
 import { Solid } from './Solid'
+import type { Delivery } from '../screens/GolvoApp'
 import { BACK_STREET_Z, CROSS_X, EXTENT_X, FAR_CROSS_X, LOT_XS, SIDEWALK, STREET_HALF, layoutCommune, route, type Lot } from './layout'
 import { Box, Lamp, Mat, Palm, Tree } from './props'
 import { FillerBuilding } from './Fillers'
@@ -49,6 +50,9 @@ export type Props = {
   frozen?: boolean
   /** Busy, the Sim walked far from where it's done: the activity stops (Walker). */
   onLeave?: () => void
+  /** A Golvo order on its way: its courier rides up in the street (open/courier.tsx); a tap on him collects it. */
+  delivery?: Delivery | null
+  onCollect?: () => void
   /** Other players in the commune right now. */
   players?: Player[]
   /** Bumped to bring the camera back on the Sim. */
