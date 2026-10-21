@@ -67,6 +67,8 @@ type Activity struct {
 	ChatWith string `json:"chatWith,omitempty"`
 	// With: an outing (sims/outing.go), the friends met in the game who came along (Friend ids).
 	With []string `json:"with,omitempty"`
+	// Auto: started by the Sim itself while the player was away (sims/autopilot.go).
+	Auto bool `json:"auto,omitempty"`
 }
 
 type Trip struct {
