@@ -41,7 +41,7 @@ const BALL_R = { basket: 0.12, foot: 0.11 }
 
 /* ---------- Who's on it ---------- */
 
-type Act = 'none' | 'pass' | 'shoot' | 'dunk' | 'layup' | 'cross' | 'steal' | 'block' | 'slide' | 'beaten' | 'kick' | 'dive' | 'hold' | 'celebrate' | 'cheer'
+export type Act = 'none' | 'pass' | 'shoot' | 'dunk' | 'layup' | 'cross' | 'steal' | 'block' | 'slide' | 'beaten' | 'kick' | 'dive' | 'hold' | 'celebrate' | 'cheer'
 
 export type Player = {
   id: number
@@ -505,7 +505,7 @@ function swat(g: Game, by: Player, shooter: Player) {
   shooter.cool = 0.5
   say(g, by.human ? 'Contré ! Quel contre !' : shooter.human ? 'Contré…' : 'Contré !')
   moment(g, 'block', by)
-  if (by.human) g.stats.blocks++
+  if (by.id === g.me) g.stats.blocks++
   // A blocked dunk comes down at once.
   if (shooter.act === 'dunk') startAct(shooter, 'layup', 0.6)
 }
@@ -564,10 +564,10 @@ function scored(g: Game, p: Player, points: number, dunk: boolean) {
     return
   }
   g.score[p.team] += points
-  if (p.human) {
+  if (p.id === g.me) {
     g.stats.points += points
     if (dunk) g.stats.dunks++
-  } else if (p.team === 0 && g.lastPass && g.ps[g.lastPass.by].human && g.time - g.lastPass.t < 4) g.stats.assists++
+  } else if (p.team === g.ps[g.me].team && g.lastPass && g.lastPass.by === g.me && g.time - g.lastPass.t < 4) g.stats.assists++
   say(g, dunk ? (p.human ? 'DUNK !!! Le terrain explose !' : 'DUNK !!!') : points === 2 ? 'De loin ! 2 points !' : 'Paniiier !')
   moment(g, dunk ? 'dunk' : points === 2 ? 'three' : 'basket', p)
   g.phase = 'dead'
@@ -644,7 +644,7 @@ export function skill(g: Game, p: Player, aim: V | null) {
       if (ankles) {
         say(g, p.human ? 'Cheville cassée !!' : 'Oh ! Cheville cassée !')
         moment(g, 'ankle', p)
-        if (p.human) g.stats.ankles++
+        if (p.id === g.me) g.stats.ankles++
       } else if (p.human) say(g, foot ? 'Crochet ! Il est passé !' : 'Crossover !')
     }
   }
@@ -678,7 +678,7 @@ export function defend(g: Game, p: Player) {
     h.cool = 0.7
     say(g, foot ? (p.human ? 'Ballon récupéré !' : 'Bien taclé !') : 'Interception !')
     moment(g, foot ? 'tackle' : 'steal', p)
-    if (p.human) g.stats.steals++
+    if (p.id === g.me) g.stats.steals++
   } else p.cool = 0.55
 }
 
@@ -776,7 +776,7 @@ function basketCarry(g: Game, p: Player) {
   }
   if (p.think > 0) return
   p.think = 0.3 + g.rnd() * 0.15
-  const human = g.ps[g.me]
+  const human = callerFor(g, p)
   const forced = g.possT > 7
   // The player asked for it: to them, if it can get there.
   if (human.team === p.team && human.call > 0 && laneGap(enemies, [p.x, p.z], [human.x, human.z]) > 0.6 && g.rnd() < 0.85) return pass(g, p, [human.x - p.x, human.z - p.z])
@@ -824,7 +824,7 @@ function footCarry(g: Game, p: Player) {
   runTo(p, goal[0], clamp(p.z * 0.7 + dodge, -PITCH.z + 1.5, PITCH.z - 1.5), 5.4)
   if (p.think > 0) return
   p.think = 0.32 + g.rnd() * 0.2
-  const human = g.ps[g.me]
+  const human = callerFor(g, p)
   if (human.team === p.team && human.call > 0 && g.rnd() < 0.85) return pass(g, p, [human.x - p.x, human.z - p.z])
   if (gd < 15 && Math.abs(p.z) < 8 && ((dd > 1.6 || !inFront) ? g.rnd() < 0.55 : g.rnd() < 0.2)) return shoot(g, p, null)
   if (def && inFront && dd < 1.9) return g.rnd() < 0.45 ? skill(g, p, null) : pass(g, p, null)
@@ -904,9 +904,19 @@ function keeperThink(g: Game, p: Player) {
   runTo(p, gx + dir * out, clamp(b.z * 0.25, -MOUTH + 0.2, MOUTH - 0.2), 4)
 }
 
+/** The human the AI listens to on its team: one calling for the ball, else the local player. */
+function callerFor(g: Game, p: Player) {
+  return g.ps.find((q) => q.human && q.team === p.team && q.call > 0) ?? g.ps[g.me]
+}
+
 /* ---------- The step ---------- */
 
-export function step(g: Game, dt: number, input: Input) {
+/**
+ * One step of the match. `input` is the local player's hands; `others` the
+ * other humans' at a court match (streetball/online.ts), by player index:
+ * the phone running the match plays them all.
+ */
+export function step(g: Game, dt: number, input: Input, others?: Map<number, Input>) {
   g.time += dt
   if (g.phase === 'count') {
     if (g.time >= 0) g.phase = 'play'
@@ -940,21 +950,8 @@ export function step(g: Game, dt: number, input: Input) {
     g.cleared = true
     g.possT = 0
   }
-  const me = g.ps[g.me]
-  // The player's hands.
-  if (playing && me.human && !locked(me)) {
-    const m = Math.min(1, hyp(input.mx, input.mz))
-    const top = input.guard && g.ball.owner !== me.id ? 3.6 : g.ball.owner === me.id ? (g.sport === 'foot' ? 5.6 : 5.2) : 6
-    const l = hyp(input.mx, input.mz) || 1
-    me.want = [(input.mx / l) * m * top, (input.mz / l) * m * top]
-    if (input.guard) lastGuard = g.time
-    const aim: V | null = m > 0.3 ? [input.mx, input.mz] : null
-    const has = g.ball.owner === me.id
-    if (input.pass) has ? pass(g, me, aim) : call(me)
-    if (input.shoot) has ? shoot(g, me, aim) : g.sport === 'basket' ? jump(g, me) : null
-    if (input.skill && has) skill(g, me, aim)
-    if (input.defend && !has) defend(g, me)
-  } else if (!playing || !me.human) me.want = [0, 0]
+  // The players' hands: the local one's, and the others' at a court match.
+  for (const p of g.ps) if (p.human) hands(g, p, p.id === g.me ? input : (others?.get(p.id) ?? NO_INPUT), playing)
   for (const p of g.ps) {
     p.cool = Math.max(0, p.cool - dt)
     p.call = Math.max(0, p.call - dt)
@@ -982,6 +979,25 @@ export function step(g: Game, dt: number, input: Input) {
   if (playing) touches(g)
   for (const p of g.ps) poseOf(g, p)
   if (g.flash && g.time - g.flash.t > 2.2) g.flash = null
+}
+
+/** A human's stick and buttons, on its player. */
+function hands(g: Game, me: Player, input: Input, playing: boolean) {
+  if (!playing || locked(me)) {
+    if (!playing) me.want = [0, 0]
+    return
+  }
+  const m = Math.min(1, hyp(input.mx, input.mz))
+  const top = input.guard && g.ball.owner !== me.id ? 3.6 : g.ball.owner === me.id ? (g.sport === 'foot' ? 5.6 : 5.2) : 6
+  const l = hyp(input.mx, input.mz) || 1
+  me.want = [(input.mx / l) * m * top, (input.mz / l) * m * top]
+  if (input.guard && me.id === g.me) lastGuard = g.time
+  const aim: V | null = m > 0.3 ? [input.mx, input.mz] : null
+  const has = g.ball.owner === me.id
+  if (input.pass) has ? pass(g, me, aim) : call(me)
+  if (input.shoot) has ? shoot(g, me, aim) : g.sport === 'basket' ? jump(g, me) : null
+  if (input.skill && has) skill(g, me, aim)
+  if (input.defend && !has) defend(g, me)
 }
 
 /** A player's move going on, and the running. */
@@ -1033,7 +1049,7 @@ function act(g: Game, p: Player, dt: number) {
         h.cool = 0.9
         say(g, p.human ? 'Tacle glissé ! Propre !' : 'Tacle glissé !')
         moment(g, 'tackle', p)
-        if (p.human) g.stats.steals++
+        if (p.id === g.me) g.stats.steals++
       }
     }
   } else if (p.act === 'dive') {
@@ -1157,7 +1173,7 @@ function moveBall(g: Game, dt: number) {
             give(g, q)
             say(g, 'Interception !')
             moment(g, 'steal', q)
-            if (q.human) g.stats.steals++
+            if (q.id === g.me) g.stats.steals++
             return
           }
         }
@@ -1301,8 +1317,8 @@ function goal(g: Game, team: 0 | 1) {
   g.score[team]++
   const by = g.ps[b.lastBy]
   const scorer = by && by.team === team ? by : g.ps.find((p) => p.team === team && p.role === 4)!
-  if (scorer.human) g.stats.goals++
-  else if (team === 0 && g.lastPass && g.ps[g.lastPass.by].human && g.time - g.lastPass.t < 5) g.stats.assists++
+  if (scorer.id === g.me) g.stats.goals++
+  else if (team === g.ps[g.me].team && g.lastPass && g.lastPass.by === g.me && g.time - g.lastPass.t < 5) g.stats.assists++
   say(g, scorer.human ? 'BUUUT !!! Tu as marqué !' : team === 0 ? `BUUUT ! ${scorer.name} !` : 'But pour eux…')
   moment(g, 'goal', scorer)
   g.phase = 'dead'
@@ -1418,6 +1434,7 @@ export function buttons(g: Game) {
 
 /** The result for the player's team. */
 export function outcome(g: Game) {
-  const [a, b] = g.score
+  // From the local player's side: at a court match it may be the other team.
+  const [a, b] = g.ps[g.me].team === 0 ? g.score : [g.score[1], g.score[0]]
   return a > b ? 'win' : a < b ? 'loss' : 'draw'
 }

@@ -1,12 +1,14 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { RotateCcw, Trophy, X } from 'lucide-react'
+import { RotateCcw, Trophy, Users, X } from 'lucide-react'
 import type { Look } from '../lib/types'
 import { randomLook } from '../avatar/options'
 import { rng } from '../world3d/themes'
 import { LENGTH, NO_INPUT, buttons, createGame, outcome, step, type Game, type Input, type Sport, type Stats } from './game'
 import { BallView, Crowd, Follow, Ground, PlayerView, upright } from './scene'
 import { likesFor } from '../world3d/fans'
+import { serverNow } from '../lib/worldClock'
+import { MatchNet, fetchMatch, leaveMatch, type CourtEntry, type CourtMatch } from './online'
 
 // The street match the player plays (game.ts, scene.tsx): opened when the
 // Sim plays basketball or football. Three minutes, the score, the moves.
@@ -24,6 +26,8 @@ type Props = {
   onExit: (r: MatchResult | null) => void
   /** The labs: the same match every time. */
   seed?: number
+  /** At a court: the match with the other players there (streetball/online.ts). */
+  online?: { token: string; simId: string; match: CourtMatch }
 }
 
 /** The two teams' kits: the player's team in orange, the others in green (or blue on the court). */
@@ -35,9 +39,9 @@ const mmss = (s: number) => {
   return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`
 }
 
-type Hud = { score: [number, number]; left: number; time: number; flash: string | null; has: boolean; dunk: boolean; over: boolean; clear: boolean }
+type Hud = { score: [number, number]; left: number; time: number; flash: string | null; has: boolean; dunk: boolean; over: boolean; clear: boolean; /** At a court, seconds before the whistle (the others are coming). */ waiting: number }
 
-function hudOf(g: Game): Hud {
+function hudOf(g: Game, waiting = 0): Hud {
   const b = buttons(g)
   const me = g.ps[g.me]
   return {
@@ -50,10 +54,11 @@ function hudOf(g: Game): Hud {
     over: g.phase === 'over',
     // Basketball: won back under the basket, the player's team has to take it out past the arc.
     clear: g.sport === 'basket' && !g.cleared && g.poss === me.team && g.phase === 'play',
+    waiting,
   }
 }
 
-export default function StreetMatch({ sport, name, look, gender, onExit, seed }: Props) {
+export default function StreetMatch({ sport, name, look, gender, onExit, seed, online }: Props) {
   const [round, setRound] = useState(0)
   const game = useMemo(() => {
     let s = (seed ?? Math.floor(Math.random() * 1e9)) + round * 7919
@@ -63,8 +68,52 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed }:
       t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296
     }
-    return createGame(sport, name, r)
-  }, [sport, name, seed, round])
+    const g = createGame(sport, name, r)
+    // At a court the player holds the place the match gave it.
+    if (online) {
+      const mine = online.match.entries.find((e) => e.sim === online.simId)
+      if (mine && g.ps[mine.slot]) {
+        g.ps[g.me].human = false
+        g.ps[g.me].name = g.ps[mine.slot].name
+        g.me = mine.slot
+        g.ps[g.me].human = true
+        g.ps[g.me].name = name
+      }
+    }
+    return g
+  }, [sport, name, seed, round, online])
+  // The other players at the court: who's there (polled), and the line to them.
+  const [entries, setEntries] = useState<CourtEntry[]>(online?.match.entries ?? [])
+  // Opened in an effect (not a memo) so it's closed with the screen, and opened again if React mounts it twice.
+  const [net, setNet] = useState<MatchNet | null>(null)
+  useEffect(() => {
+    if (!online) return
+    const n = new MatchNet(online.token, online.simId, online.match.id)
+    setNet(n)
+    return () => {
+      n.close()
+      setNet(null)
+    }
+  }, [online])
+  useEffect(() => {
+    if (!online) return
+    const t = setInterval(() => fetchMatch(online.token, online.match.id).then((m) => m && setEntries(m.entries)), 3000)
+    return () => clearInterval(t)
+  }, [online])
+  // The players who came play their place; one who went is the AI's again.
+  useEffect(() => {
+    if (!net) return
+    const fix = () => {
+      for (const p of game.ps) {
+        const e = entries.find((x) => x.slot === p.id)
+        p.human = p.id === game.me || (!!e && net.here(e.sim))
+        if (e && p.id !== game.me) p.name = e.name
+      }
+    }
+    fix()
+    const t = setInterval(fix, 1000)
+    return () => clearInterval(t)
+  }, [net, entries, game])
   // In development, the match is reachable from the console (the labs drive it).
   if (import.meta.env.DEV) (globalThis as { streetMatch?: Game }).streetMatch = game
   // The players' looks: the player's own, in the team's colours; the others, the quarter's faces.
@@ -73,12 +122,14 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed }:
     return game.ps.map((p) => {
       const kit = p.keeper ? KEEPER : KITS[sport][p.team]
       const outfit = sport === 'basket' ? 'basket' : 'jersey'
-      if (p.human) return { look: { ...look, outfit, outfitColor: kit, accessory: 'none' }, gender }
+      if (p.id === game.me) return { look: { ...look, outfit, outfitColor: kit, accessory: 'none' }, gender }
+      const e = entries.find((x) => x.slot === p.id)
+      if (e) return { look: { ...e.look, outfit, outfitColor: kit, accessory: 'none' }, gender: e.gender }
       const g: 'femme' | 'homme' = sport === 'basket' && r() < 0.25 ? 'femme' : 'homme'
       const base = randomLook(g, r)
       return { look: { ...base, outfit, outfitColor: kit, accessory: 'none', hair: base.hair === 'headwrap' ? 'short' : base.hair }, gender: g }
     })
-  }, [game, sport, look, gender])
+  }, [game, sport, look, gender, entries])
   const input = useRef<Input>({ ...NO_INPUT })
   const touch = useMemo(() => typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches, [])
   const [hud, setHud] = useState<Hud>(() => hudOf(game))
@@ -100,7 +151,7 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed }:
           <BallView g={game} />
           <Crowd g={game} seed={sceneSeed} />
         </Suspense>
-        <Loop game={game} input={input} onHud={setHud} />
+        <Loop game={game} input={input} onHud={setHud} net={net} entries={entries} start={online?.match.start ?? 0} simId={online?.simId ?? ''} />
         <Follow g={game} />
       </Canvas>
 
@@ -114,13 +165,20 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed }:
           <span className="h-4 w-4 rounded-sm" style={{ background: KITS[sport][1] }} />
           <span className="ml-2 rounded-lg bg-white/15 px-2 py-0.5 text-sm font-extrabold tabular-nums">{mmss(hud.left)}</span>
         </div>
-        <button className="pointer-events-auto grid h-11 w-11 place-items-center rounded-full bg-[#0f1230]/70 text-white" onClick={() => onExit(null)} aria-label="Quitter le match">
+        <button
+          className="pointer-events-auto grid h-11 w-11 place-items-center rounded-full bg-[#0f1230]/70 text-white"
+          onClick={() => {
+            if (online) void leaveMatch(online.token, online.simId, online.match.id)
+            onExit(null)
+          }}
+          aria-label="Quitter le match"
+        >
           <X size={22} />
         </button>
       </div>
       {hud.clear && <div className="pointer-events-none absolute top-[max(4.6rem,calc(env(safe-area-inset-top)+4rem))] left-1/2 -translate-x-1/2 rounded-xl bg-[#0f1230]/70 px-3 py-1 text-xs font-extrabold whitespace-nowrap text-white">Ressors la balle derrière l'arc !</div>}
 
-      {hud.time < 1 && (
+      {hud.time < 1 && hud.waiting <= 0 && (
         <div className="pointer-events-none absolute inset-0 grid place-items-center">
           <div key={Math.ceil(-hud.time)} className="animate-up font-display text-[110px] leading-none font-extrabold text-white drop-shadow-[0_6px_0_rgba(0,0,0,0.35)]">
             {hud.time < 0 ? Math.ceil(-hud.time) : 'Jouez !'}
@@ -136,15 +194,24 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed }:
       )}
 
       {!hud.over && <Pad input={input} hud={hud} sport={sport} touch={touch} />}
+      {online && hud.waiting > 0 && <Waiting entries={entries} cap={online.match.cap} left={hud.waiting} sport={sport} />}
 
       {hud.over && (
         <Result
           game={game}
-          onExit={() => onExit({ sport, score: [game.score[0], game.score[1]], result: outcome(game), stats: { ...game.stats } })}
-          onReplay={() => {
-            input.current = { ...NO_INPUT }
-            setRound((r) => r + 1)
+          onExit={() => {
+            if (online) void leaveMatch(online.token, online.simId, online.match.id)
+            onExit({ sport, score: [game.score[0], game.score[1]], result: outcome(game), stats: { ...game.stats } })
           }}
+          // At a court the next match is the court's: back on from the street.
+          onReplay={
+            online
+              ? undefined
+              : () => {
+                  input.current = { ...NO_INPUT }
+                  setRound((r) => r + 1)
+                }
+          }
         />
       )}
     </div>
@@ -152,8 +219,10 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed }:
 }
 
 /** The match steps every frame (in small steps, so a slow phone plays the same); the HUD is refreshed ten times a second. */
-function Loop({ game, input, onHud }: { game: Game; input: React.MutableRefObject<Input>; onHud: (h: Hud) => void }) {
+function Loop({ game, input, onHud, net, entries, start, simId }: { game: Game; input: React.MutableRefObject<Input>; onHud: (h: Hud) => void; net: MatchNet | null; entries: CourtEntry[]; start: number; simId: string }) {
   const acc = useRef(0)
+  const sent = useRef(0)
+  const said = useRef<string | null>(null)
   const size = useThree((s) => s.size)
   useFrame((_, dtRaw) => {
     const total = Math.min(Math.max(dtRaw, 0), 0.25)
@@ -162,18 +231,69 @@ function Loop({ game, input, onHud }: { game: Game; input: React.MutableRefObjec
     // Football on a phone held upright: the camera looks up the pitch, so up the screen is +x and right is +z.
     const inp = input.current
     const turned = game.sport === 'foot' && upright(size)
-    for (let i = 0; i < steps; i++) {
-      step(game, dt, turned ? { ...inp, mx: -inp.mz, mz: inp.mx } : inp)
-      // The buttons are presses, not holds.
-      inp.pass = inp.shoot = inp.skill = inp.defend = false
+    const mine = turned ? { ...inp, mx: -inp.mz, mz: inp.mx } : { ...inp }
+    // At a court: nothing moves before the whistle; then the first player
+    // there runs the match, the others draw what it sends.
+    const waiting = net ? Math.max(0, (start - serverNow()) / 1000) : 0
+    const boss = net ? net.host(entries) : simId
+    const host = boss === simId
+    if (net) net.press(inp)
+    if (waiting <= 0 && boss) {
+      if (host) {
+        const others = net?.inputs(entries)
+        for (let i = 0; i < steps; i++) {
+          step(game, dt, i === 0 ? mine : { ...mine, pass: false, shoot: false, skill: false, defend: false }, others)
+          // The others' presses count once, on the first small step.
+          if (i === 0 && others) for (const [k, v] of others) others.set(k, { ...v, pass: false, shoot: false, skill: false, defend: false })
+        }
+        if (net && game.flash && game.flash.text !== said.current) net.say(game.flash.text)
+        said.current = game.flash?.text ?? null
+      } else if (!net!.apply(game, boss)) {
+        // The match's phone has gone quiet: this one plays on from where it was.
+        for (let i = 0; i < steps; i++) step(game, dt, i === 0 ? mine : { ...mine, pass: false, shoot: false, skill: false, defend: false }, net!.inputs(entries))
+      }
+    }
+    // The buttons are presses, not holds.
+    inp.pass = inp.shoot = inp.skill = inp.defend = false
+    if (net) {
+      sent.current += total
+      if (sent.current > 0.075) {
+        sent.current = 0
+        const me = game.ps[game.me]
+        net.send(mine, [me.x, me.z], host && waiting <= 0 ? game : null)
+      }
     }
     acc.current += total
     if (acc.current > 0.1) {
       acc.current = 0
-      onHud(hudOf(game))
+      onHud(hudOf(game, waiting))
     }
   })
   return null
+}
+
+/** Before the whistle at a court: who has come, how many places are left, the countdown. */
+function Waiting({ entries, cap, left, sport }: { entries: CourtEntry[]; cap: number; left: number; sport: Sport }) {
+  return (
+    <div className="pointer-events-none absolute inset-x-0 top-[max(5rem,calc(env(safe-area-inset-top)+4.5rem))] grid place-items-center px-4">
+      <div className="sheet animate-up w-full max-w-sm rounded-[24px] p-4">
+        <div className="flex items-center gap-2 font-display text-lg font-extrabold">
+          <Users size={20} className="text-[var(--color-orange)]" />
+          {sport === 'foot' ? 'Match de foot' : 'Match de basket'} dans {Math.ceil(left)} s
+        </div>
+        <div className="mt-1 text-xs font-bold text-[var(--color-muted)]">
+          {entries.length}/{cap} joueurs · les places libres sont prises par les gars du quartier. Tes amis te rejoignent en venant jouer ici.
+        </div>
+        <ul className="mt-2 flex flex-wrap gap-1.5">
+          {entries.map((e) => (
+            <li key={e.sim} className="motion-rise rounded-full bg-[var(--color-canvas)] px-2.5 py-1 text-xs font-extrabold">
+              {e.name}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  )
 }
 
 /** The keyboard: arrows / WASD / ZQSD, Space shoot, J or X pass, K or C crossover, L or E defend. */
@@ -297,7 +417,7 @@ function Pad({ input, hud, sport, touch }: { input: React.MutableRefObject<Input
 }
 
 /** The final whistle: the score, what the player did, what the people filming made of it. */
-function Result({ game, onExit, onReplay }: { game: Game; onExit: () => void; onReplay: () => void }) {
+function Result({ game, onExit, onReplay }: { game: Game; onExit: () => void; onReplay?: () => void }) {
   const r = outcome(game)
   const s = game.stats
   const foot = game.sport === 'foot'
@@ -341,13 +461,15 @@ function Result({ game, onExit, onReplay }: { game: Game; onExit: () => void; on
           ))}
         </ul>
         {best && <p className="mt-2 rounded-xl bg-[#fff1f5] px-3 py-2 text-xs font-bold text-[#9d174d]">Au bord du terrain, on a filmé {best} : posté sur Tikitoko, ♥ {likesFor(game.score[0] + s.points + s.goals * 3)}</p>}
-        <div className="mt-4 grid grid-cols-2 gap-2">
+        <div className={`mt-4 grid gap-2 ${onReplay ? 'grid-cols-2' : ''}`}>
           <button className="btn btn-soft" onClick={onExit}>
             Sortir
           </button>
-          <button className="btn" onClick={onReplay}>
-            <RotateCcw size={18} /> Rejouer
-          </button>
+          {onReplay && (
+            <button className="btn" onClick={onReplay}>
+              <RotateCcw size={18} /> Rejouer
+            </button>
+          )}
         </div>
       </div>
     </div>

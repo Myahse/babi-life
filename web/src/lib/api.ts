@@ -155,6 +155,8 @@ export const api = {
   tester: (id: string, pass: string, action: 'age' | 'money' | 'needs' | 'finish' | 'apps', extra: { stage?: string; amount?: number } = {}) => post<ActionResult>(`/sims/${id}/tester`, { pass, action, ...extra }),
   /** Other players: who's in the commune, invitations, player friends. */
   around: (id: string) => request<Around>(`/sims/${id}/around`),
+  /** How many play at a court now, out of how many (backend court.Cap). */
+  courtAt: (place: string) => request<{ sport: 'foot' | 'basket'; cap: number; players: number; start?: number; end?: number }>(`/court/at/${place}`),
   /** Gbairai: the chats, a thread (after a message id), writing, blocking, reporting. */
   chats: (id: string) => request<Chat[]>(`/sims/${id}/gbairai`),
   thread: (id: string, friend: string, after = 0) => request<ChatMessage[]>(`/sims/${id}/gbairai/${friend}?after=${after}`),

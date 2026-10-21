@@ -134,8 +134,11 @@ export function resolvePlaces(chunk: ChunkData, spots: PlaceSpot[], onReal?: (b:
       out.push({ id: s.id, door: gate, center, rot: Math.atan2(gate[0] - center[0], gate[1] - center[1]), roadAngle: road.angle })
       continue
     }
-    // A sports ground: played on its pitch, not in a house.
-    const sport = s.kind === 'sport' ? sportOf(s.name ?? '', s.type) : null
+    // A sports ground: played on its pitch, not in a house. Only the game's
+    // own courts (backend game.Courts) are laid out: football and basketball
+    // are played there, everyone at the same few; the map's other grounds
+    // (ids with -osm-) are scenery.
+    const sport = s.kind === 'sport' && !s.id.includes('-osm-') ? sportOf(s.name ?? '', s.type) : null
     const field = sport && road ? (mapPitch(chunk, s.at, sport, usedPitch) ?? (s.noLayout ? null : layOut(chunk, s.at, sport, road, fields))) : null
     if (field) fields.push(field)
     if (field) {

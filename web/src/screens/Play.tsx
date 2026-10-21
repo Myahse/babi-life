@@ -5,6 +5,8 @@ import { api } from '../lib/api'
 import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World, Ride, Place, Plot } from '../lib/types'
 import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
+import { joinMatch, type CourtMatch } from '../streetball/online'
+import { serverNow } from '../lib/worldClock'
 import { SIM_CHANGED, useLive } from '../lib/live'
 import { WorldMap } from './WorldMap'
 import { Joystick, RunButton, WalkKeys } from '../components/Joystick'
@@ -472,6 +474,20 @@ export function Play() {
   const ballSport = !ballAct ? null : ballAct.interaction.id === 'play-basket' || (ballAct.placeId === 'happening' && ballAct.interaction.id === 'join' && street?.happening?.id === 'basket') ? 'basket' : ballAct.interaction.id === 'play-football' || (ballAct.placeId === 'happening' && ballAct.interaction.id === 'join' && street?.happening?.id === 'foot') ? 'foot' : null
   const ballKey = ballAct && ballSport ? `${ballSport}:${ballAct.placeId}:${ballAct.start}` : null
   const [played, setPlayed] = useState<string | null>(null)
+  // At a court (not the quarter's street match): the match with the other players there.
+  const courtKey = ballKey && ballAct!.placeId !== 'happening' && ballKey !== played ? ballKey : null
+  const [court, setCourt] = useState<{ key: string; online: { token: string; simId: string; match: CourtMatch } | null } | null>(null)
+  const joining = useRef<string | null>(null)
+  useEffect(() => {
+    if (!courtKey || !sim || court?.key === courtKey || joining.current === courtKey) return
+    joining.current = courtKey
+    const token = useSession.getState().token
+    if (!token) return setCourt({ key: courtKey, online: null })
+    joinMatch(token, sim.id)
+      .then((match) => setCourt({ key: courtKey, online: { token, simId: sim.id, match } }))
+      // Not a court of the game (or it's gone): played alone with the quarter's players.
+      .catch(() => setCourt({ key: courtKey, online: null }))
+  }, [courtKey, sim, court?.key])
   // The party heard from the street at night (world3d/open/party.tsx).
   const party = usePartySound()
 
@@ -567,9 +583,9 @@ export function Play() {
           />
         </Suspense>
       )}
-      {ballKey && ballKey !== played && !racing && (
+      {ballKey && ballKey !== played && !racing && (!courtKey || court?.key === courtKey) && (
         <Suspense fallback={<div className="fixed inset-0 z-50 grid place-items-center bg-[#9fd3f2] font-display text-2xl font-extrabold text-white">{ballSport === 'basket' ? 'Sur le terrain…' : 'Au maracana…'}</div>}>
-          <StreetMatch key={ballKey} sport={ballSport!} name={sim.firstName} look={sim.look} gender={sim.gender} onExit={() => setPlayed(ballKey)} />
+          <StreetMatch key={ballKey} sport={ballSport!} name={sim.firstName} look={sim.look} gender={sim.gender} online={courtKey ? (court?.online ?? undefined) : undefined} onExit={() => setPlayed(ballKey)} />
         </Suspense>
       )}
       {showInside && (
@@ -1245,6 +1261,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
             <X size={22} strokeWidth={2.6} />
           </button>
         </div>
+        {kind.id === 'sport' && 'id' in place && <CourtCount placeId={place.id} />}
         {busy && (
           <div className="mb-3 flex items-center gap-3 rounded-[20px] bg-[#fff4e8] p-3">
             <Hourglass className="shrink-0 text-[var(--color-orange)]" size={22} />
@@ -1521,5 +1538,29 @@ function DeliveryPill({ delivery, now, onOpen }: { delivery: Delivery; now: numb
       <AppLogo id="golvo" size={30} radius={15} />
       {st.stage === 'here' ? `${delivery.courier} est là avec ta commande !` : st.stage === 'kitchen' ? `${delivery.place.name} prépare ta commande` : `${delivery.courier} arrive · ${st.minutesLeft} min`}
     </button>
+  )
+}
+
+/** At a court: how many play there now, out of the places the sport has. */
+function CourtCount({ placeId }: { placeId: string }) {
+  const [c, setC] = useState<Awaited<ReturnType<typeof api.courtAt>> | null>(null)
+  useEffect(() => {
+    let live = true
+    const load = () => api.courtAt(placeId).then((r) => live && setC(r), () => live && setC(null))
+    load()
+    const t = setInterval(load, 10000)
+    return () => {
+      live = false
+      clearInterval(t)
+    }
+  }, [placeId])
+  if (!c) return null
+  const full = c.players >= c.cap
+  const on = c.start !== undefined && c.start <= serverNow()
+  return (
+    <div className={`mb-3 flex items-center gap-2 rounded-[18px] p-3 text-sm font-extrabold ${full ? 'bg-[#ffe3e3] text-[#c92a2a]' : 'bg-[#e6fcf5] text-[#087f5b]'}`}>
+      <Users size={18} />
+      {full ? `Terrain complet : ${c.players}/${c.cap} joueurs` : c.players ? `${c.players}/${c.cap} joueurs ${on ? 'en plein match' : 'attendent le coup d’envoi'}` : `Terrain libre : ${c.cap} places (${c.sport === 'foot' ? '5 contre 5' : '3 contre 3'})`}
+    </div>
   )
 }

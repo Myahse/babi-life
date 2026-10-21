@@ -24,6 +24,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/myahse/babi-life/backend/internal/auth"
+	"github.com/myahse/babi-life/backend/internal/court"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/kart"
 )
@@ -79,7 +80,9 @@ type client struct {
 type Hub struct {
 	DB *pgxpool.Pool
 	// Karts: who races on which grid at Babi Karting (the "kart" rooms).
-	Karts   *kart.Lobby
+	Karts *kart.Lobby
+	// Courts: who plays in which match at the pitches and courts (the "match" rooms).
+	Courts  *court.Lobby
 	Tokens  auth.Tokens
 	Origins []string
 
@@ -112,12 +115,19 @@ func (h *Hub) Run(ctx context.Context) {
 
 func isKart(room string) bool { return strings.HasPrefix(room, "kart:") }
 
+// isMatch: a football or basketball match at a court, run by its first player
+// (streetball/online.ts): sent as fast as a race, everything each time.
+func isMatch(room string) bool { return strings.HasPrefix(room, "match:") }
+
+// isFast: the rooms sent every KartTick, whole.
+func isFast(room string) bool { return isKart(room) || isMatch(room) }
+
 // broadcast: the kart rooms every KartTick, the streets every other one (Tick).
 func (h *Hub) broadcast(now time.Time, streets bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	for room, clients := range h.rooms {
-		if !streets && !isKart(room) {
+		if !streets && !isFast(room) {
 			continue
 		}
 		// In the streets, only the states heard since the last send: a player
@@ -125,7 +135,7 @@ func (h *Hub) broadcast(now time.Time, streets bool) {
 		// one they had (web/src/lib/live.ts). A kart race sends them all, its
 		// grid driven by the first player's states.
 		since := h.sent[room]
-		if isKart(room) {
+		if isFast(room) {
 			since = 0
 		}
 		players := make([]State, 0, len(h.states[room]))
@@ -347,13 +357,18 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					continue
 				}
 				st.K, st.B = m.K, m.B
+			} else if isMatch(c.room) {
+				if !matchOK(m.K, m.B) {
+					continue
+				}
+				st.K, st.B = m.K, m.B
 			}
 			last = time.Now()
 			st.At = last.UnixMilli()
 			h.update(c, st)
 		case "drop":
 			// An item on the track: to the others in the race straight away (a few a second at most).
-			if !isKart(c.room) || len(m.D) == 0 || len(m.D) > 512 || time.Since(lastDrop) < 150*time.Millisecond {
+			if !isFast(c.room) || len(m.D) == 0 || len(m.D) > 512 || time.Since(lastDrop) < 150*time.Millisecond {
 				continue
 			}
 			lastDrop = time.Now()
@@ -365,6 +380,20 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // kartOK: a kart's numbers (and the drivers it drives), sane and not too many.
 func kartOK(k []float64, b [][]float64) bool {
 	if len(k) > 16 || len(b) > kart.Max || !finite(k...) {
+		return false
+	}
+	for _, x := range b {
+		if len(x) > 16 || !finite(x...) {
+			return false
+		}
+	}
+	return true
+}
+
+// matchOK: a player's hands, or the match as its first player runs it (ten
+// players, the ball and the clock), sane and not too many.
+func matchOK(k []float64, b [][]float64) bool {
+	if len(k) > 16 || len(b) > 12 || !finite(k...) {
 		return false
 	}
 	for _, x := range b {
@@ -419,6 +448,14 @@ func (h *Hub) hello(ctx context.Context, conn *websocket.Conn) (*client, error) 
 		}
 		log.Printf("live: %s joins kart race %s", m.Sim, m.Race)
 		return &client{sim: m.Sim, room: "kart:" + m.Race, send: make(chan []byte, 32), sid: sid}, nil
+	}
+	// A match at a court: its own room, for the players in it.
+	if m.Mode == "match" {
+		if h.Courts == nil || !h.Courts.Has(m.Race, m.Sim) {
+			return nil, errors.New("pas dans ce match")
+		}
+		log.Printf("live: %s joins match %s", m.Sim, m.Race)
+		return &client{sim: m.Sim, room: "match:" + m.Race, send: make(chan []byte, 32), sid: sid}, nil
 	}
 	mode := "street"
 	if m.Mode == "open" {
