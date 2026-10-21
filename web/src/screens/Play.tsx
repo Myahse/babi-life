@@ -717,6 +717,8 @@ export function Play() {
             // from the place stops it (onLeave). Only on a trip, in a match, or while a request is out.
             frozen: !!pending || sim.activity?.kind === 'travel' || /^play-/.test(doing?.interaction.id ?? ''),
             onLeave: () => void run('Activité arrêtée', 'x', '', () => api.stop(sim.id)),
+            delivery,
+            onCollect: () => delivery && deliveryState(delivery, Date.now()).stage === 'here' && collect(),
             players: around.players,
             onPickPlayer: (id: string) => setPlayers({ focus: id }),
             recenter,
