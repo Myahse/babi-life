@@ -72,6 +72,7 @@ const KartRace = lazy(() => import('../kart/KartRace'))
 const MallInside = lazy(() => import('../world3d/interior/MallInside').then((m) => ({ default: m.MallInside })))
 const IvoireInside = lazy(() => import('../world3d/interior/IvoireInside').then((m) => ({ default: m.IvoireInside })))
 const CathedralInside = lazy(() => import('../world3d/interior/CathedralInside').then((m) => ({ default: m.CathedralInside })))
+const MosqueM6Inside = lazy(() => import('../world3d/interior/MosqueM6Inside').then((m) => ({ default: m.MosqueM6Inside })))
 const HotelInside = lazy(() => import('../world3d/interior/HotelInside').then((m) => ({ default: m.HotelInside })))
 const HotelStay = lazy(() => import('../world3d/interior/HotelFloors').then((m) => ({ default: m.HotelStay })))
 const StreetMatch = lazy(() => import('../streetball/StreetMatch'))
@@ -678,6 +679,11 @@ export function Play() {
             // The cathedral: its whole nave in tiers round the altar, full on Sunday morning; the top of its tower.
             <Suspense fallback={null}>
               <CathedralInside sim={sim} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
+            </Suspense>
+          ) : inside!.id === 'treich-mosquee-m6' ? (
+            // The Mosquée Mohammed VI: its great hall under the arcades, full and praying as one on Friday.
+            <Suspense fallback={null}>
+              <MosqueM6Inside sim={sim} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
             </Suspense>
           ) : inside!.kind === 'arena' ? (
             <Arena sim={sim} placeId={inside!.id} interactionId={inside!.it} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id)} />
