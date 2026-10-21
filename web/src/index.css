@@ -15,6 +15,9 @@
  * Golden-hour Abidjan: warm sunset scenes behind clean white game surfaces,
  * flag orange for the one thing to do next, emerald for "good", gold coins.
  */
+/* A short screen: a phone on its side. The HUD drops its words there, so its buttons keep out of each other's way. */
+@custom-variant short (@media (max-height: 520px));
+
 @theme {
   --font-display: 'Baloo 2', system-ui, sans-serif;
   --font-sans: 'Nunito', system-ui, sans-serif;
