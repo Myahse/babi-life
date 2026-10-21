@@ -68,12 +68,12 @@ export function PlayersChip({ count, online, invites, onOpen }: { count: number;
     <button className="hud pointer-events-auto relative flex h-11 items-center gap-1.5 rounded-full px-3 text-sm font-extrabold transition active:scale-95" onClick={onOpen}>
       <Users size={18} strokeWidth={2.6} className="text-[#2563eb]" />
       <span className="tnum">{count}</span>
-      <span className="max-sm:hidden">joueur{count > 1 ? 's' : ''} ici</span>
+      <span className="max-sm:hidden short:hidden">joueur{count > 1 ? 's' : ''} ici</span>
       {!!online && (
         <span className="flex items-center gap-1 border-l border-black/10 pl-1.5 text-[var(--color-ink-soft)]" aria-label={`${online} en ligne dans tout le jeu`}>
           <span className="h-2 w-2 rounded-full bg-[#00b86b]" />
           <span className="tnum">{online}</span>
-          <span className="max-sm:hidden">en ligne</span>
+          <span className="max-sm:hidden short:hidden">en ligne</span>
         </span>
       )}
       {invites > 0 && <span className="absolute -top-1.5 -right-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-[var(--color-rose)] px-1 text-[11px] text-white ring-2 ring-white">{invites}</span>}
@@ -84,7 +84,7 @@ export function PlayersChip({ count, online, invites, onOpen }: { count: number;
 /** An invitation that just arrived, over the street. */
 export function InviteBanner({ invite, onAnswer }: { invite: Invite; onAnswer: (answer: 'accepter' | 'refuser') => void }) {
   return (
-    <div className="card animate-pop absolute top-[5.5rem] left-1/2 z-30 w-[min(380px,calc(100vw-24px))] -translate-x-1/2 p-3 lg:top-24">
+    <div className="card animate-pop pointer-events-auto w-full p-3">
       <div className="flex items-center gap-3">
         <IconTile icon={UserPlus} colors={['#60a5fa', '#2563eb']} size={42} />
         <div className="min-w-0 flex-1 leading-tight">

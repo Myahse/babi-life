@@ -9,6 +9,7 @@ import { randomLook } from '../../avatar/options'
 import { OWN_HOUSE, homePlanFor, lifeOf, openAt } from '../../game/rules'
 import { HAPPENING_DOOR, HAPPENING_X, HappeningMarker, HappeningScene, JamOnRoad, STOPS_TRAFFIC } from '../Happenings'
 import { jamAlong } from './jam'
+import { underHud } from '../hudClear'
 import { HOME_ID, type Lot } from '../layout'
 import { LotView, type Props } from '../Neighbourhood'
 import { useSignTexture } from '../props'
@@ -1099,10 +1100,23 @@ function CampusGate({ name, kind, at, rot, width, night }: { name: string; kind:
 
 /** A place's name floating over it. */
 function LotLabel({ lot, world, label, onPick, y }: { lot: Lot; world: World; label: false | 'full' | 'icon' | undefined; onPick: (id: string) => void; y: number }) {
+  const box = useRef<HTMLDivElement>(null)
+  // Under the HUD's buttons, the sign fades out (world3d/hudClear.ts): checked on a timer, the view isn't redrawn while nothing moves.
+  useEffect(() => {
+    const t = setInterval(() => {
+      const el = box.current
+      if (!el) return
+      const hide = underHud(el.getBoundingClientRect())
+      el.style.opacity = hide ? '0' : ''
+      el.style.pointerEvents = hide ? 'none' : ''
+    }, 250)
+    return () => clearInterval(t)
+  }, [])
   if (!label) return null
   const kind = world.kinds[lot.kind]
   return (
     <Html position={[lot.x, y, lot.z]} center zIndexRange={[20, 0]}>
+      <div ref={box} className="transition-opacity duration-200">
       {label === 'icon' ? (
         <button onClick={() => onPick(lot.id)} aria-label={lot.name} title={lot.name} className="block rounded-[10px] border border-white/70 shadow-[0_3px_8px_-4px_rgba(0,0,0,0.5)] transition active:scale-95">
           <IconTile icon={iconFor(kind?.icon ?? '')} colors={kindColors(lot.kind)} size={22} radius={8} />
@@ -1113,6 +1127,7 @@ function LotLabel({ lot, world, label, onPick, y }: { lot: Lot; world: World; la
           {lot.name}
         </button>
       )}
+      </div>
     </Html>
   )
 }

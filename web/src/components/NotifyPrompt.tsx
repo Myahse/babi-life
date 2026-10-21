@@ -37,7 +37,8 @@ export function NotifyPrompt() {
   }, [state])
   if (!show || state === 'on' || state === 'unsupported') return null
   return (
-    <div className="absolute inset-x-0 top-[18%] z-30 flex justify-center px-4">
+    // On its own over the dimmed game (above the toasts and the « Entrer » button), so nothing lands on it.
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#0f1230]/45 px-4">
       <div className="sheet w-full max-w-[380px] rounded-[24px] p-4">
         <div className="flex items-start gap-3">
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[var(--color-orange)] text-white">

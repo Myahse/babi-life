@@ -692,7 +692,7 @@ export function Play() {
 
       {/* ---------- Top HUD ---------- */}
       <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:p-5">
-        <Link to="/profil" viewTransition className="hud pointer-events-auto flex min-w-0 items-center gap-2 rounded-full py-1 pr-3 pl-1 transition active:scale-95 max-sm:max-w-[52vw] sm:gap-2.5 sm:pr-4">
+        <Link to="/profil" viewTransition className="hud pointer-events-auto flex min-w-0 items-center gap-2 rounded-full py-1 pr-3 pl-1 transition active:scale-95 max-sm:max-w-[52vw] short:max-w-[36vw] sm:gap-2.5 sm:pr-4">
           <span className="block shrink-0 rounded-full p-[3px]" style={{ background: `conic-gradient(${moodHex} ${mood(sim.needs) * 3.6}deg, #e7e9f2 0)` }}>
             <span className="block h-9 w-9 overflow-hidden rounded-full border-2 border-white bg-gradient-to-b sm:h-11 sm:w-11 from-[#ffe7c7] to-[#ffb27a]">
               <Portrait look={sim.look} gender={sim.gender} framing="head" />
@@ -722,11 +722,11 @@ export function Play() {
               <span className="tnum font-display text-base font-extrabold sm:text-lg">{amount(sim.money)}</span>
             </div>
             <div className="hud flex h-10 items-center gap-1.5 rounded-full px-3 sm:h-11">
-              <span className="max-sm:hidden">
+              <span className="max-sm:hidden short:hidden">
                 <DayNight night={c.isNight} size={16} />
               </span>
               <span className="tnum font-display text-base font-extrabold sm:text-lg">{c.time}</span>
-              <span className="text-xs font-extrabold text-[var(--color-ink-soft)] max-sm:hidden">
+              <span className="text-xs font-extrabold text-[var(--color-ink-soft)] max-sm:hidden short:hidden">
                 {c.weekday} {c.date}
               </span>
             </div>
@@ -748,17 +748,17 @@ export function Play() {
                 <button className="hud flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={() => setView((v) => NEXT_VIEW[v])} title="Changer de vue">
                   {/* What the next tap gives */}
                   {view === 'epaule' ? <Mountain size={17} strokeWidth={2.6} className="text-[var(--color-emerald)]" /> : <Eye size={17} strokeWidth={2.6} className="text-[var(--color-emerald)]" />}
-                  <span className="max-sm:hidden">{{ pres: 'Vue épaule', epaule: 'Vue de haut', haut: 'Vue de près' }[view]}</span>
+                  <span className="max-sm:hidden short:hidden">{{ pres: 'Vue épaule', epaule: 'Vue de haut', haut: 'Vue de près' }[view]}</span>
                 </button>
               )}
               {!sim.activity && (
                 <button className="hud flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={() => setEmotesOpen(true)} title="Émotes">
                   <Smile size={17} strokeWidth={2.6} className="text-[var(--color-orange)]" />
-                  <span className="max-sm:hidden">Émotes</span>
+                  <span className="max-sm:hidden short:hidden">Émotes</span>
                 </button>
               )}
               {/* On a phone, a finger drag on the street turns the view: no compass to crowd the screen */}
-              <div className="max-sm:hidden">
+              <div className="max-sm:hidden short:hidden">
               <OrbitGizmo
                 read={streetPose}
                 onYaw={(d) => (cameraTurn.yaw += d)}
@@ -797,7 +797,7 @@ export function Play() {
       {!showInside && !placeId && !overlay && !players && (
         <div className="pointer-events-none absolute top-[4.5rem] left-3 z-20 flex flex-col items-start gap-2 sm:top-[5.5rem] lg:left-5">
           {/* A smaller map on a phone (scaled: the canvas keeps its sharpness) */}
-          <div className="max-sm:-mr-[33px] max-sm:-mb-[33px] max-sm:origin-top-left max-sm:scale-75">
+          <div className="origin-top-left max-sm:-mr-[33px] max-sm:-mb-[33px] max-sm:scale-75 short:-mr-[53px] short:-mb-[53px] short:scale-[0.6]">
             <MiniMap onWalk={walkTo} />
           </div>
           <button className="hud pointer-events-auto flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={() => setWhereTo(true)}>
@@ -881,20 +881,21 @@ export function Play() {
       )}
 
       {players && <PlayersSheet sim={sim} around={around} communeName={commune.name} focus={players.focus} act={run} onClose={() => setPlayers(null)} />}
-      {!players && !placeId && !overlay && (() => {
-        const inv = around.invites.find((i) => !dismissed.includes(i.id))
-        return inv ? (
-          <InviteBanner
-            key={inv.id}
-            invite={inv}
-            onAnswer={(a) => (setDismissed((d) => [...d, inv.id]), run(a === 'accepter' ? `Rejoindre ${inv.fromName}` : 'Refuser', a === 'accepter' ? 'users' : 'x', 'social', () => api.answerInvite(sim.id, inv.id, a)))}
-          />
-        ) : null
-      })()}
 
       {sim.activity && !placeId && <ActivityBar sim={sim} onStop={stop} stopping={!!pending} onRoute={() => setOverlay('map')} onMore={onGrounds ? () => (setPlaceId(doing!.placeId!), setMenuOpen(true)) : undefined} />}
 
+      {/* The invitation and the toasts in one column under the top bar: they stack, never on top of each other */}
       <div className="pointer-events-none absolute top-[5.5rem] left-1/2 z-40 flex w-[min(400px,calc(100vw-24px))] -translate-x-1/2 flex-col gap-2 lg:top-24">
+        {!players && !placeId && !overlay && (() => {
+          const inv = around.invites.find((i) => !dismissed.includes(i.id))
+          return inv ? (
+            <InviteBanner
+              key={inv.id}
+              invite={inv}
+              onAnswer={(a) => (setDismissed((d) => [...d, inv.id]), run(a === 'accepter' ? `Rejoindre ${inv.fromName}` : 'Refuser', a === 'accepter' ? 'users' : 'x', 'social', () => api.answerInvite(sim.id, inv.id, a)))}
+            />
+          ) : null
+        })()}
         {toasts.map((t) => (
           <ToastCard key={t.id} toast={t} />
         ))}

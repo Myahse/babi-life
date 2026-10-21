@@ -80,7 +80,7 @@ export function TesterTools({ sim, act }: { sim: Sim; act: Act }) {
     <>
       <button className="hud flex h-11 items-center gap-1.5 rounded-full px-3 text-sm font-extrabold" onClick={() => setOpen(true)} title="Outils testeur">
         <FlaskConical size={17} strokeWidth={2.6} className="text-[var(--color-orange)]" />
-        <span className="max-sm:hidden">Testeur</span>
+        <span className="max-sm:hidden short:hidden">Testeur</span>
       </button>
       {open && (
         <div className="fixed inset-0 z-50 grid place-items-end bg-black/40 p-3 sm:place-items-center" onClick={() => setOpen(false)}>
