@@ -221,3 +221,96 @@ export function TakeOff({ runways }: { runways: XZ[][] }) {
     </group>
   )
 }
+
+/**
+ * A plane coming in: down the glide path to the far end of the runway,
+ * touching down and rolling out, between the take-offs (TakeOff).
+ */
+export function Landing({ runways }: { runways: XZ[][] }) {
+  const g = useRef<THREE.Group>(null)
+  const line = useMemo(() => {
+    let best: [XZ, XZ] | null = null
+    let bl = 0
+    for (const pts of runways) {
+      const [a, b] = [pts[0], pts[pts.length - 1]]
+      const l = Math.hypot(b[0] - a[0], b[1] - a[1])
+      if (l > bl) [best, bl] = [[b, a], l] // the other way from the take-offs
+    }
+    return bl > 600 ? best : null
+  }, [runways])
+  useFrame(() => {
+    const p = g.current
+    if (!p || !line) return
+    const [a, b] = line
+    const L = Math.hypot(b[0] - a[0], b[1] - a[1])
+    const [ux, uz] = [(b[0] - a[0]) / L, (b[1] - a[1]) / L]
+    // Half a cycle after the take-off: 50 s of approach from 6 km out, 3° down, then the roll-out.
+    const CYCLE = 75
+    const t = (worldTime() + CYCLE / 2) % CYCLE
+    const APPROACH = 50
+    const d = t < APPROACH ? -6000 * (1 - t / APPROACH) : Math.min(L * 0.6, 70 * (t - APPROACH) - 0.9 * (t - APPROACH) ** 2)
+    const y = d < 0 ? -d * Math.tan((3 * Math.PI) / 180) : 0
+    p.visible = t < APPROACH + 30
+    p.position.set(a[0] + ux * d, y, a[1] + uz * d)
+    p.rotation.set(d < 0 ? 0.04 : 0, Math.atan2(ux, uz), 0, 'YXZ')
+  })
+  if (!line) return null
+  return (
+    <group ref={g}>
+      <Airliner />
+    </group>
+  )
+}
+
+const trail = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.35, depthWrite: false })
+const trailGeo = new THREE.BoxGeometry(1.2, 1.2, 1)
+
+/**
+ * Airliners crossing the sky over the town, high up, with their white
+ * trails: the same on every screen (the shared clock). Each on its own line
+ * and at its own pace, a few minutes apart.
+ */
+export function SkyPlanes({ focus }: { focus: React.RefObject<XZ> }) {
+  const planes = useMemo(
+    () =>
+      [0, 1, 2].map((i) => ({
+        heading: 0.7 + i * 2.1,
+        y: 650 + i * 180,
+        speed: 160 + i * 30, // m/s
+        offset: i * 47,
+        cycle: 110 + i * 25,
+        side: (i - 1) * 900,
+      })),
+    [],
+  )
+  const refs = useRef<(THREE.Group | null)[]>([])
+  useFrame(() => {
+    const [fx, fz] = focus.current ?? [0, 0]
+    // Their lines pass over the town round the Sim, a few kilometres either way (the fog hides the ends).
+    const cx = Math.round(fx / 4000) * 4000
+    const cz = Math.round(fz / 4000) * 4000
+    planes.forEach((pl, i) => {
+      const g = refs.current[i]
+      if (!g) return
+      const t = (worldTime() + pl.offset) % pl.cycle
+      const half = (pl.speed * pl.cycle) / 2
+      const d = pl.speed * t - half
+      const [ux, uz] = [Math.sin(pl.heading), Math.cos(pl.heading)]
+      g.position.set(cx + ux * d - uz * pl.side, pl.y, cz + uz * d + ux * pl.side)
+      g.rotation.set(0, pl.heading, 0)
+    })
+  })
+  return (
+    <>
+      {planes.map((_, i) => (
+        <group key={i} ref={(g) => void (refs.current[i] = g)}>
+          <Airliner gear={false} />
+          {/* The trail: a long thin white streak behind each engine */}
+          {[-6, 6].map((x) => (
+            <mesh key={x} geometry={trailGeo} material={trail} position={[x, 1, -260]} scale={[1, 1, 500]} />
+          ))}
+        </group>
+      ))}
+    </>
+  )
+}

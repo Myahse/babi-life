@@ -46,7 +46,7 @@ export type RideClass = { id: string; name: string; factor: number; wait: number
 /** Booking a ride app instead of the shared taxi; offer = the fare proposed; class = the kind of car. */
 export type Ride = { app?: string; class?: string; offer?: number; party?: number }
 /** taxi = a town's taxi (or an older trip); yango/indrive = older trips. */
-export type TripMode = 'woro' | 'compteur' | 'taxi' | 'car' | 'gnango' | 'idrive' | 'yango' | 'indrive'
+export type TripMode = 'woro' | 'compteur' | 'taxi' | 'car' | 'avion' | 'gnango' | 'idrive' | 'yango' | 'indrive'
 export type Expression = { id: string; text: string; lang: string; meaning: string; example: string; context?: string; source: Source }
 
 export type Interaction = {
@@ -156,6 +156,8 @@ export type Career = {
 export type Emote = { id: string; label: string; emoji: string; price: number; seconds: number }
 export type World = {
   cities: City[]
+  /** The airline's flights (backend world.FlightRoutes): from each airport. */
+  flights?: { from: string; place: string; to: string; toName: string; commune: string; minutes: number; fare: number; km: number; airline: string }[]
   kinds: Record<string, PlaceKind>
   traits: Option[]
   aspirations: Option[]

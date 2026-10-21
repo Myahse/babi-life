@@ -156,6 +156,7 @@ func main() {
 				"yearMinutes":   game.YearMinutes,
 				"growUp":        game.GrowUp,
 				"friendActions": game.FriendActions,
+				"flights":       world.FlightRoutes(),
 				"holidays":      game.Holidays,
 				"materials":     game.Materials,
 				"plot":          map[string]int{"w": game.PlotW, "d": game.PlotD, "h": game.PlotH},

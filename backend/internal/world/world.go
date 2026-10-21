@@ -374,6 +374,7 @@ var Cities = []City{
 			{ID: "yakro-centre", Name: "Yamoussoukro", Lat: 6.8276, Lng: -5.2893, Blurb: "Larges avenues et lacs aux caïmans.",
 				Admin: Admin{Type: "commune", Parent: "District autonome de Yamoussoukro", Mairie: "mairie-yakro-centre", Source: game.Verified("Commune du district autonome.", srcVilles2026)},
 				Places: []Place{
+					{ID: "yakro-aeroport", Name: "Aéroport de Yamoussoukro", Kind: "transport", Lat: 6.9031, Lng: -5.3658, Real: true, Approx: true, Source: game.Unverified("Aéroport de Yamoussoukro ; vols intérieurs, à confirmer.")},
 					mairie("yakro-centre", "Yamoussoukro", 6.8230, -5.2830, srcVilles2026),
 					{ID: "yakro-basilique", Name: "Basilique Notre-Dame de la Paix", Kind: "worship", Lat: 6.8113, Lng: -5.2970, Real: true, Approx: true,
 						Source: game.Verified("Basilique de Yamoussoukro.", srcYakro, srcYakroSites)},
@@ -393,6 +394,7 @@ var Cities = []City{
 			{ID: "bouake-centre", Name: "Bouaké", Lat: 7.6906, Lng: -5.0303, Blurb: "Grand marché et ambiance du Carnaval.",
 				Admin: Admin{Type: "commune", Parent: "Département de Bouaké, région du Gbêkê", Mairie: "mairie-bouake-centre", Source: game.Verified("Bouaké, chef-lieu du Gbêkê.", srcGbeke)},
 				Places: []Place{
+					{ID: "bouake-aeroport", Name: "Aéroport de Bouaké", Kind: "transport", Lat: 7.7388, Lng: -5.0736, Real: true, Approx: true, Source: game.Unverified("Aéroport de Bouaké ; vols intérieurs, à confirmer.")},
 					mairie("bouake-centre", "Bouaké", 7.6930, -5.0330, srcGbeke),
 					{ID: "bouake-marche", Name: "Grand marché de Bouaké", Kind: "market", Lat: 7.6890, Lng: -5.0290, Real: true, Approx: true, Source: game.Unverified("Grand marché ; à confirmer.")},
 					{ID: "bouake-stade", Name: "Stade de la Paix", Kind: "stade", Lat: 7.7050, Lng: -5.0200, Real: true, Approx: true, Source: game.Unverified("Stade de Bouaké ; à confirmer.")},
@@ -428,6 +430,7 @@ var Cities = []City{
 			{ID: "sp-centre", Name: "San-Pédro", Lat: 4.7485, Lng: -6.6363, Blurb: "Port, cacao et poisson frais.",
 				Admin: Admin{Type: "commune", Parent: "District du Bas-Sassandra", Mairie: "mairie-sp-centre", Source: game.Partial("District du Bas-Sassandra ; région et département à confirmer.", srcVilles2026)},
 				Places: []Place{
+					{ID: "sp-aeroport", Name: "Aéroport de San-Pédro", Kind: "transport", Lat: 4.7461, Lng: -6.6603, Real: true, Approx: true, Source: game.Unverified("Aéroport de San-Pédro ; vols intérieurs, à confirmer.")},
 					mairie("sp-centre", "San-Pédro", 4.7510, -6.6400, srcVilles2026),
 					{ID: "sp-port", Name: "Port autonome", Kind: "office", Lat: 4.7400, Lng: -6.6150, Real: true, Approx: true, Source: game.Partial("Deuxième port du pays ; statut et gestionnaire à confirmer.", srcVilles2026)},
 					{ID: "sp-plage", Name: "Plage de San-Pédro", Kind: "beach", Lat: 4.7380, Lng: -6.6500, Real: true, Approx: true, Source: game.Unverified("Plage de la ville ; à confirmer.")},
@@ -443,6 +446,7 @@ var Cities = []City{
 			{ID: "man-centre", Name: "Man", Lat: 7.4125, Lng: -7.5538, Blurb: "Montagnes, cascades et danses masquées.",
 				Admin: Admin{Type: "commune", Parent: "Département de Man, région du Tonkpi", Mairie: "mairie-man-centre", Source: game.Verified("Chef-lieu du Tonkpi.", srcRegions)},
 				Places: []Place{
+					{ID: "man-aeroport", Name: "Aéroport de Man", Kind: "transport", Lat: 7.2720, Lng: -7.5869, Real: true, Approx: true, Source: game.Unverified("Aéroport de Man ; vols intérieurs, à confirmer.")},
 					mairie("man-centre", "Man", 7.4150, -7.5560, srcRegions),
 					{ID: "man-dent", Name: "La Dent de Man", Kind: "nature", Lat: 7.4580, Lng: -7.5170, Real: true, Approx: true, Source: game.Unverified("Sommet emblématique ; aucune source consultée ne le cite encore.")},
 					{ID: "man-cascade", Name: "La Cascade", Kind: "nature", Lat: 7.3900, Lng: -7.5870, Real: true, Approx: true, Source: game.Partial("Man est connue pour ses chutes d'eau ; site précis à confirmer.", srcYakroSites)},
@@ -458,6 +462,7 @@ var Cities = []City{
 			{ID: "korhogo-centre", Name: "Korhogo", Lat: 9.4580, Lng: -5.6296, Blurb: "Artisans, toiles de Korhogo et chaleur du nord.",
 				Admin: Admin{Type: "commune", Parent: "Département de Korhogo, région du Poro", Mairie: "mairie-korhogo-centre", Source: game.Verified("Chef-lieu du Poro.", srcPoro)},
 				Places: []Place{
+					{ID: "korhogo-aeroport", Name: "Aéroport de Korhogo", Kind: "transport", Lat: 9.3872, Lng: -5.5566, Real: true, Approx: true, Source: game.Unverified("Aéroport de Korhogo ; vols intérieurs, à confirmer.")},
 					mairie("korhogo-centre", "Korhogo", 9.4600, -5.6330, srcPoro),
 					{ID: "korhogo-marche", Name: "Grand marché", Kind: "market", Lat: 9.4560, Lng: -5.6310, Real: true, Approx: true, Source: game.Unverified("Grand marché ; à confirmer.")},
 					{ID: "korhogo-mosquee", Name: "Grande mosquée", Kind: "worship", Lat: 9.4600, Lng: -5.6270, Real: true, Approx: true, Source: game.Unverified("Mosquée principale ; nom exact à confirmer.")},
@@ -474,6 +479,7 @@ var Cities = []City{
 			{ID: "daloa-centre", Name: "Daloa", Lat: 6.8774, Lng: -6.4502, Blurb: "Commerce, cacao et bonne humeur.",
 				Admin: Admin{Type: "commune", Parent: "Département de Daloa, région du Haut-Sassandra", Mairie: "mairie-daloa-centre", Source: game.Verified("Chef-lieu du Haut-Sassandra.", srcRegions)},
 				Places: []Place{
+					{ID: "daloa-aeroport", Name: "Aéroport de Daloa", Kind: "transport", Lat: 6.7928, Lng: -6.4731, Real: true, Approx: true, Source: game.Unverified("Aéroport de Daloa ; vols intérieurs, à confirmer.")},
 					mairie("daloa-centre", "Daloa", 6.8800, -6.4530, srcRegions),
 					{ID: "daloa-marche", Name: "Marché de Daloa", Kind: "market", Lat: 6.8760, Lng: -6.4500, Real: true, Approx: true, Source: game.Unverified("Marché de la ville ; à confirmer.")},
 					{ID: "daloa-maquis", Name: "Maquis du centre", Kind: "maquis", Lat: 6.8800, Lng: -6.4460, Approx: true, Source: invented},
