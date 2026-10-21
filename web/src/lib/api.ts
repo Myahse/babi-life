@@ -141,7 +141,7 @@ export const api = {
     post<ActionResult>(`/sims/${id}/interact`, { placeId, interactionId }),
   travel: (id: string, city: string, commune: string, ride?: Ride) => post<ActionResult>(`/sims/${id}/travel`, { city, commune, ...ride }),
   career: (id: string, career: string) => post<ActionResult>(`/sims/${id}/career`, { career }),
-  move: (id: string, housing: string) => post<ActionResult>(`/sims/${id}/move`, { housing }),
+  move: (id: string, housing: string, where?: LotWhere) => post<ActionResult>(`/sims/${id}/move`, { housing, ...where }),
   repay: (id: string, what: 'loan' | 'rent', amount: number) => post<ActionResult>(`/sims/${id}/repay`, { what, amount }),
   /** The wish list; with a Sim, it is born there (the family is drawn by the server). */
   joinWaitlist: (body: WaitlistJoin) => post<{ ok: boolean; already: boolean; count: number; birth?: { family: string; commune: string } }>('/waitlist', body),

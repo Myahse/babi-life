@@ -13,7 +13,6 @@ import { aCommune, capital } from '../lib/french'
  * With a lot there already, only the bigger ones, for the difference.
  */
 export function LotOffers({ sim, buy, onLoaded }: { sim: Sim; buy: (size: string, label: string, where: LotWhere) => Promise<boolean>; onLoaded?: (lot: Lot | null) => void }) {
-  const world = useWorld((s) => s.world)
   const [where, setWhere] = useState<LotWhere>({ city: sim.city, commune: sim.commune })
   const [data, setData] = useState<{ offers: LotOffer[]; lot: Lot | null; fees: number; adult: boolean } | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -32,24 +31,7 @@ export function LotOffers({ sim, buy, onLoaded }: { sim: Sim; buy: (size: string
   const name = data.offers[0]?.name ?? ''
   return (
     <div>
-      {world && (
-        <label className="mb-2 block">
-          <span className="label">Où acheter ?</span>
-          <select className="input mt-1 text-base" value={`${where.city}/${where.commune}`} onChange={(e) => (([city, commune]) => setWhere({ city, commune }))(e.target.value.split('/'))}>
-            {world.cities.map((c) => (
-              <optgroup key={c.id} label={c.name}>
-                {c.communes.map((cm) => (
-                  <option key={cm.id} value={`${c.id}/${cm.id}`}>
-                    {cm.name}
-                    {c.id === sim.city && cm.id === sim.commune ? ' (tu es ici)' : ''}
-                    {data.lot && c.id === data.lot.city && cm.id === data.lot.commune ? ' (ton terrain)' : ''}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-        </label>
-      )}
+      <CommunePicker label="Où acheter ?" sim={sim} where={where} onChange={setWhere} mark={(c, cm) => (data.lot && c === data.lot.city && cm === data.lot.commune ? 'ton terrain' : '')} />
       <p className="mb-2 text-xs font-semibold text-[var(--color-ink-soft)]">
         {capital(aCommune(name))} : {amount(data.offers[0]?.perM2 ?? 0)} Djai le m², plus {Math.round(data.fees * 100)} % pour l'ACD et le notaire.
         {data.lot && data.lot.city === where.city && data.lot.commune === where.commune ? ' Ton terrain grandit : ta maison reste, tu paies la différence.' : data.lot ? " Ailleurs, l'ancien terrain (vide) est revendu à 90 %." : ''}
@@ -84,5 +66,31 @@ export function LotOffers({ sim, buy, onLoaded }: { sim: Sim; buy: (size: string
         ))}
       </ul>
     </div>
+  )
+}
+
+/** Any commune of any town, by town: where to buy land or rent (« tu es ici » marked, and what mark() says). */
+export function CommunePicker({ label, sim, where, onChange, mark }: { label: string; sim: Sim; where: LotWhere; onChange: (w: LotWhere) => void; mark?: (city: string, commune: string) => string }) {
+  const world = useWorld((s) => s.world)
+  if (!world) return null
+  return (
+    <label className="mb-2 block">
+      <span className="label">{label}</span>
+      <select className="input mt-1 text-base" value={`${where.city}/${where.commune}`} onChange={(e) => (([city, commune]) => onChange({ city, commune }))(e.target.value.split('/'))}>
+        {world.cities.map((c) => (
+          <optgroup key={c.id} label={c.name}>
+            {c.communes.map((cm) => {
+              const notes = [c.id === sim.city && cm.id === sim.commune ? 'tu es ici' : '', mark?.(c.id, cm.id) ?? ''].filter(Boolean)
+              return (
+                <option key={cm.id} value={`${c.id}/${cm.id}`}>
+                  {cm.name}
+                  {notes.length ? ` (${notes.join(', ')})` : ''}
+                </option>
+              )
+            })}
+          </optgroup>
+        ))}
+      </select>
+    </label>
   )
 }
