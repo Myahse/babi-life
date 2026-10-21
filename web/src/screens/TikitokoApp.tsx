@@ -119,7 +119,8 @@ function ForYou({ sim, onClose, nav }: { sim: Sim; onClose: () => void; nav: (s:
 type Source = { tab: 'pour-toi' | 'abonnements' } | { posts: TikiPost[]; start: number }
 
 /** A game creator's post or page: its look, from its seed (the server sends none). */
-const withLook = <T extends { author: TikiPost['author']; npc?: TikiNPC }>(p: T): T => (p.npc ? { ...p, author: { ...p.author, look: npcLook(p.author.gender, p.npc.look) } } : p)
+// A friend's video comes with the face they had when met; a creator's is drawn from its seed.
+const withLook = <T extends { author: TikiPost['author']; npc?: TikiNPC }>(p: T): T => (p.npc && !p.author.look?.skin ? { ...p, author: { ...p.author, look: npcLook(p.author.gender, p.npc.look) } } : p)
 
 /**
  * The clips' sources, the next ones fetched ahead (prefetch): the bucket's
@@ -434,6 +435,7 @@ function Video({ sim, post: p, active, near, soundOn, onUnmute, onLike, onFollow
         <button className="pointer-events-auto text-[16px] font-extrabold" onClick={onProfile}>
           @{p.handle}
         </button>
+        {p.friend && <span className="ml-2 rounded-full bg-[#ff7a00] px-2 py-0.5 text-[11px] font-extrabold">Ton ami·e</span>}
         <span className="ml-2 text-[12px] font-bold text-white/70">· {ago(p.at)}</span>
         <p className="mt-1 text-[14px] leading-snug font-semibold">
           {p.caption} <span className="font-extrabold">#{THEME[p.theme] ?? p.theme} #babi</span>

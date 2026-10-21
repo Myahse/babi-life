@@ -2,6 +2,7 @@ package sims
 
 import (
 	"context"
+	"github.com/myahse/babi-life/backend/internal/game"
 	"hash/fnv"
 	"math/rand/v2"
 	"slices"
@@ -235,20 +236,33 @@ func (h *Handler) npcStats(ctx context.Context, me string, ps []TikiPost) {
 	}
 }
 
-// npcSaved: the game's posts this player saved, the latest first.
+// npcSaved: the game's posts this player saved (a creator's or a friend's), the latest first.
 func (h *Handler) npcSaved(ctx context.Context, me string, now time.Time) []TikiPost {
 	out := []TikiPost{}
 	rows, err := h.DB.Query(ctx, `SELECT post FROM tiki_npc_marks WHERE sim = $1 AND kind = 'save' ORDER BY created_at DESC LIMIT 60`, me)
 	if err != nil {
 		return out
 	}
-	defer rows.Close()
+	var ids []int64
 	for rows.Next() {
 		var id int64
 		if rows.Scan(&id) == nil {
-			if p, ok := npcPost(id, now); ok {
-				out = append(out, p)
-			}
+			ids = append(ids, id)
+		}
+	}
+	rows.Close()
+	var friends []game.Friend
+	read := false
+	for _, id := range ids {
+		if p, ok := npcPost(id, now); ok {
+			out = append(out, p)
+			continue
+		}
+		if !read {
+			friends, read = h.simFriends(ctx, me), true
+		}
+		if p, ok := findFriendPost(me, friends, id, now); ok {
+			out = append(out, p)
 		}
 	}
 	return out

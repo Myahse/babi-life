@@ -311,6 +311,8 @@ func (h *Handler) gramPosts(ctx context.Context, me, sql string, args ...any) ([
 	defer rows.Close()
 	now := time.Now()
 	out := []GramPost{}
+	// Posts by people met in the game (gramfriends.go): their account read after.
+	met := map[int]string{}
 	for rows.Next() {
 		var (
 			p                         GramPost
@@ -330,7 +332,7 @@ func (h *Handler) gramPosts(ctx context.Context, me, sql string, args ...any) ([
 		} else if n, ok := findGramNPC(npc); ok {
 			p.Account = npcAccount(n)
 		} else {
-			continue // an account the game no longer has
+			met[len(out)] = npc
 		}
 		p.Likes = grown(audLikes, p.At, now) + players
 		p.Comments = people + gramNPCComments(grown(p.reach, p.At, now))
@@ -340,7 +342,27 @@ func (h *Handler) gramPosts(ctx context.Context, me, sql string, args ...any) ([
 		}
 		out = append(out, p)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil || len(met) == 0 {
+		return out, err
+	}
+	rows.Close()
+	ids := []string{}
+	for _, id := range met {
+		ids = append(ids, id)
+	}
+	found := h.gramPeople(ctx, ids)
+	kept := out[:0]
+	for i, p := range out {
+		if id, ok := met[i]; ok {
+			person, ok := found[id]
+			if !ok {
+				continue // an account the game no longer has
+			}
+			p.Account = person.account()
+		}
+		kept = append(kept, p)
+	}
+	return kept, nil
 }
 
 // gramFeed: ?tab=accueil (everyone's photos, ranked, the followed first),
@@ -354,6 +376,7 @@ func (h *Handler) gramFeed(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	h.seedGram(ctx)
+	h.seedGramFriends(ctx, me)
 	q := r.URL.Query()
 	var posts []GramPost
 	switch tab := q.Get("tab"); tab {
@@ -834,7 +857,7 @@ func (h *Handler) gramFollow(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	other := chi.URLParam(r, "other")
 	if npc, ok := strings.CutPrefix(other, "npc:"); ok {
-		if _, ok := findGramNPC(npc); !ok {
+		if _, ok := findGramNPC(npc); !ok && len(h.gramPeople(ctx, []string{npc})) == 0 {
 			httpx.Error(w, http.StatusNotFound, errGramNoAccount.Error())
 			return
 		}
@@ -887,7 +910,14 @@ func (h *Handler) gramProfile(w http.ResponseWriter, r *http.Request) {
 	var p GramProfile
 	if npc, ok := strings.CutPrefix(other, "npc:"); ok {
 		n, ok := findGramNPC(npc)
-		if !ok {
+		var account GramAccount
+		if ok {
+			account = npcAccount(n)
+		} else if person, found := h.gramPeople(ctx, []string{npc})[npc]; found {
+			// Someone met in the game: no bio of their own, where they come from.
+			n, account = person.npc(), person.account()
+			n.Bio = "Rencontré·e à Babi 🤝"
+		} else {
 			httpx.Error(w, http.StatusNotFound, errGramNoAccount.Error())
 			return
 		}
@@ -897,7 +927,7 @@ func (h *Handler) gramProfile(w http.ResponseWriter, r *http.Request) {
 			h.gbairaiFail(w, err)
 			return
 		}
-		p.Account, p.Bio, p.Fans, p.Following = npcAccount(n), n.Bio, n.Fans+players, n.Following
+		p.Account, p.Bio, p.Fans, p.Following = account, n.Bio, n.Fans+players, n.Following
 		httpx.JSON(w, http.StatusOK, p)
 		return
 	}

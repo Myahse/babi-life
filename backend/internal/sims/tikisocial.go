@@ -104,7 +104,7 @@ func (h *Handler) visiblePost(r *http.Request, me string) (id int64, owner, them
 	id, _ = strconv.ParseInt(chi.URLParam(r, "post"), 10, 64)
 	// A game creator's post (tikinpc.go): no owner among the players.
 	if id < 0 {
-		p, ok := npcPost(id, time.Now())
+		p, ok := h.gamePost(r.Context(), me, id)
 		if !ok {
 			return id, "", "", 0, at, errNoPost
 		}
@@ -389,6 +389,15 @@ func (h *Handler) tikiProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	other := chi.URLParam(r, "other")
+	if strings.HasPrefix(other, "friend-") {
+		p, ok := friendProfile(me, h.simFriends(r.Context(), me), other, time.Now())
+		if !ok {
+			httpx.Error(w, http.StatusNotFound, "ami·e introuvable")
+			return
+		}
+		httpx.JSON(w, http.StatusOK, p)
+		return
+	}
 	if strings.HasPrefix(other, "npc-") {
 		p, ok := npcProfile(other, time.Now())
 		if !ok {
@@ -423,7 +432,7 @@ func (h *Handler) tikiProfile(w http.ResponseWriter, r *http.Request) {
 
 // npcMark: a like or a favourite on a game creator's post (or taken back).
 func (h *Handler) npcMark(r *http.Request, me string, id int64, kind string, on bool) error {
-	if _, ok := npcPost(id, time.Now()); !ok {
+	if _, ok := h.gamePost(r.Context(), me, id); !ok {
 		return errNoPost
 	}
 	if on {
