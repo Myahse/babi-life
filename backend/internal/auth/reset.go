@@ -14,6 +14,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/myahse/babi-life/backend/internal/httpx"
+	"github.com/myahse/babi-life/backend/internal/mail"
 )
 
 // « Mot de passe oublié »: the player gives their e-mail; if an account with
@@ -28,9 +29,7 @@ const (
 )
 
 // Mailer sends an e-mail (package mail); nil: resets can't be sent.
-type Mailer interface {
-	Send(to, subject, body string) error
-}
+type Mailer = mail.Sender
 
 var errResetsOff = errors.New("la récupération du mot de passe par e-mail n'est pas encore en place. Réessaie bientôt")
 
@@ -73,8 +72,11 @@ func (h *Handler) Forgot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	link := h.SiteURL + "/mot-de-passe?token=" + token
-	body := fmt.Sprintf("Bonjour %s,\n\nQuelqu'un (toi, on espère) a demandé un nouveau mot de passe pour ton compte Babi Life.\n\nPour en choisir un, ouvre ce lien dans les 30 minutes :\n%s\n\nSi ce n'était pas toi, ignore cet e-mail : ton mot de passe ne change pas.\n\nÀ tout de suite dans Babi !\n", first, link)
-	if err := h.Mail.Send(email, "Babi Life : ton nouveau mot de passe", body); err != nil {
+	msg, err := mail.Reset(h.SiteURL, email, first, link, int(ResetFor/time.Minute))
+	if err == nil {
+		err = h.Mail.Send(ctx, msg)
+	}
+	if err != nil {
 		log.Printf("auth: reset mail: %v", err)
 		httpx.Error(w, http.StatusBadGateway, "l'e-mail n'est pas parti, réessaie dans un instant")
 		return
