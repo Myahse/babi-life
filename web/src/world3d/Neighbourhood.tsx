@@ -408,7 +408,7 @@ export function LotView({ lot, world, night, label, onPick }: { lot: Lot; world:
         scale={hover ? 1.03 : 1}
       >
         <Solid>
-          <Building kind={lot.kind} name={lot.name} night={night} />
+          <Building kind={lot.kind} name={lot.name} faith={lot.faith} night={night} />
         </Solid>
       </group>
       {label && (

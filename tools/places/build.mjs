@@ -6,6 +6,9 @@
 //   node tools/places/build.mjs yopougon "Yopougon, Abidjan"
 //   → backend/internal/world/osm/yopougon.json
 //
+// A third argument keeps only some kinds (the churches and mosques of every
+// commune before the rest of their places): worship,school
+//
 // Bus stops, ATMs, toilets, car parks and car garages are left out:
 // nobody goes there to do something. Data © OpenStreetMap contributors (ODbL).
 
@@ -15,8 +18,9 @@ import { fileURLToPath } from 'node:url'
 import { VectorTile } from '../../web/node_modules/@mapbox/vector-tile/index.js'
 import Pbf from '../../web/node_modules/pbf/index.js'
 
-const [id, query] = process.argv.slice(2)
-if (!id || !query) throw new Error('usage: node build.mjs <commune-id> "<Nominatim query>"')
+const [id, query, only] = process.argv.slice(2)
+if (!id || !query) throw new Error('usage: node build.mjs <commune-id> "<Nominatim query>" [kind,kind…]')
+const keep = only ? new Set(only.split(',')) : null
 const here = path.dirname(fileURLToPath(import.meta.url))
 const out = path.join(here, '../../backend/internal/world/osm', `${id}.json`)
 
@@ -146,7 +150,7 @@ for (let x = tx(w); x <= tx(e); x++)
       const name = String(f.properties['name:fr'] ?? f.properties.name ?? '').trim()
       if (!name || name.length < 2) continue
       const kind = kindOf(f.properties.class, f.properties.subclass, name)
-      if (!kind) continue
+      if (!kind || (keep && !keep.has(kind))) continue
       const [lng, lat] = f.toGeoJSON(x, y, Z).geometry.coordinates
       if (!inside(lng, lat)) continue
       // The same point comes in every tile whose margin it falls in: once only.
@@ -183,6 +187,7 @@ fs.writeFileSync(
     commune: id,
     source: 'OpenStreetMap (ODbL), via OpenFreeMap; limite communale : Nominatim',
     fetched: new Date().toISOString().slice(0, 10),
+    ...(keep ? { only: [...keep] } : {}),
     fields: ['id', 'name', 'kind', 'lat', 'lng', 'quarter', 'type'],
     places,
   }),

@@ -27,7 +27,9 @@ type Place struct {
 	Owner    string `json:"owner,omitempty"`
 	Operator string `json:"operator,omitempty"`
 	// Closed: a real venue that no longer runs as such (YYYY-MM), kept for the game.
-	Closed string       `json:"closed,omitempty"`
+	Closed string `json:"closed,omitempty"`
+	// Faith: a place of worship's (game.FaithOf): catholique, protestant, evangelique, musulman.
+	Faith  string       `json:"faith,omitempty"`
 	Source *game.Source `json:"source,omitempty"`
 }
 
@@ -129,6 +131,8 @@ const (
 	srcPyramide        = "https://en.wikipedia.org/wiki/La_Pyramide_(building)"
 	srcCathedrale      = "https://fr.wikipedia.org/wiki/Cath%C3%A9drale_Saint-Paul_d%27Abidjan"
 	srcCathedrale2     = "https://en.wikipedia.org/wiki/St._Paul%27s_Cathedral,_Abidjan"
+	srcMosqueeM6       = "https://fr.allafrica.com/stories/202404050438.html"
+	srcMosqueeM62      = "https://fr.hespress.com/361344-en-images-la-mosquee-mohammed-vi-un-chef-doeuvre-architectural-au-coeur-dabidjan.html"
 	srcPyramide2       = "https://structurae.net/en/structures/la-pyramide"
 	srcBlockhauss      = "https://news.abidjan.net/articles/374315/le-chef-de-letat-aux-populations-de-blockhauss-hier-on-ne-doit-pas-vous-deposseder-totalement-de-vos-terres"
 	srcCocodyVillages  = "https://participate.oidp.net/processes/award2024/f/288/proposals/3254"
@@ -291,7 +295,7 @@ var Cities = []City{
 			abidjanCommune("adjame", "Adjamé", "Le cœur commerçant, ça bouge dans tous les sens.", 5.3550, -4.0240, "nord",
 				Place{ID: "adjame-gare", Name: "Gare routière d'Adjamé", Kind: "transport", Lat: 5.3580, Lng: -4.0220, Real: true, Approx: true, Source: game.Unverified("Grande gare routière d'Adjamé ; à confirmer.")},
 				Place{ID: "adjame-forum", Name: "Forum des marchés", Kind: "market", Lat: 5.3530, Lng: -4.0270, Real: true, Approx: true, Source: game.Unverified("Marché d'Adjamé ; nom à confirmer.")},
-				Place{ID: "adjame-mosquee", Name: "Grande mosquée", Kind: "worship", Lat: 5.3500, Lng: -4.0215, Approx: true, Source: game.Unverified("Mosquée d'Adjamé ; nom exact à confirmer.")},
+				Place{ID: "adjame-mosquee", Name: "Grande mosquée d'Adjamé", Kind: "worship", Quarter: "Bromakoté", Lat: 5.353468, Lng: -4.026495, Real: true, Source: game.Partial("Nom et position d'après OpenStreetMap.", "https://www.openstreetmap.org/copyright")},
 				Place{ID: "adjame-hopital", Name: "Hôpital général d'Adjamé", Kind: "health", Lat: 5.3610, Lng: -4.0290, Real: true, Approx: true, Operator: "Hôpital public",
 					Source: game.Partial("Inauguré par le président de la République (après celui de Gagnoa, 2013).", srcHGAdjame)},
 			),
@@ -313,6 +317,8 @@ var Cities = []City{
 					Source: game.Verified("Palais de la Culture de Treichville, 12 900 m², 7 salles.", srcVenues)},
 				Place{ID: "treich-chu", Name: "CHU de Treichville", Kind: "health", Lat: 5.2960, Lng: -4.0150, Real: true, Approx: true, Operator: "Établissement public hospitalier national",
 					Source: game.Verified("Transformé en établissement public hospitalier national en 2022.", srcCHUStatus)},
+				Place{ID: "treich-mosquee-m6", Name: "Mosquée Mohammed VI", Kind: "worship", Quarter: "Biafra", Lat: 5.310947, Lng: -4.003406, Real: true,
+					Source: game.Verified("Mosquée de style marocain inaugurée le 5 avril 2024 (architecte Mustapha Zeghari) : 25 000 m², 7 000 fidèles, un minaret de plus de 69 m, une bibliothèque et une salle de conférence. Position d'après OpenStreetMap.", srcMosqueeM6, srcMosqueeM62)},
 			),
 			abidjanCommune("marcory", "Marcory", "Zone 4, Biétry, restos et sorties.", 5.3000, -3.9850, "sud",
 				Place{ID: "marcory-azale", Name: "Azalé Hôtel", Kind: "hotel", Lat: 5.3035, Lng: -3.9880, Real: true, Approx: true,
