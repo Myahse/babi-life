@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { GoogleLogin } from '@react-oauth/google'
 import { inApp, nativeGoogleSignIn } from '../lib/native'
 import { Link, useNavigate } from 'react-router-dom'
@@ -14,7 +14,7 @@ import { IconTile } from '../components/ui'
 import { UsernameField } from '../components/UsernameField'
 import { suggestFrom } from '../lib/username'
 import { gameOpen } from '../lib/launch'
-import { firebaseConfigured, firebaseFromGoogle, googleCancelled, signInWithGoogle } from '../lib/google'
+import { firebaseConfigured, firebaseFromGoogle, googleBlocked, googleCancelled, googleRedirectResult, preloadGoogle, signInWithGoogle } from '../lib/google'
 
 const GOOGLE_ENABLED = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID)
 
@@ -59,6 +59,16 @@ export function Title() {
     if (!usernameTouched) setUsername(suggestFrom(f, l))
   }
 
+  // Firebase ready before the tap (Safari opens Google's window only straight from it); back from Google, the account.
+  useEffect(() => {
+    if (!firebaseConfigured || inApp()) return
+    preloadGoogle()
+    googleRedirectResult().then(
+      (account) => account && void finish(api.googleLogin(account.token)),
+      () => setError('Connexion Google impossible'),
+    )
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   async function google() {
     setError(null)
     try {
@@ -66,6 +76,7 @@ export function Title() {
       await finish(api.googleLogin(account.token))
     } catch (err) {
       if (googleCancelled(err)) setError('Connexion Google annulée')
+      else if (googleBlocked(err)) setError('Le navigateur a bloqué la fenêtre Google : touche encore le bouton')
       else setError('Connexion Google impossible')
     }
   }
