@@ -138,14 +138,29 @@ func (h *Handler) myLoto(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusOK, out)
 }
 
+// dueSQL: whether the Sim ($1) has bets, and loto tickets, due at $3 (Unix
+// seconds); selected along with the Sim in mutateTx.
+const dueSQL = `EXISTS(SELECT 1 FROM bets WHERE sim = $1 AND status = 'open' AND settles_at <= $3),
+	EXISTS(SELECT 1 FROM loto_tickets WHERE sim = $1 AND status = 'open' AND draw <= $3)`
+
+type dueTickets struct{ bets, tickets bool }
+
 // settle: the bets and loto tickets whose matches or draw are over are won or
 // lost; the winnings are paid. Run on every refresh of the Sim (mutateTx).
-func settle(ctx context.Context, tx pgx.Tx, s *Sim) ([]Event, error) {
-	events, err := settleBetsTx(ctx, tx, s)
-	if err != nil {
-		return nil, err
-	}
+// Most refreshes have nothing due: mutateTx looks for both (dueSQL) as it
+// reads the Sim, and neither is read here unless due.
+func settle(ctx context.Context, tx pgx.Tx, s *Sim, due dueTickets) ([]Event, error) {
 	now := time.Now().Unix()
+	var events []Event
+	if due.bets {
+		var err error
+		if events, err = settleBetsTx(ctx, tx, s); err != nil {
+			return nil, err
+		}
+	}
+	if !due.tickets {
+		return events, nil
+	}
 	rows, err := tx.Query(ctx, `SELECT id, draw, numbers, stake FROM loto_tickets WHERE sim = $1 AND status = 'open' AND draw <= $2`, s.ID, now)
 	if err != nil {
 		return nil, err
@@ -155,17 +170,17 @@ func settle(ctx context.Context, tx pgx.Tx, s *Sim) ([]Event, error) {
 		nums     []int32
 		stake    int
 	}
-	var due []t
+	var tickets []t
 	for rows.Next() {
 		var x t
 		if err := rows.Scan(&x.id, &x.draw, &x.nums, &x.stake); err != nil {
 			rows.Close()
 			return nil, err
 		}
-		due = append(due, x)
+		tickets = append(tickets, x)
 	}
 	rows.Close()
-	for _, x := range due {
+	for _, x := range tickets {
 		picked := make([]int, len(x.nums))
 		for i, n := range x.nums {
 			picked[i] = int(n)

@@ -522,16 +522,17 @@ type DameInvite struct {
 	Mine     bool   `json:"mine"`
 }
 
-// pendingDame: the challenge waiting for the Sim's answer, or its game going on; nil if none.
-func (h *Handler) pendingDame(ctx context.Context, sim string) *DameInvite {
-	var in DameInvite
-	var white string
-	err := h.DB.QueryRow(ctx, `SELECT d.id, d.status, w.first_name, d.stake, d.white FROM dames d JOIN sims w ON w.id = d.white
+// queuePendingDame: the challenge waiting for the Sim's answer, or its game going on; nil if none.
+func queuePendingDame(b *pgx.Batch, sim string, out **DameInvite) {
+	b.Queue(`SELECT d.id, d.status, w.first_name, d.stake, d.white FROM dames d JOIN sims w ON w.id = d.white
 		WHERE ((d.black = $1 AND d.status = 'invited' AND d.created_at > $2) OR ((d.white = $1 OR d.black = $1) AND d.status = 'playing'))
-		ORDER BY d.id DESC LIMIT 1`, sim, time.Now().Add(-dameInviteWindow)).Scan(&in.ID, &in.Status, &in.FromName, &in.Stake, &white)
-	if err != nil {
+		ORDER BY d.id DESC LIMIT 1`, sim, time.Now().Add(-dameInviteWindow)).QueryRow(func(row pgx.Row) error {
+		var in DameInvite
+		var white string
+		if row.Scan(&in.ID, &in.Status, &in.FromName, &in.Stake, &white) == nil {
+			in.Mine = white == sim
+			*out = &in
+		}
 		return nil
-	}
-	in.Mine = white == sim
-	return &in
+	})
 }

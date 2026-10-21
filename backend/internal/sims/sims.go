@@ -366,11 +366,12 @@ const simColumns = `id, first_name, last_name, gender, look, traits, aspiration,
 	home_city, home_commune, city, commune, needs, money, game_minutes,
 	origin, housing, loan, rent_arrears, career, career_level, performance, activity, apps, born_at, family, friends, gang, record, created_at, last_tick, furnished, stay, languages`
 
-func scanSim(row pgx.Row) (Sim, error) {
+// scanSim reads simColumns, then any extra columns selected after them into extra.
+func scanSim(row pgx.Row, extra ...any) (Sim, error) {
 	var s Sim
-	err := row.Scan(&s.ID, &s.FirstName, &s.LastName, &s.Gender, &s.Look, &s.Traits, &s.Aspiration,
+	err := row.Scan(append([]any{&s.ID, &s.FirstName, &s.LastName, &s.Gender, &s.Look, &s.Traits, &s.Aspiration,
 		&s.HomeCity, &s.HomeCommune, &s.City, &s.Commune, &s.Needs, &s.Money, &s.GameMinutes,
-		&s.Origin, &s.Housing, &s.Loan, &s.RentArrears, &s.Career, &s.CareerLevel, &s.Performance, &s.Activity, &s.Apps, &s.BornAt, &s.Family, &s.Friends, &s.Gang, &s.Record, &s.CreatedAt, &s.lastTick, &s.Furnished, &s.Stay, &s.Languages)
+		&s.Origin, &s.Housing, &s.Loan, &s.RentArrears, &s.Career, &s.CareerLevel, &s.Performance, &s.Activity, &s.Apps, &s.BornAt, &s.Family, &s.Friends, &s.Gang, &s.Record, &s.CreatedAt, &s.lastTick, &s.Furnished, &s.Stay, &s.Languages}, extra...)...)
 	return s, err
 }
 
@@ -542,11 +543,14 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
-		until, err := gymMembership(r.Context(), tx, s.ID)
-		if err != nil {
-			return game.Outcome{}, nil, err
+		// The membership counts only at a gym: read only for one (a round trip less everywhere else).
+		if _, _, p, ok := world.FindPlace(req.PlaceID); ok && p.Kind == "gym" {
+			until, err := gymMembership(r.Context(), tx, s.ID)
+			if err != nil {
+				return game.Outcome{}, nil, err
+			}
+			s.gymUntil = until
 		}
-		s.gymUntil = until
 		if req.InteractionID == game.NightID {
 			if adult, err := accountAdult(r.Context(), tx); err != nil || !adult {
 				return game.Outcome{}, nil, errNotAdult
@@ -793,8 +797,10 @@ func (h *Handler) mutateTx(w http.ResponseWriter, r *http.Request, fn func(*Sim,
 	}
 	defer tx.Rollback(ctx)
 
+	// With the Sim, whether bets or loto tickets of it are due (read in the same round trip).
+	var due dueTickets
 	s, err := scanSim(tx.QueryRow(ctx,
-		`SELECT `+simColumns+` FROM sims WHERE id = $1 AND user_id = $2 FOR UPDATE`, chi.URLParam(r, "id"), auth.UserID(ctx)))
+		`SELECT `+simColumns+`, `+dueSQL+` FROM sims WHERE id = $1 AND user_id = $2 FOR UPDATE`, chi.URLParam(r, "id"), auth.UserID(ctx), time.Now().Unix()), &due.bets, &due.tickets)
 	if err != nil {
 		httpx.Error(w, http.StatusNotFound, "sim introuvable")
 		return
@@ -802,7 +808,7 @@ func (h *Handler) mutateTx(w http.ResponseWriter, r *http.Request, fn func(*Sim,
 	// Real time passes first, so the action sees the real state.
 	fresh := s.advance(time.Now(), newRand())
 	// Bets and loto tickets that are over pay out.
-	won, err := settle(ctx, tx, &s)
+	won, err := settle(ctx, tx, &s, due)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 		return
@@ -819,23 +825,42 @@ func (h *Handler) mutateTx(w http.ResponseWriter, r *http.Request, fn func(*Sim,
 		fresh = append(fresh, events...)
 	}
 
-	if _, err := tx.Exec(ctx, `
+	// The Sim saved, the journal's new lines written and the journal read back,
+	// in one round trip to the database (they're one after the other on it).
+	b := &pgx.Batch{}
+	b.Queue(`
 		UPDATE sims SET city = $2, commune = $3, needs = $4, money = $5, game_minutes = $6, last_tick = $7,
 		       home_city = $8, home_commune = $9, housing = $10, loan = $11, rent_arrears = $12,
 		       career = $13, career_level = $14, performance = $15, activity = $16, apps = $17,
 		       friends = $18, gang = $19, record = $20, look = $21, born_at = $22, family = $23, furnished = $24, stay = $25
 		WHERE id = $1`, s.ID, s.City, s.Commune, s.Needs, s.Money, s.GameMinutes, s.lastTick,
 		s.HomeCity, s.HomeCommune, s.Housing, s.Loan, s.RentArrears, s.Career, s.CareerLevel, s.Performance, s.Activity, s.Apps,
-		friendsOrEmpty(s.Friends), s.Gang, s.Record, s.Look, s.BornAt, s.Family, furnishedOrEmpty(s.Furnished), s.Stay); err != nil {
+		friendsOrEmpty(s.Friends), s.Gang, s.Record, s.Look, s.BornAt, s.Family, furnishedOrEmpty(s.Furnished), s.Stay)
+	for _, ev := range fresh {
+		b.Queue(`INSERT INTO sim_events (sim_id, kind, text, money, game_time) VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at`, s.ID, ev.Kind, ev.Text, ev.Money, ev.GameTime)
+	}
+	b.Queue(journalSQL, s.ID)
+	saved := tx.SendBatch(ctx, b)
+	if _, err := saved.Exec(); err != nil {
+		saved.Close()
 		httpx.Error(w, http.StatusInternalServerError, "could not save sim")
 		return
 	}
-	for i, ev := range fresh {
-		if err := tx.QueryRow(ctx, `INSERT INTO sim_events (sim_id, kind, text, money, game_time) VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at`,
-			s.ID, ev.Kind, ev.Text, ev.Money, ev.GameTime).Scan(&fresh[i].ID, &fresh[i].At); err != nil {
+	for i := range fresh {
+		if err := saved.QueryRow().Scan(&fresh[i].ID, &fresh[i].At); err != nil {
+			saved.Close()
 			httpx.Error(w, http.StatusInternalServerError, "could not save journal")
 			return
 		}
+	}
+	rows, err := saved.Query()
+	var journal []Event
+	if err == nil {
+		journal, _ = collectEvents(rows)
+	}
+	if err := saved.Close(); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "could not save sim")
+		return
 	}
 	if err := tx.Commit(ctx); err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "could not save sim")
@@ -849,7 +874,6 @@ func (h *Handler) mutateTx(w http.ResponseWriter, r *http.Request, fn func(*Sim,
 	}
 	h.postMoments(ctx, moments)
 
-	journal, _ := h.journal(ctx, s.ID)
 	if fresh == nil {
 		fresh = []Event{}
 	}
@@ -866,13 +890,20 @@ func insertEvent(ctx context.Context, db execer, simID, kind, text string, money
 	return err
 }
 
-func (h *Handler) journal(ctx context.Context, simID string) ([]Event, error) {
-	rows, err := h.DB.Query(ctx, `
+// journalSQL: a Sim's last thirty journal lines, the latest first.
+const journalSQL = `
 		SELECT id, kind, text, money, game_time, created_at FROM sim_events
-		WHERE sim_id = $1 ORDER BY id DESC LIMIT 30`, simID)
+		WHERE sim_id = $1 ORDER BY id DESC LIMIT 30`
+
+func (h *Handler) journal(ctx context.Context, simID string) ([]Event, error) {
+	rows, err := h.DB.Query(ctx, journalSQL, simID)
 	if err != nil {
 		return nil, err
 	}
+	return collectEvents(rows)
+}
+
+func collectEvents(rows pgx.Rows) ([]Event, error) {
 	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (Event, error) {
 		var e Event
 		err := row.Scan(&e.ID, &e.Kind, &e.Text, &e.Money, &e.GameTime, &e.At)

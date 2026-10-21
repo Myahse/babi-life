@@ -103,6 +103,7 @@ func main() {
 	}
 	simsH := &sims.Handler{DB: pool, RealPhotos: os.Getenv("STORIES_REAL_PHOTOS") == "true", Karts: karts, Courts: courts, Push: pushes, Bucket: bucket}
 	go simsH.WatchBets(ctx)
+	go simsH.PruneJournal(ctx)
 	headlines := news.New(cfg.NewsFeeds)
 	go headlines.Run(ctx)
 	// The players of a commune, live (positions and poses, over a WebSocket).

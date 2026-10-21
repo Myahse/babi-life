@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/myahse/babi-life/backend/internal/auth"
 	"github.com/myahse/babi-life/backend/internal/game"
@@ -110,75 +111,89 @@ func (h *Handler) mySim(r *http.Request) (id, city, commune string, err error) {
 }
 
 // around: the players in the Sim's commune, the invitations waiting for it,
-// and the players it is friends with.
+// and the players it is friends with. Every player asks it every 15 s: all of
+// it goes to the database in one batch (one round trip, not ten), the Sim's
+// own check included (its commune is read in the same queries).
 func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
-	id, city, commune, err := h.mySim(r)
-	if err != nil {
-		httpx.Error(w, http.StatusNotFound, "sim introuvable")
-		return
-	}
 	ctx := r.Context()
+	id, user := chi.URLParam(r, "id"), auth.UserID(ctx)
 	now := game.MinuteOf(time.Now())
 	since := time.Now().Add(-OnlineWindow)
 
-	players, err := h.players(ctx, now, `
-		SELECT s.id, s.first_name, COALESCE(u.username, ''), s.gender, s.look, s.born_at, s.activity, COALESCE(b.friendship, 0), s.city, s.commune, s.last_tick > $5,
-		       COALESCE(b.friends, false), `+requestState("s.id", "$1::uuid")+`
-		FROM sims s JOIN users u ON u.id = s.user_id
-		LEFT JOIN bonds b ON b.sim_a = LEAST(s.id, $1::uuid) AND b.sim_b = GREATEST(s.id, $1::uuid)
-		WHERE s.city = $2 AND s.commune = $3 AND s.user_id <> $4 AND s.last_tick > $5
-		ORDER BY s.last_tick DESC LIMIT 20`, id, city, commune, auth.UserID(ctx), since)
-	if err != nil {
-		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
-		return
+	b := &pgx.Batch{}
+	mine := false
+	b.Queue(`SELECT true FROM sims WHERE id = $1 AND user_id = $2`, id, user).QueryRow(func(row pgx.Row) error {
+		_ = row.Scan(&mine) // no row: not this player's Sim
+		return nil
+	})
+	var players, friends, requests []Player
+	into := func(dst *[]Player) func(pgx.Rows) error {
+		return func(rows pgx.Rows) (err error) {
+			*dst, err = scanPlayers(rows, now)
+			return err
+		}
 	}
-	friends, err := h.players(ctx, now, `
+	b.Queue(`
+		SELECT s.id, s.first_name, COALESCE(u.username, ''), s.gender, s.look, s.born_at, s.activity, COALESCE(b.friendship, 0), s.city, s.commune, s.last_tick > $3,
+		       COALESCE(b.friends, false), `+requestState("s.id", "$1::uuid")+`
+		FROM sims me
+		JOIN sims s ON s.city = me.city AND s.commune = me.commune
+		JOIN users u ON u.id = s.user_id
+		LEFT JOIN bonds b ON b.sim_a = LEAST(s.id, $1::uuid) AND b.sim_b = GREATEST(s.id, $1::uuid)
+		WHERE me.id = $1::uuid AND s.user_id <> $2 AND s.last_tick > $3
+		ORDER BY s.last_tick DESC LIMIT 20`, id, user, since).Query(into(&players))
+	b.Queue(`
 		SELECT o.id, o.first_name, COALESCE(u.username, ''), o.gender, o.look, o.born_at, o.activity, b.friendship, o.city, o.commune, o.last_tick > $2, true, ''
 		FROM bonds b
 		JOIN sims o ON o.id = CASE WHEN b.sim_a = $1::uuid THEN b.sim_b ELSE b.sim_a END
 		JOIN users u ON u.id = o.user_id
 		WHERE (b.sim_a = $1::uuid OR b.sim_b = $1::uuid) AND b.friends
-		ORDER BY b.friendship DESC LIMIT 50`, id, since)
-	if err != nil {
-		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
-		return
-	}
+		ORDER BY b.friendship DESC LIMIT 50`, id, since).Query(into(&friends))
 	// Friend requests waiting for an answer, from wherever the one asking is.
-	requests, err := h.players(ctx, now, `
+	b.Queue(`
 		SELECT o.id, o.first_name, COALESCE(u.username, ''), o.gender, o.look, o.born_at, o.activity, COALESCE(b.friendship, 0), o.city, o.commune, o.last_tick > $2, false, 'received'
 		FROM friend_requests f
 		JOIN sims o ON o.id = f.from_sim
 		JOIN users u ON u.id = o.user_id
 		LEFT JOIN bonds b ON b.sim_a = LEAST(o.id, $1::uuid) AND b.sim_b = GREATEST(o.id, $1::uuid)
 		WHERE f.to_sim = $1::uuid
-		ORDER BY f.created_at DESC LIMIT 20`, id, since)
-	if err != nil {
-		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
-		return
-	}
+		ORDER BY f.created_at DESC LIMIT 20`, id, since).Query(into(&requests))
 	invites := []Invite{}
-	rows, err := h.DB.Query(ctx, `
+	b.Queue(`
 		SELECT i.id, i.from_sim, s.first_name, i.place_id, i.interaction_id, i.label, i.created_at
 		FROM invites i JOIN sims s ON s.id = i.from_sim
 		WHERE i.to_sim = $1 AND i.status = 'pending' AND i.created_at > $2
-		ORDER BY i.created_at DESC LIMIT 10`, id, time.Now().Add(-InviteWindow))
-	if err == nil {
+		ORDER BY i.created_at DESC LIMIT 10`, id, time.Now().Add(-InviteWindow)).Query(func(rows pgx.Rows) error {
 		for rows.Next() {
 			var in Invite
 			if rows.Scan(&in.ID, &in.From, &in.FromName, &in.PlaceID, &in.InteractionID, &in.Label, &in.At) == nil {
 				invites = append(invites, in)
 			}
 		}
-		rows.Close()
+		return nil
+	})
+	var c couples
+	c.queue(b, id)
+	var dame *DameInvite
+	queuePendingDame(b, id, &dame)
+	err := h.DB.SendBatch(ctx, b).Close()
+	var pgErr *pgconn.PgError
+	if !mine && (err == nil || errors.As(err, &pgErr) && pgErr.Code == "22P02") { // 22P02: not even an id
+		httpx.Error(w, http.StatusNotFound, "sim introuvable")
+		return
 	}
-	h.markCouples(ctx, id, friends)
-	h.markCouples(ctx, id, players) // in the street too: a heart over one's partner
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+		return
+	}
+	c.mark(friends)
+	c.mark(players) // in the street too: a heart over one's partner
 	// Everyone in the game right now, wherever they are (the chip says « 7 ici · 132 en ligne »).
 	online := len(players) + 1
 	if h.Online != nil {
 		online = max(h.Online(), 1) // connected now (« ici » counts the last 20 minutes); at least the one asking
 	}
-	httpx.JSON(w, http.StatusOK, map[string]any{"players": players, "friends": friends, "invites": invites, "requests": requests, "online": online, "dames": h.pendingDame(ctx, id)})
+	httpx.JSON(w, http.StatusOK, map[string]any{"players": players, "friends": friends, "invites": invites, "requests": requests, "online": online, "dames": dame})
 }
 
 // requestState: the SQL for a friend request between `other` and `me`: "sent" (me → other), "received", or "".
@@ -193,6 +208,10 @@ func (h *Handler) players(ctx context.Context, now int64, query string, args ...
 		return nil, err
 	}
 	defer rows.Close()
+	return scanPlayers(rows, now)
+}
+
+func scanPlayers(rows pgx.Rows, now int64) ([]Player, error) {
 	out := []Player{}
 	for rows.Next() {
 		var p Player
