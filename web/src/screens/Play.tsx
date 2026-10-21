@@ -1,6 +1,6 @@
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BadgeCheck, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, BookOpen, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World, Ride, Place, Plot } from '../lib/types'
 import { useWorld } from '../store/world'
@@ -25,6 +25,7 @@ import { NEEDS, actionLength, ageBlock, amount, fcfa, atHome, blockedBy, homeLac
 import { DOORS_OPEN, eventAt, useStadium, when } from '../lib/stadium'
 import { HomeApp, JobsApp, type Act } from './phoneApps'
 import { NewsApp, topicOf } from './NewsApp'
+import { GuideApp } from './GuideApp'
 import { RideFlow, type FlowRequest } from '../components/RideFlow'
 import { INDOOR, Interior } from '../world3d/Interior'
 import { HomeInside } from '../world3d/HomeInside'
@@ -177,7 +178,7 @@ export function Play() {
   useEffect(() => {
     const q = new URLSearchParams(location.search)
     const want = q.get('app') as PhoneAppId | null
-    if (!want || !['gbairai', 'bet225', 'parisfoot'].includes(want)) return
+    if (!want || !['gbairai', 'bet225', 'parisfoot', 'guide'].includes(want)) return
     setPhoneApp(want)
     setOverlay('phone')
     q.delete('app')
@@ -949,7 +950,7 @@ export function Play() {
 
 /* ---------- The in-game phone ---------- */
 
-type PhoneAppId = 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'galerie'
+type PhoneAppId = 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'galerie' | 'guide'
 type PhoneProps = {
   world: World
   sim: Sim
@@ -1028,10 +1029,11 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
           { id: 'galerie', label: 'Galerie', icon: Images, colors: ['#ffd36e', '#ff8a3d'], open: () => setApp('galerie') },
         ]
       : []),
+    { id: 'guide', label: 'Encyclo', icon: BookOpen, colors: ['#9fa8ff', '#4b4fd6'], open: () => setApp('guide') },
     { id: 'profile', label: 'Profil', icon: UserRound, colors: ['#ff8a9b', '#ff3d57'], open: () => navigate('/profil', { viewTransition: true }) },
     ] as Tile[]
   ).filter((a) => !life.minor || (a.id !== 'jobs' && a.id !== 'home'))
-  const title: Record<PhoneAppId, string> = { here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', babigram: 'Babigram', bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: 'Galerie' }
+  const title: Record<PhoneAppId, string> = { here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', babigram: 'Babigram', bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: 'Galerie', guide: 'Encyclopédie de Babi' }
 
   return (
     <div className="absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center" onClick={onClose}>
@@ -1101,6 +1103,7 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
                 {app === 'home' && <HomeApp world={world} sim={sim} commune={commune} act={act} onBuild={onBuild} onWalk={onWalk} onMap={onMap} />}
                 {app === 'messages' && <Journal events={journal} />}
                 {app === 'news' && <NewsApp />}
+                {app === 'guide' && <GuideApp world={world} />}
                 {app === 'friends' && <FriendsApp world={world} sim={sim} act={act} onPay={has('waye') ? (p) => (setWayeTo(p.id), setApp('waye')) : undefined} />}
                 {app === 'store' && !ownPhone && (
                   <div className="grid place-items-center gap-3 px-6 py-12 text-center">
