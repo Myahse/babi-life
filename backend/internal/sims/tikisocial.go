@@ -102,6 +102,14 @@ func npcCommentList(post int64, theme string, n int, at time.Time) []TikiComment
 // visiblePost: the post, its author and theme, if this Sim may see it.
 func (h *Handler) visiblePost(r *http.Request, me string) (id int64, owner, theme string, views int, at time.Time, err error) {
 	id, _ = strconv.ParseInt(chi.URLParam(r, "post"), 10, 64)
+	// A game creator's post (tikinpc.go): no owner among the players.
+	if id < 0 {
+		p, ok := npcPost(id, time.Now())
+		if !ok {
+			return id, "", "", 0, at, errNoPost
+		}
+		return id, "", p.Theme, p.Views, p.At, nil
+	}
 	err = h.DB.QueryRow(r.Context(), `SELECT p.sim, p.theme, p.views + (SELECT count(*) FROM tiki_likes l WHERE l.post = p.id), p.created_at FROM tiki_posts p WHERE p.id = $1
 		AND NOT EXISTS(SELECT 1 FROM blocks k WHERE (k.sim = $2 AND k.blocked = p.sim) OR (k.sim = p.sim AND k.blocked = $2))`, id, me).Scan(&owner, &theme, &views, &at)
 	if err != nil {
@@ -121,14 +129,26 @@ func (h *Handler) tikiComments(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusNotFound, err.Error())
 		return
 	}
-	rows, err := h.DB.Query(r.Context(), `
+	// On the game's posts the players' comments are in their own table, and
+	// their ids carry an « n » (their hearts stay on the screen, like the audience's).
+	q := `
 		SELECT c.id, o.id, o.first_name, o.gender, o.look, COALESCE(u.username, ''), c.body, c.created_at,
 			(SELECT count(*) FROM tiki_comment_likes l WHERE l.comment = c.id),
 			EXISTS(SELECT 1 FROM tiki_comment_likes l WHERE l.comment = c.id AND l.sim = $2)
 		FROM tiki_comments c JOIN sims o ON o.id = c.sim JOIN users u ON u.id = o.user_id
 		WHERE c.post = $1
 			AND NOT EXISTS(SELECT 1 FROM blocks k WHERE (k.sim = $2 AND k.blocked = c.sim) OR (k.sim = c.sim AND k.blocked = $2))
-		ORDER BY c.created_at DESC LIMIT 200`, id, me)
+		ORDER BY c.created_at DESC LIMIT 200`
+	prefix := ""
+	if id < 0 {
+		q, prefix = `
+		SELECT c.id, o.id, o.first_name, o.gender, o.look, COALESCE(u.username, ''), c.body, c.created_at, 0, false
+		FROM tiki_npc_comments c JOIN sims o ON o.id = c.sim JOIN users u ON u.id = o.user_id
+		WHERE c.post = $1
+			AND NOT EXISTS(SELECT 1 FROM blocks k WHERE (k.sim = $2 AND k.blocked = c.sim) OR (k.sim = c.sim AND k.blocked = $2))
+		ORDER BY c.created_at DESC LIMIT 200`, "n"
+	}
+	rows, err := h.DB.Query(r.Context(), q, id, me)
 	if err != nil {
 		h.gbairaiFail(w, err)
 		return
@@ -144,7 +164,7 @@ func (h *Handler) tikiComments(w http.ResponseWriter, r *http.Request) {
 			h.gbairaiFail(w, err)
 			return
 		}
-		c.ID, c.Author, c.Name, c.Handle = strconv.FormatInt(cid, 10), &a, a.FirstName, tikiHandle(username, a.FirstName)
+		c.ID, c.Author, c.Name, c.Handle = prefix+strconv.FormatInt(cid, 10), &a, a.FirstName, tikiHandle(username, a.FirstName)
 		c.Mine, c.ByCreator = a.ID == me, a.ID == owner
 		c.CanDelete = c.Mine || owner == me
 		out = append(out, c)
@@ -180,17 +200,22 @@ func (h *Handler) tikiComment(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	var lately int
-	_ = h.DB.QueryRow(ctx, `SELECT count(*) FROM tiki_comments WHERE sim = $1 AND created_at > now() - interval '1 hour'`, me).Scan(&lately)
+	_ = h.DB.QueryRow(ctx, `SELECT (SELECT count(*) FROM tiki_comments WHERE sim = $1 AND created_at > now() - interval '1 hour')
+		+ (SELECT count(*) FROM tiki_npc_comments WHERE sim = $1 AND created_at > now() - interval '1 hour')`, me).Scan(&lately)
 	if lately >= TikiCommentsPerHour {
 		httpx.Error(w, http.StatusTooManyRequests, errTikiTooChatty.Error())
 		return
 	}
 	var cid int64
-	if err := h.DB.QueryRow(ctx, `INSERT INTO tiki_comments (post, sim, body) VALUES ($1, $2, $3) RETURNING id`, id, me, body).Scan(&cid); err != nil {
+	table, prefix := "tiki_comments", ""
+	if id < 0 {
+		table, prefix = "tiki_npc_comments", "n"
+	}
+	if err := h.DB.QueryRow(ctx, `INSERT INTO `+table+` (post, sim, body) VALUES ($1, $2, $3) RETURNING id`, id, me, body).Scan(&cid); err != nil {
 		h.gbairaiFail(w, err)
 		return
 	}
-	httpx.JSON(w, http.StatusOK, map[string]any{"id": strconv.FormatInt(cid, 10), "body": body})
+	httpx.JSON(w, http.StatusOK, map[string]any{"id": prefix + strconv.FormatInt(cid, 10), "body": body})
 }
 
 // tikiUncomment: one's own comment, or any comment under one's own video.
@@ -198,6 +223,16 @@ func (h *Handler) tikiUncomment(w http.ResponseWriter, r *http.Request) {
 	me, err := h.appSim(r, "tikitoko")
 	if err != nil {
 		h.gbairaiFail(w, err)
+		return
+	}
+	if raw, ok := strings.CutPrefix(chi.URLParam(r, "comment"), "n"); ok {
+		// On a game creator's post: one's own only (the creator isn't a player).
+		cid, _ := strconv.ParseInt(raw, 10, 64)
+		if _, err := h.DB.Exec(r.Context(), `DELETE FROM tiki_npc_comments WHERE id = $1 AND sim = $2`, cid, me); err != nil {
+			h.gbairaiFail(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 	cid, _ := strconv.ParseInt(chi.URLParam(r, "comment"), 10, 64)
@@ -250,6 +285,22 @@ func (h *Handler) tikiCommentReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
+	if raw, ok := strings.CutPrefix(chi.URLParam(r, "comment"), "n"); ok {
+		// Under a game creator's post: the comment has no row in tiki_comments, the report keeps its words.
+		cid, _ := strconv.ParseInt(raw, 10, 64)
+		var author, body string
+		if err := h.DB.QueryRow(ctx, `SELECT sim, body FROM tiki_npc_comments WHERE id = $1`, cid).Scan(&author, &body); err != nil || author == me {
+			httpx.Error(w, http.StatusNotFound, errNoComment.Error())
+			return
+		}
+		if _, err := h.DB.Exec(ctx, `INSERT INTO reports (reporter, reported, excerpt, reason) VALUES ($1, $2, $3, $4)`, me, author, body, req.Reason); err != nil {
+			h.gbairaiFail(w, err)
+			return
+		}
+		_, _ = h.DB.Exec(ctx, `INSERT INTO blocks (sim, blocked) VALUES ($1, $2) ON CONFLICT DO NOTHING`, me, author)
+		httpx.JSON(w, http.StatusOK, map[string]string{"text": "Merci. C'est signalé : on va regarder. Tu ne verras plus ce joueur."})
+		return
+	}
 	cid, _ := strconv.ParseInt(chi.URLParam(r, "comment"), 10, 64)
 	var author, body string
 	var post int64
@@ -284,7 +335,9 @@ func (h *Handler) tikiSave(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusNotFound, err.Error())
 		return
 	}
-	if req.Saved {
+	if id < 0 {
+		err = h.npcMark(r, me, id, "save", req.Saved)
+	} else if req.Saved {
 		_, err = h.DB.Exec(r.Context(), `INSERT INTO tiki_saves (post, sim) VALUES ($1, $2) ON CONFLICT DO NOTHING`, id, me)
 	} else {
 		_, err = h.DB.Exec(r.Context(), `DELETE FROM tiki_saves WHERE post = $1 AND sim = $2`, id, me)
@@ -308,7 +361,9 @@ func (h *Handler) tikiShare(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusNotFound, err.Error())
 		return
 	}
-	_, _ = h.DB.Exec(r.Context(), `UPDATE tiki_posts SET shares = shares + 1 WHERE id = $1`, id)
+	if id > 0 {
+		_, _ = h.DB.Exec(r.Context(), `UPDATE tiki_posts SET shares = shares + 1 WHERE id = $1`, id)
+	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -323,6 +378,8 @@ type TikiProfile struct {
 	Posts     int         `json:"posts"`
 	Followed  bool        `json:"followed"`
 	Mine      bool        `json:"mine"`
+	// A game creator (tikinpc.go): the seed of their look.
+	NPC *TikiNPC `json:"npc,omitempty"`
 }
 
 func (h *Handler) tikiProfile(w http.ResponseWriter, r *http.Request) {
@@ -332,6 +389,15 @@ func (h *Handler) tikiProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	other := chi.URLParam(r, "other")
+	if strings.HasPrefix(other, "npc-") {
+		p, ok := npcProfile(other, time.Now())
+		if !ok {
+			httpx.Error(w, http.StatusNotFound, "créateur introuvable")
+			return
+		}
+		httpx.JSON(w, http.StatusOK, p)
+		return
+	}
 	var p TikiProfile
 	var username string
 	var likes, players int
@@ -353,4 +419,17 @@ func (h *Handler) tikiProfile(w http.ResponseWriter, r *http.Request) {
 	}
 	p.Handle, p.Tier, p.Likes, p.Mine = tikiHandle(username, p.Author.FirstName), tikiTier(p.Fans), likes+players, p.Author.ID == me
 	httpx.JSON(w, http.StatusOK, p)
+}
+
+// npcMark: a like or a favourite on a game creator's post (or taken back).
+func (h *Handler) npcMark(r *http.Request, me string, id int64, kind string, on bool) error {
+	if _, ok := npcPost(id, time.Now()); !ok {
+		return errNoPost
+	}
+	if on {
+		_, err := h.DB.Exec(r.Context(), `INSERT INTO tiki_npc_marks (post, sim, kind) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`, id, me, kind)
+		return err
+	}
+	_, err := h.DB.Exec(r.Context(), `DELETE FROM tiki_npc_marks WHERE post = $1 AND sim = $2 AND kind = $3`, id, me, kind)
+	return err
 }

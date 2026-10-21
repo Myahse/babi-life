@@ -283,6 +283,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Get("/sims/{id}/tiki/me", h.tikiMe)
 	r.Post("/sims/{id}/tiki", h.tikiPost)
 	r.Get("/sims/{id}/tiki/{post}/photo", h.tikiPhoto)
+	r.Get("/sims/{id}/tiki/{post}/video", h.tikiVideo)
 	r.Post("/sims/{id}/tiki/{post}/like", h.tikiLike)
 	r.Post("/sims/{id}/tiki/{post}/report", h.tikiReport)
 	r.Delete("/sims/{id}/tiki/{post}", h.tikiDelete)

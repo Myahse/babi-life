@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -64,14 +65,14 @@ func tikiTier(fans int) string {
 }
 
 const (
-	TikiMinutes  = 30 // filming and editing
-	TikiPerDay   = 10 // posts a real day, at most
-	TikiDealFrom = 1000
+	TikiPerDay     = 20 // posts a real day, at most
+	TikiPaidPerDay = 10 // of which the brands pay
+	TikiDealFrom   = 1000
 )
 
 var (
 	errTikiTheme   = errors.New("choisis ce que tu filmes")
-	errTikiTooMany = errors.New("10 vidéos aujourd'hui, c'est assez : reviens demain")
+	errTikiTooMany = errors.New("20 vidéos aujourd'hui, c'est assez : reviens demain")
 	errNoPost      = errors.New("vidéo introuvable")
 )
 
@@ -118,25 +119,16 @@ func tikiRand(parts ...string) *rand.Rand {
 	return rand.New(rand.NewPCG(f.Sum64(), uint64(time.Now().UnixNano())))
 }
 
-// tikiPost: film and post. It's an activity of half an hour.
+// tikiPost: film and post. The clip is recorded in real time on the phone
+// (its own few seconds): posting is immediate, no half hour of the Sim's day.
 func (h *Handler) tikiPost(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Photo   string `json:"photo"`
-		Caption string `json:"caption"`
-		Theme   string `json:"theme"`
-		PlaceID string `json:"placeId"`
-		// A photo of the phone's gallery (photos.go), instead of Photo.
-		PhotoID int64 `json:"photoId"`
-	}
-	if err := httpx.Decode(r, &req); err != nil {
-		httpx.Error(w, http.StatusBadRequest, "requête invalide")
+	req, err := readTikiInput(w, r)
+	if err != nil {
+		httpx.Error(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	var (
-		raw  []byte
-		mime string
-		err  error
-	)
+	var raw []byte
+	var mime string
 	if req.PhotoID > 0 {
 		var sim string
 		if sim, err = h.phoneSim(r); err == nil {
@@ -164,14 +156,34 @@ func (h *Handler) tikiPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
+	// The player's own Sim and the day's cap before the clip goes to the
+	// bucket, so a refused post leaves no file behind.
+	owner, err := h.phoneSim(r)
+	if err != nil {
+		h.photoFail(w, err)
+		return
+	}
+	var today int
+	_ = h.DB.QueryRow(ctx, `SELECT count(*) FROM tiki_posts WHERE sim = $1 AND created_at > now() - interval '24 hours'`, owner).Scan(&today)
+	if today >= TikiPerDay {
+		httpx.Error(w, http.StatusUnprocessableEntity, errTikiTooMany.Error())
+		return
+	}
+	key, video := h.storeTikiVideo(r, owner, req)
 	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
-		if err := needApp(s, "tikitoko"); err != nil {
+		fail := func(err error) (game.Outcome, []Event, error) {
+			if key != "" {
+				_ = h.bucketDelete(ctx, key)
+			}
 			return game.Outcome{}, nil, err
+		}
+		if err := needApp(s, "tikitoko"); err != nil {
+			return fail(err)
 		}
 		var today int
 		_ = tx.QueryRow(ctx, `SELECT count(*) FROM tiki_posts WHERE sim = $1 AND created_at > now() - interval '24 hours'`, s.ID).Scan(&today)
 		if today >= TikiPerDay {
-			return game.Outcome{}, nil, errTikiTooMany
+			return fail(errTikiTooMany)
 		}
 		// Where it's filmed: a place of the Sim's commune (the app sends the nearest).
 		kind, placeName := "", "Dans la rue"
@@ -180,20 +192,25 @@ func (h *Handler) tikiPost(w http.ResponseWriter, r *http.Request) {
 		}
 		var fans int
 		if err := tx.QueryRow(ctx, `SELECT tiki_fans FROM sims WHERE id = $1`, s.ID).Scan(&fans); err != nil {
-			return game.Outcome{}, nil, err
+			return fail(err)
 		}
 		views, likes, newFans, pay := tikiAudience(fans, th, kind, s.Traits, tikiRand(s.ID, th.ID))
-		it := game.Interaction{ID: "tiki-" + th.ID, Label: "Tourner une vidéo Tikitoko : " + th.Label, Icon: "camera", Minutes: TikiMinutes, Cost: -pay, Effect: game.Needs{Fun: 12, Social: 6, Energy: -6}}
-		if err := s.start(it, "tikitoko", "tikitoko", placeName, nil, ""); err != nil {
-			return game.Outcome{}, nil, err
+		// Posting is quick now: the brands pay the first videos of the day
+		// only, so twenty quick posts don't pay twice what ten slow ones did.
+		if today >= TikiPaidPerDay {
+			pay = 0
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO tiki_posts (sim, image, mime, caption, theme, place, views, likes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-			s.ID, raw, mime, caption, th.ID, placeName, views, likes); err != nil {
-			return game.Outcome{}, nil, err
+		if _, err := tx.Exec(ctx, `INSERT INTO tiki_posts (sim, image, mime, caption, theme, place, views, likes, video_key, video, video_mime, duration_ms, sound)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+			s.ID, raw, mime, caption, th.ID, placeName, views, likes, key, video, req.VideoMime, req.DurationMs, req.Sound); err != nil {
+			return fail(err)
 		}
 		if _, err := tx.Exec(ctx, `UPDATE sims SET tiki_fans = tiki_fans + $2 WHERE id = $1`, s.ID, newFans); err != nil {
-			return game.Outcome{}, nil, err
+			return fail(err)
 		}
+		// A little fun and company at once, instead of the half hour's.
+		s.Needs = s.Needs.Add(game.Needs{Fun: 4, Social: 2})
+		s.Money += pay
 		text := fmt.Sprintf("Vidéo postée sur Tikitoko : %s. Elle va faire environ %s vues, +%d fans.", th.Label, compact(views), newFans)
 		events := []Event{{Kind: "social", Text: text, GameTime: s.GameMinutes}}
 		if pay > 0 {
@@ -239,6 +256,14 @@ type TikiPost struct {
 	Saved    bool        `json:"saved"`
 	Shares   int         `json:"shares"`
 	At       time.Time   `json:"at"`
+	// The clip (none on the old photo posts): Video is the bucket's public
+	// address, else the app fetches …/video with its token.
+	HasVideo   bool   `json:"hasVideo"`
+	Video      string `json:"video,omitempty"`
+	DurationMs int    `json:"durationMs"`
+	Sound      string `json:"sound"`
+	// A game creator's post (tikinpc.go), played live from these seeds.
+	NPC *TikiNPC `json:"npc,omitempty"`
 }
 
 // The game's audience comes over six hours, not at once.
@@ -248,7 +273,8 @@ func grown(n int, at, now time.Time) int {
 }
 
 // tikiFeed: ?tab=pour-toi (every player's videos, the liked and fresh ones
-// first, as TikTok ranks them), abonnements (the creators one follows),
+// first, as TikTok ranks them, with the game's creators in between),
+// abonnements (the creators one follows),
 // favoris (the videos one saved), auteur&author= (one creator's videos).
 func (h *Handler) tikiFeed(w http.ResponseWriter, r *http.Request) {
 	me, err := h.appSim(r, "tikitoko")
@@ -263,6 +289,14 @@ func (h *Handler) tikiFeed(w http.ResponseWriter, r *http.Request) {
 		tab = "pour-toi"
 	}
 	ctx := r.Context()
+	now := time.Now()
+	// A game creator's page: their posts only, nothing in the database.
+	if tab == "auteur" && strings.HasPrefix(author, "npc-") {
+		ps := npcPosts(now, strings.TrimPrefix(author, "npc-"))
+		h.npcStats(ctx, me, ps)
+		httpx.JSON(w, http.StatusOK, ps)
+		return
+	}
 	rows, err := h.DB.Query(ctx, `
 		SELECT p.id, o.id, o.first_name, o.gender, o.look, COALESCE(u.username, ''),
 			o.tiki_fans + (SELECT count(*) FROM tiki_follows f WHERE f.followed = o.id),
@@ -272,7 +306,7 @@ func (h *Handler) tikiFeed(w http.ResponseWriter, r *http.Request) {
 			(SELECT count(*) FROM tiki_comments c WHERE c.post = p.id),
 			(SELECT count(*) FROM tiki_saves v WHERE v.post = p.id),
 			EXISTS(SELECT 1 FROM tiki_saves v WHERE v.post = p.id AND v.sim = $1),
-			p.shares, p.created_at
+			p.shares, p.created_at, p.video_key, p.video_mime <> '', p.duration_ms, p.sound
 		FROM tiki_posts p JOIN sims o ON o.id = p.sim JOIN users u ON u.id = o.user_id
 		WHERE NOT EXISTS(SELECT 1 FROM blocks k WHERE (k.sim = $1 AND k.blocked = p.sim) OR (k.sim = p.sim AND k.blocked = $1))
 			AND CASE $2::text
@@ -290,13 +324,14 @@ func (h *Handler) tikiFeed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer rows.Close()
-	now := time.Now()
 	out := []TikiPost{}
 	for rows.Next() {
 		var p TikiPost
 		var players int
+		var key string
 		if err := rows.Scan(&p.ID, &p.Author.ID, &p.Author.FirstName, &p.Author.Gender, &p.Author.Look, &p.Handle, &p.Fans, &p.Followed,
-			&p.Caption, &p.Theme, &p.Place, &p.Views, &p.Likes, &players, &p.Liked, &p.Comments, &p.Saves, &p.Saved, &p.Shares, &p.At); err != nil {
+			&p.Caption, &p.Theme, &p.Place, &p.Views, &p.Likes, &players, &p.Liked, &p.Comments, &p.Saves, &p.Saved, &p.Shares, &p.At,
+			&key, &p.HasVideo, &p.DurationMs, &p.Sound); err != nil {
 			h.gbairaiFail(w, err)
 			return
 		}
@@ -308,7 +343,26 @@ func (h *Handler) tikiFeed(w http.ResponseWriter, r *http.Request) {
 		p.Comments += npcComments(p.Views)
 		p.Saves += p.Likes / 25
 		p.Shares += p.Likes / 40
+		if p.HasVideo {
+			p.Video = h.tikiVideoURL(key)
+		}
 		out = append(out, p)
+	}
+	if err := rows.Err(); err != nil {
+		h.gbairaiFail(w, err)
+		return
+	}
+	rows.Close()
+	switch tab {
+	case "pour-toi":
+		npc := npcPosts(now, "")
+		h.npcStats(ctx, me, npc)
+		npcRank(npc, now)
+		out = interleave(out, npc)
+	case "favoris":
+		npc := h.npcSaved(ctx, me, now)
+		h.npcStats(ctx, me, npc)
+		out = append(out, npc...)
 	}
 	httpx.JSON(w, http.StatusOK, out)
 }
@@ -374,7 +428,9 @@ func (h *Handler) tikiLike(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id, _ := strconv.ParseInt(chi.URLParam(r, "post"), 10, 64)
-	if req.Liked {
+	if id < 0 {
+		err = h.npcMark(r, me, id, "like", req.Liked)
+	} else if req.Liked {
 		_, err = h.DB.Exec(r.Context(), `INSERT INTO tiki_likes (post, sim) SELECT id, $2 FROM tiki_posts WHERE id = $1 AND sim <> $2 ON CONFLICT DO NOTHING`, id, me)
 	} else {
 		_, err = h.DB.Exec(r.Context(), `DELETE FROM tiki_likes WHERE post = $1 AND sim = $2`, id, me)
@@ -423,9 +479,14 @@ func (h *Handler) tikiDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id, _ := strconv.ParseInt(chi.URLParam(r, "post"), 10, 64)
-	if _, err := h.DB.Exec(r.Context(), `DELETE FROM tiki_posts WHERE id = $1 AND sim = $2`, id, me); err != nil {
+	var key string
+	err = h.DB.QueryRow(r.Context(), `DELETE FROM tiki_posts WHERE id = $1 AND sim = $2 RETURNING video_key`, id, me).Scan(&key)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		h.gbairaiFail(w, err)
 		return
+	}
+	if key != "" {
+		_ = h.bucketDelete(r.Context(), key)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -446,6 +507,11 @@ func (h *Handler) tikiReport(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	id, _ := strconv.ParseInt(chi.URLParam(r, "post"), 10, 64)
+	// The game's own videos: nobody to report, the app just hides it.
+	if _, ok := npcPost(id, time.Now()); ok {
+		httpx.JSON(w, http.StatusOK, map[string]string{"text": "Merci. On te montrera moins de vidéos comme celle-ci."})
+		return
+	}
 	var owner, caption string
 	if err := h.DB.QueryRow(ctx, `SELECT sim, caption FROM tiki_posts WHERE id = $1`, id).Scan(&owner, &caption); err != nil || owner == me {
 		httpx.Error(w, http.StatusNotFound, errNoPost.Error())

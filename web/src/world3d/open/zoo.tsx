@@ -69,7 +69,7 @@ function B({ p, s, c, r }: { p: [number, number, number]; s: [number, number, nu
 
 const ELEPHANT = '#8b8682'
 /** The elephant, facing +x: its trunk swings, its ears fan. */
-function Elephant({ phase = 0 }: { phase?: number }) {
+export function Elephant({ phase = 0 }: { phase?: number }) {
   const trunkRef = useRef<THREE.Group>(null)
   const ears = useRef<(THREE.Group | null)[]>([])
   const tail = useRef<THREE.Group>(null)

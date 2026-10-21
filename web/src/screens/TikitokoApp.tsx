@@ -1,15 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
-import { Bookmark, Camera, ChevronLeft, Flag, Grid3x3, Heart, Home as HomeIcon, Inbox, MessageCircle, Music2, Play, Plus, Send, Share2, Sparkles, Trash2, User, Users, X } from 'lucide-react'
-import { api, ApiError } from '../lib/api'
-import type { Chat, Sim, TikiComment, TikiMe, TikiPost, TikiProfile } from '../lib/types'
+import { Bookmark, Camera, ChevronLeft, Flag, Grid3x3, Heart, Home as HomeIcon, Inbox, MessageCircle, Music2, Play, Plus, RotateCcw, Send, Share2, Sparkles, Timer, Trash2, User, Users, VolumeX, X } from 'lucide-react'
+import { api, ApiError, photoURL } from '../lib/api'
+import type { Chat, Sim, TikiComment, TikiMe, TikiNPC, TikiPost, TikiProfile } from '../lib/types'
+import type { Pose } from '../avatar/Human'
 import { Portrait } from '../avatar/portrait'
 import { Photo, ReportSheet } from '../components/Social'
 import { placeHere, takePhoto } from '../world3d/snapshot'
+import { setPhotoMode } from '../world3d/photoCam'
+import { playEmote, stopEmote } from '../world3d/emoteNow'
+import { canRecord, CLIP_MAX_MS, ClipCam, type Clip } from '../world3d/clip'
+import { playSound, soundOf, SOUNDS, tikiAudio, wakeAudio } from '../lib/tikiSounds'
+import { npcLook, SceneCard, TikiScene } from './TikiScene'
 import type { Act } from './phoneApps'
-import { actionLength } from '../game/rules'
-
-/** Filming and editing, in game minutes (sims.TikiMinutes); the button says it in real ones. */
-const TIKI_MINUTES = 30
 
 /**
  * Tikitoko (backend sims/tikitoko.go, tikisocial.go) works like TikTok: a
@@ -17,8 +19,11 @@ const TIKI_MINUTES = 30
  * and freshness, or « Abonnements »), double tap to like, the rail on the
  * right (the creator, likes, comments, favourites, shares), comments in a
  * sheet, every creator's profile with its grid, an inbox, and « + » to film.
- * The videos are pictures from the game, played as a slow pan. Fans come with
- * the views; from 1 000 fans the brands pay for each video.
+ * The videos are short clips recorded from the game with a sound (world3d/
+ * clip.ts, lib/tikiSounds.ts), posted at once; the old ones, pictures played
+ * as a slow pan. The game's own creators fill the feed between the players'
+ * posts, their videos played live as small 3D scenes (TikiScene.tsx). Fans
+ * come with the views; from 1 000 fans the brands pay for each video.
  */
 
 type Screen = { kind: 'home' } | { kind: 'friends' } | { kind: 'inbox' } | { kind: 'film' } | { kind: 'profile'; id: string } | { kind: 'player'; posts: TikiPost[]; start: number; back: Screen }
@@ -30,7 +35,7 @@ const ago = (at: string) => {
 }
 const THEME: Record<string, string> = { danse: 'danse', garba: 'garba', stade: 'stade', vlog: 'vlog', zoo: 'zoo', humour: 'humour', mode: 'look', sport: 'sport' }
 
-export function TikitokoApp({ sim, act, onClose, photo }: { sim: Sim; act: Act; onClose: () => void; /** A photo of the gallery to post (it opens on « + »). */ photo?: { id: number; src: string } }) {
+export function TikitokoApp({ sim, act, onClose, photo, street = true }: { sim: Sim; act: Act; onClose: () => void; /** A photo of the gallery to post (it opens on « + »). */ photo?: { id: number; src: string }; /** Out in the street (else in a room): what « + » films. */ street?: boolean }) {
   const [screen, setScreen] = useState<Screen>({ kind: photo ? 'film' : 'home' })
   const [me, setMe] = useState<TikiMe | null>(null)
   const refreshMe = () => void api.tikiMe(sim.id).then(setMe).catch(() => undefined)
@@ -48,13 +53,13 @@ export function TikitokoApp({ sim, act, onClose, photo }: { sim: Sim; act: Act; 
           {screen.kind === 'player' && <Feed sim={sim} source={{ posts: screen.posts, start: screen.start }} nav={nav} onBack={() => nav(screen.back)} />}
           {screen.kind === 'profile' && <Profile sim={sim} id={screen.id} me={me} nav={nav} onBack={() => nav({ kind: 'home' })} />}
           {screen.kind === 'inbox' && <InboxScreen sim={sim} me={me} nav={nav} />}
-          {screen.kind === 'film' && me && <Film sim={sim} me={me} act={act} gallery={photo} onClose={() => nav({ kind: 'home' })} onPosted={() => (refreshMe(), nav({ kind: 'profile', id: sim.id }))} />}
+          {screen.kind === 'film' && me && <Film sim={sim} me={me} act={act} street={street} gallery={photo} onClose={() => nav({ kind: 'home' })} onPosted={() => (refreshMe(), nav({ kind: 'profile', id: sim.id }))} />}
         </div>
         {screen.kind !== 'film' && screen.kind !== 'player' && (
           <nav className="flex h-14 shrink-0 items-center justify-around border-t border-white/10 bg-black pb-[env(safe-area-inset-bottom)] text-[10px] font-bold">
             <NavItem icon={HomeIcon} label="Accueil" on={tab === 'home'} onClick={() => nav({ kind: 'home' })} />
             <NavItem icon={Users} label="Amis" on={tab === 'friends'} onClick={() => nav({ kind: 'friends' })} />
-            <button aria-label="Filmer" disabled={!!sim.activity || !me} onClick={() => nav({ kind: 'film' })} className="relative h-8 w-12 disabled:opacity-40">
+            <button aria-label="Filmer" disabled={!me} onClick={() => nav({ kind: 'film' })} className="relative h-8 w-12 disabled:opacity-40">
               <span className="absolute inset-y-0 left-0 w-10 rounded-lg bg-[#12c48b]" />
               <span className="absolute inset-y-0 right-0 w-10 rounded-lg bg-[#ff7a00]" />
               <span className="absolute inset-y-0 left-1 grid w-10 place-items-center rounded-lg bg-white text-black">
@@ -113,20 +118,59 @@ function ForYou({ sim, onClose, nav }: { sim: Sim; onClose: () => void; nav: (s:
 
 type Source = { tab: 'pour-toi' | 'abonnements' } | { posts: TikiPost[]; start: number }
 
+/** A game creator's post or page: its look, from its seed (the server sends none). */
+const withLook = <T extends { author: TikiPost['author']; npc?: TikiNPC }>(p: T): T => (p.npc ? { ...p, author: { ...p.author, look: npcLook(p.author.gender, p.npc.look) } } : p)
+
+/**
+ * The clips' sources, the next ones fetched ahead (prefetch): the bucket's
+ * public address, else the file fetched with the token as an object URL (a
+ * few kept, the oldest let go).
+ */
+const clips = new Map<number, Promise<string>>()
+function clipSrc(simId: string, p: TikiPost): Promise<string> {
+  if (p.video) return Promise.resolve(p.video)
+  let pr = clips.get(p.id)
+  if (!pr) {
+    pr = photoURL(api.tikiVideo(simId, p.id))
+    clips.set(p.id, pr)
+    pr.catch(() => clips.delete(p.id))
+    if (clips.size > 6) {
+      const [old, gone] = clips.entries().next().value!
+      clips.delete(old)
+      void gone.then((u) => URL.revokeObjectURL(u)).catch(() => undefined)
+    }
+  }
+  return pr
+}
+function useClipSrc(simId: string, p: TikiPost, load: boolean) {
+  const [src, setSrc] = useState<string | null>(p.video ?? null)
+  useEffect(() => {
+    if (!load || !p.hasVideo) return
+    let live = true
+    clipSrc(simId, p)
+      .then((u) => live && setSrc(u))
+      .catch(() => undefined)
+    return () => void (live = false)
+  }, [simId, p.id, load]) // eslint-disable-line react-hooks/exhaustive-deps
+  return load ? src : null
+}
+
 function Feed({ sim, source, title, empty, nav, onBack }: { sim: Sim; source: Source; title?: string; empty?: string; nav: (s: Screen) => void; onBack?: () => void }) {
   const given = 'posts' in source
-  const [posts, setPosts] = useState<TikiPost[] | null>(given ? source.posts : null)
+  const [posts, setPosts] = useState<TikiPost[] | null>(given ? source.posts.map(withLook) : null)
   const [error, setError] = useState<string | null>(null)
   const [current, setCurrent] = useState(given ? source.start : 0)
   const [comments, setComments] = useState<TikiPost | null>(null)
   const [sharing, setSharing] = useState<TikiPost | null>(null)
+  // As on TikTok: the feed starts muted (browsers only autoplay that way), the first tap brings the sound.
+  const [soundOn, setSoundOn] = useState(false)
   const box = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (given) return
     api
       .tikiFeed(sim.id, source.tab)
-      .then((f) => (setPosts(f), setError(null)))
+      .then((f) => (setPosts(f.map(withLook)), setError(null)))
       .catch((e) => setError(e instanceof ApiError ? e.message : 'Pas de réseau'))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sim.id])
@@ -155,11 +199,26 @@ function Feed({ sim, source, title, empty, nav, onBack }: { sim: Sim; source: So
     <div className="absolute inset-0">
       <div
         ref={box}
-        className="h-full snap-y snap-mandatory overflow-y-scroll [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        // overscroll-contain: a swipe past the first or last video doesn't drag the page (or reload it on mobile).
+        className="h-full snap-y snap-mandatory overflow-y-scroll overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         onScroll={(e) => setCurrent(Math.round(e.currentTarget.scrollTop / e.currentTarget.clientHeight))}
       >
         {posts?.map((p, i) => (
-          <Video key={p.id} sim={sim} post={p} active={i === current} onLike={(on) => like(p, on)} onFollow={() => follow(p)} onSave={() => save(p)} onComments={() => setComments(p)} onShare={() => setSharing(p)} onProfile={() => nav({ kind: 'profile', id: p.author.id })} />
+          <Video
+            key={p.id}
+            sim={sim}
+            post={p}
+            active={i === current}
+            near={Math.abs(i - current) <= 1}
+            soundOn={soundOn}
+            onUnmute={() => (wakeAudio(), setSoundOn(true))}
+            onLike={(on) => like(p, on)}
+            onFollow={() => follow(p)}
+            onSave={() => save(p)}
+            onComments={() => setComments(p)}
+            onShare={() => setSharing(p)}
+            onProfile={() => nav({ kind: 'profile', id: p.author.id })}
+          />
         ))}
         {posts?.length === 0 && <p className="grid h-full place-items-center px-10 text-center text-sm font-bold text-white/60">{empty}</p>}
         {posts === null && !error && <p className="grid h-full place-items-center text-sm font-bold text-white/60">Chargement…</p>}
@@ -180,20 +239,104 @@ function Feed({ sim, source, title, empty, nav, onBack }: { sim: Sim; source: So
           post={sharing}
           onClose={() => setSharing(null)}
           onShared={() => patch(sharing.id, (x) => ({ shares: x.shares + 1 }))}
-          onGone={() => (setPosts((ps) => ps?.filter((x) => x.id !== sharing.id && (sharing.mine || x.author.id !== sharing.author.id)) ?? ps), setSharing(null))}
+          onGone={() => (setPosts((ps) => ps?.filter((x) => x.id !== sharing.id && (sharing.mine || !!sharing.npc || x.author.id !== sharing.author.id)) ?? ps), setSharing(null))}
         />
       )}
     </div>
   )
 }
 
-/** One video: the picture played as a slow pan, tap to pause, double tap to like, the rail and the caption. */
-function Video({ sim, post: p, active, onLike, onFollow, onSave, onComments, onShare, onProfile }: { sim: Sim; post: TikiPost; active: boolean; onLike: (on?: boolean) => void; onFollow: () => void; onSave: () => void; onComments: () => void; onShare: () => void; onProfile: () => void }) {
+/** The sound's line under the caption: a game sound, or the clip's own. */
+const soundLine = (p: TikiPost) => {
+  const s = soundOf(p.sound ?? '')
+  return s.id ? `${s.name} - ${s.artist}` : `son original - @${p.handle}`
+}
+
+type VideoProps = {
+  sim: Sim
+  post: TikiPost
+  /** On screen: it plays. */
+  active: boolean
+  /** On screen or next to it: its clip is fetched (the next one ahead). */
+  near: boolean
+  soundOn: boolean
+  onUnmute: () => void
+  onLike: (on?: boolean) => void
+  onFollow: () => void
+  onSave: () => void
+  onComments: () => void
+  onShare: () => void
+  onProfile: () => void
+}
+
+/**
+ * One video: a recorded clip, a game creator's live scene, or (old posts)
+ * the picture played as a slow pan. Only the one on screen plays, from the
+ * start, in a loop; tap to pause (the first tap brings the sound), double tap
+ * to like; the rail and the caption over it.
+ */
+function Video({ sim, post: p, active, near, soundOn, onUnmute, onLike, onFollow, onSave, onComments, onShare, onProfile }: VideoProps) {
   const [paused, setPaused] = useState(false)
+  // The browser refused this clip's sound (iOS wants a tap for each video): muted until tapped.
+  const [mutedHere, setMutedHere] = useState(false)
   const [hearts, setHearts] = useState<{ id: number; x: number; y: number }[]>([])
   const lastTap = useRef(0)
   const single = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const vid = useRef<HTMLVideoElement>(null)
+  const bar = useRef<HTMLElement>(null)
+  const src = useClipSrc(sim.id, p, near)
+  const moving = !!p.hasVideo || !!p.npc
+  const playing = active && !paused
+  const playingNow = useRef(playing)
+  playingNow.current = playing
   useEffect(() => setPaused(false), [active])
+
+  // The clip plays when on screen and not paused; off screen it's back to the start.
+  useEffect(() => {
+    const v = vid.current
+    if (!v) return
+    v.muted = !soundOn
+    if (playing)
+      void v.play().catch(() => {
+        // Sound refused (no tap yet on this device): muted then, as TikTok does.
+        if (!v.muted) {
+          v.muted = true
+          setMutedHere(true)
+          void v.play().catch(() => undefined)
+        }
+      })
+    else {
+      v.pause()
+      if (!active) v.currentTime = 0
+    }
+  }, [playing, active, soundOn, src])
+
+  // A game creator's video: its sound is played here (a recorded clip carries its own).
+  useEffect(() => {
+    if (!p.npc || !p.sound || !playing || !soundOn) return
+    const ctx = tikiAudio()
+    return ctx ? playSound(ctx, p.sound, [ctx.destination]) : undefined
+  }, [p.npc, p.sound, playing, soundOn])
+
+  // The bar under the video follows the real time (the clip's own, or the scene's loop).
+  useEffect(() => {
+    if (!active || !moving) return
+    const len = p.durationMs || 10000
+    let raf = 0
+    let acc = 0
+    let last = performance.now()
+    const tick = (now: number) => {
+      if (playingNow.current) acc += now - last
+      last = now
+      const v = vid.current
+      // A recorded WebM may not know its duration (Infinity): the post's own length is used.
+      const ms = v && p.hasVideo ? v.currentTime * 1000 : acc
+      if (bar.current) bar.current.style.width = `${((ms % len) / len) * 100}%`
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [active, moving, p.durationMs, p.hasVideo])
 
   const tap = (e: React.MouseEvent<HTMLDivElement>) => {
     const r = e.currentTarget.getBoundingClientRect()
@@ -205,18 +348,46 @@ function Video({ sim, post: p, active, onLike, onFollow, onSave, onComments, onS
       setHearts((hs) => [...hs, h])
       setTimeout(() => setHearts((hs) => hs.filter((x) => x.id !== h.id)), 900)
       onLike(true)
+    } else if (!soundOn || mutedHere) {
+      // The first tap: the sound, right now (in the tap itself, or the browser refuses it).
+      const v = vid.current
+      if (v) {
+        v.muted = false
+        void v.play().catch(() => undefined)
+      }
+      setMutedHere(false)
+      onUnmute()
     } else single.current = setTimeout(() => setPaused((v) => !v), 280)
     lastTap.current = now
   }
-  const run = active && !paused ? 'running' : 'paused'
+  const run = playing ? 'running' : 'paused'
   return (
-    // --run pauses everything that moves in this video (the pan, the disc, the sound's name, the bar)
-    <section className="relative h-full w-full snap-start snap-always overflow-hidden bg-black" style={{ ['--run' as string]: run }}>
+    // --run pauses everything that moves in this video (the pan, the disc, the sound's name, the bar).
+    // No callout or selection on a long press: it's a video, not a page.
+    <section className="relative h-full w-full snap-start snap-always overflow-hidden bg-black select-none [-webkit-touch-callout:none]" style={{ ['--run' as string]: run }} onContextMenu={(e) => e.preventDefault()}>
       <div className="absolute inset-0" onClick={tap}>
-        <Photo path={api.tikiPhoto(sim.id, p.id)} alt={p.caption || 'Vidéo Tikitoko'} className="tiki-pan absolute inset-0 h-full w-full" />
+        {p.npc ? (
+          active ? (
+            <TikiScene theme={p.theme} scene={p.npc.scene} look={p.author.look} gender={p.author.gender} playing={playing} />
+          ) : (
+            <SceneCard theme={p.theme} className="absolute inset-0 h-full w-full" />
+          )
+        ) : p.hasVideo ? (
+          <>
+            <Photo path={api.tikiPhoto(sim.id, p.id)} alt={p.caption || 'Vidéo Tikitoko'} className="absolute inset-0 h-full w-full" />
+            {src && <video ref={vid} src={src} loop playsInline muted preload="auto" disablePictureInPicture className="pointer-events-none absolute inset-0 h-full w-full object-cover" />}
+          </>
+        ) : (
+          <Photo path={api.tikiPhoto(sim.id, p.id)} alt={p.caption || 'Vidéo Tikitoko'} className="tiki-pan absolute inset-0 h-full w-full" />
+        )}
         {paused && (
           <span className="absolute top-1/2 left-1/2 grid h-20 w-20 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-black/30">
             <Play size={44} fill="white" className="opacity-80" />
+          </span>
+        )}
+        {active && (!soundOn || mutedHere) && moving && (
+          <span className="pointer-events-none absolute top-[calc(max(0.75rem,env(safe-area-inset-top))+3.25rem)] left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/45 px-3 py-1.5 text-[12px] font-extrabold">
+            <VolumeX size={15} /> Appuie pour le son
           </span>
         )}
         {hearts.map((h) => (
@@ -231,7 +402,8 @@ function Video({ sim, post: p, active, onLike, onFollow, onSave, onComments, onS
           <button onClick={onProfile} className="block h-12 w-12 overflow-hidden rounded-full border-2 border-white bg-white" aria-label={`Profil de @${p.handle}`}>
             <Portrait look={p.author.look} gender={p.author.gender} framing="head" />
           </button>
-          {!p.mine && !p.followed && (
+          {/* The game's creators aren't players: nobody to follow among the Sims. */}
+          {!p.mine && !p.followed && !p.npc && (
             <button onClick={onFollow} aria-label="Suivre" className="absolute -bottom-2.5 left-1/2 grid h-5 w-5 -translate-x-1/2 place-items-center rounded-full bg-[#ff7a00]">
               <Plus size={14} strokeWidth={3} />
             </button>
@@ -271,15 +443,13 @@ function Video({ sim, post: p, active, onLike, onFollow, onSave, onComments, onS
           <Music2 size={14} className="shrink-0" />
           <span className="overflow-hidden whitespace-nowrap">
             <span className="tiki-marquee inline-block">
-              son original - @{p.handle} · son original - @{p.handle} ·&nbsp;
+              {soundLine(p)} · {soundLine(p)} ·&nbsp;
             </span>
           </span>
         </div>
       </div>
       {/* How far the video has played */}
-      <div className="absolute inset-x-0 bottom-0 h-[2px] bg-white/20">
-        <i key={active ? 'on' : 'off'} className="tiki-progress block h-full bg-white/80" />
-      </div>
+      <div className="absolute inset-x-0 bottom-0 h-[2px] bg-white/20">{moving ? <i ref={bar} className="block h-full w-0 bg-white/80" /> : <i key={active ? 'on' : 'off'} className="tiki-progress block h-full bg-white/80" />}</div>
     </section>
   )
 }
@@ -324,8 +494,9 @@ function Comments({ sim, post, onClose, onCount }: { sim: Sim; post: TikiPost; o
   }
   const like = (c: TikiComment) => {
     setList((l) => l?.map((x) => (x.id === c.id ? { ...x, liked: !c.liked, likes: x.likes + (c.liked ? -1 : 1) } : x)) ?? l)
-    // The audience's comments live in the game only: their hearts stay on this screen.
-    if (c.author) void api.tikiCommentLike(sim.id, c.id, !c.liked).catch(() => undefined)
+    // The audience's comments live in the game only, and the players' under a game creator's video have no
+    // hearts on the server: their hearts stay on this screen.
+    if (c.author && !c.id.startsWith('n')) void api.tikiCommentLike(sim.id, c.id, !c.liked).catch(() => undefined)
   }
   return (
     <Sheet onClose={onClose} title={`${nf(list?.length ?? post.comments)} commentaires`}>
@@ -497,14 +668,14 @@ function Profile({ sim, id, me, nav, onBack }: { sim: Sim; id: string; me: TikiM
   useEffect(() => {
     api
       .tikiProfile(sim.id, id)
-      .then(setP)
+      .then((x) => setP(withLook(x)))
       .catch((e) => setError(e instanceof ApiError ? e.message : 'Pas de réseau'))
   }, [sim.id, id])
   useEffect(() => {
     setPosts(null)
     api
       .tikiFeed(sim.id, tab === 'favoris' ? 'favoris' : 'auteur', id)
-      .then(setPosts)
+      .then((ps) => setPosts(ps.map(withLook)))
       .catch(() => setPosts([]))
   }, [sim.id, id, tab])
   const follow = () => {
@@ -544,11 +715,11 @@ function Profile({ sim, id, me, nav, onBack }: { sim: Sim; id: string; me: TikiM
           </div>
           {p.mine ? (
             <div className="mt-4 flex w-full max-w-xs gap-2">
-              <button className="flex-1 rounded-md bg-white/15 py-2 text-sm font-extrabold" disabled={!!sim.activity || !me} onClick={() => nav({ kind: 'film' })}>
+              <button className="flex-1 rounded-md bg-white/15 py-2 text-sm font-extrabold" disabled={!me} onClick={() => nav({ kind: 'film' })}>
                 <Camera size={15} className="mr-1 inline" /> Filmer
               </button>
             </div>
-          ) : (
+          ) : p.npc ? null : (
             <button onClick={follow} className={`mt-4 w-40 rounded-md py-2 text-sm font-extrabold ${p.followed ? 'bg-white/15' : 'bg-[#ff7a00]'}`}>
               {p.followed ? 'Abonné·e' : 'Suivre'}
             </button>
@@ -579,7 +750,7 @@ function Profile({ sim, id, me, nav, onBack }: { sim: Sim; id: string; me: TikiM
       <div className="grid grid-cols-3 gap-[2px]">
         {posts?.map((x, i) => (
           <button key={x.id} className="relative aspect-[9/16] overflow-hidden bg-[#111]" onClick={() => nav({ kind: 'player', posts, start: i, back: { kind: 'profile', id } })}>
-            <Photo path={api.tikiPhoto(sim.id, x.id)} alt={x.caption || 'Vidéo'} className="absolute inset-0 h-full w-full" />
+            {x.npc ? <SceneCard theme={x.theme} className="absolute inset-0 h-full w-full" /> : <Photo path={api.tikiPhoto(sim.id, x.id)} alt={x.caption || 'Vidéo'} className="absolute inset-0 h-full w-full" />}
             <span className="absolute bottom-1 left-1 flex items-center gap-0.5 text-[11px] font-extrabold [text-shadow:0_1px_2px_rgba(0,0,0,0.8)]">
               <Play size={11} fill="white" /> {nf(x.views)}
             </span>
@@ -642,8 +813,249 @@ function InboxScreen({ sim, me, nav }: { sim: Sim; me: TikiMe | null; nav: (s: S
 
 /* ---------- « + »: filming ---------- */
 
-/** What it's about, the picture from the game, a caption; half an hour of the Sim's time. */
-function Film({ sim, me, act, gallery, onClose, onPosted }: { sim: Sim; me: TikiMe; act: Act; gallery?: { id: number; src: string }; onClose: () => void; onPosted: () => void }) {
+/** The moves the Sim can do while filmed (poses of avatar/Human.tsx, emotes among them). */
+const MOVES: [Pose, string][] = [
+  ['dance', 'Danse'],
+  ['zouglou', 'Zouglou'],
+  ['gweta', 'Gweta'],
+  ['robot', 'Robot'],
+  ['moonwalk', 'Moonwalk'],
+  ['dab', 'Dab'],
+  ['cheer', 'Ambiance'],
+  ['laugh', 'Fou rire'],
+  ['wave', 'Coucou'],
+  ['flex', 'Muscles'],
+  ['talk', 'Blabla'],
+]
+const LENGTHS = [5, 10, 15]
+/** Under this, a press is a tap (records the chosen length); longer, a hold (records until let go). */
+const HOLD_MS = 450
+
+type FilmProps = { sim: Sim; me: TikiMe; act: Act; street: boolean; gallery?: { id: number; src: string }; onClose: () => void; onPosted: () => void }
+
+/** A clip recorded from the game when the browser can; a photo of the gallery, or where it can't, as before. */
+function Film(props: FilmProps) {
+  return props.gallery || !canRecord() ? <PhotoFilm {...props} /> : <ClipFilm {...props} />
+}
+
+/**
+ * Filming like TikTok: the game seen upright round the Sim, a sound and a
+ * move to pick, a length (5, 10, 15 s); tap the button to record that long,
+ * or hold it and let go. The Sim does the move while it's filmed; the clip
+ * is played back, then posted at once with its theme and caption.
+ */
+function ClipFilm({ sim, me, act, street, onClose, onPosted }: FilmProps) {
+  const view = useRef<HTMLDivElement>(null)
+  const cam = useRef<ClipCam | null>(null)
+  const [length, setLength] = useState(10)
+  const [sound, setSound] = useState('decale')
+  const [move, setMove] = useState<Pose>('dance')
+  const [picking, setPicking] = useState<'son' | 'move' | null>(null)
+  const [recording, setRecording] = useState(false)
+  const [clip, setClip] = useState<(Clip & { url: string }) | null>(null)
+  const [theme, setTheme] = useState(me.themes[0]?.id ?? 'danse')
+  const [caption, setCaption] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [note, setNote] = useState<string | null>(null)
+  const rec = useRef<{ stop: () => Promise<Clip>; began: number; timer: ReturnType<typeof setTimeout> } | null>(null)
+  const held = useRef(false)
+  const ring = useRef<SVGCircleElement>(null)
+  const preview = useRef<(() => void) | null>(null)
+
+  const stopPreview = () => {
+    preview.current?.()
+    preview.current = null
+  }
+  useEffect(() => {
+    const c = new ClipCam(street)
+    cam.current = c
+    c.canvas.className = 'h-full w-full object-cover'
+    view.current?.appendChild(c.canvas)
+    // In the street the phone stands a few steps ahead, the whole Sim in view; in a room, the room as it's seen.
+    if (street) setPhotoMode('film')
+    const check = setTimeout(() => !c.ready && setNote('Rien à filmer ici : sors dans la rue ou entre quelque part.'), 2000)
+    return () => {
+      clearTimeout(check)
+      if (rec.current) clearTimeout(rec.current.timer)
+      void rec.current?.stop()
+      c.close()
+      c.canvas.remove()
+      if (street) setPhotoMode(null)
+      stopEmote()
+      stopPreview()
+    }
+  }, [street])
+  useEffect(() => () => void (clip && URL.revokeObjectURL(clip.url)), [clip])
+
+  // The ring round the button: how much of the clip is recorded.
+  useEffect(() => {
+    if (!recording) return
+    let raf = 0
+    const tick = () => {
+      const r = rec.current
+      if (r && ring.current) {
+        const k = Math.min(1, (performance.now() - r.began) / (held.current ? CLIP_MAX_MS : length * 1000))
+        ring.current.style.strokeDashoffset = String(276 * (1 - k))
+      }
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [recording, length])
+
+  const finish = async () => {
+    const r = rec.current
+    if (!r) return
+    rec.current = null
+    clearTimeout(r.timer)
+    const c = await r.stop()
+    stopEmote()
+    setRecording(false)
+    if (c.durationMs < 1000 || !c.blob.size) return setNote('Trop court : tape le bouton, ou garde le doigt dessus plus longtemps.')
+    if (c.blob.size > 4 * 1024 * 1024) return setNote('Vidéo trop lourde : essaie plus court.')
+    setNote(null)
+    setClip({ ...c, url: URL.createObjectURL(c.blob) })
+  }
+  const begin = () => {
+    if (rec.current || !cam.current?.ready) return
+    wakeAudio()
+    stopPreview()
+    setPicking(null)
+    const r = cam.current.record(sound)
+    playEmote(move, CLIP_MAX_MS / 1000 + 1)
+    // A tap records the chosen length; while the finger stays down, it goes on (up to 15 s).
+    const timer = setTimeout(() => {
+      if (!rec.current) return
+      if (held.current) rec.current.timer = setTimeout(() => void finish(), Math.max(0, CLIP_MAX_MS - (performance.now() - rec.current.began)))
+      else void finish()
+    }, length * 1000)
+    rec.current = { stop: r.stop, began: performance.now(), timer }
+    setRecording(true)
+    setNote(null)
+  }
+  const down = () => {
+    if (rec.current) return void finish() // a tap while recording stops it
+    held.current = true
+    begin()
+  }
+  const up = () => {
+    const was = held.current
+    held.current = false
+    const r = rec.current
+    if (was && r && performance.now() - r.began > HOLD_MS) void finish()
+  }
+  const pickSound = (id: string) => {
+    setSound(id)
+    stopPreview()
+    wakeAudio()
+    const ctx = tikiAudio()
+    // A few seconds of it, to hear what it is.
+    if (id && ctx) {
+      const stop = playSound(ctx, id, [ctx.destination])
+      const t = setTimeout(stopPreview, 4000)
+      preview.current = () => (clearTimeout(t), stop())
+    }
+  }
+  const post = async () => {
+    if (!clip || busy) return
+    setBusy(true)
+    const ok = await act('Publier sur Tikitoko', 'camera', 'social', () => api.tikiPostVideo(sim.id, { video: clip.blob, poster: clip.poster, durationMs: clip.durationMs, sound }, caption, theme, placeHere()))
+    setBusy(false)
+    if (ok) onPosted()
+  }
+  const s = soundOf(sound)
+
+  return (
+    <div className="absolute inset-0 flex flex-col bg-black">
+      <div className="relative min-h-0 flex-1 overflow-hidden">
+        <div ref={view} className={`absolute inset-0 ${clip ? 'invisible' : ''}`} />
+        {clip && <video src={clip.url} autoPlay loop playsInline className="absolute inset-0 h-full w-full object-cover" />}
+        <button className="absolute top-[max(0.75rem,env(safe-area-inset-top))] left-3 z-10 grid h-9 w-9 place-items-center rounded-full bg-black/40" onClick={onClose} aria-label="Fermer">
+          <X size={22} />
+        </button>
+        {!clip && (
+          <>
+            <button disabled={recording} onClick={() => setPicking(picking === 'son' ? null : 'son')} className="absolute top-[max(0.75rem,env(safe-area-inset-top))] left-1/2 flex max-w-[60%] -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/45 px-3 py-1.5 text-xs font-extrabold">
+              <Music2 size={14} className="shrink-0" /> <span className="truncate">{s.id ? s.name : 'Ajouter un son'}</span>
+            </button>
+            <div className="absolute top-[calc(max(0.75rem,env(safe-area-inset-top))+3rem)] right-3 flex flex-col items-center gap-3 text-[10px] font-extrabold [text-shadow:0_1px_2px_rgba(0,0,0,0.7)]">
+              <button disabled={recording} onClick={() => setPicking(picking === 'move' ? null : 'move')} className="flex flex-col items-center gap-0.5">
+                <Sparkles size={22} /> {MOVES.find(([m]) => m === move)?.[1]}
+              </button>
+              <div className="flex flex-col items-center gap-1">
+                <Timer size={22} />
+                {LENGTHS.map((n) => (
+                  <button key={n} disabled={recording} onClick={() => setLength(n)} className={`rounded-full px-2 py-0.5 ${length === n ? 'bg-white text-black' : 'bg-black/40'}`}>
+                    {n} s
+                  </button>
+                ))}
+              </div>
+            </div>
+            {picking && (
+              <div className="absolute inset-x-3 top-[calc(max(0.75rem,env(safe-area-inset-top))+3rem)] right-16 z-10 flex flex-wrap gap-1.5 rounded-2xl bg-black/70 p-2.5">
+                {picking === 'son'
+                  ? SOUNDS.map((x) => (
+                      <button key={x.id} onClick={() => pickSound(x.id)} className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${sound === x.id ? 'bg-white text-black' : 'bg-white/15'}`}>
+                        {x.id ? `${x.name} · ${x.artist}` : 'Sans musique'}
+                      </button>
+                    ))
+                  : MOVES.map(([m, label]) => (
+                      <button key={m} onClick={() => (setMove(m), setPicking(null))} className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${move === m ? 'bg-white text-black' : 'bg-white/15'}`}>
+                        {label}
+                      </button>
+                    ))}
+              </div>
+            )}
+            {note && <p className="absolute inset-x-6 top-1/2 -translate-y-1/2 rounded-xl bg-black/70 px-3 py-2 text-center text-xs font-bold">{note}</p>}
+            <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 bg-gradient-to-t from-black/70 to-transparent pt-10 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+              <p className="text-[11px] font-bold text-white/80 [text-shadow:0_1px_2px_rgba(0,0,0,0.7)]">{recording ? 'Ça tourne…' : `Tape pour ${length} s, ou garde le doigt appuyé`}</p>
+              <button
+                aria-label={recording ? 'Arrêter' : 'Filmer'}
+                className="relative grid h-[84px] w-[84px] touch-none place-items-center"
+                onPointerDown={(e) => (e.preventDefault(), down())}
+                onPointerUp={up}
+                onPointerCancel={up}
+                onContextMenu={(e) => e.preventDefault()}
+              >
+                <svg viewBox="0 0 96 96" className="absolute inset-0 -rotate-90">
+                  <circle cx="48" cy="48" r="44" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="6" />
+                  {recording && <circle ref={ring} cx="48" cy="48" r="44" fill="none" stroke="#ff3b5c" strokeWidth="6" strokeDasharray="276" strokeDashoffset="276" strokeLinecap="round" />}
+                </svg>
+                <span className={`block bg-[#ff3b5c] transition-all ${recording ? 'h-8 w-8 rounded-md' : 'h-[64px] w-[64px] rounded-full'}`} />
+              </button>
+            </div>
+          </>
+        )}
+        {clip && (
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent px-3 pt-10 pb-3">
+            <div className="flex gap-1.5 overflow-x-auto pb-1">
+              {me.themes.map((t) => (
+                <button key={t.id} onClick={() => setTheme(t.id)} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-extrabold ${theme === t.id ? 'bg-white text-black' : 'bg-white/15'}`}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1.5 flex items-start gap-1.5 text-[11px] font-bold text-white/70">
+              <Sparkles size={13} className="mt-px shrink-0 text-[#12c48b]" /> Filme au bon endroit : la danse en boîte, le garba au maquis, l'ambiance au stade… ça fait plus de vues.
+            </p>
+            <input value={caption} onChange={(e) => setCaption(e.target.value.slice(0, 150))} placeholder="Décris ta vidéo… #babi" className="mt-2 w-full rounded-lg bg-white/15 px-3 py-2.5 text-sm font-semibold text-white outline-none placeholder:text-white/50" />
+            <div className="mt-2 flex gap-2">
+              <button className="flex items-center gap-1 rounded-lg bg-white/15 px-4 py-3 text-sm font-extrabold" disabled={busy} onClick={() => setClip(null)}>
+                <RotateCcw size={15} /> Refaire
+              </button>
+              <button className="flex-1 rounded-lg bg-[#ff7a00] py-3 text-sm font-extrabold disabled:opacity-40" disabled={busy} onClick={() => void post()}>
+                {busy ? 'Publication…' : `Publier (${Math.round(clip.durationMs / 1000)} s)`}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/** A photo of the gallery (or the game's, where the browser can't record): posted as a still, played as a slow pan. */
+function PhotoFilm({ sim, me, act, gallery, onClose, onPosted }: FilmProps) {
   const [theme, setTheme] = useState(me.themes[0]?.id ?? 'vlog')
   const [photo, setPhoto] = useState<string | null>(null)
   const [caption, setCaption] = useState('')
@@ -652,7 +1064,7 @@ function Film({ sim, me, act, gallery, onClose, onPosted }: { sim: Sim; me: Tiki
   const post = async () => {
     if (!photo || busy) return
     setBusy(true)
-    const ok = await act('Tourner une vidéo Tikitoko', 'camera', 'social', () => gallery && photo === gallery.src ? api.tikiPost(sim.id, '', caption, theme, placeHere(), gallery.id) : api.tikiPost(sim.id, photo, caption, theme, placeHere()))
+    const ok = await act('Publier sur Tikitoko', 'camera', 'social', () => gallery && photo === gallery.src ? api.tikiPost(sim.id, '', caption, theme, placeHere(), gallery.id) : api.tikiPost(sim.id, photo, caption, theme, placeHere()))
     setBusy(false)
     if (ok) onPosted()
   }
@@ -667,6 +1079,7 @@ function Film({ sim, me, act, gallery, onClose, onPosted }: { sim: Sim; me: Tiki
           <Camera size={14} /> Reprendre
         </button>
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent px-3 pt-10 pb-3">
+          {!gallery && <p className="mb-1.5 text-[11px] font-bold text-white/60">Ce navigateur ne sait pas filmer : ta vidéo sera une photo du jeu.</p>}
           <div className="flex gap-1.5 overflow-x-auto pb-1">
             {me.themes.map((t) => (
               <button key={t.id} onClick={() => setTheme(t.id)} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-extrabold ${theme === t.id ? 'bg-white text-black' : 'bg-white/15'}`}>
@@ -678,8 +1091,8 @@ function Film({ sim, me, act, gallery, onClose, onPosted }: { sim: Sim; me: Tiki
             <Sparkles size={13} className="mt-px shrink-0 text-[#12c48b]" /> Filme au bon endroit : la danse en boîte, le garba au maquis, l'ambiance au stade… ça fait plus de vues.
           </p>
           <input value={caption} onChange={(e) => setCaption(e.target.value.slice(0, 150))} placeholder="Décris ta vidéo… #babi" className="mt-2 w-full rounded-lg bg-white/15 px-3 py-2.5 text-sm font-semibold text-white outline-none placeholder:text-white/50" />
-          <button className="mt-2 w-full rounded-lg bg-[#ff7a00] py-3 text-sm font-extrabold disabled:opacity-40" disabled={!photo || busy || !!sim.activity} onClick={() => void post()}>
-            {busy ? 'Publication…' : `Publier (${actionLength(TIKI_MINUTES)} min)`}
+          <button className="mt-2 w-full rounded-lg bg-[#ff7a00] py-3 text-sm font-extrabold disabled:opacity-40" disabled={!photo || busy} onClick={() => void post()}>
+            {busy ? 'Publication…' : 'Publier'}
           </button>
         </div>
       </div>

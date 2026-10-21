@@ -115,10 +115,12 @@ export type DirectPost = { id: number; kind: 'quartier' | 'stade' | 'bet' | 'jou
 export type Author = { id: string; firstName: string; gender: 'femme' | 'homme'; look: Look }
 export type Story = { id: number; caption: string; source: 'jeu' | 'reel'; at: string; expiresAt: string; seen: boolean; views?: number }
 export type StoryRing = { sim: Author; mine: boolean; stories: Story[] }
-export type TikiPost = { id: number; author: Author; handle: string; fans: number; tier: string; followed: boolean; mine: boolean; caption: string; theme: string; place: string; views: number; likes: number; liked: boolean; comments: number; saves: number; saved: boolean; shares: number; at: string }
+export type TikiPost = { id: number; author: Author; handle: string; fans: number; tier: string; followed: boolean; mine: boolean; caption: string; theme: string; place: string; views: number; likes: number; liked: boolean; comments: number; saves: number; saved: boolean; shares: number; at: string; /** The clip (old posts: a photo only): its public address, else fetched from tikiVideo. */ hasVideo?: boolean; video?: string; durationMs?: number; sound?: string; /** A game creator's video, played live from its seeds (screens/TikiScene.tsx). */ npc?: TikiNPC }
+/** The seeds of a game creator's video: their look, the scene. */
+export type TikiNPC = { look: number; scene: number }
 /** A comment under a video; no author: the game's audience. */
 export type TikiComment = { id: string; author?: Author; name: string; handle: string; body: string; likes: number; liked: boolean; mine: boolean; byCreator: boolean; canDelete: boolean; at: string }
-export type TikiProfile = { author: Author; handle: string; tier: string; following: number; fans: number; likes: number; posts: number; followed: boolean; mine: boolean }
+export type TikiProfile = { author: Author; handle: string; tier: string; following: number; fans: number; likes: number; posts: number; followed: boolean; mine: boolean; npc?: TikiNPC }
 /** A photo of the phone's gallery: in the bucket (url), or from the API with the token (path). */
 export type Photo = { id: number; url?: string; path?: string; kind: 'photo' | 'selfie'; place: string; at: string }
 export type TikiMe = { fans: number; players: number; posts: number; views: number; tier: string; next: number; dealFrom: number; themes: { id: string; label: string }[] }

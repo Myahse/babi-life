@@ -4,9 +4,10 @@ import { useSyncExternalStore } from 'react'
 // the viewfinder, the buttons) and the 3D street (snapshot.tsx draws what
 // the phone sees). Selfie: the phone held out in front of the Sim, turned
 // back on it; photo: from the Sim's eyes, the way it faces. Aim: a drag on
-// the viewfinder turns it (yaw) and tips it (pitch); zoom 1 to 3.
+// the viewfinder turns it (yaw) and tips it (pitch); zoom 1 to 3. Film: a
+// Tikitoko clip, the phone on a stand a few steps ahead, the whole Sim in view.
 
-export type PhotoMode = 'selfie' | 'photo'
+export type PhotoMode = 'selfie' | 'photo' | 'film'
 export const photoCam = { mode: null as PhotoMode | null, yaw: 0, pitch: 0, zoom: 1 }
 
 const listeners = new Set<() => void>()
