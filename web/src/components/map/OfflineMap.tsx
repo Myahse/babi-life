@@ -6,7 +6,7 @@ import features from '../../assets/civ-features.json'
 import { ABIDJAN_COAST, LAGOON, PETIT_BASSAM } from '../../assets/abidjan'
 import type { Sim } from '../../lib/types'
 import { Portrait } from '../../avatar/portrait'
-import { CIV_BOUNDS, Pin, declutter, routeDone, routeLine, routePoint, visibleAt, type Bounds, type Padding, type PinData, type Route } from './pins'
+import { CIV_BOUNDS, Pin, declutter, routeDone, routeLine, vehiclePoint, visibleAt, type Bounds, type Padding, type PinData, type Route } from './pins'
 import type { Camera } from './GameMap'
 
 // A stylised, game-board version of the country used when no Mapbox token is
@@ -177,7 +177,7 @@ export function OfflineMap({ pins, camera, night, sim, padding, route, onZoom }:
     if (zoomNow) onZoom?.(zoomNow)
   }, [zoomNow, onZoom])
   const shown = useMemo(() => pins.filter((p) => visibleAt(p, zoomNow)), [pins, zoomNow])
-  const taxi = route ? routePoint(route, route.progress) : null
+  const taxi = route ? vehiclePoint(route) : null
 
   const layout = useMemo(() => (view && size ? declutter(shown, (lng, lat) => [W(lng) * view.s + view.tx, H(lat) * view.s + view.ty], size.w, padding.top - 10) : {}), [shown, view, size, padding.top])
   const zoom = view ? view.s * K : 0 // screen px per degree
@@ -266,8 +266,14 @@ export function OfflineMap({ pins, camera, night, sim, padding, route, onZoom }:
       {view && route && taxi && (
         <>
           <div className="pointer-events-none absolute z-[35] transition-[left,top] duration-1000 ease-linear" style={{ left: W(taxi[0]) * view.s + view.tx, top: H(taxi[1]) * view.s + view.ty, transform: 'translate(-50%, -50%)' }}>
-            <TaxiMarker sim={sim} mode={route.mode} color={route.color} />
+            <TaxiMarker sim={route.pickup ? null : sim} mode={route.mode} color={route.color} />
           </div>
+          {/* The Sim waiting by the road for the driver */}
+          {route.pickup && (
+            <div className="pointer-events-none absolute z-[34]" style={{ left: W(route.from[0]) * view.s + view.tx, top: H(route.from[1]) * view.s + view.ty, transform: 'translate(-50%, -50%)' }}>
+              <WaitingMarker sim={sim} />
+            </div>
+          )}
         </>
       )}
 
@@ -282,6 +288,16 @@ export function OfflineMap({ pins, camera, night, sim, padding, route, onZoom }:
           </div>
         ))}
     </div>
+  )
+}
+
+/** The Sim by the road, waiting for the driver to come. */
+export function WaitingMarker({ sim }: { sim: Sim | null }) {
+  return (
+    <span className="flex flex-col items-center">
+      <span className="mb-1 rounded-full bg-white px-2 py-0.5 text-[11px] font-extrabold whitespace-nowrap shadow">Le chauffeur arrive…</span>
+      <span className="block h-9 w-9 overflow-hidden rounded-full border-[3px] border-white bg-[#ffd8a8] shadow-[0_6px_14px_-6px_rgba(0,0,0,0.6)]">{sim && <Portrait look={sim.look} gender={sim.gender} framing="head" />}</span>
+    </span>
   )
 }
 

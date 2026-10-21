@@ -4,9 +4,9 @@ import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import civ from '../../assets/civ.geo.json'
 import type { Sim } from '../../lib/types'
-import { CIV_BOUNDS, Pin, declutter, pxPerDegree, routeDone, routeLine, routePoint, visibleAt, type Padding, type PinData, type Route } from './pins'
+import { CIV_BOUNDS, Pin, declutter, pxPerDegree, routeDone, routeLine, vehiclePoint, visibleAt, type Padding, type PinData, type Route } from './pins'
 import type { Camera } from './GameMap'
-import { TaxiMarker } from './OfflineMap'
+import { TaxiMarker, WaitingMarker } from './OfflineMap'
 import { OrbitGizmo } from '../OrbitGizmo'
 
 type Props = { token: string; pins: PinData[]; camera: Camera; night: boolean; sim: Sim | null; padding: Padding; route?: Route | null; onZoom?: (pxPerDeg: number) => void }
@@ -95,6 +95,8 @@ export function MapboxMap({ token, pins, camera, night, sim, padding, route, onZ
 
   // The trip: the whole route, the part already driven, and the taxi on it.
   const taxi = useRef<{ marker: mapboxgl.Marker; root: Root } | null>(null)
+  // The Sim waiting by the road while the driver comes.
+  const waiting = useRef<{ marker: mapboxgl.Marker; root: Root } | null>(null)
   useEffect(() => {
     const m = map.current
     if (!m) return
@@ -120,15 +122,29 @@ export function MapboxMap({ token, pins, camera, night, sim, padding, route, onZ
       if (!taxi.current) {
         const el = document.createElement('div')
         el.style.zIndex = '40'
-        taxi.current = { marker: new mapboxgl.Marker({ element: el }).setLngLat(routePoint(route, route.progress)).addTo(m), root: createRoot(el) }
+        taxi.current = { marker: new mapboxgl.Marker({ element: el }).setLngLat(vehiclePoint(route)).addTo(m), root: createRoot(el) }
       }
-      taxi.current.marker.setLngLat(routePoint(route, route.progress))
-      taxi.current.root.render(<TaxiMarker sim={sim} mode={route.mode} color={route.color} />)
+      taxi.current.marker.setLngLat(vehiclePoint(route))
+      // On its way to pick the Sim up, the car is empty; the Sim waits at the start.
+      taxi.current.root.render(<TaxiMarker sim={route.pickup ? null : sim} mode={route.mode} color={route.color} />)
     } else if (taxi.current) {
       const t = taxi.current
       taxi.current = null
       // After React's render, not in it (a microtask can run mid-render: « unmount a root while React was already rendering »).
       setTimeout(() => (t.root.unmount(), t.marker.remove()), 0)
+    }
+    if (route?.pickup) {
+      if (!waiting.current) {
+        const el = document.createElement('div')
+        el.style.zIndex = '39'
+        waiting.current = { marker: new mapboxgl.Marker({ element: el }).setLngLat(route.from).addTo(m), root: createRoot(el) }
+      }
+      waiting.current.marker.setLngLat(route.from)
+      waiting.current.root.render(<WaitingMarker sim={sim} />)
+    } else if (waiting.current) {
+      const w = waiting.current
+      waiting.current = null
+      setTimeout(() => (w.root.unmount(), w.marker.remove()), 0)
     }
   }, [route, sim])
 
