@@ -549,9 +549,18 @@ func (h *Handler) chatHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return game.Outcome{}, nil, err
 		}
-		ans, err := s.chat(req.With, req.Topic, req.Said, adult, newRand())
+		before := s.findFriend("p-" + req.With.ID)
+		wasPartner := before != nil && before.Partner
+		rng := newRand()
+		ans, err := s.chat(req.With, req.Topic, req.Said, adult, rng)
 		if err != nil {
 			return game.Outcome{}, nil, err
+		}
+		// Together now with someone met in the game, while together with a player: word may reach them (couple.go).
+		if f := s.findFriend("p-" + req.With.ID); f != nil && f.Partner && !wasPartner {
+			if news := h.gossip(r.Context(), tx, s, f.Name, caughtNew, rng); news != "" {
+				ans.Text += " " + news
+			}
 		}
 		return game.Outcome{Text: ans.Text, Money: ans.Money, Mood: ans.Mood}, nil, nil
 	})

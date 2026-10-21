@@ -144,7 +144,8 @@ func (h *Handler) outing(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
-		came, refused, news, err := s.goOut(req.PlaceID, req.InteractionID, req.Friends, newRand())
+		rng := newRand()
+		came, refused, news, err := s.goOut(req.PlaceID, req.InteractionID, req.Friends, rng)
 		if err != nil {
 			return game.Outcome{}, nil, err
 		}
@@ -179,6 +180,15 @@ func (h *Handler) outing(w http.ResponseWriter, r *http.Request) {
 		}
 		if news != "" {
 			text += " " + news
+		}
+		// A date with someone met in the game, while together with a player: seen, maybe (couple.go).
+		for _, f := range came {
+			if f.Partner {
+				if g := h.gossip(ctx, tx, s, f.Name, caughtOuting, rng); g != "" {
+					text += " " + g
+					break
+				}
+			}
 		}
 		cost := max(a.Interaction.Cost, 0) * (1 + len(came))
 		return game.Outcome{Text: text, Money: -cost}, []Event{{Kind: "social", Text: text, GameTime: s.GameMinutes}}, nil
