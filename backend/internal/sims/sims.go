@@ -238,6 +238,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Delete("/sims/{id}", h.delete)
 	r.Post("/sims/{id}/interact", h.interact)
 	r.Post("/sims/{id}/outing", h.outing)
+	r.Post("/sims/{id}/moto", h.moto)
 	r.Post("/sims/{id}/travel", h.travel)
 	r.Post("/sims/{id}/career", h.career)
 	r.Post("/sims/{id}/move", h.move)

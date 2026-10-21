@@ -1,6 +1,6 @@
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BadgeCheck, Camera, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, Bike, Camera, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Sim, World, Ride, Place, Plot } from '../lib/types'
 import { useWorld } from '../store/world'
@@ -21,7 +21,7 @@ import { OpenWorld } from '../world3d/open/OpenWorld'
 import { GROUNDS, LANDMARKS, OPEN_AIR } from '../world3d/open/landmarks'
 import { iconFor, kindColors } from '../components/icons'
 import { Chip, Coin, DayNight, IconTile, MotiveRing, MoodPin, Row, needColor } from '../components/ui'
-import { NEEDS, actionLength, ageBlock, amount, atHome, blockedBy, homeLacks, housingOf, lifeOf, minutesToAge, clock, duration, mood, openAt, openingLabel, predict, shift } from '../game/rules'
+import { NEEDS, actionLength, ageBlock, amount, fcfa, atHome, blockedBy, homeLacks, housingOf, lifeOf, minutesToAge, clock, duration, mood, openAt, openingLabel, predict, shift } from '../game/rules'
 import { DOORS_OPEN, eventAt, useStadium, when } from '../lib/stadium'
 import { HomeApp, JobsApp, type Act } from './phoneApps'
 import { NewsApp, topicOf } from './NewsApp'
@@ -52,6 +52,7 @@ import type { Npc } from '../world3d/open/OpenWorld'
 import { setTalkHandler, setTalking } from '../world3d/talk'
 import type { Track } from '../audio/music'
 import { NotifyPrompt } from '../components/NotifyPrompt'
+import { motoFare, motoPaid, useMoto } from '../world3d/moto'
 import { aCommune } from '../lib/french'
 
 /** Building one's house: its own screen, downloaded when opened. */
@@ -918,6 +919,7 @@ export function Play() {
       {overlay === 'camera' && <CameraView sim={sim} street={!showInside} onClose={() => setOverlay(null)} onGallery={() => (setPhoneApp('galerie'), setOverlay('phone'))} />}
       {overlay === 'map' && <WorldMap world={world} sim={sim} night={c.isNight} desktop={desktop} onClose={() => setOverlay(null)} onTravel={travel} onWalk={(id) => (setOverlay(null), walkTo(id))} />}
       {delivery && overlay !== 'phone' && <DeliveryPill delivery={delivery} now={now} onOpen={() => (setPhoneApp('golvo'), setOverlay('phone'))} />}
+      {!overlay && <MotoOffer sim={sim} act={run} />}
       {chat && (
         <ChatSheet
           npc={chat}
@@ -1546,6 +1548,33 @@ function WordOfTheDay({ world, gameMinutes }: { world: World; gameMinutes: numbe
 }
 
 /** The Golvo courier on the way, over the street. */
+/**
+ * A long way on foot: a moto-taxi is offered, for a fare by the distance
+ * (world3d/moto.ts, backend sims/moto.go). Paid, the Sim rides the rest;
+ * else it walks (runs, it's far).
+ */
+function MotoOffer({ sim, act }: { sim: Sim; act: Act }) {
+  const { offer, paid } = useMoto()
+  const [no, setNo] = useState<number | null>(null)
+  if (!offer || paid || no === offer) return null
+  const fare = motoFare(offer)
+  return (
+    <div className="hud animate-up absolute bottom-[calc(7.5rem+env(safe-area-inset-bottom))] left-1/2 z-30 flex w-[min(380px,calc(100vw-24px))] -translate-x-1/2 items-center gap-2 rounded-[22px] p-2 pl-3 text-sm font-extrabold">
+      <Bike size={20} className="shrink-0 text-[#c92a2a]" />
+      <span className="min-w-0 flex-1 leading-tight">
+        C'est loin ({(offer / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} km) : moto-taxi ?
+        <span className="block text-xs text-[var(--color-ink-soft)]">Sinon tu y vas à pied.</span>
+      </span>
+      <button className="btn btn-soft !px-3 !py-2 !text-xs" onClick={() => setNo(offer)}>
+        À pied
+      </button>
+      <button className="btn !bg-[#c92a2a] !px-3 !py-2 !text-xs" disabled={sim.money < fare} onClick={async () => (await act('Moto-taxi', 'bike', 'transport', () => api.moto(sim.id, offer))) && motoPaid()}>
+        {fcfa(fare)}
+      </button>
+    </div>
+  )
+}
+
 function DeliveryPill({ delivery, now, onOpen }: { delivery: Delivery; now: number; onOpen: () => void }) {
   const st = deliveryState(delivery, now)
   return (

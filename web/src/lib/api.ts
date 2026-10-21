@@ -150,6 +150,8 @@ export const api = {
   order: (id: string, place: string, dish: string) => post<ActionResult>(`/sims/${id}/order`, { place, dish }),
   /** Buy alloco from the tantie's stall in the street (she may have none left). */
   /** Talk to a passer-by: what they answer comes back as the outcome. */
+  /** A moto-taxi for the rest of a long way (backend sims/moto.go). */
+  moto: (id: string, metres: number) => post<ActionResult>(`/sims/${id}/moto`, { metres }),
   /** An outing (backend sims/outing.go): friends met in the game come at once, player friends are invited. */
   outing: (id: string, o: { placeId: string; interactionId: string; friends: string[]; players: string[] }) => post<ActionResult>(`/sims/${id}/outing`, o),
   chat: (id: string, npc: { id: string; name: string; gender: string; seed: number; look?: Look }, topic: string, said?: string) => post<ActionResult>(`/sims/${id}/chat`, { with: npc, topic, said: said ?? '' }),

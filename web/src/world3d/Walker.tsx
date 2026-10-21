@@ -21,6 +21,7 @@ import { usePhotoMode } from './photoCam'
 import { stopEmote, useEmote } from './emoteNow'
 import { Swimmer } from './Swimmer'
 import { Vehicle } from './vehicles'
+import { motoTaken, offerMoto } from './moto'
 import type { Pose } from '../avatar/Human'
 
 type XZ = [number, number]
@@ -29,7 +30,7 @@ const SPEED = 1.9 // metres per second: a brisk walk
 const RUN = 4.6 // running: a real run, nothing like a car
 /** Further than this, the Sim runs there by itself. */
 const RUN_FROM = 90
-/** Further than this, the Sim hails a moto-taxi and rides there behind the driver. */
+/** Further than this, a moto-taxi is offered (world3d/moto.ts): paid, the Sim rides there behind the driver. */
 const RIDE_FROM = 220
 const RIDE = 9 // a moto-taxi in town: about 32 km/h
 /** Busy doing these, the Sim goes up and down a way by the place: a stroll, a hike, laps of the stadium. (The zoo: the player walks it freely.) */
@@ -122,12 +123,13 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   // Far away: on the back of a moto-taxi.
   const riding = useRef(false)
   const [ride, setRide] = useState(false)
-  /** How the Sim goes a way this long: walking, running, or by moto-taxi. */
+  /** How the Sim goes a way this long: walking, or running; a long way, a moto-taxi is offered (it rides once paid, in the frame loop). */
   const setPace = (far: number) => {
-    riding.current = far > RIDE_FROM
-    autoRun.current = !riding.current && far > RUN_FROM
-    speed.current = riding.current ? RIDE : autoRun.current ? RUN : SPEED
-    setRide(riding.current)
+    riding.current = false
+    autoRun.current = far > RUN_FROM
+    speed.current = autoRun.current ? RUN : SPEED
+    setRide(false)
+    offerMoto(far > RIDE_FROM ? Math.round(far) : null)
   }
   // The way the Sim is going, drawn on the ground.
   const [route, setRoute] = useState<XZ[] | null>(null)
@@ -255,12 +257,9 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     started.current = goTo
     const p = group.current!.position
     const way = findWay([p.x, p.z], lot.door, true)
-    if (way) path.current = way.slice(1)
-    else {
-      // No way through (too far, not loaded yet): straight there, as by moto-taxi.
-      group.current!.position.set(lot.door[0], 0, lot.door[1])
-      path.current = [lot.door]
-    }
+    // No way through (too far, the map not loaded there yet): straight for it, on foot, the
+    // map loading on the way; a moto-taxi is offered (it used to be a free jump there).
+    path.current = way ? way.slice(1) : [lot.door]
     setPace(pathLength(path.current, [p.x, p.z]))
     target.current = lot.id
     setRoute([...path.current])
@@ -539,10 +538,18 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       }
     }
     // Running with the pad (Shift, the button), or on a long way.
+    // The moto-taxi paid for: on the back for the rest of the way; there, off it.
+    if (!riding.current && path.current.length && motoTaken()) {
+      riding.current = true
+      speed.current = RIDE
+      setRide(true)
+    }
     if (riding.current && !path.current.length) {
       riding.current = false
       setRide(false)
     }
+    // There (or the way given up): no more moto-taxi to offer.
+    if (!path.current.length) offerMoto(null)
     const nowRunning = !riding.current && ((padWalking.current && running()) || (path.current.length > 0 && (autoRun.current || running())))
     if (path.current.length && !riding.current && running() && speed.current < RUN) speed.current = RUN
     if (nowRunning !== run) setRun(nowRunning)
