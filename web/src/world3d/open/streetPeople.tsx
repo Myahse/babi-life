@@ -11,6 +11,8 @@ import { whereabouts } from '../whereabouts'
 import { hash, type XZ } from './geo'
 import { TalkHuman } from '../Talkable'
 import type { Nav } from './nav'
+import { BookOpen } from 'lucide-react'
+import { inScene, JoinBubble, placeIn, type Joining } from './joinIn'
 
 // The people of the street, each at their own street, always the same:
 // - le fou du quartier, who walks up and down talking to nobody, his
@@ -100,10 +102,26 @@ export function StreetPeople({ nav, seed }: { nav: Nav; seed: string }) {
   return (
     <>
       {shown.map((s) => (
-        <StreetSpot key={s.id} spot={s} />
+        <group key={s.id}>
+          <StreetSpot spot={s} />
+          {s.kind === 'pasteur' && <JoinBubble j={preacherJoin(s)} />}
+        </group>
       ))}
     </>
   )
+}
+
+/**
+ * Stopping to listen to the street preacher (joinIn.tsx): among those listening, a little to the
+ * side of them, turned to him. His group stands on the pavement (Pasteur), turned to the road.
+ */
+function preacherJoin(s: Spot): Joining {
+  const side = s.seed < 0.5 ? 1 : -1
+  const q = side > 0 ? Math.PI : 0
+  const a = 1.35
+  const [x, z] = [Math.sin(a) * 3.2, Math.cos(a) * 3.2]
+  const at = inScene(s, 0, side * (s.w / 2 + 1.6))
+  return { vendor: `preche:${s.id}`, activity: 'street-preche', at, y: 2.9, ask: 'Écouter le prêcheur', icon: BookOpen, far: 'Approche, écoute la parole !', spot: placeIn(s, x * Math.cos(q) + z * Math.sin(q), side * (s.w / 2 + 1.6) - x * Math.sin(q) + z * Math.cos(q), a + Math.PI + q, 'idle') }
 }
 
 export function StreetSpot({ spot }: { spot: Spot }) {

@@ -235,6 +235,8 @@ export type World = {
   /** Vehicles to buy on Bolide, and the places to keep them (backend game/vehicles.go). */
   vehicles?: VehicleModel[]
   parkings?: ParkingKind[]
+  /** What one does in the street (backend sims.StreetActivities): the sellers, the scenes joined. */
+  street?: { interaction: Interaction; place: string }[]
   lotSizes?: { id: string; label: string; w: number; d: number }[]
   /** Whole houses (game/plans.go): the homes Sims are born in, and those one can build on a lot. */
   homePlans?: Record<string, HousePlan>

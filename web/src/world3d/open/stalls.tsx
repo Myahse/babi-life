@@ -14,6 +14,7 @@ import { hash, type XZ } from './geo'
 import { lettering } from './ruePrincesse'
 import { api } from '../../lib/api'
 import type { Nav } from './nav'
+import { placeIn, useJoined } from './joinIn'
 
 // The sellers of the street, at the edge of the real streets around the Sim,
 // always at the same corners:
@@ -89,6 +90,8 @@ export function StreetStalls({ nav, seed, hour, onBuy }: { nav: Nav; seed: strin
       .map((x) => ({ s: x.s, crowd: x.d < CROWD_NEAR }))
     const key = (l: typeof near) => l.map((x) => x.s.id + x.crowd).join()
     if (key(near) !== key(shown)) setShown(near)
+    // In development, for tests in the browser: the stalls drawn.
+    if (import.meta.env.DEV) Object.assign(globalThis, { __stalls: near.map((x) => x.s), __allStalls: all })
   })
   return (
     <>
@@ -753,6 +756,92 @@ function Crowd({ stall, hour }: { stall: Stall; hour: number }) {
   )
 }
 
+/* ---------- The pousse-pousse serving ---------- */
+
+/** Where the seller stands to serve, and where the Sim sits, in front of the cart (x across it, z out to the street). */
+const SERVE = { x: 0.95, seller: 1.45, sim: 2.5 }
+const tin = new THREE.MeshLambertMaterial({ color: '#c9ccd1' })
+const teaMat = new THREE.MeshBasicMaterial({ color: '#9a4f12' })
+const coffeeMat = new THREE.MeshBasicMaterial({ color: '#3b2412' })
+const glassMat = new THREE.MeshLambertMaterial({ color: '#f4f1ea', transparent: true, opacity: 0.85 })
+const STREAM = new THREE.CylinderGeometry(0.012, 0.012, 1, 6)
+
+/**
+ * The seller serves the Sim, on and on while it's there (three teas, as one does): up from his
+ * stool, the teapot lifted high and poured into the glass, glass to glass for the foam (the tea;
+ * the coffee goes straight from the thermos), handed over to the Sim on its stool, and again.
+ */
+function Serve({ tea }: { tea: boolean }) {
+  const pot = useRef<THREE.Group>(null)
+  const stream = useRef<THREE.Mesh>(null)
+  const low = useRef<THREE.Group>(null)
+  const high = useRef<THREE.Group>(null)
+  const t0 = useRef<number | null>(null)
+  // In front of his hands, between him and the Sim.
+  const z = SERVE.seller + 0.5
+  useFrame(({ clock }) => {
+    t0.current ??= clock.elapsedTime
+    const u = ((clock.elapsedTime - t0.current) % 11) / 11
+    const ease = (k: number) => k * k * (3 - 2 * k)
+    // 0–0.1 the pot goes up, 0.1–0.42 pours, 0.42–0.64 glass to glass (the tea), 0.64–0.72 the pot down, 0.72–0.84 the glass handed over.
+    const up = u < 0.1 ? ease(u / 0.1) : u < 0.64 ? 1 : u < 0.72 ? 1 - ease((u - 0.64) / 0.08) : 0
+    const pouring = u >= 0.1 && u < (tea ? 0.42 : 0.64)
+    const foaming = tea && u >= 0.42 && u < 0.64
+    if (pot.current) {
+      pot.current.position.set(SERVE.x - 0.1, 1.02 + 0.6 * up, z - 0.06)
+      pot.current.rotation.x = pouring ? 0.85 : 0
+    }
+    // Glass to glass: the full one up high, poured back into the other, down, and again.
+    const lift = foaming ? Math.abs(Math.sin(((u - 0.42) / 0.22) * Math.PI * 2)) : 0
+    if (high.current) {
+      const hand = u >= 0.72 && u < 0.84 ? ease((u - 0.72) / 0.12) : 0
+      high.current.position.set(SERVE.x + 0.12, 1.0 + lift * 0.6 - hand * 0.2, z + hand * (SERVE.sim - z - 0.25))
+      high.current.rotation.x = lift > 0.6 ? 1.2 : 0
+      // Handed over: in the Sim's hand, drunk.
+      high.current.visible = u < 0.84
+    }
+    if (low.current) low.current.visible = tea
+    if (stream.current) {
+      stream.current.visible = pouring || (foaming && lift > 0.6)
+      const [top, x] = pouring ? [1.58 + 0.12, SERVE.x + 0.12] : [1.0 + lift * 0.6, SERVE.x + 0.02]
+      stream.current.scale.set(1, Math.max(0.05, top - 1.06), 1)
+      stream.current.position.set(x, (top + 1.06) / 2, z)
+    }
+  })
+  return (
+    <group>
+      {/* The teapot (or the thermos), the glass poured into, the other one for the foam */}
+      <group ref={pot}>
+        {tea ? (
+          <>
+            <mesh material={tin} position={[0, 0.07, 0]}>
+              <cylinderGeometry args={[0.07, 0.09, 0.14, 10]} />
+            </mesh>
+            <mesh material={tin} position={[0.11, 0.1, 0.05]} rotation={[0.5, 0, -0.9]}>
+              <cylinderGeometry args={[0.012, 0.02, 0.16, 6]} />
+            </mesh>
+          </>
+        ) : (
+          <mesh material={M.thermos[0]} position={[0, 0.12, 0]}>
+            <cylinderGeometry args={[0.06, 0.06, 0.24, 10]} />
+          </mesh>
+        )}
+      </group>
+      <group ref={high}>
+        <mesh material={glassMat} position={[0, 0.05, 0]}>
+          <cylinderGeometry args={[0.035, 0.03, 0.1, 8]} />
+        </mesh>
+      </group>
+      <group ref={low} position={[SERVE.x + 0.02, 1.0, z]}>
+        <mesh material={glassMat} position={[0, 0.05, 0]}>
+          <cylinderGeometry args={[0.035, 0.03, 0.1, 8]} />
+        </mesh>
+      </group>
+      <mesh ref={stream} geometry={STREAM} material={tea ? teaMat : coffeeMat} visible={false} />
+    </group>
+  )
+}
+
 /* ---------- One stall, its seller, the customers ---------- */
 
 /** One stall and its seller. Local +z faces the street. */
@@ -796,6 +885,8 @@ export function StreetStall({ stall, hour, crowd, onBuy }: { stall: Stall; hour:
     if (d > REACH) return say('Approche, mon enfant !', 3000)
     if (!onBuy) return
     if (stall.kind === 'garba' || stall.kind === 'loto') return setChoosing(true)
+    // At the pousse-pousse: a stool by the cart, facing the seller who serves (Serve); no défi, it's his tea.
+    if (stall.kind === 'the' || stall.kind === 'cafe') whereabouts.joined = { id: stall.id, activity: `street-${stall.kind}`, spot: { ...placeIn(stall, SERVE.x, SERVE.sim, Math.PI, 'drink', 0.05), stool: true } }
     say('…', 20000)
     const text = await onBuy(stall.id)
     if (text) say(text)
@@ -803,7 +894,8 @@ export function StreetStall({ stall, hour, crowd, onBuy }: { stall: Stall; hour:
   }
   // Where the seller stands, and doing what.
   // The café/thé seller sits on his stool beside the cart (as in the street), turned to the passers-by.
-  const [sellerAt, sellerPose]: [[number, number, number], Pose] = stall.kind === 'porc' ? [[-1.3, 0, -0.1], 'cook'] : stall.kind === 'garba' ? [[0.75, 0, 0.1], 'cook'] : stall.kind === 'brochette' ? [[0.1, 0, -0.1], 'cook'] : stall.kind === 'loto' ? [[0, 0, -0.35], 'sit'] : stall.kind === 'alloco' ? [[0, 0, 0], 'idle'] : [[0.95, 0, 1.08], 'sit']
+  const serving = useJoined(stall.id) && (stall.kind === 'the' || stall.kind === 'cafe')
+  const [sellerAt, sellerPose]: [[number, number, number], Pose] = serving ? [[SERVE.x, 0, SERVE.seller], 'cook'] : stall.kind === 'porc' ? [[-1.3, 0, -0.1], 'cook'] : stall.kind === 'garba' ? [[0.75, 0, 0.1], 'cook'] : stall.kind === 'brochette' ? [[0.1, 0, -0.1], 'cook'] : stall.kind === 'loto' ? [[0, 0, -0.35], 'sit'] : stall.kind === 'alloco' ? [[0, 0, 0], 'idle'] : [[0.95, 0, 1.08], 'sit']
   return (
     <group position={[stall.at[0], 0, stall.at[1]]} rotation={[0, stall.rot, 0]} onClick={(e) => (e.stopPropagation(), void tap())}>
       {/* The stand drawn in a few meshes (its smoke and frying fish left to move) */}
@@ -825,6 +917,7 @@ export function StreetStall({ stall, hour, crowd, onBuy }: { stall: Stall; hour:
         </group>
       )}
       {crowd && <Crowd stall={stall} hour={hour} />}
+      {serving && <Serve tea={stall.kind === 'the'} />}
       {/* What the seller says */}
       {(said || near) && (
         <Html position={[0, stall.kind === 'garba' ? 3.2 : 2.4, 0]} center zIndexRange={[25, 0]}>

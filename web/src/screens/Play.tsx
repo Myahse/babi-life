@@ -11,7 +11,7 @@ import { SIM_CHANGED, useLive } from '../lib/live'
 import { WorldMap } from './WorldMap'
 import { Joystick, RunButton, WalkKeys } from '../components/Joystick'
 import { cameraTurn } from '../world3d/input'
-import { whereabouts } from '../world3d/whereabouts'
+import { distanceTo, whereabouts } from '../world3d/whereabouts'
 import { cutsAround, inCut, type PowerCut } from '../world3d/power'
 import { isRoomAct, openLift } from '../world3d/hotelLift'
 import { throwBillets } from '../world3d/clubBillets'
@@ -142,6 +142,17 @@ const ownPlaces = (c: Commune) => own.get(c) ?? c
 const streetPose = () => ({ heading: whereabouts.heading, polar: whereabouts.polar })
 
 /** The street sellers (world3d/open/stalls.tsx; backend sims/street.go): what buying from each is called. */
+/**
+ * To the nearest place of a kind (the Encyclo's « Y aller »): one in the quarter round the Sim, else
+ * one of the commune (walked to), else the map to find one elsewhere.
+ */
+function goToKind(kind: string, commune: Commune, onWalk: (id: string) => void, onMap: () => void) {
+  const around = whereabouts.places.filter((p) => p.kind === kind).sort((a, b) => distanceTo(a.door) - distanceTo(b.door))[0]
+  const here = around ?? commune.places.find((p) => p.kind === kind)
+  if (here) onWalk(here.id)
+  else onMap()
+}
+
 const STREET_SELLERS: Record<string, [string, string]> = {
   alloco: ["L'alloco de la tantie", 'banana'],
   porc: ['Le porc au four', 'drumstick'],
@@ -152,6 +163,15 @@ const STREET_SELLERS: Record<string, [string, string]> = {
   loto: ['Un ticket de Loto Chance', 'ticket'],
   foot: ['Le foot du quartier', 'volleyball'],
   basket: ['Le basket du quartier', 'trophy'],
+  grin: ['Le thé au grin', 'cup-soda'],
+  causerie: ['La causerie du quartier', 'messages-square'],
+  travail: ['Le travaillement', 'music'],
+  dames: ['Les dames sous le lampadaire', 'grid-3x3'],
+  preche: ['Le prêcheur de rue', 'book-open'],
+  oranges: ['Les oranges de la marchande', 'citrus'],
+  eau: ["L'eau glacée", 'droplet'],
+  credit: ['Le crédit du vendeur', 'smartphone'],
+  pain: ['Le pain chaud', 'croissant'],
 }
 
 export function Play() {
@@ -1403,7 +1423,7 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
                 {app === 'home' && <HomeApp world={world} sim={sim} commune={commune} act={act} onBuild={onBuild} onWalk={onWalk} onMap={onMap} />}
                 {app === 'messages' && <Journal events={journal} />}
                 {app === 'news' && <NewsApp />}
-                {app === 'guide' && <GuideApp world={world} onTutorial={() => (onClose(), openTutorial())} />}
+                {app === 'guide' && <GuideApp world={world} onTutorial={() => (onClose(), openTutorial())} onGo={(kind) => goToKind(kind, commune, onWalk, onMap)} />}
                 {app === 'dodo' && <DodoApp world={world} sim={sim} act={act} onMap={onMap} />}
                 {app === 'bolide' && <BolideApp world={world} sim={sim} act={act} onDrive={onDrive} />}
                 {app === 'dames' && <DamesApp sim={sim} onOnline={onDamesOnline} onFriend={onDames} onResume={onDamesResume} />}

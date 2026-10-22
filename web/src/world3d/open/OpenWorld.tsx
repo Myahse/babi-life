@@ -59,6 +59,7 @@ import { StreetPeople } from './streetPeople'
 import { StreetNouchis } from './nouchis'
 import { CommuneMarkers } from './communeMarkers'
 import { Billboards } from './billboards'
+import { JoinIn } from './joinIn'
 import { StreetLife, type Taken } from './streetlife'
 import { Landing, SkyPlanes, TakeOff } from './airport'
 import { TripRide } from './tripRide'
@@ -941,6 +942,11 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     return r && myPlot && myPlot.blocks.length && world.furniture ? homeSpotsOf(myPlot, lotSize(myPlot), r.center, r.rot, world.furniture) : {}
   }, [resolved, myPlot, world.furniture])
   const homeIds = Object.keys(homeSpots).sort().join()
+  // A street scene joined (joinIn.tsx: the grin's tea, the causerie…): the Sim's place in it, while it lasts.
+  // (One left long ago doesn't count: tea at a seller's cart is drunk standing there.)
+  const joined = whereabouts.joined
+  const joinedSpot = busy?.id && joined?.activity === busy.id && Math.hypot(joined.spot.from[0] - whereabouts.sim[0], joined.spot.from[1] - whereabouts.sim[1]) < 40 ? joined.spot : undefined
+  const joinValue = useMemo(() => ({ go: onStreetBuy, doing: busy?.id }), [onStreetBuy, busy?.id])
   useEffect(() => {
     onHomeSpots?.(homeIds ? homeIds.split(',') : myPlot?.blocks.length ? [''] : [])
   }, [homeIds, !!myPlot?.blocks.length]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -1141,12 +1147,15 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       {nav.nodes.length > 0 && !stopsTraffic && <RoadTraffic nav={nav} focus={focus} seed={commune.id} woro={commune.woro} />}
       <Boats water={nearWater} focus={focus} />
       {nav.nodes.length > 0 && <StreetLights nav={nav} night={night} dark={dark} />}
-      {nav.nodes.length > 0 && <StreetLife nav={nav} seed={commune.id} night={night} taken={taken} onPlay={onStreetBuy} doing={busy?.id} />}
-      {nav.nodes.length > 0 && night && <NightStreet nav={nav} seed={commune.id} />}
-      {nav.nodes.length > 0 && <StreetStalls nav={nav} seed={commune.id} hour={hour} onBuy={onStreetBuy} />}
+      {/* What the street does, joined with a tap once close (joinIn.tsx) */}
+      <JoinIn.Provider value={joinValue}>
+        {nav.nodes.length > 0 && <StreetLife nav={nav} seed={commune.id} night={night} taken={taken} />}
+        {nav.nodes.length > 0 && night && <NightStreet nav={nav} seed={commune.id} />}
+        {nav.nodes.length > 0 && <StreetFootball nav={nav} seed={commune.id} hour={hour} />}
+        {nav.nodes.length > 0 && <StreetPeople nav={nav} seed={commune.id} />}
+        {nav.nodes.length > 0 && <StreetStalls nav={nav} seed={commune.id} hour={hour} onBuy={onStreetBuy} />}
+      </JoinIn.Provider>
       {nav.nodes.length > 0 && <SotraStops nav={nav} seed={commune.id} hour={hour} night={night} />}
-      {nav.nodes.length > 0 && <StreetFootball nav={nav} seed={commune.id} hour={hour} />}
-      {nav.nodes.length > 0 && <StreetPeople nav={nav} seed={commune.id} />}
       {nav.nodes.length > 0 && <StreetNouchis nav={nav} seed={commune.id} onRobbed={onRobbed} />}
       {nav.nodes.length > 0 && <Billboards nav={nav} seed={commune.id} night={night} places={lots} />}
       <TakeOff runways={runways} />
@@ -1183,7 +1192,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
           goTo={walkTo}
           onArrive={onArrive}
           busy={busy}
-          homeSpot={busy?.id && stationAt === HOME_ID ? homeSpots[busy.id] : busy?.id?.startsWith('golvo-') && stationAt === 'golvo' ? homeSpots.golvo : undefined}
+          homeSpot={busy?.id && stationAt === HOME_ID ? homeSpots[busy.id] : busy?.id?.startsWith('golvo-') && stationAt === 'golvo' ? homeSpots.golvo : joinedSpot}
           onNear={onNear}
           frozen={!!frozen}
           onLeave={onLeave}

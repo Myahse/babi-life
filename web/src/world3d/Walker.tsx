@@ -202,8 +202,10 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     reached.current = false
     padAway.current = false
     pitchGoing.current = false
-    // The game on the street's pitch is over: its ground is no one's.
-    if (!LOOPS[busy?.id ?? '']?.pitch) whereabouts.pitch = null
+    // Doing something else than the game on the street's pitch, than the street scene joined: their ground is no one's.
+    // (Not while the request is out: busy has no id then, and the place was just chosen.)
+    if (busy?.id && !LOOPS[busy.id]?.pitch) whereabouts.pitch = null
+    if (busy?.id && busy.id !== whereabouts.joined?.activity) whereabouts.joined = null
   }, [busy?.id, stationAt])
 
   // Start where the Sim is busy, else at home, else on the sidewalk. Only

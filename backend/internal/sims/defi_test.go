@@ -4,7 +4,7 @@ import "testing"
 
 // Each défi is played during its own activities only.
 func TestDefiOf(t *testing.T) {
-	for id, want := range map[string]string{"street-the": "the", "chat-grin": "the", "ski-boulay": "ski", "supermarche": "courses", "courses": "courses", "shower": "", "chat-dance": ""} {
+	for id, want := range map[string]string{"street-grin": "the", "street-the": "", "chat-grin": "the", "ski-boulay": "ski", "supermarche": "courses", "courses": "courses", "shower": "", "chat-dance": ""} {
 		if got := defiOf(id); got != want {
 			t.Errorf("%s: %q, want %q", id, got, want)
 		}

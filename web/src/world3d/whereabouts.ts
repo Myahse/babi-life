@@ -1,3 +1,4 @@
+import type { HomeSpot } from './Walker'
 import type { Pose } from '../avatar/Human'
 
 // Where things are in the 3D street, shared with the screen around it: the
@@ -26,6 +27,8 @@ export const whereabouts = {
   way: null as { to: string | null; left: number; speed: number; how: 'walk' | 'run' | 'moto' } | null,
   /** The street's pitch or court the Sim plays on with the quartier (streetlife.tsx): its middle, its length's way, half its length to run. */
   pitch: null as { at: XZ; dir: XZ; half: number } | null,
+  /** The street scene the Sim joined (open/joinIn.tsx): which (its vendor id), for which activity, its place in it. */
+  joined: null as { id: string; activity: string; spot: HomeSpot } | null,
   /** Is there room for the Sim's body here (Walker.tsx)? */
   roomAt: (_x: number, _z: number) => true,
 }

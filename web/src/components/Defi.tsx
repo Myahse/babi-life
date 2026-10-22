@@ -16,8 +16,8 @@ import { SkiDefi } from './defi/Ski'
 
 export type DefiKind = 'the' | 'ski' | 'courses'
 
-/** The défi of an activity (backend sims/defi.go defiFor says the same), or null. */
-export const defiOf = (interactionId?: string): DefiKind | null => ({ 'street-the': 'the', 'chat-grin': 'the', 'ski-boulay': 'ski', supermarche: 'courses', courses: 'courses' } as Record<string, DefiKind>)[interactionId ?? ''] ?? null
+/** The défi of an activity (backend sims/defi.go defiFor says the same), or null. The pousse-pousse's tea is served: no défi. */
+export const defiOf = (interactionId?: string): DefiKind | null => ({ 'street-grin': 'the', 'chat-grin': 'the', 'ski-boulay': 'ski', supermarche: 'courses', courses: 'courses' } as Record<string, DefiKind>)[interactionId ?? ''] ?? null
 
 const DEFIS: Record<DefiKind, { title: string; button: string; icon: LucideIcon; colors: [string, string]; how: string[]; bg: string }> = {
   the: {

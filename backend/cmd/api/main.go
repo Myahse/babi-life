@@ -165,6 +165,7 @@ func main() {
 				"emotes":        game.Emotes,
 				"vehicles":      game.VehicleModels,
 				"parkings":      game.ParkingKinds,
+				"street":        sims.StreetActivities(),
 				"lotSizes":      game.LotSizes,
 				"homePlans":     game.HomePlans,
 				"lotPlans":      game.LotPlans,
