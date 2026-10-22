@@ -14,5 +14,6 @@
     "isolatedModules": true,
     "types": ["vite/client", "vite-plugin-pwa/client", "geojson"]
   },
-  "include": ["src", "vite.config.ts"]
+  "include": ["src", "vite.config.ts"],
+  "exclude": ["src/**/*.native.ts", "src/**/*.native.tsx"]
 }

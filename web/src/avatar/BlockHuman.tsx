@@ -7,6 +7,7 @@ import { tint } from './textures'
 import { fidgetAt, useCastShadows, usePoseRig, type Pose, type RigStyle } from './Human'
 import { worldTime } from '../lib/worldClock'
 import { Wad } from '../world3d/money'
+import { canvasTexture, canvasUrl, newCanvas } from '../lib/canvas'
 
 // A blocky Sim, Roblox / Minecraft style: a cube head, a box torso, and arms
 // and legs split at the elbows and knees. Everything that is just colour (the
@@ -265,8 +266,7 @@ const DIGITS: Record<string, string[]> = { '2': ['111', '001', '111', '100', '11
 
 /** Everything painted for one look: the face, the outfit, glasses, the chain, bobos, the hairline. */
 function paintSheet(l: Required<Look>, femme: boolean, young: boolean) {
-  const c = document.createElement('canvas')
-  c.width = c.height = SHEET * FINE
+  const c = newCanvas(SHEET * FINE, SHEET * FINE)
   // Worn clothes read the sheet back (wearOut): tell the browser, for those only.
   const p = new Painter(c.getContext('2d', { willReadFrequently: l.wear === 'use' || l.wear === 'dechire' })!)
   p.g.scale(FINE, FINE)
@@ -1056,7 +1056,7 @@ function paintSheet(l: Required<Look>, femme: boolean, young: boolean) {
   if ((l.marks === 'genou' || l.marks === 'bagarre') && cut.legRows < 6 && !cut.skirt) p.rows(R.leg[0], 6, 8, '#f4f1ea')
   if ((l.marks === 'griffures' || l.marks === 'bagarre') && cut.armRows < 7) for (const [x, y] of [[1, 7], [2, 8], [1, 9]]) p.at(R.arm[1], 'R', x, y, '#a8322a')
 
-  const t = new THREE.CanvasTexture(c)
+  const t = canvasTexture(c)
   t.magFilter = t.minFilter = THREE.NearestFilter
   t.generateMipmaps = false
   t.colorSpace = THREE.SRGBColorSpace
@@ -1100,15 +1100,14 @@ export function waxSwatch(color: string, motif: string) {
   const key = `${color}|${motif}`
   let url = swatchCache.get(key)
   if (!url) {
-    const c = document.createElement('canvas')
-    c.width = c.height = 12
+    const c = newCanvas(12, 12)
     const g = c.getContext('2d')!
     for (let y = 0; y < 12; y++)
       for (let x = 0; x < 12; x++) {
         g.fillStyle = waxPx(color, motif, x, y)
         g.fillRect(x, y, 1, 1)
       }
-    swatchCache.set(key, (url = c.toDataURL()))
+    swatchCache.set(key, (url = canvasUrl(c)))
   }
   return url
 }
@@ -1130,20 +1129,19 @@ function sheetFor(l: Required<Look>, femme: boolean, young: boolean) {
   return s
 }
 
-const texCache = new Map<string, THREE.CanvasTexture>()
+const texCache = new Map<string, THREE.Texture>()
 /** A small pixel texture for the extra boxes (hair, wraps, sleeves). */
 function pixelTex(key: string, size: number, paint: (x: number, y: number) => string) {
   let t = texCache.get(key)
   if (!t) {
-    const c = document.createElement('canvas')
-    c.width = c.height = size
+    const c = newCanvas(size, size)
     const g = c.getContext('2d')!
     for (let y = 0; y < size; y++)
       for (let x = 0; x < size; x++) {
         g.fillStyle = paint(x, y)
         g.fillRect(x, y, 1, 1)
       }
-    t = new THREE.CanvasTexture(c)
+    t = canvasTexture(c)
     t.magFilter = t.minFilter = THREE.NearestFilter
     t.generateMipmaps = false
     t.colorSpace = THREE.SRGBColorSpace

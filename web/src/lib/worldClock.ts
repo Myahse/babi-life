@@ -3,12 +3,14 @@
 // shared time, so two players looking at the same street see the same
 // passers-by at the same spot, the same step of the same dance.
 
-const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
+import { API_BASE as BASE } from './env'
+
 /** The game's epoch (Monday 1 January 2024, UTC), as on the server. */
 const EPOCH_MS = Date.UTC(2024, 0, 1)
 
 /** A clock that never goes back (Date.now can jump when the phone resyncs). */
-const local = () => performance.timeOrigin + performance.now()
+const origin = performance.timeOrigin ?? Date.now() - performance.now() // (no timeOrigin in the app's engine)
+const local = () => origin + performance.now()
 
 let offset = 0 // server − local, ms
 let bestRtt = Infinity

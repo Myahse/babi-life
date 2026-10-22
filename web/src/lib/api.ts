@@ -1,7 +1,7 @@
 import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage } from './types'
 import { useSession } from '../store/session'
-
-const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
+import { API_BASE as BASE } from './env'
+import { blobUrl } from './blobUrl'
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -14,7 +14,7 @@ export async function photoURL(path: string) {
   const token = useSession.getState().token
   const res = await fetch(BASE + path, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
   if (!res.ok) throw new ApiError(res.status, 'photo introuvable')
-  return URL.createObjectURL(await res.blob())
+  return blobUrl(await res.blob())
 }
 
 /**
