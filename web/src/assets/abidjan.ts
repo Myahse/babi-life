@@ -21,12 +21,6 @@ export const LAGOON: [number, number][] = [
   [-4.02, 5.272], [-4.05, 5.28], [-4.1, 5.288], [-4.16, 5.29], [-4.22, 5.288], [-4.3, 5.284],
 ]
 
-/** Petit-Bassam: Treichville, Marcory, Koumassi, Port-Bouët. */
-export const PETIT_BASSAM: [number, number][] = [
-  [-4.026, 5.306], [-4.019, 5.311], [-4.01, 5.3125], [-4.005, 5.313], [-3.99, 5.3145], [-3.97, 5.315], [-3.95, 5.313],
-  [-3.93, 5.309], [-3.915, 5.306], [-3.92, 5.29], [-3.94, 5.281], [-3.965, 5.279], [-3.99, 5.28], [-4.01, 5.283], [-4.028, 5.29],
-]
-
 /** The ocean shore from Jacqueville to past Grand-Bassam, west to east. */
 export const ABIDJAN_COAST: [number, number][] = [
   [-4.45, 5.2], [-4.3, 5.218], [-4.2, 5.229], [-4.1, 5.236], [-4.02, 5.241], [-3.95, 5.243], [-3.88, 5.236],
