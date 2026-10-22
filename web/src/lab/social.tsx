@@ -12,10 +12,14 @@ import { BabigramApp } from '../screens/BabigramApp'
 import { StreetStall } from '../world3d/open/stalls'
 import { Snapper } from '../world3d/snapshot'
 import { RideFlow } from '../components/RideFlow'
+import { CardBack, PlayingCard } from '../components/PlayingCards'
+import { HuitSheet } from '../components/Huit'
+import { DamesSheet } from '../components/Dames'
 
 // The phone's social apps on their own (?app=gbairai|tikitoko&token=…&sim=…),
 // against a running API (VITE_API_URL), with a street stall in 3D behind for
-// the photos. A lab for the screenshots, not part of the game.
+// the photos; the card games' table too (?app=cards|huit|dames). A lab for the
+// screenshots, not part of the game.
 
 const q = new URLSearchParams(location.search)
 const token = q.get('token')
@@ -34,8 +38,33 @@ function RideLab() {
   return <RideFlow world={world} req={{ cityId: 'abidjan', from, to, kind: 'gnango', fare: Number(q.get('fare') ?? 1500), party: 1, money: q.has('money') ? Number(q.get('money')) : undefined }} gameMinutes={12 * 60} onBoard={(r, l) => alert(`${l} ${JSON.stringify(r)}`)} onClose={() => undefined} />
 }
 
+/** The cards on their own (?app=cards): every face, the jokers, the backs. Needs nothing. */
+function CardsLab() {
+  return (
+    <div className="flex min-h-screen flex-wrap content-start gap-2 p-3" style={{ background: 'radial-gradient(ellipse at 50% 35%, #12a564, #077a45 60%, #04522e)' }}>
+      {Array.from({ length: 54 }, (_, c) => (
+        <PlayingCard key={c} c={c} w={c % 13 >= 10 || c >= 52 ? 74 : 60} />
+      ))}
+      <CardBack w={60} />
+      <CardBack w={22} />
+    </div>
+  )
+}
+
+/** 8 américain or les dames at the table (?app=huit|dames&token=…&sim=…), in a phone's frame, against a running API. */
+function TableLab({ app }: { app: 'huit' | 'dames' }) {
+  const sim = q.get('sim')!
+  return (
+    <div className="relative mx-auto h-screen w-full max-w-[430px] overflow-hidden bg-[#0f1230]">
+      {app === 'huit' ? <HuitSheet simId={sim} onClose={() => {}} onAgain={(npcs, stake) => void api.huitStart(sim, { with: 'npc', npcs, stake }).then(() => location.reload())} /> : <DamesSheet simId={sim} onClose={() => {}} onAgain={(npc, stake) => void api.damesStart(sim, { with: 'npc', npc, stake }).then(() => location.reload())} />}
+    </div>
+  )
+}
+
 function Lab() {
   if (q.get('app') === 'gnango') return <RideLab />
+  if (q.get('app') === 'cards') return <CardsLab />
+  if (q.get('app') === 'huit' || q.get('app') === 'dames') return <TableLab app={q.get('app') as 'huit' | 'dames'} />
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const [sim, setSim] = useState<Sim | null>(null)
   // eslint-disable-next-line react-hooks/rules-of-hooks
