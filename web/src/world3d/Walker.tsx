@@ -66,6 +66,8 @@ function pathLength(pts: XZ[], from: XZ) {
 }
 
 const NEAR_DOOR = 2.6 // metres from a door to be "at" a place
+/** The poses the other players are sent (backend/internal/live/live.go: its own and the emotes'). */
+const LIVE_POSES = new Set<string>(['idle', 'walk', 'run', 'busy', 'talk', 'sit', 'dance', 'wave', 'cheer', 'clap', 'shout', 'zouglou', 'gweta'])
 /** Further than this from the place, busy there, the activity stops (the Sim left). */
 const LEAVE = 40
 
@@ -115,10 +117,12 @@ type Props = {
   homeSpot?: HomeSpot
   /** Inside a place (doing something there): not drawn in the street. */
   hidden?: boolean
+  /** Joined in what's happening in the street: its spot there (world frame), what it faces, its pose. */
+  joinRole?: { at: XZ; face: XZ; pose: Pose } | null
 }
 
 /** The player's Sim: walks to places, with the pad or by tapping the ground; the camera follows. */
-export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy, stationAt, nameTag, labels, onNear, frozen, onLeave, recenter, onFreeCamera, perspective, close, shoulder, homeSpot, hidden }: Props) {
+export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy, stationAt, nameTag, labels, onNear, frozen, onLeave, recenter, onFreeCamera, perspective, close, shoulder, homeSpot, hidden, joinRole }: Props) {
   const group = useRef<THREE.Group>(null)
   const path = useRef<[number, number][]>([])
   const target = useRef<string | null>(null)
@@ -155,6 +159,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   const fieldLot = busy && stationAt ? lots.find((l) => l.id === stationAt && l.field) : undefined
   const inMatch = !!fieldLot && !!busy?.id && /^play-/.test(busy.id)
   const onTouchline = !!fieldLot && /^(play-|watch-match)/.test(busy?.id ?? '')
+  // Joined in what's happening in the street: to its place in it (a chair, the crowd), not the busy arms.
+  const joining = !!joinRole && busy?.id === 'join' && stationAt === 'happening'
   // Strolling (LOOPS): the way's start, its direction and length, and when it began.
   const loop = useRef<{ x: number; z: number; fx: number; fz: number; len: number; t0: number } | null>(null)
   const [looping, setLooping] = useState(false)
@@ -556,6 +562,20 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         pose = mo.kind === 'goal' || mo.kind === 'dunk' ? 'cheer' : 'sit'
       }
       if (pose !== matchPose) setMatchPose(pose)
+    } else if (joining && !path.current.length && !padWalking.current) {
+      const [x, z] = joinRole!.at
+      const [dx, dz] = [x - g.position.x, z - g.position.z]
+      const d = Math.hypot(dx, dz)
+      let pose: Pose = joinRole!.pose
+      if (d > 12) pose = 'idle'
+      else if (d > 0.05) {
+        const step = Math.min(d, SPEED * Math.min(dt, 0.25))
+        g.position.x += (dx / d) * step
+        g.position.z += (dz / d) * step
+        g.rotation.y = Math.atan2(dx, dz)
+        pose = 'walk'
+      } else g.rotation.y = Math.atan2(joinRole!.face[0] - x, joinRole!.face[1] - z)
+      if (pose !== matchPose) setMatchPose(pose)
     }
     // Talking with someone: face them.
     const face = whereabouts.faceTo
@@ -674,7 +694,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     // What the other players see of this Sim.
     whereabouts.simY = g.position.y
     whereabouts.simHeading = g.rotation.y
-    whereabouts.simPose = busy ? (busy.kind === 'chat' ? 'talk' : 'busy') : walking ? (run ? 'run' : 'walk') : (emote ?? 'idle')
+    whereabouts.simPose = joining && LIVE_POSES.has(matchPose) ? matchPose : busy ? (busy.kind === 'chat' ? 'talk' : 'busy') : walking ? (run ? 'run' : 'walk') : (emote ?? 'idle')
     // Camera follows the Sim, keeping whatever angle the player chose.
     if (controls && !free.current && !gesture.current) {
       const want = new THREE.Vector3(g.position.x, lookHeight, g.position.z)
@@ -832,7 +852,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         ) : (
           // Stopped on a stroll with a friend: turned to them, talking.
           <group rotation={[0, chatting && !walking ? 0.9 : 0, 0]}>
-            <Character look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking || looping} running={run || (looping && !!loopKind?.run)} busy={!!busy && !looping && !chatting} marker={!photoMode} pose={photoMode && photoMode !== 'film' && !busy && !walking ? 'phone' : emote && !busy && !walking ? emote : busy?.kind === 'chat' || (chatting && !walking) ? 'talk' : (inMatch || onTouchline) && !walking ? matchPose : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={looping && loopKind ? loopKind.speed : run ? RUN : SPEED} />
+            <Character look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking || looping} running={run || (looping && !!loopKind?.run)} busy={!!busy && !looping && !chatting} marker={!photoMode} pose={photoMode && photoMode !== 'film' && !busy && !walking ? 'phone' : emote && !busy && !walking ? emote : busy?.kind === 'chat' || (chatting && !walking) ? 'talk' : (inMatch || onTouchline || joining) && !walking ? matchPose : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={looping && loopKind ? loopKind.speed : run ? RUN : SPEED} />
           </group>
         )}
         {/* Hanging out: the friend walks along beside the Sim */}

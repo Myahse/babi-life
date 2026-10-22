@@ -41,6 +41,7 @@ import { moveObstacle } from '../world3d/obstacles'
 import { freezeWorldTime } from '../lib/worldClock'
 import { StreetSpot, type StreetPeopleSpot } from '../world3d/open/streetPeople'
 import { Grin } from '../world3d/open/streetlife'
+import { HAPPENING_ROLES, HappeningScene } from '../world3d/Happenings'
 import { homeSpotsOf } from '../world3d/homeSpots'
 import KartRace from '../kart/KartRace'
 import StreetMatch from '../streetball/StreetMatch'
@@ -411,6 +412,40 @@ function InteriorLab() {
   )
 }
 
+/**
+ * ?view=happening&id=ouverture-boutique: a street happening staged on a plain street (world3d/Happenings.tsx)
+ * with the player's Sim at its place in it (HAPPENING_ROLES), as when joining in; &night, &cam=x,y,z.
+ */
+function HappeningLab() {
+  const id = q.get('id') ?? 'ouverture-boutique'
+  const look = useMemo(() => randomLook('femme', seededLab(5)), [])
+  const r = HAPPENING_ROLES[id]
+  const night = q.has('night')
+  return (
+    <Canvas shadows dpr={[1, 2]} camera={{ position: (q.get('cam') ?? '6,7,16').split(',').map(Number) as [number, number, number], fov: 45 }} style={{ width: '100vw', height: '100vh' }}>
+      <color attach="background" args={[night ? '#0b1026' : '#cfe9f8']} />
+      <hemisphereLight args={['#ffffff', '#b8a27c', night ? 0.35 : 1.2]} />
+      <directionalLight position={[10, 20, 8]} intensity={night ? 0.2 : 1.8} castShadow />
+      {/* The street: the road, its sidewalks */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[18, 0, 0]} receiveShadow>
+        <planeGeometry args={[60, 30]} />
+        <meshLambertMaterial color="#c9b48f" />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[18, 0.01, 0]} receiveShadow>
+        <planeGeometry args={[60, 10]} />
+        <meshLambertMaterial color="#5c5f66" />
+      </mesh>
+      <HappeningScene id={id} seed="lab" night={night} />
+      {r && (
+        <group position={[r.at[0], 0, r.at[1]]} rotation={[0, Math.atan2(r.face[0] - r.at[0], r.face[1] - r.at[1]), 0]}>
+          <Character look={look} gender="femme" busy pose={r.pose} stage="adulte" />
+        </group>
+      )}
+      <OrbitControls target={(q.get('look') ?? '15,1,3').split(',').map(Number) as [number, number, number]} />
+    </Canvas>
+  )
+}
+
 function OutdoorLab() {
   const id = q.get('id') ?? 'play-football'
   const look = useMemo(() => {
@@ -535,6 +570,7 @@ function Lab() {
   if (view === 'camera') return <CameraLab />
   if (view === 'dressing' || view === 'police') return <FrontLab />
   if (view === 'outdoor') return <OutdoorLab />
+  if (view === 'happening') return <HappeningLab />
   if (view === 'field') return <FieldLab />
   if (view === 'stalls') return <StallsLab />
   if (view === 'tolls') return <TollsLab />
