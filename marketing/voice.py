@@ -111,6 +111,9 @@ def main():
     import torch
     from chatterbox.mtl_tts import ChatterboxMultilingualTTS
 
+    # Two threads: alongside the filming (Chromium on the same cores) more only fight each other.
+    torch.set_num_threads(int(os.environ.get('THREADS', '2')))
+
     ref = os.path.join(OUT, 'ref.wav')
     if not os.path.exists(ref):
         from kokoro import KPipeline
@@ -131,7 +134,8 @@ def main():
             # The best understood; of two as good, the shorter (it keeps the film moving).
             if best is None or score > best[0] + 0.001 or (abs(score - best[0]) < 0.001 and len(a) < len(best[1])):
                 best = (score, a, h)
-            if score > 0.97:
+            # Understood well enough (Whisper's own slips aside): no need for another take.
+            if score >= 0.93:
                 break
         sf.write(os.path.join(OUT, f'{id}.wav'), best[1], model.sr)
         report[id] = {'dur': round(len(best[1]) / model.sr, 3), 'score': round(best[0], 3), 'heard': best[2]}
