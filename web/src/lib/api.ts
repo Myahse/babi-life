@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, GramPost, GramProfile, GramFound, GramActivity, DameGame, CinemaProgram, CinemaSeats, CinemaTicket } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, GramPost, GramProfile, GramFound, GramActivity, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket } from './types'
 import { useSession } from '../store/session'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
@@ -289,5 +289,10 @@ export const api = {
   damesStart: (id: string, o: { with: string; npc?: string; stake: number }) => post<ActionResult>(`/sims/${id}/dames`, o),
   damesAccept: (id: string, game: number) => post<ActionResult>(`/sims/${id}/dames/${game}/accept`, {}),
   damesAct: (id: string, game: number, action: 'move' | 'resign' | 'decline', path?: number[]) => post<{ game: DameGame }>(`/sims/${id}/dames/${game}/${action}`, path ? { path } : {}),
+  /** 8 américain (backend sims/huit.go): the game going on, a table with the game's players or a friend challenged, the answer, the cards. */
+  huit: (id: string) => request<{ game: HuitGame | null }>(`/sims/${id}/huit`),
+  huitStart: (id: string, o: { with: string; npcs?: string[]; stake: number }) => post<ActionResult>(`/sims/${id}/huit`, o),
+  huitAccept: (id: string, game: number) => post<ActionResult>(`/sims/${id}/huit/${game}/accept`, {}),
+  huitAct: (id: string, game: number, action: 'play' | 'draw' | 'pass' | 'resign' | 'decline', play?: { card: number; suit: number; carte: boolean }) => post<{ game: HuitGame }>(`/sims/${id}/huit/${game}/${action}`, play ?? {}),
   answerInvite: (id: string, invite: string, answer: 'accepter' | 'refuser') => post<ActionResult>(`/sims/${id}/invites/${invite}`, { answer }),
 }

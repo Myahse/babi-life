@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowLeft, ArrowRight, Check, Clock3, Download, Search, Star, Trash2, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Download, Search, Star, Trash2, X } from 'lucide-react'
 import { api } from '../lib/api'
 import type { PhoneApp, Sim, World } from '../lib/types'
 import { AppLogo } from '../components/AppLogo'
@@ -14,16 +14,14 @@ import type { Act } from './phoneApps'
 
 const PLAY = '#01875f' // the install buttons' green
 
-const RATING: Record<string, number> = { waye: 4.8, gnango: 4.3, idrive: 4.1, golvo: 4.4, gbairai: 4.6, tikitoko: 4.5, babigram: 4.6, bet225: 4.2, parisfoot: 4.4, dodo: 4.4, kineo: 4.5, dames: 4.7 }
-const DOWNLOADS: Record<string, string> = { waye: '5 M+', gnango: '1 M+', idrive: '500 k+', gbairai: '1 M+', tikitoko: '5 M+', babigram: '1 M+', bet225: '1 M+', parisfoot: '500 k+', golvo: '500 k+', dodo: '100 k+', kineo: '100 k+', dames: '100 k+' }
+const RATING: Record<string, number> = { waye: 4.8, gnango: 4.3, idrive: 4.1, golvo: 4.4, gbairai: 4.6, tikitoko: 4.5, babigram: 4.6, bet225: 4.2, parisfoot: 4.4, dodo: 4.4, kineo: 4.5, dames: 4.7, huit: 4.8 }
+const DOWNLOADS: Record<string, string> = { waye: '5 M+', gnango: '1 M+', idrive: '500 k+', gbairai: '1 M+', tikitoko: '5 M+', babigram: '1 M+', bet225: '1 M+', parisfoot: '500 k+', golvo: '500 k+', dodo: '100 k+', kineo: '100 k+', dames: '100 k+', huit: '500 k+' }
 /** Who's old enough for it, as the stores rate apps. */
 const AGE: Record<string, string> = { bet225: '18+', parisfoot: '18+', tikitoko: '12+', babigram: '12+', gbairai: '12+', dodo: '12+' }
 /** Made-up makers, by app. */
-const MAKER: Record<string, string> = { waye: 'Waye Mobile CI', gnango: 'Gnango Mobilité', idrive: 'iDrive Afrique', gbairai: 'Gbairai Studio', tikitoko: 'Tikitoko Média', babigram: 'Babigram Labs', bet225: 'Bet225 Gaming', parisfoot: 'ParisFoot SA', golvo: 'Golvo Livraisons', dodo: 'Dodo Séjours', kineo: 'Kinéo Cinémas', dames: 'Grin Studio' }
+const MAKER: Record<string, string> = { waye: 'Waye Mobile CI', gnango: 'Gnango Mobilité', idrive: 'iDrive Afrique', gbairai: 'Gbairai Studio', tikitoko: 'Tikitoko Média', babigram: 'Babigram Labs', bet225: 'Bet225 Gaming', parisfoot: 'ParisFoot SA', golvo: 'Golvo Livraisons', dodo: 'Dodo Séjours', kineo: 'Kinéo Cinémas', dames: 'Grin Studio', huit: 'Maquis Games' }
 /** Up top on « Pour toi », in this order (when the world has them). */
-const FEATURED = ['dames', 'kineo', 'tikitoko', 'dodo']
-/** The games coming soon, shown in « Jeux » before they're out. */
-const SOON = [{ id: 'huit', name: '8 américain', tagline: 'Le jeu de cartes de chez nous, entre amis' }]
+const FEATURED = ['huit', 'dames', 'kineo', 'tikitoko', 'dodo']
 
 const downloads = (id: string) => DOWNLOADS[id] ?? '10 k+'
 const order = (d: string) => parseFloat(d) * (d.includes('M') ? 1000 : 1)
@@ -161,24 +159,12 @@ export function StoreApp({ world, sim, act, onOpen }: { world: World; sim: Sim; 
             <ul className="space-y-1">{[...apps].sort((x, y) => order(downloads(y.id)) - order(downloads(x.id)) || (RATING[y.id] ?? 4) - (RATING[x.id] ?? 4)).slice(0, 5).map((a, i) => row(a, i + 1))}</ul>
 
             <Section title="Jeux à essayer" onMore={() => setTab('jeux')} />
-            <Strip apps={games} soon onOpen={setPage} />
+            <Strip apps={games} onOpen={setPage} />
           </>
         ) : tab === 'jeux' ? (
           <>
             <Section title="Jeux de chez nous" />
             <ul className="space-y-1">{games.map((a) => row(a))}</ul>
-            {SOON.map((s) => (
-              <div key={s.id} className="mt-2 flex items-center gap-3 rounded-2xl bg-[var(--color-canvas)] p-2.5">
-                <AppLogo id={s.id} size={52} radius={15} />
-                <div className="min-w-0 flex-1">
-                  <div className="font-display text-[15px] leading-tight font-extrabold">{s.name}</div>
-                  <div className="truncate text-xs font-bold text-[var(--color-ink-soft)]">{s.tagline}</div>
-                </div>
-                <span className="flex shrink-0 items-center gap-1 rounded-full bg-white px-3 py-1.5 text-[12px] font-extrabold text-[var(--color-ink-soft)]">
-                  <Clock3 size={13} /> Bientôt
-                </span>
-              </div>
-            ))}
           </>
         ) : tab === 'applis' ? (
           // The apps by kind, a section each (or the one kind picked).
@@ -221,6 +207,7 @@ export function StoreApp({ world, sim, act, onOpen }: { world: World; sim: Sim; 
 
 /** The banners' colours, by app (the others take the store's). */
 const BANNER: Record<string, string> = {
+  huit: 'linear-gradient(135deg,#1f8a55,#073f24)',
   dames: 'linear-gradient(135deg,#b07a3c,#4a2a12)',
   kineo: 'linear-gradient(135deg,#e63946,#6b0716)',
   tikitoko: 'linear-gradient(135deg,#25f4ee,#111 55%,#fe2c55)',
@@ -252,7 +239,7 @@ function Stars({ a }: { a: PhoneApp }) {
 }
 
 /** A row of apps to slide through, the big icon above the name. */
-function Strip({ apps, soon, onOpen }: { apps: PhoneApp[]; soon?: boolean; onOpen: (a: PhoneApp) => void }) {
+function Strip({ apps, onOpen }: { apps: PhoneApp[]; onOpen: (a: PhoneApp) => void }) {
   return (
     <div className="-mx-3 flex gap-3 overflow-x-auto px-3 pb-1">
       {apps.map((a) => (
@@ -264,14 +251,6 @@ function Strip({ apps, soon, onOpen }: { apps: PhoneApp[]; soon?: boolean; onOpe
           </div>
         </button>
       ))}
-      {soon &&
-        SOON.map((s) => (
-          <div key={s.id} className="w-[76px] shrink-0 opacity-70">
-            <AppLogo id={s.id} size={72} radius={20} />
-            <div className="mt-1.5 line-clamp-2 text-[12px] leading-tight font-extrabold">{s.name}</div>
-            <div className="text-[11px] font-bold text-[var(--color-ink-soft)]">Bientôt</div>
-          </div>
-        ))}
     </div>
   )
 }
