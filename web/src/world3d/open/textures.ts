@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { ZONE } from '../power'
 
 // Pixel-art textures, 16×16 like Minecraft's, drawn once at startup: no
 // image files, and nearest-pixel filtering keeps them crisp and blocky.
@@ -303,22 +304,37 @@ export function litShare(hour: number) {
  * Lets the walls' night lights go out window by window: each window (a 3 m
  * tile of the façade, told apart by its place in the atlas and the 40 m patch
  * of the city it stands in) has its own number, and is lit while that number
- * is under `share`. Returns the uniform to set (0 to 1).
+ * is under `share`. Returns the uniform to set (0 to 1). In a zone where the
+ * power is cut (world3d/power.ts: up to CUTS of them, set in
+ * m.userData.powerCuts, their count in powerCutN) the windows are dark but for
+ * the few with a generator.
  */
+export const CUTS = 9
 export function windowsByHour(m: THREE.MeshLambertMaterial) {
   const share = { value: 1 }
+  const cuts = { value: [...Array(CUTS)].map(() => new THREE.Vector2()) }
+  const n = { value: 0 }
+  m.userData.powerCuts = cuts
+  m.userData.powerCutN = n
   m.onBeforeCompile = (s) => {
     s.uniforms.uLitShare = share
+    s.uniforms.uCuts = cuts
+    s.uniforms.uCutN = n
     s.vertexShader = s.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vLitWorld;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvLitWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;')
     s.fragmentShader = s.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform float uLitShare;\nvarying vec3 vLitWorld;')
+      .replace('#include <common>', `#include <common>\nuniform float uLitShare;\nuniform vec2 uCuts[${CUTS}];\nuniform int uCutN;\nvarying vec3 vLitWorld;`)
       .replace(
         '#include <emissivemap_fragment>',
         `#include <emissivemap_fragment>
         vec2 litTile = floor(vMapUv * ${ATLAS}.0 + 0.001);
         vec2 litPatch = floor(vLitWorld.xz / 40.0);
         float litN = fract(sin(dot(vec4(litTile, litPatch), vec4(12.9898, 78.233, 37.719, 4.581))) * 43758.5453);
-        totalEmissiveRadiance *= step(litN, uLitShare);`,
+        vec2 litZone = floor(vLitWorld.xz / ${ZONE}.0);
+        float litCut = 0.0;
+        for (int i = 0; i < ${CUTS}; i++) {
+          if (i < uCutN && litZone == uCuts[i]) litCut = 1.0;
+        }
+        totalEmissiveRadiance *= step(litN, uLitShare) * mix(1.0, step(litN, 0.05), litCut);`,
       )
   }
   m.customProgramCacheKey = () => 'windowsByHour'

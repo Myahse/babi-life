@@ -21,11 +21,12 @@ const MAX = 420
 /** The nearest lamps also get their cone of light. */
 const CONES = 70
 const SODIUM = new THREE.Color('#ffb54d')
+const OUT = new THREE.Color('#000000')
 const LED = new THREE.Color('#e8f0ff')
 
 type Lamp = { x: number; y: number; z: number; rot: number; led: boolean }
 
-export function StreetLights({ nav, night }: { nav: Nav; night: boolean }) {
+export function StreetLights({ nav, night, dark }: { nav: Nav; night: boolean; /** Where the power is cut (world3d/power.ts): those lamps stay out. */ dark?: (x: number, z: number) => boolean }) {
   // Every lamp of the loaded streets (not on paths and tracks).
   const all = useMemo(() => {
     const out: Lamp[] = []
@@ -104,11 +105,12 @@ export function StreetLights({ nav, night }: { nav: Nav; night: boolean }) {
       arms.current?.setMatrixAt(i, m.compose(new THREE.Vector3(l.x + fwd.x * 0.9, l.y + 7.1, l.z + fwd.z * 0.9), q, new THREE.Vector3(1, 1, 1)))
       heads.current?.setMatrixAt(i, m.compose(new THREE.Vector3(l.x + fwd.x * 1.75, l.y + 6.95, l.z + fwd.z * 1.75), q, new THREE.Vector3(1, 1, 1)))
       pools.current?.setMatrixAt(i, m.compose(new THREE.Vector3(l.x + fwd.x * 2.4, l.y + 0.08, l.z + fwd.z * 2.4), new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0)), new THREE.Vector3(1, 1, 1)))
-      pools.current?.setColorAt(i, l.led ? LED : SODIUM)
+      // A lamp in a cut zone: its pool, halo and cone black (added light: nothing shows).
+      const c = dark?.(l.x, l.z) ? OUT : l.led ? LED : SODIUM
+      pools.current?.setColorAt(i, c)
       // The halo, just under the lamp head.
       const [hx, hy, hz] = [l.x + fwd.x * 1.75, l.y + 6.8, l.z + fwd.z * 1.75]
       halos.attributes.position.setXYZ(i, hx, hy, hz)
-      const c = l.led ? LED : SODIUM
       halos.attributes.color.setXYZ(i, c.r, c.g, c.b)
       if (i < CONES) {
         cones.current?.setMatrixAt(i, m.compose(new THREE.Vector3(hx, l.y + 3.45, hz), new THREE.Quaternion(), new THREE.Vector3(1, 1, 1)))
@@ -125,7 +127,7 @@ export function StreetLights({ nav, night }: { nav: Nav; night: boolean }) {
     halos.attributes.color.needsUpdate = true
     halos.setDrawRange(0, shown.length)
     halos.computeBoundingSphere()
-  }, [shown, halos])
+  }, [shown, halos, dark])
 
   const mats = useMemo(
     () => ({
