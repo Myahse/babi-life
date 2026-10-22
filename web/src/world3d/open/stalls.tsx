@@ -674,6 +674,9 @@ function Cart({ tea, price }: { tea: boolean; price: number }) {
   )
 }
 
+/** Where one sits to eat what was bought, in the stall's frame: x, z, facing. */
+const EAT_AT: Partial<Record<StallKind, [number, number, number]>> = { alloco: [-1.6, 3.1, Math.PI * 0.9], porc: [1.45, -2.7, -Math.PI / 2], brochette: [-2.0, 2.45, Math.PI / 2], garba: [2.75, 2.45, -Math.PI / 2] }
+
 /* ---------- The customers ---------- */
 
 type Customer = { at: [number, number, number]; rot: number; pose: Pose; gender: 'femme' | 'homme'; seed: number }
@@ -858,8 +861,14 @@ export function StreetStall({ stall, hour, crowd, onBuy }: { stall: Stall; hour:
   const [choosing, setChoosing] = useState(false)
   // A Loto ticket just bought: « Partager mon ticket » for a while (to a friend, to the grin).
   const [bought, setBought] = useState(false)
+  // Bought something to eat: a stool beside the stall (by the others on its bench, at the porc's table's end), the plate on the lap (OutdoorAction).
+  const sitToEat = () => {
+    const at = EAT_AT[stall.kind]
+    if (at) whereabouts.joined = { id: stall.id, activity: `street-${stall.kind}`, spot: { ...placeIn(stall, at[0], at[1], at[2], 'eat', 0.05), stool: true } }
+  }
   const choose = async (choice: string) => {
     setChoosing(false)
+    if (stall.kind === 'garba') sitToEat()
     say('…', 20000)
     const text = await onBuy?.(stall.id, choice)
     if (text) say(text)
@@ -903,6 +912,7 @@ export function StreetStall({ stall, hour, crowd, onBuy }: { stall: Stall; hour:
     if (stall.kind === 'garba' || stall.kind === 'loto') return setChoosing(true)
     // At the pousse-pousse: a stool by the cart, facing the seller who serves (Serve); no défi, it's his tea.
     if (stall.kind === 'the' || stall.kind === 'cafe') whereabouts.joined = { id: stall.id, activity: `street-${stall.kind}`, spot: { ...placeIn(stall, SERVE.x, SERVE.sim, Math.PI, 'drink', 0.05), stool: true } }
+    else sitToEat()
     say('…', 20000)
     const text = await onBuy(stall.id)
     if (text) say(text)

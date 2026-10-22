@@ -13,7 +13,7 @@ import { LotFence, ownerColor } from './build/Fence'
 import { homeSpotsOf } from './homeSpots'
 import { gridWay } from './gridPath'
 import type { HomeSpot } from './Walker'
-import { Pot, TvOn, Zzz } from './interior/ActionProps'
+import { ActionProps, Pot, TvOn, Zzz } from './interior/ActionProps'
 import { Hammer } from 'lucide-react'
 import { Snapper } from './snapshot'
 import { ChatFraming } from './chatFraming'
@@ -146,7 +146,7 @@ function useFlights(plot: Plot, w: number, d: number, levels: (level: number) =>
 }
 
 /** The Sim: walks its way, then settles on the spot (lying, sitting…). */
-function Walking({ sim, stage, way, spot, onThere, steer, onMoved, onLevel }: { sim: Sim; stage: string; way: P[]; spot: HomeSpot | null; onThere: (there: boolean) => void; /** Walking about: the keys or the pad move the Sim, where the ground is free. */ steer?: (x: number, z: number) => boolean; onMoved?: (at: XZ) => void; /** The floor the Sim is on now (going up or down the stairs). */ onLevel?: (level: number) => void }) {
+function Walking({ sim, stage, way, spot, doing, onThere, steer, onMoved, onLevel }: { sim: Sim; stage: string; way: P[]; spot: HomeSpot | null; /** What it does there: what shows it round it (ActionProps). */ doing?: string; onThere: (there: boolean) => void; /** Walking about: the keys or the pad move the Sim, where the ground is free. */ steer?: (x: number, z: number) => boolean; onMoved?: (at: XZ) => void; /** The floor the Sim is on now (going up or down the stairs). */ onLevel?: (level: number) => void }) {
   const g = useRef<THREE.Group>(null)
   const camera = useThree((st) => st.camera)
   const controls = useThree((st) => st.controls) as unknown as { target: THREE.Vector3; update: () => void } | null
@@ -267,6 +267,7 @@ function Walking({ sim, stage, way, spot, onThere, steer, onMoved, onLevel }: { 
             </mesh>
           )}
           <Character look={look} gender={sim.gender} pose={spot.pose} stage={stage} marker={!spot.lying} />
+          <ActionProps id={doing} kind="house" lying={spot.lying} stage={stage} />
         </group>
       ) : (
         <Character look={sim.look} gender={sim.gender} walking={walking} stage={stage} speed={SPEED} />
@@ -319,7 +320,20 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
   // The arrow keys and WASD walk the Sim about the house.
   useEffect(() => (roam && !interactionId ? listenKeys() : undefined), [roam, interactionId])
   // Where each thing is done, in the lot's metres from its middle.
-  const spots = useMemo(() => (world.furniture ? homeSpotsOf(plot, [w, d], [0, 0], 0, world.furniture) : {}), [plot, w, d, world.furniture])
+  const spots = useMemo(() => {
+    const out = world.furniture ? homeSpotsOf(plot, [w, d], [0, 0], 0, world.furniture) : {}
+    // Off to school: out at the gate, turned back to wave to the house, the bag on the back.
+    out['aller-ecole'] = { at: [0, d / 2 + 1.2], from: [0, d / 2 + 1.2], y: 0, rot: Math.PI, pose: 'wave', lying: false }
+    // Playing in the cour: the first free bit of the yard from the gate in, with room round it for the ball.
+    const free = levels(0)
+    search: for (let v = d / 2 - 2.5; v > -d / 2; v -= 0.5)
+      for (const u of [0, 1, -1, 2, -2, 3, -3])
+        if (free(u, v) && free(u, v - 0.7) && free(u + 0.6, v) && free(u - 0.6, v)) {
+          out['jouer-cour'] = { at: [u, v], from: [u, v], y: 0, rot: Math.PI, pose: 'kick', lying: false }
+          break search
+        }
+    return out
+  }, [plot, w, d, world.furniture, levels])
   const spot = interactionId ? (spots[interactionId === 'golvo' ? 'golvo' : interactionId] ?? null) : null
   const gate: XZ = [0, d / 2 + 1.5]
   // Where to walk to (a tap on the floor, a floor's button), and on which floor.
@@ -410,7 +424,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
             </mesh>
           )}
           {partner && <Partner friend={partner} spots={spots} doing={interactionId} spot={spot} />}
-          <Walking sim={sim} stage={stage} way={way} spot={spot} onThere={setThere} steer={roam && !interactionId ? levels(lvl.current) : undefined} onMoved={(p) => ((where.current = p), setTapped(null))} onLevel={setFloor} />
+          <Walking sim={sim} stage={stage} way={way} spot={spot} doing={interactionId} onThere={setThere} steer={roam && !interactionId ? levels(lvl.current) : undefined} onMoved={(p) => ((where.current = p), setTapped(null))} onLevel={setFloor} />
           {there && interactionId === 'cook-attieke' && spot && (
             <group position={[spot.at[0] + Math.sin(spot.rot) * 0.6, 0, spot.at[1] + Math.cos(spot.rot) * 0.6]}>
               <Pot />

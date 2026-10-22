@@ -9,6 +9,7 @@ import { randomLook } from '../../avatar/options'
 import { rng } from '../themes'
 import { Snapper } from '../snapshot'
 import { ChatFraming } from '../chatFraming'
+import { ActionProps } from './ActionProps'
 import { Guest, mat, sign, useBigWalk, type Spot, type XZ } from './bigPlace'
 import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
@@ -70,7 +71,7 @@ const SPOTS: Record<string, Spot> = {
   // A table of the restaurant, by the glass over the pool.
   'brunch-lagune': { at: [-14, -11.4], rot: Math.PI, pose: 'eat', y: 0.05 },
   // A stool at the bar.
-  'bar-hotel': { at: [13.4, -4.6], rot: Math.PI, pose: 'drink' },
+  'bar-hotel': { at: [13.4, -4.6], rot: Math.PI, pose: 'drink', y: 0.35 },
   // The room down the corridor, the king bed.
   'nuit-hotel': { at: [17.2, 10.6], rot: Math.PI / 2, pose: 'sleep', y: 0.62, lying: true, from: [14.6, 10.6] },
 }
@@ -178,7 +179,9 @@ export function HotelInside({ sim, placeId, name, interactionId, roam, night, st
               <meshBasicMaterial transparent opacity={0} depthWrite={false} />
             </mesh>
           )}
-          <Guest sim={sim} stage={stage} way={way} spot={spot} steer={!!roam && !interactionId} onMoved={onMoved} free={free} entrance={ENTRANCE} />
+          <Guest sim={sim} stage={stage} way={way} spot={spot} steer={!!roam && !interactionId} onMoved={onMoved} free={free} entrance={ENTRANCE}>
+            <ActionProps id={interactionId} kind="hotel" lying={!!spot?.lying} />
+          </Guest>
           <OrbitControls makeDefault target={[0, 1, -4]} enablePan={false} minDistance={6} maxDistance={70} minPolarAngle={0.25} maxPolarAngle={1.25} enableDamping />
         </Suspense>
       </Canvas>

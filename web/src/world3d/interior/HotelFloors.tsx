@@ -9,6 +9,7 @@ import { amount, duration, openAt } from '../../game/rules'
 import { iconFor } from '../../components/icons'
 import { Snapper } from '../snapshot'
 import { ChatFraming } from '../chatFraming'
+import { ActionProps, TvOn, Zzz } from './ActionProps'
 import { Guest, mat, sign, useBigWalk, type Spot, type XZ } from './bigPlace'
 import { isRoomAct, setLift, useLift } from '../hotelLift'
 import { CorridorDecor, LOOKS, PLAIN, RoomDecor, WindowWall, type Look } from './hotelStyles'
@@ -236,7 +237,7 @@ function GuestRoom({ type, look, night }: { type: string; look: Look; night: boo
 
 /* ---------- Upstairs: the corridor or a room, the Sim in it ---------- */
 
-function Upstairs({ sim, stage, look, view, floor, room, rooms, roomType, interactionId, night, onDoor }: { sim: Sim; stage: string; look: Look; view: 'corridor' | 'room'; floor: number; room: string | null; rooms: HotelView['rooms']; roomType: string; interactionId?: string; night: boolean; onDoor: (room: string) => void }) {
+export function Upstairs({ sim, stage, look, view, floor, room, rooms, roomType, interactionId, night, onDoor }: { sim: Sim; stage: string; look: Look; view: 'corridor' | 'room'; floor: number; room: string | null; rooms: HotelView['rooms']; roomType: string; interactionId?: string; night: boolean; onDoor: (room: string) => void }) {
   const inRoom = view === 'room'
   const { hw, hd } = ROOM[roomType] ?? ROOM.standard
   const len = doorX((rooms ?? []).length) + 4
@@ -269,7 +270,20 @@ function Upstairs({ sim, stage, look, view, floor, room, rooms, roomType, intera
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
         </mesh>
       )}
-      <Guest sim={sim} stage={stage} way={way} spot={spot} steer={!interactionId} onMoved={onMoved} free={free} entrance={entrance} />
+      <Guest sim={sim} stage={stage} way={way} spot={spot} steer={!interactionId} onMoved={onMoved} free={free} entrance={entrance} look={spot?.pose === 'wash' ? { ...sim.look, outfit: 'serviette', accessory: 'none' } : undefined}>
+        <ActionProps id={interactionId} kind="room" lying={!!spot?.lying} bath={roomType !== 'standard'} />
+        {/* The TV across from the bed, on; the Z… z… of the sleeper (back upright, from the lying frame) */}
+        {interactionId === 'chambre-tele' && (
+          <group position={[0, 0.05, 1.55]} rotation={[0, Math.PI, 0]}>
+            <TvOn />
+          </group>
+        )}
+        {spot?.lying && (
+          <group rotation={[Math.PI / 2, 0, 0]}>
+            <Zzz at={[0, 0.55, -1.3]} />
+          </group>
+        )}
+      </Guest>
       <OrbitControls makeDefault target={center} enablePan={false} minDistance={4} maxDistance={30} minPolarAngle={0.3} maxPolarAngle={1.2} enableDamping />
     </Canvas>
   )

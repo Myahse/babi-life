@@ -40,6 +40,9 @@ const RIDE_FROM = 220
 const LOOPS: Record<string, { speed: number; run?: boolean; len: number; /** a stop at each end, side by side, to talk (seconds) */ pause?: number; /** on the street's pitch (whereabouts.pitch), end to end */ pitch?: boolean }> = {
   'balade-lagune': { speed: 1.2, len: 14 },
   hike: { speed: 1.4, len: 18 },
+  // Round the zoo's paths, along the street: slowly, looking about.
+  'zoo-visite': { speed: 1.0, len: 14, pause: 6 },
+  'flaner-rue': { speed: 1.0, len: 20, pause: 5 },
   'stade-footing': { speed: 3.2, run: true, len: 26 },
   // A game with the quartier on the street's pitch or court: up and down it with the others.
   'street-foot': { speed: 3.4, run: true, len: 16, pitch: true },

@@ -9,6 +9,7 @@ import { randomLook } from '../../avatar/options'
 import { rng } from '../themes'
 import { Snapper } from '../snapshot'
 import { ChatFraming } from '../chatFraming'
+import { ActionProps } from './ActionProps'
 import { Guest, mat, sign, useBigWalk, type Spot, type XZ } from './bigPlace'
 import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
@@ -146,7 +147,9 @@ export function IvoireInside({ sim, interactionId, roam, night, stage }: { sim: 
               <meshBasicMaterial transparent opacity={0} depthWrite={false} />
             </mesh>
           )}
-          <Guest sim={sim} stage={stage} way={way} spot={spot} steer={!!roam && !interactionId} onMoved={onMoved} free={free} entrance={ENTRANCE} />
+          <Guest sim={sim} stage={stage} way={way} spot={spot} steer={!!roam && !interactionId} onMoved={onMoved} free={free} entrance={ENTRANCE}>
+            <ActionProps id={interactionId} kind="hotel" lying={!!spot?.lying} />
+          </Guest>
           <OrbitControls makeDefault target={[0, 1, HD - 6]} enablePan={false} minDistance={6} maxDistance={70} minPolarAngle={0.25} maxPolarAngle={1.25} enableDamping />
         </Suspense>
       </Canvas>

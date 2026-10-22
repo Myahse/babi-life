@@ -11,10 +11,10 @@ import { EMOTE_SNAPPY, emoteArms, emoteBody, emoteLegs, type EmotePose } from '.
 // simpler blocky figure (avatar/LowHuman.tsx) far away, and the poses that
 // move them both (usePoseRig). Units are metres: feet on y=0, facing +Z.
 
-export type Pose = 'idle' | 'walk' | 'run' | 'leap' | 'hang' | 'wash' | 'sleep' | 'pray' | 'cook' | 'phone' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper' | 'touch' | 'mark' | 'guard' | 'dive' | 'airplane' | 'pass' | 'salat' | 'swim' | 'dunk' | 'layup' | 'crossover' | 'block' | 'steal' | 'slide' | 'stumble' | 'bouncepass' | 'film' | EmotePose
+export type Pose = 'idle' | 'walk' | 'run' | 'leap' | 'hang' | 'wash' | 'sleep' | 'pray' | 'cook' | 'phone' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper' | 'touch' | 'mark' | 'guard' | 'dive' | 'airplane' | 'pass' | 'salat' | 'swim' | 'dunk' | 'layup' | 'crossover' | 'block' | 'steal' | 'slide' | 'stumble' | 'bouncepass' | 'film' | 'call' | 'snack' | EmotePose
 
-/** Poses done sitting on a chair (hips at seat height). */
-export const SEATED: Pose[] = ['sit', 'eat', 'drink', 'write']
+/** Poses done sitting on a chair (hips at seat height): 'call' is the phone at the ear, sitting. */
+export const SEATED: Pose[] = ['sit', 'eat', 'drink', 'write', 'call']
 const SEAT_DROP = 0.41
 
 const Shadows = createContext(true)
@@ -499,9 +499,20 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
       } else if (pose === 'cook') {
         // Stirring the pot with the right hand, holding it with the left.
         ;[sx, sz, ex] = out > 0 ? [-0.95 + Math.cos(t * 4) * 0.15, 0.15 + Math.sin(t * 4) * 0.15, -1.05] : [-0.75, -0.15, -0.9]
-      } else if (pose === 'phone' && out > 0) {
+      } else if ((pose === 'phone' || pose === 'call') && out > 0) {
         // The phone at the ear.
         ;[sx, sz, ex] = [-1.35, 0.35, -2.35]
+      } else if (pose === 'call') {
+        // Sitting on the phone: the other hand on the knee, going now and then with what's said.
+        const g = Math.max(0, Math.sin(t * 1.9))
+        ;[sx, sz, ex] = [-0.5 - g * 0.45, -0.12, -0.7 - g * 0.5]
+      } else if (pose === 'snack' && out > 0) {
+        // Eating standing (a brochette, an orange, a sachet of water): to the mouth, a bite, back down.
+        const k = Math.max(0, Math.sin(t * 1.7))
+        ;[sx, sz, ex] = [-0.45 - k * 0.85, 0.16, -0.95 - k * 1.05]
+      } else if (pose === 'snack') {
+        // The other hand holds the rest at the waist.
+        ;[sx, sz, ex] = [-0.6, -0.2, -1.05]
       } else if (pose === 'phone') {
         const g = Math.max(0, Math.sin(t * 2.6))
         ;[sx, sz, ex] = [-0.3 - g * 0.5, -0.14, -0.5 - g * 0.6]
@@ -694,8 +705,8 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
     const look = fid && (fid.kind === 'watch' || fid.kind === 'phone') ? fid.e : wf === 'phone' ? 1 : 0
     const back = seed % 2 < 1 ? 1 : -1
     to(hd.rotation, 'y', fid?.kind === 'watch' ? -0.35 * fid.e : fid?.kind === 'look' ? back * 0.9 * fid.e : pose === 'sleep' || pose === 'pray' ? 0 : wf === 'aside' ? -s * stride * 0.1 + Math.sin(t * 0.6 + seed) * 0.6 : walk ? -s * stride * 0.1 : pose === 'rant' ? Math.sin(t * 2.3) * 0.45 : pose === 'talk' ? Math.sin(t * 0.9) * 0.12 + (tk?.move === 'point' ? 0.1 : 0) : g.y)
-    to(hd.rotation, 'z', fid?.kind === 'scratch' ? -0.14 * fid.e : fid?.kind === 'neck' ? Math.sin(t * 2.4) * 0.3 * fid.e : fid?.kind === 'chin' ? 0.1 * fid.e : tk?.move === 'listen' ? 0.1 * tk.e * back : tk?.move === 'shrug' ? 0.12 * tk.e : pose === 'phone' ? 0.12 : pose === 'sleep' ? 0.25 : pose === 'wave' ? 0.08 : pose === 'talk' ? Math.sin(t * 1.3) * 0.05 : 0)
-    to(hd.rotation, 'x', body?.head !== undefined ? body.head : pose === 'sleep' ? 0.35 : pose === 'pray' || pose === 'cook' ? 0.3 : pose === 'wash' ? -0.25 : pose === 'busy' || pose === 'write' ? 0.25 : pose === 'eat' ? 0.1 : pose === 'drink' ? -0.15 : pose === 'hug' ? 0.15 : pose === 'beg' ? 0.12 : pose === 'dance' ? bounce * 0.12 - 0.05 : pose === 'cheer' ? -0.2 : pose === 'talk' && tk ? (tk.move === 'nod' ? Math.max(0, Math.sin(t * 5)) * 0.18 * tk.e : tk.move === 'laugh' ? -0.2 * tk.e + Math.sin(t * 11) * 0.04 * tk.e : 0.02) : walk ? (run ? -0.12 : -0.02) + Math.sin(ph * 2) * 0.03 * headBob + look * 0.4 : g.x + Math.sin(t * 0.7) * 0.02 + look * 0.42 - (fid?.kind === 'stretch' ? fid.e * 0.3 : 0))
+    to(hd.rotation, 'z', fid?.kind === 'scratch' ? -0.14 * fid.e : fid?.kind === 'neck' ? Math.sin(t * 2.4) * 0.3 * fid.e : fid?.kind === 'chin' ? 0.1 * fid.e : tk?.move === 'listen' ? 0.1 * tk.e * back : tk?.move === 'shrug' ? 0.12 * tk.e : pose === 'phone' || pose === 'call' ? 0.12 : pose === 'sleep' ? 0.25 : pose === 'wave' ? 0.08 : pose === 'talk' ? Math.sin(t * 1.3) * 0.05 : 0)
+    to(hd.rotation, 'x', body?.head !== undefined ? body.head : pose === 'sleep' ? 0.35 : pose === 'pray' || pose === 'cook' ? 0.3 : pose === 'wash' ? -0.25 : pose === 'busy' || pose === 'write' ? 0.25 : pose === 'eat' || pose === 'snack' ? 0.1 : pose === 'drink' ? -0.15 : pose === 'hug' ? 0.15 : pose === 'beg' ? 0.12 : pose === 'dance' ? bounce * 0.12 - 0.05 : pose === 'cheer' ? -0.2 : pose === 'talk' && tk ? (tk.move === 'nod' ? Math.max(0, Math.sin(t * 5)) * 0.18 * tk.e : tk.move === 'laugh' ? -0.2 * tk.e + Math.sin(t * 11) * 0.04 * tk.e : 0.02) : walk ? (run ? -0.12 : -0.02) + Math.sin(ph * 2) * 0.03 * headBob + look * 0.4 : g.x + Math.sin(t * 0.7) * 0.02 + look * 0.42 - (fid?.kind === 'stretch' ? fid.e * 0.3 : 0))
   })
 }
 

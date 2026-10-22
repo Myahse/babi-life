@@ -17,9 +17,12 @@ const SIZE: Record<string, { scale: number; head: number; top: number }> = {
   ado: { scale: 0.9, head: 1.08, top: 2.05 },
 }
 
+/** How big the Sim is at its stage of life (adults are 1): what it carries is sized the same. */
+export const sizeOf = (stage = 'adulte') => SIZE[stage] ?? { scale: 1, head: 1, top: 2.15 }
+
 export function Character({ look, gender, walking, running, busy, moodColor = '#00b86b', marker = true, seed = 0, stage = 'adulte', pose, speed }: Props & { /** How fast it moves (m/s): the steps follow. */ speed?: number }) {
   const doing: Pose = pose ?? (busy ? 'busy' : walking ? (running ? 'run' : 'walk') : 'idle')
-  const size = SIZE[stage] ?? { scale: 1, head: 1, top: 2.15 }
+  const size = sizeOf(stage)
   const gem = useRef<THREE.Group>(null)
   useFrame(() => {
     if (!gem.current) return

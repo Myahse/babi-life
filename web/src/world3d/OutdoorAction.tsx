@@ -5,6 +5,8 @@ import { Human, NoShadows, type Pose } from '../avatar/Human'
 import { randomLook } from '../avatar/options'
 import { worldTime } from '../lib/worldClock'
 import { Box } from './props'
+import { Dish } from './interior/ActionProps'
+import { NoteShower } from './money'
 
 // What the Sim is doing outside, at a place with no inside (the pitch, the
 // beach, the gare, the lagoon, a nature site), set around it in the street
@@ -27,7 +29,12 @@ export function outdoorPose(id?: string): Pose | undefined {
     case 'street-basket':
       return 'dribble'
     case 'watch-match':
+    case 'stade-match':
+    case 'regarder-kart':
       return 'cheer'
+    case 'stade-concert':
+    case 'danser-rue':
+      return 'dance'
     case 'swim':
       return 'wave'
     case 'chill-sand':
@@ -36,19 +43,21 @@ export function outdoorPose(id?: string): Pose | undefined {
     case 'eat-fish':
     case 'eat-brochette':
       return 'eat'
-    case 'wait-gbaka':
+    // Photos: the phone held up in both hands.
     case 'photo-plateau':
     case 'photos':
+    case 'zoo-photos':
+    case 'regarder-tour-f':
+      return 'film'
+    case 'wait-gbaka':
+    case 'credit-station':
+    case 'street-credit':
       return 'phone'
     // At the fuel station, the village, the zoo.
     case 'boutique-station':
     case 'attieke-frais':
     case 'zoo-pique-nique':
       return 'eat'
-    case 'credit-station':
-    case 'zoo-photos':
-    case 'regarder-tour-f':
-      return 'phone'
     case 'gaz-bouteille':
     case 'gonfler-pneus':
     case 'manoeuvre-tour-f':
@@ -57,10 +66,30 @@ export function outdoorPose(id?: string): Pose | undefined {
       return 'cook'
     case 'anciens':
       return 'sit'
+    // In the street: the brochette eaten standing at the grill, the orange, the sachet of water, the bread;
+    // the pot on the terrace; telling the quartier's news; the notes thrown over the dancers.
+    case 'brochettes-rue':
+    case 'street-oranges':
+    case 'street-eau':
+    case 'street-pain':
+      return 'snack'
+    case 'pot-terrasse':
+      return 'drink'
+    case 'gbairai':
+      return 'rant'
+    case 'petit-travaillement':
+      return 'throw'
+    // Bought at a stall: eaten on a stool beside it, the plate on the lap (streetlife/stalls.tsx).
+    case 'street-alloco':
+    case 'street-porc':
+    case 'street-brochette':
+    case 'street-garba':
+      return 'eat'
     // Walks and the stadium laps: the Sim goes along a way (see Walker's LOOPS).
     case 'balade-lagune':
     case 'hike':
     case 'zoo-visite':
+    case 'flaner-rue':
       return 'walk'
     case 'stade-footing':
       return 'run'
@@ -117,6 +146,32 @@ export function OutdoorAction({ id }: { id?: string }) {
       return <Bike />
     case 'manoeuvre-tour-f':
       return <Mortar />
+    case 'brochettes-rue':
+      return <Grill standing />
+    case 'pot-terrasse':
+      return <Terrasse />
+    case 'gbairai':
+      return <Gbairai />
+    case 'danser-rue':
+      return <StreetDance />
+    case 'petit-travaillement':
+      return <StreetDance notes />
+    case 'regarder-kart':
+      return <KartWatch />
+    case 'credit-station':
+      return <CreditKiosk />
+    case 'street-oranges':
+    case 'street-eau':
+    case 'street-pain':
+      return <Snack kind={id} />
+    case 'street-alloco':
+      return <Dish kind="alloco" at={LAP} />
+    case 'street-porc':
+      return <Dish kind="porc" at={LAP} />
+    case 'street-brochette':
+      return <Dish kind="poulet" at={LAP} />
+    case 'street-garba':
+      return <Dish kind="garba" at={LAP} />
     default:
       return null
   }
@@ -339,11 +394,11 @@ function FishTable() {
 }
 
 /** The brochette grill and its seller, the stool to eat on. */
-function Grill() {
+function Grill({ standing }: { /** Eaten standing at the grill, the brochette in hand: no stool. */ standing?: boolean }) {
   const vendor = useLooks(1, 37)[0]
   return (
     <group>
-      <Box p={[0, 0.22, -0.05]} s={[0.35, 0.44, 0.35]} c="#3b2a1a" />
+      {!standing && <Box p={[0, 0.22, -0.05]} s={[0.35, 0.44, 0.35]} c="#3b2a1a" />}
       <group position={[0, 0, 1.1]}>
         <Box p={[0, 0.45, 0]} s={[0.9, 0.9, 0.35]} c="#2a2a2a" />
         <Box p={[0, 0.92, 0]} s={[0.85, 0.04, 0.3]} c="#ff5a1a" glow={0.8} />
@@ -523,6 +578,184 @@ function Hiker() {
       <Box p={[0, 1.15, -0.2]} s={[0.36, 0.45, 0.2]} c="#2e8b57" />
       <Box p={[0, 1.4, -0.21]} s={[0.3, 0.06, 0.2]} c="#1e5f3a" />
       <Box p={[0.38, 0.65, 0.18]} s={[0.04, 1.3, 0.04]} c="#7a5233" />
+    </group>
+  )
+}
+
+/* ---------- In the street ---------- */
+
+/** On the lap of a Sim sitting on a stool. */
+const LAP: [number, number, number] = [0, 0.56, 0.3]
+
+/** The pot on a maquis terrace: the plastic chair, the table and its bottles, two friends round it, the parasol. */
+function Terrasse() {
+  const friends = useLooks(2, 141)
+  return (
+    <group>
+      {/* The Sim's chair */}
+      <Box p={[0, 0.22, -0.08]} s={[0.46, 0.04, 0.46]} c="#f4f4f4" />
+      <Box p={[0, 0.5, -0.3]} s={[0.46, 0.55, 0.04]} c="#f4f4f4" />
+      {[[-0.2, -0.28], [0.2, -0.28], [-0.2, 0.12], [0.2, 0.12]].map(([x, z], i) => (
+        <Box key={i} p={[x, 0.11, z]} s={[0.04, 0.22, 0.04]} c="#e9ecef" />
+      ))}
+      <group position={[0, 0, 0.75]}>
+        <Box p={[0, 0.7, 0]} s={[0.8, 0.04, 0.8]} c="#f4f4f4" />
+        <Box p={[0, 0.35, 0]} s={[0.06, 0.7, 0.06]} c="#e9ecef" />
+        {[[-0.2, -0.1, '#2b7a3d'], [0.15, 0.12, '#7a4a1a'], [0.05, -0.2, '#2b7a3d']].map(([x, z, c], i) => (
+          <group key={i} position={[x as number, 0.72, z as number]}>
+            <Box p={[0, 0.12, 0]} s={[0.07, 0.24, 0.07]} c={c as string} />
+            <Box p={[0, 0.27, 0]} s={[0.03, 0.06, 0.03]} c={c as string} />
+          </group>
+        ))}
+        {/* The parasol of the beer, its pole through the table */}
+        <Box p={[0, 1.3, 0]} s={[0.04, 1.2, 0.04]} c="#adb5bd" />
+        <mesh position={[0, 2.0, 0]}>
+          <coneGeometry args={[1.3, 0.4, 8]} />
+          <meshLambertMaterial color="#d62828" />
+        </mesh>
+      </group>
+      <NoShadows>
+        {friends.map((f, i) => (
+          <group key={i} position={[i ? -0.75 : 0.75, 0.05, 0.75]} rotation={[0, i ? Math.PI / 2 : -Math.PI / 2, 0]}>
+            <Box p={[0, 0.17, -0.12]} s={[0.46, 0.04, 0.46]} c="#f4f4f4" />
+            <Human look={f.look} gender={f.gender} pose={i ? 'drink' : 'sit'} seed={f.seed} />
+          </group>
+        ))}
+      </NoShadows>
+    </group>
+  )
+}
+
+/** Telling the quartier's news: friends round the Sim, listening, laughing, one shaking his head. */
+function Gbairai() {
+  const friends = useLooks(3, 151)
+  const poses: Pose[] = ['laugh', 'talk', 'facepalm']
+  return (
+    <NoShadows>
+      {friends.map((f, i) => {
+        const a = -0.9 + i * 0.9
+        return (
+          <group key={i} position={[Math.sin(a) * 1.1, 0, Math.cos(a) * 1.1]} rotation={[0, a + Math.PI, 0]}>
+            <Human look={f.look} gender={f.gender} pose={poses[i]} seed={f.seed} />
+          </group>
+        )
+      })}
+    </NoShadows>
+  )
+}
+
+/** Dancing in the street: the sound system on the pavement, the others dancing round; with the notes, thrown over them. */
+function StreetDance({ notes }: { notes?: boolean }) {
+  const dancers = useLooks(4, 161)
+  const cone = useRef<THREE.Mesh>(null)
+  useFrame(() => {
+    // The woofer pumping on the beat.
+    cone.current?.scale.setScalar(1 + Math.max(0, Math.sin(worldTime() * 2.1 * Math.PI * 2)) * 0.08)
+  })
+  return (
+    <group>
+      <group position={[-1.6, 0, -0.6]} rotation={[0, 0.6, 0]}>
+        <Box p={[0, 0.55, 0]} s={[0.6, 1.1, 0.5]} c="#141416" />
+        <mesh ref={cone} position={[0, 0.4, 0.26]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.2, 0.2, 0.02, 16]} />
+          <meshLambertMaterial color="#495057" />
+        </mesh>
+        <Box p={[0, 0.88, 0.26]} s={[0.14, 0.14, 0.02]} c="#495057" />
+      </group>
+      <NoShadows>
+        {dancers.map((d, i) => {
+          const a = -1.1 + i * 0.75
+          return (
+            <group key={i} position={[Math.sin(a) * 1.6, 0, Math.cos(a) * 1.6]} rotation={[0, a + Math.PI, 0]}>
+              <Human look={d.look} gender={d.gender} pose={notes && i % 2 ? 'cheer' : i === 3 ? 'zouglou' : 'dance'} seed={d.seed} />
+            </group>
+          )
+        })}
+      </NoShadows>
+      {notes && <NoteShower from={[0.3, 1.72, 0.3]} toward={[0, 0.35, 1]} rate={1.4} fan={3} />}
+    </group>
+  )
+}
+
+/** Watching the karting: the barrier of tyres in front, two karts going round the bend beyond it. */
+function KartWatch() {
+  const karts = useRef<THREE.Group>(null)
+  useFrame(() => {
+    const t = worldTime()
+    karts.current?.children.forEach((k, i) => {
+      const a = t * 0.9 + i * 2.4
+      k.position.set(Math.cos(a) * 3.2, 0, 5.4 + Math.sin(a) * 3.2)
+      k.rotation.y = Math.atan2(-Math.sin(a), Math.cos(a))
+    })
+  })
+  return (
+    <group>
+      {[...Array(9)].map((_, i) => (
+        <mesh key={i} position={[-2 + i * 0.5, 0.18, 0.9]}>
+          <cylinderGeometry args={[0.25, 0.25, 0.36, 12]} />
+          <meshLambertMaterial color={i % 2 ? '#e03131' : '#1c1c1e'} />
+        </mesh>
+      ))}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.015, 5.4]}>
+        <ringGeometry args={[2.6, 3.8, 32]} />
+        <meshLambertMaterial color="#4a4a4f" />
+      </mesh>
+      <group ref={karts}>
+        {['#f08c00', '#1c7ed6'].map((c) => (
+          <group key={c}>
+            <Box p={[0, 0.15, 0]} s={[0.7, 0.14, 1.1]} c={c} />
+            <Box p={[0, 0.42, -0.1]} s={[0.24, 0.24, 0.24]} c="#f4f4f4" />
+            {[[-0.4, 0.4], [0.4, 0.4], [-0.4, -0.4], [0.4, -0.4]].map(([x, z], i) => (
+              <Box key={i} p={[x, 0.1, z]} s={[0.12, 0.2, 0.22]} c="#141416" />
+            ))}
+          </group>
+        ))}
+      </group>
+    </group>
+  )
+}
+
+/** The credit seller's little stand at the station: the parasol, the scratch cards on the table. */
+function CreditKiosk() {
+  const seller = useLooks(1, 171)[0]
+  return (
+    <group position={[0, 0, 0.9]}>
+      <Box p={[0, 0.4, 0]} s={[0.8, 0.8, 0.5]} c="#ffd43b" />
+      {['#ff7a00', '#00a862', '#1c7ed6'].map((c, i) => (
+        <Box key={c} p={[-0.25 + i * 0.25, 0.81, 0]} s={[0.18, 0.01, 0.1]} c={c} />
+      ))}
+      <Box p={[0, 1.25, 0.2]} s={[0.04, 1.7, 0.04]} c="#adb5bd" />
+      <mesh position={[0, 2.1, 0.2]}>
+        <coneGeometry args={[0.9, 0.3, 8]} />
+        <meshLambertMaterial color="#ff7a00" />
+      </mesh>
+      <NoShadows>
+        <group position={[0, 0, 0.6]} rotation={[0, Math.PI, 0]}>
+          <Human look={seller.look} gender={seller.gender} pose="sit" seed={seller.seed} />
+        </group>
+      </NoShadows>
+      <Box p={[0, 0.22, 0.7]} s={[0.4, 0.44, 0.4]} c="#3b2a1a" />
+    </group>
+  )
+}
+
+/** What's eaten standing, its rest in the other hand at the waist: the oranges, the sachets of water, the bread. */
+function Snack({ kind }: { kind: string }) {
+  return (
+    <group position={[-0.22, 0.92, 0.22]}>
+      {kind === 'street-oranges' && (
+        <>
+          <Box p={[0, 0, 0]} s={[0.14, 0.008, 0.14]} c="#f8f9fa" />
+          {[[0, 0], [0.04, 0.03], [-0.03, 0.04]].map(([x, z], i) => (
+            <mesh key={i} position={[x, 0.04, z]}>
+              <sphereGeometry args={[0.04, 8, 6]} />
+              <meshLambertMaterial color={i ? '#fab005' : '#9acd32'} />
+            </mesh>
+          ))}
+        </>
+      )}
+      {kind === 'street-eau' && <Box p={[0, 0, 0]} s={[0.1, 0.1, 0.04]} c="#a5d8ff" />}
+      {kind === 'street-pain' && <Box p={[0, 0.02, 0]} s={[0.08, 0.08, 0.5]} c="#d9a35a" r={0.3} />}
     </group>
   )
 }
