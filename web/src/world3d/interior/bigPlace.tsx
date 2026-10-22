@@ -20,7 +20,7 @@ export type XZ = [number, number]
  * Where an action is done: the spot, the way the Sim faces there, its pose
  * (and its height: a seat, a bed). `from`: where it walks to first (else a
  * step in front). Or swimming lengths (`swim`: half the length), or going
- * round and round an ellipse (`loop`: skating, window-shopping, pushing a
+ * round and round an ellipse (`loop`: window-shopping, pushing a
  * trolley along the aisles), at `speed`.
  */
 export type Spot = { at: XZ; rot: number; pose: Pose; y?: number; lying?: boolean; swim?: number; from?: XZ; loop?: { c: XZ; r: XZ; speed: number; pose?: Pose; lean?: number } }
@@ -158,7 +158,7 @@ export function Guest({ sim, stage, way, spot, steer, onMoved, free, entrance, g
     const e = spot && !spot.loop ? settle.current : 0
     const loop = spot?.loop
     if (loop && step.current >= way.length) {
-      // Round and round (the rink, the aisles, the shop windows), facing the way it goes.
+      // Round and round (the aisles, the shop windows), facing the way it goes.
       const t = worldTime() * loop.speed
       o.position.set(loop.c[0] + Math.cos(t) * loop.r[0], loop.lean ? 0.12 : 0, loop.c[1] + Math.sin(t) * loop.r[1])
       o.rotation.set(0, Math.atan2(-Math.sin(t) * loop.r[0], Math.cos(t) * loop.r[1]), 0)

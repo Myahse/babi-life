@@ -11,6 +11,7 @@ report.json's entry so it's measured again: python3 voice.py --measure).
     python3 voice.py                 # all the lines
     python3 voice.py outro,basket    # just those again
     python3 voice.py --measure       # only measure the wav files there (other voices)
+    python3 voice.py --split out/voix-top20-elevenlabs.mp3   # Awa's ElevenLabs take of all the lines, cut into them
 
 Python 3.11 with: chatterbox-tts==0.1.7 (torch 2.6, CPU is enough: about 30 s a take), faster-whisper,
 kokoro, misaki[fr], setuptools<81 (the watermarker's pkg_resources); espeak-ng installed.
@@ -83,6 +84,50 @@ def trim(a, sr):
     return a[max(0, on[0] - int(0.04 * sr)) : min(len(a), on[-1] + int(0.12 * sr))]
 
 
+def split(path, ear, report, report_path):
+    """One recording of all the lines (ElevenLabs: the text of scripts/top20.md in one go) cut into
+    them: Whisper times each word, the words are matched to the lines' letters, each line runs from
+    its first word to the next line's."""
+    import difflib
+    import subprocess
+
+    import soundfile as sf
+
+    wav = os.path.join(OUT, 'whole.wav')
+    subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', path, '-ac', '1', '-ar', '44100', wav], check=True)
+    a, sr = sf.read(wav, dtype='float32')
+    segs, _ = ear.transcribe(to16k(a, sr), language='fr', beam_size=5, word_timestamps=True)
+    words = [w for s in segs for w in s.words]
+    # Each heard word's letters, where they start in the whole heard text.
+    heard, owner = '', []
+    for i, w in enumerate(words):
+        l = letters(w.word)
+        heard += l
+        owner += [i] * len(l)
+    said = [letters(text) for _, text in LINES]
+    starts, at = [], 0
+    for l in said:
+        starts.append(at)
+        at += len(l)
+    blocks = difflib.SequenceMatcher(None, ''.join(said), heard, autojunk=False).get_matching_blocks()
+
+    def heard_at(k):
+        """The heard letter matching the said letter k (or the next one that matches)."""
+        for b in blocks:
+            if b.a + b.size > k:
+                return b.b + max(0, k - b.a)
+        return len(heard) - 1
+
+    times = [words[owner[min(len(owner) - 1, heard_at(k))]].start for k in starts] + [len(a) / sr]
+    for (id, _), t0, t1 in zip(LINES, times, times[1:]):
+        piece = trim(a[int(max(0, t0 - 0.08) * sr) : int(max(t0 + 0.3, t1 - 0.02) * sr)], sr)
+        sf.write(os.path.join(OUT, f'{id}.wav'), piece, sr)
+        report[id] = {'dur': round(len(piece) / sr, 3), 'heard': ' '.join(w.word.strip() for w in words if t0 - 0.05 <= w.start < t1 - 0.05)}
+        print(f'{id:10} {t0:6.2f}s {report[id]["dur"]:5.2f}s  {report[id]["heard"]}', flush=True)
+    os.remove(wav)
+    json.dump(report, open(report_path, 'w'), ensure_ascii=False, indent=1)
+
+
 def main():
     import soundfile as sf
     from faster_whisper import WhisperModel
@@ -97,6 +142,9 @@ def main():
     report_path = os.path.join(OUT, 'report.json')
     report = json.load(open(report_path)) if os.path.exists(report_path) else {}
     args = sys.argv[1:]
+    if args[:1] == ['--split']:
+        split(args[1], ear, report, report_path)
+        return
     if args == ['--measure']:
         for id, text in LINES:
             f = os.path.join(OUT, f'{id}.wav')

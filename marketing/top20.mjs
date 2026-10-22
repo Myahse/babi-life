@@ -4,9 +4,9 @@
 // line on it, the countdown drawn over it (web/src/lab/poster.tsx, ?video=top20&overlay), put together
 // by compose.py, Awa's voice (voice.py) over its beat (beat.py).
 //
-// The activities: four of the game's scenes drawn by the poster lab (the grin, the mass, the zouglou,
-// the Tour F); the game's places as a player sees them, zoomed in with the wheel and the camera turned
-// (the ski off Île Boulay, the Hôtel Ivoire's rink and its brunch, the Friday prayer, the mall, the
+// The activities: five of the game's scenes drawn by the poster lab (the zoo's lions, the grin, the
+// mass, the zouglou, the Tour F); the game's places as a player sees them, zoomed in with the wheel and the camera turned
+// (the ski off Île Boulay, the Hôtel Ivoire's brunch, the Friday prayer, the mall, the
 // Kinéo, the market, the club); the talk with someone in the street and the phone's camera; the flight;
 // the kart, basketball and football, the player's own driven by the game's AI; and two tables of the
 // real game (dames, 8 américain) against a local API, the board and the cards dealt by hand.
@@ -51,7 +51,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const CLIPS = [
   { id: 'ski', lab: 'view=boulay&act=ski-boulay', zoom: [200, 5, 120] },
   { id: 'nouchi', lab: 'view=talk', talk: true },
-  { id: 'patinoire', lab: 'view=ivoire&act=patinoire', zoom: [400, 8, 200] },
+  { id: 'zoo', scene: 'lions' },
   { id: 'grin', scene: 'grin' },
   { id: 'marche', lab: 'view=stalls', zoom: [200, 3, 30] },
   { id: 'photo', lab: 'view=phonecam', shutter: true },

@@ -71,7 +71,7 @@ export type Interaction = {
   stay?: boolean
   /** Life stages that can do it; empty = from childhood up. */
   ages?: string[]
-  /** Only at these places of the kind (the Hôtel Ivoire's ice rink…). */
+  /** Only at these places of the kind (the Hôtel Ivoire's cinema…). */
   places?: string[]
   /** Only at the places of worship of these faiths (the mass, the culte, the Friday prayer). */
   faiths?: Faith[]

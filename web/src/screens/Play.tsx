@@ -73,7 +73,7 @@ const DODO_PLANS: Record<string, string[]> = { chambre: ['cour', 'baraque'], stu
 const DODO_AT_HOME: Record<string, string> = { 'logement-dormir': 'sleep', 'logement-sieste': 'nap', 'logement-douche': 'shower', 'logement-cuisiner': 'cook-attieke', 'logement-tele': 'watch-tv', 'logement-amis': 'call-family' }
 const BuildMode = lazy(() => import('../components/BuildMode'))
 const KartRace = lazy(() => import('../kart/KartRace'))
-// The Hôtel Ivoire's own inside: its hall, ice rink, cinema, casino, terrace.
+// The Hôtel Ivoire's own inside: its hall, cinema, casino, terrace.
 // The big shopping centres' own inside: the supermarket, the gallery of shops, the food court.
 const MallInside = lazy(() => import('../world3d/interior/MallInside').then((m) => ({ default: m.MallInside })))
 import type { MallLayout } from '../world3d/interior/MallInside'
