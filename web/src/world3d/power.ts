@@ -34,10 +34,14 @@ function chance(start: number) {
   return (hot ? 0.12 : 0.04) * peak
 }
 
+/** In development, ?coupure: every zone cut, for an hour from now (to see it at any time). */
+const FORCED = import.meta.env.DEV && typeof location !== 'undefined' && new URLSearchParams(location.search).has('coupure')
+
 /** The cut on a zone at a game minute, or null when it has power. */
 export function cutAt(commune: string, ix: number, iz: number, minutes: number): PowerCut | null {
   const slot = Math.floor(minutes / SLOT)
   const start = slot * SLOT
+  if (FORCED) return { ix, iz, start: minutes - 30, end: minutes + 60 }
   if (hash(commune, ix, iz, slot, 'on') >= chance(start)) return null
   // An hour to the whole slot, starting somewhere in it.
   const len = 60 + Math.floor(hash(commune, ix, iz, slot, 'len') * (SLOT - 60))

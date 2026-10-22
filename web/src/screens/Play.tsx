@@ -1,6 +1,6 @@
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BadgeCheck, BookOpen, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Player, Sim, World, Ride, Place, Plot } from '../lib/types'
 import { useWorld } from '../store/world'
@@ -12,6 +12,7 @@ import { WorldMap } from './WorldMap'
 import { Joystick, RunButton, WalkKeys } from '../components/Joystick'
 import { cameraTurn } from '../world3d/input'
 import { whereabouts } from '../world3d/whereabouts'
+import { cutsAround, inCut, type PowerCut } from '../world3d/power'
 import { isRoomAct, openLift } from '../world3d/hotelLift'
 import { throwBillets } from '../world3d/clubBillets'
 import { OrbitGizmo } from '../components/OrbitGizmo'
@@ -23,7 +24,7 @@ import { OpenWorld } from '../world3d/open/OpenWorld'
 import { GROUNDS, LANDMARKS, OPEN_AIR } from '../world3d/open/landmarks'
 import { iconFor, kindColors } from '../components/icons'
 import { Chip, Coin, DayNight, IconTile, MotiveRing, MoodPin, Row, needColor } from '../components/ui'
-import { NEEDS, actionLength, ageBlock, amount, fcfa, atHome, blockedBy, homeLacks, housingOf, lifeOf, minutesToAge, clock, duration, mood, openAt, openingLabel, predict, shift } from '../game/rules'
+import { EPOCH, NEEDS, actionLength, ageBlock, amount, fcfa, atHome, blockedBy, homeLacks, housingOf, lifeOf, minutesToAge, clock, duration, mood, openAt, openingLabel, predict, shift } from '../game/rules'
 import { DOORS_OPEN, eventAt, useStadium, when } from '../lib/stadium'
 import { HomeApp, JobsApp, type Act } from './phoneApps'
 import { NewsApp, topicOf } from './NewsApp'
@@ -939,6 +940,8 @@ export function Play() {
           <button className="hud pointer-events-auto flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={() => setWhereTo(true)}>
             <Navigation size={17} strokeWidth={2.6} className="text-[var(--color-orange)]" /> Où aller ?
           </button>
+          {/* The power cut where the Sim stands */}
+          <PowerCutBadge commune={commune.id} />
         </div>
       )}
       {whereTo && <WhereTo world={world} onWalk={(id) => (setWhereTo(false), walkTo(id))} onClose={() => setWhereTo(false)} />}
@@ -1472,7 +1475,14 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
     // Swimming: a pool in the house one built, or the villa one rents (game.CanSwimAtHome).
     if (placeId === 'home' && it.id === 'nager' && !(sim.housing === 'maison' ? sim.furnished?.includes('piscine') : sim.housing === 'villa')) return 'Il te faut une piscine'
     const lack = placeId === 'home' ? homeLacks(world, sim, it.id) : ''
-    return lack ? `Il te faut : ${lack}` : null
+    if (lack) return `Il te faut : ${lack}`
+    // The TV wants the power: none while the home's zone is cut (world3d/power.ts).
+    const home = whereabouts.places.find((p) => p.id === 'home')
+    if (placeId === 'home' && it.id === 'watch-tv' && home) {
+      const cut = inCut(cutsAround(commune.id, home.door[0], home.door[1], sim.gameMinutes, 0), home.door[0], home.door[1])
+      if (cut) return `Coupure de courant jusqu'à ${clock(cut.end).time}`
+    }
+    return null
   }
   const state = (it: Interaction) => ({ open: openAt(it, sim.gameMinutes), broke: it.cost > 0 && sim.money < it.cost, busy, reason: ageBlock(it, life.stage?.id) ?? stadiumBlock(it) ?? blockedBy(it, sim, city.id, commune.id) ?? furnitureBlock(it) })
 
@@ -1569,6 +1579,27 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
         )}
       </div>
     </div>
+  )
+}
+
+/** The power is cut where the Sim stands (world3d/power.ts): till when, under the profile. */
+function PowerCutBadge({ commune }: { commune: string }) {
+  const [cut, setCut] = useState<PowerCut | null>(null)
+  useEffect(() => {
+    const tick = () => {
+      const [x, z] = whereabouts.sim
+      setCut(inCut(cutsAround(commune, x, z, Math.floor((serverNow() - EPOCH) / 60000), 0), x, z))
+    }
+    tick()
+    const t = setInterval(tick, 10000)
+    return () => clearInterval(t)
+  }, [commune])
+  if (!cut) return null
+  return (
+    <span className="hud flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-extrabold">
+      <ZapOff size={14} strokeWidth={2.6} className="text-[#e8590c]" />
+      Délestage ici · jusqu'à {clock(cut.end).time}
+    </span>
   )
 }
 

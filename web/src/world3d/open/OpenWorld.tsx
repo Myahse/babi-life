@@ -6,7 +6,7 @@ import { PerformanceMonitor } from '@react-three/drei'
 import { Human, NoShadows, type Pose } from '../../avatar/Human'
 import { useNpcReaction } from './npcReact'
 import { randomLook } from '../../avatar/options'
-import { OWN_HOUSE, homePlanFor, lifeOf, openAt } from '../../game/rules'
+import { OWN_HOUSE, homePlanFor, lifeOf, minuteOf, openAt } from '../../game/rules'
 import { HAPPENING_DOOR, HAPPENING_ROLES, HAPPENING_X, HappeningMarker, HappeningScene, JamOnRoad, STOPS_TRAFFIC } from '../Happenings'
 import { jamAlong } from './jam'
 import { underHud } from '../hudClear'
@@ -76,7 +76,9 @@ const RICH = typeof navigator === 'undefined' || (navigator.hardwareConcurrency 
 import { litShare, makeTextures, rippleNormals, windowsByHour } from './textures'
 import { FAR_ZOOM, type ChunkData } from './tiles'
 import type { Arrays, ChunkRequest } from './worker'
-import { worldTime } from '../../lib/worldClock'
+import { serverNow, worldTime } from '../../lib/worldClock'
+import { cutsAround, inCut, zoneOf, type PowerCut } from '../power'
+import { CUTS } from './textures'
 import { RainSky } from './rainSky'
 import { NPC_NAMES, type Npc } from '../talk'
 
@@ -970,10 +972,31 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
 
   const stopsTraffic = !!happening && STOPS_TRAFFIC.has(happening.id)
   const raining = happening?.id === 'pluie'
+  // Power cuts (world3d/power.ts): the zones round the Sim cut now, and the happening's « Délestage »
+  // street's zone with them. Their windows go dark, their lamps out; the Sim in one, the night darker.
+  const [cuts, setCuts] = useState<PowerCut[]>([])
+  useEffect(() => {
+    const tick = () => {
+      const now = minuteOf(serverNow())
+      const found = cutsAround(commune.id, whereabouts.sim[0], whereabouts.sim[1], now, 1)
+      if (happening?.id === 'delestage' && spot && !inCut(found, spot.door[0], spot.door[1])) found.push({ ix: zoneOf(spot.door[0], spot.door[1])[0], iz: zoneOf(spot.door[0], spot.door[1])[1], start: now, end: now + 120 })
+      setCuts((old) => (old.length === found.length && old.every((c, i) => c.ix === found[i].ix && c.iz === found[i].iz) ? old : found))
+    }
+    tick()
+    const t = setInterval(tick, 20000)
+    return () => clearInterval(t)
+  }, [commune.id, happening?.id, spot])
+  useEffect(() => {
+    const u = mats.walls.userData
+    cuts.slice(0, CUTS).forEach((c, i) => u.powerCuts.value[i].set(c.ix, c.iz))
+    u.powerCutN.value = Math.min(CUTS, cuts.length)
+  }, [cuts, mats])
+  const dark = useMemo(() => (cuts.length ? (x: number, z: number) => !!inCut(cuts, x, z) : undefined), [cuts])
+  const simInCut = night && !!inCut(cuts, whereabouts.sim[0], whereabouts.sim[1])
   return (
     <>
       {/* Nights are blue but readable: the Sim and the streets stay visible on a phone. */}
-      <hemisphereLight args={[night ? '#7484c4' : '#ffffff', night ? '#3a3a56' : '#b8a27c', (night ? 1.3 : 1.2) * (raining ? 0.7 : 1)]} />
+      <hemisphereLight args={[night ? '#7484c4' : '#ffffff', night ? '#3a3a56' : '#b8a27c', (night ? 1.3 : 1.2) * (raining ? 0.7 : 1) * (simInCut ? 0.72 : 1)]} />
       <Sun night={night} dusk={dusk} dim={raining ? 0.35 : 1} />
       {/* The haze at the edge of the loaded world: Minecraft's render distance (closer and grey in the rain) */}
       <fog attach="fog" args={[raining ? (night ? '#2c313d' : '#8a96a3') : skyTone(night, dusk).horizon, raining ? 120 : 400, raining ? 1800 : 5200]} />
@@ -1109,7 +1132,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
 
       {nav.nodes.length > 0 && !stopsTraffic && <RoadTraffic nav={nav} focus={focus} seed={commune.id} woro={commune.woro} />}
       <Boats water={nearWater} focus={focus} />
-      {nav.nodes.length > 0 && <StreetLights nav={nav} night={night} />}
+      {nav.nodes.length > 0 && <StreetLights nav={nav} night={night} dark={dark} />}
       {nav.nodes.length > 0 && <StreetLife nav={nav} seed={commune.id} night={night} taken={taken} />}
       {nav.nodes.length > 0 && night && <NightStreet nav={nav} seed={commune.id} />}
       {nav.nodes.length > 0 && <StreetStalls nav={nav} seed={commune.id} hour={hour} onBuy={onStreetBuy} />}
