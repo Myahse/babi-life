@@ -11,8 +11,9 @@ import { Box } from './props'
 // view: the ball, the towel and the parasol, the bus stop, the railing…
 // In the Sim's own frame: it faces +z, towards the place.
 
-/** What the Sim wears for it: a swimsuit for the sea and the sand, nothing to carry. */
+/** What the Sim wears for it: a swimsuit for the sea and the sand, the work clothes and the yellow cap on the Tour F's site. */
 export function outdoorLook<L extends { outfit: string; accessory?: string }>(look: L, id?: string): L {
+  if (id === 'manoeuvre-tour-f') return { ...look, outfit: 'bleu', accessory: 'cap', accessoryColor: '#ffd43b' }
   return id === 'swim' || id === 'chill-sand' ? { ...look, outfit: 'maillot', accessory: 'none' } : look
 }
 
@@ -44,9 +45,11 @@ export function outdoorPose(id?: string): Pose | undefined {
       return 'eat'
     case 'credit-station':
     case 'zoo-photos':
+    case 'regarder-tour-f':
       return 'phone'
     case 'gaz-bouteille':
     case 'gonfler-pneus':
+    case 'manoeuvre-tour-f':
       return 'busy'
     case 'preparer-attieke':
       return 'cook'
@@ -110,6 +113,8 @@ export function OutdoorAction({ id }: { id?: string }) {
       return <GasBottle />
     case 'gonfler-pneus':
       return <Bike />
+    case 'manoeuvre-tour-f':
+      return <Mortar />
     default:
       return null
   }
@@ -446,6 +451,46 @@ function GasBottle() {
         <cylinderGeometry args={[0.06, 0.08, 0.08, 8]} />
         <meshLambertMaterial color="#9aa3ad" />
       </mesh>
+    </group>
+  )
+}
+
+/** A day's labour on the Tour F's site: the wheelbarrow of mortar, the shovel, the sand, the bags of cement, a mate at work beside. */
+function Mortar() {
+  const mate = useMemo(() => ({ ...randomLook('homme', seeded(61)), outfit: 'bleu', accessory: 'cap', accessoryColor: '#ffd43b' }), [])
+  return (
+    <group>
+      <group position={[0.15, 0, 0.75]} rotation={[0, 0.3, 0]}>
+        <mesh position={[0, 0.42, 0]} rotation={[0.12, 0, 0]}>
+          <boxGeometry args={[0.62, 0.28, 0.9]} />
+          <meshLambertMaterial color="#5b6470" />
+        </mesh>
+        <mesh position={[0, 0.57, 0.02]} rotation={[0.12, 0, 0]}>
+          <boxGeometry args={[0.54, 0.02, 0.8]} />
+          <meshLambertMaterial color="#9a958b" />
+        </mesh>
+        <mesh position={[0, 0.2, 0.5]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.18, 0.18, 0.08, 12]} />
+          <meshLambertMaterial color="#1b1b20" />
+        </mesh>
+        {[-0.22, 0.22].map((x) => (
+          <Box key={x} p={[x, 0.42, -0.6]} s={[0.04, 0.04, 0.7]} c="#8a6a3d" />
+        ))}
+      </group>
+      {/* The sand and the shovel stuck in it, the cement bags */}
+      <mesh position={[-0.9, 0.3, 0.9]}>
+        <coneGeometry args={[0.7, 0.6, 12]} />
+        <meshLambertMaterial color="#d8b878" />
+      </mesh>
+      <Box p={[-0.85, 0.7, 0.85]} s={[0.04, 0.9, 0.04]} c="#8a6a3d" r={0.3} />
+      {[0, 1, 2].map((i) => (
+        <Box key={i} p={[0.95, 0.1 + i * 0.2, 0.2]} s={[0.5, 0.18, 0.35]} c="#c9c2b0" />
+      ))}
+      <NoShadows>
+        <group position={[-1.4, 0, 0.1]} rotation={[0, 1.1, 0]}>
+          <Human look={mate} gender="homme" pose="busy" seed={61} />
+        </group>
+      </NoShadows>
     </group>
   )
 }

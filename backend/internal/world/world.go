@@ -145,6 +145,10 @@ const (
 	srcParcExpo        = "https://www.fratmat.info/article/230674/economie/inauguration-du-parc-des-expositions-un-reve-dhouphouet-boigny-depuis-1985-qui-se-realise"
 	srcParcExpo2       = "https://news.abidjan.net/articles/717535/parc-dexposition-dabidjan-un-edifice-devenementiels-dote-dequipements-de-pointe"
 	srcParcExpoOSM     = "https://www.openstreetmap.org/way/1026355392"
+	srcTourF           = "https://fr.wikipedia.org/wiki/Tour_F"
+	srcTourF2          = "https://pfoafrica.com/projets/la-tour-f/"
+	srcTourFOSM        = "https://www.openstreetmap.org/way/1470146068"
+	srcCiteAdminOSM    = "https://www.openstreetmap.org/way/340336729"
 	srcBoulayAIP       = "https://www.aip.ci/?p=338986"
 	srcBlockhauss      = "https://news.abidjan.net/articles/374315/le-chef-de-letat-aux-populations-de-blockhauss-hier-on-ne-doit-pas-vous-deposseder-totalement-de-vos-terres"
 	srcCocodyVillages  = "https://participate.oidp.net/processes/award2024/f/288/proposals/3254"
@@ -238,7 +242,11 @@ var Cities = []City{
 			abidjanCommune("plateau", "Plateau", "Les tours, les bureaux, les costumes.", 5.3237, -4.0197, "nord",
 				fictional("plateau-basket", "Terrain de basket du Plateau", "sport", "", 5.3250, -4.0150),
 				fictional("plateau-cine", "Ciné du Plateau", "cinema", "", 5.3220, -4.0180),
-				Place{ID: "plateau-tours", Name: "Cité administrative", Kind: "office", Lat: 5.3262, Lng: -4.0178, Real: true, Approx: true, Source: game.Unverified("Bureaux de l'administration au Plateau ; nom et position à confirmer.")},
+				Place{ID: "plateau-tours", Name: "Cité administrative", Kind: "office", Lat: 5.33424, Lng: -4.02257, Real: true,
+					Source: game.Partial("Les tours administratives A à E du Plateau, entre l'avenue Carde et l'avenue Camille Aliali ; la place est à la tour A, d'après OpenStreetMap.", srcCiteAdminOSM)},
+				Place{ID: game.TourFID, Name: "Chantier de la Tour F", Kind: "chantier", Quarter: "Cité administrative", Lat: 5.33559, Lng: -4.02222, Real: true,
+					Owner: "État de Côte d'Ivoire", Operator: "Ministère de la Construction, du Logement et de l'Urbanisme",
+					Source: game.Verified("La Tour F de la Cité administrative, sixième tour après les tours A à E (architecte Pierre Fakhoury) : 76 étages de bureaux, environ 333 m de tour, une lanterne vitrée de 30 m sous le toit-terrasse, la flèche à 421 m ; un plan qui s'affine en montant, deux grandes faces symétriques dessinées comme un masque africain, une double peau de verre (16 000 panneaux), un noyau de béton. Chantier commencé en juillet 2021, structure achevée, livraison annoncée pour 2026. Dans le jeu, le verre monte encore sur la façade et les grues sont sur le toit. Emprise et position d'après OpenStreetMap.", srcTourF, srcTourF2, srcTourFOSM)},
 				Place{ID: "plateau-cathedrale", Name: "Cathédrale Saint-Paul", Kind: "worship", Lat: 5.3330, Lng: -4.0201, Real: true, Approx: true,
 					Source: game.Verified("Cathédrale du Plateau (Aldo Spirito, consacrée en 1985) : un triangle de 4 200 m², 4 500 places assises en gradins autour de l'autel, une tour en croix de 70 m tenue par 7 haubans, les vitraux de Roberto Franzosi (370 m²). Face au Palais de justice ; position d'après OpenStreetMap.", srcCathedrale, srcCathedrale2)},
 				Place{ID: "plateau-pyramide", Name: "La Pyramide", Kind: "office", Lat: 5.3223, Lng: -4.0165, Real: true, Approx: true,
