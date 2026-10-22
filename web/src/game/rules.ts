@@ -131,7 +131,7 @@ export function duration(minutes: number) {
 
 // Mirrors world.Trip on the server, for the "Y aller" estimate.
 type Pt = { lat: number; lng: number }
-function km(a: Pt, b: Pt) {
+export function km(a: Pt, b: Pt) {
   const r = 6371
   const rad = Math.PI / 180
   const dLat = (b.lat - a.lat) * rad

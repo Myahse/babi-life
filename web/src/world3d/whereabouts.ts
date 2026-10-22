@@ -22,6 +22,8 @@ export const whereabouts = {
   water: [] as XZ[][],
   /** Who the Sim is talking to stands here: the Sim turns to face them (Walker.tsx). */
   faceTo: null as XZ | null,
+  /** On the way to somewhere (Walker.tsx): where (a place's name, or null for a spot), how far is left (m), how fast it goes (m/s), how. */
+  way: null as { to: string | null; left: number; speed: number; how: 'walk' | 'run' | 'moto' } | null,
   /** Is there room for the Sim's body here (Walker.tsx)? */
   roomAt: (_x: number, _z: number) => true,
 }

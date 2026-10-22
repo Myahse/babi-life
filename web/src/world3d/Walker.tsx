@@ -23,6 +23,7 @@ import { Swimmer } from './Swimmer'
 import { Vehicle } from './vehicles'
 import { motoTaken, offerMoto } from './moto'
 import { tripRide } from './open/tripRide'
+import { askDrop, answerDrop, takeDrop } from './dropRoute'
 import { turnTo } from './open/shared'
 import type { Pose } from '../avatar/Human'
 
@@ -311,8 +312,11 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   }, [goTo, lots]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Tap the ground: the Sim walks there, the shortest way round what's in the way. */
-  const walkToPoint = (x: number, z: number) => {
+  const walkToPoint = (x: number, z: number, sure = false) => {
     if (frozen || tripRide.boarded || !nav.walkable(x, z)) return
+    // On the way to a place: asked first (dropRoute.ts); the answer comes back in the frame loop.
+    const going = target.current !== null && path.current.length > 0 ? lots.find((l) => l.id === target.current) : undefined
+    if (going && !sure) return askDrop({ x, z, from: going.name, moto: riding.current })
     const p = group.current!.position
     const way = findWay([p.x, p.z], [x, z], false)
     if (!way) return
@@ -746,13 +750,23 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       riding.current = false
       setRide(false)
     }
-    // There (or the way given up): no more moto-taxi to offer.
-    if (!path.current.length) offerMoto(null)
+    // There (or the way given up): no more moto-taxi to offer, nor a question about dropping the way.
+    if (!path.current.length) {
+      offerMoto(null)
+      answerDrop(false)
+    }
+    // The player said to drop the way for a spot tapped on the ground.
+    const drop = takeDrop()
+    if (drop) walkToPoint(drop.x, drop.z, true)
     const nowRunning = !riding.current && ((padWalking.current && running()) || (path.current.length > 0 && (autoRun.current || running())))
     if (path.current.length && !riding.current && running() && speed.current < RUN) speed.current = RUN
     if (nowRunning !== run) setRun(nowRunning)
     // For the mini-map: where the Sim is, which way the camera looks.
     whereabouts.sim = [g.position.x, g.position.z]
+    // For the screen: how much of the way is left, and how fast it goes (Play's WayLeft).
+    whereabouts.way = path.current.length
+      ? { to: lots.find((l) => l.id === target.current)?.name ?? null, left: pathLength(path.current, [g.position.x, g.position.z]), speed: speed.current, how: riding.current ? 'moto' : nowRunning ? 'run' : 'walk' }
+      : null
     if (controls) {
       const dx = controls.target.x - camera.position.x
       const dy = camera.position.y - controls.target.y
