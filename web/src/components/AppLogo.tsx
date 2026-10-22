@@ -70,7 +70,37 @@ const LOOK: Record<string, { bg: string; fg: string; mark: (s: number) => React.
   gbairai: { bg: 'linear-gradient(160deg,#ff9f43,#f0590c)', fg: '#fff', mark: (s) => <MessageCircleMore size={s} strokeWidth={2.4} /> },
   dodo: { bg: 'linear-gradient(160deg,#8b5cf6,#4c1d95)', fg: '#7c3aed', mark: (s) => <DodoHouse size={s} /> },
   kineo: { bg: 'linear-gradient(160deg,#e63946,#6b0716)', fg: '#c8102e', mark: (s) => <Clapperboard size={s} strokeWidth={2.4} color="#fff" /> },
+  dames: { bg: 'linear-gradient(160deg,#c8894a,#5c3317)', fg: '#8a4b1f', mark: (s) => <Draughts size={s} /> },
+  huit: { bg: 'linear-gradient(160deg,#2f9e44,#0b5d2a)', fg: '#1b7a3a', mark: (s) => <Cards size={s} /> },
   store: { bg: 'linear-gradient(160deg,#7aa7ff,#3b5bfd)', fg: '#fff', mark: (s) => <ShoppingBag size={s} strokeWidth={2.4} /> },
+}
+
+/** Dames 225: a white man on a dark one, as stacked on the board when crowned. */
+function Draughts({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24">
+      <ellipse cx="12" cy="15.5" rx="8" ry="3.2" fill="#1b120c" />
+      <rect x="4" y="12.5" width="16" height="3" fill="#1b120c" />
+      <ellipse cx="12" cy="12.5" rx="8" ry="3.2" fill="#3a2716" />
+      <ellipse cx="12" cy="10" rx="8" ry="3.2" fill="#e9dcc3" />
+      <rect x="4" y="7" width="16" height="3" fill="#e9dcc3" />
+      <ellipse cx="12" cy="7" rx="8" ry="3.2" fill="#fff8ea" />
+      <ellipse cx="12" cy="7" rx="4.2" ry="1.6" fill="none" stroke="#c8a676" strokeWidth="0.9" />
+    </svg>
+  )
+}
+
+/** 8 américain: two cards fanned, the 8 on top. */
+function Cards({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24">
+      <rect x="3.5" y="4.5" width="11" height="15" rx="2" transform="rotate(-12 9 12)" fill="#fff" stroke="#0b5d2a" strokeWidth="0.8" />
+      <rect x="9" y="4" width="11" height="15" rx="2" transform="rotate(10 14.5 11.5)" fill="#fff" stroke="#0b5d2a" strokeWidth="0.8" />
+      <text x="14.6" y="14.6" textAnchor="middle" fontSize="8.5" fontWeight="900" fill="#c92a2a" transform="rotate(10 14.5 11.5)">
+        8
+      </text>
+    </svg>
+  )
 }
 
 export const appColor = (id: string) => LOOK[id]?.fg ?? '#161a2b'
