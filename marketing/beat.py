@@ -1,10 +1,13 @@
-"""The gameplay video's sound (FILM=gameplay): a coupé-décalé-style beat made
-here, with no sample, plus a whoosh on every cut and a cash register on every
-money change. Writes out/son-gameplay.mp3, which video.mjs puts under the film.
+"""A video's sound: a coupé-décalé-style beat made here, with no sample, plus
+a whoosh on every cut, a hit on every word slammed on screen, a cash register
+on every money change (and for the trailer, the crowd at the goal). Writes
+out/son-<film>.mp3, which video.mjs puts under the film (under Awa's voice,
+when there is one).
 
-The times follow FILMS.gameplay and MONEY in web/src/lab/poster.tsx.
+The times follow FILMS.<film> (and MONEY for gameplay) in web/src/lab/poster.tsx.
 
-    python3 beat.py
+    python3 beat.py              # gameplay
+    FILM=tout python3 beat.py    # the trailer of everything
 """
 
 import os
@@ -14,12 +17,28 @@ import wave
 import numpy as np
 
 SR = 44100
-LENGTH = 39.0
+FILM = os.environ.get('FILM', 'gameplay')
 BPM = 124
-CUTS = [2.4, 4.8, 8.6, 11.8, 16.4, 21, 24.6, 29, 33.4]
-CASH = [6.2, 19.7, 22.4, 26.4]
-# The hook's words slammed on screen (TU NAIS…, GNAMBRO, TON BUT :, DEBOUT).
-HITS = [0.15, 0.9, 2.55, 3.2]
+if FILM == 'tout':
+    LENGTH = 53.0
+    # Each shot's start, then the montage's quarter seconds (TOUT ÇA…) and the outro.
+    CUTS = [2.8, 5.6, 8.8, 10.6, 12.6, 15.2, 18, 21, 24.4, 28.4, 31.2, 33.6, 36.2, 39, 41.8, 44.4, 46.4]
+    TICKS = [44.4 + k * 0.25 for k in range(1, 8)]
+    # ABIDJAN…, DANS UN JEU ?!, BUUUT !, RAFLE !, +6 !, PIOCHE !, CŒUR !, TOUT ÇA…, DANS UN SEUL JEU.
+    HITS = [0.2, 1.15, 16.7, 23.0, 25.75, 26.05, 27.75, 44.5, 45.3]
+    # + 5 000 F at the dames, the banknotes at the maquis.
+    CASH = [23.35, 29.2]
+    CROWD = [16.6]
+    GROOVE, LEAD_FROM = 2.8, 5.6
+else:
+    LENGTH = 39.0
+    CUTS = [2.4, 4.8, 8.6, 11.8, 16.4, 21, 24.6, 29, 33.4]
+    TICKS = []
+    # The hook's words slammed on screen (TU NAIS…, GNAMBRO, TON BUT :, DEBOUT).
+    HITS = [0.15, 0.9, 2.55, 3.2]
+    CASH = [6.2, 19.7, 22.4, 26.4]
+    CROWD = []
+    GROOVE, LEAD_FROM = 2.4, 4.8
 
 beat = 60 / BPM
 n = int(SR * LENGTH)
@@ -90,6 +109,18 @@ def impact():
     return kick() * 1.3 + np.concatenate([clap(), np.zeros(int(0.15 * SR))])[: int(0.35 * SR)] * 0.8
 
 
+def crowd(d=2.4):
+    # A stadium roaring: noise, smoothed to a roar, swelling then dying down.
+    noise = rng.uniform(-1, 1, int(d * SR))
+    out = np.zeros_like(noise)
+    acc = 0.0
+    for i, x in enumerate(noise):
+        acc += 0.08 * (x - acc)
+        out[i] = acc
+    t = np.arange(len(out)) / SR
+    return out * np.minimum(1, t / 0.15) * np.exp(-np.maximum(0, t - 0.6) / 0.8) * 3
+
+
 def cash():
     # The register's bell, then the coins.
     ding = pluck(2093, 0.5, 0.3) * 0.5 + pluck(2637, 0.5, 0.3) * 0.4
@@ -105,7 +136,7 @@ def cash():
 A, C, D, E, G = 220.0, 261.63, 293.66, 329.63, 392.0
 LEAD = [E, G, A * 2, G, E, D, E, 0, C, D, E, G, E, D, C, 0]
 BASS = [A / 2, A / 2, C / 2, C / 2, D / 2, D / 2, G / 4, G / 4]
-start = 2.4
+start = GROOVE
 step = beat / 4
 s = 0
 t = start
@@ -121,7 +152,7 @@ while t < LENGTH - 0.3:
         if pos in (0, 6, 10):
             at(t, bass(f, step * 3), 0.35)
     # The lead (a guitar-like pluck, the coupé-décalé's) from the first step on, every 16th note.
-    if t >= 4.8:
+    if t >= LEAD_FROM:
         f = LEAD[(s + (s // 32) * 2) % len(LEAD)]
         if f:
             at(t, pluck(f * 2, 0.22), 0.16)
@@ -130,15 +161,19 @@ while t < LENGTH - 0.3:
     t = start + s * step
 
 # The hook: a low drone and the hits.
-tt = np.arange(int(2.4 * SR)) / SR
+tt = np.arange(int(GROOVE * SR)) / SR
 at(0, (np.sin(2 * np.pi * 55 * tt) * 0.25 + np.sin(2 * np.pi * 110.5 * tt) * 0.08) * np.minimum(1, tt / 0.3))
 for h in HITS:
     at(h, impact(), 0.9)
 for c in CUTS:
     at(c - 0.3, whoosh(), 0.35)
     at(c, impact(), 0.5)
+for c in TICKS:
+    at(c, impact(), 0.3)
 for c in CASH:
     at(c, cash(), 0.7)
+for c in CROWD:
+    at(c, crowd(), 0.6)
 
 # Fade out at the end, then normalise.
 fade = int(2.0 * SR)
@@ -147,13 +182,13 @@ mix = np.tanh(mix * 1.2)
 mix /= np.max(np.abs(mix)) / 0.89
 
 here = os.path.dirname(os.path.abspath(__file__))
-wav = os.path.join(here, 'out', 'son-gameplay.wav')
+wav = os.path.join(here, 'out', f'son-{FILM}.wav')
 with wave.open(wav, 'wb') as w:
     w.setnchannels(1)
     w.setsampwidth(2)
     w.setframerate(SR)
     w.writeframes((mix * 32767).astype('<i2').tobytes())
-mp3 = os.path.join(here, 'out', 'son-gameplay.mp3')
+mp3 = os.path.join(here, 'out', f'son-{FILM}.mp3')
 subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', wav, '-b:a', '160k', mp3], check=True)
 os.remove(wav)
 print('son →', mp3)
