@@ -12,6 +12,8 @@ import { WorldMap } from './WorldMap'
 import { Joystick, RunButton, WalkKeys } from '../components/Joystick'
 import { cameraTurn } from '../world3d/input'
 import { distanceTo, whereabouts } from '../world3d/whereabouts'
+import { challengeInAddress, useShare } from '../lib/share'
+import { ShareSheet } from '../components/SharedCard'
 import { cutsAround, inCut, type PowerCut } from '../world3d/power'
 import { isRoomAct, openLift } from '../world3d/hotelLift'
 import { throwBillets } from '../world3d/clubBillets'
@@ -424,6 +426,19 @@ export function Play() {
     setTimeout(() => setToasts((ts) => ts.filter((x) => x.id !== id)), 5000)
   }, [])
 
+  // Sharing (lib/share.ts): who sends, what's being sent, a défi taken on (also from a link: /jeu?defi=…).
+  const { sharing, challenge, share: shareThis, challengeWith } = useShare()
+  const applyNow = useRef(apply)
+  applyNow.current = apply
+  useEffect(() => {
+    if (sim) useShare.setState({ simId: sim.id, firstName: sim.firstName, apply: (r) => applyNow.current(r) })
+  }, [sim?.id, sim?.firstName]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const c = challengeInAddress()
+    if (!c) return
+    challengeWith(c)
+    history.replaceState(null, '', location.pathname)
+  }, [challengeWith])
   function apply(res: ActionResult) {
     setBase({ sim: res.sim, at: Date.now() })
     setJournal(res.journal)
@@ -1211,6 +1226,20 @@ export function Play() {
           onClose={() => setDefi(null)}
         />
       )}
+      {/* A défi taken on from someone (a message, a link): played for fun, the score to send back */}
+      {challenge && !defi && (
+        <>
+          {challenge.kind === 'ski' && (
+            <div className="absolute inset-0 z-40 bg-[var(--color-night)]">
+              <Suspense fallback={null}>
+                <BoulayScene sim={sim} interactionId="ski-boulay" night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
+              </Suspense>
+            </div>
+          )}
+          <DefiSheet kind={challenge.kind} simId={sim.id} challenge={{ score: challenge.score, from: challenge.from }} onClose={() => challengeWith(null)} />
+        </>
+      )}
+      {sharing && <ShareSheet sharing={sharing} onClose={() => shareThis(null)} />}
       {!overlay && (dropAsk ? <DropRouteAsk from={dropAsk.from} moto={dropAsk.moto} /> : <MotoOffer sim={sim} act={run} />)}
       {/* On a flight: the plane over the clouds (the map is a tap away) */}
       {!overlay && sim.activity?.kind === 'travel' && sim.activity.trip?.mode === 'avion' && <FlightView sim={sim} night={c.isNight} onMap={() => setOverlay('map')} />}

@@ -4,6 +4,7 @@ import { api } from '../lib/api'
 import { haptic } from '../lib/native'
 import type { ActionResult } from '../lib/types'
 import { IconTile } from './ui'
+import { ChallengeButton } from './SharedCard'
 import { TeaDefi } from './defi/Tea'
 import { CoursesDefi } from './defi/Courses'
 import { SkiDefi } from './defi/Ski'
@@ -58,7 +59,7 @@ export function DefiButton({ kind, onClick }: { kind: DefiKind; onClick: () => v
 const stars = (score: number) => (score >= 85 ? 3 : score >= 50 ? 2 : score >= 15 ? 1 : 0)
 
 /** The défi: how it's played, the game, the score and what it earned. */
-export function DefiSheet({ kind, simId, big, send, onClose }: { kind: DefiKind; simId: string; /** The shopping at the supermarket: the longer list. */ big?: boolean; /** The score sent: the server's answer (applied to the Sim), or null if it failed. */ send: (score: number) => Promise<ActionResult | null>; onClose: () => void }) {
+export function DefiSheet({ kind, simId, big, send, challenge, onClose }: { kind: DefiKind; simId: string; /** The shopping at the supermarket: the longer list. */ big?: boolean; /** The score sent: the server's answer (applied to the Sim), or null if it failed. */ send?: (score: number) => Promise<ActionResult | null>; /** Taken on from someone's score (a message, a link): played for the fun of it, nothing sent. */ challenge?: { score: number; from: string }; onClose: () => void }) {
   const d = DEFIS[kind]
   const [phase, setPhase] = useState<'intro' | 'play' | 'result'>('intro')
   const [best, setBest] = useState<number | null>(null)
@@ -74,7 +75,8 @@ export function DefiSheet({ kind, simId, big, send, onClose }: { kind: DefiKind;
     if (s >= 50) haptic('success')
     setScore(s)
     setPhase('result')
-    const r = await send(s)
+    if (challenge) return setSaid(s > challenge.score ? `Tu as battu ${challenge.from} (${challenge.score}) ! Renvoie-lui ton score.` : s === challenge.score ? `Égalité avec ${challenge.from} : ${s} partout !` : `${challenge.from} reste devant avec ${challenge.score}. Retente !`)
+    const r = await send?.(s)
     setSaid(r?.outcome.text.replace(/^Défi \d+\/100\. /, '') ?? null)
   }
   const ski = kind === 'ski'
@@ -97,6 +99,11 @@ export function DefiSheet({ kind, simId, big, send, onClose }: { kind: DefiKind;
                 </span>
               )}
             </div>
+            {challenge && (
+              <div className="mt-3 flex items-center gap-2 rounded-2xl bg-[#fff3c4] px-3 py-2 text-[13px] leading-snug font-extrabold text-[#7a5200]">
+                <Trophy size={16} className="shrink-0" /> {challenge.from} a fait {challenge.score}/100. À toi de faire mieux !
+              </div>
+            )}
             <ol className="mt-3 space-y-1.5 text-[14px] leading-snug font-bold text-[var(--color-ink)]">
               {d.how.map((h, k) => (
                 <li key={k} className="flex gap-2">
@@ -131,9 +138,17 @@ export function DefiSheet({ kind, simId, big, send, onClose }: { kind: DefiKind;
             </div>
             {best !== null && best > 0 && score > best && <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-[#fff3c4] px-3 py-1 text-[13px] font-extrabold text-[#a06a00]"><Trophy size={14} /> Nouveau record !</div>}
             <p className="mt-3 min-h-[40px] text-[14px] leading-snug font-bold text-[var(--color-ink)]">{said ?? '…'}</p>
-            <button className="btn mt-3 w-full !py-2.5" onClick={onClose}>
-              Super !
-            </button>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {challenge ? (
+                <button className="btn btn-soft !py-2.5 !text-sm" onClick={() => (setSaid(null), setPhase('play'))}>
+                  Rejouer
+                </button>
+              ) : null}
+              <button className={`btn !py-2.5 ${challenge ? '' : 'col-span-2'}`} onClick={onClose}>
+                Super !
+              </button>
+            </div>
+            <ChallengeButton kind={kind} score={score} title={d.title} />
           </div>
         </div>
       )}

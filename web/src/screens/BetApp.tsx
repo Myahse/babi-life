@@ -1,5 +1,6 @@
+import { useShare } from '../lib/share'
 import { useEffect, useMemo, useState } from 'react'
-import { Check, Clock3, Radio, Trash2, X } from 'lucide-react'
+import { Check, Clock3, Radio, Send, Trash2, X } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
 import type { BetRounds, BetView, Sim, Sport, VirtualMatch } from '../lib/types'
 import type { Act } from './phoneApps'
@@ -21,7 +22,7 @@ export const BRANDS: Record<'bet225' | 'parisfoot', Brand> = {
 
 const PICK: Record<string, string> = { '1': '1', N: 'N', '2': '2', plus: '+2,5 buts', moins: '-2,5 buts', btsOui: 'Les 2 marquent', btsNon: 'Pas les 2' }
 /** A pick's name in its sport: basketball's points line, tennis's three sets. */
-const pickLabel = (m: Pick<VirtualMatch, 'sport' | 'line'> | undefined, pick: string) => {
+export const pickLabel = (m: Pick<VirtualMatch, 'sport' | 'line'> | undefined, pick: string) => {
   if (m?.sport === 'basket' && (pick === 'plus' || pick === 'moins')) return `${pick === 'plus' ? '+' : '-'}${String(m.line ?? '').replace('.', ',')} pts`
   if (m?.sport === 'tennis' && pick === 'btsOui') return '3 sets'
   if (m?.sport === 'tennis' && pick === 'btsNon') return '2 sets'
@@ -35,6 +36,26 @@ const SPORTS: { id: Sport; label: string; icon: string }[] = [
 type Leg = { match: VirtualMatch; pick: keyof VirtualMatch['odds'] }
 const nf = (n: number) => n.toLocaleString('fr-FR')
 const clockOf = (s: number) => `${Math.floor(Math.max(0, s) / 60)}:${String(Math.max(0, s) % 60).padStart(2, '0')}`
+
+/** « Partager » a ticket: to a friend, to the grin (components/SharedCard.tsx draws it there). */
+function ShareTicket({ simId, id, className = '' }: { simId: string; id: number; className?: string }) {
+  const share = useShare((s) => s.share)
+  const [busy, setBusy] = useState(false)
+  const go = async () => {
+    setBusy(true)
+    try {
+      const { ref } = await api.shareTicket(simId, 'bet', id)
+      share({ title: 'Partager mon ticket', body: ref })
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <button disabled={busy} className={`flex items-center gap-1 text-[11px] font-extrabold disabled:opacity-50 ${className}`} onClick={() => void go()}>
+      <Send size={12} /> Partager
+    </button>
+  )
+}
 
 export function BetApp({ sim, act, app }: { sim: Sim; act: Act; app: 'bet225' | 'parisfoot' }) {
   const s = useBetting(sim, act, app)
@@ -243,9 +264,10 @@ function Bet225({ sim, s }: { sim: Sim; s: Betting }) {
                   </li>
                 ))}
               </ul>
-              <div className="mt-2 flex justify-between text-xs font-extrabold text-white/70">
+              <div className="mt-2 flex items-center justify-between text-xs font-extrabold text-white/70">
                 <span>Mise {nf(x.stake)} Djai</span>
                 <span>Cote {x.odds.toFixed(2)}</span>
+                <ShareTicket simId={sim.id} id={x.id} className="rounded-full bg-white/15 px-2.5 py-1 text-white" />
               </div>
             </div>
           ))}
@@ -469,6 +491,7 @@ function ParisFoot({ sim, s }: { sim: Sim; s: Betting }) {
                     {x.status === 'won' ? `GAGNANT +${nf(x.payout)}` : x.status === 'lost' ? 'PERDANT' : 'EN JEU'}
                   </span>
                 </div>
+                <ShareTicket simId={sim.id} id={x.id} className="mt-2 w-full justify-center rounded-lg bg-[#ede9fe] py-1.5 text-[#5b21b6]" />
               </div>
             ))}
           </div>

@@ -1,3 +1,5 @@
+import { cardPreview } from './SharedCard'
+
 // Gbairai's stickers and emoji. A sticker is sent as a short message,
 // « [sticker:id] » (the server lets it through like any text), and drawn big
 // in the chat: a picture made of emoji and the word of the street that goes
@@ -36,7 +38,7 @@ export function stickerOf(body: string) {
 /** What a message says in a list or a notification: a sticker by its words. */
 export function previewOf(body: string) {
   const s = stickerOf(body)
-  return s ? `Sticker : ${s.emoji} ${s.text}` : body
+  return s ? `Sticker : ${s.emoji} ${s.text}` : (cardPreview(body) ?? body)
 }
 
 /** A sticker, drawn big in the chat (or small in the picker). */

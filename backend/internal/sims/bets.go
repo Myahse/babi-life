@@ -325,15 +325,31 @@ type BetView struct {
 	Status string    `json:"status"`
 	Payout int       `json:"payout"`
 	At     time.Time `json:"at"`
-	Legs   []struct {
-		Match string  `json:"match"`
-		Label string  `json:"label"`
-		Pick  string  `json:"pick"`
-		Odds  float64 `json:"odds"`
-		// Won: true/false once its match is over, null before.
-		Won   *bool   `json:"won"`
-		Score *[2]int `json:"score,omitempty"`
-	} `json:"legs"`
+	Legs   []betLeg  `json:"legs"`
+}
+
+// betLeg is one match of a bet, its pick, and how it stands.
+type betLeg struct {
+	Match string  `json:"match"`
+	Label string  `json:"label"`
+	Pick  string  `json:"pick"`
+	Odds  float64 `json:"odds"`
+	// Won: true/false once its match is over, null before.
+	Won   *bool   `json:"won"`
+	Score *[2]int `json:"score,omitempty"`
+}
+
+// legNow: a leg's score so far, and whether it's won once its match is over.
+func legNow(app string, leg *betLeg, now int64) {
+	league, round, i, err := parseMatch(leg.Match)
+	if err != nil {
+		return
+	}
+	m, _ := game.MatchIn(leagueOf(app, league, round, i, leg.Label), round, i, now, 0)
+	leg.Score = m.Score
+	if won, ok := game.Won(m, leg.Pick, now); ok {
+		leg.Won = &won
+	}
 }
 
 // myBets: the Sim's last 30 bets on one app (?app=; each app its own history), with each match's score so far.
@@ -357,25 +373,12 @@ func (h *Handler) myBets(w http.ResponseWriter, r *http.Request) {
 	byID := map[int64]*BetView{}
 	for rows.Next() {
 		var b BetView
-		var leg struct {
-			Match string  `json:"match"`
-			Label string  `json:"label"`
-			Pick  string  `json:"pick"`
-			Odds  float64 `json:"odds"`
-			Won   *bool   `json:"won"`
-			Score *[2]int `json:"score,omitempty"`
-		}
+		var leg betLeg
 		if err := rows.Scan(&b.ID, &b.App, &b.Stake, &b.Odds, &b.Status, &b.Payout, &b.At, &leg.Match, &leg.Label, &leg.Pick, &leg.Odds); err != nil {
 			httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 			return
 		}
-		if league, round, i, err := parseMatch(leg.Match); err == nil {
-			m, _ := game.MatchIn(leagueOf(b.App, league, round, i, leg.Label), round, i, now, 0)
-			leg.Score = m.Score
-			if won, ok := game.Won(m, leg.Pick, now); ok {
-				leg.Won = &won
-			}
-		}
+		legNow(b.App, &leg, now)
 		cur := byID[b.ID]
 		if cur == nil {
 			cur = &b
