@@ -14,7 +14,7 @@ type Route struct {
 	FromBank, ToBank string
 	// Bridges the trip crosses, from the road network.
 	Bridges []string
-	// Mode: "woro", "compteur", "taxi", "car" or a ride app's ID.
+	// Mode: "woro", "compteur", "gbaka", "moto", "taxi", "car" or a ride app's ID.
 	Mode string
 }
 
@@ -54,6 +54,8 @@ var TripIncidents = []TripIncident{
 		Source: Partial("Bouchons signalés en novembre 2024 sur la route de l'aéroport à cause de travaux simultanés ; à revoir quand les travaux seront finis.", SrcAirportRoad2024)},
 	{ID: "woro-plein", Text: "Le woro-woro attend d'être plein avant de partir.", Extra: 3, WithinCity: true, Modes: []string{"woro", "taxi"}, Chance: 0.25,
 		Effect: Needs{Fun: -5}, Source: Fictional},
+	{ID: "gbaka-arrets", Text: "Le gbaka s'arrête à chaque carrefour, l'apprenti crie la destination et serre tout le monde.", Extra: 4, WithinCity: true, Modes: []string{"gbaka"}, Chance: 0.4,
+		Effect: Needs{Fun: -5, Energy: -3}, Source: Fictional},
 	{ID: "controle-route", Text: "Contrôle routier : tout le car descend pour montrer ses papiers.", Extra: 6, Intercity: true, Chance: 0.3,
 		Effect: Needs{Fun: -10, Energy: -5}, Source: Fictional},
 	{ID: "panne-car", Text: "Le car est tombé en panne au bord de la route. On attend le mécanicien.", Extra: 15, Intercity: true, Chance: 0.12,

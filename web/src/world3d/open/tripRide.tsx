@@ -6,6 +6,7 @@ import { EPOCH } from '../../game/rules'
 import { rideLook } from '../../game/rides'
 import { serverNow } from '../../lib/worldClock'
 import { Vehicle, type VehicleKind } from '../vehicles'
+import { Human, NoShadows } from '../../avatar/Human'
 import { whereabouts } from '../whereabouts'
 import { rng } from '../themes'
 import type { Nav } from './nav'
@@ -24,8 +25,8 @@ export const tripRide = { active: false, boarded: false, x: 0, z: 0, heading: 0,
 // In development, for tests in the browser.
 if (import.meta.env.DEV) Object.assign(globalThis, { __tripRide: tripRide })
 
-/** Which vehicle comes: the woro-woro, the orange taxi, the car (the intercity coach), an app's car. */
-const kindOf = (mode: string): VehicleKind => (mode === 'woro' ? 'woro' : mode === 'car' ? 'sotra' : mode === 'compteur' || mode === 'taxi' ? 'taxi' : 'car')
+/** Which vehicle comes: the woro-woro, the orange taxi, the gbaka, the moto-taxi, the car (the intercity coach), an app's car. */
+const kindOf = (mode: string): VehicleKind => (mode === 'woro' ? 'woro' : mode === 'car' ? 'sotra' : mode === 'compteur' || mode === 'taxi' ? 'taxi' : mode === 'gbaka' ? 'gbaka' : mode === 'moto' ? 'moto' : 'car')
 
 const SPEED = 9 // m/s in town
 
@@ -131,6 +132,23 @@ export function TripRide({ sim, nav, world }: { sim: Sim; nav: Nav; world: World
   return (
     <group ref={ref} visible={false}>
       <Vehicle p={[0, 0, 0]} kind={kind} color={kind === 'sotra' ? undefined : look?.color} trim={look?.trim} seed={a.start % 97} crew />
+      {/* On a moto-taxi the Sim is seen, behind the driver (in a car, it's inside) */}
+      {kind === 'moto' && <Pillion sim={sim} />}
+    </group>
+  )
+}
+
+/** The Sim on the back of the moto-taxi, once it has got on (the moto's front is its +x). */
+function Pillion({ sim }: { sim: Sim }) {
+  const g = useRef<THREE.Group>(null)
+  useFrame(() => {
+    if (g.current) g.current.visible = tripRide.boarded
+  })
+  return (
+    <group ref={g} position={[-0.62, 0.42, 0]} rotation={[0, Math.PI / 2, 0]} visible={false}>
+      <NoShadows>
+        <Human look={sim.look} gender={sim.gender} pose="sit" seed={7} />
+      </NoShadows>
     </group>
   )
 }

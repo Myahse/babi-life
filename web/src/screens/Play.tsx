@@ -2,7 +2,7 @@ import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useS
 import { Link, useNavigate } from 'react-router-dom'
 import { BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
-import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Player, Sim, World, Ride, Place, Plot } from '../lib/types'
+import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Player, Sim, World, Ride, Place, Plot, StreetRide } from '../lib/types'
 import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
 import { joinMatch, type CourtMatch } from '../streetball/online'
@@ -65,7 +65,8 @@ import type { Npc } from '../world3d/open/OpenWorld'
 import { setTalkHandler, setTalking } from '../world3d/talk'
 import type { Track } from '../audio/music'
 import { NotifyPrompt } from '../components/NotifyPrompt'
-import { motoFare, motoPaid, useMoto } from '../world3d/moto'
+import { motoPaid, rideFare, RIDES, useMoto, type RideKind } from '../world3d/moto'
+import { GBAKA, inkOn, MOTO } from '../game/rides'
 import { answerDrop, useDropAsk } from '../world3d/dropRoute'
 import { DefiButton, DefiSheet, defiOf, type DefiKind } from '../components/Defi'
 import { BolideApp } from './BolideApp'
@@ -541,6 +542,10 @@ export function Play() {
     const to = world.cities.find((x) => x.id === cityId)?.communes.find((x) => x.id === communeId)
     // A flight is booked at the airport (Flights): no driver to find, straight on board.
     if (ride?.app === 'avion') return void (setOverlay(null), run(label, 'plane', 'transport', () => api.travel(sim!.id, cityId, communeId, ride)))
+    // A moto-taxi: one stops right away, the Sim gets on behind.
+    if (ride?.app === 'moto') return void (setOverlay(null), run(label, 'bike', 'transport', () => api.travel(sim!.id, cityId, communeId, { app: 'moto' })))
+    // The woro-woro, the taxi compteur, the gbaka: waited for at the roadside, the one chosen.
+    if (ride?.app?.startsWith('street') && to) return setFlow({ cityId, from, to, kind: 'street', want: (ride.app.split(':')[1] || undefined) as StreetRide | undefined, fare, party: ride.party ?? 1, money: sim!.money })
     if (ride?.app && to) return setFlow({ cityId, from, to, kind: ride.app, offer: ride.offer, fare, party: ride.party ?? 1, money: sim!.money })
     run(label, 'bus', 'transport', () => api.travel(sim!.id, cityId, communeId, ride))
   }
@@ -1240,7 +1245,7 @@ export function Play() {
         </>
       )}
       {sharing && <ShareSheet sharing={sharing} onClose={() => shareThis(null)} />}
-      {!overlay && (dropAsk ? <DropRouteAsk from={dropAsk.from} moto={dropAsk.moto} /> : <MotoOffer sim={sim} act={run} />)}
+      {!overlay && (dropAsk ? <DropRouteAsk from={dropAsk.from} moto={dropAsk.moto} /> : <MotoOffer world={world} sim={sim} commune={commune} act={run} />)}
       {/* On a flight: the plane over the clouds (the map is a tap away) */}
       {!overlay && sim.activity?.kind === 'travel' && sim.activity.trip?.mode === 'avion' && <FlightView sim={sim} night={c.isNight} onMap={() => setOverlay('map')} />}
       {chat && (
@@ -1832,7 +1837,7 @@ function WayLeft() {
     return () => clearInterval(t)
   }, [])
   if (!way || way.left < 15) return null
-  const Icon = way.how === 'moto' ? Bike : Footprints
+  const Icon = way.how === 'moto' ? Bike : way.how === 'gbaka' ? Bus : way.how === 'taxi' || way.how === 'woro' ? CarTaxiFront : Footprints
   const secs = way.left / Math.max(0.5, way.speed)
   return (
     <span className="hud flex max-w-[230px] items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-extrabold">
@@ -2093,24 +2098,51 @@ function WordOfTheDay({ world, gameMinutes }: { world: World; gameMinutes: numbe
  * (world3d/moto.ts, backend sims/moto.go). Paid, the Sim rides the rest;
  * else it walks (runs, it's far).
  */
-function MotoOffer({ sim, act }: { sim: Sim; act: Act }) {
+/**
+ * A long way in the commune (world3d/moto.ts): on foot, or a ride for the rest, each with its
+ * fare: the moto-taxi (the quickest), the taxi, the commune's woro-woro (where it has one), the
+ * gbaka (in Abidjan). Picked, it's paid, and the Sim rides it in the street.
+ */
+function MotoOffer({ world, sim, commune, act }: { world: World; sim: Sim; commune: Commune; act: Act }) {
   const { offer, paid } = useMoto()
   const [no, setNo] = useState<number | null>(null)
   if (!offer || paid || no === offer) return null
-  const fare = motoFare(offer)
+  const abidjan = !!world.compteur?.cities.includes(sim.city)
+  const woro = abidjan && commune.woro && !commune.woro.none ? commune.woro : null
+  const rides: { kind: RideKind; color: string; trim?: string }[] = [
+    { kind: 'moto', color: MOTO },
+    { kind: 'taxi', color: world.compteur?.color ?? '#ff7a00' },
+    ...(woro ? [{ kind: 'woro' as const, color: woro.color ?? '#f1f3f5', trim: woro.trim }] : []),
+    ...(abidjan ? [{ kind: 'gbaka' as const, color: GBAKA, trim: '#00a862' }] : []),
+  ]
+  const take = async (r: (typeof rides)[number]) => {
+    if (await act(RIDES[r.kind].name, r.kind === 'moto' ? 'bike' : r.kind === 'gbaka' ? 'bus' : 'car-taxi-front', 'transport', () => api.moto(sim.id, offer, r.kind))) motoPaid(r)
+  }
   return (
-    <div className="hud animate-up absolute bottom-[calc(7.5rem+env(safe-area-inset-bottom))] left-1/2 z-30 flex w-[min(380px,calc(100vw-24px))] -translate-x-1/2 items-center gap-2 rounded-[22px] p-2 pl-3 text-sm font-extrabold">
-      <Bike size={20} className="shrink-0 text-[#c92a2a]" />
-      <span className="min-w-0 flex-1 leading-tight">
-        C'est loin ({(offer / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} km) : moto-taxi ?
-        <span className="block text-xs text-[var(--color-ink-soft)]">Sinon tu y vas à pied.</span>
-      </span>
-      <button className="btn btn-soft !px-3 !py-2 !text-xs" onClick={() => setNo(offer)}>
-        À pied
-      </button>
-      <button className="btn !bg-[#c92a2a] !px-3 !py-2 !text-xs" disabled={sim.money < fare} onClick={async () => (await act('Moto-taxi', 'bike', 'transport', () => api.moto(sim.id, offer))) && motoPaid()}>
-        {fcfa(fare)}
-      </button>
+    <div className="hud animate-up absolute bottom-[calc(7.5rem+env(safe-area-inset-bottom))] left-1/2 z-30 w-[min(400px,calc(100vw-24px))] -translate-x-1/2 rounded-[22px] p-2.5 text-sm font-extrabold">
+      <div className="flex items-center gap-2 px-1">
+        <span className="min-w-0 flex-1 leading-tight">
+          C'est loin ({(offer / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} km) : comment tu y vas ?
+        </span>
+        <button className="btn btn-soft !min-h-0 !px-3 !py-1.5 !text-xs" onClick={() => setNo(offer)}>
+          <Footprints size={14} /> À pied
+        </button>
+      </div>
+      <div className={`mt-2 grid gap-1.5 ${rides.length > 3 ? 'grid-cols-4' : 'grid-cols-3'}`}>
+        {rides.map((r) => {
+          const fare = rideFare(r.kind, offer)
+          const Icon = r.kind === 'moto' ? Bike : r.kind === 'gbaka' ? Bus : CarTaxiFront
+          return (
+            <button key={r.kind} disabled={sim.money < fare} onClick={() => void take(r)} className="flex flex-col items-center gap-0.5 rounded-2xl bg-[var(--color-canvas)] px-1 py-2 text-[11.5px] leading-tight disabled:opacity-40">
+              <span className="grid h-8 w-8 place-items-center rounded-full ring-1 ring-black/10" style={{ background: r.color, color: inkOn(r.color) }}>
+                <Icon size={17} strokeWidth={2.4} />
+              </span>
+              <span className="truncate">{RIDES[r.kind].name}</span>
+              <span className="text-[var(--color-ink-soft)]">{fcfa(fare)}</span>
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }

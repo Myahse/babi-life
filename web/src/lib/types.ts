@@ -51,8 +51,10 @@ export type RideApp = { id: string; name: string; model: 'fixed' | 'offer'; citi
 export type RideClass = { id: string; name: string; factor: number; wait: number; cars: string; perks: string; effect: Partial<Record<'hunger' | 'energy' | 'hygiene' | 'social' | 'fun', number>> }
 /** Booking a ride app instead of the shared taxi; offer = the fare proposed; class = the kind of car. */
 export type Ride = { app?: string; class?: string; offer?: number; party?: number }
+/** Waited for at the roadside (components/RideFlow.tsx): the one the player chose. */
+export type StreetRide = 'woro' | 'compteur' | 'gbaka'
 /** taxi = a town's taxi (or an older trip); yango/indrive = older trips. */
-export type TripMode = 'woro' | 'compteur' | 'taxi' | 'car' | 'avion' | 'gnango' | 'idrive' | 'yango' | 'indrive'
+export type TripMode = 'woro' | 'compteur' | 'gbaka' | 'moto' | 'taxi' | 'car' | 'avion' | 'gnango' | 'idrive' | 'yango' | 'indrive'
 export type Expression = { id: string; text: string; lang: string; meaning: string; example: string; context?: string; source: Source }
 
 export type Interaction = {

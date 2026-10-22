@@ -101,6 +101,11 @@ type alwaysSource struct{}
 
 func (alwaysSource) Uint64() uint64 { return 0 }
 
+// neverSource makes every random draw as high as it goes: no incident.
+type neverSource struct{}
+
+func (neverSource) Uint64() uint64 { return ^uint64(0) }
+
 func TestCrossingTheLagoonAtRushHourCanJam(t *testing.T) {
 	s := newSim()                                           // in Yopougon (north bank) at noon
 	s.GameMinutes = game.MinuteOf(noon.Add(-4 * time.Hour)) // 8h
@@ -193,6 +198,45 @@ func TestStreetTaxis(t *testing.T) {
 	}
 	if err := s.leaveWith(abj, cocody, Ride{}, rand.New(alwaysSource{})); err != nil || s.Activity.Trip.Mode != "compteur" {
 		t.Errorf("default from the Plateau should be the compteur: %v %+v", err, s.Activity)
+	}
+}
+
+// The gbaka is cheaper and slower than the woro-woro; the moto-taxi quicker and dearer, one passenger.
+func TestGbakaAndMotoTaxi(t *testing.T) {
+	abj, _ := world.FindCity("abidjan")
+	cocody, _ := abj.Commune("cocody")
+	yop, _ := abj.Commune("yopougon")
+	woroMin, woroFare := world.Trip(abj, yop, abj, cocody)
+	// On the road (the game shortens every trip alike): the gbaka slower, the moto-taxi quicker.
+	if g, _, _ := world.GbakaQuote(abj, yop, cocody); g <= woroMin {
+		t.Errorf("gbaka %d min, woro-woro %d", g, woroMin)
+	}
+	if m, _, _ := world.MotoQuote(abj, yop, cocody); m >= woroMin {
+		t.Errorf("moto-taxi %d min, woro-woro %d", m, woroMin)
+	}
+
+	s := newSim()
+	if err := s.leaveWith(abj, cocody, Ride{App: "gbaka", Party: 2}, rand.New(neverSource{})); err != nil {
+		t.Fatal(err)
+	}
+	if tr := s.Activity.Trip; tr.Mode != "gbaka" || tr.Fare >= 2*woroFare {
+		t.Errorf("the gbaka should be cheaper a seat: %+v (the woro-woro %d F)", tr, woroFare)
+	}
+	s = newSim()
+	if err := s.leaveWith(abj, cocody, Ride{App: "moto", Party: 2}, rand.New(alwaysSource{})); err != errMotoOne {
+		t.Errorf("two behind a moto-taxi: %v", err)
+	}
+	if err := s.leaveWith(abj, cocody, Ride{App: "moto"}, rand.New(alwaysSource{})); err != nil {
+		t.Fatal(err)
+	}
+	if tr := s.Activity.Trip; tr.Mode != "moto" || tr.Fare <= woroFare {
+		t.Errorf("the moto-taxi should cost more than a woro seat: %+v", tr)
+	}
+	// Not between cities: the car (or the plane).
+	bouake, _ := world.FindCity("bouake")
+	s = newSim()
+	if err := s.leaveWith(bouake, bouake.Communes[0], Ride{App: "gbaka"}, rand.New(alwaysSource{})); err == nil {
+		t.Error("a gbaka to Bouaké")
 	}
 }
 

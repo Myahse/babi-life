@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { ArrowRight, Bus, Car, CarTaxiFront, Clock3, Hand, HandCoins, Minus, Plus, UserRound } from 'lucide-react'
-import type { Ride, Sim, World } from '../lib/types'
+import { ArrowRight, Bike, Bus, Car, CarTaxiFront, Clock3, Hand, HandCoins, Minus, Plus, UserRound } from 'lucide-react'
+import type { Ride, Sim, StreetRide, World } from '../lib/types'
 import { actionLength, ageOf, amount, duration, rideQuote, trip } from '../game/rules'
-import { classFare, compteurQuote, inkOn } from '../game/rides'
+import { classFare, compteurQuote, GBAKA, gbakaQuote, inkOn, MOTO, motoQuote } from '../game/rides'
 import { Chip, Coin, IconTile } from './ui'
 import { aCommune } from '../lib/french'
 
@@ -12,13 +12,16 @@ export type OnTravel = (cityId: string, communeId: string, label: string, ride?:
 // How likely a driver takes an offer on a "propose your price" app (mirrors world.OfferChance).
 const offerChance = (offer: number, quote: number) => Math.max(0, Math.min(1, (offer / quote - 0.6) / 0.4))
 
-type Choice = { id: string; name: string; colors: string[]; minutes: number; fare: number; app?: 'fixed' | 'offer'; classes?: boolean }
+type Choice = { id: string; name: string; colors: string[]; minutes: number; fare: number; app?: 'fixed' | 'offer'; classes?: boolean; /** Waited for at the roadside: which one the player wants. */ street?: StreetRide }
 
 /**
- * "Go there". In Abidjan: wait at the roadside for a woro-woro (your
- * commune's colour) or a taxi compteur (orange), or book an app (Gnango at a
- * fixed price, iDrive at the price you propose). Elsewhere the town's taxi,
- * and between cities the car. Shows the way (bridges included), time and fare.
+ * "Go there", and how. In Abidjan, the player chooses: the woro-woro (your
+ * commune's colour, a seat each), the taxi compteur (orange, the whole car),
+ * the gbaka (the cheapest, the slowest, squeezed in), each waited for at the
+ * roadside; the moto-taxi (the quickest, one behind the driver), straight
+ * away; or an app (Gnango at a fixed price, iDrive at the price you propose).
+ * Elsewhere the town's taxi or a moto-taxi, and between cities the car.
+ * Shows the way (bridges included), time and fare.
  */
 export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: World; sim: Sim; cityId: string; communeId: string; onTravel: OnTravel }) {
   const fromCity = world.cities.find((c) => c.id === sim.city)!
@@ -33,11 +36,17 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
   const [party, setParty] = useState(1)
   const woro = from.woro && !from.woro.none ? from.woro : null
 
+  const gbaka = gbakaQuote(t)
+  const moto = motoQuote(t)
   const choices: Choice[] = []
   if (bus) choices.push({ id: 'car', name: 'Car', colors: ['#00b86b'], minutes: t.minutes, fare: t.fare })
   else {
-    if (world.compteur?.cities.includes(cityId)) choices.push({ id: 'street', name: 'Bord de route', colors: woro ? [woro.color!, world.compteur.color] : [world.compteur.color], minutes: woro ? t.minutes : meter.minutes, fare: woro ? t.fare * party : meter.fare })
-    else choices.push({ id: 'taxi', name: 'Taxi', colors: ['#ff7a00'], minutes: t.minutes, fare: t.fare })
+    if (world.compteur?.cities.includes(cityId)) {
+      if (woro) choices.push({ id: 'woro', name: 'Woro', colors: [woro.color!], minutes: t.minutes, fare: t.fare * party, street: 'woro' })
+      choices.push({ id: 'compteur', name: 'Taxi', colors: [world.compteur.color], minutes: meter.minutes, fare: meter.fare, street: 'compteur' })
+      choices.push({ id: 'gbaka', name: 'Gbaka', colors: [GBAKA], minutes: gbaka.minutes, fare: gbaka.fare * party, street: 'gbaka' })
+    } else choices.push({ id: 'taxi', name: 'Taxi', colors: ['#ff7a00'], minutes: t.minutes, fare: t.fare })
+    choices.push({ id: 'moto', name: 'Moto', colors: [MOTO], minutes: moto.minutes, fare: moto.fare })
     for (const a of world.rideApps ?? []) {
       if (!a.cities.includes(cityId) || !sim.apps?.includes(a.id)) continue
       // An app with kinds of car: the cheapest here, the choice in the app.
@@ -56,18 +65,20 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
   })()
   const broke = sim.money < c.fare
   const chance = c.app === 'offer' ? offerChance(offer, quote.fare) : 1
-  const title = bus ? 'Prendre le car' : c.app ? `Commander un ${c.name}` : c.id === 'street' ? 'Héler un taxi' : 'Prendre un taxi'
+  const title = bus ? 'Prendre le car' : c.app ? `Commander un ${c.name}` : c.street === 'woro' ? 'Prendre le woro-woro' : c.street === 'gbaka' ? 'Prendre le gbaka' : c.id === 'moto' ? 'Prendre un moto-taxi' : 'Prendre un taxi'
   const color = c.colors[0]
   const go = () => {
     if (bus || c.id === 'taxi') return onTravel(cityId, communeId, bus ? `En car vers ${toCity.name}` : `En taxi vers ${to.name}`)
-    if (c.id === 'street') return onTravel(cityId, communeId, `Vers ${to.name}`, { app: 'street', party }, t.fare)
+    // At the roadside, its fare is worked out from a woro-woro seat (RideFlow).
+    if (c.street) return onTravel(cityId, communeId, `Vers ${to.name}`, { app: `street:${c.street}`, party }, t.fare)
+    if (c.id === 'moto') return onTravel(cityId, communeId, `En moto-taxi vers ${to.name}`, { app: 'moto' }, moto.fare)
     onTravel(cityId, communeId, `En ${c.name} vers ${to.name}`, { app: c.id, offer: c.app === 'offer' ? offer : undefined, party }, quote.fare)
   }
 
   return (
     <div className="rounded-2xl border border-[#ffe0c2] bg-[#fff7ef] p-3">
       <div className="mb-2 flex items-center gap-2.5">
-        <IconTile icon={bus ? Bus : c.app ? Car : c.id === 'street' ? Hand : CarTaxiFront} colors={[color, color]} style={{ color: inkOn(color), boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)' }} size={40} />
+        <IconTile icon={bus || c.street === 'gbaka' ? Bus : c.id === 'moto' ? Bike : c.app ? Car : c.street ? Hand : CarTaxiFront} colors={[color, color]} style={{ color: inkOn(color), boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)' }} size={40} />
         <div className="min-w-0 flex-1 leading-tight">
           <div className="truncate font-display text-base font-extrabold">{title}</div>
           <div className="flex min-w-0 items-center gap-1 text-xs font-bold text-[var(--color-ink-soft)]">
@@ -106,9 +117,15 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
 
       {missing.length > 0 && <p className="mb-2 text-[11px] font-bold text-[var(--color-ink-soft)]">{missing.join(' et ')} : à installer depuis le Store du téléphone.</p>}
 
-      {c.id === 'street' && (
+      {(c.street || c.id === 'moto') && (
         <p className="mb-2.5 text-xs font-bold text-[var(--color-ink-soft)]">
-          {woro ? `Attends au bord de la route : woro-woro ${woro.label} (${amount(t.fare)} Djai la place, s'il va ${aCommune(to.name)} et a de la place) ou taxi compteur libre (~${amount(meter.fare)} Djai).` : `Pas de woro-woro ${aCommune(from.name)} : attends un taxi compteur libre (~${amount(meter.fare)} Djai).`}
+          {c.street === 'woro'
+            ? `Attends au bord de la route le woro-woro ${woro?.label ?? ''} : ${amount(t.fare)} Djai la place, s'il va ${aCommune(to.name)} et a de la place.`
+            : c.street === 'gbaka'
+              ? `Attends le gbaka au bord de la route : l'apprenti crie où il va. ${amount(gbaka.fare)} Djai la place, on se serre, il s'arrête souvent.`
+              : c.street === 'compteur'
+                ? `Fais signe à un taxi compteur libre (~${amount(meter.fare)} Djai la course) : il t'emmène tout droit.`
+                : `Un moto-taxi t'emmène tout de suite : le plus rapide entre les voitures, une seule personne derrière.`}
         </p>
       )}
 
@@ -135,7 +152,7 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
         </div>
       )}
 
-      {!bus && c.id !== 'taxi' && (
+      {!bus && c.id !== 'taxi' && c.id !== 'moto' && (
         <div className="mb-2.5 flex items-center gap-2 text-xs font-extrabold text-[var(--color-ink-soft)]">
           <UserRound size={14} /> Vous êtes
           <button className="icon-btn h-7 w-7 bg-white" onClick={() => setParty(Math.max(1, party - 1))} disabled={party <= 1} aria-label="Un de moins">
@@ -145,13 +162,13 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
           <button className="icon-btn h-7 w-7 bg-white" onClick={() => setParty(Math.min(4, party + 1))} disabled={party >= 4} aria-label="Un de plus">
             <Plus size={14} />
           </button>
-          <span className="ml-auto text-[11px]">{c.id === 'street' && woro ? 'une place chacun' : 'une seule course'}</span>
+          <span className="ml-auto text-[11px]">{c.street === 'woro' || c.street === 'gbaka' ? 'une place chacun' : 'une seule course'}</span>
         </div>
       )}
 
       <button className="btn w-full" disabled={small || broke || !!sim.activity || chance <= 0} onClick={go}>
-        {small ? 'Trop petit·e pour y aller seul·e' : broke ? 'Pas assez de francs' : sim.activity ? 'Ton perso est occupé·e' : c.id === 'street' ? 'Aller au bord de la route' : c.classes ? `Ouvrir ${c.name}` : c.app ? (c.app === 'offer' ? 'Proposer' : 'Commander') : 'Y aller'}
-        {c.id !== 'street' && (
+        {small ? 'Trop petit·e pour y aller seul·e' : broke ? 'Pas assez de francs' : sim.activity ? 'Ton perso est occupé·e' : c.street ? 'Aller au bord de la route' : c.classes ? `Ouvrir ${c.name}` : c.app ? (c.app === 'offer' ? 'Proposer' : 'Commander') : 'Y aller'}
+        {!c.street && (
           <>
             {' '}
             · {c.classes ? 'dès ' : ''}
