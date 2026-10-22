@@ -5,7 +5,7 @@ import {
   Flame, Footprints, HandHeart, Heart, Hourglass, House, LandPlot, Landmark, MessagesSquare, Moon, Mountain, Music, Palette,
   PartyPopper, PiggyBank, ShoppingBasket, ShowerHead, Smartphone, Sparkles, Store, Sunset, TreePalm, Trophy, Tv, Users,
   Volleyball, Waves, Baby, Bird, BookOpen, BrushCleaning, Cake, CarTaxiFront, Drama, Drum, FileText, Flag, Flower2, Gift, GraduationCap, Hammer,
-  Hospital, Library, Presentation, Shovel, Stamp, Stethoscope, Utensils, ShoppingBag, ShoppingCart, Shirt, IceCreamCone, Hamburger, CupSoda, Scissors, Hotel, Hand, Send, Fuel, Bike, Dumbbell, PawPrint, UserPlus, Snowflake, Clapperboard, Popcorn, Plane, Dice5, Toilet, Toothbrush, Sailboat, type LucideIcon,
+  Hospital, Library, Presentation, Shovel, Stamp, Stethoscope, Utensils, ShoppingBag, ShoppingCart, Shirt, IceCreamCone, Hamburger, CupSoda, Scissors, Hotel, Hand, Send, Fuel, Bike, Dumbbell, PawPrint, UserPlus, Snowflake, Clapperboard, Popcorn, Plane, Dice5, Toilet, Toothbrush, Sailboat, HardHat, type LucideIcon,
 } from 'lucide-react'
 
 // Icon names sent by the API (backend/internal/game) → components.
@@ -30,7 +30,7 @@ const REGISTRY: Record<string, LucideIcon> = {
   hammer: Hammer, hospital: Hospital, library: Library, presentation: Presentation, shovel: Shovel, sparkles: Sparkles,
   stamp: Stamp, stethoscope: Stethoscope, utensils: Utensils, 'shopping-bag': ShoppingBag, 'shopping-cart': ShoppingCart, shirt: Shirt,
   'ice-cream-cone': IceCreamCone, hamburger: Hamburger, 'cup-soda': CupSoda,
-  scissors: Scissors, hotel: Hotel, hand: Hand, send: Send, fuel: Fuel, bike: Bike, dumbbell: Dumbbell, 'paw-print': PawPrint,
+  scissors: Scissors, hotel: Hotel, hand: Hand, send: Send, fuel: Fuel, bike: Bike, dumbbell: Dumbbell, 'paw-print': PawPrint, 'hard-hat': HardHat,
 }
 
 export const iconFor = (name: string): LucideIcon => REGISTRY[name] ?? Sparkles
@@ -69,6 +69,7 @@ export const KIND_COLORS: Record<string, [string, string]> = {
   gym: ['#ffc9c9', '#e03131'],
   station: ['#ff8a65', '#d62828'],
   zoo: ['#c0eb75', '#5c940d'],
+  chantier: ['#ffd43b', '#f08c00'],
   karting: ['#ffb36b', '#e8432f'],
   rue: ['#ffb36b', '#f77f00'],
 }
