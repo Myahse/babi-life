@@ -12,6 +12,7 @@ import { ChatFraming } from '../chatFraming'
 import { Vehicle } from '../vehicles'
 import { BOX, Blocks } from '../open/ruePrincesse'
 import { TalkHuman } from '../Talkable'
+import { ActionProps } from './ActionProps'
 import { Guest, mat, sign, useBigWalk, type Spot, type XZ } from './bigPlace'
 
 // Inside a big shopping centre (PlaYce and the others, kind « mall »): not a
@@ -146,7 +147,9 @@ export function MallInside({ sim, name, interactionId, roam, night, stage, layou
               <meshBasicMaterial transparent opacity={0} depthWrite={false} />
             </mesh>
           )}
-          <Guest sim={sim} stage={stage} way={way} spot={spot} steer={!!roam && !interactionId} onMoved={onMoved} free={free} entrance={ENTRANCE} />
+          <Guest sim={sim} stage={stage} way={way} spot={spot} steer={!!roam && !interactionId} onMoved={onMoved} free={free} entrance={ENTRANCE}>
+            <ActionProps id={interactionId} kind="mall" lying={!!spot?.lying} />
+          </Guest>
           {interactionId === 'supermarche' && <Trolley at={[-27.2, -9.2]} />}
           <OrbitControls makeDefault target={[12, 1, HD - 6]} enablePan={false} minDistance={6} maxDistance={80} minPolarAngle={0.25} maxPolarAngle={1.25} enableDamping />
         </Suspense>

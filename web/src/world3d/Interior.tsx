@@ -12,7 +12,7 @@ import { BilletsBurst, ClubDecor } from './clubDecor'
 import { useRoomStyle } from './interior/Decor'
 import * as THREE from 'three'
 import type { Player, Sim } from '../lib/types'
-import { Human, NoShadows, type Pose } from '../avatar/Human'
+import { Human, NoShadows, SEATED, type Pose } from '../avatar/Human'
 import { OUTFIT_DEFAULT_COLOR, randomLook, workLook } from '../avatar/options'
 import { Box } from './props'
 import { Character } from './Character'
@@ -76,7 +76,9 @@ export function action(kind: string, id: string | undefined): { spot: string; po
   if (id === 'brunch-lagune' || id === 'resto-u') return { spot: 'table', pose: 'eat' }
   if (id === 'bar-hotel') return { spot: 'table', pose: 'drink' }
   if (/^(sleep|nap)$/.test(id)) return { spot: 'bed', pose: 'sleep' }
+  // The baby's things on the play mat, the mother kneeling with it (ActionProps); the child's ball in the yard.
   if (/^(biberon|bouillie|hochet|calin)$/.test(id)) return { spot: 'mat', pose: 'busy' }
+  if (id === 'jouer-cour') return { spot: 'mat', pose: 'kick' }
   if (id === 'shower') return { spot: 'shower', pose: 'wash' }
   // The bathroom corner too: sitting on the toilets, standing at the basin for the teeth.
   if (id === 'toilettes') return { spot: 'shower', pose: 'sit' }
@@ -84,7 +86,15 @@ export function action(kind: string, id: string | undefined): { spot: string; po
   if (id === 'bain-bebe') return { spot: 'shower', pose: 'busy' }
   if (id === 'pray') return { spot: 'seat', pose: 'pray' }
   // At a counter: asking, explaining, filling in the papers; the shopping picked off the shelves.
-  if (id === 'courses') return { spot: 'stall', pose: 'busy' }
+  // The market: in front of a stall, the basket on the arm, or haggling; behind one's own, calling the customers.
+  if (id === 'courses' || id === 'buy-food') return { spot: 'buy', pose: 'busy' }
+  if (id === 'bargain') return { spot: 'buy', pose: 'rant' }
+  if (id === 'sell-goods') return { spot: 'sell', pose: 'wave' }
+  if (id === 'abonnement-salle') return { spot: 'desk', pose: 'talk' }
+  if (id === 'retouche') return { spot: 'fitting', pose: 'idle' }
+  // The exhibition: in front of the paintings, the phone up for a photo; by a patient's bed.
+  if (id === 'exposition') return { spot: 'gallery', pose: 'film' }
+  if (id === 'visite-malade') return { spot: 'visit', pose: 'talk' }
   if (id === 'credit') return { spot: kind === 'boutique' ? 'stall' : 'counter', pose: 'phone' }
   if (id === 'conseil' && kind === 'mairie') return { spot: 'desk', pose: 'write' }
   if (id === 'porter-plainte') return { spot: 'counter', pose: 'rant' }
@@ -95,8 +105,9 @@ export function action(kind: string, id: string | undefined): { spot: string; po
   if (id === 'sucrerie') return { spot: 'table', pose: 'drink' }
   if (/^(medicaments|conseil|credit|courses)$/.test(id)) return { spot: kind === 'boutique' ? 'stall' : 'counter', pose: 'idle' }
   if (id === 'cook-attieke') return { spot: 'stove', pose: 'cook' }
-  if (id === 'watch-tv' || id === 'call-family') return { spot: 'sofa', pose: 'sit' }
-  if (id === 'devoirs' || id === 'jouer-cour') return { spot: 'table', pose: id === 'devoirs' ? 'write' : 'dance' }
+  if (id === 'watch-tv') return { spot: 'sofa', pose: 'sit' }
+  if (id === 'call-family') return { spot: 'sofa', pose: 'call' }
+  if (id === 'devoirs') return { spot: 'table', pose: 'write' }
   if (id.endsWith('travaillement')) return { spot: 'floor', pose: 'throw' }
   // The bottles, at the VIP table; the Friday round, standing at it, glass up.
   if (id === 'bouteille-whisky' || id === 'champagne-vip') return { spot: 'table', pose: 'drink' }
@@ -548,6 +559,8 @@ export function room(kindIn: string, housing: string): Room {
         spots: {
           bed: { p: [0, 0.62, -2.4], pose: 'idle', lying: true },
           seat: { p: [-1.6, 0.05, 2.8], r: Math.PI, pose: 'sit' },
+          // By the patient in the first bed, turned to them.
+          visit: { p: [-2.55, 0, -3.3], r: -Math.PI / 2, pose: 'talk' },
           entrance: { p: [0, 0, 3.8], r: Math.PI, pose: 'idle' },
           counter: { p: [1, 0, 0], pose: 'idle' },
         },
@@ -579,6 +592,9 @@ export function room(kindIn: string, housing: string): Room {
         ),
         spots: {
           stall: { p: [0, 0, 0.6], r: Math.PI, pose: 'busy' },
+          // In front of the middle stall of the front row, or behind it.
+          buy: { p: [0, 0, 0.55], pose: 'busy' },
+          sell: { p: [0, 0, 2.45], r: Math.PI, pose: 'wave' },
           // On the chair at the little table, facing it.
           table: { p: [4, 0, 4.15], r: Math.PI, pose: 'eat' },
           entrance: { p: [0, 0, 3.6], r: Math.PI, pose: 'idle' },
@@ -685,6 +701,8 @@ export function room(kindIn: string, housing: string): Room {
           punch: { p: [3.45, 0, -0.6], r: Math.PI / 2, pose: 'kick' },
           rope: { p: [-1.2, 0.04, 1.4], r: Math.PI, pose: 'leap' },
           shower: { p: [-5, 0, 2.4], pose: 'wash' },
+          // At the reception desk, facing it.
+          desk: { p: [3, 0, 1.82], pose: 'talk' },
           entrance: { p: [0, 0, 3.6], r: Math.PI, pose: 'idle' },
           counter: { p: [3, 0, 2], r: Math.PI, pose: 'idle' },
         },
@@ -715,7 +733,7 @@ export function room(kindIn: string, housing: string): Room {
         spots: {
           seat: { p: [-3.3, 0.06, -3.6], pose: 'sit' },
           entrance: { p: [0, 0, 3.6], r: Math.PI, pose: 'idle' },
-          counter: { p: [3, 0, 2], r: Math.PI, pose: 'idle' },
+          counter: { p: [3, 0, 1.82], r: Math.PI, pose: 'idle' },
         },
         crowd: [
           { p: [3, 0, 0.2], pose: 'write' },
@@ -769,6 +787,8 @@ export function room(kindIn: string, housing: string): Room {
           entrance: { p: [0, 0, 3.6], r: Math.PI, pose: 'idle' },
           counter: { p: [2.2, 0, 0.4], r: Math.PI, pose: 'idle' },
           bench: { p: [4.55, 0.05, 2.1], r: -Math.PI / 2, pose: 'rant' },
+          // Standing for the fitting, the master at the hem.
+          fitting: { p: [2.4, 0, -0.4], pose: 'idle' },
         },
         crowd: [
           { p: [0.5, 0.06, -2.3], r: Math.PI, pose: 'write', g: 'homme' },
@@ -908,6 +928,8 @@ export function room(kindIn: string, housing: string): Room {
         ),
         spots: {
           seat: { p: [0.6, 0.05, -0.4], r: Math.PI, pose: 'sit' },
+          // Facing the paintings hung on the side wall.
+          gallery: { p: [-4.2, 0, -1], r: -Math.PI / 2, pose: 'film' },
           entrance: { p: [0, 0, 3.6], r: Math.PI, pose: 'idle' },
           counter: { p: [0, 0, 0], pose: 'idle' },
         },
@@ -916,7 +938,7 @@ export function room(kindIn: string, housing: string): Room {
   }
 }
 
-const SEATED_POSES = new Set<Pose>(['sit', 'eat', 'drink', 'write'])
+const SEATED_POSES = new Set<Pose>(SEATED)
 
 /** The friends out with the Sim (sims/outing.go): either side of it, doing what it does, with the face they had when met. */
 function Along({ sim, pose, stage }: { sim: Sim; pose: Pose; stage: string }) {
@@ -963,6 +985,11 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
     return Math.atan2(cx - me.p[0], cz - me.p[2])
   }, [r, me])
   const dark = r.dark || night
+  // The one the Sim marries at the mairie: its partner, with their own face.
+  const spouse = useMemo(() => {
+    const f = sim.friends?.find((x) => x.partner)
+    return f ? { look: f.look ?? randomLook(f.gender, rng(`partner${f.id}`)), gender: f.gender } : undefined
+  }, [sim.friends])
   // What's in the room, solid: made from the furniture once it's drawn (interior/roomGrid).
   const furniture = useRef<THREE.Group>(null)
   const [solid, setSolid] = useState<((x: number, z: number) => boolean) | null>(null)
@@ -1039,7 +1066,7 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
                 <Character look={look} gender={sim.gender} stage={stage} marker={!me.lying} busy={act.pose === 'busy'} pose={act.pose} />
                 {/* Out with friends: they sit, eat, dance at the Sim's side */}
                 {!me.lying && <Along sim={sim} pose={act.pose} stage={stage} />}
-                <ActionProps id={interactionId} kind={kind} lying={!!me.lying} />
+                <ActionProps id={interactionId} kind={kind} lying={!!me.lying} stage={stage} partner={spouse} />
                 {/* The travaillement: notes off the wad, over the dancers in front */}
                 {throwing && <NoteShower from={[0.3, 1.72, 0.3]} toward={[0, 0.35, 1]} {...shower(interactionId)} seed={placeId.length} />}
                 {/* « Lancer des billets »: a handful at a time, to the dancers on their podiums */}

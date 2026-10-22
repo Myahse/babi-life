@@ -94,7 +94,7 @@ export function useBigWalk(spot: Spot | null, interactionId: string | undefined,
 }
 
 /** The Sim: walks its way (or where the keys take it), then settles, swims or goes round its loop; the camera follows. */
-export function Guest({ sim, stage, way, spot, steer, onMoved, free, entrance, ground }: { sim: Sim; stage: string; way: XZ[]; spot: Spot | null; steer: boolean; onMoved: (at: XZ) => void; free: (x: number, z: number) => boolean; entrance: XZ; /** The floor's height where it walks (tiers, steps); flat at 0 without it. A spot's y is then its own height, not over the floor. */ ground?: (x: number, z: number) => number }) {
+export function Guest({ sim, stage, way, spot, steer, onMoved, free, entrance, ground, look: worn, children }: { sim: Sim; stage: string; way: XZ[]; spot: Spot | null; steer: boolean; onMoved: (at: XZ) => void; free: (x: number, z: number) => boolean; entrance: XZ; /** The floor's height where it walks (tiers, steps); flat at 0 without it. A spot's y is then its own height, not over the floor. */ ground?: (x: number, z: number) => number; /** What it wears there, once on its spot (a towel in the shower). */ look?: Sim['look']; /** What shows what it's doing, round it once on its spot (in its frame: ActionProps). */ children?: React.ReactNode }) {
   const g = useRef<THREE.Group>(null)
   const camera = useThree((st) => st.camera)
   const controls = useThree((st) => st.controls) as unknown as { target: THREE.Vector3; update: () => void } | null
@@ -195,7 +195,8 @@ export function Guest({ sim, stage, way, spot, steer, onMoved, free, entrance, g
         <Swimmer len={spot.swim} look={{ ...sim.look, outfit: 'maillot', accessory: 'none' }} gender={sim.gender} stage={stage} />
       ) : settled && spot ? (
         <group rotation={spot.lying ? [-Math.PI / 2, 0, 0] : [0, 0, 0]}>
-          <Character look={sim.look} gender={sim.gender} pose={spot.pose} stage={stage} marker={!spot.lying} />
+          <Character look={worn ?? sim.look} gender={sim.gender} pose={spot.pose} stage={stage} marker={!spot.lying} />
+          {children}
         </group>
       ) : (
         <group rotation={[0, 0, -lean]}>

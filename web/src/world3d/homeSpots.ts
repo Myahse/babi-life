@@ -99,6 +99,15 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
     const turn = Math.max(-0.5, Math.min(0.5, Math.atan2(Math.sin(toTv - seat.rot), Math.cos(toTv - seat.rot))))
     out['watch-tv'] = { ...seat, rot: seat.rot + turn, screen: t }
   }
+  // A baby's things are done on the floor in front of a piece, the mother kneeling with it (ActionProps):
+  // the biberon, the bouillie, the rattle and the cuddle in front of the sofa (or the bed), the bath in front of the shower.
+  const onFloor = (s: HomeSpot): HomeSpot => ({ at: s.from, from: s.from, y: 0, rot: s.rot, pose: 'busy', lying: false, wall: s.wall })
+  const seat = out['call-family'] ?? out.sleep
+  if (seat) for (const id of ['biberon', 'bouillie', 'hochet', 'calin']) out[id] ??= onFloor(seat)
+  const bath = out.shower ?? seat
+  if (bath) out['bain-bebe'] ??= onFloor(bath)
+  // Calling the family from the sofa: sitting, the phone at the ear.
+  if (out['call-family']) out['call-family'] = { ...out['call-family'], pose: 'call' }
   // The pool (a raised basin, build/Zones.tsx): in from its rim, then lengths along it.
   for (const z of plot.zones ?? []) {
     if (z[4] !== 'piscine' || out.nager) continue

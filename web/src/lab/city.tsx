@@ -23,6 +23,8 @@ import { BoulayScene } from '../world3d/interior/BoulayScene'
 import { DefiSheet } from '../components/Defi'
 import { KineoInside } from '../world3d/interior/KineoInside'
 import { HotelInside } from '../world3d/interior/HotelInside'
+import { Upstairs } from '../world3d/interior/HotelFloors'
+import { PLAIN as HOTEL_PLAIN } from '../world3d/interior/hotelStyles'
 import { Snapper } from '../world3d/snapshot'
 import { usePhotoMode } from '../world3d/photoCam'
 import { whereabouts } from '../world3d/whereabouts'
@@ -604,6 +606,8 @@ function Lab() {
   // &sococe: the Sococé's own supermarket and shops, its Kinéo in the gallery.
   if (view === 'mall') return <MallInside sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)) } as unknown as Sim} name={q.has('sococe') ? 'Sococé' : 'PlaYce Marcory'} interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" layout={q.has('sococe') ? { market: 'SOCOCÉ', back: ['PRESSING DES 2 PLATEAUX', 'BOULANGERIE', 'PHONE 225', 'PHARMACIE', 'MODE WAX'], front: ['LIBRAIRIE', 'BEAUTÉ & CO', '', 'CAFÉ DES PLATEAUX'], kineo: true } : undefined} />
   if (view === 'hotel') return <HotelInside sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)) } as unknown as Sim} placeId={q.get('id') ?? 'plateau-poulman'} name={q.get('name') ?? 'Hôtel Poulman'} interactionId={q.get('act') ?? undefined} night={night} stage="adulte" />
+  // ?view=hotelroom&type=suite&act=rs-poisson: a hotel room (standard, superieure, suite), the Sim doing what's done in it.
+  if (view === 'hotelroom') return <Upstairs sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)) } as unknown as Sim} stage="adulte" look={HOTEL_PLAIN} view="room" floor={1} room="101" rooms={undefined} roomType={q.get('type') ?? 'standard'} interactionId={q.get('act') ?? undefined} night={night} onDoor={() => undefined} />
   if (view === 'ivoire') return <IvoireInside sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)) } as unknown as Sim} interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" />
   if (view === 'cathedrale') return <CathedralInside sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)), gameMinutes: Number(q.get('m') ?? 0) } as unknown as Sim} interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" />
   if (view === 'mosquee') return <MosqueM6Inside sim={{ id: 'lab', firstName: 'Awa', gender: 'homme', look: randomLook('homme', seededLab(5)), gameMinutes: Number(q.get('m') ?? 0) } as unknown as Sim} interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" />
@@ -1163,7 +1167,7 @@ function InsideLab() {
   if (!world || !plot) return <p style={{ padding: 20 }}>{world ? `Plan inconnu : ${id}` : 'Chargement…'}</p>
   return (
     <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
-      <HomeInside sim={sim} world={world} plot={plot} interactionId={q.get('act') ?? undefined} roam night={q.has('night')} stage="adulte" partner={q.has('partner') ? { id: 'p-lab', name: 'Koffi', gender: 'homme', seed: 3, commune: '', friendship: 90, met: 0, seen: 0, adult: true, partner: true, home: true } : undefined} />
+      <HomeInside sim={sim} world={world} plot={plot} interactionId={q.get('act') ?? undefined} roam night={q.has('night')} stage={q.get('stage') ?? 'adulte'} partner={q.has('partner') ? { id: 'p-lab', name: 'Koffi', gender: 'homme', seed: 3, commune: '', friendship: 90, met: 0, seen: 0, adult: true, partner: true, home: true } : undefined} />
     </div>
   )
 }

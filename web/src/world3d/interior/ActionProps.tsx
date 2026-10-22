@@ -3,9 +3,12 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { Box } from '../props'
 import { worldTime } from '../../lib/worldClock'
-import { Baby, Human } from '../../avatar/Human'
+import { Human } from '../../avatar/Human'
 import { randomLook } from '../../avatar/options'
 import { Bottle, Sparkler } from '../clubNight'
+import { sizeOf } from '../Character'
+import type { Look } from '../../lib/types'
+import { Balloons, Cinema, Clothes, Cocktail, Coffee, Conference, Counter, Desk, Doctor, Fitting, Foam, Gallery, HairMoves, Manicure, Market, Mother, RoomService, Roulette, SchoolBag, Show, Visit, Wedding, YardBall, type Papers, type Tray } from './doings'
 
 // What shows what the Sim is doing, around it: the water of the shower, the
 // plate of garba, the bottle, the blanket, the notebook, the prayer mat…
@@ -22,14 +25,56 @@ const TABLE: [number, number, number] = [0, 0.77, 0.52]
 /** Hairdressing, at the barbier's or the salon. */
 const HAIR = /^(degrade|boule-a-zero|taille-barbe|tresses|tissage|chignon|coupe-courte|iroquoise|nattes|vanilles|macarons|carre)$/
 
-export function ActionProps({ id, kind, lying }: { id?: string; kind: string; lying: boolean }) {
-  if (!id) return null
-  if (HAIR.test(id) && (kind === 'barbier' || kind === 'salon')) return <Hairdresser salon={kind === 'salon'} braid={/tresses|tissage|nattes|vanilles|macarons|chignon/.test(id)} />
-  if (id === 'shower') return <Shower />
-  if (id === 'bain-bebe') return <Tub />
-  if (lying && /^(sleep|nap|nuit-hotel)$/.test(id)) return <Blanket />
+/** What's laid on a counter for each errand (doings.tsx Counter). */
+const PAPERS: Record<string, Papers> = { 'etat-civil': 'register', legalisation: 'stamp', 'declaration-perte': 'form', 'porter-plainte': 'typing', renseignement: 'map', 'abonnement-salle': 'signup', medicaments: 'boxes' }
+const TRAYS: Record<string, Tray> = { 'rs-petitdej': 'petitdej', 'rs-club': 'club', 'rs-poisson': 'poisson', 'rs-glace': 'glace', 'rs-cocktail': 'cocktail' }
+const BABY = /^(biberon|bouillie|hochet|calin)$/
+
+/**
+ * kind: the place's kind ('house' for one's own house, whose furniture has
+ * its own shower head; 'room' for a hotel room); stage: the Sim's age, for
+ * what it carries; partner: the one it marries.
+ */
+export function ActionProps({ id, kind, lying, stage = 'adulte', partner, bath }: { id?: string; kind: string; lying: boolean; stage?: string; partner?: { look: Look; gender: 'femme' | 'homme' }; /** A hotel room with a bathtub. */ bath?: boolean }) {
+  // (Cooking: the pot is on the stove, drawn where the stove is.)
+  if (!id || id === 'cook-attieke') return null
+  if (HAIR.test(id) && (kind === 'barbier' || kind === 'salon')) return <Hairdresser id={id} salon={kind === 'salon'} />
+  if (id === 'manucure') return <Manicure />
+  if (id === 'retouche') return <Fitting />
+  if (id === 'shower' || id === 'logement-douche' || id === 'chambre-douche' || (id === 'chambre-bain' && !bath)) return <Shower fixtures={kind !== 'house' && kind !== 'room'} />
+  if (id === 'chambre-bain') return <Foam />
+  if (id === 'bain-bebe') return <Mother doing="bain" />
+  if (BABY.test(id)) return <Mother doing={id as 'biberon' | 'bouillie' | 'hochet' | 'calin'} />
+  if (id === 'jouer-cour') return <YardBall scale={sizeOf(stage).scale} />
+  if (id === 'aller-ecole') return <SchoolBag scale={sizeOf(stage).scale} />
+  if (lying && /^(sleep|nap|nuit-hotel|chambre-dormir|chambre-sieste|passer-nuit)$/.test(id)) return <Blanket />
+  if (id === 'consultation' && lying) return <Doctor />
+  if (id === 'visite-malade') return <Visit />
   if (id === 'pray') return <PrayerMat />
-  if (id === 'devoirs' || (/cours|biblio|write/.test(id) && kind !== 'office')) return <Notebook />
+  // At a counter: the papers, the stamp, the boxes.
+  if (PAPERS[id]) return <Counter kind={PAPERS[id]} top={kind === 'pharmacie' ? 1.13 : 1.105} />
+  if (id === 'conseil' && kind === 'pharmacie') return <Counter kind="advice" top={1.13} />
+  if (id === 'mariage-civil') return <Wedding spouse={partner} />
+  // The market: buying, haggling, selling.
+  if (id === 'buy-food' || id === 'courses') return <Market how="buy" />
+  if (id === 'bargain') return <Market how="bargain" />
+  if (id === 'sell-goods') return <Market how="sell" />
+  if (id === 'spectacle') return <Show />
+  if (id === 'exposition') return <Gallery />
+  if (kind === 'cinema' && (id === 'film' || id === 'film-popcorn')) return <Cinema popcorn={id === 'film-popcorn'} />
+  // The desk: the library's books, the exam, the paper's ads, the coffee, the talk on the screen.
+  if (id === 'bibliotheque' || id === 'bu') return <Desk what="books" />
+  if (id === 'partiel') return <Desk what="exam" />
+  if (id === 'read-ads') return <Desk what="paper" />
+  if (id === 'coffee-break') return <Coffee />
+  if (id === 'conference' || id === 'conference-u')
+    return (
+      <>
+        <Notebook />
+        <Conference at={kind === 'universite' ? [0.4, 1.4, 5.1] : [0, 1.6, 3.83]} />
+      </>
+    )
+  if (id === 'devoirs' || (/cours|biblio|write|amphi/.test(id) && kind !== 'office') || (id === 'conseil' && kind === 'mairie')) return <Notebook />
   // The bottles on the club's VIP table (in front of the sofa): whisky, or champagne with its sparkler.
   if (id === 'bouteille-whisky') return <Bottle p={[0.25, 0.44, 0.9]} whisky />
   // The round for the whole club: the bottle held up high, its sparkler lit, on the dance floor.
@@ -47,16 +92,29 @@ export function ActionProps({ id, kind, lying }: { id?: string; kind: string; ly
         <Sparkler p={[0.2, 0.79, 0.9]} />
       </>
     )
+  // Room service on the room's desk; the cocktail at the hotel's bar.
+  if (TRAYS[id]) return <RoomService what={TRAYS[id]} />
+  // (On the hotel bar's counter, the Sim up on its stool.)
+  if (id === 'bar-hotel') return <Cocktail p={[0.05, 0.95, 0.85]} />
+  if (id === 'casino-ivoire') return <Roulette />
+  if (id === 'vetements') return <Clothes />
+  if (id.startsWith('anniversaire'))
+    return (
+      <>
+        <Dish kind="gateau" />
+        <Balloons />
+      </>
+    )
   const dish = dishFor(id)
   if (dish) return <Dish kind={dish} />
-  if (/^(drink|milkshake|coffee|sucrerie)/.test(id) || id.includes('drink') || id === 'bar-hotel') return <Drinks milk={id === 'milkshake'} />
+  if (/^(drink|milkshake|coffee|sucrerie)/.test(id) || id.includes('drink')) return <Drinks milk={id === 'milkshake'} />
   return null
 }
 
 /* ---------- The shower ---------- */
 
 /** Water falling from the shower head over the Sim, and the steam rising. */
-export function Shower() {
+export function Shower({ fixtures = true }: { /** The pipe, the head, the bucket: not where the furniture has its own. */ fixtures?: boolean }) {
   const drops = useRef<THREE.InstancedMesh>(null)
   const puffs = useRef<THREE.InstancedMesh>(null)
   const N = 46
@@ -89,37 +147,20 @@ export function Shower() {
   })
   return (
     <group>
-      {/* The pipe up the wall, the shower head */}
-      <Box p={[0, 2.25, -0.55]} s={[0.05, 0.05, 0.5]} c="#c3c7cf" />
-      <Box p={[0, 1.2, -0.78]} s={[0.05, 2.1, 0.05]} c="#c3c7cf" />
-      <Box p={[0, 2.2, -0.3]} s={[0.22, 0.06, 0.22]} c="#9aa0a8" />
+      {fixtures && (
+        <>
+          {/* The pipe up the wall, the shower head */}
+          <Box p={[0, 2.25, -0.55]} s={[0.05, 0.05, 0.5]} c="#c3c7cf" />
+          <Box p={[0, 1.2, -0.78]} s={[0.05, 2.1, 0.05]} c="#c3c7cf" />
+          <Box p={[0, 2.2, -0.3]} s={[0.22, 0.06, 0.22]} c="#9aa0a8" />
+          {/* The bucket and the soap, Abidjan style */}
+          <Box p={[0.55, 0.2, 0.3]} s={[0.32, 0.4, 0.32]} c="#2a6cf0" />
+          <Box p={[0.55, 0.36, 0.3]} s={[0.26, 0.04, 0.26]} c="#9fd8ff" />
+          <Box p={[-0.5, 0.05, 0.35]} s={[0.12, 0.05, 0.07]} c="#ffd43b" />
+        </>
+      )}
       <instancedMesh ref={drops} args={[BOX, water, N]} frustumCulled={false} />
       <instancedMesh ref={puffs} args={[BOX, steam, 6]} frustumCulled={false} />
-      {/* The bucket and the soap, Abidjan style */}
-      <Box p={[0.55, 0.2, 0.3]} s={[0.32, 0.4, 0.32]} c="#2a6cf0" />
-      <Box p={[0.55, 0.36, 0.3]} s={[0.26, 0.04, 0.26]} c="#9fd8ff" />
-      <Box p={[-0.5, 0.05, 0.35]} s={[0.12, 0.05, 0.07]} c="#ffd43b" />
-    </group>
-  )
-}
-
-/** The baby's bath: the basin of water, the bubbles. */
-function Tub() {
-  // The baby sitting in the water, splashing a little, facing the parent.
-  const baby = useMemo(() => {
-    let n = 7
-    return randomLook('femme', () => ((n = (n * 16807) % 2147483647) / 2147483647))
-  }, [])
-  return (
-    <group position={[0, 0, 0.55]}>
-      <group position={[0, 0.06, 0.02]} rotation={[0, Math.PI, 0]}>
-        <Baby look={baby} gender="femme" pose="busy" seed={3} />
-      </group>
-      <Box p={[0, 0.18, 0]} s={[0.7, 0.36, 0.5]} c="#f08c00" />
-      <Box p={[0, 0.34, 0]} s={[0.62, 0.04, 0.42]} c="#9fd8ff" />
-      {[[-0.15, 0.08], [0.1, -0.1], [0.2, 0.12]].map(([x, z], i) => (
-        <Box key={i} p={[x, 0.39, z]} s={[0.07, 0.06, 0.07]} c="#ffffff" />
-      ))}
     </group>
   )
 }
@@ -127,30 +168,22 @@ function Tub() {
 /* ---------- The hairdresser, the tailor ---------- */
 
 /**
- * Behind the Sim in the chair (it faces the mirror, +z): the barber with
- * the clippers going over the head, or the hairdresser braiding, comb in hand.
+ * Behind the Sim in the chair (it faces the mirror, +z): the barber or the
+ * hairdresser, the tool going over the head the way the style is done
+ * (doings.tsx HairMoves: the clippers, the razor along the beard, the
+ * scissors, the comb braiding, the needle of the tissage).
  */
-function Hairdresser({ salon, braid }: { salon: boolean; braid: boolean }) {
+function Hairdresser({ id, salon }: { id: string; salon: boolean }) {
   const look = useMemo(() => {
     let n = salon ? 41 : 17
     return randomLook(salon ? 'femme' : 'homme', () => ((n = (n * 16807) % 2147483647) / 2147483647))
   }, [salon])
-  const tool = useRef<THREE.Group>(null)
-  useFrame(() => {
-    const t = worldTime()
-    if (!tool.current) return
-    // Clippers: up and over the head in short strokes; braiding: small quick twists.
-    if (braid) tool.current.position.set(0.05 + Math.sin(t * 6) * 0.03, 1.22 + Math.sin(t * 12) * 0.015, -0.2)
-    else tool.current.position.set(Math.sin(t * 1.3) * 0.1, 1.25 + Math.abs(Math.sin(t * 5)) * 0.05, -0.17 + Math.sin(t * 0.7) * 0.06)
-  })
   return (
     <group>
       <group position={[0.1, -0.06, -0.62]}>
         <Human look={look} gender={salon ? 'femme' : 'homme'} pose="busy" seed={5} />
       </group>
-      <group ref={tool}>
-        {braid ? <Box p={[0, 0, 0]} s={[0.03, 0.12, 0.012]} c="#141416" /> : <Box p={[0, 0, 0]} s={[0.05, 0.035, 0.1]} c={salon ? '#f783ac' : '#1d1d1f'} />}
-      </group>
+      <HairMoves id={id} />
       {/* The cape over the client */}
       <Box p={[0, 0.85, 0.05]} s={[0.62, 0.55, 0.36]} c={salon ? '#f783ac' : '#2b2f3a'} />
     </group>
@@ -221,7 +254,7 @@ function Notebook() {
 
 /* ---------- At table ---------- */
 
-type DishKind = 'garba' | 'poulet' | 'alloco' | 'poisson' | 'attieke' | 'burger' | 'glace' | 'bouillie' | 'gateau' | 'plat'
+export type DishKind = 'garba' | 'porc' | 'poulet' | 'alloco' | 'poisson' | 'attieke' | 'burger' | 'glace' | 'bouillie' | 'gateau' | 'plat'
 
 function dishFor(id: string): DishKind | null {
   if (id.includes('garba')) return 'garba'
@@ -232,13 +265,13 @@ function dishFor(id: string): DishKind | null {
   if (id.includes('burger')) return 'burger'
   if (id.includes('glace')) return 'glace'
   if (id === 'bouillie' || id === 'biberon') return 'bouillie'
-  if (id === 'anniversaire') return 'gateau'
-  if (/^(eat|brunch|resto|golvo-)/.test(id)) return 'plat'
+  if (id.startsWith('anniversaire')) return 'gateau'
+  if (/^(eat|brunch|resto|golvo)/.test(id) || id === 'logement-cuisiner') return 'plat'
   return null
 }
 
-/** The plate in front of the Sim, with what it ordered on it. */
-function Dish({ kind }: { kind: DishKind }) {
+/** The plate in front of the Sim, with what it ordered on it (on the table, or where it's held: at). */
+export function Dish({ kind, at = TABLE }: { kind: DishKind; at?: [number, number, number] }) {
   const food = (() => {
     switch (kind) {
       case 'garba':
@@ -249,6 +282,17 @@ function Dish({ kind }: { kind: DishKind }) {
             <Box p={[0.08, 0.05, 0.02]} s={[0.12, 0.05, 0.08]} c="#9a5a22" />
             <Box p={[0.02, 0.09, -0.05]} s={[0.03, 0.02, 0.03]} c="#e03131" />
             <Box p={[-0.08, 0.09, 0.04]} s={[0.03, 0.02, 0.03]} c="#d0bfff" />
+          </>
+        )
+      case 'porc':
+        // The porc au four cut in pieces, the attiéké beside, the piment.
+        return (
+          <>
+            {[[-0.05, -0.03], [0.06, 0.02], [0.0, 0.05]].map(([x, z], i) => (
+              <Box key={i} p={[x + 0.04, 0.05 + (i % 2) * 0.015, z]} s={[0.08, 0.05, 0.06]} c={i % 2 ? '#a0522d' : '#8b3a1a'} />
+            ))}
+            <Box p={[-0.09, 0.05, 0.02]} s={[0.1, 0.06, 0.12]} c="#f2e6c9" />
+            <Box p={[0.1, 0.085, -0.06]} s={[0.03, 0.02, 0.03]} c="#e03131" />
           </>
         )
       case 'poulet':
@@ -319,7 +363,7 @@ function Dish({ kind }: { kind: DishKind }) {
     }
   })()
   return (
-    <group position={TABLE}>
+    <group position={at}>
       {/* The plate, the fork beside it, a sachet of water */}
       <Box p={[0, 0.01, 0]} s={[0.34, 0.02, 0.3]} c="#ffffff" />
       {food}
