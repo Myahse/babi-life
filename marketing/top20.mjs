@@ -138,6 +138,8 @@ async function scene(b, clip, dir) {
 /** A lab playing by itself (the kart driven by the game's own AI: kart/physics.ts autoInput). */
 async function lab(b, clip, dir) {
   const { ctx, page } = await phone(b, clip.auto ? [[() => (globalThis.kartAuto = true)]] : [])
+  // The lab has no API: the photo is sent, the game is told it went (else « Failed to fetch »).
+  if (clip.shutter) await page.route('**/sims/*/photos', (r) => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*' }, body: JSON.stringify({ photo: { id: 1 } }) }))
   await page.goto(`${LAB}/city.html?${clip.lab}`)
   await warm(page, Math.round((clip.from ?? 3) * FPS))
   // The talk: a greeting, then a tease (Koffi laughing, then answering back); the camera: one photo.
