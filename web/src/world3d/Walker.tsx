@@ -20,7 +20,8 @@ import { clearLine, gridWay } from './gridPath'
 import { usePhotoMode } from './photoCam'
 import { stopEmote, useEmote } from './emoteNow'
 import { Swimmer } from './Swimmer'
-import { Vehicle } from './vehicles'
+import { Bicycle, Vehicle, type CarModel } from './vehicles'
+import { HANDLING, drive, driving, useDriving } from './drive'
 import { motoTaken, offerMoto } from './moto'
 import { tripRide } from './open/tripRide'
 import { askDrop, answerDrop, takeDrop } from './dropRoute'
@@ -87,6 +88,8 @@ export type WalkNav = {
   roofAt?: (x: number, z: number) => number
   /** The height of the ground (a bridge's deck), when it isn't flat. */
   heightAt?: (x: number, z: number) => number
+  /** The nearest street to a point: where on it, which way it runs (radians, as the Sim faces), how wide: a drive starts there. */
+  street?: (p: XZ) => { at: XZ; dir: number; width: number } | null
 }
 
 /** Where the Sim does a home action on its own furniture: walked to from `from`, then settled `at` (y up), turned `rot`. */
@@ -145,6 +148,9 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   /** The ride's camera: the player's angle kept for after, when the shots began, until when a touch holds them. */
   const rideCam = useRef<{ saved: THREE.Vector3 | null; since: number; pause: number }>({ saved: null, since: 0, pause: 0 })
   const [ride, setRide] = useState(false)
+  // One's own vehicle being driven (drive.ts), and the one set on the street (once, getting on).
+  const own = useDriving()
+  const setOff = useRef<ReturnType<typeof driving>>(null)
   // A trip booked (open/tripRide.tsx): waving the driver down at the kerb, then in the car, not drawn.
   const [hailing, setHailing] = useState(false)
   const [aboard, setAboard] = useState(false)
@@ -313,7 +319,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
 
   /** Tap the ground: the Sim walks there, the shortest way round what's in the way. */
   const walkToPoint = (x: number, z: number, sure = false) => {
-    if (frozen || tripRide.boarded || !nav.walkable(x, z)) return
+    if (frozen || tripRide.boarded || driving() || !nav.walkable(x, z)) return
     // On the way to a place: asked first (dropRoute.ts); the answer comes back in the frame loop.
     const going = target.current !== null && path.current.length > 0 ? lots.find((l) => l.id === target.current) : undefined
     if (going && !sure) return askDrop({ x, z, from: going.name, moto: riding.current })
@@ -441,11 +447,70 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       cameraTurn.snap = false
     }
     const g = group.current!
+    // Driving one's own vehicle (drive.ts): the pedals and the wheel (or the keys, the pad) drive it,
+    // the way it faces; into a wall, a stall, the water or a car, it bumps back.
+    const dv = driving()
+    if (dv && setOff.current !== dv) {
+      // Getting on: the vehicle on the nearest street, along it the way the Sim faced, on its right-hand side.
+      setOff.current = dv
+      const st = nav.street?.([g.position.x, g.position.z])
+      if (st && Math.hypot(st.at[0] - g.position.x, st.at[1] - g.position.z) < 80) {
+        const h = Math.cos(st.dir - g.rotation.y) >= 0 ? st.dir : st.dir + Math.PI
+        const side = Math.max(0, Math.min(st.width / 4, st.width / 2 - 1.2))
+        g.position.x = st.at[0] - Math.cos(h) * side
+        g.position.z = st.at[1] + Math.sin(h) * side
+        g.rotation.y = h
+      }
+    }
+    if (!dv) setOff.current = null
+    if (dv) {
+      if (path.current.length) {
+        path.current = []
+        setRoute(null)
+        setWalking(false)
+      }
+      const hd = HANDLING[dv.kind]
+      const keys = moveInput()
+      const throttle = drive.throttle || keys.y
+      const wheel = drive.steer || keys.x
+      // In short steps (a slow phone's long frame would jump through a wall), the real time all the same.
+      const total = Math.min(dt, 0.25)
+      const n = Math.ceil(total / 0.04)
+      const step = total / n
+      let v = drive.speed
+      for (let k = 0; k < n; k++) {
+        if (throttle > 0.05) {
+          const want = dv.top * throttle
+          v = v < 0 ? Math.min(0, v + hd.brake * step) : v < want ? Math.min(want, v + hd.accel * step) : Math.max(want, v - 1.5 * step)
+        } else if (throttle < -0.05) v = v > 0 ? Math.max(0, v - hd.brake * step) : Math.max(-hd.reverse, v - 2 * step)
+        else v -= Math.sign(v) * Math.min(Math.abs(v), 1.4 * step)
+        // It turns as it goes (not standing still), the other way backing up.
+        const h = g.rotation.y - wheel * hd.turn * step * Math.min(1, Math.abs(v) / 4) * Math.sign(v)
+        const [fx, fz] = [Math.sin(h), Math.cos(h)]
+        const [nx, nz] = [g.position.x + fx * v * step, g.position.z + fz * v * step]
+        // Room for the nose (the tail, backing) and its two corners there?
+        const nose = Math.sign(v) * hd.half
+        const roomFor = (x: number, z: number) => nav.walkable(x, z) && !blockedFixed(x, z, 0.2)
+        const hit = v !== 0 && ![0, -1, 1].every((c) => roomFor(nx + fx * nose + fz * hd.width * c, nz + fz * nose - fx * hd.width * c))
+        const car = v !== 0 && vehicleAt(nx + fx * nose, nz + fz * nose, hd.width)
+        // (Caught inside something, it may drive out.)
+        if ((hit || car) && roomFor(g.position.x, g.position.z)) {
+          drive.bumped = performance.now()
+          v = -v * 0.25
+        } else {
+          g.position.x = nx
+          g.position.z = nz
+          drive.metres += Math.abs(v) * step
+        }
+        g.rotation.y = h
+      }
+      drive.speed = v
+    }
     // The pad (or the keyboard) walks the Sim freely, relative to the camera.
     const input = moveInput()
     const strength = Math.min(1, Math.hypot(input.x, input.y))
-    // In the car on a trip, the pad has nothing to walk.
-    if (!frozen && strength > 0.05 && !tripRide.boarded) {
+    // In the car on a trip, the pad has nothing to walk; driving, it drives.
+    if (!frozen && strength > 0.05 && !tripRide.boarded && !dv) {
       if (path.current.length) setRoute(null)
       path.current = []
       target.current = null
@@ -787,6 +852,12 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       const delta = want.sub(controls.target).multiplyScalar(1 - Math.exp(-5 * Math.min(dt, 0.25)))
       controls.target.add(delta)
       camera.position.add(delta)
+      // Driving: the camera comes round behind and a little above, looking the way it goes.
+      if (dv) {
+        const [back, up] = dv.kind === 'voiture' ? [9.5, 4.4] : [6.5, 3.2]
+        const behind = new THREE.Vector3(g.position.x - Math.sin(g.rotation.y) * back, g.position.y + lookHeight + up, g.position.z - Math.cos(g.rotation.y) * back)
+        camera.position.lerp(behind, 1 - Math.exp(-2.5 * Math.min(dt, 0.25)))
+      }
       // Close up, walking ahead with the pad: the camera swings slowly round
       // behind the Sim, so "up" on the pad keeps meaning "where I'm looking".
       if (close && padWalking.current && moveInput().y > 0.3) {
@@ -913,7 +984,21 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       </mesh>
       {route && <RouteDots route={route} from={group} heightAt={nav.heightAt} />}
       <group ref={group} visible={!hidden && !aboard}>
-        {ride ? (
+        {own ? (
+          // One's own vehicle (drive.ts), its nose (+x) the way the Sim faces; in a car, the Sim is inside.
+          own.kind === 'voiture' ? (
+            <group rotation={[0, -Math.PI / 2, 0]}>
+              <Vehicle p={[0, 0, 0]} kind="car" model={own.body as CarModel} color={own.color} seed={own.body === 'limo' ? (own.color === '#f4f4f2' ? 0 : 1) : own.id} />
+            </group>
+          ) : (
+            <>
+              <group rotation={[0, -Math.PI / 2, 0]}>{own.kind === 'moto' ? <Vehicle p={[0, 0, 0]} kind="moto" color={own.color} crew={false} /> : <Bicycle color={own.color} />}</group>
+              <group position={[0, own.kind === 'moto' ? 0.42 : 0.5, own.kind === 'moto' ? -0.25 : -0.22]}>
+                <Character look={sim.look} gender={sim.gender} walking={false} running={false} busy={false} pose="sit" moodColor={moodColor} stage={stage} />
+              </group>
+            </>
+          )
+        ) : ride ? (
           // On the moto-taxi, behind the driver (the moto's front is its +x: turned to face the way).
           <>
             <group position={[0, 0, 0.45]} rotation={[0, -Math.PI / 2, 0]}>

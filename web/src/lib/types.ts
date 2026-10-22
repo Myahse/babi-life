@@ -232,6 +232,9 @@ export type World = {
   furniture?: Furniture[]
   /** The emotes (game/emotes.go): free ones, and ones bought once with Djai. */
   emotes?: Emote[]
+  /** Vehicles to buy on Bolide, and the places to keep them (backend game/vehicles.go). */
+  vehicles?: VehicleModel[]
+  parkings?: ParkingKind[]
   lotSizes?: { id: string; label: string; w: number; d: number }[]
   /** Whole houses (game/plans.go): the homes Sims are born in, and those one can build on a lot. */
   homePlans?: Record<string, HousePlan>
@@ -380,3 +383,10 @@ export type CinemaSession = { film: string; salle: number; at: number; price: nu
 export type CinemaProgram = { cinema: { id: string; name: string; salles: CinemaSalle[] }; day: number; today: number; now: number; films: CinemaFilm[]; sessions: CinemaSession[] }
 export type CinemaSeats = { salle: CinemaSalle; session: Omit<CinemaSession, 'left'>; film: CinemaFilm; taken: string[] }
 export type CinemaTicket = { id: number; cinema: string; cinemaName: string; salle: number; salleName: string; film: string; title: string; at: number; seats: string[]; price: number; code: string; used: boolean; vip?: boolean }
+
+/** A vehicle on Bolide (backend game/vehicles.go): body is how it's drawn ("velo", "moto", a car model). */
+export type VehicleModel = { id: string; kind: 'velo' | 'moto' | 'voiture'; name: string; price: number; topSpeed: number; body: string; colors: string[]; fuelPerKm: number; about: string }
+/** A place to keep vehicles of a kind, bought in a commune. */
+export type ParkingKind = { id: string; for: VehicleModel['kind']; name: string; slots: number; price: number; about: string }
+/** The Sim's own: its vehicles (where each is kept) and its places (how many each keeps). */
+export type Garage = { vehicles: { id: number; model: string; color: string; parking: number | null; km: number }[]; parkings: { id: number; kind: string; city: string; commune: string; used: number }[] }

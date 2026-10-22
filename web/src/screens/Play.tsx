@@ -66,6 +66,8 @@ import { NotifyPrompt } from '../components/NotifyPrompt'
 import { motoFare, motoPaid, useMoto } from '../world3d/moto'
 import { answerDrop, useDropAsk } from '../world3d/dropRoute'
 import { DefiButton, DefiSheet, defiOf, type DefiKind } from '../components/Defi'
+import { BolideApp } from './BolideApp'
+import { drive, startDrive, stopDrive, useDriving, type Driven } from '../world3d/drive'
 import { FlightView } from '../world3d/FlightView'
 import { aCommune } from '../lib/french'
 
@@ -518,6 +520,18 @@ export function Play() {
   const moto = useMoto()
   // A défi taken on during the activity (components/Defi.tsx): the one going on.
   const [defi, setDefi] = useState<DefiKind | null>(null)
+  // At the wheel of one's own vehicle (world3d/drive.ts): parked, the petrol paid on the distance.
+  const driven = useDriving()
+  const park = () => {
+    const v = driven
+    if (!v) return
+    const metres = stopDrive()
+    void run(`${v.name} garé`, 'car', 'transport', () => api.garageAct(sim!.id, 'drive', { vehicle: v.id, metres }))
+  }
+  // Something to do (an activity, a place gone into): out of the vehicle, parked.
+  useEffect(() => {
+    if (driven && (sim?.activity || placeId)) park()
+  }, [!!sim?.activity, placeId]) // eslint-disable-line react-hooks/exhaustive-deps
   // A tap on the ground on the way to a place: asked before the way is dropped.
   const dropAsk = useDropAsk()
   // In a home booked on Dodo: the very house (a player's, as built; else the plan of its kind).
@@ -609,7 +623,8 @@ export function Play() {
   const defiNow = doing && !doing.defi ? defiOf(doing.interaction.id) : null
   const stop = () => run('Arrêter', 'x', '', () => api.stop(sim.id))
   // The pad shows in the shoulder view (and the classic street); the buttons over the street sit beside it, or in the middle.
-  const padShown = classic || view === 'epaule'
+  // (At the wheel, the pedals and the wheel take its place.)
+  const padShown = (classic || view === 'epaule') && !driven
   const padBeside = padShown ? 'left-[132px] max-w-[calc(100vw-144px)] sm:left-[152px] sm:max-w-[calc(100vw-164px)]' : 'left-1/2 max-w-[calc(100vw-24px)] -translate-x-1/2'
   const city = world.cities.find((x) => x.id === sim.city)!
   const commune = withMapPlaces(city.communes.find((x) => x.id === sim.commune)!, classic ? [] : mapPlaces)
@@ -1104,8 +1119,11 @@ export function Play() {
           onHuitTable={(npcs) => (setOverlay(null), setPhoneApp(null), setHuitAsk({ with: 'npc', name: npcs.join(', '), npcs, max: 5000 }))}
           onHuitFriend={(p) => (setOverlay(null), setPhoneApp(null), setHuitAsk({ with: p.id, name: p.firstName, max: 50000 }))}
           onHuitResume={() => (setOverlay(null), setPhoneApp(null), setHuitOpen(true))}
+          onDrive={(v) => (setOverlay(null), setPhoneApp(null), setPlaceId(null), setOutside(true), startDrive(v))}
         />
       )}
+      {/* At the wheel: the pedals, the wheel, the speed, and to park */}
+      {driven && <DriveHud driven={driven} onPark={park} />}
       {emotesOpen && <EmoteSheet world={world} sim={sim} onClose={() => setEmotesOpen(false)} onResult={apply} />}
       {damesAsk && <DamesStake against={damesAsk.name} max={damesAsk.max} money={sim.money} onClose={() => setDamesAsk(null)} onPick={(stake) => void startDames(damesAsk, stake)} />}
       {huitAsk && <HuitStake against={huitAsk.name} max={huitAsk.max} money={sim.money} onClose={() => setHuitAsk(null)} onPick={(stake) => void startHuit(huitAsk, stake)} />}
@@ -1186,7 +1204,7 @@ export function Play() {
 
 /* ---------- The in-game phone ---------- */
 
-type PhoneAppId = 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit'
+type PhoneAppId = 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'bolide'
 type PhoneProps = {
   world: World
   sim: Sim
@@ -1218,9 +1236,11 @@ type PhoneProps = {
   onHuitFriend: (p: Player) => void
   /** Back to the table of the game going on. */
   onHuitResume: () => void
+  /** At the wheel of one's own vehicle (Bolide). */
+  onDrive: (v: Driven) => void
 }
 
-function Phone({ world, sim, commune, journal, time, act, startApp, delivery, onDelivery, onCollect, onClose, onMap, onCamera, street, onWalk, onBuild, onDames, onDamesOnline, onDamesResume, onHuitTable, onHuitFriend, onHuitResume }: PhoneProps) {
+function Phone({ world, sim, commune, journal, time, act, startApp, delivery, onDelivery, onCollect, onClose, onMap, onCamera, street, onWalk, onBuild, onDames, onDamesOnline, onDamesResume, onHuitTable, onHuitFriend, onHuitResume, onDrive }: PhoneProps) {
   const [app, setApp] = useState<PhoneAppId | null>(startApp)
   // A photo of the gallery on its way to Tikitoko.
   const [tikiPhoto, setTikiPhoto] = useState<{ id: number; src: string } | undefined>()
@@ -1260,6 +1280,7 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
     ...(has('golvo') ? [{ id: 'golvo', label: 'Golvo', open: () => setApp('golvo') }] : []),
     ...(has('dodo') ? [{ id: 'dodo', label: 'Dodo', open: () => setApp('dodo') }] : []),
     ...(has('kineo') ? [{ id: 'kineo', label: 'Kinéo', open: () => setApp('kineo') }] : []),
+    ...(has('bolide') ? [{ id: 'bolide', label: 'Bolide', open: () => setApp('bolide') }] : []),
     ...(has('dames') ? [{ id: 'dames', label: 'Dames', open: () => setApp('dames') }] : []),
     ...(has('huit') ? [{ id: 'huit', label: '8 américain', open: () => setApp('huit') }] : []),
     ...(has('gnango') ? [{ id: 'gnango', label: 'Gnango', open: onMap }] : []),
@@ -1285,7 +1306,7 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
     { id: 'profile', label: 'Profil', icon: UserRound, colors: ['#ff8a9b', '#ff3d57'], open: () => navigate('/profil', { viewTransition: true }) },
     ] as Tile[]
   ).filter((a) => !life.minor || (a.id !== 'jobs' && a.id !== 'home'))
-  const title: Record<PhoneAppId, string> = { here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', babigram: 'Babigram', bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: 'Galerie', guide: 'Encyclopédie de Babi', dodo: 'Dodo', kineo: 'Kinéo', dames: 'Dames 225', huit: '8 américain' }
+  const title: Record<PhoneAppId, string> = { here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', babigram: 'Babigram', bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: 'Galerie', guide: 'Encyclopédie de Babi', dodo: 'Dodo', kineo: 'Kinéo', dames: 'Dames 225', huit: '8 américain', bolide: 'Bolide' }
 
   return (
     <div className="absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center" onClick={onClose}>
@@ -1357,6 +1378,7 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
                 {app === 'news' && <NewsApp />}
                 {app === 'guide' && <GuideApp world={world} />}
                 {app === 'dodo' && <DodoApp world={world} sim={sim} act={act} onMap={onMap} />}
+                {app === 'bolide' && <BolideApp world={world} sim={sim} act={act} onDrive={onDrive} />}
                 {app === 'dames' && <DamesApp sim={sim} onOnline={onDamesOnline} onFriend={onDames} onResume={onDamesResume} />}
                 {app === 'huit' && <HuitApp sim={sim} onTable={onHuitTable} onFriend={onHuitFriend} onResume={onHuitResume} />}
                 {app === 'kineo' && <KineoApp world={world} sim={sim} act={act} onWalk={onWalk} onMap={onMap} onClose={onClose} />}
@@ -1745,6 +1767,60 @@ function WayLeft() {
         {metres(way.left)} · {secs < 60 ? "moins d'1 min" : `${Math.round(secs / 60)} min`}
       </span>
     </span>
+  )
+}
+
+/**
+ * At the wheel (world3d/drive.ts): the speed and the distance up top with « Garer »; the wheel
+ * (◀ ▶) under the left thumb, the pedals (brake, accelerate) under the right; held down. The keys
+ * drive too (the arrows, ZQSD), and the pad.
+ */
+function DriveHud({ driven, onPark }: { driven: Driven; onPark: () => void }) {
+  const [, tick] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => tick((n) => n + 1), 150)
+    return () => {
+      clearInterval(t)
+      Object.assign(drive, { throttle: 0, steer: 0 })
+    }
+  }, [])
+  const hold = (set: () => void, clear: () => void) => ({
+    onPointerDown: (e: React.PointerEvent<HTMLButtonElement>) => (e.currentTarget.setPointerCapture(e.pointerId), set()),
+    onPointerUp: clear,
+    onPointerCancel: clear,
+    onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
+  })
+  const kmh = Math.round(Math.abs(drive.speed) * 3.6)
+  const bumped = performance.now() - drive.bumped < 600
+  const round = 'grid touch-none place-items-center rounded-full shadow-[0_5px_0_rgba(0,0,0,0.25)] select-none active:translate-y-1'
+  return (
+    <>
+      <div className="hud absolute top-[4.6rem] left-1/2 z-30 flex -translate-x-1/2 items-center gap-2.5 rounded-full py-1.5 pr-1.5 pl-4 text-sm font-extrabold whitespace-nowrap">
+        <span className={`font-display text-[22px] leading-none ${bumped ? 'text-[var(--color-rose)]' : ''}`}>{kmh}</span>
+        <span className="text-[11px] text-[var(--color-ink-soft)]">km/h · {metres(drive.metres)}</span>
+        <span className="max-w-[110px] truncate text-[12px]">{driven.name}</span>
+        <button className="btn !bg-[var(--color-orange)] !px-3 !py-1.5 !text-xs" onClick={onPark}>
+          Garer
+        </button>
+      </div>
+      <div className="absolute inset-x-0 bottom-[calc(6.5rem+env(safe-area-inset-bottom))] z-30 flex items-end justify-between px-4">
+        <div className="flex gap-2">
+          {([-1, 1] as const).map((d) => (
+            <button key={d} className={`${round} h-[72px] w-[72px] bg-white/90 text-[var(--color-ink)]`} {...hold(() => (drive.steer = d), () => drive.steer === d && (drive.steer = 0))} aria-label={d < 0 ? 'À gauche' : 'À droite'}>
+              {d < 0 ? <ChevronLeft size={40} strokeWidth={3} /> : <ChevronRight size={40} strokeWidth={3} />}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-end gap-2">
+          <button className={`${round} h-[64px] w-[64px] bg-[#e03131] text-[13px] font-extrabold text-white`} {...hold(() => (drive.throttle = -1), () => drive.throttle < 0 && (drive.throttle = 0))}>
+            Frein
+          </button>
+          <button className={`${round} h-[84px] w-[84px] bg-[var(--color-emerald)] text-[13px] font-extrabold text-white`} {...hold(() => (drive.throttle = 1), () => drive.throttle > 0 && (drive.throttle = 0))}>
+            Gaz
+          </button>
+        </div>
+      </div>
+    </>
   )
 }
 

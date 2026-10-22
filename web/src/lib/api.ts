@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, GramPost, GramProfile, GramFound, GramActivity, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, GramPost, GramProfile, GramFound, GramActivity, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage } from './types'
 import { useSession } from '../store/session'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
@@ -155,6 +155,9 @@ export const api = {
   /** Talk to a passer-by: what they answer comes back as the outcome. */
   /** A moto-taxi for the rest of a long way (backend sims/moto.go). */
   moto: (id: string, metres: number) => post<ActionResult>(`/sims/${id}/moto`, { metres }),
+  /** Vehicles of one's own (backend sims/garage.go): what the Sim has; a place bought, a vehicle bought or sold, a drive over (its petrol). */
+  garage: (id: string) => request<Garage>(`/sims/${id}/garage`),
+  garageAct: (id: string, action: 'parking' | 'buy' | 'sell' | 'drive', body: { kind?: string; model?: string; color?: string; vehicle?: number; metres?: number }) => post<ActionResult>(`/sims/${id}/garage/${action}`, body),
   /** Les défis (backend sims/defi.go): the best scores, and a score played during the activity. */
   defis: (id: string) => request<{ best: Record<string, number> }>(`/sims/${id}/defis`),
   defi: (id: string, kind: string, score: number) => post<ActionResult>(`/sims/${id}/defi`, { kind, score }),
