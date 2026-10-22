@@ -177,9 +177,13 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   const left = useRef(false)
   // Been at the place during this activity (walking there isn't leaving it).
   const reached = useRef(false)
+  // Walked off with the pad during this activity: it's the player's way now, the Sim isn't
+  // taken back to its spot (the furniture, the match, the crowd) when the pad lets go.
+  const padAway = useRef(false)
   useEffect(() => {
     left.current = false
     reached.current = false
+    padAway.current = false
   }, [busy?.id, stationAt])
 
   // Start where the Sim is busy, else at home, else on the sidewalk. Only
@@ -443,6 +447,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         }
       }
       g.rotation.y = Math.atan2(dir.x, dir.z)
+      if (busy) padAway.current = true
       if (!padWalking.current) {
         padWalking.current = true
         setWalking(true)
@@ -452,7 +457,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       setWalking(false)
     }
     // At home, the action done on its piece of furniture: walk up to it, then onto it.
-    if (homeSpot && !padWalking.current) {
+    if (homeSpot && !padWalking.current && !padAway.current) {
       if (settled !== homeSpot && !path.current.length) {
         const [fx, fz] = homeSpot.from
         if (Math.hypot(g.position.x - fx, g.position.z - fz) > 0.6 && homeGoing.current !== homeSpot) {
@@ -500,7 +505,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       onLeave()
     }
     // Strolling: along the way and back, again and again, as far as there's room.
-    if (loopKind && !path.current.length && !padWalking.current) {
+    if (loopKind && !path.current.length && !padWalking.current && !padAway.current) {
       if (!loop.current) {
         const [x, z] = [g.position.x, g.position.z]
         // Across the way the Sim faces (that's the building), then the other way if there's no room.
@@ -533,7 +538,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       setChatting(false)
     }
     // In the match: where the Sim's place in it is, now.
-    if (inMatch && fieldLot?.field && !path.current.length && !padWalking.current) {
+    if (inMatch && fieldLot?.field && !path.current.length && !padWalking.current && !padAway.current) {
       const f = fieldLot.field
       const m = matchFor(fieldLot.id, f)
       const s = m.player(0, SIM_SLOT[f.sport], worldTime())
@@ -541,7 +546,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       g.position.set(x, 0, z)
       g.rotation.y = worldFacing(f, s.face)
       if (s.pose !== matchPose) setMatchPose(s.pose)
-    } else if (onTouchline && fieldLot?.field && !path.current.length && !padWalking.current) {
+    } else if (onTouchline && fieldLot?.field && !path.current.length && !padWalking.current && !padAway.current) {
       // Watching: to the free seat on the bench on the street's side, sitting
       // there facing the field, up on the feet for a goal or a dunk.
       const f = fieldLot.field
@@ -562,7 +567,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         pose = mo.kind === 'goal' || mo.kind === 'dunk' ? 'cheer' : 'sit'
       }
       if (pose !== matchPose) setMatchPose(pose)
-    } else if (joining && !path.current.length && !padWalking.current) {
+    } else if (joining && !path.current.length && !padWalking.current && !padAway.current) {
       const [x, z] = joinRole!.at
       const [dx, dz] = [x - g.position.x, z - g.position.z]
       const d = Math.hypot(dx, dz)
@@ -762,8 +767,10 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         }
         let free = room(off)
         let flipped = false
-        // A wall right behind (the Sim at a door): look from the street side instead.
-        if (free < 3.2) {
+        // A wall right behind (the Sim at a door): look from the street side instead. Not while
+        // the pad steers: its « forward » is the camera's, so a flip sends the Sim back the way it
+        // came, the camera flips again at the wall, and round and round.
+        if (free < 3.2 && !padWalking.current) {
           const other = new THREE.Vector3(-off.x, off.y, -off.z)
           const there = room(other)
           if (there > free) {
