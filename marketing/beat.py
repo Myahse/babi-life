@@ -7,9 +7,10 @@ when there is one).
 The times follow FILMS.<film> (and MONEY for gameplay) in web/src/lab/poster.tsx.
 
     python3 beat.py               # gameplay
-    FILM=top10 python3 beat.py    # « 10 trucs à faire dans Babi Life »
+    FILM=top20 TIMES=out/video-frames/top20/plan.json python3 beat.py    # « 20 trucs à faire dans Babi Life »
 """
 
+import json
 import os
 import subprocess
 import wave
@@ -19,18 +20,21 @@ import numpy as np
 SR = 44100
 FILM = os.environ.get('FILM', 'gameplay')
 BPM = 124
-if FILM == 'top10':
-    # The times of top10.mjs: the hook, then ten activities of 4.2 s, then the end card.
+if FILM == 'top20':
+    # The times of top20.mjs, measured on Awa's voice (its plan.json): the hook, the twenty
+    # activities, the end card.
+    plan = json.load(open(os.environ['TIMES']))
     BPM = 128
-    LENGTH = 50.6
-    CUTS = [2.6 + k * 4.2 for k in range(11)]
+    LENGTH = plan['length']
+    CUTS = [s['from'] for s in plan['slots']] + [plan['outro']]
+    hook = plan['slots'][0]['from']
     # The hook's flashes.
-    TICKS = [0.65, 1.3, 1.95]
-    # TU T'ENNUIES ?, 10 TRUCS, À FAIRE…; the basket (N°2) and the goal (N°1), 1.2 s before their ends.
-    HITS = [0.15, 0.75, 1.3, 39.2, 43.4]
+    TICKS = [hook * k / 4 for k in (1, 2, 3)]
+    # TU T'ENNUIES ?, 20 TRUCS, À FAIRE…; the basket (N°2) and the goal (N°1), as they land.
+    HITS = [0.15, 0.75, 1.3] + plan['payoffs']
     CASH = []
-    CROWD = [43.3]
-    GROOVE, LEAD_FROM = 2.6, 6.8
+    CROWD = plan['payoffs'][-1:]
+    GROOVE, LEAD_FROM = hook, plan['slots'][1]['from']
 else:
     LENGTH = 39.0
     CUTS = [2.4, 4.8, 8.6, 11.8, 16.4, 21, 24.6, 29, 33.4]

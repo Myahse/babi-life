@@ -44,7 +44,7 @@ import { rng } from '../world3d/themes'
 const q = new URLSearchParams(location.search)
 const VIDEO = q.has('video')
 const ALPHA = q.has('alpha')
-/** marketing/top10.mjs: &only=<scene> draws that scene alone (its clock from 0), &overlay only what goes over the game filmed. */
+/** marketing/top20.mjs: &only=<scene> draws that scene alone (its clock from 0; &from=<s>: when its take starts in the film), &overlay only what goes over the game filmed. */
 const ONLY = q.get('only') as SceneId | null
 const OVERLAY = q.has('overlay')
 type SceneId = 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'princesse' | `famille-${string}` | 'palais' | 'basket' | 'fete' | 'cause' | 'look' | 'siporex' | 'phone' | 'visages' | 'coiffures' | 'selfie' | 'yop' | 'garba' | 'brochette' | 'plateau' | 'stade' | 'concert' | 'couloir' | 'amis' | 'salon' | 'douche' | 'zoo' | 'loto' | 'chambre' | 'chambre-choc' | 'cabine' | 'keke' | 'mt-yop' | 'mt-gbaka' | 'mt-maquis' | 'mt-stade' | 'mt-village' | 'mt-salon' | 'tourf' | 'messe' | 'grin' | 'zouglou'
@@ -62,12 +62,13 @@ type SceneId = 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'prin
  * emptied, what to remember: marketing/scripts/arnaque-waye.md, voice voix-arnaque.mp3) or
  * ?video=keke (Keke, Awa's friend, asks Babi « what do you want in Babi Life? »:
  * marketing/scripts/keke-micro-trottoir.md, voice voix-keke.mp3) or
- * ?video=top10 (« 10 trucs à faire dans Babi Life », Awa telling them: the game
- * filmed being played, by marketing/top10.mjs, under what's drawn here with
- * &overlay; the scenes it films from here with &only=grin|messe|zouglou|tourf:
- * marketing/scripts/top10.md, voice voix-top10.mp3 over its beat son-top10.mp3).
+ * ?video=top20 (« 20 trucs à faire dans Babi Life », Awa telling them: the game
+ * filmed being played, by marketing/top20.mjs, under what's drawn here with
+ * &overlay, timed on Awa's voice (&times=: when each line starts, then the end);
+ * the scenes it films from here with &only=grin|messe|zouglou|tourf:
+ * marketing/scripts/top20.md, voice voix-top20.mp3 over its beat son-top20.mp3).
  */
-type FilmId = 'lancement' | 'bouger' | 'bande-annonce' | 'decouverte' | 'live' | 'merci' | 'gameplay' | 'arnaque' | 'keke' | 'top10'
+type FilmId = 'lancement' | 'bouger' | 'bande-annonce' | 'decouverte' | 'live' | 'merci' | 'gameplay' | 'arnaque' | 'keke' | 'top20'
 const FILM = (q.get('video') || 'lancement') as FilmId
 
 /** The materials as the server has them (game/build.go). */
@@ -1362,9 +1363,9 @@ const ZOUGLOU: [Pose, 'femme' | 'homme'][] = [
   ['gweta', 'femme'],
 ]
 
-/** The top 10's beat (marketing/beat.py), and when the zouglou's take starts in the film: the line dances on it. */
+/** The top 20's beat (marketing/beat.py), and when the zouglou's take starts in the film (&from): the line dances on it. */
 const ZOUGLOU_BPM = 128
-const ZOUGLOU_IN = 10.7
+const ZOUGLOU_IN = Number(q.get('from') ?? 0)
 
 function Zouglou({ t }: { t: number }) {
   const looks = useMemo(() => ZOUGLOU.map(([, g], i) => randomLook(g, rng(`zouglou${i}`))), [])
@@ -1574,7 +1575,7 @@ function GbairaiChat({ t }: { t: number }) {
 
 /* ---------- The video: 25 seconds, scene after scene ---------- */
 
-type Shot = { from: number; to: number; scene: SceneId; title?: string; sub?: string; /** Its number, in the film that goes through everything. */ n?: number; /** The live: what Awa says, as a subtitle. */ cap?: string; /** « Merci »: the follower counter, the gift that hides. */ counter?: boolean; tease?: boolean; /** « Arnaque »: what the phone shows, and the tip. */ phone?: 'msg' | 'page' | 'drain' | 'call' | 'masque'; tip?: number; /** « top10 »: what Awa says (the captions). */ say?: string }
+type Shot = { from: number; to: number; scene: SceneId; title?: string; sub?: string; /** Its number, in the film that goes through everything. */ n?: number; /** The live: what Awa says, as a subtitle. */ cap?: string; /** « Merci »: the follower counter, the gift that hides. */ counter?: boolean; tease?: boolean; /** « Arnaque »: what the phone shows, and the tip. */ phone?: 'msg' | 'page' | 'drain' | 'call' | 'masque'; tip?: number; /** « top20 »: what Awa says (the captions). */ say?: string }
 /** Each film: its shots, when the intro ends and the outro starts, its length (marketing/video.mjs reads it). */
 const FILMS: Record<FilmId, { shots: Shot[]; intro: number; outro: number; length: number; hook: [string, string, string] }> = {
   lancement: {
@@ -1746,26 +1747,41 @@ const FILMS: Record<FilmId, { shots: Shot[]; intro: number; outro: number; lengt
     hook: ['', '', ''],
   },
 
-  // « 10 trucs à faire dans Babi Life » (marketing/scripts/top10.md): the game filmed being played
-  // (marketing/top10.mjs), what's drawn here over it (&overlay). Each line of Awa's on its activity.
-  top10: {
+  // « 20 trucs à faire dans Babi Life » (marketing/scripts/top20.md): the game filmed being played
+  // (marketing/top20.mjs), what's drawn here over it (&overlay). Each line of Awa's on its activity;
+  // the times here are a guide, top20.mjs gives the real ones (&times=), measured on her voice.
+  top20: {
     shots: [
-      { from: 0, to: 2.6, scene: 'crew', say: 'Tu t’ennuies ? Voilà dix trucs à faire à Babi !' },
-      { from: 2.6, to: 6.8, scene: 'grin', n: 10, title: 'LE THÉ AU GRIN', say: 'Dix : le thé au grin. On refait le monde !' },
-      { from: 6.8, to: 11, scene: 'messe', n: 9, title: 'LA MESSE', say: 'Neuf : la messe du dimanche, à la cathédrale.' },
-      { from: 11, to: 15.2, scene: 'zouglou', n: 8, title: 'LE ZOUGLOU', say: 'Huit : le zouglou avec les gars !' },
-      { from: 15.2, to: 19.4, scene: 'crew', n: 7, title: 'PRENDRE L’AVION', say: 'Sept : tu prends l’avion pour Yamoussoukro.' },
-      { from: 19.4, to: 23.6, scene: 'tourf', n: 6, title: 'LE PLATEAU', say: 'Six : le Plateau… et la Tour F en chantier !' },
-      { from: 23.6, to: 27.8, scene: 'crew', n: 5, title: 'LES DAMES', say: 'Cinq : les dames. Tu mises… et tu rafles tout !' },
-      { from: 27.8, to: 32, scene: 'crew', n: 4, title: 'LE 8 AMÉRICAIN', say: 'Quatre : le 8 américain. Joker ? Pioche six !' },
-      { from: 32, to: 36.2, scene: 'crew', n: 3, title: 'LE KART', say: 'Trois : la course de karts. Dérapage !' },
-      { from: 36.2, to: 40.4, scene: 'crew', n: 2, title: 'LE BASKET', say: 'Deux : le basket… et smash !' },
-      { from: 40.4, to: 44.6, scene: 'crew', n: 1, title: 'LE FOOT', say: 'Et numéro un… le foot avec les gars du quartier. BUUUT !' },
-      { from: 44.6, to: 50.6, scene: 'crew', say: 'Et toi, tu commences par lequel ? Inscris-toi, c’est gratuit !' },
+      { from: 0, to: 3, scene: 'crew', say: 'Tu t’ennuies ? Voilà vingt trucs à faire à Babi !' },
+      ...(
+        [
+          ['LE SKI NAUTIQUE', 'Vingt : du ski nautique à l’île Boulay !'],
+          ['PARLER NOUCHI', 'Dix-neuf : parler nouchi avec tout le monde.'],
+          ['LA PATINOIRE', 'Dix-huit : la patinoire de l’Hôtel Ivoire !'],
+          ['LE THÉ AU GRIN', 'Dix-sept : le thé au grin.'],
+          ['LE MARCHÉ', 'Seize : faire son marché.'],
+          ['LES PHOTOS', 'Quinze : prendre Babi en photo.'],
+          ['LA MESSE', 'Quatorze : la messe du dimanche.'],
+          ['LA PRIÈRE DU VENDREDI', 'Treize : la grande prière du vendredi.'],
+          ['LE LÈCHE-VITRINE', 'Douze : le lèche-vitrine au centre commercial.'],
+          ['LE CINÉ', 'Onze : le ciné, avec le pop-corn !'],
+          ['LE BRUNCH', 'Dix : bruncher face à la lagune.'],
+          ['LA BOÎTE', 'Neuf : la boîte, à la rue Princesse !'],
+          ['LE ZOUGLOU', 'Huit : le zouglou avec les gars !'],
+          ['L’AVION', 'Sept : l’avion pour Yamoussoukro.'],
+          ['LA TOUR F', 'Six : la tour F en chantier !'],
+          ['LES DAMES', 'Cinq : les dames. Tu mises, tu rafles tout !'],
+          ['LE 8 AMÉRICAIN', 'Quatre : le 8 américain. Joker ? Pioche six !'],
+          ['LE KART', 'Trois : la course de karts !'],
+          ['LE BASKET', 'Deux : le basket… et panier !'],
+          ['LE FOOT', 'Et numéro un… le foot du quartier. BUUUT !'],
+        ] as const
+      ).map(([title, say], i) => ({ from: 3 + i * 2.7, to: 5.7 + i * 2.7, scene: 'crew' as SceneId, n: 20 - i, title, say })),
+      { from: 57, to: 62.5, scene: 'crew', say: 'Et il y en a plus de 160 dans le jeu ! Tu commences par lequel ?' },
     ],
     intro: 0,
-    outro: 44.6,
-    length: 50.6,
+    outro: 57,
+    length: 62.5,
     hook: ['', '', ''],
   },
 }
@@ -2444,7 +2460,7 @@ function PhoneApps({ t }: { t: number }) {
   )
 }
 
-/* ---------- « top10 »: what goes over the game filmed (marketing/top10.mjs) ---------- */
+/* ---------- « top20 »: what goes over the game filmed (marketing/top20.mjs) ---------- */
 
 const YELLOW = '#ffd400'
 
@@ -2461,35 +2477,34 @@ function Captions({ say, local, span }: { say: string; local: number; span: numb
   )
 }
 
-/** The countdown down the right: done, the one now (big, yellow), to come. */
-function Ladder({ now }: { now: number }) {
+/** The countdown as a bar of segments across the top, as on stories: done, the one now (yellow, filling), to come. */
+function Countdown({ now, of, k }: { now: number; of: number; k: number }) {
   return (
-    <div className="absolute top-[30%] right-3 flex flex-col items-center gap-1.5">
-      {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map((n) => (
-        <span
-          key={n}
-          className="grid place-items-center rounded-full font-extrabold"
-          style={{
-            width: n === now ? 40 : 28,
-            height: n === now ? 40 : 28,
-            fontSize: n === now ? 21 : 14,
-            fontFamily: 'Alfa Slab One, serif',
-            background: n === now ? YELLOW : n > now ? 'rgba(255,255,255,0.28)' : 'rgba(0,0,0,0.55)',
-            color: n === now ? '#111' : n > now ? 'rgba(255,255,255,0.75)' : '#fff',
-            textDecoration: n > now ? 'line-through' : undefined,
-            boxShadow: n === now ? '0 0 0 3px #111, 0 6px 0 rgba(0,0,0,0.3)' : undefined,
-          }}
-        >
-          {n}
+    <div className="absolute inset-x-3 top-[3.2%] flex gap-[3px]">
+      {Array.from({ length: of }, (_, i) => of - i).map((n) => (
+        <span key={n} className="relative h-[7px] flex-1 overflow-hidden rounded-full bg-white/30 shadow-[0_2px_0_rgba(0,0,0,0.35)]">
+          <span className="absolute inset-y-0 left-0 rounded-full" style={{ width: n > now ? '100%' : n === now ? `${Math.round(clamp01(k) * 100)}%` : '0%', background: n === now ? YELLOW : '#fff' }} />
         </span>
       ))}
     </div>
   )
 }
 
-/** « top10 »: the hook, each activity's number and name, the countdown, Awa's words, and the end card. */
-function Top10Overlay({ t, qr, url }: { t: number; qr: string; url: string }) {
-  const film = FILMS.top10
+/**
+ * The film's times as top20.mjs measured them on Awa's voice (&times=: when the hook, each activity and
+ * the end card start, then the end), else the guide's.
+ */
+function timed(film: (typeof FILMS)['top20']) {
+  const times = q.get('times')?.split(',').map(Number)
+  if (!times || times.length !== film.shots.length + 1) return film
+  const shots = film.shots.map((s, i) => ({ ...s, from: times[i], to: times[i + 1] }))
+  return { ...film, shots, outro: times[times.length - 2], length: times[times.length - 1] }
+}
+
+/** « top20 »: the hook, each activity's number and name, the countdown, Awa's words, and the end card. */
+function Top20Overlay({ t, qr, url }: { t: number; qr: string; url: string }) {
+  const film = useMemo(() => timed(FILMS.top20), [])
+  const count = film.shots.filter((s) => s.n).length
   const shot = film.shots.find((s) => t >= s.from && t < s.to) ?? film.shots[film.shots.length - 1]
   const local = t - shot.from
   const hook = t < film.shots[1].from
@@ -2503,7 +2518,7 @@ function Top10Overlay({ t, qr, url }: { t: number; qr: string; url: string }) {
             TU T’ENNUIES ?
           </div>
           <div className="text-[132px] leading-[1.05] [text-shadow:0_8px_0_#000]" style={{ fontFamily: 'Alfa Slab One, serif', color: YELLOW, ...slam(t, 0.75) }}>
-            10 TRUCS
+            {count} TRUCS
           </div>
           <div className="rounded-xl bg-black px-4 py-1 text-[40px] leading-tight" style={{ fontFamily: 'Anton, sans-serif', ...slam(t, 1.3) }}>
             À FAIRE DANS BABI LIFE 👇
@@ -2524,7 +2539,7 @@ function Top10Overlay({ t, qr, url }: { t: number; qr: string; url: string }) {
           </div>
         </div>
       )}
-      {!hook && !outro && <Ladder now={shot.n ?? 10} />}
+      {!hook && !outro && <Countdown now={shot.n ?? count} of={count} k={local / (shot.to - shot.from)} />}
       {shot.say && !outro && <Captions say={shot.say} local={local} span={shot.to - shot.from} />}
       {outro && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 bg-[#0b0c18]/80 px-8 text-center" style={{ opacity: clamp01((t - film.outro) / 0.35) }}>
@@ -2542,7 +2557,7 @@ function Top10Overlay({ t, qr, url }: { t: number; qr: string; url: string }) {
             <div className="font-sans text-[22px] font-extrabold text-[var(--color-orange)]">{url}</div>
           </div>
           <div className="font-sans text-[21px] font-extrabold text-white/85" style={pop(t, film.outro + 1.5)}>
-            Les 10 sont dans le jeu · 100 % ivoirien
+            + de 160 activités dans le jeu · 100 % ivoirien
           </div>
         </div>
       )}
@@ -2550,7 +2565,7 @@ function Top10Overlay({ t, qr, url }: { t: number; qr: string; url: string }) {
   )
 }
 
-/** One scene alone, nothing over it, its clock from 0 (marketing/top10.mjs films it): ?video=top10&only=<scene>. */
+/** One scene alone, nothing over it, its clock from 0 (marketing/top20.mjs films it): ?video=top20&only=<scene>. */
 function Clean({ t }: { t: number }) {
   return (
     <div className="relative h-full w-full overflow-hidden bg-[var(--color-night)]">
@@ -2795,7 +2810,7 @@ function Poster() {
     if (!VIDEO) for (let k = 0; k < 20; k++) setTimeout(() => window.__frame!(t - 1 + k * 0.05), 50 * k)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
   if (VIDEO && ONLY) return <Clean t={t} />
-  if (VIDEO && OVERLAY) return <Top10Overlay t={t} {...outro} />
+  if (VIDEO && OVERLAY) return <Top20Overlay t={t} {...outro} />
   if (VIDEO) return <Video t={t} {...outro} />
   return (
     <div className="h-full w-full" style={{ background: ALPHA ? 'transparent' : undefined }}>

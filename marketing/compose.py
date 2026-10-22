@@ -1,8 +1,13 @@
-"""The top 10's frames put together (top10.mjs films them, then calls this): the hook (four flashes of
-what's coming), each activity swiping up over the one before as on a phone's feed, the last one (the
-football) going on under the end card, and the overlay (the countdown, Awa's words) over everything.
+"""The top 20's frames put together (top20.mjs films them, then calls this): the hook (four flashes of
+what's coming), each activity swiping up over the one before as on a phone's feed, each for as long as
+Awa's line on it, the last one (the football) going on under the end card, and the overlay (the
+countdown, Awa's words) over everything.
 
-    python3 compose.py out/video-frames/top10/plan.json
+    python3 compose.py out/video-frames/top20/plan.json
+
+plan.json: fps, length, swipe, frames (the takes' folder), out, teaser [[clip, frame], …] and slots
+[{clip, from, to, start, speed}, …]: each activity's time in the film, the frame of its take it starts
+on (SWIPE before `from`, as it comes up) and how fast its take goes by (1 as filmed).
 """
 
 import json
@@ -13,11 +18,12 @@ from PIL import Image
 
 plan = json.load(open(sys.argv[1]))
 FPS = plan['fps']
-HOOK, EACH, SWIPE = plan['hook'], plan['each'], plan['swipe']
+SWIPE = plan['swipe']
 FRAMES = plan['frames']
-CLIPS = plan['clips']
+SLOTS = plan['slots']
 W, H = 1080, 1920
 TOTAL = round(plan['length'] * FPS)
+HOOK = SLOTS[0]['from']
 SNIP = round(HOOK * FPS / len(plan['teaser']))
 os.makedirs(plan['out'], exist_ok=True)
 
@@ -48,18 +54,20 @@ def hook(i):
 
 
 def segment(t):
-    """What's on at t: -1 the hook, 0–9 the activities (the last one going on under the end card)."""
-    if t < HOOK:
-        return -1
-    return min(len(CLIPS) - 1, int((t - HOOK) / EACH))
+    """What's on at t: -1 the hook, then each activity (the last one going on under the end card)."""
+    k = -1
+    for j, s in enumerate(SLOTS):
+        if t >= s['from']:
+            k = j
+    return k
 
 
 def picture(k, i, t):
-    """Segment k's picture at frame i (time t)."""
+    """Activity k's picture at frame i (time t)."""
     if k < 0:
         return hook(i)
-    start = HOOK + k * EACH - SWIPE
-    return frame(CLIPS[k], round((t - start) * FPS))
+    s = SLOTS[k]
+    return frame(s['clip'], s['start'] + round((t - (s['from'] - SWIPE)) * FPS * s.get('speed', 1)))
 
 
 for i in range(TOTAL):
@@ -68,13 +76,14 @@ for i in range(TOTAL):
     img = picture(k, i, t)
     # The next activity coming up from the bottom over the last SWIPE of this one.
     nxt = k + 1
-    turn = HOOK + nxt * EACH
-    if nxt < len(CLIPS) and turn - SWIPE <= t < turn:
-        p = ease((t - (turn - SWIPE)) / SWIPE)
-        both = Image.new('RGB', (W, H))
-        both.paste(img, (0, -round(p * H)))
-        both.paste(picture(nxt, i, t), (0, H - round(p * H)))
-        img = both
+    if nxt < len(SLOTS):
+        turn = SLOTS[nxt]['from']
+        if turn - SWIPE <= t < turn:
+            p = ease((t - (turn - SWIPE)) / SWIPE)
+            both = Image.new('RGB', (W, H))
+            both.paste(img, (0, -round(p * H)))
+            both.paste(picture(nxt, i, t), (0, H - round(p * H)))
+            img = both
     over = os.path.join(FRAMES, 'overlay', f'{i:05d}.png')
     if os.path.exists(over):
         o = Image.open(over).convert('RGBA').resize((W, H))
