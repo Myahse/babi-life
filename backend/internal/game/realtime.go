@@ -71,6 +71,8 @@ type Activity struct {
 	Auto bool `json:"auto,omitempty"`
 	// Seance: a film seen with a Kinéo ticket (sims/cinema.go): which, in which screen, the seats.
 	Seance *Seance `json:"seance,omitempty"`
+	// Defi: the défi taken on during it (sims/defi.go), its score (1–100; 0 not played): once each time.
+	Defi int `json:"defi,omitempty"`
 }
 
 // Seance: the film being watched, its screen and the ticket's seats.

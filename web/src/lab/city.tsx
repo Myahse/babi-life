@@ -20,6 +20,7 @@ import { CathedralInside } from '../world3d/interior/CathedralInside'
 import { MosqueM6Inside } from '../world3d/interior/MosqueM6Inside'
 import { PyramideInside } from '../world3d/interior/PyramideInside'
 import { BoulayScene } from '../world3d/interior/BoulayScene'
+import { DefiSheet } from '../components/Defi'
 import { KineoInside } from '../world3d/interior/KineoInside'
 import { HotelInside } from '../world3d/interior/HotelInside'
 import { Snapper } from '../world3d/snapshot'
@@ -77,7 +78,7 @@ import { NightCityLab, NightStreetLab, PartyLab } from './night'
 import { RainSky } from '../world3d/open/rainSky'
 import { SkyDome } from '../world3d/open/sky'
 import { throwBillets } from '../world3d/clubBillets'
-import type { Block, Furniture, HousePlan, Material, Piece, Plot, Sim, World } from '../lib/types'
+import type { ActionResult, Block, Furniture, HousePlan, Material, Piece, Plot, Sim, World } from '../lib/types'
 import { FlightView } from '../world3d/FlightView'
 
 const seededLab = (n: number) => () => ((n = (n * 16807) % 2147483647) / 2147483647)
@@ -612,7 +613,14 @@ function Lab() {
     const activity = film ? { kind: 'do', placeId: q.get('id') ?? 'marcory-kineo', seance: { film, salle: Number(salle), seats: [seat] } } : undefined
     return <KineoInside sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)), gameMinutes: 1200, activity } as unknown as Sim} placeId={q.get('id') ?? 'marcory-kineo'} interactionId={film ? 'seance' : undefined} roam={!film} night={night} stage="adulte" />
   }
-  if (view === 'boulay') return <BoulayScene sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)), gameMinutes: 600 } as unknown as Sim} interactionId={q.get('act') ?? 'traversee-boulay'} night={night} stage="adulte" />
+  // &act=ski-boulay&defi: the water-ski défi over it (its score not sent anywhere).
+  if (view === 'boulay')
+    return (
+      <div className="relative h-screen w-screen">
+        <BoulayScene sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)), gameMinutes: 600 } as unknown as Sim} interactionId={q.get('act') ?? 'traversee-boulay'} night={night} stage="adulte" />
+        {q.has('defi') && <DefiSheet kind="ski" simId="lab" send={async (score) => ({ outcome: { text: `Défi ${score}/100. Belle sortie.`, money: 0 } }) as unknown as ActionResult} onClose={() => location.reload()} />}
+      </div>
+    )
   if (view === 'home') return <HomeLab />
   if (view === 'plan') return <PlanLab />
   if (view === 'inside') return <InsideLab />

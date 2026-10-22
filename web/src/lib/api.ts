@@ -155,6 +155,9 @@ export const api = {
   /** Talk to a passer-by: what they answer comes back as the outcome. */
   /** A moto-taxi for the rest of a long way (backend sims/moto.go). */
   moto: (id: string, metres: number) => post<ActionResult>(`/sims/${id}/moto`, { metres }),
+  /** Les défis (backend sims/defi.go): the best scores, and a score played during the activity. */
+  defis: (id: string) => request<{ best: Record<string, number> }>(`/sims/${id}/defis`),
+  defi: (id: string, kind: string, score: number) => post<ActionResult>(`/sims/${id}/defi`, { kind, score }),
   /** An outing (backend sims/outing.go): friends met in the game come at once, player friends are invited. */
   outing: (id: string, o: { placeId: string; interactionId: string; friends: string[]; players: string[] }) => post<ActionResult>(`/sims/${id}/outing`, o),
   chat: (id: string, npc: { id: string; name: string; gender: string; seed: number; look?: Look }, topic: string, said?: string, lang?: string) => post<ActionResult>(`/sims/${id}/chat`, { with: npc, topic, said: said ?? '', lang: lang ?? '' }),

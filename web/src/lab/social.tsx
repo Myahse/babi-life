@@ -4,7 +4,7 @@ import { Canvas } from '@react-three/fiber'
 import '../index.css'
 import { api } from '../lib/api'
 import { useSession } from '../store/session'
-import type { Sim, World } from '../lib/types'
+import type { ActionResult, Sim, World } from '../lib/types'
 import { GbairaiApp } from '../screens/GbairaiApp'
 import { TikitokoApp } from '../screens/TikitokoApp'
 import { BetApp } from '../screens/BetApp'
@@ -15,6 +15,7 @@ import { RideFlow } from '../components/RideFlow'
 import { CardBack, PlayingCard } from '../components/PlayingCards'
 import { HuitSheet } from '../components/Huit'
 import { DamesSheet } from '../components/Dames'
+import { DefiSheet } from '../components/Defi'
 
 // The phone's social apps on their own (?app=gbairai|tikitoko&token=…&sim=…),
 // against a running API (VITE_API_URL), with a street stall in 3D behind for
@@ -64,6 +65,13 @@ function TableLab({ app }: { app: 'huit' | 'dames' }) {
 function Lab() {
   if (q.get('app') === 'gnango') return <RideLab />
   if (q.get('app') === 'cards') return <CardsLab />
+  // A défi on its own (?app=defi&kind=the|courses[&big]), its score not sent anywhere.
+  if (q.get('app') === 'defi')
+    return (
+      <div className="relative mx-auto h-screen w-full max-w-[430px] overflow-hidden">
+        <DefiSheet kind={(q.get('kind') ?? 'the') as 'the'} simId={q.get('sim') ?? 'lab'} big={q.has('big')} send={async (score) => ({ outcome: { text: `Défi ${score}/100. C'est noté.`, money: 0 } }) as unknown as ActionResult} onClose={() => location.reload()} />
+      </div>
+    )
   if (q.get('app') === 'huit' || q.get('app') === 'dames') return <TableLab app={q.get('app') as 'huit' | 'dames'} />
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const [sim, setSim] = useState<Sim | null>(null)
