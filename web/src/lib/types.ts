@@ -109,13 +109,45 @@ export type Player = {
   coupleRequest?: '' | 'sent' | 'received'
 }
 export type Invite = { id: string; from: string; fromName: string; placeId: string; interactionId: string; label: string; at: string }
-export type Around = { players: Player[]; friends: Player[]; invites: Invite[]; /** Friend requests waiting for an answer. */ requests?: Player[]; /** Players in the game right now, everywhere. */ online?: number; /** A game of dames waiting for an answer, or going on. */ dames?: DameInvite | null }
+export type Around = { players: Player[]; friends: Player[]; invites: Invite[]; /** Friend requests waiting for an answer. */ requests?: Player[]; /** Players in the game right now, everywhere. */ online?: number; /** A game of dames waiting for an answer, or going on. */ dames?: DameInvite | null; /** A game of 8 américain waiting for an answer, or going on. */ huit?: DameInvite | null }
 /** Les dames (backend sims/dames.go): a move, the squares (0–49) it goes through and the pieces it takes. */
 export type DamesMove = { path: number[]; taken?: number[] }
 export type DameSide = { id?: string; name: string; npc?: boolean }
 /** A game seen from one side: `you` 1 white (plays first, from the bottom), -1 black; the board's 50 dark squares (1 a man, 2 a dame, negative black). */
 export type DameGame = { id: number; you: 1 | -1; white: DameSide; black: DameSide; stake: number; board: number[]; turn: 1 | -1; status: 'invited' | 'playing' | 'done' | 'declined' | 'expired'; winner: number; last?: DamesMove; legal?: DamesMove[]; text?: string }
 export type DameInvite = { id: number; status: 'invited' | 'playing'; fromName: string; stake: number; mine: boolean }
+/**
+ * 8 américain (backend game/huit.go, sims/huit.go). A card: 0–51 is suit × 13 + value − 1 (value 1 the ace … 13 the
+ * king; suits trèfle, carreau, cœur, pique), 52 and 53 the jokers.
+ */
+export type HuitStep = { seat: number; kind: 'play' | 'draw' | 'pass'; card: number; /** Asked with an 8 (-1 none). */ suit: number; drawn?: number; /** Only the cards the player drew themselves. */ cards?: number[]; carte?: boolean; forgot?: boolean; won?: boolean }
+export type HuitSeat = { id?: string; name: string; npc?: boolean; cards: number }
+export type HuitGame = {
+  id: number
+  you: number
+  seats: HuitSeat[]
+  hand: number[]
+  /** The last card down, and the one played on (under the jokers). */
+  top: number
+  under: number
+  deck: number
+  turn: number
+  dir: number
+  /** The suit asked by an 8 (-1 none); owed: cards to draw unless answered (by 2: a 2's, 0: a joker's); ace: an ace to answer. */
+  suit: number
+  owed: number
+  by: number
+  ace: boolean
+  /** The card just drawn, which goes (-1 none). */
+  drawn: number
+  legal?: number[] | null
+  stake: number
+  pot: number
+  status: 'invited' | 'playing' | 'done' | 'declined' | 'expired'
+  winner: number
+  text?: string
+  steps?: HuitStep[] | null
+}
 /** Gbairai: a message, and a friend's chat in the list. */
 export type ChatMessage = { id: number; mine: boolean; body: string; at: string; readAt?: string }
 export type Chat = { friend: Player; last?: ChatMessage; unread: number; blocked?: boolean }

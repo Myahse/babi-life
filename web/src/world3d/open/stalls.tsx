@@ -394,7 +394,10 @@ function LotoMenu({ onChoose, onClose }: { onChoose: (choice: string) => void; o
   const [pays, setPays] = useState<Record<number, number>>({ 1: 15, 2: 250, 3: 2500 })
   const [draw, setDraw] = useState<number | null>(null)
   const [picked, setPicked] = useState<number[]>([])
-  const [stake, setStake] = useState(200)
+  // The stake: typed, or a usual one in a tap (backend game/loto.go: 100 to 10 000).
+  const [typed, setTyped] = useState('200')
+  const stake = Number(typed) || 0
+  const badStake = stake < 100 ? '100 Djai au moins' : stake > 10000 ? '10 000 Djai au plus' : ''
   useEffect(() => {
     void api.lotoDraws().then((d) => {
       setPays(d.pays)
@@ -435,15 +438,20 @@ function LotoMenu({ onChoose, onClose }: { onChoose: (choice: string) => void; o
           </button>
         ))}
       </div>
-      <div className="mt-2 flex gap-1">
-        {[100, 200, 500, 1000, 2000].map((v) => (
-          <button key={v} onClick={() => setStake(v)} className={`flex-1 rounded-full py-1 text-[11px] font-extrabold ${stake === v ? 'bg-[var(--color-ink)] text-white' : 'bg-[var(--color-canvas)]'}`}>
+      <div className="mt-2 flex items-center gap-1">
+        <label className="flex min-w-0 flex-[1.4] items-center gap-1 rounded-full bg-[var(--color-canvas)] px-2.5 py-1">
+          <span className="text-[10px] font-extrabold text-[var(--color-ink-soft)] uppercase">Mise</span>
+          <input inputMode="numeric" value={typed} onChange={(e) => setTyped(e.target.value.replace(/\D/g, '').slice(0, 5))} className="w-0 min-w-0 flex-1 bg-transparent text-right text-[13px] font-extrabold outline-none" aria-label="Mise en Djai" />
+        </label>
+        {[200, 500, 1000, 2000].map((v) => (
+          <button key={v} onClick={() => setTyped(String(v))} className={`flex-1 rounded-full py-1 text-[11px] font-extrabold ${stake === v ? 'bg-[var(--color-ink)] text-white' : 'bg-[var(--color-canvas)]'}`}>
             {v}
           </button>
         ))}
       </div>
+      {badStake && <p className="mt-1 text-[11px] font-bold text-[#d81b3f]">{badStake}</p>}
       <button
-        disabled={!draw || picked.length === 0}
+        disabled={!draw || picked.length === 0 || !!badStake}
         onClick={() => onChoose(JSON.stringify({ draw, numbers: picked, stake }))}
         className="mt-2 w-full rounded-xl bg-[#f26b1d] py-2 text-[13px] font-extrabold text-white disabled:opacity-40"
       >

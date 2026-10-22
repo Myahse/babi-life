@@ -176,6 +176,8 @@ func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
 	c.queue(b, id)
 	var dame *DameInvite
 	queuePendingDame(b, id, &dame)
+	var huit *HuitInvite
+	queuePendingHuit(b, id, &huit)
 	err := h.DB.SendBatch(ctx, b).Close()
 	var pgErr *pgconn.PgError
 	if !mine && (err == nil || errors.As(err, &pgErr) && pgErr.Code == "22P02") { // 22P02: not even an id
@@ -193,7 +195,7 @@ func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
 	if h.Online != nil {
 		online = max(h.Online(), 1) // connected now (« ici » counts the last 20 minutes); at least the one asking
 	}
-	httpx.JSON(w, http.StatusOK, map[string]any{"players": players, "friends": friends, "invites": invites, "requests": requests, "online": online, "dames": dame})
+	httpx.JSON(w, http.StatusOK, map[string]any{"players": players, "friends": friends, "invites": invites, "requests": requests, "online": online, "dames": dame, "huit": huit})
 }
 
 // requestState: the SQL for a friend request between `other` and `me`: "sent" (me → other), "received", or "".

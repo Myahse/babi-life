@@ -4,6 +4,7 @@ import { api } from '../lib/api'
 import type { DameGame, DameInvite, DamesMove } from '../lib/types'
 import { fcfa } from '../game/rules'
 import { IconTile } from './ui'
+import { StakeSheet } from './Stake'
 
 // Les dames at the grin (backend sims/dames.go plays the rules): the board,
 // the player's own side at the bottom; a tap on a piece that can move shows
@@ -32,35 +33,9 @@ function played(board: number[], m: DamesMove): number[] {
   return b
 }
 
-const STAKES = [0, 500, 1000, 2000, 5000]
-
-/** How much to put down: for nothing, or a stake (no more than one has, nor than the other side allows). */
+/** How much to put down: typed, or for nothing (no more than one has, nor than the other side allows). */
 export function DamesStake({ against, max, money, onPick, onClose }: { against: string; max: number; money: number; onPick: (stake: number) => void; onClose: () => void }) {
-  const list = (max > 5000 ? [...STAKES, 10000, 20000] : STAKES).filter((s) => s <= max)
-  return (
-    <div className="absolute inset-0 z-40 flex flex-col justify-end bg-[#0f1230]/25 lg:items-center lg:justify-center" onClick={onClose}>
-      <div className="sheet animate-up w-full rounded-t-[28px] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:w-[420px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center gap-3">
-          <IconTile icon={Grid3x3} colors={['#c58b4e', '#7a4a22']} size={44} />
-          <div className="min-w-0 flex-1 leading-tight">
-            <div className="label">Une partie de dames</div>
-            <div className="font-display text-[17px] font-extrabold">avec {against}</div>
-          </div>
-          <button className="grid h-9 w-9 place-items-center rounded-full bg-[var(--color-canvas)]" onClick={onClose} aria-label="Fermer">
-            <X size={18} />
-          </button>
-        </div>
-        <p className="mt-3 text-sm font-bold text-[var(--color-ink-soft)]">On joue pour combien ? Le gagnant prend les deux mises ; partie nulle, chacun reprend la sienne.</p>
-        <div className="mt-3 grid grid-cols-3 gap-2">
-          {list.map((s) => (
-            <button key={s} className="btn btn-soft !py-2.5 !text-sm" disabled={s > money} onClick={() => onPick(s)}>
-              {s === 0 ? 'Pour le plaisir' : fcfa(s)}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
+  return <StakeSheet label="Une partie de dames" against={against} icon={Grid3x3} colors={['#c58b4e', '#7a4a22']} note="Le gagnant prend les deux mises ; partie nulle, chacun reprend la sienne." max={max} money={money} onPick={onPick} onClose={onClose} />
 }
 
 /** A challenge to answer, or one's game going on: under the top bar, like an invitation. */

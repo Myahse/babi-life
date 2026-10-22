@@ -31,6 +31,7 @@ import { GuideApp } from './GuideApp'
 import { DodoApp } from './DodoApp'
 import { KineoApp } from './KineoApp'
 import { DamesApp } from './DamesApp'
+import { HuitApp } from './HuitApp'
 import { RideFlow, type FlowRequest } from '../components/RideFlow'
 import { INDOOR, Interior } from '../world3d/Interior'
 import { HomeInside } from '../world3d/HomeInside'
@@ -50,6 +51,7 @@ import { EmoteSheet } from './EmoteSheet'
 import { GalleryApp } from './GalleryApp'
 import { InviteBanner, PlayersChip, PlayersSheet, usePlayers } from '../components/Players'
 import { DamesBanner, DamesSheet, DamesStake } from '../components/Dames'
+import { HuitBanner, HuitSheet, HuitStake } from '../components/Huit'
 import { SoundToggle, Soundtrack } from '../components/Soundtrack'
 import { usePartySound } from '../world3d/open/party'
 import { MiniMap, WhereTo } from '../components/Navigator'
@@ -383,6 +385,10 @@ export function Play() {
   const [damesAsk, setDamesAsk] = useState<{ with: string; name: string; max: number } | null>(null)
   const [damesOpen, setDamesOpen] = useState(false)
   const [damesSeen, setDamesSeen] = useState<number[]>([])
+  // 8 américain: who's asked (a table of the game's players, a friend) and for how much; the table open.
+  const [huitAsk, setHuitAsk] = useState<{ with: string; name: string; npcs?: string[]; max: number } | null>(null)
+  const [huitOpen, setHuitOpen] = useState(false)
+  const [huitSeen, setHuitSeen] = useState<number[]>([])
   const toast = useCallback((t: Omit<Toast, 'id'>) => {
     const id = Date.now() + Math.random()
     setToasts((ts) => [...ts.slice(-1), { ...t, id }])
@@ -457,6 +463,12 @@ export function Play() {
     setDamesAsk(null)
     const ok = await run('Une partie de dames', 'crown', 'social', () => api.damesStart(sim!.id, ask.with === 'npc' ? { with: 'npc', npc: ask.name, stake } : { with: ask.with, stake }))
     if (ok) setDamesOpen(true)
+  }
+  /** A game of 8 américain: at a table of the game's players (`with` 'npc', their names) or against a friend, for the stake picked. */
+  const startHuit = async (ask: { with: string; npcs?: string[] }, stake: number) => {
+    setHuitAsk(null)
+    const ok = await run('Une partie de 8 américain', 'sparkles', 'social', () => api.huitStart(sim!.id, ask.with === 'npc' ? { with: 'npc', npcs: ask.npcs, stake } : { with: ask.with, stake }))
+    if (ok) setHuitOpen(true)
   }
   const walkTo = (id: string) => {
     setOverlay(null)
@@ -1025,6 +1037,21 @@ export function Play() {
             }}
           />
         )}
+        {!players && !placeId && !overlay && !huitOpen && around.huit && !huitSeen.includes(around.huit.id) && (
+          <HuitBanner
+            game={around.huit}
+            onOpen={() => setHuitOpen(true)}
+            onDecline={() => {
+              const h = around.huit!
+              setHuitSeen((s) => [...s, h.id])
+              void api.huitAct(sim.id, h.id, 'decline').then(refreshPlayers, () => undefined)
+            }}
+            onAccept={() => {
+              const h = around.huit!
+              void run('Une partie de 8 américain', 'sparkles', 'social', () => api.huitAccept(sim.id, h.id)).then((ok) => ok && setHuitOpen(true))
+            }}
+          />
+        )}
         {!players && !placeId && !overlay && (() => {
           const inv = around.invites.find((i) => !dismissed.includes(i.id))
           return inv ? (
@@ -1061,10 +1088,22 @@ export function Play() {
           onDames={(p) => (setOverlay(null), setPhoneApp(null), setDamesAsk({ with: p.id, name: p.firstName, max: 50000 }))}
           onDamesOnline={(name) => (setOverlay(null), setPhoneApp(null), setDamesAsk({ with: 'npc', name, max: 5000 }))}
           onDamesResume={() => (setOverlay(null), setPhoneApp(null), setDamesOpen(true))}
+          onHuitTable={(npcs) => (setOverlay(null), setPhoneApp(null), setHuitAsk({ with: 'npc', name: npcs.join(', '), npcs, max: 5000 }))}
+          onHuitFriend={(p) => (setOverlay(null), setPhoneApp(null), setHuitAsk({ with: p.id, name: p.firstName, max: 50000 }))}
+          onHuitResume={() => (setOverlay(null), setPhoneApp(null), setHuitOpen(true))}
         />
       )}
       {emotesOpen && <EmoteSheet world={world} sim={sim} onClose={() => setEmotesOpen(false)} onResult={apply} />}
       {damesAsk && <DamesStake against={damesAsk.name} max={damesAsk.max} money={sim.money} onClose={() => setDamesAsk(null)} onPick={(stake) => void startDames(damesAsk, stake)} />}
+      {huitAsk && <HuitStake against={huitAsk.name} max={huitAsk.max} money={sim.money} onClose={() => setHuitAsk(null)} onPick={(stake) => void startHuit(huitAsk, stake)} />}
+      {huitOpen && (
+        <HuitSheet
+          simId={sim.id}
+          onClose={() => (setHuitOpen(false), refreshPlayers())}
+          onAgain={(npcs, stake) => (setHuitOpen(false), void startHuit({ with: 'npc', npcs }, stake))}
+          onMoney={() => void api.sim(sim.id).then(apply, () => undefined)}
+        />
+      )}
       {damesOpen && (
         <DamesSheet
           simId={sim.id}
@@ -1116,7 +1155,7 @@ export function Play() {
 
 /* ---------- The in-game phone ---------- */
 
-type PhoneAppId = 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames'
+type PhoneAppId = 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit'
 type PhoneProps = {
   world: World
   sim: Sim
@@ -1142,9 +1181,15 @@ type PhoneProps = {
   onDamesOnline: (name: string) => void
   /** Back to the board of the game going on. */
   onDamesResume: () => void
+  /** Sit down at a table of 8 américain with the game's players (their names). */
+  onHuitTable: (npcs: string[]) => void
+  /** Challenge a player friend to 8 américain. */
+  onHuitFriend: (p: Player) => void
+  /** Back to the table of the game going on. */
+  onHuitResume: () => void
 }
 
-function Phone({ world, sim, commune, journal, time, act, startApp, delivery, onDelivery, onCollect, onClose, onMap, onCamera, street, onWalk, onBuild, onDames, onDamesOnline, onDamesResume }: PhoneProps) {
+function Phone({ world, sim, commune, journal, time, act, startApp, delivery, onDelivery, onCollect, onClose, onMap, onCamera, street, onWalk, onBuild, onDames, onDamesOnline, onDamesResume, onHuitTable, onHuitFriend, onHuitResume }: PhoneProps) {
   const [app, setApp] = useState<PhoneAppId | null>(startApp)
   // A photo of the gallery on its way to Tikitoko.
   const [tikiPhoto, setTikiPhoto] = useState<{ id: number; src: string } | undefined>()
@@ -1185,6 +1230,7 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
     ...(has('dodo') ? [{ id: 'dodo', label: 'Dodo', open: () => setApp('dodo') }] : []),
     ...(has('kineo') ? [{ id: 'kineo', label: 'Kinéo', open: () => setApp('kineo') }] : []),
     ...(has('dames') ? [{ id: 'dames', label: 'Dames', open: () => setApp('dames') }] : []),
+    ...(has('huit') ? [{ id: 'huit', label: '8 américain', open: () => setApp('huit') }] : []),
     ...(has('gnango') ? [{ id: 'gnango', label: 'Gnango', open: onMap }] : []),
     ...(has('idrive') ? [{ id: 'idrive', label: 'iDrive', open: onMap }] : []),
   ]
@@ -1208,7 +1254,7 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
     { id: 'profile', label: 'Profil', icon: UserRound, colors: ['#ff8a9b', '#ff3d57'], open: () => navigate('/profil', { viewTransition: true }) },
     ] as Tile[]
   ).filter((a) => !life.minor || (a.id !== 'jobs' && a.id !== 'home'))
-  const title: Record<PhoneAppId, string> = { here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', babigram: 'Babigram', bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: 'Galerie', guide: 'Encyclopédie de Babi', dodo: 'Dodo', kineo: 'Kinéo', dames: 'Dames 225' }
+  const title: Record<PhoneAppId, string> = { here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', babigram: 'Babigram', bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: 'Galerie', guide: 'Encyclopédie de Babi', dodo: 'Dodo', kineo: 'Kinéo', dames: 'Dames 225', huit: '8 américain' }
 
   return (
     <div className="absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center" onClick={onClose}>
@@ -1281,6 +1327,7 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
                 {app === 'guide' && <GuideApp world={world} />}
                 {app === 'dodo' && <DodoApp world={world} sim={sim} act={act} onMap={onMap} />}
                 {app === 'dames' && <DamesApp sim={sim} onOnline={onDamesOnline} onFriend={onDames} onResume={onDamesResume} />}
+                {app === 'huit' && <HuitApp sim={sim} onTable={onHuitTable} onFriend={onHuitFriend} onResume={onHuitResume} />}
                 {app === 'kineo' && <KineoApp world={world} sim={sim} act={act} onWalk={onWalk} onMap={onMap} onClose={onClose} />}
                 {app === 'friends' && <FriendsApp world={world} sim={sim} act={act} onPay={has('waye') ? (p) => (setWayeTo(p.id), setApp('waye')) : undefined} onDames={onDames} />}
                 {app === 'store' && !ownPhone && (
