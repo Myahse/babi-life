@@ -1176,6 +1176,30 @@ function Sky({ top, horizon, haze }: { top: string; horizon: string; haze?: [num
   return null
 }
 
+/**
+ * A sky round the camera, light at the horizon, deep blue overhead: seen from a drone looking down, the
+ * screen-wide gradient of <Sky> puts deep blue right above the hazy horizon, a hard line like a wall.
+ */
+function SkyDome({ top, horizon, r }: { top: string; horizon: string; r: number }) {
+  const geo = useMemo(() => {
+    const g = new THREE.SphereGeometry(r, 48, 96)
+    const [a, b] = [new THREE.Color(horizon), new THREE.Color(top)]
+    const pos = g.attributes.position
+    const col = new Float32Array(pos.count * 3)
+    for (let i = 0; i < pos.count; i++) {
+      const c = a.clone().lerp(b, ease(clamp01(pos.getY(i) / r / 0.3)))
+      col.set([c.r, c.g, c.b], i * 3)
+    }
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3))
+    return g
+  }, [top, horizon, r])
+  return (
+    <mesh geometry={geo} renderOrder={-1}>
+      <meshBasicMaterial vertexColors side={THREE.BackSide} fog={false} depthWrite={false} />
+    </mesh>
+  )
+}
+
 /** A tower's face: windows in rows (the Cité administrative's). */
 let towerTex: THREE.CanvasTexture | null = null
 function towerMaterial() {
@@ -1204,7 +1228,7 @@ const CITE: [number, number, number, number, number][] = [
   [-118, 150, 24, 82, 16], [-62, 168, 24, 88, 16], [-4, 150, 24, 92, 16], [54, 168, 24, 86, 16], [110, 150, 24, 80, 16],
 ]
 
-function Tower({ at, w, h, d }: { at: [number, number]; w: number; h: number; d: number }) {
+function Tower({ at, w, h, d, tint = '#ffffff' }: { at: [number, number]; w: number; h: number; d: number; tint?: string }) {
   const map = useMemo(() => {
     const m = towerMaterial().clone()
     m.repeat.set(w / 8, h / 8)
@@ -1214,10 +1238,39 @@ function Tower({ at, w, h, d }: { at: [number, number]; w: number; h: number; d:
   return (
     <mesh position={[at[0], h / 2, at[1]]}>
       <boxGeometry args={[w, h, d]} />
-      <meshLambertMaterial map={map} />
+      <meshLambertMaterial map={map} color={tint} />
     </mesh>
   )
 }
+
+/** The lagoon west of the Plateau as a shape: its two shores wind (a straight edge reads as a wall from the drone). */
+const LAGOON = (() => {
+  const shore = (x: number, z: number, k: number) => x + Math.sin(z / 260 + k) * 120 + Math.sin(z / 97 + k * 2) * 45
+  const sh = new THREE.Shape()
+  const zs = [...Array(61)].map((_, i) => -6000 + i * 200)
+  sh.moveTo(shore(-520, zs[0], 0), zs[0])
+  for (const z of zs) sh.lineTo(shore(-520, z, 0), z)
+  for (const z of [...zs].reverse()) sh.lineTo(shore(-3300, z, 3), z)
+  // The shape is drawn in x/y; laid flat (rotated -90° on x) its y becomes -z.
+  return new THREE.ShapeGeometry(sh)
+})()
+
+/** The rest of the Plateau round the Cité: offices, a few towers, kept off the lagoon (west), the Cité and the landmarks. */
+const PLATEAU_CITY = (() => {
+  const r = rng('plateau-ville')
+  const out: { at: [number, number]; w: number; h: number; d: number; tint: string }[] = []
+  const clear = (x: number, z: number, cx: number, cz: number, m: number) => Math.hypot(x - cx, z - cz) < m
+  while (out.length < 150) {
+    const a = r() * Math.PI * 2
+    const dist = 170 + r() * 1150
+    const x = Math.sin(a) * dist
+    const z = Math.cos(a) * dist
+    if (x < -470 || (Math.abs(x) < 150 && z > 110 && z < 205) || clear(x, z, 235, 286, 90) || clear(x, z, 634, 1470, 110)) continue
+    const tall = r() < 0.15
+    out.push({ at: [x, z], w: 18 + r() * 24, d: 18 + r() * 24, h: tall ? 70 + r() * 60 : 14 + r() * 40, tint: ['#ffffff', '#dfe9f2', '#f4e7d2', '#cfe0ea', '#e8f0e0'][Math.floor(r() * 5)] })
+  }
+  return out
+})()
 
 /** The Plateau: the drone climbing the Tour F (up the facade, then back to see it over the Plateau), the mass in the cathedral. */
 function Plateau({ scene, t }: { scene: 'tourf' | 'messe'; t: number }) {
@@ -1237,23 +1290,30 @@ function Plateau({ scene, t }: { scene: 'tourf' | 'messe'; t: number }) {
   const r = 175 + back * 520
   return (
     <>
-      <Sky top="#3b8de0" horizon="#dcefff" haze={[700, 4500]} />
+      <Sky top="#3b8de0" horizon="#dcefff" haze={[1400, 5200]} />
+      <SkyDome top="#2f80d8" horizon="#dcefff" r={4800} />
       <hemisphereLight args={['#fff4e6', '#8a7a62', 1.2]} />
       <directionalLight position={[300, 500, 200]} intensity={2.1} />
       <ambientLight intensity={0.35} />
       <Camera at={[Math.sin(a) * r, y, Math.cos(a) * r]} look={[0, y + 18 - up * 40 - back * 70, 0]} near={1} far={6000} />
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[6000, 6000]} />
-        <meshLambertMaterial color="#a39c8c" />
+        <planeGeometry args={[12000, 12000]} />
+        <meshLambertMaterial color="#949484" />
       </mesh>
-      {/* The lagoon, west and south of the Plateau */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-1500, 0.2, 600]}>
-        <planeGeometry args={[2000, 4000]} />
-        <meshLambertMaterial color="#3d7fb0" />
+      {/* The lagoon, all along the west of the Plateau, its shores winding; the forest on the far one */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 1.5, 0]} geometry={LAGOON}>
+        <meshLambertMaterial color="#2f78a8" />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-6200, 0.8, 0]}>
+        <planeGeometry args={[6000, 12000]} />
+        <meshLambertMaterial color="#5f8a4c" />
       </mesh>
       <Landmark id="plateau-tour-f" night={false} />
       {CITE.map(([x, z, w, h, d], i) => (
         <Tower key={i} at={[x, z]} w={w} h={h} d={d} />
+      ))}
+      {PLATEAU_CITY.map((b, i) => (
+        <Tower key={`v${i}`} {...b} />
       ))}
       <group position={[235, 0, 286]}>
         <Landmark id="plateau-cathedrale" night={false} />
@@ -1302,16 +1362,28 @@ const ZOUGLOU: [Pose, 'femme' | 'homme'][] = [
   ['gweta', 'femme'],
 ]
 
+/** The top 10's beat (marketing/beat.py), and when the zouglou's take starts in the film: the line dances on it. */
+const ZOUGLOU_BPM = 128
+const ZOUGLOU_IN = 10.7
+
 function Zouglou({ t }: { t: number }) {
   const looks = useMemo(() => ZOUGLOU.map(([, g], i) => randomLook(g, rng(`zouglou${i}`))), [])
   const bulbs = [...Array(16)].map((_, i) => [-6 + i * 0.8, 3.3 - Math.sin((i / 15) * Math.PI) * 0.6, -2.2] as [number, number, number])
+  // Beats into the film: the line steps side to side over two beats, dips on each one, the bulbs change on it.
+  const b = ((t + ZOUGLOU_IN) * ZOUGLOU_BPM) / 60
+  const step = Math.sin((b * Math.PI) / 2)
+  const dip = Math.abs(Math.sin(b * Math.PI))
+  const hit = Math.pow(1 - (b % 1), 3)
+  const x = -1.9 + t * 0.85
   return (
     <>
       <hemisphereLight args={['#8f9cff', '#2a2a4e', 0.75]} />
       <ambientLight intensity={0.3} />
-      <pointLight position={[0, 3.2, 1.8]} intensity={18} distance={14} color="#ffc27a" />
+      <pointLight position={[0, 3.2, 1.8]} intensity={16 + hit * 14} distance={14} color="#ffc27a" />
       <pointLight position={[-4, 2.5, -1]} intensity={8} distance={10} color="#ff7a00" />
-      <Camera at={[-1.4 + t * 0.6, 1.35 + Math.sin(t * 0.8) * 0.1, 8.2 - Math.sin(t * 0.5) * 0.6]} look={[t * 0.18 - 0.3, 1.15, 0]} />
+      <pointLight position={[4, 2.5, -1]} intensity={4 + hit * 10} distance={10} color={Math.floor(b) % 2 ? '#00d27a' : '#ff3d7f'} />
+      {/* Coming in on them from the side, low, as one would with a phone in the crowd */}
+      <Camera at={[x, 1.0 + t * 0.1, 8.8 - ease(clamp01(t / 4.5)) * 3.4]} look={[x * 0.5, 1.2, 0]} />
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[60, 60]} />
         <meshLambertMaterial color="#4a4560" />
@@ -1328,11 +1400,11 @@ function Zouglou({ t }: { t: number }) {
       {bulbs.map((p, i) => (
         <mesh key={i} position={p}>
           <boxGeometry args={[0.14, 0.14, 0.14]} />
-          <meshBasicMaterial color={['#ffc233', '#ff7a00', '#00b86b', '#ffffff'][i % 4]} />
+          <meshBasicMaterial color={['#ffc233', '#ff7a00', '#00b86b', '#ffffff'][(i + Math.floor(b)) % 4]} />
         </mesh>
       ))}
       {ZOUGLOU.map(([pose, gender], i) => (
-        <group key={i} position={[(i - 2) * 1.25, 0, -Math.abs(i - 2) * 0.35]} rotation={[0, (2 - i) * 0.12, 0]}>
+        <group key={i} position={[(i - 2) * 1.25 + step * 0.22, -dip * 0.06, -Math.abs(i - 2) * 0.35]} rotation={[0, (2 - i) * 0.12 + step * 0.35, 0]}>
           <Character look={looks[i]} gender={gender} pose={pose} stage="adulte" marker={false} seed={i * 1.7} />
         </group>
       ))}

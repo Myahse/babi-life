@@ -9,9 +9,9 @@ Pour la voix (ElevenLabs ou enregistrée au téléphone) : un seul fichier, `mar
 | 0 – 2,6 s | Quatre flashs : le kart, le joker, le panier, le but. **TU T'ENNUIES ? 10 TRUCS À FAIRE DANS BABI LIFE 👇** | « Tu t'ennuies ? Voilà dix trucs à faire à Babi ! » |
 | 2,6 – 6,8 s | **N°10 · LE THÉ AU GRIN** : le thé qu'on verse de haut, les trois sur leurs bancs | « Dix : le thé au grin. On refait le monde ! » |
 | 6,8 – 11 s | **N°9 · LA MESSE** : la nef de la cathédrale pleine | « Neuf : la messe du dimanche, à la cathédrale. » |
-| 11 – 15,2 s | **N°8 · LE ZOUGLOU** : cinq qui dansent devant le maquis la nuit (zouglou, gweta, moonwalk) | « Huit : le zouglou avec les gars ! » |
-| 15,2 – 19,4 s | **N°7 · PRENDRE L'AVION** : l'avion d'Air Lagune au-dessus des nuages, « Vol Abidjan → Yamoussoukro » | « Sept : tu prends l'avion pour Yamoussoukro. » |
-| 19,4 – 23,6 s | **N°6 · LE PLATEAU** : le drone monte la Tour F en chantier jusqu'aux grues | « Six : le Plateau… et la Tour F en chantier ! » |
+| 11 – 15,2 s | **N°8 · LE ZOUGLOU** : cinq qui dansent devant le maquis la nuit, en ligne sur le beat (zouglou, gweta, moonwalk), les ampoules qui changent à chaque temps | « Huit : le zouglou avec les gars ! » |
+| 15,2 – 19,4 s | **N°7 · PRENDRE L'AVION** : l'avion d'Air Lagune au-dessus de la ville, « Vol Abidjan → Yamoussoukro » | « Sept : tu prends l'avion pour Yamoussoukro. » |
+| 19,4 – 23,6 s | **N°6 · LE PLATEAU** : le drone monte la Tour F en chantier jusqu'aux grues, puis recule : la Cité administrative, les tours du Plateau, la lagune | « Six : le Plateau… et la Tour F en chantier ! » |
 | 23,6 – 27,8 s | **N°5 · LES DAMES** : le pion d'Awa en prend trois d'un coup, Tonton Brou répond | « Cinq : les dames. Tu mises… et tu rafles tout ! » |
 | 27,8 – 32 s | **N°4 · LE 8 AMÉRICAIN** : Awa pose son 9 de cœur, Tantie Bintou sort le joker, Awa pioche six | « Quatre : le 8 américain. Joker ? Pioche six ! » |
 | 32 – 36,2 s | **N°3 · LE KART** : la course, les virages, la position | « Trois : la course de karts. Dérapage ! » |
