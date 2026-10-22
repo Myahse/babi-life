@@ -258,6 +258,30 @@ export function CathedralInside({ sim, interactionId, roam, night, stage }: { si
 function Nave({ sim, interactionId, roam, night, stage, mass }: { sim: Sim; interactionId?: string; roam?: boolean; night: boolean; stage: string; mass: boolean }) {
   const spot = interactionId ? (SPOTS[interactionId] ?? null) : null
   const { way, tap, onMoved } = useBigWalk(spot, interactionId, roam, free, ENTRANCE)
+  return (
+    <div className="absolute inset-0">
+      <Canvas shadows dpr={[1, 1.75]} camera={{ position: [0, 26, NAVE.F + 10], fov: 45, near: 0.3, far: 900 }} style={{ background: night ? '#0b1026' : '#9ccbea' }}>
+        <Snapper />
+        <ChatFraming />
+        <Suspense fallback={null}>
+          <NaveWorld night={night} mass={mass} onFloor={roam && !interactionId ? tap : undefined} />
+          <Guest sim={sim} stage={stage} way={way} spot={spot} steer={!!roam && !interactionId} onMoved={onMoved} free={free} entrance={ENTRANCE} ground={ground} />
+          <OrbitControls makeDefault target={[0, -3, NAVE.F - 16]} enablePan={false} minDistance={6} maxDistance={95} minPolarAngle={0.25} maxPolarAngle={1.3} enableDamping />
+        </Suspense>
+      </Canvas>
+    </div>
+  )
+}
+
+/** Where the altar is, and how deep the nave goes down to it: for a camera looking down the nave (the trailer's). */
+export const NAVE_VIEW = { altar: ALTAR, pit: PIT, front: NAVE.F }
+
+/**
+ * The nave and everything in it (the benches, the windows, the sanctuary,
+ * the faithful, at mass or not), without anyone walking in it: the game's
+ * own room (Nave) and the trailer (lab/poster.tsx) draw it.
+ */
+export function NaveWorld({ night, mass, onFloor }: { night: boolean; mass: boolean; /** A tap on the floor: walk there. */ onFloor?: (at: XZ) => void }) {
   const floor = useMemo(floorGeometry, [])
   const bench = useMemo(benches, [])
   const floorMat = useMemo(() => new THREE.MeshLambertMaterial({ vertexColors: true }), [])
@@ -276,52 +300,43 @@ function Nave({ sim, interactionId, roam, night, stage, mass }: { sim: Sim; inte
   for (const m of glass) m.emissiveIntensity = night ? 1.1 : 0.8
   const signs = useMemo(() => ({ tower: sign('ACCÈS À LA TOUR', '#2b3a55', '#ffffff', 512, 96) }), [])
   return (
-    <div className="absolute inset-0">
-      <Canvas shadows dpr={[1, 1.75]} camera={{ position: [0, 26, NAVE.F + 10], fov: 45, near: 0.3, far: 900 }} style={{ background: night ? '#0b1026' : '#9ccbea' }}>
-        <Snapper />
-        <ChatFraming />
-        <Suspense fallback={null}>
-          <hemisphereLight args={[night ? '#7080c0' : '#ffffff', '#c9b48c', night ? 0.7 : 1.15]} />
-          <directionalLight position={[25, 60, 30]} intensity={night ? 0.2 : 1.2} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-60} shadow-camera-right={60} shadow-camera-top={60} shadow-camera-bottom={-60} />
-          <pointLight position={[ALTAR[0], -PIT + 9, ALTAR[1]]} intensity={night ? 80 : 30} distance={40} color="#ffe0a8" />
-          <pointLight position={[0, 6, 6]} intensity={night ? 60 : 10} distance={50} color="#ffe8c4" />
-          <mesh
-            geometry={floor}
-            material={floorMat}
-            receiveShadow
-            onClick={(e) => {
-              if (!roam || interactionId || e.delta > 6) return
-              e.stopPropagation()
-              tap([e.point.x, e.point.z])
-            }}
-          />
-          {walls.map((g, i) => (
-            <mesh key={i} geometry={g} material={mat('#f1ece2')} castShadow receiveShadow />
-          ))}
-          {/* Outside the doors: the forecourt and its steps down to the street */}
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, NAVE.F + 30]} receiveShadow>
-            <planeGeometry args={[200, 60]} />
-            <meshLambertMaterial color="#d6cdbb" />
-          </mesh>
-          <Blocks at={bench.out} material={mat('#8a5a34')} />
-          <Windows glass={glass} />
-          <Sanctuary night={night} mass={mass} tower={signs.tower} />
-          <Corners />
-          {/* The tower rising out of the roof, over the altar's back */}
-          <group position={[0, -PIT, TOWER.z]} rotation={[-TOWER.lean, 0, 0]}>
-            <mesh geometry={BOX} position={[0, TOWER.H / 2 + PIT / 2, 0]} scale={[5.5, TOWER.H + PIT, 4]} material={mat('#f4f1ea')} castShadow />
-            <mesh geometry={BOX} position={[0, TOWER.arm + PIT, 0]} scale={[22, 3.2, 3]} material={mat('#f4f1ea')} castShadow />
-          </group>
-          <People seats={bench.seats} mass={mass} />
-          <Guest sim={sim} stage={stage} way={way} spot={spot} steer={!!roam && !interactionId} onMoved={onMoved} free={free} entrance={ENTRANCE} ground={ground} />
-          <OrbitControls makeDefault target={[0, -3, NAVE.F - 16]} enablePan={false} minDistance={6} maxDistance={95} minPolarAngle={0.25} maxPolarAngle={1.3} enableDamping />
-        </Suspense>
-      </Canvas>
-    </div>
+    <>
+      <hemisphereLight args={[night ? '#7080c0' : '#ffffff', '#c9b48c', night ? 0.7 : 1.15]} />
+      <directionalLight position={[25, 60, 30]} intensity={night ? 0.2 : 1.2} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-60} shadow-camera-right={60} shadow-camera-top={60} shadow-camera-bottom={-60} />
+      <pointLight position={[ALTAR[0], -PIT + 9, ALTAR[1]]} intensity={night ? 80 : 30} distance={40} color="#ffe0a8" />
+      <pointLight position={[0, 6, 6]} intensity={night ? 60 : 10} distance={50} color="#ffe8c4" />
+      <mesh
+        geometry={floor}
+        material={floorMat}
+        receiveShadow
+        onClick={(e) => {
+          if (!onFloor || e.delta > 6) return
+          e.stopPropagation()
+          onFloor([e.point.x, e.point.z])
+        }}
+      />
+      {walls.map((g, i) => (
+        <mesh key={i} geometry={g} material={mat('#f1ece2')} castShadow receiveShadow />
+      ))}
+      {/* Outside the doors: the forecourt and its steps down to the street */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, NAVE.F + 30]} receiveShadow>
+        <planeGeometry args={[200, 60]} />
+        <meshLambertMaterial color="#d6cdbb" />
+      </mesh>
+      <Blocks at={bench.out} material={mat('#8a5a34')} />
+      <Windows glass={glass} />
+      <Sanctuary night={night} mass={mass} tower={signs.tower} />
+      <Corners />
+      {/* The tower rising out of the roof, over the altar's back */}
+      <group position={[0, -PIT, TOWER.z]} rotation={[-TOWER.lean, 0, 0]}>
+        <mesh geometry={BOX} position={[0, TOWER.H / 2 + PIT / 2, 0]} scale={[5.5, TOWER.H + PIT, 4]} material={mat('#f4f1ea')} castShadow />
+        <mesh geometry={BOX} position={[0, TOWER.arm + PIT, 0]} scale={[22, 3.2, 3]} material={mat('#f4f1ea')} castShadow />
+      </group>
+      <People seats={bench.seats} mass={mass} />
+    </>
   )
 }
 
-/** The four windows on the walls' inside, and the twelve ceramic panels under them. */
 function Windows({ glass }: { glass: THREE.Material[] }) {
   const list = useMemo(() => WINDOWS.map((w) => windowAt(w.side, w.t)), [])
   const panels = useMemo(

@@ -35,6 +35,8 @@ Everything for the launch of the wish list (**lifeinbabi.com/liste**), made from
 | `babi-life-video-keke-cover.png` | Its last frame, as a cover |
 | `babi-life-video-gameplay-1080x1920.mp4` | **How you play**, 39 s, **with its beat** (`son-gameplay.mp3`, made by `beat.py`): « TU NAIS… GNAMBRO », « TON BUT : DEBOUT », then six numbered steps, fast cuts with a flash and a zoom, the goal, the money and the six families' ladder always on top: 1 work (the salary, +150 000 F), 2 take care of yourself (the shower fills the hygiene gauge), 3 go about Babi (the zoo's elephants, the game's three views: from above, close, over the shoulder), 4 try your luck (the loto kiosk, a bet won on Bet225, +45 000 F), 5 party with your friends (the maquis, −20 000 F), 6 build your house (−120 000 F); « petit à petit » the perso climbs to debout, then « Et toi, tu finis gnambro ou debout ? » and the QR code (`?src=video-gameplay`) |
 | `babi-life-video-gameplay-cover.png` | Its last frame, as a cover |
+| `babi-life-video-tout-1080x1920.mp4` | **« Abidjan… dans un jeu ?! »**, the trailer of everything, 53 s at 30 images a second, **with its beat** (`son-tout.mp3`, made by `beat.py`) and, once it's there, **Awa's voice** over it (`voix-tout.mp3`): an airliner passing Abidjan's skyline at sunset (« ABIDJAN… DANS UN JEU ?! »), landing at Félix-Houphouët-Boigny, the drone climbing the Tour F under construction to its cranes, the cathedral Saint-Paul and the Sunday mass inside, basket at the Palais des Sports, the full stadium (« BUUUT ! »), the tea at the grin, a rafle at dames (« RAFLE ! + 5 000 F »), a joker at 8 américain (« +6 ! PIOCHE ! », then « ♥ CŒUR ! »), the maquis and its banknotes, DJ Garba Chaud at the stadium, the gbaka at the gare d'Adjamé, the house going up, the phone and its apps, the plane over the clouds, then everything in quarter seconds (« TOUT ÇA… DANS UN SEUL JEU ») and the QR code (`?src=video-tout`). Hard cuts with a flash, Awa's words as captions with the word said in yellow, her face in a bubble. Script, texts for the voice and the post's caption: `scripts/tout-babi.md` |
+| `babi-life-video-tout-cover.png` | Its last frame, as a cover |
 | `babi-life-flyer-famille-*` | The trailer's flyer: « Tu nais gnambro ou laté ? », the two families side by side (A5 PDF and 300 dpi PNG, post 1080 × 1350, status 1080 × 1920) |
 | `babi-life-flyer-commentaire-*` | For the comments: « Tu es tombé·e dans quelle famille ? », the six families with their odds (debout 4 %, laté 8 %, lagnon 15 %, poignon 33 %, coulé 25 %, gnambro 15 %), « Écris ta famille en commentaire » and two example comments (A5 PDF and 300 dpi PNG, post 1080 × 1350, status 1080 × 1920) |
 | `babi-life-flyer-decouverte-*` | « Tout ce que tu peux faire à Babi »: nine pictures from the game (same sizes) |
@@ -56,12 +58,13 @@ npm run video:merci           # « Merci la famille », 1 500 followers (out/voi
 npm run video:arnaque         # « On m'a arnaquée sur Waye », prevention (out/voix-arnaque.mp3 as its sound when there)
 npm run video:keke            # Keke's street interview « what do you want in Babi Life? » (out/voix-keke.mp3)
 npm run video:gameplay        # how you play, with its beat (beat.py writes out/son-gameplay.mp3)
+npm run video:tout            # the trailer of everything: its beat (FILM=tout beat.py), Awa's voice (out/voix-tout.mp3) over it when there
 node flyer-jeu.mjs            # the « famille » and « découverte » flyers
 node flyer-tout.mjs           # « Tout ce que tu peux faire à Babi » (pictures in out/art/tout/)
 node flyer-commentaire.mjs    # « Tu es tombé·e dans quelle famille ? », for the comments
 ```
 
-The gameplay video's sound is made by `beat.py` (Python and numpy, no sample): a coupé-décalé-style beat at 124 BPM, a whoosh and a hit on every cut, a cash register on every money change, on the film's own times.
+The gameplay video's sound is made by `beat.py` (Python and numpy, no sample): a coupé-décalé-style beat at 124 BPM, a whoosh and a hit on every cut, a cash register on every money change, on the film's own times. `FILM=tout python3 beat.py` makes the trailer's (`out/son-tout.mp3`), with the crowd roaring at the goal; `video.mjs` puts Awa's voice over it, the beat lower.
 
 Another address: `WAITLIST_URL=https://… npm run all`. Chromium is found where Playwright puts it, or set `CHROMIUM=/path/to/chrome`.
 
