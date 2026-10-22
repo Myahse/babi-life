@@ -13,8 +13,7 @@ import (
 //   - the joker goes on anything and makes the next one draw 6, unless they put down a joker
 //     (the cards after it go on the card under it; not to finish on);
 //   - the ace: the next one puts down an ace, or draws a card and lets the others play;
-//   - the 7: the next one misses their turn; the 10: its player plays again;
-//   - the jack turns the way round (between two, its player plays again).
+//   - the 10 and the jack turn the way round (between two, their player plays again).
 // Who can't play draws a card, and may put it down if it goes. Going down to
 // one card, you say « carte » or draw 2.
 
@@ -52,7 +51,7 @@ func (c Card) Suit() int {
 // special: a card that does something (not to be turned up to start).
 func (c Card) special() bool {
 	switch c.Rank() {
-	case 0, 1, 2, 7, 8, 10, 11:
+	case 0, 1, 2, 8, 10, 11:
 		return true
 	}
 	return false
@@ -223,10 +222,10 @@ func (g *Huit) draw(seat, n int, r *rand.Rand) []Card {
 	return got
 }
 
-// next: the seat after seat, the way round, missing `skip` players.
-func (g *Huit) next(seat, skip int) int {
+// next: the seat after seat, the way round.
+func (g *Huit) next(seat int) int {
 	n := len(g.Hands)
-	return ((seat+g.Dir*(1+skip))%n + n) % n
+	return ((seat+g.Dir)%n + n) % n
 }
 
 // Play: seat puts card c down (suit: the one asked, with an 8; carte: « carte ! » said).
@@ -258,7 +257,7 @@ func (g *Huit) Play(seat int, c Card, suit int, carte bool, r *rand.Rand) (HuitS
 		step.Cards = g.draw(seat, HuitCarteDraw, r)
 		step.Drawn = len(step.Cards)
 	}
-	skip, again := 0, false
+	again := false
 	switch {
 	case c.Joker():
 		g.Owed, g.By = g.Owed+HuitJokerDraw, 0
@@ -272,16 +271,12 @@ func (g *Huit) Play(seat int, c Card, suit int, carte bool, r *rand.Rand) (HuitS
 		g.Owed, g.By = g.Owed+HuitTwoDraw, 2
 	case 1:
 		g.Ace = true
-	case 7:
-		skip = 1
-	case 10:
-		again = true
-	case 11:
+	case 10, 11:
 		g.Dir = -g.Dir
 		again = len(g.Hands) == 2
 	}
 	if !again {
-		g.Turn = g.next(seat, skip)
+		g.Turn = g.next(seat)
 	}
 	return step, nil
 }
@@ -303,17 +298,17 @@ func (g *Huit) Draw(seat int, r *rand.Rand) (HuitStep, error) {
 	case g.Owed > 0:
 		step.Cards = g.draw(seat, g.Owed, r)
 		g.Owed = 0
-		g.Turn = g.next(seat, 0)
+		g.Turn = g.next(seat)
 	case g.Ace:
 		step.Cards = g.draw(seat, 1, r)
 		g.Ace = false
-		g.Turn = g.next(seat, 0)
+		g.Turn = g.next(seat)
 	default:
 		step.Cards = g.draw(seat, 1, r)
 		if len(step.Cards) == 1 && g.CanPlay(seat, step.Cards[0]) {
 			g.Drawn = int(step.Cards[0])
 		} else {
-			g.Turn = g.next(seat, 0)
+			g.Turn = g.next(seat)
 		}
 	}
 	step.Drawn = len(step.Cards)
@@ -332,7 +327,7 @@ func (g *Huit) Pass(seat int) (HuitStep, error) {
 		return HuitStep{}, ErrHuitNoPass
 	}
 	g.Drawn = -1
-	g.Turn = g.next(seat, 0)
+	g.Turn = g.next(seat)
 	return HuitStep{Seat: seat, Kind: "pass", Suit: -1}, nil
 }
 
@@ -354,7 +349,7 @@ func (g *Huit) HuitBot(seat int, r *rand.Rand) (HuitStep, error) {
 			suits[c.Suit()]++
 		}
 	}
-	near := len(g.Hands[g.next(seat, 0)]) <= 2
+	near := len(g.Hands[g.next(seat)]) <= 2
 	best, bestScore := legal[0], -1.0
 	for _, c := range legal {
 		score := 10.0
@@ -369,7 +364,7 @@ func (g *Huit) HuitBot(seat int, r *rand.Rand) (HuitStep, error) {
 			}
 		case c.Rank() == 8:
 			score = 2
-		case c.Rank() == 2, c.Rank() == 7, c.Rank() == 1:
+		case c.Rank() == 2, c.Rank() == 1:
 			if near {
 				score += 15
 			}

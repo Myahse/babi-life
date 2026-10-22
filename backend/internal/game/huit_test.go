@@ -175,28 +175,30 @@ func TestHuitAce(t *testing.T) {
 }
 
 func TestHuitSevenTenJack(t *testing.T) {
-	// Three at the table: the 7 misses the next one.
+	// Three at the table: the 7 does nothing, the next one plays.
 	g := table(cd(5, 2), []Card{cd(7, 2), cd(10, 2), cd(11, 2), cd(4, 3)}, []Card{cd(9, 1), cd(4, 1)}, []Card{cd(9, 0), cd(4, 0)})
 	mustPlay(t, g, 0, cd(7, 2))
-	if g.Turn != 2 {
-		t.Fatalf("after a 7: turn %d", g.Turn)
+	if g.Turn != 1 || g.Dir != 1 {
+		t.Fatalf("after a 7: turn %d dir %d", g.Turn, g.Dir)
 	}
-	// The 10: its player again.
+	// The 10 and the jack: the other way round, each time.
 	g.Turn = 0
 	mustPlay(t, g, 0, cd(10, 2))
-	if g.Turn != 0 {
-		t.Fatalf("after a 10: turn %d", g.Turn)
-	}
-	// The jack: the other way round.
-	mustPlay(t, g, 0, cd(11, 2))
 	if g.Dir != -1 || g.Turn != 2 {
+		t.Fatalf("after a 10: dir %d turn %d", g.Dir, g.Turn)
+	}
+	g.Turn = 0
+	mustPlay(t, g, 0, cd(11, 2))
+	if g.Dir != 1 || g.Turn != 1 {
 		t.Fatalf("after a jack: dir %d turn %d", g.Dir, g.Turn)
 	}
-	// Between two, the jack's player plays again.
-	g = table(cd(5, 2), []Card{cd(11, 2), cd(4, 3)}, []Card{cd(9, 1)})
-	mustPlay(t, g, 0, cd(11, 2))
-	if g.Turn != 0 {
-		t.Fatalf("jack between two: turn %d", g.Turn)
+	// Between two, the 10's player and the jack's play again.
+	for _, c := range []Card{cd(10, 2), cd(11, 2)} {
+		g = table(cd(5, 2), []Card{c, cd(4, 3)}, []Card{cd(9, 1)})
+		mustPlay(t, g, 0, c)
+		if g.Turn != 0 {
+			t.Fatalf("%v between two: turn %d", c, g.Turn)
+		}
 	}
 }
 
