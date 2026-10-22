@@ -175,8 +175,9 @@ async function place(b, clip, dir) {
   await tick(page, 30)
   await page.mouse.move(120, 300)
   await page.mouse.down()
+  // About 20° over the take: enough to feel the camera in hand, not so much it swings into a wall.
   for (let i = 0; i < TAKE; i++) {
-    await page.mouse.move(120 + i * 1.1, 300)
+    await page.mouse.move(120 + i * 0.3, 300)
     await tick(page)
     await shoot(page, dir, i)
   }
