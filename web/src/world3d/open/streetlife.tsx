@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { Trophy, Volleyball } from 'lucide-react'
+import { useMemo, useRef, useState } from 'react'
+import { Citrus, Croissant, CupSoda, Droplet, MessagesSquare, Music, Smartphone, Trophy, Volleyball } from 'lucide-react'
+import { JoinBubble, placeIn, useJoined, type Joining } from './joinIn'
 import { FieldFence } from './fieldFence'
 import { StaticMerge } from '../staticMerge'
 import { inZone } from '../obstacles'
@@ -31,14 +32,15 @@ type Vendor = Spot & { goods: (typeof GOODS)[number] }
 const SCENE_NEAR = 260
 const SCENE_MAX = 4
 const COURT_NEAR = 380
+// What each marchand sells (backend sims/street.go: oranges, eau, credit, pain), and its price.
 const GOODS = [
-  { label: 'Oranges', color: '#f08c00' },
-  { label: 'Eau glacée', color: '#3aa0e8' },
-  { label: 'Crédit', color: '#f2c14b' },
-  { label: 'Pain', color: '#e6c48a' },
+  { label: 'Oranges', color: '#f08c00', kind: 'oranges', ask: 'Des oranges · 200 F', icon: Citrus },
+  { label: 'Eau glacée', color: '#3aa0e8', kind: 'eau', ask: 'Un sachet d’eau glacée · 50 F', icon: Droplet },
+  { label: 'Crédit', color: '#f2c14b', kind: 'credit', ask: 'Du crédit pour appeler · 500 F', icon: Smartphone },
+  { label: 'Pain', color: '#e6c48a', kind: 'pain', ask: 'Un pain chaud · 150 F', icon: Croissant },
 ] as const
 
-export function StreetLife({ nav, seed, night, taken, onPlay, doing }: { nav: Nav; seed: string; night: boolean; /** ground already given to a place, a field, a lot */ taken: Taken[]; /** Join the boys' game on the street's pitch or court (backend sims/street.go: foot:…, basket:…): what they say. */ onPlay?: (vendor: string) => Promise<string | null>; /** What the Sim is doing (an interaction id) */ doing?: string }) {
+export function StreetLife({ nav, seed, night, taken }: { nav: Nav; seed: string; night: boolean; /** ground already given to a place, a field, a lot */ taken: Taken[] }) {
   const scenes = useMemo(() => {
     const out: Scene[] = []
     for (const e of nav.edges) {
@@ -103,7 +105,7 @@ export function StreetLife({ nav, seed, night, taken, onPlay, doing }: { nav: Na
     if (nextFoot?.id !== foot?.id) setFoot(nextFoot)
     if (nextBasket?.id !== basket?.id) setBasket(nextBasket)
     // In development, for tests in the browser: the street's pitch and court now drawn.
-    if (import.meta.env.DEV) Object.assign(globalThis, { __streetCourts: { foot: nextFoot, basket: nextBasket } })
+    if (import.meta.env.DEV) Object.assign(globalThis, { __streetCourts: { foot: nextFoot, basket: nextBasket }, __streetScenes: near, __allScenes: scenes })
     const avoid = [nextFoot, nextBasket].flatMap((s) => (s ? [s.at] : []))
     const next = nearest(stalls.filter((s) => !inZone(s.at[0], s.at[1], 2)), 3, avoid).map((s) => ({ ...s, goods: GOODS[Math.floor(s.seed * GOODS.length)] }))
     if (next.map((v) => v.id).join() !== vendors.map((v) => v.id).join()) setVendors(next)
@@ -112,24 +114,28 @@ export function StreetLife({ nav, seed, night, taken, onPlay, doing }: { nav: Na
     <>
       <NoShadows>
         {shown.map((s) => (
-          <group key={s.id} position={[s.at[0], 0, s.at[1]]} rotation={[0, s.rot, 0]}>
-            {s.kind === 'grin' ? (
-              <Solid parts>
-                <Grin seed={s.id} />
-              </Solid>
-            ) : s.kind === 'foot' ? (
-              <>
-                <Foot seed={s.id} />
-                {/* After dark the children play on under a lamp (its poles not walked through) */}
-                <Solid parts>{night && <Lights night w={8} d={6} />}</Solid>
-              </>
-            ) : night ? (
-              <Solid parts>
-                <Travail seed={s.id} />
-              </Solid>
-            ) : (
-              <Causerie seed={s.id} />
-            )}
+          <group key={s.id}>
+            <group position={[s.at[0], 0, s.at[1]]} rotation={[0, s.rot, 0]}>
+              {s.kind === 'grin' ? (
+                <Solid parts>
+                  <Grin seed={s.id} />
+                  <GuestBench vendor={`grin:${s.id}`} />
+                </Solid>
+              ) : s.kind === 'foot' ? (
+                <>
+                  <Foot seed={s.id} />
+                  {/* After dark the children play on under a lamp (its poles not walked through) */}
+                  <Solid parts>{night && <Lights night w={8} d={6} />}</Solid>
+                </>
+              ) : night ? (
+                <Solid parts>
+                  <Travail seed={s.id} />
+                </Solid>
+              ) : (
+                <Causerie seed={s.id} />
+              )}
+            </group>
+            <JoinBubble j={joinOf(s, night)} />
           </group>
         ))}
       </NoShadows>
@@ -137,12 +143,16 @@ export function StreetLife({ nav, seed, night, taken, onPlay, doing }: { nav: Na
       <Solid parts>{post && <PolicePost spot={post} />}</Solid>
       <Solid parts>{foot && <Pitch spot={foot} night={night} />}</Solid>
       <Solid parts>{basket && <Court spot={basket} night={night} />}</Solid>
-      {foot && <PlayHere spot={foot} sport="foot" half={8} onPlay={onPlay} playing={doing === 'street-foot'} />}
-      {basket && <PlayHere spot={basket} sport="basket" half={5.5} onPlay={onPlay} playing={doing === 'street-basket'} />}
+      {/* The street's pitch and court: the boys take whoever comes into their game (free) */}
+      {foot && <JoinBubble j={{ vendor: `foot:${foot.id}`, activity: 'street-foot', at: foot.at, y: 3.4, reach: 30, ask: 'Jouer avec les gars', icon: Volleyball, far: 'Approche du terrain !', pitch: { dir: along(foot), half: 8 } }} />}
+      {basket && <JoinBubble j={{ vendor: `basket:${basket.id}`, activity: 'street-basket', at: basket.at, y: 3.4, reach: 30, ask: 'Jouer au basket avec eux', icon: Trophy, far: 'Viens au playground !', pitch: { dir: along(basket), half: 5.5 } }} />}
       {vendors.map((v) => (
-        <Solid key={v.id} parts>
-          <Marchand vendor={v} />
-        </Solid>
+        <group key={v.id}>
+          <Solid parts>
+            <Marchand vendor={v} />
+          </Solid>
+          <MarchandAsk vendor={v} />
+        </group>
       ))}
     </>
   )
@@ -627,58 +637,58 @@ function Court({ spot, night }: { spot: Spot; night: boolean }) {
   )
 }
 
-const PLAY_REACH = 30 // metres from the middle: close enough to be asked in
-const PLAY = {
-  foot: { ask: 'Jouer avec les gars', icon: Volleyball, far: 'Approche du terrain !' },
-  basket: { ask: 'Jouer au basket avec eux', icon: Trophy, far: 'Viens au playground !' },
-}
+/** A scene's own length (its x), in the world. */
+const along = (s: { rot: number }): XZ => [Math.cos(s.rot), -Math.sin(s.rot)]
+
+/** Where a guest sits at the grin: between the maker and the one drinking (the angle round the teapot). */
+const GUEST = Math.PI / 3
+/** The gap in the causerie's ring (its three stand at 0.3 rad and every third of a turn). */
+const GAP = 0.3 + Math.PI / 3
 
 /**
- * The street's pitch or court invites whoever comes near: a tap, and the boys
- * take the Sim into their game (a street activity, free); it runs up and down
- * with them (Walker LOOPS) until the game is over.
+ * Joining a scene of the street (joinIn.tsx): tea at the grin, on the guest's bench, sitting low
+ * like the others (100 F; made oneself, its défi in the activity); the children's football, running between
+ * them; at night the travaillement, dancing beside the three; by day the causerie, in the gap of
+ * the ring.
  */
-function PlayHere({ spot, sport, half, onPlay, playing }: { spot: Spot; sport: 'foot' | 'basket'; half: number; onPlay?: (vendor: string) => Promise<string | null>; playing: boolean }) {
-  const [near, setNear] = useState(false)
-  const [said, setSaid] = useState<string | null>(null)
-  const clear = useRef<ReturnType<typeof setTimeout>>(undefined)
-  useEffect(() => () => clearTimeout(clear.current), [])
-  const say = (text: string, ms = 6000) => {
-    setSaid(text)
-    clearTimeout(clear.current)
-    clear.current = setTimeout(() => setSaid(null), ms)
+function joinOf(s: Scene, night: boolean): Joining {
+  switch (s.kind) {
+    case 'grin':
+      return { vendor: `grin:${s.id}`, activity: 'street-grin', at: s.at, y: 2.5, ask: 'Prendre le thé avec eux · 100 F', icon: CupSoda, far: "Approche, viens t'asseoir !", spot: placeIn(s, Math.sin(GUEST) * 1.4, Math.cos(GUEST) * 1.4, GUEST + Math.PI, 'drink', -0.22) }
+    case 'foot':
+      return { vendor: `foot:${s.id}`, activity: 'street-foot', at: s.at, y: 2.4, ask: 'Taper le ballon avec eux', icon: Volleyball, far: 'Approche, on te passe la balle !', pitch: { dir: along(s), half: 3 } }
+    default:
+      return night
+        ? { vendor: `travail:${s.id}`, activity: 'street-travail', at: s.at, y: 2.8, ask: 'Danser avec eux', icon: Music, far: 'Viens, on danse !', spot: placeIn(s, 1.9, -0.4, 0, 'dance') }
+        : { vendor: `causerie:${s.id}`, activity: 'street-causerie', at: s.at, y: 2.5, ask: 'Causer avec eux', icon: MessagesSquare, far: 'Approche, viens on cause !', spot: placeIn(s, Math.sin(GAP) * 0.95, Math.cos(GAP) * 0.95, GAP + Math.PI, 'talk') }
   }
-  const away = () => Math.hypot(spot.at[0] - whereabouts.sim[0], spot.at[1] - whereabouts.sim[1])
-  useFrame(() => {
-    const d = away() < PLAY_REACH
-    if (d !== near) setNear(d)
-  })
-  const p = PLAY[sport]
-  const tap = async () => {
-    if (!onPlay) return
-    if (away() > PLAY_REACH) return say(p.far, 3000)
-    // Its ground, for the Sim to run on (the pitch's length is its own x).
-    whereabouts.pitch = { at: spot.at, dir: [Math.cos(spot.rot), -Math.sin(spot.rot)], half }
-    say('…', 20000)
-    const text = await onPlay(`${sport}:${spot.id}`)
-    if (text) say(text)
-    else setSaid(null)
-  }
-  // In the game already: only what the boys said, for a moment.
-  if ((!near || playing) && !said) return null
-  const Icon = p.icon
+}
+
+/** The guest's bench at a grin, while the Sim sits there for tea. */
+function GuestBench({ vendor }: { vendor: string }) {
+  if (!useJoined(vendor)) return null
   return (
-    <Html position={[spot.at[0], 3.4, spot.at[1]]} center zIndexRange={[25, 0]}>
-      <button onClick={() => void tap()} className="flex items-center gap-1.5 rounded-2xl rounded-bl-sm border border-black/5 bg-white px-3 py-1.5 text-[13px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_6px_14px_-8px_rgba(0,0,0,0.5)] transition active:scale-95">
-        {!said && <Icon size={15} strokeWidth={2.6} className="text-[#ff7a00]" />}
-        {said ?? p.ask}
-      </button>
-    </Html>
+    <group position={[Math.sin(GUEST) * 1.4, 0, Math.cos(GUEST) * 1.4]} rotation={[0, GUEST + Math.PI, 0]}>
+      <mesh material={wood} position={[0, 0.22, 0.05]}>
+        <boxGeometry args={[1.1, 0.06, 0.32]} />
+      </mesh>
+      {[-0.45, 0.45].map((lx) => (
+        <mesh key={lx} material={wood} position={[lx, 0.1, 0.05]}>
+          <boxGeometry args={[0.06, 0.2, 0.3]} />
+        </mesh>
+      ))}
+    </group>
   )
 }
 
 function Marchand({ vendor }: { vendor: Vendor }) {
   const look = useMemo(() => randomLook(vendor.seed < 0.5 ? 'femme' : 'homme', rng(vendor.id)), [vendor])
+  // Close by, the bubble that sells (MarchandAsk) says it instead of the name.
+  const [near, setNear] = useState(false)
+  useFrame(() => {
+    const d = Math.hypot(vendor.at[0] - whereabouts.sim[0], vendor.at[1] - whereabouts.sim[1]) < 10
+    if (d !== near) setNear(d)
+  })
   return (
     <group position={[vendor.at[0], 0, vendor.at[1]]} rotation={[0, vendor.rot, 0]}>
       <mesh position={[0, 0.72, 0.7]} material={stallWood}>
@@ -701,13 +711,21 @@ function Marchand({ vendor }: { vendor: Vendor }) {
           <TalkHuman id={`marchand:${vendor.id}`} look={look} gender={vendor.seed < 0.5 ? 'femme' : 'homme'} pose="idle" seed={vendor.seed * 80} />
         </group>
       </NoShadows>
-      <Html position={[0, 2.3, 0]} center zIndexRange={[12, 0]} distanceFactor={18}>
-        <div className="rounded-full bg-white px-2 py-0.5 text-[11px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_4px_10px_-6px_rgba(0,0,0,0.5)]">
-          Marchand · {vendor.goods.label}
-        </div>
-      </Html>
+      {!near && (
+        <Html position={[0, 2.3, 0]} center zIndexRange={[12, 0]} distanceFactor={18}>
+          <div className="rounded-full bg-white px-2 py-0.5 text-[11px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_4px_10px_-6px_rgba(0,0,0,0.5)]">
+            Marchand · {vendor.goods.label}
+          </div>
+        </Html>
+      )}
     </group>
   )
+}
+
+/** The marchand's goods, bought close by (and eaten, drunk or used there). */
+function MarchandAsk({ vendor }: { vendor: Vendor }) {
+  const g = vendor.goods
+  return <JoinBubble j={{ vendor: `${g.kind}:${vendor.id}`, activity: `street-${g.kind}`, at: vendor.at, y: 2.5, reach: 10, ask: g.ask, icon: g.icon, far: 'Approche, mon enfant !' }} />
 }
 
 /**

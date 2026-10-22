@@ -48,7 +48,7 @@ func TestStreetSellers(t *testing.T) {
 	for _, c := range []struct {
 		prefix string
 		cost   int
-	}{{"porc", 1500}, {"cafe", 150}, {"the", 100}, {"foot", 0}, {"basket", 0}} {
+	}{{"porc", 1500}, {"cafe", 150}, {"the", 100}, {"foot", 0}, {"basket", 0}, {"causerie", 0}, {"preche", 0}, {"oranges", 200}, {"eau", 50}, {"credit", 500}, {"pain", 150}} {
 		s := newSim() // at noon
 		var had string
 		for i := 0; i < 80 && had == ""; i++ {
@@ -87,6 +87,16 @@ func TestStreetSellers(t *testing.T) {
 	if said, err := s.buyStreet(had); err != nil || s.Activity == nil || s.Activity.Interaction.ID != "street-brochette" {
 		t.Fatalf("brochette at 20 h: %q %v", said, err)
 	}
+	// The street's scenes are there or not: never « sold out » in their hours.
+	for h := 0; h < 30; h++ {
+		if !hasStock("causerie:"+string(rune('a'+h%26)), game.MinuteOf(noon)+int64(h)) {
+			t.Fatal("a causerie with no room")
+		}
+	}
+	// The party and the draughts are for the evening.
+	if hasStock("travail:x", game.MinuteOf(noon)) || !hasStock("travail:x", game.MinuteOf(noon)+8*60) || !hasStock("dames:x", game.MinuteOf(noon)+8*60) {
+		t.Error("the travaillement and the draughts: from the evening")
+	}
 	// After the lights go off, no more game on the street's pitch.
 	if hasStock("foot:x", game.MinuteOf(noon)+11*60+30) {
 		t.Error("street football at 23 h 30")
@@ -94,5 +104,19 @@ func TestStreetSellers(t *testing.T) {
 	// Porc au four isn't sold in the morning.
 	if hasStock("porc:x", game.MinuteOf(noon)-12*60+9*60) {
 		t.Error("porc au four at 9 a.m.")
+	}
+}
+
+func TestStreetActivities(t *testing.T) {
+	seen := map[string]bool{}
+	for _, a := range StreetActivities() {
+		if a.Interaction.ID == "" || a.Place == "" || seen[a.Interaction.ID] {
+			t.Errorf("street activity %+v", a)
+		}
+		seen[a.Interaction.ID] = true
+	}
+	// Every seller and scene is listed (and the garbadrome).
+	if len(seen) != len(streetSellers)+1 {
+		t.Errorf("%d listed for %d sellers", len(seen), len(streetSellers))
 	}
 }

@@ -12,6 +12,8 @@ import { lettering, signMaterial } from './ruePrincesse'
 import { hash, type XZ } from './geo'
 import { TalkHuman } from '../Talkable'
 import type { Nav } from './nav'
+import { Armchair, Coffee, Grid3x3 } from 'lucide-react'
+import { JoinBubble, placeIn, useJoined, type Joining } from './joinIn'
 
 // The quarters after dark, away from the party: in front of the houses the
 // family sits out on plastic chairs under a bare bulb, the radio on; at the
@@ -81,15 +83,48 @@ export function NightStreet({ nav, seed }: { nav: Nav; seed: string }) {
   })
   return (
     <NoShadows>
-      {shown.map((s) => (
-        <group key={s.id} position={[s.at[0], 0, s.at[1]]} rotation={[0, s.rot, 0]}>
-          <Solid parts>
-            <NightScene kind={s.kind} seed={s.id} />
-          </Solid>
-        </group>
-      ))}
+      {shown.map((s) => {
+        const j = joinOf(s)
+        return (
+          <group key={s.id}>
+            <group position={[s.at[0], 0, s.at[1]]} rotation={[0, s.rot, 0]}>
+              <Solid parts>
+                <NightScene kind={s.kind} seed={s.id} />
+                {s.kind === 'porch' && j && <GuestChair vendor={j.vendor} />}
+              </Solid>
+            </group>
+            {j && <JoinBubble j={j} />}
+          </group>
+        )
+      })}
     </NoShadows>
   )
+}
+
+/** The porch's chair for a guest (beside the old man's), and the kiosk's and the draughts' places for the Sim. */
+const GUEST_CHAIR: [number, number, number] = [-2.75, 0, 0.55]
+
+/**
+ * Joining a night scene (joinIn.tsx): a chair on the porch with the family (a causerie), a coffee
+ * at the kiosk standing with the regulars, the draughts watched with the supporters. The couple
+ * walking and the sleeping watchman are left alone (they talk, one at a time).
+ */
+function joinOf(s: Spot): Joining | null {
+  switch (s.kind) {
+    case 'porch':
+      return { vendor: `causerie:${s.id}`, activity: 'street-causerie', at: s.at, y: 2.7, ask: "S'asseoir avec la famille", icon: Armchair, far: 'Approche, prends une chaise !', spot: placeIn(s, GUEST_CHAIR[0], GUEST_CHAIR[2], 0.6, 'sit') }
+    case 'kiosque':
+      return { vendor: `cafe:${s.id}`, activity: 'street-cafe', at: s.at, y: 2.9, ask: 'Un café au kiosque · 150 F', icon: Coffee, far: 'Approche du kiosque !', spot: placeIn(s, -1.5, 1.6, Math.PI - 0.4, 'talk') }
+    case 'dames':
+      return { vendor: `dames:${s.id}`, activity: 'street-dames', at: s.at, y: 2.6, ask: 'Supporter la partie', icon: Grid3x3, far: 'Approche, viens voir la partie !', spot: placeIn(s, -1.3, 0.9, Math.atan2(1.3, -0.9), 'talk') }
+    default:
+      return null
+  }
+}
+
+/** The guest's chair on the porch, while the Sim sits there. */
+function GuestChair({ vendor }: { vendor: string }) {
+  return useJoined(vendor) ? <Chair p={GUEST_CHAIR} r={0.6} c="#3f8fd6" /> : null
 }
 
 /** One night scene, in its own frame (+z toward the street): for the open world and the lab. */

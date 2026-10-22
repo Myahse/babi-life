@@ -35,6 +35,7 @@ import { RABISSON_SOLID } from '../world3d/open/rabisson'
 import { SportField } from '../world3d/open/field'
 import { FuelStation } from '../world3d/open/station'
 import { StreetStall, type StallKind } from '../world3d/open/stalls'
+import { JoinIn, placeIn } from '../world3d/open/joinIn'
 import { BusStop } from '../world3d/open/sotra'
 import { CableStayed, TollPlaza } from '../world3d/open/bridges'
 import { StreetGame } from '../world3d/open/streetFoot'
@@ -690,6 +691,13 @@ function StallsLab() {
   const only = q.get('only') as StallKind | null
   const kinds: StallKind[] = only ? [only] : ['alloco', 'porc', 'cafe', 'the', 'garba', 'brochette', 'loto']
   const cam = (q.get('cam') ?? '0,7,16').split(',').map(Number) as [number, number, number]
+  const serve = useMemo(() => {
+    if (!q.has('serve') || (only !== 'the' && only !== 'cafe')) return null
+    const id = `${only}:lab:0`
+    const spot = placeIn({ at: [0, -2], rot: 0 }, 0.95, 2.5, Math.PI, 'drink', 0.05)
+    whereabouts.joined = { id, activity: `street-${only}`, spot }
+    return spot
+  }, [only])
   return (
     <Canvas shadows dpr={[1, 1.5]} camera={{ position: cam, fov: 45 }} style={{ width: '100vw', height: '100vh' }}>
       <color attach="background" args={['#a9d3f0']} />
@@ -699,9 +707,21 @@ function StallsLab() {
         <planeGeometry args={[80, 80]} />
         <meshLambertMaterial color="#b98b5c" />
       </mesh>
-      {kinds.map((kind, i) => (
-        <StreetStall key={kind} stall={{ id: `${kind}:lab:${i}`, kind, at: [only ? 0 : (i - 1.5) * 7, -2], rot: 0, seed: (0.3 + i * 0.17) % 1 }} hour={hour} crowd onBuy={only ? async (_v, c) => `Choix : ${c ?? '—'}` : undefined} />
-      ))}
+      {/* ?only=the&serve: the seller serving the Sim on its stool (as when it buys there) */}
+      <JoinIn.Provider value={{ doing: serve ? `street-${only}` : undefined }}>
+        {kinds.map((kind, i) => (
+          <StreetStall key={kind} stall={{ id: `${kind}:lab:${i}`, kind, at: [only ? 0 : (i - 1.5) * 7, -2], rot: 0, seed: (0.3 + i * 0.17) % 1 }} hour={hour} crowd onBuy={only ? async (_v, c) => `Choix : ${c ?? '—'}` : undefined} />
+        ))}
+      </JoinIn.Provider>
+      {serve && (
+        <group position={[serve.at[0], serve.y, serve.at[1]]} rotation={[0, serve.rot, 0]}>
+          <mesh position={[0, 0.2 - serve.y, -0.05]}>
+            <boxGeometry args={[0.38, 0.4, 0.38]} />
+            <meshLambertMaterial color="#7a5233" />
+          </mesh>
+          <Human look={randomLook('homme', () => 0.37)} gender="homme" pose={serve.pose} seed={3} />
+        </group>
+      )}
       {/* A SITRA stop, and a bus pulled in */}
       <BusStop stop={{ id: 'sotra:lab', at: [0, 7], rot: 0, seed: 0.42, lines: ['11', '19', '44'] }} hour={hour} night={false} />
       <Vehicle p={[-11, 0, 10]} kind="sotra" />

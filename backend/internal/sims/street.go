@@ -52,6 +52,60 @@ var streetSellers = map[string]streetSeller{
 		"Terrain du quartier", "Les équipes sont faites, attends la prochaine partie !", "Les gars te prennent dans leur équipe. Balle à terre !", 6},
 	"basket": {game.Interaction{ID: "street-basket", Label: "Jouer au basket avec les gars du quartier", Icon: "trophy", Minutes: 40, Effect: game.Needs{Fun: 25, Social: 12, Energy: -18, Hygiene: -18}, MinHour: 6, MaxHour: 23},
 		"Terrain de basket du quartier", "On joue à la gagne : attends ton tour !", "Trois contre trois, à la gagne. À toi la balle !", 6},
+	// Tea at a grin of the street, with the boys, a share of the sugar and the leaves: one makes it
+	// oneself there (its défi, sims/defi.go), unlike the pousse-pousse's, poured by the seller.
+	"grin": {game.Interaction{ID: "street-grin", Label: "Prendre le thé au grin avec les gars", Icon: "cup-soda", Minutes: 25, Cost: 100, Effect: game.Needs{Energy: 8, Social: 14, Fun: 5}, MinHour: 6, MaxHour: 24},
+		"Le grin du quartier", "", "On te fait de la place sur le banc. Premier thé : il est amer comme la mort !", never},
+	// What the street does, joined (web world3d/open/joinIn.tsx): a ring of people talking (by day,
+	// or on the porch after dark), the travaillement party at night, the draughts under the lamp, the
+	// street preacher. Free; the scene is there or it isn't, so never « sold out » (oneIn: never).
+	"causerie": {game.Interaction{ID: "street-causerie", Label: "Causer avec les gens du quartier", Icon: "messages-square", Minutes: 20, Effect: game.Needs{Social: 14, Fun: 4}, MinHour: 6, MaxHour: 24},
+		"Causerie du quartier", "", "On te fait de la place : « Assia, viens on cause ! »", never},
+	"travail": {game.Interaction{ID: "street-travail", Label: "Danser au son du travaillement", Icon: "music", Minutes: 30, Effect: game.Needs{Fun: 18, Social: 10, Energy: -10}, MinHour: 18, MaxHour: 24},
+		"Le travaillement du coin", "", "Le DJ monte le son, le grand-frère lance les billets. Danse !", never},
+	"dames": {game.Interaction{ID: "street-dames", Label: "Supporter la partie de dames", Icon: "grid-3x3", Minutes: 20, Effect: game.Needs{Fun: 10, Social: 8}, MinHour: 19, MaxHour: 24},
+		"Les dames sous le lampadaire", "", "« Il va manger trois pions là ! » Tu supportes avec les autres.", never},
+	"preche": {game.Interaction{ID: "street-preche", Label: "Écouter le prêcheur de rue", Icon: "book-open", Minutes: 15, Effect: game.Needs{Social: 4, Fun: 2}, MinHour: 7, MaxHour: 19},
+		"Le prêcheur du carrefour", "", "« Amen ! » Tu écoutes la parole avec les autres.", never},
+	// The marchands who walk the street (streetlife.tsx Marchand): oranges peeled, frozen water in
+	// its bag, phone credit, the bread of the morning.
+	"oranges": {game.Interaction{ID: "street-oranges", Label: "Manger des oranges épluchées", Icon: "citrus", Minutes: 10, Cost: 200, Effect: game.Needs{Hunger: 12, Energy: 3}, MinHour: 7, MaxHour: 20},
+		"Oranges de la marchande", "Les oranges sont finies, ma fille !", "Bien épluchées, bien sucrées. Prends !", 5},
+	"eau": {game.Interaction{ID: "street-eau", Label: "Boire un sachet d'eau glacée", Icon: "droplet", Minutes: 5, Cost: 50, Effect: game.Needs{Energy: 5, Hunger: 2}, MinHour: 7, MaxHour: 22},
+		"Eau glacée", "Y a plus glacé, c'est chaud seulement !", "Eau glacée, bien fraîche !", 6},
+	"credit": {game.Interaction{ID: "street-credit", Label: "Acheter du crédit et appeler la famille", Icon: "smartphone", Minutes: 10, Cost: 500, Effect: game.Needs{Social: 10}, MinHour: 6, MaxHour: 22},
+		"Crédit du vendeur", "Mon réseau est en panne, reviens tout à l'heure !", "Crédit chargé. Allô, maman ?", 6},
+	"pain": {game.Interaction{ID: "street-pain", Label: "Acheter un pain chaud", Icon: "croissant", Minutes: 5, Cost: 150, Effect: game.Needs{Hunger: 14}, MinHour: 6, MaxHour: 21},
+		"Pain du vendeur", "Le pain est fini, le livreur arrive !", "Pain chaud, bien croustillant !", 5},
+}
+
+// never: a scene's oneIn, for one that's never « sold out » (hasStock).
+const never = 0
+
+// StreetActivity: what one does in the street, for the game's encyclopedia (/world: street).
+type StreetActivity struct {
+	Interaction game.Interaction `json:"interaction"`
+	Place       string           `json:"place"`
+}
+
+// streetOrder: the street's sellers and scenes, in the encyclopedia's order.
+var streetOrder = []string{"alloco", "porc", "brochette", "cafe", "the", "grin", "oranges", "eau", "pain", "credit", "foot", "basket", "causerie", "travail", "dames", "preche"}
+
+// StreetActivities: every activity of the street (the sellers, the scenes joined, the garbadrome).
+func StreetActivities() []StreetActivity {
+	out := make([]StreetActivity, 0, len(streetOrder)+1)
+	for _, k := range streetOrder {
+		sl := streetSellers[k]
+		out = append(out, StreetActivity{sl.it, sl.place})
+	}
+	// The garba: its cheapest fish, as the price from.
+	cheap := garbaPiece{}
+	for _, p := range garbaPieces {
+		if cheap.cost == 0 || p.cost < cheap.cost {
+			cheap = p
+		}
+	}
+	return append(out, StreetActivity{game.Interaction{ID: "street-garba", Label: "Manger un garba", Icon: "fish", Minutes: 15, Cost: cheap.cost, Effect: game.Needs{Hunger: float64(cheap.hunger), Social: 3}, MinHour: 9, MaxHour: 2}, "Garbadrome"})
 }
 
 // sellerOf: the kind of seller a vendor id names (alloco by default).
@@ -72,6 +126,9 @@ func hasStock(vendor string, gameMinutes int64) bool {
 	h := game.HourOf(gameMinutes)
 	if h < sl.it.MinHour || h >= sl.it.MaxHour {
 		return false
+	}
+	if sl.oneIn == never {
+		return true
 	}
 	f := fnv.New32a()
 	_, _ = f.Write([]byte(vendor))

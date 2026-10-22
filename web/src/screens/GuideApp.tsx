@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import { BookOpen, Briefcase, GraduationCap, ChevronDown, Heart, MapPin, MessageSquareQuote, Plane, Search, Smartphone, Users, type LucideIcon } from 'lucide-react'
-import type { World } from '../lib/types'
+import { BookOpen, Briefcase, GraduationCap, ChevronDown, Heart, MapPin, MessageSquareQuote, Navigation, Plane, Search, Smartphone, Sparkles, Users, type LucideIcon } from 'lucide-react'
+import type { Interaction, World } from '../lib/types'
 import { IconTile } from '../components/ui'
 import { iconFor, kindColors } from '../components/icons'
 import { NEEDS, duration, fcfa, openingLabel } from '../game/rules'
@@ -10,11 +10,12 @@ import { NEEDS, duration, fcfa, openingLabel } from '../game/rules'
 // words, families, flights), so it never lags behind the game; the rules are
 // written here, short, the way a friend would explain them.
 
-type Tab = 'regles' | 'lieux' | 'metiers' | 'applis' | 'mots' | 'familles' | 'vols'
-type Entry = { id: string; tab: Tab; title: string; sub: string; body: string[]; icon: LucideIcon; colors: [string, string] }
+type Tab = 'regles' | 'activites' | 'lieux' | 'metiers' | 'applis' | 'mots' | 'familles' | 'vols'
+type Entry = { id: string; tab: Tab; title: string; sub: string; body: string[]; icon: LucideIcon; colors: [string, string]; /** An activity: the kind of place it's done at (« Y aller »). */ go?: string }
 
 const TABS: { id: Tab; label: string; icon: LucideIcon; colors: [string, string] }[] = [
   { id: 'regles', label: 'Règles', icon: BookOpen, colors: ['#b39dff', '#6c47ff'] },
+  { id: 'activites', label: 'Activités', icon: Sparkles, colors: ['#ffd36e', '#ff8a3d'] },
   { id: 'lieux', label: 'Lieux', icon: MapPin, colors: ['#ffa040', '#ff6a00'] },
   { id: 'metiers', label: 'Métiers', icon: Briefcase, colors: ['#64b5ff', '#2a6cf0'] },
   { id: 'applis', label: 'Applis', icon: Smartphone, colors: ['#69e2a0', '#00a862'] },
@@ -98,6 +99,17 @@ const RULES: { title: string; sub: string; body: string[]; icon?: LucideIcon }[]
   },
 ]
 
+const priceOf = (it: Interaction) => (it.cost ? fcfa(it.cost) : 'gratuit')
+/** An activity's hours, who can do it, what it fills. */
+function activityLines(it: Interaction): string[] {
+  const gives = NEEDS.filter((n) => (it.effect?.[n.key] ?? 0) !== 0).map((n) => `${n.label} ${it.effect![n.key]! > 0 ? '+' : ''}${Math.round(it.effect![n.key]!)}`)
+  return [
+    `${priceOf(it) === 'gratuit' ? 'Gratuit' : `Prix : ${priceOf(it)}`} · durée : ${duration(it.minutes)}${it.minHour || it.maxHour || it.days?.length ? ` · ${openingLabel(it)}` : ''}.`,
+    gives.length ? `Ça donne : ${gives.join(', ')}.` : '',
+    it.ages?.length ? `Pour : ${it.ages.join(', ')}.` : '',
+  ]
+}
+
 /** Lowercase, no accents: « Écoles » is found by « ecole ». */
 const plain = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
@@ -119,6 +131,16 @@ function entries(world: World): Entry[] {
       colors: kindColors(k.id),
     })
   })
+  // Every activity of the game, one by one: where it's done, its price, its time, its hours, what it gives.
+  Object.values(world.kinds).forEach((k) =>
+    k.interactions.forEach((it) => {
+      const n = count[k.id] ?? 0
+      out.push({ id: `x-${k.id}-${it.id}`, tab: 'activites', title: it.label, sub: `${k.label} · ${priceOf(it)} · ${duration(it.minutes)}`, body: [`Où : ${k.label}${n ? ` (${n} sur la carte)` : ''}.`, ...activityLines(it)], icon: iconFor(it.icon), colors: kindColors(k.id), go: k.id })
+    }),
+  )
+  ;(world.street ?? []).forEach(({ interaction: it, place }) =>
+    out.push({ id: `x-rue-${it.id}`, tab: 'activites', title: it.label, sub: `Dans la rue · ${priceOf(it)} · ${duration(it.minutes)}`, body: [`Où : dans la rue (${place}). Approche-toi : une bulle te propose de le faire.`, ...activityLines(it)], icon: iconFor(it.icon), colors: ['#ffd36e', '#ff8a3d'] }),
+  )
   world.careers.forEach((c) => {
     const where = [c.kind, ...(c.also ?? [])].map((k) => world.kinds[k]?.label ?? k).join(', ')
     out.push({
@@ -142,7 +164,7 @@ function entries(world: World): Entry[] {
   return out
 }
 
-export function GuideApp({ world, onTutorial }: { world: World; /** Koffi's tuto again (components/Tutorial.tsx). */ onTutorial?: () => void }) {
+export function GuideApp({ world, onTutorial, onGo }: { world: World; /** Koffi's tuto again (components/Tutorial.tsx). */ onTutorial?: () => void; /** To the nearest place of this kind (the activities' « Y aller »). */ onGo?: (kind: string) => void }) {
   const all = useMemo(() => entries(world), [world])
   const [tab, setTab] = useState<Tab>('regles')
   const [q, setQ] = useState('')
@@ -176,6 +198,11 @@ export function GuideApp({ world, onTutorial }: { world: World; /** Koffi's tuto
         </div>
       )}
       {query && <p className="text-xs font-bold text-[var(--color-ink-soft)]">{shown.length ? `${shown.length} résultat${shown.length > 1 ? 's' : ''}` : 'Rien trouvé. Essaie un autre mot.'}</p>}
+      {!query && tab === 'activites' && (
+        <p className="text-[13px] leading-snug font-bold text-[var(--color-ink-soft)]">
+          <span className="font-display text-[22px] font-extrabold text-[var(--color-ink)]">{shown.length}</span> activités dans le jeu : chaque lieu a les siennes (on les voit en y entrant), et la rue aussi. Touche-en une pour savoir où, quand et combien.
+        </p>
+      )}
       <ul className="space-y-2">
         {shown.map((e) => (
           <li key={e.id} className="rounded-[20px] bg-[var(--color-canvas)]">
@@ -198,6 +225,13 @@ export function GuideApp({ world, onTutorial }: { world: World; /** Koffi's tuto
                     <span>{b}</span>
                   </li>
                 ))}
+                {e.go && onGo && (
+                  <li>
+                    <button className="btn mt-1 !min-h-0 w-full !py-2.5 !text-sm" onClick={() => onGo(e.go!)}>
+                      <Navigation size={16} strokeWidth={2.6} /> Y aller
+                    </button>
+                  </li>
+                )}
               </ul>
             )}
           </li>

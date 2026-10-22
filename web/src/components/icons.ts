@@ -5,7 +5,7 @@ import {
   Flame, Footprints, HandHeart, Heart, Hourglass, House, LandPlot, Landmark, MessagesSquare, Moon, Mountain, Music, Palette,
   PartyPopper, PiggyBank, ShoppingBasket, ShowerHead, Smartphone, Sparkles, Store, Sunset, TreePalm, Trophy, Tv, Users,
   Volleyball, Waves, Baby, Bird, BookOpen, BrushCleaning, Cake, CarTaxiFront, Drama, Drum, FileText, Flag, Flower2, Gift, GraduationCap, Hammer,
-  Hospital, Library, Presentation, Shovel, Stamp, Stethoscope, Utensils, ShoppingBag, ShoppingCart, Shirt, IceCreamCone, Hamburger, CupSoda, Scissors, Hotel, Hand, Send, Fuel, Bike, Dumbbell, PawPrint, UserPlus, Snowflake, Clapperboard, Popcorn, Plane, Dice5, Toilet, Toothbrush, Sailboat, HardHat, type LucideIcon,
+  Hospital, Library, Presentation, Shovel, Stamp, Stethoscope, Utensils, ShoppingBag, ShoppingCart, Shirt, IceCreamCone, Hamburger, CupSoda, Scissors, Hotel, Hand, Send, Fuel, Bike, Dumbbell, PawPrint, UserPlus, Snowflake, Clapperboard, Popcorn, Plane, Dice5, Toilet, Toothbrush, Sailboat, HardHat, Citrus, Croissant, Droplet, Grid3x3, type LucideIcon,
 } from 'lucide-react'
 
 // Icon names sent by the API (backend/internal/game) → components.
@@ -31,6 +31,7 @@ const REGISTRY: Record<string, LucideIcon> = {
   stamp: Stamp, stethoscope: Stethoscope, utensils: Utensils, 'shopping-bag': ShoppingBag, 'shopping-cart': ShoppingCart, shirt: Shirt,
   'ice-cream-cone': IceCreamCone, hamburger: Hamburger, 'cup-soda': CupSoda,
   scissors: Scissors, hotel: Hotel, hand: Hand, send: Send, fuel: Fuel, bike: Bike, dumbbell: Dumbbell, 'paw-print': PawPrint, 'hard-hat': HardHat,
+  citrus: Citrus, croissant: Croissant, droplet: Droplet, 'grid-3x3': Grid3x3,
 }
 
 export const iconFor = (name: string): LucideIcon => REGISTRY[name] ?? Sparkles

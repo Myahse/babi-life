@@ -24,7 +24,8 @@ import (
 
 // defiFor: each défi, and the interactions it's played during.
 var defiFor = map[string][]string{
-	"the":     {"street-the", "chat-grin"},
+	// The tea one makes oneself, with the boys at the grin (the pousse-pousse's is served: no défi).
+	"the":     {"street-grin", "chat-grin"},
 	"ski":     {"ski-boulay"},
 	"courses": {"supermarche", "courses"},
 }
