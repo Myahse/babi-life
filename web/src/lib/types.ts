@@ -323,6 +323,8 @@ export type Activity = {
   trip?: { fromCity: string; fromCommune: string; city: string; commune: string; mode: TripMode; class?: string; fare: number; label: string; incident?: string; path?: [number, number][]; bridges?: string[]; party?: number }
   /** A film seen with a Kinéo ticket: which, the screen, the seats. */
   seance?: { film: string; salle: number; seats: string[]; vip?: boolean }
+  /** The défi taken on during it (components/Defi.tsx): its score, 1–100; not there, not played. */
+  defi?: number
 }
 
 export type JournalEvent = {

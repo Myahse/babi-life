@@ -1,4 +1,4 @@
-import { Suspense, useMemo, useRef } from 'react'
+import { Suspense, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
@@ -13,6 +13,7 @@ import { Character } from '../Character'
 import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
 import { Guest, mat, useBigWalk, type Spot, type XZ } from './bigPlace'
+import { SKI_BUOY, SKI_GAP, SKI_SIDES, skiDefi, type SkiGate } from '../defiSki'
 
 // Île Boulay, across the lagoon from Azito (Yopougon): the pinasse lands on
 // the beach of the village (N'gandikro), the long boats pulled up on the
@@ -21,7 +22,9 @@ import { Guest, mat, useBigWalk, type Spot, type XZ } from './bigPlace'
 // over the whole island; to the east, a weekend house with its jetty and its
 // speedboat. Across the water, Yopougon's shore and the Azito power station's
 // stacks. The day on the island: a walk round the village. Water-skiing: the
-// speedboat goes round off the beach, the Sim behind it on its skis.
+// speedboat goes round off the beach, the Sim behind it on its skis; taken on
+// as a défi (components/defi/Ski.tsx), the player steers it round the buoys
+// and over the ramps.
 // The frame: the beach along x, the island south (+z), the water north (-z).
 
 /** The beach: from the water's edge (z 0) to the village. */
@@ -383,7 +386,7 @@ function Villagers() {
   )
 }
 
-/** Water-skiing: the speedboat round its loop off the beach, the Sim behind it on the rope; the camera following. */
+/** Water-skiing: the speedboat round its loop off the beach, the Sim behind it on the rope; the camera following. In the défi, the player steers. */
 function Skier({ sim, stage }: { sim: Sim; stage: string }) {
   const boat = useRef<THREE.Group>(null)
   const ski = useRef<THREE.Group>(null)
@@ -394,40 +397,112 @@ function Skier({ sim, stage }: { sim: Sim; stage: string }) {
     const a = t * SKI.speed
     return { p: new THREE.Vector3(SKI.c[0] + Math.cos(a) * SKI.r[0], 0, SKI.c[1] + Math.sin(a) * SKI.r[1]), a }
   }
+  /** Which way the boat goes at a moment, and its side (to the right of the way, as seen from behind). */
+  const frame = (t: number) => {
+    const b = along(t)
+    const dir = new THREE.Vector3(-Math.sin(b.a) * SKI.r[0], 0, Math.cos(b.a) * SKI.r[1]).normalize()
+    return { b, dir, side: new THREE.Vector3(-dir.z, 0, dir.x) }
+  }
+  // In the défi: how far out the skier is (m, along the side), and a jump going on.
+  const out = useRef(0)
+  const jump = useRef<{ t: number; len: number; h: number; spin: number } | null>(null)
+  const [gates, setGates] = useState<SkiGate[]>([])
+  const seen = useRef(-1)
   useFrame((_, dt) => {
     const t = worldTime()
-    const b = along(t)
-    // The skier 14 m behind the boat, on its rope, swinging out to one side and the other.
-    const dir = new THREE.Vector3(-Math.sin(b.a) * SKI.r[0], 0, Math.cos(b.a) * SKI.r[1]).normalize()
-    const side = new THREE.Vector3(dir.z, 0, -dir.x)
-    const out = Math.sin(t * 0.9) * 4
-    const s = b.p.clone().addScaledVector(dir, -14).addScaledVector(side, out)
+    const d = skiDefi
+    // Asked for: the gates laid on the water where the skier will pass them, after a countdown.
+    if (d.requested && !d.active) {
+      d.requested = false
+      d.active = true
+      d.done = false
+      d.t0 = t + 3.5
+      d.gates = SKI_SIDES.map((side, k) => {
+        const tk = d.t0 + k * SKI_GAP
+        const f = frame(tk)
+        const p = f.b.p.clone().addScaledVector(f.dir, -14).addScaledVector(f.side, side * SKI_BUOY)
+        return { t: tk, side, at: [p.x, p.z] as XZ, rot: Math.atan2(f.dir.x, f.dir.z) }
+      })
+      d.version++
+    }
+    const playing = d.active && !d.done
+    const { b, dir, side } = frame(t)
+    // The skier 14 m behind the boat, on its rope, swinging out to one side and the other; in the
+    // défi, where the player steers.
+    if (playing) out.current = THREE.MathUtils.clamp(out.current + d.steer * 7 * Math.min(dt, 0.25), -8, 8)
+    else out.current += (Math.sin(t * 0.9) * 4 - out.current) * Math.min(1, dt * 1.5)
+    const s = b.p.clone().addScaledVector(dir, -14).addScaledVector(side, out.current)
+    if (playing) {
+      // Each gate judged as the skier passes it: round the buoy on the outside, over the ramp.
+      for (const g of d.gates) {
+        if (g.result || t < g.t) continue
+        if (g.side === 0) {
+          const onRamp = Math.abs(out.current) < 1.6
+          const jumped = d.jumpAt > g.t - 0.9 && d.jumpAt < g.t + 0.15
+          g.result = onRamp ? (jumped ? 'jump' : 'hop') : 'miss'
+          if (onRamp) jump.current = jumped ? { t, len: 1.25, h: 2.6, spin: Math.PI * 2 } : { t, len: 0.5, h: 0.6, spin: 0 }
+        } else g.result = out.current * g.side >= SKI_BUOY + 0.1 ? 'ok' : 'miss'
+        d.version++
+      }
+      const last = d.gates[d.gates.length - 1]
+      if (last?.result && t > last.t + 1.4) {
+        d.done = true
+        d.version++
+      }
+    }
+    if (d.version !== seen.current) {
+      seen.current = d.version
+      setGates(d.active ? d.gates.map((g) => ({ ...g })) : [])
+    }
     const heading = Math.atan2(dir.x, dir.z)
     if (boat.current) {
       boat.current.position.copy(b.p)
       boat.current.rotation.y = heading
     }
+    // Up off the ramp, turning round once in the air on a real jump.
+    let y = 0
+    let spin = 0
+    const j = jump.current
+    if (j) {
+      const u = (t - j.t) / j.len
+      if (u >= 1) jump.current = null
+      else {
+        y = Math.sin(Math.PI * u) * j.h
+        spin = j.spin * u
+      }
+    }
     if (ski.current) {
-      ski.current.position.copy(s)
-      // Facing the boat on the rope, leaning into the swing.
-      ski.current.rotation.set(0, Math.atan2(b.p.x - s.x, b.p.z - s.z), -Math.cos(t * 0.9) * 0.25)
+      ski.current.position.copy(s).setY(y)
+      // Facing the boat on the rope, leaning into the swing (into the turn, in the défi).
+      const lean = playing ? d.steer * 0.3 : Math.cos(t * 0.9) * 0.25
+      ski.current.rotation.set(0, Math.atan2(b.p.x - s.x, b.p.z - s.z) + spin, lean)
     }
     if (rope.current) {
-      const [from, to] = [b.p.clone().setY(0.9), s.clone().setY(1.1)]
+      const [from, to] = [b.p.clone().setY(0.9), s.clone().setY(1.1 + y)]
       rope.current.position.copy(from).add(to).multiplyScalar(0.5)
       rope.current.lookAt(to)
       rope.current.scale.set(1, 1, from.distanceTo(to))
     }
-    // The camera comes along, on the boat and the skier both (the island behind them).
     if (controls) {
-      const k = Math.min(1, dt * 2)
-      const [mx, mz] = [(s.x + b.p.x) / 2, (s.z + b.p.z) / 2]
-      const [ox, oz] = [(mx - controls.target.x) * k, (mz - controls.target.z) * k]
-      controls.target.x += ox
-      controls.target.z += oz
-      camera.position.x += ox
-      camera.position.z += oz
-      controls.update()
+      if (d.active) {
+        // The défi: close behind the skier, looking ahead to the buoys coming.
+        const k = 1 - Math.exp(-3 * Math.min(dt, 0.1))
+        const want = s.clone().addScaledVector(dir, -10).setY(5.5)
+        const look = s.clone().addScaledVector(dir, 14).setY(0.5)
+        camera.position.lerp(want, k)
+        controls.target.lerp(look, k)
+        controls.update()
+      } else {
+        // The camera comes along, on the boat and the skier both (the island behind them).
+        const k = Math.min(1, dt * 2)
+        const [mx, mz] = [(s.x + b.p.x) / 2, (s.z + b.p.z) / 2]
+        const [ox, oz] = [(mx - controls.target.x) * k, (mz - controls.target.z) * k]
+        controls.target.x += ox
+        controls.target.z += oz
+        camera.position.x += ox
+        camera.position.z += oz
+        controls.update()
+      }
     }
   })
   const rideLook = useMemo(() => ({ ...sim.look, outfit: 'maillot', accessory: 'none' }), [sim.look])
@@ -444,6 +519,7 @@ function Skier({ sim, stage }: { sim: Sim; stage: string }) {
           <meshBasicMaterial color="#ffffff" transparent opacity={0.35} depthWrite={false} />
         </mesh>
       </group>
+      {gates.map((g, k) => (g.side === 0 ? <Ramp key={k} gate={g} /> : <Buoy key={k} gate={g} />))}
       <mesh ref={rope}>
         <boxGeometry args={[0.03, 0.03, 1]} />
         <meshBasicMaterial color="#f2b705" />
@@ -460,6 +536,52 @@ function Skier({ sim, stage }: { sim: Sim; stage: string }) {
           <Character look={rideLook} gender={sim.gender} pose="keeper" stage={stage} />
         </group>
       </group>
+    </group>
+  )
+}
+
+/** A slalom buoy, bobbing: orange, green once passed round, red if missed. */
+function Buoy({ gate }: { gate: SkiGate }) {
+  const ref = useRef<THREE.Group>(null)
+  useFrame(() => {
+    if (ref.current) ref.current.position.y = Math.sin(worldTime() * 2.4 + gate.t) * 0.08
+  })
+  const color = gate.result === 'ok' ? '#2fb344' : gate.result === 'miss' ? '#e03131' : '#ff7a00'
+  return (
+    <group position={[gate.at[0], 0, gate.at[1]]}>
+      <group ref={ref}>
+        <mesh position={[0, 0.25, 0]}>
+          <sphereGeometry args={[0.55, 14, 10]} />
+          <meshLambertMaterial color={color} />
+        </mesh>
+        <mesh position={[0, 0.32, 0]}>
+          <cylinderGeometry args={[0.57, 0.57, 0.14, 14]} />
+          <meshLambertMaterial color="#ffffff" />
+        </mesh>
+      </group>
+    </group>
+  )
+}
+
+/** A ski ramp afloat, across the way: white boards on a wooden frame, a gold edge (green jumped, red missed). */
+function Ramp({ gate }: { gate: SkiGate }) {
+  const edge = gate.result === 'jump' ? '#2fb344' : gate.result === 'miss' ? '#e03131' : '#ffc233'
+  return (
+    <group position={[gate.at[0], 0, gate.at[1]]} rotation={[0, gate.rot, 0]}>
+      <mesh position={[0, 0.45, 0]} rotation={[-0.28, 0, 0]}>
+        <boxGeometry args={[3.2, 0.12, 3.4]} />
+        <meshLambertMaterial color="#f4f1ea" />
+      </mesh>
+      <mesh position={[0, 0.92, 1.62]}>
+        <boxGeometry args={[3.3, 0.14, 0.18]} />
+        <meshLambertMaterial color={edge} />
+      </mesh>
+      {[-1.5, 1.5].map((x) => (
+        <mesh key={x} position={[x, 0.25, 0.4]}>
+          <boxGeometry args={[0.18, 0.7, 3]} />
+          <meshLambertMaterial color="#8a5a32" />
+        </mesh>
+      ))}
     </group>
   )
 }

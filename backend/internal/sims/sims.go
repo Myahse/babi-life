@@ -254,6 +254,8 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/huit", h.huitStart)
 	r.Post("/sims/{id}/huit/{game}/{action}", h.huitAct)
 	r.Post("/sims/{id}/moto", h.moto)
+	r.Get("/sims/{id}/defis", h.defis)
+	r.Post("/sims/{id}/defi", h.defi)
 	r.Post("/sims/{id}/travel", h.travel)
 	r.Post("/sims/{id}/career", h.career)
 	r.Post("/sims/{id}/move", h.move)

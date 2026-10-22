@@ -65,6 +65,7 @@ import type { Track } from '../audio/music'
 import { NotifyPrompt } from '../components/NotifyPrompt'
 import { motoFare, motoPaid, useMoto } from '../world3d/moto'
 import { answerDrop, useDropAsk } from '../world3d/dropRoute'
+import { DefiButton, DefiSheet, defiOf, type DefiKind } from '../components/Defi'
 import { FlightView } from '../world3d/FlightView'
 import { aCommune } from '../lib/french'
 
@@ -515,6 +516,8 @@ export function Play() {
 
   // Building one's house on the plot; the houses are fetched again after.
   const moto = useMoto()
+  // A défi taken on during the activity (components/Defi.tsx): the one going on.
+  const [defi, setDefi] = useState<DefiKind | null>(null)
   // A tap on the ground on the way to a place: asked before the way is dropped.
   const dropAsk = useDropAsk()
   // In a home booked on Dodo: the very house (a player's, as built; else the plan of its kind).
@@ -602,6 +605,8 @@ export function Play() {
   const moodHex = needColor(mood(sim.needs))
   // The activity the Sim is acting out here, if any (a trip happens on the road).
   const doing = sim.activity?.kind === 'do' ? sim.activity : null
+  // The défi this activity can be taken on as, not yet played (the ski off the island only, seen there).
+  const defiNow = doing && !doing.defi ? defiOf(doing.interaction.id) : null
   const stop = () => run('Arrêter', 'x', '', () => api.stop(sim.id))
   // The pad shows in the shoulder view (and the classic street); the buttons over the street sit beside it, or in the middle.
   const padShown = classic || view === 'epaule'
@@ -1026,7 +1031,7 @@ export function Play() {
 
       {players && <PlayersSheet sim={sim} around={around} communeName={commune.name} focus={players.focus} act={run} onClose={() => setPlayers(null)} />}
 
-      {sim.activity && !placeId && <ActivityBar world={world} onRejoin={ballKey && played === ballKey ? { sport: ballSport!, go: rejoin } : undefined} sim={sim} onStop={stop} stopping={!!pending} onRoute={() => setOverlay('map')} onMore={onGrounds ? () => (setPlaceId(doing!.placeId!), setMenuOpen(true)) : undefined} />}
+      {sim.activity && !placeId && !defi && <ActivityBar world={world} onDefi={defiNow ? () => (defiNow === 'ski' && setOutside(false), setDefi(defiNow)) : undefined} onRejoin={ballKey && played === ballKey ? { sport: ballSport!, go: rejoin } : undefined} sim={sim} onStop={stop} stopping={!!pending} onRoute={() => setOverlay('map')} onMore={onGrounds ? () => (setPlaceId(doing!.placeId!), setMenuOpen(true)) : undefined} />}
 
       {/* The invitation and the toasts in one column under the top bar: they stack, never on top of each other */}
       <div className="pointer-events-none absolute top-[5.5rem] left-1/2 z-40 flex w-[min(400px,calc(100vw-24px))] -translate-x-1/2 flex-col gap-2 lg:top-24">
@@ -1123,6 +1128,24 @@ export function Play() {
       {overlay === 'camera' && <CameraView sim={sim} street={!showInside} onClose={() => setOverlay(null)} onGallery={() => (setPhoneApp('galerie'), setOverlay('phone'))} />}
       {overlay === 'map' && <WorldMap world={world} sim={sim} night={c.isNight} desktop={desktop} onClose={() => setOverlay(null)} onTravel={travel} onWalk={(id) => (setOverlay(null), walkTo(id))} />}
       {delivery && overlay !== 'phone' && <DeliveryPill delivery={delivery} now={now} onOpen={() => (setPhoneApp('golvo'), setOverlay('phone'))} />}
+      {defi && sim.activity && (
+        <DefiSheet
+          kind={defi}
+          simId={sim.id}
+          big={sim.activity.interaction.id === 'supermarche'}
+          send={async (score) => {
+            try {
+              const res = await api.defi(sim.id, defi, score)
+              apply(res)
+              return res
+            } catch (e) {
+              toast({ tone: 'error', title: 'Pas possible', text: e instanceof Error ? e.message : 'Erreur', money: 0 })
+              return null
+            }
+          }}
+          onClose={() => setDefi(null)}
+        />
+      )}
       {!overlay && (dropAsk ? <DropRouteAsk from={dropAsk.from} moto={dropAsk.moto} /> : <MotoOffer sim={sim} act={run} />)}
       {/* On a flight: the plane over the clouds (the map is a tap away) */}
       {!overlay && sim.activity?.kind === 'travel' && sim.activity.trip?.mode === 'avion' && <FlightView sim={sim} night={c.isNight} onMap={() => setOverlay('map')} />}
@@ -1748,7 +1771,7 @@ function DropRouteAsk({ from, moto }: { from: string; moto: boolean }) {
 }
 
 /** What the Sim is busy with, on real time: progress, time left, and a way to stop. */
-function ActivityBar({ world, sim, onStop, stopping, onRoute, onMore, onRejoin }: { world: World; sim: Sim; onStop: () => void; stopping: boolean; onRoute: () => void; /** At the zoo: the other things to do there. */ onMore?: () => void; /** A match left before its end: back onto the pitch. */ onRejoin?: { sport: 'foot' | 'basket'; go: () => void } }) {
+function ActivityBar({ world, sim, onStop, stopping, onRoute, onMore, onRejoin, onDefi }: { world: World; sim: Sim; onStop: () => void; stopping: boolean; onRoute: () => void; /** At the zoo: the other things to do there. */ onMore?: () => void; /** A match left before its end: back onto the pitch. */ onRejoin?: { sport: 'foot' | 'basket'; go: () => void }; /** The activity taken on as a défi. */ onDefi?: () => void }) {
   const a = sim.activity!
   const span = Math.max(1, a.end - a.start)
   const done = Math.min(1, Math.max(0, (sim.gameMinutes - a.start) / span))
@@ -1786,6 +1809,7 @@ function ActivityBar({ world, sim, onStop, stopping, onRoute, onMore, onRejoin }
           </button>
         )}
       </div>
+      {onDefi && defiOf(a.interaction.id) && <DefiButton kind={defiOf(a.interaction.id)!} onClick={onDefi} />}
       {onRejoin && (
         <button className="btn animate-pop mt-2 w-full !py-2.5" onClick={onRejoin.go}>
           <Volleyball size={18} /> {onRejoin.sport === 'basket' ? 'Revenir sur le terrain' : 'Revenir au match'}
