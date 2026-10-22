@@ -3,6 +3,7 @@ import { ArrowLeft, Check, CheckCheck, EllipsisVertical, Keyboard, Lock, Send, S
 import type { Look, Sim } from '../lib/types'
 import { Portrait } from '../avatar/portrait'
 import { EmojiPanel, StickerView, stickerOf } from './Stickers'
+import { SharedCard, isCard } from './SharedCard'
 
 type Gender = Sim['gender']
 
@@ -181,8 +182,9 @@ export function ChatScreen({
             const newDay = !prev || dayOf(prev.at) !== dayOf(m.at)
             const first = newDay || !prev || prev.mine !== m.mine || prev.sender?.key !== m.sender?.key
             const st = stickerOf(m.body)
-            const big = !st && bigEmoji(m.body)
-            const bare = !!st || big
+            const card = !st && isCard(m.body)
+            const big = !st && !card && bigEmoji(m.body)
+            const bare = !!st || big || card
             const group = !!m.sender && !m.mine
             const reportable = !!onReport && !m.mine && !m.reactions
             const ticks = m.mine && m.readAt !== undefined ? (m.readAt ? <CheckCheck size={15} className="text-[#2b9ce8]" /> : <Check size={15} className="opacity-60" />) : null
@@ -214,7 +216,12 @@ export function ChatScreen({
                         {m.sender!.sub && <span className="font-semibold text-[#8696a0]">· {m.sender!.sub}</span>}
                       </div>
                     )}
-                    {st ? (
+                    {card ? (
+                      <div className={`flex flex-col gap-1 ${m.mine ? 'items-end' : 'items-start'}`}>
+                        <SharedCard body={m.body} mine={m.mine} from={m.sender?.name ?? title} />
+                        <span className="rounded-full bg-white/85 px-1.5 py-0.5 shadow-sm">{stamp}</span>
+                      </div>
+                    ) : st ? (
                       <div className="flex flex-col items-end gap-1">
                         <StickerView s={st} />
                         <span className="rounded-full bg-white/85 px-1.5 py-0.5 shadow-sm">{stamp}</span>

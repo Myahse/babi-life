@@ -157,6 +157,7 @@ export type VirtualMatch = { key: string; round: number; home: string; away: str
 export type Sport = 'foot' | 'basket' | 'tennis'
 export type BetRounds = { now: number; app: string; boost: number; sport?: Sport; league?: string; rounds: { round: number; kickoff: number; matches: VirtualMatch[] }[] }
 export type BetLeg = { match: string; label: string; pick: string; odds: number; won: boolean | null; score?: [number, number] }
+export type LotoTicket = { id: number; draw: number; name: string; numbers: number[]; drawn?: number[]; stake: number; status: 'open' | 'won' | 'lost'; payout: number }
 export type BetView = { id: number; app: string; stake: number; odds: number; status: 'open' | 'won' | 'lost'; payout: number; at: string; legs: BetLeg[] }
 /** Le grin: the public chat (all of Babi, or the commune). */
 export type GrinMessage = { id: number; sim: string; firstName: string; gender: 'femme' | 'homme'; look: Look; commune: string; mine: boolean; friend: boolean; body: string; at: string }

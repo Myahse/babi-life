@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, GramPost, GramProfile, GramFound, GramActivity, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage } from './types'
 import { useSession } from '../store/session'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
@@ -185,6 +185,11 @@ export const api = {
   report: (id: string, friend: string, reason: string, messageId?: number) => post<{ text: string }>(`/sims/${id}/gbairai/${friend}/report`, { reason, messageId }),
   lotoDraws: () => request<{ now: number; pays: Record<number, number>; draws: { id: number; name: string; at: number; numbers?: number[] }[] }>('/loto/draws'),
   buyLoto: (id: string, kiosk: string, draw: number, numbers: number[], stake: number) => post<ActionResult>(`/sims/${id}/loto`, { kiosk, draw, numbers, stake }),
+  myLoto: (id: string) => request<LotoTicket[]>(`/sims/${id}/loto`),
+  /** A ticket of one's own, as a message carries it ([ticket:…], components/SharedCard.tsx). */
+  shareTicket: (id: string, kind: 'bet' | 'loto', ticket: number) => post<{ ref: string }>(`/sims/${id}/tickets/share`, { kind, id: ticket }),
+  /** A ticket someone shared, as it stands now. */
+  sharedTicket: (kind: string, ref: string, sig: string) => request<{ kind: 'bet' | 'loto'; owner: string; bet?: BetView; loto?: LotoTicket }>(`/tickets/${kind}/${ref}/${sig}`),
   betRounds: (app: string, sport = 'foot') => request<BetRounds>(`/bets/rounds?app=${app}&sport=${sport}`),
   placeBet: (id: string, app: string, stake: number, legs: { match: string; pick: string }[]) => post<ActionResult>(`/sims/${id}/bets`, { app, stake, legs }),
   settleBets: (id: string) => post<ActionResult>(`/sims/${id}/bets/settle`, {}),

@@ -105,35 +105,16 @@ func (h *Handler) myLoto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer rows.Close()
-	type ticket struct {
-		ID      int64  `json:"id"`
-		Draw    int64  `json:"draw"`
-		Name    string `json:"name"`
-		Numbers []int  `json:"numbers"`
-		Drawn   []int  `json:"drawn,omitempty"`
-		Stake   int    `json:"stake"`
-		Status  string `json:"status"`
-		Payout  int    `json:"payout"`
-	}
-	out := []ticket{}
+	out := []LotoView{}
 	now := time.Now().Unix()
 	for rows.Next() {
-		var t ticket
+		var t LotoView
 		var nums []int32
 		if err := rows.Scan(&t.ID, &t.Draw, &nums, &t.Stake, &t.Status, &t.Payout); err != nil {
 			httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 			return
 		}
-		for _, n := range nums {
-			t.Numbers = append(t.Numbers, int(n))
-		}
-		if d, ok := game.LotoDrawAt(t.Draw); ok {
-			t.Name = d.Name
-		}
-		if t.Draw <= now {
-			t.Drawn = game.LotoNumbers(t.Draw)
-		}
-		out = append(out, t)
+		out = append(out, lotoView(t, nums, now))
 	}
 	httpx.JSON(w, http.StatusOK, out)
 }

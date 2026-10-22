@@ -15,6 +15,7 @@ import { lettering } from './ruePrincesse'
 import { api } from '../../lib/api'
 import type { Nav } from './nav'
 import { placeIn, useJoined } from './joinIn'
+import { useShare } from '../../lib/share'
 
 // The sellers of the street, at the edge of the real streets around the Sim,
 // always at the same corners:
@@ -855,12 +856,27 @@ export function StreetStall({ stall, hour, crowd, onBuy }: { stall: Stall; hour:
   const [near, setNear] = useState(false)
   // At the garbadrome: choosing one's fish.
   const [choosing, setChoosing] = useState(false)
+  // A Loto ticket just bought: « Partager mon ticket » for a while (to a friend, to the grin).
+  const [bought, setBought] = useState(false)
   const choose = async (choice: string) => {
     setChoosing(false)
     say('…', 20000)
     const text = await onBuy?.(stall.id, choice)
     if (text) say(text)
     else setSaid(null)
+    if (stall.kind === 'loto' && text && text !== sl.out) {
+      setBought(true)
+      setTimeout(() => setBought(false), 30000)
+    }
+  }
+  const shareLoto = async () => {
+    const { simId, share } = useShare.getState()
+    if (!simId) return
+    const [last] = await api.myLoto(simId).catch(() => [])
+    if (!last) return
+    const { ref } = await api.shareTicket(simId, 'loto', last.id)
+    setBought(false)
+    share({ title: 'Partager mon ticket Loto', body: ref })
   }
   const shout = useRef(0)
   const clear = useRef<ReturnType<typeof setTimeout>>(undefined)
@@ -926,6 +942,13 @@ export function StreetStall({ stall, hour, crowd, onBuy }: { stall: Stall; hour:
             className={`rounded-2xl rounded-bl-sm border border-black/5 px-3 py-1.5 text-[13px] font-extrabold whitespace-nowrap shadow-[0_6px_14px_-8px_rgba(0,0,0,0.5)] transition active:scale-95 ${said === sl.out ? 'bg-[#ffe08a] text-[#5a3a00]' : 'bg-white text-[var(--color-ink)]'}`}
           >
             {said ?? sl.ask}
+          </button>
+        </Html>
+      )}
+      {bought && !choosing && (
+        <Html position={[0, 1.5, 1.2]} center zIndexRange={[26, 0]}>
+          <button onClick={() => void shareLoto()} className="flex items-center gap-1.5 rounded-full bg-[#f26b1d] px-3 py-1.5 text-[12px] font-extrabold whitespace-nowrap text-white shadow-[0_6px_14px_-8px_rgba(0,0,0,0.5)] active:scale-95">
+            Partager mon ticket
           </button>
         </Html>
       )}
