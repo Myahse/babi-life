@@ -16,7 +16,7 @@ import { whereabouts } from './whereabouts'
 import { worldTime } from '../lib/worldClock'
 import { SIM_SLOT, matchFor, onField, simSeat, toField, worldFacing } from './open/match'
 import { blocked, blockedFixed, topAt, vehicleAt } from './obstacles'
-import { gridWay } from './gridPath'
+import { clearLine, gridWay } from './gridPath'
 import { usePhotoMode } from './photoCam'
 import { stopEmote, useEmote } from './emoteNow'
 import { Swimmer } from './Swimmer'
@@ -284,8 +284,9 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     started.current = goTo
     const p = group.current!.position
     const way = findWay([p.x, p.z], lot.door, true)
-    // No way through (too far, the map not loaded there yet): straight for it, on foot, the
-    // map loading on the way; a moto-taxi is offered (it used to be a free jump there).
+    // No way through (too far, the map not loaded there yet): toward it on foot, the map loading
+    // on the way, a new way found round each wall met (never through it); a moto-taxi is offered
+    // (it used to be a free jump there).
     path.current = way ? way.slice(1) : [lot.door]
     setPace(pathLength(path.current, [p.x, p.z]))
     target.current = lot.id
@@ -321,6 +322,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   whereabouts.roomAt = roomAt
   /** Room for the body, the cars aside (they'll have moved on): for planning a way. */
   const roomFixed = (x: number, z: number) => clear(x, z) && !blockedFixed(x, z, R)
+  // In development, for tests in the browser: is there room here, the cars aside?
+  if (import.meta.env.DEV) Object.assign(globalThis, { __roomFixed: roomFixed })
   /**
    * The way from a to b: close by, straight round the walls, trees and
    * stalls (never the long way by the streets); further, along the streets,
@@ -333,17 +336,25 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       if (near) return near
     }
     const way = nav.route(a, b, door)
-    if (!way || way.length < 3) return way
-    const first = gridWay(a, way[1], roomFixed) ?? [a, way[1]]
+    // No way by the streets (they don't join, or aren't loaded all the way): across the open ground, round everything.
+    if (!way || way.length < 3) return wide(a, b)
     const n = way.length
-    const last = gridWay(way[n - 2], b, roomFixed) ?? [way[n - 2], b]
+    const first = round(a, way[1])
+    const last = round(way[n - 2], b)
+    // Never a straight line through a wall: no way round from the street, then across the open ground.
+    if (!first || !last) return wide(a, b)
     return [...first, ...way.slice(2, n - 2), ...last]
   }
+  /** Round whatever's between two points: on the fine grid, else on a coarser one that looks further round. */
+  const round = (p: XZ, q: XZ) => gridWay(p, q, roomFixed) ?? gridWay(p, q, roomFixed, 1.5, 60)
+  /** Across the open ground on a coarse grid (two-metre cells), round the buildings and what stands in the streets. */
+  const wide = (a: XZ, b: XZ) => gridWay(a, b, roomFixed, 2, 60, 700 * 700)
   /**
-   * Something standing on the way ahead (a stall, a table, a car stuck in a
-   * jam: the streets' graph doesn't know them): from here round it to the
+   * Something on the way ahead (a stall, a table, a car stuck in a jam, a
+   * building's corner: what the streets' graph doesn't know, or a way laid
+   * straight before the map was loaded there): from here round it to the
    * first free point past it on the way, then on along the way. Null if
-   * there's none close (the end itself taken: walk on).
+   * there's none close.
    */
   const detour = (from: XZ, way: XZ[]): XZ[] | null => {
     let [px, pz] = from
@@ -354,8 +365,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       const len = Math.hypot(tx - px, tz - pz)
       for (let d = 0.5; d <= len; d += 0.5) {
         const [x, z] = [px + ((tx - px) * d) / len, pz + ((tz - pz) * d) / len]
-        if (blockedFixed(x, z, R)) wasBlocked = true
-        else if (wasBlocked && roomFixed(x, z)) {
+        if (!roomFixed(x, z)) wasBlocked = true
+        else if (wasBlocked) {
           const round = gridWay(from, [x, z], roomFixed, 0.5, 6)
           return round ? [...round.slice(1), ...way.slice(i)] : null
         }
@@ -366,6 +377,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     return null
   }
   const noDetour = useRef(0)
+  const walledFor = useRef(0)
   const waited = useRef(0)
   const near = useRef<string | null>(null)
   const padWalking = useRef(false)
@@ -408,15 +420,17 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       const [x, z] = [g.position.x + dir.x * step, g.position.z + dir.z * step]
       // Slide along walls: try the full step, then each axis on its own.
       // (Caught inside something, a car that stopped on it say: it may step out.)
-      if (roomAt(x, z) || !roomAt(g.position.x, g.position.z)) g.position.set(x, 0, z)
-      else if (roomAt(x, g.position.z)) g.position.x = x
-      else if (roomAt(g.position.x, z)) g.position.z = z
+      // The whole step looked at, not just where it lands (a slow phone's step can be over a post).
+      const stepOk = (px: number, pz: number) => roomAt(px, pz) && clearLine([g.position.x, g.position.z], [px, pz], roomAt, 0.4)
+      if (stepOk(x, z) || !roomAt(g.position.x, g.position.z)) g.position.set(x, 0, z)
+      else if (stepOk(x, g.position.z)) g.position.x = x
+      else if (stepOk(g.position.x, z)) g.position.z = z
       else {
         // Straight into a post or a trunk: step round it, a little to one side.
         for (const a of [0.5, -0.5, 1, -1]) {
           const [c, s] = [Math.cos(a), Math.sin(a)]
           const [sx, sz] = [g.position.x + (dir.x * c - dir.z * s) * step, g.position.z + (dir.x * s + dir.z * c) * step]
-          if (roomAt(sx, sz)) {
+          if (stepOk(sx, sz)) {
             g.position.set(sx, 0, sz)
             break
           }
@@ -585,13 +599,32 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         const nx = g.position.x + (dx / dist) * step
         const nz = g.position.z + (dz / dist) * step
         g.rotation.y = Math.atan2(dx, dz)
-        // Something standing in the way: round it (no way round: on through it, and asked again a little later).
-        const standing = blockedFixed(nx, nz, R) && !blockedFixed(g.position.x, g.position.z, R) && performance.now() > noDetour.current
-        const round = standing ? detour([g.position.x, g.position.z], path.current) : null
-        if (standing && !round) noDetour.current = performance.now() + 1500
-        if (round) {
-          path.current = round
-          setRoute([...path.current])
+        // A wall or something standing right ahead: never through it. Round it, else a new way from
+        // here; no way yet (the map still loading there), wait and ask again in a moment. Only the
+        // last step onto a door, which is on its wall, may brush it. (Caught inside something: it may step out.)
+        const cur: XZ = [g.position.x, g.position.z]
+        const atDoor = path.current.length === 1 && dist < 1.2
+        // The whole step looked at, not just where it lands (a slow phone's step can be over a post).
+        const walled = !atDoor && roomFixed(cur[0], cur[1]) && !(roomFixed(nx, nz) && clearLine(cur, [nx, nz], roomFixed, 0.4))
+        if (walled && performance.now() > noDetour.current) {
+          const end = path.current[path.current.length - 1]
+          // Round it close by; else across the open ground (a map building may sit on the street
+          // itself, the streets' way would meet it again); else by the streets.
+          const other = detour(cur, path.current) ?? (Math.hypot(end[0] - cur[0], end[1] - cur[1]) < 600 ? wide(cur, end) : null)?.slice(1) ?? findWay(cur, end, target.current !== null)?.slice(1) ?? null
+          if (other?.length) {
+            path.current = other
+            setRoute([...path.current])
+          } else noDetour.current = performance.now() + 1500
+        }
+        walledFor.current = walled ? walledFor.current + dt : 0
+        if (walled && walledFor.current > 8) {
+          // Still no way round: the walk is given up where the Sim stands.
+          walledFor.current = 0
+          path.current = []
+          setRoute(null)
+          setWalking(false)
+        } else if (walled) {
+          // Waiting for a way round.
         } else if (vehicleAt(nx, nz) && !vehicleAt(g.position.x, g.position.z)) {
           // A car in the way: wait for it to pass; still there after a while, find another way round it.
           waited.current += dt
