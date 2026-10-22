@@ -7,7 +7,7 @@ import '../index.css'
 import type { Block, Look } from '../lib/types'
 import { BlockHuman } from '../avatar/BlockHuman'
 import type { Pose } from '../avatar/Human'
-import { DEFAULT_LOOK, HAIRS } from '../avatar/options'
+import { DEFAULT_LOOK, HAIRS, randomLook } from '../avatar/options'
 import { House, materialTexture } from '../world3d/build/House'
 import { FurnitureSet } from '../world3d/build/Furniture'
 import type { Furniture, Piece } from '../lib/types'
@@ -30,11 +30,10 @@ import { StreetStall } from '../world3d/open/stalls'
 import { StreetSpot } from '../world3d/open/streetPeople'
 import { NouchiCorner } from '../world3d/open/nouchis'
 import { Shower } from '../world3d/interior/ActionProps'
-import { Airliner } from '../world3d/open/airport'
 import { NaveWorld, NAVE_VIEW } from '../world3d/interior/CathedralInside'
 import { Grin } from '../world3d/open/streetlife'
-import { NightScene } from '../world3d/open/nightStreet'
-import { CardBack, PlayingCard } from '../components/Huit'
+import { Character } from '../world3d/Character'
+import { rng } from '../world3d/themes'
 
 // Dev-only (/poster.html): the game's own blocky Sims for the flyer and the
 // video (marketing/). Stills: ?scene=crew|house|dance&t=2 (&alpha for a
@@ -45,7 +44,10 @@ import { CardBack, PlayingCard } from '../components/Huit'
 const q = new URLSearchParams(location.search)
 const VIDEO = q.has('video')
 const ALPHA = q.has('alpha')
-type SceneId = 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'princesse' | `famille-${string}` | 'palais' | 'basket' | 'fete' | 'cause' | 'look' | 'siporex' | 'phone' | 'visages' | 'coiffures' | 'selfie' | 'yop' | 'garba' | 'brochette' | 'plateau' | 'stade' | 'concert' | 'couloir' | 'amis' | 'salon' | 'douche' | 'zoo' | 'loto' | 'chambre' | 'chambre-choc' | 'cabine' | 'keke' | 'mt-yop' | 'mt-gbaka' | 'mt-maquis' | 'mt-stade' | 'mt-village' | 'mt-salon' | 'avion' | 'aeroport' | 'tourf' | 'cathedrale' | 'messe' | 'grin' | 'dames' | 'huit' | 'vol'
+/** marketing/top10.mjs: &only=<scene> draws that scene alone (its clock from 0), &overlay only what goes over the game filmed. */
+const ONLY = q.get('only') as SceneId | null
+const OVERLAY = q.has('overlay')
+type SceneId = 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'princesse' | `famille-${string}` | 'palais' | 'basket' | 'fete' | 'cause' | 'look' | 'siporex' | 'phone' | 'visages' | 'coiffures' | 'selfie' | 'yop' | 'garba' | 'brochette' | 'plateau' | 'stade' | 'concert' | 'couloir' | 'amis' | 'salon' | 'douche' | 'zoo' | 'loto' | 'chambre' | 'chambre-choc' | 'cabine' | 'keke' | 'mt-yop' | 'mt-gbaka' | 'mt-maquis' | 'mt-stade' | 'mt-village' | 'mt-salon' | 'tourf' | 'messe' | 'grin' | 'zouglou'
 /**
  * Which film: ?video (the launch), ?video=bouger (getting about: gbaka,
  * Gnango, Rue Princesse), ?video=bande-annonce (the trailer: gnambro or
@@ -60,12 +62,12 @@ type SceneId = 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'prin
  * emptied, what to remember: marketing/scripts/arnaque-waye.md, voice voix-arnaque.mp3) or
  * ?video=keke (Keke, Awa's friend, asks Babi « what do you want in Babi Life? »:
  * marketing/scripts/keke-micro-trottoir.md, voice voix-keke.mp3) or
- * ?video=tout (the trailer of everything, Awa telling it: the plane, the
- * Plateau and the Tour F, the cathedral, basket, football, the grin, dames,
- * 8 américain, the maquis, the house, the phone: marketing/scripts/tout-babi.md,
- * voice voix-tout.mp3 over its beat son-tout.mp3).
+ * ?video=top10 (« 10 trucs à faire dans Babi Life », Awa telling them: the game
+ * filmed being played, by marketing/top10.mjs, under what's drawn here with
+ * &overlay; the scenes it films from here with &only=grin|messe|zouglou|tourf:
+ * marketing/scripts/top10.md, voice voix-top10.mp3 over its beat son-top10.mp3).
  */
-type FilmId = 'lancement' | 'bouger' | 'bande-annonce' | 'decouverte' | 'live' | 'merci' | 'gameplay' | 'arnaque' | 'keke' | 'tout'
+type FilmId = 'lancement' | 'bouger' | 'bande-annonce' | 'decouverte' | 'live' | 'merci' | 'gameplay' | 'arnaque' | 'keke' | 'top10'
 const FILM = (q.get('video') || 'lancement') as FilmId
 
 /** The materials as the server has them (game/build.go). */
@@ -537,14 +539,14 @@ function Camera({ at, look, near = 0.1, far = 100 }: { at: [number, number, numb
 }
 
 /** One scene of the video (or a still), at t seconds into it. */
-function World({ scene, t, from = 0 }: { scene: SceneId; t: number; /** When the shot starts in the film (the trailer times the stadium's goal on it). */ from?: number }) {
+function World({ scene, t }: { scene: SceneId; t: number }) {
   if (scene === 'salon') return <Salon t={t} />
   if (scene === 'chambre' || scene === 'chambre-choc') return <Chambre t={t} shock={scene === 'chambre-choc'} />
   if (scene === 'cabine') return <Cabine t={t} />
   if (scene === 'keke' || scene.startsWith('mt-')) return <MicroTrottoir scene={scene} t={t} />
-  if (scene === 'avion' || scene === 'aeroport' || scene === 'vol') return <Planes scene={scene} t={t} />
-  if (scene === 'tourf' || scene === 'cathedrale' || scene === 'messe') return <Plateau scene={scene} t={t} />
-  if (scene === 'grin' || scene === 'dames' || scene === 'huit') return <Grins scene={scene} t={t} />
+  if (scene === 'tourf' || scene === 'messe') return <Plateau scene={scene} t={t} />
+  if (scene === 'grin') return <GrinScene t={t} />
+  if (scene === 'zouglou') return <Zouglou t={t} />
   const night = scene === 'dance' || scene === 'fete'
   const spots = useSpots()
   const wide = useThree((s) => s.size.width >= s.size.height)
@@ -666,7 +668,7 @@ function World({ scene, t, from = 0 }: { scene: SceneId; t: number; /** When the
   if (scene === 'cause' || scene === 'selfie' || scene === 'yop' || scene === 'plateau' || scene === 'amis' || scene === 'couloir') return <Street scene={scene} t={t} />
   if (scene === 'garba' || scene === 'brochette') return <Stalls scene={scene} t={t} />
   if (scene === 'douche' || scene === 'zoo' || scene === 'loto') return <Jeu scene={scene} t={t} />
-  if (scene === 'stade' || scene === 'concert') return <Stade scene={scene} t={t} from={from} />
+  if (scene === 'stade' || scene === 'concert') return <Stade scene={scene} t={t} />
   if (scene === 'coiffures') {
     // Every hairstyle, seven at a time (t < 5 or 10–15: the first seven), turning slowly; from behind after t = 10.
     const first = t < 5 || (t >= 10 && t < 15)
@@ -1117,27 +1119,22 @@ function Jeu({ scene, t }: { scene: 'douche' | 'zoo' | 'loto'; t: number }) {
 }
 
 /** The match at the stadium, then the concert, seen from the stands. */
-function Stade({ scene, t, from }: { scene: 'stade' | 'concert'; t: number; from: number }) {
+function Stade({ scene, t }: { scene: 'stade' | 'concert'; t: number }) {
   const concert = scene === 'concert'
-  const tout = FILM === 'tout'
-  // A made-up event under way, the same at every frame: a goal 2 s into the shot (the trailer: on its own shot, 1.5 s in).
+  // A made-up event under way, the same at every frame: a goal 2 s into the shot.
   const demo = useMemo(() => {
-    const now = (EPOCH + (tout ? from + 1.5 - 2.1 : 63.3)) / 60
+    const now = (EPOCH + 63.3) / 60
     return concert
       ? { kind: 'concert' as const, title: 'DJ Garba Chaud en concert', detail: '', start: now - 30, end: now + 180, artist: 'DJ Garba Chaud', genre: 'coupé-décalé' }
       : { kind: 'match' as const, title: 'Babi Sporting – Yop City FC', detail: '', start: now - 30, end: now + 90, home: 'Babi Sporting', away: 'Yop City FC', homeGoals: [12, 30.035], awayGoals: [21] }
-  }, [concert, tout, from])
+  }, [concert])
   const a = (concert ? 0.9 : -0.6) + t * 0.05
   return (
     <>
       <hemisphereLight args={[concert ? '#8f9cff' : '#fff4e6', concert ? '#2a2a4e' : '#c0704f', concert ? 0.5 : 1.2]} />
       <directionalLight position={[40, 80, 50]} intensity={concert ? 0.2 : 2} />
       <ambientLight intensity={0.35} />
-      {tout ? (
-        <Camera at={concert ? [Number(q.get('cx') ?? 30) - t * 2, 20, 30] : [10 - t * 4, 34 - t, 62]} look={concert ? [-44, 8, 0] : [-25 + t * 2, 0, 0]} far={600} />
-      ) : (
-        <Camera at={concert ? [8 - t * 0.6, 17, 22] : [Math.sin(a) * 62, 30, Math.cos(a) * 50]} look={concert ? [-44, 7, 0] : [0, 1, 0]} />
-      )}
+      <Camera at={concert ? [8 - t * 0.6, 17, 22] : [Math.sin(a) * 62, 30, Math.cos(a) * 50]} look={concert ? [-44, 7, 0] : [0, 1, 0]} />
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[600, 600]} />
         <meshLambertMaterial color={concert ? '#3a3448' : '#b98b5c'} />
@@ -1177,141 +1174,6 @@ function Sky({ top, horizon, haze }: { top: string; horizon: string; haze?: [num
     }
   }, [scene, tex, horizon, near, far])
   return null
-}
-
-const cloudGeo = new THREE.IcosahedronGeometry(1, 1)
-const cloudMat = new THREE.MeshLambertMaterial({ color: '#ffffff', flatShading: true })
-
-/** Clouds: puffs of a few lumps each, seeded, at a height. */
-function Clouds({ y, n, spread, seed, size = 1 }: { y: number; n: number; spread: number; seed: number; size?: number }) {
-  const parts = useMemo(() => {
-    let k = seed * 7919 + 1
-    const r = () => (k = (k * 16807) % 2147483647) / 2147483647
-    const out: [number, number, number, number][] = []
-    for (let i = 0; i < n; i++) {
-      const [cx, cz, s] = [(r() - 0.5) * spread, (r() - 0.5) * spread, (24 + r() * 40) * size]
-      for (let j = 0; j < 6; j++) out.push([cx + (r() - 0.5) * s * 2, y + r() * s * 0.35, cz + (r() - 0.5) * s * 1.3, s * (0.45 + r() * 0.6)])
-    }
-    return out
-  }, [y, n, spread, seed, size])
-  return (
-    <instancedMesh
-      args={[cloudGeo, cloudMat, parts.length]}
-      // Its bounds would be the first lump's, taken before the others are placed.
-      frustumCulled={false}
-      ref={(m) => {
-        if (!m) return
-        const d = new THREE.Object3D()
-        parts.forEach(([x, py, z, sc], i) => {
-          d.position.set(x, py, z)
-          d.scale.set(sc, sc * 0.55, sc)
-          d.updateMatrix()
-          m.setMatrixAt(i, d.matrix)
-        })
-        m.instanceMatrix.needsUpdate = true
-      }}
-    />
-  )
-}
-
-/** The city far off across the lagoon at sunset: x, height, width (the Tour F the highest, the Pyramide, the Plateau's towers). */
-const SKYLINE: [number, number, number][] = [
-  [-620, 38, 40], [-560, 64, 34], [-500, 52, 44], [-430, 96, 30], [-380, 72, 38], [-320, 120, 34], [-260, 88, 42], [-200, 140, 30], [-150, 104, 36],
-  [-90, 92, 50], [-30, 363, 34], [20, 118, 30], [70, 86, 44], [130, 150, 32], [190, 98, 40], [250, 70, 52], [320, 112, 30], [380, 58, 46], [450, 80, 36], [520, 44, 50], [600, 36, 42],
-]
-
-/** The trailer's planes: over the lagoon at sunset (the hook), landing at Port-Bouët, above the clouds. */
-function Planes({ scene, t }: { scene: 'avion' | 'aeroport' | 'vol'; t: number }) {
-  if (scene === 'avion') {
-    const x = -40 + t * 62
-    return (
-      <>
-        <Sky top="#211d55" horizon="#ff9450" haze={[400, 3200]} />
-        <hemisphereLight args={['#ffd2a8', '#3a2f6a', 1.1]} />
-        <directionalLight position={[160, 160, -900]} intensity={2.6} color="#ffb070" />
-        <ambientLight intensity={0.35} />
-        <Camera at={[x - 22, 74, 150 - t * 12]} look={[x + 18, 57, -170]} near={1} far={5000} />
-        <mesh rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[12000, 12000]} />
-          <meshLambertMaterial color="#4b3f7e" />
-        </mesh>
-        {/* The sun going down, and its road on the water */}
-        <mesh position={[160, 150, -2600]}>
-          <circleGeometry args={[150, 48]} />
-          <meshBasicMaterial color="#ffd27a" fog={false} />
-        </mesh>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[160, 0.3, -1500]}>
-          <planeGeometry args={[150, 2200]} />
-          <meshBasicMaterial color="#ffb867" transparent opacity={0.32} fog={false} />
-        </mesh>
-        {SKYLINE.map(([sx, h, w], i) => (
-          <mesh key={i} position={[sx + 150, h / 2, -1700]}>
-            <boxGeometry args={[w, h, w]} />
-            <meshLambertMaterial color="#35285a" />
-          </mesh>
-        ))}
-        <group position={[x, 60, 0]} rotation={[0, Math.PI / 2, Math.sin(t * 0.8) * 0.06]}>
-          <Airliner gear={false} />
-        </group>
-      </>
-    )
-  }
-  if (scene === 'aeroport') {
-    // Down the glide path, the wheels on the runway, the terminal and its tower behind.
-    const x = -240 + t * 74
-    const y = Math.max(0, 26 - t * 11)
-    return (
-      <>
-        <Sky top="#3f95e6" horizon="#d8eefc" haze={[500, 3500]} />
-        <hemisphereLight args={['#fff4e6', '#8a7a62', 1.2]} />
-        <directionalLight position={[300, 500, 400]} intensity={2.2} />
-        <ambientLight intensity={0.35} />
-        <Camera at={[-150 + t * 12, 7, -500]} look={[(x - 150) / 2, 12, -200]} near={1} far={4000} />
-        <mesh rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[8000, 8000]} />
-          <meshLambertMaterial color="#8fb46a" />
-        </mesh>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, -270]}>
-          <planeGeometry args={[2400, 46]} />
-          <meshLambertMaterial color="#4a4d52" />
-        </mesh>
-        {[...Array(40)].map((_, i) => (
-          <mesh key={i} rotation={[-Math.PI / 2, 0, 0]} position={[-1170 + i * 60, 0.09, -270]}>
-            <planeGeometry args={[30, 0.9]} />
-            <meshBasicMaterial color="#f4f5f7" />
-          </mesh>
-        ))}
-        <Landmark id="pb-aeroport" night={false} />
-        <group position={[x, y, -270]} rotation={[0, Math.PI / 2, 0]}>
-          <group rotation={[y > 0 ? -0.07 : -0.02, 0, 0]}>
-            <Airliner />
-          </group>
-        </group>
-      </>
-    )
-  }
-  // Above the clouds: the airliner cruising, the camera going round it, the clouds going by.
-  const a = 0.75 + t * 0.14
-  return (
-    <>
-      <Sky top="#0b48b8" horizon="#d4ecff" haze={[500, 3800]} />
-      <hemisphereLight args={['#ffffff', '#9ab8e0', 1.3]} />
-      <directionalLight position={[300, 400, 200]} intensity={2.2} />
-      <ambientLight intensity={0.35} />
-      <Camera at={[Math.cos(a) * 95, 26 + Math.sin(t * 0.6) * 1.5, Math.sin(a) * 95]} look={[0, -12, 0]} near={1} far={6000} />
-      <group position={[0, Math.sin(t * 1.4) * 0.6, 0]} rotation={[0, Math.PI / 2, Math.sin(t * 0.9) * 0.03]}>
-        <Airliner gear={false} />
-      </group>
-      <group position={[-t * 120, 0, 0]}>
-        <Clouds y={-70} n={130} spread={2600} seed={7} />
-        <Clouds y={-170} n={70} spread={3800} seed={11} size={1.6} />
-      </group>
-      <mesh position={[1400, 600, -1800]}>
-        <circleGeometry args={[90, 40]} />
-        <meshBasicMaterial color="#fff6d8" fog={false} />
-      </mesh>
-    </>
-  )
 }
 
 /** A tower's face: windows in rows (the Cité administrative's). */
@@ -1357,53 +1219,28 @@ function Tower({ at, w, h, d }: { at: [number, number]; w: number; h: number; d:
   )
 }
 
-/** The Plateau: the drone climbing the Tour F, the cathedral seen from the sky, the mass inside. */
-function Plateau({ scene, t }: { scene: 'tourf' | 'cathedrale' | 'messe'; t: number }) {
+/** The Plateau: the drone climbing the Tour F (up the facade, then back to see it over the Plateau), the mass in the cathedral. */
+function Plateau({ scene, t }: { scene: 'tourf' | 'messe'; t: number }) {
   if (scene === 'messe') {
     const { altar, pit, front } = NAVE_VIEW
     return (
       <>
-        <Camera at={[Math.sin(t * 0.5) * 2, 6 - t * 0.8, front - 6 - t * 5]} look={[altar[0], -pit + 2.5, altar[1]]} near={0.3} far={900} />
+        <Camera at={[Math.sin(t * 0.4) * 2, 6 - t * 0.6, front - 6 - t * 4]} look={[altar[0], -pit + 2.5, altar[1]]} near={0.3} far={900} />
         <NaveWorld night={false} mass />
       </>
     )
   }
-  const day = (
+  const a = 0.5 + t * 0.12
+  const up = ease(clamp01(t / 2.6))
+  const back = ease(clamp01((t - 2.4) / 1.8))
+  const y = 14 + up * 300 - back * 60
+  const r = 175 + back * 520
+  return (
     <>
       <Sky top="#3b8de0" horizon="#dcefff" haze={[700, 4500]} />
       <hemisphereLight args={['#fff4e6', '#8a7a62', 1.2]} />
       <directionalLight position={[300, 500, 200]} intensity={2.1} />
       <ambientLight intensity={0.35} />
-    </>
-  )
-  if (scene === 'cathedrale') {
-    const a = -0.2 + t * 0.1
-    const r = 300 - t * 30
-    return (
-      <>
-        {day}
-        <Camera at={[Math.sin(a) * r, 52 - t * 5, Math.cos(a) * r]} look={[0, 44, 0]} near={1} far={4000} />
-        <mesh rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[4000, 4000]} />
-          <meshLambertMaterial color="#b9ad94" />
-        </mesh>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.2, -1200]}>
-          <planeGeometry args={[4000, 2000]} />
-          <meshLambertMaterial color="#3d7fb0" />
-        </mesh>
-        <Landmark id="plateau-cathedrale" night={false} />
-      </>
-    )
-  }
-  // The Tour F: from its site up to the cranes, the Cité's towers and the cathedral round it.
-  const a = 0.5 + t * 0.16
-  const up = ease(clamp01(t / 2))
-  const back = ease(clamp01((t - 1.8) / 1.4))
-  const y = 14 + up * 300 - back * 60
-  const r = 175 + back * 520
-  return (
-    <>
-      {day}
       <Camera at={[Math.sin(a) * r, y, Math.cos(a) * r]} look={[0, y + 18 - up * 40 - back * 70, 0]} near={1} far={6000} />
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[6000, 6000]} />
@@ -1428,45 +1265,77 @@ function Plateau({ scene, t }: { scene: 'tourf' | 'cathedrale' | 'messe'; t: num
   )
 }
 
-/** The grin by day (the tea), and at night under the bulb (the dames, the cards over them). */
-function Grins({ scene, t }: { scene: 'grin' | 'dames' | 'huit'; t: number }) {
-  if (scene === 'grin') {
-    const a = 0.5 + t * 0.24
-    return (
-      <>
-        <Sky top="#58a6ea" horizon="#ffe9c8" />
-        <hemisphereLight args={['#fff4e6', '#c0704f', 1.25]} />
-        <directionalLight position={[4, 9, 6]} intensity={2} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-6} shadow-camera-right={6} shadow-camera-top={6} shadow-camera-bottom={-6} />
-        <ambientLight intensity={0.4} />
-        <Camera at={[Math.sin(a) * 5.6, 2.1, Math.cos(a) * 5.6]} look={[0, 0.6, 0]} />
-        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-          <planeGeometry args={[80, 80]} />
-          <meshLambertMaterial color="#c9a77a" />
-        </mesh>
-        {/* The courtyard wall behind */}
-        <mesh position={[0, 1.1, -4.2]} receiveShadow>
-          <boxGeometry args={[14, 2.2, 0.3]} />
-          <meshLambertMaterial color="#e3c9a0" />
-        </mesh>
-        <mesh position={[0, 0.25, -4.04]}>
-          <boxGeometry args={[14, 0.5, 0.02]} />
-          <meshLambertMaterial color="#ff8200" />
-        </mesh>
-        <Grin seed="bande-annonce" />
-      </>
-    )
-  }
-  const a = (scene === 'dames' ? 0.3 : -0.4) + t * 0.12
+/** Le grin by day: the tea being made, the three of them on their benches, the camera going round. */
+function GrinScene({ t }: { t: number }) {
+  const a = 0.5 + t * 0.2
+  return (
+    <>
+      <Sky top="#58a6ea" horizon="#ffe9c8" />
+      <hemisphereLight args={['#fff4e6', '#c0704f', 1.25]} />
+      <directionalLight position={[4, 9, 6]} intensity={2} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-6} shadow-camera-right={6} shadow-camera-top={6} shadow-camera-bottom={-6} />
+      <ambientLight intensity={0.4} />
+      <Camera at={[Math.sin(a) * 5.6, 2.1, Math.cos(a) * 5.6]} look={[0, 0.6, 0]} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[80, 80]} />
+        <meshLambertMaterial color="#c9a77a" />
+      </mesh>
+      {/* The courtyard wall behind */}
+      <mesh position={[0, 1.1, -4.2]} receiveShadow>
+        <boxGeometry args={[14, 2.2, 0.3]} />
+        <meshLambertMaterial color="#e3c9a0" />
+      </mesh>
+      <mesh position={[0, 0.25, -4.04]}>
+        <boxGeometry args={[14, 0.5, 0.02]} />
+        <meshLambertMaterial color="#ff8200" />
+      </mesh>
+      <Grin seed="bande-annonce" />
+    </>
+  )
+}
+
+/** Le zouglou at night outside the maquis: five of them in a line, the game's own dance moves (avatar/emotes.ts). */
+const ZOUGLOU: [Pose, 'femme' | 'homme'][] = [
+  ['gweta', 'femme'],
+  ['zouglou', 'homme'],
+  ['moonwalk', 'homme'],
+  ['zouglou', 'homme'],
+  ['gweta', 'femme'],
+]
+
+function Zouglou({ t }: { t: number }) {
+  const looks = useMemo(() => ZOUGLOU.map(([, g], i) => randomLook(g, rng(`zouglou${i}`))), [])
+  const bulbs = [...Array(16)].map((_, i) => [-6 + i * 0.8, 3.3 - Math.sin((i / 15) * Math.PI) * 0.6, -2.2] as [number, number, number])
   return (
     <>
       <hemisphereLight args={['#8f9cff', '#2a2a4e', 0.75]} />
       <ambientLight intensity={0.3} />
-      <Camera at={[Math.sin(a) * 3.2, 1.9, 2.4 + Math.cos(a) * 1.2]} look={[0, 0.7, 0]} />
+      <pointLight position={[0, 3.2, 1.8]} intensity={18} distance={14} color="#ffc27a" />
+      <pointLight position={[-4, 2.5, -1]} intensity={8} distance={10} color="#ff7a00" />
+      <Camera at={[-1.4 + t * 0.6, 1.35 + Math.sin(t * 0.8) * 0.1, 8.2 - Math.sin(t * 0.5) * 0.6]} look={[t * 0.18 - 0.3, 1.15, 0]} />
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[60, 60]} />
-        <meshLambertMaterial color="#5a5470" />
+        <meshLambertMaterial color="#4a4560" />
       </mesh>
-      <NightScene kind="dames" seed="bande-annonce" />
+      {/* The maquis behind: its wall, its colours, its string of bulbs */}
+      <mesh position={[0, 1.6, -2.6]}>
+        <boxGeometry args={[16, 3.2, 0.3]} />
+        <meshLambertMaterial color="#2f6b4f" />
+      </mesh>
+      <mesh position={[0, 2.7, -2.44]}>
+        <boxGeometry args={[16, 0.4, 0.02]} />
+        <meshBasicMaterial color="#ffd166" />
+      </mesh>
+      {bulbs.map((p, i) => (
+        <mesh key={i} position={p}>
+          <boxGeometry args={[0.14, 0.14, 0.14]} />
+          <meshBasicMaterial color={['#ffc233', '#ff7a00', '#00b86b', '#ffffff'][i % 4]} />
+        </mesh>
+      ))}
+      {ZOUGLOU.map(([pose, gender], i) => (
+        <group key={i} position={[(i - 2) * 1.25, 0, -Math.abs(i - 2) * 0.35]} rotation={[0, (2 - i) * 0.12, 0]}>
+          <Character look={looks[i]} gender={gender} pose={pose} stage="adulte" marker={false} seed={i * 1.7} />
+        </group>
+      ))}
     </>
   )
 }
@@ -1633,7 +1502,7 @@ function GbairaiChat({ t }: { t: number }) {
 
 /* ---------- The video: 25 seconds, scene after scene ---------- */
 
-type Shot = { from: number; to: number; scene: SceneId; title?: string; sub?: string; /** Its number, in the film that goes through everything. */ n?: number; /** The live: what Awa says, as a subtitle. */ cap?: string; /** « Merci »: the follower counter, the gift that hides. */ counter?: boolean; tease?: boolean; /** « Arnaque »: what the phone shows, and the tip. */ phone?: 'msg' | 'page' | 'drain' | 'call' | 'masque'; tip?: number; /** « tout »: what Awa says (the captions), the place's tag, the scenes cut through fast, the scene's own clock sped up. */ say?: string; tag?: string; montage?: SceneId[]; speed?: number; /** Where in its scene the shot starts (seconds). */ at?: number }
+type Shot = { from: number; to: number; scene: SceneId; title?: string; sub?: string; /** Its number, in the film that goes through everything. */ n?: number; /** The live: what Awa says, as a subtitle. */ cap?: string; /** « Merci »: the follower counter, the gift that hides. */ counter?: boolean; tease?: boolean; /** « Arnaque »: what the phone shows, and the tip. */ phone?: 'msg' | 'page' | 'drain' | 'call' | 'masque'; tip?: number; /** « top10 »: what Awa says (the captions). */ say?: string }
 /** Each film: its shots, when the intro ends and the outro starts, its length (marketing/video.mjs reads it). */
 const FILMS: Record<FilmId, { shots: Shot[]; intro: number; outro: number; length: number; hook: [string, string, string] }> = {
   lancement: {
@@ -1805,31 +1674,26 @@ const FILMS: Record<FilmId, { shots: Shot[]; intro: number; outro: number; lengt
     hook: ['', '', ''],
   },
 
-  // The trailer of everything (marketing/scripts/tout-babi.md), Awa telling it: one shot per line of hers.
-  tout: {
+  // « 10 trucs à faire dans Babi Life » (marketing/scripts/top10.md): the game filmed being played
+  // (marketing/top10.mjs), what's drawn here over it (&overlay). Each line of Awa's on its activity.
+  top10: {
     shots: [
-      { from: 0, to: 2.8, scene: 'avion', say: 'Attends… Abidjan… dans un jeu ?!' },
-      { from: 2.8, to: 5.6, scene: 'aeroport', tag: '✈️ AÉROPORT FHB', say: 'Bienvenue à Babi ! Moi c’est Awa, suis-moi !' },
-      { from: 5.6, to: 8.8, scene: 'tourf', tag: '🏙️ LE PLATEAU', say: 'Le Plateau, les tours… même la Tour F en chantier !' },
-      { from: 8.8, to: 10.6, scene: 'cathedrale', tag: '⛪ LA CATHÉDRALE', say: 'La cathédrale…' },
-      { from: 10.6, to: 12.6, scene: 'messe', tag: '🙏🏾 LA MESSE', say: '… et la messe du dimanche.' },
-      { from: 12.6, to: 15.2, scene: 'basket', tag: '🏀 PALAIS DES SPORTS', say: 'Le basket au Palais des Sports…' },
-      { from: 15.2, to: 18, scene: 'stade', tag: '⚽ LE STADE', say: '… le foot au stade : BUUUT !' },
-      { from: 18, to: 21, scene: 'grin', tag: '🍵 LE GRIN', say: 'Le thé au grin : on refait le monde.' },
-      { from: 21, to: 24.4, scene: 'dames', tag: '⚪⚫ LES DAMES', say: 'Les dames : tu mises… et tu rafles tout !' },
-      { from: 24.4, to: 28.4, scene: 'huit', tag: '🃏 8 AMÉRICAIN', say: 'Et le 8 américain ! Joker… tu pioches six !' },
-      { from: 28.4, to: 31.2, scene: 'fete', tag: '💸 LE MAQUIS', say: 'Le soir, maquis : on travaille les billets !' },
-      { from: 31.2, to: 33.6, scene: 'concert', tag: '🎤 CONCERT AU STADE', say: 'Concert au stade…' },
-      { from: 33.6, to: 36.2, scene: 'gbaka', tag: '🚐 LE GBAKA', say: 'Gbaka, woro-woro… on bouge !', at: 2 },
-      { from: 36.2, to: 39, scene: 'build', tag: '🏠 TA MAISON', say: 'Tu construis ta maison, brique par brique.', speed: 3.2 },
-      { from: 39, to: 41.8, scene: 'phone', tag: '📱 TON TÉLÉPHONE', say: 'Waye, Tikitoko, Bet225… tout est dans ton téléphone !' },
-      { from: 41.8, to: 44.4, scene: 'vol', tag: '🌍 LE VOYAGE', say: 'Et quand l’argent est là… tu prends l’avion !' },
-      { from: 44.4, to: 46.4, scene: 'tourf', montage: ['tourf', 'basket', 'stade', 'fete', 'concert', 'aeroport', 'build', 'vol'], say: 'Tout ça… dans un seul jeu !' },
-      { from: 46.4, to: 53, scene: 'crew' },
+      { from: 0, to: 2.6, scene: 'crew', say: 'Tu t’ennuies ? Voilà dix trucs à faire à Babi !' },
+      { from: 2.6, to: 6.8, scene: 'grin', n: 10, title: 'LE THÉ AU GRIN', say: 'Dix : le thé au grin. On refait le monde !' },
+      { from: 6.8, to: 11, scene: 'messe', n: 9, title: 'LA MESSE', say: 'Neuf : la messe du dimanche, à la cathédrale.' },
+      { from: 11, to: 15.2, scene: 'zouglou', n: 8, title: 'LE ZOUGLOU', say: 'Huit : le zouglou avec les gars !' },
+      { from: 15.2, to: 19.4, scene: 'crew', n: 7, title: 'PRENDRE L’AVION', say: 'Sept : tu prends l’avion pour Yamoussoukro.' },
+      { from: 19.4, to: 23.6, scene: 'tourf', n: 6, title: 'LE PLATEAU', say: 'Six : le Plateau… et la Tour F en chantier !' },
+      { from: 23.6, to: 27.8, scene: 'crew', n: 5, title: 'LES DAMES', say: 'Cinq : les dames. Tu mises… et tu rafles tout !' },
+      { from: 27.8, to: 32, scene: 'crew', n: 4, title: 'LE 8 AMÉRICAIN', say: 'Quatre : le 8 américain. Joker ? Pioche six !' },
+      { from: 32, to: 36.2, scene: 'crew', n: 3, title: 'LE KART', say: 'Trois : la course de karts. Dérapage !' },
+      { from: 36.2, to: 40.4, scene: 'crew', n: 2, title: 'LE BASKET', say: 'Deux : le basket… et smash !' },
+      { from: 40.4, to: 44.6, scene: 'crew', n: 1, title: 'LE FOOT', say: 'Et numéro un… le foot avec les gars du quartier. BUUUT !' },
+      { from: 44.6, to: 50.6, scene: 'crew', say: 'Et toi, tu commences par lequel ? Inscris-toi, c’est gratuit !' },
     ],
     intro: 0,
-    outro: 46.4,
-    length: 53,
+    outro: 44.6,
+    length: 50.6,
     hook: ['', '', ''],
   },
 }
@@ -2469,19 +2333,7 @@ const TALK: [string, string][] = [
 /** The phone's home screen: the game's apps come up one after the other. */
 function PhoneApps({ t }: { t: number }) {
   const up = ease(clamp01(t / 0.6))
-  const tout = FILM === 'tout'
-  const apps: { id?: string; icon?: typeof MapIcon; bg?: string; label: string }[] = tout
-    ? [
-        { id: 'waye', label: 'Waye' },
-        { id: 'tikitoko', label: 'Tikitoko' },
-        { id: 'babigram', label: 'Babigram' },
-        { id: 'bet225', label: 'Bet225' },
-        { id: 'dames', label: 'Dames' },
-        { id: 'huit', label: '8 américain' },
-        { id: 'kineo', label: 'Kinéo' },
-        { id: 'dodo', label: 'Dodo' },
-      ]
-    : [
+  const apps: { id?: string; icon?: typeof MapIcon; bg?: string; label: string }[] = [
     { id: 'waye', label: 'Waye' },
     { id: 'gnango', label: 'Gnango' },
     { id: 'golvo', label: 'Golvo' },
@@ -2490,15 +2342,15 @@ function PhoneApps({ t }: { t: number }) {
     { icon: Newspaper, bg: '#d6336c', label: 'Infos' },
     { icon: MapIcon, bg: '#00a862', label: 'Carte' },
     { icon: MessageCircle, bg: '#7b5cff', label: 'Messages' },
-      ]
+  ]
   return (
-    <div className={`absolute inset-x-0 flex justify-center ${tout ? 'bottom-[29%]' : 'bottom-[7%]'}`} style={{ transform: `translateY(${(1 - up) * 110}%)`, opacity: up }}>
+    <div className="absolute inset-x-0 bottom-[7%] flex justify-center" style={{ transform: `translateY(${(1 - up) * 110}%)`, opacity: up }}>
       <div className="w-[320px] rounded-[44px] bg-[#141416] p-3 shadow-[0_30px_60px_-20px_rgba(0,0,0,0.7)]">
         <div className="rounded-[34px] bg-[linear-gradient(170deg,#2a2f6a,#ff7a59)] px-5 pt-8 pb-7">
           <div className="text-center font-sans text-[15px] font-extrabold text-white/85">Mon téléphone</div>
           <div className="mt-5 grid grid-cols-4 gap-x-3 gap-y-5">
             {apps.map((a, i) => {
-              const k = ease(clamp01((t - (tout ? 0.35 : 0.5) - i * (tout ? 0.14 : 0.22)) / 0.4))
+              const k = ease(clamp01((t - 0.5 - i * 0.22) / 0.4))
               const I = a.icon
               return (
                 <div key={a.label} className="flex flex-col items-center gap-1.5" style={{ opacity: k, transform: `scale(${0.6 + 0.4 * k})` }}>
@@ -2520,221 +2372,125 @@ function PhoneApps({ t }: { t: number }) {
   )
 }
 
-/* ---------- « tout »: the trailer's overlay ---------- */
+/* ---------- « top10 »: what goes over the game filmed (marketing/top10.mjs) ---------- */
 
-/** A dames board mid-game: the white pawn about to take three (the rafle). Squares: [row, column], row 0 at the top. */
-const RAFLE_BLACK: [number, number][] = [[0, 5], [0, 9], [1, 0], [1, 2], [1, 4], [1, 8], [2, 1], [2, 7], [3, 2]]
-const RAFLE_WHITE: [number, number][] = [[6, 9], [7, 6], [8, 1], [8, 3], [8, 5], [9, 4], [9, 8]]
-const RAFLE_PATH: [number, number][] = [[7, 2], [5, 4], [3, 6], [5, 8]]
-const RAFLE_TAKEN: [number, number][] = [[6, 3], [4, 5], [4, 7]]
+const YELLOW = '#ffd400'
 
-function Pawn({ white, size, lift = 0, glow }: { white: boolean; size: number; lift?: number; glow?: boolean }) {
+/** Awa's line as on TikTok: white boxes, black words, the words coming as she says them. */
+function Captions({ say, local, span }: { say: string; local: number; span: number }) {
+  const words = say.split(' ')
+  const shown = Math.min(words.length, 1 + Math.floor((Math.max(0, local - 0.1) / Math.max(0.5, span - 0.6)) * words.length))
   return (
-    <span
-      className="block rounded-full"
-      style={{
-        width: size,
-        height: size,
-        transform: `translateY(${-lift * 10}px) scale(${1 + lift * 0.25})`,
-        background: white ? 'radial-gradient(circle at 35% 30%, #fffdf6, #e8dcc2 60%, #c9b48c)' : 'radial-gradient(circle at 35% 30%, #4a3a32, #241a15 60%, #0e0a08)',
-        boxShadow: `${glow ? '0 0 0 3px #ffd166,' : ''} inset 0 -3px 0 rgba(0,0,0,0.25), 0 ${3 + lift * 10}px ${4 + lift * 8}px rgba(0,0,0,0.45)`,
-      }}
-    />
-  )
-}
-
-/** Les dames: the board comes in, the white pawn takes three in one go, they leave the board. */
-function DamesRafle({ t }: { t: number }) {
-  const SQ = 40
-  const k = ease(clamp01(t / 0.35))
-  // The jumping pawn: 0.35 s a jump, a hop in the middle of each.
-  const u = clamp01((t - 0.6) / 1.05) * 3
-  const leg = Math.min(2, Math.floor(u))
-  const f = u >= 3 ? 1 : u - leg
-  const [a, b] = [RAFLE_PATH[leg], RAFLE_PATH[leg + 1]]
-  const at: [number, number] = [a[0] + (b[0] - a[0]) * ease(f), a[1] + (b[1] - a[1]) * ease(f)]
-  const hop = u > 0 && u < 3 ? Math.sin(f * Math.PI) : 0
-  const gone = clamp01((t - 1.8) / 0.25)
-  const cell = ([r, c]: [number, number]) => ({ left: c * SQ, top: r * SQ })
-  return (
-    <div className="absolute inset-x-0 top-[24%] flex justify-center" style={{ opacity: k, transform: `scale(${0.8 + 0.2 * k}) rotate(${(1 - k) * -6}deg)` }}>
-      <div className="rounded-2xl bg-[#5a3418] p-2.5 shadow-[0_30px_60px_-20px_rgba(0,0,0,0.8)]">
-        <div className="relative overflow-hidden rounded-md" style={{ width: SQ * 10, height: SQ * 10 }}>
-          {Array.from({ length: 100 }, (_, i) => {
-            const [r, c] = [Math.floor(i / 10), i % 10]
-            const lit = RAFLE_PATH.some(([pr, pc]) => pr === r && pc === c) && t > 0.6
-            return <i key={i} className="absolute block" style={{ ...cell([r, c]), width: SQ, height: SQ, background: (r + c) % 2 ? (lit ? '#9c6a2c' : '#7a4a22') : '#efd9ae' }} />
-          })}
-          {[...RAFLE_BLACK.map((p) => ({ p, white: false, o: 1 })), ...RAFLE_WHITE.map((p) => ({ p, white: true, o: 1 })), ...RAFLE_TAKEN.map((p) => ({ p, white: false, o: 1 - gone }))].map(({ p, white, o }, i) => (
-            <span key={i} className="absolute grid place-items-center" style={{ ...cell(p), width: SQ, height: SQ, opacity: o }}>
-              <Pawn white={white} size={SQ * 0.78} />
-            </span>
-          ))}
-          <span className="absolute grid place-items-center" style={{ left: at[1] * SQ, top: at[0] * SQ, width: SQ, height: SQ, zIndex: 2 }}>
-            <Pawn white size={SQ * 0.78} lift={hop} glow />
-          </span>
-        </div>
-      </div>
+    <div className="absolute inset-x-7 top-[62%] text-center">
+      <p className="text-[27px] leading-[1.45] font-extrabold text-[#111]" style={{ opacity: clamp01(local / 0.1) }}>
+        <span className="box-decoration-clone rounded-lg bg-white px-2.5 py-0.5 shadow-[0_6px_0_rgba(0,0,0,0.25)]">{words.slice(0, shown).join(' ')}</span>
+      </p>
     </div>
   )
 }
 
-/** 8 américain: Awa's hand, a joker on her (+6), she draws, then she puts her 8 down and asks for hearts. */
-const HAND = [17, 36, 39, 8, 27, 46, 25]
-const DRAWN = [3, 14, 30, 41, 10, 22]
-function HuitTable({ t }: { t: number }) {
-  const k = ease(clamp01(t / 0.35))
-  const drawn = DRAWN.filter((_, i) => t > 2 + i * 0.13 + 0.12)
-  const eight = clamp01((t - 3) / 0.3)
-  const hand = [...HAND.filter((c) => c !== 46 || eight === 0), ...drawn]
-  const joker = ease(clamp01((t - 0.9) / 0.4))
+/** The countdown down the right: done, the one now (big, yellow), to come. */
+function Ladder({ now }: { now: number }) {
   return (
-    <div className="absolute inset-x-[4%] top-[23%] h-[50%] overflow-hidden rounded-[36px] border-[10px] border-[#5a3418] shadow-[0_30px_60px_-20px_rgba(0,0,0,0.8)]" style={{ background: 'radial-gradient(ellipse at 50% 40%, #1f8a55, #0b5a33 70%, #073f24)', opacity: k, transform: `scale(${0.85 + 0.15 * k})` }}>
-      {/* The others */}
-      <div className="flex justify-around px-3 pt-3">
-        {[
-          ['Tantie Bintou', joker > 0 ? 3 : 4],
-          ['Le Boss du 8', 5],
-        ].map(([name, n]) => (
-          <div key={name} className="flex flex-col items-center gap-1 rounded-2xl bg-black/20 px-3 py-1.5">
-            <span className="font-sans text-[15px] font-extrabold">{name}</span>
-            <span className="flex pl-2">
-              {Array.from({ length: n as number }, (_, i) => (
-                <span key={i} className="-ml-2">
-                  <CardBack w={18} />
-                </span>
-              ))}
-            </span>
-          </div>
-        ))}
-      </div>
-      {/* The deck and the pile */}
-      <div className="absolute inset-x-0 top-[34%] flex items-center justify-center gap-10">
-        <span className="relative">
-          <span className="absolute top-1 left-1">
-            <CardBack w={66} />
-          </span>
-          <CardBack w={66} />
+    <div className="absolute top-[30%] right-3 flex flex-col items-center gap-1.5">
+      {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map((n) => (
+        <span
+          key={n}
+          className="grid place-items-center rounded-full font-extrabold"
+          style={{
+            width: n === now ? 40 : 28,
+            height: n === now ? 40 : 28,
+            fontSize: n === now ? 21 : 14,
+            fontFamily: 'Alfa Slab One, serif',
+            background: n === now ? YELLOW : n > now ? 'rgba(255,255,255,0.28)' : 'rgba(0,0,0,0.55)',
+            color: n === now ? '#111' : n > now ? 'rgba(255,255,255,0.75)' : '#fff',
+            textDecoration: n > now ? 'line-through' : undefined,
+            boxShadow: n === now ? '0 0 0 3px #111, 0 6px 0 rgba(0,0,0,0.3)' : undefined,
+          }}
+        >
+          {n}
         </span>
-        <span className="relative" style={{ width: 82, height: 116 }}>
-          <span className="absolute inset-0">
-            <PlayingCard c={32} w={82} />
-          </span>
-          {joker > 0 && (
-            <span className="absolute inset-0" style={{ transform: `translate(${(1 - joker) * -150}px, ${(1 - joker) * -170}px) rotate(${-40 + 46 * joker}deg) scale(${0.7 + 0.3 * joker})` }}>
-              <PlayingCard c={52} w={82} />
-            </span>
-          )}
-          {eight > 0 && (
-            <span className="absolute inset-0" style={{ transform: `translate(${(1 - eight) * 40}px, ${(1 - eight) * 260}px) rotate(${(1 - eight) * 30 - 4}deg)` }}>
-              <PlayingCard c={46} w={82} />
-            </span>
-          )}
-        </span>
-      </div>
-      {/* The cards drawn flying from the deck */}
-      {DRAWN.map((_, i) => {
-        const f = clamp01((t - 2 - i * 0.13) / 0.12)
-        return f > 0 && f < 1 ? (
-          <span key={i} className="absolute" style={{ left: '30%', top: '36%', transform: `translate(${f * 60}px, ${f * 190}px) rotate(${f * 20}deg)` }}>
-            <CardBack w={50} />
-          </span>
-        ) : null
-      })}
-      {/* Awa's hand, fanned */}
-      <div className="absolute inset-x-0 bottom-[10px] flex justify-center">
-        {hand.map((c, i) => {
-          const mid = (hand.length - 1) / 2
-          return (
-            <span key={c} className="-mx-[13px] origin-bottom" style={{ transform: `rotate(${(i - mid) * (hand.length > 9 ? 4 : 6)}deg) translateY(${Math.abs(i - mid) ** 2 * 1.4}px)`, zIndex: i }}>
-              <PlayingCard c={c} w={58} />
-            </span>
-          )
-        })}
-      </div>
+      ))}
     </div>
   )
 }
 
-/** « tout »: the progress at the top, the place's tag, the slammed words, Awa's captions and her face, the board and the cards. */
-function ToutOverlay({ t, shot, local }: { t: number; shot: Shot; local: number }) {
-  const A = (txt: string, at: number, color: string, size: number, top: string) => (
-    <div className="absolute inset-x-0 flex justify-center text-center" style={{ top }}>
-      <div className="leading-none [text-shadow:0_7px_0_#000]" style={{ fontFamily: 'Anton, sans-serif', fontSize: size, color, ...slam(local, at) }}>
-        {txt}
-      </div>
+/** « top10 »: the hook, each activity's number and name, the countdown, Awa's words, and the end card. */
+function Top10Overlay({ t, qr, url }: { t: number; qr: string; url: string }) {
+  const film = FILMS.top10
+  const shot = film.shots.find((s) => t >= s.from && t < s.to) ?? film.shots[film.shots.length - 1]
+  const local = t - shot.from
+  const hook = t < film.shots[1].from
+  const outro = t >= film.outro
+  const gold = shot.n === 1
+  return (
+    <div className="relative h-full w-full overflow-hidden font-display text-white">
+      {hook && (
+        <div className="absolute inset-x-0 top-[12%] flex flex-col items-center gap-1 px-6 text-center">
+          <div className="text-[58px] leading-none [text-shadow:0_5px_0_#000]" style={{ fontFamily: 'Anton, sans-serif', ...slam(t, 0.15) }}>
+            TU T’ENNUIES ?
+          </div>
+          <div className="text-[132px] leading-[1.05] [text-shadow:0_8px_0_#000]" style={{ fontFamily: 'Alfa Slab One, serif', color: YELLOW, ...slam(t, 0.75) }}>
+            10 TRUCS
+          </div>
+          <div className="rounded-xl bg-black px-4 py-1 text-[40px] leading-tight" style={{ fontFamily: 'Anton, sans-serif', ...slam(t, 1.3) }}>
+            À FAIRE DANS BABI LIFE 👇
+          </div>
+        </div>
+      )}
+      {shot.n && !outro && (
+        <div className="absolute top-[10.5%] left-4 flex flex-col items-start gap-2">
+          <div
+            className="flex h-[104px] w-[104px] -rotate-[7deg] flex-col items-center justify-center rounded-[28px] border-[5px] border-white text-[#111] shadow-[0_10px_0_rgba(0,0,0,0.35)]"
+            style={{ background: gold ? 'linear-gradient(140deg,#fff3a0,#ffc300 45%,#e08e00)' : YELLOW, fontFamily: 'Alfa Slab One, serif', ...slam(local, 0.05) }}
+          >
+            <span className="text-[20px] leading-none">{gold ? '🏆 N°' : 'N°'}</span>
+            <span className="text-[56px] leading-[0.95]">{shot.n}</span>
+          </div>
+          <div className="-rotate-[2deg] rounded-xl bg-black/85 px-4 py-1 text-[36px] leading-tight" style={{ fontFamily: 'Anton, sans-serif', color: gold ? '#ffd76a' : YELLOW, ...slam(local, 0.3) }}>
+            {shot.title}
+          </div>
+        </div>
+      )}
+      {!hook && !outro && <Ladder now={shot.n ?? 10} />}
+      {shot.say && !outro && <Captions say={shot.say} local={local} span={shot.to - shot.from} />}
+      {outro && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 bg-[#0b0c18]/80 px-8 text-center" style={{ opacity: clamp01((t - film.outro) / 0.35) }}>
+          <div style={pop(t, film.outro + 0.2)}>
+            <Logo size={70} />
+          </div>
+          <div className="text-[54px] leading-[1.02] [text-shadow:0_5px_0_#000]" style={{ fontFamily: 'Anton, sans-serif', ...slam(t, film.outro + 0.45) }}>
+            ET TOI, TU COMMENCES
+            <br />
+            <span style={{ color: YELLOW }}>PAR LEQUEL ? 👇</span>
+          </div>
+          <div className="flex flex-col items-center gap-3 rounded-[30px] bg-white p-5 text-[#111] shadow-[0_14px_0_rgba(0,0,0,0.35)]" style={pop(t, film.outro + 1)}>
+            <div className="text-[28px] leading-tight font-extrabold">Inscris-toi, c’est gratuit</div>
+            {qr && <img src={qr} alt="" className="h-[200px] w-[200px] [image-rendering:pixelated]" />}
+            <div className="font-sans text-[22px] font-extrabold text-[var(--color-orange)]">{url}</div>
+          </div>
+          <div className="font-sans text-[21px] font-extrabold text-white/85" style={pop(t, film.outro + 1.5)}>
+            Les 10 sont dans le jeu · 100 % ivoirien
+          </div>
+        </div>
+      )}
     </div>
   )
-  // The words of the line, the one being said lit (spread over the shot).
-  const words = (shot.say ?? '').split(' ')
-  const span = Math.max(0.6, shot.to - shot.from - 0.45)
-  const said = Math.floor(((local - 0.12) / span) * words.length)
-  const shake = shot.scene === 'stade' && local > 1.5 && local < 2.1 ? Math.sin(local * 90) * 8 : 0
+}
+
+/** One scene alone, nothing over it, its clock from 0 (marketing/top10.mjs films it): ?video=top10&only=<scene>. */
+function Clean({ t }: { t: number }) {
   return (
-    <>
-      {/* The film going by, as on a story */}
-      <div className="absolute inset-x-4 top-3 h-[5px] overflow-hidden rounded-full bg-white/30">
-        <i className="block h-full bg-white" style={{ width: `${(t / FILMS.tout.outro) * 100}%` }} />
+    <div className="relative h-full w-full overflow-hidden bg-[var(--color-night)]">
+      <div className="absolute inset-0">
+        <Scene className="h-full w-full" />
       </div>
-      {/* The place */}
-      {shot.tag && (
-        <div className="absolute inset-x-0 top-[6%] flex justify-center">
-          <div className="rounded-2xl bg-[var(--color-orange)] px-5 py-1.5 text-[38px] leading-[1.15] whitespace-nowrap [text-shadow:0_3px_0_rgba(0,0,0,0.35)]" style={{ fontFamily: 'Anton, sans-serif', ...slam(local, 0.05) }}>
-            {shot.tag}
-          </div>
-        </div>
-      )}
-      {/* The hook */}
-      {shot.scene === 'avion' && (
-        <>
-          {A('ABIDJAN…', 0.2, '#ffffff', 104, '24%')}
-          {A('DANS UN JEU ?!', 1.15, '#ffd43b', 92, '34%')}
-        </>
-      )}
-      {shot.scene === 'stade' && <div className="absolute inset-0" style={{ transform: `translateX(${shake}px)` }}>{A('BUUUT ! ⚽', 1.5, '#3ddc84', 116, '30%')}</div>}
-      {shot.scene === 'dames' && (
-        <>
-          <DamesRafle t={local} />
-          {A('RAFLE !', 2.0, '#ffd43b', 112, '27%')}
-          {A('+ 5 000 F', 2.35, '#3ddc84', 86, '40%')}
-        </>
-      )}
-      {shot.scene === 'huit' && (
-        <>
-          <HuitTable t={local} />
-          {local < 3 && A('+6 !', 1.35, '#ff4d4d', 150, '28%')}
-          {local < 3 && A('PIOCHE !', 1.65, '#ffffff', 84, '42%')}
-          {A('♥ CŒUR !', 3.35, '#ff4d4d', 96, '33%')}
-        </>
-      )}
-      {shot.montage && (
-        <>
-          {A('TOUT ÇA…', 0.1, '#ffffff', 104, '26%')}
-          {A('DANS UN SEUL JEU', 0.9, '#ffd43b', 64, '37%')}
-        </>
-      )}
-      {/* Awa's words, as she says them */}
-      {shot.say && (
-        <div className="absolute inset-x-6 bottom-[19%] flex justify-center">
-          <p className="max-w-[92%] text-center text-[36px] leading-[1.12] font-extrabold [text-shadow:0_3px_0_#000,0_-2px_0_#000,2px_0_0_#000,-2px_0_0_#000]" style={{ opacity: clamp01(local / 0.12) }}>
-            {words.map((w, i) => (
-              <span key={i} className="inline-block px-[5px]" style={{ color: i === said ? '#ffd43b' : '#ffffff', opacity: i <= said ? 1 : 0.55, transform: i === said ? 'scale(1.12)' : undefined }}>
-                {w}
-              </span>
-            ))}
-          </p>
-        </div>
-      )}
-      {/* Awa, telling it */}
-      {t >= 2.8 && (
-        <div className="absolute bottom-[4.5%] left-4 flex items-end gap-2" style={{ opacity: clamp01((t - 2.8) / 0.3) }}>
-          <div className="h-[120px] w-[120px] overflow-hidden rounded-full border-[5px] border-[var(--color-orange)] bg-[linear-gradient(170deg,#ffe0b8,#ff9a5a)] shadow-[0_10px_24px_-8px_rgba(0,0,0,0.6)]">
-            <AwaFace t={t} size={120} talking />
-          </div>
-          <span className="mb-2 rounded-full bg-white px-3 py-0.5 font-sans text-[18px] font-extrabold text-[var(--color-orange)]">Awa</span>
-        </div>
-      )}
-    </>
+      <Canvas frameloop="never" shadows gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }} dpr={2} camera={{ fov: 40, near: 0.1, far: 100 }}>
+        <FullDetail.Provider value>
+          <World scene={ONLY!} t={t} />
+        </FullDetail.Provider>
+      </Canvas>
+    </div>
   )
 }
 
@@ -2801,15 +2557,11 @@ function GnangoPhone({ t }: { t: number }) {
 function Video({ t, qr, url, placeholder }: { t: number; qr: string; url: string; placeholder: boolean }) {
   const shot = SHOTS.find((s) => t >= s.from && t < s.to) ?? SHOTS[SHOTS.length - 1]
   const local = t - shot.from
-  // A montage cuts every quarter second through its scenes, each at a moment of its own.
-  const scene = shot.montage ? shot.montage[Math.floor(local / 0.25) % shot.montage.length] : shot.scene
-  const sceneT = shot.montage ? 1.4 + (local % 0.25) : (shot.at ?? 0) + local * (shot.speed ?? 1)
-  const cut = shot.montage ? local % 0.25 : local
-  // « gameplay » and « tout » cut hard: a white flash and a zoom punch instead of the fade to black.
-  const punchy = FILM === 'gameplay' || FILM === 'tout'
+  // « gameplay » cuts hard: a white flash and a zoom punch instead of the fade to black.
+  const punchy = FILM === 'gameplay'
   const black = punchy ? 0 : 1 - Math.min(1, fade(t, shot.from, shot.to, 0.35) + (shot.from === 0 ? 1 : 0))
-  const flash = punchy && shot.from > 0 ? 0.75 * (1 - clamp01(cut / 0.16)) : 0
-  const zoom = punchy ? 1 + 0.1 * (1 - ease(clamp01(cut / 0.35))) : 1
+  const flash = punchy && shot.from > 0 ? 0.75 * (1 - clamp01(local / 0.16)) : 0
+  const zoom = punchy ? 1 + 0.1 * (1 - ease(clamp01(local / 0.35))) : 1
   const film = FILMS[FILM]
   const intro = t < film.intro
   const outro = t >= film.outro
@@ -2820,13 +2572,13 @@ function Video({ t, qr, url, placeholder }: { t: number; qr: string; url: string
   }
   return (
     <div className="relative h-full w-full overflow-hidden bg-[var(--color-night)] font-display text-white">
-      <div className="absolute inset-0" style={{ opacity: scene === 'dance' || scene === 'princesse' || scene === 'fete' ? 0.25 : 1 }}>
+      <div className="absolute inset-0" style={{ opacity: shot.scene === 'dance' || shot.scene === 'princesse' || shot.scene === 'fete' ? 0.25 : 1 }}>
         <Scene className="h-full w-full" />
       </div>
       <div className="absolute inset-0" style={{ opacity: intro ? 0 : outro ? 0.35 : 1, transform: `scale(${zoom})` }}>
         <Canvas frameloop="never" shadows gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }} dpr={2} camera={{ fov: 40, near: 0.1, far: 100 }}>
           <FullDetail.Provider value>
-            <World scene={scene} t={sceneT} from={shot.from} />
+            <World scene={shot.scene} t={local} />
           </FullDetail.Provider>
         </Canvas>
       </div>
@@ -2860,7 +2612,6 @@ function Video({ t, qr, url, placeholder }: { t: number; qr: string; url: string
       {FILM === 'gameplay' && !outro && <GameplayOverlay t={t} shot={shot} />}
       {FILM === 'arnaque' && !outro && <ArnaqueOverlay t={t} shot={shot} />}
       {FILM === 'keke' && !outro && <KekeOverlay t={t} shot={shot} />}
-      {FILM === 'tout' && !outro && <ToutOverlay t={t} shot={shot} local={local} />}
       {FILM === 'live' && shot.scene === 'garba' && local > 5.6 && local < 10.2 && <WayePay t={local - 5.6} />}
       {FILM === 'live' && shot.scene === 'amis' && local > 3 && <GbairaiChat t={local - 3} />}
       {/* Captions */}
@@ -2893,13 +2644,7 @@ function Video({ t, qr, url, placeholder }: { t: number; qr: string; url: string
             <Logo size={72} />
           </div>
           <div className="text-[52px] leading-[1] font-extrabold" style={pop(O + 0.6)}>
-            {FILM === 'tout' ? (
-              <>
-                Ta vie. Ton quartier.
-                <br />
-                <span className="text-[var(--color-orange)]">Ton Babi.</span>
-              </>
-            ) : FILM === 'keke' ? (
+            {FILM === 'keke' ? (
               <>
                 Et toi, tu veux quoi
                 <br />
@@ -2977,6 +2722,8 @@ function Poster() {
     // Stills: a few steps, so the poses have settled.
     if (!VIDEO) for (let k = 0; k < 20; k++) setTimeout(() => window.__frame!(t - 1 + k * 0.05), 50 * k)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  if (VIDEO && ONLY) return <Clean t={t} />
+  if (VIDEO && OVERLAY) return <Top10Overlay t={t} {...outro} />
   if (VIDEO) return <Video t={t} {...outro} />
   return (
     <div className="h-full w-full" style={{ background: ALPHA ? 'transparent' : undefined }}>
@@ -2992,6 +2739,6 @@ function Poster() {
   )
 }
 
-document.documentElement.style.background = ALPHA ? 'transparent' : '#0f1230'
+document.documentElement.style.background = ALPHA || OVERLAY ? 'transparent' : '#0f1230'
 document.body.style.background = 'transparent'
 createRoot(document.getElementById('root')!).render(<Poster />)
