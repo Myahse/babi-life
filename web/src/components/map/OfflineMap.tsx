@@ -3,7 +3,7 @@ import { Bus, CarTaxiFront } from 'lucide-react'
 import { inkOn } from '../../game/rides'
 import civ from '../../assets/civ.geo.json'
 import features from '../../assets/civ-features.json'
-import { ABIDJAN_COAST, LAGOON, PETIT_BASSAM } from '../../assets/abidjan'
+import { ABIDJAN_COAST, LAGOON } from '../../assets/abidjan'
 import type { Sim } from '../../lib/types'
 import { Portrait } from '../../avatar/portrait'
 import { CIV_BOUNDS, Pin, declutter, routeDone, routeLine, vehiclePoint, visibleAt, type Bounds, type Padding, type PinData, type Route } from './pins'
@@ -23,8 +23,11 @@ const NEIGHBOURS = features.neighbours.map((n) => ({ name: n.name, d: n.polys.ma
 const LAKES = features.lakes.map((r) => path(r)).join('')
 const RIVERS = features.rivers.map((r) => path(r.line, false)).join('')
 const ROADS = features.roads.map((r) => path(r.line, false)).join('')
+// The lagoon's outline already goes round Petit-Bassam (its north shore is the lagoon's south
+// edge): the island is the land between it and the coast, not a hole to cut in the water. Cut as
+// one (even-odd), it lies outside the lagoon and came out blue, Treichville, Marcory and Koumassi
+// on the water.
 const WATER = path(LAGOON)
-const ISLAND = path(PETIT_BASSAM)
 // Natural Earth's coastline is too coarse around Abidjan: patch it with a
 // hand-drawn shore so the lagoon, Port-Bouët and Grand-Bassam read right.
 const COAST = path(ABIDJAN_COAST, false)
@@ -233,7 +236,7 @@ export function OfflineMap({ pins, camera, night, sim, padding, route, onZoom }:
             <path d={ROADS} fill="none" stroke="#fff7e2" strokeWidth={urban ? 6 : 2} vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" />
             <path d={RIVERS} fill="none" stroke="#49b4e6" strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" />
             <path d={LAKES} fill="#49b4e6" />
-            <path d={`${WATER}${ISLAND}`} fill="#49b4e6" fillRule="evenodd" stroke="#fff" strokeOpacity="0.7" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+            <path d={WATER} fill="#49b4e6" stroke="#fff" strokeOpacity="0.7" strokeWidth="2" vectorEffect="non-scaling-stroke" />
             <path d={COUNTRY} fill="none" stroke="#ff7a00" strokeWidth="2.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" opacity={Math.min(Math.max((1800 - zoom) / 1200, 0), 1)} />
             {route && (
               <g>
