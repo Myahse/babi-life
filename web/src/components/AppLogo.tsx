@@ -1,4 +1,4 @@
-import { Car, ShoppingBag, Bike, HandCoins, MessageCircleMore, Trophy, Clapperboard } from 'lucide-react'
+import { Car, ShoppingBag, Bike, HandCoins, MessageCircleMore, Trophy, Clapperboard, Gauge } from 'lucide-react'
 
 // Logos of the phone's store apps. Invented brands: their own colours and
 // marks, nodding to the services they are modelled on.
@@ -69,6 +69,7 @@ const LOOK: Record<string, { bg: string; fg: string; mark: (s: number) => React.
   parisfoot: { bg: 'linear-gradient(160deg,#a78bfa,#6d28d9)', fg: '#fff', mark: (s) => <Trophy size={s} strokeWidth={2.4} /> },
   gbairai: { bg: 'linear-gradient(160deg,#ff9f43,#f0590c)', fg: '#fff', mark: (s) => <MessageCircleMore size={s} strokeWidth={2.4} /> },
   dodo: { bg: 'linear-gradient(160deg,#8b5cf6,#4c1d95)', fg: '#7c3aed', mark: (s) => <DodoHouse size={s} /> },
+  bolide: { bg: 'linear-gradient(160deg,#ff5c5c,#b3121f)', fg: '#d6262f', mark: (s) => <Gauge size={s} strokeWidth={2.4} color="#fff" /> },
   kineo: { bg: 'linear-gradient(160deg,#e63946,#6b0716)', fg: '#c8102e', mark: (s) => <Clapperboard size={s} strokeWidth={2.4} color="#fff" /> },
   dames: { bg: 'linear-gradient(160deg,#c8894a,#5c3317)', fg: '#8a4b1f', mark: (s) => <Draughts size={s} /> },
   huit: { bg: 'linear-gradient(160deg,#2f9e44,#0b5d2a)', fg: '#1b7a3a', mark: (s) => <Cards size={s} /> },

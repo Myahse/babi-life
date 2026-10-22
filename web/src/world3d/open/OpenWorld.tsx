@@ -956,6 +956,13 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       route: (a, b) => nav.path(a, b),
       heightAt: (x, z) => nav.heightAt(x, z),
       roofAt: (x, z) => nav.roofAt(x, z),
+      street: (p) => {
+        const n = nav.nearest(p, 80)
+        if (!n) return null
+        const e = nav.edges[n.edge]
+        const [a, b] = [nav.nodes[e.a], nav.nodes[e.b]]
+        return { at: n.at, dir: Math.atan2(b[0] - a[0], b[1] - a[1]), width: e.width }
+      },
       start: homeLot?.door ?? (nav.nearest(focus.current)?.at as XZ | undefined),
     }),
     [nav, homeLot],

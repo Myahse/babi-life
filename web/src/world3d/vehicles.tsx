@@ -276,8 +276,8 @@ function Sotra({ body }: { body: string }) {
 
 const RIDER = { ...randomLook('homme', () => 0.81), outfit: 'casual', accessory: 'cap' }
 
-/** A moto: square wheels, a frame, the tank, the seat, the bars, and its rider. */
-function Moto({ color }: { color: string }) {
+/** A moto: square wheels, a frame, the tank, the seat, the bars, and its rider (none: the Sim rides its own). */
+function Moto({ color, rider = true }: { color: string; rider?: boolean }) {
   const dark = paint('#1b1b20')
   const metal = paint('#c3c7cf')
   return (
@@ -295,17 +295,19 @@ function Moto({ color }: { color: string }) {
       <K p={[0.68, 1.1, 0]} s={[0.08, 0.06, 0.66]} m={dark} cast={false} />
       <K p={[0.74, 0.92, 0]} s={[0.1, 0.14, 0.18]} m={HEAD} cast={false} />
       {/* The rider, seated, hands on the bars */}
-      <NoShadows>
-        <group position={[-0.25, 0.42, 0]} rotation={[0, Math.PI / 2, 0]}>
-          <Human look={RIDER} gender="homme" pose="sit" seed={4} />
-        </group>
-      </NoShadows>
+      {rider && (
+        <NoShadows>
+          <group position={[-0.25, 0.42, 0]} rotation={[0, Math.PI / 2, 0]}>
+            <Human look={RIDER} gender="homme" pose="sit" seed={4} />
+          </group>
+        </NoShadows>
+      )}
     </group>
   )
 }
 
 /** Abidjan's traffic: orange taxi compteur, woro-woro, gbaka, cars and motos. */
-type VehicleProps = { p: [number, number, number]; r?: number; kind?: VehicleKind; color?: string; trim?: string; seed?: number; /** The gbaka's apprenti at the door (false: someone else moves him, see OpenWorld's Gbaka). */ crew?: boolean }
+type VehicleProps = { p: [number, number, number]; r?: number; kind?: VehicleKind; color?: string; trim?: string; seed?: number; /** The gbaka's apprenti at the door, the moto's rider (false: someone else moves him, see OpenWorld's Gbaka; the Sim rides its own moto). */ crew?: boolean; /** A private car of this model (else one by the seed): the Sim's own (world3d/drive.ts). */ model?: CarModel }
 
 /**
  * A vehicle in full detail up close; past FAR metres, a simple shape in the
@@ -334,9 +336,9 @@ const farMat = (c: string) => {
   return m
 }
 const FAR_BOX = new THREE.BoxGeometry(1, 1, 1)
-function FarVehicle({ p, r = 0, kind = 'taxi', color, seed = 0 }: VehicleProps) {
+function FarVehicle({ p, r = 0, kind = 'taxi', color, seed = 0, model: own }: VehicleProps) {
   // A private car far off keeps its length and height (a limousine stays long, a 4x4 tall) and its paint.
-  const model = kind === 'car' ? carModel(seed) : null
+  const model = kind === 'car' ? (own ?? carModel(seed)) : null
   const [l, h, w] = model ? [CAR_SIZE[model][0], model === '4x4' ? 1.5 : model === 'suv' ? 1.3 : 1.05, CAR_SIZE[model][1]] : FAR_SIZE[kind]
   const body = model ? carPaint(model, seed, color) : (color ?? (kind === 'taxi' ? '#ff7a00' : kind === 'gbaka' ? '#f4c430' : kind === 'moto' ? '#c92a2a' : kind === 'sotra' ? '#f4f6f5' : '#e9ecef'))
   return (
@@ -351,20 +353,42 @@ function FarVehicle({ p, r = 0, kind = 'taxi', color, seed = 0 }: VehicleProps) 
   )
 }
 
-function NearVehicle({ p, r = 0, kind = 'taxi', color, trim, seed = 0, crew = true }: VehicleProps) {
+function NearVehicle({ p, r = 0, kind = 'taxi', color, trim, seed = 0, crew = true, model }: VehicleProps) {
   return (
     <group position={p} rotation={[0, r, 0]}>
       {kind === 'moto' ? (
-        <Moto color={color ?? '#c92a2a'} />
+        <Moto color={color ?? '#c92a2a'} rider={crew} />
       ) : kind === 'sotra' ? (
         <Sotra body={color ?? '#f4f6f5'} />
       ) : kind === 'gbaka' ? (
         <Gbaka body={color ?? '#f4c430'} stripe={trim ?? '#00a862'} crew={crew} />
       ) : kind === 'car' ? (
-        <PrivateCar model={carModel(seed)} body={carPaint(carModel(seed), seed, color)} />
+        <PrivateCar model={model ?? carModel(seed)} body={carPaint(model ?? carModel(seed), seed, color)} />
       ) : (
         <Car4 type="saloon" body={color ?? (kind === 'taxi' ? '#ff7a00' : '#e9ecef')} trim={kind === 'woro' ? trim : undefined} roofSign={kind === 'taxi'} />
       )}
+    </group>
+  )
+}
+
+/** A bicycle, its nose along +x like the others: two wheels, the frame in its colour, the saddle, the bars. */
+export function Bicycle({ color }: { color: string }) {
+  const dark = paint('#1b1b20')
+  const metal = paint('#c3c7cf')
+  return (
+    <group>
+      {[-0.52, 0.52].map((x) => (
+        <mesh key={x} position={[x, 0.34, 0]} rotation={[0, 0, 0]}>
+          <torusGeometry args={[0.31, 0.04, 6, 18]} />
+          <meshLambertMaterial color="#1b1b20" />
+        </mesh>
+      ))}
+      <K p={[0, 0.58, 0]} s={[0.95, 0.06, 0.06]} m={paint(color)} />
+      <K p={[-0.18, 0.62, 0]} s={[0.06, 0.5, 0.06]} m={paint(color)} />
+      <K p={[0.2, 0.46, 0]} s={[0.7, 0.05, 0.05]} m={paint(color)} cast={false} />
+      <K p={[-0.2, 0.9, 0]} s={[0.26, 0.06, 0.14]} m={dark} />
+      <K p={[0.48, 0.78, 0]} s={[0.05, 0.6, 0.05]} m={metal} cast={false} />
+      <K p={[0.48, 1.08, 0]} s={[0.05, 0.05, 0.56]} m={dark} cast={false} />
     </group>
   )
 }
