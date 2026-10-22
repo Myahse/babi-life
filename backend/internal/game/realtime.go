@@ -88,7 +88,7 @@ type Trip struct {
 	FromCommune string `json:"fromCommune"`
 	City        string `json:"city"`
 	Commune     string `json:"commune"`
-	Mode        string `json:"mode"` // "woro" | "compteur" | "taxi" | "car" | a ride app ID
+	Mode        string `json:"mode"` // "woro" | "compteur" | "gbaka" | "moto" | "taxi" | "car" | a ride app ID
 	// Class: the kind of car ordered on the app ("eco", "confort", "confortplus").
 	Class string `json:"class,omitempty"`
 	Fare  int    `json:"fare"`

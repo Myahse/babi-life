@@ -24,7 +24,7 @@ export const whereabouts = {
   /** Who the Sim is talking to stands here: the Sim turns to face them (Walker.tsx). */
   faceTo: null as XZ | null,
   /** On the way to somewhere (Walker.tsx): where (a place's name, or null for a spot), how far is left (m), how fast it goes (m/s), how. */
-  way: null as { to: string | null; left: number; speed: number; how: 'walk' | 'run' | 'moto' } | null,
+  way: null as { to: string | null; left: number; speed: number; how: 'walk' | 'run' | 'moto' | 'taxi' | 'woro' | 'gbaka' } | null,
   /** The street's pitch or court the Sim plays on with the quartier (streetlife.tsx): its middle, its length's way, half its length to run. */
   pitch: null as { at: XZ; dir: XZ; half: number } | null,
   /** The street scene the Sim joined (open/joinIn.tsx): which (its vendor id), for which activity, its place in it. */

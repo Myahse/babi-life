@@ -7,6 +7,8 @@ export type RideLook = { name: string; how: string; color: string; trim?: string
 const ORANGE = '#ff7a00'
 const WHITE = '#f1f3f5'
 const INK = '#161a2b'
+export const GBAKA = '#f4c430'
+export const MOTO = '#c92a2a'
 
 /**
  * Street taxis in Abidjan: the woro-woro wears its commune's colour (blue in
@@ -22,6 +24,8 @@ export function rideLook(world: World, mode: TripMode | string, from?: Commune, 
   }
   if (mode === 'car') return { name: 'Car', how: 'En car', color: '#00b86b', app: false }
   if (mode === 'compteur') return { name: 'Taxi compteur', how: 'En taxi compteur', color: world.compteur?.color ?? ORANGE, app: false }
+  if (mode === 'gbaka') return { name: 'Gbaka', how: 'En gbaka', color: GBAKA, trim: '#00a862', app: false }
+  if (mode === 'moto') return { name: 'Moto-taxi', how: 'En moto-taxi', color: MOTO, app: false }
   if (mode === 'woro' || (mode === 'taxi' && from?.woro && !from.woro.none)) {
     return { name: 'Woro-woro', how: 'En woro-woro', color: from?.woro?.color ?? WHITE, trim: from?.woro?.trim, app: false }
   }
@@ -39,6 +43,16 @@ export function classFare(fare: number, c?: RideClass) {
 /** Mirrors world.CompteurQuote: a bit quicker than the woro-woro, about twice the fare. */
 export function compteurQuote(t: { minutes: number; fare: number; toll?: number }) {
   return { minutes: Math.round(t.minutes * 0.85), fare: withToll(t.fare, t.toll ?? 0, 2, 500, 50) }
+}
+
+/** Mirrors world.GbakaQuote: stopping all along the way, slower than the woro-woro; a seat costs less. */
+export function gbakaQuote(t: { minutes: number; fare: number }) {
+  return { minutes: Math.round(t.minutes * 1.25), fare: Math.max(200, Math.round((t.fare * 0.7) / 50) * 50) }
+}
+
+/** Mirrors world.MotoQuote: between the cars, the quickest; one passenger, the bridge's toll paid. */
+export function motoQuote(t: { minutes: number; fare: number; toll?: number }) {
+  return { minutes: Math.round(t.minutes * 0.7), fare: withToll(t.fare, t.toll ?? 0, 1.5, 300, 50) }
 }
 
 /** A readable text colour on a car colour. */

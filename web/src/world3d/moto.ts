@@ -1,24 +1,38 @@
 import { useSyncExternalStore } from 'react'
 
-// The moto-taxi on a long way. The Sim walks (runs, if it's far); a long way,
-// a moto-taxi is offered (Walker publishes how far), the player takes it or
-// not (Play pays the fare: backend sims/moto.go), and the Sim rides the rest.
+// A ride on a long way in the commune. The Sim walks (runs, if it's far); a long way, a ride is
+// offered (Walker publishes how far), the player picks one or walks (Play pays the fare: backend
+// sims/moto.go), and the Sim rides the rest: behind a moto-taxi driver, in a taxi, in the
+// commune's woro-woro, squeezed in a gbaka.
 
-/** The fare for a ride this long (metres): backend sims/moto.go says the same. */
-export const motoFare = (metres: number) => 200 + Math.ceil(metres / 500) * 100
+export type RideKind = 'moto' | 'taxi' | 'woro' | 'gbaka'
 
-type Moto = { offer: number | null; paid: boolean }
-let state: Moto = { offer: null, paid: false }
+/** Each ride: its name, its fare (to get on, and every so many metres: backend rideFares says the same), how fast it goes (m/s). */
+export const RIDES: Record<RideKind, { name: string; base: number; step: number; every: number; speed: number }> = {
+  moto: { name: 'Moto-taxi', base: 200, step: 100, every: 500, speed: 9 },
+  taxi: { name: 'Taxi', base: 300, step: 150, every: 500, speed: 8.5 },
+  woro: { name: 'Woro-woro', base: 200, step: 50, every: 2000, speed: 8 },
+  gbaka: { name: 'Gbaka', base: 150, step: 50, every: 3000, speed: 7 },
+}
+
+/** The fare for a ride this long (metres). */
+export const rideFare = (kind: RideKind, metres: number) => RIDES[kind].base + Math.ceil(metres / RIDES[kind].every) * RIDES[kind].step
+export const motoFare = (metres: number) => rideFare('moto', metres)
+
+/** The ride taken: which, and its colours (the commune's woro-woro). */
+export type Taken = { kind: RideKind; color: string; trim?: string }
+type Moto = { offer: number | null; paid: Taken | null }
+let state: Moto = { offer: null, paid: null }
 const listeners = new Set<() => void>()
 const set = (s: Moto) => ((state = s), listeners.forEach((f) => f()))
 
 /** A long way ahead (metres), or none. */
 export const offerMoto = (metres: number | null) => {
-  if (metres !== state.offer || (metres === null && state.paid)) set({ offer: metres, paid: metres === null ? false : state.paid })
+  if (metres !== state.offer || (metres === null && state.paid)) set({ offer: metres, paid: metres === null ? null : state.paid })
 }
 /** The player paid: the Sim gets on. */
-export const motoPaid = () => set({ ...state, paid: true })
-/** Read in the frame loop: whether the ride is paid for. */
+export const motoPaid = (taken: Taken = { kind: 'moto', color: '#c92a2a' }) => set({ ...state, paid: taken })
+/** Read in the frame loop: the ride paid for, if any. */
 export const motoTaken = () => state.paid
 const subscribe = (f: () => void) => (listeners.add(f), () => void listeners.delete(f))
 export const useMoto = () => useSyncExternalStore(subscribe, () => state)

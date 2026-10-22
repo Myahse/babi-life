@@ -10,3 +10,16 @@ func TestMotoFare(t *testing.T) {
 		}
 	}
 }
+
+// Each ride in the commune, its fare; the woro-woro only where the commune has one.
+func TestRidesInTheCommune(t *testing.T) {
+	if rideFare("taxi", 1200) <= rideFare("moto", 1200) || rideFare("gbaka", 1200) >= rideFare("woro", 1200) || rideFare("woro", 1200) >= rideFare("moto", 1200) {
+		t.Errorf("fares: taxi %d, moto %d, woro %d, gbaka %d", rideFare("taxi", 1200), rideFare("moto", 1200), rideFare("woro", 1200), rideFare("gbaka", 1200))
+	}
+	if !rideHere("woro", "abidjan", "yopougon") || rideHere("woro", "abidjan", "plateau") {
+		t.Error("the woro-woro: Yopougon's yes, none at the Plateau")
+	}
+	if !rideHere("gbaka", "abidjan", "abobo") || rideHere("gbaka", "bouake", "") || !rideHere("moto", "bouake", "") || rideHere("avion", "abidjan", "yopougon") {
+		t.Error("the gbaka in Abidjan; the moto-taxi anywhere; no plane in the street")
+	}
+}

@@ -154,7 +154,8 @@ export const api = {
   /** Buy alloco from the tantie's stall in the street (she may have none left). */
   /** Talk to a passer-by: what they answer comes back as the outcome. */
   /** A moto-taxi for the rest of a long way (backend sims/moto.go). */
-  moto: (id: string, metres: number) => post<ActionResult>(`/sims/${id}/moto`, { metres }),
+  /** A ride in the commune (world3d/moto.ts): a moto-taxi, a taxi, the woro-woro, a gbaka. */
+  moto: (id: string, metres: number, kind = 'moto') => post<ActionResult>(`/sims/${id}/moto`, { metres, kind }),
   /** Vehicles of one's own (backend sims/garage.go): what the Sim has; a place bought, a vehicle bought or sold, a drive over (its petrol). */
   garage: (id: string) => request<Garage>(`/sims/${id}/garage`),
   garageAct: (id: string, action: 'parking' | 'buy' | 'sell' | 'drive', body: { kind?: string; model?: string; color?: string; vehicle?: number; metres?: number }) => post<ActionResult>(`/sims/${id}/garage/${action}`, body),

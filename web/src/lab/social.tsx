@@ -4,7 +4,7 @@ import { Canvas } from '@react-three/fiber'
 import '../index.css'
 import { api } from '../lib/api'
 import { useSession } from '../store/session'
-import type { ActionResult, Sim, World } from '../lib/types'
+import type { ActionResult, Sim, StreetRide, World } from '../lib/types'
 import { GbairaiApp } from '../screens/GbairaiApp'
 import { TikitokoApp } from '../screens/TikitokoApp'
 import { BetApp } from '../screens/BetApp'
@@ -12,6 +12,7 @@ import { BabigramApp } from '../screens/BabigramApp'
 import { StreetStall } from '../world3d/open/stalls'
 import { Snapper } from '../world3d/snapshot'
 import { RideFlow } from '../components/RideFlow'
+import { TravelCTA } from '../components/TravelCTA'
 import { CardBack, PlayingCard } from '../components/PlayingCards'
 import { HuitSheet } from '../components/Huit'
 import { DamesSheet } from '../components/Dames'
@@ -36,7 +37,26 @@ function RideLab() {
   const abj = world.cities.find((c) => c.id === 'abidjan')!
   const from = abj.communes.find((c) => c.id === 'yopougon')!
   const to = abj.communes.find((c) => c.id === 'cocody')!
-  return <RideFlow world={world} req={{ cityId: 'abidjan', from, to, kind: 'gnango', fare: Number(q.get('fare') ?? 1500), party: 1, money: q.has('money') ? Number(q.get('money')) : undefined }} gameMinutes={12 * 60} onBoard={(r, l) => alert(`${l} ${JSON.stringify(r)}`)} onClose={() => undefined} />
+  // &want=gbaka (woro, compteur): waiting at the roadside for the one chosen.
+  const want = q.get('want') as StreetRide | null
+  return <RideFlow world={world} req={{ cityId: 'abidjan', from, to, kind: want ? 'street' : 'gnango', want: want ?? undefined, fare: Number(q.get('fare') ?? (want ? 500 : 1500)), party: 1, money: q.has('money') ? Number(q.get('money')) : undefined }} gameMinutes={12 * 60} onBoard={(r, l) => alert(`${l} ${JSON.stringify(r)}`)} onClose={() => undefined} />
+}
+
+/** « Y aller » from Yopougon to Cocody (?app=travel): how to go, each with its time and fare. */
+function TravelLab() {
+  const [world, setWorld] = useState<World | null>(null)
+  const [said, setSaid] = useState('')
+  useEffect(() => {
+    void api.world().then(setWorld)
+  }, [])
+  if (!world) return <>Chargement…</>
+  const sim = { city: 'abidjan', commune: q.get('from') ?? 'yopougon', money: 50000, apps: [], bornAt: 0, gameMinutes: 30 * (world.yearMinutes ?? 525600) } as unknown as Sim
+  return (
+    <div className="mx-auto max-w-[400px] p-3">
+      <TravelCTA world={world} sim={sim} cityId="abidjan" communeId={q.get('to') ?? 'cocody'} onTravel={(_c, _cm, label, ride, fare) => setSaid(`${label} · ${JSON.stringify(ride ?? {})} · ${fare ?? ''}`)} />
+      <p className="mt-3 text-sm font-bold">{said}</p>
+    </div>
+  )
 }
 
 /** The cards on their own (?app=cards): every face, the jokers, the backs. Needs nothing. */
@@ -63,7 +83,8 @@ function TableLab({ app }: { app: 'huit' | 'dames' }) {
 }
 
 function Lab() {
-  if (q.get('app') === 'gnango') return <RideLab />
+  if (q.get('app') === 'gnango' || q.get('app') === 'ride') return <RideLab />
+  if (q.get('app') === 'travel') return <TravelLab />
   if (q.get('app') === 'cards') return <CardsLab />
   // A défi on its own (?app=defi&kind=the|courses[&big]), its score not sent anywhere.
   if (q.get('app') === 'defi')

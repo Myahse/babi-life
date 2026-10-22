@@ -79,3 +79,24 @@ func CompteurQuote(city City, from, to Commune) (minutes int64, fare int, ok boo
 	m, f, path := TripPath(city, from, city, to)
 	return int64(math.Round(float64(m) * 0.85)), withToll(f, path.Bridges, 2, 500, 50), true
 }
+
+// GbakaQuote: the minibus stops all along the way for whoever waves (the
+// apprenti shouting where it goes), slower than the woro-woro; a seat costs
+// less, its share of the toll included.
+func GbakaQuote(city City, from, to Commune) (minutes int64, fare int, ok bool) {
+	if !slices.Contains(Compteur.Cities, city.ID) || from.ID == to.ID {
+		return 0, 0, false
+	}
+	m, f, _ := TripPath(city, from, city, to)
+	return int64(math.Round(float64(m) * 1.25)), max(200, roundTo(float64(f)*0.7, 50)), true
+}
+
+// MotoQuote: the moto-taxi weaves between the cars, the quickest in town; one
+// passenger behind the driver, who pays the toll of a bridge.
+func MotoQuote(city City, from, to Commune) (minutes int64, fare int, ok bool) {
+	if from.ID == to.ID {
+		return 0, 0, false
+	}
+	m, f, path := TripPath(city, from, city, to)
+	return int64(math.Round(float64(m) * 0.7)), withToll(f, path.Bridges, 1.5, 300, 50), true
+}

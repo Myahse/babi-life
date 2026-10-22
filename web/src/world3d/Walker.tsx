@@ -22,7 +22,7 @@ import { stopEmote, useEmote } from './emoteNow'
 import { Swimmer } from './Swimmer'
 import { Bicycle, Vehicle, type CarModel } from './vehicles'
 import { HANDLING, drive, driving, useDriving } from './drive'
-import { motoTaken, offerMoto } from './moto'
+import { motoTaken, offerMoto, RIDES, type Taken } from './moto'
 import { tripRide } from './open/tripRide'
 import { askDrop, answerDrop, takeDrop } from './dropRoute'
 import { turnTo } from './open/shared'
@@ -36,7 +36,6 @@ const RUN = 4.6 // running: a real run, nothing like a car
 const RUN_FROM = 90
 /** Further than this, a moto-taxi is offered (world3d/moto.ts): paid, the Sim rides there behind the driver. */
 const RIDE_FROM = 220
-const RIDE = 9 // a moto-taxi in town: about 32 km/h
 /** Busy doing these, the Sim goes up and down a way by the place: a stroll, a hike, laps of the stadium. (The zoo: the player walks it freely.) */
 const LOOPS: Record<string, { speed: number; run?: boolean; len: number; /** a stop at each end, side by side, to talk (seconds) */ pause?: number; /** on the street's pitch (whereabouts.pitch), end to end */ pitch?: boolean }> = {
   'balade-lagune': { speed: 1.2, len: 14 },
@@ -150,7 +149,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   const riding = useRef(false)
   /** The ride's camera: the player's angle kept for after, when the shots began, until when a touch holds them. */
   const rideCam = useRef<{ saved: THREE.Vector3 | null; since: number; pause: number }>({ saved: null, since: 0, pause: 0 })
-  const [ride, setRide] = useState(false)
+  const [ride, setRide] = useState<Taken | null>(null)
   // One's own vehicle being driven (drive.ts), and the one set on the street (once, getting on).
   const own = useDriving()
   const setOff = useRef<ReturnType<typeof driving>>(null)
@@ -162,7 +161,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     riding.current = false
     autoRun.current = far > RUN_FROM
     speed.current = autoRun.current ? RUN : SPEED
-    setRide(false)
+    setRide(null)
     offerMoto(far > RIDE_FROM ? Math.round(far) : null)
   }
   // The way the Sim is going, drawn on the ground.
@@ -817,10 +816,11 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     }
     // Running with the pad (Shift, the button), or on a long way.
     // The moto-taxi paid for: on the back for the rest of the way; there, off it.
-    if (!riding.current && path.current.length && motoTaken()) {
+    const taken = motoTaken()
+    if (!riding.current && path.current.length && taken) {
       riding.current = true
-      speed.current = RIDE
-      setRide(true)
+      speed.current = RIDES[taken.kind].speed
+      setRide(taken)
       onStreets.current = false
       askedWay.current = 0
     }
@@ -837,7 +837,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     }
     if (riding.current && !path.current.length) {
       riding.current = false
-      setRide(false)
+      setRide(null)
     }
     // There (or the way given up): no more moto-taxi to offer, nor a question about dropping the way.
     if (!path.current.length) {
@@ -854,7 +854,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     whereabouts.sim = [g.position.x, g.position.z]
     // For the screen: how much of the way is left, and how fast it goes (Play's WayLeft).
     whereabouts.way = path.current.length
-      ? { to: lots.find((l) => l.id === target.current)?.name ?? null, left: pathLength(path.current, [g.position.x, g.position.z]), speed: speed.current, how: riding.current ? 'moto' : nowRunning ? 'run' : 'walk' }
+      ? { to: lots.find((l) => l.id === target.current)?.name ?? null, left: pathLength(path.current, [g.position.x, g.position.z]), speed: speed.current, how: riding.current ? (motoTaken()?.kind ?? 'moto') : nowRunning ? 'run' : 'walk' }
       : null
     if (controls) {
       const dx = controls.target.x - camera.position.x
@@ -1022,13 +1022,23 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
               </group>
             </>
           )
-        ) : ride ? (
+        ) : ride?.kind === 'moto' ? (
           // On the moto-taxi, behind the driver (the moto's front is its +x: turned to face the way).
           <>
             <group position={[0, 0, 0.45]} rotation={[0, -Math.PI / 2, 0]}>
-              <Vehicle p={[0, 0, 0]} kind="moto" color="#c92a2a" />
+              <Vehicle p={[0, 0, 0]} kind="moto" color={ride.color} />
             </group>
             <group position={[0, 0.42, -0.15]}>
+              <Character look={sim.look} gender={sim.gender} walking={false} running={false} busy={false} pose="sit" moodColor={moodColor} stage={stage} />
+            </group>
+          </>
+        ) : ride ? (
+          // In the taxi, the woro-woro, the gbaka: on a back seat by the window, the driver in front.
+          <>
+            <group position={ride.kind === 'gbaka' ? [0.45, 0, 1] : [0.35, 0, 0.6]} rotation={[0, -Math.PI / 2, 0]}>
+              <Vehicle p={[0, 0, 0]} kind={ride.kind} color={ride.color} trim={ride.trim} crew />
+            </group>
+            <group position={[0, ride.kind === 'gbaka' ? 0.55 : 0.32, 0]}>
               <Character look={sim.look} gender={sim.gender} walking={false} running={false} busy={false} pose="sit" moodColor={moodColor} stage={stage} />
             </group>
           </>

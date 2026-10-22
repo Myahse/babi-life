@@ -181,6 +181,7 @@ var (
 	errNoWoro       = errors.New("pas de woro-woro ici : prends un taxi compteur")
 	errTooMany      = errors.New("pas plus de quatre passagers par voiture")
 	errNoFlight     = errors.New("pas de vol pour cette ville")
+	errMotoOne      = errors.New("une seule personne derrière le moto-taxi")
 	errNotAtAirport = errors.New("les vols partent de l'aéroport : vas-y d'abord")
 )
 
@@ -251,6 +252,22 @@ func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, ride Ride, r
 			return errNoRideHere
 		}
 		mode, label = "compteur", fmt.Sprintf("Trajet %s → %s en taxi compteur", fromCommune.Name, toCommune.Name)
+	case app == "gbaka":
+		var ok bool
+		if minutes, fare, ok = world.GbakaQuote(fromCity, fromCommune, toCommune); !ok {
+			return errNoRideHere
+		}
+		mode, label = "gbaka", fmt.Sprintf("Trajet %s → %s en gbaka", fromCommune.Name, toCommune.Name)
+		fare *= party // one fare per seat
+	case app == "moto":
+		if party > 1 {
+			return errMotoOne
+		}
+		var ok bool
+		if minutes, fare, ok = world.MotoQuote(fromCity, fromCommune, toCommune); !ok {
+			return errNoRideHere
+		}
+		mode, label = "moto", fmt.Sprintf("Trajet %s → %s en moto-taxi", fromCommune.Name, toCommune.Name)
 	default:
 		a, ok := world.FindRideApp(app)
 		if !ok {
