@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { fcfa } from '../../game/rules'
 import { PRODUCTS, Pixels, TROLLEY } from './Pixels'
+import { haptic } from '../../lib/native'
 
 // Le défi des courses: the list in hand, the shelves going by as the trolley
 // goes down the aisle (three of them, one way and the other). A tap on a thing
@@ -74,11 +75,13 @@ export function CoursesDefi({ big, onEnd }: { /** At the supermarket: a longer l
     if (over.current) return
     if (want.includes(id) && !found.includes(id)) {
       const next = [...found, id]
+      haptic(next.length === want.length ? 'success' : 'light')
       setFound(next)
       setFlying((f) => [...f, { id, key: performance.now(), from: el.getBoundingClientRect() }])
       if (next.length === want.length) finish(next.length)
     } else {
       // Not on the list (or already in the trolley): two seconds lost.
+      haptic('error')
       mistakes.current++
       lost.current += 2
       setWrong(`${id}${performance.now()}`)

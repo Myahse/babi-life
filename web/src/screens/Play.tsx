@@ -68,6 +68,7 @@ import { answerDrop, useDropAsk } from '../world3d/dropRoute'
 import { DefiButton, DefiSheet, defiOf, type DefiKind } from '../components/Defi'
 import { BolideApp } from './BolideApp'
 import { Tutorial, beginner, openTutorial, useTutorialAsked } from '../components/Tutorial'
+import { haptic, onBack } from '../lib/native'
 import { drive, startDrive, stopDrive, useDriving, type Driven } from '../world3d/drive'
 import { FlightView } from '../world3d/FlightView'
 import { aCommune } from '../lib/french'
@@ -534,6 +535,21 @@ export function Play() {
     const metres = stopDrive()
     void run(`${v.name} garé`, 'car', 'transport', () => api.garageAct(sim!.id, 'drive', { vehicle: v.id, metres }))
   }
+  // The phone's back button, in the app (lib/native.ts onBack): what's open closes first, the last
+  // opened first (a défi, a game's table, the phone or the map, the places' list, a place); at the
+  // wheel, the vehicle is parked. Nothing open: the app goes back a page.
+  const back = useRef<() => boolean>(() => false)
+  back.current = () => {
+    if (defi) return (setDefi(null), true)
+    if (huitOpen) return (setHuitOpen(false), true)
+    if (damesOpen) return (setDamesOpen(false), true)
+    if (overlay) return (setOverlay(null), setPhoneApp(null), true)
+    if (whereTo) return (setWhereTo(false), true)
+    if (driven) return (park(), true)
+    if (placeId) return (setPlaceId(null), true)
+    return false
+  }
+  useEffect(() => onBack(() => back.current()), [])
   // Something to do (an activity, a place gone into): out of the vehicle, parked.
   useEffect(() => {
     if (driven && (sim?.activity || placeId)) park()
@@ -1787,7 +1803,15 @@ function WayLeft() {
 function DriveHud({ driven, onPark }: { driven: Driven; onPark: () => void }) {
   const [, tick] = useState(0)
   useEffect(() => {
-    const t = setInterval(() => tick((n) => n + 1), 150)
+    // A bump (a wall, a car): felt in the hands.
+    let felt = drive.bumped
+    const t = setInterval(() => {
+      tick((n) => n + 1)
+      if (drive.bumped !== felt) {
+        felt = drive.bumped
+        haptic('heavy')
+      }
+    }, 150)
     return () => {
       clearInterval(t)
       Object.assign(drive, { throttle: 0, steer: 0 })

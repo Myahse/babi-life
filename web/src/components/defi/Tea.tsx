@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Pixels, STOVE, TEAPOT } from './Pixels'
+import { haptic } from '../../lib/native'
 
 // Le défi du thé, as it's made at the grin: three little glasses. Held down,
 // « Verser » pours, and the hand lifts the teapot higher and higher: poured
@@ -47,6 +48,7 @@ export function TeaDefi({ onEnd }: { onEnd: (score: number) => void }) {
     const s = st.current
     s.pouring = false
     const score = glassScore(s)
+    haptic(s.fill > 1 ? 'error' : score >= 50 ? 'success' : 'medium')
     setServed({ score, foam: s.foam >= 0.55 ? 3 : s.foam >= 0.3 ? 2 : s.foam >= 0.1 ? 1 : 0, filled: s.fill <= 1 && Math.abs(s.fill - LINE) < 0.1 })
     const all = [...scores, score]
     setScores(all)

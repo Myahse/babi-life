@@ -11,11 +11,12 @@ L'appli Android et iOS de Babi Life. Le jeu lui-même est le jeu web (`web/`), a
 | **Connexion Google** | Google refuse d'ouvrir sa connexion dans une vue web : dans l'appli, le bouton « Continuer avec Google » passe par la connexion Google du téléphone, qui rend un jeton ; le jeu l'envoie à l'API (`/auth/google`) comme sur le web (`lib/bridge.dart`, `web/src/lib/native.ts`). |
 | **Partager** | Le partage (Profil) ouvre la feuille de partage du téléphone : WhatsApp d'abord. |
 | **Position** | « Naître là où tu es » : le téléphone demande l'autorisation une fois (seule la commune est gardée). |
-| **Bouton retour** | Revient en arrière dans le jeu ; au début, un second appui dans les 2 s quitte l'appli. |
+| **Bouton retour** | Ferme d'abord ce qui est ouvert dans le jeu : un défi, une table de cartes ou de dames, le téléphone, la carte, la liste des lieux, un lieu ; au volant, il gare le véhicule (le jeu répond par `window.__babiBack()`, `web/src/lib/native.ts` `onBack`). Sinon il revient en arrière dans le jeu ; au début, un second appui dans les 2 s quitte l'appli. |
+| **Vibrations** | Le téléphone vibre un peu à ce qui arrive dans le jeu : une bouée passée, un saut ou une bouée ratée au slalom ; un verre de thé servi, ou qui déborde ; un article dans le chariot, ou pas sur la liste ; un choc en conduisant ; une carte posée, un pion qui prend ; un « Bravo ! » du tuto (`haptic`, sans réponse attendue ; hors de l'appli, la vibration du navigateur sur Android). |
 | **Liens** | WhatsApp, les articles des infos, un numéro de téléphone : ouverts dans leur appli, pas dans le jeu. |
 | **Hors connexion** | « Pas de connexion », avec « Réessayer » ; le jeu revient tout seul quand le réseau revient. |
 
-Le jeu sait qu'il est dans l'appli : son agent utilisateur contient `BabiLifeApp/1.0` (`web/src/lib/native.ts`, `inApp()`). Il appelle l'appli par le canal `BabiApp` (`{ id, name: 'googleSignIn' | 'share', arg }`), et l'appli répond par `window.__babiAnswer(id, résultat, erreur)`. Les achats intégrés passeront par ce même pont.
+Le jeu sait qu'il est dans l'appli : son agent utilisateur contient `BabiLifeApp/1.1` (la version de l'appli, `lib/config.dart` ; `pubspec.yaml` : 1.1.0+2) (`web/src/lib/native.ts`, `inApp()`). Il appelle l'appli par le canal `BabiApp` (`{ id, name: 'googleSignIn' | 'share', arg }`), et l'appli répond par `window.__babiAnswer(id, résultat, erreur)`. Les achats intégrés passeront par ce même pont.
 
 ## Construire
 
