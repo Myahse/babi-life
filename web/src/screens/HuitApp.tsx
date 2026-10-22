@@ -14,8 +14,8 @@ const FELT = 'linear-gradient(160deg,#1f8a55,#073f24)'
 /** The tables open: the game's players sitting there, waiting for one more. */
 const TABLES: { names: string[]; note: string }[] = [
   { names: ['Tantie Bintou'], note: 'Tête-à-tête, ça va vite' },
-  { names: ['Le Boss du 8', 'Kader Joker'], note: 'À trois, le 7 fait mal' },
-  { names: ['Mimi Carreau', 'Tonton Pique', 'Awa la Reine'], note: 'À quatre, le valet tourne' },
+  { names: ['Le Boss du 8', 'Kader Joker'], note: 'À trois, l’as fait mal' },
+  { names: ['Mimi Carreau', 'Tonton Pique', 'Awa la Reine'], note: 'À quatre, le 10 et le valet tournent' },
 ]
 
 /** The rules as the game plays them (backend game/huit.go). */
@@ -25,7 +25,7 @@ const RULES = [
   'Le 2 : le suivant pioche 3, sauf s’il pose un 2 ou un joker (ça s’additionne).',
   'Le joker va sur tout : le suivant pioche 6, sauf s’il pose un joker. On joue ensuite sur la carte d’en dessous. On ne finit pas sur un joker.',
   "L'as : le suivant pose un as, ou pioche une carte et laisse jouer le suivant.",
-  'Le 7 : le suivant passe son tour. Le 10 : on rejoue. Le valet : le sens change (à deux, on rejoue).',
+  'Le 10 et le valet : le sens change. À deux, celui qui les pose rejoue.',
   'Rien ne va ? On pioche une carte ; si elle va, on peut la poser.',
   "À une carte, on dit « Carte ! », sinon on pioche 2. Le premier qui n'a plus de cartes gagne, et prend toutes les mises.",
 ]

@@ -49,9 +49,7 @@ function told(s: HuitStep, g: HuitGame) {
   else if (isJoker(s.card)) t += ' : le suivant pioche 6, ou pose un joker'
   else if (r === 2) t += ' : le suivant pioche 3, ou pose un 2'
   else if (r === 1) t += ' : le suivant pose un as, ou pioche une carte et passe'
-  else if (r === 7) t += ' : le suivant passe son tour'
-  else if (r === 10) t += ` et ${me ? 'rejoues' : 'rejoue'}`
-  else if (r === 11) t += ' : le sens change'
+  else if (r === 10 || r === 11) t += g.seats.length === 2 ? ` et ${me ? 'rejoues' : 'rejoue'}` : ' : le sens change'
   if (s.forgot) t += me ? '. Tu as oublié de dire « carte » : 2 cartes de pénalité' : `. ${who} oublie de dire « carte » : 2 cartes`
   else if (s.carte) t += ` · « Carte ! »`
   return t + '.'
