@@ -1141,7 +1141,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       {nav.nodes.length > 0 && !stopsTraffic && <RoadTraffic nav={nav} focus={focus} seed={commune.id} woro={commune.woro} />}
       <Boats water={nearWater} focus={focus} />
       {nav.nodes.length > 0 && <StreetLights nav={nav} night={night} dark={dark} />}
-      {nav.nodes.length > 0 && <StreetLife nav={nav} seed={commune.id} night={night} taken={taken} />}
+      {nav.nodes.length > 0 && <StreetLife nav={nav} seed={commune.id} night={night} taken={taken} onPlay={onStreetBuy} doing={busy?.id} />}
       {nav.nodes.length > 0 && night && <NightStreet nav={nav} seed={commune.id} />}
       {nav.nodes.length > 0 && <StreetStalls nav={nav} seed={commune.id} hour={hour} onBuy={onStreetBuy} />}
       {nav.nodes.length > 0 && <SotraStops nav={nav} seed={commune.id} hour={hour} night={night} />}

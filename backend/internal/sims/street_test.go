@@ -48,7 +48,7 @@ func TestStreetSellers(t *testing.T) {
 	for _, c := range []struct {
 		prefix string
 		cost   int
-	}{{"porc", 1500}, {"cafe", 150}, {"the", 100}} {
+	}{{"porc", 1500}, {"cafe", 150}, {"the", 100}, {"foot", 0}, {"basket", 0}} {
 		s := newSim() // at noon
 		var had string
 		for i := 0; i < 80 && had == ""; i++ {
@@ -86,6 +86,10 @@ func TestStreetSellers(t *testing.T) {
 	}
 	if said, err := s.buyStreet(had); err != nil || s.Activity == nil || s.Activity.Interaction.ID != "street-brochette" {
 		t.Fatalf("brochette at 20 h: %q %v", said, err)
+	}
+	// After the lights go off, no more game on the street's pitch.
+	if hasStock("foot:x", game.MinuteOf(noon)+11*60+30) {
+		t.Error("street football at 23 h 30")
 	}
 	// Porc au four isn't sold in the morning.
 	if hasStock("porc:x", game.MinuteOf(noon)-12*60+9*60) {

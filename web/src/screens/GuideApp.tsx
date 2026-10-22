@@ -91,7 +91,10 @@ const RULES: { title: string; sub: string; body: string[]; icon?: LucideIcon }[]
   {
     title: 'Les terrains',
     sub: 'Basket et foot entre joueur·ses',
-    body: ["Aux terrains, rejoins un match avec les autres joueur·ses présent·es. Le joystick te déplace, les boutons servent à passer et tirer."],
+    body: [
+      "Aux terrains, rejoins un match avec les autres joueur·ses présent·es. Le joystick te déplace, les boutons servent à passer et tirer.",
+      "Dans la rue, le terrain et le playground du quartier : approche-toi et touche « Jouer avec les gars ». Ils te prennent dans leur partie, gratuitement, de 6 h à 23 h.",
+    ],
   },
 ]
 

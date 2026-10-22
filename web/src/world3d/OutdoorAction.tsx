@@ -21,8 +21,10 @@ export function outdoorLook<L extends { outfit: string; accessory?: string }>(lo
 export function outdoorPose(id?: string): Pose | undefined {
   switch (id) {
     case 'play-football':
+    case 'street-foot':
       return 'kick'
     case 'play-basket':
+    case 'street-basket':
       return 'dribble'
     case 'watch-match':
       return 'cheer'

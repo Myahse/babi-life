@@ -13,8 +13,11 @@ import (
 // The sellers of the street. The alloco tantie at the corner (300 F of fried
 // plantain, eaten standing), the women grilling porc au four in Yopougon,
 // the café and thé sellers with their pousse-pousse, the pain brochette man
-// at his grill in the evening. The vendor id says which (« porc:… »,
-// « cafe:… », « the:… », « brochette:… »; anything else is an alloco stall). Each
+// at his grill in the evening; and the street's own pitch and court, where the
+// boys of the quartier take whoever comes into their game (free, from morning
+// to the lights going off). The vendor id says which (« porc:… », « cafe:… »,
+// « the:… », « brochette:… », « foot:… », « basket:… »; anything else is an
+// alloco stall). Each
 // is often sold out: « Ya pas banane oh ! ». Whether there's some is the same
 // for everyone at the same stall in the same game hour, so asking again
 // straight away doesn't change the answer.
@@ -43,6 +46,12 @@ var streetSellers = map[string]streetSeller{
 		"Pain brochette", "Y a plus pain oh, attends le livreur !", "Pain brochette bien chaud : oignon, mayo, un peu de piment. Bon appétit !", 4},
 	"the": {game.Interaction{ID: "street-the", Label: "Boire un thé avec les gars", Icon: "cup-soda", Minutes: 20, Cost: 100, Effect: game.Needs{Energy: 8, Social: 10, Fun: 4}, MinHour: 6, MaxHour: 24},
 		"Thé du pousse-pousse", "Le thé n'est pas encore prêt, assieds-toi d'abord !", "Premier thé, bien mousseux. On cause !", 5},
+	// The street's pitch and court (web world3d/open/streetlife.tsx): a pickup game with the
+	// quartier, shorter and less of a crowd than a match at the courts (game.Courts).
+	"foot": {game.Interaction{ID: "street-foot", Label: "Jouer au foot avec les gars du quartier", Icon: "volleyball", Minutes: 45, Effect: game.Needs{Fun: 25, Social: 15, Energy: -18, Hygiene: -20}, MinHour: 6, MaxHour: 23},
+		"Terrain du quartier", "Les équipes sont faites, attends la prochaine partie !", "Les gars te prennent dans leur équipe. Balle à terre !", 6},
+	"basket": {game.Interaction{ID: "street-basket", Label: "Jouer au basket avec les gars du quartier", Icon: "trophy", Minutes: 40, Effect: game.Needs{Fun: 25, Social: 12, Energy: -18, Hygiene: -18}, MinHour: 6, MaxHour: 23},
+		"Terrain de basket du quartier", "On joue à la gagne : attends ton tour !", "Trois contre trois, à la gagne. À toi la balle !", 6},
 }
 
 // sellerOf: the kind of seller a vendor id names (alloco by default).
