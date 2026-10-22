@@ -251,6 +251,12 @@ function rivalInput(race: Race, k: Kart, player: Kart): Input {
   return { throttle: brake ? 0 : 1, brake, steer, drift: false, use }
 }
 
+/** The labs' autopilot (marketing/ films the game being played): the player's kart driven as a rival's is. */
+export function autoInput(race: Race): Input {
+  const me = playerOf(race)
+  return rivalInput(race, me, me)
+}
+
 /** One step of the race. */
 export function step(race: Race, dtRaw: number, input: Input) {
   const dt = Math.min(dtRaw, 1 / 20)

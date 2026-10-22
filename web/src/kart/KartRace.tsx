@@ -6,7 +6,7 @@ import type { Look } from '../lib/types'
 import { randomLook } from '../avatar/options'
 import { rng } from '../world3d/themes'
 import { music } from '../audio/music'
-import { applyVec, COUNTDOWN, createRace, fmtTime, ITEMS, kartVec, NO_INPUT, playerOf, standings, step, takeOver, type Input, type Race, type Seat } from './physics'
+import { applyVec, autoInput, COUNTDOWN, createRace, fmtTime, ITEMS, kartVec, NO_INPUT, playerOf, standings, step, takeOver, type Input, type Race, type Seat } from './physics'
 import { fetchRace, joinRace, KartNet, type OnlineRace } from './online'
 import { serverNow } from '../lib/worldClock'
 import { Circuit, Hazards, KartView } from './scene'
@@ -312,9 +312,10 @@ function Loop({ race, input, touch, onHud, online, net, simId }: { race: Race; i
       // Bananas and coconuts the others threw.
       for (const d of net.drops.splice(0)) race.hazards.push({ id: d.id, kind: d.kind, x: d.x, z: d.z, s: d.s, d: d.d, ttl: d.kind === 'coco' ? 4 : 40, owner: -1, seed: Math.random() * 6 })
     }
-    // On a phone the kart accelerates by itself (unless braking).
+    // On a phone the kart accelerates by itself (unless braking). In development, globalThis.kartAuto drives it (the labs, the films).
+    const auto = import.meta.env.DEV && (globalThis as { kartAuto?: boolean }).kartAuto
     for (let i = 0; i < steps; i++) {
-      const inp = touch ? { ...input.current, throttle: race.time < 0 || input.current.brake ? 0 : 1 } : input.current
+      const inp = auto && race.time > 0 ? autoInput(race) : touch ? { ...input.current, throttle: race.time < 0 || input.current.brake ? 0 : 1 } : input.current
       step(race, dt, inp)
       // The item button is a press, not a hold.
       input.current.use = false

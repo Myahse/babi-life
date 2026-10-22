@@ -6,8 +6,8 @@ when there is one).
 
 The times follow FILMS.<film> (and MONEY for gameplay) in web/src/lab/poster.tsx.
 
-    python3 beat.py              # gameplay
-    FILM=tout python3 beat.py    # the trailer of everything
+    python3 beat.py               # gameplay
+    FILM=top10 python3 beat.py    # « 10 trucs à faire dans Babi Life »
 """
 
 import os
@@ -19,17 +19,18 @@ import numpy as np
 SR = 44100
 FILM = os.environ.get('FILM', 'gameplay')
 BPM = 124
-if FILM == 'tout':
-    LENGTH = 53.0
-    # Each shot's start, then the montage's quarter seconds (TOUT ÇA…) and the outro.
-    CUTS = [2.8, 5.6, 8.8, 10.6, 12.6, 15.2, 18, 21, 24.4, 28.4, 31.2, 33.6, 36.2, 39, 41.8, 44.4, 46.4]
-    TICKS = [44.4 + k * 0.25 for k in range(1, 8)]
-    # ABIDJAN…, DANS UN JEU ?!, BUUUT !, RAFLE !, +6 !, PIOCHE !, CŒUR !, TOUT ÇA…, DANS UN SEUL JEU.
-    HITS = [0.2, 1.15, 16.7, 23.0, 25.75, 26.05, 27.75, 44.5, 45.3]
-    # + 5 000 F at the dames, the banknotes at the maquis.
-    CASH = [23.35, 29.2]
-    CROWD = [16.6]
-    GROOVE, LEAD_FROM = 2.8, 5.6
+if FILM == 'top10':
+    # The times of top10.mjs: the hook, then ten activities of 4.2 s, then the end card.
+    BPM = 128
+    LENGTH = 50.6
+    CUTS = [2.6 + k * 4.2 for k in range(11)]
+    # The hook's flashes.
+    TICKS = [0.65, 1.3, 1.95]
+    # TU T'ENNUIES ?, 10 TRUCS, À FAIRE…; the basket (N°2) and the goal (N°1), 1.2 s before their ends.
+    HITS = [0.15, 0.75, 1.3, 39.2, 43.4]
+    CASH = []
+    CROWD = [43.3]
+    GROOVE, LEAD_FROM = 2.6, 6.8
 else:
     LENGTH = 39.0
     CUTS = [2.4, 4.8, 8.6, 11.8, 16.4, 21, 24.6, 29, 33.4]

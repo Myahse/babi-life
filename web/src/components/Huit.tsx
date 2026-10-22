@@ -100,7 +100,7 @@ export function PlayingCard({ c, w = 58, dim, up, onClick }: { c: number; w?: nu
 }
 
 /** A card face down: the game's colours. */
-export function CardBack({ w = 22 }: { w?: number }) {
+function CardBack({ w = 22 }: { w?: number }) {
   return <span className="block shrink-0 rounded-[4px] border-2 border-white shadow-[0_2px_4px_rgba(0,0,0,0.4)]" style={{ width: w, height: Math.round(w * 1.42), background: 'repeating-linear-gradient(45deg,#ff7a00 0 4px,#e85d00 4px 8px)' }} />
 }
 

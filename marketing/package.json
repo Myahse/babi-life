@@ -15,7 +15,7 @@
     "video:keke": "FILM=keke node video.mjs",
     "video:decouverte": "FILM=decouverte node video.mjs",
     "video:gameplay": "python3 beat.py && FILM=gameplay node video.mjs",
-    "video:tout": "FILM=tout python3 beat.py && FILM=tout FPS=30 node video.mjs",
+    "video:top10": "node top10.mjs",
     "flyer:jeu": "node flyer-jeu.mjs",
     "flyer:commentaire": "node flyer-commentaire.mjs",
     "all": "node logos.mjs && node flyer.mjs && node flyer-jeu.mjs && node flyer-commentaire.mjs && node video.mjs && FILM=bouger node video.mjs && FILM=bande-annonce node video.mjs && FILM=decouverte node video.mjs"

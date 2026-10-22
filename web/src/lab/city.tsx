@@ -77,6 +77,7 @@ import { RainSky } from '../world3d/open/rainSky'
 import { SkyDome } from '../world3d/open/sky'
 import { throwBillets } from '../world3d/clubBillets'
 import type { Block, Furniture, HousePlan, Material, Piece, Plot, Sim, World } from '../lib/types'
+import { FlightView } from '../world3d/FlightView'
 
 const seededLab = (n: number) => () => ((n = (n * 16807) % 2147483647) / 2147483647)
 
@@ -551,11 +552,14 @@ function Lab() {
           <meshLambertMaterial color="#c9a77a" />
         </mesh>
         <Grin seed={q.get('seed') ?? 'lab'} />
-        <OrbitControls target={[0, 0.6, 0]} />
+        {/* &rotate: the camera going slowly round (the films) */}
+        <OrbitControls target={[0, 0.6, 0]} autoRotate={q.has('rotate')} autoRotateSpeed={1.4} />
       </Canvas>
     )
   }
   if (view === 'ride') return <RideLab />
+  // ?view=flight: on a plane (world3d/FlightView), halfway from Abidjan to Yamoussoukro.
+  if (view === 'flight') return <FlightView sim={{ id: 'lab', firstName: 'Awa', gameMinutes: 600, activity: { start: 580, end: 625, interaction: { label: 'Vol Abidjan → Yamoussoukro (Air Lagune)' } } } as unknown as Sim} night={night} onMap={() => undefined} />
   if (view === 'phonecam') return <PhoneCamLab />
   if (view === 'emotes') return <EmotesLab />
   if (view === 'talk') return <TalkLab />
