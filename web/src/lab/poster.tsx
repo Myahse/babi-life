@@ -1757,7 +1757,7 @@ const FILMS: Record<FilmId, { shots: Shot[]; intro: number; outro: number; lengt
         [
           ['LE SKI NAUTIQUE', 'Vingt : du ski nautique à l’île Boulay !'],
           ['PARLER NOUCHI', 'Dix-neuf : parler nouchi avec tout le monde.'],
-          ['LA PATINOIRE', 'Dix-huit : la patinoire de l’Hôtel Ivoire !'],
+          ['LE ZOO', 'Dix-huit : les selfies devant les lions du zoo !'],
           ['LE THÉ AU GRIN', 'Dix-sept : le thé au grin.'],
           ['LE MARCHÉ', 'Seize : faire son marché.'],
           ['LES PHOTOS', 'Quinze : prendre Babi en photo.'],
