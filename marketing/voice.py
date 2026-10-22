@@ -125,7 +125,8 @@ def main():
         if only and id not in only:
             continue
         best = None
-        for seed in (7, 21, 42):
+        # SEEDS=1,2,3: other takes, when the first three weren't understood well enough.
+        for seed in [int(x) for x in os.environ.get('SEEDS', '7,21,42').split(',')]:
             torch.manual_seed(seed)
             a = trim(model.generate(text, language_id='fr', audio_prompt_path=ref, exaggeration=0.75, cfg_weight=0.35).squeeze().numpy(), model.sr)
             h = heard(a, model.sr)
