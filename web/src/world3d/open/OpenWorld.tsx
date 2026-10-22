@@ -1470,7 +1470,8 @@ function routeFor(routes: Map<string, XZ[]>, nav: Nav, key: string, anchor: numb
 }
 
 const CAR_CELL = 300
-const CARS_PER_CELL = 2
+// Busy streets, like Abidjan's; fewer on a small phone (each one drives and draws).
+const CARS_PER_CELL = RICH ? 5 : 3
 const CAR_ROUND = 90 // seconds
 
 /** Woro-woro, taxis, gbakas, motos and SITRA buses on the big streets around the Sim: the same ones on every screen. */
@@ -1482,8 +1483,9 @@ function RoadTraffic({ nav, focus, seed, woro }: { nav: Nav; focus: React.RefObj
       cells.flatMap((cell) =>
         [...Array(CARS_PER_CELL)].map((_, k) => {
           const r = rng(`otraffic${seed}|${cell.key}|${k}`)
-          // The people's own cars are four in ten (saloons, berlines, SUVs, 4x4s, a limousine now and then: vehicles.tsx carModel).
-          const kinds: VehicleKind[] = ['taxi', 'woro', 'woro', 'gbaka', 'car', 'car', 'car', 'car', 'moto', 'sotra']
+          // Abidjan's streets are its taxis, woro-woros, gbakas and buses first (seven in ten); the people's
+          // own cars after (saloons, berlines, SUVs, 4x4s, a limousine now and then: vehicles.tsx carModel).
+          const kinds: VehicleKind[] = ['taxi', 'taxi', 'woro', 'woro', 'woro', 'gbaka', 'gbaka', 'sotra', 'sotra', 'car', 'car', 'car', 'moto']
           const drawn = kinds[Math.floor(r() * kinds.length)]
           const kind: VehicleKind = drawn === 'woro' && woro?.none ? 'taxi' : drawn
           return {
@@ -1519,8 +1521,9 @@ const CAR_SIZE: Record<VehicleKind, [number, number]> = { taxi: [4.4, 1.7], woro
 
 function Car({ car, nav, routes }: { car: { id: string; kind: VehicleKind; color?: string; trim?: string; seed: number; near: XZ; speed: number; offset: number }; nav: Nav; routes: Map<string, XZ[]> }) {
   const ref = useRef<THREE.Group>(null)
-  // The SITRA keeps to the big roads.
-  const wide = car.kind === 'sotra' ? 12 : 7
+  // The SITRA keeps to the bigger roads (not only the 12 m ones: most quarters have none, and the
+  // bus, finding no road, never showed).
+  const wide = car.kind === 'sotra' ? 9 : 7
   const anchor = useMemo(() => anchorNode(nav, car.near, wide), [nav, car.near, wide])
   const gbaka = car.kind === 'gbaka'
   // The gbaka and the bus stop and go (at the stops); the others drive on.

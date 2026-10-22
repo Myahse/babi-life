@@ -22,7 +22,7 @@ type Stop = { id: string; at: XZ; rot: number; seed: number; lines: string[] }
 
 const NEAR = 280 // metres: stops drawn around the Sim
 const MAX = 6
-const WIDE = 11 // only on roads at least this wide
+const WIDE = 8 // only on roads at least this wide (most quarters have no 11 m road: no stop at all)
 
 /** How many wait at the stop at an hour (0..1). */
 const rush = (h: number) => (h < 5 || h >= 23 ? 0 : (h >= 6 && h < 9) || (h >= 17 && h < 20) ? 1 : 0.35)
@@ -34,7 +34,7 @@ export function SotraStops({ nav, seed, hour, night }: { nav: Nav; seed: string;
       if (e.width < WIDE || e.len < 60 || nav.ys[e.a] || nav.ys[e.b]) continue
       const [a, b] = [nav.nodes[e.a], nav.nodes[e.b]]
       const m: XZ = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]
-      if (hash(Math.round(m[0]), Math.round(m[1]), 211) > 0.3) continue
+      if (hash(Math.round(m[0]), Math.round(m[1]), 211) > 0.45) continue
       // On the right-hand side going from a to b, alternately (both directions get stops).
       const side = hash(Math.round(m[1]), Math.round(m[0]), 9) < 0.5 ? 1 : -1
       const [ux, uz] = [(b[0] - a[0]) / e.len, (b[1] - a[1]) / e.len]
