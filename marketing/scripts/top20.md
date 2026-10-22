@@ -9,7 +9,7 @@ La voix est faite ici (`marketing/voice.py`), avec un modèle ouvert qu'on a le 
 | Accroche | Quatre flashs : le ski nautique, le joker, le panier, le but. **TU T'ENNUIES ? 20 TRUCS À FAIRE DANS BABI LIFE 👇** | « Tu t'ennuies ? Voilà vingt trucs à faire à Babi ! » |
 | 20 | **LE SKI NAUTIQUE** : le bateau qui tire Awa au large de l'île Boulay | « Vingt : du ski nautique à l'île Boulay ! » |
 | 19 | **PARLER NOUCHI** : Koffi, le vendeur de crédit, la fenêtre de discussion ; « On dit quoi ? », il éclate de rire | « Dix-neuf : parler nouchi avec tout le monde. » |
-| 18 | **LA PATINOIRE** : la patinoire de l'Hôtel Ivoire, les boutiques autour | « Dix-huit : la patinoire de l'Hôtel Ivoire ! » |
+| 18 | **LE ZOO** : le zoo d'Abidjan, Awa en selfie devant les lions | « Dix-huit : les selfies devant les lions du zoo ! » |
 | 17 | **LE THÉ AU GRIN** : le thé qu'on verse de haut, les trois sur leurs bancs | « Dix-sept : le thé au grin. » |
 | 16 | **LE MARCHÉ** : les étals, les prix qu'on crie | « Seize : faire son marché. » |
 | 15 | **LES PHOTOS** : l'appareil photo du téléphone, la photo prise | « Quinze : prendre Babi en photo. » |
@@ -36,7 +36,7 @@ Le jeu compte 161 activités différentes dans ses lieux (`backend/internal/game
 Tu t'ennuies ? Voilà vingt trucs à faire à Babi !
 Vingt : du ski nautique à l'île Boulay !
 Dix-neuf : parler nouchi avec tout le monde.
-Dix-huit : la patinoire de l'Hôtel Ivoire !
+Dix-huit : les selfies devant les lions du zoo !
 Dix-sept : le thé au grin.
 Seize : faire son marché.
 Quinze : prendre Babi en photo.
@@ -71,7 +71,7 @@ Réglages : Stability « Creative », vitesse normale. Coller tel quel :
 
 [laughs] Dix-neuf : parler nouchi avec tout le monde.
 
-[excited] Dix-huit : la patinoire de l'Hôtel Ivoire !
+[excited] Dix-huit : les selfies devant les lions du zoo !
 
 [relaxed] Dix-sept : le thé au grin.
 
@@ -118,7 +118,7 @@ Réglages : Stability 35 %, Similarity 75 %, Style 45 %, Speaker boost activé, 
 Tu t'ennuies ? Voilà vingt trucs à faire à Babi ! <break time="1.0s" />
 Vingt : du ski nautique à l'île Boulay ! <break time="1.0s" />
 Dix-neuf : parler nouchi avec tout le monde. <break time="1.0s" />
-Dix-huit : la patinoire de l'Hôtel Ivoire ! <break time="1.0s" />
+Dix-huit : les selfies devant les lions du zoo ! <break time="1.0s" />
 Dix-sept : le thé au grin. <break time="1.0s" />
 Seize : faire son marché. <break time="1.0s" />
 Quinze : prendre Babi en photo. <break time="1.0s" />
@@ -146,7 +146,7 @@ Télécharger le MP3 et l'envoyer à Claude (ou le mettre dans `marketing/out/vo
 ## La légende du post (TikTok, Instagram, statut)
 
 20 trucs à faire dans Babi Life 🇨🇮👇 Le N°1 c'est sûr que tu le fais aussi 😂⚽
-Ski nautique, patinoire, nouchi, grin, messe, prière du vendredi, ciné, boîte à la rue Princesse, zouglou, avion, Tour F, dames, 8 américain, kart, basket, foot… et + de 160 activités 🔥
+Ski nautique, zoo, nouchi, grin, messe, prière du vendredi, ciné, boîte à la rue Princesse, zouglou, avion, Tour F, dames, 8 américain, kart, basket, foot… et + de 160 activités 🔥
 Tu commences par lequel ? Dis-le en commentaire 👇
 Inscris-toi gratuitement : lifeinbabi.com/liste
 
@@ -156,6 +156,6 @@ Inscris-toi gratuitement : lifeinbabi.com/liste
 
 - La première image, c'est déjà du jeu (le ski, le joker, le panier, le but) avec « TU T'ENNUIES ? » : on ne coupe pas avant le N°20.
 - La barre de 20 segments en haut fait rester jusqu'au N°1.
-- Épingler un commentaire : « Moi c'est la patinoire direct ⛸️ Et toi ? ».
+- Épingler un commentaire : « Moi c'est le ski nautique direct 🌊 Et toi ? ».
 - Publier le soir (19 h – 21 h), répondre aux premiers commentaires dans l'heure.
 - La semaine suivante, chaque numéro peut faire sa petite vidéo de 5 s.

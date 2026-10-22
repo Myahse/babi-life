@@ -33,7 +33,7 @@ LINES = [
     ('hook', "Tu t'ennuies ? Voilà vingt trucs à faire à Babi !"),
     ('ski', "Vingt : du ski nautique à l'île Boulay !"),
     ('nouchi', 'Dix-neuf : parler nouchi avec tout le monde.'),
-    ('patinoire', "Dix-huit : la patinoire de l'Hôtel Ivoire !"),
+    ('zoo', 'Dix-huit : les selfies devant les lions du zoo !'),
     ('grin', 'Dix-sept : le thé au grin.'),
     ('marche', 'Seize : faire son marché.'),
     ('photo', 'Quinze : prendre Babi en photo.'),
