@@ -275,9 +275,9 @@ var Cities = []City{
 				// Its cinema, of the game's chain (game/cinema.go): one screen of 180 seats, like the real one.
 				Place{ID: "cocody-kineo", Name: "Kinéo Sococé", Kind: "cinema", Quarter: "Deux-Plateaux", Lat: 5.37252, Lng: -3.99895, Real: true, Approx: true,
 					Source: game.Partial("Nom du jeu pour la salle de cinéma du centre commercial Sococé (180 places), aux Deux-Plateaux ; placée au bord du centre, à relever.", srcCinemas2024, srcSococeOSM)},
-				Place{ID: "cocody-playce", Name: "PlaYce Palmeraie", Kind: "mall", Quarter: "Riviera Palmeraie", Lat: 5.3668, Lng: -3.9560, Real: true, Approx: true,
+				Place{ID: "cocody-playce", Name: "PlaYce Palmeraie", Kind: "mall", Quarter: "Riviera Palmeraie", Lat: 5.37353, Lng: -3.93359, Real: true,
 					Operator: "CFAO (CFAO Consumer Retail)",
-					Source:   game.Verified("Centre commercial ouvert le 29 juin 2017 à Cocody-Riviera Palmeraie (Génie 2000) : 29 000 m², Carrefour Market, 24 enseignes ; exploité par CFAO. Position placée d'après l'adresse, à relever.", srcPlayceToyota, srcPlayceFA, srcCFAORetail)},
+					Source:   game.Verified("Centre commercial ouvert le 29 juin 2017 à Cocody-Riviera Palmeraie (Génie 2000) : 29 000 m², Carrefour Market, 24 enseignes ; exploité par CFAO. Position d'après OpenStreetMap (le point « PlaYce Palmeraie » de la carte).", srcPlayceToyota, srcPlayceFA, srcCFAORetail)},
 				Place{ID: "cocody-hotel-ivoire", Name: "Hôtel Ivoire", Kind: "hotel", Lat: 5.3272, Lng: -4.0047, Real: true,
 					Source: game.Partial("Hôtel du complexe Village Ivoire, boulevard Hassan II à Cocody, face à la lagune et au Plateau (5°19′38″N 4°00′17″W) ; exploitant actuel à confirmer.", srcHotelIvoire)},
 				Place{ID: "cocody-oranjo", Name: "Oranjo Village", Kind: "office", Quarter: "Riviera Golf", Lat: 5.3318, Lng: -3.9700, Real: true, Approx: true, Operator: "Oranjo CI (opérateur du jeu)",
