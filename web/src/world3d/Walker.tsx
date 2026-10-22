@@ -22,6 +22,8 @@ import { stopEmote, useEmote } from './emoteNow'
 import { Swimmer } from './Swimmer'
 import { Vehicle } from './vehicles'
 import { motoTaken, offerMoto } from './moto'
+import { tripRide } from './open/tripRide'
+import { turnTo } from './open/shared'
 import type { Pose } from '../avatar/Human'
 
 type XZ = [number, number]
@@ -142,6 +144,9 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   /** The ride's camera: the player's angle kept for after, when the shots began, until when a touch holds them. */
   const rideCam = useRef<{ saved: THREE.Vector3 | null; since: number; pause: number }>({ saved: null, since: 0, pause: 0 })
   const [ride, setRide] = useState(false)
+  // A trip booked (open/tripRide.tsx): waving the driver down at the kerb, then in the car, not drawn.
+  const [hailing, setHailing] = useState(false)
+  const [aboard, setAboard] = useState(false)
   /** How the Sim goes a way this long: walking, or running; a long way, a moto-taxi is offered (it rides once paid, in the frame loop). */
   const setPace = (far: number) => {
     riding.current = false
@@ -307,7 +312,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
 
   /** Tap the ground: the Sim walks there, the shortest way round what's in the way. */
   const walkToPoint = (x: number, z: number) => {
-    if (frozen || !nav.walkable(x, z)) return
+    if (frozen || tripRide.boarded || !nav.walkable(x, z)) return
     const p = group.current!.position
     const way = findWay([p.x, p.z], [x, z], false)
     if (!way) return
@@ -333,7 +338,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   /** Room for the body, the cars aside (they'll have moved on): for planning a way. */
   const roomFixed = (x: number, z: number) => clear(x, z) && !blockedFixed(x, z, R)
   // In development, for tests in the browser: is there room here, the cars aside?
-  if (import.meta.env.DEV) Object.assign(globalThis, { __roomFixed: roomFixed })
+  if (import.meta.env.DEV) Object.assign(globalThis, { __roomFixed: roomFixed, __route: nav.route, __findWay: (a: XZ, b: XZ) => findWay(a, b, true), __path: () => path.current })
   /**
    * The way from a to b: close by, straight round the walls, trees and
    * stalls (never the long way by the streets); further, along the streets,
@@ -355,6 +360,23 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     if (!first || !last) return wide(a, b)
     return [...first, ...way.slice(2, n - 2), ...last]
   }
+  /**
+   * The moto-taxi's way: by the streets, the shortest, whatever the distance (findWay walks a short
+   * way straight across, and goes across the open ground when the streets fail it: on a moto, that
+   * was a zigzag over the blocks, stopping at each wall). Null while the streets there aren't loaded.
+   */
+  const rideWay = (a: XZ, b: XZ, door: boolean): XZ[] | null => {
+    const way = nav.route(a, b, door)
+    if (!way || way.length < 3) return null
+    const n = way.length
+    // To the street and from it at the end: round what's in the way, else straight (it's short).
+    const first = round(a, way[1]) ?? [a, way[1]]
+    const last = round(way[n - 2], b) ?? [way[n - 2], b]
+    return [...first, ...way.slice(2, n - 2), ...last]
+  }
+  /** The ride is on a way by the streets (else it asks again as the map loads). */
+  const onStreets = useRef(false)
+  const askedWay = useRef(0)
   /** Round whatever's between two points: on the fine grid, else on a coarser one that looks further round. */
   const round = (p: XZ, q: XZ) => gridWay(p, q, roomFixed) ?? gridWay(p, q, roomFixed, 1.5, 60)
   /** Across the open ground on a coarse grid (two-metre cells), round the buildings and what stands in the streets. */
@@ -418,7 +440,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     // The pad (or the keyboard) walks the Sim freely, relative to the camera.
     const input = moveInput()
     const strength = Math.min(1, Math.hypot(input.x, input.y))
-    if (!frozen && strength > 0.05) {
+    // In the car on a trip, the pad has nothing to walk.
+    if (!frozen && strength > 0.05 && !tripRide.boarded) {
       if (path.current.length) setRoute(null)
       path.current = []
       target.current = null
@@ -589,6 +612,33 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       const d = Math.atan2(Math.sin(want - g.rotation.y), Math.cos(want - g.rotation.y))
       g.rotation.y += d * Math.min(1, dt * 8)
     }
+    // A trip booked: to the kerb where the driver pulls up, waving as it comes; then in it, the
+    // camera following the car through the streets (TripRide drives it) until the trip's end.
+    const trip = tripRide.active && !path.current.length && !padWalking.current
+    if (trip && tripRide.boarded) {
+      g.position.x = tripRide.x
+      g.position.z = tripRide.z
+      g.rotation.y = tripRide.heading
+    } else if (trip) {
+      const [x, z] = tripRide.meet
+      const [dx, dz] = [x - g.position.x, z - g.position.z]
+      const d = Math.hypot(dx, dz)
+      // Far from the kerb (it's the Sim's own street, so never really): it waits where it stands.
+      if (d > 0.05 && d < 40) {
+        const step = Math.min(d, SPEED * Math.min(dt, 0.25))
+        g.position.x += (dx / d) * step
+        g.position.z += (dz / d) * step
+        g.rotation.y = Math.atan2(dx, dz)
+      } else g.rotation.y = turnTo(g.rotation.y, Math.atan2(tripRide.x - g.position.x, tripRide.z - g.position.z), 1 - Math.exp(-4 * Math.min(dt, 0.25)))
+      const walkingThere = d > 0.05 && d < 40
+      if (walkingThere !== walking && !padWalking.current) setWalking(walkingThere)
+    }
+    if (trip && tripRide.boarded) {
+      if (!aboard) setAboard(true)
+    } else if (aboard) setAboard(false)
+    // The car in sight: an arm up to it.
+    const hail = trip && !tripRide.boarded && Math.hypot(tripRide.x - g.position.x, tripRide.z - g.position.z) < 45
+    if (hail !== hailing) setHailing(hail)
     // Standing at a door: offer to go in.
     if (onNear) {
       let best: Lot | null = null
@@ -597,7 +647,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         const d = Math.hypot(l.door[0] - g.position.x, l.door[1] - g.position.z)
         if (d < bestD) [best, bestD] = [l, d]
       }
-      const id = path.current.length ? null : (best?.id ?? null)
+      const id = path.current.length || tripRide.boarded ? null : (best?.id ?? null)
       if (id !== near.current) {
         near.current = id
         onNear(id)
@@ -629,8 +679,11 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         // last step onto a door, which is on its wall, may brush it. (Caught inside something: it may step out.)
         const cur: XZ = [g.position.x, g.position.z]
         const atDoor = path.current.length === 1 && dist < 1.2
+        // On the moto, by the streets: it weaves through the traffic and round what's parked, it
+        // never stops for it (stopping, it looked for a way round across the blocks, and got stuck).
+        const weaving = riding.current && onStreets.current
         // The whole step looked at, not just where it lands (a slow phone's step can be over a post).
-        const walled = !atDoor && roomFixed(cur[0], cur[1]) && !(roomFixed(nx, nz) && clearLine(cur, [nx, nz], roomFixed, 0.4))
+        const walled = !atDoor && !weaving && roomFixed(cur[0], cur[1]) && !(roomFixed(nx, nz) && clearLine(cur, [nx, nz], roomFixed, 0.4))
         if (walled && performance.now() > noDetour.current) {
           const end = path.current[path.current.length - 1]
           // Round it close by; else across the open ground (a map building may sit on the street
@@ -650,7 +703,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
           setWalking(false)
         } else if (walled) {
           // Waiting for a way round.
-        } else if (vehicleAt(nx, nz) && !vehicleAt(g.position.x, g.position.z)) {
+        } else if (!weaving && vehicleAt(nx, nz) && !vehicleAt(g.position.x, g.position.z)) {
           // A car in the way: wait for it to pass; still there after a while, find another way round it.
           waited.current += dt
           if (waited.current > 2.5) {
@@ -675,6 +728,19 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       riding.current = true
       speed.current = RIDE
       setRide(true)
+      onStreets.current = false
+      askedWay.current = 0
+    }
+    // On the moto, the way by the streets from here (the walk's way may be a straight line, the map
+    // not loaded there when it began): asked again every few seconds until the streets join up.
+    if (riding.current && !onStreets.current && path.current.length && performance.now() > askedWay.current) {
+      askedWay.current = performance.now() + 2000
+      const way = rideWay([g.position.x, g.position.z], path.current[path.current.length - 1], target.current !== null)
+      if (way && way.length > 1) {
+        path.current = way.slice(1)
+        onStreets.current = true
+        setRoute([...path.current])
+      }
     }
     if (riding.current && !path.current.length) {
       riding.current = false
@@ -832,7 +898,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
       {route && <RouteDots route={route} from={group} heightAt={nav.heightAt} />}
-      <group ref={group} visible={!hidden}>
+      <group ref={group} visible={!hidden && !aboard}>
         {ride ? (
           // On the moto-taxi, behind the driver (the moto's front is its +x: turned to face the way).
           <>
@@ -859,7 +925,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         ) : (
           // Stopped on a stroll with a friend: turned to them, talking.
           <group rotation={[0, chatting && !walking ? 0.9 : 0, 0]}>
-            <Character look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking || looping} running={run || (looping && !!loopKind?.run)} busy={!!busy && !looping && !chatting} marker={!photoMode} pose={photoMode && photoMode !== 'film' && !busy && !walking ? 'phone' : emote && !busy && !walking ? emote : busy?.kind === 'chat' || (chatting && !walking) ? 'talk' : (inMatch || onTouchline || joining) && !walking ? matchPose : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={looping && loopKind ? loopKind.speed : run ? RUN : SPEED} />
+            <Character look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking || looping} running={run || (looping && !!loopKind?.run)} busy={!!busy && !looping && !chatting} marker={!photoMode} pose={hailing && !walking ? 'wave' : photoMode && photoMode !== 'film' && !busy && !walking ? 'phone' : emote && !busy && !walking ? emote : busy?.kind === 'chat' || (chatting && !walking) ? 'talk' : (inMatch || onTouchline || joining) && !walking ? matchPose : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={looping && loopKind ? loopKind.speed : run ? RUN : SPEED} />
           </group>
         )}
         {/* Hanging out: the friend walks along beside the Sim */}
@@ -868,7 +934,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         {!!sim.activity?.with?.length && <Companions sim={sim} walking={walking || looping} pose={outdoorPose(busy?.id)} stage={stage} />}
         {/* Outdoors, what the Sim is doing is set around it (the ball, the towel, the bus stop…) */}
         {busy && !walking && !onTouchline && <OutdoorAction id={busy.id} />}
-        {labels && nameTag && !hidden && (
+        {labels && nameTag && !hidden && !aboard && (
           <Html position={[0, 2.45, 0]} center zIndexRange={[28, 20]}>
             <span className="pointer-events-none rounded-md bg-[#0f1230]/80 px-1.5 py-0.5 text-[11px] font-extrabold whitespace-nowrap text-white">{nameTag}</span>
           </Html>
