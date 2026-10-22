@@ -4,6 +4,7 @@ import { Portrait } from '../avatar/portrait'
 import { randomLook } from '../avatar/options'
 import { rng } from '../world3d/themes'
 import { whereabouts } from '../world3d/whereabouts'
+import { haptic } from '../lib/native'
 
 // Le tuto: the first time in the game, Koffi, a big brother of the quarter,
 // shows the beginner round, a step at a time: the needs, walking, « Où aller ? »,
@@ -101,6 +102,7 @@ export function Tutorial({ state, onEnd }: { state: TutoState; onEnd: () => void
   const did = !!step.done?.({ ...state, moved })
   useEffect(() => {
     if (!did || bravo) return
+    haptic('success')
     setBravo(true)
     const t = setTimeout(() => (setBravo(false), next()), 1100)
     return () => clearTimeout(t)

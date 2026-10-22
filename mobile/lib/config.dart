@@ -4,6 +4,10 @@
 class Config {
   static const gameUrl = String.fromEnvironment('GAME_URL', defaultValue: 'https://www.lifeinbabi.com');
 
+  /// The app's version, in its user agent (BabiLifeApp/1.1): from 1.1 it shakes the phone
+  /// (haptic) and its back button asks the game first. pubspec.yaml says the same.
+  static const version = '1.1';
+
   /// The Firebase project's Google web client (« Web client (auto created by
   /// Google Service) », public: it's in every Firebase sign-in link). The
   /// phone's Google sign-in is issued for it, and the game turns it into a

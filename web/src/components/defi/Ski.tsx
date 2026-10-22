@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { worldTime } from '../../lib/worldClock'
 import { resetSki, skiDefi, skiScore, type SkiGate } from '../../world3d/defiSki'
+import { haptic } from '../../lib/native'
 
 // Le défi du ski nautique, over the water-skiing at Île Boulay (BoulayScene's
 // Skier skis it): held down, ◀ and ▶ take the skier out to one side of the
@@ -23,8 +24,13 @@ export function SkiDefi({ onEnd }: { onEnd: (score: number) => void }) {
     resetSki()
     skiDefi.requested = true
     let ended = false
+    let felt = 0
     const t = setInterval(() => {
       setGates(skiDefi.gates.map((g) => ({ ...g })))
+      // Each gate passed, felt in the hands: a buoy, a jump, a miss.
+      const judged = skiDefi.gates.filter((g) => g.result)
+      for (const g of judged.slice(felt)) haptic(g.result === 'ok' ? 'light' : g.result === 'jump' ? 'success' : g.result === 'hop' ? 'medium' : 'error')
+      felt = judged.length
       setCount(skiDefi.active ? Math.ceil(skiDefi.t0 - worldTime()) : 4)
       if (skiDefi.done && !ended) {
         ended = true

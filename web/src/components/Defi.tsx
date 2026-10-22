@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ShoppingCart, Trophy, Waves, Coffee, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
+import { haptic } from '../lib/native'
 import type { ActionResult } from '../lib/types'
 import { IconTile } from './ui'
 import { TeaDefi } from './defi/Tea'
@@ -70,6 +71,7 @@ export function DefiSheet({ kind, simId, big, send, onClose }: { kind: DefiKind;
       .catch(() => setBest(0))
   }, [simId, kind])
   const end = async (s: number) => {
+    if (s >= 50) haptic('success')
     setScore(s)
     setPhase('result')
     const r = await send(s)

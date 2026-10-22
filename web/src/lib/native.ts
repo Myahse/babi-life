@@ -1,7 +1,8 @@
 // The Babi Life app (mobile/, Flutter) runs this same game in a web view and
 // lends it what a web page can't do well on a phone: Google's sign-in (it
 // refuses to open inside a web view), the phone's share sheet. Outside the
-// app, everything falls back to the web's own ways.
+// app, everything falls back to the web's own ways. It also shakes the phone
+// (haptic), and its back button asks the game first (onBack).
 //
 // The game calls the app through the `BabiApp` channel ({id, name, arg});
 // the app answers by calling window.__babiAnswer(id, result, error).
@@ -59,4 +60,35 @@ export async function share(text: string, url?: string): Promise<boolean> {
  */
 export function nativeNotifications(what: 'status' | 'enable') {
   return call('notifications', what)
+}
+
+const BUZZ = { light: 12, medium: 22, heavy: 38, success: [14, 50, 14], error: [30, 40, 30] } as const
+/**
+ * A little shake of the phone for what happens in the game (a buoy passed, a bump, a card played): the
+ * phone's own haptics in the app (no answer waited for), the browser's vibration elsewhere (Android).
+ */
+export function haptic(kind: keyof typeof BUZZ) {
+  const c = channel()
+  if (c) return c.postMessage(JSON.stringify({ name: 'haptic', arg: kind }))
+  try {
+    navigator.vibrate?.(BUZZ[kind] as number | number[])
+  } catch {
+    /* not allowed before a touch */
+  }
+}
+
+// The phone's back button, in the app: it asks the game first (window.__babiBack), and the game
+// closes what's open (the last one that said it would) before the app goes back a page.
+const backs: (() => boolean)[] = []
+;(window as unknown as { __babiBack: () => boolean }).__babiBack = () => {
+  for (let i = backs.length - 1; i >= 0; i--) if (backs[i]()) return true
+  return false
+}
+/** Back pressed: `close` closes something and says true, or says false (nothing open); returns how to stop listening. */
+export function onBack(close: () => boolean) {
+  backs.push(close)
+  return () => {
+    const i = backs.indexOf(close)
+    if (i >= 0) backs.splice(i, 1)
+  }
 }

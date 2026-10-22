@@ -82,7 +82,7 @@ class _GameScreenState extends State<GameScreen> {
   /// (web/src/lib/native.ts, launch.ts), then loads.
   Future<void> _start() async {
     final ua = await _web.getUserAgent();
-    await _web.setUserAgent('${ua ?? ''} BabiLifeApp/1.0${Config.tester ? ' BabiTest' : ''}'.trim());
+    await _web.setUserAgent('${ua ?? ''} BabiLifeApp/${Config.version}${Config.tester ? ' BabiTest' : ''}'.trim());
     await _web.loadRequest(Uri.parse(Config.gameUrl));
   }
 
@@ -92,6 +92,11 @@ class _GameScreenState extends State<GameScreen> {
     try {
       call = jsonDecode(raw) as Map<String, dynamic>;
     } catch (_) {
+      return;
+    }
+    // A shake asks for no answer (it has no id).
+    if (call['name'] == 'haptic') {
+      await Bridge.haptic('${call['arg'] ?? ''}');
       return;
     }
     Object? result;
@@ -146,8 +151,16 @@ class _GameScreenState extends State<GameScreen> {
     _web.loadRequest(Uri.parse(Config.gameUrl));
   }
 
-  /// Back: back in the game; at its start, a second press within 2 s leaves.
+  /// Back: what's open in the game closes first (a défi, the phone, a place; at the wheel, the
+  /// vehicle is parked: the game says if it took it); else back in the game; at its start, a
+  /// second press within 2 s leaves.
   Future<void> _back() async {
+    try {
+      final took = await _web.runJavaScriptReturningResult('window.__babiBack ? window.__babiBack() : false');
+      if (Bridge.tookBack(took)) return;
+    } catch (_) {
+      // A page that isn't the game: as before.
+    }
     if (await _web.canGoBack()) {
       await _web.goBack();
       return;

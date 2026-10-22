@@ -1,3 +1,4 @@
+import 'package:babi_life/bridge.dart';
 import 'package:babi_life/config.dart';
 import 'package:babi_life/game_screen.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,14 @@ void main() {
     expect(Config.isGame(Uri.parse('https://babi-life-jnvy.onrender.com/api/v1/world')), isTrue);
     expect(Config.isGame(Uri.parse('https://wa.me/?text=hello')), isFalse);
     expect(Config.isGame(Uri.parse('https://news.abidjan.net/articles/1')), isFalse);
+  });
+
+  test('back: the game took it when it says true (a bool, or its text)', () {
+    expect(Bridge.tookBack(true), isTrue);
+    expect(Bridge.tookBack('true'), isTrue);
+    expect(Bridge.tookBack(false), isFalse);
+    expect(Bridge.tookBack('false'), isFalse);
+    expect(Bridge.tookBack(null), isFalse);
   });
 
   testWidgets('the splash shows the name and the line', (tester) async {

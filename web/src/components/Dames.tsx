@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Crown, Flag, Grid3x3, RotateCcw, X } from 'lucide-react'
 import { api } from '../lib/api'
+import { haptic } from '../lib/native'
 import type { DameGame, DameInvite, DamesMove } from '../lib/types'
 import { fcfa } from '../game/rules'
 import { IconTile } from './ui'
@@ -126,6 +127,7 @@ export function DamesSheet({ simId, onClose, onAgain, onMoney }: { simId: string
   const playOut = async (board: number[], move: DamesMove) => {
     await new Promise<void>((done) => setMoving({ board, move, p: board[move.path[0]], done }))
     const after = played(board, move)
+    haptic(move.taken?.length ? 'medium' : 'light')
     const to = move.path[move.path.length - 1]
     setShown(after)
     setMoving(null)

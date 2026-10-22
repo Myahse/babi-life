@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Flag, RotateCcw, RotateCw, Spade, X } from 'lucide-react'
 import { api } from '../lib/api'
+import { haptic } from '../lib/native'
 import type { DameInvite, HuitGame, HuitStep } from '../lib/types'
 import { fcfa } from '../game/rules'
 import { IconTile } from './ui'
@@ -347,6 +348,7 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
     // The card played leaves the hand at once, onto the pile, while the server answers.
     let out: Promise<void> | null = null
     if (play) {
+      haptic('light')
       out = fly(play.card, slot(play.card), pileAt(play.card), false, 380)
       setAway((a) => new Set([...a, play.card]))
     }
