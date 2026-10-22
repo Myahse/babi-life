@@ -16,7 +16,7 @@ import { BlockhaussMaquis } from './blockhauss'
 import { Cathedral } from './cathedral'
 import { MosqueM6 } from './mosqueM6'
 import { ParcExpo } from './parcExpo'
-import { TourF } from './tourF'
+import { TOUR_F_FACING, TourF, TourFFar } from './tourF'
 import type { StadiumEvent } from '../../lib/stadium'
 import type { Obstacle } from '../obstacles'
 
@@ -63,6 +63,25 @@ export const GROUNDS = new Set(['cocody-zoo', 'cocody-hotel-ivoire', 'yop-rue-pr
 
 /** The ones under the sky (a maquis by the lagoon, a street of maquis, a square, a gare, a market): one walks there, never into a room. */
 export const OPEN_AIR = new Set([...GROUNDS].filter((id) => id !== 'cocody-hotel-ivoire'))
+
+/** Landmarks seen from the whole city, over the roofs of the other communes: their far model, turned as in their own. */
+export const SKYLINE = new Set(['plateau-tour-f'])
+
+/** No further than this (the fog has them all by then). */
+export const SKYLINE_FAR = 5500
+
+export function FarLandmark({ id, night }: { id: string; night: boolean }) {
+  switch (id) {
+    case 'plateau-tour-f':
+      return (
+        <group rotation={[0, TOUR_F_FACING, 0]}>
+          <TourFFar night={night} />
+        </group>
+      )
+    default:
+      return null
+  }
+}
 
 /** The landmark's model, by place. */
 export function Landmark({ id, night, demo, open = true }: { id: string; night: boolean; /** The stadium: a made-up match or concert (the videos), instead of the agenda. */ demo?: StadiumEvent; /** Open now (its hours): closed, nobody visiting (the zoo). */ open?: boolean }) {

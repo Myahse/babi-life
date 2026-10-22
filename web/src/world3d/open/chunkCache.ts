@@ -62,11 +62,13 @@ function hash(s: string) {
  * The key of a chunk: the code's version, the origin, the tile, and the
  * places within reach of its box (a landmark clears its ground this far).
  */
-export function chunkKey(origin: { lat: number; lng: number }, tx: number, ty: number, z: number, box: { x0: number; x1: number; z0: number; z1: number }, places: PlaceSpot[]) {
+export function chunkKey(origin: { lat: number; lng: number }, tx: number, ty: number, z: number, box: { x0: number; x1: number; z0: number; z1: number }, places: PlaceSpot[], clear: { at: [number, number]; r: number }[] = []) {
   const reach = 200
+  const inReach = (at: [number, number]) => at[0] > box.x0 - reach && at[0] < box.x1 + reach && at[1] > box.z0 - reach && at[1] < box.z1 + reach
   const near = places
-    .filter((p) => p.at[0] > box.x0 - reach && p.at[0] < box.x1 + reach && p.at[1] > box.z0 - reach && p.at[1] < box.z1 + reach)
+    .filter((p) => inReach(p.at))
     .map((p) => [p.id, Math.round(p.at[0] * 10), Math.round(p.at[1] * 10), p.kind ?? '', p.landmark ?? 0, p.noFill ?? 0, p.name ?? '', p.type ?? '', p.noLayout ? 1 : 0].join(','))
+    .concat(clear.filter((c) => inReach(c.at)).map((c) => ['clear', Math.round(c.at[0] * 10), Math.round(c.at[1] * 10), c.r].join(',')))
     .sort()
     .join(';')
   return `${VERSION}|${origin.lat.toFixed(6)},${origin.lng.toFixed(6)}|${z}|${tx}/${ty}|${hash(near)}`

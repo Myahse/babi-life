@@ -49,7 +49,7 @@ import { Courier } from './courier'
 import { MOSQUE_M6_SOLID } from './mosqueM6'
 import { clearObstacles, moveObstacle, setObstacles, type Obstacle } from '../obstacles'
 import { Solid } from '../Solid'
-import { LANDMARKS, Landmark, NO_FILL, STADIUM_SOLID, slotIn } from './landmarks'
+import { FarLandmark, LANDMARKS, Landmark, NO_FILL, SKYLINE, SKYLINE_FAR, STADIUM_SOLID, slotIn } from './landmarks'
 import { RUE_SOLID } from './ruePrincesse'
 import { Boats } from './boats'
 import { StreetStalls } from './stalls'
@@ -302,6 +302,9 @@ function useMaterials(night: boolean, hour: number) {
 function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, indoors, nameTag, onNear, frozen, onLeave, delivery, onCollect, players, onPickPlayer, recenter, onFreeCamera, closeView, shoulderView, token, onFail, onLoaded, onStreetBuy, onRobbed, onTalk, talkingTo, plotsVersion, onMapPlaces, onHomeSpots, onHomePlot }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void; onLoaded?: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void; onHomePlot?: (plot: Plot | undefined) => void }) {
   const origin = useMemo<Origin>(() => ({ lat: commune.lat, lng: commune.lng }), [commune.lat, commune.lng])
   const cityCommunes = useMemo(() => world.cities.find((c) => c.communes.some((m) => m.id === commune.id))?.communes ?? [commune], [world.cities, commune])
+  // The landmarks seen from the whole city (the Tour F), where they stand in this commune's metres:
+  // drawn far off while their own lot isn't (another commune, or its streets not loaded yet).
+  const skyline = useMemo(() => cityCommunes.flatMap((m) => m.places.filter((p) => SKYLINE.has(p.id)).map((p) => ({ id: p.id, at: toLocal(origin, p.lat, p.lng) }))), [cityCommunes, origin])
   const { mats, far: farMats } = useMaterials(night, hour)
   const home = sim.homeCity === sim.city && sim.homeCommune === commune.id
 
@@ -584,7 +587,9 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       const id = nextId.current++
       pending.current.set(id, c.key)
       const far = c.key.includes(':')
-      const req: ChunkRequest = { id, origin, tx: c.tx, ty: c.ty, token, places: far ? [] : spots.filter((x) => !isMapPlace(x.id) && !x.parent).map(({ id, at, kind, landmark, name, type }) => ({ id, at, kind, landmark, name, type, noLayout: tight.has(id) })), z: far ? FAR_ZOOM : undefined }
+      // Another commune's landmark seen from here: the map's own building of it goes (its spot clears it in its commune).
+      const clear = far ? [] : skyline.filter((x) => !spots.some((p) => p.id === x.id)).map((x) => ({ at: x.at, r: LANDMARKS[x.id] }))
+      const req: ChunkRequest = { id, origin, tx: c.tx, ty: c.ty, token, places: far ? [] : spots.filter((x) => !isMapPlace(x.id) && !x.parent).map(({ id, at, kind, landmark, name, type }) => ({ id, at, kind, landmark, name, type, noLayout: tight.has(id) })), z: far ? FAR_ZOOM : undefined, clear }
       w.postMessage(req)
     }
     // Chunks too far are let go, like Minecraft's render distance.
@@ -979,6 +984,14 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       </mesh>
       {/* Zoomed out: each commune's name on its pin */}
       <CommuneMarkers communes={cityCommunes} origin={origin} here={commune.id} />
+      {/* Over the roofs, from the whole city: the Tour F, while its own lot isn't drawn here */}
+      {skyline
+        .filter((x) => !lots.some((l) => l.id === x.id) && Math.hypot(x.at[0] - here[0], x.at[1] - here[1]) < SKYLINE_FAR)
+        .map((x) => (
+          <group key={x.id} position={[x.at[0], 0, x.at[1]]}>
+            <FarLandmark id={x.id} night={night} />
+          </group>
+        ))}
 
       {[...chunks.values()].map((c) => {
         const far = c.data.key.includes(':')

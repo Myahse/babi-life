@@ -251,7 +251,31 @@ function latticeBox(w: number, h: number, d: number, cell = 2) {
 const lambert = (color: string) => new THREE.MeshLambertMaterial({ color })
 const lattice = (color: string) => new THREE.MeshLambertMaterial({ color, map: latticeTexture(), alphaTest: 0.5, side: THREE.DoubleSide })
 
+/** Which way it faces (its gate north, on its avenue), as its street in the Plateau sets it: the same from the other communes. */
+export const TOUR_F_FACING = 3.04
+
 export function TourF({ night }: { night: boolean }) {
+  const mats = useTourFMaterials(night)
+  return (
+    <group>
+      <TourFTower night={night} mats={mats} />
+      <Cradles />
+      <Site night={night} mats={mats} />
+    </group>
+  )
+}
+
+/**
+ * The tower alone, as it's seen from the other communes (the Plateau's
+ * streets aren't loaded there): its skin, the hoist, the cranes, the lights
+ * for the planes; no site, nobody, no shadow, nothing to bump into.
+ */
+export function TourFFar({ night }: { night: boolean }) {
+  const mats = useTourFMaterials(night)
+  return <TourFTower night={night} mats={mats} far />
+}
+
+function useTourFMaterials(night: boolean) {
   const mats = useMemo(
     () => ({
       glass: new THREE.MeshLambertMaterial({ map: glassTexture() }),
@@ -271,33 +295,39 @@ export function TourF({ night }: { night: boolean }) {
   // At night the offices behind the glass are empty and dark; the builders' lamps burn up on the bare floors.
   mats.frame.emissiveIntensity = night ? 1 : 0
   mats.lamp.color.set(night ? '#fff4d6' : '#c9ccd1')
-  const geos = useMemo(
-    () => ({
-      glass: skin(0, GLASS),
-      // Above the glass, the floors as they are, a little in from where the glass will be; the lantern's storeys too.
-      frame: skin(GLASS, ROOF, 0.985),
-      screen: skin(ROOF - SCREEN, ROOF + 1.2, 1.02),
-      // The strip left open for the hoist, its bare floors seen through it.
-      open: rise(4, GLASS, FOLD / 4, (y) => [onFace(y, HOIST_FACE[1], 1.004), onFace(y, HOIST_FACE[2], 1.004)], false),
-      roof: cap(ROOF, plan(ROOF, 0.985)),
-    }),
-    [],
-  )
+  return mats
+}
+
+// Built once, shared by the tower near and far.
+let towerGeos: Record<'glass' | 'frame' | 'screen' | 'open' | 'roof', THREE.BufferGeometry> | null = null
+function tower() {
+  towerGeos ??= {
+    glass: skin(0, GLASS),
+    // Above the glass, the floors as they are, a little in from where the glass will be; the lantern's storeys too.
+    frame: skin(GLASS, ROOF, 0.985),
+    screen: skin(ROOF - SCREEN, ROOF + 1.2, 1.02),
+    // The strip left open for the hoist, its bare floors seen through it.
+    open: rise(4, GLASS, FOLD / 4, (y) => [onFace(y, HOIST_FACE[1], 1.004), onFace(y, HOIST_FACE[2], 1.004)], false),
+    roof: cap(ROOF, plan(ROOF, 0.985)),
+  }
+  return towerGeos
+}
+
+/** The tower: glass nearly to the top, the bare floors above, the screen round the highest, the roof, the hoist and the cranes. */
+function TourFTower({ night, mats, far }: { night: boolean; mats: ReturnType<typeof useTourFMaterials>; far?: boolean }) {
+  const geos = tower()
   return (
     <group>
-      {/* The tower: glass nearly to the top, the bare floors above, the screen round the highest, the roof */}
-      <mesh geometry={geos.glass} material={mats.glass} castShadow receiveShadow />
-      <mesh geometry={geos.frame} material={mats.frame} castShadow />
+      <mesh geometry={geos.glass} material={mats.glass} castShadow={!far} receiveShadow={!far} />
+      <mesh geometry={geos.frame} material={mats.frame} castShadow={!far} />
       <mesh geometry={geos.screen} material={mats.screen} />
       <mesh geometry={geos.open} material={mats.frame} />
       <mesh geometry={geos.roof} material={mats.slab} />
-      <mesh geometry={BOX} material={mats.concrete} position={[0, ROOF + 2.5, 0]} scale={[7, 5, 4.5]} />
-      <Cradles />
-      <Crane at={[-4, ROOF, 0]} mast={26} turn={0.4} phase={0} night={night} mats={mats} />
-      <Crane at={[CRANE_X, 0, 0]} mast={ROOF + 20} turn={2.6} phase={2.1} night={night} mats={mats} tied />
-      <Hoist mats={mats} />
+      {!far && <mesh geometry={BOX} material={mats.concrete} position={[0, ROOF + 2.5, 0]} scale={[7, 5, 4.5]} />}
+      <Crane at={[-4, ROOF, 0]} mast={26} turn={0.4} phase={0} night={night} mats={mats} far={far} />
+      <Crane at={[CRANE_X, 0, 0]} mast={ROOF + 20} turn={2.6} phase={2.1} night={night} mats={mats} tied={!far} far={far} />
+      <Hoist mats={mats} far={far} />
       <AviationLights night={night} mats={mats} />
-      <Site night={night} mats={mats} />
     </group>
   )
 }
@@ -329,7 +359,7 @@ function Cradles() {
  * weights; it turns slowly to and fro, a pallet of glass panels on its hook
  * going up and down.
  */
-function Crane({ at, mast, turn, phase, night, mats, tied }: { at: [number, number, number]; mast: number; turn: number; phase: number; night: boolean; mats: Mats; tied?: boolean }) {
+function Crane({ at, mast, turn, phase, night, mats, tied, far }: { at: [number, number, number]; mast: number; turn: number; phase: number; night: boolean; mats: Mats; tied?: boolean; /** Seen from another commune: no hook (too small to see from there). */ far?: boolean }) {
   const head = useRef<THREE.Group>(null)
   const load = useRef<THREE.Group>(null)
   const line = useRef<THREE.Mesh>(null)
@@ -361,18 +391,24 @@ function Crane({ at, mast, turn, phase, night, mats, tied }: { at: [number, numb
         <mesh key={t.y} geometry={BOX} material={mats.steel} position={[-t.len / 2, t.y, 0]} scale={[t.len, 0.3, 0.3]} />
       ))}
       <group ref={head} position={[0, mast, 0]}>
-        <mesh geometry={BOX} material={cab} position={[1.6, 0.9, 0]} scale={[2, 1.8, 1.8]} />
         <mesh geometry={geos.jib} material={mats.steel} position={[26 + 1, 2.4, 0]} />
         <mesh geometry={geos.back} material={mats.steel} position={[-8 - 1, 2.4, 0]} />
-        <mesh geometry={BOX} material={weights} position={[-15, 1.6, 0]} scale={[3, 2, 2]} />
-        {/* The top of the mast */}
-        <mesh geometry={BOX} material={mats.steel} position={[0, 5, 0]} scale={[1.2, 5, 1.2]} />
-        <group position={[30, 2.4, 0]}>
-          <mesh ref={line} geometry={BOX} material={mats.concrete} scale={[0.06, 1, 0.06]} />
-          <group ref={load}>
-            <mesh geometry={BOX} material={crate} scale={[3, 0.6, 2.2]} />
+        {/* The cab, the weights, the top of the mast (from another commune: the jib's line is enough) */}
+        {!far && (
+          <>
+            <mesh geometry={BOX} material={cab} position={[1.6, 0.9, 0]} scale={[2, 1.8, 1.8]} />
+            <mesh geometry={BOX} material={weights} position={[-15, 1.6, 0]} scale={[3, 2, 2]} />
+            <mesh geometry={BOX} material={mats.steel} position={[0, 5, 0]} scale={[1.2, 5, 1.2]} />
+          </>
+        )}
+        {!far && (
+          <group position={[30, 2.4, 0]}>
+            <mesh ref={line} geometry={BOX} material={mats.concrete} scale={[0.06, 1, 0.06]} />
+            <group ref={load}>
+              <mesh geometry={BOX} material={crate} scale={[3, 0.6, 2.2]} />
+            </group>
           </group>
-        </group>
+        )}
         {night && (
           <>
             <mesh geometry={BOX} material={mats.red} position={[52, 2.4, 0]} scale={0.5} />
@@ -386,7 +422,7 @@ function Crane({ at, mast, turn, phase, night, mats, tied }: { at: [number, numb
 }
 
 /** The builders' hoist up the front, in the strip the glass leaves open, tied to the floors; its cage going up and down. */
-function Hoist({ mats }: { mats: Mats }) {
+function Hoist({ mats, far }: { mats: Mats; far?: boolean }) {
   const cage = useRef<THREE.Mesh>(null)
   const H = GLASS + 2 * FLOOR
   const { x, z, out, ties } = useMemo(() => {
@@ -420,9 +456,10 @@ function Hoist({ mats }: { mats: Mats }) {
     <group position={[x, 0, z]} rotation={[0, out, 0]}>
       <mesh geometry={geo} material={mats.hoist} position={[0, H / 2, 0]} />
       <mesh ref={cage} geometry={BOX} material={cageMat} scale={[3, 2.6, 1.6]} />
-      {ties.map((t) => (
-        <mesh key={t.y} geometry={BOX} material={mats.hoist} position={[0, t.y, -t.len / 2]} scale={[0.25, 0.25, t.len]} />
-      ))}
+      {!far &&
+        ties.map((t) => (
+          <mesh key={t.y} geometry={BOX} material={mats.hoist} position={[0, t.y, -t.len / 2]} scale={[0.25, 0.25, t.len]} />
+        ))}
     </group>
   )
 }

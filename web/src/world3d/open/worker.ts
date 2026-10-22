@@ -13,13 +13,13 @@ import type { Building } from './tiles'
 // chunk built once is kept in the browser (chunkCache): next time it comes
 // back from there at once, and only the missing ones are fetched and built.
 
-export type ChunkRequest = { id: number; origin: Origin; tx: number; ty: number; token: string; places: PlaceSpot[]; z?: number }
+export type ChunkRequest = { id: number; origin: Origin; tx: number; ty: number; token: string; places: PlaceSpot[]; z?: number; /** Another commune's landmark drawn from afar (the Tour F seen from Adjamé): the map's buildings and trees go from its ground here too. */ clear?: { at: XZ; r: number }[] }
 export type Arrays = { position: Float32Array; uv: Float32Array; normal: Float32Array; color?: Float32Array; colorSize?: number; index: Uint32Array }
 
 self.onmessage = async (e: MessageEvent<ChunkRequest>) => {
-  const { id, origin, tx, ty, token, places, z } = e.data
+  const { id, origin, tx, ty, token, places, z, clear = [] } = e.data
   try {
-    const key = chunkKey(origin, tx, ty, z ?? 0, z ? tileBox(origin, tx, ty, z) : tileBox(origin, tx, ty), places)
+    const key = chunkKey(origin, tx, ty, z ?? 0, z ? tileBox(origin, tx, ty, z) : tileBox(origin, tx, ty), places, clear)
     const kept = await getChunk(key)
     if (kept) {
       const transfer = Object.values(kept.meshes).flatMap((a) => [a.position, a.uv, a.normal, a.color, a.index].flatMap((v) => (v ? [v.buffer as ArrayBuffer] : [])))
@@ -39,7 +39,7 @@ self.onmessage = async (e: MessageEvent<ChunkRequest>) => {
     // drawing and from the ways on foot, which use these buildings too.
     if (fields.length) data.buildings = data.buildings.filter((b) => !fields.some((f) => onFieldGround(f, b.c) || b.ring.some((p) => onFieldGround(f, p, 0.5))))
     // A landmark clears its ground in every chunk it reaches, not only its own.
-    const landmarks = places.filter((p) => p.landmark).map((p) => ({ at: resolved.find((r) => r.id === p.id)?.center ?? p.at, r: p.landmark! }))
+    const landmarks = [...places.filter((p) => p.landmark).map((p) => ({ at: resolved.find((r) => r.id === p.id)?.center ?? p.at, r: p.landmark! })), ...clear]
     // Not only the buildings whose middle is on it: a big one whose corner reaches in
     // (a block of flats beside a house's lot) would stand across its walls.
     if (landmarks.length) data.buildings = data.buildings.filter((b) => !landmarks.some((l) => b.ring.some((q) => Math.hypot(q[0] - l.at[0], q[1] - l.at[1]) < l.r)))
