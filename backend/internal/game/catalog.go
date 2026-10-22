@@ -195,6 +195,18 @@ var Kinds = map[string]PlaceKind{
 			{Text: "Réunion surprise qui dure deux heures…", Effect: Needs{Fun: -15, Energy: -10}},
 		},
 	},
+	// A building site: the Tour F of the Plateau going up. One stops to film it, or works a day there.
+	"chantier": {
+		ID: "chantier", Label: "Chantier", Icon: "hard-hat",
+		Interactions: []Interaction{
+			{ID: "regarder-tour-f", Label: "Regarder monter la Tour F", Icon: "camera", Minutes: 20, Effect: Needs{Fun: 12}, Places: []string{TourFID}},
+			{ID: "manoeuvre-tour-f", Ages: Adults, Label: "Faire une journée de manœuvre sur le chantier", Icon: "hard-hat", Minutes: 6 * 60, Cost: -7000, Effect: Needs{Energy: -35, Hygiene: -25, Fun: -5, Social: 10}, MinHour: 7, MaxHour: 15, Places: []string{TourFID}},
+		},
+		Events: []RandomEvent{
+			{Text: "Un ouvrier t'a raconté que de là-haut, on voit jusqu'à Bassam.", Effect: Needs{Fun: 5, Social: 5}},
+			{Text: "Un coup de vent a soulevé la poussière du chantier : te voilà tout gris…", Effect: Needs{Hygiene: -10}},
+		},
+	},
 	"beach": {
 		ID: "beach", Label: "Plage", Icon: "tree-palm",
 		Interactions: []Interaction{
@@ -678,6 +690,9 @@ const CathedraleID = "plateau-cathedrale"
 
 // PyramideID: La Pyramide of the Plateau (world/world.go), its gallery and its roof.
 const PyramideID = "plateau-pyramide"
+
+// TourFID: the Tour F's building site in the Plateau's Cité administrative (world/world.go).
+const TourFID = "plateau-tour-f"
 
 // BoulayID: the landing on the Azito shore (world/world.go), where the pinasse leaves for Île Boulay.
 const BoulayID = "yop-ile-boulay"
