@@ -75,13 +75,14 @@ const CLIPS = [
 
 // Each line (voice.py: out/voix-top20/<id>.wav, their lengths in report.json) gets its slot: the hook,
 // each activity, the end card, a beat of air after each line.
-// Without it, only the takes that don't depend on the times can be filmed (not the zouglou, on the beat).
-const voiced = fs.existsSync(path.join(VOICE, 'report.json'))
+// Until every line is there, only the takes that don't depend on the times can be filmed (not the
+// zouglou, on the beat, nor the overlay), and nothing is put together.
+const said = fs.existsSync(path.join(VOICE, 'report.json')) ? JSON.parse(fs.readFileSync(path.join(VOICE, 'report.json'), 'utf8')) : {}
+const voiced = ['hook', ...CLIPS.map((c) => c.voice ?? c.id), 'outro'].every((id) => said[id])
 if (!voiced && (!ONLY || ONLY.some((id) => id === 'zouglou' || id === 'overlay'))) {
-  console.error('No voice yet: python3 voice.py first (out/voix-top20/).')
+  console.error('Not all of the voice yet: python3 voice.py first (out/voix-top20/).')
   process.exit(1)
 }
-const said = voiced ? JSON.parse(fs.readFileSync(path.join(VOICE, 'report.json'), 'utf8')) : {}
 const len = (id) => said[id]?.dur ?? 2.4
 const HOOK = Math.max(2.8, len('hook') + 0.35)
 const SLOTS = []
