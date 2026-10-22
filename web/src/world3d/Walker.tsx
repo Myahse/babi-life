@@ -231,7 +231,9 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     // with the place behind (never from inside the house).
     if (controls) {
       const off = camera.position.clone().sub(controls.target)
-      const out = at ? new THREE.Vector2(x - at.x, z - at.z) : new THREE.Vector2()
+      // Development only (tests): &face=x,z turns the camera to look at that point over the Sim.
+      const face = import.meta.env.DEV ? new URLSearchParams(location.search).get('face')?.split(',').map(Number) : undefined
+      const out = face?.length === 2 ? new THREE.Vector2(x - face[0], z - face[1]) : at ? new THREE.Vector2(x - at.x, z - at.z) : new THREE.Vector2()
       if (out.lengthSq() > 0.25) {
         out.normalize()
         const flat = Math.hypot(off.x, off.z)

@@ -5,7 +5,7 @@ import { worldTime } from '../../lib/worldClock'
 import { whereabouts } from '../whereabouts'
 import { hash, type XZ } from './geo'
 import type { Nav } from './nav'
-import { LANDMARKS } from './landmarks'
+import { LANDMARK_GROUND, LANDMARKS } from './landmarks'
 import { onFieldGround, type Field } from './places'
 import { Solid } from '../Solid'
 
@@ -52,6 +52,15 @@ export function Billboards({ nav, seed, night, places = [] }: { nav: Nav; seed: 
       if (!nav.walkable(at[0], at[1])) return
       // Never on a pitch or a court (its fence and a few metres round it).
       if (places.some((p) => p.field && onFieldGround(p.field, at, FORMATS[format].w / 2 + 3))) return
+      // Not on a landmark's own ground (in its frame: +z through its door).
+      for (const p of places) {
+        const g = LANDMARK_GROUND[p.id]
+        if (!g) continue
+        const rot = Math.atan2(p.door[0] - p.x, p.door[1] - p.z)
+        const [dx, dz] = [at[0] - p.x, at[1] - p.z]
+        const [lx, lz] = [dx * Math.cos(rot) - dz * Math.sin(rot), dx * Math.sin(rot) + dz * Math.cos(rot)]
+        if (lx > g[0] - 2 && lx < g[1] + 2 && lz > g[2] - 2 && lz < g[3] + 2) return
+      }
       // Not two boards on top of each other.
       if (out.some((o) => Math.hypot(o.at[0] - at[0], o.at[1] - at[1]) < (format === 'sucette' ? 12 : 30))) return
       out.push({ id: `pub:${format}:${Math.round(at[0])}:${Math.round(at[1])}`, at, rot, seed: hash(at[0], at[1], 9), format, span, featured })
@@ -67,7 +76,9 @@ export function Billboards({ nav, seed, night, places = [] }: { nav: Nav; seed: 
       const [ux, uz] = [ox / ol, oz / ol]
       const turn = Math.atan2(ux, uz)
       for (const [side, f] of (big ? [[1, 'led'], [-1, 'geant']] : [[hash(p.x, p.z, 5) < 0.5 ? 1 : -1, format]]) as [number, BoardFormat][]) {
-        const aside = big ? Math.min(big, 40) * 0.6 : 9
+        // (Past the ends of a landmark's own ground, when it has one.)
+        const ground = LANDMARK_GROUND[p.id]
+        const aside = ground ? Math.max(-ground[0], ground[1]) + 6 : big ? Math.min(big, 40) * 0.6 : 9
         for (const back of [2, -4, 6]) {
           const at: XZ = [p.door[0] + uz * aside * side - ux * back, p.door[1] - ux * aside * side - uz * back]
           const n = out.length

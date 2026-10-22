@@ -97,6 +97,7 @@ const BoulayScene = lazy(() => import('../world3d/interior/BoulayScene').then((m
 const MALLS: Record<string, MallLayout> = {
   'cocody-sococe': { market: 'SOCOCÉ', back: ['PRESSING DES 2 PLATEAUX', 'BOULANGERIE', 'PHONE 225', 'PHARMACIE', 'MODE WAX'], front: ['LIBRAIRIE', 'BEAUTÉ & CO', '', 'CAFÉ DES PLATEAUX'], kineo: true },
   'marcory-capsud': { kineo: true },
+  'cocody-playce': { market: 'BABI MARKET', back: ['MODE WAX', 'BABI SNEAKERS', 'PHONE 225', 'PHARMACIE DE LA PALMERAIE', 'BIJOUX D’ÉBÈNE'], front: ['LIBRAIRIE', 'BEAUTÉ & CO', 'BURGER 225', 'CAFÉ DE LA RIVIERA'] },
 }
 /** The landing at Azito: the pinasse over to Île Boulay, its own scene while there. */
 const BOULAY = 'yop-ile-boulay'
