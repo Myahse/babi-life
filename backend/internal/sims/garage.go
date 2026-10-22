@@ -34,7 +34,7 @@ var (
 	errNoParking    = errors.New("il te faut d'abord une place pour le garder")
 	errVehicle      = errors.New("véhicule introuvable")
 	errParkingKind  = errors.New("cette place n'existe pas")
-	errGarageFull      = errors.New("tu en as déjà assez")
+	errGarageFull   = errors.New("tu en as déjà assez")
 )
 
 type vehicleRow struct {
