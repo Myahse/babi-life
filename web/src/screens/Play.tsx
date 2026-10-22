@@ -150,6 +150,8 @@ const STREET_SELLERS: Record<string, [string, string]> = {
   garba: ['Le garba du garbadrome', 'fish'],
   brochette: ['Le pain brochette', 'sandwich'],
   loto: ['Un ticket de Loto Chance', 'ticket'],
+  foot: ['Le foot du quartier', 'volleyball'],
+  basket: ['Le basket du quartier', 'trophy'],
 }
 
 export function Play() {

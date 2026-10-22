@@ -24,6 +24,8 @@ export const whereabouts = {
   faceTo: null as XZ | null,
   /** On the way to somewhere (Walker.tsx): where (a place's name, or null for a spot), how far is left (m), how fast it goes (m/s), how. */
   way: null as { to: string | null; left: number; speed: number; how: 'walk' | 'run' | 'moto' } | null,
+  /** The street's pitch or court the Sim plays on with the quartier (streetlife.tsx): its middle, its length's way, half its length to run. */
+  pitch: null as { at: XZ; dir: XZ; half: number } | null,
   /** Is there room for the Sim's body here (Walker.tsx)? */
   roomAt: (_x: number, _z: number) => true,
 }

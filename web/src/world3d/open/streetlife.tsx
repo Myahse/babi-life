@@ -1,4 +1,5 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Trophy, Volleyball } from 'lucide-react'
 import { FieldFence } from './fieldFence'
 import { StaticMerge } from '../staticMerge'
 import { inZone } from '../obstacles'
@@ -37,7 +38,7 @@ const GOODS = [
   { label: 'Pain', color: '#e6c48a' },
 ] as const
 
-export function StreetLife({ nav, seed, night, taken }: { nav: Nav; seed: string; night: boolean; /** ground already given to a place, a field, a lot */ taken: Taken[] }) {
+export function StreetLife({ nav, seed, night, taken, onPlay, doing }: { nav: Nav; seed: string; night: boolean; /** ground already given to a place, a field, a lot */ taken: Taken[]; /** Join the boys' game on the street's pitch or court (backend sims/street.go: foot:…, basket:…): what they say. */ onPlay?: (vendor: string) => Promise<string | null>; /** What the Sim is doing (an interaction id) */ doing?: string }) {
   const scenes = useMemo(() => {
     const out: Scene[] = []
     for (const e of nav.edges) {
@@ -101,6 +102,8 @@ export function StreetLife({ nav, seed, night, taken }: { nav: Nav; seed: string
     const nextBasket = nearest(playable.filter(isCourt), 1, nextFoot ? [nextFoot.at] : [])[0] ?? null
     if (nextFoot?.id !== foot?.id) setFoot(nextFoot)
     if (nextBasket?.id !== basket?.id) setBasket(nextBasket)
+    // In development, for tests in the browser: the street's pitch and court now drawn.
+    if (import.meta.env.DEV) Object.assign(globalThis, { __streetCourts: { foot: nextFoot, basket: nextBasket } })
     const avoid = [nextFoot, nextBasket].flatMap((s) => (s ? [s.at] : []))
     const next = nearest(stalls.filter((s) => !inZone(s.at[0], s.at[1], 2)), 3, avoid).map((s) => ({ ...s, goods: GOODS[Math.floor(s.seed * GOODS.length)] }))
     if (next.map((v) => v.id).join() !== vendors.map((v) => v.id).join()) setVendors(next)
@@ -134,6 +137,8 @@ export function StreetLife({ nav, seed, night, taken }: { nav: Nav; seed: string
       <Solid parts>{post && <PolicePost spot={post} />}</Solid>
       <Solid parts>{foot && <Pitch spot={foot} night={night} />}</Solid>
       <Solid parts>{basket && <Court spot={basket} night={night} />}</Solid>
+      {foot && <PlayHere spot={foot} sport="foot" half={8} onPlay={onPlay} playing={doing === 'street-foot'} />}
+      {basket && <PlayHere spot={basket} sport="basket" half={5.5} onPlay={onPlay} playing={doing === 'street-basket'} />}
       {vendors.map((v) => (
         <Solid key={v.id} parts>
           <Marchand vendor={v} />
@@ -619,6 +624,56 @@ function Court({ spot, night }: { spot: Spot; night: boolean }) {
       </NoShadows>
     </group>
     </StaticMerge>
+  )
+}
+
+const PLAY_REACH = 30 // metres from the middle: close enough to be asked in
+const PLAY = {
+  foot: { ask: 'Jouer avec les gars', icon: Volleyball, far: 'Approche du terrain !' },
+  basket: { ask: 'Jouer au basket avec eux', icon: Trophy, far: 'Viens au playground !' },
+}
+
+/**
+ * The street's pitch or court invites whoever comes near: a tap, and the boys
+ * take the Sim into their game (a street activity, free); it runs up and down
+ * with them (Walker LOOPS) until the game is over.
+ */
+function PlayHere({ spot, sport, half, onPlay, playing }: { spot: Spot; sport: 'foot' | 'basket'; half: number; onPlay?: (vendor: string) => Promise<string | null>; playing: boolean }) {
+  const [near, setNear] = useState(false)
+  const [said, setSaid] = useState<string | null>(null)
+  const clear = useRef<ReturnType<typeof setTimeout>>(undefined)
+  useEffect(() => () => clearTimeout(clear.current), [])
+  const say = (text: string, ms = 6000) => {
+    setSaid(text)
+    clearTimeout(clear.current)
+    clear.current = setTimeout(() => setSaid(null), ms)
+  }
+  const away = () => Math.hypot(spot.at[0] - whereabouts.sim[0], spot.at[1] - whereabouts.sim[1])
+  useFrame(() => {
+    const d = away() < PLAY_REACH
+    if (d !== near) setNear(d)
+  })
+  const p = PLAY[sport]
+  const tap = async () => {
+    if (!onPlay) return
+    if (away() > PLAY_REACH) return say(p.far, 3000)
+    // Its ground, for the Sim to run on (the pitch's length is its own x).
+    whereabouts.pitch = { at: spot.at, dir: [Math.cos(spot.rot), -Math.sin(spot.rot)], half }
+    say('…', 20000)
+    const text = await onPlay(`${sport}:${spot.id}`)
+    if (text) say(text)
+    else setSaid(null)
+  }
+  // In the game already: only what the boys said, for a moment.
+  if ((!near || playing) && !said) return null
+  const Icon = p.icon
+  return (
+    <Html position={[spot.at[0], 3.4, spot.at[1]]} center zIndexRange={[25, 0]}>
+      <button onClick={() => void tap()} className="flex items-center gap-1.5 rounded-2xl rounded-bl-sm border border-black/5 bg-white px-3 py-1.5 text-[13px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_6px_14px_-8px_rgba(0,0,0,0.5)] transition active:scale-95">
+        {!said && <Icon size={15} strokeWidth={2.6} className="text-[#ff7a00]" />}
+        {said ?? p.ask}
+      </button>
+    </Html>
   )
 }
 

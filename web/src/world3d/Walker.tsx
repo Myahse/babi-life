@@ -38,10 +38,13 @@ const RUN_FROM = 90
 const RIDE_FROM = 220
 const RIDE = 9 // a moto-taxi in town: about 32 km/h
 /** Busy doing these, the Sim goes up and down a way by the place: a stroll, a hike, laps of the stadium. (The zoo: the player walks it freely.) */
-const LOOPS: Record<string, { speed: number; run?: boolean; len: number; /** a stop at each end, side by side, to talk (seconds) */ pause?: number }> = {
+const LOOPS: Record<string, { speed: number; run?: boolean; len: number; /** a stop at each end, side by side, to talk (seconds) */ pause?: number; /** on the street's pitch (whereabouts.pitch), end to end */ pitch?: boolean }> = {
   'balade-lagune': { speed: 1.2, len: 14 },
   hike: { speed: 1.4, len: 18 },
   'stade-footing': { speed: 3.2, run: true, len: 26 },
+  // A game with the quartier on the street's pitch or court: up and down it with the others.
+  'street-foot': { speed: 3.4, run: true, len: 16, pitch: true },
+  'street-basket': { speed: 3, run: true, len: 11, pitch: true },
   // Hanging out with a friend: a slow walk side by side, a stop to talk and laugh, and on again.
   'ami-trainer': { speed: 1.1, len: 16, pause: 9 },
 }
@@ -179,6 +182,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   // Stopped on the stroll, turned to the friend: talking.
   const [chatting, setChatting] = useState(false)
   const loopKind = busy?.id ? LOOPS[busy.id] : undefined
+  // Walking onto the street's pitch before the game (once: blocked, it plays from where it got to).
+  const pitchGoing = useRef(false)
   // At home on the furniture: walking to it, then settled on it.
   const homeGoing = useRef<HomeSpot | null>(null)
   const [settled, setSettled] = useState<HomeSpot | null>(null)
@@ -196,6 +201,9 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     left.current = false
     reached.current = false
     padAway.current = false
+    pitchGoing.current = false
+    // The game on the street's pitch is over: its ground is no one's.
+    if (!LOOPS[busy?.id ?? '']?.pitch) whereabouts.pitch = null
   }, [busy?.id, stationAt])
 
   // Start where the Sim is busy, else at home, else on the sidewalk. Only
@@ -348,7 +356,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   /** Room for the body, the cars aside (they'll have moved on): for planning a way. */
   const roomFixed = (x: number, z: number) => clear(x, z) && !blockedFixed(x, z, R)
   // In development, for tests in the browser: is there room here, the cars aside?
-  if (import.meta.env.DEV) Object.assign(globalThis, { __roomFixed: roomFixed, __route: nav.route, __findWay: (a: XZ, b: XZ) => findWay(a, b, true), __path: () => path.current })
+  if (import.meta.env.DEV) Object.assign(globalThis, { __roomFixed: roomFixed, __route: nav.route, __findWay: (a: XZ, b: XZ) => findWay(a, b, true), __path: () => path.current, __walkTo: walkToPoint })
   /**
    * The way from a to b: close by, straight round the walls, trees and
    * stalls (never the long way by the streets); further, along the streets,
@@ -598,8 +606,22 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     }
     // Strolling: along the way and back, again and again, as far as there's room.
     if (loopKind && !path.current.length && !padWalking.current && !padAway.current) {
-      if (!loop.current) {
-        const [x, z] = [g.position.x, g.position.z]
+      const [x, z] = [g.position.x, g.position.z]
+      const pitch = loopKind.pitch && whereabouts.pitch && Math.hypot(whereabouts.pitch.at[0] - x, whereabouts.pitch.at[1] - z) < 60 ? whereabouts.pitch : null
+      if (!loop.current && pitch) {
+        // On the street's pitch: in by its gate to one end, then end to end along it.
+        const start: XZ = [pitch.at[0] - pitch.dir[0] * pitch.half, pitch.at[1] - pitch.dir[1] * pitch.half]
+        const off = Math.hypot(start[0] - x, start[1] - z)
+        if (!pitchGoing.current && off > 1) {
+          pitchGoing.current = true
+          const way = findWay([x, z], start, false)
+          path.current = way ? way.slice(1) : [start]
+          target.current = null
+          speed.current = RUN
+          setRoute([...path.current])
+          setWalking(true)
+        } else loop.current = { x, z, fx: pitch.dir[0], fz: pitch.dir[1], len: Math.max(2, pitch.half * 2 - (off > 1 ? 0 : off)), t0: worldTime() }
+      } else if (!loop.current) {
         // Across the way the Sim faces (that's the building), then the other way if there's no room.
         const ways: XZ[] = [[Math.cos(g.rotation.y), -Math.sin(g.rotation.y)], [-Math.cos(g.rotation.y), Math.sin(g.rotation.y)], [-Math.sin(g.rotation.y), -Math.cos(g.rotation.y)]]
         let best = { fx: 0, fz: 1, len: 0 }
@@ -611,7 +633,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         loop.current = { x, z, ...best, t0: worldTime() }
       }
       const l = loop.current
-      if (l.len >= 2) {
+      if (l && l.len >= 2) {
         // Out, a stop, back, a stop (no stop: on and on).
         const walkT = l.len / loopKind.speed
         const P = loopKind.pause ?? 0
