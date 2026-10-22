@@ -55,15 +55,16 @@ const tex = (c: HTMLCanvasElement, nearest = true) => {
   return t
 }
 
-/** The light grey cladding: big panels, their joints, one a shade lighter now and then. */
-function cladding(w: number, h: number) {
+/** The cladding: big panels, their joints, one a shade lighter now and then; light grey (Palmeraie) or cream (Marcory). */
+export function cladding(w: number, h: number, tone: 'grey' | 'cream' = 'grey') {
   const [c, g] = canvas(64, 64)
-  g.fillStyle = '#dcdcd8'
+  const [base, light, joint] = tone === 'cream' ? ['#ddd0b6', '#e7dcc6', '#bfb095'] : ['#dcdcd8', '#e6e6e2', '#b9bab6']
+  g.fillStyle = base
   g.fillRect(0, 0, 64, 64)
-  g.fillStyle = '#e6e6e2'
+  g.fillStyle = light
   g.fillRect(0, 0, 32, 16)
   g.fillRect(32, 32, 32, 16)
-  g.fillStyle = '#b9bab6'
+  g.fillStyle = joint
   for (let y = 0; y < 64; y += 16) g.fillRect(0, y, 64, 1)
   for (let x = 0; x < 64; x += 32) g.fillRect(x, 0, 1, 64)
   const t = tex(c)
@@ -74,7 +75,7 @@ function cladding(w: number, h: number) {
 }
 
 /** The supermarket's name in red on the wall, and its mark: the game's Babi Market. */
-function marketSign(night: boolean) {
+export function marketSign(night: boolean) {
   const [c, g] = canvas(512, 128)
   g.fillStyle = '#d6202a'
   g.textBaseline = 'middle'
@@ -138,34 +139,51 @@ const ARROW = (() => {
   return new THREE.ShapeGeometry(s)
 })()
 
-/** The car park's paint: the bays in rows, the lanes' edges, the octagons to walk on, the arrows. */
-function useMarkings() {
-  return useMemo(() => {
+type Park = { x0: number; x1: number; z0: number; z1: number }
+
+/**
+ * A centre's car park: its asphalt (wet, a few puddles shining), the kerb on
+ * the street, the bays in rows nose to nose with lanes between, the long lines
+ * of the lanes, the octagons leading the walkers from the street to the door
+ * (and along the front), the painted arrows.
+ */
+export function CarPark({ park, walkX, front, arrows, wet = false }: { park: Park; /** The walkway's x, street to door. */ walkX: number; /** The octagons along the front: from x, to x. */ front: [number, number]; arrows: { p: [number, number]; r: number }[]; wet?: boolean }) {
+  const marks = useMemo(() => {
     const lines: Block[] = []
-    // Rows of bays, nose to nose, with lanes between; the walkway of octagons left clear.
-    for (const z of [6.5, 18.5, 30]) {
-      for (let x = PARK.x0 + 2; x <= PARK.x1 - 2; x += 2.6) if (Math.abs(x + 8) > 2.4) lines.push({ p: [x, 0.03, z], s: [0.12, 0.02, 5] })
-      lines.push({ p: [0, 0.03, z - 2.5], s: [PARK.x1 - PARK.x0 - 4, 0.02, 0.12] })
+    const w = park.x1 - park.x0
+    const cx = (park.x0 + park.x1) / 2
+    const rows = [park.z0 + 5.5, park.z0 + 17.5, park.z0 + 29].filter((z) => z < park.z1 - 2)
+    for (const z of rows) {
+      for (let x = park.x0 + 2; x <= park.x1 - 2; x += 2.6) if (Math.abs(x - walkX) > 2.4) lines.push({ p: [x, 0.03, z], s: [0.12, 0.02, 5] })
+      lines.push({ p: [cx, 0.03, z - 2.5], s: [w - 4, 0.02, 0.12] })
     }
-    // The long lines along the lanes.
-    for (const z of [12.5, 24.5]) lines.push({ p: [0, 0.03, z], s: [PARK.x1 - PARK.x0 - 6, 0.02, 0.15] })
-    // The walkway: octagons in a line from the street to the main door, a second row along the front.
+    for (const z of [park.z0 + 11.5, park.z0 + 23.5].filter((z) => z < park.z1 - 2)) lines.push({ p: [cx, 0.03, z], s: [w - 6, 0.02, 0.15] })
     const octagons: [number, number][] = []
-    for (let z = PARK.z1 - 2; z > 2; z -= 2.6) octagons.push([-8, z])
-    for (let x = -4; x < 34; x += 2.6) octagons.push([x, 3.2])
-    const arrows: { p: [number, number]; r: number }[] = [
-      { p: [20, 12.5 + 1.8], r: 0 },
-      { p: [36, 24.5 + 1.8], r: 0 },
-      { p: [-24, 12.5 - 1.8], r: Math.PI },
-      { p: [12, 24.5 - 1.8], r: Math.PI },
-      { p: [44, 18.5], r: -Math.PI / 2 },
-    ]
-    return { lines, octagons, arrows }
-  }, [])
+    for (let z = park.z1 - 2; z > park.z0 + 1; z -= 2.6) octagons.push([walkX, z])
+    for (let x = front[0]; x < front[1]; x += 2.6) octagons.push([x, park.z0 + 2.2])
+    return { lines, octagons }
+  }, [park, walkX, front])
+  return (
+    <group>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[(park.x0 + park.x1) / 2, 0.02, (park.z0 + park.z1) / 2 - 0.5]} geometry={PLANE_GEO} scale={[park.x1 - park.x0, park.z1 - park.z0 + 1, 1]} material={asphalt} />
+      {wet &&
+        [[-20, 20, 9, 3], [6, 15, 6, 2.2], [26, 28, 10, 3.5], [-38, 26, 7, 2.5]].map(([x, z, w, d], i) => (
+          <mesh key={i} rotation={[-Math.PI / 2, 0, 0]} position={[x, 0.025, z]} geometry={CIRCLE} scale={[w, d, 1]} material={puddle} />
+        ))}
+      <mesh geometry={BOX} position={[(park.x0 + park.x1) / 2, 0.1, park.z1 + 0.2]} scale={[park.x1 - park.x0, 0.2, 0.4]} material={kerb} />
+      <Blocks at={marks.lines} material={paint} />
+      {marks.octagons.map(([x, z], i) => (
+        <mesh key={i} geometry={OCTAGON} position={[x, 0.035, z]} material={paint} />
+      ))}
+      {arrows.map((a, i) => (
+        <mesh key={i} geometry={ARROW} rotation={[-Math.PI / 2, 0, a.r]} position={[a.p[0], 0.035, a.p[1]]} material={paint} />
+      ))}
+    </group>
+  )
 }
 
 /** A tall lamp post with its two lamps on a cross arm. */
-function LampPost({ x, z, night }: { x: number; z: number; night: boolean }) {
+export function LampPost({ x, z, night }: { x: number; z: number; night: boolean }) {
   const lamp = useMemo(() => new THREE.MeshLambertMaterial({ color: '#f1f3f5', emissive: '#ffe9b0', emissiveIntensity: night ? 1.2 : 0 }), [night])
   return (
     <group position={[x, 0, z]}>
@@ -202,7 +220,7 @@ function ShowTent() {
 }
 
 /** Shopping trolleys in their shelter by the door. */
-function Trolleys({ x, z }: { x: number; z: number }) {
+export function Trolleys({ x, z }: { x: number; z: number }) {
   const at = useMemo(() => {
     const out: Block[] = [{ p: [x, 2.3, z], s: [4.4, 0.1, 1.6], c: '#c9ccd1' }]
     for (const dx of [-2, 2]) out.push({ p: [x + dx, 1.15, z - 0.7], s: [0.08, 2.3, 0.08], c: '#c9ccd1' })
@@ -232,7 +250,6 @@ export function Playce({ night }: { night: boolean }) {
     }),
     [night],
   )
-  const marks = useMarkings()
   // The brown squares: a row on the wing, three big ones on the supermarket; the coloured stripes up the walls.
   const trims = useMemo<Block[]>(
     () => [
@@ -249,19 +266,7 @@ export function Playce({ night }: { night: boolean }) {
   )
   return (
     <group>
-      {/* The car park, its kerb along the street, a few puddles shining */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[(PARK.x0 + PARK.x1) / 2, 0.02, (PARK.z0 + PARK.z1) / 2 - 0.5]} geometry={PLANE_GEO} scale={[PARK.x1 - PARK.x0, PARK.z1 - PARK.z0 + 1, 1]} material={asphalt} />
-      {[[-20, 20, 9, 3], [6, 15, 6, 2.2], [26, 28, 10, 3.5], [-38, 26, 7, 2.5]].map(([x, z, w, d], i) => (
-        <mesh key={i} rotation={[-Math.PI / 2, 0, 0]} position={[x, 0.025, z]} geometry={CIRCLE} scale={[w, d, 1]} material={puddle} />
-      ))}
-      <mesh geometry={BOX} position={[0, 0.1, PARK.z1 + 0.2]} scale={[PARK.x1 - PARK.x0, 0.2, 0.4]} material={kerb} />
-      <Blocks at={marks.lines} material={paint} />
-      {marks.octagons.map(([x, z], i) => (
-        <mesh key={i} geometry={OCTAGON} position={[x, 0.035, z]} material={paint} />
-      ))}
-      {marks.arrows.map((a, i) => (
-        <mesh key={i} geometry={ARROW} rotation={[-Math.PI / 2, 0, a.r]} position={[a.p[0], 0.035, a.p[1]]} material={paint} />
-      ))}
+      <CarPark park={PARK} walkX={-8} front={[-4, 34]} wet arrows={[{ p: [20, 14.3], r: 0 }, { p: [36, 26.3], r: 0 }, { p: [-24, 10.7], r: Math.PI }, { p: [12, 22.7], r: Math.PI }, { p: [44, 18.5], r: -Math.PI / 2 }]} />
       {/* The boxes of the centre, in their grey panels */}
       {BOXES.map((b, i) => (
         <mesh key={i} geometry={BOX} position={[(b.x0 + b.x1) / 2, b.h / 2, -b.d / 2]} scale={[b.x1 - b.x0, b.h, b.d]} material={mats.boxes[i]} castShadow receiveShadow />
