@@ -64,7 +64,7 @@ async function call(token, path, method = 'GET', body) {
   }
 }
 
-const live = { sent: 0, received: 0, opened: 0, failed: 0, closed: 0 }
+const live = { sent: 0, received: 0, bytes: 0, opened: 0, failed: 0, closed: 0 }
 const db = [] // connections seen, every 2 s
 
 /* ---------- One player ---------- */
@@ -87,7 +87,10 @@ async function play(i, world, until) {
     live.opened++
     ws.send(JSON.stringify({ t: 'hello', token, sim: sim.id, mode: 'open' }))
   }
-  ws.onmessage = () => live.received++
+  ws.onmessage = (e) => {
+    live.received++
+    live.bytes += typeof e.data === 'string' ? Buffer.byteLength(e.data) : e.data.byteLength
+  }
   ws.onerror = () => live.failed++
   ws.onclose = () => live.closed++
   const walk = setInterval(() => {
@@ -156,5 +159,5 @@ for (const [k, list] of [...times].sort((a, b) => b[1].length - a[1].length))
 const total = [...times.values()].reduce((n, l) => n + l.length, 0)
 console.log(`\n${total} requêtes en ${secs.toFixed(0)} s (${(total / secs).toFixed(1)}/s)`)
 console.log(errors.size ? `Erreurs : ${[...errors].map(([k, n]) => `${k} ×${n}`).join(', ')}` : 'Aucune erreur (hors refus du jeu, 422).')
-console.log(`Live : ${live.opened} connexions, ${live.failed} échecs, ${live.sent} positions envoyées (${(live.sent / secs).toFixed(0)}/s), ${live.received} messages reçus (${(live.received / secs).toFixed(0)}/s)`)
+console.log(`Live : ${live.opened} connexions, ${live.failed} échecs, ${live.sent} positions envoyées (${(live.sent / secs).toFixed(0)}/s), ${live.received} messages reçus (${(live.received / secs).toFixed(0)}/s, ${(live.bytes / secs / 1e6).toFixed(2)} Mo/s)`)
 if (db.length) console.log(`Base : jusqu'à ${Math.max(...db.map((d) => d.all))} connexions ouvertes, ${Math.max(...db.map((d) => d.active))} actives en même temps`)

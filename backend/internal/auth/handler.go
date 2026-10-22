@@ -178,23 +178,27 @@ func (h *Handler) ConfirmAdult(w http.ResponseWriter, r *http.Request) {
 }
 
 // BecomeTester: with the testers' code (or the admin key), the account is a
-// tester's from now on, on every browser.
+// tester's from now on, on every browser. Typed: the person has just typed
+// the code (on /testeur or in the toolbox), not a browser sending the one it
+// kept, so it holds even after the testers' reset.
 func (h *Handler) BecomeTester(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Code string `json:"code"`
+		Code  string `json:"code"`
+		Typed bool   `json:"typed"`
 	}
 	if err := httpx.Decode(r, &body); err != nil || !adminkey.Tester(body.Code) {
 		httpx.Error(w, http.StatusForbidden, "code testeur incorrect")
 		return
 	}
-	// After the testers' reset (sims.ResetTesters) the code no longer works for the account: only /admin can.
+	// After the testers' reset (sims.ResetTesters) the code a browser kept no
+	// longer works for the account: typing it again (or /admin) does.
 	var off bool
-	if err := h.DB.QueryRow(r.Context(), `SELECT tester_off FROM users WHERE id = $1`, UserID(r.Context())).Scan(&off); err == nil && off {
+	if err := h.DB.QueryRow(r.Context(), `SELECT tester_off FROM users WHERE id = $1`, UserID(r.Context())).Scan(&off); err == nil && off && !body.Typed {
 		httpx.Error(w, http.StatusForbidden, "les tests sont finis : ton compte est un compte joueur")
 		return
 	}
 	var u User
-	if err := scanUser(h.DB.QueryRow(r.Context(), `UPDATE users SET tester = true WHERE id = $1 RETURNING `+userColumns, UserID(r.Context())), &u); err != nil {
+	if err := scanUser(h.DB.QueryRow(r.Context(), `UPDATE users SET tester = true, tester_off = false WHERE id = $1 RETURNING `+userColumns, UserID(r.Context())), &u); err != nil {
 		httpx.Error(w, http.StatusUnauthorized, "user not found")
 		return
 	}

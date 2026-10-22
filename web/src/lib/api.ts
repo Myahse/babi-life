@@ -129,8 +129,8 @@ export const api = {
   usernameAvailable: (u: string) => request<{ available: boolean }>(`/auth/username?u=${encodeURIComponent(u)}`),
   setUsername: (username: string) => request<User>('/me/username', { method: 'PUT', body: JSON.stringify({ username }) }),
   me: () => request<User>('/me'),
-  /** With the testers' code (or the admin key), the account becomes a tester's. */
-  becomeTester: (code: string) => post<User>('/me/tester', { code }),
+  /** With the testers' code (or the admin key), the account becomes a tester's. typed: just typed by the person (it holds even after the testers' reset). */
+  becomeTester: (code: string, typed = false) => post<User>('/me/tester', { code, typed }),
   /** The player says once that they are 18 or over (romance). */
   confirmAdult: () => post<User>('/me/adult', {}),
   sims: () => request<Sim[]>('/sims'),

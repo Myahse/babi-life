@@ -862,7 +862,7 @@ function TalkLab() {
         </mesh>
         <OrbitControls target={[0, -0.4, 0]} />
       </Canvas>
-      <ChatSheet npc={npc} simGender="femme" onSay={onSay} onClose={() => location.reload()} />
+      <ChatSheet npc={npc} simGender="femme" onSay={onSay} onClose={() => location.reload()} grownUp={q.has('grown')} adultAccount={q.has('grown')} />
     </div>
   )
 }

@@ -20,7 +20,8 @@ export default defineConfig({
         description: "Ta vie. Ton quartier. Ton Babi. Un jeu de vie en Côte d'Ivoire, à l'heure d'Abidjan.",
         lang: 'fr',
         dir: 'ltr',
-        start_url: '/liste',
+        // The game for testers, the wish list for everyone else (App.tsx sends them there).
+        start_url: '/',
         scope: '/',
         display: 'standalone',
         orientation: 'portrait',

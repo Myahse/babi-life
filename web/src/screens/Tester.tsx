@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { FlaskConical, KeyRound, LogOut, Play } from 'lucide-react'
-import { isTester, isTesterCode, setTester, testerPass } from '../lib/launch'
+import { homeScreenApp, isTester, isTesterCode, setTester, testerPass } from '../lib/launch'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
 
@@ -113,6 +113,12 @@ export default function Tester() {
               {busy ? 'Vérification…' : 'Ouvrir le jeu'}
             </button>
           </form>
+        )}
+        {/* The app on the home screen has no back button */}
+        {homeScreenApp() && (
+          <a href="/" className="mt-4 block text-center text-sm font-extrabold text-[var(--color-ink-soft)]">
+            Retour
+          </a>
         )}
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { registerSW } from 'virtual:pwa-register'
+import { homeScreenApp } from './launch'
 
 // Installable app: the service worker caches the shell and updates itself;
 // these hooks offer installation and tell when the network is gone.
@@ -29,7 +30,7 @@ window.addEventListener('appinstalled', () => {
   listeners.forEach((f) => f())
 })
 
-const standalone = () => window.matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true
+const standalone = homeScreenApp
 /** iPhone and iPad Safari never fire beforeinstallprompt: they install from the Share menu. */
 const ios = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 
