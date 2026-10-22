@@ -67,6 +67,7 @@ import { motoFare, motoPaid, useMoto } from '../world3d/moto'
 import { answerDrop, useDropAsk } from '../world3d/dropRoute'
 import { DefiButton, DefiSheet, defiOf, type DefiKind } from '../components/Defi'
 import { BolideApp } from './BolideApp'
+import { Tutorial, beginner, openTutorial, useTutorialAsked } from '../components/Tutorial'
 import { drive, startDrive, stopDrive, useDriving, type Driven } from '../world3d/drive'
 import { FlightView } from '../world3d/FlightView'
 import { aCommune } from '../lib/french'
@@ -518,6 +519,11 @@ export function Play() {
 
   // Building one's house on the plot; the houses are fetched again after.
   const moto = useMoto()
+  // The tuto for a beginner (components/Tutorial.tsx), or asked for again from the Encyclo.
+  const [tuto, setTuto] = useState(beginner)
+  // Started with the tuto: the two old first tips (FirstSteps) aren't needed after it.
+  const [firstTime] = useState(beginner)
+  const tutoAsked = useTutorialAsked()
   // A défi taken on during the activity (components/Defi.tsx): the one going on.
   const [defi, setDefi] = useState<DefiKind | null>(null)
   // At the wheel of one's own vehicle (world3d/drive.ts): parked, the petrol paid on the distance.
@@ -905,7 +911,7 @@ export function Play() {
           {!showInside && !placeId && !overlay && (
             <div className="pointer-events-auto flex flex-col items-end gap-2">
               {!classic && (
-                <button className="hud flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={() => setView((v) => NEXT_VIEW[v])} title="Changer de vue">
+                <button className="hud flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={() => setView((v) => NEXT_VIEW[v])} title="Changer de vue" data-tour="vue">
                   {/* What the next tap gives */}
                   {view === 'epaule' ? <Mountain size={17} strokeWidth={2.6} className="text-[var(--color-emerald)]" /> : <Eye size={17} strokeWidth={2.6} className="text-[var(--color-emerald)]" />}
                   <span className="max-sm:hidden short:hidden">{{ pres: 'Vue épaule', epaule: 'Vue de haut', haut: 'Vue de près' }[view]}</span>
@@ -933,16 +939,17 @@ export function Play() {
 
       {/* ---------- Bottom HUD: needs, map, phone ---------- */}
       <footer className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex items-end justify-between gap-2 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:p-5">
-        <button className="hud pointer-events-auto flex h-16 w-16 flex-col items-center justify-center gap-0.5 rounded-[20px] text-[11px] font-extrabold transition active:scale-95" onClick={() => setOverlay('map')}>
+        <button data-tour="carte" className="hud pointer-events-auto flex h-16 w-16 flex-col items-center justify-center gap-0.5 rounded-[20px] text-[11px] font-extrabold transition active:scale-95" onClick={() => setOverlay('map')}>
           <MapIcon size={24} strokeWidth={2.4} className="text-[var(--color-emerald)]" />
           Carte
         </button>
-        <div className="hud pointer-events-auto flex flex-1 justify-around gap-1 rounded-[26px] px-2 py-2 sm:max-w-md sm:flex-none sm:gap-3 sm:px-4">
+        <div data-tour="besoins" className="hud pointer-events-auto flex flex-1 justify-around gap-1 rounded-[26px] px-2 py-2 sm:max-w-md sm:flex-none sm:gap-3 sm:px-4">
           {NEEDS.map((n) => (
             <MotiveRing key={n.key} value={sim.needs[n.key]} icon={n.icon} label={desktop ? n.label : undefined} size={desktop ? 52 : 44} />
           ))}
         </div>
         <button
+          data-tour="phone"
           className="pointer-events-auto relative flex h-16 w-16 flex-col items-center justify-center gap-0.5 rounded-[22px] bg-[var(--color-orange)] text-[11px] font-extrabold text-white shadow-[0_8px_20px_-10px_rgba(224,90,0,0.8)] transition hover:bg-[#f26f00] active:scale-95"
           onClick={() => (setOverlay('phone'), setSeen(journal[0]?.id ?? 0))}
         >
@@ -960,7 +967,7 @@ export function Play() {
           <div className="origin-top-left max-sm:-mr-[33px] max-sm:-mb-[33px] max-sm:scale-75 short:-mr-[53px] short:-mb-[53px] short:scale-[0.6]">
             <MiniMap onWalk={walkTo} />
           </div>
-          <button className="hud pointer-events-auto flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={() => setWhereTo(true)}>
+          <button data-tour="ou-aller" className="hud pointer-events-auto flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={() => setWhereTo(true)}>
             <Navigation size={17} strokeWidth={2.6} className="text-[var(--color-orange)]" /> Où aller ?
           </button>
           {/* On the way somewhere: how far, how long */}
@@ -976,7 +983,9 @@ export function Play() {
         </button>
       )}
 
-      {!classic && <FirstSteps pad={padShown} hidden={showInside || !!placeId || !!overlay || !!players || whereTo || !!sim.activity || !!pending} />}
+      {!classic && <FirstSteps pad={padShown} hidden={showInside || !!placeId || !!overlay || !!players || whereTo || !!sim.activity || !!pending || tuto || tutoAsked || firstTime} />}
+      {/* The first time (or asked for again from the Encyclo): Koffi shows the beginner round */}
+      {(tuto || tutoAsked) && !classic && <Tutorial state={{ whereTo, placeId, overlay }} onEnd={() => setTuto(false)} />}
       {/* Walking: the keys always (arrows / WASD); the pad on screen only in the shoulder view (the third-person
           view, chosen with the view button), so the other views stay clear. There, one walks with « Où aller ? »,
           the mini-map and the places' signs. The classic street has no views: the pad stays. */}
@@ -1376,7 +1385,7 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
                 {app === 'home' && <HomeApp world={world} sim={sim} commune={commune} act={act} onBuild={onBuild} onWalk={onWalk} onMap={onMap} />}
                 {app === 'messages' && <Journal events={journal} />}
                 {app === 'news' && <NewsApp />}
-                {app === 'guide' && <GuideApp world={world} />}
+                {app === 'guide' && <GuideApp world={world} onTutorial={() => (onClose(), openTutorial())} />}
                 {app === 'dodo' && <DodoApp world={world} sim={sim} act={act} onMap={onMap} />}
                 {app === 'bolide' && <BolideApp world={world} sim={sim} act={act} onDrive={onDrive} />}
                 {app === 'dames' && <DamesApp sim={sim} onOnline={onDamesOnline} onFriend={onDames} onResume={onDamesResume} />}
