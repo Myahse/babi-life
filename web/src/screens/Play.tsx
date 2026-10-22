@@ -24,7 +24,7 @@ import { OpenWorld } from '../world3d/open/OpenWorld'
 import { GROUNDS, LANDMARKS, OPEN_AIR } from '../world3d/open/landmarks'
 import { iconFor, kindColors } from '../components/icons'
 import { Chip, Coin, DayNight, IconTile, MotiveRing, MoodPin, Row, needColor } from '../components/ui'
-import { EPOCH, NEEDS, actionLength, ageBlock, amount, fcfa, atHome, blockedBy, homeLacks, housingOf, lifeOf, minutesToAge, clock, duration, mood, openAt, openingLabel, predict, shift } from '../game/rules'
+import { EPOCH, NEEDS, km, actionLength, ageBlock, amount, fcfa, atHome, blockedBy, homeLacks, housingOf, lifeOf, minutesToAge, clock, duration, mood, openAt, openingLabel, predict, shift } from '../game/rules'
 import { DOORS_OPEN, eventAt, useStadium, when } from '../lib/stadium'
 import { HomeApp, JobsApp, type Act } from './phoneApps'
 import { NewsApp, topicOf } from './NewsApp'
@@ -64,6 +64,7 @@ import { setTalkHandler, setTalking } from '../world3d/talk'
 import type { Track } from '../audio/music'
 import { NotifyPrompt } from '../components/NotifyPrompt'
 import { motoFare, motoPaid, useMoto } from '../world3d/moto'
+import { answerDrop, useDropAsk } from '../world3d/dropRoute'
 import { FlightView } from '../world3d/FlightView'
 import { aCommune } from '../lib/french'
 
@@ -514,6 +515,8 @@ export function Play() {
 
   // Building one's house on the plot; the houses are fetched again after.
   const moto = useMoto()
+  // A tap on the ground on the way to a place: asked before the way is dropped.
+  const dropAsk = useDropAsk()
   // In a home booked on Dodo: the very house (a player's, as built; else the plan of its kind).
   const dodoStay = sim?.stay?.kind === 'dodo' ? sim.stay : null
   const [hostPlot, setHostPlot] = useState<Plot | null>(null)
@@ -940,6 +943,8 @@ export function Play() {
           <button className="hud pointer-events-auto flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={() => setWhereTo(true)}>
             <Navigation size={17} strokeWidth={2.6} className="text-[var(--color-orange)]" /> Où aller ?
           </button>
+          {/* On the way somewhere: how far, how long */}
+          <WayLeft />
           {/* The power cut where the Sim stands */}
           <PowerCutBadge commune={commune.id} />
         </div>
@@ -1021,7 +1026,7 @@ export function Play() {
 
       {players && <PlayersSheet sim={sim} around={around} communeName={commune.name} focus={players.focus} act={run} onClose={() => setPlayers(null)} />}
 
-      {sim.activity && !placeId && <ActivityBar onRejoin={ballKey && played === ballKey ? { sport: ballSport!, go: rejoin } : undefined} sim={sim} onStop={stop} stopping={!!pending} onRoute={() => setOverlay('map')} onMore={onGrounds ? () => (setPlaceId(doing!.placeId!), setMenuOpen(true)) : undefined} />}
+      {sim.activity && !placeId && <ActivityBar world={world} onRejoin={ballKey && played === ballKey ? { sport: ballSport!, go: rejoin } : undefined} sim={sim} onStop={stop} stopping={!!pending} onRoute={() => setOverlay('map')} onMore={onGrounds ? () => (setPlaceId(doing!.placeId!), setMenuOpen(true)) : undefined} />}
 
       {/* The invitation and the toasts in one column under the top bar: they stack, never on top of each other */}
       <div className="pointer-events-none absolute top-[5.5rem] left-1/2 z-40 flex w-[min(400px,calc(100vw-24px))] -translate-x-1/2 flex-col gap-2 lg:top-24">
@@ -1118,7 +1123,7 @@ export function Play() {
       {overlay === 'camera' && <CameraView sim={sim} street={!showInside} onClose={() => setOverlay(null)} onGallery={() => (setPhoneApp('galerie'), setOverlay('phone'))} />}
       {overlay === 'map' && <WorldMap world={world} sim={sim} night={c.isNight} desktop={desktop} onClose={() => setOverlay(null)} onTravel={travel} onWalk={(id) => (setOverlay(null), walkTo(id))} />}
       {delivery && overlay !== 'phone' && <DeliveryPill delivery={delivery} now={now} onOpen={() => (setPhoneApp('golvo'), setOverlay('phone'))} />}
-      {!overlay && <MotoOffer sim={sim} act={run} />}
+      {!overlay && (dropAsk ? <DropRouteAsk from={dropAsk.from} moto={dropAsk.moto} /> : <MotoOffer sim={sim} act={run} />)}
       {/* On a flight: the plane over the clouds (the map is a tap away) */}
       {!overlay && sim.activity?.kind === 'travel' && sim.activity.trip?.mode === 'avion' && <FlightView sim={sim} night={c.isNight} onMap={() => setOverlay('map')} />}
       {chat && (
@@ -1678,13 +1683,79 @@ function HappeningSheet({ now, sim, commune, onClose, onJoin }: { now: Happening
 
 /* ---------- Feedback ---------- */
 
+/** A distance to read at a glance: « 320 m », « 1,2 km ». */
+const metres = (m: number) => (m < 950 ? `${Math.max(10, Math.round(m / 10) * 10)} m` : `${(m / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} km`)
+
+/**
+ * A trip's kilometres left, as the map moves the car (WorldMap's useTrip): along its road (or the
+ * crow's way, a quarter longer, for a trip without one), once the driver has come; null till then.
+ */
+function tripLeft(world: World, a: NonNullable<Sim['activity']>, now: number) {
+  const t = a.trip
+  if (!t) return undefined
+  const from = world.cities.find((c) => c.id === t.fromCity)?.communes.find((c) => c.id === t.fromCommune)
+  const to = world.cities.find((c) => c.id === t.city)?.communes.find((c) => c.id === t.commune)
+  const total = t.path && t.path.length > 1 ? t.path.reduce((s, p, i) => (i ? s + km({ lng: t.path![i - 1][0], lat: t.path![i - 1][1] }, { lng: p[0], lat: p[1] }) : 0), 0) : from && to ? km(from, to) * 1.25 : 0
+  if (!total) return undefined
+  const pick = t.city === t.fromCity && t.mode !== 'avion' ? Math.min(3, Math.max(0.75, (a.end - a.start) * 0.33)) : 0
+  const at = now - a.start
+  if (at < pick) return null
+  return total * (1 - Math.min(1, Math.max(0, (at - pick) / Math.max(0.5, a.end - a.start - pick))))
+}
+
+/** On the way somewhere in the street (Walker publishes it): how far is left, and about how long. */
+function WayLeft() {
+  const [way, setWay] = useState(whereabouts.way)
+  useEffect(() => {
+    const t = setInterval(() => setWay(whereabouts.way && { ...whereabouts.way }), 500)
+    return () => clearInterval(t)
+  }, [])
+  if (!way || way.left < 15) return null
+  const Icon = way.how === 'moto' ? Bike : Footprints
+  const secs = way.left / Math.max(0.5, way.speed)
+  return (
+    <span className="hud flex max-w-[230px] items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-extrabold">
+      <Icon size={14} strokeWidth={2.6} className={`shrink-0 ${way.how === 'moto' ? 'text-[#c92a2a]' : 'text-[var(--color-orange)]'}`} />
+      {way.to && <span className="min-w-0 truncate">{way.to}</span>}
+      <span className="shrink-0 whitespace-nowrap">
+        {way.to ? '· ' : ''}
+        {metres(way.left)} · {secs < 60 ? "moins d'1 min" : `${Math.round(secs / 60)} min`}
+      </span>
+    </span>
+  )
+}
+
+/** A tap on the ground on the way to a place: drop the way for that spot? (world3d/dropRoute.ts) */
+function DropRouteAsk({ from, moto }: { from: string; moto: boolean }) {
+  return (
+    <div className="hud animate-up absolute bottom-[calc(7.5rem+env(safe-area-inset-bottom))] left-1/2 z-30 flex w-[min(380px,calc(100vw-24px))] -translate-x-1/2 items-center gap-2 rounded-[22px] p-2 pl-3 text-sm font-extrabold">
+      <Navigation size={20} className="shrink-0 text-[var(--color-orange)]" />
+      <span className="min-w-0 flex-1 leading-tight">
+        Aller plutôt ici ?
+        <span className="line-clamp-2 block text-xs text-[var(--color-ink-soft)]">
+          Tu laisses tomber {from}
+          {moto ? ' et tu descends de la moto-taxi (déjà payée).' : '.'}
+        </span>
+      </span>
+      <button className="btn btn-soft !px-3 !py-2 !text-xs" onClick={() => answerDrop(false)}>
+        Continuer
+      </button>
+      <button className="btn !px-3 !py-2 !text-xs" onClick={() => answerDrop(true)}>
+        Aller ici
+      </button>
+    </div>
+  )
+}
+
 /** What the Sim is busy with, on real time: progress, time left, and a way to stop. */
-function ActivityBar({ sim, onStop, stopping, onRoute, onMore, onRejoin }: { sim: Sim; onStop: () => void; stopping: boolean; onRoute: () => void; /** At the zoo: the other things to do there. */ onMore?: () => void; /** A match left before its end: back onto the pitch. */ onRejoin?: { sport: 'foot' | 'basket'; go: () => void } }) {
+function ActivityBar({ world, sim, onStop, stopping, onRoute, onMore, onRejoin }: { world: World; sim: Sim; onStop: () => void; stopping: boolean; onRoute: () => void; /** At the zoo: the other things to do there. */ onMore?: () => void; /** A match left before its end: back onto the pitch. */ onRejoin?: { sport: 'foot' | 'basket'; go: () => void } }) {
   const a = sim.activity!
   const span = Math.max(1, a.end - a.start)
   const done = Math.min(1, Math.max(0, (sim.gameMinutes - a.start) / span))
   const left = Math.max(0, Math.ceil(a.end - sim.gameMinutes))
   const travel = a.kind === 'travel'
+  // On the server's clock, like the car in the street (the Sim's minutes come with its updates, late).
+  const road = travel ? tripLeft(world, a, (serverNow() - EPOCH) / 60000) : undefined
   const icon = travel ? CarTaxiFront : iconFor(a.interaction.icon)
   const colors = travel ? (['#ffa040', '#ff6a00'] as [string, string]) : kindColors(a.placeKind ?? '')
   return (
@@ -1697,7 +1768,7 @@ function ActivityBar({ sim, onStop, stopping, onRoute, onMore, onRejoin }: { sim
           <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-[var(--color-canvas)]">
             <div className="h-full rounded-full bg-[var(--color-emerald)] transition-[width] duration-1000 ease-linear" style={{ width: `${done * 100}%` }} />
           </div>
-          <div className="mt-1 text-[11px] font-extrabold text-[var(--color-ink-soft)]">{left > 0 ? `Encore ${duration(left)} · fin à ${clock(a.end).time}` : 'Presque fini…'}</div>
+          <div className="mt-1 text-[11px] font-extrabold text-[var(--color-ink-soft)]">{left <= 0 ? 'Presque fini…' : road === null ? `Le chauffeur arrive · encore ${duration(left)}` : `Encore ${duration(left)}${road !== undefined ? ` · ${metres(road * 1000)}` : ''} · fin à ${clock(a.end).time}`}</div>
         </div>
         {travel && (
           <button className="icon-btn shrink-0 bg-[var(--color-canvas)]" onClick={onRoute} aria-label="Voir le trajet" title="Voir le trajet">
