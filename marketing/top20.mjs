@@ -1,15 +1,18 @@
-// « 10 trucs à faire dans Babi Life » (50.6 s, 1080 × 1920, 30 images a second): the game filmed being
-// played, on a machine too slow to play it (clock.mjs stops the page's clock: each frame is moved on by
-// hand, then taken), one activity swiping up after the other, the countdown drawn over it
-// (web/src/lab/poster.tsx, ?video=top10&overlay), put together by compose.py, with its beat (beat.py)
-// and Awa's voice over it (out/voix-top10.mp3) when there.
+// « 20 trucs à faire dans Babi Life » (about a minute, 1080 × 1920, 30 images a second): the game
+// filmed being played, on a machine too slow to play it (clock.mjs stops the page's clock: each frame
+// is moved on by hand, then taken), one activity swiping up after the other, each for as long as Awa's
+// line on it, the countdown drawn over it (web/src/lab/poster.tsx, ?video=top20&overlay), put together
+// by compose.py, Awa's voice (voice.py) over its beat (beat.py).
 //
 // The activities: four of the game's scenes drawn by the poster lab (the grin, the mass, the zouglou,
-// the Tour F), four of its labs playing by themselves (the flight; the kart, basketball and football,
-// the player's own driven by the game's AI), and two tables of the real game (dames, 8 américain)
-// against a local API, the board and the cards dealt by hand.
+// the Tour F); the game's places as a player sees them, zoomed in with the wheel and the camera turned
+// (the ski off Île Boulay, the Hôtel Ivoire's rink and its brunch, the Friday prayer, the mall, the
+// Kinéo, the market, the club); the talk with someone in the street and the phone's camera; the flight;
+// the kart, basketball and football, the player's own driven by the game's AI; and two tables of the
+// real game (dames, 8 américain) against a local API, the board and the cards dealt by hand.
 //
-//   API=http://localhost:8099/api/v1 GAME=http://192.0.2.2:5175 DATABASE_URL=postgres://… TESTER_CODE=… node top10.mjs
+//   python3 voice.py   # Awa's lines first (out/voix-top20/): the film is timed on them
+//   API=http://localhost:8099/api/v1 GAME=http://192.0.2.2:5175 DATABASE_URL=postgres://… TESTER_CODE=… node top20.mjs
 //
 // API: a local or staging API started with DEV_LOGIN=true, never production. GAME: the game's dev
 // server built against it (VITE_API_URL), at an address in the API's ALLOWED_ORIGINS. DATABASE_URL:
@@ -25,16 +28,11 @@ import { HERE, OUT, SHORT, URL } from './shared.mjs'
 import { STOPPED_CLOCK } from './clock.mjs'
 
 const FPS = 30
-// The film's times, as FILMS.top10 has them (web/src/lab/poster.tsx).
-const HOOK = 2.6
-const EACH = 4.2
 const SWIPE = 0.3
-const OUTRO = 6
-const LENGTH = HOOK + 10 * EACH + OUTRO
-// Each activity is taken from SWIPE before its turn (it comes up over the one before) to its end;
-// a goal or a basket lands PAYOFF before that end.
-const TAKE = Math.round((EACH + SWIPE) * FPS)
-const PAYOFF = 1.2
+// Each take is filmed long enough for any of Awa's lines on it; its slot is cut from it.
+const TAKE = Math.round(4.5 * FPS)
+// A basket or a goal lands this long before its slot's end.
+const PAYOFF = 1.0
 
 const API = process.env.API ?? 'http://localhost:8099/api/v1'
 const GAME = process.env.GAME ?? 'http://localhost:5174'
@@ -42,23 +40,60 @@ const DB = process.env.DATABASE_URL ?? 'postgres://postgres:pg@localhost:5432/ba
 const ONLY = process.env.ONLY?.split(',')
 const PORT = 5245
 const LAB = `http://127.0.0.1:${PORT}`
-const FRAMES = path.join(OUT, 'video-frames', 'top10')
+const FRAMES = path.join(OUT, 'video-frames', 'top20')
+const VOICE = path.join(OUT, 'voix-top20')
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
-/* ---------- The activities, N°10 to N°1 ---------- */
+/* ---------- The activities, N°20 to N°1 ---------- */
 
+// zoom: [frames before (the walk to the spot), wheel steps in, how far the camera is lowered];
+// start: the take's frame the slot starts on; speed: how fast a poster scene is played (the drone, quicker).
 const CLIPS = [
+  { id: 'ski', lab: 'view=boulay&act=ski-boulay', zoom: [200, 5, 120] },
+  { id: 'nouchi', lab: 'view=talk', talk: true },
+  { id: 'patinoire', lab: 'view=ivoire&act=patinoire', zoom: [400, 8, 200] },
   { id: 'grin', scene: 'grin' },
+  { id: 'marche', lab: 'view=stalls', zoom: [200, 3, 30] },
+  { id: 'photo', lab: 'view=phonecam', shutter: true },
   { id: 'messe', scene: 'messe' },
+  { id: 'priere', lab: 'view=mosquee&act=priere-vendredi&m=780', zoom: [400, 4, 40] },
+  { id: 'mall', lab: 'view=mall&act=leche-vitrine', zoom: [500, 8, 150] },
+  { id: 'cine', lab: 'view=kineo&seance=demo:3:E6', zoom: [300, 0, 0] },
+  { id: 'brunch', lab: 'view=ivoire&act=brunch-lagune', zoom: [500, 8, 150] },
+  { id: 'boite', lab: 'view=party', zoom: [200, 0, 0] },
   { id: 'zouglou', scene: 'zouglou' },
   { id: 'avion', lab: 'view=flight' },
-  { id: 'plateau', scene: 'tourf' },
-  { id: 'dames', game: dames },
-  { id: 'huit', game: huit },
+  { id: 'plateau', voice: 'tourf', scene: 'tourf', speed: 1.5 },
+  { id: 'dames', game: dames, start: 8 },
+  { id: 'huit', game: huit, start: 40 },
   { id: 'kart', lab: 'view=kart', auto: true, from: 9 },
   { id: 'basket', lab: 'view=hoops&seed=7', match: true },
-  { id: 'foot', lab: 'view=foot5&seed=7', match: true, more: OUTRO },
+  { id: 'foot', lab: 'view=foot5&seed=7', match: true, more: 7 },
 ]
+
+/* ---------- The times, on Awa's voice ---------- */
+
+// Each line (voice.py: out/voix-top20/<id>.wav, their lengths in report.json) gets its slot: the hook,
+// each activity, the end card, a beat of air after each line.
+// Without it, only the takes that don't depend on the times can be filmed (not the zouglou, on the beat).
+const voiced = fs.existsSync(path.join(VOICE, 'report.json'))
+if (!voiced && (!ONLY || ONLY.some((id) => id === 'zouglou' || id === 'overlay'))) {
+  console.error('No voice yet: python3 voice.py first (out/voix-top20/).')
+  process.exit(1)
+}
+const said = voiced ? JSON.parse(fs.readFileSync(path.join(VOICE, 'report.json'), 'utf8')) : {}
+const len = (id) => said[id]?.dur ?? 2.4
+const HOOK = Math.max(2.8, len('hook') + 0.35)
+const SLOTS = []
+let at = HOOK
+for (const c of CLIPS) {
+  const d = Math.max(2.3, len(c.voice ?? c.id) + 0.3)
+  SLOTS.push({ clip: c.id, from: +at.toFixed(3), to: +(at + d).toFixed(3), start: c.start ?? 0 })
+  at += d
+}
+const OUTRO = +at.toFixed(3)
+const LENGTH = +(OUTRO + Math.max(5.5, len('outro') + 2.2)).toFixed(3)
+const frames = (s) => Math.round((s.to - s.from + SWIPE) * FPS)
 
 /* ---------- Filming ---------- */
 
@@ -89,11 +124,12 @@ async function warm(page, frames) {
 async function scene(b, clip, dir) {
   const page = await b.newPage({ viewport: { width: 540, height: 960 }, deviceScaleFactor: 2 })
   page.on('pageerror', (e) => console.error('page:', String(e).slice(0, 200)))
-  await page.goto(`${LAB}/poster.html?video=top10&only=${clip.scene}`, { waitUntil: 'networkidle' })
+  const slot = SLOTS.find((x) => x.clip === clip.id)
+  await page.goto(`${LAB}/poster.html?video=top20&only=${clip.scene}&from=${slot.from - SWIPE}`, { waitUntil: 'networkidle' })
   await page.waitForFunction(() => !!window.__frame)
   for (const s of [0, 0.03, 0.06]) (await page.evaluate((s) => window.__frame(s), s), await sleep(300))
   for (let i = 0; i < TAKE; i++) {
-    await page.evaluate((s) => window.__frame(s), i / FPS)
+    await page.evaluate((s) => window.__frame(s), (i * (clip.speed ?? 1)) / FPS)
     await shoot(page, dir, i)
   }
   await page.close()
@@ -104,10 +140,47 @@ async function lab(b, clip, dir) {
   const { ctx, page } = await phone(b, clip.auto ? [[() => (globalThis.kartAuto = true)]] : [])
   await page.goto(`${LAB}/city.html?${clip.lab}`)
   await warm(page, Math.round((clip.from ?? 3) * FPS))
+  // The talk: a greeting, then a tease (Koffi laughing, then answering back); the camera: one photo.
+  const at = clip.talk
+    ? { 12: () => page.getByRole('button', { name: /On dit quoi/ }).first().click(), 70: () => page.getByRole('tab', { name: /Taquiner/ }).first().click() }
+    : clip.shutter
+      ? { 60: () => page.getByRole('button', { name: 'Prendre la photo' }).click() }
+      : {}
   for (let i = 0; i < TAKE; i++) {
+    if (at[i]) await at[i]().catch((e) => console.error(clip.id, String(e).slice(0, 120)))
     await tick(page)
     await shoot(page, dir, i)
   }
+  await ctx.close()
+}
+
+/**
+ * A place of the game as a player sees it: once there, zoomed in with the wheel and the camera lowered
+ * (a drag up), then turned slowly while it's taken (a drag across). A mouse, not a touch screen: the
+ * wheel and the drag are the mouse's.
+ */
+async function place(b, clip, dir) {
+  const ctx = await b.newContext({ viewport: { width: 405, height: 720 }, deviceScaleFactor: 1080 / 405, locale: 'fr-FR' })
+  await ctx.addInitScript(STOPPED_CLOCK)
+  const page = await ctx.newPage()
+  page.on('pageerror', (e) => console.error('page:', String(e).slice(0, 200)))
+  const [before, wheel, lower] = clip.zoom
+  await page.goto(`${LAB}/city.html?${clip.lab}`)
+  await warm(page, before)
+  await page.mouse.move(202, 360)
+  for (let i = 0; i < wheel; i++) (await page.mouse.wheel(0, -200), await tick(page, 3))
+  await page.mouse.down()
+  for (let i = 0; i < 12; i++) (await page.mouse.move(202, 360 - (lower * (i + 1)) / 12), await tick(page))
+  await page.mouse.up()
+  await tick(page, 30)
+  await page.mouse.move(120, 300)
+  await page.mouse.down()
+  for (let i = 0; i < TAKE; i++) {
+    await page.mouse.move(120 + i * 1.1, 300)
+    await tick(page)
+    await shoot(page, dir, i)
+  }
+  await page.mouse.up()
   await ctx.close()
 }
 
@@ -138,6 +211,7 @@ async function match(b, clip, dir) {
   ;({ ctx, page } = await phone(b))
   await page.goto(`${LAB}/city.html?${clip.lab}`)
   await sleep(3000)
+  // Taken from a little earlier than its slot needs, to land the score at PAYOFF before the slot's end.
   const from = goal - (TAKE / FPS - PAYOFF)
   for (let i = 0; ; i++) {
     await tick(page)
@@ -154,6 +228,7 @@ async function match(b, clip, dir) {
     await shoot(page, dir, i)
   }
   await ctx.close()
+  fs.writeFileSync(path.join(dir, 'meta.json'), JSON.stringify({ payoff: scored }))
   console.log(`${clip.id}: scored at ${goal.toFixed(2)} s of the match, frame ${scored} of the take`)
 }
 
@@ -258,9 +333,11 @@ async function huit(b, dir) {
 /* ---------- The overlay, the hook, putting it together ---------- */
 
 async function overlay(b, dir) {
-  const qr = await QRCode.toDataURL(`${URL}?src=video-top10`, { margin: 1, width: 440, color: { dark: '#111111', light: '#ffffff' } })
+  const qr = await QRCode.toDataURL(`${URL}?src=video-top20`, { margin: 1, width: 440, color: { dark: '#111111', light: '#ffffff' } })
   const page = await b.newPage({ viewport: { width: 540, height: 960 }, deviceScaleFactor: 2 })
-  await page.goto(`${LAB}/poster.html?video=top10&overlay`, { waitUntil: 'networkidle' })
+  // The times measured on the voice: when the hook, each activity and the end card start, then the end.
+  const times = [0, ...SLOTS.map((x) => x.from), OUTRO, LENGTH].join(',')
+  await page.goto(`${LAB}/poster.html?video=top20&overlay&times=${times}`, { waitUntil: 'networkidle' })
   await page.waitForFunction(() => !!window.__frame)
   await page.evaluate(([qr, url]) => window.__setOutro(qr, url, false), [qr, SHORT])
   const total = Math.round(LENGTH * FPS)
@@ -291,6 +368,7 @@ for (const clip of CLIPS) {
   fs.mkdirSync(dir, { recursive: true })
   if (clip.scene) await scene(b, clip, dir)
   else if (clip.match) await match(b, clip, dir)
+  else if (clip.zoom) await place(b, clip, dir)
   else if (clip.lab) await lab(b, clip, dir)
   else await clip.game(b, dir)
   console.log(`${clip.id}: ${fs.readdirSync(dir).length} frames (${Math.round((Date.now() - started) / 1000)} s)`)
@@ -305,38 +383,53 @@ if (!ONLY || ONLY.includes('overlay')) {
 await b.close()
 vite.kill()
 const missing = [...CLIPS.map((c) => c.id), 'overlay'].filter((id) => !fs.existsSync(path.join(FRAMES, id)) || !fs.readdirSync(path.join(FRAMES, id)).length)
-if (missing.length) {
+if (missing.length || !voiced) {
   console.log('not put together yet, still to film:', missing.join(', '))
   process.exit(0)
 }
 
 // Put together (compose.py: the hook, the swipes, the overlay), then the sound.
+// The matches: their slot starts so the basket or the goal lands PAYOFF before its end.
+const payoff = (id) => JSON.parse(fs.readFileSync(path.join(FRAMES, id, 'meta.json'), 'utf8')).payoff
+for (const x of SLOTS) if (CLIPS.find((c) => c.id === x.clip).match) x.start = Math.max(0, payoff(x.clip) - Math.round((x.to - x.from + SWIPE - PAYOFF) * FPS))
 const plan = {
   fps: FPS,
   length: LENGTH,
-  hook: HOOK,
-  each: EACH,
+  outro: OUTRO,
   swipe: SWIPE,
   frames: FRAMES,
-  clips: CLIPS.map((c) => c.id),
-  // The hook: four flashes of what's coming (the kart, the joker, the basket, the goal).
+  slots: SLOTS,
+  // The hook: four flashes of what's coming (the ski, the joker, the basket, the goal).
   teaser: [
-    ['kart', 40],
-    ['huit', 42],
-    ['basket', TAKE - Math.round(PAYOFF * FPS) - 12],
-    ['foot', TAKE - Math.round(PAYOFF * FPS) - 10],
+    ['ski', 60],
+    ['huit', 46],
+    ['basket', payoff('basket') - 12],
+    ['foot', payoff('foot') - 10],
   ],
+  // When the basket and the goal land, for the beat's hits and the crowd.
+  payoffs: ['basket', 'foot'].map((id) => +(SLOTS.find((x) => x.clip === id).to - PAYOFF).toFixed(3)),
   out: path.join(FRAMES, 'final'),
 }
 fs.writeFileSync(path.join(FRAMES, 'plan.json'), JSON.stringify(plan, null, 2))
+for (const x of SLOTS) if (x.start + frames(x) > fs.readdirSync(path.join(FRAMES, x.clip)).filter((f) => f.endsWith('.jpg')).length) console.log(`${x.clip}: its take is short of its slot, its last frame held`)
+fs.rmSync(plan.out, { recursive: true, force: true })
 execFileSync('python3', [path.join(HERE, 'compose.py'), path.join(FRAMES, 'plan.json')], { stdio: 'inherit' })
-execFileSync('python3', [path.join(HERE, 'beat.py')], { stdio: 'inherit', env: { ...process.env, FILM: 'top10' } })
-const voice = path.join(OUT, 'voix-top10.mp3')
-const beat = path.join(OUT, 'son-top10.mp3')
-const mp4 = path.join(OUT, 'babi-life-video-top10-1080x1920.mp4')
-const sound = fs.existsSync(voice)
-  ? ['-i', voice, '-i', beat, '-filter_complex', '[1:a]apad[v];[2:a]volume=0.3[b];[v][b]amix=inputs=2:duration=first:normalize=0[a]', '-map', '0:v', '-map', '[a]']
-  : ['-i', beat, '-map', '0:v', '-map', '1:a']
+execFileSync('python3', [path.join(HERE, 'beat.py')], { stdio: 'inherit', env: { ...process.env, FILM: 'top20', TIMES: path.join(FRAMES, 'plan.json') } })
+
+// Awa's voice: each line at its slot (the hook's at once, the end card's just after it comes up).
+const lines = [['hook', 0.15], ...SLOTS.map((x) => [CLIPS.find((c) => c.id === x.clip).voice ?? x.clip, x.from + 0.08]), ['outro', OUTRO + 0.3]]
+const voice = path.join(OUT, 'voix-top20.mp3')
+execFileSync('ffmpeg', [
+  '-y', '-loglevel', 'error',
+  ...lines.flatMap(([id]) => ['-i', path.join(VOICE, `${id}.wav`)]),
+  '-filter_complex',
+  lines.map(([, t], i) => `[${i}:a]aresample=44100,adelay=${Math.round(t * 1000)}:all=1[l${i}]`).join(';') + ';' + lines.map((_, i) => `[l${i}]`).join('') + `amix=inputs=${lines.length}:normalize=0,apad=whole_dur=${LENGTH}[a]`,
+  '-map', '[a]', '-t', String(LENGTH), '-b:a', '160k', voice,
+])
+// The beat under it, ducked while she speaks.
+const beat = path.join(OUT, 'son-top20.mp3')
+const mp4 = path.join(OUT, 'babi-life-video-top20-1080x1920.mp4')
+const sound = ['-i', voice, '-i', beat, '-filter_complex', '[1:a]asplit[v][k];[2:a]volume=0.55[b];[b][k]sidechaincompress=threshold=0.03:ratio=8:attack=15:release=350[d];[v][d]amix=inputs=2:duration=first:normalize=0,alimiter=limit=0.95[a]', '-map', '0:v', '-map', '[a]']
 execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', path.join(plan.out, '%05d.jpg'), ...sound, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '18', '-preset', 'slow', '-c:a', 'aac', '-b:a', '192k', '-shortest', '-movflags', '+faststart', mp4])
-fs.copyFileSync(path.join(plan.out, `${String(Math.round((LENGTH - 1.2) * FPS)).padStart(5, '0')}.jpg`), path.join(OUT, 'babi-life-video-top10-cover.jpg'))
+fs.copyFileSync(path.join(plan.out, `${String(Math.round((LENGTH - 1.2) * FPS)).padStart(5, '0')}.jpg`), path.join(OUT, 'babi-life-video-top20-cover.jpg'))
 console.log('video →', mp4, `(${Math.round((Date.now() - started) / 1000)} s)`)
