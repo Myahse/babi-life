@@ -30,6 +30,7 @@ import { NewsApp, topicOf } from './NewsApp'
 import { GuideApp } from './GuideApp'
 import { DodoApp } from './DodoApp'
 import { KineoApp } from './KineoApp'
+import { DamesApp } from './DamesApp'
 import { RideFlow, type FlowRequest } from '../components/RideFlow'
 import { INDOOR, Interior } from '../world3d/Interior'
 import { HomeInside } from '../world3d/HomeInside'
@@ -1058,6 +1059,8 @@ export function Play() {
           onWalk={walkTo}
           onBuild={(lot) => (setOverlay(null), setBuilding(lot ?? 0))}
           onDames={(p) => (setOverlay(null), setPhoneApp(null), setDamesAsk({ with: p.id, name: p.firstName, max: 50000 }))}
+          onDamesOnline={(name) => (setOverlay(null), setPhoneApp(null), setDamesAsk({ with: 'npc', name, max: 5000 }))}
+          onDamesResume={() => (setOverlay(null), setPhoneApp(null), setDamesOpen(true))}
         />
       )}
       {emotesOpen && <EmoteSheet world={world} sim={sim} onClose={() => setEmotesOpen(false)} onResult={apply} />}
@@ -1113,7 +1116,7 @@ export function Play() {
 
 /* ---------- The in-game phone ---------- */
 
-type PhoneAppId = 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'galerie' | 'guide' | 'dodo' | 'kineo'
+type PhoneAppId = 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames'
 type PhoneProps = {
   world: World
   sim: Sim
@@ -1135,9 +1138,13 @@ type PhoneProps = {
   onBuild: (lot?: number) => void
   /** Challenge a player friend to a game of dames. */
   onDames: (p: Player) => void
+  /** Sit down at Dames 225 with a player online (their name). */
+  onDamesOnline: (name: string) => void
+  /** Back to the board of the game going on. */
+  onDamesResume: () => void
 }
 
-function Phone({ world, sim, commune, journal, time, act, startApp, delivery, onDelivery, onCollect, onClose, onMap, onCamera, street, onWalk, onBuild, onDames }: PhoneProps) {
+function Phone({ world, sim, commune, journal, time, act, startApp, delivery, onDelivery, onCollect, onClose, onMap, onCamera, street, onWalk, onBuild, onDames, onDamesOnline, onDamesResume }: PhoneProps) {
   const [app, setApp] = useState<PhoneAppId | null>(startApp)
   // A photo of the gallery on its way to Tikitoko.
   const [tikiPhoto, setTikiPhoto] = useState<{ id: number; src: string } | undefined>()
@@ -1177,6 +1184,7 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
     ...(has('golvo') ? [{ id: 'golvo', label: 'Golvo', open: () => setApp('golvo') }] : []),
     ...(has('dodo') ? [{ id: 'dodo', label: 'Dodo', open: () => setApp('dodo') }] : []),
     ...(has('kineo') ? [{ id: 'kineo', label: 'Kinéo', open: () => setApp('kineo') }] : []),
+    ...(has('dames') ? [{ id: 'dames', label: 'Dames', open: () => setApp('dames') }] : []),
     ...(has('gnango') ? [{ id: 'gnango', label: 'Gnango', open: onMap }] : []),
     ...(has('idrive') ? [{ id: 'idrive', label: 'iDrive', open: onMap }] : []),
   ]
@@ -1200,7 +1208,7 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
     { id: 'profile', label: 'Profil', icon: UserRound, colors: ['#ff8a9b', '#ff3d57'], open: () => navigate('/profil', { viewTransition: true }) },
     ] as Tile[]
   ).filter((a) => !life.minor || (a.id !== 'jobs' && a.id !== 'home'))
-  const title: Record<PhoneAppId, string> = { here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', babigram: 'Babigram', bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: 'Galerie', guide: 'Encyclopédie de Babi', dodo: 'Dodo', kineo: 'Kinéo' }
+  const title: Record<PhoneAppId, string> = { here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', babigram: 'Babigram', bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: 'Galerie', guide: 'Encyclopédie de Babi', dodo: 'Dodo', kineo: 'Kinéo', dames: 'Dames 225' }
 
   return (
     <div className="absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center" onClick={onClose}>
@@ -1272,6 +1280,7 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
                 {app === 'news' && <NewsApp />}
                 {app === 'guide' && <GuideApp world={world} />}
                 {app === 'dodo' && <DodoApp world={world} sim={sim} act={act} onMap={onMap} />}
+                {app === 'dames' && <DamesApp sim={sim} onOnline={onDamesOnline} onFriend={onDames} onResume={onDamesResume} />}
                 {app === 'kineo' && <KineoApp world={world} sim={sim} act={act} onWalk={onWalk} onMap={onMap} onClose={onClose} />}
                 {app === 'friends' && <FriendsApp world={world} sim={sim} act={act} onPay={has('waye') ? (p) => (setWayeTo(p.id), setApp('waye')) : undefined} onDames={onDames} />}
                 {app === 'store' && !ownPhone && (
