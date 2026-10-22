@@ -17,6 +17,7 @@ import { Cathedral } from './cathedral'
 import { MosqueM6 } from './mosqueM6'
 import { ParcExpo } from './parcExpo'
 import { Playce } from './playce'
+import { PlayceMarcory } from './playceMarcory'
 import { TOUR_F_FACING, TourF, TourFFar } from './tourF'
 import type { StadiumEvent } from '../../lib/stadium'
 import type { Obstacle } from '../obstacles'
@@ -39,6 +40,7 @@ export const LANDMARKS: Record<string, number> = {
   'pb-aeroport': 150,
   'cocody-oranjo': 42,
   'cocody-playce': 62,
+  'marcory-playce': 60,
   'yop-rue-princesse': 32,
   'yop-gare-siporex': 36,
   'yop-ficgayo': 46,
@@ -53,6 +55,7 @@ export const LANDMARKS: Record<string, number> = {
 /** The landmarks' own grounds in their frame (x from, x to, z from, z to; +z the street): no ad board stands on them (the PlaYce's car park). */
 export const LANDMARK_GROUND: Record<string, [number, number, number, number]> = {
   'cocody-playce': [-51, 51, -34, 37],
+  'marcory-playce': [-49, 49, -36, 35],
 }
 
 /** Grounds where the game builds none of its own houses (the map's buildings stay): a fairground, metres round the place. */
@@ -123,6 +126,8 @@ export function Landmark({ id, night, demo, open = true }: { id: string; night: 
       return <OranjoVillage night={night} />
     case 'cocody-playce':
       return <Playce night={night} />
+    case 'marcory-playce':
+      return <PlayceMarcory night={night} />
     case 'yop-rue-princesse':
       return <RuePrincesse night={night} />
     case 'yop-gare-siporex':

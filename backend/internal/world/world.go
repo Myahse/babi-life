@@ -124,6 +124,7 @@ const (
 	srcSococePharma    = "https://annuaireci.com/entreprises/pharmacie-des-deux-plateaux-grde-cocody-cote-divoire/"
 	srcPlayceToyota    = "https://www.toyota-tsusho.com/english/press/detail/170704_003995.html"
 	srcPlayceFA        = "https://financialafrik.com/2017/06/29/cote-divoire-playce-palmeraie-une-nouvelle-etape-du-deploiement-de-cfao-retail"
+	srcPlayceMarcory   = "https://www.financialafrik.com/2015/12/18/cote-divoire-playce-centre-commercial-de-nouvelle-generation-est-inaugure-ce-jour-a-abidjan/"
 	srcCFAORetail      = "https://www.foodbusinessmea.com/cfao-consumer-retail-expands-footprint-in-ivory-coast-acquires-leader-prices-stores/"
 	srcBurgerKing      = "https://www.qsrweb.com/news/burger-king-to-open-first-ivory-coast-location/"
 	srcHotelIvoire     = "https://en.wikipedia.org/wiki/Village_Ivoire"
@@ -369,9 +370,9 @@ var Cities = []City{
 				// The multiplex at Cap Sud, of the game's chain (game/cinema.go): six screens, two of them VIP.
 				Place{ID: "marcory-kineo", Name: "Kinéo Cap Sud", Kind: "cinema", Quarter: "Zone 4", Lat: 5.29790, Lng: -3.98640, Real: true, Approx: true,
 					Source: game.Partial("Nom du jeu pour le multiplexe ouvert en avril 2024 au centre commercial Cap Sud (six salles dont deux VIP, environ 1 000 fauteuils) ; placé au bord du centre, à relever.", srcCinemas2024, srcPatheAbj, srcCapSudOSM)},
-				Place{ID: "marcory-playce", Name: "PlaYce Marcory", Kind: "mall", Lat: 5.2965, Lng: -3.9880, Real: true, Approx: true, Operator: "CFAO",
-					Source: game.Partial("Centre commercial CFAO de Marcory (cité en 2015) ; position placée dans la commune, à relever.", srcBurgerKing)},
-				Place{ID: "marcory-burger-king", Name: "Babi Burger", Kind: "restaurant", Lat: 5.2972, Lng: -3.9874, Real: true, Approx: true,
+				Place{ID: "marcory-playce", Name: "PlaYce Marcory", Kind: "mall", Lat: 5.30240, Lng: -3.99218, Real: true, Operator: "CFAO",
+					Source: game.Verified("Centre commercial de CFAO ouvert le 18 décembre 2015 sur le boulevard Valéry Giscard d'Estaing : 20 000 m², un hypermarché de 3 200 m², 55 boutiques, un food court de plus de 400 places, 510 places de parking. Position d'après OpenStreetMap (le point « PlaYce Marcory » de la carte).", srcPlayceMarcory, srcBurgerKing)},
+				Place{ID: "marcory-burger-king", Name: "Babi Burger", Kind: "restaurant", Lat: 5.30240, Lng: -3.99130, Real: true, Approx: true,
 					Operator: "Servair Abidjan (franchise, 2015)",
 					Source:   game.Partial("Nom du jeu pour le premier Burger King du pays, ouvert en 2015 dans PlaYce Marcory, en franchise avec Servair Abidjan ; activité actuelle à confirmer.", srcBurgerKing)},
 				Place{ID: "marcory-karting", Name: "Babi Karting", Kind: "karting", Quarter: "Zone 4", Lat: 5.29471, Lng: -3.99237, Real: true, Approx: true,

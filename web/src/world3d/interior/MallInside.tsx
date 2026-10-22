@@ -69,10 +69,22 @@ const SOLID: [number, number, number, number][] = (() => {
   // The atrium: the fountain, the benches, the escalator, the kiosk, the food court's tables.
   out.push([12, 0, 2.6, 2.6], [12, -5.5, 1.2, 0.4], [12, 5.5, 1.2, 0.4], [4, 0, 1.2, 3.6], [30.5, -5, 1.4, 1.2])
   for (const [x, z] of [[24, 0], [28, 3], [33, 0], [28, -3], [34, 4]]) out.push([x, z, 0.7, 0.7])
+  // The supermarket's bakery counter along its left wall.
+  out.push([-37.2, -6, 0.5, 4])
   // The outer walls of the gallery, with the doors.
   out.push([HW, 0, 0.2, HD], [-HW, 0, 0.2, HD], [-17, HD, 21, 0.2], [29, HD, 9, 0.2])
   return out
 })()
+
+/** Marcory's car on show, on its podium by the supermarket's wall. */
+const SHOW_CAR: [number, number, number, number] = [-10, 0, 1.3, 2.6]
+
+/** Where one can walk in a centre of this look (Marcory's car is in the way there). */
+function freeOf(style?: MallLayout['style']) {
+  if (style !== 'marcory') return free
+  const [cx, cz, hw, hd] = SHOW_CAR
+  return (x: number, z: number) => free(x, z) && !(Math.abs(x - cx) < hw + 0.3 && Math.abs(z - cz) < hd + 0.3)
+}
 
 function free(x: number, z: number) {
   if (x < -HW + 0.5 || x > HW - 0.5 || z < -HD + 0.5 || z > HD + 14) return false
@@ -101,12 +113,21 @@ function tiles() {
   return t
 }
 
-/** What a centre is made of when it isn't the default: its supermarket's name, its shops, its cinema in the gallery (a Kinéo, game/cinema.go). */
-export type MallLayout = { market?: string; back?: string[]; front?: string[]; kineo?: boolean }
+/**
+ * What a centre is made of when it isn't the default: its supermarket's name,
+ * its shops, its cinema in the gallery (a Kinéo, game/cinema.go), and the
+ * look of a PlaYce as the photos show it: Marcory's hypermarket under its
+ * ducts with magenta and yellow columns, its gallery under a white ring of
+ * spotlights and coloured skylights, a car on show, the food court's bar and
+ * its giant screen; Palmeraie's hypermarket under light wood trusses with red
+ * columns, its bright gallery of palms.
+ */
+export type MallLayout = { market?: string; back?: string[]; front?: string[]; kineo?: boolean; style?: 'marcory' | 'palmeraie' }
 
-export function MallInside({ sim, name, interactionId, roam, night, stage, layout }: { sim: Sim; /** The centre's name, over the doors. */ name: string; interactionId?: string; /** Just come in: walk about (tap the floor, or the keys). */ roam?: boolean; night: boolean; stage: string; layout?: MallLayout }) {
+export function MallInside({ sim, name, interactionId, roam, night, stage, layout, view }: { sim: Sim; /** The centre's name, over the doors. */ name: string; interactionId?: string; /** Just come in: walk about (tap the floor, or the keys). */ roam?: boolean; night: boolean; stage: string; layout?: MallLayout; /** Where the camera starts and looks (the lab). */ view?: { cam: [number, number, number]; look: [number, number, number] } }) {
   const spot = interactionId ? (SPOTS[interactionId] ?? null) : null
-  const { way, tap, onMoved } = useBigWalk(spot, interactionId, roam, free, ENTRANCE)
+  const walkable = useMemo(() => freeOf(layout?.style), [layout?.style])
+  const { way, tap, onMoved } = useBigWalk(spot, interactionId, roam, walkable, ENTRANCE)
   const floor = useMemo(() => tiles(), [])
   const signs = useMemo(
     () => ({
@@ -118,7 +139,7 @@ export function MallInside({ sim, name, interactionId, roam, night, stage, layou
   )
   return (
     <div className="absolute inset-0">
-      <Canvas shadows dpr={[1, 1.75]} camera={{ position: [12, 22, HD + 26], fov: 45, near: 0.3, far: 900 }} style={{ background: night ? '#0b1026' : '#9ccbea' }}>
+      <Canvas shadows dpr={[1, 1.75]} camera={{ position: view?.cam ?? [12, 22, HD + 26], fov: 45, near: 0.3, far: 900 }} style={{ background: night ? '#0b1026' : '#9ccbea' }}>
         <Snapper />
         <ChatFraming />
         <Suspense fallback={null}>
@@ -127,9 +148,11 @@ export function MallInside({ sim, name, interactionId, roam, night, stage, layou
           <pointLight position={[12, 9, 0]} intensity={night ? 70 : 25} distance={50} color="#fff2d8" />
           <pointLight position={[-24, 8, -6]} intensity={night ? 60 : 20} distance={40} color="#ffffff" />
           <Building floor={floor} night={night} signs={signs} />
-          <Supermarket night={night} />
+          <Supermarket night={night} style={layout?.style} />
           <Shops night={night} layout={layout} />
-          <Atrium />
+          <Atrium style={layout?.style} />
+          {layout?.style === 'marcory' && <MarcoryGallery night={night} />}
+          {layout?.style === 'palmeraie' && <PalmeraieGallery night={night} />}
           <Outside night={night} />
           <People />
           {roam && !interactionId && (
@@ -147,11 +170,11 @@ export function MallInside({ sim, name, interactionId, roam, night, stage, layou
               <meshBasicMaterial transparent opacity={0} depthWrite={false} />
             </mesh>
           )}
-          <Guest sim={sim} stage={stage} way={way} spot={spot} steer={!!roam && !interactionId} onMoved={onMoved} free={free} entrance={ENTRANCE}>
+          <Guest sim={sim} stage={stage} way={way} spot={spot} steer={!!roam && !interactionId} onMoved={onMoved} free={walkable} entrance={ENTRANCE}>
             <ActionProps id={interactionId} kind="mall" lying={!!spot?.lying} />
           </Guest>
           {interactionId === 'supermarche' && <Trolley at={[-27.2, -9.2]} />}
-          <OrbitControls makeDefault target={[12, 1, HD - 6]} enablePan={false} minDistance={6} maxDistance={80} minPolarAngle={0.25} maxPolarAngle={1.25} enableDamping />
+          <OrbitControls makeDefault target={view?.look ?? [12, 1, HD - 6]} enablePan={false} minDistance={6} maxDistance={80} minPolarAngle={0.25} maxPolarAngle={1.25} enableDamping />
         </Suspense>
       </Canvas>
     </div>
@@ -208,7 +231,7 @@ function Building({ floor, night, signs }: { floor: THREE.Texture; night: boolea
 
 /* ---------- The supermarket ---------- */
 
-function Supermarket({ night }: { night: boolean }) {
+function Supermarket({ night, style }: { night: boolean; style?: MallLayout['style'] }) {
   const parts = useMemo(() => {
     const r = rng('mall-rayons')
     const shelves: Block[] = []
@@ -249,6 +272,86 @@ function Supermarket({ night }: { night: boolean }) {
       {TILLS.map((x) => (
         <mesh key={x} geometry={BOX} position={[x, 2.95, 7]} scale={[0.3, 0.2, 0.12]} material={mat('#fff6d8', night ? '#ffd98a' : '#c9a227')} />
       ))}
+      <Bakery />
+      {style === 'marcory' && <Ducts />}
+      {style === 'palmeraie' && <Trusses />}
+      {/* The columns rising out of the shelves: magenta and yellow at Marcory, red with their wood at Palmeraie */}
+      {style && (
+        <Blocks
+          at={SHELVES.filter((_, i) => i % 2 === 0).flatMap((x, i) =>
+            [-15, -4].flatMap((z, j): Block[] =>
+              style === 'marcory'
+                ? [{ p: [x, 3.6, z], s: [0.8, 7.2, 0.8], c: (i + j) % 2 ? '#f2c230' : '#c2185b' }]
+                : [{ p: [x, 3.6, z], s: [0.85, 7.2, 0.85], c: '#c92a2a' }, { p: [x, 3.6, z], s: [0.5, 2.6, 0.9], c: '#c08a4a' }],
+            ),
+          )}
+          material={mat('#ffffff')}
+          color
+        />
+      )}
+    </group>
+  )
+}
+
+/** The bakery: its glass counter of croissants and pains au chocolat, the bread on the shelf behind, the baker. */
+function Bakery() {
+  const pastries = useMemo<Block[]>(() => {
+    const out: Block[] = []
+    for (let i = 0; i < 14; i++) out.push({ p: [-37.05 + (i % 2) * 0.35, 1.02, -9.5 + Math.floor(i / 2) * 1], s: [0.22, 0.08, 0.14], c: i % 3 ? '#d9a35a' : '#8a5a2a' })
+    return out
+  }, [])
+  return (
+    <group>
+      <Blocks at={[{ p: [-37.2, 0.45, -6], s: [1, 0.9, 8], c: '#f3f1ec' }, { p: [-37.2, 0.95, -6], s: [1, 0.05, 8], c: '#c9a227' }, { p: [-37.85, 1.6, -6], s: [0.3, 1.2, 8], c: '#8a5a32' }]} material={mat('#ffffff')} color />
+      <mesh position={[-36.75, 1.25, -6]}>
+        <boxGeometry args={[0.06, 0.6, 8]} />
+        <meshLambertMaterial color="#d8eef6" transparent opacity={0.35} />
+      </mesh>
+      <Blocks at={pastries} material={mat('#ffffff')} color />
+      {/* The baguettes standing in their baskets on the shelf */}
+      <Blocks at={[...Array(12)].map((_, i): Block => ({ p: [-37.8, 2.3, -9.5 + i * 0.65], s: [0.08, 0.7, 0.08], c: '#d9a35a' }))} material={mat('#ffffff')} color />
+    </group>
+  )
+}
+
+/** Marcory's hypermarket roof: silver ducts and the trays of the lights, running the length of the aisles. */
+function Ducts() {
+  const parts = useMemo<Block[]>(() => {
+    const out: Block[] = []
+    for (const z of [-17, -9, -1, 7]) out.push({ p: [-24.5, 6.4, z], s: [23, 0.12, 0.5], c: '#dfe3e8' })
+    for (const x of [-35, -27, -19]) out.push({ p: [x, 6.6, -6], s: [0.12, 0.12, 30], c: '#9aa1a8' })
+    return out
+  }, [])
+  return (
+    <group>
+      {[-14, -2].map((z) => (
+        <mesh key={z} position={[-24.5, 6.9, z]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.45, 0.45, 23, 14]} />
+          <meshLambertMaterial color="#c9ced4" />
+        </mesh>
+      ))}
+      <Blocks at={parts} material={mat('#ffffff')} color />
+    </group>
+  )
+}
+
+/** Palmeraie's new hypermarket roof: light glued-wood trusses over white panels. */
+function Trusses() {
+  const parts = useMemo<Block[]>(() => {
+    const out: Block[] = []
+    for (const z of [-20, -14, -8, -2, 4, 10]) {
+      // Each truss: its two chords, the posts between them.
+      out.push({ p: [-24.5, 6.6, z], s: [25, 0.35, 0.35], c: '#d9b07a' }, { p: [-24.5, 7.8, z], s: [25, 0.3, 0.3], c: '#d9b07a' })
+      for (let x = -36; x <= -13; x += 2.9) out.push({ p: [x, 7.2, z], s: [0.22, 1.2, 0.25], c: '#c99d66' })
+    }
+    for (const x of [-34, -24.5, -15]) out.push({ p: [x, 7.5, -5], s: [0.3, 0.3, 32], c: '#c99d66' })
+    return out
+  }, [])
+  return (
+    <group>
+      <Blocks at={parts} material={mat('#ffffff')} color />
+      {/* The red rail along the walls, as round the new hypermarket */}
+      <Blocks at={[{ p: [-37.75, 3.2, -6], s: [0.15, 0.25, 34], c: '#c92a2a' }, { p: [-24.5, 3.2, -23.75], s: [26, 0.25, 0.15], c: '#c92a2a' }]} material={mat('#ffffff')} color />
     </group>
   )
 }
@@ -321,7 +424,7 @@ function Shops({ night, layout }: { night: boolean; layout?: MallLayout }) {
 
 /* ---------- The atrium: fountain, benches, palms, escalator, the food court ---------- */
 
-function Atrium() {
+function Atrium({ style }: { style?: MallLayout['style'] }) {
   const water = useRef<THREE.MeshLambertMaterial>(null)
   useFrame(() => {
     water.current?.color.setHSL(0.53, 0.65, 0.55 + Math.sin(worldTime() * 2) * 0.04)
@@ -346,9 +449,11 @@ function Atrium() {
       for (const [dx, dz] of [[0, 0.9], [0, -0.9]]) out.push({ p: [x + dx, 0.22, z + dz], s: [0.45, 0.44, 0.45], c: '#ff8200' })
     }
     // Palms in pots along the gallery.
-    for (const x of [-6, 2, 20, 26]) for (const z of [-6.5, 6.5]) out.push({ p: [x, 0.4, z], s: [0.9, 0.8, 0.9], c: '#8a5a32' })
+    for (const x of PALMS(style)) for (const z of [-6.5, 6.5]) out.push({ p: [x, 0.4, z], s: [0.9, 0.8, 0.9], c: style === 'palmeraie' ? '#c08a4a' : '#8a5a32' })
+    // The food court's tables in wood at Palmeraie.
+    if (style === 'palmeraie') for (const o of out) if (o.c === '#ffffff' && Math.abs(o.s[1] - 0.08) < 0.01) o.c = '#d9b07a'
     return out
-  }, [])
+  }, [style])
   return (
     <group>
       <Blocks at={parts} material={mat('#ffffff')} color />
@@ -357,7 +462,7 @@ function Atrium() {
         <meshLambertMaterial ref={water} color="#58c4dc" />
       </mesh>
       <mesh geometry={BOX} position={[12, 1.2, 0]} scale={[0.5, 1.6, 0.5]} material={mat('#d8d0c0')} />
-      {[-6, 2, 20, 26].flatMap((x) =>
+      {PALMS(style).flatMap((x) =>
         [-6.5, 6.5].map((z) => (
           <group key={`${x}${z}`} position={[x, 0.8, z]}>
             <mesh geometry={BOX} position={[0, 1.2, 0]} scale={[0.25, 2.4, 0.25]} material={mat('#7d6248')} />
@@ -367,6 +472,85 @@ function Atrium() {
           </group>
         )),
       )}
+    </group>
+  )
+}
+
+/** Where the palms stand along the gallery: more of them at the Palmeraie. */
+const PALMS = (style?: MallLayout['style']) => (style === 'palmeraie' ? [-8, -2, 2, 8, 16, 20, 26] : [-6, 2, 20, 26])
+
+/* ---------- PlaYce Marcory's gallery ---------- */
+
+/**
+ * Over the atrium the white ring of the ceiling, its spotlights hanging on
+ * their wires, the skylights of colour inside it; a car on show on its
+ * podium; the food court's bar and its giant screen (a match on).
+ */
+function MarcoryGallery({ night }: { night: boolean }) {
+  const screen = useRef<THREE.MeshBasicMaterial>(null)
+  useFrame(() => {
+    const t = worldTime()
+    // The match: the green of the pitch, a flash of the crowd now and then.
+    screen.current?.color.setHSL(Math.floor(t / 4) % 5 === 0 ? 0.08 : 0.33, 0.55, 0.32 + Math.sin(t * 6) * 0.03)
+  })
+  const ring = useMemo(() => {
+    const out: Block[] = []
+    for (let i = 0; i < 28; i++) {
+      const a = (i / 28) * Math.PI * 2
+      out.push({ p: [12 + Math.cos(a) * 10, 6.4, Math.sin(a) * 6.5], s: [2.4, 1, 0.6], ry: -a + Math.PI / 2, c: '#f8f9fa' })
+    }
+    return out
+  }, [])
+  const spots = useMemo(() => [...Array(14)].map((_, i) => [12 + Math.cos(i * 2.4) * (2 + (i % 4) * 2), Math.sin(i * 2.4) * (1.5 + (i % 4) * 1.2)] as XZ), [])
+  return (
+    <group>
+      <Blocks at={ring} material={mat('#ffffff')} color />
+      {/* The skylights of colour, seen through */}
+      {[['#3ba7ff', 8, -1.5], ['#ff8a3d', 14, 1.5], ['#f06595', 16, -2.5]].map(([c, x, z]) => (
+        <mesh key={c as string} rotation={[-Math.PI / 2, 0, 0.4]} position={[x as number, 7.4, z as number]}>
+          <planeGeometry args={[5, 2.4]} />
+          <meshBasicMaterial color={c as string} transparent opacity={0.45} side={THREE.DoubleSide} depthWrite={false} />
+        </mesh>
+      ))}
+      {spots.map(([x, z], i) => (
+        <group key={i} position={[x, 0, z]}>
+          <mesh geometry={BOX} position={[0, 6.4, 0]} scale={[0.02, 1.4, 0.02]} material={mat('#2b2f3a')} />
+          <mesh geometry={BOX} position={[0, 5.6, 0]} scale={[0.22, 0.22, 0.22]} material={mat('#ffffff', night ? '#fff2c0' : '#a8a08a')} />
+        </group>
+      ))}
+      {/* The car on show, on its podium, the ropes round it */}
+      <mesh geometry={BOX} position={[-10, 0.1, 0]} scale={[2.6, 0.2, 5.2]} material={mat('#2b2f3a')} />
+      <Vehicle p={[-10, 0.2, 0]} r={0} kind="car" seed={31} color="#1b1d22" />
+      <Blocks at={[...[-1, 1].flatMap((sx) => [-1, 1].map((sz): Block => ({ p: [-10 + sx * 1.6, 0.5, sz * 2.9], s: [0.08, 1, 0.08], c: '#c9a227' }))), { p: [-8.4, 0.9, 0], s: [0.03, 0.03, 5.8], c: '#c92a2a' }]} material={mat('#ffffff')} color />
+      {/* The food court's bar, its giant screen on the wall */}
+      <mesh geometry={BOX} position={[36.6, 0.55, 3]} scale={[1.2, 1.1, 6]} material={mat('#2b2230')} />
+      <mesh geometry={BOX} position={[37.75, 4.4, 0]} scale={[0.2, 3.4, 6]} material={mat('#111111')} />
+      <mesh position={[37.6, 4.4, 0]} rotation={[0, -Math.PI / 2, 0]}>
+        <planeGeometry args={[5.6, 3]} />
+        <meshBasicMaterial ref={screen} color="#2f8f3a" />
+      </mesh>
+    </group>
+  )
+}
+
+/* ---------- PlaYce Palmeraie's gallery ---------- */
+
+/** Bright and natural: the light wood slats across the atrium's roof, green hanging over the food court. */
+function PalmeraieGallery({ night }: { night: boolean }) {
+  const slats = useMemo<Block[]>(() => {
+    const out: Block[] = []
+    for (let x = -10; x <= 36; x += 2.4) out.push({ p: [x, 7.2, 0], s: [0.25, 0.3, 15], c: '#d9b07a' })
+    // The planters over the food court's counter, their green spilling down.
+    for (const x of [24, 28, 32]) out.push({ p: [x, 5.6, -6.8], s: [2.4, 0.4, 0.6], c: '#c08a4a' }, { p: [x, 5.1, -6.6], s: [2.2, 0.8, 0.3], c: '#2f7a35' })
+    return out
+  }, [])
+  return (
+    <group>
+      <Blocks at={slats} material={mat('#ffffff')} color />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[13, 0.03, 0]}>
+        <planeGeometry args={[46, 14]} />
+        <meshBasicMaterial color={night ? '#ffe6b0' : '#fffaf0'} transparent opacity={night ? 0.1 : 0.28} depthWrite={false} />
+      </mesh>
     </group>
   )
 }
