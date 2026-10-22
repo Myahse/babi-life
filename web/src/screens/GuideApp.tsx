@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { BookOpen, Briefcase, ChevronDown, Heart, MapPin, MessageSquareQuote, Plane, Search, Smartphone, Users, type LucideIcon } from 'lucide-react'
+import { BookOpen, Briefcase, GraduationCap, ChevronDown, Heart, MapPin, MessageSquareQuote, Plane, Search, Smartphone, Users, type LucideIcon } from 'lucide-react'
 import type { World } from '../lib/types'
 import { IconTile } from '../components/ui'
 import { iconFor, kindColors } from '../components/icons'
@@ -139,7 +139,7 @@ function entries(world: World): Entry[] {
   return out
 }
 
-export function GuideApp({ world }: { world: World }) {
+export function GuideApp({ world, onTutorial }: { world: World; /** Koffi's tuto again (components/Tutorial.tsx). */ onTutorial?: () => void }) {
   const all = useMemo(() => entries(world), [world])
   const [tab, setTab] = useState<Tab>('regles')
   const [q, setQ] = useState('')
@@ -150,6 +150,15 @@ export function GuideApp({ world }: { world: World }) {
   const present = TABS.filter((t) => all.some((e) => e.tab === t.id))
   return (
     <div className="space-y-3">
+      {onTutorial && (
+        <button className="flex w-full items-center gap-3 rounded-[20px] bg-gradient-to-r from-[#ffd36e] to-[#ff8a3d] p-3 text-left text-[var(--color-ink)]" onClick={onTutorial}>
+          <GraduationCap size={26} strokeWidth={2.4} className="shrink-0" />
+          <span className="min-w-0 flex-1">
+            <span className="block font-display text-[15px] font-extrabold">Revoir le tuto avec Koffi</span>
+            <span className="block text-[12px] font-bold">Les besoins, marcher, les lieux, le téléphone, la carte…</span>
+          </span>
+        </button>
+      )}
       <label className="flex items-center gap-2 rounded-2xl bg-[var(--color-canvas)] px-3 py-2.5">
         <Search size={16} className="shrink-0 text-[var(--color-ink-soft)]" />
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Chercher : maquis, loyer, avion…" className="min-w-0 flex-1 bg-transparent text-sm font-bold outline-none" />
