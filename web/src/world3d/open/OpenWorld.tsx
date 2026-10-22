@@ -7,7 +7,7 @@ import { Human, NoShadows, type Pose } from '../../avatar/Human'
 import { useNpcReaction } from './npcReact'
 import { randomLook } from '../../avatar/options'
 import { OWN_HOUSE, homePlanFor, lifeOf, openAt } from '../../game/rules'
-import { HAPPENING_DOOR, HAPPENING_X, HappeningMarker, HappeningScene, JamOnRoad, STOPS_TRAFFIC } from '../Happenings'
+import { HAPPENING_DOOR, HAPPENING_ROLES, HAPPENING_X, HappeningMarker, HappeningScene, JamOnRoad, STOPS_TRAFFIC } from '../Happenings'
 import { jamAlong } from './jam'
 import { underHud } from '../hudClear'
 import { HOME_ID, type Lot } from '../layout'
@@ -802,6 +802,14 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     return { id: 'happening', kind: 'happening', name: happening.label, x: door[0], z: door[1], rot: 0, door, seed: 0 }
   }, [happening, spot, jam])
   const walkLots = useMemo(() => (happeningLot ? [...lots, happeningLot] : lots), [lots, happeningLot])
+  // Joined in: the Sim's place in the scene (a chair, the crowd), turned to the real street like the scene.
+  const joinRole = useMemo(() => {
+    const r = happening && spot && !jam ? HAPPENING_ROLES[happening.id] : undefined
+    if (!r || !spot) return null
+    const [c, s] = [Math.cos(spot.roadAngle), Math.sin(spot.roadAngle)]
+    const world = ([x, z]: XZ): XZ => [spot.door[0] + (x - HAPPENING_X) * c - z * s, spot.door[1] + (x - HAPPENING_X) * s + z * c]
+    return { at: world(r.at), face: world(r.face), pose: r.pose }
+  }, [happening, spot, jam])
 
   // For the mini-map and the « Où aller ? » list.
   useEffect(() => {
@@ -1150,6 +1158,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
           onLeave={onLeave}
           recenter={recenter ?? 0}
           onFreeCamera={onFreeCamera}
+          joinRole={joinRole}
         />
       )}
       {/* A Golvo order on its way: the courier rides up to the Sim */}
