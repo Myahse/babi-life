@@ -14,13 +14,14 @@ import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
 
 // Inside the Hôtel Ivoire: not a room but a world. The great hall (marble,
-// columns, the chandeliers, the reception, the sofas), and around it what
-// made the hotel famous: the ice rink, the Ciné Ivoire, the casino, the
-// shopping gallery, the bar, the restaurant along the glass wall over the
-// lagoon, and outside the glass the pool terrace, the Plateau's towers across
-// the water. A suite for the night. The rink, the cinema and the bowling are
-// of the hotel's great years (under InterContinental): the game has them open
-// again; the casino is still there. The layout is the game's.
+// columns, the chandeliers, the reception, the sofas), and around it the Ciné
+// Ivoire, the casino, the shopping gallery, the bar, the restaurant along the
+// glass wall over the lagoon, and outside the glass the pool terrace, the
+// Plateau's towers across the water. A suite for the night. The famous ice
+// rink is not here: closed for years, it is to become a convention centre
+// (announced in 2026); where it would be, a lounge of the hall. The cinema is
+// of the hotel's great years: the game has it open again; the casino is still
+// there. The layout is the game's.
 // Frame: x across, +z toward the entrance (the boulevard), -z the lagoon.
 
 type Block = { p: [number, number, number]; s: [number, number, number]; ry?: number; c?: string }
@@ -32,7 +33,6 @@ const TERRACE = -36
 
 const SPOTS: Record<string, Spot> = {
   'lobby-ivoire': { at: [2, 9], rot: Math.PI, pose: 'phone' },
-  patinoire: { at: [-22, 11], rot: 0, pose: 'walk', from: [-22, 0.8], loop: { c: [-22, 11], r: [6.2, 7.4], speed: 0.32, pose: 'touch', lean: 0.12 } },
   'cinema-ivoire': { at: [22, -6.2], rot: Math.PI, pose: 'sit', y: 0.05 },
   'casino-ivoire': { at: [19.6, 8.4], rot: Math.PI, pose: 'busy' },
   'bar-hotel': { at: [0.7, -4.5], rot: Math.PI, pose: 'drink' },
@@ -42,10 +42,16 @@ const SPOTS: Record<string, Spot> = {
 }
 const ENTRANCE: XZ = [0, HD - 1.5]
 
+/** The sofas round low tables: [x, z, facing]. */
+const LOUNGE: [number, number, number][] = [
+  [-25, 6.5, 0], [-25, 9.5, Math.PI], [-18, 6.5, 0], [-18, 9.5, Math.PI],
+  [-25, 13.5, 0], [-25, 16.5, Math.PI], [-18, 13.5, 0], [-18, 16.5, Math.PI],
+]
+
 /** The floor plan's solid things, as boxes [x, z, half-width, half-depth] (for walking round them). */
 const SOLID: [number, number, number, number][] = [
   [-8, 12, 3.2, 0.7], // the reception desk
-  [-22, 11, 8.6, 9.6], // the ice rink and its boards
+  ...LOUNGE.map(([x, z, r]): [number, number, number, number] => (Math.abs(Math.sin(r)) > 0.5 ? [x, z, 0.5, 1.3] : [x, z, 1.3, 0.5])), // the lounge's sofas
   [0, -6, 6.2, 0.7], // the bar counter
   [23.2, 0.4, 7.6, 0.3], // the cinema's walls (its door at x 14–15.5)
   [14, -6, 0.2, 6],
@@ -99,7 +105,6 @@ export function IvoireInside({ sim, interactionId, roam, night, stage }: { sim: 
   const { way, tap, onMoved } = useBigWalk(spot, interactionId, roam, free, ENTRANCE)
   const signs = useMemo(
     () => ({
-      rink: sign('PATINOIRE', '#0b6fa4', '#ffffff'),
       cine: sign('CINÉ IVOIRE', '#1b1b2f', '#ffd54f'),
       casino: sign('CASINO', '#5a0f1a', '#f3c63f'),
       bar: sign('LE BAR DU HALL', '#2b1d14', '#f3e6c9'),
@@ -121,7 +126,7 @@ export function IvoireInside({ sim, interactionId, roam, night, stage }: { sim: 
           <pointLight position={[0, 9, 8]} intensity={night ? 60 : 25} distance={40} color="#ffe2b0" />
           <pointLight position={[0, 8, -14]} intensity={night ? 40 : 10} distance={30} color="#ffd9a0" />
           <Hall floor={floor} night={night} signs={signs} />
-          <Rink />
+          <Lounge />
           <Casino night={night} />
           <Cinema night={night} />
           <Terrace night={night} />
@@ -151,7 +156,7 @@ export function IvoireInside({ sim, interactionId, roam, night, stage }: { sim: 
 
 /* ---------- The hall ---------- */
 
-function Hall({ floor, night, signs }: { floor: THREE.Texture; night: boolean; signs: { rink: THREE.Material; cine: THREE.Material; casino: THREE.Material; bar: THREE.Material; resto: THREE.Material; hotel: THREE.Material; shops: THREE.Material[] } }) {
+function Hall({ floor, night, signs }: { floor: THREE.Texture; night: boolean; signs: { cine: THREE.Material; casino: THREE.Material; bar: THREE.Material; resto: THREE.Material; hotel: THREE.Material; shops: THREE.Material[] } }) {
   const parts = useMemo(() => {
     const walls: Block[] = []
     const gold: Block[] = []
@@ -247,9 +252,6 @@ function Hall({ floor, night, signs }: { floor: THREE.Texture; night: boolean; s
       <mesh position={[-8, 3.8, 14.24]} rotation={[0, Math.PI, 0]} material={signs.hotel} scale={[1, 1, 1]}>
         <planeGeometry args={[6, 0.95]} />
       </mesh>
-      <mesh position={[-22, 3.2, 1.3]} material={signs.rink}>
-        <planeGeometry args={[6, 1.5]} />
-      </mesh>
       <mesh position={[22, 3.6, 0.62]} material={signs.cine}>
         <planeGeometry args={[6, 1.5]} />
       </mesh>
@@ -278,50 +280,53 @@ function Hall({ floor, night, signs }: { floor: THREE.Texture; night: boolean; s
   )
 }
 
-/* ---------- The ice rink ---------- */
+/* ---------- The hall's lounge, where the rink was ---------- */
 
-function Rink() {
-  const skaters = useMemo(() => {
-    const r = rng('ivoire-patineurs')
-    return [...Array(9)].map((_, i) => {
+function Lounge() {
+  const guests = useMemo(() => {
+    const r = rng('ivoire-salon')
+    return [0, 1, 3, 4, 6].map((i) => {
       const gender: 'femme' | 'homme' = r() < 0.5 ? 'femme' : 'homme'
-      return { gender, look: randomLook(gender, r), phase: (i / 9) * Math.PI * 2, rx: 4.5 + r() * 2.5, rz: 5.5 + r() * 2.5, speed: 0.25 + r() * 0.15, kid: r() < 0.3 }
+      return { i, gender, look: randomLook(gender, r) }
     })
   }, [])
-  const refs = useRef<(THREE.Group | null)[]>([])
-  useFrame(() => {
-    const t = worldTime()
-    skaters.forEach((s, i) => {
-      const g = refs.current[i]
-      if (!g) return
-      const a = t * s.speed + s.phase
-      g.position.set(-22 + Math.cos(a) * s.rx, 0.12, 11 + Math.sin(a) * s.rz)
-      g.rotation.set(0, Math.atan2(-Math.sin(a) * s.rx, Math.cos(a) * s.rz), -0.12)
-    })
-  })
   return (
     <group>
-      {/* The ice, white-blue, shining; the boards round it */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-22, 0.1, 11]} receiveShadow>
-        <planeGeometry args={[16.4, 18.4]} />
-        <meshPhongMaterial color="#e6f4fb" shininess={120} specular="#ffffff" />
-      </mesh>
-      <Blocks
-        at={[
-          { p: [-22, 0.55, 1.8], s: [17, 1.1, 0.25] },
-          { p: [-22, 0.55, 20.2], s: [17, 1.1, 0.25] },
-          { p: [-30.4, 0.55, 11], s: [0.25, 1.1, 18.6] },
-          { p: [-13.6, 0.55, 11], s: [0.25, 1.1, 18.6] },
-        ]}
-        material={mat('#f8f9fa')}
-      />
-      <Blocks at={[{ p: [-22, 1.12, 1.8], s: [17, 0.08, 0.3] }, { p: [-22, 1.12, 20.2], s: [17, 0.08, 0.3] }, { p: [-30.4, 1.12, 11], s: [0.3, 0.08, 18.6] }, { p: [-13.6, 1.12, 11], s: [0.3, 0.08, 18.6] }]} material={mat('#0b6fa4')} />
-      <NoShadows>
-        {skaters.map((s, i) => (
-          <group key={i} ref={(g) => { refs.current[i] = g }} scale={s.kid ? 0.65 : 1}>
-            <Human look={s.look} gender={s.gender} pose={i % 3 ? 'walk' : 'airplane'} speed={1.1} seed={i * 3} />
+      {/* A rug under each group, the low table, the sofas (seat and back), the palms in their pots */}
+      {[8, 15].flatMap((z) =>
+        [-25, -18].map((x) => (
+          <group key={`${x}${z}`}>
+            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[x, 0.02, z]} receiveShadow>
+              <planeGeometry args={[4.4, 4.6]} />
+              <meshLambertMaterial color="#8a1c1c" />
+            </mesh>
+            <Blocks at={[{ p: [x, 0.25, z], s: [1.4, 0.5, 0.9] }]} material={mat('#3b2a1e')} />
           </group>
-        ))}
+        )),
+      )}
+      <Blocks at={LOUNGE.map(([x, z]) => ({ p: [x, 0.25, z] as [number, number, number], s: [2.6, 0.5, 0.9] as [number, number, number] }))} material={mat('#e9dfc9')} />
+      <Blocks at={LOUNGE.map(([x, z, r]) => ({ p: [x, 0.7, z - Math.cos(r) * 0.4] as [number, number, number], s: [2.6, 0.8, 0.18] as [number, number, number] }))} material={mat('#d8cbb0')} />
+      {[[-29, 3], [-29, 19], [-14, 3], [-14, 19]].map(([x, z]) => (
+        <group key={`${x}${z}`} position={[x, 0, z]}>
+          <mesh position={[0, 0.35, 0]}>
+            <cylinderGeometry args={[0.4, 0.32, 0.7, 10]} />
+            <meshLambertMaterial color="#b5432c" />
+          </mesh>
+          <mesh position={[0, 1.6, 0]}>
+            <icosahedronGeometry args={[0.9, 0]} />
+            <meshLambertMaterial color="#2f7a3a" />
+          </mesh>
+        </group>
+      ))}
+      <NoShadows>
+        {guests.map((g) => {
+          const [x, z, r] = LOUNGE[g.i]
+          return (
+            <group key={g.i} position={[x + (g.i % 2 ? 0.5 : -0.5), 0.05, z]} rotation={[0, r, 0]}>
+              <Human look={g.look} gender={g.gender} pose={g.i % 3 ? 'talk' : 'drink'} seed={g.i * 3} />
+            </group>
+          )
+        })}
       </NoShadows>
     </group>
   )

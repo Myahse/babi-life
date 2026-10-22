@@ -47,7 +47,7 @@ const ALPHA = q.has('alpha')
 /** marketing/top20.mjs: &only=<scene> draws that scene alone (its clock from 0; &from=<s>: when its take starts in the film), &overlay only what goes over the game filmed. */
 const ONLY = q.get('only') as SceneId | null
 const OVERLAY = q.has('overlay')
-type SceneId = 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'princesse' | `famille-${string}` | 'palais' | 'basket' | 'fete' | 'cause' | 'look' | 'siporex' | 'phone' | 'visages' | 'coiffures' | 'selfie' | 'yop' | 'garba' | 'brochette' | 'plateau' | 'stade' | 'concert' | 'couloir' | 'amis' | 'salon' | 'douche' | 'zoo' | 'loto' | 'chambre' | 'chambre-choc' | 'cabine' | 'keke' | 'mt-yop' | 'mt-gbaka' | 'mt-maquis' | 'mt-stade' | 'mt-village' | 'mt-salon' | 'tourf' | 'messe' | 'grin' | 'zouglou'
+type SceneId = 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'princesse' | `famille-${string}` | 'palais' | 'basket' | 'fete' | 'cause' | 'look' | 'siporex' | 'phone' | 'visages' | 'coiffures' | 'selfie' | 'yop' | 'garba' | 'brochette' | 'plateau' | 'stade' | 'concert' | 'couloir' | 'amis' | 'salon' | 'douche' | 'zoo' | 'loto' | 'chambre' | 'chambre-choc' | 'cabine' | 'keke' | 'mt-yop' | 'mt-gbaka' | 'mt-maquis' | 'mt-stade' | 'mt-village' | 'mt-salon' | 'tourf' | 'messe' | 'grin' | 'zouglou' | 'lions'
 /**
  * Which film: ?video (the launch), ?video=bouger (getting about: gbaka,
  * Gnango, Rue Princesse), ?video=bande-annonce (the trailer: gnambro or
@@ -669,6 +669,7 @@ function World({ scene, t }: { scene: SceneId; t: number }) {
   if (scene === 'cause' || scene === 'selfie' || scene === 'yop' || scene === 'plateau' || scene === 'amis' || scene === 'couloir') return <Street scene={scene} t={t} />
   if (scene === 'garba' || scene === 'brochette') return <Stalls scene={scene} t={t} />
   if (scene === 'douche' || scene === 'zoo' || scene === 'loto') return <Jeu scene={scene} t={t} />
+  if (scene === 'lions') return <Lions t={t} />
   if (scene === 'stade' || scene === 'concert') return <Stade scene={scene} t={t} />
   if (scene === 'coiffures') {
     // Every hairstyle, seven at a time (t < 5 or 10–15: the first seven), turning slowly; from behind after t = 10.
@@ -1321,6 +1322,31 @@ function Plateau({ scene, t }: { scene: 'tourf' | 'messe'; t: number }) {
       </group>
       <group position={[634, 0, 1470]}>
         <Landmark id="plateau-pyramide" night={false} />
+      </group>
+    </>
+  )
+}
+
+/** The top 20's zoo: Awa's selfie at the lions' cage (the male on his rock behind her), a friend dabbing, the camera coming in. */
+function Lions({ t }: { t: number }) {
+  const k = ease(clamp01(t / 4.5))
+  return (
+    <>
+      <hemisphereLight args={['#fff4e6', '#c0704f', 1.2]} />
+      <directionalLight position={[6, 14, 8]} intensity={2.1} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-14} shadow-camera-right={14} shadow-camera-top={14} shadow-camera-bottom={-14} />
+      <ambientLight intensity={0.45} />
+      <Sky top="#58a6ea" horizon="#ffe9c8" />
+      <Camera at={[5.6 - k * 2.4, 1.95 - k * 0.25, -23.6 - k * 3]} look={[0.6 - k * 0.4, 1.7, -37]} near={0.2} far={400} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]}>
+        <planeGeometry args={[400, 400]} />
+        <meshLambertMaterial color="#6fae4b" />
+      </mesh>
+      <Landmark id="cocody-zoo" night={false} />
+      <group position={[1.6, 0, -31.2]} rotation={[0, 0.5, 0]}>
+        <BlockHuman look={CREW[1].look} gender="femme" pose="film" seed={4} />
+      </group>
+      <group position={[2.5, 0, -31.5]} rotation={[0, 0.25, 0]}>
+        <BlockHuman look={HERO} gender="homme" pose={t < 1.6 ? 'cheer' : 'dab'} seed={1} />
       </group>
     </>
   )
