@@ -65,7 +65,7 @@ const CLIPS = [
   { id: 'avion', lab: 'view=flight' },
   { id: 'plateau', voice: 'tourf', scene: 'tourf', speed: 1.5 },
   { id: 'dames', game: dames, start: 8 },
-  { id: 'huit', game: huit, start: 40 },
+  { id: 'huit', game: huit, start: 25 },
   { id: 'kart', lab: 'view=kart', auto: true, from: 9 },
   { id: 'basket', lab: 'view=hoops&seed=7', match: true },
   { id: 'foot', lab: 'view=foot5&seed=7', match: true, more: 7 },
@@ -377,6 +377,7 @@ for (const clip of CLIPS) {
   else await clip.game(b, dir)
   console.log(`${clip.id}: ${fs.readdirSync(dir).length} frames (${Math.round((Date.now() - started) / 1000)} s)`)
 }
+// ONLY=none: nothing filmed again, just put together.
 if (!ONLY || ONLY.includes('overlay')) {
   const dir = path.join(FRAMES, 'overlay')
   fs.rmSync(dir, { recursive: true, force: true })
