@@ -7,6 +7,8 @@
  */
 const TESTER = 'babi-testeur'
 const TESTER_PASS = 'babi-testeur-code'
+/** The code was just typed on /testeur, not only kept: the server takes it even after the testers' reset. */
+const TESTER_TYPED = 'babi-testeur-tape'
 
 /**
  * The SHA-256 of the testers' code, checked in the browser (no server, so
@@ -48,14 +50,41 @@ export function setTester(on: boolean, pass = '') {
   try {
     if (on) {
       localStorage.setItem(TESTER, '1')
-      if (pass) localStorage.setItem(TESTER_PASS, pass.trim())
+      if (pass) (localStorage.setItem(TESTER_PASS, pass.trim()), localStorage.setItem(TESTER_TYPED, '1'))
     } else {
       localStorage.removeItem(TESTER)
       localStorage.removeItem(TESTER_PASS)
+      localStorage.removeItem(TESTER_TYPED)
     }
   } catch {
     /* private browsing: nothing kept */
   }
 }
+
+/** Whether the code kept was typed on /testeur and the server hasn't taken it yet. */
+export function testerTyped() {
+  try {
+    return localStorage.getItem(TESTER_TYPED) === '1'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * The server answered for the code kept: it's no longer « just typed ». With
+ * forget, the code goes too (refused after the testers' reset): the game
+ * stays open on this browser, and the toolbox asks for the code again.
+ */
+export function testerAnswered(forget = false) {
+  try {
+    localStorage.removeItem(TESTER_TYPED)
+    if (forget) localStorage.removeItem(TESTER_PASS)
+  } catch {
+    /* private browsing: nothing kept */
+  }
+}
+
+/** The game opened as an app from the home screen: no address bar there, and on an iPhone its own storage, apart from Safari's. */
+export const homeScreenApp = () => typeof window !== 'undefined' && (window.matchMedia?.('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true)
 
 export const gameOpen = import.meta.env.VITE_GAME_OPEN === 'true' || (typeof navigator !== 'undefined' && navigator.userAgent.includes('BabiTest')) || isTester()

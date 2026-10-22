@@ -49,5 +49,5 @@ export function helloFrom(seed: number, simGender: 'femme' | 'homme'): string {
 
 /** The greetings the player can say back. */
 export function greetingsFor(npcGender: 'femme' | 'homme'): string[] {
-  return ["C'est comment ?", 'Ça dit quoi ?', "C'est comment famille ?", 'Eh fiscalité !', 'Y a fohi ?', npcGender === 'femme' ? 'Bonjour tantie !' : 'Bonjour tonton !', 'Ça dit quoi ?', 'Bonne arrivée !']
+  return ["C'est comment ?", 'Ça dit quoi ?', "C'est comment famille ?", 'Eh fiscalité !', 'Y a fohi ?', npcGender === 'femme' ? 'Bonjour tantie !' : 'Bonjour tonton !', 'On dit quoi ?', 'Bonne arrivée !']
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Beer, BookOpen, Briefcase, Check, Coffee, Grid3x3, Hand, HandCoins, HandHelping, Heart, HeartCrack, House, Laugh, Lightbulb, MapPin, MessagesSquare, Scissors, Smartphone, Smile, Sparkles, Trophy, Users, Utensils, X, type LucideIcon } from 'lucide-react'
+import { Beer, BookOpen, Briefcase, Check, Coffee, Grid3x3, Hand, HandCoins, HandHelping, Handshake, Heart, HeartCrack, House, Laugh, Lightbulb, MapPin, MessageCircleQuestion, MessagesSquare, Scissors, Smartphone, Smile, Sparkles, Trophy, Users, Utensils, X, type LucideIcon } from 'lucide-react'
 import type { Npc } from '../world3d/open/OpenWorld'
 import type { Friend } from '../lib/types'
 import { greetingsFor, helloFrom } from '../lib/nouchi'
@@ -15,10 +15,11 @@ import { IconTile } from './ui'
 
 /** `says`: what the Sim says for it (one picked each time), shown in its bubble. `lang`: a greeting in that language. */
 type Topic = { id: string; label: string; icon: LucideIcon; hint: string; says?: string[]; lang?: string }
-const GROUPS: { id: string; label: string; colors: [string, string]; topics: Topic[] }[] = [
+const GROUPS: { id: string; label: string; icon: LucideIcon; colors: [string, string]; topics: Topic[] }[] = [
   {
     id: 'saluer',
     label: 'Saluer',
+    icon: Hand,
     colors: ['#ffa040', '#ff6a00'],
     // The greetings in the player's languages are added when the sheet opens.
     topics: [],
@@ -26,6 +27,7 @@ const GROUPS: { id: string; label: string; colors: [string, string]; topics: Top
   {
     id: 'causer',
     label: 'Causer',
+    icon: MessagesSquare,
     colors: ['#64b5ff', '#2a6cf0'],
     topics: [
       { id: 'famille', label: 'Demander la famille', icon: Users, hint: '8 min · les nouvelles de chez eux', says: ['Et la famille, ça va ?', 'Comment va la maison ?', 'Les enfants vont bien ?'] },
@@ -40,6 +42,7 @@ const GROUPS: { id: string; label: string; colors: [string, string]; topics: Top
   {
     id: 'demander',
     label: 'Demander',
+    icon: MessageCircleQuestion,
     colors: ['#69e2a0', '#00a862'],
     topics: [
       { id: 'tombe', label: '« Tombe sur moi ! »', icon: Utensils, hint: 'Un garba offert… peut-être', says: ['Tombe sur moi, je suis fauché !', 'Eh, tombe sur moi un peu !'] },
@@ -51,6 +54,7 @@ const GROUPS: { id: string; label: string; colors: [string, string]; topics: Top
   {
     id: 'proposer',
     label: 'Proposer',
+    icon: Handshake,
     colors: ['#ffd54f', '#ffa000'],
     topics: [
       { id: 'grin', label: 'Proposer le thé au grin', icon: Coffee, hint: '30 min · on refait le monde', says: ['On va au grin prendre le thé ?', 'Viens, on va boire le thé au grin !'] },
@@ -62,6 +66,7 @@ const GROUPS: { id: string; label: string; colors: [string, string]; topics: Top
   {
     id: 'taquiner',
     label: 'Taquiner',
+    icon: Laugh,
     colors: ['#ff7ad9', '#b02bd6'],
     topics: [
       { id: 'chambrer', label: 'Chambrer', icon: Smile, hint: 'Ça rigole… ou ça vexe', says: ['Toi tu marches comme un gbaka en panne !', 'Eh, c\'est ta tête de dimanche ça ?'] },
@@ -73,7 +78,7 @@ const GROUPS: { id: string; label: string; colors: [string, string]; topics: Top
 
 // Romance, between adults only: the Sim grown up, the person met as an adult
 // (their number taken), and the player who said once they're 18 or over.
-const LOVE = { id: 'coeur', label: 'Cœur', colors: ['#ff8fb1', '#e0245e'] as [string, string] }
+const LOVE = { id: 'coeur', label: 'Cœur', icon: Heart, colors: ['#ff8fb1', '#e0245e'] as [string, string] }
 function loveTopics(friend: Friend | undefined, taken?: string): Topic[] {
   if (!friend?.adult) return []
   // Already with someone else: it's cheating, and the quarter talks (backend sims/cheating.go).
@@ -223,7 +228,7 @@ export function ChatSheet({ npc, simGender, onSay, onClose, onBye, onDames, lang
   return (
     <div className="absolute inset-0 z-30 flex flex-col justify-end bg-[#0f1230]/15 lg:items-center lg:justify-center" onClick={onClose}>
       <div className="sheet animate-up flex max-h-[68vh] w-full flex-col rounded-t-[28px] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:w-[460px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-3">
           <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full font-display text-xl font-extrabold" style={{ background: npc.look.outfitColor ?? '#ff7a00', color: light(npc.look.outfitColor) ? '#141416' : '#ffffff' }}>
             {npc.name[0]}
           </div>
@@ -247,7 +252,7 @@ export function ChatSheet({ npc, simGender, onSay, onClose, onBye, onDames, lang
           </button>
         </div>
         {/* The conversation so far */}
-        <div ref={log} className="mt-3 flex max-h-[24vh] min-h-[64px] flex-col gap-1.5 overflow-y-auto pr-0.5">
+        <div ref={log} className="mt-3 flex max-h-[22vh] min-h-[48px] shrink-0 flex-col gap-1.5 overflow-y-auto pr-0.5">
           {lines.map((l, i) => (
             <div
               key={i}
@@ -269,31 +274,30 @@ export function ChatSheet({ npc, simGender, onSay, onClose, onBye, onDames, lang
           )}
         </div>
         {gone ? (
-          <button className="btn mt-3 w-full" onClick={onClose}>
+          <button className="btn mt-3 w-full shrink-0" onClick={onClose}>
             À plus, {npc.name} !
           </button>
         ) : (
           <>
-            {/* The groups: greet, chat, ask, offer, tease */}
-            <div className="-mx-1 mt-3 flex gap-1.5 overflow-x-auto px-1 pb-1" role="tablist">
-              {groups.map((x) => (
-                <button
-                  key={x.id}
-                  role="tab"
-                  aria-selected={x.id === group}
-                  className="shrink-0 rounded-full px-3.5 py-1.5 text-sm font-extrabold transition-colors"
-                  style={x.id === group ? { background: x.colors[1], color: '#fff' } : { background: 'var(--color-canvas)', color: 'var(--color-ink-soft)' }}
-                  onClick={() => setGroup(x.id)}
-                >
-                  {x.label}
-                </button>
-              ))}
+            {/* The groups (greet, chat, ask, offer, tease, love), all in sight on one row: a scrolling row hid the last ones on small phones */}
+            <div className="mt-3 flex shrink-0 gap-0.5" role="tablist">
+              {groups.map((x) => {
+                const on = x.id === g.id
+                return (
+                  <button key={x.id} role="tab" aria-selected={on} className="flex flex-auto flex-col items-center gap-1 rounded-2xl px-1 pt-1.5 pb-1 transition-colors" style={{ background: on ? `${x.colors[1]}1f` : 'transparent' }} onClick={() => setGroup(x.id)}>
+                    <IconTile icon={x.icon} colors={on ? x.colors : ['#e6e7ee', '#e6e7ee']} size={32} className={on ? '' : '!text-[var(--color-ink-soft)]'} />
+                    <span className="text-[10px] leading-tight font-extrabold whitespace-nowrap min-[360px]:text-[11px]" style={{ color: on ? x.colors[1] : 'var(--color-ink-soft)' }}>
+                      {x.label}
+                    </span>
+                  </button>
+                )
+              })}
             </div>
-            <div className="mt-2 min-h-0 overflow-y-auto">
+            <div className="mt-2 min-h-0 flex-1 overflow-y-auto">
               {group === 'saluer' && (
                 <div className="mb-2 flex flex-wrap gap-1.5">
-                  {greetingsFor(npc.gender).map((phrase, i) => (
-                    <button key={phrase + i} className="tile px-3 py-2 text-[14px] font-extrabold disabled:opacity-50" disabled={busy} onClick={() => say('salut', 'Saluer', phrase)}>
+                  {greetingsFor(npc.gender).map((phrase) => (
+                    <button key={phrase} className="tile flex-auto px-3 py-2 text-center text-[14px] font-extrabold disabled:opacity-50" disabled={busy} onClick={() => say('salut', 'Saluer', phrase)}>
                       « {phrase} »
                     </button>
                   ))}
@@ -349,12 +353,12 @@ export function ChatSheet({ npc, simGender, onSay, onClose, onBye, onDames, lang
             </div>
             {/* One of the men of the grin: sit down at the board with him */}
             {onDames && (
-              <button className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#7a4a22] py-2.5 text-sm font-extrabold text-white" onClick={onDames}>
+              <button className="mt-3 flex w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-[#7a4a22] py-2.5 text-sm font-extrabold text-white" onClick={onDames}>
                 <Grid3x3 size={16} /> Jouer aux dames avec {npc.name}
               </button>
             )}
             {/* Taking leave ends the chat there and then, in a language you share if you have one */}
-            <button className="mt-3 w-full rounded-2xl bg-[var(--color-canvas)] py-2.5 text-sm font-extrabold text-[var(--color-ink-soft)]" onClick={onBye ?? onClose}>
+            <button className="mt-3 w-full shrink-0 rounded-2xl bg-[var(--color-canvas)] py-2.5 text-sm font-extrabold text-[var(--color-ink-soft)]" onClick={onBye ?? onClose}>
               {goodbyeIn(shared, npc.name)}
             </button>
           </>

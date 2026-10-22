@@ -5,6 +5,7 @@ import { useWorld } from '../store/world'
 import { Community, Share } from '../components/WaitlistShare'
 import { Consent } from '../components/Consent'
 import { InstallButton } from '../components/InstallButton'
+import { homeScreenApp } from '../lib/launch'
 import { Discover, Trailer } from '../components/Discover'
 import { firebaseConfigured, googleBlocked, googleCancelled, googleRedirectResult, preloadGoogle, signInWithGoogle } from '../lib/google'
 
@@ -242,6 +243,12 @@ export function Waitlist({ form = false }: { form?: boolean }) {
             <Link to="/confidentialite" className="underline">
               Confidentialité
             </Link>
+            {/* The app on the home screen has no address bar to type /testeur in, and on an iPhone it doesn't share Safari's storage: the testers go in from here */}
+            {homeScreenApp() && (
+              <Link to="/testeur" className="opacity-50">
+                Testeur
+              </Link>
+            )}
           </span>
           <span className="chalk-hand text-[26px] text-[var(--ochre)]">Fait à Abidjan</span>
         </div>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { FlaskConical, KeyRound, X } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
-import { isTester, isTesterCode, setTester, testerPass } from '../lib/launch'
+import { isTester, isTesterCode, setTester, testerAnswered, testerPass, testerTyped } from '../lib/launch'
 import { useSession } from '../store/session'
 import type { Sim } from '../lib/types'
 import type { Act } from '../screens/phoneApps'
@@ -31,8 +31,8 @@ export function TesterTools({ sim, act }: { sim: Sim; act: Act }) {
 
   // The code kept on this browser: the tools work with it even before the account is a tester's.
   const [pass, setPass] = useState(testerPass)
-  const become = async (code: string) => {
-    const u = await api.becomeTester(code)
+  const become = async (code: string, typed: boolean) => {
+    const u = await api.becomeTester(code, typed)
     if (token) signIn(token, u)
   }
   // A browser opened with /testeur makes the account signed in on it a tester's;
@@ -41,13 +41,19 @@ export function TesterTools({ sim, act }: { sim: Sim; act: Act }) {
     if (account) {
       if (!isTester()) setTester(true)
     } else if (testerPass()) {
-      become(testerPass()).catch((x) => {
-        // The tests are over for this account (the testers' reset): this browser forgets the code.
-        if (x instanceof ApiError && x.status === 403) {
-          setTester(false)
-          location.reload()
-        }
-      })
+      become(testerPass(), testerTyped()).then(
+        () => testerAnswered(),
+        (x) => {
+          // The tests are over for this account (the testers' reset) and the code was only kept: the toolbox asks
+          // for it again. The game stays open here: sending the person back to the wish list mid-game, without a
+          // word, was taken for a bug (and before launch, it shut the game for them).
+          if (x instanceof ApiError && x.status === 403) {
+            testerAnswered(true)
+            setPass('')
+            setError('Les tests ont été remis à zéro pour ton compte : entre le code testeur pour retrouver les outils.')
+          }
+        },
+      )
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account])
@@ -65,7 +71,8 @@ export function TesterTools({ sim, act }: { sim: Sim; act: Act }) {
     setTester(true, typed)
     setPass(typed.trim())
     try {
-      await become(typed)
+      await become(typed, true)
+      testerAnswered()
     } catch (x) {
       setError(
         x instanceof ApiError && x.status === 404

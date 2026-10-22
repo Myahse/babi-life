@@ -6,7 +6,7 @@ import { Title } from './screens/Title'
 import { Legal } from './screens/Legal'
 import { MoodPin } from './components/ui'
 import { ResetPassword } from './screens/ResetPassword'
-import { gameOpen } from './lib/launch'
+import { gameOpen, homeScreenApp } from './lib/launch'
 
 // Each screen is its own download: the title screen opens without the 3D
 // game, and the game without the creator.
@@ -30,11 +30,17 @@ const Loading = () => (
 export function App() {
   const token = useSession((s) => s.token)
   const { world, error, load } = useWorld()
-  const { pathname: path, search } = useLocation()
+  const { pathname: path, search, key } = useLocation()
 
   useEffect(() => {
     load()
   }, [load])
+
+  // A tester's home-screen app installed when it opened on the wish list:
+  // iOS opens it there again each time it was closed (or put to sleep while
+  // playing), so it goes on to the game. Only on opening (key 'default'):
+  // the wish list stays reachable from inside.
+  if (path === '/liste' && gameOpen && key === 'default' && homeScreenApp()) return <Navigate to="/jeu" replace />
 
   // The wish list is open to everyone, signed in or not, even if the API is down.
   if (path === '/liste' || path === '/liste/inscription')
