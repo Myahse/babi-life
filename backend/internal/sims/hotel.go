@@ -229,7 +229,8 @@ func stayName(st *Stay) string {
 	return fmt.Sprintf("ta location « %s »", st.Name)
 }
 
-// endStay: POST /sims/{id}/stay/end — the key handed back before the end (nothing paid back).
+// endStay: POST /sims/{id}/stay/end — the room freed before the end. A hotel pays
+// back the whole nights not started (the one under way is owed); a Dodo stay, nothing.
 func (h *Handler) endStay(w http.ResponseWriter, r *http.Request) {
 	h.mutate(w, r, func(s *Sim) (game.Outcome, []Event, error) {
 		st := s.stay()
@@ -239,8 +240,26 @@ func (h *Handler) endStay(w http.ResponseWriter, r *http.Request) {
 		if a := s.Activity; a != nil && a.PlaceID == st.Place && (a.Interaction.Stay || a.PlaceID == StayPlaceID) {
 			return game.Outcome{}, nil, game.ErrBusy
 		}
+		back := stayRefund(st, s.GameMinutes)
 		s.Stay = nil
-		text := fmt.Sprintf("Tu rends la clé de %s. Merci de ta visite !", stayName(st))
-		return game.Outcome{Text: text}, []Event{{Kind: "life", Text: text, GameTime: s.GameMinutes}}, nil
+		s.Money += back
+		text := fmt.Sprintf("Tu libères %s. Merci de ta visite !", stayName(st))
+		if back > 0 {
+			text = fmt.Sprintf("Tu libères %s : %s remboursés pour les nuits pas commencées. Merci de ta visite !", stayName(st), game.FCFA(back))
+		}
+		return game.Outcome{Text: text, Money: back}, []Event{{Kind: "life", Text: text, Money: back, GameTime: s.GameMinutes}}, nil
 	})
+}
+
+// stayRefund: what a hotel pays back for a room freed early: the whole nights
+// left, at what the stay cost a minute (the night under way, and the hours, are owed).
+func stayRefund(st *Stay, now int64) int {
+	if st.Kind != "hotel" || st.Until <= st.From {
+		return 0
+	}
+	nights := (st.Until - now) / (24 * 60)
+	if nights <= 0 {
+		return 0
+	}
+	return int(int64(st.Paid) * nights * 24 * 60 / (st.Until - st.From))
 }
