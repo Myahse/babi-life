@@ -79,7 +79,8 @@ import { setVehicleNight } from '../vehicles'
 const RICH = typeof navigator === 'undefined' || (navigator.hardwareConcurrency ?? 4) > 4
 import { litShare, makeTextures, rippleNormals, windowsByHour } from './textures'
 import { FAR_ZOOM, type ChunkData } from './tiles'
-import type { Arrays, ChunkRequest } from './worker'
+import type { ChunkRequest } from './chunkJob'
+import { startChunkWorker, type ChunkWorker } from './chunkWorker'
 import { serverNow, worldTime } from '../../lib/worldClock'
 import { cutsAround, inCut, zoneOf, type PowerCut } from '../power'
 import { CUTS } from './textures'
@@ -448,7 +449,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const failed = useRef(new Map<string, number>())
   const failedAt = useRef(new Map<string, number>())
   const loadedOnce = useRef(false)
-  const worker = useRef<Worker | null>(null)
+  const worker = useRef<ChunkWorker | null>(null)
   const nextId = useRef(1)
   // Sports places too close to another: no pitch laid out for them (only the map's own).
   const tight = useMemo(() => new Set(spaceFields(spots).filter((s) => s.noLayout).map((s) => s.id)), [spots])
@@ -457,9 +458,9 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const focus = useRef<XZ>(spots.find((s) => s.id === stationAt)?.at ?? spots.find((s) => s.id === HOME_ID)?.at ?? [0, 0])
 
   useEffect(() => {
-    const w = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' })
+    const w = startChunkWorker()
     worker.current = w
-    w.onmessage = (e: MessageEvent<{ id: number; data?: ChunkData; meshes?: Record<string, Arrays>; resolved?: Resolved[]; error?: string }>) => {
+    w.onmessage = (e) => {
       const key = pending.current.get(e.data.id)
       pending.current.delete(e.data.id)
       if (!key) return
