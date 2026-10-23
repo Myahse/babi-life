@@ -53,6 +53,8 @@ export class DomNode {
   readonly style: Record<string, any>
   readonly classList = { add() {}, remove() {}, toggle() {}, contains: () => false, replace() {} }
   value = ''
+  /** A <video>'s player (elements.tsx Video): what play(), pause(), its time and sound reach. */
+  media?: { play: () => void; pause: () => void; readonly playing: boolean; currentTime: number; muted: boolean; readonly duration: number }
   private listeners = new Map<string, Set<(e: any) => void>>()
 
   constructor(tag: string) {
@@ -201,6 +203,32 @@ export class DomNode {
   }
   getAnimations() {
     return []
+  }
+  play() {
+    this.media?.play()
+    return Promise.resolve()
+  }
+  pause() {
+    this.media?.pause()
+  }
+  load() {}
+  get paused() {
+    return !this.media?.playing
+  }
+  get currentTime() {
+    return this.media?.currentTime ?? 0
+  }
+  set currentTime(t: number) {
+    if (this.media) this.media.currentTime = t
+  }
+  get muted() {
+    return this.media?.muted ?? !!this.props.muted
+  }
+  set muted(v: boolean) {
+    if (this.media) this.media.muted = v
+  }
+  get duration() {
+    return this.media?.duration ?? NaN
   }
 }
 

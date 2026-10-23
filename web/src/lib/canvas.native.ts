@@ -291,9 +291,10 @@ class Context2D {
     return new Gradient((colors, pos) => Skia.Shader.MakeTwoPointConicalGradient({ x: x0, y: y0 }, r0, { x: x1, y: y1 }, r1, colors, pos, TileMode.Clamp)) as unknown as CanvasGradient
   }
 
-  /** Another painted canvas, drawn on this one (the whole of it, or a part, at a size). */
-  drawImage(src: SkiaCanvas, ...a: number[]) {
-    const img = src.surface.makeImageSnapshot()
+  /** Another painted canvas, or a picture loaded (an <img>), drawn on this one (the whole of it, or a part, at a size). */
+  drawImage(src: SkiaCanvas | SkImageElement, ...a: number[]) {
+    const img = src instanceof SkImageElement ? src.image : src.surface.makeImageSnapshot()
+    if (!img) return
     const p = Skia.Paint()
     p.setAlphaf(this.s.alpha)
     if (a.length <= 2) this.c.drawImage(img, a[0] ?? 0, a[1] ?? 0, p)
@@ -367,41 +368,69 @@ class SkiaCanvas {
   }
 }
 
+/**
+ * A picture to paint with (new Image(), an <img> made by hand): its address
+ * set, it's fetched and decoded by Skia, then onload (or onerror), as in the
+ * browser; drawImage takes it.
+ */
+export class SkImageElement {
+  image: ReturnType<typeof Skia.Image.MakeImageFromEncoded> = null
+  onload: ((e?: any) => void) | null = null
+  onerror: ((e?: any) => void) | null = null
+  crossOrigin: string | null = null
+  decoding = 'async'
+  complete = false
+  private address = ''
+  private listeners: Record<string, ((e?: any) => void)[]> = {}
+  get src() {
+    return this.address
+  }
+  set src(v: string) {
+    this.address = v
+    this.complete = false
+    const done = (ok: boolean) => {
+      this.complete = true
+      for (const f of [ok ? this.onload : this.onerror, ...(this.listeners[ok ? 'load' : 'error'] ?? [])]) f?.({ type: ok ? 'load' : 'error', target: this })
+    }
+    const data = v.startsWith('data:') ? Promise.resolve(Skia.Data.fromBase64(v.slice(v.indexOf(',') + 1))) : Skia.Data.fromURI(v.startsWith('/') ? `https://www.lifeinbabi.com${v}` : v)
+    data
+      .then((d) => {
+        this.image = Skia.Image.MakeImageFromEncoded(d)
+        done(!!this.image)
+      })
+      .catch(() => done(false))
+  }
+  get width() {
+    return this.image?.width() ?? 0
+  }
+  get height() {
+    return this.image?.height() ?? 0
+  }
+  get naturalWidth() {
+    return this.width
+  }
+  get naturalHeight() {
+    return this.height
+  }
+  addEventListener(type: string, f: (e?: any) => void) {
+    ;(this.listeners[type] ??= []).push(f)
+  }
+  removeEventListener(type: string, f: (e?: any) => void) {
+    this.listeners[type] = (this.listeners[type] ?? []).filter((x) => x !== f)
+  }
+  decode() {
+    return new Promise<void>((ok, fail) => (this.complete ? (this.image ? ok() : fail()) : (this.addEventListener('load', () => ok()), this.addEventListener('error', () => fail()))))
+  }
+}
+
 /** A blank canvas this size. */
 export function newCanvas(width: number, height: number): HTMLCanvasElement {
   return new SkiaCanvas(width, height) as unknown as HTMLCanvasElement
 }
 
-/** A painted canvas's pixels for three.js (rows turned over: a texture starts at the bottom); painted again, `needsUpdate = true` takes them anew. */
-class PaintedTexture extends THREE.DataTexture {
-  // (Not `source`: a three.js texture has its own.)
-  private painted?: SkiaCanvas
-  constructor(painted: SkiaCanvas) {
-    super(new Uint8Array(painted.width * painted.height * 4), painted.width, painted.height, THREE.RGBAFormat)
-    this.painted = painted
-    // As a canvas texture is drawn (a data texture's own are pixel sharp, without mipmaps).
-    this.magFilter = THREE.LinearFilter
-    this.minFilter = THREE.LinearMipmapLinearFilter
-    this.generateMipmaps = true
-    this.take()
-  }
-  private take() {
-    const c = this.painted!
-    const { width: w, height: h } = c
-    const px = c.pixels()
-    const img = this.image as { data: Uint8Array; width: number; height: number }
-    if (img.width !== w || img.height !== h) Object.assign(img, { data: new Uint8Array(w * h * 4), width: w, height: h })
-    const row = w * 4
-    for (let y = 0; y < h; y++) img.data.set(px.subarray(y * row, (y + 1) * row), (h - 1 - y) * row)
-  }
-  override set needsUpdate(v: boolean) {
-    if (v && this.painted) this.take()
-    super.needsUpdate = v
-  }
-}
-
 /** The texture of a painted canvas. */
-export const canvasTexture = (c: HTMLCanvasElement): THREE.Texture => new PaintedTexture(c as unknown as SkiaCanvas)
+// (three's CanvasTexture is the app's own, native/src/shims/three.ts: it takes the Skia canvas's pixels.)
+export const canvasTexture = (c: HTMLCanvasElement): THREE.Texture => new THREE.CanvasTexture(c)
 
 /** A painted canvas as a picture (a swatch): a data URL. */
 export const canvasUrl = (c: HTMLCanvasElement) => (c as unknown as SkiaCanvas).toDataURL()

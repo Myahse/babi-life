@@ -4,6 +4,9 @@ import * as THREE from 'three'
 // draws from it: the browser's own here; in the app (native/), canvas.native.ts paints the same
 // with Skia and hands three.js the pixels.
 
+/** A picture to paint with: the browser's own (the app has its own, canvas.native.ts). */
+export const SkImageElement = globalThis.Image
+
 /** A blank canvas this size. */
 export function newCanvas(width: number, height: number): HTMLCanvasElement {
   const c = document.createElement('canvas')

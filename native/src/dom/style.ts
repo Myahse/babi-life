@@ -1,4 +1,5 @@
 import { Dimensions } from 'react-native'
+import { initialWindowMetrics } from 'react-native-safe-area-context'
 import { fontKeyOf, VARS, type FontKey } from './theme'
 
 // The game's styles (a className's utilities, a style={{}} object, an arbitrary [prop:value]) all
@@ -126,6 +127,8 @@ export function length(raw: string | number | undefined, fontSize = 16): number 
   const s = raw.trim()
   if (s === 'auto') return 'auto'
   if (s === '0') return 0
+  // The phone's notch and its gesture bar (the page's env(safe-area-inset-*)).
+  if (s.includes('env(')) return length(s.replace(/env\(\s*safe-area-inset-(top|bottom|left|right)\s*(?:,[^)]*)?\)/g, (_, k: 'top' | 'bottom' | 'left' | 'right') => `${initialWindowMetrics?.insets[k] ?? 0}px`), fontSize)
   const m = /^(-?[\d.]+)(px|rem|em|%|vh|vw|dvh|svh|lvh|dvw|svw|lvw)?$/.exec(s)
   if (m) {
     const n = parseFloat(m[1])
