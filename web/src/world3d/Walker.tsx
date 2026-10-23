@@ -133,6 +133,22 @@ type Props = {
 /** The player's Sim: walks to places, with the pad or by tapping the ground; the camera follows. */
 export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy, stationAt, nameTag, labels, onNear, frozen, onLeave, recenter, onFreeCamera, perspective, close, shoulder, homeSpot, hidden, joinRole }: Props) {
   const group = useRef<THREE.Group>(null)
+  // Come out of a building: turned from its door to the street (it faced the building going in).
+  const wasHidden = useRef(hidden)
+  useEffect(() => {
+    const g = group.current
+    if (wasHidden.current && !hidden && g) {
+      let best: Lot | null = null
+      let near = 8
+      for (const l of lots) {
+        const d = Math.hypot(l.door[0] - g.position.x, l.door[1] - g.position.z)
+        if (d < near) (near = d), (best = l)
+      }
+      // (From the building's middle out through its door; a door at its middle: the way the building faces.)
+      if (best) g.rotation.y = Math.hypot(best.door[0] - best.x, best.door[1] - best.z) > 0.5 ? Math.atan2(best.door[0] - best.x, best.door[1] - best.z) : best.rot
+    }
+    wasHidden.current = hidden
+  }, [hidden]) // eslint-disable-line react-hooks/exhaustive-deps
   const path = useRef<[number, number][]>([])
   const target = useRef<string | null>(null)
   const [walking, setWalking] = useState(false)
