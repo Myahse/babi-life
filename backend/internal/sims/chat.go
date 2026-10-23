@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/myahse/babi-life/backend/internal/auth"
@@ -415,7 +416,8 @@ func (s *Sim) chatIn(p Passerby, topicID, said, lang string, adult bool, rng *ra
 	if i < 0 {
 		return chatAnswer{}, errUnknownTopic
 	}
-	if p.Name == "" || len(p.Name) > 30 || len(p.ID) > 60 || len(said) > 60 {
+	// (What the Sim says can be a whole joke, a few lines.)
+	if p.Name == "" || len(p.Name) > 30 || len(p.ID) > 60 || len(said) > 400 {
 		return chatAnswer{}, errors.New("personne à qui parler")
 	}
 	if len(p.Look) > maxLook || (len(p.Look) > 0 && !json.Valid(p.Look)) {
@@ -423,7 +425,8 @@ func (s *Sim) chatIn(p Passerby, topicID, said, lang string, adult bool, rng *ra
 	}
 	t := chatTopics[i]
 	label := t.label + " avec " + p.Name
-	if said != "" {
+	// A greeting, a question: the activity is what was said; a joke is told, not quoted whole there.
+	if said != "" && utf8.RuneCountInString(said) <= 60 {
 		label = "« " + said + " » à " + p.Name
 	}
 	it := game.Interaction{ID: "chat-" + t.id, Label: label, Icon: t.icon, Minutes: t.minutes, Effect: t.effect, Ages: t.ages}

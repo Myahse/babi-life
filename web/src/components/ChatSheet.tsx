@@ -33,7 +33,22 @@ const GROUPS: { id: string; label: string; icon: LucideIcon; colors: [string, st
       { id: 'famille', label: 'Demander la famille', icon: Users, hint: '8 min · les nouvelles de chez eux', says: ['Et la famille, ça va ?', 'Comment va la maison ?', 'Les enfants vont bien ?'] },
       { id: 'gbairai', label: 'Faire le gbairai', icon: MessagesSquare, hint: '15 min · les nouvelles du quartier', says: ['Y a quoi comme gbairai ?', 'Raconte, ça dit quoi au quartier ?', 'Quoi de neuf dans le quartier ?'] },
       { id: 'foot', label: 'Parler foot', icon: Trophy, hint: 'Éléphants, Asec, Africa… attention aux disputes', says: ['Tu as vu le match d\'hier ?', 'Les Éléphants vont gagner samedi ?', 'Asec ou Africa, toi tu es où ?'] },
-      { id: 'blague', label: 'Lancer une blague', icon: Laugh, hint: 'Ça fait rire… ou pas', says: ['J\'ai une blague pour toi, écoute !', 'Tu connais celle du gbaka sans chauffeur ?'] },
+      // The joke itself (the one listening laughs, or not: the server's answer).
+      {
+        id: 'blague',
+        label: 'Lancer une blague',
+        icon: Laugh,
+        hint: 'Ça fait rire… ou pas',
+        says: [
+          'Le maître demande à Koffi : « Tu as 500 F et tu demandes 500 F à ton papa, tu as combien ? » « 500 F, monsieur. » « Tu ne connais pas l\'addition ! » « Non, c\'est vous qui ne connaissez pas mon papa ! »',
+          'Le docteur dit à Yao : « Il faut arrêter l\'attiéké le soir. » Yao : « D\'accord docteur, je vais le manger la nuit. »',
+          'Le woro-woro tombe en panne. Le chauffeur : « Tout le monde descend pousser ! » Un passager : « Ah non, moi j\'ai payé une place assise ! »',
+          'Pourquoi le chauffeur de gbaka ne joue jamais à cache-cache ? Parce qu\'on l\'entend crier « Adjamé ! » à trois rues.',
+          'Un gaou arrive au Plateau, il voit la Pyramide et il dit : « Les Égyptiens sont venus jusqu\'ici ? »',
+          'Ma tantie m\'a dit : « Choisis, c\'est le foot ou moi. » J\'ai demandé : « Ça dépend, c\'est quel match ? »',
+          'Pourquoi le poisson de la lagune ne joue jamais au foot ? Il a trop peur du filet !',
+        ],
+      },
       { id: 'compliment', label: 'Faire un compliment', icon: Sparkles, hint: '3 min · ça fait toujours plaisir… presque', says: ['Ton habit là est joli dèh !', 'Tu as la classe aujourd\'hui !', 'Tu as un beau sourire, toi !'] },
       { id: 'histoire', label: 'Demander une histoire', icon: BookOpen, hint: '10 min · contes et souvenirs du quartier', says: ['Tu connais un conte ? Raconte !', 'Raconte-moi une histoire de chez toi.'] },
       { id: 'route', label: 'Demander le chemin', icon: MapPin, hint: '4 min', says: ['Pardon, c\'est par où le marché ?', 'Je cherche la pharmacie, c\'est où ?'] },
