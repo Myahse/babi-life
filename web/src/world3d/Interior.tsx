@@ -24,6 +24,7 @@ import { Talkable } from './Talkable'
 import { doingOf, nameFor } from './talk'
 import { listenKeys, moveInput } from './input'
 import { SERVICES, worshipAction, worshipRoom, worshipTour, type TourStop } from './interior/worshipRooms'
+import { gamingRoom } from './interior/GamingRoom'
 
 /** Soft shade in the corners, downloaded only on phones that show it. */
 const AmbientOcclusion = lazy(() => import('./effects'))
@@ -39,7 +40,7 @@ export type Spot = { p: V3; r?: number; pose: Pose; lying?: boolean; g?: 'femme'
 type Person = Spot & { gender: 'femme' | 'homme'; look: ReturnType<typeof randomLook>; seed: number }
 
 /** Kinds of places that have an inside (the beach or the football pitch don't). */
-export const INDOOR = new Set(['gym', 'boutique', 'couture', 'pharmacie', 'police', 'home', 'maquis', 'club', 'restaurant', 'market', 'office', 'mairie', 'school', 'health', 'worship', 'mall', 'culture', 'cinema', 'barbier', 'salon', 'hotel', 'universite', 'aeroport'])
+export const INDOOR = new Set(['gym', 'gaming', 'boutique', 'couture', 'pharmacie', 'police', 'home', 'maquis', 'club', 'restaurant', 'market', 'office', 'mairie', 'school', 'health', 'worship', 'mall', 'culture', 'cinema', 'barbier', 'salon', 'hotel', 'universite', 'aeroport'])
 
 /** Kinds under the sky with a scene of their own all the same: the beach (interior/BeachScene), its sand and its waves, not the roadside. */
 export const SCENES = new Set(['beach'])
@@ -107,6 +108,10 @@ export function action(kind: string, id: string | undefined): { spot: string; po
   if (/^(medicaments|conseil|etat-civil|legalisation|renseignement|declaration-perte|abonnement-salle)$/.test(id)) return { spot: 'counter', pose: 'talk' }
   if (id === 'mariage-civil') return { spot: 'counter', pose: 'cheer' }
   if (id === 'aller-ecole') return { spot: 'entrance', pose: 'wave' }
+  // The salle de jeux vidéo: on the bench before a TV, the controller in the hands; standing at the arcade cabinet; behind the players, cheering.
+  if (/^console-|^tournoi-console$/.test(id)) return { spot: 'tv', pose: 'write' }
+  if (id === 'borne-arcade') return { spot: 'arcade', pose: 'busy' }
+  if (id === 'regarder-console') return { spot: 'watch', pose: 'cheer' }
   // The cold drink bought at the boutique, drunk sitting at its little table.
   if (id === 'sucrerie') return { spot: 'table', pose: 'drink' }
   if (/^(medicaments|conseil|credit|courses)$/.test(id)) return { spot: kind === 'boutique' ? 'stall' : 'counter', pose: 'idle' }
@@ -368,6 +373,7 @@ export function room(kindIn: string, housing: string): Room {
       ),
     }
   }
+  if (kindIn === 'gaming') return gamingRoom()
   const kind = ROOM_LIKE[kindIn] ?? kindIn
   switch (kind) {
     case 'home': {

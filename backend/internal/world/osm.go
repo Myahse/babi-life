@@ -94,6 +94,10 @@ func init() {
 			if t, ok := row[6].(string); ok {
 				p.Type = t
 			}
+			// The salles de jeux vidéo: the map calls them shops (shop=video_games), the quarter goes there to play.
+			if p.Type == "video_games" || p.Type == "amusement_arcade" {
+				p.Kind = "gaming"
+			}
 			if _, ok := game.Kinds[p.Kind]; !ok {
 				panic("osm/" + e.Name() + ": unknown kind " + p.Kind + " for " + p.ID)
 			}
