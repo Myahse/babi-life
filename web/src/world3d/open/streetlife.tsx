@@ -1,9 +1,9 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Citrus, Croissant, CupSoda, Droplet, MessagesSquare, Music, Smartphone, Trophy, Volleyball } from 'lucide-react'
 import { JoinBubble, placeIn, useJoined, type Joining } from './joinIn'
 import { FieldFence } from './fieldFence'
 import { StaticMerge } from '../staticMerge'
-import { inZone } from '../obstacles'
+import { inZone, moveObstacle } from '../obstacles'
 import { Solid } from '../Solid'
 import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
@@ -18,6 +18,9 @@ import { NoteShower } from '../money'
 import { hash, type XZ } from './geo'
 import type { Nav } from './nav'
 import { worldTime } from '../../lib/worldClock'
+import { blockedAhead, checkpoints, PAPERS, queueOf, report, STALE, waiting } from './trafficFlow'
+import { along as alongWay, DRIVABLE, routeLength, turnTo } from './shared'
+import { CAR_COLORS, Vehicle, type VehicleKind } from '../vehicles'
 
 // Life at the street side, around the Sim: le grin, children playing football,
 // people talking in a ring, a lit pitch and a basketball court with a crowd,
@@ -27,6 +30,8 @@ import { worldTime } from '../../lib/worldClock'
 type Kind = 'grin' | 'foot' | 'causerie'
 type Scene = { id: string; kind: Kind; at: XZ; rot: number; seed: number }
 type Spot = { id: string; at: XZ; rot: number; seed: number }
+/** A police checkpoint, and the street it stands by (nav's edge). */
+type Post = Spot & { edge: number }
 type Vendor = Spot & { goods: (typeof GOODS)[number] }
 
 const SCENE_NEAR = 260
@@ -61,8 +66,8 @@ export function StreetLife({ nav, seed, night, taken }: { nav: Nav; seed: string
   }, [nav, seed])
   // Police checkpoints on the big roads: a patrol car on the shoulder, cones, two officers.
   const posts = useMemo(() => {
-    const out: Spot[] = []
-    for (const e of nav.edges) {
+    const out: Post[] = []
+    for (const [i, e] of nav.edges.entries()) {
       if (e.width < 9 || e.len < 40 || nav.ys[e.a] || nav.ys[e.b]) continue
       const [a, b] = [nav.nodes[e.a], nav.nodes[e.b]]
       const m: XZ = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]
@@ -71,11 +76,11 @@ export function StreetLife({ nav, seed, night, taken }: { nav: Nav; seed: string
       const [ux, uz] = [(b[0] - a[0]) / e.len, (b[1] - a[1]) / e.len]
       // On the right-hand shoulder (traffic drives on the right).
       const off = e.width / 2 + 1.2
-      out.push({ id: `police:${Math.round(m[0])}:${Math.round(m[1])}`, at: [m[0] + uz * off, m[1] - ux * off], rot: Math.atan2(ux, uz), seed: h })
+      out.push({ id: `police:${Math.round(m[0])}:${Math.round(m[1])}`, at: [m[0] + uz * off, m[1] - ux * off], rot: Math.atan2(ux, uz), seed: h, edge: i })
     }
     return out
   }, [nav])
-  const [post, setPost] = useState<Spot | null>(null)
+  const [post, setPost] = useState<Post | null>(null)
   const courts = useMemo(() => spotsOf(nav, 41, 36, false, (seed) => (seed < 0.4 ? COURT_HALF : PITCH_HALF), taken), [nav, taken])
   const stalls = useMemo(() => spotsOf(nav, 19, 24, true, undefined, taken), [nav, taken])
   const [shown, setShown] = useState<Scene[]>([])
@@ -141,6 +146,8 @@ export function StreetLife({ nav, seed, night, taken }: { nav: Nav; seed: string
       </NoShadows>
       {/* Their tables, benches, posts and hoops: not walked through */}
       <Solid parts>{post && <PolicePost spot={post} />}</Solid>
+      {post && <PoliceAtWork spot={post} />}
+      {post && <WavedOver post={post} nav={nav} />}
       <Solid parts>{foot && <Pitch spot={foot} night={night} />}</Solid>
       <Solid parts>{basket && <Court spot={basket} night={night} />}</Solid>
       {/* The street's pitch and court: the boys take whoever comes into their game (free) */}
@@ -730,10 +737,9 @@ function MarchandAsk({ vendor }: { vendor: Vendor }) {
 
 /**
  * A police checkpoint on the shoulder of a big road: the patrol car, its
- * light going, the cones, one officer waving drivers over, the other by the car.
+ * light going, the cones out into the lane (the officers: PoliceAtWork).
  */
 export function PolicePost({ spot }: { spot: Spot }) {
-  const officers = useMemo(() => people(`police${spot.id}`, 2, { outfit: 'policier', accessory: 'none', beard: 'none' }), [spot.id])
   const lamp = useRef<THREE.MeshBasicMaterial>(null)
   useFrame(() => lamp.current?.color.set(Math.floor(worldTime() * 3) % 2 ? '#e03131' : '#1c7ed6'))
   return (
@@ -768,12 +774,241 @@ export function PolicePost({ spot }: { spot: Spot }) {
           <meshLambertMaterial color={k % 2 ? '#ffffff' : '#ff6a00'} />
         </mesh>
       ))}
+    </group>
+  )
+}
+
+/** The car the officers wave over: every so many seconds (three times in four), how fast it comes, the metres it slows down (and speeds up) in, how long it stays (the officer comes to its window, the papers), how far off it shows. */
+const WAVED_EVERY = 50
+const WAVED_SPEED = 8.5
+const BRAKE = 12
+const WAVED_STAY = PAPERS + 3
+const WAVED_REACH = 70
+const WAVED_KINDS: VehicleKind[] = ['taxi', 'taxi', 'car', 'car', 'car']
+
+/** The street through a checkpoint the way the cars it stops come (its edge's b to a), going on straight ahead at both ends as far as the streets do; and where the checkpoint is along it. */
+function roadThrough(nav: Nav, edge: number) {
+  const e = nav.edges[edge]
+  // From `from` to `to`, then on: at each crossing, the street most straight ahead.
+  const on = (from: number, to: number) => {
+    const out: XZ[] = []
+    let [prev, cur, len] = [from, to, 0]
+    for (let i = 0; i < 40 && len < WAVED_REACH; i++) {
+      const [[px, pz], [cx, cz]] = [nav.nodes[prev], nav.nodes[cur]]
+      const d0 = Math.hypot(cx - px, cz - pz) || 1
+      let next: { to: number; len: number } | null = null
+      let straight = 0.8
+      for (const n of nav.adj[cur]) {
+        if (n.to === prev || n.width < DRIVABLE || nav.ys[n.to]) continue
+        const [nx, nz] = nav.nodes[n.to]
+        const dot = ((cx - px) * (nx - cx) + (cz - pz) * (nz - cz)) / (d0 * (n.len || 1))
+        if (dot > straight) [next, straight] = [n, dot]
+      }
+      if (!next) break
+      out.push(nav.nodes[next.to])
+      len += next.len
+      ;[prev, cur] = [cur, next.to]
+    }
+    return out
+  }
+  const before = [...on(e.a, e.b).reverse(), nav.nodes[e.b]]
+  const way = [...before, nav.nodes[e.a], ...on(e.b, e.a)]
+  return { way, at: routeLength(before) + e.len / 2 }
+}
+
+/**
+ * The car waved over at the checkpoint, on the street's clock: it comes
+ * down the lane beside the post, slows down and stops at the officer, waits
+ * while he looks at the papers at its window (PoliceAtWork goes to it as to
+ * any car stopped there), then pulls away. The street's own traffic stops
+ * there too now and then (trafficFlow stopForPapers); this one, so that a
+ * checkpoint is never only standing there.
+ */
+function WavedOver({ post, nav }: { post: Post; nav: Nav }) {
+  const road = useMemo(() => roadThrough(nav, post.edge), [nav, post.edge])
+  const g = useRef<THREE.Group>(null)
+  const late = useRef(0)
+  const held = useRef(0)
+  const [ride, setRide] = useState<{ n: number; kind: VehicleKind; color?: string } | null>(null)
+  const id = `${post.id}|waved`
+  useFrame((_, dtRaw) => {
+    const car = g.current
+    if (!car) return
+    const dt = Math.min(dtRaw, 0.1)
+    const t = worldTime()
+    const u = t + post.seed * 1000 - late.current
+    const n = Math.floor(u / WAVED_EVERY)
+    const s = u - n * WAVED_EVERY
+    const seed = Math.round(post.seed * 1000)
+    // Where it is along the street: from a way off to the officer, there for the papers, then a way off again.
+    const start = Math.max(0, road.at - WAVED_REACH)
+    const end = Math.min(routeLength(road.way), road.at + WAVED_REACH)
+    const [d1, d2] = [road.at - start, end - road.at]
+    const [e1, e2] = [Math.min(BRAKE, d1), Math.min(BRAKE, d2)]
+    const v = WAVED_SPEED
+    const [tc, td, ta] = [(d1 - e1) / v, (2 * e1) / v, (2 * e2) / v]
+    const t1 = tc + td
+    const k = s - t1 - WAVED_STAY
+    const stay = s >= t1 && k < 0
+    const d = s < tc ? v * s : s < t1 ? d1 - e1 + v * (s - tc) - (v * (s - tc) ** 2) / (2 * td) : stay ? d1 : k < ta ? d1 + (v * k * k) / (2 * ta) : d1 + e2 + v * (k - ta)
+    const c = checkpoints.get(post.id)
+    if (hash(n, seed, 71) > 0.75 || d > d1 + d2 || road.way.length < 2) {
+      car.visible = false
+      if (c?.car?.id === id) c.car = null
+      report(id, null)
+      moveObstacle(id, null)
+      return
+    }
+    if (ride?.n !== n) {
+      const kind = WAVED_KINDS[Math.floor(hash(n, seed, 73) * WAVED_KINDS.length)]
+      setRide({ n, kind, color: kind === 'car' ? CAR_COLORS[Math.floor(hash(n, seed, 79) * CAR_COLORS.length)] : undefined })
+    }
+    const p = alongWay(road.way, start + d)
+    // Drive on the right (as the street's traffic: OpenWorld Car).
+    const [x, z] = [p.x - Math.cos(p.r) * 2, p.z + Math.sin(p.r) * 2]
+    const half = (ride?.kind === 'car' ? 4.5 : 4.4) / 2
+    if (stay) {
+      // At the officer: his car to check, unless another one's being checked already.
+      if (c && (!c.car || c.car.id === id || t - c.car.seen >= STALE)) c.car = { id, x, z, h: p.r, seen: t }
+    } else {
+      if (c?.car?.id === id) c.car = null
+      // Something ahead in the lane: it waits behind (as the street's traffic does).
+      const ahead = blockedAhead(id, x, z, p.r, half)
+      const queue = ahead && queueOf(id, ahead)
+      if (ahead && (queue === 'light' || held.current < (queue === 'jam' ? 3 : 8))) {
+        late.current += dt
+        if (queue !== 'light') held.current += dt
+        waiting(id, ahead)
+        return
+      }
+      held.current = Math.max(0, held.current - dt * 4)
+    }
+    car.visible = true
+    car.position.set(x, nav.heightAt(x, z), z)
+    car.rotation.y = turnTo(car.rotation.y, p.r - Math.PI / 2, 1 - Math.exp(-6 * dt))
+    report(id, stay ? { x, z, h: p.r, half, wait: 'papers' } : { x, z, h: p.r, half })
+    moveObstacle(id, { x, z, hw: half, hd: 0.85, rot: car.rotation.y })
+  })
+  useEffect(
+    () => () => {
+      const c = checkpoints.get(post.id)
+      if (c?.car?.id === id) c.car = null
+      report(id, null)
+      moveObstacle(id, null)
+    },
+    [id, post.id],
+  )
+  return <group ref={g} visible={false}>{ride && <Vehicle p={[0, 0, 0]} kind={ride.kind} color={ride.color} seed={ride.n % 97} crew />}</group>
+}
+
+/** Where the officers stand when nothing's going on (in the post's frame: +z along the road, the lane at -x). */
+const WAVER: XZ = [-1.6, 1]
+const GUARD: XZ = [0.1, -0.6]
+/** The chase: every so many seconds (two times in three), how fast the thief runs, and the officer after him. */
+const CHASE_EVERY = 100
+const THIEF_RUN = 6.2
+const COP_RUN = 5.6
+
+/**
+ * The officers at work, on the street's clock (the same on every screen):
+ * one waves the cars over (one in two: trafficFlow stopForPapers), walks to
+ * the stopped car's window and asks for the papers while it waits, then
+ * goes back to his place; now and then a thief runs past on the sidewalk,
+ * a bag under his arm, and the other one sprints after him, then comes back
+ * out of breath.
+ */
+function PoliceAtWork({ spot }: { spot: Spot }) {
+  const officers = useMemo(() => people(`police${spot.id}`, 2, { outfit: 'policier', accessory: 'none', beard: 'none' }), [spot.id])
+  const thief = useMemo(() => people(`voleur${spot.id}`, 1, { outfit: 'casual', outfitColor: '#2b2b2b', accessory: 'cap' })[0], [spot.id])
+  const frame = useRef<THREE.Group>(null)
+  const waver = useRef<THREE.Group>(null)
+  const guard = useRef<THREE.Group>(null)
+  const runner = useRef<THREE.Group>(null)
+  const [poses, setPoses] = useState<{ waver: Pose; guard: Pose; thief: boolean }>({ waver: 'wave', guard: 'idle', thief: false })
+  const at = useRef({ x: WAVER[0], z: WAVER[1], r: -Math.PI / 2 })
+  // The checkpoint, for the cars (trafficFlow.tsx), while it's there.
+  useEffect(() => {
+    checkpoints.set(spot.id, { id: spot.id, x: spot.at[0], z: spot.at[1], rot: spot.rot, car: null })
+    return () => void checkpoints.delete(spot.id)
+  }, [spot])
+  const v = useMemo(() => new THREE.Vector3(), [])
+  useFrame((_, dtRaw) => {
+    const f = frame.current
+    if (!f) return
+    const dt = Math.min(dtRaw, 0.1)
+    const want = { ...poses }
+    // The papers: to the passenger's window of the car waved over (on the shoulder's side), facing it.
+    const held = checkpoints.get(spot.id)?.car
+    const car = held && worldTime() - held.seen < STALE ? held : null
+    let goal: XZ = WAVER
+    let face = -Math.PI / 2
+    if (car) {
+      const [fx, fz] = [Math.sin(car.h), Math.cos(car.h)]
+      // (The car's right: where the post stands, -cos h, sin h.)
+      v.set(car.x - Math.cos(car.h) * 1.35 + fx * 0.5, 0, car.z + Math.sin(car.h) * 1.35 + fz * 0.5)
+      f.worldToLocal(v)
+      goal = [v.x, v.z]
+      v.set(car.x + fx * 0.5, 0, car.z + fz * 0.5)
+      f.worldToLocal(v)
+      face = Math.atan2(v.x - goal[0], v.z - goal[1])
+    }
+    const o = at.current
+    const [dx, dz] = [goal[0] - o.x, goal[1] - o.z]
+    const far = Math.hypot(dx, dz)
+    if (far > 0.15) {
+      const k = Math.min(far, 1.7 * dt) / far
+      o.x += dx * k
+      o.z += dz * k
+      o.r = Math.atan2(dx, dz)
+      want.waver = 'walk'
+    } else {
+      o.r += Math.atan2(Math.sin(face - o.r), Math.cos(face - o.r)) * Math.min(1, dt * 6)
+      want.waver = car ? 'talk' : 'wave'
+    }
+    waver.current?.position.set(o.x, 0, o.z)
+    if (waver.current) waver.current.rotation.y = o.r
+    // The chase: the thief from behind the post to well past it; the officer off after him once he's gone by, then back.
+    const t = worldTime() + spot.seed * 1000
+    const n = Math.floor(t / CHASE_EVERY)
+    const k = t - n * CHASE_EVERY
+    const on = hash(n, Math.round(spot.seed * 1000), 61) < 0.66
+    const thiefZ = -30 + k * THIEF_RUN
+    const running = on && thiefZ < 45
+    if (runner.current) {
+      runner.current.visible = running
+      runner.current.position.set(3.4, 0, thiefZ)
+    }
+    want.thief = running
+    // He sets off as the thief passes him; stops where he lost him; walks back.
+    const off = (GUARD[1] + 30) / THIEF_RUN + 0.6
+    const chaseZ = !on || k < off ? GUARD[1] : Math.min(48, GUARD[1] + (k - off) * COP_RUN)
+    const lost = (48 - GUARD[1]) / COP_RUN + off
+    const back = on && k > lost ? Math.max(GUARD[1], 48 - (k - lost) * 1.6) : chaseZ
+    const gz = on && k > lost ? back : chaseZ
+    if (guard.current) {
+      const out = gz > GUARD[1] + 0.2
+      guard.current.position.set(out ? 2.8 : GUARD[0], 0, gz)
+      guard.current.rotation.y = !out ? -2.2 : on && k > lost ? Math.PI : 0
+      want.guard = !out ? 'idle' : on && k > lost ? 'walk' : 'run'
+    }
+    if (want.waver !== poses.waver || want.guard !== poses.guard || want.thief !== poses.thief) setPoses(want)
+  })
+  return (
+    <group ref={frame} position={[spot.at[0], 0, spot.at[1]]} rotation={[0, spot.rot, 0]}>
       <NoShadows>
-        <group position={[-1.6, 0, 1]} rotation={[0, -Math.PI / 2, 0]}>
-          <TalkHuman id={`police:${spot.id}:0`} look={officers[0].look} gender={officers[0].gender} pose="wave" seed={officers[0].seed} />
+        <group ref={waver} position={[WAVER[0], 0, WAVER[1]]} rotation={[0, -Math.PI / 2, 0]}>
+          <TalkHuman id={`police:${spot.id}:0`} look={officers[0].look} gender={officers[0].gender} pose={poses.waver} seed={officers[0].seed} />
         </group>
-        <group position={[0.1, 0, -0.6]} rotation={[0, -2.2, 0]}>
-          <TalkHuman id={`police:${spot.id}:1`} look={officers[1].look} gender={officers[1].gender} pose="idle" seed={officers[1].seed} />
+        <group ref={guard} position={[GUARD[0], 0, GUARD[1]]} rotation={[0, -2.2, 0]}>
+          <TalkHuman id={`police:${spot.id}:1`} look={officers[1].look} gender={officers[1].gender} pose={poses.guard} seed={officers[1].seed} />
+        </group>
+        <group ref={runner} visible={false}>
+          {poses.thief && <Human look={thief.look} gender="homme" pose="run" seed={thief.seed} />}
+          {/* The bag he snatched, under his arm */}
+          <mesh position={[0.32, 1.05, 0.05]}>
+            <boxGeometry args={[0.3, 0.25, 0.14]} />
+            <meshLambertMaterial color="#8a3f8a" />
+          </mesh>
         </group>
       </NoShadows>
     </group>
