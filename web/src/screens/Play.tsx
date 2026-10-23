@@ -569,7 +569,7 @@ export function Play() {
   const board = (ride: Ride, label: string) => {
     const f = flow!
     setFlow(null)
-    run(label, 'bus', 'transport', () => api.travel(sim!.id, f.cityId, f.to.id, ride))
+    run(label, ride.app === 'moto' ? 'bike' : 'bus', 'transport', () => api.travel(sim!.id, f.cityId, f.to.id, ride))
   }
 
   const collect = () => {
