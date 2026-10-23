@@ -32,6 +32,16 @@ export function Person({ p, r = 0, pose, g, seed, outfit, look: given, scale }: 
   )
 }
 
+/** The gbairai: two of them at the Sim's sides, turned to it, one laughing, one telling theirs back (in its frame). */
+export function Gossip() {
+  return (
+    <>
+      <Person p={[-0.85, 0, -0.05]} r={Math.atan2(0.85, 0.05)} pose="laugh" g="femme" seed={171} />
+      <Person p={[0.85, 0, -0.05]} r={Math.atan2(-0.85, 0.05)} pose="talk" g="femme" seed={172} />
+    </>
+  )
+}
+
 /** A word painted on a little board (the price on the slate, the slide on the screen). */
 function useLabel(text: string, bg: string, fg: string, w = 256, h = 128) {
   return useMemo(() => {
