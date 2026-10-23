@@ -32,7 +32,7 @@ const RULES: { title: string; sub: string; body: string[]; icon?: LucideIcon }[]
     body: [
       "Une heure du jeu, c'est une heure de ta vraie vie : il fait nuit dans le jeu quand il fait nuit à Abidjan.",
       "Les activités, elles, vont plus vite : une douche ou une journée de travail ne te prennent que quelques vraies minutes.",
-      "C'est un jeu en ligne : quand tu fermes le jeu, ton perso continue sa vie. Il dort la nuit, mange, se lave et va au travail à ses heures. À ton retour, le journal te raconte ce qu'il a fait.",
+      "Quand tu fermes le jeu (ou qu'il passe derrière une autre appli), la vie de ton perso se met en pause : ce qu'il faisait attend ton retour, ses besoins, son argent et son âge ne bougent plus. L'heure, elle, continue pour tout le monde.",
     ],
   },
   {

@@ -424,10 +424,11 @@ export function Play() {
   useEffect(() => {
     if (!filmOn) setWatching(false)
   }, [filmOn])
-  // And every few minutes anyway: Saturdays, a long nap, another tab.
+  // And every few minutes anyway: Saturdays, a long nap, another tab. Only while the game is in sight:
+  // these say the player is there, and the Sim's life is on hold while it isn't (backend sims/clock.go).
   useEffect(() => {
     if (!base) return
-    const t = setInterval(() => api.sim(base.sim.id).then(apply).catch(() => undefined), 5 * 60000)
+    const t = setInterval(() => !document.hidden && api.sim(base.sim.id).then(apply).catch(() => undefined), 5 * 60000)
     return () => clearInterval(t)
   }, [base?.sim.id]) // eslint-disable-line react-hooks/exhaustive-deps
 

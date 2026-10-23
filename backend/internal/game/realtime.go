@@ -67,8 +67,6 @@ type Activity struct {
 	ChatWith string `json:"chatWith,omitempty"`
 	// With: an outing (sims/outing.go), the friends met in the game who came along (Friend ids).
 	With []string `json:"with,omitempty"`
-	// Auto: started by the Sim itself while the player was away (sims/autopilot.go).
-	Auto bool `json:"auto,omitempty"`
 	// Seance: a film seen with a Kinéo ticket (sims/cinema.go): which, in which screen, the seats.
 	Seance *Seance `json:"seance,omitempty"`
 	// Defi: the défi taken on during it (sims/defi.go), its score (1–100; 0 not played): once each time.

@@ -11,26 +11,63 @@ import (
 	"github.com/myahse/babi-life/backend/internal/world"
 )
 
-// advance brings the Sim up to now on the real clock: needs drop, the current
-// activity makes progress and maybe ends, and Saturdays are settled. It
+// The player away (the app closed, or out of sight): no word from it for
+// offlineAfter (it asks every few minutes while it's open and seen), and the
+// Sim's life was on hold from about the last time it asked (livePoll on):
+// nothing earned, spent, lost or grown while nobody plays it. The world's
+// clock goes on (the same hour for everyone), the Sim's own time doesn't.
+// (Left at work all night, or living by itself while away, a Sim got rich
+// without being played.)
+const (
+	offlineAfter = 7 * time.Minute
+	livePoll     = 5 * time.Minute
+)
+
+// advance brings the Sim up to now on the real clock: the time the player
+// was there goes by for it (needs drop, the current activity makes progress
+// and maybe ends, Saturdays are settled), the time it was away is held. It
 // returns the journal lines that time produced.
 func (s *Sim) advance(now time.Time, rng *rand.Rand) []Event {
-	to := game.MinuteOf(now)
-	s.lastTick = now
 	var events []Event
-	var away awayLog
+	if !s.lastTick.IsZero() && now.Sub(s.lastTick) > offlineAfter {
+		events = s.advanceTo(game.MinuteOf(s.lastTick.Add(livePoll)), rng)
+		s.hold(game.MinuteOf(now) - s.GameMinutes)
+	}
+	s.lastTick = now
+	return append(events, s.advanceTo(game.MinuteOf(now), rng)...)
+}
+
+// hold: time gone by for the world but not for the Sim (the player away): its
+// clock jumps on, and what it was doing, its age, its friends' last news wait
+// where they were.
+func (s *Sim) hold(minutes int64) {
+	if minutes <= 0 {
+		return
+	}
+	s.GameMinutes += minutes
+	if s.BornAt != 0 {
+		s.BornAt += minutes
+	}
+	if a := s.Activity; a != nil {
+		a.Start += minutes
+		a.End += minutes
+		for k, at := range a.Tasks {
+			a.Tasks[k] = at + minutes
+		}
+	}
+	for i := range s.Friends {
+		s.Friends[i].Seen += minutes
+	}
+}
+
+// advanceTo lets the Sim's time run to the game minute `to`.
+func (s *Sim) advanceTo(to int64, rng *rand.Rand) []Event {
+	var events []Event
 	for {
 		// An activity whose time is up ends, even when no time passes now.
 		if a := s.Activity; a != nil && a.End <= s.GameMinutes {
 			s.Needs = a.Progress(s.Needs, a.End, a.End)
-			for _, ev := range s.finish(rng) {
-				// What the Sim did by itself goes in one line at the end (autopilot.go); the surprises and promotions stay.
-				if a.Auto && ev.Kind == "interaction" {
-					away.add(a.Interaction.Label, ev.Money)
-					continue
-				}
-				events = append(events, ev)
-			}
+			events = append(events, s.finish(rng)...)
 			continue
 		}
 		if s.GameMinutes >= to {
@@ -48,20 +85,11 @@ func (s *Sim) advance(now time.Time, rng *rand.Rand) []Event {
 		if s.AutoWork && s.goToWork() {
 			continue
 		}
-		// Left idle a while: the Sim lives its life (autopilot.go), from the moment it was left.
-		// Nothing needed just now: an hour idle, and it looks again (night falls, hunger comes).
-		next := to
-		if to-from >= autopilotAfter {
-			if s.live() {
-				continue
-			}
-			next = min(to, from+60)
-		}
-		s.Needs = game.DecayIdle(s.Needs, next-from)
-		s.GameMinutes = next
-		events = append(events, s.settleRange(from, next)...)
+		s.Needs = game.DecayIdle(s.Needs, to-from)
+		s.GameMinutes = to
+		events = append(events, s.settleRange(from, to)...)
 	}
-	return append(events, away.event(s.FirstName, s.GameMinutes)...)
+	return events
 }
 
 // finish ends the current activity: pay, move, promote, surprise.

@@ -20,6 +20,65 @@ func newSim() Sim {
 		Housing: "studio", Money: 10000, Needs: game.FreshNeeds(), GameMinutes: game.MinuteOf(noon), lastTick: noon}
 }
 
+// played: the player there all along until `until` (its app asks every few minutes), the Sim's time going by.
+func played(s *Sim, until time.Time) []Event {
+	at := s.lastTick
+	if at.IsZero() {
+		at = game.TimeOf(s.GameMinutes)
+	}
+	var ev []Event
+	for at = at.Add(4 * time.Minute); at.Before(until); at = at.Add(4 * time.Minute) {
+		ev = append(ev, s.advance(at, noLuck())...)
+	}
+	return append(ev, s.advance(until, noLuck())...)
+}
+
+// The player away all night: the Sim's life waits for it. Its selling stops
+// where it was and goes on once back; its needs and its money are as they
+// were, its age too.
+func TestOnHoldWhileAway(t *testing.T) {
+	s := newSim()
+	s.BornAt = s.GameMinutes - game.MinutesToAge(25)
+	born := s.BornAt
+	sell, _ := game.Kinds["market"].Interaction("sell-goods") // 10 real minutes, earns 4 000F
+	_ = s.start(sell, "yop-marche", "market", "Marché de Siporex", nil, "")
+	s.advance(noon.Add(2*time.Minute), noLuck())
+	money := s.Money
+	ev := s.advance(noon.Add(20*time.Hour), noLuck())
+	if s.Activity == nil || len(ev) != 0 || s.Money != money {
+		t.Fatalf("away, nothing happens: act %+v events %v money %d", s.Activity, ev, s.Money)
+	}
+	if s.GameMinutes != game.MinuteOf(noon.Add(20*time.Hour)) {
+		t.Error("the Sim's clock is the world's when back")
+	}
+	if left := s.Activity.End - s.GameMinutes; left != 3 {
+		t.Errorf("selling: 2 min played, 5 counted after the last word, 3 left; got %d", left)
+	}
+	// As if played only those 5 minutes more.
+	twin := newSim()
+	_ = twin.start(sell, "yop-marche", "market", "Marché de Siporex", nil, "")
+	twin.advance(noon.Add(2*time.Minute), noLuck())
+	twin.advance(noon.Add(7*time.Minute), noLuck())
+	if s.Needs != twin.Needs {
+		t.Errorf("needs as after 5 minutes more: %+v, not %+v", twin.Needs, s.Needs)
+	}
+	if game.AgeAt(s.BornAt, s.GameMinutes) != game.AgeAt(born, game.MinuteOf(noon.Add(7*time.Minute))) {
+		t.Error("a Sim doesn't grow older while nobody plays it")
+	}
+	ev = played(&s, noon.Add(20*time.Hour+4*time.Minute))
+	if s.Activity != nil || s.Money < money+4000 || len(ev) == 0 {
+		t.Fatalf("back, the selling ends and pays: act %+v money %d ev %v", s.Activity, s.Money, ev)
+	}
+	// Idle and away a week: no rent, no fading friends, needs as they were.
+	s = newSim()
+	s.Friends = []game.Friend{{ID: "f1", Name: "Koffi", Friendship: 50, Seen: s.GameMinutes}}
+	needs, money := s.Needs, s.Money
+	ev = s.advance(noon.Add(8*24*time.Hour), noLuck())
+	if len(ev) != 0 || s.Money != money || s.Friends[0].Friendship != 50 || s.Needs.Hunger < needs.Hunger-5 {
+		t.Errorf("a week away: events %v money %d friendship %d needs %+v", ev, s.Money, s.Friends[0].Friendship, s.Needs)
+	}
+}
+
 func TestActivityEndsWhileAway(t *testing.T) {
 	s := newSim()
 	sell, _ := game.Kinds["market"].Interaction("sell-goods") // 4 h (10 real minutes), earns 4 000F
@@ -75,7 +134,7 @@ func TestTaxiArrives(t *testing.T) {
 func TestRentFallsOnTheRealSaturday(t *testing.T) {
 	s := newSim()
 	s.Money = 100000
-	ev := s.advance(noon.Add(4*24*time.Hour), noLuck()) // Wednesday → Sunday
+	ev := played(&s, noon.Add(4*24*time.Hour)) // Wednesday → Sunday, the player there
 	paid := false
 	for _, e := range ev {
 		paid = paid || (e.Kind == "bill" && e.Money == -15000)
