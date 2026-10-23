@@ -67,6 +67,8 @@ type Inh = {
   parent?: DomNode
   /** Right in a scroller: its view's size (a child h-full in it is as tall as the view, not the content). */
   viewport?: { w: number; h: number; horizontal: boolean }
+  /** An item of a grid that stretches its items (CSS's default): as tall as its row. */
+  fillCell?: boolean
 }
 type Page = { y: Animated.Value; content: { current: any }; /** Measured again when the page's height changes (what's above may have moved). */ relayout: Set<() => void> }
 const ROOT: Inh = { text: { color: VARS['--color-ink'], fontKey: 'sans', fontWeight: 400, fontSize: 16, lineHeight: { ratio: 1.5 } }, vars: VARS, scopes: [], parentOwn: [], inText: false, peNone: false }
@@ -551,6 +553,8 @@ function Box(props: any) {
   const vp = inh.viewport
   if (vp && !vp.horizontal && box.height === '100%') box.height = vp.h
   if (vp && vp.horizontal && box.width === '100%') box.width = vp.w
+  // A grid's item fills its cell down to the row's bottom, as CSS stretches it (unless it's sized, aligned or set apart): a damier's empty squares.
+  if (inh.fillCell && box.height === undefined && box.alignSelf === undefined && box.position !== 'absolute') box.flexGrow ??= 1
   const textStyle = rnText(text)
   const pe = a.f.pe === 'none' || (inh.peNone && a.f.pe !== 'auto')
   const sticky = a.f.position === 'sticky' && !!inh.page
@@ -821,6 +825,8 @@ function flowRuns(kids: any[], kinds: Kind[], textStyle: any, ctx: Inh, lines: n
   return out
 }
 
+const placeOfItems = (v?: string) => (v === 'center' ? 'center' : v === 'flex-end' || v === 'end' ? 'flex-end' : 'flex-start')
+
 /** A grid: rows of cells, each column as its track says (1fr, auto, 80px, as many as fit). */
 type GridLayout = { rowGap?: number; columnGap?: number; alignItems?: string; justifyItems?: string }
 function GridRows({ kids, kinds, grid, layout: box, textStyle, ctx }: { kids: any[]; kinds: Kind[]; grid: Grid; layout: GridLayout; textStyle: any; ctx: Inh }) {
@@ -874,6 +880,10 @@ function GridRows({ kids, kinds, grid, layout: box, textStyle, ctx }: { kids: an
     if (fixed) return { width: fixed, flexShrink: 0 }
     return auto ? { flexShrink: 0 } : { flex: 1 }
   }
+  const stretch = !box.alignItems || box.alignItems === 'stretch'
+  // (What the items had, a scroller's included, and that they fill their cells.)
+  const here = useContext(DomCtx)
+  const cellCtx = useMemo(() => ({ ...here, fillCell: true }), [here])
   // The empty cells at the end of a row keep their room (the row's other cells don't stretch into it).
   const pad = (r: typeof row) => {
     const used = r.reduce((s, c) => s + c.span, 0)
@@ -883,15 +893,21 @@ function GridRows({ kids, kinds, grid, layout: box, textStyle, ctx }: { kids: an
     // The rows share what height the grid has beyond their own (CSS's auto tracks stretch): a sized grid's lone row fills it.
     <View style={{ rowGap: box.rowGap, alignSelf: 'stretch', flexGrow: 1 }} onLayout={fill ? (e) => setWidth(e.nativeEvent.layout.width) : undefined}>
       {rows.map((r, i) => (
-        <View key={i} style={{ flexDirection: 'row', columnGap: box.columnGap, alignItems: (box.alignItems ?? 'stretch') as any, flexGrow: 1 }}>
+        // A cell is its row's height (its grid area); the item is aligned in it (items-center: in the middle of the area, as CSS does).
+        <View key={i} style={{ flexDirection: 'row', columnGap: box.columnGap, alignItems: 'stretch', flexGrow: 1 }}>
           {[...r, ...pad(r)].map((c, j) => (
-            <View key={(isValidElement(c.node) && c.node.key) || `p${j}`} style={[cell(c.col, c.span), { alignItems: (box.justifyItems ?? 'stretch') as any }]}>
-              {c.node}
+            <View key={(isValidElement(c.node) && c.node.key) || `p${j}`} style={[cell(c.col, c.span), { alignItems: (box.justifyItems ?? 'stretch') as any, justifyContent: box.alignItems === 'center' ? 'center' : box.alignItems === 'flex-end' ? 'flex-end' : 'flex-start' }]}>
+              {stretch ? <DomCtx.Provider value={cellCtx}>{c.node}</DomCtx.Provider> : c.node}
             </View>
           ))}
         </View>
       ))}
-      {abs}
+      {/* What's set apart without a place of its own sits where the grid puts its items (place-items-center: in the middle), as CSS has it. */}
+      {abs.length > 0 && (
+        <View pointerEvents="box-none" style={[StyleSheet.absoluteFill, { alignItems: placeOfItems(box.justifyItems), justifyContent: placeOfItems(box.alignItems) }]}>
+          {abs}
+        </View>
+      )}
     </View>
   )
 }
