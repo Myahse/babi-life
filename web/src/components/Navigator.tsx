@@ -138,7 +138,7 @@ type Spot = { id: string; kind: string; name: string; door: [number, number] }
  * off (where the map puts them), and, searching, the map's places anywhere
  * in the commune (the server has them all: thousands in Yopougon).
  */
-export function WhereTo({ world, commune, total, onWalk, onClose }: { world: World; commune: string; /** All the commune's places, its own and the map's: the number the map shows too. */ total: number; onWalk: (id: string) => void; onClose: () => void }) {
+export function WhereTo({ world, commune, total, onWalk, onClose }: { world: World; commune: string; /** All the commune's places, its own and the map's: the number the map shows too. */ total: number; /** The place chosen (with where its door is: the GPS at the wheel goes there). */ onWalk: (id: string, spot: Spot) => void; onClose: () => void }) {
   const [, tick] = useState(0)
   useEffect(() => {
     const t = setInterval(() => tick((n) => n + 1), 1000)
@@ -200,7 +200,7 @@ export function WhereTo({ world, commune, total, onWalk, onClose }: { world: Wor
             const kind = world.kinds[p.kind]
             return (
               <li key={p.id}>
-                <button className="tile flex w-full items-center gap-3 p-2.5 text-left" onClick={() => onWalk(p.id)}>
+                <button className="tile flex w-full items-center gap-3 p-2.5 text-left" onClick={() => onWalk(p.id, p)}>
                   <IconTile icon={iconFor(p.kind === 'home' ? 'house' : p.kind === 'plot' ? 'land-plot' : p.kind === 'happening' ? 'sparkles' : (kind?.icon ?? ''))} colors={kindColors(p.kind)} size={40} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-display text-[15px] leading-tight font-extrabold">{p.name}</span>

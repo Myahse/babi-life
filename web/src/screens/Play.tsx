@@ -3,7 +3,7 @@ import { gesture } from '../world3d/gesture'
 import type { Pose } from '../avatar/Human'
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car } from 'lucide-react'
 import { api } from '../lib/api'
 import type { ActionResult, City, Commune, HappeningNow, Interaction, JobTask, JournalEvent, Player, Sim, World, Ride, Place, Plot, StreetRide } from '../lib/types'
 import { useWorld } from '../store/world'
@@ -14,7 +14,7 @@ import { SIM_CHANGED, useLive } from '../lib/live'
 import { WorldMap } from './WorldMap'
 import { Joystick, RunButton, WalkKeys } from '../components/Joystick'
 import { cameraTurn } from '../world3d/input'
-import { distanceTo, whereabouts } from '../world3d/whereabouts'
+import { bearingTo, distanceTo, whereabouts } from '../world3d/whereabouts'
 import { challengeInAddress, useShare } from '../lib/share'
 import { ShareSheet } from '../components/SharedCard'
 import { cutsAround, inCut, type PowerCut } from '../world3d/power'
@@ -77,7 +77,7 @@ import { DefiButton, DefiSheet, defiOf, type DefiKind } from '../components/Defi
 import { BolideApp } from './BolideApp'
 import { Tutorial, beginner, openTutorial, useTutorialAsked } from '../components/Tutorial'
 import { haptic, onBack } from '../lib/native'
-import { drive, startDrive, stopDrive, useDriving, type Driven } from '../world3d/drive'
+import { drive, getIn, gps, parkIn, setParked, startDrive, stopDrive, useDriving, useParked, type Driven } from '../world3d/drive'
 import { FlightView } from '../world3d/FlightView'
 import { aCommune } from '../lib/french'
 
@@ -651,6 +651,8 @@ export function Play() {
   const park = () => {
     const v = driven
     if (!v) return
+    // It stays where it's left, against the kerb (the Walker sets it there), until the Sim gets back in.
+    parkIn.commune = commune.id
     const metres = stopDrive()
     void run(`${v.name} garé`, 'car', 'transport', () => api.garageAct(sim!.id, 'drive', { vehicle: v.id, metres }))
   }
@@ -1124,8 +1126,8 @@ export function Play() {
       </footer>
 
       <Soundtrack track={partyHeard ? 'club' : track} seed={trackSeed} level={partyHeard ? party.level : 1} />
-      {/* Finding the way: the mini-map, and every place of the quarter */}
-      {!showInside && !placeId && !overlay && !players && (
+      {/* Finding the way: the mini-map, and every place of the quarter (at the wheel, the GPS does it) */}
+      {!showInside && !placeId && !overlay && !players && !driven && (
         <div className="pointer-events-none absolute top-[4.5rem] left-3 z-20 flex flex-col items-start gap-2 sm:top-[5.5rem] lg:left-5">
           {/* A smaller map on a phone (scaled: the canvas keeps its sharpness) */}
           <div className="origin-top-left max-sm:-mr-[33px] max-sm:-mb-[33px] max-sm:scale-75 short:-mr-[53px] short:-mb-[53px] short:scale-[0.6]">
@@ -1140,7 +1142,16 @@ export function Play() {
           <PowerCutBadge commune={commune.id} />
         </div>
       )}
-      {whereTo && <WhereTo world={world} commune={commune.id} total={ownPlaces(commune).places.length + (commune.mapCount ?? 0)} onWalk={(id) => (setWhereTo(false), walkTo(id))} onClose={() => setWhereTo(false)} />}
+      {whereTo && (
+        <WhereTo
+          world={world}
+          commune={commune.id}
+          total={ownPlaces(commune).places.length + (commune.mapCount ?? 0)}
+          // At the wheel: the GPS takes the car there (arrows on the road); on foot, the Sim walks.
+          onWalk={(id, spot) => (setWhereTo(false), driven ? void (gps.to = { id, name: spot.name, door: spot.door }, gps.way = null) : walkTo(id))}
+          onClose={() => setWhereTo(false)}
+        />
+      )}
       {freeCam && !placeId && !overlay && (
         <button className="hud motion-pop absolute right-3 bottom-[6.25rem] z-20 flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-extrabold lg:right-5 lg:bottom-[7.5rem]" onClick={() => setRecenter((n) => n + 1)}>
           <LocateFixed size={18} strokeWidth={2.6} className="text-[var(--color-orange)]" /> Revenir à moi
@@ -1309,7 +1320,9 @@ export function Play() {
         />
       )}
       {/* At the wheel: the pedals, the wheel, the speed, and to park */}
-      {driven && <DriveHud driven={driven} onPark={park} />}
+      {driven && <DriveHud driven={driven} onPark={park} onWhere={() => setWhereTo(true)} onParkAt={(id) => (park(), walkTo(id))} />}
+      {/* Its vehicle parked near: get back in */}
+      {!driven && !showInside && !placeId && !overlay && !sim.activity && <GetIn simId={sim.id} commune={commune.id} />}
       {emotesOpen && <EmoteSheet world={world} sim={sim} onClose={() => setEmotesOpen(false)} onResult={apply} />}
       {damesAsk && <DamesStake against={damesAsk.name} max={damesAsk.max} money={sim.money} onClose={() => setDamesAsk(null)} onPick={(stake) => void startDames(damesAsk, stake)} />}
       {huitAsk && <HuitStake against={huitAsk.name} max={huitAsk.max} money={sim.money} onClose={() => setHuitAsk(null)} onPick={(stake) => void startHuit(huitAsk, stake)} />}
@@ -2065,7 +2078,7 @@ function WayLeft() {
  * (◀ ▶) under the left thumb, the pedals (brake, accelerate) under the right; held down. The keys
  * drive too (the arrows, ZQSD), and the pad.
  */
-function DriveHud({ driven, onPark }: { driven: Driven; onPark: () => void }) {
+function DriveHud({ driven, onPark, onWhere, onParkAt }: { driven: Driven; onPark: () => void; /** « Où aller ? »: the places, the GPS taking the car to the one chosen. */ onWhere: () => void; /** Parked before a place, and in. */ onParkAt: (id: string) => void }) {
   const [, tick] = useState(0)
   useEffect(() => {
     // A bump (a wall, a car): felt in the hands.
@@ -2090,6 +2103,12 @@ function DriveHud({ driven, onPark }: { driven: Driven; onPark: () => void }) {
   })
   const kmh = Math.round(Math.abs(drive.speed) * 3.6)
   const bumped = performance.now() - drive.bumped < 600
+  // A place's door by the car (slowing down before Babi Burger…): park there and go in.
+  const near = whereabouts.places.filter((p) => p.kind !== 'happening' && p.kind !== 'plot').map((p) => ({ p, d: distanceTo(p.door) })).filter((x) => x.d < 16).sort((a, b) => a.d - b.d)[0]?.p
+  const to = gps.to
+  const next = to ? gps.next : null
+  const arrived = next?.turn === 'arrive'
+  const there = arrived && to ? to : near
   const round = 'grid touch-none place-items-center rounded-full shadow-[0_5px_0_rgba(0,0,0,0.25)] select-none active:translate-y-1'
   return (
     <>
@@ -2097,10 +2116,41 @@ function DriveHud({ driven, onPark }: { driven: Driven; onPark: () => void }) {
         <span className={`font-display text-[22px] leading-none ${bumped ? 'text-[var(--color-rose)]' : ''}`}>{kmh}</span>
         <span className="text-[11px] text-[var(--color-ink-soft)]">km/h · {metres(drive.metres)}</span>
         <span className="max-w-[110px] truncate text-[12px]">{driven.name}</span>
+        <button className="icon-btn !h-8 !w-8 bg-[var(--color-canvas)]" onClick={onWhere} aria-label="Où aller ?">
+          <Navigation size={16} strokeWidth={2.6} className="text-[var(--color-orange)]" />
+        </button>
         <button className="btn !bg-[var(--color-orange)] !px-3 !py-1.5 !text-xs" onClick={onPark}>
           Garer
         </button>
       </div>
+      {/* The GPS: the next turn, and where to */}
+      {to && (
+        <div className="hud absolute top-[7.9rem] left-1/2 z-30 flex w-[min(360px,calc(100vw-24px))] -translate-x-1/2 items-center gap-3 rounded-[20px] py-2 pr-2 pl-3">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#ffd43b] text-[#16161c]">
+            {!next && gps.lost ? <ArrowUp size={28} strokeWidth={3} style={{ transform: `rotate(${bearingTo(to.door)}rad)` }} /> : arrived ? <MapPin size={26} strokeWidth={2.8} /> : next?.turn === 'left' ? <CornerUpLeft size={28} strokeWidth={3} /> : next?.turn === 'right' ? <CornerUpRight size={28} strokeWidth={3} /> : next?.turn === 'uturn' ? <Undo2 size={26} strokeWidth={3} /> : <ArrowUp size={28} strokeWidth={3} />}
+          </span>
+          <span className="min-w-0 flex-1 leading-tight">
+            <span className="block font-display text-[17px] font-extrabold">
+              {!next && gps.lost ? `Hors des rues : ${metres(gps.lost)}, par là` : !next ? 'Je cherche le chemin…' : arrived ? 'Tu es arrivé·e' : next.turn === 'uturn' ? 'Fais demi-tour' : next.turn === 'straight' ? `Tout droit, ${metres(next.in)}` : `À ${next.turn === 'left' ? 'gauche' : 'droite'} dans ${metres(Math.max(10, Math.round(next.in / 10) * 10))}`}
+            </span>
+            <span className="block truncate text-xs font-bold text-[var(--color-ink-soft)]">
+              {to.name}
+              {next && !arrived ? ` · ${metres(gps.left)}` : ''}
+            </span>
+          </span>
+          <button className="icon-btn !h-8 !w-8 bg-[var(--color-canvas)]" onClick={() => ((gps.to = null), (gps.way = null), (gps.next = null))} aria-label="Arrêter le GPS">
+            <X size={16} strokeWidth={2.6} />
+          </button>
+        </div>
+      )}
+      {/* At a place's door: park and go in */}
+      {there && Math.abs(drive.speed) < 9 && (
+        <div className="absolute inset-x-0 bottom-[calc(13.2rem+env(safe-area-inset-bottom))] z-30 flex justify-center px-3">
+          <button className="btn animate-pop max-w-full !px-4 !py-2.5 !text-sm" onClick={() => onParkAt(there.id)}>
+            <Car size={17} strokeWidth={2.6} /> <span className="truncate">Garer devant {there.name}</span>
+          </button>
+        </div>
+      )}
       <div className="absolute inset-x-0 bottom-[calc(6.5rem+env(safe-area-inset-bottom))] z-30 flex items-end justify-between px-4">
         <div className="flex gap-2">
           {([-1, 1] as const).map((d) => (
@@ -2119,6 +2169,32 @@ function DriveHud({ driven, onPark }: { driven: Driven; onPark: () => void }) {
         </div>
       </div>
     </>
+  )
+}
+
+/** Its vehicle parked a few steps away (drive.ts parked): « Monter », and off from where it stands. */
+function GetIn({ simId, commune }: { simId: string; commune: string }) {
+  const parked = useParked()
+  const [near, setNear] = useState(false)
+  useEffect(() => {
+    if (!parked || parked.sim !== simId || parked.commune !== commune) return setNear(false)
+    const t = setInterval(() => setNear(distanceTo([parked.x, parked.z]) < 5), 400)
+    return () => clearInterval(t)
+  }, [parked, simId, commune])
+  if (!parked || !near) return null
+  return (
+    <div className="absolute inset-x-0 bottom-[calc(7.4rem+env(safe-area-inset-bottom))] z-30 flex justify-center px-3">
+      <button
+        className="btn animate-pop max-w-full !px-4 !py-2.5 !text-sm"
+        onClick={() => {
+          getIn.at = { x: parked.x, z: parked.z, h: parked.h }
+          setParked(null)
+          startDrive(parked.v)
+        }}
+      >
+        <Car size={17} strokeWidth={2.6} /> <span className="truncate">Monter dans {parked.v.name}</span>
+      </button>
+    </div>
   )
 }
 

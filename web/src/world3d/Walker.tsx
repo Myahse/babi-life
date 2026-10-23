@@ -22,7 +22,7 @@ import { usePhotoMode } from './photoCam'
 import { stopEmote, useEmote } from './emoteNow'
 import { Swimmer } from './Swimmer'
 import { Bicycle, Vehicle, type CarModel } from './vehicles'
-import { HANDLING, drive, driving, useDriving } from './drive'
+import { HANDLING, drive, driving, getIn, gps, nextTurn, onWay, parkIn, setParked, useDriving } from './drive'
 import { report } from './open/trafficFlow'
 import { motoTaken, offerMoto, RIDES, type Taken } from './moto'
 import { tripRide } from './open/tripRide'
@@ -89,6 +89,8 @@ export type WalkNav = {
   route: (a: XZ, b: XZ, door: boolean) => XZ[] | null
   /** A vehicle's way from a to b: by the streets it can take (not the footpaths between the houses, nor the tracks over the plots). */
   drive?: (a: XZ, b: XZ) => XZ[] | null
+  /** A car's way to a place: to the kerb by its door that's the shortest drive. */
+  driveTo?: (a: XZ, door: XZ) => XZ[] | null
   /** Keep the camera over the playable area. */
   bounds?: { x0: number; x1: number; z0: number; z1: number }
   /** Where the Sim starts when it isn't busy anywhere and has no home here. */
@@ -396,6 +398,29 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
    * with the bits from the Sim to the street and from the street to b found
    * the same way round.
    */
+  // The GPS's way (drive.ts gps): from the car to the place, by the streets a car takes; worked
+  // out again when the car strays from it (not more than once in a while: it's an A* over the town).
+  const guided = useRef(0)
+  const guide = (x: number, z: number, h: number) => {
+    const to = gps.to!
+    const now = performance.now()
+    const off = gps.way ? onWay(gps.way, x, z).d : Infinity
+    if (off > 18 && now - guided.current > (gps.lost ? 5000 : 1500)) {
+      guided.current = now
+      gps.way = nav.driveTo?.([x, z], to.door) ?? nav.drive?.([x, z], to.door) ?? nav.route([x, z], to.door, true)
+    }
+    if (!gps.way || gps.way.length < 2) {
+      // No way by the streets: the place as the crow flies (the HUD points to it); there all the same once close.
+      const d = Math.hypot(to.door[0] - x, to.door[1] - z)
+      gps.lost = d
+      gps.next = d < 18 ? { turn: 'arrive', in: d } : null
+      return
+    }
+    gps.lost = 0
+    const n = nextTurn(gps.way, x, z, h)
+    gps.left = n.left
+    gps.next = n.next
+  }
   const findWay = (a: XZ, b: XZ, door: boolean): XZ[] | null => {
     if (Math.hypot(b[0] - a[0], b[1] - a[1]) < NEAR_WALK) {
       const near = gridWay(a, b, roomFixed)
@@ -493,7 +518,14 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     // Driving one's own vehicle (drive.ts): the pedals and the wheel (or the keys, the pad) drive it,
     // the way it faces; into a wall, a stall, the water or a car, it bumps back.
     const dv = driving()
-    if (dv && setOff.current !== dv) {
+    if (dv && setOff.current !== dv && getIn.at) {
+      // Back in the vehicle left parked: off from where it stands.
+      setOff.current = dv
+      g.position.x = getIn.at.x
+      g.position.z = getIn.at.z
+      g.rotation.y = getIn.at.h
+      getIn.at = null
+    } else if (dv && setOff.current !== dv) {
       // Getting on: the vehicle on the nearest street, along it the way the Sim faced, on its right-hand side.
       setOff.current = dv
       const st = nav.street?.([g.position.x, g.position.z])
@@ -505,7 +537,31 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         g.rotation.y = h
       }
     }
-    if (!dv) setOff.current = null
+    if (!dv && setOff.current) {
+      // Parked: the vehicle pulled in against the kerb where it stopped, the Sim out of it on the sidewalk.
+      const v = setOff.current
+      setOff.current = null
+      const h = g.rotation.y
+      let [x, z] = [g.position.x, g.position.z]
+      const st = nav.street?.([x, z])
+      if (st && Math.hypot(st.at[0] - x, st.at[1] - z) < 30) {
+        // Its right-hand side of the street (the way it faces), close to the edge.
+        const sd = Math.cos(st.dir - h) >= 0 ? 1 : -1
+        const along = st.dir + (sd < 0 ? Math.PI : 0)
+        const edge = Math.max(0, st.width / 2 - HANDLING[v.kind].width - 0.15)
+        ;[x, z] = [st.at[0] - Math.cos(along) * edge, st.at[1] + Math.sin(along) * edge]
+      }
+      if (parkIn.commune) setParked({ sim: sim.id, v, x, z, h, commune: parkIn.commune })
+      parkIn.commune = null
+      // Out on the kerb side.
+      const out = HANDLING[v.kind].width + 0.8
+      const [sx, sz] = [x - Math.cos(h) * out, z + Math.sin(h) * out]
+      if (nav.walkable(sx, sz) && !blockedFixed(sx, sz, 0.2)) [g.position.x, g.position.z] = [sx, sz]
+      else [g.position.x, g.position.z] = [x, z]
+      gps.to = null
+      gps.way = null
+      gps.next = null
+    }
     if (dv) {
       if (path.current.length) {
         path.current = []
@@ -550,6 +606,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       drive.speed = v
       // The street's traffic waits behind it, as behind any car (open/trafficFlow.tsx).
       report('me', { x: g.position.x, z: g.position.z, h: g.rotation.y, half: hd.half })
+      // The GPS: the way to where it's going, by the streets; again when it strays from it.
+      if (gps.to) guide(g.position.x, g.position.z, g.rotation.y)
     } else report('me', null)
     // The pad (or the keyboard) walks the Sim freely, relative to the camera.
     const input = moveInput()
@@ -1156,6 +1214,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
       {route && <RouteDots route={route} from={group} heightAt={nav.heightAt} />}
+      {/* At the wheel with somewhere to go: the GPS's arrows on the road */}
+      {own && <GpsArrows from={group} heightAt={nav.heightAt} />}
       <group ref={group} visible={!hidden && !aboard}>
         {own ? (
           // One's own vehicle (drive.ts), its nose (+x) the way the Sim faces; in a car, the Sim is inside.
@@ -1242,6 +1302,82 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
 }
 
 /** The way to go, as dots on the ground, and a marker bobbing over where it ends. */
+/** The GPS's arrow on the road (pointing +y, laid flat): a chevron. */
+const CHEVRON = (() => {
+  const sh = new THREE.Shape()
+  sh.moveTo(0, 0.9)
+  sh.lineTo(0.9, -0.2)
+  sh.lineTo(0.55, -0.5)
+  sh.lineTo(0, 0.2)
+  sh.lineTo(-0.55, -0.5)
+  sh.lineTo(-0.9, -0.2)
+  sh.closePath()
+  return new THREE.ShapeGeometry(sh)
+})()
+const ARROWS = 16
+
+/**
+ * The GPS on the road (drive.ts gps): yellow chevrons along the way ahead of
+ * the car, every few metres, pointing where to go, lighting up in turn from
+ * the car outwards; at the end, a tall light where the place is.
+ */
+function GpsArrows({ from, heightAt }: { from: React.RefObject<THREE.Group | null>; heightAt?: (x: number, z: number) => number }) {
+  const arrows = useRef<THREE.InstancedMesh>(null)
+  const pin = useRef<THREE.Mesh>(null)
+  const mat = useMemo(() => new THREE.MeshBasicMaterial({ color: '#ffd43b', transparent: true, opacity: 0.9, toneMapped: false, side: THREE.DoubleSide, depthWrite: false }), [])
+  const o = useMemo(() => new THREE.Object3D(), [])
+  const c = useMemo(() => new THREE.Color(), [])
+  useFrame(() => {
+    const m = arrows.current
+    const g = from.current
+    if (!m || !g) return
+    const way = gps.to ? gps.way : null
+    let n = 0
+    if (way && way.length > 1) {
+      const at = onWay(way, g.position.x, g.position.z)
+      const t = performance.now() / 1000
+      // From 6 m ahead of the car, every 6 m along the way.
+      let want = at.from + 6
+      let run = 0
+      for (let i = 1; i < way.length && n < ARROWS; i++) {
+        const [ax, az] = way[i - 1]
+        const [bx, bz] = way[i]
+        const len = Math.hypot(bx - ax, bz - az)
+        while (want <= run + len && n < ARROWS) {
+          const k = (want - run) / len
+          const [x, z] = [ax + (bx - ax) * k, az + (bz - az) * k]
+          o.position.set(x, (heightAt?.(x, z) ?? 0) + 0.14, z)
+          o.rotation.set(-Math.PI / 2, Math.atan2(bx - ax, bz - az) + Math.PI, 0, 'YXZ')
+          o.scale.setScalar(1.1)
+          o.updateMatrix()
+          m.setMatrixAt(n, o.matrix)
+          // A wave of light running ahead, the way to go.
+          m.setColorAt(n, c.set('#ffd43b').multiplyScalar(0.55 + 0.45 * Math.max(0, Math.sin(t * 5 - n * 0.7))))
+          n++
+          want += 6
+        }
+        run += len
+      }
+    }
+    m.count = n
+    m.instanceMatrix.needsUpdate = true
+    if (m.instanceColor) m.instanceColor.needsUpdate = true
+    if (pin.current) {
+      pin.current.visible = !!gps.to
+      if (gps.to) pin.current.position.set(gps.to.door[0], (heightAt?.(gps.to.door[0], gps.to.door[1]) ?? 0) + 5, gps.to.door[1])
+    }
+  })
+  return (
+    <>
+      <instancedMesh ref={arrows} args={[CHEVRON, mat, ARROWS]} frustumCulled={false} renderOrder={2} />
+      <mesh ref={pin} visible={false}>
+        <cylinderGeometry args={[0.45, 0.45, 10, 12, 1, true]} />
+        <meshBasicMaterial color="#ffd43b" transparent opacity={0.35} toneMapped={false} depthWrite={false} side={THREE.DoubleSide} />
+      </mesh>
+    </>
+  )
+}
+
 function RouteDots({ route, from, heightAt }: { route: XZ[]; from: React.RefObject<THREE.Group | null>; heightAt?: (x: number, z: number) => number }) {
   const MAX = 400
   const dots = useRef<THREE.InstancedMesh>(null)
