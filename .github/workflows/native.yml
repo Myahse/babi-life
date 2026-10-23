@@ -1,0 +1,58 @@
+# The new Android app (native/: the game's own code drawn by React Native), built on every
+# change to it or to the game, the APK kept as the run's artifact (Actions → this run →
+# « babi-life-native-apk »). Signed with the same release key as the old app (mobile.yml),
+# so it can replace it on the phones and Google sign-in knows it.
+name: Native app
+
+on:
+  push:
+    paths: ['native/**', 'web/src/**', '.github/workflows/native.yml']
+  workflow_dispatch:
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: native
+    env:
+      # The API, and the Google sign-in's web client (repository variable; none: no Google sign-in).
+      EXPO_PUBLIC_API_URL: https://babi-life-jnvy.onrender.com/api/v1
+      EXPO_PUBLIC_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
+      EXPO_PUBLIC_COMMIT_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: native/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: npm ci
+      # The game bundles for the phone (a missing twin or package shows here, before Gradle).
+      - run: npx expo export --platform android --output-dir /tmp/bundle-check
+      - run: npx expo prebuild --platform android --no-install
+      - run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a,armeabi-v7a --no-daemon
+        working-directory: native/android
+      # The release key, from the repository's secrets (ANDROID_KEYSTORE: the .jks in base64,
+      # ANDROID_KEY_PASSWORD); without them the APK keeps the build's own key (fine to try, not to publish).
+      - name: Sign
+        working-directory: native/android/app/build/outputs/apk/release
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+          PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE" ]; then mv app-release.apk babi-life-native.apk; exit 0; fi
+          echo "$KEYSTORE" | base64 -d > /tmp/babi-life.jks
+          TOOLS=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$TOOLS/zipalign" -f -p 4 app-release.apk aligned.apk
+          "$TOOLS/apksigner" sign --ks /tmp/babi-life.jks --ks-key-alias babi-life --ks-pass env:PASSWORD --key-pass env:PASSWORD --out babi-life-native.apk aligned.apk
+          rm -f /tmp/babi-life.jks aligned.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: babi-life-native-apk
+          path: native/android/app/build/outputs/apk/release/babi-life-native.apk
+          retention-days: 30
