@@ -3,7 +3,7 @@ import { ArrowRight, Car, Clock3, Crown, Gem, Hand, MessageCircle, Minus, PiggyB
 import type { Commune, Ride, RideApp, RideClass, StreetRide, World } from '../lib/types'
 import { amount, clock, tollOf, withToll } from '../game/rules'
 import { routeIn } from '../game/roads'
-import { classFare, inkOn, rideLook } from '../game/rides'
+import { classFare, inkOn, motoQuote, rideLook } from '../game/rides'
 import { AppLogo } from './AppLogo'
 import { DriverCall, newCall, type Call } from './DriverCall'
 import { aCommune, deCommune } from '../lib/french'
@@ -57,8 +57,9 @@ const CAR_COLORS = ['#f1f3f5', '#212529', '#adb5bd', '#c92a2a', '#1c7ed6', '#868
 /**
  * Waiting by the road. Vehicles go by at random: a woro-woro (four seats,
  * maybe already full, going somewhere that may not be your way), a taxi
- * compteur (stops only if it's empty, then takes your group), and traffic you
- * can't hail. Wave, ask, get in.
+ * compteur (stops only if it's empty, then takes your group), a gbaka, a
+ * moto-taxi (one behind the driver), and cars you can't hail. Whichever was
+ * chosen comes by more often, but any of them can be waved at. Wave, ask, get in.
  */
 function Roadside({ world, req, gameMinutes, onBoard, onClose }: { world: World; req: FlowRequest; gameMinutes: number; onBoard: (ride: Ride, label: string) => void; onClose: () => void }) {
   const { from, to } = req
@@ -107,7 +108,7 @@ function Roadside({ world, req, gameMinutes, onBoard, onClose }: { world: World;
       ['compteur', 0.26 * more('compteur')],
       ['gbaka', (night(hour) ? 0.04 : 0.12) * (want === 'gbaka' ? 4 : 1)],
       ['car', 0.16],
-      ['moto', 0.05],
+      ['moto', night(hour) ? 0.04 : 0.1],
     ])
     const busy = rush(hour)
     const taken =
@@ -121,7 +122,11 @@ function Roadside({ world, req, gameMinutes, onBoard, onClose }: { world: World;
             ? chance(busy ? 0.25 : 0.1)
               ? GBAKA_SEATS
               : 6 + Math.floor(Math.random() * 10)
-            : 1
+            : kind === 'moto'
+              ? chance(0.35)
+                ? 1
+                : 0
+              : 1
     const color = kind === 'woro' ? from.woro!.color! : kind === 'compteur' ? (world.compteur?.color ?? '#ff7a00') : kind === 'gbaka' ? '#f4c430' : kind === 'moto' ? '#c92a2a' : pick(CAR_COLORS)
     setCar({ id: nextId.current++, kind, color, trim: kind === 'woro' ? from.woro?.trim : kind === 'gbaka' ? '#00a862' : undefined, taken, dest: chance(0.42) ? to.id : pick(communes).id, refuses: chance(0.12), born: Date.now() })
     setWaved(false)
@@ -141,9 +146,9 @@ function Roadside({ world, req, gameMinutes, onBoard, onClose }: { world: World;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pos > 1.15])
 
-  const free = car ? (car.kind === 'gbaka' ? GBAKA_SEATS : 4) - car.taken : 0
-  // Waved at: the one chosen (or, without a choice, a woro-woro or a taxi compteur).
-  const mine = (k: Kind) => (want ? k === want : k === 'woro' || k === 'compteur')
+  const free = car ? (car.kind === 'gbaka' ? GBAKA_SEATS : car.kind === 'moto' ? 1 : 4) - car.taken : 0
+  // Waved at: anything that takes passengers (the one chosen only comes by more often), not the cars going about their business.
+  const mine = (k: Kind) => k !== 'car'
   const hailable = !!car && !stopped && !waved && mine(car.kind) && pos > 0.03 && pos < STOP_AT
   const destName = (id: string) => communes.find((c) => c.id === id)?.name ?? to.name
 
@@ -161,6 +166,8 @@ function Roadside({ world, req, gameMinutes, onBoard, onClose }: { world: World;
     if (car.kind === 'woro' && free < party) return later(500, () => say({ who: 'info', text: `Il ne reste que ${free} place${free > 1 ? 's' : ''}, vous êtes ${party}. Il passe.` }))
     if (car.kind === 'compteur' && car.taken > 0) return later(500, () => say({ who: 'info', text: 'Occupé : il y a déjà un client, il ne s\'arrête pas.' }))
     if (car.kind === 'gbaka' && free < party) return later(500, () => say({ who: 'info', text: 'Le gbaka est plein à craquer, il ne s\'arrête même pas.' }))
+    if (car.kind === 'moto' && car.taken > 0) return later(500, () => say({ who: 'info', text: 'Il a déjà un client derrière, il passe.' }))
+    if (car.kind === 'moto' && party > 1) return later(500, () => say({ who: 'info', text: `Une moto, c'est une seule personne derrière : vous êtes ${party}. Il passe.` }))
     // It stops: say where you're going, the driver says yes or no.
     const c = car
     setStopped({ at: Date.now(), yes: null })
@@ -174,12 +181,16 @@ function Roadside({ world, req, gameMinutes, onBoard, onClose }: { world: World;
             ? `« ${to.name} ! ${to.name} ! » Monte, on se serre !`
             : c.kind === 'woro'
               ? `${to.name}, oui ! Monte, ${free - party > 0 ? `il reste de la place derrière` : 'on part'}.`
-              : `${to.name} ? Ok, monte.`
+              : c.kind === 'moto'
+                ? `${to.name} ? Monte derrière, tiens-toi bien.`
+                : `${to.name} ? Ok, monte.`
           : c.kind === 'gbaka'
             ? `Non, nous on va ${aCommune(destName(c.dest))} ! ${destName(c.dest)} ! ${destName(c.dest)} !`
             : c.kind === 'woro'
               ? `Non, moi je vais ${aCommune(destName(c.dest))}.`
-              : `Non, ${to.name} c'est trop loin avec les bouchons.`,
+              : c.kind === 'moto'
+                ? `Non, ${to.name} je ne connais pas bien là-bas.`
+                : `Non, ${to.name} c'est trop loin avec les bouchons.`,
       })
       setStopped({ at: Date.now(), yes })
       if (!yes) later(1400, () => leave(c))
@@ -188,6 +199,8 @@ function Roadside({ world, req, gameMinutes, onBoard, onClose }: { world: World;
 
   const board = () => {
     if (!car) return
+    // The moto-taxi is the server's own ride (one passenger), the others the roadside's.
+    if (car.kind === 'moto') return onBoard({ app: 'moto' }, `En moto-taxi vers ${to.name}`)
     const app = car.kind as StreetRide
     onBoard({ app, party }, `${app === 'woro' ? 'En woro-woro' : app === 'gbaka' ? 'En gbaka' : 'En taxi compteur'} vers ${to.name}`)
   }
@@ -196,7 +209,8 @@ function Roadside({ world, req, gameMinutes, onBoard, onClose }: { world: World;
   const woroFare = req.fare * party
   const gbakaFare = gbakaSeat(req.fare) * party
   const meterFare = estimateMeter(req.fare, toll)
-  const fareOf = (k?: Kind) => (k === 'woro' ? woroFare : k === 'gbaka' ? gbakaFare : meterFare)
+  const motoFare = motoQuote({ minutes: 0, fare: req.fare, toll }).fare
+  const fareOf = (k?: Kind) => (k === 'woro' ? woroFare : k === 'gbaka' ? gbakaFare : k === 'moto' ? motoFare : meterFare)
   const label = !car
     ? 'La route est calme…'
     : car.kind === 'woro'
@@ -206,7 +220,7 @@ function Roadside({ world, req, gameMinutes, onBoard, onClose }: { world: World;
         : car.kind === 'gbaka'
           ? `Gbaka · ${free <= 0 ? 'plein' : 'on se serre'}`
           : car.kind === 'moto'
-            ? 'Moto'
+            ? `Moto-taxi · ${car.taken ? 'un client derrière' : 'libre'}`
             : 'Voiture'
 
   return (
@@ -288,6 +302,7 @@ function VehicleSide({ kind, color, trim, taken }: { kind: Kind; color: string; 
         <circle cx="44" cy="31" r="7" fill="#1d1d24" />
         <path d="M12 31 L24 18 L38 18 L44 31" stroke={color} strokeWidth="6" fill="none" strokeLinecap="round" />
         <circle cx="30" cy="8" r="6" fill="#6b4a32" />
+        {taken > 0 && <circle cx="21" cy="10" r="5.5" fill="#8a5a3b" />}
       </svg>
     )
   }
