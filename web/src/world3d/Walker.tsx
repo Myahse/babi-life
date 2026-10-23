@@ -133,7 +133,7 @@ type Props = {
   /** Inside a place (doing something there): not drawn in the street. */
   hidden?: boolean
   /** Joined in what's happening in the street: its spot there (world frame), what it faces, its pose. */
-  joinRole?: { at: XZ; face: XZ; pose: Pose } | null
+  joinRole?: { at: XZ; face: XZ; pose: Pose; /** On the move with the scene (the wedding cortège): its place in it at a time, and the way it goes. */ move?: (t: number) => { at: XZ; heading: number } } | null
 }
 
 /** The player's Sim: walks to places, with the pad or by tapping the ground; the camera follows. */
@@ -667,8 +667,9 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       g.position.set(onRoof.current.door[0], 0, onRoof.current.door[1])
       onRoof.current = null
     }
-    // (Round a stadium's track, the far side is well away from its door; on a roof, the middle may be.)
-    const away = station && !laps.current && !roof ? Math.hypot(g.position.x - station.door[0], g.position.z - station.door[1]) : 0
+    // (Round a stadium's track, the far side is well away from its door; on a roof, the middle may be; with
+    // the cortège, the end of the street.)
+    const away = station && !laps.current && !roof && !(joining && joinRole?.move) ? Math.hypot(g.position.x - station.door[0], g.position.z - station.door[1]) : 0
     if (station && away < 15) reached.current = true
     if (station && onLeave && reached.current && !left.current && away > LEAVE) {
       left.current = true
@@ -795,6 +796,25 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         g.rotation.y = worldFacing(f, side > 0 ? -Math.PI / 2 : Math.PI / 2)
         const mo = matchFor(fieldLot.id, f).moment(worldTime())
         pose = mo.kind === 'goal' || mo.kind === 'dunk' ? 'cheer' : 'sit'
+      }
+      if (pose !== matchPose) setMatchPose(pose)
+    } else if (joining && joinRole!.move && !path.current.length && !padWalking.current && !padAway.current) {
+      // Dancing with the cortège: its place in the family's ranks, as it goes up the street and back.
+      // Behind (just joined, or it turned): a run to catch it up.
+      const m = joinRole!.move(worldTime())
+      const [dx, dz] = [m.at[0] - g.position.x, m.at[1] - g.position.z]
+      const d = Math.hypot(dx, dz)
+      let pose: Pose = joinRole!.pose
+      if (d > 1) {
+        const step = Math.min(d, RUN * Math.min(dt, 0.25))
+        g.position.x += (dx / d) * step
+        g.position.z += (dz / d) * step
+        g.rotation.y = Math.atan2(dx, dz)
+        pose = 'run'
+      } else {
+        g.position.x = m.at[0]
+        g.position.z = m.at[1]
+        g.rotation.y = turnTo(g.rotation.y, m.heading, 1 - Math.exp(-6 * Math.min(dt, 0.25)))
       }
       if (pose !== matchPose) setMatchPose(pose)
     } else if (joining && !path.current.length && !padWalking.current && !padAway.current) {

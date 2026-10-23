@@ -840,7 +840,12 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     if (!r || !spot) return null
     const [c, s] = [Math.cos(spot.roadAngle), Math.sin(spot.roadAngle)]
     const world = ([x, z]: XZ): XZ => [spot.door[0] + (x - HAPPENING_X) * c - z * s, spot.door[1] + (x - HAPPENING_X) * s + z * c]
-    return { at: world(r.at), face: world(r.face), pose: r.pose }
+    // On the move with the scene (the cortège): where the Sim's place in it is now, in the street's frame.
+    const move = r.moving && ((t: number) => {
+      const p = r.moving!(t)
+      return { at: world([p.x, p.z]), heading: p.h - spot.roadAngle }
+    })
+    return { at: world(r.at), face: world(r.face), pose: r.pose, move: move || undefined }
   }, [happening, spot, jam])
 
   // For the mini-map and the « Où aller ? » list.
