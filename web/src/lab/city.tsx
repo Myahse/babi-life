@@ -1,3 +1,4 @@
+import { setSceneActions } from '../world3d/sceneActions'
 import { useMemo } from 'react'
 import { createRoot } from 'react-dom/client'
 import '../index.css'
@@ -615,6 +616,12 @@ function Lab() {
   if (view === 'mosquee') return <MosqueM6Inside sim={{ id: 'lab', firstName: 'Awa', gender: 'homme', look: randomLook('homme', seededLab(5)), gameMinutes: Number(q.get('m') ?? 0) } as unknown as Sim} interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" />
   if (view === 'pyramide') return <PyramideInside sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)), gameMinutes: Number(q.get('m') ?? 600) } as unknown as Sim} interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" />
   // ?view=aeroport&act=voir-avions: the FHB's terminal, the Sim doing that (else walking about).
+  // &pins: the things to do over their spots (SpotActions), as Play sends them; &pins=clear takes them away after 5 s.
+  if (view === 'aeroport' && q.has('pins')) {
+    const colors: [string, string] = ['#74c0fc', '#1d4ed8']
+    setSceneActions(['voir-avions', 'cafe-aeroport', 'resto-aeroport', 'boutique-aeroport', 'accueillir-arrivees', 'salle-attente'].map((id) => ({ id, label: id, icon: 'plane', colors, note: '3 min' })), (id) => console.log('pick', id))
+    if (q.get('pins') === 'clear') setTimeout(() => setSceneActions([], () => undefined), 5000)
+  }
   if (view === 'aeroport') return <AirportInside sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)), gameMinutes: Number(q.get('m') ?? 610) } as unknown as Sim} name="Aéroport Félix-Houphouët-Boigny" flights={['Yamoussoukro', 'Bouaké', 'San-Pédro', 'Korhogo', 'Man', 'Daloa'].map((toName) => ({ toName }))} interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" />
   // ?view=plage&id=bassam-plage&act=swim: on the beach, the Sim doing that (else walking about).
   if (view === 'plage') return <BeachScene sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)), gameMinutes: 610 } as unknown as Sim} placeId={q.get('id') ?? 'pb-plage'} interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" />

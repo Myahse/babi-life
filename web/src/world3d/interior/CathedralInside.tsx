@@ -1,3 +1,4 @@
+import { SpotActions } from '../SpotActions'
 import { Suspense, useMemo } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
@@ -10,7 +11,7 @@ import { rng } from '../themes'
 import { Snapper } from '../snapshot'
 import { ChatFraming } from '../chatFraming'
 import { Character } from '../Character'
-import { Guest, mat, sign, useBigWalk, type Spot, type XZ } from './bigPlace'
+import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere } from './bigPlace'
 import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
 import { Cathedral, NAVE, TOWER, WINDOWS, naveHalf, roofAt, towerPoint, vitrail, windowAt } from '../open/cathedral'
@@ -266,6 +267,8 @@ function Nave({ sim, interactionId, roam, night, stage, mass }: { sim: Sim; inte
         <Suspense fallback={null}>
           <NaveWorld night={night} mass={mass} onFloor={roam && !interactionId ? tap : undefined} />
           <Guest sim={sim} stage={stage} way={way} spot={spot} steer={!!roam && !interactionId} onMoved={onMoved} free={free} entrance={ENTRANCE} ground={ground} />
+          {/* What's done here, over where it's done (SpotActions): tap one, the Sim goes */}
+          <SpotActions shown={!!roam && !interactionId} where={spotWhere(SPOTS)} entrance={[ENTRANCE[0], 0, ENTRANCE[1]]} />
           <OrbitControls makeDefault target={[0, -3, NAVE.F - 16]} enablePan={false} minDistance={6} maxDistance={95} minPolarAngle={0.25} maxPolarAngle={1.3} enableDamping />
         </Suspense>
       </Canvas>

@@ -1,3 +1,4 @@
+import { SpotActions } from '../SpotActions'
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
@@ -330,6 +331,8 @@ function Lobby({ sim, placeId, roam, night, stage }: { sim: Sim; placeId: string
             ))}
           </NoShadows>
           <Guest sim={sim} stage={stage} way={way} spot={null} steer={!!roam} onMoved={onMoved} free={freeLobby} entrance={ENTRANCE} />
+          {/* What's done here, over where it's done (SpotActions): tap one, the Sim goes */}
+          <SpotActions shown={!!roam} where={() => [COUNTER[0], 0, COUNTER[1] + 1.6]} entrance={[ENTRANCE[0], 0, ENTRANCE[1]]} />
           <OrbitControls makeDefault target={[0, 0, 0]} enablePan={false} minDistance={6} maxDistance={50} minPolarAngle={0.25} maxPolarAngle={1.3} enableDamping />
         </Suspense>
       </Canvas>

@@ -1,3 +1,4 @@
+import { SpotActions } from './SpotActions'
 import { useGesture } from './gesture'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Snapper } from './snapshot'
@@ -1140,6 +1141,8 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
         {arrived && interactionId === 'watch-tv' && kind === 'home' && <TvScreen />}
         {arrived && interactionId === 'cook-attieke' && kind === 'home' && <Pot />}
         {arrived && me.lying && /^(sleep|nap|nuit-hotel)$/.test(interactionId ?? '') && <Zzz at={[me.p[0], me.p[1] + 0.6, me.p[2] - 0.6]} />}
+        {/* What's done here, over where it's done (SpotActions): tap one, the Sim goes */}
+        <SpotActions shown={!!roam && !interactionId} where={(id) => r.spots[(byFaith ? worshipAction(r, id) : action(kind, id)).spot]?.p ?? null} entrance={r.spots.entrance?.p ?? [0, 0, ROOM.D / 2 - 1]} />
         {/* Turn around the room and zoom, within the cut-away side */}
         <OrbitControls makeDefault target={kind === 'club' ? CLUB_TARGET : [0, 0.8, 0]} enablePan={false} minDistance={interactionId ? 2.6 : 7} maxDistance={24} minPolarAngle={0.35} maxPolarAngle={1.25} minAzimuthAngle={0.15} maxAzimuthAngle={1.4} enableDamping />
         {/* Doing something: the camera comes close to see it */}
