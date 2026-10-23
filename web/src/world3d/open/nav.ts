@@ -133,6 +133,29 @@ export class Nav {
     return best && best.dist <= radius ? best : null
   }
 
+  /** Every street within `radius` of a point (at least `minWidth` wide): the nearest point of each, the nearest first. */
+  near(p: XZ, radius: number, minWidth = 0): { at: XZ; edge: number; t: number; dist: number }[] {
+    const out: { at: XZ; edge: number; t: number; dist: number }[] = []
+    const seen = new Set<number>()
+    const [cx, cz] = [Math.floor(p[0] / CELL), Math.floor(p[1] / CELL)]
+    const r = Math.ceil(radius / CELL)
+    for (let dx = -r; dx <= r; dx++)
+      for (let dz = -r; dz <= r; dz++)
+        for (const e of this.edgeGrid.get(`${cx + dx},${cz + dz}`) ?? []) {
+          if (seen.has(e) || this.edges[e].width < minWidth) continue
+          seen.add(e)
+          const { a, b } = this.edges[e]
+          const [ax, az] = this.nodes[a]
+          const [bx, bz] = this.nodes[b]
+          const l2 = (bx - ax) ** 2 + (bz - az) ** 2
+          const t = l2 ? Math.max(0, Math.min(1, ((p[0] - ax) * (bx - ax) + (p[1] - az) * (bz - az)) / l2)) : 0
+          const at: XZ = [ax + (bx - ax) * t, az + (bz - az) * t]
+          const dist = Math.hypot(at[0] - p[0], at[1] - p[1])
+          if (dist <= radius) out.push({ at, edge: e, t, dist })
+        }
+    return out.sort((x, y) => x.dist - y.dist)
+  }
+
   /** How high the ground is here: up on a bridge's deck, else 0. */
   heightAt(x: number, z: number) {
     const n = this.nearest([x, z], 14)

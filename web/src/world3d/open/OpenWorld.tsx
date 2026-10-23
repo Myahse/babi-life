@@ -35,6 +35,8 @@ import { ChatFraming } from '../chatFraming'
 import { CHUNK_ZOOM, hash, tileBox, tileOf, toLatLng, toLocal, type Origin, type XZ } from './geo'
 import { Nav } from './nav'
 import { along, anchorNode, DRIVABLE, round, routeLength, turnTo, useCellsAround, type Round } from './shared'
+import { ParkedVehicle } from './parkedVehicle'
+import { useParked } from '../drive'
 import { blockedAhead, lightsOf, queueOf, redAhead, report, stopForPapers, TrafficLights, waiting, type Light } from './trafficFlow'
 import { inTheWay, resolvePlaces, spaceFields, type PlaceSpot, type Resolved } from './places'
 import { SportField } from './field'
@@ -1000,6 +1002,25 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       walkable: (x, z) => nav.walkable(x, z),
       route: (a, b) => nav.path(a, b),
       drive: (a, b) => nav.path(a, b, DRIVABLE),
+      // To a place by car: to the kerb nearest its door, or a little further along another street
+      // when that one is the shorter drive (the nearest street may be behind its block).
+      driveTo: (a, door) => {
+        const len = (w: XZ[]) => w.reduce((s, q, i) => (i ? s + Math.hypot(q[0] - w[i - 1][0], q[1] - w[i - 1][1]) : 0), 0)
+        let best: { way: XZ[]; cost: number } | null = null
+        const seen = new Set<string>()
+        for (const c of nav.near(door, 45, DRIVABLE)) {
+          const k = `${Math.round(c.at[0] / 8)},${Math.round(c.at[1] / 8)}`
+          if (seen.has(k)) continue
+          seen.add(k)
+          const way = nav.path(a, c.at, DRIVABLE)
+          if (way) {
+            const cost = len(way) + c.dist * 4
+            if (!best || cost < best.cost) best = { way, cost }
+          }
+          if (seen.size >= 5) break
+        }
+        return best?.way ?? nav.path(a, door, DRIVABLE)
+      },
       heightAt: (x, z) => nav.heightAt(x, z),
       roofAt: (x, z) => nav.roofAt(x, z),
       street: (p) => {
@@ -1025,6 +1046,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const labels = shownLabels && !high
 
   const stopsTraffic = !!happening && STOPS_TRAFFIC.has(happening.id)
+  const parked = useParked()
   const raining = happening?.id === 'pluie'
   // Power cuts (world3d/power.ts): the zones round the Sim cut now, and the happening's « Délestage »
   // street's zone with them. Their windows go dark, their lamps out; the Sim in one, the night darker.
@@ -1185,6 +1207,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       )}
 
       {nav.nodes.length > 0 && !stopsTraffic && <RoadTraffic nav={nav} focus={focus} seed={commune.id} woro={commune.woro} />}
+      {/* The Sim's own vehicle, where it was left parked */}
+      {parked && parked.sim === sim.id && parked.commune === commune.id && <ParkedVehicle p={parked} y={nav.heightAt(parked.x, parked.z)} />}
       <Boats water={nearWater} focus={focus} />
       {nav.nodes.length > 0 && <StreetLights nav={nav} night={night} dark={dark} />}
       {/* What the street does, joined with a tap once close (joinIn.tsx) */}
