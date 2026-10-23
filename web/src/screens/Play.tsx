@@ -1682,7 +1682,10 @@ function usePlaceActions(world: World, sim: Sim, city: City, commune: Commune, p
 
 function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose, onPick, onTravel, onStop, onBuild }: MenuProps) {
   const navigate = useNavigate()
-  const { place, kind, life, roomHere, items, busy, here, agenda, on, state } = usePlaceActions(world, sim, city, commune, placeId)!
+  const pa = usePlaceActions(world, sim, city, commune, placeId)
+  // (A place of the map the street hasn't loaded yet, or not any more: the Sim went far.)
+  if (!pa) return null
+  const { place, kind, life, roomHere, items, busy, here, agenda, on, state } = pa
   const colors = kindColors(place.kind)
   const canBuild = placeId === 'home' && here && !!world.materials?.length
   // Building is on one's own lot, bought from 18.
