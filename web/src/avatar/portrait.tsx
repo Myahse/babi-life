@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useState } from 'react'
-import { advance, createRoot, extend, useThree, type ReconcilerRoot } from '@react-three/fiber'
+import { advance, createRoot, extend, useThree, type ReconcilerRoot, type RootState } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { Look, Sim } from '../lib/types'
 import { Human } from './Human'
@@ -24,8 +24,12 @@ const cache = new Map<string, Promise<string>>()
 
 const frame = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)))
 
+/** The pictures' own scene, advanced by itself: the page's other scenes (the street, a video) draw on their own, and one may not have its context yet. */
+let studio: RootState | null = null
+
 function Studio({ look, gender, framing, onReady }: { look: Look; gender: Sim['gender']; framing: Framing; onReady: () => void }) {
   const camera = useThree((s) => s.camera)
+  studio = useThree()
   const f = FRAMES[framing]
   const h = look.height ?? 1
   useLayoutEffect(() => {
@@ -67,7 +71,7 @@ async function render(look: Look, gender: Sim['gender'], framing: Framing) {
     root!.render(<Studio look={look} gender={gender} framing={framing} onReady={() => (clearTimeout(timeout), done())} />)
   })
   await frame()
-  advance(performance.now(), true)
+  if (studio) advance(performance.now(), true, studio)
   return canvas.toDataURL('image/png')
 }
 
