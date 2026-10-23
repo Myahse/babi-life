@@ -717,7 +717,8 @@ export function Play() {
 
   // Playing basketball or football (on a court, a pitch, or with the quarter's match): the player plays the match, once per activity.
   const ballAct = sim?.activity?.kind === 'do' ? sim.activity : null
-  const ballSport = !ballAct ? null : ballAct.interaction.id === 'play-basket' || (ballAct.placeId === 'happening' && ballAct.interaction.id === 'join' && street?.happening?.id === 'basket') ? 'basket' : ballAct.interaction.id === 'play-football' || (ballAct.placeId === 'happening' && ballAct.interaction.id === 'join' && street?.happening?.id === 'foot') ? 'foot' : null
+  // (The same on every court: the game's, the quartier's match, the street's pitch and court, the kids' game in the street.)
+  const ballSport = !ballAct ? null : ballAct.interaction.id === 'play-basket' || ballAct.interaction.id === 'street-basket' || (ballAct.placeId === 'happening' && ballAct.interaction.id === 'join' && street?.happening?.id === 'basket') ? 'basket' : ballAct.interaction.id === 'play-football' || ballAct.interaction.id === 'street-foot' || (ballAct.placeId === 'happening' && ballAct.interaction.id === 'join' && street?.happening?.id === 'foot') ? 'foot' : null
   const ballKey = ballAct && ballSport ? `${ballSport}:${ballAct.placeId}:${ballAct.start}` : null
   const [played, setPlayed] = useState<string | null>(null)
   // Left the match before its end (the activity goes on): back onto the pitch; at a court, into the court's match again.
@@ -727,7 +728,8 @@ export function Play() {
     setPlayed(null)
   }
   // At a court (not the quarter's street match): the match with the other players there.
-  const courtKey = ballKey && ballAct!.placeId !== 'happening' && ballKey !== played ? ballKey : null
+  // (A street game has no place: played with the street's players, as the quartier's match.)
+  const courtKey = ballKey && ballAct!.placeId && ballAct!.placeId !== 'happening' && ballKey !== played ? ballKey : null
   const [court, setCourt] = useState<{ key: string; online: { token: string; simId: string; match: CourtMatch } | null } | null>(null)
   const joining = useRef<string | null>(null)
   useEffect(() => {
