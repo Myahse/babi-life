@@ -161,7 +161,19 @@ export function ContactShadows({ scale = 10, frames = Infinity, opacity = 1, wid
   }, [resolution, w, h, color])
   useEffect(() => () => (parts.target.dispose(), parts.targetBlur.dispose(), parts.plane.dispose(), parts.depth.dispose(), parts.hBlur.dispose(), parts.vBlur.dispose()), [parts])
 
-  const draw = (s: THREE.Object3D, c: THREE.Camera) => THREE.WebGLRenderer.prototype.render.call(gl, s, c)
+  // Drawn off screen, into the shadow's targets: not a frame of the screen. r3f's phone side ends a
+  // frame after every render (expo-gl's endFrameEXP): held back for these. (three's render is the
+  // renderer's own, not its prototype's: the prototype has none.)
+  const draw = (s: THREE.Object3D, c: THREE.Camera) => {
+    const ctx = gl.getContext() as WebGLRenderingContext & { endFrameEXP?: () => void }
+    const end = ctx.endFrameEXP
+    if (end) ctx.endFrameEXP = () => undefined
+    try {
+      gl.render(s, c)
+    } finally {
+      if (end) ctx.endFrameEXP = end
+    }
+  }
   const blurOnce = (amount: number) => {
     const { blurPlane, hBlur, vBlur, target, targetBlur } = parts
     blurPlane.visible = true
