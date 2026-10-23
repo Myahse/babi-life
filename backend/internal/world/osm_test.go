@@ -33,6 +33,12 @@ func TestMapPlacesYopougon(t *testing.T) {
 			t.Fatalf("%s (%s) duplicates a hand-made place", p.Name, p.ID)
 		}
 	}
+	// Nor when its point is approximate (Grand-Bassam's museum and mairie were listed twice).
+	for _, p := range mapPlaces["bassam-france"] {
+		if n := strings.ToLower(p.Name); strings.Contains(n, "costume") || n == "mairie de grand-bassam" {
+			t.Fatalf("%s (%s) duplicates a hand-made place", p.Name, p.ID)
+		}
+	}
 	if got := SearchMapPlaces("yopougon", "pharmacie", 5); len(got) == 0 {
 		t.Fatal("searching « pharmacie » finds nothing")
 	}
