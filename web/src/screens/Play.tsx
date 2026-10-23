@@ -27,6 +27,7 @@ import { Portrait } from '../avatar/portrait'
 import { Neighbourhood } from '../world3d/Neighbourhood'
 import { OpenWorld } from '../world3d/open/OpenWorld'
 import { GROUNDS, LANDMARKS, OPEN_AIR } from '../world3d/open/landmarks'
+import { rooftopFor } from '../world3d/open/rooftops'
 import { iconFor, kindColors } from '../components/icons'
 import { Chip, Coin, DayNight, IconTile, MotiveRing, MoodPin, Row, needColor } from '../components/ui'
 import { EPOCH, NEEDS, km, actionLength, ageBlock, amount, fcfa, atHome, blockedBy, homeLacks, housingOf, lifeOf, minutesToAge, clock, duration, mood, openAt, openingLabel, predict, shift, trip } from '../game/rules'
@@ -779,6 +780,8 @@ export function Play() {
       // In a home booked on Dodo: a home's inside, what's done in it as at home.
       if (doing.placeId === 'logement') return { id: 'logement', kind: 'home', it: DODO_AT_HOME[doing.interaction.id] ?? 'watch-tv' }
       if (!doing.placeId || OPEN_AIR.has(doing.placeId)) return null
+      // Up on a landmark's roof (La Pyramide's): in the street, the city all round (Walker, open/rooftops.ts).
+      if (!classic && rooftopFor(doing.placeId, doing.interaction.id)) return null
       if (doing.placeId === BOULAY && doing.interaction.id.endsWith('-boulay')) return { id: doing.placeId, kind: 'boulay', it: doing.interaction.id }
       const kind = doing.placeId === 'home' ? 'home' : ARENAS.has(doing.placeId) ? 'arena' : (doing.placeKind ?? '')
       return INDOOR.has(kind) || SCENES.has(kind) || kind === 'arena' ? { id: doing.placeId, kind, it: doing.interaction.id } : null

@@ -204,6 +204,7 @@ export function Pyramide({ night }: { night: boolean }) {
     return facade(floorsTexture('#2d3f52', '#2d3f52', '#b8ad98', 1, 10))
   }, [])
   const green = useMemo(() => new THREE.MeshLambertMaterial({ color: '#4f8a3a' }), [])
+  const rail = useMemo(() => new THREE.MeshLambertMaterial({ color: '#9aa0a8' }), [])
   glass.emissiveIntensity = night ? 0.55 : 0
   const STOREY = 3.9
   const HOLE = 7
@@ -247,6 +248,25 @@ export function Pyramide({ night }: { night: boolean }) {
       <mesh position={[0, 15 * STOREY + 0.5, 0]} material={concrete} castShadow>
         <boxGeometry args={[10, 1, 10]} />
       </mesh>
+      {/* The rail round the crown, for those who come up to look at the city (rooftops.ts) */}
+      {[-1, 1].flatMap((s) => [
+        <mesh key={`x${s}`} position={[0, 15 * STOREY + 2, s * 4.9]} material={rail}>
+          <boxGeometry args={[9.8, 0.08, 0.08]} />
+        </mesh>,
+        <mesh key={`z${s}`} position={[s * 4.9, 15 * STOREY + 2, 0]} material={rail}>
+          <boxGeometry args={[0.08, 0.08, 9.8]} />
+        </mesh>,
+      ])}
+      {[-4.9, 0, 4.9].flatMap((x) =>
+        [-4.9, 4.9].flatMap((z) => [
+          <mesh key={`a${x}${z}`} position={[x, 15 * STOREY + 1.5, z]} material={rail}>
+            <boxGeometry args={[0.07, 1, 0.07]} />
+          </mesh>,
+          <mesh key={`b${x}${z}`} position={[z, 15 * STOREY + 1.5, x]} material={rail}>
+            <boxGeometry args={[0.07, 1, 0.07]} />
+          </mesh>,
+        ]),
+      )}
       <mesh position={[0, 15 * STOREY + 2.5, 0]} material={concrete}>
         <cylinderGeometry args={[0.25, 0.4, 4, 6]} />
       </mesh>
