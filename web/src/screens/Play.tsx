@@ -217,6 +217,10 @@ export function Play() {
   const [flow, setFlow] = useState<FlowRequest | null>(null)
   // Looking at the street rather than inside the place the Sim is in.
   const [outside, setOutside] = useState(false)
+  // The place an action was picked in: still on screen while it's asked for (no flash of the
+  // street before the Sim is seen at it), and open again once it's done, for another thing there
+  // (Sortir is what leaves).
+  const [backTo, setBackTo] = useState<string | null>(null)
   // A Golvo order on its way, and the phone app to open.
   // Kept on the device: the phone dropping the tab (or a reload) mid-delivery no longer loses the order.
   const [delivery, setDelivery] = useState<Delivery | null>(() => {
@@ -359,6 +363,16 @@ export function Play() {
       .catch(() => undefined)
       .finally(() => (settling.current = false))
   }, [ended]) // eslint-disable-line react-hooks/exhaustive-deps
+  // The action picked in a place done (its time up, stopped, or over at once): back in that place, if
+  // the Sim is still there (not walked off, not gone elsewhere), its menu or its room to pick another.
+  const doingAt = sim?.activity?.kind === 'do' ? (sim.activity.placeId ?? null) : null
+  useEffect(() => {
+    if (!backTo || pending || doingAt) return
+    const was = backTo
+    setBackTo(null)
+    const door = whereabouts.places.find((p) => p.id === was)?.door
+    if (was === 'home' || !door || Math.hypot(door[0] - whereabouts.sim[0], door[1] - whereabouts.sim[1]) < (LANDMARKS[was] ?? 0) + 25) setPlaceId(was)
+  }, [backTo, pending, doingAt]) // eslint-disable-line react-hooks/exhaustive-deps
   // And every few minutes anyway: Saturdays, a long nap, another tab.
   useEffect(() => {
     if (!base) return
@@ -525,6 +539,7 @@ export function Play() {
     const id = placeId!
     setPlaceId(null)
     setOutside(false)
+    setBackTo(id)
     // Already doing something at the zoo (or the hotel's grounds): it gives way to the new thing.
     const there = sim!.activity?.kind === 'do' && sim!.activity.placeId === id && GROUNDS.has(id)
     run(it.label, it.icon, kind, async () => {
@@ -708,10 +723,12 @@ export function Play() {
       const kind = doing.placeId === 'home' ? 'home' : ARENAS.has(doing.placeId) ? 'arena' : (doing.placeKind ?? '')
       return INDOOR.has(kind) || kind === 'arena' ? { id: doing.placeId, kind, it: doing.interaction.id } : null
     }
-    if (placeId && placeId !== 'happening' && !OPEN_AIR.has(placeId)) {
+    // (An action just picked, or just done: still in the place it was picked in.)
+    const at = placeId ?? backTo
+    if (at && at !== 'happening' && !OPEN_AIR.has(at)) {
       // A covered hall (the Palais des Sports) has its own inside.
-      const kind = placeId === 'home' ? 'home' : ARENAS.has(placeId) ? 'arena' : commune.places.find((p) => p.id === placeId)?.kind
-      return kind && (INDOOR.has(kind) || kind === 'arena') ? { id: placeId, kind, it: undefined } : null
+      const kind = at === 'home' ? 'home' : ARENAS.has(at) ? 'arena' : commune.places.find((p) => p.id === at)?.kind
+      return kind && (INDOOR.has(kind) || kind === 'arena') ? { id: at, kind, it: undefined } : null
     }
     return null
   })()
@@ -1115,7 +1132,8 @@ export function Play() {
 
       {players && <PlayersSheet sim={sim} around={around} communeName={commune.name} focus={players.focus} act={run} onClose={() => setPlayers(null)} />}
 
-      {sim.activity && !placeId && !defi && <ActivityBar world={world} onDefi={defiNow ? () => (defiNow === 'ski' && setOutside(false), setDefi(defiNow)) : undefined} onRejoin={ballKey && played === ballKey ? { sport: ballSport!, go: rejoin } : undefined} sim={sim} onStop={stop} stopping={!!pending} onRoute={() => setOverlay('map')} onMore={onGrounds ? () => (setPlaceId(doing!.placeId!), setMenuOpen(true)) : undefined} />}
+      {/* (Its time up, the bar goes at once: the server is settling it, nothing left to follow.) */}
+      {sim.activity && !ended && !placeId && !defi && <ActivityBar world={world} onDefi={defiNow ? () => (defiNow === 'ski' && setOutside(false), setDefi(defiNow)) : undefined} onRejoin={ballKey && played === ballKey ? { sport: ballSport!, go: rejoin } : undefined} sim={sim} onStop={stop} stopping={!!pending} onRoute={() => setOverlay('map')} onMore={onGrounds ? () => (setPlaceId(doing!.placeId!), setMenuOpen(true)) : undefined} />}
 
       {/* The invitation and the toasts in one column under the top bar: they stack, never on top of each other */}
       <div className="pointer-events-none absolute top-[5.5rem] left-1/2 z-40 flex w-[min(400px,calc(100vw-24px))] -translate-x-1/2 flex-col gap-2 lg:top-24">

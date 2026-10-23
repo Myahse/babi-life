@@ -32,8 +32,6 @@ type XZ = [number, number]
 
 const SPEED = 1.9 // metres per second: a brisk walk
 const RUN = 4.6 // running: a real run, nothing like a car
-/** Further than this, the Sim runs there by itself. */
-const RUN_FROM = 90
 /** Further than this, a moto-taxi is offered (world3d/moto.ts): paid, the Sim rides there behind the driver. */
 const RIDE_FROM = 220
 /** Busy doing these, the Sim goes up and down a way by the place: a stroll, a hike, laps of the stadium. (The zoo: the player walks it freely.) */
@@ -147,6 +145,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   }, [walking, busy])
   const speed = useRef(SPEED)
   const [run, setRun] = useState(false)
+  // Running by itself, Courir or not: only the jog onto the street's pitch (going somewhere walks, unless the player runs).
   const autoRun = useRef(false)
   // Far away: on the back of a moto-taxi.
   const riding = useRef(false)
@@ -159,11 +158,11 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   // A trip booked (open/tripRide.tsx): waving the driver down at the kerb, then in the car, not drawn.
   const [hailing, setHailing] = useState(false)
   const [aboard, setAboard] = useState(false)
-  /** How the Sim goes a way this long: walking, or running; a long way, a moto-taxi is offered (it rides once paid, in the frame loop). */
+  /** How the Sim goes a way this long: walking, or running if the player runs (Courir, Shift); a long way, a moto-taxi is offered (it rides once paid, in the frame loop). */
   const setPace = (far: number) => {
     riding.current = false
-    autoRun.current = far > RUN_FROM
-    speed.current = autoRun.current ? RUN : SPEED
+    autoRun.current = false
+    speed.current = running() ? RUN : SPEED
     setRide(null)
     offerMoto(far > RIDE_FROM ? Math.round(far) : null)
   }
@@ -624,6 +623,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
           path.current = way ? way.slice(1) : [start]
           target.current = null
           speed.current = RUN
+          autoRun.current = true
           setRoute([...path.current])
           setWalking(true)
         } else loop.current = { x, z, fx: pitch.dir[0], fz: pitch.dir[1], len: Math.max(2, pitch.half * 2 - (off > 1 ? 0 : off)), t0: worldTime() }
@@ -853,7 +853,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     const drop = takeDrop()
     if (drop) walkToPoint(drop.x, drop.z, true)
     const nowRunning = !riding.current && ((padWalking.current && running()) || (path.current.length > 0 && (autoRun.current || running())))
-    if (path.current.length && !riding.current && running() && speed.current < RUN) speed.current = RUN
+    // Courir on or off on the way: the pace follows (a jog onto the pitch runs by itself).
+    if (path.current.length && !riding.current) speed.current = autoRun.current || running() ? RUN : SPEED
     if (nowRunning !== run) setRun(nowRunning)
     // For the mini-map: where the Sim is, which way the camera looks.
     whereabouts.sim = [g.position.x, g.position.z]
