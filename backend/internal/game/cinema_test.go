@@ -1,6 +1,9 @@
 package game
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestCinemaProgram(t *testing.T) {
 	for id, c := range Cinemas {
@@ -28,6 +31,36 @@ func TestCinemaProgram(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+func TestCineClub(t *testing.T) {
+	// Cap Sud's ciné-club shows only real films, each of them some day; the others none.
+	seen := map[string]bool{}
+	for day := int64(0); day < 7; day++ {
+		for _, s := range Program(KineoCapSud, day) {
+			f, _ := FindFilm(s.Film)
+			salle, _ := FindSalle(KineoCapSud, s.Salle)
+			if salle.Club != (f.Video != "") {
+				t.Fatalf("salle %d (club %v) shows %s (video %q)", s.Salle, salle.Club, f.Title, f.Video)
+			}
+			if salle.Club {
+				seen[f.ID] = true
+			}
+		}
+	}
+	if len(seen) != len(CineClub) {
+		t.Errorf("%d of the %d ciné-club films shown in a week", len(seen), len(CineClub))
+	}
+	for _, f := range CineClub {
+		if f.Video == "" || f.Credit == "" || f.Minutes < 1 || !strings.HasPrefix(f.File, "https://archive.org/download/") {
+			t.Errorf("%s: a real film needs its video, its file, its credit and its length", f.ID)
+		}
+	}
+	// In late till the film's (nearly) over: never after a short one has ended.
+	short, _ := FindFilm("cc-coffee-run")
+	if LateFor(short, 20) >= int64(short.Minutes) || LateFor(Films[0], 20) != 20 {
+		t.Errorf("late: %d for a %d-minute film, %d for a feature", LateFor(short, 20), short.Minutes, LateFor(Films[0], 20))
 	}
 }
 

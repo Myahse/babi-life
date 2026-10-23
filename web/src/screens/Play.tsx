@@ -45,6 +45,7 @@ import { ARENAS, Arena } from '../world3d/interior/Arena'
 import { AppLogo } from '../components/AppLogo'
 import { TesterTools } from '../components/TesterTools'
 import { GolvoApp, deliveryState, type Delivery } from './GolvoApp'
+import { FilmButton, FilmPlayer } from './FilmPlayer'
 import { GbairaiApp } from './GbairaiApp'
 import { TikitokoApp } from './TikitokoApp'
 import { BabigramApp } from './BabigramApp'
@@ -200,6 +201,8 @@ export function Play() {
   const [placeId, setPlaceId] = useState<string | null>(null)
   // Inside a place, the Sim walks about first; the actions open when asked for.
   const [menuOpen, setMenuOpen] = useState(false)
+  // The ciné-club's film open on the screen (screens/FilmPlayer.tsx).
+  const [watching, setWatching] = useState(false)
   // The « Émotes » sheet.
   const [emotesOpen, setEmotesOpen] = useState(false)
   useEffect(() => {
@@ -415,6 +418,11 @@ export function Play() {
       // (Idem.)
     }
   }, [sim?.id, inHome]) // eslint-disable-line react-hooks/exhaustive-deps
+  // The séance over (or left): the film's screen with it.
+  const filmOn = sim?.activity?.kind === 'do' ? (sim.activity.seance?.video ?? null) : null
+  useEffect(() => {
+    if (!filmOn) setWatching(false)
+  }, [filmOn])
   // And every few minutes anyway: Saturdays, a long nap, another tab.
   useEffect(() => {
     if (!base) return
@@ -1195,7 +1203,9 @@ export function Play() {
       {players && <PlayersSheet sim={sim} around={around} communeName={commune.name} focus={players.focus} act={run} onClose={() => setPlayers(null)} />}
 
       {/* (Its time up, the bar goes at once: the server is settling it, nothing left to follow.) */}
-      {sim.activity && !ended && !placeId && !defi && <ActivityBar world={world} onTask={sim.activity.kind === 'do' && sim.activity.career && sim.activity.career === sim.career ? (t) => api.jobTask(sim.id, t.id).then((res) => (apply(res), gesture(t.pose as Pose), res.outcome)) : undefined} onDefi={defiNow ? () => (defiNow === 'ski' && setOutside(false), setDefi(defiNow)) : undefined} onRejoin={ballKey && played === ballKey ? { sport: ballSport!, go: rejoin } : undefined} sim={sim} onStop={stop} stopping={!!pending} onRoute={() => setOverlay('map')} onMore={onGrounds ? () => (setPlaceId(doing!.placeId!), setMenuOpen(true)) : undefined} />}
+      {sim.activity && !ended && !placeId && !defi && <ActivityBar world={world} onTask={sim.activity.kind === 'do' && sim.activity.career && sim.activity.career === sim.career ? (t) => api.jobTask(sim.id, t.id).then((res) => (apply(res), gesture(t.pose as Pose), res.outcome)) : undefined} onDefi={defiNow ? () => (defiNow === 'ski' && setOutside(false), setDefi(defiNow)) : undefined} onRejoin={ballKey && played === ballKey ? { sport: ballSport!, go: rejoin } : undefined} sim={sim} onStop={stop} stopping={!!pending} onRoute={() => setOverlay('map')} onMore={onGrounds ? () => (setPlaceId(doing!.placeId!), setMenuOpen(true)) : undefined} onFilm={() => setWatching(true)} />}
+      {/* The ciné-club's film, watched for real (screens/FilmPlayer.tsx). */}
+      {watching && doing?.seance?.video && doing.seance.at !== undefined && <FilmPlayer video={doing.seance.video} at={doing.seance.at} title={doing.seance.title ?? doing.interaction.label} credit={doing.seance.credit} file={doing.seance.file} onClose={() => setWatching(false)} />}
 
       {/* The invitation and the toasts in one column under the top bar: they stack, never on top of each other */}
       <div className="pointer-events-none absolute top-[5.5rem] left-1/2 z-40 flex w-[min(400px,calc(100vw-24px))] -translate-x-1/2 flex-col gap-2 lg:top-24">
@@ -2113,7 +2123,7 @@ function DropRouteAsk({ from, moto }: { from: string; moto: boolean }) {
 }
 
 /** What the Sim is busy with, on real time: progress, time left, and a way to stop. */
-function ActivityBar({ world, sim, onStop, stopping, onRoute, onMore, onRejoin, onDefi, onTask }: { world: World; sim: Sim; onStop: () => void; stopping: boolean; onRoute: () => void; /** At the zoo: the other things to do there. */ onMore?: () => void; /** A match left before its end: back onto the pitch. */ onRejoin?: { sport: 'foot' | 'basket'; go: () => void }; /** The activity taken on as a défi. */ onDefi?: () => void; /** At work: one of the job's tasks (backend sims/jobs.go). */ onTask?: (t: JobTask) => Promise<ActionResult['outcome']> }) {
+function ActivityBar({ world, sim, onStop, stopping, onRoute, onMore, onRejoin, onDefi, onTask, onFilm }: { world: World; sim: Sim; onStop: () => void; stopping: boolean; onRoute: () => void; /** At the ciné-club: the real film, to watch. */ onFilm?: () => void; /** At the zoo: the other things to do there. */ onMore?: () => void; /** A match left before its end: back onto the pitch. */ onRejoin?: { sport: 'foot' | 'basket'; go: () => void }; /** The activity taken on as a défi. */ onDefi?: () => void; /** At work: one of the job's tasks (backend sims/jobs.go). */ onTask?: (t: JobTask) => Promise<ActionResult['outcome']> }) {
   const a = sim.activity!
   const span = Math.max(1, a.end - a.start)
   const done = Math.min(1, Math.max(0, (sim.gameMinutes - a.start) / span))
@@ -2152,6 +2162,7 @@ function ActivityBar({ world, sim, onStop, stopping, onRoute, onMore, onRejoin, 
         )}
       </div>
       {onTask && <JobTasks world={world} sim={sim} onTask={onTask} />}
+      {onFilm && a.seance?.video && a.seance.at !== undefined && <FilmButton at={a.seance.at} onWatch={onFilm} />}
       {onDefi && defiOf(a.interaction.id) && <DefiButton kind={defiOf(a.interaction.id)!} onClick={onDefi} />}
       {onRejoin && (
         <button className="btn animate-pop mt-2 w-full !py-2.5" onClick={onRejoin.go}>
