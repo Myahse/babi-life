@@ -145,6 +145,10 @@ export const api = {
     post<ActionResult>(`/sims/${id}/interact`, { placeId, interactionId }),
   travel: (id: string, city: string, commune: string, ride?: Ride) => post<ActionResult>(`/sims/${id}/travel`, { city, commune, ...ride }),
   career: (id: string, career: string) => post<ActionResult>(`/sims/${id}/career`, { career }),
+  /** One of the job's tasks, during the shift (backend sims/jobs.go). */
+  jobTask: (id: string, task: string) => post<ActionResult>(`/sims/${id}/job-task`, { task }),
+  /** Going to work by oneself as the shift's hours come. */
+  autoWork: (id: string, on: boolean) => request<{ autoWork: boolean }>(`/sims/${id}/auto-work`, { method: 'PUT', body: JSON.stringify({ on }) }),
   move: (id: string, housing: string, where?: LotWhere) => post<ActionResult>(`/sims/${id}/move`, { housing, ...where }),
   repay: (id: string, what: 'loan' | 'rent', amount: number) => post<ActionResult>(`/sims/${id}/repay`, { what, amount }),
   /** The wish list; with a Sim, it is born there (the family is drawn by the server). */

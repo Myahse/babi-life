@@ -6,6 +6,7 @@ import {
   PartyPopper, PiggyBank, ShoppingBasket, ShowerHead, Smartphone, Sparkles, Store, Sunset, TreePalm, Trophy, Tv, Users,
   Volleyball, Waves, Baby, Bird, BookOpen, BrushCleaning, Cake, CarTaxiFront, Drama, Drum, FileText, Flag, Flower2, Gift, GraduationCap, Hammer,
   Hospital, Library, Presentation, Shovel, Stamp, Stethoscope, Utensils, ShoppingBag, ShoppingCart, Shirt, IceCreamCone, Hamburger, CupSoda, Scissors, Hotel, Hand, Send, Fuel, Bike, Dumbbell, PawPrint, UserPlus, Snowflake, Clapperboard, Popcorn, Plane, Dice5, Toilet, Toothbrush, Sailboat, HardHat, Citrus, Croissant, Droplet, Grid3x3, type LucideIcon,
+  Mail, PenLine, Receipt, Megaphone, Coins, HeartPulse, Syringe, ScanLine, Calculator, ConciergeBell, Luggage, Handshake, Gavel, Pill, ClipboardList,
 } from 'lucide-react'
 
 // Icon names sent by the API (backend/internal/game) → components.
@@ -32,6 +33,9 @@ const REGISTRY: Record<string, LucideIcon> = {
   'ice-cream-cone': IceCreamCone, hamburger: Hamburger, 'cup-soda': CupSoda,
   scissors: Scissors, hotel: Hotel, hand: Hand, send: Send, fuel: Fuel, bike: Bike, dumbbell: Dumbbell, 'paw-print': PawPrint, 'hard-hat': HardHat,
   citrus: Citrus, croissant: Croissant, droplet: Droplet, 'grid-3x3': Grid3x3,
+  // At work (backend game/jobs.go).
+  mail: Mail, 'pen-line': PenLine, receipt: Receipt, megaphone: Megaphone, coins: Coins, 'heart-pulse': HeartPulse, syringe: Syringe, 'scan-line': ScanLine,
+  calculator: Calculator, 'concierge-bell': ConciergeBell, luggage: Luggage, handshake: Handshake, gavel: Gavel, pill: Pill, 'clipboard-list': ClipboardList,
 }
 
 export const iconFor = (name: string): LucideIcon => REGISTRY[name] ?? Sparkles

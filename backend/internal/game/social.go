@@ -120,4 +120,4 @@ func CoupOutcome(record int, rng *rand.Rand) (money int, caught bool) {
 }
 
 // CleanRecordCareers: jobs closed to Sims with a police record.
-var CleanRecordCareers = []string{"bureau", "mairie", "enseignement", "sante"}
+var CleanRecordCareers = []string{"bureau", "mairie", "enseignement", "sante", "droit", "police", "pharmacie", "aerien"}

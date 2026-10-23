@@ -73,6 +73,8 @@ type Activity struct {
 	Seance *Seance `json:"seance,omitempty"`
 	// Defi: the défi taken on during it (sims/defi.go), its score (1–100; 0 not played): once each time.
 	Defi int `json:"defi,omitempty"`
+	// Tasks: at work, the job's tasks done in this shift (game/jobs.go) and when each was last done (game minute).
+	Tasks map[string]int64 `json:"tasks,omitempty"`
 }
 
 // Seance: the film being watched, its screen and the ticket's seats.

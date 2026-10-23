@@ -15,7 +15,7 @@ type AppProps = { world: World; sim: Sim; commune: Commune; act: Act }
 
 /* ---------- Boulot ---------- */
 
-export function JobsApp({ world, sim, commune, act, onWalk, onMap }: AppProps & { onWalk: (id: string) => void; onMap: () => void }) {
+export function JobsApp({ world, sim, commune, act, onWalk, onMap, onAutoWork }: AppProps & { onWalk: (id: string) => void; onMap: () => void; /** The switch: to work by oneself as the hours come. */ onAutoWork: (on: boolean) => Promise<void> }) {
   const city = world.cities.find((c) => c.id === sim.city)!
   const career = world.careers.find((c) => c.id === sim.career)
   const gigs = city.communes.flatMap((cm) =>
@@ -25,7 +25,7 @@ export function JobsApp({ world, sim, commune, act, onWalk, onMap }: AppProps & 
   return (
     <div className="space-y-4">
       {career ? (
-        <CareerCard world={world} sim={sim} commune={commune} act={act} onWalk={onWalk} onMap={onMap} />
+        <CareerCard world={world} sim={sim} commune={commune} act={act} onWalk={onWalk} onMap={onMap} onAutoWork={onAutoWork} />
       ) : (
         <div className="rounded-[22px] bg-[#fff4e8] p-4">
           <div className="font-display text-lg font-extrabold">Tu cherches du travail</div>
@@ -69,7 +69,8 @@ export function JobsApp({ world, sim, commune, act, onWalk, onMap }: AppProps & 
   )
 }
 
-function CareerCard({ world, sim, commune, act, onWalk, onMap }: AppProps & { onWalk: (id: string) => void; onMap: () => void }) {
+function CareerCard({ world, sim, commune, act, onWalk, onMap, onAutoWork }: AppProps & { onWalk: (id: string) => void; onMap: () => void; onAutoWork: (on: boolean) => Promise<void> }) {
+  const [saving, setSaving] = useState(false)
   const c = world.careers.find((x) => x.id === sim.career)!
   const level = c.levels[sim.careerLevel]
   const next = c.levels[sim.careerLevel + 1]
@@ -119,6 +120,28 @@ function CareerCard({ world, sim, commune, act, onWalk, onMap }: AppProps & { on
           </div>
         )}
       </div>
+
+      {/* Going to work by itself: as the shift's hours come, at a workplace of the commune it's in (backend sims/jobs.go). */}
+      <button
+        role="switch"
+        aria-checked={!!sim.autoWork}
+        disabled={saving}
+        onClick={async () => {
+          setSaving(true)
+          await onAutoWork(!sim.autoWork)
+          setSaving(false)
+        }}
+        className="flex w-full items-center gap-3 rounded-[20px] bg-[#fff4e8] p-3 text-left"
+      >
+        <CalendarClock size={22} className="shrink-0 text-[var(--color-orange)]" />
+        <span className="min-w-0 flex-1 leading-tight">
+          <span className="block font-display text-[15px] font-extrabold">Travail automatique</span>
+          <span className="block text-xs font-bold text-[var(--color-ink-soft)]">Va au travail tout·e seul·e dès {hours(c).split('–')[0]}, s'il y a un lieu de travail dans la commune.</span>
+        </span>
+        <span className={`relative h-7 w-12 shrink-0 rounded-full transition ${sim.autoWork ? 'bg-[var(--color-emerald)]' : 'bg-black/20'}`}>
+          <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${sim.autoWork ? 'left-6' : 'left-1'}`} />
+        </span>
+      </button>
 
       <h4 className="label">Où travailler</h4>
       <ul className="motion-stagger space-y-2">

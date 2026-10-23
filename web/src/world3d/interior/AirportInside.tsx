@@ -5,7 +5,7 @@ import * as THREE from 'three'
 import type { Sim } from '../../lib/types'
 import { worldTime } from '../../lib/worldClock'
 import { NoShadows, type Pose } from '../../avatar/Human'
-import { randomLook } from '../../avatar/options'
+import { randomLook, workLook } from '../../avatar/options'
 import { rng } from '../themes'
 import { Snapper } from '../snapshot'
 import { ChatFraming } from '../chatFraming'
@@ -91,6 +91,8 @@ const SPOTS: Record<string, Spot> = {
   'boutique-aeroport': { at: [-16.6, 2], rot: 0, pose: 'walk', loop: { c: [-16.4, 2], r: [0.7, 2.4], speed: 0.12 } },
   // At the barrier, waving to the ones coming out.
   'accueillir-arrivees': { at: [BARRIER_X - 0.7, ARRIVALS_Z + 0.6], rot: Math.PI / 2, pose: 'wave' },
+  // At work: behind the last check-in desk (the others are the colleagues').
+  work: { at: [DESKS[4], DESK_Z - 0.75], rot: 0, pose: 'busy', from: [-6.2, -8.2] },
   // In a seat by the glass, the planes in front.
   'salle-attente': { at: [SEATS[8], SEAT_ROWS[1]], rot: Math.PI, pose: 'sit', y: 0.05, from: [SEATS[8], SEAT_ROWS[1] + 0.95] },
 }
@@ -134,7 +136,7 @@ export function AirportInside({ sim, name, flights, interactionId, roam, night, 
           <Shops />
           <People night={night} />
           <Travellers />
-          <Guest sim={sim} stage={stage} way={way} spot={spot} steer={!!roam && !interactionId} onMoved={onMoved} free={free} entrance={ENTRANCE}>
+          <Guest sim={sim} stage={stage} way={way} spot={spot} steer={!!roam && !interactionId} onMoved={onMoved} free={free} entrance={ENTRANCE} working={interactionId === 'work'} look={interactionId === 'work' ? workLook(sim.look, sim.career ?? '', sim.careerLevel) : undefined}>
             {worn}
           </Guest>
           <OrbitControls makeDefault target={[0, 0, 0]} enablePan={false} minDistance={6} maxDistance={80} minPolarAngle={0.25} maxPolarAngle={1.3} enableDamping />
@@ -631,7 +633,7 @@ function People({ night }: { night: boolean }) {
     const bags = ['#1d4ed8', '#c92a2a', '#2b2f45', '#f08a24', '#5c6773']
     const out: Still[] = [
       // Behind the desks, in the airline's navy; the queue in front, each with a bag.
-      ...DESKS.slice(0, night ? 2 : 5).map((x) => one([x, 0, DESK_Z - 0.75], 0, 'busy', crew)),
+      ...DESKS.slice(0, night ? 2 : 4).map((x) => one([x, 0, DESK_Z - 0.75], 0, 'busy', crew)),
       ...(night ? [] : [-16.6, -15.2, -13.8, -12.3, -10.9, -9.4]).map((x, i) => one([x, 0, -1.8 + (i % 2) * 0.3], Math.PI, i % 3 ? 'idle' : 'phone', undefined, { bag: bags[i % bags.length] })),
       one([DESKS[1] + 0.2, 0, DESK_Z + 0.85], Math.PI, 'talk', undefined, { bag: '#2b2f45' }),
       // In the seats by the glass, looking at the planes or at their phone.

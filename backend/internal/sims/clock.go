@@ -44,6 +44,10 @@ func (s *Sim) advance(now time.Time, rng *rand.Rand) []Event {
 			events = append(events, s.settleRange(from, end)...)
 			continue
 		}
+		// Going to work by itself (the Boulot app's switch, jobs.go): as soon as the shift's hours come.
+		if s.AutoWork && s.goToWork() {
+			continue
+		}
 		// Left idle a while: the Sim lives its life (autopilot.go), from the moment it was left.
 		// Nothing needed just now: an hour idle, and it looks again (night falls, hunger comes).
 		next := to

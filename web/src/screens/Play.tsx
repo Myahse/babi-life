@@ -1,8 +1,10 @@
+import { gesture } from '../world3d/gesture'
+import type { Pose } from '../avatar/Human'
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
-import type { ActionResult, City, Commune, HappeningNow, Interaction, JournalEvent, Player, Sim, World, Ride, Place, Plot, StreetRide } from '../lib/types'
+import type { ActionResult, City, Commune, HappeningNow, Interaction, JobTask, JournalEvent, Player, Sim, World, Ride, Place, Plot, StreetRide } from '../lib/types'
 import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
 import { joinMatch, type CourtMatch } from '../streetball/online'
@@ -1145,7 +1147,7 @@ export function Play() {
       {players && <PlayersSheet sim={sim} around={around} communeName={commune.name} focus={players.focus} act={run} onClose={() => setPlayers(null)} />}
 
       {/* (Its time up, the bar goes at once: the server is settling it, nothing left to follow.) */}
-      {sim.activity && !ended && !placeId && !defi && <ActivityBar world={world} onDefi={defiNow ? () => (defiNow === 'ski' && setOutside(false), setDefi(defiNow)) : undefined} onRejoin={ballKey && played === ballKey ? { sport: ballSport!, go: rejoin } : undefined} sim={sim} onStop={stop} stopping={!!pending} onRoute={() => setOverlay('map')} onMore={onGrounds ? () => (setPlaceId(doing!.placeId!), setMenuOpen(true)) : undefined} />}
+      {sim.activity && !ended && !placeId && !defi && <ActivityBar world={world} onTask={sim.activity.kind === 'do' && sim.activity.career && sim.activity.career === sim.career ? (t) => api.jobTask(sim.id, t.id).then((res) => (apply(res), gesture(t.pose as Pose), res.outcome)) : undefined} onDefi={defiNow ? () => (defiNow === 'ski' && setOutside(false), setDefi(defiNow)) : undefined} onRejoin={ballKey && played === ballKey ? { sport: ballSport!, go: rejoin } : undefined} sim={sim} onStop={stop} stopping={!!pending} onRoute={() => setOverlay('map')} onMore={onGrounds ? () => (setPlaceId(doing!.placeId!), setMenuOpen(true)) : undefined} />}
 
       {/* The invitation and the toasts in one column under the top bar: they stack, never on top of each other */}
       <div className="pointer-events-none absolute top-[5.5rem] left-1/2 z-40 flex w-[min(400px,calc(100vw-24px))] -translate-x-1/2 flex-col gap-2 lg:top-24">
@@ -1196,6 +1198,10 @@ export function Play() {
 
       {overlay === 'phone' && (
         <Phone
+          onAutoWork={async (on) => {
+            const r = await api.autoWork(sim.id, on).catch(() => null)
+            if (r) setBase((b) => (b ? { ...b, sim: { ...b.sim, autoWork: r.autoWork } } : b))
+          }}
           world={world}
           sim={sim}
           commune={ownPlaces(commune)}
@@ -1322,6 +1328,8 @@ type PhoneProps = {
   world: World
   sim: Sim
   commune: Commune
+  /** The Boulot app's switch: to work by oneself as the shift's hours come. */
+  onAutoWork: (on: boolean) => Promise<void>
   journal: JournalEvent[]
   time: string
   act: Act
@@ -1353,7 +1361,7 @@ type PhoneProps = {
   onDrive: (v: Driven) => void
 }
 
-function Phone({ world, sim, commune, journal, time, act, startApp, delivery, onDelivery, onCollect, onClose, onMap, onCamera, street, onWalk, onBuild, onDames, onDamesOnline, onDamesResume, onHuitTable, onHuitFriend, onHuitResume, onDrive }: PhoneProps) {
+function Phone({ world, sim, commune, onAutoWork, journal, time, act, startApp, delivery, onDelivery, onCollect, onClose, onMap, onCamera, street, onWalk, onBuild, onDames, onDamesOnline, onDamesResume, onHuitTable, onHuitFriend, onHuitResume, onDrive }: PhoneProps) {
   const [app, setApp] = useState<PhoneAppId | null>(startApp)
   // A photo of the gallery on its way to Tikitoko.
   const [tikiPhoto, setTikiPhoto] = useState<{ id: number; src: string } | undefined>()
@@ -1485,7 +1493,17 @@ function Phone({ world, sim, commune, journal, time, act, startApp, delivery, on
                     ))}
                   </ul>
                 )}
-                {app === 'jobs' && <JobsApp world={world} sim={sim} commune={commune} act={act} onWalk={onWalk} onMap={onMap} />}
+                {app === 'jobs' && (
+                  <JobsApp
+                    world={world}
+                    sim={sim}
+                    commune={commune}
+                    act={act}
+                    onWalk={onWalk}
+                    onMap={onMap}
+                    onAutoWork={onAutoWork}
+                  />
+                )}
                 {app === 'home' && <HomeApp world={world} sim={sim} commune={commune} act={act} onBuild={onBuild} onWalk={onWalk} onMap={onMap} />}
                 {app === 'messages' && <Journal events={journal} />}
                 {app === 'news' && <NewsApp />}
@@ -1970,7 +1988,7 @@ function DropRouteAsk({ from, moto }: { from: string; moto: boolean }) {
 }
 
 /** What the Sim is busy with, on real time: progress, time left, and a way to stop. */
-function ActivityBar({ world, sim, onStop, stopping, onRoute, onMore, onRejoin, onDefi }: { world: World; sim: Sim; onStop: () => void; stopping: boolean; onRoute: () => void; /** At the zoo: the other things to do there. */ onMore?: () => void; /** A match left before its end: back onto the pitch. */ onRejoin?: { sport: 'foot' | 'basket'; go: () => void }; /** The activity taken on as a défi. */ onDefi?: () => void }) {
+function ActivityBar({ world, sim, onStop, stopping, onRoute, onMore, onRejoin, onDefi, onTask }: { world: World; sim: Sim; onStop: () => void; stopping: boolean; onRoute: () => void; /** At the zoo: the other things to do there. */ onMore?: () => void; /** A match left before its end: back onto the pitch. */ onRejoin?: { sport: 'foot' | 'basket'; go: () => void }; /** The activity taken on as a défi. */ onDefi?: () => void; /** At work: one of the job's tasks (backend sims/jobs.go). */ onTask?: (t: JobTask) => Promise<ActionResult['outcome']> }) {
   const a = sim.activity!
   const span = Math.max(1, a.end - a.start)
   const done = Math.min(1, Math.max(0, (sim.gameMinutes - a.start) / span))
@@ -2008,11 +2026,72 @@ function ActivityBar({ world, sim, onStop, stopping, onRoute, onMore, onRejoin, 
           </button>
         )}
       </div>
+      {onTask && <JobTasks world={world} sim={sim} onTask={onTask} />}
       {onDefi && defiOf(a.interaction.id) && <DefiButton kind={defiOf(a.interaction.id)!} onClick={onDefi} />}
       {onRejoin && (
         <button className="btn animate-pop mt-2 w-full !py-2.5" onClick={onRejoin.go}>
           <Volleyball size={18} /> {onRejoin.sport === 'basket' ? 'Revenir sur le terrain' : 'Revenir au match'}
         </button>
+      )}
+    </div>
+  )
+}
+
+/** A job's tasks done once a shift count for the promotion; the same one again after an hour of the shift (backend game.TaskCooldown). */
+const TASK_COOLDOWN = 60
+
+/**
+ * At work: the job's tasks as buttons (the cashier scans, the lawyer
+ * pleads, the DG signs), those of the Sim's rung; each makes the Sim's
+ * gesture in the room and says how it went. One done waits an hour of the
+ * shift before it can be done again.
+ */
+function JobTasks({ world, sim, onTask }: { world: World; sim: Sim; onTask: (t: JobTask) => Promise<ActionResult['outcome']> }) {
+  const career = world.careers.find((c) => c.id === sim.career)
+  const [said, setSaid] = useState<{ text: string; money?: number; bad?: boolean } | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+  useEffect(() => {
+    if (!said) return
+    const t = setTimeout(() => setSaid(null), 4500)
+    return () => clearTimeout(t)
+  }, [said])
+  if (!career) return null
+  const done = sim.activity?.tasks ?? {}
+  const tasks = career.tasks.filter((t) => sim.careerLevel >= (t.minLevel ?? 0))
+  const go = async (t: JobTask) => {
+    setBusy(t.id)
+    try {
+      const out = await onTask(t)
+      setSaid({ text: out.text, money: out.money })
+    } catch (e) {
+      setSaid({ text: e instanceof Error ? e.message : 'Pas possible maintenant.', bad: true })
+    } finally {
+      setBusy(null)
+    }
+  }
+  return (
+    <div className="card animate-pop mt-2 p-2.5">
+      <div className="label mb-1.5 px-0.5">Au travail · {career.levels[sim.careerLevel]?.title}</div>
+      <div className="grid grid-cols-2 gap-1.5">
+        {tasks.map((t) => {
+          const last = done[t.id]
+          const wait = last === undefined ? 0 : Math.max(0, last + TASK_COOLDOWN - sim.gameMinutes)
+          const Icon = iconFor(t.icon)
+          return (
+            <button key={t.id} className="tile flex min-w-0 items-center gap-2 p-2 text-left disabled:opacity-50" disabled={wait > 0 || !!busy} onClick={() => go(t)}>
+              <IconTile icon={Icon} colors={kindColors(career.kind)} size={32} />
+              <span className="min-w-0 flex-1 leading-tight">
+                <span className="block text-[12.5px] font-extrabold">{t.label}</span>
+                <span className="block text-[10.5px] font-bold text-[var(--color-ink-soft)]">{wait > 0 ? `Encore ${duration(actionLength(wait))}` : last !== undefined ? 'Fait · à refaire' : t.tip ? 'Pourboires possibles' : '+1 pour la promotion'}</span>
+              </span>
+            </button>
+          )
+        })}
+      </div>
+      {said && (
+        <p className={`animate-pop mt-2 rounded-xl px-2.5 py-1.5 text-[12.5px] font-bold ${said.bad ? 'bg-[#fff0f0] text-[#c92a2a]' : 'bg-[#e6fcf5] text-[#087f5b]'}`}>
+          {said.text}
+        </p>
       )}
     </div>
   )

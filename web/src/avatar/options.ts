@@ -292,6 +292,14 @@ export function workLook(look: Look, career: string, level: number): Look {
       bureau: level >= 2 ? 'suit' : 'chemise',
       mairie: level >= 4 ? 'suit' : 'chemise',
       enseignement: 'chemise',
+      // The tills and the shops in a shirt; the hotel, the chambers, the airport in a suit; the white coat, the police's.
+      caisse: 'chemise',
+      vente: 'chemise',
+      hotellerie: level >= 1 ? 'suit' : 'chemise',
+      droit: 'suit',
+      pharmacie: 'blouse',
+      police: 'policier',
+      aerien: 'suit',
     } as Record<string, string>
   )[career]
   if (!outfit) return look

@@ -203,7 +203,11 @@ export type Career = {
   maxHour: number
   minutes: number
   effect: Needs
+  /** What's done during a shift, a tap at a time (backend game/jobs.go). */
+  tasks: JobTask[]
 }
+/** One thing done at work: its gesture, from which rung, whether customers tip. */
+export type JobTask = { id: string; label: string; icon: string; pose: string; minLevel?: number; tip?: number }
 
 /** An emote: its pose (the id), name, emoji, price (0: free), how long it plays. */
 export type Emote = { id: string; label: string; emoji: string; price: number; seconds: number }
@@ -302,6 +306,8 @@ export type Sim = {
   career: string
   careerLevel: number
   performance: number
+  /** It goes to work by itself as the shift's hours come (the Boulot app's switch). */
+  autoWork?: boolean
   /** What the Sim is busy with right now (real time), or null. */
   activity: Activity | null
   createdAt: string
@@ -328,6 +334,8 @@ export type Activity = {
   end: number
   applied: number
   career?: string
+  /** At work: the job's tasks done in this shift, when each was last done (game minute). */
+  tasks?: Record<string, number>
   /** An outing (backend sims/outing.go): the friends met in the game who came along (Friend ids). */
   with?: string[]
   trip?: { fromCity: string; fromCommune: string; city: string; commune: string; mode: TripMode; class?: string; fare: number; label: string; incident?: string; path?: [number, number][]; bridges?: string[]; party?: number }
