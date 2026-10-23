@@ -570,14 +570,14 @@ export function room(kindIn: string, housing: string): Room {
           </>
         ),
         spots: {
-          bed: { p: [0, 0.62, -2.4], pose: 'idle', lying: true },
+          bed: { p: [0, 0.74, -1.75], pose: 'idle', lying: true },
           seat: { p: [-1.6, 0.05, 2.8], r: Math.PI, pose: 'sit' },
           // By the patient in the first bed, turned to them.
           visit: { p: [-2.55, 0, -3.3], r: -Math.PI / 2, pose: 'talk' },
           entrance: { p: [0, 0, 3.8], r: Math.PI, pose: 'idle' },
           counter: { p: [1, 0, 0], pose: 'idle' },
         },
-        crowd: [{ p: [1.2, 0, -1.4], r: Math.PI, pose: 'busy' }, { p: [-3.5, 0.62, -2.4], pose: 'idle', lying: true }, { p: [-4, 0.05, 2.8], r: Math.PI, pose: 'sit' }],
+        crowd: [{ p: [1.2, 0, -1.4], r: Math.PI, pose: 'busy' }, { p: [-3.5, 0.74, -1.75], pose: 'idle', lying: true }, { p: [-4, 0.05, 2.8], r: Math.PI, pose: 'sit' }],
       }
     case 'market':
     case 'mall':
@@ -881,7 +881,7 @@ export function room(kindIn: string, housing: string): Room {
         spots: {
           // In the water up to the waist (the floor hides the legs).
           pool: { p: [1.6, -0.8, 0.9], r: 0.4, pose: 'wave' },
-          bed: { p: [4.4, 0.62, -3.1], pose: 'idle', lying: true },
+          bed: { p: [4.4, 0.74, -2.45], pose: 'idle', lying: true },
           table: { p: [-2.2, 0, 3.45], r: Math.PI, pose: 'eat' },
           entrance: { p: [0, 0, 3.8], r: Math.PI, pose: 'idle' },
           counter: { p: [-3, 0, -2.8], r: Math.PI, pose: 'idle' },
