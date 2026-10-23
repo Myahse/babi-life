@@ -35,6 +35,7 @@ import { ChatFraming } from '../chatFraming'
 import { CHUNK_ZOOM, hash, tileBox, tileOf, toLatLng, toLocal, type Origin, type XZ } from './geo'
 import { Nav } from './nav'
 import { along, anchorNode, DRIVABLE, round, routeLength, turnTo, useCellsAround, type Round } from './shared'
+import { blockedAhead, lightsOf, redAhead, report, TrafficLights, type Light } from './trafficFlow'
 import { inTheWay, resolvePlaces, spaceFields, type PlaceSpot, type Resolved } from './places'
 import { SportField } from './field'
 import { FuelStation } from './station'
@@ -1557,11 +1558,14 @@ function RoadTraffic({ nav, focus, seed, woro }: { nav: Nav; focus: React.RefObj
       ),
     [cells, seed, woro],
   )
+  // The lights at the big crossroads round the Sim, which the cars stop at.
+  const lights = useMemo(() => lightsOf(nav, cells, CAR_CELL), [nav, cells])
   return (
     <>
       {cars.map((c) => (
-        <Car key={c.id} car={c} nav={nav} routes={routes} />
+        <Car key={c.id} car={c} nav={nav} routes={routes} lights={lights} />
       ))}
+      <TrafficLights lights={lights} />
     </>
   )
 }
@@ -1574,7 +1578,7 @@ const SOLID_LANDMARKS: Record<string, number> = { 'treich-palais': 34, 'plateau-
 /** A vehicle's length and width, for what it blocks. */
 const CAR_SIZE: Record<VehicleKind, [number, number]> = { taxi: [4.4, 1.7], woro: [4.4, 1.7], car: [4.5, 1.8], gbaka: [5.3, 1.9], moto: [1.9, 0.6], sotra: [11, 2.5] }
 
-function Car({ car, nav, routes }: { car: { id: string; kind: VehicleKind; color?: string; trim?: string; seed: number; near: XZ; speed: number; offset: number }; nav: Nav; routes: Map<string, XZ[]> }) {
+function Car({ car, nav, routes, lights }: { car: { id: string; kind: VehicleKind; color?: string; trim?: string; seed: number; near: XZ; speed: number; offset: number }; nav: Nav; routes: Map<string, XZ[]>; lights: Light[] }) {
   const ref = useRef<THREE.Group>(null)
   // The SITRA keeps to the bigger roads (not only the 12 m ones: most quarters have none, and the
   // bus, finding no road, never showed).
@@ -1585,30 +1589,51 @@ function Car({ car, nav, routes }: { car: { id: string; kind: VehicleKind; color
   const stops = gbaka || car.kind === 'sotra'
   // The gbaka's leg, for its apprenti: seconds since it left (or since it stopped).
   const leg = useRef<GbakaLeg>({ moving: false, since: 99, go: 0 })
-  useFrame((_, dt) => {
+  // How far behind its schedule it is (seconds): the time spent waiting behind another car, or at a red light.
+  const late = useRef(0)
+  // How long it has been held up: past a while, it squeezes by (no two cars stuck nose to nose for ever).
+  const held = useRef(0)
+  useFrame((_, dtRaw) => {
     const g = ref.current
     if (!g) return
+    const dt = Math.min(dtRaw, 0.1)
+    const [l, w] = CAR_SIZE[car.kind]
     const reach = CAR_ROUND * 0.42 * car.speed
     const path = (n: number) => routeFor(routes, nav, `${car.id}|${n}`, anchor, 14, wide, reach)
-    const at = round(worldTime(), CAR_ROUND, car.offset, (n) => routeLength(path(n)), car.speed)
+    const now = worldTime() - late.current
+    const at = round(now, CAR_ROUND, car.offset, (n) => routeLength(path(n)), car.speed)
     const way = path(at.n)
     g.visible = way.length > 1
-    if (!g.visible) return
+    if (!g.visible) return report(car.id, null)
     // A gbaka pulls away and pulls in (an apprenti has to be able to run
     // after it): the same leg in the same time, eased at both ends.
-    const d = stops ? eased(at, routeLength(way), car.speed, CAR_ROUND, car.offset, leg.current) : at.d
+    const d = stops ? eased(at, routeLength(way), car.speed, CAR_ROUND, car.offset, leg.current, now) : at.d
     const p = along(way, d)
     const heading = at.forward ? p.r : p.r + Math.PI
     // Drive on the right: shift to the right of the way it goes.
     const off = 2
-    g.position.set(p.x + Math.cos(heading) * -off, nav.heightAt(p.x, p.z), p.z - Math.sin(heading) * -off)
+    const [x, z] = [p.x + Math.cos(heading) * -off, p.z - Math.sin(heading) * -off]
+    // The car ahead too close, or a red light just ahead: it waits where it is (its schedule held back).
+    if (at.moving && held.current < 8 && (blockedAhead(car.id, x, z, heading, l / 2) || redAhead(lights, x, z, heading, l / 2, worldTime()))) {
+      late.current += dt
+      held.current += dt
+      return
+    }
+    held.current = at.moving ? Math.max(0, held.current - dt * 4) : 0
+    g.position.set(x, nav.heightAt(x, z), z)
     // A U-turn at each end, eased so it isn't a snap.
-    g.rotation.y = turnTo(g.rotation.y, heading - Math.PI / 2, 1 - Math.exp(-6 * Math.min(dt, 0.1)))
+    g.rotation.y = turnTo(g.rotation.y, heading - Math.PI / 2, 1 - Math.exp(-6 * dt))
+    report(car.id, { x, z, h: heading, half: l / 2 })
     // Nobody walks through it.
-    const [l, w] = CAR_SIZE[car.kind]
     moveObstacle(car.id, { x: g.position.x, z: g.position.z, hw: l / 2, hd: w / 2, rot: g.rotation.y })
   })
-  useEffect(() => () => moveObstacle(car.id, null), [car.id])
+  useEffect(
+    () => () => {
+      moveObstacle(car.id, null)
+      report(car.id, null)
+    },
+    [car.id],
+  )
   return (
     <group ref={ref}>
       <Vehicle p={[0, 0, 0]} kind={car.kind} color={car.color} trim={car.trim} seed={car.seed} crew={!gbaka} />
@@ -1635,8 +1660,8 @@ const GBAKA_EASE = 5
  * same time, but pulling away slowly and pulling in slowly (a trapezoid of
  * speed), so the apprenti left on the sidewalk can catch it. Fills `leg`.
  */
-function eased(at: Round, len: number, speed: number, cycle: number, offset: number, leg: GbakaLeg) {
-  const u = worldTime() + offset
+function eased(at: Round, len: number, speed: number, cycle: number, offset: number, leg: GbakaLeg, now = worldTime()) {
+  const u = now + offset
   const k = u - Math.floor(u / cycle) * cycle
   const go = Math.min(len / speed, cycle * 0.42)
   const wait = (cycle - 2 * go) / 2
