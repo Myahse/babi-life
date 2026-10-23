@@ -213,6 +213,9 @@ var Kinds = map[string]PlaceKind{
 			{ID: "swim", Label: "Se baigner", Icon: "waves", Minutes: 60, Effect: Needs{Fun: 35, Hygiene: -10, Energy: -10}},
 			{ID: "chill-sand", Label: "Se poser sous les cocotiers", Icon: "sunset", Minutes: 90, Cost: 1000, Effect: Needs{Fun: 25, Energy: 10, Social: 10}},
 			{ID: "eat-fish", Label: "Manger du poisson braisé", Icon: "fish", Minutes: 45, Cost: 3000, Effect: Needs{Hunger: 55, Fun: 10}},
+			{ID: "balade-plage", Label: "Marcher au bord de l'eau", Icon: "footprints", Minutes: 30, Effect: Needs{Fun: 15, Energy: -5}},
+			{ID: "foot-plage", Label: "Jouer au foot sur le sable", Icon: "volleyball", Minutes: 45, Effect: Needs{Fun: 30, Social: 20, Energy: -20, Hygiene: -15}},
+			{ID: "coco-plage", Label: "Boire une noix de coco", Icon: "citrus", Minutes: 10, Cost: 500, Effect: Needs{Hunger: 5, Fun: 8}},
 		},
 		Events: []RandomEvent{
 			{Text: "Attention aux vagues ! Le maître-nageur te rappelle à l'ordre.", Effect: Needs{Fun: -5}},
@@ -242,6 +245,24 @@ var Kinds = map[string]PlaceKind{
 		},
 		Events: []RandomEvent{
 			{Text: "Un « gnambro » te fait payer 100F de plus. C'est comme ça.", Money: -100},
+		},
+	},
+	// An airport's terminal (the FHB at Port-Bouët, the other cities' own): its hall, the check-in, the departures
+	// board, the glass wall over the planes. The flights themselves are booked from the place's card (flights.go).
+	"aeroport": {
+		ID: "aeroport", Label: "Aéroport", Icon: "plane",
+		Interactions: []Interaction{
+			{ID: "voir-avions", Label: "Regarder les avions décoller", Icon: "plane", Minutes: 30, Effect: Needs{Fun: 20}},
+			{ID: "cafe-aeroport", Label: "Prendre un café au comptoir", Icon: "coffee", Minutes: 20, Cost: 1500, Effect: Needs{Energy: 10, Fun: 5}, MinHour: 5, MaxHour: 24},
+			{ID: "resto-aeroport", Label: "Manger au restaurant de l'aérogare", Icon: "utensils", Minutes: 45, Cost: 6000, Effect: Needs{Hunger: 50, Fun: 10}, MinHour: 6, MaxHour: 23},
+			{ID: "boutique-aeroport", Label: "Faire un tour à la boutique hors taxes", Icon: "shopping-bag", Minutes: 30, Effect: Needs{Fun: 12}, MinHour: 6, MaxHour: 23},
+			{ID: "accueillir-arrivees", Label: "Attendre quelqu'un aux arrivées", Icon: "users", Minutes: 45, Effect: Needs{Social: 20, Fun: 5}},
+			{ID: "salle-attente", Label: "Se reposer en salle d'attente", Icon: "sofa", Minutes: 40, Effect: Needs{Energy: 15, Fun: -3}},
+		},
+		Events: []RandomEvent{
+			{Text: "Toute une famille est venue accueillir un tonton de retour de Paris : les youyous résonnent dans le hall !", Effect: Needs{Social: 15, Fun: 10}},
+			{Text: "« Le vol Air Lagune à destination de Bouaké est retardé. » Toute la salle soupire.", Effect: Needs{Fun: -5}},
+			{Text: "Un porteur veut absolument pousser tes bagages. Tu n'en as pas : il éclate de rire.", Effect: Needs{Social: 5}},
 		},
 	},
 	// A street of maquis and clubs (the Rue Princesse): one strolls it, sits at a terrace, eats in it, dances in it on party

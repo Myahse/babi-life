@@ -22,6 +22,8 @@ import { PyramideInside } from '../world3d/interior/PyramideInside'
 import { BoulayScene } from '../world3d/interior/BoulayScene'
 import { DefiSheet } from '../components/Defi'
 import { KineoInside } from '../world3d/interior/KineoInside'
+import { AirportInside } from '../world3d/interior/AirportInside'
+import { BeachScene } from '../world3d/interior/BeachScene'
 import { HotelInside } from '../world3d/interior/HotelInside'
 import { Upstairs } from '../world3d/interior/HotelFloors'
 import { PLAIN as HOTEL_PLAIN } from '../world3d/interior/hotelStyles'
@@ -612,6 +614,10 @@ function Lab() {
   if (view === 'cathedrale') return <CathedralInside sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)), gameMinutes: Number(q.get('m') ?? 0) } as unknown as Sim} interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" />
   if (view === 'mosquee') return <MosqueM6Inside sim={{ id: 'lab', firstName: 'Awa', gender: 'homme', look: randomLook('homme', seededLab(5)), gameMinutes: Number(q.get('m') ?? 0) } as unknown as Sim} interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" />
   if (view === 'pyramide') return <PyramideInside sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)), gameMinutes: Number(q.get('m') ?? 600) } as unknown as Sim} interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" />
+  // ?view=aeroport&act=voir-avions: the FHB's terminal, the Sim doing that (else walking about).
+  if (view === 'aeroport') return <AirportInside sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)), gameMinutes: Number(q.get('m') ?? 610) } as unknown as Sim} name="Aéroport Félix-Houphouët-Boigny" flights={['Yamoussoukro', 'Bouaké', 'San-Pédro', 'Korhogo', 'Man', 'Daloa'].map((toName) => ({ toName }))} interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" />
+  // ?view=plage&id=bassam-plage&act=swim: on the beach, the Sim doing that (else walking about).
+  if (view === 'plage') return <BeachScene sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)), gameMinutes: 610 } as unknown as Sim} placeId={q.get('id') ?? 'pb-plage'} interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" />
   // &seance=film:salle:seat (the room), else the lobby.
   if (view === 'kineo') {
     const [film, salle, seat] = (q.get('seance') ?? '').split(':')

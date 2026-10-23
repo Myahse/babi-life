@@ -24,6 +24,7 @@ export function outdoorPose(id?: string): Pose | undefined {
   switch (id) {
     case 'play-football':
     case 'street-foot':
+    case 'foot-plage':
       return 'kick'
     case 'play-basket':
     case 'street-basket':
@@ -69,6 +70,7 @@ export function outdoorPose(id?: string): Pose | undefined {
     // In the street: the brochette eaten standing at the grill, the orange, the sachet of water, the bread;
     // the pot on the terrace; telling the quartier's news; the notes thrown over the dancers.
     case 'brochettes-rue':
+    case 'coco-plage':
     case 'street-oranges':
     case 'street-eau':
     case 'street-pain':

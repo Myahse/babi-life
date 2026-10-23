@@ -45,6 +45,7 @@ export const KIND_COLORS: Record<string, [string, string]> = {
   beach: ['#4dd8e6', '#0097c4'],
   worship: ['#b39dff', '#6c47ff'],
   transport: ['#8c9eff', '#3d4fd6'],
+  aeroport: ['#74c0fc', '#1d4ed8'],
   club: ['#ff7ad9', '#b02bd6'],
   sport: ['#69e2a0', '#00a862'],
   stade: ['#ffd8a8', '#e8590c'],

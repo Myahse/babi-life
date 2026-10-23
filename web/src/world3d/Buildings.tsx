@@ -531,6 +531,7 @@ const BY_KIND: Record<string, (p: Props) => React.ReactElement> = {
   beach: Beach,
   worship: Worship,
   transport: Station,
+  aeroport: Station,
   club: Club,
   sport: Pitch,
   nature: Nature,

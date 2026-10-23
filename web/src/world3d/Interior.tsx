@@ -37,7 +37,10 @@ export type Spot = { p: V3; r?: number; pose: Pose; lying?: boolean; g?: 'femme'
 type Person = Spot & { gender: 'femme' | 'homme'; look: ReturnType<typeof randomLook>; seed: number }
 
 /** Kinds of places that have an inside (the beach or the football pitch don't). */
-export const INDOOR = new Set(['gym', 'boutique', 'couture', 'pharmacie', 'police', 'home', 'maquis', 'club', 'restaurant', 'market', 'office', 'mairie', 'school', 'health', 'worship', 'mall', 'culture', 'cinema', 'barbier', 'salon', 'hotel', 'universite'])
+export const INDOOR = new Set(['gym', 'boutique', 'couture', 'pharmacie', 'police', 'home', 'maquis', 'club', 'restaurant', 'market', 'office', 'mairie', 'school', 'health', 'worship', 'mall', 'culture', 'cinema', 'barbier', 'salon', 'hotel', 'universite', 'aeroport'])
+
+/** Kinds under the sky with a scene of their own all the same: the beach (interior/BeachScene), its sand and its waves, not the roadside. */
+export const SCENES = new Set(['beach'])
 
 /** Ambient occlusion where the device can afford it. */
 const RICH = typeof navigator === 'undefined' || (navigator.hardwareConcurrency ?? 4) > 4

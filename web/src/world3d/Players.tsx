@@ -7,7 +7,7 @@ import { Character } from './Character'
 import { EXTENT_X, SIDEWALK, type Lot } from './layout'
 import { rng } from './themes'
 import { sampleLive, type LivePose } from '../lib/live'
-import { INDOOR } from './Interior'
+import { INDOOR, SCENES } from './Interior'
 import { whereabouts } from './whereabouts'
 
 // The other players in the commune, live: where they really are (lib/live.ts),
@@ -22,8 +22,8 @@ export function OtherPlayers({ players, lots, labels, onPick }: { players: Playe
     <>
       {players.map((p) => {
         const lot = p.activity && lots.find((l) => l.id === p.activity!.placeId)
-        // Busy inside a place (the maquis, the pharmacy, the office…): they're in there, not in the street.
-        if (lot && INDOOR.has(lot.kind) && lot.kind !== 'home') return null
+        // Busy inside a place (the maquis, the pharmacy, the office…), or down on the beach: they're in there, not in the street.
+        if (lot && (INDOOR.has(lot.kind) || SCENES.has(lot.kind)) && lot.kind !== 'home') return null
         return <OtherPlayer key={p.id} player={p} at={lot ? lot.door : null} labels={labels} onPick={onPick} />
       })}
     </>

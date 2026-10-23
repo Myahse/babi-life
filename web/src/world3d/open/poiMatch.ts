@@ -11,7 +11,7 @@ export type Poi = { name: string; cls: string; maki: string; type: string; at: X
 /** Words that say nothing about which place it is. */
 const STOP = new Set(['de', 'du', 'des', 'la', 'le', 'les', 'l', 'd', 'et', 'a', 'au', 'aux', 'en', 'the', 'of', 'sur'])
 /** Words that say what kind of place it is, not which one: they count for less. */
-const GENERIC = new Set(['marche', 'chu', 'hopital', 'mairie', 'gare', 'maquis', 'eglise', 'mosquee', 'stade', 'universite', 'hotel', 'college', 'lycee', 'ecole', 'centre', 'grand', 'grande', 'place', 'rue', 'boulevard', 'commune', 'quartier', 'pharmacie', 'clinique', 'restaurant', 'bar', 'cathedrale', 'basilique', 'terrain', 'parc', 'palais', 'sante', 'general', 'routiere', 'municipal', 'municipale'])
+const GENERIC = new Set(['marche', 'chu', 'hopital', 'mairie', 'gare', 'maquis', 'eglise', 'mosquee', 'stade', 'universite', 'hotel', 'college', 'lycee', 'ecole', 'centre', 'grand', 'grande', 'place', 'rue', 'boulevard', 'commune', 'quartier', 'pharmacie', 'clinique', 'restaurant', 'bar', 'cathedrale', 'basilique', 'terrain', 'parc', 'palais', 'sante', 'general', 'routiere', 'municipal', 'municipale', 'aeroport'])
 
 export function words(name: string): string[] {
   return name
@@ -36,7 +36,8 @@ const FITS: Record<string, string[]> = {
   universite: ['college', 'school', 'library'],
   school: ['school', 'college'],
   hotel: ['lodging'],
-  transport: ['bus', 'airport', 'rail', 'car', 'ferry', 'airfield'],
+  transport: ['bus', 'rail', 'car', 'ferry'],
+  aeroport: ['airport', 'airfield'],
   club: ['bar', 'nightclub', 'music', 'theatre'],
   maquis: ['restaurant', 'bar', 'fast-food', 'cafe'],
   restaurant: ['restaurant', 'fast-food', 'cafe'],

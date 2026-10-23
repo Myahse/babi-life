@@ -36,7 +36,7 @@ import { KineoApp } from './KineoApp'
 import { DamesApp } from './DamesApp'
 import { HuitApp } from './HuitApp'
 import { RideFlow, type FlowRequest } from '../components/RideFlow'
-import { INDOOR, Interior } from '../world3d/Interior'
+import { INDOOR, Interior, SCENES } from '../world3d/Interior'
 import { HomeInside } from '../world3d/HomeInside'
 import { ARENAS, Arena } from '../world3d/interior/Arena'
 import { AppLogo } from '../components/AppLogo'
@@ -93,6 +93,10 @@ const MosqueM6Inside = lazy(() => import('../world3d/interior/MosqueM6Inside').t
 const PyramideInside = lazy(() => import('../world3d/interior/PyramideInside').then((m) => ({ default: m.PyramideInside })))
 const KineoInside = lazy(() => import('../world3d/interior/KineoInside').then((m) => ({ default: m.KineoInside })))
 const BoulayScene = lazy(() => import('../world3d/interior/BoulayScene').then((m) => ({ default: m.BoulayScene })))
+// An airport's terminal: its hall, the check-in, the departures board, the planes beyond the glass.
+const AirportInside = lazy(() => import('../world3d/interior/AirportInside').then((m) => ({ default: m.AirportInside })))
+// A beach: down on the sand, the waves, the paillotes (not by the road).
+const BeachScene = lazy(() => import('../world3d/interior/BeachScene').then((m) => ({ default: m.BeachScene })))
 /** The centres that aren't the default mall: Sococé's own supermarket and shops, the Kinéo cinemas in their galleries. */
 const MALLS: Record<string, MallLayout> = {
   'cocody-sococe': { market: 'SOCOCÉ', back: ['PRESSING DES 2 PLATEAUX', 'BOULANGERIE', 'PHONE 225', 'PHARMACIE', 'MODE WAX'], front: ['LIBRAIRIE', 'BEAUTÉ & CO', '', 'CAFÉ DES PLATEAUX'], kineo: true },
@@ -721,14 +725,14 @@ export function Play() {
       if (!doing.placeId || OPEN_AIR.has(doing.placeId)) return null
       if (doing.placeId === BOULAY && doing.interaction.id.endsWith('-boulay')) return { id: doing.placeId, kind: 'boulay', it: doing.interaction.id }
       const kind = doing.placeId === 'home' ? 'home' : ARENAS.has(doing.placeId) ? 'arena' : (doing.placeKind ?? '')
-      return INDOOR.has(kind) || kind === 'arena' ? { id: doing.placeId, kind, it: doing.interaction.id } : null
+      return INDOOR.has(kind) || SCENES.has(kind) || kind === 'arena' ? { id: doing.placeId, kind, it: doing.interaction.id } : null
     }
     // (An action just picked, or just done: still in the place it was picked in.)
     const at = placeId ?? backTo
     if (at && at !== 'happening' && !OPEN_AIR.has(at)) {
       // A covered hall (the Palais des Sports) has its own inside.
       const kind = at === 'home' ? 'home' : ARENAS.has(at) ? 'arena' : commune.places.find((p) => p.id === at)?.kind
-      return kind && (INDOOR.has(kind) || kind === 'arena') ? { id: at, kind, it: undefined } : null
+      return kind && (INDOOR.has(kind) || SCENES.has(kind) || kind === 'arena') ? { id: at, kind, it: undefined } : null
     }
     return null
   })()
@@ -839,6 +843,14 @@ export function Play() {
             // A Kinéo cinema: its lobby; with a ticket, the screen's room and the Sim in its seat.
             <Suspense fallback={null}>
               <KineoInside sim={sim} placeId={inside!.id} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
+            </Suspense>
+          ) : inside!.kind === 'aeroport' ? (
+            <Suspense fallback={null}>
+              <AirportInside sim={sim} name={placeName(inside!.id)} flights={(world.flights ?? []).filter((f) => f.place === inside!.id)} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
+            </Suspense>
+          ) : inside!.kind === 'beach' ? (
+            <Suspense fallback={null}>
+              <BeachScene sim={sim} placeId={inside!.id} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id)} />
             </Suspense>
           ) : inside!.kind === 'boulay' ? (
             // Over on Île Boulay: its village and its beach, or water-skiing off it.
