@@ -6,6 +6,11 @@
 //   node tools/places/build.mjs yopougon "Yopougon, Abidjan"
 //   → backend/internal/world/osm/yopougon.json
 //
+// A town with no commune boundary on the map (or only its département's,
+// tens of kilometres wide) takes a circle round its centre instead, in km:
+//
+//   node tools/places/build.mjs yakro-centre @6.8276,-5.2893,8
+//
 // A third argument keeps only some kinds (the churches and mosques of every
 // commune before the rest of their places): worship,school
 //
@@ -93,9 +98,9 @@ function kindOf(cls, sub, name) {
       return sub === 'bus_station' ? 'transport' : null
     case 'ferry_terminal':
       return 'transport'
-    case 'bank':
     case 'police':
       return 'police' // the commissariats (and the gendarmeries) by their own name
+    case 'bank': // its counters and clerks
     case 'office':
     case 'post':
     case 'town_hall':
@@ -108,21 +113,30 @@ function kindOf(cls, sub, name) {
 }
 
 const UA = { 'User-Agent': 'babi-life-places/1.0 (game map data)' }
-const nom = await (await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&polygon_geojson=1&limit=1`, { headers: UA })).json()
-if (!nom[0]?.geojson) throw new Error(`no boundary for ${query}`)
-const geo = nom[0].geojson
-const polys = geo.type === 'Polygon' ? [geo.coordinates] : geo.coordinates
-const inRing = (x, y, r) => {
-  let c = false
-  for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
-    const [xi, yi] = r[i]
-    const [xj, yj] = r[j]
-    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) c = !c
+let inside, s, n, w, e
+if (query.startsWith('@')) {
+  const [lat0, lng0, km] = query.slice(1).split(',').map(Number)
+  const dLat = km / 111
+  const dLng = km / (111 * Math.cos((lat0 * Math.PI) / 180))
+  ;[s, n, w, e] = [lat0 - dLat, lat0 + dLat, lng0 - dLng, lng0 + dLng]
+  inside = (lng, lat) => Math.hypot((lat - lat0) / dLat, (lng - lng0) / dLng) <= 1
+} else {
+  const nom = await (await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&polygon_geojson=1&limit=1`, { headers: UA })).json()
+  if (!nom[0]?.geojson) throw new Error(`no boundary for ${query}`)
+  const geo = nom[0].geojson
+  const polys = geo.type === 'Polygon' ? [geo.coordinates] : geo.coordinates
+  const inRing = (x, y, r) => {
+    let c = false
+    for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+      const [xi, yi] = r[i]
+      const [xj, yj] = r[j]
+      if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) c = !c
+    }
+    return c
   }
-  return c
+  inside = (lng, lat) => polys.some((p) => inRing(lng, lat, p[0]) && !p.slice(1).some((h) => inRing(lng, lat, h)))
+  ;[s, n, w, e] = nom[0].boundingbox.map(Number)
 }
-const inside = (lng, lat) => polys.some((p) => inRing(lng, lat, p[0]) && !p.slice(1).some((h) => inRing(lng, lat, h)))
-const [s, n, w, e] = nom[0].boundingbox.map(Number)
 
 const tj = await (await fetch('https://tiles.openfreemap.org/planet')).json()
 const Z = 14
@@ -185,7 +199,7 @@ fs.writeFileSync(
   out,
   JSON.stringify({
     commune: id,
-    source: 'OpenStreetMap (ODbL), via OpenFreeMap; limite communale : Nominatim',
+    source: `OpenStreetMap (ODbL), via OpenFreeMap; ${query.startsWith('@') ? `cercle de ${query.split(',')[2]} km autour du centre` : 'limite communale : Nominatim'}`,
     fetched: new Date().toISOString().slice(0, 10),
     ...(keep ? { only: [...keep] } : {}),
     fields: ['id', 'name', 'kind', 'lat', 'lng', 'quarter', 'type'],
