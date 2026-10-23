@@ -91,10 +91,12 @@ export type Route = {
   /** The car's colour and the "En …" line. */
   color: string
   how: string
+  /** What it is (« Woro-woro », « Gbaka »…). */
+  name?: string
   /** The destination's pin id, highlighted. */
   toId: string
   /** The driver still on the way to pick the Sim up: from where he comes (by `path`), and how far he's come (0 → 1). */
-  pickup?: { from: LngLat; path?: LngLat[]; k: number }
+  pickup?: { from: LngLat; path?: LngLat[]; k: number; /** Hailed at the roadside: it's stopped there, waiting for the Sim (no driver coming). */ waits?: boolean }
 }
 
 /** Where the vehicle is: on its way to the Sim, then on the trip with it. */

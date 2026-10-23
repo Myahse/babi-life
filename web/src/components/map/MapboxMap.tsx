@@ -140,7 +140,7 @@ export function MapboxMap({ token, pins, camera, night, sim, padding, route, onZ
         waiting.current = { marker: new mapboxgl.Marker({ element: el }).setLngLat(route.from).addTo(m), root: createRoot(el) }
       }
       waiting.current.marker.setLngLat(route.from)
-      waiting.current.root.render(<WaitingMarker sim={sim} />)
+      waiting.current.root.render(<WaitingMarker sim={sim} text={route.pickup.waits ? 'J’arrive !' : undefined} />)
     } else if (waiting.current) {
       const w = waiting.current
       waiting.current = null

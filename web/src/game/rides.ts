@@ -11,6 +11,14 @@ export const GBAKA = '#f4c430'
 export const MOTO = '#c92a2a'
 
 /**
+ * Hailed at the roadside (the woro-woro, the taxi, the gbaka, the car at its stop): it has stopped
+ * at the kerb by the Sim and waits there while the Sim walks up to it (world3d/open/tripRide.tsx),
+ * at most this long (game minutes); the moto-taxi and the apps' drivers come to the Sim instead.
+ */
+export const waitsAtKerb = (mode: string) => mode === 'woro' || mode === 'compteur' || mode === 'gbaka' || mode === 'taxi' || mode === 'car'
+export const kerbWait = (trip: number) => Math.min(0.5, Math.max(0.2, trip * 0.4))
+
+/**
  * Street taxis in Abidjan: the woro-woro wears its commune's colour (blue in
  * Yopougon, yellow in Cocody…), the taxi compteur is orange. The apps' cars
  * are drawn dark. Mirrors backend/internal/world/taxis.go.
