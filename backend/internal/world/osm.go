@@ -117,7 +117,7 @@ func init() {
 			}
 			mapPlaces[f.Commune] = append(mapPlaces[f.Commune], p)
 		}
-		mapPlaces[f.Commune] = append(mapPlaces[f.Commune], onceEach(worship)...)
+		mapPlaces[f.Commune] = append(onceSame(mapPlaces[f.Commune]), onceEach(worship)...)
 		for _, p := range mapPlaces[f.Commune] {
 			mapByID[p.ID] = p
 			mapCommune[p.ID] = f.Commune
@@ -247,10 +247,15 @@ func communeByID(id string) (Commune, bool) {
 // A place of another kind only when it has the very name: the town's name
 // in both was enough before, and the Pharmacie Saint-André went with the
 // Église Saint-André, the commissariat of Grand-Bassam with its mairie.
+// The hand-made places' points are often approximate: when the map's name
+// says it all (every word of the hand-made one, or the very name), up to
+// sameFar away (the Musée national du costume and the Mairie de
+// Grand-Bassam were listed twice, the map's points 440 m and 1.5 km off).
 func curated(cm Commune, p MapPlace) bool {
 	pw := nameWords(p.Name)
 	for _, c := range cm.Places {
-		if distKm(c.Lat, c.Lng, p.Lat, p.Lng) > 0.4 {
+		d := distKm(c.Lat, c.Lng, p.Lat, p.Lng)
+		if d > sameFar {
 			continue
 		}
 		cw := nameWords(c.Name)
@@ -263,17 +268,45 @@ func curated(cm Commune, p MapPlace) bool {
 				shared++
 			}
 		}
+		same := shared == len(cw) && shared == len(pw)
 		if c.Kind != p.Kind {
-			if shared == len(cw) && shared == len(pw) {
+			if same {
 				return true
 			}
 			continue
 		}
-		if float64(shared) >= 0.6*float64(min(len(cw), len(pw))) {
+		if same || (shared == len(cw) && len(cw) >= 2) {
+			return true
+		}
+		if d <= 0.4 && float64(shared) >= 0.6*float64(min(len(cw), len(pw))) {
 			return true
 		}
 	}
 	return false
+}
+
+// sameFar: how far a hand-made place's point may be from the map's for the same name (km).
+const sameFar = 2.0
+
+// onceSame: the map's other places (not the places of worship, all kept: onceEach) once each
+// when the very same name of the same kind is there twice within 40 m: one place drawn twice (a
+// point and its building). Further apart, a « Boutique » and a « Maquis » again are other ones.
+func onceSame(all []MapPlace) []MapPlace {
+	var once []MapPlace
+	for _, p := range all {
+		pw := nameWords(p.Name)
+		dup := false
+		for _, o := range once {
+			if o.Kind == p.Kind && sameWords(pw, nameWords(o.Name)) && distKm(o.Lat, o.Lng, p.Lat, p.Lng) < 0.04 {
+				dup = true
+				break
+			}
+		}
+		if !dup {
+			once = append(once, p)
+		}
+	}
+	return once
 }
 
 var stopWords = map[string]bool{"de": true, "du": true, "des": true, "la": true, "le": true, "les": true, "l": true, "d": true, "et": true, "a": true, "au": true, "yopougon": true}
