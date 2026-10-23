@@ -98,6 +98,10 @@ func init() {
 			if p.Type == "video_games" || p.Type == "amusement_arcade" {
 				p.Kind = "gaming"
 			}
+			// The orphanages and pouponnières: an office, a school or a crèche to the map, the game's own place.
+			if orphanage.MatchString(p.Name) {
+				p.Kind = "orphelinat"
+			}
 			if _, ok := game.Kinds[p.Kind]; !ok {
 				panic("osm/" + e.Name() + ": unknown kind " + p.Kind + " for " + p.ID)
 			}
@@ -183,6 +187,9 @@ func worshipName(name string) string {
 
 // The words that alone don't name a place (« Eglise Evangelique », « Mission »).
 var worshipGeneric = map[string]bool{"eglise": true, "eglises": true, "evangelique": true, "mosquee": true, "mission": true, "temple": true, "chapelle": true, "protestante": true}
+
+// orphanage: the names of the orphanages, pouponnières and centres for children in care.
+var orphanage = regexp.MustCompile(`(?i)orphelinat|pouponni[eè]re|protection de la p[eé]tite enfance|village d.enfants sos|maison de l.enfance`)
 
 var notWorship = regexp.MustCompile(`(?i)groupe scolaire|école|ecole|collège|college|lycée|lycee`)
 

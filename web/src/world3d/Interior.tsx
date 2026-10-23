@@ -26,6 +26,7 @@ import { doingOf, nameFor } from './talk'
 import { listenKeys, moveInput } from './input'
 import { SERVICES, worshipAction, worshipRoom, worshipTour, type TourStop } from './interior/worshipRooms'
 import { gamingRoom } from './interior/GamingRoom'
+import { orphanageRoom } from './interior/OrphanageRoom'
 
 /** Soft shade in the corners, downloaded only on phones that show it. */
 const AmbientOcclusion = lazy(() => import('./effects'))
@@ -37,11 +38,11 @@ const AmbientOcclusion = lazy(() => import('./effects'))
 
 type V3 = [number, number, number]
 /** Where someone is and what they're doing. */
-export type Spot = { p: V3; r?: number; pose: Pose; lying?: boolean; g?: 'femme' | 'homme'; /** What they wear there (the swimsuit in the pool). */ outfit?: string }
+export type Spot = { p: V3; r?: number; pose: Pose; lying?: boolean; g?: 'femme' | 'homme'; /** What they wear there (the swimsuit in the pool). */ outfit?: string; /** A child (the orphanage's): drawn small, and not someone to chat up. */ kid?: boolean }
 type Person = Spot & { gender: 'femme' | 'homme'; look: ReturnType<typeof randomLook>; seed: number }
 
 /** Kinds of places that have an inside (the beach or the football pitch don't). */
-export const INDOOR = new Set(['gym', 'gaming', 'boutique', 'couture', 'pharmacie', 'police', 'home', 'maquis', 'club', 'restaurant', 'market', 'office', 'mairie', 'school', 'health', 'worship', 'mall', 'culture', 'cinema', 'barbier', 'salon', 'hotel', 'universite', 'aeroport'])
+export const INDOOR = new Set(['gym', 'gaming', 'orphelinat', 'boutique', 'couture', 'pharmacie', 'police', 'home', 'maquis', 'club', 'restaurant', 'market', 'office', 'mairie', 'school', 'health', 'worship', 'mall', 'culture', 'cinema', 'barbier', 'salon', 'hotel', 'universite', 'aeroport'])
 
 /** Kinds under the sky with a scene of their own all the same: the beach (interior/BeachScene), its sand and its waves, not the roadside. */
 export const SCENES = new Set(['beach'])
@@ -112,6 +113,12 @@ export function action(kind: string, id: string | undefined): { spot: string; po
   // The salle de jeux vidéo: on the bench before a TV, the controller in the hands; standing at the arcade cabinet; behind the players, cheering.
   if (/^console-|^tournoi-console$/.test(id)) return { spot: 'tv', pose: 'write' }
   if (id === 'borne-arcade') return { spot: 'arcade', pose: 'busy' }
+  // The orphanage: in the ring with the children, the story on the bench, the meal served, the gift at the desk, the washing.
+  if (id === 'jouer-enfants') return { spot: 'play', pose: 'clap' }
+  if (id === 'lire-enfants') return { spot: 'read', pose: 'sit' }
+  if (id === 'repas-enfants') return { spot: 'table', pose: 'busy' }
+  if (id === 'don-orphelinat' || id === 'grand-don-orphelinat') return { spot: 'desk', pose: 'talk' }
+  if (id === 'benevolat-orphelinat') return { spot: 'linge', pose: 'busy' }
   if (id === 'regarder-console') return { spot: 'watch', pose: 'cheer' }
   // The cold drink bought at the boutique, drunk sitting at its little table.
   if (id === 'sucrerie') return { spot: 'table', pose: 'drink' }
@@ -375,6 +382,7 @@ export function room(kindIn: string, housing: string): Room {
     }
   }
   if (kindIn === 'gaming') return gamingRoom()
+  if (kindIn === 'orphelinat') return orphanageRoom()
   const kind = ROOM_LIKE[kindIn] ?? kindIn
   switch (kind) {
     case 'home': {
@@ -1094,6 +1102,8 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
       // The club's dance floor is the women's; elsewhere anyone.
       const gender: Person['gender'] = s.g ?? (kind === 'club' && s.pose === 'dance' ? 'femme' : kind === 'salon' && rand() < 0.8 ? 'femme' : rand() < 0.5 ? 'femme' : 'homme')
       const look = randomLook(gender, rand)
+      // (A child: no beard, nothing grown-up about it.)
+      if (s.kid) return { ...s, gender, look: { ...look, beard: 'none', accessory: 'none', marks: 'none' }, seed: rand() * 100 }
       return { ...s, gender, look: s.outfit ? { ...look, outfit: s.outfit, outfitColor: OUTFIT_DEFAULT_COLOR[s.outfit] ?? look.outfitColor, accessory: 'none' } : look, seed: rand() * 100 }
     })
   }, [placeId, kind, r.crowd.length]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -1149,6 +1159,13 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
             const pose = throwing && p.pose === 'dance' && i % 2 ? 'cheer' : p.pose
             // Everyone in the room can be talked to: the same person every visit (the place's seed).
             const npc = { id: `in-${placeId}-${i}`, name: nameFor(p.gender, p.seed * 1000), gender: p.gender, seed: Math.floor(p.seed * 1000), look: p.look, doing: doingOf(pose) }
+            // The children: small, their heads bigger for their size; they play, they aren't talked to like grown-ups.
+            if (p.kid)
+              return (
+                <group key={i} position={p.p} rotation={[0, p.r ?? 0, 0]} scale={0.6}>
+                  <Human look={p.look} gender={p.gender} pose={pose} seed={p.seed} headScale={1.3} />
+                </group>
+              )
             return (
               <group key={i} position={p.p} rotation={p.lying ? [-Math.PI / 2, 0, 0] : [0, p.r ?? 0, 0]}>
                 <Talkable npc={npc} pose={pose}>

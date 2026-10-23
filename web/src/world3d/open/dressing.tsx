@@ -116,6 +116,8 @@ export function Dressing({ kind, name = '', faith, seed, night }: { kind: string
         return <Boutique seed={seed} />
       case 'gaming':
         return <GamingFront night={night} />
+      case 'orphelinat':
+        return <OrphanageFront />
       case 'couture':
         return <Couture seed={seed} />
       default:
@@ -793,6 +795,31 @@ function GamingFront({ night }: { night: boolean }) {
       {[1.15, 2.25].map((x) => (
         <B key={x} p={[x, 0.2, 1.2]} s={[0.07, 0.4, 0.34]} c="#5c3d22" />
       ))}
+    </group>
+  )
+}
+
+/** The orphanage's front: its sign with a heart, the children's hands painted on the wall in every colour, a swing in the yard. */
+function OrphanageFront() {
+  const hands = ['#ff6b6b', '#ffd43b', '#69db7c', '#4dabf7', '#b197fc', '#ffa94d']
+  return (
+    <group>
+      <B p={[0, 2.6, 0.62]} s={[2.4, 0.6, 0.08]} c="#e64980" />
+      {/* The heart on the sign */}
+      <B p={[-0.85, 2.62, 0.67]} s={[0.26, 0.2, 0.03]} c="#ffffff" />
+      <B p={[-0.85, 2.5, 0.67]} s={[0.14, 0.12, 0.03]} c="#ffffff" />
+      {hands.map((c, i) => (
+        <B key={c} p={[-2 + i * 0.32 + (i % 2) * 0.05, 1.2 + (i % 3) * 0.28, 0.62]} s={[0.2, 0.22, 0.02]} c={c} />
+      ))}
+      {/* The swing in the yard */}
+      {[1.5, 2.7].map((x) => (
+        <B key={x} p={[x, 1.0, 1.6]} s={[0.08, 2.0, 0.08]} c="#868e96" />
+      ))}
+      <B p={[2.1, 2.0, 1.6]} s={[1.3, 0.08, 0.08]} c="#868e96" />
+      {[1.85, 2.35].map((x) => (
+        <B key={x} p={[x, 1.25, 1.6]} s={[0.02, 1.5, 0.02]} c="#495057" />
+      ))}
+      <B p={[2.1, 0.5, 1.6]} s={[0.6, 0.05, 0.25]} c="#f08c00" />
     </group>
   )
 }

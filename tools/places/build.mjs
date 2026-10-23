@@ -34,6 +34,8 @@ function kindOf(cls, sub, name) {
   const n = name.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
   // The salles de jeux vidéo (a shop to the map): where the quarter plays.
   if (sub === 'video_games' || sub === 'amusement_arcade') return 'gaming'
+  // The orphanages and pouponnières (an office, a school or a crèche to the map).
+  if (/orphelinat|pouponniere|protection de la petite enfance|village d.enfants sos|maison de l.enfance/.test(n)) return 'orphelinat'
   switch (cls) {
     case 'beer':
     case 'bar':
