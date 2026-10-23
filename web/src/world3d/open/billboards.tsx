@@ -50,6 +50,11 @@ export function Billboards({ nav, seed, night, places = [] }: { nav: Nav; seed: 
     const out: Board[] = []
     const add = (format: BoardFormat, at: XZ, rot: number, span?: number, featured?: boolean) => {
       if (!nav.walkable(at[0], at[1])) return
+      // Never standing on a roadway (a crossing street, a boulevard beside): only the banderole spans one, high above it.
+      // (Its feet: the pole of a sucette, a giant or a screen; the two legs of a 4×3.)
+      const across = format === '4x3' ? FORMATS[format].w * 0.35 : 0
+      const feet: XZ[] = across ? [at, [at[0] + Math.cos(rot) * across, at[1] - Math.sin(rot) * across], [at[0] - Math.cos(rot) * across, at[1] + Math.sin(rot) * across]] : [at]
+      if (format !== 'banderole' && feet.some((q) => nav.onRoadway(q, 0.8))) return
       // Never on a pitch or a court (its fence and a few metres round it).
       if (places.some((p) => p.field && onFieldGround(p.field, at, FORMATS[format].w / 2 + 3))) return
       // Not on a landmark's own ground (in its frame: +z through its door).

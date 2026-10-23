@@ -23,6 +23,7 @@ import { stopEmote, useEmote } from './emoteNow'
 import { Swimmer } from './Swimmer'
 import { Bicycle, Vehicle, type CarModel } from './vehicles'
 import { HANDLING, drive, driving, useDriving } from './drive'
+import { report } from './open/trafficFlow'
 import { motoTaken, offerMoto, RIDES, type Taken } from './moto'
 import { tripRide } from './open/tripRide'
 import { askDrop, answerDrop, takeDrop } from './dropRoute'
@@ -541,7 +542,9 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         g.rotation.y = h
       }
       drive.speed = v
-    }
+      // The street's traffic waits behind it, as behind any car (open/trafficFlow.tsx).
+      report('me', { x: g.position.x, z: g.position.z, h: g.rotation.y, half: hd.half })
+    } else report('me', null)
     // The pad (or the keyboard) walks the Sim freely, relative to the camera.
     const input = moveInput()
     const strength = Math.min(1, Math.hypot(input.x, input.y))

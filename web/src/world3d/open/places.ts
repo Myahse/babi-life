@@ -60,6 +60,26 @@ function nearestRoad(chunk: ChunkData, [x, z]: XZ, facing?: number): Road | null
   return best
 }
 
+/** Each street round a point (its nearest stretch), the nearest first: where else a lot can go. */
+function roadsNear(roads: ChunkData['roads'], [x, z]: XZ): Road[] {
+  const out: Road[] = []
+  for (const r of roads) {
+    if (r.cls === 'path' || r.cls === 'motorway') continue
+    let best: Road | null = null
+    for (let i = 1; i < r.pts.length; i++) {
+      const [ax, az] = r.pts[i - 1]
+      const [bx, bz] = r.pts[i]
+      const l2 = (bx - ax) ** 2 + (bz - az) ** 2
+      const t = l2 ? Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (z - az) * (bz - az)) / l2)) : 0
+      const at: XZ = [ax + (bx - ax) * t, az + (bz - az) * t]
+      const d = Math.hypot(at[0] - x, at[1] - z)
+      if (!best || d < best.d) best = { at, d, angle: Math.atan2(bz - az, bx - ax), width: r.width }
+    }
+    if (best) out.push(best)
+  }
+  return out.sort((a, b) => a.d - b.d)
+}
+
 /**
  * The landmarks whose front is known, and which way it looks (the game's
  * convention: 0 = +z, south): their door goes on the street on that side, not
@@ -117,6 +137,45 @@ export function resolvePlaces(chunk: ChunkData, spots: PlaceSpot[], onReal?: (b:
     if (x < box.x0 || x >= box.x1 || z < box.z0 || z >= box.z1) continue
     const road = (s.landmark && FACING[s.id] !== undefined && nearestRoad(chunk, s.at, FACING[s.id])) || nearestRoad(chunk, s.at)
 
+    // A lot of the game's (the Sim's house, a plot bought): beside its street, and clear of
+    // every other one (not across a corner, a lane behind it, a road the plot fell on), a
+    // little along the street or across it if need be, as the game's own buildings are.
+    if (s.landmark && road && (s.kind === 'home' || s.kind === 'plot')) {
+      // (landmark: half the lot's diagonal and 3 m: the square's half side from it.)
+      const half = Math.max(6, (s.landmark - 3) / Math.SQRT2)
+      const near = chunk.roads.filter((r) => r.pts.some(([px, pz]) => Math.abs(px - x) < 160 && Math.abs(pz - z) < 160))
+      // Along its own street first, then along the other streets round it, the nearest first.
+      const streets = [road, ...roadsNear(near, s.at).filter((r) => Math.hypot(r.at[0] - road.at[0], r.at[1] - road.at[1]) > 1)].slice(0, 12)
+      const lotAt = (st: Road, along: number, sd: number) => {
+        const [ux, uz] = [Math.cos(st.angle), Math.sin(st.angle)]
+        const [nx, nz] = [-uz, ux]
+        const off = st.width / 2 + 1.2
+        const foot: XZ = [st.at[0] + ux * along, st.at[1] + uz * along]
+        return { door: [foot[0] + nx * sd * off, foot[1] + nz * sd * off] as XZ, center: [foot[0] + nx * sd * (off + half + 0.8), foot[1] + nz * sd * (off + half + 0.8)] as XZ, angle: st.angle }
+      }
+      const sideOf = (st: Road) => ((x - st.at[0]) * -Math.sin(st.angle) + (z - st.at[1]) * Math.cos(st.angle) >= 0 ? 1 : -1)
+      // The first spot no street touches; where there's none (a dense quarter), the one they touch least.
+      let lot = lotAt(road, 0, sideOf(road))
+      let least = Infinity
+      search: for (const st of streets)
+        for (const along of [0, -10, 10, -20, 20, -30, 30, -45, 45, -60, 60])
+          for (const sd of [sideOf(st), -sideOf(st)]) {
+            const c = lotAt(st, along, sd)
+            // (Inside this chunk: the streets of the next one aren't known here.)
+            const out = half * 1.42 + 2
+            if (c.center[0] - out < box.x0 || c.center[0] + out > box.x1 || c.center[1] - out < box.z0 || c.center[1] + out > box.z1) continue
+            if (fields.some((f) => onFieldGround(f, c.center, half * 1.42 + 2)) || madeHere.some((m) => Math.hypot(m[0] - c.center[0], m[1] - c.center[1]) < half + MADE_HALF + 2)) continue
+            const hits = squareHits(near, c.center, c.angle, half, least)
+            if (hits < least) {
+              least = hits
+              lot = c
+              if (!hits) break search
+            }
+          }
+      madeHere.push(lot.center)
+      out.push({ id: s.id, door: lot.door, center: lot.center, rot: Math.atan2(lot.door[0] - lot.center[0], lot.door[1] - lot.center[1]), roadAngle: lot.angle })
+      continue
+    }
     // A landmark stands where the map says, facing its street.
     if (s.landmark && road) {
       const d = Math.hypot(road.at[0] - x, road.at[1] - z) || 1
@@ -240,23 +299,30 @@ function inWater(chunk: ChunkData, p: XZ) {
 /** Half the side of the ground a game-made building takes, its yard round it. */
 const MADE_HALF = 8
 
-/** No street on a square of half-side `half` turned by `angle` round `c` (looked at every 2 m, its edges too). */
-function squareClear(roads: ChunkData['roads'], c: XZ, angle: number, half: number) {
+/** How many points of a square of half-side `half` turned by `angle` round `c` are on a street (looked at every quarter of the half side, its edges too); counting stops at `enough`. */
+function squareHits(roads: ChunkData['roads'], c: XZ, angle: number, half: number, enough = Infinity) {
   const [ux, uz] = [Math.cos(angle), Math.sin(angle)]
+  let hits = 0
   for (let a = -half; a <= half + 0.01; a += half / 4)
     for (let b = -half; b <= half + 0.01; b += half / 4) {
       const q: XZ = [c[0] + ux * a - uz * b, c[1] + uz * a + ux * b]
-      for (const r of roads)
+      on: for (const r of roads)
         for (let i = 1; i < r.pts.length; i++) {
           const [ax, az] = r.pts[i - 1]
           const [bx, bz] = r.pts[i]
           const l2 = (bx - ax) ** 2 + (bz - az) ** 2
           const t = l2 ? Math.max(0, Math.min(1, ((q[0] - ax) * (bx - ax) + (q[1] - az) * (bz - az)) / l2)) : 0
-          if (Math.hypot(ax + (bx - ax) * t - q[0], az + (bz - az) * t - q[1]) < r.width / 2 + 0.5) return false
+          if (Math.hypot(ax + (bx - ax) * t - q[0], az + (bz - az) * t - q[1]) < r.width / 2 + 0.5) {
+            if (++hits >= enough) return hits
+            break on
+          }
         }
     }
-  return true
+  return hits
 }
+
+/** No street on a square of half-side `half` turned by `angle` round `c`. */
+const squareClear = (roads: ChunkData['roads'], c: XZ, angle: number, half: number) => squareHits(roads, c, angle, half, 1) === 0
 
 /**
  * Real buildings in the way of a game-made one (its lot, or a landmark's

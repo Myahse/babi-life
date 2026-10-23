@@ -91,6 +91,22 @@ export class Nav {
   }
 
   /** The closest point on a street (one at least `minWidth` wide), within `radius` metres. */
+  /** Whether a point is on a street's roadway, or within `margin` metres of it (any street round it, the widest too, not only the nearest). */
+  onRoadway(p: XZ, margin = 0): boolean {
+    const [cx, cz] = [Math.floor(p[0] / CELL), Math.floor(p[1] / CELL)]
+    for (let dx = -2; dx <= 2; dx++)
+      for (let dz = -2; dz <= 2; dz++)
+        for (const e of this.edgeGrid.get(`${cx + dx},${cz + dz}`) ?? []) {
+          const { a, b, width } = this.edges[e]
+          const [ax, az] = this.nodes[a]
+          const [bx, bz] = this.nodes[b]
+          const l2 = (bx - ax) ** 2 + (bz - az) ** 2
+          const t = l2 ? Math.max(0, Math.min(1, ((p[0] - ax) * (bx - ax) + (p[1] - az) * (bz - az)) / l2)) : 0
+          if (Math.hypot(ax + (bx - ax) * t - p[0], az + (bz - az) * t - p[1]) < width / 2 + margin) return true
+        }
+    return false
+  }
+
   nearest(p: XZ, radius = 400, minWidth = 0): { at: XZ; edge: number; t: number; dist: number } | null {
     type Hit = { at: XZ; edge: number; t: number; dist: number }
     let best = null as Hit | null

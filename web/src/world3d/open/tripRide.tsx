@@ -12,6 +12,7 @@ import { rng } from '../themes'
 import type { Nav } from './nav'
 import type { XZ } from './geo'
 import { along, DRIVABLE, routeLength, turnTo } from './shared'
+import { report } from './trafficFlow'
 
 // The ride in the street. Once a trip to another commune is booked (Play's travel), the driver
 // comes to the Sim along the real streets, pulls up at the kerb, the Sim gets in, and off they go,
@@ -56,6 +57,7 @@ export function TripRide({ sim, nav, world }: { sim: Sim; nav: Nav; world: World
     return () => {
       tripRide.active = false
       tripRide.boarded = false
+      report('trip', null)
     }
   }, [])
   useFrame((_, dt) => {
@@ -127,6 +129,8 @@ export function TripRide({ sim, nav, world }: { sim: Sim; nav: Nav; world: World
     tripRide.z = g.position.z
     tripRide.heading = g.rotation.y + Math.PI / 2
     tripRide.meet = pl.meet
+    // The street's traffic waits behind it, as behind any car (trafficFlow.tsx).
+    report('trip', g.visible ? { x: g.position.x, z: g.position.z, h: tripRide.heading, half: kindOf(trip?.mode ?? '') === 'moto' ? 1 : 2.3 } : null)
   })
   if (!a || !trip) return null
   const kind = kindOf(trip.mode)
