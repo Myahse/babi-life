@@ -1,14 +1,12 @@
 /** @jsxImportSource babi-dom */
 import { useEffect, useRef, useState } from 'react'
 import { ScrollView, useWindowDimensions, View, type ScrollViewInstance } from 'react-native'
-import { ArrowRight, Bell, UserRound } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { onBack } from '@web/lib/native'
-import { history } from './dom/history'
 
-// The app's welcome, instead of the website's wish list page: four pages to
-// swipe through (what Babi Life is, in the wish list's painted-wall look and
-// words), then where to go. Once seen, the app opens on its last page while
-// the game is shut (the wish list's place); when it's open, on the game.
+// The app's welcome, the first time it opens (the app is the game: no wish
+// list here): four pages to swipe through, what Babi Life is, in the wish
+// list's painted-wall look and words; then on to the game.
 // Written with the game's own classes (this file's JSX is the game's: <div>
 // → our elements), the swiping with React Native's own paging scroller.
 
@@ -32,8 +30,8 @@ const PAGES: Page[] = [
 ]
 const LAST = PAGES.length - 1
 
-/** open: the game is open to this phone (a tester's); done: on to it. */
-export function Onboarding({ open, done }: { open: boolean; done: () => void }) {
+/** done: on to the game (its sign-in, then the Sim's creation). */
+export function Onboarding({ done }: { done: () => void }) {
   const { width, height } = useWindowDimensions()
   const scroller = useRef<ScrollViewInstance>(null)
   // Seen before: straight to the last page, where one goes on from.
@@ -53,13 +51,12 @@ export function Onboarding({ open, done }: { open: boolean; done: () => void }) 
   // The phone's back button: the page before, if there's one.
   useEffect(() => onBack(() => (pageRef.current > 0 ? (go(pageRef.current - 1), true) : false)), [width]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const finish = (to?: string) => {
+  const finish = () => {
     try {
       localStorage.setItem(SEEN, '1')
     } catch {
       /* nothing kept: seen again next time */
     }
-    if (to) history.push(to)
     done()
   }
 
@@ -83,7 +80,7 @@ export function Onboarding({ open, done }: { open: boolean; done: () => void }) 
               Passer
             </button>
           ) : (
-            <span className="text-[13px] font-extrabold">{open ? 'Gratuit' : 'Bientôt · Gratuit'}</span>
+            <span className="text-[13px] font-extrabold">Gratuit</span>
           )}
         </div>
       </header>
@@ -136,19 +133,10 @@ export function Onboarding({ open, done }: { open: boolean; done: () => void }) 
           <button type="button" className="sign-btn w-full" onClick={() => go(page + 1)}>
             Suivant <ArrowRight size={20} strokeWidth={2.6} />
           </button>
-        ) : open ? (
-          <button type="button" className="sign-btn w-full" onClick={() => finish()}>
+        ) : (
+          <button type="button" className="sign-btn w-full" onClick={finish}>
             C'est parti <ArrowRight size={20} strokeWidth={2.6} />
           </button>
-        ) : (
-          <>
-            <button type="button" className="sign-btn w-full" onClick={() => finish('/liste/creer')}>
-              <UserRound size={20} strokeWidth={2.6} /> Crée ton perso
-            </button>
-            <button type="button" className="sign-btn alt w-full" onClick={() => finish('/liste/inscription')}>
-              <Bell size={19} strokeWidth={2.6} /> Préviens-moi à l'ouverture
-            </button>
-          </>
         )}
       </footer>
     </div>

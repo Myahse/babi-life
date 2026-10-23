@@ -312,7 +312,8 @@ g.Node = class {}
 
 g.navigator = {
   ...(g.navigator ?? {}),
-  userAgent: 'BabiLifeApp (Android; React Native)',
+  // The app is the game: it opens as the testers' app does (BabiTest: lib/launch.ts), never on the wish list.
+  userAgent: 'BabiLifeApp/2.0 (Android; React Native) BabiTest',
   platform: 'Android',
   language: 'fr-FR',
   languages: ['fr-FR', 'fr'],

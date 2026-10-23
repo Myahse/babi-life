@@ -46,7 +46,7 @@ const PAINT: [string, number, number][] = [
   ['Caveat', 700, Caveat_700Bold],
 ]
 
-type Game = { App: ComponentType; OfflineBanner: ComponentType; Onboarding: typeof import('./src/Onboarding').Onboarding; onboarded: () => boolean; open: boolean; PortraitHost?: ComponentType }
+type Game = { App: ComponentType; OfflineBanner: ComponentType; Onboarding: typeof import('./src/Onboarding').Onboarding; onboarded: () => boolean; PortraitHost?: ComponentType }
 
 export default function Root() {
   const [game, setGame] = useState<Game | null>(null)
@@ -58,12 +58,12 @@ export default function Root() {
     ;(async () => {
       // The saved session and settings first: the game's stores read them as they're made.
       await Promise.all([loadStorage(), Font.loadAsync(FONTS), paintFonts(PAINT).catch(() => undefined)])
-      // (After the storage: whether this phone is a tester's, the game open to it, is read as they load.)
-      const [{ App }, { OfflineBanner }, { startClockSync }, { Onboarding, onboarded }, { gameOpen }, portrait] = await Promise.all([import('@web/App'), import('@web/components/InstallButton'), import('@web/lib/worldClock'), import('./src/Onboarding'), import('@web/lib/launch'), import('@web/avatar/portrait')])
+      // (After the storage: the game's modules read what's saved as they load.)
+      const [{ App }, { OfflineBanner }, { startClockSync }, { Onboarding, onboarded }, portrait] = await Promise.all([import('@web/App'), import('@web/components/InstallButton'), import('@web/lib/worldClock'), import('./src/Onboarding'), import('@web/avatar/portrait')])
       startClockSync()
       // (The Sims' pictures are drawn in a GL view of the app's own: portrait.native.tsx. A browser's look at the app has the web's.)
       const PortraitHost = (portrait as { PortraitHost?: ComponentType }).PortraitHost
-      if (live) setGame({ App, OfflineBanner, Onboarding, onboarded, open: gameOpen, PortraitHost })
+      if (live) setGame({ App, OfflineBanner, Onboarding, onboarded, PortraitHost })
       void SplashScreen.hideAsync()
     })()
     const reload = () => setRound((r) => r + 1)
@@ -91,8 +91,8 @@ export default function Root() {
   const [, seen] = useState(0)
 
   if (!game) return <View style={styles.root} />
-  const { App, OfflineBanner, Onboarding, onboarded, open, PortraitHost } = game
-  // Not the website's wish list page: the app's welcome (Onboarding.tsx) in its place, and on a first opening.
+  const { App, OfflineBanner, Onboarding, onboarded, PortraitHost } = game
+  // The app's welcome (Onboarding.tsx) on its first opening; and never the website's wish list page.
   const welcome = where.pathname === '/liste' || (!onboarded() && history.index === 0)
   return (
     <View style={styles.root}>
@@ -100,7 +100,7 @@ export default function Root() {
       {PortraitHost && <PortraitHost />}
       <View key={round} style={StyleSheet.absoluteFill}>
         {welcome ? (
-          <Onboarding open={open} done={() => seen((n) => n + 1)} />
+          <Onboarding done={() => seen((n) => n + 1)} />
         ) : (
           <Document>
             <App />
