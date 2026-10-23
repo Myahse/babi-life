@@ -30,10 +30,10 @@ export const STOPS_TRAFFIC = new Set(['mariage', 'match', 'concert', 'foot', 'co
  * HAPPENING_X): a seat among the guests, a place in the crowd, its broom on the gutter. Without one,
  * the Sim stood at the door doing the generic busy arms, alone on the pavement.
  */
-export type HappeningRole = { at: XZ; face: XZ; pose: Pose; /** A plastic chair under it (the scene puts it there). */ chair?: boolean; /** In hand: the scene puts it by the Sim. */ tool?: 'broom' | 'shovel' }
+export type HappeningRole = { at: XZ; face: XZ; pose: Pose; /** A plastic chair under it (the scene puts it there). */ chair?: boolean; /** In hand: the scene puts it by the Sim. */ tool?: 'broom' | 'shovel'; /** On the move with the scene (the wedding cortège): where it is at a time, and which way it goes. */ moving?: (t: number) => { x: number; z: number; h: number } }
 const role = (x: number, z: number, fx: number, fz: number, pose: Pose, more: Partial<HappeningRole> = {}): HappeningRole => ({ at: [HAPPENING_X + x, z], face: [HAPPENING_X + fx, fz], pose, ...more })
 export const HAPPENING_ROLES: Record<string, HappeningRole> = {
-  mariage: role(-4.2, 5, -4.2, 0, 'dance'),
+  mariage: role(-4.2, 5, -4.2, 0, 'dance', { moving: (t) => inCortege(t, CORTEGE_SIM.gap, CORTEGE_SIM.lat) }),
   match: role(-4.6, 4.9, 0, -3.6, 'cheer'),
   concert: role(-4.4, 4.7, 0, -3.4, 'dance'),
   delestage: role(-4.2, 5.4, -3, 7.2, 'talk'),
@@ -81,6 +81,43 @@ function Guest({ p, r = 0, person, pose, scale = 1 }: { p: [number, number, numb
 
 /* ---------- Wedding procession ---------- */
 
+/**
+ * The cortège's round on the street (in the scene's frame, x from
+ * HAPPENING_X): up one lane, round at the end, back down the other, round
+ * again, at a walk; everyone in it a little way behind the one ahead, so it
+ * goes round in one piece. (It went one way only and jumped back to the
+ * start, passing and passing again in front of the Sim who danced with it.)
+ */
+const CORTEGE = { half: 30, lane: 2, speed: 1.4 }
+const CORTEGE_ROUND = 4 * CORTEGE.half + 2 * Math.PI * CORTEGE.lane
+/** The point of the round `s` metres along it, and the way it goes there (an angle, as rotation.y). */
+function cortegeAt(s: number): { x: number; z: number; h: number } {
+  const { half, lane: R } = CORTEGE
+  const turn = Math.PI * R
+  let k = ((s % CORTEGE_ROUND) + CORTEGE_ROUND) % CORTEGE_ROUND
+  if (k < 2 * half) return { x: -half + k, z: R, h: Math.PI / 2 }
+  k -= 2 * half
+  if (k < turn) {
+    const a = k / R
+    return { x: half + Math.sin(a) * R, z: Math.cos(a) * R, h: Math.PI / 2 + a }
+  }
+  k -= turn
+  if (k < 2 * half) return { x: half - k, z: -R, h: -Math.PI / 2 }
+  const a = (k - 2 * half) / R
+  return { x: -half - Math.sin(a) * R, z: -Math.cos(a) * R, h: -Math.PI / 2 + a }
+}
+/** Where one of the cortège is at time t: `gap` metres behind its head, `lat` to its side. */
+export function inCortege(t: number, gap: number, lat: number): { x: number; z: number; h: number } {
+  const p = cortegeAt(t * CORTEGE.speed - gap)
+  // (Its left: the way it goes turned a quarter.)
+  return { x: HAPPENING_X + p.x + Math.cos(p.h) * lat, z: p.z - Math.sin(p.h) * lat, h: p.h }
+}
+/** The Sim dancing with it: in the family's ranks, at their side. */
+export const CORTEGE_SIM = { gap: 21.5, lat: -1.3 }
+
+/** Who's in the cortège, from its head: the cars (pink ribbons), the bride and groom, the family. */
+const CARS = [0, 6.5, 13]
+
 function Wedding({ seed }: { seed: string }) {
   // The family all wear the same pagne, chosen for the wedding.
   const crowd = useCrowd(9, `wed${seed}`, (_, g) => ({ outfit: g === 'femme' ? 'pagne' : 'boubou', outfitColor: '#7b5cff', pattern: 'feuilles', hair: g === 'femme' ? 'headwrap' : 'short' }))
@@ -91,24 +128,41 @@ function Wedding({ seed }: { seed: string }) {
     ],
     [seed],
   )
-  const group = useRef<THREE.Group>(null)
+  // Each one's place in it: behind the head, and to the side (the family three abreast).
+  const ranks = useMemo(() => [...CARS.map((gap) => ({ gap, lat: 0 })), { gap: 17, lat: 0.6 }, { gap: 17, lat: -0.6 }, ...crowd.map((_, i) => ({ gap: 19.5 + Math.floor(i / 3) * 1.4 + (i % 2) * 0.3, lat: ((i % 3) - 1) * 0.9 }))], [crowd])
+  const refs = useRef<(THREE.Group | null)[]>([])
   useFrame(() => {
-    if (group.current) group.current.position.x = HAPPENING_X - 40 + ((worldTime() * 2.6) % 80)
+    const t = worldTime()
+    ranks.forEach((r, i) => {
+      const g = refs.current[i]
+      if (!g) return
+      const p = inCortege(t, r.gap, r.lat)
+      g.position.set(p.x - HAPPENING_X, 0, p.z)
+      // The cars' models lie along x; the people face their way.
+      g.rotation.y = i < CARS.length ? p.h - Math.PI / 2 : p.h
+    })
   })
+  const at = (i: number) => (g: THREE.Group | null) => void (refs.current[i] = g)
   return (
-    <group ref={group} position={[HAPPENING_X, 0, 0]}>
-      {[0, -6.5, -13].map((x, i) => (
-        <group key={i} position={[x, 0, 2.2]}>
+    <group position={[HAPPENING_X, 0, 0]}>
+      {CARS.map((_, i) => (
+        <group key={i} ref={at(i)}>
           <Vehicle p={[0, 0, 0]} kind="car" color="#f8f9fa" />
           <Box p={[1.4, 1.25, 0]} s={[0.9, 0.08, 1.2]} c="#ff8fab" />
           <Box p={[1.4, 1.3, 0]} s={[0.3, 0.3, 0.3]} c="#ffffff" />
         </group>
       ))}
       <NoShadows>
-        <Guest p={[-17, 0, 1.4]} r={Math.PI / 2} person={couple[0]} pose="wave" />
-        <Guest p={[-17, 0, 2.6]} r={Math.PI / 2} person={couple[1]} pose="walk" />
+        <group ref={at(CARS.length)}>
+          <Human look={couple[0].look} gender={couple[0].gender} pose="wave" seed={couple[0].seed} />
+        </group>
+        <group ref={at(CARS.length + 1)}>
+          <Human look={couple[1].look} gender={couple[1].gender} pose="walk" seed={couple[1].seed} />
+        </group>
         {crowd.map((p, i) => (
-          <Guest key={i} p={[-20 - (i % 4) * 1.5, 0, 0.6 + Math.floor(i / 4) * 1.2 + (i % 2) * 0.3]} r={Math.PI / 2} person={p} pose={i % 3 ? 'walk' : 'dance'} />
+          <group key={i} ref={at(CARS.length + 2 + i)}>
+            <Human look={p.look} gender={p.gender} pose={i % 3 ? 'walk' : 'dance'} seed={p.seed} />
+          </group>
         ))}
       </NoShadows>
     </group>

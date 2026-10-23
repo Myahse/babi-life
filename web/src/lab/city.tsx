@@ -444,12 +444,28 @@ function HappeningLab() {
       </mesh>
       <HappeningScene id={id} seed="lab" night={night} />
       {r && (
-        <group position={[r.at[0], 0, r.at[1]]} rotation={[0, Math.atan2(r.face[0] - r.at[0], r.face[1] - r.at[1]), 0]}>
+        <LabRole r={r}>
           <Character look={look} gender="femme" busy pose={r.pose} stage="adulte" />
-        </group>
+        </LabRole>
       )}
       <OrbitControls target={(q.get('look') ?? '15,1,3').split(',').map(Number) as [number, number, number]} />
     </Canvas>
+  )
+}
+
+/** The Sim at its place in the happening; with the cortège, going along with it. */
+function LabRole({ r, children }: { r: (typeof HAPPENING_ROLES)[string]; children: React.ReactNode }) {
+  const g = useRef<THREE.Group>(null)
+  useFrame(() => {
+    const m = r.moving?.(worldTime())
+    if (!m || !g.current) return
+    g.current.position.set(m.x, 0, m.z)
+    g.current.rotation.y = m.h
+  })
+  return (
+    <group ref={g} position={[r.at[0], 0, r.at[1]]} rotation={[0, Math.atan2(r.face[0] - r.at[0], r.face[1] - r.at[1]), 0]}>
+      {children}
+    </group>
   )
 }
 
