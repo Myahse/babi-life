@@ -504,6 +504,27 @@ var Kinds = map[string]PlaceKind{
 			{Text: "La manette ne répond plus : le gérant te change de poste et t'offre une partie.", Money: 200, Effect: Needs{Fun: 5}},
 		},
 	},
+	// The orphanages and pouponnières (the map's « Orphelinat de filles » of
+	// Grand-Bassam, the centres de protection de la petite enfance): not an
+	// office. One comes to give, to spend time with the children, to read them
+	// a story, to serve them their meal, to lend a hand.
+	"orphelinat": {
+		ID: "orphelinat", Label: "Orphelinat", Icon: "heart-handshake",
+		Interactions: []Interaction{
+			{ID: "jouer-enfants", Label: "Passer du temps avec les enfants", Icon: "baby", Minutes: 60, Effect: Needs{Social: 30, Fun: 25, Energy: -10}, MinHour: 9, MaxHour: 18},
+			{ID: "lire-enfants", Label: "Lire une histoire aux enfants", Icon: "book-open", Minutes: 30, Effect: Needs{Social: 20, Fun: 15}, MinHour: 9, MaxHour: 19},
+			{ID: "repas-enfants", Label: "Servir le repas aux enfants", Icon: "utensils", Minutes: 45, Effect: Needs{Social: 20, Fun: 10, Energy: -5}, MinHour: 11, MaxHour: 13},
+			{ID: "don-orphelinat", Label: "Faire un don (5 000 F)", Icon: "hand-heart", Minutes: 20, Cost: 5000, Effect: Needs{Social: 15, Fun: 15}, MinHour: 8, MaxHour: 18},
+			{ID: "grand-don-orphelinat", Ages: TeensUp, Label: "Faire un grand don (25 000 F) : matelas, lait, cahiers", Icon: "gift", Minutes: 30, Cost: 25000, Effect: Needs{Social: 30, Fun: 25}, MinHour: 8, MaxHour: 18},
+			{ID: "benevolat-orphelinat", Ages: TeensUp, Label: "Faire du bénévolat : le linge, le ménage, les devoirs", Icon: "heart", Minutes: 120, Effect: Needs{Social: 25, Fun: 10, Energy: -20, Hygiene: -10}, MinHour: 8, MaxHour: 17},
+		},
+		Events: []RandomEvent{
+			{Text: "Une petite fille te tend un dessin : c'est toi, avec un grand sourire.", Effect: Needs{Fun: 10, Social: 10}},
+			{Text: "Les enfants chantent une chanson pour te dire merci : tu as la gorge serrée.", Effect: Needs{Social: 15}},
+			{Text: "Au moment de partir, un petit garçon ne veut plus lâcher ta main.", Effect: Needs{Social: 10, Fun: -5}},
+			{Text: "La directrice te montre le dortoir : il manque encore des matelas.", Effect: Needs{Fun: -5}},
+		},
+	},
 	"couture": {
 		ID: "couture", Label: "Couturier", Icon: "shirt",
 		Interactions: []Interaction{

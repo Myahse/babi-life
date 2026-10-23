@@ -65,6 +65,10 @@ export function ActionProps({ id, kind, lying, stage = 'adulte', partner, bath }
   if (id === 'bargain') return <Market how="bargain" />
   if (id === 'sell-goods') return <Market how="sell" />
   if (id === 'spectacle') return <Show />
+  // The orphanage: the story book held open to the little ones, the pot of rice to serve, the envelope of the gift.
+  if (id === 'lire-enfants') return <StoryBook />
+  if (id === 'repas-enfants') return <ServingPot />
+  if (id === 'don-orphelinat' || id === 'grand-don-orphelinat') return <Box p={[0.22, 1.02, 0.3]} s={[0.24, 0.02, 0.14]} c="#f1f3f5" />
   if (id === 'exposition') return <Gallery />
   if (kind === 'cinema' && (id === 'film' || id === 'film-popcorn')) return <Cinema popcorn={id === 'film-popcorn'} />
   // The desk: the library's books, the exam, the paper's ads, the coffee, the talk on the screen.
@@ -247,6 +251,39 @@ function PrayerMat() {
 }
 
 /** The notebook open on the table, and the pen. */
+/** A picture book held open on the lap, turned to the children: its two pages, its bright cover. */
+function StoryBook() {
+  return (
+    <group position={[0, 0.82, 0.32]} rotation={[-0.5, 0, 0]}>
+      {[-1, 1].map((s) => (
+        <group key={s} position={[s * 0.13, 0, 0]} rotation={[0, 0, -s * 0.18]}>
+          <Box p={[0, 0, 0]} s={[0.25, 0.02, 0.32]} c="#f8f9fa" />
+        </group>
+      ))}
+      <Box p={[0, -0.02, 0]} s={[0.54, 0.02, 0.34]} c="#e8590c" />
+    </group>
+  )
+}
+
+/** The big pot of rice held in both hands, its ladle in it. */
+function ServingPot() {
+  return (
+    <group position={[0, 1.0, 0.36]}>
+      <mesh>
+        <cylinderGeometry args={[0.2, 0.17, 0.2, 14]} />
+        <meshLambertMaterial color="#adb5bd" />
+      </mesh>
+      <mesh position={[0, 0.09, 0]}>
+        <cylinderGeometry args={[0.18, 0.18, 0.02, 14]} />
+        <meshLambertMaterial color="#fff9db" />
+      </mesh>
+      <group position={[0.08, 0.2, 0]} rotation={[0, 0, -0.4]}>
+        <Box p={[0, 0, 0]} s={[0.03, 0.28, 0.03]} c="#5c3d22" />
+      </group>
+    </group>
+  )
+}
+
 function Notebook() {
   return (
     <group position={TABLE}>

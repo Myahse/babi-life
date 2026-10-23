@@ -395,6 +395,20 @@ export function roomStyle(kind: string, housing: string): RoomStyle {
           </>
         ),
       }
+    case 'orphelinat':
+      // The orphanage: its floor of wood, the light of its windows, the children's drawings pinned up, its name over the shelf.
+      return {
+        floorType: 'wood',
+        lower: '#ffd8a8',
+        openings: [],
+        lamps: [[-2.5, -1], [2.5, -1], [0, 2]],
+        decor: () => (
+          <>
+            <Board p={[-0.6, 2.4, BACK]} wall="back" text="NOS ENFANTS, NOTRE AVENIR" bg="#e64980" w={3.2} />
+            <Board p={[LEFT, 2.2, 1.6]} wall="left" text="BIENVENUE" bg="#1c7ed6" w={1.8} />
+          </>
+        ),
+      }
     case 'gaming':
       // The salle de jeux: dark paint, its screens and its neon standing out (GamingRoom.tsx); its name over the TVs, the prices by the arcade.
       return {
