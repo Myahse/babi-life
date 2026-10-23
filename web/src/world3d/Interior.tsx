@@ -68,7 +68,8 @@ export function action(kind: string, id: string | undefined): { spot: string; po
   if (id === 'douche-vestiaire') return { spot: 'shower', pose: 'wash' }
   if (/^(degrade|boule-a-zero|taille-barbe|tresses|tissage|chignon|manucure|coupe-courte|iroquoise|nattes|vanilles|macarons|carre|coudre-pagne|retouche)$/.test(id)) return { spot: 'chair', pose: 'sit' }
   // Gbairai: telling the quarter's news, with the hands.
-  if (id === 'gbairai') return kind === 'couture' ? { spot: 'chair', pose: 'sit' } : { spot: kind === 'barbier' || kind === 'salon' ? 'bench' : 'table', pose: 'rant' }
+  // (At the market: in the aisle between the stalls, where people stop to talk.)
+  if (id === 'gbairai') return kind === 'couture' ? { spot: 'chair', pose: 'sit' } : { spot: kind === 'barbier' || kind === 'salon' ? 'bench' : kind === 'market' || kind === 'mall' ? 'gossip' : 'table', pose: 'rant' }
   // The coffee break at the office: a cup at one's desk.
   if (id === 'coffee-break') return { spot: 'desk', pose: 'drink' }
   if (id === 'piscine-hotel') return { spot: 'pool', pose: 'idle' }
@@ -597,6 +598,8 @@ export function room(kindIn: string, housing: string): Room {
           sell: { p: [0, 0, 2.45], r: Math.PI, pose: 'wave' },
           // On the chair at the little table, facing it.
           table: { p: [4, 0, 4.15], r: Math.PI, pose: 'eat' },
+          // In the aisle between the stalls, to tell the news (the others at its sides: ActionProps).
+          gossip: { p: [1.75, 0, -0.25], r: -Math.PI / 2, pose: 'rant' },
           entrance: { p: [0, 0, 3.6], r: Math.PI, pose: 'idle' },
           counter: { p: [0, 0, 0.6], r: Math.PI, pose: 'idle' },
         },
