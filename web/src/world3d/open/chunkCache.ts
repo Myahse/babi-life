@@ -11,7 +11,7 @@
 
 import type { PlaceSpot } from './places'
 import type { ChunkData } from './tiles'
-import type { Arrays } from './worker'
+import type { Arrays } from './chunkJob'
 import type { Resolved } from './places'
 
 export type Cached = { data: ChunkData; meshes: Record<string, Arrays>; resolved: Resolved[] }
