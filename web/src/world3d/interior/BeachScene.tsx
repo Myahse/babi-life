@@ -1,3 +1,4 @@
+import { SpotActions } from '../SpotActions'
 import { Suspense, useMemo, useRef } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
@@ -13,7 +14,7 @@ import { Character } from '../Character'
 import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
 import { Dish } from './ActionProps'
-import { Guest, mat, sign, useBigWalk, type Spot, type XZ } from './bigPlace'
+import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere } from './bigPlace'
 
 // A beach on the ocean (Port-Bouët, Bassam, San-Pédro): one comes down from
 // the road onto the sand, the Atlantic's rollers breaking white and running
@@ -135,6 +136,8 @@ export function BeachScene({ sim, placeId, interactionId, roam, night, stage, ot
           <Guest sim={sim} stage={stage} way={way} spot={spot} steer={!!roam && !interactionId} onMoved={onMoved} free={free} entrance={ENTRANCE} look={look}>
             {interactionId === 'eat-fish' && <Dish kind="poisson" />}
           </Guest>
+          {/* What's done here, over where it's done (SpotActions): tap one, the Sim goes */}
+          <SpotActions shown={!!roam && !interactionId} where={spotWhere(SPOTS)} entrance={[ENTRANCE[0], 0, ENTRANCE[1]]} />
           <OrbitControls makeDefault target={[0, 0, 14]} enablePan={false} minDistance={6} maxDistance={90} minPolarAngle={0.25} maxPolarAngle={1.35} enableDamping />
         </Suspense>
       </Canvas>

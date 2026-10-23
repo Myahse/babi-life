@@ -1,3 +1,4 @@
+import { SpotActions } from './SpotActions'
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
@@ -436,6 +437,8 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
             </group>
           )}
           {there && spot?.lying && /^(sleep|nap)$/.test(interactionId ?? '') && <Zzz at={[spot.at[0], spot.y + 0.8, spot.at[1]]} />}
+          {/* What's done here, over where it's done (SpotActions): tap one, the Sim goes */}
+          <SpotActions shown={!!roam && !interactionId} where={(id) => (spots[id] ? [spots[id].at[0], spots[id].y, spots[id].at[1]] : null)} entrance={[gate[0], 0, gate[1]]} />
           <OrbitControls makeDefault target={[0, 0, 0]} enablePan={false} minDistance={4} maxDistance={span * 2.2} minPolarAngle={0.3} maxPolarAngle={1.2} enableDamping />
           <Focus on={there && spot ? [spot.at[0], 0, spot.at[1]] : null} span={span} />
         </Suspense>

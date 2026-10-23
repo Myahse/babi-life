@@ -1,3 +1,4 @@
+import { openSpot, setSceneActions, useSceneActions, type SceneAction } from '../world3d/sceneActions'
 import { gesture } from '../world3d/gesture'
 import type { Pose } from '../avatar/Human'
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -1120,6 +1121,10 @@ export function Play() {
       {placeId && placeId !== 'happening' && (!roaming || menuOpen) && (
         <InteractionMenu world={world} sim={sim} city={city} commune={commune} placeId={placeId} desktop={desktop} onClose={() => (roaming ? setMenuOpen(false) : setPlaceId(null))} onPick={interact} onTravel={travel} onStop={stop} onBuild={() => (setPlaceId(null), setBuilding(0))} />
       )}
+      {visiting && !menuOpen && <SpotSheet />}
+      {visiting && !menuOpen && placeId && (
+        <SceneActionsFeed world={world} sim={sim} city={city} commune={commune} placeId={placeId} onPick={(it, kind, why) => (why ? toast({ tone: 'error', title: it.label, text: why, money: 0 }) : interact(it, kind))} />
+      )}
       {roaming && !menuOpen && (
         // Walking about inside (or round the grounds): the place's name, what to do here, the way out.
         // Above the needs, the map and the phone, which stay in reach (it used to cover them on a phone).
@@ -1130,7 +1135,7 @@ export function Play() {
             </button>
             <div className="min-w-0 flex-1 px-1 text-center leading-tight">
               <div className="truncate font-display text-[15px] font-extrabold">{placeName(placeId!)}</div>
-              <div className="text-[11px] font-bold text-[var(--color-ink-soft)]">{strolling ? (desktop ? 'Flèches ou WASD pour visiter' : 'Le joystick pour visiter') : desktop ? 'Clique au sol ou flèches pour marcher' : 'Touche le sol pour marcher'}</div>
+              <div className="text-[11px] font-bold text-[var(--color-ink-soft)]">{strolling ? (desktop ? 'Flèches ou WASD pour visiter' : 'Le joystick pour visiter') : desktop ? 'Marche, clique une icône pour agir' : 'Marche, touche une icône pour agir'}</div>
             </div>
             <button className="btn !px-3 !py-2.5 !text-sm" onClick={() => setMenuOpen(true)}>
               <Sparkles size={18} /> Que faire ?
@@ -1562,11 +1567,79 @@ type MenuProps = {
   onBuild: () => void
 }
 
-function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose, onPick, onTravel, onStop, onBuild }: MenuProps) {
-  const place = placeId === 'home' ? { name: 'Chez toi', kind: 'home' } : commune.places.find((p) => p.id === placeId)!
-  const navigate = useNavigate()
+/**
+ * Walking about inside a place: what's done there, for the scene to show
+ * over its spots (world3d/SpotActions), the same list as « Que faire ? ». Sent
+ * again only when it changes (an open pin stays open as the clock ticks).
+ */
+function SceneActionsFeed({ world, sim, city, commune, placeId, onPick }: { world: World; sim: Sim; city: City; commune: Commune; placeId: string; /** why: what stops it now (shown instead of doing it). */ onPick: (it: Interaction, kind: string, why?: string) => void }) {
+  const pa = usePlaceActions(world, sim, city, commune, placeId)
+  const whyNot = (it: Interaction) => {
+    const st = pa!.state(it)
+    return st.reason ?? (!st.open ? `Ouvert ${openingLabel(it)}` : st.broke ? 'Pas assez de Djai' : undefined)
+  }
+  const acts: SceneAction[] = pa
+    ? pa.items.map((it) => ({
+        id: it.id,
+        label: it.label,
+        icon: it.icon,
+        colors: kindColors(pa.place.kind),
+        note: [duration(actionLength(it.minutes)), it.cost > 0 ? `−${amount(it.cost)} Djai` : it.cost < 0 ? `+${amount(-it.cost)} Djai` : ''].filter(Boolean).join(' · '),
+        why: whyNot(it),
+      }))
+    : []
+  const latest = useRef({ pa, onPick, whyNot })
+  latest.current = { pa, onPick, whyNot }
+  const key = JSON.stringify(acts)
+  useEffect(() => {
+    setSceneActions(JSON.parse(key) as SceneAction[], (id) => {
+      const { pa, onPick, whyNot } = latest.current
+      const it = pa?.items.find((x) => x.id === id)
+      if (pa && it) onPick(it, pa.place.kind, whyNot(it))
+    })
+  }, [key])
+  useEffect(() => () => setSceneActions([], () => undefined), [])
+  return null
+}
+
+/** The things of the pin tapped in the room (world3d/SpotActions), in a card over the place's bar: tap one, the Sim goes. */
+function SpotSheet() {
+  const { open, pick } = useSceneActions()
+  if (!open) return null
+  return (
+    <div className="pointer-events-none absolute inset-x-0 bottom-[11.25rem] z-30 flex justify-center px-3 lg:bottom-[12.25rem]">
+      <div className="card animate-pop pointer-events-auto w-full max-w-md p-2">
+        <div className="max-h-[38vh] space-y-1 overflow-y-auto">
+          {open.map((a) => (
+            <button key={a.id} className={`tile flex w-full items-center gap-2.5 p-2 text-left ${a.why ? 'opacity-60' : ''}`} onClick={() => (openSpot(null), pick(a.id))}>
+              <IconTile icon={iconFor(a.icon)} colors={a.colors} size={36} />
+              <span className="min-w-0 flex-1 leading-tight">
+                <span className="block text-[14px] font-extrabold">{a.label}</span>
+                <span className="block truncate text-[11.5px] font-bold text-[var(--color-ink-soft)]">{a.why ?? a.note}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+        <button className="mt-1 w-full rounded-xl py-1.5 text-xs font-extrabold text-[var(--color-ink-soft)]" onClick={() => openSpot(null)}>
+          Fermer
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * What can be done at a place, and why each thing can't be now: the place's
+ * menu (« Que faire ? ») and the buttons over their spots inside it
+ * (world3d/SpotActions) show the same.
+ */
+function usePlaceActions(world: World, sim: Sim, city: City, commune: Commune, placeId: string | null) {
+  const place = !placeId ? null : placeId === 'home' ? { name: 'Chez toi', kind: 'home' } : (commune.places.find((p) => p.id === placeId) ?? null)
+  const adult = !!useSession((s) => s.user?.adult)
+  // At the stadium: what's on, and the match or the concert only while it's on.
+  const agenda = useStadium(place?.kind === 'stade' ? placeId : null)
+  if (!place || !placeId) return null
   const kind = world.kinds[place.kind]
-  const colors = kindColors(place.kind)
   const here = sim.city === city.id && sim.commune === commune.id
   const home = housingOf(world, sim)
   const career = world.careers.find((c) => c.id === sim.career && (c.kind === place.kind || c.also?.includes(place.kind)))
@@ -1574,7 +1647,6 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
   // Things past this age (the biberon for an adult) don't show; things for later do, greyed.
   // A night together: only with one's partner living at home, and a player who said they're 18 or over.
   const partner = sim.friends?.find((f) => f.partner && f.home)
-  const adult = !!useSession((s) => s.user?.adult)
   // What's done in a rented room only shows with the room (backend sims/hotel.go): else the lift's « Les chambres ».
   const roomHere = !!sim.stay && sim.stay.place === placeId && sim.stay.until > sim.gameMinutes
   const items = [...(career ? [shift(career, sim.careerLevel)] : []), ...kind.interactions.map((it) => (placeId === 'home' ? atHome(it, home) : it))].filter((it) => !it.stay || roomHere)
@@ -1583,11 +1655,6 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
     .map((it) => (it.id === 'passer-nuit' && partner ? { ...it, label: `Passer la nuit avec ${partner.name}` } : it))
   // Busy at these grounds (the zoo visit): the other things there can still be picked, they take over.
   const busy = !!sim.activity && !(sim.activity.kind === 'do' && sim.activity.placeId === placeId && GROUNDS.has(placeId))
-  const canBuild = placeId === 'home' && here && !!world.materials?.length
-  // Building is on one's own lot, bought from 18.
-  const tooYoung = life.minor
-  // At the stadium: what's on, and the match or the concert only while it's on.
-  const agenda = useStadium(place.kind === 'stade' ? placeId : null)
   const on = eventAt(agenda, sim.gameMinutes)
   const stadiumBlock = (it: Interaction) => {
     const k = it.id === 'stade-match' ? 'match' : it.id === 'stade-concert' ? 'concert' : null
@@ -1595,6 +1662,31 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
     const next = agenda?.agenda.find((e) => e.kind === k && e.start - DOORS_OPEN > sim.gameMinutes)
     return next ? `Prochain : ${when(next.start)}` : k === 'match' ? 'Pas de match' : 'Pas de concert'
   }
+  // In one's own house, sleeping takes a bed, cooking a stove, the TV a TV.
+  const furnitureBlock = (it: Interaction) => {
+    // Swimming: a pool in the house one built, or the villa one rents (game.CanSwimAtHome).
+    if (placeId === 'home' && it.id === 'nager' && !(sim.housing === 'maison' ? sim.furnished?.includes('piscine') : sim.housing === 'villa')) return 'Il te faut une piscine'
+    const lack = placeId === 'home' ? homeLacks(world, sim, it.id) : ''
+    if (lack) return `Il te faut : ${lack}`
+    // The TV wants the power: none while the home's zone is cut (world3d/power.ts).
+    const home = whereabouts.places.find((p) => p.id === 'home')
+    if (placeId === 'home' && it.id === 'watch-tv' && home) {
+      const cut = inCut(cutsAround(commune.id, home.door[0], home.door[1], sim.gameMinutes, 0), home.door[0], home.door[1])
+      if (cut) return `Coupure de courant jusqu'à ${clock(cut.end).time}`
+    }
+    return null
+  }
+  const state = (it: Interaction) => ({ open: openAt(it, sim.gameMinutes), broke: it.cost > 0 && sim.money < it.cost, busy, reason: ageBlock(it, life.stage?.id) ?? stadiumBlock(it) ?? blockedBy(it, sim, city.id, commune.id) ?? furnitureBlock(it) })
+  return { place, kind, home, career, life, roomHere, items, busy, here, agenda, on, state }
+}
+
+function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose, onPick, onTravel, onStop, onBuild }: MenuProps) {
+  const navigate = useNavigate()
+  const { place, kind, life, roomHere, items, busy, here, agenda, on, state } = usePlaceActions(world, sim, city, commune, placeId)!
+  const colors = kindColors(place.kind)
+  const canBuild = placeId === 'home' && here && !!world.materials?.length
+  // Building is on one's own lot, bought from 18.
+  const tooYoung = life.minor
   const billing = place.kind === 'stade' && (
     <div className="min-w-0 rounded-[20px] bg-[#fff4e8] p-3">
       <div className="label">À l'affiche</div>
@@ -1652,21 +1744,6 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
       </span>
     </button>
   )
-  // In one's own house, sleeping takes a bed, cooking a stove, the TV a TV.
-  const furnitureBlock = (it: Interaction) => {
-    // Swimming: a pool in the house one built, or the villa one rents (game.CanSwimAtHome).
-    if (placeId === 'home' && it.id === 'nager' && !(sim.housing === 'maison' ? sim.furnished?.includes('piscine') : sim.housing === 'villa')) return 'Il te faut une piscine'
-    const lack = placeId === 'home' ? homeLacks(world, sim, it.id) : ''
-    if (lack) return `Il te faut : ${lack}`
-    // The TV wants the power: none while the home's zone is cut (world3d/power.ts).
-    const home = whereabouts.places.find((p) => p.id === 'home')
-    if (placeId === 'home' && it.id === 'watch-tv' && home) {
-      const cut = inCut(cutsAround(commune.id, home.door[0], home.door[1], sim.gameMinutes, 0), home.door[0], home.door[1])
-      if (cut) return `Coupure de courant jusqu'à ${clock(cut.end).time}`
-    }
-    return null
-  }
-  const state = (it: Interaction) => ({ open: openAt(it, sim.gameMinutes), broke: it.cost > 0 && sim.money < it.cost, busy, reason: ageBlock(it, life.stage?.id) ?? stadiumBlock(it) ?? blockedBy(it, sim, city.id, commune.id) ?? furnitureBlock(it) })
 
   // Desktop: the Sims radial menu around the place (at home, the rooms' list: too many things for a ring;
   // the stadium's programme, too tall to go under the ring: the list, which has room for it).

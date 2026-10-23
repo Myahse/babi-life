@@ -57,6 +57,16 @@ export function sign(text: string, bg: string, fg: string, w = 512, h = 128) {
   return new THREE.MeshBasicMaterial({ map: t })
 }
 
+/** Where each thing is done, for the pins over the spots (SpotActions): the spot, or the middle of its round. */
+export const spotWhere =
+  (spots: Record<string, Spot>) =>
+  (id: string): [number, number, number] | null => {
+    const s = spots[id]
+    if (!s) return null
+    const [x, z] = s.loop ? s.loop.c : s.at
+    return [x, s.y ?? 0, z]
+  }
+
 /** Where the Sim walks to before settling on a spot. */
 function approach(s: Spot): XZ {
   if (s.from) return s.from

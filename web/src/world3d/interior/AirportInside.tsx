@@ -1,3 +1,4 @@
+import { SpotActions } from '../SpotActions'
 import { Suspense, useEffect, useMemo, useRef } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
@@ -13,7 +14,7 @@ import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
 import { Airliner } from '../open/airport'
 import { Dish } from './ActionProps'
-import { Guest, mat, sign, useBigWalk, type Spot, type XZ } from './bigPlace'
+import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere } from './bigPlace'
 
 // Inside an airport's terminal (the FHB at Port-Bouët, the other cities'
 // own): the hall, the Air Lagune check-in desks and their queue, the
@@ -139,6 +140,8 @@ export function AirportInside({ sim, name, flights, interactionId, roam, night, 
           <Guest sim={sim} stage={stage} way={way} spot={spot} steer={!!roam && !interactionId} onMoved={onMoved} free={free} entrance={ENTRANCE} working={interactionId === 'work'} look={interactionId === 'work' ? workLook(sim.look, sim.career ?? '', sim.careerLevel) : undefined}>
             {worn}
           </Guest>
+          {/* What's done here, over where it's done (SpotActions): tap one, the Sim goes */}
+          <SpotActions shown={!!roam && !interactionId} where={spotWhere(SPOTS)} entrance={[ENTRANCE[0], 0, ENTRANCE[1]]} />
           <OrbitControls makeDefault target={[0, 0, 0]} enablePan={false} minDistance={6} maxDistance={80} minPolarAngle={0.25} maxPolarAngle={1.3} enableDamping />
         </Suspense>
       </Canvas>

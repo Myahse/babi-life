@@ -1,3 +1,4 @@
+import { SpotActions } from '../SpotActions'
 import { Suspense, useMemo, useRef } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
@@ -10,7 +11,7 @@ import { rng } from '../themes'
 import { Snapper } from '../snapshot'
 import { ChatFraming } from '../chatFraming'
 import { ActionProps } from './ActionProps'
-import { Guest, mat, sign, useBigWalk, type Spot, type XZ } from './bigPlace'
+import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere } from './bigPlace'
 import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
 
@@ -184,6 +185,8 @@ export function HotelInside({ sim, placeId, name, interactionId, roam, night, st
           <Guest sim={sim} stage={stage} way={way} spot={spot} steer={!!roam && !interactionId} onMoved={onMoved} free={free} entrance={ENTRANCE} working={interactionId === 'work'} look={interactionId === 'work' ? workLook(sim.look, sim.career ?? '', sim.careerLevel) : undefined}>
             <ActionProps id={interactionId} kind="hotel" lying={!!spot?.lying} />
           </Guest>
+          {/* What's done here, over where it's done (SpotActions): tap one, the Sim goes */}
+          <SpotActions shown={!!roam && !interactionId} where={spotWhere(SPOTS)} entrance={[ENTRANCE[0], 0, ENTRANCE[1]]} />
           <OrbitControls makeDefault target={[0, 1, -4]} enablePan={false} minDistance={6} maxDistance={70} minPolarAngle={0.25} maxPolarAngle={1.25} enableDamping />
         </Suspense>
       </Canvas>
