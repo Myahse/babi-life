@@ -71,10 +71,9 @@ export function along(path: XZ[], d: number): { x: number; z: number; r: number 
 
 /** The street node nearest a point, for an anchor; null where the map has no street. */
 export function anchorNode(nav: Nav, p: XZ, minWidth = 0): number | null {
-  const n = nav.nearest(p, 120)
+  const n = nav.nearest(p, 120, minWidth)
   if (!n) return null
   const e = nav.edges[n.edge]
-  if (e.width < minWidth) return null
   return n.t < 0.5 ? e.a : e.b
 }
 
@@ -83,3 +82,6 @@ export function turnTo(from: number, to: number, k: number) {
   const d = Math.atan2(Math.sin(to - from), Math.cos(to - from))
   return from + d * k
 }
+
+/** The narrowest street a vehicle takes (a service road, 4.5 m): not a track over the plots, nor a footpath between the houses. */
+export const DRIVABLE = 4.2

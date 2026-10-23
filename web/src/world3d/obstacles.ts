@@ -14,6 +14,8 @@ const CELL = 8
 const fixed = new Map<string, Obstacle[]>()
 const moving = new Map<string, Obstacle>()
 let grid: Map<string, Obstacle[]> | null = null
+// In development, the moving ones, for tests in the browser (are the cars on the roads?).
+if (import.meta.env.DEV) Object.assign(globalThis, { __moving: moving, __fixed: fixed })
 
 /** Something that doesn't move: put down (or replaced) under a key. */
 export function setObstacles(key: string, list: Obstacle[]) {

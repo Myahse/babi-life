@@ -83,6 +83,8 @@ export type WalkNav = {
   walkable: (x: number, z: number) => boolean
   /** The way from a to b (a place's door when `door`), or null if there is none. */
   route: (a: XZ, b: XZ, door: boolean) => XZ[] | null
+  /** A vehicle's way from a to b: by the streets it can take (not the footpaths between the houses, nor the tracks over the plots). */
+  drive?: (a: XZ, b: XZ) => XZ[] | null
   /** Keep the camera over the playable area. */
   bounds?: { x0: number; x1: number; z0: number; z1: number }
   /** Where the Sim starts when it isn't busy anywhere and has no home here. */
@@ -405,12 +407,14 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
    * was a zigzag over the blocks, stopping at each wall). Null while the streets there aren't loaded.
    */
   const rideWay = (a: XZ, b: XZ, door: boolean): XZ[] | null => {
-    const way = nav.route(a, b, door)
+    // By the streets a vehicle takes; where there are none to there, by any street (never across the plots).
+    const way = nav.drive?.(a, b) ?? nav.route(a, b, door)
     if (!way || way.length < 3) return null
     const n = way.length
-    // To the street and from it at the end: round what's in the way, else straight (it's short).
-    const first = round(a, way[1]) ?? [a, way[1]]
-    const last = round(way[n - 2], b) ?? [way[n - 2], b]
+    // To the street and from it at the end: round what's in the way, else (a door down a lane) by the
+    // lane, else straight (it's short). Never through the houses.
+    const first = round(a, way[1]) ?? nav.route(a, way[1], false) ?? [a, way[1]]
+    const last = round(way[n - 2], b) ?? nav.route(way[n - 2], b, door) ?? [way[n - 2], b]
     return [...first, ...way.slice(2, n - 2), ...last]
   }
   /** The ride is on a way by the streets (else it asks again as the map loads). */
