@@ -14,6 +14,7 @@ import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
 import { Pyramide } from '../open/landmarks'
 import { Guest, mat, sign, useBigWalk, type Spot, type XZ } from './bigPlace'
+import { Coffee } from './doings'
 
 // Inside La Pyramide (Plateau): its ground floor, the gallery of shops all
 // round under the stepped storeys, the open well in the middle going up to
@@ -157,7 +158,11 @@ function Gallery({ sim, interactionId, roam, night, stage }: { sim: Sim; interac
           <Cafe />
           <Board />
           <People night={night} open={open} />
-          <Guest sim={sim} stage={stage} way={way} spot={spot} steer={!!roam && !interactionId} onMoved={onMoved} free={free} entrance={ENTRANCE} />
+          {/* The coffee break: the colleagues at the table, a coffee each */}
+          {interactionId === 'coffee-break' && <Colleagues />}
+          <Guest sim={sim} stage={stage} way={way} spot={spot} steer={!!roam && !interactionId} onMoved={onMoved} free={free} entrance={ENTRANCE}>
+            {interactionId === 'coffee-break' && <Coffee />}
+          </Guest>
           <OrbitControls makeDefault target={[0, 0, 4]} enablePan={false} minDistance={6} maxDistance={80} minPolarAngle={0.25} maxPolarAngle={1.3} enableDamping />
         </Suspense>
       </Canvas>
@@ -341,6 +346,26 @@ function Cafe() {
   )
 }
 
+/** The Sim's colleagues on the coffee break: one across the table, a cup in front of him; one standing by it, talking. */
+function Colleagues() {
+  const two = useMemo(() => {
+    const r = rng('pyramide-collegues')
+    return (['homme', 'femme'] as const).map((gender) => ({ gender, look: { ...randomLook(gender, r), outfit: gender === 'homme' ? 'suit' : 'chemise' }, seed: r() * 100 }))
+  }, [])
+  const [x, z] = TABLES[2]
+  return (
+    <NoShadows>
+      <group position={[x, 0.05, z - 0.8]}>
+        <TalkHuman id="pyramide-collegue-0" look={two[0].look} gender={two[0].gender} pose="drink" seed={two[0].seed} />
+        <Coffee />
+      </group>
+      <group position={[x + 0.95, 0, z]} rotation={[0, -Math.PI / 2, 0]}>
+        <TalkHuman id="pyramide-collegue-1" look={two[1].look} gender={two[1].gender} pose="talk" seed={two[1].seed} />
+      </group>
+    </NoShadows>
+  )
+}
+
 /** The board of job ads by the door: sheets pinned up under its title. */
 function Board() {
   const tex = useMemo(() => {
@@ -441,6 +466,8 @@ function People({ night, open }: { night: boolean; open: boolean }) {
       {still.map((g, i) => (
         <group key={i} position={g.p} rotation={[0, g.ry, 0]}>
           <TalkHuman id={`pyramide-${open ? 'j' : 's'}${i}`} look={g.look} gender={g.gender} pose={g.pose} seed={g.seed} />
+          {/* At the café's tables, the coffee in front */}
+          {g.pose === 'drink' && <Coffee />}
         </group>
       ))}
       {walkers.map((w, i) => (
