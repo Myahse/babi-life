@@ -274,7 +274,7 @@ export function OfflineMap({ pins, camera, night, sim, padding, route, onZoom }:
           {/* The Sim waiting by the road for the driver */}
           {route.pickup && (
             <div className="pointer-events-none absolute z-[34]" style={{ left: W(route.from[0]) * view.s + view.tx, top: H(route.from[1]) * view.s + view.ty, transform: 'translate(-50%, -50%)' }}>
-              <WaitingMarker sim={sim} />
+              <WaitingMarker sim={sim} text={route.pickup.waits ? 'J’arrive !' : undefined} />
             </div>
           )}
         </>
@@ -294,11 +294,11 @@ export function OfflineMap({ pins, camera, night, sim, padding, route, onZoom }:
   )
 }
 
-/** The Sim by the road, waiting for the driver to come. */
-export function WaitingMarker({ sim }: { sim: Sim | null }) {
+/** The Sim by the road, waiting for the driver to come (or on its way to the one waiting at the kerb). */
+export function WaitingMarker({ sim, text = 'Le chauffeur arrive…' }: { sim: Sim | null; text?: string }) {
   return (
     <span className="flex flex-col items-center">
-      <span className="mb-1 rounded-full bg-white px-2 py-0.5 text-[11px] font-extrabold whitespace-nowrap shadow">Le chauffeur arrive…</span>
+      <span className="mb-1 rounded-full bg-white px-2 py-0.5 text-[11px] font-extrabold whitespace-nowrap shadow">{text}</span>
       <span className="block h-9 w-9 overflow-hidden rounded-full border-[3px] border-white bg-[#ffd8a8] shadow-[0_6px_14px_-6px_rgba(0,0,0,0.6)]">{sim && <Portrait look={sim.look} gender={sim.gender} framing="head" />}</span>
     </span>
   )

@@ -184,6 +184,9 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   // A trip booked (open/tripRide.tsx): waving the driver down at the kerb, then in the car, not drawn.
   const [hailing, setHailing] = useState(false)
   const [aboard, setAboard] = useState(false)
+  // On the way to it (the way, from where, running), and running there now.
+  const toRide = useRef<{ meet: XZ; way: XZ[]; last: XZ; run: boolean; at: number } | null>(null)
+  const toRideRun = useRef(false)
   /** How the Sim goes a way this long: walking, or running if the player runs (Courir, Shift); a long way, a moto-taxi is offered (it rides once paid, in the frame loop). */
   const setPace = (far: number) => {
     riding.current = false
@@ -905,24 +908,44 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       g.position.z = tripRide.z
       g.rotation.y = tripRide.heading
     } else if (trip) {
-      const [x, z] = tripRide.meet
-      const [dx, dz] = [x - g.position.x, z - g.position.z]
-      const d = Math.hypot(dx, dz)
-      // Far from the kerb (it's the Sim's own street, so never really): it waits where it stands.
-      if (d > 0.05 && d < 40) {
-        const step = Math.min(d, SPEED * Math.min(dt, 0.25))
+      // Up to its door on the kerb, round whatever's in between (running when it's far), then turned
+      // to it; worked out again if the player took the Sim off somewhere meanwhile.
+      let t = toRide.current
+      if (!t || t.meet !== tripRide.meet || (Math.hypot(t.last[0] - g.position.x, t.last[1] - g.position.z) > 0.5 && performance.now() - t.at > 1000)) {
+        const from: XZ = [g.position.x, g.position.z]
+        const way = findWay(from, tripRide.meet, false) ?? [tripRide.meet]
+        t = toRide.current = { meet: tripRide.meet, way, last: from, run: pathLength(way, from) > 25, at: performance.now() }
+      }
+      let step = (t.run ? RUN : SPEED) * Math.min(dt, 0.25)
+      while (t.way.length && step > 0) {
+        const [tx, tz] = t.way[0]
+        const [dx, dz] = [tx - g.position.x, tz - g.position.z]
+        const d = Math.hypot(dx, dz)
+        if (d <= step) {
+          g.position.x = tx
+          g.position.z = tz
+          step -= d
+          t.way.shift()
+          continue
+        }
         g.position.x += (dx / d) * step
         g.position.z += (dz / d) * step
         g.rotation.y = Math.atan2(dx, dz)
-      } else g.rotation.y = turnTo(g.rotation.y, Math.atan2(tripRide.x - g.position.x, tripRide.z - g.position.z), 1 - Math.exp(-4 * Math.min(dt, 0.25)))
-      const walkingThere = d > 0.05 && d < 40
-      if (walkingThere !== walking && !padWalking.current) setWalking(walkingThere)
+        step = 0
+      }
+      t.last = [g.position.x, g.position.z]
+      const going = t.way.length > 0
+      tripRide.reached = !going
+      toRideRun.current = going && t.run
+      if (!going) g.rotation.y = turnTo(g.rotation.y, Math.atan2(tripRide.x - g.position.x, tripRide.z - g.position.z), 1 - Math.exp(-4 * Math.min(dt, 0.25)))
+      if (going !== walking && !padWalking.current) setWalking(going)
     }
+    if (!trip || tripRide.boarded) toRideRun.current = false
     if (trip && tripRide.boarded) {
       if (!aboard) setAboard(true)
     } else if (aboard) setAboard(false)
-    // The car in sight: an arm up to it.
-    const hail = trip && !tripRide.boarded && Math.hypot(tripRide.x - g.position.x, tripRide.z - g.position.z) < 45
+    // The car in sight: an arm up to it (not to one already standing there for the Sim).
+    const hail = trip && !tripRide.boarded && !tripRide.parked && Math.hypot(tripRide.x - g.position.x, tripRide.z - g.position.z) < 45
     if (hail !== hailing) setHailing(hail)
     // Standing at a door: offer to go in.
     if (onNear) {
@@ -1040,7 +1063,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     // The player said to drop the way for a spot tapped on the ground.
     const drop = takeDrop()
     if (drop) walkToPoint(drop.x, drop.z, true)
-    const nowRunning = !riding.current && ((padWalking.current && running()) || (path.current.length > 0 && (autoRun.current || running())))
+    const nowRunning = toRideRun.current || (!riding.current && ((padWalking.current && running()) || (path.current.length > 0 && (autoRun.current || running()))))
     // Courir on or off on the way: the pace follows (a jog onto the pitch runs by itself).
     if (path.current.length && !riding.current) speed.current = autoRun.current || running() ? RUN : SPEED
     if (nowRunning !== run) setRun(nowRunning)

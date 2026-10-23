@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Car, CarTaxiFront, Bus, Eye, EyeOff, Footprints, Globe2, Landmark, Layers, LocateFixed, MapPin, PartyPopper, TriangleAlert, X } from 'lucide-react'
 import type { City, Commune, Place, Sim, World } from '../lib/types'
 import { GameMap, type Camera } from '../components/map/GameMap'
-import { inkOn, rideLook } from '../game/rides'
+import { inkOn, kerbWait, rideLook, waitsAtKerb } from '../game/rides'
 import { routeIn, type LngLat } from '../game/roads'
 import { useDrivingRoute, waypointsOf } from '../components/map/roadRoute'
 import { CIV_BOUNDS, Z_PLACE, Z_TOWN, allPins, boundsFor, routeBounds, type Padding, type Route } from '../components/map/pins'
@@ -294,7 +294,7 @@ function TripCard({ sim, route }: { sim: Sim; route: Route }) {
       <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-[var(--color-canvas)]">
         <div className="h-full rounded-full bg-[var(--color-orange)] transition-[width] duration-1000 ease-linear" style={{ width: `${route.progress * 100}%` }} />
       </div>
-      <div className="mt-1.5 text-xs font-extrabold text-[var(--color-ink-soft)]">{route.pickup ? (car ? 'Le car arrive à l’arrêt…' : 'Le chauffeur arrive te chercher…') : left > 0 ? `Encore ${duration(left)} de route` : 'On arrive…'}</div>
+      <div className="mt-1.5 text-xs font-extrabold text-[var(--color-ink-soft)]">{route.pickup?.waits ? `Le ${(route.name ?? 'taxi').toLowerCase()} t’attend au bord de la route…` : route.pickup ? (car ? 'Le car arrive à l’arrêt…' : 'Le chauffeur arrive te chercher…') : left > 0 ? `Encore ${duration(left)} de route` : 'On arrive…'}</div>
       {a.trip?.incident && (
         <p className="mt-2 flex items-start gap-1.5 rounded-xl bg-[#fff4e5] px-3 py-2 text-xs font-bold text-[#a35200]">
           <TriangleAlert size={14} className="mt-px shrink-0" /> {a.trip.incident}
@@ -354,12 +354,14 @@ function useTrip(world: World, sim: Sim): Route | null {
     // Seen within its first minute: the trip began then; opened later on, from its start.
     const seen = tripSeen.get(key)!
     const begin = seen < a.start + 1 ? Math.min(a.end - 1, Math.max(a.start, seen)) : a.start
-    const pick = pickFrom ? Math.min(3, Math.max(0.75, (a.end - begin) * 0.33)) : 0
+    // Hailed at the roadside, it has stopped there: it waits (game/rides.ts kerbWait) while the Sim walks up.
+    const waits = waitsAtKerb(t.mode)
+    const pick = pickFrom ? (waits ? kerbWait(a.end - begin) : Math.min(3, Math.max(0.75, (a.end - begin) * 0.33))) : 0
     const at = nowMin - begin
     const progress = Math.min(1, Math.max(0, (at - pick) / Math.max(0.5, a.end - begin - pick)))
-    const pickup = pickFrom && at < pick ? { from: pickFrom, path: approach, k: Math.max(0, at / pick) } : undefined
+    const pickup = pickFrom && at < pick ? (waits ? { from: ends[0], k: 1, waits: true } : { from: pickFrom, path: approach, k: Math.max(0, at / pick) }) : undefined
     const look = rideLook(world, t.mode, from, t.class)
-    return { from: ends[0], to: ends[1], path: streets ?? path, progress, mode: t.mode, color: look.color, how: look.how, toId: `${t.city}/${t.commune}`, label: t.city === t.fromCity ? to.name : `${to.name}, ${toCity.name}`, pickup }
+    return { from: ends[0], to: ends[1], path: streets ?? path, progress, mode: t.mode, color: look.color, how: look.how, name: look.name, toId: `${t.city}/${t.commune}`, label: t.city === t.fromCity ? to.name : `${to.name}, ${toCity.name}`, pickup }
   }, [a, base, streets, approach, pickFrom, now, world])
 }
 

@@ -71,7 +71,7 @@ import { setTalkHandler, setTalking } from '../world3d/talk'
 import type { Track } from '../audio/music'
 import { NotifyPrompt } from '../components/NotifyPrompt'
 import { motoPaid, rideFare, RIDES, useMoto, type RideKind } from '../world3d/moto'
-import { GBAKA, inkOn, MOTO } from '../game/rides'
+import { GBAKA, inkOn, kerbWait, MOTO, waitsAtKerb } from '../game/rides'
 import { answerDrop, useDropAsk } from '../world3d/dropRoute'
 import { DefiButton, DefiSheet, defiOf, type DefiKind } from '../components/Defi'
 import { BolideApp } from './BolideApp'
@@ -2070,7 +2070,8 @@ function tripLeft(world: World, a: NonNullable<Sim['activity']>, now: number) {
   const to = world.cities.find((c) => c.id === t.city)?.communes.find((c) => c.id === t.commune)
   const total = t.path && t.path.length > 1 ? t.path.reduce((s, p, i) => (i ? s + km({ lng: t.path![i - 1][0], lat: t.path![i - 1][1] }, { lng: p[0], lat: p[1] }) : 0), 0) : from && to ? km(from, to) * 1.25 : 0
   if (!total) return undefined
-  const pick = t.city === t.fromCity && t.mode !== 'avion' ? Math.min(3, Math.max(0.75, (a.end - a.start) * 0.33)) : 0
+  // Hailed at the roadside (or one's own), it's waiting at the kerb a moment; else the driver comes.
+  const pick = t.city !== t.fromCity || t.mode === 'avion' ? 0 : t.mode === 'perso' ? 0.2 : waitsAtKerb(t.mode) ? kerbWait(a.end - a.start) : Math.min(3, Math.max(0.75, (a.end - a.start) * 0.33))
   const at = now - a.start
   if (at < pick) return null
   return total * (1 - Math.min(1, Math.max(0, (at - pick) / Math.max(0.5, a.end - a.start - pick))))
@@ -2268,7 +2269,7 @@ function ActivityBar({ world, sim, onStop, stopping, onRoute, onMore, onRejoin, 
           <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-[var(--color-canvas)]">
             <div className="h-full rounded-full bg-[var(--color-emerald)] transition-[width] duration-1000 ease-linear" style={{ width: `${done * 100}%` }} />
           </div>
-          <div className="mt-1 text-[11px] font-extrabold text-[var(--color-ink-soft)]">{left <= 0 ? 'Presque fini…' : road === null ? `Le chauffeur arrive · encore ${duration(left)}` : `Encore ${duration(left)}${road !== undefined ? ` · ${metres(road * 1000)}` : ''} · fin à ${clock(a.end).time}`}</div>
+          <div className="mt-1 text-[11px] font-extrabold text-[var(--color-ink-soft)]">{left <= 0 ? 'Presque fini…' : road === null ? `${a.trip?.mode === 'perso' ? 'Tu montes' : a.trip && waitsAtKerb(a.trip.mode) ? 'Il t’attend au bord de la route' : 'Le chauffeur arrive'} · encore ${duration(left)}` : `Encore ${duration(left)}${road !== undefined ? ` · ${metres(road * 1000)}` : ''} · fin à ${clock(a.end).time}`}</div>
         </div>
         {travel && (
           <button className="icon-btn shrink-0 bg-[var(--color-canvas)]" onClick={onRoute} aria-label="Voir le trajet" title="Voir le trajet">

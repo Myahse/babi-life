@@ -261,10 +261,10 @@ export class Nav {
   }
 
   /** A random walk of a few streets from a node, for passers-by and cars (the same for the same `r`). */
-  wander(from: number, steps: number, r: () => number, minWidth = 0): XZ[] {
+  /** came: the node it's coming from (it doesn't turn straight back there). */
+  wander(from: number, steps: number, r: () => number, minWidth = 0, came = -1): XZ[] {
     const way: XZ[] = [this.nodes[from]]
     let at = from
-    let came = -1
     for (let k = 0; k < steps; k++) {
       // In a fixed order (by where they lead), not the order chunks loaded in:
       // the same seed takes the same walk on every player's phone.
