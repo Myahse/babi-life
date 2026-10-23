@@ -757,6 +757,8 @@ func (h *Handler) travel(w http.ResponseWriter, r *http.Request) {
 		Class string `json:"class,omitempty"` // the kind of car, on an app that has them
 		Offer int    `json:"offer,omitempty"`
 		Party int    `json:"party,omitempty"` // the Sim plus friends riding along
+		// Vehicle: one of the Sim's own (garage.go), driven there.
+		Vehicle int64 `json:"vehicle,omitempty"`
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
@@ -773,12 +775,35 @@ func (h *Handler) travel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.mutate(w, r, func(s *Sim) (game.Outcome, []Event, error) {
+	ctx := r.Context()
+	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
 		if app, ok := world.FindRideApp(req.App); ok && !s.hasApp(app.ID) {
 			return game.Outcome{}, nil, fmt.Errorf("installe d'abord %s depuis le Store", app.Name)
 		}
-		if err := s.leaveWith(toCity, toCommune, Ride{App: req.App, Class: req.Class, Offer: req.Offer, Party: req.Party}, newRand()); err != nil {
+		ride := Ride{App: req.App, Class: req.Class, Offer: req.Offer, Party: req.Party}
+		// At the wheel of one's own: one of its vehicles, its kilometres counted.
+		if req.Vehicle != 0 {
+			vs, _, err := garageOf(ctx, tx, s.ID)
+			if err != nil {
+				return game.Outcome{}, nil, err
+			}
+			for _, v := range vs {
+				if v.ID == req.Vehicle {
+					m, _ := game.FindVehicleModel(v.Model)
+					ride.Own = &OwnVehicle{ID: v.ID, Model: m, Color: v.Color}
+				}
+			}
+			if ride.Own == nil {
+				return game.Outcome{}, nil, errVehicle
+			}
+		}
+		if err := s.leaveWith(toCity, toCommune, ride, newRand()); err != nil {
 			return game.Outcome{}, nil, err
+		}
+		if o := ride.Own; o != nil {
+			if _, err := tx.Exec(ctx, `UPDATE vehicles SET km = km + $3 WHERE id = $1 AND sim_id = $2`, o.ID, s.ID, s.Activity.Trip.Vehicle.Km); err != nil {
+				return game.Outcome{}, nil, err
+			}
 		}
 		t := s.Activity.Trip
 		text := fmt.Sprintf("%s (%s)", t.Label, humanMinutes(s.Activity.Interaction.Minutes))

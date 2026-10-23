@@ -322,3 +322,35 @@ func TestFriendsRideAlong(t *testing.T) {
 		t.Error("the trip should carry its road path for the map")
 	}
 }
+
+// One's own car to another commune: no fare but the petrol (and the 3e pont's
+// toll), quicker than the taxi; the bike not up country.
+func TestOwnVehicleTrip(t *testing.T) {
+	car, _ := game.FindVehicleModel("auto-akwaba")
+	bike, _ := game.FindVehicleModel("velo-kodjo")
+	abj, _ := world.FindCity("abidjan")
+	cocody, _ := abj.Commune("cocody")
+	taxi := newSim()
+	if err := taxi.leaveWith(abj, cocody, Ride{App: "compteur"}, noLuck()); err != nil {
+		t.Fatal(err)
+	}
+	s := newSim()
+	if err := s.leaveWith(abj, cocody, Ride{Own: &OwnVehicle{ID: 3, Model: car, Color: "#c92a2a"}}, noLuck()); err != nil {
+		t.Fatal(err)
+	}
+	tr := s.Activity.Trip
+	if tr.Mode != "perso" || tr.Vehicle == nil || tr.Vehicle.ID != 3 || tr.Vehicle.Km <= 0 || !strings.Contains(tr.Label, car.Name) {
+		t.Fatalf("own car trip: %+v %+v", tr, tr.Vehicle)
+	}
+	if tr.Fare <= 0 || tr.Fare >= taxi.Activity.Trip.Fare {
+		t.Errorf("the petrol, less than the taxi: %d vs %d", tr.Fare, taxi.Activity.Trip.Fare)
+	}
+	if s.Activity.End-s.Activity.Start > taxi.Activity.End-taxi.Activity.Start {
+		t.Error("one's own car is no slower than the taxi")
+	}
+	bassam, _ := world.FindCity("grand-bassam")
+	far := newSim()
+	if err := far.leaveWith(bassam, bassam.Communes[0], Ride{Own: &OwnVehicle{ID: 4, Model: bike}}, noLuck()); err != errBikeTooFar {
+		t.Errorf("by bike up country: %v", err)
+	}
+}

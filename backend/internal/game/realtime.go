@@ -107,6 +107,20 @@ type Trip struct {
 	Bridges []string     `json:"bridges,omitempty"`
 	// Party: how many travel together (the Sim and friends).
 	Party int `json:"party,omitempty"`
+	// Vehicle: the Sim's own (mode "perso"), the one it drives there.
+	Vehicle *TripVehicle `json:"vehicle,omitempty"`
+}
+
+// TripVehicle: one's own vehicle on a trip, as the street draws it and the
+// Sim gets back at its wheel on arrival.
+type TripVehicle struct {
+	ID    int64   `json:"id"`
+	Kind  string  `json:"kind"`
+	Body  string  `json:"body"`
+	Color string  `json:"color"`
+	Name  string  `json:"name"`
+	Top   float64 `json:"top"` // km/h
+	Km    float64 `json:"km"`  // the way's length, added to its counter
 }
 
 var ErrBusy = fmt.Errorf("ton perso est occupé·e : arrête d'abord ce qu'il fait")
