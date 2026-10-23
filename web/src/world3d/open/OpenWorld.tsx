@@ -34,7 +34,7 @@ import { Snapper } from '../snapshot'
 import { ChatFraming } from '../chatFraming'
 import { CHUNK_ZOOM, hash, tileBox, tileOf, toLatLng, toLocal, type Origin, type XZ } from './geo'
 import { Nav } from './nav'
-import { along, anchorNode, round, routeLength, turnTo, useCellsAround, type Round } from './shared'
+import { along, anchorNode, DRIVABLE, round, routeLength, turnTo, useCellsAround, type Round } from './shared'
 import { inTheWay, resolvePlaces, spaceFields, type PlaceSpot, type Resolved } from './places'
 import { SportField } from './field'
 import { FuelStation } from './station'
@@ -826,6 +826,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   }, [walkLots, lots])
   useEffect(() => {
     whereabouts.roads = nav.edges.map((e) => [nav.nodes[e.a], nav.nodes[e.b], e.width] as [XZ, XZ, number])
+    if (import.meta.env.DEV) Object.assign(window, { __nav: nav })
     whereabouts.water = [...chunks.values()].flatMap((c) => c.data.areas.filter((a) => a.kind === 'water').map((a) => a.rings[0]))
   }, [nav, chunks])
 
@@ -963,6 +964,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     () => ({
       walkable: (x, z) => nav.walkable(x, z),
       route: (a, b) => nav.path(a, b),
+      drive: (a, b) => nav.path(a, b, DRIVABLE),
       heightAt: (x, z) => nav.heightAt(x, z),
       roofAt: (x, z) => nav.roofAt(x, z),
       street: (p) => {

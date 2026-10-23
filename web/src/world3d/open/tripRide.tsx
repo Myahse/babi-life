@@ -11,7 +11,7 @@ import { whereabouts } from '../whereabouts'
 import { rng } from '../themes'
 import type { Nav } from './nav'
 import type { XZ } from './geo'
-import { along, routeLength, turnTo } from './shared'
+import { along, DRIVABLE, routeLength, turnTo } from './shared'
 
 // The ride in the street. Once a trip to another commune is booked (Play's travel), the driver
 // comes to the Sim along the real streets, pulls up at the kerb, the Sim gets in, and off they go,
@@ -30,9 +30,9 @@ const kindOf = (mode: string): VehicleKind => (mode === 'woro' ? 'woro' : mode =
 
 const SPEED = 9 // m/s in town
 
-/** A drive of a few streets from a node: by the streets a car takes, else (a lane, a yard's track) by any. */
+/** A drive of a few streets from a node: by the streets a car takes, else (none here) by any. */
 const drive = (nav: Nav, node: number, steps: number, seed: string) => {
-  const way = nav.wander(node, steps, rng(seed), 4)
+  const way = nav.wander(node, steps, rng(seed), DRIVABLE)
   return way.length > 2 ? way : nav.wander(node, steps, rng(seed), 0)
 }
 const BOARD = 3 / 60 // the stop at the kerb, getting in (game minutes)
@@ -63,7 +63,8 @@ export function TripRide({ sim, nav, world }: { sim: Sim; nav: Nav; world: World
     if (plan.current && plan.current.start !== a?.start) plan.current = null
     // The Walker places the Sim in its first moments: the kerb is the one by where it ends up.
     if (a && !plan.current && performance.now() - born.current > 500) {
-      const n = nav.nearest([whereabouts.sim[0], whereabouts.sim[1]], 200)
+      // The kerb of a street a car takes (not the footpath the Sim may be standing on).
+      const n = nav.nearest([whereabouts.sim[0], whereabouts.sim[1]], 200, DRIVABLE) ?? nav.nearest([whereabouts.sim[0], whereabouts.sim[1]], 200)
       if (n) {
         const e = nav.edges[n.edge]
         const node = n.t < 0.5 ? e.a : e.b
@@ -102,7 +103,7 @@ export function TripRide({ sim, nav, world }: { sim: Sim; nav: Nav; world: World
       const d = (at - pick - BOARD) * 60 * SPEED
       if (d > pl.lenOut - 300) {
         const last = pl.away[pl.away.length - 1]
-        const n = nav.nearest(last, 30)
+        const n = nav.nearest(last, 30, DRIVABLE) ?? nav.nearest(last, 30)
         if (n) {
           const e = nav.edges[n.edge]
           const more = drive(nav, n.t < 0.5 ? e.a : e.b, 30, `ride-on${a.start}${pl.away.length}`)

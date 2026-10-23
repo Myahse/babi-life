@@ -90,8 +90,8 @@ export class Nav {
     return keys
   }
 
-  /** The closest point on a street, within `radius` metres. */
-  nearest(p: XZ, radius = 400): { at: XZ; edge: number; t: number; dist: number } | null {
+  /** The closest point on a street (one at least `minWidth` wide), within `radius` metres. */
+  nearest(p: XZ, radius = 400, minWidth = 0): { at: XZ; edge: number; t: number; dist: number } | null {
     type Hit = { at: XZ; edge: number; t: number; dist: number }
     let best = null as Hit | null
     const [cx, cz] = [Math.floor(p[0] / CELL), Math.floor(p[1] / CELL)]
@@ -100,6 +100,7 @@ export class Nav {
         for (let dz = -ring; dz <= ring; dz++) {
           if (Math.max(Math.abs(dx), Math.abs(dz)) !== ring) continue
           for (const e of this.edgeGrid.get(`${cx + dx},${cz + dz}`) ?? []) {
+            if (this.edges[e].width < minWidth) continue
             const { a, b } = this.edges[e]
             const [ax, az] = this.nodes[a]
             const [bx, bz] = this.nodes[b]
@@ -172,10 +173,10 @@ export class Nav {
     return w
   }
 
-  /** The shortest walk along the streets from a to b (A*), or null. */
-  path(from: XZ, to: XZ): XZ[] | null {
-    const s = this.nearest(from)
-    const g = this.nearest(to)
+  /** The shortest walk along the streets from a to b (A*), or null; by the streets at least `minWidth` wide (a drive: no footpath). */
+  path(from: XZ, to: XZ, minWidth = 0): XZ[] | null {
+    const s = this.nearest(from, 400, minWidth)
+    const g = this.nearest(to, 400, minWidth)
     if (!s || !g) return null
     if (s.edge === g.edge) return [from, s.at, g.at, to]
     const N = this.nodes.length
@@ -185,7 +186,7 @@ export class Nav {
     const eg = this.edges[g.edge]
     const extra = (i: number): { to: number; len: number }[] => {
       if (i === START) return [{ to: es.a, len: es.len * s.t }, { to: es.b, len: es.len * (1 - s.t) }]
-      const out: { to: number; len: number }[] = [...this.adj[i]]
+      const out: { to: number; len: number }[] = minWidth ? this.adj[i].filter((e) => e.width >= minWidth) : [...this.adj[i]]
       if (i === eg.a) out.push({ to: GOAL, len: eg.len * g.t })
       if (i === eg.b) out.push({ to: GOAL, len: eg.len * (1 - g.t) })
       return out
