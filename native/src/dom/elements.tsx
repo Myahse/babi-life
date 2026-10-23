@@ -513,9 +513,10 @@ function Box(props: any) {
   const interactive = !disabled && (PRESSES.some((k) => props[k]) || tag === 'button' || (tag === 'a' && props.href) || tag === 'summary' || (tag === 'input' && (props.type === 'checkbox' || props.type === 'radio')))
   const submit = tag === 'button' && props.type !== 'button' && props.type !== 'reset' && !!inh.form
   const link = tag === 'a' && typeof props.href === 'string' ? props.href : undefined
-  // Touchable where its own pointer-events say auto again, in a box that lets touches through (the HUD's buttons, in bars over the street).
-  const ownPe = style?.pointerEvents ?? parsed.base.f.pe
-  const { pressed, handlers, unpress } = usePress(dom, props, interactive && ownPe !== 'none' && (!inh.peNone || ownPe === 'auto'), (e) => {
+  // Its handlers whatever its pointer-events: what can be touched is the views' to say (pointerEvents below), and a touch on a
+  // part of it that can be bubbles up to it, as a click does on the web (a HUD's button in a bar that lets the street be touched,
+  // a map's pin that only takes taps on its label).
+  const { pressed, handlers, unpress } = usePress(dom, props, interactive, (e) => {
     if (e.defaultPrevented) return
     if (submit) inh.form!.submit()
     if (tag === 'summary') inh.details?.toggle()
