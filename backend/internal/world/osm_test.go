@@ -76,3 +76,45 @@ func TestInGameBrands(t *testing.T) {
 		}
 	}
 }
+
+func TestWorshipNames(t *testing.T) {
+	for in, want := range map[string]string{
+		"Mosquéu NOUROULOUDHA":            "Mosquée Nourouloudha",
+		"mosqée":                          "Mosquée",
+		"mosqué Sénégalaise":              "Mosquée Sénégalaise",
+		"Eglie Methodiste Rehoboth":       "Église Methodiste Rehoboth",
+		"Église évangélique CMA Koumassi": "Église évangélique CMA Koumassi",
+	} {
+		if got := worshipName(in); got != want {
+			t.Errorf("worshipName(%q) = %q, want %q", in, got, want)
+		}
+	}
+	for name, want := range map[string]bool{"Mosquée": false, "Eglise Evangelique": false, "Groupe Scolaire Baradji": false, "Église Parole de Vie": true, "Mosquée Bilal": true} {
+		if got := realWorship(name); got != want {
+			t.Errorf("realWorship(%q) = %v, want %v", name, got, want)
+		}
+	}
+}
+
+// A dense commune: its churches and mosques each once, spelt right, not one at every corner.
+func TestKoumassiWorship(t *testing.T) {
+	var w []MapPlace
+	for _, p := range mapPlaces["koumassi"] {
+		if p.Kind == "worship" {
+			w = append(w, p)
+		}
+	}
+	if len(w) < 10 || len(w) > 30 {
+		t.Fatalf("%d places of worship in Koumassi, want 10 to 30", len(w))
+	}
+	for i, p := range w {
+		if strings.Contains(strings.ToLower(p.Name), "mosquéu") {
+			t.Errorf("misspelt: %s", p.Name)
+		}
+		for _, o := range w[i+1:] {
+			if sameWords(nameWords(p.Name), nameWords(o.Name)) && distKm(p.Lat, p.Lng, o.Lat, o.Lng) < 0.3 {
+				t.Errorf("twice: %s", p.Name)
+			}
+		}
+	}
+}

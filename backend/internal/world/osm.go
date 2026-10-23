@@ -88,21 +88,33 @@ func init() {
 		if !ok {
 			panic("osm/" + e.Name() + ": unknown commune " + f.Commune)
 		}
+		var worship []MapPlace
 		for _, row := range f.Places {
 			p := MapPlace{ID: row[0].(string), Name: InGameName(row[1].(string)), Kind: row[2].(string), Lat: row[3].(float64), Lng: row[4].(float64), Quarter: row[5].(string)}
 			if t, ok := row[6].(string); ok {
 				p.Type = t
 			}
-			if p.Kind == "worship" {
-				p.Faith = game.FaithOf(p.Name, p.Type)
-			}
 			if _, ok := game.Kinds[p.Kind]; !ok {
 				panic("osm/" + e.Name() + ": unknown kind " + p.Kind + " for " + p.ID)
+			}
+			if p.Kind == "worship" {
+				p.Name = worshipName(p.Name)
+				if !realWorship(p.Name) {
+					continue
+				}
+				p.Faith = game.FaithOf(p.Name, p.Type)
 			}
 			if curated(cm, p) {
 				continue
 			}
+			if p.Kind == "worship" {
+				worship = append(worship, p)
+				continue
+			}
 			mapPlaces[f.Commune] = append(mapPlaces[f.Commune], p)
+		}
+		mapPlaces[f.Commune] = append(mapPlaces[f.Commune], fewerWorship(worship)...)
+		for _, p := range mapPlaces[f.Commune] {
 			mapByID[p.ID] = p
 			mapCommune[p.ID] = f.Commune
 		}
@@ -129,6 +141,116 @@ func InGameName(name string) string {
 		name = b.re.ReplaceAllString(name, b.name)
 	}
 	return name
+}
+
+// Places of worship as the map has them: a dense commune has a church or a
+// mosque at every corner (a hundred and more in Koumassi), many with no name
+// but « Eglise » or « Eglise Evangelique », some twice a few metres apart,
+// misspelt (« Mosquéu », « mosqée », « Eglie »), a school among them. The
+// game keeps the named ones, spelt right, each once, and at most one church
+// and one mosque to a square kilometre: the best known there (a parish, a
+// cathedral, a great mosque), else the one with the fullest name.
+
+// The words of a place's name the map misspells, by how it writes them (lower case).
+var worshipWords = map[string]string{"mosquéu": "Mosquée", "mosqée": "Mosquée", "mosqué": "Mosquée", "mosque": "Mosquée", "mosquee": "Mosquée", "eglie": "Église", "eglise": "Église", "eglises": "Églises"}
+
+// worshipName: the name spelt right, its shouted words (NOUROULOUDHA) in
+// ordinary case (short ones are initials: CMA, MIEDA), its first letter up.
+func worshipName(name string) string {
+	words := strings.Fields(name)
+	for i, w := range words {
+		if fixed, ok := worshipWords[strings.ToLower(w)]; ok {
+			words[i] = fixed
+			continue
+		}
+		if r := []rune(w); len(r) >= 6 && strings.ToUpper(w) == w && strings.ToLower(w) != w {
+			words[i] = string(r[0]) + strings.ToLower(string(r[1:]))
+		}
+	}
+	if r := []rune(strings.Join(words, " ")); len(r) > 0 {
+		return string(unicode.ToUpper(r[0])) + string(r[1:])
+	}
+	return name
+}
+
+// The words that alone don't name a place (« Eglise Evangelique », « Mission »).
+var worshipGeneric = map[string]bool{"eglise": true, "eglises": true, "evangelique": true, "mosquee": true, "mission": true, "temple": true, "chapelle": true, "protestante": true}
+
+var notWorship = regexp.MustCompile(`(?i)groupe scolaire|école|ecole|collège|college|lycée|lycee`)
+
+// realWorship: a named place of worship (not a school, not a nameless « Eglise »).
+func realWorship(name string) bool {
+	if notWorship.MatchString(name) {
+		return false
+	}
+	for w := range nameWords(name) {
+		if !worshipGeneric[w] {
+			return true
+		}
+	}
+	return false
+}
+
+var worshipNotable = regexp.MustCompile(`(?i)paroisse|cathédrale|cathedrale|grande mosquée|notre-dame|notre dame|saint|méthodiste|methodiste|baptiste|adventiste|assemblée de dieu|harriste|christianisme céleste|jéhovah|jehovah`)
+
+// fewerWorship: each place once (the same name within 300 m is the same
+// place), then the best one of each faith side (mosques, the rest) in each
+// square kilometre, in the map's order.
+func fewerWorship(all []MapPlace) []MapPlace {
+	var once []MapPlace
+	for _, p := range all {
+		pw := nameWords(p.Name)
+		dup := false
+		for _, o := range once {
+			if sameWords(pw, nameWords(o.Name)) && distKm(o.Lat, o.Lng, p.Lat, p.Lng) < 0.3 {
+				dup = true
+				break
+			}
+		}
+		if !dup {
+			once = append(once, p)
+		}
+	}
+	type cell struct {
+		y, x   int
+		mosque bool
+	}
+	score := func(p MapPlace) int {
+		n := min(len(nameWords(p.Name)), 4)
+		if worshipNotable.MatchString(p.Name) {
+			n += 5
+		}
+		return n
+	}
+	best := map[cell]int{}
+	var order []cell
+	for i, p := range once {
+		k := cell{int(math.Floor(p.Lat * 111.32)), int(math.Floor(p.Lng * 111.32)), p.Faith == game.FaithMuslim}
+		j, ok := best[k]
+		if !ok {
+			order = append(order, k)
+		}
+		if !ok || score(p) > score(once[j]) {
+			best[k] = i
+		}
+	}
+	out := make([]MapPlace, 0, len(order))
+	for _, k := range order {
+		out = append(out, once[best[k]])
+	}
+	return out
+}
+
+func sameWords(a, b map[string]bool) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for w := range a {
+		if !b[w] {
+			return false
+		}
+	}
+	return true
 }
 
 func communeByID(id string) (Commune, bool) {
@@ -170,16 +292,16 @@ func curated(cm Commune, p MapPlace) bool {
 var stopWords = map[string]bool{"de": true, "du": true, "des": true, "la": true, "le": true, "les": true, "l": true, "d": true, "et": true, "a": true, "au": true, "yopougon": true}
 
 func nameWords(s string) map[string]bool {
-	t := norm.NFD.String(strings.ToLower(s))
+	// The accents off first (« é » is « e » and its mark, which isn't a letter: split on, « église » was « e », « glise »).
+	t := strings.Map(func(r rune) rune {
+		if unicode.Is(unicode.Mn, r) {
+			return -1
+		}
+		return r
+	}, norm.NFD.String(strings.ToLower(s)))
 	out := map[string]bool{}
 	for _, w := range strings.FieldsFunc(t, func(r rune) bool { return !unicode.IsLetter(r) && !unicode.IsDigit(r) }) {
-		w = strings.Map(func(r rune) rune {
-			if unicode.Is(unicode.Mn, r) {
-				return -1
-			}
-			return r
-		}, w)
-		if w != "" && !stopWords[w] {
+		if !stopWords[w] {
 			out[w] = true
 		}
 	}
