@@ -616,19 +616,33 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   // Going to a place that isn't loaded yet: load the chunks there first.
   const [walkTo, setWalkTo] = useState<Props['goTo']>(null)
   const away = useRef<XZ | null>(null)
+  const handled = useRef<Props['goTo']>(null)
+  const asked = useRef<string | null>(null)
   useEffect(() => {
-    if (!goTo) return
+    if (!goTo || handled.current === goTo) return
     if (goTo.placeId === 'happening' || resolvedRef.current.has(goTo.placeId)) {
+      handled.current = goTo
       away.current = null
       setWalkTo(goTo)
       return
     }
     const s = spots.find((x) => x.id === goTo.placeId)
-    if (!s) return
+    if (!s) {
+      // A place from the map further off, found by its name (« Où aller »): asked for, and gone to once it's here.
+      if (isMapPlace(goTo.placeId) && asked.current !== goTo.placeId) {
+        asked.current = goTo.placeId
+        api
+          .mapPlace(commune.id, goTo.placeId)
+          .then(({ places: got }) => got.length && setMapList((was) => [...was.filter((p) => p.id !== goTo.placeId), ...got.map((p) => ({ ...p, real: true }))]))
+          .catch(() => (asked.current = null))
+      }
+      return
+    }
+    handled.current = goTo
     away.current = s.at
     focus.current = s.at
     stream()
-  }, [goTo]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [goTo, spots]) // eslint-disable-line react-hooks/exhaustive-deps
   const resolvedRef = useRef(resolved)
   resolvedRef.current = resolved
   useEffect(() => {
@@ -666,7 +680,16 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   // The map's places around the Sim: asked again every 400 m, kept (up to a
   // few thousand) so they don't vanish behind it.
   const mapAsked = useRef<XZ | null>(null)
+  // A commune with a few hundred of them: all at once (« Où aller » lists every one, as many as its number says).
+  const allAsked = useRef(false)
   const askMap = () => {
+    if (!allAsked.current && (commune.mapCount ?? 0) > 0 && (commune.mapCount ?? 0) <= ALL_MAP_PLACES) {
+      allAsked.current = true
+      api
+        .allPlaces(commune.id)
+        .then(({ places: got }) => got.length && setMapList((was) => [...was.filter((p) => !got.some((g) => g.id === p.id)), ...got.map((p) => ({ ...p, real: true }))]))
+        .catch(() => (allAsked.current = false))
+    }
     const at = focus.current
     if (mapAsked.current && Math.hypot(at[0] - mapAsked.current[0], at[1] - mapAsked.current[1]) < 400) return
     mapAsked.current = at
@@ -821,9 +844,14 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   // For the mini-map and the « Où aller ? » list.
   useEffect(() => {
     whereabouts.places = walkLots.map((l) => ({ id: l.id, kind: l.kind, name: l.name, door: l.door }))
+    // The commune's places further than the streets loaded (its mairie at the other end, a forest 7 km off): there
+    // too, where the map puts them; going there loads the streets round them first.
+    const set = new Set(walkLots.map((l) => l.id))
+    whereabouts.further = spots.filter((s) => s.name && !set.has(s.id) && s.kind !== 'plot' && s.kind !== 'happening' && s.id !== HOME_ID).map((s) => ({ id: s.id, kind: s.kind, name: s.name, door: s.at }))
+    whereabouts.toLocal = (lat, lng) => toLocal(origin, lat, lng)
     // In development, every lot (the landmarks too), for tests in the browser.
     if (import.meta.env.DEV) Object.assign(window, { __lots: lots.map((l) => ({ id: l.id, kind: l.kind, x: l.x, z: l.z, door: l.door })) })
-  }, [walkLots, lots])
+  }, [walkLots, lots, spots, origin])
   useEffect(() => {
     whereabouts.roads = nav.edges.map((e) => [nav.nodes[e.a], nav.nodes[e.b], e.width] as [XZ, XZ, number])
     if (import.meta.env.DEV) Object.assign(window, { __nav: nav })
@@ -1494,6 +1522,8 @@ function routeFor(routes: Map<string, XZ[]>, nav: Nav, key: string, anchor: numb
 }
 
 const CAR_CELL = 300
+/** Up to this many places from the map in a commune, they all come at once (Yopougon has thousands: those round the Sim). */
+const ALL_MAP_PLACES = 400
 // Busy streets, like Abidjan's; fewer on a small phone (each one drives and draws).
 const CARS_PER_CELL = RICH ? 5 : 3
 const CAR_ROUND = 90 // seconds

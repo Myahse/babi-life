@@ -36,6 +36,8 @@ export type Commune = {
   /** Colour of the commune's woro-woro (Abidjan); none = there aren't any. */
   woro?: Woro
   places: Place[]
+  /** How many more places the map has there (sent a few at a time, round the Sim): the commune has places.length + mapCount. */
+  mapCount?: number
 }
 /** An app of the phone's store (invented names, modelled on real services). */
 export type PhoneApp = { id: string; name: string; tagline: string; about: string; category: string; sizeMB: number; preinstalled?: boolean; source: Source }

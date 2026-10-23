@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArrowUp, Navigation, X } from 'lucide-react'
 import type { World } from '../lib/types'
+import { api } from '../lib/api'
 import { bearingTo, distanceTo, whereabouts } from '../world3d/whereabouts'
 import { iconFor, kindColors } from './icons'
 import { IconTile } from './ui'
@@ -129,8 +130,15 @@ const LIST_MAX = 60
 /** Lower case, without accents: « Pharmacie Sainte-Thérèse » → « pharmacie sainte-therese ». */
 const fold = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 
-/** The places of the quarter, the nearest first, with the way to each. */
-export function WhereTo({ world, onWalk, onClose }: { world: World; onWalk: (id: string) => void; onClose: () => void }) {
+type Spot = { id: string; kind: string; name: string; door: [number, number] }
+
+/**
+ * Every place of the commune, the nearest first, with the way to each: the
+ * ones the streets round the Sim have set down, the commune's others further
+ * off (where the map puts them), and, searching, the map's places anywhere
+ * in the commune (the server has them all: thousands in Yopougon).
+ */
+export function WhereTo({ world, commune, total, onWalk, onClose }: { world: World; commune: string; /** All the commune's places, its own and the map's: the number the map shows too. */ total: number; onWalk: (id: string) => void; onClose: () => void }) {
   const [, tick] = useState(0)
   useEffect(() => {
     const t = setInterval(() => tick((n) => n + 1), 1000)
@@ -140,8 +148,26 @@ export function WhereTo({ world, onWalk, onClose }: { world: World; onWalk: (id:
   // first, a few dozen of them, and a search over all (name, kind, quarter).
   const [q, setQ] = useState('')
   const words = fold(q).split(/\s+/).filter(Boolean)
-  const all = [...whereabouts.places].filter((p) => p.name)
-  const hits = words.length ? all.filter((p) => words.every((w) => fold(`${p.name} ${world.kinds[p.kind]?.label ?? ''}`).includes(w))) : all
+  const all: Spot[] = [...whereabouts.places, ...whereabouts.further].filter((p) => p.name)
+  // The map's places by that name further off, asked of the server as one types.
+  const [found, setFound] = useState<Spot[]>([])
+  useEffect(() => {
+    const s = q.trim()
+    if (s.length < 2) return setFound([])
+    let live = true
+    const t = setTimeout(() => {
+      api.searchPlaces(commune, s).then(
+        ({ places }) => live && setFound(places.map((p) => ({ id: p.id, kind: p.kind, name: p.name, door: whereabouts.toLocal?.(p.lat, p.lng) ?? whereabouts.sim }))),
+        () => undefined,
+      )
+    }, 300)
+    return () => {
+      live = false
+      clearTimeout(t)
+    }
+  }, [q, commune])
+  const known = new Set(all.map((p) => p.id))
+  const hits = words.length ? [...all.filter((p) => words.every((w) => fold(`${p.name} ${world.kinds[p.kind]?.label ?? ''}`).includes(w))), ...found.filter((p) => !known.has(p.id))] : all
   const list = hits.sort((a, b) => distanceTo(a.door) - distanceTo(b.door)).slice(0, LIST_MAX)
   return (
     <div className="absolute inset-0 z-30 flex flex-col justify-end bg-[#0f1230]/55 backdrop-blur-[3px] lg:items-center lg:justify-center" onClick={onClose}>
@@ -151,16 +177,17 @@ export function WhereTo({ world, onWalk, onClose }: { world: World; onWalk: (id:
           <div className="min-w-0 flex-1">
             <div className="label">Dans le quartier</div>
             <div className="font-display text-[22px] leading-tight font-extrabold">Où aller ?</div>
+            <div className="text-xs font-bold text-[var(--color-ink-soft)]">{total.toLocaleString('fr-FR')} lieux dans la commune</div>
           </div>
           <button className="icon-btn bg-[var(--color-canvas)]" onClick={onClose} aria-label="Fermer">
             <X size={22} strokeWidth={2.6} />
           </button>
         </div>
-        {all.length > 12 && (
+        {total > 12 && (
           <div className="px-4 pb-2">
             <input
               className="w-full rounded-2xl border-2 border-[var(--color-line)] bg-[var(--color-canvas)] px-4 py-2.5 text-[15px] font-bold outline-none focus:border-[var(--color-orange)]"
-              placeholder={`Chercher parmi ${all.length} lieux : maquis, pharmacie…`}
+              placeholder={`Chercher parmi les ${total.toLocaleString('fr-FR')} lieux : maquis, pharmacie…`}
               value={q}
               onChange={(e) => setQ(e.target.value)}
               aria-label="Chercher un lieu"

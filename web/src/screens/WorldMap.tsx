@@ -227,7 +227,8 @@ function SelectionCard({ world, sim, s, onClose, onTravel, onWalk, onZoom }: { w
         </div>
         {commune.admin && <p className="mt-1.5 text-xs font-bold text-[var(--color-ink-soft)]">Commune · {commune.admin.parent}</p>}
         <div className="mt-2 flex flex-wrap gap-1.5">
-          <Chip>{commune.places.length} lieux</Chip>
+          {/* Its own places and the map's (the churches, the shops, the maquis): all there are, as « Où aller » counts them. */}
+          <Chip>{(commune.places.length + (commune.mapCount ?? 0)).toLocaleString('fr-FR')} lieux</Chip>
           {here(city.id, commune.id) && <Chip tone="good">Tu es ici</Chip>}
         </div>
         <div className="mt-3 grid gap-2">

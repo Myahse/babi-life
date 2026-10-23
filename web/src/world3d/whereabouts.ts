@@ -18,6 +18,10 @@ export const whereabouts = {
   /** Angle from straight down (radians). 0 is overhead, π/2 is the horizon. */
   polar: 0.9,
   places: [] as { id: string; kind: string; name: string; door: XZ }[],
+  /** The commune's other places, not set down in the streets yet (too far): where the map puts them, for « Où aller ». */
+  further: [] as { id: string; kind: string; name: string; door: XZ }[],
+  /** A point of the map in the street's metres (null before the street is there). */
+  toLocal: null as ((lat: number, lng: number) => XZ) | null,
   /** Street segments: from, to, width. */
   roads: [] as [XZ, XZ, number][],
   water: [] as XZ[][],

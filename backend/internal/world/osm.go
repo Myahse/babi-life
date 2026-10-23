@@ -120,6 +120,12 @@ func init() {
 		}
 		mapFetched[f.Commune] = f.Fetched
 	}
+	// Each commune's count of them, for its number of places (the map's card, « Où aller »).
+	for i := range Cities {
+		for j := range Cities[i].Communes {
+			Cities[i].Communes[j].MapCount = len(mapPlaces[Cities[i].Communes[j].ID])
+		}
+	}
 }
 
 // The real brands go by their names in the game (« Babi » is a story, not
@@ -361,6 +367,12 @@ func MapPlaceByID(id string) (MapPlace, bool) {
 
 // MapPlaceCount: how many map places a commune has.
 func MapPlaceCount(commune string) int { return len(mapPlaces[commune]) }
+
+// MapPlacesOf: all the commune's places from the map, up to limit (a commune with a few hundred: its whole list).
+func MapPlacesOf(commune string, limit int) []MapPlace {
+	all := mapPlaces[commune]
+	return all[:min(len(all), limit)]
+}
 
 // mapPlace finds a map place by id, as a world Place.
 func mapPlace(id string) (City, Commune, Place, bool) {
