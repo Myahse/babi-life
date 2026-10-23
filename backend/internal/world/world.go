@@ -57,6 +57,8 @@ type Commune struct {
 	// Woro: the colour of its woro-woro (Abidjan), set in taxis.go.
 	Woro   *Woro   `json:"woro,omitempty"`
 	Places []Place `json:"places"`
+	// MapCount: how many more places the map has here (osm.go: churches, shops, maquis…), sent a few at a time.
+	MapCount int `json:"mapCount,omitempty"`
 }
 
 // CityAdmin is a city's administrative status.

@@ -115,6 +115,10 @@ export const api = {
   world: () => request<World>('/world'),
   /** A commune's places from the map (OpenStreetMap) within r km of a point. */
   mapPlace: (commune: string, id: string) => request<{ places: Place[]; total: number }>(`/places?commune=${encodeURIComponent(commune)}&id=${encodeURIComponent(id)}`),
+  /** All the commune's places from the map (one with a few hundred). */
+  allPlaces: (commune: string) => request<{ places: Place[]; total: number }>(`/places?commune=${encodeURIComponent(commune)}&all=1`),
+  /** The commune's places from the map whose name has these words, wherever they are. */
+  searchPlaces: (commune: string, q: string) => request<{ places: Place[]; total: number }>(`/places?commune=${encodeURIComponent(commune)}&q=${encodeURIComponent(q)}`),
   mapPlaces: (commune: string, lat: number, lng: number, r = 1.2) => request<{ places: Place[]; total: number }>(`/places?commune=${encodeURIComponent(commune)}&lat=${lat.toFixed(5)}&lng=${lng.toFixed(5)}&r=${r}`),
   news: () => request<{ items: NewsItem[]; updated: string }>('/news'),
   happening: (city: string, commune: string, gameMinutes: number) => request<HappeningNow>(`/happening?city=${encodeURIComponent(city)}&commune=${encodeURIComponent(commune)}&t=${Math.floor(gameMinutes)}`),

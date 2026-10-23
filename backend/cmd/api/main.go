@@ -191,6 +191,8 @@ func main() {
 				}
 			} else if s := strings.TrimSpace(q.Get("q")); s != "" {
 				places = world.SearchMapPlaces(commune, s, 40)
+			} else if q.Get("all") != "" {
+				places = world.MapPlacesOf(commune, 1000)
 			} else {
 				places = world.MapPlacesNear(commune, num("lat", 0), num("lng", 0), math.Min(num("r", 1.2), 3), 1500)
 			}
