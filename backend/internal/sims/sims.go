@@ -166,6 +166,8 @@ type Sim struct {
 	Career      string   `json:"career"`
 	CareerLevel int      `json:"careerLevel"`
 	Performance int      `json:"performance"`
+	// AutoWork: it goes to work by itself as the shift's hours come (jobs.go; set apart, like Languages).
+	AutoWork bool `json:"autoWork"`
 	// Activity is what the Sim is busy with right now; nil when free.
 	Activity *game.Activity `json:"activity"`
 	// Apps installed on the phone (world.PhoneApps).
@@ -272,6 +274,8 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/robbed", h.robbed)
 	r.Post("/sims/{id}/chat", h.chatHandler)
 	r.Put("/sims/{id}/languages", h.setLanguages)
+	r.Put("/sims/{id}/auto-work", h.setAutoWork)
+	r.Post("/sims/{id}/job-task", h.doJobTask)
 	r.Post("/sims/{id}/friend", h.friend)
 	r.Post("/sims/{id}/gang", h.gang)
 	r.Get("/sims/{id}/gbairai", h.chats)
@@ -373,14 +377,14 @@ func (h *Handler) Routes(r chi.Router) {
 
 const simColumns = `id, first_name, last_name, gender, look, traits, aspiration,
 	home_city, home_commune, city, commune, needs, money, game_minutes,
-	origin, housing, loan, rent_arrears, career, career_level, performance, activity, apps, born_at, family, friends, gang, record, created_at, last_tick, furnished, stay, languages`
+	origin, housing, loan, rent_arrears, career, career_level, performance, activity, apps, born_at, family, friends, gang, record, created_at, last_tick, furnished, stay, languages, auto_work`
 
 // scanSim reads simColumns, then any extra columns selected after them into extra.
 func scanSim(row pgx.Row, extra ...any) (Sim, error) {
 	var s Sim
 	err := row.Scan(append([]any{&s.ID, &s.FirstName, &s.LastName, &s.Gender, &s.Look, &s.Traits, &s.Aspiration,
 		&s.HomeCity, &s.HomeCommune, &s.City, &s.Commune, &s.Needs, &s.Money, &s.GameMinutes,
-		&s.Origin, &s.Housing, &s.Loan, &s.RentArrears, &s.Career, &s.CareerLevel, &s.Performance, &s.Activity, &s.Apps, &s.BornAt, &s.Family, &s.Friends, &s.Gang, &s.Record, &s.CreatedAt, &s.lastTick, &s.Furnished, &s.Stay, &s.Languages}, extra...)...)
+		&s.Origin, &s.Housing, &s.Loan, &s.RentArrears, &s.Career, &s.CareerLevel, &s.Performance, &s.Activity, &s.Apps, &s.BornAt, &s.Family, &s.Friends, &s.Gang, &s.Record, &s.CreatedAt, &s.lastTick, &s.Furnished, &s.Stay, &s.Languages, &s.AutoWork}, extra...)...)
 	return s, err
 }
 

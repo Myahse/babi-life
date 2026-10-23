@@ -75,6 +75,35 @@ func TestCatalogueIsConsistent(t *testing.T) {
 		if _, ok := Kinds[c.Kind].Interaction(WorkInteractionID); ok {
 			t.Errorf("place kind %s already has a %q interaction", c.Kind, WorkInteractionID)
 		}
+		// Something to do at work from the first rung (game/jobs.go), each with how it went.
+		first := 0
+		for _, task := range c.Tasks {
+			if task.ID == "" || task.Label == "" || task.Icon == "" || task.Pose == "" || len(task.Lines) == 0 {
+				t.Errorf("career %s: task %q incomplete", c.ID, task.ID)
+			}
+			if task.MinLevel >= len(c.Levels) {
+				t.Errorf("career %s: task %s from a rung it doesn't have", c.ID, task.ID)
+			}
+			if task.MinLevel == 0 {
+				first++
+			}
+		}
+		if first < 2 {
+			t.Errorf("career %s: %d tasks for its first rung, want 2 or more", c.ID, first)
+		}
+	}
+}
+
+func TestTaskTip(t *testing.T) {
+	task := JobTask{Tip: 500}
+	if got := TaskTip(task, 0, 0.5); got != 500 {
+		t.Errorf("tip at the first rung, middle roll = %d, want 500", got)
+	}
+	if lo, hi := TaskTip(task, 4, 0.5), TaskTip(task, 0, 0.5); lo <= hi {
+		t.Errorf("tip higher up %d, want more than %d", lo, hi)
+	}
+	if got := TaskTip(JobTask{}, 3, 1); got != 0 {
+		t.Errorf("no tip in this job, got %d", got)
 	}
 }
 

@@ -1,3 +1,4 @@
+import { useGesture } from './gesture'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Snapper } from './snapshot'
 import { ChatFraming } from './chatFraming'
@@ -1011,6 +1012,8 @@ function Tour({ stops, look, gender, stage }: { stops: TourStop[]; look: Sim['lo
 
 export function Interior({ sim, kind, placeId, interactionId, roam, housing, night, stage, others = [], open = true, faith }: { sim: Sim; kind: string; placeId: string; interactionId?: string; /** A place of worship's: the mosque, the temple or the parish inside, full for its service. */ faith?: string; /** Just come in: the Sim walks about the room (tap the floor, or the keys). */ roam?: boolean; housing: string; night: boolean; stage: string; others?: Player[]; /** Within its hours: closed, nobody's in (no customers, no staff). */ open?: boolean }) {
   const [roamTo, setRoamTo] = useState<{ p: V3; facing: number } | null>(null)
+  // At work, a task done (gesture.ts): the Sim makes its gesture a moment.
+  const gestureNow = useGesture()
   // The arrow keys and WASD walk the Sim about the room.
   useEffect(() => (roam ? listenKeys() : undefined), [roam])
   const byFaith = kind === 'worship' && !!faith
@@ -1119,7 +1122,7 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
             {(there) =>
               there ? (
                 <>
-                  <Character look={look} gender={sim.gender} stage={stage} marker={!me.lying} busy={act.pose === 'busy'} pose={act.pose} />
+                  <Character look={look} gender={sim.gender} stage={stage} marker={!me.lying} busy={(interactionId === 'work' && gestureNow ? gestureNow : act.pose) === 'busy'} pose={interactionId === 'work' && gestureNow ? gestureNow : act.pose} />
                   {/* Out with friends: they sit, eat, dance at the Sim's side */}
                   {!me.lying && <Along sim={sim} pose={act.pose} stage={stage} />}
                   <ActionProps id={interactionId} kind={kind} lying={!!me.lying} stage={stage} partner={spouse} />

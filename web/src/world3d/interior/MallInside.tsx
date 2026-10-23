@@ -5,7 +5,7 @@ import * as THREE from 'three'
 import type { Sim } from '../../lib/types'
 import { worldTime } from '../../lib/worldClock'
 import { Human, NoShadows, type Pose } from '../../avatar/Human'
-import { randomLook } from '../../avatar/options'
+import { randomLook, workLook } from '../../avatar/options'
 import { rng } from '../themes'
 import { Snapper } from '../snapshot'
 import { ChatFraming } from '../chatFraming'
@@ -124,8 +124,15 @@ function tiles() {
  */
 export type MallLayout = { market?: string; back?: string[]; front?: string[]; kineo?: boolean; style?: 'marcory' | 'palmeraie' }
 
+/** At work there: at the first till, or behind the first shop's counter (its cashier's or its seller's place). */
+const WORK: Record<string, Spot> = {
+  caisse: { at: [TILLS[0] - 0.9, 8], rot: Math.PI / 2, pose: 'busy', from: [TILLS[0] - 0.9, 10.2] },
+  vente: { at: [BACK[0] + 0.6, -13.2], rot: 0, pose: 'busy', from: [BACK[0] + 0.6, -9.5] },
+}
+
 export function MallInside({ sim, name, interactionId, roam, night, stage, layout, view }: { sim: Sim; /** The centre's name, over the doors. */ name: string; interactionId?: string; /** Just come in: walk about (tap the floor, or the keys). */ roam?: boolean; night: boolean; stage: string; layout?: MallLayout; /** Where the camera starts and looks (the lab). */ view?: { cam: [number, number, number]; look: [number, number, number] } }) {
-  const spot = interactionId ? (SPOTS[interactionId] ?? null) : null
+  const working = interactionId === 'work' ? (sim.career ?? '') : ''
+  const spot = interactionId ? ((working ? WORK[working] : SPOTS[interactionId]) ?? null) : null
   const walkable = useMemo(() => freeOf(layout?.style), [layout?.style])
   const { way, tap, onMoved } = useBigWalk(spot, interactionId, roam, walkable, ENTRANCE)
   const floor = useMemo(() => tiles(), [])
@@ -154,7 +161,7 @@ export function MallInside({ sim, name, interactionId, roam, night, stage, layou
           {layout?.style === 'marcory' && <MarcoryGallery night={night} />}
           {layout?.style === 'palmeraie' && <PalmeraieGallery night={night} />}
           <Outside night={night} />
-          <People />
+          <People working={working} />
           {roam && !interactionId && (
             // The floor, to tap where to walk (a drag turns the camera instead).
             <mesh
@@ -170,7 +177,7 @@ export function MallInside({ sim, name, interactionId, roam, night, stage, layou
               <meshBasicMaterial transparent opacity={0} depthWrite={false} />
             </mesh>
           )}
-          <Guest sim={sim} stage={stage} way={way} spot={spot} steer={!!roam && !interactionId} onMoved={onMoved} free={walkable} entrance={ENTRANCE}>
+          <Guest sim={sim} stage={stage} way={way} spot={spot} steer={!!roam && !interactionId} onMoved={onMoved} free={walkable} entrance={ENTRANCE} working={!!working} look={working ? workLook(sim.look, working, sim.careerLevel) : undefined}>
             <ActionProps id={interactionId} kind="mall" lying={!!spot?.lying} />
           </Guest>
           {interactionId === 'supermarche' && <Trolley at={[-27.2, -9.2]} />}
@@ -600,7 +607,8 @@ function Outside({ night }: { night: boolean }) {
 
 /* ---------- The people ---------- */
 
-function People() {
+/** working: the Sim's job there (its till's cashier, its shop's seller stand aside). */
+function People({ working }: { working: string }) {
   const list = useMemo(() => {
     const r = rng('mall-gens')
     const one = (p: [number, number, number], ry: number, pose: Pose, dress?: string, kid = false) => {
@@ -612,12 +620,12 @@ function People() {
       // The security guard at the doors.
       one([8.6, 0, HD - 2], Math.PI, 'idle', 'vigile'),
       // The cashiers and the customers at the tills; shoppers in the aisles.
-      ...TILLS.map((x) => one([x - 0.9, 0, 8], Math.PI / 2, 'busy')),
+      ...TILLS.slice(working === 'caisse' ? 1 : 0).map((x) => one([x - 0.9, 0, 8], Math.PI / 2, 'busy')),
       one([-33, 0, 9.6], Math.PI, 'phone'), one([-23, 0, 9.6], Math.PI, 'idle'),
       one([-32, 0, -4], -Math.PI / 2, 'busy'), one([-24, 0, -12], Math.PI / 2, 'busy'), one([-20, 0, 0], -Math.PI / 2, 'touch'), one([-28, 0, -17], Math.PI / 2, 'busy'),
       one([-30, 0, 15.5], Math.PI, 'busy'), one([-22, 0, 15.5], Math.PI, 'talk'),
       // In the shops: the sellers, the customers.
-      ...BACK.map((x) => one([x + 0.6, 0, -13.2], 0, 'busy')),
+      ...BACK.slice(working === 'vente' ? 1 : 0).map((x) => one([x + 0.6, 0, -13.2], 0, 'busy')),
       ...FRONT.map((x) => one([x + 0.6, 0, 13.2], Math.PI, 'busy')),
       one([-4, 0, -16], Math.PI, 'phone'), one([10.5, 0, -17], Math.PI, 'busy'), one([3, 0, 15.5], 0, 'talk'),
       // The atrium: on the benches, by the fountain, children round it.
@@ -627,7 +635,7 @@ function People() {
       one([24, 0.05, 0.9], Math.PI, 'eat'), one([24, 0.05, -0.9], 0, 'talk'), one([28, 0.05, 3.9], Math.PI, 'eat'), one([33, 0.05, 0.9], Math.PI, 'drink'), one([28, 0.05, -2.1], Math.PI, 'eat'),
       one([30.5, 0, -6.6], 0, 'busy'),
     ]
-  }, [])
+  }, [working])
   // Shoppers walking the gallery, back and forth, bags in hand.
   const walkers = useMemo(() => {
     const r = rng('mall-passants')

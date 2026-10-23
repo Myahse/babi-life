@@ -1,3 +1,4 @@
+import { useGesture } from './gesture'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Html, OrbitControls } from '@react-three/drei'
@@ -135,6 +136,8 @@ type Props = {
 /** The player's Sim: walks to places, with the pad or by tapping the ground; the camera follows. */
 export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy, stationAt, nameTag, labels, onNear, frozen, onLeave, recenter, onFreeCamera, perspective, close, shoulder, homeSpot, hidden, joinRole }: Props) {
   const group = useRef<THREE.Group>(null)
+  // At work out in the street (the gare), a task done (gesture.ts): its gesture a moment.
+  const gestureNow = useGesture()
   // Come out of a building: turned from its door to the street (it faced the building going in).
   const wasHidden = useRef(hidden)
   useEffect(() => {
@@ -1085,7 +1088,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
           // Stopped on a stroll with a friend: turned to them, talking. (On the move it walks, busy or not:
           // a ride being paid for, the place of the action still ahead; frozen, it glided along.)
           <group rotation={[0, chatting && !walking ? 0.9 : 0, 0]}>
-            <Character look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking || looping} running={run || (looping && !!loopKind?.run)} busy={!!busy && !walking && !looping && !chatting} marker={!photoMode} pose={hailing && !walking ? 'wave' : photoMode && photoMode !== 'film' && !busy && !walking ? 'phone' : emote && !busy && !walking ? emote : busy?.kind === 'chat' || (chatting && !walking) ? 'talk' : (inMatch || onTouchline || joining) && !walking ? matchPose : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={looping && loopKind ? loopKind.speed : run ? RUN : SPEED} />
+            <Character look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking || looping} running={run || (looping && !!loopKind?.run)} busy={!!busy && !walking && !looping && !chatting} marker={!photoMode} pose={hailing && !walking ? 'wave' : photoMode && photoMode !== 'film' && !busy && !walking ? 'phone' : emote && !busy && !walking ? emote : busy?.kind === 'chat' || (chatting && !walking) ? 'talk' : (inMatch || onTouchline || joining) && !walking ? matchPose : busy?.id === 'work' && gestureNow && !walking ? gestureNow : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={looping && loopKind ? loopKind.speed : run ? RUN : SPEED} />
           </group>
         )}
         {/* Hanging out: the friend walks along beside the Sim */}

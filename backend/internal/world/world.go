@@ -178,7 +178,21 @@ func abidjanCommune(id, name, blurb string, lat, lng float64, bank string, place
 	src := &game.Source{Status: game.StatusVerified, URLs: append(append([]string{}, abidjanAdmin.URLs...), srcBridges), Checked: game.Checked, Note: abidjanAdmin.Note + " " + bankNote}
 	return Commune{ID: id, Name: name, Blurb: blurb, Lat: lat, Lng: lng,
 		Admin:  Admin{Type: "commune", Parent: "District autonome d'Abidjan", Mairie: "mairie-" + id, Bank: bank, Source: src},
-		Places: append(append([]Place{mairie(id, name, lat+0.0025, lng-0.0035, srcAbidjanDistrict)}, places...), coiffeurs(id, lat, lng)...)}
+		Places: append(append(append([]Place{mairie(id, name, lat+0.0025, lng-0.0035, srcAbidjanDistrict)}, places...), coiffeurs(id, lat, lng)...), services(id, name, lat, lng)...)}
+}
+
+// services: every commune has its pharmacy and its police station (where
+// the pharmacists and the police work, game.Careers), named for the game.
+func services(communeID, name string, lat, lng float64) []Place {
+	pharmacies := []string{"Pharmacie du Marché", "Pharmacie Sainte-Anne", "Pharmacie de la Paix", "Pharmacie de l'Espoir"}
+	n := 0
+	for _, r := range communeID {
+		n += int(r)
+	}
+	return []Place{
+		fictional(communeID+"-pharmacie", pharmacies[n%len(pharmacies)], "pharmacie", "", lat+0.0012, lng-0.0018),
+		fictional(communeID+"-police", "Commissariat de police de "+name, "police", "", lat-0.0016, lng-0.0026),
+	}
 }
 
 // coiffeurs: every quarter has its barbier and its salon de coiffure,

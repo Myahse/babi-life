@@ -5,7 +5,7 @@ import * as THREE from 'three'
 import type { Sim } from '../../lib/types'
 import { worldTime } from '../../lib/worldClock'
 import { Human, NoShadows, type Pose } from '../../avatar/Human'
-import { randomLook } from '../../avatar/options'
+import { randomLook, workLook } from '../../avatar/options'
 import { rng } from '../themes'
 import { Snapper } from '../snapshot'
 import { ChatFraming } from '../chatFraming'
@@ -40,6 +40,8 @@ const SPOTS: Record<string, Spot> = {
   'brunch-lagune': { at: [-6, -15.4], rot: Math.PI, pose: 'eat', y: 0.05 },
   'piscine-hotel': { at: [0, -29], rot: Math.PI / 2, pose: 'swim', y: 0.42, swim: 7.5, from: [0, -23.6] },
   'nuit-hotel': { at: [26, -17.4], rot: 0, pose: 'sleep', y: 0.62, lying: true, from: [26, -15] },
+  // At work: behind the reception desk, at its end by the receptionists.
+  work: { at: [-5.2, 13.3], rot: Math.PI, pose: 'busy', from: [-4, 13.4] },
 }
 const ENTRANCE: XZ = [0, HD - 1.5]
 
@@ -147,7 +149,7 @@ export function IvoireInside({ sim, interactionId, roam, night, stage }: { sim: 
               <meshBasicMaterial transparent opacity={0} depthWrite={false} />
             </mesh>
           )}
-          <Guest sim={sim} stage={stage} way={way} spot={spot} steer={!!roam && !interactionId} onMoved={onMoved} free={free} entrance={ENTRANCE}>
+          <Guest sim={sim} stage={stage} way={way} spot={spot} steer={!!roam && !interactionId} onMoved={onMoved} free={free} entrance={ENTRANCE} working={interactionId === 'work'} look={interactionId === 'work' ? workLook(sim.look, sim.career ?? '', sim.careerLevel) : undefined}>
             <ActionProps id={interactionId} kind="hotel" lying={!!spot?.lying} />
           </Guest>
           <OrbitControls makeDefault target={[0, 1, HD - 6]} enablePan={false} minDistance={6} maxDistance={70} minPolarAngle={0.25} maxPolarAngle={1.25} enableDamping />

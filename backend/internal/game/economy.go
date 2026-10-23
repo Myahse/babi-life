@@ -102,6 +102,8 @@ type Career struct {
 	Days []int `json:"days,omitempty"`
 	// Also: other kinds of place where the job is done.
 	Also []string `json:"also,omitempty"`
+	// Tasks: what's done during a shift, a tap at a time (jobs.go).
+	Tasks []JobTask `json:"tasks"`
 }
 
 // WorksAt: whether the job is done at this kind of place.
@@ -117,7 +119,7 @@ type Level struct {
 var Careers = []Career{
 	{ID: "bureau", Label: "Bureau", Icon: "briefcase", Kind: "office", MinHour: 7, MaxHour: 11, Minutes: 8 * 60,
 		Effect: Needs{Energy: -35, Fun: -20, Hunger: -20, Social: 10},
-		Levels: []Level{{"Stagiaire", 6000}, {"Assistant·e", 12000}, {"Chef de service", 22000}, {"Directeur·rice", 40000}, {"PDG", 70000}}},
+		Levels: []Level{{"Stagiaire", 6000}, {"Assistant·e", 12000}, {"Chef de service", 22000}, {"Directeur·rice général·e (DG)", 40000}, {"PDG", 70000}}},
 	{ID: "maquis", Label: "Restauration", Icon: "chef-hat", Kind: "maquis", MinHour: 10, MaxHour: 18, Minutes: 6 * 60,
 		Effect: Needs{Energy: -30, Hygiene: -20, Hunger: 10, Social: 15},
 		Levels: []Level{{"Plongeur·se", 4000}, {"Serveur·se", 7000}, {"Cuisinier·ère", 12000}, {"Chef du maquis", 20000}, {"Patron·ne de maquis", 35000}}},
@@ -143,6 +145,29 @@ var Careers = []Career{
 	{ID: "sante", Label: "Santé", Icon: "stethoscope", Kind: "health", MinHour: 6, MaxHour: 20, Minutes: 8 * 60,
 		Effect: Needs{Energy: -40, Hygiene: -10, Fun: -10, Social: 15},
 		Levels: []Level{{"Aide-soignant·e", 6000}, {"Infirmier·ère", 11000}, {"Sage-femme / Major", 17000}, {"Médecin", 30000}, {"Professeur·e de médecine", 52000}}},
+	// The tills of the supermarkets (in the shopping centres), the shops' counters, the hotels, the lawyers'
+	// chambers (in the office towers), the pharmacies, the police stations, the airports.
+	{ID: "caisse", Label: "Caisse", Icon: "shopping-cart", Kind: "mall", MinHour: 7, MaxHour: 14, Minutes: 7 * 60,
+		Effect: Needs{Energy: -30, Fun: -15, Hunger: -15, Social: 15},
+		Levels: []Level{{"Caissier·ère stagiaire", 4000}, {"Caissier·ère", 7000}, {"Chef de caisse", 12000}, {"Responsable de magasin", 22000}, {"Directeur·rice d'hypermarché", 40000}}},
+	{ID: "vente", Label: "Vente en boutique", Icon: "shopping-bag", Kind: "boutique", Also: []string{"mall"}, MinHour: 8, MaxHour: 13, Minutes: 7 * 60,
+		Effect: Needs{Energy: -25, Fun: -5, Hunger: -15, Social: 25},
+		Levels: []Level{{"Vendeur·se", 4500}, {"Conseiller·ère de vente", 8000}, {"Responsable de boutique", 14000}, {"Gérant·e", 24000}, {"Patron·ne d'une chaîne de boutiques", 42000}}},
+	{ID: "hotellerie", Label: "Hôtellerie", Icon: "hotel", Kind: "hotel", MinHour: 6, MaxHour: 16, Minutes: 8 * 60,
+		Effect: Needs{Energy: -30, Fun: -5, Hunger: -15, Social: 20},
+		Levels: []Level{{"Bagagiste", 4500}, {"Réceptionniste", 9000}, {"Chef de réception", 16000}, {"Directeur·rice d'hôtel", 30000}, {"Propriétaire d'hôtels", 55000}}},
+	{ID: "droit", Label: "Droit", Icon: "gavel", Kind: "office", MinHour: 8, MaxHour: 11, Minutes: 8 * 60, Days: Weekdays,
+		Effect: Needs{Energy: -35, Fun: -15, Hunger: -20, Social: 10},
+		Levels: []Level{{"Stagiaire en cabinet", 6000}, {"Avocat·e collaborateur·rice", 14000}, {"Avocat·e associé·e", 26000}, {"Bâtonnier·ère", 45000}, {"Ténor du barreau", 75000}}},
+	{ID: "pharmacie", Label: "Pharmacie", Icon: "pill", Kind: "pharmacie", MinHour: 7, MaxHour: 15, Minutes: 8 * 60,
+		Effect: Needs{Energy: -25, Fun: -10, Hunger: -15, Social: 15},
+		Levels: []Level{{"Vendeur·se en pharmacie", 5000}, {"Préparateur·rice", 8500}, {"Pharmacien·ne assistant·e", 15000}, {"Pharmacien·ne titulaire", 28000}, {"Propriétaire de pharmacies", 48000}}},
+	{ID: "police", Label: "Police", Icon: "shield", Kind: "police", MinHour: 6, MaxHour: 20, Minutes: 8 * 60,
+		Effect: Needs{Energy: -35, Hygiene: -10, Fun: -10, Social: 10},
+		Levels: []Level{{"Gardien·ne de la paix", 6000}, {"Brigadier·ère", 10000}, {"Lieutenant·e", 17000}, {"Commissaire", 30000}, {"Directeur·rice général·e de la police", 52000}}},
+	{ID: "aerien", Label: "Aéroport", Icon: "plane", Kind: "aeroport", MinHour: 4, MaxHour: 16, Minutes: 8 * 60,
+		Effect: Needs{Energy: -30, Fun: -5, Hunger: -15, Social: 15},
+		Levels: []Level{{"Agent·e d'escale", 6000}, {"Hôte·sse d'enregistrement", 10000}, {"Chef d'escale", 18000}, {"Directeur·rice des opérations", 32000}, {"Directeur·rice général·e de l'aéroport", 58000}}},
 }
 
 func FindCareer(id string) (Career, bool) {
