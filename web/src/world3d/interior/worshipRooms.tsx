@@ -13,6 +13,52 @@ import type { Room, Spot } from '../Interior'
 
 type V3 = [number, number, number]
 
+/** A stop on the visit's way round: where, and what to turn to and look at (and take a photo of). */
+export type TourStop = { at: [number, number]; face?: [number, number] }
+
+/**
+ * « Visiter »: the way round the room by its free aisles (not through the
+ * pews, the chairs, the faithful), stopping before what's worth seeing: the
+ * altar and the Virgin and the windows, the mihrab and the minbar and the
+ * books, the stage and its drums and keyboard. Round and round while it lasts.
+ */
+export function worshipTour(faith: string): TourStop[] {
+  if (faith === 'musulman')
+    return [
+      { at: [0, 3.3], face: [0, -4] },
+      { at: [-2.6, 1.8] },
+      { at: [-4.6, -0.4], face: [-5.6, -2] },
+      { at: [-3.5, -2.7], face: [-3.5, -3.6] },
+      { at: [-1.4, -2.6], face: [0, -4.35] },
+      { at: [3.4, -2.2], face: [2.2, -3.6] },
+      { at: [4.6, 0.6] },
+      { at: [2.4, 2.6] },
+    ]
+  if (faith === 'catholique')
+    return [
+      { at: [0, 3.3], face: [0, -4] },
+      { at: [0, -2.6], face: [0, -4.4] },
+      { at: [-3.6, -2.7], face: [-5, -3.4] },
+      { at: [-5.35, -1.2] },
+      { at: [-5.35, 3.3] },
+      { at: [5.35, 3.3] },
+      { at: [5.35, -1.2] },
+      { at: [3.8, -2.7], face: [4, -4.4] },
+      { at: [0, -2.6] },
+    ]
+  return [
+    { at: [0, 3.3], face: [0, -4] },
+    { at: [0, -1.9], face: [0, -3.6] },
+    { at: [-2.6, -2.0], face: [-3, -3.8] },
+    { at: [-5.35, -1.6] },
+    { at: [-5.35, 3.3] },
+    { at: [5.35, 3.3] },
+    { at: [5.35, -1.6] },
+    { at: [2.8, -2.0], face: [2.8, -3.5] },
+    { at: [0, -1.9] },
+  ]
+}
+
 /** The activities that are a service: the room is full. */
 export const SERVICES = new Set(['messe', 'messe-matin', 'culte', 'veillee', 'priere-vendredi'])
 
