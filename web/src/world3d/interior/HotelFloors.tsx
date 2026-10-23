@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
-import { ArrowDownUp, BedDouble, ChevronLeft, ConciergeBell, DoorClosed, KeyRound, X } from 'lucide-react'
+import { ArrowDown, ArrowDownUp, BedDouble, ConciergeBell, DoorClosed, DoorOpen, KeyRound, X } from 'lucide-react'
 import { api } from '../../lib/api'
-import type { ActionResult, HotelView, Interaction, Sim, World } from '../../lib/types'
+import type { ActionResult, HotelView, Interaction, Sim, Stay, World } from '../../lib/types'
 import { amount, duration, openAt } from '../../game/rules'
 import { iconFor } from '../../components/icons'
 import { Snapper } from '../snapshot'
@@ -293,6 +293,12 @@ export function Upstairs({ sim, stage, look, view, floor, room, rooms, roomType,
 
 const TYPE_LABEL: Record<string, string> = { standard: 'Standard', superieure: 'Supérieure', suite: 'Suite' }
 
+/** What freeing the room early pays back (mirrors backend sims/hotel.go stayRefund): the whole nights not started. */
+const refundOf = (st: Stay, now: number) => {
+  const nights = Math.floor((st.until - now) / 1440)
+  return st.kind !== 'hotel' || nights <= 0 || st.until <= st.from ? 0 : Math.floor((st.paid * nights * 1440) / (st.until - st.from))
+}
+
 export function HotelStay({ world, sim, placeId, stage, night, interactionId, act, onAct, children }: { world: World; sim: Sim; placeId: string; stage: string; night: boolean; interactionId?: string; act: Act; onAct: (it: Interaction) => void; children: ReactNode }) {
   const look = LOOKS[placeId] ?? PLAIN
   const [info, setInfo] = useState<HotelView | null>(null)
@@ -340,6 +346,9 @@ export function HotelStay({ world, sim, placeId, stage, night, interactionId, ac
   const busy = !!sim.activity
   const [sheet, setSheet] = useState(true)
   useEffect(() => setSheet(true), [view, room])
+  // « Libérer la chambre » asked: what it means first (what's paid back), then done.
+  const [freeing, setFreeing] = useState(false)
+  useEffect(() => setFreeing(false), [view, room, sheet])
   // The hotel's sheets go over the whole game (a portal: the inside is under the HUD), so nothing sits on them.
   const panel = 'pointer-events-auto fixed inset-x-0 bottom-0 z-[60] mx-auto max-h-[min(62vh,520px)] w-full max-w-md overflow-y-auto rounded-t-[26px] bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-18px_40px_-18px_rgba(0,0,0,0.55)] animate-up short:max-h-[78vh]'
   const where = level === 0 ? 'Hall' : view === 'room' && room ? `Chambre ${room}` : `Étage ${level}`
@@ -368,13 +377,20 @@ export function HotelStay({ world, sim, placeId, stage, night, interactionId, ac
             {where}
           </button>
           {level > 0 && view === 'corridor' && (
-            <button className="hud pointer-events-auto rounded-full px-3 py-1.5 text-[11px] font-extrabold" onClick={() => setLift(true)}>
-              Touche une porte · 🟢 libre · 🔴 occupée
-            </button>
+            <>
+              <button className="hud pointer-events-auto rounded-full px-3 py-1.5 text-[11px] font-extrabold" onClick={() => setLift(true)}>
+                Touche une porte · 🟢 libre · 🔴 occupée
+              </button>
+              {/* Out of the floors, still in the hotel: its hall (the way out of the hotel is at the bottom of the screen). */}
+              <button className="hud pointer-events-auto flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-extrabold active:scale-95" onClick={() => ride(0)}>
+                <ArrowDown size={14} /> Descendre au hall
+              </button>
+            </>
           )}
           {level > 0 && view === 'room' && (
+            // Out of the room, not of the hotel: into the corridor.
             <button className="hud pointer-events-auto flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-extrabold active:scale-95" onClick={() => (setView('corridor'), setRoom(null))}>
-              <ChevronLeft size={14} /> Couloir
+              <DoorOpen size={14} /> Sortir de la chambre
             </button>
           )}
         </div>
@@ -481,19 +497,37 @@ export function HotelStay({ world, sim, placeId, stage, night, interactionId, ac
                     )
                   })}
               </ul>
-              <div className="mt-3 flex gap-2">
-                <button className="btn flex-1 !py-2 !text-sm" onClick={() => void act(`Prolonger : 1 nuit`, 'bed-double', 'home', () => api.bookRoom(sim.id, placeId, room, '1n')).then(() => load())}>
-                  <BedDouble size={15} /> +1 nuit · {amount(info.prices[type]?.['1n'] ?? 0)}
-                </button>
-                <button className="flex-1 rounded-2xl bg-[var(--color-canvas)] py-2 text-sm font-extrabold" onClick={() => void act('Rendre la clé', 'key-round', 'home', () => api.endStay(sim.id)).then((ok) => {
-                    if (!ok) return
-                    setView('corridor')
-                    setRoom(null)
-                    void load()
-                  })}>
-                  <DoorClosed size={15} className="mr-1 inline" /> Rendre la clé
-                </button>
-              </div>
+              {freeing ? (
+                // Freeing the room before its time: what's paid back, then the key handed in at the desk.
+                <div className="mt-3 rounded-2xl bg-[#fff1f0] p-3">
+                  <p className="text-xs font-bold text-[#8a1c12]">
+                    Libérer la chambre {room} maintenant ?{' '}
+                    {refundOf(stay, sim.gameMinutes) > 0 ? `Les nuits pas commencées te sont remboursées : ${amount(refundOf(stay, sim.gameMinutes))} Djai.` : 'La nuit en cours est due : rien n’est remboursé.'}
+                  </p>
+                  <div className="mt-2 flex gap-2">
+                    <button className="flex-1 rounded-2xl bg-white py-2 text-sm font-extrabold" onClick={() => setFreeing(false)}>
+                      Garder la chambre
+                    </button>
+                    <button className="btn flex-1 !bg-[#c92a2a] !py-2 !text-sm" onClick={() => void act('Libérer la chambre', 'key-round', 'home', () => api.endStay(sim.id)).then((ok) => {
+                        if (!ok) return
+                        setView('corridor')
+                        setRoom(null)
+                        void load()
+                      })}>
+                      <DoorClosed size={15} /> Libérer
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-3 flex gap-2">
+                  <button className="btn flex-1 !py-2 !text-sm" onClick={() => void act(`Prolonger : 1 nuit`, 'bed-double', 'home', () => api.bookRoom(sim.id, placeId, room, '1n')).then(() => load())}>
+                    <BedDouble size={15} /> +1 nuit · {amount(info.prices[type]?.['1n'] ?? 0)}
+                  </button>
+                  <button className="flex-1 rounded-2xl bg-[var(--color-canvas)] py-2 text-sm font-extrabold" onClick={() => setFreeing(true)}>
+                    <DoorClosed size={15} className="mr-1 inline" /> Libérer la chambre
+                  </button>
+                </div>
+              )}
             </>
           ) : (
             <>

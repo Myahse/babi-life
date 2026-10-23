@@ -866,9 +866,11 @@ export function Play() {
             <Suspense fallback={null}>
               <HotelStay world={world} sim={sim} placeId={inside!.id} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} night={c.isNight} interactionId={inside!.it} act={run} onAct={(it) => {
                 const id = inside!.id
-                // As from the place's menu: the menu closes, the room shows what's done in it.
+                // As from the place's menu: the menu closes, the room shows what's done in it, and once
+                // it's done the Sim is still there (in its room: the hotel's floors stay as they were).
                 setPlaceId(null)
                 setOutside(false)
+                setBackTo(id)
                 void run(it.label, it.icon, 'home', () => api.interact(sim.id, id, it.id))
               }}>
                 {inside!.id === 'cocody-hotel-ivoire' ? (
@@ -1182,7 +1184,8 @@ export function Play() {
         <div className="pointer-events-none absolute inset-x-0 bottom-[6.5rem] z-20 flex justify-center px-3 lg:bottom-[7.5rem]">
           <div className="hud pointer-events-auto flex w-full max-w-md items-center gap-2 rounded-[26px] p-2">
             <button className="btn btn-soft !px-3 !py-2.5 !text-sm" onClick={() => setPlaceId(null)}>
-              <LogOut size={18} /> Sortir
+              {/* (At a hotel, the way out of the whole hotel: out of one's room is « Sortir de la chambre », up there.) */}
+              <LogOut size={18} /> {placeId && commune.places.find((p) => p.id === placeId)?.kind === 'hotel' ? 'Quitter l’hôtel' : 'Sortir'}
             </button>
             <div className="min-w-0 flex-1 px-1 text-center leading-tight">
               <div className="truncate font-display text-[15px] font-extrabold">{placeName(placeId!)}</div>
