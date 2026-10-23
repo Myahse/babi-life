@@ -15,6 +15,8 @@ import { Character } from '../Character'
 import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
 import { Guest, mat, sign, useBigWalk, type XZ } from './bigPlace'
+import { Cinema } from './doings'
+import { drawReel, REEL_H, REEL_W } from './filmReel'
 
 // Inside a Kinéo cinema (game/cinema.go). Come in: the lobby, the ticket
 // machines and the counter, the popcorn under its lamp, this week's posters
@@ -82,7 +84,6 @@ function Room({ sim, placeId, seance, popcorn, stage }: { sim: Sim; placeId: str
   const salle = SALLES[placeId]?.find((s) => s.n === (seance?.salle ?? 3)) ?? SALLES[placeId]?.[0] ?? SALLES['cocody-kineo'][0]
   const vip = !!salle.vip
   const film = useFilm(placeId, seance?.film) ?? FALLBACK
-  const screen = useMemo(() => new THREE.MeshBasicMaterial({ map: screenTexture(film) }), [film])
   // The room's measures: a seat's width, a row's depth and rise; the aisles' gaps.
   const [SW, RD, RISE] = vip ? [1.05, 1.7, 0.45] : [0.62, 1.05, 0.34]
   const xOf = (c: number) => {
@@ -131,11 +132,8 @@ function Room({ sim, placeId, seance, popcorn, stage }: { sim: Sim; placeId: str
         <Suspense fallback={null}>
           {/* The room in the half-light: the film's glow, the aisles' little lights */}
           <hemisphereLight args={['#9a8ab4', '#3a1c22', 1.25]} />
-          <FilmLight color={film.colors[0]} />
-          {/* The screen, and the dark walls round it */}
-          <mesh position={[0, 4.2, 0]} material={screen}>
-            <planeGeometry args={[screenW, screenW * 0.425]} />
-          </mesh>
+          {/* The screen, the film playing on it and its light on the room; the dark walls round it */}
+          <FilmScreen film={film} width={screenW} />
           <mesh geometry={BOX} position={[0, 4, -0.3]} scale={[width + 4, 9, 0.4]} material={mat('#121218')} />
           {[-1, 1].map((k) => (
             <mesh key={k} geometry={BOX} position={[k * (width / 2 + 1.5), 4, zOf(salle.rows) / 2]} scale={[0.4, 10, zOf(salle.rows) + 4]} material={mat('#1a1622')} />
@@ -160,9 +158,10 @@ function Room({ sim, placeId, seance, popcorn, stage }: { sim: Sim; placeId: str
               </group>
             ))}
           </NoShadows>
-          {/* The Sim in its seat, facing the screen; popcorn if bought */}
+          {/* The Sim in its seat, facing the screen; the popcorn on the lap if bought (a VIP seat comes with it) */}
           <group position={[sx, sy + 0.05, sz + 0.1]} rotation={[0, Math.PI, 0]}>
             <Character look={sim.look} gender={sim.gender} pose={popcorn || vip ? 'eat' : 'sit'} stage={stage} />
+            <Cinema popcorn={popcorn || vip} />
           </group>
           <OrbitControls makeDefault target={[sx / 2, (sy + 4.2) / 2, sz / 2]} enablePan={false} minDistance={3} maxDistance={40} enableDamping />
         </Suspense>
@@ -171,13 +170,40 @@ function Room({ sim, placeId, seance, popcorn, stage }: { sim: Sim; placeId: str
   )
 }
 
-/** The film's light on the room, flickering as the pictures change. */
-function FilmLight({ color }: { color: string }) {
+/**
+ * The screen with the film playing (filmReel.ts: drawn about twelve times a
+ * second, enough for a picture going by), and its light on the room, in the
+ * colour of the shot on screen, flickering as the pictures change.
+ */
+function FilmScreen({ film, width }: { film: CinemaFilm; width: number }) {
   const glow = useRef<THREE.PointLight>(null)
+  const reel = useMemo(() => {
+    const canvas = document.createElement('canvas')
+    canvas.width = REEL_W
+    canvas.height = REEL_H
+    const texture = new THREE.CanvasTexture(canvas)
+    texture.colorSpace = THREE.SRGBColorSpace
+    return { g: canvas.getContext('2d')!, texture, material: new THREE.MeshBasicMaterial({ map: texture }), last: -1 }
+  }, [])
+  useEffect(() => () => (reel.texture.dispose(), reel.material.dispose()), [reel])
   useFrame(() => {
-    if (glow.current) glow.current.intensity = 70 + Math.sin(worldTime() * 2.3) * 12 + Math.sin(worldTime() * 7.1) * 7
+    const t = worldTime()
+    if (t - reel.last >= 1 / 12 || t < reel.last) {
+      reel.last = t
+      const light = drawReel(reel.g, film, t)
+      reel.texture.needsUpdate = true
+      glow.current?.color.set(light)
+    }
+    if (glow.current) glow.current.intensity = 70 + Math.sin(t * 2.3) * 12 + Math.sin(t * 7.1) * 7
   })
-  return <pointLight ref={glow} position={[0, 5, 3]} intensity={70} distance={60} decay={1.2} color={color} />
+  return (
+    <>
+      <pointLight ref={glow} position={[0, 5, 3]} intensity={70} distance={60} decay={1.2} color={film.colors[0]} />
+      <mesh position={[0, 4.2, 0]} material={reel.material}>
+        <planeGeometry args={[width, width * (REEL_H / REEL_W)]} />
+      </mesh>
+    </>
+  )
 }
 
 /* ---------- The lobby ---------- */
