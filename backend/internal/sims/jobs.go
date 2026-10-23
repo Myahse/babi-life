@@ -3,6 +3,7 @@ package sims
 import (
 	"errors"
 	"fmt"
+	"math"
 	"math/rand/v2"
 	"net/http"
 
@@ -94,6 +95,15 @@ func (s *Sim) goToWork() bool {
 		}
 		if _, err := s.interactAt(p.ID, game.WorkInteractionID); err == nil {
 			return true
+		}
+	}
+	// Outside Abidjan the pharmacies, commissariats, banks… are the map's:
+	// the first one of the kind (what would turn it away, the hours, turns
+	// all of them away).
+	for _, p := range world.MapPlacesOf(cm.ID, math.MaxInt) {
+		if c.WorksAt(p.Kind) {
+			_, err := s.interactAt(p.ID, game.WorkInteractionID)
+			return err == nil
 		}
 	}
 	return false

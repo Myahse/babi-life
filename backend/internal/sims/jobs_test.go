@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/myahse/babi-life/backend/internal/game"
+	"github.com/myahse/babi-life/backend/internal/world"
 )
 
 func TestJobTask(t *testing.T) {
@@ -47,5 +48,13 @@ func TestGoToWork(t *testing.T) {
 	late := &Sim{Career: "pharmacie", City: "abidjan", Commune: "koumassi", GameMinutes: 20 * 60, Needs: s.Needs}
 	if late.goToWork() {
 		t.Error("at 20 h, past the shift's hours: started all the same")
+	}
+	// Yamoussoukro's pharmacies are the map's.
+	yakro := &Sim{Career: "pharmacie", City: "yamoussoukro", Commune: "yakro-centre", HomeCity: "yamoussoukro", HomeCommune: "yakro-centre", GameMinutes: 8 * 60, Needs: s.Needs}
+	if !yakro.goToWork() {
+		t.Fatal("at 8 h in Yamoussoukro: no shift started at a pharmacy of the map")
+	}
+	if _, cm, p, ok := world.FindPlace(yakro.Activity.PlaceID); !ok || p.Kind != "pharmacie" || cm.ID != "yakro-centre" {
+		t.Errorf("shift at %q (%s in %s), want a pharmacy of Yamoussoukro", yakro.Activity.PlaceID, p.Kind, cm.ID)
 	}
 }
