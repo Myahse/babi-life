@@ -10,10 +10,8 @@ import { randomLook } from '../../avatar/options'
 import { rng } from '../themes'
 import { Snapper } from '../snapshot'
 import { ChatFraming } from '../chatFraming'
-import { Character } from '../Character'
 import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
-import { Pyramide } from '../open/landmarks'
 import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere } from './bigPlace'
 import { Coffee } from './doings'
 
@@ -22,8 +20,7 @@ import { Coffee } from './doings'
 // the sky (a fountain and palms at its foot), the lifts up to the offices on
 // the far side, the café's tables out in the gallery, the job ads pinned up
 // by the door. In the day the office people come and go; at night it's
-// nearly empty. Up the lifts, its roof: the Plateau's towers all round and
-// the lagoon. The frame: +z the doors, y 0 the floor; one square, 46 m a side,
+// nearly empty. (Up the lifts, its roof is the street's own: open/rooftops.ts.) The frame: +z the doors, y 0 the floor; one square, 46 m a side,
 // like the outside (landmarks.tsx).
 
 /** Half the square; where the shops' fronts are; half the well. */
@@ -114,7 +111,6 @@ const SPOTS: Record<string, Spot> = {
 }
 
 export function PyramideInside({ sim, interactionId, roam, night, stage }: { sim: Sim; interactionId?: string; /** Just come in: walk about (tap the floor, or the keys). */ roam?: boolean; night: boolean; stage: string }) {
-  if (interactionId === 'terrasse-pyramide') return <Roof sim={sim} night={night} stage={stage} />
   return <Gallery sim={sim} interactionId={interactionId} roam={roam} night={night} stage={stage} />
 }
 
@@ -479,83 +475,5 @@ function People({ night, open }: { night: boolean; open: boolean }) {
         </group>
       ))}
     </NoShadows>
-  )
-}
-
-/* ---------- The roof ---------- */
-
-/** The roof's height (the crown on top of the fifteenth storey: landmarks.tsx). */
-const TOP = 15 * 3.9 + 1
-
-/** Up on the roof: the steps of the storeys going down all round, the Plateau's towers, the lagoon past them, the bridges to Treichville. */
-function Roof({ sim, night, stage }: { sim: Sim; night: boolean; stage: string }) {
-  const city = useMemo(() => {
-    const r = rng('pyramide-vue')
-    const out: { x: number; z: number; h: number; w: number; d: number; c: string }[] = []
-    // The Plateau's blocks round it, lower than its roof; a tower now and then further off; one far over the rest.
-    while (out.length < 110) {
-      const [x, z] = [-520 + r() * 1040, -520 + r() * 1040]
-      const d = Math.hypot(x, z)
-      if (d < 90 || d > 540) continue
-      const far = Math.min(1, (d - 90) / 250)
-      out.push({ x, z, h: 10 + r() * 25 + (r() < 0.3 ? far * (30 + r() * 70) : 0), w: 12 + r() * 18, d: 12 + r() * 18, c: ['#d9d6cf', '#c4cbd3', '#e6dfd2', '#9fb0c2', '#d2c3a8', '#8aa0b6'][Math.floor(r() * 6)] })
-    }
-    out.push({ x: -170, z: -230, h: 150, w: 26, d: 26, c: '#8aa0b6' })
-    return out
-  }, [])
-  const streets = useMemo(() => {
-    const c = document.createElement('canvas')
-    c.width = c.height = 128
-    const g = c.getContext('2d')!
-    g.fillStyle = '#cbb38c'
-    g.fillRect(0, 0, 128, 128)
-    g.fillStyle = '#55585e'
-    g.fillRect(0, 58, 128, 10)
-    g.fillRect(58, 0, 10, 128)
-    const t = new THREE.CanvasTexture(c)
-    t.wrapS = t.wrapT = THREE.RepeatWrapping
-    t.repeat.set(12, 12)
-    t.colorSpace = THREE.SRGBColorSpace
-    return t
-  }, [])
-  const rail = useMemo(() => [-1, 1].flatMap((s) => [{ p: [0, TOP + 1, s * 4.9] as [number, number, number], s: [9.8, 0.08, 0.08] as [number, number, number] }, { p: [s * 4.9, TOP + 1, 0] as [number, number, number], s: [0.08, 0.08, 9.8] as [number, number, number] }]), [])
-  return (
-    <div className="absolute inset-0">
-      <Canvas shadows dpr={[1, 1.75]} camera={{ position: [-4.5, TOP + 4.5, -5], fov: 50, near: 0.3, far: 4000 }} style={{ background: night ? '#0b1026' : '#9ccbea' }}>
-        <Snapper />
-        <ChatFraming />
-        <Suspense fallback={null}>
-          <hemisphereLight args={[night ? '#5060a0' : '#ffffff', '#b8a27c', night ? 0.5 : 1.2]} />
-          <directionalLight position={[60, 160, 80]} intensity={night ? 0.15 : 1.5} />
-          <Pyramide night={night} />
-          {/* The Plateau, the lagoon all round its point but the north */}
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, -60]}>
-            <circleGeometry args={[600, 48]} />
-            <meshLambertMaterial map={streets} color={night ? '#4a4a58' : '#ffffff'} />
-          </mesh>
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.6, 0]}>
-            <planeGeometry args={[5000, 5000]} />
-            <meshLambertMaterial color={night ? '#0e2a3a' : '#3c7c8a'} />
-          </mesh>
-          {/* North, the town going on (Adjamé); across the water, the other shores */}
-          <mesh geometry={BOX} position={[0, 4, -1100]} scale={[1400, 8, 900]} material={mat(night ? '#2a2a34' : '#c9b48c')} />
-          <mesh geometry={BOX} position={[0, 5, 1700]} scale={[4000, 10, 600]} material={mat(night ? '#10241a' : '#6f8f58')} />
-          <mesh geometry={BOX} position={[1700, 5, 0]} scale={[600, 10, 4000]} material={mat(night ? '#10241a' : '#5f8a52')} />
-          <mesh geometry={BOX} position={[-1700, 5, 0]} scale={[600, 10, 4000]} material={mat(night ? '#10241a' : '#4f7f4a')} />
-          {/* The two bridges south, over to Treichville */}
-          {[-260, 120].map((x) => (
-            <mesh key={x} geometry={BOX} position={[x, 8, 1000]} scale={[24, 1.4, 820]} material={mat('#c7ccd2')} />
-          ))}
-          {city.map((b, i) => (
-            <mesh key={i} geometry={BOX} position={[b.x, b.h / 2, b.z]} scale={[b.w, b.h, b.d]} material={mat(night ? '#1b2238' : b.c, night && i % 3 === 0 ? '#3a3010' : undefined)} />
-          ))}
-          <Blocks at={rail} material={mat('#9aa0a8')} />
-          <group position={[0, TOP, 3.6]}>
-            <Character look={sim.look} gender={sim.gender} pose="film" stage={stage} />
-          </group>
-          <OrbitControls makeDefault target={[0, TOP - 3, 16]} enablePan={false} minDistance={4} maxDistance={60} enableDamping />
-        </Suspense>
-      </Canvas>
-    </div>
   )
 }

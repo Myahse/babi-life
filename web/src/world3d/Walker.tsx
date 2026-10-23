@@ -29,6 +29,7 @@ import { tripRide } from './open/tripRide'
 import { askDrop, answerDrop, takeDrop } from './dropRoute'
 import { along, routeLength, turnTo } from './open/shared'
 import { laneStart, lanePoint, laneStretch, STADIUM_TRACKS, toWorld, type Track } from './open/stadiumTrack'
+import { rooftopFor } from './open/rooftops'
 import type { Pose } from '../avatar/Human'
 
 type XZ = [number, number]
@@ -205,6 +206,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   const [looping, setLooping] = useState(false)
   // Laps of a stadium's track: the stadium (its middle, its turn), the way in or out by the tunnel and how far along it, the angle round the lane.
   const laps = useRef<{ at: XZ; rot: number; track: Track; way: XZ[]; d: number; th: number; out: boolean } | null>(null)
+  // Up on a landmark's roof: the door to come back down to.
+  const onRoof = useRef<{ door: XZ } | null>(null)
   // Stopped on the stroll, turned to the friend: talking.
   const [chatting, setChatting] = useState(false)
   const loopKind = busy?.id ? LOOPS[busy.id] : undefined
@@ -632,8 +635,40 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     // once. Near it, the Sim does it where it stands.
     // (Only once it has been there: on its way to it, it isn't leaving.)
     const station = busy && stationAt ? lots.find((l) => l.id === stationAt) : undefined
-    // (Round a stadium's track, the far side is well away from its door.)
-    const away = station && !laps.current ? Math.hypot(g.position.x - station.door[0], g.position.z - station.door[1]) : 0
+    // Up on a landmark's roof (open/rooftops.ts): the city all round; the Sim can walk about on it.
+    const roof = station ? rooftopFor(station.id, busy?.id) : undefined
+    if (roof && station) {
+      const [cs, sn] = [Math.cos(station.rot), Math.sin(station.rot)]
+      if (!onRoof.current) {
+        onRoof.current = { door: station.door }
+        path.current = []
+        setRoute(null)
+        setWalking(false)
+        const [x, z] = toWorld([station.x, station.z], station.rot, roof.spot)
+        g.position.set(x, roof.y, z)
+        // Looking out over the city, the way the landmark faces; the camera behind it, low, to see
+        // the city stretch away (the player turns it round from there).
+        g.rotation.y = station.rot
+        if (controls) {
+          // (Askew: straight behind, the mast in the roof's middle stands between.)
+          const back = station.rot + Math.PI + 0.7
+          controls.target.set(x, roof.y + 1.4, z)
+          camera.position.set(x + Math.sin(back) * 11, roof.y + 6, z + Math.cos(back) * 11)
+          controls.update()
+        }
+      }
+      // On it, never off its edge.
+      const [dx, dz] = [g.position.x - station.x, g.position.z - station.z]
+      const lx = THREE.MathUtils.clamp(dx * cs - dz * sn, -roof.half, roof.half)
+      const lz = THREE.MathUtils.clamp(dx * sn + dz * cs, -roof.half, roof.half)
+      ;[g.position.x, g.position.z] = toWorld([station.x, station.z], station.rot, [lx, lz])
+    } else if (onRoof.current) {
+      // Done: down the lift, out at the door.
+      g.position.set(onRoof.current.door[0], 0, onRoof.current.door[1])
+      onRoof.current = null
+    }
+    // (Round a stadium's track, the far side is well away from its door; on a roof, the middle may be.)
+    const away = station && !laps.current && !roof ? Math.hypot(g.position.x - station.door[0], g.position.z - station.door[1]) : 0
     if (station && away < 15) reached.current = true
     if (station && onLeave && reached.current && !left.current && away > LEAVE) {
       left.current = true
@@ -944,15 +979,16 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       whereabouts.heading = Math.atan2(dx, -dz)
       whereabouts.polar = Math.acos(THREE.MathUtils.clamp(dy / (Math.hypot(dx, dy, dz) || 1), -1, 1))
     }
-    // Up and down bridges.
-    if (nav.heightAt) g.position.y = nav.heightAt(g.position.x, g.position.z)
+    // Up and down bridges; up on a roof.
+    if (onRoof.current && roof) g.position.y = roof.y
+    else if (nav.heightAt) g.position.y = nav.heightAt(g.position.x, g.position.z)
     // What the other players see of this Sim.
     whereabouts.simY = g.position.y
     whereabouts.simHeading = g.rotation.y
     whereabouts.simPose = joining && LIVE_POSES.has(matchPose) ? matchPose : busy ? (busy.kind === 'chat' ? 'talk' : 'busy') : walking || looping ? (run ? 'run' : 'walk') : (emote ?? 'idle')
     // Camera follows the Sim, keeping whatever angle the player chose.
     if (controls && !free.current && !gesture.current) {
-      const want = new THREE.Vector3(g.position.x, lookHeight, g.position.z)
+      const want = new THREE.Vector3(g.position.x, lookHeight + (onRoof.current ? g.position.y : 0), g.position.z)
       // Smooth, and as quick on a slow phone as on a fast computer.
       const delta = want.sub(controls.target).multiplyScalar(1 - Math.exp(-5 * Math.min(dt, 0.25)))
       controls.target.add(delta)
