@@ -47,25 +47,40 @@ func TestWayeSendsWithAOnePercentFee(t *testing.T) {
 
 func TestGolvoDeliversAndTheSimEats(t *testing.T) {
 	s := newSim() // in Yopougon at noon, 10 000 F
-	if err := s.order("marcory-bietry", "garba"); err == nil {
+	if err := s.order("marcory-bietry", "garba", false); err == nil {
 		t.Fatal("Golvo must be installed")
 	}
 	s.Apps = []string{"golvo"}
-	if err := s.order("yop-rue-princesse", "brochettes"); err != errPlaceClosed {
+	if err := s.order("yop-rue-princesse", "brochettes", false); err != errPlaceClosed {
 		t.Errorf("the Rue Princesse closed in 2011: %v", err)
 	}
-	if err := s.order("marcory-bietry", "cheeseburger"); err != errNoDish {
+	if err := s.order("marcory-bietry", "cheeseburger", false); err != errNoDish {
 		t.Errorf("not on the menu: %v", err)
 	}
-	if err := s.order("marcory-zone4", "plateau"); err == nil {
+	if err := s.order("marcory-zone4", "plateau", false); err == nil {
 		t.Error("the club kitchen is closed at noon")
 	}
 	fee, _, _ := world.DeliveryQuote("abidjan", "marcory", "yopougon")
-	if err := s.order("marcory-bietry", "garba"); err != nil || s.Money != 10000-1000-fee || s.Activity == nil {
+	if err := s.order("marcory-bietry", "garba", false); err != nil || s.Money != 10000-1000-fee || s.Activity == nil {
 		t.Fatalf("garba from Biétry: money %d fee %d err %v", s.Money, fee, err)
 	}
 	near, _, _ := world.DeliveryQuote("abidjan", "yopougon", "yopougon")
 	if near != world.DeliveryBase || fee <= near {
 		t.Errorf("delivery costs more from further away: %d vs %d", fee, near)
+	}
+	if s.Activity.PlaceID != "golvo" {
+		t.Errorf("eaten where the Sim is: at %q", s.Activity.PlaceID)
+	}
+
+	// Delivered home: eaten in the house; not from another commune.
+	h := newSim()
+	h.Apps = []string{"golvo"}
+	h.HomeCity, h.HomeCommune = "abidjan", "cocody"
+	if err := h.order("marcory-bietry", "garba", true); err != errNotHome {
+		t.Errorf("in Yopougon, living in Cocody: %v", err)
+	}
+	h.HomeCommune = h.Commune
+	if err := h.order("marcory-bietry", "garba", true); err != nil || h.Activity.PlaceID != HomePlaceID {
+		t.Fatalf("at home: err %v, activity %+v", err, h.Activity)
 	}
 }

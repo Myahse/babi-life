@@ -1225,7 +1225,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
           goTo={walkTo}
           onArrive={onArrive}
           busy={busy}
-          homeSpot={busy?.id && stationAt === HOME_ID ? homeSpots[busy.id] : busy?.id?.startsWith('golvo-') && stationAt === 'golvo' ? homeSpots.golvo : joinedSpot}
+          homeSpot={busy?.id && stationAt === HOME_ID ? homeSpots[busy.id.startsWith('golvo-') ? 'golvo' : busy.id] : joinedSpot}
           onNear={onNear}
           frozen={!!frozen}
           onLeave={onLeave}

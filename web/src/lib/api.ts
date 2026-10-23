@@ -158,7 +158,8 @@ export const api = {
   send: (id: string, to: string, amount: number) => post<ActionResult>(`/sims/${id}/send`, { to, amount }),
   friend: (id: string, friend: string, action: string) => post<ActionResult>(`/sims/${id}/friend`, { friend, action }),
   gang: (id: string, action: string) => post<ActionResult>(`/sims/${id}/gang`, { action }),
-  order: (id: string, place: string, dish: string) => post<ActionResult>(`/sims/${id}/order`, { place, dish }),
+  /** home: eaten in the house, at the table. */
+  order: (id: string, place: string, dish: string, home = false) => post<ActionResult>(`/sims/${id}/order`, { place, dish, home }),
   /** Buy alloco from the tantie's stall in the street (she may have none left). */
   /** Talk to a passer-by: what they answer comes back as the outcome. */
   /** A moto-taxi for the rest of a long way (backend sims/moto.go). */

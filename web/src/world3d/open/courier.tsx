@@ -12,7 +12,8 @@ import type { Nav } from './nav'
 import type { XZ } from './geo'
 
 // The Golvo courier (screens/GolvoApp.tsx), seen in the street: over the last
-// stretch of the delivery he rides up the streets to the Sim on his moto, the
+// stretch of the delivery he rides up the streets to the Sim (to its house's
+// door, for an order delivered home; only seen there) on his moto, the
 // yellow box on the back; there he gets off with the bag and waits (a tap on
 // him collects the order); once it's handed over he gets back on and rides
 // off the way he came, and is gone.
@@ -53,8 +54,10 @@ export function Courier({ delivery, nav, onCollect }: { delivery: Delivery | nul
   const look = useMemo(() => ({ ...randomLook('homme', rng(`golvo${name}`)), outfit: 'casual', outfitColor: '#f4c430', accessory: 'none' }), [name])
 
   /** The way in: from some streets away to the road by the Sim, then to its side. */
-  const plan = (key: number): Run | null => {
-    const target: XZ = [whereabouts.sim[0], whereabouts.sim[1]]
+  const plan = (key: number, home?: boolean): Run | null => {
+    const door = home ? whereabouts.places.find((p) => p.id === 'home')?.door : null
+    if (home && !door) return null
+    const target: XZ = door ? [door[0], door[1]] : [whereabouts.sim[0], whereabouts.sim[1]]
     const near = nav.nearest(target, 120)
     if (!near) return null
     const e = nav.edges[near.edge]
@@ -81,7 +84,7 @@ export function Courier({ delivery, nav, onCollect }: { delivery: Delivery | nul
         if (phase !== 'away') setPhase('away')
         return
       }
-      if (!run.current || run.current.key !== delivery.start) run.current = plan(delivery.start)
+      if (!run.current || run.current.key !== delivery.start) run.current = plan(delivery.start, delivery.home)
       const r = run.current
       if (!r) return
       // The phase first: he's drawn from the next frame on.

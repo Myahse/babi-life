@@ -1,13 +1,13 @@
 import { useState } from 'react'
-import { Bike, ChevronLeft, Clock3, MapPin, PhoneCall } from 'lucide-react'
+import { Bike, ChevronLeft, Clock3, House, MapPin, PhoneCall } from 'lucide-react'
 import type { Commune, Dish, Place, Sim, World } from '../lib/types'
 import { amount, openAt, openingLabel } from '../game/rules'
 import { routeIn } from '../game/roads'
 import { iconFor } from '../components/icons'
 import { IconTile } from '../components/ui'
 
-/** A Golvo order on its way. */
-export type Delivery = { place: Place; commune: Commune; dish: Dish; fee: number; minutes: number; courier: string; start: number; lost: number; stage: 'kitchen' | 'road' | 'here' }
+/** A Golvo order on its way. home: to the Sim's house (eaten there, at the table), else where the Sim is. */
+export type Delivery = { place: Place; commune: Commune; dish: Dish; fee: number; minutes: number; courier: string; start: number; lost: number; stage: 'kitchen' | 'road' | 'here'; home?: boolean }
 
 export const DELIVERY_SECONDS_PER_MIN = 3 // the courier's minutes go by quickly
 const COURIERS = ['Ibrahim', 'Seydou', 'Junior', 'Lassina', 'Fabrice', 'Arouna', 'Koné', 'Ange']
@@ -18,11 +18,11 @@ export function deliveryQuote(world: World, from: string, to: string) {
   return { fee: 500 + 100 * Math.max(0, Math.floor(km) - 3), minutes: 6 + Math.round(km * 0.5) }
 }
 
-export function newDelivery(world: World, sim: Sim, place: Place, commune: Commune, dish: Dish): Delivery {
-  const q = deliveryQuote(world, commune.id, sim.commune)
+export function newDelivery(world: World, sim: Sim, place: Place, commune: Commune, dish: Dish, home = false): Delivery {
+  const q = deliveryQuote(world, commune.id, home ? sim.homeCommune : sim.commune)
   // Sometimes the courier gets lost and calls for the way.
   const lost = Math.random() < 0.15 ? 3 : 0
-  return { place, commune, dish, ...q, courier: COURIERS[Math.floor(Math.random() * COURIERS.length)], start: Date.now(), lost, stage: 'kitchen' }
+  return { place, commune, dish, ...q, courier: COURIERS[Math.floor(Math.random() * COURIERS.length)], start: Date.now(), lost, stage: 'kitchen', home }
 }
 
 /** Seconds left, and what's happening, for a delivery at time now. */
@@ -39,8 +39,13 @@ export function deliveryState(d: Delivery, now: number) {
  * Golvo, the game's food delivery (modelled on Glovo): the maquis, restaurants
  * and clubs of Abidjan, their menus, and a courier on a moto.
  */
-export function GolvoApp({ world, sim, delivery, onOrder, onCancel, onCollect }: { world: World; sim: Sim; delivery: Delivery | null; onOrder: (d: Delivery) => void; onCancel: () => void; onCollect: () => void }) {
+export function GolvoApp({ world, sim, delivery, onOrder, onCancel, onCollect }: { world: World; sim: Sim; delivery: Delivery | null; onOrder: (d: Delivery) => void; onCancel: () => void; /** home: eaten in the house, at the table (else where the Sim is). */ onCollect: (home: boolean) => void }) {
   const [shop, setShop] = useState<{ place: Place; commune: Commune } | null>(null)
+  // Where to: here, where the Sim is, or home (a house in Abidjan: Golvo doesn't deliver elsewhere).
+  const homeHere = sim.homeCity === 'abidjan'
+  const [toHome, setToHome] = useState(false)
+  const inHomeCommune = sim.city === sim.homeCity && sim.commune === sim.homeCommune
+  const homeName = world.cities.find((c) => c.id === sim.homeCity)?.communes.find((c) => c.id === sim.homeCommune)?.name ?? ''
   const abidjan = world.cities.find((c) => c.id === 'abidjan')!
   const shops = abidjan.communes
     .flatMap((c) => c.places.filter((p) => world.menus?.[p.kind] && !p.closed).map((p) => ({ place: p, commune: c, q: deliveryQuote(world, c.id, sim.commune) })))
@@ -57,6 +62,9 @@ export function GolvoApp({ world, sim, delivery, onOrder, onCancel, onCollect }:
         <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-[var(--color-line)]">
           <div className="label">{delivery.place.name}</div>
           <div className="font-display text-xl leading-tight font-extrabold">{delivery.dish.label}</div>
+          <div className="mt-0.5 flex items-center gap-1 text-xs font-bold text-[var(--color-ink-soft)]">
+            {delivery.home ? <House size={12} /> : <MapPin size={12} />} {delivery.home ? `Livré chez toi, à ${homeName}` : 'Livré là où tu es'}
+          </div>
           <div className="mt-3 text-sm font-extrabold">
             {st.stage === 'kitchen' ? 'En cuisine…' : st.stage === 'here' ? `${delivery.courier} est là !` : `${delivery.courier} arrive à moto · ${st.minutesLeft} min`}
           </div>
@@ -70,9 +78,27 @@ export function GolvoApp({ world, sim, delivery, onOrder, onCancel, onCollect }:
           )}
         </div>
         {st.stage === 'here' ? (
-          <button className="btn btn-emerald w-full" disabled={!!sim.activity} onClick={onCollect}>
-            {sim.activity ? 'Ton perso est occupé·e' : `Récupérer et manger · ${amount(delivery.dish.price + delivery.fee)} Djai`}
-          </button>
+          delivery.home && !inHomeCommune ? (
+            <p className="rounded-xl bg-[#fff4e0] px-3 py-2 text-sm font-bold text-[#7a5200]">{delivery.courier} t'attend chez toi, à {homeName} : rentre pour récupérer ton repas.</p>
+          ) : sim.activity ? (
+            <button className="btn btn-emerald w-full" disabled>
+              Ton perso est occupé·e
+            </button>
+          ) : (
+            <div className="space-y-2">
+              {/* At home (delivered there, or in its commune): eaten in the house, at the table. */}
+              {(delivery.home || inHomeCommune) && (
+                <button className="btn btn-emerald w-full" onClick={() => onCollect(true)}>
+                  <House size={18} /> Manger chez toi · {amount(delivery.dish.price + delivery.fee)} Djai
+                </button>
+              )}
+              {!delivery.home && (
+                <button className={`btn w-full ${inHomeCommune ? 'btn-soft' : 'btn-emerald'}`} onClick={() => onCollect(false)}>
+                  Manger ici · {amount(delivery.dish.price + delivery.fee)} Djai
+                </button>
+              )}
+            </div>
+          )
         ) : (
           st.stage === 'kitchen' && (
             <button className="btn btn-soft w-full" onClick={onCancel}>
@@ -86,7 +112,7 @@ export function GolvoApp({ world, sim, delivery, onOrder, onCancel, onCollect }:
   }
 
   if (shop) {
-    const q = deliveryQuote(world, shop.commune.id, sim.commune)
+    const q = deliveryQuote(world, shop.commune.id, toHome ? sim.homeCommune : sim.commune)
     return (
       <div className="space-y-3">
         <button className="flex items-center gap-1 text-sm font-extrabold text-[#0b6e4f]" onClick={() => setShop(null)}>
@@ -98,6 +124,20 @@ export function GolvoApp({ world, sim, delivery, onOrder, onCancel, onCollect }:
             {shop.commune.name} · livraison {amount(q.fee)} Djai · ~{q.minutes} min
           </div>
         </div>
+        {homeHere && (
+          <div className="segmented" role="tablist" aria-label="Livrer où">
+            <button role="tab" aria-selected={!toHome} onClick={() => setToHome(false)} className="!py-1.5 text-[13px]">
+              <span className="flex items-center justify-center gap-1">
+                <MapPin size={14} /> Ici
+              </span>
+            </button>
+            <button role="tab" aria-selected={toHome} onClick={() => setToHome(true)} className="!py-1.5 text-[13px]">
+              <span className="flex items-center justify-center gap-1">
+                <House size={14} /> Chez toi{inHomeCommune ? '' : ` (${homeName})`}
+              </span>
+            </button>
+          </div>
+        )}
         {/* Busy: say why the buttons are grey. */}
         {sim.activity && <p className="rounded-xl bg-[#fff4e0] px-3 py-2 text-xs font-bold text-[#7a5200]">Finis d'abord : {sim.activity.trip?.label ?? sim.activity.interaction.label}. Tu commanderas après.</p>}
         <ul className="space-y-2">
@@ -111,7 +151,7 @@ export function GolvoApp({ world, sim, delivery, onOrder, onCancel, onCollect }:
                   <div className="font-extrabold leading-tight">{d.label}</div>
                   <div className="text-xs font-bold text-[var(--color-ink-soft)]">{open ? `${amount(d.price)} Djai` : `Fermé · ${openingLabel({ minHour: d.minHour, maxHour: d.maxHour } as never)}`}</div>
                 </div>
-                <button className="btn !bg-[#0b6e4f] !px-3 !py-2 !text-sm" disabled={!open || sim.money < total || !!sim.activity} onClick={() => onOrder(newDelivery(world, sim, shop.place, shop.commune, d))}>
+                <button className="btn !bg-[#0b6e4f] !px-3 !py-2 !text-sm" disabled={!open || sim.money < total || !!sim.activity} onClick={() => onOrder(newDelivery(world, sim, shop.place, shop.commune, d, toHome && homeHere))}>
                   {sim.money < total ? 'Trop cher' : 'Commander'}
                 </button>
               </li>

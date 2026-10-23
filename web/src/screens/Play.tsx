@@ -375,13 +375,12 @@ export function Play() {
   const doingAt = sim?.activity?.kind === 'do' ? (sim.activity.placeId ?? null) : null
   // The place of the action under way, from the action itself: its end brings the Sim back in
   // there too when it wasn't picked on this page (the app opened again during a night's sleep,
-  // the Sim's own life, a Golvo meal eaten at home).
+  // the Sim's own life).
   const lastAt = useRef<string | null>(null)
   useEffect(() => {
     if (!doingAt || !sim) return
-    const home = sim.city === sim.homeCity && sim.commune === sim.homeCommune
     const known = (id: string) => world.cities.find((c) => c.id === sim.city)?.communes.find((c) => c.id === sim.commune)?.places.some((p) => p.id === id) || mapPlaces.some((p) => p.id === id)
-    lastAt.current = doingAt === 'golvo' ? (home ? 'home' : null) : doingAt === 'home' || known(doingAt) ? doingAt : null
+    lastAt.current = doingAt === 'home' || known(doingAt) ? doingAt : null
   }, [doingAt]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (pending || doingAt) return
@@ -394,7 +393,7 @@ export function Play() {
   }, [backTo, pending, doingAt]) // eslint-disable-line react-hooks/exhaustive-deps
   // At home (in the house, or doing something there): kept on the device, so the Sim is still
   // home when the game opens again after the action is over (a night's sleep, the app closed).
-  const inHome = placeId === 'home' || doingAt === 'home' || (doingAt === 'golvo' && sim?.city === sim?.homeCity && sim?.commune === sim?.homeCommune)
+  const inHome = placeId === 'home' || doingAt === 'home'
   const restored = useRef<string | null>(null)
   useEffect(() => {
     if (!sim) return
@@ -615,9 +614,17 @@ export function Play() {
     run(label, ride.app === 'moto' ? 'bike' : 'bus', 'transport', () => api.travel(sim!.id, f.cityId, f.to.id, ride))
   }
 
-  const collect = () => {
+  // The order handed over: eaten where the Sim is, or at home (delivered there, or taken in; in the
+  // house already), in the house at the table, and the Sim stays in after.
+  const collect = (home = !!delivery?.home) => {
     const d = delivery!
-    run(d.dish.label, d.dish.icon, 'eat', () => api.order(sim!.id, d.place.id, d.dish.id)).then((ok) => ok && setDelivery(null))
+    const inside = home || placeId === 'home'
+    if (inside) {
+      setPlaceId(null)
+      setOutside(false)
+      setBackTo('home')
+    }
+    run(d.dish.label, d.dish.icon, 'eat', () => api.order(sim!.id, d.place.id, d.dish.id, inside)).then((ok) => ok && setDelivery(null))
   }
 
   // Building one's house on the plot; the houses are fetched again after.
@@ -755,10 +762,10 @@ export function Play() {
   const unseen = journal.filter((e) => e.id > seen).length
   const placeName = (id: string) => (id === 'home' ? 'Chez toi' : id === 'happening' ? (street?.happening?.label ?? 'En ce moment') : (commune.places.find((p) => p.id === id)?.name ?? ''))
   // Inside a place: while doing something there, or looking at what it offers.
-  const atHomeNow = sim.city === sim.homeCity && sim.commune === sim.homeCommune
   const inside = (() => {
     if (doing) {
-      if (doing.placeId === 'golvo') return atHomeNow ? { id: 'home', kind: 'home', it: doing.interaction.id } : null
+      // A Golvo meal eaten where the Sim is: in the street (eaten at home, its place is « home »).
+      if (doing.placeId === 'golvo') return null
       // In a home booked on Dodo: a home's inside, what's done in it as at home.
       if (doing.placeId === 'logement') return { id: 'logement', kind: 'home', it: DODO_AT_HOME[doing.interaction.id] ?? 'watch-tv' }
       if (!doing.placeId || OPEN_AIR.has(doing.placeId)) return null
@@ -1252,7 +1259,8 @@ export function Play() {
           startApp={phoneApp}
           delivery={delivery}
           onDelivery={setDelivery}
-          onCollect={collect}
+          // (The phone put away: the meal is seen being eaten.)
+          onCollect={(home) => (setOverlay(null), setPhoneApp(null), collect(home))}
           onClose={() => (setOverlay(null), setPhoneApp(null))}
           onMap={() => setOverlay('map')}
           onCamera={() => (setPhoneApp(null), setOverlay('camera'))}
@@ -1377,7 +1385,7 @@ type PhoneProps = {
   startApp: PhoneAppId | null
   delivery: Delivery | null
   onDelivery: (d: Delivery | null) => void
-  onCollect: () => void
+  onCollect: (home: boolean) => void
   onClose: () => void
   onMap: () => void
   /** The camera, full screen over the game. */

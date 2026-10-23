@@ -5,7 +5,7 @@ import { Human, NoShadows, type Pose } from '../avatar/Human'
 import { randomLook } from '../avatar/options'
 import { worldTime } from '../lib/worldClock'
 import { Box } from './props'
-import { Dish } from './interior/ActionProps'
+import { Dish, dishFor } from './interior/ActionProps'
 import { NoteShower } from './money'
 
 // What the Sim is doing outside, at a place with no inside (the pitch, the
@@ -21,6 +21,8 @@ export function outdoorLook<L extends { outfit: string; accessory?: string }>(lo
 
 /** How the Sim stands (or sits) for an outdoor activity; undefined if there's no scene for it. */
 export function outdoorPose(id?: string): Pose | undefined {
+  // A Golvo meal eaten where the courier found the Sim: on a stool, the plate on the lap.
+  if (id?.startsWith('golvo-')) return 'eat'
   switch (id) {
     case 'play-football':
     case 'street-foot':
@@ -118,6 +120,7 @@ function useLooks(n: number, seed: number) {
 }
 
 export function OutdoorAction({ id }: { id?: string }) {
+  if (id?.startsWith('golvo-')) return <GolvoMeal id={id} />
   switch (id) {
     case 'play-football':
       return <Football />
@@ -599,6 +602,20 @@ function Hiker() {
 
 /** On the lap of a Sim sitting on a stool. */
 const LAP: [number, number, number] = [0, 0.56, 0.3]
+
+/** A Golvo meal in the street: a stool, the yellow bag open beside it, the dish on the lap. */
+function GolvoMeal({ id }: { id: string }) {
+  return (
+    <group>
+      <Box p={[0, 0.22, -0.05]} s={[0.35, 0.44, 0.35]} c="#3b2a1a" />
+      <group position={[0.45, 0, 0.05]}>
+        <Box p={[0, 0.18, 0]} s={[0.3, 0.36, 0.22]} c="#f4c430" />
+        <Box p={[0, 0.2, 0.111]} s={[0.16, 0.1, 0.002]} c="#00a862" />
+      </group>
+      <Dish kind={dishFor(id) ?? 'plat'} at={LAP} />
+    </group>
+  )
+}
 
 /** The pot on a maquis terrace: the plastic chair, the table and its bottles, two friends round it, the parasol. */
 function Terrasse() {
