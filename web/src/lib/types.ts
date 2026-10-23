@@ -342,7 +342,8 @@ export type Activity = {
   with?: string[]
   trip?: { fromCity: string; fromCommune: string; city: string; commune: string; mode: TripMode; class?: string; fare: number; label: string; incident?: string; path?: [number, number][]; bridges?: string[]; party?: number }
   /** A film seen with a Kinéo ticket: which, the screen, the seats. */
-  seance?: { film: string; salle: number; seats: string[]; vip?: boolean }
+  /** video, at: a real film (the ciné-club's), and the game minute it starts. */
+  seance?: { film: string; salle: number; seats: string[]; vip?: boolean; video?: string; at?: number; title?: string; credit?: string; file?: string }
   /** The défi taken on during it (components/Defi.tsx): its score, 1–100; not there, not played. */
   defi?: number
 }
@@ -394,8 +395,9 @@ export type DodoMine = { id: number; lot: number; title: string; night: number; 
 export type DodoView = { listings: DodoListing[]; stay: Stay | null; mine: DodoMine[]; lettable: Plot[]; lengths: StayLength[]; fee: number; studio: number; adult: boolean }
 
 /** Kinéo, the game's cinemas (backend game/cinema.go, sims/cinema.go). */
-export type CinemaFilm = { id: string; title: string; genre: string; minutes: number; rating: string; tagline: string; colors: [string, string] }
-export type CinemaSalle = { n: number; rows: number; cols: number; aisles: number[]; vip?: boolean; price: number; name: string }
+/** video: a real film (the ciné-club's, YouTube's id on its makers' channel), credit: who made it, under what licence. */
+export type CinemaFilm = { id: string; title: string; genre: string; minutes: number; rating: string; tagline: string; colors: [string, string]; video?: string; credit?: string; file?: string }
+export type CinemaSalle = { n: number; rows: number; cols: number; aisles: number[]; vip?: boolean; club?: boolean; price: number; name: string }
 export type CinemaSession = { film: string; salle: number; at: number; price: number; vip?: boolean; left: number }
 export type CinemaProgram = { cinema: { id: string; name: string; salles: CinemaSalle[] }; day: number; today: number; now: number; films: CinemaFilm[]; sessions: CinemaSession[] }
 export type CinemaSeats = { salle: CinemaSalle; session: Omit<CinemaSession, 'left'>; film: CinemaFilm; taken: string[] }

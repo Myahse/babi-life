@@ -26,6 +26,8 @@ const hm = (min: number) => `${Math.floor(min / 60)} h ${String(min % 60).padSta
 function Poster({ f, small }: { f: CinemaFilm; small?: boolean }) {
   return (
     <div className={`relative shrink-0 overflow-hidden rounded-xl text-white shadow-[0_6px_14px_-8px_rgba(0,0,0,0.6)] ${small ? 'h-24 w-16' : 'h-32 w-[88px]'}`} style={{ background: `linear-gradient(160deg, ${f.colors[0]}, ${f.colors[1]})` }}>
+      {/* A real film: a picture of it (its video's), under the title. */}
+      {f.video && <img src={`https://i.ytimg.com/vi/${f.video}/hqdefault.jpg`} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />}
       <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 to-transparent" />
       <div className={`absolute inset-x-1.5 bottom-1.5 font-display leading-[1.05] font-extrabold ${small ? 'text-[10px]' : 'text-[12px]'}`}>{f.title}</div>
       <span className="absolute top-1.5 left-1.5 rounded bg-black/55 px-1 text-[9px] font-extrabold">{f.rating === 'Tous publics' ? 'TP' : f.rating}</span>
@@ -120,7 +122,9 @@ export function KineoApp({ world, sim, act, onWalk, onMap, onClose }: { world: W
                   <div className="mt-0.5 text-[11px] font-extrabold text-[var(--color-ink-soft)]">
                     {f.genre} · {hm(f.minutes)} · {f.rating}
                   </div>
+                  {f.video && <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-[#e7f5ff] px-2 py-0.5 text-[10.5px] font-extrabold text-[#1864ab]">Ciné-club · le vrai film, à voir dans la salle</div>}
                   <p className="mt-1 line-clamp-2 text-[12px] leading-snug font-bold text-[var(--color-ink-soft)]">{f.tagline}</p>
+                  {f.credit && <p className="mt-0.5 truncate text-[10px] font-bold text-[var(--color-ink-soft)] opacity-80">{f.credit}</p>}
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {prog!.sessions
                       .filter((s) => s.film === f.id)

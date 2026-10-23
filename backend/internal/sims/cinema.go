@@ -115,14 +115,14 @@ func (h *Handler) cinemaProgram(w http.ResponseWriter, r *http.Request) {
 	}
 	out := []session{}
 	for _, sh := range game.Program(c.ID, day) {
-		// Over (twenty minutes in, no more selling): not in the list.
-		if sh.At < now-ticketLate {
+		// Over (twenty minutes in, no more selling; a short film, its end): not in the list.
+		if f, _ := game.FindFilm(sh.Film); sh.At < now-game.LateFor(f, ticketLate) {
 			continue
 		}
 		s, _ := game.FindSalle(c.ID, sh.Salle)
 		out = append(out, session{sh, s.Rows*s.Cols - len(taken(c.ID, sh, s, bought[[2]int64{int64(sh.Salle), sh.At}]))})
 	}
-	httpx.JSON(w, http.StatusOK, map[string]any{"cinema": c, "day": day, "today": today, "now": now, "films": game.OnThisWeek(day), "sessions": out})
+	httpx.JSON(w, http.StatusOK, map[string]any{"cinema": c, "day": day, "today": today, "now": now, "films": append(game.OnThisWeek(day), game.CineClub...), "sessions": out})
 }
 
 // cinemaSeats: the plan of a session's screen and the seats taken (GET /cinema/{cinema}/seats?salle=&at=).
@@ -168,7 +168,8 @@ func (h *Handler) cinemaBuy(w http.ResponseWriter, r *http.Request) {
 		}
 		sh, ok := game.FindShowing(c.ID, req.Salle, req.At)
 		now := game.MinuteOf(time.Now())
-		if !ok || sh.At < now-ticketLate || sh.At > now+7*1440 {
+		f, _ := game.FindFilm(sh.Film)
+		if !ok || sh.At < now-game.LateFor(f, ticketLate) || sh.At > now+7*1440 {
 			return game.Outcome{}, nil, errNoSession
 		}
 		salle, _ := game.FindSalle(c.ID, req.Salle)
@@ -204,7 +205,6 @@ func (h *Handler) cinemaBuy(w http.ResponseWriter, r *http.Request) {
 			s.ID, c.ID, sh.Salle, sh.Film, sh.At, req.Seats, total, code); err != nil {
 			return game.Outcome{}, nil, err
 		}
-		f, _ := game.FindFilm(sh.Film)
 		places := "place " + req.Seats[0]
 		if len(req.Seats) > 1 {
 			places = fmt.Sprintf("%d places (%s)", len(req.Seats), joinSeats(req.Seats))
@@ -262,11 +262,14 @@ func (h *Handler) cinemaUse(w http.ResponseWriter, r *http.Request) {
 			return game.Outcome{}, nil, err
 		}
 		now := game.MinuteOf(time.Now())
+		f, _ := game.FindFilm(t.Film)
 		switch {
 		case t.Used:
 			return game.Outcome{}, nil, errors.New("ce billet a déjà servi")
 		case now < t.At-ticketEarly:
 			return game.Outcome{}, nil, fmt.Errorf("les portes ouvrent à %s", clockOf(t.At-ticketEarly))
+		case now > t.At+game.LateFor(f, ticketLate) && f.Video != "":
+			return game.Outcome{}, nil, errors.New("trop tard : le film est presque fini")
 		case now > t.At+ticketLate:
 			return game.Outcome{}, nil, errors.New("trop tard : le film a commencé depuis plus de vingt minutes")
 		}
@@ -277,7 +280,6 @@ func (h *Handler) cinemaUse(w http.ResponseWriter, r *http.Request) {
 		if city.ID != s.City || cm.ID != s.Commune {
 			return game.Outcome{}, nil, fmt.Errorf("va d'abord %s", inCommune(cm.Name))
 		}
-		f, _ := game.FindFilm(t.Film)
 		salle, _ := game.FindSalle(t.Cinema, t.Salle)
 		// The film from the Sim's seat (its length, as every activity's, shortened by the game's clock).
 		it := game.Interaction{ID: "seance", Label: fmt.Sprintf("« %s », %s", f.Title, salle.Name), Icon: "clapperboard", Minutes: int64(f.Minutes), Effect: game.Needs{Fun: 45, Social: 5, Energy: -5}}
@@ -288,6 +290,11 @@ func (h *Handler) cinemaUse(w http.ResponseWriter, r *http.Request) {
 			return game.Outcome{}, nil, err
 		}
 		s.Activity.Seance = &game.Seance{Film: f.ID, Salle: salle.N, Seats: t.Seats, VIP: salle.VIP}
+		if f.Video != "" {
+			// A real film (the ciné-club's): the Sim stays in its seat till the film's end, watched for real from its start.
+			s.Activity.Seance.Video, s.Activity.Seance.At, s.Activity.Seance.Title, s.Activity.Seance.Credit, s.Activity.Seance.File = f.Video, t.At, f.Title, f.Credit, f.File
+			s.Activity.End = max(s.Activity.Start+1, t.At+int64(f.Minutes))
+		}
 		if _, err := tx.Exec(ctx, `UPDATE cinema_tickets SET used = true WHERE id = $1`, ticket); err != nil {
 			return game.Outcome{}, nil, err
 		}

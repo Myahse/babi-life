@@ -83,6 +83,13 @@ type Seance struct {
 	Salle int      `json:"salle"`
 	Seats []string `json:"seats"`
 	VIP   bool     `json:"vip,omitempty"`
+	// A real film (the ciné-club's): its video, and the minute it starts (everyone sees the same moment of it); its title and credit, for the player.
+	Video  string `json:"video,omitempty"`
+	At     int64  `json:"at,omitempty"`
+	Title  string `json:"title,omitempty"`
+	Credit string `json:"credit,omitempty"`
+	// File: the film as a file, for the browser's own player (game.Film's).
+	File string `json:"file,omitempty"`
 }
 
 type Trip struct {
