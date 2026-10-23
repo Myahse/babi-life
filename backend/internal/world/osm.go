@@ -99,7 +99,7 @@ func init() {
 			}
 			if p.Kind == "worship" {
 				p.Name = worshipName(p.Name)
-				if !realWorship(p.Name) {
+				if notWorship.MatchString(p.Name) {
 					continue
 				}
 				p.Faith = game.FaithOf(p.Name, p.Type)
@@ -113,7 +113,7 @@ func init() {
 			}
 			mapPlaces[f.Commune] = append(mapPlaces[f.Commune], p)
 		}
-		mapPlaces[f.Commune] = append(mapPlaces[f.Commune], fewerWorship(worship)...)
+		mapPlaces[f.Commune] = append(mapPlaces[f.Commune], onceEach(worship)...)
 		for _, p := range mapPlaces[f.Commune] {
 			mapByID[p.ID] = p
 			mapCommune[p.ID] = f.Commune
@@ -143,13 +143,11 @@ func InGameName(name string) string {
 	return name
 }
 
-// Places of worship as the map has them: a dense commune has a church or a
-// mosque at every corner (a hundred and more in Koumassi), many with no name
-// but « Eglise » or « Eglise Evangelique », some twice a few metres apart,
-// misspelt (« Mosquéu », « mosqée », « Eglie »), a school among them. The
-// game keeps the named ones, spelt right, each once, and at most one church
-// and one mosque to a square kilometre: the best known there (a parish, a
-// cathedral, a great mosque), else the one with the fullest name.
+// Places of worship as the map has them, all of them (a dense commune has a
+// church or a mosque at every corner: they all stay), but misspelt
+// (« Mosquéu », « mosqée », « Eglie »), some twice a few metres apart, a
+// school among them. The game spells them right, keeps each named one once,
+// and leaves the schools out.
 
 // The words of a place's name the map misspells, by how it writes them (lower case).
 var worshipWords = map[string]string{"mosquéu": "Mosquée", "mosqée": "Mosquée", "mosqué": "Mosquée", "mosque": "Mosquée", "mosquee": "Mosquée", "eglie": "Église", "eglise": "Église", "eglises": "Églises"}
@@ -178,11 +176,8 @@ var worshipGeneric = map[string]bool{"eglise": true, "eglises": true, "evangeliq
 
 var notWorship = regexp.MustCompile(`(?i)groupe scolaire|école|ecole|collège|college|lycée|lycee`)
 
-// realWorship: a named place of worship (not a school, not a nameless « Eglise »).
-func realWorship(name string) bool {
-	if notWorship.MatchString(name) {
-		return false
-	}
+// named: the name says which one it is (« Église Parole de Vie »), not only what it is (« Eglise Evangelique »).
+func named(name string) bool {
 	for w := range nameWords(name) {
 		if !worshipGeneric[w] {
 			return true
@@ -191,54 +186,27 @@ func realWorship(name string) bool {
 	return false
 }
 
-var worshipNotable = regexp.MustCompile(`(?i)paroisse|cathédrale|cathedrale|grande mosquée|notre-dame|notre dame|saint|méthodiste|methodiste|baptiste|adventiste|assemblée de dieu|harriste|christianisme céleste|jéhovah|jehovah`)
-
-// fewerWorship: each place once (the same name within 300 m is the same
-// place), then the best one of each faith side (mosques, the rest) in each
-// square kilometre, in the map's order.
-func fewerWorship(all []MapPlace) []MapPlace {
+// onceEach: a named place once (the same name within 300 m is the same
+// place); the nameless ones (« Église », « Mosquée ») are as many places as
+// the map has.
+func onceEach(all []MapPlace) []MapPlace {
 	var once []MapPlace
 	for _, p := range all {
 		pw := nameWords(p.Name)
 		dup := false
-		for _, o := range once {
-			if sameWords(pw, nameWords(o.Name)) && distKm(o.Lat, o.Lng, p.Lat, p.Lng) < 0.3 {
-				dup = true
-				break
+		if named(p.Name) {
+			for _, o := range once {
+				if sameWords(pw, nameWords(o.Name)) && distKm(o.Lat, o.Lng, p.Lat, p.Lng) < 0.3 {
+					dup = true
+					break
+				}
 			}
 		}
 		if !dup {
 			once = append(once, p)
 		}
 	}
-	type cell struct {
-		y, x   int
-		mosque bool
-	}
-	score := func(p MapPlace) int {
-		n := min(len(nameWords(p.Name)), 4)
-		if worshipNotable.MatchString(p.Name) {
-			n += 5
-		}
-		return n
-	}
-	best := map[cell]int{}
-	var order []cell
-	for i, p := range once {
-		k := cell{int(math.Floor(p.Lat * 111.32)), int(math.Floor(p.Lng * 111.32)), p.Faith == game.FaithMuslim}
-		j, ok := best[k]
-		if !ok {
-			order = append(order, k)
-		}
-		if !ok || score(p) > score(once[j]) {
-			best[k] = i
-		}
-	}
-	out := make([]MapPlace, 0, len(order))
-	for _, k := range order {
-		out = append(out, once[best[k]])
-	}
-	return out
+	return once
 }
 
 func sameWords(a, b map[string]bool) bool {

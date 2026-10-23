@@ -89,14 +89,14 @@ func TestWorshipNames(t *testing.T) {
 			t.Errorf("worshipName(%q) = %q, want %q", in, got, want)
 		}
 	}
-	for name, want := range map[string]bool{"Mosquée": false, "Eglise Evangelique": false, "Groupe Scolaire Baradji": false, "Église Parole de Vie": true, "Mosquée Bilal": true} {
-		if got := realWorship(name); got != want {
-			t.Errorf("realWorship(%q) = %v, want %v", name, got, want)
+	for name, want := range map[string]bool{"Mosquée": false, "Eglise Evangelique": false, "Église Parole de Vie": true, "Mosquée Bilal": true} {
+		if got := named(name); got != want {
+			t.Errorf("named(%q) = %v, want %v", name, got, want)
 		}
 	}
 }
 
-// A dense commune: its churches and mosques each once, spelt right, not one at every corner.
+// A dense commune: all its churches and mosques (a hundred and more), spelt right, a named one once.
 func TestKoumassiWorship(t *testing.T) {
 	var w []MapPlace
 	for _, p := range mapPlaces["koumassi"] {
@@ -104,15 +104,15 @@ func TestKoumassiWorship(t *testing.T) {
 			w = append(w, p)
 		}
 	}
-	if len(w) < 10 || len(w) > 30 {
-		t.Fatalf("%d places of worship in Koumassi, want 10 to 30", len(w))
+	if len(w) < 90 {
+		t.Fatalf("%d places of worship in Koumassi, want them all (90 and more)", len(w))
 	}
 	for i, p := range w {
 		if strings.Contains(strings.ToLower(p.Name), "mosquéu") {
 			t.Errorf("misspelt: %s", p.Name)
 		}
 		for _, o := range w[i+1:] {
-			if sameWords(nameWords(p.Name), nameWords(o.Name)) && distKm(p.Lat, p.Lng, o.Lat, o.Lng) < 0.3 {
+			if named(p.Name) && sameWords(nameWords(p.Name), nameWords(o.Name)) && distKm(p.Lat, p.Lng, o.Lat, o.Lng) < 0.3 {
 				t.Errorf("twice: %s", p.Name)
 			}
 		}
