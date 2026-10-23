@@ -65,7 +65,7 @@ const Glow = ({ p, size, c, opacity = 0.6, flat = false }: { p: [number, number,
 )
 
 // These stay open after dark. Everything else pulls a shutter down over the door.
-const OPEN_AT_NIGHT = new Set(['gym', 'police', 'pharmacie', 'maquis', 'restaurant', 'club', 'hotel', 'health', 'transport', 'home', 'beach', 'lagune', 'nature', 'village', 'sport'])
+const OPEN_AT_NIGHT = new Set(['gym', 'police', 'pharmacie', 'maquis', 'restaurant', 'club', 'hotel', 'health', 'transport', 'aeroport', 'home', 'beach', 'lagune', 'nature', 'village', 'sport'])
 
 export function Dressing({ kind, name = '', faith, seed, night }: { kind: string; name?: string; /** A place of worship's (lib/types Faith). */ faith?: string; seed: number; night: boolean }) {
   const front = (() => {
