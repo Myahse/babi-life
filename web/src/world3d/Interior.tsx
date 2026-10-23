@@ -21,7 +21,7 @@ import { rng } from './themes'
 import { Talkable } from './Talkable'
 import { doingOf, nameFor } from './talk'
 import { listenKeys, moveInput } from './input'
-import { SERVICES, worshipAction, worshipRoom } from './interior/worshipRooms'
+import { SERVICES, worshipAction, worshipRoom, worshipTour, type TourStop } from './interior/worshipRooms'
 
 /** Soft shade in the corners, downloaded only on phones that show it. */
 const AmbientOcclusion = lazy(() => import('./effects'))
@@ -956,6 +956,51 @@ function Along({ sim, pose, stage }: { sim: Sim; pose: Pose; stage: string }) {
   )
 }
 
+/**
+ * Visiting a place of worship: the Sim goes round it (worshipTour), at a
+ * walk, and stops before what's worth seeing, turned to it, its phone up for
+ * a photo, then goes on; round and round while the visit lasts.
+ */
+function Tour({ stops, look, gender, stage }: { stops: TourStop[]; look: Sim['look']; gender: Sim['gender']; stage: string }) {
+  const g = useRef<THREE.Group>(null)
+  // Heading to stops[i]; waiting there while `wait` runs down.
+  const s = useRef({ i: 1, x: stops[0].at[0], z: stops[0].at[1], rot: Math.PI, wait: 0 })
+  const [looking, setLooking] = useState(false)
+  useFrame((_, dtRaw) => {
+    const dt = Math.min(dtRaw, 0.1)
+    const o = g.current
+    if (!o) return
+    const st = s.current
+    const stop = stops[st.i]
+    const turnTo = (want: number, k: number) => (st.rot += Math.atan2(Math.sin(want - st.rot), Math.cos(want - st.rot)) * Math.min(1, dt * k))
+    if (st.wait > 0) {
+      if (stop.face) turnTo(Math.atan2(stop.face[0] - st.x, stop.face[1] - st.z), 5)
+      st.wait -= dt
+      if (st.wait <= 0) {
+        st.i = (st.i + 1) % stops.length
+        setLooking(false)
+      }
+    } else {
+      const [dx, dz] = [stop.at[0] - st.x, stop.at[1] - st.z]
+      const len = Math.hypot(dx, dz)
+      if (len < 0.05) {
+        if (stop.face) {
+          st.wait = 3.5
+          setLooking(true)
+        } else st.i = (st.i + 1) % stops.length
+      } else {
+        const k = Math.min(len, WALK_IN * dt)
+        st.x += (dx / len) * k
+        st.z += (dz / len) * k
+        turnTo(Math.atan2(dx, dz), 10)
+      }
+    }
+    o.position.set(st.x, 0, st.z)
+    o.rotation.set(0, st.rot, 0)
+  })
+  return <group ref={g}>{looking ? <Character look={look} gender={gender} stage={stage} pose="phone" /> : <Character look={look} gender={gender} stage={stage} walking speed={WALK_IN} />}</group>
+}
+
 /* ---------- The scene ---------- */
 
 export function Interior({ sim, kind, placeId, interactionId, roam, housing, night, stage, others = [], open = true, faith }: { sim: Sim; kind: string; placeId: string; interactionId?: string; /** A place of worship's: the mosque, the temple or the parish inside, full for its service. */ faith?: string; /** Just come in: the Sim walks about the room (tap the floor, or the keys). */ roam?: boolean; housing: string; night: boolean; stage: string; others?: Player[]; /** Within its hours: closed, nobody's in (no customers, no staff). */ open?: boolean }) {
@@ -966,6 +1011,8 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
   const r = byFaith ? worshipRoom(faith, SERVICES.has(interactionId ?? '')) : room(kind, housing)
   const style = useRoomStyle(kind, housing)
   const act = byFaith ? worshipAction(r, interactionId) : action(kind, interactionId)
+  // Visiting it: round the room, not standing in one place.
+  const touring = byFaith && interactionId === 'visit'
   const me = r.spots[act.spot] ?? r.spots.counter ?? r.spots.entrance
   const people = useMemo<Person[]>(() => {
     const rand = rng(`inside${placeId}`)
@@ -1059,31 +1106,35 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
             <meshBasicMaterial transparent opacity={0} depthWrite={false} />
           </mesh>
         )}
-        <WalkTo to={!interactionId && roamTo ? roamTo.p : me.p} facing={!interactionId && roamTo ? roamTo.facing : throwing ? faceDancers : (me.r ?? 0)} lying={!interactionId && roamTo ? false : !!me.lying} free={roam} room={solid} onThere={setArrived}>
-          {(there) =>
-            there ? (
-              <>
-                <Character look={look} gender={sim.gender} stage={stage} marker={!me.lying} busy={act.pose === 'busy'} pose={act.pose} />
-                {/* Out with friends: they sit, eat, dance at the Sim's side */}
-                {!me.lying && <Along sim={sim} pose={act.pose} stage={stage} />}
-                <ActionProps id={interactionId} kind={kind} lying={!!me.lying} stage={stage} partner={spouse} />
-                {/* The travaillement: notes off the wad, over the dancers in front */}
-                {throwing && <NoteShower from={[0.3, 1.72, 0.3]} toward={[0, 0.35, 1]} {...shower(interactionId)} seed={placeId.length} />}
-                {/* « Lancer des billets »: a handful at a time, to the dancers on their podiums */}
-                {kind === 'club' && <BilletsBurst />}
-              </>
-            ) : (
-              <Character look={look} gender={sim.gender} stage={stage} walking speed={WALK_IN} />
-            )
-          }
-        </WalkTo>
+        {touring ? (
+          <Tour stops={worshipTour(faith!)} look={look} gender={sim.gender} stage={stage} />
+        ) : (
+          <WalkTo to={!interactionId && roamTo ? roamTo.p : me.p} facing={!interactionId && roamTo ? roamTo.facing : throwing ? faceDancers : (me.r ?? 0)} lying={!interactionId && roamTo ? false : !!me.lying} free={roam} room={solid} onThere={setArrived}>
+            {(there) =>
+              there ? (
+                <>
+                  <Character look={look} gender={sim.gender} stage={stage} marker={!me.lying} busy={act.pose === 'busy'} pose={act.pose} />
+                  {/* Out with friends: they sit, eat, dance at the Sim's side */}
+                  {!me.lying && <Along sim={sim} pose={act.pose} stage={stage} />}
+                  <ActionProps id={interactionId} kind={kind} lying={!!me.lying} stage={stage} partner={spouse} />
+                  {/* The travaillement: notes off the wad, over the dancers in front */}
+                  {throwing && <NoteShower from={[0.3, 1.72, 0.3]} toward={[0, 0.35, 1]} {...shower(interactionId)} seed={placeId.length} />}
+                  {/* « Lancer des billets »: a handful at a time, to the dancers on their podiums */}
+                  {kind === 'club' && <BilletsBurst />}
+                </>
+              ) : (
+                <Character look={look} gender={sim.gender} stage={stage} walking speed={WALK_IN} />
+              )
+            }
+          </WalkTo>
+        )}
         {arrived && interactionId === 'watch-tv' && kind === 'home' && <TvScreen />}
         {arrived && interactionId === 'cook-attieke' && kind === 'home' && <Pot />}
         {arrived && me.lying && /^(sleep|nap|nuit-hotel)$/.test(interactionId ?? '') && <Zzz at={[me.p[0], me.p[1] + 0.6, me.p[2] - 0.6]} />}
         {/* Turn around the room and zoom, within the cut-away side */}
         <OrbitControls makeDefault target={kind === 'club' ? CLUB_TARGET : [0, 0.8, 0]} enablePan={false} minDistance={interactionId ? 2.6 : 7} maxDistance={24} minPolarAngle={0.35} maxPolarAngle={1.25} minAzimuthAngle={0.15} maxAzimuthAngle={1.4} enableDamping />
         {/* Doing something: the camera comes close to see it */}
-        {interactionId && arrived && <FocusOn at={me.p} lying={!!me.lying} facing={throwing ? faceDancers : (me.r ?? 0)} key={`${interactionId}${act.spot}`} />}
+        {interactionId && arrived && !touring && <FocusOn at={me.p} lying={!!me.lying} facing={throwing ? faceDancers : (me.r ?? 0)} key={`${interactionId}${act.spot}`} />}
         {RICH && (
           <Suspense fallback={null}>
             <AmbientOcclusion radius={1.2} falloff={0.6} intensity={2.2} />
