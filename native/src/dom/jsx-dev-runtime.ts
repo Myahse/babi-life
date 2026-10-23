@@ -9,3 +9,5 @@ export function jsxDEV(type: any, props: any, key: any, isStatic: boolean, sourc
   return reactJsxDEV(type, props, key, isStatic, source, self)
 }
 export { Fragment }
+
+export type { JSX } from 'react/jsx-dev-runtime'

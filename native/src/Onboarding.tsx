@@ -1,6 +1,6 @@
 /** @jsxImportSource babi-dom */
 import { useEffect, useRef, useState } from 'react'
-import { ScrollView, useWindowDimensions, View } from 'react-native'
+import { ScrollView, useWindowDimensions, View, type ScrollViewInstance } from 'react-native'
 import { ArrowRight, Bell, UserRound } from 'lucide-react'
 import { onBack } from '@web/lib/native'
 import { history } from './dom/history'
@@ -35,7 +35,7 @@ const LAST = PAGES.length - 1
 /** open: the game is open to this phone (a tester's); done: on to it. */
 export function Onboarding({ open, done }: { open: boolean; done: () => void }) {
   const { width, height } = useWindowDimensions()
-  const scroller = useRef<ScrollView>(null)
+  const scroller = useRef<ScrollViewInstance>(null)
   // Seen before: straight to the last page, where one goes on from.
   const [page, setPage] = useState(() => (onboarded() ? LAST : 0))
   const pageRef = useRef(page)
@@ -110,8 +110,9 @@ export function Onboarding({ open, done }: { open: boolean; done: () => void }) 
         {PAGES.map((p, i) => (
           <View key={p.kicker} style={{ width }}>
             <div className={`flex h-full flex-col px-6 ${short ? 'pt-3' : 'pt-5'}`}>
+              {/* (The picture is the app's own file: a number, as React Native's pictures are; our <img> takes it.) */}
               <figure className={`taped m-0 self-center ${i % 2 ? 'rotate-[1.2deg]' : '-rotate-1'}`} style={{ width: pictureW }}>
-                <img src={p.picture} alt="" className="block w-full" style={{ aspectRatio: 360 / 420 }} />
+                <img src={p.picture as unknown as string} alt="" className="block w-full" style={{ aspectRatio: 360 / 420 }} />
               </figure>
               <p className={`chalk-hand ${short ? 'mt-3' : 'mt-5'} text-[24px] leading-none text-[var(--ci-green)]`}>{p.kicker}</p>
               <h1 className={`paint m-0 mt-1 ${short ? 'text-[36px]' : 'text-[46px]'} text-[var(--rust)] [text-shadow:3px_3px_0_var(--ochre)]`}>

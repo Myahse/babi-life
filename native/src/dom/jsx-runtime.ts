@@ -19,3 +19,6 @@ export function jsxs(type: any, props: any, key?: any) {
   return reactJsxs(t, p, key)
 }
 export { Fragment }
+
+// The type checker's JSX (div, svg…: React's own list), for the files written with our runtime.
+export type { JSX } from 'react/jsx-runtime'

@@ -96,7 +96,7 @@ export default function Root() {
   const welcome = where.pathname === '/liste' || (!onboarded() && history.index === 0)
   return (
     <View style={styles.root}>
-      <StatusBar style="light" translucent />
+      <StatusBar style="light" />
       {PortraitHost && <PortraitHost />}
       <View key={round} style={StyleSheet.absoluteFill}>
         {welcome ? (

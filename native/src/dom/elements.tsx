@@ -1,5 +1,5 @@
 import { createContext, Fragment, isValidElement, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Animated, Dimensions, Image, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View, type GestureResponderEvent, type LayoutChangeEvent } from 'react-native'
+import { Animated, Dimensions, Image, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View, type GestureResponderEvent, type LayoutChangeEvent, type ScrollViewInstance } from 'react-native'
 import * as SVG from 'react-native-svg'
 import { useVideoPlayer, VideoView } from 'expo-video'
 import { strongOf, tw, type Parsed } from './tw'
@@ -87,8 +87,8 @@ export function Document({ children }: { children?: ReactNode }) {
     setTall(Math.ceil(m))
   }, [])
   const y = useRef(new Animated.Value(0)).current
-  const content = useRef<View>(null)
-  const scroller = useRef<ScrollView>(null)
+  const content = useRef<any>(null)
+  const scroller = useRef<ScrollViewInstance>(null)
   const relayout = useRef(new Set<() => void>()).current
   const ctx = useMemo(() => ({ ...ROOT, doc, page: { y, content, relayout } }), [doc, y, relayout])
   useEffect(() => relayout.forEach((f) => f()), [tall, relayout])
@@ -931,7 +931,10 @@ function Field({ dom, p, box, textStyle, placeholder, disabled, setFocused, form
     p.onInput?.(ev)
   }
   const key = (k: string) => {
-    const ev = { key: k, code: k, target: dom, currentTarget: dom, preventDefault() {}, stopPropagation() {}, shiftKey: false, ctrlKey: false, metaKey: false, altKey: false, nativeEvent: { isComposing: false } }
+    // (A handler that prevents the default keeps Enter from sending the form.)
+    const ev = { key: k, code: k, target: dom, currentTarget: dom, defaultPrevented: false, preventDefault() {
+        ev.defaultPrevented = true
+      }, stopPropagation() {}, shiftKey: false, ctrlKey: false, metaKey: false, altKey: false, nativeEvent: { isComposing: false } }
     p.onKeyDown?.(ev)
     p.onKeyUp?.(ev)
     return ev

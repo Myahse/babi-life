@@ -96,7 +96,7 @@ export const OrbitControls = forwardRef<OrbitControlsImpl, OrbitProps>(function 
   const set = useThree((s) => s.set)
   const get = useThree((s) => s.get)
   const invalidate = useThree((s) => s.invalidate)
-  const camera = own ?? fallback
+  const camera = (own ?? fallback) as THREE.Camera
   const controls = useMemo(() => new OrbitControlsImpl(camera), [camera])
 
   useFrame(() => {

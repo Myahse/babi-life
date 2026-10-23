@@ -50,6 +50,9 @@
       ],
       "expo-*": [
         "./node_modules/expo-*"
+      ],
+      "babi-dom/*": [
+        "./src/dom/*"
       ]
     }
   },

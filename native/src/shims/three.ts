@@ -45,7 +45,7 @@ export const CanvasTexture = function CanvasTexture(canvas: unknown, ...rest: un
 
 /** Pictures by the site's address (/textures/…) fetched from the site; React Three Fiber's loader does the rest. */
 export class TextureLoader extends THREE.TextureLoader {
-  override load(url: string, onLoad?: (t: THREE.Texture) => void, onProgress?: (e: ProgressEvent) => void, onError?: (e: unknown) => void) {
-    return super.load(absUrl(url), onLoad, onProgress, onError)
+  override load(...[url, ...rest]: Parameters<THREE.TextureLoader['load']>) {
+    return super.load(absUrl(url), ...rest)
   }
 }
