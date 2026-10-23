@@ -20,6 +20,7 @@ import { Box } from './props'
 import { Character } from './Character'
 import { ActionProps, Pot, SewingTable, TvScreen, Zzz } from './interior/ActionProps'
 import { rng } from './themes'
+import { worldTime } from '../lib/worldClock'
 import { Talkable } from './Talkable'
 import { doingOf, nameFor } from './talk'
 import { listenKeys, moveInput } from './input'
@@ -971,6 +972,63 @@ function Along({ sim, pose, stage }: { sim: Sim; pose: Pose; stage: string }) {
 }
 
 /**
+ * Where the guests of a birthday sit and stand round the Sim's table (in the
+ * Sim's frame: it sits at the table's side, the table ahead): across it and
+ * at both ends, two more standing at the far corners (the camera's side, behind
+ * the Sim, kept clear).
+ */
+const PARTY: { p: [number, number, number]; r: number; seated: boolean }[] = [
+  { p: [0, 0, 1.7], r: Math.PI, seated: true },
+  { p: [0.95, 0, 0.85], r: -Math.PI / 2, seated: true },
+  { p: [-0.95, 0, 0.85], r: Math.PI / 2, seated: true },
+  { p: [1.5, 0, 1.8], r: -2.1, seated: false },
+  { p: [-1.5, 0, 1.8], r: 2.1, seated: false },
+]
+/** A birthday's round (seconds): the song, everyone up and clapping; then eating and talking; a cheer at the end. */
+const PARTY_ROUND = 30
+const SONG = 8
+
+/**
+ * A birthday with the friends (anniversaire-resto): those out with the Sim
+ * (an outing), else its closest friends, and people of its own age to make up
+ * the table if it hasn't many yet. They sing and clap round the cake, eat and
+ * talk, cheer.
+ */
+function BirthdayParty({ sim, stage }: { sim: Sim; stage: string }) {
+  const guests = useMemo(() => {
+    const along = (sim.activity?.with ?? []).map((id) => sim.friends?.find((f) => f.id === id)).filter((f) => !!f)
+    const close = [...(sim.friends ?? [])].filter((f) => !along.includes(f)).sort((a, b) => b.friendship - a.friendship)
+    const r = rng(`anniversaire${sim.id}`)
+    return PARTY.map((place, i) => {
+      const f = [...along, ...close][i]
+      const gender: 'femme' | 'homme' = f?.gender ?? (r() < 0.5 ? 'femme' : 'homme')
+      return { ...place, key: f?.id ?? `invite${i}`, gender, look: f?.look ?? randomLook(gender, rng(f ? `partner${f.id}` : `invite${sim.id}${i}`)) }
+    })
+  }, [sim.id, sim.friends, sim.activity?.with])
+  const [phase, setPhase] = useState<'song' | 'table' | 'cheer'>('song')
+  useFrame(() => {
+    const k = worldTime() % PARTY_ROUND
+    const now = k < SONG ? 'song' : k > PARTY_ROUND - 3 ? 'cheer' : 'table'
+    if (now !== phase) setPhase(now)
+  })
+  return (
+    <>
+      {guests.map((g, i) => {
+        // At the table they eat and drink (seated poses), the two up behind talk; for the song, everyone up and clapping.
+        const pose: Pose = phase === 'song' ? 'clap' : phase === 'cheer' ? 'cheer' : !g.seated ? 'talk' : i % 2 ? 'drink' : 'eat'
+        return (
+          <group key={g.key} position={g.p} rotation={[0, g.r, 0]}>
+            {/* At the ends, a stool brought over */}
+            {g.seated && i > 0 && <Box p={[0, 0.22, -0.12]} s={[0.46, 0.44, 0.46]} c="#6c4a2b" />}
+            <Character look={g.look} gender={g.gender} stage={stage} marker={false} pose={pose} />
+          </group>
+        )
+      })}
+    </>
+  )
+}
+
+/**
  * Visiting a place of worship: the Sim goes round it (worshipTour), at a
  * walk, and stops before what's worth seeing, turned to it, its phone up for
  * a photo, then goes on; round and round while the visit lasts.
@@ -1131,7 +1189,7 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
                 <>
                   <Character look={look} gender={sim.gender} stage={stage} marker={!me.lying} busy={(interactionId === 'work' && gestureNow ? gestureNow : act.pose) === 'busy'} pose={interactionId === 'work' && gestureNow ? gestureNow : act.pose} />
                   {/* Out with friends: they sit, eat, dance at the Sim's side */}
-                  {!me.lying && <Along sim={sim} pose={act.pose} stage={stage} />}
+                  {!me.lying && (interactionId?.startsWith('anniversaire') ? <BirthdayParty sim={sim} stage={stage} /> : <Along sim={sim} pose={act.pose} stage={stage} />)}
                   <ActionProps id={interactionId} kind={kind} lying={!!me.lying} stage={stage} partner={spouse} />
                   {/* The travaillement: notes off the wad, over the dancers in front */}
                   {throwing && <NoteShower from={[0.3, 1.72, 0.3]} toward={[0, 0.35, 1]} {...shower(interactionId)} seed={placeId.length} />}
