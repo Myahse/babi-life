@@ -65,6 +65,8 @@ type Inh = {
   page?: Page
   /** The element this one is in. */
   parent?: DomNode
+  /** Right in a scroller: its view's size (a child h-full in it is as tall as the view, not the content). */
+  viewport?: { w: number; h: number; horizontal: boolean }
 }
 type Page = { y: Animated.Value; content: { current: any }; /** Measured again when the page's height changes (what's above may have moved). */ relayout: Set<() => void> }
 const ROOT: Inh = { text: { color: VARS['--color-ink'], fontKey: 'sans', fontWeight: 400, fontSize: 16, lineHeight: { ratio: 1.5 } }, vars: VARS, scopes: [], parentOwn: [], inText: false, peNone: false }
@@ -302,14 +304,22 @@ function kindOf(c: any): Kind {
   return 'block'
 }
 
+/**
+ * Where each child is among its parent's as React reconciles them (its place in the JSX, a
+ * `{cond && …}` counting even when it's false; its key in a list), noted by flatten: the key it's
+ * drawn with, so a sibling coming or going doesn't remount the ones after it (and lose their state).
+ */
+const slots = new WeakMap<object, string>()
+
 /** Children as a flat list: arrays and fragments opened, nothing for null, false, true. */
-function flatten(children: ReactNode, out: any[] = []): any[] {
+function flatten(children: ReactNode, out: any[] = [], path = ''): any[] {
   if (children === null || children === undefined || typeof children === 'boolean') return out
   if (Array.isArray(children)) {
-    for (const c of children) flatten(c, out)
+    children.forEach((c, j) => flatten(c, out, `${path}${isValidElement(c) && c.key != null ? `k${String(c.key)}` : j}.`))
     return out
   }
-  if (isValidElement(children) && children.type === Fragment) return flatten((children.props as any).children, out)
+  if (isValidElement(children) && children.type === Fragment) return flatten((children.props as any).children, out, path)
+  if (isValidElement(children)) slots.set(children, path)
   out.push(children)
   return out
 }
@@ -457,6 +467,8 @@ function Box(props: any) {
   const [webAnim, setWebAnim] = useState<Record<string, any> | null>(null)
   dom.setAnim = setWebAnim
   const [open, setOpen] = useState(!!props.open)
+  // A scroller's view, once laid out (for its pages: children h-full).
+  const [view, setView] = useState<{ w: number; h: number } | null>(null)
 
   // The ref the game holds: our node (its .native the view).
   useLayoutEffect(() => {
@@ -499,7 +511,9 @@ function Box(props: any) {
   const interactive = !disabled && (PRESSES.some((k) => props[k]) || tag === 'button' || (tag === 'a' && props.href) || tag === 'summary' || (tag === 'input' && (props.type === 'checkbox' || props.type === 'radio')))
   const submit = tag === 'button' && props.type !== 'button' && props.type !== 'reset' && !!inh.form
   const link = tag === 'a' && typeof props.href === 'string' ? props.href : undefined
-  const { pressed, handlers, unpress } = usePress(dom, props, interactive && !inh.peNone, (e) => {
+  // Touchable where its own pointer-events say auto again, in a box that lets touches through (the HUD's buttons, in bars over the street).
+  const ownPe = style?.pointerEvents ?? parsed.base.f.pe
+  const { pressed, handlers, unpress } = usePress(dom, props, interactive && ownPe !== 'none' && (!inh.peNone || ownPe === 'auto'), (e) => {
     if (e.defaultPrevented) return
     if (submit) inh.form!.submit()
     if (tag === 'summary') inh.details?.toggle()
@@ -508,6 +522,9 @@ function Box(props: any) {
       else if (!props.onClick) navigateTo(link)
     }
   })
+
+  // What a screen reader says of it (TalkBack, VoiceOver): its label, and that it's a button or a link.
+  const a11y = { 'aria-label': props['aria-label'], role: tag === 'button' || props.role === 'button' ? ('button' as const) : link ? ('link' as const) : undefined }
 
   // The shape: the utilities, the game's own classes (by state), the inline style, the !important ones; under the finger, disabled.
   const a = acc()
@@ -530,6 +547,10 @@ function Box(props: any) {
   const text = textOf(inh.text, a.t, vars)
   const display = a.f.display ?? (INLINE.has(tag) ? 'inline' : ATOM.has(tag) ? 'inline-block' : 'block')
   const box = boxOf(a, vars, text.color, display)
+  // A page of a scroller (h-full right in it, a feed's video): the view's size, as the web has it (Yoga's 100% would be of the content).
+  const vp = inh.viewport
+  if (vp && !vp.horizontal && box.height === '100%') box.height = vp.h
+  if (vp && vp.horizontal && box.width === '100%') box.width = vp.w
   const textStyle = rnText(text)
   const pe = a.f.pe === 'none' || (inh.peNone && a.f.pe !== 'auto')
   const sticky = a.f.position === 'sticky' && !!inh.page
@@ -599,6 +620,7 @@ function Box(props: any) {
         numberOfLines={lines}
         ellipsizeMode={a.f.lines ? 'tail' : 'clip'}
         pointerEvents={pe ? 'none' : undefined}
+        {...a11y}
         onPress={handlers ? (e) => handlers.onResponderRelease(e, true) : undefined}
         onPressIn={handlers ? (e) => handlers.onResponderGrant(e) : undefined}
         onPressOut={handlers ? unpress : undefined}
@@ -632,16 +654,21 @@ function Box(props: any) {
       <ScrollView
         ref={hostRef}
         horizontal={horizontal}
-        style={outer}
+        // Sized as the web sizes a scrolling box (React Native's would grow into what room its parent has: a row of chips as tall as the page).
+        style={{ flexGrow: 0, ...outer }}
         contentContainerStyle={inner}
         showsHorizontalScrollIndicator={false}
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
         keyboardShouldPersistTaps="handled"
         pointerEvents={pe ? 'box-none' : undefined}
+        // snap-y snap-mandatory (a feed of full pages): one page at a time (a row of cards snaps freely: their width isn't the view's).
+        pagingEnabled={!!a.f.snapPages && !horizontal}
         onLayout={(e: LayoutChangeEvent) => {
-          dom.scrollState.viewH = e.nativeEvent.layout.height
-          dom.scrollState.viewW = e.nativeEvent.layout.width
+          const { width, height } = e.nativeEvent.layout
+          dom.scrollState.viewH = height
+          dom.scrollState.viewW = width
+          setView((v) => (v && v.w === width && v.h === height ? v : { w: width, h: height }))
         }}
         onContentSizeChange={(w, h) => {
           dom.scrollState.width = w
@@ -657,7 +684,7 @@ function Box(props: any) {
         }}
       >
         {bgImage}
-        <DomCtx.Provider value={{ ...childCtx, scroller: dom }}>{content}</DomCtx.Provider>
+        <DomCtx.Provider value={{ ...childCtx, scroller: dom, viewport: view ? { ...view, horizontal } : undefined }}>{content}</DomCtx.Provider>
       </ScrollView>
     )
   }
@@ -688,6 +715,7 @@ function Box(props: any) {
       ref={hostRef}
       style={[box, animStyle, stickStyle]}
       pointerEvents={pe ? 'box-none' : undefined}
+      {...a11y}
       {...(handlers ?? {})}
       onLayout={
         doc || sticky
@@ -737,7 +765,12 @@ function flexItems(kids: any[], kinds: Kind[], textStyle: any, ctx: Inh) {
   return out
 }
 
-const keyOf = (c: any, i: number) => (isValidElement(c) && c.key != null ? `k${String(c.key)}` : `i${i}`)
+const keyOf = (c: any, i: number) => (isValidElement(c) ? `s${slots.get(c) ?? (c.key != null ? `k${String(c.key)}` : i)}` : `i${i}`)
+/** A line's key: its first box's (a run of words alone keeps its place's). */
+const runKey = (kids: any[], run: number[]) => {
+  const first = run.find((i) => isValidElement(kids[i]))
+  return `r${first === undefined ? run[0] : keyOf(kids[first], first)}`
+}
 
 /**
  * A block's children: its lines (runs of text and inline boxes, one <Text>
@@ -754,7 +787,7 @@ function flowRuns(kids: any[], kinds: Kind[], textStyle: any, ctx: Inh, lines: n
       const onlySpace = run.every((i) => kinds[i] === 'text' && !String(kids[i]).trim())
       if (!onlySpace)
         out.push(
-          <Text key={`r${run[0]}`} style={textStyle} numberOfLines={lines}>
+          <Text key={runKey(kids, run)} style={textStyle} numberOfLines={lines}>
             <DomCtx.Provider value={{ ...ctx, inText: true }}>{run.map((i) => (kinds[i] === 'text' ? String(kids[i]) : <Fragment key={keyOf(kids[i], i)}>{kids[i]}</Fragment>))}</DomCtx.Provider>
           </Text>,
         )
@@ -762,13 +795,13 @@ function flowRuns(kids: any[], kinds: Kind[], textStyle: any, ctx: Inh, lines: n
       // One inline box alone on its line: set straight in the block (a row around it would undo its h-full), at the line's start, middle or end.
       const i = run[0]
       out.push(
-        <DomCtx.Provider key={`r${i}`} value={{ ...ctx, selfAlign: align === 'center' ? 'center' : align === 'right' || align === 'end' ? 'flex-end' : 'flex-start' }}>
+        <DomCtx.Provider key={runKey(kids, run)} value={{ ...ctx, selfAlign: align === 'center' ? 'center' : align === 'right' || align === 'end' ? 'flex-end' : 'flex-start' }}>
           {kids[i]}
         </DomCtx.Provider>,
       )
     } else
       out.push(
-        <View key={`r${run[0]}`} style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: align === 'center' ? 'center' : align === 'right' || align === 'end' ? 'flex-end' : 'flex-start' }}>
+        <View key={runKey(kids, run)} style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: align === 'center' ? 'center' : align === 'right' || align === 'end' ? 'flex-end' : 'flex-start' }}>
           {run.map((i) => (
             <Fragment key={keyOf(kids[i], i)}>{kids[i]}</Fragment>
           ))}
@@ -852,7 +885,7 @@ function GridRows({ kids, kinds, grid, layout: box, textStyle, ctx }: { kids: an
       {rows.map((r, i) => (
         <View key={i} style={{ flexDirection: 'row', columnGap: box.columnGap, alignItems: (box.alignItems ?? 'stretch') as any, flexGrow: 1 }}>
           {[...r, ...pad(r)].map((c, j) => (
-            <View key={j} style={[cell(c.col, c.span), { alignItems: (box.justifyItems ?? 'stretch') as any }]}>
+            <View key={(isValidElement(c.node) && c.node.key) || `p${j}`} style={[cell(c.col, c.span), { alignItems: (box.justifyItems ?? 'stretch') as any }]}>
               {c.node}
             </View>
           ))}

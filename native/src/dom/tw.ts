@@ -217,7 +217,6 @@ function utility(a: Acc, u: string): boolean {
     case 'peer':
     case 'snap-x':
     case 'snap-y':
-    case 'snap-mandatory':
     case 'snap-start':
     case 'snap-center':
     case 'snap-always':
@@ -287,6 +286,9 @@ function utility(a: Acc, u: string): boolean {
     case 'overflow-x-auto':
     case 'overflow-x-scroll':
       f.scrollX = true
+      return true
+    case 'snap-mandatory':
+      f.snapPages = true
       return true
     case 'pointer-events-none':
       f.pe = 'none'

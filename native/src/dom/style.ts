@@ -13,6 +13,8 @@ export type Flags = {
   position?: string
   scrollX?: boolean
   scrollY?: boolean
+  /** snap-mandatory: the scroller stops on each page (pagingEnabled). */
+  snapPages?: boolean
   lines?: number
   pe?: 'none' | 'auto'
   anim?: string[]
