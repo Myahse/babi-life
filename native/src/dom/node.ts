@@ -1,4 +1,5 @@
 import { webAnimation, type Keyframe } from './anim'
+import { newCanvas } from '@web/lib/canvas'
 
 // What the game's code holds of an element (ref.current, e.currentTarget): the web's element as
 // far as the game uses it. Where it's measured, React Native's own element answers (the new
@@ -53,6 +54,8 @@ export class DomNode {
   readonly style: Record<string, any>
   readonly classList = { add() {}, remove() {}, toggle() {}, contains: () => false, replace() {} }
   value = ''
+  /** A <canvas>'s drawing (the phone's: Skia's, lib/canvas.native.ts): its context and its size; elements.tsx CanvasView shows it. */
+  drawing?: HTMLCanvasElement
   /** A <video>'s player (elements.tsx Video): what play(), pause(), its time and sound reach. */
   media?: { play: () => void; pause: () => void; readonly playing: boolean; currentTime: number; muted: boolean; readonly duration: number }
   private listeners = new Map<string, Set<(e: any) => void>>()
@@ -71,6 +74,28 @@ export class DomNode {
 
   get tagName() {
     return this.tag.toUpperCase()
+  }
+  // A <canvas>: drawn on with its context, sized in pixels (a fresh canvas is 300 × 150, as the web's).
+  private drawn() {
+    return (this.drawing ??= newCanvas(Number(this.props.width) || 300, Number(this.props.height) || 150))
+  }
+  getContext(type: string) {
+    return this.tag === 'canvas' && type === '2d' ? this.drawn().getContext('2d') : null
+  }
+  get width() {
+    return this.tag === 'canvas' ? this.drawn().width : Number(this.props.width) || 0
+  }
+  set width(v: number) {
+    if (this.tag === 'canvas') this.drawn().width = v
+  }
+  get height() {
+    return this.tag === 'canvas' ? this.drawn().height : Number(this.props.height) || 0
+  }
+  set height(v: number) {
+    if (this.tag === 'canvas') this.drawn().height = v
+  }
+  toDataURL() {
+    return this.drawing?.toDataURL() ?? ''
   }
   get dataset() {
     const d: Record<string, string> = {}

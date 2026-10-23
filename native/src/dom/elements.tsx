@@ -11,6 +11,7 @@ import { playOf, run, styleOf } from './anim'
 import { navigateTo } from './links'
 import { absUrl } from './origin'
 import { Portal } from './portal'
+import { CanvasView } from './canvasView'
 
 // The game's HTML on the phone: every <div>, <span>, <button>, <input>, <svg>
 // of web/src becomes this element (the JSX runtime, jsx-runtime.ts, sends the
@@ -565,7 +566,8 @@ function Box(props: any) {
   if (tag === 'select') return <Select p={props} box={box} textStyle={textStyle} disabled={disabled} hostRef={hostRef} />
   if (tag === 'img') return <Img p={props} box={box} fit={a.f.fit} hostRef={hostRef} />
   if (tag === 'video') return <Video dom={dom} p={props} box={box} fit={a.f.fit} hostRef={hostRef} />
-  if (tag === 'canvas' || tag === 'iframe') return <View ref={hostRef} style={[{ backgroundColor: '#000' }, box]} />
+  if (tag === 'canvas') return <CanvasView dom={dom} box={box} pe={pe} handlers={handlers} hostRef={hostRef} />
+  if (tag === 'iframe') return <View ref={hostRef} style={[{ backgroundColor: '#000' }, box]} />
   if (tag === 'icon') return <IconBox p={props} box={box} color={text.color} anim={webAnim ?? anim?.style} pe={pe} handlers={handlers} hostRef={hostRef} vars={vars} />
   if (tag === 'option') return null
 
