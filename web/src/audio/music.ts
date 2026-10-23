@@ -1,11 +1,14 @@
 // Music made in the browser, so nothing is copyrighted: the game plays its
 // own tunes, written note by note here, in the style of what you'd hear in
 // Abidjan. Coupé-décalé in the club and at the maquis (four-on-the-floor kick,
-// claps, busy hi-hats, a bouncing bass and a bright guitar-like arpeggio), and
-// the fanfare that walks in front of a wedding cortège (bass drum, snare,
-// tuba oom-pah, two trumpets in thirds). Each place gets its own variation.
+// claps, busy hi-hats, a bouncing bass and a bright guitar-like arpeggio), the
+// fanfare that walks in front of a wedding cortège (bass drum, snare, tuba
+// oom-pah, two trumpets in thirds), the show of a cultural centre or a village
+// (djembés, the dunun and its bell, a balafon, a singer and the choir that
+// answers him, the audience's applause and you-yous), the crowd of a match at
+// the stadium, the hush of a museum. Each place gets its own variation.
 
-export type Track = 'club' | 'maquis' | 'fanfare'
+export type Track = 'club' | 'maquis' | 'fanfare' | 'spectacle' | 'stade' | 'expo'
 
 type Style = { bpm: number; steps: number; swing: number; build: (r: () => number) => Song }
 type Song = (ctx: AudioContext, out: AudioNode, step: number, t: number, dur: number) => void
@@ -186,6 +189,88 @@ function brass(c: AudioContext, out: AudioNode, t: number, midi: number, dur: nu
   lfo.stop(t + dur + 0.05)
 }
 
+/** A sung vowel: a buzz through the vowel's formants (the mouth), a little vibrato, a scoop up to the note. */
+const VOWELS = { a: [800, 1150, 2900], o: [450, 800, 2830], e: [400, 2000, 2550], i: [300, 2300, 3000], u: [325, 700, 2530] } as const
+type Vowel = keyof typeof VOWELS
+function voice(c: AudioContext, out: AudioNode, t: number, midi: number, dur: number, vol: number, vowel: Vowel = 'a', trill = 0) {
+  const g = c.createGain()
+  g.gain.setValueAtTime(0.0001, t)
+  g.gain.linearRampToValueAtTime(vol, t + 0.06)
+  g.gain.setValueAtTime(vol, t + Math.max(0.07, dur - 0.1))
+  g.gain.linearRampToValueAtTime(0.0001, t + dur)
+  g.connect(out)
+  const src = c.createOscillator()
+  src.type = 'sawtooth'
+  src.frequency.setValueAtTime(hz(midi - 1), t)
+  src.frequency.linearRampToValueAtTime(hz(midi), t + 0.08)
+  VOWELS[vowel].forEach((f, i) => {
+    const bp = c.createBiquadFilter()
+    bp.type = 'bandpass'
+    bp.frequency.value = f
+    bp.Q.value = 9
+    const k = c.createGain()
+    k.gain.value = [3, 1.6, 0.8][i]
+    bp.connect(k).connect(g)
+    src.connect(bp)
+  })
+  // The vibrato; a you-you's trill is the same, quicker and wider.
+  const lfo = c.createOscillator()
+  const depth = c.createGain()
+  lfo.frequency.value = trill ? 7.5 : 5.2
+  depth.gain.value = trill ? trill : 14
+  lfo.connect(depth).connect(src.detune)
+  src.start(t)
+  lfo.start(t)
+  src.stop(t + dur + 0.05)
+  lfo.stop(t + dur + 0.05)
+}
+
+/** The djembé: its bass (the palm in the middle), its tone (the fingers at the edge), its slap (cracking). */
+const djembe = (c: AudioContext, out: AudioNode, t: number, hit: 'B' | 'T' | 'S', vol = 1) => {
+  if (hit === 'B') conga(c, out, t, 78, 0.5 * vol)
+  if (hit === 'T') conga(c, out, t, 215, 0.3 * vol)
+  if (hit === 'S') {
+    hiss(c, out, t, { vol: 0.32 * vol, decay: 0.07, type: 'bandpass', freq: 2600, q: 1.2 })
+    conga(c, out, t, 330, 0.12 * vol)
+  }
+}
+/** The dunun's iron bell. */
+const bell = (c: AudioContext, out: AudioNode, t: number, vol = 0.05) => {
+  tone(c, out, t, 1240, 0.09, vol, 'triangle')
+  tone(c, out, t, 3310, 0.05, vol * 0.4, 'sine')
+}
+/** A balafon's wooden key under the mallet: the note, its bright partial, the knock. */
+function balafon(c: AudioContext, out: AudioNode, t: number, midi: number, vol = 0.16) {
+  tone(c, out, t, hz(midi), 0.28, vol, 'sine')
+  tone(c, out, t, hz(midi) * 3.9, 0.06, vol * 0.35, 'sine')
+  hiss(c, out, t, { vol: vol * 0.25, decay: 0.02, type: 'bandpass', freq: 1800, q: 2 })
+}
+/** The audience: a round of applause (claps scattered over `len` seconds). */
+function applause(c: AudioContext, out: AudioNode, t: number, len: number, vol = 0.12) {
+  for (let i = 0; i < len * 28; i++) {
+    const at = t + Math.random() * len
+    hiss(c, out, at, { vol: vol * (0.4 + Math.random() * 0.6) * Math.min(1, (t + len - at) / 0.8), decay: 0.06, type: 'bandpass', freq: 1100 + Math.random() * 1400, q: 1.1 })
+  }
+}
+/** A crowd murmuring, a while: noise shaped like voices, far off. */
+function murmur(c: AudioContext, out: AudioNode, t: number, len: number, vol = 0.05, freq = 520) {
+  const s = c.createBufferSource()
+  s.buffer = noiseBuf ??= noise(c)
+  s.loop = true
+  const f = c.createBiquadFilter()
+  f.type = 'bandpass'
+  f.frequency.value = freq
+  f.Q.value = 0.9
+  const g = c.createGain()
+  g.gain.setValueAtTime(0.0001, t)
+  g.gain.linearRampToValueAtTime(vol, t + 0.3)
+  g.gain.setValueAtTime(vol, t + len - 0.3)
+  g.gain.linearRampToValueAtTime(0.0001, t + len)
+  s.connect(f).connect(g).connect(out)
+  s.start(t, Math.random() * 0.5)
+  s.stop(t + len + 0.05)
+}
+
 /* ---------- Songs ---------- */
 
 // Chord loops (roots as MIDI notes, with the chord's tones), bright and major
@@ -257,10 +342,116 @@ function fanfare(r: () => number): Song {
   }
 }
 
+/**
+ * The show (a cultural centre's stage, the village of Anoumabo, the masks):
+ * the djembés and the dunun, the shekere; the balafon's tune; a singer calls,
+ * the choir answers, then all sing; and at the end of each round, the
+ * audience claps, the women's you-yous, a shout.
+ */
+function spectacle(r: () => number): Song {
+  const key = 57 + Math.floor(r() * 5) // A to C♯: the singer's note
+  const penta = [0, 3, 5, 7, 10, 12, 15]
+  const lead = [0, 1, 2].map(() => [...Array(8)].map(() => Math.floor(r() * 5)))
+  const riff = [...Array(16)].map(() => (r() < 0.6 ? Math.floor(r() * 7) : -1))
+  const vowels: Vowel[] = ['e', 'o', 'a', 'e', 'o', 'i', 'a', 'o']
+  const ONE = 'B..TT.S.B..TT.SS'
+  const TWO = '..ST..ST..ST..ST'
+  return (c, out, step, t, dur) => {
+    const bar = Math.floor(step / 16)
+    const s = step % 16
+    const round = bar % 16
+    // The last bar of the round: the drums stop, the audience claps and cheers.
+    if (round === 15) {
+      if (s === 0) {
+        applause(c, out, t, dur * 16 * 1.4, 0.13)
+        voice(c, out, t + dur * 2, key + 27, dur * 7, 0.035, 'i', 160)
+        voice(c, out, t + dur * 5, key + 24, dur * 6, 0.03, 'i', 190)
+        voice(c, out, t + dur * 1, key + 4, dur * 1.5, 0.05, 'e')
+      }
+      return
+    }
+    // The djembés, the dunun and its bell, the shekere.
+    const intro = round < 2
+    const h1 = ONE[s]
+    if (h1 !== '.') djembe(c, out, t, h1 as 'B' | 'T' | 'S', intro ? 1.1 : 0.9)
+    const h2 = TWO[s]
+    if (!intro && h2 !== '.') djembe(c, out, t, h2 as 'B' | 'T' | 'S', 0.55)
+    if (!intro && (s === 0 || s === 6 || s === 8 || s === 11)) kick(c, out, t, 0.45)
+    if (!intro && s % 2 === 0) bell(c, out, t, s % 4 === 0 ? 0.06 : 0.04)
+    if (!intro) shaker(c, out, t, s % 4 === 0 ? 0.09 : 0.05)
+    // The balafon's tune, after the drums' call.
+    if (round >= 2 && riff[s] >= 0 && (round < 4 || s % 2 === 0)) balafon(c, out, t, key + 12 + penta[riff[s]], round < 4 ? 0.17 : 0.11)
+    // The song: the singer calls (two bars), the choir answers (two bars), then all of them.
+    const phrase = Math.floor((round - 4) / 2)
+    if (round >= 4 && s % 2 === 0) {
+      const n = lead[phrase % 3][s / 2]
+      const note = key + penta[n]
+      const len = dur * (s % 4 === 0 ? 3.6 : 1.8)
+      const v = vowels[(s / 2 + phrase) % vowels.length]
+      if (phrase % 2 === 0 || round >= 12) voice(c, out, t, note, len, 0.07, v)
+      if (phrase % 2 === 1 || round >= 12)
+        for (const [x, vv] of [
+          [0, 0.045],
+          [-5, 0.035],
+          [7, 0.03],
+        ] as [number, number][])
+          voice(c, out, t + Math.random() * 0.02, note + x, len, vv, v)
+    }
+    // Now and then someone in the audience shouts their joy.
+    if (round === 8 && s === 0) voice(c, out, t, key + 9, dur * 2, 0.04, 'e')
+  }
+}
+
+/**
+ * The stadium on match day: the crowd's roar all along, the supporters' big
+ * drum and their song (« O-lé »), the trumpets; the roar rising now and then
+ * (a chance, a goal).
+ */
+function stade(r: () => number): Song {
+  const key = 60 + Math.floor(r() * 3)
+  const chant = [0, 4, 7, 4, 0, 4, 7, 12]
+  return (c, out, step, t, dur) => {
+    const bar = Math.floor(step / 8)
+    const s = step % 8
+    if (s === 0) murmur(c, out, t, dur * 8 + 0.3, bar % 12 === 11 ? 0.16 : 0.08, 650)
+    // A chance, a goal: the roar swells.
+    if (s === 0 && bar % 12 === 11) applause(c, out, t, dur * 8, 0.1)
+    // The big drum: boum, boum, boum… boum.
+    if (s === 0 || s === 2 || s === 4) kick(c, out, t, 0.55)
+    if (s === 6) snare(c, out, t, 0.18)
+    // The song, every other phrase, the whole stand in unison.
+    if (bar % 4 < 2 && s % 2 === 0) {
+      const n = chant[((bar % 2) * 4 + s / 2) % chant.length]
+      for (const x of [0, 12, -12]) voice(c, out, t, key + n + x, dur * 1.8, x ? 0.025 : 0.045, s % 4 === 0 ? 'o' : 'e')
+    }
+    // The trumpets of the brass band in the stand.
+    if (bar % 8 === 6 && s === 0) brass(c, out, t, key + 7, dur * 3, 0.06, 2000)
+    if (bar % 8 === 6 && s === 4) brass(c, out, t, key + 12, dur * 3.5, 0.06, 2000)
+  }
+}
+
+/** The museum, the gallery: hushed voices of the visitors, a kora playing softly somewhere. */
+function expo(r: () => number): Song {
+  const key = 57 + Math.floor(r() * 5)
+  const scale = [0, 2, 4, 7, 9, 12, 14, 16]
+  const run = [...Array(16)].map(() => Math.floor(r() * scale.length))
+  return (c, out, step, t, dur) => {
+    const bar = Math.floor(step / 8)
+    const s = step % 8
+    if (s === 0 && bar % 2 === 0) murmur(c, out, t, dur * 16 + 0.3, 0.05, 480)
+    // The kora's arpeggio, quiet.
+    if (bar % 4 !== 3) pluck(c, out, t, key + scale[run[(bar % 2) * 8 + s]], 0.085)
+    if (s === 0) pluck(c, out, t, key - 12, 0.075)
+  }
+}
+
 const STYLES: Record<Track, Style> = {
   club: { bpm: 128, steps: 4, swing: 0.04, build: (r) => coupeDecale(r, false) },
   maquis: { bpm: 118, steps: 4, swing: 0.08, build: (r) => coupeDecale(r, true) },
   fanfare: { bpm: 112, steps: 2, swing: 0, build: fanfare },
+  spectacle: { bpm: 112, steps: 4, swing: 0.06, build: spectacle },
+  stade: { bpm: 120, steps: 2, swing: 0, build: stade },
+  expo: { bpm: 72, steps: 2, swing: 0.04, build: expo },
 }
 
 /* ---------- Playing ---------- */
