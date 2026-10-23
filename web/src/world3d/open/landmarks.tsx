@@ -21,6 +21,7 @@ import { PlayceMarcory } from './playceMarcory'
 import { TOUR_F_FACING, TourF, TourFFar } from './tourF'
 import type { StadiumEvent } from '../../lib/stadium'
 import type { Obstacle } from '../obstacles'
+import { STADIUM_TRACKS } from './stadiumTrack'
 
 // Landmarks the map alone can't draw: their shape is what people know them
 // by. Built from published descriptions; sizes are estimates for the game.
@@ -258,6 +259,8 @@ export function Pyramide({ night }: { night: boolean }) {
  * a closed oval bowl under a roof ring held by 40 cantilevered beams. The
  * dimensions are estimates.
  */
+/** Its running track and the tunnel to it. */
+const TRACK = STADIUM_TRACKS['plateau-stade']
 /** The bowl's outer oval (half-axes, metres): its wall, round the stands. */
 const STADIUM_OVAL = { x: 80 * 1.25, z: 80 }
 
@@ -301,6 +304,7 @@ function Stadium({ place, night, demo }: { place: string; night: boolean; demo?:
     return new THREE.MeshLambertMaterial({ map: t })
   }, [])
   const track = useMemo(() => new THREE.MeshLambertMaterial({ color: '#b5533c' }), [])
+  const tunnelDark = useMemo(() => new THREE.MeshBasicMaterial({ color: '#141416' }), [])
 
   // The bowl, turned around the middle: tiers rising from the track to the top.
   const bowl = useMemo(() => {
@@ -344,6 +348,16 @@ function Stadium({ place, night, demo }: { place: string; night: boolean; demo?:
       <mesh geometry={bowl} material={seats} receiveShadow castShadow />
       <mesh geometry={outer} material={shell} castShadow receiveShadow />
       <mesh geometry={ring} material={roof} castShadow />
+      {/* The tunnel in from the front (stadiumTrack.ts): its mouth in the wall, and the other on the track, under the first tier */}
+      <mesh position={[TRACK.tunnel, 2.3, 80.15]} material={tunnelDark}>
+        <boxGeometry args={[4.2, 4.6, 0.5]} />
+      </mesh>
+      <mesh position={[TRACK.tunnel, 2.6, 79.95]} material={steel}>
+        <boxGeometry args={[5.2, 5.2, 0.3]} />
+      </mesh>
+      <mesh position={[TRACK.tunnel, 1.3, 51.9]} material={tunnelDark}>
+        <boxGeometry args={[3.6, 2.6, 0.8]} />
+      </mesh>
       {/* A match or a concert, when one is on */}
       <StadiumLive place={place} night={night} demo={demo} />
       {beams.map(({ foot, tip }, i) => {

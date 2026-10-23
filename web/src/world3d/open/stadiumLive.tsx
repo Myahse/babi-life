@@ -5,6 +5,10 @@ import * as THREE from 'three'
 import { worldTime } from '../../lib/worldClock'
 import { DOORS_OPEN, eventAt, useStadium, type StadiumEvent } from '../../lib/stadium'
 import { whereabouts } from '../whereabouts'
+import { Human } from '../../avatar/Human'
+import { randomLook } from '../../avatar/options'
+import { rng } from '../themes'
+import { lanePoint, STADIUM_TRACKS } from './stadiumTrack'
 import { lettering } from './ruePrincesse'
 import { AR1, AR2, CAPTAIN, COACH, FOURTH, KID, BEARER, MEDIC, NF, NUMBERS, REF, SUB, SUB_NUMBERS, announce, clockText, ease, hash, hypeAt, matchFrame, playerName, scorerName, type Target } from './stadiumMatch'
 
@@ -47,8 +51,55 @@ export function StadiumLive({ place, night, demo }: { place: string; night: bool
     const e = demo ?? eventAt(agenda, minuteNow())
     if (e?.start !== on?.start) setOn(e)
   })
-  if (!on) return null
+  // Nothing on: in the day, a few joggers doing their laps.
+  if (!on) return night ? null : <Joggers place={place} />
   return <Live key={on.start} e={on} night={night} />
+}
+
+/** The joggers round the track: each in a lane, at a pace, from a place on it, on the street's clock (the same on every screen). */
+const JOGGERS = [
+  { lane: 1, speed: 3.1, from: 0.4 },
+  { lane: 2, speed: 2.6, from: 2.1 },
+  { lane: 1, speed: 3.6, from: 3.5 },
+  { lane: 3, speed: 2.4, from: 4.6 },
+  { lane: 2, speed: 3.3, from: 5.6 },
+]
+
+function Joggers({ place }: { place: string }) {
+  const track = STADIUM_TRACKS[place]
+  const people = useMemo(() => {
+    const r = rng(`joggers${place}`)
+    return JOGGERS.map((j) => {
+      const gender: 'femme' | 'homme' = r() < 0.45 ? 'femme' : 'homme'
+      return { ...j, gender, look: { ...randomLook(gender, r), outfit: ['jogging', 'survet', 'debardeur', 'jersey'][Math.floor(r() * 4)] }, seed: r() * 100 }
+    })
+  }, [place])
+  const refs = useRef<(THREE.Group | null)[]>([])
+  useFrame(() => {
+    if (!track) return
+    const t = worldTime()
+    people.forEach((p, i) => {
+      const g = refs.current[i]
+      if (!g) return
+      // Inside the Sim's lane (stadiumTrack.ts), 1.2 m a lane; a steady turn of the angle (near enough a steady pace).
+      const lane = { ...track, rx: track.rx - p.lane * 1.2, rz: track.rz - p.lane * 1.2 }
+      const th = p.from + (t * p.speed) / ((lane.rx + lane.rz) / 2)
+      const [x, z] = lanePoint(lane, th)
+      const [ax, az] = lanePoint(lane, th + 0.02)
+      g.position.set(x, 0.5, z)
+      g.rotation.y = Math.atan2(ax - x, az - z)
+    })
+  })
+  if (!track) return null
+  return (
+    <>
+      {people.map((p, i) => (
+        <group key={i} ref={(g) => void (refs.current[i] = g)}>
+          <Human look={p.look} gender={p.gender} pose="run" seed={p.seed} speed={p.speed} />
+        </group>
+      ))}
+    </>
+  )
 }
 
 function Live({ e, night }: { e: StadiumEvent; night: boolean }) {

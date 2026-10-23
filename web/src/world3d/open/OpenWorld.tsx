@@ -852,7 +852,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     whereabouts.further = spots.filter((s) => s.name && !set.has(s.id) && s.kind !== 'plot' && s.kind !== 'happening' && s.id !== HOME_ID).map((s) => ({ id: s.id, kind: s.kind, name: s.name, door: s.at }))
     whereabouts.toLocal = (lat, lng) => toLocal(origin, lat, lng)
     // In development, every lot (the landmarks too), for tests in the browser.
-    if (import.meta.env.DEV) Object.assign(window, { __lots: lots.map((l) => ({ id: l.id, kind: l.kind, x: l.x, z: l.z, door: l.door })) })
+    if (import.meta.env.DEV) Object.assign(window, { __lots: lots.map((l) => ({ id: l.id, kind: l.kind, x: l.x, z: l.z, rot: l.rot, door: l.door })) })
   }, [walkLots, lots, spots, origin])
   useEffect(() => {
     whereabouts.roads = nav.edges.map((e) => [nav.nodes[e.a], nav.nodes[e.b], e.width] as [XZ, XZ, number])
