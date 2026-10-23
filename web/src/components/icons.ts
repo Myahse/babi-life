@@ -6,6 +6,7 @@ import {
   PartyPopper, PiggyBank, ShoppingBasket, ShowerHead, Smartphone, Sparkles, Store, Sunset, TreePalm, Trophy, Tv, Users,
   Volleyball, Waves, Baby, Bird, BookOpen, BrushCleaning, Cake, CarTaxiFront, Drama, Drum, FileText, Flag, Flower2, Gift, GraduationCap, Hammer,
   Hospital, Library, Presentation, Shovel, Stamp, Stethoscope, Utensils, ShoppingBag, ShoppingCart, Shirt, IceCreamCone, Hamburger, CupSoda, Scissors, Hotel, Hand, Send, Fuel, Bike, Dumbbell, PawPrint, UserPlus, Snowflake, Clapperboard, Popcorn, Plane, Dice5, Toilet, Toothbrush, Sailboat, HardHat, Citrus, Croissant, Droplet, Grid3x3, type LucideIcon,
+  Gamepad2, Joystick, Swords, Eye,
   Mail, PenLine, Receipt, Megaphone, Coins, HeartPulse, Syringe, ScanLine, Calculator, ConciergeBell, Luggage, Handshake, Gavel, Pill, ClipboardList,
 } from 'lucide-react'
 
@@ -33,6 +34,8 @@ const REGISTRY: Record<string, LucideIcon> = {
   'ice-cream-cone': IceCreamCone, hamburger: Hamburger, 'cup-soda': CupSoda,
   scissors: Scissors, hotel: Hotel, hand: Hand, send: Send, fuel: Fuel, bike: Bike, dumbbell: Dumbbell, 'paw-print': PawPrint, 'hard-hat': HardHat,
   citrus: Citrus, croissant: Croissant, droplet: Droplet, 'grid-3x3': Grid3x3,
+  // The salle de jeux vidéo.
+  'gamepad-2': Gamepad2, joystick: Joystick, swords: Swords, eye: Eye,
   // At work (backend game/jobs.go).
   mail: Mail, 'pen-line': PenLine, receipt: Receipt, megaphone: Megaphone, coins: Coins, 'heart-pulse': HeartPulse, syringe: Syringe, 'scan-line': ScanLine,
   calculator: Calculator, 'concierge-bell': ConciergeBell, luggage: Luggage, handshake: Handshake, gavel: Gavel, pill: Pill, 'clipboard-list': ClipboardList,
@@ -69,6 +72,7 @@ export const KIND_COLORS: Record<string, [string, string]> = {
   village: ['#e9c46a', '#a0612b'],
   lagune: ['#66d9e8', '#1971c2'],
   boutique: ['#ffd8a8', '#f08c00'],
+  gaming: ['#b197fc', '#5f3dc4'],
   couture: ['#d0bfff', '#7048e8'],
   pharmacie: ['#8ce99a', '#2b8a3e'],
   police: ['#a5d8ff', '#1c4f9c'],

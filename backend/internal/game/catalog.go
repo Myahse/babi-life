@@ -481,6 +481,29 @@ var Kinds = map[string]PlaceKind{
 			{Text: "Le boutiquier te fait crédit : « Tu me donnes ça demain. »", Money: 200, Effect: Needs{Social: 10}},
 		},
 	},
+	// The salles de jeux vidéo of the quarters (the map's shop=video_games): the
+	// TVs in a row on the counter, a console under each, the benches, the boys
+	// who watch and comment; the match paid by the round (a few hundred francs),
+	// the challenge where the loser pays, the quarter's tournament on Saturday.
+	"gaming": {
+		ID: "gaming", Label: "Salle de jeux vidéo", Icon: "gamepad-2",
+		Interactions: []Interaction{
+			{ID: "console-foot", Label: "Un match de foot à la console", Icon: "gamepad-2", Minutes: 20, Cost: 200, Effect: Needs{Fun: 25, Social: 10, Energy: -5}, MinHour: 9, MaxHour: 23},
+			{ID: "console-defi", Ages: TeensUp, Label: "Défier un gars du quartier : le perdant paie", Icon: "swords", Minutes: 30, Cost: 400, Effect: Needs{Fun: 30, Social: 20, Energy: -5}, MinHour: 9, MaxHour: 23},
+			{ID: "console-course", Label: "Une course de voitures à deux", Icon: "car", Minutes: 20, Cost: 200, Effect: Needs{Fun: 25, Social: 10, Energy: -5}, MinHour: 9, MaxHour: 23},
+			{ID: "console-combat", Label: "Un jeu de combat, manette contre manette", Icon: "gamepad-2", Minutes: 20, Cost: 200, Effect: Needs{Fun: 25, Social: 10, Energy: -5}, MinHour: 9, MaxHour: 23},
+			{ID: "borne-arcade", Label: "Une partie à la borne d'arcade", Icon: "joystick", Minutes: 15, Cost: 100, Effect: Needs{Fun: 20, Energy: -5}, MinHour: 9, MaxHour: 23},
+			{ID: "tournoi-console", Ages: TeensUp, Label: "Le tournoi du samedi", Icon: "trophy", Minutes: 90, Cost: 1000, Effect: Needs{Fun: 40, Social: 30, Energy: -15}, MinHour: 14, MaxHour: 20, Days: []int{5}},
+			{ID: "regarder-console", Label: "Regarder les autres jouer, et commenter", Icon: "eye", Minutes: 20, Effect: Needs{Fun: 10, Social: 15}, MinHour: 9, MaxHour: 23},
+			{ID: "sucrerie", Label: "Prendre une sucrerie bien fraîche", Icon: "cup-soda", Minutes: 10, Cost: 300, Effect: Needs{Hunger: 5, Fun: 10}, MinHour: 9, MaxHour: 23},
+			Gbairai,
+		},
+		Events: []RandomEvent{
+			{Text: "Délestage au milieu du match ! Toute la salle crie, le gérant démarre le groupe.", Effect: Needs{Fun: -10, Social: 5}},
+			{Text: "Tu marques à la dernière minute : la salle se lève, on va en parler dans le quartier.", Effect: Needs{Fun: 15, Social: 10}},
+			{Text: "La manette ne répond plus : le gérant te change de poste et t'offre une partie.", Money: 200, Effect: Needs{Fun: 5}},
+		},
+	},
 	"couture": {
 		ID: "couture", Label: "Couturier", Icon: "shirt",
 		Interactions: []Interaction{

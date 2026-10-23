@@ -65,7 +65,7 @@ const Glow = ({ p, size, c, opacity = 0.6, flat = false }: { p: [number, number,
 )
 
 // These stay open after dark. Everything else pulls a shutter down over the door.
-const OPEN_AT_NIGHT = new Set(['gym', 'police', 'pharmacie', 'maquis', 'restaurant', 'club', 'hotel', 'health', 'transport', 'aeroport', 'home', 'beach', 'lagune', 'nature', 'village', 'sport'])
+const OPEN_AT_NIGHT = new Set(['gym', 'gaming', 'police', 'pharmacie', 'maquis', 'restaurant', 'club', 'hotel', 'health', 'transport', 'aeroport', 'home', 'beach', 'lagune', 'nature', 'village', 'sport'])
 
 export function Dressing({ kind, name = '', faith, seed, night }: { kind: string; name?: string; /** A place of worship's (lib/types Faith). */ faith?: string; seed: number; night: boolean }) {
   const front = (() => {
@@ -114,6 +114,8 @@ export function Dressing({ kind, name = '', faith, seed, night }: { kind: string
         return <Gym night={night} seed={seed} />
       case 'boutique':
         return <Boutique seed={seed} />
+      case 'gaming':
+        return <GamingFront night={night} />
       case 'couture':
         return <Couture seed={seed} />
       default:
@@ -760,6 +762,37 @@ function Boutique({ seed }: { seed: number }) {
       <B p={[2.4, 0.8, 1.1]} s={[0.9, 1.6, 0.06]} c="#ffd43b" />
       <B p={[2.4, 1.15, 1.14]} s={[0.7, 0.18, 0.02]} c="#1c1c1e" />
       <B p={[2.4, 0.75, 1.14]} s={[0.55, 0.12, 0.02]} c="#e03131" />
+    </group>
+  )
+}
+
+/**
+ * The salle de jeux vidéo: its purple sign over the door with a big controller
+ * painted on it (lit at night), the poster of a match on the wall, and the
+ * bench out front where those waiting for their turn sit.
+ */
+function GamingFront({ night }: { night: boolean }) {
+  return (
+    <group>
+      <B p={[0, 2.6, 0.62]} s={[2.6, 0.7, 0.08]} c="#5f3dc4" />
+      {/* The controller: its body, its two grips, its stick and its buttons */}
+      <B p={[0, 2.62, 0.67]} s={[0.7, 0.26, 0.03]} c="#f8f9fa" />
+      {[-0.32, 0.32].map((x) => (
+        <B key={x} p={[x, 2.5, 0.67]} s={[0.2, 0.26, 0.03]} c="#f8f9fa" />
+      ))}
+      <B p={[-0.16, 2.63, 0.69]} s={[0.08, 0.08, 0.02]} c="#212529" />
+      {['#e03131', '#1971c2', '#2b8a3e'].map((c, i) => (
+        <B key={c} p={[0.1 + i * 0.09, 2.63 + (i % 2) * 0.05, 0.69]} s={[0.06, 0.06, 0.02]} c={c} />
+      ))}
+      {night && <Glow p={[0, 2.6, 0.7]} size={[3.2, 1.2]} c="#b197fc" opacity={0.45} />}
+      {/* The poster of the match, beside the door */}
+      <B p={[-1.9, 1.5, 0.62]} s={[0.9, 0.6, 0.03]} c="#2f9e44" />
+      <B p={[-1.9, 1.5, 0.64]} s={[0.02, 0.56, 0.01]} c="#f8f9fa" />
+      {/* The bench out front */}
+      <B p={[1.7, 0.42, 1.2]} s={[1.4, 0.07, 0.4]} c="#8a5a32" />
+      {[1.15, 2.25].map((x) => (
+        <B key={x} p={[x, 0.2, 1.2]} s={[0.07, 0.4, 0.34]} c="#5c3d22" />
+      ))}
     </group>
   )
 }

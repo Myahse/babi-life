@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { Box } from '../props'
+import { Controller } from './GamingRoom'
 import { worldTime } from '../../lib/worldClock'
 import { Human } from '../../avatar/Human'
 import { randomLook } from '../../avatar/options'
@@ -39,6 +40,8 @@ export function ActionProps({ id, kind, lying, stage = 'adulte', partner, bath }
   // (Cooking: the pot is on the stove, drawn where the stove is.)
   if (!id || id === 'cook-attieke') return null
   if (HAIR.test(id) && (kind === 'barbier' || kind === 'salon')) return <Hairdresser id={id} salon={kind === 'salon'} />
+  // Before the TV of the salle de jeux: the controller in the hands.
+  if (/^console-|^tournoi-console$/.test(id)) return <Controller />
   if (id === 'manucure') return <Manicure />
   if (id === 'retouche') return <Fitting />
   if (id === 'shower' || id === 'logement-douche' || id === 'chambre-douche' || (id === 'chambre-bain' && !bath)) return <Shower fixtures={kind !== 'house' && kind !== 'room'} />

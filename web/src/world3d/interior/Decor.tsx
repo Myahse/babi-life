@@ -395,6 +395,20 @@ export function roomStyle(kind: string, housing: string): RoomStyle {
           </>
         ),
       }
+    case 'gaming':
+      // The salle de jeux: dark paint, its screens and its neon standing out (GamingRoom.tsx); its name over the TVs, the prices by the arcade.
+      return {
+        floorType: 'dark',
+        lower: '#2a2142',
+        openings: [],
+        lamps: [[-2.5, -1], [2.5, -1], [0, 2]],
+        decor: () => (
+          <>
+            <Board p={[0, 2.35, BACK]} wall="back" text="SALLE DE JEUX" bg="#5f3dc4" w={2.8} />
+            <Board p={[LEFT, 2.1, -2.4]} wall="left" text="MATCH : 200 F" bg="#111014" w={1.8} />
+          </>
+        ),
+      }
     default:
       return {
         floorType: 'tiles',

@@ -32,6 +32,8 @@ const out = path.join(here, '../../backend/internal/world/osm', `${id}.json`)
 // The game kind of a map point, from its OpenMapTiles class and subclass (and name).
 function kindOf(cls, sub, name) {
   const n = name.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+  // The salles de jeux vidéo (a shop to the map): where the quarter plays.
+  if (sub === 'video_games' || sub === 'amusement_arcade') return 'gaming'
   switch (cls) {
     case 'beer':
     case 'bar':
