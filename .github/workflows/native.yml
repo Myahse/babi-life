@@ -1,7 +1,8 @@
-# The new Android app (native/: the game's own code drawn by React Native), built on every
-# change to it or to the game, the APK kept as the run's artifact (Actions → this run →
-# « babi-life-native-apk »). Signed with the same release key as the old app (mobile.yml),
-# so it can replace it on the phones and Google sign-in knows it.
+# The Android app (native/: the game's own code drawn by React Native), built on every change
+# to it or to the game: the APK to install and the AAB for the Play Store, kept as the run's
+# artifact (Actions → this run → « babi-life-native-apk »). Signed with the same release key as
+# the old Flutter app (mobile.yml), and numbered above it, so it installs over it on the phones
+# and Google sign-in knows it (native/README.md).
 name: Native app
 
 on:
@@ -16,9 +17,9 @@ jobs:
       run:
         working-directory: native
     env:
-      # The API, and the Google sign-in's web client (repository variable; none: no Google sign-in).
+      # The API, and the Google sign-in's web client (the Firebase project's, public, as the old app had it in mobile/lib/config.dart).
       EXPO_PUBLIC_API_URL: https://babi-life-jnvy.onrender.com/api/v1
-      EXPO_PUBLIC_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
+      EXPO_PUBLIC_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID || '115685300024-jo2jvvpg0p1ue1gsv156lcmkjjb99s9t.apps.googleusercontent.com' }}
       EXPO_PUBLIC_COMMIT_SHA: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
@@ -32,27 +33,46 @@ jobs:
           distribution: temurin
           java-version: '17'
       - run: npm ci
+      # The version number Android and the Play Store compare: this run's, above the old app's (2).
+      - run: echo "ANDROID_VERSION_CODE=$((100 + ${{ github.run_number }}))" >> "$GITHUB_ENV"
+      # Firebase, for the notifications, from the repository's variables (FCM_APP_ID, FCM_API_KEY: the
+      # Firebase console's Android app, public identifiers); without them the app runs, nothing is received.
+      - name: Firebase
+        env:
+          APP_ID: ${{ vars.FCM_APP_ID }}
+          API_KEY: ${{ vars.FCM_API_KEY }}
+        run: |
+          [ -n "$APP_ID" ] && [ -n "$API_KEY" ] || exit 0
+          cat > google-services.json <<JSON
+          {"project_info":{"project_number":"115685300024","project_id":"babilife-38e39","storage_bucket":"babilife-38e39.appspot.com"},
+           "client":[{"client_info":{"mobilesdk_app_id":"$APP_ID","android_client_info":{"package_name":"com.lifeinbabi.babi_life"}},
+            "oauth_client":[],"api_key":[{"current_key":"$API_KEY"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}}],
+           "configuration_version":"1"}
+          JSON
       # The game bundles for the phone (a missing twin or package shows here, before Gradle).
       - run: npx expo export --platform android --output-dir /tmp/bundle-check
       - run: npx expo prebuild --platform android --no-install
-      - run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a,armeabi-v7a --no-daemon
+      - run: ./gradlew assembleRelease bundleRelease -PreactNativeArchitectures=arm64-v8a,armeabi-v7a --no-daemon
         working-directory: native/android
       # The release key, from the repository's secrets (ANDROID_KEYSTORE: the .jks in base64,
       # ANDROID_KEY_PASSWORD); without them the APK keeps the build's own key (fine to try, not to publish).
       - name: Sign
-        working-directory: native/android/app/build/outputs/apk/release
+        working-directory: native/android/app/build/outputs
         env:
           KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
           PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          if [ -z "$KEYSTORE" ]; then mv app-release.apk babi-life-native.apk; exit 0; fi
+          mkdir -p /tmp/out
+          if [ -z "$KEYSTORE" ]; then mv apk/release/app-release.apk /tmp/out/babi-life-native.apk; mv bundle/release/app-release.aab /tmp/out/babi-life-native.aab; exit 0; fi
           echo "$KEYSTORE" | base64 -d > /tmp/babi-life.jks
           TOOLS=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
-          "$TOOLS/zipalign" -f -p 4 app-release.apk aligned.apk
-          "$TOOLS/apksigner" sign --ks /tmp/babi-life.jks --ks-key-alias babi-life --ks-pass env:PASSWORD --key-pass env:PASSWORD --out babi-life-native.apk aligned.apk
-          rm -f /tmp/babi-life.jks aligned.apk
+          "$TOOLS/zipalign" -f -p 4 apk/release/app-release.apk /tmp/aligned.apk
+          "$TOOLS/apksigner" sign --ks /tmp/babi-life.jks --ks-key-alias babi-life --ks-pass env:PASSWORD --key-pass env:PASSWORD --out /tmp/out/babi-life-native.apk /tmp/aligned.apk
+          # The Play Store's bundle: signed by jarsigner with the same key (the store re-signs what it hands out).
+          jarsigner -keystore /tmp/babi-life.jks -storepass:env PASSWORD -keypass:env PASSWORD -signedjar /tmp/out/babi-life-native.aab bundle/release/app-release.aab babi-life
+          rm -f /tmp/babi-life.jks /tmp/aligned.apk
       - uses: actions/upload-artifact@v4
         with:
           name: babi-life-native-apk
-          path: native/android/app/build/outputs/apk/release/babi-life-native.apk
+          path: /tmp/out/babi-life-native.*
           retention-days: 30

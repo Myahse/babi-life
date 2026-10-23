@@ -9,7 +9,7 @@ import { loadStorage } from './src/dom/globals'
 import { history } from './src/dom/history'
 import { LayerHost } from './src/dom/portal'
 import { Document } from './src/dom/elements'
-import { gameBack } from '@web/lib/native'
+import { gameBack, onNotificationOpen } from '@web/lib/native'
 import { paintFonts } from './src/fonts'
 
 // Babi Life on the phone: the website's game itself (web/src), drawn by React
@@ -86,6 +86,17 @@ export default function Root() {
     })
     return () => sub.remove()
   }, [])
+
+  // A notification tapped: the game drawn anew on its page (« /jeu?app=gbairai »: the phone opens on that app), as the old app loaded it.
+  // (Not in a browser's look at the app: no notifications there.)
+  const ready = !!game
+  useEffect(() => {
+    if (!ready) return
+    return onNotificationOpen?.((url) => {
+      history.push(url.replace(/^https?:\/\/[^/]+/, ''))
+      setRound((r) => r + 1)
+    })
+  }, [ready])
 
   const where = useSyncExternalStore(history.listen, () => history.location)
   const [, seen] = useState(0)

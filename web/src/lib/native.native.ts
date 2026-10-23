@@ -1,5 +1,6 @@
-import { BackHandler, Share, Vibration } from 'react-native'
+import { BackHandler, Linking, Share, Vibration } from 'react-native'
 import * as Haptics from 'expo-haptics'
+import * as Notifications from 'expo-notifications'
 import { GoogleSignin } from '@react-native-google-signin/google-signin'
 
 // In the app (native/; React Native picks this file over native.ts) the game
@@ -32,9 +33,45 @@ export async function share(text: string, url?: string): Promise<boolean> {
   return true
 }
 
-/** The app's notifications: none sent to the phone yet ('denied' asked to enable). */
+/**
+ * The app's notifications (backend internal/push, through Firebase): 'status' says 'granted', 'denied'
+ * (refused for good: only the phone's settings turn them on) or 'default'; 'enable' asks Android, then
+ * gives this phone's token for the server: '' without Firebase in this build (native/README.md), 'denied'
+ * when refused for good (the app's settings open, as the old app did).
+ */
 export async function nativeNotifications(what: 'status' | 'enable'): Promise<unknown> {
-  return what === 'status' ? 'default' : ''
+  const p = await Notifications.getPermissionsAsync()
+  if (what === 'status') return p.granted ? 'granted' : p.canAskAgain ? 'default' : 'denied'
+  if (!p.granted && !p.canAskAgain) {
+    await Linking.openSettings()
+    return 'denied'
+  }
+  // (Android only asks once there's a channel to show them in.)
+  await Notifications.setNotificationChannelAsync('default', { name: 'Babi Life', importance: Notifications.AndroidImportance.HIGH, lightColor: '#FF7A00' })
+  const r = p.granted ? p : await Notifications.requestPermissionsAsync()
+  if (!r.granted) return r.canAskAgain ? '' : 'denied'
+  try {
+    return String((await Notifications.getDevicePushTokenAsync()).data)
+  } catch {
+    return ''
+  }
+}
+
+/** A notification tapped (its page of the game: « /jeu?app=gbairai »), as the app opens or while it runs; returns how to stop listening. */
+export function onNotificationOpen(open: (url: string) => void) {
+  const urlOf = (r: Notifications.NotificationResponse | null) => {
+    const data = (r?.notification.request.content.data ?? {}) as { url?: string }
+    // (Shown by Android itself while the app was closed: what the server sent is the message's data.)
+    const sent = (r?.notification.request.trigger as { remoteMessage?: { data?: { url?: string } } } | null)?.remoteMessage?.data
+    return data.url || sent?.url || ''
+  }
+  const first = urlOf(Notifications.getLastNotificationResponse())
+  if (first) open(first)
+  const sub = Notifications.addNotificationResponseReceivedListener((r) => {
+    const url = urlOf(r)
+    if (url) open(url)
+  })
+  return () => sub.remove()
 }
 
 const IMPACT = { light: Haptics.ImpactFeedbackStyle.Light, medium: Haptics.ImpactFeedbackStyle.Medium, heavy: Haptics.ImpactFeedbackStyle.Heavy } as const

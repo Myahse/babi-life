@@ -5,6 +5,7 @@ Babi Life is a life-sim set in Abidjan. The repo is `myahse/babi-life` (GitHub n
 - `web/`: React 19, Vite, Tailwind v4, react-three-fiber.
 - `backend/`: Go (chi, pgx). Migrations are embedded in `backend/internal/db/migrations/`, up to `039_couples.sql`.
 - `mobile/`: a Flutter webview.
+- `native/`: the Android app in React Native (Expo), drawing the game's own code (`web/src`) natively; it replaces `mobile/` once tried on phones. Branch only, never on main: `native/`, the `*.native.ts(x)` and `*.web.ts` twins in `web/src`, `web/src/lib/canvas.ts` (see `native/README.md`).
 
 Auth is Firebase (project `babilife-38e39`). The web app is on Vercel. The API runs on Render (`render.yaml`, **free plan**) and the database on Neon.
 

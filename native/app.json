@@ -2,7 +2,7 @@
   "expo": {
     "name": "Babi Life",
     "slug": "babi-life",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -28,7 +28,15 @@
       "expo-font",
       "@react-native-google-signin/google-signin",
       "expo-splash-screen",
-      "expo-video"
+      "expo-video",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/android-icon-monochrome.png",
+          "color": "#FF7A00",
+          "defaultChannel": "default"
+        }
+      ]
     ],
     "scheme": "babilife",
     "backgroundColor": "#15161c",

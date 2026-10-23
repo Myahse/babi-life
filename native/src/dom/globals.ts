@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Alert, AppState, Dimensions, Linking, PixelRatio, Share, Vibration } from 'react-native'
 import * as Clipboard from 'expo-clipboard'
 import * as Crypto from 'expo-crypto'
+import * as Network from 'expo-network'
 import { newCanvas, SkImageElement } from '@web/lib/canvas'
 import { history, parse } from './history'
 import { query, queryAll } from './node'
@@ -344,6 +345,14 @@ g.navigator = {
   permissions: { query: async () => ({ state: 'prompt', addEventListener() {}, removeEventListener() {} }) },
   wakeLock: { request: async () => ({ release: async () => {} }) },
 }
+
+// The network coming and going: navigator.onLine, and the window's online / offline (the game's « Hors connexion » banner).
+Network.addNetworkStateListener(({ isConnected, isInternetReachable }) => {
+  const on = isConnected !== false && isInternetReachable !== false
+  if (on === g.navigator.onLine) return
+  g.navigator.onLine = on
+  fire(winEvents, on ? 'online' : 'offline')
+})
 
 g.crypto = { ...(g.crypto ?? {}), randomUUID: () => Crypto.randomUUID(), getRandomValues: <T extends ArrayBufferView>(a: T) => Crypto.getRandomValues(a as any) as T }
 
