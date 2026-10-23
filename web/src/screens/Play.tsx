@@ -373,13 +373,49 @@ export function Play() {
   // The action picked in a place done (its time up, stopped, or over at once): back in that place, if
   // the Sim is still there (not walked off, not gone elsewhere), its menu or its room to pick another.
   const doingAt = sim?.activity?.kind === 'do' ? (sim.activity.placeId ?? null) : null
+  // The place of the action under way, from the action itself: its end brings the Sim back in
+  // there too when it wasn't picked on this page (the app opened again during a night's sleep,
+  // the Sim's own life, a Golvo meal eaten at home).
+  const lastAt = useRef<string | null>(null)
   useEffect(() => {
-    if (!backTo || pending || doingAt) return
-    const was = backTo
+    if (!doingAt || !sim) return
+    const home = sim.city === sim.homeCity && sim.commune === sim.homeCommune
+    const known = (id: string) => world.cities.find((c) => c.id === sim.city)?.communes.find((c) => c.id === sim.commune)?.places.some((p) => p.id === id) || mapPlaces.some((p) => p.id === id)
+    lastAt.current = doingAt === 'golvo' ? (home ? 'home' : null) : doingAt === 'home' || known(doingAt) ? doingAt : null
+  }, [doingAt]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (pending || doingAt) return
+    const was = backTo ?? lastAt.current
+    lastAt.current = null
+    if (!was) return
     setBackTo(null)
     const door = whereabouts.places.find((p) => p.id === was)?.door
     if (was === 'home' || !door || Math.hypot(door[0] - whereabouts.sim[0], door[1] - whereabouts.sim[1]) < (LANDMARKS[was] ?? 0) + 25) setPlaceId(was)
   }, [backTo, pending, doingAt]) // eslint-disable-line react-hooks/exhaustive-deps
+  // At home (in the house, or doing something there): kept on the device, so the Sim is still
+  // home when the game opens again after the action is over (a night's sleep, the app closed).
+  const inHome = placeId === 'home' || doingAt === 'home' || (doingAt === 'golvo' && sim?.city === sim?.homeCity && sim?.commune === sim?.homeCommune)
+  const restored = useRef<string | null>(null)
+  useEffect(() => {
+    if (!sim) return
+    const key = `babi.chezToi.${sim.id}`
+    if (restored.current !== sim.id) {
+      restored.current = sim.id
+      let was: string | null = null
+      try {
+        was = localStorage.getItem(key)
+      } catch {
+        // (No storage here: the street, as before.)
+      }
+      if (was && !sim.activity && !placeId && sim.city === sim.homeCity && sim.commune === sim.homeCommune) return setPlaceId('home')
+    }
+    try {
+      if (inHome) localStorage.setItem(key, '1')
+      else localStorage.removeItem(key)
+    } catch {
+      // (Idem.)
+    }
+  }, [sim?.id, inHome]) // eslint-disable-line react-hooks/exhaustive-deps
   // And every few minutes anyway: Saturdays, a long nap, another tab.
   useEffect(() => {
     if (!base) return
