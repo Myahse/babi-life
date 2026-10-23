@@ -30,8 +30,8 @@ import { CAR_COLORS, Vehicle, type VehicleKind } from '../vehicles'
 type Kind = 'grin' | 'foot' | 'causerie'
 type Scene = { id: string; kind: Kind; at: XZ; rot: number; seed: number }
 type Spot = { id: string; at: XZ; rot: number; seed: number }
-/** A police checkpoint, and the street it stands by (nav's edge). */
-type Post = Spot & { edge: number }
+/** A police checkpoint, and the street it stands by (nav's edge, and that edge's middle). */
+type Post = Spot & { edge: number; mid: XZ }
 type Vendor = Spot & { goods: (typeof GOODS)[number] }
 
 const SCENE_NEAR = 260
@@ -76,7 +76,7 @@ export function StreetLife({ nav, seed, night, taken }: { nav: Nav; seed: string
       const [ux, uz] = [(b[0] - a[0]) / e.len, (b[1] - a[1]) / e.len]
       // On the right-hand shoulder (traffic drives on the right).
       const off = e.width / 2 + 1.2
-      out.push({ id: `police:${Math.round(m[0])}:${Math.round(m[1])}`, at: [m[0] + uz * off, m[1] - ux * off], rot: Math.atan2(ux, uz), seed: h, edge: i })
+      out.push({ id: `police:${Math.round(m[0])}:${Math.round(m[1])}`, at: [m[0] + uz * off, m[1] - ux * off], rot: Math.atan2(ux, uz), seed: h, edge: i, mid: m })
     }
     return out
   }, [nav])
@@ -787,8 +787,10 @@ const WAVED_REACH = 70
 const WAVED_KINDS: VehicleKind[] = ['taxi', 'taxi', 'car', 'car', 'car']
 
 /** The street through a checkpoint the way the cars it stops come (its edge's b to a), going on straight ahead at both ends as far as the streets do; and where the checkpoint is along it. */
-function roadThrough(nav: Nav, edge: number) {
-  const e = nav.edges[edge]
+function roadThrough(nav: Nav, post: Post) {
+  const e = nav.edges[post.edge]
+  // New streets loaded, the post not moved yet: its edge may be another one now (or gone); none till it has.
+  if (!e || Math.hypot((nav.nodes[e.a][0] + nav.nodes[e.b][0]) / 2 - post.mid[0], (nav.nodes[e.a][1] + nav.nodes[e.b][1]) / 2 - post.mid[1]) > 1) return { way: [] as XZ[], at: 0 }
   // From `from` to `to`, then on: at each crossing, the street most straight ahead.
   const on = (from: number, to: number) => {
     const out: XZ[] = []
@@ -825,7 +827,7 @@ function roadThrough(nav: Nav, edge: number) {
  * checkpoint is never only standing there.
  */
 function WavedOver({ post, nav }: { post: Post; nav: Nav }) {
-  const road = useMemo(() => roadThrough(nav, post.edge), [nav, post.edge])
+  const road = useMemo(() => roadThrough(nav, post), [nav, post])
   const g = useRef<THREE.Group>(null)
   const late = useRef(0)
   const held = useRef(0)
