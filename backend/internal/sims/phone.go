@@ -20,6 +20,7 @@ var (
 	errNoContact   = errors.New("contact inconnu")
 	errNoDish      = errors.New("ce plat n'est pas au menu")
 	errNotAbidjan  = errors.New("Golvo ne livre qu'à Abidjan")
+	errNotHome     = errors.New("ton repas t'attend chez toi : rentre d'abord")
 	errPlaceClosed = errors.New("ce lieu a fermé")
 )
 
@@ -76,8 +77,9 @@ func (s *Sim) send(to string, amount int) (Event, error) {
 	return Event{Kind: "transfer", Text: text, Money: -(amount + fee), GameTime: s.GameMinutes}, nil
 }
 
-// order: the Golvo courier has arrived; the Sim pays and eats where they are.
-func (s *Sim) order(placeID, dishID string) error {
+// order: the Golvo courier has arrived; the Sim pays and eats where they
+// are, or (home) in the house, at the table: delivered home, or taken in.
+func (s *Sim) order(placeID, dishID string, home bool) error {
 	if err := needApp(s, "golvo"); err != nil {
 		return err
 	}
@@ -87,6 +89,9 @@ func (s *Sim) order(placeID, dishID string) error {
 	}
 	if city.ID != "abidjan" || s.City != "abidjan" {
 		return errNotAbidjan
+	}
+	if home && (s.City != s.HomeCity || s.Commune != s.HomeCommune) {
+		return errNotHome
 	}
 	if place.Closed != "" {
 		return errPlaceClosed
@@ -101,6 +106,9 @@ func (s *Sim) order(placeID, dishID string) error {
 		return errNotAbidjan
 	}
 	it := game.Interaction{ID: "golvo-" + d.ID, Label: d.Label + " (livré par Golvo)", Icon: d.Icon, Minutes: d.Minutes, Cost: d.Price + fee, Effect: d.Effect, MinHour: d.MinHour, MaxHour: d.MaxHour}
+	if home {
+		return s.start(it, HomePlaceID, "home", "Chez toi", nil, "")
+	}
 	return s.start(it, "golvo", place.Kind, place.Name, nil, "")
 }
 
@@ -154,13 +162,15 @@ func (h *Handler) order(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Place string `json:"place"`
 		Dish  string `json:"dish"`
+		// Home: eaten in the house.
+		Home bool `json:"home"`
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
 		return
 	}
 	h.mutate(w, r, func(s *Sim) (game.Outcome, []Event, error) {
-		if err := s.order(req.Place, req.Dish); err != nil {
+		if err := s.order(req.Place, req.Dish, req.Home); err != nil {
 			return game.Outcome{}, nil, err
 		}
 		a := s.Activity

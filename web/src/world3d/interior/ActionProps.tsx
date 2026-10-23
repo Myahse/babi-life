@@ -258,7 +258,7 @@ function Notebook() {
 
 export type DishKind = 'garba' | 'porc' | 'poulet' | 'alloco' | 'poisson' | 'attieke' | 'burger' | 'glace' | 'bouillie' | 'gateau' | 'plat'
 
-function dishFor(id: string): DishKind | null {
+export function dishFor(id: string): DishKind | null {
   if (id.includes('garba')) return 'garba'
   if (id.includes('poulet') || id.includes('brochette')) return 'poulet'
   if (id.includes('alloco')) return 'alloco'

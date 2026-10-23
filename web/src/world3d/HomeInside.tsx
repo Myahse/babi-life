@@ -335,7 +335,8 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
         }
     return out
   }, [plot, w, d, world.furniture, levels])
-  const spot = interactionId ? (spots[interactionId === 'golvo' ? 'golvo' : interactionId] ?? null) : null
+  // A Golvo meal (golvo-garba…): at the table; no table, on a seat.
+  const spot = interactionId ? ((interactionId.startsWith('golvo-') ? (spots.golvo ?? (spots['watch-tv'] && { ...spots['watch-tv'], pose: 'eat' as const })) : spots[interactionId]) ?? null) : null
   const gate: XZ = [0, d / 2 + 1.5]
   // Where to walk to (a tap on the floor, a floor's button), and on which floor.
   const [tapped, setTapped] = useState<{ at: XZ; level: number } | null>(null)
