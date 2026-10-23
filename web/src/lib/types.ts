@@ -52,11 +52,11 @@ export type RideApp = { id: string; name: string; model: 'fixed' | 'offer'; citi
 /** A kind of car on an app (Éco, Confort, Confort+): dearer and longer to come as it gets better. */
 export type RideClass = { id: string; name: string; factor: number; wait: number; cars: string; perks: string; effect: Partial<Record<'hunger' | 'energy' | 'hygiene' | 'social' | 'fun', number>> }
 /** Booking a ride app instead of the shared taxi; offer = the fare proposed; class = the kind of car. */
-export type Ride = { app?: string; class?: string; offer?: number; party?: number }
+export type Ride = { app?: string; class?: string; offer?: number; party?: number; /** One of the Sim's own vehicles, driven there (backend sims/clock.go). */ vehicle?: number }
 /** Waited for at the roadside (components/RideFlow.tsx): the one the player chose. */
 export type StreetRide = 'woro' | 'compteur' | 'gbaka'
 /** taxi = a town's taxi (or an older trip); yango/indrive = older trips. */
-export type TripMode = 'woro' | 'compteur' | 'gbaka' | 'moto' | 'taxi' | 'car' | 'avion' | 'gnango' | 'idrive' | 'yango' | 'indrive'
+export type TripMode = 'woro' | 'compteur' | 'gbaka' | 'moto' | 'taxi' | 'car' | 'avion' | 'gnango' | 'idrive' | 'yango' | 'indrive' | 'perso'
 export type Expression = { id: string; text: string; lang: string; meaning: string; example: string; context?: string; source: Source }
 
 export type Interaction = {
@@ -340,7 +340,7 @@ export type Activity = {
   tasks?: Record<string, number>
   /** An outing (backend sims/outing.go): the friends met in the game who came along (Friend ids). */
   with?: string[]
-  trip?: { fromCity: string; fromCommune: string; city: string; commune: string; mode: TripMode; class?: string; fare: number; label: string; incident?: string; path?: [number, number][]; bridges?: string[]; party?: number }
+  trip?: { fromCity: string; fromCommune: string; city: string; commune: string; mode: TripMode; class?: string; fare: number; label: string; incident?: string; path?: [number, number][]; bridges?: string[]; party?: number; /** Its own vehicle (mode « perso »): the Sim drives it there. */ vehicle?: { id: number; kind: 'velo' | 'moto' | 'voiture'; body: string; color: string; name: string; top: number; km: number } }
   /** A film seen with a Kinéo ticket: which, the screen, the seats. */
   /** video, at: a real film (the ciné-club's), and the game minute it starts. */
   seance?: { film: string; salle: number; seats: string[]; vip?: boolean; video?: string; at?: number; title?: string; credit?: string; file?: string }

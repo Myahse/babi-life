@@ -77,7 +77,7 @@ import { DefiButton, DefiSheet, defiOf, type DefiKind } from '../components/Defi
 import { BolideApp } from './BolideApp'
 import { Tutorial, beginner, openTutorial, useTutorialAsked } from '../components/Tutorial'
 import { haptic, onBack } from '../lib/native'
-import { drive, getIn, gps, parkIn, setParked, startDrive, stopDrive, useDriving, useParked, type Driven } from '../world3d/drive'
+import { drive, getIn, gps, parkedNow, parkIn, setParked, startDrive, stopDrive, topSpeed, useDriving, useParked, type Driven } from '../world3d/drive'
 import { FlightView } from '../world3d/FlightView'
 import { aCommune } from '../lib/french'
 
@@ -609,6 +609,18 @@ export function Play() {
     const fromCity = world.cities.find((x) => x.id === sim!.city)!
     const from = fromCity.communes.find((x) => x.id === sim!.commune)!
     const to = world.cities.find((x) => x.id === cityId)?.communes.find((x) => x.id === communeId)
+    // One's own vehicle (the Bolide app): no one to wait for, the Sim drives off at once. Driven
+    // here, its petrol so far is settled first; left parked somewhere, it comes along (it's the one driven).
+    if (ride?.vehicle) {
+      setOverlay(null)
+      const was = driven
+      const metres = was ? stopDrive() : 0
+      if (parkedNow()?.v.id === ride.vehicle) setParked(null)
+      return void run(label, 'car', 'transport', async () => {
+        if (was && metres) await api.garageAct(sim!.id, 'drive', { vehicle: was.id, metres }).catch(() => undefined)
+        return api.travel(sim!.id, cityId, communeId, ride)
+      })
+    }
     // A flight is booked at the airport (Flights): no driver to find, straight on board.
     if (ride?.app === 'avion') return void (setOverlay(null), run(label, 'plane', 'transport', () => api.travel(sim!.id, cityId, communeId, ride)))
     // A moto-taxi: one stops right away, the Sim gets on behind.
@@ -675,6 +687,19 @@ export function Play() {
   useEffect(() => {
     if (driven && (sim?.activity || placeId)) park()
   }, [!!sim?.activity, placeId]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Gone to another commune in one's own vehicle (a « perso » trip): there, at the wheel again, the
+  // GPS to take it on to a place. Kept while the trip lasts (a reload mid-way too: it's read again).
+  const ownTrip = useRef<Driven | null>(null)
+  useEffect(() => {
+    const t = sim?.activity?.kind === 'travel' ? sim.activity.trip : undefined
+    if (t?.mode === 'perso' && t.vehicle) return void (ownTrip.current = { id: t.vehicle.id, kind: t.vehicle.kind, body: t.vehicle.body, color: t.vehicle.color, name: t.vehicle.name, top: topSpeed(t.vehicle.top) })
+    const v = ownTrip.current
+    if (!v || sim?.activity) return
+    ownTrip.current = null
+    setPlaceId(null)
+    setOutside(true)
+    startDrive(v)
+  }, [sim?.activity?.start, sim?.commune]) // eslint-disable-line react-hooks/exhaustive-deps
   // A tap on the ground on the way to a place: asked before the way is dropped.
   const dropAsk = useDropAsk()
   // In a home booked on Dodo: the very house (a player's, as built; else the plan of its kind).
@@ -2229,12 +2254,14 @@ function ActivityBar({ world, sim, onStop, stopping, onRoute, onMore, onRejoin, 
   const travel = a.kind === 'travel'
   // On the server's clock, like the car in the street (the Sim's minutes come with its updates, late).
   const road = travel ? tripLeft(world, a, (serverNow() - EPOCH) / 60000) : undefined
-  const icon = travel ? CarTaxiFront : iconFor(a.interaction.icon)
-  const colors = travel ? (['#ffa040', '#ff6a00'] as [string, string]) : kindColors(a.placeKind ?? '')
+  // In one's own vehicle: it, in its colour.
+  const own = travel ? a.trip?.vehicle : undefined
+  const icon = own ? (own.kind === 'voiture' ? Car : Bike) : travel ? CarTaxiFront : iconFor(a.interaction.icon)
+  const colors = own ? ([own.color, own.color] as [string, string]) : travel ? (['#ffa040', '#ff6a00'] as [string, string]) : kindColors(a.placeKind ?? '')
   return (
     <div className="absolute bottom-[6.5rem] left-1/2 z-30 w-[min(360px,calc(100vw-24px))] -translate-x-1/2 lg:bottom-[7.5rem]">
       <div className="card animate-pop flex items-center gap-3 p-3">
-        <IconTile icon={icon} colors={colors} size={46} />
+        <IconTile icon={icon} colors={colors} size={46} style={own ? { color: inkOn(own.color), boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)' } : undefined} />
         <div className="min-w-0 flex-1">
           <div className="label truncate">{travel ? 'En route' : a.placeName}</div>
           <div className="truncate font-display text-[15px] leading-tight font-extrabold">{travel ? a.trip!.label.replace(/^Trajet /, '') : a.interaction.label}</div>

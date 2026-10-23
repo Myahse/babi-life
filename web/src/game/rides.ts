@@ -22,6 +22,7 @@ export function rideLook(world: World, mode: TripMode | string, from?: Commune, 
     const name = c ? `${app.name} ${c.name}` : app.name
     return { name, how: `En ${name}`, color: c ? CLASS_COLOR[c.id] ?? INK : INK, app: true }
   }
+  if (mode === 'perso') return { name: 'Ton véhicule', how: 'Avec ton véhicule', color: INK, app: false }
   if (mode === 'car') return { name: 'Car', how: 'En car', color: '#00b86b', app: false }
   if (mode === 'compteur') return { name: 'Taxi compteur', how: 'En taxi compteur', color: world.compteur?.color ?? ORANGE, app: false }
   if (mode === 'gbaka') return { name: 'Gbaka', how: 'En gbaka', color: GBAKA, trim: '#00a862', app: false }

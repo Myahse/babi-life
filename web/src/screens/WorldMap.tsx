@@ -335,9 +335,10 @@ function useTrip(world: World, sim: Sim): Route | null {
   }, [a, world])
   // …then the same way on the real streets, once Mapbox has drawn it.
   const streets = useDrivingRoute(base?.waypoints ?? null)
-  // In town the driver comes to the Sim first, from a few streets away (on the side away from where it's going).
+  // In town the driver comes to the Sim first, from a few streets away (on the side away from where it's going);
+  // in one's own vehicle, nobody comes.
   const pickFrom = useMemo<LngLat | null>(() => {
-    if (!base || base.t.city !== base.t.fromCity || base.t.mode === 'avion') return null
+    if (!base || base.t.city !== base.t.fromCity || base.t.mode === 'avion' || base.t.mode === 'perso') return null
     const [[x0, y0], [x1, y1]] = base.ends
     const d = Math.hypot(x1 - x0, y1 - y0) || 1
     return [x0 - ((x1 - x0) / d) * 0.006 + ((y1 - y0) / d) * 0.004, y0 - ((y1 - y0) / d) * 0.006 - ((x1 - x0) / d) * 0.004]

@@ -201,12 +201,22 @@ type Ride struct {
 	// Party: the Sim plus friends riding along (1 when empty). A woro-woro
 	// charges each seat; a taxi compteur or an app car takes the group.
 	Party int
+	// Own: the Sim's own vehicle, driven there (the handler found it in its garage).
+	Own *OwnVehicle
+}
+
+// OwnVehicle: one of the Sim's vehicles (garage.go), for a trip.
+type OwnVehicle struct {
+	ID    int64
+	Model game.VehicleModel
+	Color string
 }
 
 // MaxParty: a taxi or a car takes four passengers.
 const MaxParty = 4
 
 var (
+	errBikeTooFar   = errors.New("trop loin pour y aller à vélo")
 	errNoRideHere   = errors.New("cette appli ne fait pas ce trajet")
 	errNoRideClass  = errors.New("cette catégorie de voiture n'existe pas sur l'appli")
 	errOfferRefused = errors.New("aucun chauffeur n'a accepté ton prix : propose un peu plus")
@@ -250,6 +260,28 @@ func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, ride Ride, r
 		}
 	}
 	switch {
+	case ride.Own != nil:
+		// At the wheel of one's own vehicle: no driver to wait for and nobody
+		// else's stops, a little quicker than a taxi; no fare, the petrol on the
+		// way's length (and the 3e pont's toll for a car), as for a drive in town.
+		m := ride.Own.Model
+		if m.Kind != "voiture" && party > 1 {
+			return errMotoOne
+		}
+		if m.Kind == "velo" && fromCity.ID != toCity.ID {
+			return errBikeTooFar
+		}
+		fare = fuelCost(m, int(path.Km*1000))
+		if m.Kind == "voiture" {
+			fare += world.TollOf(path.Bridges)
+		}
+		if fromCity.ID != toCity.ID {
+			s.Needs = s.Needs.Add(game.RoadEffect)
+			mode, label = "perso", fmt.Sprintf("Trajet %s → %s en %s", fromCity.Name, toCity.Name, m.Name)
+		} else {
+			mode, label = "perso", fmt.Sprintf("Trajet %s → %s en %s", fromCommune.Name, toCommune.Name, m.Name)
+		}
+		minutes = max(1, minutes*4/5)
 	case app == "avion":
 		// A flight (game/flights.go): from the airport's commune, landing in the other city's.
 		a := game.Airports[fromCity.ID]
@@ -327,7 +359,7 @@ func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, ride Ride, r
 			label = fmt.Sprintf("Trajet %s → %s en %s %s", fromCommune.Name, toCommune.Name, a.Name, c.Name)
 		}
 	}
-	if street && world.TollOf(path.Bridges) > 0 {
+	if street && world.TollOf(path.Bridges) > 0 && (ride.Own == nil || ride.Own.Model.Kind == "voiture") {
 		label += " (péage du 3e pont compris)"
 	}
 	if s.Money < fare {
@@ -335,6 +367,9 @@ func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, ride Ride, r
 	}
 	s.Money -= fare
 	trip := &game.Trip{FromCity: fromCity.ID, FromCommune: fromCommune.ID, City: toCity.ID, Commune: toCommune.ID, Mode: mode, Class: class.ID, Fare: fare, Label: label, Path: path.Points, Bridges: path.Bridges}
+	if o := ride.Own; o != nil {
+		trip.Vehicle = &game.TripVehicle{ID: o.ID, Kind: o.Model.Kind, Body: o.Model.Body, Color: o.Color, Name: o.Model.Name, Top: float64(o.Model.TopSpeed), Km: path.Km}
+	}
 	// The car's comfort shows on arrival: hot and cramped in Éco, rested in Confort+.
 	s.Needs = s.Needs.Add(class.Effect)
 	if party > 1 {

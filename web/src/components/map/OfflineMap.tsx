@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Bus, CarTaxiFront } from 'lucide-react'
+import { Bus, Car, CarTaxiFront } from 'lucide-react'
 import { inkOn } from '../../game/rides'
 import civ from '../../assets/civ.geo.json'
 import features from '../../assets/civ-features.json'
@@ -310,7 +310,7 @@ export function TaxiMarker({ sim, mode, color }: { sim: Sim | null; mode: string
     <span className="relative flex items-center">
       <span className="absolute top-0 left-0 h-11 w-11 animate-ping rounded-full bg-[var(--color-orange)]/40" />
       <span className="relative grid h-11 w-11 place-items-center rounded-full border-[3px] border-white shadow-[0_8px_18px_-6px_rgba(0,0,0,0.6)]" style={{ background: color }}>
-        {mode === 'car' ? <Bus size={22} color="#fff" strokeWidth={2.4} /> : <CarTaxiFront size={22} color={inkOn(color)} strokeWidth={2.4} />}
+        {mode === 'car' ? <Bus size={22} color="#fff" strokeWidth={2.4} /> : mode === 'perso' ? <Car size={22} color={inkOn(color)} strokeWidth={2.4} /> : <CarTaxiFront size={22} color={inkOn(color)} strokeWidth={2.4} />}
       </span>
       {sim && (
         <span className="relative -ml-2 block h-8 w-8 overflow-hidden rounded-full border-2 border-white bg-[#ffd8a8] shadow">
