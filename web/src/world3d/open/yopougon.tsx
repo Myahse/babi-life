@@ -9,7 +9,8 @@ import { BOX, Blocks, PLANE, lettering, signMaterial } from './ruePrincesse'
 
 // Two of Yopougon's places, in blocks:
 // - the Gare de Siporex, on the route de Dabou: gbakas in files under their
-//   destination boards, the apprentis calling, the shelter, the kiosks;
+//   destination boards, the apprentis calling, the shelter, the kiosks (and,
+//   the same yard with coaches to the other towns, Bouaké's gare routière);
 // - the Place Ficgayo, about a hectare of paving in the middle of the
 //   commune, where the shows, veillées and meetings happen: the stage under
 //   its awning, the speakers, the flags, and at night the crowd dancing.
@@ -66,15 +67,27 @@ function trees(at: [number, number][]) {
 
 // ---------------------------------------------------------------- the gare
 
-const LINES = [
+/** A file of the yard: where it goes, its vehicles' colours, gbakas or the long coaches of the roads up country. */
+type Line = { to: string; body: string; trim: string; coach?: boolean }
+const LINES: Line[] = [
   { to: 'ADJAMÉ', body: '#f4c430', trim: '#00a862' },
   { to: 'DABOU', body: '#2b8a3e', trim: '#ffd43b' },
   { to: 'SONGON', body: '#1971c2', trim: '#ffffff' },
   { to: 'NIANGON', body: '#f4c430', trim: '#c92a2a' },
   { to: 'ATTÉCOUBÉ', body: '#e8590c', trim: '#ffffff' },
 ]
-const FILE_X = (i: number) => (i - (LINES.length - 1) / 2) * 8.5
+/** Bouaké's: the coaches to the big towns, the minicars to the nearby ones. */
+const BOUAKE_LINES: Line[] = [
+  { to: 'ABIDJAN', body: '#f8f9fa', trim: '#1971c2', coach: true },
+  { to: 'YAMOUSSOUKRO', body: '#ffd43b', trim: '#c92a2a', coach: true },
+  { to: 'KORHOGO', body: '#2b8a3e', trim: '#ffffff', coach: true },
+  { to: 'KATIOLA', body: '#f4c430', trim: '#00a862' },
+  { to: 'BÉOUMI', body: '#e8590c', trim: '#ffffff' },
+]
+const FILE_X = (i: number, n: number) => (i - (n - 1) / 2) * 8.5
 const FILE_Z = [1, -6, -13]
+/** A coach is 11 m long: two to a file. */
+const COACH_Z = [-0.5, -12]
 const KIOSKS = [
   { name: 'TICKETS', wall: '#1971c2' },
   { name: 'GARBA', wall: '#e8590c' },
@@ -82,14 +95,18 @@ const KIOSKS = [
   { name: 'BOUTIQUE', wall: '#2b8a3e' },
 ]
 
-export function GareSiporex({ night }: { night: boolean }) {
-  const cast = useCast('yop-gare-siporex', LINES.length + 6)
+export const GareSiporex = ({ night }: { night: boolean }) => <Gare id="yop-gare-siporex" talk="yopougon:120" title="GARE DE SIPOREX" lines={LINES} night={night} />
+export const GareBouake = ({ night }: { night: boolean }) => <Gare id="bouake-gare" talk="bouake:120" title="GARE ROUTIÈRE DE BOUAKÉ" lines={BOUAKE_LINES} night={night} />
+
+/** A gare routière: its gate on the road, the files of vehicles under their destination boards, the shelter, the kiosks. */
+function Gare({ id, talk, title, lines, night }: { id: string; /** The people's ids, to talk to them (Talkable). */ talk: string; title: string; lines: Line[]; night: boolean }) {
+  const cast = useCast(id, lines.length + 6)
   const mats = useMemo(() => {
-    const gate = lettering('GARE DE SIPOREX', '#00a862', '#ffffff', '#ffd43b')
+    const gate = lettering(title, '#00a862', '#ffffff', '#ffd43b')
     return {
       gate: signMaterial(gate.t),
       gateAspect: gate.aspect,
-      boards: LINES.map((l) => {
+      boards: lines.map((l) => {
         const b = lettering(l.to, '#ffffff', '#1c1c1e', l.trim === '#ffffff' ? l.body : l.trim)
         return { m: signMaterial(b.t), aspect: b.aspect }
       }),
@@ -98,7 +115,7 @@ export function GareSiporex({ night }: { night: boolean }) {
         return { wall: new THREE.MeshLambertMaterial({ color: k.wall }), sign: signMaterial(b.t), aspect: b.aspect }
       }),
     }
-  }, [])
+  }, [title, lines])
   for (const s of [mats.gate, ...mats.boards.map((b) => b.m), ...mats.kiosks.map((k) => k.sign)]) s.emissiveIntensity = night ? 0.9 : 0
 
   const { masts, heads } = useMemo(() => lamps([[-24, 8], [24, 8], [-24, -14], [24, -14], [0, 8]]), [])
@@ -118,7 +135,7 @@ export function GareSiporex({ night }: { night: boolean }) {
     const c = cast[who++ % cast.length]
     return (
       <group key={who} position={p} rotation={[0, ry, 0]}>
-        <TalkHuman id={`yopougon:120:${Math.round((c.seed) * 1000)}`} look={c.look} gender={c.gender} pose={pose} seed={c.seed} />
+        <TalkHuman id={`${talk}:${Math.round(c.seed * 1000)}`} look={c.look} gender={c.gender} pose={pose} seed={c.seed} />
       </group>
     )
   }
@@ -126,20 +143,20 @@ export function GareSiporex({ night }: { night: boolean }) {
     <group>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, -4]} scale={[58, 46, 1]} geometry={PLANE} material={laterite} receiveShadow />
 
-      {/* The files of gbakas, each under its destination board */}
-      {LINES.map((l, i) => (
+      {/* The files of gbakas (or coaches), each under its destination board */}
+      {lines.map((l, i) => (
         <group key={l.to}>
-          {FILE_Z.map((z, k) => (
-            <Vehicle key={k} p={[FILE_X(i), 0, z]} r={-Math.PI / 2} kind="gbaka" color={l.body} trim={l.trim} seed={i * 3 + k} />
+          {(l.coach ? COACH_Z : FILE_Z).map((z, k) => (
+            <Vehicle key={k} p={[FILE_X(i, lines.length), 0, z]} r={-Math.PI / 2} kind={l.coach ? 'sotra' : 'gbaka'} color={l.body} trim={l.trim} skirt={l.coach ? l.trim : undefined} seed={i * 3 + k} />
           ))}
-          <group position={[FILE_X(i) - 2.4, 0, 5.5]}>
+          <group position={[FILE_X(i, lines.length) - 2.4, 0, 5.5]}>
             <mesh position={[0, 1.6, 0]} scale={[0.15, 3.2, 0.15]} geometry={BOX} material={iron} castShadow />
             <mesh position={[0, 3.3, 0.09]} scale={[0.5 * mats.boards[i].aspect, 0.5, 1]} geometry={PLANE} material={mats.boards[i].m} />
           </group>
         </group>
       ))}
-      {/* The apprentis, at the head of their file, calling the passengers */}
-      {LINES.map((_, i) => person([FILE_X(i) + 1.8, 0, 5], 0.3 * (i % 2 ? 1 : -1), 'wave'))}
+      {/* The apprentis (the coxers), at the head of their file, calling the passengers */}
+      {lines.map((_, i) => person([FILE_X(i, lines.length) + 1.8, 0, 5], 0.3 * (i % 2 ? 1 : -1), 'wave'))}
 
       {/* The shelter, people waiting on its benches */}
       <mesh position={[0, 3.1, -22.75]} rotation={[0.06, 0, 0]} scale={[32, 0.15, 6]} geometry={BOX} material={tin} castShadow receiveShadow />
@@ -162,7 +179,7 @@ export function GareSiporex({ night }: { night: boolean }) {
       {person([23, 0, -11], Math.PI / 2, 'idle')}
       {person([-6, 0, 9], Math.PI, 'walk')}
 
-      {/* The gate on the route de Dabou */}
+      {/* The gate on the road */}
       <group position={[0, 0, 15]}>
         {[-1, 1].map((s) => (
           <mesh key={s} position={[s * 9, 3, 0]} scale={[1.2, 6, 1.2]} geometry={BOX} material={plaster} castShadow />

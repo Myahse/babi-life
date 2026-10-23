@@ -36,7 +36,7 @@ export function OutingPlanner({ world, sim, act }: { world: World; sim: Sim; act
       .filter((p) => OUT_KINDS.has(p.kind))
       .flatMap((p) =>
         (world.kinds[p.kind]?.interactions ?? [])
-          .filter((it) => it.cost >= 0 && (!it.places?.length || it.places.includes(p.id)) && (!it.faiths || it.faiths.includes(p.faith!)) && openAt(it, sim.gameMinutes) && !ageBlock(it, stage) && (!it.gender || it.gender === sim.gender))
+          .filter((it) => it.cost >= 0 && (!it.places?.length || it.places.includes(p.id)) && (!it.cities || it.cities.includes(sim.city)) && (!it.faiths || it.faiths.includes(p.faith!)) && openAt(it, sim.gameMinutes) && !ageBlock(it, stage) && (!it.gender || it.gender === sim.gender))
           .map((it) => ({ placeId: p.id, name: p.name, it })),
       )
   }, [world, sim.city, sim.commune, sim.gameMinutes, sim.gender, stage])

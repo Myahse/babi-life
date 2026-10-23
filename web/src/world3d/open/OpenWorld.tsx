@@ -49,7 +49,7 @@ import { Courier } from './courier'
 import { MOSQUE_M6_SOLID } from './mosqueM6'
 import { clearObstacles, moveObstacle, setObstacles, type Obstacle } from '../obstacles'
 import { Solid } from '../Solid'
-import { FarLandmark, LANDMARKS, Landmark, NO_FILL, SKYLINE, SKYLINE_FAR, STADIUM_SOLID, slotIn } from './landmarks'
+import { FarLandmark, LANDMARK_FRONT, LANDMARKS, Landmark, NO_FILL, SKYLINE, SKYLINE_FAR, STADIUM_SOLID, slotIn } from './landmarks'
 import { RUE_SOLID } from './ruePrincesse'
 import { PLAYCE_SOLID } from './playce'
 import { PLAYCE_MARCORY_SOLID } from './playceMarcory'
@@ -365,7 +365,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const spots = useMemo<(PlaceSpot & { kind: string; name: string })[]>(() => {
     const [a, d] = livesOnLot ? lotSpot(mine?.key ?? sim.id) : homeSpot(sim.id)
     // A real place found on the map (by its name) stands where the map has it.
-    const list: (PlaceSpot & { kind: string; name: string })[] = places.map((p) => ({ id: p.id, kind: p.kind, name: p.name, type: p.type, faith: p.faith, parent: p.parent, slot: p.slot, at: snaps.get(p.id) ?? toLocal(origin, p.lat, p.lng), landmark: LANDMARKS[p.id], noFill: NO_FILL[p.id] }))
+    const list: (PlaceSpot & { kind: string; name: string })[] = places.map((p) => ({ id: p.id, kind: p.kind, name: p.name, type: p.type, faith: p.faith, parent: p.parent, slot: p.slot, at: snaps.get(p.id) ?? toLocal(origin, p.lat, p.lng), landmark: LANDMARKS[p.id], front: LANDMARK_FRONT[p.id], noFill: NO_FILL[p.id] }))
     // A home with a house built on it clears its ground: the game draws the house.
     if (home) list.unshift({ id: HOME_ID, kind: 'home', name: 'Chez toi', at: [Math.cos(a) * d, Math.sin(a) * d], landmark: myPlot ? lotClear(myPlot) : livesOnLot ? PLOT_CLEAR : undefined })
     for (const id of plotKey ? plotKey.split(',') : []) {

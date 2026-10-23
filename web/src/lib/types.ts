@@ -77,6 +77,8 @@ export type Interaction = {
   ages?: string[]
   /** Only at these places of the kind (the Hôtel Ivoire's cinema…). */
   places?: string[]
+  /** Only in these cities (the gbaka is Abidjan's). */
+  cities?: string[]
   /** Only at the places of worship of these faiths (the mass, the culte, the Friday prayer). */
   faiths?: Faith[]
   /** Only Sims of this gender (a beard trim is for men). */
