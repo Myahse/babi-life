@@ -1578,7 +1578,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
     return next ? `Prochain : ${when(next.start)}` : k === 'match' ? 'Pas de match' : 'Pas de concert'
   }
   const billing = place.kind === 'stade' && (
-    <div className="rounded-[20px] bg-[#fff4e8] p-3">
+    <div className="min-w-0 rounded-[20px] bg-[#fff4e8] p-3">
       <div className="label">À l'affiche</div>
       {on ? (
         <div className="mt-1">
@@ -1590,13 +1590,14 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
       ) : (
         <p className="mt-1 text-xs font-bold text-[var(--color-ink-soft)]">Rien en ce moment.</p>
       )}
-      <ul className="mt-2 grid gap-1">
+      {/* (One column that can be narrower than its longest title: else the title, kept on one line, widened the whole sheet past a small phone's edge.) */}
+      <ul className="mt-2 grid grid-cols-1 gap-1">
         {agenda?.agenda
           .filter((e) => e !== on && e.start > sim.gameMinutes)
           .slice(0, 4)
           .map((e) => (
-            <li key={e.start} className="flex items-baseline gap-2 text-[13px] font-bold">
-              <span className="w-[118px] shrink-0 text-[var(--color-ink-soft)]">{when(e.start)}</span>
+            <li key={e.start} className="flex min-w-0 items-baseline gap-2 text-[13px] font-bold">
+              <span className="shrink-0 whitespace-nowrap text-[var(--color-ink-soft)]">{when(e.start)}</span>
               <span className="min-w-0 truncate">{e.title}</span>
             </li>
           ))}
@@ -1649,8 +1650,9 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
   }
   const state = (it: Interaction) => ({ open: openAt(it, sim.gameMinutes), broke: it.cost > 0 && sim.money < it.cost, busy, reason: ageBlock(it, life.stage?.id) ?? stadiumBlock(it) ?? blockedBy(it, sim, city.id, commune.id) ?? furnitureBlock(it) })
 
-  // Desktop: the Sims radial menu around the place (at home, the rooms' list: too many things for a ring).
-  if (desktop && here && !busy && !items.some((it) => it.room)) {
+  // Desktop: the Sims radial menu around the place (at home, the rooms' list: too many things for a ring;
+  // the stadium's programme, too tall to go under the ring: the list, which has room for it).
+  if (desktop && here && !busy && !items.some((it) => it.room) && !billing) {
     const rx = 250
     const ry = 175
     return (
