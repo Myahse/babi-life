@@ -806,22 +806,35 @@ export function Play() {
   const roaming = visiting || strolling
   // A long way ahead, a moto-taxi offered: its card takes the place of « En ce moment » (they sat on each other).
   const motoAsking = !!moto.offer && !moto.paid
-  // The music of where the Sim is: the club and the maquis inside, and in
-  // the street, the fanfare of a wedding cortège or a concert.
+  // The music of where the Sim is: the club and the maquis inside, a show on
+  // its stage (the drums, the singers, the audience), the hush of a museum; at
+  // the stadium, the crowd of the match or the concert; and in the street, the
+  // fanfare of a wedding cortège, a concert, the masks.
   const happeningId = street?.happening?.id
+  const doingId = doing?.interaction.id
   const track: Track | null = showInside
     ? inside!.kind === 'club'
       ? 'club'
       : inside!.kind === 'maquis'
         ? 'maquis'
-        : null
-    : happeningId === 'mariage'
-      ? 'fanfare'
-      : happeningId === 'concert' || happeningId === 'femua'
+        : doingId === 'spectacle'
+          ? 'spectacle'
+          : doingId === 'exposition'
+            ? 'expo'
+            : null
+    : doingId === 'stade-match'
+      ? 'stade'
+      : doingId === 'stade-concert'
         ? 'club'
-        : happeningId === 'anniversaire' || happeningId === 'bapteme'
-          ? 'maquis'
-          : null
+        : happeningId === 'mariage'
+          ? 'fanfare'
+          : happeningId === 'concert' || happeningId === 'femua'
+            ? 'club'
+            : happeningId === 'fete-masques' || happeningId === 'abissa' || happeningId === 'carnaval-bouake'
+              ? 'spectacle'
+              : happeningId === 'anniversaire' || happeningId === 'bapteme'
+                ? 'maquis'
+                : null
   // Out in the street at night, the party at the Rue Princesse or Blockhauss is heard from down the road, louder as one comes near.
   const partyHeard = !track && !showInside && party.id !== null && party.level > 0
   const trackSeed = partyHeard ? `party${party.id}` : showInside ? inside!.id : `${commune.id}${happeningId ?? ''}`
