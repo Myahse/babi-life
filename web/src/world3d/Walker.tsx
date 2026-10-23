@@ -27,7 +27,8 @@ import { report } from './open/trafficFlow'
 import { motoTaken, offerMoto, RIDES, type Taken } from './moto'
 import { tripRide } from './open/tripRide'
 import { askDrop, answerDrop, takeDrop } from './dropRoute'
-import { turnTo } from './open/shared'
+import { along, routeLength, turnTo } from './open/shared'
+import { laneStart, lanePoint, laneStretch, STADIUM_TRACKS, toWorld, type Track } from './open/stadiumTrack'
 import type { Pose } from '../avatar/Human'
 
 type XZ = [number, number]
@@ -202,6 +203,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   // Strolling (LOOPS): the way's start, its direction and length, and when it began.
   const loop = useRef<{ x: number; z: number; fx: number; fz: number; len: number; t0: number } | null>(null)
   const [looping, setLooping] = useState(false)
+  // Laps of a stadium's track: the stadium (its middle, its turn), the way in or out by the tunnel and how far along it, the angle round the lane.
+  const laps = useRef<{ at: XZ; rot: number; track: Track; way: XZ[]; d: number; th: number; out: boolean } | null>(null)
   // Stopped on the stroll, turned to the friend: talking.
   const [chatting, setChatting] = useState(false)
   const loopKind = busy?.id ? LOOPS[busy.id] : undefined
@@ -629,14 +632,60 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     // once. Near it, the Sim does it where it stands.
     // (Only once it has been there: on its way to it, it isn't leaving.)
     const station = busy && stationAt ? lots.find((l) => l.id === stationAt) : undefined
-    const away = station ? Math.hypot(g.position.x - station.door[0], g.position.z - station.door[1]) : 0
+    // (Round a stadium's track, the far side is well away from its door.)
+    const away = station && !laps.current ? Math.hypot(g.position.x - station.door[0], g.position.z - station.door[1]) : 0
     if (station && away < 15) reached.current = true
     if (station && onLeave && reached.current && !left.current && away > LEAVE) {
       left.current = true
       onLeave()
     }
+    // Laps of a stadium's track (open/stadiumTrack.ts): from its door in by the tunnel under the
+    // stands, round and round the pitch, and once done across to the tunnel and out to the street.
+    const track = busy?.id === 'stade-footing' && station ? STADIUM_TRACKS[station.id] : undefined
+    if (track && station && !laps.current && !path.current.length && !padWalking.current && !padAway.current && Math.hypot(g.position.x - station.door[0], g.position.z - station.door[1]) < 15) {
+      const at: XZ = [station.x, station.z]
+      const w = (p: XZ) => toWorld(at, station.rot, p)
+      const th = laneStart(track)
+      laps.current = { at, rot: station.rot, track, way: [[g.position.x, g.position.z], w([track.tunnel, track.out]), w([track.tunnel, track.in]), w(lanePoint(track, th))], d: 0, th, out: false }
+    }
+    const lap = laps.current
+    if (lap && (padWalking.current || padAway.current)) {
+      // Off the track with the pad: the player's way now (from inside the stands, a step may go out through them).
+      laps.current = null
+      setLooping(false)
+    } else if (lap) {
+      const w = (p: XZ) => toWorld(lap.at, lap.rot, p)
+      if (!lap.out && !track) {
+        lap.way = [[g.position.x, g.position.z], w(lanePoint(lap.track, laneStart(lap.track))), w([lap.track.tunnel, lap.track.in]), w([lap.track.tunnel, lap.track.out])]
+        lap.d = 0
+        lap.out = true
+      }
+      // (Out, done: at a walk.)
+      const speed = lap.out ? SPEED : LOOPS['stade-footing'].speed
+      const step = speed * Math.min(dt, 0.25)
+      const len = routeLength(lap.way)
+      lap.d += step
+      if (lap.d < len || lap.out) {
+        // In or out by the tunnel.
+        const p = along(lap.way, Math.min(lap.d, len))
+        g.position.set(p.x, 0, p.z)
+        g.rotation.y = turnTo(g.rotation.y, p.r, 1 - Math.exp(-8 * dt))
+        if (lap.out && lap.d >= len) {
+          laps.current = null
+          setLooping(false)
+        }
+      } else {
+        // Round the lane.
+        lap.th += step / laneStretch(lap.track, lap.th)
+        const [x, z] = w(lanePoint(lap.track, lap.th))
+        const [ax, az] = w(lanePoint(lap.track, lap.th + 0.02))
+        g.position.set(x, 0, z)
+        g.rotation.y = turnTo(g.rotation.y, Math.atan2(ax - x, az - z), 1 - Math.exp(-8 * dt))
+      }
+      if (laps.current && !looping) setLooping(true)
+    }
     // Strolling: along the way and back, again and again, as far as there's room.
-    if (loopKind && !path.current.length && !padWalking.current && !padAway.current) {
+    if (loopKind && !track && !laps.current && !path.current.length && !padWalking.current && !padAway.current) {
       const [x, z] = [g.position.x, g.position.z]
       const pitch = loopKind.pitch && whereabouts.pitch && Math.hypot(whereabouts.pitch.at[0] - x, whereabouts.pitch.at[1] - z) < 60 ? whereabouts.pitch : null
       if (!loop.current && pitch) {
@@ -900,7 +949,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     // What the other players see of this Sim.
     whereabouts.simY = g.position.y
     whereabouts.simHeading = g.rotation.y
-    whereabouts.simPose = joining && LIVE_POSES.has(matchPose) ? matchPose : busy ? (busy.kind === 'chat' ? 'talk' : 'busy') : walking ? (run ? 'run' : 'walk') : (emote ?? 'idle')
+    whereabouts.simPose = joining && LIVE_POSES.has(matchPose) ? matchPose : busy ? (busy.kind === 'chat' ? 'talk' : 'busy') : walking || looping ? (run ? 'run' : 'walk') : (emote ?? 'idle')
     // Camera follows the Sim, keeping whatever angle the player chose.
     if (controls && !free.current && !gesture.current) {
       const want = new THREE.Vector3(g.position.x, lookHeight, g.position.z)
@@ -991,6 +1040,18 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         if (flipped) camera.position.copy(t).addScaledVector(off, Math.min(free, dist))
         else if (Math.abs(next - dist) > 0.001) camera.position.copy(t).addScaledVector(off, next)
       }
+    }
+    // Round a stadium's track: the camera over the pitch, looking out at the Sim (from outside, the
+    // stands and the roof are in the way); no further than the pitch.
+    const lapNow = laps.current
+    if (lapNow && controls && !gesture.current && !shooting) {
+      const t = controls.target
+      const off = camera.position.clone().sub(t)
+      const now = Math.atan2(off.x, off.z)
+      const want = Math.atan2(lapNow.at[0] - t.x, lapNow.at[1] - t.z)
+      const a = now + Math.atan2(Math.sin(want - now), Math.cos(want - now)) * (1 - Math.exp(-2 * Math.min(dt, 0.25)))
+      const r = Math.min(Math.hypot(off.x, off.z), 24)
+      camera.position.set(t.x + Math.sin(a) * r, t.y + Math.min(off.y, 18), t.z + Math.cos(a) * r)
     }
     // Looking around stays over the playable area.
     if (controls && nav.bounds) {
