@@ -240,6 +240,9 @@ func communeByID(id string) (Commune, bool) {
 
 // curated: the map point is one of the commune's hand-made places (same
 // kind of name, within 400 m): the hand-made one stays, with its sources.
+// A place of another kind only when it has the very name: the town's name
+// in both was enough before, and the Pharmacie Saint-André went with the
+// Église Saint-André, the commissariat of Grand-Bassam with its mairie.
 func curated(cm Commune, p MapPlace) bool {
 	pw := nameWords(p.Name)
 	for _, c := range cm.Places {
@@ -255,6 +258,12 @@ func curated(cm Commune, p MapPlace) bool {
 			if pw[w] {
 				shared++
 			}
+		}
+		if c.Kind != p.Kind {
+			if shared == len(cw) && shared == len(pw) {
+				return true
+			}
+			continue
 		}
 		if float64(shared) >= 0.6*float64(min(len(cw), len(pw))) {
 			return true

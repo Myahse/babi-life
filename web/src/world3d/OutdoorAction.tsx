@@ -51,6 +51,7 @@ export function outdoorPose(id?: string): Pose | undefined {
     case 'regarder-tour-f':
       return 'film'
     case 'wait-gbaka':
+    case 'attendre-car':
     case 'credit-station':
     case 'street-credit':
       return 'phone'
@@ -74,11 +75,16 @@ export function outdoorPose(id?: string): Pose | undefined {
     case 'street-oranges':
     case 'street-eau':
     case 'street-pain':
+    case 'arachides-route':
+    case 'eau-glacee-gare':
       return 'snack'
     case 'pot-terrasse':
       return 'drink'
     case 'gbairai':
       return 'rant'
+    // At the gare: the coxers calling the destinations, the Sim chatting with them.
+    case 'coxers':
+      return 'talk'
     case 'petit-travaillement':
       return 'throw'
     // Bought at a stall: eaten on a stool beside it, the plate on the lap (streetlife/stalls.tsx).
@@ -128,6 +134,7 @@ export function OutdoorAction({ id }: { id?: string }) {
     case 'eat-brochette':
       return <Grill />
     case 'wait-gbaka':
+    case 'attendre-car':
       return <BusStop />
     case 'coucher-soleil':
     case 'photo-plateau':
@@ -153,6 +160,7 @@ export function OutdoorAction({ id }: { id?: string }) {
     case 'pot-terrasse':
       return <Terrasse />
     case 'gbairai':
+    case 'coxers':
       return <Gbairai />
     case 'danser-rue':
       return <StreetDance />
@@ -165,7 +173,10 @@ export function OutdoorAction({ id }: { id?: string }) {
     case 'street-oranges':
     case 'street-eau':
     case 'street-pain':
+    case 'arachides-route':
       return <Snack kind={id} />
+    case 'eau-glacee-gare':
+      return <Snack kind="street-eau" />
     case 'street-alloco':
       return <Dish kind="alloco" at={LAP} />
     case 'street-porc':
@@ -758,6 +769,8 @@ function Snack({ kind }: { kind: string }) {
       )}
       {kind === 'street-eau' && <Box p={[0, 0, 0]} s={[0.1, 0.1, 0.04]} c="#a5d8ff" />}
       {kind === 'street-pain' && <Box p={[0, 0.02, 0]} s={[0.08, 0.08, 0.5]} c="#d9a35a" r={0.3} />}
+      {/* The peanuts in their twist of paper. */}
+      {kind === 'arachides-route' && <Box p={[0, 0.02, 0]} s={[0.07, 0.12, 0.07]} c="#e9d8a6" />}
     </group>
   )
 }

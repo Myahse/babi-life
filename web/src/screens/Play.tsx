@@ -29,7 +29,7 @@ import { OpenWorld } from '../world3d/open/OpenWorld'
 import { GROUNDS, LANDMARKS, OPEN_AIR } from '../world3d/open/landmarks'
 import { iconFor, kindColors } from '../components/icons'
 import { Chip, Coin, DayNight, IconTile, MotiveRing, MoodPin, Row, needColor } from '../components/ui'
-import { EPOCH, NEEDS, km, actionLength, ageBlock, amount, fcfa, atHome, blockedBy, homeLacks, housingOf, lifeOf, minutesToAge, clock, duration, mood, openAt, openingLabel, predict, shift } from '../game/rules'
+import { EPOCH, NEEDS, km, actionLength, ageBlock, amount, fcfa, atHome, blockedBy, homeLacks, housingOf, lifeOf, minutesToAge, clock, duration, mood, openAt, openingLabel, predict, shift, trip } from '../game/rules'
 import { DOORS_OPEN, eventAt, useStadium, when } from '../lib/stadium'
 import { HomeApp, JobsApp, type Act } from './phoneApps'
 import { NewsApp, topicOf } from './NewsApp'
@@ -1650,7 +1650,7 @@ function usePlaceActions(world: World, sim: Sim, city: City, commune: Commune, p
   // What's done in a rented room only shows with the room (backend sims/hotel.go): else the lift's « Les chambres ».
   const roomHere = !!sim.stay && sim.stay.place === placeId && sim.stay.until > sim.gameMinutes
   const items = [...(career ? [shift(career, sim.careerLevel)] : []), ...kind.interactions.map((it) => (placeId === 'home' ? atHome(it, home) : it))].filter((it) => !it.stay || roomHere)
-    .filter((it) => ageBlock(it, life.stage?.id) !== 'Plus de ton âge' && (!it.places || it.places.includes(placeId)) && (!it.faiths || it.faiths.includes((place as Place).faith!)) && (!it.gender || it.gender === sim.gender))
+    .filter((it) => ageBlock(it, life.stage?.id) !== 'Plus de ton âge' && (!it.places || it.places.includes(placeId)) && (!it.cities || it.cities.includes(city.id)) && (!it.faiths || it.faiths.includes((place as Place).faith!)) && (!it.gender || it.gender === sim.gender))
     .filter((it) => it.id !== 'passer-nuit' || (partner && adult && !life.minor))
     .map((it) => (it.id === 'passer-nuit' && partner ? { ...it, label: `Passer la nuit avec ${partner.name}` } : it))
   // Busy at these grounds (the zoo visit): the other things there can still be picked, they take over.
@@ -1800,6 +1800,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
         </div>
         {kind.id === 'sport' && 'id' in place && <CourtCount placeId={place.id} />}
         {'id' in place && <Flights world={world} sim={sim} placeId={place.id} busy={busy} onTravel={onTravel} />}
+        {'id' in place && place.kind === 'transport' && place.type !== 'ferry_terminal' && <Departures world={world} sim={sim} busy={busy} onTravel={onTravel} />}
         {busy && (
           <div className="mb-3 flex items-center gap-3 rounded-[20px] bg-[#fff4e8] p-3">
             <Hourglass className="shrink-0 text-[var(--color-orange)]" size={22} />
@@ -2373,6 +2374,46 @@ function Flights({ world, sim, placeId, busy, onTravel }: { world: World; sim: S
             </span>
             <button className="btn !bg-[#1d4ed8] !px-3 !py-2 !text-xs" disabled={busy || sim.money < f.fare} onClick={() => onTravel(f.to, f.commune, `Vol pour ${f.toName}`, { app: 'avion' }, f.fare)}>
               {fcfa(f.fare)}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+/**
+ * At a gare routière: the cars to the other cities, with their time and
+ * fare, as the flights at the airport. They arrive at the town's own gare
+ * (Abidjan's at Adjamé), or its centre.
+ */
+function Departures({ world, sim, busy, onTravel }: { world: World; sim: Sim; busy: boolean; onTravel: OnTravel }) {
+  const from = world.cities.find((c) => c.id === sim.city)?.communes.find((c) => c.id === sim.commune)
+  if (!from) return null
+  const cars = world.cities
+    .filter((c) => c.id !== sim.city)
+    .map((c) => {
+      const to = c.communes.find((cm) => cm.places.some((p) => p.kind === 'transport' && /gare routi/i.test(p.name))) ?? c.communes[0]
+      return { city: c, to, t: trip(sim.city, from, c.id, to, world) }
+    })
+    .sort((a, b) => a.t.minutes - b.t.minutes)
+  return (
+    <div className="mb-3 rounded-[20px] bg-[#e9fbf1] p-3">
+      <div className="mb-2 flex items-center gap-2 text-sm font-extrabold text-[#087f5b]">
+        <Bus size={18} /> Départs en car
+      </div>
+      <ul className="space-y-1.5">
+        {cars.map(({ city, to, t }) => (
+          <li key={city.id} className="flex items-center gap-2 rounded-xl bg-white px-3 py-2">
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-extrabold">{city.name}</span>
+              <span className="block truncate text-xs font-bold text-[var(--color-ink-soft)]">
+                {to.name !== city.name ? `${to.name} · ` : ''}
+                {duration(actionLength(t.minutes))} de route
+              </span>
+            </span>
+            <button className="btn !bg-[#087f5b] !px-3 !py-2 !text-xs" disabled={busy || sim.money < t.fare} onClick={() => onTravel(city.id, to.id, `En car vers ${city.name}`, undefined, t.fare)}>
+              {fcfa(t.fare)}
             </button>
           </li>
         ))}

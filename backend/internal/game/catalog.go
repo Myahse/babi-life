@@ -23,6 +23,8 @@ type Interaction struct {
 	Ages []string `json:"ages,omitempty"`
 	// Places: only at these places of the kind (the Hôtel Ivoire's cinema…); empty = at every one.
 	Places []string `json:"places,omitempty"`
+	// Cities: only in these cities (the gbaka is Abidjan's); empty = in every one.
+	Cities []string `json:"cities,omitempty"`
 	// Faiths: only at the places of worship of these faiths (faith.go): the mass, the culte, the Friday prayer.
 	Faiths []string `json:"faiths,omitempty"`
 	// Gender: only Sims of this gender (a beard trim is for men); empty = anyone.
@@ -240,11 +242,18 @@ var Kinds = map[string]PlaceKind{
 	"transport": {
 		ID: "transport", Label: "Gare", Icon: "bus",
 		Interactions: []Interaction{
-			{ID: "wait-gbaka", Ages: TeensUp, Label: "Attendre le gbaka", Icon: "hourglass", Minutes: 30, Effect: Needs{Fun: -10, Social: 5}},
+			{ID: "wait-gbaka", Ages: TeensUp, Label: "Attendre le gbaka", Icon: "hourglass", Minutes: 30, Effect: Needs{Fun: -10, Social: 5}, Cities: []string{"abidjan"}},
+			// The car itself is taken from the place's card (its departures), or the map.
+			{ID: "attendre-car", Ages: TeensUp, Label: "Attendre le départ du car", Icon: "bus", Minutes: 30, Effect: Needs{Fun: -8, Social: 8}},
 			{ID: "eat-brochette", Label: "Manger une brochette", Icon: "flame", Minutes: 10, Cost: 500, Effect: Needs{Hunger: 15}},
+			{ID: "arachides-route", Label: "Acheter des arachides pour la route", Icon: "shopping-bag", Minutes: 5, Cost: 200, Effect: Needs{Hunger: 8, Fun: 3}},
+			{ID: "eau-glacee-gare", Label: "Boire un sachet d'eau glacée", Icon: "droplet", Minutes: 5, Cost: 50, Effect: Needs{Hunger: 2, Energy: 3}},
+			{ID: "coxers", Ages: TeensUp, Label: "Discuter avec les coxers", Icon: "messages-square", Minutes: 15, Effect: Needs{Social: 12, Fun: 6}},
 		},
 		Events: []RandomEvent{
 			{Text: "Un « gnambro » te fait payer 100F de plus. C'est comme ça.", Money: -100},
+			{Text: "« On part, on part ! » Un coxer te tire par le bras vers un car qui ne va pas du tout où tu vas.", Effect: Needs{Social: 5, Fun: 5}},
+			{Text: "Une vendeuse te glisse un sachet d'eau glacée de plus : « cadeau, pour la route ».", Effect: Needs{Social: 5}},
 		},
 	},
 	// An airport's terminal (the FHB at Port-Bouët, the other cities' own): its hall, the check-in, the departures

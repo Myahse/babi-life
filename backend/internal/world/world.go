@@ -121,6 +121,7 @@ const (
 	srcBassamMusee     = "https://economie-ivoirienne.ci/activites-sectorielles/une-culture-riche-diverse-et-vivante.html"
 	srcYakro           = "https://en.wikipedia.org/wiki/Yamoussoukro"
 	srcYakroSites      = "https://erooamba.com/posts/sites-touristiques-cote-divoire-2026"
+	srcOSMBouakeGare   = "https://www.openstreetmap.org/#map=18/7.68909/-5.02848"
 	srcBridges         = game.SrcBridges
 	srcSococe          = "https://business.abidjan.net/pages-jaunes/details-1-services-aux-entreprises-39-commerce-general/10137-club-sococe-sa"
 	srcSococePharma    = "https://annuaireci.com/entreprises/pharmacie-des-deux-plateaux-grde-cocody-cote-divoire/"
@@ -471,7 +472,8 @@ var Cities = []City{
 						Source: game.Verified("Créée en 2012 à partir de l'Université de Bouaké.", srcUniversities, srcUniversities2)},
 					{ID: "bouake-chu", Name: "CHU de Bouaké", Kind: "health", Lat: 7.6980, Lng: -5.0400, Real: true, Approx: true, Operator: "Établissement public hospitalier national",
 						Source: game.Verified("Transformé en établissement public hospitalier national en 2022.", srcCHUStatus)},
-					fictional("bouake-gare", "Gare routière de Bouaké", "transport", "", 7.6860, -5.0360),
+					{ID: "bouake-gare", Name: "Gare routière de Bouaké", Kind: "transport", Lat: 7.68909, Lng: -5.02848, Real: true,
+						Source: game.Partial("La gare routière du Grand marché, à côté du marché (quartier Koko) ; position d'après OpenStreetMap.", srcOSMBouakeGare)},
 				}},
 		},
 	},

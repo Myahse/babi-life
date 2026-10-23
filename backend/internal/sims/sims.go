@@ -634,7 +634,7 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 		if it, ok = kind.Interaction(interactionID); !ok {
 			return game.Interaction{}, errors.New("action inconnue")
 		}
-		if len(it.Places) > 0 && !slices.Contains(it.Places, placeID) {
+		if len(it.Places) > 0 && !slices.Contains(it.Places, placeID) || len(it.Cities) > 0 && !slices.Contains(it.Cities, s.City) {
 			return game.Interaction{}, errors.New("pas possible ici")
 		}
 		if len(it.Faiths) > 0 && !slices.Contains(it.Faiths, faith) {

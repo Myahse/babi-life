@@ -241,17 +241,20 @@ function Gbaka({ body, stripe, crew }: { body: string; stripe: string; crew: boo
   )
 }
 
-/** The SITRA bus: 11 m long, white over a green skirt with the orange band, two doors on the right, windows all along, the line on the front. */
-function Sotra({ body }: { body: string }) {
+/**
+ * The SITRA bus: 11 m long, white over a green skirt with the orange band, two doors on the right, windows all along, the line on the front.
+ * With a skirt: a coach of the roads up country, in its company's colours (a gare routière's).
+ */
+function Sotra({ body, skirt }: { body: string; skirt?: string }) {
   const [len, wide] = [11, 2.5]
   const p = paint(body)
-  const green = paint('#008f4c')
+  const green = paint(skirt ?? '#008f4c')
   return (
     <group>
       <K p={[0, 1.75, 0]} s={[len, 2.6, wide]} m={p} />
       {/* The green skirt and the orange band, round the bus */}
       <K p={[0, 0.78, 0]} s={[len + 0.02, 0.62, wide + 0.02]} m={green} cast={false} />
-      <K p={[0, 1.16, 0]} s={[len + 0.02, 0.14, wide + 0.02]} m={paint('#ff7a00')} cast={false} />
+      <K p={[0, 1.16, 0]} s={[len + 0.02, 0.14, wide + 0.02]} m={paint(skirt ? '#1c1c1e' : '#ff7a00')} cast={false} />
       {/* Windows all along, the windscreen, the back window */}
       <K p={[-0.4, 2.15, 0]} s={[len - 1.6, 0.95, wide + 0.02]} m={GLASS} cast={false} />
       <K p={[len / 2 + 0.005, 2.0, 0]} s={[0.02, 1.35, wide - 0.25]} m={GLASS} cast={false} />
@@ -307,7 +310,7 @@ function Moto({ color, rider = true }: { color: string; rider?: boolean }) {
 }
 
 /** Abidjan's traffic: orange taxi compteur, woro-woro, gbaka, cars and motos. */
-type VehicleProps = { p: [number, number, number]; r?: number; kind?: VehicleKind; color?: string; trim?: string; seed?: number; /** The gbaka's apprenti at the door, the moto's rider (false: someone else moves him, see OpenWorld's Gbaka; the Sim rides its own moto). */ crew?: boolean; /** A private car of this model (else one by the seed): the Sim's own (world3d/drive.ts). */ model?: CarModel }
+type VehicleProps = { p: [number, number, number]; r?: number; kind?: VehicleKind; color?: string; trim?: string; seed?: number; /** The gbaka's apprenti at the door, the moto's rider (false: someone else moves him, see OpenWorld's Gbaka; the Sim rides its own moto). */ crew?: boolean; /** A private car of this model (else one by the seed): the Sim's own (world3d/drive.ts). */ model?: CarModel; /** A bus as a coach up country, its skirt in its company's colour (a gare routière's). */ skirt?: string }
 
 /**
  * A vehicle in full detail up close; past FAR metres, a simple shape in the
@@ -353,13 +356,13 @@ function FarVehicle({ p, r = 0, kind = 'taxi', color, seed = 0, model: own }: Ve
   )
 }
 
-function NearVehicle({ p, r = 0, kind = 'taxi', color, trim, seed = 0, crew = true, model }: VehicleProps) {
+function NearVehicle({ p, r = 0, kind = 'taxi', color, trim, seed = 0, crew = true, model, skirt }: VehicleProps) {
   return (
     <group position={p} rotation={[0, r, 0]}>
       {kind === 'moto' ? (
         <Moto color={color ?? '#c92a2a'} rider={crew} />
       ) : kind === 'sotra' ? (
-        <Sotra body={color ?? '#f4f6f5'} />
+        <Sotra body={color ?? '#f4f6f5'} skirt={skirt} />
       ) : kind === 'gbaka' ? (
         <Gbaka body={color ?? '#f4c430'} stripe={trim ?? '#00a862'} crew={crew} />
       ) : kind === 'car' ? (

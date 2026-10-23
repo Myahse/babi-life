@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { Airport } from './airport'
 import { RuePrincesse, rueSlot } from './ruePrincesse'
-import { GareSiporex, PlaceFicgayo } from './yopougon'
+import { GareBouake, GareSiporex, PlaceFicgayo } from './yopougon'
 import { PalaisDesSports } from './treichville'
 import { MarcheAdjame } from './adjame'
 import { HotelIvoire } from './hotelIvoire'
@@ -43,6 +43,7 @@ export const LANDMARKS: Record<string, number> = {
   'marcory-playce': 60,
   'yop-rue-princesse': 32,
   'yop-gare-siporex': 36,
+  'bouake-gare': 36,
   'yop-ficgayo': 46,
   'treich-palais': 45,
   'adjame-forum': 52,
@@ -50,6 +51,12 @@ export const LANDMARKS: Record<string, number> = {
   'cocody-blockhauss-maquis': 27,
   'portbouet-parc-expo': 60,
   'plateau-tour-f': 40,
+}
+
+/** How far a landmark's front is from its middle (metres): its ground starts at the roadside, the gare's yard at the street, not behind the houses along it. Else the middle stands its clearing back from the street. */
+export const LANDMARK_FRONT: Record<string, number> = {
+  'yop-gare-siporex': 19,
+  'bouake-gare': 19,
 }
 
 /** The landmarks' own grounds in their frame (x from, x to, z from, z to; +z the street): no ad board stands on them (the PlaYce's car park). */
@@ -69,7 +76,7 @@ export function slotIn(parent: string, slot: number): { door: [number, number]; 
 }
 
 /** The landmarks one walks round freely on arriving (the park, the hotel's grounds, the street, the forecourts), before picking what to do. */
-export const GROUNDS = new Set(['cocody-zoo', 'cocody-hotel-ivoire', 'yop-rue-princesse', 'adjame-forum', 'yop-ficgayo', 'yop-gare-siporex', 'cocody-blockhauss-maquis'])
+export const GROUNDS = new Set(['cocody-zoo', 'cocody-hotel-ivoire', 'yop-rue-princesse', 'adjame-forum', 'yop-ficgayo', 'yop-gare-siporex', 'bouake-gare', 'cocody-blockhauss-maquis'])
 
 /** The ones under the sky (a maquis by the lagoon, a street of maquis, a square, a gare, a market): one walks there, never into a room. */
 export const OPEN_AIR = new Set([...GROUNDS].filter((id) => id !== 'cocody-hotel-ivoire'))
@@ -132,6 +139,8 @@ export function Landmark({ id, night, demo, open = true }: { id: string; night: 
       return <RuePrincesse night={night} />
     case 'yop-gare-siporex':
       return <GareSiporex night={night} />
+    case 'bouake-gare':
+      return <GareBouake night={night} />
     case 'yop-ficgayo':
       return <PlaceFicgayo night={night} />
     case 'treich-palais':
