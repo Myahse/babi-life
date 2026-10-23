@@ -7,6 +7,17 @@ import { LOAN_INSTALLMENT, amount } from '../game/rules'
 import { Chip } from '../components/ui'
 import type { Act } from './phoneApps'
 
+/** The balance hidden or not: kept on the device, as Wave keeps it. */
+const HIDE_KEY = 'babi.waye.masque'
+const hiddenBefore = () => {
+  try {
+    return localStorage.getItem(HIDE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+const MASK = '••••••'
+
 // Mirrors world.SendFee: 1 %, rounded up, at most 5 000 F.
 const sendFee = (n: number) => Math.min(5000, Math.ceil(n / 100))
 const QUICK = [1000, 2000, 5000, 10000, 25000]
@@ -16,7 +27,17 @@ const QUICK = [1000, 2000, 5000, 10000, 25000]
  * money for 1 %, paying bills for free, and the history.
  */
 export function WayeApp({ world, sim, act, journal, renderJournal, payTo }: { world: World; sim: Sim; act: Act; journal: JournalEvent[]; renderJournal: (events: JournalEvent[]) => React.ReactNode; /** A player friend to send to straight away. */ payTo?: string }) {
-  const [hidden, setHidden] = useState(false)
+  // Hidden: the balance and what came in and went out with it.
+  const [hidden, setHidden] = useState(hiddenBefore)
+  const toggle = () =>
+    setHidden((h) => {
+      try {
+        localStorage.setItem(HIDE_KEY, h ? '0' : '1')
+      } catch {
+        // (No storage: hidden for this time only.)
+      }
+      return !h
+    })
   const [to, setTo] = useState<string | null>(payTo ?? null)
   const [sum, setSum] = useState(5000)
   // The player friends, to send them money too (it lands in their Waye at once).
@@ -82,17 +103,17 @@ export function WayeApp({ world, sim, act, journal, renderJournal, payTo }: { wo
       <div className="rounded-[22px] bg-[linear-gradient(160deg,#5fd3ff,#1aa6e6)] p-4 text-white">
         <div className="flex items-center justify-between">
           <span className="text-xs font-extrabold tracking-wider uppercase opacity-85">Solde Waye</span>
-          <button onClick={() => setHidden((h) => !h)} aria-label={hidden ? 'Afficher le solde' : 'Masquer le solde'}>
+          <button onClick={toggle} aria-label={hidden ? 'Afficher le solde' : 'Masquer le solde'}>
             {hidden ? <Eye size={18} /> : <EyeOff size={18} />}
           </button>
         </div>
-        <div className="tnum font-display text-4xl leading-tight font-extrabold">{hidden ? '•••••• Djai' : `${amount(sim.money)} Djai`}</div>
+        <div className="tnum font-display text-4xl leading-tight font-extrabold">{hidden ? MASK : amount(sim.money)} Djai</div>
         <div className="mt-3 flex gap-4 text-xs font-extrabold opacity-90">
           <span className="flex items-center gap-1">
-            <ArrowDownLeft size={14} strokeWidth={3} /> {amount(earned)} Djai reçus
+            <ArrowDownLeft size={14} strokeWidth={3} /> {hidden ? MASK : amount(earned)} Djai reçus
           </span>
           <span className="flex items-center gap-1">
-            <ArrowUpRight size={14} strokeWidth={3} /> {amount(spent)} Djai dépensés
+            <ArrowUpRight size={14} strokeWidth={3} /> {hidden ? MASK : amount(spent)} Djai dépensés
           </span>
         </div>
         <div className="mt-3 flex items-center gap-3 rounded-2xl bg-white/95 p-2.5 text-[var(--color-ink)]">
