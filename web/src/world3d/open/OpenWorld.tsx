@@ -35,7 +35,7 @@ import { ChatFraming } from '../chatFraming'
 import { CHUNK_ZOOM, hash, tileBox, tileOf, toLatLng, toLocal, type Origin, type XZ } from './geo'
 import { Nav } from './nav'
 import { along, anchorNode, DRIVABLE, round, routeLength, turnTo, useCellsAround, type Round } from './shared'
-import { blockedAhead, lightsOf, redAhead, report, TrafficLights, type Light } from './trafficFlow'
+import { blockedAhead, lightsOf, queueOf, redAhead, report, stopForPapers, TrafficLights, waiting, type Light } from './trafficFlow'
 import { inTheWay, resolvePlaces, spaceFields, type PlaceSpot, type Resolved } from './places'
 import { SportField } from './field'
 import { FuelStation } from './station'
@@ -1614,9 +1614,17 @@ function Car({ car, nav, routes, lights }: { car: { id: string; kind: VehicleKin
     const off = 2
     const [x, z] = [p.x + Math.cos(heading) * -off, p.z - Math.sin(heading) * -off]
     // The car ahead too close, or a red light just ahead: it waits where it is (its schedule held back).
-    if (at.moving && held.current < 8 && (blockedAhead(car.id, x, z, heading, l / 2) || redAhead(lights, x, z, heading, l / 2, worldTime()))) {
+    // (Waved over at a police checkpoint, it stops for its papers; the bus and the gbaka with their passengers aren't.)
+    const t = worldTime()
+    const papers = at.moving && !stops && stopForPapers(car.id, x, z, heading, l / 2, t)
+    const red = at.moving && !papers && redAhead(lights, x, z, heading, l / 2, t)
+    const ahead = at.moving && !papers && !red ? blockedAhead(car.id, x, z, heading, l / 2) : null
+    // Behind a queue at a light or a checkpoint, it waits its turn; nose to nose with a car waiting for it, one gets by after a moment.
+    const queue = ahead && queueOf(car.id, ahead)
+    if (papers || red || (ahead && (queue === 'light' || held.current < (queue === 'jam' ? 3 : 8)))) {
       late.current += dt
-      held.current += dt
+      if (ahead && queue !== 'light') held.current += dt
+      waiting(car.id, papers ? 'papers' : red ? 'red' : (ahead ?? ''))
       return
     }
     held.current = at.moving ? Math.max(0, held.current - dt * 4) : 0

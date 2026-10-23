@@ -11,16 +11,21 @@ import type { Nav } from './nav'
 // crossroads the traffic lights stop one road while the other goes. The
 // lights run on the shared clock: the same colour on every screen.
 
-/** A vehicle on the move this frame: where, which way it heads (along()'s angle), half its length. */
-type Moving = { x: number; z: number; h: number; half: number }
+/** A vehicle on the move this frame: where, which way it heads (along()'s angle), half its length; stopped, what it waits for ('red', 'papers', or the car it queues behind). */
+type Moving = { x: number; z: number; h: number; half: number; wait?: string }
 const moving = new Map<string, Moving>()
 
 export const report = (id: string, m: Moving | null) => (m ? moving.set(id, m) : moving.delete(id))
+/** A vehicle stopped where it last said it was, and why. */
+export const waiting = (id: string, why: string) => {
+  const m = moving.get(id)
+  if (m) m.wait = why
+}
 
 /** The gap kept to the car ahead, bumper to bumper (metres). */
 const GAP = 1.6
 
-/** Whether a vehicle at (x, z), heading h, would run into another one: one ahead of it in its lane, or crossing in front. */
+/** The vehicle a vehicle at (x, z), heading h, would run into (one ahead of it in its lane, or crossing in front), if any. */
 export function blockedAhead(id: string, x: number, z: number, h: number, half: number) {
   const [fx, fz] = [Math.sin(h), Math.cos(h)]
   for (const [other, o] of moving) {
@@ -30,7 +35,71 @@ export function blockedAhead(id: string, x: number, z: number, h: number, half: 
     if (ahead <= 0 || ahead > half + o.half + GAP + 2) continue
     // In its lane (the cars coming the other way keep to theirs, 4 m off), or across it.
     const side = Math.abs(dx * fz - dz * fx)
-    if (side < 1.7) return true
+    if (side < 1.7) return other
+  }
+  return null
+}
+
+/**
+ * What the queue ahead of a car waits for, down to its head: a red light or
+ * a checkpoint (it waits its turn, however long), this very car (two cars
+ * nose to nose at a crossing: one squeezes by), or nothing it knows of (a car
+ * parked at the end of its round: it gets by after a while).
+ */
+export function queueOf(id: string, ahead: string): 'light' | 'jam' | 'other' {
+  let cur = ahead
+  for (let i = 0; i < 12; i++) {
+    const w = moving.get(cur)?.wait
+    if (!w) return 'other'
+    if (w === 'red' || w === 'papers') return 'light'
+    if (w === id) return 'jam'
+    cur = w
+  }
+  return 'other'
+}
+
+/**
+ * A police checkpoint on the shoulder (streetlife.tsx PolicePost): where, the
+ * way its road runs (the lane beside it heads the other way), and the car
+ * being checked there now, for the officer to go to its window.
+ */
+export type Checkpoint = { id: string; x: number; z: number; rot: number; car: { id: string; x: number; z: number; h: number; /** when it last said it was there (a car gone from the street no longer holds the officer) */ seen: number } | null }
+export const checkpoints = new Map<string, Checkpoint>()
+/** When each car's papers began to be checked at each checkpoint (`car|checkpoint`): once checked, it drives on. */
+const checked = new Map<string, number>()
+/** How long the papers take (seconds). */
+export const PAPERS = 8
+/** A car at a checkpoint that hasn't said it's there for this long (seconds) is gone (a slow phone's frames can be far apart). */
+export const STALE = 2
+/** A number from 0 to 1 for a word (the same every time). */
+const pick = (s: string) => {
+  let h = 2166136261
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619)
+  return (h >>> 0) / 4294967296
+}
+
+/** Whether a vehicle at (x, z), heading h, is waved over at a checkpoint just ahead (one in two), and its papers aren't done yet. */
+export function stopForPapers(id: string, x: number, z: number, h: number, half: number, t: number) {
+  const [fx, fz] = [Math.sin(h), Math.cos(h)]
+  for (const c of checkpoints.values()) {
+    const [dx, dz] = [c.x - x, c.z - z]
+    const ahead = dx * fx + dz * fz
+    // Its front up to the officer, in the lane beside the post (heading against the road's way).
+    if (ahead < half - 2 || ahead > half + 4 || Math.abs(dx * fz - dz * fx) > 6 || Math.cos(h - c.rot - Math.PI) < 0.7) continue
+    if (pick(`${id}|${c.id}`) > 0.5) continue
+    const key = `${id}|${c.id}`
+    const began = checked.get(key)
+    if (began === undefined) {
+      // One car at a time: the next waits its turn.
+      if (c.car && c.car.id !== id && t - c.car.seen < STALE) return true
+      checked.set(key, t)
+      if (checked.size > 2000) checked.clear()
+    } else if (t - began >= PAPERS) {
+      if (c.car?.id === id) c.car = null
+      continue
+    }
+    c.car = { id, x, z, h, seen: t }
+    return true
   }
   return false
 }
