@@ -66,11 +66,11 @@ func TestChildhoodGoesFast(t *testing.T) {
 
 func TestGrowingUp(t *testing.T) {
 	s := newBaby("poignon")
-	ev := s.advance(noon.Add(years(3.2)), noLuck())
+	ev := played(&s, noon.Add(years(3.2)))
 	if s.stage().ID != game.StageEnfant || !hasText(ev, "3 ans") {
 		t.Fatalf("at 3: stage %s, events %v", s.stage().ID, ev)
 	}
-	ev = s.advance(noon.Add(years(8)), noLuck()) // birthdays 3 to 8 (3 came with the first step)
+	ev = played(&s, noon.Add(years(8))) // birthdays 3 to 8 (3 came with the first step)
 	if f, _ := game.FindFamily("poignon"); s.Money != 6*(f.Pocket/birthdayShare/100*100) || !hasText(ev, "Argent de poche") {
 		t.Errorf("a child gets pocket money on its birthdays: %d", s.Money)
 	}
@@ -80,13 +80,13 @@ func TestGrowingUp(t *testing.T) {
 	if s.Performance != 1 {
 		t.Errorf("homework mark: %d", s.Performance)
 	}
-	s.advance(noon.Add(years(12.1)), noLuck())
+	played(&s, noon.Add(years(12.1)))
 	if s.stage().ID != game.StageAdo || !s.hasApp("waye") {
 		t.Errorf("at 12: stage %s, apps %v", s.stage().ID, s.Apps)
 	}
 	s.Performance = game.BacMarks
 	before := s.Money
-	ev = s.advance(noon.Add(years(18.05)), noLuck())
+	ev = played(&s, noon.Add(years(18.05)))
 	f, _ := game.FindFamily("poignon")
 	if s.stage().ID != game.StageAdulte || s.Housing != f.Leave || s.Money < before+f.Start+f.BacGift || !hasText(ev, "Bac en poche") {
 		t.Errorf("at 18: stage %s housing %s money %d (+%d) events %v", s.stage().ID, s.Housing, s.Money, s.Money-before, ev)
