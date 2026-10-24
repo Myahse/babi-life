@@ -11,16 +11,18 @@ import (
 	"github.com/myahse/babi-life/backend/internal/world"
 )
 
-// The player away (the app closed, or out of sight): no word from it for
-// offlineAfter (it asks every few minutes while it's open and seen), and the
-// Sim's life was on hold from about the last time it asked (livePoll on):
-// nothing earned, spent, lost or grown while nobody plays it. The world's
-// clock goes on (the same hour for everyone), the Sim's own time doesn't.
-// (Left at work all night, or living by itself while away, a Sim got rich
-// without being played.)
+// The player away: nothing earned, spent, lost or grown while nobody plays
+// the Sim. The world's clock goes on (the same hour for everyone), the Sim's
+// own time doesn't. The app says when it's put away (closed, sent to the
+// background: pause, the Sim held from that very moment); while it's open and
+// seen it says it's there every minute (heartbeat), so an app gone without a
+// word (killed, the phone dead) holds the Sim from a minute after it last
+// spoke. (Left at work all night, or living by itself while away, a Sim got
+// rich without being played; then it went on a few minutes after the app
+// was closed.)
 const (
-	offlineAfter = 7 * time.Minute
-	livePoll     = 5 * time.Minute
+	heartbeat    = time.Minute
+	offlineAfter = 150 * time.Second
 )
 
 // advance brings the Sim up to now on the real clock: the time the player
@@ -29,8 +31,14 @@ const (
 // returns the journal lines that time produced.
 func (s *Sim) advance(now time.Time, rng *rand.Rand) []Event {
 	var events []Event
-	if !s.lastTick.IsZero() && now.Sub(s.lastTick) > offlineAfter {
-		events = s.advanceTo(game.MinuteOf(s.lastTick.Add(livePoll)), rng)
+	switch {
+	case s.pausedAt != nil:
+		// Put away: lived up to then, held since.
+		events = s.advanceTo(min(game.MinuteOf(now), game.MinuteOf(*s.pausedAt)), rng)
+		s.hold(game.MinuteOf(now) - s.GameMinutes)
+		s.pausedAt = nil
+	case !s.lastTick.IsZero() && now.Sub(s.lastTick) > offlineAfter:
+		events = s.advanceTo(game.MinuteOf(s.lastTick.Add(heartbeat)), rng)
 		s.hold(game.MinuteOf(now) - s.GameMinutes)
 	}
 	s.lastTick = now

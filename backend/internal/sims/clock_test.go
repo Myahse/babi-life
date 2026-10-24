@@ -27,7 +27,7 @@ func played(s *Sim, until time.Time) []Event {
 		at = game.TimeOf(s.GameMinutes)
 	}
 	var ev []Event
-	for at = at.Add(4 * time.Minute); at.Before(until); at = at.Add(4 * time.Minute) {
+	for at = at.Add(heartbeat); at.Before(until); at = at.Add(heartbeat) {
 		ev = append(ev, s.advance(at, noLuck())...)
 	}
 	return append(ev, s.advance(until, noLuck())...)
@@ -51,21 +51,21 @@ func TestOnHoldWhileAway(t *testing.T) {
 	if s.GameMinutes != game.MinuteOf(noon.Add(20*time.Hour)) {
 		t.Error("the Sim's clock is the world's when back")
 	}
-	if left := s.Activity.End - s.GameMinutes; left != 3 {
-		t.Errorf("selling: 2 min played, 5 counted after the last word, 3 left; got %d", left)
+	if left := s.Activity.End - s.GameMinutes; left != 7 {
+		t.Errorf("selling: 2 min played, 1 counted after the last word, 7 left; got %d", left)
 	}
-	// As if played only those 5 minutes more.
+	// As if played only that minute more.
 	twin := newSim()
 	_ = twin.start(sell, "yop-marche", "market", "Marché de Siporex", nil, "")
 	twin.advance(noon.Add(2*time.Minute), noLuck())
-	twin.advance(noon.Add(7*time.Minute), noLuck())
+	twin.advance(noon.Add(3*time.Minute), noLuck())
 	if s.Needs != twin.Needs {
-		t.Errorf("needs as after 5 minutes more: %+v, not %+v", twin.Needs, s.Needs)
+		t.Errorf("needs as after a minute more: %+v, not %+v", twin.Needs, s.Needs)
 	}
-	if game.AgeAt(s.BornAt, s.GameMinutes) != game.AgeAt(born, game.MinuteOf(noon.Add(7*time.Minute))) {
+	if game.AgeAt(s.BornAt, s.GameMinutes) != game.AgeAt(born, game.MinuteOf(noon.Add(3*time.Minute))) {
 		t.Error("a Sim doesn't grow older while nobody plays it")
 	}
-	ev = played(&s, noon.Add(20*time.Hour+4*time.Minute))
+	ev = played(&s, noon.Add(20*time.Hour+8*time.Minute))
 	if s.Activity != nil || s.Money < money+4000 || len(ev) == 0 {
 		t.Fatalf("back, the selling ends and pays: act %+v money %d ev %v", s.Activity, s.Money, ev)
 	}
@@ -76,6 +76,26 @@ func TestOnHoldWhileAway(t *testing.T) {
 	ev = s.advance(noon.Add(8*24*time.Hour), noLuck())
 	if len(ev) != 0 || s.Money != money || s.Friends[0].Friendship != 50 || s.Needs.Hunger < needs.Hunger-5 {
 		t.Errorf("a week away: events %v money %d friendship %d needs %+v", ev, s.Money, s.Friends[0].Friendship, s.Needs)
+	}
+}
+
+// Put away (the app closed or hidden): held from that very moment, not a minute more.
+func TestPausedHeldAtOnce(t *testing.T) {
+	s := newSim()
+	sell, _ := game.Kinds["market"].Interaction("sell-goods") // 10 real minutes
+	_ = s.start(sell, "yop-marche", "market", "Marché de Siporex", nil, "")
+	s.advance(noon.Add(2*time.Minute), noLuck())
+	at := noon.Add(2 * time.Minute)
+	s.pausedAt = &at
+	// Back a minute later (under the gap that would hold an app gone without a word): still nothing went by.
+	s.advance(noon.Add(3*time.Minute), noLuck())
+	if left := s.Activity.End - s.GameMinutes; left != 8 || s.pausedAt != nil {
+		t.Fatalf("paused at 2 min, back at 3: 8 min left, got %d (paused %v)", s.Activity.End-s.GameMinutes, s.pausedAt)
+	}
+	// Played on: it goes by again.
+	s.advance(noon.Add(4*time.Minute), noLuck())
+	if left := s.Activity.End - s.GameMinutes; left != 7 {
+		t.Errorf("played a minute more: 7 left, got %d", left)
 	}
 }
 
@@ -92,7 +112,7 @@ func TestActivityEndsWhileAway(t *testing.T) {
 	if s.Activity == nil || len(ev) != 0 || s.Money != 10000 {
 		t.Fatalf("after 5 min it is still selling: %+v %v %d", s.Activity, ev, s.Money)
 	}
-	ev = s.advance(noon.Add(6*time.Hour), noLuck())
+	ev = played(&s, noon.Add(6*time.Hour))
 	if s.Activity != nil || s.Money < 14000 || len(ev) == 0 || !strings.Contains(ev[0].Text, "Vendre") {
 		t.Fatalf("after 6 h it is done and paid: act=%v money=%d ev=%v", s.Activity, s.Money, ev)
 	}
@@ -105,7 +125,7 @@ func TestStopPaysProRata(t *testing.T) {
 	s := newSim()
 	sell, _ := game.Kinds["market"].Interaction("sell-goods")
 	_ = s.start(sell, "yop-marche", "market", "Marché de Siporex", nil, "")
-	s.advance(noon.Add(5*time.Minute), noLuck())
+	played(&s, noon.Add(5*time.Minute))
 	ev, err := s.stop()
 	if err != nil || s.Activity != nil || s.Money != 12000 || ev.Money != 2000 {
 		t.Fatalf("5 min of 10: money %d ev %+v err %v", s.Money, ev, err)
@@ -125,7 +145,7 @@ func TestTaxiArrives(t *testing.T) {
 	if _, err := s.stop(); err == nil {
 		t.Error("can't get out of a moving taxi")
 	}
-	s.advance(noon.Add(3*time.Hour), noLuck())
+	played(&s, noon.Add(3*time.Hour))
 	if s.Commune != "cocody" || s.Activity != nil {
 		t.Fatalf("arrived: commune %s act %v", s.Commune, s.Activity)
 	}
