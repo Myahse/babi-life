@@ -31,11 +31,11 @@ type State = { ps: P[]; ball: Ball; goals: [number, number]; t: number; pause: n
 export type FootRound = { name: string; diff: number; label?: string }
 export const FOOT_MODES: Record<'match' | 'defi' | 'tournoi', FootRound[]> = {
   match: [{ name: 'Les gars du quartier', diff: 0.82 }],
-  defi: [{ name: 'Le caïd du quartier', diff: 1 }],
+  defi: [{ name: 'Le caïd du quartier', diff: 0.92 }],
   tournoi: [
     { name: "Les Lions d'Abobo", diff: 0.85, label: 'Quart de finale' },
     { name: 'Koumassi FC', diff: 0.97, label: 'Demi-finale' },
-    { name: 'Yop City', diff: 1.1, label: 'Finale' },
+    { name: 'Yop City', diff: 1.05, label: 'Finale' },
   ],
 }
 
@@ -147,6 +147,8 @@ function Match({ rival, tournament, onDone }: { rival: FootRound; tournament: bo
   }
   const n = useCount(3)
   const [hud, setHud] = useState({ goals: [0, 0], min: 0, said: '', owning: false, golden: false })
+  // In development, for the test pilot in the browser.
+  if (import.meta.env.DEV) Object.assign(globalThis, { __foot: st.current })
   const diff = rival.diff
 
   const step = (dt: number) => {
@@ -253,8 +255,9 @@ function Match({ rival, tournament, onDone }: { rival: FootRound; tournament: bo
           const o = s.ps[i === 4 ? 5 : 4]
           kick(s, i, o.x, o.y + 20, 250, 0.15)
         } else goTo(p, MID + Math.sin(s.t * 1.3 + i) * 70, BOTTOM, v * 0.9)
-      } else if (own === 1) goTo(p, s.ps[b.owner!].x > MID ? MID - 70 : MID + 70, Math.min(BOTTOM - 70, s.ps[b.owner!].y + 80), v)
-      else if (i === chaser) goTo(p, b.x, b.y - (own === 0 ? 6 : 0), v)
+      } else if (b.owner !== null && s.ps[b.owner].team === 1) goTo(p, s.ps[b.owner].x > MID ? MID - 70 : MID + 70, Math.min(BOTTOM - 70, s.ps[b.owner].y + 80), v)
+      // (Read again: the other may have just passed or shot.)
+      else if (i === chaser) goTo(p, b.x, b.y - (b.owner !== null ? 6 : 0), v)
       else goTo(p, (b.x + MID) / 2, Math.max(TOP + 60, b.y - 70), v * 0.85)
       // Theirs tackle yours with the ball.
       if (b.owner !== null && s.ps[b.owner].team === 0 && !s.ps[b.owner].gk && dist(p, s.ps[b.owner]) < 12 && s.tackleCool <= 0 && Math.random() < dt * 2.4 * diff) {
@@ -341,7 +344,7 @@ function Match({ rival, tournament, onDone }: { rival: FootRound; tournament: bo
 
   const goal = (s: State, by: 0 | 1) => {
     s.goals[by]++
-    s.said = by === 0 ? 'BUT !' : `But de ${rival.name}`
+    s.said = by === 0 ? 'BUT !' : 'But encaissé…'
     s.pause = 1.6
     s.kickoff = by === 0 ? 1 : 0
     haptic(by === 0 ? 'success' : 'error')
