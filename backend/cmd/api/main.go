@@ -289,6 +289,7 @@ func main() {
 		r.Post("/auth/google", authH.Google)
 		r.Post("/auth/register", authH.Register)
 		r.Post("/shop/geniuspay", shopH.Webhook)
+		shopH.PubRoutes(r)
 		r.Post("/auth/login", authH.Login)
 		r.Post("/auth/forgot", authH.Forgot)
 		r.Post("/auth/reset", authH.Reset)

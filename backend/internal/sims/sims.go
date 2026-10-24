@@ -105,7 +105,7 @@ func (l Look) validate(gender string) error {
 // The accessories and where each goes on the body (web/src/avatar/options.ts,
 // ACCESSORY_SLOT): several can be worn, one per place, five at most.
 var accessorySlot = map[string]string{
-	"cap": "head", "capback": "head", "beanie": "head", "hat": "head", "buckethat": "head", "bandana": "head", "headphones": "head", "kufi": "head",
+	"cap": "head", "capback": "head", "beanie": "head", "hat": "head", "buckethat": "head", "bandana": "head", "headphones": "head", "kufi": "head", "couronne": "head",
 	"glasses": "eyes", "sunglasses": "eyes",
 	"earrings": "ears",
 	"chain":    "neck", "beads": "neck", "croix": "neck", "chapelet": "hand",
@@ -184,6 +184,10 @@ type Sim struct {
 	lastTick  time.Time
 	// The app put away (sims/clock.go): the Sim held from then on.
 	pausedAt *time.Time
+	// PassUntil: the Babi Pass (shop/): a quarter more on the Djai earned, the gold star by the name, till then.
+	PassUntil *time.Time `json:"passUntil,omitempty"`
+	// Prestige: the Pack Prestige bought (shop/): the crown may be worn.
+	Prestige bool `json:"prestige,omitempty"`
 	// gymUntil: the game minute the gym membership runs out (0: none), read from the journal (gym.go).
 	gymUntil int64
 }
@@ -386,14 +390,14 @@ func (h *Handler) Routes(r chi.Router) {
 
 const simColumns = `id, first_name, last_name, gender, look, traits, aspiration,
 	home_city, home_commune, city, commune, needs, money, game_minutes,
-	origin, housing, loan, rent_arrears, career, career_level, performance, activity, apps, born_at, family, friends, gang, record, created_at, last_tick, furnished, stay, languages, auto_work, paused_at`
+	origin, housing, loan, rent_arrears, career, career_level, performance, activity, apps, born_at, family, friends, gang, record, created_at, last_tick, furnished, stay, languages, auto_work, paused_at, pass_until, prestige`
 
 // scanSim reads simColumns, then any extra columns selected after them into extra.
 func scanSim(row pgx.Row, extra ...any) (Sim, error) {
 	var s Sim
 	err := row.Scan(append([]any{&s.ID, &s.FirstName, &s.LastName, &s.Gender, &s.Look, &s.Traits, &s.Aspiration,
 		&s.HomeCity, &s.HomeCommune, &s.City, &s.Commune, &s.Needs, &s.Money, &s.GameMinutes,
-		&s.Origin, &s.Housing, &s.Loan, &s.RentArrears, &s.Career, &s.CareerLevel, &s.Performance, &s.Activity, &s.Apps, &s.BornAt, &s.Family, &s.Friends, &s.Gang, &s.Record, &s.CreatedAt, &s.lastTick, &s.Furnished, &s.Stay, &s.Languages, &s.AutoWork, &s.pausedAt}, extra...)...)
+		&s.Origin, &s.Housing, &s.Loan, &s.RentArrears, &s.Career, &s.CareerLevel, &s.Performance, &s.Activity, &s.Apps, &s.BornAt, &s.Family, &s.Friends, &s.Gang, &s.Record, &s.CreatedAt, &s.lastTick, &s.Furnished, &s.Stay, &s.Languages, &s.AutoWork, &s.pausedAt, &s.PassUntil, &s.Prestige}, extra...)...)
 	return s, err
 }
 

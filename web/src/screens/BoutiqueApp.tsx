@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react'
-import { BadgeCheck, Clock3, Lock, ShieldCheck, ShoppingBag, XCircle } from 'lucide-react'
+import { BadgeCheck, Clock3, Crown, Lock, ShieldCheck, ShoppingBag, Star, XCircle, Zap } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
-import type { ShopPack, ShopPurchase, ShopView, Sim } from '../lib/types'
+import type { ShopPurchase, ShopView, Sim } from '../lib/types'
 import { amount } from '../game/rules'
 import { Chip, Coin } from '../components/ui'
 
-// La boutique (backend shop/): Djai bought with real money, paid on
-// GeniusPay's page (Wave, Orange Money, MTN, Moov, a card), for accounts of 18
-// or over. The game is played for free from start to end: a pack only brings
-// Djai sooner. Back from the payment (/jeu?achat=…), the purchase is asked
-// again until GeniusPay has said its word; the Djai land on the Sim's Waye.
+// La boutique (backend shop/): what's paid with real money, on GeniusPay's
+// page (Wave, Orange Money, MTN, Moov, a card), for accounts of 18 or over:
+// packs of Djai, the Babi Pass (a month: a quarter more on the Djai earned,
+// the gold star by the name), « Plein d'énergie », the Pack Prestige (the
+// crown). The game is played for free from start to end. Back from the
+// payment (/jeu?achat=…), the purchase is asked again until GeniusPay has
+// said its word; what was bought lands on the Sim.
 
 const STATUS: Record<string, { label: string; tone: 'good' | 'bad' | 'gold' | 'neutral' }> = {
   completed: { label: 'Payé', tone: 'good' },
@@ -24,6 +26,12 @@ const STATUS: Record<string, { label: string; tone: 'good' | 'bad' | 'gold' | 'n
 }
 const waitingOn = (p: ShopPurchase) => !p.credited && (p.status === 'pending' || p.status === 'processing')
 const failure = (e: unknown) => (e instanceof ApiError ? e.message : 'Pas de réseau')
+/** The Babi Pass still on. */
+export const passOn = (sim: Pick<Sim, 'passUntil'>) => !!sim.passUntil && Date.parse(sim.passUntil) > Date.now()
+const day = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
+/** What a purchase brought, in a few words (a pack: its Djai). */
+const bought = (p: ShopPurchase) => (p.kind === 'djai' ? `${amount(p.djai)} Djai` : p.kind === 'pass' ? 'Babi Pass · 30 jours' : p.kind === 'energie' ? "Plein d'énergie" : p.kind === 'prestige' ? 'Pack Prestige' : p.item)
+const ICONS = { pass: Star, energie: Zap, prestige: Crown }
 
 export function BoutiqueApp({ sim, back, onConfirmAdult }: { sim: Sim; /** Back from GeniusPay's page: the purchase, and whether it came back by the error way. */ back?: { id: string; failed: boolean } | null; onConfirmAdult: () => Promise<void> }) {
   const [view, setView] = useState<ShopView | null>(null)
@@ -57,11 +65,11 @@ export function BoutiqueApp({ sim, back, onConfirmAdult }: { sim: Sim; /** Back 
     return () => void (stop = true)
   }, [back?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const buy = async (pack: ShopPack) => {
-    setBuying(pack.id)
+  const buy = async (what: { pack?: string; item?: string }) => {
+    setBuying(what.pack ?? what.item ?? null)
     setError(null)
     try {
-      const { url } = await api.buy(sim.id, pack.id)
+      const { url } = await api.buy(sim.id, what)
       // GeniusPay's page: the player chooses how to pay there, and is sent back to the game.
       location.assign(url)
     } catch (e) {
@@ -69,8 +77,10 @@ export function BoutiqueApp({ sim, back, onConfirmAdult }: { sim: Sim; /** Back 
       setBuying(null)
     }
   }
+  const price = (id: string, n: number) => (buying === id ? 'Vers GeniusPay…' : `${amount(n)} F CFA`)
 
   if (!view) return error ? <p className="text-sm font-bold text-[var(--color-rose)]">{error}</p> : <p className="text-sm font-bold text-[var(--color-ink-soft)]">Chargement de la boutique…</p>
+  const pass = view.passUntil && Date.parse(view.passUntil) > Date.now() ? view.passUntil : null
 
   return (
     <div className="space-y-3">
@@ -79,7 +89,7 @@ export function BoutiqueApp({ sim, back, onConfirmAdult }: { sim: Sim; /** Back 
         <ShoppingBag size={28} strokeWidth={2.4} />
         <div className="min-w-0 flex-1 leading-tight">
           <div className="font-display text-[19px] font-extrabold">Boutique</div>
-          <div className="text-[12px] font-bold text-[var(--color-ink)]/75">Des Djai tout de suite</div>
+          <div className="text-[12px] font-bold text-[var(--color-ink)]/75">Des Djai, le Pass, la couronne</div>
         </div>
         <div className="text-right text-[12px] font-extrabold">
           <div className="text-[var(--color-ink)]/65">Ton solde</div>
@@ -106,32 +116,64 @@ export function BoutiqueApp({ sim, back, onConfirmAdult }: { sim: Sim; /** Back 
           <p className="text-sm font-bold text-[var(--color-ink-soft)]">Les packs de Djai arrivent. En attendant, tout le jeu se joue gratuitement.</p>
         </div>
       ) : (
-        <div>
-          <div className="label mb-1.5">Les packs</div>
-          {view.sandbox && <Chip tone="gold" className="mb-2">Mode test : rien n'est vraiment payé</Chip>}
-          <ul className="motion-stagger space-y-2">
-            {view.packs.map((p) => (
-              <li key={p.id} className="card flex items-center gap-3 p-3">
-                <Coin size={34} />
-                <div className="min-w-0 flex-1">
-                  <div className="font-display text-[17px] leading-tight font-extrabold">{amount(p.djai)} Djai</div>
-                  <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[12px] font-extrabold text-[var(--color-ink-soft)]">
-                    {p.label}
-                    {p.bonus && <Chip tone="good">{p.bonus}</Chip>}
+        <>
+          {view.sandbox && <Chip tone="gold">Mode test : rien n'est vraiment payé</Chip>}
+          <div>
+            <div className="label mb-1.5">Le Pass et les coups de pouce</div>
+            <ul className="motion-stagger space-y-2">
+              {view.items.map((it) => {
+                const Icon = ICONS[it.id as keyof typeof ICONS] ?? Star
+                const have = it.id === 'prestige' && view.prestige
+                return (
+                  <li key={it.id} className="card p-3">
+                    <div className="flex items-center gap-3">
+                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#fff4d6] text-[#a86800]">
+                        <Icon size={22} strokeWidth={2.4} />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-display text-[17px] leading-tight font-extrabold">{it.label}</div>
+                        {(it.id === 'pass' && pass) || have ? (
+                          <div className="mt-1">
+                            <Chip tone="good">{have ? 'À toi' : `Actif jusqu'au ${day(pass!)}`}</Chip>
+                          </div>
+                        ) : null}
+                      </div>
+                      <button className="btn shrink-0 !py-2 !text-sm" disabled={!!buying || have} onClick={() => void buy({ item: it.id })}>
+                        {have ? 'Acheté' : it.id === 'pass' && pass ? `Prolonger · ${amount(it.price)} F` : price(it.id, it.price)}
+                      </button>
+                    </div>
+                    <p className="mt-1.5 text-[12px] font-bold text-[var(--color-ink-soft)]">{it.text}</p>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+          <div>
+            <div className="label mb-1.5">Les packs de Djai</div>
+            <ul className="motion-stagger space-y-2">
+              {view.packs.map((p) => (
+                <li key={p.id} className="card flex items-center gap-3 p-3">
+                  <Coin size={34} />
+                  <div className="min-w-0 flex-1">
+                    <div className="font-display text-[17px] leading-tight font-extrabold">{amount(p.djai)} Djai</div>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[12px] font-extrabold text-[var(--color-ink-soft)]">
+                      {p.label}
+                      {p.bonus && <Chip tone="good">{p.bonus}</Chip>}
+                    </div>
                   </div>
-                </div>
-                <button className="btn shrink-0 !py-2 !text-sm" disabled={!!buying} onClick={() => void buy(p)}>
-                  {buying === p.id ? 'Vers GeniusPay…' : `${amount(p.price)} F CFA`}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
+                  <button className="btn shrink-0 !py-2 !text-sm" disabled={!!buying} onClick={() => void buy({ pack: p.id })}>
+                    {price(p.id, p.price)}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </>
       )}
 
       <p className="flex gap-1.5 text-[12px] font-bold text-[var(--color-ink-soft)]">
         <ShieldCheck size={16} className="shrink-0" />
-        Le jeu se joue gratuitement du début à la fin : un pack donne seulement des Djai plus vite. Paiement sur la page sécurisée de GeniusPay (Wave, Orange Money, MTN, Moov ou carte). Les Djai restent dans le jeu : ils ne se revendent pas et ne se changent pas en argent.
+        Le jeu se joue gratuitement du début à la fin : la boutique donne seulement des Djai plus vite, un coup de pouce ou une marque. Paiement sur la page sécurisée de GeniusPay (Wave, Orange Money, MTN, Moov ou carte). Les Djai restent dans le jeu : ils ne se revendent pas et ne se changent pas en argent.
       </p>
 
       {view.purchases.length > 0 && (
@@ -143,7 +185,7 @@ export function BoutiqueApp({ sim, back, onConfirmAdult }: { sim: Sim; /** Back 
               return (
                 <li key={p.id} className="flex items-center gap-2 rounded-2xl bg-[var(--color-canvas)] p-2.5 text-sm font-bold">
                   <span className="min-w-0 flex-1">
-                    <span className="tnum block font-extrabold">{amount(p.djai)} Djai</span>
+                    <span className="tnum block font-extrabold">{bought(p)}</span>
                     <span className="text-[12px] text-[var(--color-ink-soft)]">
                       {amount(p.price)} F CFA · {new Date(p.at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                     </span>
@@ -159,15 +201,15 @@ export function BoutiqueApp({ sim, back, onConfirmAdult }: { sim: Sim; /** Back 
   )
 }
 
-/** Back from GeniusPay's page: paid (the Djai added), still waiting for its word, or not paid. */
+/** Back from GeniusPay's page: paid (what was bought given), still waiting for its word, or not paid. */
 function Returned({ purchase: p, failed }: { purchase: ShopPurchase; failed: boolean }) {
   if (p.credited)
     return (
       <div className="flex items-center gap-3 rounded-2xl bg-[#e3f9ee] p-3">
         <BadgeCheck size={28} className="shrink-0 text-[var(--color-emerald-deep)]" />
         <div className="text-sm font-bold">
-          <div className="font-display text-[17px] leading-tight font-extrabold">+{amount(p.djai)} Djai</div>
-          Merci ! C'est sur ton Waye.
+          <div className="font-display text-[17px] leading-tight font-extrabold">{p.kind === 'djai' ? `+${amount(p.djai)} Djai` : bought(p)}</div>
+          {p.kind === 'djai' ? "Merci ! C'est sur ton Waye." : p.kind === 'pass' ? 'Merci ! Un quart de Djai en plus sur ce que tu gagnes, et ton étoile dorée.' : p.kind === 'energie' ? 'Toutes tes jauges sont à fond !' : 'Merci ! La couronne est à toi : Profil, Mon look.'}
         </div>
       </div>
     )
@@ -177,7 +219,7 @@ function Returned({ purchase: p, failed }: { purchase: ShopPurchase; failed: boo
         <Clock3 size={28} className="shrink-0 text-[#a86800]" />
         <div className="text-sm font-bold">
           <div className="font-display text-[17px] leading-tight font-extrabold">Paiement en cours</div>
-          Dès que GeniusPay le confirme, tes {amount(p.djai)} Djai arrivent sur ton Waye. Tu peux continuer à jouer.
+          Dès que GeniusPay le confirme, {p.kind === 'djai' ? `tes ${amount(p.djai)} Djai arrivent sur ton Waye` : `ton ${bought(p)} est à toi`}. Tu peux continuer à jouer.
         </div>
       </div>
     )
@@ -186,7 +228,7 @@ function Returned({ purchase: p, failed }: { purchase: ShopPurchase; failed: boo
       <XCircle size={28} className="shrink-0 text-[#d81b3f]" />
       <div className="text-sm font-bold">
         <div className="font-display text-[17px] leading-tight font-extrabold">Paiement non abouti</div>
-        Le paiement n'est pas passé : tu peux réessayer quand tu veux. Si de l'argent a quand même été pris, tes Djai arrivent dès que GeniusPay le confirme.
+        Le paiement n'est pas passé : tu peux réessayer quand tu veux. Si de l'argent a quand même été pris, ton achat arrive dès que GeniusPay le confirme.
       </div>
     </div>
   )

@@ -327,6 +327,10 @@ export type Sim = {
   gang?: string
   /** Times arrested by the police. */
   record?: number
+  /** The Babi Pass (Boutique): a quarter more on the Djai earned, the gold star by the name, till then (ISO). */
+  passUntil?: string
+  /** The Pack Prestige bought (Boutique): the crown may be worn. */
+  prestige?: boolean
 }
 
 export type Activity = {
@@ -383,9 +387,12 @@ export type ActionResult = { sim: Sim; outcome: Outcome; journal: JournalEvent[]
 
 /** La boutique (backend shop/): Djai for real money (F CFA), through GeniusPay. */
 export type ShopPack = { id: string; label: string; price: number; djai: number; bonus?: string }
-export type ShopPurchase = { id: string; pack: string; price: number; djai: number; status: string; credited: boolean; at: string }
-/** open: GeniusPay set up; sandbox: its test keys; adult: the account said it's 18 or over. */
-export type ShopView = { open: boolean; sandbox?: boolean; adult: boolean; packs: ShopPack[]; purchases: ShopPurchase[] }
+/** Something else than Djai: the Pass, a boost, the Pack Prestige (once: bought once and kept). */
+export type ShopItem = { id: string; label: string; text: string; price: number; once?: boolean }
+/** kind: djai | pass | energie | prestige (| pub, an advertiser's); item: the pack's or item's id. */
+export type ShopPurchase = { id: string; kind: string; item: string; price: number; djai: number; status: string; credited: boolean; at: string }
+/** open: GeniusPay set up; sandbox: its test keys; adult: the account said it's 18 or over; passUntil: the Pass on till then. */
+export type ShopView = { open: boolean; sandbox?: boolean; adult: boolean; passUntil?: string; prestige: boolean; packs: ShopPack[]; items: ShopItem[]; purchases: ShopPurchase[] }
 
 export type Happening = { id: string; label: string; icon: string; text: string; category?: string; minHour?: number; maxHour?: number; days?: number[]; join?: Interaction; source?: Source }
 export type HappeningNow = { happening: Happening | null; start: number; end: number }
