@@ -55,3 +55,9 @@ services:
         sync: false
       - key: MAIL_FROM # e.g. Babi Life <noreply@lifeinbabi.com> (with Brevo: a sender or domain verified there)
         sync: false
+      - key: GENIUSPAY_API_KEY # la boutique (backend shop/): the merchant's public key from GeniusPay's dashboard (pk_sandbox_… to test, pk_live_… to sell); unset: the shop shows, shut
+        sync: false
+      - key: GENIUSPAY_API_SECRET # its secret key (sk_…), never in the code
+        sync: false
+      - key: GENIUSPAY_WEBHOOK_SECRET # the webhook's secret (whsec_…); the webhook URL to give GeniusPay: <this API's address>/api/v1/shop/geniuspay
+        sync: false

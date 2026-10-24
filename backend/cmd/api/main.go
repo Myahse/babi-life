@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"log"
@@ -33,6 +34,7 @@ import (
 	"github.com/myahse/babi-life/backend/internal/mail"
 	"github.com/myahse/babi-life/backend/internal/news"
 	"github.com/myahse/babi-life/backend/internal/push"
+	"github.com/myahse/babi-life/backend/internal/shop"
 	"github.com/myahse/babi-life/backend/internal/sims"
 	"github.com/myahse/babi-life/backend/internal/waitlist"
 	"github.com/myahse/babi-life/backend/internal/world"
@@ -113,6 +115,14 @@ func main() {
 	players.Karts = karts
 	players.Courts = courts
 	go players.Run(ctx)
+	// La boutique: Djai bought through GeniusPay (its keys only in the environment).
+	shopH := &shop.Handler{DB: pool, Pay: shop.FromEnv(), Site: authH.SiteURL, API: strings.TrimRight(cmp.Or(os.Getenv("API_URL"), os.Getenv("RENDER_EXTERNAL_URL")), "/"), Changed: func(id string) { players.Changed(id) }}
+	if shopH.Pay == nil {
+		log.Printf("⚠️  GeniusPay not set (GENIUSPAY_API_KEY, GENIUSPAY_API_SECRET): the shop is shut")
+	} else if shopH.Pay.WebhookSecret == "" {
+		log.Printf("⚠️  GENIUSPAY_WEBHOOK_SECRET not set: webhooks aren't checked by signature (payments are still confirmed with GeniusPay)")
+	}
+	go shopH.Watch(ctx, 10*time.Minute)
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.RealIP, middleware.Logger, middleware.Recoverer)
@@ -278,6 +288,7 @@ func main() {
 		r.Get("/moderation/photo", mod.Photo)
 		r.Post("/auth/google", authH.Google)
 		r.Post("/auth/register", authH.Register)
+		r.Post("/shop/geniuspay", shopH.Webhook)
 		r.Post("/auth/login", authH.Login)
 		r.Post("/auth/forgot", authH.Forgot)
 		r.Post("/auth/reset", authH.Reset)
@@ -315,6 +326,7 @@ func main() {
 			r.Post("/me/push", pushes.Subscribe)
 			r.Delete("/me/push", pushes.Unsubscribe)
 			simsH.Routes(r)
+			shopH.Routes(r)
 		})
 	})
 
