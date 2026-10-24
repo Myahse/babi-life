@@ -20,6 +20,7 @@ import { Playce } from './playce'
 import { PlayceMarcory } from './playceMarcory'
 import { TOUR_F_FACING, TourF, TourFFar } from './tourF'
 import { PalaisJustice } from './palaisJustice'
+import { Presidence } from './presidence'
 import type { StadiumEvent } from '../../lib/stadium'
 import type { Obstacle } from '../obstacles'
 import { STADIUM_TRACKS } from './stadiumTrack'
@@ -54,6 +55,7 @@ export const LANDMARKS: Record<string, number> = {
   'portbouet-parc-expo': 60,
   'plateau-tour-f': 40,
   'plateau-tribunal': 44,
+  'plateau-presidence': 50,
 }
 
 /** How far a landmark's front is from its middle (metres): its ground starts at the roadside, the gare's yard at the street, not behind the houses along it. Else the middle stands its clearing back from the street. */
@@ -90,9 +92,9 @@ export const OPEN_AIR = new Set([...GROUNDS].filter((id) => id !== 'cocody-hotel
  * has a light one; the cathedral, the stadium, the Pyramide and the Palais de justice are drawn as
  * they are (they stand a kilometre apart in the Plateau: from one, the others were nowhere).
  */
-export const SKYLINE = new Set(['plateau-tour-f', 'plateau-cathedrale', 'plateau-stade', 'plateau-pyramide', 'plateau-tribunal'])
+export const SKYLINE = new Set(['plateau-tour-f', 'plateau-cathedrale', 'plateau-stade', 'plateau-pyramide', 'plateau-tribunal', 'plateau-presidence'])
 /** Which way each faces when drawn from afar (its lot not laid out yet): the way its street turns it. */
-const FAR_FACING: Record<string, number> = { 'plateau-cathedrale': 0, 'plateau-tribunal': Math.PI, 'plateau-stade': 0, 'plateau-pyramide': 0 }
+const FAR_FACING: Record<string, number> = { 'plateau-cathedrale': 0, 'plateau-tribunal': Math.PI, 'plateau-stade': 0, 'plateau-pyramide': 0, 'plateau-presidence': 0 }
 
 /** No further than this (the fog has them all by then). */
 export const SKYLINE_FAR = 5500
@@ -109,6 +111,7 @@ export function FarLandmark({ id, night }: { id: string; night: boolean }) {
     case 'plateau-stade':
     case 'plateau-pyramide':
     case 'plateau-tribunal':
+    case 'plateau-presidence':
       return (
         <group rotation={[0, FAR_FACING[id] ?? 0, 0]}>
           <Landmark id={id} night={night} />
@@ -134,6 +137,8 @@ export function Landmark({ id, night, demo, open = true }: { id: string; night: 
       return <TourF night={night} />
     case 'plateau-tribunal':
       return <PalaisJustice night={night} />
+    case 'plateau-presidence':
+      return <Presidence night={night} />
     case 'plateau-stade':
       return <Stadium place={id} night={night} demo={demo} />
     case 'cocody-hotel-ivoire':

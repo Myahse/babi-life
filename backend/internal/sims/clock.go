@@ -61,6 +61,21 @@ func (s *Sim) withPass(earned int) int {
 	return earned + int(float64(earned)*PassBonus+0.5)
 }
 
+// SectBonus: the share a sect adds to what its members earn (politics.Sects):
+// the Baobab on work, the Cercle des Sept on défis and bets, the Lumière on all.
+const SectBonus = 0.05
+
+// withSect: what's earned, a twentieth more when the Sim's sect blesses that kind ("travail", "defi").
+func (s *Sim) withSect(earned int, kind string) int {
+	if earned <= 0 || s.Sect == "" {
+		return earned
+	}
+	if s.Sect == "lumiere" || (s.Sect == "baobab" && kind == "travail") || (s.Sect == "sept" && kind == "defi") {
+		return earned + int(float64(earned)*SectBonus+0.5)
+	}
+	return earned
+}
+
 // hold: time gone by for the world but not for the Sim (the player away): its
 // clock jumps on, and what it was doing, its age, its friends' last news wait
 // where they were.
@@ -124,7 +139,7 @@ func (s *Sim) finish(rng *rand.Rand) []Event {
 		s.City, s.Commune = a.Trip.City, a.Trip.Commune
 		return []Event{{Kind: "travel", Text: a.Trip.Label, Money: -a.Trip.Fare, GameTime: a.Start}}
 	}
-	earned := s.withPass(a.Earned())
+	earned := s.withSect(s.withPass(a.Earned()), "travail")
 	s.Money += earned
 	money := earned
 	if a.Interaction.Cost > 0 {

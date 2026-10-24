@@ -62,6 +62,9 @@ type Player struct {
 	// Together (couple.go), and a couple request between the two: "sent" | "received" | "".
 	Couple        bool   `json:"couple,omitempty"`
 	CoupleRequest string `json:"coupleRequest,omitempty"`
+	// In office (politics: « Présidente », « Maire de Cocody »), and the gang's tag over the name.
+	Title string `json:"title,omitempty"`
+	Crew  string `json:"crew,omitempty"`
 }
 
 type PlayerActivity struct {
@@ -190,6 +193,8 @@ func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
 	}
 	c.mark(friends)
 	c.mark(players) // in the street too: a heart over one's partner
+	h.titles(ctx, players)
+	h.titles(ctx, friends)
 	// Everyone in the game right now, wherever they are (the chip says « 7 ici · 132 en ligne »).
 	online := len(players) + 1
 	if h.Online != nil {

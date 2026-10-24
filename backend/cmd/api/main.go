@@ -34,6 +34,7 @@ import (
 	"github.com/myahse/babi-life/backend/internal/live"
 	"github.com/myahse/babi-life/backend/internal/mail"
 	"github.com/myahse/babi-life/backend/internal/news"
+	"github.com/myahse/babi-life/backend/internal/politics"
 	"github.com/myahse/babi-life/backend/internal/push"
 	"github.com/myahse/babi-life/backend/internal/shop"
 	"github.com/myahse/babi-life/backend/internal/sims"
@@ -283,6 +284,9 @@ func main() {
 		// The /admin page's API (ADMIN_KEY): players, log, announcements, WhatsApp.
 		// The players' ideas from the phone (ideas): sent signed in, read and answered on /admin.
 		ideasH := &ideas.Handler{DB: pool}
+		// The city's political life (politics): elections settled, offices paid, the sects' dues, on the clock.
+		politicsH := &politics.Handler{DB: pool, Changed: func(id string) { players.Changed(id) }}
+		go politicsH.Watch(ctx, 10*time.Minute)
 		(&admin.Handler{DB: pool, WA: &admin.WhatsApp{Token: os.Getenv("WHATSAPP_TOKEN"), PhoneID: os.Getenv("WHATSAPP_PHONE_ID"), API: os.Getenv("WHATSAPP_API")}, Ideas: ideasH}).Routes(r)
 		// Moderation of Gbairai's reports (MODERATION_KEY).
 		mod := &sims.Moderation{H: simsH, Key: os.Getenv("MODERATION_KEY")}
@@ -332,6 +336,7 @@ func main() {
 			simsH.Routes(r)
 			shopH.Routes(r)
 			ideasH.Routes(r)
+			politicsH.Routes(r)
 		})
 	})
 
