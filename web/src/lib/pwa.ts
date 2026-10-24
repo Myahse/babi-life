@@ -56,17 +56,5 @@ export function useInstall() {
   }
 }
 
-export function useOnline() {
-  const [online, setOnline] = useState(navigator.onLine)
-  useEffect(() => {
-    const on = () => setOnline(true)
-    const off = () => setOnline(false)
-    window.addEventListener('online', on)
-    window.addEventListener('offline', off)
-    return () => {
-      window.removeEventListener('online', on)
-      window.removeEventListener('offline', off)
-    }
-  }, [])
-  return online
-}
+/** Online or not: the same as the game's data and actions see it (lib/offline.ts: the browser's word, and the requests that fail or get through). */
+export { useOnline } from './offline'

@@ -23,6 +23,8 @@
         function (e) {
           var t = e.target
           if (!t || t.tagName !== 'SCRIPT' || !/\/assets\//.test(t.src || '')) return
+          // Without network a missing file is the network's doing: what's kept stays.
+          if (navigator.onLine === false) return
           try {
             if (sessionStorage.getItem('babi-repair')) return
             sessionStorage.setItem('babi-repair', '1')

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { User } from '../lib/types'
+import { forgetData } from '../lib/offline'
 
 type SessionState = {
   token: string | null
@@ -15,7 +16,8 @@ export const useSession = create<SessionState>()(
       token: null,
       user: null,
       signIn: (token, user) => set({ token, user }),
-      signOut: () => set({ token: null, user: null }),
+      // Nothing of the account stays on the phone (the data kept for the times without network).
+      signOut: () => (forgetData(), set({ token: null, user: null })),
     }),
     { name: 'ivoire-life-session' },
   ),

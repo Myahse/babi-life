@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ShoppingCart, Trophy, Waves, Coffee, Gamepad2, Car, Swords, Joystick, type LucideIcon } from 'lucide-react'
+import { ShoppingCart, Trophy, Waves, Coffee, Gamepad2, Car, Swords, Joystick, X, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import { haptic } from '../lib/native'
 import type { ActionResult } from '../lib/types'
@@ -93,6 +93,11 @@ const DEFIS: Record<DefiKind, { title: string; button: string; icon: LucideIcon;
   },
 }
 
+/** The games the phone's « Jeux » plays for practice, without network too (the ski needs the lagoon's 3D: not there). */
+export const PRACTICE: DefiKind[] = ['foot', 'course', 'combat', 'arcade', 'the', 'courses']
+/** A défi's name, icon and colours, for a list. */
+export const defiLook = (kind: DefiKind) => ({ title: DEFIS[kind].title, icon: DEFIS[kind].icon, colors: DEFIS[kind].colors })
+
 /** The défi to take on during the activity: a gold button under its card. */
 export function DefiButton({ kind, interactionId, onClick }: { kind: DefiKind; interactionId?: string; onClick: () => void }) {
   return (
@@ -105,7 +110,7 @@ export function DefiButton({ kind, interactionId, onClick }: { kind: DefiKind; i
 const stars = (score: number) => (score >= 85 ? 3 : score >= 50 ? 2 : score >= 15 ? 1 : 0)
 
 /** The défi: how it's played, the game, the score and what it earned. */
-export function DefiSheet({ kind, simId, big, interactionId, send, challenge, onClose }: { kind: DefiKind; simId: string; /** The shopping at the supermarket: the longer list. */ big?: boolean; /** The activity it's played during (the foot's match, challenge or tournament). */ interactionId?: string; /** The score sent: the server's answer (applied to the Sim), or null if it failed. */ send?: (score: number) => Promise<ActionResult | null>; /** Taken on from someone's score (a message, a link): played for the fun of it, nothing sent. */ challenge?: { score: number; from: string }; onClose: () => void }) {
+export function DefiSheet({ kind, simId, big, interactionId, practice, send, challenge, onClose }: { kind: DefiKind; simId: string; /** The shopping at the supermarket: the longer list. */ big?: boolean; /** The activity it's played during (the foot's match, challenge or tournament). */ interactionId?: string; /** Played from the phone's « Jeux », for practice: nothing sent, nothing earned. */ practice?: boolean; /** The score sent: the server's answer (applied to the Sim), or null if it failed. */ send?: (score: number) => Promise<ActionResult | null>; /** Taken on from someone's score (a message, a link): played for the fun of it, nothing sent. */ challenge?: { score: number; from: string }; onClose: () => void }) {
   const mode = footMode(challenge ? undefined : interactionId)
   const d = kind === 'foot' ? { ...DEFIS.foot, title: FOOT[mode].title, how: [...DEFIS.foot.how, FOOT[mode].how] } : DEFIS[kind]
   const [phase, setPhase] = useState<'intro' | 'play' | 'result'>('intro')
@@ -122,12 +127,19 @@ export function DefiSheet({ kind, simId, big, interactionId, send, challenge, on
     if (s >= 50) haptic('success')
     setScore(s)
     setPhase('result')
+    if (practice) return setSaid(best && s > best ? 'Nouveau record d’entraînement ! Le vrai défi se joue sur place (la salle de jeux, le grin, le supermarché).' : 'Entraînement : rien n’est envoyé. Le vrai défi se joue sur place, et il rapporte.')
     if (challenge) return setSaid(s > challenge.score ? `Tu as battu ${challenge.from} (${challenge.score}) ! Renvoie-lui ton score.` : s === challenge.score ? `Égalité avec ${challenge.from} : ${s} partout !` : `${challenge.from} reste devant avec ${challenge.score}. Retente !`)
     const r = await send?.(s)
     setSaid(r?.outcome.text.replace(/^Défi \d+\/100\. /, '') ?? null)
   }
   const ski = kind === 'ski'
   const n = stars(score)
+  // On a computer, Échap leaves the game (nothing sent: it can be played again later).
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', key)
+    return () => window.removeEventListener('keydown', key)
+  }, [onClose])
   return (
     <div className="absolute inset-0 z-50 flex flex-col" style={{ background: phase === 'play' || !ski ? d.bg : 'rgba(15,18,48,0.35)' }}>
       {phase === 'play' &&
@@ -146,6 +158,12 @@ export function DefiSheet({ kind, simId, big, interactionId, send, challenge, on
         ) : (
           <SkiDefi onEnd={(s) => void end(s)} />
         ))}
+      {/* Left halfway: nothing sent, the défi can be taken on again */}
+      {phase === 'play' && (
+        <button className="absolute top-12 right-2 z-20 grid h-8 w-8 place-items-center rounded-full bg-black/45 text-white" onClick={onClose} aria-label="Quitter la partie">
+          <X size={17} strokeWidth={2.6} />
+        </button>
+      )}
       {phase === 'intro' && (
         <div className={`flex flex-1 flex-col p-4 ${ski ? 'justify-end' : 'justify-center'}`}>
           <div className="card animate-pop mx-auto w-full max-w-[380px] p-4">
@@ -201,12 +219,12 @@ export function DefiSheet({ kind, simId, big, interactionId, send, challenge, on
             {best !== null && best > 0 && score > best && <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-[#fff3c4] px-3 py-1 text-[13px] font-extrabold text-[#a06a00]"><Trophy size={14} /> Nouveau record !</div>}
             <p className="mt-3 min-h-[40px] text-[14px] leading-snug font-bold text-[var(--color-ink)]">{said ?? '…'}</p>
             <div className="mt-3 grid grid-cols-2 gap-2">
-              {challenge ? (
+              {challenge || practice ? (
                 <button className="btn btn-soft !py-2.5 !text-sm" onClick={() => (setSaid(null), setPhase('play'))}>
                   Rejouer
                 </button>
               ) : null}
-              <button className={`btn !py-2.5 ${challenge ? '' : 'col-span-2'}`} onClick={onClose}>
+              <button className={`btn !py-2.5 ${challenge || practice ? '' : 'col-span-2'}`} onClick={onClose}>
                 Super !
               </button>
             </div>

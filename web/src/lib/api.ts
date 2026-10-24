@@ -2,6 +2,7 @@ import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User
 import { useSession } from '../store/session'
 import { API_BASE as BASE } from './env'
 import { blobUrl } from './blobUrl'
+import { keepData, keptData, OFFLINE_TEXT, setOnline } from './offline'
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -51,27 +52,63 @@ function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return p
 }
 
+/**
+ * The reads kept for the times without network (lib/offline.ts): what the game
+ * needs to open and be looked round as it was (the world, the account and its
+ * Sim, the commune's places, the garage, the défis' records, the messages and
+ * the snaps' list, the news), not the rest (a feed, a match going on).
+ */
+const KEEP = /^\/(world|me|sims|news)(\?|$)|^\/sims\/[^/]+(\?|$)|^\/sims\/[^/]+\/(gbairai|photos|garage|defis|flashe|stories|lots|plots|emotes)(\?|$)|^\/places\?/
+
 async function send<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = useSession.getState().token
   const method = (init.method ?? 'GET').toUpperCase()
   const key = method !== 'GET' && token ? writeKey(method, path, init.body) : null
-  const res = await fetch(BASE + path, {
-    ...init,
-    headers: {
-      // A form (a Tikitoko clip) sets its own multipart type, with the boundary.
-      ...(init.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(key ? { 'Idempotency-Key': key } : {}),
-      ...init.headers,
-    },
-  })
+  const kept = method === 'GET' && KEEP.test(path) ? `${useSession.getState().user?.id ?? 'guest'} ${path}` : null
+  // No network: a read from what was kept, a write not even tried (it waits for the network).
+  const offline = async (): Promise<T> => {
+    setOnline(false)
+    const hit = kept ? await keptData<T>(kept) : undefined
+    if (hit !== undefined) return hit
+    throw new ApiError(0, OFFLINE_TEXT)
+  }
+  let res: Response
+  try {
+    res = await fetch(BASE + path, {
+      ...init,
+      headers: {
+        // A form (a Tikitoko clip) sets its own multipart type, with the boundary.
+        ...(init.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(key ? { 'Idempotency-Key': key } : {}),
+        ...init.headers,
+      },
+    })
+  } catch (e) {
+    // The request didn't leave (or no answer came): the network, not the server.
+    if (e instanceof DOMException && e.name === 'AbortError') throw e
+    return offline()
+  }
+  setOnline(true)
   if (res.status === 401 && token) useSession.getState().signOut()
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
     // A 404 with no message of ours: the server doesn't know this address yet (an older version is running).
     throw new ApiError(res.status, body.error ?? (res.status === 404 ? "Le serveur n'a pas encore cette fonction : il doit être mis à jour." : res.statusText))
   }
-  return res.status === 204 ? (undefined as T) : res.json()
+  if (res.status === 204) return undefined as T
+  const data = (await res.json()) as T
+  if (kept) void keepData(kept, data)
+  // An action's answer carries the Sim as it is now: the kept copy follows (else, without network, it'd go back to before).
+  const sim = method !== 'GET' ? (data as { sim?: { id?: string } } | null)?.sim : undefined
+  if (sim?.id) void keepSim(sim)
+  return data
+}
+
+async function keepSim(sim: { id?: string }) {
+  const key = `${useSession.getState().user?.id ?? 'guest'} /sims/${sim.id}`
+  const was = await keptData<Record<string, unknown>>(key)
+  if (was) await keepData(key, { ...was, sim })
 }
 
 const post = <T>(path: string, body: unknown) => request<T>(path, { method: 'POST', body: JSON.stringify(body) })

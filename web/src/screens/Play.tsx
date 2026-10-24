@@ -3,8 +3,9 @@ import { gesture } from '../world3d/gesture'
 import type { Pose } from '../avatar/Human'
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car } from 'lucide-react'
-import { api } from '../lib/api'
+import { BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2 } from 'lucide-react'
+import { api, ApiError } from '../lib/api'
+import { isOnline, offlineSince, useOnline } from '../lib/offline'
 import type { ActionResult, City, Commune, HappeningNow, Interaction, JobTask, JournalEvent, Player, Sim, World, Ride, Place, Plot, StreetRide } from '../lib/types'
 import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
@@ -74,7 +75,7 @@ import { NotifyPrompt } from '../components/NotifyPrompt'
 import { motoPaid, rideFare, RIDES, useMoto, type RideKind } from '../world3d/moto'
 import { GBAKA, inkOn, kerbWait, MOTO, waitsAtKerb } from '../game/rides'
 import { answerDrop, useDropAsk } from '../world3d/dropRoute'
-import { DefiButton, DefiSheet, defiOf, type DefiKind } from '../components/Defi'
+import { DefiButton, DefiSheet, defiLook, defiOf, PRACTICE, type DefiKind } from '../components/Defi'
 import { BolideApp } from './BolideApp'
 import { Tutorial, beginner, openTutorial, useTutorialAsked } from '../components/Tutorial'
 import { haptic, onBack } from '../lib/native'
@@ -355,11 +356,24 @@ export function Play() {
 
   // The game runs on real time; between server round-trips the clock, needs
   // and the current activity advance locally, minute by minute.
+  // Without network nothing advances (the server holds the Sim too: backend sims/clock.go): it's
+  // seen as it was when the network went, as it was kept when the game opened without.
+  const online = useOnline()
+  const frozen = online ? 0 : offlineSince()
   const sim = useMemo(() => {
     if (!base) return null
-    const mins = (now - base.at) / 60000
+    const mins = Math.max(0, ((frozen || now) - base.at) / 60000)
     return { ...base.sim, gameMinutes: base.sim.gameMinutes + mins, needs: predict(base.sim, mins) }
-  }, [base, now])
+  }, [base, now, frozen])
+  // The network back: the Sim as the server has it.
+  const wasOnline = useRef(online)
+  useEffect(() => {
+    if (online && !wasOnline.current && base) {
+      void api.sim(base.sim.id).then(apply, () => undefined)
+      toast({ tone: 'done', title: 'De retour en ligne', text: 'Ton perso reprend sa vie.', money: 0 })
+    }
+    wasOnline.current = online
+  }, [online]) // eslint-disable-line react-hooks/exhaustive-deps
   // Another commune, another street: the door one stood at is gone (the new street's walker
   // starts with nothing near, so it never says so), or « Chez toi » was offered in Plateau.
   useEffect(() => setNear(null), [sim?.city, sim?.commune])
@@ -430,7 +444,7 @@ export function Play() {
   // these say the player is there, and the Sim's life is on hold while it isn't (backend sims/clock.go).
   useEffect(() => {
     if (!base) return
-    const t = setInterval(() => !document.hidden && api.sim(base.sim.id).then(apply).catch(() => undefined), 5 * 60000)
+    const t = setInterval(() => !document.hidden && isOnline() && api.sim(base.sim.id).then(apply).catch(() => undefined), 5 * 60000)
     return () => clearInterval(t)
   }, [base?.sim.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -552,7 +566,7 @@ export function Play() {
       if (money) toast({ tone: 'done', title: label, money, kind: 'social', icon: 'messages-square' })
       return { text, mood }
     } catch (e) {
-      toast({ tone: 'error', title: 'Pas possible', text: e instanceof Error ? e.message : 'Erreur', money: 0 })
+      toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? 'Hors ligne' : 'Pas possible', text: e instanceof Error ? e.message : 'Erreur', money: 0 })
       return null
     }
   }
@@ -566,7 +580,7 @@ export function Play() {
       if (kind === 'social') refreshPlayers()
       return true
     } catch (e) {
-      toast({ tone: 'error', title: 'Pas possible', text: e instanceof Error ? e.message : 'Erreur', money: 0 })
+      toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? 'Hors ligne' : 'Pas possible', text: e instanceof Error ? e.message : 'Erreur', money: 0 })
       return false
     } finally {
       setPending(null)
@@ -660,6 +674,8 @@ export function Play() {
   const tutoAsked = useTutorialAsked()
   // A défi taken on during the activity (components/Defi.tsx): the one going on.
   const [defi, setDefi] = useState<DefiKind | null>(null)
+  // One of the phone's « Jeux », played for practice.
+  const [practice, setPractice] = useState<DefiKind | null>(null)
   // At the wheel of one's own vehicle (world3d/drive.ts): parked, the petrol paid on the distance.
   const driven = useDriving()
   const park = () => {
@@ -676,6 +692,7 @@ export function Play() {
   const back = useRef<() => boolean>(() => false)
   back.current = () => {
     if (defi) return (setDefi(null), true)
+    if (practice) return (setPractice(null), true)
     if (huitOpen) return (setHuitOpen(false), true)
     if (damesOpen) return (setDamesOpen(false), true)
     if (overlay) return (setOverlay(null), setPhoneApp(null), true)
@@ -1335,6 +1352,7 @@ export function Play() {
           onMap={() => setOverlay('map')}
           onCamera={() => (setPhoneApp(null), setOverlay('camera'))}
           onFlashe={() => (setPhoneApp(null), setOverlay('flashe'))}
+          onPractice={(k) => (setOverlay(null), setPhoneApp(null), setPractice(k))}
           street={!showInside}
           onWalk={walkTo}
           onBuild={(lot) => (setOverlay(null), setBuilding(lot ?? 0))}
@@ -1386,13 +1404,14 @@ export function Play() {
               apply(res)
               return res
             } catch (e) {
-              toast({ tone: 'error', title: 'Pas possible', text: e instanceof Error ? e.message : 'Erreur', money: 0 })
+              toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? 'Hors ligne' : 'Pas possible', text: e instanceof Error ? e.message : 'Erreur', money: 0 })
               return null
             }
           }}
           onClose={() => setDefi(null)}
         />
       )}
+      {practice && !defi && <DefiSheet kind={practice} simId={sim.id} practice onClose={() => setPractice(null)} />}
       {/* A défi taken on from someone (a message, a link): played for fun, the score to send back */}
       {challenge && !defi && (
         <>
@@ -1447,7 +1466,7 @@ export function Play() {
 
 /* ---------- The in-game phone ---------- */
 
-type PhoneAppId = 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'bolide'
+type PhoneAppId = 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'bolide' | 'jeux'
 type PhoneProps = {
   world: World
   sim: Sim
@@ -1467,6 +1486,8 @@ type PhoneProps = {
   onCamera: () => void
   /** Flashé, full screen over the game too (its camera sees the street). */
   onFlashe: () => void
+  /** One of the « Jeux », for practice (nothing sent). */
+  onPractice: (kind: DefiKind) => void
   /** Out in the street (else in a room): what Tikitoko films. */
   street: boolean
   onWalk: (id: string) => void
@@ -1487,7 +1508,7 @@ type PhoneProps = {
   onDrive: (v: Driven) => void
 }
 
-function Phone({ world, sim, commune, onAutoWork, journal, time, act, startApp, delivery, onDelivery, onCollect, onClose, onMap, onCamera, onFlashe, street, onWalk, onBuild, onDames, onDamesOnline, onDamesResume, onHuitTable, onHuitFriend, onHuitResume, onDrive }: PhoneProps) {
+function Phone({ world, sim, commune, onAutoWork, journal, time, act, startApp, delivery, onDelivery, onCollect, onClose, onMap, onCamera, onFlashe, onPractice, street, onWalk, onBuild, onDames, onDamesOnline, onDamesResume, onHuitTable, onHuitFriend, onHuitResume, onDrive }: PhoneProps) {
   const [app, setApp] = useState<PhoneAppId | null>(startApp)
   // A photo of the gallery on its way to Tikitoko.
   const [tikiPhoto, setTikiPhoto] = useState<{ id: number; src: string } | undefined>()
@@ -1550,11 +1571,12 @@ function Phone({ world, sim, commune, onAutoWork, journal, time, act, startApp, 
           { id: 'galerie', label: 'Galerie', icon: Images, colors: ['#ffd36e', '#ff8a3d'], open: () => setApp('galerie') },
         ]
       : []),
+    { id: 'jeux', label: 'Jeux', icon: Gamepad2, colors: ['#c49bff', '#7048e8'], open: () => setApp('jeux') },
     { id: 'guide', label: 'Encyclo', icon: BookOpen, colors: ['#9fa8ff', '#4b4fd6'], open: () => setApp('guide') },
     { id: 'profile', label: 'Profil', icon: UserRound, colors: ['#ff8a9b', '#ff3d57'], open: () => navigate('/profil', { viewTransition: true }) },
     ] as Tile[]
   ).filter((a) => !life.minor || (a.id !== 'jobs' && a.id !== 'home'))
-  const title: Record<PhoneAppId, string> = { here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', babigram: 'Babigram', bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: 'Galerie', guide: 'Encyclopédie de Babi', dodo: 'Dodo', kineo: 'Kinéo', dames: 'Dames 225', huit: '8 américain', bolide: 'Bolide' }
+  const title: Record<PhoneAppId, string> = { here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', babigram: 'Babigram', bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: 'Galerie', guide: 'Encyclopédie de Babi', dodo: 'Dodo', kineo: 'Kinéo', dames: 'Dames 225', huit: '8 américain', bolide: 'Bolide', jeux: 'Jeux' }
 
   return (
     <div className="absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center" onClick={onClose}>
@@ -1634,6 +1656,17 @@ function Phone({ world, sim, commune, onAutoWork, journal, time, act, startApp, 
                 {app === 'home' && <HomeApp world={world} sim={sim} commune={commune} act={act} onBuild={onBuild} onWalk={onWalk} onMap={onMap} />}
                 {app === 'messages' && <Journal events={journal} />}
                 {app === 'news' && <NewsApp />}
+                {app === 'jeux' && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-bold text-[var(--color-ink-soft)]">Pour s'entraîner, même sans réseau : rien n'est envoyé ni gagné. Les vrais défis se jouent sur place (la salle de jeux vidéo, le grin, le supermarché) et rapportent.</p>
+                    <ul className="motion-stagger space-y-2">
+                      {PRACTICE.map((k) => {
+                        const d = defiLook(k)
+                        return <Row key={k} icon={d.icon} colors={d.colors} title={d.title} sub="Entraînement" onClick={() => onPractice(k)} />
+                      })}
+                    </ul>
+                  </div>
+                )}
                 {app === 'guide' && <GuideApp world={world} onTutorial={() => (onClose(), openTutorial())} onGo={(kind) => goToKind(kind, commune, onWalk, onMap)} />}
                 {app === 'dodo' && <DodoApp world={world} sim={sim} act={act} onMap={onMap} />}
                 {app === 'bolide' && <BolideApp world={world} sim={sim} act={act} onDrive={onDrive} />}
