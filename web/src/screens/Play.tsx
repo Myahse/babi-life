@@ -1379,6 +1379,7 @@ export function Play() {
           kind={defi}
           simId={sim.id}
           big={sim.activity.interaction.id === 'supermarche'}
+          interactionId={sim.activity.interaction.id}
           send={async (score) => {
             try {
               const res = await api.defi(sim.id, defi, score)
@@ -2296,7 +2297,7 @@ function ActivityBar({ world, sim, onStop, stopping, onRoute, onMore, onRejoin, 
       </div>
       {onTask && <JobTasks world={world} sim={sim} onTask={onTask} />}
       {onFilm && a.seance?.video && a.seance.at !== undefined && <FilmButton at={a.seance.at} onWatch={onFilm} />}
-      {onDefi && defiOf(a.interaction.id) && <DefiButton kind={defiOf(a.interaction.id)!} onClick={onDefi} />}
+      {onDefi && defiOf(a.interaction.id) && <DefiButton kind={defiOf(a.interaction.id)!} interactionId={a.interaction.id} onClick={onDefi} />}
       {onRejoin && (
         <button className="btn animate-pop mt-2 w-full !py-2.5" onClick={onRejoin.go}>
           <Volleyball size={18} /> {onRejoin.sport === 'basket' ? 'Revenir sur le terrain' : 'Revenir au match'}

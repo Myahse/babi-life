@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ShoppingCart, Trophy, Waves, Coffee, type LucideIcon } from 'lucide-react'
+import { ShoppingCart, Trophy, Waves, Coffee, Gamepad2, Car, Swords, Joystick, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import { haptic } from '../lib/native'
 import type { ActionResult } from '../lib/types'
@@ -8,17 +8,31 @@ import { ChallengeButton } from './SharedCard'
 import { TeaDefi } from './defi/Tea'
 import { CoursesDefi } from './defi/Courses'
 import { SkiDefi } from './defi/Ski'
+import { FootDefi } from './defi/Foot'
+import { CourseDefi } from './defi/Course'
+import { CombatDefi } from './defi/Combat'
+import { MoustiquesDefi } from './defi/Moustiques'
 
-// Les défis: while making tea at the grin, water-skiing off Île Boulay or doing
-// the shopping, the player can take it on as a little game with an action
-// button (components/defi/*). How it's played first, the game, then the score
+// Les défis: while making tea at the grin, water-skiing off Île Boulay, doing
+// the shopping or playing at the salle de jeux vidéo (the foot, the car race,
+// the fighting game, the arcade's mosquitoes: real games there), the player
+// can take it on as a little game with an action button (components/defi/*). How it's played first, the game, then the score
 // out of 100 and what it earned (backend sims/defi.go: once each time, a small
 // bonus, the best score kept as a record to beat).
 
-export type DefiKind = 'the' | 'ski' | 'courses'
+export type DefiKind = 'the' | 'ski' | 'courses' | 'foot' | 'course' | 'combat' | 'arcade'
 
 /** The défi of an activity (backend sims/defi.go defiFor says the same), or null. The pousse-pousse's tea is served: no défi. */
-export const defiOf = (interactionId?: string): DefiKind | null => ({ 'street-grin': 'the', 'chat-grin': 'the', 'ski-boulay': 'ski', supermarche: 'courses', courses: 'courses' } as Record<string, DefiKind>)[interactionId ?? ''] ?? null
+export const defiOf = (interactionId?: string): DefiKind | null =>
+  ({ 'street-grin': 'the', 'chat-grin': 'the', 'ski-boulay': 'ski', supermarche: 'courses', courses: 'courses', 'console-foot': 'foot', 'console-defi': 'foot', 'tournoi-console': 'foot', 'console-course': 'course', 'console-combat': 'combat', 'borne-arcade': 'arcade' } as Record<string, DefiKind>)[interactionId ?? ''] ?? null
+
+/** The foot's three ways: a match, the challenge where the loser pays, the Saturday tournament. */
+const footMode = (interactionId?: string) => (interactionId === 'console-defi' ? 'defi' : interactionId === 'tournoi-console' ? 'tournoi' : 'match')
+const FOOT: Record<ReturnType<typeof footMode>, { title: string; button: string; how: string }> = {
+  match: { title: 'Le match à la console', button: 'Jouer le match', how: '80 secondes : le plus de buts possible contre les gars du quartier.' },
+  defi: { title: 'Le défi du quartier', button: 'Jouer le défi', how: 'Contre le caïd du quartier : gagné, il te paie ta mise ; perdu, tu paies.' },
+  tournoi: { title: 'Le tournoi du samedi', button: 'Jouer le tournoi', how: 'Quart, demi, finale : un nul se joue au but en or, puis aux tirs au but. La coupe : 4 000 Djai ; la finale : 1 500.' },
+}
 
 const DEFIS: Record<DefiKind, { title: string; button: string; icon: LucideIcon; colors: [string, string]; how: string[]; bg: string }> = {
   the: {
@@ -37,6 +51,38 @@ const DEFIS: Record<DefiKind, { title: string; button: string; icon: LucideIcon;
     how: ['Tiens ◀ ou ▶ pour te déporter derrière le bateau.', "Passe chaque bouée par l'extérieur.", 'Aux tremplins : reviens au milieu et touche « Sauter » juste avant.'],
     bg: 'transparent',
   },
+  foot: {
+    title: 'Le foot à la console',
+    button: 'Jouer le match',
+    icon: Gamepad2,
+    colors: ['#ff9a3c', '#e8590c'],
+    how: ['Pose le pouce à gauche et glisse : ton joueur (cerclé de jaune) court.', '« Passe » donne au coéquipier ; « Tir » tire vers le but en haut, le stick vise à gauche ou à droite.', 'Sans le ballon, « Passe » devient un tacle : tu le prends… ou tu tombes.'],
+    bg: '#0b1a10',
+  },
+  course: {
+    title: 'La course à deux',
+    button: 'Jouer la course',
+    icon: Car,
+    colors: ['#4dabf7', '#1c7ed6'],
+    how: ['La voiture accélère toute seule : tiens ◀ ou ▶ pour tourner.', 'Double les woro-woros et les gbakas : si tu les touches, tu perds ta vitesse. Le bas-côté te ralentit.', 'Deux tours contre la voiture bleue ; trois « Turbo » pour la passer.'],
+    bg: '#0d1b2a',
+  },
+  combat: {
+    title: 'Le combat de rue',
+    button: 'Jouer le combat',
+    icon: Swords,
+    colors: ['#ff6b6b', '#c92a2a'],
+    how: ['◀ ▶ pour bouger. « Poing » est rapide, « Pied » va plus loin mais plus lentement.', '« Garde » (tenu) encaisse les coups. Chaque coup remplit ta jauge.', 'Jauge pleine : « Super », le coupé-décalé qui fait mal. Deux rounds gagnés pour le match.'],
+    bg: '#120d24',
+  },
+  arcade: {
+    title: 'Moustiques !',
+    button: 'Jouer à la borne',
+    icon: Joystick,
+    colors: ['#b197fc', '#7048e8'],
+    how: ['Glisse le doigt : la bombe PAF suit, et tire toute seule.', 'Les moustiques tigres prennent trois coups. Attrape la spirale verte : tir triple.', 'Trois piqûres et c\'est fini. À 45 secondes, le Gros Moustique arrive.'],
+    bg: '#070a1c',
+  },
   courses: {
     title: 'La liste de courses',
     button: 'Défi : la liste',
@@ -48,10 +94,10 @@ const DEFIS: Record<DefiKind, { title: string; button: string; icon: LucideIcon;
 }
 
 /** The défi to take on during the activity: a gold button under its card. */
-export function DefiButton({ kind, onClick }: { kind: DefiKind; onClick: () => void }) {
+export function DefiButton({ kind, interactionId, onClick }: { kind: DefiKind; interactionId?: string; onClick: () => void }) {
   return (
     <button className="btn animate-pop mt-2 w-full !bg-[#ffc233] !py-2.5 !text-sm !text-[#16161c] shadow-[0_4px_0_#e09a00]" onClick={onClick}>
-      <Trophy size={17} strokeWidth={2.6} /> {DEFIS[kind].button}
+      <Trophy size={17} strokeWidth={2.6} /> {kind === 'foot' ? FOOT[footMode(interactionId)].button : DEFIS[kind].button}
     </button>
   )
 }
@@ -59,8 +105,9 @@ export function DefiButton({ kind, onClick }: { kind: DefiKind; onClick: () => v
 const stars = (score: number) => (score >= 85 ? 3 : score >= 50 ? 2 : score >= 15 ? 1 : 0)
 
 /** The défi: how it's played, the game, the score and what it earned. */
-export function DefiSheet({ kind, simId, big, send, challenge, onClose }: { kind: DefiKind; simId: string; /** The shopping at the supermarket: the longer list. */ big?: boolean; /** The score sent: the server's answer (applied to the Sim), or null if it failed. */ send?: (score: number) => Promise<ActionResult | null>; /** Taken on from someone's score (a message, a link): played for the fun of it, nothing sent. */ challenge?: { score: number; from: string }; onClose: () => void }) {
-  const d = DEFIS[kind]
+export function DefiSheet({ kind, simId, big, interactionId, send, challenge, onClose }: { kind: DefiKind; simId: string; /** The shopping at the supermarket: the longer list. */ big?: boolean; /** The activity it's played during (the foot's match, challenge or tournament). */ interactionId?: string; /** The score sent: the server's answer (applied to the Sim), or null if it failed. */ send?: (score: number) => Promise<ActionResult | null>; /** Taken on from someone's score (a message, a link): played for the fun of it, nothing sent. */ challenge?: { score: number; from: string }; onClose: () => void }) {
+  const mode = footMode(challenge ? undefined : interactionId)
+  const d = kind === 'foot' ? { ...DEFIS.foot, title: FOOT[mode].title, how: [...DEFIS.foot.how, FOOT[mode].how] } : DEFIS[kind]
   const [phase, setPhase] = useState<'intro' | 'play' | 'result'>('intro')
   const [best, setBest] = useState<number | null>(null)
   const [score, setScore] = useState(0)
@@ -83,7 +130,22 @@ export function DefiSheet({ kind, simId, big, send, challenge, onClose }: { kind
   const n = stars(score)
   return (
     <div className="absolute inset-0 z-50 flex flex-col" style={{ background: phase === 'play' || !ski ? d.bg : 'rgba(15,18,48,0.35)' }}>
-      {phase === 'play' && (kind === 'the' ? <TeaDefi onEnd={(s) => void end(s)} /> : kind === 'courses' ? <CoursesDefi big={!!big} onEnd={(s) => void end(s)} /> : <SkiDefi onEnd={(s) => void end(s)} />)}
+      {phase === 'play' &&
+        (kind === 'the' ? (
+          <TeaDefi onEnd={(s) => void end(s)} />
+        ) : kind === 'courses' ? (
+          <CoursesDefi big={!!big} onEnd={(s) => void end(s)} />
+        ) : kind === 'foot' ? (
+          <FootDefi mode={mode} onEnd={(s) => void end(s)} />
+        ) : kind === 'course' ? (
+          <CourseDefi onEnd={(s) => void end(s)} />
+        ) : kind === 'combat' ? (
+          <CombatDefi onEnd={(s) => void end(s)} />
+        ) : kind === 'arcade' ? (
+          <MoustiquesDefi onEnd={(s) => void end(s)} />
+        ) : (
+          <SkiDefi onEnd={(s) => void end(s)} />
+        ))}
       {phase === 'intro' && (
         <div className={`flex flex-1 flex-col p-4 ${ski ? 'justify-end' : 'justify-center'}`}>
           <div className="card animate-pop mx-auto w-full max-w-[380px] p-4">
