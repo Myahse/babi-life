@@ -853,6 +853,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   // For the mini-map and the « Où aller ? » list.
   useEffect(() => {
     whereabouts.places = walkLots.map((l) => ({ id: l.id, kind: l.kind, name: l.name, door: l.door }))
+    // Development only (tests): the lots set down, with where each stands and faces.
+    if (import.meta.env.DEV) Object.assign(globalThis, { __lots: () => walkLots.map((l) => ({ id: l.id, x: l.x, z: l.z, rot: l.rot, door: l.door })) })
     // The commune's places further than the streets loaded (its mairie at the other end, a forest 7 km off): there
     // too, where the map puts them; going there loads the streets round them first.
     const set = new Set(walkLots.map((l) => l.id))

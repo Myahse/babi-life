@@ -570,8 +570,8 @@ export function Zoo({ night, open = true }: { night: boolean; /** Within its hou
       crowns.push({ p: [x, h + 0.8, z], s: [R * 1.6, 2.4, R * 1.6], ry: r() * 3, c: green })
       crowns.push({ p: [x + (r() - 0.5) * 2, h + 2.6, z + (r() - 0.5) * 2], s: [R, 2, R], ry: r() * 3, c: green })
     }
-    // In the enclosures: the elephants' shade tree, the lions' tree.
-    for (const [x, z, h] of [[-34, -22, 10], [12, -46, 7]] as const) {
+    // In the enclosures: the elephants' shade tree, the lions' tree; over the picnic lawn by the gate, two more.
+    for (const [x, z, h] of [[-34, -22, 10], [12, -46, 7], [-48, 33, 9], [-45.5, 24.5, 8]] as const) {
       trunks.push({ p: [x, h / 2, z], s: [0.9, h, 0.9] })
       crowns.push({ p: [x, h + 0.8, z], s: [9, 2.2, 9], c: '#3b8a3e' })
     }

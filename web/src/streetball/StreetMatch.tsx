@@ -412,24 +412,33 @@ function Pad({ input, hud, sport, touch }: { input: React.MutableRefObject<Input
     <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
       <Stick input={input} />
       <div className="flex flex-col items-end gap-2">
-        {!touch && <span className="text-right text-[11px] font-bold text-white drop-shadow">Flèches courir · Espace tir · J passe · K crochet · L défense</span>}
+        {!touch && <span className="text-right text-[11px] font-bold text-white drop-shadow">Flèches courir · Espace tir · J passe (sans le ballon : appelle) · K crochet · L défense</span>}
         <div className="grid grid-cols-2 gap-3">
-          <button className={`${btn} h-16 w-16 bg-[#2563eb] text-sm text-white`} onPointerDown={press('pass')}>
+          <button className={`${btn} relative h-16 w-16 bg-[#2563eb] text-sm text-white`} onPointerDown={press('pass')}>
             {hud.has ? 'Passe' : 'Appelle'}
+            {!touch && <Key>J</Key>}
           </button>
-          <button className={`${btn} h-20 w-20 text-base text-white ${hud.dunk ? 'animate-pulse bg-[#e11d48]' : 'bg-[#ff8200]'} ${!hud.has && !basket ? off : ''}`} onPointerDown={press('shoot')}>
+          <button className={`${btn} relative h-20 w-20 text-base text-white ${hud.dunk ? 'animate-pulse bg-[#e11d48]' : 'bg-[#ff8200]'} ${!hud.has && !basket ? off : ''}`} onPointerDown={press('shoot')}>
             {hud.dunk ? 'Dunk !' : hud.has ? 'Tir' : basket ? 'Saut' : 'Tir'}
+            {!touch && <Key>Espace</Key>}
           </button>
-          <button className={`${btn} h-16 w-16 bg-[#ffd43b] text-xs text-[#141416] ${hud.has ? '' : off}`} onPointerDown={press('skill')}>
+          <button className={`${btn} relative h-16 w-16 bg-[#ffd43b] text-xs text-[#141416] ${hud.has ? '' : off}`} onPointerDown={press('skill')}>
             {basket ? 'Crossover' : 'Crochet'}
+            {!touch && <Key>K</Key>}
           </button>
-          <button className={`${btn} h-16 w-16 bg-[#16a34a] text-xs text-white ${hud.has ? off : ''}`} onPointerDown={press('defend')} onPointerUp={lift} onPointerCancel={lift} onPointerLeave={lift}>
+          <button className={`${btn} relative h-16 w-16 bg-[#16a34a] text-xs text-white ${hud.has ? off : ''}`} onPointerDown={press('defend')} onPointerUp={lift} onPointerCancel={lift} onPointerLeave={lift}>
             Défense
+            {!touch && <Key>L</Key>}
           </button>
         </div>
       </div>
     </div>
   )
+}
+
+/** On a computer: the key of a move, in the corner of its button. */
+function Key({ children }: { children: string }) {
+  return <kbd className="absolute -top-1.5 -right-1.5 rounded-md bg-white px-1 font-sans text-[10px] leading-4 font-extrabold text-[#141416] shadow">{children}</kbd>
 }
 
 /** The final whistle: the score, what the player did, what the people filming made of it. */

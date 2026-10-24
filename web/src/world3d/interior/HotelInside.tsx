@@ -69,8 +69,8 @@ const PLAIN_HOTEL: Hotel = { pal: PLAIN, view: 'jardin', tall: false, decor: 'au
 const SPOTS: Record<string, Spot> = {
   // Lengths of the pool, from the deck.
   'piscine-hotel': { at: [0, -26], rot: Math.PI / 2, pose: 'swim', y: 0.42, swim: 6.5, from: [0, -20.5] },
-  // A table of the restaurant, by the glass over the pool.
-  'brunch-lagune': { at: [-14, -11.4], rot: Math.PI, pose: 'eat', y: 0.05 },
+  // A table of the restaurant, by the glass over the pool: on its chair (the chairs stand either side, along x), facing it.
+  'brunch-lagune': { at: [-14.9, -11.4], rot: Math.PI / 2, pose: 'eat', y: 0.05 },
   // A stool at the bar.
   'bar-hotel': { at: [13.4, -4.6], rot: Math.PI, pose: 'drink', y: 0.35 },
   // At work: behind the reception desk, beside the receptionist.
