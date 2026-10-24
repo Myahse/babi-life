@@ -1,14 +1,14 @@
 import { useSyncExternalStore } from 'react'
 
-// Without the network (the 4G gone in the gbaka, the Wi-Fi cut): the game
-// opens and goes on as it was last seen, from what was kept on the phone, and
-// nothing advances (the server holds the Sim while it's not there:
-// backend sims/clock.go). Kept: the game's data last read (the world, the Sim,
-// the commune's places, the messages…: lib/api.ts says which), the account's
-// own and wiped at sign-out; the map's tiles (the streets, the buildings) for
-// a month (lib/tileCache.ts). Whatever has to reach the server waits for the network.
+// Without network (the 4G gone in the gbaka, the Wi-Fi cut): the game opens
+// and goes on from what was kept on the phone (the game's data last read:
+// the world, the Sim, the commune's places, the messages…: lib/api.ts says
+// which; the account's own, wiped at sign-out; the map's tiles, the streets,
+// the buildings, for a month: lib/tileCache.ts). The Sim is played on the
+// phone and what's done is sent once online (lib/offlinePlay.ts); what
+// can't be done without the server waits for the network.
 
-export const OFFLINE_TEXT = "Pas de réseau : ton perso t'attend. Ça reprendra quand tu seras connecté·e."
+export const OFFLINE_TEXT = 'Pas de réseau pour ça : réessaie une fois connecté·e.'
 
 const DATA = 'babi-data-v1'
 const can = () => typeof caches !== 'undefined'

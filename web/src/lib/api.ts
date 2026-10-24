@@ -60,14 +60,28 @@ function request<T>(path: string, init: RequestInit = {}): Promise<T> {
  */
 const KEEP = /^\/(world|me|sims|news)(\?|$)|^\/sims\/[^/]+(\?|$)|^\/sims\/[^/]+\/(gbairai|photos|garage|defis|flashe|stories|lots|plots|emotes)(\?|$)|^\/places\?/
 
+/**
+ * Played without network (lib/offlinePlay.ts): what it answers in the server's place (a Sim's
+ * reads and the actions the phone can play), the Sim each time the server sends it, and what was
+ * played offline sent before anything else once online (the server counts it in order).
+ */
+export const offlinePlay: {
+  answer?: (method: string, path: string, body: unknown) => Promise<unknown>
+  seen?: (sim: Sim, journal?: ActionResult['journal']) => void
+  flush?: () => Promise<void>
+} = {}
+
 async function send<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const token = useSession.getState().token
   const method = (init.method ?? 'GET').toUpperCase()
+  if (offlinePlay.flush && !/^\/sims\/[^/]+\/sync$/.test(path)) await offlinePlay.flush()
+  const token = useSession.getState().token
   const key = method !== 'GET' && token ? writeKey(method, path, init.body) : null
   const kept = method === 'GET' && KEEP.test(path) ? `${useSession.getState().user?.id ?? 'guest'} ${path}` : null
   // No network: a read from what was kept, a write not even tried (it waits for the network).
   const offline = async (): Promise<T> => {
     setOnline(false)
+    const own = await offlinePlay.answer?.(method, path, init.body)
+    if (own !== undefined) return own as T
     const hit = kept ? await keptData<T>(kept) : undefined
     if (hit !== undefined) return hit
     throw new ApiError(0, OFFLINE_TEXT)
@@ -100,8 +114,10 @@ async function send<T>(path: string, init: RequestInit = {}): Promise<T> {
   const data = (await res.json()) as T
   if (kept) void keepData(kept, data)
   // An action's answer carries the Sim as it is now: the kept copy follows (else, without network, it'd go back to before).
-  const sim = method !== 'GET' ? (data as { sim?: { id?: string } } | null)?.sim : undefined
-  if (sim?.id) void keepSim(sim)
+  const withSim = data as { sim?: Sim; journal?: ActionResult['journal'] } | null
+  const sim = withSim?.sim
+  if (sim?.id && method !== 'GET') void keepSim(sim)
+  if (sim?.id && sim.needs) offlinePlay.seen?.(sim, withSim?.journal)
   return data
 }
 
@@ -178,6 +194,8 @@ export const api = {
   sim: (id: string) => request<ActionResult>(`/sims/${id}`),
   /** The app put away (hidden, closed): the Sim held from now (backend sims/clock.go); sent even as the page goes. */
   pause: (id: string) => request<ActionResult>(`/sims/${id}/pause`, { method: 'POST', body: '{}', keepalive: true }),
+  /** What was played offline (lib/offlinePlay.ts), sent once online: the server plays it again (backend sims/sync.go). */
+  sync: (id: string, steps: unknown[]) => post<ActionResult>(`/sims/${id}/sync`, { clock: Date.now(), steps }),
   createSim: (sim: NewSim) => post<Sim>('/sims', sim),
   deleteSim: (id: string) => request<void>(`/sims/${id}`, { method: 'DELETE' }),
   interact: (id: string, placeId: string, interactionId: string) =>

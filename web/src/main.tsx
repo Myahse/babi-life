@@ -5,6 +5,8 @@ import { GoogleOAuthProvider } from '@react-oauth/google'
 import { App } from './App'
 import { OfflineBanner } from './components/InstallButton'
 import './lib/pwa'
+// Played offline: sent before anything else once online (and answered on the phone till then).
+import './lib/offlinePlay'
 import { startClockSync } from './lib/worldClock'
 import './index.css'
 import './motion.css'
