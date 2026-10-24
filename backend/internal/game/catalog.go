@@ -389,6 +389,20 @@ var Kinds = map[string]PlaceKind{
 			{Text: "L'agent d'accueil te reconnaît : il t'aide à passer vite.", Effect: Needs{Fun: 10, Social: 10}},
 		},
 	},
+	"presidence": {
+		ID: "presidence", Label: "Présidence", Icon: "landmark",
+		Interactions: []Interaction{
+			{ID: "visite-palais", Label: "Visiter le Palais présidentiel", Icon: "landmark", Minutes: 45, Effect: Needs{Fun: 15, Social: 10, Energy: -5}, MinHour: 9, MaxHour: 17, Days: Weekdays},
+			{ID: "conseil-ministres", Ages: Adults, Label: "Suivre le conseil des ministres depuis la tribune", Icon: "users", Minutes: 90, Effect: Needs{Social: 15, Fun: -5, Energy: -5}, MinHour: 10, MaxHour: 12, Days: []int{Mercredi}},
+			{ID: "manif-palais", Ages: TeensUp, Label: "Manifester devant le Palais", Icon: "megaphone", Minutes: 60, Effect: Needs{Fun: 20, Social: 25, Energy: -15}, MinHour: 8, MaxHour: 18},
+			{ID: "selfie-palais", Label: "Un selfie devant les grilles", Icon: "camera", Minutes: 15, Effect: Needs{Fun: 10}, MinHour: 7, MaxHour: 20},
+		},
+		Events: []RandomEvent{
+			{Text: "Le cortège présidentiel sort : sirènes, motards, tout le boulevard s'arrête.", Effect: Needs{Fun: 15}},
+			{Text: "Un garde te fait reculer : « Pas de photo ici ! »", Effect: Needs{Fun: -10}},
+			{Text: "Un ministre passe et te serre la main devant les caméras.", Effect: Needs{Social: 20, Fun: 10}},
+		},
+	},
 	"school": {
 		ID: "school", Label: "École", Icon: "graduation-cap",
 		Interactions: []Interaction{

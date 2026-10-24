@@ -269,6 +269,8 @@ var Cities = []City{
 					Source: game.Verified("Cathédrale du Plateau (Aldo Spirito, consacrée en 1985) : un triangle de 4 200 m², 4 500 places assises en gradins autour de l'autel, une tour en croix de 70 m tenue par 7 haubans, les vitraux de Roberto Franzosi (370 m²). Face au Palais de justice ; position d'après OpenStreetMap.", srcCathedrale, srcCathedrale2)},
 				Place{ID: "plateau-tribunal", Name: "Palais de justice", Kind: "tribunal", Lat: 5.33155, Lng: -4.02075, Real: true, Approx: true,
 					Source: game.Partial("Le Palais de justice d'Abidjan, boulevard Angoulvant au Plateau, en face de la cathédrale Saint-Paul ; position d'après la carte, à relever.", srcCathedrale)},
+				Place{ID: "plateau-presidence", Name: "Palais présidentiel", Kind: "presidence", Lat: 5.3192, Lng: -4.0237, Real: true, Approx: true,
+					Owner: "État de Côte d'Ivoire", Source: game.Partial("Le Palais présidentiel du Plateau, à la pointe sud de la commune, boulevard Clozel au bord de la lagune ; position d'après le point d'intérêt de la carte (OpenStreetMap). Dans le jeu, le président élu, ses ministres et les députés y siègent (politics).", srcCathedrale)},
 				Place{ID: "plateau-pyramide", Name: "La Pyramide", Kind: "office", Lat: 5.3223, Lng: -4.0165, Real: true, Approx: true,
 					Source: game.Verified("Immeuble de bureaux du Plateau (Rinaldo Olivieri, 1973) : pyramide à gradins de 15 niveaux, environ 62 m. Position placée d'après la carte, à relever.", srcPyramide, srcPyramide2)},
 				Place{ID: "plateau-poulman", Name: "Hôtel Poulman", Kind: "hotel", Lat: 5.3222, Lng: -4.0138, Real: true, Approx: true,

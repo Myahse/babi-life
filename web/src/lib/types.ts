@@ -113,6 +113,9 @@ export type Player = {
   /** Together (backend sims/couple.go), and a couple request between the two. */
   couple?: boolean
   coupleRequest?: '' | 'sent' | 'received'
+  /** In office (politics): « Présidente », « Maire de Cocody »; the tag of their gang. */
+  title?: string
+  crew?: string
 }
 export type Invite = { id: string; from: string; fromName: string; placeId: string; interactionId: string; label: string; at: string }
 export type Around = { players: Player[]; friends: Player[]; invites: Invite[]; /** Friend requests waiting for an answer. */ requests?: Player[]; /** Players in the game right now, everywhere. */ online?: number; /** A game of dames waiting for an answer, or going on. */ dames?: DameInvite | null; /** A game of 8 américain waiting for an answer, or going on. */ huit?: DameInvite | null }
@@ -331,6 +334,8 @@ export type Sim = {
   passUntil?: string
   /** The Pack Prestige bought (Boutique): the crown may be worn. */
   prestige?: boolean
+  /** The secret society joined (politics): '' none; baobab, sept, lumiere. */
+  sect?: string
 }
 
 export type Activity = {
@@ -428,3 +433,32 @@ export type VehicleModel = { id: string; kind: 'velo' | 'moto' | 'voiture'; name
 export type ParkingKind = { id: string; for: VehicleModel['kind']; name: string; slots: number; price: number; about: string }
 /** The Sim's own: its vehicles (where each is kept) and its places (how many each keeps). */
 export type Garage = { vehicles: { id: number; model: string; color: string; parking: number | null; km: number }[]; parkings: { id: number; kind: string; city: string; commune: string; used: number }[] }
+
+/* ---------- Politics (backend/internal/politics): parties, elections, offices, gangs, sects ---------- */
+export type Party = { id: number; name: string; acronym: string; color: string; slogan: string; leader: string; leaderName: string; members: number }
+export type Candidate = { sim: string; name: string; username?: string; look: Look; gender: 'femme' | 'homme'; party?: number; acronym?: string; color?: string; programme: string; points: number; votes: number; npcVotes: number }
+export type Election = { id: number; kind: 'president' | 'maire'; commune?: string; opensAt: string; votesAt: string; closesAt: string; settled: boolean; winner?: string; turnout: number; candidates: Candidate[]; myVote?: string }
+export type Holder = { office: string; label: string; sim: string; name: string; username?: string; gender: 'femme' | 'homme'; look: Look; acronym?: string; color?: string; since: string; until: string }
+export type CrewMember = { sim: string; name: string; username?: string; role: string }
+export type Crew = { id: number; name: string; tag: string; color: string; commune: string; leader: string; leaderName: string; treasury: number; members?: CrewMember[]; size: number; asked?: boolean; requests?: CrewMember[] }
+export type Sect = { id: string; name: string; motto: string; fee: number; dues: number; perk: string; risk?: string }
+export type CampaignAct = { id: string; label: string; cost: number; points: number; scope: 'commune' | 'all'; blurb: string }
+export type Politics = {
+  party: Party | null
+  offices: Holder[]
+  crew: Crew | null
+  sect: string
+  president: Election | null
+  lastPresident: Election | null
+  mayor: Election | null
+  lastMayor: Election | null
+  government: Holder[]
+  mayors: Holder[]
+  communiques: string[]
+  campaignActs: CampaignAct[]
+  sects: Sect[]
+  fees: { party: number; crew: number }
+  pay: { president: number; ministre: number; depute: number; maire: number }
+  deposits: { president: number; maire: number }
+  playerWeight: number
+}

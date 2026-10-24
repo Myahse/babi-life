@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew } from './types'
 import { useSession } from '../store/session'
 import { API_BASE as BASE } from './env'
 import { blobUrl } from './blobUrl'
@@ -176,6 +176,27 @@ export const api = {
   news: () => request<{ items: NewsItem[]; updated: string }>('/news'),
   /** The ideas the player sent Babi Life, and sending one (from the Sim whose phone it is). */
   ideas: () => request<{ ideas: Idea[] }>('/me/ideas'),
+  /** Politics (backend/internal/politics): the Sim's summary, and everything done from the Politique app. */
+  politics: (id: string) => request<Politics>(`/sims/${id}/politics`),
+  parties: () => request<{ parties: Party[]; fee: number }>('/politics/parties'),
+  foundParty: (id: string, p: { name: string; acronym: string; color: string; slogan: string }) => post<{ id: number; text: string }>(`/sims/${id}/politics/party`, p),
+  joinParty: (id: string, party: number) => post<{ text: string }>(`/sims/${id}/politics/party/${party}/join`, {}),
+  leaveParty: (id: string) => post<{ ok: boolean }>(`/sims/${id}/politics/party/leave`, {}),
+  declare: (id: string, election: number, programme: string) => post<{ text: string }>(`/sims/${id}/politics/candidacy`, { election, programme }),
+  campaign: (id: string, election: number, kind: string, commune: string) => post<{ text: string }>(`/sims/${id}/politics/campaign`, { election, kind, commune }),
+  vote: (id: string, election: number, candidate: string, at: string) => post<{ text: string }>(`/sims/${id}/politics/vote`, { election, candidate, at }),
+  government: () => request<{ holders: Holder[]; portfolios: { id: string; label: string }[] }>('/politics/government'),
+  nameOffice: (id: string, office: string, sim: string) => post<{ text: string }>(`/sims/${id}/politics/name`, { office, sim }),
+  communique: (id: string, text: string) => post<{ text: string }>(`/sims/${id}/politics/communique`, { text }),
+  searchSims: (q: string) => request<{ sims: { id: string; firstName: string; lastName: string; username: string; commune: string }[] }>(`/politics/search?q=${encodeURIComponent(q)}`),
+  crews: () => request<{ crews: Crew[]; fee: number }>('/politics/crews'),
+  foundCrew: (id: string, c: { name: string; tag: string; color: string }) => post<{ id: number; text: string }>(`/sims/${id}/politics/crew`, c),
+  askCrew: (id: string, crew: number) => post<{ text: string }>(`/sims/${id}/politics/crew/${crew}/ask`, {}),
+  answerCrew: (id: string, sim: string, no: boolean) => post<{ text?: string }>(`/sims/${id}/politics/crew/accept`, { sim, no }),
+  kickCrew: (id: string, sim: string, role?: string) => post<{ text: string }>(`/sims/${id}/politics/crew/kick`, { sim, role }),
+  leaveCrew: (id: string) => post<{ ok: boolean }>(`/sims/${id}/politics/crew/leave`, {}),
+  fundCrew: (id: string, amount: number) => post<{ text: string }>(`/sims/${id}/politics/crew/fund`, { amount }),
+  setSect: (id: string, sect: string) => post<{ text: string }>(`/sims/${id}/politics/sect`, { sect }),
   sendIdea: (simId: string, topic: Idea['topic'], text: string) => post<{ idea: Idea; text: string }>('/me/ideas', { simId, topic, text }),
   happening: (city: string, commune: string, gameMinutes: number) => request<HappeningNow>(`/happening?city=${encodeURIComponent(city)}&commune=${encodeURIComponent(commune)}&t=${Math.floor(gameMinutes)}`),
   googleLogin: (credential: string) => post<Session>('/auth/google', { credential }),

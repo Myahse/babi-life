@@ -27,6 +27,9 @@ func robbery(s *Sim, spot string, last int64) (string, int) {
 	if s.Gang == "member" {
 		return "« Laisse, c'est notre gars ! » Les nouchis te laissent passer.", 0
 	}
+	if s.Sect == "sept" {
+		return "L'un d'eux voit la marque du Cercle à ton poignet : « Lui, on ne touche pas. » Ils baissent les yeux.", 0
+	}
 	if last >= 0 && s.GameMinutes-last < robbedRest {
 		return "Les nouchis te regardent passer : ils t'ont déjà eu aujourd'hui.", 0
 	}
@@ -53,6 +56,11 @@ func (h *Handler) robbed(w http.ResponseWriter, r *http.Request) {
 		last, err := lastRobbed(r.Context(), tx, s.ID)
 		if err != nil {
 			return game.Outcome{}, nil, err
+		}
+		// A gang's member on its own turf (politics: crews): the nouchis know the tag.
+		var tag string
+		if err := tx.QueryRow(r.Context(), `SELECT c.tag FROM crew_members m JOIN crews c ON c.id = m.crew_id WHERE m.sim_id = $1 AND c.commune = $2`, s.ID, s.Commune).Scan(&tag); err == nil {
+			return game.Outcome{Text: "« Eh, c'est un gars du " + tag + " ! » Les nouchis reculent : ici, c'est le quartier de ton gang."}, nil, nil
 		}
 		text, amount := robbery(s, req.Spot, last)
 		if amount == 0 {

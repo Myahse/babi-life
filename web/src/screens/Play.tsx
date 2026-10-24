@@ -3,7 +3,7 @@ import { gesture } from '../world3d/gesture'
 import type { Pose } from '../avatar/Human'
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2, ShoppingBag, Lightbulb } from 'lucide-react'
+import { BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2, ShoppingBag, Lightbulb, Landmark } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
 import { useOnline } from '../lib/offline'
 import { onSynced, pendingOffline, picking } from '../lib/offlinePlay'
@@ -38,6 +38,7 @@ import { HomeApp, JobsApp, type Act } from './phoneApps'
 import { NewsApp, topicOf } from './NewsApp'
 import { GuideApp } from './GuideApp'
 import { IdeasApp } from './IdeasApp'
+import { PolitiqueApp } from './PolitiqueApp'
 import { DodoApp } from './DodoApp'
 import { KineoApp } from './KineoApp'
 import { DamesApp } from './DamesApp'
@@ -387,6 +388,20 @@ export function Play() {
     const mins = Math.max(0, (now - base.at) / 60000)
     return { ...base.sim, gameMinutes: base.sim.gameMinutes + mins, needs: predict(base.sim, mins) }
   }, [base, now])
+  // One's own office and gang's tag (politics): over the name in the street, by it on the HUD; read again when the phone closes.
+  const [mine, setMine] = useState<{ title?: string; crew?: string }>({})
+  useEffect(() => {
+    const id = sim?.id
+    if (!id || phoneApp) return
+    let gone = false
+    api
+      .politics(id)
+      .then((p) => !gone && setMine({ title: p.offices[0]?.label, crew: p.crew?.tag }))
+      .catch(() => undefined)
+    return () => {
+      gone = true
+    }
+  }, [sim?.id, phoneApp]) // eslint-disable-line react-hooks/exhaustive-deps
   // What was played offline, counted by the server: its Sim (the toasts were shown as it was played).
   useEffect(
     () =>
@@ -1040,7 +1055,7 @@ export function Play() {
             // Busy inside (the street seen through « Voir la rue »): the Sim is in there, not at the door.
             indoors: !!inside && !!doing,
             // In the air (FlightView over the street), no name floating over the clouds.
-            nameTag: sim.activity?.trip?.mode === 'avion' ? undefined : `${user?.username ? `@${user.username}` : sim.firstName}${passOn(sim) ? ' ★' : ''}`,
+            nameTag: sim.activity?.trip?.mode === 'avion' ? undefined : `${mine.crew ? `[${mine.crew}] ` : ''}${user?.username ? `@${user.username}` : sim.firstName}${passOn(sim) ? ' ★' : ''}${mine.title ? ` · ${mine.title}` : ''}`,
             happening,
             onNear: setNear,
             // Busy, the Sim isn't frozen: it does what it does where it stands, and walking far
@@ -1114,8 +1129,10 @@ export function Play() {
           </span>
           <span className="min-w-0 leading-tight">
             <span className="block truncate font-display text-[15px] font-extrabold sm:text-[17px]">
+              {mine.crew ? `[${mine.crew}] ` : ''}
               {user?.username ? `@${user.username}` : sim.firstName}
               {passOn(sim) && <span className="ml-1 text-[#e6b422]" title="Babi Pass">★</span>}
+              {mine.title && <span className="ml-1 text-[#3d4fd6]">· {mine.title}</span>}
             </span>
             <span className="flex min-w-0 items-center gap-1 text-[11px] font-extrabold text-[var(--color-ink-soft)]">
               <MapPin size={11} strokeWidth={3} className="shrink-0" />
@@ -1381,6 +1398,7 @@ export function Play() {
           world={world}
           sim={sim}
           commune={ownPlaces(commune)}
+          at={inside?.id ?? doing?.placeId ?? placeId ?? null}
           journal={journal}
           time={c.time}
           act={run}
@@ -1512,11 +1530,13 @@ export function Play() {
 
 /* ---------- The in-game phone ---------- */
 
-type PhoneAppId = 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'bolide' | 'jeux' | 'boutique' | 'idees'
+type PhoneAppId = 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'bolide' | 'jeux' | 'boutique' | 'idees' | 'politique'
 type PhoneProps = {
   world: World
   sim: Sim
   commune: Commune
+  /** The place the Sim is in (inside it, or just picked there): the Politique app votes at a mairie. */
+  at: string | null
   /** The Boulot app's switch: to work by oneself as the shift's hours come. */
   onAutoWork: (on: boolean) => Promise<void>
   journal: JournalEvent[]
@@ -1558,7 +1578,7 @@ type PhoneProps = {
   onDrive: (v: Driven) => void
 }
 
-function Phone({ world, sim, commune, onAutoWork, journal, time, act, startApp, achat, onConfirmAdult, delivery, onDelivery, onCollect, onClose, onMap, onCamera, onFlashe, onPractice, street, onWalk, onBuild, onDames, onDamesOnline, onDamesResume, onHuitTable, onHuitFriend, onHuitResume, onDrive }: PhoneProps) {
+function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startApp, achat, onConfirmAdult, delivery, onDelivery, onCollect, onClose, onMap, onCamera, onFlashe, onPractice, street, onWalk, onBuild, onDames, onDamesOnline, onDamesResume, onHuitTable, onHuitFriend, onHuitResume, onDrive }: PhoneProps) {
   const [app, setApp] = useState<PhoneAppId | null>(startApp)
   // A photo of the gallery on its way to Tikitoko.
   const [tikiPhoto, setTikiPhoto] = useState<{ id: number; src: string } | undefined>()
@@ -1625,10 +1645,11 @@ function Phone({ world, sim, commune, onAutoWork, journal, time, act, startApp, 
     { id: 'guide', label: 'Encyclo', icon: BookOpen, colors: ['#9fa8ff', '#4b4fd6'], open: () => setApp('guide') },
     { id: 'boutique', label: 'Boutique', icon: ShoppingBag, colors: ['#ffc233', '#e07800'], open: () => setApp('boutique') },
     { id: 'idees', label: 'Idées', icon: Lightbulb, colors: ['#ffe066', '#f5a000'], open: () => setApp('idees') },
+    { id: 'politique', label: 'Politique', icon: Landmark, colors: ['#8c9eff', '#3d4fd6'], open: () => setApp('politique') },
     { id: 'profile', label: 'Profil', icon: UserRound, colors: ['#ff8a9b', '#ff3d57'], open: () => navigate('/profil', { viewTransition: true }) },
     ] as Tile[]
   ).filter((a) => !life.minor || (a.id !== 'jobs' && a.id !== 'home'))
-  const title: Record<PhoneAppId, string> = { here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', babigram: 'Babigram', bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: 'Galerie', guide: 'Encyclopédie de Babi', dodo: 'Dodo', kineo: 'Kinéo', dames: 'Dames 225', huit: '8 américain', bolide: 'Bolide', jeux: 'Jeux', boutique: 'Boutique', idees: 'Tes idées pour Babi Life' }
+  const title: Record<PhoneAppId, string> = { here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', babigram: 'Babigram', bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: 'Galerie', guide: 'Encyclopédie de Babi', dodo: 'Dodo', kineo: 'Kinéo', dames: 'Dames 225', huit: '8 américain', bolide: 'Bolide', jeux: 'Jeux', boutique: 'Boutique', idees: 'Tes idées pour Babi Life', politique: 'Politique' }
 
   return (
     <div className="absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center" onClick={onClose}>
@@ -1742,6 +1763,7 @@ function Phone({ world, sim, commune, onAutoWork, journal, time, act, startApp, 
                 {app === 'store' && ownPhone && <StoreApp world={world} sim={sim} act={act} onOpen={(id) => (id === 'gnango' || id === 'idrive' ? onMap() : id === 'flashe' ? onFlashe() : setApp(id as PhoneAppId))} />}
                 {app === 'boutique' && <BoutiqueApp sim={sim} back={achat} onConfirmAdult={onConfirmAdult} />}
                 {app === 'idees' && <IdeasApp sim={sim} />}
+                {app === 'politique' && <PolitiqueApp world={world} sim={sim} commune={commune} at={at} onWalk={(id) => (onClose(), onWalk(id))} />}
                 {app === 'waye' && <WayeApp world={world} sim={sim} act={act} journal={journal} renderJournal={(events) => <Journal events={events} />} payTo={wayeTo} />}
                 {app === 'gbairai' && <GbairaiApp world={world} sim={sim} />}
                 {app === 'tikitoko' && <TikitokoApp sim={sim} act={act} photo={tikiPhoto} street={street} onClose={() => (setApp(null), setTikiPhoto(undefined))} />}
