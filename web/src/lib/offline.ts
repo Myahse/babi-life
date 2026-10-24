@@ -16,7 +16,8 @@ const keyUrl = (key: string) => `https://kept.babi.local/${encodeURIComponent(ke
 
 /* ---------- Online or not ---------- */
 
-let online = typeof navigator === 'undefined' ? true : navigator.onLine
+// (The app's own screens, React Native's, have no navigator.onLine: online until a request fails.)
+let online = typeof navigator === 'undefined' || navigator.onLine !== false
 /** When the network went (ms), or 0. */
 let since = online ? 0 : Date.now()
 const listeners = new Set<() => void>()
@@ -26,7 +27,7 @@ export function setOnline(on: boolean) {
   since = on ? 0 : Date.now()
   listeners.forEach((f) => f())
 }
-if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
   window.addEventListener('online', () => setOnline(true))
   window.addEventListener('offline', () => setOnline(false))
 }
