@@ -68,7 +68,8 @@ type SceneId = 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'prin
  * the scenes it films from here with &only=grin|messe|zouglou|tourf:
  * marketing/scripts/top20.md, voice voix-top20.mp3 over its beat son-top20.mp3) or
  * ?video=sortie (Awa, at home, opens the gift she teased in « merci »: the game
- * comes out on Wednesday 28 October; the game in four shots, sign up now:
+ * comes out on Wednesday 28 October; what's new lately (politics, matches
+ * with friends, Flashé, playing offline), sign up now:
  * marketing/scripts/sortie-28-octobre.md, voice voix-sortie.mp3).
  */
 type FilmId = 'lancement' | 'bouger' | 'bande-annonce' | 'decouverte' | 'live' | 'merci' | 'gameplay' | 'arnaque' | 'keke' | 'top20' | 'sortie'
@@ -1604,7 +1605,7 @@ function GbairaiChat({ t }: { t: number }) {
 
 /* ---------- The video: 25 seconds, scene after scene ---------- */
 
-type Shot = { from: number; to: number; scene: SceneId; title?: string; sub?: string; /** Its number, in the film that goes through everything. */ n?: number; /** The live: what Awa says, as a subtitle. */ cap?: string; /** « Merci »: the follower counter, the gift that hides. */ counter?: boolean; tease?: boolean; /** « Arnaque »: what the phone shows, and the tip. */ phone?: 'msg' | 'page' | 'drain' | 'call' | 'masque'; tip?: number; /** « top20 »: what Awa says (the captions). */ say?: string; /** « Sortie »: the gift opens on the date; the date pinned at the top. */ reveal?: boolean; date?: boolean }
+type Shot = { from: number; to: number; scene: SceneId; title?: string; sub?: string; /** Its number, in the film that goes through everything. */ n?: number; /** The live: what Awa says, as a subtitle. */ cap?: string; /** « Merci »: the follower counter, the gift that hides. */ counter?: boolean; tease?: boolean; /** « Arnaque »: what the phone shows, and the tip. */ phone?: 'msg' | 'page' | 'drain' | 'call' | 'masque'; tip?: number; /** « top20 »: what Awa says (the captions). */ say?: string; /** « Sortie »: the gift opens on the date; the date pinned at the top; what's new in the game, shown. */ reveal?: boolean; date?: boolean; nouveau?: 'politique' | 'matchs' | 'flashe' | 'horsligne' }
 /** Each film: its shots, when the intro ends and the outro starts, its length (marketing/video.mjs reads it). */
 const FILMS: Record<FilmId, { shots: Shot[]; intro: number; outro: number; length: number; hook: [string, string, string] }> = {
   lancement: {
@@ -1756,23 +1757,24 @@ const FILMS: Record<FilmId, { shots: Shot[]; intro: number; outro: number; lengt
     length: 58.5,
     hook: ['', '', ''],
   },
-  // « Sortie » (marketing/scripts/sortie-28-octobre.md): the gift Awa teased opens on the release date, the game in four shots, sign up now.
+  // « Sortie » (marketing/scripts/sortie-28-octobre.md): the gift Awa teased opens on the release date, what's new lately, sign up now.
   sortie: {
     // Timed on the script's lines (marketing/out/voix-sortie.mp3 when there): each shot starts with its sentence.
     shots: [
       { from: 0, to: 3.7, scene: 'salon', cap: 'La famille ! C’est Awa 👋' },
       { from: 3.7, to: 8.7, scene: 'salon', tease: true, cap: 'Je vous avais dit : de bonnes nouvelles… 🤫' },
       { from: 8.7, to: 14.7, scene: 'salon', reveal: true, cap: 'Babi Life sort le mercredi 28 octobre ! 🎉' },
-      { from: 14.7, to: 17.7, scene: 'build', date: true, title: 'Ta vie à Babi', cap: 'Ton perso, ta famille, ta maison…' },
-      { from: 17.7, to: 19.5, scene: 'fete', date: true, title: 'Ta vie à Babi', cap: 'Le maquis, le coupé-décalé…' },
-      { from: 19.5, to: 21.2, scene: 'stade', date: true, title: 'Ta vie à Babi', cap: '… le match au stade !' },
-      { from: 21.2, to: 24.7, scene: 'gbaka', date: true, title: 'Ta vie à Babi', cap: 'Tout Babi dans ton téléphone. Gratuit !' },
-      { from: 24.7, to: 30.2, scene: 'salon', date: true, cap: 'Inscris-toi : mercredi, tu joues parmi les premiers !' },
-      { from: 30.2, to: 36.5, scene: 'crew' },
+      // What's new lately, not what everyone has seen already.
+      { from: 14.7, to: 19.6, scene: 'plateau', date: true, nouveau: 'politique', title: 'La politique', cap: 'Vote pour ton maire… ou deviens président·e !' },
+      { from: 19.6, to: 23.3, scene: 'basket', date: true, nouveau: 'matchs', title: 'Matchs entre amis', cap: 'Foot et basket avec tes amis, en vrai' },
+      { from: 23.3, to: 25.4, scene: 'selfie', date: true, nouveau: 'flashe', title: 'Flashé', cap: 'Tes selfies avec les lentilles 📸' },
+      { from: 25.4, to: 28.2, scene: 'gbaka', date: true, nouveau: 'horsligne', title: 'Sans réseau', cap: 'Pas de réseau ? Tu joues quand même !' },
+      { from: 28.2, to: 33.7, scene: 'salon', date: true, cap: 'Inscris-toi : mercredi, tu joues parmi les premiers !' },
+      { from: 33.7, to: 40, scene: 'crew' },
     ],
     intro: 0,
-    outro: 30.2,
-    length: 36.5,
+    outro: 33.7,
+    length: 40,
     hook: ['', '', ''],
   },
   // How you play: born gnambro, the goal is debout, six steps, the money that comes and goes.
@@ -2157,13 +2159,48 @@ const SORTIE_COMMENTS: [number, string, string][] = [
   [10.4, 'fanta.d', 'ENFIN 😭🔥🔥'],
   [12.2, 'kader.abobo', 'Mercredi je suis là !'],
   [14, 'aya.k', 'Je prends congé mercredi 😂'],
-  [16.4, 'ibou', 'Ma maison sera la plus belle de Cocody'],
-  [18.6, 'mamie.c', 'Rue Princesse dès mercredi 🕺'],
-  [20.8, 'serge.plateau', 'On est ensemble 🇨🇮'],
-  [23, 'koffi_225', 'Inscrit ✅'],
-  [25.4, 'fanta.d', 'Tag ton gars 👇'],
-  [27.6, 'le_vrai_bk', 'Awa tu es la meilleure ❤️'],
+  [16, 'ibou', 'Je me présente à la mairie de Yop 😎'],
+  [18.2, 'mamie.c', 'Président Kader 2026 😂'],
+  [20.6, 'serge.plateau', 'Foot à 5 mercredi soir, qui est chaud ?'],
+  [23.6, 'aya.k', 'Les lentilles de Flashé 😍'],
+  [26, 'kader.abobo', 'Même sans data ?? Ça c’est fort 🔥'],
+  [28.6, 'koffi_225', 'Inscrit ✅'],
+  [30.6, 'fanta.d', 'Tag ton gars 👇'],
+  [32.4, 'le_vrai_bk', 'Awa tu es la meilleure ❤️'],
 ]
+
+/** « Sortie »: an election in the Politique app, the ballot and its results so far. */
+function Ballot({ t }: { t: number }) {
+  const up = ease(clamp01(t / 0.5))
+  const voted = t > 2.2
+  const cands: [string, string, number][] = [
+    ['Kader Traoré', '#ff7a00', 0.42],
+    ['Aya Kouassi', '#12a37a', 0.35],
+    ['Serge Yao', '#3b5bdb', 0.23],
+  ]
+  return (
+    <div className="absolute inset-x-0 top-[23%] flex justify-center font-sans" style={{ opacity: up, transform: `translateY(${(1 - up) * 60}px)` }}>
+      <div className="w-[400px] rounded-[30px] bg-white p-5 text-[var(--color-ink)] shadow-[0_24px_60px_-20px_rgba(0,0,0,0.7)]">
+        <div className="text-[16px] font-extrabold tracking-wide text-[var(--color-ink-soft)] uppercase">Élection du maire · Yopougon</div>
+        <div className="mt-3 flex flex-col gap-2.5">
+          {cands.map(([name, color, share], i) => (
+            <div key={name} className="flex items-center gap-3">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[18px] font-extrabold text-white" style={{ background: color }}>{name[0]}</span>
+              <div className="min-w-0 flex-1">
+                <div className="text-[19px] leading-tight font-extrabold">{name}</div>
+                <div className="mt-1 h-2.5 overflow-hidden rounded-full bg-[#eef0f4]">
+                  <div className="h-full rounded-full" style={{ width: `${Math.round(share * 100 * ease(clamp01((t - 0.4) / 1.2)))}%`, background: color }} />
+                </div>
+              </div>
+              {voted && i === 1 && <span className="rounded-full bg-[#e6f8ef] px-2.5 py-1 text-[15px] font-extrabold text-[#12a37a]">✓ Ton vote</span>}
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 rounded-full py-2.5 text-center text-[20px] font-extrabold text-white" style={{ background: voted ? '#12a37a' : 'var(--color-orange)' }}>{voted ? 'A voté !' : 'Voter à la mairie'}</div>
+      </div>
+    </div>
+  )
+}
 
 /** A calendar page: the month on its red band, the day, the weekday. */
 function CalendarCard({ scale = 1 }: { scale?: number }) {
@@ -2207,10 +2244,26 @@ function SortieOverlay({ t, shot }: { t: number; shot: Shot }) {
             📅 {SORTIE.weekday} {SORTIE.day} {SORTIE.month}
           </div>
           {shot.title && (
-            <div className="rounded-full bg-[var(--color-orange)] px-6 py-1.5 text-[30px] leading-tight font-extrabold shadow-[0_10px_30px_-10px_rgba(0,0,0,0.6)]" style={{ opacity: Math.min(1, local / 0.5) }}>
-              {shot.title}
+            <div className="flex items-center gap-3">
+              {shot.nouveau && (
+                <span className="-rotate-[6deg] rounded-xl border-[3px] border-white bg-[#ffd43b] px-3 py-0.5 text-[26px] font-extrabold text-[#141416] shadow-[0_6px_0_rgba(0,0,0,0.3)]" style={{ transform: `rotate(-6deg) scale(${0.6 + 0.4 * ease(clamp01(local / 0.3))})` }}>
+                  NOUVEAU
+                </span>
+              )}
+              <div className="rounded-full bg-[var(--color-orange)] px-6 py-1.5 text-[30px] leading-tight font-extrabold shadow-[0_10px_30px_-10px_rgba(0,0,0,0.6)]" style={{ opacity: Math.min(1, local / 0.5) }}>
+                {shot.title}
+              </div>
             </div>
           )}
+        </div>
+      )}
+      {/* What's new: what it shows */}
+      {shot.nouveau === 'politique' && <Ballot t={local} />}
+      {shot.nouveau === 'horsligne' && (
+        <div className="absolute inset-x-0 top-[24%] flex justify-center font-sans" style={{ opacity: ease(clamp01(local / 0.4)) }}>
+          <div className="flex items-center gap-3 rounded-full bg-[#141416]/90 px-6 py-3 text-[26px] font-extrabold">
+            <span className="text-[34px]">📵</span> Hors ligne · le jeu continue
+          </div>
         </div>
       )}
       {/* The gift Awa teased last time: shaking, then it bursts */}
@@ -2232,8 +2285,8 @@ function SortieOverlay({ t, shot }: { t: number; shot: Shot }) {
         </div>
       )}
       {shot.reveal && local > 0.9 && <Confetti t={local - 0.9} />}
-      {/* Awa's face, filming herself (not at home: there she's the whole picture) */}
-      {shot.scene !== 'salon' && (
+      {/* Awa's face, filming herself (not at home nor in her selfie: there she's the whole picture) */}
+      {shot.scene !== 'salon' && shot.scene !== 'selfie' && shot.nouveau !== 'politique' && shot.nouveau !== 'horsligne' && (
         <div className="absolute top-[24%] right-6 h-[210px] w-[160px] overflow-hidden rounded-[28px] border-[4px] border-white/90 bg-[#ffb37a] shadow-[0_16px_40px_-14px_rgba(0,0,0,0.7)]">
           <AwaFace t={t} size={210} talking />
         </div>
