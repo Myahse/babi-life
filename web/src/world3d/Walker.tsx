@@ -30,6 +30,7 @@ import { askDrop, answerDrop, takeDrop } from './dropRoute'
 import { along, routeLength, turnTo } from './open/shared'
 import { laneStart, lanePoint, laneStretch, STADIUM_TRACKS, toWorld, type Track } from './open/stadiumTrack'
 import { rooftopFor } from './open/rooftops'
+import { landmarkRouteFor, landmarkSpotFor, type LandmarkRoute } from './open/landmarkSpots'
 import type { Pose } from '../avatar/Human'
 
 type XZ = [number, number]
@@ -213,9 +214,16 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   const laps = useRef<{ at: XZ; rot: number; track: Track; way: XZ[]; d: number; th: number; out: boolean } | null>(null)
   // Up on a landmark's roof: the door to come back down to.
   const onRoof = useRef<{ door: XZ } | null>(null)
+  // On an action's way through a landmark's grounds (open/landmarkSpots.ts): its points (the street's
+  // metres), the one left and how far past it, the stop's wait, which way it's turned and in what pose.
+  const tour = useRef<{ pts: XZ[]; i: number; d: number; wait: number; rot: number; pose: Pose; stopOf: (i: number) => LandmarkRoute['stops'][number] | undefined; cycle: boolean } | null>(null)
+  const [touring, setTouring] = useState<'walk' | Pose | null>(null)
+  // Gone to the action's spot in a landmark's grounds (once per action).
+  const spotGoing = useRef(false)
   // Stopped on the stroll, turned to the friend: talking.
   const [chatting, setChatting] = useState(false)
   const loopKind = busy?.id ? LOOPS[busy.id] : undefined
+  const tourRoute = landmarkRouteFor(stationAt, busy?.id)
   // Walking onto the street's pitch before the game (once: blocked, it plays from where it got to).
   const pitchGoing = useRef(false)
   // At home on the furniture: walking to it, then settled on it.
@@ -236,6 +244,9 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     reached.current = false
     padAway.current = false
     pitchGoing.current = false
+    spotGoing.current = false
+    tour.current = null
+    setTouring(null)
     // Doing something else than the game on the street's pitch, than the street scene joined: their ground is no one's.
     // (Not while the request is out: busy has no id then, and the place was just chosen.)
     if (busy?.id && !LOOPS[busy.id]?.pitch) whereabouts.pitch = null
@@ -730,7 +741,9 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     }
     // (Round a stadium's track, the far side is well away from its door; on a roof, the middle may be; with
     // the cortège, the end of the street.)
-    const away = station && !laps.current && !roof && !(joining && joinRole?.move) ? Math.hypot(g.position.x - station.door[0], g.position.z - station.door[1]) : 0
+    const spot = station ? landmarkSpotFor(station.id, busy?.id) : undefined
+    const route = station ? landmarkRouteFor(station.id, busy?.id) : undefined
+    const away = station && !laps.current && !roof && !spot && !route && !(joining && joinRole?.move) ? Math.hypot(g.position.x - station.door[0], g.position.z - station.door[1]) : 0
     if (station && away < 15) reached.current = true
     if (station && onLeave && reached.current && !left.current && away > LEAVE) {
       left.current = true
@@ -781,8 +794,76 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       }
       if (laps.current && !looping) setLooping(true)
     }
+    // The action's spot in a landmark's grounds (open/landmarkSpots.ts): walked to, once (round what's in
+    // the way), then done there, turned its way.
+    if (spot && station && !laps.current && !padWalking.current && !padAway.current) {
+      const [sx, sz] = toWorld([station.x, station.z], station.rot, spot.at)
+      const off = Math.hypot(g.position.x - sx, g.position.z - sz)
+      if (!path.current.length && off > 1.2 && !spotGoing.current) {
+        spotGoing.current = true
+        const way = findWay([g.position.x, g.position.z], [sx, sz], false)
+        path.current = way ? way.slice(1) : [[sx, sz]]
+        target.current = null
+        speed.current = SPEED
+        autoRun.current = false
+        setRoute([...path.current])
+        setWalking(true)
+      } else if (!path.current.length && off <= 1.2) {
+        g.position.set(sx, 0, sz)
+        g.rotation.y = turnTo(g.rotation.y, station.rot + spot.rot, 1 - Math.exp(-8 * dt))
+      }
+    }
+    // The action's way through a landmark's grounds (open/landmarkSpots.ts): in by the front, then from
+    // point to point, over and over, a stop here and there turned to what's there.
+    if (route && station && !laps.current && !path.current.length && !padWalking.current && !padAway.current) {
+      const w = (p: XZ) => toWorld([station.x, station.z], station.rot, p)
+      const way = route.way.map(w)
+      if (!tour.current) {
+        // In: from where the Sim stands, round what's in the way, to the entry (so the gate is passed straight), then the way's first point.
+        const here: XZ = [g.position.x, g.position.z]
+        const first = route.entry ? w(route.entry) : way[0]
+        const toFirst = findWay(here, first, false) ?? [here, first]
+        const pts = [...toFirst, ...(route.entry ? [way[0]] : [])]
+        tour.current = { pts, i: 0, d: 0, wait: 0, rot: 0, pose: 'idle', stopOf: (i) => (i === pts.length - 1 ? route.stops[0] : undefined), cycle: false }
+      }
+      const tr = tour.current
+      if (tr.wait > 0) {
+        tr.wait -= dt
+        g.rotation.y = turnTo(g.rotation.y, station.rot + tr.rot, 1 - Math.exp(-6 * dt))
+      } else {
+        const n = tr.pts.length
+        const next = tr.cycle ? (tr.i + 1) % n : tr.i + 1
+        const [ax, az] = tr.pts[tr.i]
+        const [bx, bz] = tr.pts[next]
+        const len = Math.hypot(bx - ax, bz - az)
+        tr.d += route.speed * Math.min(dt, 0.25)
+        if (tr.d >= len) {
+          g.position.set(bx, 0, bz)
+          tr.d = 0
+          const stop = tr.stopOf(next)
+          if (stop) [tr.wait, tr.rot, tr.pose] = [stop.secs, stop.rot, stop.pose]
+          if (!tr.cycle && next === n - 1) {
+            // At the way's first point: round and round from here (back to the first at the end, or back along it).
+            const m = way.length
+            tr.pts = route.loop ? way : [...way, ...way.slice(1, -1).reverse()]
+            tr.stopOf = (i) => route.stops[i < m ? i : 2 * m - 2 - i]
+            tr.cycle = true
+            tr.i = 0
+          } else tr.i = next
+        } else {
+          const k = tr.d / len
+          g.position.set(ax + (bx - ax) * k, 0, az + (bz - az) * k)
+          g.rotation.y = turnTo(g.rotation.y, Math.atan2(bx - ax, bz - az), 1 - Math.exp(-8 * dt))
+        }
+      }
+      const want = tr.wait > 0 ? tr.pose : 'walk'
+      if (touring !== want) setTouring(want)
+    } else if (tour.current || touring) {
+      tour.current = null
+      setTouring(null)
+    }
     // Strolling: along the way and back, again and again, as far as there's room.
-    if (loopKind && !track && !laps.current && !path.current.length && !padWalking.current && !padAway.current) {
+    if (loopKind && !track && !route && !laps.current && !path.current.length && !padWalking.current && !padAway.current) {
       const [x, z] = [g.position.x, g.position.z]
       const pitch = loopKind.pitch && whereabouts.pitch && Math.hypot(whereabouts.pitch.at[0] - x, whereabouts.pitch.at[1] - z) < 60 ? whereabouts.pitch : null
       if (!loop.current && pitch) {
@@ -1291,7 +1372,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
           // Stopped on a stroll with a friend: turned to them, talking. (On the move it walks, busy or not:
           // a ride being paid for, the place of the action still ahead; frozen, it glided along.)
           <group rotation={[0, chatting && !walking ? 0.9 : 0, 0]}>
-            <Character look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking || looping} running={run || (looping && !!loopKind?.run)} busy={!!busy && !walking && !looping && !chatting} marker={!photoMode} pose={hailing && !walking ? 'wave' : photoMode && photoMode !== 'film' && !busy && !walking ? 'phone' : emote && !busy && !walking ? emote : busy?.kind === 'chat' || (chatting && !walking) ? 'talk' : (inMatch || onTouchline || joining) && !walking ? matchPose : busy?.id === 'work' && gestureNow && !walking ? gestureNow : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={looping && loopKind ? loopKind.speed : run ? RUN : SPEED} />
+            <Character look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking || looping || touring === 'walk'} running={run || (looping && !!loopKind?.run)} busy={!!busy && !walking && !looping && !chatting && touring !== 'walk'} marker={!photoMode} pose={hailing && !walking ? 'wave' : photoMode && photoMode !== 'film' && !busy && !walking ? 'phone' : emote && !busy && !walking ? emote : busy?.kind === 'chat' || (chatting && !walking) ? 'talk' : (inMatch || onTouchline || joining) && !walking ? matchPose : touring && touring !== 'walk' && !walking ? touring : busy?.id === 'work' && gestureNow && !walking ? gestureNow : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={looping && loopKind ? loopKind.speed : touring === 'walk' ? (tourRoute?.speed ?? SPEED) : run ? RUN : SPEED} />
           </group>
         )}
         {/* Hanging out: the friend walks along beside the Sim */}
@@ -1299,7 +1380,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         {/* Out with friends (an outing): they came along, at the Sim's side */}
         {!!sim.activity?.with?.length && <Companions sim={sim} walking={walking || looping} pose={outdoorPose(busy?.id)} stage={stage} />}
         {/* Outdoors, what the Sim is doing is set around it (the ball, the towel, the bus stop…) */}
-        {busy && !walking && !onTouchline && <OutdoorAction id={busy.id} />}
+        {busy && !walking && !onTouchline && <OutdoorAction id={busy.id} touring={!!touring} />}
         {labels && nameTag && !hidden && !aboard && (
           <Html position={[0, 2.45, 0]} center zIndexRange={[28, 20]}>
             <span className="pointer-events-none rounded-md bg-[#0f1230]/80 px-1.5 py-0.5 text-[11px] font-extrabold whitespace-nowrap text-white">{nameTag}</span>

@@ -119,7 +119,8 @@ function useLooks(n: number, seed: number) {
   }, [n, seed])
 }
 
-export function OutdoorAction({ id }: { id?: string }) {
+export function OutdoorAction({ id, touring }: { id?: string; /** On the action's way through a landmark's grounds (open/landmarkSpots.ts): only what goes along (the wheelbarrow), not the whole set. */ touring?: boolean }) {
+  if (touring) return id === 'manoeuvre-tour-f' ? <Wheelbarrow p={[0, 0, 0.85]} /> : null
   if (id?.startsWith('golvo-')) return <GolvoMeal id={id} />
   switch (id) {
     case 'play-football':
@@ -146,8 +147,9 @@ export function OutdoorAction({ id }: { id?: string }) {
       return <Hiker />
     case 'boutique-station':
     case 'attieke-frais':
-    case 'zoo-pique-nique':
       return <FishTable />
+    case 'zoo-pique-nique':
+      return <Picnic />
     case 'anciens':
       return <Anciens />
     case 'preparer-attieke':
@@ -409,6 +411,35 @@ function FishTable() {
   )
 }
 
+/** The picnic on the zoo's lawn: the pagne spread on the grass, the cool box sat on, the basket, the bottles, the plate on the lap. */
+function Picnic() {
+  return (
+    <group>
+      <Box p={[0, 0.03, 0.55]} s={[2.2, 0.03, 1.7]} c="#e8572a" />
+      {[-0.7, 0, 0.7].map((x) => (
+        <Box key={x} p={[x, 0.05, 0.55]} s={[0.22, 0.01, 1.7]} c="#f6c744" />
+      ))}
+      {/* The cool box the Sim sits on */}
+      <Box p={[0, 0.22, -0.05]} s={[0.5, 0.44, 0.38]} c="#1f6fd0" />
+      <Box p={[0, 0.45, -0.05]} s={[0.52, 0.03, 0.4]} c="#f4f4f4" />
+      {/* The basket and what came out of it: the bottles, the bread, the fruit */}
+      <Box p={[0.6, 0.2, 0.9]} s={[0.5, 0.3, 0.36]} c="#b98a4a" />
+      <Box p={[0.6, 0.42, 0.9]} s={[0.04, 0.16, 0.3]} c="#8a6a3d" />
+      {[[-0.5, 0.95, '#2b7a3d'], [-0.35, 1.05, '#f08a24']].map(([x, z, c], i) => (
+        <group key={i} position={[x as number, 0.06, z as number]}>
+          <Box p={[0, 0.13, 0]} s={[0.09, 0.26, 0.09]} c={c as string} />
+          <Box p={[0, 0.29, 0]} s={[0.04, 0.06, 0.04]} c={c as string} />
+        </group>
+      ))}
+      <Box p={[0.1, 0.09, 0.95]} s={[0.4, 0.1, 0.14]} c="#d9a05b" r={0.4} />
+      {[[-0.1, 0.6, '#ffb703'], [0.35, 0.55, '#52b788'], [0.15, 0.4, '#e63946']].map(([x, z, c], i) => (
+        <Box key={i} p={[x as number, 0.11, z as number]} s={[0.12, 0.12, 0.12]} c={c as string} />
+      ))}
+      <Dish kind="plat" at={LAP} />
+    </group>
+  )
+}
+
 /** The brochette grill and its seller, the stool to eat on. */
 function Grill({ standing }: { /** Eaten standing at the grill, the brochette in hand: no stool. */ standing?: boolean }) {
   const vendor = useLooks(1, 37)[0]
@@ -528,28 +559,39 @@ function GasBottle() {
   )
 }
 
+/** The wheelbarrow, its load of sand, the wheel ahead, the handles toward the Sim. */
+function Wheelbarrow({ p, ry = 0 }: { p: [number, number, number]; ry?: number }) {
+  return (
+    <group position={p} rotation={[0, ry, 0]}>
+      <mesh position={[0, 0.42, 0]} rotation={[0.12, 0, 0]}>
+        <boxGeometry args={[0.62, 0.28, 0.9]} />
+        <meshLambertMaterial color="#5b6470" />
+      </mesh>
+      <mesh position={[0, 0.57, 0.02]} rotation={[0.12, 0, 0]}>
+        <boxGeometry args={[0.54, 0.02, 0.8]} />
+        <meshLambertMaterial color="#9a958b" />
+      </mesh>
+      <mesh position={[0, 0.62, 0.02]} rotation={[0.12, 0, 0]}>
+        <boxGeometry args={[0.46, 0.14, 0.66]} />
+        <meshLambertMaterial color="#d8b878" />
+      </mesh>
+      <mesh position={[0, 0.2, 0.5]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.18, 0.18, 0.08, 12]} />
+        <meshLambertMaterial color="#1b1b20" />
+      </mesh>
+      {[-0.22, 0.22].map((x) => (
+        <Box key={x} p={[x, 0.42, -0.6]} s={[0.04, 0.04, 0.7]} c="#8a6a3d" />
+      ))}
+    </group>
+  )
+}
+
 /** A day's labour on the Tour F's site: the wheelbarrow of mortar, the shovel, the sand, the bags of cement, a mate at work beside. */
 function Mortar() {
   const mate = useMemo(() => ({ ...randomLook('homme', seeded(61)), outfit: 'bleu', accessory: 'cap', accessoryColor: '#ffd43b' }), [])
   return (
     <group>
-      <group position={[0.15, 0, 0.75]} rotation={[0, 0.3, 0]}>
-        <mesh position={[0, 0.42, 0]} rotation={[0.12, 0, 0]}>
-          <boxGeometry args={[0.62, 0.28, 0.9]} />
-          <meshLambertMaterial color="#5b6470" />
-        </mesh>
-        <mesh position={[0, 0.57, 0.02]} rotation={[0.12, 0, 0]}>
-          <boxGeometry args={[0.54, 0.02, 0.8]} />
-          <meshLambertMaterial color="#9a958b" />
-        </mesh>
-        <mesh position={[0, 0.2, 0.5]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.18, 0.18, 0.08, 12]} />
-          <meshLambertMaterial color="#1b1b20" />
-        </mesh>
-        {[-0.22, 0.22].map((x) => (
-          <Box key={x} p={[x, 0.42, -0.6]} s={[0.04, 0.04, 0.7]} c="#8a6a3d" />
-        ))}
-      </group>
+      <Wheelbarrow p={[0.15, 0, 0.75]} ry={0.3} />
       {/* The sand and the shovel stuck in it, the cement bags */}
       <mesh position={[-0.9, 0.3, 0.9]}>
         <coneGeometry args={[0.7, 0.6, 12]} />

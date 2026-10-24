@@ -6,9 +6,11 @@
 // oom-pah, two trumpets in thirds), the show of a cultural centre or a village
 // (djembés, the dunun and its bell, a balafon, a singer and the choir that
 // answers him, the audience's applause and you-yous), the crowd of a match at
-// the stadium, the hush of a museum. Each place gets its own variation.
+// the stadium, the stadium's concert (the stage's coupé-décalé over the
+// crowd's roar, its cheers and shouts), the hush of a museum. Each place gets
+// its own variation.
 
-export type Track = 'club' | 'maquis' | 'fanfare' | 'spectacle' | 'stade' | 'expo'
+export type Track = 'club' | 'maquis' | 'fanfare' | 'spectacle' | 'stade' | 'concert' | 'expo'
 
 type Style = { bpm: number; steps: number; swing: number; build: (r: () => number) => Song }
 type Song = (ctx: AudioContext, out: AudioNode, step: number, t: number, dur: number) => void
@@ -430,6 +432,29 @@ function stade(r: () => number): Song {
   }
 }
 
+/**
+ * The stadium's concert: the stage's coupé-décalé (the club's, bigger) over a
+ * crowd of thousands: its roar all along, louder between two songs with the
+ * cheers and the whistles, shouts and you-yous in it, and the singer calling
+ * the crowd, which answers in one voice.
+ */
+function concert(r: () => number): Song {
+  const song = coupeDecale(r, false)
+  const key = 57 + Math.floor(r() * 4)
+  return (c, out, step, t, dur) => {
+    song(c, out, step, t, dur)
+    const bar = Math.floor(step / 16)
+    const s = step % 16
+    if (s === 0) murmur(c, out, t, dur * 16 + 0.3, bar % 8 === 7 ? 0.2 : 0.11, 700)
+    // Between two songs: the crowd cheers and whistles.
+    if (s === 0 && bar % 8 === 7) applause(c, out, t, dur * 16, 0.14)
+    // Shouts here and there in the crowd, a you-you now and then.
+    if (r() < 0.1) voice(c, out, t + r() * dur, key + 12 + Math.floor(r() * 5), dur * 1.5, 0.03, 'e', r() < 0.3 ? 9 : 0)
+    // The singer calls (« Babi ! »), the crowd answers, every fourth bar.
+    if (bar % 4 === 3 && (s === 0 || s === 6)) for (const x of [0, 12, -12]) voice(c, out, t, key + (s === 0 ? 7 : 4) + x, dur * 3, x ? 0.03 : 0.05, s === 0 ? 'a' : 'o')
+  }
+}
+
 /** The museum, the gallery: hushed voices of the visitors, a kora playing softly somewhere. */
 function expo(r: () => number): Song {
   const key = 57 + Math.floor(r() * 5)
@@ -451,6 +476,7 @@ const STYLES: Record<Track, Style> = {
   fanfare: { bpm: 112, steps: 2, swing: 0, build: fanfare },
   spectacle: { bpm: 112, steps: 4, swing: 0.06, build: spectacle },
   stade: { bpm: 120, steps: 2, swing: 0, build: stade },
+  concert: { bpm: 128, steps: 4, swing: 0.04, build: concert },
   expo: { bpm: 72, steps: 2, swing: 0.04, build: expo },
 }
 
