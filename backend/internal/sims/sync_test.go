@@ -82,3 +82,32 @@ func TestSyncHoldsAfterSilence(t *testing.T) {
 		t.Errorf("3 min played and 1 after the last sign: 7 left, got %d", left)
 	}
 }
+
+// The Babi Pass: a quarter more on what's earned while it lasts, nothing on what's spent, nothing after.
+func TestPassBonus(t *testing.T) {
+	s := newSim()
+	if s.withPass(4000) != 4000 {
+		t.Error("no Pass, no bonus")
+	}
+	until := noon.Add(24 * time.Hour)
+	s.PassUntil = &until
+	if got := s.withPass(4000); got != 5000 {
+		t.Errorf("with the Pass: 5000, got %d", got)
+	}
+	if got := s.withPass(0); got != 0 {
+		t.Errorf("nothing earned: nothing, got %d", got)
+	}
+	s.GameMinutes = game.MinuteOf(noon.Add(25 * time.Hour))
+	if got := s.withPass(4000); got != 4000 {
+		t.Errorf("the Pass over: 4000, got %d", got)
+	}
+	// Selling at the market with the Pass: paid a quarter more at the end.
+	s = newSim()
+	s.PassUntil = &until
+	sell, _ := game.Kinds["market"].Interaction("sell-goods") // 4 000F
+	_ = s.start(sell, "yop-marche", "market", "Marché de Siporex", nil, "")
+	played(&s, noon.Add(11*time.Minute))
+	if s.Money != 15000 {
+		t.Errorf("4 000 earned, 5 000 with the Pass: money %d", s.Money)
+	}
+}

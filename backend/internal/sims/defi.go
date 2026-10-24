@@ -162,6 +162,7 @@ func playDefi(ctx context.Context, tx pgx.Tx, s *Sim, kind string, score int) (s
 	}
 	a.Defi = max(1, score)
 	needs, back, text := defiReward(kind, a.Interaction.ID, score, a.Interaction.Cost)
+	back = s.withPass(back)
 	s.Needs = s.Needs.Add(needs)
 	s.Money += back
 	var before int

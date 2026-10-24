@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Glasses, Scissors, Shirt, X, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import type { Look, Sim } from '../lib/types'
-import { ACCESSORIES, ACCESSORY_COLORS, BEARDS, BOTTOM_COLORS, FEMME_OUTFITS, HAIR_COLORS, HAIRS, OUTFIT_COLORS, OUTFIT_DEFAULT_COLOR, OUTFITS, PATTERNS, SHOE_COLORS, WAX_OUTFITS, defaultColors, fullLook } from '../avatar/options'
+import { ACCESSORIES, ACCESSORY_COLORS, BEARDS, BOTTOM_COLORS, FEMME_OUTFITS, HAIR_COLORS, HAIRS, OUTFIT_COLORS, OUTFIT_DEFAULT_COLOR, OUTFITS, PATTERNS, PRESTIGE_ACCESSORIES, SHOE_COLORS, WAX_OUTFITS, defaultColors, fullLook } from '../avatar/options'
 import { ColorPicker } from '../components/ColorPicker'
 import { AccessoryOptions, Options, Section } from '../components/LookOptions'
 import { Stage, type Focus } from '../avatar/Stage'
@@ -139,7 +139,7 @@ export function LookEditor() {
           {tab === 'accessoire' && (
             <div className="space-y-5">
               <Section title="Accessoire" icon={Glasses}>
-                <AccessoryOptions choices={ACCESSORIES} value={look.accessory} onPick={(accessory) => setLook({ accessory })} look={look} gender={sim.gender} />
+                <AccessoryOptions choices={ACCESSORIES} value={look.accessory} onPick={(accessory) => setLook({ accessory })} look={look} gender={sim.gender} locked={sim.prestige ? undefined : PRESTIGE_ACCESSORIES} />
               </Section>
               {look.accessory !== 'none' && (
                 <Section title="Couleur de l'accessoire">

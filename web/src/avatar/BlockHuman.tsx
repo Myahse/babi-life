@@ -1382,6 +1382,18 @@ function HeadBoxes({ l, hair, young, cast, femme, pose, seed }: { l: Required<Lo
           <Box m={m} cast={cast} s={[H * 1.1, H * 0.1, H * 1.1]} p={[0, H * 1.05, 0]} mat={lambert(tint(accOf('hat'), -0.45))} />
         </group>
       )}
+      {!young && hasAcc(l, 'couronne') && (
+        <group>
+          <Box m={m} cast={cast} s={[H * 1.1, H * 0.16, H * 1.1]} p={[0, H * 0.98, 0]} mat={lambert('#e6b422')} />
+          {[0, 1, 2, 3].map((i) => (
+            <Box key={i} m={m} cast={cast} s={[H * 0.16, H * 0.22, H * 0.16]} p={[Math.sin((i * Math.PI) / 2) * H * 0.47, H * 1.15, Math.cos((i * Math.PI) / 2) * H * 0.47]} mat={lambert('#e6b422')} />
+          ))}
+          {[0, 1, 2, 3].map((i) => (
+            <Box key={`p${i}`} m={m} cast={cast} s={[H * 0.14, H * 0.2, H * 0.14]} p={[Math.sin((i * Math.PI) / 2 + Math.PI / 4) * H * 0.5, H * 1.14, Math.cos((i * Math.PI) / 2 + Math.PI / 4) * H * 0.5]} mat={lambert('#e6b422')} />
+          ))}
+          <Box m={m} cast={cast} s={[H * 0.14, H * 0.12, H * 0.06]} p={[0, H * 0.98, H * 0.56]} mat={lambert('#d81b3f')} />
+        </group>
+      )}
       {!young && hasAcc(l, 'buckethat') && (
         <group>
           <Box m={m} cast={cast} s={[H * 1.14, H * 0.38, H * 1.14]} p={[0, H * 1.08, 0]} mat={clothMat(accOf('buckethat'))} />

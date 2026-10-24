@@ -1,10 +1,14 @@
-// Package shop: la boutique, Djai bought with real money (F CFA, through
-// GeniusPay). The game is played for free from start to end; a pack only
-// brings Djai sooner. For accounts of 18 or over, a few packs at fixed
-// prices (set here, never by the phone). A purchase's Djai are added to the
-// Sim once GeniusPay says, when asked, that it's paid the right sum:
-// whether the player comes back to the game, its webhook arrives, or the
-// shop looks again by itself; and only once.
+// Package shop: la boutique, what's paid with real money (F CFA, through
+// GeniusPay). The game is played for free from start to end; the shop only
+// brings Djai sooner, or a comfort, or a mark. For accounts of 18 or over:
+// a few packs of Djai, the Babi Pass (a month: a quarter more on the Djai
+// earned, the gold star by the name), « Plein d'énergie » (every need full
+// at once), the Pack Prestige (the crown, for good). And the advertisers'
+// pubs (ads/): a campaign's price, paid from its follow-up page. Prices are
+// set here, never by the phone. A purchase is credited once GeniusPay says,
+// when asked, that it's paid the right sum: whether the player comes back
+// to the game, its webhook arrives, or the shop looks again by itself; and
+// only once.
 package shop
 
 import (
@@ -23,6 +27,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/myahse/babi-life/backend/internal/auth"
+	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
 )
 
@@ -44,6 +49,25 @@ var Packs = []Pack{
 	{ID: "grotto", Label: "Le grotto", Price: 10_000, Djai: 1_120_000, Bonus: "+40 %"},
 }
 
+// Item: something else than Djai, for a price in F CFA.
+type Item struct {
+	ID    string `json:"id"`
+	Label string `json:"label"`
+	Text  string `json:"text"`
+	Price int    `json:"price"`
+	// Once: bought once and kept (the pack Prestige); the others again and again.
+	Once bool `json:"once,omitempty"`
+}
+
+// PassDays: how long the Babi Pass lasts, from its purchase (or the end of the one before).
+const PassDays = 30
+
+var Items = []Item{
+	{ID: "pass", Label: "Babi Pass · 30 jours", Text: "Un quart de Djai en plus sur tout ce que tu gagnes (boulot, petits boulots, défis), et l'étoile dorée à ton nom.", Price: 1500},
+	{ID: "energie", Label: "Plein d'énergie", Text: "Faim, énergie, hygiène, social, loisirs : toutes les jauges à fond, tout de suite.", Price: 300},
+	{ID: "prestige", Label: "Pack Prestige", Text: "La couronne, à porter pour toujours (Profil, Mon look).", Price: 2000, Once: true},
+}
+
 func FindPack(id string) (Pack, bool) {
 	for _, p := range Packs {
 		if p.ID == id {
@@ -53,13 +77,22 @@ func FindPack(id string) (Pack, bool) {
 	return Pack{}, false
 }
 
+func FindItem(id string) (Item, bool) {
+	for _, it := range Items {
+		if it.ID == id {
+			return it, true
+		}
+	}
+	return Item{}, false
+}
+
 type Handler struct {
 	DB *pgxpool.Pool
 	// Pay: nil while GeniusPay's keys aren't set (the shop shows, shut).
 	Pay *GeniusPay
 	// Site: the game's address, where GeniusPay sends the player back; API: the API's own (for the webhook).
 	Site, API string
-	// Changed: the Sim's devices told (its money changed).
+	// Changed: the Sim's devices told (its money, its Pass changed).
 	Changed func(simID string)
 }
 
@@ -70,10 +103,17 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/shop/{purchase}", h.check)
 }
 
+// PubRoutes: the advertiser's, by the campaign's private token (not signed in).
+func (h *Handler) PubRoutes(r chi.Router) {
+	r.Post("/ads/campaigns/{token}/pay", h.payCampaign)
+	r.Post("/ads/campaigns/{token}/pay/{purchase}", h.checkCampaign)
+}
+
 // Purchase: one, as the player sees it.
 type Purchase struct {
 	ID       string    `json:"id"`
-	Pack     string    `json:"pack"`
+	Kind     string    `json:"kind"`
+	Item     string    `json:"item"`
 	Price    int       `json:"price"`
 	Djai     int       `json:"djai"`
 	Status   string    `json:"status"`
@@ -83,10 +123,14 @@ type Purchase struct {
 
 type view struct {
 	// Open: GeniusPay set up; Sandbox: its test keys (nothing really paid).
-	Open      bool       `json:"open"`
-	Sandbox   bool       `json:"sandbox,omitempty"`
-	Adult     bool       `json:"adult"`
+	Open    bool `json:"open"`
+	Sandbox bool `json:"sandbox,omitempty"`
+	Adult   bool `json:"adult"`
+	// PassUntil: the Pass on, till then; Prestige: the pack bought.
+	PassUntil *time.Time `json:"passUntil,omitempty"`
+	Prestige  bool       `json:"prestige"`
 	Packs     []Pack     `json:"packs"`
+	Items     []Item     `json:"items"`
 	Purchases []Purchase `json:"purchases"`
 }
 
@@ -96,6 +140,7 @@ var (
 	errNoSim    = errors.New("sim introuvable")
 	errTooMany  = errors.New("trop d'achats en attente : termine ou attends ceux en cours")
 	errNotFound = errors.New("achat introuvable")
+	errHave     = errors.New("tu l'as déjà")
 )
 
 // owner: the account's Sim (and whether the account is 18 or over, a tester's, its name and e-mail for the receipt).
@@ -111,42 +156,60 @@ func (h *Handler) owner(ctx context.Context, r *http.Request) (simID string, adu
 
 func (h *Handler) view(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	_, adult, tester, _, err := h.owner(ctx, r)
+	simID, adult, tester, _, err := h.owner(ctx, r)
 	if err != nil {
 		httpx.Error(w, http.StatusNotFound, errNoSim.Error())
 		return
 	}
-	rows, err := h.DB.Query(ctx, `SELECT id, pack, price, djai, status, credited_at IS NOT NULL, created_at FROM purchases
+	v := view{Adult: adult, Packs: Packs, Items: Items}
+	if err := h.DB.QueryRow(ctx, `SELECT pass_until, prestige FROM sims WHERE id = $1`, simID).Scan(&v.PassUntil, &v.Prestige); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+		return
+	}
+	if v.PassUntil != nil && v.PassUntil.Before(time.Now()) {
+		v.PassUntil = nil
+	}
+	rows, err := h.DB.Query(ctx, `SELECT id, kind, item, price, djai, status, credited_at IS NOT NULL, created_at FROM purchases
 		WHERE user_id = $1 AND status <> 'created' ORDER BY created_at DESC LIMIT 10`, auth.UserID(ctx))
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 		return
 	}
-	list, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (Purchase, error) {
+	v.Purchases, err = pgx.CollectRows(rows, func(row pgx.CollectableRow) (Purchase, error) {
 		var p Purchase
-		return p, row.Scan(&p.ID, &p.Pack, &p.Price, &p.Djai, &p.Status, &p.Credited, &p.At)
+		return p, row.Scan(&p.ID, &p.Kind, &p.Item, &p.Price, &p.Djai, &p.Status, &p.Credited, &p.At)
 	})
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 		return
 	}
 	// Test keys: nothing is really paid, so only the team's accounts buy (else anyone would get Djai for free).
-	sandbox := h.Pay != nil && h.Pay.Sandbox()
-	httpx.JSON(w, http.StatusOK, view{Open: h.Pay != nil && (!sandbox || tester), Sandbox: sandbox, Adult: adult, Packs: Packs, Purchases: list})
+	v.Sandbox = h.Pay != nil && h.Pay.Sandbox()
+	v.Open = h.Pay != nil && (!v.Sandbox || tester)
+	httpx.JSON(w, http.StatusOK, v)
 }
 
-// buy: a payment opened at GeniusPay for the pack; the player is sent to its page.
+// buy: a payment opened at GeniusPay for a pack or an item; the player is sent to its page.
 func (h *Handler) buy(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Pack string `json:"pack"`
+		Pack string `json:"pack,omitempty"`
+		Item string `json:"item,omitempty"`
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
 		return
 	}
-	pack, ok := FindPack(req.Pack)
-	if !ok {
-		httpx.Error(w, http.StatusUnprocessableEntity, "pack inconnu")
+	// What's bought: a pack of Djai, or an item.
+	var kind, id, label, description string
+	var price, djai int
+	if pack, ok := FindPack(req.Pack); ok {
+		kind, id, label, price, djai = "djai", pack.ID, pack.Label, pack.Price, pack.Djai
+		description = fmt.Sprintf("Babi Life · %s Djai (%s)", thousands(pack.Djai), pack.Label)
+	} else if it, ok := FindItem(req.Item); ok {
+		kind, id, label, price = it.ID, it.ID, it.Label, it.Price
+		description = "Babi Life · " + it.Label
+	} else {
+		httpx.Error(w, http.StatusUnprocessableEntity, "article inconnu")
 		return
 	}
 	if h.Pay == nil {
@@ -167,6 +230,13 @@ func (h *Handler) buy(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusForbidden, errMinor.Error())
 		return
 	}
+	if kind == "prestige" {
+		var have bool
+		if err := h.DB.QueryRow(ctx, `SELECT prestige FROM sims WHERE id = $1`, simID).Scan(&have); err == nil && have {
+			httpx.Error(w, http.StatusUnprocessableEntity, errHave.Error())
+			return
+		}
+	}
 	user := auth.UserID(ctx)
 	var waiting int
 	_ = h.DB.QueryRow(ctx, `SELECT count(*) FROM purchases WHERE user_id = $1 AND credited_at IS NULL AND status IN ('created', 'pending', 'processing') AND created_at > now() - interval '15 minutes'`, user).Scan(&waiting)
@@ -174,55 +244,76 @@ func (h *Handler) buy(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusTooManyRequests, errTooMany.Error())
 		return
 	}
-	var id string
-	if err := h.DB.QueryRow(ctx, `INSERT INTO purchases (user_id, sim_id, pack, price, djai, sandbox) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-		user, simID, pack.ID, pack.Price, pack.Djai, h.Pay.Sandbox()).Scan(&id); err != nil {
+	var pid string
+	if err := h.DB.QueryRow(ctx, `INSERT INTO purchases (user_id, sim_id, kind, item, pack, price, djai, sandbox) VALUES ($1, $2, $3, $4, $4, $5, $6, $7) RETURNING id`,
+		user, simID, kind, id, price, djai, h.Pay.Sandbox()).Scan(&pid); err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 		return
 	}
-	back := h.Site + "/jeu?achat=" + id
+	back := h.Site + "/jeu?achat=" + pid
 	np := NewPayment{
-		Amount: pack.Price, Currency: "XOF", Description: fmt.Sprintf("Babi Life · %s Djai (%s)", thousands(pack.Djai), pack.Label),
+		Amount: price, Currency: "XOF", Description: description,
 		SuccessURL: back, ErrorURL: back + "&echec=1",
-		Metadata: map[string]string{"purchase": id, "sim": simID, "pack": pack.ID},
+		Metadata: map[string]string{"purchase": pid, "sim": simID, "item": id},
 	}
 	if customer.Name != "" || customer.Email != "" {
 		np.Customer = &customer
 	}
+	url, err := h.open(ctx, pid, np)
+	if err != nil {
+		log.Printf("shop: payment not created for %s (%s): %v", pid, label, err)
+		httpx.Error(w, http.StatusBadGateway, "GeniusPay ne répond pas : réessaie dans un instant")
+		return
+	}
+	httpx.JSON(w, http.StatusOK, map[string]string{"id": pid, "url": url})
+}
+
+// open creates the payment at GeniusPay for a purchase and records its reference; the page to pay on.
+func (h *Handler) open(ctx context.Context, id string, np NewPayment) (string, error) {
 	if h.API != "" {
 		np.WebhookURL = h.API + "/api/v1/shop/geniuspay"
 	}
 	pay, err := h.Pay.Create(ctx, np)
 	if err != nil || pay.URL() == "" {
-		log.Printf("shop: payment not created for %s: %v", id, err)
 		_, _ = h.DB.Exec(ctx, `UPDATE purchases SET status = 'error', updated_at = now() WHERE id = $1`, id)
-		httpx.Error(w, http.StatusBadGateway, "GeniusPay ne répond pas : réessaie dans un instant")
-		return
+		if err == nil {
+			err = errors.New("no page to pay on")
+		}
+		return "", err
 	}
 	if _, err := h.DB.Exec(ctx, `UPDATE purchases SET reference = $2, status = 'pending', updated_at = now() WHERE id = $1`, id, pay.Reference); err != nil {
-		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
-		return
+		return "", err
 	}
-	httpx.JSON(w, http.StatusOK, map[string]string{"id": id, "url": pay.URL()})
+	return pay.URL(), nil
 }
 
 // check: back from GeniusPay's page (or waiting on it): the purchase as GeniusPay says it now.
 func (h *Handler) check(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	var p Purchase
-	var ref *string
-	err := h.DB.QueryRow(ctx, `SELECT id, pack, price, djai, status, credited_at IS NOT NULL, created_at, reference FROM purchases WHERE id = $1 AND user_id = $2 AND sim_id = $3`,
-		chi.URLParam(r, "purchase"), auth.UserID(ctx), chi.URLParam(r, "id")).Scan(&p.ID, &p.Pack, &p.Price, &p.Djai, &p.Status, &p.Credited, &p.At, &ref)
+	p, err := h.settled(ctx, h.DB.QueryRow(ctx, `SELECT id, kind, item, price, djai, status, credited_at IS NOT NULL, created_at, reference FROM purchases WHERE id = $1 AND user_id = $2 AND sim_id = $3`,
+		chi.URLParam(r, "purchase"), auth.UserID(ctx), chi.URLParam(r, "id")))
 	if err != nil {
 		httpx.Error(w, http.StatusNotFound, errNotFound.Error())
 		return
 	}
+	httpx.JSON(w, http.StatusOK, p)
+}
+
+// settled reads one purchase (the Purchase columns, then its reference) and, still waiting on
+// GeniusPay, asks it now.
+func (h *Handler) settled(ctx context.Context, row pgx.Row) (Purchase, error) {
+	var p Purchase
+	var ref *string
+	if err := row.Scan(&p.ID, &p.Kind, &p.Item, &p.Price, &p.Djai, &p.Status, &p.Credited, &p.At, &ref); err != nil {
+		return Purchase{}, err
+	}
 	if !p.Credited && ref != nil && h.Pay != nil && open(p.Status) {
+		var err error
 		if p.Status, p.Credited, err = h.settle(ctx, p.ID, *ref); err != nil {
 			log.Printf("shop: check %s: %v", p.ID, err)
 		}
 	}
-	httpx.JSON(w, http.StatusOK, p)
+	return p, nil
 }
 
 // open: GeniusPay hasn't said its last word yet.
@@ -237,7 +328,7 @@ func paid(status string) bool {
 	return false
 }
 
-// settle asks GeniusPay how the payment stands and, paid the right sum, adds the Djai (once).
+// settle asks GeniusPay how the payment stands and, paid the right sum, gives what was bought (once).
 func (h *Handler) settle(ctx context.Context, id, reference string) (status string, credited bool, err error) {
 	pay, err := h.Pay.Get(ctx, reference)
 	if err != nil {
@@ -258,24 +349,24 @@ func (h *Handler) settle(ctx context.Context, id, reference string) (status stri
 	return status, false, err
 }
 
-// credit adds a paid purchase's Djai to its Sim, with a line in its journal; done once (credited_at).
+// credit gives a paid purchase what it bought, with a line in the Sim's journal; done once (credited_at).
 func (h *Handler) credit(ctx context.Context, id string, pay Payment) (string, bool, error) {
 	tx, err := h.DB.Begin(ctx)
 	if err != nil {
 		return "pending", false, err
 	}
 	defer tx.Rollback(ctx)
-	var simID *string
-	var user, packID string
+	var simID, user *string
+	var kind, item string
 	var price, djai int
 	var already bool
-	if err := tx.QueryRow(ctx, `SELECT sim_id, user_id, pack, price, djai, credited_at IS NOT NULL FROM purchases WHERE id = $1 FOR UPDATE`, id).Scan(&simID, &user, &packID, &price, &djai, &already); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT sim_id, user_id, kind, item, price, djai, credited_at IS NOT NULL FROM purchases WHERE id = $1 FOR UPDATE`, id).Scan(&simID, &user, &kind, &item, &price, &djai, &already); err != nil {
 		return "pending", false, err
 	}
 	if already {
 		return "completed", true, nil
 	}
-	// Not the sum sold, or a test payment while the shop sells for real: nothing added (looked at by hand).
+	// Not the sum sold, or a test payment while the shop sells for real: nothing given (looked at by hand).
 	if int(pay.Amount) != price || pay.Currency != "" && !strings.EqualFold(pay.Currency, "XOF") || !h.Pay.Sandbox() && strings.EqualFold(pay.Environment, "sandbox") {
 		log.Printf("shop: purchase %s paid %v %s, sold %d XOF: not credited", id, float64(pay.Amount), pay.Currency, price)
 		_, err := tx.Exec(ctx, `UPDATE purchases SET status = 'mismatch', updated_at = now() WHERE id = $1`, id)
@@ -284,36 +375,77 @@ func (h *Handler) credit(ctx context.Context, id string, pay Payment) (string, b
 		}
 		return "mismatch", false, err
 	}
-	// Its Sim gone since: the account's (the oldest one, the one the game plays).
-	if simID == nil {
-		var s string
-		if err := tx.QueryRow(ctx, `SELECT id FROM sims WHERE user_id = $1 ORDER BY created_at LIMIT 1`, user).Scan(&s); err != nil {
+	if kind == "pub" {
+		// The advertiser's campaign: paid, it runs on its days (ads.Shows).
+		if _, err := tx.Exec(ctx, `UPDATE ad_campaigns SET paid = true WHERE id::text = $1`, item); err != nil {
 			return "pending", false, err
 		}
-		simID = &s
+	} else {
+		// Its Sim gone since: the account's (the oldest one, the one the game plays).
+		if simID == nil && user != nil {
+			var s string
+			if err := tx.QueryRow(ctx, `SELECT id FROM sims WHERE user_id = $1 ORDER BY created_at LIMIT 1`, *user).Scan(&s); err != nil {
+				return "pending", false, err
+			}
+			simID = &s
+		}
+		if simID == nil {
+			return "pending", false, errors.New("no sim to credit")
+		}
+		if err := give(ctx, tx, *simID, kind, item, djai); err != nil {
+			return "pending", false, err
+		}
 	}
-	var minutes int64
-	if err := tx.QueryRow(ctx, `UPDATE sims SET money = money + $2 WHERE id = $1 RETURNING game_minutes`, *simID, djai).Scan(&minutes); err != nil {
-		return "pending", false, err
-	}
-	pack, _ := FindPack(packID)
-	text := fmt.Sprintf("Boutique : %s Djai (%s), merci !", thousands(djai), pack.Label)
-	if _, err := tx.Exec(ctx, `INSERT INTO sim_events (sim_id, kind, text, money, game_time) VALUES ($1, 'transfer', $2, $3, $4)`, *simID, text, djai, minutes); err != nil {
-		return "pending", false, err
-	}
-	if _, err := tx.Exec(ctx, `UPDATE purchases SET status = 'completed', credited_at = now(), sim_id = $2, updated_at = now() WHERE id = $1`, id, *simID); err != nil {
+	if _, err := tx.Exec(ctx, `UPDATE purchases SET status = 'completed', credited_at = now(), sim_id = COALESCE($2, sim_id), updated_at = now() WHERE id = $1`, id, simID); err != nil {
 		return "pending", false, err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return "pending", false, err
 	}
-	if h.Changed != nil {
+	if simID != nil && h.Changed != nil {
 		h.Changed(*simID)
 	}
 	return "completed", true, nil
 }
 
-// refund: paid back by GeniusPay: the Djai it brought taken back (what's left of them).
+// give: what a purchase brings its Sim, and the journal's line about it.
+func give(ctx context.Context, tx pgx.Tx, simID, kind, item string, djai int) error {
+	var minutes int64
+	var text string
+	money := 0
+	switch kind {
+	case "djai":
+		pack, _ := FindPack(item)
+		if err := tx.QueryRow(ctx, `UPDATE sims SET money = money + $2 WHERE id = $1 RETURNING game_minutes`, simID, djai).Scan(&minutes); err != nil {
+			return err
+		}
+		text, money = fmt.Sprintf("Boutique : %s Djai (%s), merci !", thousands(djai), pack.Label), djai
+	case "pass":
+		// From now, or from the end of the Pass still running.
+		var until time.Time
+		if err := tx.QueryRow(ctx, `UPDATE sims SET pass_until = GREATEST(COALESCE(pass_until, now()), now()) + make_interval(days => $2) WHERE id = $1 RETURNING game_minutes, pass_until`, simID, PassDays).Scan(&minutes, &until); err != nil {
+			return err
+		}
+		text = fmt.Sprintf("Boutique : Babi Pass jusqu'au %s. Un quart de Djai en plus sur ce que tu gagnes, et l'étoile à ton nom.", until.UTC().Format("02/01/2006"))
+	case "energie":
+		full := game.Needs{Hunger: 100, Energy: 100, Hygiene: 100, Social: 100, Fun: 100}
+		if err := tx.QueryRow(ctx, `UPDATE sims SET needs = $2 WHERE id = $1 RETURNING game_minutes`, simID, full).Scan(&minutes); err != nil {
+			return err
+		}
+		text = "Boutique : plein d'énergie, toutes les jauges à fond !"
+	case "prestige":
+		if err := tx.QueryRow(ctx, `UPDATE sims SET prestige = true WHERE id = $1 RETURNING game_minutes`, simID).Scan(&minutes); err != nil {
+			return err
+		}
+		text = "Boutique : Pack Prestige. La couronne est à toi (Profil, Mon look)."
+	default:
+		return fmt.Errorf("unknown purchase kind %q", kind)
+	}
+	_, err := tx.Exec(ctx, `INSERT INTO sim_events (sim_id, kind, text, money, game_time) VALUES ($1, 'transfer', $2, $3, $4)`, simID, text, money, minutes)
+	return err
+}
+
+// refund: paid back by GeniusPay: what it brought taken back (the Djai that are left, the Pass, the crown; a pub stops).
 func (h *Handler) refund(ctx context.Context, id string) error {
 	tx, err := h.DB.Begin(ctx)
 	if err != nil {
@@ -321,20 +453,32 @@ func (h *Handler) refund(ctx context.Context, id string) error {
 	}
 	defer tx.Rollback(ctx)
 	var simID *string
+	var kind, item string
 	var djai int
 	var credited bool
-	if err := tx.QueryRow(ctx, `SELECT sim_id, djai, credited_at IS NOT NULL FROM purchases WHERE id = $1 AND status <> 'refunded' FOR UPDATE`, id).Scan(&simID, &djai, &credited); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT sim_id, kind, item, djai, credited_at IS NOT NULL FROM purchases WHERE id = $1 AND status <> 'refunded' FOR UPDATE`, id).Scan(&simID, &kind, &item, &djai, &credited); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
 		return err
 	}
-	if credited && simID != nil {
-		var minutes int64
-		if err := tx.QueryRow(ctx, `UPDATE sims SET money = money - LEAST(GREATEST(money, 0), $2) WHERE id = $1 RETURNING game_minutes`, *simID, djai).Scan(&minutes); err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			return err
+	if credited {
+		switch {
+		case kind == "pub":
+			_, err = tx.Exec(ctx, `UPDATE ad_campaigns SET paid = false WHERE id::text = $1`, item)
+		case simID == nil:
+		case kind == "djai":
+			var minutes int64
+			if err = tx.QueryRow(ctx, `UPDATE sims SET money = money - LEAST(GREATEST(money, 0), $2) WHERE id = $1 RETURNING game_minutes`, *simID, djai).Scan(&minutes); err == nil {
+				_, err = tx.Exec(ctx, `INSERT INTO sim_events (sim_id, kind, text, money, game_time) VALUES ($1, 'transfer', 'Boutique : achat remboursé, ses Djai repris.', $2, $3)`, *simID, -djai, minutes)
+			}
+		case kind == "pass":
+			_, err = tx.Exec(ctx, `UPDATE sims SET pass_until = NULL WHERE id = $1`, *simID)
+		case kind == "prestige":
+			// The crown taken off, with the pack.
+			_, err = tx.Exec(ctx, `UPDATE sims SET prestige = false, look = jsonb_set(look, '{accessory}', to_jsonb(nullif(trim(both ',' from replace(replace(coalesce(look->>'accessory', 'none'), 'couronne', ''), ',,', ',')), '')), true) WHERE id = $1`, *simID)
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO sim_events (sim_id, kind, text, money, game_time) VALUES ($1, 'transfer', 'Boutique : achat remboursé, ses Djai repris.', $2, $3)`, *simID, -djai, minutes); err != nil {
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			return err
 		}
 	}
@@ -349,6 +493,87 @@ func (h *Handler) refund(ctx context.Context, id string) error {
 	}
 	return nil
 }
+
+/* ---------- The advertisers' pubs ---------- */
+
+// payCampaign: the campaign's price (set by the team once approved), paid by its advertiser on GeniusPay's page.
+func (h *Handler) payCampaign(w http.ResponseWriter, r *http.Request) {
+	if h.Pay == nil {
+		httpx.Error(w, http.StatusServiceUnavailable, errShut.Error())
+		return
+	}
+	token := chi.URLParam(r, "token")
+	if len(token) < 20 {
+		httpx.Error(w, http.StatusNotFound, "campagne introuvable")
+		return
+	}
+	ctx := r.Context()
+	var id, advertiser, contact, title, status string
+	var price int
+	var isPaid bool
+	if err := h.DB.QueryRow(ctx, `SELECT id::text, advertiser, contact, title, status, price, paid FROM ad_campaigns WHERE token = $1`, token).Scan(&id, &advertiser, &contact, &title, &status, &price, &isPaid); err != nil {
+		httpx.Error(w, http.StatusNotFound, "campagne introuvable")
+		return
+	}
+	switch {
+	case isPaid:
+		httpx.Error(w, http.StatusUnprocessableEntity, "cette pub est déjà payée")
+		return
+	case status != "approved":
+		httpx.Error(w, http.StatusUnprocessableEntity, "la pub doit d'abord être acceptée")
+		return
+	case price < 200:
+		httpx.Error(w, http.StatusUnprocessableEntity, "le prix n'est pas encore fixé : on te l'envoie")
+		return
+	}
+	var waiting int
+	_ = h.DB.QueryRow(ctx, `SELECT count(*) FROM purchases WHERE kind = 'pub' AND item = $1 AND credited_at IS NULL AND status IN ('created', 'pending', 'processing') AND created_at > now() - interval '15 minutes'`, id).Scan(&waiting)
+	if waiting >= 3 {
+		httpx.Error(w, http.StatusTooManyRequests, errTooMany.Error())
+		return
+	}
+	var pid string
+	if err := h.DB.QueryRow(ctx, `INSERT INTO purchases (kind, item, pack, price, djai, sandbox) VALUES ('pub', $1, 'pub', $2, 0, $3) RETURNING id`, id, price, h.Pay.Sandbox()).Scan(&pid); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+		return
+	}
+	back := h.Site + "/pub/suivi/" + token + "?achat=" + pid
+	np := NewPayment{
+		Amount: price, Currency: "XOF", Description: "Babi Pub · " + title,
+		Customer:   &Customer{Name: advertiser, Email: emailOf(contact)},
+		SuccessURL: back, ErrorURL: back + "&echec=1",
+		Metadata: map[string]string{"purchase": pid, "campaign": id},
+	}
+	url, err := h.open(ctx, pid, np)
+	if err != nil {
+		log.Printf("shop: pub payment not created for %s: %v", id, err)
+		httpx.Error(w, http.StatusBadGateway, "GeniusPay ne répond pas : réessaie dans un instant")
+		return
+	}
+	httpx.JSON(w, http.StatusOK, map[string]string{"id": pid, "url": url})
+}
+
+// checkCampaign: back from GeniusPay's page: the campaign's payment as GeniusPay says it now.
+func (h *Handler) checkCampaign(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	p, err := h.settled(ctx, h.DB.QueryRow(ctx, `SELECT p.id, p.kind, p.item, p.price, p.djai, p.status, p.credited_at IS NOT NULL, p.created_at, p.reference
+		FROM purchases p JOIN ad_campaigns c ON c.id::text = p.item WHERE p.id = $1 AND p.kind = 'pub' AND c.token = $2`, chi.URLParam(r, "purchase"), chi.URLParam(r, "token")))
+	if err != nil {
+		httpx.Error(w, http.StatusNotFound, errNotFound.Error())
+		return
+	}
+	httpx.JSON(w, http.StatusOK, p)
+}
+
+// emailOf: the contact if it's an e-mail (a phone number isn't given to GeniusPay as one).
+func emailOf(contact string) string {
+	if strings.Contains(contact, "@") {
+		return contact
+	}
+	return ""
+}
+
+/* ---------- GeniusPay's word ---------- */
 
 // Webhook: GeniusPay telling a payment changed (POST /shop/geniuspay, not signed in). Its
 // signature checked, the payment is asked of GeniusPay itself before anything is done.

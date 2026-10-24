@@ -63,7 +63,10 @@ export const ACCESSORIES: Choice[] = [
   { id: 'kufi', label: 'Bonnet de prière' },
   { id: 'croix', label: 'Croix' },
   { id: 'chapelet', label: 'Chapelet' },
+  { id: 'couronne', label: 'Couronne' },
 ]
+/** Worn only with the Pack Prestige (the Boutique): the server refuses them otherwise. */
+export const PRESTIGE_ACCESSORIES = new Set(['couronne'])
 
 export const OUTFITS: Choice[] = [
   { id: 'pagne', label: 'Pagne wax' },
@@ -137,7 +140,7 @@ export const HEADWEAR = new Set(['cap', 'capback', 'beanie', 'hat', 'buckethat',
  */
 export const MAX_ACCESSORIES = 5
 export const ACCESSORY_SLOT: Record<string, string> = {
-  cap: 'head', capback: 'head', beanie: 'head', hat: 'head', buckethat: 'head', bandana: 'head', headphones: 'head', kufi: 'head',
+  cap: 'head', capback: 'head', beanie: 'head', hat: 'head', buckethat: 'head', bandana: 'head', headphones: 'head', kufi: 'head', couronne: 'head',
   glasses: 'eyes', sunglasses: 'eyes',
   earrings: 'ears',
   chain: 'neck', beads: 'neck', croix: 'neck', chapelet: 'hand',

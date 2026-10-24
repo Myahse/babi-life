@@ -45,6 +45,22 @@ func (s *Sim) advance(now time.Time, rng *rand.Rand) []Event {
 	return append(events, s.advanceTo(game.MinuteOf(now), rng)...)
 }
 
+// PassBonus: the share added to the Djai earned (work, gigs, défis) while the Babi Pass (shop/) lasts.
+const PassBonus = 0.25
+
+// passOn: the Babi Pass still running at the Sim's time.
+func (s *Sim) passOn() bool {
+	return s.PassUntil != nil && game.TimeOf(s.GameMinutes).Before(*s.PassUntil)
+}
+
+// withPass: what's earned, a quarter more with the Pass (nothing on what's spent).
+func (s *Sim) withPass(earned int) int {
+	if earned <= 0 || !s.passOn() {
+		return earned
+	}
+	return earned + int(float64(earned)*PassBonus+0.5)
+}
+
 // hold: time gone by for the world but not for the Sim (the player away): its
 // clock jumps on, and what it was doing, its age, its friends' last news wait
 // where they were.
@@ -108,7 +124,7 @@ func (s *Sim) finish(rng *rand.Rand) []Event {
 		s.City, s.Commune = a.Trip.City, a.Trip.Commune
 		return []Event{{Kind: "travel", Text: a.Trip.Label, Money: -a.Trip.Fare, GameTime: a.Start}}
 	}
-	earned := a.Earned()
+	earned := s.withPass(a.Earned())
 	s.Money += earned
 	money := earned
 	if a.Interaction.Cost > 0 {
@@ -148,7 +164,7 @@ func (s *Sim) stop() (Event, error) {
 		return Event{}, errInCustody
 	}
 	s.Activity = nil
-	earned := a.Earned()
+	earned := s.withPass(a.Earned())
 	s.Money += earned
 	money := earned
 	if a.Interaction.Cost > 0 {

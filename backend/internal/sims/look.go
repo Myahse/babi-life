@@ -1,7 +1,10 @@
 package sims
 
 import (
+	"errors"
 	"net/http"
+	"slices"
+	"strings"
 
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
@@ -19,6 +22,9 @@ func (s *Sim) changeLook(nl Look) (int, error) {
 	}
 	if err := nl.validate(s.Gender); err != nil {
 		return 0, err
+	}
+	if !s.Prestige && slices.Contains(strings.Split(nl.Accessory, ","), "couronne") {
+		return 0, errors.New("la couronne vient avec le Pack Prestige (Boutique)")
 	}
 	old := s.Look
 	nl.Skin, nl.Body, nl.Height, nl.Eyes, nl.Marks = old.Skin, old.Body, old.Height, old.Eyes, old.Marks

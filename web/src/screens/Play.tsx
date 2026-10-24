@@ -54,7 +54,7 @@ import { TikitokoApp } from './TikitokoApp'
 import { BabigramApp } from './BabigramApp'
 import { BetApp } from './BetApp'
 import { WayeApp } from './WayeApp'
-import { BoutiqueApp } from './BoutiqueApp'
+import { BoutiqueApp, passOn } from './BoutiqueApp'
 import { StoreApp } from './StoreApp'
 import { FriendsApp } from './FriendsApp'
 import { CameraView } from './CameraView'
@@ -1039,7 +1039,7 @@ export function Play() {
             // Busy inside (the street seen through « Voir la rue »): the Sim is in there, not at the door.
             indoors: !!inside && !!doing,
             // In the air (FlightView over the street), no name floating over the clouds.
-            nameTag: sim.activity?.trip?.mode === 'avion' ? undefined : user?.username ? `@${user.username}` : sim.firstName,
+            nameTag: sim.activity?.trip?.mode === 'avion' ? undefined : `${user?.username ? `@${user.username}` : sim.firstName}${passOn(sim) ? ' ★' : ''}`,
             happening,
             onNear: setNear,
             // Busy, the Sim isn't frozen: it does what it does where it stands, and walking far
@@ -1112,7 +1112,10 @@ export function Play() {
             </span>
           </span>
           <span className="min-w-0 leading-tight">
-            <span className="block truncate font-display text-[15px] font-extrabold sm:text-[17px]">{user?.username ? `@${user.username}` : sim.firstName}</span>
+            <span className="block truncate font-display text-[15px] font-extrabold sm:text-[17px]">
+              {user?.username ? `@${user.username}` : sim.firstName}
+              {passOn(sim) && <span className="ml-1 text-[#e6b422]" title="Babi Pass">★</span>}
+            </span>
             <span className="flex min-w-0 items-center gap-1 text-[11px] font-extrabold text-[var(--color-ink-soft)]">
               <MapPin size={11} strokeWidth={3} className="shrink-0" />
               <span className="truncate">

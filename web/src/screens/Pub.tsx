@@ -287,9 +287,43 @@ export function PubFollow({ token }: { token: string }) {
   const name = (id: string) => world?.cities.flatMap((c) => c.communes).find((c) => c.id === id)?.name ?? id
   const [s, setS] = useState<Status | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const load = () => call<Status>(`/ads/campaigns/${encodeURIComponent(token)}`).then(setS, (e: Error) => setError(e.message))
+  useEffect(() => void load(), [token]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Paying: on GeniusPay's page (Wave, Orange Money, MTN, Moov, a card), then back here (?achat=…), asked
+  // every few seconds until GeniusPay has said its word.
+  const [paying, setPaying] = useState(false)
+  const [pay, setPay] = useState<{ status: string; credited: boolean; failed: boolean } | null>(null)
   useEffect(() => {
-    call<Status>(`/ads/campaigns/${encodeURIComponent(token)}`).then(setS, (e: Error) => setError(e.message))
-  }, [token])
+    const q = new URLSearchParams(location.search)
+    const id = q.get('achat')
+    if (!id) return
+    const failed = q.get('echec') === '1'
+    history.replaceState(null, '', location.pathname)
+    let stop = false
+    let tries = 0
+    const ask = () =>
+      call<{ status: string; credited: boolean }>(`/ads/campaigns/${encodeURIComponent(token)}/pay/${encodeURIComponent(id)}`, { method: 'POST' })
+        .then((p) => {
+          if (stop) return
+          setPay({ ...p, failed })
+          if (!p.credited && (p.status === 'pending' || p.status === 'processing') && tries++ < 40) setTimeout(ask, 3000)
+          else void load()
+        })
+        .catch((e: Error) => !stop && setError(e.message))
+    void ask()
+    return () => void (stop = true)
+  }, [token]) // eslint-disable-line react-hooks/exhaustive-deps
+  const payNow = async () => {
+    setPaying(true)
+    setError(null)
+    try {
+      const { url } = await call<{ id: string; url: string }>(`/ads/campaigns/${encodeURIComponent(token)}/pay`, { method: 'POST' })
+      location.assign(url)
+    } catch (e) {
+      setError((e as Error).message)
+      setPaying(false)
+    }
+  }
   return (
     <Shell>
       <Link to="/pub" className="inline-flex items-center gap-1.5 text-[15px] font-extrabold">
@@ -306,6 +340,19 @@ export function PubFollow({ token }: { token: string }) {
               {STATUS[s.status][0]}
               {s.status === 'approved' && !s.paid && ' · en attente du paiement'}
             </p>
+            {pay && (
+              <p className="mt-3 bg-[var(--cream)] px-3 py-2 text-[15px] font-bold" role="status">
+                {pay.credited ? 'Paiement reçu, merci ! Ta pub passera sur les panneaux à ses dates.' : pay.status === 'pending' || pay.status === 'processing' ? (pay.failed ? "Le paiement n'est pas passé : tu peux réessayer." : 'Paiement en cours : dès que GeniusPay le confirme, ta pub est réglée.') : "Le paiement n'a pas abouti : rien n'a été débité, tu peux réessayer."}
+              </p>
+            )}
+            {s.status === 'approved' && !s.paid && s.price >= 200 && !pay?.credited && (
+              <div className="mt-3">
+                <button className="sign-btn" disabled={paying} onClick={() => void payNow()}>
+                  {paying ? 'Vers GeniusPay…' : `Payer ${s.price.toLocaleString('fr-FR')} F CFA en ligne`}
+                </button>
+                <p className="mt-1.5 text-[13px] font-bold opacity-75">Wave, Orange Money, MTN, Moov ou carte, sur la page sécurisée de GeniusPay. On peut aussi régler avec nous comme convenu.</p>
+              </div>
+            )}
             {s.note && <p className="mt-3 bg-[var(--cream)] px-3 py-2 text-[15px] font-bold">{s.note}</p>}
             <p className="mt-3 text-[15px] font-bold">
               Du {fr(s.starts)} au {fr(s.ends)} · {s.communes.length ? s.communes.map(name).join(', ') : 'toutes les communes'}
