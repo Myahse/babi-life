@@ -31,7 +31,7 @@ var (
 	errListingFull  = errors.New("ce logement est déjà réservé : choisis-en un autre")
 	errOwnListing   = errors.New("c'est ta propre maison : tu n'as pas besoin de la louer")
 	errNotLettable  = errors.New("pour la mettre en location, il faut une maison habitable (un lit sous un toit, des toilettes) où tu n'habites pas")
-	errBadNight     = errors.New("le prix de la nuit va de 5 000 à 500 000 Djai")
+	errBadNight     = errors.New("le prix de la nuit va de 5 000 à 60 000 Djai")
 	errTooYoungDodo = errors.New("louer un logement, c'est à partir de 18 ans")
 	errNoDodoStay   = errors.New("réserve d'abord un logement (appli Dodo)")
 )
@@ -198,13 +198,24 @@ func (h *Handler) dodoBook(w http.ResponseWriter, r *http.Request) {
 		if price > s.Money {
 			return game.Outcome{}, nil, game.ErrNotEnoughMoney
 		}
+		// A player's house: Djai going from one account to another, within the day's limits (money.go).
+		gain := price - int(float64(price)*game.DodoFee)
+		if l.HostSim != "" {
+			if err := heldBack(ctx, tx, s.ID); err != nil {
+				return game.Outcome{}, nil, err
+			}
+			if left, err := leftFor(ctx, tx, l.HostSim, game.FromRental); err != nil {
+				return game.Outcome{}, nil, err
+			} else if left < gain {
+				return game.Outcome{}, nil, game.ErrFull(game.FromRental)
+			}
+		}
 		s.Money -= price
 		s.Stay = &Stay{Kind: "dodo", Place: StayPlaceID, Name: l.Title, Room: l.ID, City: l.City, Commune: l.Commune, From: s.GameMinutes, Until: s.GameMinutes + length.Minutes, Paid: price, Listing: listing, Host: l.HostSim, Type: l.Type, Lot: lot, Seed: l.Seed}
 		where := inCommune(communeName(l.City, l.Commune))
 		if l.HostSim != "" {
 			// The host is paid, Dodo keeps its share.
-			gain := price - int(float64(price)*game.DodoFee)
-			if _, err := tx.Exec(ctx, `UPDATE sims SET money = money + $2 WHERE id = $1`, l.HostSim, gain); err != nil {
+			if _, err := takeFor(ctx, tx, l.HostSim, game.FromRental, gain); err != nil {
 				return game.Outcome{}, nil, err
 			}
 			_, _ = tx.Exec(ctx, `UPDATE dodo_listings SET stays = stays + 1, earned = earned + $2 WHERE id = $1`, listing, gain)
@@ -235,7 +246,7 @@ func (h *Handler) dodoList(w http.ResponseWriter, r *http.Request) {
 		if !p.Livable || p.Home {
 			return game.Outcome{}, nil, errNotLettable
 		}
-		if req.Night < 5000 || req.Night > 500000 {
+		if req.Night < 5000 || req.Night > 60000 {
 			return game.Outcome{}, nil, errBadNight
 		}
 		where := communeName(p.Lot.City, p.Lot.Commune)

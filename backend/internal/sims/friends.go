@@ -153,9 +153,23 @@ func (h *Handler) sendToFriend(ctx context.Context, tx pgx.Tx, s *Sim, to string
 	if s.Money < amount+fee {
 		return game.Outcome{}, nil, game.ErrNotEnoughMoney
 	}
-	if _, err := tx.Exec(ctx, `UPDATE sims SET money = money + $1 WHERE id = $2`, amount, o.ID); err != nil {
+	// Between players, the day's limits (money.go): an account made to farm
+	// can't pass its Djai on, nor any account more than a little a day.
+	if err := heldBack(ctx, tx, s.ID); err != nil {
 		return game.Outcome{}, nil, err
 	}
+	if s.left(game.ToPlayers) < amount {
+		return game.Outcome{}, nil, game.ErrFull(game.ToPlayers)
+	}
+	if left, err := leftFor(ctx, tx, o.ID, game.FromPlayers); err != nil {
+		return game.Outcome{}, nil, err
+	} else if left < amount {
+		return game.Outcome{}, nil, fmt.Errorf("%s : %s", o.FirstName, game.Full(game.FromPlayers))
+	}
+	if _, err := takeFor(ctx, tx, o.ID, game.FromPlayers, amount); err != nil {
+		return game.Outcome{}, nil, err
+	}
+	s.wallet().Take(s.today(), game.ToPlayers, amount, s.passOn())
 	s.Money -= amount + fee
 	s.Needs = s.Needs.Add(game.Needs{Social: 4})
 	_ = befriend(ctx, tx, s.ID, o.ID, 2)

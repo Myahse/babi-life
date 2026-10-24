@@ -40,10 +40,10 @@ var defiFor = map[string][]string{
 	"arcade":  {"borne-arcade"},
 }
 
-// The tournament's prizes: the cup, the final lost (the entry is 1 000).
+// The tournament's prizes: the cup, the final lost (the entry is 1 000; played once a day, game.FromTournament).
 const (
-	tournamentWin   = 4000
-	tournamentFinal = 1500
+	tournamentWin   = 2000
+	tournamentFinal = 800
 )
 
 var (
@@ -162,9 +162,22 @@ func playDefi(ctx context.Context, tx pgx.Tx, s *Sim, kind string, score int) (s
 	}
 	a.Defi = max(1, score)
 	needs, back, text := defiReward(kind, a.Interaction.ID, score, a.Interaction.Cost)
-	back = s.withSect(s.withPass(back), "defi")
 	s.Needs = s.Needs.Add(needs)
-	s.Money += back
+	// What comes back up to what was paid (the stake, money saved on the
+	// shopping) isn't a gain; what's won over it is, within the day's limit
+	// (the score is the phone's: a made-up one buys little).
+	refund := min(back, max(a.Interaction.Cost, 0))
+	s.Money += refund
+	if gain := back - refund; gain > 0 {
+		src := game.FromDefi
+		if a.Interaction.ID == game.TournamentID {
+			src = game.FromTournament
+		}
+		would := s.withSect(s.withPass(gain), "defi")
+		got := s.earn(src, would)
+		back = refund + got
+		text = capNote(text, src, got, would)
+	}
 	var before int
 	if err := tx.QueryRow(ctx, `SELECT best FROM defis WHERE sim_id = $1 AND kind = $2`, s.ID, kind).Scan(&before); err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return "", 0, err

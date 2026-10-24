@@ -31,8 +31,8 @@ const (
 	dameIdle         = 10 * time.Minute
 	dameInviteWindow = 10 * time.Minute
 	// dameNpcMax: the most a man of the grin puts on a game; damePlayerMax: between friends.
-	dameNpcMax    = 5000
-	damePlayerMax = 50000
+	dameNpcMax    = 2000
+	damePlayerMax = 10000
 	// How long a game just over still shows (its result).
 	dameShowEnded = 3 * time.Minute
 )
@@ -209,16 +209,27 @@ func finish(ctx context.Context, tx pgx.Tx, d *dameRow, winner int8, why string)
 	now := game.MinuteOf(time.Now())
 	for _, p := range players {
 		amount := 0
+		line := "Dames : " + d.Text
 		switch {
 		case winner == 0:
 			amount = d.Stake
-		case winner == p.color:
-			amount = pot
+			if err := pay(p.id, amount); err != nil {
+				return err
+			}
+		case winner == p.color && d.Stake > 0:
+			// Won: within the day's limit for the account (money.go).
+			src := game.FromPlayers
+			if d.Black == nil {
+				src = game.FromGames
+			}
+			var err error
+			if amount, err = payWinner(ctx, tx, p.id, d.Stake, pot, src); err != nil {
+				return err
+			}
+			if amount < pot {
+				line += " " + game.Full(src)
+			}
 		}
-		if err := pay(p.id, amount); err != nil {
-			return err
-		}
-		line := "Dames : " + d.Text
 		_ = insertEvent(ctx, tx, p.id, "dames", line, amount, now)
 	}
 	_, err := tx.Exec(ctx, `UPDATE dames SET status = 'done', winner = $2, result = $3, updated_at = now() WHERE id = $1`, d.ID, winner, d.Text)
@@ -318,6 +329,11 @@ func (h *Handler) damesStart(w http.ResponseWriter, r *http.Request) {
 		if s.Money < req.Stake {
 			return game.Outcome{}, nil, game.ErrNotEnoughMoney
 		}
+		if req.Stake > 0 {
+			if err := heldBack(ctx, tx, s.ID); err != nil {
+				return game.Outcome{}, nil, err
+			}
+		}
 		var busy bool
 		_ = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM dames WHERE (white = $1 OR black = $1) AND (status = 'playing' OR (status = 'invited' AND created_at > $2)))`, o.ID, time.Now().Add(-dameInviteWindow)).Scan(&busy)
 		if busy {
@@ -367,6 +383,11 @@ func (h *Handler) damesAct(w http.ResponseWriter, r *http.Request) {
 			}
 			if s.Money < d.Stake {
 				return game.Outcome{}, nil, game.ErrNotEnoughMoney
+			}
+			if d.Stake > 0 {
+				if err := heldBack(r.Context(), tx, s.ID); err != nil {
+					return game.Outcome{}, nil, err
+				}
 			}
 			// The one who challenged puts theirs down now too, if they still have it.
 			tag, err := tx.Exec(r.Context(), `UPDATE sims SET money = money - $1 WHERE id = $2 AND money >= $1`, d.Stake, d.White)

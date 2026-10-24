@@ -40,7 +40,7 @@ func TestOnHoldWhileAway(t *testing.T) {
 	s := newSim()
 	s.BornAt = s.GameMinutes - game.MinutesToAge(25)
 	born := s.BornAt
-	sell, _ := game.Kinds["market"].Interaction("sell-goods") // 10 real minutes, earns 4 000F
+	sell, _ := game.Kinds["market"].Interaction("sell-goods") // 10 real minutes, earns 1 200F
 	_ = s.start(sell, "yop-marche", "market", "Marché de Siporex", nil, "")
 	s.advance(noon.Add(2*time.Minute), noLuck())
 	money := s.Money
@@ -66,16 +66,30 @@ func TestOnHoldWhileAway(t *testing.T) {
 		t.Error("a Sim doesn't grow older while nobody plays it")
 	}
 	ev = played(&s, noon.Add(20*time.Hour+8*time.Minute))
-	if s.Activity != nil || s.Money < money+4000 || len(ev) == 0 {
+	if s.Activity != nil || s.Money < money+1200 || len(ev) == 0 {
 		t.Fatalf("back, the selling ends and pays: act %+v money %d ev %v", s.Activity, s.Money, ev)
 	}
-	// Idle and away a week: no rent, no fading friends, needs as they were.
+	// Idle and away a week: no fading friends, needs as they were; only the
+	// landlord doesn't wait: he passes once for the Saturday gone by.
 	s = newSim()
 	s.Friends = []game.Friend{{ID: "f1", Name: "Koffi", Friendship: 50, Seen: s.GameMinutes}}
 	needs, money := s.Needs, s.Money
 	ev = s.advance(noon.Add(8*24*time.Hour), noLuck())
-	if len(ev) != 0 || s.Money != money || s.Friends[0].Friendship != 50 || s.Needs.Hunger < needs.Hunger-5 {
+	if len(ev) == 0 || s.Money >= money || s.Friends[0].Friendship != 50 || s.Needs.Hunger < needs.Hunger-5 {
 		t.Errorf("a week away: events %v money %d friendship %d needs %+v", ev, s.Money, s.Friends[0].Friendship, s.Needs)
+	}
+	for _, e := range ev {
+		if e.Kind != "bill" {
+			t.Errorf("a week away, only the landlord: %+v", e)
+		}
+	}
+	// Away three weeks more: one Saturday's rent again (and what was still owed), not three.
+	s.Money = 100000
+	owed := s.RentArrears
+	h, _ := game.FindHousing(s.Housing)
+	ev = s.advance(noon.Add(29*24*time.Hour), noLuck())
+	if s.Money != 100000-h.Rent-owed {
+		t.Errorf("three weeks away: one rent (%d) and %d owed, money %d, events %v", h.Rent, owed, s.Money, ev)
 	}
 }
 
@@ -101,7 +115,7 @@ func TestPausedHeldAtOnce(t *testing.T) {
 
 func TestActivityEndsWhileAway(t *testing.T) {
 	s := newSim()
-	sell, _ := game.Kinds["market"].Interaction("sell-goods") // 4 h (10 real minutes), earns 4 000F
+	sell, _ := game.Kinds["market"].Interaction("sell-goods") // 4 h (10 real minutes), earns 1 200F
 	if err := s.start(sell, "yop-marche", "market", "Marché de Siporex", nil, ""); err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +127,7 @@ func TestActivityEndsWhileAway(t *testing.T) {
 		t.Fatalf("after 5 min it is still selling: %+v %v %d", s.Activity, ev, s.Money)
 	}
 	ev = played(&s, noon.Add(6*time.Hour))
-	if s.Activity != nil || s.Money < 14000 || len(ev) == 0 || !strings.Contains(ev[0].Text, "Vendre") {
+	if s.Activity != nil || s.Money < 11200 || len(ev) == 0 || !strings.Contains(ev[0].Text, "Vendre") {
 		t.Fatalf("after 6 h it is done and paid: act=%v money=%d ev=%v", s.Activity, s.Money, ev)
 	}
 	if s.GameMinutes != game.MinuteOf(noon.Add(6*time.Hour)) {
@@ -127,7 +141,7 @@ func TestStopPaysProRata(t *testing.T) {
 	_ = s.start(sell, "yop-marche", "market", "Marché de Siporex", nil, "")
 	played(&s, noon.Add(5*time.Minute))
 	ev, err := s.stop()
-	if err != nil || s.Activity != nil || s.Money != 12000 || ev.Money != 2000 {
+	if err != nil || s.Activity != nil || s.Money != 10600 || ev.Money != 600 {
 		t.Fatalf("5 min of 10: money %d ev %+v err %v", s.Money, ev, err)
 	}
 }

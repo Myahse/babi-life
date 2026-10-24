@@ -176,7 +176,7 @@ var Kinds = map[string]PlaceKind{
 			{ID: "bargain", Ages: TeensUp, Label: "Marchander avec les tanties", Icon: "messages-square", Minutes: 30, Effect: Needs{Social: 20, Fun: 10}},
 			{ID: "eat-alloco", Label: "Manger de l'alloco", Icon: "banana", Minutes: 15, Cost: 300, Effect: Needs{Hunger: 25}},
 			Gbairai,
-			{ID: "sell-goods", Ages: TeensUp, Label: "Vendre au petit commerce", Icon: "store", Minutes: 4 * 60, Cost: -4000, Effect: Needs{Energy: -20, Social: 15, Hygiene: -10}, MinHour: 6, MaxHour: 18},
+			{ID: "sell-goods", Ages: TeensUp, Label: "Vendre au petit commerce", Icon: "store", Minutes: 4 * 60, Cost: -1200, Effect: Needs{Energy: -20, Social: 15, Hygiene: -10}, MinHour: 6, MaxHour: 18},
 		},
 		Events: []RandomEvent{
 			{Text: "Une tantie t'a fait « cadeau » d'une poignée de piment en plus.", Effect: Needs{Social: 5}},
@@ -193,7 +193,7 @@ var Kinds = map[string]PlaceKind{
 			{ID: "terrasse-pyramide", Label: "Monter sur le toit de la Pyramide", Icon: "mountain", Minutes: 40, Cost: 500, Effect: Needs{Fun: 30, Energy: -5}, MinHour: 9, MaxHour: 18, Places: []string{PyramideID}},
 		},
 		Events: []RandomEvent{
-			{Text: "Le patron t'a félicité devant tout le monde. Prime !", Money: 10000, Effect: Needs{Fun: 15}},
+			{Text: "Le patron t'a félicité devant tout le monde. Petite prime !", Money: 1000, Effect: Needs{Fun: 15}},
 			{Text: "Réunion surprise qui dure deux heures…", Effect: Needs{Fun: -15, Energy: -10}},
 		},
 	},
@@ -202,7 +202,7 @@ var Kinds = map[string]PlaceKind{
 		ID: "chantier", Label: "Chantier", Icon: "hard-hat",
 		Interactions: []Interaction{
 			{ID: "regarder-tour-f", Label: "Regarder monter la Tour F", Icon: "camera", Minutes: 20, Effect: Needs{Fun: 12}, Places: []string{TourFID}},
-			{ID: "manoeuvre-tour-f", Ages: Adults, Label: "Faire une journée de manœuvre sur le chantier", Icon: "hard-hat", Minutes: 6 * 60, Cost: -7000, Effect: Needs{Energy: -35, Hygiene: -25, Fun: -5, Social: 10}, MinHour: 7, MaxHour: 15, Places: []string{TourFID}},
+			{ID: "manoeuvre-tour-f", Ages: Adults, Label: "Faire une journée de manœuvre sur le chantier", Icon: "hard-hat", Minutes: 6 * 60, Cost: -1800, Effect: Needs{Energy: -35, Hygiene: -25, Fun: -5, Social: 10}, MinHour: 7, MaxHour: 15, Places: []string{TourFID}},
 		},
 		Events: []RandomEvent{
 			{Text: "Un ouvrier t'a raconté que de là-haut, on voit jusqu'à Bassam.", Effect: Needs{Fun: 5, Social: 5}},
@@ -684,7 +684,7 @@ var Kinds = map[string]PlaceKind{
 	"village": {
 		ID: "village", Label: "Village ébrié", Icon: "cooking-pot",
 		Interactions: []Interaction{
-			{ID: "preparer-attieke", Ages: TeensUp, Label: "Aider à préparer l'attiéké", Icon: "cooking-pot", Minutes: 3 * 60, Cost: -3000, Effect: Needs{Energy: -25, Hygiene: -15, Social: 20}, MinHour: 6, MaxHour: 15},
+			{ID: "preparer-attieke", Ages: TeensUp, Label: "Aider à préparer l'attiéké", Icon: "cooking-pot", Minutes: 3 * 60, Cost: -1000, Effect: Needs{Energy: -25, Hygiene: -15, Social: 20}, MinHour: 6, MaxHour: 15},
 			{ID: "attieke-frais", Label: "Manger de l'attiéké frais du village", Icon: "fish", Minutes: 20, Cost: 500, Effect: Needs{Hunger: 45, Fun: 5}},
 			{ID: "anciens", Label: "Écouter les anciens raconter le village", Icon: "users", Minutes: 60, Effect: Needs{Social: 25, Fun: 10}},
 		},
@@ -770,9 +770,9 @@ var Hairdos = map[string]struct{ Hair, Beard string }{
 
 // Generic events can happen anywhere.
 var GenericEvents = []RandomEvent{
-	{Text: "Tu trouves un billet de 1 000F par terre. C'est Dieu qui donne !", Money: 1000, Effect: Needs{Fun: 10}},
+	{Text: "Tu trouves une pièce de 500F par terre. C'est Dieu qui donne !", Money: 500, Effect: Needs{Fun: 10}},
 	{Text: "Il pleut des cordes, tu es trempé·e.", Effect: Needs{Hygiene: -15, Fun: -10}},
-	{Text: "Un ami t'envoie un transfert Mobile Money « pour ta soif ».", Money: 2000, Effect: Needs{Social: 10}},
+	{Text: "Un ami t'envoie un transfert Mobile Money « pour ta soif ».", Money: 1000, Effect: Needs{Social: 10}},
 	{Text: "Délestage : le courant est parti. On s'éclaire au téléphone en attendant.", Effect: Needs{Fun: -8, Energy: -5}},
 	{Text: "Une tantie te fait goûter son garba « juste pour voir ». Il était doux !", Effect: Needs{Hunger: 15, Social: 5}},
 	{Text: "Tu croises un ami d'enfance. Vous avez rigolé comme avant.", Effect: Needs{Social: 15, Fun: 10}},
@@ -783,7 +783,7 @@ var GenericEvents = []RandomEvent{
 	{Text: "Le cousin du village appelle : il a « un petit problème ». Tu envoies 1 000 Djai.", Money: -1000, Effect: Needs{Social: 6}},
 	{Text: "Un coupé-décalé passe dans un maquis : tu as fait deux pas de danse dans la rue.", Effect: Needs{Fun: 10}},
 	{Text: "La chaleur est trop forte aujourd'hui. Tu as bu de l'eau glacée.", Money: -100, Effect: Needs{Energy: -5}},
-	{Text: "Tu as gagné 2 000 Djai au pari du match. La chance est avec toi !", Money: 2000, Effect: Needs{Fun: 12}},
+	{Text: "Tu as gagné 1 000 Djai au pari du match. La chance est avec toi !", Money: 1000, Effect: Needs{Fun: 12}},
 	{Text: "Un vendeur ambulant t'a eu avec ses lunettes « originales » : 1 500 Djai.", Money: -1500, Effect: Needs{Fun: 3}},
 }
 

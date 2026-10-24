@@ -55,8 +55,8 @@ func TestEarnedIsProRata(t *testing.T) {
 	sell, _ := Kinds["market"].Interaction("sell-goods")
 	a := Activity{Kind: "do", Interaction: sell, Start: 0, End: sell.Minutes}
 	a.Progress(Needs{}, 0, sell.Minutes/4)
-	if got := a.Earned(); got != 1000 {
-		t.Errorf("a quarter of 4 000F: got %d", got)
+	if got := a.Earned(); got != 300 {
+		t.Errorf("a quarter of 1 200F: got %d", got)
 	}
 }
 

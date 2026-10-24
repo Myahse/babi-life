@@ -75,8 +75,19 @@ func leagueOf(app, league string, round int64, i int, label string) string {
 	return l
 }
 
-// boostOf: the boost a combined bet of n matches gets on an app.
-func boostOf(a betApp, n int) float64 {
+// BoostMinOdds: a match counts towards a combined bet's boost from these odds
+// (near-certain picks stacked up would otherwise make the boost pay over time).
+const BoostMinOdds = 1.3
+
+// boostOf: the boost a combined bet gets on an app, from its matches' odds:
+// from 3 matches at BoostMinOdds or more, a share for each beyond 2.
+func boostOf(a betApp, odds []float64) float64 {
+	n := 0
+	for _, o := range odds {
+		if o >= BoostMinOdds {
+			n++
+		}
+	}
 	if n < 3 {
 		return 1
 	}
@@ -202,7 +213,11 @@ func (h *Handler) placeBet(w http.ResponseWriter, r *http.Request) {
 			settles = max(settles, m.End)
 			legs = append(legs, leg{key, m.Home + " – " + m.Away, l.Pick, o})
 		}
-		odds = math.Min(MaxOdds, math.Round(odds*boostOf(a, len(legs))*100)/100)
+		each := make([]float64, len(legs))
+		for i, l := range legs {
+			each[i] = l.odds
+		}
+		odds = math.Min(MaxOdds, math.Round(odds*boostOf(a, each)*100)/100)
 		var id int64
 		if err := tx.QueryRow(ctx, `INSERT INTO bets (sim, app, stake, odds, settles_at) VALUES ($1, $2, $3, $4, $5) RETURNING id`, s.ID, a.ID, req.Stake, odds, settles).Scan(&id); err != nil {
 			return game.Outcome{}, nil, err

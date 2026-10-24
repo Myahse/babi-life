@@ -55,9 +55,10 @@ func (s *Sim) jobTask(id string, rng *rand.Rand) (game.Outcome, error) {
 	}
 	tip := 0
 	if t.Tip > 0 && rng.Float64() < 0.5 {
-		tip = game.TaskTip(t, s.CareerLevel, rng.Float64())
-		s.Money += tip
-		text += fmt.Sprintf(" Pourboire : %s.", game.FCFA(tip))
+		// Within the day's tips (money.go): past them, the customer just says thank you.
+		if tip = s.earn(game.FromTips, game.TaskTip(t, s.CareerLevel, rng.Float64())); tip > 0 {
+			text += fmt.Sprintf(" Pourboire : %s.", game.FCFA(tip))
+		}
 	}
 	s.Needs = s.Needs.Add(game.Needs{Energy: -2, Social: 2})
 	return game.Outcome{Text: text, Money: tip}, nil

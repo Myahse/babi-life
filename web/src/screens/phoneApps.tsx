@@ -22,8 +22,10 @@ export function JobsApp({ world, sim, commune, act, onWalk, onMap, onAutoWork }:
     cm.places.flatMap((p) => world.kinds[p.kind].interactions.filter((it) => it.cost < 0).map((it) => ({ place: p, commune: cm, it }))),
   )
 
+  const gigsDone = !!sim.today?.boulot?.max && sim.today.boulot.got >= sim.today.boulot.max
   return (
     <div className="space-y-4">
+      <DayCard sim={sim} />
       {career ? (
         <CareerCard world={world} sim={sim} commune={commune} act={act} onWalk={onWalk} onMap={onMap} onAutoWork={onAutoWork} />
       ) : (
@@ -56,6 +58,7 @@ export function JobsApp({ world, sim, commune, act, onWalk, onMap, onAutoWork }:
       {gigs.length > 0 && (
         <section>
           <h4 className="label mb-2">Petits boulots</h4>
+          {gigsDone && <p className="mb-2 text-sm font-bold text-[var(--color-ink-soft)]">Plus de petit boulot aujourd'hui : reviens demain.</p>}
           <ul className="motion-stagger space-y-2">
             {gigs.map(({ place, commune: cm, it }) => (
               <Row key={place.id + it.id} icon={iconFor(it.icon)} colors={kindColors(place.kind)} title={it.label} sub={`${place.name} · ${cm.name}`} onClick={() => (cm.id === commune.id ? onWalk(place.id) : onMap())}>
@@ -65,6 +68,38 @@ export function JobsApp({ world, sim, commune, act, onWalk, onMap, onAutoWork }:
           </ul>
         </section>
       )}
+    </div>
+  )
+}
+
+/**
+ * The day so far, against its limits (backend game/money.go): the shift paid
+ * once a day, the petits boulots, all that's earned by playing. Djai stays
+ * scarce: the counters say where the day stands, from midnight to midnight.
+ */
+function DayCard({ sim }: { sim: Sim }) {
+  const t = sim.today
+  if (!t) return null
+  const shift = t.travail
+  const gigs = t.boulot
+  const total = t.total
+  return (
+    <div className="rounded-[22px] bg-[var(--color-canvas)] p-4">
+      <div className="label mb-2">Ta journée</div>
+      <div className="flex flex-wrap gap-1.5">
+        {sim.career && <Chip tone={shift?.times ? 'neutral' : 'good'}>{shift?.times ? 'Service du jour fait' : 'Service du jour à faire'}</Chip>}
+        {gigs?.max ? (
+          <Chip tone={gigs.got >= gigs.max ? 'neutral' : 'good'}>
+            Petits boulots : {amount(gigs.got)} / {amount(gigs.max)} Djai
+          </Chip>
+        ) : null}
+        {total?.max ? (
+          <Chip tone="neutral">
+            <Coin size={13} /> Gagné en jouant : {amount(total.got)} / {amount(total.max)} Djai
+          </Chip>
+        ) : null}
+      </div>
+      <p className="mt-2 text-xs font-semibold text-[var(--color-ink-soft)]">Un service payé par jour, des petits boulots jusqu'à leur plafond, et au plus {amount(total?.max ?? 20000)} Djai gagnés en jouant par jour. Tout repart à zéro à minuit.</p>
     </div>
   )
 }
