@@ -397,6 +397,8 @@ export type ShopView = { open: boolean; sandbox?: boolean; adult: boolean; passU
 export type Happening = { id: string; label: string; icon: string; text: string; category?: string; minHour?: number; maxHour?: number; days?: number[]; join?: Interaction; source?: Source }
 export type HappeningNow = { happening: Happening | null; start: number; end: number }
 
+/** An idea a player sent Babi Life from the phone (the Idées app), and what the team did with it. */
+export type Idea = { id: number; topic: 'jeu' | 'lieu' | 'bug' | 'autre'; text: string; status: 'new' | 'read' | 'kept' | 'done' | 'no'; reply: string; at: string; answeredAt?: string }
 export type NewsItem = { id: string; title: string; source: string; link: string; published: string; topic: 'sport' | 'politique' | 'economie' | 'societe' | 'culture' | 'meteo' }
 
 /** A room (or a home) rented away from home, until a game minute (backend sims/hotel.go Stay). */

@@ -17,12 +17,15 @@ import (
 	"github.com/myahse/babi-life/backend/internal/adminkey"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
+	"github.com/myahse/babi-life/backend/internal/ideas"
 	"github.com/myahse/babi-life/backend/internal/sims"
 )
 
 type Handler struct {
 	DB *pgxpool.Pool
 	WA *WhatsApp
+	// The players' ideas (the phone's Idées app): read and answered here.
+	Ideas *ideas.Handler
 }
 
 func (h *Handler) Routes(r chi.Router) {
@@ -48,6 +51,9 @@ func (h *Handler) Routes(r chi.Router) {
 		r.Post("/whatsapp", h.waSend)
 		r.Post("/whatsapp/{id}/stop", h.waStop)
 		r.Post("/whatsapp/optout", h.waOptout)
+		if h.Ideas != nil {
+			h.Ideas.Admin(r)
+		}
 	})
 }
 
@@ -69,6 +75,8 @@ func (h *Handler) stats(w http.ResponseWriter, r *http.Request) {
 		Campaigns int `json:"campaigns"`
 		Messages  int `json:"messages"`
 		TikiPosts int `json:"tikiPosts"`
+		// The players' ideas not read yet.
+		Ideas int `json:"ideas"`
 	}
 	err := h.DB.QueryRow(r.Context(), `SELECT
 		(SELECT count(*) FROM users),
@@ -80,8 +88,9 @@ func (h *Handler) stats(w http.ResponseWriter, r *http.Request) {
 		(SELECT count(*) FROM reports WHERE status = 'open'),
 		(SELECT count(*) FROM ad_campaigns WHERE status = 'pending'),
 		(SELECT count(*) FROM messages WHERE created_at > now() - interval '24 hours'),
-		(SELECT count(*) FROM tiki_posts WHERE created_at > now() - interval '24 hours')`).
-		Scan(&s.Users, &s.Sims, &s.Online, &s.Today, &s.Waitlist, &s.Phones, &s.Reports, &s.Campaigns, &s.Messages, &s.TikiPosts)
+		(SELECT count(*) FROM tiki_posts WHERE created_at > now() - interval '24 hours'),
+		(SELECT count(*) FROM ideas WHERE status = 'new')`).
+		Scan(&s.Users, &s.Sims, &s.Online, &s.Today, &s.Waitlist, &s.Phones, &s.Reports, &s.Campaigns, &s.Messages, &s.TikiPosts, &s.Ideas)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 		return
@@ -146,7 +155,7 @@ type Entry struct {
 }
 
 // log: what happened lately, all together: sign-ups, logins, new Sims, the
-// wish list, reports, ads, and what the team did. ?kind= keeps one kind.
+// wish list, reports, ads, the players' ideas, and what the team did. ?kind= keeps one kind.
 func (h *Handler) log(w http.ResponseWriter, r *http.Request) {
 	kind := r.URL.Query().Get("kind")
 	rows, err := h.DB.Query(r.Context(), `SELECT kind, text, at FROM (
@@ -157,6 +166,7 @@ func (h *Handler) log(w http.ResponseWriter, r *http.Request) {
 		UNION ALL SELECT 'liste', first_name || ' s''est inscrit·e sur la liste d''attente' || CASE WHEN commune <> '' THEN ' (' || commune || ')' ELSE '' END || CASE WHEN beta THEN ', veut tester' ELSE '' END, created_at FROM waitlist
 		UNION ALL SELECT 'signalement', 'Signalement : ' || reason, created_at FROM reports
 		UNION ALL SELECT 'pub', 'Campagne de pub reçue : ' || title || ' (' || advertiser || ')', created_at FROM ad_campaigns
+		UNION ALL SELECT 'idee', 'Idée de ' || u.name || CASE WHEN i.sim_name <> '' THEN ' (' || i.sim_name || ')' ELSE '' END || ' : ' || left(i.text, 90) || CASE WHEN length(i.text) > 90 THEN '…' ELSE '' END, i.created_at FROM ideas i JOIN users u ON u.id = i.user_id
 		UNION ALL SELECT 'admin', action || CASE WHEN detail <> '' THEN ' : ' || detail ELSE '' END, created_at FROM admin_log
 	) x WHERE $1 = '' OR kind = $1 ORDER BY at DESC LIMIT 200`, kind)
 	if err != nil {

@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea } from './types'
 import { useSession } from '../store/session'
 import { keepData, keptData, OFFLINE_TEXT, setOnline } from './offline'
 
@@ -174,6 +174,9 @@ export const api = {
   searchPlaces: (commune: string, q: string) => request<{ places: Place[]; total: number }>(`/places?commune=${encodeURIComponent(commune)}&q=${encodeURIComponent(q)}`),
   mapPlaces: (commune: string, lat: number, lng: number, r = 1.2) => request<{ places: Place[]; total: number }>(`/places?commune=${encodeURIComponent(commune)}&lat=${lat.toFixed(5)}&lng=${lng.toFixed(5)}&r=${r}`),
   news: () => request<{ items: NewsItem[]; updated: string }>('/news'),
+  /** The ideas the player sent Babi Life, and sending one (from the Sim whose phone it is). */
+  ideas: () => request<{ ideas: Idea[] }>('/me/ideas'),
+  sendIdea: (simId: string, topic: Idea['topic'], text: string) => post<{ idea: Idea; text: string }>('/me/ideas', { simId, topic, text }),
   happening: (city: string, commune: string, gameMinutes: number) => request<HappeningNow>(`/happening?city=${encodeURIComponent(city)}&commune=${encodeURIComponent(commune)}&t=${Math.floor(gameMinutes)}`),
   googleLogin: (credential: string) => post<Session>('/auth/google', { credential }),
   devLogin: (name: string) => post<Session>('/auth/dev', { name }),

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Bell, Download, ExternalLink, Flag, LayoutDashboard, ListChecks, LogOut, Megaphone, MessageCircle, RefreshCw, ScrollText, Search, Send, ShieldCheck, Users } from 'lucide-react'
+import { Bell, Download, ExternalLink, Flag, LayoutDashboard, Lightbulb, ListChecks, LogOut, Megaphone, MessageCircle, RefreshCw, ScrollText, Search, Send, ShieldCheck, Users } from 'lucide-react'
 import { Preview, STATUS, type Status } from './Pub'
 
 // /admin: everything Babi Life's team manages, behind one key (ADMIN_KEY on
@@ -12,13 +12,14 @@ import { Preview, STATUS, type Status } from './Pub'
 // - Annonces: a message from Babi Life in every Sim's phone;
 // - WhatsApp: a message to the wish list's numbers, through WhatsApp's API
 //   with an approved template, or by hand with click-to-chat links;
-// - Liste d'attente, Pub (backend/internal/ads), Signalements (moderation).
+// - Liste d'attente, Pub (backend/internal/ads), Signalements (moderation);
+// - Idées: what the players suggest from the phone (backend/internal/ideas), answered here.
 // The key stays in the tab only (sessionStorage); the page is never indexed.
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
 const STORE = 'babi.adminKey'
 
-type Tab = 'tableau' | 'joueurs' | 'journal' | 'annonces' | 'whatsapp' | 'liste' | 'pub' | 'signalements'
+type Tab = 'tableau' | 'joueurs' | 'journal' | 'annonces' | 'whatsapp' | 'liste' | 'pub' | 'signalements' | 'idees'
 const TABS: { id: Tab; label: string; icon: typeof Flag }[] = [
   { id: 'tableau', label: 'Tableau de bord', icon: LayoutDashboard },
   { id: 'joueurs', label: 'Joueurs', icon: Users },
@@ -28,6 +29,7 @@ const TABS: { id: Tab; label: string; icon: typeof Flag }[] = [
   { id: 'liste', label: "Liste d'attente", icon: ListChecks },
   { id: 'pub', label: 'Pub', icon: Megaphone },
   { id: 'signalements', label: 'Signalements', icon: Flag },
+  { id: 'idees', label: 'Idées', icon: Lightbulb },
 ]
 
 async function call<T>(path: string, key: string, init: RequestInit = {}): Promise<T> {
@@ -151,6 +153,8 @@ export function Admin() {
           <Pub k={key} />
         ) : tab === 'signalements' ? (
           <Reports k={key} />
+        ) : tab === 'idees' ? (
+          <Ideas k={key} />
         ) : (
           <Dashboard k={key} go={(t) => navigate(`/admin?tab=${t}`)} />
         )}
@@ -188,7 +192,7 @@ const Ok = ({ t }: { t: string | null }) => (t ? <p className="mb-3 rounded-lg b
 
 /* ---------- Tableau de bord ---------- */
 
-type Stats = { users: number; sims: number; online: number; today: number; waitlist: number; phones: number; reports: number; campaigns: number; messages: number; tikiPosts: number }
+type Stats = { users: number; sims: number; online: number; today: number; waitlist: number; phones: number; reports: number; campaigns: number; messages: number; tikiPosts: number; ideas: number }
 type Entry = { kind: string; text: string; at: string }
 
 function Dashboard({ k, go }: { k: string; go: (t: Tab) => void }) {
@@ -205,6 +209,7 @@ function Dashboard({ k, go }: { k: string; go: (t: Tab) => void }) {
     ["Liste d'attente", s?.waitlist, `${nf(s?.phones ?? 0)} numéros WhatsApp`, 'liste'],
     ['Signalements', s?.reports, 'à traiter', 'signalements'],
     ['Pubs en attente', s?.campaigns, 'à vérifier', 'pub'],
+    ['Idées des joueurs', s?.ideas, 'pas encore lues', 'idees'],
     ['Messages Gbairai', s?.messages, 'en 24 h'],
     ['Vidéos Tikitoko', s?.tikiPosts, 'en 24 h'],
   ]
@@ -955,6 +960,106 @@ function Reports({ k }: { k: string }) {
                   Classer
                 </Btn>
               </div>
+            </div>
+          </div>
+        </Card>
+      ))}
+    </div>
+  )
+}
+
+/* ---------- Idées ---------- */
+
+type Idea = { id: number; topic: 'jeu' | 'lieu' | 'bug' | 'autre'; text: string; status: 'new' | 'read' | 'kept' | 'done' | 'no'; reply: string; at: string; answeredAt?: string; user: string; simName: string }
+const IDEA_TOPIC: Record<Idea['topic'], string> = { jeu: 'Activité', lieu: 'Lieu', bug: 'Souci', autre: 'Autre' }
+const IDEA_STATUS: Record<Idea['status'], string> = { new: 'Nouvelle', read: 'Lue', kept: 'Retenue', done: 'Faite', no: 'Pas pour l’instant' }
+
+function Ideas({ k }: { k: string }) {
+  const [list, setList] = useState<Idea[] | null>(null)
+  const [filter, setFilter] = useState<'open' | 'new' | 'kept' | 'done' | 'no' | 'all'>('open')
+  const [e, setE] = useState<string | null>(null)
+  const [draft, setDraft] = useState<Record<number, string>>({})
+  const [busy, setBusy] = useState<number | null>(null)
+  useEffect(() => void call<Idea[]>(`/admin/ideas?status=${filter}`, k).then(setList, (x: Error) => setE(x.message)), [k, filter])
+  // A step on, or an answer (the status goes from « new » to « read » with it).
+  const update = async (i: Idea, body: { status?: Idea['status']; reply?: string }) => {
+    setBusy(i.id)
+    setE(null)
+    try {
+      const got = await call<Idea>(`/admin/ideas/${i.id}`, k, { method: 'POST', body: JSON.stringify(body) })
+      setList((l) => l?.map((x) => (x.id === i.id ? { ...x, ...got } : x)) ?? l)
+      if (body.reply !== undefined) setDraft((d) => ({ ...d, [i.id]: '' }))
+    } catch (x) {
+      setE(x instanceof Error ? x.message : 'Erreur')
+    } finally {
+      setBusy(null)
+    }
+  }
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-[#6b7280]">Ce que les joueurs proposent depuis l’appli Idées de leur téléphone. Le joueur voit le statut et la réponse dans son appli : « Retenue » promet qu’on le fera, « Faite » dit que c’est dans le jeu, « Pas pour l’instant » ferme sans vexer.</p>
+      <div className="flex flex-wrap gap-1.5">
+        {(
+          [
+            ['open', 'À traiter'],
+            ['new', 'Nouvelles'],
+            ['kept', 'Retenues'],
+            ['done', 'Faites'],
+            ['no', 'Refusées'],
+            ['all', 'Toutes'],
+          ] as const
+        ).map(([id, label]) => (
+          <button key={id} onClick={() => setFilter(id)} className={`rounded-full px-3 py-1 text-xs font-semibold ${filter === id ? 'bg-[#111827] text-white' : 'bg-white text-[#374151] ring-1 ring-[#e5e7eb]'}`}>
+            {label}
+          </button>
+        ))}
+      </div>
+      <Err e={e} />
+      {list?.length === 0 && <Card>Rien ici.</Card>}
+      {list?.map((i) => (
+        <Card key={i.id}>
+          <div className="space-y-2 text-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded bg-[#eef2ff] px-2 py-0.5 text-xs font-semibold text-[#3730a3]">{IDEA_TOPIC[i.topic] ?? 'Autre'}</span>
+              <span className={`rounded px-2 py-0.5 text-xs font-semibold ${i.status === 'new' ? 'bg-[#fef3c7] text-[#92400e]' : i.status === 'kept' ? 'bg-[#dbeafe] text-[#1e40af]' : i.status === 'done' ? 'bg-[#dcfce7] text-[#166534]' : i.status === 'no' ? 'bg-[#fee2e2] text-[#991b1b]' : 'bg-[#f3f4f6] text-[#374151]'}`}>{IDEA_STATUS[i.status] ?? i.status}</span>
+              <span className="text-[#6b7280]">
+                {i.user}
+                {i.simName ? ` (${i.simName})` : ''} · {when(i.at)}
+              </span>
+            </div>
+            <p className="whitespace-pre-wrap text-[#111827]">{i.text}</p>
+            {i.reply && (
+              <p className="rounded-lg bg-[#f9fafb] px-3 py-2 text-[#374151]">
+                <b>Réponse :</b> {i.reply}
+              </p>
+            )}
+            <div className="flex flex-wrap gap-2 pt-1">
+              {i.status !== 'read' && i.status !== 'kept' && i.status !== 'done' && (
+                <Btn tone="light" onClick={() => void update(i, { status: 'read' })}>
+                  Lue
+                </Btn>
+              )}
+              {i.status !== 'kept' && i.status !== 'done' && (
+                <Btn tone="light" onClick={() => void update(i, { status: 'kept' })}>
+                  Retenue
+                </Btn>
+              )}
+              {i.status !== 'done' && (
+                <Btn tone="dark" onClick={() => void update(i, { status: 'done' })}>
+                  Faite
+                </Btn>
+              )}
+              {i.status !== 'no' && i.status !== 'done' && (
+                <Btn tone="red" onClick={() => void update(i, { status: 'no' })}>
+                  Pas pour l’instant
+                </Btn>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <input value={draft[i.id] ?? ''} onChange={(x) => setDraft((d) => ({ ...d, [i.id]: x.target.value.slice(0, 400) }))} placeholder={i.reply ? 'Changer la réponse…' : 'Répondre au joueur (il la verra dans l’appli)…'} className="min-w-0 flex-1 rounded-lg border border-[#d1d5db] px-3 py-2 text-sm" />
+              <Btn tone="dark" onClick={() => void update(i, { reply: draft[i.id] ?? '' })}>
+                {busy === i.id ? '…' : 'Envoyer'}
+              </Btn>
             </div>
           </div>
         </Card>
