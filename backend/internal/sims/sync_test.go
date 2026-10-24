@@ -36,7 +36,7 @@ func TestSyncReplaysOffline(t *testing.T) {
 	steps := beats(noon, noon.Add(time.Minute))
 	steps = append(steps, syncStep{At: noon.Add(time.Minute).UnixMilli() + 1, Do: "interact", PlaceID: "yop-marche", InteractionID: "sell-goods", Label: "Vendre au marché"})
 	steps = append(steps, beats(noon.Add(time.Minute), noon.Add(12*time.Minute))...)
-	steps = append(steps, syncStep{At: noon.Add(12 * time.Minute).UnixMilli() + 1, Do: "pause"})
+	steps = append(steps, syncStep{At: noon.Add(12*time.Minute).UnixMilli() + 1, Do: "pause"})
 	back := noon.Add(5 * time.Hour)
 	steps = append(steps, syncStep{At: back.UnixMilli(), Do: "beat"}, syncStep{At: back.UnixMilli() + 1, Do: "stop"})
 	now := back.Add(30 * time.Second)
