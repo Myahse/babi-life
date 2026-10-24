@@ -116,7 +116,7 @@ func CoupOutcome(record int, rng *rand.Rand) (money int, caught bool) {
 	if rng.Float64() < 0.25+0.1*float64(record) {
 		return 0, true
 	}
-	return 5000 + rng.IntN(15)*1000, false
+	return 2000 + rng.IntN(5)*1000, false
 }
 
 // CleanRecordCareers: jobs closed to Sims with a police record.

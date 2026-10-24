@@ -172,6 +172,7 @@ func (a *Activity) Surprise(rng *rand.Rand) *RandomEvent {
 		return nil
 	}
 	pool := append(append([]RandomEvent{}, a.Surprises...), GenericEvents...)
-	ev := pool[rng.IntN(len(pool))]
+	// Money come by chance is rare (money.go): most draws of one turn into another surprise.
+	ev := Windfall(pool, pool[rng.IntN(len(pool))], rng)
 	return &ev
 }

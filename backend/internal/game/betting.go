@@ -127,12 +127,16 @@ func poisson(l float64, k int) float64 {
 // Margin: the bookmaker's share in the odds (each app may add its own).
 const Margin = 0.07
 
+// price: the decimal odds of an outcome of probability p, with the margin.
+// Never above what the outcome is worth: a near-certain one pays its stake
+// back (1,00), never a little more (a floor above 1 would have made it pay
+// over time, and the boosted combined bets with it).
 func price(p, margin float64) float64 {
 	if p <= 0 {
 		return 50
 	}
 	o := 1 / (p * (1 + margin))
-	return math.Max(1.05, math.Min(50, math.Round(o*100)/100))
+	return math.Max(1, math.Min(50, math.Round(o*100)/100))
 }
 
 // OddsFor: the prices of a match, from the probabilities of each score.

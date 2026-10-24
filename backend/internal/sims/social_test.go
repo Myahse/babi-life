@@ -85,6 +85,11 @@ func TestTheStreetGang(t *testing.T) {
 		t.Fatalf("a coup pays: %v %d", err, got)
 	}
 	s.Activity = nil
+	// One coup a day for the account.
+	if _, _, err := s.gangAction("coup", lucky()); err == nil {
+		t.Fatal("a second coup the same day")
+	}
+	s.GameMinutes += 24 * 60
 	// A coup that goes wrong: custody, a record, no way out early.
 	if _, _, err := s.gangAction("coup", unlucky()); err != nil || s.Record != 1 || s.Activity == nil || s.Activity.PlaceID != custodyPlace {
 		t.Fatalf("caught: %v record %d act %+v", err, s.Record, s.Activity)

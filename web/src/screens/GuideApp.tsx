@@ -48,9 +48,10 @@ const RULES: { title: string; sub: string; body: string[]; icon?: LucideIcon }[]
     title: "L'argent",
     sub: 'Le Djai, la monnaie du jeu',
     body: [
-      "On gagne des Djai en travaillant (l'appli Boulot), en vendant, en pariant (avec prudence), ou par ta famille quand tu es jeune.",
-      "Le loyer et les remboursements de prêt tombent chaque samedi à minuit. Sans assez d'argent, les dettes s'accumulent.",
-      "Envoie de l'argent à tes amis avec Waye.",
+      "On gagne des Djai en travaillant (l'appli Boulot), avec les petits boulots, les défis, ou par ta famille quand tu es jeune. Les paris et le loto, eux, reprennent plus qu'ils ne donnent.",
+      "Le Djai est rare : un service payé par jour, 2 000 Djai de petits boulots par jour, et au plus 20 000 Djai gagnés en jouant chaque jour (25 000 avec le Babi Pass). Les compteurs repartent à zéro à minuit ; l'appli Boulot te dit où tu en es.",
+      "Le loyer et les remboursements de prêt tombent chaque samedi à minuit. Même si tu n'as pas joué, le propriétaire passe une fois. Sans assez d'argent, les dettes s'accumulent.",
+      "Envoie de l'argent avec Waye. Entre joueurs : 20 000 Djai par jour au plus, et pas avant 7 jours de compte.",
     ],
   },
   {

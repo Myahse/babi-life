@@ -65,10 +65,10 @@ func (p *replay) move(at time.Time) {
 	s := p.s
 	switch {
 	case !p.playing:
-		s.hold(game.MinuteOf(at) - s.GameMinutes)
+		p.events = append(p.events, s.hold(game.MinuteOf(at)-s.GameMinutes)...)
 	case at.Sub(p.last) > offlineAfter:
 		p.events = append(p.events, s.advanceTo(game.MinuteOf(p.last.Add(heartbeat)), p.rng)...)
-		s.hold(game.MinuteOf(at) - s.GameMinutes)
+		p.events = append(p.events, s.hold(game.MinuteOf(at)-s.GameMinutes)...)
 	}
 	p.events = append(p.events, s.advanceTo(game.MinuteOf(at), p.rng)...)
 	p.last = at

@@ -55,7 +55,7 @@ func TestTikiAudience(t *testing.T) {
 	if vBig <= vClub {
 		t.Errorf("20 000 fans bring fewer views (%d) than none (%d)", vBig, vClub)
 	}
-	if p0 != 0 || pBig != 5000 {
+	if p0 != 0 || pBig != TikiDealBase+20000/100 {
 		t.Errorf("brand pay: %d with no fans, %d with 20 000", p0, pBig)
 	}
 	if tikiTier(0) != "Débutant·e" || tikiTier(1000) != "Créateur·rice" || tikiTier(250000) != "Star de Babi" {

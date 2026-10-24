@@ -1420,11 +1420,11 @@ export function Play() {
           street={!showInside}
           onWalk={walkTo}
           onBuild={(lot) => (setOverlay(null), setBuilding(lot ?? 0))}
-          onDames={(p) => (setOverlay(null), setPhoneApp(null), setDamesAsk({ with: p.id, name: p.firstName, max: 50000 }))}
-          onDamesOnline={(name) => (setOverlay(null), setPhoneApp(null), setDamesAsk({ with: 'npc', name, max: 5000 }))}
+          onDames={(p) => (setOverlay(null), setPhoneApp(null), setDamesAsk({ with: p.id, name: p.firstName, max: 10000 }))}
+          onDamesOnline={(name) => (setOverlay(null), setPhoneApp(null), setDamesAsk({ with: 'npc', name, max: 2000 }))}
           onDamesResume={() => (setOverlay(null), setPhoneApp(null), setDamesOpen(true))}
-          onHuitTable={(npcs) => (setOverlay(null), setPhoneApp(null), setHuitAsk({ with: 'npc', name: npcs.join(', '), npcs, max: 5000 }))}
-          onHuitFriend={(p) => (setOverlay(null), setPhoneApp(null), setHuitAsk({ with: p.id, name: p.firstName, max: 50000 }))}
+          onHuitTable={(npcs) => (setOverlay(null), setPhoneApp(null), setHuitAsk({ with: 'npc', name: npcs.join(', '), npcs, max: 2000 }))}
+          onHuitFriend={(p) => (setOverlay(null), setPhoneApp(null), setHuitAsk({ with: p.id, name: p.firstName, max: 10000 }))}
           onHuitResume={() => (setOverlay(null), setPhoneApp(null), setHuitOpen(true))}
           onDrive={(v) => (setOverlay(null), setPhoneApp(null), setPlaceId(null), setOutside(true), startDrive(v))}
         />
@@ -1448,7 +1448,7 @@ export function Play() {
         <DamesSheet
           simId={sim.id}
           onClose={() => (setDamesOpen(false), refreshPlayers())}
-          onAgain={(npc) => (setDamesOpen(false), setDamesAsk({ with: 'npc', name: npc, max: 5000 }))}
+          onAgain={(npc) => (setDamesOpen(false), setDamesAsk({ with: 'npc', name: npc, max: 2000 }))}
           onMoney={() => void api.sim(sim.id).then(apply, () => undefined)}
         />
       )}
@@ -1499,7 +1499,7 @@ export function Play() {
           simGender={sim.gender}
           onSay={say}
           onClose={() => setChat(null)}
-          onDames={/^(grin:|dames-)/.test(chat.id) && lifeOf(world, sim).stage?.id !== 'enfant' ? () => (setChat(null), setDamesAsk({ with: 'npc', name: chat.name, max: 5000 })) : undefined}
+          onDames={/^(grin:|dames-)/.test(chat.id) && lifeOf(world, sim).stage?.id !== 'enfant' ? () => (setChat(null), setDamesAsk({ with: 'npc', name: chat.name, max: 2000 })) : undefined}
           onBye={() => {
             // « Au revoir » is the end: the chat stops there, nothing more is said or done.
             const a = sim.activity

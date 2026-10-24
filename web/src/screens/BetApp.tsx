@@ -34,6 +34,15 @@ const SPORTS: { id: Sport; label: string; icon: string }[] = [
   { id: 'tennis', label: 'Tennis', icon: '🎾' },
 ]
 type Leg = { match: VirtualMatch; pick: keyof VirtualMatch['odds'] }
+
+/** A match counts towards a combined bet's boost from these odds (backend sims/bets.go, BoostMinOdds). */
+const BOOST_MIN_ODDS = 1.3
+
+/** The boost of a combined bet: from 3 matches at BOOST_MIN_ODDS or more, a share for each beyond 2. */
+function boostOf(slip: Leg[], share: number) {
+  const n = slip.filter((l) => l.match.odds[l.pick] >= BOOST_MIN_ODDS).length
+  return n >= 3 ? 1 + share * (n - 2) : 1
+}
 const nf = (n: number) => n.toLocaleString('fr-FR')
 const clockOf = (s: number) => `${Math.floor(Math.max(0, s) / 60)}:${String(Math.max(0, s) % 60).padStart(2, '0')}`
 
@@ -103,7 +112,7 @@ function useBetting(sim: Sim, act: Act, app: 'bet225' | 'parisfoot') {
   const live = data?.rounds.filter((r) => r.kickoff <= now) ?? []
   const odds = useMemo(() => {
     const raw = slip.reduce((k, l) => k * l.match.odds[l.pick], 1)
-    const boost = slip.length >= 3 ? 1 + (data?.boost ?? 0) * (slip.length - 2) : 1
+    const boost = boostOf(slip, data?.boost ?? 0)
     return Math.min(1000, Math.round(raw * boost * 100) / 100)
   }, [slip, data])
 
@@ -297,7 +306,7 @@ function Bet225({ sim, s }: { sim: Sim; s: Betting }) {
               </li>
             ))}
           </ul>
-          {slip.length >= 3 && !!data?.boost && <p className="mt-1 text-[11px] font-extrabold" style={{ color: b.accent }}>Boost combiné : +{Math.round(data.boost * (slip.length - 2) * 100)} % sur la cote</p>}
+          {slip.length >= 3 && !!data?.boost && <p className="mt-1 text-[11px] font-extrabold" style={{ color: b.accent }}>{boostOf(slip, data.boost) > 1 ? `Boost combiné : +${Math.round((boostOf(slip, data.boost) - 1) * 100)} % sur la cote` : `Boost dès 3 matchs à ${BOOST_MIN_ODDS.toFixed(2).replace('.', ',')} ou plus`}</p>}
           <StakeInput stake={stake} setStake={setStake} money={sim.money} dark accent={b.accent} />
           <div className="mt-2 flex items-center gap-2">
             <div className="min-w-0 flex-1 text-[11px] font-bold text-white/70">

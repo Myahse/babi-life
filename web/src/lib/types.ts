@@ -332,6 +332,8 @@ export type Sim = {
   record?: number
   /** The Babi Pass (Boutique): a quarter more on the Djai earned, the gold star by the name, till then (ISO). */
   passUntil?: string
+  /** The account's day so far by source, and its limits (backend game/money.go): travail, boulot, total… */
+  today?: Partial<Record<Income, DayLimit>>
   /** The Pack Prestige bought (Boutique): the crown may be worn. */
   prestige?: boolean
   /** The secret society joined (politics): '' none; baobab, sept, lumiere. */
@@ -462,3 +464,8 @@ export type Politics = {
   deposits: { president: number; maire: number }
   playerWeight: number
 }
+
+/** Where Djai earned by playing comes from (backend game/money.go). */
+export type Income = 'travail' | 'boulot' | 'pourboire' | 'defi' | 'tournoi' | 'jeux' | 'chance' | 'coup' | 'reseaux' | 'recu' | 'envoye' | 'location' | 'total'
+/** A source's day so far: Djai got and the most a day (0: none), times done and the most a day. */
+export type DayLimit = { got: number; max?: number; times?: number; maxTimes?: number }

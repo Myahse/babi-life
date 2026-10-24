@@ -192,6 +192,10 @@ type Sim struct {
 	Sect string `json:"sect,omitempty"`
 	// gymUntil: the game minute the gym membership runs out (0: none), read from the journal (gym.go).
 	gymUntil int64
+	// purse: what the account (all its Sims) got by playing these last days, for the day's limits (money.go).
+	purse *game.Purse
+	// Today: the account's day so far by source, and its limits (game/money.go), for the apps.
+	Today map[game.Income]game.Limit `json:"today,omitempty"`
 }
 
 type Event struct {
@@ -730,8 +734,24 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 			placeName = place.Name
 		}
 	}
+	// Paid by the day's limits (money.go): one shift a day for the account; a
+	// petit boulot only while there's some of the day's left to earn.
+	switch {
+	case job.ID != "" && !s.wallet().Can(s.today(), game.FromWork):
+		return game.Interaction{}, game.ErrFull(game.FromWork)
+	case job.ID == "" && it.Cost < 0 && s.left(game.FromGig) <= 0:
+		return game.Interaction{}, game.ErrFull(game.FromGig)
+	case it.ID == game.TournamentID && !s.wallet().Can(s.today(), game.FromTournament):
+		return game.Interaction{}, game.ErrFull(game.FromTournament)
+	}
 	if err := s.start(it, placeID, kind.ID, placeName, kind.Events, job.ID); err != nil {
 		return game.Interaction{}, err
+	}
+	switch {
+	case job.ID != "":
+		s.wallet().Use(s.today(), game.FromWork)
+	case it.ID == game.TournamentID:
+		s.wallet().Use(s.today(), game.FromTournament)
 	}
 	s.restyle(it.ID)
 	return it, nil
@@ -866,14 +886,17 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 	}
 	defer tx.Rollback(ctx)
 
-	// With the Sim, whether bets or loto tickets of it are due (read in the same round trip).
+	// With the Sim, whether bets or loto tickets of it are due, and what the
+	// account got by playing these last days (read in the same round trip).
 	var due dueTickets
+	var tallies []byte
 	s, err := scanSim(tx.QueryRow(ctx,
-		`SELECT `+simColumns+`, `+dueSQL+` FROM sims WHERE id = $1 AND user_id = $2 FOR UPDATE`, chi.URLParam(r, "id"), auth.UserID(ctx), time.Now().Unix()), &due.bets, &due.tickets)
+		`SELECT `+simColumns+`, `+dueSQL+`, `+purseSQL+` FROM sims WHERE id = $1 AND user_id = $2 FOR UPDATE`, chi.URLParam(r, "id"), auth.UserID(ctx), time.Now().Unix(), purseFrom(time.Now())), &due.bets, &due.tickets, &tallies)
 	if err != nil {
 		httpx.Error(w, http.StatusNotFound, "sim introuvable")
 		return
 	}
+	s.purse = readPurse(tallies)
 	// Real time passes first, so the action sees the real state.
 	var fresh []Event
 	if advance {
@@ -908,15 +931,18 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 		WHERE id = $1`, s.ID, s.City, s.Commune, s.Needs, s.Money, s.GameMinutes, s.lastTick,
 		s.HomeCity, s.HomeCommune, s.Housing, s.Loan, s.RentArrears, s.Career, s.CareerLevel, s.Performance, s.Activity, s.Apps,
 		friendsOrEmpty(s.Friends), s.Gang, s.Record, s.Look, s.BornAt, s.Family, furnishedOrEmpty(s.Furnished), s.Stay, s.pausedAt)
+	tallied := queuePurse(b, auth.UserID(ctx), s.purse)
 	for _, ev := range fresh {
 		b.Queue(`INSERT INTO sim_events (sim_id, kind, text, money, game_time) VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at`, s.ID, ev.Kind, ev.Text, ev.Money, ev.GameTime)
 	}
 	b.Queue(journalSQL, s.ID)
 	saved := tx.SendBatch(ctx, b)
-	if _, err := saved.Exec(); err != nil {
-		saved.Close()
-		httpx.Error(w, http.StatusInternalServerError, "could not save sim")
-		return
+	for range 1 + tallied {
+		if _, err := saved.Exec(); err != nil {
+			saved.Close()
+			httpx.Error(w, http.StatusInternalServerError, "could not save sim")
+			return
+		}
 	}
 	for i := range fresh {
 		if err := saved.QueryRow().Scan(&fresh[i].ID, &fresh[i].At); err != nil {
@@ -949,6 +975,7 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 	if fresh == nil {
 		fresh = []Event{}
 	}
+	s.Today = s.wallet().Today(s.today(), s.passOn())
 	httpx.JSON(w, http.StatusOK, actionResult{Sim: s, Outcome: out, Journal: journal, Fresh: fresh})
 }
 

@@ -147,7 +147,7 @@ var chatTopics = []chatTopic{
 	}, no: []string{
 		"{name} : « Moi-même je cherche, on est ensemble ! »",
 		"{name} : « Fin du mois est loin, pardon. »",
-	}, yesEffect: game.Needs{Social: 4}, noEffect: game.Needs{Social: -2}, money: [2]int{500, 2000}},
+	}, yesEffect: game.Needs{Social: 4}, noEffect: game.Needs{Social: -2}, money: [2]int{200, 800}},
 	{id: "boulot", label: "Demander un petit boulot", icon: "briefcase", minutes: 5, ages: game.TeensUp, effect: game.Needs{}, chance: 0.3, yes: []string{
 		"{name} : « Viens m'aider à décharger les sacs, je te donne quelque chose. » Une heure plus tard, tu as gagné ta part.",
 		"{name} : « Ma boutique a besoin d'un coup de peinture. Tu fais ça, je te paie. »",
@@ -155,7 +155,7 @@ var chatTopics = []chatTopic{
 	}, no: []string{
 		"{name} : « Y a rien, {toi}. C'est la crise partout. »",
 		"{name} : « Repasse la semaine prochaine, on va voir. »",
-	}, yesEffect: game.Needs{Energy: -20, Fun: 5}, money: [2]int{1000, 3500}, yesMinutes: 60},
+	}, yesEffect: game.Needs{Energy: -20, Fun: 5}, money: [2]int{500, 1500}, yesMinutes: 60},
 	{id: "conseil", label: "Demander conseil", icon: "lightbulb", minutes: 10, ages: game.KidsUp, effect: game.Needs{Social: 8, Fun: 4}, yes: []string{
 		"« Doucement on va loin. Celui qui court trop tombe. »",
 		"« L'argent c'est bien, mais la famille d'abord. Un jour tu vas comprendre. »",
@@ -185,7 +185,7 @@ var chatTopics = []chatTopic{
 	}, no: []string{
 		"{name} : « Merci, merci, ça va aller. Garde ta force ! »",
 		"{name} serre son sac : « Non non, je me débrouille. » On sait jamais, à Abidjan.",
-	}, yesEffect: game.Needs{Social: 14, Energy: -8, Fun: 4}, noEffect: game.Needs{Social: 3}, money: [2]int{200, 1000}},
+	}, yesEffect: game.Needs{Social: 14, Energy: -8, Fun: 4}, noEffect: game.Needs{Social: 3}, money: [2]int{100, 500}},
 	{id: "numero", label: "Échanger les numéros", icon: "smartphone", minutes: 5, ages: game.TeensUp, effect: game.Needs{Social: 10}},
 	// Taquiner
 	{id: "chambrer", label: "Chambrer", icon: "smile", minutes: 5, ages: game.KidsUp, effect: game.Needs{}, chance: 0.6, yes: []string{
@@ -495,7 +495,8 @@ func (s *Sim) chatIn(p Passerby, topicID, said, lang string, adult bool, rng *ra
 		} else {
 			ans = chatAnswer{Text: say(numNo, p, s, rng), Mood: "bad"}
 		}
-	case chance == 0 || rng.Float64() < chance:
+	// Asked for money or a job once the day's limit is reached (money.go): nothing doing.
+	case (chance == 0 || rng.Float64() < chance) && !(t.money[0] > 0 && s.left(chatIncome(t.id)) < 100):
 		ans = chatAnswer{Text: say(t.yes, p, s, rng), Mood: "good"}
 		if t.yesEffect != (game.Needs{}) {
 			it.Effect = t.yesEffect
@@ -504,8 +505,11 @@ func (s *Sim) chatIn(p Passerby, topicID, said, lang string, adult bool, rng *ra
 			it.Minutes = t.yesMinutes
 		}
 		if t.money != [2]int{} {
-			// Rounded to 100 F, like any note or coin in the street.
+			// Rounded to 100 F, like any note or coin in the street (and no more than the day has left).
 			ans.Money = (t.money[0] + rng.IntN(t.money[1]-t.money[0]+1)) / 100 * 100
+			if ans.Money > 0 {
+				ans.Money = min(ans.Money, s.left(chatIncome(t.id))/100*100)
+			}
 			if ans.Money < 0 && s.Money+ans.Money < 0 {
 				// Inviting someone you can't pay for: they pay, laughing.
 				ans.Money = 0
@@ -532,7 +536,11 @@ func (s *Sim) chatIn(p Passerby, topicID, said, lang string, adult bool, rng *ra
 		}
 		s.Activity.Said = append(slices.Clone(before), t.id)
 	}
-	s.Money += ans.Money
+	if ans.Money > 0 {
+		ans.Money = s.earn(chatIncome(t.id), ans.Money)
+	} else {
+		s.Money += ans.Money
+	}
 	// A friend: seen today, and closer (or not) for how it went.
 	if friend != nil {
 		friend.Seen = s.GameMinutes
@@ -588,4 +596,13 @@ func accountAdult(ctx context.Context, tx pgx.Tx) (bool, error) {
 	var adult bool
 	err := tx.QueryRow(ctx, `SELECT adult_at IS NOT NULL FROM users WHERE id = $1`, auth.UserID(ctx)).Scan(&adult)
 	return adult, err
+}
+
+// chatIncome: where the money a chat brings counts in the day's limits: a
+// petit boulot asked for is a gig, a djai or a thank-you note is luck.
+func chatIncome(topic string) game.Income {
+	if topic == "boulot" {
+		return game.FromGig
+	}
+	return game.FromLuck
 }

@@ -118,7 +118,7 @@ func TestBasketAndTennis(t *testing.T) {
 		sport := SportOf(league)
 		for i := range PairingIn(league, r) {
 			before, _ := MatchIn(league, r, i, roundStart(r), Margin)
-			if before.Sport != sport || before.Score != nil || before.Odds.Draw != 0 || before.Odds.Home <= 1 || before.Odds.Away <= 1 {
+			if before.Sport != sport || before.Score != nil || before.Odds.Draw != 0 || before.Odds.Home < 1 || before.Odds.Away < 1 {
 				t.Fatalf("%s before kickoff: %+v", league, before)
 			}
 			m, _ := MatchIn(league, r, i, end, Margin)

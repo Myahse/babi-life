@@ -123,7 +123,7 @@ var Happenings = []Happening{
 	{ID: "ouverture-boutique", Category: "commerce", Source: Fictional, Label: "Ouverture d'une boutique", Icon: "store", MinHour: 9, MaxHour: 18, Days: Workweek,
 		Text:      "Nouvelle boutique dans la rue : ballons, sono et promotions d'ouverture.",
 		Join:      &Interaction{ID: JoinHappeningID, Label: "Passer voir les promos", Icon: "store", Minutes: 30, Effect: Needs{Fun: 15, Social: 10}},
-		Surprises: []RandomEvent{{Text: "Tu gagnes la tombola d'ouverture : un bon d'achat !", Money: 2000, Effect: Needs{Fun: 15}}}},
+		Surprises: []RandomEvent{{Text: "Tu gagnes la tombola d'ouverture : un bon d'achat !", Money: 1000, Effect: Needs{Fun: 15}}}},
 	{ID: "ligue1", Category: "sport", Label: "Match de Ligue 1", Icon: "trophy", MinHour: 15, MaxHour: 21, Communes: []string{"plateau", "treichville", "adjame"},
 		Source: &Source{Status: StatusFictional, Note: "Supporters génériques au stade ; aucun calendrier réel n'est simulé."},
 		Text:   "Jour de match au stade : les supporters chantent dans les rues avec drapeaux et tambours.",

@@ -138,6 +138,11 @@ func (s *Sim) gangAction(action string, rng *rand.Rand) (string, int, error) {
 		if s.Activity != nil {
 			return "", 0, game.ErrBusy
 		}
+		// One a day for the account (money.go), caught or not.
+		if !s.wallet().Can(s.today(), game.FromCoup) {
+			return "", 0, game.ErrFull(game.FromCoup)
+		}
+		s.wallet().Use(s.today(), game.FromCoup)
 		money, caught := game.CoupOutcome(s.Record, rng)
 		if caught {
 			s.Record++
@@ -151,7 +156,7 @@ func (s *Sim) gangAction(action string, rng *rand.Rand) (string, int, error) {
 		if err := s.start(it, "bande", "social", "La bande", nil, ""); err != nil {
 			return "", 0, err
 		}
-		s.Money += money
+		money = s.earn(game.FromCoup, money)
 		return fmt.Sprintf("Le coup a marché : %s pour toi. Mais la police a l'œil.", game.FCFA(money)), money, nil
 	}
 	return "", 0, errors.New("action inconnue")

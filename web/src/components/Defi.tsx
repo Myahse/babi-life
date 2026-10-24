@@ -31,7 +31,7 @@ const footMode = (interactionId?: string) => (interactionId === 'console-defi' ?
 const FOOT: Record<ReturnType<typeof footMode>, { title: string; button: string; how: string }> = {
   match: { title: 'Le match à la console', button: 'Jouer le match', how: '80 secondes : le plus de buts possible contre les gars du quartier.' },
   defi: { title: 'Le défi du quartier', button: 'Jouer le défi', how: 'Contre le caïd du quartier : gagné, il te paie ta mise ; perdu, tu paies.' },
-  tournoi: { title: 'Le tournoi du samedi', button: 'Jouer le tournoi', how: 'Quart, demi, finale : un nul se joue au but en or, puis aux tirs au but. La coupe : 4 000 Djai ; la finale : 1 500.' },
+  tournoi: { title: 'Le tournoi du samedi', button: 'Jouer le tournoi', how: 'Quart, demi, finale : un nul se joue au but en or, puis aux tirs au but. La coupe : 2 000 Djai ; la finale : 800. Un tournoi par jour.' },
 }
 
 const DEFIS: Record<DefiKind, { title: string; button: string; icon: LucideIcon; colors: [string, string]; how: string[]; bg: string }> = {

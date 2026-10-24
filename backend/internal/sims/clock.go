@@ -35,18 +35,18 @@ func (s *Sim) advance(now time.Time, rng *rand.Rand) []Event {
 	case s.pausedAt != nil:
 		// Put away: lived up to then, held since.
 		events = s.advanceTo(min(game.MinuteOf(now), game.MinuteOf(*s.pausedAt)), rng)
-		s.hold(game.MinuteOf(now) - s.GameMinutes)
+		events = append(events, s.hold(game.MinuteOf(now)-s.GameMinutes)...)
 		s.pausedAt = nil
 	case !s.lastTick.IsZero() && now.Sub(s.lastTick) > offlineAfter:
 		events = s.advanceTo(game.MinuteOf(s.lastTick.Add(heartbeat)), rng)
-		s.hold(game.MinuteOf(now) - s.GameMinutes)
+		events = append(events, s.hold(game.MinuteOf(now)-s.GameMinutes)...)
 	}
 	s.lastTick = now
 	return append(events, s.advanceTo(game.MinuteOf(now), rng)...)
 }
 
 // PassBonus: the share added to the Djai earned (work, gigs, défis) while the Babi Pass (shop/) lasts.
-const PassBonus = 0.25
+const PassBonus = game.PassBonus
 
 // passOn: the Babi Pass still running at the Sim's time.
 func (s *Sim) passOn() bool {
@@ -78,11 +78,15 @@ func (s *Sim) withSect(earned int, kind string) int {
 
 // hold: time gone by for the world but not for the Sim (the player away): its
 // clock jumps on, and what it was doing, its age, its friends' last news wait
-// where they were.
-func (s *Sim) hold(minutes int64) {
+// where they were. Only the landlord doesn't wait: if a Saturday went by, he
+// passes once (rent and loan, as on a Saturday played; however many weeks the
+// player was away, only one), so the rent is paid by those who never play at
+// midnight on a Friday.
+func (s *Sim) hold(minutes int64) []Event {
 	if minutes <= 0 {
-		return
+		return nil
 	}
+	from := s.GameMinutes
 	s.GameMinutes += minutes
 	if s.BornAt != 0 {
 		s.BornAt += minutes
@@ -97,6 +101,10 @@ func (s *Sim) hold(minutes int64) {
 	for i := range s.Friends {
 		s.Friends[i].Seen += minutes
 	}
+	if game.Saturdays(from, s.GameMinutes) == 0 || (s.BornAt != 0 && game.AgeAt(s.BornAt, s.GameMinutes) < game.AdultAge) {
+		return nil
+	}
+	return s.weekEnd(s.GameMinutes)
 }
 
 // advanceTo lets the Sim's time run to the game minute `to`.
@@ -139,14 +147,14 @@ func (s *Sim) finish(rng *rand.Rand) []Event {
 		s.City, s.Commune = a.Trip.City, a.Trip.Commune
 		return []Event{{Kind: "travel", Text: a.Trip.Label, Money: -a.Trip.Fare, GameTime: a.Start}}
 	}
-	earned := s.withSect(s.withPass(a.Earned()), "travail")
-	s.Money += earned
+	would, earned := s.pay(a)
 	money := earned
 	if a.Interaction.Cost > 0 {
 		money = -a.Interaction.Cost
 	}
 	s.schoolMark(a.Interaction)
-	events := []Event{{Kind: "interaction", Text: fmt.Sprintf("%s — %s", a.PlaceName, a.Interaction.Label), Money: money, GameTime: a.Start}}
+	text := capNote(fmt.Sprintf("%s — %s", a.PlaceName, a.Interaction.Label), earnedFrom(a), earned, would)
+	events := []Event{{Kind: "interaction", Text: text, Money: money, GameTime: a.Start}}
 	if a.Career != "" {
 		if c, ok := game.FindCareer(a.Career); ok && a.Career == s.Career {
 			if promo := s.work(c, s.Needs.Mood()); promo != "" {
@@ -160,11 +168,42 @@ func (s *Sim) finish(rng *rand.Rand) []Event {
 	}
 	events = append(events, s.socialize(a.Interaction, rng)...)
 	if ev := a.Surprise(rng); ev != nil {
+		// Money come by chance: within the day's luck, or something else happens.
+		// What an activity paid for gives back (the tontine's pot to the one
+		// whose turn it is, at most five times what was put in) isn't luck: its
+		// rarity (game.Windfall) keeps it well below what's paid in.
+		paidBack := ev.Money > 0 && a.Interaction.Cost > 0 && ev.Money <= 5*a.Interaction.Cost
+		if ev.Money > 0 && !paidBack && s.left(game.FromLuck) < ev.Money {
+			calm := game.Calm(append(append([]game.RandomEvent{}, a.Surprises...), game.GenericEvents...), rng)
+			ev = &calm
+		}
 		s.Needs = s.Needs.Add(ev.Effect)
-		s.Money += ev.Money
+		if ev.Money > 0 && !paidBack {
+			s.earn(game.FromLuck, ev.Money)
+		} else {
+			s.Money += ev.Money
+		}
 		events = append(events, Event{Kind: "random", Text: ev.Text, Money: ev.Money, GameTime: a.End})
 	}
 	return events
+}
+
+// earnedFrom: the source of what an activity pays: work, or a petit boulot.
+func earnedFrom(a *game.Activity) game.Income {
+	if a.Career != "" {
+		return game.FromWork
+	}
+	return game.FromGig
+}
+
+// pay: what the activity pays for what was done of it (a shift; a petit boulot,
+// within the day's limit), with the Pass and the sect; what it would have paid and what it paid.
+func (s *Sim) pay(a *game.Activity) (would, got int) {
+	would = s.withPass(a.Earned())
+	if a.Career != "" {
+		would = s.withSect(would, "travail")
+	}
+	return would, s.earn(earnedFrom(a), would)
 }
 
 // stop cuts the current activity short: the Sim keeps what it got so far.
@@ -179,13 +218,12 @@ func (s *Sim) stop() (Event, error) {
 		return Event{}, errInCustody
 	}
 	s.Activity = nil
-	earned := s.withPass(a.Earned())
-	s.Money += earned
+	would, earned := s.pay(a)
 	money := earned
 	if a.Interaction.Cost > 0 {
 		money = -a.Interaction.Cost
 	}
-	return Event{Kind: "interaction", Text: fmt.Sprintf("%s — %s (arrêté avant la fin)", a.PlaceName, a.Interaction.Label), Money: money, GameTime: a.Start}, nil
+	return Event{Kind: "interaction", Text: capNote(fmt.Sprintf("%s — %s (arrêté avant la fin)", a.PlaceName, a.Interaction.Label), earnedFrom(a), earned, would), Money: money, GameTime: a.Start}, nil
 }
 
 // settleRange charges rent and loan for every Saturday in (from, to].
@@ -196,15 +234,20 @@ func (s *Sim) settleRange(from, to int64) []Event {
 	if s.BornAt != 0 && game.AgeAt(s.BornAt, to) < game.AdultAge {
 		return append(events, s.pocketMoney(from, to)...)
 	}
-	l := game.Ledger{Money: s.Money, Loan: s.Loan, RentArrears: s.RentArrears, Housing: s.Housing}
 	for range game.Saturdays(from, to) {
-		var charges []game.Charge
-		l, charges = game.WeekEnd(l)
-		for _, c := range charges {
-			events = append(events, Event{Kind: "bill", Text: c.Text, Money: c.Money, GameTime: to})
-		}
+		events = append(events, s.weekEnd(to)...)
 	}
+	return events
+}
+
+// weekEnd: a Saturday's rent and loan installment, settled at `at`.
+func (s *Sim) weekEnd(at int64) []Event {
+	l, charges := game.WeekEnd(game.Ledger{Money: s.Money, Loan: s.Loan, RentArrears: s.RentArrears, Housing: s.Housing})
 	s.Money, s.Loan, s.RentArrears, s.Housing = l.Money, l.Loan, l.RentArrears, l.Housing
+	events := make([]Event, 0, len(charges))
+	for _, c := range charges {
+		events = append(events, Event{Kind: "bill", Text: c.Text, Money: c.Money, GameTime: at})
+	}
 	return events
 }
 

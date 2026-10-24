@@ -42,7 +42,7 @@ func TestSyncReplaysOffline(t *testing.T) {
 	now := back.Add(30 * time.Second)
 
 	out, done := replayed(t, &s, steps, now, 0)
-	if s.Activity != nil || s.Money != 14000 {
+	if s.Activity != nil || s.Money != 11200 {
 		t.Fatalf("the selling done and paid: activity %+v money %d", s.Activity, s.Money)
 	}
 	if s.GameMinutes != game.MinuteOf(now) || !s.lastTick.Equal(now) || s.pausedAt != nil {
@@ -104,10 +104,10 @@ func TestPassBonus(t *testing.T) {
 	// Selling at the market with the Pass: paid a quarter more at the end.
 	s = newSim()
 	s.PassUntil = &until
-	sell, _ := game.Kinds["market"].Interaction("sell-goods") // 4 000F
+	sell, _ := game.Kinds["market"].Interaction("sell-goods") // 1 200F
 	_ = s.start(sell, "yop-marche", "market", "Marché de Siporex", nil, "")
 	played(&s, noon.Add(11*time.Minute))
-	if s.Money != 15000 {
-		t.Errorf("4 000 earned, 5 000 with the Pass: money %d", s.Money)
+	if s.Money != 11500 {
+		t.Errorf("1 200 earned, 1 500 with the Pass: money %d", s.Money)
 	}
 }

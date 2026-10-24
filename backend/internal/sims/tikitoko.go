@@ -66,8 +66,12 @@ func tikiTier(fans int) string {
 
 const (
 	TikiPerDay     = 20 // posts a real day, at most
-	TikiPaidPerDay = 10 // of which the brands pay
+	TikiPaidPerDay = 3  // of which the brands pay
 	TikiDealFrom   = 1000
+	// A brand's pay for a video: TikiDealBase and one Djai a hundred fans, at most TikiDealMax
+	// (and the account's day of brands at most, game.FromSocial).
+	TikiDealBase = 200
+	TikiDealMax  = 1500
 )
 
 var (
@@ -97,7 +101,7 @@ func tikiAudience(fans int, th tikiTheme, placeKind string, traits []string, rng
 	// A first post brings a few (the friends, the quarter); then about one view in twenty.
 	newFans = max(1, int(math.Round(float64(views)*0.05*fit/(1+float64(fans)/50000))))
 	if fans >= TikiDealFrom {
-		pay = min(100000, fans/4)
+		pay = min(TikiDealMax, TikiDealBase+fans/100)
 	}
 	return views, likes, newFans, pay
 }
@@ -210,7 +214,7 @@ func (h *Handler) tikiPost(w http.ResponseWriter, r *http.Request) {
 		}
 		// A little fun and company at once, instead of the half hour's.
 		s.Needs = s.Needs.Add(game.Needs{Fun: 4, Social: 2})
-		s.Money += pay
+		pay = s.earn(game.FromSocial, pay)
 		text := fmt.Sprintf("Vidéo postée sur Tikitoko : %s. Elle va faire environ %s vues, +%d fans.", th.Label, compact(views), newFans)
 		events := []Event{{Kind: "social", Text: text, GameTime: s.GameMinutes}}
 		if pay > 0 {

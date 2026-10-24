@@ -52,11 +52,12 @@ const (
 	// The crowd voting, per election (split between the candidates by their campaign).
 	CrowdPresident = 20_000
 	CrowdMayor     = 2_000
-	// A day's pay, by office.
-	PayPresident = 150_000
-	PayMinister  = 60_000
-	PayDeputy    = 40_000
-	PayMayor     = 50_000
+	// A day's pay, by office: an honour more than a living (game/money.go,
+	// docs/economie.md): the deposit and the campaign cost more than a mandate pays.
+	PayPresident = 20_000
+	PayMinister  = 8_000
+	PayDeputy    = 5_000
+	PayMayor     = 6_000
 	// How many ministers a president names.
 	MaxMinisters = 8
 )

@@ -145,6 +145,7 @@ export function WayeApp({ world, sim, act, journal, renderJournal, payTo }: { wo
 
       <div>
         <div className="label mb-1.5">Envoyer de l'argent · 1 % de frais</div>
+        <p className="mb-2 text-xs font-semibold text-[var(--color-ink-soft)]">Aux amis joueurs : {amount(sim.today?.envoye?.max ?? 20000)} Djai par jour au plus, et pas avant 7 jours de compte.</p>
         <div className="grid grid-cols-3 gap-2">
           {(world.contacts ?? []).map((c) => (
             <button key={c.id} className="flex flex-col items-center gap-1 rounded-2xl bg-[var(--color-canvas)] p-2.5 text-center text-xs font-extrabold active:scale-95" onClick={() => setTo(c.id)}>

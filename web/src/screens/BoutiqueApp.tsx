@@ -209,7 +209,7 @@ function Returned({ purchase: p, failed }: { purchase: ShopPurchase; failed: boo
         <BadgeCheck size={28} className="shrink-0 text-[var(--color-emerald-deep)]" />
         <div className="text-sm font-bold">
           <div className="font-display text-[17px] leading-tight font-extrabold">{p.kind === 'djai' ? `+${amount(p.djai)} Djai` : bought(p)}</div>
-          {p.kind === 'djai' ? "Merci ! C'est sur ton Waye." : p.kind === 'pass' ? 'Merci ! Un quart de Djai en plus sur ce que tu gagnes, et ton étoile dorée.' : p.kind === 'energie' ? 'Toutes tes jauges sont à fond !' : 'Merci ! La couronne est à toi : Profil, Mon look.'}
+          {p.kind === 'djai' ? "Merci ! C'est sur ton Waye." : p.kind === 'pass' ? 'Merci ! Un quart de Djai en plus sur ce que tu gagnes et sur tes plafonds du jour, et ton étoile dorée.' : p.kind === 'energie' ? 'Toutes tes jauges sont à fond !' : 'Merci ! La couronne est à toi : Profil, Mon look.'}
         </div>
       </div>
     )

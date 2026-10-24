@@ -31,8 +31,8 @@ const (
 	huitIdle         = 10 * time.Minute
 	huitInviteWindow = 10 * time.Minute
 	// huitNpcMax: the most the game's players put on a game; huitPlayerMax: between friends.
-	huitNpcMax    = 5000
-	huitPlayerMax = 50000
+	huitNpcMax    = 2000
+	huitPlayerMax = 10000
 	// How long a game just over still shows (its result).
 	huitShowEnded = 3 * time.Minute
 	// The steps kept for the phones to show (the last move and the game's players' answers).
@@ -225,13 +225,22 @@ func finishHuit(ctx context.Context, tx pgx.Tx, h *huitRow, winner int, abandon 
 	minute := game.MinuteOf(time.Now())
 	for seat, sim := range players {
 		amount := 0
-		if seat == winner {
-			amount = pot
-			if _, err := tx.Exec(ctx, `UPDATE sims SET money = money + $1 WHERE id = $2`, amount, sim); err != nil {
+		line := "8 américain : " + h.Text
+		if seat == winner && h.Stake > 0 {
+			// Won: within the day's limit for the account (money.go).
+			src := game.FromPlayers
+			if h.Guest == nil {
+				src = game.FromGames
+			}
+			var err error
+			if amount, err = payWinner(ctx, tx, sim, h.Stake, pot, src); err != nil {
 				return err
 			}
+			if amount < pot {
+				line += " " + game.Full(src)
+			}
 		}
-		_ = insertEvent(ctx, tx, sim, "huit", "8 américain : "+h.Text, amount, minute)
+		_ = insertEvent(ctx, tx, sim, "huit", line, amount, minute)
 	}
 	h.G.Winner = winner
 	state, _ := json.Marshal(h.G)
@@ -340,6 +349,11 @@ func (h *Handler) huitStart(w http.ResponseWriter, r *http.Request) {
 		if s.Money < req.Stake {
 			return game.Outcome{}, nil, game.ErrNotEnoughMoney
 		}
+		if req.Stake > 0 {
+			if err := heldBack(ctx, tx, s.ID); err != nil {
+				return game.Outcome{}, nil, err
+			}
+		}
 		var busy bool
 		_ = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM huit WHERE (host = $1 OR guest = $1) AND (status = 'playing' OR (status = 'invited' AND created_at > $2)))`, o.ID, time.Now().Add(-huitInviteWindow)).Scan(&busy)
 		if busy {
@@ -397,6 +411,11 @@ func (h *Handler) huitAct(w http.ResponseWriter, r *http.Request) {
 			}
 			if s.Money < g.Stake {
 				return game.Outcome{}, nil, game.ErrNotEnoughMoney
+			}
+			if g.Stake > 0 {
+				if err := heldBack(r.Context(), tx, s.ID); err != nil {
+					return game.Outcome{}, nil, err
+				}
 			}
 			// The one who challenged puts theirs down now too, if they still have it.
 			tag, err := tx.Exec(r.Context(), `UPDATE sims SET money = money - $1 WHERE id = $2 AND money >= $1`, g.Stake, g.Host)
