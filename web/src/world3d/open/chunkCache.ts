@@ -36,7 +36,11 @@ function open(): Promise<IDBDatabase | null> {
         r.result.createObjectStore(STORE)
         r.result.createObjectStore(SEEN)
       }
-      r.onsuccess = () => resolve(r.result)
+      r.onsuccess = () => {
+        resolve(r.result)
+        // Chunks of other builds of the code never match again: gone, so this build's keep their room.
+        void sweep(r.result)
+      }
       r.onerror = () => resolve(null)
       r.onblocked = () => resolve(null)
     } catch {
@@ -47,6 +51,27 @@ function open(): Promise<IDBDatabase | null> {
 }
 
 const done = (t: IDBTransaction) => new Promise<void>((res) => ((t.oncomplete = () => res()), (t.onerror = () => res()), (t.onabort = () => res())))
+
+/** The entries of other versions go (their keys start otherwise). */
+async function sweep(db: IDBDatabase) {
+  try {
+    const t = db.transaction([STORE, SEEN], 'readwrite')
+    const seen = t.objectStore(SEEN)
+    const r = seen.openCursor()
+    r.onsuccess = () => {
+      const c = r.result
+      if (!c) return
+      if (!String(c.key).startsWith(VERSION + '|')) {
+        t.objectStore(STORE).delete(c.key)
+        seen.delete(c.key)
+      }
+      c.continue()
+    }
+    await done(t)
+  } catch {
+    // Nothing to sweep, or no room to: the prune takes the oldest anyway.
+  }
+}
 
 /** A short fingerprint of a string (FNV-1a), enough to tell two inputs apart. */
 function hash(s: string) {
@@ -59,10 +84,12 @@ function hash(s: string) {
 }
 
 /**
- * The key of a chunk: the code's version, the origin, the tile, and the
+ * What a chunk is made of, besides the code: the origin, the tile, and the
  * places within reach of its box (a landmark clears its ground this far).
+ * The street keeps the chunks it built under this (OpenWorld's BUILT), the
+ * database under it with the code's version in front (chunkKey).
  */
-export function chunkKey(origin: { lat: number; lng: number }, tx: number, ty: number, z: number, box: { x0: number; x1: number; z0: number; z1: number }, places: PlaceSpot[], clear: { at: [number, number]; r: number }[] = []) {
+export function requestKey(origin: { lat: number; lng: number }, tx: number, ty: number, z: number, box: { x0: number; x1: number; z0: number; z1: number }, places: PlaceSpot[], clear: { at: [number, number]; r: number }[] = []) {
   const reach = 200
   const inReach = (at: [number, number]) => at[0] > box.x0 - reach && at[0] < box.x1 + reach && at[1] > box.z0 - reach && at[1] < box.z1 + reach
   const near = places
@@ -71,8 +98,11 @@ export function chunkKey(origin: { lat: number; lng: number }, tx: number, ty: n
     .concat(clear.filter((c) => inReach(c.at)).map((c) => ['clear', Math.round(c.at[0] * 10), Math.round(c.at[1] * 10), c.r].join(',')))
     .sort()
     .join(';')
-  return `${VERSION}|${origin.lat.toFixed(6)},${origin.lng.toFixed(6)}|${z}|${tx}/${ty}|${hash(near)}`
+  return `${origin.lat.toFixed(6)},${origin.lng.toFixed(6)}|${z}|${tx}/${ty}|${hash(near)}`
 }
+
+/** The key of a chunk in the database: the code's version, then what it's made of (requestKey). */
+export const chunkKey = (...args: Parameters<typeof requestKey>) => `${VERSION}|${requestKey(...args)}`
 
 export async function getChunk(key: string): Promise<Cached | null> {
   const db = await open()
@@ -84,8 +114,8 @@ export async function getChunk(key: string): Promise<Cached | null> {
       r.onsuccess = () => res((r.result as Cached | undefined) ?? null)
       r.onerror = () => res(null)
     })
+    // Seen now (for the prune): written as the transaction ends, not waited for.
     if (got) t.objectStore(SEEN).put(Date.now(), key)
-    await done(t)
     return got
   } catch {
     return null
