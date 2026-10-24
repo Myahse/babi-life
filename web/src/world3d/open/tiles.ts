@@ -6,6 +6,7 @@ import { blockRing } from './voxel'
 import { fillQuarters } from './fill'
 import { bigBridgeName, bridgeKind } from './bridgeNames'
 import { deckWidth } from './bridgeLine'
+import { freshOrKept, tileFetch } from '../../lib/tileCache'
 
 // A chunk of the open world: one map tile of real Abidjan (OpenStreetMap data
 // served by Mapbox), turned into game metres. Roads keep their class (a
@@ -48,7 +49,8 @@ const FAR_ROADS = new Set(['motorway', 'trunk', 'primary', 'secondary'])
 
 export async function fetchChunk(o: Origin, tx: number, ty: number, token: string, signal?: AbortSignal, z = CHUNK_ZOOM): Promise<ChunkData> {
   if (!token) return fetchOpenChunk(o, tx, ty, signal, z)
-  const res = await fetch(tileUrl(token, tx, ty, z), { signal })
+  // Kept a month on the phone, there without network too (lib/offline.ts).
+  const res = await tileFetch(`mbx/${z}/${tx}/${ty}`, tileUrl(token, tx, ty, z), signal)
   if (res.status === 404) return emptyChunk(o, tx, ty, z) // nothing mapped there (open sea)
   if (!res.ok) throw new Error(`tile ${tx}/${ty}: ${res.status}`)
   return decodeChunk(o, tx, ty, new Uint8Array(await res.arrayBuffer()), z)
@@ -585,11 +587,11 @@ function ofmTile(tx: number, ty: number, signal?: AbortSignal): Promise<VectorTi
   const key = `${tx}/${ty}`
   let p = ofmCache.get(key)
   if (!p) {
-    ofmTiles ??= fetch(OFM_TILEJSON)
+    ofmTiles ??= freshOrKept('ofm/tilejson', OFM_TILEJSON)
       .then((r) => r.json())
       .then((j: { tiles: string[] }) => j.tiles[0])
     p = ofmTiles
-      .then((tpl) => fetch(tpl.replace('{z}', String(OFM_ZOOM)).replace('{x}', String(tx)).replace('{y}', String(ty)), { signal }))
+      .then((tpl) => tileFetch(`ofm/${OFM_ZOOM}/${tx}/${ty}`, tpl.replace('{z}', String(OFM_ZOOM)).replace('{x}', String(tx)).replace('{y}', String(ty)), signal))
       .then(async (res) => {
         if (res.status === 404 || res.status === 204) return null
         if (!res.ok) throw new Error(`tile ${tx}/${ty}: ${res.status}`)

@@ -42,14 +42,14 @@ export function InstallButton({ className = '', sign = false }: { className?: st
   )
 }
 
-/** A thin banner while the phone has no network: the game needs it to live. */
+/** A thin banner while the phone has no network: the game opens as it was last seen, the Sim waits (lib/offline.ts). */
 export function OfflineBanner() {
   const online = useOnline()
   if (online) return null
   return (
     <div className="motion-pop fixed inset-x-0 top-0 z-[60] flex justify-center p-2 pt-[max(0.5rem,env(safe-area-inset-top))]" role="status">
       <div className="flex items-center gap-2 rounded-xl bg-[var(--color-ink)] px-3 py-2 text-sm font-bold text-white shadow-lg">
-        <WifiOff size={16} /> Hors connexion : ta vie reprend dès que le réseau revient.
+        <WifiOff size={16} className="shrink-0" /> Hors ligne : ton perso t'attend, rien n'avance. En attendant, les Jeux du téléphone marchent.
       </div>
     </div>
   )
