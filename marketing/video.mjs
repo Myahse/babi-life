@@ -4,7 +4,7 @@
 // thanking the community for 1 500 followers, 52 s, voice out/voix-merci.mp3 when there;
 // FILM=arnaque, Awa scammed through a link on Gbairai, 51 s, voice out/voix-arnaque.mp3 when there;
 // FILM=keke, Keke's street interview « what do you want in Babi Life? », 58 s, voice out/voix-keke.mp3;
-// FILM=sortie, Awa announcing the game comes out on Wednesday 28 October, 36 s, voice out/voix-sortie.mp3 when there;
+// FILM=sortie, Awa announcing the game comes out on Wednesday 28 October and what is new in it, 40 s, voice out/voix-sortie.mp3 when there;
 // FILM=gameplay, how you play, 39 s, its beat out/son-gameplay.mp3 from beat.py;
 // FILM=tout, the trailer of everything, 53 s, Awa's voice out/voix-tout.mp3 over its beat out/son-tout.mp3),
 // 1080 × 1920 (WhatsApp status, TikTok, Reels), drawn frame
