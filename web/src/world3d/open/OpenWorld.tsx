@@ -84,6 +84,7 @@ const RICH = typeof navigator === 'undefined' || (navigator.hardwareConcurrency 
 import { litShare, makeTextures, rippleNormals, windowsByHour } from './textures'
 import { FAR_ZOOM, type ChunkData } from './tiles'
 import type { ChunkRequest } from './chunkJob'
+import { requestKey } from './chunkCache'
 import { startChunkWorker, type ChunkWorker } from './chunkWorker'
 import { serverNow, worldTime } from '../../lib/worldClock'
 import { cutsAround, inCut, zoneOf, type PowerCut } from '../power'
@@ -113,7 +114,46 @@ const FAR_DROP = 7000
 const PARALLEL = 3
 const HAPPENING_KEY = 'happening'
 
-type Loaded = { data: ChunkData; geos: Record<string, THREE.BufferGeometry> }
+type Loaded = { data: ChunkData; geos: Record<string, THREE.BufferGeometry>; resolved: Resolved[]; /** what it was made of (chunkCache.requestKey): the same request finds it in BUILT */ mem: string }
+
+// The chunks built while the page lives, by what they were made of: a street
+// left and come back to (another commune and back by taxi, the profile and
+// back, a chunk gone out of range and in again) stands at once, without the
+// worker, the database or the network. The oldest go when there are too many
+// (their geometry freed, unless a street still draws it).
+const BUILT = new Map<string, Loaded>()
+const BUILT_MAX = 60
+function keepBuilt(c: Loaded, drawn: Map<string, Loaded>) {
+  BUILT.delete(c.mem)
+  BUILT.set(c.mem, c)
+  while (BUILT.size > BUILT_MAX) {
+    const [mem, old] = BUILT.entries().next().value as [string, Loaded]
+    BUILT.delete(mem)
+    if (drawn.get(old.data.key) !== old) for (const g of Object.values(old.geos)) g.dispose()
+  }
+}
+const SNAPS = 'babi.snaps.v1.'
+function loadSnaps(commune: string): Map<string, XZ> {
+  try {
+    const raw = localStorage.getItem(SNAPS + commune)
+    const list = raw ? (JSON.parse(raw) as [string, number, number][]) : []
+    return new Map(list.filter((e) => Array.isArray(e) && typeof e[0] === 'string' && Number.isFinite(e[1]) && Number.isFinite(e[2])).map(([id, x, z]) => [id, [x, z] as XZ]))
+  } catch {
+    return new Map()
+  }
+}
+function saveSnaps(commune: string, snaps: Map<string, XZ>) {
+  try {
+    localStorage.setItem(SNAPS + commune, JSON.stringify([...snaps].map(([id, [x, z]]) => [id, Math.round(x * 10) / 10, Math.round(z * 10) / 10])))
+  } catch {
+    // No room, or private browsing: found again next time.
+  }
+}
+/** A chunk made of something else now (a house built, a place found elsewhere): forgotten and freed. */
+function forgetBuilt(c: Loaded) {
+  if (BUILT.get(c.mem) === c) BUILT.delete(c.mem)
+  for (const g of Object.values(c.geos)) g.dispose()
+}
 
 /** A plot with a house clears the map's buildings this far around (metres). */
 const PLOT_CLEAR = 12
@@ -319,8 +359,11 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const { mats, far: farMats } = useMaterials(night, hour)
   const home = sim.homeCity === sim.city && sim.homeCommune === commune.id
 
-  // The real places found on the map's points of interest, by name.
-  const [snaps, setSnaps] = useState<Map<string, XZ>>(new Map())
+  // The real places found on the map's points of interest, by name. Kept in the browser from one
+  // visit to the next: the first chunks are then asked for with the places where they really are,
+  // instead of being built once, then again when the map's points come in (two builds, two entries
+  // in the cache, and the second visit finding the first's).
+  const [snaps, setSnaps] = useState<Map<string, XZ>>(() => loadSnaps(commune.id))
   const snapsRef = useRef(snaps)
   snapsRef.current = snaps
 
@@ -406,7 +449,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         if (k.includes(':')) continue
         const { box } = c.data
         if (!changed.some(([x, z]) => x >= box.x0 - PLOT_CLEAR && x < box.x1 + PLOT_CLEAR && z >= box.z0 - PLOT_CLEAR && z < box.z1 + PLOT_CLEAR)) continue
-        for (const g of Object.values(c.geos)) g.dispose()
+        forgetBuilt(c)
         n.delete(k)
       }
       return n
@@ -449,7 +492,13 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     if (up !== high) setHigh(up)
   })
   const [resolved, setResolved] = useState<Map<string, Resolved>>(new Map())
-  const pending = useRef(new Map<number, string>())
+  const pending = useRef(new Map<number, { key: string; mem: string }>())
+  // Chunks arrived (from the worker, or found in BUILT) and not drawn yet: drawn together a moment
+  // later, one change of state for all (each was a whole new render of the street before), then
+  // the next ones asked for at once (not at the next tick, half a second on).
+  const arrived = useRef<Loaded[]>([])
+  const arriving = useRef(new Set<string>())
+  const flushing = useRef(false)
   const failed = useRef(new Map<string, number>())
   const failedAt = useRef(new Map<string, number>())
   const loadedOnce = useRef(false)
@@ -465,9 +514,10 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     const w = startChunkWorker()
     worker.current = w
     w.onmessage = (e) => {
-      const key = pending.current.get(e.data.id)
+      const got = pending.current.get(e.data.id)
       pending.current.delete(e.data.id)
-      if (!key) return
+      if (!got) return
+      const { key, mem } = got
       if (e.data.error || !e.data.data) {
         failed.current.set(key, (failed.current.get(key) ?? 0) + 1)
         failedAt.current.set(key, performance.now())
@@ -489,17 +539,36 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         g.computeBoundingSphere()
         geos[name] = g
       }
-      const data = e.data.data
-      setChunks((m) => new Map(m).set(key, { data, geos }))
-      // A place since found elsewhere on the map: this chunk's old answer for it is stale.
-      const fresh = (e.data.resolved ?? []).filter((r) => {
+      arrive({ data: e.data.data, geos, resolved: e.data.resolved ?? [], mem })
+    }
+    return () => w.terminate()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  const arrive = (c: Loaded) => {
+    arriving.current.add(c.data.key)
+    arrived.current.push(c)
+    if (flushing.current) return
+    flushing.current = true
+    setTimeout(() => {
+      flushing.current = false
+      const got = arrived.current
+      arrived.current = []
+      if (!got.length) return
+      setChunks((m) => {
+        const n = new Map(m)
+        for (const c of got) {
+          n.set(c.data.key, c)
+          keepBuilt(c, n)
+        }
+        return n
+      })
+      // A place since found elsewhere on the map: a chunk's old answer for it is stale.
+      const fresh = got.flatMap((c) => c.resolved).filter((r) => {
         const at = snapsRef.current.get(r.id)
         return !at || Math.hypot(r.center[0] - at[0], r.center[1] - at[1]) < 120
       })
       if (fresh.length) setResolved((m) => new Map([...m, ...fresh.map((r) => [r.id, r] as const)]))
-    }
-    return () => w.terminate()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    }, 30)
+  }
 
   const chunksRef = useRef(chunks)
   // Look for the real places on the map's points of interest, as tiles come in;
@@ -533,12 +602,14 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     }
     snapsRef.current = next
     setSnaps(next)
+    saveSnaps(commune.id, next)
     if (import.meta.env.DEV) Object.assign(window, { __snaps: next })
     if (stale.size)
       setChunks((m) => {
         const n = new Map(m)
         for (const k of stale) {
-          for (const g of Object.values(n.get(k)?.geos ?? {})) g.dispose()
+          const c = n.get(k)
+          if (c) forgetBuilt(c)
           n.delete(k)
         }
         return n
@@ -590,24 +661,32 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         if (d <= FAR_RADIUS) horizon.push({ key: `${FAR_ZOOM}:${tx}/${ty}`, tx, ty, d })
       }
     horizon.sort((a, b) => a.d - b.d)
-    const busy = new Set(pending.current.values())
+    const busy = new Set([...pending.current.values()].map((p) => p.key))
     for (const c of [...wanted, ...horizon]) {
       if (pending.current.size >= PARALLEL) break
       // A piece that failed is asked again a little later each time (up to a minute), never given up on.
       const tries = failed.current.get(c.key) ?? 0
-      if (chunksRef.current.has(c.key) || busy.has(c.key) || (tries && performance.now() - (failedAt.current.get(c.key) ?? 0) < Math.min(60000, 3000 * tries))) continue
-      const id = nextId.current++
-      pending.current.set(id, c.key)
+      if (chunksRef.current.has(c.key) || busy.has(c.key) || arriving.current.has(c.key) || (tries && performance.now() - (failedAt.current.get(c.key) ?? 0) < Math.min(60000, 3000 * tries))) continue
       const far = c.key.includes(':')
       // Another commune's landmark seen from here: the map's own building of it goes (its spot clears it in its commune).
       const clear = far ? [] : skyline.filter((x) => !spots.some((p) => p.id === x.id)).map((x) => ({ at: x.at, r: LANDMARKS[x.id] }))
-      const req: ChunkRequest = { id, origin, tx: c.tx, ty: c.ty, token, places: far ? [] : spots.filter((x) => !isMapPlace(x.id) && !x.parent).map(({ id, at, kind, landmark, name, type }) => ({ id, at, kind, landmark, name, type, noLayout: tight.has(id) })), z: far ? FAR_ZOOM : undefined, clear }
+      const places = far ? [] : spots.filter((x) => !isMapPlace(x.id) && !x.parent).map(({ id, at, kind, landmark, name, type }) => ({ id, at, kind, landmark, name, type, noLayout: tight.has(id) }))
+      const mem = requestKey(origin, c.tx, c.ty, far ? FAR_ZOOM : 0, tileBox(origin, c.tx, c.ty, far ? FAR_ZOOM : undefined), places, clear)
+      // Built already while the page lives: drawn again as it was, nothing asked.
+      const built = BUILT.get(mem)
+      if (built) {
+        arrive(built)
+        continue
+      }
+      const id = nextId.current++
+      pending.current.set(id, { key: c.key, mem })
+      const req: ChunkRequest = { id, origin, tx: c.tx, ty: c.ty, token, places, z: far ? FAR_ZOOM : undefined, clear }
       w.postMessage(req)
     }
     // Chunks too far are let go, like Minecraft's render distance.
     const far = [...chunksRef.current.values()].filter(({ data: { key, box: b } }) => Math.hypot(Math.max(b.x0 - fx, 0, fx - b.x1), Math.max(b.z0 - fz, 0, fz - b.z1)) > (key.includes(':') ? FAR_DROP : DROP_RADIUS))
     if (far.length) {
-      for (const c of far) for (const g of Object.values(c.geos)) g.dispose()
+      // Their geometry stays in BUILT (freed when too many): back in range, they stand at once.
       setChunks((m) => {
         const n = new Map(m)
         for (const c of far) n.delete(c.data.key)
@@ -617,6 +696,10 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   }
   streamRef.current = stream
   useEffect(stream, [spots]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    for (const k of chunks.keys()) arriving.current.delete(k)
+    stream()
+  }, [chunks]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Going to a place that isn't loaded yet: load the chunks there first.
   const [walkTo, setWalkTo] = useState<Props['goTo']>(null)
