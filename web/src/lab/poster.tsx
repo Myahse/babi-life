@@ -66,9 +66,12 @@ type SceneId = 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'prin
  * filmed being played, by marketing/top20.mjs, under what's drawn here with
  * &overlay, timed on Awa's voice (&times=: when each line starts, then the end);
  * the scenes it films from here with &only=grin|messe|zouglou|tourf:
- * marketing/scripts/top20.md, voice voix-top20.mp3 over its beat son-top20.mp3).
+ * marketing/scripts/top20.md, voice voix-top20.mp3 over its beat son-top20.mp3) or
+ * ?video=sortie (Awa, at home, opens the gift she teased in « merci »: the game
+ * comes out on Wednesday 28 October; the game in four shots, sign up now:
+ * marketing/scripts/sortie-28-octobre.md, voice voix-sortie.mp3).
  */
-type FilmId = 'lancement' | 'bouger' | 'bande-annonce' | 'decouverte' | 'live' | 'merci' | 'gameplay' | 'arnaque' | 'keke' | 'top20'
+type FilmId = 'lancement' | 'bouger' | 'bande-annonce' | 'decouverte' | 'live' | 'merci' | 'gameplay' | 'arnaque' | 'keke' | 'top20' | 'sortie'
 const FILM = (q.get('video') || 'lancement') as FilmId
 
 /** The materials as the server has them (game/build.go). */
@@ -115,9 +118,9 @@ const CREW: { look: Look; gender: 'femme' | 'homme'; pose: Pose }[] = [
 ]
 
 /** Awa, who streams the game (the wish list's guide): orange kaba, headwrap, earrings. */
-// Awa: her kaba and headscarf in the live; a new look for « Merci » (braids, a kente top and skirt, her jewels).
+// Awa: her kaba and headscarf in the live; a new look for « Merci » (braids, a kente top and skirt, her jewels), kept at home since.
 const AWA =
-  FILM === 'merci'
+  FILM === 'merci' || FILM === 'sortie'
     ? L({ skin: '#8a5532', hair: 'braids', hairColor: '#24160e', outfit: 'jupe', outfitColor: '#12a37a', pattern: 'kente', accessory: 'earrings,beads,watch,bag' })
     : L({ skin: '#8a5532', hair: 'headwrap', outfit: 'kaba', outfitColor: '#ff7a00', pattern: 'cercles', accessory: 'earrings' })
 
@@ -1601,7 +1604,7 @@ function GbairaiChat({ t }: { t: number }) {
 
 /* ---------- The video: 25 seconds, scene after scene ---------- */
 
-type Shot = { from: number; to: number; scene: SceneId; title?: string; sub?: string; /** Its number, in the film that goes through everything. */ n?: number; /** The live: what Awa says, as a subtitle. */ cap?: string; /** « Merci »: the follower counter, the gift that hides. */ counter?: boolean; tease?: boolean; /** « Arnaque »: what the phone shows, and the tip. */ phone?: 'msg' | 'page' | 'drain' | 'call' | 'masque'; tip?: number; /** « top20 »: what Awa says (the captions). */ say?: string }
+type Shot = { from: number; to: number; scene: SceneId; title?: string; sub?: string; /** Its number, in the film that goes through everything. */ n?: number; /** The live: what Awa says, as a subtitle. */ cap?: string; /** « Merci »: the follower counter, the gift that hides. */ counter?: boolean; tease?: boolean; /** « Arnaque »: what the phone shows, and the tip. */ phone?: 'msg' | 'page' | 'drain' | 'call' | 'masque'; tip?: number; /** « top20 »: what Awa says (the captions). */ say?: string; /** « Sortie »: the gift opens on the date; the date pinned at the top. */ reveal?: boolean; date?: boolean }
 /** Each film: its shots, when the intro ends and the outro starts, its length (marketing/video.mjs reads it). */
 const FILMS: Record<FilmId, { shots: Shot[]; intro: number; outro: number; length: number; hook: [string, string, string] }> = {
   lancement: {
@@ -1751,6 +1754,25 @@ const FILMS: Record<FilmId, { shots: Shot[]; intro: number; outro: number; lengt
     intro: 0,
     outro: 52.07,
     length: 58.5,
+    hook: ['', '', ''],
+  },
+  // « Sortie » (marketing/scripts/sortie-28-octobre.md): the gift Awa teased opens on the release date, the game in four shots, sign up now.
+  sortie: {
+    // Timed on the script's lines (marketing/out/voix-sortie.mp3 when there): each shot starts with its sentence.
+    shots: [
+      { from: 0, to: 3.7, scene: 'salon', cap: 'La famille ! C’est Awa 👋' },
+      { from: 3.7, to: 8.7, scene: 'salon', tease: true, cap: 'Je vous avais dit : de bonnes nouvelles… 🤫' },
+      { from: 8.7, to: 14.7, scene: 'salon', reveal: true, cap: 'Babi Life sort le mercredi 28 octobre ! 🎉' },
+      { from: 14.7, to: 17.7, scene: 'build', date: true, title: 'Ta vie à Babi', cap: 'Ton perso, ta famille, ta maison…' },
+      { from: 17.7, to: 19.5, scene: 'fete', date: true, title: 'Ta vie à Babi', cap: 'Le maquis, le coupé-décalé…' },
+      { from: 19.5, to: 21.2, scene: 'stade', date: true, title: 'Ta vie à Babi', cap: '… le match au stade !' },
+      { from: 21.2, to: 24.7, scene: 'gbaka', date: true, title: 'Ta vie à Babi', cap: 'Tout Babi dans ton téléphone. Gratuit !' },
+      { from: 24.7, to: 30.2, scene: 'salon', date: true, cap: 'Inscris-toi : mercredi, tu joues parmi les premiers !' },
+      { from: 30.2, to: 36.5, scene: 'crew' },
+    ],
+    intro: 0,
+    outro: 30.2,
+    length: 36.5,
     hook: ['', '', ''],
   },
   // How you play: born gnambro, the goal is debout, six steps, the money that comes and goes.
@@ -2100,6 +2122,119 @@ function MerciOverlay({ t, shot }: { t: number; shot: Shot }) {
       {/* Awa's face, filming herself (not at home: there she's the whole picture) */}
       {shot.scene !== 'salon' && (
         <div className="absolute top-[17%] right-6 h-[210px] w-[160px] overflow-hidden rounded-[28px] border-[4px] border-white/90 bg-[#ffb37a] shadow-[0_16px_40px_-14px_rgba(0,0,0,0.7)]">
+          <AwaFace t={t} size={210} talking />
+        </div>
+      )}
+      <div className="absolute bottom-[19%] left-6 flex w-[62%] flex-col gap-2.5 font-sans">
+        {shown.map(([at, who, text]) => (
+          <div key={at} className="flex items-start gap-2.5 rounded-2xl bg-black/40 px-3.5 py-2" style={{ opacity: Math.min(1, (t - at) / 0.3) }}>
+            <span className="text-[20px] leading-snug font-extrabold text-[#ffd43b]">{who}</span>
+            <span className="text-[20px] leading-snug font-bold">{text}</span>
+          </div>
+        ))}
+      </div>
+      <div className="absolute right-10 bottom-[19%] h-[420px] w-20">
+        {hearts.map((h, i) => (
+          <Heart key={i} size={34} className="absolute bottom-0 left-1/2" style={{ transform: `translate(${h.x - 17}px, ${-h.k * 400}px) scale(${0.7 + h.k * 0.5})`, opacity: 1 - h.k, color: h.c, fill: h.c }} />
+        ))}
+      </div>
+      {shot.cap && (
+        <div className="absolute inset-x-0 bottom-[8%] flex justify-center px-10">
+          <div className="rounded-2xl bg-white px-5 py-2.5 text-center text-[34px] leading-tight font-extrabold text-[var(--color-ink)] shadow-[0_12px_30px_-10px_rgba(0,0,0,0.6)]">{shot.cap}</div>
+        </div>
+      )}
+    </>
+  )
+}
+
+/** « Sortie »: the day the game comes out (Wednesday 28 October 2026). */
+const SORTIE = { weekday: 'Mercredi', day: 28, month: 'octobre' }
+/** What the community answers in « Sortie ». */
+const SORTIE_COMMENTS: [number, string, string][] = [
+  [1.4, 'koffi_225', 'Awaaa 🔥'],
+  [5.2, 'mariam.yop', 'Dis vite !! 👀'],
+  [7.4, 'le_vrai_bk', 'Le jeu sort ou bien ??'],
+  [10.4, 'fanta.d', 'ENFIN 😭🔥🔥'],
+  [12.2, 'kader.abobo', 'Mercredi je suis là !'],
+  [14, 'aya.k', 'Je prends congé mercredi 😂'],
+  [16.4, 'ibou', 'Ma maison sera la plus belle de Cocody'],
+  [18.6, 'mamie.c', 'Rue Princesse dès mercredi 🕺'],
+  [20.8, 'serge.plateau', 'On est ensemble 🇨🇮'],
+  [23, 'koffi_225', 'Inscrit ✅'],
+  [25.4, 'fanta.d', 'Tag ton gars 👇'],
+  [27.6, 'le_vrai_bk', 'Awa tu es la meilleure ❤️'],
+]
+
+/** A calendar page: the month on its red band, the day, the weekday. */
+function CalendarCard({ scale = 1 }: { scale?: number }) {
+  return (
+    <div className="overflow-hidden rounded-[40px] bg-white text-center text-[var(--color-ink)] shadow-[0_24px_60px_-20px_rgba(0,0,0,0.7)]" style={{ transform: `scale(${scale})`, width: 360 }}>
+      <div className="bg-[#d6202a] py-3 text-[40px] font-extrabold tracking-wide text-white uppercase">{SORTIE.month}</div>
+      <div className="py-2 text-[190px] leading-[1] font-extrabold tabular-nums">{SORTIE.day}</div>
+      <div className="pb-5 text-[44px] font-extrabold text-[var(--color-orange)] uppercase">{SORTIE.weekday}</div>
+    </div>
+  )
+}
+
+/** « Sortie »: Awa's news from home: the gift she teased opens on the date, the comments, the hearts, her words. */
+function SortieOverlay({ t, shot }: { t: number; shot: Shot }) {
+  const shown = SORTIE_COMMENTS.filter(([at]) => at <= t).slice(-3)
+  const local = t - shot.from
+  const revealed = t >= 9.6
+  const hearts = [...Array(revealed ? 16 : 9)].map((_, i) => {
+    const k = ((t * 0.55 + i * 0.37) % 1 + 1) % 1
+    return { k, x: Math.sin(i * 2.7 + t) * 22, c: ['#ff3d6e', '#ff7a00', '#ffd43b', '#ff3d6e', '#ffffff'][i % 5] }
+  })
+  // The gift: shaking while she teases, then it jumps and bursts on « sort le mercredi ».
+  const burst = shot.reveal ? clamp01((local - 0.6) / 0.3) : 0
+  const card = shot.reveal ? ease(clamp01((local - 0.8) / 0.5)) : 0
+  return (
+    <>
+      <div className="absolute inset-x-0 top-0 flex items-center gap-3 bg-gradient-to-b from-black/55 to-transparent px-6 pt-8 pb-12 font-sans">
+        <span className="block h-14 w-14 overflow-hidden rounded-full border-[3px] border-[#ff7a00] bg-[#ffd8a8]">
+          <AwaFace t={t} size={56} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="text-[26px] leading-none font-extrabold">awa.babi</div>
+          <div className="mt-1 text-[18px] font-bold text-white/80">À la maison · Grande nouvelle 📢</div>
+        </div>
+        <span className="flex items-center gap-1.5 rounded-lg bg-[#ff2d55] px-3 py-1.5 text-[20px] font-extrabold">EN DIRECT</span>
+      </div>
+      {/* The date, pinned once it's said */}
+      {shot.date && (
+        <div className="absolute inset-x-0 top-[9.5%] flex flex-col items-center gap-3 px-8">
+          <div className="flex items-center gap-2 rounded-full bg-white px-6 py-2 text-[34px] leading-tight font-extrabold text-[var(--color-ink)] shadow-[0_10px_30px_-10px_rgba(0,0,0,0.6)]" style={{ opacity: Math.min(1, local / 0.4) }}>
+            📅 {SORTIE.weekday} {SORTIE.day} {SORTIE.month}
+          </div>
+          {shot.title && (
+            <div className="rounded-full bg-[var(--color-orange)] px-6 py-1.5 text-[30px] leading-tight font-extrabold shadow-[0_10px_30px_-10px_rgba(0,0,0,0.6)]" style={{ opacity: Math.min(1, local / 0.5) }}>
+              {shot.title}
+            </div>
+          )}
+        </div>
+      )}
+      {/* The gift Awa teased last time: shaking, then it bursts */}
+      {(shot.tease || (shot.reveal && burst < 1)) && (
+        <div className="absolute inset-x-0 top-[14%] flex flex-col items-center font-display" style={{ opacity: shot.tease ? clamp01(local / 0.5) : 1 - burst }}>
+          <div className="text-[130px] leading-none" style={{ transform: `rotate(${Math.sin(t * 9) * (shot.reveal || local > 2.5 ? 12 : 4)}deg) scale(${1 + (shot.reveal ? burst * 1.2 : Math.sin(local * 4) * 0.04)})` }}>
+            🎁
+          </div>
+          {shot.tease && <div className="mt-4 rounded-full bg-[#0f1230]/80 px-7 py-2.5 text-[38px] font-extrabold">Vous vous rappelez ?</div>}
+        </div>
+      )}
+      {/* The date, big, out of the gift */}
+      {shot.reveal && card > 0 && (
+        <div className="absolute inset-x-0 top-[12%] flex flex-col items-center gap-5 font-display" style={{ opacity: card }}>
+          <CalendarCard scale={0.6 + card * 0.4} />
+          <div className="rounded-full bg-[var(--color-orange)] px-8 py-2.5 text-[42px] font-extrabold shadow-[0_10px_30px_-10px_rgba(0,0,0,0.6)]" style={{ opacity: clamp01((local - 1.6) / 0.4) }}>
+            Babi Life sort ! 🎉
+          </div>
+        </div>
+      )}
+      {shot.reveal && local > 0.9 && <Confetti t={local - 0.9} />}
+      {/* Awa's face, filming herself (not at home: there she's the whole picture) */}
+      {shot.scene !== 'salon' && (
+        <div className="absolute top-[24%] right-6 h-[210px] w-[160px] overflow-hidden rounded-[28px] border-[4px] border-white/90 bg-[#ffb37a] shadow-[0_16px_40px_-14px_rgba(0,0,0,0.7)]">
           <AwaFace t={t} size={210} talking />
         </div>
       )}
@@ -2725,10 +2860,11 @@ function Video({ t, qr, url, placeholder }: { t: number; qr: string; url: string
       {FILM === 'gameplay' && !outro && <GameplayOverlay t={t} shot={shot} />}
       {FILM === 'arnaque' && !outro && <ArnaqueOverlay t={t} shot={shot} />}
       {FILM === 'keke' && !outro && <KekeOverlay t={t} shot={shot} />}
+      {FILM === 'sortie' && !outro && <SortieOverlay t={t} shot={shot} />}
       {FILM === 'live' && shot.scene === 'garba' && local > 5.6 && local < 10.2 && <WayePay t={local - 5.6} />}
       {FILM === 'live' && shot.scene === 'amis' && local > 3 && <GbairaiChat t={local - 3} />}
       {/* Captions */}
-      {shot.title && FILM !== 'live' && FILM !== 'gameplay' && (
+      {shot.title && FILM !== 'live' && FILM !== 'gameplay' && FILM !== 'sortie' && (
         <div className="absolute inset-x-0 top-[9%] flex flex-col items-center px-8 text-center">
           <div className="flex items-center gap-3 rounded-full bg-[var(--color-orange)] px-6 py-2 text-[40px] leading-tight font-extrabold shadow-[0_10px_30px_-10px_rgba(0,0,0,0.6)]" style={pop(shot.from + 0.3)}>
             {shot.n && <span className="-ml-3 grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white text-[28px] text-[var(--color-orange)]">{shot.n}</span>}
@@ -2774,6 +2910,14 @@ function Video({ t, qr, url, placeholder }: { t: number; qr: string; url: string
                 Merci la famille !
                 <br />
                 <span className="text-[var(--color-orange)]">Bonne semaine ❤️</span>
+              </>
+            ) : FILM === 'sortie' ? (
+              <>
+                Babi Life sort
+                <br />
+                <span className="text-[var(--color-orange)]">
+                  {SORTIE.weekday.toLowerCase()} {SORTIE.day} {SORTIE.month}
+                </span>
               </>
             ) : FILM === 'gameplay' ? (
               <>
