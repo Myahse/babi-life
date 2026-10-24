@@ -13,6 +13,7 @@
     "video:merci": "FILM=merci node video.mjs",
     "video:arnaque": "FILM=arnaque node video.mjs",
     "video:keke": "FILM=keke node video.mjs",
+    "video:sortie": "FILM=sortie node video.mjs",
     "video:decouverte": "FILM=decouverte node video.mjs",
     "video:gameplay": "python3 beat.py && FILM=gameplay node video.mjs",
     "video:top20": "node top20.mjs",
