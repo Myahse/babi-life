@@ -7,8 +7,8 @@ import { clamp, Count, useCanvas, useCount, useKeys, useLoop } from './arcade'
 // finger slides it left and right (or the arrows). The mosquitoes come down
 // in swarms, swaying, now and then one dives at you; the tiger ones take
 // three sprays; the coil (a green spiral, caught) sprays three ways for a
-// while. Three bites and it's over. At 45 seconds the Gros Moustique comes:
-// it drops its larvae, and takes forty sprays.
+// while; one let through costs ten points. Three bites and it's over. At 45
+// seconds the Gros Moustique comes: it drops its larvae, and takes sixty sprays.
 
 const W = 360
 const H = 540
@@ -19,8 +19,8 @@ const BOSS_AT = 45
 type Bug = { x: number; y: number; hp: number; tiger: boolean; dive: number; phase: number; boss?: boolean; max?: number }
 type Shot = { x: number; y: number; vx: number; vy: number; foe?: boolean }
 
-/** Points as a score out of 100 (a full game well played is near 1 200). */
-export const bugScore = (points: number) => Math.round(clamp(points / 12, 0, 100))
+/** Points as a score out of 100 (a full game well played, the boss down, is near 3 000). */
+export const bugScore = (points: number) => Math.round(clamp(points / 30, 0, 100))
 
 export function MoustiquesDefi({ onEnd }: { onEnd: (score: number) => void }) {
   const { ref, ctx } = useCanvas(W, H)
@@ -44,7 +44,7 @@ export function MoustiquesDefi({ onEnd }: { onEnd: (score: number) => void }) {
     s.fire -= dt
     s.coil = Math.max(0, s.coil - dt)
     if (s.fire <= 0) {
-      s.fire = 0.16
+      s.fire = 0.2
       s.shots.push({ x: s.x, y: Y - 22, vx: 0, vy: -440 })
       if (s.coil > 0) s.shots.push({ x: s.x, y: Y - 22, vx: -130, vy: -420 }, { x: s.x, y: Y - 22, vx: 130, vy: -420 })
     }
@@ -60,7 +60,7 @@ export function MoustiquesDefi({ onEnd }: { onEnd: (score: number) => void }) {
     }
     if (!s.boss && s.t >= BOSS_AT) {
       s.boss = true
-      s.bugs.push({ x: W / 2, y: -60, hp: 40, max: 40, tiger: true, dive: 0, phase: 0, boss: true })
+      s.bugs.push({ x: W / 2, y: -60, hp: 60, max: 60, tiger: true, dive: 0, phase: 0, boss: true })
       setHud((h) => ({ ...h, said: 'Le Gros Moustique !' }))
       setTimeout(() => setHud((h) => ({ ...h, said: '' })), 1500)
     }
@@ -80,7 +80,7 @@ export function MoustiquesDefi({ onEnd }: { onEnd: (score: number) => void }) {
       } else {
         b.y += (28 + s.wave * 2.5) * dt
         b.x += Math.sin(b.phase * 2.2) * 40 * dt
-        if (b.y > 60 && Math.random() < dt * 0.06 * (1 + s.wave * 0.1)) b.dive = 1
+        if (b.y > 60 && Math.random() < dt * 0.12 * (1 + s.wave * 0.12)) b.dive = 1
       }
     }
     // Sprays and larvae.
@@ -97,7 +97,7 @@ export function MoustiquesDefi({ onEnd }: { onEnd: (score: number) => void }) {
         if (b.hp <= 0) {
           s.combo = s.comboT > 0 ? s.combo + 1 : 1
           s.comboT = 0.9
-          const pts = (b.boss ? 300 : b.tiger ? 30 : 10) * Math.min(4, s.combo)
+          const pts = b.boss ? 300 : (b.tiger ? 30 : 10) * Math.min(3, s.combo)
           s.points += pts
           s.pops.push({ x: b.x, y: b.y, t: 0.7, text: `+${pts}` })
           haptic(b.boss ? 'success' : 'light')
@@ -136,6 +136,13 @@ export function MoustiquesDefi({ onEnd }: { onEnd: (score: number) => void }) {
         if (s.lives <= 0) return finish('Trop de piqûres…')
       }
     }
+    // Let through: ten points lost.
+    for (const b of s.bugs)
+      if (b.hp > 0 && b.y >= H + 30) {
+        s.points = Math.max(0, s.points - 10)
+        s.combo = 0
+        s.pops.push({ x: clamp(b.x, 20, W - 20), y: H - 20, t: 0.8, text: '−10' })
+      }
     s.bugs = s.bugs.filter((b) => b.hp > 0 && b.y < H + 30)
     s.shots = s.shots.filter((sh) => sh.y > -20 && sh.y < H + 20)
     for (const p of s.pops) p.t -= dt

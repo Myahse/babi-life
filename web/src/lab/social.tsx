@@ -86,11 +86,11 @@ function Lab() {
   if (q.get('app') === 'gnango' || q.get('app') === 'ride') return <RideLab />
   if (q.get('app') === 'travel') return <TravelLab />
   if (q.get('app') === 'cards') return <CardsLab />
-  // A défi on its own (?app=defi&kind=the|courses[&big]), its score not sent anywhere.
+  // A défi on its own (?app=defi&kind=the|courses|foot|course|combat|arcade[&big][&ia=tournoi-console]), its score not sent anywhere.
   if (q.get('app') === 'defi')
     return (
       <div className="relative mx-auto h-screen w-full max-w-[430px] overflow-hidden">
-        <DefiSheet kind={(q.get('kind') ?? 'the') as 'the'} simId={q.get('sim') ?? 'lab'} big={q.has('big')} send={async (score) => ({ outcome: { text: `Défi ${score}/100. C'est noté.`, money: 0 } }) as unknown as ActionResult} onClose={() => location.reload()} />
+        <DefiSheet kind={(q.get('kind') ?? 'the') as 'the'} simId={q.get('sim') ?? 'lab'} big={q.has('big')} interactionId={q.get('ia') ?? undefined} send={async (score) => ({ outcome: { text: `Défi ${score}/100. C'est noté.`, money: 0 } }) as unknown as ActionResult} onClose={() => location.reload()} />
       </div>
     )
   if (q.get('app') === 'huit' || q.get('app') === 'dames') return <TableLab app={q.get('app') as 'huit' | 'dames'} />

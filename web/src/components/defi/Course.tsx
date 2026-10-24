@@ -85,6 +85,8 @@ export function CourseDefi({ onEnd }: { onEnd: (score: number) => void }) {
     g.current = { segs, len, pos: 0, x: -0.35, speed: 0, turbo: 0, turbos: 3, bump: 0, cars, rival: { z: CAR_Z, x: 0.35, speed: 0, kind: 'rival', color: COLOR.rival }, t: 0, done: 0, rivalDone: 0, over: false }
   }
   const [hud, setHud] = useState({ lap: 1, first: true, kmh: 0, turbos: 3, said: '' })
+  // In development, for the test pilot in the browser.
+  if (import.meta.env.DEV) Object.assign(globalThis, { __course: g.current })
 
   const step = (dt: number) => {
     const s = g.current!
