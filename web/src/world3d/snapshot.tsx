@@ -9,6 +9,13 @@ import { photoCam, usePhotoMode } from './photoCam'
 // shrunk to 720 px and saved as a JPEG. <Snapper /> sits in each 3D scene.
 
 let snap: (() => HTMLCanvasElement | null) | null = null
+/**
+ * The phone's own view while its camera is open (PhotoView): it takes the
+ * photo, whichever scene's Snapper set `snap` last (a scene and the camera
+ * mounted together, as when Flashé opens with the game: the child's effect
+ * runs first, the scene's after it).
+ */
+let viewSnap: (() => HTMLCanvasElement | null) | null = null
 
 /**
  * A Tikitoko clip being filmed (world3d/clip.ts): each frame the 3D draws is
@@ -101,13 +108,12 @@ function PhotoView() {
     cam.updateProjectionMatrix()
   }
   useEffect(() => {
-    const before = snap
-    snap = () => {
+    viewSnap = () => {
       place()
       gl.render(scene, cam)
       return gl.domElement
     }
-    return () => void (snap = before)
+    return () => void (viewSnap = null)
   }, [gl, scene, cam]) // eslint-disable-line react-hooks/exhaustive-deps
   // A priority above 0: this draws the frame (the canvas's own drawing pauses while the camera is open).
   useFrame(() => {
@@ -129,7 +135,7 @@ export function shrink(src: CanvasImageSource & { width: number; height: number 
 
 /** A photo of what's on screen in the game, or null when no 3D is showing. */
 export function takePhoto(): string | null {
-  const c = snap?.()
+  const c = (viewSnap ?? snap)?.()
   return c && c.width > 0 ? shrink(c) : null
 }
 

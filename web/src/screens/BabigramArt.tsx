@@ -67,7 +67,7 @@ function compose(a: M, b: M): M {
   return out
 }
 
-function applyFilter(ctx: CanvasRenderingContext2D, w: number, h: number, f: GramFilter) {
+export function applyFilter(ctx: CanvasRenderingContext2D, w: number, h: number, f: GramFilter) {
   if (f.ops.length) {
     const m = f.ops.map(opMatrix).reduce(compose)
     const img = ctx.getImageData(0, 0, w, h)
@@ -98,7 +98,7 @@ function vignette(ctx: CanvasRenderingContext2D, w: number, h: number, alpha: nu
 
 export const ratioOf = (r: 'carre' | 'portrait') => (r === 'portrait' ? 4 / 5 : 1)
 
-function loadImage(src: string) {
+export function loadImage(src: string) {
   return new Promise<HTMLImageElement>((ok, fail) => {
     const img = new Image()
     // A photo in the bucket comes from another origin: ask for it with CORS, or the canvas can't be read.

@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage } from './types'
 import { useSession } from '../store/session'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
@@ -255,6 +255,11 @@ export const api = {
   },
   /** Babigram: the feeds, posting (instant), likes, saves, comments, follows, profiles, search and activity. An account is a Sim's id or « npc:<handle> » (sent as it is: the router reads the path undecoded). */
   gramFeed: (id: string, tab: 'accueil' | 'explorer' | 'auteur' | 'enregistres', author = '') => request<GramPost[]>(`/sims/${id}/gram?tab=${tab}&author=${encodeURIComponent(author)}`),
+  flashe: (id: string) => request<{ contacts: FlashContact[]; left: number }>(`/sims/${id}/flashe`),
+  flashSend: (id: string, p: { photo: string; caption: string; seconds: number; to: string[]; story: boolean; placeId: string }) => post<ActionResult>(`/sims/${id}/flashe`, p),
+  flashFrom: (id: string, other: string) => request<{ ids: number[] }>(`/sims/${id}/flashe/from/${other}`),
+  flashOpen: (id: string, snap: number) => post<FlashSnap>(`/sims/${id}/flashe/${snap}/open`, {}),
+  flashReport: (id: string, snap: number, reason: string) => post<{ text: string }>(`/sims/${id}/flashe/${snap}/report`, { reason }),
   gramPost: (id: string, p: { photo: string; photoId?: number; caption: string; placeId: string; filter: string; ratio: 'carre' | 'portrait' }) => post<ActionResult>(`/sims/${id}/gram`, p),
   gramLike: (id: string, postId: number, on: boolean) => post<{ on: boolean }>(`/sims/${id}/gram/${postId}/like`, { on }),
   gramSave: (id: string, postId: number, on: boolean) => post<{ on: boolean }>(`/sims/${id}/gram/${postId}/save`, { on }),
