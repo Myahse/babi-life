@@ -16,7 +16,12 @@ import (
 // Les défis (web components/Defi.tsx): while doing some things, the player can
 // take them on as a little game with an action button: the tea made at the
 // grin (poured from high for the foam, three glasses), water-skiing round the
-// buoys off Île Boulay, the shopping list at the supermarket or the boutique.
+// buoys off Île Boulay, the shopping list at the supermarket or the boutique,
+// the games of the salle de jeux vidéo (foot, the car race, the fighting game,
+// the arcade's mosquitoes).
+// The challenge where the loser pays is played for its stake (won: the other's
+// stake too), the Saturday tournament for its prizes; a made-up score there buys
+// a few thousand francs at most, once a game paid for (the tournament once a week).
 // The phone plays it and sends the score (0–100). What it earns is small, a
 // bonus on the activity (a better mood, some money saved on the shopping), so
 // a score made up buys little. Once each time; the best score of each défi is
@@ -28,7 +33,17 @@ var defiFor = map[string][]string{
 	"the":     {"street-grin", "chat-grin"},
 	"ski":     {"ski-boulay"},
 	"courses": {"supermarche", "courses"},
+	"foot":    {"console-foot", "console-defi", "tournoi-console"},
+	"course":  {"console-course"},
+	"combat":  {"console-combat"},
+	"arcade":  {"borne-arcade"},
 }
+
+// The tournament's prizes: the cup, the final lost (the entry is 1 000).
+const (
+	tournamentWin   = 4000
+	tournamentFinal = 1500
+)
 
 var (
 	errDefiKind = errors.New("défi inconnu")
@@ -47,7 +62,8 @@ func defiOf(interaction string) string {
 }
 
 // defiReward: what a score earns (the needs, the money back on what was paid) and the line said.
-func defiReward(kind string, score, cost int) (game.Needs, int, string) {
+// interaction: the activity it's played during (the foot's match, challenge or tournament).
+func defiReward(kind, interaction string, score, cost int) (game.Needs, int, string) {
 	k := float64(score) / 100
 	tier := 0
 	switch {
@@ -63,6 +79,40 @@ func defiReward(kind string, score, cost int) (game.Needs, int, string) {
 	case "ski":
 		lines := []string{"Quelques bouées ratées et un plongeon : la lagune est bonne !", "Belle sortie : les bouées passées, un saut ou deux.", "Slalom parfait et des sauts de champion : le pilote te filme !"}
 		return game.Needs{Fun: math.Round(16 * k)}, 0, lines[tier]
+	case "foot":
+		fun := game.Needs{Fun: math.Round(14 * k), Social: math.Round(6 * k)}
+		switch interaction {
+		case "console-defi":
+			// The loser pays: won, the stake back and the other's; level, each keeps his own.
+			switch {
+			case score > 50:
+				return fun, 2 * cost, fmt.Sprintf("Tu gagnes le défi : le gars du quartier te paie %s.", game.FCFA(cost))
+			case score == 50:
+				return fun, cost, "Match nul : chacun reprend sa mise."
+			}
+			return fun, 0, "Perdu : c'est toi qui paies. La revanche, c'est quand tu veux."
+		case "tournoi-console":
+			switch {
+			case score >= 100:
+				return game.Needs{Fun: 20, Social: 15}, tournamentWin, fmt.Sprintf("Champion du tournoi du samedi ! La coupe et %s.", game.FCFA(tournamentWin))
+			case score >= 66:
+				return fun, tournamentFinal, fmt.Sprintf("Finaliste du tournoi : %s pour la deuxième place.", game.FCFA(tournamentFinal))
+			case score >= 33:
+				return fun, 0, "Éliminé·e en demi-finale : pas mal du tout."
+			}
+			return fun, 0, "Éliminé·e en quart de finale : samedi prochain, ce sera la bonne."
+		}
+		lines := []string{"Défaite : les gars du quartier rigolent, tu veux ta revanche.", "Un bon match, serré jusqu'au bout.", "Victoire nette : tu es le roi de la manette !"}
+		return fun, 0, lines[tier]
+	case "course":
+		lines := []string{"Le woro-woro t'a coupé la route : deuxième, de loin.", "Une belle course, au coude-à-coude.", "Premier avec de l'avance : tu pilotes comme un chauffeur de gbaka !"}
+		return game.Needs{Fun: math.Round(14 * k), Social: math.Round(4 * k)}, 0, lines[tier]
+	case "combat":
+		lines := []string{"Le Boss d'Adjamé t'a mis K.O. : entraîne-toi.", "Un combat accroché, round après round.", "Le Boss d'Adjamé à terre : la salle crie ton nom !"}
+		return game.Needs{Fun: math.Round(14 * k), Social: math.Round(4 * k)}, 0, lines[tier]
+	case "arcade":
+		lines := []string{"Les moustiques ont gagné cette nuit.", "Pas mal de moustiques au tapis.", "Un massacre de moustiques : ton nom tout en haut de la borne !"}
+		return game.Needs{Fun: math.Round(14 * k)}, 0, lines[tier]
 	default:
 		// Good shopping: the right things, quickly, nothing silly bought: up to a fifth saved.
 		back := int(math.Round(float64(cost)*0.2*k/50)) * 50
@@ -100,7 +150,7 @@ func (h *Handler) defi(w http.ResponseWriter, r *http.Request) {
 			return game.Outcome{}, nil, errDefiDone
 		}
 		a.Defi = max(1, score)
-		needs, back, text := defiReward(req.Kind, score, a.Interaction.Cost)
+		needs, back, text := defiReward(req.Kind, a.Interaction.ID, score, a.Interaction.Cost)
 		s.Needs = s.Needs.Add(needs)
 		s.Money += back
 		var before int
