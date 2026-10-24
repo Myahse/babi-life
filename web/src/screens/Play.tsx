@@ -3,7 +3,7 @@ import { gesture } from '../world3d/gesture'
 import type { Pose } from '../avatar/Human'
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2 } from 'lucide-react'
+import { BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2, ShoppingBag } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
 import { useOnline } from '../lib/offline'
 import { onSynced, pendingOffline, picking } from '../lib/offlinePlay'
@@ -54,6 +54,7 @@ import { TikitokoApp } from './TikitokoApp'
 import { BabigramApp } from './BabigramApp'
 import { BetApp } from './BetApp'
 import { WayeApp } from './WayeApp'
+import { BoutiqueApp } from './BoutiqueApp'
 import { StoreApp } from './StoreApp'
 import { FriendsApp } from './FriendsApp'
 import { CameraView } from './CameraView'
@@ -258,11 +259,26 @@ export function Play() {
     const want = import.meta.env.DEV ? new URLSearchParams(location.search).get('place') : null
     if (want) setPlaceId(want)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // Back from GeniusPay's page (/jeu?achat=<purchase>, &echec=1 the error way): the phone opens on the Boutique, which asks how it went.
+  const [achat] = useState(() => {
+    const q = new URLSearchParams(location.search)
+    const id = q.get('achat')
+    return id ? { id, failed: q.get('echec') === '1' } : null
+  })
+  useEffect(() => {
+    if (!achat) return
+    setPhoneApp('boutique')
+    setOverlay('phone')
+    const q = new URLSearchParams(location.search)
+    q.delete('achat')
+    q.delete('echec')
+    history.replaceState(null, '', location.pathname + (q.size ? `?${q}` : ''))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   // A notification tapped (/jeu?app=gbairai, ?app=bet225): the phone opens on that app.
   useEffect(() => {
     const q = new URLSearchParams(location.search)
     const want = q.get('app') as PhoneAppId | 'flashe' | null
-    if (!want || !['gbairai', 'bet225', 'parisfoot', 'guide', 'flashe'].includes(want)) return
+    if (!want || !['gbairai', 'bet225', 'parisfoot', 'guide', 'flashe', 'boutique'].includes(want)) return
     // Flashé opens over the game (its camera sees the street), not in the phone.
     if (want === 'flashe') setOverlay('flashe')
     else (setPhoneApp(want), setOverlay('phone'))
@@ -1365,6 +1381,11 @@ export function Play() {
           time={c.time}
           act={run}
           startApp={phoneApp}
+          achat={achat}
+          onConfirmAdult={async () => {
+            const u = await api.confirmAdult()
+            if (token) useSession.getState().signIn(token, u)
+          }}
           delivery={delivery}
           onDelivery={setDelivery}
           // (The phone put away: the meal is seen being eaten.)
@@ -1487,7 +1508,7 @@ export function Play() {
 
 /* ---------- The in-game phone ---------- */
 
-type PhoneAppId = 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'bolide' | 'jeux'
+type PhoneAppId = 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'bolide' | 'jeux' | 'boutique'
 type PhoneProps = {
   world: World
   sim: Sim
@@ -1498,6 +1519,10 @@ type PhoneProps = {
   time: string
   act: Act
   startApp: PhoneAppId | null
+  /** Back from GeniusPay: the purchase the Boutique asks about. */
+  achat: { id: string; failed: boolean } | null
+  /** The account says it's 18 or over (the Boutique's purchases need it). */
+  onConfirmAdult: () => Promise<void>
   delivery: Delivery | null
   onDelivery: (d: Delivery | null) => void
   onCollect: (home: boolean) => void
@@ -1529,7 +1554,7 @@ type PhoneProps = {
   onDrive: (v: Driven) => void
 }
 
-function Phone({ world, sim, commune, onAutoWork, journal, time, act, startApp, delivery, onDelivery, onCollect, onClose, onMap, onCamera, onFlashe, onPractice, street, onWalk, onBuild, onDames, onDamesOnline, onDamesResume, onHuitTable, onHuitFriend, onHuitResume, onDrive }: PhoneProps) {
+function Phone({ world, sim, commune, onAutoWork, journal, time, act, startApp, achat, onConfirmAdult, delivery, onDelivery, onCollect, onClose, onMap, onCamera, onFlashe, onPractice, street, onWalk, onBuild, onDames, onDamesOnline, onDamesResume, onHuitTable, onHuitFriend, onHuitResume, onDrive }: PhoneProps) {
   const [app, setApp] = useState<PhoneAppId | null>(startApp)
   // A photo of the gallery on its way to Tikitoko.
   const [tikiPhoto, setTikiPhoto] = useState<{ id: number; src: string } | undefined>()
@@ -1594,10 +1619,11 @@ function Phone({ world, sim, commune, onAutoWork, journal, time, act, startApp, 
       : []),
     { id: 'jeux', label: 'Jeux', icon: Gamepad2, colors: ['#c49bff', '#7048e8'], open: () => setApp('jeux') },
     { id: 'guide', label: 'Encyclo', icon: BookOpen, colors: ['#9fa8ff', '#4b4fd6'], open: () => setApp('guide') },
+    { id: 'boutique', label: 'Boutique', icon: ShoppingBag, colors: ['#ffc233', '#e07800'], open: () => setApp('boutique') },
     { id: 'profile', label: 'Profil', icon: UserRound, colors: ['#ff8a9b', '#ff3d57'], open: () => navigate('/profil', { viewTransition: true }) },
     ] as Tile[]
   ).filter((a) => !life.minor || (a.id !== 'jobs' && a.id !== 'home'))
-  const title: Record<PhoneAppId, string> = { here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', babigram: 'Babigram', bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: 'Galerie', guide: 'Encyclopédie de Babi', dodo: 'Dodo', kineo: 'Kinéo', dames: 'Dames 225', huit: '8 américain', bolide: 'Bolide', jeux: 'Jeux' }
+  const title: Record<PhoneAppId, string> = { here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', babigram: 'Babigram', bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: 'Galerie', guide: 'Encyclopédie de Babi', dodo: 'Dodo', kineo: 'Kinéo', dames: 'Dames 225', huit: '8 américain', bolide: 'Bolide', jeux: 'Jeux', boutique: 'Boutique' }
 
   return (
     <div className="absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center" onClick={onClose}>
@@ -1709,6 +1735,7 @@ function Phone({ world, sim, commune, onAutoWork, journal, time, act, startApp, 
                   </div>
                 )}
                 {app === 'store' && ownPhone && <StoreApp world={world} sim={sim} act={act} onOpen={(id) => (id === 'gnango' || id === 'idrive' ? onMap() : id === 'flashe' ? onFlashe() : setApp(id as PhoneAppId))} />}
+                {app === 'boutique' && <BoutiqueApp sim={sim} back={achat} onConfirmAdult={onConfirmAdult} />}
                 {app === 'waye' && <WayeApp world={world} sim={sim} act={act} journal={journal} renderJournal={(events) => <Journal events={events} />} payTo={wayeTo} />}
                 {app === 'gbairai' && <GbairaiApp world={world} sim={sim} />}
                 {app === 'tikitoko' && <TikitokoApp sim={sim} act={act} photo={tikiPhoto} street={street} onClose={() => (setApp(null), setTikiPhoto(undefined))} />}

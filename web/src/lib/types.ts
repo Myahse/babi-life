@@ -381,6 +381,12 @@ export type HousePlan = { id: string; label: string; hint: string; w: number; d:
 
 export type ActionResult = { sim: Sim; outcome: Outcome; journal: JournalEvent[]; fresh: JournalEvent[] }
 
+/** La boutique (backend shop/): Djai for real money (F CFA), through GeniusPay. */
+export type ShopPack = { id: string; label: string; price: number; djai: number; bonus?: string }
+export type ShopPurchase = { id: string; pack: string; price: number; djai: number; status: string; credited: boolean; at: string }
+/** open: GeniusPay set up; sandbox: its test keys; adult: the account said it's 18 or over. */
+export type ShopView = { open: boolean; sandbox?: boolean; adult: boolean; packs: ShopPack[]; purchases: ShopPurchase[] }
+
 export type Happening = { id: string; label: string; icon: string; text: string; category?: string; minHour?: number; maxHour?: number; days?: number[]; join?: Interaction; source?: Source }
 export type HappeningNow = { happening: Happening | null; start: number; end: number }
 

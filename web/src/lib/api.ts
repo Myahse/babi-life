@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView } from './types'
 import { useSession } from '../store/session'
 import { keepData, keptData, OFFLINE_TEXT, setOnline } from './offline'
 
@@ -190,6 +190,12 @@ export const api = {
   becomeTester: (code: string, typed = false) => post<User>('/me/tester', { code, typed }),
   /** The player says once that they are 18 or over (romance). */
   confirmAdult: () => post<User>('/me/adult', {}),
+  /** La boutique (backend shop/): the packs, and the account's purchases. */
+  shop: (id: string) => request<ShopView>(`/sims/${id}/shop`),
+  /** A pack bought: the payment opened at GeniusPay, its page to go to. */
+  buy: (id: string, pack: string) => post<{ id: string; url: string }>(`/sims/${id}/shop`, { pack }),
+  /** Back from GeniusPay: the purchase as it stands (its Djai added once paid). */
+  purchase: (id: string, purchase: string) => post<ShopPurchase>(`/sims/${id}/shop/${purchase}`, {}),
   sims: () => request<Sim[]>('/sims'),
   sim: (id: string) => request<ActionResult>(`/sims/${id}`),
   /** The app put away (hidden, closed): the Sim held from now (backend sims/clock.go); sent even as the page goes. */
