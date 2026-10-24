@@ -5,7 +5,8 @@ import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useS
 import { Link, useNavigate } from 'react-router-dom'
 import { BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2 } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
-import { isOnline, offlineSince, useOnline } from '../lib/offline'
+import { useOnline } from '../lib/offline'
+import { onSynced, pendingOffline, picking } from '../lib/offlinePlay'
 import type { ActionResult, City, Commune, HappeningNow, Interaction, JobTask, JournalEvent, Player, Sim, World, Ride, Place, Plot, StreetRide } from '../lib/types'
 import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
@@ -361,22 +362,33 @@ export function Play() {
   }, [simId])
 
   // The game runs on real time; between server round-trips the clock, needs
-  // and the current activity advance locally, minute by minute.
-  // Without network nothing advances (the server holds the Sim too: backend sims/clock.go): it's
-  // seen as it was when the network went, as it was kept when the game opened without.
+  // and the current activity advance locally, minute by minute. Without network too: the phone
+  // plays the Sim as the server would (lib/offlinePlay.ts) and sends it all once back online.
   const online = useOnline()
-  const frozen = online ? 0 : offlineSince()
   const sim = useMemo(() => {
     if (!base) return null
-    const mins = Math.max(0, ((frozen || now) - base.at) / 60000)
+    const mins = Math.max(0, (now - base.at) / 60000)
     return { ...base.sim, gameMinutes: base.sim.gameMinutes + mins, needs: predict(base.sim, mins) }
-  }, [base, now, frozen])
-  // The network back: the Sim as the server has it.
+  }, [base, now])
+  // What was played offline, counted by the server: its Sim (the toasts were shown as it was played).
+  useEffect(
+    () =>
+      onSynced((res, late) => {
+        if (!late) {
+          setBase({ sim: res.sim, at: Date.now() })
+          setJournal(res.journal)
+        }
+        toast({ tone: 'done', title: 'De retour en ligne', text: res.outcome.text, money: 0 })
+      }),
+    [],
+  )
+  // The network back: the Sim as the server has it (what was played offline sent first).
   const wasOnline = useRef(online)
   useEffect(() => {
     if (online && !wasOnline.current && base) {
+      const played = pendingOffline()
       void api.sim(base.sim.id).then(apply, () => undefined)
-      toast({ tone: 'done', title: 'De retour en ligne', text: 'Ton perso reprend sa vie.', money: 0 })
+      if (!played) toast({ tone: 'done', title: 'De retour en ligne', text: 'Ton perso reprend sa vie.', money: 0 })
     }
     wasOnline.current = online
   }, [online]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -450,7 +462,7 @@ export function Play() {
   // these say the player is there (a minute without, the Sim's life goes on hold: backend sims/clock.go).
   useEffect(() => {
     if (!base) return
-    const t = setInterval(() => !document.hidden && isOnline() && api.sim(base.sim.id).then(apply).catch(() => undefined), 60000)
+    const t = setInterval(() => !document.hidden && api.sim(base.sim.id).then(apply).catch(() => undefined), 60000)
     return () => clearInterval(t)
   }, [base?.sim.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -616,6 +628,9 @@ export function Play() {
     setBackTo(id)
     // Already doing something at the zoo (or the hotel's grounds): it gives way to the new thing.
     const there = sim!.activity?.kind === 'do' && sim!.activity.placeId === id && GROUNDS.has(id)
+    // Without network the phone plays it: what it is at this place.
+    const at = id === 'home' ? { kind: 'home', name: 'Chez toi' } : commune.places.find((p) => p.id === id)
+    if (at) picking(id, it, { kind: at.kind, name: at.name })
     run(it.label, it.icon, kind, async () => {
       if (there) await api.stop(sim!.id)
       return api.interact(sim!.id, id, it.id)

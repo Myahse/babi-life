@@ -1,6 +1,7 @@
 package sims
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math"
@@ -142,30 +143,39 @@ func (h *Handler) defi(w http.ResponseWriter, r *http.Request) {
 	score := max(0, min(100, req.Score))
 	ctx := r.Context()
 	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
-		a := s.Activity
-		if a == nil || a.Kind != "do" || defiOf(a.Interaction.ID) != req.Kind {
-			return game.Outcome{}, nil, errDefiNot
-		}
-		if a.Defi > 0 {
-			return game.Outcome{}, nil, errDefiDone
-		}
-		a.Defi = max(1, score)
-		needs, back, text := defiReward(req.Kind, a.Interaction.ID, score, a.Interaction.Cost)
-		s.Needs = s.Needs.Add(needs)
-		s.Money += back
-		var before int
-		if err := tx.QueryRow(ctx, `SELECT best FROM defis WHERE sim_id = $1 AND kind = $2`, s.ID, req.Kind).Scan(&before); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		text, back, err := playDefi(ctx, tx, s, req.Kind, score)
+		if err != nil {
 			return game.Outcome{}, nil, err
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO defis (sim_id, kind, best, played) VALUES ($1, $2, $3, 1)
-			ON CONFLICT (sim_id, kind) DO UPDATE SET best = GREATEST(defis.best, EXCLUDED.best), played = defis.played + 1, updated_at = now()`, s.ID, req.Kind, score); err != nil {
-			return game.Outcome{}, nil, err
-		}
-		if score > before && before > 0 {
-			text += fmt.Sprintf(" Nouveau record : %d (avant : %d) !", score, before)
-		}
-		return game.Outcome{Text: fmt.Sprintf("Défi %d/100. %s", score, text), Money: back}, nil, nil
+		return game.Outcome{Text: text, Money: back}, nil, nil
 	})
+}
+
+// playDefi: the défi played during the Sim's activity (once): its bonus, the record; the line said and the money back.
+func playDefi(ctx context.Context, tx pgx.Tx, s *Sim, kind string, score int) (string, int, error) {
+	a := s.Activity
+	if a == nil || a.Kind != "do" || defiOf(a.Interaction.ID) != kind {
+		return "", 0, errDefiNot
+	}
+	if a.Defi > 0 {
+		return "", 0, errDefiDone
+	}
+	a.Defi = max(1, score)
+	needs, back, text := defiReward(kind, a.Interaction.ID, score, a.Interaction.Cost)
+	s.Needs = s.Needs.Add(needs)
+	s.Money += back
+	var before int
+	if err := tx.QueryRow(ctx, `SELECT best FROM defis WHERE sim_id = $1 AND kind = $2`, s.ID, kind).Scan(&before); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return "", 0, err
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO defis (sim_id, kind, best, played) VALUES ($1, $2, $3, 1)
+		ON CONFLICT (sim_id, kind) DO UPDATE SET best = GREATEST(defis.best, EXCLUDED.best), played = defis.played + 1, updated_at = now()`, s.ID, kind, score); err != nil {
+		return "", 0, err
+	}
+	if score > before && before > 0 {
+		text += fmt.Sprintf(" Nouveau record : %d (avant : %d) !", score, before)
+	}
+	return fmt.Sprintf("Défi %d/100. %s", score, text), back, nil
 }
 
 // defis: GET: the Sim's best score at each défi (none played: not there).

@@ -246,6 +246,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Delete("/sims/{id}", h.delete)
 	r.Post("/sims/{id}/interact", h.interact)
 	r.Post("/sims/{id}/pause", h.pause)
+	r.Post("/sims/{id}/sync", h.sync)
 	r.Post("/sims/{id}/outing", h.outing)
 	r.Get("/sims/{id}/dames", h.dames)
 	r.Get("/cinema/{cinema}/program", h.cinemaProgram)
@@ -845,6 +846,12 @@ func (h *Handler) mutate(w http.ResponseWriter, r *http.Request, fn func(*Sim) (
 // mutateTx: like mutate, for actions that also write other rows. They must go
 // through tx: the Sim's row is locked until it commits.
 func (h *Handler) mutateTx(w http.ResponseWriter, r *http.Request, fn func(*Sim, pgx.Tx) (game.Outcome, []Event, error)) {
+	h.mutateWith(w, r, true, fn)
+}
+
+// mutateWith: mutateTx, with real time brought in first or not (the sync, sync.go, brings
+// the time played offline in itself, step by step).
+func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance bool, fn func(*Sim, pgx.Tx) (game.Outcome, []Event, error)) {
 	ctx := r.Context()
 	tx, err := h.DB.Begin(ctx)
 	if err != nil {
@@ -862,7 +869,10 @@ func (h *Handler) mutateTx(w http.ResponseWriter, r *http.Request, fn func(*Sim,
 		return
 	}
 	// Real time passes first, so the action sees the real state.
-	fresh := s.advance(time.Now(), newRand())
+	var fresh []Event
+	if advance {
+		fresh = s.advance(time.Now(), newRand())
+	}
 	// Bets and loto tickets that are over pay out.
 	won, err := settle(ctx, tx, &s, due)
 	if err != nil {
