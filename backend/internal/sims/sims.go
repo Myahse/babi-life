@@ -182,6 +182,8 @@ type Sim struct {
 	Record    int           `json:"record"`
 	CreatedAt time.Time     `json:"createdAt"`
 	lastTick  time.Time
+	// The app put away (sims/clock.go): the Sim held from then on.
+	pausedAt *time.Time
 	// gymUntil: the game minute the gym membership runs out (0: none), read from the journal (gym.go).
 	gymUntil int64
 }
@@ -243,6 +245,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Get("/sims/{id}", h.get)
 	r.Delete("/sims/{id}", h.delete)
 	r.Post("/sims/{id}/interact", h.interact)
+	r.Post("/sims/{id}/pause", h.pause)
 	r.Post("/sims/{id}/outing", h.outing)
 	r.Get("/sims/{id}/dames", h.dames)
 	r.Get("/cinema/{cinema}/program", h.cinemaProgram)
@@ -382,14 +385,14 @@ func (h *Handler) Routes(r chi.Router) {
 
 const simColumns = `id, first_name, last_name, gender, look, traits, aspiration,
 	home_city, home_commune, city, commune, needs, money, game_minutes,
-	origin, housing, loan, rent_arrears, career, career_level, performance, activity, apps, born_at, family, friends, gang, record, created_at, last_tick, furnished, stay, languages, auto_work`
+	origin, housing, loan, rent_arrears, career, career_level, performance, activity, apps, born_at, family, friends, gang, record, created_at, last_tick, furnished, stay, languages, auto_work, paused_at`
 
 // scanSim reads simColumns, then any extra columns selected after them into extra.
 func scanSim(row pgx.Row, extra ...any) (Sim, error) {
 	var s Sim
 	err := row.Scan(append([]any{&s.ID, &s.FirstName, &s.LastName, &s.Gender, &s.Look, &s.Traits, &s.Aspiration,
 		&s.HomeCity, &s.HomeCommune, &s.City, &s.Commune, &s.Needs, &s.Money, &s.GameMinutes,
-		&s.Origin, &s.Housing, &s.Loan, &s.RentArrears, &s.Career, &s.CareerLevel, &s.Performance, &s.Activity, &s.Apps, &s.BornAt, &s.Family, &s.Friends, &s.Gang, &s.Record, &s.CreatedAt, &s.lastTick, &s.Furnished, &s.Stay, &s.Languages, &s.AutoWork}, extra...)...)
+		&s.Origin, &s.Housing, &s.Loan, &s.RentArrears, &s.Career, &s.CareerLevel, &s.Performance, &s.Activity, &s.Apps, &s.BornAt, &s.Family, &s.Friends, &s.Gang, &s.Record, &s.CreatedAt, &s.lastTick, &s.Furnished, &s.Stay, &s.Languages, &s.AutoWork, &s.pausedAt}, extra...)...)
 	return s, err
 }
 
@@ -529,6 +532,16 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 	// Reading a Sim lets real time pass for it, so it is saved like an action.
 	h.mutate(w, r, nil)
+}
+
+// pause: the app put away (closed, sent to the background): the Sim lived up to
+// now, and is held from now until it's played again (sims/clock.go).
+func (h *Handler) pause(w http.ResponseWriter, r *http.Request) {
+	h.mutateTx(w, r, func(s *Sim, _ pgx.Tx) (game.Outcome, []Event, error) {
+		now := time.Now()
+		s.pausedAt = &now
+		return game.Outcome{}, nil, nil
+	})
 }
 
 func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
@@ -875,10 +888,10 @@ func (h *Handler) mutateTx(w http.ResponseWriter, r *http.Request, fn func(*Sim,
 		UPDATE sims SET city = $2, commune = $3, needs = $4, money = $5, game_minutes = $6, last_tick = $7,
 		       home_city = $8, home_commune = $9, housing = $10, loan = $11, rent_arrears = $12,
 		       career = $13, career_level = $14, performance = $15, activity = $16, apps = $17,
-		       friends = $18, gang = $19, record = $20, look = $21, born_at = $22, family = $23, furnished = $24, stay = $25
+		       friends = $18, gang = $19, record = $20, look = $21, born_at = $22, family = $23, furnished = $24, stay = $25, paused_at = $26
 		WHERE id = $1`, s.ID, s.City, s.Commune, s.Needs, s.Money, s.GameMinutes, s.lastTick,
 		s.HomeCity, s.HomeCommune, s.Housing, s.Loan, s.RentArrears, s.Career, s.CareerLevel, s.Performance, s.Activity, s.Apps,
-		friendsOrEmpty(s.Friends), s.Gang, s.Record, s.Look, s.BornAt, s.Family, furnishedOrEmpty(s.Furnished), s.Stay)
+		friendsOrEmpty(s.Friends), s.Gang, s.Record, s.Look, s.BornAt, s.Family, furnishedOrEmpty(s.Furnished), s.Stay, s.pausedAt)
 	for _, ev := range fresh {
 		b.Queue(`INSERT INTO sim_events (sim_id, kind, text, money, game_time) VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at`, s.ID, ev.Kind, ev.Text, ev.Money, ev.GameTime)
 	}

@@ -342,14 +342,20 @@ export function Play() {
     const changed = (e: Event) => {
       if ((e as CustomEvent<string>).detail === simId) reload()
     }
+    // Put away (another app, the screen off, the tab hidden, closed): the Sim held from that very
+    // moment, nothing advances until it's played again; back, the latest.
     const shown = () => {
       if (document.visibilityState === 'visible') reload()
+      else void api.pause(simId).catch(() => undefined)
     }
+    const gone = () => void api.pause(simId).catch(() => undefined)
     window.addEventListener(SIM_CHANGED, changed)
     document.addEventListener('visibilitychange', shown)
+    window.addEventListener('pagehide', gone)
     return () => {
       window.removeEventListener(SIM_CHANGED, changed)
       document.removeEventListener('visibilitychange', shown)
+      window.removeEventListener('pagehide', gone)
       if (pending) clearTimeout(pending)
     }
   }, [simId])
@@ -440,11 +446,11 @@ export function Play() {
   useEffect(() => {
     if (!filmOn) setWatching(false)
   }, [filmOn])
-  // And every few minutes anyway: Saturdays, a long nap, another tab. Only while the game is in sight:
-  // these say the player is there, and the Sim's life is on hold while it isn't (backend sims/clock.go).
+  // And every minute anyway: Saturdays, a long nap, another tab. Only while the game is in sight:
+  // these say the player is there (a minute without, the Sim's life goes on hold: backend sims/clock.go).
   useEffect(() => {
     if (!base) return
-    const t = setInterval(() => !document.hidden && isOnline() && api.sim(base.sim.id).then(apply).catch(() => undefined), 5 * 60000)
+    const t = setInterval(() => !document.hidden && isOnline() && api.sim(base.sim.id).then(apply).catch(() => undefined), 60000)
     return () => clearInterval(t)
   }, [base?.sim.id]) // eslint-disable-line react-hooks/exhaustive-deps
 

@@ -176,6 +176,8 @@ export const api = {
   confirmAdult: () => post<User>('/me/adult', {}),
   sims: () => request<Sim[]>('/sims'),
   sim: (id: string) => request<ActionResult>(`/sims/${id}`),
+  /** The app put away (hidden, closed): the Sim held from now (backend sims/clock.go); sent even as the page goes. */
+  pause: (id: string) => request<ActionResult>(`/sims/${id}/pause`, { method: 'POST', body: '{}', keepalive: true }),
   createSim: (sim: NewSim) => post<Sim>('/sims', sim),
   deleteSim: (id: string) => request<void>(`/sims/${id}`, { method: 'DELETE' }),
   interact: (id: string, placeId: string, interactionId: string) =>
