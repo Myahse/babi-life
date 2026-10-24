@@ -1,4 +1,4 @@
-# « Babi Life sort mercredi 28 octobre » — Awa annonce la date (vidéo de 40 s)
+# « Babi Life sort mercredi 28 octobre » — Awa annonce la date (vidéo de 35 s)
 
 La suite de « Merci la famille » : Awa avait dit que de bonnes nouvelles arrivaient. Elle revient **chez elle, dans son salon**, avec le même look (tresses, haut et jupe en kente vert, ses bijoux), face caméra, comme en direct. Le cadeau qui bougeait la dernière fois s'ouvre : une page de calendrier en sort, **mercredi 28 octobre**, les confettis. Puis, plutôt que ce que tout le monde a déjà vu, **les nouveautés** de ces derniers jours, chacune avec son autocollant « NOUVEAU » : la politique (le bulletin de vote du maire), les matchs entre amis, Flashé, et le jeu sans réseau. Enfin, l'appel à s'inscrire tout de suite. Ton : excité au moment de la date, chaleureux après, comme une grande sœur qui invite tout le quartier.
 
@@ -72,8 +72,12 @@ Partage avec tes amis, ta famille, tout ton quartier. Mercredi vingt-huit, on se
 
 ### Après
 
-Télécharger en MP3, le mettre dans `marketing/out/voix-sortie.mp3`, puis `npm run video:sortie` : la vidéo ressort avec la voix. Sans voix, elle sort muette, calée sur les temps du tableau. Si la voix dure plus ou moins de 40 s, recaler les temps des plans (`FILMS.sortie` dans `web/src/lab/poster.tsx`) sur ses phrases, ou l'envoyer à Claude pour qu'il le fasse.
+Télécharger en MP3, le mettre dans `marketing/out/voix-sortie.mp3`, puis `npm run video:sortie` : la vidéo ressort avec la voix. Sans voix, elle sort muette, calée sur les temps du tableau. Si la voix dure plus ou moins de 35 s, recaler les temps des plans (`FILMS.sortie` dans `web/src/lab/poster.tsx`) sur ses phrases, ou l'envoyer à Claude pour qu'il le fasse.
 
 ## Si on la publie un autre jour
 
 La date est à un seul endroit dans la vidéo : `SORTIE` dans `web/src/lab/poster.tsx` (le jour de la semaine, le jour, le mois), plus les phrases du texte ci-dessus.
+
+## La voix enregistrée
+
+`out/voix-sortie.mp3` : ElevenLabs, voix « Lea - UGC creator » (vitesse 1,08), 33,5 s. La vidéo (35 s) est calée sur elle (`FILMS.sortie` dans `web/src/lab/poster.tsx`), chaque plan commençant avec sa phrase : le bonjour 0 – 3,95 s, « Vous vous rappelez ? » et le cadeau 3,95 – 7,1 s, la date 7,1 – 12,7 s (la page du calendrier sort à 7,9 s, sur « Babi Laïf sort le mercredi »), la politique 12,7 – 17,5 s, les matchs entre amis 17,5 – 20,4 s, Flashé 20,4 – 22 s, sans réseau 22 – 24,3 s, « Inscris-toi » 24,3 – 28,45 s, la fin 28,45 – 35 s. Pas de reconnaissance vocale ici : les phrases ont été placées sur les pauses de la voix et le nombre de syllabes de chacune. Avec une autre voix, recaler ces temps de la même façon.

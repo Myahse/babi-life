@@ -1759,22 +1759,22 @@ const FILMS: Record<FilmId, { shots: Shot[]; intro: number; outro: number; lengt
   },
   // « Sortie » (marketing/scripts/sortie-28-octobre.md): the gift Awa teased opens on the release date, what's new lately, sign up now.
   sortie: {
-    // Timed on the script's lines (marketing/out/voix-sortie.mp3 when there): each shot starts with its sentence.
+    // Timed on Awa's voice (marketing/out/voix-sortie.mp3, 33.5 s): each shot starts with its sentence.
     shots: [
-      { from: 0, to: 3.7, scene: 'salon', cap: 'La famille ! C’est Awa 👋' },
-      { from: 3.7, to: 8.7, scene: 'salon', tease: true, cap: 'Je vous avais dit : de bonnes nouvelles… 🤫' },
-      { from: 8.7, to: 14.7, scene: 'salon', reveal: true, cap: 'Babi Life sort le mercredi 28 octobre ! 🎉' },
+      { from: 0, to: 3.95, scene: 'salon', cap: 'La famille ! C’est Awa 👋' },
+      { from: 3.95, to: 7.1, scene: 'salon', tease: true, cap: 'Je vous avais dit : de bonnes nouvelles… 🤫' },
+      { from: 7.1, to: 12.71, scene: 'salon', reveal: true, cap: 'Babi Life sort le mercredi 28 octobre ! 🎉' },
       // What's new lately, not what everyone has seen already.
-      { from: 14.7, to: 19.6, scene: 'plateau', date: true, nouveau: 'politique', title: 'La politique', cap: 'Vote pour ton maire… ou deviens président·e !' },
-      { from: 19.6, to: 23.3, scene: 'basket', date: true, nouveau: 'matchs', title: 'Matchs entre amis', cap: 'Foot et basket avec tes amis, en vrai' },
-      { from: 23.3, to: 25.4, scene: 'selfie', date: true, nouveau: 'flashe', title: 'Flashé', cap: 'Tes selfies avec les lentilles 📸' },
-      { from: 25.4, to: 28.2, scene: 'gbaka', date: true, nouveau: 'horsligne', title: 'Sans réseau', cap: 'Pas de réseau ? Tu joues quand même !' },
-      { from: 28.2, to: 33.7, scene: 'salon', date: true, cap: 'Inscris-toi : mercredi, tu joues parmi les premiers !' },
-      { from: 33.7, to: 40, scene: 'crew' },
+      { from: 12.71, to: 17.51, scene: 'plateau', date: true, nouveau: 'politique', title: 'La politique', cap: 'Vote pour ton maire… ou deviens président·e !' },
+      { from: 17.51, to: 20.37, scene: 'basket', date: true, nouveau: 'matchs', title: 'Matchs entre amis', cap: 'Foot et basket avec tes amis, en vrai' },
+      { from: 20.37, to: 21.98, scene: 'selfie', date: true, nouveau: 'flashe', title: 'Flashé', cap: 'Tes selfies avec les lentilles 📸' },
+      { from: 21.98, to: 24.3, scene: 'gbaka', date: true, nouveau: 'horsligne', title: 'Sans réseau', cap: 'Pas de réseau ? Tu joues quand même !' },
+      { from: 24.3, to: 28.45, scene: 'salon', date: true, cap: 'Inscris-toi : mercredi, tu joues parmi les premiers !' },
+      { from: 28.45, to: 35, scene: 'crew' },
     ],
     intro: 0,
-    outro: 33.7,
-    length: 40,
+    outro: 28.45,
+    length: 35,
     hook: ['', '', ''],
   },
   // How you play: born gnambro, the goal is debout, six steps, the money that comes and goes.
@@ -2154,19 +2154,19 @@ const SORTIE = { weekday: 'Mercredi', day: 28, month: 'octobre' }
 /** What the community answers in « Sortie ». */
 const SORTIE_COMMENTS: [number, string, string][] = [
   [1.4, 'koffi_225', 'Awaaa 🔥'],
-  [5.2, 'mariam.yop', 'Dis vite !! 👀'],
-  [7.4, 'le_vrai_bk', 'Le jeu sort ou bien ??'],
-  [10.4, 'fanta.d', 'ENFIN 😭🔥🔥'],
-  [12.2, 'kader.abobo', 'Mercredi je suis là !'],
-  [14, 'aya.k', 'Je prends congé mercredi 😂'],
-  [16, 'ibou', 'Je me présente à la mairie de Yop 😎'],
-  [18.2, 'mamie.c', 'Président Kader 2026 😂'],
-  [20.6, 'serge.plateau', 'Foot à 5 mercredi soir, qui est chaud ?'],
-  [23.6, 'aya.k', 'Les lentilles de Flashé 😍'],
-  [26, 'kader.abobo', 'Même sans data ?? Ça c’est fort 🔥'],
-  [28.6, 'koffi_225', 'Inscrit ✅'],
-  [30.6, 'fanta.d', 'Tag ton gars 👇'],
-  [32.4, 'le_vrai_bk', 'Awa tu es la meilleure ❤️'],
+  [4.8, 'mariam.yop', 'Dis vite !! 👀'],
+  [6.4, 'le_vrai_bk', 'Le jeu sort ou bien ??'],
+  [9, 'fanta.d', 'ENFIN 😭🔥🔥'],
+  [10.4, 'kader.abobo', 'Mercredi je suis là !'],
+  [11.8, 'aya.k', 'Je prends congé mercredi 😂'],
+  [14, 'ibou', 'Je me présente à la mairie de Yop 😎'],
+  [15.9, 'mamie.c', 'Président Kader 2026 😂'],
+  [18.4, 'serge.plateau', 'Foot à 5 mercredi soir, qui est chaud ?'],
+  [20.8, 'aya.k', 'Les lentilles de Flashé 😍'],
+  [22.6, 'kader.abobo', 'Même sans data ?? Ça c’est fort 🔥'],
+  [25, 'koffi_225', 'Inscrit ✅'],
+  [26.4, 'fanta.d', 'Tag ton gars 👇'],
+  [27.6, 'le_vrai_bk', 'Awa tu es la meilleure ❤️'],
 ]
 
 /** « Sortie »: an election in the Politique app, the ballot and its results so far. */
@@ -2217,7 +2217,7 @@ function CalendarCard({ scale = 1 }: { scale?: number }) {
 function SortieOverlay({ t, shot }: { t: number; shot: Shot }) {
   const shown = SORTIE_COMMENTS.filter(([at]) => at <= t).slice(-3)
   const local = t - shot.from
-  const revealed = t >= 9.6
+  const revealed = t >= 8.6
   const hearts = [...Array(revealed ? 16 : 9)].map((_, i) => {
     const k = ((t * 0.55 + i * 0.37) % 1 + 1) % 1
     return { k, x: Math.sin(i * 2.7 + t) * 22, c: ['#ff3d6e', '#ff7a00', '#ffd43b', '#ff3d6e', '#ffffff'][i % 5] }
