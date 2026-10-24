@@ -361,6 +361,20 @@ var Kinds = map[string]PlaceKind{
 	},
 	// Public services and culture. Opening days and hours are game rules,
 	// not the institutions' real timetables.
+	// The Palais de justice of the Plateau (world.go), across the boulevard from the cathedral.
+	"tribunal": {
+		ID: "tribunal", Label: "Palais de justice", Icon: "gavel",
+		Interactions: []Interaction{
+			{ID: "proces", Ages: Adults, Label: "Assister à un procès", Icon: "gavel", Minutes: 120, Effect: Needs{Fun: 10, Social: 10, Energy: -5}, MinHour: 9, MaxHour: 16, Days: Weekdays},
+			{ID: "plainte", Ages: Adults, Label: "Déposer une plainte", Icon: "file-text", Minutes: 60, Effect: Needs{Fun: -10, Social: 5}, MinHour: 8, MaxHour: 16, Days: Weekdays},
+			{ID: "casier", Ages: Adults, Label: "Retirer son casier judiciaire", Icon: "stamp", Minutes: 45, Cost: 1000, Effect: Needs{Fun: -5}, MinHour: 8, MaxHour: 15, Days: Weekdays},
+			{ID: "avocat", Ages: Adults, Label: "Consulter un avocat", Icon: "briefcase", Minutes: 60, Cost: 15000, Effect: Needs{Fun: -5, Social: 10}, MinHour: 9, MaxHour: 17, Days: Weekdays},
+		},
+		Events: []RandomEvent{
+			{Text: "L'audience est renvoyée : le juge est malade.", Effect: Needs{Fun: -15}},
+			{Text: "Le procès du jour fait rire toute la salle : l'accusé plaide « c'est pas moi, c'est mon jumeau ».", Effect: Needs{Fun: 15}},
+		},
+	},
 	"mairie": {
 		ID: "mairie", Label: "Mairie", Icon: "landmark",
 		Interactions: []Interaction{

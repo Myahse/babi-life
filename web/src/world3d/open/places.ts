@@ -86,7 +86,7 @@ function roadsNear(roads: ChunkData['roads'], [x, z]: XZ): Road[] {
  * on the nearest one. The Cathédrale Saint-Paul faces the Palais de justice,
  * across the boulevard to the south; its tower leans the other way, over the lagoon.
  */
-const FACING: Record<string, number> = { 'plateau-cathedrale': 0 }
+const FACING: Record<string, number> = { 'plateau-cathedrale': 0, 'plateau-tribunal': Math.PI }
 
 /** The point of a ring closest to p, and the outward normal of that side. */
 function closestOnRing(ring: XZ[], p: XZ): { at: XZ; d: number; n: XZ } {

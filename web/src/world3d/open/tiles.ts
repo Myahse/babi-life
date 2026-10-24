@@ -777,6 +777,9 @@ function decodeOpenChunk(o: Origin, tx: number, ty: number, z: number, tile: Vec
       if (!kind) continue
       const xz = toXZ(f.extent)
       for (const poly of classifyRings(f.loadGeometry())) {
+        // The pools and basins of the town (the map has them all, villas' and hotels'): not drawn as
+        // ponds on the ground (they showed as patches of water all over the quarters).
+        if (kind === 'water' && ringArea(open(poly[0].map(xz))) < SMALL_WATER) continue
         const rings = poly.map((r) => clipRing(open(r.map(xz)), box)).filter((r) => r.length >= 3)
         if (!rings.length || rings[0].length < 3) continue
         if (kind === 'forest') {

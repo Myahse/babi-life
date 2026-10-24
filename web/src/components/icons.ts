@@ -59,6 +59,7 @@ export const KIND_COLORS: Record<string, [string, string]> = {
   nature: ['#9be15d', '#2fa84f'],
   happening: ['#ffd54f', '#ffa000'],
   mairie: ['#69e2a0', '#00895a'],
+  tribunal: ['#c9b8ff', '#5b3fd6'],
   school: ['#7fd3ff', '#1e88e5'],
   health: ['#ff9aa8', '#e53950'],
   culture: ['#ffb07a', '#d9480f'],
