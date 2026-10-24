@@ -75,6 +75,10 @@ Never use `pkill` in compound commands; use `fuser -k <port>/tcp`.
 
 ## Done in the last session (all pushed to the branch and to main)
 
+- **The Djai economy** (`docs/economie.md` is the reference; read it before touching any amount): per-account daily limits by source in `backend/internal/game/money.go` (`Caps`, `DailyTotal` 20 000, `NewAccountHold` 7 days), tallies in the `earnings` table (migration `059_earnings.sql`), read with the Sim in `mutateWith` and saved in the same batch (`sims/money.go`: `s.earn(src, amount)`; `takeFor`/`leftFor`/`payWinner` for credits to another player's Sim; `heldBack` for new or tested accounts). One paid shift a day per account; salaries, gigs, money surprises, family gifts, Tikitoko deals and politics pay scaled down; the landlord passes once after an absence spanning a Saturday (`hold` returns events now); odds floor at 1,00 and the combo boost only counts legs at 1,30+. The Sim JSON carries `today` (the day's tallies and limits), shown in the Boulot app. Tests: `game/money_test.go`, `sims/economy_test.go` (prints the casual week and the grinder's day). The packs' prices were not touched.
+- **Release video** (`?video=sortie`, `marketing/scripts/sortie-28-octobre.md`): Awa announces Wednesday 28 October and what's new (politics, matches with friends, Flashé, offline). Silent until the user sends `marketing/out/voix-sortie.mp3`; then retime `FILMS.sortie` on the voice and re-render (`FILM=sortie node /home/user/babi-life/marketing/video.mjs`). The mp4 and cover are on the branch only.
+
+
 - **Court matches on phones** (`streetball/`): the « you » ring only on your own player; the upright football camera and stick turn round for team 1; the camera keeps your player above the controls (`Follow`, `lift`); a phone only runs the match once its socket is open (`MatchNet.host`). Tested with 2–3 phones (`/tmp/claude-0/tiles/court-probe.mjs`).
 - **Emotes** (`avatar/emotes.ts`): wrappers add a knee dip, overshoot and settle, breathing and sway; the kiss and moonwalk no longer jump.
 - **Talk to anyone** (`world3d/talk.ts`, `Talkable.tsx`, `TalkHuman`): adults inside maquis, clubs, hotels, the mall, the street's pasteur/fou/office workers and the night street open the chat. **Children are never talkable** (a chat friend is `Adult: true`, so romance could follow). Chatting while busy is an aside (`Activity.ChatWith`). Friends keep their look (`Friend.Look`, `Passerby.Look`); `MaxFriends` is 30.
@@ -83,6 +87,8 @@ Never use `pkill` in compound commands; use `fuser -k <port>/tcp`.
 - **Romance** (`sims/cheating.go`, `couple.go`, migration 039): dates, two partners at once and getting caught, couples between players (asked and accepted, adults only, one at a time).
 
 ## Open or possible next steps
+
+- **Economy:** several accounts can still each pass 20 000 Djai a day after 7 days (only a phone-number check would stop it); two Sims of one account played at the same instant can pass a limit by one action. Tune with real sales: `docs/economie.md`, « Ce qui reste ouvert ».
 
 - **Social:** a player couple isn't drawn together in 3D yet; jealousy only exists with partners met in the game (not between players); Gbairai messages from friends met in the game; outing companions at outdoor places only stand beside the Sim.
 - **Court matches:** players who close the app keep their place (ghost entries); on small phones the ball can leave the top of the screen.
