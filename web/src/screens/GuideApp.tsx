@@ -75,7 +75,7 @@ const RULES: { title: string; sub: string; body: string[]; icon?: LucideIcon }[]
     sub: 'Parler, devenir ami·es',
     body: [
       "Tu peux parler à tout le monde : les passant·es, les vendeur·ses, les gens au maquis, même pendant qu'ils font autre chose.",
-      "Bien parler, c'est se faire des ami·es. Tes ami·es publient sur Tikitoko et Babigram, et tu peux les inviter à sortir (ciné, maquis, plage…).",
+      "Bien parler, c'est se faire des ami·es. Tes ami·es publient sur Tikitoko et Babigram, te répondent sur Flashé quand tu leur envoies un snap (gardez la flamme 🔥 en vous snappant chaque jour), et tu peux les inviter à sortir (ciné, maquis, plage…).",
       "Avec les autres joueur·ses, demande-les en ami·e depuis l'appli Amis, invite-les à une activité, écris-leur sur Gbairai.",
     ],
     icon: Users,

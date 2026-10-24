@@ -55,6 +55,7 @@ import { WayeApp } from './WayeApp'
 import { StoreApp } from './StoreApp'
 import { FriendsApp } from './FriendsApp'
 import { CameraView } from './CameraView'
+import { FlasheApp } from './FlasheApp'
 import { EmoteSheet } from './EmoteSheet'
 import { GalleryApp } from './GalleryApp'
 import { InviteBanner, PlayersChip, PlayersSheet, usePlayers } from '../components/Players'
@@ -219,7 +220,7 @@ export function Play() {
     return () => clearInterval(t)
   }, [placeId])
   const [goTo, setGoTo] = useState<{ placeId: string; nonce: number } | null>(null)
-  const [overlay, setOverlay] = useState<'phone' | 'map' | 'camera' | null>(null)
+  const [overlay, setOverlay] = useState<'phone' | 'map' | 'camera' | 'flashe' | null>(null)
   const [pending, setPending] = useState<{ label: string; icon: string; kind: string } | null>(null)
   // The place whose door the Sim is standing at after walking with the pad.
   const [near, setNear] = useState<string | null>(null)
@@ -258,10 +259,11 @@ export function Play() {
   // A notification tapped (/jeu?app=gbairai, ?app=bet225): the phone opens on that app.
   useEffect(() => {
     const q = new URLSearchParams(location.search)
-    const want = q.get('app') as PhoneAppId | null
-    if (!want || !['gbairai', 'bet225', 'parisfoot', 'guide'].includes(want)) return
-    setPhoneApp(want)
-    setOverlay('phone')
+    const want = q.get('app') as PhoneAppId | 'flashe' | null
+    if (!want || !['gbairai', 'bet225', 'parisfoot', 'guide', 'flashe'].includes(want)) return
+    // Flashé opens over the game (its camera sees the street), not in the phone.
+    if (want === 'flashe') setOverlay('flashe')
+    else (setPhoneApp(want), setOverlay('phone'))
     q.delete('app')
     history.replaceState(null, '', location.pathname + (q.size ? `?${q}` : ''))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -1332,6 +1334,7 @@ export function Play() {
           onClose={() => (setOverlay(null), setPhoneApp(null))}
           onMap={() => setOverlay('map')}
           onCamera={() => (setPhoneApp(null), setOverlay('camera'))}
+          onFlashe={() => (setPhoneApp(null), setOverlay('flashe'))}
           street={!showInside}
           onWalk={walkTo}
           onBuild={(lot) => (setOverlay(null), setBuilding(lot ?? 0))}
@@ -1367,6 +1370,7 @@ export function Play() {
           onMoney={() => void api.sim(sim.id).then(apply, () => undefined)}
         />
       )}
+      {overlay === 'flashe' && <FlasheApp world={world} sim={sim} street={!showInside} act={run} onClose={() => setOverlay(null)} />}
       {overlay === 'camera' && <CameraView sim={sim} street={!showInside} onClose={() => setOverlay(null)} onGallery={() => (setPhoneApp('galerie'), setOverlay('phone'))} />}
       {overlay === 'map' && <WorldMap world={world} sim={sim} night={c.isNight} desktop={desktop} onClose={() => setOverlay(null)} onTravel={travel} onWalk={(id) => (setOverlay(null), walkTo(id))} />}
       {delivery && overlay !== 'phone' && <DeliveryPill delivery={delivery} now={now} onOpen={() => (setPhoneApp('golvo'), setOverlay('phone'))} />}
@@ -1460,6 +1464,8 @@ type PhoneProps = {
   onMap: () => void
   /** The camera, full screen over the game. */
   onCamera: () => void
+  /** Flashé, full screen over the game too (its camera sees the street). */
+  onFlashe: () => void
   /** Out in the street (else in a room): what Tikitoko films. */
   street: boolean
   onWalk: (id: string) => void
@@ -1480,7 +1486,7 @@ type PhoneProps = {
   onDrive: (v: Driven) => void
 }
 
-function Phone({ world, sim, commune, onAutoWork, journal, time, act, startApp, delivery, onDelivery, onCollect, onClose, onMap, onCamera, street, onWalk, onBuild, onDames, onDamesOnline, onDamesResume, onHuitTable, onHuitFriend, onHuitResume, onDrive }: PhoneProps) {
+function Phone({ world, sim, commune, onAutoWork, journal, time, act, startApp, delivery, onDelivery, onCollect, onClose, onMap, onCamera, onFlashe, street, onWalk, onBuild, onDames, onDamesOnline, onDamesResume, onHuitTable, onHuitFriend, onHuitResume, onDrive }: PhoneProps) {
   const [app, setApp] = useState<PhoneAppId | null>(startApp)
   // A photo of the gallery on its way to Tikitoko.
   const [tikiPhoto, setTikiPhoto] = useState<{ id: number; src: string } | undefined>()
@@ -1515,6 +1521,7 @@ function Phone({ world, sim, commune, onAutoWork, journal, time, act, startApp, 
     ...(has('gbairai') ? [{ id: 'gbairai', label: 'Gbairai', open: () => setApp('gbairai') }] : []),
     ...(has('tikitoko') ? [{ id: 'tikitoko', label: 'Tikitoko', open: () => setApp('tikitoko') }] : []),
     ...(has('babigram') ? [{ id: 'babigram', label: 'Babigram', open: () => setApp('babigram') }] : []),
+    ...(has('flashe') ? [{ id: 'flashe', label: 'Flashé', open: onFlashe }] : []),
     ...(has('bet225') ? [{ id: 'bet225', label: 'Bet225', open: () => setApp('bet225') }] : []),
     ...(has('parisfoot') ? [{ id: 'parisfoot', label: 'ParisFoot', open: () => setApp('parisfoot') }] : []),
     ...(has('golvo') ? [{ id: 'golvo', label: 'Golvo', open: () => setApp('golvo') }] : []),
@@ -1646,7 +1653,7 @@ function Phone({ world, sim, commune, onAutoWork, journal, time, act, startApp, 
                     </p>
                   </div>
                 )}
-                {app === 'store' && ownPhone && <StoreApp world={world} sim={sim} act={act} onOpen={(id) => (id === 'gnango' || id === 'idrive' ? onMap() : setApp(id as PhoneAppId))} />}
+                {app === 'store' && ownPhone && <StoreApp world={world} sim={sim} act={act} onOpen={(id) => (id === 'gnango' || id === 'idrive' ? onMap() : id === 'flashe' ? onFlashe() : setApp(id as PhoneAppId))} />}
                 {app === 'waye' && <WayeApp world={world} sim={sim} act={act} journal={journal} renderJournal={(events) => <Journal events={events} />} payTo={wayeTo} />}
                 {app === 'gbairai' && <GbairaiApp world={world} sim={sim} />}
                 {app === 'tikitoko' && <TikitokoApp sim={sim} act={act} photo={tikiPhoto} street={street} onClose={() => (setApp(null), setTikiPhoto(undefined))} />}

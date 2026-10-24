@@ -73,7 +73,19 @@ const LOOK: Record<string, { bg: string; fg: string; mark: (s: number) => React.
   kineo: { bg: 'linear-gradient(160deg,#e63946,#6b0716)', fg: '#c8102e', mark: (s) => <Clapperboard size={s} strokeWidth={2.4} color="#fff" /> },
   dames: { bg: 'linear-gradient(160deg,#c8894a,#5c3317)', fg: '#8a4b1f', mark: (s) => <Draughts size={s} /> },
   huit: { bg: 'linear-gradient(160deg,#2f9e44,#0b5d2a)', fg: '#1b7a3a', mark: (s) => <Cards size={s} /> },
+  flashe: { bg: 'linear-gradient(160deg,#ff5fb0,#e01e7e 55%,#8a0f55)', fg: '#e01e7e', mark: (s) => <FlashEye size={s} /> },
   store: { bg: 'linear-gradient(160deg,#7aa7ff,#3b5bfd)', fg: '#fff', mark: (s) => <ShoppingBag size={s} strokeWidth={2.4} /> },
+}
+
+/** Flashé's mark: a lightning bolt through a camera's round eye, the flash going off. */
+function FlashEye({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden>
+      <circle cx="24" cy="24" r="15" fill="none" stroke="#fff" strokeWidth="4" />
+      <path d="M27 6 L15 27 h8 l-3 15 L33 20 h-8 z" fill="#fff" stroke="#c2187a" strokeWidth="1.6" strokeLinejoin="round" />
+      <circle cx="36.5" cy="11.5" r="3" fill="#ffe14d" />
+    </svg>
+  )
 }
 
 /** Dames 225: a white man on a dark one, as stacked on the board when crowned. */
@@ -110,7 +122,7 @@ export function AppLogo({ id, size = 60, radius = 18 }: { id: string; size?: num
   const l = LOOK[id] ?? LOOK.store
   return (
     <span className="relative inline-grid shrink-0 place-items-center shadow-[0_6px_14px_-6px_rgba(0,0,0,0.35)]" style={{ width: size, height: size, borderRadius: radius, background: l.bg, color: l.fg }}>
-      {l.mark(Math.round(size * (id === 'waye' || id === 'tikitoko' || id === 'babigram' ? 0.78 : 0.5)))}
+      {l.mark(Math.round(size * (id === 'waye' || id === 'tikitoko' || id === 'babigram' || id === 'flashe' ? 0.78 : 0.5)))}
     </span>
   )
 }

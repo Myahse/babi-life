@@ -31,6 +31,17 @@ var (
 	errNoStory        = errors.New("story introuvable ou expirée")
 )
 
+// storyTeller: the player's Sim, with Gbairai or Flashé (both show the stories).
+func (h *Handler) storyTeller(r *http.Request) (string, error) {
+	me, err := h.texter(r)
+	if errors.Is(err, errNoGbairai) {
+		if id, e := h.appSim(r, "flashe"); e == nil {
+			return id, nil
+		}
+	}
+	return me, err
+}
+
 // cleanCaption: like a message, shorter, and it may be empty.
 func cleanCaption(c string) (string, error) {
 	if strings.TrimSpace(c) == "" {
@@ -77,7 +88,7 @@ func (h *Handler) postStory(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
 		return
 	}
-	me, err := h.texter(r)
+	me, err := h.storyTeller(r)
 	if err != nil {
 		h.gbairaiFail(w, err)
 		return
@@ -129,7 +140,7 @@ func (h *Handler) postStory(w http.ResponseWriter, r *http.Request) {
 
 // stories: mine first, then my friends' (not blocked either way), unseen first.
 func (h *Handler) stories(w http.ResponseWriter, r *http.Request) {
-	me, err := h.texter(r)
+	me, err := h.storyTeller(r)
 	if err != nil {
 		h.gbairaiFail(w, err)
 		return
@@ -199,7 +210,7 @@ func sortRings(r []StoryRing) {
 
 // storyPhoto: the photo, for its author or a friend; seen once opened.
 func (h *Handler) storyPhoto(w http.ResponseWriter, r *http.Request) {
-	me, err := h.texter(r)
+	me, err := h.storyTeller(r)
 	if err != nil {
 		h.gbairaiFail(w, err)
 		return
@@ -228,7 +239,7 @@ func (h *Handler) storyPhoto(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) deleteStory(w http.ResponseWriter, r *http.Request) {
-	me, err := h.texter(r)
+	me, err := h.storyTeller(r)
 	if err != nil {
 		h.gbairaiFail(w, err)
 		return
@@ -250,7 +261,7 @@ func (h *Handler) reportStory(w http.ResponseWriter, r *http.Request) {
 		h.gbairaiFail(w, errNoReason)
 		return
 	}
-	me, err := h.texter(r)
+	me, err := h.storyTeller(r)
 	if err != nil {
 		h.gbairaiFail(w, err)
 		return

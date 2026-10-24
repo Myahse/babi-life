@@ -186,6 +186,10 @@ export type TikiMe = { fans: number; players: number; posts: number; views: numb
 export type GramAccount = { id: string; author?: Author; npc?: boolean; name: string; gender: 'femme' | 'homme'; handle: string }
 /** A photo in a feed: a player's (photo: its API path) or the game's (painted by the app from scene and seed). */
 export type GramPost = { id: number; account: GramAccount; followed: boolean; mine: boolean; photo?: string; scene?: string; seed?: number; ratio: 'carre' | 'portrait'; filter?: string; caption: string; place: string; likes: number; liked: boolean; likedBy?: string; comments: number; saved: boolean; shares: number; at: string }
+/** A friend in Flashé (backend sims/flashe.go): a player (id: their Sim, look) or one met in the game (id « npc:… », friend). */
+export type FlashContact = { id: string; name: string; gender: 'femme' | 'homme'; look?: Look; friend?: Friend; online?: boolean; /** Their snaps not opened yet. */ new: number; last?: { mine: boolean; opened: boolean; at: string }; /** The flame: days in a row both snapped. */ streak: number }
+/** A snap opened: a player's photo, or a scene the app paints (a friend met in the game's). */
+export type FlashSnap = { id: number; from: string; photo?: string; scene?: string; seed?: number; caption: string; place?: string; seconds: number; at: string }
 export type GramProfile = { account: GramAccount; bio: string; posts: number; fans: number; following: number; followed: boolean; mine: boolean; left?: number }
 export type GramFound = { account: GramAccount; bio: string; fans: number; followed: boolean }
 export type GramActivity = { kind: 'like' | 'comment' | 'follow' | 'audience' | 'audience-comments' | 'fans'; who?: GramAccount; others?: number; post?: number; photo?: string; text?: string; at: string }

@@ -423,6 +423,16 @@ button {
   }
 }
 
+/* A label that shows a moment, then fades (Flashé's lens name). */
+@keyframes fade-out {
+  0%,
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
 @keyframes grow {
   from {
     width: 0;
