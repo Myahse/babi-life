@@ -9,14 +9,13 @@ import { People, Stroller, type Staff } from './hotelBits'
 // The Tour Ivoire, on the service road of the boulevard Félix-Houphouët-
 // Boigny (the old VGE) at the interchange, on the Koumassi side: sixteen
 // levels on a foot of about 47 × 24 m (OpenStreetMap), as the photos show
-// it from the boulevard. At the corner toward the street, a round tower of
-// blue mirror glass, its last four floors banded with dark rings; behind it,
-// the slab: anthracite toward the street with its light bands at each floor
-// and the gold IVOIRE emblem, light grey at its end with a dark panel down
-// the middle; under both, the dark podium of two floors with its louvres and
-// its shops (the game's names). Next door, the store with its two red frames
-// around the doors. Frame: +z the street, x along the long side (the round
-// tower on the left seen from the street).
+// it from the boulevard. In front, toward the street, a round tower of blue
+// mirror glass, its last four floors banded with dark rings; behind it, the
+// slab, wider than it: anthracite toward the street with its light bands at
+// each floor and the gold IVOIRE emblem, light grey at its ends with a dark
+// panel down the middle; under both, the dark podium of two floors with its
+// louvres and its shops (the game's names). Next door, the store with its two
+// red frames around the doors. Frame: +z the street, x along the long side.
 
 const W = 23.5 // half the long side
 const D = 11.8 // half the short side
@@ -27,9 +26,9 @@ const TOP = 58
 const GLASS_TOP = TOP - 4 * FLOOR // the round tower's glass, under its four ringed floors
 const FLOORS = Math.round((TOP - PODIUM) / FLOOR)
 /** The round tower: its middle and radius. */
-const [RX, RZ, R] = [-11.5, 0.6, 11]
+const [RX, RZ, R] = [-2, 2.3, 9.5]
 /** The slab: x from, to; z from, to. */
-const SLAB = { x0: -3, x1: W, z0: -10.5, z1: 5 }
+const SLAB = { x0: -19, x1: 19, z0: -11.3, z1: 0 }
 /** The store next door, with its red frames. */
 const STORE = { x: W + 12, z: 1, w: 18, d: 14, h: 9 }
 
@@ -200,7 +199,7 @@ function RoundTower({ night }: { night: boolean }) {
 function Slab({ night }: { night: boolean }) {
   const [w, d] = [SLAB.x1 - SLAB.x0, SLAB.z1 - SLAB.z0]
   const mats = useMemo(() => {
-    const front = slabLong(Math.round(w / 2.2), 'tour-ivoire-front', true)
+    const front = slabLong(Math.round(w / 2.2), 'tour-ivoire-front', false)
     const back = slabLong(Math.round(w / 2.2), 'tour-ivoire-back', false)
     const end = slabEnd(Math.round(d / 2), 'tour-ivoire-end')
     const west = slabEnd(Math.round(d / 2), 'tour-ivoire-west')
@@ -214,9 +213,10 @@ function Slab({ night }: { night: boolean }) {
       <mesh geometry={BOX} material={mats} position={[cx, (PODIUM + TOP) / 2, cz]} scale={[w, TOP - PODIUM, d]} />
       <mesh geometry={BOX} material={dark} position={[cx, TOP + 0.5, cz]} scale={[w + 0.3, 1, d + 0.3]} />
       <mesh geometry={BOX} material={roof} position={[cx + 4, TOP + 2, cz - 2]} scale={[6, 3, 5]} />
-      {/* The emblem: in the dark recess toward the street, and up the dark panel at the end */}
-      <Sign text="IVOIRE" bg="#24272b" ink="#d9b45a" p={[cx, TOP - 9, SLAB.z1 + 0.05]} h={1.1} />
+      {/* The emblem: on the street side beside the round tower, and up the dark panel at each end */}
+      <Sign text="IVOIRE" bg="#3b3f45" ink="#d9b45a" p={[SLAB.x1 - 5, TOP - 9, SLAB.z1 + 0.05]} h={1.1} />
       <Sign text="IVOIRE" bg="#4a4f57" ink="#d9b45a" p={[SLAB.x1 + 0.05, TOP - 12, cz]} h={1.1} r={Math.PI / 2} />
+      <Sign text="IVOIRE" bg="#4a4f57" ink="#d9b45a" p={[SLAB.x0 - 0.05, TOP - 12, cz]} h={1.1} r={-Math.PI / 2} />
     </group>
   )
 }
@@ -236,7 +236,7 @@ function Podium({ night }: { night: boolean }) {
       {/* The shop windows along the street, and the band over them */}
       <mesh geometry={BOX} material={shopGlass} position={[0, SHOPS / 2 - 0.2, D - 0.25]} scale={[2 * W - 2, SHOPS - 1, 0.1]} />
       <mesh geometry={BOX} material={dark} position={[0, SHOPS - 0.35, D]} scale={[2 * W, 0.7, 0.4]} />
-      <Sign text="BABI MODE" bg="#2e3237" ink="#ffffff" p={[-13, SHOPS + 1.8, D + 0.05]} h={1.4} />
+      <Sign text="BABI MODE" bg="#2e3237" ink="#ffffff" p={[-15, SHOPS + 1.8, D + 0.05]} h={1.4} />
       <Sign text="SORTIE" bg="#1b1d21" ink="#ffffff" p={[5, SHOPS - 1.2, D + 0.06]} h={0.6} />
       <Sign text="PHARMA+" bg="#d7262e" ink="#ffffff" p={[-1, SHOPS - 1.2, D + 0.06]} h={0.6} />
       {/* The tall totem at the corner of the forecourt, red at its top */}
