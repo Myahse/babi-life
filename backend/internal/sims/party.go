@@ -20,9 +20,9 @@ import (
 // hours. The others there see the lights over the house on the map and come
 // to dance, mix at the decks, have a drink (game/soiree.go); friends
 // elsewhere are told. It goes on at the house by itself: the host isn't held
-// there (an action on the house, not on the Sim), and comes when it likes. The host pays for it (a sink): nothing done there
-// pays. Its theme is picked from a list, like everything players say to one
-// another (never free text).
+// there (an action on the house, not on the Sim), and comes when it likes.
+// The host pays for it (a sink): nothing done there pays. Its theme is picked
+// from a list, like everything players say to one another (never free text).
 
 // PartyThemes: what a soirée can be (its title is « <theme> chez <host> »).
 var PartyThemes = []struct{ ID, Label string }{

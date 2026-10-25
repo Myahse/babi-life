@@ -70,7 +70,7 @@ export type Interaction = {
   maxHour?: number
   /** Opening days, 0 = lundi … 6 = dimanche; absent = every day. */
   days?: number[]
-  requires?: { resident?: boolean; minMoney?: number; anyTrait?: string[]; career?: string; /** A skill at a level (backend game/progress.go); level 0: only open. */ skill?: string; skillLevel?: number }
+  requires?: { resident?: boolean; minMoney?: number; anyTrait?: string[]; career?: string }
   /** Only in a room (or a home) one has rented there. */
   stay?: boolean
   /** Life stages that can do it; empty = from childhood up. */
@@ -116,8 +116,6 @@ export type Player = {
   /** In office (politics): « Présidente », « Maire de Cocody »; the tag of their gang. */
   title?: string
   crew?: string
-  /** The player's level (backend game/progress.go). */
-  level?: number
 }
 export type Invite = { id: string; from: string; fromName: string; placeId: string; interactionId: string; label: string; at: string }
 /** A soirée thrown by a player at home (backend sims/party.go): its lights over the house, the others in the commune come. */
@@ -225,15 +223,8 @@ export type JobTask = { id: string; label: string; icon: string; pose: string; m
 
 /** An emote: its pose (the id), name, emoji, price (0: free), how long it plays. */
 export type Emote = { id: string; label: string; emoji: string; price: number; seconds: number }
-/** A skill (backend game/progress.go): what trains it, the player's level it opens at, what its levels bring. */
-export type Skill = { id: string; label: string; icon: string; hint: string; unlock?: number; perks: { level: number; text: string }[] }
-/** The progress as the server sends it: the level and its bar, each skill's. */
-export type Progress = { xp: number; level: number; into: number; next: number; skills: { id: string; level: number; into: number; next: number; unlocked: boolean }[] }
-
 export type World = {
   cities: City[]
-  /** The skills (backend game/progress.go). */
-  skills?: Skill[]
   /** The airline's flights (backend world.FlightRoutes): from each airport. */
   flights?: { from: string; place: string; to: string; toName: string; commune: string; minutes: number; fare: number; km: number; airline: string }[]
   kinds: Record<string, PlaceKind>
@@ -346,8 +337,6 @@ export type Sim = {
   passUntil?: string
   /** The account's day so far by source, and its limits (backend game/money.go): travail, boulot, total… */
   today?: Partial<Record<Income, DayLimit>>
-  /** Experience, level and skills (backend game/progress.go). */
-  progress?: Progress
   /** The Pack Prestige bought (Boutique): the crown may be worn. */
   prestige?: boolean
   /** The secret society joined (politics): '' none; baobab, sept, lumiere. */
@@ -379,7 +368,7 @@ export type Activity = {
 
 export type JournalEvent = {
   id: number
-  kind: 'life' | 'social' | 'transfer' | 'interaction' | 'random' | 'travel' | 'bill' | 'career' | 'robbed' | 'abonnement' | 'annonce' | 'progress'
+  kind: 'life' | 'social' | 'transfer' | 'interaction' | 'random' | 'travel' | 'bill' | 'career' | 'robbed' | 'abonnement' | 'annonce'
   text: string
   money: number
   gameTime: number

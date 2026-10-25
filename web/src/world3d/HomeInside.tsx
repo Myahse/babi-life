@@ -427,7 +427,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
           )}
           {partner && <Partner friend={partner} spots={spots} doing={interactionId} spot={spot} />}
           <Walking sim={sim} stage={stage} way={way} spot={spot} doing={interactionId} onThere={setThere} steer={roam && !interactionId ? levels(lvl.current) : undefined} onMoved={(p) => ((where.current = p), setTapped(null))} onLevel={setFloor} />
-          {there && (interactionId === 'cook-attieke' || interactionId === 'garba-maison') && spot && (
+          {there && interactionId === 'cook-attieke' && spot && (
             <group position={[spot.at[0] + Math.sin(spot.rot) * 0.6, 0, spot.at[1] + Math.cos(spot.rot) * 0.6]}>
               <Pot />
             </group>

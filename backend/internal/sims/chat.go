@@ -469,10 +469,6 @@ func (s *Sim) chatIn(p Passerby, topicID, said, lang string, adult bool, rng *ra
 	if friend != nil && chance > 0 {
 		chance = min(0.95, chance+friendBonus)
 	}
-	// Charisme (game/progress.go): better luck with people, a little more each level.
-	if chance > 0 {
-		chance = min(0.95, chance+game.CharmLuck*float64(max(0, s.Progress.SkillLevel(game.SkillCharisme))))
-	}
 	var ans chatAnswer
 	romantic, isRomance, err := s.romance(t, friend, adult, len(before), rng, p, &it)
 	if err != nil {

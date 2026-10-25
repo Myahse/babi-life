@@ -154,12 +154,7 @@ func (s *Sim) finish(rng *rand.Rand) []Event {
 	}
 	s.schoolMark(a.Interaction)
 	text := capNote(fmt.Sprintf("%s — %s", a.PlaceName, a.Interaction.Label), earnedFrom(a), earned, would)
-	g := s.gain(a, 1)
-	if g.XP > 0 {
-		text += fmt.Sprintf(" · +%d XP", g.XP)
-	}
 	events := []Event{{Kind: "interaction", Text: text, Money: money, GameTime: a.Start}}
-	events = append(events, progressEvents(g, a.End)...)
 	if a.Career != "" {
 		if c, ok := game.FindCareer(a.Career); ok && a.Career == s.Career {
 			if promo := s.work(c, s.Needs.Mood()); promo != "" {
@@ -228,17 +223,7 @@ func (s *Sim) stop() (Event, error) {
 	if a.Interaction.Cost > 0 {
 		money = -a.Interaction.Cost
 	}
-	text := capNote(fmt.Sprintf("%s — %s (arrêté avant la fin)", a.PlaceName, a.Interaction.Label), earnedFrom(a), earned, would)
-	// The experience of the part done.
-	if span := a.End - a.Start; span > 0 {
-		if g := s.gain(a, float64(s.GameMinutes-a.Start)/float64(span)); g.XP > 0 {
-			text += fmt.Sprintf(" · +%d XP", g.XP)
-			for _, l := range progressLines(g) {
-				text += " " + l
-			}
-		}
-	}
-	return Event{Kind: "interaction", Text: text, Money: money, GameTime: a.Start}, nil
+	return Event{Kind: "interaction", Text: capNote(fmt.Sprintf("%s — %s (arrêté avant la fin)", a.PlaceName, a.Interaction.Label), earnedFrom(a), earned, would), Money: money, GameTime: a.Start}, nil
 }
 
 // settleRange charges rent and loan for every Saturday in (from, to].
@@ -276,11 +261,10 @@ func (s *Sim) start(it game.Interaction, placeID, placeKind, placeName string, s
 		return err
 	}
 	s.setState(st)
-	xp := game.ActivityXP(it.Minutes)
 	it.Minutes = game.Length(it.Minutes)
 	s.Activity = &game.Activity{
 		Kind: "do", PlaceID: placeID, PlaceKind: placeKind, PlaceName: placeName, Interaction: it,
-		Start: s.GameMinutes, End: s.GameMinutes + max(it.Minutes, 1), Career: career, Surprises: slices.Clone(surprises), XP: xp,
+		Start: s.GameMinutes, End: s.GameMinutes + max(it.Minutes, 1), Career: career, Surprises: slices.Clone(surprises),
 	}
 	return nil
 }

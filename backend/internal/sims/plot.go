@@ -450,9 +450,7 @@ func (h *Handler) build(w http.ResponseWriter, r *http.Request) {
 		case placed == 0 && cost < 0:
 			text = "Démoli : la moitié revendue."
 		}
-		// Building and furnishing train the Bâtisseur (game/progress.go).
-		events := s.gainBuilding(placed + len(req.Furnish))
-		return game.Outcome{Text: text, Money: -cost}, events, nil
+		return game.Outcome{Text: text, Money: -cost}, nil, nil
 	})
 }
 
@@ -509,16 +507,15 @@ func (h *Handler) buildPlan(w http.ResponseWriter, r *http.Request) {
 		if p.Home {
 			s.Furnished = house.Has()
 		}
-		// The masons raise it on the lot over time (faster for a Bâtisseur); the Sim isn't held there:
-		// it's the house being built, not the Sim (it's free to go where it likes meanwhile).
-		minutes := game.ChantierMinutes(len(house.Blocks), s.Progress.SkillLevel(game.SkillBatisseur))
+		// The masons raise it on the lot over time; the Sim isn't held there: it's the house
+		// being built, not the Sim (it's free to go where it likes meanwhile).
+		minutes := game.ChantierMinutes(len(house.Blocks))
 		if _, err := tx.Exec(ctx, `UPDATE plots SET build_from = now(), build_until = now() + $2 * interval '1 minute' WHERE id = $1`, p.ID, minutes); err != nil {
 			return game.Outcome{}, nil, err
 		}
 		text := fmt.Sprintf("%s : le chantier commence, les maçons montent ta maison (fini dans %d min). Toi, tu es libre en attendant.", pl.Label, minutes)
 		m := houseMoment(s, false, p.Lot.City, p.Lot.Commune)
-		events := append([]Event{{Kind: "bill", Text: text, Money: -pl.Cost, GameTime: s.GameMinutes, moment: &m}}, s.gainBuilding(len(house.Blocks)/4)...)
-		return game.Outcome{Text: text, Money: -pl.Cost}, events, nil
+		return game.Outcome{Text: text, Money: -pl.Cost}, []Event{{Kind: "bill", Text: text, Money: -pl.Cost, GameTime: s.GameMinutes, moment: &m}}, nil
 	})
 }
 

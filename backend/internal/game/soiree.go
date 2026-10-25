@@ -20,8 +20,6 @@ const (
 	// AtalakuID, SlowID: at the club; at a soirée, the same with « -soiree ».
 	AtalakuID = "atalaku"
 	SlowID    = "slow"
-	// DefiDanseID: the dance-off, unlocked by Danse 4 (progress.go).
-	DefiDanseID = "defi-danse"
 )
 
 // IsSlow: a slow danced at the club or a soirée (always with someone: sims/social.go).
@@ -33,12 +31,11 @@ func init() {
 		Interactions: []Interaction{
 			{ID: SoireeHostID, Ages: Adults, Label: "Recevoir tes invités", Icon: "party-popper", Minutes: 60, Effect: Needs{Social: 30, Fun: 25, Energy: -10}},
 			{ID: "danser-soiree", Ages: TeensUp, Label: "Danser le coupé-décalé", Icon: "music", Minutes: 45, Effect: Needs{Fun: 35, Social: 20, Energy: -15}},
-			{ID: SoireeMixID, Ages: TeensUp, Label: "Passer derrière les platines", Icon: "disc-3", Minutes: 40, Effect: Needs{Fun: 30, Social: 15, Energy: -8}, Requires: &Requirement{Skill: SkillMixage}},
+			{ID: SoireeMixID, Ages: TeensUp, Label: "Passer derrière les platines", Icon: "disc-3", Minutes: 40, Effect: Needs{Fun: 30, Social: 15, Energy: -8}},
 			{ID: "boire-soiree", Ages: Adults, Label: "Prendre un verre au bar", Icon: "martini", Minutes: 20, Cost: 1000, Effect: Needs{Fun: 10, Social: 15}},
 			{ID: "travaillement-soiree", Ages: Adults, Label: "Travailler le DJ (lancer les billets)", Icon: "banknote", Minutes: 15, Cost: 5000, Effect: Needs{Fun: 30, Social: 25}},
 			{ID: AtalakuID + "-soiree", Ages: Adults, Label: "Payer l'atalaku pour qu'il crie ton nom", Icon: "megaphone", Minutes: 15, Cost: 2000, Effect: Needs{Fun: 25, Social: 20}},
-			{ID: "podium-soiree", Ages: TeensUp, Label: "Monter danser sur le podium", Icon: "music", Minutes: 30, Effect: Needs{Fun: 30, Social: 15, Energy: -15}, Requires: &Requirement{Skill: SkillDanse, SkillLevel: 2}},
-			{ID: DefiDanseID + "-soiree", Ages: TeensUp, Label: "Défier la piste au coupé-décalé", Icon: "flame", Minutes: 20, Effect: Needs{Fun: 40, Social: 30, Energy: -20}, Requires: &Requirement{Skill: SkillDanse, SkillLevel: 4}},
+			{ID: "podium-soiree", Ages: TeensUp, Label: "Monter danser sur le podium", Icon: "music", Minutes: 30, Effect: Needs{Fun: 30, Social: 15, Energy: -15}},
 			{ID: SlowID + "-soiree", Ages: Adults, Label: "Inviter quelqu'un à danser un slow", Icon: "heart", Minutes: 20, Effect: Needs{Fun: 15, Social: 25}},
 			{ID: "bouteille-soiree", Ages: Adults, Label: "Ouvrir une bouteille au carré VIP", Icon: "beer", Minutes: 45, Cost: 20000, Effect: Needs{Fun: 30, Social: 35}},
 		},

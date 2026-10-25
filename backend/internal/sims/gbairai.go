@@ -170,7 +170,7 @@ func (h *Handler) chats(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	friends, err := h.players(ctx, game.MinuteOf(time.Now()), `
-		SELECT o.id, o.first_name, COALESCE(u.username, ''), o.gender, o.look, o.born_at, o.activity, b.friendship, o.city, o.commune, o.last_tick > $2, true, '', o.progress
+		SELECT o.id, o.first_name, COALESCE(u.username, ''), o.gender, o.look, o.born_at, o.activity, b.friendship, o.city, o.commune, o.last_tick > $2, true, ''
 		FROM bonds b
 		JOIN sims o ON o.id = CASE WHEN b.sim_a = $1::uuid THEN b.sim_b ELSE b.sim_a END
 		JOIN users u ON u.id = o.user_id

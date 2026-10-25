@@ -78,14 +78,6 @@ export function action(kind: string, id: string | undefined): { spot: string; po
   if (id === 'atalaku' || id === 'atalaku-soiree') return { spot: 'floor', pose: 'cheer' }
   if (id === 'podium' || id === 'podium-soiree') return { spot: 'podium', pose: 'dance' }
   if (id === 'slow' || id === 'slow-soiree') return { spot: 'slow', pose: 'hug' }
-  // Unlocked by the skills (backend game/progress.go): the dance-off, a guest set, the maquis got going,
-  // the garba made at home, press-ups, a debate in the amphi.
-  if (id.startsWith('defi-danse')) return { spot: 'floor', pose: 'dance' }
-  if (id === 'set-guest') return { spot: 'decks', pose: 'dj' }
-  if (id === 'ambiancer-maquis') return { spot: 'floor', pose: 'cheer' }
-  if (id === 'garba-maison') return { spot: 'stove', pose: 'cook' }
-  if (id === 'pompes-abdos') return { spot: 'mat', pose: 'busy' }
-  if (id === 'debat-amphi') return { spot: 'counter', pose: 'rant' }
   // The gym: the bench, the treadmill, the class on the floor, the showers.
   if (id === 'musculation') return { spot: 'bench', pose: 'busy' }
   if (id === 'cardio') return { spot: 'treadmill', pose: 'run' }

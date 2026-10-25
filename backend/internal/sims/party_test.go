@@ -113,27 +113,3 @@ func TestSlowWith(t *testing.T) {
 		}
 	}
 }
-
-// An activity done brings XP and trains its skill; stopped, the part done.
-func TestActivityExperience(t *testing.T) {
-	s := adultSim(game.Families[0], "")
-	if _, err := s.interactAt(HomePlaceID, "cook-attieke"); err != nil {
-		t.Fatal(err)
-	}
-	ev := s.finish(noLuck())
-	if s.Progress.XP != 15 || s.Progress.Skills[game.SkillCuisine] != 15 || !strings.Contains(ev[0].Text, "+15 XP") {
-		t.Errorf("cooking for 45 min: %+v, %q", s.Progress, ev[0].Text)
-	}
-	if _, err := s.interactAt(HomePlaceID, "cook-attieke"); err != nil {
-		t.Fatal(err)
-	}
-	s.GameMinutes = s.Activity.Start + (s.Activity.End-s.Activity.Start)/2
-	stopped, err := s.stop()
-	if err != nil || s.Progress.XP != 22 || !strings.Contains(stopped.Text, "+7 XP") {
-		t.Errorf("half of it: %+v, %q, %v", s.Progress, stopped.Text, err)
-	}
-	// A garba made at home is for the cooks (Cuisine 3).
-	if _, err := s.interactAt(HomePlaceID, "garba-maison"); err == nil || !strings.Contains(err.Error(), "Cuisine niveau 3") {
-		t.Errorf("garba maison at Cuisine 0: %v", err)
-	}
-}

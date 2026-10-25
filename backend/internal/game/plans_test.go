@@ -179,3 +179,12 @@ func TestPlansCanBeWalked(t *testing.T) {
 		}
 	}
 }
+
+// A house from a plan takes a quarter of an hour to an hour to go up.
+func TestChantierMinutes(t *testing.T) {
+	for _, c := range []struct{ blocks, want int }{{0, 15}, {150, 20}, {600, 50}, {5000, 60}} {
+		if got := ChantierMinutes(c.blocks); got != c.want {
+			t.Errorf("%d blocks: %d min, want %d", c.blocks, got, c.want)
+		}
+	}
+}

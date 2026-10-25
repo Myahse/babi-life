@@ -157,7 +157,6 @@ func main() {
 				"origins":       game.Origins,
 				"housings":      game.Housings,
 				"careers":       game.Careers,
-				"skills":        game.Skills,
 				"expressions":   game.Expressions,
 				"rideApps":      world.RideApps,
 				"compteur":      world.Compteur,
