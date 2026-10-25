@@ -20,6 +20,10 @@ import { MallInside } from '../world3d/interior/MallInside'
 import { CathedralInside } from '../world3d/interior/CathedralInside'
 import { MosqueM6Inside } from '../world3d/interior/MosqueM6Inside'
 import { PyramideInside } from '../world3d/interior/PyramideInside'
+import { PalaisCultureInside } from '../world3d/interior/PalaisCultureInside'
+import { MuseeInside } from '../world3d/interior/MuseeInside'
+import { AssembleeInside } from '../world3d/interior/AssembleeInside'
+import { MarcheTreichInside } from '../world3d/interior/MarcheTreichInside'
 import { BoulayScene } from '../world3d/interior/BoulayScene'
 import { DefiSheet } from '../components/Defi'
 import { KineoInside } from '../world3d/interior/KineoInside'
@@ -630,6 +634,10 @@ function Lab() {
   if (view === 'ivoire') return <IvoireInside sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)) } as unknown as Sim} interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" />
   if (view === 'cathedrale') return <CathedralInside sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)), gameMinutes: Number(q.get('m') ?? 0) } as unknown as Sim} interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" />
   if (view === 'mosquee') return <MosqueM6Inside sim={{ id: 'lab', firstName: 'Awa', gender: 'homme', look: randomLook('homme', seededLab(5)), gameMinutes: Number(q.get('m') ?? 0) } as unknown as Sim} interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" />
+  if (view === 'palaisculture') return <PalaisCultureInside sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)), gameMinutes: Number(q.get('m') ?? 600) } as unknown as Sim} interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" />
+  if (view === 'musee') return <MuseeInside sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)), gameMinutes: Number(q.get('m') ?? 600) } as unknown as Sim} interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" />
+  if (view === 'assemblee') return <AssembleeInside sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)), gameMinutes: Number(q.get('m') ?? 600) } as unknown as Sim} interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" />
+  if (view === 'grandmarche') return <MarcheTreichInside sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)), gameMinutes: Number(q.get('m') ?? 600) } as unknown as Sim} interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" />
   if (view === 'pyramide') return <PyramideInside sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)), gameMinutes: Number(q.get('m') ?? 600) } as unknown as Sim} interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" />
   // ?view=aeroport&act=voir-avions: the FHB's terminal, the Sim doing that (else walking about).
   // &pins: the things to do over their spots (SpotActions), as Play sends them; &pins=clear takes them away after 5 s.
