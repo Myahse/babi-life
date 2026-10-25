@@ -179,6 +179,8 @@ var Kinds = map[string]PlaceKind{
 			{ID: "sell-goods", Ages: TeensUp, Label: "Vendre au petit commerce", Icon: "store", Minutes: 4 * 60, Cost: -1200, Effect: Needs{Energy: -20, Social: 15, Hygiene: -10}, MinHour: 6, MaxHour: 18},
 			// The Grand Marché de Treichville's own: its floor of pagnes, upstairs.
 			{ID: "pagnes-treich", Ages: TeensUp, Label: "Choisir des pagnes à l'étage", Icon: "shirt", Minutes: 45, Cost: 6000, Effect: Needs{Fun: 25, Social: 10, Energy: -5}, MinHour: 7, MaxHour: 18, Places: []string{MarcheTreichID}},
+			// The market of Cocody's: the stalls of mèches and wigs, upstairs.
+			{ID: "meches-cocody", Ages: TeensUp, Label: "Choisir des mèches à l'étage", Icon: "sparkles", Minutes: 40, Cost: 5000, Effect: Needs{Fun: 20, Social: 10, Energy: -5}, MinHour: 7, MaxHour: 18, Places: []string{MarcheCocodyID}},
 		},
 		Events: []RandomEvent{
 			{Text: "Une tantie t'a fait « cadeau » d'une poignée de piment en plus.", Effect: Needs{Social: 5}},
@@ -193,6 +195,8 @@ var Kinds = map[string]PlaceKind{
 			// La Pyramide's own: its gallery of shops round the open well, and its roof over the Plateau.
 			{ID: "visiter-pyramide", Label: "Faire le tour de la galerie", Icon: "store", Minutes: 30, Effect: Needs{Fun: 15, Social: 5}, MinHour: 8, MaxHour: 19, Places: []string{PyramideID}},
 			{ID: "terrasse-pyramide", Label: "Monter sur le toit de la Pyramide", Icon: "mountain", Minutes: 40, Cost: 500, Effect: Needs{Fun: 30, Energy: -5}, MinHour: 9, MaxHour: 18, Places: []string{PyramideID}},
+			// The Tour Ivoire's: the boulevard and the lagoon from its top floor.
+			{ID: "vue-tour-ivoire", Label: "Voir le boulevard du 16e étage", Icon: "building-2", Minutes: 20, Effect: Needs{Fun: 15, Energy: -3}, MinHour: 8, MaxHour: 18, Places: []string{TourIvoireID}},
 		},
 		Events: []RandomEvent{
 			{Text: "Le patron t'a félicité devant tout le monde. Petite prime !", Money: 1000, Effect: Needs{Fun: 15}},
@@ -826,6 +830,12 @@ const PalaisCultureID = "treich-palais-culture"
 
 // MarcheTreichID: the Grand Marché de Treichville (world/world.go), its floors of food and pagnes.
 const MarcheTreichID = "treich-marche"
+
+// MarcheCocodyID: the market of Cocody Saint-Jean (world/world.go), its floor of hair and wigs.
+const MarcheCocodyID = "cocody-marche"
+
+// TourIvoireID: the Tour Ivoire over the boulevard, on the Koumassi side (world/world.go), its sixteen floors of offices.
+const TourIvoireID = "koumassi-tour-ivoire"
 
 // TourFID: the Tour F's building site in the Plateau's Cité administrative (world/world.go).
 const TourFID = "plateau-tour-f"

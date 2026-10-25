@@ -85,7 +85,7 @@ function LedWall({ style }: { style: Style }) {
 }
 
 /** The stage, the DJ's desk, its two decks turning and the mixer, the laptop; the DJ himself. */
-function DjBooth({ style, placeId }: { style: Style; placeId: string }) {
+function DjBooth({ style, placeId, mixing }: { style: Style; placeId: string; mixing?: boolean }) {
   const decks = useRef<THREE.Group>(null)
   useFrame(() => {
     decks.current?.children.forEach((d, i) => (d.rotation.y = worldTime() * (i ? -3.3 : 3.3)))
@@ -98,6 +98,13 @@ function DjBooth({ style, placeId }: { style: Style; placeId: string }) {
       </mesh>
       <mesh position={[1.5, 0.36, -3.06]} material={M(style.trim, 1.2)}>
         <boxGeometry args={[3.8, 0.04, 0.04]} />
+      </mesh>
+      {/* The step up at the end of the stage, its edge lit (low: the way up for whoever plays) */}
+      <mesh position={[3.05, 0.05, -2.86]} material={M('#1c1c20')}>
+        <boxGeometry args={[0.7, 0.1, 0.32]} />
+      </mesh>
+      <mesh position={[3.05, 0.1, -2.7]} material={M(style.trim, 1.2)}>
+        <boxGeometry args={[0.7, 0.012, 0.012]} />
       </mesh>
       {/* The desk, its lit front */}
       <mesh position={[1.5, 0.85, -3.35]} material={M('#1b1b1f')}>
@@ -119,9 +126,16 @@ function DjBooth({ style, placeId }: { style: Style; placeId: string }) {
       <mesh position={[1.5, 1.5, -3.5]} rotation={[-0.4, 0, 0]} material={M('#cfe8ff', 0.6)}>
         <boxGeometry args={[0.4, 0.26, 0.02]} />
       </mesh>
-      <group position={[1.5, 0.35, -4.0]}>
-        <TalkHuman id={`dj-${placeId}`} look={dj} gender="homme" pose="dance" seed={7} />
-      </group>
+      {/* The resident DJ; gone down to the bar while the Sim plays its set */}
+      {mixing ? (
+        <group position={[-2.6, 0, -2.6]} rotation={[0, 0.6, 0]}>
+          <TalkHuman id={`dj-${placeId}`} look={dj} gender="homme" pose="drink" seed={7} />
+        </group>
+      ) : (
+        <group position={[1.5, 0.35, -4.0]}>
+          <TalkHuman id={`dj-${placeId}`} look={dj} gender="homme" pose="dj" seed={7} />
+        </group>
+      )}
     </group>
   )
 }
@@ -346,12 +360,15 @@ function Podiums({ style, placeId }: { style: Style; placeId: string }) {
 }
 
 /** Everything the club room adds for the night (Interior draws the room, the sofas and the crowd). */
-export function ClubDecor({ placeId, fill }: { placeId: string; fill: number }) {
-  const style = clubStyle(placeId)
+export function ClubDecor({ placeId, fill, mixing, name }: { placeId: string; fill: number; mixing?: boolean; /** Over the club's own (a player's soirée: « CHEZ AWA »). */ name?: string }) {
+  const style = useMemo(() => {
+    const base = clubStyle(placeId)
+    return name ? { ...base, name } : base
+  }, [placeId, name])
   return (
     <group>
       <LedWall style={style} />
-      <DjBooth style={style} placeId={placeId} />
+      <DjBooth style={style} placeId={placeId} mixing={mixing} />
       <SpeakerStack p={[-0.9, 0, -3.95]} />
       <SpeakerStack p={[3.9, 0, -3.95]} />
       <Bar style={style} placeId={placeId} />

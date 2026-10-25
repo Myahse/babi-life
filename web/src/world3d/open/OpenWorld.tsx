@@ -13,7 +13,7 @@ import { underHud } from '../hudClear'
 import { HOME_ID, type Lot } from '../layout'
 import { LotView, type Props } from '../Neighbourhood'
 import { useSignTexture } from '../props'
-import type { Commune, Place, Plot, World } from '../../lib/types'
+import type { Commune, Place, Plot, Soiree, World } from '../../lib/types'
 import { api } from '../../lib/api'
 import { House } from '../build/House'
 import { CutHouse } from '../build/CutHouse'
@@ -46,6 +46,7 @@ import { PALAIS_SOLID } from './palaisJustice'
 import { PRESIDENCE_SOLID } from './presidence'
 import { PALAIS_CULTURE_SOLID } from './palaisCulture'
 import { MUSEE_SOLID } from './musee'
+import { TOUR_IVOIRE_SOLID } from './tourIvoire'
 import { ASSEMBLEE_SOLID } from './assemblee'
 import { GRAND_MARCHE_SOLID } from './grandMarche'
 import { IVOIRE_SOLID } from './hotelIvoire'
@@ -76,6 +77,7 @@ import { Landing, SkyPlanes, TakeOff } from './airport'
 import { TripRide } from './tripRide'
 import { StreetLights } from './streetlights'
 import { PARTIES, Party } from './party'
+import { PartyFront } from './soiree'
 import { NightStreet } from './nightStreet'
 import { BRIDGE_LABEL, bridgeKind } from './bridgeNames'
 import { BridgeSights } from './bridges'
@@ -108,6 +110,8 @@ const NightBloom = lazy(() => import('../effects').then((m) => ({ default: m.Nig
 
 /** A place from the map (world/osm.go on the server), not one of the game's own. */
 export const isMapPlace = (id: string) => id.includes('-osm-')
+/** A player's soirée (backend sims/party.go): placed on the main thread, not by the chunks' worker. */
+const isSoiree = (id: string) => id.startsWith('soiree:')
 /** Metres around the Sim within which the map's places show their sign. */
 const MAP_SIGNS = 90
 /** How many places, the nearest, show their name over the street. */
@@ -372,7 +376,7 @@ function useMaterials(night: boolean, hour: number) {
   return { mats, far }
 }
 
-function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, indoors, nameTag, onNear, frozen, onLeave, delivery, onCollect, players, onPickPlayer, recenter, onFreeCamera, closeView, shoulderView, token, onFail, onLoaded, onStreetBuy, onRobbed, onTalk, talkingTo, plotsVersion, onMapPlaces, onHomeSpots, onHomePlot }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void; onLoaded?: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void; onHomePlot?: (plot: Plot | undefined) => void }) {
+function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, indoors, nameTag, onNear, frozen, onLeave, delivery, onCollect, players, onPickPlayer, recenter, onFreeCamera, closeView, shoulderView, token, onFail, onLoaded, onStreetBuy, onRobbed, onTalk, talkingTo, plotsVersion, onMapPlaces, onHomeSpots, onHomePlot, parties }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void; onLoaded?: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void; onHomePlot?: (plot: Plot | undefined) => void }) {
   const origin = useMemo<Origin>(() => ({ lat: commune.lat, lng: commune.lng }), [commune.lat, commune.lng])
   const cityCommunes = useMemo(() => world.cities.find((c) => c.communes.some((m) => m.id === commune.id))?.communes ?? [commune], [world.cities, commune])
   // The landmarks seen from the whole city (the Tour F), where they stand in this commune's metres:
@@ -409,6 +413,14 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     }
   }, [sim.id, commune.id, plotsVersion])
   const plotKey = (plots ?? []).map((p) => p.key).sort().join()
+  // Where a soirée is: the house it's thrown in (resolved: one's own « Chez toi », the host's lot), else the host's home spot.
+  const partyAt = (p: Soiree): { ref?: string; at: XZ } => {
+    if (p.host === sim.id) return { ref: HOME_ID, at: [0, 0] }
+    const lot = plots?.find((x) => x.simId === p.host && x.home)
+    const [pa, pd] = lot ? lotSpot(lot.key) : homeSpot(p.host)
+    return { ref: lot ? `plot:${lot.key}` : undefined, at: [Math.cos(pa) * pd, Math.sin(pa) * pd] }
+  }
+  const partyKey = (parties ?? []).map((p) => `${p.id}:${p.guests}:${plots?.find((x) => x.simId === p.host && x.home)?.key ?? ''}`).join()
   // The house the Sim lives in (one of its lots, here).
   const mine = plots?.find((p) => p.simId === sim.id && p.home && (p.blocks.length || p.furniture?.length))
   // Living in the house one built: it is « Chez toi ». Otherwise the house stands on its lot, apart.
@@ -445,8 +457,13 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       list.push({ id: `plot:${id}`, kind: 'plot', name: p?.simId === sim.id ? 'Mon terrain' : '', at: [Math.cos(pa) * pd, Math.sin(pa) * pd], landmark: p ? lotClear(p) : PLOT_CLEAR })
     }
     list.push({ id: HAPPENING_KEY, kind: 'happening', name: '', at: [35, -20] })
+    // The soirées: at the host's house (one's own home, a player's lot), else where the host lives.
+    for (const p of parties ?? []) {
+      const at = partyAt(p)
+      list.push({ id: `soiree:${p.id}`, kind: 'soiree', name: `${p.title} chez ${p.hostName}`, at: at.ref === HOME_ID ? [Math.cos(a) * d, Math.sin(a) * d] : at.at })
+    }
     return list
-  }, [places, origin, home, sim.id, snaps, plotKey, !!myPlot, livesOnLot]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [places, origin, home, sim.id, snaps, plotKey, !!myPlot, livesOnLot, partyKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const plotsRef = useRef(plots)
   plotsRef.current = plots
@@ -693,7 +710,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       const far = c.key.includes(':')
       // Another commune's landmark seen from here: the map's own building of it goes (its spot clears it in its commune).
       const clear = far ? [] : skyline.filter((x) => !spots.some((p) => p.id === x.id)).map((x) => ({ at: x.at, r: LANDMARKS[x.id] }))
-      const places = far ? [] : spots.filter((x) => !isMapPlace(x.id) && !x.parent).map(({ id, at, kind, landmark, name, type }) => ({ id, at, kind, landmark, name, type, noLayout: tight.has(id) }))
+      const places = far ? [] : spots.filter((x) => !isMapPlace(x.id) && !isSoiree(x.id) && !x.parent).map(({ id, at, kind, landmark, name, type }) => ({ id, at, kind, landmark, name, type, noLayout: tight.has(id) }))
       const mem = requestKey(origin, c.tx, c.ty, far ? FAR_ZOOM : 0, tileBox(origin, c.tx, c.ty, far ? FAR_ZOOM : undefined), places, clear)
       // Built already while the page lives: drawn again as it was, nothing asked.
       const built = BUILT.get(mem)
@@ -859,9 +876,43 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
 
   // The few real buildings in the way of a game-made one don't block the way.
   const clears = useMemo(() => new Map(spots.filter((x) => x.landmark).map((x) => [x.id, x.landmark!])), [spots])
-  const made = useMemo<XZ[]>(() => [...resolved.values()].filter((r) => !r.real && !r.field && !r.station && !clears.has(r.id)).map((r) => r.center), [resolved, clears])
+  const made = useMemo<XZ[]>(() => [...resolved.values()].filter((r) => !r.real && !r.field && !r.station && !clears.has(r.id) && !isSoiree(r.id)).map((r) => r.center), [resolved, clears])
   const marks = useMemo(() => [...resolved.values()].filter((r) => clears.has(r.id)).map((r) => ({ at: r.center, r: clears.get(r.id)! })), [resolved, clears])
   const nav = useMemo(() => new Nav([...chunks.values()].filter((c) => !c.data.key.includes(':')).map((c) => c.data), (c, ring) => inTheWay(made, c, marks, ring)), [chunks, made, marks])
+
+  // The soirées stand at the house they're thrown in (its resolved lot), else on the street nearest
+  // where the host lives, facing it; they go when they end.
+  useEffect(() => {
+    const add: Resolved[] = []
+    const ids = new Set((parties ?? []).map((p) => `soiree:${p.id}`))
+    const gone = [...resolved.keys()].filter((id) => isSoiree(id) && !ids.has(id))
+    for (const p of parties ?? []) {
+      const id = `soiree:${p.id}`
+      const at = partyAt(p)
+      const ref = at.ref ? resolved.get(at.ref) : undefined
+      const had = resolved.get(id)
+      if (ref) {
+        if (!had || had.door[0] !== ref.door[0] || had.door[1] !== ref.door[1]) add.push({ id, door: ref.door, center: ref.door, rot: ref.rot, roadAngle: ref.roadAngle })
+        continue
+      }
+      if (had || at.ref) continue
+      const n = nav.nodes.length ? nav.nearest(at.at, 120) : null
+      if (!n) continue
+      // Off the roadway, on the side of the house: the gate a few metres from the middle of the street.
+      const [dx, dz] = [at.at[0] - n.at[0], at.at[1] - n.at[1]]
+      const len = Math.hypot(dx, dz) || 1
+      const k = Math.min(5, len) / len
+      const door: XZ = [n.at[0] + dx * k, n.at[1] + dz * k]
+      add.push({ id, door, center: door, rot: Math.atan2(-dx, -dz), roadAngle: 0 })
+    }
+    if (add.length || gone.length)
+      setResolved((m) => {
+        const out = new Map(m)
+        for (const id of gone) out.delete(id)
+        for (const r of add) out.set(r.id, r)
+        return out
+      })
+  }, [partyKey, resolved, nav]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // The ground the game gave away (its buildings, the landmarks, the fields, the stations, the lots): no street pitch or stall on it.
   const taken = useMemo<Taken[]>(
@@ -1255,7 +1306,18 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         ) : null
       })}
       {shown.map((lot) =>
-        lot.kind === 'plot' ? (
+        lot.kind === 'soiree' ? (
+          // A player's soirée: its beams, its sign, its speakers and its dancers at the gate.
+          <group key={lot.id}>
+            <group position={[lot.door[0], 0, lot.door[1]]} rotation={[0, lot.rot, 0]} onClick={(e) => (e.stopPropagation(), onPick(lot.id))}>
+              {(() => {
+                const p = parties?.find((x) => `soiree:${x.id}` === lot.id)
+                return p ? <PartyFront party={p} night={night} /> : null
+              })()}
+            </group>
+            <LotLabel lot={lot} world={world} label={labels && labelOf.get(lot.id)} onPick={onPick} y={6} />
+          </group>
+        ) : lot.kind === 'plot' ? (
           // One's own lot: its ground and clôture are drawn with the houses above; here only its name.
           <LotLabel key={lot.id} lot={lot} world={world} label={labels && labelOf.get(lot.id)} onPick={onPick} y={3} />
         ) : lot.id === HOME_ID && myPlot ? (
@@ -1710,7 +1772,7 @@ function RoadTraffic({ nav, focus, seed, woro }: { nav: Nav; focus: React.RefObj
 
 /** Landmarks that are one solid building: how far round their middle they stand (metres). */
 /** Landmarks one walks into, and what stands in the way there (in their own frame). */
-const GROUNDS: Record<string, Obstacle[]> = { 'cocody-zoo': ZOO_SOLID, 'cocody-hotel-ivoire': IVOIRE_SOLID, 'plateau-poulman': POULMAN_SOLID, 'plateau-noum': NOUM_SOLID, 'marcory-azale': AZALE_SOLID, 'pb-rabisson': RABISSON_SOLID, 'plateau-cathedrale': CATHEDRAL_SOLID, 'plateau-stade': STADIUM_SOLID, 'plateau-tribunal': PALAIS_SOLID, 'plateau-presidence': PRESIDENCE_SOLID, 'treich-palais-culture': PALAIS_CULTURE_SOLID, 'plateau-musee': MUSEE_SOLID, 'plateau-assemblee': ASSEMBLEE_SOLID, 'treich-marche': GRAND_MARCHE_SOLID, 'treich-mosquee-m6': MOSQUE_M6_SOLID, 'yop-rue-princesse': RUE_SOLID, 'cocody-playce': PLAYCE_SOLID, 'marcory-playce': PLAYCE_MARCORY_SOLID }
+const GROUNDS: Record<string, Obstacle[]> = { 'cocody-zoo': ZOO_SOLID, 'cocody-hotel-ivoire': IVOIRE_SOLID, 'plateau-poulman': POULMAN_SOLID, 'plateau-noum': NOUM_SOLID, 'marcory-azale': AZALE_SOLID, 'pb-rabisson': RABISSON_SOLID, 'plateau-cathedrale': CATHEDRAL_SOLID, 'plateau-stade': STADIUM_SOLID, 'plateau-tribunal': PALAIS_SOLID, 'plateau-presidence': PRESIDENCE_SOLID, 'treich-palais-culture': PALAIS_CULTURE_SOLID, 'plateau-musee': MUSEE_SOLID, 'koumassi-tour-ivoire': TOUR_IVOIRE_SOLID, 'plateau-assemblee': ASSEMBLEE_SOLID, 'treich-marche': GRAND_MARCHE_SOLID, 'treich-mosquee-m6': MOSQUE_M6_SOLID, 'yop-rue-princesse': RUE_SOLID, 'cocody-playce': PLAYCE_SOLID, 'marcory-playce': PLAYCE_MARCORY_SOLID }
 const SOLID_LANDMARKS: Record<string, number> = { 'treich-palais': 34, 'plateau-pyramide': 28, 'cocody-oranjo': 34, 'yakro-basilique': 55, 'portbouet-parc-expo': 59, 'plateau-tour-f': 19 }
 
 /** A vehicle's length and width, for what it blocks. */

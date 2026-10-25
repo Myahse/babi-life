@@ -3,11 +3,11 @@ import { gesture } from '../world3d/gesture'
 import type { Pose } from '../avatar/Human'
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2, ShoppingBag, Lightbulb, Landmark } from 'lucide-react'
+import { BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2, ShoppingBag, Lightbulb, Landmark, PartyPopper } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
 import { useOnline } from '../lib/offline'
 import { onSynced, pendingOffline, picking } from '../lib/offlinePlay'
-import type { ActionResult, City, Commune, HappeningNow, Interaction, JobTask, JournalEvent, Player, Sim, World, Ride, Place, Plot, StreetRide } from '../lib/types'
+import type { ActionResult, City, Commune, HappeningNow, Interaction, JobTask, JournalEvent, Player, Sim, Soiree, World, Ride, Place, Plot, StreetRide } from '../lib/types'
 import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
 import { joinMatch, type CourtMatch } from '../streetball/online'
@@ -31,6 +31,7 @@ import { OpenWorld } from '../world3d/open/OpenWorld'
 import { GROUNDS, LANDMARKS, OPEN_AIR } from '../world3d/open/landmarks'
 import { rooftopFor } from '../world3d/open/rooftops'
 import { iconFor, kindColors } from '../components/icons'
+import { SOIREE_COST, SOIREE_HOURS, SOIREE_THEMES } from '../game/soirees'
 import { Chip, Coin, DayNight, IconTile, MotiveRing, MoodPin, Row, needColor } from '../components/ui'
 import { EPOCH, NEEDS, km, actionLength, ageBlock, amount, fcfa, atHome, blockedBy, homeLacks, housingOf, lifeOf, minutesToAge, clock, duration, mood, openAt, openingLabel, predict, shift, trip } from '../game/rules'
 import { DOORS_OPEN, eventAt, useStadium, when } from '../lib/stadium'
@@ -808,6 +809,11 @@ export function Play() {
 
   // Live: the other players in the commune, every few seconds.
   const [around, refreshPlayers] = usePlayers(base?.sim.id, `${sim?.city}/${sim?.commune}`)
+  // The soirées thrown by players here (backend sims/party.go): picking a theme for one's own.
+  const [soireeAsk, setSoireeAsk] = useState(false)
+  const soirees = around.parties ?? []
+  const soireeOf = (id: string | null | undefined) => (id ? soirees.find((p) => `soiree:${p.id}` === id) : undefined)
+  const mySoiree = soirees.find((p) => p.host === sim?.id)
   // …and where they are in the street, a few times a second.
   useLive(base?.sim.id, classic ? 'street' : 'open', `${sim?.city}/${sim?.commune}`)
 
@@ -875,7 +881,7 @@ export function Play() {
   const city = world.cities.find((x) => x.id === sim.city)!
   const commune = withMapPlaces(city.communes.find((x) => x.id === sim.commune)!, classic ? [] : mapPlaces)
   const unseen = journal.filter((e) => e.id > seen).length
-  const placeName = (id: string) => (id === 'home' ? 'Chez toi' : id === 'happening' ? (street?.happening?.label ?? 'En ce moment') : (commune.places.find((p) => p.id === id)?.name ?? ''))
+  const placeName = (id: string) => (id === 'home' ? 'Chez toi' : id === 'happening' ? (street?.happening?.label ?? 'En ce moment') : id.startsWith('soiree:') ? (soireeOf(id) ? `${soireeOf(id)!.title} chez ${soireeOf(id)!.hostName}` : 'La soirée') : (commune.places.find((p) => p.id === id)?.name ?? ''))
   // Inside a place: while doing something there, or looking at what it offers.
   const inside = (() => {
     if (doing) {
@@ -883,6 +889,8 @@ export function Play() {
       if (doing.placeId === 'golvo') return null
       // In a home booked on Dodo: a home's inside, what's done in it as at home.
       if (doing.placeId === 'logement') return { id: 'logement', kind: 'home', it: DODO_AT_HOME[doing.interaction.id] ?? 'watch-tv' }
+      // At a player's soirée: in its club.
+      if (doing.placeId?.startsWith('soiree:')) return { id: doing.placeId, kind: 'club', it: doing.interaction.id }
       if (!doing.placeId || OPEN_AIR.has(doing.placeId)) return null
       // Up on a landmark's roof (La Pyramide's): in the street, the city all round (Walker, open/rooftops.ts).
       if (!classic && rooftopFor(doing.placeId, doing.interaction.id)) return null
@@ -1058,7 +1066,7 @@ export function Play() {
           ) : inside!.kind === 'arena' ? (
             <Arena sim={sim} placeId={inside!.id} interactionId={inside!.it} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id)} />
           ) : (
-            <Interior faith={commune.places.find((p) => p.id === inside!.id)?.faith} open={inside!.kind === 'home' || (world.kinds[inside!.kind]?.interactions.some((it) => openAt(it, sim.gameMinutes)) ?? true)} sim={sim} kind={inside!.kind} placeId={inside!.id} interactionId={inside!.it} roam={visiting && !menuOpen} housing={inside!.id === 'logement' ? 'appart' : sim.housing} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id && inside!.id !== 'home')} />
+            <Interior faith={commune.places.find((p) => p.id === inside!.id)?.faith} party={inside!.id.startsWith('soiree:') ? (soireeOf(inside!.id)?.hostName ?? doing?.placeName?.split(' chez ').pop()) : undefined} open={inside!.kind === 'home' || inside!.id.startsWith('soiree:') || (world.kinds[inside!.kind]?.interactions.some((it) => openAt(it, sim.gameMinutes)) ?? true)} sim={sim} kind={inside!.kind} placeId={inside!.id} interactionId={inside!.it} roam={visiting && !menuOpen} housing={inside!.id === 'logement' ? 'appart' : sim.housing} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id && inside!.id !== 'home')} />
           )}
         </div>
       )}
@@ -1089,6 +1097,7 @@ export function Play() {
             delivery,
             onCollect: () => delivery && deliveryState(delivery, Date.now()).stage === 'here' && collect(),
             players: around.players,
+            parties: soirees,
             onPickPlayer: (id: string) => setPlayers({ focus: id }),
             recenter,
             onFreeCamera: setFreeCam,
@@ -1324,11 +1333,57 @@ export function Play() {
         </button>
       )}
 
+      {soirees.length > 0 && !placeId && !pending && !sim.activity && !motoAsking && (() => {
+        // The soirée here (one's own first): walked to; one's own is at home, opened at once.
+        const p = mySoiree ?? soirees[0]
+        return (
+          <button
+            className={`animate-pop absolute ${near || street?.happening ? 'bottom-[10.75rem] lg:bottom-[12rem]' : 'bottom-[6.5rem] lg:bottom-[7.5rem]'} ${padBeside} z-20 flex items-center lg:left-1/2 lg:max-w-md lg:-translate-x-1/2 gap-2 rounded-full bg-[#2b1240] py-1.5 pr-4 pl-1.5 text-left text-white shadow-[0_8px_20px_-10px_rgba(0,0,0,0.6)]`}
+            onClick={() => (p.host === sim.id ? setPlaceId(`soiree:${p.id}`) : walkTo(`soiree:${p.id}`))}
+          >
+            <IconTile icon={PartyPopper} colors={['#ff5cc8', '#7a2bd6']} size={36} radius={18} />
+            <span className="min-w-0 leading-tight">
+              <span className="block text-[10px] font-extrabold tracking-wider uppercase opacity-80">{p.host === sim.id ? 'Ta soirée' : `Soirée chez ${p.hostName}`}{p.guests ? ` · ${p.guests} invité${p.guests > 1 ? 's' : ''}` : ''}</span>
+              <span className="block truncate font-display text-[15px] font-extrabold">{p.title}</span>
+            </span>
+            <ChevronRight size={18} strokeWidth={3} className="shrink-0" />
+          </button>
+        )
+      })()}
+
       {placeId === 'happening' && street?.happening && (
         <HappeningSheet now={street} sim={sim} commune={commune} onClose={() => setPlaceId(null)} onJoin={(it) => (setPlaceId(null), run(it.label, it.icon, 'happening', () => api.interact(sim.id, 'happening', it.id)))} />
       )}
-      {placeId && placeId !== 'happening' && (!roaming || menuOpen) && (
-        <InteractionMenu world={world} sim={sim} city={city} commune={commune} placeId={placeId} desktop={desktop} onClose={() => (roaming ? setMenuOpen(false) : setPlaceId(null))} onPick={interact} onTravel={travel} onStop={stop} onBuild={() => (setPlaceId(null), setBuilding(0))} />
+      {placeId?.startsWith('soiree:') && (
+        <SoireeSheet
+          party={soireeOf(placeId)}
+          world={world}
+          sim={sim}
+          city={city}
+          commune={commune}
+          onClose={() => setPlaceId(null)}
+          onPick={(it) => {
+            const id = placeId
+            setPlaceId(null)
+            setBackTo(id)
+            run(it.label, it.icon, 'soiree', () => api.interact(sim.id, id, it.id))
+          }}
+          onEnd={() => (setPlaceId(null), run('Fin de la soirée', 'party-popper', 'social', () => api.endParty(sim.id)))}
+        />
+      )}
+      {soireeAsk && (
+        <ThrowSoireeSheet
+          sim={sim}
+          onClose={() => setSoireeAsk(false)}
+          onThrow={(theme) => {
+            setSoireeAsk(false)
+            setPlaceId(null)
+            run('Ta soirée', 'party-popper', 'soiree', () => api.throwParty(sim.id, theme)).then((ok) => ok && refreshPlayers())
+          }}
+        />
+      )}
+      {placeId && placeId !== 'happening' && !placeId.startsWith('soiree:') && (!roaming || menuOpen) && (
+        <InteractionMenu world={world} sim={sim} city={city} commune={commune} placeId={placeId} desktop={desktop} onClose={() => (roaming ? setMenuOpen(false) : setPlaceId(null))} onPick={interact} onTravel={travel} onStop={stop} onBuild={() => (setPlaceId(null), setBuilding(0))} soiree={mySoiree} onSoiree={() => (mySoiree ? setPlaceId(`soiree:${mySoiree.id}`) : (setMenuOpen(false), setSoireeAsk(true)))} />
       )}
       {visiting && !menuOpen && <SpotSheet />}
       {visiting && !menuOpen && placeId && (
@@ -1820,6 +1875,9 @@ type MenuProps = {
   onStop: () => void
   /** At home: build one's house on the plot. */
   onBuild: () => void
+  /** At home: one's soirée going on, or throwing one. */
+  soiree?: Soiree
+  onSoiree?: () => void
 }
 
 /**
@@ -1935,7 +1993,7 @@ function usePlaceActions(world: World, sim: Sim, city: City, commune: Commune, p
   return { place, kind, home, career, life, roomHere, items, busy, here, agenda, on, state }
 }
 
-function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose, onPick, onTravel, onStop, onBuild }: MenuProps) {
+function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose, onPick, onTravel, onStop, onBuild, soiree, onSoiree }: MenuProps) {
   const navigate = useNavigate()
   const pa = usePlaceActions(world, sim, city, commune, placeId)
   // (A place of the map the street hasn't loaded yet, or not any more: the Sim went far.)
@@ -1981,6 +2039,16 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
       </span>
     </button>
   )
+  // At home: a soirée for the players of the quarter (backend sims/party.go), from 18 (the host is an adult).
+  const party = placeId === 'home' && here && onSoiree && (
+    <button disabled={(busy && !soiree) || life.minor} onClick={onSoiree} className={`flex w-full items-center gap-3 rounded-[20px] bg-[#f6e8ff] p-2.5 text-left transition active:scale-[0.98] ${(busy && !soiree) || life.minor ? 'opacity-55 grayscale-[0.6]' : ''}`}>
+      <IconTile icon={life.minor ? Lock : PartyPopper} colors={['#ff5cc8', '#7a2bd6']} size={44} />
+      <span className="min-w-0 flex-1">
+        <span className="block font-display text-[15px] leading-tight font-extrabold">{soiree ? `Ta soirée : ${soiree.title}` : 'Organiser une soirée'}</span>
+        <span className="mt-0.5 block text-xs font-bold text-[var(--color-ink-soft)]">{life.minor ? 'À 18 ans' : soiree ? `${soiree.guests} invité${soiree.guests > 1 ? 's' : ''} · retourne sur la piste` : `${fcfa(SOIREE_COST)} · 3 h · les joueurs du quartier viennent danser`}</span>
+      </span>
+    </button>
+  )
   // The wardrobe at home and at the couturier; a new hairdo at the barber or the salon.
   const lookTab = { home: 'tenue', couture: 'tenue', boutique: 'tenue', salon: 'coiffure', barbier: 'coiffure' }[place.kind]
   const restyle = lookTab && here && (
@@ -2015,9 +2083,10 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
             <IconTile icon={iconFor(kind.icon)} colors={colors} size={96} radius={34} />
             <span className="mt-2 rounded-full bg-white px-4 py-1.5 font-display text-lg font-extrabold shadow-lg">{place.name}</span>
           </button>
-          {(build || restyle || billing || rooms) && (
+          {(build || restyle || billing || rooms || party) && (
             <div className="absolute top-full left-1/2 mt-[200px] grid w-64 -translate-x-1/2 gap-2">
               {billing}
+              {party}
               {build}
               {restyle}
               {rooms}
@@ -2072,6 +2141,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
         {here ? (
           <div className="motion-stagger grid gap-2">
             {billing}
+            {party}
             {build}
             {restyle}
             {rooms}
@@ -2190,6 +2260,99 @@ function HappeningSheet({ now, sim, commune, onClose, onJoin }: { now: Happening
             <p className="text-sm font-bold text-[var(--color-ink-soft)]">Rien à faire ici à part regarder… et attendre que ça passe.</p>
           )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+/** A player's soirée (backend sims/party.go): its host, its guests, how long it goes on; what's done there; the host ends it. */
+function SoireeSheet({ party, world, sim, city, commune, onClose, onPick, onEnd }: { party?: Soiree; world: World; sim: Sim; city: City; commune: Commune; onClose: () => void; onPick: (it: Interaction) => void; onEnd: () => void }) {
+  const life = lifeOf(world, sim)
+  const host = party?.host === sim.id
+  const left = party ? Math.max(0, Math.round((new Date(party.ends).getTime() - serverNow()) / 60000)) : 0
+  const items = (world.kinds.soiree?.interactions ?? []).filter((it) => (it.id === 'recevoir-soiree' ? host : true) && ageBlock(it, life.stage?.id) !== 'Plus de ton âge')
+  const colors: [string, string] = ['#ff5cc8', '#7a2bd6']
+  return (
+    <div className="absolute inset-0 z-30 flex flex-col justify-end bg-[#0f1230]/55 backdrop-blur-[3px] lg:items-center lg:justify-center" onClick={onClose}>
+      <div className="sheet animate-up max-h-[80%] w-full overflow-y-auto rounded-t-[28px] pb-[max(1rem,env(safe-area-inset-bottom))] lg:w-[440px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
+        <div className="bg-gradient-to-br from-[#3a0f5c] to-[#c2187a] p-4 text-white">
+          <div className="flex items-center gap-3">
+            <IconTile icon={PartyPopper} colors={['#ffffff55', '#ffffff22']} size={52} />
+            <div className="min-w-0 flex-1">
+              <div className="label !text-white/75">{party ? (host ? 'Ta soirée' : `Chez ${party.hostName}`) : 'Soirée'}</div>
+              <div className="truncate font-display text-[22px] leading-tight font-extrabold">{party?.title ?? 'La soirée est finie'}</div>
+            </div>
+            <button className="icon-btn bg-white/20 text-white" onClick={onClose} aria-label="Fermer">
+              <X size={22} strokeWidth={2.6} />
+            </button>
+          </div>
+          {party && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <Chip tone="dark">
+                <Clock3 size={12} /> Encore {duration(left)}
+              </Chip>
+              <Chip tone="dark">
+                <Users size={12} /> {party.guests ? `${party.guests} invité${party.guests > 1 ? 's' : ''}` : 'Les premiers arrivent'}
+              </Chip>
+            </div>
+          )}
+        </div>
+        <div className="motion-stagger grid gap-2 p-4">
+          {party ? (
+            <>
+              {items.map((it) => (
+                <ActionButton key={it.id} it={it} colors={colors} open={openAt(it, sim.gameMinutes)} broke={it.cost > 0 && sim.money < it.cost} busy={!!sim.activity} reason={ageBlock(it, life.stage?.id) ?? blockedBy(it, sim, city.id, commune.id)} onPick={() => onPick(it)} />
+              ))}
+              {host && (
+                <button className="btn btn-soft mt-1 !text-sm" onClick={onEnd}>
+                  Finir la soirée
+                </button>
+              )}
+            </>
+          ) : (
+            <p className="text-sm font-bold text-[var(--color-ink-soft)]">La musique s'est arrêtée, les invités sont rentrés.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Throwing a soirée at home: its theme (from the list: players never write to one another), what it costs. */
+function ThrowSoireeSheet({ sim, onClose, onThrow }: { sim: Sim; onClose: () => void; onThrow: (theme: string) => void }) {
+  const [theme, setTheme] = useState(SOIREE_THEMES[0].id)
+  const broke = sim.money < SOIREE_COST
+  return (
+    <div className="absolute inset-0 z-30 flex flex-col justify-end bg-[#0f1230]/55 backdrop-blur-[3px] lg:items-center lg:justify-center" onClick={onClose}>
+      <div className="sheet animate-up max-h-[85%] w-full overflow-y-auto rounded-t-[28px] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:w-[460px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-3 flex items-center gap-3">
+          <IconTile icon={PartyPopper} colors={['#ff5cc8', '#7a2bd6']} size={52} />
+          <div className="min-w-0 flex-1">
+            <div className="label">Chez toi</div>
+            <div className="font-display text-[22px] leading-tight font-extrabold">Organiser une soirée</div>
+          </div>
+          <button className="icon-btn bg-[var(--color-canvas)]" onClick={onClose} aria-label="Fermer">
+            <X size={22} strokeWidth={2.6} />
+          </button>
+        </div>
+        <p className="mb-3 text-sm leading-snug font-bold text-[var(--color-ink-soft)]">
+          La sono, le DJ et les boissons pour {SOIREE_HOURS} h. Les lumières s'allument au-dessus de chez toi : les joueurs du quartier les voient et viennent danser, tes amis sont prévenus.
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          {SOIREE_THEMES.map((t) => (
+            <button key={t.id} onClick={() => setTheme(t.id)} className={`flex items-center gap-2 rounded-[16px] border-2 p-2.5 text-left text-[13px] font-extrabold transition active:scale-[0.97] ${theme === t.id ? 'border-[#c2187a] bg-[#fdeaf6]' : 'border-transparent bg-[var(--color-canvas)]'}`}>
+              <span className="flex shrink-0 gap-0.5">
+                {t.colours.map((c) => (
+                  <span key={c} className="h-4 w-1.5 rounded-full border border-black/10" style={{ background: c }} />
+                ))}
+              </span>
+              <span className="min-w-0 leading-tight">{t.label}</span>
+            </button>
+          ))}
+        </div>
+        <button className="btn mt-4 w-full" disabled={broke} onClick={() => onThrow(theme)}>
+          <PartyPopper size={18} /> {broke ? `Il te faut ${fcfa(SOIREE_COST)}` : `Lancer la soirée · ${fcfa(SOIREE_COST)}`}
+        </button>
       </div>
     </div>
   )

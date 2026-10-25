@@ -277,7 +277,7 @@ function Concert({ seed, night, title = 'COUPÉ-DÉCALÉ', color = '#b02bd6' }: 
         </mesh>
       ))}
       <NoShadows>
-        <Guest p={[0, 1, -3.2]} person={dj} pose="dance" />
+        <Guest p={[0, 1, -3.2]} person={dj} pose="dj" />
         {crowd.map((p, i) => (
           <Guest key={i} p={[-4 + (i % 6) * 1.6 + (Math.floor(i / 6) % 2) * 0.7, 0, 0.4 + Math.floor(i / 6) * 1.5]} r={Math.PI + (i % 3) * 0.3 - 0.3} person={p} pose={i % 5 === 0 ? 'cheer' : 'dance'} />
         ))}
