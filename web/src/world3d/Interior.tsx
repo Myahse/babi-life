@@ -17,6 +17,7 @@ import type { Player, Sim } from '../lib/types'
 import { Human, NoShadows, SEATED, type Pose } from '../avatar/Human'
 import { OUTFIT_DEFAULT_COLOR, randomLook, workLook } from '../avatar/options'
 import { Box } from './props'
+import { SlotMachine } from './slotMachine'
 import { Character } from './Character'
 import { ActionProps, Pot, SewingTable, TvScreen, Zzz } from './interior/ActionProps'
 import { rng } from './themes'
@@ -78,6 +79,8 @@ export function action(kind: string, id: string | undefined): { spot: string; po
   if (id === 'atalaku' || id === 'atalaku-soiree') return { spot: 'floor', pose: 'cheer' }
   if (id === 'podium' || id === 'podium-soiree') return { spot: 'podium', pose: 'dance' }
   if (id === 'slow' || id === 'slow-soiree') return { spot: 'slow', pose: 'hug' }
+  // At the slot machine (components/Machine.tsx): standing at it, a hand on the buttons.
+  if (id === 'machine-maquis' || id === 'machine-casino') return { spot: 'slots', pose: 'touch' }
   // The gym: the bench, the treadmill, the class on the floor, the showers.
   if (id === 'musculation') return { spot: 'bench', pose: 'busy' }
   if (id === 'cardio') return { spot: 'treadmill', pose: 'run' }
@@ -461,6 +464,8 @@ export function room(kindIn: string, housing: string): Room {
               <Box key={k} p={[-5.7, 0.2 + k * 0.32, 1.5]} s={[0.5, 0.3, 0.4]} c="#d62828" />
             ))}
             <Speaker p={[-5.3, 0, -3.8]} />
+            {/* The slot machine against the side wall */}
+            <SlotMachine p={[-5.6, 0, -0.1]} r={Math.PI / 2} />
             {/* String lights */}
             {[...Array(9)].map((_, i) => (
               <mesh key={i} position={[-5 + i * 1.25, 2.9 - Math.sin((i / 8) * Math.PI) * 0.3, 0]}>
@@ -475,6 +480,7 @@ export function room(kindIn: string, housing: string): Room {
           floor: { p: [1.5, 0, 1.2], pose: 'dance' },
           entrance: { p: [0, 0, 3.4], r: Math.PI, pose: 'idle' },
           counter: { p: [-4.3, 0, 3.2], r: -Math.PI / 2, pose: 'idle' },
+          slots: { p: [-4.95, 0, -0.1], r: -Math.PI / 2, pose: 'touch' },
         },
         crowd: [
           { p: [0.5, 0, -3.35], pose: 'eat' },

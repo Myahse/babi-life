@@ -6,13 +6,13 @@ import {
   PartyPopper, PiggyBank, ShoppingBasket, ShowerHead, Smartphone, Sparkles, Store, Sunset, TreePalm, Trophy, Tv, Users,
   Volleyball, Waves, Baby, Bird, BookOpen, BrushCleaning, Cake, CarTaxiFront, Drama, Drum, FileText, Flag, Flower2, Gift, GraduationCap, Hammer,
   Hospital, Library, Presentation, Shovel, Stamp, Stethoscope, Utensils, ShoppingBag, ShoppingCart, Shirt, IceCreamCone, Hamburger, CupSoda, Scissors, Hotel, Hand, Send, Fuel, Bike, Dumbbell, PawPrint, UserPlus, Snowflake, Clapperboard, Popcorn, Plane, Dice5, Toilet, Toothbrush, Sailboat, HardHat, Citrus, Croissant, Droplet, Grid3x3, type LucideIcon,
-  Gamepad2, Joystick, Swords, Eye, HeartHandshake,
+  Gamepad2, Joystick, Swords, Eye, HeartHandshake, Cherry,
   Mail, PenLine, Receipt, Megaphone, Coins, HeartPulse, Syringe, ScanLine, Calculator, ConciergeBell, Luggage, Handshake, Gavel, Pill, ClipboardList,
 } from 'lucide-react'
 
 // Icon names sent by the API (backend/internal/game) → components.
 const REGISTRY: Record<string, LucideIcon> = {
-  snowflake: Snowflake, clapperboard: Clapperboard, popcorn: Popcorn, plane: Plane, 'dice-5': Dice5, sailboat: Sailboat,
+  snowflake: Snowflake, clapperboard: Clapperboard, popcorn: Popcorn, plane: Plane, 'dice-5': Dice5, sailboat: Sailboat, cherry: Cherry,
   crown: Crown,
   toilet: Toilet, toothbrush: Toothbrush,
   'milk': Milk, 'soup': Soup, 'bath': Bath, 'notebook-pen': NotebookPen, 'egg': Egg, 'beef': Beef,

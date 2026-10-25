@@ -253,6 +253,8 @@ export type World = {
   furniture?: Furniture[]
   /** The emotes (game/emotes.go): free ones, and ones bought once with Djai. */
   emotes?: Emote[]
+  /** The slot machines (game/slots.go): the pictures and what they pay, the stakes each machine takes. */
+  slots?: { symbols: SlotSymbol[]; stakes: Record<string, number[]>; perDay: number }
   /** Vehicles to buy on Bolide, and the places to keep them (backend game/vehicles.go). */
   vehicles?: VehicleModel[]
   parkings?: ParkingKind[]
@@ -364,7 +366,16 @@ export type Activity = {
   seance?: { film: string; salle: number; seats: string[]; vip?: boolean; video?: string; at?: number; title?: string; credit?: string; file?: string }
   /** The défi taken on during it (components/Defi.tsx): its score, 1–100; not there, not played. */
   defi?: number
+  /** At a slot machine (backend sims/machine.go): the session so far. */
+  machine?: SlotSession
 }
+
+/** A slot machine's picture (backend game/slots.go): what three of it and two of it pay, times the stake. */
+export type SlotSymbol = { id: string; label: string; three: number; two: number }
+/** One turn of the reels, and the multiple of the stake won (0: lost). */
+export type SlotSpin = { reels: [string, string, string]; times: number; line?: string }
+/** At a slot machine: the session so far. */
+export type SlotSession = { last?: SlotSpin; stake: number; spins: number; staked: number; won: number }
 
 export type JournalEvent = {
   id: number
@@ -469,6 +480,6 @@ export type Politics = {
 }
 
 /** Where Djai earned by playing comes from (backend game/money.go). */
-export type Income = 'travail' | 'boulot' | 'pourboire' | 'defi' | 'tournoi' | 'jeux' | 'chance' | 'coup' | 'reseaux' | 'recu' | 'envoye' | 'location' | 'total'
+export type Income = 'travail' | 'boulot' | 'pourboire' | 'defi' | 'tournoi' | 'jeux' | 'chance' | 'coup' | 'reseaux' | 'recu' | 'envoye' | 'location' | 'total' | 'machine'
 /** A source's day so far: Djai got and the most a day (0: none), times done and the most a day. */
 export type DayLimit = { got: number; max?: number; times?: number; maxTimes?: number }

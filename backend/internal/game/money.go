@@ -45,6 +45,9 @@ const (
 	FromRental Income = "location"
 	// EarnedTotal: everything earned by playing, together (FromPlayers, ToPlayers and FromRental aside).
 	EarnedTotal Income = "total"
+	// Slots: the spins at the slot machines, counted (game/slots.go). What they pay isn't earned
+	// (like the bets', it's what was staked coming back, less the house's edge): only the spins are limited.
+	Slots Income = "machine"
 )
 
 // Cap: what an account may get from a source in a real day.
@@ -73,6 +76,7 @@ var Caps = map[Income]Cap{
 	ToPlayers:      {Djai: 20000, Full: "Waye : 20 000 Djai envoyés aux joueurs par jour, pas plus. Reviens demain."},
 	FromRental:     {Djai: 250000, Full: "L'hôte ne peut plus être payé sur Dodo aujourd'hui : réessaie demain."},
 	EarnedTotal:    {Djai: DailyTotal, Full: "Tu as assez gagné pour aujourd'hui : reviens demain."},
+	Slots:          {Times: SlotsPerDay, Full: "Assez de machine à sous pour aujourd'hui : reviens demain."},
 }
 
 // DailyTotal: the most an account earns by playing in a real day, every
@@ -140,7 +144,7 @@ func limit(src Income, pass bool) int {
 
 // inTotal: the sources the day's total counts.
 func inTotal(src Income) bool {
-	return src != FromPlayers && src != ToPlayers && src != FromRental && src != EarnedTotal
+	return src != FromPlayers && src != ToPlayers && src != FromRental && src != EarnedTotal && src != Slots
 }
 
 // Left: the Djai a source can still bring today (math.MaxInt: no limit).
