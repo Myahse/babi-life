@@ -13,7 +13,7 @@ import { underHud } from '../hudClear'
 import { HOME_ID, type Lot } from '../layout'
 import { LotView, type Props } from '../Neighbourhood'
 import { useSignTexture } from '../props'
-import type { Place, Plot, World } from '../../lib/types'
+import type { Commune, Place, Plot, World } from '../../lib/types'
 import { api } from '../../lib/api'
 import { House } from '../build/House'
 import { CutHouse } from '../build/CutHouse'
@@ -133,19 +133,36 @@ function keepBuilt(c: Loaded, drawn: Map<string, Loaded>) {
     if (drawn.get(old.data.key) !== old) for (const g of Object.values(old.geos)) g.dispose()
   }
 }
-const SNAPS = 'babi.snaps.v1.'
-function loadSnaps(commune: string): Map<string, XZ> {
+const SNAPS = 'babi.snaps.v2.'
+/**
+ * The key a commune's finds are kept under: its id and where the game's data
+ * puts its approximate places. Moved in the data (or found by other rules,
+ * v2), a place's old find isn't kept: it was the stadium on its bus stop for
+ * good, whatever the data said after.
+ */
+function snapKey(commune: Commune) {
+  let h = 0
+  for (const p of commune.places) if (p.real && p.approx) for (const ch of `${p.id}@${p.lat},${p.lng};`) h = (Math.imul(h, 31) + ch.charCodeAt(0)) | 0
+  return `${commune.id}.${(h >>> 0).toString(36)}`
+}
+function loadSnaps(key: string): Map<string, XZ> {
   try {
-    const raw = localStorage.getItem(SNAPS + commune)
+    // The commune's finds kept under another key (other data, other rules) go.
+    const commune = key.slice(0, key.indexOf('.'))
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i) ?? ''
+      if (k !== SNAPS + key && /^babi\.snaps\.v\d+\.([^.]+)/.exec(k)?.[1] === commune) localStorage.removeItem(k)
+    }
+    const raw = localStorage.getItem(SNAPS + key)
     const list = raw ? (JSON.parse(raw) as [string, number, number][]) : []
     return new Map(list.filter((e) => Array.isArray(e) && typeof e[0] === 'string' && Number.isFinite(e[1]) && Number.isFinite(e[2])).map(([id, x, z]) => [id, [x, z] as XZ]))
   } catch {
     return new Map()
   }
 }
-function saveSnaps(commune: string, snaps: Map<string, XZ>) {
+function saveSnaps(key: string, snaps: Map<string, XZ>) {
   try {
-    localStorage.setItem(SNAPS + commune, JSON.stringify([...snaps].map(([id, [x, z]]) => [id, Math.round(x * 10) / 10, Math.round(z * 10) / 10])))
+    localStorage.setItem(SNAPS + key, JSON.stringify([...snaps].map(([id, [x, z]]) => [id, Math.round(x * 10) / 10, Math.round(z * 10) / 10])))
   } catch {
     // No room, or private browsing: found again next time.
   }
@@ -364,7 +381,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   // visit to the next: the first chunks are then asked for with the places where they really are,
   // instead of being built once, then again when the map's points come in (two builds, two entries
   // in the cache, and the second visit finding the first's).
-  const [snaps, setSnaps] = useState<Map<string, XZ>>(() => loadSnaps(commune.id))
+  const [snaps, setSnaps] = useState<Map<string, XZ>>(() => loadSnaps(snapKey(commune)))
   const snapsRef = useRef(snaps)
   snapsRef.current = snaps
 
@@ -580,7 +597,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     let changed = false
     const next = new Map(snapsRef.current)
     for (const p of commune.places) {
-      if (!p.real || isMapPlace(p.id)) continue
+      // A place the game's data already puts where the map has it (not approx) stays there.
+      if (!p.real || !p.approx || isMapPlace(p.id)) continue
       const poi = matchPoi({ name: p.name, kind: p.kind, at: toLocal(origin, p.lat, p.lng) }, pois)
       const was = next.get(p.id)
       if (poi && (!was || Math.hypot(was[0] - poi.at[0], was[1] - poi.at[1]) > 1)) {
@@ -603,7 +621,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     }
     snapsRef.current = next
     setSnaps(next)
-    saveSnaps(commune.id, next)
+    saveSnaps(snapKey(commune), next)
     if (import.meta.env.DEV) Object.assign(window, { __snaps: next })
     if (stale.size)
       setChunks((m) => {
