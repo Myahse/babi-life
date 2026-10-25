@@ -136,6 +136,13 @@ const (
 	srcOrangeVillage   = "https://worldarchitecture.org/architecture-news/enhnz/the-new-headquarters-of-orange-village-in-abidjan-c%C3%B4te-d-ivoire-by-koffi-diabat-architects.html"
 	srcOrangeVillage2  = "https://www.koaci.com/article/2022/01/14/cote-divoire/economie/orange-cote-divoire-inaugure-orange-village-son-nouveau-siege-a-abidjan-et-confirme-son-attachement-et-ses-ambitions-pour-la-cote-divoire_156877.html"
 	srcPyramide        = "https://en.wikipedia.org/wiki/La_Pyramide_(building)"
+	srcMusee           = "https://en.wikipedia.org/wiki/Mus%C3%A9e_des_Civilisations_de_C%C3%B4te_d%27Ivoire"
+	srcMusee2          = "https://mainlymuseums.com/post/1245/mus-e-des-civilisations-de-c-te-d-ivoire/"
+	srcAssemblee       = "https://en.wikipedia.org/wiki/National_Assembly_(Ivory_Coast)"
+	srcPalaisCulture   = "https://en.wikipedia.org/wiki/Culture_Palace_of_Abidjan"
+	srcPalaisCulture2  = "https://connectionivoirienne.net/2012/11/28/palais-de-la-culture-la-salle-anoumabo-dans-un-etat-inquietant/"
+	srcMarcheTreich    = "https://news.abidjan.net/articles/614296/dossier-nos-marches-implantation-specificites-histoire"
+	srcMarcheTreich2   = "https://news.abidjan.net/articles/514019/a-laffiche-treichville-la-cite-aux-grands-espaces-commerciaux"
 	srcCathedrale      = "https://fr.wikipedia.org/wiki/Cath%C3%A9drale_Saint-Paul_d%27Abidjan"
 	srcCathedrale2     = "https://en.wikipedia.org/wiki/St._Paul%27s_Cathedral,_Abidjan"
 	srcMosqueeM6       = "https://fr.allafrica.com/stories/202404050438.html"
@@ -323,6 +330,10 @@ var Cities = []City{
 					Source: game.Partial("Nom du jeu pour le Noom Hôtel (5 étoiles, boulevard Général-de-Gaulle, Plateau) ; position d'après OpenStreetMap, à côté du Pullman.", srcHotelsAbj, srcOSM)},
 				Place{ID: "plateau-stade", Name: "Stade Félix-Houphouët-Boigny", Kind: "stade", Lat: 5.32831, Lng: -4.01852, Real: true,
 					Source: game.Verified("Stade du Plateau, ouvert en 1961 sur le site du stade Géo-André ; capacité variable selon les sources (27 000 à 40 000). Position d'après OpenStreetMap.", srcVenues, srcStadeFHB, srcOSM)},
+				Place{ID: game.MuseeID, Name: "Musée des Civilisations", Kind: "culture", Lat: 5.33355, Lng: -4.02417, Real: true, Operator: "Ministère de la Culture",
+					Source: game.Partial("Musée d'État du Plateau, avenue Nangui-Abrogoua : né en 1942 d'un centre artisanal, plus de 15 000 pièces de toutes les régions (statues, masques, instruments de musique, poids à peser l'or, portes sculptées, regalia, textiles), exposées sur un seul niveau ; pillé en 2011, rouvert en juillet 2017. La salle du jeu est dessinée pour le jeu ; position d'après OpenStreetMap.", srcMusee, srcMusee2, srcOSM)},
+				Place{ID: game.AssembleeID, Name: "Assemblée nationale", Kind: "assemblee", Lat: 5.32883, Lng: -4.02015, Real: true, Owner: "État de Côte d'Ivoire",
+					Source: game.Partial("Siège de l'Assemblée nationale, avenue Jeanne-Gervais au Plateau : 255 députés élus dans 205 circonscriptions. Le bâtiment et l'hémicycle du jeu sont dessinés pour le jeu ; position d'après OpenStreetMap.", srcAssemblee, srcOSM)},
 			),
 			abidjanCommune("cocody", "Cocody", "Résidences, université et Riviera.", 5.3480, -3.9870, "nord",
 				Place{ID: "cocody-danga", Name: "Maquis de Danga", Kind: "maquis", Quarter: "Danga", Lat: 5.3420, Lng: -4.0010, Approx: true, Source: invented},
@@ -410,12 +421,13 @@ var Cities = []City{
 				fictional("abobo-gare", "Gare des gbakas", "transport", "", 5.4160, -4.0130),
 			),
 			abidjanCommune("treichville", "Treichville", "Le vieux quartier mythique, le Palais des Sports.", 5.2990, -4.0090, "sud",
-				Place{ID: "treich-marche", Name: "Marché de Treichville", Kind: "market", Lat: 5.30888, Lng: -4.01362, Real: true, Source: game.Partial("Grand marché de Treichville, rue Pierre-Billon ; position d'après OpenStreetMap.", srcOSM)},
+				Place{ID: game.MarcheTreichID, Name: "Grand Marché de Treichville", Kind: "market", Lat: 5.30888, Lng: -4.01362, Real: true, Operator: "SGMT (Sicogi et mairie de Treichville)",
+					Source: game.Partial("Grand marché de Treichville, rue Pierre-Billon : deux niveaux sur environ 18 500 m², reconstruit après un incendie et inauguré en 2003 ; vivriers, pagnes, volaille, friperie, viande, les commerçants regroupés par marchandise. Le plan du jeu (les vivriers en bas, les pagnes en haut) est dessiné pour le jeu ; position d'après OpenStreetMap.", srcMarcheTreich, srcMarcheTreich2, srcOSM)},
 				Place{ID: "treich-palais", Name: "Palais des Sports", Kind: "sport", Lat: 5.29807, Lng: -4.00545, Real: true,
 					Source: game.Verified("Salle couverte de 3 500 places (1978), à côté du Parc des sports : la rotonde de 66 m de diamètre, rue du Stade (position et taille d'après OpenStreetMap).", srcPalaisSports, "https://www.openstreetmap.org/way/123174041")},
 				Place{ID: "treich-maquis", Name: "Maquis de l'Avenue 16", Kind: "maquis", Lat: 5.3000, Lng: -4.0150, Approx: true, Source: invented},
-				Place{ID: "treich-palais-culture", Name: "Palais de la Culture", Kind: "culture", Lat: 5.31226, Lng: -4.01258, Real: true,
-					Source: game.Verified("Palais de la Culture de Treichville, 12 900 m², 7 salles. Position d'après OpenStreetMap.", srcVenues, srcOSM)},
+				Place{ID: game.PalaisCultureID, Name: "Palais de la Culture", Kind: "culture", Lat: 5.31226, Lng: -4.01258, Real: true,
+					Source: game.Verified("Palais de la Culture de Treichville, au bord de la lagune, offert par la Chine : 12 900 m², 7 salles, dont la grande salle Anoumabo (environ 4 000 places), les salles Louga-François (1 500), Kodjo-Ebouclé (700) et Niangoran-Porquet (300), et l'espace lagunaire. Sa forme dans le jeu est dessinée pour le jeu ; position d'après OpenStreetMap.", srcVenues, srcPalaisCulture, srcPalaisCulture2, srcOSM)},
 				Place{ID: "treich-chu", Name: "CHU de Treichville", Kind: "health", Lat: 5.29119, Lng: -4.00356, Real: true, Operator: "Établissement public hospitalier national",
 					Source: game.Verified("Transformé en établissement public hospitalier national en 2022. Position d'après OpenStreetMap.", srcCHUStatus, srcOSM)},
 				Place{ID: "treich-mosquee-m6", Name: "Mosquée Mohammed VI", Kind: "worship", Quarter: "Biafra", Lat: 5.310947, Lng: -4.003406, Real: true,

@@ -7,6 +7,7 @@ import type { Look } from '../../lib/types'
 import { api } from '../../lib/api'
 import { rng } from '../themes'
 import { BOX, Blocks, PLANE } from './ruePrincesse'
+import { WavingFlag } from './flag'
 
 // The Palais présidentiel of the Plateau, on the boulevard by the lagoon: a
 // long white palace of two floors behind its lawns and its gate, a columned
@@ -87,16 +88,6 @@ export function Presidence({ night }: { night: boolean }) {
     for (const z of [FRONT + 2, FRONT + FORECOURT - 2]) dk.push({ p: [-W - 1, 1, (z + (z === FRONT + 2 ? FRONT + FORECOURT - 2 : FRONT + 2)) / 2], s: [0.15, 2, FORECOURT - 4], c: '#2b3038' }, { p: [W + 1, 1, (z + (z === FRONT + 2 ? FRONT + FORECOURT - 2 : FRONT + 2)) / 2], s: [0.15, 2, FORECOURT - 4], c: '#2b3038' })
     return { wh, dk }
   }, [night])
-  const flag = useMemo(() => {
-    const c = document.createElement('canvas')
-    c.width = 96
-    c.height = 64
-    const g = c.getContext('2d')!
-    ;['#f77f00', '#ffffff', '#009e60'].forEach((col, i) => ((g.fillStyle = col), g.fillRect(i * 32, 0, 32, 64)))
-    const t = new THREE.CanvasTexture(c)
-    t.colorSpace = THREE.SRGBColorSpace
-    return new THREE.MeshLambertMaterial({ map: t, side: THREE.DoubleSide })
-  }, [])
   // The guards at the gate, a gardener on the lawn.
   const people = useMemo(() => {
     const r = rng('presidence')
@@ -118,7 +109,10 @@ export function Presidence({ night }: { night: boolean }) {
       <Blocks at={blocks.dk} material={dark} color />
       <mesh position={[0, H + 1.9, FRONT + 5.02]} scale={[3.2, 1.6, 1]} geometry={PLANE} material={crest} />
       <mesh position={[0, 3.4, FRONT + 0.36]} scale={[4.6, 4.8, 1]} geometry={PLANE} material={gold} />
-      <mesh position={[1.7, H + 11.4, 0]} scale={[3.2, 2.1, 1]} geometry={PLANE} material={flag} />
+      {/* The flag on its pole, rippling */}
+      <group position={[0, H + 1.5, 0]}>
+        <WavingFlag height={11} w={3.2} pole={false} seed={5} />
+      </group>
       {palms.map(([x, z], i) => (
         <group key={i} position={[x, 0, z]}>
           <mesh position={[0, 3.5, 0]} scale={[0.4, 7, 0.4]} geometry={BOX} material={dark} />

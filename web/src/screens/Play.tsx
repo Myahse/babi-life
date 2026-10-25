@@ -102,6 +102,10 @@ const IvoireInside = lazy(() => import('../world3d/interior/IvoireInside').then(
 const CathedralInside = lazy(() => import('../world3d/interior/CathedralInside').then((m) => ({ default: m.CathedralInside })))
 const MosqueM6Inside = lazy(() => import('../world3d/interior/MosqueM6Inside').then((m) => ({ default: m.MosqueM6Inside })))
 const PyramideInside = lazy(() => import('../world3d/interior/PyramideInside').then((m) => ({ default: m.PyramideInside })))
+const PalaisCultureInside = lazy(() => import('../world3d/interior/PalaisCultureInside').then((m) => ({ default: m.PalaisCultureInside })))
+const MuseeInside = lazy(() => import('../world3d/interior/MuseeInside').then((m) => ({ default: m.MuseeInside })))
+const AssembleeInside = lazy(() => import('../world3d/interior/AssembleeInside').then((m) => ({ default: m.AssembleeInside })))
+const MarcheTreichInside = lazy(() => import('../world3d/interior/MarcheTreichInside').then((m) => ({ default: m.MarcheTreichInside })))
 const KineoInside = lazy(() => import('../world3d/interior/KineoInside').then((m) => ({ default: m.KineoInside })))
 const BoulayScene = lazy(() => import('../world3d/interior/BoulayScene').then((m) => ({ default: m.BoulayScene })))
 // An airport's terminal: its hall, the check-in, the departures board, the planes beyond the glass.
@@ -1012,6 +1016,26 @@ export function Play() {
             // La Pyramide: its gallery of shops round the open well, the lifts to the offices; its roof over the Plateau.
             <Suspense fallback={null}>
               <PyramideInside sim={sim} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
+            </Suspense>
+          ) : inside!.id === 'treich-palais-culture' ? (
+            // The Palais de la Culture: its great salle Anoumabo (the stage, the band, the rows, the pit), its foyer of paintings.
+            <Suspense fallback={null}>
+              <PalaisCultureInside sim={sim} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
+            </Suspense>
+          ) : inside!.id === 'plateau-musee' ? (
+            // The Musée des Civilisations: its hall of masks, carved figures, gold-weights and cloths; the guide and the class.
+            <Suspense fallback={null}>
+              <MuseeInside sim={sim} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
+            </Suspense>
+          ) : inside!.id === 'plateau-assemblee' ? (
+            // The Assemblée nationale: the hemicycle in a sitting, seen from the public gallery.
+            <Suspense fallback={null}>
+              <AssembleeInside sim={sim} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
+            </Suspense>
+          ) : inside!.id === 'treich-marche' ? (
+            // The Grand Marché de Treichville: its hall of food, the stairs up to its floor of pagnes.
+            <Suspense fallback={null}>
+              <MarcheTreichInside sim={sim} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
             </Suspense>
           ) : inside!.id === 'marcory-kineo' || inside!.id === 'cocody-kineo' ? (
             // A Kinéo cinema: its lobby; with a ticket, the screen's room and the Sim in its seat.

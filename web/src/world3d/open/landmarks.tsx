@@ -21,6 +21,10 @@ import { PlayceMarcory } from './playceMarcory'
 import { TOUR_F_FACING, TourF, TourFFar } from './tourF'
 import { PalaisJustice } from './palaisJustice'
 import { Presidence } from './presidence'
+import { PalaisCulture } from './palaisCulture'
+import { Musee } from './musee'
+import { Assemblee } from './assemblee'
+import { GrandMarche } from './grandMarche'
 import type { StadiumEvent } from '../../lib/stadium'
 import type { Obstacle } from '../obstacles'
 import { STADIUM_TRACKS } from './stadiumTrack'
@@ -56,12 +60,21 @@ export const LANDMARKS: Record<string, number> = {
   'plateau-tour-f': 40,
   'plateau-tribunal': 44,
   'plateau-presidence': 50,
+  'treich-palais-culture': 66,
+  'plateau-musee': 44,
+  'plateau-assemblee': 68,
+  'treich-marche': 78,
 }
 
 /** How far a landmark's front is from its middle (metres): its ground starts at the roadside, the gare's yard at the street, not behind the houses along it. Else the middle stands its clearing back from the street. */
 export const LANDMARK_FRONT: Record<string, number> = {
   'yop-gare-siporex': 19,
   'bouake-gare': 19,
+  // Their forecourts, gardens and pavements reach the street.
+  'treich-palais-culture': 49,
+  'plateau-musee': 25,
+  'plateau-assemblee': 56,
+  'treich-marche': 54,
 }
 
 /** The landmarks' own grounds in their frame (x from, x to, z from, z to; +z the street): no ad board stands on them (the PlaYce's car park). */
@@ -177,6 +190,14 @@ export function Landmark({ id, night, demo, open = true }: { id: string; night: 
       return <Zoo night={night} open={open} />
     case 'cocody-blockhauss-maquis':
       return <BlockhaussMaquis night={night} />
+    case 'treich-palais-culture':
+      return <PalaisCulture night={night} />
+    case 'plateau-musee':
+      return <Musee night={night} />
+    case 'plateau-assemblee':
+      return <Assemblee night={night} />
+    case 'treich-marche':
+      return <GrandMarche night={night} />
     default:
       return null
   }

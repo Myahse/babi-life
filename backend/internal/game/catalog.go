@@ -177,6 +177,8 @@ var Kinds = map[string]PlaceKind{
 			{ID: "eat-alloco", Label: "Manger de l'alloco", Icon: "banana", Minutes: 15, Cost: 300, Effect: Needs{Hunger: 25}},
 			Gbairai,
 			{ID: "sell-goods", Ages: TeensUp, Label: "Vendre au petit commerce", Icon: "store", Minutes: 4 * 60, Cost: -1200, Effect: Needs{Energy: -20, Social: 15, Hygiene: -10}, MinHour: 6, MaxHour: 18},
+			// The Grand Marché de Treichville's own: its floor of pagnes, upstairs.
+			{ID: "pagnes-treich", Ages: TeensUp, Label: "Choisir des pagnes à l'étage", Icon: "shirt", Minutes: 45, Cost: 6000, Effect: Needs{Fun: 25, Social: 10, Energy: -5}, MinHour: 7, MaxHour: 18, Places: []string{MarcheTreichID}},
 		},
 		Events: []RandomEvent{
 			{Text: "Une tantie t'a fait « cadeau » d'une poignée de piment en plus.", Effect: Needs{Social: 5}},
@@ -403,6 +405,21 @@ var Kinds = map[string]PlaceKind{
 			{Text: "Un ministre passe et te serre la main devant les caméras.", Effect: Needs{Social: 20, Fun: 10}},
 		},
 	},
+	// The Assemblée nationale (world/world.go): its sittings, followed from the public gallery.
+	"assemblee": {
+		ID: "assemblee", Label: "Assemblée nationale", Icon: "landmark",
+		Interactions: []Interaction{
+			{ID: "seance-publique", Ages: TeensUp, Label: "Suivre une séance depuis la tribune du public", Icon: "users", Minutes: 120, Effect: Needs{Social: 15, Fun: 10, Energy: -10}, MinHour: 9, MaxHour: 13, Days: Weekdays},
+			{ID: "visite-hemicycle", Label: "Visiter l'hémicycle", Icon: "landmark", Minutes: 45, Effect: Needs{Fun: 20, Social: 5}, MinHour: 9, MaxHour: 16, Days: Weekdays},
+			{ID: "petition", Ages: Adults, Label: "Déposer une pétition à son député", Icon: "file-text", Minutes: 45, Effect: Needs{Social: 10, Fun: -5}, MinHour: 9, MaxHour: 15, Days: Weekdays},
+			{ID: "selfie-assemblee", Label: "Un selfie devant l'Assemblée", Icon: "camera", Minutes: 15, Effect: Needs{Fun: 10}, MinHour: 7, MaxHour: 20},
+		},
+		Events: []RandomEvent{
+			{Text: "Le texte passe à main levée : tout l'hémicycle applaudit.", Effect: Needs{Fun: 15, Social: 5}},
+			{Text: "Un député s'endort pendant un long discours : la tribune rit sous cape.", Effect: Needs{Fun: 15}},
+			{Text: "Un huissier te demande d'éteindre ton téléphone.", Effect: Needs{Fun: -5}},
+		},
+	},
 	"school": {
 		ID: "school", Label: "École", Icon: "graduation-cap",
 		Interactions: []Interaction{
@@ -444,6 +461,11 @@ var Kinds = map[string]PlaceKind{
 		Interactions: []Interaction{
 			{ID: "spectacle", Label: "Voir un spectacle", Icon: "drama", Minutes: 120, Cost: 3000, Effect: Needs{Fun: 45, Social: 15}, MinHour: 18, MaxHour: 23},
 			{ID: "exposition", Label: "Visiter une exposition", Icon: "palette", Minutes: 60, Cost: 1000, Effect: Needs{Fun: 25}, MinHour: 9, MaxHour: 18, Days: []int{Mardi, Mercredi, Jeudi, Vendredi, Samedi, Dimanche}},
+			// The Palais de la Culture's own: a concert in its great hall, the salle Anoumabo.
+			{ID: "concert-anoumabo", Label: "Un concert dans la salle Anoumabo", Icon: "music", Minutes: 150, Cost: 5000, Effect: Needs{Fun: 55, Social: 20, Energy: -10}, MinHour: 19, MaxHour: 23, Days: []int{Vendredi, Samedi}, Places: []string{PalaisCultureID}},
+			// The Musée des Civilisations' own: its collections, alone or with the guide.
+			{ID: "visite-musee", Label: "Voir les masques et les statues du musée", Icon: "landmark", Minutes: 60, Cost: 2000, Effect: Needs{Fun: 25, Social: 5}, MinHour: 9, MaxHour: 17, Days: []int{Mardi, Mercredi, Jeudi, Vendredi, Samedi}, Places: []string{MuseeID}},
+			{ID: "visite-guidee", Label: "Suivre la visite guidée", Icon: "users", Minutes: 90, Cost: 3000, Effect: Needs{Fun: 30, Social: 15, Energy: -5}, MinHour: 9, MaxHour: 16, Days: []int{Mardi, Mercredi, Jeudi, Vendredi, Samedi}, Places: []string{MuseeID}},
 		},
 		Events: []RandomEvent{
 			{Text: "Tu croises l'artiste à la sortie : photo souvenir !", Effect: Needs{Fun: 20, Social: 10}},
@@ -792,6 +814,18 @@ const CathedraleID = "plateau-cathedrale"
 
 // PyramideID: La Pyramide of the Plateau (world/world.go), its gallery and its roof.
 const PyramideID = "plateau-pyramide"
+
+// MuseeID: the Musée des Civilisations of the Plateau (world/world.go), its collections.
+const MuseeID = "plateau-musee"
+
+// AssembleeID: the Assemblée nationale of the Plateau (world/world.go), its hemicycle.
+const AssembleeID = "plateau-assemblee"
+
+// PalaisCultureID: the Palais de la Culture of Treichville (world/world.go), its salle Anoumabo.
+const PalaisCultureID = "treich-palais-culture"
+
+// MarcheTreichID: the Grand Marché de Treichville (world/world.go), its floors of food and pagnes.
+const MarcheTreichID = "treich-marche"
 
 // TourFID: the Tour F's building site in the Plateau's Cité administrative (world/world.go).
 const TourFID = "plateau-tour-f"

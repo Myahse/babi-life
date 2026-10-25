@@ -4,6 +4,7 @@ import { Human, NoShadows } from '../../avatar/Human'
 import { randomLook } from '../../avatar/options'
 import { rng } from '../themes'
 import { BOX, Blocks, PLANE } from './ruePrincesse'
+import { WavingFlag } from './flag'
 
 // The Palais de justice of the Plateau, on the boulevard Angoulvant, across
 // from the cathedral: a long pale building of four floors set back behind
@@ -74,16 +75,6 @@ export function PalaisJustice({ night }: { night: boolean }) {
     for (const x of [-7, 7]) st.push({ p: [x, 1.4, FRONT + FORECOURT + 1], s: [1.2, 2.8, 1.2] })
     return { st, dk }
   }, [night])
-  const flag = useMemo(() => {
-    const c = document.createElement('canvas')
-    c.width = 96
-    c.height = 64
-    const g = c.getContext('2d')!
-    ;['#f77f00', '#ffffff', '#009e60'].forEach((col, i) => ((g.fillStyle = col), g.fillRect(i * 32, 0, 32, 64)))
-    const t = new THREE.CanvasTexture(c)
-    t.colorSpace = THREE.SRGBColorSpace
-    return new THREE.MeshLambertMaterial({ map: t, side: THREE.DoubleSide })
-  }, [])
   // On the steps and the forecourt: lawyers in their robes, a gendarme at the gate, people waiting.
   const people = useMemo(() => {
     const r = rng('palais-justice')
@@ -108,7 +99,10 @@ export function PalaisJustice({ night }: { night: boolean }) {
       <Blocks at={blocks.dk} material={dark} color />
       <mesh position={[0, H + 1.6, FRONT + 3.22]} scale={[W * 2 - 4, 1.3, 1]} geometry={PLANE} material={sign} />
       <mesh position={[0, 2.6, FRONT + 0.36]} scale={[5.6, 4, 1]} geometry={PLANE} material={bronze} />
-      <mesh position={[1.6, H + 9.5, 0]} scale={[3, 2, 1]} geometry={PLANE} material={flag} />
+      {/* The flag on its pole, rippling */}
+      <group position={[0, H + 1.5, 0]}>
+        <WavingFlag height={9} w={3} pole={false} seed={2} />
+      </group>
       <mesh position={[W + 1, 1.3, FRONT + FORECOURT / 2 + 1]} scale={[1, 0.1, 1]} geometry={BOX} material={hedge} visible={false} />
       <NoShadows>
         {people.map((g, i) => (
