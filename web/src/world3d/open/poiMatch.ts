@@ -60,6 +60,28 @@ function nameScore(game: string[], map: Set<string>) {
   return all ? have / all : 0
 }
 
+/** Every icon that says what a point is (a pharmacy, a school, a market…). */
+const KNOWN = new Set(Object.values(FITS).flat())
+
+/**
+ * The words naming what a place is, and the map's words for the same: a place
+ * named with one only goes to a point named with it too. Else the commune's
+ * name was enough: the « Mairie de Koumassi » went to the « Foyer des jeunes
+ * de Koumassi », the « CHU d'Angré » to the « Pharmacie Angré ».
+ */
+const KIND_WORDS: Record<string, string[]> = {
+  mairie: ['mairie', 'ville', 'communal'],
+  marche: ['marche', 'market'],
+  chu: ['chu', 'hospitalier', 'hopital'],
+  hopital: ['hopital', 'hospitalier', 'chu'],
+  gare: ['gare', 'station'],
+  stade: ['stade', 'stadium'],
+  universite: ['universite', 'university', 'campus'],
+  cathedrale: ['cathedrale', 'cathedral'],
+  mosquee: ['mosquee', 'mosque'],
+  aeroport: ['aeroport', 'aerogare', 'airport'],
+}
+
 /**
  * The map's point for a game place, or null. A near-certain name is enough
  * within 3 km; a looser one must be the right kind of place and within 1.2 km.
@@ -68,6 +90,7 @@ export function matchPoi(place: { name: string; kind: string; at: XZ }, pois: Po
   const game = words(place.name)
   if (!game.length) return null
   const fits = FITS[place.kind] ?? []
+  const named = game.flatMap((w) => (KIND_WORDS[w] ? [KIND_WORDS[w]] : []))
   let best: { poi: Poi; score: number; fit: boolean; d: number } | null = null
   for (const poi of pois) {
     const d = Math.hypot(poi.at[0] - place.at[0], poi.at[1] - place.at[1])
@@ -75,8 +98,13 @@ export function matchPoi(place: { name: string; kind: string; at: XZ }, pois: Po
     // A bus stop named after the place (« Stade Félix Houphouët-Boigny ») is
     // on the boulevard: a stadium moved onto it would stand across the road.
     if (poi.maki === 'bus' && !fits.includes('bus')) continue
-    const score = nameScore(game, new Set(words(poi.name)))
+    // Another kind of place named after it (the « Pharmacie du Palais de
+    // Justice », the « Mosquée du CHU », the « EPP Forêt du Banco ») isn't it.
     const fit = fits.includes(poi.maki)
+    if (!fit && KNOWN.has(poi.maki)) continue
+    const map = new Set(words(poi.name))
+    if (named.some((alts) => !alts.some((w) => map.has(w)))) continue
+    const score = nameScore(game, map)
     const ok = (score >= 0.85 && (fit || score === 1)) || (score >= 0.6 && fit) || (score >= 0.4 && fit && d < 1200)
     if (!ok) continue
     // The best name first; between equals, the right kind of place, then the nearest.
