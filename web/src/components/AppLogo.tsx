@@ -1,4 +1,4 @@
-import { Car, ShoppingBag, Bike, HandCoins, MessageCircleMore, Trophy, Clapperboard, Gauge } from 'lucide-react'
+import { Car, ShoppingBag, Bike, HandCoins, MessageCircleMore, Trophy, Clapperboard, Gauge, Spade } from 'lucide-react'
 
 // Logos of the phone's store apps. Invented brands: their own colours and
 // marks, nodding to the services they are modelled on.
@@ -68,6 +68,7 @@ const LOOK: Record<string, { bg: string; fg: string; mark: (s: number) => React.
   bet225: { bg: 'linear-gradient(160deg,#17291f,#0e1a14)', fg: '#22c55e', mark: (s) => <span style={{ fontSize: s * 0.42, fontWeight: 900, letterSpacing: -1 }}>225</span> },
   parisfoot: { bg: 'linear-gradient(160deg,#a78bfa,#6d28d9)', fg: '#fff', mark: (s) => <Trophy size={s} strokeWidth={2.4} /> },
   bingo: { bg: 'linear-gradient(160deg,#9b5cff,#4c1d95)', fg: '#7b2ff7', mark: (s) => <BingoMark size={s * 1.15} /> },
+  casino: { bg: 'radial-gradient(circle at 50% 20%,#1f7a4d,#0b3d26)', fg: '#0b3d26', mark: (s) => <Spade size={s} strokeWidth={2.4} color="#ffcc33" fill="#ffcc33" /> },
   gbairai: { bg: 'linear-gradient(160deg,#ff9f43,#f0590c)', fg: '#fff', mark: (s) => <MessageCircleMore size={s} strokeWidth={2.4} /> },
   dodo: { bg: 'linear-gradient(160deg,#8b5cf6,#4c1d95)', fg: '#7c3aed', mark: (s) => <DodoHouse size={s} /> },
   bolide: { bg: 'linear-gradient(160deg,#ff5c5c,#b3121f)', fg: '#d6262f', mark: (s) => <Gauge size={s} strokeWidth={2.4} color="#fff" /> },
