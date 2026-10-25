@@ -38,7 +38,7 @@ const AmbientOcclusion = lazy(() => import('./effects'))
 
 type V3 = [number, number, number]
 /** Where someone is and what they're doing. */
-export type Spot = { p: V3; r?: number; pose: Pose; lying?: boolean; g?: 'femme' | 'homme'; /** What they wear there (the swimsuit in the pool). */ outfit?: string; /** A child (the orphanage's): drawn small, and not someone to chat up. */ kid?: boolean }
+export type Spot = { p: V3; r?: number; pose: Pose; lying?: boolean; /** Up on a stage: the foot of its steps, then the way along it (walked straight, at the stage's height). */ via?: [number, number][]; g?: 'femme' | 'homme'; /** What they wear there (the swimsuit in the pool). */ outfit?: string; /** A child (the orphanage's): drawn small, and not someone to chat up. */ kid?: boolean }
 type Person = Spot & { gender: 'femme' | 'homme'; look: ReturnType<typeof randomLook>; seed: number }
 
 /** Kinds of places that have an inside (the beach or the football pitch don't). */
@@ -61,11 +61,18 @@ export function action(kind: string, id: string | undefined): { spot: string; po
     if (kind === 'maquis' || kind === 'restaurant') return { spot: 'counter', pose: 'cook' }
     if (kind === 'office' || kind === 'mairie') return { spot: 'desk', pose: 'write' }
     if (kind === 'school' || kind === 'universite') return { spot: 'counter', pose: 'talk' }
-    if (kind === 'club') return { spot: 'floor', pose: 'dance' }
+    // The night's ambiance: behind the decks, mixing (the club's own DJ steps aside).
+    if (kind === 'club') return { spot: 'decks', pose: 'dj' }
     if (kind === 'market' || kind === 'mall' || kind === 'boutique') return { spot: 'stall', pose: 'busy' }
     return { spot: 'counter', pose: 'busy' }
   }
   if (id === 'garde-a-vue') return { spot: 'seat', pose: 'sit' }
+  // A player's soirée (drawn as a club): the decks, the floor, the bar, the notes thrown.
+  if (id === 'mixer-soiree') return { spot: 'decks', pose: 'dj' }
+  if (id === 'danser-soiree') return { spot: 'floor', pose: 'dance' }
+  if (id === 'recevoir-soiree') return { spot: 'floor', pose: 'cheer' }
+  if (id === 'boire-soiree') return { spot: 'counter', pose: 'drink' }
+  if (id === 'travaillement-soiree') return { spot: 'floor', pose: 'throw' }
   // The gym: the bench, the treadmill, the class on the floor, the showers.
   if (id === 'musculation') return { spot: 'bench', pose: 'busy' }
   if (id === 'cardio') return { spot: 'treadmill', pose: 'run' }
@@ -151,7 +158,7 @@ const WALK_IN = 1.5
  * walks back to the door. On the floor while walking; up onto the sofa or
  * the bed, and over onto its back, eased at the end.
  */
-function WalkTo({ to, facing, lying, free, room, onThere, children }: { to: V3; facing: number; lying: boolean; /** Walking about the room: the keys (or the pad) move the Sim too. */ free?: boolean; /** Where one can walk (roomGrid): round the furniture and the people, not through them. */ room?: ((x: number, z: number) => boolean) | null; onThere?: (there: boolean) => void; children: (there: boolean) => React.ReactNode }) {
+function WalkTo({ to, facing, lying, via, free, room, onThere, children }: { to: V3; facing: number; lying: boolean; via?: [number, number][]; /** Walking about the room: the keys (or the pad) move the Sim too. */ free?: boolean; /** Where one can walk (roomGrid): round the furniture and the people, not through them. */ room?: ((x: number, z: number) => boolean) | null; onThere?: (there: boolean) => void; children: (there: boolean) => React.ReactNode }) {
   const camera = useThree((st) => st.camera)
   const outer = useRef<THREE.Group>(null)
   const inner = useRef<THREE.Group>(null)
@@ -170,7 +177,11 @@ function WalkTo({ to, facing, lying, free, room, onThere, children }: { to: V3; 
       a.settle = 0
       const [sx, sz] = [a.x, a.z]
       const ok = room ? (x: number, z: number) => room(x, z) || Math.hypot(x - to[0], z - to[2]) < 0.75 || Math.hypot(x - sx, z - sz) < 0.5 : null
-      path.current = ok ? (gridWay([sx, sz], [to[0], to[2]], ok, 0.25, 4, 140 * 140) ?? [[to[0], to[2]]]).slice(1) : []
+      if (via?.length) {
+        // Round the room to the foot of the steps, then up and along the stage.
+        const foot = (ok && gridWay([sx, sz], via[0], ok, 0.25, 4, 140 * 140)?.slice(1)) || [via[0]]
+        path.current = [...foot, ...via.slice(1), [to[0], to[2]]]
+      } else path.current = ok ? (gridWay([sx, sz], [to[0], to[2]], ok, 0.25, 4, 140 * 140) ?? [[to[0], to[2]]]).slice(1) : []
       if (there) setThere(false)
       onThere?.(false)
     }
@@ -224,7 +235,9 @@ function WalkTo({ to, facing, lying, free, room, onThere, children }: { to: V3; 
       if (a.settle >= 1) a.rot = want
     }
     const e = a.settle * a.settle * (3 - 2 * a.settle)
-    outer.current?.position.set(a.x, to[1] * e, a.z)
+    // Past the foot of the steps: up at the stage's height.
+    const up = via?.length && path.current.length <= via.length ? 1 : e
+    outer.current?.position.set(a.x, to[1] * up, a.z)
     if (outer.current) outer.current.rotation.y = a.rot
     if (inner.current) inner.current.rotation.x = lying ? (-Math.PI / 2) * e : 0
   })
@@ -341,12 +354,13 @@ function Speaker({ p }: { p: V3 }) {
 }
 
 /** The club for the night: its stage, bar and lights (clubDecor), and, while it's open, its crowd. */
-function ClubNight({ placeId, open }: { placeId: string; open: boolean }) {
-  const fill = useClubFill()
+function ClubNight({ placeId, open, mixing, party }: { placeId: string; open: boolean; mixing: boolean; /** A player's soirée: its host's name on the wall, the floor full whatever the hour. */ party?: string }) {
+  const clubFill = useClubFill()
+  const fill = party ? 0.75 : clubFill
   return (
     <>
-      <ClubDecor placeId={placeId} fill={open ? fill : 0} />
-      {open && <ClubCrowd placeId={placeId} />}
+      <ClubDecor placeId={placeId} fill={open ? fill : 0} mixing={mixing} name={party ? `CHEZ ${party.toUpperCase()}` : undefined} />
+      {open && <ClubCrowd placeId={placeId} fill={party ? fill : undefined} />}
     </>
   )
 }
@@ -489,6 +503,7 @@ export function room(kindIn: string, housing: string): Room {
         ),
         spots: {
           floor: { p: [0.3, 0, 1.6], r: Math.PI * 0.85, pose: 'dance' },
+          decks: { p: [1.5, 0.35, -4.0], r: 0, pose: 'dj', via: [[3.05, -2.55], [3.05, -4.0]] },
           table: { p: [-4.2, 0.05, -2], r: Math.PI / 2, pose: 'drink' },
           entrance: { p: [0, 0, 3.6], r: Math.PI, pose: 'idle' },
           counter: { p: [-3.3, 0, -2.95], r: Math.PI, pose: 'idle' },
@@ -1083,7 +1098,7 @@ function Tour({ stops, look, gender, stage }: { stops: TourStop[]; look: Sim['lo
 
 /* ---------- The scene ---------- */
 
-export function Interior({ sim, kind, placeId, interactionId, roam, housing, night, stage, others = [], open = true, faith }: { sim: Sim; kind: string; placeId: string; interactionId?: string; /** A place of worship's: the mosque, the temple or the parish inside, full for its service. */ faith?: string; /** Just come in: the Sim walks about the room (tap the floor, or the keys). */ roam?: boolean; housing: string; night: boolean; stage: string; others?: Player[]; /** Within its hours: closed, nobody's in (no customers, no staff). */ open?: boolean }) {
+export function Interior({ sim, kind, placeId, interactionId, roam, housing, night, stage, others = [], open = true, faith, party }: { sim: Sim; kind: string; placeId: string; interactionId?: string; /** A player's soirée in its club: the host's name. */ party?: string; /** A place of worship's: the mosque, the temple or the parish inside, full for its service. */ faith?: string; /** Just come in: the Sim walks about the room (tap the floor, or the keys). */ roam?: boolean; housing: string; night: boolean; stage: string; others?: Player[]; /** Within its hours: closed, nobody's in (no customers, no staff). */ open?: boolean }) {
   const [roamTo, setRoamTo] = useState<{ p: V3; facing: number } | null>(null)
   // At work, a task done (gesture.ts): the Sim makes its gesture a moment.
   const gestureNow = useGesture()
@@ -1153,7 +1168,7 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
           {r.furniture}
         </group>
         <SolidRoom key={`${kind}:${placeId}:${housing}:${open}:${r.crowd.length}`} root={furniture} people={open ? people.map((p) => [p.p[0], p.p[2]] as [number, number]) : []} onReady={(f) => setSolid(() => f)} />
-        {kind === 'club' && <ClubNight placeId={placeId} open={open} />}
+        {kind === 'club' && <ClubNight placeId={placeId} open={open} party={party} mixing={act.spot === 'decks' || others.some((o) => action(kind, o.activity?.interactionId).spot === 'decks')} />}
         <NoShadows>
           {(open ? people : []).map((p, i) => {
             const pose = throwing && p.pose === 'dance' && i % 2 ? 'cheer' : p.pose
@@ -1200,7 +1215,7 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
         {touring ? (
           <Tour stops={worshipTour(faith!)} look={look} gender={sim.gender} stage={stage} />
         ) : (
-          <WalkTo to={!interactionId && roamTo ? roamTo.p : me.p} facing={!interactionId && roamTo ? roamTo.facing : throwing ? faceDancers : (me.r ?? 0)} lying={!interactionId && roamTo ? false : !!me.lying} free={roam} room={solid} onThere={setArrived}>
+          <WalkTo to={!interactionId && roamTo ? roamTo.p : me.p} via={!interactionId && roamTo ? undefined : me.via} facing={!interactionId && roamTo ? roamTo.facing : throwing ? faceDancers : (me.r ?? 0)} lying={!interactionId && roamTo ? false : !!me.lying} free={roam} room={solid} onThere={setArrived}>
             {(there) =>
               there ? (
                 <>

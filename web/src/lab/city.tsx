@@ -79,6 +79,8 @@ import { ChatSheet } from '../components/ChatSheet'
 import { npcReact, useNpcReaction } from '../world3d/open/npcReact'
 import { OutdoorAction, outdoorLook, outdoorPose } from '../world3d/OutdoorAction'
 import { Dressing } from '../world3d/open/dressing'
+import { PartyFront } from '../world3d/open/soiree'
+import { SOIREE_THEMES } from '../game/soirees'
 import { PolicePost } from '../world3d/open/streetlife'
 import { BridgeSights } from '../world3d/open/bridges'
 import { BridgeLife } from '../world3d/open/bridgeLife'
@@ -417,7 +419,7 @@ function InteriorLab() {
       {q.get('kind') === 'arena' ? (
         <Arena sim={sim} placeId="treich-palais" interactionId={q.get('id') ?? undefined} stage="adulte" />
       ) : (
-        <Interior sim={sim} kind={q.get('kind') ?? 'home'} faith={q.get('faith') ?? undefined} placeId={q.get('place') ?? 'lab-place'} interactionId={id} roam={q.has('roam') && !id} housing={q.get('housing') ?? 'cour'} night={night} stage={q.get('stage') ?? 'adulte'} />
+        <Interior sim={sim} kind={q.get('kind') ?? 'home'} party={q.get('party') ?? undefined} faith={q.get('faith') ?? undefined} placeId={q.get('place') ?? 'lab-place'} interactionId={id} roam={q.has('roam') && !id} housing={q.get('housing') ?? 'cour'} night={night} stage={q.get('stage') ?? 'adulte'} />
       )}
     </div>
   )
@@ -524,7 +526,12 @@ function FrontLab() {
             <boxGeometry args={[12, 4, 5]} />
             <meshLambertMaterial color="#e3c9a3" />
           </mesh>
-          <Dressing kind={q.get('kind') ?? 'maquis'} name={q.get('name') ?? ''} faith={q.get('faith') ?? undefined} seed={Number(q.get('seed') ?? 0.37)} night={night} />
+          {q.get('kind') === 'soiree' ? (
+            // A player's soirée at the gate (&theme=zouglou, &guests=3).
+            <PartyFront party={{ id: 'lab', host: 'h', hostName: q.get('host') ?? 'Awa', theme: q.get('theme') ?? 'coupe-decale', title: SOIREE_THEMES.find((t) => t.id === (q.get('theme') ?? 'coupe-decale'))?.label ?? 'Soirée', city: 'abidjan', commune: 'cocody', ends: '', guests: Number(q.get('guests') ?? 3) }} night={night} />
+          ) : (
+            <Dressing kind={q.get('kind') ?? 'maquis'} name={q.get('name') ?? ''} faith={q.get('faith') ?? undefined} seed={Number(q.get('seed') ?? 0.37)} night={night} />
+          )}
         </>
       )}
       <OrbitControls target={police ? [0, 0.8, 0] : [1.5, 1, 1.5]} />

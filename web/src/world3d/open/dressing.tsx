@@ -74,7 +74,7 @@ export function Dressing({ kind, name = '', faith, seed, night }: { kind: string
         return <Market seed={seed} />
       case 'maquis':
       case 'restaurant':
-        return <Terrace seed={seed} night={night} />
+        return /^babi burger/i.test(name) ? <BurgerFront name={name} seed={seed} night={night} /> : <Terrace seed={seed} night={night} />
       case 'club':
         return <Club night={night} seed={seed} />
       case 'health':
@@ -495,6 +495,74 @@ function Terrace({ seed, night }: { seed: number; night: boolean }) {
       {[2.4, 10].map((x) => <mesh key={x} geometry={POLE} material={mat('#555')} position={[x, 1.3, 2.8]} scale={[1, 2.6, 1]} />)}
       {night && <Glow p={[6.2, 0.06, 2.6]} size={[11, 7]} c="#ffc36b" opacity={0.45} flat />}
       {night && <Glow p={[0.4, 0.07, 1.9]} size={3.2} c="#ff6a2a" opacity={0.5} flat />}
+      <MaquisCrowd tables={tables} seed={seed} />
+    </group>
+  )
+}
+
+/**
+ * An outlet of the game's burger chain: the pylon with its burger turning on top
+ * and the name under it, a terrace under red and yellow parasols, and at the
+ * drive (Saint-Jean) the lane, the lit menu board and a car at the window.
+ */
+function BurgerFront({ name, seed, night }: { name: string; seed: number; night: boolean }) {
+  const r = useMemo(() => rnd(Math.floor(seed * 1000) + 11), [seed])
+  const tables = useMemo(() => [...Array(4)].map((_, i) => ({ x: -3.2 - (i % 2) * 2.6, z: 1.8 + Math.floor(i / 2) * 2.4 + (r() - 0.5) * 0.3, chair: i % 2 ? '#ffb703' : '#d62828' })), [r])
+  const drive = /saint-jean/i.test(name)
+  const logo = useRef<THREE.Group>(null)
+  useFrame(() => {
+    if (logo.current) logo.current.rotation.y = worldTime() * 0.6
+  })
+  const word = useMemo(() => lettering('BABI BURGER', '#d62828', '#ffffff', '#ffb703'), [])
+  return (
+    <group>
+      {/* The pylon by the road, the burger on top: bun, cheese, salad, the patty, the bun */}
+      <group position={[6.5, 0, 3.6]}>
+        <mesh geometry={POLE} material={mat('#c9ccd1')} position={[0, 3.5, 0]} scale={[5, 7, 5]} />
+        {/* The name on its panel, both faces, in front of and behind the mast */}
+        <B p={[0, 5.6, 0]} s={[word.aspect * 0.75 + 0.1, 0.85, 0.5]} c="#b81d1d" />
+        {[0.26, -0.26].map((z) => (
+          <mesh key={z} position={[0, 5.6, z]} rotation={[0, z < 0 ? Math.PI : 0, 0]}>
+            <planeGeometry args={[word.aspect * 0.75, 0.75]} />
+            <meshBasicMaterial map={word.t} toneMapped={false} />
+          </mesh>
+        ))}
+        <group ref={logo} position={[0, 7.3, 0]}>
+          <mesh geometry={HUT} material={mat('#e09a3e', night ? 0.5 : 0)} position={[0, -0.55, 0]} scale={[1.05, 0.28, 1.05]} />
+          <mesh geometry={HUT} material={mat('#5a2f1a', night ? 0.3 : 0)} position={[0, -0.28, 0]} scale={[1.12, 0.26, 1.12]} />
+          <mesh geometry={HUT} material={mat('#ffcc33', night ? 0.6 : 0)} position={[0, -0.1, 0]} scale={[1.18, 0.07, 1.18]} />
+          <mesh geometry={HUT} material={mat('#5cb85c', night ? 0.4 : 0)} position={[0, 0.0, 0]} scale={[1.2, 0.08, 1.2]} />
+          <mesh geometry={ROOF} material={mat('#e09a3e', night ? 0.5 : 0)} position={[0, 0.42, 0]} scale={[1.08, 0.8, 1.08]} />
+        </group>
+      </group>
+      {/* The terrace: tables under the chain's parasols */}
+      {tables.map((t, i) => (
+        <group key={i} position={[t.x, 0, t.z]}>
+          <B p={[0, 0.72, 0]} s={[0.9, 0.05, 0.9]} c="#ffffff" />
+          <mesh geometry={POLE} material={mat('#dcdcdc')} position={[0, 1.2, 0]} scale={[1.5, 2.4, 1.5]} />
+          <mesh geometry={CONE} material={mat(i % 2 ? '#d62828' : '#ffb703')} position={[0, 2.4, 0]} scale={[1.5, 1, 1.5]} />
+          {[[-0.65, 0], [0.65, 0]].map(([x, z], k) => (
+            <B key={k} p={[x, 0.42, z]} s={[0.42, 0.05, 0.42]} c={t.chair} />
+          ))}
+        </group>
+      ))}
+      {drive && (
+        <group position={[10, 0, 1.4]}>
+          {/* The lane painted on the ground, its arrow, the board with the menu, a car at the window */}
+          <B p={[0, 0.02, 1.2]} s={[3.2, 0.03, 6]} c="#5b5f66" />
+          {[-1.5, 1.5].map((x) => <B key={x} p={[x, 0.04, 1.2]} s={[0.1, 0.03, 6]} c="#ffd60a" />)}
+          <B p={[0, 0.04, 2.6]} s={[0.25, 0.03, 1.4]} c="#ffffff" />
+          <group position={[2.1, 0, 3.2]} rotation={[0, -Math.PI / 2, 0]}>
+            <mesh geometry={POLE} material={mat('#3a3a3a')} position={[0, 0.8, 0]} scale={[3, 1.6, 3]} />
+            <B p={[0, 1.7, 0]} s={[1.6, 1.1, 0.12]} c="#d62828" glow={night ? 0.7 : 0.1} />
+            <B p={[0, 1.7, 0.07]} s={[1.4, 0.9, 0.02]} c="#fff3d6" glow={night ? 1 : 0.15} />
+          </group>
+          <Vehicle p={[0, 0, 0.6]} r={Math.PI / 2} kind="car" seed={Math.floor(seed * 100) % 9} crew={false} />
+        </group>
+      )}
+      <Worker p={[-1.4, 0, 1.0]} outfit="cuisinier" pose="wave" seed={seed} />
+      {night && <Glow p={[6.5, 7.2, 3.6]} size={4} c="#ffb703" opacity={0.5} />}
+      {night && <Glow p={[-4.5, 0.06, 3]} size={[7, 6]} c="#ffd9a0" opacity={0.4} flat />}
       <MaquisCrowd tables={tables} seed={seed} />
     </group>
   )

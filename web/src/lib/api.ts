@@ -408,4 +408,7 @@ export const api = {
   huitAccept: (id: string, game: number) => post<ActionResult>(`/sims/${id}/huit/${game}/accept`, {}),
   huitAct: (id: string, game: number, action: 'play' | 'draw' | 'pass' | 'resign' | 'decline', play?: { card: number; suit: number; carte: boolean }) => post<{ game: HuitGame }>(`/sims/${id}/huit/${game}/${action}`, play ?? {}),
   answerInvite: (id: string, invite: string, answer: 'accepter' | 'refuser') => post<ActionResult>(`/sims/${id}/invites/${invite}`, { answer }),
+  /** A soirée at home (backend sims/party.go): thrown with one of its themes, ended by its host. */
+  throwParty: (id: string, theme: string) => post<ActionResult>(`/sims/${id}/soiree`, { theme }),
+  endParty: (id: string) => post<ActionResult>(`/sims/${id}/soiree/fin`, {}),
 }

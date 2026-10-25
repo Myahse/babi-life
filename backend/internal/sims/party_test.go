@@ -1,0 +1,85 @@
+package sims
+
+import (
+	"errors"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/myahse/babi-life/backend/internal/game"
+)
+
+// A soirée in Yopougon: its guests dance, mix and drink there; only the host
+// receives; someone in another commune is sent there; once over, nothing.
+func TestPartyActions(t *testing.T) {
+	f := game.Families[0]
+	party := &Party{ID: "p1", Host: "host", HostName: "Awa", Theme: "zouglou", Title: "Soirée zouglou", City: "abidjan", Commune: "yopougon", Ends: time.Now().Add(time.Hour)}
+	place := party.PlaceID()
+
+	guest := adultSim(f, "")
+	guest.ID = "guest"
+	guest.party = party
+	it, err := guest.interactAt(place, "danser-soiree")
+	if err != nil {
+		t.Fatalf("a guest dances: %v", err)
+	}
+	if guest.Activity.PlaceName != "Soirée zouglou chez Awa" || guest.Activity.PlaceKind != game.SoireeKind || it.Cost != 0 {
+		t.Errorf("at the soirée: %+v", guest.Activity)
+	}
+	if !joinable(guest.Activity, guest.GameMinutes) {
+		t.Error("the others can join a guest dancing")
+	}
+
+	busy := adultSim(f, "")
+	busy.party = party
+	if _, err := busy.interactAt(place, game.SoireeHostID); !errors.Is(err, errPartyHost) {
+		t.Errorf("a guest can't receive: %v", err)
+	}
+	money := busy.Money
+	if _, err := busy.interactAt(place, "boire-soiree"); err != nil || busy.Money != money-1000 {
+		t.Errorf("a drink at the bar: %v, %d", err, busy.Money)
+	}
+
+	away := adultSim(f, "")
+	away.Commune = "cocody"
+	away.party = party
+	if _, err := away.interactAt(place, "danser-soiree"); err == nil || !strings.Contains(err.Error(), "Yopougon") {
+		t.Errorf("from Cocody, sent to Yopougon: %v", err)
+	}
+
+	late := adultSim(f, "")
+	if _, err := late.interactAt(place, "danser-soiree"); !errors.Is(err, errPartyGone) {
+		t.Errorf("no soirée read (over): %v", err)
+	}
+	other := adultSim(f, "")
+	other.party = &Party{ID: "p2", City: "abidjan", Commune: "yopougon"}
+	if _, err := other.interactAt(place, "danser-soiree"); !errors.Is(err, errPartyGone) {
+		t.Errorf("another soirée read: %v", err)
+	}
+
+	host := adultSim(f, "")
+	host.ID = "host"
+	host.party = party
+	if _, err := host.interactAt(place, game.SoireeHostID); err != nil {
+		t.Errorf("the host receives: %v", err)
+	}
+}
+
+// Nothing done at a soirée pays (it's a sink), and its themes are a fixed list.
+func TestPartySink(t *testing.T) {
+	for _, it := range game.Kinds[game.SoireeKind].Interactions {
+		if it.Cost < 0 {
+			t.Errorf("%s pays %d", it.ID, -it.Cost)
+		}
+	}
+	if _, ok := themeLabel("coupe-decale"); !ok {
+		t.Error("coupé-décalé is a theme")
+	}
+	if _, ok := themeLabel("n'importe quoi"); ok {
+		t.Error("no free titles")
+	}
+	s := adultSim(game.Families[0], "")
+	if _, _, _, err := s.goOut(game.SoireePrefix+"p1", "danser-soiree", nil, newRand()); !errors.Is(err, errOutingWhere) {
+		t.Errorf("no outing with the NPC friends to a soirée: %v", err)
+	}
+}

@@ -149,8 +149,9 @@ type Guest = { p: [number, number, number]; r: number; pose: Pose; gender: 'femm
  * room's frame (Interior's): the floor around (1.5, 0.5), the DJ at the back
  * (z -3.7), the sofas along x -4.4, the bar along the back wall at x -3.4 (clubDecor.tsx).
  */
-export function ClubCrowd({ placeId }: { placeId: string }) {
-  const fill = useClubFill()
+export function ClubCrowd({ placeId, fill: fixed }: { placeId: string; /** How full, whatever the hour (a player's soirée). */ fill?: number }) {
+  const clubFill = useClubFill()
+  const fill = fixed ?? clubFill
   const guests = useMemo<Guest[]>(() => {
     const r = rng(`club${placeId}`)
     const out: Guest[] = []

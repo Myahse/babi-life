@@ -192,6 +192,8 @@ type Sim struct {
 	Sect string `json:"sect,omitempty"`
 	// gymUntil: the game minute the gym membership runs out (0: none), read from the journal (gym.go).
 	gymUntil int64
+	// party: the soirée the action is at, read for it (party.go).
+	party *Party
 	// purse: what the account (all its Sims) got by playing these last days, for the day's limits (money.go).
 	purse *game.Purse
 	// Today: the account's day so far by source, and its limits (game/money.go), for the apps.
@@ -382,6 +384,8 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/plot/movein", h.moveIn)
 	r.Post("/sims/{id}/plot/plan", h.buildPlan)
 	r.Post("/sims/{id}/meet", h.meet)
+	r.Post("/sims/{id}/soiree", h.throwParty)
+	r.Post("/sims/{id}/soiree/fin", h.endParty)
 	r.Post("/sims/{id}/kart/join", h.kartJoin)
 	r.Get("/kart/{race}", h.kartRace)
 	r.Post("/sims/{id}/court/join", h.courtJoin)
@@ -598,8 +602,14 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 				return game.Outcome{}, nil, errNotAdult
 			}
 		}
+		if err := loadParty(r.Context(), tx, s, req.PlaceID); err != nil {
+			return game.Outcome{}, nil, err
+		}
 		it, err := s.interactAt(req.PlaceID, req.InteractionID)
 		if err != nil {
+			return game.Outcome{}, nil, err
+		}
+		if err := h.arrive(r.Context(), tx, s); err != nil {
 			return game.Outcome{}, nil, err
 		}
 		if err := h.courtTake(s, req.PlaceID, it); err != nil {
@@ -617,7 +627,15 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 	// A place of worship's faith: the mass, the culte, the Friday prayer are held at their own.
 	faith := ""
 	home := placeID == HomePlaceID
-	if placeID == HappeningPlaceID {
+	partyName := ""
+	if strings.HasPrefix(placeID, game.SoireePrefix) {
+		// A player's soirée (party.go), read before.
+		k, name, err := s.atParty(placeID, interactionID)
+		if err != nil {
+			return game.Interaction{}, err
+		}
+		kind, partyName = k, name
+	} else if placeID == HappeningPlaceID {
 		h, _, ok := game.HappeningAt(s.City, s.Commune, s.GameMinutes)
 		if !ok || h.Join == nil || interactionID != game.JoinHappeningID {
 			return game.Interaction{}, errors.New("c'est fini, il n'y a plus rien ici")
@@ -729,6 +747,8 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 		placeName = kind.Label
 	case placeID == StayPlaceID:
 		_, placeName, _ = s.atStay()
+	case partyName != "":
+		placeName = partyName
 	default:
 		if _, _, place, ok := world.FindPlace(placeID); ok {
 			placeName = place.Name

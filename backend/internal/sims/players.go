@@ -181,6 +181,8 @@ func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
 	queuePendingDame(b, id, &dame)
 	var huit *HuitInvite
 	queuePendingHuit(b, id, &huit)
+	parties := []Party{}
+	queueParties(b, id, &parties)
 	err := h.DB.SendBatch(ctx, b).Close()
 	var pgErr *pgconn.PgError
 	if !mine && (err == nil || errors.As(err, &pgErr) && pgErr.Code == "22P02") { // 22P02: not even an id
@@ -200,7 +202,7 @@ func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
 	if h.Online != nil {
 		online = max(h.Online(), 1) // connected now (« ici » counts the last 20 minutes); at least the one asking
 	}
-	httpx.JSON(w, http.StatusOK, map[string]any{"players": players, "friends": friends, "invites": invites, "requests": requests, "online": online, "dames": dame, "huit": huit})
+	httpx.JSON(w, http.StatusOK, map[string]any{"players": players, "friends": friends, "invites": invites, "requests": requests, "online": online, "dames": dame, "huit": huit, "parties": parties})
 }
 
 // requestState: the SQL for a friend request between `other` and `me`: "sent" (me → other), "received", or "".
@@ -340,8 +342,19 @@ func (h *Handler) join(ctx context.Context, tx pgx.Tx, s *Sim, host other, a *ga
 	if !joinable(a, game.MinuteOf(time.Now())) {
 		return game.Outcome{}, nil, errHostDone
 	}
-	it, err := s.interactAt(a.PlaceID, a.Interaction.ID)
+	if err := loadParty(ctx, tx, s, a.PlaceID); err != nil {
+		return game.Outcome{}, nil, err
+	}
+	// The host receiving its guests: the guest comes to dance.
+	id := a.Interaction.ID
+	if id == game.SoireeHostID {
+		id = "danser-soiree"
+	}
+	it, err := s.interactAt(a.PlaceID, id)
 	if err != nil {
+		return game.Outcome{}, nil, err
+	}
+	if err := h.arrive(ctx, tx, s); err != nil {
 		return game.Outcome{}, nil, err
 	}
 	// Better together.
@@ -387,6 +400,11 @@ func (h *Handler) answerInvite(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, errNotHere) {
 			if _, cm, _, ok := world.FindPlace(in.PlaceID); ok {
 				return game.Outcome{}, nil, fmt.Errorf("va d'abord %s", inCommune(cm.Name))
+			}
+			// At a soirée: where it's held.
+			if loadParty(ctx, tx, s, in.PlaceID) == nil && s.party != nil {
+				_, _, err := s.atParty(in.PlaceID, "")
+				return game.Outcome{}, nil, err
 			}
 		}
 		if err != nil {

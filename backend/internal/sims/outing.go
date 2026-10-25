@@ -53,7 +53,7 @@ var outingNo = []string{"{name} ne peut pas, le travail", "{name} est déjà pri
 // goOut starts the outing for the friends met in the game (ids from
 // s.Friends): who came, and what the ones who didn't said.
 func (s *Sim) goOut(placeID, interactionID string, friends []string, rng *rand.Rand) (came []game.Friend, refused []string, news string, err error) {
-	if placeID == HomePlaceID || placeID == HappeningPlaceID || placeID == "ami" || placeID == "bande" || interactionID == game.WorkInteractionID || interactionID == game.NightID {
+	if placeID == HomePlaceID || placeID == HappeningPlaceID || placeID == "ami" || placeID == "bande" || strings.HasPrefix(placeID, game.SoireePrefix) || interactionID == game.WorkInteractionID || interactionID == game.NightID {
 		return nil, nil, "", errOutingWhere
 	}
 	var asked []*game.Friend

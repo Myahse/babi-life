@@ -11,7 +11,7 @@ import { EMOTE_SNAPPY, emoteArms, emoteBody, emoteLegs, type EmotePose } from '.
 // simpler blocky figure (avatar/LowHuman.tsx) far away, and the poses that
 // move them both (usePoseRig). Units are metres: feet on y=0, facing +Z.
 
-export type Pose = 'idle' | 'walk' | 'run' | 'leap' | 'hang' | 'wash' | 'sleep' | 'pray' | 'cook' | 'phone' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper' | 'touch' | 'mark' | 'guard' | 'dive' | 'airplane' | 'pass' | 'salat' | 'swim' | 'dunk' | 'layup' | 'crossover' | 'block' | 'steal' | 'slide' | 'stumble' | 'bouncepass' | 'film' | 'call' | 'snack' | EmotePose
+export type Pose = 'idle' | 'walk' | 'run' | 'leap' | 'hang' | 'wash' | 'sleep' | 'pray' | 'cook' | 'phone' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper' | 'touch' | 'mark' | 'guard' | 'dive' | 'airplane' | 'pass' | 'salat' | 'swim' | 'dunk' | 'layup' | 'crossover' | 'block' | 'steal' | 'slide' | 'stumble' | 'bouncepass' | 'film' | 'call' | 'snack' | 'dj' | EmotePose
 
 /** Poses done sitting on a chair (hips at seat height): 'call' is the phone at the ear, sitting. */
 export const SEATED: Pose[] = ['sit', 'eat', 'drink', 'write', 'call']
@@ -191,6 +191,12 @@ function sportLegs(pose: Pose, out: number, t: number, since: number): [number, 
     }
     case 'pass':
       return out > 0 ? [-0.38 * ease(clamp01(since / 0.3)), 0, 0.2] : [0.12, 0, 0.25]
+    case 'dj': {
+      // Behind the decks: the knees giving on the beat, the weight on one leg then the other every bar.
+      const b = Math.max(0, Math.sin(t * 2.1 * Math.PI * 2))
+      const w = Math.sin(t * 2.1 * Math.PI * 0.5) * out
+      return [-0.1 - b * 0.08, out * 0.06, 0.16 + b * 0.2 + Math.max(0, w) * 0.12]
+    }
     case 'mark':
     case 'guard':
       // Low, knees bent, feet apart, ready to go either way.
@@ -318,6 +324,19 @@ function sportArms(pose: Pose, out: number, t: number, since: number, armSwing: 
       const k = ease(clamp01(since / 0.3))
       return [-1.0 + 0.35 * k, 0, out * (0.3 - 0.15 * k), -1.8 + 1.7 * k, 0]
     }
+    case 'dj': {
+      // The DJ: the right hand on the platter, scratching (the record pushed and pulled); every eight beats
+      // up in the air for the crowd. The left one holds the headphones to the ear, then goes down to the fader.
+      const bar = (t * 2.1) / 8
+      const k = bar - Math.floor(bar)
+      if (out > 0) {
+        if (k > 0.8) return [-0.25, 0, 2.5 + Math.max(0, Math.sin(t * 2.1 * Math.PI * 2)) * 0.25, -0.3, 0.2]
+        const sc = Math.sin(t * 9) * (Math.sin(t * 1.3) > -0.3 ? 1 : 0.25)
+        return [-0.95 + sc * 0.1, 0, 0.14, -0.8 + sc * 0.2, 0]
+      }
+      const two = Math.floor(bar * 2) % 2 === 0
+      return two ? [-1.35, 0, -0.38, -2.35, 0] : [-0.85, 0, -0.1, -0.95 + Math.sin(t * 5) * 0.08, 0]
+    }
     case 'film':
       // The phone held up at eye height, both hands round it, filming.
       return out > 0 ? [-1.55 + Math.sin(t * 1.3) * 0.05, 0, 0.12, -0.75, 0] : [-1.35, 0, -0.35, -1.05, 0]
@@ -389,6 +408,11 @@ function sportBody(pose: Pose, t: number, since: number): { y?: number; x?: numb
       return { y: -0.06, rx: 0.25, head: 0.1 }
     case 'film':
       return { head: -0.06 }
+    case 'dj': {
+      // Bent a little over the decks, the head nodding hard on the beat.
+      const b = Math.max(0, Math.sin(t * 2.1 * Math.PI * 2))
+      return { y: -0.02 - b * 0.04, rx: 0.1 + b * 0.03, head: 0.18 + b * 0.2 }
+    }
     case 'salat': {
       const { step } = salatStep()
       // The body turns about the feet: moved so the hips stay where they should be (the hip is 0.84 m up the body).
@@ -439,7 +463,7 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
     // next. Moving in rhythm (walking, dancing) the joints follow closely, so
     // the swing keeps its shape; changing pose they glide.
     // A quick emote glides in for its first quarter second all the same: it starts, it doesn't appear.
-    const rhythmic = walk || SNAPPY.has(pose) || (EMOTE_SNAPPY.has(pose) && since > 0.25) || pose === 'dance' || pose === 'throw' || pose === 'cheer' || pose === 'leap' || pose === 'hang' || pose === 'wash' || pose === 'cook'
+    const rhythmic = walk || SNAPPY.has(pose) || (EMOTE_SNAPPY.has(pose) && since > 0.25) || pose === 'dance' || pose === 'dj' || pose === 'throw' || pose === 'cheer' || pose === 'leap' || pose === 'hang' || pose === 'wash' || pose === 'cook'
     const a = 1 - Math.exp(-(rhythmic ? 30 : 13) * snap * dt)
     const to = (o: THREE.Euler | THREE.Vector3, k: 'x' | 'y' | 'z', target: number) => void (o[k] += (target - o[k]) * a)
     // Standing: the weight goes from one leg to the other, slowly.

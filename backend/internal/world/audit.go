@@ -286,7 +286,7 @@ func (a *auditor) kinds() {
 			seen[it.ID] = true
 			a.interaction(ref+"/"+it.ID, it)
 		}
-		if id != "home" && used[id] == 0 {
+		if id != "home" && id != game.SoireeKind && used[id] == 0 {
 			a.add(SevWarning, CodeUnpopulated, ref, "aucun lieu de ce type sur la carte")
 		}
 	}

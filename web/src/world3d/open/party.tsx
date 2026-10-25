@@ -314,12 +314,12 @@ function Bubble({ name, text, onClick }: { name: string; text: string; onClick: 
 /* ---------- Seen from far: the beams and the glow ---------- */
 
 /** A beam: a long cone, bright at the projector, fading up into the sky. */
-const BEAM_GEO = (() => {
+export const BEAM_GEO = (() => {
   const g = new THREE.CylinderGeometry(9, 0.35, 170, 14, 1, true)
   g.translate(0, 85, 0)
   return g
 })()
-function fade(stops: [number, string][]) {
+export function fade(stops: [number, string][]) {
   const c = document.createElement('canvas')
   c.width = 4
   c.height = 128
@@ -567,7 +567,7 @@ function DJ({ at, who, atalaku, bubble, onTalk }: { at: Spot; who: Who; atalaku:
         <B p={[0, 0.17, -0.16]} s={[0.5, 0.32, 0.02]} m={M.screen} r={0} />
       </group>
       <B p={[0.45, 1.05, 0.7]} s={[0.6, 0.06, 0.4]} m={M.grey} />
-      <Person who={who} p={[0, 0]} pose="busy" onTalk={onTalk} />
+      <Person who={who} p={[0, 0]} pose="dj" onTalk={onTalk} />
       <Person who={{ ...atalaku, gender: 'homme', look: { ...atalaku.look, outfit: 'chemise-pagne' } }} p={[1.5, 1.3]} r={0.3} pose="rant" bubble={bubble} onTalk={onTalk} />
     </group>
   )

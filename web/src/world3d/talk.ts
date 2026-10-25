@@ -68,5 +68,6 @@ const DOING: Partial<Record<Pose, string>> = {
   hug: 'dans les bras de quelqu’un',
   idle: 'là, tranquille',
   film: 'en train de filmer',
+  dj: 'aux platines',
 }
 export const doingOf = (pose: Pose): string | undefined => DOING[pose]

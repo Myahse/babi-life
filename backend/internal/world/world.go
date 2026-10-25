@@ -5,6 +5,7 @@
 package world
 
 import (
+	"fmt"
 	"math"
 	"slices"
 
@@ -143,6 +144,11 @@ const (
 	srcPalaisCulture2  = "https://connectionivoirienne.net/2012/11/28/palais-de-la-culture-la-salle-anoumabo-dans-un-etat-inquietant/"
 	srcMarcheTreich    = "https://news.abidjan.net/articles/614296/dossier-nos-marches-implantation-specificites-histoire"
 	srcMarcheTreich2   = "https://news.abidjan.net/articles/514019/a-laffiche-treichville-la-cite-aux-grands-espaces-commerciaux"
+	srcMarcheCocody    = "https://connectionivoirienne.net/2018/06/19/nouveau-marche-de-cocody-en-cote-divoire-70-des-places-occupees-six-mois-apres-la-livraison/"
+	srcMarcheCocody2   = "https://connectionivoirienne.net/2017/08/04/cote-divoire-visite-guidee-du-chantier-en-finition-du-nouveau-centre-commercial-de-cocody/"
+	srcMarcheCocodyOSM = "https://www.openstreetmap.org/way/630374575"
+	srcTourIvoireOSM   = "https://www.openstreetmap.org/way/1247592584"
+	srcTourIvoire      = "https://www.expat.com/fr/immobilier/afrique/cote-d-ivoire/44-terrains-a-vendre/798755-a-vendre-terrain-strategique-de-1-135-m2-a-koumassi-en-bordure-du-boulevard-houphouet-boigny-ancien-vge.html"
 	srcCathedrale      = "https://fr.wikipedia.org/wiki/Cath%C3%A9drale_Saint-Paul_d%27Abidjan"
 	srcCathedrale2     = "https://en.wikipedia.org/wiki/St._Paul%27s_Cathedral,_Abidjan"
 	srcMosqueeM6       = "https://fr.allafrica.com/stories/202404050438.html"
@@ -302,6 +308,14 @@ func fictional(id, name, kind, quarter string, lat, lng float64) Place {
 	return Place{ID: id, Name: name, Kind: kind, Lat: lat, Lng: lng, Quarter: quarter, Approx: true, Source: invented}
 }
 
+// babiBurger is an outlet of the game's burger chain where the map has a
+// Burger King: its node on OpenStreetMap gives the position.
+func babiBurger(id, name, quarter string, lat, lng float64, where string, node int64) Place {
+	return Place{ID: id, Name: name, Kind: "restaurant", Quarter: quarter, Lat: lat, Lng: lng, Real: true,
+		Source: game.Partial(fmt.Sprintf("Nom du jeu pour le Burger King de %s ; activité actuelle à confirmer. Position d'après OpenStreetMap (nœud %d).", where, node),
+			srcBurgerKing, fmt.Sprintf("https://www.openstreetmap.org/node/%d", node))}
+}
+
 var Cities = []City{
 	{
 		ID: "abidjan", Name: "Abidjan", Zoom: 11.2, Lat: 5.33, Lng: -4.01,
@@ -332,6 +346,7 @@ var Cities = []City{
 					Source: game.Verified("Stade du Plateau, ouvert en 1961 sur le site du stade Géo-André ; capacité variable selon les sources (27 000 à 40 000). Position d'après OpenStreetMap.", srcVenues, srcStadeFHB, srcOSM)},
 				Place{ID: game.MuseeID, Name: "Musée des Civilisations", Kind: "culture", Lat: 5.33355, Lng: -4.02417, Real: true, Operator: "Ministère de la Culture",
 					Source: game.Partial("Musée d'État du Plateau, avenue Nangui-Abrogoua : né en 1942 d'un centre artisanal, plus de 15 000 pièces de toutes les régions (statues, masques, instruments de musique, poids à peser l'or, portes sculptées, regalia, textiles), exposées sur un seul niveau ; pillé en 2011, rouvert en juillet 2017. La salle du jeu est dessinée pour le jeu ; position d'après OpenStreetMap.", srcMusee, srcMusee2, srcOSM)},
+				babiBurger("plateau-babi-burger", "Babi Burger Plateau", "", 5.32173, -4.01732, "l'avenue Jean-Delafosse", 4572949935),
 				Place{ID: game.AssembleeID, Name: "Assemblée nationale", Kind: "assemblee", Lat: 5.32883, Lng: -4.02015, Real: true, Owner: "État de Côte d'Ivoire",
 					Source: game.Partial("Siège de l'Assemblée nationale, avenue Jeanne-Gervais au Plateau : 255 députés élus dans 205 circonscriptions. Le bâtiment et l'hémicycle du jeu sont dessinés pour le jeu ; position d'après OpenStreetMap.", srcAssemblee, srcOSM)},
 			),
@@ -369,6 +384,13 @@ var Cities = []City{
 					Source: game.Partial("Université catholique de l'Afrique de l'Ouest, unité universitaire d'Abidjan, rue Sainte-Marie à Cocody ; position d'après OpenStreetMap (Val Doyen).", srcUCAO, srcUCAO2, srcOSM)},
 				Place{ID: "cocody-zoo", Name: "Zoo national d'Abidjan", Kind: "zoo", Lat: 5.38019, Lng: -4.00554, Real: true, Operator: "Ministère des Eaux et Forêts",
 					Source: game.Partial("Zoo public entre Cocody et Abobo ; fermé le 8 septembre 2020 pour audit, rouvert le 20 décembre 2021 après rénovation, avec des tickets à 500, 1 000 et 1 500 F selon le public. Éléphants, lions, hippopotames, crocodiles et chimpanzés ; les enclos du jeu sont dessinés pour le jeu ; position d'après OpenStreetMap.", srcZoo, srcZoo2, srcZoo3, srcOSM)},
+				// The market of Saint-Jean, rebuilt after the fire on the old market's ground, and the drive of the burger chain across the road.
+				Place{ID: game.MarcheCocodyID, Name: "Marché de Cocody", Kind: "market", Quarter: "Saint-Jean", Lat: 5.33497, Lng: -4.00224, Real: true, Operator: "Adam TP (BOT de 30 ans avec la mairie de Cocody)",
+					Source: game.Partial("Le centre commercial N'Goan Aka Mathias de Cocody Saint-Jean, entre l'église Saint-Jean et l'ancienne mairie, reconstruit après l'incendie de l'ancien marché : environ 500 places (étals, box et boutiques) sur plusieurs niveaux, livré en janvier 2018, construit et géré par Adam TP pour 30 ans. Les étals du jeu (vivriers, poisson, pagnes, mèches, téléphones) sont dessinés pour le jeu ; position et emprise d'après OpenStreetMap (bâtiment de 4 niveaux).", srcMarcheCocody, srcMarcheCocody2, srcMarcheCocodyOSM)},
+				babiBurger("cocody-babi-burger-stjean", "Babi Burger Saint-Jean", "Saint-Jean", 5.33546, -4.00179, "le boulevard Thérèse-Houphouët-Boigny, avec un drive", 4983385324),
+				babiBurger("cocody-babi-burger-sococe", "Babi Burger Sococé", "Deux-Plateaux", 5.37360, -3.99894, "la rue K131, à côté de Sococé", 9202510907),
+				babiBurger("cocody-babi-burger-jardins", "Babi Burger Rue des Jardins", "Deux-Plateaux", 5.36245, -3.98987, "la rue des Jardins", 13285355028),
+				babiBurger("cocody-babi-burger-palmeraie", "Babi Burger Palmeraie", "Riviera Palmeraie", 5.37286, -3.93315, "les résidences Génie 2000, près de PlaYce Palmeraie", 6900316188),
 				Place{ID: "cocody-iua", Name: "Institut universitaire d'Abidjan (IUA)", Kind: "universite", Lat: 5.37602, Lng: -3.98193, Real: true, Operator: "Établissement privé",
 					Source: game.Partial("Université privée fondée en 2004, aux Deux-Plateaux (Cocody) ; position d'après OpenStreetMap.", srcIUA, srcOSM)},
 			),
@@ -401,6 +423,7 @@ var Cities = []City{
 					Source: game.Verified("Zone industrielle ouverte en 1972 : cimenteries, plasturgie, pharmacie, textile (Uniwax), boissons (Solibra), agroalimentaire (Nestlé, Cémoi). Position d'après OpenStreetMap.", srcYopougon, srcOSM)},
 				Place{ID: "yop-koute", Name: "Kouté village", Kind: "village", Quarter: "Kouté", Lat: 5.32152, Lng: -4.07489, Real: true,
 					Source: game.Verified("Village atchan (ébrié) de Yopougon, organisé en générations (Tchagba, Blessoué) ; l'un des villages de la commune. Position d'après OpenStreetMap.", srcKoute, srcKoute2, srcYopougon)},
+				babiBurger("yop-babi-burger", "Babi Burger Ficgayo", "Figayo", 5.34967, -4.07439, "le boulevard Principal, près de la place Ficgayo", 6040188940),
 				Place{ID: "yop-lycee-pro", Name: "Lycée professionnel sectoriel de Yopougon", Kind: "school", Quarter: "Siporex", Lat: 5.35712, Lng: -4.07996, Real: true, Operator: "Établissement public",
 					Source: game.Verified("Lycée professionnel construit avec le C2D (9 milliards FCFA, 390 apprenants), inauguré le 20 octobre 2022. Position d'après OpenStreetMap.", srcLyceeProYop, srcOSM)},
 			), 5.34389, -4.06745, game.Partial("Hôtel de ville de Yopougon, à Selmer ; position d'après OpenStreetMap.", srcYopougon, srcOSM)),
@@ -449,22 +472,27 @@ var Cities = []City{
 					Source: game.Partial("Nom du jeu pour le multiplexe ouvert en avril 2024 au centre commercial Cap Sud (six salles dont deux VIP, environ 1 000 fauteuils) ; position d'après OpenStreetMap (le cinéma du centre).", srcCinemas2024, srcPatheAbj, srcCapSudOSM, srcOSM)},
 				Place{ID: "marcory-playce", Name: "PlaYce Marcory", Kind: "mall", Lat: 5.30240, Lng: -3.99218, Real: true, Operator: "CFAO",
 					Source: game.Verified("Centre commercial de CFAO ouvert le 18 décembre 2015 sur le boulevard Valéry Giscard d'Estaing : 20 000 m², un hypermarché de 3 200 m², 55 boutiques, un food court de plus de 400 places, 510 places de parking. Position d'après OpenStreetMap (le point « PlaYce Marcory » de la carte).", srcPlayceMarcory, srcBurgerKing)},
-				Place{ID: "marcory-burger-king", Name: "Babi Burger", Kind: "restaurant", Lat: 5.30246, Lng: -3.99274, Real: true,
+				Place{ID: "marcory-burger-king", Name: "Babi Burger PlaYce", Kind: "restaurant", Lat: 5.30246, Lng: -3.99274, Real: true,
 					Operator: "Servair Abidjan (franchise, 2015)",
 					Source:   game.Partial("Nom du jeu pour le premier Burger King du pays, ouvert en 2015 dans PlaYce Marcory, en franchise avec Servair Abidjan ; activité actuelle à confirmer. Position d'après OpenStreetMap, à côté du centre.", srcBurgerKing, srcOSM)},
 				Place{ID: "marcory-karting", Name: "Babi Karting", Kind: "karting", Quarter: "Zone 4", Lat: 5.29454, Lng: -3.99252, Real: true,
 					Source: game.Partial("Nom du jeu pour le karting de Marcory (Abidjan Karting, « Superkart » sur OpenStreetMap), 9 rue du Canal, entre Zone 3 et Zone 4 ; position d'après OpenStreetMap. Le circuit, les tarifs et les horaires du jeu sont dessinés pour le jeu ; l'activité actuelle du lieu est à confirmer.", srcKarting, srcKarting2)},
+				babiBurger("marcory-babi-burger-capsud", "Babi Burger Cap Sud", "Zone 4", 5.29783, -3.98619, "la rue Angeline-Nadié, à l'échangeur, près de Cap Sud", 5203033005),
 			),
 			abidjanCommune("koumassi", "Koumassi", "Populaire, vivante, au bord de la lagune.", 5.2930, -3.9500, "sud",
 				Place{ID: "koumassi-marche", Name: "Marché de Koumassi", Kind: "market", Lat: 5.29278, Lng: -3.95828, Real: true, Source: game.Partial("Grand marché de Koumassi ; position d'après OpenStreetMap.", srcOSM)},
 				fictional("koumassi-maquis", "Maquis de la lagune", "maquis", "", 5.2890, -3.9440),
 				fictional("koumassi-ecole", "Groupe scolaire de Koumassi", "school", "", 5.2990, -3.9560),
 				fictional("koumassi-terrain", "Terrain de Koumassi", "sport", "", 5.2990, -3.9440),
+				// The tower over the boulevard (web/src/world3d/open/tourIvoire.tsx).
+				Place{ID: game.TourIvoireID, Name: "Tour Ivoire", Kind: "office", Quarter: "Cité Hibiscus", Lat: 5.29182, Lng: -3.97274, Real: true,
+					Source: game.Partial("Immeuble « Tour Ivoire » de 16 niveaux sur la contre-allée du boulevard Félix-Houphouët-Boigny (ex-VGE), à l'échangeur, côté Koumassi, près de l'hôtel Ibis ; emprise (environ 47 × 24 m), niveaux et position d'après OpenStreetMap. Son architecture et ses bureaux sont dessinés pour le jeu (aucune description publiée trouvée).", srcTourIvoireOSM, srcTourIvoire)},
 			),
 			abidjanCommune("port-bouet", "Port-Bouët", "La plage, l'aéroport, le vent de l'océan.", 5.2560, -3.9260, "sud",
 				Place{ID: "pb-plage", Name: "Plage de Port-Bouët", Kind: "beach", Lat: 5.2470, Lng: -3.9400, Real: true, Approx: true, Source: game.Unverified("Plage publique de Port-Bouët ; à confirmer.")},
 				fictional("portbouet-terrain", "Terrain du Wharf", "sport", "", 5.2540, -3.9480),
 				Place{ID: "pb-maquis", Name: "Maquis du Wharf", Kind: "maquis", Lat: 5.2520, Lng: -3.9530, Approx: true, Source: invented},
+				babiBurger("pb-babi-burger", "Babi Burger Aéroport", "", 5.25400, -3.93306, "la rue des Irokos, près de l'aérogare", 3615713041),
 				Place{ID: "pb-rabisson", Name: "Rabisson Aéroport", Kind: "hotel", Lat: 5.25895, Lng: -3.93641, Real: true,
 					Source: game.Partial("Nom du jeu pour le Radisson Blu de l'aéroport (boulevard de l'Aéroport, à environ 500 m de l'aéroport) ; position d'après OpenStreetMap.", srcRadisson, srcOSM)},
 				Place{ID: "pb-aeroport", Name: "Aéroport Félix-Houphouët-Boigny", Kind: "aeroport", Lat: 5.25440, Lng: -3.93268, Real: true,

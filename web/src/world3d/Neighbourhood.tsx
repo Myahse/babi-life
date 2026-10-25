@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import * as THREE from 'three'
-import type { Commune, Player, Sim, World } from '../lib/types'
+import type { Commune, Player, Sim, Soiree, World } from '../lib/types'
 import { iconFor, kindColors } from '../components/icons'
 import { IconTile } from '../components/ui'
 import { Building } from './Buildings'
@@ -55,6 +55,8 @@ export type Props = {
   onCollect?: () => void
   /** Other players in the commune right now. */
   players?: Player[]
+  /** The soirées thrown by players here (backend sims/party.go): over the host's house, walked to like a place. */
+  parties?: Soiree[]
   /** Bumped to bring the camera back on the Sim. */
   recenter?: number
   /** The player moved the camera away from the Sim (true) or it follows again (false). */

@@ -23,6 +23,7 @@ import { PalaisJustice } from './palaisJustice'
 import { Presidence } from './presidence'
 import { PalaisCulture } from './palaisCulture'
 import { Musee } from './musee'
+import { TourIvoire } from './tourIvoire'
 import { Assemblee } from './assemblee'
 import { GrandMarche } from './grandMarche'
 import type { StadiumEvent } from '../../lib/stadium'
@@ -64,6 +65,7 @@ export const LANDMARKS: Record<string, number> = {
   'plateau-musee': 44,
   'plateau-assemblee': 68,
   'treich-marche': 78,
+  'koumassi-tour-ivoire': 36,
 }
 
 /** How far a landmark's front is from its middle (metres): its ground starts at the roadside, the gare's yard at the street, not behind the houses along it. Else the middle stands its clearing back from the street. */
@@ -75,6 +77,7 @@ export const LANDMARK_FRONT: Record<string, number> = {
   'plateau-musee': 25,
   'plateau-assemblee': 56,
   'treich-marche': 54,
+  'koumassi-tour-ivoire': 23,
 }
 
 /** The landmarks' own grounds in their frame (x from, x to, z from, z to; +z the street): no ad board stands on them (the PlaYce's car park). */
@@ -194,6 +197,8 @@ export function Landmark({ id, night, demo, open = true }: { id: string; night: 
       return <PalaisCulture night={night} />
     case 'plateau-musee':
       return <Musee night={night} />
+    case 'koumassi-tour-ivoire':
+      return <TourIvoire night={night} />
     case 'plateau-assemblee':
       return <Assemblee night={night} />
     case 'treich-marche':
