@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
+import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { NoShadows } from '../avatar/Human'
 import { randomLook } from '../avatar/options'
@@ -85,7 +86,7 @@ function LedWall({ style }: { style: Style }) {
 }
 
 /** The stage, the DJ's desk, its two decks turning and the mixer, the laptop; the DJ himself. */
-function DjBooth({ style, placeId, mixing }: { style: Style; placeId: string; mixing?: boolean }) {
+function DjBooth({ style, placeId, mixing, shout }: { style: Style; placeId: string; mixing?: boolean; shout?: string }) {
   const decks = useRef<THREE.Group>(null)
   useFrame(() => {
     decks.current?.children.forEach((d, i) => (d.rotation.y = worldTime() * (i ? -3.3 : 3.3)))
@@ -126,6 +127,7 @@ function DjBooth({ style, placeId, mixing }: { style: Style; placeId: string; mi
       <mesh position={[1.5, 1.5, -3.5]} rotation={[-0.4, 0, 0]} material={M('#cfe8ff', 0.6)}>
         <boxGeometry args={[0.4, 0.26, 0.02]} />
       </mesh>
+      <Atalaku placeId={placeId} shout={shout} />
       {/* The resident DJ; gone down to the bar while the Sim plays its set */}
       {mixing ? (
         <group position={[-2.6, 0, -2.6]} rotation={[0, 0.6, 0]}>
@@ -136,6 +138,42 @@ function DjBooth({ style, placeId, mixing }: { style: Style; placeId: string; mi
           <TalkHuman id={`dj-${placeId}`} look={dj} gender="homme" pose="dj" seed={7} />
         </group>
       )}
+    </group>
+  )
+}
+
+/** What the atalaku shouts for whoever paid him: the name, and the praise (one line every few seconds). */
+const SHOUTS = [
+  (n: string) => `${n} ! Le boss de la nuit !`,
+  (n: string) => `Faites du bruit pour ${n} !`,
+  (n: string) => `${n} est dans la place, on ne dort pas ce soir !`,
+  (n: string) => `${n}, l'enfant chéri de Babi ! Ça travaille !`,
+  (n: string) => `Quand ${n} arrive, toute la boîte se lève !`,
+]
+/** And the rest of the night, to the room. */
+const CALLS = ['Les mains en l’air !', 'Coupé ! Décalé !', 'DJ, envoie le son !', 'Ambiance facile !', 'Tout le monde au milieu !']
+
+/**
+ * The atalaku on the mic, on the stage beside the decks: he calls to the room
+ * all night; paid (« Payer l'atalaku »), he shouts the Sim's name, arms up.
+ */
+function Atalaku({ placeId, shout }: { placeId: string; shout?: string }) {
+  const look = useMemo(() => ({ ...randomLook('homme', rng(`atalaku${placeId}`)), outfit: 'chemise-pagne', accessory: 'chain' }), [placeId])
+  const [line, setLine] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => setLine((l) => l + 1), 3200)
+    return () => clearInterval(t)
+  }, [])
+  const text = shout ? SHOUTS[line % SHOUTS.length](shout) : line % 3 === 0 ? CALLS[(line / 3) % CALLS.length] : null
+  return (
+    <group position={[0.05, 0.35, -3.75]} rotation={[0, 0.35, 0]}>
+      <TalkHuman id={`atalaku-${placeId}`} look={look} gender="homme" pose={shout ? 'cheer' : 'rant'} seed={13} />
+      {/* Always there, hidden between calls (an Html coming and going trips React over its DOM node) */}
+      <Html position={[0, 2.35, 0]} center zIndexRange={[20, 0]}>
+        <div style={{ visibility: text ? 'visible' : 'hidden' }} className={`w-max max-w-[220px] rounded-2xl px-3 py-1.5 text-center text-[13px] leading-tight font-extrabold shadow-lg ${shout ? 'bg-[#ffd23f] text-[#2b1240]' : 'bg-white/90 text-[#14101f]'}`}>
+          {text ?? ''}
+        </div>
+      </Html>
     </group>
   )
 }
@@ -323,7 +361,7 @@ function Bunting() {
 }
 
 /** The dancers on their podiums, dressed for the show; a throw of notes their way and they answer it. */
-function Podiums({ style, placeId }: { style: Style; placeId: string }) {
+function Podiums({ style, placeId, mine }: { style: Style; placeId: string; /** The Sim is up on the first one: its dancer steps down. */ mine?: boolean }) {
   const looks = useMemo(() => {
     const r = rng(`podium${placeId}`)
     return [
@@ -350,9 +388,11 @@ function Podiums({ style, placeId }: { style: Style; placeId: string }) {
             <cylinderGeometry args={[0.5, 0.5, 0.02, 20]} />
           </mesh>
           <spotLight position={[p[0], 3, p[2] + 0.5]} target-position={[p[0], 0.6, p[2]]} intensity={hype ? 40 : 18} distance={5} angle={0.5} penumbra={0.5} color={style.colors[i % style.colors.length]} />
-          <group position={p} rotation={[0, i ? -0.5 : 0.5, 0]}>
-            <TalkHuman id={`podium-${placeId}-${i}`} look={looks[i]} gender={i ? 'homme' : 'femme'} pose={hype ? 'cheer' : 'dance'} seed={i + 11} />
-          </group>
+          {!(mine && i === 0) && (
+            <group position={p} rotation={[0, i ? -0.5 : 0.5, 0]}>
+              <TalkHuman id={`podium-${placeId}-${i}`} look={looks[i]} gender={i ? 'homme' : 'femme'} pose={hype ? 'cheer' : 'dance'} seed={i + 11} />
+            </group>
+          )}
         </group>
       ))}
     </group>
@@ -360,7 +400,7 @@ function Podiums({ style, placeId }: { style: Style; placeId: string }) {
 }
 
 /** Everything the club room adds for the night (Interior draws the room, the sofas and the crowd). */
-export function ClubDecor({ placeId, fill, mixing, name }: { placeId: string; fill: number; mixing?: boolean; /** Over the club's own (a player's soirée: « CHEZ AWA »). */ name?: string }) {
+export function ClubDecor({ placeId, fill, mixing, name, shout, podium }: { placeId: string; fill: number; mixing?: boolean; /** Over the club's own (a player's soirée: « CHEZ AWA »). */ name?: string; /** The name the atalaku shouts (the Sim paid him). */ shout?: string; /** The Sim dances on the first podium. */ podium?: boolean }) {
   const style = useMemo(() => {
     const base = clubStyle(placeId)
     return name ? { ...base, name } : base
@@ -368,7 +408,7 @@ export function ClubDecor({ placeId, fill, mixing, name }: { placeId: string; fi
   return (
     <group>
       <LedWall style={style} />
-      <DjBooth style={style} placeId={placeId} mixing={mixing} />
+      <DjBooth style={style} placeId={placeId} mixing={mixing} shout={shout} />
       <SpeakerStack p={[-0.9, 0, -3.95]} />
       <SpeakerStack p={[3.9, 0, -3.95]} />
       <Bar style={style} placeId={placeId} />
@@ -377,7 +417,7 @@ export function ClubDecor({ placeId, fill, mixing, name }: { placeId: string; fi
       {style.bunting && <Bunting />}
       {fill > 0 && (
         <NoShadows>
-          <Podiums style={style} placeId={placeId} />
+          <Podiums style={style} placeId={placeId} mine={podium} />
         </NoShadows>
       )}
     </group>

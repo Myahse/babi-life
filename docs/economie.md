@@ -114,6 +114,7 @@ L'argent de poche : un cinquième de la somme de la semaine à chaque anniversai
 | Hôtel, la nuit (3 étoiles ; Azalé ; Poulman ; Noum) | 35 000 ; 60 000 ; 85 000 ; 110 000 | 440 à 1 375 |
 | Émote | 1 000 | 12 |
 | Soirée chez soi (`game/soiree.go`, payée par l'hôte, 3 h) ; un verre au bar, les billets lancés au DJ | 5 000 ; 1 000, 5 000 | 62 ; 12, 62 |
+| L'atalaku qui crie ton nom (boîte, soirée) ; la bouteille au carré VIP d'une soirée | 2 000 ; 20 000 | 25 ; 250 |
 | Marchés : pagnes du Grand Marché de Treichville, mèches du marché de Cocody | 6 000 ; 5 000 | 75 ; 62 |
 | Véhicule (vélo, moto, citadine, limousine) | 28 000 ; 320 000 ; 1 800 000 ; 32 000 000 | 350 à 400 000 |
 | Terrain (au m², frais de 10 % en plus ; 300 m² à Yopougon) | 700 à 6 000 ; 495 000 | 6 200 |

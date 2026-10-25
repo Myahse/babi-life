@@ -36,6 +36,9 @@ func friendsOrEmpty(f []game.Friend) []game.Friend {
 // socialize: after doing something with others, maybe a new friend, a
 // friend seen again, or (for a poor teenager) the bande coming to talk.
 func (s *Sim) socialize(it game.Interaction, rng *rand.Rand) []Event {
+	if game.IsSlow(it.ID) {
+		return s.slowWith(rng)
+	}
 	if !slices.Contains(game.SocialInteractions, it.ID) {
 		return nil
 	}
@@ -55,6 +58,39 @@ func (s *Sim) socialize(it game.Interaction, rng *rand.Rand) []Event {
 		events = append(events, Event{Kind: "social", Text: "Des gars du quartier t'ont repéré·e : « Viens avec nous, on va te montrer la vie. » Ils attendent ta réponse (appli Amis).", GameTime: s.GameMinutes})
 	}
 	return events
+}
+
+// slowWith: a slow at the club or a soirée is always danced with someone: a new face (their number
+// swapped, then the Amis app, and going out together asked when talking: chat.go) or a friend seen
+// again, closer. Together with someone else, word may get back to them, as when flirting.
+func (s *Sim) slowWith(rng *rand.Rand) []Event {
+	var f *game.Friend
+	isNew := false
+	for range 20 {
+		if f, isNew = game.Meet(s.Friends, s.Commune, s.GameMinutes, rng); f != nil {
+			break
+		}
+	}
+	if f == nil {
+		return nil
+	}
+	var text string
+	if isNew {
+		f.Adult = true
+		f.Friendship = min(100, f.Friendship+10)
+		s.Friends = append(s.Friends, *f)
+		f = &s.Friends[len(s.Friends)-1]
+		text = fmt.Sprintf("Un slow avec %s. À la fin, vous avez échangé vos numéros (appli Amis).", f.Name)
+	} else {
+		f.Friendship = min(100, f.Friendship+8)
+		f.Seen = s.GameMinutes
+		text = fmt.Sprintf("Un slow avec %s, collé·e·s. Vous vous êtes rapproché·e·s.", f.Name)
+	}
+	if mine := s.partner(); mine != nil && mine.ID != f.ID && rng.Float64() < caughtFlirt {
+		mine.Friendship = max(0, mine.Friendship-15)
+		text += " " + strings.NewReplacer("{name}", mine.Name, "{Pronoun}", pronoun(mine)).Replace(flirtHeard[rng.IntN(len(flirtHeard))])
+	}
+	return []Event{{Kind: "social", Text: text, GameTime: s.GameMinutes}}
 }
 
 func (s *Sim) findFriend(id string) *game.Friend {
