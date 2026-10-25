@@ -1,4 +1,5 @@
 // The economy apps of the in-game phone: Boulot and Logement (money is in Waye).
+import { building, doneAt } from '../game/chantier'
 import { BadgeCheck, CalendarClock, Hammer, LandPlot, Clock3, Footprints, House, Map as MapIcon, TrendingUp, TriangleAlert } from 'lucide-react'
 import { api, type LotWhere } from '../lib/api'
 import { CommunePicker, LotOffers } from '../components/Lots'
@@ -319,7 +320,7 @@ function MyLot({ world, sim, act, onBuild, onWalk, onMap }: { world: World; sim:
                   {city && city.id !== 'abidjan' ? `, ${city.name}` : ''}
                 </span>
                 <span className="block text-xs font-semibold text-[var(--color-ink-soft)]">
-                  {lot.w} × {lot.d} m · {p.home ? 'tu y habites : pas de loyer' : p.livable ? 'maison prête : tu peux emménager' : built ? 'chantier en cours' : 'terrain nu'}
+                  {lot.w} × {lot.d} m · {building(p) ? `les maçons construisent : fini à ${doneAt(p)}` : p.home ? 'tu y habites : pas de loyer' : p.livable ? 'maison prête : tu peux emménager' : built ? 'chantier en cours' : 'terrain nu'}
                 </span>
               </span>
               {p.home && (
@@ -343,7 +344,7 @@ function MyLot({ world, sim, act, onBuild, onWalk, onMap }: { world: World; sim:
                   <Hammer size={13} className="mr-1 inline" /> {p.home ? 'Modifier' : built ? 'Continuer' : 'Construire'}
                 </button>
               )}
-              {p.livable && !p.home && (
+              {p.livable && !p.home && !building(p) && (
                 <button className="rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-xs font-extrabold text-white" onClick={() => void done(act('Emménager', 'house', 'home', () => api.moveIn(sim.id, p.id)))}>
                   Emménager
                 </button>

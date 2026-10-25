@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
@@ -22,6 +23,7 @@ var (
 	errAlreadyHome    = errors.New("tu habites déjà ta maison")
 	errNoSuchPlan     = errors.New("plan inconnu")
 	errLivesThere     = errors.New("tu habites cette maison : déménage d'abord pour la démolir")
+	errChantier       = errors.New("le chantier n'est pas fini")
 	errNoSuchCommune  = errors.New("commune inconnue")
 	errSellHome       = errors.New("tu habites cette maison : déménage d'abord pour la vendre")
 	errTwoInCommune   = fmt.Errorf("deux terrains au plus dans une même commune : agrandis-en un, ou vends-en un")
@@ -65,6 +67,22 @@ type Plot struct {
 	// Livable: a covered bed and toilets; Home: the Sim lives there.
 	Livable bool `json:"livable"`
 	Home    bool `json:"home"`
+	// BuildFrom, BuildUntil: a house from a plan going up (its building site, on its own: the Sim is free).
+	BuildFrom  *time.Time `json:"buildFrom,omitempty"`
+	BuildUntil *time.Time `json:"buildUntil,omitempty"`
+}
+
+// building: the masons still at it, and how many minutes are left.
+func (p Plot) building(now time.Time) (bool, int) {
+	if p.BuildUntil == nil || !now.Before(*p.BuildUntil) {
+		return false, 0
+	}
+	return true, int(p.BuildUntil.Sub(now).Minutes()) + 1
+}
+
+// chantierErr: why the house can't be lived in or changed yet.
+func chantierErr(left int) error {
+	return fmt.Errorf("%w : encore %d min, les maçons travaillent", errChantier, left)
 }
 
 func (p Plot) house() game.House {
@@ -81,12 +99,12 @@ func (p Plot) bare() bool { return len(p.Blocks) == 0 && len(p.Furniture) == 0 &
 // plotColumns, then the key and whether it's the home (p for plots, s for its Sim).
 const plotColumns = `p.id, p.sim_id, p.blocks, p.built, p.furniture, p.zones, p.lot_w, p.lot_d, p.lot_city, p.lot_commune, p.lot_paid,
 	CASE WHEN p.id = (SELECT min(q.id) FROM plots q WHERE q.sim_id = p.sim_id) THEN p.sim_id::text ELSE p.sim_id::text || ':' || p.id END,
-	COALESCE(s.home_plot = p.id AND s.housing = '` + game.OwnHouse + `', false)`
+	COALESCE(s.home_plot = p.id AND s.housing = '` + game.OwnHouse + `', false), p.build_from, p.build_until`
 
 func scanPlot(row pgx.Row, extra ...any) (Plot, error) {
 	var p Plot
 	var l Lot
-	err := row.Scan(append([]any{&p.ID, &p.SimID, &p.Blocks, &p.Built, &p.Furniture, &p.Zones, &l.W, &l.D, &l.City, &l.Commune, &l.Paid, &p.Key, &p.Home}, extra...)...)
+	err := row.Scan(append([]any{&p.ID, &p.SimID, &p.Blocks, &p.Built, &p.Furniture, &p.Zones, &l.W, &l.D, &l.City, &l.Commune, &l.Paid, &p.Key, &p.Home, &p.BuildFrom, &p.BuildUntil}, extra...)...)
 	if err == nil && l.W > 0 {
 		l.Area = l.W * l.D
 		p.Lot = &l
@@ -406,6 +424,9 @@ func (h *Handler) build(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return game.Outcome{}, nil, err
 		}
+		if on, left := p.building(time.Now()); on {
+			return game.Outcome{}, nil, chantierErr(left)
+		}
 		house, placed, cost, err := p.house().Edit(req.Place, req.Remove, req.Furnish, req.Unfurnish)
 		if err != nil {
 			return game.Outcome{}, nil, err
@@ -486,7 +507,13 @@ func (h *Handler) buildPlan(w http.ResponseWriter, r *http.Request) {
 		if p.Home {
 			s.Furnished = house.Has()
 		}
-		text := fmt.Sprintf("%s : les maçons ont tout bâti, les meubles sont posés. Tu peux emménager !", pl.Label)
+		// The masons raise it on the lot over time; the Sim isn't held there: it's the house
+		// being built, not the Sim (it's free to go where it likes meanwhile).
+		minutes := game.ChantierMinutes(len(house.Blocks))
+		if _, err := tx.Exec(ctx, `UPDATE plots SET build_from = now(), build_until = now() + $2 * interval '1 minute' WHERE id = $1`, p.ID, minutes); err != nil {
+			return game.Outcome{}, nil, err
+		}
+		text := fmt.Sprintf("%s : le chantier commence, les maçons montent ta maison (fini dans %d min). Toi, tu es libre en attendant.", pl.Label, minutes)
 		m := houseMoment(s, false, p.Lot.City, p.Lot.Commune)
 		return game.Outcome{Text: text, Money: -pl.Cost}, []Event{{Kind: "bill", Text: text, Money: -pl.Cost, GameTime: s.GameMinutes, moment: &m}}, nil
 	})
@@ -511,6 +538,9 @@ func (h *Handler) moveIn(w http.ResponseWriter, r *http.Request) {
 			return game.Outcome{}, nil, errAlreadyHome
 		case !p.house().Livable():
 			return game.Outcome{}, nil, game.ErrNotLivable
+		case p.BuildUntil != nil && time.Now().Before(*p.BuildUntil):
+			_, left := p.building(time.Now())
+			return game.Outcome{}, nil, chantierErr(left)
 		case s.RentArrears > 0:
 			return game.Outcome{}, nil, errMoveInArrears
 		case s.Activity != nil:

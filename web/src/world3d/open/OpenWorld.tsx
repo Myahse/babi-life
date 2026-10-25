@@ -78,6 +78,7 @@ import { TripRide } from './tripRide'
 import { StreetLights } from './streetlights'
 import { PARTIES, Party } from './party'
 import { PartyFront } from './soiree'
+import { Chantier, building } from './chantier'
 import { NightStreet } from './nightStreet'
 import { BRIDGE_LABEL, bridgeKind } from './bridgeNames'
 import { BridgeSights } from './bridges'
@@ -1288,8 +1289,15 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         return owner && world.materials ? (
           <group key={`house${r.id}`} position={[r.center[0], 0, r.center[1]]} rotation={[0, r.rot, 0]}>
             <group position={[-lotSize(owner)[0] / 2, 0, -lotSize(owner)[1] / 2]} onClick={r.id === HOME_ID ? (e) => (e.stopPropagation(), onPick(HOME_ID)) : undefined}>
-              {r.id === HOME_ID && inside ? <CutHouse blocks={owner.blocks} materials={world.materials} top={CUT_HEIGHT} look={simPoint} /> : <House blocks={owner.blocks} materials={world.materials} />}
-              {owner.furniture?.length > 0 && world.furniture && <FurnitureSet pieces={r.id === HOME_ID && inside ? downstairs(owner.furniture, CUT_HEIGHT) : owner.furniture} catalog={world.furniture} />}
+              {/* A house from a plan still going up: its building site (open/chantier.tsx), the furniture once it's done */}
+              {building(owner) ? (
+                <Chantier plot={owner} materials={world.materials} w={lotSize(owner)[0]} d={lotSize(owner)[1]} />
+              ) : r.id === HOME_ID && inside ? (
+                <CutHouse blocks={owner.blocks} materials={world.materials} top={CUT_HEIGHT} look={simPoint} />
+              ) : (
+                <House blocks={owner.blocks} materials={world.materials} />
+              )}
+              {!building(owner) && owner.furniture?.length > 0 && world.furniture && <FurnitureSet pieces={r.id === HOME_ID && inside ? downstairs(owner.furniture, CUT_HEIGHT) : owner.furniture} catalog={world.furniture} />}
               {/* The ground: the rooms' floors, the yard or the lawn, the pool; a bare lot, its lawn and its corner posts */}
               {/* A lot a player owns: its clôture, in its owner's colour, the name over the gate */}
               {(r.id !== HOME_ID || livesOnLot) && <LotFence w={lotSize(owner)[0]} d={lotSize(owner)[1]} color={ownerColor(owner.simId)} name={`Chez ${owner.simId === sim.id ? sim.firstName : owner.firstName ?? ''}`} />}

@@ -387,7 +387,7 @@ export type Piece = [number, number, number, number, string]
 export type Furniture = { id: string; label: string; icon: string; w: number; d: number; h: number; price: number; comfort: number; unlocks?: string[]; color: string }
 export type Lot = { w: number; d: number; area: number; city: string; commune: string; paid: number }
 export type LotOffer = { id: string; label: string; w: number; d: number; area: number; price: number; perM2: number; city: string; commune: string; name: string; /** One of the Sim's lots made bigger: its id. */ upgrade?: number; payable: number; possible: boolean }
-export type Plot = { /** The lot's own id (0: none yet); key: where it stands in the commune (world3d lotSpot). */ id: number; key: string; simId: string; firstName?: string; blocks: Block[]; built: number; furniture: Piece[]; zones?: Zone[]; lot: Lot | null; livable: boolean; home?: boolean }
+export type Plot = { /** The lot's own id (0: none yet); key: where it stands in the commune (world3d lotSpot). */ id: number; key: string; simId: string; firstName?: string; blocks: Block[]; built: number; furniture: Piece[]; zones?: Zone[]; lot: Lot | null; livable: boolean; home?: boolean; /** A house from a plan going up: its building site, from when to when (ISO). */ buildFrom?: string; buildUntil?: string }
 /** A stretch of ground in a house: x, z of its corner, w × d, its kind (sol, beton, cour, jardin, terrasse, piscine) and a room's name. */
 export type Zone = [number, number, number, number, string, string]
 /** A whole house (game/plans.go): its rooms' walls and furniture, its floors, garden and pool. */

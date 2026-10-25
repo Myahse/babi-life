@@ -750,3 +750,9 @@ func PlanRefund(h House) int {
 	}
 	return back
 }
+
+// ChantierMinutes: how long the masons take to raise a house of so many blocks from a plan (real
+// minutes: a quarter of an hour for a small one, an hour at most).
+func ChantierMinutes(blocks int) int {
+	return min(60, max(15, 10+blocks/15))
+}
