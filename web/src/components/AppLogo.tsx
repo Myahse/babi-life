@@ -67,6 +67,7 @@ const LOOK: Record<string, { bg: string; fg: string; mark: (s: number) => React.
   tikitoko: { bg: 'linear-gradient(160deg,#23232d,#101015)', fg: '#ff7a00', mark: (s) => <TikiNote size={s} /> },
   bet225: { bg: 'linear-gradient(160deg,#17291f,#0e1a14)', fg: '#22c55e', mark: (s) => <span style={{ fontSize: s * 0.42, fontWeight: 900, letterSpacing: -1 }}>225</span> },
   parisfoot: { bg: 'linear-gradient(160deg,#a78bfa,#6d28d9)', fg: '#fff', mark: (s) => <Trophy size={s} strokeWidth={2.4} /> },
+  bingo: { bg: 'linear-gradient(160deg,#9b5cff,#4c1d95)', fg: '#7b2ff7', mark: (s) => <BingoMark size={s * 1.15} /> },
   gbairai: { bg: 'linear-gradient(160deg,#ff9f43,#f0590c)', fg: '#fff', mark: (s) => <MessageCircleMore size={s} strokeWidth={2.4} /> },
   dodo: { bg: 'linear-gradient(160deg,#8b5cf6,#4c1d95)', fg: '#7c3aed', mark: (s) => <DodoHouse size={s} /> },
   bolide: { bg: 'linear-gradient(160deg,#ff5c5c,#b3121f)', fg: '#d6262f', mark: (s) => <Gauge size={s} strokeWidth={2.4} color="#fff" /> },
@@ -124,5 +125,19 @@ export function AppLogo({ id, size = 60, radius = 18 }: { id: string; size?: num
     <span className="relative inline-grid shrink-0 place-items-center shadow-[0_6px_14px_-6px_rgba(0,0,0,0.35)]" style={{ width: size, height: size, borderRadius: radius, background: l.bg, color: l.fg }}>
       {l.mark(Math.round(size * (id === 'waye' || id === 'tikitoko' || id === 'babigram' || id === 'flashe' ? 0.78 : 0.5)))}
     </span>
+  )
+}
+
+/** The app's mark: a bingo ball. */
+export function BingoMark({ size }: { size: number }) {
+  return (
+    <svg viewBox="0 0 48 48" width={size} height={size}>
+      <circle cx="24" cy="24" r="21" fill="#ffcc33" />
+      <circle cx="24" cy="24" r="13" fill="#fff" />
+      <text x="24" y="30" textAnchor="middle" fontSize="16" fontWeight="900" fontFamily="'Baloo 2', system-ui, sans-serif" fill="#7b2ff7">
+        B
+      </text>
+      <path d="M10 15a17 17 0 0 1 9-7" stroke="#fff8" strokeWidth="3" fill="none" strokeLinecap="round" />
+    </svg>
   )
 }

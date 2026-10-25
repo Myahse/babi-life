@@ -255,6 +255,8 @@ export type World = {
   emotes?: Emote[]
   /** The slot machines (game/slots.go): the pictures and what they pay, the stakes each machine takes. */
   slots?: { symbols: SlotSymbol[]; stakes: Record<string, number[]>; perDay: number }
+  /** Babi Bingo (game/bingo.go): the four games, the stakes, the cards a draw and a day. */
+  bingo?: { games: BingoGame[]; stakes: number[]; perDraw: number; perDay: number }
   /** Vehicles to buy on Bolide, and the places to keep them (backend game/vehicles.go). */
   vehicles?: VehicleModel[]
   parkings?: ParkingKind[]
@@ -370,6 +372,17 @@ export type Activity = {
   machine?: SlotSession
 }
 
+/** Babi Bingo (backend game/bingo.go): a prize, done within so many balls, paid times the stake. */
+export type BingoPrize = { id: string; label: string; within: number; times: number }
+/** One of the games: its balls (Drawn of 1…Balls), its card (Rows × Cols, the free middle), its draws (a ball every Every ms, a draw every Period s). */
+export type BingoGame = { id: string; name: string; about: string; balls: number; drawn: number; rows: number; cols: number; free?: boolean; every: number; period: number; prizes: BingoPrize[] }
+/** A card: row by row (0: blank, or the free middle); its result once its draw is over. */
+export type BingoCard = { id: number; game: string; draw: number; numbers: number[]; stake: number; status: 'open' | 'won' | 'lost'; prize?: string; payout?: number }
+/** A room now: its draw (running, or just over), the balls out, the next draw, how many play. */
+export type BingoRoom = { game: string; draw: number; start: number; balls: number[]; over: boolean; next: number; nextAt: number; players: number; waiting: number }
+export type BingoWinner = { name: string; game: string; prize: string; payout: number; mine?: boolean }
+export type BingoState = { now: number; rooms: BingoRoom[]; mine: BingoCard[]; winners: BingoWinner[] }
+
 /** A slot machine's picture (backend game/slots.go): what three of it and two of it pay, times the stake. */
 export type SlotSymbol = { id: string; label: string; three: number; two: number }
 /** One turn of the reels, and the multiple of the stake won (0: lost). */
@@ -480,6 +493,6 @@ export type Politics = {
 }
 
 /** Where Djai earned by playing comes from (backend game/money.go). */
-export type Income = 'travail' | 'boulot' | 'pourboire' | 'defi' | 'tournoi' | 'jeux' | 'chance' | 'coup' | 'reseaux' | 'recu' | 'envoye' | 'location' | 'total' | 'machine'
+export type Income = 'travail' | 'boulot' | 'pourboire' | 'defi' | 'tournoi' | 'jeux' | 'chance' | 'coup' | 'reseaux' | 'recu' | 'envoye' | 'location' | 'total' | 'machine' | 'bingo'
 /** A source's day so far: Djai got and the most a day (0: none), times done and the most a day. */
 export type DayLimit = { got: number; max?: number; times?: number; maxTimes?: number }

@@ -275,6 +275,9 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Get("/sims/{id}/defis", h.defis)
 	r.Post("/sims/{id}/defi", h.defi)
 	r.Post("/sims/{id}/machine", h.machineSpin)
+	r.Get("/sims/{id}/bingo", h.bingoState)
+	r.Post("/sims/{id}/bingo", h.buyBingo)
+	r.Post("/sims/{id}/bingo/paye", h.settleBets)
 	r.Get("/sims/{id}/garage", h.garage)
 	r.Post("/sims/{id}/garage/{action}", h.garageAct)
 	r.Post("/sims/{id}/travel", h.travel)
@@ -912,7 +915,7 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 	var due dueTickets
 	var tallies []byte
 	s, err := scanSim(tx.QueryRow(ctx,
-		`SELECT `+simColumns+`, `+dueSQL+`, `+purseSQL+` FROM sims WHERE id = $1 AND user_id = $2 FOR UPDATE`, chi.URLParam(r, "id"), auth.UserID(ctx), time.Now().Unix(), purseFrom(time.Now())), &due.bets, &due.tickets, &tallies)
+		`SELECT `+simColumns+`, `+dueSQL+`, `+purseSQL+` FROM sims WHERE id = $1 AND user_id = $2 FOR UPDATE`, chi.URLParam(r, "id"), auth.UserID(ctx), time.Now().Unix(), purseFrom(time.Now())), &due.bets, &due.tickets, &due.bingo, &tallies)
 	if err != nil {
 		httpx.Error(w, http.StatusNotFound, "sim introuvable")
 		return
