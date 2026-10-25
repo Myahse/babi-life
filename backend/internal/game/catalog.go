@@ -311,6 +311,12 @@ var Kinds = map[string]PlaceKind{
 			{ID: "bouteille-whisky", Ages: Adults, Label: "Prendre une bouteille de whisky à table", Icon: "beer", Minutes: 60, Cost: 40000, Effect: Needs{Fun: 30, Social: 35}, MinHour: 21, MaxHour: 4},
 			{ID: "champagne-vip", Ages: Adults, Label: "Champagne au carré VIP, avec les cierges magiques", Icon: "sparkles", Minutes: 90, Cost: 150000, Effect: Needs{Fun: 55, Social: 65}, MinHour: 21, MaxHour: 4},
 			{ID: "tournee-vendredi", Ages: Adults, Label: "Vendredi soir : le champagne pour toute la boîte", Icon: "crown", Minutes: 120, Cost: 500000, Effect: Needs{Fun: 85, Social: 100}, MinHour: 22, MaxHour: 4, Days: []int{Vendredi, Samedi}},
+			// The atalaku on the mic beside the DJ: a few notes and he shouts your name, the whole club cheers.
+			{ID: AtalakuID, Ages: Adults, Label: "Payer l'atalaku pour qu'il crie ton nom", Icon: "megaphone", Minutes: 15, Cost: 2000, Effect: Needs{Fun: 25, Social: 20}, MinHour: 21, MaxHour: 4},
+			// Up on a podium by the stage, with the dancers.
+			{ID: "podium", Ages: Adults, Label: "Monter danser sur le podium", Icon: "music", Minutes: 30, Effect: Needs{Fun: 30, Social: 15, Energy: -15}, MinHour: 21, MaxHour: 4},
+			// A slow, close: always danced with someone (sims/social.go, slowWith), who may become more (fade to black, never shown).
+			{ID: SlowID, Ages: Adults, Label: "Inviter quelqu'un à danser un slow", Icon: "heart", Minutes: 20, Effect: Needs{Fun: 15, Social: 25}, MinHour: 21, MaxHour: 4},
 		},
 		Events: []RandomEvent{
 			{Text: "Ton artiste préféré passe en showcase surprise !", Effect: Needs{Fun: 30}},

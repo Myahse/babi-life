@@ -149,7 +149,7 @@ type Guest = { p: [number, number, number]; r: number; pose: Pose; gender: 'femm
  * room's frame (Interior's): the floor around (1.5, 0.5), the DJ at the back
  * (z -3.7), the sofas along x -4.4, the bar along the back wall at x -3.4 (clubDecor.tsx).
  */
-export function ClubCrowd({ placeId, fill: fixed }: { placeId: string; /** How full, whatever the hour (a player's soirée). */ fill?: number }) {
+export function ClubCrowd({ placeId, fill: fixed, cheer }: { placeId: string; /** How full, whatever the hour (a player's soirée). */ fill?: number; /** The atalaku shouting someone's name: the floor's arms go up. */ cheer?: boolean }) {
   const clubFill = useClubFill()
   const fill = fixed ?? clubFill
   const guests = useMemo<Guest[]>(() => {
@@ -192,7 +192,7 @@ export function ClubCrowd({ placeId, fill: fixed }: { placeId: string; /** How f
           .filter((g) => g.at <= fill)
           .map((g, i) => (
             <group key={i} position={g.p} rotation={[0, g.r, 0]}>
-              <TalkHuman id={`club-${placeId}-${i}`} look={g.look} gender={g.gender} pose={big && g.pose === 'dance' && i % 3 === 0 ? 'cheer' : g.pose} seed={g.seed} />
+              <TalkHuman id={`club-${placeId}-${i}`} look={g.look} gender={g.gender} pose={(cheer || big) && g.pose === 'dance' && (cheer || i % 3 === 0) ? 'cheer' : g.pose} seed={g.seed} />
             </group>
           ))}
         {big &&

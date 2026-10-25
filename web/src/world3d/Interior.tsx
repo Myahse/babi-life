@@ -73,6 +73,11 @@ export function action(kind: string, id: string | undefined): { spot: string; po
   if (id === 'recevoir-soiree') return { spot: 'floor', pose: 'cheer' }
   if (id === 'boire-soiree') return { spot: 'counter', pose: 'drink' }
   if (id === 'travaillement-soiree') return { spot: 'floor', pose: 'throw' }
+  if (id === 'bouteille-soiree') return { spot: 'table', pose: 'drink' }
+  // The atalaku shouting one's name (the Sim on the floor, arms up), the podium, the slow with someone.
+  if (id === 'atalaku' || id === 'atalaku-soiree') return { spot: 'floor', pose: 'cheer' }
+  if (id === 'podium' || id === 'podium-soiree') return { spot: 'podium', pose: 'dance' }
+  if (id === 'slow' || id === 'slow-soiree') return { spot: 'slow', pose: 'hug' }
   // The gym: the bench, the treadmill, the class on the floor, the showers.
   if (id === 'musculation') return { spot: 'bench', pose: 'busy' }
   if (id === 'cardio') return { spot: 'treadmill', pose: 'run' }
@@ -354,13 +359,13 @@ function Speaker({ p }: { p: V3 }) {
 }
 
 /** The club for the night: its stage, bar and lights (clubDecor), and, while it's open, its crowd. */
-function ClubNight({ placeId, open, mixing, party }: { placeId: string; open: boolean; mixing: boolean; /** A player's soirée: its host's name on the wall, the floor full whatever the hour. */ party?: string }) {
+function ClubNight({ placeId, open, mixing, party, shout, podium }: { placeId: string; open: boolean; mixing: boolean; /** A player's soirée: its host's name on the wall, the floor full whatever the hour. */ party?: string; shout?: string; podium?: boolean }) {
   const clubFill = useClubFill()
   const fill = party ? 0.75 : clubFill
   return (
     <>
-      <ClubDecor placeId={placeId} fill={open ? fill : 0} mixing={mixing} name={party ? `CHEZ ${party.toUpperCase()}` : undefined} />
-      {open && <ClubCrowd placeId={placeId} fill={party ? fill : undefined} />}
+      <ClubDecor placeId={placeId} fill={open ? fill : 0} mixing={mixing} name={party ? `CHEZ ${party.toUpperCase()}` : undefined} shout={shout} podium={podium} />
+      {open && <ClubCrowd placeId={placeId} fill={party ? fill : undefined} cheer={!!shout} />}
     </>
   )
 }
@@ -504,6 +509,8 @@ export function room(kindIn: string, housing: string): Room {
         spots: {
           floor: { p: [0.3, 0, 1.6], r: Math.PI * 0.85, pose: 'dance' },
           decks: { p: [1.5, 0.35, -4.0], r: 0, pose: 'dj', via: [[3.05, -2.55], [3.05, -4.0]] },
+          podium: { p: [-0.6, 0.6, -2.1], r: 0.5, pose: 'dance' },
+          slow: { p: [2.3, 0, 1.9], r: -2.3, pose: 'hug' },
           table: { p: [-4.2, 0.05, -2], r: Math.PI / 2, pose: 'drink' },
           entrance: { p: [0, 0, 3.6], r: Math.PI, pose: 'idle' },
           counter: { p: [-3.3, 0, -2.95], r: Math.PI, pose: 'idle' },
@@ -979,6 +986,20 @@ export function room(kindIn: string, housing: string): Room {
 const SEATED_POSES = new Set<Pose>(SEATED)
 
 /** The friends out with the Sim (sims/outing.go): either side of it, doing what it does, with the face they had when met. */
+/** Who the Sim dances the slow with: facing it, close, swaying with it (the same one each night here). */
+function SlowPartner({ seed }: { seed: string }) {
+  const who = useMemo(() => {
+    const r = rng(`slow${seed}`)
+    const gender: 'femme' | 'homme' = r() < 0.5 ? 'femme' : 'homme'
+    return { gender, look: randomLook(gender, r) }
+  }, [seed])
+  return (
+    <group position={[0, 0, 0.56]} rotation={[0, Math.PI, 0]}>
+      <Human look={who.look} gender={who.gender} pose="hug" seed={31} />
+    </group>
+  )
+}
+
 function Along({ sim, pose, stage }: { sim: Sim; pose: Pose; stage: string }) {
   const along = (sim.activity?.with ?? []).map((id) => sim.friends?.find((f) => f.id === id)).filter((f) => !!f)
   return (
@@ -1168,7 +1189,7 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
           {r.furniture}
         </group>
         <SolidRoom key={`${kind}:${placeId}:${housing}:${open}:${r.crowd.length}`} root={furniture} people={open ? people.map((p) => [p.p[0], p.p[2]] as [number, number]) : []} onReady={(f) => setSolid(() => f)} />
-        {kind === 'club' && <ClubNight placeId={placeId} open={open} party={party} mixing={act.spot === 'decks' || others.some((o) => action(kind, o.activity?.interactionId).spot === 'decks')} />}
+        {kind === 'club' && <ClubNight placeId={placeId} open={open} party={party} shout={arrived && act.spot === 'floor' && /^atalaku/.test(interactionId ?? '') ? sim.firstName : undefined} podium={act.spot === 'podium'} mixing={act.spot === 'decks' || others.some((o) => action(kind, o.activity?.interactionId).spot === 'decks')} />}
         <NoShadows>
           {(open ? people : []).map((p, i) => {
             const pose = throwing && p.pose === 'dance' && i % 2 ? 'cheer' : p.pose
@@ -1223,6 +1244,8 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
                   {/* Out with friends: they sit, eat, dance at the Sim's side */}
                   {!me.lying && (interactionId?.startsWith('anniversaire') ? <BirthdayParty sim={sim} stage={stage} /> : <Along sim={sim} pose={act.pose} stage={stage} />)}
                   <ActionProps id={interactionId} kind={kind} lying={!!me.lying} stage={stage} partner={spouse} />
+                  {/* A slow: someone met on the floor, in the Sim's arms */}
+                  {act.spot === 'slow' && <SlowPartner seed={`${placeId}${sim.id}`} />}
                   {/* The travaillement: notes off the wad, over the dancers in front */}
                   {throwing && <NoteShower from={[0.3, 1.72, 0.3]} toward={[0, 0.35, 1]} {...shower(interactionId)} seed={placeId.length} />}
                   {/* « Lancer des billets »: a handful at a time, to the dancers on their podiums */}

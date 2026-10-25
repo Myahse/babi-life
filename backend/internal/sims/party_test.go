@@ -2,6 +2,7 @@ package sims
 
 import (
 	"errors"
+	"math/rand/v2"
 	"strings"
 	"testing"
 	"time"
@@ -81,5 +82,34 @@ func TestPartySink(t *testing.T) {
 	s := adultSim(game.Families[0], "")
 	if _, _, _, err := s.goOut(game.SoireePrefix+"p1", "danser-soiree", nil, newRand()); !errors.Is(err, errOutingWhere) {
 		t.Errorf("no outing with the NPC friends to a soirée: %v", err)
+	}
+}
+
+// A slow is always danced with someone: a new face met as an adult (a friend now), or a friend seen again.
+func TestSlowWith(t *testing.T) {
+	for seed := range uint64(30) {
+		s := adultSim(game.Families[0], "")
+		ev := s.socialize(game.Interaction{ID: game.SlowID}, rand.New(rand.NewPCG(seed, 7)))
+		if len(ev) != 1 || len(s.Friends) != 1 || !s.Friends[0].Adult || !strings.Contains(ev[0].Text, s.Friends[0].Name) {
+			t.Fatalf("seed %d: %+v %+v", seed, ev, s.Friends)
+		}
+		before := s.Friends[0].Friendship
+		s.Friends[0].Seen = 0
+		for i := 0; len(s.Friends) == 1 && i < 50; i++ {
+			s.socialize(game.Interaction{ID: game.SlowID + "-soiree"}, rand.New(rand.NewPCG(seed, uint64(i))))
+		}
+		if len(s.Friends) == 1 && s.Friends[0].Friendship <= before {
+			t.Errorf("seed %d: the friend danced with again is closer", seed)
+		}
+	}
+	for _, k := range []string{"club", game.SoireeKind} {
+		for _, id := range []string{"atalaku", "podium", "slow"} {
+			if k == game.SoireeKind {
+				id += "-soiree"
+			}
+			if _, ok := game.Kinds[k].Interaction(id); !ok {
+				t.Errorf("%s: no %s", k, id)
+			}
+		}
 	}
 }
