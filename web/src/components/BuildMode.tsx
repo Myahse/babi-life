@@ -1,3 +1,4 @@
+import { building, doneAt } from '../game/chantier'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, type ThreeEvent } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
@@ -63,9 +64,8 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
     setError(null)
     try {
       onResult(await api.buildPlan(sim.id, p.id, lotId))
-      setPreview(null)
-      setTab('meubles')
-      await reload()
+      // The masons build it on the lot over time: back to the street, free meanwhile.
+      onClose()
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Pas de réseau')
     } finally {
@@ -263,6 +263,20 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
       </div>
     )
 
+  // The masons still at it (game/chantier.ts): nothing to change till it's done; the Sim is free meanwhile.
+  if (plot && building(plot))
+    return (
+      <div className="absolute inset-0 z-40 flex flex-col justify-end bg-[#0f1230]/55 backdrop-blur-[3px] lg:items-center lg:justify-center" onClick={onClose}>
+        <div className="sheet animate-up w-full rounded-t-[28px] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] lg:w-[420px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
+          <div className="label">Chantier en cours</div>
+          <div className="mt-1 font-display text-[22px] leading-tight font-extrabold">Les maçons construisent ta maison</div>
+          <p className="mt-2 text-sm leading-snug font-bold text-[var(--color-ink-soft)]">Ce sera fini à {doneAt(plot)}. Ce n'est pas toi qui construis : va où tu veux en attendant, tu pourras meubler et emménager ensuite.</p>
+          <button className="btn mt-4 w-full" onClick={onClose}>
+            D'accord
+          </button>
+        </div>
+      </div>
+    )
   const span = Math.max(W, D, 12)
   return (
     <div className="absolute inset-0 z-40 bg-[#9fd8f5]">

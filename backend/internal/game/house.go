@@ -85,7 +85,7 @@ var Furnitures = []Furniture{
 	{ID: "chaises", Label: "Chaises en plastique", Icon: "armchair", W: 1, D: 1, H: 1, Price: 3000, Comfort: 0.03, Color: "#e8e3d6"},
 	{ID: "table", Label: "Table à manger", Icon: "utensils", W: 1, D: 2, H: 1, Price: 8000, Comfort: 0.05, Color: "#8a5a32"},
 	{ID: "canape", Label: "Canapé", Icon: "sofa", W: 2, D: 1, H: 1, Price: 40000, Comfort: 0.1, Color: "#7a4a8a"},
-	{ID: "gaziniere", Label: "Gazinière et bonbonne", Icon: "cooking-pot", W: 1, D: 1, H: 1, Price: 15000, Comfort: 0.03, Unlocks: []string{"cook-attieke"}, Color: "#cfd3d6"},
+	{ID: "gaziniere", Label: "Gazinière et bonbonne", Icon: "cooking-pot", W: 1, D: 1, H: 1, Price: 15000, Comfort: 0.03, Unlocks: []string{"cook-attieke", "garba-maison"}, Color: "#cfd3d6"},
 	{ID: "frigo", Label: "Frigo", Icon: "refrigerator", W: 1, D: 1, H: 2, Price: 60000, Comfort: 0.06, Color: "#f4f6f8"},
 	{ID: "tele", Label: "Télé", Icon: "tv", W: 1, D: 1, H: 1, Price: 45000, Comfort: 0.05, Unlocks: []string{"watch-tv"}, Color: "#222222"},
 	{ID: "ventilo", Label: "Ventilateur", Icon: "fan", W: 1, D: 1, H: 2, Price: 10000, Comfort: 0.08, Color: "#3a8fd8"},

@@ -70,7 +70,7 @@ export type Interaction = {
   maxHour?: number
   /** Opening days, 0 = lundi … 6 = dimanche; absent = every day. */
   days?: number[]
-  requires?: { resident?: boolean; minMoney?: number; anyTrait?: string[]; career?: string }
+  requires?: { resident?: boolean; minMoney?: number; anyTrait?: string[]; career?: string; /** A skill at a level (backend game/progress.go); level 0: only open. */ skill?: string; skillLevel?: number }
   /** Only in a room (or a home) one has rented there. */
   stay?: boolean
   /** Life stages that can do it; empty = from childhood up. */
@@ -116,6 +116,8 @@ export type Player = {
   /** In office (politics): « Présidente », « Maire de Cocody »; the tag of their gang. */
   title?: string
   crew?: string
+  /** The player's level (backend game/progress.go). */
+  level?: number
 }
 export type Invite = { id: string; from: string; fromName: string; placeId: string; interactionId: string; label: string; at: string }
 /** A soirée thrown by a player at home (backend sims/party.go): its lights over the house, the others in the commune come. */
@@ -223,8 +225,15 @@ export type JobTask = { id: string; label: string; icon: string; pose: string; m
 
 /** An emote: its pose (the id), name, emoji, price (0: free), how long it plays. */
 export type Emote = { id: string; label: string; emoji: string; price: number; seconds: number }
+/** A skill (backend game/progress.go): what trains it, the player's level it opens at, what its levels bring. */
+export type Skill = { id: string; label: string; icon: string; hint: string; unlock?: number; perks: { level: number; text: string }[] }
+/** The progress as the server sends it: the level and its bar, each skill's. */
+export type Progress = { xp: number; level: number; into: number; next: number; skills: { id: string; level: number; into: number; next: number; unlocked: boolean }[] }
+
 export type World = {
   cities: City[]
+  /** The skills (backend game/progress.go). */
+  skills?: Skill[]
   /** The airline's flights (backend world.FlightRoutes): from each airport. */
   flights?: { from: string; place: string; to: string; toName: string; commune: string; minutes: number; fare: number; km: number; airline: string }[]
   kinds: Record<string, PlaceKind>
@@ -337,6 +346,8 @@ export type Sim = {
   passUntil?: string
   /** The account's day so far by source, and its limits (backend game/money.go): travail, boulot, total… */
   today?: Partial<Record<Income, DayLimit>>
+  /** Experience, level and skills (backend game/progress.go). */
+  progress?: Progress
   /** The Pack Prestige bought (Boutique): the crown may be worn. */
   prestige?: boolean
   /** The secret society joined (politics): '' none; baobab, sept, lumiere. */
@@ -368,7 +379,7 @@ export type Activity = {
 
 export type JournalEvent = {
   id: number
-  kind: 'life' | 'social' | 'transfer' | 'interaction' | 'random' | 'travel' | 'bill' | 'career' | 'robbed' | 'abonnement' | 'annonce'
+  kind: 'life' | 'social' | 'transfer' | 'interaction' | 'random' | 'travel' | 'bill' | 'career' | 'robbed' | 'abonnement' | 'annonce' | 'progress'
   text: string
   money: number
   gameTime: number
@@ -387,7 +398,7 @@ export type Piece = [number, number, number, number, string]
 export type Furniture = { id: string; label: string; icon: string; w: number; d: number; h: number; price: number; comfort: number; unlocks?: string[]; color: string }
 export type Lot = { w: number; d: number; area: number; city: string; commune: string; paid: number }
 export type LotOffer = { id: string; label: string; w: number; d: number; area: number; price: number; perM2: number; city: string; commune: string; name: string; /** One of the Sim's lots made bigger: its id. */ upgrade?: number; payable: number; possible: boolean }
-export type Plot = { /** The lot's own id (0: none yet); key: where it stands in the commune (world3d lotSpot). */ id: number; key: string; simId: string; firstName?: string; blocks: Block[]; built: number; furniture: Piece[]; zones?: Zone[]; lot: Lot | null; livable: boolean; home?: boolean }
+export type Plot = { /** The lot's own id (0: none yet); key: where it stands in the commune (world3d lotSpot). */ id: number; key: string; simId: string; firstName?: string; blocks: Block[]; built: number; furniture: Piece[]; zones?: Zone[]; lot: Lot | null; livable: boolean; home?: boolean; /** A house from a plan going up: its building site, from when to when (ISO). */ buildFrom?: string; buildUntil?: string }
 /** A stretch of ground in a house: x, z of its corner, w × d, its kind (sol, beton, cour, jardin, terrasse, piscine) and a room's name. */
 export type Zone = [number, number, number, number, string, string]
 /** A whole house (game/plans.go): its rooms' walls and furniture, its floors, garden and pool. */

@@ -19,7 +19,8 @@ import (
 // Soirées: a player throws one at home, in its own commune, for three
 // hours. The others there see the lights over the house on the map and come
 // to dance, mix at the decks, have a drink (game/soiree.go); friends
-// elsewhere are told. The host pays for it (a sink): nothing done there
+// elsewhere are told. It goes on at the house by itself: the host isn't held
+// there (an action on the house, not on the Sim), and comes when it likes. The host pays for it (a sink): nothing done there
 // pays. Its theme is picked from a list, like everything players say to one
 // another (never free text).
 
@@ -152,8 +153,6 @@ func (h *Handler) throwParty(w http.ResponseWriter, r *http.Request) {
 			return game.Outcome{}, nil, errPartyAdult
 		case s.City != s.HomeCity || s.Commune != s.HomeCommune:
 			return game.Outcome{}, nil, errPartyAway
-		case s.Activity != nil:
-			return game.Outcome{}, nil, game.ErrBusy
 		case s.Money < game.SoireeCost:
 			return game.Outcome{}, nil, fmt.Errorf("il te faut %d Djai pour la sono, le DJ et les boissons", game.SoireeCost)
 		}
@@ -169,12 +168,8 @@ func (h *Handler) throwParty(w http.ResponseWriter, r *http.Request) {
 			s.ID, s.City, s.Commune, req.Theme, game.SoireeHours).Scan(&p.ID, &p.Ends); err != nil {
 			return game.Outcome{}, nil, err
 		}
-		s.party = &p
-		kind := game.Kinds[game.SoireeKind]
-		it, _ := kind.Interaction(game.SoireeHostID)
-		if err := s.start(it, p.PlaceID(), kind.ID, p.Name(), kind.Events, ""); err != nil {
-			return game.Outcome{}, nil, err
-		}
+		// The soirée goes on at the house on its own: the host isn't held there, busy or not (« Recevoir
+		// tes invités » is one of its actions, when the host comes to it).
 		s.Money -= game.SoireeCost
 		// The friends are told, wherever they are; those with notifications on, on their phone.
 		where := "chez " + s.FirstName
@@ -196,7 +191,7 @@ func (h *Handler) throwParty(w http.ResponseWriter, r *http.Request) {
 			}
 			h.Push.ToSim(f, push.Message{Title: title + " " + where, Body: "La soirée a commencé, viens danser !", URL: "/jeu", Tag: "soiree-" + p.ID})
 		}
-		text := fmt.Sprintf("%s : c'est parti chez toi pour %d h ! Les lumières sont allumées au-dessus de la maison, les joueurs du quartier peuvent venir.", title, game.SoireeHours)
+		text := fmt.Sprintf("%s : c'est parti chez toi pour %d h ! Les lumières sont allumées au-dessus de la maison, les joueurs du quartier peuvent venir. Rejoins-la quand tu veux.", title, game.SoireeHours)
 		return game.Outcome{Text: text, Money: -game.SoireeCost}, []Event{{Kind: "social", Text: text, Money: -game.SoireeCost, GameTime: s.GameMinutes}}, nil
 	})
 }

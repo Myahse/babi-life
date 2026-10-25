@@ -57,6 +57,7 @@ import { homeSpotsOf } from '../world3d/homeSpots'
 import KartRace from '../kart/KartRace'
 import StreetMatch from '../streetball/StreetMatch'
 import { House } from '../world3d/build/House'
+import { Chantier } from '../world3d/open/chantier'
 import { HomeInside } from '../world3d/HomeInside'
 import { FurnitureSet, downstairs } from '../world3d/build/Furniture'
 import { Zones } from '../world3d/build/Zones'
@@ -671,6 +672,7 @@ function Lab() {
       </div>
     )
   if (view === 'home') return <HomeLab />
+  if (view === 'chantier') return <ChantierLab />
   if (view === 'plan') return <PlanLab />
   if (view === 'inside') return <InsideLab />
   if (view === 'hoops' || view === 'foot5') return <StreetMatch sport={view === 'hoops' ? 'basket' : 'foot'} name="Awa" look={randomLook('femme', seededLab(5))} gender="femme" seed={Number(q.get('seed') ?? 7)} onExit={() => location.reload()} />
@@ -1046,6 +1048,40 @@ const LAB_FURNITURE: Furniture[] = [
   { id: 'douche', label: 'Douche', icon: 'shower-head', w: 1, d: 1, h: 2, price: 0, comfort: 0, color: '#9fd3e8' },
   { id: 'table', label: 'Table', icon: 'utensils', w: 1, d: 2, h: 1, price: 0, comfort: 0, color: '#8a5a32' },
 ]
+/** A house from a plan going up on its lot (?view=chantier&k=0.5: the share done): the masons, the scaffolding, the sign. */
+function ChantierLab() {
+  const cam = (q.get('cam') ?? '7,9,22').split(',').map(Number) as [number, number, number]
+  const k = Number(q.get('k') ?? 0.5)
+  const plot = useMemo(() => {
+    const blocks: Block[] = []
+    // The walls three high round an 8 × 8 room, a door at the front, the tin roof on top.
+    for (let x = 2; x < 10; x++)
+      for (let z = 2; z < 10; z++) {
+        const edge = x === 2 || x === 9 || z === 2 || z === 9
+        if (edge && !(z === 9 && (x === 5 || x === 6))) for (const y of [0, 1, 2]) blocks.push([x, y, z, 'parpaing'])
+        if (edge && z === 9 && (x === 5 || x === 6)) blocks.push([x, 2, z, 'parpaing'])
+        blocks.push([x, 3, z, 'tole'])
+      }
+    const span = 18 * 60000
+    const from = Date.now() - k * span
+    return { id: 1, simId: 'lab', key: 'lab', blocks, built: 0, furniture: [], lot: { w: 12, d: 12 }, buildFrom: new Date(from).toISOString(), buildUntil: new Date(from + span).toISOString() } as unknown as Plot
+  }, [k])
+  return (
+    <Canvas shadows dpr={[1, 1.5]} camera={{ position: cam, fov: 45 }} style={{ width: '100vw', height: '100vh' }}>
+      <color attach="background" args={['#a9d3f0']} />
+      <hemisphereLight args={['#ffffff', '#b8a27c', 1.2]} />
+      <directionalLight position={[10, 20, 12]} intensity={1.6} castShadow />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[40, 40]} />
+        <meshLambertMaterial color="#b98b5c" />
+      </mesh>
+      <group position={[-6, 0, -6]}>
+        <Chantier plot={plot} materials={LAB_MATERIALS} w={12} d={12} />
+      </group>
+      <OrbitControls target={[0, 2, 2]} />
+    </Canvas>
+  )
+}
 function HomeLab() {
   const cam = (q.get('cam') ?? '9,14,13').split(',').map(Number) as [number, number, number]
   const rot = Number(q.get('rot') ?? 0.5)

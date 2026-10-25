@@ -67,7 +67,7 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
         tv = { at: toWorld(pu + 0.05 * ls, pv + 0.05 * lc), rot }
         break
       case 'gaziniere':
-        at(0, 0, half + 0.45, Math.PI, 'cook', false, ['cook-attieke'])
+        at(0, 0, half + 0.45, Math.PI, 'cook', false, ['cook-attieke', 'garba-maison'])
         break
       case 'table':
         // Sitting at the side of the table, on a stool: homework, the Golvo delivery.
@@ -103,7 +103,7 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
   // the biberon, the bouillie, the rattle and the cuddle in front of the sofa (or the bed), the bath in front of the shower.
   const onFloor = (s: HomeSpot): HomeSpot => ({ at: s.from, from: s.from, y: 0, rot: s.rot, pose: 'busy', lying: false, wall: s.wall })
   const seat = out['call-family'] ?? out.sleep
-  if (seat) for (const id of ['biberon', 'bouillie', 'hochet', 'calin']) out[id] ??= onFloor(seat)
+  if (seat) for (const id of ['biberon', 'bouillie', 'hochet', 'calin', 'pompes-abdos']) out[id] ??= onFloor(seat)
   const bath = out.shower ?? seat
   if (bath) out['bain-bebe'] ??= onFloor(bath)
   // Calling the family from the sofa: sitting, the phone at the ear.

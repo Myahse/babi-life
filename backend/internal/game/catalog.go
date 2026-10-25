@@ -52,6 +52,9 @@ type Requirement struct {
 	AnyTrait []string `json:"anyTrait,omitempty"`
 	// Career: the Sim must work in this career.
 	Career string `json:"career,omitempty"`
+	// Skill, SkillLevel: the Sim must have this skill (progress.go) at this level (0: only open).
+	Skill      string `json:"skill,omitempty"`
+	SkillLevel int    `json:"skillLevel,omitempty"`
 }
 
 // Who describes a Sim for requirement checks.
@@ -60,6 +63,8 @@ type Who struct {
 	Money    int
 	Traits   []string
 	Career   string
+	// Skills: each skill's level, -1 while not open yet (Progress.Levels).
+	Skills map[string]int
 }
 
 // Check explains why a Sim can't do it, or returns nil.
@@ -76,6 +81,8 @@ func (r *Requirement) Check(w Who) error {
 		return ErrWrongCareer
 	case len(r.AnyTrait) > 0 && !anyIn(r.AnyTrait, w.Traits):
 		return ErrNotYourThing
+	case r.Skill != "" && w.Skills[r.Skill] < r.SkillLevel:
+		return SkillNeeded(r.Skill, r.SkillLevel, w.Skills[r.Skill] < 0)
 	}
 	return nil
 }
@@ -137,6 +144,9 @@ var Kinds = map[string]PlaceKind{
 			{ID: "toilettes", Room: RoomBath, Label: "Aller aux toilettes", Icon: "toilet", Minutes: 10, Effect: Needs{Hygiene: 6, Fun: 3}},
 			{ID: "dents", Room: RoomBath, Label: "Se brosser les dents", Icon: "toothbrush", Minutes: 10, Effect: Needs{Hygiene: 18, Social: 4}},
 			{ID: "cook-attieke", Room: RoomKitchen, Ages: Adults, Label: "Préparer attiéké-poisson", Icon: "cooking-pot", Minutes: 45, Cost: 1500, Effect: Needs{Hunger: 55, Fun: 5}},
+			// Unlocked by the skills (progress.go): the garba made at home, press-ups in the living room.
+			{ID: "garba-maison", Room: RoomKitchen, Ages: TeensUp, Label: "Préparer un garba maison", Icon: "fish", Minutes: 30, Cost: 600, Effect: Needs{Hunger: 50, Fun: 10}, Requires: &Requirement{Skill: SkillCuisine, SkillLevel: 3}},
+			{ID: "pompes-abdos", Room: RoomLiving, Ages: TeensUp, Label: "Faire des pompes et des abdos", Icon: "dumbbell", Minutes: 20, Effect: Needs{Fun: 10, Energy: -10, Hygiene: -10}, Requires: &Requirement{Skill: SkillForme, SkillLevel: 2}},
 			{ID: "watch-tv", Room: RoomLiving, Label: "Regarder RTI 1", Icon: "tv", Minutes: 60, Effect: Needs{Fun: 25, Energy: -3}},
 			// Only with a pool (CanSwimAtHome): one's own, or the rented villa's.
 			{ID: SwimID, Room: RoomYard, Label: "Nager dans la piscine", Icon: "waves", Minutes: 45, Effect: Needs{Fun: 35, Hygiene: 10, Energy: -12}, Ages: []string{StageEnfant, StageAdo, StageAdulte}},
@@ -157,6 +167,9 @@ var Kinds = map[string]PlaceKind{
 			{ID: "eat-garba", Label: "Manger un garba", Icon: "fish", Minutes: 20, Cost: 500, Effect: Needs{Hunger: 40}},
 			{ID: "drink-with-friends", Ages: Adults, Label: "Prendre un pot avec les amis", Icon: "beer", Minutes: 90, Cost: 2000, Effect: Needs{Social: 40, Fun: 30, Energy: -10}, MinHour: 17},
 			Gbairai,
+			// Unlocked by the skills (progress.go): the dance-off, getting the whole maquis going.
+			{ID: DefiDanseID, Ages: Adults, Label: "Défier la piste au coupé-décalé", Icon: "flame", Minutes: 20, Effect: Needs{Fun: 40, Social: 30, Energy: -20}, MinHour: 18, MaxHour: 3, Requires: &Requirement{Skill: SkillDanse, SkillLevel: 4}},
+			{ID: "ambiancer-maquis", Ages: TeensUp, Label: "Ambiancer le maquis", Icon: "megaphone", Minutes: 30, Effect: Needs{Fun: 30, Social: 35}, Requires: &Requirement{Skill: SkillCharisme, SkillLevel: 3}},
 			{ID: "dance-coupe-decale", Ages: Adults, Label: "Danser le coupé-décalé", Icon: "music", Minutes: 60, Effect: Needs{Fun: 40, Social: 20, Energy: -15, Hygiene: -10}, MinHour: 19},
 			// The travaillement: banknotes rained on the dancers, the more the louder.
 			{ID: "petit-travaillement", Ages: Adults, Label: "Petit « travaillement »", Icon: "banknote", Minutes: 30, Cost: 5000, Effect: Needs{Fun: 20, Social: 25}, MinHour: 19, MaxHour: 4},
@@ -314,7 +327,10 @@ var Kinds = map[string]PlaceKind{
 			// The atalaku on the mic beside the DJ: a few notes and he shouts your name, the whole club cheers.
 			{ID: AtalakuID, Ages: Adults, Label: "Payer l'atalaku pour qu'il crie ton nom", Icon: "megaphone", Minutes: 15, Cost: 2000, Effect: Needs{Fun: 25, Social: 20}, MinHour: 21, MaxHour: 4},
 			// Up on a podium by the stage, with the dancers.
-			{ID: "podium", Ages: Adults, Label: "Monter danser sur le podium", Icon: "music", Minutes: 30, Effect: Needs{Fun: 30, Social: 15, Energy: -15}, MinHour: 21, MaxHour: 4},
+			{ID: "podium", Ages: Adults, Label: "Monter danser sur le podium", Icon: "music", Minutes: 30, Effect: Needs{Fun: 30, Social: 15, Energy: -15}, MinHour: 21, MaxHour: 4, Requires: &Requirement{Skill: SkillDanse, SkillLevel: 2}},
+			// Unlocked by the skills (progress.go): the dance-off, a guest set at the decks.
+			{ID: DefiDanseID, Ages: Adults, Label: "Défier la piste au coupé-décalé", Icon: "flame", Minutes: 20, Effect: Needs{Fun: 40, Social: 30, Energy: -20}, MinHour: 21, MaxHour: 4, Requires: &Requirement{Skill: SkillDanse, SkillLevel: 4}},
+			{ID: "set-guest", Ages: Adults, Label: "Mixer en guest à la boîte", Icon: "disc-3", Minutes: 45, Effect: Needs{Fun: 35, Social: 25, Energy: -10}, MinHour: 21, MaxHour: 4, Requires: &Requirement{Skill: SkillMixage, SkillLevel: 3}},
 			// A slow, close: always danced with someone (sims/social.go, slowWith), who may become more (fade to black, never shown).
 			{ID: SlowID, Ages: Adults, Label: "Inviter quelqu'un à danser un slow", Icon: "heart", Minutes: 20, Effect: Needs{Fun: 15, Social: 25}, MinHour: 21, MaxHour: 4},
 		},
@@ -701,6 +717,8 @@ var Kinds = map[string]PlaceKind{
 		ID: "universite", Label: "Université", Icon: "graduation-cap",
 		Interactions: []Interaction{
 			{ID: "amphi", Ages: Adults, Label: "Suivre un cours en amphi", Icon: "presentation", Minutes: 3 * 60, Effect: Needs{Fun: -10, Energy: -20, Social: 20, Hunger: -10}, MinHour: 7, MaxHour: 16, Days: Weekdays},
+			// Unlocked by Savoir 3 (progress.go).
+			{ID: "debat-amphi", Ages: Adults, Label: "Animer un débat dans l'amphi", Icon: "messages-square", Minutes: 60, Effect: Needs{Fun: 25, Social: 25, Energy: -10}, MinHour: 8, MaxHour: 18, Requires: &Requirement{Skill: SkillSavoir, SkillLevel: 3}},
 			{ID: "partiel", Ages: Adults, Label: "Passer un partiel", Icon: "file-text", Minutes: 3 * 60, Effect: Needs{Fun: -25, Energy: -25}, MinHour: 8, MaxHour: 12, Days: Weekdays},
 			{ID: "bu", Ages: TeensUp, Label: "Réviser à la bibliothèque universitaire", Icon: "library", Minutes: 2 * 60, Effect: Needs{Fun: -5, Energy: -10}, MinHour: 8, MaxHour: 19, Days: Workweek},
 			{ID: "resto-u", Ages: TeensUp, Label: "Manger au resto U", Icon: "utensils", Minutes: 30, Cost: 250, Effect: Needs{Hunger: 45, Social: 10}, MinHour: 11, MaxHour: 14, Days: Workweek},

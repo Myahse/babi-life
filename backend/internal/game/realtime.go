@@ -73,6 +73,8 @@ type Activity struct {
 	Defi int `json:"defi,omitempty"`
 	// Tasks: at work, the job's tasks done in this shift (game/jobs.go) and when each was last done (game minute).
 	Tasks map[string]int64 `json:"tasks,omitempty"`
+	// XP: the experience it brings done to its end (progress.go), from its length as the catalog writes it.
+	XP int `json:"xp,omitempty"`
 }
 
 // Seance: the film being watched, its screen and the ticket's seats.

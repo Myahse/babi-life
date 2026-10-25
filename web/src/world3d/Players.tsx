@@ -87,7 +87,7 @@ function OtherPlayer({ player, at, labels, onPick }: { player: Player; at: [numb
     if (near !== close) setClose(near)
   })
   // Their gang's tag before the name, their office after (politics).
-  const tag = `${player.crew ? `[${player.crew}] ` : ''}${player.username ? `@${player.username}` : player.firstName}${player.title ? ` · ${player.title}` : ''}`
+  const tag = `${player.level ? `Niv. ${player.level} · ` : ''}${player.crew ? `[${player.crew}] ` : ''}${player.username ? `@${player.username}` : player.firstName}${player.title ? ` · ${player.title}` : ''}`
   return (
     <group ref={ref}>
       <Character look={player.look} gender={player.gender} stage={player.stage} walking={walking} busy={!!at} pose={livePose ?? undefined} moodColor={PLAYER_BLUE} seed={player.id.charCodeAt(0)} speed={livePose === 'run' ? 8.5 : 3.2} />

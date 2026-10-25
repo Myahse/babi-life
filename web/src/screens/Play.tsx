@@ -3,7 +3,7 @@ import { gesture } from '../world3d/gesture'
 import type { Pose } from '../avatar/Human'
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2, ShoppingBag, Lightbulb, Landmark, PartyPopper } from 'lucide-react'
+import { BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2, ShoppingBag, Lightbulb, Landmark, PartyPopper, Star } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
 import { useOnline } from '../lib/offline'
 import { onSynced, pendingOffline, picking } from '../lib/offlinePlay'
@@ -32,6 +32,7 @@ import { GROUNDS, LANDMARKS, OPEN_AIR } from '../world3d/open/landmarks'
 import { rooftopFor } from '../world3d/open/rooftops'
 import { iconFor, kindColors } from '../components/icons'
 import { SOIREE_COST, SOIREE_HOURS, SOIREE_THEMES } from '../game/soirees'
+import { LevelPill, ProgressSheet } from '../components/ProgressSheet'
 import { Chip, Coin, DayNight, IconTile, MotiveRing, MoodPin, Row, needColor } from '../components/ui'
 import { EPOCH, NEEDS, km, actionLength, ageBlock, amount, fcfa, atHome, blockedBy, homeLacks, housingOf, lifeOf, minutesToAge, clock, duration, mood, openAt, openingLabel, predict, shift, trip } from '../game/rules'
 import { DOORS_OPEN, eventAt, useStadium, when } from '../lib/stadium'
@@ -594,6 +595,7 @@ export function Play() {
         if (e.kind === 'robbed') toast({ tone: 'random', title: 'Les nouchis du couloir !', text: e.text, money: e.money })
         else if (e.kind === 'random') toast({ tone: 'random', title: 'Imprévu !', text: e.text, money: e.money })
         else if (e.kind === 'career') toast({ tone: 'promo', title: 'Promotion !', text: e.text.replace(/^Promotion ! /, ''), money: 0 })
+        else if (e.kind === 'progress') toast({ tone: 'promo', title: /^Niveau/.test(e.text) ? 'Niveau supérieur !' : 'Compétence en hausse !', text: e.text, money: 0 })
         else if (e.kind === 'travel') toast({ tone: 'done', title: 'Bien arrivé·e !', text: e.text, money: e.money, icon: 'car-taxi-front', kind: 'transport' })
         // Life news (a birthday's pocket money, coming of age): its own toast, not the activity that just ended.
         else if (e.kind === 'life') toast({ tone: 'event', title: /anniversaire/i.test(e.text) ? 'Joyeux anniversaire !' : 'Dans ta vie', text: e.text, money: e.money, icon: 'cake' })
@@ -811,6 +813,8 @@ export function Play() {
   const [around, refreshPlayers] = usePlayers(base?.sim.id, `${sim?.city}/${sim?.commune}`)
   // The soirées thrown by players here (backend sims/party.go): picking a theme for one's own.
   const [soireeAsk, setSoireeAsk] = useState(false)
+  // The level and the skills (components/ProgressSheet).
+  const [progressOpen, setProgressOpen] = useState(false)
   const soirees = around.parties ?? []
   const soireeOf = (id: string | null | undefined) => (id ? soirees.find((p) => `soiree:${p.id}` === id) : undefined)
   const mySoiree = soirees.find((p) => p.host === sim?.id)
@@ -1154,28 +1158,32 @@ export function Play() {
 
       {/* ---------- Top HUD ---------- */}
       <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:p-5">
-        <Link to="/profil" viewTransition className="hud pointer-events-auto flex min-w-0 items-center gap-2 rounded-full py-1 pr-3 pl-1 transition active:scale-95 max-sm:max-w-[52vw] short:max-w-[36vw] sm:gap-2.5 sm:pr-4">
-          <span className="block shrink-0 rounded-full p-[3px]" style={{ background: `conic-gradient(${moodHex} ${mood(sim.needs) * 3.6}deg, #e7e9f2 0)` }}>
-            <span className="block h-9 w-9 overflow-hidden rounded-full border-2 border-white bg-gradient-to-b sm:h-11 sm:w-11 from-[#ffe7c7] to-[#ffb27a]">
-              <Portrait look={sim.look} gender={sim.gender} framing="head" />
-            </span>
-          </span>
-          <span className="min-w-0 leading-tight">
-            <span className="block truncate font-display text-[15px] font-extrabold sm:text-[17px]">
-              {mine.crew ? `[${mine.crew}] ` : ''}
-              {user?.username ? `@${user.username}` : sim.firstName}
-              {passOn(sim) && <span className="ml-1 text-[#e6b422]" title="Babi Pass">★</span>}
-              {mine.title && <span className="ml-1 text-[#3d4fd6]">· {mine.title}</span>}
-            </span>
-            <span className="flex min-w-0 items-center gap-1 text-[11px] font-extrabold text-[var(--color-ink-soft)]">
-              <MapPin size={11} strokeWidth={3} className="shrink-0" />
-              <span className="truncate">
-                {commune.name} · <span className="max-sm:hidden">{lifeOf(world, sim).stage?.label ?? ''}, </span>
-                {lifeOf(world, sim).age < 1 ? "moins d'un an" : `${lifeOf(world, sim).age} an${lifeOf(world, sim).age > 1 ? 's' : ''}`}
+        {/* The profile, and under it the level and its bar (components/ProgressSheet) */}
+        <div className="flex min-w-0 flex-col items-start gap-1.5">
+          <Link to="/profil" viewTransition className="hud pointer-events-auto flex min-w-0 items-center gap-2 rounded-full py-1 pr-3 pl-1 transition active:scale-95 max-sm:max-w-[52vw] short:max-w-[36vw] sm:gap-2.5 sm:pr-4">
+            <span className="block shrink-0 rounded-full p-[3px]" style={{ background: `conic-gradient(${moodHex} ${mood(sim.needs) * 3.6}deg, #e7e9f2 0)` }}>
+              <span className="block h-9 w-9 overflow-hidden rounded-full border-2 border-white bg-gradient-to-b sm:h-11 sm:w-11 from-[#ffe7c7] to-[#ffb27a]">
+                <Portrait look={sim.look} gender={sim.gender} framing="head" />
               </span>
             </span>
-          </span>
-        </Link>
+            <span className="min-w-0 leading-tight">
+              <span className="block truncate font-display text-[15px] font-extrabold sm:text-[17px]">
+                {mine.crew ? `[${mine.crew}] ` : ''}
+                {user?.username ? `@${user.username}` : sim.firstName}
+                {passOn(sim) && <span className="ml-1 text-[#e6b422]" title="Babi Pass">★</span>}
+                {mine.title && <span className="ml-1 text-[#3d4fd6]">· {mine.title}</span>}
+              </span>
+              <span className="flex min-w-0 items-center gap-1 text-[11px] font-extrabold text-[var(--color-ink-soft)]">
+                <MapPin size={11} strokeWidth={3} className="shrink-0" />
+                <span className="truncate">
+                  {commune.name} · <span className="max-sm:hidden">{lifeOf(world, sim).stage?.label ?? ''}, </span>
+                  {lifeOf(world, sim).age < 1 ? "moins d'un an" : `${lifeOf(world, sim).age} an${lifeOf(world, sim).age > 1 ? 's' : ''}`}
+                </span>
+              </span>
+            </span>
+          </Link>
+          <LevelPill progress={sim.progress} onOpen={() => setProgressOpen(true)} />
+        </div>
 
         {/* The money and the hour, then the camera's controls under them (in the flow, so a wrapped row on a phone pushes them down instead of hiding them). */}
         <div className="flex shrink-0 flex-col items-end gap-2">
@@ -1371,6 +1379,7 @@ export function Play() {
           onEnd={() => (setPlaceId(null), run('Fin de la soirée', 'party-popper', 'social', () => api.endParty(sim.id)))}
         />
       )}
+      {progressOpen && <ProgressSheet world={world} sim={sim} onClose={() => setProgressOpen(false)} />}
       {soireeAsk && (
         <ThrowSoireeSheet
           sim={sim}
@@ -2725,6 +2734,8 @@ export function Journal({ events }: { events: JournalEvent[] }) {
                 ? [ReceiptText, ['#ff8a9b', '#ff3d57']]
                 : e.kind === 'career'
                   ? [BadgeCheck, ['#69e2a0', '#00a862']]
+                  : e.kind === 'progress'
+                    ? [Star, ['#ffd54f', '#ff8a00']]
                   : e.kind === 'life'
                     ? [Cake, ['#ff8ad8', '#d63aa8']]
                     : e.kind === 'social'

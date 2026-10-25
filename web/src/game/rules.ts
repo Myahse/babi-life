@@ -100,8 +100,18 @@ export function blockedBy(it: Interaction, sim: Sim, cityId: string, communeId: 
   if (r.minMoney && sim.money < r.minMoney) return `Il faut ${amount(r.minMoney)} Djai`
   if (r.career && sim.career !== r.career) return 'Réservé au personnel'
   if (r.anyTrait?.length && !r.anyTrait.some((t) => sim.traits.includes(t))) return 'Pas ton caractère'
+  if (r.skill) {
+    // A skill's level (backend game/progress.go): opened at a player's level, then trained.
+    const sk = sim.progress?.skills.find((x) => x.id === r.skill)
+    const name = SKILL_NAMES[r.skill] ?? r.skill
+    if (!sk?.unlocked) return `${name} : s'ouvre plus tard`
+    if (sk.level < (r.skillLevel ?? 0)) return `Il faut ${name} niveau ${r.skillLevel}`
+  }
   return null
 }
+
+/** The skills' names, for the reasons above (the full list comes with the world). */
+const SKILL_NAMES: Record<string, string> = { danse: 'Danse', cuisine: 'Cuisine', forme: 'Forme', charisme: 'Charisme', savoir: 'Savoir', mixage: 'Mixage', batisseur: 'Bâtisseur' }
 
 export const fcfa = (n: number) => `${n.toLocaleString('fr-FR')} Djai`
 export const amount = (n: number) => n.toLocaleString('fr-FR')

@@ -62,6 +62,8 @@ type Player struct {
 	// Together (couple.go), and a couple request between the two: "sent" | "received" | "".
 	Couple        bool   `json:"couple,omitempty"`
 	CoupleRequest string `json:"coupleRequest,omitempty"`
+	// Level: the player's (game/progress.go), shown by the name.
+	Level int `json:"level"`
 	// In office (politics: « Présidente », « Maire de Cocody »), and the gang's tag over the name.
 	Title string `json:"title,omitempty"`
 	Crew  string `json:"crew,omitempty"`
@@ -138,7 +140,7 @@ func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
 	}
 	b.Queue(`
 		SELECT s.id, s.first_name, COALESCE(u.username, ''), s.gender, s.look, s.born_at, s.activity, COALESCE(b.friendship, 0), s.city, s.commune, s.last_tick > $3,
-		       COALESCE(b.friends, false), `+requestState("s.id", "$1::uuid")+`
+		       COALESCE(b.friends, false), `+requestState("s.id", "$1::uuid")+`, s.progress
 		FROM sims me
 		JOIN sims s ON s.city = me.city AND s.commune = me.commune
 		JOIN users u ON u.id = s.user_id
@@ -146,7 +148,7 @@ func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
 		WHERE me.id = $1::uuid AND s.user_id <> $2 AND s.last_tick > $3
 		ORDER BY s.last_tick DESC LIMIT 20`, id, user, since).Query(into(&players))
 	b.Queue(`
-		SELECT o.id, o.first_name, COALESCE(u.username, ''), o.gender, o.look, o.born_at, o.activity, b.friendship, o.city, o.commune, o.last_tick > $2, true, ''
+		SELECT o.id, o.first_name, COALESCE(u.username, ''), o.gender, o.look, o.born_at, o.activity, b.friendship, o.city, o.commune, o.last_tick > $2, true, '', o.progress
 		FROM bonds b
 		JOIN sims o ON o.id = CASE WHEN b.sim_a = $1::uuid THEN b.sim_b ELSE b.sim_a END
 		JOIN users u ON u.id = o.user_id
@@ -154,7 +156,7 @@ func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
 		ORDER BY b.friendship DESC LIMIT 50`, id, since).Query(into(&friends))
 	// Friend requests waiting for an answer, from wherever the one asking is.
 	b.Queue(`
-		SELECT o.id, o.first_name, COALESCE(u.username, ''), o.gender, o.look, o.born_at, o.activity, COALESCE(b.friendship, 0), o.city, o.commune, o.last_tick > $2, false, 'received'
+		SELECT o.id, o.first_name, COALESCE(u.username, ''), o.gender, o.look, o.born_at, o.activity, COALESCE(b.friendship, 0), o.city, o.commune, o.last_tick > $2, false, 'received', o.progress
 		FROM friend_requests f
 		JOIN sims o ON o.id = f.from_sim
 		JOIN users u ON u.id = o.user_id
@@ -226,9 +228,11 @@ func scanPlayers(rows pgx.Rows, now int64) ([]Player, error) {
 		var p Player
 		var born int64
 		var act *game.Activity
-		if err := rows.Scan(&p.ID, &p.FirstName, &p.Username, &p.Gender, &p.Look, &born, &act, &p.Friendship, &p.City, &p.Commune, &p.Online, &p.Friend, &p.Request); err != nil {
+		var prog game.Progress
+		if err := rows.Scan(&p.ID, &p.FirstName, &p.Username, &p.Gender, &p.Look, &born, &act, &p.Friendship, &p.City, &p.Commune, &p.Online, &p.Friend, &p.Request, &prog); err != nil {
 			return nil, err
 		}
+		p.Level = prog.Level()
 		p.Stage = game.StageOf(game.AgeAt(born, now)).ID
 		if p.Online {
 			p.Activity = publicActivity(act, now)
