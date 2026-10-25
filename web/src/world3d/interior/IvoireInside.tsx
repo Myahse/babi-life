@@ -37,6 +37,8 @@ const SPOTS: Record<string, Spot> = {
   'lobby-ivoire': { at: [2, 9], rot: Math.PI, pose: 'phone' },
   'cinema-ivoire': { at: [22, -6.2], rot: Math.PI, pose: 'sit', y: 0.05 },
   'casino-ivoire': { at: [19.6, 8.4], rot: Math.PI, pose: 'busy' },
+  // At one of the slot machines along the casino's wall (components/Machine.tsx).
+  'machine-casino': { at: [29.6, 13], rot: Math.PI / 2, pose: 'touch' },
   'bar-hotel': { at: [0.7, -4.5], rot: Math.PI, pose: 'drink' },
   'brunch-lagune': { at: [-6, -15.4], rot: Math.PI, pose: 'eat', y: 0.05 },
   'piscine-hotel': { at: [0, -29], rot: Math.PI / 2, pose: 'swim', y: 0.42, swim: 7.5, from: [0, -23.6] },

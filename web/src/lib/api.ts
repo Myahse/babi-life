@@ -410,5 +410,7 @@ export const api = {
   answerInvite: (id: string, invite: string, answer: 'accepter' | 'refuser') => post<ActionResult>(`/sims/${id}/invites/${invite}`, { answer }),
   /** A soirée at home (backend sims/party.go): thrown with one of its themes, ended by its host. */
   throwParty: (id: string, theme: string) => post<ActionResult>(`/sims/${id}/soiree`, { theme }),
+  /** One turn of the slot machine the Sim is playing (backend sims/machine.go). */
+  machineSpin: (id: string, stake: number) => post<ActionResult>(`/sims/${id}/machine`, { stake }),
   endParty: (id: string) => post<ActionResult>(`/sims/${id}/soiree/fin`, {}),
 }

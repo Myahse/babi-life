@@ -154,6 +154,10 @@ func (s *Sim) finish(rng *rand.Rand) []Event {
 	}
 	s.schoolMark(a.Interaction)
 	text := capNote(fmt.Sprintf("%s — %s", a.PlaceName, a.Interaction.Label), earnedFrom(a), earned, would)
+	// At a slot machine: the spins, and what the session came to.
+	if note, net, ok := machineNote(a); ok {
+		text, money = text+note, net
+	}
 	events := []Event{{Kind: "interaction", Text: text, Money: money, GameTime: a.Start}}
 	if a.Career != "" {
 		if c, ok := game.FindCareer(a.Career); ok && a.Career == s.Career {
@@ -222,6 +226,10 @@ func (s *Sim) stop() (Event, error) {
 	money := earned
 	if a.Interaction.Cost > 0 {
 		money = -a.Interaction.Cost
+	}
+	// Leaving a slot machine is how its session ends: the spins, and what it came to.
+	if note, net, ok := machineNote(a); ok {
+		return Event{Kind: "interaction", Text: fmt.Sprintf("%s — %s%s", a.PlaceName, a.Interaction.Label, note), Money: net, GameTime: a.Start}, nil
 	}
 	return Event{Kind: "interaction", Text: capNote(fmt.Sprintf("%s — %s (arrêté avant la fin)", a.PlaceName, a.Interaction.Label), earnedFrom(a), earned, would), Money: money, GameTime: a.Start}, nil
 }

@@ -162,6 +162,8 @@ var Kinds = map[string]PlaceKind{
 			{ID: "petit-travaillement", Ages: Adults, Label: "Petit « travaillement »", Icon: "banknote", Minutes: 30, Cost: 5000, Effect: Needs{Fun: 20, Social: 25}, MinHour: 19, MaxHour: 4},
 			{ID: "travaillement", Ages: Adults, Label: "Faire le « travaillement »", Icon: "banknote", Minutes: 60, Cost: 20000, Effect: Needs{Fun: 40, Social: 50}, MinHour: 19, MaxHour: 4},
 			{ID: "grand-travaillement", Ages: Adults, Label: "Grand « travaillement » : tout le monde crie ton nom", Icon: "banknote", Minutes: 60, Cost: 100000, Effect: Needs{Fun: 70, Social: 80}, MinHour: 19, MaxHour: 4},
+			// The slot machine in the corner (game/slots.go, sims/machine.go): small stakes, played spin by spin.
+			{ID: SlotsMaquisID, Ages: Adults, Label: "Jouer à la machine à sous", Icon: "cherry", Minutes: 60, Effect: Needs{Fun: 15}, MinHour: 10},
 		},
 		Events: []RandomEvent{
 			{Text: "Un grand-frère « travaillement » paie la tournée pour toute la table !", Effect: Needs{Fun: 15, Social: 15}},
@@ -679,6 +681,7 @@ var Kinds = map[string]PlaceKind{
 			// famous ice rink: closed for years, it is to become a convention centre.
 			{ID: "cinema-ivoire", Label: "Voir un film au Ciné Ivoire", Icon: "clapperboard", Minutes: 2 * 60, Cost: 3500, Effect: Needs{Fun: 40, Energy: -5}, MinHour: 12, MaxHour: 2, Places: []string{HotelIvoireID}},
 			{ID: "casino-ivoire", Ages: Adults, Label: "Passer la soirée au casino", Icon: "dice-5", Minutes: 90, Cost: 15000, Effect: Needs{Fun: 45, Social: 15, Energy: -10}, MinHour: 18, MaxHour: 4, Places: []string{HotelIvoireID}},
+			{ID: SlotsCasinoID, Ages: Adults, Label: "Jouer aux machines à sous du casino", Icon: "cherry", Minutes: 90, Effect: Needs{Fun: 20, Social: 5}, MinHour: 12, MaxHour: 4, Places: []string{HotelIvoireID}},
 			{ID: "lobby-ivoire", Label: "Flâner dans le grand hall", Icon: "sparkles", Minutes: 30, Effect: Needs{Fun: 15, Social: 5}, Places: []string{HotelIvoireID}},
 			// In the room one has rented (game/hotels.go): one's own for the stay, room service to the door.
 			{ID: RoomSleepID, Stay: true, Label: "Dormir dans ta chambre", Icon: "bed-double", Minutes: 8 * 60, Effect: Needs{Energy: 100, Hygiene: 5, Fun: 5}},

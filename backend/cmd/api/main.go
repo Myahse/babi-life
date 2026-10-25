@@ -175,6 +175,7 @@ func main() {
 				"plot":          map[string]int{"w": game.PlotW, "d": game.PlotD, "h": game.PlotH},
 				"furniture":     game.Furnitures,
 				"emotes":        game.Emotes,
+				"slots":         map[string]any{"symbols": game.SlotSymbols, "stakes": game.SlotStakes, "perDay": game.SlotsPerDay},
 				"vehicles":      game.VehicleModels,
 				"parkings":      game.ParkingKinds,
 				"street":        sims.StreetActivities(),
