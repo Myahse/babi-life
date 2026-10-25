@@ -176,6 +176,7 @@ func main() {
 				"furniture":     game.Furnitures,
 				"emotes":        game.Emotes,
 				"slots":         map[string]any{"symbols": game.SlotSymbols, "stakes": game.SlotStakes, "perDay": game.SlotsPerDay},
+				"bingo":         map[string]any{"games": game.BingoGames, "stakes": game.BingoStakes, "perDraw": game.BingoCardsPerDraw, "perDay": game.BingoPerDay},
 				"vehicles":      game.VehicleModels,
 				"parkings":      game.ParkingKinds,
 				"street":        sims.StreetActivities(),

@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState } from './types'
 import { useSession } from '../store/session'
 import { API_BASE as BASE } from './env'
 import { blobUrl } from './blobUrl'
@@ -412,5 +412,9 @@ export const api = {
   throwParty: (id: string, theme: string) => post<ActionResult>(`/sims/${id}/soiree`, { theme }),
   /** One turn of the slot machine the Sim is playing (backend sims/machine.go). */
   machineSpin: (id: string, stake: number) => post<ActionResult>(`/sims/${id}/machine`, { stake }),
+  /** Babi Bingo (backend sims/bingo.go): the rooms and the Sim's cards; cards for a room's next draw; the cards over settled. */
+  bingo: (id: string) => request<BingoState>(`/sims/${id}/bingo`),
+  buyBingo: (id: string, game: string, cards: number, stake: number) => post<ActionResult>(`/sims/${id}/bingo`, { game, cards, stake }),
+  bingoPay: (id: string) => post<ActionResult>(`/sims/${id}/bingo/paye`, {}),
   endParty: (id: string) => post<ActionResult>(`/sims/${id}/soiree/fin`, {}),
 }
