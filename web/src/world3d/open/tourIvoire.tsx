@@ -8,29 +8,33 @@ import { People, Stroller, type Staff } from './hotelBits'
 
 // The Tour Ivoire, on the service road of the boulevard Félix-Houphouët-
 // Boigny (the old VGE) at the interchange, on the Koumassi side: sixteen
-// levels on a foot of about 47 × 24 m (OpenStreetMap), as the photos show
-// it from the boulevard. In front, toward the street, a round tower of blue
-// mirror glass, its last four floors banded with dark rings; behind it, the
-// slab, wider than it: anthracite toward the street with its light bands at
-// each floor and the gold IVOIRE emblem, light grey at its ends with a dark
-// panel down the middle; under both, the dark podium of two floors with its
-// louvres and its shops (the game's names). Next door, the store with its two
-// red frames around the doors. Frame: +z the street, x along the long side.
+// levels (OpenStreetMap), as the photos show it from the boulevard and from
+// the air. One slab, its length going back from the street, its end toward
+// the street rounded: a half-round of blue mirror glass, its last four
+// floors ringed with dark bands round their curved balconies. The slab's
+// long side on the left is light grey with a dark panel down its middle and
+// the gold IVOIRE emblem; the one on the right anthracite, a light band at
+// each floor. Under it, wider, the dark podium of two floors with its
+// louvres and its shops (the game's names), the forecourt where cars park.
+// Next door, the store with its two red frames round its doors.
+// Frame: +z the street, x along it.
 
-const W = 23.5 // half the long side
-const D = 11.8 // half the short side
+/** The slab: half its width; from its back to where its rounded end starts (that end's middle). */
+const SW = 11
+const SZ = { back: -24, round: 2 }
+/** The podium under it, wider: x from, to; z from, to (its front under the rounded end's). */
+const POD = { x0: -19, x1: 15, z0: -24, z1: SZ.round + SW }
+const FRONT = POD.z1
 const PODIUM = 9 // the shops, then the louvred floor
 const SHOPS = 5
 const FLOOR = 3.5
 const TOP = 58
-const GLASS_TOP = TOP - 4 * FLOOR // the round tower's glass, under its four ringed floors
+const GLASS_TOP = TOP - 4 * FLOOR // the rounded end's glass, under its four ringed floors
 const FLOORS = Math.round((TOP - PODIUM) / FLOOR)
-/** The round tower: its middle and radius. */
-const [RX, RZ, R] = [-2, 2.3, 9.5]
-/** The slab: x from, to; z from, to. */
-const SLAB = { x0: -19, x1: 19, z0: -11.3, z1: 0 }
 /** The store next door, with its red frames. */
-const STORE = { x: W + 12, z: 1, w: 18, d: 14, h: 9 }
+const STORE = { x: POD.x1 + 11, z: 3, w: 18, d: 14, h: 9 }
+/** The half of a cylinder toward the street (three.js measures its angle from +z). */
+const HALF: [number, number] = [-Math.PI / 2, Math.PI]
 
 const dark = new THREE.MeshLambertMaterial({ color: '#3a3e44' })
 const roof = new THREE.MeshLambertMaterial({ color: '#8c8f93' })
@@ -102,7 +106,7 @@ const slabEnd = (bays: number, seed: string) =>
     }
   })
 
-/** The round tower's mirror glass: the sky in it, lighter up high, its mullions and floor lines; at night some offices lit. */
+/** The rounded end's mirror glass: the sky in it, lighter up high, its mullions and floor lines; at night some offices lit. */
 const roundGlass = painted(256, 10 * PX * 2, 'tour-ivoire-glass', (g, night, lit) => {
   const h = 10 * PX * 2
   if (night) {
@@ -124,9 +128,9 @@ const roundGlass = painted(256, 10 * PX * 2, 'tour-ivoire-glass', (g, night, lit
   for (let x = 0; x < 256; x += 8) g.fillRect(x, 0, 1, h)
   for (let y = 0; y < h; y += 32) g.fillRect(0, y, 256, 2)
 }, true)
-roundGlass.map!.repeat.set(3, 1)
-roundGlass.emissiveMap!.repeat.set(3, 1)
-/** The glass of the ringed floors, darker, set back behind the rings. */
+roundGlass.map!.repeat.set(1.5, 1)
+roundGlass.emissiveMap!.repeat.set(1.5, 1)
+/** The glass of the ringed floors, darker, set back behind the curved balconies and their rings. */
 const ringGlass = new THREE.MeshLambertMaterial({ color: '#5f7f9b', emissive: '#ffd994', emissiveIntensity: 0 })
 
 /** The podium's louvres: dark slats over the first floor all round. */
@@ -164,59 +168,60 @@ function Sign({ text, bg, ink, p, h, r = 0 }: { text: string; bg: string; ink: s
   )
 }
 
-/** The round tower: its mirror glass up to the ringed floors, the dark rings, the cap. */
-function RoundTower({ night }: { night: boolean }) {
+/** The slab's rounded end: its mirror glass up to the ringed floors, the dark rings round the curved balconies, the cap. */
+function RoundedEnd({ night }: { night: boolean }) {
   roundGlass.emissiveIntensity = night ? 0.9 : 0
-  ringGlass.emissiveIntensity = night ? 0.2 : 0
-  const rings = [0, 1, 2, 3]
+  ringGlass.emissiveIntensity = night ? 0.35 : 0
   return (
-    <group position={[RX, 0, RZ]}>
+    <group position={[0, 0, SZ.round]}>
       <mesh material={dark} position={[0, PODIUM + 0.3, 0]}>
-        <cylinderGeometry args={[R + 0.3, R + 0.3, 0.6, 48]} />
+        <cylinderGeometry args={[SW + 0.3, SW + 0.3, 0.6, 32, 1, false, ...HALF]} />
       </mesh>
       <mesh material={roundGlass} position={[0, (PODIUM + GLASS_TOP) / 2, 0]}>
-        <cylinderGeometry args={[R, R, GLASS_TOP - PODIUM, 48, 1, true]} />
+        <cylinderGeometry args={[SW, SW, GLASS_TOP - PODIUM, 32, 1, true, ...HALF]} />
       </mesh>
-      {rings.map((k) => (
+      {[0, 1, 2, 3].map((k) => (
         <group key={k} position={[0, GLASS_TOP + k * FLOOR, 0]}>
           <mesh material={dark} position={[0, 0.4, 0]}>
-            <cylinderGeometry args={[R + 0.45, R + 0.45, 0.8, 48]} />
+            <cylinderGeometry args={[SW + 0.5, SW + 0.5, 0.8, 32, 1, false, ...HALF]} />
           </mesh>
           <mesh material={ringGlass} position={[0, 0.8 + (FLOOR - 0.8) / 2, 0]}>
-            <cylinderGeometry args={[R - 0.4, R - 0.4, FLOOR - 0.8, 48]} />
+            <cylinderGeometry args={[SW - 0.6, SW - 0.6, FLOOR - 0.8, 32, 1, true, ...HALF]} />
           </mesh>
         </group>
       ))}
-      {/* The cap over the last floor, a little wider */}
+      {/* The roof over the last floor, a little wider */}
       <mesh material={dark} position={[0, TOP + 0.35, 0]}>
-        <cylinderGeometry args={[R + 0.8, R + 0.8, 0.7, 48]} />
+        <cylinderGeometry args={[SW + 0.8, SW + 0.8, 0.7, 32, 1, false, ...HALF]} />
       </mesh>
     </group>
   )
 }
 
-/** The slab: its faces, the emblem on the street and at its end, its roof and parapet. */
+/** The slab behind its rounded end: its long sides (light grey on the left, anthracite on the right), the emblem, its roof. */
 function Slab({ night }: { night: boolean }) {
-  const [w, d] = [SLAB.x1 - SLAB.x0, SLAB.z1 - SLAB.z0]
+  const d = SZ.round - SZ.back
   const mats = useMemo(() => {
-    const front = slabLong(Math.round(w / 2.2), 'tour-ivoire-front', false)
-    const back = slabLong(Math.round(w / 2.2), 'tour-ivoire-back', false)
-    const end = slabEnd(Math.round(d / 2), 'tour-ivoire-end')
-    const west = slabEnd(Math.round(d / 2), 'tour-ivoire-west')
-    // BoxGeometry's faces: +x, -x, +y, -y, +z, -z.
-    return [end, west, roof, roof, front, back]
-  }, [w, d])
-  mats.forEach((m) => m !== roof && ((m as THREE.MeshLambertMaterial).emissiveIntensity = night ? 1 : 0))
-  const [cx, cz] = [(SLAB.x0 + SLAB.x1) / 2, (SLAB.z0 + SLAB.z1) / 2]
+    const right = slabLong(Math.round(d / 2.2), 'tour-ivoire-right', false)
+    const left = slabEnd(Math.round(d / 2), 'tour-ivoire-left')
+    const back = slabLong(Math.round((2 * SW) / 2.2), 'tour-ivoire-back', false)
+    // BoxGeometry's faces: +x, -x, +y, -y, +z (behind the rounded end), -z.
+    return [right, left, roof, roof, dark, back]
+  }, [d])
+  mats.forEach((m) => m !== roof && m !== dark && ((m as THREE.MeshLambertMaterial).emissiveIntensity = night ? 1 : 0))
+  const cz = (SZ.back + SZ.round) / 2
   return (
     <group>
-      <mesh geometry={BOX} material={mats} position={[cx, (PODIUM + TOP) / 2, cz]} scale={[w, TOP - PODIUM, d]} />
-      <mesh geometry={BOX} material={dark} position={[cx, TOP + 0.5, cz]} scale={[w + 0.3, 1, d + 0.3]} />
-      <mesh geometry={BOX} material={roof} position={[cx + 4, TOP + 2, cz - 2]} scale={[6, 3, 5]} />
-      {/* The emblem: on the street side beside the round tower, and up the dark panel at each end */}
-      <Sign text="IVOIRE" bg="#3b3f45" ink="#d9b45a" p={[SLAB.x1 - 5, TOP - 9, SLAB.z1 + 0.05]} h={1.1} />
-      <Sign text="IVOIRE" bg="#4a4f57" ink="#d9b45a" p={[SLAB.x1 + 0.05, TOP - 12, cz]} h={1.1} r={Math.PI / 2} />
-      <Sign text="IVOIRE" bg="#4a4f57" ink="#d9b45a" p={[SLAB.x0 - 0.05, TOP - 12, cz]} h={1.1} r={-Math.PI / 2} />
+      <mesh geometry={BOX} material={mats} position={[0, (PODIUM + TOP) / 2, cz]} scale={[2 * SW, TOP - PODIUM, d]} />
+      <mesh geometry={BOX} material={dark} position={[0, TOP + 0.35, cz]} scale={[2 * SW + 0.4, 0.7, d + 0.4]} />
+      {/* The air conditioners and the lift's room on the roof */}
+      <mesh geometry={BOX} material={roof} position={[-4, TOP + 1.8, cz - 4]} scale={[6, 2.6, 5]} />
+      {[[3, -2], [6, -2], [3, 2], [6, 2]].map(([x, z]) => (
+        <mesh key={`${x}${z}`} geometry={BOX} material={roof} position={[x, TOP + 1.1, SZ.round + z - 4]} scale={[1.8, 1.2, 1.4]} />
+      ))}
+      {/* The emblem: up the dark panel of the light grey side, and high on the anthracite one near the street */}
+      <Sign text="IVOIRE" bg="#4a4f57" ink="#d9b45a" p={[-SW - 0.05, TOP - 12, cz]} h={1.1} r={-Math.PI / 2} />
+      <Sign text="IVOIRE" bg="#3b3f45" ink="#d9b45a" p={[SW + 0.05, TOP - 9, SZ.round - 4]} h={1.1} r={Math.PI / 2} />
     </group>
   )
 }
@@ -224,23 +229,25 @@ function Slab({ night }: { night: boolean }) {
 /** The podium: two dark floors, the louvres over the shops, the shop windows lit in the evening, their signs (the game's names). */
 function Podium({ night }: { night: boolean }) {
   shopGlass.emissiveIntensity = night ? 0.6 : 0.05
+  const [w, d] = [POD.x1 - POD.x0, POD.z1 - POD.z0]
+  const [cx, cz] = [(POD.x0 + POD.x1) / 2, (POD.z0 + POD.z1) / 2]
   const mats = useMemo(() => {
-    const long = louvreMat(2 * W)
-    const short = louvreMat(2 * D)
+    const long = louvreMat(w)
+    const short = louvreMat(d)
     return [short, short, roof, roof, long, long]
-  }, [])
+  }, [w, d])
   return (
     <group>
-      <mesh geometry={BOX} material={dark} position={[0, SHOPS / 2, 0]} scale={[2 * W - 0.6, SHOPS, 2 * D - 0.6]} />
-      <mesh geometry={BOX} material={mats} position={[0, (SHOPS + PODIUM) / 2, 0]} scale={[2 * W, PODIUM - SHOPS, 2 * D]} />
+      <mesh geometry={BOX} material={dark} position={[cx, SHOPS / 2, cz]} scale={[w - 0.6, SHOPS, d - 0.6]} />
+      <mesh geometry={BOX} material={mats} position={[cx, (SHOPS + PODIUM) / 2, cz]} scale={[w, PODIUM - SHOPS, d]} />
       {/* The shop windows along the street, and the band over them */}
-      <mesh geometry={BOX} material={shopGlass} position={[0, SHOPS / 2 - 0.2, D - 0.25]} scale={[2 * W - 2, SHOPS - 1, 0.1]} />
-      <mesh geometry={BOX} material={dark} position={[0, SHOPS - 0.35, D]} scale={[2 * W, 0.7, 0.4]} />
-      <Sign text="BABI MODE" bg="#2e3237" ink="#ffffff" p={[-15, SHOPS + 1.8, D + 0.05]} h={1.4} />
-      <Sign text="SORTIE" bg="#1b1d21" ink="#ffffff" p={[5, SHOPS - 1.2, D + 0.06]} h={0.6} />
-      <Sign text="PHARMA+" bg="#d7262e" ink="#ffffff" p={[-1, SHOPS - 1.2, D + 0.06]} h={0.6} />
+      <mesh geometry={BOX} material={shopGlass} position={[cx, SHOPS / 2 - 0.2, FRONT - 0.25]} scale={[w - 2, SHOPS - 1, 0.1]} />
+      <mesh geometry={BOX} material={dark} position={[cx, SHOPS - 0.35, FRONT]} scale={[w, 0.7, 0.4]} />
+      <Sign text="BABI MODE" bg="#2e3237" ink="#ffffff" p={[-12, SHOPS + 1.8, FRONT + 0.05]} h={1.4} />
+      <Sign text="SORTIE" bg="#1b1d21" ink="#ffffff" p={[6, SHOPS - 1.2, FRONT + 0.06]} h={0.6} />
+      <Sign text="PHARMA+" bg="#d7262e" ink="#ffffff" p={[-2, SHOPS - 1.2, FRONT + 0.06]} h={0.6} />
       {/* The tall totem at the corner of the forecourt, red at its top */}
-      <group position={[8, 0, D + 2.2]}>
+      <group position={[11, 0, FRONT + 2.2]}>
         <mesh geometry={BOX} material={dark} position={[0, 6, 0]} scale={[1.6, 12, 0.8]} />
         <mesh geometry={BOX} material={red} position={[0, 11, 0.05]} scale={[1.7, 1.6, 0.85]} />
         <Sign text="TOUR IVOIRE" bg="#1b1d21" ink="#ffffff" p={[0, 8.8, 0.42]} h={0.32} />
@@ -278,36 +285,37 @@ function RedStore({ night }: { night: boolean }) {
 export function TourIvoire({ night }: { night: boolean }) {
   const people = useMemo<Staff[]>(
     () => [
-      { p: [4.2, 0, D + 1.6], r: 0.2, who: 'vigile' },
-      { p: [-10, 0, D + 3.2], r: -2.6, who: 'client', pose: 'phone' },
-      { p: [-8.9, 0, D + 2.6], r: -0.6, who: 'client', pose: 'talk' },
+      { p: [4.5, 0, FRONT + 1.6], r: 0.2, who: 'vigile' },
+      { p: [-10, 0, FRONT + 3.2], r: -2.6, who: 'client', pose: 'phone' },
+      { p: [-8.9, 0, FRONT + 2.6], r: -0.6, who: 'client', pose: 'talk' },
       { p: [STORE.x - 1, 0, STORE.z + STORE.d / 2 + 2.6], r: 2.8, who: 'client', pose: 'talk' },
     ],
     [],
   )
   const cars = useMemo(() => {
     const r = rng('tour-ivoire-cars')
-    return [-20, -16, 13, 17, 21].map((x, i) => ({ x, seed: i + Math.floor(r() * 50) }))
+    return [-17, -13, -9, 14, 18].map((x, i) => ({ x, seed: i + Math.floor(r() * 50) }))
   }, [])
+  const [x0, x1] = [POD.x0 - 3, STORE.x + STORE.w / 2 + 2]
   return (
     <group>
-      {/* The forecourt along the service road, its kerb */}
-      <mesh geometry={BOX} material={paving} position={[STORE.w / 2 + 3, 0.03, D + 4]} scale={[2 * W + STORE.w + 8, 0.06, 8]} />
-      <mesh geometry={BOX} material={kerb} position={[STORE.w / 2 + 3, 0.08, D + 8.1]} scale={[2 * W + STORE.w + 8, 0.16, 0.3]} />
+      {/* The forecourt where cars park, along the service road, its kerb */}
+      <mesh geometry={BOX} material={paving} position={[(x0 + x1) / 2, 0.03, FRONT + 4]} scale={[x1 - x0, 0.06, 8]} />
+      <mesh geometry={BOX} material={kerb} position={[(x0 + x1) / 2, 0.08, FRONT + 8.1]} scale={[x1 - x0, 0.16, 0.3]} />
       <Podium night={night} />
-      <RoundTower night={night} />
+      <RoundedEnd night={night} />
       <Slab night={night} />
       <RedStore night={night} />
-      {/* Cars parked along the front, a taxi waiting; a lorry at the store */}
+      {/* Cars parked nose in on the forecourt, a taxi waiting */}
       {cars.map((c) => (
-        <Vehicle key={c.x} p={[c.x, 0, D + 6]} r={0} kind="car" seed={c.seed} crew={false} />
+        <Vehicle key={c.x} p={[c.x, 0, FRONT + 5]} r={Math.PI / 2} kind="car" seed={c.seed} crew={false} />
       ))}
-      <Vehicle p={[-2, 0, D + 6]} r={0} kind="taxi" seed={4} crew={false} />
-      {night && <pointLight position={[0, 4, D + 4]} intensity={25} distance={22} color="#ffe2b0" />}
+      <Vehicle p={[1, 0, FRONT + 6.4]} r={0} kind="taxi" seed={4} crew={false} />
+      {night && <pointLight position={[0, 4, FRONT + 4]} intensity={25} distance={22} color="#ffe2b0" />}
       <NoShadows>
         <People at={people} seed="tour-ivoire" />
-        {!night && <Stroller from={[-16, D + 2]} to={[2, D + 2.4]} seed="tour-ivoire-a" />}
-        {!night && <Stroller from={[12, D + 2.2]} to={[STORE.x, STORE.z + STORE.d / 2 + 2]} seed="tour-ivoire-b" bag />}
+        {!night && <Stroller from={[-16, FRONT + 2]} to={[2, FRONT + 2.4]} seed="tour-ivoire-a" />}
+        {!night && <Stroller from={[8, FRONT + 2.2]} to={[STORE.x, STORE.z + STORE.d / 2 + 2]} seed="tour-ivoire-b" bag />}
       </NoShadows>
     </group>
   )
@@ -315,7 +323,7 @@ export function TourIvoire({ night }: { night: boolean }) {
 
 /** What stands in the way: the podium under the tower, the store next door, the totem. */
 export const TOUR_IVOIRE_SOLID: ({ x: number; z: number; r: number } | { x: number; z: number; hw: number; hd: number; rot: number; top?: number })[] = [
-  { x: 0, z: 0, hw: W + 0.3, hd: D + 0.3, rot: 0, top: PODIUM },
+  { x: (POD.x0 + POD.x1) / 2, z: (POD.z0 + POD.z1) / 2, hw: (POD.x1 - POD.x0) / 2 + 0.3, hd: (POD.z1 - POD.z0) / 2 + 0.3, rot: 0, top: PODIUM },
   { x: STORE.x, z: STORE.z, hw: STORE.w / 2 + 0.3, hd: STORE.d / 2 + 1.2, rot: 0, top: STORE.h },
-  { x: 8, z: D + 2.2, r: 1 },
+  { x: 11, z: FRONT + 2.2, r: 1 },
 ]
