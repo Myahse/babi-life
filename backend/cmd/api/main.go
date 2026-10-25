@@ -177,6 +177,7 @@ func main() {
 				"emotes":        game.Emotes,
 				"slots":         map[string]any{"symbols": game.SlotSymbols, "stakes": game.SlotStakes, "perDay": game.SlotsPerDay},
 				"bingo":         map[string]any{"games": game.BingoGames, "stakes": game.BingoStakes, "perDraw": game.BingoCardsPerDraw, "perDay": game.BingoPerDay},
+				"casino":        map[string]any{"chips": game.RouletteChips, "maxTotal": game.RouletteMaxTotal, "maxBets": game.RouletteMaxBets, "stakes": game.BlackjackStakes, "tickets": game.ScratchTickets, "perDay": game.CasinoPerDay},
 				"vehicles":      game.VehicleModels,
 				"parkings":      game.ParkingKinds,
 				"street":        sims.StreetActivities(),

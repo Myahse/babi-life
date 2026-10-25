@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackView } from './types'
 import { useSession } from '../store/session'
 import { keepData, keptData, OFFLINE_TEXT, setOnline } from './offline'
 
@@ -416,5 +416,10 @@ export const api = {
   bingo: (id: string) => request<BingoState>(`/sims/${id}/bingo`),
   buyBingo: (id: string, game: string, cards: number, stake: number) => post<ActionResult>(`/sims/${id}/bingo`, { game, cards, stake }),
   bingoPay: (id: string) => post<ActionResult>(`/sims/${id}/bingo/paye`, {}),
+  /** Babi Casino (backend sims/casino.go): a spin of the roulette, le 21 (the hand going on; a move), a ticket à gratter. */
+  roulette: (id: string, bets: RouletteBet[]) => post<ActionResult>(`/sims/${id}/casino/roulette`, { bets }),
+  blackjack: (id: string) => request<{ hand: BlackjackView | null }>(`/sims/${id}/casino/21`),
+  blackjackMove: (id: string, move: 'distribuer' | 'tirer' | 'rester' | 'doubler', stake = 0) => post<ActionResult>(`/sims/${id}/casino/21`, { move, stake }),
+  scratch: (id: string, ticket: string) => post<ActionResult>(`/sims/${id}/casino/grattage`, { ticket }),
   endParty: (id: string) => post<ActionResult>(`/sims/${id}/soiree/fin`, {}),
 }

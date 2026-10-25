@@ -50,6 +50,8 @@ const (
 	Slots Income = "machine"
 	// Bingo: the bingo cards bought, counted (game/bingo.go); what they pay, like the bets', isn't earned.
 	Bingo Income = "bingo"
+	// Casino: the rounds at Babi Casino (game/casino.go: a spin, a hand, a ticket), counted; what they pay isn't earned.
+	Casino Income = "casino"
 )
 
 // Cap: what an account may get from a source in a real day.
@@ -80,6 +82,7 @@ var Caps = map[Income]Cap{
 	EarnedTotal:    {Djai: DailyTotal, Full: "Tu as assez gagné pour aujourd'hui : reviens demain."},
 	Slots:          {Times: SlotsPerDay, Full: "Assez de machine à sous pour aujourd'hui : reviens demain."},
 	Bingo:          {Times: BingoPerDay, Full: "Assez de cartons de bingo pour aujourd'hui : reviens demain."},
+	Casino:         {Times: CasinoPerDay, Full: "Le casino ferme pour toi aujourd'hui : reviens demain."},
 }
 
 // DailyTotal: the most an account earns by playing in a real day, every
@@ -147,7 +150,7 @@ func limit(src Income, pass bool) int {
 
 // inTotal: the sources the day's total counts.
 func inTotal(src Income) bool {
-	return src != FromPlayers && src != ToPlayers && src != FromRental && src != EarnedTotal && src != Slots && src != Bingo
+	return src != FromPlayers && src != ToPlayers && src != FromRental && src != EarnedTotal && src != Slots && src != Bingo && src != Casino
 }
 
 // Left: the Djai a source can still bring today (math.MaxInt: no limit).

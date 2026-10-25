@@ -25,6 +25,8 @@ type Outcome struct {
 	Money int    `json:"money"`
 	// Mood: how someone took what was said to them ("good", "bad"), for their face.
 	Mood string `json:"mood,omitempty"`
+	// Data: what a game played sends back with it (the roulette's number, a ticket's cells…).
+	Data any `json:"data,omitempty"`
 }
 
 // RandomEventChance is the probability that something unexpected happens

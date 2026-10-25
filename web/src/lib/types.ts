@@ -257,6 +257,8 @@ export type World = {
   slots?: { symbols: SlotSymbol[]; stakes: Record<string, number[]>; perDay: number }
   /** Babi Bingo (game/bingo.go): the four games, the stakes, the cards a draw and a day. */
   bingo?: { games: BingoGame[]; stakes: number[]; perDraw: number; perDay: number }
+  /** Babi Casino (game/casino.go): the roulette's chips and limits, le 21's stakes, the tickets, the rounds a day. */
+  casino?: { chips: number[]; maxTotal: number; maxBets: number; stakes: number[]; tickets: ScratchTicket[]; perDay: number }
   /** Vehicles to buy on Bolide, and the places to keep them (backend game/vehicles.go). */
   vehicles?: VehicleModel[]
   parkings?: ParkingKind[]
@@ -372,6 +374,14 @@ export type Activity = {
   machine?: SlotSession
 }
 
+/** Babi Casino (backend game/casino.go): a bet on the roulette's cloth (plein: number 0–36; douzaine, colonne: 1–3). */
+export type RouletteBet = { kind: string; number?: number; stake: number }
+export type RouletteSpin = { number: number; colour: 'rouge' | 'noir' | 'vert'; wins: number[]; back: number }
+/** A hand of le 21 as the player sees it: the dealer's second card hidden till the end. */
+export type BlackjackView = { stake: number; player: number[]; dealer: number[]; total: number; shown: number; doubled?: boolean; done: boolean; result?: 'blackjack' | 'gagne' | 'egalite' | 'perdu' | 'saute'; paid?: number }
+export type ScratchTicket = { id: string; name: string; about: string; price: number; prizes: { amount: number; odds: number }[] }
+export type ScratchResult = { ticket: string; cells: number[]; prize: number }
+
 /** Babi Bingo (backend game/bingo.go): a prize, done within so many balls, paid times the stake. */
 export type BingoPrize = { id: string; label: string; within: number; times: number }
 /** One of the games: its balls (Drawn of 1…Balls), its card (Rows × Cols, the free middle), its draws (a ball every Every ms, a draw every Period s). */
@@ -399,7 +409,7 @@ export type JournalEvent = {
   at: string
 }
 
-export type Outcome = { text: string; money: number; mood?: 'good' | 'bad' | 'bye' }
+export type Outcome = { text: string; money: number; mood?: 'good' | 'bad' | 'bye'; /** What a game played sends back (the roulette's number, a ticket's cells, a hand of le 21). */ data?: unknown }
 /** Every read or action on a Sim returns this; `fresh` = journal lines this request produced. */
 /** A building material: basic ones from the start, the others unlocked by building. */
 export type Material = { id: string; label: string; color: string; price: number; unlock: number; glass?: boolean }
@@ -493,6 +503,6 @@ export type Politics = {
 }
 
 /** Where Djai earned by playing comes from (backend game/money.go). */
-export type Income = 'travail' | 'boulot' | 'pourboire' | 'defi' | 'tournoi' | 'jeux' | 'chance' | 'coup' | 'reseaux' | 'recu' | 'envoye' | 'location' | 'total' | 'machine' | 'bingo'
+export type Income = 'travail' | 'boulot' | 'pourboire' | 'defi' | 'tournoi' | 'jeux' | 'chance' | 'coup' | 'reseaux' | 'recu' | 'envoye' | 'location' | 'total' | 'machine' | 'bingo' | 'casino'
 /** A source's day so far: Djai got and the most a day (0: none), times done and the most a day. */
 export type DayLimit = { got: number; max?: number; times?: number; maxTimes?: number }
