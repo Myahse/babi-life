@@ -177,9 +177,22 @@ var (
 
 func abidjanCommune(id, name, blurb string, lat, lng float64, bank string, places ...Place) Commune {
 	src := &game.Source{Status: game.StatusVerified, URLs: append(append([]string{}, abidjanAdmin.URLs...), srcBridges), Checked: game.Checked, Note: abidjanAdmin.Note + " " + bankNote}
+	all := append(append(append([]Place{mairie(id, name, lat+0.0025, lng-0.0035, srcAbidjanDistrict)}, places...), coiffeurs(id, lat, lng)...), services(id, name, lat, lng)...)
+	for i := range all {
+		if at, ok := ashore[all[i].ID]; ok {
+			all[i].Lat, all[i].Lng = at[0], at[1]
+		}
+	}
 	return Commune{ID: id, Name: name, Blurb: blurb, Lat: lat, Lng: lng,
 		Admin:  Admin{Type: "commune", Parent: "District autonome d'Abidjan", Mairie: "mairie-" + id, Bank: bank, Source: src},
-		Places: append(append(append([]Place{mairie(id, name, lat+0.0025, lng-0.0035, srcAbidjanDistrict)}, places...), coiffeurs(id, lat, lng)...), services(id, name, lat, lng)...)}
+		Places: all}
+}
+
+// ashore: the game's own shops whose usual spot round their commune's centre
+// (coiffeurs, services) falls in the lagoon, set on dry ground by a street
+// instead (OpenStreetMap's water and roads, 2026-10-25).
+var ashore = map[string][2]float64{
+	"attecoube-salon": {5.33549, -4.03872},
 }
 
 // services: every commune has its pharmacy and its police station (where
@@ -240,6 +253,7 @@ var townHalls = map[string]struct {
 	"songon":         {5.32390, -4.19346, "boulevard Koui-Mamadou, à Songon Gare"},
 	"yakro-centre":   {6.83589, -5.26657, "l'hôtel de ville, route de Mami-Adjoua"},
 	"bassam-france":  {5.19699, -3.73723, "rue Marcel-Monnier, Quartier France"},
+	"bouake-centre":  {7.67896, -5.03042, "l'hôtel de ville, avenue Gabriel-Dadié"},
 	"sp-centre":      {4.73555, -6.62224, "boulevard Félix-Houphouët-Boigny"},
 	"man-centre":     {7.40508, -7.55702, "sur l'A8"},
 	"korhogo-centre": {9.45179, -5.63354, "rue des Banques, à Koko"},
@@ -445,13 +459,13 @@ var Cities = []City{
 					Owner: "État de Côte d'Ivoire (concédant)", Operator: "AERIA (concession depuis 1996)",
 					Source: game.Verified("Aéroport de Port-Bouët géré par AERIA depuis mai 1996 ; concession renouvelée par l'État en 2010 pour vingt ans. Placé à l'aérogare internationale, d'après OpenStreetMap.", srcAirport, srcAirport2, srcOSM)},
 				// Its central building under the dome (web/src/world3d/open/parcExpo.tsx); no game houses on its grounds.
-				Place{ID: "portbouet-parc-expo", Name: "Parc des Expositions d'Abidjan", Kind: "culture", Lat: 5.26465, Lng: -3.94603, Real: true, Approx: true,
+				Place{ID: "portbouet-parc-expo", Name: "Parc des Expositions d'Abidjan", Kind: "culture", Lat: 5.26465, Lng: -3.94603, Real: true,
 					Source: game.Partial("Parc des Expositions d'Abidjan, boulevard de l'Aéroport à Port-Bouët, inauguré en juillet 2023 : 16 ha en première phase, un hall d'exposition de 7 200 m², le Convention Center sous son dôme (plus de 5 000 places assises, environ 10 000 debout), un écran LED de 250 m², 800 places de parking. Le dôme est posé sur le grand bâtiment central d'OpenStreetMap ; ses dimensions sont celles du jeu.", srcParcExpo, srcParcExpo2, srcParcExpoOSM)},
 			),
 			abidjanCommune("attecoube", "Attécoubé", "Entre lagune et forêt du Banco.", 5.3350, -4.0400, "nord",
-				Place{ID: "attecoube-banco", Name: "Forêt du Banco", Kind: "nature", Lat: 5.3945, Lng: -4.0520, Real: true, Approx: true,
-					Source: game.Partial("Parc national du Banco : forêt classée en 1926, parc national en 1953, environ 3 438 ha dont 600 ha de forêt primaire ; ses forages donnent une large part de l'eau d'Abidjan. Il touche Attécoubé, Yopougon, Abobo et Adjamé.", srcBanco)},
-				fictional("attecoube-maquis", "Maquis de Santé", "maquis", "", 5.3330, -4.0350),
+				Place{ID: "attecoube-banco", Name: "Forêt du Banco", Kind: "nature", Lat: 5.36024, Lng: -4.04645, Real: true,
+					Source: game.Partial("Parc national du Banco : forêt classée en 1926, parc national en 1953, environ 3 438 ha dont 600 ha de forêt primaire ; ses forages donnent une large part de l'eau d'Abidjan. Il touche Attécoubé, Yopougon, Abobo et Adjamé. Placé à son entrée, sur l'autoroute du Nord, d'après OpenStreetMap.", srcBanco, srcOSM)},
+				fictional("attecoube-maquis", "Maquis de Santé", "maquis", "Santé-Village", 5.33265, -4.03917),
 			),
 			abidjanCommune("anyama", "Anyama", "Au nord d'Abidjan, entre ville et campagne.", 5.5000, -4.0500, "nord",
 				fictional("anyama-marche", "Marché d'Anyama", "market", "", 5.4970, -4.0530),
@@ -478,15 +492,15 @@ var Cities = []City{
 			{ID: "yakro-centre", Name: "Yamoussoukro", Lat: 6.8276, Lng: -5.2893, Blurb: "Larges avenues et lacs aux caïmans.",
 				Admin: Admin{Type: "commune", Parent: "District autonome de Yamoussoukro", Mairie: "mairie-yakro-centre", Source: game.Verified("Commune du district autonome.", srcVilles2026)},
 				Places: []Place{
-					{ID: "yakro-aeroport", Name: "Aéroport de Yamoussoukro", Kind: "aeroport", Lat: 6.9031, Lng: -5.3658, Real: true, Approx: true, Source: game.Unverified("Aéroport de Yamoussoukro ; vols intérieurs, à confirmer.")},
+					{ID: "yakro-aeroport", Name: "Aéroport de Yamoussoukro", Kind: "aeroport", Lat: 6.90607, Lng: -5.35955, Real: true, Approx: true, Source: game.Partial("Aéroport de Yamoussoukro ; vols intérieurs, à confirmer. Placé au plus grand bâtiment au bord du tarmac, d'après OpenStreetMap.", srcOSM)},
 					mairie("yakro-centre", "Yamoussoukro", 6.8230, -5.2830, srcVilles2026),
 					{ID: "yakro-basilique", Name: "Basilique Notre-Dame de la Paix", Kind: "worship", Lat: 6.81133, Lng: -5.29709, Real: true,
 						Source: game.Verified("Basilique de Yamoussoukro. Position d'après OpenStreetMap.", srcYakro, srcYakroSites, srcOSM)},
 					{ID: "yakro-maquis", Name: "Maquis du Lac", Kind: "maquis", Lat: 6.8190, Lng: -5.2760, Approx: true, Source: invented},
 					{ID: "yakro-inphb", Name: "INP-HB", Kind: "universite", Lat: 6.88138, Lng: -5.22991, Real: true, Operator: "Institut public d'enseignement supérieur",
 						Source: game.Verified("Institut national polytechnique Félix-Houphouët-Boigny ; placé à la bibliothèque de l'INP-HB Centre, d'après OpenStreetMap.", srcINPHB, srcOSM)},
-					{ID: "yakro-lac", Name: "Lac aux caïmans", Kind: "nature", Lat: 6.8170, Lng: -5.2690, Real: true, Approx: true,
-						Source: game.Partial("Caïmans du lac artificiel du palais présidentiel.", srcYakro)},
+					{ID: "yakro-lac", Name: "Lac aux caïmans", Kind: "nature", Lat: 6.82538, Lng: -5.28031, Real: true,
+						Source: game.Partial("Caïmans du lac artificiel du palais présidentiel ; placé sur la rive ouest, côté palais (le « Lac n°4 » d'OpenStreetMap).", srcYakro, srcOSM)},
 				}},
 		},
 	},
@@ -498,7 +512,7 @@ var Cities = []City{
 			{ID: "bouake-centre", Name: "Bouaké", Lat: 7.6906, Lng: -5.0303, Blurb: "Grand marché et ambiance du Carnaval.",
 				Admin: Admin{Type: "commune", Parent: "Département de Bouaké, région du Gbêkê", Mairie: "mairie-bouake-centre", Source: game.Verified("Bouaké, chef-lieu du Gbêkê.", srcGbeke)},
 				Places: []Place{
-					{ID: "bouake-aeroport", Name: "Aéroport de Bouaké", Kind: "aeroport", Lat: 7.7388, Lng: -5.0736, Real: true, Approx: true, Source: game.Unverified("Aéroport de Bouaké ; vols intérieurs, à confirmer.")},
+					{ID: "bouake-aeroport", Name: "Aéroport de Bouaké", Kind: "aeroport", Lat: 7.73576, Lng: -5.06910, Real: true, Approx: true, Source: game.Partial("Aéroport de Bouaké ; vols intérieurs, à confirmer. Placé au bâtiment du tarmac civil, d'après OpenStreetMap.", srcOSM)},
 					mairie("bouake-centre", "Bouaké", 7.6930, -5.0330, srcGbeke),
 					{ID: "bouake-marche", Name: "Grand marché de Bouaké", Kind: "market", Lat: 7.68984, Lng: -5.02480, Real: true, Source: game.Partial("Grand marché de Bouaké (en reconstruction sur la carte) ; position d'après OpenStreetMap.", srcOSM)},
 					{ID: "bouake-stade", Name: "Stade de la Paix", Kind: "stade", Lat: 7.68299, Lng: -5.04456, Real: true, Source: game.Partial("Stade de la Paix de Bouaké ; position d'après OpenStreetMap.", srcOSM)},
@@ -538,7 +552,7 @@ var Cities = []City{
 					{ID: "sp-aeroport", Name: "Aéroport de San-Pédro", Kind: "aeroport", Lat: 4.7461, Lng: -6.6603, Real: true, Approx: true, Source: game.Unverified("Aéroport de San-Pédro ; vols intérieurs, à confirmer.")},
 					mairie("sp-centre", "San-Pédro", 4.7510, -6.6400, srcVilles2026),
 					{ID: "sp-port", Name: "Port autonome", Kind: "office", Lat: 4.74228, Lng: -6.62083, Real: true, Source: game.Partial("Deuxième port du pays ; statut et gestionnaire à confirmer. Placé à sa direction générale, d'après OpenStreetMap.", srcVilles2026, srcOSM)},
-					{ID: "sp-plage", Name: "Plage de San-Pédro", Kind: "beach", Lat: 4.7380, Lng: -6.6500, Real: true, Approx: true, Source: game.Unverified("Plage de la ville ; à confirmer.")},
+					{ID: "sp-plage", Name: "Plage de San-Pédro", Kind: "beach", Lat: 4.72290, Lng: -6.63990, Real: true, Approx: true, Source: game.Partial("Plage de la ville ; placée au bord du sable, au bout de la route de l'hôtel Balmer, d'après OpenStreetMap.", srcOSM)},
 					fictional("sp-maquis", "Maquis du port", "maquis", "", 4.7450, -6.6280),
 				}},
 		},
@@ -554,7 +568,7 @@ var Cities = []City{
 					{ID: "man-aeroport", Name: "Aéroport de Man", Kind: "aeroport", Lat: 7.2720, Lng: -7.5869, Real: true, Approx: true, Source: game.Unverified("Aéroport de Man ; vols intérieurs, à confirmer.")},
 					mairie("man-centre", "Man", 7.4150, -7.5560, srcRegions),
 					{ID: "man-dent", Name: "La Dent de Man", Kind: "nature", Lat: 7.45635, Lng: -7.54433, Real: true, Source: game.Partial("Sommet emblématique de Man ; le sommet d'après OpenStreetMap.", srcOSM)},
-					{ID: "man-cascade", Name: "La Cascade", Kind: "nature", Lat: 7.41205, Lng: -7.58638, Real: true, Source: game.Partial("Man est connue pour ses chutes d'eau ; les Cascades naturelles de Man, d'après OpenStreetMap.", srcYakroSites, srcOSM)},
+					{ID: "man-cascade", Name: "La Cascade", Kind: "nature", Lat: 7.41192, Lng: -7.58662, Real: true, Source: game.Partial("Man est connue pour ses chutes d'eau ; les Cascades naturelles de Man, d'après OpenStreetMap ; placée sur la rive, au bord du chemin.", srcYakroSites, srcOSM)},
 					{ID: "man-marche", Name: "Marché de Man", Kind: "market", Lat: 7.40970, Lng: -7.54818, Real: true, Source: game.Partial("Marché de Man ; position d'après OpenStreetMap.", srcOSM)},
 				}},
 		},
@@ -567,7 +581,7 @@ var Cities = []City{
 			{ID: "korhogo-centre", Name: "Korhogo", Lat: 9.4580, Lng: -5.6296, Blurb: "Artisans, toiles de Korhogo et chaleur du nord.",
 				Admin: Admin{Type: "commune", Parent: "Département de Korhogo, région du Poro", Mairie: "mairie-korhogo-centre", Source: game.Verified("Chef-lieu du Poro.", srcPoro)},
 				Places: []Place{
-					{ID: "korhogo-aeroport", Name: "Aéroport de Korhogo", Kind: "aeroport", Lat: 9.3872, Lng: -5.5566, Real: true, Approx: true, Source: game.Unverified("Aéroport de Korhogo ; vols intérieurs, à confirmer.")},
+					{ID: "korhogo-aeroport", Name: "Aéroport de Korhogo", Kind: "aeroport", Lat: 9.39037, Lng: -5.55448, Real: true, Approx: true, Source: game.Partial("Aéroport de Korhogo ; vols intérieurs, à confirmer. Placé au plus grand bâtiment au bord du tarmac, d'après OpenStreetMap.", srcOSM)},
 					mairie("korhogo-centre", "Korhogo", 9.4600, -5.6330, srcPoro),
 					{ID: "korhogo-marche", Name: "Grand marché", Kind: "market", Lat: 9.45871, Lng: -5.63102, Real: true, Source: game.Partial("Grand marché de Korhogo ; position d'après OpenStreetMap.", srcOSM)},
 					{ID: "korhogo-mosquee", Name: "Grande mosquée", Kind: "worship", Lat: 9.45983, Lng: -5.63912, Real: true, Source: game.Partial("Grande mosquée de Korhogo ; position d'après OpenStreetMap.", srcOSM)},
@@ -586,7 +600,7 @@ var Cities = []City{
 				Places: []Place{
 					{ID: "daloa-aeroport", Name: "Aéroport de Daloa", Kind: "aeroport", Lat: 6.7928, Lng: -6.4731, Real: true, Approx: true, Source: game.Unverified("Aéroport de Daloa ; vols intérieurs, à confirmer.")},
 					mairie("daloa-centre", "Daloa", 6.8800, -6.4530, srcRegions),
-					{ID: "daloa-marche", Name: "Marché de Daloa", Kind: "market", Lat: 6.8760, Lng: -6.4500, Real: true, Approx: true, Source: game.Unverified("Marché de la ville ; à confirmer.")},
+					{ID: "daloa-marche", Name: "Marché de Daloa", Kind: "market", Lat: 6.87950, Lng: -6.45650, Real: true, Approx: true, Source: game.Unverified("Le grand marché ; placé entre la pharmacie et le cabinet dentaire « du Grand Marché » d'OpenStreetMap, son emprise est à relever.", srcOSM)},
 					{ID: "daloa-maquis", Name: "Maquis du centre", Kind: "maquis", Lat: 6.8800, Lng: -6.4460, Approx: true, Source: invented},
 					{ID: "daloa-universite", Name: "Université Jean-Lorougnon-Guédé", Kind: "universite", Lat: 6.89446, Lng: -6.44112, Real: true, Operator: "Université publique",
 						Source: game.Verified("Université de plein exercice depuis 2012, tournée vers l'agroforesterie. Position d'après OpenStreetMap.", srcUniversities, srcUniversities2, srcOSM)},
