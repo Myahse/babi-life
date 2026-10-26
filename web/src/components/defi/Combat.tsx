@@ -143,6 +143,9 @@ function Match({ foe, me, onEnd }: { foe: Foe; me?: Me; onEnd: (score: number) =
   // In development, the fight for the test pilot in the browser.
   if (import.meta.env.DEV) Object.assign(globalThis, { __combat: F })
 
+  // A blow's flash over the whole screen: white when the player lands a big one, red when hit hard.
+  const flashEl = useRef<HTMLDivElement>(null)
+  const flashV = useRef(0)
   const onFrame = (dt: number): FightEvent[] => {
     const fight = F.current
     const k = keys.current
@@ -172,6 +175,10 @@ function Match({ foe, me, onEnd }: { foe: Foe; me?: Me; onEnd: (score: number) =
         sfx.punch(e.heavy || e.kind !== 'hit')
         haptic(mineHit ? 'medium' : 'heavy')
         rumble(mineHit ? 0.35 : e.heavy ? 0.9 : 0.6, e.heavy ? 220 : 120)
+        if (e.heavy || e.kind !== 'hit') {
+          flashV.current = mineHit ? 0.28 : 0.4
+          if (flashEl.current) flashEl.current.style.background = mineHit ? '#ffffff' : '#e03131'
+        }
         if (e.kind === 'counter') note = mineHit ? 'Contre !' : ''
         if (e.kind === 'throw' && mineHit) note = 'Saisie !'
       } else if (e.kind === 'block') sfx.guard()
@@ -181,6 +188,8 @@ function Match({ foe, me, onEnd }: { foe: Foe; me?: Me; onEnd: (score: number) =
         note = mineHit ? 'Coupé-décalé !' : ''
       } else if (e.kind === 'ko') sfx.bell(3)
     }
+    flashV.current = Math.max(0, flashV.current - dt * 2.2)
+    if (flashEl.current) flashEl.current.style.opacity = String(flashV.current)
     // The bars and the words, when they change.
     const [a, b] = fight.f
     const next: Hud = {
@@ -270,6 +279,9 @@ function Match({ foe, me, onEnd }: { foe: Foe; me?: Me; onEnd: (score: number) =
       </div>
       {/* The Super: the street darkened for an instant. */}
       <div className="pointer-events-none absolute inset-0 bg-black transition-opacity duration-150" style={{ opacity: F.current.flash > 0 ? 0.25 : 0 }} />
+      <div ref={flashEl} className="pointer-events-none absolute inset-0 opacity-0 mix-blend-screen" />
+      {/* Low on life: the edges of the screen beat red. */}
+      {hud.hp[0] > 0 && hud.hp[0] <= 25 && <div className="pointer-events-none absolute inset-0 animate-pulse shadow-[inset_0_0_70px_14px_rgba(224,49,49,0.55)]" />}
       {/* The bars. */}
       <div className="pointer-events-none absolute inset-x-0 top-0 px-3 pt-3 text-white">
         <div className="flex items-center gap-2">

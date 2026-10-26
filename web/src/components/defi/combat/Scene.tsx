@@ -13,8 +13,10 @@ import { poseOf, STAGE, type Fight, type FightEvent } from './engine'
 // the cabine still open, the bulbs strung across, two street lamps on the
 // fighters, the crowd round them, a woro-woro and a gbaka parked. The camera
 // stands behind the player at an angle (the phone is upright: the fight goes
-// into the screen), pulls back as the fighters part, shakes on the big blows
-// and closes in on a K.O.
+// into the screen), pulls back as the fighters part, shakes and lunges in on
+// the big blows, drops low for a Super and closes in on a K.O. The road is wet:
+// the neon and the lamps shine in it. Each blow lands with a flash, a shock
+// ring and its damage flying off; the big swings leave a trail, a fall raises dust.
 
 export type FighterLook = { look: Look; gender: 'femme' | 'homme'; seed: number }
 
@@ -40,7 +42,10 @@ export function FightCanvas({ F, looks, onFrame }: Props) {
 
 function World({ F, looks, onFrame }: Props) {
   const fx = useRef<FightEvent[]>([])
+  const dust = useRef<FightEvent[]>([])
+  const trails = useRef<FightEvent[]>([])
   const shake = useRef(0)
+  const punch = useRef(0)
   const cheer = useRef(0)
   // The fight is stepped first each frame; what happened goes to the sparks, the camera and the crowd.
   useFrame((_, dt) => {
@@ -48,6 +53,10 @@ function World({ F, looks, onFrame }: Props) {
     for (const e of evs) {
       if (e.kind === 'hit' || e.kind === 'counter' || e.kind === 'throw' || e.kind === 'block') fx.current.push(e)
       if (e.kind === 'hit' || e.kind === 'counter' || e.kind === 'throw') shake.current = Math.max(shake.current, e.heavy ? 0.16 : 0.06)
+      // The camera lunges in on a big one.
+      if ((e.kind === 'hit' || e.kind === 'counter' || e.kind === 'throw') && e.heavy) punch.current = 1
+      if (e.kind === 'land') dust.current.push(e)
+      if (e.kind === 'swing' && e.heavy) trails.current.push(e)
       if ((e.kind === 'hit' && e.heavy) || e.kind === 'ko' || e.kind === 'throw' || e.kind === 'super') cheer.current = 1.6
       if (e.kind === 'land' && e.heavy) shake.current = Math.max(shake.current, 0.08)
     }
@@ -55,20 +64,22 @@ function World({ F, looks, onFrame }: Props) {
   }, -1)
   return (
     <>
-      <CameraRig F={F} shake={shake} />
+      <CameraRig F={F} shake={shake} punch={punch} />
       <Lights F={F} />
       <Street />
       <Crowd cheer={cheer} />
       <FighterView F={F} i={0} who={looks[0]} />
       <FighterView F={F} i={1} who={looks[1]} />
       <Sparks fx={fx} />
+      <Dust fx={dust} />
+      <Trails F={F} fx={trails} />
     </>
   )
 }
 
 /* ---------- The camera ---------- */
 
-function CameraRig({ F, shake }: { F: React.RefObject<Fight>; shake: React.RefObject<number> }) {
+function CameraRig({ F, shake, punch }: { F: React.RefObject<Fight>; shake: React.RefObject<number>; punch: React.MutableRefObject<number> }) {
   const { camera } = useThree()
   const at = useRef(new THREE.Vector3(0, 1, 0))
   const side = useRef(-1)
@@ -89,11 +100,18 @@ function CameraRig({ F, shake }: { F: React.RefObject<Fight>; shake: React.RefOb
     const a = (60 * Math.PI) / 180
     const cam = camera as THREE.PerspectiveCamera
     const across = Math.tan((cam.fov * Math.PI) / 360) * cam.aspect
-    const dist = ko ? 4.4 : Math.max(5.8, Math.min(15, ((gap * Math.sin(a)) / 2 + 0.9) / across))
-    const k = Math.min(1, dt * (ko ? 2.5 : 4))
+    // A Super: in close and low, looking up at the one throwing it.
+    const sup = fight.flash > 0
+    // A big blow: the camera lunges in a little, then eases back.
+    punch.current = Math.max(0, punch.current - dt * 3)
+    const dist = (ko ? 4.4 : sup ? 4.8 : Math.max(5.8, Math.min(15, ((gap * Math.sin(a)) / 2 + 0.9) / across))) * (1 - 0.12 * punch.current)
+    const k = Math.min(1, dt * (ko ? 2.5 : sup ? 3 : 4))
     // Looking a little low, so the fighters stand between the bars and the pad.
-    at.current.lerp(new THREE.Vector3(tx, ko ? 0.5 : 0.95 - dist * 0.07, 0), k)
-    const pos = new THREE.Vector3(at.current.x + side.current * Math.cos(a) * dist, 1.6 + dist * 0.13, Math.sin(a) * dist)
+    at.current.lerp(new THREE.Vector3(tx, ko ? 0.5 : sup ? 1.2 : 0.95 - dist * 0.07, 0), k)
+    // A slow drift round the fight, so the street never stands quite still.
+    const drift = Math.sin(fight.time * 0.35) * 0.08
+    const aa = a + drift
+    const pos = new THREE.Vector3(at.current.x + side.current * Math.cos(aa) * dist, sup ? 0.7 : 1.6 + dist * 0.13, Math.sin(aa) * dist)
     camera.position.lerp(pos, k)
     // The shake of a big blow, dying away.
     const s = shake.current ?? 0
@@ -188,6 +206,14 @@ function sign(text: string, bg: string, fg: string) {
   return t
 }
 
+/** The puddles on the road: where, how big. */
+const PUDDLES: [number, number, number][] = [
+  [-4.6, 1.2, 1.1],
+  [3.9, 1.8, 0.8],
+  [-1.2, -2.4, 0.9],
+  [6.2, -1.2, 1.2],
+]
+
 const FACADES: { x: number; w: number; h: number; color: string; cols: number; rows: number }[] = [
   { x: -11, w: 4.6, h: 8, color: '#5b4a7a', cols: 4, rows: 4 },
   { x: -6.6, w: 4.2, h: 6, color: '#7a5240', cols: 3, rows: 3 },
@@ -232,10 +258,17 @@ function Street() {
   return (
     <group>
       {/* The road, the red earth by the gutters, the pavement. */}
+      {/* Wet from the evening's rain: the lamps and the neon shine in it, more in the puddles. */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[60, 30]} />
-        <meshLambertMaterial color="#3b3a40" />
+        <meshStandardMaterial color="#34333a" roughness={0.42} metalness={0.25} />
       </mesh>
+      {PUDDLES.map(([x, z, r], i) => (
+        <mesh key={i} rotation={[-Math.PI / 2, 0, 0]} position={[x, 0.006, z]} scale={[r, r * 0.6, 1]} receiveShadow>
+          <circleGeometry args={[1, 24]} />
+          <meshStandardMaterial color="#3a3a48" roughness={0.12} metalness={0.35} />
+        </mesh>
+      ))}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, -3.9]} receiveShadow>
         <planeGeometry args={[60, 1.4]} />
         <meshLambertMaterial color="#8a4b2a" />
@@ -391,7 +424,34 @@ const STAR = (() => {
   return new THREE.CanvasTexture(c)
 })()
 
-type Burst = { t: number; x: number; y: number; kind: FightEvent['kind']; heavy: boolean; dirs: THREE.Vector3[] }
+type Burst = { t: number; x: number; y: number; kind: FightEvent['kind']; heavy: boolean; dmg: number; dirs: THREE.Vector3[] }
+
+/** A blow's damage as it flies off: white, gold for a big one, orange for a counter. */
+const numbers = new Map<string, THREE.CanvasTexture>()
+function numberTexture(text: string, color: string) {
+  const key = text + color
+  const had = numbers.get(key)
+  if (had) return had
+  const c = document.createElement('canvas')
+  c.width = 256
+  c.height = 128
+  const g = c.getContext('2d')!
+  g.font = "900 92px 'Baloo 2', Impact, sans-serif"
+  g.textAlign = 'center'
+  g.textBaseline = 'middle'
+  g.lineWidth = 14
+  g.lineJoin = 'round'
+  g.strokeStyle = 'rgba(15,11,34,0.9)'
+  g.strokeText(text, 128, 68)
+  g.fillStyle = color
+  g.fillText(text, 128, 68)
+  const t = new THREE.CanvasTexture(c)
+  t.colorSpace = THREE.SRGBColorSpace
+  numbers.set(key, t)
+  return t
+}
+
+const ringMat = () => new THREE.MeshBasicMaterial({ color: '#fff3c4', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })
 const POOL = 6
 const SHARDS = 9
 
@@ -400,17 +460,20 @@ function Sparks({ fx }: { fx: React.RefObject<FightEvent[]> }) {
   const groups = useRef<(THREE.Group | null)[]>([])
   const stars = useRef<(THREE.Mesh | null)[]>([])
   const shards = useRef<(THREE.Mesh | null)[][]>(Array.from({ length: POOL }, () => []))
+  const rings = useRef<(THREE.Mesh | null)[]>([])
+  const nums = useRef<(THREE.Mesh | null)[]>([])
+  const ringMats = useMemo(() => Array.from({ length: POOL }, ringMat), [])
   const next = useRef(0)
   const { camera } = useThree()
   useFrame((_, dt) => {
     for (const e of fx.current?.splice(0) ?? []) {
       const k = next.current++ % POOL
-      bursts.current[k] = { t: 0, x: e.x, y: e.y, kind: e.kind, heavy: !!e.heavy, dirs: Array.from({ length: SHARDS }, () => new THREE.Vector3(Math.random() - 0.5, Math.random() * 0.9 - 0.2, Math.random() - 0.5).normalize()) }
+      bursts.current[k] = { t: 0, x: e.x, y: e.y, kind: e.kind, heavy: !!e.heavy, dmg: Math.round(e.dmg ?? 0), dirs: Array.from({ length: SHARDS }, () => new THREE.Vector3(Math.random() - 0.5, Math.random() * 0.9 - 0.2, Math.random() - 0.5).normalize()) }
     }
     bursts.current.forEach((b, k) => {
       const grp = groups.current[k]
       if (!grp) return
-      if (!b || b.t > 0.4) {
+      if (!b || b.t > 0.8) {
         grp.visible = false
         return
       }
@@ -418,7 +481,31 @@ function Sparks({ fx }: { fx: React.RefObject<FightEvent[]> }) {
       grp.visible = true
       grp.position.set(b.x, b.y, 0.15)
       const block = b.kind === 'block'
-      const life = b.t / 0.4
+      const life = Math.min(1, b.t / 0.4)
+      // The shock ring, opening out round the blow (not on a block).
+      const ring = rings.current[k]
+      if (ring) {
+        ring.visible = !block && b.t < 0.3
+        ring.quaternion.copy(camera.quaternion)
+        ring.scale.setScalar((b.heavy ? 1.6 : 1) * (0.2 + (b.t / 0.3) * 1.1))
+        ringMats[k].opacity = Math.max(0, 1 - b.t / 0.3) * 0.9
+        ringMats[k].color.set(b.kind === 'counter' ? '#ff6b3d' : '#fff3c4')
+      }
+      // The damage, flying up off the blow and fading.
+      const num = nums.current[k]
+      if (num) {
+        num.visible = !block && b.dmg > 0
+        if (num.visible) {
+          const m = num.material as THREE.MeshBasicMaterial
+          const tex = numberTexture(b.kind === 'counter' ? `${b.dmg}!` : String(b.dmg), b.kind === 'counter' ? '#ff8a3d' : b.heavy ? '#ffd43b' : '#ffffff')
+          if (m.map !== tex) ((m.map = tex), (m.needsUpdate = true))
+          m.opacity = Math.max(0, 1 - Math.max(0, b.t - 0.45) / 0.35)
+          num.quaternion.copy(camera.quaternion)
+          num.position.set(0.15, 0.35 + b.t * 1.1, 0.1)
+          const pop = b.t < 0.12 ? 0.6 + (b.t / 0.12) * 0.6 : 1.2 - Math.min(0.2, (b.t - 0.12) * 0.5)
+          num.scale.set(0.7 * pop * (b.heavy ? 1.25 : 1), 0.35 * pop * (b.heavy ? 1.25 : 1), 1)
+        }
+      }
       const star = stars.current[k]
       if (star) {
         star.quaternion.copy(camera.quaternion)
@@ -446,6 +533,13 @@ function Sparks({ fx }: { fx: React.RefObject<FightEvent[]> }) {
             <planeGeometry args={[1, 1]} />
             <meshBasicMaterial map={STAR} transparent depthWrite={false} blending={THREE.AdditiveBlending} />
           </mesh>
+          <mesh ref={(el) => void (rings.current[k] = el)} material={ringMats[k]}>
+            <ringGeometry args={[0.42, 0.5, 32]} />
+          </mesh>
+          <mesh ref={(el) => void (nums.current[k] = el)} renderOrder={5}>
+            <planeGeometry args={[1, 1]} />
+            <meshBasicMaterial transparent depthWrite={false} depthTest={false} />
+          </mesh>
           {Array.from({ length: SHARDS }, (_, j) => (
             <mesh key={j} ref={(el) => void (shards.current[k][j] = el)}>
               <boxGeometry args={[0.05, 0.05, 0.05]} />
@@ -453,6 +547,84 @@ function Sparks({ fx }: { fx: React.RefObject<FightEvent[]> }) {
             </mesh>
           ))}
         </group>
+      ))}
+    </>
+  )
+}
+
+/* ---------- The dust of a fall, the trail of a big swing ---------- */
+
+const DUST = 4
+const PUFFS = 8
+const dustMat = new THREE.MeshBasicMaterial({ color: '#b9ada0', transparent: true, depthWrite: false })
+
+/** A fall (or a landing from a jump): a ring of dust puffing out along the road. */
+function Dust({ fx }: { fx: React.RefObject<FightEvent[]> }) {
+  const falls = useRef<({ t: number; x: number; big: boolean } | null)[]>(Array(DUST).fill(null))
+  const groups = useRef<(THREE.Group | null)[]>([])
+  const mats = useMemo(() => Array.from({ length: DUST }, () => dustMat.clone()), [])
+  const next = useRef(0)
+  useFrame((_, dt) => {
+    for (const e of fx.current?.splice(0) ?? []) falls.current[next.current++ % DUST] = { t: 0, x: e.x, big: !!e.heavy }
+    falls.current.forEach((f, k) => {
+      const g = groups.current[k]
+      if (!g) return
+      if (!f || f.t > 0.7) return void (g.visible = false)
+      f.t += dt
+      g.visible = true
+      g.position.set(f.x, 0.08, 0)
+      const u = f.t / 0.7
+      mats[k].opacity = (f.big ? 0.55 : 0.3) * (1 - u)
+      g.children.forEach((c, j) => {
+        const a = (j / PUFFS) * Math.PI * 2
+        const r = (f.big ? 1.1 : 0.6) * (1 - Math.pow(1 - u, 2))
+        c.position.set(Math.cos(a) * r, u * 0.25, Math.sin(a) * r * 0.6)
+        c.scale.setScalar((f.big ? 0.32 : 0.2) * (0.5 + u))
+      })
+    })
+  })
+  return (
+    <>
+      {Array.from({ length: DUST }, (_, k) => (
+        <group key={k} ref={(el) => void (groups.current[k] = el)} visible={false}>
+          {Array.from({ length: PUFFS }, (_, j) => (
+            <mesh key={j} material={mats[k]}>
+              <sphereGeometry args={[1, 8, 6]} />
+            </mesh>
+          ))}
+        </group>
+      ))}
+    </>
+  )
+}
+
+const trailMat = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })
+/** A big swing: a white arc in front of the one throwing it, gone in a blink. */
+function Trails({ F, fx }: { F: React.RefObject<Fight>; fx: React.RefObject<FightEvent[]> }) {
+  const arcs = useRef<({ t: number; by: 0 | 1; y: number } | null)[]>([null, null])
+  const meshes = useRef<(THREE.Mesh | null)[]>([])
+  const mats = useMemo(() => [trailMat.clone(), trailMat.clone()], [])
+  useFrame((_, dt) => {
+    for (const e of fx.current?.splice(0) ?? []) arcs.current[e.by] = { t: 0, by: e.by, y: e.y }
+    arcs.current.forEach((a, k) => {
+      const m = meshes.current[k]
+      const f = F.current?.f[k]
+      if (!m) return
+      if (!a || !f || a.t > 0.22) return void (m.visible = false)
+      a.t += dt
+      m.visible = true
+      // Round the front of the fighter, sweeping as it opens.
+      m.position.set(f.x + f.face * 0.35, a.y, 0.05)
+      m.rotation.set(0, 0, f.face > 0 ? -0.6 + a.t * 6 : Math.PI + 0.6 - a.t * 6)
+      mats[k].opacity = 0.55 * (1 - a.t / 0.22)
+    })
+  })
+  return (
+    <>
+      {[0, 1].map((k) => (
+        <mesh key={k} ref={(el) => void (meshes.current[k] = el)} material={mats[k]} visible={false}>
+          <ringGeometry args={[0.55, 0.75, 20, 1, 0, Math.PI * 0.7]} />
+        </mesh>
       ))}
     </>
   )
