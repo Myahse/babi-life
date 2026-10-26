@@ -24,7 +24,7 @@ import { Swimmer } from './Swimmer'
 import { Bicycle, Vehicle, type CarModel } from './vehicles'
 import { HANDLING, drive, driving, getIn, gps, nextTurn, onWay, parkIn, setParked, useDriving } from './drive'
 import { report } from './open/trafficFlow'
-import { motoTaken, offerMoto, RIDES, type Taken } from './moto'
+import { motoAsking, motoTaken, offerMoto, RIDES, type Taken } from './moto'
 import { tripRide } from './open/tripRide'
 import { askDrop, answerDrop, takeDrop } from './dropRoute'
 import { along, routeLength, turnTo } from './open/shared'
@@ -455,7 +455,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
    * way straight across, and goes across the open ground when the streets fail it: on a moto, that
    * was a zigzag over the blocks, stopping at each wall). Null while the streets there aren't loaded.
    */
-  const rideWay = (a: XZ, b: XZ, door: boolean): XZ[] | null => {
+  const rideWay = (a: XZ, b: XZ, door: boolean): { way: XZ[]; kerb: XZ; lead: number } | null => {
     // By the streets a vehicle takes; where there are none to there, by any street (never across the plots).
     const way = nav.drive?.(a, b) ?? nav.route(a, b, door)
     if (!way || way.length < 3) return null
@@ -464,11 +464,16 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     // lane, else straight (it's short). Never through the houses.
     const first = round(a, way[1]) ?? nav.route(a, way[1], false) ?? [a, way[1]]
     const last = round(way[n - 2], b) ?? nav.route(way[n - 2], b, door) ?? [way[n - 2], b]
-    return [...first, ...way.slice(2, n - 2), ...last]
+    // How far the street is from the Sim: far, it walks there first and gets on at the kerb.
+    return { way: [...first, ...way.slice(2, n - 2), ...last], kerb: way[1], lead: pathLength(first, a) }
   }
+  /** A ride taken far from any street: the kerb the Sim walks to first, to get on there. */
+  const kerb = useRef<XZ | null>(null)
   /** The ride is on a way by the streets (else it asks again as the map loads). */
   const onStreets = useRef(false)
   const askedWay = useRef(0)
+  /** When the ride was taken (ms): it waits for its way by the streets this long at most. */
+  const rideSince = useRef(0)
   /** Round whatever's between two points: on the fine grid, else on a coarser one that looks further round. */
   const round = (p: XZ, q: XZ) => gridWay(p, q, roomFixed) ?? gridWay(p, q, roomFixed, 1.5, 60)
   /** Across the open ground on a coarse grid (two-metre cells), round the buildings and what stands in the streets. */
@@ -1042,7 +1047,13 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         onNear(id)
       }
     }
-    if (path.current.length) {
+    // A long way: the Sim waits for the player to choose how it goes (on foot or a ride), then sets off.
+    // A ride goes only by the streets: till its way by them is found, it waits.
+    if (path.current.length && ((!riding.current && motoAsking()) || (riding.current && !onStreets.current))) {
+      if (walking && !riding.current) setWalking(false)
+    } else if (path.current.length) {
+      // Off again once the choice is made (walking, or the ride taking over).
+      if (!walking && (!riding.current || kerb.current) && !padWalking.current) setWalking(true)
       const [tx, tz] = path.current[0]
       const dx = tx - g.position.x
       const dz = tz - g.position.z
@@ -1120,20 +1131,42 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       setRide(taken)
       onStreets.current = false
       askedWay.current = 0
+      rideSince.current = performance.now()
+    }
+    // No way by the streets yet (the map still loading there, or none): the ride waits at the kerb rather than
+    // cut across the plots; after a while without one, the driver lets the Sim off and it walks the rest.
+    if (riding.current && !onStreets.current && performance.now() - rideSince.current > 15_000) {
+      riding.current = false
+      setRide(null)
+      speed.current = running() ? RUN : SPEED
     }
     // On the moto, the way by the streets from here (the walk's way may be a straight line, the map
     // not loaded there when it began): asked again every few seconds until the streets join up.
     if (riding.current && !onStreets.current && path.current.length && performance.now() > askedWay.current) {
       askedWay.current = performance.now() + 2000
-      const way = rideWay([g.position.x, g.position.z], path.current[path.current.length - 1], target.current !== null)
-      if (way && way.length > 1) {
-        path.current = way.slice(1)
+      const r = rideWay([g.position.x, g.position.z], path.current[path.current.length - 1], target.current !== null)
+      if (r && r.way.length > 1) {
+        path.current = r.way.slice(1)
         onStreets.current = true
         setRoute([...path.current])
+        // The street a good way off: on foot to the kerb first (the vehicle never crosses the plots).
+        if (r.lead > 25) {
+          kerb.current = r.kerb
+          setRide(null)
+          speed.current = running() ? RUN : SPEED
+        }
       }
+    }
+    // At the kerb: on board, for the rest by the streets.
+    const kb = kerb.current
+    if (riding.current && kb && taken && Math.hypot(kb[0] - g.position.x, kb[1] - g.position.z) < 2.5) {
+      kerb.current = null
+      setRide(taken)
+      speed.current = RIDES[taken.kind].speed
     }
     if (riding.current && !path.current.length) {
       riding.current = false
+      kerb.current = null
       setRide(null)
     }
     // There (or the way given up): no more moto-taxi to offer, nor a question about dropping the way.

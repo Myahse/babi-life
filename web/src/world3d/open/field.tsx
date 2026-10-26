@@ -34,7 +34,6 @@ const board = new THREE.MeshLambertMaterial({ color: '#f8f9fa' })
 const lampOff = new THREE.MeshLambertMaterial({ color: '#d9dde2' })
 const lampOn = new THREE.MeshBasicMaterial({ color: '#fff6dc' })
 const flat = (color: string) => new THREE.MeshLambertMaterial({ color })
-const RICH = typeof navigator === 'undefined' || (navigator.hardwareConcurrency ?? 4) > 4
 
 /** A painted line on the ground, from a to b (field frame). */
 function Line({ a, b, w = 0.12 }: { a: [number, number]; b: [number, number]; w?: number }) {
@@ -350,8 +349,8 @@ function Players({ field, seed, without }: { field: Field; seed: string; without
   })
   return (
     <NoShadows>
-      {/* In full, running and kicking, as far as the city's camera stands (a strong phone further) */}
-      <NearUpTo.Provider value={RICH ? 95 : 60}>
+      {/* In full, running and kicking, as far as the city's camera stands and a little more (ten players: every phone can) */}
+      <NearUpTo.Provider value={100}>
         {players.map((p, k) =>
           p.team === 0 && p.i === without ? null : (
             <group key={k} ref={(g) => void (refs.current[k] = g)}>

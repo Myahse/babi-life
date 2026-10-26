@@ -189,6 +189,9 @@ func playDefi(ctx context.Context, tx pgx.Tx, s *Sim, kind string, score int) (s
 	if score > before && before > 0 {
 		text += fmt.Sprintf(" Nouveau record : %d (avant : %d) !", score, before)
 	}
+	// The défi was what the activity was for: played, it's over (the tea at the grin drunk, the match at
+	// the console done), not left running for the rest of its time. Talking on is an action of its own.
+	a.End = min(a.End, s.GameMinutes)
 	return fmt.Sprintf("Défi %d/100. %s", score, text), back, nil
 }
 
