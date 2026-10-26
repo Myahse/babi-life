@@ -26,7 +26,7 @@ import { FilmingPhone } from './BlockHuman'
  * it comes in full. A little in the street; more at the stadium, seen from
  * high up and far.
  */
-export const FarGrow = createContext({ grow: 0.15, from: 18, over: 40 })
+export const FarGrow = createContext<{ grow: number; from: number; over: number; /** How much broader across, at full bulk (two fifths by default). */ wide?: number }>({ grow: 0.15, from: 18, over: 40 })
 
 /** How far into the bulk a body `d` metres from the camera is (0 to 1), on a screen drawing `ratio` pixels a point. */
 export function farBulk(d: number, ratio: number, { from, over }: { from: number; over: number }) {
@@ -34,7 +34,7 @@ export function farBulk(d: number, ratio: number, { from, over }: { from: number
   return Math.min(1, Math.max(0, (d * fewer - from) / over))
 }
 /** The body's scale across, up and front to back at that bulk. */
-export const bulkScale = (b: number, grow: number): [number, number, number] => [1 + 0.38 * b, 1 + grow * b, 1 + 0.8 * b]
+export const bulkScale = (b: number, grow: number, wide = 0.38): [number, number, number] => [1 + wide * b, 1 + grow * b, 1 + 0.8 * b]
 const at = new THREE.Vector3()
 const eye = new THREE.Vector3()
 
@@ -145,7 +145,7 @@ export function LowHuman({ look, gender, pose = 'idle', seed = 0, speed }: { loo
     const w0 = whole.current
     if (w0) {
       w0.getWorldPosition(at)
-      const [x, y, z] = bulkScale(farBulk(at.distanceTo(camera.getWorldPosition(eye)), gl.getPixelRatio(), far), far.grow)
+      const [x, y, z] = bulkScale(farBulk(at.distanceTo(camera.getWorldPosition(eye)), gl.getPixelRatio(), far), far.grow, far.wide)
       w0.scale.set(size * x, size * y, size * z)
     }
     // The salat, on the shared clock like the full-size people (Human): standing, hands folded; bowing;
