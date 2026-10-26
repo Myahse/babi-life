@@ -233,13 +233,13 @@ const TAKES = {
     await page.goto(`${LAB}/city.html?view=kart`)
     await warm(page, 11 * FPS)
     for (let i = 0; i < need('kart'); i++) {
-      // « Qui a mis la banane là ?! »: one lying on the line, a few metres ahead.
-      if (i === 8)
+      // « Qui a mis la banane là ?! »: one right under the front wheels (the race differs from run to run: a rival could take it first).
+      if (i === 10)
         await page.evaluate(() => {
           const r = globalThis.kartRace
           const k = r.karts.find((x) => x.human)
           const [fx, fz] = [Math.sin(k.heading), Math.cos(k.heading)]
-          r.hazards.push({ id: 'film', kind: 'banane', x: k.x + fx * 11, z: k.z + fz * 11, s: k.s + 11, d: k.d, ttl: 40, owner: -1, seed: 0.4 })
+          r.hazards.push({ id: 'film', kind: 'banane', x: k.x + fx * 0.8, z: k.z + fz * 0.8, s: k.s + 0.8, d: k.d, ttl: 40, owner: -1, seed: 0.4 })
         })
       await tick(page)
       await shoot(page, dir, i)
