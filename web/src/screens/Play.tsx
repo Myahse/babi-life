@@ -1550,6 +1550,7 @@ export function Play() {
           simId={sim.id}
           big={sim.activity.interaction.id === 'supermarche'}
           interactionId={sim.activity.interaction.id}
+          me={sim}
           send={async (score) => {
             try {
               const res = await api.defi(sim.id, defi, score)
@@ -1563,7 +1564,7 @@ export function Play() {
           onClose={() => setDefi(null)}
         />
       )}
-      {practice && !defi && <DefiSheet kind={practice} simId={sim.id} practice onClose={() => setPractice(null)} />}
+      {practice && !defi && <DefiSheet kind={practice} simId={sim.id} me={sim} practice onClose={() => setPractice(null)} />}
       {machineOpen && doing && isSlots(doing.interaction.id) && (
         <MachineSheet
           world={world}
@@ -1596,7 +1597,7 @@ export function Play() {
               </Suspense>
             </div>
           )}
-          <DefiSheet kind={challenge.kind} simId={sim.id} challenge={{ score: challenge.score, from: challenge.from }} onClose={() => challengeWith(null)} />
+          <DefiSheet kind={challenge.kind} simId={sim.id} me={sim} challenge={{ score: challenge.score, from: challenge.from }} onClose={() => challengeWith(null)} />
         </>
       )}
       {sharing && <ShareSheet sharing={sharing} onClose={() => shareThis(null)} />}

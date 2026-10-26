@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { ShoppingCart, Trophy, Waves, Coffee, Gamepad2, Car, Swords, Joystick, X, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import { haptic } from '../lib/native'
-import type { ActionResult } from '../lib/types'
+import type { ActionResult, Look } from '../lib/types'
 import { IconTile } from './ui'
 import { ChallengeButton } from './SharedCard'
 import { TeaDefi } from './defi/Tea'
@@ -72,7 +72,7 @@ const DEFIS: Record<DefiKind, { title: string; button: string; icon: LucideIcon;
     button: 'Jouer le combat',
     icon: Swords,
     colors: ['#ff6b6b', '#c92a2a'],
-    how: ['◀ ▶ pour bouger. « Poing » est rapide, « Pied » va plus loin mais plus lentement.', '« Garde » (tenu) encaisse les coups. Chaque coup remplit ta jauge.', 'Jauge pleine : « Super », le coupé-décalé qui fait mal. Deux rounds gagnés pour le match.'],
+    how: ['◀ ▶ pour bouger (deux fois vite : un pas rapide), ▲ pour sauter, ▼ pour t\'accroupir.', '« Poing » trois fois : jab, direct, uppercut. « Pied » : le coup de pied haut ; avec ▼ : le balayage.', '« Garde » tenue pare (accroupi pour les coups bas). Garde + Poing tout près : la saisie. Jauge pleine : « Super ». Deux rounds pour gagner.'],
     bg: '#120d24',
   },
   arcade: {
@@ -110,7 +110,7 @@ export function DefiButton({ kind, interactionId, onClick }: { kind: DefiKind; i
 const stars = (score: number) => (score >= 85 ? 3 : score >= 50 ? 2 : score >= 15 ? 1 : 0)
 
 /** The défi: how it's played, the game, the score and what it earned. */
-export function DefiSheet({ kind, simId, big, interactionId, practice, send, challenge, onClose }: { kind: DefiKind; simId: string; /** The shopping at the supermarket: the longer list. */ big?: boolean; /** The activity it's played during (the foot's match, challenge or tournament). */ interactionId?: string; /** Played from the phone's « Jeux », for practice: nothing sent, nothing earned. */ practice?: boolean; /** The score sent: the server's answer (applied to the Sim), or null if it failed. */ send?: (score: number) => Promise<ActionResult | null>; /** Taken on from someone's score (a message, a link): played for the fun of it, nothing sent. */ challenge?: { score: number; from: string }; onClose: () => void }) {
+export function DefiSheet({ kind, simId, big, interactionId, practice, send, challenge, me, onClose }: { kind: DefiKind; simId: string; /** The player's Sim, to play as itself (the fight). */ me?: { look: Look; gender: 'femme' | 'homme' }; /** The shopping at the supermarket: the longer list. */ big?: boolean; /** The activity it's played during (the foot's match, challenge or tournament). */ interactionId?: string; /** Played from the phone's « Jeux », for practice: nothing sent, nothing earned. */ practice?: boolean; /** The score sent: the server's answer (applied to the Sim), or null if it failed. */ send?: (score: number) => Promise<ActionResult | null>; /** Taken on from someone's score (a message, a link): played for the fun of it, nothing sent. */ challenge?: { score: number; from: string }; onClose: () => void }) {
   const mode = footMode(challenge ? undefined : interactionId)
   const d = kind === 'foot' ? { ...DEFIS.foot, title: FOOT[mode].title, how: [...DEFIS.foot.how, FOOT[mode].how] } : DEFIS[kind]
   const [phase, setPhase] = useState<'intro' | 'play' | 'result'>('intro')
@@ -152,7 +152,7 @@ export function DefiSheet({ kind, simId, big, interactionId, practice, send, cha
         ) : kind === 'course' ? (
           <CourseDefi onEnd={(s) => void end(s)} />
         ) : kind === 'combat' ? (
-          <CombatDefi onEnd={(s) => void end(s)} />
+          <CombatDefi me={me} onEnd={(s) => void end(s)} />
         ) : kind === 'arcade' ? (
           <MoustiquesDefi onEnd={(s) => void end(s)} />
         ) : (
@@ -160,7 +160,7 @@ export function DefiSheet({ kind, simId, big, interactionId, practice, send, cha
         ))}
       {/* Left halfway: nothing sent, the défi can be taken on again */}
       {phase === 'play' && (
-        <button className="absolute top-12 right-2 z-20 grid h-8 w-8 place-items-center rounded-full bg-black/45 text-white" onClick={onClose} aria-label="Quitter la partie">
+        <button className={`absolute right-2 z-20 grid h-8 w-8 place-items-center rounded-full bg-black/45 text-white ${kind === 'combat' ? 'top-[96px]' : 'top-12'}`} onClick={onClose} aria-label="Quitter la partie">
           <X size={17} strokeWidth={2.6} />
         </button>
       )}

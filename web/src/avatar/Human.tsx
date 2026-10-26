@@ -6,12 +6,13 @@ import { LowHuman } from './LowHuman'
 import { BlockBaby, BlockHuman } from './BlockHuman'
 import { worldTime } from '../lib/worldClock'
 import { EMOTE_SNAPPY, emoteArms, emoteBody, emoteLegs, type EmotePose } from './emotes'
+import { fightArms, fightBody, fightLegs, isFight, type FightPose } from './fight'
 
 // The game's Sims: the blocky avatar (avatar/BlockHuman.tsx) up close, a
 // simpler blocky figure (avatar/LowHuman.tsx) far away, and the poses that
 // move them both (usePoseRig). Units are metres: feet on y=0, facing +Z.
 
-export type Pose = 'idle' | 'walk' | 'run' | 'leap' | 'hang' | 'wash' | 'sleep' | 'pray' | 'cook' | 'phone' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper' | 'touch' | 'mark' | 'guard' | 'dive' | 'airplane' | 'pass' | 'salat' | 'swim' | 'dunk' | 'layup' | 'crossover' | 'block' | 'steal' | 'slide' | 'stumble' | 'bouncepass' | 'film' | 'call' | 'snack' | 'dj' | EmotePose
+export type Pose = 'idle' | 'walk' | 'run' | 'leap' | 'hang' | 'wash' | 'sleep' | 'pray' | 'cook' | 'phone' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper' | 'touch' | 'mark' | 'guard' | 'dive' | 'airplane' | 'pass' | 'salat' | 'swim' | 'dunk' | 'layup' | 'crossover' | 'block' | 'steal' | 'slide' | 'stumble' | 'bouncepass' | 'film' | 'call' | 'snack' | 'dj' | EmotePose | FightPose
 
 /** Poses done sitting on a chair (hips at seat height): 'call' is the phone at the ear, sitting. */
 export const SEATED: Pose[] = ['sit', 'eat', 'drink', 'write', 'call']
@@ -432,7 +433,11 @@ const SNAPPY = new Set<Pose>(['dunk', 'layup', 'crossover', 'block', 'steal', 's
  * Rotations are about the rest pose's axes (the person faces +z): x swings a
  * limb forward (negative) or back, z raises it sideways.
  */
-export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Rig, pose: Pose, seed: number, speed?: number, style: RigStyle = {}) {
+/**
+ * take: a count; when it changes, the pose starts over (a second jab after the first).
+ * clock: the seconds into the pose, when something else keeps time (the fight's hit-stop and slow motion).
+ */
+export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Rig, pose: Pose, seed: number, speed?: number, style: RigStyle = {}, take = 0, clock?: () => number) {
   const { snap = 1, swing: swingK = 1, elbow: elbowK = 1, knee: kneeK = 1, headBob = 0 } = style
   const m = mannerOf(seed)
   // The walk's phase, carried on frame to frame so the stride can change
@@ -440,13 +445,13 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
   const phase = useRef<number | null>(null)
   const glance = useRef({ y: 0, x: 0, next: 0 })
   // When this pose began: a kick, a shot, a dive move on through their phases.
-  const began = useRef({ pose, t: 0 })
+  const began = useRef({ pose, take, t: 0 })
   useFrame((_, dtRaw) => {
     // Never backwards (a video rendered frame by frame can step back), at most 0.1 s.
     const dt = Math.min(Math.max(dtRaw, 0), 0.1)
     const t = worldTime() + seed
-    if (began.current.pose !== pose) began.current = { pose, t: worldTime() + seed }
-    const since = worldTime() + seed - began.current.t
+    if (began.current.pose !== pose || began.current.take !== take) began.current = { pose, take, t: worldTime() + seed }
+    const since = clock ? clock() : worldTime() + seed - began.current.t
     const run = pose === 'run' || pose === 'touch' || pose === 'airplane'
     const walk = pose === 'walk' || run || pose === 'dribble'
     const seated = SEATED.includes(pose)
@@ -464,7 +469,9 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
     // the swing keeps its shape; changing pose they glide.
     // A quick emote glides in for its first quarter second all the same: it starts, it doesn't appear.
     const rhythmic = walk || SNAPPY.has(pose) || (EMOTE_SNAPPY.has(pose) && since > 0.25) || pose === 'dance' || pose === 'dj' || pose === 'throw' || pose === 'cheer' || pose === 'leap' || pose === 'hang' || pose === 'wash' || pose === 'cook'
-    const a = 1 - Math.exp(-(rhythmic ? 30 : 13) * snap * dt)
+    // A fight's blows land fast: the joints follow closer still.
+    const fight = isFight(pose)
+    const a = 1 - Math.exp(-(fight ? 48 : rhythmic ? 30 : 13) * snap * dt)
     const to = (o: THREE.Euler | THREE.Vector3, k: 'x' | 'y' | 'z', target: number) => void (o[k] += (target - o[k]) * a)
     // Standing: the weight goes from one leg to the other, slowly.
     const shift = Math.sin(t * 0.35 + seed)
@@ -499,7 +506,7 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
       const danceStep = pose === 'dance' ? out * Math.max(0, out * Math.sin(beat / 2)) * 0.14 : 0
       // Hanging off the gbaka: the inner foot on the step, the outer leg dangling, swinging with the road.
       const dangle = Math.sin(t * 3.1 + seed) * 0.12
-      const sl = sportLegs(pose, out, t, since) ?? emoteLegs(pose, out, t, since)
+      const sl = sportLegs(pose, out, t, since) ?? fightLegs(pose, out, t, since) ?? emoteLegs(pose, out, t, since)
       to(h.rotation, 'x', sl ? sl[0] : pose === 'pray' ? 0.05 : pose === 'sleep' ? 0 : pose === 'leap' ? -0.95 : pose === 'hang' ? (out > 0 ? -0.35 : 0.3 + dangle) : seated ? -1.5 : kick ? -1.15 : pose === 'keeper' ? -0.45 : walk ? gaitHip : pose === 'dance' || pose === 'throw' ? -0.18 - bounce * 0.16 : pose === 'cheer' ? -Math.max(0, -jump) * 0.4 : 0)
       to(h.rotation, 'z', sl ? sl[1] : pose === 'hang' ? (out < 0 ? -0.35 : 0.05) : pose === 'leap' ? out * 0.08 : walk || seated ? 0 : pose === 'dance' ? danceStep : out * shift * 0.03)
       to(kn.rotation, 'x', sl ? sl[2] : pose === 'pray' ? 1.55 : pose === 'sleep' ? 0.05 : pose === 'leap' ? 1.35 : pose === 'hang' ? (out > 0 ? 0.55 : 0.35 - dangle) : seated ? 1.5 : kick ? 0.15 : pose === 'keeper' ? 0.8 : walk ? gaitKnee : pose === 'dance' || pose === 'throw' ? 0.32 + bounce * 0.32 : pose === 'cheer' ? Math.max(0, -jump) * 0.8 : fid?.kind === 'tap' && out > 0 ? fid.e * (0.2 + Math.max(0, Math.sin(t * 9)) * 0.25) : tk?.move === 'laugh' ? tk.e * 0.12 : Math.max(0, -out * shift) * 0.12)
@@ -508,7 +515,7 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
       const sh = shoulder[i].current!
       const el = elbow[i].current!
       let [sx, sy, sz, ex, ez] = [0, 0, out * 0.1, -0.12, 0]
-      const sa = sportArms(pose, out, t, since, armSwing) ?? emoteArms(pose, out, t, since)
+      const sa = sportArms(pose, out, t, since, armSwing) ?? fightArms(pose, out, t, since) ?? emoteArms(pose, out, t, since)
       if (sa) {
         ;[sx, sy, sz, ex, ez] = sa
       } else if (pose === 'wash') {
@@ -671,7 +678,7 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
       to(el.rotation, 'x', ex)
       to(el.rotation, 'z', ez)
     }
-    const body: { y?: number; x?: number; z?: number; rx?: number; rz?: number; ry?: number; head?: number } | null = sportBody(pose, t, since) ?? emoteBody(pose, t, since)
+    const body: { y?: number; x?: number; z?: number; rx?: number; rz?: number; ry?: number; head?: number } | null = sportBody(pose, t, since) ?? fightBody(pose, t, since) ?? emoteBody(pose, t, since)
     const r = root.current!
     to(
       r.position,
@@ -728,7 +735,7 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
     const hd = head.current!
     const look = fid && (fid.kind === 'watch' || fid.kind === 'phone') ? fid.e : wf === 'phone' ? 1 : 0
     const back = seed % 2 < 1 ? 1 : -1
-    to(hd.rotation, 'y', fid?.kind === 'watch' ? -0.35 * fid.e : fid?.kind === 'look' ? back * 0.9 * fid.e : pose === 'sleep' || pose === 'pray' ? 0 : wf === 'aside' ? -s * stride * 0.1 + Math.sin(t * 0.6 + seed) * 0.6 : walk ? -s * stride * 0.1 : pose === 'rant' ? Math.sin(t * 2.3) * 0.45 : pose === 'talk' ? Math.sin(t * 0.9) * 0.12 + (tk?.move === 'point' ? 0.1 : 0) : g.y)
+    to(hd.rotation, 'y', fid?.kind === 'watch' ? -0.35 * fid.e : fid?.kind === 'look' ? back * 0.9 * fid.e : pose === 'sleep' || pose === 'pray' ? 0 : wf === 'aside' ? -s * stride * 0.1 + Math.sin(t * 0.6 + seed) * 0.6 : walk ? -s * stride * 0.1 : pose === 'rant' ? Math.sin(t * 2.3) * 0.45 : pose === 'talk' ? Math.sin(t * 0.9) * 0.12 + (tk?.move === 'point' ? 0.1 : 0) : fight ? 0 : g.y)
     to(hd.rotation, 'z', fid?.kind === 'scratch' ? -0.14 * fid.e : fid?.kind === 'neck' ? Math.sin(t * 2.4) * 0.3 * fid.e : fid?.kind === 'chin' ? 0.1 * fid.e : tk?.move === 'listen' ? 0.1 * tk.e * back : tk?.move === 'shrug' ? 0.12 * tk.e : pose === 'phone' || pose === 'call' ? 0.12 : pose === 'sleep' ? 0.25 : pose === 'wave' ? 0.08 : pose === 'talk' ? Math.sin(t * 1.3) * 0.05 : 0)
     to(hd.rotation, 'x', body?.head !== undefined ? body.head : pose === 'sleep' ? 0.35 : pose === 'pray' || pose === 'cook' ? 0.3 : pose === 'wash' ? -0.25 : pose === 'busy' || pose === 'write' ? 0.25 : pose === 'eat' || pose === 'snack' ? 0.1 : pose === 'drink' ? -0.15 : pose === 'hug' ? 0.15 : pose === 'beg' ? 0.12 : pose === 'dance' ? bounce * 0.12 - 0.05 : pose === 'cheer' ? -0.2 : pose === 'talk' && tk ? (tk.move === 'nod' ? Math.max(0, Math.sin(t * 5)) * 0.18 * tk.e : tk.move === 'laugh' ? -0.2 * tk.e + Math.sin(t * 11) * 0.04 * tk.e : 0.02) : walk ? (run ? -0.12 : -0.02) + Math.sin(ph * 2) * 0.03 * headBob + look * 0.4 : g.x + Math.sin(t * 0.7) * 0.02 + look * 0.42 - (fid?.kind === 'stretch' ? fid.e * 0.3 : 0))
   })
@@ -737,7 +744,7 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
 
 /* ---------- The whole Sim ---------- */
 
-type Props = { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; /** Children have bigger heads for their size (1 = adult). */ headScale?: number; /** Walking speed (m/s): the steps follow it. */ speed?: number }
+type Props = { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; /** Children have bigger heads for their size (1 = adult). */ headScale?: number; /** Walking speed (m/s): the steps follow it. */ speed?: number; /** A count: when it changes, the pose starts over (usePoseRig). */ take?: number; /** The seconds into the pose, kept by something else (usePoseRig). */ clock?: () => number }
 
 /**
  * A person: the blocky Sim up close, and a simpler blocky figure (LowHuman)

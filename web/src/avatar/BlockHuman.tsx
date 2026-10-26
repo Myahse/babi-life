@@ -17,7 +17,7 @@ import { canvasTexture, canvasUrl, newCanvas } from '../lib/canvas'
 // Hair, caps, earrings and skirts are extra boxes. Units are metres: feet on
 // y=0, facing +Z, the same joints as the other Sims so the poses drive it.
 
-type Props = { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; /** Children have bigger heads for their size (1 = adult). */ headScale?: number; /** Walking speed (m/s): the steps follow it. */ speed?: number }
+type Props = { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; /** Children have bigger heads for their size (1 = adult). */ headScale?: number; /** Walking speed (m/s): the steps follow it. */ speed?: number; /** A count: when it changes, the pose starts over. */ take?: number; /** The seconds into the pose, kept by something else. */ clock?: () => number }
 type V3 = [number, number, number]
 
 /* ---------- Proportions ---------- */
@@ -1454,7 +1454,7 @@ function HeadBoxes({ l, hair, young, cast, femme, pose, seed }: { l: Required<Lo
 
 /* ---------- The whole Sim ---------- */
 
-export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 1, speed }: Props) {
+export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 1, speed, take, clock }: Props) {
   const young = headScale > 1
   const l = fullLook(look)
   const femme = gender === 'femme'
@@ -1471,7 +1471,7 @@ export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 
   const shoulder = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
   const elbow = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
   // Minecraft bodies, but they move like people (usePoseRig's gait, dance, travaillement).
-  usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }, pose, seed, speed, BLOCK_STYLE)
+  usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }, pose, seed, speed, BLOCK_STYLE, take, clock)
 
   // A squash when landing from a jump (cheering, dancing), and back.
   const body = useRef<THREE.Group>(null)

@@ -109,7 +109,7 @@ func defiReward(kind, interaction string, score, cost int) (game.Needs, int, str
 		lines := []string{"Le woro-woro t'a coupé la route : deuxième, de loin.", "Une belle course, au coude-à-coude.", "Premier avec de l'avance : tu pilotes comme un chauffeur de gbaka !"}
 		return game.Needs{Fun: math.Round(14 * k), Social: math.Round(4 * k)}, 0, lines[tier]
 	case "combat":
-		lines := []string{"Le Boss d'Adjamé t'a mis K.O. : entraîne-toi.", "Un combat accroché, round après round.", "Le Boss d'Adjamé à terre : la salle crie ton nom !"}
+		lines := []string{"Ton adversaire t'a mis K.O. : entraîne-toi.", "Un combat accroché, round après round.", "Ton adversaire au tapis : la salle crie ton nom !"}
 		return game.Needs{Fun: math.Round(14 * k), Social: math.Round(4 * k)}, 0, lines[tier]
 	case "arcade":
 		lines := []string{"Les moustiques ont gagné cette nuit.", "Pas mal de moustiques au tapis.", "Un massacre de moustiques : ton nom tout en haut de la borne !"}

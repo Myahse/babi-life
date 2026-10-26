@@ -1,9 +1,10 @@
 import { music } from '../audio/music'
 
-// The casino's sounds, made in the browser (nothing recorded, nothing to
+// The games' sounds, made in the browser (nothing recorded, nothing to
 // license): a chip put down, the ball running round the wheel and dropping
 // into its pocket, a card dealt, the coins of a win, the chime of a big one,
-// the low note of a loss. Silent when the game's music button is off.
+// the low note of a loss; the street fight's blows, guard, swish, fall and
+// bell. Silent when the game's music button is off.
 
 let ctx: AudioContext | null = null
 
@@ -114,6 +115,54 @@ export const sfx = {
     const c = audio()
     if (!c) return
     tone(c, c.currentTime, 330, 0.35, 0.12, 'triangle', 196)
+  },
+  /** A blow landing: a thud in the body, a slap on top; heavier, lower and longer. */
+  punch(heavy = false) {
+    const c = audio()
+    if (!c) return
+    const t = c.currentTime
+    tone(c, t, heavy ? 120 : 170, heavy ? 0.22 : 0.12, heavy ? 0.5 : 0.35, 'sine', 45)
+    noise(c, t, heavy ? 0.12 : 0.07, heavy ? 900 : 1500, 1.2, heavy ? 0.7 : 0.5)
+  },
+  /** A blow on the guard: a dull knock. */
+  guard() {
+    const c = audio()
+    if (!c) return
+    const t = c.currentTime
+    noise(c, t, 0.06, 600, 2, 0.45)
+    tone(c, t, 260, 0.06, 0.15, 'square', 180)
+  },
+  /** A fist or a foot through the air. */
+  swish(heavy = false) {
+    const c = audio()
+    if (!c) return
+    noise(c, c.currentTime, heavy ? 0.2 : 0.12, heavy ? 500 : 900, 1.5, 0.22, heavy ? 2400 : 3400)
+  },
+  /** A body down on the road. */
+  fall() {
+    const c = audio()
+    if (!c) return
+    const t = c.currentTime
+    tone(c, t, 90, 0.3, 0.45, 'sine', 40)
+    noise(c, t, 0.18, 400, 1, 0.5)
+  },
+  /** The bell: a round begins, a fight ends. */
+  bell(times = 1) {
+    const c = audio()
+    if (!c) return
+    const t = c.currentTime
+    for (let k = 0; k < times; k++) {
+      tone(c, t + k * 0.32, 1568, 0.9, 0.12, 'sine')
+      tone(c, t + k * 0.32, 2350, 0.6, 0.05, 'sine')
+    }
+  },
+  /** The Super going off: a rising roar. */
+  rise() {
+    const c = audio()
+    if (!c) return
+    const t = c.currentTime
+    tone(c, t, 180, 0.5, 0.18, 'sawtooth', 720)
+    noise(c, t, 0.5, 400, 0.8, 0.25, 3000)
   },
   /** A tick (the plane's multiplier climbing, the price moving). */
   tick(pitch = 1) {
