@@ -43,7 +43,7 @@ const QUESTIONS: [string, string][] = [
   ["C'est quoi, Babi Life ?", "Un jeu de vie à Abidjan : les vraies communes, les vrais lieux, les gbakas, les maquis, notre façon de parler. Ton perso naît, grandit, travaille et se débrouille, en même temps que toi, à l'heure d'Abidjan."],
   ["C'est gratuit ?", "Oui. Le jeu est gratuit, et l'inscription sur la liste aussi."],
   ['Sur quel téléphone ?', "Sur ton téléphone, dans le navigateur, sans passer par un store. Tu peux aussi l'installer sur ton écran d'accueil."],
-  ['Ça ouvre quand ?', 'Bientôt. Inscris-toi : on te prévient en premier, et si tu veux, tu testes avant tout le monde.'],
+  ['Ça ouvre quand ?', 'Le mercredi 28 octobre. Inscris-toi : on te prévient en premier, et si tu veux, tu testes avant tout le monde.'],
   ['Mon perso créé maintenant, je le garde ?', "Oui. Le perso que tu crées aujourd'hui, et la famille où il est né, t'attendent à l'ouverture."],
 ]
 
