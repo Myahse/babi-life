@@ -29,7 +29,7 @@ export const defiOf = (interactionId?: string): DefiKind | null =>
 /** The foot's three ways: a match, the challenge where the loser pays, the Saturday tournament. */
 const footMode = (interactionId?: string) => (interactionId === 'console-defi' ? 'defi' : interactionId === 'tournoi-console' ? 'tournoi' : 'match')
 const FOOT: Record<ReturnType<typeof footMode>, { title: string; button: string; how: string }> = {
-  match: { title: 'Le match à la console', button: 'Jouer le match', how: 'Un match de 100 secondes contre les gars du quartier : le plus de buts possible.' },
+  match: { title: 'Babi Foot à la console', button: 'Jouer à Babi Foot', how: 'Choisis le format (5 contre 5 au maracana ou 11 contre 11 au stade), les deux équipes, la difficulté et la durée.' },
   defi: { title: 'Le défi du quartier', button: 'Jouer le défi', how: 'Contre le caïd du quartier : gagné, il te paie ta mise ; perdu, tu paies.' },
   tournoi: { title: 'Le tournoi du samedi', button: 'Jouer le tournoi', how: 'Quart, demi, finale, chaque équipe plus forte que la précédente ; un nul se joue au but en or. La coupe : 2 000 Djai ; la finale : 800. Un tournoi par jour.' },
 }
@@ -56,7 +56,7 @@ const DEFIS: Record<DefiKind, { title: string; button: string; icon: LucideIcon;
     button: 'Jouer le match',
     icon: Gamepad2,
     colors: ['#ff9a3c', '#e8590c'],
-    how: ['Le foot de la rue, à cinq contre cinq, sur la console : le stick à gauche fait courir ton joueur.', '« Passe » donne au coéquipier, « Tir » tire au but (le stick vise), « Crochet » efface celui qui est devant toi.', 'Sans le ballon, « Défense » va le chercher : un tacle, ou tu tombes.'],
+    how: ['Le stick à gauche fait courir ton joueur, « Sprint » tenu le fait accélérer (il s\'essouffle).', '« Passe », « Profondeur », « Centre », « Crochet » ; « Tir » tenu charge la frappe, le stick vise.', 'Sans le ballon : « Changer » de joueur, « Tacle » pour le reprendre. L\'arbitre siffle les fautes.'],
     bg: '#0b1a10',
   },
   course: {

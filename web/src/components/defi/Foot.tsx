@@ -2,19 +2,22 @@ import { lazy, Suspense, useMemo, useState } from 'react'
 import type { Look } from '../../lib/types'
 import { randomLook } from '../../avatar/options'
 import { rng } from '../../world3d/themes'
+import { MatchSetup, rulesOf, type Setup } from './foot/Hub'
+import { CLUBS, kitsFor, teamOf } from './foot/teams'
 
-// Le foot à la console, as it's played at the salle de jeux vidéo: the
-// street's own football in 3D (streetball/), five against five, the orange
-// of the Éléphants against the boys of the quarter, on the console's rules:
-// a shorter match, the other side as strong as its rank, and in the
-// tournament (the quarter-final, the semi, the final, each side harder) a
-// draw played on to the golden goal. The stick runs, « Passe », « Tir »,
-// « Crochet », « Défense », as in the street.
+// Le foot à la console, as it's played at the salle de jeux vidéo: Babi
+// Foot, the street's football in 3D (streetball/) on the console's rules (a
+// referee, the switch from player to player, sprint, through balls, lobs,
+// the charged shot). The match: set up in the hub (foot/Hub.tsx), five a
+// side in the maracana or eleven at the stadium, any two sides, their
+// shirts, the difficulty, the length. The challenge against the caïd, and
+// the Saturday tournament (the quarter-final, the semi, the final, each
+// side harder, a draw played on to the golden goal), as before.
 
 const StreetMatch = lazy(() => import('../../streetball/StreetMatch'))
 
-/** The console's match: 100 seconds. */
-const LENGTH = 100
+/** The challenge's and the tournament's matches: 150 seconds, five a side. */
+const LENGTH = 150
 
 export type FootRound = { name: string; diff: number; label?: string }
 export const FOOT_MODES: Record<'match' | 'defi' | 'tournoi', FootRound[]> = {
@@ -35,17 +38,57 @@ export function matchScore(mine: number, theirs: number) {
   return Math.max(4, 42 - 12 * (-d - 1) + Math.min(6, mine * 3) - 6)
 }
 
-export function FootDefi({ mode, me, onEnd, onQuit }: { mode: keyof typeof FOOT_MODES; me?: { look: Look; gender: 'femme' | 'homme' }; onEnd: (score: number) => void; /** Left mid-match: nothing sent. */ onQuit?: () => void }) {
+type Me = { look: Look; gender: 'femme' | 'homme' }
+
+export function FootDefi({ mode, me, onEnd, onQuit }: { mode: keyof typeof FOOT_MODES; me?: Me; onEnd: (score: number) => void; /** Left mid-match: nothing sent. */ onQuit?: () => void }) {
+  const player = useMemo(() => me ?? { look: randomLook('homme', rng('console')), gender: 'homme' as const }, [me])
+  if (mode === 'match') return <Quick me={player} onEnd={onEnd} />
+  return <Rounds mode={mode} me={player} onEnd={onEnd} onQuit={onQuit} />
+}
+
+/** A match set up in the hub, against the console. */
+function Quick({ me, onEnd }: { me: Me; onEnd: (score: number) => void }) {
+  const [setup, setSetup] = useState<Setup | null>(null)
+  const [round, setRound] = useState(0)
+  const rules = useMemo(() => (setup ? rulesOf(setup) : null), [setup])
+  if (!setup || !rules) return <MatchSetup title="Match rapide" onPlay={(s) => (setSetup(s), setRound((r) => r + 1))} />
+  const mine = teamOf(setup.mine)
+  const theirs = teamOf(setup.theirs)
+  return (
+    <Suspense fallback={<Loading text={`${mine.name} contre ${theirs.name}…`} />}>
+      <StreetMatch
+        key={round}
+        sport="foot"
+        name="Toi"
+        look={me.look}
+        gender={me.gender}
+        rules={rules}
+        teams={[mine.name, theirs.name]}
+        kits={kitsFor(mine, theirs)}
+        // Left mid-match: back to the hub; played out: the score.
+        onExit={(r) => (r ? onEnd(matchScore(r.score[0], r.score[1])) : setSetup(null))}
+      />
+    </Suspense>
+  )
+}
+
+function Loading({ text }: { text: string }) {
+  return <div className="grid h-full place-items-center bg-[#0b2e1a] px-6 text-center font-display text-xl font-extrabold text-white">{text}</div>
+}
+
+/** The challenge (one match) and the tournament (three, the golden goal for a draw). */
+function Rounds({ mode, me, onEnd, onQuit }: { mode: 'defi' | 'tournoi'; me: Me; onEnd: (score: number) => void; onQuit?: () => void }) {
   const rounds = FOOT_MODES[mode]
   const [round, setRound] = useState(0)
   const [between, setBetween] = useState<{ won: boolean; mine: number; theirs: number } | null>(null)
-  const player = useMemo(() => me ?? { look: randomLook('homme', rng('console')), gender: 'homme' as const }, [me])
   // Kept from render to render: a new one would start the match over.
-  const rules = useMemo(() => ({ length: LENGTH, foe: rounds[round].diff, golden: rounds.length > 1 }), [rounds, round])
-  const done = (mine: number, theirs: number) => {
-    const won = mine > theirs
-    if (rounds.length === 1) return onEnd(matchScore(mine, theirs))
-    setBetween({ won, mine, theirs })
+  const rules = useMemo(() => ({ size: 5 as const, referee: true, switching: true, length: LENGTH, foe: rounds[round].diff, golden: rounds.length > 1 }), [rounds, round])
+  const rival = rounds[round]
+  const theirs = CLUBS.find((t) => t.name === rival.name) ?? { ...teamOf('babi'), name: rival.name, home: '#009e60', away: '#f8f9fa' }
+  const mine = teamOf('babi')
+  const done = (a: number, b: number) => {
+    if (rounds.length === 1) return onEnd(matchScore(a, b))
+    setBetween({ won: a > b, mine: a, theirs: b })
   }
   const next = () => {
     const b = between!
@@ -55,7 +98,6 @@ export function FootDefi({ mode, me, onEnd, onQuit }: { mode: keyof typeof FOOT_
     if (round + 1 >= rounds.length) return onEnd(100)
     setRound(round + 1)
   }
-  const rival = rounds[round]
   if (between)
     return (
       <div className="grid h-full place-items-center bg-[#0b1a10] p-5">
@@ -74,14 +116,8 @@ export function FootDefi({ mode, me, onEnd, onQuit }: { mode: keyof typeof FOOT_
       </div>
     )
   return (
-    <Suspense
-      fallback={
-        <div className="grid h-full place-items-center bg-[#0b1a10] font-display text-xl font-extrabold text-white">
-          {rival.label ?? 'Le match'} : contre {rival.name}…
-        </div>
-      }
-    >
-      <StreetMatch key={round} sport="foot" name="Toi" look={player.look} gender={player.gender} rules={rules} onExit={(r) => (r ? done(r.score[0], r.score[1]) : onQuit?.())} />
+    <Suspense fallback={<Loading text={`${rival.label ?? 'Le match'} : contre ${rival.name}…`} />}>
+      <StreetMatch key={round} sport="foot" name="Toi" look={me.look} gender={me.gender} rules={rules} teams={['Ton équipe', rival.name]} kits={kitsFor(mine, theirs)} onExit={(r) => (r ? done(r.score[0], r.score[1]) : onQuit?.())} />
     </Suspense>
   )
 }
