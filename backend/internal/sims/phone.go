@@ -1,6 +1,7 @@
 package sims
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -31,10 +32,14 @@ func needApp(s *Sim, id string) error {
 	if !s.hasPhone() {
 		return errNoPhoneYet
 	}
+	a, _ := world.FindPhoneApp(id)
+	// An app the team hasn't opened yet (features, the admin's « Mises à jour »): even installed, not there.
+	if features.Default.BlocksKey(context.Background(), "app:"+id) != "" {
+		return fmt.Errorf("%s arrive bientôt dans le jeu", a.Name)
+	}
 	if s.hasApp(id) {
 		return nil
 	}
-	a, _ := world.FindPhoneApp(id)
 	return fmt.Errorf("installe d'abord %s depuis le Store", a.Name)
 }
 

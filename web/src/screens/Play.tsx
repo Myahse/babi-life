@@ -1769,7 +1769,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
     { id: 'guide', label: 'Encyclo', icon: BookOpen, colors: ['#9fa8ff', '#4b4fd6'], open: () => setApp('guide') },
     { id: 'boutique', label: 'Boutique', icon: ShoppingBag, colors: ['#ffc233', '#e07800'], open: () => setApp('boutique') },
     { id: 'idees', label: 'Idées', icon: Lightbulb, colors: ['#ffe066', '#f5a000'], open: () => setApp('idees') },
-    { id: 'politique', label: 'Politique', icon: Landmark, colors: ['#8c9eff', '#3d4fd6'], open: () => setApp('politique') },
+    ...(keyOpen(feats, 'app:politique') ? [{ id: 'politique', label: 'Politique', icon: Landmark, colors: ['#8c9eff', '#3d4fd6'] as [string, string], open: () => setApp('politique') }] : []),
     { id: 'profile', label: 'Profil', icon: UserRound, colors: ['#ff8a9b', '#ff3d57'], open: () => navigate('/profil', { viewTransition: true }) },
     ] as Tile[]
   ).filter((a) => !life.minor || (a.id !== 'jobs' && a.id !== 'home'))
@@ -2052,6 +2052,7 @@ function usePlaceActions(world: World, sim: Sim, city: City, commune: Commune, p
 function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose, onPick, onTravel, onStop, onBuild, soiree, onSoiree }: MenuProps) {
   const navigate = useNavigate()
   const pa = usePlaceActions(world, sim, city, commune, placeId)
+  const feats = useFeatures()
   // (A place of the map the street hasn't loaded yet, or not any more: the Sim went far.)
   if (!pa) return null
   const { place, kind, life, roomHere, items, busy, here, agenda, on, state } = pa
@@ -2096,7 +2097,8 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
     </button>
   )
   // At home: a soirée for the players of the quarter (backend sims/party.go), from 18 (the host is an adult).
-  const party = placeId === 'home' && here && onSoiree && (
+  // (An update the team opens from the admin: lib/features.ts.)
+  const party = placeId === 'home' && here && onSoiree && keyOpen(feats, 'soiree') && (
     <button disabled={(busy && !soiree) || life.minor} onClick={onSoiree} className={`flex w-full items-center gap-3 rounded-[20px] bg-[#f6e8ff] p-2.5 text-left transition active:scale-[0.98] ${(busy && !soiree) || life.minor ? 'opacity-55 grayscale-[0.6]' : ''}`}>
       <IconTile icon={life.minor ? Lock : PartyPopper} colors={['#ff5cc8', '#7a2bd6']} size={44} />
       <span className="min-w-0 flex-1">

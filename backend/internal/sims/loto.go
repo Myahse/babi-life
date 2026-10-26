@@ -12,6 +12,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/myahse/babi-life/backend/internal/features"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
 )
@@ -36,6 +37,11 @@ func (h *Handler) lotoDraws(w http.ResponseWriter, r *http.Request) {
 
 // buyLoto: a ticket at the kiosk.
 func (h *Handler) buyLoto(w http.ResponseWriter, r *http.Request) {
+	// An update the team opens from the admin (features).
+	if features.Default.BlocksKey(r.Context(), "loto") != "" {
+		httpx.Error(w, http.StatusForbidden, "bientôt dans le jeu")
+		return
+	}
 	var req struct {
 		Kiosk   string `json:"kiosk"`
 		Draw    int64  `json:"draw"`

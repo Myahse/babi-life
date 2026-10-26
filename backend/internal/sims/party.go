@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/myahse/babi-life/backend/internal/features"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
 	"github.com/myahse/babi-life/backend/internal/push"
@@ -136,6 +137,11 @@ func (h *Handler) arrive(ctx context.Context, tx pgx.Tx, s *Sim) error {
 
 // throwParty: POST /sims/{id}/soiree {theme}: the soirée starts at home, the host receiving.
 func (h *Handler) throwParty(w http.ResponseWriter, r *http.Request) {
+	// An update the team opens from the admin (features).
+	if features.Default.BlocksKey(r.Context(), "soiree") != "" {
+		httpx.Error(w, http.StatusForbidden, "bientôt dans le jeu")
+		return
+	}
 	var req struct {
 		Theme string `json:"theme"`
 	}
