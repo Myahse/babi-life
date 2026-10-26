@@ -197,6 +197,8 @@ var Kinds = map[string]PlaceKind{
 			// La Pyramide's own: its gallery of shops round the open well, and its roof over the Plateau.
 			{ID: "visiter-pyramide", Label: "Faire le tour de la galerie", Icon: "store", Minutes: 30, Effect: Needs{Fun: 15, Social: 5}, MinHour: 8, MaxHour: 19, Places: []string{PyramideID}},
 			{ID: "terrasse-pyramide", Label: "Monter sur le toit de la Pyramide", Icon: "mountain", Minutes: 40, Cost: 500, Effect: Needs{Fun: 30, Energy: -5}, MinHour: 9, MaxHour: 18, Places: []string{PyramideID}},
+			// Air Lagune's head office by the airport: its counter for the flights.
+			{ID: "comptoir-air-lagune", Label: "Se renseigner au comptoir d'Air Lagune", Icon: "plane", Minutes: 20, Effect: Needs{Fun: 5, Social: 5}, MinHour: 8, MaxHour: 17, Places: []string{AirLaguneID}},
 			// The Tour Ivoire's: the boulevard and the lagoon from its top floor.
 			{ID: "vue-tour-ivoire", Label: "Voir le boulevard du 16e étage", Icon: "building-2", Minutes: 20, Effect: Needs{Fun: 15, Energy: -3}, MinHour: 8, MaxHour: 18, Places: []string{TourIvoireID}},
 		},
@@ -275,6 +277,8 @@ var Kinds = map[string]PlaceKind{
 			{ID: "boutique-aeroport", Label: "Faire un tour à la boutique hors taxes", Icon: "shopping-bag", Minutes: 30, Effect: Needs{Fun: 12}, MinHour: 6, MaxHour: 23},
 			{ID: "accueillir-arrivees", Label: "Attendre quelqu'un aux arrivées", Icon: "users", Minutes: 45, Effect: Needs{Social: 20, Fun: 5}},
 			{ID: "salle-attente", Label: "Se reposer en salle d'attente", Icon: "sofa", Minutes: 40, Effect: Needs{Energy: 15, Fun: -3}},
+			// Abidjan's: the burger chain's counter in the terminal (it stood outside, on the terminal's doorstep).
+			{ID: "babi-burger-aeroport", Label: "Manger au Babi Burger de l'aérogare", Icon: "hamburger", Minutes: 30, Cost: 4000, Effect: Needs{Hunger: 45, Fun: 8}, MinHour: 7, MaxHour: 23, Places: []string{AirportID}},
 		},
 		Events: []RandomEvent{
 			{Text: "Toute une famille est venue accueillir un tonton de retour de Paris : les youyous résonnent dans le hall !", Effect: Needs{Social: 15, Fun: 10}},
@@ -851,6 +855,12 @@ const TourFID = "plateau-tour-f"
 
 // BoulayID: the landing on the Azito shore (world/world.go), where the pinasse leaves for Île Boulay.
 const BoulayID = "yop-ile-boulay"
+
+// AirportID: Abidjan's airport (world/world.go), with its Babi Burger counter; AirLaguneID: the airline's head office beside it.
+const (
+	AirportID   = "pb-aeroport"
+	AirLaguneID = "pb-air-lagune"
+)
 
 // HotelIvoireID: the Hôtel Ivoire (world/world.go), whose cinema and casino are its own.
 const HotelIvoireID = "cocody-hotel-ivoire"

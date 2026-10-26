@@ -108,9 +108,14 @@ export const OPEN_AIR = new Set([...GROUNDS].filter((id) => id !== 'cocody-hotel
  * has a light one; the cathedral, the stadium, the Pyramide and the Palais de justice are drawn as
  * they are (they stand a kilometre apart in the Plateau: from one, the others were nowhere).
  */
-export const SKYLINE = new Set(['plateau-tour-f', 'plateau-cathedrale', 'plateau-stade', 'plateau-pyramide', 'plateau-tribunal', 'plateau-presidence'])
-/** Which way each faces when drawn from afar (its lot not laid out yet): the way its street turns it. */
-const FAR_FACING: Record<string, number> = { 'plateau-cathedrale': 0, 'plateau-tribunal': Math.PI, 'plateau-stade': 0, 'plateau-pyramide': 0, 'plateau-presidence': 0 }
+export const SKYLINE = new Set(['plateau-tour-f', 'plateau-cathedrale', 'plateau-stade', 'plateau-pyramide', 'plateau-tribunal', 'plateau-presidence', 'pb-aeroport', 'pb-rabisson', 'portbouet-parc-expo'])
+/**
+ * Which way each faces when drawn from afar (its lot not laid out yet): the way its street turns it.
+ * The road to the airport's (the Parc des Expositions' dome, the Rabisson, the terminal) as Port-Bouët
+ * lays them out on the map (the lab: city.html?view=map, window.marks), so they're seen from the
+ * boulevard on the way there, from Koumassi and Marcory, not only once in Port-Bouët.
+ */
+const FAR_FACING: Record<string, number> = { 'plateau-cathedrale': 0, 'plateau-tribunal': Math.PI, 'plateau-stade': 0, 'plateau-pyramide': 0, 'plateau-presidence': 0, 'pb-aeroport': -2.015, 'pb-rabisson': 1.176, 'portbouet-parc-expo': 1.846 }
 
 /** No further than this (the fog has them all by then). */
 export const SKYLINE_FAR = 5500
@@ -128,6 +133,9 @@ export function FarLandmark({ id, night }: { id: string; night: boolean }) {
     case 'plateau-pyramide':
     case 'plateau-tribunal':
     case 'plateau-presidence':
+    case 'pb-aeroport':
+    case 'pb-rabisson':
+    case 'portbouet-parc-expo':
       return (
         <group rotation={[0, FAR_FACING[id] ?? 0, 0]}>
           <Landmark id={id} night={night} />

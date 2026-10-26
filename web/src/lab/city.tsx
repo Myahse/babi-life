@@ -298,6 +298,8 @@ function MapLab() {
           const t0 = performance.now()
           const found = resolvePlaces(data, spots)
           if (found.length) setMarks((m) => [...m, ...found])
+          // (For tests: how the landmarks were laid out, which way they face.)
+          if (found.length) (window as unknown as { marks: Resolved[] }).marks = [...((window as unknown as { marks?: Resolved[] }).marks ?? []), ...found]
           const cleared = spots.map((s) => ({ at: s.at, r: s.landmark! }))
           // A fairground's ground: none of the game's own houses (as worker.ts).
           const fairs = spots.flatMap((s) => (NO_FILL[s.id] ? [{ at: s.at, r: NO_FILL[s.id] }] : []))
