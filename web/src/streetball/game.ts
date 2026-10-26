@@ -123,6 +123,8 @@ export type Player = {
   out: boolean
   /** This slide tackle has been judged already (a foul or not). */
   judged: boolean
+  /** Basketball: a jump shot on the meter (Tir held), how far it has filled (0 to 1; −1: none). */
+  meter: number
 }
 
 /** Something worth cheering, filming and posting. */
@@ -267,7 +269,7 @@ const fifa = (g: Game) => g.referee || g.switching || g.size === 11
 const striker = (g: Game) => (g.size === 11 ? 9 : 4)
 
 function makePlayer(id: number, team: 0 | 1, role: number, name: string, x: number, z: number): Player {
-  return { id, team, human: false, keeper: false, name, role, x, z, vx: 0, vz: 0, face: 0, want: [0, 0], act: 'none', at: 0, len: 0, side: 1, cool: 0, think: 0, call: 0, from: [0, 0], to: [0, 0], pending: null, pendingAt: 0, spot: role, pose: 'idle', flip: false, stamina: 1, charge: 0, cards: 0, out: false, judged: false }
+  return { id, team, human: false, keeper: false, name, role, x, z, vx: 0, vz: 0, face: 0, want: [0, 0], act: 'none', at: 0, len: 0, side: 1, cool: 0, think: 0, call: 0, from: [0, 0], to: [0, 0], pending: null, pendingAt: 0, spot: role, pose: 'idle', flip: false, stamina: 1, charge: 0, cards: 0, out: false, judged: false, meter: -1 }
 }
 
 /** A seeded random (the labs replay the same match), or Math.random. */
@@ -627,8 +629,19 @@ export function pass(g: Game, p: Player, aim: V | null, kind: 'ground' | 'throug
   if (g.switching && to.team === myTeam(g) && !to.keeper) control(g, to)
 }
 
-/** Tir: a jump shot, a layup close in, a dunk with a run-up at the ring; football, a shot at goal (the stick aims it). */
-export function shoot(g: Game, p: Player, aim: V | null, power?: number) {
+/**
+ * Basketball's shot meter (a player with Tir held: the hands' input.charge): the jump
+ * shot goes up as Tir is pressed, the meter fills while it's held, the ball leaves
+ * when it's let go; let go in the green (METER_GOOD), « Parfait ! », it goes in far
+ * more often; too soon or too late, less. Without the meter (the AI, a phone
+ * without it), the shot as it always was.
+ */
+export const METER_GOOD: [number, number] = [0.72, 0.9]
+const METER_FILL = 1.25 // per second: full in 0,8 s
+const METER_OVER = 1.05 // held past this: it goes by itself, late
+
+/** Tir: a jump shot, a layup close in, a dunk with a run-up at the ring; football, a shot at goal (the stick aims it). `metered`: basketball's jump shot on the meter. */
+export function shoot(g: Game, p: Player, aim: V | null, power?: number, metered = false) {
   const b = g.ball
   if (b.owner !== p.id || locked(p)) return
   if (g.sport === 'foot') return kickAtGoal(g, p, aim, power)
@@ -660,14 +673,42 @@ export function shoot(g: Game, p: Player, aim: V | null, power?: number) {
     p.pendingAt = 0.42
     return
   }
-  // The jump shot: up, released at the top.
-  startAct(p, 'shoot', 0.8)
+  // The jump shot: up, released at the top (on the meter: when Tir is let go).
+  startAct(p, 'shoot', metered ? 1.3 : 0.8)
   p.vx *= 0.2
   p.vz *= 0.2
   p.face = Math.atan2(HOOP[0] - p.x, HOOP[1] - p.z)
-  const chance = d < 3.5 ? 0.6 : d <= ARC ? 0.47 : 0.37
+  if (metered) {
+    p.meter = 0
+    p.pending = null
+    return
+  }
+  const chance = jumpChance(d)
   p.pending = () => release(g, p, chance, 0.75 + d * 0.05)
   p.pendingAt = 0.42
+}
+
+/** A jump shot's chance from so far (before the man guarding takes some off). */
+const jumpChance = (d: number) => (d < 3.5 ? 0.6 : d <= ARC ? 0.47 : 0.37)
+
+/** The meter let go (or run over): the shot leaves, its chance from where the meter stood. */
+function letGo(g: Game, p: Player) {
+  const q = Math.min(1, p.meter)
+  p.meter = -1
+  const d = fromHoop(p.x, p.z)
+  const base = jumpChance(d)
+  const [lo, hi] = METER_GOOD
+  let chance: number
+  if (q >= lo && q <= hi) {
+    chance = Math.min(0.9, base + 0.3)
+    if (p.human) say(g, 'Parfait !')
+  } else {
+    // The further off the green, the less it goes in.
+    const off = q < lo ? lo - q : q - hi
+    chance = base * Math.max(0.25, 1 - off * 2.2)
+    if (p.human) say(g, q < lo ? 'Trop tôt !' : 'Trop tard !')
+  }
+  release(g, p, chance, 0.75 + d * 0.05)
 }
 
 /** The man guarding a player: the nearest opponent between him and the ring. */
@@ -1682,6 +1723,15 @@ export function step(g: Game, dt: number, input: Input, others?: Map<number, Inp
 /** A human's stick and buttons, on its player. */
 function hands(g: Game, me: Player, input: Input, playing: boolean, dt: number) {
   const foot = g.sport === 'foot'
+  // Basketball: a jump shot on the meter fills while Tir is held, and goes when it's let go (or held too long).
+  if (!foot && me.meter >= 0) {
+    if (me.act !== 'shoot' || g.ball.owner !== me.id || !playing) me.meter = -1
+    else {
+      me.meter += dt * METER_FILL
+      if (!input.charge || me.meter >= METER_OVER) letGo(g, me)
+    }
+    return
+  }
   if (!playing || locked(me)) {
     if (!playing) me.want = [0, 0]
     if (!input.charge) me.charge = 0
@@ -1714,7 +1764,8 @@ function hands(g: Game, me: Player, input: Input, playing: boolean, dt: number) 
   if (set && aim) me.face = Math.atan2(aim[0], aim[1])
   if (!foot) {
     if (input.pass) has ? pass(g, me, aim) : call(me)
-    if (input.shoot) has ? shoot(g, me, aim) : jump(g, me)
+    // Tir held where the hands can hold it: the jump shot on the meter.
+    if (input.shoot) has ? shoot(g, me, aim, undefined, input.charge !== undefined) : jump(g, me)
     if (input.skill && has) skill(g, me, aim)
     if (input.defend && !has) defend(g, me)
     return

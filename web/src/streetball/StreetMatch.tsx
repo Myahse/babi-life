@@ -4,7 +4,7 @@ import { RotateCcw, Trophy, Users, X } from 'lucide-react'
 import type { Look } from '../lib/types'
 import { randomLook } from '../avatar/options'
 import { rng } from '../world3d/themes'
-import { COUNTDOWN, NO_INPUT, buttons, createGame, outcome, shootoutScore, step, type Game, type Input, type Rules, type Sport, type Stats } from './game'
+import { COUNTDOWN, METER_GOOD, NO_INPUT, buttons, createGame, outcome, shootoutScore, step, type Game, type Input, type Rules, type Sport, type Stats } from './game'
 import { holdScenes } from '../world3d/hold'
 import { BallView, Crowd, Follow, Ground, PlayerView, upright } from './scene'
 import { HAZE, Sky } from './looks'
@@ -85,6 +85,8 @@ type Hud = {
   /** The console's football: the breath left, Tir held so far, what to do at a set piece. */
   stamina: number
   charge: number
+  /** Basketball: the shot meter (−1: none). */
+  meter: number
   hint: string | null
   /** The console's hands move from player to player (else, online at the stadium, each keeps its own). */
   switching: boolean
@@ -94,6 +96,8 @@ type Hud = {
 
 /** At a set piece, what the hands can do. */
 function hintOf(g: Game): string | null {
+  // Basketball, the first half-minute: how the shot meter goes.
+  if (g.sport === 'basket') return g.time < 30 && g.ball.owner === g.me && g.phase === 'play' ? 'Tiens Tir : la jauge monte. Lâche dans le vert pour un tir parfait.' : null
   const sp = g.set
   if (!sp) return null
   const mine = sp.team === g.ps[g.me].team
@@ -130,6 +134,7 @@ function hudOf(g: Game, waiting = 0): Hud {
     waiting,
     stamina: me.stamina,
     charge: me.charge,
+    meter: me.meter,
     hint: hintOf(g),
     switching: g.switching,
     pens: g.shootout ? [[...g.shootout.kicks[0]], [...g.shootout.kicks[1]]] : null,
@@ -216,11 +221,12 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
     })
   }, [game, sport, look, gender, entries, kits])
   // The console's hands can hold Tir (the power) and the sprint: starting them defined is what tells the game.
-  const fresh = (): Input => (fifa ? { ...NO_INPUT, charge: false, sprint: false } : { ...NO_INPUT })
+  // The hands that can hold Tir: the console's football (the power), the basketball's shot meter.
+  const fresh = (): Input => (fifa ? { ...NO_INPUT, charge: false, sprint: false } : sport === 'basket' ? { ...NO_INPUT, charge: false } : { ...NO_INPUT })
   const input = useRef<Input>(fresh())
   const touch = useMemo(() => typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches, [])
   const [hud, setHud] = useState<Hud>(() => hudOf(game))
-  useKeyboard(input, fifa)
+  useKeyboard(input, fifa, sport === 'basket')
   usePad(input, sport, fifa)
   const padOn = usePadConnected()
   const sceneSeed = `${sport}-${seed ?? 'street'}`
@@ -309,6 +315,7 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
         </div>
       )}
       {fifa && !hud.over && <Gauges hud={hud} />}
+      {sport === 'basket' && !hud.over && hud.meter >= 0 && <ShotMeter v={hud.meter} />}
       {!hud.over && (fifa ? <FifaPad input={input} hud={hud} touch={touch && !padOn} pad={padOn} /> : <Pad input={input} hud={hud} sport={sport} touch={touch && !padOn} pad={padOn} />)}
       {online && hud.waiting > 0 && <Waiting entries={entries} cap={online.match.cap} left={hud.waiting} sport={sport} />}
 
@@ -428,7 +435,8 @@ function Loop({ game, input, onHud, net, entries, start, simId }: { game: Game; 
       }
     }
     acc.current += total
-    if (acc.current > 0.1) {
+    // The HUD ten times a second; the shot meter climbing, every few hundredths (it's timed by the eye).
+    if (acc.current > (game.ps[game.me].meter >= 0 ? 0.03 : 0.1)) {
       acc.current = 0
       onHud(hudOf(game, waiting))
     }
@@ -461,7 +469,7 @@ function Waiting({ entries, cap, left, sport }: { entries: CourtEntry[]; cap: nu
 }
 
 /** The keyboard: arrows / WASD / ZQSD, Space shoot, J or X pass, K or C crossover, L or E defend. */
-function useKeyboard(input: React.MutableRefObject<Input>, fifa: boolean) {
+function useKeyboard(input: React.MutableRefObject<Input>, fifa: boolean, basket: boolean) {
   useEffect(() => {
     const keys = new Set<string>()
     const apply = () => {
@@ -477,6 +485,8 @@ function useKeyboard(input: React.MutableRefObject<Input>, fifa: boolean) {
         i.sprint = keys.has('ShiftLeft') || keys.has('ShiftRight')
         i.charge = keys.has('Space')
       }
+      // Basketball: Space held, the shot meter.
+      if (basket) i.charge = keys.has('Space')
     }
     const down = (e: KeyboardEvent) => {
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Tab'].includes(e.code)) e.preventDefault()
@@ -574,7 +584,16 @@ function Pad({ input, hud, sport, touch, pad }: { input: React.MutableRefObject<
             {hud.has ? 'Passe' : 'Appelle'}
             {!touch && <Key>{pad ? 'A' : 'J'}</Key>}
           </button>
-          <button className={`${btn} relative h-20 w-20 text-base text-white ${hud.dunk ? 'animate-pulse bg-[#e11d48]' : 'bg-[#ff8200]'} ${!hud.has && !basket ? off : ''}`} onPointerDown={press('shoot')}>
+          <button
+            className={`${btn} relative h-20 w-20 text-base text-white ${hud.dunk ? 'animate-pulse bg-[#e11d48]' : 'bg-[#ff8200]'} ${!hud.has && !basket ? off : ''}`}
+            onPointerDown={(e) => {
+              // Basketball: held, the shot meter fills; let go, the ball leaves.
+              if (basket) ((e.target as HTMLElement).setPointerCapture?.(e.pointerId), (input.current.charge = true))
+              press('shoot')(e)
+            }}
+            onPointerUp={() => basket && (input.current.charge = false)}
+            onPointerCancel={() => basket && (input.current.charge = false)}
+          >
             {hud.dunk ? 'Dunk !' : hud.has ? 'Tir' : basket ? 'Saut' : 'Tir'}
             {!touch && <Key>{pad ? 'B' : 'Espace'}</Key>}
           </button>
@@ -626,6 +645,12 @@ function usePad(input: React.MutableRefObject<Input>, sport: Sport, fifa: boolea
       return
     }
     if (p.pressed.has('x') || p.pressed.has('y')) i.skill = true
+    // Basketball: B held, the shot meter.
+    if (sport === 'basket') {
+      const charge = p.held.has('b')
+      if (charge !== held.current.charge) i.charge = charge
+      held.current = { ...held.current, charge }
+    }
     const g = p.held.has('rb') || p.held.has('lb') || p.lt > 0.4
     if (g && !guard.current) i.defend = true
     if (g !== guard.current) i.guard = g
@@ -634,6 +659,21 @@ function usePad(input: React.MutableRefObject<Input>, sport: Sport, fifa: boolea
 }
 
 /** The console's football on a phone: the breath and, Tir held, the power. */
+/** Basketball's shot meter: it climbs while Tir is held; let go in the green for « Parfait ! ». */
+function ShotMeter({ v }: { v: number }) {
+  const [lo, hi] = METER_GOOD
+  const good = v >= lo && v <= hi
+  return (
+    <div className="pointer-events-none absolute right-[7.5rem] bottom-[max(12rem,calc(env(safe-area-inset-bottom)+11.5rem))] flex flex-col items-center gap-1">
+      <div className="relative h-36 w-5 overflow-hidden rounded-full bg-[#0f1230]/70 ring-2 ring-white/70">
+        <div className="absolute inset-x-0 bg-[#2fd27a]/80" style={{ bottom: `${lo * 100}%`, height: `${(hi - lo) * 100}%` }} />
+        <div className={`absolute inset-x-0 bottom-0 ${good ? 'bg-[#fff36b]' : 'bg-white/90'}`} style={{ height: `${Math.min(1, v) * 100}%` }} />
+      </div>
+      <span className="rounded-full bg-[#0f1230]/70 px-2 text-[11px] font-extrabold text-white">{good ? 'Lâche !' : 'Tiens…'}</span>
+    </div>
+  )
+}
+
 function Gauges({ hud }: { hud: Hud }) {
   return (
     <div className="pointer-events-none absolute bottom-[max(10.5rem,calc(env(safe-area-inset-bottom)+10rem))] left-4 w-36 space-y-1.5">

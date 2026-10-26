@@ -25,7 +25,133 @@ const flat = (color: string) => new THREE.MeshLambertMaterial({ color })
 const steel = flat('#4b5563')
 const white = flat('#f8f9fa')
 const orange = flat('#e85d04')
-const netMat = new THREE.MeshBasicMaterial({ color: '#ffffff', wireframe: true, transparent: true, opacity: 0.7 })
+const dark = flat('#1f2933')
+const pad = flat('#1d4ed8')
+// The street court's chain net: grey steel links, not a white string one.
+const netMat = new THREE.MeshLambertMaterial({ color: '#c3c9d1', wireframe: true })
+
+/** A canvas texture drawn once and kept (the grounds share them). */
+const painted = new Map<string, THREE.CanvasTexture>()
+function paint(key: string, w: number, h: number, draw: (g: CanvasRenderingContext2D) => void, repeat?: [number, number]) {
+  const had = painted.get(key)
+  if (had) return had
+  const c = document.createElement('canvas')
+  c.width = w
+  c.height = h
+  draw(c.getContext('2d')!)
+  const t = new THREE.CanvasTexture(c)
+  t.colorSpace = THREE.SRGBColorSpace
+  t.anisotropy = 4
+  if (repeat) {
+    t.wrapS = t.wrapT = THREE.RepeatWrapping
+    t.repeat.set(...repeat)
+  }
+  painted.set(key, t)
+  return t
+}
+
+/** The court's asphalt: grey grain, cracks, oil stains, a patch mended darker. */
+function asphalt() {
+  return paint('asphalt', 512, 512, (g) => {
+    const r = rng('asphalt')
+    g.fillStyle = '#56565c'
+    g.fillRect(0, 0, 512, 512)
+    for (let i = 0; i < 26000; i++) {
+      const v = 70 + Math.floor(r() * 50)
+      g.fillStyle = `rgb(${v},${v},${v + 4})`
+      g.fillRect(r() * 512, r() * 512, 1.5, 1.5)
+    }
+    // Stains and patches.
+    for (let i = 0; i < 9; i++) {
+      const [x, y, rad] = [r() * 512, r() * 512, 20 + r() * 50]
+      const grad = g.createRadialGradient(x, y, 0, x, y, rad)
+      grad.addColorStop(0, 'rgba(25,25,30,0.35)')
+      grad.addColorStop(1, 'rgba(25,25,30,0)')
+      g.fillStyle = grad
+      g.fillRect(x - rad, y - rad, rad * 2, rad * 2)
+    }
+    g.fillStyle = 'rgba(40,40,46,0.45)'
+    g.fillRect(300, 60, 120, 70)
+    // Cracks.
+    g.strokeStyle = 'rgba(20,20,24,0.7)'
+    g.lineWidth = 1.4
+    for (let i = 0; i < 7; i++) {
+      let [x, y] = [r() * 512, r() * 512]
+      g.beginPath()
+      g.moveTo(x, y)
+      for (let k = 0; k < 9; k++) {
+        x += (r() - 0.5) * 40
+        y += (r() - 0.5) * 40
+        g.lineTo(x, y)
+      }
+      g.stroke()
+    }
+  })
+}
+
+/** The quarter's walls: the paint and its grime, two windows with their grille, a door; now and then a sign painted on. */
+const SIGNS = ['CABINE', 'COIFFURE', 'MAQUIS', 'QUINCAILLERIE', 'TRANSFERT', 'BOUTIQUE', 'ATTIÉKÉ', 'PRESSING']
+function facade(color: string, k: number) {
+  return paint(`facade${color}${k}`, 256, 192, (g) => {
+    const r = rng(`facade${color}${k}`)
+    g.fillStyle = color
+    g.fillRect(0, 0, 256, 192)
+    for (let i = 0; i < 2500; i++) {
+      g.fillStyle = r() < 0.5 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)'
+      g.fillRect(r() * 256, r() * 192, 2, 2)
+    }
+    // The red earth splashed up the foot of the wall by the rains.
+    const foot = g.createLinearGradient(0, 150, 0, 192)
+    foot.addColorStop(0, 'rgba(120,60,30,0)')
+    foot.addColorStop(1, 'rgba(120,60,30,0.45)')
+    g.fillStyle = foot
+    g.fillRect(0, 150, 256, 42)
+    // The door, the windows and their grilles.
+    g.fillStyle = ['#3d5a80', '#6b3e26', '#2f6b3a', '#8d2f2f'][k % 4]
+    g.fillRect(108, 96, 40, 96)
+    for (const x of [30, 186]) {
+      g.fillStyle = '#26323e'
+      g.fillRect(x, 82, 40, 44)
+      g.strokeStyle = '#d9dee3'
+      g.lineWidth = 2
+      for (let gx = x + 8; gx < x + 40; gx += 8) {
+        g.beginPath()
+        g.moveTo(gx, 82)
+        g.lineTo(gx, 126)
+        g.stroke()
+      }
+    }
+    if (k % 3 === 0) {
+      g.fillStyle = 'rgba(255,255,255,0.85)'
+      g.fillRect(20, 20, 216, 40)
+      g.fillStyle = ['#c2410c', '#1d4ed8', '#15803d'][k % 3 === 0 ? Math.floor(r() * 3) : 0]
+      g.font = "900 30px 'Baloo 2', Impact, sans-serif"
+      g.textAlign = 'center'
+      g.textBaseline = 'middle'
+      g.fillText(SIGNS[Math.floor(r() * SIGNS.length)], 128, 42, 200)
+    }
+  })
+}
+
+/** Corrugated tin: light and dark stripes, a bit of rust. */
+function tinTexture() {
+  return paint(
+    'tin',
+    64,
+    64,
+    (g) => {
+      for (let x = 0; x < 64; x += 8) {
+        g.fillStyle = '#a7b0ba'
+        g.fillRect(x, 0, 4, 64)
+        g.fillStyle = '#7f8893'
+        g.fillRect(x + 4, 0, 4, 64)
+      }
+      g.fillStyle = 'rgba(150,70,30,0.35)'
+      g.fillRect(10, 40, 30, 18)
+    },
+    [4, 4],
+  )
+}
 
 
 /* ---------- The fence and the quarter ---------- */
@@ -51,6 +177,9 @@ function wire() {
   return wireMat
 }
 const fencePost = flat('#2f6b3a')
+const bark = flat('#6b4a2e')
+const leaves = flat('#2f7d32')
+const lampMat = new THREE.MeshBasicMaterial({ color: '#fff6d5' })
 
 /** The grillage round the ground: green posts, a top rail, the chain-link between. Half-sizes hx × hz, centred on z0; the side towards the camera is left out (it would be in the way). */
 function Fence({ hx, hz, z0 = 0 }: { hx: number; hz: number; z0?: number }) {
@@ -98,14 +227,43 @@ function Quarter({ hx, hz, seed }: { hx: number; hz: number; seed: string }) {
     }
     return out
   }, [hx, hz, seed])
-  const mats = useMemo(() => new Map(houses.map((h) => [h.c, flat(h.c)])), [houses])
-  const tin = useMemo(() => flat('#9aa3ad'), [])
+  // Each wall painted (a few variants of each colour), the roofs in corrugated tin.
+  const mats = useMemo(() => {
+    const m = new Map<string, THREE.Material>()
+    houses.forEach((h, i) => {
+      const key = `${h.c}${i % 3}`
+      if (!m.has(key)) m.set(key, new THREE.MeshLambertMaterial({ map: facade(h.c, i % 3) }))
+    })
+    return m
+  }, [houses])
+  const tin = useMemo(() => new THREE.MeshLambertMaterial({ map: tinTexture() }), [])
+  // Mango trees and a wooden electric pole or two between the houses and the fence.
+  const trees = useMemo(() => {
+    const r = rng(`trees${seed}`)
+    return [...Array(6)].map((_, i) => {
+      const side = i % 3
+      const u = (r() - 0.5) * (side === 0 ? hx * 1.6 : hz * 1.4)
+      const off = (side === 0 ? hz : hx) + 5 + r() * 2
+      return { p: (side === 0 ? [u, -off] : side === 1 ? [-off, u] : [off, u]) as [number, number], s: 0.8 + r() * 0.5 }
+    })
+  }, [hx, hz, seed])
   return (
     <group>
       {houses.map((h, i) => (
         <group key={i}>
-          <mesh geometry={BOX} material={mats.get(h.c)} position={h.p} scale={h.s} />
+          <mesh geometry={BOX} material={mats.get(`${h.c}${i % 3}`)} position={h.p} scale={h.s} />
           {h.roof && <mesh geometry={BOX} material={tin} position={[h.p[0], h.s[1] + 0.06, h.p[2]]} scale={[h.s[0] + 0.4, 0.12, h.s[2] + 0.4]} />}
+        </group>
+      ))}
+      {trees.map((t, i) => (
+        <group key={i} position={[t.p[0], 0, t.p[1]]} scale={t.s}>
+          <mesh geometry={BOX} material={bark} position={[0, 1.4, 0]} scale={[0.35, 2.8, 0.35]} castShadow />
+          <mesh material={leaves} position={[0, 3.6, 0]} scale={[2.3, 1.7, 2.3]} castShadow>
+            <icosahedronGeometry args={[1, 1]} />
+          </mesh>
+          <mesh material={leaves} position={[0.9, 3.1, 0.4]} scale={[1.3, 1.1, 1.3]} castShadow>
+            <icosahedronGeometry args={[1, 1]} />
+          </mesh>
         </group>
       ))}
     </group>
@@ -116,15 +274,51 @@ function Quarter({ hx, hz, seed }: { hx: number; hz: number; seed: string }) {
 
 function Court() {
   const { x, z0, z1 } = COURT
-  const concrete = useMemo(() => flat('#b9b2a6'), [])
-  const paint = useMemo(() => flat('#c2410c'), [])
+  const ground = useMemo(() => new THREE.MeshLambertMaterial({ map: asphalt() }), [])
+  const court = useMemo(() => flat('#2c6aa0'), [])
+  const keyPaint = useMemo(() => flat('#d9480f'), [])
   const sand = useMemo(() => flat('#c9a77a'), [])
+  const logo = useMemo(
+    () =>
+      new THREE.MeshLambertMaterial({
+        transparent: true,
+        map: paint('courtlogo', 256, 128, (g) => {
+          g.clearRect(0, 0, 256, 128)
+          g.font = "900 64px 'Baloo 2', Impact, sans-serif"
+          g.textAlign = 'center'
+          g.textBaseline = 'middle'
+          g.lineWidth = 8
+          g.strokeStyle = 'rgba(255,255,255,0.9)'
+          g.strokeText('BABI', 128, 46)
+          g.fillStyle = '#ff8200'
+          g.fillText('BABI', 128, 46)
+          g.font = "800 26px 'Baloo 2', Impact, sans-serif"
+          g.fillStyle = 'rgba(255,255,255,0.92)'
+          g.fillText('STREET BALL', 128, 98)
+        }),
+      }),
+    [],
+  )
   return (
     <group>
       <mesh geometry={BOX} material={sand} position={[0, -0.05, 0]} scale={[90, 0.1, 90]} receiveShadow />
-      <mesh geometry={BOX} material={concrete} position={[0, 0.01, (z0 + z1) / 2]} scale={[x * 2 + 2.4, 0.04, z1 - z0 + 2.4]} receiveShadow />
-      {/* The key, painted, and the free-throw circle */}
-      <mesh geometry={BOX} material={paint} position={[0, 0.032, z0 + 2.9]} scale={[4.9, 0.01, 5.8]} receiveShadow />
+      <mesh geometry={BOX} material={ground} position={[0, 0.01, (z0 + z1) / 2]} scale={[x * 2 + 2.4, 0.04, z1 - z0 + 2.4]} receiveShadow />
+      {/* The court painted blue inside its lines, the key orange, the quarter's logo at half-court */}
+      <mesh geometry={BOX} material={court} position={[0, 0.028, (z0 + z1) / 2]} scale={[x * 2, 0.01, z1 - z0]} receiveShadow />
+      <mesh geometry={BOX} material={keyPaint} position={[0, 0.032, z0 + 2.9]} scale={[4.9, 0.01, 5.8]} receiveShadow />
+      <mesh material={logo} position={[0, 0.036, z1 - 1.6]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[4.4, 2.2]} />
+      </mesh>
+      {/* The floodlights at the corners, for the night games */}
+      {[-1, 1].map((sx) =>
+        [z0 - 1.2, z1 + 1.2].map((zz) => (
+          <group key={`${sx}${zz}`} position={[sx * (x + 1.4), 0, zz]}>
+            <mesh geometry={BOX} material={steel} position={[0, 3.5, 0]} scale={[0.14, 7, 0.14]} castShadow />
+            <mesh geometry={BOX} material={steel} position={[-sx * 0.3, 7, 0]} scale={[0.9, 0.12, 0.3]} />
+            <mesh geometry={BOX} material={lampMat} position={[-sx * 0.5, 6.85, 0]} scale={[0.5, 0.14, 0.26]} />
+          </group>
+        )),
+      )}
       <Line a={[-2.45, z0]} b={[-2.45, z0 + 5.8]} />
       <Line a={[2.45, z0]} b={[2.45, z0 + 5.8]} />
       <Line a={[-2.45, z0 + 5.8]} b={[2.45, z0 + 5.8]} />
@@ -140,7 +334,9 @@ function Court() {
       {/* The stand behind the baseline: the pole, the arm, the board with its square */}
       <mesh geometry={BOX} material={steel} position={[0, 1.75, z0 - 0.8]} scale={[0.2, 3.5, 0.2]} castShadow />
       <mesh geometry={BOX} material={steel} position={[0, 3.35, (z0 - 0.8 + BOARD_Z) / 2]} scale={[0.12, 0.12, BOARD_Z - z0 + 0.8]} />
-      <mesh geometry={BOX} material={white} position={[0, 3.42, BOARD_Z - 0.03]} scale={[1.8, 1.05, 0.05]} castShadow />
+      <mesh geometry={BOX} material={pad} position={[0, 1, z0 - 0.8]} scale={[0.32, 2, 0.32]} />
+      <mesh geometry={BOX} material={dark} position={[0, 3.42, BOARD_Z - 0.05]} scale={[1.9, 1.15, 0.05]} castShadow />
+      <mesh geometry={BOX} material={white} position={[0, 3.42, BOARD_Z - 0.02]} scale={[1.78, 1.03, 0.04]} />
       <mesh geometry={BOX} material={orange} position={[0, 3.3, BOARD_Z]} scale={[0.59, 0.04, 0.01]} />
       <mesh geometry={BOX} material={orange} position={[-0.29, 3.18, BOARD_Z]} scale={[0.04, 0.45, 0.01]} />
       <mesh geometry={BOX} material={orange} position={[0.29, 3.18, BOARD_Z]} scale={[0.04, 0.45, 0.01]} />
@@ -413,7 +609,7 @@ export function Crowd({ g, seed }: { g: Game; seed: string }) {
         spots.push({ at: [-9.3 - r() * 0.6, z + r() * 0.4], face: Math.PI / 2 })
         spots.push({ at: [9.3 + r() * 0.6, z + r() * 0.4], face: -Math.PI / 2 })
       }
-      for (let x = -6.5; x <= 6.5; x += 1.5) spots.push({ at: [x + r() * 0.4, 8.9 + r() * 0.5], face: Math.PI })
+      // (Not along the near side: the camera looks over it, they'd stand in front of the game.)
       // Behind the basket too, along the back fence: they're the ones the camera sees.
       for (let x = -7.4; x <= 7.4; x += 1.25) if (Math.abs(x) > 0.7) spots.push({ at: [x + r() * 0.3, -9 - r() * 0.7], face: 0 })
     } else if (g.size === 11) {
