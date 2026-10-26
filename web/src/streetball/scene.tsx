@@ -522,6 +522,17 @@ export function Follow({ g }: { g: Game }) {
       want = new THREE.Vector3(xx, 10.5, zz + 12.5)
       target = new THREE.Vector3(xx, 0, zz - 0.5)
     }
+    // The shoot-out, like on TV: from behind the spot, looking at the goal the kick is for (the player's keeper, face on, at the other side's).
+    const so = g.sport === 'foot' && g.phase !== 'over' ? g.shootout : null
+    if (so) {
+      const d = so.turn === 0 ? 1 : -1
+      const F = g.field
+      const big = g.size === 11
+      want = new THREE.Vector3(d * (F.x - F.spot - (big ? 9 : 6.5)), big ? 6 : 4.6, 0)
+      target = new THREE.Vector3(d * F.x, 0.8, 0)
+      lift.current = 0
+      back.current = 0
+    }
     // Down the screen: towards the camera along the pitch.
     const down = g.sport === 'foot' && tall ? new THREE.Vector3(-dir, 0, 0) : new THREE.Vector3(0, 0, 1)
     want.addScaledVector(down, lift.current)
@@ -537,6 +548,7 @@ export function Follow({ g }: { g: Game }) {
     // (StreetMatch's Pad): a Sim standing back from the play, or a small
     // screen, put it under them. Its feet stay above that line.
     camera.updateMatrixWorld()
+    if (so) return
     const y = feet.current.set(me.x, 0, me.z).project(camera).y
     const floor = -1 + (2 * 190) / Math.max(size.height, 300)
     if (y < floor) lift.current = Math.min(14, lift.current + dt * 10)

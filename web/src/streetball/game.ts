@@ -212,7 +212,13 @@ export type Game = {
   ref: { x: number; z: number; face: number; whistle: number }
   /** At a penalty against the local team: the side its stick says the keeper dives (null: no say). */
   penStick: -1 | 0 | 1 | null
+  /** A draw at the end goes to penalties (the cup); the shoot-out once it's begun. */
+  pens: boolean
+  shootout: Shootout | null
 }
+
+/** The penalty shoot-out: each side's kicks so far (in or not), whose turn, the one taking it, when it was struck (-1: not yet). */
+export type Shootout = { kicks: [boolean[], boolean[]]; turn: 0 | 1; taker: number; t: number }
 
 /** A dead ball about to be played: who takes it, from where, since when; the others kept back. */
 export type SetPiece = { kind: 'free' | 'pen' | 'corner' | 'throw' | 'goal'; team: 0 | 1; taker: number; at: V; t: number }
@@ -220,12 +226,12 @@ export type SetPiece = { kind: 'free' | 'pen' | 'corner' | 'throw' | 'goal'; tea
 /**
  * A match's rules, if not the street's (the console's, at the salle de jeux):
  * how long, how good the other side is (1 as in the street), a draw played on
- * to the golden goal. Football also: eleven a side at the stadium (else the
+ * to the golden goal or to penalties. Football also: eleven a side at the stadium (else the
  * maracana's five), the player switching team-mates (the console: one team in
  * one pair of hands), a referee (fouls, free kicks, penalties, cards), and the
  * teams' names by place in the team (the player's own name goes on `me`).
  */
-export type Rules = { length?: number; foe?: number; golden?: boolean; size?: 5 | 11; switching?: boolean; referee?: boolean; names?: [string[], string[]] }
+export type Rules = { length?: number; foe?: number; golden?: boolean; shootout?: boolean; size?: 5 | 11; switching?: boolean; referee?: boolean; names?: [string[], string[]] }
 
 /** When the player last held Défense (the stance reads a crossover). */
 let lastGuard = -9
@@ -327,6 +333,8 @@ export function createGame(sport: Sport, name: string, rnd: () => number = Math.
     set: null,
     ref: { x: 0, z: -6, face: 0, whistle: -9 },
     penStick: null,
+    pens: !!rules.shootout,
+    shootout: null,
   }
   restart(g, 0)
   return g
@@ -840,7 +848,8 @@ function fire(g: Game, p: Player, goal: V, z: number, h: number, speed: number, 
     if (pen) {
       const side = Math.abs(z) < F.mouth * 0.3 ? 0 : Math.sign(z)
       const guess = penGuess(g, keeper)
-      save = onTarget && guess === side && g.rnd() < (Math.abs(z) > F.mouth * 0.8 ? 0.35 : 0.75) * good
+      // (In a shoot-out a right guess saves it a little less often: most kicks go in.)
+      save = onTarget && guess === side && g.rnd() < (Math.abs(z) > F.mouth * 0.8 ? 0.35 : g.shootout ? 0.55 : 0.75) * good
       keeper.side = guess >= 0 ? 1 : -1
       if (guess !== 0) {
         startAct(keeper, 'dive', 1.3)
@@ -1020,6 +1029,7 @@ function foul(g: Game, by: Player, on: Player, reckless: boolean) {
 /** The ball out over a line: a throw-in, a corner or a goal kick, after a moment. */
 function outOfPlay(g: Game, kind: 'throw' | 'corner' | 'goal', team: 0 | 1, at: V) {
   const b = g.ball
+  if (g.shootout) return kickDone(g, false)
   g.phase = 'dead'
   g.wait = 1.1
   g.shot = null
@@ -1028,8 +1038,8 @@ function outOfPlay(g: Game, kind: 'throw' | 'corner' | 'goal', team: 0 | 1, at: 
   g.then = () => setPiece(g, kind, team, at)
 }
 
-/** Everyone to their place for a set piece; the ball to the one taking it. */
-function setPiece(g: Game, kind: SetPiece['kind'], team: 0 | 1, at0: V) {
+/** Everyone to their place for a set piece; the ball to the one taking it (`who`, or the one whose it is). */
+function setPiece(g: Game, kind: SetPiece['kind'], team: 0 | 1, at0: V, who?: Player) {
   const F = g.field
   const b = g.ball
   const dir = dirOf(team)
@@ -1051,7 +1061,8 @@ function setPiece(g: Game, kind: SetPiece['kind'], team: 0 | 1, at0: V) {
   // Who takes it: the keeper a goal kick, the one up front a penalty (or the local hands' player), the nearest otherwise.
   const side = g.ps.filter((p) => p.team === team && !p.out)
   let taker: Player
-  if (kind === 'goal') taker = side.find((p) => p.keeper) ?? side[0]
+  if (who) taker = who
+  else if (kind === 'goal') taker = side.find((p) => p.keeper) ?? side[0]
   else if (kind === 'pen') taker = g.switching && team === myTeam(g) && !g.ps[g.me].keeper ? g.ps[g.me] : (side.find((p) => p.role === striker(g)) ?? side[0])
   else taker = nearest(side.filter((p) => !p.keeper), at[0], at[1])[0] ?? side[0]
   // Facing the goal (a free kick, a penalty) or the pitch (from a line); a step behind the ball.
@@ -1102,6 +1113,97 @@ function setPiece(g: Game, kind: SetPiece['kind'], team: 0 | 1, at0: V) {
   else if (kind === 'free') say(g, 'Coup franc.')
 }
 
+/* ---------- The penalty shoot-out ---------- */
+
+/** Time up on a draw, the cup's way: five penalties each, then one each until one side misses and the other doesn't. */
+function startShootout(g: Game) {
+  g.shootout = { kicks: [[], []], turn: 0, taker: -1, t: -1 }
+  g.set = null
+  g.shot = null
+  g.ball.flight = null
+  g.phase = 'dead'
+  g.wait = 2.6
+  g.ref.whistle = g.time
+  say(g, 'Tirs au but !')
+  g.then = () => nextKick(g)
+}
+
+/** The order the side's players take their kicks: the one up front first, then from the front back, the keeper last. */
+const kickOrder = (g: Game, p: Player) => (p.role === striker(g) ? 0 : p.keeper ? 99 : 20 - p.role)
+
+/** The next kick: its taker on the spot, the keeper on his line, the others in the centre circle. */
+function nextKick(g: Game) {
+  const so = g.shootout!
+  const team = so.turn
+  const order = g.ps.filter((p) => p.team === team && !p.out).sort((a, c) => kickOrder(g, a) - kickOrder(g, c))
+  const taker = order[so.kicks[team].length % order.length]
+  // The local hands take their side's kick; on the other's, they're on the keeper's dive (the stick), not on the keeper himself.
+  if (g.switching && team === myTeam(g)) control(g, taker)
+  else if (g.switching && g.ps[g.me].keeper) {
+    const mate = g.ps.find((p) => p.team === myTeam(g) && !p.keeper && !p.out)
+    if (mate) control(g, mate)
+  }
+  setPiece(g, 'pen', team, penaltySpot(g, team === 0 ? 1 : 0), taker)
+  say(g, team === myTeam(g) && g.switching ? 'À toi de tirer !' : `${taker.name} s'avance…`)
+  const gx = goalOf(g, team)[0]
+  for (const t of [0, 1] as const) {
+    const wait = g.ps.filter((p) => p.team === t && p !== taker && !p.out && !(p.keeper && p.team !== team))
+    wait.forEach((p, k) => {
+      p.x = (t === 0 ? -0.6 : 0.6) * (g.size === 11 ? 2 : 1)
+      p.z = (k - (wait.length - 1) / 2) * 0.8
+      p.face = Math.atan2(gx - p.x, -p.z * 0.2)
+      p.vx = p.vz = 0
+      p.want = [0, 0]
+    })
+  }
+  so.taker = taker.id
+  so.t = -1
+}
+
+/** A kick in or not: counted, the other side's turn; the shoot-out over once one side can't catch the other. */
+function kickDone(g: Game, scored: boolean) {
+  const so = g.shootout!
+  const team = so.turn
+  const taker = g.ps[so.taker]
+  so.kicks[team].push(scored)
+  so.turn = team === 0 ? 1 : 0
+  so.taker = -1
+  g.ball.dead = true
+  g.set = null
+  g.shot = null
+  g.phase = 'dead'
+  g.wait = 2.2
+  const w = shootoutWinner(so)
+  const mine = team === myTeam(g)
+  if (w !== null) say(g, w === myTeam(g) ? 'Gagné aux tirs au but !' : 'Perdu aux tirs au but…')
+  else say(g, scored ? (mine ? 'Réussi !' : 'Il marque.') : mine ? 'Manqué…' : 'Raté ! Il ne marque pas !')
+  if (scored && taker && !taker.out) startAct(taker, 'cheer', 1.8)
+  g.then = () => nextKick(g)
+}
+
+/** Who has won the shoot-out (null: not yet). */
+function shootoutWinner(so: Shootout): 0 | 1 | null {
+  const [a, b] = so.kicks
+  const [sa, sb] = [a.filter(Boolean).length, b.filter(Boolean).length]
+  // The first five each: over as soon as one side couldn't catch up even scoring all it has left.
+  if (a.length <= 5 && b.length <= 5) {
+    if (sa > sb + 5 - b.length) return 0
+    if (sb > sa + 5 - a.length) return 1
+    if (a.length < 5 || b.length < 5) return null
+  }
+  // Then one each: settled when both have kicked and one scored more.
+  return a.length === b.length && sa !== sb ? (sa > sb ? 0 : 1) : null
+}
+
+/** The shoot-out's score (goals each), if there was one. */
+export const shootoutScore = (g: Game): [number, number] | null => (g.shootout ? [g.shootout.kicks[0].filter(Boolean).length, g.shootout.kicks[1].filter(Boolean).length] : null)
+
+/** The side ahead: on the score, else on the shoot-out (null: level). */
+function leader(g: Game): 0 | 1 | null {
+  if (g.score[0] !== g.score[1]) return g.score[0] > g.score[1] ? 0 : 1
+  return g.shootout ? shootoutWinner(g.shootout) : null
+}
+
 /** The AI takes a set piece (or the local hands' one who's left it too long). */
 function takeSetPiece(g: Game, p: Player) {
   const sp = g.set!
@@ -1110,7 +1212,8 @@ function takeSetPiece(g: Game, p: Player) {
   const big = g.size === 11
   switch (sp.kind) {
     case 'pen':
-      return shoot(g, p, [0, g.rnd() < 0.5 ? -1 : 1], 0.55 + g.rnd() * 0.35)
+      // A shoot-out's kick placed more than struck: fewer over the maracana's bar.
+      return shoot(g, p, [0, g.rnd() < 0.5 ? -1 : 1], (g.shootout ? 0.45 : 0.55) + g.rnd() * 0.35)
     case 'free':
       if (gd < (big ? 27 : 12) && g.rnd() < 0.6) return shoot(g, p, [0, (g.rnd() - 0.5) * 2], 0.65 + g.rnd() * 0.3)
       return pass(g, p, null, gd < (big ? 40 : 16) ? 'lob' : 'ground')
@@ -1142,8 +1245,8 @@ function think(g: Game, p: Player, dt: number) {
   const h = holder(g)
   const foot = g.sport === 'foot'
   if (locked(p) || p.out) return
-  // Taking a set piece: still, until it's played (takeSetPiece).
-  if (g.set && g.set.taker === p.id) {
+  // Taking a set piece: still, until it's played (takeSetPiece). The shoot-out: all but the keeper facing the kick wait in the circle.
+  if ((g.set && g.set.taker === p.id) || (g.shootout && !(p.keeper && p.team !== g.shootout.turn))) {
     p.want = [0, 0]
     return
   }
@@ -1444,7 +1547,7 @@ function callerFor(g: Game, p: Player) {
  */
 export function step(g: Game, dt: number, input: Input, others?: Map<number, Input>) {
   g.time += dt
-  // Time up; a draw with the golden goal plays on until somebody scores.
+  // Time up; a draw with the golden goal plays on until somebody scores; with penalties, to the shoot-out's end.
   const up = () => {
     if (g.time < g.length) return false
     if (g.golden && g.score[0] === g.score[1]) {
@@ -1453,6 +1556,13 @@ export function step(g: Game, dt: number, input: Input, others?: Map<number, Inp
         say(g, 'But en or : le premier qui marque gagne !')
       }
       return false
+    }
+    if (g.pens && g.score[0] === g.score[1]) {
+      if (!g.shootout) {
+        startShootout(g)
+        return false
+      }
+      return shootoutWinner(g.shootout) !== null
     }
     return true
   }
@@ -1466,7 +1576,8 @@ export function step(g: Game, dt: number, input: Input, others?: Map<number, Inp
     g.wait -= dt
     if (g.wait <= 0) {
       if (up()) g.phase = 'over'
-      else {
+      // (Unless the shoot-out has just begun, with its own pause.)
+      else if (g.wait <= 0) {
         g.phase = 'play'
         const then = g.then
         g.then = null
@@ -1478,8 +1589,8 @@ export function step(g: Game, dt: number, input: Input, others?: Map<number, Inp
     say(g, 'Fin du match !')
   }
   // The final whistle: the winners jump about.
-  if (g.phase === 'over' && g.score[0] !== g.score[1])
-    for (const p of g.ps) if (p.team === (g.score[0] > g.score[1] ? 0 : 1) && p.act === 'none' && !p.keeper) startAct(p, 'cheer', 60)
+  const won = g.phase === 'over' ? leader(g) : null
+  if (won !== null) for (const p of g.ps) if (p.team === won && p.act === 'none' && !p.keeper) startAct(p, 'cheer', 60)
   const playing = g.phase === 'play'
   g.possT += dt
   // Taken back out past the arc: the team can score again.
@@ -1522,6 +1633,13 @@ export function step(g: Game, dt: number, input: Input, others?: Map<number, Inp
         }
         if (sp.kind === 'pen' && inBox(g, sp.team === 0 ? 1 : 0, p.x, p.z)) p.x = sp.at[0] - dirOf(sp.team) * (g.field.wall + 1)
       }
+  }
+  // The shoot-out: once struck, a kick that's anyone's (the keeper's catch, the taker's rebound) or gone a while is missed; in, goal() counts it.
+  const so = g.shootout
+  if (so && playing && so.taker >= 0 && !g.set) {
+    if (so.t < 0) so.t = g.time
+    const o = g.ball.owner
+    if ((o >= 0 && (o !== so.taker || g.time - so.t > 0.6)) || (g.time - so.t > 3.2 && !g.shot)) kickDone(g, false)
   }
   // The referee: a little behind the play and to the side, facing the ball.
   if (g.referee && g.sport === 'foot') {
@@ -1582,6 +1700,12 @@ function hands(g: Game, me: Player, input: Input, playing: boolean, dt: number) 
     if (me.stamina < 0.25) top *= 0.88 + me.stamina * 0.48
   }
   const set = g.set && g.set.taker === me.id ? g.set : null
+  // The shoot-out: only the one taking the kick (the keeper's dive goes on the stick by itself).
+  if (g.shootout && !set) {
+    me.want = [0, 0]
+    me.charge = 0
+    return
+  }
   const l = hyp(input.mx, input.mz) || 1
   me.want = set ? [0, 0] : [(input.mx / l) * m * top, (input.mz / l) * m * top]
   if (input.guard && me.id === g.me) lastGuard = g.time
@@ -1987,6 +2111,7 @@ function goal(g: Game, team: 0 | 1) {
   const b = g.ball
   b.dead = true
   g.shot = null
+  if (g.shootout) return kickDone(g, true)
   g.score[team]++
   const by = g.ps[b.lastBy]
   const scorer = by && by.team === team ? by : (g.ps.find((p) => p.team === team && p.role === striker(g) && !p.out) ?? g.ps.find((p) => p.team === team)!)
@@ -2036,6 +2161,8 @@ function touches(g: Game) {
         continue
       }
     }
+    // A shoot-out's kick he wasn't to save goes past him, his dive or not.
+    if (p.keeper && g.shootout && g.shot && g.shot.keeper === p.id && !g.shot.save) continue
     // In the box, a keeper only takes it in his own half.
     if (p.keeper && Math.abs(p.x - (p.team === 0 ? -g.field.x : g.field.x)) > (g.size === 11 ? g.field.box[0] : 6)) continue
     if (!foot && jumping) say(g, p.team === g.poss ? 'Rebond offensif !' : 'Rebond !')
@@ -2127,7 +2254,7 @@ export function buttons(g: Game) {
 
 /** The result for the player's team. */
 export function outcome(g: Game) {
-  // From the local player's side: at a court match it may be the other team.
-  const [a, b] = g.ps[g.me].team === 0 ? g.score : [g.score[1], g.score[0]]
-  return a > b ? 'win' : a < b ? 'loss' : 'draw'
+  // From the local player's side (at a court match it may be the other team); a draw settled on penalties, the shoot-out's.
+  const w = leader(g)
+  return w === null ? 'draw' : w === g.ps[g.me].team ? 'win' : 'loss'
 }

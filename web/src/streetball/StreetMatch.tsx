@@ -4,7 +4,7 @@ import { RotateCcw, Trophy, Users, X } from 'lucide-react'
 import type { Look } from '../lib/types'
 import { randomLook } from '../avatar/options'
 import { rng } from '../world3d/themes'
-import { COUNTDOWN, NO_INPUT, buttons, createGame, outcome, step, type Game, type Input, type Rules, type Sport, type Stats } from './game'
+import { COUNTDOWN, NO_INPUT, buttons, createGame, outcome, shootoutScore, step, type Game, type Input, type Rules, type Sport, type Stats } from './game'
 import { holdScenes } from '../world3d/hold'
 import { BallView, Crowd, Follow, Ground, PlayerView, upright } from './scene'
 import { Referee } from './stadium'
@@ -23,7 +23,7 @@ import { MatchNet, fetchMatch, leaveMatch, type CourtEntry, type CourtMatch } fr
 // has more: Shift (RT) sprints, Space (B) held charges the shot, U (Y) the
 // through ball, I (X) the lob or cross, Tab or R (LB) changes player.
 
-export type MatchResult = { sport: Sport; score: [number, number]; result: 'win' | 'loss' | 'draw'; stats: Stats }
+export type MatchResult = { sport: Sport; score: [number, number]; result: 'win' | 'loss' | 'draw'; stats: Stats; /** A draw settled on penalties: the shoot-out's score. */ pens?: [number, number] }
 
 type Props = {
   sport: Sport
@@ -68,6 +68,8 @@ type Hud = {
   stamina: number
   charge: number
   hint: string | null
+  /** The shoot-out's kicks so far, each side's (in or not). */
+  pens: [boolean[], boolean[]] | null
 }
 
 /** At a set piece, what the hands can do. */
@@ -75,11 +77,12 @@ function hintOf(g: Game): string | null {
   const sp = g.set
   if (!sp) return null
   const mine = sp.team === g.ps[g.me].team
-  if (!mine) return sp.kind === 'pen' ? 'Penalty contre toi : le stick en haut ou en bas, ton gardien plonge de ce côté.' : null
+  const so = !!g.shootout
+  if (!mine) return sp.kind === 'pen' ? `${so ? 'Tir au but' : 'Penalty'} contre toi : le stick en haut ou en bas, ton gardien plonge de ce côté.` : null
   if (sp.taker !== g.me) return null
   switch (sp.kind) {
     case 'pen':
-      return 'Penalty : vise avec le stick, tiens Tir pour la puissance, lâche pour frapper.'
+      return so ? 'Tir au but : vise un côté avec le stick, tiens Tir un peu (trop fort, ça passe au-dessus), lâche pour frapper.' : 'Penalty : vise avec le stick, tiens Tir pour la puissance, lâche pour frapper.'
     case 'free':
       return 'Coup franc : vise avec le stick ; Tir (tenu) frappe au but, Passe ou Centre pour un partenaire.'
     case 'corner':
@@ -108,6 +111,7 @@ function hudOf(g: Game, waiting = 0): Hud {
     stamina: me.stamina,
     charge: me.charge,
     hint: hintOf(g),
+    pens: g.shootout ? [[...g.shootout.kicks[0]], [...g.shootout.kicks[1]]] : null,
   }
 }
 
@@ -223,7 +227,7 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
 
       {/* The score, the clock */}
       <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
-        <div className="flex items-center gap-2 rounded-2xl bg-[#0f1230]/75 px-3 py-2 text-white">
+        <div className="flex min-w-0 items-center gap-2 rounded-2xl bg-[#0f1230]/75 px-3 py-2 text-white">
           {teams && <span className="max-w-[6.5rem] truncate text-xs font-extrabold">{teams[0]}</span>}
           <span className="h-4 w-4 rounded-sm" style={{ background: kits[0] }} />
           <span className="font-display text-3xl leading-none font-extrabold tabular-nums">{hud.score[0]}</span>
@@ -231,10 +235,10 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
           <span className="font-display text-3xl leading-none font-extrabold tabular-nums">{hud.score[1]}</span>
           <span className="h-4 w-4 rounded-sm" style={{ background: kits[1] }} />
           {teams && <span className="max-w-[6.5rem] truncate text-xs font-extrabold">{teams[1]}</span>}
-          <span className="ml-2 rounded-lg bg-white/15 px-2 py-0.5 text-sm font-extrabold tabular-nums">{game.extra ? 'But en or' : mmss(hud.left)}</span>
+          <span className="ml-2 rounded-lg bg-white/15 px-2 py-0.5 text-sm font-extrabold tabular-nums">{game.extra ? 'But en or' : hud.pens ? <Pens pens={hud.pens} /> : mmss(hud.left)}</span>
         </div>
         <button
-          className="pointer-events-auto grid h-11 w-11 place-items-center rounded-full bg-[#0f1230]/70 text-white"
+          className="pointer-events-auto grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#0f1230]/70 text-white"
           onClick={() => {
             if (online) void leaveMatch(online.token, online.simId, online.match.id)
             onExit(null)
@@ -277,7 +281,7 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
           kits={kits}
           onExit={() => {
             if (online) void leaveMatch(online.token, online.simId, online.match.id)
-            onExit({ sport, score: [game.score[0], game.score[1]], result: outcome(game), stats: { ...game.stats } })
+            onExit({ sport, score: [game.score[0], game.score[1]], result: outcome(game), stats: { ...game.stats }, pens: shootoutScore(game) ?? undefined })
           }}
           // At a court the next match is the court's: back on from the street.
           onReplay={
@@ -673,9 +677,28 @@ function Key({ children }: { children: string }) {
   return <kbd className="absolute -top-1.5 -right-1.5 rounded-md bg-white px-1 font-sans text-[10px] leading-4 font-extrabold text-[#141416] shadow">{children}</kbd>
 }
 
+/** The shoot-out's kicks in place of the clock, the player's side on top: green for each in, red for each missed, rings for the five still to come (sudden death: the last five). */
+function Pens({ pens }: { pens: [boolean[], boolean[]] }) {
+  const n = Math.max(5, pens[0].length, pens[1].length)
+  const from = n - 5
+  return (
+    <span className="flex flex-col gap-0.5 py-0.5" aria-label="Tirs au but">
+      {pens.map((row, t) => (
+        <span key={t} className="flex gap-0.5">
+          {Array.from({ length: 5 }, (_, k) => {
+            const i = from + k
+            return <span key={k} className={`h-2.5 w-2.5 rounded-full ${i >= row.length ? 'ring-1 ring-white/45' : row[i] ? 'bg-[#40c057]' : 'bg-[#fa5252]'}`} />
+          })}
+        </span>
+      ))}
+    </span>
+  )
+}
+
 /** The final whistle: the score, what the player did, what the people filming made of it. */
 function Result({ game, onExit, onReplay, played, kits }: { game: Game; onExit: () => void; onReplay?: () => void; /** On the console: no film of it, and it goes on. */ played?: boolean; /** The two sides' shirts. */ kits: [string, string] }) {
   const r = outcome(game)
+  const pens = shootoutScore(game)
   const s = game.stats
   const foot = game.sport === 'foot'
   const lines: [string, number][] = (
@@ -705,10 +728,11 @@ function Result({ game, onExit, onReplay, played, kits }: { game: Game; onExit: 
           <div className="font-display text-2xl font-extrabold">{r === 'win' ? 'Victoire !' : r === 'loss' ? 'Défaite…' : 'Match nul'}</div>
         </div>
         <div className="mt-2 flex items-center justify-center gap-3 font-display text-4xl font-extrabold tabular-nums">
-          <span className="h-5 w-5 rounded" style={{ background: kits[0] }} />
+          <span className="h-5 w-5 rounded ring-1 ring-black/15" style={{ background: kits[0] }} />
           {game.score[0]} - {game.score[1]}
-          <span className="h-5 w-5 rounded" style={{ background: kits[1] }} />
+          <span className="h-5 w-5 rounded ring-1 ring-black/15" style={{ background: kits[1] }} />
         </div>
+        {pens && <div className="text-center text-sm font-extrabold text-[var(--color-ink-soft)] tabular-nums">Tirs au but : {pens[0]} - {pens[1]}</div>}
         <ul className="mt-3 grid grid-cols-2 gap-1.5">
           {lines.map(([k, v]) => (
             <li key={k} className="flex items-center justify-between rounded-xl bg-[var(--color-canvas)] px-3 py-1.5 text-sm font-extrabold">
