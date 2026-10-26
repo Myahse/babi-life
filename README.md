@@ -609,6 +609,11 @@ Pour compléter une donnée : corriger l'entrée dans le code (garder son identi
   - **Les joueurs** : une ombre douce sous chacun, même vu de loin.
   - **Le tableau du score** comme à la télé : les trois lettres de chaque équipe dans sa couleur, le score au milieu, l'horloge à côté.
   - **Le stade** : des tribunes en gradins orange, blanc et vert, des toits sur trois côtés, trois écrans géants avec le score et les minutes, et une foule qui se balance et saute à chaque but. Au coup d'envoi, la caméra fait le tour du stade pendant le compte à rebours.
+- **Les mises à jour, ouvertes une par une depuis l'admin** (`backend/internal/features`, migration `068_features.sql`, `web/src/lib/features.ts`, `web/src/components/FeatureNews.tsx`, onglet « Mises à jour » de `web/src/screens/Admin.tsx`) : chaque nouveauté arrive fermée, et on l'ouvre quand on veut, pour que le jeu ait des mises à jour au fil des semaines.
+  - **Fermée**, elle est cachée à tous les joueurs : pas d'activité dans le lieu, pas d'appli dans le Store ni sur le téléphone, pas de mode dans le menu du foot, rien dans l'Encyclo ; et le serveur la refuse (« bientôt dans le jeu »).
+  - **Dans l'admin**, chaque nouveauté a son bouton « Ouvrir maintenant », ou une date et une heure pour qu'elle s'ouvre toute seule ; on peut la refermer. Chaque changement est noté dans le Journal.
+  - **À l'ouverture**, chaque joueur voit une fois « Nouveau dans Babi Life » avec son nom et sa description (pendant deux semaines).
+  - **Les premières** : le foot au stade en 11 contre 11, la Coupe, la carrière foot, le combat de rue, la course à deux, Babi Karting, la borne d'arcade, Tikitoko et Babigram.
 - **Plus de maisons sur la route, plus de voitures dans les murs** (`web/src/world3d/open/tiles.ts`, `open/nav.ts`, `open/OpenWorld.tsx`, `open/sotra.tsx`) :
   - **Les maisons sur la chaussée** : sur les rues de quartier où roulent les voitures (6 m et plus), une maison de la carte posée sur la chaussée, même à moitié, n'est plus dessinée. Avant, seules les grandes routes étaient dégagées.
   - **Les rues qui passent sous un bâtiment** : un grand bâtiment qu'une rue traverse sur la carte (un marché, un centre commercial) reste, mais les voitures, les taxis, les gbakas, les bus, le taxi du trajet et le GPS de sa propre voiture ne prennent plus cette rue. À pied, on y passe toujours.

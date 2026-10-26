@@ -11,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 
+	"github.com/myahse/babi-life/backend/internal/features"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
 )
@@ -71,6 +72,10 @@ func (h *Handler) footCareer(w http.ResponseWriter, r *http.Request) {
 // footSave: PUT /sims/{id}/foot {club, season}: the career begun (the club set
 // then, kept after) or the season as it stands.
 func (h *Handler) footSave(w http.ResponseWriter, r *http.Request) {
+	if !features.Default.Open(r.Context(), "foot-carriere") {
+		httpx.Error(w, http.StatusForbidden, "bientôt dans le jeu")
+		return
+	}
 	id, _, _, err := h.mySim(r)
 	if err != nil {
 		httpx.Error(w, http.StatusNotFound, "sim introuvable")
@@ -95,6 +100,10 @@ func (h *Handler) footSave(w http.ResponseWriter, r *http.Request) {
 
 // footSign: POST /sims/{id}/foot/sign/{player}: a player signed for his price, kept.
 func (h *Handler) footSign(w http.ResponseWriter, r *http.Request) {
+	if !features.Default.Open(r.Context(), "foot-carriere") {
+		httpx.Error(w, http.StatusForbidden, "bientôt dans le jeu")
+		return
+	}
 	ctx := r.Context()
 	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
 		p, ok := game.FindFootRecruit(chi.URLParam(r, "player"))

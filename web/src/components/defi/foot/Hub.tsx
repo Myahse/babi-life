@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, Shield, Star, Trophy, Zap } from 'lucide-react'
 import { CLUBS, foeFor, kitsFor, LEVELS, NATIONS, teamOf } from './teams'
+import { keyOpen, useFeatures } from '../../../lib/features'
 
 // Babi Foot, the console's football « à la FIFA »: the hub's menu (a quick
 // match, the cup, the career), and where a match is set up (the format, the two sides and
@@ -104,6 +105,10 @@ function TeamPicker({ label, value, onPick, other }: { label: string; value: str
 /** The hub: a quick match, the cup (one under way to take up again), the career. */
 export function HubMenu({ onQuick, onCup, onCareer, cupOn, onBack }: { onQuick: () => void; onCup: () => void; onCareer?: () => void; /** A cup under way: its round. */ cupOn: string | null; onBack?: () => void }) {
   const card = 'flex w-full items-center gap-3 rounded-[22px] bg-white/10 p-4 text-left ring-1 ring-white/12 transition active:scale-[0.98]'
+  // The cup and the career come with their updates (lib/features.ts).
+  const feats = useFeatures()
+  const cupOpen = keyOpen(feats, 'foot-coupe')
+  const careerOpen = keyOpen(feats, 'foot-carriere')
   return (
     <div className="flex h-full flex-col overflow-y-auto bg-[radial-gradient(circle_at_50%_0%,#1f7a3f,#0b2e1a_70%)] px-4 pt-12 pb-6 text-white">
       <div className="flex items-center gap-2">
@@ -127,17 +132,19 @@ export function HubMenu({ onQuick, onCup, onCareer, cupOn, onBack }: { onQuick: 
             <span className="block text-[12.5px] font-bold text-white/65">Deux équipes, un match : tu choisis tout.</span>
           </span>
         </button>
-        <button className={card} onClick={onCup}>
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#ff922b] text-[#16161c]">
-            <Trophy size={24} strokeWidth={2.6} />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block font-display text-[19px] leading-tight font-extrabold">La Coupe</span>
-            <span className="block text-[12.5px] font-bold text-white/65">Huit équipes, élimination directe : quarts, demies, finale.</span>
-          </span>
-          {cupOn && <span className="shrink-0 rounded-full bg-[#ffd43b] px-2.5 py-1 text-[11px] font-extrabold text-[#16161c]">{cupOn}</span>}
-        </button>
-        {onCareer && (
+        {cupOpen && (
+          <button className={card} onClick={onCup}>
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#ff922b] text-[#16161c]">
+              <Trophy size={24} strokeWidth={2.6} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-display text-[19px] leading-tight font-extrabold">La Coupe</span>
+              <span className="block text-[12.5px] font-bold text-white/65">Huit équipes, élimination directe : quarts, demies, finale.</span>
+            </span>
+            {cupOn && <span className="shrink-0 rounded-full bg-[#ffd43b] px-2.5 py-1 text-[11px] font-extrabold text-[#16161c]">{cupOn}</span>}
+          </button>
+        )}
+        {onCareer && careerOpen && (
           <button className={card} onClick={onCareer}>
             <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#74c0fc] text-[#16161c]">
               <Shield size={24} strokeWidth={2.6} />
@@ -157,6 +164,12 @@ export function HubMenu({ onQuick, onCup, onCareer, cupOn, onBack }: { onQuick: 
 export function MatchSetup({ title, onPlay, onBack, cup }: { title: string; onPlay: (s: Setup) => void; onBack?: () => void; /** The cup's: the opponents are drawn; a draw settled on penalties or the golden goal. */ cup?: boolean }) {
   const [s, set] = useState<Setup>(loadSetup)
   const up = (p: Partial<Setup>) => set((o) => ({ ...o, ...p }))
+  // The eleven at the stadium comes with its update (lib/features.ts): till then, the five only.
+  const feats = useFeatures()
+  const eleven = keyOpen(feats, 'foot11')
+  useEffect(() => {
+    if (!eleven && s.size === 11) set((o) => ({ ...o, size: 5 }))
+  }, [eleven, s.size])
   const me = teamOf(s.mine)
   const them = teamOf(s.theirs)
   const kits = useMemo(() => kitsFor(me, them), [me, them])
@@ -173,7 +186,7 @@ export function MatchSetup({ title, onPlay, onBack, cup }: { title: string; onPl
       </div>
       {/* The format: the five's walled maracana or the eleven at the stadium. */}
       <div className="mt-3 grid grid-cols-2 gap-2">
-        {([5, 11] as const).map((n) => (
+        {(eleven ? ([5, 11] as const) : ([5] as const)).map((n) => (
           <button key={n} className={`rounded-[18px] p-3 text-left ring-2 transition ${s.size === n ? 'bg-white/15 ring-[#ffd43b]' : 'bg-black/20 ring-transparent'}`} onClick={() => up({ size: n })}>
             <svg viewBox="0 0 60 36" className="w-full">
               <rect x="1" y="1" width="58" height="34" rx="3" fill={n === 5 ? '#2f9e44' : '#37b24d'} stroke="#fff" strokeWidth="1.2" />

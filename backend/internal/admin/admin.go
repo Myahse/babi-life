@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/myahse/babi-life/backend/internal/adminkey"
+	"github.com/myahse/babi-life/backend/internal/features"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
 	"github.com/myahse/babi-life/backend/internal/ideas"
@@ -51,6 +52,8 @@ func (h *Handler) Routes(r chi.Router) {
 		r.Post("/whatsapp", h.waSend)
 		r.Post("/whatsapp/{id}/stop", h.waStop)
 		r.Post("/whatsapp/optout", h.waOptout)
+		r.Get("/features", h.features)
+		r.Post("/features/{id}", h.setFeature)
 		if h.Ideas != nil {
 			h.Ideas.Admin(r)
 		}
@@ -314,3 +317,50 @@ func (h *Handler) resetTesters(w http.ResponseWriter, r *http.Request) {
 	h.Log(r.Context(), "Testeurs remis à zéro", strconv.Itoa(n)+" persos")
 	httpx.JSON(w, http.StatusOK, map[string]int{"reset": n})
 }
+
+// features: GET /admin/features: every update, closed or with the players, and when it opens by itself.
+func (h *Handler) features(w http.ResponseWriter, r *http.Request) {
+	httpx.JSON(w, http.StatusOK, map[string]any{"features": features.Default.All(r.Context())})
+}
+
+// setFeature: POST /admin/features/{id} {open, opensAt}: opened or closed now, or set to open by itself at a moment (RFC 3339; empty: by hand).
+func (h *Handler) setFeature(w http.ResponseWriter, r *http.Request) {
+	f, ok := features.Find(chi.URLParam(r, "id"))
+	if !ok {
+		httpx.Error(w, http.StatusNotFound, "mise à jour inconnue")
+		return
+	}
+	var req struct {
+		Open    bool   `json:"open"`
+		OpensAt string `json:"opensAt"`
+	}
+	if err := httpx.Decode(r, &req); err != nil {
+		httpx.Error(w, http.StatusBadRequest, "requête invalide")
+		return
+	}
+	var at *time.Time
+	if req.OpensAt != "" {
+		t, err := time.Parse(time.RFC3339, req.OpensAt)
+		if err != nil {
+			httpx.Error(w, http.StatusBadRequest, "date invalide")
+			return
+		}
+		at = &t
+	}
+	if err := features.Default.Set(r.Context(), f.ID, req.Open, at); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+		return
+	}
+	what := "fermée"
+	switch {
+	case req.Open:
+		what = "ouverte"
+	case at != nil:
+		what = "programmée le " + at.In(abidjan).Format("02/01/2006 à 15h04")
+	}
+	h.Log(r.Context(), "mise à jour", f.Label+" : "+what)
+	httpx.JSON(w, http.StatusOK, map[string]any{"features": features.Default.All(r.Context())})
+}
+
+// abidjan: the time the team reads (UTC+0, no summer time).
+var abidjan = time.FixedZone("Abidjan", 0)

@@ -27,6 +27,7 @@ import (
 	"github.com/myahse/babi-life/backend/internal/config"
 	"github.com/myahse/babi-life/backend/internal/court"
 	"github.com/myahse/babi-life/backend/internal/db"
+	"github.com/myahse/babi-life/backend/internal/features"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
 	"github.com/myahse/babi-life/backend/internal/ideas"
@@ -105,6 +106,8 @@ func main() {
 		Endpoint: os.Getenv("ADS_S3_ENDPOINT"), Region: os.Getenv("ADS_S3_REGION"), Name: os.Getenv("ADS_S3_BUCKET"),
 		AccessKey: os.Getenv("ADS_S3_ACCESS_KEY"), SecretKey: os.Getenv("ADS_S3_SECRET_KEY"), PublicURL: os.Getenv("ADS_PUBLIC_URL"),
 	}
+	// The updates the team opens one by one from the admin (features: closed until then).
+	features.Default = &features.Store{DB: pool}
 	simsH := &sims.Handler{DB: pool, RealPhotos: os.Getenv("STORIES_REAL_PHOTOS") == "true", Karts: karts, Courts: courts, Push: pushes, Bucket: bucket}
 	go simsH.WatchBets(ctx)
 	go simsH.PruneJournal(ctx)
@@ -146,6 +149,8 @@ func main() {
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/push/key", pushes.Key)
+		// What the phone hides (the updates not opened yet) and what just came.
+		r.Get("/features", features.Default.Public)
 		r.With(middleware.Compress(5, "application/json")).Get("/world", func(w http.ResponseWriter, r *http.Request) {
 			// The same for everyone until the next deploy: let browsers keep it a while.
 			w.Header().Set("Cache-Control", "public, max-age=600")

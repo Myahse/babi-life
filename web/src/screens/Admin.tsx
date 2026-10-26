@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Bell, Download, ExternalLink, Flag, LayoutDashboard, Lightbulb, ListChecks, LogOut, Megaphone, MessageCircle, RefreshCw, ScrollText, Search, Send, ShieldCheck, Users } from 'lucide-react'
+import { Bell, Download, ExternalLink, Flag, LayoutDashboard, Lightbulb, ListChecks, LogOut, Megaphone, MessageCircle, Package, RefreshCw, ScrollText, Search, Send, ShieldCheck, Users } from 'lucide-react'
 import { Preview, STATUS, type Status } from './Pub'
 
 // /admin: everything Babi Life's team manages, behind one key (ADMIN_KEY on
@@ -13,13 +13,14 @@ import { Preview, STATUS, type Status } from './Pub'
 // - WhatsApp: a message to the wish list's numbers, through WhatsApp's API
 //   with an approved template, or by hand with click-to-chat links;
 // - Liste d'attente, Pub (backend/internal/ads), Signalements (moderation);
-// - Idées: what the players suggest from the phone (backend/internal/ideas), answered here.
+// - Idées: what the players suggest from the phone (backend/internal/ideas), answered here;
+// - Mises à jour: the features that ship closed, opened one by one (now or at a set time) (backend/internal/features).
 // The key stays in the tab only (sessionStorage); the page is never indexed.
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
 const STORE = 'babi.adminKey'
 
-type Tab = 'tableau' | 'joueurs' | 'journal' | 'annonces' | 'whatsapp' | 'liste' | 'pub' | 'signalements' | 'idees'
+type Tab = 'tableau' | 'joueurs' | 'journal' | 'annonces' | 'whatsapp' | 'liste' | 'pub' | 'signalements' | 'idees' | 'majs'
 const TABS: { id: Tab; label: string; icon: typeof Flag }[] = [
   { id: 'tableau', label: 'Tableau de bord', icon: LayoutDashboard },
   { id: 'joueurs', label: 'Joueurs', icon: Users },
@@ -30,6 +31,7 @@ const TABS: { id: Tab; label: string; icon: typeof Flag }[] = [
   { id: 'pub', label: 'Pub', icon: Megaphone },
   { id: 'signalements', label: 'Signalements', icon: Flag },
   { id: 'idees', label: 'Idées', icon: Lightbulb },
+  { id: 'majs', label: 'Mises à jour', icon: Package },
 ]
 
 async function call<T>(path: string, key: string, init: RequestInit = {}): Promise<T> {
@@ -155,6 +157,8 @@ export function Admin() {
           <Reports k={key} />
         ) : tab === 'idees' ? (
           <Ideas k={key} />
+        ) : tab === 'majs' ? (
+          <Updates k={key} />
         ) : (
           <Dashboard k={key} go={(t) => navigate(`/admin?tab=${t}`)} />
         )}
@@ -545,6 +549,123 @@ function Announcements({ k }: { k: string }) {
           ))}
         </ul>
       </Card>
+    </div>
+  )
+}
+
+/* ---------- Mises à jour ---------- */
+
+type Update = { id: string; label: string; about: string; open: boolean; opensAt: string | null; openedAt: string | null; live: boolean }
+
+/** An ISO time as the date-time field wants it (local), and back. */
+const toField = (iso: string | null) => {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
+function Updates({ k }: { k: string }) {
+  const [list, setList] = useState<Update[]>([])
+  const [e, setE] = useState<string | null>(null)
+  const [ok, setOk] = useState<string | null>(null)
+  const [sure, setSure] = useState<string | null>(null)
+  const [dates, setDates] = useState<Record<string, string>>({})
+  const load = () => call<{ features: Update[] }>('/admin/features', k).then((r) => setList(r.features), (x: Error) => setE(x.message))
+  useEffect(() => {
+    void load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [k])
+  const set = async (u: Update, open: boolean, opensAt: string | null, said: string) => {
+    setE(null)
+    setOk(null)
+    try {
+      const r = await call<{ features: Update[] }>(`/admin/features/${u.id}`, k, { method: 'POST', body: JSON.stringify({ open, opensAt: opensAt ? new Date(opensAt).toISOString() : '' }) })
+      setList(r.features)
+      setOk(`${u.label} : ${said}`)
+      setSure(null)
+    } catch (x) {
+      setE(x instanceof Error ? x.message : 'Erreur')
+    }
+  }
+  const live = list.filter((u) => u.live).length
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-[#6b7280]">
+        Chaque nouveauté arrive fermée : les joueurs ne la voient pas (ni bouton, ni activité, ni appli) et le serveur la refuse. Ouvre-les une par une, maintenant ou à une date, pour que le jeu ait des mises à jour au fil des semaines. À l'ouverture, chaque joueur voit une fois « Nouveau dans Babi Life » avec le texte ci-dessous. Ouvertes : {live}/{list.length}.
+      </p>
+      <Err e={e} />
+      <Ok t={ok} />
+      <ul className="space-y-3">
+        {list.map((u) => {
+          const date = dates[u.id] ?? toField(u.opensAt)
+          return (
+            <li key={u.id}>
+              <Card title={u.label}>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-[#374151]">{u.about}</p>
+                    <p className="mt-1 text-xs text-[#9ca3af]">
+                      {u.live ? `Avec les joueurs${u.openedAt ? ` depuis le ${when(u.openedAt)}` : u.opensAt ? ` depuis le ${when(u.opensAt)}` : ''}` : u.opensAt ? `Fermée : ouvre toute seule le ${when(u.opensAt)}` : 'Fermée'}
+                    </p>
+                  </div>
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${u.live ? 'bg-[#dcfce7] text-[#166534]' : 'bg-[#f3f4f6] text-[#6b7280]'}`}>{u.live ? 'Ouverte' : 'Fermée'}</span>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {u.live ? (
+                    sure === u.id ? (
+                      <>
+                        <span className="text-sm text-[#374151]">La retirer aux joueurs ?</span>
+                        <Btn tone="light" onClick={() => setSure(null)}>
+                          Annuler
+                        </Btn>
+                        <Btn tone="orange" onClick={() => void set(u, false, null, 'fermée')}>
+                          Oui, fermer
+                        </Btn>
+                      </>
+                    ) : (
+                      <Btn tone="light" onClick={() => setSure(u.id)}>
+                        Fermer
+                      </Btn>
+                    )
+                  ) : sure === u.id ? (
+                    <>
+                      <span className="text-sm text-[#374151]">L'ouvrir à tous les joueurs maintenant ?</span>
+                      <Btn tone="light" onClick={() => setSure(null)}>
+                        Annuler
+                      </Btn>
+                      <Btn tone="orange" onClick={() => void set(u, true, null, 'ouverte')}>
+                        Oui, ouvrir
+                      </Btn>
+                    </>
+                  ) : (
+                    <>
+                      <Btn tone="orange" onClick={() => setSure(u.id)}>
+                        Ouvrir maintenant
+                      </Btn>
+                      <span className="text-sm text-[#6b7280]">ou le</span>
+                      <input
+                        type="datetime-local"
+                        value={date}
+                        onChange={(x) => setDates((d) => ({ ...d, [u.id]: x.target.value }))}
+                        className="rounded-lg border border-[#d1d5db] px-2 py-1.5 text-sm outline-none focus:border-[#ea580c]"
+                      />
+                      <Btn tone="light" disabled={!date || new Date(date).getTime() <= Date.now()} onClick={() => void set(u, false, date, `programmée le ${when(new Date(date).toISOString())}`)}>
+                        Programmer
+                      </Btn>
+                      {u.opensAt && (
+                        <Btn tone="light" onClick={() => (setDates((d) => ({ ...d, [u.id]: '' })), void set(u, false, null, 'programmation annulée'))}>
+                          Annuler la date
+                        </Btn>
+                      )}
+                    </>
+                  )}
+                </div>
+              </Card>
+            </li>
+          )
+        })}
+      </ul>
     </div>
   )
 }
