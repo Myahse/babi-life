@@ -405,7 +405,9 @@ function InteriorLab() {
   const sim = useMemo(() => {
     let n = Number(q.get('seed') ?? 3)
     const r = () => ((n = (n * 16807) % 2147483647) / 2147483647)
-    return { id: 'lab', firstName: 'Awa', lastName: 'Koné', gender, look: randomLook(gender, r), career: q.get('career') ?? '', careerLevel: Number(q.get('level') ?? 0) } as unknown as Sim
+    // &awa: Awa as in the videos (braids, the kente top and skirt, her jewels).
+    const look = q.has('awa') ? { ...randomLook('femme', r), skin: '#8a5532', hair: 'braids', hairColor: '#24160e', outfit: 'jupe', outfitColor: '#12a37a', pattern: 'kente', accessory: 'earrings,beads,watch,bag' } : randomLook(gender, r)
+    return { id: 'lab', firstName: 'Awa', lastName: 'Koné', gender, look, career: q.get('career') ?? '', careerLevel: Number(q.get('level') ?? 0) } as unknown as Sim
   }, [gender])
   // &billets: a handful thrown over the club's dancers every few seconds (the « Lancer des billets » button).
   useEffect(() => {
@@ -413,12 +415,12 @@ function InteriorLab() {
     const t = setInterval(() => throwBillets(5000), 2500)
     return () => clearInterval(t)
   }, [])
-  // &after=<action>: the room first, then the action picked a moment later (the Sim walks over).
+  // &after=<action>: the room first, then the action picked a moment later (&wait= ms; the Sim walks over).
   const [id, setId] = useState<string | undefined>(q.get('id') ?? undefined)
   useEffect(() => {
     const later = q.get('after')
     if (!later) return
-    const t = setTimeout(() => setId(later), 1500)
+    const t = setTimeout(() => setId(later), Number(q.get('wait') ?? 1500))
     return () => clearTimeout(t)
   }, [])
   return (
