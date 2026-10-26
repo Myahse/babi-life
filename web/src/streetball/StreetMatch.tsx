@@ -4,7 +4,8 @@ import { RotateCcw, Trophy, Users, X } from 'lucide-react'
 import type { Look } from '../lib/types'
 import { randomLook } from '../avatar/options'
 import { rng } from '../world3d/themes'
-import { COUNTDOWN, LENGTH, NO_INPUT, buttons, createGame, outcome, step, type Game, type Input, type Sport, type Stats } from './game'
+import { COUNTDOWN, NO_INPUT, buttons, createGame, outcome, step, type Game, type Input, type Rules, type Sport, type Stats } from './game'
+import { holdScenes } from '../world3d/hold'
 import { BallView, Crowd, Follow, Ground, PlayerView, upright } from './scene'
 import { likesFor } from '../world3d/fans'
 import { serverNow } from '../lib/worldClock'
@@ -28,6 +29,8 @@ type Props = {
   seed?: number
   /** At a court: the match with the other players there (streetball/online.ts). */
   online?: { token: string; simId: string; match: CourtMatch }
+  /** The console's match at the salle de jeux (components/defi/Foot.tsx): its length, the other side's strength, the golden goal. No replay: the console goes on. */
+  rules?: Rules
 }
 
 /** The two teams' kits: the player's team in orange, the others in green (or blue on the court). */
@@ -46,7 +49,7 @@ function hudOf(g: Game, waiting = 0): Hud {
   const me = g.ps[g.me]
   return {
     score: [g.score[0], g.score[1]],
-    left: LENGTH - Math.max(0, g.time),
+    left: g.length - Math.max(0, g.time),
     time: g.time,
     flash: g.flash?.text ?? null,
     has: b.has,
@@ -58,7 +61,7 @@ function hudOf(g: Game, waiting = 0): Hud {
   }
 }
 
-export default function StreetMatch({ sport, name, look, gender, onExit, seed, online }: Props) {
+export default function StreetMatch({ sport, name, look, gender, onExit, seed, online, rules }: Props) {
   const [round, setRound] = useState(0)
   const game = useMemo(() => {
     let s = (seed ?? Math.floor(Math.random() * 1e9)) + round * 7919
@@ -68,7 +71,7 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
       t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296
     }
-    const g = createGame(sport, name, r)
+    const g = createGame(sport, name, r, rules)
     // At a court the player holds the place the match gave it.
     if (online) {
       const mine = online.match.entries.find((e) => e.sim === online.simId)
@@ -81,7 +84,7 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
       }
     }
     return g
-  }, [sport, name, seed, round, online])
+  }, [sport, name, seed, round, online, rules])
   // The other players at the court: who's there (polled), and the line to them.
   const [entries, setEntries] = useState<CourtEntry[]>(online?.match.entries ?? [])
   // Opened in an effect (not a memo) so it's closed with the screen, and opened again if React mounts it twice.
@@ -135,10 +138,13 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
   const [hud, setHud] = useState<Hud>(() => hudOf(game))
   useKeyboard(input)
   const sceneSeed = `${sport}-${seed ?? 'street'}`
+  // The world underneath holds still during the match.
+  const held = useRef<(() => void) | null>(null)
+  useEffect(() => () => held.current?.(), [])
 
   return (
     <div className="fixed inset-0 z-50 touch-none bg-[#9fd3f2] select-none">
-      <Canvas shadows dpr={[1, 1.5]} camera={{ fov: 50, near: 0.3, far: 400, position: [0, 9, 14] }}>
+      <Canvas shadows dpr={[1, 1.5]} camera={{ fov: 50, near: 0.3, far: 400, position: [0, 9, 14] }} onCreated={({ gl }) => void (held.current = holdScenes(gl.domElement))}>
         <color attach="background" args={['#9fd3f2']} />
         <fog attach="fog" args={['#9fd3f2', 60, 180]} />
         <hemisphereLight args={['#ffffff', '#8a7a5c', 1.15]} />
@@ -163,7 +169,7 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
           <span className="text-lg font-extrabold opacity-60">-</span>
           <span className="font-display text-3xl leading-none font-extrabold tabular-nums">{hud.score[1]}</span>
           <span className="h-4 w-4 rounded-sm" style={{ background: KITS[sport][1] }} />
-          <span className="ml-2 rounded-lg bg-white/15 px-2 py-0.5 text-sm font-extrabold tabular-nums">{mmss(hud.left)}</span>
+          <span className="ml-2 rounded-lg bg-white/15 px-2 py-0.5 text-sm font-extrabold tabular-nums">{game.extra ? 'But en or' : mmss(hud.left)}</span>
         </div>
         <button
           className="pointer-events-auto grid h-11 w-11 place-items-center rounded-full bg-[#0f1230]/70 text-white"
@@ -199,13 +205,14 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
       {hud.over && (
         <Result
           game={game}
+          played={!!rules}
           onExit={() => {
             if (online) void leaveMatch(online.token, online.simId, online.match.id)
             onExit({ sport, score: [game.score[0], game.score[1]], result: outcome(game), stats: { ...game.stats } })
           }}
           // At a court the next match is the court's: back on from the street.
           onReplay={
-            online
+            online || rules
               ? undefined
               : () => {
                   input.current = { ...NO_INPUT }
@@ -442,7 +449,7 @@ function Key({ children }: { children: string }) {
 }
 
 /** The final whistle: the score, what the player did, what the people filming made of it. */
-function Result({ game, onExit, onReplay }: { game: Game; onExit: () => void; onReplay?: () => void }) {
+function Result({ game, onExit, onReplay, played }: { game: Game; onExit: () => void; onReplay?: () => void; /** On the console: no film of it, and it goes on. */ played?: boolean }) {
   const r = outcome(game)
   const s = game.stats
   const foot = game.sport === 'foot'
@@ -485,10 +492,10 @@ function Result({ game, onExit, onReplay }: { game: Game; onExit: () => void; on
             </li>
           ))}
         </ul>
-        {best && <p className="mt-2 rounded-xl bg-[#fff1f5] px-3 py-2 text-xs font-bold text-[#9d174d]">Au bord du terrain, on a filmé {best} : posté sur Tikitoko, ♥ {likesFor(game.score[0] + s.points + s.goals * 3)}</p>}
+        {best && !played && <p className="mt-2 rounded-xl bg-[#fff1f5] px-3 py-2 text-xs font-bold text-[#9d174d]">Au bord du terrain, on a filmé {best} : posté sur Tikitoko, ♥ {likesFor(game.score[0] + s.points + s.goals * 3)}</p>}
         <div className={`mt-4 grid gap-2 ${onReplay ? 'grid-cols-2' : ''}`}>
-          <button className="btn btn-soft" onClick={onExit}>
-            Sortir
+          <button className={`btn ${played ? '' : 'btn-soft'}`} onClick={onExit}>
+            {played ? 'Continuer' : 'Sortir'}
           </button>
           {onReplay && (
             <button className="btn" onClick={onReplay}>

@@ -29,9 +29,9 @@ export const defiOf = (interactionId?: string): DefiKind | null =>
 /** The foot's three ways: a match, the challenge where the loser pays, the Saturday tournament. */
 const footMode = (interactionId?: string) => (interactionId === 'console-defi' ? 'defi' : interactionId === 'tournoi-console' ? 'tournoi' : 'match')
 const FOOT: Record<ReturnType<typeof footMode>, { title: string; button: string; how: string }> = {
-  match: { title: 'Le match à la console', button: 'Jouer le match', how: '80 secondes : le plus de buts possible contre les gars du quartier.' },
+  match: { title: 'Le match à la console', button: 'Jouer le match', how: 'Un match de 100 secondes contre les gars du quartier : le plus de buts possible.' },
   defi: { title: 'Le défi du quartier', button: 'Jouer le défi', how: 'Contre le caïd du quartier : gagné, il te paie ta mise ; perdu, tu paies.' },
-  tournoi: { title: 'Le tournoi du samedi', button: 'Jouer le tournoi', how: 'Quart, demi, finale : un nul se joue au but en or, puis aux tirs au but. La coupe : 2 000 Djai ; la finale : 800. Un tournoi par jour.' },
+  tournoi: { title: 'Le tournoi du samedi', button: 'Jouer le tournoi', how: 'Quart, demi, finale, chaque équipe plus forte que la précédente ; un nul se joue au but en or. La coupe : 2 000 Djai ; la finale : 800. Un tournoi par jour.' },
 }
 
 const DEFIS: Record<DefiKind, { title: string; button: string; icon: LucideIcon; colors: [string, string]; how: string[]; bg: string }> = {
@@ -56,7 +56,7 @@ const DEFIS: Record<DefiKind, { title: string; button: string; icon: LucideIcon;
     button: 'Jouer le match',
     icon: Gamepad2,
     colors: ['#ff9a3c', '#e8590c'],
-    how: ['Pose le pouce à gauche et glisse : ton joueur (cerclé de jaune) court.', '« Passe » donne au coéquipier ; « Tir » tire vers le but en haut, le stick vise à gauche ou à droite.', 'Sans le ballon, « Passe » devient un tacle : tu le prends… ou tu tombes.'],
+    how: ['Le foot de la rue, à cinq contre cinq, sur la console : le stick à gauche fait courir ton joueur.', '« Passe » donne au coéquipier, « Tir » tire au but (le stick vise), « Crochet » efface celui qui est devant toi.', 'Sans le ballon, « Défense » va le chercher : un tacle, ou tu tombes.'],
     bg: '#0b1a10',
   },
   course: {
@@ -150,7 +150,7 @@ export function DefiSheet({ kind, simId, big, interactionId, practice, send, cha
         ) : kind === 'courses' ? (
           <CoursesDefi big={!!big} onEnd={(s) => void end(s)} />
         ) : kind === 'foot' ? (
-          <FootDefi mode={mode} onEnd={(s) => void end(s)} />
+          <FootDefi mode={mode} me={me} onQuit={onClose} onEnd={(s) => void end(s)} />
         ) : kind === 'course' ? (
           <CourseDefi onStart={setInMatch} onEnd={(s) => void end(s)} />
         ) : kind === 'combat' ? (
@@ -161,7 +161,7 @@ export function DefiSheet({ kind, simId, big, interactionId, practice, send, cha
           <SkiDefi onEnd={(s) => void end(s)} />
         ))}
       {/* Left halfway: nothing sent, the défi can be taken on again */}
-      {phase === 'play' && (
+      {phase === 'play' && kind !== 'foot' && (
         <button className={`absolute right-2 z-20 grid h-8 w-8 place-items-center rounded-full bg-black/45 text-white ${inMatch && kind === 'combat' ? 'top-[96px]' : inMatch && kind === 'course' ? 'top-[150px]' : 'top-12'}`} onClick={onClose} aria-label="Quitter la partie">
           <X size={17} strokeWidth={2.6} />
         </button>
