@@ -254,12 +254,16 @@ export function Ground({ g, seed, teams }: { g: Game; seed: string; /** The side
 /* ---------- The players and the ball ---------- */
 
 /** One player: placed every frame; the pose handed to React when it changes. The player's own one has a ring under the feet. */
-export function PlayerView({ g, i, look, gender }: { g: Game; i: number; look: Look; gender: 'femme' | 'homme' }) {
+/** Past this from the camera, the stadium's team disc grows with the distance, so it stays as big on the screen. */
+const DISC_FROM = 22
+
+export function PlayerView({ g, i, look, gender, kit }: { g: Game; i: number; look: Look; gender: 'femme' | 'homme'; /** The team's colour: at the stadium, a disc under each player says whose side they're on from the far end. */ kit?: string }) {
   const root = useRef<THREE.Group>(null)
   const inner = useRef<THREE.Group>(null)
   const mark = useRef<THREE.Group>(null)
+  const disc = useRef<THREE.Group>(null)
   const [view, setView] = useState<{ pose: Pose; speed: number }>({ pose: 'idle', speed: 0 })
-  useFrame(() => {
+  useFrame(({ camera }) => {
     const p = g.ps[i]
     const r = root.current
     if (!r) return
@@ -268,6 +272,12 @@ export function PlayerView({ g, i, look, gender }: { g: Game; i: number; look: L
     r.position.set(p.x, 0, p.z)
     r.rotation.y = p.face
     inner.current?.scale.set(p.flip ? -1 : 1, 1, 1)
+    if (disc.current) {
+      // The phone's own player has the marker instead.
+      disc.current.visible = i !== g.me
+      const s = Math.max(1, Math.min(3, r.position.distanceTo(camera.position) / DISC_FROM))
+      disc.current.scale.set(s, s, s)
+    }
     const speed = Math.round(Math.hypot(p.vx, p.vz))
     if (p.pose !== view.pose || speed !== view.speed) setView({ pose: p.pose, speed })
   })
@@ -276,6 +286,19 @@ export function PlayerView({ g, i, look, gender }: { g: Game; i: number; look: L
   return (
     <group ref={root}>
       <Blob />
+      {kit && g.size === 11 && (
+        // A white edge round the colour, so a green side still shows on the grass.
+        <group ref={disc} position={[0, 0.045, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <mesh renderOrder={2}>
+            <ringGeometry args={[0.3, 0.46, 24]} />
+            <meshBasicMaterial color={kit} transparent opacity={0.9} depthWrite={false} />
+          </mesh>
+          <mesh renderOrder={2}>
+            <ringGeometry args={[0.46, 0.52, 24]} />
+            <meshBasicMaterial color="#ffffff" transparent opacity={0.75} depthWrite={false} />
+          </mesh>
+        </group>
+      )}
       <group ref={inner}>
         <Human look={look} gender={gender} pose={view.pose} seed={i * 7.3} speed={view.speed || undefined} />
       </group>

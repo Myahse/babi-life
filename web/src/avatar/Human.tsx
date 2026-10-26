@@ -756,6 +756,8 @@ const FAR = 24
 const GONE = 110
 /** Everyone in full detail, however far (the videos: marketing/). */
 export const FullDetail = createContext(false)
+/** Up to how far the full, animated Sim is drawn: further in a match, where the far players' running, kicks and tackles are the game. */
+export const NearUpTo = createContext(FAR)
 
 export function Human(props: Props & { /** Always in full detail (the creator, close-ups). */ full?: boolean }) {
   const anchor = useRef<THREE.Group>(null)
@@ -764,14 +766,15 @@ export function Human(props: Props & { /** Always in full detail (the creator, c
   const at = useRef(new THREE.Vector3())
   const near = useRef<THREE.Group>(null)
   const farLook = useContext(FarGrow)
+  const nearUpTo = useContext(NearUpTo)
   const full = useContext(FullDetail) || props.full
   useFrame(({ camera, gl }) => {
     if (full || !anchor.current) return
     const d = anchor.current.getWorldPosition(at.current).distanceTo(camera.position)
     // Up close too, the body as broad as the far figure will draw it (a screen drawing few pixels starts it early): no change at the switch.
-    if (near.current) near.current.scale.set(...bulkScale(farBulk(d, gl.getPixelRatio(), farLook), farLook.grow))
-    if (!far && d > FAR + 3) setFar(true)
-    else if (far && d < FAR - 3) setFar(false)
+    if (near.current) near.current.scale.set(...bulkScale(farBulk(d, gl.getPixelRatio(), farLook), farLook.grow, farLook.wide))
+    if (!far && d > nearUpTo + 3) setFar(true)
+    else if (far && d < nearUpTo - 3) setFar(false)
     if (!gone && d > GONE + 5) setGone(true)
     else if (gone && d < GONE - 5) setGone(false)
   })

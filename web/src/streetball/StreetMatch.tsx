@@ -9,6 +9,7 @@ import { holdScenes } from '../world3d/hold'
 import { BallView, Crowd, Follow, Ground, PlayerView, upright } from './scene'
 import { HAZE, Sky } from './looks'
 import { FarGrow } from '../avatar/LowHuman'
+import { NearUpTo } from '../avatar/Human'
 import { Referee } from './stadium'
 import { likesFor } from '../world3d/fans'
 import { serverNow } from '../lib/worldClock'
@@ -52,7 +53,7 @@ const KEEPER = '#141416'
 const KEEPERS = ['#fcc419', '#7950f2']
 
 /** The players seen from afar (avatar/LowHuman.tsx): bigger and broader at the stadium, seen from high up. */
-const FAR_STADIUM = { grow: 0.45, from: 12, over: 38 }
+const FAR_STADIUM = { grow: 0.6, from: 10, over: 34, wide: 0.6 }
 const FAR_PITCH = { grow: 0.15, from: 20, over: 40 }
 
 /** A side's three letters from its name (« Les Lagunaires »: LAG). */
@@ -240,10 +241,13 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
           <Ground g={game} seed={sceneSeed} teams={teams} />
           {/* The players seen from afar a little bigger (more at the stadium, from high up), so they read as people, not sticks. */}
           <FarGrow.Provider value={big ? FAR_STADIUM : FAR_PITCH}>
-            {game.ps.map((p, i) => (
-              <PlayerView key={`${round}-${p.id}`} g={game} i={i} look={looks[i].look} gender={looks[i].gender} />
-            ))}
-            <Referee g={game} />
+            {/* The players and the referee in full, running and kicking, far up the pitch too (the crowd stays the simple figures). */}
+            <NearUpTo.Provider value={big ? 70 : 45}>
+              {game.ps.map((p, i) => (
+                <PlayerView key={`${round}-${p.id}`} g={game} i={i} look={looks[i].look} gender={looks[i].gender} kit={kits[p.team]} />
+              ))}
+              <Referee g={game} />
+            </NearUpTo.Provider>
             <Crowd g={game} seed={sceneSeed} />
           </FarGrow.Provider>
           <BallView g={game} />
