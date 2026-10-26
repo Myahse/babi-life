@@ -81,7 +81,7 @@ import type { Npc } from '../world3d/open/OpenWorld'
 import { setTalkHandler, setTalking } from '../world3d/talk'
 import type { Track } from '../audio/music'
 import { NotifyPrompt } from '../components/NotifyPrompt'
-import { motoPaid, rideFare, RIDES, useMoto, type RideKind } from '../world3d/moto'
+import { motoPaid, motoWalk, rideFare, RIDES, useMoto, type RideKind } from '../world3d/moto'
 import { GBAKA, inkOn, kerbWait, MOTO, waitsAtKerb } from '../game/rides'
 import { answerDrop, useDropAsk } from '../world3d/dropRoute'
 import { DefiButton, DefiSheet, defiLook, defiOf, PRACTICE, type DefiKind } from '../components/Defi'
@@ -2840,9 +2840,8 @@ function WordOfTheDay({ world, gameMinutes }: { world: World; gameMinutes: numbe
  * gbaka (in Abidjan). Picked, it's paid, and the Sim rides it in the street.
  */
 function MotoOffer({ world, sim, commune, act }: { world: World; sim: Sim; commune: Commune; act: Act }) {
-  const { offer, paid } = useMoto()
-  const [no, setNo] = useState<number | null>(null)
-  if (!offer || paid || no === offer) return null
+  const { offer, paid, walk } = useMoto()
+  if (!offer || paid || walk) return null
   const abidjan = !!world.compteur?.cities.includes(sim.city)
   const woro = abidjan && commune.woro && !commune.woro.none ? commune.woro : null
   const rides: { kind: RideKind; color: string; trim?: string }[] = [
@@ -2860,7 +2859,7 @@ function MotoOffer({ world, sim, commune, act }: { world: World; sim: Sim; commu
         <span className="min-w-0 flex-1 leading-tight">
           C'est loin ({(offer / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} km) : comment tu y vas ?
         </span>
-        <button className="btn btn-soft !min-h-0 !px-3 !py-1.5 !text-xs" onClick={() => setNo(offer)}>
+        <button className="btn btn-soft !min-h-0 !px-3 !py-1.5 !text-xs" onClick={motoWalk}>
           <Footprints size={14} /> À pied
         </button>
       </div>

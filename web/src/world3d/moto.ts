@@ -21,17 +21,24 @@ export const motoFare = (metres: number) => rideFare('moto', metres)
 
 /** The ride taken: which, and its colours (the commune's woro-woro). */
 export type Taken = { kind: RideKind; color: string; trim?: string }
-type Moto = { offer: number | null; paid: Taken | null }
-let state: Moto = { offer: null, paid: null }
+/** `walk`: the player chose to go on foot. `since`: when the offer came (ms), the Sim waiting for the choice till then. */
+type Moto = { offer: number | null; paid: Taken | null; walk: boolean; since: number }
+let state: Moto = { offer: null, paid: null, walk: false, since: 0 }
 const listeners = new Set<() => void>()
 const set = (s: Moto) => ((state = s), listeners.forEach((f) => f()))
 
 /** A long way ahead (metres), or none. */
 export const offerMoto = (metres: number | null) => {
-  if (metres !== state.offer || (metres === null && state.paid)) set({ offer: metres, paid: metres === null ? null : state.paid })
+  if (metres !== state.offer || (metres === null && state.paid)) set({ offer: metres, paid: metres === null ? null : state.paid, walk: false, since: performance.now() })
 }
 /** The player paid: the Sim gets on. */
 export const motoPaid = (taken: Taken = { kind: 'moto', color: '#c92a2a' }) => set({ ...state, paid: taken })
+/** The player chose to walk it. */
+export const motoWalk = () => set({ ...state, walk: true })
+/** How long the Sim waits for the choice at most (the offer unseen: a screen without it). */
+const WAIT = 20_000
+/** Read in the frame loop: the way is long and the player hasn't chosen yet — the Sim waits to know how it goes. */
+export const motoAsking = () => state.offer !== null && !state.paid && !state.walk && performance.now() - state.since < WAIT
 /** Read in the frame loop: the ride paid for, if any. */
 export const motoTaken = () => state.paid
 const subscribe = (f: () => void) => (listeners.add(f), () => void listeners.delete(f))
