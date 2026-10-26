@@ -1,7 +1,8 @@
 // Package court puts the players at the same court in the same match. The
 // football pitches and basketball courts are fixed places (game.Courts); each
 // holds one match at a time, with room for so many players by sport (Cap):
-// ten on a five-a-side pitch, six on a three-against-three court. The first
+// ten on a five-a-side pitch, six on a three-against-three court,
+// twenty-two at the stadium's eleven against eleven (foot11). The first
 // player opens a match that waits a little for friends (Wait); others join
 // it, even once it's under way, taking an AI player's place, until it's
 // full. The match itself goes over the live WebSocket (package live, mode
@@ -33,13 +34,15 @@ const (
 )
 
 // Cap: players a match takes, by sport.
-var Cap = map[string]int{"foot": 10, "basket": 6}
+var Cap = map[string]int{"foot": 10, "basket": 6, "foot11": 22}
 
 // order: the places in the teams the players take, in turn, as streetball/game.ts
 // numbers them: both teams kept even, the keepers last.
 var order = map[string][]int{
 	"foot":   {2, 7, 1, 6, 3, 8, 4, 9, 0, 5},
 	"basket": {0, 3, 1, 4, 2, 5},
+	// The eleven (11 a side, the second team from 11): the strikers first, then the wings, the midfield, the backs.
+	"foot11": {9, 20, 8, 19, 10, 21, 5, 16, 6, 17, 7, 18, 1, 12, 2, 13, 3, 14, 4, 15, 0, 11},
 }
 
 // Entry is a player in a match, and the place it holds (game.ts's player index).

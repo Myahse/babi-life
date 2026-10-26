@@ -123,3 +123,37 @@ func TestGoneFreesThePlace(t *testing.T) {
 		t.Fatalf("b back: %+v %v", again.Entries, err)
 	}
 }
+
+// The stadium's eleven: twenty-two places, both teams kept even as they fill, the keepers last.
+func TestElevenFillsBothSides(t *testing.T) {
+	l := NewLobby()
+	now := time.Now()
+	var id string
+	teams := [2]int{}
+	for i := 0; i < Cap["foot11"]; i++ {
+		m, err := l.Join("stade", "foot11", Entry{Sim: string(rune('A' + i))}, now)
+		if err != nil {
+			t.Fatalf("player %d refused: %v", i, err)
+		}
+		id = m.ID
+		slot := m.Entries[len(m.Entries)-1].Slot
+		teams[slot/11]++
+		if d := teams[0] - teams[1]; d < 0 || d > 1 {
+			t.Fatalf("after %d players the teams are %v", i+1, teams)
+		}
+		if (slot == 0 || slot == 11) && i < 20 {
+			t.Fatalf("a keeper's place given to player %d", i+1)
+		}
+	}
+	m, _ := l.Get(id)
+	seen := map[int]bool{}
+	for _, e := range m.Entries {
+		if seen[e.Slot] || e.Slot < 0 || e.Slot > 21 {
+			t.Fatalf("slot %d given twice or out of the teams", e.Slot)
+		}
+		seen[e.Slot] = true
+	}
+	if _, err := l.Join("stade", "foot11", Entry{Sim: "zz"}, now); err == nil {
+		t.Fatal("a 23rd player should find the pitch full")
+	}
+}

@@ -224,6 +224,13 @@ func NextStadiumEvent(placeID, kind string, now int64) (StadiumEvent, bool) {
 // AtStadium: the interaction as it is now at the stadium: the match or the
 // concert that's on, until its end; or why not.
 func AtStadium(placeID string, it Interaction, now int64) (Interaction, error) {
+	// The pitch for eleven against eleven: free while nothing's on.
+	if it.ID == Foot11ID {
+		if e, ok := StadiumEventAt(placeID, now); ok {
+			return it, fmt.Errorf("La pelouse est prise : %s, jusqu'à %s", e.Title, clockOf(e.End))
+		}
+		return it, nil
+	}
 	kind := map[string]string{StadiumMatchID: "match", StadiumConcertID: "concert"}[it.ID]
 	if kind == "" {
 		return it, nil

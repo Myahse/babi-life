@@ -838,7 +838,9 @@ export function Play() {
   // Playing basketball or football (on a court, a pitch, or with the quarter's match): the player plays the match, once per activity.
   const ballAct = sim?.activity?.kind === 'do' ? sim.activity : null
   // (The same on every court: the game's, the quartier's match, the street's pitch and court, the kids' game in the street.)
-  const ballSport = !ballAct ? null : ballAct.interaction.id === 'play-basket' || ballAct.interaction.id === 'street-basket' || (ballAct.placeId === 'happening' && ballAct.interaction.id === 'join' && street?.happening?.id === 'basket') ? 'basket' : ballAct.interaction.id === 'play-football' || ballAct.interaction.id === 'street-foot' || (ballAct.placeId === 'happening' && ballAct.interaction.id === 'join' && street?.happening?.id === 'foot') ? 'foot' : null
+  const ballSport = !ballAct ? null : ballAct.interaction.id === 'play-basket' || ballAct.interaction.id === 'street-basket' || (ballAct.placeId === 'happening' && ballAct.interaction.id === 'join' && street?.happening?.id === 'basket') ? 'basket' : ballAct.interaction.id === 'play-football' || ballAct.interaction.id === 'play-foot11' || ballAct.interaction.id === 'street-foot' || (ballAct.placeId === 'happening' && ballAct.interaction.id === 'join' && street?.happening?.id === 'foot') ? 'foot' : null
+  // The stadium's pitch: eleven against eleven on the console's rules (a referee, lines, corners), each player in its own place online.
+  const eleven = ballAct?.interaction.id === 'play-foot11'
   const ballKey = ballAct && ballSport ? `${ballSport}:${ballAct.placeId}:${ballAct.start}` : null
   const [played, setPlayed] = useState<string | null>(null)
   // Left the match before its end (the activity goes on): back onto the pitch; at a court, into the court's match again.
@@ -864,6 +866,8 @@ export function Play() {
   }, [courtKey, sim, court?.key])
   // The party heard from the street at night (world3d/open/party.tsx).
   const party = usePartySound()
+  // Kept from render to render (a new one would start the match over); alone (no court match), the console's switching too.
+  const elevenRules = useMemo(() => (eleven ? { size: 11 as const, referee: true, switching: !court?.online } : undefined), [eleven, court?.online])
 
   if (!sim) {
     return (
@@ -985,8 +989,8 @@ export function Play() {
         </Suspense>
       )}
       {ballKey && ballKey !== played && !racing && (!courtKey || court?.key === courtKey) && (
-        <Suspense fallback={<div className="fixed inset-0 z-50 grid place-items-center bg-[#9fd3f2] font-display text-2xl font-extrabold text-white">{ballSport === 'basket' ? 'Sur le terrain…' : 'Au maracana…'}</div>}>
-          <StreetMatch key={ballKey} sport={ballSport!} name={sim.firstName} look={sim.look} gender={sim.gender} online={courtKey ? (court?.online ?? undefined) : undefined} onExit={() => setPlayed(ballKey)} />
+        <Suspense fallback={<div className="fixed inset-0 z-50 grid place-items-center bg-[#9fd3f2] font-display text-2xl font-extrabold text-white">{ballSport === 'basket' ? 'Sur le terrain…' : eleven ? 'Au stade…' : 'Au maracana…'}</div>}>
+          <StreetMatch key={ballKey} sport={ballSport!} name={sim.firstName} look={sim.look} gender={sim.gender} online={courtKey ? (court?.online ?? undefined) : undefined} rules={elevenRules} onExit={() => setPlayed(ballKey)} />
         </Suspense>
       )}
       {showInside && (
@@ -2164,7 +2168,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
             <X size={22} strokeWidth={2.6} />
           </button>
         </div>
-        {kind.id === 'sport' && 'id' in place && <CourtCount placeId={place.id} />}
+        {'id' in place && (kind.id === 'sport' || place.id === 'plateau-stade') && <CourtCount placeId={place.id} />}
         {'id' in place && <Flights world={world} sim={sim} placeId={place.id} busy={busy} onTravel={onTravel} />}
         {'id' in place && place.kind === 'transport' && place.type !== 'ferry_terminal' && <Departures world={world} sim={sim} busy={busy} onTravel={onTravel} />}
         {busy && (
@@ -2969,7 +2973,7 @@ function CourtCount({ placeId }: { placeId: string }) {
   return (
     <div className={`mb-3 flex items-center gap-2 rounded-[18px] p-3 text-sm font-extrabold ${full ? 'bg-[#ffe3e3] text-[#c92a2a]' : 'bg-[#e6fcf5] text-[#087f5b]'}`}>
       <Users size={18} />
-      {full ? `Terrain complet : ${c.players}/${c.cap} joueurs` : c.players ? `${c.players}/${c.cap} joueurs ${on ? 'en plein match' : 'attendent le coup d’envoi'}` : `Terrain libre : ${c.cap} places (${c.sport === 'foot' ? '5 contre 5' : '3 contre 3'})`}
+      {full ? `Terrain complet : ${c.players}/${c.cap} joueurs` : c.players ? `${c.players}/${c.cap} joueurs ${on ? 'en plein match' : 'attendent le coup d’envoi'}` : `Terrain libre : ${c.cap} places (${c.sport === 'foot' ? '5 contre 5' : c.sport === 'foot11' ? '11 contre 11' : '3 contre 3'})`}
     </div>
   )
 }

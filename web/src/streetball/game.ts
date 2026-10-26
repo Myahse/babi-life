@@ -1754,7 +1754,8 @@ function hands(g: Game, me: Player, input: Input, playing: boolean, dt: number) 
     return
   }
   if (input.pass) call(me)
-  if (input.defend || (input.shoot && g.switching)) defend(g, me)
+  // Tir tackles on the console's pitch (the stadium's eleven online too, each in its own place).
+  if (input.defend || (input.shoot && fifa(g))) defend(g, me)
 }
 
 /** A player's move going on, and the running. */

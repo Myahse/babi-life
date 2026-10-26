@@ -404,9 +404,10 @@ func kartOK(k []float64, b [][]float64) bool {
 }
 
 // matchOK: a player's hands, or the match as its first player runs it (ten
-// players, the ball and the clock), sane and not too many.
+// players, or twenty-two at the stadium; the ball and the clock, the set
+// piece and the referee), sane and not too many.
 func matchOK(k []float64, b [][]float64) bool {
-	if len(k) > 16 || len(b) > 12 || !finite(k...) {
+	if len(k) > 16 || len(b) > 26 || !finite(k...) {
 		return false
 	}
 	for _, x := range b {

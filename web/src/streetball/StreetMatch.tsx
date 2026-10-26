@@ -68,6 +68,8 @@ type Hud = {
   stamina: number
   charge: number
   hint: string | null
+  /** The console's hands move from player to player (else, online at the stadium, each keeps its own). */
+  switching: boolean
   /** The shoot-out's kicks so far, each side's (in or not). */
   pens: [boolean[], boolean[]] | null
 }
@@ -111,6 +113,7 @@ function hudOf(g: Game, waiting = 0): Hud {
     stamina: me.stamina,
     charge: me.charge,
     hint: hintOf(g),
+    switching: g.switching,
     pens: g.shootout ? [[...g.shootout.kicks[0]], [...g.shootout.kicks[1]]] : null,
   }
 }
@@ -658,8 +661,8 @@ function FifaPad({ input, hud, touch, pad }: { input: React.MutableRefObject<Inp
             Crochet
             {k('K', 'RB')}
           </button>
-          <button className={`${btn} col-span-1 h-16 w-16 bg-[#2563eb] text-sm text-white`} onPointerDown={press(hud.has ? 'pass' : 'swap')}>
-            {hud.has ? 'Passe' : 'Changer'}
+          <button className={`${btn} col-span-1 h-16 w-16 bg-[#2563eb] text-sm text-white`} onPointerDown={press(hud.has || !hud.switching ? 'pass' : 'swap')}>
+            {hud.has ? 'Passe' : hud.switching ? 'Changer' : 'Appel'}
             {k(hud.has ? 'J' : 'Tab', hud.has ? 'A' : 'LB')}
           </button>
           <button className={`${btn} col-span-2 h-16 w-full rounded-3xl text-base text-white ${hud.has ? 'bg-[#ff8200]' : 'bg-[#e03131]'}`} {...hold('charge')}>
