@@ -1,3 +1,4 @@
+import { rumble, stickOwner, useGamepad } from '../../lib/gamepad'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, Flame, Trophy } from 'lucide-react'
 import { haptic } from '../../lib/native'
@@ -87,6 +88,18 @@ function Drive({ rival, onEnd }: { rival: Rival; onEnd: (score: number) => void 
   const rank = RIVALS.indexOf(rival)
   const [hud, setHud] = useState<Hud>({ lap: 1, first: false, kmh: 0, nitro: 0.34, time: -3, said: '', saidAt: -9, count: 3 })
   const shown = useRef(hud)
+  // A controller: the left stick (or the cross) steers, LT or B brakes (and drifts), A, RT or Y the nitro.
+  const padStick = useMemo(() => stickOwner(), [])
+  const padBrake = useRef(false)
+  useGamepad((g) => {
+    const p = pad.current
+    const dx = (g.held.has('right') ? 1 : 0) - (g.held.has('left') ? 1 : 0)
+    padStick(g.lx || dx, 0, (x) => (p.steer = x))
+    const brake = g.lt > 0.3 || g.held.has('b') || g.held.has('rb') || g.held.has('lb')
+    if (brake !== padBrake.current) p.brake = brake
+    padBrake.current = brake
+    if (g.pressed.has('a') || g.pressed.has('rt') || g.pressed.has('y')) p.nitro = true
+  })
   // In development, the race for the test pilot in the browser.
   if (import.meta.env.DEV) Object.assign(globalThis, { __course: R })
   useEffect(() => {
@@ -131,6 +144,7 @@ function Drive({ rival, onEnd }: { rival: Rival; onEnd: (score: number) => void 
     let said = ''
     for (const e of evs) {
       if (!e.me && e.kind !== 'pass' && e.kind !== 'finish') continue
+      if (e.kind === 'crash' || e.kind === 'wall' || e.kind === 'bump') rumble(e.kind === 'crash' ? 0.9 : 0.45, e.kind === 'crash' ? 350 : 120)
       if (e.kind === 'crash') {
         sfx.fall()
         haptic('heavy')
