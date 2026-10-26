@@ -1,20 +1,25 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Check, Crown, Flag, Landmark, Megaphone, Shield, Sparkles, Users, Vote, type LucideIcon } from 'lucide-react'
+import { Check, Crown, Flag, Landmark, Medal, Megaphone, Shield, Sparkles, Users, Vote, type LucideIcon } from 'lucide-react'
 import { ApiError, api } from '../lib/api'
 import type { Candidate, Commune, Crew, Election, Party, Politics, Sim, World } from '../lib/types'
 import { Chip, IconTile } from '../components/ui'
 import { lifeOf } from '../game/rules'
+import { Presidence, Terrain, abidjan } from './politique/Presidence'
 
 // « Politique »: the city's political life (backend/internal/politics).
-// Élections: the president of the republic and the mayor of one's commune,
-// a week each: five days of campaign, two of vote; the candidates' programme
-// and their paid campaign; the vote cast at a town hall. Partis: found one,
+// Présidence: the president's week (politique/Presidence.tsx): the speech,
+// the measures, the citizens' stars, the Fête de la Nation. Élections: the
+// president of the republic and the mayor of one's commune, every week: one
+// stands till Sunday, campaigns from Friday 18 h to Saturday night (in the
+// app, and in the street: tours, militants, the meeting at the stadium),
+// votes on Sunday at a town hall, hears the results on Monday at 9 h. Partis: found one,
 // join one. Gouvernement: the president names ministers and deputies, who sit
 // at the Palais présidentiel. Mairie: the mayor's word to the commune. Gang:
 // the players' crews, their tag over the name. Sociétés: the secret societies.
 
-type Tab = 'elections' | 'partis' | 'gouvernement' | 'mairie' | 'gang' | 'societes'
+type Tab = 'presidence' | 'elections' | 'partis' | 'gouvernement' | 'mairie' | 'gang' | 'societes'
 const TABS: { id: Tab; label: string; icon: LucideIcon }[] = [
+  { id: 'presidence', label: 'Présidence', icon: Medal },
   { id: 'elections', label: 'Élections', icon: Vote },
   { id: 'partis', label: 'Partis', icon: Flag },
   { id: 'gouvernement', label: 'Gouvernement', icon: Crown },
@@ -31,7 +36,7 @@ const SWATCHES = ['#ff7a00', '#00a862', '#2a6cf0', '#e83e8c', '#7048e8', '#e8590
 type Props = { world: World; sim: Sim; commune: Commune; /** The place the Sim is in (a mairie: it can vote). */ at: string | null; onWalk: (id: string) => void }
 
 export function PolitiqueApp({ world, sim, commune, at, onWalk }: Props) {
-  const [tab, setTab] = useState<Tab>('elections')
+  const [tab, setTab] = useState<Tab>('presidence')
   const [p, setP] = useState<Politics | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
@@ -71,6 +76,8 @@ export function PolitiqueApp({ world, sim, commune, at, onWalk }: Props) {
       )}
       {!p ? (
         <p className="text-sm font-bold text-[var(--color-ink-soft)]">Chargement…</p>
+      ) : tab === 'presidence' ? (
+        <Presidence p={p} sim={sim} city={city} run={run} onWalk={onWalk} minor={minor} />
       ) : tab === 'elections' ? (
         <Elections p={p} sim={sim} city={city} commune={commune} at={at} run={run} onWalk={onWalk} minor={minor} />
       ) : tab === 'partis' ? (
@@ -99,8 +106,8 @@ function Elections({ p, sim, city, commune, at, run, onWalk, minor }: { p: Polit
       <div className="flex items-start gap-3 rounded-[22px] bg-[#eef2ff] p-4">
         <IconTile icon={Vote} colors={['#8c9eff', '#3d4fd6']} size={44} />
         <div className="min-w-0 text-sm font-semibold text-[var(--color-ink-soft)]">
-          <div className="font-display text-lg leading-tight font-extrabold text-[var(--color-ink)]">Une semaine, un mandat</div>
-          Cinq jours de campagne, deux jours de vote, à la mairie. Les candidats disent pourquoi voter pour eux, et font campagne avec leurs Djai. Ton vote vaut {p.playerWeight} voix de la foule.
+          <div className="font-display text-lg leading-tight font-extrabold text-[var(--color-ink)]">Un·e président·e par semaine</div>
+          On se présente pendant la semaine, on fait campagne du vendredi 18 h au samedi soir, on vote le dimanche à la mairie, et les résultats tombent le lundi à 9 h. {p.rules.mandatesAMonth} mandats par mois au plus. Ton vote vaut {p.playerWeight} voix de la foule.
         </div>
       </div>
       <ElectionCard title="La présidentielle" e={p.president} last={p.lastPresident} p={p} sim={sim} city={city} commune={commune} at={at} run={run} onWalk={onWalk} minor={minor} />
@@ -118,11 +125,22 @@ function ElectionCard({ title, e, last, p, sim, city, commune, at, run, onWalk, 
   if (!e) return null
   const now = Date.now()
   const voting = now >= Date.parse(e.votesAt) && now < Date.parse(e.closesAt)
+  // Standing: till the vote; campaigning: from Friday 18 h to the vote.
   const campaign = now < Date.parse(e.votesAt)
+  const campaignOn = now >= Date.parse(e.campaignAt) && campaign
+  const phase = voting ? 'Vote ouvert' : campaignOn ? 'Campagne' : campaign ? 'Candidatures' : 'Dépouillement'
   const me = e.candidates.find((c) => c.sim === sim.id)
   const forPresident = e.kind === 'president'
-  const canRun = campaign && !me && !!p.party && (forPresident ? p.party.leader === sim.id : sim.homeCommune === e.commune) && !minor
-  const whyNot = !p.party ? "Il faut un parti pour se présenter (onglet Partis)." : forPresident && p.party.leader !== sim.id ? 'À la présidentielle, c’est le chef du parti qui se présente.' : !forPresident && sim.homeCommune !== e.commune ? 'On se présente à la mairie de sa commune.' : ''
+  const canRun = campaign && !me && !!p.party && (forPresident ? p.party.leader === sim.id && p.mandatesLeft > 0 : sim.homeCommune === e.commune) && !minor
+  const whyNot = !p.party
+    ? 'Il faut un parti pour se présenter (onglet Partis).'
+    : forPresident && p.party.leader !== sim.id
+      ? 'À la présidentielle, c’est le chef du parti qui se présente.'
+      : forPresident && p.mandatesLeft <= 0
+        ? `${p.rules.mandatesAMonth} mandats ce mois-ci : c’est la limite. Le mois prochain !`
+        : !forPresident && sim.homeCommune !== e.commune
+          ? 'On se présente à la mairie de sa commune.'
+          : ''
   // At a town hall: any of the city's for the president, the commune's own for its mayor.
   const atPlace = at ? city.communes.flatMap((c) => c.places).find((x) => x.id === at) : undefined
   const atMairie = !!atPlace && atPlace.kind === 'mairie' && (forPresident || at === commune.admin?.mairie || city.communes.find((c) => c.id === e.commune)?.admin?.mairie === at)
@@ -132,9 +150,15 @@ function ElectionCard({ title, e, last, p, sim, city, commune, at, run, onWalk, 
     <section className="space-y-2 rounded-[22px] bg-[var(--color-canvas)] p-3">
       <div className="flex items-center justify-between gap-2">
         <h4 className="font-display text-base font-extrabold">{title}</h4>
-        <Chip tone={voting ? 'good' : 'neutral'}>{voting ? 'Vote ouvert' : 'Campagne'}</Chip>
+        <Chip tone={voting || campaignOn ? 'good' : 'neutral'}>{phase}</Chip>
       </div>
-      <p className="text-xs font-bold text-[var(--color-ink-soft)]">{voting ? `Jusqu’au ${when(e.closesAt)}.` : `Vote du ${when(e.votesAt)} au ${when(e.closesAt)}.`}</p>
+      <p className="text-xs font-bold text-[var(--color-ink-soft)]">
+        {voting
+          ? `Vote jusqu’au ${abidjan(e.closesAt)}. Résultats ${abidjan(e.resultsAt)}.`
+          : campaign
+            ? `Campagne ${abidjan(e.campaignAt)} → ${abidjan(e.votesAt)}. Vote jusqu’au ${abidjan(e.closesAt)}. Résultats ${abidjan(e.resultsAt)}.`
+            : `Résultats ${abidjan(e.resultsAt)}.`}
+      </p>
       {e.candidates.length === 0 && <p className="text-sm font-semibold text-[var(--color-ink-soft)]">Personne ne s’est encore présenté. Un parti, un programme, une caution de {F(deposit)} : à toi.</p>}
       <ul className="space-y-2">
         {e.candidates.map((c) => (
@@ -158,10 +182,12 @@ function ElectionCard({ title, e, last, p, sim, city, commune, at, run, onWalk, 
         </div>
       )}
       {e.myVote && <p className="text-xs font-bold text-[#0f7a3f]">Tu as voté. L’encre sur ton doigt le prouve.</p>}
-      {me && now < Date.parse(e.closesAt) && (
+      {me && campaign && (
         <div className="space-y-2 rounded-2xl bg-white p-3">
           <div className="text-sm font-extrabold">Ta campagne</div>
-          <p className="text-xs font-semibold text-[var(--color-ink-soft)]">Chaque action convainc une part de la foule ; les affiches et les tournées comptent dans leur commune, la radio et le meeting partout.</p>
+          <p className="text-xs font-semibold text-[var(--color-ink-soft)]">
+            {campaignOn ? 'Chaque action convainc une part de la foule ; les affiches et les tournées comptent dans leur commune, la radio partout.' : `La campagne ouvre ${abidjan(e.campaignAt)}. D’ici là, appelle tes militants et prépare ton meeting.`}
+          </p>
           {!forPresident ? null : (
             <select className="input w-full !py-2 text-sm font-bold" value={actCommune} onChange={(x) => setActCommune(x.target.value)}>
               {city.communes.map((c) => (
@@ -180,12 +206,13 @@ function ElectionCard({ title, e, last, p, sim, city, commune, at, run, onWalk, 
                     +{a.points} pts {a.scope === 'all' ? 'partout' : forPresident ? `à ${communeName(city, actCommune)}` : 'dans ta commune'}
                   </div>
                 </div>
-                <button className="btn shrink-0 !py-1.5 !text-xs" onClick={() => void run(() => api.campaign(sim.id, e.id, a.id, a.scope === 'commune' ? (forPresident ? actCommune : e.commune ?? sim.homeCommune) : ''))}>
+                <button className="btn shrink-0 !py-1.5 !text-xs" disabled={!campaignOn} onClick={() => void run(() => api.campaign(sim.id, e.id, a.id, a.scope === 'commune' ? (forPresident ? actCommune : (e.commune ?? sim.homeCommune)) : ''))}>
                   {F(a.cost)}
                 </button>
               </li>
             ))}
           </ul>
+          <Terrain e={e} p={p} sim={sim} city={city} run={run} />
         </div>
       )}
       {canRun && (

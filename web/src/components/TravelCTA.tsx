@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ArrowRight, Bike, Bus, Car, CarTaxiFront, Clock3, Hand, HandCoins, Minus, Plus, UserRound } from 'lucide-react'
 import type { Ride, Sim, StreetRide, World } from '../lib/types'
 import { actionLength, ageOf, amount, duration, rideQuote, trip } from '../game/rules'
+import { discounted, fareOff, PUBLIC_RIDES } from '../lib/civic'
 import { classFare, compteurQuote, GBAKA, gbakaQuote, inkOn, MOTO, motoQuote } from '../game/rides'
 import { Chip, Coin, IconTile } from './ui'
 import { aCommune } from '../lib/french'
@@ -70,6 +71,9 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
       choices.push({ id: a.id, name: a.name, colors: ['#161a2b'], minutes: quote.minutes, fare: a.model === 'offer' ? offer : classFare(quote.fare, a.classes?.[0]), app: a.model, classes: !!a.classes?.length })
     }
   }
+  // The president's « transport » measure: the public transport at half price (lib/civic.ts).
+  const off = fareOff(world, sim)
+  if (off) for (const c of choices) if (PUBLIC_RIDES.has(c.id)) c.fare = discounted(c.fare, off)
   const [pick, setPick] = useState(choices[0].id)
   // One's own vehicle chosen first, once the garage is known (the one at the wheel, if driving), unless another was picked.
   const [chose, setChose] = useState(false)

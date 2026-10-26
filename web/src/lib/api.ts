@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackView, EnvolState, TradeState } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackView, EnvolState, TradeState, Terrain } from './types'
 import { useSession } from '../store/session'
 import { API_BASE as BASE } from './env'
 import { blobUrl } from './blobUrl'
@@ -185,6 +185,15 @@ export const api = {
   declare: (id: string, election: number, programme: string) => post<{ text: string }>(`/sims/${id}/politics/candidacy`, { election, programme }),
   campaign: (id: string, election: number, kind: string, commune: string) => post<{ text: string }>(`/sims/${id}/politics/campaign`, { election, kind, commune }),
   vote: (id: string, election: number, candidate: string, at: string) => post<{ text: string }>(`/sims/${id}/politics/vote`, { election, candidate, at }),
+  /** The president's week and the campaign in the street (backend politics/presidency.go). */
+  speak: (id: string, kind: 'discours' | 'adresse', text: string) => post<{ text: string }>(`/sims/${id}/politics/parole`, { kind, text }),
+  decree: (id: string, measure: string) => post<{ text: string }>(`/sims/${id}/politics/mesure`, { measure }),
+  ratePresident: (id: string, score: number) => post<{ text: string }>(`/sims/${id}/politics/note`, { score }),
+  fete: (id: string, place: string, at: string) => post<{ text: string }>(`/sims/${id}/politics/fete`, { place, at }),
+  meeting: (id: string, election: number, place: string, at: string) => post<{ text: string }>(`/sims/${id}/politics/meeting`, { election, place, at }),
+  callMilitants: (id: string, election: number, commune: string, pay: number, slots: number) => post<{ text: string }>(`/sims/${id}/politics/militants`, { election, commune, pay, slots }),
+  terrain: (id: string) => request<Terrain>(`/sims/${id}/politics/terrain`),
+  posters: (commune: string) => request<{ posters: { name: string; acronym?: string; color: string; slogan?: string; kind: 'president' | 'maire'; points: number }[] }>(`/politics/affiches?commune=${encodeURIComponent(commune)}`),
   government: () => request<{ holders: Holder[]; portfolios: { id: string; label: string }[] }>('/politics/government'),
   nameOffice: (id: string, office: string, sim: string) => post<{ text: string }>(`/sims/${id}/politics/name`, { office, sim }),
   communique: (id: string, text: string) => post<{ text: string }>(`/sims/${id}/politics/communique`, { text }),

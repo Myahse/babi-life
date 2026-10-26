@@ -7,9 +7,10 @@ import { classFare, inkOn, motoQuote, rideLook } from '../game/rides'
 import { AppLogo } from './AppLogo'
 import { DriverCall, newCall, type Call } from './DriverCall'
 import { aCommune, deCommune } from '../lib/french'
+import { discounted } from '../lib/civic'
 
 /** A ride being arranged in town: hailing at the roadside, or booking an app. */
-export type FlowRequest = { cityId: string; from: Commune; to: Commune; kind: 'street' | string; offer?: number; fare: number; party: number; money?: number; /** At the roadside: the one the player chose to wait for (else the woro-woro or a taxi compteur, whichever). */ want?: StreetRide }
+export type FlowRequest = { cityId: string; from: Commune; to: Commune; kind: 'street' | string; offer?: number; fare: number; party: number; money?: number; /** The share off the public transport (the president's measure, lib/civic.ts). */ off?: number; /** At the roadside: the one the player chose to wait for (else the woro-woro or a taxi compteur, whichever). */ want?: StreetRide }
 
 export function RideFlow({ world, req, gameMinutes, onBoard, onClose }: { world: World; req: FlowRequest; gameMinutes: number; onBoard: (ride: Ride, label: string) => void; onClose: () => void }) {
   return (
@@ -206,9 +207,10 @@ function Roadside({ world, req, gameMinutes, onBoard, onClose }: { world: World;
   }
 
   // req.fare: a woro-woro seat (world.Trip); the others from it.
-  const woroFare = req.fare * party
-  const gbakaFare = gbakaSeat(req.fare) * party
-  const meterFare = estimateMeter(req.fare, toll)
+  // (The president's « transport » measure halves the public ones, as the server does.)
+  const woroFare = discounted(req.fare * party, req.off ?? 0)
+  const gbakaFare = discounted(gbakaSeat(req.fare) * party, req.off ?? 0)
+  const meterFare = discounted(estimateMeter(req.fare, toll), req.off ?? 0)
   const motoFare = motoQuote({ minutes: 0, fare: req.fare, toll }).fare
   const fareOf = (k?: Kind) => (k === 'woro' ? woroFare : k === 'gbaka' ? gbakaFare : k === 'moto' ? motoFare : meterFare)
   const label = !car

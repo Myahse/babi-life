@@ -452,6 +452,11 @@ func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, ride Ride, r
 	if street && world.TollOf(path.Bridges) > 0 && (ride.Own == nil || ride.Own.Model.Kind == "voiture") {
 		label += " (péage du 3e pont compris)"
 	}
+	// The president's « transport » measure (game/civic.go): the public transport at half price.
+	if off := game.FareOff(s.Measures); off > 0 && publicFare(mode) && fare > 0 {
+		fare = game.Discounted(fare, off)
+		label += " (moitié prix : mesure du président)"
+	}
 	if s.Money < fare {
 		return game.ErrNotEnoughMoney
 	}

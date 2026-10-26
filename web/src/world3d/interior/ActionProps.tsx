@@ -9,7 +9,7 @@ import { randomLook } from '../../avatar/options'
 import { Bottle, Sparkler } from '../clubNight'
 import { sizeOf } from '../Character'
 import type { Look } from '../../lib/types'
-import { Balloons, Cinema, Gossip, Clothes, Cocktail, Coffee, Conference, Counter, Desk, Doctor, Fitting, Foam, Gallery, HairMoves, Manicure, Market, Mother, RoomService, Roulette, SchoolBag, Show, Visit, Wedding, YardBall, type Papers, type Tray } from './doings'
+import { Balloons, Campaign, Cinema, Gossip, Clothes, Cocktail, Coffee, Conference, Counter, Desk, Doctor, Fitting, Foam, Gallery, HairMoves, Manicure, Market, Mother, RoomService, Roulette, SchoolBag, Show, Visit, Wedding, YardBall, type Papers, type Tray } from './doings'
 
 // What shows what the Sim is doing, around it: the water of the shower, the
 // plate of garba, the bottle, the blanket, the notebook, the prayer mat…
@@ -56,6 +56,9 @@ export function ActionProps({ id, kind, lying, stage = 'adulte', partner, bath }
   if (id === 'pray') return <PrayerMat />
   // The gbairai told standing (at the market, the maquis): someone to tell it to. (Seated at the tailor's, the barber's, among the customers.)
   if (id === 'gbairai' && kind !== 'couture' && kind !== 'barbier' && kind !== 'salon') return <Gossip />
+  // The campaign: the candidate's tour, the militant's day (a crowd round them, the banner).
+  if (id === 'campagne-terrain') return <Campaign />
+  if (id === 'militer') return <Campaign militant />
   // At a counter: the papers, the stamp, the boxes.
   if (PAPERS[id]) return <Counter kind={PAPERS[id]} top={kind === 'pharmacie' ? 1.13 : 1.105} />
   if (id === 'conseil' && kind === 'pharmacie') return <Counter kind="advice" top={1.13} />

@@ -90,6 +90,10 @@ func (h *Handler) moto(w http.ResponseWriter, r *http.Request) {
 			return game.Outcome{}, nil, errRideKind
 		}
 		fare := rideFare(kind, metres)
+		// The president's « transport » measure (game/civic.go): the taxi, the woro-woro, the gbaka at half price.
+		if off := game.FareOff(s.Measures); off > 0 && publicFare(kind) {
+			fare = game.Discounted(fare, off)
+		}
 		if s.Money < fare {
 			return game.Outcome{}, nil, game.ErrNotEnoughMoney
 		}

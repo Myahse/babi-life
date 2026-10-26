@@ -8,9 +8,13 @@
 // mayors sit at their mairie), and their daily pay. Also the players' gangs
 // (crews: the Sim's gang column is the street's nouchis) and the sects joined.
 //
-// Everything is on the real clock (the game's clock is the real one): a
-// mandate lasts a week, five days of campaign then the two days of the vote,
-// the next election opening as the results fall.
+// Everything is on the real clock (the game's clock is the real one), the
+// week's (game.ElectionWeek): one stands from the Monday, the campaign runs
+// from Friday at 18 h to Saturday night, the vote on Sunday, and the results
+// fall on Monday at 9 h, for everyone (journal and notification): a new
+// president every week, three mandates a month at most. The president speaks
+// to the nation, decrees the week's measures, gives the Fête de la Nation,
+// and the citizens rate them every day (presidency.go).
 package politics
 
 import (
@@ -34,14 +38,11 @@ import (
 	"github.com/myahse/babi-life/backend/internal/auth"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
+	"github.com/myahse/babi-life/backend/internal/push"
 	"github.com/myahse/babi-life/backend/internal/world"
 )
 
 const (
-	// The cycle: candidacies and campaign for Campaign, then the vote for Voting; a mandate is the two.
-	Campaign = 5 * 24 * time.Hour
-	Voting   = 2 * 24 * time.Hour
-	Mandate  = Campaign + Voting
 	// What it costs, in Djai.
 	PartyFee         = 50_000
 	DepositPresident = 200_000
@@ -83,7 +84,6 @@ var CampaignActs = []CampaignAct{
 	{"tshirts", "Des t-shirts et des pagnes", 30_000, 15, "commune", "Distribués au marché : tout le quartier porte tes couleurs."},
 	{"tournee", "Une tournée dans la commune", 50_000, 30, "commune", "De cour en cour, de maquis en maquis, tu serres les mains."},
 	{"radio", "Un spot à la radio", 80_000, 25, "all", "Ton slogan entre deux coupés-décalés, dans toute la ville."},
-	{"meeting", "Un grand meeting au stade", 150_000, 60, "all", "Le stade plein, les artistes, ton discours : toute la ville en parle."},
 }
 
 // Sect: a secret society. Fee to be initiated, dues each Monday; the perk is read by the Sim (sims).
@@ -116,6 +116,8 @@ type Handler struct {
 	DB *pgxpool.Pool
 	// Changed: a Sim's devices told (its money, its titles changed).
 	Changed func(simID string)
+	// Push: the phones told (the results on Monday, the president's words); nil: none.
+	Push *push.Service
 }
 
 var (
@@ -146,6 +148,15 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/politics/crew/fund", h.fundCrew)
 	r.Post("/sims/{id}/politics/crew/{crew}/ask", h.askCrew)
 	r.Post("/sims/{id}/politics/sect", h.setSect)
+	// The president's week and the campaign in the street (presidency.go).
+	r.Get("/politics/events", h.events)
+	r.Get("/sims/{id}/politics/terrain", h.terrain)
+	r.Post("/sims/{id}/politics/parole", h.speak)
+	r.Post("/sims/{id}/politics/mesure", h.decree)
+	r.Post("/sims/{id}/politics/note", h.rate)
+	r.Post("/sims/{id}/politics/fete", h.fete)
+	r.Post("/sims/{id}/politics/meeting", h.meeting)
+	r.Post("/sims/{id}/politics/militants", h.callMilitants)
 }
 
 /* ---------- the Sim, its money, its journal ---------- */
@@ -420,16 +431,19 @@ type Candidate struct {
 }
 
 type Election struct {
-	ID       int64       `json:"id"`
-	Kind     string      `json:"kind"`
-	Commune  string      `json:"commune,omitempty"`
-	OpensAt  time.Time   `json:"opensAt"`
-	VotesAt  time.Time   `json:"votesAt"`
-	ClosesAt time.Time   `json:"closesAt"`
-	Settled  bool        `json:"settled"`
-	Winner   *string     `json:"winner,omitempty"`
-	Turnout  int         `json:"turnout"`
-	Cands    []Candidate `json:"candidates"`
+	ID      int64     `json:"id"`
+	Kind    string    `json:"kind"`
+	Commune string    `json:"commune,omitempty"`
+	OpensAt time.Time `json:"opensAt"`
+	// The campaign from CampaignAt to VotesAt, the vote to ClosesAt, the results (and the mandate) at ResultsAt.
+	CampaignAt time.Time   `json:"campaignAt"`
+	VotesAt    time.Time   `json:"votesAt"`
+	ClosesAt   time.Time   `json:"closesAt"`
+	ResultsAt  time.Time   `json:"resultsAt"`
+	Settled    bool        `json:"settled"`
+	Winner     *string     `json:"winner,omitempty"`
+	Turnout    int         `json:"turnout"`
+	Cands      []Candidate `json:"candidates"`
 	// For the player asking: whom they voted for ("" not yet), whether they're a candidate.
 	MyVote string `json:"myVote,omitempty"`
 }
@@ -448,23 +462,22 @@ func mayoralCommunes() []world.Commune {
 }
 
 // ensure opens the elections to come: the presidential one, and a mayoral one
-// per commune, on the same dates. The first ones ever open now.
+// per commune, on the same dates (game.ElectionWeek): one may stand from now.
 func (h *Handler) ensure(ctx context.Context) error {
-	var opens, votes, closes time.Time
-	err := h.DB.QueryRow(ctx, `SELECT opens_at, votes_at, closes_at FROM elections WHERE kind = 'president' AND NOT settled ORDER BY closes_at LIMIT 1`).Scan(&opens, &votes, &closes)
+	var opens, campaign, votes, closes, results time.Time
+	err := h.DB.QueryRow(ctx, `SELECT opens_at, campaign_at, votes_at, closes_at, results_at FROM elections WHERE kind = 'president' AND NOT settled ORDER BY results_at LIMIT 1`).Scan(&opens, &campaign, &votes, &closes, &results)
 	if errors.Is(err, pgx.ErrNoRows) {
 		opens = time.Now()
-		votes = opens.Add(Campaign)
-		closes = votes.Add(Voting)
-		if _, err := h.DB.Exec(ctx, `INSERT INTO elections (kind, commune, opens_at, votes_at, closes_at) VALUES ('president', '', $1, $2, $3)`, opens, votes, closes); err != nil {
+		campaign, votes, closes, results = game.ElectionWeek(opens)
+		if _, err := h.DB.Exec(ctx, `INSERT INTO elections (kind, commune, opens_at, campaign_at, votes_at, closes_at, results_at) VALUES ('president', '', $1, $2, $3, $4, $5)`, opens, campaign, votes, closes, results); err != nil {
 			return err
 		}
 	} else if err != nil {
 		return err
 	}
 	for _, m := range mayoralCommunes() {
-		_, err := h.DB.Exec(ctx, `INSERT INTO elections (kind, commune, opens_at, votes_at, closes_at)
-			SELECT 'maire', $1, $2, $3, $4 WHERE NOT EXISTS (SELECT 1 FROM elections WHERE kind = 'maire' AND commune = $1 AND NOT settled)`, m.ID, opens, votes, closes)
+		_, err := h.DB.Exec(ctx, `INSERT INTO elections (kind, commune, opens_at, campaign_at, votes_at, closes_at, results_at)
+			SELECT 'maire', $1, $2, $3, $4, $5, $6 WHERE NOT EXISTS (SELECT 1 FROM elections WHERE kind = 'maire' AND commune = $1 AND NOT settled)`, m.ID, opens, campaign, votes, closes, results)
 		if err != nil {
 			return err
 		}
@@ -472,12 +485,12 @@ func (h *Handler) ensure(ctx context.Context) error {
 	return nil
 }
 
-// candidatesOf: an election's candidates, their points counted for a commune ("" for everywhere).
+// candidatesOf: an election's candidates, their points counted for a commune ("": all of them, everywhere).
 func (h *Handler) candidatesOf(ctx context.Context, q interface {
 	Query(context.Context, string, ...any) (pgx.Rows, error)
 }, election int64, commune string) ([]Candidate, error) {
 	rows, err := q.Query(ctx, `SELECT c.sim_id, s.first_name || ' ' || s.last_name, COALESCE(u.username, ''), s.look, s.gender, c.party_id, COALESCE(p.acronym, ''), COALESCE(p.color, ''), c.programme,
-			COALESCE((SELECT sum(a.points) FROM campaign_acts a WHERE a.election_id = c.election_id AND a.sim_id = c.sim_id AND (a.commune = '' OR a.commune = $2)), 0), c.votes, c.npc_votes
+			COALESCE((SELECT sum(a.points) FROM campaign_acts a WHERE a.election_id = c.election_id AND a.sim_id = c.sim_id AND ($2 = '' OR a.commune = '' OR a.commune = $2)), 0), c.votes, c.npc_votes
 		FROM candidates c JOIN sims s ON s.id = c.sim_id JOIN users u ON u.id = s.user_id LEFT JOIN parties p ON p.id = c.party_id
 		WHERE c.election_id = $1 ORDER BY c.votes + c.npc_votes DESC, c.declared_at`, election, commune)
 	if err != nil {
@@ -497,11 +510,13 @@ func (h *Handler) candidatesOf(ctx context.Context, q interface {
 	return out, rows.Err()
 }
 
+const electionColumns = `id, kind, commune, opens_at, campaign_at, votes_at, closes_at, results_at, settled, winner, turnout`
+
 // current: the election to come (or running) of a kind, with its candidates.
 func (h *Handler) current(ctx context.Context, kind, commune, user string) (*Election, error) {
 	var e Election
-	err := h.DB.QueryRow(ctx, `SELECT id, kind, commune, opens_at, votes_at, closes_at, settled, winner, turnout FROM elections WHERE kind = $1 AND commune = $2 AND NOT settled ORDER BY closes_at LIMIT 1`, kind, commune).
-		Scan(&e.ID, &e.Kind, &e.Commune, &e.OpensAt, &e.VotesAt, &e.ClosesAt, &e.Settled, &e.Winner, &e.Turnout)
+	err := h.DB.QueryRow(ctx, `SELECT `+electionColumns+` FROM elections WHERE kind = $1 AND commune = $2 AND NOT settled ORDER BY results_at LIMIT 1`, kind, commune).
+		Scan(&e.ID, &e.Kind, &e.Commune, &e.OpensAt, &e.CampaignAt, &e.VotesAt, &e.ClosesAt, &e.ResultsAt, &e.Settled, &e.Winner, &e.Turnout)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -520,8 +535,8 @@ func (h *Handler) current(ctx context.Context, kind, commune, user string) (*Ele
 // last: the latest settled election of a kind (the results shown).
 func (h *Handler) last(ctx context.Context, kind, commune string) (*Election, error) {
 	var e Election
-	err := h.DB.QueryRow(ctx, `SELECT id, kind, commune, opens_at, votes_at, closes_at, settled, winner, turnout FROM elections WHERE kind = $1 AND commune = $2 AND settled ORDER BY closes_at DESC LIMIT 1`, kind, commune).
-		Scan(&e.ID, &e.Kind, &e.Commune, &e.OpensAt, &e.VotesAt, &e.ClosesAt, &e.Settled, &e.Winner, &e.Turnout)
+	err := h.DB.QueryRow(ctx, `SELECT `+electionColumns+` FROM elections WHERE kind = $1 AND commune = $2 AND settled ORDER BY results_at DESC LIMIT 1`, kind, commune).
+		Scan(&e.ID, &e.Kind, &e.Commune, &e.OpensAt, &e.CampaignAt, &e.VotesAt, &e.ClosesAt, &e.ResultsAt, &e.Settled, &e.Winner, &e.Turnout)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -550,8 +565,8 @@ func (h *Handler) declare(w http.ResponseWriter, r *http.Request) {
 			return nil, userError("Ton programme : dis aux gens pourquoi voter pour toi, de 20 à 600 lettres.")
 		}
 		var kind, commune string
-		var votesAt time.Time
-		if err := tx.QueryRow(ctx, `SELECT kind, commune, votes_at FROM elections WHERE id = $1 AND NOT settled`, req.Election).Scan(&kind, &commune, &votesAt); err != nil {
+		var votesAt, results time.Time
+		if err := tx.QueryRow(ctx, `SELECT kind, commune, votes_at, results_at FROM elections WHERE id = $1 AND NOT settled`, req.Election).Scan(&kind, &commune, &votesAt, &results); err != nil {
 			return nil, userError("Cette élection est passée.")
 		}
 		if time.Now().After(votesAt) {
@@ -568,6 +583,12 @@ func (h *Handler) declare(w http.ResponseWriter, r *http.Request) {
 				return nil, userError("À la présidentielle, c'est le chef du parti qui se présente.")
 			}
 			deposit, what = DepositPresident, "à la présidence"
+			// Three mandates starting in a month, no more: the next one, the month after.
+			if n, err := mandatesInMonth(ctx, tx, s.ID, results); err != nil {
+				return nil, err
+			} else if n >= game.MandatesAMonth {
+				return nil, userError(fmt.Sprintf("Tu as déjà gagné %d présidentielles ce mois-ci : c'est la limite. Tu pourras te représenter le mois prochain.", n))
+			}
 		} else {
 			if s.HomeCommune != commune {
 				return nil, userError("On se présente à la mairie de sa commune (celle où l'on habite).")
@@ -610,12 +631,12 @@ func (h *Handler) campaign(w http.ResponseWriter, r *http.Request) {
 			return nil, userError("action de campagne inconnue")
 		}
 		var kind, commune string
-		var closes time.Time
-		if err := tx.QueryRow(ctx, `SELECT e.kind, e.commune, e.closes_at FROM candidates c JOIN elections e ON e.id = c.election_id WHERE c.election_id = $1 AND c.sim_id = $2 AND NOT e.settled`, req.Election, s.ID).Scan(&kind, &commune, &closes); err != nil {
+		var opens, votes time.Time
+		if err := tx.QueryRow(ctx, `SELECT e.kind, e.commune, e.campaign_at, e.votes_at FROM candidates c JOIN elections e ON e.id = c.election_id WHERE c.election_id = $1 AND c.sim_id = $2 AND NOT e.settled`, req.Election, s.ID).Scan(&kind, &commune, &opens, &votes); err != nil {
 			return nil, userError("Tu n'es pas candidat·e à cette élection.")
 		}
-		if time.Now().After(closes) {
-			return nil, userError("Le vote est clos.")
+		if err := campaignOpen(opens, votes, time.Now()); err != nil {
+			return nil, err
 		}
 		where := ""
 		if act.Scope == "commune" {
@@ -658,8 +679,8 @@ func (h *Handler) vote(w http.ResponseWriter, r *http.Request) {
 			return nil, userError("On vote à partir de 18 ans.")
 		}
 		var kind, commune string
-		var votesAt, closes time.Time
-		if err := tx.QueryRow(ctx, `SELECT kind, commune, votes_at, closes_at FROM elections WHERE id = $1 AND NOT settled`, req.Election).Scan(&kind, &commune, &votesAt, &closes); err != nil {
+		var votesAt, closes, results time.Time
+		if err := tx.QueryRow(ctx, `SELECT kind, commune, votes_at, closes_at, results_at FROM elections WHERE id = $1 AND NOT settled`, req.Election).Scan(&kind, &commune, &votesAt, &closes, &results); err != nil {
 			return nil, userError("Cette élection est passée.")
 		}
 		now := time.Now()
@@ -667,7 +688,7 @@ func (h *Handler) vote(w http.ResponseWriter, r *http.Request) {
 			return nil, userError("Le vote ouvre " + frenchDate(votesAt) + ". D'ici là, lis les programmes.")
 		}
 		if now.After(closes) {
-			return nil, userError("Le vote est clos : les résultats arrivent.")
+			return nil, userError("Le vote est clos : les résultats tombent " + frenchDate(results) + ".")
 		}
 		// At a town hall: the commune's own for its mayor, any of the city's for the president.
 		_, c, p, ok := world.FindPlace(req.At)
@@ -691,7 +712,7 @@ func (h *Handler) vote(w http.ResponseWriter, r *http.Request) {
 			return nil, err
 		}
 		_ = note(ctx, tx, s.ID, "Politique : tu as voté à la "+p.Name+". L'encre sur ton doigt le prouve.", 0)
-		return map[string]any{"text": "Bulletin dans l'urne ! Les résultats tombent " + frenchDate(closes) + "."}, nil
+		return map[string]any{"text": "Bulletin dans l'urne ! Les résultats tombent " + frenchDate(results) + "."}, nil
 	})
 }
 
@@ -705,11 +726,12 @@ func popularity(ctx context.Context, q interface {
 	return friends*2 + members*3
 }
 
-// Settle counts a closed election: the players' ballots, each worth PlayerWeight,
-// and the crowd, split by what each campaign won over (its points here, its
-// popularity, a little luck); the winner takes office, the next election opens.
+// Settle counts an election whose results are due: the players' ballots, each worth
+// PlayerWeight, and the crowd, split by what each campaign won over (its points, its
+// popularity, a little luck; the president's crowd commune by commune, and the
+// outgoing president's rating with it); the winner takes office, the next opens.
 func (h *Handler) Settle(ctx context.Context) error {
-	rows, err := h.DB.Query(ctx, `SELECT id, kind, commune, closes_at FROM elections WHERE NOT settled AND closes_at <= now() ORDER BY closes_at, kind DESC`)
+	rows, err := h.DB.Query(ctx, `SELECT id, kind, commune, results_at FROM elections WHERE NOT settled AND results_at <= now() ORDER BY results_at, kind DESC`)
 	if err != nil {
 		return err
 	}
@@ -738,7 +760,7 @@ func (h *Handler) Settle(ctx context.Context) error {
 	return nil
 }
 
-func (h *Handler) settleOne(ctx context.Context, id int64, kind, commune string, closes time.Time) error {
+func (h *Handler) settleOne(ctx context.Context, id int64, kind, commune string, results time.Time) error {
 	tx, err := h.DB.Begin(ctx)
 	if err != nil {
 		return err
@@ -748,32 +770,58 @@ func (h *Handler) settleOne(ctx context.Context, id int64, kind, commune string,
 	if err != nil {
 		return err
 	}
+	// The crowd's votes for each: the mayor's in the commune; the president's commune by
+	// commune, each its share, where the tours and the posters count with the radio and the meeting.
+	areas := []string{commune}
+	if kind == "president" {
+		areas = areas[:0]
+		for _, m := range mayoralCommunes() {
+			areas = append(areas, m.ID)
+		}
+	}
 	crowd := CrowdMayor
 	if kind == "president" {
 		crowd = CrowdPresident
 	}
-	// The crowd's share of each: points here, popularity, a base so nobody has nothing, a little luck.
-	weights := make([]float64, len(cands))
-	var total float64
+	base := make([]float64, len(cands))
 	for i, c := range cands {
 		f := fnv.New32a()
 		_, _ = f.Write([]byte(fmt.Sprintf("%d|%s", id, c.Sim)))
 		luck := 0.9 + float64(f.Sum32()%2000)/10000 // 0.9 … 1.1
-		weights[i] = (20 + float64(c.Points) + float64(popularity(ctx, tx, c.Sim))) * luck
-		total += weights[i]
+		base[i] = luck * ratingFactor(ctx, tx, c.Sim)
+	}
+	npc := make([]int, len(cands))
+	pop := make([]float64, len(cands))
+	for i, c := range cands {
+		pop[i] = float64(popularity(ctx, tx, c.Sim))
+	}
+	for _, area := range areas {
+		share := float64(crowd) / float64(len(areas))
+		weights := make([]float64, len(cands))
+		var total float64
+		for i, c := range cands {
+			var pts int64
+			_ = tx.QueryRow(ctx, `SELECT COALESCE(sum(points), 0) FROM campaign_acts WHERE election_id = $1 AND sim_id = $2 AND (commune = '' OR commune = $3)`, id, c.Sim, area).Scan(&pts)
+			weights[i] = (20 + float64(pts) + pop[i]) * base[i]
+			total += weights[i]
+		}
+		for i := range cands {
+			if total > 0 {
+				npc[i] += int(share * weights[i] / total)
+			}
+		}
 	}
 	var turnout int
 	winner, best := "", -1
 	for i, c := range cands {
 		var votes int
 		_ = tx.QueryRow(ctx, `SELECT count(*) FROM ballots WHERE election_id = $1 AND candidate = $2`, id, c.Sim).Scan(&votes)
-		npc := int(float64(crowd) * weights[i] / total)
-		score := votes*PlayerWeight + npc
-		if _, err := tx.Exec(ctx, `UPDATE candidates SET votes = $1, npc_votes = $2 WHERE election_id = $3 AND sim_id = $4`, votes, npc, id, c.Sim); err != nil {
+		score := votes*PlayerWeight + npc[i]
+		if _, err := tx.Exec(ctx, `UPDATE candidates SET votes = $1, npc_votes = $2 WHERE election_id = $3 AND sim_id = $4`, votes, npc[i], id, c.Sim); err != nil {
 			return err
 		}
 		turnout += score
-		cands[i].Votes, cands[i].NpcVotes = votes, npc
+		cands[i].Votes, cands[i].NpcVotes = votes, npc[i]
 		if score > best {
 			winner, best = c.Sim, score
 		}
@@ -785,10 +833,21 @@ func (h *Handler) settleOne(ctx context.Context, id int64, kind, commune string,
 	if _, err := tx.Exec(ctx, `UPDATE elections SET settled = true, winner = $1, turnout = $2 WHERE id = $3`, w, turnout, id); err != nil {
 		return err
 	}
+	// What the militants didn't take goes back to the candidates who called them.
+	if err := refundCalls(ctx, tx, id); err != nil {
+		return err
+	}
 	if winner == "" {
+		if kind == "president" {
+			// Nobody stood: the old government goes all the same, the week has no president.
+			if _, err := tx.Exec(ctx, `DELETE FROM offices WHERE office = 'president' OR office LIKE 'ministre:%' OR office LIKE 'depute:%'`); err != nil {
+				return err
+			}
+		}
 		return tx.Commit(ctx)
 	}
-	until := closes.Add(Mandate)
+	// Till the next results (a Monday at 9 h): the next election opens on the same calendar.
+	_, _, _, until := game.ElectionWeek(results)
 	var name, acronym string
 	_ = tx.QueryRow(ctx, `SELECT s.first_name || ' ' || s.last_name, COALESCE(p.acronym, '') FROM sims s LEFT JOIN party_members m ON m.sim_id = s.id LEFT JOIN parties p ON p.id = m.party_id WHERE s.id = $1`, winner).Scan(&name, &acronym)
 	share := 0
@@ -799,22 +858,25 @@ func (h *Handler) settleOne(ctx context.Context, id int64, kind, commune string,
 	if acronym != "" {
 		with = " (" + acronym + ")"
 	}
+	var news push.Message
+	residents := ""
 	if kind == "president" {
 		// The old government goes with its president.
 		if _, err := tx.Exec(ctx, `DELETE FROM offices WHERE office = 'president' OR office LIKE 'ministre:%' OR office LIKE 'depute:%'`); err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO offices (office, sim_id, until) VALUES ('president', $1, $2)`, winner, until); err != nil {
+		if _, err := tx.Exec(ctx, `INSERT INTO offices (office, sim_id, until, election_id) VALUES ('president', $1, $2, $3)`, winner, until, id); err != nil {
 			return err
 		}
-		text := fmt.Sprintf("Présidentielle : %s%s élu·e président·e avec %d %% des voix. Il nomme ses ministres et les députés : tous siègent au Palais présidentiel, au Plateau.", name, with, share)
+		text := fmt.Sprintf("Présidentielle : %s%s élu·e président·e avec %d %% des voix, pour la semaine. Son discours et ses mesures arrivent dans l'appli Politique.", name, with, share)
 		if _, err := tx.Exec(ctx, `INSERT INTO sim_events (sim_id, kind, text, money, game_time) SELECT id, 'politique', $1, 0, $2 FROM sims`, text, game.MinuteOf(time.Now())); err != nil {
 			return err
 		}
-		_ = note(ctx, tx, winner, "Tu es élu·e président·e de la République ! Nomme tes ministres et les députés depuis l'appli Politique : ils t'attendent au Palais.", 0)
+		_ = note(ctx, tx, winner, "Tu es élu·e président·e de la République pour la semaine ! Fais ton discours à la nation, décrète tes deux mesures, nomme tes ministres et les députés depuis l'appli Politique : ils t'attendent au Palais.", 0)
+		news = push.Message{Title: "Nouveau président·e : " + name, Body: fmt.Sprintf("%s%s est élu·e avec %d %% des voix. Son discours arrive.", name, with, share), URL: "/jeu", Tag: "presidentielle"}
 	} else {
 		office := "maire:" + commune
-		if _, err := tx.Exec(ctx, `INSERT INTO offices (office, sim_id, until) VALUES ($1, $2, $3) ON CONFLICT (office) DO UPDATE SET sim_id = EXCLUDED.sim_id, since = now(), until = EXCLUDED.until, paid_until = NULL`, office, winner, until); err != nil {
+		if _, err := tx.Exec(ctx, `INSERT INTO offices (office, sim_id, until, election_id) VALUES ($1, $2, $3, $4) ON CONFLICT (office) DO UPDATE SET sim_id = EXCLUDED.sim_id, since = now(), until = EXCLUDED.until, paid_until = NULL, election_id = EXCLUDED.election_id`, office, winner, until, id); err != nil {
 			return err
 		}
 		text := fmt.Sprintf("Municipales : %s%s élu·e maire %s avec %d %% des voix.", name, with, communeDe(commune), share)
@@ -822,18 +884,55 @@ func (h *Handler) settleOne(ctx context.Context, id int64, kind, commune string,
 			return err
 		}
 		_ = note(ctx, tx, winner, "Tu es élu·e maire "+communeDe(commune)+" ! Ton bureau t'attend à la mairie ; parle à ta commune depuis l'appli Politique.", 0)
+		news = push.Message{Title: "Nouveau maire " + communeDe(commune), Body: text, URL: "/jeu", Tag: "municipales-" + commune}
+		residents = commune
 	}
 	// The others hear it too.
 	for _, c := range cands {
 		if c.Sim != winner {
-			_ = note(ctx, tx, c.Sim, fmt.Sprintf("Élection : %s l'emporte avec %d %% des voix. Tu as eu %d voix. La prochaine est dans une semaine.", name, share, c.Votes*PlayerWeight+c.NpcVotes), 0)
+			_ = note(ctx, tx, c.Sim, fmt.Sprintf("Élection : %s l'emporte avec %d %% des voix. Tu as eu %d voix. La prochaine : candidatures dès maintenant, campagne vendredi à 18 h, vote dimanche.", name, share, c.Votes*PlayerWeight+c.NpcVotes), 0)
 		}
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return err
 	}
 	h.changed(winner)
+	if kind == "president" {
+		h.Push.ToAll(news)
+	} else {
+		h.Push.ToCommune(residents, news)
+	}
 	return nil
+}
+
+// mandatesInMonth: the presidencies a Sim won whose week starts in the month of a moment.
+func mandatesInMonth(ctx context.Context, q pgx.Tx, sim string, at time.Time) (int, error) {
+	var n int
+	err := q.QueryRow(ctx, `SELECT count(*) FROM elections WHERE kind = 'president' AND settled AND winner = $1 AND date_trunc('month', results_at) = date_trunc('month', $2::timestamptz)`, sim, at).Scan(&n)
+	return n, err
+}
+
+// campaignOpen: whether one may campaign now (from Friday 18 h to the vote), or why not.
+func campaignOpen(opens, votes, now time.Time) error {
+	switch {
+	case now.Before(opens):
+		return userError("La campagne ouvre " + frenchDate(opens) + ". D'ici là : ton programme, ton parti, tes militants.")
+	case !now.Before(votes):
+		return userError("La campagne est close : place au vote.")
+	}
+	return nil
+}
+
+// ratingFactor: the outgoing president's rating weighs on their campaign: from 0,8 (1 star
+// on average) to 1,2 (5 stars), once ten citizens have said; 1 for anyone else.
+func ratingFactor(ctx context.Context, q pgx.Tx, sim string) float64 {
+	var avg float64
+	var n int
+	err := q.QueryRow(ctx, `SELECT COALESCE(avg(r.score), 0), count(*) FROM offices o JOIN president_ratings r ON r.election_id = o.election_id WHERE o.office = 'president' AND o.sim_id = $1`, sim).Scan(&avg, &n)
+	if err != nil || n < 10 {
+		return 1
+	}
+	return 0.8 + 0.1*(avg-1)
 }
 
 /* ---------- the government and the mayors ---------- */
@@ -1041,6 +1140,15 @@ type Summary struct {
 	Pay         map[string]int `json:"pay"`
 	Deposits    map[string]int `json:"deposits"`
 	Weight      int            `json:"playerWeight"`
+	// The president's week (presidency.go), the measures one may decree, the presidencies the
+	// Sim may still win this month, the calls it made as a candidate, its meetings.
+	Week         *Week          `json:"week"`
+	Measures     []game.Measure `json:"measures"`
+	MandatesLeft int            `json:"mandatesLeft"`
+	MyCalls      []MilitCall    `json:"myCalls"`
+	MyEvents     []StateEvent   `json:"myEvents"`
+	Events       []StateEvent   `json:"events"`
+	Rules        map[string]int `json:"rules"`
 }
 
 func (h *Handler) summary(w http.ResponseWriter, r *http.Request) {
@@ -1079,6 +1187,18 @@ func (h *Handler) summary(w http.ResponseWriter, r *http.Request) {
 	out.LastMayor, _ = h.last(ctx, "maire", s.HomeCommune)
 	out.Government, _ = h.holders(ctx, "o.office NOT LIKE 'maire:%'")
 	out.Holders, _ = h.holders(ctx, "o.office LIKE 'maire:%'")
+	out.Week, _ = h.week(ctx, user)
+	out.Measures = game.Measures
+	if out.President != nil {
+		var won int
+		_ = h.DB.QueryRow(ctx, `SELECT count(*) FROM elections WHERE kind = 'president' AND settled AND winner = $1 AND date_trunc('month', results_at) = date_trunc('month', $2::timestamptz)`, s.ID, out.President.ResultsAt).Scan(&won)
+		out.MandatesLeft = max(0, game.MandatesAMonth-won)
+	}
+	out.MyCalls, _ = h.calls(ctx, `c.sim_id = $1 AND NOT c.settled`, s.ID)
+	out.MyEvents, _ = h.stateEvents(ctx, `e.sim_id = $1 AND e.ends_at > now()`, s.ID)
+	out.Events, _ = h.stateEvents(ctx, `e.ends_at > now()`)
+	out.Rules = map[string]int{"tourCost": game.TourCost, "tourPoints": game.TourPoints, "militantPoints": game.MilitantPoints, "meetingCost": game.MeetingCost, "meetingPoints": game.MeetingPoints, "meetingGuest": game.MeetingGuest, "meetingGuests": game.MeetingGuests,
+		"feteHours": game.FeteHours, "meetingHours": game.MeetingHours, "payMin": game.MilitantPayMin, "payMax": game.MilitantPayMax, "slotsMax": game.MilitantSlotMax, "measures": game.MeasuresAMandate, "mandatesAMonth": game.MandatesAMonth}
 	out.Communiques = []string{}
 	if rows, err := h.DB.Query(ctx, `SELECT text FROM communiques WHERE commune = $1 ORDER BY created_at DESC LIMIT 5`, s.HomeCommune); err == nil {
 		for rows.Next() {
@@ -1607,7 +1727,11 @@ var frenchDays = []string{"dimanche", "lundi", "mardi", "mercredi", "jeudi", "ve
 // frenchDate: « samedi 25 octobre à 18 h » (Abidjan's clock is UTC).
 func frenchDate(t time.Time) string {
 	months := []string{"janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"}
-	return fmt.Sprintf("%s %d %s à %d h", frenchDays[t.Weekday()], t.Day(), months[t.Month()-1], t.Hour())
+	at := fmt.Sprintf("%d h", t.Hour())
+	if t.Minute() != 0 {
+		at = fmt.Sprintf("%d h %02d", t.Hour(), t.Minute())
+	}
+	return fmt.Sprintf("%s %d %s à %s", frenchDays[t.Weekday()], t.Day(), months[t.Month()-1], at)
 }
 
 func thousands(n int) string {
