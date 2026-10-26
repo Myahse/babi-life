@@ -274,6 +274,7 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
         <Result
           game={game}
           played={!!rules}
+          kits={kits}
           onExit={() => {
             if (online) void leaveMatch(online.token, online.simId, online.match.id)
             onExit({ sport, score: [game.score[0], game.score[1]], result: outcome(game), stats: { ...game.stats } })
@@ -673,7 +674,7 @@ function Key({ children }: { children: string }) {
 }
 
 /** The final whistle: the score, what the player did, what the people filming made of it. */
-function Result({ game, onExit, onReplay, played }: { game: Game; onExit: () => void; onReplay?: () => void; /** On the console: no film of it, and it goes on. */ played?: boolean }) {
+function Result({ game, onExit, onReplay, played, kits }: { game: Game; onExit: () => void; onReplay?: () => void; /** On the console: no film of it, and it goes on. */ played?: boolean; /** The two sides' shirts. */ kits: [string, string] }) {
   const r = outcome(game)
   const s = game.stats
   const foot = game.sport === 'foot'
@@ -704,9 +705,9 @@ function Result({ game, onExit, onReplay, played }: { game: Game; onExit: () => 
           <div className="font-display text-2xl font-extrabold">{r === 'win' ? 'Victoire !' : r === 'loss' ? 'Défaite…' : 'Match nul'}</div>
         </div>
         <div className="mt-2 flex items-center justify-center gap-3 font-display text-4xl font-extrabold tabular-nums">
-          <span className="h-5 w-5 rounded" style={{ background: KITS[game.sport][0] }} />
+          <span className="h-5 w-5 rounded" style={{ background: kits[0] }} />
           {game.score[0]} - {game.score[1]}
-          <span className="h-5 w-5 rounded" style={{ background: KITS[game.sport][1] }} />
+          <span className="h-5 w-5 rounded" style={{ background: kits[1] }} />
         </div>
         <ul className="mt-3 grid grid-cols-2 gap-1.5">
           {lines.map(([k, v]) => (

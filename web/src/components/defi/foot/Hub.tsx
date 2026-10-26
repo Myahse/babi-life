@@ -1,0 +1,182 @@
+import { useMemo, useState } from 'react'
+import { ChevronLeft, Star } from 'lucide-react'
+import { CLUBS, foeFor, kitsFor, LEVELS, NATIONS, teamOf } from './teams'
+
+// Babi Foot, the console's football « à la FIFA »: the hub where a match is
+// set up (the format, the two sides and their shirts, the difficulty, the
+// length) before the kick-off. The last choices are kept on the phone.
+
+export type Setup = { size: 5 | 11; mine: string; theirs: string; level: number; length: number }
+
+const KEY = 'babi.foot.setup'
+/** The lengths offered, in seconds: shorter for the five's maracana. */
+export const LENGTHS: Record<5 | 11, number[]> = { 5: [120, 240, 360], 11: [240, 360, 480] }
+
+export function loadSetup(): Setup {
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY) ?? 'null') as Setup | null
+    if (s && (s.size === 5 || s.size === 11) && teamOf(s.mine) && teamOf(s.theirs)) return s
+  } catch {
+    /* nothing kept: the defaults */
+  }
+  return { size: 5, mine: 'babi', theirs: 'yop', level: 1, length: 1 }
+}
+
+function saveSetup(s: Setup) {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(s))
+  } catch {
+    /* private mode: not kept */
+  }
+}
+
+/** The match's rules for the engine (streetball/game.ts), from the setup. */
+export function rulesOf(s: Setup, golden = false) {
+  const me = teamOf(s.mine)
+  const them = teamOf(s.theirs)
+  return { size: s.size, referee: true, switching: true, length: LENGTHS[s.size][s.length] ?? LENGTHS[s.size][1], foe: foeFor(LEVELS[s.level]?.foe ?? 1, me, them), golden }
+}
+
+/** A shirt, in its colour. */
+export function Shirt({ color, size = 34 }: { color: string; size?: number }) {
+  const light = parseInt(color.slice(1, 3), 16) + parseInt(color.slice(3, 5), 16) + parseInt(color.slice(5, 7), 16) > 600
+  return (
+    <svg viewBox="0 0 40 40" width={size} height={size}>
+      <path d="M13 4 L5 9 L2 18 L9 20 L9 37 L31 37 L31 20 L38 18 L35 9 L27 4 Q20 9 13 4 Z" fill={color} stroke={light ? '#adb5bd' : 'rgba(0,0,0,0.25)'} strokeWidth="1.5" />
+    </svg>
+  )
+}
+
+export function Stars({ n, size = 11 }: { n: number; size?: number }) {
+  return (
+    <span className="inline-flex">
+      {[0, 1, 2, 3, 4].map((k) => (
+        <Star key={k} size={size} className={k < n ? 'fill-[#ffd43b] text-[#ffd43b]' : 'text-white/25'} />
+      ))}
+    </span>
+  )
+}
+
+/** Choosing a side: clubs or nations, a row of shirts. */
+function TeamPicker({ label, value, onPick, other }: { label: string; value: string; onPick: (id: string) => void; other: string }) {
+  const [tab, setTab] = useState<'club' | 'nation'>(teamOf(value).kind)
+  const list = tab === 'club' ? CLUBS : NATIONS
+  const t = teamOf(value)
+  return (
+    <div className="rounded-[20px] bg-white/8 p-3 ring-1 ring-white/10">
+      <div className="flex items-center gap-2">
+        <span className="text-[11px] font-extrabold tracking-wide text-white/60 uppercase">{label}</span>
+        <span className="ml-auto flex rounded-full bg-black/30 p-0.5 text-[11px] font-extrabold">
+          {(['club', 'nation'] as const).map((k) => (
+            <button key={k} className={`rounded-full px-2.5 py-1 ${tab === k ? 'bg-white text-[#0b2e1a]' : 'text-white/70'}`} onClick={() => setTab(k)}>
+              {k === 'club' ? 'Clubs' : 'Nations'}
+            </button>
+          ))}
+        </span>
+      </div>
+      <div className="mt-1.5 flex items-center gap-2">
+        <Shirt color={t.home} />
+        <div className="min-w-0">
+          <div className="truncate font-display text-[18px] leading-tight font-extrabold">{t.name}</div>
+          <Stars n={t.stars} />
+        </div>
+      </div>
+      <div className="no-scrollbar -mx-3 mt-2 flex gap-1.5 overflow-x-auto px-3 pb-0.5">
+        {list.map((x) => (
+          <button
+            key={x.id}
+            disabled={x.id === other}
+            className={`flex shrink-0 flex-col items-center rounded-2xl px-2 py-1.5 text-[10.5px] font-extrabold transition ${x.id === value ? 'bg-white text-[#0b2e1a]' : 'bg-black/25 text-white/85'} disabled:opacity-30`}
+            onClick={() => onPick(x.id)}
+          >
+            <Shirt color={x.home} size={26} />
+            {x.short}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** The match's setup: format, sides, shirts, difficulty, length; then the kick-off. */
+export function MatchSetup({ title, onPlay, onBack }: { title: string; onPlay: (s: Setup) => void; onBack?: () => void }) {
+  const [s, set] = useState<Setup>(loadSetup)
+  const up = (p: Partial<Setup>) => set((o) => ({ ...o, ...p }))
+  const me = teamOf(s.mine)
+  const them = teamOf(s.theirs)
+  const kits = useMemo(() => kitsFor(me, them), [me, them])
+  const chip = (on: boolean) => `rounded-full px-3 py-1.5 text-[12.5px] font-extrabold transition ${on ? 'bg-[#ffd43b] text-[#16161c]' : 'bg-black/25 text-white/85'}`
+  return (
+    <div className="flex h-full flex-col overflow-y-auto bg-[radial-gradient(circle_at_50%_0%,#1f7a3f,#0b2e1a_70%)] px-4 pt-12 pb-6 text-white">
+      <div className="flex items-center gap-2">
+        {onBack && (
+          <button className="grid h-9 w-9 place-items-center rounded-full bg-black/30" onClick={onBack} aria-label="Retour">
+            <ChevronLeft size={20} />
+          </button>
+        )}
+        <div className="font-display text-[26px] leading-tight font-extrabold">{title}</div>
+      </div>
+      {/* The format: the five's walled maracana or the eleven at the stadium. */}
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        {([5, 11] as const).map((n) => (
+          <button key={n} className={`rounded-[18px] p-3 text-left ring-2 transition ${s.size === n ? 'bg-white/15 ring-[#ffd43b]' : 'bg-black/20 ring-transparent'}`} onClick={() => up({ size: n })}>
+            <svg viewBox="0 0 60 36" className="w-full">
+              <rect x="1" y="1" width="58" height="34" rx="3" fill={n === 5 ? '#2f9e44' : '#37b24d'} stroke="#fff" strokeWidth="1.2" />
+              <line x1="30" y1="1" x2="30" y2="35" stroke="#fff" strokeWidth="1" />
+              <circle cx="30" cy="18" r="5" fill="none" stroke="#fff" strokeWidth="1" />
+              {n === 11 && (
+                <>
+                  <rect x="1" y="10" width="8" height="16" fill="none" stroke="#fff" strokeWidth="1" />
+                  <rect x="51" y="10" width="8" height="16" fill="none" stroke="#fff" strokeWidth="1" />
+                </>
+              )}
+            </svg>
+            <div className="mt-1.5 font-display text-[16px] leading-tight font-extrabold">
+              {n} contre {n}
+            </div>
+            <div className="text-[11.5px] font-bold text-white/65">{n === 5 ? 'Le maracana, entre murs' : 'Le grand stade, avec arbitre et touches'}</div>
+          </button>
+        ))}
+      </div>
+      <div className="mt-3 space-y-2">
+        <TeamPicker label="Ton équipe" value={s.mine} other={s.theirs} onPick={(id) => up({ mine: id })} />
+        <TeamPicker label="Adversaire" value={s.theirs} other={s.mine} onPick={(id) => up({ theirs: id })} />
+      </div>
+      {/* The two shirts as they'll be on the pitch. */}
+      <div className="mt-3 flex items-center justify-center gap-3 rounded-[18px] bg-black/20 py-2">
+        <Shirt color={kits[0]} size={40} />
+        <span className="font-display text-[18px] font-extrabold text-white/70">contre</span>
+        <Shirt color={kits[1]} size={40} />
+      </div>
+      <div className="mt-3">
+        <div className="text-[11px] font-extrabold tracking-wide text-white/60 uppercase">Difficulté</div>
+        <div className="mt-1 flex flex-wrap gap-1.5">
+          {LEVELS.map((l, k) => (
+            <button key={l.id} className={chip(s.level === k)} onClick={() => up({ level: k })}>
+              {l.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="mt-3">
+        <div className="text-[11px] font-extrabold tracking-wide text-white/60 uppercase">Durée</div>
+        <div className="mt-1 flex flex-wrap gap-1.5">
+          {LENGTHS[s.size].map((sec, k) => (
+            <button key={sec} className={chip(s.length === k)} onClick={() => up({ length: k })}>
+              {sec / 60} min
+            </button>
+          ))}
+        </div>
+      </div>
+      <button
+        className="btn mt-5 w-full !bg-[#ffd43b] !py-3 !text-[#16161c] shadow-[0_4px_0_#e09a00]"
+        onClick={() => {
+          saveSetup(s)
+          onPlay(s)
+        }}
+      >
+        Coup d'envoi
+      </button>
+    </div>
+  )
+}
