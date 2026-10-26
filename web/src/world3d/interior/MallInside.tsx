@@ -642,9 +642,11 @@ function People({ working }: { working: string }) {
   // Shoppers walking the gallery, back and forth, bags in hand.
   const walkers = useMemo(() => {
     const r = rng('mall-passants')
+    // On the gallery's two free lanes, between the escalator, the fountain and its benches on one side and the
+    // palms on the other; they turn round before the food court (its tables, its stools, the ice-cream kiosk).
     return [...Array(9)].map((_, i) => {
       const gender: 'femme' | 'homme' = r() < 0.55 ? 'femme' : 'homme'
-      return { gender, look: randomLook(gender, r), z: -5 + (i % 5) * 2.5, x0: -8, x1: 34, speed: 1 + r() * 0.4, phase: r() * 60, kid: r() < 0.2 }
+      return { gender, look: randomLook(gender, r), z: (i % 2 ? 4.4 : -4.4) + (r() - 0.5) * 0.2, x0: -8 + r() * 2, x1: 19 + r() * 1.5, speed: 1 + r() * 0.4, phase: r() * 60, kid: r() < 0.2 }
     })
   }, [])
   const wr = useRef<(THREE.Group | null)[]>([])
@@ -656,10 +658,9 @@ function People({ working }: { working: string }) {
       const len = w.x1 - w.x0
       const p = ((t * w.speed + w.phase) % (2 * len)) / len
       const there = p < 1
-      // Round the fountain rather than through it.
       const x = there ? w.x0 + len * p : w.x1 - len * (p - 1)
-      const z = Math.abs(x - 12) < 4 ? w.z + Math.sign(w.z || 1) * (4 - Math.abs(x - 12)) : w.z
-      g.position.set(x, 0, z)
+      // Each on its own side of the lane, so the ones coming the other way pass by.
+      g.position.set(x, 0, w.z + (there ? 0.35 : -0.35) * Math.sign(w.z))
       g.rotation.y = there ? Math.PI / 2 : -Math.PI / 2
     })
   })
