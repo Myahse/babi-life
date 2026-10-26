@@ -50,7 +50,8 @@ const LINES = [
 // Each take's slot in the film; `at`: for a match, the film time its goal (or basket) lands on.
 const SLOTS = [
   { clip: 'intro', from: 0, to: 7.1 },
-  { clip: 'stade', from: 7.1, to: 15.1, at: 14.3 },
+  { clip: 'stade', from: 7.1, to: 13.0, at: 12.2 },
+  { clip: 'penalty', from: 13.0, to: 15.1, at: 14.3 },
   { clip: 'combat', from: 15.1, to: 19.8 },
   { clip: 'course', from: 19.8, to: 24.2 },
   { clip: 'kart', from: 24.2, to: 26.5 },
@@ -113,15 +114,16 @@ async function tap(page, name) {
  * A match played by the game's AI (both sides): a first run finds when the player's side scores, the
  * same match again (the lab's seed, the stopped clock) is taken from `lead` seconds before it.
  */
-async function match(b, lab, dir, lead, total) {
+async function match(b, lab, dir, lead, total, scored0 = (g) => g.time > 6 && g.score[0] > 0) {
   const ai = (page) =>
     page.evaluate(() => {
       const g = globalThis.streetMatch
       if (!g) return null
       g.switching = false
       for (const p of g.ps) p.human = false
-      return { time: g.time, score: g.score[0] }
+      return { time: g.time, score: g.score, kicks: g.shootout ? g.shootout.kicks[0] : [] }
     })
+  const done = (s) => s && scored0({ time: s.time, score: s.score, shootout: s.kicks.length ? { kicks: [s.kicks] } : null })
   let { ctx, page } = await phone(b)
   await page.goto(`${LAB}/city.html?${lab}`)
   await sleep(3000)
@@ -130,7 +132,7 @@ async function match(b, lab, dir, lead, total) {
     await tick(page)
     if (i % 60 === 0) await sleep(20)
     const s = await ai(page)
-    if (s && s.time > 6 && s.score > 0) goal = s.time
+    if (done(s)) goal = s.time
   }
   await ctx.close()
   if (goal === null) throw new Error(`${lab}: no goal in four minutes`)
@@ -147,7 +149,7 @@ async function match(b, lab, dir, lead, total) {
   for (let i = 0; i < total; i++) {
     await tick(page)
     const s = await ai(page)
-    if (scored === null && s?.score > 0) scored = i
+    if (scored === null && done(s)) scored = i
     await shoot(page, dir, i)
   }
   await ctx.close()
@@ -158,20 +160,19 @@ async function match(b, lab, dir, lead, total) {
 const TAKES = {
   // The stadium at the kick-off and just after: the camera on the pitch, the stands full.
   async intro(b, dir) {
+    // The salle de jeux: the room, the TVs, the boys at the consoles; Awa walks to the console and sits as she answers Keke.
     const { ctx, page } = await phone(b)
-    await page.goto(`${LAB}/city.html?view=fifa11&seed=3`)
-    await warm(page, 4 * FPS)
+    await page.goto(`${LAB}/city.html?view=interior&kind=gaming&awa=1&after=console-foot&wait=4500`)
+    await warm(page, 2 * FPS)
     for (let i = 0; i < need('intro'); i++) {
-      await page.evaluate(() => {
-        const g = globalThis.streetMatch
-        if (g) for (const p of g.ps) p.human = false
-      })
       await tick(page)
       await shoot(page, dir, i)
     }
     await ctx.close()
   },
-  stade: (b, dir) => match(b, 'view=fifa11&seed=9', dir, 14.3 - 7.1, need('stade') + 30),
+  stade: (b, dir) => match(b, 'view=fifa11&seed=9', dir, 12.2 - 7.1, need('stade') + 30),
+  // « Penalty… Et c'est but ! »: a match of three seconds, level, to the shoot-out; the first kick, in.
+  penalty: (b, dir) => match(b, 'view=fifa11&seed=9&length=3&pens=1', dir, 14.3 - 13.0, need('penalty') + 30, (g) => !!g.shootout && g.shootout.kicks[0][0] === true),
   basket: (b, dir) => match(b, 'view=hoops&seed=7', dir, 29.2 - 26.5, need('basket') + 20),
   foot: (b, dir) => match(b, 'view=foot5&seed=7', dir, 1.0, need('foot') + 20),
   // The fight: in, a three-hit series, again, a sweep, the kick; the other one standing still.
@@ -188,6 +189,8 @@ const TAKES = {
       plan[at] = ['press', k % 4 === 3 ? 'KeyK' : 'KeyJ']
     }
     for (let i = 0; i < need('combat'); i++) {
+      // « Elle m'a mis KO ! »: the other one nearly done in, the series puts him down.
+      if (i === 80) await page.evaluate(() => (globalThis.__combat.current.f[1].hp = 4))
       const a = plan[i]
       if (a?.[0] === 'down') await page.keyboard.down(a[1])
       else if (a?.[0] === 'up') await page.keyboard.up(a[1])
@@ -204,7 +207,22 @@ const TAKES = {
     await tap(page, /C'est parti/)
     await tap(page, /Le Taximan/)
     await warm(page, 9 * FPS)
+    // « Je te double sur la ligne ! »: both on the last lap just before the line, the taxi ahead; the player's
+    // nitro (by hand: the gauges emptied, so the autopilots fire none) takes it on the last metres.
+    await page.evaluate(() => {
+      const R = globalThis.__course.current
+      const tr = R.track
+      const n = tr.n
+      R.cars.forEach((c, k) => {
+        const s = n - (k ? 94 : 125)
+        const d = k ? 2.4 : -2.4
+        const i = Math.floor(s)
+        Object.assign(c, { lap: 1, half: true, s, i, d, x: tr.x[i] - tr.tz[i] * d, z: tr.z[i] + tr.tx[i] * d, heading: Math.atan2(tr.tx[i], tr.tz[i]), speed: 33, progress: n + s, nitro: 0 })
+      })
+      R.traffic.length = 0
+    })
     for (let i = 0; i < need('course'); i++) {
+      if (i === 68) await page.evaluate(() => (globalThis.__course.current.cars[0].boost = 2.2))
       await tick(page)
       await shoot(page, dir, i)
     }
@@ -215,6 +233,14 @@ const TAKES = {
     await page.goto(`${LAB}/city.html?view=kart`)
     await warm(page, 11 * FPS)
     for (let i = 0; i < need('kart'); i++) {
+      // « Qui a mis la banane là ?! »: one lying on the line, a few metres ahead.
+      if (i === 8)
+        await page.evaluate(() => {
+          const r = globalThis.kartRace
+          const k = r.karts.find((x) => x.human)
+          const [fx, fz] = [Math.sin(k.heading), Math.cos(k.heading)]
+          r.hazards.push({ id: 'film', kind: 'banane', x: k.x + fx * 11, z: k.z + fz * 11, s: k.s + 11, d: k.d, ttl: 40, owner: -1, seed: 0.4 })
+        })
       await tick(page)
       await shoot(page, dir, i)
     }
