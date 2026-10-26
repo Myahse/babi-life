@@ -6,6 +6,7 @@ import { useSession } from '../store/session'
 import type { BingoCard, BingoGame, BingoRoom, BingoState, Sim, World } from '../lib/types'
 import type { Act } from './phoneApps'
 import { BingoMark } from '../components/AppLogo'
+import { StakeField, stakeOK } from '../components/StakeField'
 
 /**
  * Babi Bingo (backend game/bingo.go, sims/bingo.go): four rooms whose draws
@@ -408,13 +409,8 @@ function Room({ g, room, st, now, sim, act, cardsLeft, stakes, perDraw, onBack, 
         )}
         {free > 0 ? (
           <>
-            <div className="mt-3 flex items-center gap-1.5">
-              <span className="text-[11px] font-extrabold tracking-wider text-[#6b7083] uppercase">Mise</span>
-              {stakes.map((s) => (
-                <button key={s} className={`flex-1 rounded-full py-1.5 text-[13px] font-extrabold ${stake === s ? 'bg-[#7b2ff7] text-white' : 'bg-[#f1ecfb] text-[#4c1d95]'}`} onClick={() => setStake(s)}>
-                  {nf(s)}
-                </button>
-              ))}
+            <div className="mt-3">
+              <StakeField usual={stakes} value={stake} onChange={setStake} look="light" label="Ou tape le prix du carton" disabled={busy} />
             </div>
             <div className="mt-2 flex items-center gap-2">
               <button className="icon-btn bg-[#f1ecfb] text-[#4c1d95]" onClick={() => setCount((c) => Math.max(1, c - 1))} aria-label="Un carton de moins">
@@ -426,7 +422,7 @@ function Room({ g, room, st, now, sim, act, cardsLeft, stakes, perDraw, onBack, 
               <button className="icon-btn bg-[#f1ecfb] text-[#4c1d95]" onClick={() => setCount((c) => Math.min(free, c + 1))} aria-label="Un carton de plus">
                 <Plus size={18} />
               </button>
-              <button className="btn flex-1 !px-2 !py-2.5 text-[15px] whitespace-nowrap" style={{ background: 'linear-gradient(180deg,#9b5cff,#6a1ee0)' }} disabled={busy || sim.money < n * stake} onClick={() => void buy()}>
+              <button className="btn flex-1 !px-2 !py-2.5 text-[15px] whitespace-nowrap" style={{ background: 'linear-gradient(180deg,#9b5cff,#6a1ee0)' }} disabled={busy || !stakeOK(stake, stakes) || sim.money < n * stake} onClick={() => void buy()}>
                 {sim.money < n * stake ? "Pas assez d'argent" : `Prendre ${nf(n * stake)}`}
               </button>
             </div>

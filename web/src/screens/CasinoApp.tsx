@@ -1,15 +1,19 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent } from 'react'
-import { ChevronLeft, CircleDot, Spade, Ticket } from 'lucide-react'
+import { ChevronLeft, CircleDot, Plane, Spade, Ticket, TrendingUp } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
 import { haptic } from '../lib/native'
 import { useSession } from '../store/session'
 import type { ActionResult, BlackjackView, RouletteBet, RouletteSpin, ScratchResult, ScratchTicket, Sim, World } from '../lib/types'
 import { CardBack, PlayingCard } from '../components/PlayingCards'
 import type { Act } from './phoneApps'
+import { StakeField, stakeOK } from '../components/StakeField'
+import { Envol } from './casino/Envol'
+import { Trade } from './casino/Trade'
 
 /**
  * Babi Casino (backend game/casino.go, sims/casino.go): the roulette with its
- * one zero, le 21 against the bank, the tickets à gratter. Every round is
+ * one zero, le 21 against the bank, the tickets à gratter, L'Envol and Babi
+ * Trade (casino/Envol.tsx, casino/Trade.tsx). Every round is
  * drawn on the server and paid at once; the app shows it (the wheel turning,
  * the cards dealt, the silver scratched) and then tells the game. The game's
  * money only, adults only, a number of rounds a day.
@@ -21,7 +25,7 @@ type Props = { world: World; sim: Sim; act: Act; /** While a round is shown (the
 
 export function CasinoApp({ world, sim, act, onConfirmAdult }: Omit<Props, 'hold'> & { onConfirmAdult: () => Promise<void> }) {
   const adult = useSession((s) => !!s.user?.adult)
-  const [table, setTable] = useState<'roulette' | '21' | 'grattage' | null>(null)
+  const [table, setTable] = useState<'roulette' | '21' | 'grattage' | 'envol' | 'trade' | null>(null)
   const [held, hold] = useState<number | null>(null)
   const roundsLeft = (world.casino?.perDay ?? 300) - (sim.today?.casino?.times ?? 0)
   const shell = '-mx-3 -mt-1 min-h-full p-3 pb-6 text-white'
@@ -68,10 +72,26 @@ export function CasinoApp({ world, sim, act, onConfirmAdult }: Omit<Props, 'hold
         <Scratch world={world} sim={sim} act={act} hold={hold} />
       </div>
     )
+  if (table === 'envol')
+    return (
+      <div className={shell} style={bg}>
+        {back("L'Envol")}
+        <Envol world={world} sim={sim} act={act} />
+      </div>
+    )
+  if (table === 'trade')
+    return (
+      <div className={shell} style={{ background: 'radial-gradient(circle at 50% 0%, #1d3b7a, #0b1530 55%, #050a1a)' }}>
+        {back('Babi Trade')}
+        <Trade world={world} sim={sim} act={act} />
+      </div>
+    )
   const tiles = [
     { id: 'roulette' as const, title: 'La roulette', text: 'Le rouge, le noir, ton numéro plein payé 35 fois. Un seul zéro.', icon: CircleDot, colours: ['#e5383b', '#7a0f1f'] },
     { id: '21' as const, title: 'Le 21', text: 'Contre la banque : approche 21 sans le dépasser. Blackjack payé 3 pour 2.', icon: Spade, colours: ['#2b2f45', '#0f1222'] },
     { id: 'grattage' as const, title: 'Tickets à gratter', text: 'Pinda, Akwaba, Super Banco : trois fois la même somme, tu la gagnes.', icon: Ticket, colours: ['#ffcc33', '#d98a00'] },
+    { id: 'envol' as const, title: "L'Envol", text: "L'avion décolle, le multiplicateur monte : encaisse avant qu'il parte !", icon: Plane, colours: ['#ff5a7a', '#8a1238'] },
+    { id: 'trade' as const, title: 'Babi Trade', text: 'Cacao, café, or : hausse ou baisse dans 30 s ? Un jeu de hasard, pas du trading.', icon: TrendingUp, colours: ['#3d8bff', '#16307a'] },
   ]
   return (
     <div className={shell} style={bg}>
@@ -92,7 +112,7 @@ export function CasinoApp({ world, sim, act, onConfirmAdult }: Omit<Props, 'hold
       <p className="mt-4 text-center text-[11.5px] leading-snug font-bold text-white/60">
         Argent du jeu seulement · 18 ans et plus · encore {Math.max(0, roundsLeft)} tours aujourd'hui.
         <br />
-        La roulette rend 36 pour 37 misés, le 21 un peu moins que ce qu'on mise, les tickets environ deux tiers de leur prix.
+        La roulette rend 36 pour 37 misés, le 21 un peu moins que ce qu'on mise, les tickets environ deux tiers de leur prix, L'Envol 95 %, Babi Trade 92,5 %.
       </p>
     </div>
   )
@@ -106,7 +126,7 @@ function Brand() {
       </span>
       <div>
         <div className="font-display text-[24px] leading-none font-extrabold text-[#ffcc33]">Babi Casino</div>
-        <div className="text-[12px] font-bold text-white/75">Roulette, 21 et tickets à gratter</div>
+        <div className="text-[12px] font-bold text-white/75">Roulette, 21, tickets, Envol et Trade</div>
       </div>
     </div>
   )
@@ -180,6 +200,7 @@ function Roulette({ world, sim, act, hold }: Props) {
     setResult(null)
     setError('')
     const k = keyOf(s)
+    if (!stakeOK(chip, chips, maxTotal)) return setError(`Un jeton de ${nf(chips[0])} à ${nf(maxTotal)} Djai.`)
     if (total + chip > maxTotal) return setError(`${nf(maxTotal)} Djai au plus sur le tapis.`)
     if (!bets[k] && Object.keys(bets).length >= maxBets) return setError(`${maxBets} mises au plus.`)
     haptic('light')
@@ -281,6 +302,9 @@ function Roulette({ world, sim, act, hold }: Props) {
             {nf(c)}
           </button>
         ))}
+      </div>
+      <div className="mt-2">
+        <StakeField usual={chips} value={chip} onChange={setChip} max={maxTotal} label="Ou tape ton jeton" chips={false} disabled={spinning} />
       </div>
       <div className="mt-2 text-center text-[12.5px] font-bold text-white/80">
         Sur le tapis : {nf(total)} / {nf(maxTotal)} Djai
@@ -393,14 +417,10 @@ function Blackjack({ world, sim, act }: Props) {
         </div>
       ) : (
         <>
-          <div className="mt-3 flex items-center gap-1.5">
-            {stakes.map((s) => (
-              <button key={s} className={`flex-1 rounded-full py-2 text-[13px] font-extrabold ${stake === s ? 'bg-[#ffcc33] text-[#5a1a00]' : 'bg-white/12'}`} onClick={() => setStake(s)}>
-                {nf(s)}
-              </button>
-            ))}
+          <div className="mt-3">
+            <StakeField usual={stakes} value={stake} onChange={setStake} money={sim.money} disabled={busy} />
           </div>
-          <button className="btn mt-2 w-full !py-3" style={{ background: 'linear-gradient(180deg,#ffe27a,#ff9f1a)', color: '#5a1a00' }} disabled={busy || sim.money < stake} onClick={() => void move('distribuer')}>
+          <button className="btn mt-2 w-full !py-3" style={{ background: 'linear-gradient(180deg,#ffe27a,#ff9f1a)', color: '#5a1a00' }} disabled={busy || !stakeOK(stake, stakes) || sim.money < stake} onClick={() => void move('distribuer')}>
             {sim.money < stake ? "Pas assez d'argent" : `Distribuer · ${nf(stake)}`}
           </button>
         </>

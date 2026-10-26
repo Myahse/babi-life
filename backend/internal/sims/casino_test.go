@@ -37,8 +37,11 @@ func TestBlackjackHand(t *testing.T) {
 	if _, _, _, err := s.playBlackjack(nil, "tirer", 0, noLuck()); !errors.Is(err, errNoHand) {
 		t.Errorf("a card with no hand: %v", err)
 	}
-	if _, _, _, err := s.playBlackjack(nil, "distribuer", 300, noLuck()); !errors.Is(err, errBJStake) {
-		t.Errorf("300 at the table: %v", err)
+	if _, _, _, err := s.playBlackjack(nil, "distribuer", 50, noLuck()); !errors.Is(err, errBJStake) {
+		t.Errorf("50 at the table: %v", err)
+	}
+	if _, _, _, err := s.playBlackjack(nil, "distribuer", 6000, noLuck()); !errors.Is(err, errBJStake) {
+		t.Errorf("6 000 at the table: %v", err)
 	}
 	rng := noLuck()
 	for range 50 {

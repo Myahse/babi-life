@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackView } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackView, EnvolState, TradeState } from './types'
 import { useSession } from '../store/session'
 import { API_BASE as BASE } from './env'
 import { blobUrl } from './blobUrl'
@@ -421,5 +421,12 @@ export const api = {
   blackjack: (id: string) => request<{ hand: BlackjackView | null }>(`/sims/${id}/casino/21`),
   blackjackMove: (id: string, move: 'distribuer' | 'tirer' | 'rester' | 'doubler', stake = 0) => post<ActionResult>(`/sims/${id}/casino/21`, { move, stake }),
   scratch: (id: string, ticket: string) => post<ActionResult>(`/sims/${id}/casino/grattage`, { ticket }),
+  /** L'Envol (backend sims/envol.go): the round (held till the next thing happens, 2 s at most), a bet on the next plane, cashing in now. */
+  envol: (id: string) => request<EnvolState>(`/sims/${id}/casino/envol?attendre=1`),
+  envolBet: (id: string, stake: number, auto: number) => post<ActionResult>(`/sims/${id}/casino/envol`, { stake, auto }),
+  envolCash: (id: string) => post<ActionResult>(`/sims/${id}/casino/envol/encaisser`, {}),
+  /** Babi Trade (backend sims/trade.go): the last minutes of a price and the Sim's calls; a call taken now. */
+  trade: (id: string, asset: string) => request<TradeState>(`/sims/${id}/casino/trade?asset=${encodeURIComponent(asset)}`),
+  tradeCall: (id: string, asset: string, dir: 'hausse' | 'baisse', stake: number, secs: number) => post<ActionResult>(`/sims/${id}/casino/trade`, { asset, dir, stake, secs }),
   endParty: (id: string) => post<ActionResult>(`/sims/${id}/soiree/fin`, {}),
 }
