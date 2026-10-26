@@ -28,6 +28,9 @@ import { FilmingPhone } from './BlockHuman'
  */
 export const FarGrow = createContext<{ grow: number; from: number; over: number; /** How much broader across, at full bulk (two fifths by default). */ wide?: number }>({ grow: 0.15, from: 18, over: 40 })
 
+/** The city seen from its usual height (some 80 m off, open/OpenWorld.tsx): taller and broader from 22 m, in full at 77, as at the stadium. */
+export const CITY_FAR = { grow: 0.45, from: 22, over: 55, wide: 0.55 }
+
 /** How far into the bulk a body `d` metres from the camera is (0 to 1), on a screen drawing `ratio` pixels a point. */
 export function farBulk(d: number, ratio: number, { from, over }: { from: number; over: number }) {
   const fewer = Math.min(2, Math.max(1, 1.5 / ratio))

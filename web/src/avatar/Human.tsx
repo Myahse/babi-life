@@ -752,8 +752,8 @@ type Props = { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; /*
  * switch has some slack so nobody flickers between the two at the border.
  */
 const FAR = 30
-/** Past this, nobody is drawn at all: a figure this far is a few pixels, and a crowd costs draws. */
-const GONE = 110
+/** Past this, nobody is drawn at all: a figure this far is a few pixels, and a crowd costs draws (further on a phone with the cores for it). */
+const GONE = typeof navigator === 'undefined' || (navigator.hardwareConcurrency ?? 4) > 4 ? 150 : 110
 /** Everyone in full detail, however far (the videos: marketing/). */
 export const FullDetail = createContext(false)
 /** Up to how far the full, animated Sim is drawn: further in a match, where the far players' running, kicks and tackles are the game. */
