@@ -31,7 +31,7 @@ export function SotraStops({ nav, seed, hour, night }: { nav: Nav; seed: string;
   const all = useMemo(() => {
     const out: Stop[] = []
     for (const e of nav.edges) {
-      if (e.width < WIDE || e.len < 60 || nav.ys[e.a] || nav.ys[e.b]) continue
+      if (e.width < WIDE || e.walled || e.len < 60 || nav.ys[e.a] || nav.ys[e.b]) continue
       const [a, b] = [nav.nodes[e.a], nav.nodes[e.b]]
       const m: XZ = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]
       if (hash(Math.round(m[0]), Math.round(m[1]), 211) > 0.45) continue

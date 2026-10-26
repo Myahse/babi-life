@@ -880,7 +880,16 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const clears = useMemo(() => new Map(spots.filter((x) => x.landmark).map((x) => [x.id, x.landmark!])), [spots])
   const made = useMemo<XZ[]>(() => [...resolved.values()].filter((r) => !r.real && !r.field && !r.station && !clears.has(r.id) && !isSoiree(r.id)).map((r) => r.center), [resolved, clears])
   const marks = useMemo(() => [...resolved.values()].filter((r) => clears.has(r.id)).map((r) => ({ at: r.center, r: clears.get(r.id)! })), [resolved, clears])
-  const nav = useMemo(() => new Nav([...chunks.values()].filter((c) => !c.data.key.includes(':')).map((c) => c.data), (c, ring) => inTheWay(made, c, marks, ring)), [chunks, made, marks])
+  // The landmarks' buildings stand in their cleared ground's middle: the traffic keeps off the streets the map runs through there.
+  const nav = useMemo(
+    () =>
+      new Nav(
+        [...chunks.values()].filter((c) => !c.data.key.includes(':')).map((c) => c.data),
+        (c, ring) => inTheWay(made, c, marks, ring),
+        marks.map((m) => ({ at: m.at, r: m.r * 0.6 })),
+      ),
+    [chunks, made, marks],
+  )
 
   // The soirées stand at the house they're thrown in (its resolved lot), else on the street nearest
   // where the host lives, facing it; they go when they end.
