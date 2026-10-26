@@ -121,9 +121,11 @@ L'argent de poche : un cinquième de la somme de la semaine à chaque anniversai
 | Politique : parti, caution présidentielle, caution de maire, gang, campagne | 50 000 ; 200 000 ; 50 000 ; 30 000 ; 20 000 à 150 000 l'action | 625 à 2 500 |
 | Sectes : initiation, cotisation du lundi | 10 000 à 30 000 ; 2 000 à 7 000 | |
 | Paris (marge 6 à 8 %) ; loto (rend 83 %, 62 % ou 21 % selon 1, 2 ou 3 numéros) | | |
-| Machines à sous (`game/slots.go`) : maquis 100 à 500 le tour, casino de l'Hôtel Ivoire 500 à 2 000 ; elles rendent environ 89 % des mises sur la durée (`SlotsReturn`, vérifié par son test), un tour sur trois gagne quelque chose | | |
+| Machines à sous (`game/slots.go`) : maquis 100 à 500 le tour (tout montant entre les deux), casino de l'Hôtel Ivoire 500 à 2 000 ; elles rendent environ 89 % des mises sur la durée (`SlotsReturn`, vérifié par son test), un tour sur trois gagne quelque chose | | |
 | Babi Bingo (`game/bingo.go`) : 100 à 1 000 le carton, 4 cartons par partie ; chaque salle rend environ 85 % des mises (`BingoReturn`, vérifié par son test : entre 80 et 90 %), un carton sur quatre ou cinq gagne quelque chose | | |
-| Babi Casino (`game/casino.go`) : roulette (jetons de 100 à 2 000, 5 000 par tour au plus ; rend 36/37), le 21 (100 à 5 000 ; ≈ 98 % bien joué), tickets à gratter (200, 500, 1 000 ; rendent 62 à 66 %) | | |
+| Babi Casino (`game/casino.go`) : roulette (jetons de 100 à 5 000, tapés ou de 100 à 2 000 en un geste, 5 000 par tour au plus ; rend 36/37), le 21 (100 à 5 000 ; ≈ 98 % bien joué), tickets à gratter (200, 500, 1 000 ; rendent 62 à 66 %) | | |
+| L'Envol (`game/envol.go`) : 100 à 5 000 la mise, un envol toutes les 40 s ; rend 95 % quel que soit le moment où l'on encaisse (`EnvolReturn`, vérifié par son test) | | |
+| Babi Trade (`game/envol.go`) : 100 à 5 000 le pari, 3 ouverts au plus ; juste 1,85 fois la mise, rend 92,5 % (les cours sont un hasard sans tendance, vérifié par son test) | | |
 
 Un mandat de président·e rapporte 140 000 pour 200 000 de caution et une campagne : c'est un honneur qu'on se paie, pas un métier.
 
@@ -148,7 +150,7 @@ Par compte (tous ses persos ensemble), de minuit à minuit à Abidjan. Le Babi P
 | `location` (Dodo, chez un joueur) | 250 000 | « L'hôte ne peut plus être payé sur Dodo aujourd'hui : réessaie demain. » |
 | `machine` (les tours de machine à sous) | 200 tours | « Assez de machine à sous pour aujourd'hui : reviens demain. » Ce qu'elles paient n'est pas compté comme gagné (comme les paris, ce sont les mises qui reviennent, moins l'avantage de la maison). |
 | `bingo` (les cartons de bingo) | 120 cartons | « Assez de cartons de bingo pour aujourd'hui : reviens demain. » Ce qu'ils paient n'est pas compté comme gagné, comme les paris. |
-| `casino` (les tours de Babi Casino : un tour de roue, une main, un ticket) | 300 tours | « Le casino ferme pour toi aujourd'hui : reviens demain. » Ce qu'ils paient n'est pas compté comme gagné. |
+| `casino` (les tours de Babi Casino : un tour de roue, une main, un ticket, une mise à L'Envol, un pari à Babi Trade) | 300 tours | « Le casino ferme pour toi aujourd'hui : reviens demain. » Ce qu'ils paient n'est pas compté comme gagné. |
 
 Les comptes sont gardés dans la table `earnings` (migration `059_earnings.sql`), lus avec le perso et enregistrés avec lui dans la même transaction (`sims/money.go`). La synchronisation hors ligne (`sims/sync.go`) rejoue les actions par les mêmes fonctions : elle compte pareil, et un téléphone qui ment sur l'heure ne crée pas de jour en plus (le temps est borné entre la dernière fois que le serveur l'a entendu et maintenant). L'appli Boulot montre la journée (le service fait ou pas, les petits boulots, le total), envoyée par le serveur avec le perso (`today`).
 

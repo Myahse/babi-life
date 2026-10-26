@@ -4,6 +4,7 @@ import { amount } from '../game/rules'
 import { haptic } from '../lib/native'
 import type { ActionResult, Sim, SlotSpin, World } from '../lib/types'
 import { Coin } from './ui'
+import { StakeField, stakeOK } from './StakeField'
 
 // La machine à sous (backend game/slots.go, sims/machine.go): at the maquis
 // or at the Hôtel Ivoire's casino, the Sim sits at a machine; here, the
@@ -152,7 +153,7 @@ export function MachineSheet({
   const casino = a?.interaction.id === 'machine-casino'
   const stakes = world.slots?.stakes[a?.interaction.id ?? ''] ?? [100]
   const session = a?.machine
-  const [stake, setStake] = useState(() => (session && stakes.includes(session.stake) ? session.stake : stakes[0]))
+  const [stake, setStake] = useState(() => (session && stakeOK(session.stake, stakes) ? session.stake : stakes[0]))
   const [reels, setReels] = useState<string[]>(session?.last?.reels ?? ['sept', 'cacao', 'elephant'])
   const [stopped, setStopped] = useState(3)
   const [pull, setPull] = useState(0)
@@ -275,18 +276,13 @@ export function MachineSheet({
             </div>
 
             {/* The stake, and spin */}
-            <div className="mt-3 flex items-center gap-2">
-              <span className="text-[11px] font-extrabold tracking-wider text-white/70 uppercase">Mise</span>
-              {stakes.map((n) => (
-                <button key={n} className={`flex-1 rounded-full py-2 text-[14px] font-extrabold transition ${stake === n ? 'bg-[#ffcc33] text-[#5a1a00]' : 'bg-white/12 text-white'}`} onClick={() => setStake(n)} disabled={busy}>
-                  {amount(n)}
-                </button>
-              ))}
+            <div className="mt-3">
+              <StakeField usual={stakes} value={stake} onChange={setStake} money={sim.money} disabled={busy} />
             </div>
             <button
               className="mt-3 w-full rounded-[18px] bg-gradient-to-b from-[#ffe27a] to-[#ff9f1a] py-3.5 font-display text-[22px] font-extrabold tracking-wide text-[#5a1a00] shadow-[inset_0_-4px_0_rgba(0,0,0,0.18),0_6px_18px_rgba(255,160,26,0.35)] transition active:scale-[0.98] disabled:opacity-50"
               onClick={() => void go()}
-              disabled={busy || sim.money < stake || spinsLeft <= 0}
+              disabled={busy || !stakeOK(stake, stakes) || sim.money < stake || spinsLeft <= 0}
             >
               {sim.money < stake ? "Pas assez d'argent" : spinsLeft <= 0 ? 'Reviens demain' : `LANCER · ${amount(stake)}`}
             </button>

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"net/http"
-	"slices"
 
 	"github.com/jackc/pgx/v5"
 
@@ -26,7 +25,7 @@ var (
 	errCasinoMinor  = errors.New("le casino, c'est à partir de 18 ans")
 	errNoBets       = fmt.Errorf("pose de 1 à %d mises", game.RouletteMaxBets)
 	errTooMuchCloth = fmt.Errorf("%d Djai au plus sur le tapis à chaque tour", game.RouletteMaxTotal)
-	errBJStake      = errors.New("cette mise n'est pas proposée à la table")
+	errBJStake      = fmt.Errorf("à cette table, on mise de %s à %s Djai", money(game.BlackjackStakes[0]), money(game.BlackjackStakes[len(game.BlackjackStakes)-1]))
 	errHandOpen     = errors.New("finis d'abord ta main en cours")
 	errNoHand       = errors.New("pas de main en cours : distribue")
 	errTicket       = errors.New("ticket inconnu")
@@ -200,7 +199,7 @@ func (s *Sim) playBlackjack(hand *game.BlackjackHand, move string, stake int, rn
 		if hand != nil && !hand.Done {
 			return game.Outcome{}, nil, nil, errHandOpen
 		}
-		if !slices.Contains(game.BlackjackStakes, stake) {
+		if !game.StakeIn(stake, game.BlackjackStakes) {
 			return game.Outcome{}, nil, nil, errBJStake
 		}
 		if s.Money < stake {

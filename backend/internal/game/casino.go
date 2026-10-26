@@ -2,6 +2,7 @@ package game
 
 import (
 	"errors"
+	"fmt"
 	"math/rand/v2"
 )
 
@@ -26,7 +27,14 @@ type RouletteBet struct {
 	Stake  int    `json:"stake"`
 }
 
-// The chips, the most on the cloth at a spin, the most bets at once.
+// StakeIn: whether a stake typed by the player is one a game takes: any whole amount
+// from its least usual stake to its most (the usual ones are offered in a tap).
+func StakeIn(stake int, usual []int) bool {
+	return len(usual) > 0 && stake >= usual[0] && stake <= usual[len(usual)-1]
+}
+
+// The chips, the most on the cloth at a spin, the most bets at once. A chip of
+// any other amount (RouletteChips[0] at least) may be typed.
 var RouletteChips = []int{100, 500, 1000, 2000}
 
 const (
@@ -48,7 +56,7 @@ func RouletteColour(n int) string {
 	return "noir"
 }
 
-var errRouletteBet = errors.New("mise de roulette inconnue")
+var errRouletteBet = fmt.Errorf("mise de roulette inconnue (%d Djai au moins par case)", RouletteChips[0])
 
 // RouletteCheck: a bet that can be placed.
 func RouletteCheck(b RouletteBet) error {
@@ -65,7 +73,7 @@ func RouletteCheck(b RouletteBet) error {
 	default:
 		return errRouletteBet
 	}
-	if b.Stake <= 0 || b.Stake%100 != 0 {
+	if b.Stake < RouletteChips[0] || b.Stake > RouletteMaxTotal {
 		return errRouletteBet
 	}
 	return nil

@@ -119,13 +119,15 @@ func (h *Handler) myLoto(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusOK, out)
 }
 
-// dueSQL: whether the Sim ($1) has bets, loto tickets and bingo cards due at
-// $3 (Unix seconds); selected along with the Sim in mutateTx.
+// dueSQL: whether the Sim ($1) has bets, loto tickets, bingo cards, Envol bets
+// and Babi Trade calls due at $3 (Unix seconds); selected along with the Sim in mutateTx.
 const dueSQL = `EXISTS(SELECT 1 FROM bets WHERE sim = $1 AND status = 'open' AND settles_at <= $3),
 	EXISTS(SELECT 1 FROM loto_tickets WHERE sim = $1 AND status = 'open' AND draw <= $3),
-	EXISTS(SELECT 1 FROM bingo_cards WHERE sim = $1 AND status = 'open' AND settles_at <= $3)`
+	EXISTS(SELECT 1 FROM bingo_cards WHERE sim = $1 AND status = 'open' AND settles_at <= $3),
+	EXISTS(SELECT 1 FROM envol_bets WHERE sim = $1 AND status = 'open' AND settles_at <= $3),
+	EXISTS(SELECT 1 FROM trade_bets WHERE sim = $1 AND status = 'open' AND expiry_at <= $3)`
 
-type dueTickets struct{ bets, tickets, bingo bool }
+type dueTickets struct{ bets, tickets, bingo, envol, trade bool }
 
 // settle: the bets, loto tickets and bingo cards whose matches or draw are over
 // are won or lost; the winnings are paid. Run on every refresh of the Sim (mutateTx).
@@ -146,6 +148,18 @@ func settle(ctx context.Context, tx pgx.Tx, s *Sim, due dueTickets) ([]Event, er
 			return nil, err
 		}
 		events = append(events, won...)
+	}
+	if due.envol {
+		won, err := settleEnvol(ctx, tx, s, now)
+		if err != nil {
+			return nil, err
+		}
+		events = append(events, won...)
+	}
+	if due.trade {
+		if err := settleTrade(ctx, tx, s, now); err != nil {
+			return nil, err
+		}
 	}
 	if !due.tickets {
 		return events, nil

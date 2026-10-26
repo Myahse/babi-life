@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"net/http"
-	"slices"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -55,8 +54,8 @@ func (s *Sim) spin(stake int, rng *rand.Rand) (game.Outcome, []Event, error) {
 	if s.stage().ID != game.StageAdulte {
 		return game.Outcome{}, nil, errSlotsMinor
 	}
-	if !slices.Contains(game.SlotStakes[a.Interaction.ID], stake) {
-		return game.Outcome{}, nil, errSlotStake
+	if usual := game.SlotStakes[a.Interaction.ID]; !game.StakeIn(stake, usual) {
+		return game.Outcome{}, nil, fmt.Errorf("%w : de %s à %s Djai", errSlotStake, money(usual[0]), money(usual[len(usual)-1]))
 	}
 	if s.Money < stake {
 		return game.Outcome{}, nil, game.ErrNotEnoughMoney

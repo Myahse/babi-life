@@ -24,10 +24,13 @@ func TestRouletteReturn(t *testing.T) {
 	if RouletteColour(0) != "vert" || RouletteColour(32) != "rouge" || RouletteColour(15) != "noir" {
 		t.Error("the wheel's colours")
 	}
-	for _, b := range []RouletteBet{{Kind: "plein", Number: 37, Stake: 100}, {Kind: "douzaine", Number: 4, Stake: 100}, {Kind: "rouge", Stake: 150}, {Kind: "cheval", Stake: 100}} {
+	for _, b := range []RouletteBet{{Kind: "plein", Number: 37, Stake: 100}, {Kind: "douzaine", Number: 4, Stake: 100}, {Kind: "rouge", Stake: 50}, {Kind: "noir", Stake: 6000}, {Kind: "cheval", Stake: 100}} {
 		if RouletteCheck(b) == nil {
 			t.Errorf("%+v accepted", b)
 		}
+	}
+	if err := RouletteCheck(RouletteBet{Kind: "rouge", Stake: 750}); err != nil {
+		t.Errorf("750 typed on rouge: %v", err)
 	}
 }
 

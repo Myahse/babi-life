@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"net/http"
-	"slices"
 	"sort"
 	"time"
 
@@ -26,7 +25,7 @@ import (
 
 var (
 	errBingoGame  = errors.New("salle de bingo inconnue")
-	errBingoStake = errors.New("cette mise n'est pas proposée")
+	errBingoStake = fmt.Errorf("une carte coûte de %s à %s Djai", money(game.BingoStakes[0]), money(game.BingoStakes[len(game.BingoStakes)-1]))
 	errBingoCards = fmt.Errorf("de 1 à %d cartons par partie", game.BingoCardsPerDraw)
 	errBingoMinor = errors.New("le bingo, c'est à partir de 18 ans")
 )
@@ -225,7 +224,7 @@ func (s *Sim) bingoCards(gameID string, n, stake, held int, rng *rand.Rand) ([][
 		return nil, errBingoGame
 	case s.stage().ID != game.StageAdulte:
 		return nil, errBingoMinor
-	case !slices.Contains(game.BingoStakes, stake):
+	case !game.StakeIn(stake, game.BingoStakes):
 		return nil, errBingoStake
 	case n < 1 || held+n > game.BingoCardsPerDraw:
 		return nil, errBingoCards

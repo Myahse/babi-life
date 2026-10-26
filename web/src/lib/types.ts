@@ -258,7 +258,18 @@ export type World = {
   /** Babi Bingo (game/bingo.go): the four games, the stakes, the cards a draw and a day. */
   bingo?: { games: BingoGame[]; stakes: number[]; perDraw: number; perDay: number }
   /** Babi Casino (game/casino.go): the roulette's chips and limits, le 21's stakes, the tickets, the rounds a day. */
-  casino?: { chips: number[]; maxTotal: number; maxBets: number; stakes: number[]; tickets: ScratchTicket[]; perDay: number }
+  casino?: {
+    chips: number[]
+    maxTotal: number
+    maxBets: number
+    stakes: number[]
+    tickets: ScratchTicket[]
+    perDay: number
+    /** L'Envol (game/envol.go): a round every `period` s, `wait` s of bets, a flight of `maxFlight` s at most to ×`max`. */
+    envol?: { stakes: number[]; period: number; wait: number; maxFlight: number; max: number }
+    /** Babi Trade: the made-up prices, the stakes, the lengths (s), what a right call pays, the calls open at once. */
+    trade?: { assets: TradeAsset[]; stakes: number[]; secs: number[]; pays: number; open: number }
+  }
   /** Vehicles to buy on Bolide, and the places to keep them (backend game/vehicles.go). */
   vehicles?: VehicleModel[]
   parkings?: ParkingKind[]
@@ -381,6 +392,19 @@ export type RouletteSpin = { number: number; colour: 'rouge' | 'noir' | 'vert'; 
 export type BlackjackView = { stake: number; player: number[]; dealer: number[]; total: number; shown: number; doubled?: boolean; done: boolean; result?: 'blackjack' | 'gagne' | 'egalite' | 'perdu' | 'saute'; paid?: number }
 export type ScratchTicket = { id: string; name: string; about: string; price: number; prizes: { amount: number; odds: number }[] }
 export type ScratchResult = { ticket: string; cells: number[]; prize: number }
+/** L'Envol (backend sims/envol.go): the round (attente: bets taken; vol; parti: its crash told), the last planes, the Sim's bets, this round's players. */
+export type EnvolBet = { id: number; round: number; stake: number; auto?: number; cashed?: number; status: 'open' | 'won' | 'lost'; payout?: number }
+export type EnvolState = {
+  now: number
+  round: { n: number; phase: 'attente' | 'vol' | 'parti'; takeoff: number; next: number; crash?: number; flown?: number }
+  history: number[]
+  mine: EnvolBet[]
+  players: { name: string; stake: number; mine: boolean; cashed?: number }[]
+}
+/** Babi Trade (backend sims/trade.go): a made-up price, a call on it, the last minutes of a price (one a second from `from`). */
+export type TradeAsset = { id: string; label: string; unit: string }
+export type TradeCall = { id: number; asset: string; dir: 'hausse' | 'baisse'; stake: number; entryAt: number; entryPrice: number; expiryAt: number; exitPrice?: number; status: 'open' | 'won' | 'lost' | 'tie'; payout?: number }
+export type TradeState = { now: number; asset: string; from: number; prices: number[]; last: Record<string, number>; calls: TradeCall[]; /** When the market's session (an hour) closes: a call ends before (Unix s). */ closes: number }
 
 /** Babi Bingo (backend game/bingo.go): a prize, done within so many balls, paid times the stake. */
 export type BingoPrize = { id: string; label: string; within: number; times: number }

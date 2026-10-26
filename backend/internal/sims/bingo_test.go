@@ -15,8 +15,12 @@ func TestBingoCards(t *testing.T) {
 	if _, err := s.bingoCards("poker", 1, 100, 0, noLuck()); !errors.Is(err, errBingoGame) {
 		t.Errorf("unknown room: %v", err)
 	}
-	if _, err := s.bingoCards(game.Loto90, 1, 150, 0, noLuck()); !errors.Is(err, errBingoStake) {
-		t.Errorf("150 a card: %v", err)
+	// Any amount typed, from the least card to the dearest.
+	if _, err := s.bingoCards(game.Loto90, 1, 50, 0, noLuck()); !errors.Is(err, errBingoStake) {
+		t.Errorf("50 a card: %v", err)
+	}
+	if _, err := s.bingoCards(game.Loto90, 1, 1500, 0, noLuck()); !errors.Is(err, errBingoStake) {
+		t.Errorf("1 500 a card: %v", err)
 	}
 	if _, err := s.bingoCards(game.Loto90, 2, 100, 3, noLuck()); !errors.Is(err, errBingoCards) {
 		t.Errorf("five cards on a draw: %v", err)
