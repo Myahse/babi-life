@@ -614,3 +614,8 @@ Pour compléter une donnée : corriger l'entrée dans le code (garder son identi
   - **Sur un téléphone qui baisse sa résolution** pour suivre, ça commence plus tôt.
   - **Les joueurs vus de loin** ont maintenant short, genoux et chaussettes, comme de près, au lieu de jambes blanches de haut en bas.
   - **La même chose en ville**, pour les passants au loin.
+- **Cap Sud en 3D** (`web/src/world3d/open/capsud.tsx`) : le centre commercial de la Zone 4 à Marcory a enfin son extérieur, d'après les photos.
+  - **Le bâtiment** : la longue boîte en bardage bleu roi sur sa bande blanche, et le toit plat blanc couvert de climatiseurs, avec le pylône en treillis derrière.
+  - **Les entrées** : à gauche, l'entrée en verre arrondie sous la grande vague orange à la pointe relevée, et le panneau CAP en rouge sur blanc au-dessus de SUD en blanc sur bleu foncé. À droite, la petite vague orange au-dessus de la porte du bout.
+  - **Devant** : le parvis, le parking avec ses places, le passage piéton rouge et blanc, les lampadaires doubles, des palmiers, des motos, et un panneau publicitaire Pingus.
+  - **La nuit**, la verrière et le panneau s'allument. Dedans, rien ne change : ses boutiques et le cinéma Kinéo.

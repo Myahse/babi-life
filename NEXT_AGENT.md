@@ -128,7 +128,7 @@ Never use `pkill` in compound commands; use `fuser -k <port>/tcp`.
 ## Open or possible next steps
 
 - **Helper work in progress when this session stopped** (2026-10-26). Both run in worktrees under `.claude/worktrees/agent-*` on branches `worktree-agent-*`. If those are gone, redo the work from these specs. Cherry-pick their commits onto the branch (a merge refuses: different histories).
-  1. **Cap Sud's exterior** (`world3d/open/capsud.tsx`, registered like the hotels; place `marcory-capsud`). From the user's two photos:
+  1. **Cap Sud's exterior** — **done** (`world3d/open/capsud.tsx`, `LANDMARKS['marcory-capsud'] = 52`, `LANDMARK_GROUND`, `CAPSUD_SOLID` in OpenWorld's `GROUNDS`; the wave roofs are `ExtrudeGeometry` from a `Shape`; the zebra has its own polygon-offset paint above the car park's; lab `city.html?view=landmark&id=marcory-capsud&cam=-40,26,40`). It was built from the user's two photos:
      - a long low box in royal-blue ribbed cladding on a white base band;
      - on the left, a curved glass entrance under a big **orange wave-shaped roof with a pointed crest**;
      - the sign « CAP » in red on white over « SUD » in white on dark blue;
