@@ -6,7 +6,7 @@ import type { Look } from '../lib/types'
 import { randomLook } from '../avatar/options'
 import { rng } from '../world3d/themes'
 import { rumble, stickOwner, useGamepad, usePadConnected } from '../lib/gamepad'
-import { applyVec, autoInput, COUNTDOWN, createRace, fmtTime, ITEMS, kartVec, NO_INPUT, playerOf, standings, step, takeOver, type Input, type Race, type Seat } from './physics'
+import { applyVec, autoInput, COUNTDOWN, createRace, fmtTime, ITEM_LIST, ITEMS, kartVec, MAX_COINS, NO_INPUT, playerOf, standings, step, takeOver, type Input, type Race, type Seat } from './physics'
 import { fetchRace, joinRace, KartNet, type OnlineRace } from './online'
 import { serverNow } from '../lib/worldClock'
 import { Circuit, Hazards, KartView } from './scene'
@@ -157,18 +157,30 @@ function Raceway({ name, look, gender, onExit, simId, token, onReplay, online }:
         <Chase race={race} />
       </Canvas>
 
+      {/* On the screen: speed lines on a boost, the colours of the star, the flash of the power cut */}
+      {hud.boost && !done && <div className="kart-speedlines pointer-events-none absolute inset-0" />}
+      {hud.star && !done && <div className="kart-star pointer-events-none absolute inset-0" />}
+      {hud.slow && !done && <div className="pointer-events-none absolute inset-0 bg-[#0f1230]/35" />}
       {/* The HUD: the place, the lap, the time, the item, the map */}
       <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <div className="rounded-2xl bg-[#0f1230]/70 px-3 py-2 text-white">
           <div className="font-display text-4xl leading-none font-extrabold">
-            {ORDINAL(hud.place)}
+            <span className={hud.place === 1 ? 'text-[#ffd43b]' : hud.place <= 3 ? 'text-[#e8f1ff]' : ''}>{ORDINAL(hud.place)}</span>
             <span className="text-lg opacity-70">/{race.karts.length}</span>
           </div>
           <div className="mt-1 text-xs font-extrabold opacity-90">
             Tour {Math.min(LAPS, hud.lap + 1)}/{LAPS} · {fmtTime(Math.max(0, hud.time))}
           </div>
+          {/* The coins: each one a little faster */}
+          <div className={`mt-0.5 text-sm font-extrabold tabular-nums ${hud.coins >= MAX_COINS ? 'text-[#ffd43b]' : ''}`}>🪙 {hud.coins}/{MAX_COINS}</div>
         </div>
-        <div className="grid h-16 w-16 place-items-center rounded-2xl border-4 border-white/80 bg-[#0f1230]/60 text-4xl">{hud.rolling ? <span className="animate-pulse">{ITEMS[(['piment', 'banane', 'coco'] as const)[Math.floor(Date.now() / 90) % 3]].emoji}</span> : hud.item ? ITEMS[hud.item].emoji : ''}</div>
+        <div className="flex flex-col items-center gap-1">
+          {/* The item, in its box; the roulette turning through them all */}
+          <div className={`relative grid h-16 w-16 place-items-center rounded-2xl border-4 bg-[#0f1230]/60 text-4xl ${hud.item && !hud.rolling ? 'border-[#ffd43b] shadow-[0_0_14px_#ffd43b]' : 'border-white/80'}`}>
+            {hud.rolling ? <span className="animate-pulse">{ITEMS[ITEM_LIST[Math.floor(Date.now() / 80) % ITEM_LIST.length]].emoji}</span> : hud.item ? ITEMS[hud.item].emoji : ''}
+            {!hud.rolling && hud.item && hud.uses > 1 && <span className="absolute -right-2 -bottom-2 grid h-6 w-6 place-items-center rounded-full bg-[#ff3b30] text-xs font-extrabold text-white">×{hud.uses}</span>}
+          </div>
+        </div>
         <div className="flex flex-col items-end gap-2">
           <button className="pointer-events-auto grid h-11 w-11 place-items-center rounded-full bg-[#0f1230]/70 text-white" onClick={() => onExit(null)} aria-label="Quitter la course">
             <X size={22} />
@@ -259,7 +271,7 @@ function Raceway({ name, look, gender, onExit, simId, token, onReplay, online }:
   )
 }
 
-type Hud = { place: number; lap: number; time: number; speed: number; item: keyof typeof ITEMS | null; rolling: boolean; flash: string | null; countdown: string | null; done: boolean; best: number | null }
+type Hud = { place: number; lap: number; time: number; speed: number; item: keyof typeof ITEMS | null; uses: number; coins: number; boost: boolean; star: boolean; slow: boolean; rolling: boolean; flash: string | null; countdown: string | null; done: boolean; best: number | null }
 
 const BEST = 'babi.kart.best'
 const readBest = () => {
@@ -280,6 +292,11 @@ function hudOf(race: Race): Hud {
     time: me.finished ?? t,
     speed: me.speed,
     item: me.item,
+    uses: me.uses,
+    coins: me.coins,
+    boost: me.boost > 0,
+    star: me.star > 0,
+    slow: me.slow > 0,
     rolling: me.rolling > 0,
     flash: race.flash?.text ?? null,
     countdown: t < 0 ? (Math.ceil(-t) <= 3 ? String(Math.ceil(-t)) : null) : t < 1 ? 'Partez !' : null,
@@ -320,7 +337,7 @@ function Loop({ race, input, touch, onHud, online, net, simId }: { race: Race; i
         }
       }
       // Bananas and coconuts the others threw.
-      for (const d of net.drops.splice(0)) race.hazards.push({ id: d.id, kind: d.kind, x: d.x, z: d.z, s: d.s, d: d.d, ttl: d.kind === 'coco' ? 4 : 40, owner: -1, seed: Math.random() * 6 })
+      for (const d of net.drops.splice(0)) race.hazards.push({ id: d.id, kind: d.kind, x: d.x, z: d.z, s: d.s, d: d.d, ttl: d.kind === 'coco' ? 4 : d.kind === 'mangue' ? 6 : 40, owner: -1, seed: Math.random() * 6 })
     }
     // On a phone the kart accelerates by itself (unless braking). In development, globalThis.kartAuto drives it (the labs, the films).
     const auto = import.meta.env.DEV && (globalThis as { kartAuto?: boolean }).kartAuto
@@ -340,7 +357,7 @@ function Loop({ race, input, touch, onHud, online, net, simId }: { race: Race; i
       }
     }
     const me = playerOf(race)
-    engine(me.speed, me.boost > 0)
+    engine(me.speed, me.boost > 0 || me.star > 0)
     // A controller shakes when the kart spins out (a banana, a coconut).
     if (me.spin > 0 && !spun.current) rumble(0.8, 300)
     spun.current = me.spin > 0
@@ -368,8 +385,14 @@ function Chase({ race }: { race: Race }) {
   const at = useRef(new THREE.Vector3())
   const look = useRef(new THREE.Vector3())
   const first = useRef(true)
+  const shake = useRef(0)
+  const wasSpin = useRef(false)
   useFrame((_, dt) => {
     const me = playerOf(race)
+    // A shake when hit.
+    if (me.spin > 0 && !wasSpin.current) shake.current = 0.35
+    wasSpin.current = me.spin > 0
+    shake.current = Math.max(0, shake.current - dt)
     // Behind the way the kart looks (not its drift angle or its spin).
     const h = me.heading
     const [fx, fz] = [Math.sin(h), Math.cos(h)]
@@ -380,8 +403,11 @@ function Chase({ race }: { race: Race }) {
     at.current.lerp(want, k)
     look.current.lerp(target, k)
     camera.position.copy(at.current)
+    if (shake.current > 0) camera.position.add(new THREE.Vector3((Math.random() - 0.5) * shake.current, (Math.random() - 0.5) * shake.current, 0))
+    // Off a ramp the camera rises with the kart, a little.
+    if (me.air > 0 && me.airFor > 0) camera.position.y += Math.sin((1 - me.air / me.airFor) * Math.PI) * 1.2
     camera.lookAt(look.current)
-    const fov = me.boost > 0 ? 72 : 62
+    const fov = me.boost > 0 || me.star > 0 ? 74 : 62
     camera.fov += (fov - camera.fov) * Math.min(1, dt * 4)
     camera.updateProjectionMatrix()
   })
@@ -490,7 +516,7 @@ function Pad({ input, touch }: { input: React.MutableRefObject<Input>; touch: bo
         <button className={`${btn} h-16 w-16 !bg-[#ffd43b] text-sm`} onPointerDown={() => (input.current.use = true)}>
           Objet
         </button>
-        {!touch && <span className="col-span-2 text-right text-[11px] font-bold text-white drop-shadow">↑ ou RT accélérer · Espace ou RB déraper · E ou X objet</span>}
+        {!touch && <span className="col-span-2 text-right text-[11px] font-bold text-white drop-shadow">↑ ou RT accélérer · Espace ou RB déraper (en l'air : une figure) · E ou X objet</span>}
         <button className={`${btn} col-span-2 h-16 w-full !rounded-3xl !bg-[#ff8200] text-base text-white`} {...hold((on) => (input.current.drift = on))}>
           Déraper
         </button>

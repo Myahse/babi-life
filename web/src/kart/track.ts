@@ -20,6 +20,9 @@ export type Track = {
   /** The item boxes (rows across the road) and the boost pads: a distance along the lap, an offset across. */
   boxes: { s: number; d: number }[]
   pads: { s: number; d: number }[]
+  /** The coins (lines of them along the road) and the ramps (across the whole road, where along the lap). */
+  coins: { s: number; d: number }[]
+  ramps: number[]
 }
 
 /** The corners, in metres: the start straight runs along +x at the bottom. */
@@ -81,7 +84,10 @@ export function buildTrack(corners: [number, number][] = CORNERS, half = HALF): 
     { s: Math.round(0.66 * n), d: 2.5 },
     { s: Math.round(0.93 * n), d: 0 },
   ]
-  return { length: n, half, x, z, tx, tz, n, boxes, pads }
+  // Lines of five coins, swinging from one side of the road to the other round the lap; two ramps.
+  const coins = [0.08, 0.28, 0.44, 0.6, 0.74, 0.88].flatMap((k, j) => [0, 1, 2, 3, 4].map((c) => ({ s: Math.round(k * n) + c * 3, d: [-3.5, 0, 3.5][j % 3] })))
+  const ramps = [Math.round(0.42 * n), Math.round(0.97 * n)]
+  return { length: n, half, x, z, tx, tz, n, boxes, pads, coins, ramps }
 }
 
 /**

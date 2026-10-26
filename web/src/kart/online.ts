@@ -20,7 +20,7 @@ export type GridEntry = { sim: string; name: string; gender: 'femme' | 'homme'; 
 export type OnlineRace = { id: string; start: number; entries: GridEntry[] }
 
 type Snap = { at: number; k: number[] }
-type Drop = { kind: 'banane' | 'coco'; x: number; z: number; s: number; d: number; id: string }
+type Drop = { kind: 'banane' | 'coco' | 'mangue'; x: number; z: number; s: number; d: number; id: string }
 
 export class KartNet {
   private ws: WebSocket | null = null
