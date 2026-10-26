@@ -93,6 +93,8 @@ export function action(kind: string, id: string | undefined): { spot: string; po
   // Gbairai: telling the quarter's news, with the hands.
   // (At the market: in the aisle between the stalls, where people stop to talk.)
   if (id === 'gbairai') return kind === 'couture' ? { spot: 'chair', pose: 'sit' } : { spot: kind === 'barbier' || kind === 'salon' ? 'bench' : kind === 'market' || kind === 'mall' ? 'gossip' : 'table', pose: 'rant' }
+  // The campaign: greeting the crowd (the candidate), telling them (the militant), where people stop.
+  if (id === 'campagne-terrain' || id === 'militer') return { spot: kind === 'market' || kind === 'mall' ? 'gossip' : 'table', pose: id === 'militer' ? 'talk' : 'wave' }
   // The coffee break at the office: a cup at one's desk.
   if (id === 'coffee-break') return { spot: 'desk', pose: 'drink' }
   if (id === 'piscine-hotel') return { spot: 'pool', pose: 'idle' }

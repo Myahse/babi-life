@@ -36,8 +36,11 @@ export function outdoorPose(id?: string): Pose | undefined {
     case 'regarder-kart':
       return 'cheer'
     case 'stade-concert':
+    case 'stade-fete':
     case 'danser-rue':
       return 'dance'
+    case 'stade-meeting':
+      return 'cheer'
     case 'swim':
       return 'wave'
     case 'chill-sand':

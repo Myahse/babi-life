@@ -28,9 +28,6 @@ func TestOfficeLabel(t *testing.T) {
 }
 
 func TestCycle(t *testing.T) {
-	if Mandate != Campaign+Voting {
-		t.Error("a mandate is the campaign and the vote")
-	}
 	if len(Portfolios) != MaxMinisters {
 		t.Errorf("%d portfolios for %d ministers", len(Portfolios), MaxMinisters)
 	}

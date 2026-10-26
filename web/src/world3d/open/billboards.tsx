@@ -20,13 +20,18 @@ import { Solid } from '../Solid'
 // turn, the same one at the same moment on every screen (the shared clock).
 // With none, a bright « TA PUB ICI » in the board's own format: the boards are
 // for sale, and they should be seen. Passing in front counts a view: by
-// commune and day, nobody is tracked.
+// commune and day, nobody is tracked. During the campaign (backend
+// politics.posters), the sucettes, the banderoles and some of the big boards
+// carry the candidates' posters instead, in their party's colours.
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
 
 export type BoardFormat = '4x3' | 'geant' | 'sucette' | 'banderole' | 'led'
 type Board = { id: string; at: XZ; rot: number; seed: number; format?: BoardFormat; /** A banderole: the street's width between its poles. */ span?: number; /** At a particular place: shown before the others. */ featured?: boolean }
 type Ad = { id: string; advertiser: string; title: string; type: 'image' | 'video'; url: string }
+/** A candidate's poster on the walls of the commune (backend politics.posters). */
+type Poster = { name: string; acronym?: string; color: string; slogan?: string; kind: 'president' | 'maire'; points: number }
+const POSTER = 'affiche:'
 
 const NEAR = 450 // metres: boards drawn around the Sim
 const MAX = 16
@@ -137,6 +142,23 @@ export function Billboards({ nav, seed, night, places = [] }: { nav: Nav; seed: 
     }
   }, [seed])
 
+  // The campaign's posters in the commune, while it's on (as ads: drawn on a canvas, never counted as views).
+  const [campaign, setCampaign] = useState<Ad[]>([])
+  useEffect(() => {
+    let stop = false
+    const load = () =>
+      fetch(`${BASE}/politics/affiches?commune=${encodeURIComponent(seed)}`)
+        .then((r) => (r.ok ? r.json() : { posters: [] }))
+        .then((r: { posters?: Poster[] }) => !stop && setCampaign((r.posters ?? []).map((p) => ({ id: POSTER + p.kind + p.name, advertiser: p.name, title: p.acronym ?? '', type: 'image', url: POSTER + JSON.stringify(p) }))))
+        .catch(() => undefined)
+    void load()
+    const t = setInterval(load, 5 * 60_000)
+    return () => {
+      stop = true
+      clearInterval(t)
+    }
+  }, [seed])
+
   // The views, sent once a minute (and when leaving).
   const views = useRef<Record<string, number>>({})
   useEffect(() => {
@@ -172,7 +194,7 @@ export function Billboards({ nav, seed, night, places = [] }: { nav: Nav; seed: 
   return (
     <>
       {shown.map((b) => (
-        <Billboard key={b.id} board={b} ads={ads} night={night} onSeen={(id) => (views.current[id] = (views.current[id] ?? 0) + 1)} />
+        <Billboard key={b.id} board={b} ads={campaign.length && (b.format === 'sucette' || b.format === 'banderole' || b.seed < 0.3) ? campaign : ads} night={night} onSeen={(id) => !id.startsWith(POSTER) && (views.current[id] = (views.current[id] ?? 0) + 1)} />
       ))}
     </>
   )
@@ -187,7 +209,9 @@ const textures = new Map<string, { tex: THREE.Texture; video?: HTMLVideoElement 
 function textureOf(ad: Ad) {
   let t = textures.get(ad.url)
   if (!t) {
-    if (ad.type === 'video') {
+    if (ad.url.startsWith(POSTER)) {
+      t = { tex: posterTexture(JSON.parse(ad.url.slice(POSTER.length)) as Poster) }
+    } else if (ad.type === 'video') {
       const v = document.createElement('video')
       v.crossOrigin = 'anonymous'
       v.src = ad.url
@@ -206,6 +230,54 @@ function textureOf(ad: Ad) {
     textures.set(ad.url, t)
   }
   return t
+}
+
+/** A campaign poster: the party's colour, « VOTEZ », the name, the party, the election, the slogan. */
+function posterTexture(p: Poster) {
+  const c = document.createElement('canvas')
+  c.width = 768
+  c.height = 1024
+  const g = c.getContext('2d')!
+  const [W, H] = [c.width, c.height]
+  g.fillStyle = p.color || '#ff7a00'
+  g.fillRect(0, 0, W, H)
+  // A white band across, the name on it; the party's sigle in a disc above.
+  g.fillStyle = '#ffffff'
+  g.fillRect(0, H * 0.5, W, H * 0.2)
+  g.textAlign = 'center'
+  g.textBaseline = 'middle'
+  const fit = (text: string, size: number, max: number) => {
+    g.font = `900 ${size}px Anton, Impact, sans-serif`
+    const w = g.measureText(text).width
+    if (w > max) g.font = `900 ${(size * max) / w}px Anton, Impact, sans-serif`
+  }
+  g.fillStyle = '#ffffff'
+  fit('VOTEZ', H * 0.14, W * 0.9)
+  g.fillText('VOTEZ', W / 2, H * 0.12)
+  if (p.acronym) {
+    g.beginPath()
+    g.arc(W / 2, H * 0.33, H * 0.12, 0, Math.PI * 2)
+    g.fill()
+    g.fillStyle = p.color || '#ff7a00'
+    fit(p.acronym, H * 0.09, H * 0.2)
+    g.fillText(p.acronym, W / 2, H * 0.335)
+  }
+  g.fillStyle = '#1b1b2f'
+  fit(p.name.toUpperCase(), H * 0.1, W * 0.9)
+  g.fillText(p.name.toUpperCase(), W / 2, H * 0.6)
+  g.fillStyle = '#ffffff'
+  fit(p.kind === 'president' ? 'PRÉSIDENTIELLE' : 'MUNICIPALES', H * 0.06, W * 0.9)
+  g.fillText(p.kind === 'president' ? 'PRÉSIDENTIELLE' : 'MUNICIPALES', W / 2, H * 0.78)
+  if (p.slogan) {
+    g.font = `italic 700 ${H * 0.045}px sans-serif`
+    const k = Math.min(1, (W * 0.9) / g.measureText(`« ${p.slogan} »`).width)
+    g.font = `italic 700 ${H * 0.045 * k}px sans-serif`
+    g.fillText(`« ${p.slogan} »`, W / 2, H * 0.89)
+  }
+  const tex = new THREE.CanvasTexture(c)
+  tex.colorSpace = THREE.SRGBColorSpace
+  tex.anisotropy = 4
+  return tex
 }
 
 /** What an empty board says, in its own format: « TA PUB ICI », bright, the format and the address. */

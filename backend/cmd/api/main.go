@@ -178,6 +178,7 @@ func main() {
 				"slots":         map[string]any{"symbols": game.SlotSymbols, "stakes": game.SlotStakes, "perDay": game.SlotsPerDay},
 				"bingo":         map[string]any{"games": game.BingoGames, "stakes": game.BingoStakes, "perDraw": game.BingoCardsPerDraw, "perDay": game.BingoPerDay},
 				"casino":        map[string]any{"chips": game.RouletteChips, "maxTotal": game.RouletteMaxTotal, "maxBets": game.RouletteMaxBets, "stakes": game.BlackjackStakes, "tickets": game.ScratchTickets, "perDay": game.CasinoPerDay, "envol": map[string]any{"stakes": game.EnvolStakes, "period": game.EnvolPeriod, "wait": game.EnvolWait, "maxFlight": game.EnvolMaxFlight, "max": game.EnvolMax}, "trade": map[string]any{"assets": game.TradeAssets, "stakes": game.TradeStakes, "secs": game.TradeSecs, "pays": game.TradePays, "open": game.TradeOpen}},
+				"measures":      game.Measures,
 				"vehicles":      game.VehicleModels,
 				"parkings":      game.ParkingKinds,
 				"street":        sims.StreetActivities(),
@@ -288,8 +289,10 @@ func main() {
 		// The players' ideas from the phone (ideas): sent signed in, read and answered on /admin.
 		ideasH := &ideas.Handler{DB: pool}
 		// The city's political life (politics): elections settled, offices paid, the sects' dues, on the clock.
-		politicsH := &politics.Handler{DB: pool, Changed: func(id string) { players.Changed(id) }}
-		go politicsH.Watch(ctx, 10*time.Minute)
+		politicsH := &politics.Handler{DB: pool, Changed: func(id string) { players.Changed(id) }, Push: pushes}
+		go politicsH.Watch(ctx, time.Minute)
+		// The campaign's posters on the boards, as public as the ads (politics/presidency.go).
+		r.Get("/politics/affiches", politicsH.Posters)
 		(&admin.Handler{DB: pool, WA: &admin.WhatsApp{Token: os.Getenv("WHATSAPP_TOKEN"), PhoneID: os.Getenv("WHATSAPP_PHONE_ID"), API: os.Getenv("WHATSAPP_API")}, Ideas: ideasH}).Routes(r)
 		// Moderation of Gbairai's reports (MODERATION_KEY).
 		mod := &sims.Moderation{H: simsH, Key: os.Getenv("MODERATION_KEY")}

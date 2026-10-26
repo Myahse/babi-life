@@ -129,6 +129,43 @@ func (s *Service) ToSim(simID string, m Message) {
 	}()
 }
 
+// ToAll sends a notification to every player who takes them (the new
+// president, the president's words), in the background.
+func (s *Service) ToAll(m Message) {
+	s.toUsers(`SELECT DISTINCT user_id FROM push_subs`, m)
+}
+
+// ToCommune sends a notification to the players with a Sim living in a commune (its new mayor).
+func (s *Service) ToCommune(commune string, m Message) {
+	s.toUsers(`SELECT DISTINCT p.user_id FROM push_subs p JOIN sims s ON s.user_id = p.user_id WHERE s.home_commune = $1`, m, commune)
+}
+
+// toUsers: the players a query finds, one after the other (a few minutes at most).
+func (s *Service) toUsers(query string, m Message, args ...any) {
+	if !s.Enabled() {
+		return
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+		defer cancel()
+		rows, err := s.DB.Query(ctx, query, args...)
+		if err != nil {
+			return
+		}
+		var users []string
+		for rows.Next() {
+			var u string
+			if rows.Scan(&u) == nil {
+				users = append(users, u)
+			}
+		}
+		rows.Close()
+		for _, u := range users {
+			s.toUser(ctx, u, m)
+		}
+	}()
+}
+
 func (s *Service) toUser(ctx context.Context, user string, m Message) {
 	rows, err := s.DB.Query(ctx, `SELECT kind, endpoint, p256dh, auth FROM push_subs WHERE user_id = $1`, user)
 	if err != nil {

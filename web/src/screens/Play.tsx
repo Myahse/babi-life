@@ -35,6 +35,7 @@ import { SOIREE_COST, SOIREE_HOURS, SOIREE_THEMES } from '../game/soirees'
 import { Chip, Coin, DayNight, IconTile, MotiveRing, MoodPin, Row, needColor } from '../components/ui'
 import { EPOCH, NEEDS, km, actionLength, ageBlock, amount, fcfa, atHome, blockedBy, homeLacks, housingOf, lifeOf, minutesToAge, clock, duration, mood, openAt, openingLabel, predict, shift, trip } from '../game/rules'
 import { DOORS_OPEN, eventAt, useStadium, when } from '../lib/stadium'
+import { CIVIC_KINDS, civicState, discounted, fareOff, PUBLIC_RIDES, useTerrain, withMeasures } from '../lib/civic'
 import { HomeApp, JobsApp, type Act } from './phoneApps'
 import { NewsApp, topicOf } from './NewsApp'
 import { GuideApp } from './GuideApp'
@@ -707,7 +708,7 @@ export function Play() {
     // A moto-taxi: one stops right away, the Sim gets on behind.
     if (ride?.app === 'moto') return void (setOverlay(null), run(label, 'bike', 'transport', () => api.travel(sim!.id, cityId, communeId, { app: 'moto' })))
     // The woro-woro, the taxi compteur, the gbaka: waited for at the roadside, the one chosen.
-    if (ride?.app?.startsWith('street') && to) return setFlow({ cityId, from, to, kind: 'street', want: (ride.app.split(':')[1] || undefined) as StreetRide | undefined, fare, party: ride.party ?? 1, money: sim!.money })
+    if (ride?.app?.startsWith('street') && to) return setFlow({ cityId, from, to, kind: 'street', want: (ride.app.split(':')[1] || undefined) as StreetRide | undefined, fare, party: ride.party ?? 1, money: sim!.money, off: fareOff(world, sim!) })
     if (ride?.app && to) return setFlow({ cityId, from, to, kind: ride.app, offer: ride.offer, fare, party: ride.party ?? 1, money: sim!.money })
     run(label, 'bus', 'transport', () => api.travel(sim!.id, cityId, communeId, ride))
   }
@@ -943,7 +944,7 @@ export function Play() {
             : null
     : doingId === 'stade-match'
       ? 'stade'
-      : doingId === 'stade-concert' || happeningId === 'femua'
+      : doingId === 'stade-concert' || doingId === 'stade-fete' || happeningId === 'femua'
         ? 'concert'
         : happeningId === 'mariage'
           ? 'fanfare'
@@ -1985,6 +1986,8 @@ function usePlaceActions(world: World, sim: Sim, city: City, commune: Commune, p
   const adult = !!useSession((s) => s.user?.adult)
   // At the stadium: what's on, and the match or the concert only while it's on.
   const agenda = useStadium(place?.kind === 'stade' ? placeId : null)
+  // The republic's (lib/civic.ts): the campaign at the mairie, the market, the maquis; the stadium's big days.
+  const terrain = useTerrain(sim.id, !!place && CIVIC_KINDS.has(place.kind))
   if (!place || !placeId) return null
   const kind = world.kinds[place.kind]
   const here = sim.city === city.id && sim.commune === commune.id
@@ -1999,7 +2002,10 @@ function usePlaceActions(world: World, sim: Sim, city: City, commune: Commune, p
   const items = [...(career ? [shift(career, sim.careerLevel)] : []), ...kind.interactions.map((it) => (placeId === 'home' ? atHome(it, home) : it))].filter((it) => !it.stay || roomHere)
     .filter((it) => ageBlock(it, life.stage?.id) !== 'Plus de ton âge' && (!it.places || it.places.includes(placeId)) && (!it.cities || it.cities.includes(city.id)) && (!it.faiths || it.faiths.includes((place as Place).faith!)) && (!it.gender || it.gender === sim.gender))
     .filter((it) => it.id !== 'passer-nuit' || (partner && adult && !life.minor))
+    .filter((it) => civicState(it, terrain, placeId, commune.id).show)
     .map((it) => (it.id === 'passer-nuit' && partner ? { ...it, label: `Passer la nuit avec ${partner.name}` } : it))
+    // The president's measures of the week: some prices lowered for everyone.
+    .map((it) => withMeasures(world, sim, place.kind, it))
   // Busy at these grounds (the zoo visit): the other things there can still be picked, they take over.
   const busy = !!sim.activity && !(sim.activity.kind === 'do' && sim.activity.placeId === placeId && GROUNDS.has(placeId))
   const on = eventAt(agenda, sim.gameMinutes)
@@ -2023,7 +2029,7 @@ function usePlaceActions(world: World, sim: Sim, city: City, commune: Commune, p
     }
     return null
   }
-  const state = (it: Interaction) => ({ open: openAt(it, sim.gameMinutes), broke: it.cost > 0 && sim.money < it.cost, busy, reason: ageBlock(it, life.stage?.id) ?? stadiumBlock(it) ?? blockedBy(it, sim, city.id, commune.id) ?? furnitureBlock(it) })
+  const state = (it: Interaction) => ({ open: openAt(it, sim.gameMinutes), broke: it.cost > 0 && sim.money < it.cost, busy, reason: ageBlock(it, life.stage?.id) ?? stadiumBlock(it) ?? civicState(it, terrain, placeId, commune.id).why ?? blockedBy(it, sim, city.id, commune.id) ?? furnitureBlock(it) })
   return { place, kind, home, career, life, roomHere, items, busy, here, agenda, on, state }
 }
 
@@ -2844,7 +2850,7 @@ function MotoOffer({ world, sim, commune, act }: { world: World; sim: Sim; commu
       </div>
       <div className={`mt-2 grid gap-1.5 ${rides.length > 3 ? 'grid-cols-4' : 'grid-cols-3'}`}>
         {rides.map((r) => {
-          const fare = rideFare(r.kind, offer)
+          const fare = PUBLIC_RIDES.has(r.kind) ? discounted(rideFare(r.kind, offer), fareOff(world, sim)) : rideFare(r.kind, offer)
           const Icon = r.kind === 'moto' ? Bike : r.kind === 'gbaka' ? Bus : CarTaxiFront
           return (
             <button key={r.kind} disabled={sim.money < fare} onClick={() => void take(r)} className="flex flex-col items-center gap-0.5 rounded-2xl bg-[var(--color-canvas)] px-1 py-2 text-[11.5px] leading-tight disabled:opacity-40">

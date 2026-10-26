@@ -258,6 +258,8 @@ export type World = {
   /** Babi Bingo (game/bingo.go): the four games, the stakes, the cards a draw and a day. */
   bingo?: { games: BingoGame[]; stakes: number[]; perDraw: number; perDay: number }
   /** Babi Casino (game/casino.go): the roulette's chips and limits, le 21's stakes, the tickets, the rounds a day. */
+  /** The measures a president may decree (backend game.Measures). */
+  measures?: Measure[]
   casino?: {
     chips: number[]
     maxTotal: number
@@ -358,6 +360,8 @@ export type Sim = {
   prestige?: boolean
   /** The secret society joined (politics): '' none; baobab, sept, lumiere. */
   sect?: string
+  /** The president's measures in force for everyone (backend game/civic.go): some prices lowered. */
+  measures?: string[]
 }
 
 export type Activity = {
@@ -500,7 +504,29 @@ export type Garage = { vehicles: { id: number; model: string; color: string; par
 /* ---------- Politics (backend/internal/politics): parties, elections, offices, gangs, sects ---------- */
 export type Party = { id: number; name: string; acronym: string; color: string; slogan: string; leader: string; leaderName: string; members: number }
 export type Candidate = { sim: string; name: string; username?: string; look: Look; gender: 'femme' | 'homme'; party?: number; acronym?: string; color?: string; programme: string; points: number; votes: number; npcVotes: number }
-export type Election = { id: number; kind: 'president' | 'maire'; commune?: string; opensAt: string; votesAt: string; closesAt: string; settled: boolean; winner?: string; turnout: number; candidates: Candidate[]; myVote?: string }
+/** An election's week (backend game.ElectionWeek): one stands till the vote, campaigns from campaignAt (Friday 18 h), votes from votesAt (Sunday) to closesAt, hears the results at resultsAt (Monday 9 h). */
+export type Election = { id: number; kind: 'president' | 'maire'; commune?: string; opensAt: string; campaignAt: string; votesAt: string; closesAt: string; resultsAt: string; settled: boolean; winner?: string; turnout: number; candidates: Candidate[]; myVote?: string }
+/** The president's measures of the week (backend game/civic.go): a share off at some places, or off the public transport. */
+export type Measure = { id: string; label: string; about: string; kinds?: string[]; fares?: boolean; off: number }
+/** The stadium's big days: the president's Fête de la Nation, a candidate's meeting. */
+export type StateEvent = { id: number; kind: 'fete' | 'meeting'; sim: string; name: string; acronym?: string; color?: string; place: string; startsAt: string; endsAt: string; guests: number }
+/** A candidate's call to the party's militants (their pay held from the candidate). */
+export type MilitCall = { id: number; election: number; candidate: string; name: string; commune: string; pay: number; slots: number; taken: number; done?: boolean }
+/** The president's week: their words, measures, rating, Fête de la Nation. */
+export type PresidentWeek = {
+  election: number
+  sim: string
+  name: string
+  acronym?: string
+  color?: string
+  until: string
+  words: { kind: 'discours' | 'adresse'; text: string; at: string }[]
+  measures: string[]
+  rating: { avg: number; count: number; mine: number }
+  fete?: StateEvent
+}
+/** What a Sim may do in the street for the republic (backend politics.terrain). */
+export type Terrain = { stands: { election: number; kind: 'president' | 'maire'; commune?: string }[]; toured: string[]; calls: MilitCall[]; events: StateEvent[] }
 export type Holder = { office: string; label: string; sim: string; name: string; username?: string; gender: 'femme' | 'homme'; look: Look; acronym?: string; color?: string; since: string; until: string }
 export type CrewMember = { sim: string; name: string; username?: string; role: string }
 export type Crew = { id: number; name: string; tag: string; color: string; commune: string; leader: string; leaderName: string; treasury: number; members?: CrewMember[]; size: number; asked?: boolean; requests?: CrewMember[] }
@@ -524,6 +550,13 @@ export type Politics = {
   pay: { president: number; ministre: number; depute: number; maire: number }
   deposits: { president: number; maire: number }
   playerWeight: number
+  week: PresidentWeek | null
+  measures: Measure[]
+  mandatesLeft: number
+  myCalls: MilitCall[]
+  myEvents: StateEvent[]
+  events: StateEvent[]
+  rules: Record<'tourCost' | 'tourPoints' | 'militantPoints' | 'meetingCost' | 'meetingPoints' | 'meetingGuest' | 'meetingGuests' | 'feteHours' | 'meetingHours' | 'payMin' | 'payMax' | 'slotsMax' | 'measures' | 'mandatesAMonth', number>
 }
 
 /** Where Djai earned by playing comes from (backend game/money.go). */

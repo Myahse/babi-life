@@ -190,6 +190,8 @@ type Sim struct {
 	Prestige bool `json:"prestige,omitempty"`
 	// Sect: the secret society joined (politics.Sects): its perk on what's earned, its dues each Monday.
 	Sect string `json:"sect,omitempty"`
+	// Measures: the president's measures in force for everyone (game/civic.go): the prices the app shows lowered.
+	Measures []string `json:"measures,omitempty"`
 	// gymUntil: the game minute the gym membership runs out (0: none), read from the journal (gym.go).
 	gymUntil int64
 	// party: the soirée the action is at, read for it (party.go).
@@ -629,7 +631,15 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 			return game.Outcome{}, nil, err
 		}
 		text := fmt.Sprintf("%s : %s (%s)", s.FirstName, it.Label, humanMinutes(game.Length(it.Minutes)))
-		return game.Outcome{Text: text, Money: -max(it.Cost, 0)}, gymEvents(s, it), nil
+		// The republic's: the campaign, the militants, the stadium's big days (civic.go).
+		said, paid, err := h.civicAct(r.Context(), tx, s, req.PlaceID, it)
+		if err != nil {
+			return game.Outcome{}, nil, err
+		}
+		if said != "" {
+			text = said
+		}
+		return game.Outcome{Text: text, Money: paid - max(it.Cost, 0)}, gymEvents(s, it), nil
 	})
 }
 
@@ -776,6 +786,10 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 		return game.Interaction{}, game.ErrFull(game.FromGig)
 	case it.ID == game.TournamentID && !s.wallet().Can(s.today(), game.FromTournament):
 		return game.Interaction{}, game.ErrFull(game.FromTournament)
+	}
+	// The president's measures of the week (game/civic.go): some prices down for everyone.
+	if it.Cost > 0 && job.ID == "" {
+		it.Cost = game.Discounted(it.Cost, game.MeasureOff(s.Measures, kind.ID))
 	}
 	if err := s.start(it, placeID, kind.ID, placeName, kind.Events, job.ID); err != nil {
 		return game.Interaction{}, err
@@ -930,6 +944,7 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 		return
 	}
 	s.purse = readPurse(tallies)
+	s.Measures = h.activeMeasures(ctx)
 	// Real time passes first, so the action sees the real state.
 	var fresh []Event
 	if advance {

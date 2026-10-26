@@ -950,3 +950,43 @@ export function Clothes() {
     </group>
   )
 }
+
+/**
+ * The campaign at the mairie, the market, the maquis (backend game.CampaignTourID,
+ * MilitantID): a little crowd come round the Sim, cheering, the banner up behind
+ * them; the candidate with the megaphone, the militant with the flyers.
+ */
+export function Campaign({ militant }: { militant?: boolean }) {
+  const banner = useLabel('VOTEZ !', '#ff7a00', '#ffffff', 512, 128)
+  const flyer = useRef<THREE.Group>(null)
+  useFrame(() => {
+    if (flyer.current) flyer.current.rotation.z = Math.sin(worldTime() * 3) * 0.25
+  })
+  return (
+    <>
+      <Person p={[-0.95, 0, 1.25]} r={Math.PI + 0.5} pose="cheer" g="femme" seed={311} outfit="tshirt" />
+      <Person p={[0, 0, 1.55]} r={Math.PI} pose="wave" g="homme" seed={312} outfit="tshirt" />
+      <Person p={[0.95, 0, 1.25]} r={Math.PI - 0.5} pose="cheer" g="homme" seed={313} outfit="tshirt" />
+      {/* The banner on its two poles, behind the crowd. */}
+      <Box p={[-1.1, 1.1, 2.3]} s={[0.05, 2.2, 0.05]} c="#6b4f2a" />
+      <Box p={[1.1, 1.1, 2.3]} s={[0.05, 2.2, 0.05]} c="#6b4f2a" />
+      <mesh position={[0, 1.95, 2.3]} rotation={[0, Math.PI, 0]} material={banner}>
+        <planeGeometry args={[2.2, 0.55]} />
+      </mesh>
+      {militant ? (
+        <group ref={flyer} position={[0.28, 1.1, 0.35]}>
+          <Box p={[0, 0, 0]} s={[0.15, 0.2, 0.01]} c="#fff7e6" />
+          <Box p={[0, 0.03, 0.006]} s={[0.11, 0.05, 0.002]} c="#ff7a00" />
+        </group>
+      ) : (
+        <group position={[0.24, 1.42, 0.3]} rotation={[-0.3, 0, 0]}>
+          <mesh rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.09, 0.035, 0.24, 14, 1, true]} />
+            <meshStandardMaterial color="#f1f3f5" side={THREE.DoubleSide} />
+          </mesh>
+          <Box p={[0, -0.09, -0.06]} s={[0.04, 0.12, 0.04]} c="#212529" />
+        </group>
+      )}
+    </>
+  )
+}

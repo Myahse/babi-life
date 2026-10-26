@@ -118,7 +118,8 @@ L'argent de poche : un cinquième de la somme de la semaine à chaque anniversai
 | Marchés : pagnes du Grand Marché de Treichville, mèches du marché de Cocody | 6 000 ; 5 000 | 75 ; 62 |
 | Véhicule (vélo, moto, citadine, limousine) | 28 000 ; 320 000 ; 1 800 000 ; 32 000 000 | 350 à 400 000 |
 | Terrain (au m², frais de 10 % en plus ; 300 m² à Yopougon) | 700 à 6 000 ; 495 000 | 6 200 |
-| Politique : parti, caution présidentielle, caution de maire, gang, campagne | 50 000 ; 200 000 ; 50 000 ; 30 000 ; 20 000 à 150 000 l'action | 625 à 2 500 |
+| Politique : parti, caution présidentielle, caution de maire, gang, campagne | 50 000 ; 200 000 ; 50 000 ; 30 000 ; 20 000 à 80 000 l'action, une tournée sur le terrain 5 000, le meeting au stade 150 000, les militants 1 000 à 5 000 chacun (payés au militant, compté « reçu ») | 625 à 2 500 |
+| Les mesures du ou de la président·e (`game/civic.go`, deux par semaine) : moitié prix ou moins 25 % à certains lieux, moitié prix sur les transports en commun ; elles baissent des dépenses, n'ajoutent aucun gain | | |
 | Sectes : initiation, cotisation du lundi | 10 000 à 30 000 ; 2 000 à 7 000 | |
 | Paris (marge 6 à 8 %) ; loto (rend 83 %, 62 % ou 21 % selon 1, 2 ou 3 numéros) | | |
 | Machines à sous (`game/slots.go`) : maquis 100 à 500 le tour (tout montant entre les deux), casino de l'Hôtel Ivoire 500 à 2 000 ; elles rendent environ 89 % des mises sur la durée (`SlotsReturn`, vérifié par son test), un tour sur trois gagne quelque chose | | |
