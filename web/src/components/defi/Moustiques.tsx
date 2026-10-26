@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { haptic } from '../../lib/native'
+import { sfx } from '../../lib/sfx'
 import { clamp, Count, useCanvas, useCount, useKeys, useLoop } from './arcade'
 
 // La borne d'arcade de la salle: « Moustiques ! », the shooting game of the
@@ -15,6 +16,9 @@ const H = 540
 const Y = H - 46 // the bombe
 const TIME = 60
 const BOSS_AT = 45
+// How big the mosquitoes are drawn (and hit), the boss's too.
+const K = 1.6
+const KB = 4.4
 
 type Bug = { x: number; y: number; hp: number; tiger: boolean; dive: number; phase: number; boss?: boolean; max?: number }
 type Shot = { x: number; y: number; vx: number; vy: number; foe?: boolean }
@@ -27,7 +31,7 @@ export function MoustiquesDefi({ onEnd }: { onEnd: (score: number) => void }) {
   const keys = useKeys()
   const n = useCount(3)
   const finger = useRef<number | null>(null)
-  const g = useRef({ x: W / 2, t: 0, fire: 0, bugs: [] as Bug[], shots: [] as Shot[], wave: 0, lives: 3, safe: 0, points: 0, combo: 0, comboT: 0, coil: 0, coilAt: null as { x: number; y: number } | null, boss: false, over: false, pops: [] as { x: number; y: number; t: number; text: string }[] })
+  const g = useRef({ x: W / 2, t: 0, fire: 0, bugs: [] as Bug[], shots: [] as Shot[], wave: 0, lives: 3, safe: 0, points: 0, combo: 0, comboT: 0, coil: 0, coilAt: null as { x: number; y: number } | null, boss: false, over: false, pops: [] as { x: number; y: number; t: number; text: string }[], splats: [] as { x: number; y: number; t: number; big: boolean; drops: [number, number][] }[], shake: 0 })
   const [hud, setHud] = useState({ lives: 3, points: 0, left: TIME, said: '', boss: 0 })
 
   const step = (dt: number) => {
@@ -91,15 +95,20 @@ export function MoustiquesDefi({ onEnd }: { onEnd: (score: number) => void }) {
     for (const sh of s.shots) {
       if (sh.foe || sh.y < -10) continue
       for (const b of s.bugs) {
-        if (b.hp <= 0 || Math.abs(sh.x - b.x) > (b.boss ? 34 : 13) || Math.abs(sh.y - b.y) > (b.boss ? 26 : 12)) continue
+        if (b.hp <= 0 || Math.abs(sh.x - b.x) > (b.boss ? 50 : 19) || Math.abs(sh.y - b.y) > (b.boss ? 40 : 18)) continue
         sh.y = -100
         b.hp--
+        if (b.boss && b.hp > 0 && Math.random() < 0.25) sfx.guard()
         if (b.hp <= 0) {
           s.combo = s.comboT > 0 ? s.combo + 1 : 1
           s.comboT = 0.9
           const pts = b.boss ? 300 : (b.tiger ? 30 : 10) * Math.min(3, s.combo)
           s.points += pts
           s.pops.push({ x: b.x, y: b.y, t: 0.7, text: `+${pts}` })
+          // It bursts: a splat, its drops flying.
+          s.splats.push({ x: b.x, y: b.y, t: 0.6, big: !!b.boss, drops: Array.from({ length: b.boss ? 18 : 7 }, () => [(Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2] as [number, number]) })
+          if (s.splats.length > 12) s.splats.shift()
+          b.boss ? (sfx.win(true), (s.shake = 0.6)) : sfx.pop()
           haptic(b.boss ? 'success' : 'light')
           if (b.boss) {
             // The boss down: what time is left counts too.
@@ -117,6 +126,7 @@ export function MoustiquesDefi({ onEnd }: { onEnd: (score: number) => void }) {
       if (Math.abs(s.coilAt.x - s.x) < 22 && Math.abs(s.coilAt.y - Y) < 24) {
         s.coil = 6
         s.coilAt = null
+        sfx.coins(2)
         haptic('success')
         s.pops.push({ x: s.x, y: Y - 40, t: 1, text: 'Spirale !' })
       } else if (s.coilAt.y > H + 20) s.coilAt = null
@@ -124,11 +134,13 @@ export function MoustiquesDefi({ onEnd }: { onEnd: (score: number) => void }) {
     // A bite: a mosquito (or a larva) on the bombe.
     s.safe = Math.max(0, s.safe - dt)
     if (s.safe <= 0) {
-      const bit = s.bugs.find((b) => b.hp > 0 && Math.abs(b.x - s.x) < (b.boss ? 40 : 16) && Math.abs(b.y - Y) < (b.boss ? 40 : 18)) || s.shots.find((sh) => sh.foe && Math.abs(sh.x - s.x) < 14 && Math.abs(sh.y - Y) < 16)
+      const bit = s.bugs.find((b) => b.hp > 0 && Math.abs(b.x - s.x) < (b.boss ? 56 : 22) && Math.abs(b.y - Y) < (b.boss ? 56 : 24)) || s.shots.find((sh) => sh.foe && Math.abs(sh.x - s.x) < 16 && Math.abs(sh.y - Y) < 20)
       if (bit) {
         s.lives--
         s.safe = 1.5
         s.combo = 0
+        s.shake = 0.35
+        sfx.lose()
         haptic('error')
         if ('hp' in bit && !bit.boss) bit.hp = 0
         else if (!('hp' in bit)) bit.y = H + 50
@@ -147,6 +159,9 @@ export function MoustiquesDefi({ onEnd }: { onEnd: (score: number) => void }) {
     s.shots = s.shots.filter((sh) => sh.y > -20 && sh.y < H + 20)
     for (const p of s.pops) p.t -= dt
     s.pops = s.pops.filter((p) => p.t > 0)
+    for (const p of s.splats) p.t -= dt
+    s.splats = s.splats.filter((p) => p.t > 0)
+    s.shake = Math.max(0, s.shake - dt)
     if (s.t >= TIME) return finish('Fin de la partie')
     if (c) draw(c)
     if (Math.round(s.t * 6) !== Math.round((s.t - dt) * 6)) {
@@ -164,6 +179,9 @@ export function MoustiquesDefi({ onEnd }: { onEnd: (score: number) => void }) {
 
   const draw = (c: CanvasRenderingContext2D) => {
     const s = g.current
+    // A bite or the boss down: the screen shakes.
+    c.save()
+    if (s.shake > 0) c.translate((Math.random() - 0.5) * 14 * s.shake, (Math.random() - 0.5) * 14 * s.shake)
     // The night over the lagoon: the sky, the moon, the water's glints.
     const sky = c.createLinearGradient(0, 0, 0, H)
     sky.addColorStop(0, '#0b1030')
@@ -193,7 +211,7 @@ export function MoustiquesDefi({ onEnd }: { onEnd: (score: number) => void }) {
     }
     // The mosquitoes: the body, the stripes of the tiger ones, the wings beating.
     for (const b of s.bugs) {
-      const k = b.boss ? 3 : 1
+      const k = b.boss ? KB : K
       const flap = Math.sin(b.phase * 40) > 0
       c.fillStyle = 'rgba(220,235,255,0.55)'
       c.beginPath()
@@ -216,21 +234,51 @@ export function MoustiquesDefi({ onEnd }: { onEnd: (score: number) => void }) {
         c.lineTo(b.x + sx * 9 * k, b.y + 7 * k)
         c.stroke()
       }
-      if (b.boss) {
-        c.fillStyle = '#e03131'
-        c.fillRect(b.x - 6, b.y - 30, 4, 4)
-        c.fillRect(b.x + 2, b.y - 30, 4, 4)
+      // The eyes: red on the boss, and on all of them when they dive.
+      if (b.boss || b.dive) {
+        c.fillStyle = '#ff2a2a'
+        c.fillRect(b.x - 2.6 * k, b.y - 10 * k, 1.8 * k, 1.8 * k)
+        c.fillRect(b.x + 0.8 * k, b.y - 10 * k, 1.8 * k, 1.8 * k)
       }
+    }
+    // The ones that burst: a splat, its drops flying out and falling.
+    for (const p of s.splats) {
+      const e = 1 - p.t / 0.6
+      c.globalAlpha = Math.min(1, p.t * 2.5)
+      c.fillStyle = '#c92a2a'
+      for (const [dx, dy] of p.drops) {
+        const r = p.big ? 70 : 26
+        c.beginPath()
+        c.arc(p.x + dx * r * e, p.y + dy * r * e + 40 * e * e, p.big ? 5 : 2.6, 0, Math.PI * 2)
+        c.fill()
+      }
+      c.fillStyle = 'rgba(255,255,255,0.8)'
+      c.beginPath()
+      c.arc(p.x, p.y, (p.big ? 30 : 12) * (0.4 + e), 0, Math.PI * 2)
+      c.globalAlpha = Math.max(0, 0.6 - e)
+      c.fill()
+      c.globalAlpha = 1
     }
     // The sprays, the larvae.
     for (const sh of s.shots) {
-      c.fillStyle = sh.foe ? '#8ce99a' : '#c5f6fa'
+      if (!sh.foe) {
+        // The spray's mist round each jet.
+        c.fillStyle = 'rgba(197,246,250,0.18)'
+        c.beginPath()
+        c.ellipse(sh.x, sh.y + 8, 7, 12, 0, 0, Math.PI * 2)
+        c.fill()
+      }
+      c.fillStyle = sh.foe ? '#8ce99a' : '#e3fafc'
       c.beginPath()
-      c.ellipse(sh.x, sh.y, sh.foe ? 4 : 2.5, sh.foe ? 6 : 5, 0, 0, Math.PI * 2)
+      c.ellipse(sh.x, sh.y, sh.foe ? 5 : 3, sh.foe ? 7 : 6, 0, 0, Math.PI * 2)
       c.fill()
     }
-    // The bombe PAF (blinking while it's been bitten).
+    // The bombe PAF (blinking while it's been bitten), drawn bigger round its middle.
     if (!(s.safe > 0 && Math.floor(s.t * 12) % 2)) {
+      c.save()
+      c.translate(s.x, Y)
+      c.scale(1.35, 1.35)
+      c.translate(-s.x, -Y)
       c.fillStyle = '#e03131'
       c.fillRect(s.x - 11, Y - 14, 22, 36)
       c.fillStyle = '#f8f9fa'
@@ -248,6 +296,7 @@ export function MoustiquesDefi({ onEnd }: { onEnd: (score: number) => void }) {
         c.lineWidth = 2
         c.strokeRect(s.x - 14, Y - 26, 28, 50)
       }
+      c.restore()
     }
     for (const p of s.pops) {
       c.globalAlpha = Math.min(1, p.t * 2)
@@ -257,6 +306,7 @@ export function MoustiquesDefi({ onEnd }: { onEnd: (score: number) => void }) {
       c.fillText(p.text, p.x, p.y - (1 - p.t) * 24)
       c.globalAlpha = 1
     }
+    c.restore()
   }
   useLoop(step)
 
