@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
-import { ChevronLeft, Star, Trophy, Zap } from 'lucide-react'
+import { ChevronLeft, Shield, Star, Trophy, Zap } from 'lucide-react'
 import { CLUBS, foeFor, kitsFor, LEVELS, NATIONS, teamOf } from './teams'
 
 // Babi Foot, the console's football « à la FIFA »: the hub's menu (a quick
-// match, the cup), and where a match is set up (the format, the two sides and
+// match, the cup, the career), and where a match is set up (the format, the two sides and
 // their shirts, the difficulty, the length; the cup's draws) before the
 // kick-off. The last choices are kept on the phone.
 
@@ -40,12 +40,12 @@ export function rulesOf(s: Setup, draw?: Draw, harder = 1) {
   return { size: s.size, referee: true, switching: true, length: LENGTHS[s.size][s.length] ?? LENGTHS[s.size][1], foe: foeFor((LEVELS[s.level]?.foe ?? 1) * harder, me, them), golden: draw === 'golden', shootout: draw === 'pens' }
 }
 
-/** A shirt, in its colour. */
+/** A shirt, in its colour (a black one outlined in light, to be seen on the pitch's green). */
 export function Shirt({ color, size = 34 }: { color: string; size?: number }) {
-  const light = parseInt(color.slice(1, 3), 16) + parseInt(color.slice(3, 5), 16) + parseInt(color.slice(5, 7), 16) > 600
+  const sum = parseInt(color.slice(1, 3), 16) + parseInt(color.slice(3, 5), 16) + parseInt(color.slice(5, 7), 16)
   return (
     <svg viewBox="0 0 40 40" width={size} height={size}>
-      <path d="M13 4 L5 9 L2 18 L9 20 L9 37 L31 37 L31 20 L38 18 L35 9 L27 4 Q20 9 13 4 Z" fill={color} stroke={light ? '#adb5bd' : 'rgba(0,0,0,0.25)'} strokeWidth="1.5" />
+      <path d="M13 4 L5 9 L2 18 L9 20 L9 37 L31 37 L31 20 L38 18 L35 9 L27 4 Q20 9 13 4 Z" fill={color} stroke={sum > 600 ? '#adb5bd' : sum < 160 ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.25)'} strokeWidth="1.5" />
     </svg>
   )
 }
@@ -101,8 +101,8 @@ function TeamPicker({ label, value, onPick, other }: { label: string; value: str
   )
 }
 
-/** The hub: a quick match or the cup (one under way to take up again). */
-export function HubMenu({ onQuick, onCup, cupOn, onBack }: { onQuick: () => void; onCup: () => void; /** A cup under way: its round. */ cupOn: string | null; onBack?: () => void }) {
+/** The hub: a quick match, the cup (one under way to take up again), the career. */
+export function HubMenu({ onQuick, onCup, onCareer, cupOn, onBack }: { onQuick: () => void; onCup: () => void; onCareer?: () => void; /** A cup under way: its round. */ cupOn: string | null; onBack?: () => void }) {
   const card = 'flex w-full items-center gap-3 rounded-[22px] bg-white/10 p-4 text-left ring-1 ring-white/12 transition active:scale-[0.98]'
   return (
     <div className="flex h-full flex-col overflow-y-auto bg-[radial-gradient(circle_at_50%_0%,#1f7a3f,#0b2e1a_70%)] px-4 pt-12 pb-6 text-white">
@@ -137,6 +137,17 @@ export function HubMenu({ onQuick, onCup, cupOn, onBack }: { onQuick: () => void
           </span>
           {cupOn && <span className="shrink-0 rounded-full bg-[#ffd43b] px-2.5 py-1 text-[11px] font-extrabold text-[#16161c]">{cupOn}</span>}
         </button>
+        {onCareer && (
+          <button className={card} onClick={onCareer}>
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#74c0fc] text-[#16161c]">
+              <Shield size={24} strokeWidth={2.6} />
+            </span>
+            <span className="min-w-0">
+              <span className="block font-display text-[19px] leading-tight font-extrabold">Carrière</span>
+              <span className="block text-[12.5px] font-bold text-white/65">Le club de ton quartier : le championnat, le classement, les transferts.</span>
+            </span>
+          </button>
+        )}
       </div>
     </div>
   )

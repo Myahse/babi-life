@@ -111,6 +111,7 @@ const seededLab = (n: number) => () => ((n = (n * 16807) % 2147483647) / 2147483
 // ?view=field&sport=foot|basket (&len=40&wid=20 &night &t= &cam= &target=) a pitch or a court and its match;
 // ?view=hoops the playable 3 against 3 under one basket, ?view=foot5 the 5 against 5 (&seed=);
 // ?view=fifa5 | fifa11 the console's football (referee, switching; fifa11 the stadium's eleven) (&seed=, &foe=, &length= seconds, &pens=1 a draw to penalties);
+// ?view=defi&kind=foot the console's football hub (&sim= a Sim of the session kept in the browser, &home= its commune, &money=: the career online);
 // ?view=family&f=gnambro (&g=homme &seed=3) a family at the birth, in front of its home;
 // ?view=interior&kind=home&id=sleep (&housing=villa &g=homme &stage=bebe
 // &seed=3 &night) the inside of a place, the Sim doing that activity;
@@ -677,7 +678,13 @@ function Lab() {
   if (view === 'defi')
     return (
       <div className="relative h-screen w-screen bg-[#16161c]">
-        <DefiSheet kind={(q.get('kind') ?? 'combat') as DefiKind} simId="lab" practice onClose={() => location.reload()} />
+        <DefiSheet
+          kind={(q.get('kind') ?? 'combat') as DefiKind}
+          simId={q.get('sim') ?? 'lab'}
+          me={q.has('home') ? { look: randomLook('femme', seededLab(5)), gender: 'femme', homeCommune: q.get('home') ?? undefined, money: Number(q.get('money') ?? 0) } : undefined}
+          practice
+          onClose={() => location.reload()}
+        />
       </div>
     )
   if (view === 'home') return <HomeLab />

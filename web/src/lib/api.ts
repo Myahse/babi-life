@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView } from './types'
 import { useSession } from '../store/session'
 import { keepData, keptData, OFFLINE_TEXT, setOnline } from './offline'
 
@@ -269,6 +269,11 @@ export const api = {
   /** Les défis (backend sims/defi.go): the best scores, and a score played during the activity. */
   defis: (id: string) => request<{ best: Record<string, number> }>(`/sims/${id}/defis`),
   defi: (id: string, kind: string, score: number) => post<ActionResult>(`/sims/${id}/defi`, { kind, score }),
+  /** Babi Foot's career: read, the season saved, a player signed (paid in Djai) or let go. */
+  footCareer: (id: string) => request<FootCareerView>(`/sims/${id}/foot`),
+  footSave: (id: string, club: string, season: unknown) => request<FootCareerView>(`/sims/${id}/foot`, { method: 'PUT', body: JSON.stringify({ club, season }) }),
+  footSign: (id: string, player: string) => post<ActionResult>(`/sims/${id}/foot/sign/${player}`, {}),
+  footRelease: (id: string, player: string) => post<FootCareerView>(`/sims/${id}/foot/release/${player}`, {}),
   /** An outing (backend sims/outing.go): friends met in the game come at once, player friends are invited. */
   outing: (id: string, o: { placeId: string; interactionId: string; friends: string[]; players: string[] }) => post<ActionResult>(`/sims/${id}/outing`, o),
   chat: (id: string, npc: { id: string; name: string; gender: string; seed: number; look?: Look }, topic: string, said?: string, lang?: string) => post<ActionResult>(`/sims/${id}/chat`, { with: npc, topic, said: said ?? '', lang: lang ?? '' }),

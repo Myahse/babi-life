@@ -584,3 +584,8 @@ export type Politics = {
 export type Income = 'travail' | 'boulot' | 'pourboire' | 'defi' | 'tournoi' | 'jeux' | 'chance' | 'coup' | 'reseaux' | 'recu' | 'envoye' | 'location' | 'total' | 'machine' | 'bingo' | 'casino'
 /** A source's day so far: Djai got and the most a day (0: none), times done and the most a day. */
 export type DayLimit = { got: number; max?: number; times?: number; maxTimes?: number }
+
+/** Babi Foot's career (backend game/footcareer.go): a player on the market (G keeper, D back, M midfield, A forward). */
+export type FootRecruit = { id: string; name: string; post: 'G' | 'D' | 'M' | 'A'; stars: number; price: number }
+/** The Sim's career (null: none yet; the season is the phone's), the market, the most signings. */
+export type FootCareerView = { career: { club: string; squad: string[]; season: unknown } | null; market: FootRecruit[]; max: number }
