@@ -109,6 +109,8 @@ Never use `pkill` in compound commands; use `fuser -k <port>/tcp`.
 
 ## Open or possible next steps
 
+- **Waiting on the user — remind them in every report** (they asked to be reminded): the **metro's opening date** (the works along line 1 now, the trains running from that date; OSM has only `railway=construction` ways Anyama → Port-Bouët and the Attécoubé depot, no stations), the **godé game's rules**, the **Pullman / new hotel's name**, and whether « **Aircode** » is what they meant. Also still to do from their casino picks: the shared 3D roulette table at the Hôtel Ivoire, sounds in the other casino games, my rounds' history and a self-set loss limit, a weekly leaderboard and challenges; and what bothers them in the kart, the streetball, the bets and the loto (dames and 8 américain not asked yet).
+
 - **Economy:** several accounts can still each pass 20 000 Djai a day after 7 days (only a phone-number check would stop it); two Sims of one account played at the same instant can pass a limit by one action. Tune with real sales: `docs/economie.md`, « Ce qui reste ouvert ».
 
 - **Social:** a player couple isn't drawn together in 3D yet; jealousy only exists with partners met in the game (not between players); Gbairai messages from friends met in the game; outing companions at outdoor places only stand beside the Sim.
