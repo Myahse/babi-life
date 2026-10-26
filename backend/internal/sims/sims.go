@@ -21,6 +21,7 @@ import (
 	"github.com/myahse/babi-life/backend/internal/ads"
 	"github.com/myahse/babi-life/backend/internal/auth"
 	"github.com/myahse/babi-life/backend/internal/court"
+	"github.com/myahse/babi-life/backend/internal/features"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
 	"github.com/myahse/babi-life/backend/internal/kart"
@@ -707,6 +708,10 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 		var ok bool
 		if it, ok = kind.Interaction(interactionID); !ok {
 			return game.Interaction{}, errors.New("action inconnue")
+		}
+		// An update the team hasn't opened yet (features, the admin's « Mises à jour »).
+		if features.Default.Blocks(context.Background(), it.ID) != "" {
+			return game.Interaction{}, errors.New("bientôt dans le jeu")
 		}
 		if len(it.Places) > 0 && !slices.Contains(it.Places, placeID) || len(it.Cities) > 0 && !slices.Contains(it.Cities, s.City) {
 			return game.Interaction{}, errors.New("pas possible ici")

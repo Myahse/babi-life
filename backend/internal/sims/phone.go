@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/myahse/babi-life/backend/internal/features"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
 	"github.com/myahse/babi-life/backend/internal/world"
@@ -119,6 +120,11 @@ func (h *Handler) apps(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
+		return
+	}
+	// An app the team hasn't opened yet (features): not in the Store yet.
+	if req.Install && features.Default.BlocksKey(r.Context(), "app:"+req.App) != "" {
+		httpx.Error(w, http.StatusForbidden, "bientôt dans le Store")
 		return
 	}
 	h.mutate(w, r, func(s *Sim) (game.Outcome, []Event, error) {

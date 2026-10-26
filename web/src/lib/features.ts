@@ -1,0 +1,62 @@
+import { useEffect, useSyncExternalStore } from 'react'
+import { API_BASE } from './env'
+
+// The game's updates (backend features/): the features the team opens one by
+// one from the admin (« Mises à jour »). Until then they're hidden: the
+// place's activities they bring (`interactions`), the phone's apps and the
+// console's modes (`keys`: 'app:tikitoko', 'foot11'…). Asked when the game
+// opens and every minute after; while it isn't known, everything listed is
+// hidden (a closed feature never shows by mistake).
+
+export type FeatureNews = { id: string; label: string; about: string; at: string }
+type State = { known: boolean; closed: Set<string>; interactions: Set<string>; keys: Set<string>; news: FeatureNews[] }
+
+let state: State = { known: false, closed: new Set(), interactions: new Set(), keys: new Set(), news: [] }
+const listeners = new Set<() => void>()
+let asking: Promise<void> | null = null
+let last = 0
+
+async function ask() {
+  try {
+    const res = await fetch(`${API_BASE}/features`)
+    if (!res.ok) return
+    const d = (await res.json()) as { closed: string[]; interactions: string[]; keys: string[]; new: FeatureNews[] }
+    state = { known: true, closed: new Set(d.closed), interactions: new Set(d.interactions), keys: new Set(d.keys), news: d.new ?? [] }
+    last = Date.now()
+    listeners.forEach((f) => f())
+  } catch {
+    // No network: as it was.
+  }
+}
+/** Asks the server again (at most once a minute). */
+export function refreshFeatures() {
+  if (asking || Date.now() - last < 60_000) return asking
+  asking = ask().finally(() => (asking = null))
+  return asking
+}
+
+const subscribe = (f: () => void) => {
+  listeners.add(f)
+  return () => void listeners.delete(f)
+}
+/** The updates as known now (asked again every minute while something listens). */
+export function useFeatures() {
+  const s = useSyncExternalStore(subscribe, () => state)
+  useEffect(() => {
+    void refreshFeatures()
+    const t = setInterval(() => void refreshFeatures(), 60_000)
+    return () => clearInterval(t)
+  }, [])
+  return s
+}
+
+// The labs (city.html) show everything: they're for looking at the features, open or not.
+const LAB = typeof location !== 'undefined' && location.pathname.endsWith('city.html')
+/** A place's activity is there to do (not waiting for an update). Before the server has answered: held back only if it's one it may hide. */
+export const activityOpen = (s: State, id: string) => LAB || (!s.interactions.has(id) && (s.known || !MAYBE_INTERACTIONS.has(id)))
+/** An app or a console's mode is there ('app:tikitoko', 'foot11', 'foot-coupe', 'foot-carriere'). */
+export const keyOpen = (s: State, key: string) => LAB || (!s.keys.has(key) && (s.known || !MAYBE_KEYS.has(key)))
+
+// What an update may hide (the same as backend features.List): held back while the server's answer hasn't come.
+const MAYBE_INTERACTIONS = new Set(['play-foot11', 'console-combat', 'console-course', 'course-kart', 'regarder-kart', 'borne-arcade'])
+const MAYBE_KEYS = new Set(['foot11', 'foot-coupe', 'foot-carriere', 'app:tikitoko', 'app:babigram'])

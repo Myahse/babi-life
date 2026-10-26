@@ -4,6 +4,7 @@ import { api } from '../lib/api'
 import type { PhoneApp, Sim, World } from '../lib/types'
 import { AppLogo } from '../components/AppLogo'
 import type { Act } from './phoneApps'
+import { keyOpen, useFeatures } from '../lib/features'
 
 // The phone's app store, laid out like the stores of real phones: a search,
 // the tabs (for you, games, apps by kind, the ones on the phone), the featured
@@ -35,7 +36,9 @@ const TABS: { id: Tab; label: string }[] = [
 ]
 
 export function StoreApp({ world, sim, act, onOpen }: { world: World; sim: Sim; act: Act; onOpen: (id: string) => void }) {
-  const apps = world.phoneApps ?? []
+  // The apps an update hasn't brought yet (lib/features.ts) aren't in the Store.
+  const feats = useFeatures()
+  const apps = (world.phoneApps ?? []).filter((a) => keyOpen(feats, `app:${a.id}`))
   const [tab, setTab] = useState<Tab>('pour')
   const [q, setQ] = useState('')
   const [cat, setCat] = useState<string | null>(null)

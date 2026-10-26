@@ -4,6 +4,7 @@ import type { Interaction, World } from '../lib/types'
 import { IconTile } from '../components/ui'
 import { iconFor, kindColors } from '../components/icons'
 import { NEEDS, duration, fcfa, openingLabel } from '../game/rules'
+import { activityOpen, useFeatures } from '../lib/features'
 
 // « Encyclo »: the whole game in one place, searchable. Most of it is read
 // from the world the server sends (places and what's done there, jobs, apps,
@@ -114,27 +115,29 @@ function activityLines(it: Interaction): string[] {
 /** Lowercase, no accents: « Écoles » is found by « ecole ». */
 const plain = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
-function entries(world: World): Entry[] {
+function entries(world: World, open: (id: string) => boolean): Entry[] {
+  // What an update hasn't brought yet isn't in the Encyclo (lib/features.ts).
+  const acts = (k: World['kinds'][string]) => k.interactions.filter((it) => open(it.id))
   const out: Entry[] = []
   RULES.forEach((r, i) => out.push({ id: `r${i}`, tab: 'regles', title: r.title, sub: r.sub, body: r.body, icon: r.icon ?? tabOf('regles').icon, colors: tabOf('regles').colors }))
   const count: Record<string, number> = {}
   world.cities.forEach((c) => c.communes.forEach((cm) => cm.places.forEach((p) => (count[p.kind] = (count[p.kind] ?? 0) + 1))))
   Object.values(world.kinds).forEach((k) => {
-    if (!k.interactions.length) return
+    if (!acts(k).length) return
     const n = count[k.id] ?? 0
     out.push({
       id: `k-${k.id}`,
       tab: 'lieux',
       title: k.label,
-      sub: `${k.interactions.length} activité${k.interactions.length > 1 ? 's' : ''}${n ? ` · ${n} lieu${n > 1 ? 'x' : ''} dans le jeu` : ''}`,
-      body: k.interactions.map((it) => `${it.label} — ${it.cost ? fcfa(it.cost) : 'gratuit'} · ${duration(it.minutes)}${it.minHour || it.maxHour || it.days?.length ? ` · ${openingLabel(it)}` : ''}`),
+      sub: `${acts(k).length} activité${acts(k).length > 1 ? 's' : ''}${n ? ` · ${n} lieu${n > 1 ? 'x' : ''} dans le jeu` : ''}`,
+      body: acts(k).map((it) => `${it.label} — ${it.cost ? fcfa(it.cost) : 'gratuit'} · ${duration(it.minutes)}${it.minHour || it.maxHour || it.days?.length ? ` · ${openingLabel(it)}` : ''}`),
       icon: iconFor(k.icon),
       colors: kindColors(k.id),
     })
   })
   // Every activity of the game, one by one: where it's done, its price, its time, its hours, what it gives.
   Object.values(world.kinds).forEach((k) =>
-    k.interactions.forEach((it) => {
+    acts(k).forEach((it) => {
       const n = count[k.id] ?? 0
       out.push({ id: `x-${k.id}-${it.id}`, tab: 'activites', title: it.label, sub: `${k.label} · ${priceOf(it)} · ${duration(it.minutes)}`, body: [`Où : ${k.label}${n ? ` (${n} sur la carte)` : ''}.`, ...activityLines(it)], icon: iconFor(it.icon), colors: kindColors(k.id), go: k.id })
     }),
@@ -166,7 +169,8 @@ function entries(world: World): Entry[] {
 }
 
 export function GuideApp({ world, onTutorial, onGo }: { world: World; /** Koffi's tuto again (components/Tutorial.tsx). */ onTutorial?: () => void; /** To the nearest place of this kind (the activities' « Y aller »). */ onGo?: (kind: string) => void }) {
-  const all = useMemo(() => entries(world), [world])
+  const feats = useFeatures()
+  const all = useMemo(() => entries(world, (id) => activityOpen(feats, id)), [world, feats])
   const [tab, setTab] = useState<Tab>('regles')
   const [q, setQ] = useState('')
   const [open, setOpen] = useState<string | null>(null)

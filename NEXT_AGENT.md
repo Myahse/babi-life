@@ -37,6 +37,7 @@ Auth is Firebase (project `babilife-38e39`). The web app is on Vercel. The API r
 - **Romance** is fade-to-black only. Explicit content and sex workers were declined; keep declining.
 - **Language:** code comments in English, in-game text in French.
 - **Kids' street football** (`open/streetFoot.tsx`, happenings `foot`/`basket`) must stay as it is. The user wants to be able to play with the kids.
+- **Every new feature ships closed, behind the admin's « Mises à jour »** (the user wants to release them one by one, like updates). Add it to `backend/internal/features/features.go` `List` (an ID, a French label and « about » the players see in « Nouveau dans Babi Life », the catalog interaction IDs it brings, the phone keys it shows) and to `MAYBE_INTERACTIONS` / `MAYBE_KEYS` in `web/src/lib/features.ts`. Hide its entry points with `activityOpen` / `keyOpen` (`useFeatures()`), and refuse it on the server (`features.Default.Blocks`, `BlocksKey`, `Open`). Table `features` (migration 068); a feature with no row is closed. The labs (`city.html`) show everything.
 
 ## Checks before pushing
 

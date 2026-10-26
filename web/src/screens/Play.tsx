@@ -103,6 +103,8 @@ const KartRace = lazy(() => import('../kart/KartRace'))
 // The big shopping centres' own inside: the supermarket, the gallery of shops, the food court.
 const MallInside = lazy(() => import('../world3d/interior/MallInside').then((m) => ({ default: m.MallInside })))
 import type { MallLayout } from '../world3d/interior/MallInside'
+import { activityOpen, keyOpen, useFeatures } from '../lib/features'
+import { FeatureNews } from '../components/FeatureNews'
 const IvoireInside = lazy(() => import('../world3d/interior/IvoireInside').then((m) => ({ default: m.IvoireInside })))
 const CathedralInside = lazy(() => import('../world3d/interior/CathedralInside').then((m) => ({ default: m.CathedralInside })))
 const MosqueM6Inside = lazy(() => import('../world3d/interior/MosqueM6Inside').then((m) => ({ default: m.MosqueM6Inside })))
@@ -965,6 +967,8 @@ export function Play() {
 
   return (
     <div className="relative h-full overflow-hidden bg-[var(--color-night)] select-none">
+      {/* An update the team just opened (the admin's « Mises à jour »), once. */}
+      <FeatureNews />
       {racing && (
         <Suspense fallback={<div className="fixed inset-0 z-50 grid place-items-center bg-[#87c5ef] font-display text-2xl font-extrabold text-white">Babi Karting…</div>}>
           <KartRace
@@ -1720,7 +1724,9 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
   const life = lifeOf(world, sim)
   // A phone of one's own comes at 12; work and rent at 18.
   const ownPhone = !life.minor || life.age >= 12
-  const has = (id: string) => ownPhone && (sim.apps?.includes(id) ?? false)
+  // (An app an update hasn't opened yet doesn't show, even installed: lib/features.ts.)
+  const feats = useFeatures()
+  const has = (id: string) => ownPhone && (sim.apps?.includes(id) ?? false) && keyOpen(feats, `app:${id}`)
   // Apps from the store, once installed. The ride apps open the map to pick where to go.
   const STORE_APPS: { id: string; label: string; open: () => void }[] = [
     // Before 12 the Store is there, locked: it says when the phone comes.
@@ -1992,6 +1998,8 @@ function usePlaceActions(world: World, sim: Sim, city: City, commune: Commune, p
   const adult = !!useSession((s) => s.user?.adult)
   // At the stadium: what's on, and the match or the concert only while it's on.
   const agenda = useStadium(place?.kind === 'stade' ? placeId : null)
+  // The updates not opened yet (lib/features.ts).
+  const feats = useFeatures()
   // The republic's (lib/civic.ts): the campaign at the mairie, the market, the maquis; the stadium's big days.
   const terrain = useTerrain(sim.id, !!place && CIVIC_KINDS.has(place.kind))
   if (!place || !placeId) return null
@@ -2009,6 +2017,8 @@ function usePlaceActions(world: World, sim: Sim, city: City, commune: Commune, p
     .filter((it) => ageBlock(it, life.stage?.id) !== 'Plus de ton âge' && (!it.places || it.places.includes(placeId)) && (!it.cities || it.cities.includes(city.id)) && (!it.faiths || it.faiths.includes((place as Place).faith!)) && (!it.gender || it.gender === sim.gender))
     .filter((it) => it.id !== 'passer-nuit' || (partner && adult && !life.minor))
     .filter((it) => civicState(it, terrain, placeId, commune.id).show)
+    // What an update hasn't brought yet (lib/features.ts).
+    .filter((it) => activityOpen(feats, it.id))
     .map((it) => (it.id === 'passer-nuit' && partner ? { ...it, label: `Passer la nuit avec ${partner.name}` } : it))
     // The president's measures of the week: some prices lowered for everyone.
     .map((it) => withMeasures(world, sim, place.kind, it))
