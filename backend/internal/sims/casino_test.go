@@ -54,11 +54,19 @@ func TestBlackjackHand(t *testing.T) {
 			if _, _, _, err := s.playBlackjack(hand, "distribuer", 1000, rng); !errors.Is(err, errHandOpen) {
 				t.Errorf("a second hand: %v", err)
 			}
+			// The dealer showing an ace: the insurance answered first.
+			if hand.Offer {
+				if _, _, _, err := s.playBlackjack(hand, "non", 0, rng); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
+		if !hand.Done {
 			if _, _, _, err := s.playBlackjack(hand, "doubler", 0, rng); err != nil {
 				t.Fatal(err)
 			}
 		}
-		if !hand.Done || s.Money-before != hand.Paid-hand.Stake {
+		if !hand.Done || s.Money-before != hand.Paid-hand.Staked() {
 			t.Fatalf("hand %+v: money %+d", hand.View(), s.Money-before)
 		}
 	}

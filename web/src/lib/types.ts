@@ -389,11 +389,32 @@ export type Activity = {
   machine?: SlotSession
 }
 
-/** Babi Casino (backend game/casino.go): a bet on the roulette's cloth (plein: number 0–36; douzaine, colonne: 1–3). */
-export type RouletteBet = { kind: string; number?: number; stake: number }
+/** Babi Casino (backend game/casino.go): a bet on the roulette's cloth (plein: number 0–36; douzaine, colonne: 1–3; cheval, transversale, carre, sixain: their numbers). */
+export type RouletteBet = { kind: string; number?: number; numbers?: number[]; stake: number }
 export type RouletteSpin = { number: number; colour: 'rouge' | 'noir' | 'vert'; wins: number[]; back: number }
 /** A hand of le 21 as the player sees it: the dealer's second card hidden till the end. */
-export type BlackjackView = { stake: number; player: number[]; dealer: number[]; total: number; shown: number; doubled?: boolean; done: boolean; result?: 'blackjack' | 'gagne' | 'egalite' | 'perdu' | 'saute'; paid?: number }
+export type BlackjackMove = 'distribuer' | 'tirer' | 'rester' | 'doubler' | 'separer' | 'assurance' | 'non'
+export type BlackjackResult = 'blackjack' | 'gagne' | 'egalite' | 'perdu' | 'saute'
+/** One of the player's hands at le 21 (two once split). */
+export type BlackjackSeat = { cards: number[]; stake: number; doubled?: boolean; done?: boolean; result?: BlackjackResult; paid?: number }
+/** A round of le 21: `player` and `total` are the hand being played; `offer` while the bank, an ace up, asks about the insurance. */
+export type BlackjackView = {
+  stake: number
+  hands: BlackjackSeat[]
+  at: number
+  player: number[]
+  total: number
+  dealer: number[]
+  shown: number
+  doubled?: boolean
+  offer?: boolean
+  insurance?: number
+  canSplit?: boolean
+  staked: number
+  done: boolean
+  result?: BlackjackResult
+  paid?: number
+}
 export type ScratchTicket = { id: string; name: string; about: string; price: number; prizes: { amount: number; odds: number }[] }
 export type ScratchResult = { ticket: string; cells: number[]; prize: number }
 /** L'Envol (backend sims/envol.go): the round (attente: bets taken; vol; parti: its crash told), the last planes, the Sim's bets, this round's players. */
