@@ -105,7 +105,7 @@ async function warm(page, frames) {
 /** Tap a button by its text if it's there (the défi's menus), the clock moved on a little after. */
 async function tap(page, name) {
   const b = page.getByRole('button', { name }).first()
-  if (await b.count()) await b.click({ timeout: 3000 }).catch(() => undefined)
+  if (await b.count()) await b.click({ timeout: 3000, force: true }).catch(() => undefined)
   await tick(page, 8)
 }
 
