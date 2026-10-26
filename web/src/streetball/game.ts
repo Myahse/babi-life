@@ -151,7 +151,15 @@ export type Game = {
   shot: { keeper: number; save: boolean; t: number; z: number; goalX: number } | null
   me: number
   rnd: () => number
+  /** The rules (Rules): the length, the other side's strength, the golden goal; in the golden goal now. */
+  length: number
+  foe: number
+  golden: boolean
+  extra: boolean
 }
+
+/** A match's rules, if not the street's (the console's, at the salle de jeux): how long, how good the other side is (1 as in the street), a draw played on to the golden goal. */
+export type Rules = { length?: number; foe?: number; golden?: boolean }
 
 /** When the player last held Défense (the stance reads a crossover). */
 let lastGuard = -9
@@ -172,7 +180,7 @@ export function seeded(seed: number) {
   }
 }
 
-export function createGame(sport: Sport, name: string, rnd: () => number = Math.random): Game {
+export function createGame(sport: Sport, name: string, rnd: () => number = Math.random, rules: Rules = {}): Game {
   const ps: Player[] = []
   if (sport === 'basket') {
     // 3 against 3: the player and two mates, three in front.
@@ -207,6 +215,10 @@ export function createGame(sport: Sport, name: string, rnd: () => number = Math.
     shot: null,
     me,
     rnd,
+    length: rules.length ?? LENGTH,
+    foe: rules.foe ?? 1,
+    golden: !!rules.golden,
+    extra: false,
   }
   restart(g, 0)
   return g
@@ -609,7 +621,8 @@ function kickAtGoal(g: Game, p: Player, aim: V | null) {
     // The keeper's chance: time to react, how far he has to go, a corner.
     const reach = Math.abs(z - keeper.z)
     const onTarget = Math.abs(z) < MOUTH && h < BAR
-    const save = onTarget && g.rnd() < clamp(0.62 + (T - 0.6) * 0.5 - reach * 0.2 - (Math.abs(z) > 1.1 ? 0.12 : 0), 0.08, 0.85)
+    const good = keeper.team === 1 ? 0.7 + 0.3 * g.foe : 1
+    const save = onTarget && g.rnd() < clamp((0.62 + (T - 0.6) * 0.5 - reach * 0.2 - (Math.abs(z) > 1.1 ? 0.12 : 0)) * good, 0.08, 0.88)
     g.shot = { keeper: keeper.id, save, t: g.time + T, z, goalX: goal[0] }
   }
   p.pendingAt = 0.16
@@ -918,6 +931,18 @@ function callerFor(g: Game, p: Player) {
  */
 export function step(g: Game, dt: number, input: Input, others?: Map<number, Input>) {
   g.time += dt
+  // Time up; a draw with the golden goal plays on until somebody scores.
+  const up = () => {
+    if (g.time < g.length) return false
+    if (g.golden && g.score[0] === g.score[1]) {
+      if (!g.extra) {
+        g.extra = true
+        say(g, 'But en or : le premier qui marque gagne !')
+      }
+      return false
+    }
+    return true
+  }
   if (g.phase === 'count') {
     if (g.time >= 0) g.phase = 'play'
     for (const p of g.ps) poseOf(g, p)
@@ -927,7 +952,7 @@ export function step(g: Game, dt: number, input: Input, others?: Map<number, Inp
   if (g.phase === 'dead') {
     g.wait -= dt
     if (g.wait <= 0) {
-      if (g.time >= LENGTH) g.phase = 'over'
+      if (up()) g.phase = 'over'
       else {
         g.phase = 'play'
         const then = g.then
@@ -935,7 +960,7 @@ export function step(g: Game, dt: number, input: Input, others?: Map<number, Inp
         then?.()
       }
     }
-  } else if (g.phase === 'play' && g.time >= LENGTH && !g.ball.flight && !g.shot) {
+  } else if (g.phase === 'play' && !g.ball.flight && !g.shot && up()) {
     g.phase = 'over'
     say(g, 'Fin du match !')
   }
@@ -955,7 +980,8 @@ export function step(g: Game, dt: number, input: Input, others?: Map<number, Inp
   for (const p of g.ps) {
     p.cool = Math.max(0, p.cool - dt)
     p.call = Math.max(0, p.call - dt)
-    if (!p.human && playing) think(g, p, dt)
+    // The other side thinks quicker or slower by its strength.
+    if (!p.human && playing) think(g, p, p.team === 1 ? dt * g.foe : dt)
     else if (!p.human) p.want = [0, 0]
     act(g, p, dt)
   }
@@ -1075,8 +1101,9 @@ function act(g: Game, p: Player, dt: number) {
     p.x += p.vx * dt
     p.z += p.vz * dt
   } else {
-    // Running: easing to the speed wanted (a crossover's burst keeps going a moment).
-    const [wx, wz] = p.act === 'cheer' ? [0, 0] : p.want
+    // Running: easing to the speed wanted (a crossover's burst keeps going a moment); the other side a little faster or slower by its strength.
+    const pace = p.team === 1 && !p.human ? clamp(0.8 + 0.2 * g.foe, 0.88, 1.03) : 1
+    const [wx, wz] = p.act === 'cheer' ? [0, 0] : [p.want[0] * pace, p.want[1] * pace]
     p.vx += (wx - p.vx) * k
     p.vz += (wz - p.vz) * k
     p.x += p.vx * dt
