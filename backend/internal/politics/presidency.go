@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -45,6 +46,7 @@ type Week struct {
 }
 
 type Word struct {
+	ID   int64     `json:"id"`
 	Kind string    `json:"kind"` // discours | adresse
 	Text string    `json:"text"`
 	At   time.Time `json:"at"`
@@ -97,10 +99,10 @@ func (h *Handler) week(ctx context.Context, user string) (*Week, error) {
 		return nil, err
 	}
 	w.Words, w.Measures = []Word{}, []string{}
-	if rows, err := h.DB.Query(ctx, `SELECT kind, text, created_at FROM president_words WHERE election_id = $1 ORDER BY created_at DESC LIMIT 10`, w.Election); err == nil {
+	if rows, err := h.DB.Query(ctx, `SELECT id, kind, text, created_at FROM president_words WHERE election_id = $1 AND NOT hidden ORDER BY created_at DESC LIMIT 10`, w.Election); err == nil {
 		for rows.Next() {
 			var x Word
-			if rows.Scan(&x.Kind, &x.Text, &x.At) == nil {
+			if rows.Scan(&x.ID, &x.Kind, &x.Text, &x.At) == nil {
 				w.Words = append(w.Words, x)
 			}
 		}
@@ -206,10 +208,11 @@ func (h *Handler) speak(w http.ResponseWriter, r *http.Request) {
 		default:
 			return nil, userError("discours ou adresse ?")
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO president_words (election_id, sim_id, kind, text) VALUES ($1, $2, $3, $4)`, election, s.ID, req.Kind, req.Text); err != nil {
+		from, to, err := toNation(ctx, tx, journal)
+		if err != nil {
 			return nil, err
 		}
-		if err := toNation(ctx, tx, journal); err != nil {
+		if _, err := tx.Exec(ctx, `INSERT INTO president_words (election_id, sim_id, kind, text, journal_from, journal_to) VALUES ($1, $2, $3, $4, $5, $6)`, election, s.ID, req.Kind, req.Text, from, to); err != nil {
 			return nil, err
 		}
 		msg = push.Message{Title: title, Body: short(req.Text, 160), URL: "/jeu", Tag: "president-" + req.Kind}
@@ -221,9 +224,56 @@ func (h *Handler) speak(w http.ResponseWriter, r *http.Request) {
 }
 
 // toNation: a line in every Sim's journal.
-func toNation(ctx context.Context, tx pgx.Tx, text string) error {
-	_, err := tx.Exec(ctx, `INSERT INTO sim_events (sim_id, kind, text, money, game_time) SELECT id, 'politique', $1, 0, $2 FROM sims`, text, game.MinuteOf(time.Now()))
-	return err
+// toNation: a line in every Sim's journal; from, to: the ids of those lines.
+func toNation(ctx context.Context, tx pgx.Tx, text string) (from, to int64, err error) {
+	err = tx.QueryRow(ctx, `WITH ins AS (INSERT INTO sim_events (sim_id, kind, text, money, game_time) SELECT id, 'politique', $1, 0, $2 FROM sims RETURNING id)
+		SELECT COALESCE(min(id), 0), COALESCE(max(id), 0) FROM ins`, text, game.MinuteOf(time.Now())).Scan(&from, &to)
+	return
+}
+
+// WordHideAt: reports from this many players take a speech or an address down, from
+// the Présidence tab and from the journals (the notification sent then stays sent).
+const WordHideAt = 5
+
+// reportWord: POST /sims/{id}/politics/parole/{word}/signaler {reason} — a player
+// flags the president's words; the team sees it with the other reports.
+func (h *Handler) reportWord(w http.ResponseWriter, r *http.Request) {
+	var req struct{ Reason string }
+	if err := httpx.Decode(r, &req); err != nil || !slices.Contains(game.ReportReasons, req.Reason) {
+		httpx.Error(w, http.StatusBadRequest, "Choisis pourquoi tu signales.")
+		return
+	}
+	id, _ := strconv.ParseInt(chi.URLParam(r, "word"), 10, 64)
+	h.inTx(w, r, func(ctx context.Context, tx pgx.Tx, s sim) (any, error) {
+		var author, text string
+		var from, to int64
+		if err := tx.QueryRow(ctx, `SELECT sim_id, text, journal_from, journal_to FROM president_words WHERE id = $1 AND NOT hidden`, id).Scan(&author, &text, &from, &to); err != nil {
+			return nil, userError("Ces mots ne sont plus là.")
+		}
+		if author == s.ID {
+			return nil, userError("On ne signale pas ses propres mots.")
+		}
+		if _, err := tx.Exec(ctx, `INSERT INTO reports (reporter, reported, word_id, excerpt, reason) VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`, s.ID, author, id, text, req.Reason); err != nil {
+			return nil, err
+		}
+		// Players, not Sims: one account's Sims count once.
+		var n int
+		if err := tx.QueryRow(ctx, `SELECT count(DISTINCT s.user_id) FROM reports r JOIN sims s ON s.id = r.reporter WHERE r.word_id = $1`, id).Scan(&n); err != nil {
+			return nil, err
+		}
+		if n < WordHideAt {
+			return map[string]any{"text": "Merci. C'est signalé : l'équipe va regarder."}, nil
+		}
+		if _, err := tx.Exec(ctx, `UPDATE president_words SET hidden = true WHERE id = $1`, id); err != nil {
+			return nil, err
+		}
+		if to > 0 {
+			if _, err := tx.Exec(ctx, `DELETE FROM sim_events WHERE id BETWEEN $1 AND $2 AND kind = 'politique'`, from, to); err != nil {
+				return nil, err
+			}
+		}
+		return map[string]any{"text": "Merci. Assez de joueurs l'ont signalé : ces mots sont retirés.", "hidden": true}, nil
+	})
 }
 
 // short: a text cut to n letters, with an ellipsis.
@@ -267,7 +317,7 @@ func (h *Handler) decree(w http.ResponseWriter, r *http.Request) {
 			return nil, err
 		}
 		text := fmt.Sprintf("Le·la président·e %s %s décrète : %s. %s Jusqu'à lundi 9 h.", s.First, s.Last, m.Label, m.About)
-		if err := toNation(ctx, tx, text); err != nil {
+		if _, _, err := toNation(ctx, tx, text); err != nil {
 			return nil, err
 		}
 		msg = push.Message{Title: "Mesure : " + m.Label, Body: m.About + " Jusqu'à lundi 9 h.", URL: "/jeu", Tag: "mesure-" + m.ID}
@@ -384,7 +434,7 @@ func (h *Handler) fete(w http.ResponseWriter, r *http.Request) {
 		}
 		_, _, p, _ := world.FindPlace(req.Place)
 		text := fmt.Sprintf("Fête de la Nation %s, au %s, offerte par le·la président·e %s %s : musique, artistes, entrée libre pour tous !", frenchDate(start), p.Name, s.First, s.Last)
-		if err := toNation(ctx, tx, text); err != nil {
+		if _, _, err := toNation(ctx, tx, text); err != nil {
 			return nil, err
 		}
 		msg = push.Message{Title: "Fête de la Nation " + frenchDate(start), Body: "Au " + p.Name + ", entrée libre : le·la président·e vous invite.", URL: "/jeu", Tag: "fete-nation"}
@@ -440,7 +490,7 @@ func (h *Handler) meeting(w http.ResponseWriter, r *http.Request) {
 		text := fmt.Sprintf("Meeting de %s %s %s au %s : venez nombreux !", s.First, s.Last, frenchDate(start), p.Name)
 		var err error
 		if kind == "president" {
-			err = toNation(ctx, tx, text)
+			_, _, err = toNation(ctx, tx, text)
 		} else {
 			_, err = tx.Exec(ctx, `INSERT INTO sim_events (sim_id, kind, text, money, game_time) SELECT id, 'politique', $1, 0, $2 FROM sims WHERE home_commune = $3`, text, game.MinuteOf(time.Now()), commune)
 		}

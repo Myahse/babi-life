@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Crown, Megaphone, PartyPopper, Star, Users } from 'lucide-react'
+import { Crown, Flag, Megaphone, PartyPopper, Star, Users } from 'lucide-react'
 import { api } from '../../lib/api'
 import type { Election, Politics, Sim, StateEvent, World } from '../../lib/types'
 import { Chip, IconTile } from '../../components/ui'
+import { ReportSheet } from '../../components/Social'
 
 // The president's week in the Politique app (backend politics/presidency.go):
 // who governs till Monday 9 h, their speech and addresses to the nation, the
@@ -88,6 +89,9 @@ export function Presidence({ p, sim, city, run, onWalk, minor }: { p: Politics; 
   const w = p.week
   const mine = w?.sim === sim.id
   const [text, setText] = useState('')
+  // A speech being reported (the reasons open under it), and those reported from this phone.
+  const [reporting, setReporting] = useState<number | null>(null)
+  const [reported, setReported] = useState<number[]>([])
   const spoke = !!w?.words.some((x) => x.kind === 'discours')
   const measure = (id: string) => p.measures.find((m) => m.id === id)
   const others = p.events.filter((e) => e.kind === 'meeting' || e.id !== w?.fete?.id)
@@ -186,11 +190,31 @@ export function Presidence({ p, sim, city, run, onWalk, minor }: { p: Politics; 
             {w.words.length === 0 && !mine && <p className="text-sm font-semibold text-[var(--color-ink-soft)]">Pas encore de discours.</p>}
             <ul className="space-y-1.5">
               {w.words.map((x) => (
-                <li key={x.at} className="rounded-2xl bg-white p-3">
-                  <div className="text-[11px] font-extrabold tracking-wide text-[var(--color-ink-soft)] uppercase">
-                    {x.kind === 'discours' ? 'Discours d’investiture' : 'Adresse à la nation'} · {abidjan(x.at)}
+                <li key={x.id} className="rounded-2xl bg-white p-3">
+                  <div className="flex items-start gap-2">
+                    <div className="min-w-0 flex-1 text-[11px] font-extrabold tracking-wide text-[var(--color-ink-soft)] uppercase">
+                      {x.kind === 'discours' ? 'Discours d’investiture' : 'Adresse à la nation'} · {abidjan(x.at)}
+                    </div>
+                    {!mine &&
+                      (reported.includes(x.id) ? (
+                        <span className="text-[11px] font-extrabold text-[var(--color-ink-soft)]">Signalé</span>
+                      ) : (
+                        <button className="flex items-center gap-1 text-[11px] font-extrabold text-[var(--color-ink-soft)]" onClick={() => setReporting(reporting === x.id ? null : x.id)}>
+                          <Flag size={12} strokeWidth={2.6} /> Signaler
+                        </button>
+                      ))}
                   </div>
                   <p className="mt-1 text-sm leading-snug font-semibold whitespace-pre-wrap">« {x.text} »</p>
+                  {reporting === x.id && (
+                    <div className="mt-2">
+                      <ReportSheet
+                        title={x.kind === 'discours' ? 'Signaler ce discours' : 'Signaler cette adresse'}
+                        onCancel={() => setReporting(null)}
+                        onPick={(reason) => void run(() => api.reportWord(sim.id, x.id, reason)).then((ok) => ok && (setReported((r) => [...r, x.id]), setReporting(null)))}
+                        note="L'équipe regarde chaque signalement. Si cinq joueurs signalent ces mots, ils sont retirés."
+                      />
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>

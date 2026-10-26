@@ -152,6 +152,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Get("/politics/events", h.events)
 	r.Get("/sims/{id}/politics/terrain", h.terrain)
 	r.Post("/sims/{id}/politics/parole", h.speak)
+	r.Post("/sims/{id}/politics/parole/{word}/signaler", h.reportWord)
 	r.Post("/sims/{id}/politics/mesure", h.decree)
 	r.Post("/sims/{id}/politics/note", h.rate)
 	r.Post("/sims/{id}/politics/fete", h.fete)

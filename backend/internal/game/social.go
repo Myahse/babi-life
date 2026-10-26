@@ -121,3 +121,6 @@ func CoupOutcome(record int, rng *rand.Rand) (money int, caught bool) {
 
 // CleanRecordCareers: jobs closed to Sims with a police record.
 var CleanRecordCareers = []string{"bureau", "mairie", "enseignement", "sante", "droit", "police", "pharmacie", "aerien"}
+
+// ReportReasons: why a player reports a message, a post or a president's words (the web's ReportSheet).
+var ReportReasons = []string{"insultes", "harcèlement", "contenu choquant", "arnaque", "autre"}

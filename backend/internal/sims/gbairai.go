@@ -51,7 +51,7 @@ var (
 	reLink        = regexp.MustCompile(`(?i)\b((https?://|www\.)\S+|[a-z0-9-]+\.(com|net|org|ci|fr|io|me|app|link|ly|gg|tv)\b(/\S*)?)`)
 	rePhone       = regexp.MustCompile(`(\+?\d[\d .-]{6,}\d)`)
 	reSticker     = regexp.MustCompile(`^\[sticker:[a-z0-9-]+\]$`)
-	reportReasons = []string{"insultes", "harcèlement", "contenu choquant", "arnaque", "autre"}
+	reportReasons = game.ReportReasons
 )
 
 // cleanMessage: trimmed, control characters out, links and phone numbers masked.

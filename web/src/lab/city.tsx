@@ -25,7 +25,7 @@ import { MuseeInside } from '../world3d/interior/MuseeInside'
 import { AssembleeInside } from '../world3d/interior/AssembleeInside'
 import { MarcheTreichInside } from '../world3d/interior/MarcheTreichInside'
 import { BoulayScene } from '../world3d/interior/BoulayScene'
-import { DefiSheet } from '../components/Defi'
+import { DefiSheet, type DefiKind } from '../components/Defi'
 import { KineoInside } from '../world3d/interior/KineoInside'
 import { AirportInside } from '../world3d/interior/AirportInside'
 import { BeachScene } from '../world3d/interior/BeachScene'
@@ -671,6 +671,12 @@ function Lab() {
       <div className="relative h-screen w-screen">
         <BoulayScene sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)), gameMinutes: 600 } as unknown as Sim} interactionId={q.get('act') ?? 'traversee-boulay'} night={night} stage="adulte" />
         {q.has('defi') && <DefiSheet kind="ski" simId="lab" send={async (score) => ({ outcome: { text: `Défi ${score}/100. Belle sortie.`, money: 0 } }) as unknown as ActionResult} onClose={() => location.reload()} />}
+      </div>
+    )
+  if (view === 'defi')
+    return (
+      <div className="relative h-screen w-screen bg-[#16161c]">
+        <DefiSheet kind={(q.get('kind') ?? 'combat') as DefiKind} simId="lab" practice onClose={() => location.reload()} />
       </div>
     )
   if (view === 'home') return <HomeLab />

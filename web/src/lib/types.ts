@@ -541,7 +541,7 @@ export type PresidentWeek = {
   acronym?: string
   color?: string
   until: string
-  words: { kind: 'discours' | 'adresse'; text: string; at: string }[]
+  words: { id: number; kind: 'discours' | 'adresse'; text: string; at: string }[]
   measures: string[]
   rating: { avg: number; count: number; mine: number }
   fete?: StateEvent

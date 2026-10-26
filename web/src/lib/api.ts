@@ -187,6 +187,8 @@ export const api = {
   vote: (id: string, election: number, candidate: string, at: string) => post<{ text: string }>(`/sims/${id}/politics/vote`, { election, candidate, at }),
   /** The president's week and the campaign in the street (backend politics/presidency.go). */
   speak: (id: string, kind: 'discours' | 'adresse', text: string) => post<{ text: string }>(`/sims/${id}/politics/parole`, { kind, text }),
+  /** Reports the president's words (five players take them down). */
+  reportWord: (id: string, word: number, reason: string) => post<{ text: string; hidden?: boolean }>(`/sims/${id}/politics/parole/${word}/signaler`, { reason }),
   decree: (id: string, measure: string) => post<{ text: string }>(`/sims/${id}/politics/mesure`, { measure }),
   ratePresident: (id: string, score: number) => post<{ text: string }>(`/sims/${id}/politics/note`, { score }),
   fete: (id: string, place: string, at: string) => post<{ text: string }>(`/sims/${id}/politics/fete`, { place, at }),
