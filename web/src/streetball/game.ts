@@ -12,12 +12,36 @@ import type { Pose } from '../avatar/Human'
 //
 // x across the screen (right +), z towards the camera. Basketball: the ring
 // at HOOP, everyone attacks it. Football: team 0 (the player's) attacks +x.
+//
+// Football also comes as the console's game, « à la FIFA » (Rules): eleven a
+// side on a lined pitch (throw-ins, corners, goal kicks) or the five-a-side
+// maracana; a referee who gives fouls, free kicks, penalties and cards; the
+// player switching to whichever team-mate the play needs, sprinting on a
+// stamina bar, playing through balls and lobs, heading crosses, and holding
+// Tir to choose the power. The street and the courts keep their own rules.
 
 export type Sport = 'basket' | 'foot'
 type V = [number, number]
 
 /** The player's hands: the stick (x right, z down the screen), and the buttons, each a press. */
-export type Input = { mx: number; mz: number; pass: boolean; shoot: boolean; skill: boolean; defend: boolean; /** Défense held: low in the stance. */ guard: boolean }
+export type Input = {
+  mx: number
+  mz: number
+  pass: boolean
+  shoot: boolean
+  skill: boolean
+  defend: boolean
+  /** Défense held: low in the stance. */
+  guard: boolean
+  /** Football, held: sprinting (it costs stamina). */
+  sprint?: boolean
+  /** Football, presses: the through ball, the lob (a cross from the wing), changing player. */
+  through?: boolean
+  lob?: boolean
+  swap?: boolean
+  /** Football, Tir held: the shot's power grows until it's let go. Where the hands can hold it (the keys, a pad, the touch button), `shoot` alone is no longer a shot. */
+  charge?: boolean
+}
 export const NO_INPUT: Input = { mx: 0, mz: 0, pass: false, shoot: false, skill: false, defend: false, guard: false }
 
 /** Seconds of play, and of the 3-2-1 before. */
@@ -33,15 +57,27 @@ export const ARC = 6
 export const BOARD_Z = -6.0
 export const COURT = { x: 7.5, z0: -7.2, z1: 6.8 }
 const COURT_FENCE = { x: 8.6, z0: -8.3, z1: 8.0 }
-/** The maracana: half length and width, the goal's half-mouth and its bar. */
-export const PITCH = { x: 18, z: 10.5 }
-export const MOUTH = 1.6
-export const BAR = 2
+/**
+ * A football ground: half its length and width, the goal's half-mouth and its
+ * bar, the penalty box (depth from the goal line, half-width) and the spot,
+ * and whether boards run round it (the maracana: the ball comes back off
+ * them) or lines (the stadium: out is a throw-in, a corner, a goal kick).
+ */
+export type Field = { x: number; z: number; mouth: number; bar: number; box: V; spot: number; walls: boolean; /** How far the wall stands at a free kick. */ wall: number }
+/** The five-a-side maracana and the stadium's pitch (a real one's proportions, a little smaller so the eleven reach each other). */
+export const FIELDS: Record<5 | 11, Field> = {
+  5: { x: 18, z: 10.5, mouth: 1.6, bar: 2, box: [6, 5], spot: 6, walls: true, wall: 4 },
+  11: { x: 46, z: 30, mouth: 3.4, bar: 2.44, box: [14.5, 17.5], spot: 10, walls: false, wall: 8 },
+}
+/** The maracana's, as before the stadium (the street, the courts). */
+export const PITCH = FIELDS[5]
+export const MOUTH = PITCH.mouth
+export const BAR = PITCH.bar
 const BALL_R = { basket: 0.12, foot: 0.11 }
 
 /* ---------- Who's on it ---------- */
 
-export type Act = 'none' | 'pass' | 'shoot' | 'dunk' | 'layup' | 'cross' | 'steal' | 'block' | 'slide' | 'beaten' | 'kick' | 'dive' | 'hold' | 'celebrate' | 'cheer'
+export type Act = 'none' | 'pass' | 'shoot' | 'dunk' | 'layup' | 'cross' | 'steal' | 'block' | 'slide' | 'beaten' | 'kick' | 'dive' | 'hold' | 'celebrate' | 'cheer' | 'head' | 'throw'
 
 export type Player = {
   id: number
@@ -80,10 +116,17 @@ export type Player = {
   pose: Pose
   /** Mirrored body (the keeper diving the other way). */
   flip: boolean
+  /** Football: the sprint's breath (0…1), Tir held so far (0…1), the cards, sent off. */
+  stamina: number
+  charge: number
+  cards: number
+  out: boolean
+  /** This slide tackle has been judged already (a foul or not). */
+  judged: boolean
 }
 
 /** Something worth cheering, filming and posting. */
-export type Moment = { kind: 'dunk' | 'basket' | 'three' | 'goal' | 'block' | 'steal' | 'ankle' | 'save' | 'tackle' | 'post'; team: 0 | 1; by: number; t: number }
+export type Moment = { kind: 'dunk' | 'basket' | 'three' | 'goal' | 'block' | 'steal' | 'ankle' | 'save' | 'tackle' | 'post' | 'foul' | 'card'; team: 0 | 1; by: number; t: number }
 
 type Flight = {
   kind: 'pass' | 'bounce' | 'shot'
@@ -120,6 +163,8 @@ export type Ball = {
   phase: number
   /** A shot through the ring: no one touches it before it's down. */
   dead: boolean
+  /** Football: a lofted ball (a lob, a cross, a goal kick) still in the air: heads go up for it. */
+  lofted: boolean
 }
 
 export type Stats = { points: number; goals: number; dunks: number; assists: number; steals: number; blocks: number; ankles: number }
@@ -142,7 +187,7 @@ export type Game = {
   flash: { text: string; t: number } | null
   moments: Moment[]
   stats: Stats
-  lastPass: { by: number; team: 0 | 1; t: number } | null
+  lastPass: { by: number; team: 0 | 1; t: number; /** Played by the local hands (the console moves them on to whoever it's for). */ mine: boolean } | null
   /** The ring after a dunk or off the iron: when it was hit, and how hard. */
   rim: { t: number; amp: number }
   /** The net when the ball goes through it. */
@@ -156,18 +201,67 @@ export type Game = {
   foe: number
   golden: boolean
   extra: boolean
+  /** Football: the ground, how many a side, the player taking over the team-mate the play needs, a referee. */
+  field: Field
+  size: 5 | 11
+  switching: boolean
+  referee: boolean
+  /** A set piece waiting to be taken (a free kick, a penalty, a corner, a throw-in, a goal kick). */
+  set: SetPiece | null
+  /** The referee, following the play. */
+  ref: { x: number; z: number; face: number; whistle: number }
+  /** At a penalty against the local team: the side its stick says the keeper dives (null: no say). */
+  penStick: -1 | 0 | 1 | null
 }
 
-/** A match's rules, if not the street's (the console's, at the salle de jeux): how long, how good the other side is (1 as in the street), a draw played on to the golden goal. */
-export type Rules = { length?: number; foe?: number; golden?: boolean }
+/** A dead ball about to be played: who takes it, from where, since when; the others kept back. */
+export type SetPiece = { kind: 'free' | 'pen' | 'corner' | 'throw' | 'goal'; team: 0 | 1; taker: number; at: V; t: number }
+
+/**
+ * A match's rules, if not the street's (the console's, at the salle de jeux):
+ * how long, how good the other side is (1 as in the street), a draw played on
+ * to the golden goal. Football also: eleven a side at the stadium (else the
+ * maracana's five), the player switching team-mates (the console: one team in
+ * one pair of hands), a referee (fouls, free kicks, penalties, cards), and the
+ * teams' names by place in the team (the player's own name goes on `me`).
+ */
+export type Rules = { length?: number; foe?: number; golden?: boolean; size?: 5 | 11; switching?: boolean; referee?: boolean; names?: [string[], string[]] }
 
 /** When the player last held Défense (the stance reads a crossover). */
 let lastGuard = -9
 
 const NAMES = { mates: ['Yao', 'Ibrahim', 'Koffi', 'Moussa'], them: ['Bakary', 'Junior', 'Didier', 'Salif', 'Lass'] }
+/** Eleven a side, by place: keeper, the back four, the three in midfield, the wingers and the striker between them. */
+const ELEVEN = {
+  mates: ['Gbagbo', 'Seri', 'Kanga', 'Diomandé', 'Koné', 'Bamba', 'Yao', 'Ibrahim', 'Koffi', 'Moussa', 'Gervais'],
+  them: ['Sangaré', 'Traoré', 'Coulibaly', 'Ouattara', 'Doumbia', 'Fofana', 'Bakary', 'Junior', 'Didier', 'Salif', 'Lass'],
+}
+
+/**
+ * The eleven's shape (4-3-3) by place in the team, in fractions of the
+ * pitch's half length and width, for the team attacking +x: where each one
+ * stands at the kick-off and goes back to without the ball.
+ */
+const SHAPE11: V[] = [
+  [-0.96, 0],
+  [-0.62, -0.62],
+  [-0.7, -0.22],
+  [-0.7, 0.22],
+  [-0.62, 0.62],
+  [-0.45, 0],
+  [-0.3, -0.36],
+  [-0.3, 0.36],
+  [-0.12, -0.72],
+  [-0.06, 0],
+  [-0.12, 0.72],
+]
+/** The console's football (a referee, switching, or the stadium's eleven): lobs and headers, its own long balls; the street plays as it always has. */
+const fifa = (g: Game) => g.referee || g.switching || g.size === 11
+/** Who kicks off and who scores when it isn't clear: the one up front. */
+const striker = (g: Game) => (g.size === 11 ? 9 : 4)
 
 function makePlayer(id: number, team: 0 | 1, role: number, name: string, x: number, z: number): Player {
-  return { id, team, human: false, keeper: false, name, role, x, z, vx: 0, vz: 0, face: 0, want: [0, 0], act: 'none', at: 0, len: 0, side: 1, cool: 0, think: 0, call: 0, from: [0, 0], to: [0, 0], pending: null, pendingAt: 0, spot: role, pose: 'idle', flip: false }
+  return { id, team, human: false, keeper: false, name, role, x, z, vx: 0, vz: 0, face: 0, want: [0, 0], act: 'none', at: 0, len: 0, side: 1, cool: 0, think: 0, call: 0, from: [0, 0], to: [0, 0], pending: null, pendingAt: 0, spot: role, pose: 'idle', flip: false, stamina: 1, charge: 0, cards: 0, out: false, judged: false }
 }
 
 /** A seeded random (the labs replay the same match), or Math.random. */
@@ -182,22 +276,29 @@ export function seeded(seed: number) {
 
 export function createGame(sport: Sport, name: string, rnd: () => number = Math.random, rules: Rules = {}): Game {
   const ps: Player[] = []
+  const size = sport === 'foot' && rules.size === 11 ? 11 : 5
   if (sport === 'basket') {
     // 3 against 3: the player and two mates, three in front.
     for (let i = 0; i < 3; i++) ps.push(makePlayer(i, 0, i, i === 0 ? name : NAMES.mates[i - 1], 0, 0))
     for (let i = 0; i < 3; i++) ps.push(makePlayer(3 + i, 1, i, NAMES.them[i], 0, 0))
+  } else if (size === 11) {
+    // 11 against 11: the player starts up front (the kick-off is theirs), and takes over whoever the play needs.
+    const names = rules.names ?? [ELEVEN.mates, ELEVEN.them]
+    for (const team of [0, 1] as const) for (let i = 0; i < 11; i++) ps.push(makePlayer(team * 11 + i, team, i, names[team][i] ?? ELEVEN.mates[i], 0, 0))
+    ps[9].name = name
+    for (const p of ps) p.keeper = p.role === 0
   } else {
     // 5 against 5: a keeper, a back, two wings, one up front; the player on a wing.
-    for (let i = 0; i < 5; i++) ps.push(makePlayer(i, 0, i, i === 2 ? name : NAMES.mates[i < 2 ? i : i - 1], 0, 0))
-    for (let i = 0; i < 5; i++) ps.push(makePlayer(5 + i, 1, i, NAMES.them[i], 0, 0))
+    for (let i = 0; i < 5; i++) ps.push(makePlayer(i, 0, i, i === 2 ? name : (rules.names?.[0][i] ?? NAMES.mates[i < 2 ? i : i - 1]), 0, 0))
+    for (let i = 0; i < 5; i++) ps.push(makePlayer(5 + i, 1, i, rules.names?.[1][i] ?? NAMES.them[i], 0, 0))
     for (const p of ps) p.keeper = p.role === 0
   }
-  const me = sport === 'basket' ? 0 : 2
+  const me = sport === 'basket' ? 0 : size === 11 ? 9 : 2
   ps[me].human = true
   const g: Game = {
     sport,
     ps,
-    ball: { x: 0, y: 0.5, z: 0, vx: 0, vy: 0, vz: 0, owner: -1, lastTeam: 0, lastBy: -1, flight: null, meant: -1, tried: [], phase: 0, dead: false },
+    ball: { x: 0, y: 0.5, z: 0, vx: 0, vy: 0, vz: 0, owner: -1, lastTeam: 0, lastBy: -1, flight: null, meant: -1, tried: [], phase: 0, dead: false, lofted: false },
     score: [0, 0],
     time: -COUNTDOWN,
     phase: 'count',
@@ -219,6 +320,13 @@ export function createGame(sport: Sport, name: string, rnd: () => number = Math.
     foe: rules.foe ?? 1,
     golden: !!rules.golden,
     extra: false,
+    field: FIELDS[size],
+    size,
+    switching: !!rules.switching,
+    referee: !!rules.referee,
+    set: null,
+    ref: { x: 0, z: -6, face: 0, whistle: -9 },
+    penStick: null,
   }
   restart(g, 0)
   return g
@@ -233,16 +341,19 @@ const fwd = (p: Player): V => [Math.sin(p.face), Math.cos(p.face)]
 const right = (p: Player): V => [Math.cos(p.face), -Math.sin(p.face)]
 const dist = (a: { x: number; z: number }, b: { x: number; z: number }) => hyp(a.x - b.x, a.z - b.z)
 const speedOf = (p: Player) => hyp(p.vx, p.vz)
-const mates = (g: Game, p: Player) => g.ps.filter((q) => q.team === p.team && q !== p)
-const foes = (g: Game, p: Player) => g.ps.filter((q) => q.team !== p.team)
+/** The others on the pitch (one sent off isn't). */
+const mates = (g: Game, p: Player) => g.ps.filter((q) => q.team === p.team && q !== p && !q.out)
+const foes = (g: Game, p: Player) => g.ps.filter((q) => q.team !== p.team && !q.out)
 export const holder = (g: Game) => (g.ball.owner >= 0 ? g.ps[g.ball.owner] : null)
 /** Where a team scores (football: the middle of the goal mouth). */
-const goalOf = (g: Game, team: 0 | 1): V => (g.sport === 'basket' ? HOOP : [team === 0 ? PITCH.x : -PITCH.x, 0])
+const goalOf = (g: Game, team: 0 | 1): V => (g.sport === 'basket' ? HOOP : [team === 0 ? g.field.x : -g.field.x, 0])
+/** Inside the penalty box a team defends (team's own goal). */
+const inBox = (g: Game, team: 0 | 1, x: number, z: number) => Math.abs(x - (team === 0 ? -g.field.x : g.field.x)) < g.field.box[0] && Math.abs(z) < g.field.box[1]
 /** Which way a team attacks (football). */
 const dirOf = (team: 0 | 1) => (team === 0 ? 1 : -1)
 const fromHoop = (x: number, z: number) => hyp(x - HOOP[0], z - HOOP[1])
 /** Locked in a move: the stick doesn't steer. */
-const locked = (p: Player) => p.act === 'dunk' || p.act === 'layup' || p.act === 'shoot' || p.act === 'slide' || p.act === 'beaten' || p.act === 'dive' || p.act === 'celebrate' || (p.act === 'block' && p.at < 0.6)
+const locked = (p: Player) => p.act === 'dunk' || p.act === 'layup' || p.act === 'shoot' || p.act === 'slide' || p.act === 'beaten' || p.act === 'dive' || p.act === 'celebrate' || p.act === 'head' || (p.act === 'block' && p.at < 0.6)
 
 function say(g: Game, text: string) {
   g.flash = { text, t: g.time }
@@ -326,24 +437,49 @@ function restart(g: Game, team: 0 | 1) {
     })
     give(g, first)
   } else {
+    const F = g.field
+    g.set = null
+    b.lofted = false
     for (const p of g.ps) {
       const d = dirOf(p.team)
       const own = p.team === team
-      const SPOT: V[] = [
-        [-PITCH.x + 0.8, 0],
-        [-11, 0],
-        [-4, -5.5],
-        [-4, 5.5],
-        own ? [-0.4, 0] : [-4.5, 0],
-      ]
-      const [x, z] = SPOT[p.role]
+      let x: number, z: number
+      if (g.size === 11) {
+        // Each in the shape, in his own half; the kicker on the ball, a team-mate beside him, the others outside the circle.
+        const [fx, fz] = SHAPE11[p.role]
+        ;[x, z] = [Math.min(-1.5, fx * F.x), fz * F.z * 0.92]
+        if (p.role === 9) [x, z] = own ? [-0.4, 0] : [-9.6, 0]
+        if (p.role === 6 && own) [x, z] = [-1.2, -5]
+      } else {
+        const SPOT: V[] = [
+          [-F.x + 0.8, 0],
+          [-11, 0],
+          [-4, -5.5],
+          [-4, 5.5],
+          own ? [-0.4, 0] : [-4.5, 0],
+        ]
+        ;[x, z] = SPOT[p.role]
+      }
+      // Mirrored for the side attacking -x; the eleven's left is the other's right (the maracana's places were always set the same way).
       p.x = x * d
-      p.z = z
+      p.z = g.size === 11 ? z * d : z
       p.face = d > 0 ? Math.PI / 2 : -Math.PI / 2
+      if (p.out) offPitch(g, p)
     }
-    const kicker = g.ps.find((p) => p.team === team && p.role === 4)!
+    // The one up front kicks off (another if he's been sent off).
+    const kicker = g.ps.find((p) => p.team === team && p.role === striker(g) && !p.out) ?? g.ps.find((p) => p.team === team && !p.keeper && !p.out)!
     give(g, kicker)
   }
+}
+
+/** One sent off stands by the touchline, out of the play. */
+function offPitch(g: Game, p: Player) {
+  p.x = (p.team === 0 ? -6 : 6) - p.role * 0.7
+  p.z = g.field.z + 3
+  p.vx = p.vz = 0
+  p.want = [0, 0]
+  p.face = Math.PI
+  p.act = 'none'
 }
 
 /** The ball into someone's hands (or at their feet). */
@@ -357,6 +493,7 @@ function give(g: Game, p: Player) {
   b.meant = -1
   b.tried = []
   b.dead = false
+  b.lofted = false
   p.think = 0.25
   p.call = 0
   if (changed) {
@@ -366,16 +503,48 @@ function give(g: Game, p: Player) {
     g.cleared = g.sport === 'basket' ? fromHoop(p.x, p.z) > ARC + 0.2 : true
   }
   if (g.shot && p.keeper) g.shot = null
+  // The console: the player plays whoever of the team has the ball; the other side has it, the team-mate nearest it (if the one played is far behind).
+  if (g.switching) {
+    if (p.team === myTeam(g) && !p.keeper) control(g, p)
+    else if (p.team !== myTeam(g)) {
+      const near = nearestMate(g, b.x, b.z)
+      if (near && dist(near, b) < dist(g.ps[g.me], b) - 6) control(g, near)
+    }
+  }
+}
+
+/** The team the local hands play for. */
+const myTeam = (g: Game) => g.ps[g.me].team
+
+/** The console: the local hands go to another of the team (the one before plays by itself again). */
+function control(g: Game, p: Player) {
+  if (!g.switching || p.id === g.me || p.out || p.team !== myTeam(g)) return
+  const was = g.ps[g.me]
+  was.human = false
+  was.charge = 0
+  p.human = true
+  p.think = 0
+  g.me = p.id
+}
+
+/** Of the local team (not the keeper, nor `not`), the one nearest a point. */
+function nearestMate(g: Game, x: number, z: number, not?: Player) {
+  return nearest(
+    g.ps.filter((q) => q.team === myTeam(g) && !q.keeper && !q.out && q !== not),
+    x,
+    z,
+  )[0]
 }
 
 /* ---------- The moves ---------- */
 
 /** Passe: to the team-mate the stick points at (or the most open one). Basketball, a bounce pass when a hand is in the way; football, along the ground, into space when it's played forward. */
-export function pass(g: Game, p: Player, aim: V | null) {
+export function pass(g: Game, p: Player, aim: V | null, kind: 'ground' | 'through' | 'lob' | 'throw' = 'ground') {
   const b = g.ball
   if (b.owner !== p.id || locked(p)) return
   const list = mates(g, p).filter((q) => !q.keeper || g.sport === 'basket' || p.keeper)
   if (!list.length) return
+  const F = g.field
   let to = list[0]
   let best = -Infinity
   for (const q of list) {
@@ -383,11 +552,15 @@ export function pass(g: Game, p: Player, aim: V | null) {
     const d = hyp(dx, dz) || 1
     let score: number
     if (aim && hyp(aim[0], aim[1]) > 0.3) score = (dx * aim[0] + dz * aim[1]) / d / hyp(aim[0], aim[1]) - d * 0.012
-    else score = Math.min(4, openness(g, q)) * 0.4 - d * 0.03 + (g.sport === 'foot' ? ((q.x - p.x) * dirOf(p.team)) * 0.05 : 0) + (q.human ? 0.5 : 0)
+    else score = Math.min(4, openness(g, q)) * 0.4 - d * (g.size === 11 ? 0.018 : 0.03) + (g.sport === 'foot' ? ((q.x - p.x) * dirOf(p.team)) * 0.05 : 0) + (q.human ? 0.5 : 0)
+    // A through ball looks for the run in behind; a lob, for a head in the box.
+    if (kind === 'through') score += ((q.x - p.x) * dirOf(p.team)) * 0.06
+    if (kind === 'lob' && inBox(g, q.team === 0 ? 1 : 0, q.x, q.z)) score += 1.2
     if (score > best) [best, to] = [score, q]
   }
   const enemies = foes(g, p)
-  g.lastPass = { by: p.id, team: p.team, t: g.time }
+  g.lastPass = { by: p.id, team: p.team, t: g.time, mine: p.id === g.me }
+  if (g.set?.taker === p.id) g.set = null
   b.owner = -1
   b.lastBy = p.id
   b.lastTeam = p.team
@@ -410,21 +583,30 @@ export function pass(g: Game, p: Player, aim: V | null) {
   const dir = dirOf(p.team)
   const forward = aim ? aim[0] * dir > 0.5 : false
   const ahead = (to.x - p.x) * dir > 2
-  const through = forward && ahead
-  const lead = through ? 4 + d0 * 0.1 : 0
+  const through = kind === 'through' || (forward && ahead)
+  const big = g.size === 11
+  const lead = through ? (big ? 6 : 4) + d0 * (big ? 0.12 : 0.1) : 0
   const eta = d0 / 13
-  const tx = clamp(to.x + to.vx * eta + dir * lead, -PITCH.x + 1, PITCH.x - 1)
-  const tz = clamp(to.z + to.vz * eta, -PITCH.z + 1, PITCH.z - 1)
+  const tx = clamp(to.x + to.vx * eta + dir * lead, -F.x + 1, F.x - 1)
+  const tz = clamp(to.z + to.vz * eta, -F.z + 1, F.z - 1)
   const d = hyp(tx - p.x, tz - p.z) || 1
   // Fast enough to get there, rolling to a stop a little past it.
-  const v = clamp(Math.sqrt(2 * 1.6 * (d + 3)), 7, 21)
-  const lofted = d > 16
+  const v = clamp(Math.sqrt(2 * 1.6 * (d + 3)), 7, big ? 26 : 21)
+  // In the air: asked for (a lob, a cross), a throw-in, or too far along the ground.
+  const lob = kind === 'lob' || kind === 'throw' || d > (big ? 32 : 16)
+  // Up and down so it comes down near him: the higher the further, a throw-in low. The street's long ball as it always was.
+  const street = !fifa(g)
+  const vy = street ? (lob ? 5.5 : 0) : kind === 'throw' ? 3.4 : lob ? clamp(3.5 + d * 0.14, 4.5, 10) : 0
+  const air = (2 * vy) / 9.8
+  const vh = street ? v * (lob ? 0.8 : 1) : lob ? Math.min((Math.max(1, d - 1.5) / Math.max(air, 0.3)) * (kind === 'throw' ? 1 : 0.95), 24) : v
   p.face = Math.atan2(tx - p.x, tz - p.z)
-  startAct(p, 'kick', 0.45)
+  startAct(p, kind === 'throw' ? 'throw' : 'kick', 0.45)
   p.pending = () => {
-    b.vx = ((tx - p.x) / d) * v * (lofted ? 0.8 : 1)
-    b.vz = ((tz - p.z) / d) * v * (lofted ? 0.8 : 1)
-    b.vy = lofted ? 5.5 : 0
+    b.vx = ((tx - p.x) / d) * vh
+    b.vz = ((tz - p.z) / d) * vh
+    b.vy = vy
+    if (kind === 'throw') b.y = 1.9
+    b.lofted = lob && !street
     b.meant = to.id
   }
   p.pendingAt = 0.14
@@ -432,13 +614,16 @@ export function pass(g: Game, p: Player, aim: V | null) {
   // The ball stays at his foot until it's struck.
   b.vx = b.vy = b.vz = 0
   if (through && p.human) say(g, 'Passe en profondeur !')
+  else if (kind === 'lob' && p.human && inBox(g, p.team === 0 ? 1 : 0, tx, tz)) say(g, 'Centre !')
+  // The console: the hands go with the ball to whoever it's for.
+  if (g.switching && to.team === myTeam(g) && !to.keeper) control(g, to)
 }
 
 /** Tir: a jump shot, a layup close in, a dunk with a run-up at the ring; football, a shot at goal (the stick aims it). */
-export function shoot(g: Game, p: Player, aim: V | null) {
+export function shoot(g: Game, p: Player, aim: V | null, power?: number) {
   const b = g.ball
   if (b.owner !== p.id || locked(p)) return
-  if (g.sport === 'foot') return kickAtGoal(g, p, aim)
+  if (g.sport === 'foot') return kickAtGoal(g, p, aim, power)
   const d = fromHoop(p.x, p.z)
   const sp = speedOf(p)
   const toward = sp > 0.1 ? ((HOOP[0] - p.x) * p.vx + (HOOP[1] - p.z) * p.vz) / (d * sp || 1) : 0
@@ -579,7 +764,7 @@ function scored(g: Game, p: Player, points: number, dunk: boolean) {
   if (p.id === g.me) {
     g.stats.points += points
     if (dunk) g.stats.dunks++
-  } else if (p.team === g.ps[g.me].team && g.lastPass && g.lastPass.by === g.me && g.time - g.lastPass.t < 4) g.stats.assists++
+  } else if (p.team === g.ps[g.me].team && g.lastPass?.mine && g.time - g.lastPass.t < 4) g.stats.assists++
   say(g, dunk ? (p.human ? 'DUNK !!! Le terrain explose !' : 'DUNK !!!') : points === 2 ? 'De loin ! 2 points !' : 'Paniiier !')
   moment(g, dunk ? 'dunk' : points === 2 ? 'three' : 'basket', p)
   g.phase = 'dead'
@@ -589,43 +774,127 @@ function scored(g: Game, p: Player, points: number, dunk: boolean) {
   for (const q of g.ps) if (q.team === p.team && q !== p && !locked(q)) startAct(q, 'cheer', g.wait)
 }
 
-/** Football: the shot. Its speed, its lift and how far off the aim it goes; whether the keeper gets there. */
-function kickAtGoal(g: Game, p: Player, aim: V | null) {
-  const b = g.ball
+/**
+ * Football: the shot. Its speed, its lift and how far off the aim it goes;
+ * whether the keeper gets there. `power` (0…1) is how long Tir was held: soft
+ * and placed, or hard and rising (too hard close in, over the bar). The AI
+ * hits it about three quarters.
+ */
+function kickAtGoal(g: Game, p: Player, aim: V | null, power?: number) {
+  const F = g.field
   const goal = goalOf(g, p.team)
   const d = hyp(goal[0] - p.x, goal[1] - p.z)
-  // Aimed with the stick (up and down the screen); left alone, a corner.
-  const want = aim && Math.abs(aim[1]) > 0.25 ? Math.sign(aim[1]) * 1.15 : (g.rnd() < 0.5 ? -1 : 1) * (0.5 + g.rnd() * 0.8)
-  const err = (g.rnd() - 0.5) * (0.4 + d * 0.07)
-  const z = want + err
-  const speed = 19 + g.rnd() * 5
+  const pen = g.set?.kind === 'pen' && g.set.taker === p.id
+  // The goal's size against the maracana's (the stadium's is wider).
+  const k = F.mouth / 1.6
+  let z: number, h: number, speed: number
+  if (power === undefined) {
+    // The street's shot (the AI's everywhere, a tap where Tir isn't held): aimed with the stick, else a corner.
+    const want = (aim && Math.abs(aim[1]) > 0.25 ? Math.sign(aim[1]) * 1.15 : (g.rnd() < 0.5 ? -1 : 1) * (0.5 + g.rnd() * 0.8)) * k
+    z = want + (g.rnd() - 0.5) * (0.4 + d * 0.07) * (pen ? 0.6 : 1)
+    speed = 19 + g.rnd() * 5
+    h = 0.25 + g.rnd() * 1.6 + (d > 20 ? 0.6 : 0)
+  } else {
+    // Charged: placed with the stick across the goal; the harder, the faster, the less precise, and the higher it can rise.
+    const corner = 1.15 * k
+    const want = aim && Math.abs(aim[1]) > 0.25 ? Math.sign(aim[1]) * corner * (0.6 + 0.4 * Math.min(1, Math.abs(aim[1]) * 1.4)) : (g.rnd() < 0.5 ? -1 : 1) * corner * (0.45 + g.rnd() * 0.5)
+    z = want + (g.rnd() - 0.5) * (0.4 + d * 0.07) * (0.7 + power * 0.6) * (pen ? 0.6 : 1)
+    speed = 14 + power * 13
+    h = 0.2 + g.rnd() * (0.4 + power * 1.1) + power * power * power * 1.6 + (d > 20 ? 0.5 : 0)
+  }
+  fire(g, p, goal, z, h, speed, 'kick')
+  if (g.set?.taker === p.id) g.set = null
+}
+
+/** A shot leaves the foot (or the head) for (goalX, z) at height h: the keeper's chance worked out now. */
+function fire(g: Game, p: Player, goal: V, z: number, h: number, speed: number, act: 'kick' | 'head') {
+  const b = g.ball
+  const F = g.field
+  // The flight time to the goal (as the street's shot always reckoned it), the line to the corner aimed at.
+  const d = hyp(goal[0] - p.x, goal[1] - p.z) || 1
   const T = d / speed
-  const h = 0.25 + g.rnd() * 1.6 + (d > 20 ? 0.6 : 0)
-  const vy = (h - 0.11 + 4.9 * T * T) / T
+  const vy = (h - b.y + 4.9 * T * T) / T
   const [tx, tz] = [goal[0], z]
   const l = hyp(tx - p.x, tz - p.z) || 1
   p.face = Math.atan2(tx - p.x, tz - p.z)
-  startAct(p, 'kick', 0.5)
-  b.vx = b.vz = b.vy = 0
-  p.pending = () => {
+  const pen = g.set?.kind === 'pen' && g.set.taker === p.id
+  const launch = () => {
     b.owner = -1
+    b.flight = null
     b.vx = ((tx - p.x) / l) * speed
     b.vz = ((tz - p.z) / l) * speed
     b.vy = vy
+    b.lofted = false
     b.lastBy = p.id
     b.lastTeam = p.team
     b.meant = -1
     b.tried = [p.id]
     p.cool = 0.4
-    const keeper = g.ps.find((q) => q.keeper && q.team !== p.team)!
-    // The keeper's chance: time to react, how far he has to go, a corner.
+    const keeper = g.ps.find((q) => q.keeper && q.team !== p.team && !q.out)
+    if (!keeper) return
+    // The keeper's chance: time to react, how far he has to go, a corner; a penalty, whether he guessed the side.
     const reach = Math.abs(z - keeper.z)
-    const onTarget = Math.abs(z) < MOUTH && h < BAR
+    const onTarget = Math.abs(z) < F.mouth && h < F.bar
     const good = keeper.team === 1 ? 0.7 + 0.3 * g.foe : 1
-    const save = onTarget && g.rnd() < clamp((0.62 + (T - 0.6) * 0.5 - reach * 0.2 - (Math.abs(z) > 1.1 ? 0.12 : 0)) * good, 0.08, 0.88)
+    let save: boolean
+    if (pen) {
+      const side = Math.abs(z) < F.mouth * 0.3 ? 0 : Math.sign(z)
+      const guess = penGuess(g, keeper)
+      save = onTarget && guess === side && g.rnd() < (Math.abs(z) > F.mouth * 0.8 ? 0.35 : 0.75) * good
+      keeper.side = guess >= 0 ? 1 : -1
+      if (guess !== 0) {
+        startAct(keeper, 'dive', 1.3)
+        keeper.vz = guess * (save ? 5.5 : 4.5)
+        keeper.vx = 0
+      }
+    } else save = onTarget && g.rnd() < clamp((0.62 + (T - 0.6) * 0.5 - reach * 0.2 * (1.6 / F.mouth) - (Math.abs(z) > 1.1 * (F.mouth / 1.6) ? 0.12 : 0) - (act === 'head' ? 0.08 : 0)) * good, 0.08, 0.88)
     g.shot = { keeper: keeper.id, save, t: g.time + T, z, goalX: goal[0] }
   }
+  if (act === 'head') {
+    startAct(p, 'head', 0.6)
+    launch()
+    return
+  }
+  startAct(p, 'kick', 0.5)
+  b.vx = b.vz = b.vy = 0
+  p.pending = launch
   p.pendingAt = 0.16
+}
+
+/** Which way the keeper goes at a penalty: the local hands' stick if he's theirs, else a guess (sometimes he stays). */
+function penGuess(g: Game, k: Player): -1 | 0 | 1 {
+  if (k.team === myTeam(g) && g.switching && g.penStick !== null) return g.penStick
+  const r = g.rnd()
+  return r < 0.42 ? -1 : r < 0.84 ? 1 : 0
+}
+
+/** A lofted ball met in the air in the box: headed at goal (an attacker) or away (a defender). */
+function header(g: Game, p: Player) {
+  const b = g.ball
+  const F = g.field
+  const attacking = inBox(g, p.team === 0 ? 1 : 0, p.x, p.z)
+  b.owner = -1
+  b.lofted = false
+  b.flight = null
+  b.lastBy = p.id
+  b.lastTeam = p.team
+  b.tried = [p.id]
+  b.meant = -1
+  if (attacking) {
+    const goal = goalOf(g, p.team)
+    const z = clamp((g.rnd() - 0.5) * F.mouth * 2.2, -F.mouth * 1.1, F.mouth * 1.1)
+    say(g, p.human ? 'Tête !' : `Tête de ${p.name} !`)
+    fire(g, p, goal, z, 0.3 + g.rnd() * 1.9, 12 + g.rnd() * 5, 'head')
+    return
+  }
+  // Cleared: up and away towards the other half.
+  startAct(p, 'head', 0.5)
+  const dir = dirOf(p.team)
+  b.vx = dir * (8 + g.rnd() * 4)
+  b.vz = (g.rnd() - 0.5) * 9
+  b.vy = 4 + g.rnd() * 2
+  p.cool = 0.4
+  say(g, 'Dégagé de la tête !')
 }
 
 /** Crochet: a crossover (basketball) or a sharp cut (football): a burst one way, and the man in front left behind, or on the floor. */
@@ -672,6 +941,7 @@ export function defend(g: Game, p: Player) {
   if (foot && speedOf(p) > 3.6 && (!h || h.team !== p.team)) {
     // Feet first along the ground, through the ball.
     startAct(p, 'slide', 1.05)
+    p.judged = false
     const sp = speedOf(p) || 1
     p.vx = (p.vx / sp) * 7.5
     p.vz = (p.vz / sp) * 7.5
@@ -684,7 +954,9 @@ export function defend(g: Game, p: Player) {
   // From behind, it's hard; against someone mid-move, easier.
   const [fx, fz] = fwd(h)
   const behind = ((p.x - h.x) * fx + (p.z - h.z) * fz) / (dist(p, h) || 1) < -0.3
-  const chance = (foot ? 0.5 : 0.36) + (h.act === 'cross' ? 0.12 : 0) - (behind ? 0.25 : 0) + (p.human ? 0.08 : 0)
+  // The console: one sprinting with the ball has it further from his feet.
+  const loose = foot && fifa(g) && speedOf(h) > 5.8 ? 0.12 : 0
+  const chance = (foot ? 0.5 : 0.36) + (h.act === 'cross' ? 0.12 : 0) - (behind ? 0.25 : 0) + (p.human ? 0.08 : 0) + loose
   if (g.rnd() < chance) {
     give(g, p)
     startAct(h, 'beaten', 0.6)
@@ -692,7 +964,11 @@ export function defend(g: Game, p: Player) {
     say(g, foot ? (p.human ? 'Ballon récupéré !' : 'Bien taclé !') : 'Interception !')
     moment(g, foot ? 'tackle' : 'steal', p)
     if (p.id === g.me) g.stats.steals++
-  } else p.cool = 0.55
+  } else {
+    p.cool = 0.55
+    // Missed, from behind, into the man: the referee sees it now and then.
+    if (foot && g.referee && behind && g.rnd() < 0.05) foul(g, p, h, false)
+  }
 }
 
 /** Without the ball, Tir is a jump: a block on a shot, a rebound off the ring. */
@@ -704,6 +980,147 @@ export function jump(g: Game, p: Player) {
 /** Without the ball, Passe asks for it. */
 export function call(p: Player) {
   p.call = 1.6
+}
+
+/* ---------- The referee and the set pieces ---------- */
+
+/** The penalty spot in front of a team's goal. */
+const penaltySpot = (g: Game, team: 0 | 1): V => [team === 0 ? -g.field.x + g.field.spot : g.field.x - g.field.spot, 0]
+
+/** A foul by `by` on `on`: the whistle, maybe a card, then a free kick where it happened (a penalty in the box). */
+function foul(g: Game, by: Player, on: Player, reckless: boolean) {
+  const at: V = [on.x, on.z]
+  const b = g.ball
+  g.ref.whistle = g.time
+  moment(g, 'foul', by)
+  let text = reckless ? `Faute de ${by.name} !` : 'Faute !'
+  if (reckless && g.rnd() < 0.25) {
+    by.cards++
+    moment(g, 'card', by)
+    text = by.cards >= 2 ? `Deuxième jaune : ${by.name} est expulsé !` : `Carton jaune pour ${by.name} !`
+    if (by.cards >= 2) by.out = true
+  }
+  say(g, text)
+  startAct(on, 'beaten', 1.2)
+  b.flight = null
+  b.vx = b.vy = b.vz = 0
+  b.lofted = false
+  g.shot = null
+  g.phase = 'dead'
+  g.wait = 1.8
+  const pen = inBox(g, by.team, at[0], at[1])
+  g.then = () => setPiece(g, pen ? 'pen' : 'free', on.team, pen ? penaltySpot(g, by.team) : at)
+  // Sent off: the hands leave him for a team-mate.
+  if (by.out && by.id === g.me) {
+    const next = nearestMate(g, by.x, by.z, by)
+    if (next) control(g, next)
+  }
+}
+
+/** The ball out over a line: a throw-in, a corner or a goal kick, after a moment. */
+function outOfPlay(g: Game, kind: 'throw' | 'corner' | 'goal', team: 0 | 1, at: V) {
+  const b = g.ball
+  g.phase = 'dead'
+  g.wait = 1.1
+  g.shot = null
+  b.lofted = false
+  say(g, kind === 'throw' ? 'Touche.' : kind === 'corner' ? 'Corner !' : 'Six mètres.')
+  g.then = () => setPiece(g, kind, team, at)
+}
+
+/** Everyone to their place for a set piece; the ball to the one taking it. */
+function setPiece(g: Game, kind: SetPiece['kind'], team: 0 | 1, at0: V) {
+  const F = g.field
+  const b = g.ball
+  const dir = dirOf(team)
+  for (const p of g.ps) {
+    p.act = 'none'
+    p.pending = null
+    p.vx = p.vz = 0
+    p.cool = 0
+    p.charge = 0
+    if (p.out) offPitch(g, p)
+  }
+  // Where the ball goes.
+  let at: V
+  if (kind === 'corner') at = [Math.sign(at0[0]) * F.x, Math.sign(at0[1] || 1) * F.z]
+  else if (kind === 'throw') at = [clamp(at0[0], -F.x + 0.5, F.x - 0.5), Math.sign(at0[1]) * F.z]
+  else if (kind === 'goal') at = [-dir * (F.x - 5.5), at0[1] > 0 ? 4 : -4]
+  else if (kind === 'pen') at = at0
+  else at = [clamp(at0[0], -F.x + 1, F.x - 1), clamp(at0[1], -F.z + 1, F.z - 1)]
+  // Who takes it: the keeper a goal kick, the one up front a penalty (or the local hands' player), the nearest otherwise.
+  const side = g.ps.filter((p) => p.team === team && !p.out)
+  let taker: Player
+  if (kind === 'goal') taker = side.find((p) => p.keeper) ?? side[0]
+  else if (kind === 'pen') taker = g.switching && team === myTeam(g) && !g.ps[g.me].keeper ? g.ps[g.me] : (side.find((p) => p.role === striker(g)) ?? side[0])
+  else taker = nearest(side.filter((p) => !p.keeper), at[0], at[1])[0] ?? side[0]
+  // Facing the goal (a free kick, a penalty) or the pitch (from a line); a step behind the ball.
+  const goal = goalOf(g, team)
+  const look: V = kind === 'free' || kind === 'pen' ? [goal[0] - at[0], goal[1] - at[1]] : [dir * 6 - at[0] * 0.1, -at[1]]
+  const ll = hyp(look[0], look[1]) || 1
+  taker.x = at[0] - (look[0] / ll) * 0.45
+  taker.z = at[1] - (look[1] / ll) * 0.45
+  taker.face = Math.atan2(look[0], look[1])
+  // The others back: the other side the wall's distance away (out of the box at a penalty), the keeper on his line.
+  for (const p of g.ps) {
+    if (p === taker || p.out) continue
+    if (kind === 'pen') {
+      if (p.keeper && p.team !== team) {
+        p.x = team === 0 ? F.x - 0.3 : -F.x + 0.3
+        p.z = 0
+        p.face = team === 0 ? -Math.PI / 2 : Math.PI / 2
+        continue
+      }
+      if (p.keeper) continue
+      if (inBox(g, team === 0 ? 1 : 0, p.x, p.z) || hyp(p.x - at[0], p.z - at[1]) < F.wall) {
+        p.x = at[0] - dir * (F.wall + 1 + (p.id % 3))
+        p.z = clamp(p.z, -F.box[1], F.box[1])
+      }
+      continue
+    }
+    if (p.team !== team) {
+      const d = hyp(p.x - at[0], p.z - at[1])
+      if (d < F.wall) {
+        const k = (F.wall + 0.3) / (d || 1)
+        p.x = at[0] + (p.x - at[0]) * k
+        p.z = at[1] + (p.z - at[1]) * k
+      }
+    }
+  }
+  b.flight = null
+  b.vx = b.vy = b.vz = 0
+  b.x = at[0]
+  b.z = at[1]
+  g.shot = null
+  give(g, taker)
+  b.x = at[0]
+  b.z = at[1]
+  g.set = { kind, team, taker: taker.id, at, t: g.time }
+  g.penStick = null
+  g.ref.whistle = g.time
+  if (kind === 'pen') say(g, 'Penalty !')
+  else if (kind === 'free') say(g, 'Coup franc.')
+}
+
+/** The AI takes a set piece (or the local hands' one who's left it too long). */
+function takeSetPiece(g: Game, p: Player) {
+  const sp = g.set!
+  const goal = goalOf(g, p.team)
+  const gd = hyp(goal[0] - p.x, goal[1] - p.z)
+  const big = g.size === 11
+  switch (sp.kind) {
+    case 'pen':
+      return shoot(g, p, [0, g.rnd() < 0.5 ? -1 : 1], 0.55 + g.rnd() * 0.35)
+    case 'free':
+      if (gd < (big ? 27 : 12) && g.rnd() < 0.6) return shoot(g, p, [0, (g.rnd() - 0.5) * 2], 0.65 + g.rnd() * 0.3)
+      return pass(g, p, null, gd < (big ? 40 : 16) ? 'lob' : 'ground')
+    case 'corner':
+      return pass(g, p, null, 'lob')
+    case 'throw':
+      return pass(g, p, null, 'throw')
+    case 'goal':
+      return pass(g, p, null, 'lob')
+  }
 }
 
 /* ---------- The players' heads ---------- */
@@ -724,7 +1141,12 @@ function think(g: Game, p: Player, dt: number) {
   const b = g.ball
   const h = holder(g)
   const foot = g.sport === 'foot'
-  if (locked(p)) return
+  if (locked(p) || p.out) return
+  // Taking a set piece: still, until it's played (takeSetPiece).
+  if (g.set && g.set.taker === p.id) {
+    p.want = [0, 0]
+    return
+  }
   // The keeper.
   if (p.keeper) return keeperThink(g, p)
   // A pass in the air: the one it's for meets it, the nearest opponent goes to cut it out.
@@ -747,8 +1169,8 @@ function think(g: Game, p: Player, dt: number) {
   if (foot && b.meant === p.id && !h) return runTo(p, ...landing(g), 6.5)
   const attacking = h ? h.team === p.team : g.poss === p.team
   if (h === p) return foot ? footCarry(g, p) : basketCarry(g, p)
-  if (attacking) return foot ? footSupport(g, p) : basketSupport(g, p)
-  return foot ? footDefend(g, p) : basketDefend(g, p)
+  if (attacking) return foot ? (g.size === 11 ? elevenSupport(g, p) : footSupport(g, p)) : basketSupport(g, p)
+  return foot ? (g.size === 11 ? elevenDefend(g, p) : footDefend(g, p)) : basketDefend(g, p)
 }
 
 /** Where a loose ball will be when it comes down (or rolls to). */
@@ -826,25 +1248,29 @@ function basketDefend(g: Game, p: Player) {
 /* Football */
 
 function footCarry(g: Game, p: Player) {
+  const F = g.field
+  const big = g.size === 11
   const dir = dirOf(p.team)
   const goal = goalOf(g, p.team)
   const enemies = foes(g, p).filter((q) => !q.keeper)
   const [def, dd] = nearest(enemies, p.x, p.z)
   const inFront = def ? (def.x - p.x) * dir > -0.3 : false
   const gd = hyp(goal[0] - p.x, goal[1] - p.z)
-  // At the feet towards the goal, away from the man in front.
+  // At the feet towards the goal, away from the man in front; nobody near, flat out.
   const dodge = def && inFront && dd < 3 ? Math.sign(p.z - def.z || 1) * 2.5 : 0
-  runTo(p, goal[0], clamp(p.z * 0.7 + dodge, -PITCH.z + 1.5, PITCH.z - 1.5), 5.4)
+  runTo(p, goal[0], clamp(p.z * 0.7 + dodge, -F.z + 1.5, F.z - 1.5), big && dd > 6 ? 6.3 : 5.4)
   if (p.think > 0) return
   p.think = 0.32 + g.rnd() * 0.2
   const human = callerFor(g, p)
   if (human.team === p.team && human.call > 0 && g.rnd() < 0.85) return pass(g, p, [human.x - p.x, human.z - p.z])
-  if (gd < 15 && Math.abs(p.z) < 8 && ((dd > 1.6 || !inFront) ? g.rnd() < 0.55 : g.rnd() < 0.2)) return shoot(g, p, null)
+  if (gd < (big ? 24 : 15) && Math.abs(p.z) < (big ? 14 : 8) && ((dd > 1.6 || !inFront) ? g.rnd() < (big ? 0.4 : 0.55) : g.rnd() < 0.2)) return shoot(g, p, null)
+  // Out wide near the byline: a cross into the box.
+  if (big && Math.abs(p.z) > F.z * 0.42 && (goal[0] - p.x) * dir < 18 && g.rnd() < 0.6) return pass(g, p, null, 'lob')
   if (def && inFront && dd < 1.9) return g.rnd() < 0.45 ? skill(g, p, null) : pass(g, p, null)
-  if (g.rnd() < 0.16) {
+  if (g.rnd() < (big ? 0.24 : 0.16)) {
     // Forward to someone free, into his run.
     const ahead = mates(g, p).filter((q) => !q.keeper && (q.x - p.x) * dir > 1 && openness(g, q) > 2.2)
-    if (ahead.length) return pass(g, p, [dir, 0])
+    if (ahead.length) return pass(g, p, [dir, 0], big && g.rnd() < 0.4 ? 'through' : 'ground')
     return pass(g, p, null)
   }
 }
@@ -861,9 +1287,76 @@ function footSupport(g: Game, p: Player) {
     [7, 0.5],
   ]
   const [sx, sz] = SHAPE[p.role]
-  const x = clamp(b.x + sx * dir, -PITCH.x + 2, PITCH.x - 2.5)
-  const z = clamp(sz + b.z * 0.25 + Math.sin(g.time * 0.6 + p.id) * 1.2, -PITCH.z + 1.2, PITCH.z - 1.2)
+  const F = g.field
+  const x = clamp(b.x + sx * dir, -F.x + 2, F.x - 2.5)
+  const z = clamp(sz + b.z * 0.25 + Math.sin(g.time * 0.6 + p.id) * 1.2, -F.z + 1.2, F.z - 1.2)
   runTo(p, x, z, p.role === 4 ? 5.6 : 5)
+}
+
+/**
+ * Eleven a side, with the ball: the shape moves up the pitch with it; the
+ * front three stretch the play and run in behind, the midfield offers itself,
+ * the back four hold a line behind the ball.
+ */
+function elevenSupport(g: Game, p: Player) {
+  const F = g.field
+  const b = g.ball
+  const dir = dirOf(p.team)
+  const [hx, hz] = SHAPE11[p.role]
+  const bf = (b.x * dir) / F.x
+  const front = p.role >= 8
+  const mid = p.role >= 5 && !front
+  const push = front ? 0.5 : mid ? 0.38 : 0.3
+  let fx = clamp(hx * 0.5 + push + bf * 0.5, -0.92, front ? 0.88 : mid ? 0.7 : 0.4)
+  // The back four never get in front of the ball.
+  if (!front && !mid) fx = Math.min(fx, bf - 0.08)
+  // The striker attacks the box when the ball is out wide near it.
+  const box = p.role === 9 && bf > 0.55 && Math.abs(b.z) > F.z * 0.35
+  const x = (box ? F.x - 8 : fx * F.x) * dir
+  const z = box ? -Math.sign(b.z) * 2 : clamp(hz * F.z * 0.95 + b.z * 0.25 + Math.sin(g.time * 0.5 + p.id) * 1.5, -F.z + 1.5, F.z - 1.5)
+  runTo(p, x, z, front ? 6 : 5.2)
+}
+
+/**
+ * Eleven a side, without the ball: the nearest presses it, the next covers;
+ * the rest fall back into the shape, shifted towards the ball; near their own
+ * box each one takes the attacker in his zone, goal side.
+ */
+function elevenDefend(g: Game, p: Player) {
+  const F = g.field
+  const b = g.ball
+  const h = holder(g)
+  const dir = dirOf(p.team)
+  const own = goalOf(g, p.team === 0 ? 1 : 0)
+  const field = g.ps.filter((q) => q.team === p.team && !q.keeper && !q.human && !q.out).sort((a, c) => dist(a, b) - dist(c, b))
+  const order = field.indexOf(p)
+  const me = g.ps[g.me]
+  const humanNearer = me && me.team === p.team && dist(me, b) < dist(p, b) - 1
+  if (order === 0 && !humanNearer) {
+    // Pressing flat out (they sprint too), goal side of the ball.
+    const d = hyp(own[0] - b.x, own[1] - b.z) || 1
+    runTo(p, b.x + ((own[0] - b.x) / d) * 0.8, b.z + ((own[1] - b.z) / d) * 0.8, 6.6)
+    return engage(g, p, h, 0.5)
+  }
+  if (order === 1 || (order === 0 && humanNearer)) {
+    // Covering: between the ball and the goal, a few metres off; in if the man gets past the first.
+    const d = hyp(own[0] - b.x, own[1] - b.z) || 1
+    runTo(p, b.x + ((own[0] - b.x) / d) * 4, b.z + ((own[1] - b.z) / d) * 4, 6.4)
+    return engage(g, p, h, 0.3)
+  }
+  const [hx, hz] = SHAPE11[p.role]
+  const bf = (b.x * dir) / F.x
+  const fx = clamp(hx * 0.75 - 0.12 + bf * 0.45, -0.94, 0.35)
+  let [x, z] = [fx * F.x * dir, clamp(hz * F.z * 0.8 + b.z * 0.3, -F.z + 1, F.z - 1)]
+  // Near the box: the attacker nearest the zone, marked goal side.
+  if (bf < -0.3) {
+    const [man, md] = nearest(foes(g, p).filter((q) => !q.keeper && (q.x - own[0]) * -dir < F.x * 0.5), x, z)
+    if (man && md < 9) {
+      const d = hyp(own[0] - man.x, own[1] - man.z) || 1
+      ;[x, z] = [man.x + ((own[0] - man.x) / d) * 1.5, man.z + ((own[1] - man.z) / d) * 1.5]
+    }
+  }
+  runTo(p, x, z, 5.4)
 }
 
 function footDefend(g: Game, p: Player) {
@@ -874,11 +1367,12 @@ function footDefend(g: Game, p: Player) {
   const presser = nearest(g.ps.filter((q) => q.team === p.team && !q.keeper && !q.human), b.x, b.z)[0]
   if (presser === p && (!g.ps[g.me] || g.ps[g.me].team !== p.team || dist(g.ps[g.me], b) > dist(p, b) - 1)) {
     const d = hyp(own[0] - b.x, own[1] - b.z) || 1
-    runTo(p, b.x + ((own[0] - b.x) / d) * 0.8, b.z + ((own[1] - b.z) / d) * 0.8, 5.6)
+    runTo(p, b.x + ((own[0] - b.x) / d) * 0.8, b.z + ((own[1] - b.z) / d) * 0.8, fifa(g) ? 6.4 : 5.6)
+    if (fifa(g)) return engage(g, p, h, 0.45)
     if (p.think > 0) return
     p.think = 0.45 + g.rnd() * 0.3
     if (h && dist(h, p) < 1.4 && p.cool <= 0 && g.rnd() < 0.3) defend(g, p)
-    else if (h && dist(h, p) < 2.6 && dist(h, p) > 1.2 && speedOf(p) > 3.6 && g.rnd() < 0.12) defend(g, p)
+    else if (h && dist(h, p) < 2.6 && dist(h, p) > 1.2 && speedOf(p) > 3.6 && g.rnd() < (g.referee ? 0.06 : 0.12)) defend(g, p)
     return
   }
   const man = g.ps.find((q) => q.team !== p.team && q.role === (p.role === 1 ? 4 : p.role === 4 ? 1 : p.role === 2 ? 3 : 2))!
@@ -886,10 +1380,27 @@ function footDefend(g: Game, p: Player) {
   runTo(p, man.x + ((own[0] - man.x) / d) * 1.6, man.z + ((own[1] - man.z) / d) * 1.6, 5)
 }
 
+/**
+ * The console's defenders on the man with the ball: they think quicker,
+ * step in when he's within reach (more often on a harder level), and slide
+ * now and then when he runs past.
+ */
+function engage(g: Game, p: Player, h: Player | null, will: number) {
+  if (p.think > 0) return
+  p.think = 0.22 + g.rnd() * 0.18
+  if (!h || h.team === p.team || p.cool > 0) return
+  const d = dist(h, p)
+  if (d < 1.45 && g.rnd() < clamp(will * g.foe, 0.1, 0.85)) defend(g, p)
+  else if (d < 2.6 && d > 1.2 && speedOf(p) > 3.6 && g.rnd() < 0.06 * g.foe) defend(g, p)
+}
+
 function keeperThink(g: Game, p: Player) {
   const b = g.ball
-  const gx = p.team === 0 ? -PITCH.x : PITCH.x
+  const F = g.field
+  const gx = p.team === 0 ? -F.x : F.x
   const dir = dirOf(p.team)
+  // A penalty against him: on his line, in the middle, until it's struck.
+  if (g.set?.kind === 'pen' && g.set.team !== p.team) return runTo(p, gx + dir * 0.3, 0, 2)
   // Holding it: a look, then out to someone free.
   if (b.owner === p.id) {
     p.want = [0, 0]
@@ -907,14 +1418,16 @@ function keeperThink(g: Game, p: Player) {
       p.side = z > p.z ? 1 : -1
       p.vz = p.side * (s.save ? 5.5 : 3.2)
       p.vx = 0
-    } else runTo(p, gx + dir * 0.6, clamp(z, -MOUTH, MOUTH), 6)
+    } else runTo(p, gx + dir * 0.6, clamp(z, -F.mouth, F.mouth), 6)
     return
   }
-  // A loose ball in his box: out to grab it.
-  if (!holder(g) && Math.abs(b.x - gx) < 5.5 && Math.abs(b.z) < 5 && b.y < 2) return runTo(p, b.x, b.z, 6)
+  // A loose ball in his box (a cross coming down in it too): out to grab it.
+  const [kx, kz] = g.size === 11 ? [8, 10] : [5.5, 5]
+  const [lx, lz] = b.lofted ? landing(g) : [b.x, b.z]
+  if (!holder(g) && Math.abs(lx - gx) < kx && Math.abs(lz) < kz && (b.y < 2 || b.lofted)) return runTo(p, b.lofted ? lx : b.x, b.lofted ? lz : b.z, 6)
   // On his line, across with the ball, a step out when it comes close.
-  const out = clamp(5 - Math.abs(b.x - gx) * 0.2, 0.5, 2.5)
-  runTo(p, gx + dir * out, clamp(b.z * 0.25, -MOUTH + 0.2, MOUTH - 0.2), 4)
+  const out = clamp((g.size === 11 ? 7 : 5) - Math.abs(b.x - gx) * 0.2, 0.5, g.size === 11 ? 4 : 2.5)
+  runTo(p, gx + dir * out, clamp(b.z * 0.25 * (F.mouth / 1.6), -F.mouth + 0.2, F.mouth - 0.2), 4)
 }
 
 /** The human the AI listens to on its team: one calling for the ball, else the local player. */
@@ -975,9 +1488,15 @@ export function step(g: Game, dt: number, input: Input, others?: Map<number, Inp
     g.cleared = true
     g.possT = 0
   }
+  // A penalty against the local team: its stick says where the keeper dives.
+  if (g.set?.kind === 'pen' && g.set.team !== myTeam(g) && Math.abs(input.mz) > 0.4) g.penStick = input.mz > 0 ? 1 : -1
   // The players' hands: the local one's, and the others' at a court match.
-  for (const p of g.ps) if (p.human) hands(g, p, p.id === g.me ? input : (others?.get(p.id) ?? NO_INPUT), playing)
+  for (const p of g.ps) if (p.human && !p.out) hands(g, p, p.id === g.me ? input : (others?.get(p.id) ?? NO_INPUT), playing, dt)
   for (const p of g.ps) {
+    if (p.out) {
+      offPitch(g, p)
+      continue
+    }
     p.cool = Math.max(0, p.cool - dt)
     p.call = Math.max(0, p.call - dt)
     // The other side thinks quicker or slower by its strength.
@@ -985,11 +1504,46 @@ export function step(g: Game, dt: number, input: Input, others?: Map<number, Inp
     else if (!p.human) p.want = [0, 0]
     act(g, p, dt)
   }
+  // A set piece: the AI takes its own after a moment; one left too long by the hands, too. The other side keeps its distance.
+  const sp = g.set
+  if (sp && playing) {
+    const t = g.ps[sp.taker]
+    const waited = g.time - sp.t
+    if (t.out || g.ball.owner !== t.id) g.set = null
+    else if ((!t.human && waited > (sp.kind === 'pen' ? 1.8 : 1.2)) || waited > 9) takeSetPiece(g, t)
+    else
+      for (const p of g.ps) {
+        if (p.team === sp.team || p.out || (p.keeper && sp.kind === 'pen')) continue
+        const d = hyp(p.x - sp.at[0], p.z - sp.at[1])
+        const r = sp.kind === 'pen' ? Math.max(g.field.wall, 1) : g.field.wall
+        if (d < r) {
+          p.x = sp.at[0] + ((p.x - sp.at[0]) / (d || 1)) * r
+          p.z = sp.at[1] + ((p.z - sp.at[1]) / (d || 1)) * r
+        }
+        if (sp.kind === 'pen' && inBox(g, sp.team === 0 ? 1 : 0, p.x, p.z)) p.x = sp.at[0] - dirOf(sp.team) * (g.field.wall + 1)
+      }
+  }
+  // The referee: a little behind the play and to the side, facing the ball.
+  if (g.referee && g.sport === 'foot') {
+    const b = g.ball
+    const side = g.size === 11 ? 9 : 4
+    const [tx, tz] = [clamp(b.x * 0.85, -g.field.x + 4, g.field.x - 4), clamp(b.z + (b.z > 0 ? -side : side), -g.field.z + 1, g.field.z - 1)]
+    const [dx, dz] = [tx - g.ref.x, tz - g.ref.z]
+    const d = hyp(dx, dz)
+    const v = Math.min(5.6, d * 1.5) * dt
+    if (d > 0.05) {
+      g.ref.x += (dx / d) * v
+      g.ref.z += (dz / d) * v
+    }
+    g.ref.face = Math.atan2(b.x - g.ref.x, b.z - g.ref.z)
+  }
   // Nobody walks through anybody.
   for (let i = 0; i < g.ps.length; i++)
     for (let j = i + 1; j < g.ps.length; j++) {
       const [a, c] = [g.ps[i], g.ps[j]]
-      if (a.act === 'dunk' || c.act === 'dunk') continue
+      if (a.act === 'dunk' || c.act === 'dunk' || a.out || c.out) continue
+      // A set piece's taker isn't pushed off the ball.
+      if (g.set && (g.set.taker === a.id || g.set.taker === c.id)) continue
       const [dx, dz] = [c.x - a.x, c.z - a.z]
       const d = hyp(dx, dz)
       if (d > 0 && d < 0.62) {
@@ -1008,22 +1562,75 @@ export function step(g: Game, dt: number, input: Input, others?: Map<number, Inp
 }
 
 /** A human's stick and buttons, on its player. */
-function hands(g: Game, me: Player, input: Input, playing: boolean) {
+function hands(g: Game, me: Player, input: Input, playing: boolean, dt: number) {
+  const foot = g.sport === 'foot'
   if (!playing || locked(me)) {
     if (!playing) me.want = [0, 0]
+    if (!input.charge) me.charge = 0
     return
   }
   const m = Math.min(1, hyp(input.mx, input.mz))
-  const top = input.guard && g.ball.owner !== me.id ? 3.6 : g.ball.owner === me.id ? (g.sport === 'foot' ? 5.6 : 5.2) : 6
+  const has = g.ball.owner === me.id
+  let top = input.guard && !has ? 3.6 : has ? (foot ? 5.6 : 5.2) : 6
+  // Football: the sprint, for as long as the breath lasts; out of breath, slower.
+  if (foot) {
+    const sprinting = !!input.sprint && m > 0.3 && me.stamina > 0.04 && !input.guard
+    if (sprinting) {
+      top *= has ? 1.12 : 1.27
+      me.stamina = Math.max(0, me.stamina - dt * 0.15)
+    } else me.stamina = Math.min(1, me.stamina + dt * 0.07)
+    if (me.stamina < 0.25) top *= 0.88 + me.stamina * 0.48
+  }
+  const set = g.set && g.set.taker === me.id ? g.set : null
   const l = hyp(input.mx, input.mz) || 1
-  me.want = [(input.mx / l) * m * top, (input.mz / l) * m * top]
+  me.want = set ? [0, 0] : [(input.mx / l) * m * top, (input.mz / l) * m * top]
   if (input.guard && me.id === g.me) lastGuard = g.time
   const aim: V | null = m > 0.3 ? [input.mx, input.mz] : null
-  const has = g.ball.owner === me.id
-  if (input.pass) has ? pass(g, me, aim) : call(me)
-  if (input.shoot) has ? shoot(g, me, aim) : g.sport === 'basket' ? jump(g, me) : null
-  if (input.skill && has) skill(g, me, aim)
-  if (input.defend && !has) defend(g, me)
+  // At a set piece the stick aims: the taker turns to it.
+  if (set && aim) me.face = Math.atan2(aim[0], aim[1])
+  if (!foot) {
+    if (input.pass) has ? pass(g, me, aim) : call(me)
+    if (input.shoot) has ? shoot(g, me, aim) : jump(g, me)
+    if (input.skill && has) skill(g, me, aim)
+    if (input.defend && !has) defend(g, me)
+    return
+  }
+  // Football. Tir held where the hands can hold it: the power fills, the shot goes when it's let go.
+  const holds = input.charge !== undefined
+  if (has) {
+    const pen = set?.kind === 'pen'
+    const line = set && (set.kind === 'throw' || set.kind === 'corner') ? set.kind : null
+    if (holds) {
+      if (input.charge && line !== 'throw') me.charge = Math.min(1, me.charge + dt * 1.15)
+      else if (me.charge > 0) {
+        const power = 0.25 + me.charge * 0.75
+        me.charge = 0
+        if (line === 'corner') pass(g, me, aim, 'lob')
+        else shoot(g, me, aim, power)
+        return
+      }
+    } else if (input.shoot) {
+      if (line === 'corner') pass(g, me, aim, 'lob')
+      else if (line !== 'throw') shoot(g, me, aim)
+    }
+    if (pen) return
+    if (input.pass) pass(g, me, aim, line === 'throw' ? 'throw' : 'ground')
+    else if (input.through) pass(g, me, aim, line === 'throw' ? 'throw' : 'through')
+    else if (input.lob) pass(g, me, aim, line === 'throw' ? 'throw' : 'lob')
+    else if (input.skill && !set) skill(g, me, aim)
+    return
+  }
+  me.charge = 0
+  // Without the ball. The console: Changer (or Passe) to the team-mate nearest the ball; on a court, Passe calls for it.
+  const swap = input.swap || (input.pass && g.switching)
+  if (swap && g.switching && me.id === g.me) {
+    const [lx, lz] = landing(g)
+    const next = nearestMate(g, lx, lz, me)
+    if (next) control(g, next)
+    return
+  }
+  if (input.pass) call(me)
+  if (input.defend || (input.shoot && g.switching)) defend(g, me)
 }
 
 /** A player's move going on, and the running. */
@@ -1060,6 +1667,18 @@ function act(g: Game, p: Player, dt: number) {
     const b = g.ball
     const [fx, fz] = fwd(p)
     const [px, pz] = [p.x + fx * 0.7, p.z + fz * 0.7]
+    // The referee: the man taken before the ball, or from behind, is a foul.
+    const on = holder(g)
+    if (g.referee && !p.judged && on && on.team !== p.team && p.at > 0.1 && p.at < 0.75 && hyp(on.x - px, on.z - pz) < 0.8) {
+      p.judged = true
+      const ballFirst = hyp(b.x - px, b.z - pz) < 0.75
+      const [hx, hz] = fwd(on)
+      const behind = ((p.x - on.x) * hx + (p.z - on.z) * hz) / (dist(p, on) || 1) < -0.35
+      if (g.rnd() < (behind ? 0.16 : ballFirst ? 0.02 : 0.07)) {
+        foul(g, p, on, behind)
+        return
+      }
+    }
     if (p.at > 0.12 && p.at < 0.7 && b.y < 0.5 && hyp(b.x - px, b.z - pz) < 0.75 && b.owner !== p.id) {
       const h = holder(g)
       b.owner = -1
@@ -1088,14 +1707,14 @@ function act(g: Game, p: Player, dt: number) {
     p.vz *= Math.exp(-6 * dt)
     p.x += p.vx * dt
     p.z += p.vz * dt
-  } else if (p.act === 'shoot' || (p.act === 'block' && p.at < 0.6) || p.act === 'hold') {
+  } else if (p.act === 'shoot' || (p.act === 'block' && p.at < 0.6) || p.act === 'hold' || p.act === 'head' || p.act === 'throw') {
     p.vx *= Math.exp(-8 * dt)
     p.vz *= Math.exp(-8 * dt)
     p.x += p.vx * dt
     p.z += p.vz * dt
   } else if (p.act === 'celebrate') {
     // Off to the corner with the arms out.
-    runTo(p, dirOf(p.team) * (PITCH.x - 3), p.z > 0 ? PITCH.z - 1.5 : -PITCH.z + 1.5, 5.5)
+    runTo(p, dirOf(p.team) * (g.field.x - 3), p.z > 0 ? g.field.z - 1.5 : -g.field.z + 1.5, 5.5)
     p.vx += (p.want[0] - p.vx) * k
     p.vz += (p.want[1] - p.vz) * k
     p.x += p.vx * dt
@@ -1126,12 +1745,17 @@ function act(g: Game, p: Player, dt: number) {
 
 /** Inside the fence (and off the keeper's line for the others, a little). */
 function keepIn(g: Game, p: Player) {
+  if (p.out) return
   if (g.sport === 'basket') {
     p.x = clamp(p.x, -COURT_FENCE.x + 0.4, COURT_FENCE.x - 0.4)
     p.z = clamp(p.z, COURT_FENCE.z0 + 0.4, COURT_FENCE.z1 - 0.4)
+  } else if (g.field.walls) {
+    p.x = clamp(p.x, -g.field.x - 0.6, g.field.x + 0.6)
+    p.z = clamp(p.z, -g.field.z - 0.4, g.field.z + 0.4)
   } else {
-    p.x = clamp(p.x, -PITCH.x - 0.6, PITCH.x + 0.6)
-    p.z = clamp(p.z, -PITCH.z - 0.4, PITCH.z + 0.4)
+    // A lined pitch: a few steps past the lines (a throw-in, a corner), not into the stands.
+    p.x = clamp(p.x, -g.field.x - 3, g.field.x + 3)
+    p.z = clamp(p.z, -g.field.z - 2.5, g.field.z + 2.5)
   }
 }
 
@@ -1160,6 +1784,11 @@ function moveBall(g: Game, dt: number) {
         b.z = h.z + rz * hand * 0.32 + fz * 0.22
         b.y = R + Math.abs(Math.sin(b.phase)) * (h.act === 'cross' ? 0.45 : 0.82)
       }
+    } else if (g.set && g.set.taker === h.id) {
+      // A dead ball: still on its spot (a throw-in over the head).
+      b.x = g.set.at[0]
+      b.z = g.set.at[1]
+      b.y = g.set.kind === 'throw' ? 2.05 : R
     } else if (h.act === 'hold') {
       b.x = h.x + fx * 0.3
       b.z = h.z + fz * 0.3
@@ -1249,6 +1878,8 @@ function moveBall(g: Game, dt: number) {
   b.z += b.vz * dt
   if (b.y < R) {
     b.y = R
+    // Down: no head can get to it now.
+    b.lofted = false
     if (b.vy < -1.2) b.vy = -b.vy * (g.sport === 'basket' ? 0.62 : 0.5)
     else b.vy = 0
     // Rolling slows it.
@@ -1307,10 +1938,11 @@ function footBall(g: Game) {
     }
     if (g.time > s.t + 0.6) g.shot = null
   }
-  const ex = PITCH.x
+  const F = g.field
+  const ex = F.x
   if (Math.abs(b.x) > ex) {
     const side = Math.sign(b.x)
-    if (Math.abs(b.z) < MOUTH - R && b.y < BAR - R && b.owner < 0) {
+    if (Math.abs(b.z) < F.mouth - R && b.y < F.bar - R && b.owner < 0) {
       // In: into the net, then the goal.
       if (Math.abs(b.x) > ex + 0.9) {
         b.x = side * (ex + 0.9)
@@ -1320,20 +1952,34 @@ function footBall(g: Game) {
       if (g.phase === 'play' && !b.dead) goal(g, side > 0 ? 0 : 1)
       return
     }
-    if (Math.abs(b.z) < MOUTH + 0.15 && Math.abs(b.z) > MOUTH - R - 0.1 && b.y < BAR + 0.1 && !b.dead && g.phase === 'play') {
+    const post = Math.abs(b.z) < F.mouth + 0.15 && Math.abs(b.z) > F.mouth - R - 0.1 && b.y < F.bar + 0.1
+    if (post && !b.dead && g.phase === 'play') {
       say(g, 'Poteau !')
       const p = g.ps[b.lastBy]
       if (p) moment(g, 'post', p)
     }
-    if (!b.dead) {
+    if (!b.dead && (F.walls || post)) {
+      // Off the boards (the maracana), or off the post.
       b.x = side * ex
       b.vx = -b.vx * 0.55
       g.shot = null
+    } else if (!b.dead && g.phase === 'play' && !g.set && Math.abs(b.x) > ex + R) {
+      // Over the goal line: a corner if the side defending it touched it last, else a goal kick.
+      const defending: 0 | 1 = side > 0 ? 1 : 0
+      b.dead = true
+      if (b.lastTeam === defending) outOfPlay(g, 'corner', defending === 1 ? 0 : 1, [side * ex, b.z])
+      else outOfPlay(g, 'goal', defending, [side * ex, b.z])
     }
   }
-  if (Math.abs(b.z) > PITCH.z + 0.6) {
-    b.z = Math.sign(b.z) * (PITCH.z + 0.6)
-    b.vz = -b.vz * 0.55
+  if (Math.abs(b.z) > F.z + (F.walls ? 0.6 : R)) {
+    if (F.walls) {
+      b.z = Math.sign(b.z) * (F.z + 0.6)
+      b.vz = -b.vz * 0.55
+    } else if (!b.dead && g.phase === 'play' && !g.set) {
+      // Over the touchline: a throw-in to the other side.
+      b.dead = true
+      outOfPlay(g, 'throw', b.lastTeam === 0 ? 1 : 0, [b.x, b.z])
+    }
   }
 }
 
@@ -1343,10 +1989,11 @@ function goal(g: Game, team: 0 | 1) {
   g.shot = null
   g.score[team]++
   const by = g.ps[b.lastBy]
-  const scorer = by && by.team === team ? by : g.ps.find((p) => p.team === team && p.role === 4)!
+  const scorer = by && by.team === team ? by : (g.ps.find((p) => p.team === team && p.role === striker(g) && !p.out) ?? g.ps.find((p) => p.team === team)!)
   if (scorer.id === g.me) g.stats.goals++
-  else if (team === g.ps[g.me].team && g.lastPass && g.lastPass.by === g.me && g.time - g.lastPass.t < 5) g.stats.assists++
-  say(g, scorer.human ? 'BUUUT !!! Tu as marqué !' : team === 0 ? `BUUUT ! ${scorer.name} !` : 'But pour eux…')
+  else if (team === g.ps[g.me].team && g.lastPass?.mine && g.lastPass.team === team && g.time - g.lastPass.t < 5) g.stats.assists++
+  say(g, scorer.id === g.me ? 'BUUUT !!! Tu as marqué !' : team === myTeam(g) ? `BUUUT ! ${scorer.name} !` : 'But pour eux…')
+  g.set = null
   moment(g, 'goal', scorer)
   g.phase = 'dead'
   g.wait = 3.6
@@ -1359,11 +2006,23 @@ function goal(g: Game, team: 0 | 1) {
 /** Who gets the loose ball: the first close enough (football: the one it was meant for, or anyone who controls it). */
 function touches(g: Game) {
   const b = g.ball
-  if (b.owner >= 0 || b.flight || b.dead) return
+  if (b.owner >= 0 || b.flight || b.dead || g.set) return
   const foot = g.sport === 'foot'
   for (const p of g.ps) {
-    if (p.cool > 0 || p.act === 'beaten' || p.act === 'celebrate' || (p.act === 'slide' && p.at < 0.7)) continue
+    if (p.out || p.cool > 0 || p.act === 'beaten' || p.act === 'celebrate' || (p.act === 'slide' && p.at < 0.7)) continue
     const d = hyp(p.x - b.x, p.z - b.z)
+    // A ball in the air at head height: in the box, headed (at goal, or away); elsewhere taken on the chest if it isn't too high.
+    if (foot && !p.keeper && b.lofted && b.y > 0.9 && b.y < 2.5 && d < 0.9) {
+      if (inBox(g, p.team === 0 ? 1 : 0, p.x, p.z) || (inBox(g, p.team, p.x, p.z) && b.lastTeam !== p.team)) {
+        header(g, p)
+        return
+      }
+      if (b.y < 1.6) {
+        give(g, p)
+        return
+      }
+      continue
+    }
     const jumping = p.act === 'block' && p.at > 0.12 && p.at < 0.6
     const reach = foot ? (p.keeper ? 0.95 : 0.6) : 0.75
     const high = foot ? (p.keeper ? 2.3 : 0.9) : jumping ? 3.4 : 2.0
@@ -1378,7 +2037,7 @@ function touches(g: Game) {
       }
     }
     // In the box, a keeper only takes it in his own half.
-    if (p.keeper && Math.abs(p.x - (p.team === 0 ? -PITCH.x : PITCH.x)) > 6) continue
+    if (p.keeper && Math.abs(p.x - (p.team === 0 ? -g.field.x : g.field.x)) > (g.size === 11 ? g.field.box[0] : 6)) continue
     if (!foot && jumping) say(g, p.team === g.poss ? 'Rebond offensif !' : 'Rebond !')
     give(g, p)
     return
@@ -1407,6 +2066,12 @@ function poseOf(g: Game, p: Player) {
       break
     case 'kick':
       pose = 'kick'
+      break
+    case 'head':
+      pose = 'leap'
+      break
+    case 'throw':
+      pose = 'pass'
       break
     case 'cross':
       pose = 'crossover'
@@ -1437,7 +2102,8 @@ function poseOf(g: Game, p: Player) {
       break
     default:
       if (has) pose = foot ? (sp > 0.7 ? 'touch' : 'idle') : 'dribble'
-      else if (p.keeper && foot && Math.abs(g.ball.x - (p.team === 0 ? -PITCH.x : PITCH.x)) < 14) pose = 'keeper'
+      else if (p.keeper && foot && Math.abs(g.ball.x - (p.team === 0 ? -g.field.x : g.field.x)) < (g.size === 11 ? 30 : 14)) pose = 'keeper'
+      else if (g.set && g.set.taker === p.id && g.set.kind === 'throw') pose = 'pass'
       else if (h && h.team !== p.team && dist(h, p) < (foot ? 2.6 : 2) && sp < 4.2) pose = foot ? 'mark' : 'guard'
       else if (p.human && sp < 4 && g.time - lastGuard < 0.15 && !has) pose = foot ? 'mark' : 'guard'
       else pose = sp > 3.4 ? 'run' : sp > 0.45 ? 'walk' : 'idle'

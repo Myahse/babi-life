@@ -3,7 +3,7 @@
 Babi Life is a life-sim set in Abidjan. The repo is `myahse/babi-life` (GitHub now redirects it to `Myahse/babi-life`).
 
 - `web/`: React 19, Vite, Tailwind v4, react-three-fiber.
-- `backend/`: Go (chi, pgx). Migrations are embedded in `backend/internal/db/migrations/`, up to `039_couples.sql`.
+- `backend/`: Go (chi, pgx). Migrations are embedded in `backend/internal/db/migrations/`, up to `066_word_reports.sql` (the casino odds/history work below will add the next one).
 - `mobile/`: a Flutter webview.
 - `native/`: the Android app in React Native (Expo), drawing the game's own code (`web/src`) natively; it replaces `mobile/` once tried on phones. Branch only, never on main: `native/`, the `*.native.ts(x)` and `*.web.ts` twins in `web/src`, `web/src/lib/canvas.ts` (see `native/README.md`).
 
@@ -101,6 +101,19 @@ Never use `pkill` in compound commands; use `fuser -k <port>/tcp`.
 - **Release video** (`?video=sortie`, `marketing/scripts/sortie-28-octobre.md`): Awa announces Wednesday 28 October and what's new (politics, matches with friends, Flashé, offline). Silent until the user sends `marketing/out/voix-sortie.mp3`; then retime `FILMS.sortie` on the voice and re-render (`FILM=sortie node /home/user/babi-life/marketing/video.mjs`). The mp4 and cover are on the branch only.
 
 
+- **Football « à la FIFA »** (2026-10-26; `streetball/game.ts`, `streetball/stadium.tsx`, `streetball/marks.tsx`, `streetball/StreetMatch.tsx`, `lib/sfx.ts`, sims `web/scripts/foot-sim.ts` and `foot-human.ts`). The user asked to turn the football into « a FIFA in our style » and chose: **both formats** (the 5 v 5 kept and improved, 11 v 11 at the stadium added), **all four modes** (quick match, online with friends, career/club, cup), and **controller support for every action game** (done, below).
+  - **Engine.** `Rules` gained `size` (5 | 11), `referee`, `switching` and `names`. `g.field` comes from `FIELDS` (5: the walled maracana, as `PITCH` was; 11: 92×60 m, lines, a box of 14.5×17.5, the spot at 10 m). `fifa(g)` gates every new behaviour: lobs and headers (`b.lofted`, `header()`), the charged shot (`Input.charge` defined means Tir is held; `kickAtGoal` power path), sprint and stamina (`Input.sprint`, `p.stamina`), the through ball and lob (`pass(..., kind)`), and switching (`control()`, `nearestMate()`, `Input.swap`; `g.me` moves with the ball).
+  - **Referee.** Slide and standing-tackle fouls → `foul()` → `setPiece()` (free kick or penalty; `penGuess`/`g.penStick` decide the keeper's dive). Cards: a second yellow sets `p.out`, and `offPitch` puts the player by the touchline. On a lined pitch, `outOfPlay` gives throw-ins, corners and goal kicks, and `takeSetPiece` is the AI's taker. The 11's shape is `SHAPE11` (4-3-3) with `elevenSupport`/`elevenDefend`, and `engage()` is the console's tighter defending, scaled by `foe`.
+  - **Street matches unchanged.** The **street/court matches are unchanged**: AI shots use the old formula, the street long ball is the old one, and `foot-sim.ts` prints the same street scores (9.25 goals a match, `5-3 3-6 9-3…`) as before. Keep it that way: run the sim after any change.
+  - **Rates.** Console 5 v 5 gives about 11 goals, 4.8 fouls and 1 penalty in 4 min; the 11 v 11 about 7 goals, 7.6 fouls, 1.7 cards, 4 headers, a few corners, throw-ins and goal kicks in 5 min. A scripted human (`foot-human.ts`) wins about 4-2 at `foe` 1.
+  - **Scene.** `Ground` draws `Stadium` for 11: track, lines, goals with nets, flags, boards with the game's brands, stands with instanced fans who jump on goals, floodlights; `Referee` is the man in black. `Follow` has a TV camera for 11 (upright: behind the player's own half). The « you » ring follows `g.me` every frame. `online.ts` ACTS gained `head` and `throw` (appended, so the indices are kept).
+  - **HUD.** The HUD (`FifaPad`, `Gauges`, `hintOf`) shows the breath and power bars and the set-piece hints. Keys: Shift sprint, Space held shoot, J pass, U through, I lob, K skill, L defend, Tab/R swap. Pad: RT sprint, B held shoot, A pass, Y through, X lob, RB skill, LB swap, LT defend.
+  - **Labs:** `city.html?view=fifa5|fifa11&foe=`.
+  - **Not done yet.**
+    - The **modes**: a hub in `components/defi/Foot.tsx` with the format and teams (invented clubs, and national sides by country name), a knock-out cup with penalties or golden goal, a career with the neighbourhood club (Djai costs only, never payouts, saved server-side, new migration), and online 11 v 11 with friends at `plateau-stade` through the court lobby (`backend/internal/court`: add a sport `foot11` with `Cap` 22 and `order` slots; raise `matchOK` in `live.go` to 26 rows for 22 players).
+    - **Offside** (not modelled).
+    - **Penalty shoot-outs** for the cup.
+    - **Far players** could use `LowHuman` if phones struggle with 22 `Human`s.
 - **Controllers** (2026-10-26; `lib/gamepad.ts`): the Gamepad API polled each frame (`useGamepad(onPad)`: sticks with a dead zone, `held`, `pressed` since the last read; `stickOwner()` writes a stick while pushed and once on release so keys and touch still work; `rumble()`; `usePadConnected()`). Wired into StreetMatch (A pass, B shoot, X skill, RB/LB/LT defend), KartRace (RT/A gas, LT/B brake, RB/LB drift, X/Y item; a pad turns off the phone's auto-throttle), Combat (X punch, A/B kick, Y/RT super, RB/LB/LT guard) and Course (LT/B/RB brake, A/RT/Y nitro). Test with a fake pad: `navigator.getGamepads` overridden in an init script (`/tmp/claude-0/padtest.js`, `window.__pad`). Menus aren't driven by the pad yet. The user asked for a « FIFA in our style » next: both formats (5 v 5 kept, 11 v 11 at the stadium added), quick match, online with friends, career/club (Djai only), cup.
 - **Court matches on phones** (`streetball/`): the « you » ring only on your own player; the upright football camera and stick turn round for team 1; the camera keeps your player above the controls (`Follow`, `lift`); a phone only runs the match once its socket is open (`MatchNet.host`). Tested with 2–3 phones (`/tmp/claude-0/tiles/court-probe.mjs`).
 - **Emotes** (`avatar/emotes.ts`): wrappers add a knee dip, overshoot and settle, breathing and sway; the kiss and moonwalk no longer jump.
@@ -110,6 +123,26 @@ Never use `pkill` in compound commands; use `fuser -k <port>/tcp`.
 - **Romance** (`sims/cheating.go`, `couple.go`, migration 039): dates, two partners at once and getting caught, couples between players (asked and accepted, adults only, one at a time).
 
 ## Open or possible next steps
+
+- **Helper work in progress when this session stopped** (2026-10-26). Both run in worktrees under `.claude/worktrees/agent-*` on branches `worktree-agent-*`. If those are gone, redo the work from these specs. Cherry-pick their commits onto the branch (a merge refuses: different histories).
+  1. **Cap Sud's exterior** (`world3d/open/capsud.tsx`, registered like the hotels; place `marcory-capsud`). From the user's two photos:
+     - a long low box in royal-blue ribbed cladding on a white base band;
+     - on the left, a curved glass entrance under a big **orange wave-shaped roof with a pointed crest**;
+     - the sign « CAP » in red on white over « SUD » in white on dark blue;
+     - a smaller orange swoosh over the right-end entrance;
+     - a flat white roof full of air-conditioning units, a lattice mast behind;
+     - in front, a car park with bays, a red and white zebra crossing, twin lamps, motorbikes and a billboard (invented brands).
+  2. **Casino odds setting and round history** (backend `game/` + `sims/` casino files, admin, `screens/casino/*`, `BingoApp.tsx`, `components/Machine.tsx`). The user wants the games to keep taking more than they give and to tune « la difficulté de gagner » from the admin: a **global level plus a per-game override** (they chose « les deux »). Agreed shape:
+     - the same for every player;
+     - clamped to a return of 70–97 %;
+     - applied from the next round (shared rounds keyed by `BetSecret` keep the rate of their start);
+     - slots, bingo and tickets scale their prize tables;
+     - L'Envol uses P(≥x) = rate/x;
+     - Trade pays 2 × rate;
+     - roulette and le 21 keep their classic payouts plus a disclosed house commission on net wins;
+     - history of changes in admin.
+
+     The user then asked that players « not see or even know » about it: **declined**, because players buy Djai with real money. The rate is shown discreetly in each game's « Règles » sheet (and the commission on the result when it's taken), never hidden. Keep declining a hidden version. Same task: an **« Historique » section in every money game** (slots, bingo, roulette, le 21, tickets, L'Envol, Trade, Bet225/ParisFoot bets, loto): `game_rounds` (or the existing tables), `GET /sims/{id}/historique?jeu=&avant=`, the last 50 rounds and today's/7 days' totals.
 
 - **Waiting on the user — remind them in every report** (they asked to be reminded): the **metro's opening date** (the works along line 1 now, the trains running from that date; OSM has only `railway=construction` ways Anyama → Port-Bouët and the Attécoubé depot, no stations), the **godé game's rules**, the **Pullman / new hotel's name**, and whether « **Aircode** » is what they meant. Also still to do from their casino picks: the shared 3D roulette table at the Hôtel Ivoire, sounds in the other casino games, my rounds' history and a self-set loss limit, a weekly leaderboard and challenges; and what bothers them in the kart, the streetball, the bets and the loto (dames and 8 américain not asked yet).
 
