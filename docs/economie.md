@@ -113,6 +113,7 @@ L'argent de poche : un cinquième de la somme de la semaine à chaque anniversai
 | Cinéma (salle, VIP) | 4 500 ; 10 000 | 56 ; 125 |
 | Hôtel, la nuit (3 étoiles ; Azalé ; Poulman ; Noum) | 35 000 ; 60 000 ; 85 000 ; 110 000 | 440 à 1 375 |
 | Émote | 1 000 | 12 |
+| Babi Foot, la carrière (`game/footcareer.go`) : une recrue de 3, 4 ou 5 étoiles, payée une fois et gardée au club (5 au plus) ; la libérer ne rend rien, la carrière ne rapporte jamais d'argent | 3 000 ; 7 500 ; 15 000 | 37 ; 94 ; 190 |
 | Soirée chez soi (`game/soiree.go`, payée par l'hôte, 3 h) ; un verre au bar, les billets lancés au DJ | 5 000 ; 1 000, 5 000 | 62 ; 12, 62 |
 | L'atalaku qui crie ton nom (boîte, soirée) ; la bouteille au carré VIP d'une soirée | 2 000 ; 20 000 | 25 ; 250 |
 | Marchés : pagnes du Grand Marché de Treichville, mèches du marché de Cocody | 6 000 ; 5 000 | 75 ; 62 |

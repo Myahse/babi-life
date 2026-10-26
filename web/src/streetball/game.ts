@@ -290,7 +290,7 @@ export function createGame(sport: Sport, name: string, rnd: () => number = Math.
   } else if (size === 11) {
     // 11 against 11: the player starts up front (the kick-off is theirs), and takes over whoever the play needs.
     const names = rules.names ?? [ELEVEN.mates, ELEVEN.them]
-    for (const team of [0, 1] as const) for (let i = 0; i < 11; i++) ps.push(makePlayer(team * 11 + i, team, i, names[team][i] ?? ELEVEN.mates[i], 0, 0))
+    for (const team of [0, 1] as const) for (let i = 0; i < 11; i++) ps.push(makePlayer(team * 11 + i, team, i, names[team][i] ?? (team === 0 ? ELEVEN.mates : ELEVEN.them)[i], 0, 0))
     ps[9].name = name
     for (const p of ps) p.keeper = p.role === 0
   } else {

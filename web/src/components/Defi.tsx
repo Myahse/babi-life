@@ -110,7 +110,7 @@ export function DefiButton({ kind, interactionId, onClick }: { kind: DefiKind; i
 const stars = (score: number) => (score >= 85 ? 3 : score >= 50 ? 2 : score >= 15 ? 1 : 0)
 
 /** The défi: how it's played, the game, the score and what it earned. */
-export function DefiSheet({ kind, simId, big, interactionId, practice, send, challenge, me, onClose }: { kind: DefiKind; simId: string; /** The player's Sim, to play as itself (the fight). */ me?: { look: Look; gender: 'femme' | 'homme' }; /** The shopping at the supermarket: the longer list. */ big?: boolean; /** The activity it's played during (the foot's match, challenge or tournament). */ interactionId?: string; /** Played from the phone's « Jeux », for practice: nothing sent, nothing earned. */ practice?: boolean; /** The score sent: the server's answer (applied to the Sim), or null if it failed. */ send?: (score: number) => Promise<ActionResult | null>; /** Taken on from someone's score (a message, a link): played for the fun of it, nothing sent. */ challenge?: { score: number; from: string }; onClose: () => void }) {
+export function DefiSheet({ kind, simId, big, interactionId, practice, send, challenge, me, onResult, onClose }: { kind: DefiKind; simId: string; /** The player's Sim, to play as itself (the fight; the foot's career: its money, its commune). */ me?: { look: Look; gender: 'femme' | 'homme'; money?: number; homeCommune?: string }; /** Something bought along the way (a signing in the foot's career): the server's answer, applied to the Sim. */ onResult?: (r: ActionResult) => void; /** The shopping at the supermarket: the longer list. */ big?: boolean; /** The activity it's played during (the foot's match, challenge or tournament). */ interactionId?: string; /** Played from the phone's « Jeux », for practice: nothing sent, nothing earned. */ practice?: boolean; /** The score sent: the server's answer (applied to the Sim), or null if it failed. */ send?: (score: number) => Promise<ActionResult | null>; /** Taken on from someone's score (a message, a link): played for the fun of it, nothing sent. */ challenge?: { score: number; from: string }; onClose: () => void }) {
   const mode = footMode(challenge ? undefined : interactionId)
   const d = kind === 'foot' ? { ...DEFIS.foot, title: FOOT[mode].title, how: [...DEFIS.foot.how, FOOT[mode].how] } : DEFIS[kind]
   const [phase, setPhase] = useState<'intro' | 'play' | 'result'>('intro')
@@ -150,7 +150,7 @@ export function DefiSheet({ kind, simId, big, interactionId, practice, send, cha
         ) : kind === 'courses' ? (
           <CoursesDefi big={!!big} onEnd={(s) => void end(s)} />
         ) : kind === 'foot' ? (
-          <FootDefi mode={mode} me={me} onQuit={onClose} onEnd={(s) => void end(s)} />
+          <FootDefi mode={mode} me={me} simId={simId} onResult={onResult} onQuit={onClose} onEnd={(s) => void end(s)} />
         ) : kind === 'course' ? (
           <CourseDefi onStart={setInMatch} onEnd={(s) => void end(s)} />
         ) : kind === 'combat' ? (

@@ -3,6 +3,7 @@ import { ChevronLeft, Trophy } from 'lucide-react'
 import type { Look } from '../../../lib/types'
 import { MatchSetup, rulesOf, Shirt, type Setup } from './Hub'
 import { CLUBS, kitsFor, NATIONS, teamOf, type Team } from './teams'
+import { scoreOf } from './sim'
 
 // Babi Foot's cup: eight sides, knock-out. The player's side and seven drawn
 // among its own kind (clubs or nations); the quarter-finals, the semis, the
@@ -60,18 +61,6 @@ export function pairsOf(c: CupState, round: number): [string, string][] {
   return out
 }
 
-/** A count of goals around `mean` (Poisson, by Knuth's way). */
-function goals(mean: number, rnd: () => number) {
-  const l = Math.exp(-mean)
-  let k = 0
-  let p = rnd()
-  while (p > l && k < 12) {
-    k++
-    p *= rnd()
-  }
-  return k
-}
-
 /** A shoot-out played out: five each, then one each; three in four go in. */
 function pensOf(rnd: () => number): [number, number] {
   let [a, b] = [0, 0]
@@ -88,9 +77,7 @@ function pensOf(rnd: () => number): [number, number] {
 
 /** A tie the player isn't in: played out by the console, the stronger side more likely through. */
 export function simTie(a: Team, b: Team, size: 5 | 11, rnd = Math.random): Tie {
-  const base = size === 5 ? 2.4 : 1.3
-  const ga = goals(base * Math.pow(1.22, a.stars - b.stars), rnd)
-  const gb = goals(base * Math.pow(1.22, b.stars - a.stars), rnd)
+  const [ga, gb] = scoreOf(a, b, size, rnd)
   if (ga !== gb) return { a: a.id, b: b.id, ga, gb, win: ga > gb ? a.id : b.id }
   const pens = pensOf(rnd)
   return { a: a.id, b: b.id, ga, gb, pens, win: pens[0] > pens[1] ? a.id : b.id }

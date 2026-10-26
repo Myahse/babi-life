@@ -1,10 +1,14 @@
 import { lazy, Suspense, useMemo, useState } from 'react'
-import type { Look } from '../../lib/types'
+import type { ActionResult, Look } from '../../lib/types'
 import { randomLook } from '../../avatar/options'
 import { rng } from '../../world3d/themes'
 import { HubMenu, MatchSetup, rulesOf, type Setup } from './foot/Hub'
 import { Cup, loadCup } from './foot/Cup'
+import { Career } from './foot/Career'
 import { CLUBS, kitsFor, teamOf } from './foot/teams'
+import { matchScore } from './foot/sim'
+
+export { matchScore }
 
 // Le foot à la console, as it's played at the salle de jeux vidéo: Babi
 // Foot, the street's football in 3D (streetball/) on the console's rules (a
@@ -12,7 +16,8 @@ import { CLUBS, kitsFor, teamOf } from './foot/teams'
 // the charged shot). The hub (foot/Hub.tsx): the quick match, five a side in
 // the maracana or eleven at the stadium, any two sides, their shirts, the
 // difficulty, the length; the cup (foot/Cup.tsx), eight sides knock-out, a
-// draw on penalties or the golden goal. The challenge against the caïd, and
+// draw on penalties or the golden goal; the career (foot/Career.tsx), the
+// neighbourhood's club through the seasons. The challenge against the caïd, and
 // the Saturday tournament (the quarter-final, the semi, the final, each
 // side harder, a draw played on to the golden goal), as before.
 
@@ -32,28 +37,22 @@ export const FOOT_MODES: Record<'match' | 'defi' | 'tournoi', FootRound[]> = {
   ],
 }
 
-/** The match result as a score out of 100: a win from 65, by the goals between; a draw 50; a loss under 40. */
-export function matchScore(mine: number, theirs: number) {
-  const d = mine - theirs
-  if (d > 0) return Math.min(100, 55 + d * 10 + Math.min(10, mine * 2))
-  if (d === 0) return 50
-  return Math.max(4, 42 - 12 * (-d - 1) + Math.min(6, mine * 3) - 6)
-}
 
-type Me = { look: Look; gender: 'femme' | 'homme' }
+type Me = { look: Look; gender: 'femme' | 'homme'; money?: number; homeCommune?: string }
 
-export function FootDefi({ mode, me, onEnd, onQuit }: { mode: keyof typeof FOOT_MODES; me?: Me; onEnd: (score: number) => void; /** Left mid-match: nothing sent. */ onQuit?: () => void }) {
+export function FootDefi({ mode, me, simId, onEnd, onQuit, onResult }: { mode: keyof typeof FOOT_MODES; me?: Me; /** The Sim (the career is its own); none: no career. */ simId?: string; onEnd: (score: number) => void; /** Left mid-match: nothing sent. */ onQuit?: () => void; /** A signing's answer, for the Sim's money. */ onResult?: (r: ActionResult) => void }) {
   const player = useMemo(() => me ?? { look: randomLook('homme', rng('console')), gender: 'homme' as const }, [me])
-  if (mode === 'match') return <Console me={player} onEnd={onEnd} onQuit={onQuit} />
+  if (mode === 'match') return <Console me={player} simId={simId} onEnd={onEnd} onQuit={onQuit} onResult={onResult} />
   return <Rounds mode={mode} me={player} onEnd={onEnd} onQuit={onQuit} />
 }
 
-/** The console's hub: the quick match or the cup. */
-function Console({ me, onEnd, onQuit }: { me: Me; onEnd: (score: number) => void; onQuit?: () => void }) {
-  const [screen, setScreen] = useState<'menu' | 'quick' | 'cup'>('menu')
+/** The console's hub: the quick match, the cup, the career. */
+function Console({ me, simId, onEnd, onQuit, onResult }: { me: Me; simId?: string; onEnd: (score: number) => void; onQuit?: () => void; onResult?: (r: ActionResult) => void }) {
+  const [screen, setScreen] = useState<'menu' | 'quick' | 'cup' | 'career'>('menu')
   if (screen === 'quick') return <Quick me={me} onEnd={onEnd} onBack={() => setScreen('menu')} />
   if (screen === 'cup') return <Cup me={me} onEnd={onEnd} onBack={() => setScreen('menu')} />
-  return <HubMenu cupOn={loadCup() ? 'En cours' : null} onQuick={() => setScreen('quick')} onCup={() => setScreen('cup')} onBack={onQuit} />
+  if (screen === 'career' && simId) return <Career me={me} simId={simId} onEnd={onEnd} onResult={onResult} onBack={() => setScreen('menu')} />
+  return <HubMenu cupOn={loadCup() ? 'En cours' : null} onQuick={() => setScreen('quick')} onCup={() => setScreen('cup')} onCareer={simId ? () => setScreen('career') : undefined} onBack={onQuit} />
 }
 
 /** A match set up in the hub, against the console. */
