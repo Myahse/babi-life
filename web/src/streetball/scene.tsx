@@ -8,9 +8,10 @@ import type { Look } from '../lib/types'
 import { rng } from '../world3d/themes'
 import { StaticMerge } from '../world3d/staticMerge'
 import { PostedBubble, likesFor } from '../world3d/fans'
-import { ARC, BAR, BOARD_Z, COURT, HOOP, MOUTH, PITCH, RIM_Y, holder, type Game } from './game'
+import { ARC, BAR, BOARD_Z, COUNTDOWN, COURT, HOOP, MOUTH, PITCH, RIM_Y, holder, type Game } from './game'
 import { Arc, Line } from './marks'
 import { Stadium } from './stadium'
+import { Blob, grassMaterial, Net, turf } from './looks'
 
 // What the street match looks like: the court chalked and painted on the
 // concrete under its basket on a stand (or the maracana's green carpet and
@@ -177,16 +178,18 @@ function Rim({ g }: { g: Game }) {
 
 function Pitch() {
   const { x, z } = PITCH
-  const grass = useMemo(() => flat('#3f9e4d'), [])
-  const stripe = useMemo(() => flat('#47a856'), [])
+  // The grass's blades (looks.tsx), the mown stripes lighter.
+  const grass = grassMaterial('#4aa956')
+  const stripe = grassMaterial('#58b964')
   const sand = useMemo(() => flat('#c9a77a'), [])
+  const turfs = useMemo(() => ({ all: turf(x * 2 + 3, z * 2 + 2, 0, 0), stripes: [...Array(6)].map((_, i) => turf(3, z * 2, -x + 3 + i * 6, 0)) }), [x, z])
   return (
     <group>
       <mesh geometry={BOX} material={sand} position={[0, -0.05, 0]} scale={[110, 0.1, 90]} receiveShadow />
-      <mesh geometry={BOX} material={grass} position={[0, 0.01, 0]} scale={[x * 2 + 3, 0.04, z * 2 + 2]} receiveShadow />
+      <mesh geometry={turfs.all} material={grass} position={[0, 0.03, 0]} receiveShadow />
       {/* Mown stripes */}
-      {[...Array(6)].map((_, i) => (
-        <mesh key={i} geometry={BOX} material={stripe} position={[-x + 3 + i * 6, 0.031, 0]} scale={[3, 0.01, z * 2]} receiveShadow />
+      {turfs.stripes.map((t, i) => (
+        <mesh key={i} geometry={t} material={stripe} position={[-x + 3 + i * 6, 0.033, 0]} receiveShadow />
       ))}
       <Line a={[-x, -z]} b={[x, -z]} />
       <Line a={[-x, z]} b={[x, z]} />
@@ -210,7 +213,7 @@ function Pitch() {
 
 /** The goals' nets, apart: they bulge when the ball goes in. */
 function Nets({ g }: { g: Game }) {
-  const refs = useRef<(THREE.Mesh | null)[]>([])
+  const refs = useRef<(THREE.Group | null)[]>([])
   useFrame(() => {
     const b = g.ball
     ;[-1, 1].forEach((s, i) => {
@@ -223,17 +226,19 @@ function Nets({ g }: { g: Game }) {
   return (
     <>
       {[-1, 1].map((s, i) => (
-        <mesh key={s} ref={(m) => void (refs.current[i] = m)} geometry={BOX} material={netMat} position={[s * (PITCH.x + 0.5), BAR / 2, 0]} scale={[1, BAR, MOUTH * 2]} />
+        <group key={s} ref={(m) => void (refs.current[i] = m)} position={[s * PITCH.x, 0, 0]}>
+          <Net mouth={MOUTH} bar={BAR} depth={1} dir={s as 1 | -1} />
+        </group>
       ))}
     </>
   )
 }
 
 /** The ground, its markings, the fence, the quarter round it (all baked into a few meshes). */
-export function Ground({ g, seed }: { g: Game; seed: string }) {
+export function Ground({ g, seed, teams }: { g: Game; seed: string; /** The sides' names, for the stadium's screens. */ teams?: [string, string] }) {
   const basket = g.sport === 'basket'
   // The console's eleven: the stadium.
-  if (!basket && g.size === 11) return <Stadium g={g} />
+  if (!basket && g.size === 11) return <Stadium g={g} teams={teams} />
   return (
     <>
       <StaticMerge>
@@ -270,6 +275,7 @@ export function PlayerView({ g, i, look, gender }: { g: Game; i: number; look: L
   const k = g.size === 11 ? 1.8 : 1
   return (
     <group ref={root}>
+      <Blob />
       <group ref={inner}>
         <Human look={look} gender={gender} pose={view.pose} seed={i * 7.3} speed={view.speed || undefined} />
       </group>
@@ -502,12 +508,12 @@ export function Follow({ g }: { g: Game }) {
       if (tall) {
         const xx = dir * Math.max(-F.x + 6, Math.min(F.x - 10, dir * bx))
         const zz = Math.max(-F.z + 6, Math.min(F.z - 6, bz))
-        want = new THREE.Vector3(xx - 20 * dir, 19, zz)
+        want = new THREE.Vector3(xx - 18 * dir, 17, zz)
         target = new THREE.Vector3(xx + 9 * dir, 0, zz)
       } else {
         const xx = Math.max(-F.x + 14, Math.min(F.x - 14, bx))
         const zz = Math.max(-F.z + 8, Math.min(F.z - 8, bz * 0.7))
-        want = new THREE.Vector3(xx, 21, zz + 27)
+        want = new THREE.Vector3(xx, 18, zz + 23)
         target = new THREE.Vector3(xx, 0, zz - 1)
       }
     } else if (tall) {
@@ -533,6 +539,16 @@ export function Follow({ g }: { g: Game }) {
       lift.current = 0
       back.current = 0
     }
+    // The kick-off at the stadium, like on TV: a slow turn round the ground from high up during the countdown, then down to the play.
+    const intro = g.sport === 'foot' && g.size === 11 && g.phase === 'count'
+    if (intro) {
+      const k = Math.min(1, Math.max(0, (g.time + COUNTDOWN) / COUNTDOWN))
+      const a = -0.95 + k * 1.15
+      want = new THREE.Vector3(Math.sin(a) * 92, 44 - k * 14, Math.cos(a) * 92)
+      target = new THREE.Vector3(0, 2, 0)
+      lift.current = 0
+      back.current = 0
+    }
     // Down the screen: towards the camera along the pitch.
     const down = g.sport === 'foot' && tall ? new THREE.Vector3(-dir, 0, 0) : new THREE.Vector3(0, 0, 1)
     want.addScaledVector(down, lift.current)
@@ -548,7 +564,7 @@ export function Follow({ g }: { g: Game }) {
     // (StreetMatch's Pad): a Sim standing back from the play, or a small
     // screen, put it under them. Its feet stay above that line.
     camera.updateMatrixWorld()
-    if (so) return
+    if (so || intro) return
     const y = feet.current.set(me.x, 0, me.z).project(camera).y
     const floor = -1 + (2 * 190) / Math.max(size.height, 300)
     if (y < floor) lift.current = Math.min(14, lift.current + dt * 10)

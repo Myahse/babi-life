@@ -6,19 +6,20 @@ import { randomLook } from '../avatar/options'
 import { rng } from '../world3d/themes'
 import { StaticMerge } from '../world3d/staticMerge'
 import { Arc, Line } from './marks'
+import { grassMaterial, Net, turf } from './looks'
 import type { Game } from './game'
 
 // The console's eleven-a-side ground (game.ts FIELDS[11]): a lined pitch in
 // mown stripes inside the running track, two goals with their nets, the
 // corner flags, the boards round the pitch with the game's own brands, and
-// the stands in orange, white and green packed with people who jump up for a
-// goal; four floodlight towers; and the referee in black, following the play.
-// The near stand is left low so the camera sees over it.
+// the stands in orange, white and green, in rows of seats, packed with people
+// who sway and jump up for a goal; the giant screens with the score; four
+// floodlight towers; and the referee in black, following the play. The near
+// stand is left low so the camera sees over it.
 
 const BOX = new THREE.BoxGeometry(1, 1, 1)
 const flat = (color: string) => new THREE.MeshLambertMaterial({ color })
 const white = flat('#f8f9fa')
-const netMat = new THREE.MeshBasicMaterial({ color: '#ffffff', wireframe: true, transparent: true, opacity: 0.55 })
 
 /** The boards' brands, all the game's own. */
 const BRANDS: [string, string, string][] = [
@@ -56,21 +57,22 @@ function boardTexture() {
 /** The pitch, its lines and the track round it. */
 function Pitch11({ g }: { g: Game }) {
   const F = g.field
-  const grass = useMemo(() => flat('#3c9a48'), [])
-  const stripe = useMemo(() => flat('#46a653'), [])
+  // The grass's blades (looks.tsx), the mown stripes lighter.
+  const grass = grassMaterial('#45a451')
+  const stripe = grassMaterial('#52b35e')
   const track = useMemo(() => flat('#b5553a'), [])
   const apron = useMemo(() => flat('#7a8a6a'), [])
   const [bx, bz] = F.box
   const six: [number, number] = [bx * 0.37, F.mouth + 5]
   const stripes = Math.round((F.x * 2) / 7)
+  const w = (F.x * 2) / stripes
+  const turfs = useMemo(() => ({ all: turf(F.x * 2 + 8, F.z * 2 + 7, 0, 0, 5), stripes: [...Array(stripes)].map((_, i) => (i % 2 ? null : turf(w, F.z * 2, -F.x + (i + 0.5) * w, 0, 5))) }), [F, stripes, w])
   return (
     <group>
       <mesh geometry={BOX} material={apron} position={[0, -0.06, 0]} scale={[F.x * 2 + 60, 0.1, F.z * 2 + 60]} receiveShadow />
       <mesh geometry={BOX} material={track} position={[0, -0.02, 0]} scale={[F.x * 2 + 22, 0.04, F.z * 2 + 18]} receiveShadow />
-      <mesh geometry={BOX} material={grass} position={[0, 0.01, 0]} scale={[F.x * 2 + 8, 0.04, F.z * 2 + 7]} receiveShadow />
-      {[...Array(stripes)].map((_, i) =>
-        i % 2 ? null : <mesh key={i} geometry={BOX} material={stripe} position={[-F.x + (i + 0.5) * ((F.x * 2) / stripes), 0.031, 0]} scale={[(F.x * 2) / stripes, 0.01, F.z * 2]} receiveShadow />,
-      )}
+      <mesh geometry={turfs.all} material={grass} position={[0, 0.03, 0]} receiveShadow />
+      {turfs.stripes.map((t, i) => t && <mesh key={i} geometry={t} material={stripe} position={[-F.x + (i + 0.5) * w, 0.033, 0]} receiveShadow />)}
       <Line a={[-F.x, -F.z]} b={[F.x, -F.z]} w={0.14} />
       <Line a={[-F.x, F.z]} b={[F.x, F.z]} w={0.14} />
       <Line a={[-F.x, -F.z]} b={[-F.x, F.z]} w={0.14} />
@@ -114,7 +116,7 @@ function Goals({ g }: { g: Game }) {
           ))}
           <mesh geometry={BOX} material={white} position={[0, F.bar, 0]} scale={[0.14, 0.14, F.mouth * 2 + 0.14]} castShadow />
           <group ref={(n) => void (nets.current[i] = n)} scale={[1, 1, 1]}>
-            <mesh geometry={BOX} material={netMat} position={[s * 1.1, F.bar / 2, 0]} scale={[2.2, F.bar, F.mouth * 2]} />
+            <Net mouth={F.mouth} bar={F.bar} depth={2.2} dir={s as 1 | -1} />
           </group>
         </group>
       ))}
@@ -162,12 +164,14 @@ function Boards({ g }: { g: Game }) {
   )
 }
 
-/** The stands: three tiers stepping up and back, seats in the national colours. */
+/** The stands: three tiers stepping up and back, each in three rows of seats (a row a step), in the national colours. */
 function Stands({ g }: { g: Game }) {
   const F = g.field
   const blocks = useMemo(() => {
     const out: { p: [number, number, number]; s: [number, number, number]; c: string }[] = []
     const SEATS = ['#ff8200', '#f8f9fa', '#009e60']
+    // Every other row a shade darker: the seats read as rows from afar.
+    const SHADE: Record<string, string> = { '#ff8200': '#e06f00', '#f8f9fa': '#d9dde1', '#009e60': '#00854f' }
     // Far side (behind the play, as the camera sees it), the two ends; the near side only its lowest tier.
     const sides: { len: number; off: number; along: 'x' | 'z'; sign: number; tiers: number }[] = [
       { len: F.x * 2 + 26, off: F.z + 12, along: 'x', sign: -1, tiers: 3 },
@@ -179,23 +183,99 @@ function Stands({ g }: { g: Game }) {
       for (let t = 0; t < s.tiers; t++) {
         const depth = 7
         const h = 2.2 + t * 3.2
-        const off = s.off + t * depth + depth / 2
-        const c = SEATS[t % 3]
-        if (s.along === 'x') out.push({ p: [0, h / 2, s.sign * off], s: [s.len, h, depth], c })
-        else out.push({ p: [s.sign * off, h / 2, 0], s: [depth, h, s.len], c })
+        for (let row = 0; row < 3; row++) {
+          // A step 2.1 m deep (the last one to the tier's back), 0.9 m above the one in front.
+          const d0 = s.off + t * depth + row * 2.1
+          const dd = row === 2 ? depth - 4.2 : 2.1
+          const hh = h + row * 0.9
+          const c = row % 2 ? SHADE[SEATS[t % 3]] : SEATS[t % 3]
+          if (s.along === 'x') out.push({ p: [0, hh / 2, s.sign * (d0 + dd / 2)], s: [s.len, hh, dd], c })
+          else out.push({ p: [s.sign * (d0 + dd / 2), hh / 2, 0], s: [dd, hh, s.len], c })
+        }
       }
     return out
   }, [F])
-  const mats = useMemo(() => new Map(['#ff8200', '#f8f9fa', '#009e60'].map((c) => [c, flat(c)])), [])
+  const mats = useMemo(() => new Map([...new Set(blocks.map((b) => b.c))].map((c) => [c, flat(c)])), [blocks])
   const roof = useMemo(() => flat('#adb5bd'), [])
+  const pillar = useMemo(() => flat('#6c757d'), [])
+  const back = F.z + 12 + 21
   return (
     <group>
       {blocks.map((b, i) => (
         <mesh key={i} geometry={BOX} material={mats.get(b.c)} position={b.p} scale={b.s} receiveShadow />
       ))}
-      {/* The roof over the main stand */}
+      {/* The roofs over the main stand and the two ends, on their pillars */}
       <mesh geometry={BOX} material={roof} position={[0, 15.5, -(F.z + 12 + 12)]} scale={[F.x * 2 + 26, 0.5, 26]} />
+      {[-1, 1].map((s) => (
+        <mesh key={s} geometry={BOX} material={roof} position={[s * (F.x + 13 + 12), 15.5, 0]} scale={[26, 0.5, F.z * 2 + 18]} />
+      ))}
+      {[-0.8, -0.4, 0, 0.4, 0.8].map((k) => (
+        <mesh key={k} geometry={BOX} material={pillar} position={[k * (F.x + 13), 7.75, -back]} scale={[0.6, 15.5, 0.6]} />
+      ))}
+      {[-1, 1].flatMap((s) =>
+        [-0.7, 0, 0.7].map((k) => <mesh key={`${s}${k}`} geometry={BOX} material={pillar} position={[s * (F.x + 13 + 21), 7.75, k * (F.z + 9)]} scale={[0.6, 15.5, 0.6]} />),
+      )}
     </group>
+  )
+}
+
+/** The giant screens over the stands: the two sides' names, the score, the minutes played. */
+function Screens({ g, teams }: { g: Game; teams?: [string, string] }) {
+  const F = g.field
+  const tex = useMemo(() => {
+    const c = document.createElement('canvas')
+    c.width = 512
+    c.height = 160
+    const t = new THREE.CanvasTexture(c)
+    t.colorSpace = THREE.SRGBColorSpace
+    return t
+  }, [])
+  const shown = useRef('')
+  useFrame(() => {
+    const min = Math.max(0, Math.floor(g.time / 60))
+    const sec = Math.max(0, Math.floor(g.time % 60))
+    const key = `${g.score[0]}-${g.score[1]}-${min}-${sec}`
+    if (key === shown.current) return
+    shown.current = key
+    const c = tex.image as HTMLCanvasElement
+    const x = c.getContext('2d')!
+    x.fillStyle = '#0b0d1a'
+    x.fillRect(0, 0, 512, 160)
+    x.fillStyle = '#ff8200'
+    x.fillRect(0, 0, 512, 10)
+    x.fillStyle = '#ffffff'
+    x.textAlign = 'center'
+    x.textBaseline = 'middle'
+    const [a, b] = (teams ?? ['DOMICILE', 'EXTÉRIEUR']).map((n) => n.toUpperCase())
+    x.font = '800 30px sans-serif'
+    x.fillText(a, 128, 62, 210)
+    x.fillText(b, 384, 62, 210)
+    x.font = '900 64px sans-serif'
+    x.fillText(`${g.score[0]} - ${g.score[1]}`, 256, 64)
+    x.font = '700 28px sans-serif'
+    x.fillStyle = '#ffd43b'
+    x.fillText(`${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`, 256, 128)
+    tex.needsUpdate = true
+  })
+  const frame = useMemo(() => flat('#212529'), [])
+  const spots: { p: [number, number, number]; rot: number }[] = [
+    { p: [0, 21, -(F.z + 12 + 24)], rot: 0 },
+    { p: [-(F.x + 13 + 24), 21, 0], rot: Math.PI / 2 },
+    { p: [F.x + 13 + 24, 21, 0], rot: -Math.PI / 2 },
+  ]
+  return (
+    <>
+      {spots.map((s, i) => (
+        <group key={i} position={s.p} rotation={[0, s.rot, 0]}>
+          <mesh geometry={BOX} material={frame} position={[0, 0, -0.35]} scale={[17, 5.8, 0.6]} />
+          <mesh position={[0, 0, 0]}>
+            <planeGeometry args={[16, 5]} />
+            <meshBasicMaterial map={tex} toneMapped={false} />
+          </mesh>
+          <mesh geometry={BOX} material={frame} position={[0, -5.5, -0.35]} scale={[0.6, 6, 0.6]} />
+        </group>
+      ))}
+    </>
   )
 }
 
@@ -227,35 +307,58 @@ function People({ g }: { g: Game }) {
     return out
   }, [F])
   const geo = useMemo(() => new THREE.BoxGeometry(0.5, 0.8, 0.4), [])
-  const mat = useMemo(() => new THREE.MeshLambertMaterial({ color: '#ffffff' }), [])
+  const headGeo = useMemo(() => new THREE.BoxGeometry(0.32, 0.32, 0.32).translate(0, 0.58, 0), [])
+  // Each one sways on its feet at its own beat (in the shader: thousands of them, no work each frame).
+  const time = useMemo(() => ({ value: 0 }), [])
+  const sway = (m: THREE.Material) => {
+    m.onBeforeCompile = (s) => {
+      s.uniforms.uTime = time
+      s.vertexShader = 'uniform float uTime;\n' + s.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  transformed.y += max(0.0, sin(uTime * 2.6 + float(gl_InstanceID) * 2.399)) * 0.07;')
+    }
+    return m
+  }
+  const mat = useMemo(() => sway(new THREE.MeshLambertMaterial({ color: '#ffffff' })), [])
+  const headMat = useMemo(() => sway(new THREE.MeshLambertMaterial({ color: '#ffffff' })), [])
+  const heads = useRef<THREE.InstancedMesh[]>([])
+  const groups = useRef<THREE.Group[]>([])
   const built = useRef(false)
-  useFrame(() => {
+  useFrame((_, dt) => {
+    time.value += dt
     if (!built.current) {
       built.current = true
       const o = new THREE.Object3D()
       const col = new THREE.Color()
+      const SKIN = ['#4a2c1a', '#5c3a24', '#6e4024', '#3b2214', '#7a4a2c', '#2e1a10']
       seats.forEach((list, t) => {
         const m = tiers.current[t]
-        if (!m) return
+        const h = heads.current[t]
+        if (!m || !h) return
         list.forEach((s, i) => {
           o.position.set(...s.p)
           o.updateMatrix()
           m.setMatrixAt(i, o.matrix)
           m.setColorAt(i, col.set(s.c))
+          h.setMatrixAt(i, o.matrix)
+          h.setColorAt(i, col.set(SKIN[i % SKIN.length]))
         })
-        m.instanceMatrix.needsUpdate = true
-        if (m.instanceColor) m.instanceColor.needsUpdate = true
+        for (const x of [m, h]) {
+          x.instanceMatrix.needsUpdate = true
+          if (x.instanceColor) x.instanceColor.needsUpdate = true
+        }
       })
     }
     // A goal: the stands jump.
     const last = g.moments[g.moments.length - 1]
     const up = last && last.kind === 'goal' && g.time - last.t < 3 ? Math.abs(Math.sin((g.time - last.t) * 9)) * 0.35 : 0
-    tiers.current.forEach((m, t) => m && (m.position.y = up * (t === 1 ? 0.8 : 1)))
+    groups.current.forEach((m, t) => m && (m.position.y = up * (t === 1 ? 0.8 : 1)))
   })
   return (
     <>
       {seats.map((list, t) => (
-        <instancedMesh key={t} ref={(m) => void (m && (tiers.current[t] = m))} args={[geo, mat, Math.max(1, list.length)]} frustumCulled={false} />
+        <group key={t} ref={(x) => void (x && (groups.current[t] = x))}>
+          <instancedMesh ref={(m) => void (m && (tiers.current[t] = m))} args={[geo, mat, Math.max(1, list.length)]} frustumCulled={false} />
+          <instancedMesh ref={(m) => void (m && (heads.current[t] = m))} args={[headGeo, headMat, Math.max(1, list.length)]} frustumCulled={false} />
+        </group>
       ))}
     </>
   )
@@ -281,7 +384,7 @@ function Lights({ g }: { g: Game }) {
 }
 
 /** The whole ground, baked where it doesn't move. */
-export function Stadium({ g }: { g: Game }) {
+export function Stadium({ g, teams }: { g: Game; teams?: [string, string] }) {
   return (
     <>
       <StaticMerge>
@@ -292,6 +395,7 @@ export function Stadium({ g }: { g: Game }) {
       <Boards g={g} />
       <Goals g={g} />
       <People g={g} />
+      <Screens g={g} teams={teams} />
     </>
   )
 }

@@ -76,6 +76,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Interior } from '../world3d/Interior'
 import { Character } from '../world3d/Character'
 import { Human } from '../avatar/Human'
+import { FarGrow } from '../avatar/LowHuman'
 import { ChatSheet } from '../components/ChatSheet'
 import { npcReact, useNpcReaction } from '../world3d/open/npcReact'
 import { OutdoorAction, outdoorLook, outdoorPose } from '../world3d/OutdoorAction'
@@ -110,6 +111,7 @@ const seededLab = (n: number) => () => ((n = (n * 16807) % 2147483647) / 2147483
 // into the cycle, frozen; without t it plays);
 // ?view=field&sport=foot|basket (&len=40&wid=20 &night &t= &cam= &target=) a pitch or a court and its match;
 // ?view=hoops the playable 3 against 3 under one basket, ?view=foot5 the 5 against 5 (&seed=);
+// ?view=far people along a street from 8 to 105 m, as the city's camera sees them (&old=1 without the far bulk);
 // ?view=fifa5 | fifa11 the console's football (referee, switching; fifa11 the stadium's eleven) (&seed=, &foe=, &length= seconds, &pens=1 a draw to penalties);
 // ?view=defi&kind=foot the console's football hub (&sim= a Sim of the session kept in the browser, &home= its commune, &money=: the career online);
 // ?view=family&f=gnambro (&g=homme &seed=3) a family at the birth, in front of its home;
@@ -615,6 +617,7 @@ function Lab() {
   if (view === 'tolls') return <TollsLab />
   if (view === 'streetfoot') return <StreetFootLab />
   if (view === 'people') return <PeopleLab />
+  if (view === 'far') return <FarLab />
   if (view === 'grin') {
     if (q.get('t') !== null) freezeWorldTime(Number(q.get('t')))
     return (
@@ -925,6 +928,46 @@ function BillboardLab() {
       <Billboard board={{ id: 'f', at: [0, 2], rot: 0, seed: 0.7, format: 'banderole', span: 11 }} ads={[]} night={night} onSeen={() => undefined} />
       <Billboard board={{ id: 'g', at: [24, 2], rot: -0.5, seed: 0.9, format: 'led' }} ads={[]} night={night} onSeen={() => undefined} />
       <OrbitControls target={[0, 6, 0]} />
+    </Canvas>
+  )
+}
+
+/** People along a street from 8 to 105 m, seen from the city's camera height (?view=far&cam=; &old=1 without the far bulk): how they read from afar. */
+function FarLab() {
+  const cam = (q.get('cam') ?? '0,3.2,-5').split(',').map(Number) as [number, number, number]
+  const people = useMemo(
+    () =>
+      [8, 14, 20, 28, 36, 46, 58, 72, 88, 105].flatMap((d, i) =>
+        [-1, 1].map((s) => {
+          const g: 'femme' | 'homme' = (i + (s > 0 ? 1 : 0)) % 2 ? 'homme' : 'femme'
+          return { d, x: s * (3 + (i % 3)), look: randomLook(g, seededLab(i * 2 + (s > 0 ? 1 : 0) + 5)), g, walk: (i + (s > 0 ? 1 : 0)) % 2 === 0 }
+        }),
+      ),
+    [],
+  )
+  const scene = (
+    <>
+      {people.map((p, i) => (
+        <group key={i} position={[p.x, 0, p.d]} rotation={[0, p.walk ? Math.PI / 2 : Math.PI, 0]}>
+          <Human look={p.look} gender={p.g} pose={p.walk ? 'walk' : 'idle'} seed={i} speed={1.4} />
+        </group>
+      ))}
+    </>
+  )
+  return (
+    <Canvas shadows dpr={[1, 1.5]} camera={{ position: cam, fov: 50, far: 500 }} onCreated={({ camera }) => camera.lookAt(0, 1.6, 40)} style={{ width: '100vw', height: '100vh' }}>
+      <color attach="background" args={['#cfe6f2']} />
+      <hemisphereLight args={['#ffffff', '#b8a27c', 1.2]} />
+      <directionalLight position={[10, 20, 12]} intensity={1.6} castShadow />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 100]} receiveShadow>
+        <planeGeometry args={[80, 300]} />
+        <meshLambertMaterial color="#c9a77a" />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 100]} receiveShadow>
+        <planeGeometry args={[5, 300]} />
+        <meshLambertMaterial color="#4a4d55" />
+      </mesh>
+      {q.get('old') === '1' ? <FarGrow.Provider value={{ grow: 0, from: 1e9, over: 1 }}>{scene}</FarGrow.Provider> : scene}
     </Canvas>
   )
 }

@@ -603,3 +603,14 @@ Pour compléter une donnée : corriger l'entrée dans le code (garder son identi
   - **Le match** : celui du grand stade, avec arbitre, touches, corners, coups francs et penaltys. Chacun garde son propre joueur (pas de changement). Sans le ballon, le bouton bleu appelle la balle et « Tacle » reprend le ballon. Le sprint, la frappe chargée, la passe en profondeur et le centre passent par le réseau, comme le coup de pied arrêté en cours et la place de l'arbitre : tout le monde voit le même match.
   - **Seul** (sans réseau), on joue le même match contre la console, en changeant de joueur comme à la console.
   - **Les matchs à 5 du quartier** ne changent pas.
+- **Le foot plus beau** (`web/src/streetball/looks.tsx`, `stadium.tsx`, `scene.tsx`) : toutes les parties de foot (la console, le stade, les terrains de quartier) changent seulement d'image, pas de jeu.
+  - **Le terrain** : un vrai gazon, avec des brins d'herbe et des bandes tondues, et des filets à mailles dans les buts.
+  - **Le décor** : un ciel bleu avec des nuages, et une lumière d'après-midi.
+  - **Les joueurs** : une ombre douce sous chacun, même vu de loin.
+  - **Le tableau du score** comme à la télé : les trois lettres de chaque équipe dans sa couleur, le score au milieu, l'horloge à côté.
+  - **Le stade** : des tribunes en gradins orange, blanc et vert, des toits sur trois côtés, trois écrans géants avec le score et les minutes, et une foule qui se balance et saute à chaque but. Au coup d'envoi, la caméra fait le tour du stade pendant le compte à rebours.
+- **Les gens vus de loin ne sont plus des bâtons** (`web/src/avatar/LowHuman.tsx`, `Human.tsx`) : plus quelqu'un est loin de la caméra, plus son corps est dessiné large, épais et un peu plus grand, petit à petit.
+  - **Au stade**, où la caméra est haute et lointaine, c'est plus marqué, et la caméra s'est un peu rapprochée.
+  - **Sur un téléphone qui baisse sa résolution** pour suivre, ça commence plus tôt.
+  - **Les joueurs vus de loin** ont maintenant short, genoux et chaussettes, comme de près, au lieu de jambes blanches de haut en bas.
+  - **La même chose en ville**, pour les passants au loin.

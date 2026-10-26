@@ -2,7 +2,7 @@ import { createContext, useContext, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { Look, Sim } from '../lib/types'
-import { LowHuman } from './LowHuman'
+import { bulkScale, farBulk, FarGrow, LowHuman } from './LowHuman'
 import { BlockBaby, BlockHuman } from './BlockHuman'
 import { worldTime } from '../lib/worldClock'
 import { EMOTE_SNAPPY, emoteArms, emoteBody, emoteLegs, type EmotePose } from './emotes'
@@ -762,10 +762,14 @@ export function Human(props: Props & { /** Always in full detail (the creator, c
   const [far, setFar] = useState(false)
   const [gone, setGone] = useState(false)
   const at = useRef(new THREE.Vector3())
+  const near = useRef<THREE.Group>(null)
+  const farLook = useContext(FarGrow)
   const full = useContext(FullDetail) || props.full
-  useFrame(({ camera }) => {
+  useFrame(({ camera, gl }) => {
     if (full || !anchor.current) return
     const d = anchor.current.getWorldPosition(at.current).distanceTo(camera.position)
+    // Up close too, the body as broad as the far figure will draw it (a screen drawing few pixels starts it early): no change at the switch.
+    if (near.current) near.current.scale.set(...bulkScale(farBulk(d, gl.getPixelRatio(), farLook), farLook.grow))
     if (!far && d > FAR + 3) setFar(true)
     else if (far && d < FAR - 3) setFar(false)
     if (!gone && d > GONE + 5) setGone(true)
@@ -773,7 +777,13 @@ export function Human(props: Props & { /** Always in full detail (the creator, c
   })
   return (
     <group ref={anchor} name="human">
-      {gone && !full ? null : far && !full ? <LowHuman look={props.look} gender={props.gender} pose={props.pose} seed={props.seed} speed={props.speed} /> : <BlockHuman {...props} />}
+      {gone && !full ? null : far && !full ? (
+        <LowHuman look={props.look} gender={props.gender} pose={props.pose} seed={props.seed} speed={props.speed} />
+      ) : (
+        <group ref={near}>
+          <BlockHuman {...props} />
+        </group>
+      )}
     </group>
   )
 }

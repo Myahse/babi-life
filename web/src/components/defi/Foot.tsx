@@ -73,6 +73,7 @@ function Quick({ me, onEnd, onBack }: { me: Me; onEnd: (score: number) => void; 
         gender={me.gender}
         rules={rules}
         teams={[mine.name, theirs.name]}
+        shorts={[mine.short, theirs.short]}
         kits={kitsFor(mine, theirs)}
         // Left mid-match: back to the hub; played out: the score.
         onExit={(r) => (r ? onEnd(matchScore(r.score[0], r.score[1])) : setSetup(null))}
@@ -126,7 +127,7 @@ function Rounds({ mode, me, onEnd, onQuit }: { mode: 'defi' | 'tournoi'; me: Me;
     )
   return (
     <Suspense fallback={<Loading text={`${rival.label ?? 'Le match'} : contre ${rival.name}…`} />}>
-      <StreetMatch key={round} sport="foot" name="Toi" look={me.look} gender={me.gender} rules={rules} teams={['Ton équipe', rival.name]} kits={kitsFor(mine, theirs)} onExit={(r) => (r ? done(r.score[0], r.score[1]) : onQuit?.())} />
+      <StreetMatch key={round} sport="foot" name="Toi" look={me.look} gender={me.gender} rules={rules} teams={['Ton équipe', rival.name]} shorts={['TOI', theirs.short]} kits={kitsFor(mine, theirs)} onExit={(r) => (r ? done(r.score[0], r.score[1]) : onQuit?.())} />
     </Suspense>
   )
 }
