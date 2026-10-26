@@ -167,13 +167,56 @@ export function LowHuman({ look, gender, pose = 'idle', seed = 0, speed }: { loo
     const v = speed ?? (run ? 8 : 1.4)
     phase.current += Math.min(dt, 0.1) * Math.PI * 2 * (run ? 1.5 + v * 0.07 : Math.min(2.1, 0.85 + v * 0.3))
     const s = Math.sin(phase.current)
+    const t = phase.current
+    // From afar the whole body has to tell what it's doing: the bounce of each step, the lean of a run,
+    // the shoulders turning against the hips, a kick's leg out, a keeper's dive, a dancer's bounce.
+    const kick = pose === 'kick' || pose === 'shoot' || pose === 'pass'
+    const hop = pose === 'cheer' || pose === 'dance' || pose === 'airplane' || pose === 'leap' || pose === 'dunk'
+    const bob = walk ? Math.abs(s) * (run ? 0.07 : 0.025) : hop ? Math.abs(Math.sin(t * 1.6)) * 0.12 : 0
+    if (whole.current) {
+      whole.current.position.y = seatDrop + bob
+      whole.current.rotation.z = pose === 'dive' ? 1.15 * (seed % 2 ? 1 : -1) : pose === 'idle' || pose === 'talk' ? Math.sin(t * 0.25) * 0.025 : 0
+      whole.current.rotation.x = pose === 'slide' ? -0.9 : 0
+    }
+    if (upper.current) {
+      upper.current.rotation.x = run ? 0.2 : walk ? 0.05 : kick ? -0.15 : pose === 'guard' || pose === 'mark' || pose === 'keeper' ? 0.3 : 0
+      upper.current.rotation.y = walk ? s * (run ? 0.16 : 0.08) : 0
+    }
     for (const i of [0, 1]) {
       const out = i ? 1 : -1
       const leg = legs[i].current
       const arm = arms[i].current
-      if (leg) leg.rotation.x = seated ? -1.5 : walk ? s * (run ? 0.95 : 0.5) * out : 0
-      // Arms up to cheer; the phone held up to film.
-      if (arm) arm.rotation.x = pose === 'wave' && i ? -2.6 + s * 0.3 : pose === 'cheer' ? -2.8 + Math.sin(phase.current * 2 + i) * 0.15 : pose === 'film' ? (i ? -1.85 : -1.45) : walk ? -s * (run ? 0.9 : 0.45) * out : 0
+      if (leg) {
+        leg.rotation.x = seated ? -1.5 : walk ? s * (run ? 1.05 : 0.55) * out : kick ? (i ? -1.2 : 0.25) : pose === 'keeper' || pose === 'guard' || pose === 'mark' ? -0.25 : 0
+        // Feet apart, set to go, for the keeper and the defender.
+        leg.rotation.z = pose === 'keeper' || pose === 'guard' || pose === 'mark' ? out * 0.22 : pose === 'airplane' ? out * 0.1 : 0
+      }
+      // Arms up to cheer; the phone held up to film, or to the ear; the hands talking; arms out like a plane.
+      if (arm) {
+        arm.rotation.x =
+          pose === 'wave' && i
+            ? -2.6 + s * 0.3
+            : pose === 'cheer' || pose === 'dunk'
+              ? -2.8 + Math.sin(t * 2 + i) * 0.15
+              : pose === 'film'
+                ? i
+                  ? -1.85
+                  : -1.45
+                : pose === 'phone' || pose === 'call'
+                  ? i
+                    ? -2.3
+                    : 0
+                  : pose === 'talk' || pose === 'rant'
+                    ? -0.6 - Math.max(0, Math.sin(t * 0.8 + i * 2)) * 0.6
+                    : pose === 'dance'
+                      ? -1.2 + Math.sin(t * 1.6 + i * Math.PI) * 0.9
+                      : kick
+                        ? (i ? 0.5 : -0.7)
+                        : walk
+                          ? -s * (run ? 1.0 : 0.5) * out
+                          : 0
+        arm.rotation.z = pose === 'airplane' ? out * 1.45 : pose === 'keeper' || pose === 'dive' ? out * 0.9 : run ? out * 0.14 : 0
+      }
     }
   })
   const seatDrop = pose === 'sit' || pose === 'eat' || pose === 'drink' || pose === 'write' ? -0.41 : 0
