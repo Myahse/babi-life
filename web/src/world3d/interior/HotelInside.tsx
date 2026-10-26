@@ -697,7 +697,7 @@ function People({ placeId, night }: { placeId: string; night: boolean }) {
     const r = rng(`hotel-passants|${placeId}`)
     return [...Array(4)].map((_, i) => {
       const gender: 'femme' | 'homme' = r() < 0.5 ? 'femme' : 'homme'
-      return { gender, look: randomLook(gender, r), x: -3 + i * 2, z0: 8.4, z1: HD - 2, speed: 1 + r() * 0.4, phase: r() * 30 }
+      return { gender, look: randomLook(gender, r), x: -3 + i * 2, z0: 9.4, z1: HD - 2, speed: 1 + r() * 0.4, phase: r() * 30 }
     })
   }, [placeId])
   const wr = useRef<(THREE.Group | null)[]>([])
