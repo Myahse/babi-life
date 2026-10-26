@@ -201,6 +201,10 @@ var Kinds = map[string]PlaceKind{
 			{ID: "comptoir-air-lagune", Label: "Se renseigner au comptoir d'Air Lagune", Icon: "plane", Minutes: 20, Effect: Needs{Fun: 5, Social: 5}, MinHour: 8, MaxHour: 17, Places: []string{AirLaguneID}},
 			// The Tour Ivoire's: the boulevard and the lagoon from its top floor.
 			{ID: "vue-tour-ivoire", Label: "Voir le boulevard du 16e étage", Icon: "building-2", Minutes: 20, Effect: Needs{Fun: 15, Energy: -3}, MinHour: 8, MaxHour: 18, Places: []string{TourIvoireID}},
+			// The RTI's: in the audience of a show being recorded, the studios visited, a casting.
+			{ID: "rti-emission", Label: "Être dans le public d'une émission", Icon: "tv", Minutes: 90, Effect: Needs{Fun: 35, Social: 20, Energy: -5}, MinHour: 10, MaxHour: 22, Places: []string{RTIID}},
+			{ID: "rti-visite", Label: "Visiter les studios de la RTI", Icon: "camera", Minutes: 45, Cost: 1000, Effect: Needs{Fun: 20, Social: 10}, MinHour: 9, MaxHour: 17, Days: Weekdays, Places: []string{RTIID}},
+			{ID: "rti-casting", Ages: TeensUp, Label: "Passer un casting pour la télé", Icon: "clapperboard", Minutes: 40, Effect: Needs{Fun: 15, Social: 15, Energy: -5}, MinHour: 9, MaxHour: 17, Days: Weekdays, Places: []string{RTIID}},
 		},
 		Events: []RandomEvent{
 			{Text: "Le patron t'a félicité devant tout le monde. Petite prime !", Money: 1000, Effect: Needs{Fun: 15}},
@@ -861,6 +865,9 @@ const (
 	AirportID   = "pb-aeroport"
 	AirLaguneID = "pb-air-lagune"
 )
+
+// RTIID: the national radio and television's site in Cocody (world/world.go), its studios open to the public.
+const RTIID = "cocody-rti"
 
 // HotelIvoireID: the Hôtel Ivoire (world/world.go), whose cinema and casino are its own.
 const HotelIvoireID = "cocody-hotel-ivoire"

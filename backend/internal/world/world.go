@@ -393,6 +393,15 @@ var Cities = []City{
 				babiBurger("cocody-babi-burger-palmeraie", "Babi Burger Palmeraie", "Riviera Palmeraie", 5.37286, -3.93315, "les résidences Génie 2000, près de PlaYce Palmeraie", 6900316188),
 				Place{ID: "cocody-iua", Name: "Institut universitaire d'Abidjan (IUA)", Kind: "universite", Lat: 5.37602, Lng: -3.98193, Real: true, Operator: "Établissement privé",
 					Source: game.Partial("Université privée fondée en 2004, aux Deux-Plateaux (Cocody) ; position d'après OpenStreetMap.", srcIUA, srcOSM)},
+				// The national radio and television, its studios and its mast (web/src/world3d/open/rti.tsx).
+				Place{ID: game.RTIID, Name: "RTI", Kind: "office", Quarter: "Vieux Cocody", Lat: 5.34270, Lng: -4.00214, Real: true, Operator: "Radiodiffusion Télévision Ivoirienne (service public)",
+					Source: game.Partial("Le site de la Radiodiffusion Télévision Ivoirienne à Cocody : ses studios et son pylône. Position d'après OpenStreetMap (« Radiodiffusion-Télévision-Ivoirienne », Vieux Cocody) ; les bâtiments et la hauteur du pylône sont des estimations du jeu.", srcOSM)},
+				Place{ID: "cocody-carrefour-vie", Name: "Carrefour de la Vie", Kind: "rue", Quarter: "Cité BAD", Lat: 5.34856, Lng: -4.00243, Real: true, Approx: true,
+					Source: game.Partial("Grand carrefour du Vieux Cocody, près de la Cité BAD, sur le tracé du BRT en construction ; position d'après OpenStreetMap. Le jeu en fait un lieu d'ambiance (vendeurs, terrasses, gbairai).", srcOSM)},
+				Place{ID: "cocody-mosquee-aghien", Name: "Mosquée d'Aghien", Kind: "worship", Quarter: "Aghien", Lat: 5.38286, Lng: -3.99375, Real: true,
+					Source: game.Partial("Nom et position d'après OpenStreetMap (rue L16, à Aghien, près du boulevard Latrille et de son arrêt « Mosquée Aghien »).", srcOSM)},
+				Place{ID: "cocody-espace-opera", Name: "Espace Opéra", Kind: "maquis", Quarter: "Aghien", Lat: 5.38542, Lng: -3.99335, Real: true,
+					Source: game.Partial("Restaurant et espace de détente, rue des Flamboyants à Aghien ; nom et position d'après OpenStreetMap. Ce que l'on y fait est celui des maquis du jeu.", srcOSM)},
 			),
 			withMairie(abidjanCommune("yopougon", "Yopougon", "Yop City, capitale de l'ambiance.", 5.3450, -4.0820, "nord",
 				// The island across the water from Azito: reached by pinasse from the shore (web/src/world3d/interior/BoulayScene.tsx).
