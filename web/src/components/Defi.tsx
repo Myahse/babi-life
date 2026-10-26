@@ -64,7 +64,7 @@ const DEFIS: Record<DefiKind, { title: string; button: string; icon: LucideIcon;
     button: 'Jouer la course',
     icon: Car,
     colors: ['#4dabf7', '#1c7ed6'],
-    how: ['La voiture accélère toute seule : tiens ◀ ou ▶ pour tourner.', 'Double les woro-woros et les gbakas : si tu les touches, tu perds ta vitesse. Le bas-côté te ralentit.', 'Deux tours contre la voiture bleue ; trois « Turbo » pour la passer.'],
+    how: ['La voiture accélère toute seule : ◀ ▶ pour tourner, « Frein » avant les virages serrés.', 'Frein tenu en tournant vite : tu dérapes ; lâche, c\'est le mini-turbo. Les murs et les voitures te ralentissent.', 'Frôle les woro-woros et les gbakas, suis l\'autre de près : ta jauge de « Nitro » se remplit. Deux tours pour gagner.'],
     bg: '#0d1b2a',
   },
   combat: {
@@ -117,6 +117,8 @@ export function DefiSheet({ kind, simId, big, interactionId, practice, send, cha
   const [best, setBest] = useState<number | null>(null)
   const [score, setScore] = useState(0)
   const [said, setSaid] = useState<string | null>(null)
+  // The fight and the race: their opponent chosen, the match on (the close button moves out of the bars' way).
+  const [inMatch, setInMatch] = useState(false)
   useEffect(() => {
     void api
       .defis(simId)
@@ -150,9 +152,9 @@ export function DefiSheet({ kind, simId, big, interactionId, practice, send, cha
         ) : kind === 'foot' ? (
           <FootDefi mode={mode} onEnd={(s) => void end(s)} />
         ) : kind === 'course' ? (
-          <CourseDefi onEnd={(s) => void end(s)} />
+          <CourseDefi onStart={setInMatch} onEnd={(s) => void end(s)} />
         ) : kind === 'combat' ? (
-          <CombatDefi me={me} onEnd={(s) => void end(s)} />
+          <CombatDefi me={me} onStart={setInMatch} onEnd={(s) => void end(s)} />
         ) : kind === 'arcade' ? (
           <MoustiquesDefi onEnd={(s) => void end(s)} />
         ) : (
@@ -160,7 +162,7 @@ export function DefiSheet({ kind, simId, big, interactionId, practice, send, cha
         ))}
       {/* Left halfway: nothing sent, the défi can be taken on again */}
       {phase === 'play' && (
-        <button className={`absolute right-2 z-20 grid h-8 w-8 place-items-center rounded-full bg-black/45 text-white ${kind === 'combat' ? 'top-[96px]' : 'top-12'}`} onClick={onClose} aria-label="Quitter la partie">
+        <button className={`absolute right-2 z-20 grid h-8 w-8 place-items-center rounded-full bg-black/45 text-white ${inMatch && kind === 'combat' ? 'top-[96px]' : inMatch && kind === 'course' ? 'top-[150px]' : 'top-12'}`} onClick={onClose} aria-label="Quitter la partie">
           <X size={17} strokeWidth={2.6} />
         </button>
       )}

@@ -48,9 +48,10 @@ const CORNERS: [number, number][] = [
 export const HALF = 6.5
 export const LAPS = 3
 
-export function buildTrack(): Track {
+/** A closed track through `corners` (the karting's by default), `half` its half-width. */
+export function buildTrack(corners: [number, number][] = CORNERS, half = HALF): Track {
   const curve = new THREE.CatmullRomCurve3(
-    CORNERS.map(([x, z]) => new THREE.Vector3(x, 0, z)),
+    corners.map(([x, z]) => new THREE.Vector3(x, 0, z)),
     true,
     'centripetal',
   )
@@ -80,7 +81,7 @@ export function buildTrack(): Track {
     { s: Math.round(0.66 * n), d: 2.5 },
     { s: Math.round(0.93 * n), d: 0 },
   ]
-  return { length: n, half: HALF, x, z, tx, tz, n, boxes, pads }
+  return { length: n, half, x, z, tx, tz, n, boxes, pads }
 }
 
 /**
