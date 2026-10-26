@@ -2,15 +2,17 @@ import { lazy, Suspense, useMemo, useState } from 'react'
 import type { Look } from '../../lib/types'
 import { randomLook } from '../../avatar/options'
 import { rng } from '../../world3d/themes'
-import { MatchSetup, rulesOf, type Setup } from './foot/Hub'
+import { HubMenu, MatchSetup, rulesOf, type Setup } from './foot/Hub'
+import { Cup, loadCup } from './foot/Cup'
 import { CLUBS, kitsFor, teamOf } from './foot/teams'
 
 // Le foot à la console, as it's played at the salle de jeux vidéo: Babi
 // Foot, the street's football in 3D (streetball/) on the console's rules (a
 // referee, the switch from player to player, sprint, through balls, lobs,
-// the charged shot). The match: set up in the hub (foot/Hub.tsx), five a
-// side in the maracana or eleven at the stadium, any two sides, their
-// shirts, the difficulty, the length. The challenge against the caïd, and
+// the charged shot). The hub (foot/Hub.tsx): the quick match, five a side in
+// the maracana or eleven at the stadium, any two sides, their shirts, the
+// difficulty, the length; the cup (foot/Cup.tsx), eight sides knock-out, a
+// draw on penalties or the golden goal. The challenge against the caïd, and
 // the Saturday tournament (the quarter-final, the semi, the final, each
 // side harder, a draw played on to the golden goal), as before.
 
@@ -42,16 +44,24 @@ type Me = { look: Look; gender: 'femme' | 'homme' }
 
 export function FootDefi({ mode, me, onEnd, onQuit }: { mode: keyof typeof FOOT_MODES; me?: Me; onEnd: (score: number) => void; /** Left mid-match: nothing sent. */ onQuit?: () => void }) {
   const player = useMemo(() => me ?? { look: randomLook('homme', rng('console')), gender: 'homme' as const }, [me])
-  if (mode === 'match') return <Quick me={player} onEnd={onEnd} />
+  if (mode === 'match') return <Console me={player} onEnd={onEnd} onQuit={onQuit} />
   return <Rounds mode={mode} me={player} onEnd={onEnd} onQuit={onQuit} />
 }
 
+/** The console's hub: the quick match or the cup. */
+function Console({ me, onEnd, onQuit }: { me: Me; onEnd: (score: number) => void; onQuit?: () => void }) {
+  const [screen, setScreen] = useState<'menu' | 'quick' | 'cup'>('menu')
+  if (screen === 'quick') return <Quick me={me} onEnd={onEnd} onBack={() => setScreen('menu')} />
+  if (screen === 'cup') return <Cup me={me} onEnd={onEnd} onBack={() => setScreen('menu')} />
+  return <HubMenu cupOn={loadCup() ? 'En cours' : null} onQuick={() => setScreen('quick')} onCup={() => setScreen('cup')} onBack={onQuit} />
+}
+
 /** A match set up in the hub, against the console. */
-function Quick({ me, onEnd }: { me: Me; onEnd: (score: number) => void }) {
+function Quick({ me, onEnd, onBack }: { me: Me; onEnd: (score: number) => void; onBack: () => void }) {
   const [setup, setSetup] = useState<Setup | null>(null)
   const [round, setRound] = useState(0)
   const rules = useMemo(() => (setup ? rulesOf(setup) : null), [setup])
-  if (!setup || !rules) return <MatchSetup title="Match rapide" onPlay={(s) => (setSetup(s), setRound((r) => r + 1))} />
+  if (!setup || !rules) return <MatchSetup title="Match rapide" onBack={onBack} onPlay={(s) => (setSetup(s), setRound((r) => r + 1))} />
   const mine = teamOf(setup.mine)
   const theirs = teamOf(setup.theirs)
   return (

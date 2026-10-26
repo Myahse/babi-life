@@ -29,7 +29,7 @@ export const defiOf = (interactionId?: string): DefiKind | null =>
 /** The foot's three ways: a match, the challenge where the loser pays, the Saturday tournament. */
 const footMode = (interactionId?: string) => (interactionId === 'console-defi' ? 'defi' : interactionId === 'tournoi-console' ? 'tournoi' : 'match')
 const FOOT: Record<ReturnType<typeof footMode>, { title: string; button: string; how: string }> = {
-  match: { title: 'Babi Foot à la console', button: 'Jouer à Babi Foot', how: 'Choisis le format (5 contre 5 au maracana ou 11 contre 11 au stade), les deux équipes, la difficulté et la durée.' },
+  match: { title: 'Babi Foot à la console', button: 'Jouer à Babi Foot', how: 'Match rapide : le format (5 contre 5 au maracana ou 11 contre 11 au stade), les deux équipes, la difficulté, la durée. Ou la Coupe : huit équipes, élimination directe, un nul aux tirs au but ou au but en or.' },
   defi: { title: 'Le défi du quartier', button: 'Jouer le défi', how: 'Contre le caïd du quartier : gagné, il te paie ta mise ; perdu, tu paies.' },
   tournoi: { title: 'Le tournoi du samedi', button: 'Jouer le tournoi', how: 'Quart, demi, finale, chaque équipe plus forte que la précédente ; un nul se joue au but en or. La coupe : 2 000 Djai ; la finale : 800. Un tournoi par jour.' },
 }

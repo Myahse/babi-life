@@ -1,12 +1,15 @@
 import { useMemo, useState } from 'react'
-import { ChevronLeft, Star } from 'lucide-react'
+import { ChevronLeft, Star, Trophy, Zap } from 'lucide-react'
 import { CLUBS, foeFor, kitsFor, LEVELS, NATIONS, teamOf } from './teams'
 
-// Babi Foot, the console's football « à la FIFA »: the hub where a match is
-// set up (the format, the two sides and their shirts, the difficulty, the
-// length) before the kick-off. The last choices are kept on the phone.
+// Babi Foot, the console's football « à la FIFA »: the hub's menu (a quick
+// match, the cup), and where a match is set up (the format, the two sides and
+// their shirts, the difficulty, the length; the cup's draws) before the
+// kick-off. The last choices are kept on the phone.
 
-export type Setup = { size: 5 | 11; mine: string; theirs: string; level: number; length: number }
+/** A draw in the cup: penalties, or played on to the golden goal. */
+export type Draw = 'pens' | 'golden'
+export type Setup = { size: 5 | 11; mine: string; theirs: string; level: number; length: number; draw?: Draw }
 
 const KEY = 'babi.foot.setup'
 /** The lengths offered, in seconds: shorter for the five's maracana. */
@@ -30,11 +33,11 @@ function saveSetup(s: Setup) {
   }
 }
 
-/** The match's rules for the engine (streetball/game.ts), from the setup. */
-export function rulesOf(s: Setup, golden = false) {
+/** The match's rules for the engine (streetball/game.ts), from the setup: a draw settled (the cup) or not; `harder` the cup's later rounds. */
+export function rulesOf(s: Setup, draw?: Draw, harder = 1) {
   const me = teamOf(s.mine)
   const them = teamOf(s.theirs)
-  return { size: s.size, referee: true, switching: true, length: LENGTHS[s.size][s.length] ?? LENGTHS[s.size][1], foe: foeFor(LEVELS[s.level]?.foe ?? 1, me, them), golden }
+  return { size: s.size, referee: true, switching: true, length: LENGTHS[s.size][s.length] ?? LENGTHS[s.size][1], foe: foeFor((LEVELS[s.level]?.foe ?? 1) * harder, me, them), golden: draw === 'golden', shootout: draw === 'pens' }
 }
 
 /** A shirt, in its colour. */
@@ -98,8 +101,49 @@ function TeamPicker({ label, value, onPick, other }: { label: string; value: str
   )
 }
 
-/** The match's setup: format, sides, shirts, difficulty, length; then the kick-off. */
-export function MatchSetup({ title, onPlay, onBack }: { title: string; onPlay: (s: Setup) => void; onBack?: () => void }) {
+/** The hub: a quick match or the cup (one under way to take up again). */
+export function HubMenu({ onQuick, onCup, cupOn, onBack }: { onQuick: () => void; onCup: () => void; /** A cup under way: its round. */ cupOn: string | null; onBack?: () => void }) {
+  const card = 'flex w-full items-center gap-3 rounded-[22px] bg-white/10 p-4 text-left ring-1 ring-white/12 transition active:scale-[0.98]'
+  return (
+    <div className="flex h-full flex-col overflow-y-auto bg-[radial-gradient(circle_at_50%_0%,#1f7a3f,#0b2e1a_70%)] px-4 pt-12 pb-6 text-white">
+      <div className="flex items-center gap-2">
+        {onBack && (
+          <button className="grid h-9 w-9 place-items-center rounded-full bg-black/30" onClick={onBack} aria-label="Quitter">
+            <ChevronLeft size={20} />
+          </button>
+        )}
+        <div>
+          <div className="font-display text-[30px] leading-none font-extrabold">Babi Foot</div>
+          <div className="text-[12.5px] font-bold text-white/65">Le foot de la console, au maracana ou au stade</div>
+        </div>
+      </div>
+      <div className="mt-6 space-y-2.5">
+        <button className={card} onClick={onQuick}>
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#ffd43b] text-[#16161c]">
+            <Zap size={24} strokeWidth={2.6} />
+          </span>
+          <span className="min-w-0">
+            <span className="block font-display text-[19px] leading-tight font-extrabold">Match rapide</span>
+            <span className="block text-[12.5px] font-bold text-white/65">Deux équipes, un match : tu choisis tout.</span>
+          </span>
+        </button>
+        <button className={card} onClick={onCup}>
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#ff922b] text-[#16161c]">
+            <Trophy size={24} strokeWidth={2.6} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-display text-[19px] leading-tight font-extrabold">La Coupe</span>
+            <span className="block text-[12.5px] font-bold text-white/65">Huit équipes, élimination directe : quarts, demies, finale.</span>
+          </span>
+          {cupOn && <span className="shrink-0 rounded-full bg-[#ffd43b] px-2.5 py-1 text-[11px] font-extrabold text-[#16161c]">{cupOn}</span>}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/** The match's setup: format, sides, shirts, difficulty, length (the cup: no opponent, its draws); then the kick-off. */
+export function MatchSetup({ title, onPlay, onBack, cup }: { title: string; onPlay: (s: Setup) => void; onBack?: () => void; /** The cup's: the opponents are drawn; a draw settled on penalties or the golden goal. */ cup?: boolean }) {
   const [s, set] = useState<Setup>(loadSetup)
   const up = (p: Partial<Setup>) => set((o) => ({ ...o, ...p }))
   const me = teamOf(s.mine)
@@ -139,15 +183,35 @@ export function MatchSetup({ title, onPlay, onBack }: { title: string; onPlay: (
         ))}
       </div>
       <div className="mt-3 space-y-2">
-        <TeamPicker label="Ton équipe" value={s.mine} other={s.theirs} onPick={(id) => up({ mine: id })} />
-        <TeamPicker label="Adversaire" value={s.theirs} other={s.mine} onPick={(id) => up({ theirs: id })} />
+        {/* The cup: any side, the others drawn among its own kind (clubs or nations). */}
+        <TeamPicker label="Ton équipe" value={s.mine} other={cup ? '' : s.theirs} onPick={(id) => up({ mine: id, ...(id === s.theirs ? { theirs: s.mine } : {}) })} />
+        {!cup && <TeamPicker label="Adversaire" value={s.theirs} other={s.mine} onPick={(id) => up({ theirs: id })} />}
       </div>
       {/* The two shirts as they'll be on the pitch. */}
-      <div className="mt-3 flex items-center justify-center gap-3 rounded-[18px] bg-black/20 py-2">
-        <Shirt color={kits[0]} size={40} />
-        <span className="font-display text-[18px] font-extrabold text-white/70">contre</span>
-        <Shirt color={kits[1]} size={40} />
-      </div>
+      {!cup && (
+        <div className="mt-3 flex items-center justify-center gap-3 rounded-[18px] bg-black/20 py-2">
+          <Shirt color={kits[0]} size={40} />
+          <span className="font-display text-[18px] font-extrabold text-white/70">contre</span>
+          <Shirt color={kits[1]} size={40} />
+        </div>
+      )}
+      {cup && (
+        <div className="mt-3">
+          <div className="text-[11px] font-extrabold tracking-wide text-white/60 uppercase">En cas de match nul</div>
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            {(
+              [
+                ['pens', 'Tirs au but'],
+                ['golden', 'But en or'],
+              ] as const
+            ).map(([k, label]) => (
+              <button key={k} className={chip((s.draw ?? 'pens') === k)} onClick={() => up({ draw: k })}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="mt-3">
         <div className="text-[11px] font-extrabold tracking-wide text-white/60 uppercase">Difficulté</div>
         <div className="mt-1 flex flex-wrap gap-1.5">
