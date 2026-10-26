@@ -933,6 +933,9 @@ function BillboardLab() {
 }
 
 /** People along a street from 8 to 105 m, seen from the city's camera height (?view=far&cam=; &old=1 without the far bulk): how they read from afar. */
+/** What the standing people of the far lab do, so each pose is seen from near and from afar. */
+const FAR_POSES = ['idle', 'talk', 'cheer', 'phone', 'dance', 'kick'] as const
+
 function FarLab() {
   const cam = (q.get('cam') ?? '0,3.2,-5').split(',').map(Number) as [number, number, number]
   const people = useMemo(
@@ -949,7 +952,7 @@ function FarLab() {
     <>
       {people.map((p, i) => (
         <group key={i} position={[p.x, 0, p.d]} rotation={[0, p.walk ? Math.PI / 2 : Math.PI, 0]}>
-          <Human look={p.look} gender={p.g} pose={p.walk ? 'walk' : 'idle'} seed={i} speed={1.4} />
+          <Human look={p.look} gender={p.g} pose={p.walk ? (i % 4 < 2 ? 'walk' : 'run') : FAR_POSES[i % FAR_POSES.length]} seed={i} speed={p.walk && i % 4 >= 2 ? 6 : 1.4} />
         </group>
       ))}
     </>

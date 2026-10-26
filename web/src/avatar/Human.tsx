@@ -751,7 +751,7 @@ type Props = { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; /*
  * past FAR metres from the camera, where the detail can't be seen anyway. The
  * switch has some slack so nobody flickers between the two at the border.
  */
-const FAR = 24
+const FAR = 30
 /** Past this, nobody is drawn at all: a figure this far is a few pixels, and a crowd costs draws. */
 const GONE = 110
 /** Everyone in full detail, however far (the videos: marketing/). */

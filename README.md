@@ -614,6 +614,8 @@ Pour compléter une donnée : corriger l'entrée dans le code (garder son identi
   - **Sur un téléphone qui baisse sa résolution** pour suivre, ça commence plus tôt.
   - **Les joueurs vus de loin** ont maintenant short, genoux et chaussettes, comme de près, au lieu de jambes blanches de haut en bas.
   - **La même chose en ville**, pour les passants au loin.
+  - **Ils bougent aussi de loin** : la figure simple qu'on voit au loin rebondit à chaque pas, se penche en courant, tourne les épaules, et fait les gestes de sa pose (bras levés pour applaudir, danse, téléphone à l'oreille, mains qui parlent, jambe tendue pour frapper, plongeon du gardien, bras en avion). Le perso complet, avec tous ses détails, se voit maintenant jusqu'à 30 m au lieu de 24.
+  - **En match**, les joueurs et l'arbitre restent des persos complets et animés jusqu'à 70 m au stade (45 m sur les terrains) : on les voit courir, frapper et tacler au bout du terrain. Au stade, chacun a sous les pieds un disque à la couleur de son équipe, bordé de blanc, pour savoir de quel camp il est de loin.
 - **Cap Sud en 3D** (`web/src/world3d/open/capsud.tsx`) : le centre commercial de la Zone 4 à Marcory a enfin son extérieur, d'après les photos.
   - **Le bâtiment** : la longue boîte en bardage bleu roi sur sa bande blanche, et le toit plat blanc couvert de climatiseurs, avec le pylône en treillis derrière.
   - **Les entrées** : à gauche, l'entrée en verre arrondie sous la grande vague orange à la pointe relevée, et le panneau CAP en rouge sur blanc au-dessus de SUD en blanc sur bleu foncé. À droite, la petite vague orange au-dessus de la porte du bout.
