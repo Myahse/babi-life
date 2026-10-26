@@ -5,13 +5,13 @@ import { ArrowLeft, ArrowRight, Flag, RotateCcw, X } from 'lucide-react'
 import type { Look } from '../lib/types'
 import { randomLook } from '../avatar/options'
 import { rng } from '../world3d/themes'
-import { music } from '../audio/music'
 import { applyVec, autoInput, COUNTDOWN, createRace, fmtTime, ITEMS, kartVec, NO_INPUT, playerOf, standings, step, takeOver, type Input, type Race, type Seat } from './physics'
 import { fetchRace, joinRace, KartNet, type OnlineRace } from './online'
 import { serverNow } from '../lib/worldClock'
 import { Circuit, Hazards, KartView } from './scene'
 import { buildTrack, LAPS, type Track } from './track'
 import { holdScenes } from '../world3d/hold'
+import { useEngine } from '../audio/engine'
 
 // Babi Karting: a race of three laps against five drivers of the quarter,
 // the player at the wheel. Phone: auto-throttle (and the drift button held
@@ -464,37 +464,4 @@ function Pad({ input, touch }: { input: React.MutableRefObject<Input>; touch: bo
       </div>
     </div>
   )
-}
-
-/** The engine's hum, its pitch following the speed (silent when the game's sound is off). */
-function useEngine() {
-  const nodes = useRef<{ ctx: AudioContext; osc: OscillatorNode; gain: GainNode } | null>(null)
-  useEffect(() => {
-    if (music.muted) return
-    try {
-      const ctx = new AudioContext()
-      const osc = ctx.createOscillator()
-      osc.type = 'sawtooth'
-      const filter = ctx.createBiquadFilter()
-      filter.type = 'lowpass'
-      filter.frequency.value = 700
-      const gain = ctx.createGain()
-      gain.gain.value = 0.035
-      osc.connect(filter).connect(gain).connect(ctx.destination)
-      osc.start()
-      nodes.current = { ctx, osc, gain }
-    } catch {
-      nodes.current = null
-    }
-    return () => {
-      void nodes.current?.ctx.close()
-      nodes.current = null
-    }
-  }, [])
-  return (speed: number, boost: boolean) => {
-    const n = nodes.current
-    if (!n) return
-    if (n.ctx.state === 'suspended') void n.ctx.resume()
-    n.osc.frequency.setTargetAtTime(55 + Math.abs(speed) * 5.5 + (boost ? 40 : 0), n.ctx.currentTime, 0.05)
-  }
 }

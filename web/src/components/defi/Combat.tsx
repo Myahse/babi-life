@@ -38,8 +38,12 @@ function beaten(): string[] {
   }
 }
 
-export function CombatDefi({ onEnd, me }: { onEnd: (score: number) => void; me?: Me }) {
+export function CombatDefi({ onEnd, me, onStart }: { onEnd: (score: number) => void; me?: Me; /** The opponent chosen: the fight is on (or off again). */ onStart?: (on: boolean) => void }) {
   const [foe, setFoe] = useState<Foe | null>(null)
+  useEffect(() => {
+    onStart?.(!!foe)
+    return () => onStart?.(false)
+  }, [foe, onStart])
   if (!foe) return <Pick onPick={setFoe} />
   return <Match foe={foe} me={me} onEnd={onEnd} />
 }
