@@ -164,6 +164,12 @@ export const sfx = {
     tone(c, t, 180, 0.5, 0.18, 'sawtooth', 720)
     noise(c, t, 0.5, 400, 0.8, 0.25, 3000)
   },
+  /** A little pop (a mosquito bursting). */
+  pop() {
+    const c = audio()
+    if (!c) return
+    tone(c, c.currentTime, 900 + Math.random() * 300, 0.07, 0.08, 'square', 300)
+  },
   /** A tick (the plane's multiplier climbing, the price moving). */
   tick(pitch = 1) {
     const c = audio()
