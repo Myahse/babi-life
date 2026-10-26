@@ -186,7 +186,7 @@ export function Waitlist({ form = false }: { form?: boolean }) {
             </svg>
             Babi <span className="text-[var(--ochre)]">Life</span>
           </Link>
-          <span className="text-[13px] font-extrabold">Bientôt · Gratuit</span>
+          <span className="text-[13px] font-extrabold">Sortie le mercredi 28 octobre · Gratuit</span>
         </div>
       </header>
       <div className="ci-stripe" aria-hidden />
@@ -212,6 +212,8 @@ export function Waitlist({ form = false }: { form?: boolean }) {
               </h1>
               <p className="mt-5 max-w-md text-[19px] font-extrabold">Tu ne choisis pas ta famille : elle est tirée au sort à ta naissance. Ensuite, ta vie se joue sur la vraie carte d'Abidjan, avec ton téléphone dans le jeu : Waye, Gnango, Gbairai, Tikitoko… À toi de jouer.</p>
               <p className="chalk-hand mt-1 text-[30px] text-[var(--ci-green)]">Fait ici, pour nous.</p>
+              {/* The release date, painted like a sticker on the wall */}
+              <p className="paint mt-3 inline-block -rotate-2 rounded-md bg-[var(--ochre)] px-3 py-1 text-[22px] whitespace-nowrap text-[var(--brown)]">Sortie le 28 octobre</p>
               <div className="mt-5 flex flex-wrap gap-3">
                 {/* Make one's perso now and be born into a family: kept for the opening */}
                 <Link to={`/liste/creer${location.search}`} className="sign-btn">
