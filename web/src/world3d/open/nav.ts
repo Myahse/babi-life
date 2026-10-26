@@ -10,13 +10,13 @@ import type { ChunkData, Couloir } from './tiles'
 const SNAP = 1.5 // metres: ends of a street cut by two chunks join up
 const CELL = 24 // metres: spatial index cell
 
-type Edge = { a: number; b: number; len: number; width: number; /** a bridge's deck, wider than its roadway */ deck?: number }
+type Edge = { a: number; b: number; len: number; width: number; /** a bridge's deck, wider than its roadway */ deck?: number; /** runs through a building (the map's street under a market, a mall…): walked, never driven */ walled?: boolean }
 
 export class Nav {
   nodes: XZ[] = []
   /** Each node's height: 0 on the ground, up on a bridge. */
   ys: number[] = []
-  adj: { to: number; len: number; width: number }[][] = []
+  adj: { to: number; len: number; width: number; walled?: boolean }[][] = []
   edges: Edge[] = []
   /** The couloirs between the game's houses (not all between two walls: see nouchis.tsx). */
   couloirs: Couloir[] = []
@@ -26,7 +26,8 @@ export class Nav {
   private heights = new Map<XZ[], number>()
   private water: XZ[][][] = []
 
-  constructor(chunks: ChunkData[], skipBuilding: (c: XZ, ring: XZ[]) => boolean = () => false) {
+  /** `solids`: the game's own buildings standing in place of the map's (the landmarks: a middle, a radius), which no vehicle drives through. */
+  constructor(chunks: ChunkData[], skipBuilding: (c: XZ, ring: XZ[]) => boolean = () => false, private solids: { at: XZ; r: number }[] = []) {
     for (const ch of chunks) {
       const joined = joinedEnds(ch.roads)
       for (const r of ch.roads) {
@@ -50,6 +51,45 @@ export class Nav {
       for (const a of ch.areas) if (a.kind === 'water') this.water.push(a.rings)
       if (ch.couloirs) this.couloirs.push(...ch.couloirs)
     }
+    this.wallOff()
+  }
+
+  /**
+   * The streets a vehicle may take (4 m and wider) that run through a building (its middle
+   * or a lane of it): the traffic, the taxis and the GPS keep off them (see
+   * `drivable`); on foot they're walked as before.
+   */
+  private wallOff() {
+    for (const e of this.edges) {
+      if (e.width < 4 || e.deck) continue
+      const [ax, az] = this.nodes[e.a]
+      const [bx, bz] = this.nodes[e.b]
+      if (!e.len) continue
+      const [nx, nz] = [-(bz - az) / e.len, (bx - ax) / e.len]
+      const lane = Math.min(2, e.width / 2 - 1)
+      const n = Math.ceil(e.len / 2)
+      let inside = 0
+      for (let k = 0; k <= n && inside < 2; k++)
+        for (const o of [0, -lane, lane]) {
+          const x = ax + ((bx - ax) * k) / n + nx * o
+          const z = az + ((bz - az) * k) / n + nz * o
+          if (this.inBuilding(x, z) && ++inside >= 2) break
+        }
+      if (inside < 2) continue
+      e.walled = true
+      for (const x of this.adj[e.a]) if (x.to === e.b) x.walled = true
+      for (const x of this.adj[e.b]) if (x.to === e.a) x.walled = true
+    }
+  }
+  private inBuilding(x: number, z: number) {
+    for (const { at, r } of this.solids) if (Math.hypot(x - at[0], z - at[1]) < r) return true
+    const p: XZ = [x, z]
+    for (const ring of this.blockGrid.get(this.key(x, z)) ?? []) if (pointInRing(p, ring)) return true
+    return false
+  }
+  /** A street a vehicle may take: wide enough, and not through a building (only asked for a drive: minWidth > 0). */
+  private drivable(e: { width: number; walled?: boolean }, minWidth: number) {
+    return e.width >= minWidth && !(minWidth > 0 && e.walled)
   }
 
   private key(x: number, z: number) {
@@ -116,7 +156,7 @@ export class Nav {
         for (let dz = -ring; dz <= ring; dz++) {
           if (Math.max(Math.abs(dx), Math.abs(dz)) !== ring) continue
           for (const e of this.edgeGrid.get(`${cx + dx},${cz + dz}`) ?? []) {
-            if (this.edges[e].width < minWidth) continue
+            if (!this.drivable(this.edges[e], minWidth)) continue
             const { a, b } = this.edges[e]
             const [ax, az] = this.nodes[a]
             const [bx, bz] = this.nodes[b]
@@ -142,7 +182,7 @@ export class Nav {
     for (let dx = -r; dx <= r; dx++)
       for (let dz = -r; dz <= r; dz++)
         for (const e of this.edgeGrid.get(`${cx + dx},${cz + dz}`) ?? []) {
-          if (seen.has(e) || this.edges[e].width < minWidth) continue
+          if (seen.has(e) || !this.drivable(this.edges[e], minWidth)) continue
           seen.add(e)
           const { a, b } = this.edges[e]
           const [ax, az] = this.nodes[a]
@@ -225,7 +265,7 @@ export class Nav {
     const eg = this.edges[g.edge]
     const extra = (i: number): { to: number; len: number }[] => {
       if (i === START) return [{ to: es.a, len: es.len * s.t }, { to: es.b, len: es.len * (1 - s.t) }]
-      const out: { to: number; len: number }[] = minWidth ? this.adj[i].filter((e) => e.width >= minWidth) : [...this.adj[i]]
+      const out: { to: number; len: number }[] = minWidth ? this.adj[i].filter((e) => this.drivable(e, minWidth)) : [...this.adj[i]]
       if (i === eg.a) out.push({ to: GOAL, len: eg.len * g.t })
       if (i === eg.b) out.push({ to: GOAL, len: eg.len * (1 - g.t) })
       return out
@@ -268,7 +308,7 @@ export class Nav {
     for (let k = 0; k < steps; k++) {
       // In a fixed order (by where they lead), not the order chunks loaded in:
       // the same seed takes the same walk on every player's phone.
-      const next = this.adj[at].filter((e) => e.to !== came && e.width >= minWidth).sort((p, q) => this.nodes[p.to][0] - this.nodes[q.to][0] || this.nodes[p.to][1] - this.nodes[q.to][1])
+      const next = this.adj[at].filter((e) => e.to !== came && this.drivable(e, minWidth)).sort((p, q) => this.nodes[p.to][0] - this.nodes[q.to][0] || this.nodes[p.to][1] - this.nodes[q.to][1])
       if (!next.length) break
       const e = next[Math.floor(r() * next.length)]
       came = at

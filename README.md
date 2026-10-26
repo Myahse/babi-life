@@ -609,6 +609,10 @@ Pour compléter une donnée : corriger l'entrée dans le code (garder son identi
   - **Les joueurs** : une ombre douce sous chacun, même vu de loin.
   - **Le tableau du score** comme à la télé : les trois lettres de chaque équipe dans sa couleur, le score au milieu, l'horloge à côté.
   - **Le stade** : des tribunes en gradins orange, blanc et vert, des toits sur trois côtés, trois écrans géants avec le score et les minutes, et une foule qui se balance et saute à chaque but. Au coup d'envoi, la caméra fait le tour du stade pendant le compte à rebours.
+- **Plus de maisons sur la route, plus de voitures dans les murs** (`web/src/world3d/open/tiles.ts`, `open/nav.ts`, `open/OpenWorld.tsx`, `open/sotra.tsx`) :
+  - **Les maisons sur la chaussée** : sur les rues de quartier où roulent les voitures (6 m et plus), une maison de la carte posée sur la chaussée, même à moitié, n'est plus dessinée. Avant, seules les grandes routes étaient dégagées.
+  - **Les rues qui passent sous un bâtiment** : un grand bâtiment qu'une rue traverse sur la carte (un marché, un centre commercial) reste, mais les voitures, les taxis, les gbakas, les bus, le taxi du trajet et le GPS de sa propre voiture ne prennent plus cette rue. À pied, on y passe toujours.
+  - **Les monuments du jeu** (Cap Sud, le stade, le grand marché…) : les rues de la carte qui passent sous eux sont fermées aux véhicules aussi, et aucun arrêt de bus n'y est posé.
 - **Les gens vus de loin ne sont plus des bâtons** (`web/src/avatar/LowHuman.tsx`, `Human.tsx`) : plus quelqu'un est loin de la caméra, plus son corps est dessiné large, épais et un peu plus grand, petit à petit.
   - **Au stade**, où la caméra est haute et lointaine, c'est plus marqué, et la caméra s'est un peu rapprochée.
   - **Sur un téléphone qui baisse sa résolution** pour suivre, ça commence plus tôt.

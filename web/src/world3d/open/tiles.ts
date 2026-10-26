@@ -323,6 +323,8 @@ function tollGrounds(tile: VectorTile, toXZ: (extent: number) => (p: { x: number
  * as solid blocks they'd wall the road off; they're left out (the game
  * draws the toll plazas itself, bridges.tsx).
  */
+/** A building up to this size (m²) on a street the cars drive is a house drawn on the road, not something the street runs under. */
+const SMALL_HOUSE = 900
 const THROUGH = new Set(['motorway', 'trunk', 'primary', 'motorway_link', 'trunk_link', 'primary_link', 'secondary'])
 function dropOverRoads(chunk: ChunkData) {
   // Nothing stands on a bridge's deck or its ramps, nor on a pitch or a playground's ground.
@@ -332,6 +334,35 @@ function dropOverRoads(chunk: ChunkData) {
     chunk.buildings = chunk.buildings.filter((b) => {
       if (pitches.some((a) => pointInRing(b.c, a.rings[0]))) return false
       return !decks.some((d) => b.ring.concat([b.c]).some((p) => nearLine(p, d.pts, d.half)))
+    })
+  // The quarters' streets the cars and taxis drive (6 m and wider): a house standing on the roadway (the map's
+  // outline a little off, or drawn over the street) is left out; a big building the street runs under stays
+  // (a market, a mall: the traffic keeps off that bit, nav.ts).
+  const streets = chunk.roads.filter((r) => !THROUGH.has(r.cls) && !r.bridge && r.width >= 6)
+  if (streets.length)
+    chunk.buildings = chunk.buildings.filter((b) => {
+      if (ringArea(b.ring) > SMALL_HOUSE) return true
+      let [x0, z0, x1, z1] = [Infinity, Infinity, -Infinity, -Infinity]
+      for (const [x, z] of b.ring) [x0, z0, x1, z1] = [Math.min(x0, x), Math.min(z0, z), Math.max(x1, x), Math.max(z1, z)]
+      for (const r of streets) {
+        // The middle of the roadway and a lane each side of it (a house half on the street).
+        const lane = r.width / 2 - 1.2
+        for (let i = 1; i < r.pts.length; i++) {
+          const [ax, az] = r.pts[i - 1]
+          const [bx, bz] = r.pts[i]
+          if (Math.max(ax, bx) + lane < x0 || Math.min(ax, bx) - lane > x1 || Math.max(az, bz) + lane < z0 || Math.min(az, bz) - lane > z1) continue
+          const len = Math.hypot(bx - ax, bz - az)
+          if (!len) continue
+          const [nx, nz] = [-(bz - az) / len, (bx - ax) / len]
+          const n = Math.ceil(len / 2)
+          for (let k = 0; k <= n; k++)
+            for (const o of [0, -lane, lane]) {
+              const p: XZ = [ax + ((bx - ax) * k) / n + nx * o, az + ((bz - az) * k) / n + nz * o]
+              if (pointInRing(p, b.ring)) return false
+            }
+        }
+      }
+      return true
     })
   const big = chunk.roads.filter((r) => THROUGH.has(r.cls) && !r.bridge)
   if (!big.length) return
