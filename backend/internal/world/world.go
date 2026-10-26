@@ -488,16 +488,20 @@ var Cities = []City{
 				Place{ID: game.TourIvoireID, Name: "Tour Ivoire", Kind: "office", Quarter: "Cité Hibiscus", Lat: 5.29182, Lng: -3.97274, Real: true,
 					Source: game.Partial("Immeuble « Tour Ivoire » de 16 niveaux sur la contre-allée du boulevard Félix-Houphouët-Boigny (ex-VGE), à l'échangeur, côté Koumassi, près de l'hôtel Ibis ; emprise (environ 47 × 24 m), niveaux et position d'après OpenStreetMap. Son allure d'après des photos du bâtiment, dont une vue aérienne : une seule barre qui part de la rue vers l'arrière, son bout côté rue arrondi en verre bleu, ses quatre derniers étages à balcons courbes cerclés de bandeaux sombres ; le grand côté gauche gris clair à panneau sombre et emblème IVOIRE, le droit anthracite ; le socle sombre à lames et ses boutiques, le magasin voisin aux cadres rouges (les noms des boutiques sont ceux du jeu) ; les bureaux sont dessinés pour le jeu.", srcTourIvoireOSM, srcTourIvoire)},
 			),
-			abidjanCommune("port-bouet", "Port-Bouët", "La plage, l'aéroport, le vent de l'océan.", 5.2560, -3.9260, "sud",
+			// The commune's middle is the town's (OpenStreetMap's centre of Port-Bouët, by the Hôtel communal),
+			// not the airfield: one arrives in its streets, its houses stand there, not between the runways.
+			abidjanCommune("port-bouet", "Port-Bouët", "La plage, l'aéroport, le vent de l'océan.", 5.2569, -3.9586, "sud",
 				Place{ID: "pb-plage", Name: "Plage de Port-Bouët", Kind: "beach", Lat: 5.2470, Lng: -3.9400, Real: true, Approx: true, Source: game.Unverified("Plage publique de Port-Bouët ; à confirmer.")},
 				fictional("portbouet-terrain", "Terrain du Wharf", "sport", "", 5.2540, -3.9480),
 				Place{ID: "pb-maquis", Name: "Maquis du Wharf", Kind: "maquis", Lat: 5.2520, Lng: -3.9530, Approx: true, Source: invented},
-				babiBurger("pb-babi-burger", "Babi Burger Aéroport", "", 5.25400, -3.93306, "la rue des Irokos, près de l'aérogare", 3615713041),
 				Place{ID: "pb-rabisson", Name: "Rabisson Aéroport", Kind: "hotel", Lat: 5.25895, Lng: -3.93641, Real: true,
 					Source: game.Partial("Nom du jeu pour le Radisson Blu de l'aéroport (boulevard de l'Aéroport, à environ 500 m de l'aéroport) ; position d'après OpenStreetMap.", srcRadisson, srcOSM)},
 				Place{ID: "pb-aeroport", Name: "Aéroport Félix-Houphouët-Boigny", Kind: "aeroport", Lat: 5.25440, Lng: -3.93268, Real: true,
 					Owner: "État de Côte d'Ivoire (concédant)", Operator: "AERIA (concession depuis 1996)",
 					Source: game.Verified("Aéroport de Port-Bouët géré par AERIA depuis mai 1996 ; concession renouvelée par l'État en 2010 pour vingt ans. Placé à l'aérogare internationale, d'après OpenStreetMap.", srcAirport, srcAirport2, srcOSM)},
+				// The airline's head office, across the car parks from the terminal (its counter: game/catalog.go).
+				Place{ID: game.AirLaguneID, Name: "Siège d'Air Lagune", Kind: "office", Lat: 5.25575, Lng: -3.93545, Real: true,
+					Source: game.Partial("Nom du jeu pour le siège d'Air Côte d'Ivoire, boulevard de l'Aéroport (Cité Douane), près de l'aérogare ; position d'après OpenStreetMap (nœud 11217949138).", "https://www.openstreetmap.org/node/11217949138")},
 				// Its central building under the dome (web/src/world3d/open/parcExpo.tsx); no game houses on its grounds.
 				Place{ID: "portbouet-parc-expo", Name: "Parc des Expositions d'Abidjan", Kind: "culture", Lat: 5.26465, Lng: -3.94603, Real: true,
 					Source: game.Partial("Parc des Expositions d'Abidjan, boulevard de l'Aéroport à Port-Bouët, inauguré en juillet 2023 : 16 ha en première phase, un hall d'exposition de 7 200 m², le Convention Center sous son dôme (plus de 5 000 places assises, environ 10 000 debout), un écran LED de 250 m², 800 places de parking. Le dôme est posé sur le grand bâtiment central d'OpenStreetMap ; ses dimensions sont celles du jeu.", srcParcExpo, srcParcExpo2, srcParcExpoOSM)},
