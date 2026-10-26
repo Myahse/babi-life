@@ -11,7 +11,7 @@ import { PostedBubble, likesFor } from '../world3d/fans'
 import { ARC, BAR, BOARD_Z, COUNTDOWN, COURT, HOOP, MOUTH, PITCH, RIM_Y, holder, type Game } from './game'
 import { Arc, Line } from './marks'
 import { Stadium } from './stadium'
-import { Blob, grassMaterial, Net, turf } from './looks'
+import { asphalt, Blob, grassMaterial, Net, paint, turf } from './looks'
 
 // What the street match looks like: the court chalked and painted on the
 // concrete under its basket on a stand (or the maracana's green carpet and
@@ -29,65 +29,6 @@ const dark = flat('#1f2933')
 const pad = flat('#1d4ed8')
 // The street court's chain net: grey steel links, not a white string one.
 const netMat = new THREE.MeshLambertMaterial({ color: '#c3c9d1', wireframe: true })
-
-/** A canvas texture drawn once and kept (the grounds share them). */
-const painted = new Map<string, THREE.CanvasTexture>()
-function paint(key: string, w: number, h: number, draw: (g: CanvasRenderingContext2D) => void, repeat?: [number, number]) {
-  const had = painted.get(key)
-  if (had) return had
-  const c = document.createElement('canvas')
-  c.width = w
-  c.height = h
-  draw(c.getContext('2d')!)
-  const t = new THREE.CanvasTexture(c)
-  t.colorSpace = THREE.SRGBColorSpace
-  t.anisotropy = 4
-  if (repeat) {
-    t.wrapS = t.wrapT = THREE.RepeatWrapping
-    t.repeat.set(...repeat)
-  }
-  painted.set(key, t)
-  return t
-}
-
-/** The court's asphalt: grey grain, cracks, oil stains, a patch mended darker. */
-function asphalt() {
-  return paint('asphalt', 512, 512, (g) => {
-    const r = rng('asphalt')
-    g.fillStyle = '#56565c'
-    g.fillRect(0, 0, 512, 512)
-    for (let i = 0; i < 26000; i++) {
-      const v = 70 + Math.floor(r() * 50)
-      g.fillStyle = `rgb(${v},${v},${v + 4})`
-      g.fillRect(r() * 512, r() * 512, 1.5, 1.5)
-    }
-    // Stains and patches.
-    for (let i = 0; i < 9; i++) {
-      const [x, y, rad] = [r() * 512, r() * 512, 20 + r() * 50]
-      const grad = g.createRadialGradient(x, y, 0, x, y, rad)
-      grad.addColorStop(0, 'rgba(25,25,30,0.35)')
-      grad.addColorStop(1, 'rgba(25,25,30,0)')
-      g.fillStyle = grad
-      g.fillRect(x - rad, y - rad, rad * 2, rad * 2)
-    }
-    g.fillStyle = 'rgba(40,40,46,0.45)'
-    g.fillRect(300, 60, 120, 70)
-    // Cracks.
-    g.strokeStyle = 'rgba(20,20,24,0.7)'
-    g.lineWidth = 1.4
-    for (let i = 0; i < 7; i++) {
-      let [x, y] = [r() * 512, r() * 512]
-      g.beginPath()
-      g.moveTo(x, y)
-      for (let k = 0; k < 9; k++) {
-        x += (r() - 0.5) * 40
-        y += (r() - 0.5) * 40
-        g.lineTo(x, y)
-      }
-      g.stroke()
-    }
-  })
-}
 
 /** The quarter's walls: the paint and its grime, two windows with their grille, a door; now and then a sign painted on. */
 const SIGNS = ['CABINE', 'COIFFURE', 'MAQUIS', 'QUINCAILLERIE', 'TRANSFERT', 'BOUTIQUE', 'ATTIÉKÉ', 'PRESSING']

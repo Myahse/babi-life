@@ -762,7 +762,10 @@ function FieldLab() {
         <planeGeometry args={[200, 200]} />
         <meshLambertMaterial color="#cbb38c" />
       </mesh>
-      <SportField field={field} seed={q.get('seed') ?? 'lab-field'} night={night} withSim={false} />
+      {/* &city=1: the people as the city draws them, seen from its height (CITY_FAR) */}
+      <FarGrow.Provider value={q.get('city') === '1' ? CITY_FAR : { grow: 0.15, from: 18, over: 40 }}>
+        <SportField field={field} seed={q.get('seed') ?? 'lab-field'} night={night} withSim={false} />
+      </FarGrow.Provider>
       <OrbitControls target={(q.get('target') ?? '0,0,0').split(',').map(Number) as [number, number, number]} />
     </Canvas>
   )

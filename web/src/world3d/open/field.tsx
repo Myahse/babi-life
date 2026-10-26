@@ -10,11 +10,18 @@ import { FENCE_OUT, PER_TEAM, SEATS, SIM_SLOT, benches, matchFor, simSeat } from
 import { FieldFence } from './fieldFence'
 import { StaticMerge } from '../staticMerge'
 import { PostedBubble, likesFor } from '../fans'
+import { asphalt, grassMaterial, turf } from '../../streetball/looks'
+import { NearUpTo } from '../../avatar/Human'
 
 // A maracana or a basketball court on the map, and the match always being
 // played on it (open/match.ts): the surface and its lines, the goals or the
 // baskets, floodlights that come on at night, a few people watching, and
 // ten players. When the Sim plays here, it takes one of their places.
+// The same look as the matches one plays (streetball/): the grass's blades
+// and mown stripes, the court's asphalt painted inside its lines; the players
+// drawn in full and moving far off (the city's camera stands some 80 m away),
+// a disc in their team's colour under each, the ball growing with the distance
+// so it's seen from up there.
 // Drawn in the field's frame: x along its length, z across.
 
 const BOX = new THREE.BoxGeometry(1, 1, 1)
@@ -27,6 +34,7 @@ const board = new THREE.MeshLambertMaterial({ color: '#f8f9fa' })
 const lampOff = new THREE.MeshLambertMaterial({ color: '#d9dde2' })
 const lampOn = new THREE.MeshBasicMaterial({ color: '#fff6dc' })
 const flat = (color: string) => new THREE.MeshLambertMaterial({ color })
+const RICH = typeof navigator === 'undefined' || (navigator.hardwareConcurrency ?? 4) > 4
 
 /** A painted line on the ground, from a to b (field frame). */
 function Line({ a, b, w = 0.12 }: { a: [number, number]; b: [number, number]; w?: number }) {
@@ -99,10 +107,26 @@ function Ground({ field, seed }: { field: Field; seed: string }) {
     // A maracana is laterite or a green synthetic pitch; a court, concrete with its keys painted.
     return sport === 'foot' ? (r() < 0.55 ? { ground: '#b98552', paint: '#b98552' } : { ground: '#3f9e4d', paint: '#3f9e4d' }) : { ground: '#b9b2a6', paint: ['#2f6fd6', '#c2410c', '#2b8a3e'][Math.floor(r() * 3)] }
   }, [seed, sport])
-  const mats = useMemo(() => ({ ground: flat(looks.ground), paint: flat(looks.paint) }), [looks])
+  const mats = useMemo(() => ({ ground: flat(looks.ground), paint: flat(looks.paint), asphalt: new THREE.MeshLambertMaterial({ map: asphalt() }), court: flat('#2c6aa0') }), [looks])
+  const green = looks.ground === '#3f9e4d'
+  // The synthetic pitch as in the matches one plays: the blades, the mown stripes.
+  const grass = useMemo(() => (green ? { all: turf(L + 2, W + 2, 0, 0), stripes: [...Array(Math.max(2, Math.floor(L / 6)))].map((_, i) => ({ x: -hl + 3 + i * 6, geo: turf(3, W, -hl + 3 + i * 6, 0) })) } : null), [green, L, W, hl])
   return (
     <group>
-      <mesh geometry={BOX} material={mats.ground} position={[0, 0.02, 0]} scale={[L + 2, 0.02, W + 2]} receiveShadow />
+      {grass ? (
+        <>
+          <mesh geometry={grass.all} material={grassMaterial('#4aa956')} position={[0, 0.02, 0]} receiveShadow />
+          {grass.stripes.map((st, i) => (i % 2 ? null : <mesh key={i} geometry={st.geo} material={grassMaterial('#58b964')} position={[st.x, 0.023, 0]} receiveShadow />))}
+        </>
+      ) : sport === 'basket' ? (
+        <>
+          {/* The asphalt, the court painted blue inside its lines */}
+          <mesh geometry={BOX} material={mats.asphalt} position={[0, 0.02, 0]} scale={[L + 2, 0.02, W + 2]} receiveShadow />
+          <mesh geometry={BOX} material={mats.court} position={[0, 0.026, 0]} scale={[L, 0.01, W]} receiveShadow />
+        </>
+      ) : (
+        <mesh geometry={BOX} material={mats.ground} position={[0, 0.02, 0]} scale={[L + 2, 0.02, W + 2]} receiveShadow />
+      )}
       <Line a={[-hl, -hw]} b={[hl, -hw]} />
       <Line a={[-hl, hw]} b={[hl, hw]} />
       <Line a={[-hl, -hw]} b={[-hl, hw]} />
@@ -279,6 +303,11 @@ function Players({ field, seed, without }: { field: Field; seed: string; without
     return out
   }, [seed, foot])
   const refs = useRef<(THREE.Group | null)[]>([])
+  // The team's colour on a disc under each, growing far off so it still says whose side they're on.
+  const discs = useRef<(THREE.Mesh | null)[]>([])
+  const kits = useMemo(() => kitsOf(rng(`players${seed}`), foot), [seed, foot])
+  const discMats = useMemo(() => kits.map((c) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.85, depthWrite: false })), [kits])
+  const at = useMemo(() => new THREE.Vector3(), [])
   // Inside each: mirrored for the keeper's dive the other way.
   const inner = useRef<(THREE.Group | null)[]>([])
   const ball = useRef<THREE.Mesh>(null)
@@ -286,7 +315,7 @@ function Players({ field, seed, without }: { field: Field; seed: string; without
   // How fast each one runs (to the next m/s), so the steps match the ground covered.
   const speeds = useRef<number[]>(players.map(() => 0))
   const [, redraw] = useState(0)
-  useFrame(() => {
+  useFrame(({ camera }) => {
     const t = worldTime()
     let changed = false
     players.forEach((p, k) => {
@@ -294,6 +323,12 @@ function Players({ field, seed, without }: { field: Field; seed: string; without
       if (!g) return
       const s = match.player(p.team, p.i, t)
       g.position.set(s.u, 0, s.v)
+      const d = discs.current[k]
+      if (d) {
+        const far = Math.max(1, Math.min(2.2, g.getWorldPosition(at).distanceTo(camera.position) / 25))
+        d.position.set(s.u, 0.05, s.v)
+        d.scale.setScalar(far)
+      }
       // The Sim faces +z at 0: in the field's frame, `face` is from +x towards +z.
       g.rotation.y = Math.atan2(Math.cos(s.face), Math.sin(s.face))
       inner.current[k]?.scale.set(s.flip ? -1 : 1, 1, 1)
@@ -305,18 +340,33 @@ function Players({ field, seed, without }: { field: Field; seed: string; without
       }
     })
     const b = match.ball(t)
-    ball.current?.position.set(b.u, b.y, b.v)
+    const bm = ball.current
+    if (bm) {
+      bm.position.set(b.u, b.y, b.v)
+      // Seen from the city's height, the ball would be a speck: it grows with the distance.
+      bm.scale.setScalar(Math.max(1, Math.min(4, bm.getWorldPosition(at).distanceTo(camera.position) / 18)))
+    }
     if (changed) redraw((n) => n + 1)
   })
   return (
     <NoShadows>
+      {/* In full, running and kicking, as far as the city's camera stands (a strong phone further) */}
+      <NearUpTo.Provider value={RICH ? 95 : 60}>
+        {players.map((p, k) =>
+          p.team === 0 && p.i === without ? null : (
+            <group key={k} ref={(g) => void (refs.current[k] = g)}>
+              <group ref={(g) => void (inner.current[k] = g)}>
+                <Human look={p.look} gender={p.gender} pose={poses.current[k]} seed={p.seed} speed={speeds.current[k] || undefined} />
+              </group>
+            </group>
+          ),
+        )}
+      </NearUpTo.Provider>
       {players.map((p, k) =>
         p.team === 0 && p.i === without ? null : (
-          <group key={k} ref={(g) => void (refs.current[k] = g)}>
-            <group ref={(g) => void (inner.current[k] = g)}>
-              <Human look={p.look} gender={p.gender} pose={poses.current[k]} seed={p.seed} speed={speeds.current[k] || undefined} />
-            </group>
-          </group>
+          <mesh key={`d${k}`} ref={(m) => void (discs.current[k] = m)} rotation={[-Math.PI / 2, 0, 0]} material={discMats[p.team]} renderOrder={2}>
+            <ringGeometry args={[0.28, 0.44, 20]} />
+          </mesh>
         ),
       )}
       {!foot && (field.len >= 20 ? [-1, 1] : [1]).map((s) => <Rim key={s} x={s * (field.len / 2 - 1.575)} side={s as 1 | -1} match={match} />)}
