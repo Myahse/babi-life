@@ -171,7 +171,7 @@ const TAKES = {
     }
     await ctx.close()
   },
-  stade: (b, dir) => match(b, 'view=fifa11&seed=11', dir, 14.3 - 7.1, need('stade') + 30),
+  stade: (b, dir) => match(b, 'view=fifa11&seed=9', dir, 14.3 - 7.1, need('stade') + 30),
   basket: (b, dir) => match(b, 'view=hoops&seed=7', dir, 29.2 - 26.5, need('basket') + 20),
   foot: (b, dir) => match(b, 'view=foot5&seed=7', dir, 1.0, need('foot') + 20),
   // The fight: in, a three-hit series, again, a sweep, the kick; the other one standing still.
