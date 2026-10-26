@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { createContext, useContext, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
@@ -12,6 +12,54 @@ import { FilmingPhone } from './BlockHuman'
 // same proportions and the walk, but a dozen plain boxes in flat colours
 // instead of the painted sheet, which nobody sees at that distance. The
 // street's crowd, cars and boats stay light enough for a phone.
+//
+// Seen from further and further, a body this thin (18 cm from the side, arms
+// of 13) would end up a few pixels wide, a stick: so the further, the
+// broader and deeper it's drawn (up to two fifths wider, four fifths
+// deeper), and a little taller (FarGrow), a little at a time so nobody
+// changes at a glance; sooner when the screen draws fewer pixels (a phone
+// that has turned its resolution down to keep up).
+
+/**
+ * How people are drawn from afar: how much taller they grow with the
+ * distance on top of their bulk, from how far it starts, over how many metres
+ * it comes in full. A little in the street; more at the stadium, seen from
+ * high up and far.
+ */
+export const FarGrow = createContext({ grow: 0.15, from: 18, over: 40 })
+
+/** How far into the bulk a body `d` metres from the camera is (0 to 1), on a screen drawing `ratio` pixels a point. */
+export function farBulk(d: number, ratio: number, { from, over }: { from: number; over: number }) {
+  const fewer = Math.min(2, Math.max(1, 1.5 / ratio))
+  return Math.min(1, Math.max(0, (d * fewer - from) / over))
+}
+/** The body's scale across, up and front to back at that bulk. */
+export const bulkScale = (b: number, grow: number): [number, number, number] => [1 + 0.38 * b, 1 + grow * b, 1 + 0.8 * b]
+const at = new THREE.Vector3()
+const eye = new THREE.Vector3()
+
+/** The legs' bands, top to bottom (their share of the leg, their colour): sport shorts, the knee, the socks. */
+function legBands(outfit: string, bottom: string, skin: string): [number, string][] {
+  switch (outfit) {
+    case 'jersey':
+      return [
+        [0.4, bottom],
+        [0.2, skin],
+        [0.4, '#009a44'],
+      ]
+    case 'basket':
+      return [
+        [0.7, bottom],
+        [0.3, skin],
+      ]
+    case 'debardeur':
+      return [
+        [0.4, bottom],
+        [0.6, skin],
+      ]
+  }
+  return [[1, bottom]]
+}
 
 const HEAD = 0.32
 const NECK_Y = 1.36
@@ -90,7 +138,16 @@ export function LowHuman({ look, gender, pose = 'idle', seed = 0, speed }: { loo
   const whole = useRef<THREE.Group>(null)
   const upper = useRef<THREE.Group>(null)
   const phase = useRef(seed)
-  useFrame((_, dt) => {
+  const far = useContext(FarGrow)
+  const size = l.height * (femme ? 0.96 : 1)
+  useFrame(({ camera, gl }, dt) => {
+    // Broader, deeper and a little taller the further from the camera (as if further still on a screen drawing fewer pixels).
+    const w0 = whole.current
+    if (w0) {
+      w0.getWorldPosition(at)
+      const [x, y, z] = bulkScale(farBulk(at.distanceTo(camera.getWorldPosition(eye)), gl.getPixelRatio(), far), far.grow)
+      w0.scale.set(size * x, size * y, size * z)
+    }
     // The salat, on the shared clock like the full-size people (Human): standing, hands folded; bowing;
     // prostrated (the legs back, the body down along the mat); sitting back on the heels.
     if (pose === 'salat') {
@@ -136,9 +193,16 @@ export function LowHuman({ look, gender, pose = 'idle', seed = 0, speed }: { loo
     { c: l.skin, s: [HEAD, HEAD, HEAD], p: [0, NECK_Y + HEAD / 2, 0] },
     ...(shape !== 'bald' || capped ? [{ c: hair, s: hairScale.map(r3) as [number, number, number], p: [0, r3(NECK_Y + HEAD * (veiled ? 0.7 : shape === 'afro' || shape === 'headwrap' ? 1.05 : 0.86)), -0.012] as [number, number, number] }] : []),
   ])
-  // Legs: trousers or bare legs, the shoe at the bottom
+  // Legs: trousers or bare legs (sport shorts, the knee, the socks), the shoe at the bottom
+  let down = 0
+  const bands = long ? ([[1, l.skin]] as [number, string][]) : legBands(l.outfit, bottom, l.skin)
   const leg = part([
-    { c: long ? l.skin : bottom, s: [r3(lw), LEG - 0.08, r3(ld)], hang: true },
+    ...bands.map(([k, c]) => {
+      const h = (LEG - 0.08) * k
+      const box: Box = { c, s: [r3(lw), r3(h), r3(ld)], p: [0, r3(-down), 0], hang: true }
+      down += h
+      return box
+    }),
     { c: shoe, s: [r3(lw * 1.04), 0.08, r3(ld * 1.15)], p: [0, -(LEG - 0.08), 0.01], hang: true },
   ])
   // Arms: the sleeve, then skin down to the hand
@@ -147,7 +211,7 @@ export function LowHuman({ look, gender, pose = 'idle', seed = 0, speed }: { loo
     ...(sleeve > 0 ? [{ c: top, s: [r3(aw), r3((ARM + 0.03) * sleeve), r3(aw)] as [number, number, number], p: [0, 0.03, 0] as [number, number, number], hang: true }] : []),
   ])
   return (
-    <group ref={whole} scale={l.height * (femme ? 0.96 : 1)} position={[0, seatDrop, 0]}>
+    <group ref={whole} scale={size} position={[0, seatDrop, 0]}>
       {[0, 1].map((i) => (
         <group key={i} ref={legs[i]} position={[(i ? 1 : -1) * (tw / 4), HIP_Y, 0]}>
           <mesh geometry={leg} material={material} />

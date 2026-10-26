@@ -262,6 +262,7 @@ export function Career({ me, simId, onEnd, onBack, onResult }: { me: Me; simId: 
           gender={me.gender}
           rules={rules}
           teams={[mine.name, theirs.name]}
+          shorts={[mine.short, theirs.short]}
           kits={kitsFor(mine, theirs)}
           // Left mid-match: back to the club, the match to play again; played out, the matchday goes on.
           onExit={(r) => {

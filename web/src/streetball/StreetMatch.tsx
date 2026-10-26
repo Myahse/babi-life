@@ -7,6 +7,8 @@ import { rng } from '../world3d/themes'
 import { COUNTDOWN, NO_INPUT, buttons, createGame, outcome, shootoutScore, step, type Game, type Input, type Rules, type Sport, type Stats } from './game'
 import { holdScenes } from '../world3d/hold'
 import { BallView, Crowd, Follow, Ground, PlayerView, upright } from './scene'
+import { HAZE, Sky } from './looks'
+import { FarGrow } from '../avatar/LowHuman'
 import { Referee } from './stadium'
 import { likesFor } from '../world3d/fans'
 import { serverNow } from '../lib/worldClock'
@@ -37,9 +39,10 @@ type Props = {
   online?: { token: string; simId: string; match: CourtMatch }
   /** The console's match at the salle de jeux (components/defi/Foot.tsx): its length, the other side's strength, the golden goal. No replay: the console goes on. */
   rules?: Rules
-  /** The console: the two sides' names and shirts (the player's first). */
+  /** The console: the two sides' names and shirts (the player's first), and their three letters for the scoreboard. */
   teams?: [string, string]
   kits?: [string, string]
+  shorts?: [string, string]
 }
 
 /** The two teams' kits: the player's team in orange, the others in green (or blue on the court). */
@@ -47,6 +50,20 @@ const KITS: Record<Sport, [string, string]> = { basket: ['#ff7a00', '#1d4ed8'], 
 const KEEPER = '#141416'
 /** With a referee (in black), the keepers in their own colours. */
 const KEEPERS = ['#fcc419', '#7950f2']
+
+/** The players seen from afar (avatar/LowHuman.tsx): bigger and broader at the stadium, seen from high up. */
+const FAR_STADIUM = { grow: 0.45, from: 12, over: 38 }
+const FAR_PITCH = { grow: 0.15, from: 20, over: 40 }
+
+/** A side's three letters from its name (« Les Lagunaires »: LAG). */
+const short3 = (n: string) =>
+  n
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/^(les|le|la|l')\s*/i, '')
+    .replace(/[^a-z]/gi, '')
+    .slice(0, 3)
+    .toUpperCase()
 
 const mmss = (s: number) => {
   const t = Math.max(0, Math.ceil(s))
@@ -118,10 +135,12 @@ function hudOf(g: Game, waiting = 0): Hud {
   }
 }
 
-export default function StreetMatch({ sport, name, look, gender, onExit, seed, online, rules, teams, kits: kitsProp }: Props) {
+export default function StreetMatch({ sport, name, look, gender, onExit, seed, online, rules, teams, kits: kitsProp, shorts }: Props) {
   // The console's football: its extra moves and its HUD.
   const fifa = sport === 'foot' && !!rules && !!(rules.referee || rules.switching || rules.size === 11)
   const kits = kitsProp ?? KITS[sport]
+  // The scoreboard's three letters: the console's own, else from the names.
+  const labels = shorts ?? (teams ? [short3(teams[0]), short3(teams[1])] : null)
   // The stadium's eleven: a bigger ground to light and to see across.
   const big = sport === 'foot' && rules?.size === 11
   const [round, setRound] = useState(0)
@@ -209,20 +228,25 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
   useEffect(() => () => held.current?.(), [])
 
   return (
-    <div className="fixed inset-0 z-50 touch-none bg-[#9fd3f2] select-none">
+    <div className="fixed inset-0 z-50 touch-none select-none" style={{ background: HAZE }}>
       <Canvas shadows dpr={[1, 1.5]} camera={{ fov: 50, near: 0.3, far: big ? 700 : 400, position: [0, 9, 14] }} onCreated={({ gl }) => void (held.current = holdScenes(gl.domElement))}>
-        <color attach="background" args={['#9fd3f2']} />
-        <fog attach="fog" args={['#9fd3f2', big ? 140 : 60, big ? 420 : 180]} />
-        <hemisphereLight args={['#ffffff', '#8a7a5c', 1.15]} />
-        <directionalLight position={big ? [40, 70, 30] : [18, 30, 14]} intensity={1.7} castShadow shadow-mapSize={[big ? 2048 : 1024, big ? 2048 : 1024]} shadow-camera-left={big ? -70 : -24} shadow-camera-right={big ? 70 : 24} shadow-camera-top={big ? 60 : 24} shadow-camera-bottom={big ? -60 : -24} shadow-camera-far={big ? 200 : 100} />
+        <color attach="background" args={[HAZE]} />
+        <fog attach="fog" args={[HAZE, big ? 160 : 70, big ? 520 : 260]} />
+        {/* The afternoon: a warm sun high to the side, the sky's blue from above and the grass's green from below. */}
+        <hemisphereLight args={['#e3f1ff', '#6f8f4f', 1.05]} />
+        <directionalLight color="#fff1dc" position={big ? [40, 70, 30] : [18, 30, 14]} intensity={1.85} castShadow shadow-mapSize={[big ? 2048 : 1024, big ? 2048 : 1024]} shadow-camera-left={big ? -70 : -24} shadow-camera-right={big ? 70 : 24} shadow-camera-top={big ? 60 : 24} shadow-camera-bottom={big ? -60 : -24} shadow-camera-far={big ? 200 : 100} />
+        <Sky radius={big ? 600 : 330} />
         <Suspense fallback={null}>
-          <Ground g={game} seed={sceneSeed} />
-          {game.ps.map((p, i) => (
-            <PlayerView key={`${round}-${p.id}`} g={game} i={i} look={looks[i].look} gender={looks[i].gender} />
-          ))}
+          <Ground g={game} seed={sceneSeed} teams={teams} />
+          {/* The players seen from afar a little bigger (more at the stadium, from high up), so they read as people, not sticks. */}
+          <FarGrow.Provider value={big ? FAR_STADIUM : FAR_PITCH}>
+            {game.ps.map((p, i) => (
+              <PlayerView key={`${round}-${p.id}`} g={game} i={i} look={looks[i].look} gender={looks[i].gender} />
+            ))}
+            <Referee g={game} />
+            <Crowd g={game} seed={sceneSeed} />
+          </FarGrow.Provider>
           <BallView g={game} />
-          <Referee g={game} />
-          <Crowd g={game} seed={sceneSeed} />
         </Suspense>
         <Loop game={game} input={input} onHud={setHud} net={net} entries={entries} start={online?.match.start ?? 0} simId={online?.simId ?? ''} />
         <Follow g={game} />
@@ -230,15 +254,22 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
 
       {/* The score, the clock */}
       <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
-        <div className="flex min-w-0 items-center gap-2 rounded-2xl bg-[#0f1230]/75 px-3 py-2 text-white">
-          {teams && <span className="max-w-[6.5rem] truncate text-xs font-extrabold">{teams[0]}</span>}
-          <span className="h-4 w-4 rounded-sm" style={{ background: kits[0] }} />
-          <span className="font-display text-3xl leading-none font-extrabold tabular-nums">{hud.score[0]}</span>
-          <span className="text-lg font-extrabold opacity-60">-</span>
-          <span className="font-display text-3xl leading-none font-extrabold tabular-nums">{hud.score[1]}</span>
-          <span className="h-4 w-4 rounded-sm" style={{ background: kits[1] }} />
-          {teams && <span className="max-w-[6.5rem] truncate text-xs font-extrabold">{teams[1]}</span>}
-          <span className="ml-2 rounded-lg bg-white/15 px-2 py-0.5 text-sm font-extrabold tabular-nums">{game.extra ? 'But en or' : hud.pens ? <Pens pens={hud.pens} /> : mmss(hud.left)}</span>
+        {/* Like on TV: each side's colour and three letters, the score in the middle, the clock. */}
+        <div className="flex min-w-0 items-stretch overflow-hidden rounded-xl text-white shadow-[0_4px_14px_rgba(0,0,0,0.35)]">
+          <span className="flex items-center gap-1.5 bg-[#0f1230]/90 py-1.5 pr-2.5 pl-2">
+            <span className="h-5 w-1.5 rounded-full" style={{ background: kits[0] }} />
+            {labels && <span className="text-[13px] font-extrabold tracking-wide">{labels[0]}</span>}
+          </span>
+          <span className="flex items-center bg-white px-2.5 font-display text-[24px] leading-none font-extrabold text-[#0f1230] tabular-nums">
+            {hud.score[0]}
+            <span className="mx-1 text-[16px] opacity-40">-</span>
+            {hud.score[1]}
+          </span>
+          <span className="flex items-center gap-1.5 bg-[#0f1230]/90 py-1.5 pr-2 pl-2.5">
+            {labels && <span className="text-[13px] font-extrabold tracking-wide">{labels[1]}</span>}
+            <span className="h-5 w-1.5 rounded-full" style={{ background: kits[1] }} />
+          </span>
+          <span className="flex items-center bg-[#ff8200] px-2 text-[13px] font-extrabold whitespace-nowrap tabular-nums">{game.extra ? 'But en or' : hud.pens ? <Pens pens={hud.pens} /> : mmss(hud.left)}</span>
         </div>
         <button
           className="pointer-events-auto grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#0f1230]/70 text-white"

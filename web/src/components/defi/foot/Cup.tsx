@@ -147,6 +147,7 @@ export function Cup({ me, onEnd, onBack }: { me: Me; onEnd: (score: number) => v
           gender={me.gender}
           rules={rules}
           teams={[mine.name, them.name]}
+          shorts={[mine.short, them.short]}
           kits={kitsFor(mine, them)}
           // Left mid-match: back to the bracket, the match to play again; played out, the round goes on.
           onExit={(r) => {
