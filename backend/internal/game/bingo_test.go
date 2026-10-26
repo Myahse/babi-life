@@ -14,6 +14,10 @@ func TestBingoReturn(t *testing.T) {
 		if back < 0.8 || back > 0.9 {
 			t.Errorf("%s gives back %.3f for 1 staked: should stay between 0.80 and 0.90", g.ID, back)
 		}
+		// The room's own rate, as the casino's odds use it (game/odds.go).
+		if d := back - BingoNatural[g.ID]; d < -0.005 || d > 0.005 {
+			t.Errorf("%s gives back %.4f, BingoNatural says %.4f", g.ID, back, BingoNatural[g.ID])
+		}
 		if hits < 0.15 || hits > 0.4 {
 			t.Errorf("%s: a card wins %.0f %% of the time", g.ID, hits*100)
 		}

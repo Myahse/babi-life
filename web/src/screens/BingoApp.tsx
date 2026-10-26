@@ -7,6 +7,8 @@ import type { BingoCard, BingoGame, BingoRoom, BingoState, Sim, World } from '..
 import type { Act } from './phoneApps'
 import { BingoMark } from '../components/AppLogo'
 import { StakeField, stakeOK } from '../components/StakeField'
+import { pct, useCasinoRates } from '../lib/casino'
+import { GameHistory } from '../components/GameHistory'
 
 /**
  * Babi Bingo (backend game/bingo.go, sims/bingo.go): four rooms whose draws
@@ -162,7 +164,16 @@ function Card({ g, card, balls, small = false }: { g: BingoGame; card: BingoCard
 
 export function BingoApp({ world, sim, act, onConfirmAdult }: { world: World; sim: Sim; act: Act; onConfirmAdult: () => Promise<void> }) {
   const adult = useSession((s) => !!s.user?.adult)
-  const games = world.bingo?.games ?? []
+  // The prizes as each room pays them now: scaled by the casino's rate when the team set one (lib/casino.ts).
+  const rate = useCasinoRates().bingo
+  const games = useMemo(
+    () =>
+      (world.bingo?.games ?? []).map((g) => {
+        const k = rate?.set ? rate.rate / (rate.variants?.[g.id] ?? rate.natural) : 1
+        return k === 1 ? g : { ...g, prizes: g.prizes.map((p) => ({ ...p, times: Math.floor(p.times * k * 100) / 100 })) }
+      }),
+    [world.bingo, rate],
+  )
   const [st, setSt] = useState<BingoState | null>(null)
   const [offset, setOffset] = useState(0)
   const [roomId, setRoomId] = useState<string | null>(null)
@@ -272,8 +283,9 @@ export function BingoApp({ world, sim, act, onConfirmAdult }: { world: World; si
       <p className="mt-4 text-center text-[11.5px] leading-snug font-bold text-white/60">
         Argent du jeu seulement · 18 ans et plus · encore {Math.max(0, cardsLeft)} cartons aujourd'hui.
         <br />
-        Comme tous les jeux d'argent, le bingo garde un peu plus qu'il ne rend : environ 85 Djai rendus pour 100 misés.
+        Comme tous les jeux d'argent, le bingo garde un peu plus qu'il ne rend : taux de retour {pct(rate?.rate ?? 0.857)}, soit environ {Math.round((rate?.rate ?? 0.857) * 100)} Djai rendus pour 100 misés.
       </p>
+      <GameHistory simId={sim.id} jeu="bingo" />
     </div>
   )
 }

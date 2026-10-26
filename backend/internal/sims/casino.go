@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"math/rand/v2"
 	"net/http"
 
@@ -12,6 +13,7 @@ import (
 
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
+	"github.com/myahse/babi-life/backend/internal/odds"
 )
 
 // Babi Casino (game/casino.go, web screens/CasinoApp.tsx): the roulette, le
@@ -75,7 +77,16 @@ func (h *Handler) roulette(w http.ResponseWriter, r *http.Request) {
 		if err := casinoOpen(ctx, tx, s); err != nil {
 			return game.Outcome{}, nil, err
 		}
-		return s.spinRoulette(req.Bets, casinoRng())
+		out, events, err := s.spinRoulette(req.Bets, casinoRng())
+		if err != nil {
+			return out, events, err
+		}
+		staked := 0
+		for _, b := range req.Bets {
+			staked += b.Stake
+		}
+		d, _ := out.Data.(map[string]any)
+		return out, events, recordRound(ctx, tx, s.ID, game.OddsRoulette, staked, staked+out.Money, fmt.Sprintf("le %v %v", d["number"], d["colour"]))
 	})
 }
 
@@ -98,10 +109,17 @@ func (s *Sim) spinRoulette(bets []game.RouletteBet, rng *rand.Rand) (game.Outcom
 	}
 	s.wallet().Use(s.today(), game.Casino)
 	n := game.SpinRoulette(rng)
-	back := 0
+	back, kept := 0, 0
 	wins := make([]int, len(bets))
+	// The classic payouts; at a rate the team set (odds), the house's commission on each winning bet's net winnings.
+	rate, _ := odds.Default.Now(game.OddsRoulette)
 	for i, b := range bets {
 		wins[i] = game.RoulettePays(b, n)
+		if net := wins[i] - b.Stake; wins[i] > 0 && net > 0 {
+			k := int(math.Floor(float64(net) * game.RouletteCommission(rate, net/b.Stake)))
+			wins[i] -= k
+			kept += k
+		}
 		back += wins[i]
 	}
 	s.Money += back - total
@@ -110,7 +128,10 @@ func (s *Sim) spinRoulette(bets []game.RouletteBet, rng *rand.Rand) (game.Outcom
 	if back > 0 {
 		text = fmt.Sprintf("Le %d %s ! Tu récupères %s Djai.", n, colour, money(back))
 	}
-	data := map[string]any{"number": n, "colour": colour, "wins": wins, "back": back}
+	if kept > 0 {
+		text += fmt.Sprintf(" (Commission de la maison : %s Djai.)", money(kept))
+	}
+	data := map[string]any{"number": n, "colour": colour, "wins": wins, "back": back, "commission": kept}
 	return game.Outcome{Text: text, Money: back - total, Data: data}, bigWin(s, fmt.Sprintf("roulette, le %d", n), total, back), nil
 }
 
@@ -184,6 +205,12 @@ func (h *Handler) blackjack(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return game.Outcome{}, nil, err
 		}
+		// A hand just over: kept for the « Historique ».
+		if next.Done && (hand == nil || !hand.Done || req.Move == "distribuer") {
+			if err := recordRound(ctx, tx, s.ID, game.Odds21, next.Staked(), next.Paid, next.Result); err != nil {
+				return game.Outcome{}, nil, err
+			}
+		}
 		raw, _ := json.Marshal(next)
 		if _, err := tx.Exec(ctx, `INSERT INTO blackjack_hands (sim, hand) VALUES ($1, $2) ON CONFLICT (sim) DO UPDATE SET hand = $2, updated_at = now()`, s.ID, raw); err != nil {
 			return game.Outcome{}, nil, err
@@ -226,7 +253,14 @@ func (s *Sim) playBlackjack(hand *game.BlackjackHand, move string, stake int, rn
 	s.Money -= taken
 	out := game.Outcome{Money: -taken}
 	var events []Event
+	kept := 0
 	if hand.Done {
+		// At a rate the team set (odds), the house's commission on the net winnings.
+		if net := hand.Paid - hand.Staked(); net > 0 {
+			rate, _ := odds.Default.Now(game.Odds21)
+			kept = int(math.Floor(float64(net) * game.Commission21(rate)))
+			hand.Paid -= kept
+		}
 		s.Money += hand.Paid
 		out.Money += hand.Paid
 		out.Text = map[string]string{
@@ -236,6 +270,9 @@ func (s *Sim) playBlackjack(hand *game.BlackjackHand, move string, stake int, rn
 			"perdu":     "La banque gagne.",
 			"saute":     "Plus de 21 : tu as sauté.",
 		}[hand.Result]
+		if kept > 0 {
+			out.Text += fmt.Sprintf(" (Commission de la maison : %s Djai.)", money(kept))
+		}
 		events = bigWin(s, "le 21", hand.Staked(), hand.Paid)
 	}
 	out.Data = hand.View()
@@ -259,7 +296,12 @@ func (h *Handler) scratch(w http.ResponseWriter, r *http.Request) {
 		if err := casinoOpen(ctx, tx, s); err != nil {
 			return game.Outcome{}, nil, err
 		}
-		return s.buyScratch(req.Ticket, casinoRng())
+		out, events, err := s.buyScratch(req.Ticket, casinoRng())
+		if err != nil {
+			return out, events, err
+		}
+		t, _ := game.FindScratch(req.Ticket)
+		return out, events, recordRound(ctx, tx, s.ID, game.OddsTickets, t.Price, t.Price+out.Money, t.Name)
 	})
 }
 
@@ -272,7 +314,9 @@ func (s *Sim) buyScratch(id string, rng *rand.Rand) (game.Outcome, []Event, erro
 		return game.Outcome{}, nil, game.ErrNotEnoughMoney
 	}
 	s.wallet().Use(s.today(), game.Casino)
-	grid, prize := game.Scratch(t, rng)
+	// Its prizes at the casino's rate (odds: untouched, as printed).
+	rate, _ := odds.Default.Now(game.OddsTickets)
+	grid, prize := game.Scratch(game.ScratchAt(t, rate), rng)
 	s.Money += prize - t.Price
 	data := map[string]any{"ticket": t.ID, "cells": grid, "prize": prize}
 	// The result is told by the app once the ticket is scratched: no text here.

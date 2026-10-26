@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Bell, Download, ExternalLink, Flag, LayoutDashboard, Lightbulb, ListChecks, LogOut, Megaphone, MessageCircle, Package, RefreshCw, ScrollText, Search, Send, ShieldCheck, Users } from 'lucide-react'
+import { Bell, Dices, Download, ExternalLink, Flag, LayoutDashboard, Lightbulb, ListChecks, LogOut, Megaphone, MessageCircle, Package, RefreshCw, ScrollText, Search, Send, ShieldCheck, Users } from 'lucide-react'
 import { Preview, STATUS, type Status } from './Pub'
 
 // /admin: everything Babi Life's team manages, behind one key (ADMIN_KEY on
@@ -14,13 +14,14 @@ import { Preview, STATUS, type Status } from './Pub'
 //   with an approved template, or by hand with click-to-chat links;
 // - Liste d'attente, Pub (backend/internal/ads), Signalements (moderation);
 // - Idées: what the players suggest from the phone (backend/internal/ideas), answered here;
-// - Mises à jour: the features that ship closed, opened one by one (now or at a set time) (backend/internal/features).
+// - Mises à jour: the features that ship closed, opened one by one (now or at a set time) (backend/internal/features);
+// - Casino: the money games' « taux de retour », a level for all and one per game (backend/internal/odds), told in each game's rules.
 // The key stays in the tab only (sessionStorage); the page is never indexed.
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
 const STORE = 'babi.adminKey'
 
-type Tab = 'tableau' | 'joueurs' | 'journal' | 'annonces' | 'whatsapp' | 'liste' | 'pub' | 'signalements' | 'idees' | 'majs'
+type Tab = 'tableau' | 'joueurs' | 'journal' | 'annonces' | 'whatsapp' | 'liste' | 'pub' | 'signalements' | 'idees' | 'majs' | 'casino'
 const TABS: { id: Tab; label: string; icon: typeof Flag }[] = [
   { id: 'tableau', label: 'Tableau de bord', icon: LayoutDashboard },
   { id: 'joueurs', label: 'Joueurs', icon: Users },
@@ -32,6 +33,7 @@ const TABS: { id: Tab; label: string; icon: typeof Flag }[] = [
   { id: 'signalements', label: 'Signalements', icon: Flag },
   { id: 'idees', label: 'Idées', icon: Lightbulb },
   { id: 'majs', label: 'Mises à jour', icon: Package },
+  { id: 'casino', label: 'Casino', icon: Dices },
 ]
 
 async function call<T>(path: string, key: string, init: RequestInit = {}): Promise<T> {
@@ -159,6 +161,8 @@ export function Admin() {
           <Ideas k={key} />
         ) : tab === 'majs' ? (
           <Updates k={key} />
+        ) : tab === 'casino' ? (
+          <Casino k={key} />
         ) : (
           <Dashboard k={key} go={(t) => navigate(`/admin?tab=${t}`)} />
         )}
@@ -666,6 +670,129 @@ function Updates({ k }: { k: string }) {
           )
         })}
       </ul>
+    </div>
+  )
+}
+
+/* ---------- Casino ---------- */
+
+type OddsRate = { id: string; label: string; rate: number; natural: number; set: boolean; own: boolean }
+type OddsState = { games: OddsRate[]; level: number | null; history: { game: string; rate: number | null; at: string }[]; min: number; max: number }
+const pc = (r: number) => `${(Math.round(r * 1000) / 10).toLocaleString('fr-FR')} %`
+
+function Casino({ k }: { k: string }) {
+  const [st, setSt] = useState<OddsState | null>(null)
+  const [e, setE] = useState<string | null>(null)
+  const [ok, setOk] = useState<string | null>(null)
+  const [level, setLevel] = useState(85)
+  const [typed, setTyped] = useState<Record<string, string>>({})
+  useEffect(() => {
+    call<OddsState>('/admin/casino', k).then(
+      (x) => (setSt(x), x.level !== null && setLevel(Math.round(x.level * 1000) / 10)),
+      (x: Error) => setE(x.message),
+    )
+  }, [k])
+  const set = async (game: string, rate: number | null, said: string) => {
+    setE(null)
+    setOk(null)
+    try {
+      setSt(await call<OddsState>(`/admin/casino/${encodeURIComponent(game)}`, k, { method: 'POST', body: JSON.stringify({ rate }) }))
+      setOk(said)
+    } catch (x) {
+      setE(x instanceof Error ? x.message : 'Erreur')
+    }
+  }
+  if (!st) return <Err e={e} />
+  const name = (id: string) => (id === '*' ? 'Tous les jeux' : (st.games.find((g) => g.id === id)?.label ?? id))
+  const lo = st.min * 100
+  const hi = st.max * 100
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-[#6b7280]">
+        Le taux de retour, c'est ce qu'un jeu rend en moyenne pour 100 Djai misés : le reste, la maison le garde. Il est le même pour tous les joueurs, compte dès la prochaine partie (une partie commencée garde le sien) et s'affiche dans les règles de chaque jeu : on ne le cache pas, les joueurs
+        achètent leurs Djai avec de l'argent réel. De {pc(st.min)} à {pc(st.max)}.
+      </p>
+      <Err e={e} />
+      <Ok t={ok} />
+      <Card title="Le niveau pour tous les jeux">
+        <p className="mb-3 text-sm text-[#6b7280]">Il s'applique à chaque jeu qui n'a pas son propre réglage. {st.level === null ? "Aucun niveau : chaque jeu rend ce qu'il rendait d'origine." : `Niveau actuel : ${pc(st.level)}.`}</p>
+        <div className="flex flex-wrap items-center gap-3">
+          <input type="range" min={lo} max={hi} step={0.5} value={level} onChange={(x) => setLevel(Number(x.target.value))} className="w-64 accent-[#ea580c]" />
+          <span className="w-16 text-sm font-bold">{level.toLocaleString('fr-FR')} %</span>
+          <Btn tone="orange" onClick={() => void set('*', level / 100, `Niveau pour tous les jeux : ${level.toLocaleString('fr-FR')} %`)}>
+            Appliquer à tous
+          </Btn>
+          {st.level !== null && (
+            <Btn tone="light" onClick={() => void set('*', null, "Niveau retiré : chaque jeu rend ce qu'il rendait d'origine (sauf ceux réglés à part)")}>
+              Retirer le niveau
+            </Btn>
+          )}
+        </div>
+      </Card>
+      <Card title="Jeu par jeu">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs text-[#6b7280]">
+                <th className="py-2">Jeu</th>
+                <th>D'origine</th>
+                <th>Maintenant</th>
+                <th>Régler ce jeu</th>
+              </tr>
+            </thead>
+            <tbody>
+              {st.games.map((g) => {
+                const v = typed[g.id] ?? ''
+                const n = Number(v.replace(',', '.'))
+                const good = v !== '' && n >= lo && n <= hi
+                return (
+                  <tr key={g.id} className="border-t border-[#f3f4f6]">
+                    <td className="py-2 font-medium">{g.label}</td>
+                    <td className="text-[#6b7280]">{pc(g.natural)}</td>
+                    <td>
+                      <span className="font-bold">{pc(g.rate)}</span>
+                      <span className="ml-1.5 text-xs text-[#9ca3af]">{g.own ? 'réglé à part' : g.set ? 'niveau pour tous' : "d'origine"}</span>
+                    </td>
+                    <td>
+                      <span className="flex flex-wrap items-center gap-1.5 py-1">
+                        <input
+                          value={v}
+                          onChange={(x) => setTyped((t) => ({ ...t, [g.id]: x.target.value }))}
+                          placeholder={`${lo}–${hi}`}
+                          inputMode="decimal"
+                          className="w-20 rounded-lg border border-[#d1d5db] px-2 py-1 outline-none focus:border-[#ea580c]"
+                        />
+                        <span className="text-xs text-[#6b7280]">%</span>
+                        <Btn tone="light" disabled={!good} onClick={() => (setTyped((t) => ({ ...t, [g.id]: '' })), void set(g.id, n / 100, `${g.label} : ${n.toLocaleString('fr-FR')} %`))}>
+                          Appliquer
+                        </Btn>
+                        {g.own && (
+                          <Btn tone="light" onClick={() => void set(g.id, null, `${g.label} : suit le niveau pour tous`)}>
+                            Remettre
+                          </Btn>
+                        )}
+                      </span>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-3 text-xs text-[#9ca3af]">
+          Machines, tickets et bingo : leurs gains sont mis à l'échelle. L'Envol part plus ou moins tôt. Babi Trade paie 2 × le taux. Roulette et 21 gardent leurs gains habituels, moins une commission de la maison sur le gain net, dite au joueur à chaque résultat.
+        </p>
+      </Card>
+      <Card title="Les derniers changements">
+        {st.history.length === 0 && <p className="text-sm text-[#6b7280]">Aucun changement : chaque jeu rend ce qu'il rendait d'origine.</p>}
+        <ul className="space-y-1.5">
+          {st.history.map((c, i) => (
+            <li key={i} className="text-sm">
+              <span className="text-[#9ca3af]">{when(c.at)}</span> · {name(c.game)} : <span className="font-bold">{c.rate === null ? (c.game === '*' ? 'niveau retiré' : 'suit le niveau pour tous') : pc(c.rate)}</span>
+            </li>
+          ))}
+        </ul>
+      </Card>
     </div>
   )
 }

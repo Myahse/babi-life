@@ -156,6 +156,10 @@ export type WaitlistJoin = { firstName: string; contact: string; commune: string
 /** A commune to buy land in, anywhere in the game. */
 export type LotWhere = { city: string; commune: string }
 
+export type HistRound = { at: string; stake: number; payout: number; status: 'open' | 'won' | 'lost' | 'tie'; detail: string }
+export type HistTotal = { rounds: number; staked: number; back: number }
+export type Historique = { rounds: HistRound[]; today: HistTotal; week: HistTotal }
+
 export const api = {
   /** The devices signed in to the account; sign one out, all the others, or this one. */
   /** The emotes bought; buying one. */
@@ -430,6 +434,8 @@ export const api = {
   machineSpin: (id: string, stake: number) => post<ActionResult>(`/sims/${id}/machine`, { stake }),
   /** Babi Bingo (backend sims/bingo.go): the rooms and the Sim's cards; cards for a room's next draw; the cards over settled. */
   bingo: (id: string) => request<BingoState>(`/sims/${id}/bingo`),
+  /** A money game's « Historique »: the last rounds (before `avant`), today's and the week's totals. */
+  historique: (id: string, jeu: string, avant?: string) => request<Historique>(`/sims/${id}/historique?jeu=${jeu}${avant ? `&avant=${encodeURIComponent(avant)}` : ''}`),
   buyBingo: (id: string, game: string, cards: number, stake: number) => post<ActionResult>(`/sims/${id}/bingo`, { game, cards, stake }),
   bingoPay: (id: string) => post<ActionResult>(`/sims/${id}/bingo/paye`, {}),
   /** Babi Casino (backend sims/casino.go): a spin of the roulette, le 21 (the hand going on; a move), a ticket à gratter. */

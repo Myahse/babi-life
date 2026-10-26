@@ -54,14 +54,18 @@ func EnvolRound(nowMs int64) int64 { return nowMs / 1000 / EnvolPeriod }
 // EnvolTakeoff: when a round's plane takes off (Unix ms); its bets are taken till then.
 func EnvolTakeoff(n int64) int64 { return (n*EnvolPeriod + EnvolWait) * 1000 }
 
-// EnvolCrash: where a round's plane flies off (1.00 to EnvolMax): P(≥ x) = EnvolReturn / x.
-func EnvolCrash(n int64) float64 {
+// EnvolCrash: where a round's plane flies off (1.00 to EnvolMax) at a rate (0: EnvolReturn): P(≥ x) = rate / x.
+// The round's rate is the one set when it began (odds.RateAt its take-off), so it stays as it started.
+func EnvolCrash(n int64, rate float64) float64 {
+	if rate <= 0 {
+		rate = EnvolReturn
+	}
 	m := hmac.New(sha256.New, []byte(BetSecret))
 	fmt.Fprintf(m, "envol:%d", n)
 	sum := m.Sum(nil)
 	// u in (0, 1].
 	u := (float64(binary.BigEndian.Uint64(sum[:8])>>11) + 1) / float64(1<<53)
-	x := math.Floor(EnvolReturn/u*100) / 100
+	x := math.Floor(rate/u*100) / 100
 	return math.Max(1, math.Min(EnvolMax, x))
 }
 
@@ -73,9 +77,9 @@ func EnvolAt(ms int64) float64 {
 	return math.Floor(math.Exp(envolRate*float64(ms)/1000)*100) / 100
 }
 
-// EnvolFlown: when a round's plane flies off (Unix ms).
-func EnvolFlown(n int64) int64 {
-	c := EnvolCrash(n)
+// EnvolFlown: when a round's plane flies off (Unix ms), at its rate.
+func EnvolFlown(n int64, rate float64) int64 {
+	c := EnvolCrash(n, rate)
 	return EnvolTakeoff(n) + int64(math.Ceil(math.Log(c)/envolRate*1000))
 }
 

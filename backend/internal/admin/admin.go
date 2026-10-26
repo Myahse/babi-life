@@ -5,6 +5,8 @@ package admin
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -19,6 +21,7 @@ import (
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
 	"github.com/myahse/babi-life/backend/internal/ideas"
+	"github.com/myahse/babi-life/backend/internal/odds"
 	"github.com/myahse/babi-life/backend/internal/sims"
 )
 
@@ -54,6 +57,8 @@ func (h *Handler) Routes(r chi.Router) {
 		r.Post("/whatsapp/optout", h.waOptout)
 		r.Get("/features", h.features)
 		r.Post("/features/{id}", h.setFeature)
+		r.Get("/casino", h.casino)
+		r.Post("/casino/{game}", h.setOdds)
 		if h.Ideas != nil {
 			h.Ideas.Admin(r)
 		}
@@ -364,3 +369,45 @@ func (h *Handler) setFeature(w http.ResponseWriter, r *http.Request) {
 
 // abidjan: the time the team reads (UTC+0, no summer time).
 var abidjan = time.FixedZone("Abidjan", 0)
+
+// casino: GET /admin/casino: each game's « taux de retour » now (untouched: its own), the level for all, the changes.
+func (h *Handler) casino(w http.ResponseWriter, r *http.Request) {
+	httpx.JSON(w, http.StatusOK, map[string]any{"games": odds.Default.Rates(), "level": odds.Default.Level(), "history": odds.Default.History(r.Context(), 50), "min": game.OddsMin, "max": game.OddsMax})
+}
+
+// setOdds: POST /admin/casino/{game} {rate}: a game's rate (or '*', the level for all) from the next round;
+// rate null brings it back (to the level for all, or untouched).
+func (h *Handler) setOdds(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "game")
+	if !odds.Known(id) {
+		httpx.Error(w, http.StatusNotFound, "jeu inconnu")
+		return
+	}
+	var req struct {
+		Rate *float64 `json:"rate"`
+	}
+	if err := httpx.Decode(r, &req); err != nil {
+		httpx.Error(w, http.StatusBadRequest, "requête invalide")
+		return
+	}
+	if err := odds.Default.Set(r.Context(), id, req.Rate); err != nil {
+		if errors.Is(err, odds.ErrRange) {
+			httpx.Error(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+		return
+	}
+	name := "tous les jeux"
+	for _, g := range game.OddsGames {
+		if g.ID == id {
+			name = g.Label
+		}
+	}
+	what := "remis comme avant"
+	if req.Rate != nil {
+		what = fmt.Sprintf("%.0f %%", *req.Rate*100)
+	}
+	h.Log(r.Context(), "casino", "taux de retour, "+name+" : "+what)
+	h.casino(w, r)
+}

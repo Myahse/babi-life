@@ -5,6 +5,8 @@ import { haptic } from '../../lib/native'
 import type { Sim, TradeCall, TradeState, World } from '../../lib/types'
 import type { Act } from '../phoneApps'
 import { StakeField, stakeOK } from '../../components/StakeField'
+import { pct, useCasinoRates } from '../../lib/casino'
+import { GameHistory } from '../../components/GameHistory'
 
 /**
  * Babi Trade (backend game/envol.go, sims/trade.go), in Babi Casino: made-up
@@ -107,7 +109,10 @@ export function Trade({ world, sim, act }: Props) {
   const last = prices[prices.length - 1]
   const open = (st?.calls ?? []).filter((c) => c.status === 'open')
   const full = open.length >= cfg.open
-  const gain = Math.floor(stake * cfg.pays)
+  // What a right call pays now: 2 × the casino's rate when the team set one (lib/casino.ts), else as the game says.
+  const tr = useCasinoRates().trade
+  const pays = tr?.set ? 2 * tr.rate : cfg.pays
+  const gain = Math.floor(stake * pays)
   // The session (an hour) closes: a call must end before (the next one opens at another price).
   const closesIn = st ? st.closes - st.now : 3600
   const fits = (s: number) => s < closesIn
@@ -178,7 +183,7 @@ export function Trade({ world, sim, act }: Props) {
                 ? 'La séance ferme avant la fin de ce pari : prends une durée plus courte.'
                 : sim.money < stake
                   ? "Pas assez d'argent pour cette mise."
-                  : `Juste : ${String(cfg.pays).replace('.', ',')} fois ta mise. Le cours n'a pas bougé : ta mise revient. Faux : elle est perdue.`}
+                  : `Juste : ${(Math.round(pays * 100) / 100).toLocaleString('fr-FR')} fois ta mise. Le cours n'a pas bougé : ta mise revient. Faux : elle est perdue.`}
         </p>
       </div>
       {!!st?.calls.length && (
@@ -192,10 +197,11 @@ export function Trade({ world, sim, act }: Props) {
       <div className="mt-3 flex gap-2 rounded-[18px] border border-[#ffcc33]/40 bg-[#ffcc33]/10 p-3 text-[12px] leading-snug font-bold text-[#ffe7a3]">
         <TriangleAlert size={18} className="mt-0.5 shrink-0" />
         <span>
-          Ce n'est pas du vrai trading : les cours sont tirés au hasard chaque seconde, la courbe ne dit rien de la suite, et le jeu garde en moyenne 7,5 % des mises. Le marché ouvre par séances d'une heure, chacune à un nouveau cours : un
+          Ce n'est pas du vrai trading : les cours sont tirés au hasard chaque seconde, la courbe ne dit rien de la suite, et le jeu garde en moyenne {pct(1 - pays / 2)} des mises (taux de retour {pct(pays / 2)}). Le marché ouvre par séances d'une heure, chacune à un nouveau cours : un
           pari se termine avant la clôture. Dans la vraie vie, les « options binaires » et les « traders » qui promettent de doubler ton argent sur les réseaux sont presque toujours des arnaques.
         </span>
       </div>
+      <GameHistory simId={sim.id} jeu="trade" tick={(st?.calls ?? []).filter((c) => c.status !== 'open').length} />
     </div>
   )
 }

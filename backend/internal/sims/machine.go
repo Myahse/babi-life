@@ -11,6 +11,7 @@ import (
 
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
+	"github.com/myahse/babi-life/backend/internal/odds"
 )
 
 // Les machines à sous (game/slots.go, web components/Machine.tsx): playing
@@ -41,7 +42,16 @@ func (h *Handler) machineSpin(w http.ResponseWriter, r *http.Request) {
 			return game.Outcome{}, nil, errNotAdult
 		}
 		// Seeded from the system's own randomness: no spin can be foreseen.
-		return s.spin(req.Stake, rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64())))
+		out, events, err := s.spin(req.Stake, rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64())))
+		if err != nil {
+			return out, events, err
+		}
+		// Kept for the game's « Historique ».
+		reels := ""
+		if m := s.Activity.Machine; m != nil && m.Last != nil {
+			reels = strings.Join(m.Last.Reels[:], " ")
+		}
+		return out, events, recordRound(ctx, tx, s.ID, game.OddsMachines, req.Stake, req.Stake+out.Money, reels)
 	})
 }
 
@@ -65,7 +75,10 @@ func (s *Sim) spin(stake int, rng *rand.Rand) (game.Outcome, []Event, error) {
 	}
 	s.wallet().Use(s.today(), game.Slots)
 	sp := game.Spin(rng)
-	win := stake * sp.Times
+	// The prize at the casino's rate (odds: untouched, the machine's own).
+	rate, _ := odds.Default.Now(game.OddsMachines)
+	natural, _ := game.SlotsReturn()
+	win := game.Scaled(stake*sp.Times, rate, natural)
 	s.Money += win - stake
 	if a.Machine == nil {
 		a.Machine = &game.SlotSession{}
@@ -77,8 +90,10 @@ func (s *Sim) spin(stake int, rng *rand.Rand) (game.Outcome, []Event, error) {
 	m.Won += win
 	text := "Perdu : les rouleaux ne donnent rien."
 	switch {
-	case sp.Times == 1:
+	case sp.Times == 1 && win == stake:
 		text = sp.Line + "."
+	case sp.Times == 1:
+		text = fmt.Sprintf("Un 7 : %s reviennent.", game.FCFA(win))
 	case win > 0:
 		text = fmt.Sprintf("%s Tu gagnes %s.", strings.TrimSuffix(sp.Line, " !")+" !", game.FCFA(win))
 	}

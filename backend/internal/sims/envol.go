@@ -13,6 +13,7 @@ import (
 
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
+	"github.com/myahse/babi-life/backend/internal/odds"
 )
 
 // L'Envol (game/envol.go, web screens/casino/Envol.tsx): a bet before the plane
@@ -46,7 +47,7 @@ func envolNow(nowMs int64) (n int64, phase string) {
 	switch {
 	case nowMs < game.EnvolTakeoff(n):
 		return n, "attente"
-	case nowMs < game.EnvolFlown(n):
+	case nowMs < envolFlown(n):
 		return n, "vol"
 	}
 	return n, "parti"
@@ -68,7 +69,7 @@ func (h *Handler) envolState(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Get("attendre") == "1" {
 		nowMs := time.Now().UnixMilli()
 		n, phase := envolNow(nowMs)
-		next := map[string]int64{"attente": game.EnvolTakeoff(n), "vol": game.EnvolFlown(n), "parti": (n + 1) * game.EnvolPeriod * 1000}[phase]
+		next := map[string]int64{"attente": game.EnvolTakeoff(n), "vol": envolFlown(n), "parti": (n + 1) * game.EnvolPeriod * 1000}[phase]
 		if d := min(time.Duration(next-nowMs)*time.Millisecond, envolWait); d > 0 {
 			select {
 			case <-ctx.Done():
@@ -81,8 +82,8 @@ func (h *Handler) envolState(w http.ResponseWriter, r *http.Request) {
 	n, phase := envolNow(nowMs)
 	round := map[string]any{"n": n, "phase": phase, "takeoff": game.EnvolTakeoff(n), "next": game.EnvolTakeoff(n + 1)}
 	if phase == "parti" {
-		round["crash"] = game.EnvolCrash(n)
-		round["flown"] = game.EnvolFlown(n)
+		round["crash"] = envolCrash(n)
+		round["flown"] = envolFlown(n)
 	}
 	// The planes gone before (never the one in the air).
 	last := n - 1
@@ -91,7 +92,7 @@ func (h *Handler) envolState(w http.ResponseWriter, r *http.Request) {
 	}
 	history := make([]float64, 0, 14)
 	for k := last; k > last-14; k-- {
-		history = append(history, game.EnvolCrash(k))
+		history = append(history, envolCrash(k))
 	}
 	mine := []envolBet{}
 	players := []map[string]any{}
@@ -116,7 +117,7 @@ func (h *Handler) envolState(w http.ResponseWriter, r *http.Request) {
 		}
 		b.Auto, b.Cashed = float64(auto)/100, float64(cashed)/100
 		// Cashed in by itself already (the multiplier past its target): said, paid when the plane is gone.
-		if b.Cashed == 0 && b.Auto > 0 && b.Round == n && phase != "attente" && game.EnvolAt(min(nowMs, game.EnvolFlown(n))-took) >= b.Auto && b.Auto <= game.EnvolCrash(n) {
+		if b.Cashed == 0 && b.Auto > 0 && b.Round == n && phase != "attente" && game.EnvolAt(min(nowMs, envolFlown(n))-took) >= b.Auto && b.Auto <= envolCrash(n) {
 			b.Cashed = b.Auto
 		}
 		if own {
@@ -158,7 +159,7 @@ func (h *Handler) envolBet(w http.ResponseWriter, r *http.Request) {
 			return game.Outcome{}, nil, err
 		}
 		tag, err := tx.Exec(ctx, `INSERT INTO envol_bets (sim, round, stake, auto, settles_at) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (sim, round) DO NOTHING`,
-			s.ID, n, req.Stake, auto, (game.EnvolFlown(n)+999)/1000)
+			s.ID, n, req.Stake, auto, (envolFlown(n)+999)/1000)
 		if err != nil {
 			return game.Outcome{}, nil, err
 		}
@@ -221,10 +222,20 @@ func (h *Handler) envolCash(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// envolRate: a round's « taux de retour »: the one set when its plane took off (odds; 0: untouched).
+func envolRate(n int64) float64 {
+	r, _ := odds.Default.RateAt(game.OddsEnvol, time.UnixMilli(game.EnvolTakeoff(n)))
+	return r
+}
+
+// envolCrash, envolFlown: where and when a round's plane flies off, at its rate.
+func envolCrash(n int64) float64 { return game.EnvolCrash(n, envolRate(n)) }
+func envolFlown(n int64) int64   { return game.EnvolFlown(n, envolRate(n)) }
+
 // envolCashAt: the multiplier a bet is cashed in at now: the plane's, or its target if
 // it got there first; an error before take-off or once the plane is gone.
 func envolCashAt(n, nowMs int64, auto float64) (float64, error) {
-	took, flown := game.EnvolTakeoff(n), game.EnvolFlown(n)
+	took, flown := game.EnvolTakeoff(n), envolFlown(n)
 	switch {
 	case nowMs < took:
 		return 0, errEnvolWait
@@ -235,7 +246,7 @@ func envolCashAt(n, nowMs int64, auto float64) (float64, error) {
 	if auto > 0 && m >= auto {
 		m = auto
 	}
-	return math.Min(m, game.EnvolCrash(n)), nil
+	return math.Min(m, envolCrash(n)), nil
 }
 
 // settleEnvol: the Sim's bets on planes gone: cashed in by themselves at their target if it
@@ -262,7 +273,7 @@ func settleEnvol(ctx context.Context, tx pgx.Tx, s *Sim, now int64) ([]Event, er
 	var events []Event
 	for _, b := range bets {
 		target := float64(b.auto) / 100
-		if b.auto > 0 && target <= game.EnvolCrash(b.round) {
+		if b.auto > 0 && target <= envolCrash(b.round) {
 			pay := int(math.Floor(float64(b.stake) * target))
 			if _, err := tx.Exec(ctx, `UPDATE envol_bets SET status = 'won', cashed = $2, payout = $3 WHERE id = $1`, b.id, b.auto, pay); err != nil {
 				return nil, err

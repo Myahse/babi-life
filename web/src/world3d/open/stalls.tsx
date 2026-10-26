@@ -16,6 +16,7 @@ import { api } from '../../lib/api'
 import type { Nav } from './nav'
 import { placeIn, useJoined } from './joinIn'
 import { useShare } from '../../lib/share'
+import { GameHistory } from '../../components/GameHistory'
 
 // The sellers of the street, at the edge of the real streets around the Sim,
 // always at the same corners:
@@ -394,6 +395,7 @@ const LT = {
 
 /** The loto ticket: which draw, 1 to 3 numbers out of 90, the stake (game/loto.go). */
 function LotoMenu({ onChoose, onClose }: { onChoose: (choice: string) => void; onClose: () => void }) {
+  const simId = useShare((x) => x.simId)
   const [draws, setDraws] = useState<{ id: number; name: string; at: number; numbers?: number[] }[]>([])
   const [pays, setPays] = useState<Record<number, number>>({ 1: 15, 2: 250, 3: 2500 })
   const [draw, setDraw] = useState<number | null>(null)
@@ -461,6 +463,12 @@ function LotoMenu({ onChoose, onClose }: { onChoose: (choice: string) => void; o
       >
         {picked.length ? `Jouer ${picked.join('-')} · ${stake} Djai → ${(stake * (pays[picked.length] ?? 0)).toLocaleString('fr-FR')} Djai` : 'Choisis tes numéros'}
       </button>
+      {/* The tickets played before, what they came to (components/GameHistory.tsx). */}
+      {simId && (
+        <div className="mt-2 rounded-xl bg-[#0f1230] px-2 pt-0.5 pb-2">
+          <GameHistory simId={simId} jeu="loto" />
+        </div>
+      )}
     </div>
   )
 }

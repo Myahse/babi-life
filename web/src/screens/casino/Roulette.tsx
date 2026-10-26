@@ -5,6 +5,8 @@ import { sfx } from '../../lib/sfx'
 import type { ActionResult, RouletteBet, RouletteSpin, Sim, World } from '../../lib/types'
 import type { Act } from '../phoneApps'
 import { StakeField, stakeOK } from '../../components/StakeField'
+import { pct, useCasinoRates } from '../../lib/casino'
+import { GameHistory } from '../../components/GameHistory'
 
 /**
  * La roulette of Babi Casino (backend game/casino.go): the European wheel with
@@ -28,6 +30,9 @@ const STEP = 360 / 37
 const SPIN_MS = 4300
 
 type Props = { world: World; sim: Sim; act: Act; hold: (money: number | null) => void }
+
+/** The share of a bet's net winnings the house keeps at a rate, for a bet paying `times` to 1 (backend game.RouletteCommission). */
+const commission = (rate: number, times: number) => Math.max(0, Math.min(1, 1 - ((rate / (36 / 37)) * (times + 1) - 1) / times))
 type Mode = 'plein' | 'cheval' | 'transversale' | 'carre' | 'sixain'
 const MODES: { id: Mode; label: string; pays: number }[] = [
   { id: 'plein', label: 'Plein', pays: 35 },
@@ -183,6 +188,7 @@ export function Roulette({ world, sim, act, hold }: Props) {
   // The ball is thrown when the server's answer is in, with the wheel.
   const [rolling, setRolling] = useState(false)
   const [result, setResult] = useState<RouletteSpin | null>(null)
+  const rr = useCasinoRates().roulette
   const [error, setError] = useState('')
   const list = Object.values(bets)
   const total = list.reduce((t, b) => t + b.stake, 0)
@@ -433,7 +439,10 @@ export function Roulette({ world, sim, act, hold }: Props) {
       </div>
       <p className="mt-2 text-center text-[11.5px] font-bold text-white/55">
         Plein ×35 · cheval ×17 · transversale ×11 · carré ×8 · sixain ×5 · douzaine et colonne ×2 · rouge, noir, pair, impair, 1-18, 19-36 ×1. Le zéro gagne pour la banque.
+        {/* At a rate the team set (lib/casino.ts), the house's commission on the net winnings, by bet (the server's game.RouletteCommission). */}
+        {rr?.set && rr.rate < 36 / 37 && ` Taux de retour ${pct(rr.rate)} : la maison garde une commission sur le gain net, de ${pct(commission(rr.rate, 35))} sur un plein à ${pct(commission(rr.rate, 1))} sur les chances simples.`}
       </p>
+      <GameHistory simId={sim.id} jeu="roulette" tick={result} />
     </div>
   )
 }

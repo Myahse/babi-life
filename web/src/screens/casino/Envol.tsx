@@ -6,6 +6,8 @@ import { serverNow } from '../../lib/worldClock'
 import type { EnvolBet, EnvolState, Sim, World } from '../../lib/types'
 import type { Act } from '../phoneApps'
 import { StakeField, stakeOK } from '../../components/StakeField'
+import { pct, useCasinoRates } from '../../lib/casino'
+import { GameHistory } from '../../components/GameHistory'
 
 /**
  * L'Envol (backend game/envol.go, sims/envol.go), in Babi Casino: a bet before
@@ -36,6 +38,8 @@ export function Envol({ world, sim, act }: Props) {
   }
   const rate = Math.log(cfg.max) / cfg.maxFlight
   const climb = (ms: number) => (ms <= 0 ? 1 : Math.floor(Math.exp((rate * ms) / 1000) * 100) / 100)
+  // What it gives back on average (lib/casino.ts): the team's rate, else its own.
+  const back = useCasinoRates().envol?.rate ?? 0.95
   const [st, setSt] = useState<EnvolState | null>(null)
   const [stake, setStake] = useState(cfg.stakes[2] ?? cfg.stakes[0])
   const [auto, setAuto] = useState(0)
@@ -206,8 +210,9 @@ export function Envol({ world, sim, act }: Props) {
       )}
       <p className="mt-3 text-center text-[11.5px] leading-snug font-bold text-white/55">
         Mise avant le décollage. Tant que l'avion vole, le multiplicateur monte : encaisse avant qu'il parte et tu gagnes ta mise fois le multiplicateur. Parti avant, ta mise est perdue. Où il part, personne ne le sait avant : le jeu rend
-        95 % des mises en moyenne, quel que soit le moment où tu encaisses.
+        {pct(back)} des mises en moyenne (son taux de retour), quel que soit le moment où tu encaisses.
       </p>
+      <GameHistory simId={sim.id} jeu="envol" tick={st?.round?.n} />
     </div>
   )
 }

@@ -5,6 +5,8 @@ import { haptic } from '../lib/native'
 import type { ActionResult, Sim, SlotSpin, World } from '../lib/types'
 import { Coin } from './ui'
 import { StakeField, stakeOK } from './StakeField'
+import { pct, useCasinoRates } from '../lib/casino'
+import { GameHistory } from './GameHistory'
 
 // La machine à sous (backend game/slots.go, sims/machine.go): at the maquis
 // or at the Hôtel Ivoire's casino, the Sim sits at a machine; here, the
@@ -159,6 +161,10 @@ export function MachineSheet({
   const [pull, setPull] = useState(0)
   const [result, setResult] = useState<{ spin: SlotSpin; win: number } | null>(null)
   const [table, setTable] = useState(false)
+  // The casino's rate (lib/casino.ts): the prizes as the machine pays them now (scaled when the team set one).
+  const rate = useCasinoRates().machines
+  const k = rate?.set ? rate.rate / rate.natural : 1
+  const times = (n: number) => (Math.floor(n * k * 100) / 100).toLocaleString('fr-FR')
   const busy = stopped < 3
   // What's shown of the money and the session stays as it was while the reels roll: a sync of the
   // game arriving meanwhile doesn't tell the result before they stop.
@@ -318,15 +324,16 @@ export function MachineSheet({
                       ))}
                     </span>
                     <span className="flex-1 text-[13px] font-bold text-white/80">{s.label}</span>
-                    <span className="text-[13px] font-extrabold text-[#ffcc33]">×{s.three}</span>
-                    <span className="w-14 text-right text-[12px] font-bold text-white/60">deux ×{s.two}</span>
+                    <span className="text-[13px] font-extrabold text-[#ffcc33]">×{times(s.three)}</span>
+                    <span className="w-14 text-right text-[12px] font-bold text-white/60">deux ×{times(s.two)}</span>
                   </div>
                 ))}
-                <p className="mt-1 text-[12px] font-bold text-white/70">Deux pareils : sur les deux premiers rouleaux. Un 7 seul, n'importe où : ta mise revient.</p>
-                <p className="mt-1 text-[12px] font-bold text-white/55">Comme partout, la machine garde un peu plus qu'elle ne rend : environ 89 Djai rendus pour 100 misés, sur la durée.</p>
+                <p className="mt-1 text-[12px] font-bold text-white/70">Deux pareils : sur les deux premiers rouleaux. Un 7 seul, n'importe où : {k === 1 ? 'ta mise revient' : `×${times(1)} de ta mise`}.</p>
+                <p className="mt-1 text-[12px] font-bold text-white/55">Comme partout, la machine garde un peu plus qu'elle ne rend : taux de retour {pct(rate?.rate ?? 0.891)}, soit environ {Math.round((rate?.rate ?? 0.891) * 100)} Djai rendus pour 100 misés, sur la durée.</p>
               </div>
             )}
 
+            <GameHistory simId={sim.id} jeu="machines" tick={shown.session?.spins} />
             <button className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-full bg-white/12 py-2.5 text-[14px] font-extrabold text-white disabled:opacity-50" onClick={onLeave} disabled={busy}>
               <LogOut size={16} /> Quitter la machine
             </button>

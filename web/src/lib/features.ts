@@ -59,4 +59,4 @@ export const keyOpen = (s: State, key: string) => LAB || (!s.keys.has(key) && (s
 
 // What an update may hide (the same as backend features.List): held back while the server's answer hasn't come.
 const MAYBE_INTERACTIONS = new Set(['play-foot11', 'console-combat', 'console-course', 'course-kart', 'regarder-kart', 'borne-arcade'])
-const MAYBE_KEYS = new Set(['foot11', 'foot-coupe', 'foot-carriere', 'app:tikitoko', 'app:babigram'])
+const MAYBE_KEYS = new Set(['foot11', 'foot-coupe', 'foot-carriere', 'app:tikitoko', 'app:babigram', 'historique'])

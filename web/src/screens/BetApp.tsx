@@ -5,6 +5,7 @@ import { api, ApiError } from '../lib/api'
 import type { BetRounds, BetView, Sim, Sport, VirtualMatch } from '../lib/types'
 import type { Act } from './phoneApps'
 import { NotifyBanner } from '../components/NotifyPrompt'
+import { GameHistory } from '../components/GameHistory'
 
 /**
  * The betting apps (backend game/betting.go, sims/bets.go), on the Babi
@@ -72,6 +73,10 @@ export function BetApp({ sim, act, app }: { sim: Sim; act: Act; app: 'bet225' | 
     <>
       <NotifyBanner what="quand les matchs de ton pari sont finis" dark={app === 'bet225'} />
       {app === 'parisfoot' ? <ParisFoot sim={sim} s={s} /> : <Bet225 sim={sim} s={s} />}
+      {/* What the bets came to: today, the week, the last ones (on a dark card, in both apps). */}
+      <div className="mx-3 mb-4 rounded-[22px] bg-[#0f1230] px-3 pb-3 pt-1">
+        <GameHistory simId={sim.id} jeu={app} tick={s.bets.filter((b) => b.status !== 'open').length} />
+      </div>
     </>
   )
 }

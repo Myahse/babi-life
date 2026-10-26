@@ -282,6 +282,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/foot/sign/{player}", h.footSign)
 	r.Post("/sims/{id}/foot/release/{player}", h.footRelease)
 	r.Post("/sims/{id}/machine", h.machineSpin)
+	r.Get("/sims/{id}/historique", h.historique)
 	r.Get("/sims/{id}/bingo", h.bingoState)
 	r.Post("/sims/{id}/bingo", h.buyBingo)
 	r.Post("/sims/{id}/bingo/paye", h.settleBets)
