@@ -124,7 +124,7 @@ L'argent de poche : un cinquième de la somme de la semaine à chaque anniversai
 | Paris (marge 6 à 8 %) ; loto (rend 83 %, 62 % ou 21 % selon 1, 2 ou 3 numéros) | | |
 | Machines à sous (`game/slots.go`) : maquis 100 à 500 le tour (tout montant entre les deux), casino de l'Hôtel Ivoire 500 à 2 000 ; elles rendent environ 89 % des mises sur la durée (`SlotsReturn`, vérifié par son test), un tour sur trois gagne quelque chose | | |
 | Babi Bingo (`game/bingo.go`) : 100 à 1 000 le carton, 4 cartons par partie ; chaque salle rend environ 85 % des mises (`BingoReturn`, vérifié par son test : entre 80 et 90 %), un carton sur quatre ou cinq gagne quelque chose | | |
-| Babi Casino (`game/casino.go`) : roulette (jetons de 100 à 5 000, tapés ou de 100 à 2 000 en un geste, 5 000 par tour au plus ; rend 36/37), le 21 (100 à 5 000 ; ≈ 98 % bien joué), tickets à gratter (200, 500, 1 000 ; rendent 62 à 66 %) | | |
+| Babi Casino (`game/casino.go`) : roulette (jetons de 100 à 5 000, tapés ou de 100 à 2 000 en un geste, 20 mises et 5 000 par tour au plus ; plein, cheval, transversale, carré, sixain et chances simples payés comme au vrai casino : rend 36/37), le 21 (100 à 5 000, autant pour séparer une paire ou doubler, la moitié pour l'assurance ; ≈ 98,8 % bien joué, `TestBlackjack`), tickets à gratter (200, 500, 1 000 ; rendent 62 à 66 %) | | |
 | L'Envol (`game/envol.go`) : 100 à 5 000 la mise, un envol toutes les 40 s ; rend 95 % quel que soit le moment où l'on encaisse (`EnvolReturn`, vérifié par son test) | | |
 | Babi Trade (`game/envol.go`) : 100 à 5 000 le pari, 3 ouverts au plus ; juste 1,85 fois la mise, rend 92,5 % (les cours sont un hasard sans tendance, vérifié par son test) | | |
 

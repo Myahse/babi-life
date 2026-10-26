@@ -132,6 +132,7 @@ func blackjackHand(ctx context.Context, q interface {
 	if err := json.Unmarshal(raw, &hand); err != nil {
 		return nil, err
 	}
+	hand.Normalize()
 	return &hand, nil
 }
 
@@ -154,7 +155,8 @@ func (h *Handler) blackjackState(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusOK, map[string]any{"hand": hand.View()})
 }
 
-// blackjack: POST /sims/{id}/casino/21 {move, stake} — distribuer (a new hand for the stake), tirer, rester, doubler.
+// blackjack: POST /sims/{id}/casino/21 {move, stake} — distribuer (a new hand for the stake), tirer, rester,
+// doubler, separer (a pair), assurance or non (the dealer showing an ace).
 func (h *Handler) blackjack(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Move  string `json:"move"`
@@ -212,11 +214,10 @@ func (s *Sim) playBlackjack(hand *game.BlackjackHand, move string, stake int, rn
 		if hand == nil || hand.Done {
 			return game.Outcome{}, nil, nil, errNoHand
 		}
-		if move == "doubler" {
-			if s.Money < hand.Stake {
-				return game.Outcome{}, nil, nil, game.ErrNotEnoughMoney
-			}
-			taken = hand.Stake
+		// A double, a split, the insurance: as much again on the table (or half, the insurance).
+		taken = hand.Cost(move)
+		if s.Money < taken {
+			return game.Outcome{}, nil, nil, game.ErrNotEnoughMoney
 		}
 		if err := hand.Play(move); err != nil {
 			return game.Outcome{}, nil, nil, err
@@ -235,7 +236,7 @@ func (s *Sim) playBlackjack(hand *game.BlackjackHand, move string, stake int, rn
 			"perdu":     "La banque gagne.",
 			"saute":     "Plus de 21 : tu as sauté.",
 		}[hand.Result]
-		events = bigWin(s, "le 21", hand.Stake, hand.Paid)
+		events = bigWin(s, "le 21", hand.Staked(), hand.Paid)
 	}
 	out.Data = hand.View()
 	return out, events, hand, nil

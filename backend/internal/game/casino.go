@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand/v2"
+	"slices"
 )
 
 // Babi Casino (sims/casino.go, web screens/CasinoApp.tsx): the roulette, le
@@ -20,12 +21,51 @@ const CasinoPerDay = 300
 /* ---------- La roulette ---------- */
 
 // RouletteBet: a stake on the cloth. Kind: plein (Number 0–36), rouge, noir, pair,
-// impair, manque (1–18), passe (19–36), douzaine and colonne (Number 1–3).
+// impair, manque (1–18), passe (19–36), douzaine and colonne (Number 1–3); and the
+// numbers together on their lines (Numbers): cheval (2 side by side), transversale
+// (a row of 3, or the zero with 1-2 or 2-3), carre (4 at a corner, or 0-1-2-3),
+// sixain (two rows): each pays 36 for 1 divided among its numbers.
 type RouletteBet struct {
-	Kind   string `json:"kind"`
-	Number int    `json:"number,omitempty"`
-	Stake  int    `json:"stake"`
+	Kind    string `json:"kind"`
+	Number  int    `json:"number,omitempty"`
+	Numbers []int  `json:"numbers,omitempty"`
+	Stake   int    `json:"stake"`
 }
+
+// rouletteGroups: the numbers one may bet together, by kind, keyed by their sorted list.
+var rouletteGroups = func() map[string]map[string]bool {
+	g := map[string]map[string]bool{"cheval": {}, "transversale": {}, "carre": {}, "sixain": {}}
+	add := func(kind string, ns ...int) {
+		slices.Sort(ns)
+		g[kind][fmt.Sprint(ns)] = true
+	}
+	for n := 1; n <= 36; n++ {
+		if n%3 != 0 {
+			add("cheval", n, n+1) // side by side in a row
+		}
+		if n <= 33 {
+			add("cheval", n, n+3) // one above the other
+		}
+	}
+	add("cheval", 0, 1)
+	add("cheval", 0, 2)
+	add("cheval", 0, 3)
+	for r := 1; r <= 34; r += 3 {
+		add("transversale", r, r+1, r+2)
+		if r <= 31 {
+			add("sixain", r, r+1, r+2, r+3, r+4, r+5)
+		}
+	}
+	add("transversale", 0, 1, 2)
+	add("transversale", 0, 2, 3)
+	for n := 1; n <= 32; n++ {
+		if n%3 != 0 {
+			add("carre", n, n+1, n+3, n+4)
+		}
+	}
+	add("carre", 0, 1, 2, 3)
+	return g
+}()
 
 // StakeIn: whether a stake typed by the player is one a game takes: any whole amount
 // from its least usual stake to its most (the usual ones are offered in a tap).
@@ -39,7 +79,7 @@ var RouletteChips = []int{100, 500, 1000, 2000}
 
 const (
 	RouletteMaxTotal = 5000
-	RouletteMaxBets  = 10
+	RouletteMaxBets  = 20
 )
 
 // rouletteRed: the red numbers of the wheel.
@@ -68,6 +108,11 @@ func RouletteCheck(b RouletteBet) error {
 	case "rouge", "noir", "pair", "impair", "manque", "passe":
 	case "douzaine", "colonne":
 		if b.Number < 1 || b.Number > 3 {
+			return errRouletteBet
+		}
+	case "cheval", "transversale", "carre", "sixain":
+		ns := slices.Sorted(slices.Values(b.Numbers))
+		if !rouletteGroups[b.Kind][fmt.Sprint(ns)] {
 			return errRouletteBet
 		}
 	default:
@@ -101,6 +146,9 @@ func RoulettePays(b RouletteBet, n int) int {
 		win, times = n != 0 && (n-1)/12+1 == b.Number, 2
 	case "colonne":
 		win, times = n != 0 && (n-1)%3+1 == b.Number, 2
+	case "cheval", "transversale", "carre", "sixain":
+		// 36 for 1 among its numbers: 17 to 1, 11 to 1, 8 to 1, 5 to 1.
+		win, times = slices.Contains(b.Numbers, n), 36/max(len(b.Numbers), 1)-1
 	}
 	if !win {
 		return 0
@@ -140,21 +188,66 @@ func IsBlackjack(cards []int) bool {
 	return len(cards) == 2 && t == 21
 }
 
-// BlackjackHand: a hand being played. The shoe (six decks, shuffled for each hand)
-// and the dealer's hidden card stay on the server.
+// BlackjackHand: a round at the table: the player's hand (or two, once split), the
+// dealer's, and the shoe (six decks, shuffled for each round); the shoe and the
+// dealer's hidden card stay on the server. When the dealer shows an ace, the
+// insurance is offered first (half the stake, paid 2 to 1 if the dealer has a
+// blackjack); then the dealer looks at the hidden card (a blackjack ends the round).
+// A pair may be split once into two hands, each with the stake again (split aces
+// take one card each); a hand of two cards may be doubled.
 type BlackjackHand struct {
-	Stake   int   `json:"stake"`
-	Player  []int `json:"player"`
-	Dealer  []int `json:"dealer"`
-	Shoe    []int `json:"shoe"`
-	Doubled bool  `json:"doubled,omitempty"`
-	Done    bool  `json:"done,omitempty"`
-	// Result: blackjack, gagne, egalite, perdu, saute (over 21); Paid: what came back.
+	// Stake: what was put down at the deal; each hand of a split takes as much again.
+	Stake int      `json:"stake"`
+	Hands []BJHand `json:"hands"`
+	// At: the hand being played.
+	At     int   `json:"at"`
+	Dealer []int `json:"dealer"`
+	Shoe   []int `json:"shoe"`
+	// Offer: the insurance offered, not answered yet; Insurance: what was staked on it.
+	Offer     bool `json:"offer,omitempty"`
+	Insurance int  `json:"insurance,omitempty"`
+	Done      bool `json:"done,omitempty"`
+	// Result: blackjack, gagne, egalite, perdu, saute (one hand), or the round's
+	// over all its hands; Paid: what came back, the insurance's included.
 	Result string `json:"result,omitempty"`
 	Paid   int    `json:"paid,omitempty"`
+	// A hand saved before the split came in (one hand: its cards here).
+	Player  []int `json:"player,omitempty"`
+	Doubled bool  `json:"doubled,omitempty"`
 }
 
-// DealBlackjack: a new hand: two cards each; a blackjack on either side ends it at once.
+// BJHand: one of the player's hands.
+type BJHand struct {
+	Cards   []int  `json:"cards"`
+	Stake   int    `json:"stake"`
+	Doubled bool   `json:"doubled,omitempty"`
+	Done    bool   `json:"done,omitempty"`
+	Result  string `json:"result,omitempty"`
+	Paid    int    `json:"paid,omitempty"`
+}
+
+// Normalize: a round saved before the split came in, as one hand.
+func (h *BlackjackHand) Normalize() {
+	if len(h.Hands) == 0 && len(h.Player) > 0 {
+		h.Hands = []BJHand{{Cards: h.Player, Stake: h.Stake, Doubled: h.Doubled, Done: h.Done, Result: h.Result, Paid: h.Paid}}
+		if h.Doubled {
+			h.Stake /= 2
+		}
+		h.Player, h.Doubled = nil, false
+	}
+}
+
+// Staked: all that was put on the table this round (the doubles, the split, the insurance).
+func (h *BlackjackHand) Staked() int {
+	t := h.Insurance
+	for _, x := range h.Hands {
+		t += x.Stake
+	}
+	return t
+}
+
+// DealBlackjack: a new round: two cards each. The dealer showing an ace: the insurance
+// is offered first; else the dealer looks, and a blackjack on either side ends it at once.
 func DealBlackjack(stake int, rng *rand.Rand) *BlackjackHand {
 	shoe := make([]int, 0, 6*52)
 	for range 6 {
@@ -164,11 +257,16 @@ func DealBlackjack(stake int, rng *rand.Rand) *BlackjackHand {
 	}
 	rng.Shuffle(len(shoe), func(i, j int) { shoe[i], shoe[j] = shoe[j], shoe[i] })
 	h := &BlackjackHand{Stake: stake, Shoe: shoe}
-	h.Player = []int{h.draw(), h.draw()}
-	h.Dealer = []int{h.draw(), h.draw()}
-	if IsBlackjack(h.Player) || IsBlackjack(h.Dealer) {
-		h.settle()
+	p := []int{h.draw()}
+	h.Dealer = []int{h.draw()}
+	p = append(p, h.draw())
+	h.Dealer = append(h.Dealer, h.draw())
+	h.Hands = []BJHand{{Cards: p, Stake: stake}}
+	if h.Dealer[0]%13 == 0 && !IsBlackjack(p) {
+		h.Offer = true
+		return h
 	}
+	h.peek()
 	return h
 }
 
@@ -181,89 +279,197 @@ func (h *BlackjackHand) draw() int {
 var (
 	ErrHandOver      = errors.New("cette main est finie : distribue une nouvelle main")
 	ErrCantDouble    = errors.New("on ne double que sur les deux premières cartes")
+	ErrCantSplit     = errors.New("on ne sépare qu'une paire, une seule fois")
+	ErrAnswerFirst   = errors.New("l'assurance d'abord : la prendre ou non ?")
 	errUnknownBJMove = errors.New("coup inconnu")
 )
 
-// Play: tirer (a card), rester (the dealer plays), doubler (the stake doubled, one card, then the dealer).
+// Cost: what a move puts on the table besides what's there (a double, a split, the insurance).
+func (h *BlackjackHand) Cost(move string) int {
+	switch move {
+	case "doubler":
+		if h.At < len(h.Hands) {
+			return h.Hands[h.At].Stake
+		}
+	case "separer":
+		return h.Stake
+	case "assurance":
+		return h.Stake / 2
+	}
+	return 0
+}
+
+// Play: assurance or non (the insurance offered), tirer (a card), rester, doubler (the
+// stake doubled, one card), separer (a pair split into two hands).
 func (h *BlackjackHand) Play(move string) error {
 	if h.Done {
 		return ErrHandOver
 	}
+	if h.Offer {
+		switch move {
+		case "assurance":
+			h.Insurance = h.Stake / 2
+		case "non":
+		default:
+			return ErrAnswerFirst
+		}
+		h.Offer = false
+		h.peek()
+		return nil
+	}
+	x := &h.Hands[h.At]
 	switch move {
 	case "tirer":
-		h.Player = append(h.Player, h.draw())
-		if t, _ := HandTotal(h.Player); t >= 21 {
-			h.settle()
+		x.Cards = append(x.Cards, h.draw())
+		if t, _ := HandTotal(x.Cards); t >= 21 {
+			h.next()
 		}
 	case "rester":
-		h.settle()
+		h.next()
 	case "doubler":
-		if len(h.Player) != 2 {
+		if len(x.Cards) != 2 || (len(h.Hands) > 1 && x.Cards[0]%13 == 0) {
 			return ErrCantDouble
 		}
-		h.Doubled = true
-		h.Stake *= 2
-		h.Player = append(h.Player, h.draw())
-		h.settle()
+		x.Doubled = true
+		x.Stake *= 2
+		x.Cards = append(x.Cards, h.draw())
+		h.next()
+	case "separer":
+		if !h.CanSplit() {
+			return ErrCantSplit
+		}
+		a, b := x.Cards[0], x.Cards[1]
+		h.Hands = []BJHand{{Cards: []int{a, h.draw()}, Stake: h.Stake}, {Cards: []int{b, h.draw()}, Stake: h.Stake}}
+		// Split aces: one card each, and that's all.
+		if a%13 == 0 {
+			h.Hands[0].Done, h.Hands[1].Done = true, true
+			h.finish()
+		}
 	default:
 		return errUnknownBJMove
 	}
 	return nil
 }
 
-// settle: the dealer draws to 17 (standing on a soft 17), the hands are compared,
-// the hand paid: 2,5 times the stake for a blackjack, 2 times for a win, the stake back on a tie.
-func (h *BlackjackHand) settle() {
-	h.Done = true
-	p, _ := HandTotal(h.Player)
-	switch {
-	case IsBlackjack(h.Player) && IsBlackjack(h.Dealer):
-		h.Result, h.Paid = "egalite", h.Stake
-		return
-	case IsBlackjack(h.Player):
-		h.Result, h.Paid = "blackjack", h.Stake*5/2
-		return
-	case IsBlackjack(h.Dealer):
-		h.Result = "perdu"
-		return
-	case p > 21:
-		h.Result = "saute"
-		return
+// CanSplit: a pair of the same card, before anything else is played (and no second split).
+func (h *BlackjackHand) CanSplit() bool {
+	if h.Done || h.Offer || len(h.Hands) != 1 {
+		return false
 	}
-	for {
-		d, _ := HandTotal(h.Dealer)
-		if d >= 17 {
-			break
+	c := h.Hands[0].Cards
+	return len(c) == 2 && c[0]%13 == c[1]%13
+}
+
+// peek: the dealer looks at the hidden card: a blackjack (or the player's) ends the round.
+func (h *BlackjackHand) peek() {
+	if IsBlackjack(h.Dealer) || IsBlackjack(h.Hands[0].Cards) {
+		for i := range h.Hands {
+			h.Hands[i].Done = true
 		}
-		h.Dealer = append(h.Dealer, h.draw())
+		h.finish()
+	}
+}
+
+// next: this hand is over; on to the next, or the dealer's turn.
+func (h *BlackjackHand) next() {
+	h.Hands[h.At].Done = true
+	for h.At < len(h.Hands) && h.Hands[h.At].Done {
+		h.At++
+	}
+	if h.At >= len(h.Hands) {
+		h.finish()
+	}
+}
+
+// finish: the dealer draws to 17 (standing on a soft 17) unless every hand has gone
+// over, each hand is compared and paid (2,5 times for a blackjack, 2 times for a win,
+// the stake back on a tie), the insurance paid 3 times if the dealer had a blackjack.
+func (h *BlackjackHand) finish() {
+	h.Done, h.At = true, max(0, len(h.Hands)-1)
+	dealerBJ := IsBlackjack(h.Dealer)
+	alive := false
+	for _, x := range h.Hands {
+		if t, _ := HandTotal(x.Cards); t <= 21 {
+			alive = true
+		}
+	}
+	split := len(h.Hands) > 1
+	if alive && !dealerBJ && !(len(h.Hands) == 1 && IsBlackjack(h.Hands[0].Cards)) {
+		for {
+			d, _ := HandTotal(h.Dealer)
+			if d >= 17 {
+				break
+			}
+			h.Dealer = append(h.Dealer, h.draw())
+		}
 	}
 	d, _ := HandTotal(h.Dealer)
+	h.Paid = 0
+	for i := range h.Hands {
+		x := &h.Hands[i]
+		p, _ := HandTotal(x.Cards)
+		bj := !split && IsBlackjack(x.Cards)
+		switch {
+		case bj && dealerBJ:
+			x.Result, x.Paid = "egalite", x.Stake
+		case bj:
+			x.Result, x.Paid = "blackjack", x.Stake*5/2
+		case dealerBJ:
+			x.Result = "perdu"
+		case p > 21:
+			x.Result = "saute"
+		case d > 21 || p > d:
+			x.Result, x.Paid = "gagne", x.Stake*2
+		case p == d:
+			x.Result, x.Paid = "egalite", x.Stake
+		default:
+			x.Result = "perdu"
+		}
+		h.Paid += x.Paid
+	}
+	if dealerBJ && h.Insurance > 0 {
+		h.Paid += h.Insurance * 3
+	}
+	// The round's word: one hand's own; over two, how the whole came out.
+	staked := h.Staked()
 	switch {
-	case d > 21 || p > d:
-		h.Result, h.Paid = "gagne", h.Stake*2
-	case p == d:
-		h.Result, h.Paid = "egalite", h.Stake
+	case !split && h.Insurance == 0:
+		h.Result = h.Hands[0].Result
+	case h.Paid > staked:
+		h.Result = "gagne"
+	case h.Paid == staked:
+		h.Result = "egalite"
 	default:
 		h.Result = "perdu"
 	}
 }
 
-// BlackjackView: a hand as the player sees it: the dealer's second card hidden till the end.
+// BlackjackView: a round as the player sees it: the dealer's second card hidden till the end.
 type BlackjackView struct {
-	Stake   int    `json:"stake"`
-	Player  []int  `json:"player"`
-	Dealer  []int  `json:"dealer"`
-	Total   int    `json:"total"`
-	Shown   int    `json:"shown"`
-	Doubled bool   `json:"doubled,omitempty"`
-	Done    bool   `json:"done"`
-	Result  string `json:"result,omitempty"`
-	Paid    int    `json:"paid,omitempty"`
+	Stake int      `json:"stake"`
+	Hands []BJHand `json:"hands"`
+	At    int      `json:"at"`
+	// Player, Total: the hand being played (the last, after the round).
+	Player    []int  `json:"player"`
+	Total     int    `json:"total"`
+	Dealer    []int  `json:"dealer"`
+	Shown     int    `json:"shown"`
+	Doubled   bool   `json:"doubled,omitempty"`
+	Offer     bool   `json:"offer,omitempty"`
+	Insurance int    `json:"insurance,omitempty"`
+	CanSplit  bool   `json:"canSplit,omitempty"`
+	Staked    int    `json:"staked"`
+	Done      bool   `json:"done"`
+	Result    string `json:"result,omitempty"`
+	Paid      int    `json:"paid,omitempty"`
 }
 
 func (h *BlackjackHand) View() BlackjackView {
-	v := BlackjackView{Stake: h.Stake, Player: h.Player, Dealer: h.Dealer, Doubled: h.Doubled, Done: h.Done, Result: h.Result, Paid: h.Paid}
-	v.Total, _ = HandTotal(h.Player)
+	h.Normalize()
+	at := min(h.At, len(h.Hands)-1)
+	x := h.Hands[at]
+	v := BlackjackView{Stake: h.Stake, Hands: h.Hands, At: at, Player: x.Cards, Dealer: h.Dealer, Doubled: x.Doubled, Offer: h.Offer, Insurance: h.Insurance, CanSplit: h.CanSplit(), Staked: h.Staked(), Done: h.Done, Result: h.Result, Paid: h.Paid}
+	v.Total, _ = HandTotal(x.Cards)
 	if !h.Done {
 		v.Dealer = h.Dealer[:1]
 	}
