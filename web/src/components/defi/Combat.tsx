@@ -1,348 +1,340 @@
-import { useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Skull, Trophy } from 'lucide-react'
 import { haptic } from '../../lib/native'
-import { clamp, Count, hold, PadButton, useCanvas, useCount, useKeys, useLoop } from './arcade'
+import { sfx } from '../../lib/sfx'
+import type { Look } from '../../lib/types'
+import { randomLook } from '../../avatar/options'
+import { Portrait } from '../../avatar/portrait'
+import { rng } from '../../world3d/themes'
+import { hold, useKeys } from './arcade'
+import { aiPad, FOES, newMind, type Foe } from './combat/ai'
+import { createFight, fightScore, NO_PAD, ROUND_TIME, stepFight, type Fight, type FightEvent, type Pad } from './combat/engine'
+import { FightCanvas, type FighterLook } from './combat/Scene'
 
-// Le jeu de combat, manette contre manette: two fighters face to face in a
-// street of Treichville at night, the crowd round them. ◀ ▶ move; « Poing »
-// is quick and short, « Pied » slower and further, « Garde » held takes the
-// blows (a scratch gets through); each blow fills the jauge, and full, the
-// « Coupé-décalé » goes off: a dash that hurts. Two rounds won take the match
-// (45 seconds a round: at the bell, the most life left wins it).
+// Le combat de rue, on the console of the salle de jeux: your own Sim
+// against a fighter of the street (combat/ai.ts), in a road of Treichville at
+// night (combat/Scene.tsx), by the rules of combat/engine.ts. ◀ ▶ move (twice
+// quickly: a dash), ▲ jumps, ▼ crouches; « Poing » chains jab, cross,
+// uppercut; « Pied » is the high kick (▼: the sweep); « Garde » held takes
+// the blows (crouching for the low ones), with « Poing » close in it throws;
+// the gauge full, « Super ». Two rounds won take the match.
 
-const W = 360
-const H = 300
-const GROUND = 252
-const ROUND = 45
-const RIVAL = "Le Boss d'Adjamé"
+type Me = { look: Look; gender: 'femme' | 'homme' }
+const BEATEN = 'babi.combat.beaten'
 
-type Move = 'punch' | 'kick' | 'super'
-type State = 'idle' | 'walk' | Move | 'block' | 'hit' | 'ko'
-type F = { x: number; vx: number; hp: number; state: State; t: number; stun: number; meter: number; landed: boolean; face: 1 | -1; ai: number; blockFor: number }
-const MOVES: Record<Move, { start: number; active: number; rec: number; range: number; dmg: number; stun: number; knock: number }> = {
-  punch: { start: 0.07, active: 0.08, rec: 0.16, range: 42, dmg: 6, stun: 0.25, knock: 30 },
-  kick: { start: 0.15, active: 0.1, rec: 0.28, range: 56, dmg: 11, stun: 0.35, knock: 60 },
-  super: { start: 0.1, active: 0.38, rec: 0.3, range: 46, dmg: 22, stun: 0.6, knock: 150 },
+/** How the street's fighters look (on top of a look drawn from their seed). */
+const FOE_LOOK: Record<Foe['id'], Partial<Look>> = {
+  yao: { body: 'mince', height: 0.95, outfit: 'debardeur', outfitColor: '#f6c445', bottomColor: '#2b3a67', hair: 'degrade', skin: '#7a4a2a', beard: 'none' },
+  go: { body: 'mince', height: 1.02, outfit: 'jogging', outfitColor: '#ff3d7f', bottomColor: '#1d1d24', hair: 'cornrows', hairColor: '#1a1010', skin: '#5b3620' },
+  boss: { body: 'fort', height: 1.1, outfit: 'blouson', outfitColor: '#1f2937', bottomColor: '#111827', hair: 'bald', skin: '#3e2516' },
 }
-const busy = (f: F) => f.state === 'punch' || f.state === 'kick' || f.state === 'super' || f.state === 'hit' || f.state === 'ko'
+const foeLook = (f: Foe): Look => ({ ...randomLook(f.gender, rng(`foe-${f.id}`)), ...FOE_LOOK[f.id] })
 
-/** The match as a score: won 2–0 from 80, 2–1 from 62 (more with life left); lost, by the blows given. */
-export function fightScore(won: number, lost: number, hpLeft: number, dealt: number) {
-  if (won >= 2) return Math.round(Math.min(100, (lost === 0 ? 80 : 62) + hpLeft / 5))
-  return Math.round(won === 1 ? 30 + Math.min(15, dealt / 14) : Math.min(25, dealt / 8))
+function beaten(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(BEATEN) ?? '[]')
+  } catch {
+    return []
+  }
 }
 
-export function CombatDefi({ onEnd }: { onEnd: (score: number) => void }) {
-  const { ref, ctx } = useCanvas(W, H)
-  const keys = useKeys()
-  const ask = useRef({ dir: 0, punch: false, kick: false, guard: false, super: false })
-  const n = useCount(3)
-  const st = useRef({ me: fighter(110, 1), them: fighter(250, -1), t: 0, round: 1, won: 0, lost: 0, dealt: 0, pause: 0, over: false, said: '' })
-  const [hud, setHud] = useState({ hp: [100, 100], meter: [0, 0], left: ROUND, round: 1, won: 0, lost: 0, said: '' })
+export function CombatDefi({ onEnd, me }: { onEnd: (score: number) => void; me?: Me }) {
+  const [foe, setFoe] = useState<Foe | null>(null)
+  if (!foe) return <Pick onPick={setFoe} />
+  return <Match foe={foe} me={me} onEnd={onEnd} />
+}
 
-  const step = (dt: number) => {
-    const s = st.current
-    const c = ctx()
-    if (n > 0 || s.over) return c && draw(c, s)
-    if (s.pause > 0) {
-      s.pause -= dt
-      if (s.pause <= 0) {
-        if (s.won >= 2 || s.lost >= 2) return end(s)
-        s.round++
-        Object.assign(s.me, fighter(110, 1), { meter: s.me.meter })
-        Object.assign(s.them, fighter(250, -1), { meter: s.them.meter })
-        s.t = 0
-        s.said = `Round ${s.round}`
-        setTimeout(() => (s.said = ''), 900)
-      }
-      return c && draw(c, s)
-    }
-    s.t += dt
-    const { me, them } = s
-    // The player's hands (the pad, the keys).
-    const k = keys.current
-    const a = ask.current
-    const dir = clamp(a.dir + (k.has('ArrowRight') || k.has('KeyD') ? 1 : 0) - (k.has('ArrowLeft') || k.has('KeyA') ? 1 : 0), -1, 1)
-    const guard = a.guard || k.has('KeyL') || k.has('ArrowDown')
-    act(me, dir, guard, a.punch || k.has('KeyJ'), a.kick || k.has('KeyK'), a.super || k.has('Space'))
-    a.punch = a.kick = a.super = false
-    for (const key of ['KeyJ', 'KeyK', 'Space']) k.delete(key)
-    // The rival: a look every few tenths of a second (it reacts, a little late), then a choice.
-    them.ai -= dt
-    them.blockFor = Math.max(0, them.blockFor - dt)
-    const gap = Math.abs(them.x - me.x)
-    let tdir = 0
-    let tguard = them.blockFor > 0
-    let tp = false
-    let tk = false
-    let ts = false
-    if (them.ai <= 0 && !busy(them)) {
-      them.ai = 0.16 + Math.random() * 0.22
-      const r = Math.random()
-      if ((me.state === 'punch' || me.state === 'kick' || me.state === 'super') && me.t < MOVES[me.state].start + 0.05 && gap < 70 && r < 0.5) them.blockFor = 0.45
-      else if (them.meter >= 100 && gap < 130 && r < 0.35) ts = true
-      else if (gap < 50) tp = r < 0.55
-      else if (gap < 62) tk = r < 0.5
-      tguard = them.blockFor > 0
-    }
-    if (!tp && !tk && !ts && !tguard) tdir = gap > 48 ? (me.x > them.x ? 1 : -1) * (Math.random() < 0.9 ? 1 : 0) : Math.random() < 0.03 ? (me.x > them.x ? -1 : 1) : 0
-    act(them, tdir, tguard, tp, tk, ts)
-    for (const f of [me, them]) {
-      f.t += dt
-      const o = f === me ? them : me
-      f.face = o.x > f.x ? 1 : -1
-      if (f.state === 'walk') f.x += f.vx * dt
-      if (f.state === 'super' && f.t > MOVES.super.start && f.t < MOVES.super.start + MOVES.super.active) f.x += f.face * 300 * dt
-      // A move's end, a stun's end.
-      if (f.state === 'punch' || f.state === 'kick' || f.state === 'super') {
-        const m = MOVES[f.state]
-        if (f.t >= m.start + m.active + m.rec) setState(f, 'idle')
-      }
-      if (f.state === 'hit' && f.t > f.stun) setState(f, 'idle')
-    }
-    // Apart, in the street.
-    for (const f of [me, them]) f.x = clamp(f.x, 22, W - 22)
-    if (Math.abs(me.x - them.x) < 34) {
-      const push = (34 - Math.abs(me.x - them.x)) / 2
-      const sgn = me.x < them.x ? -1 : 1
-      me.x += sgn * push
-      them.x -= sgn * push
-    }
-    // The blows that land.
-    for (const [f, o] of [[me, them], [them, me]] as const) {
-      if (f.state !== 'punch' && f.state !== 'kick' && f.state !== 'super') continue
-      const m = MOVES[f.state]
-      if (f.landed || f.t < m.start || f.t > m.start + m.active || o.state === 'ko') continue
-      if ((o.x - f.x) * f.face <= 0 || Math.abs(o.x - f.x) > m.range) continue
-      f.landed = true
-      const blocked = o.state === 'block'
-      const dmg = blocked ? (f.state === 'super' ? 5 : 1) : m.dmg
-      o.hp = Math.max(0, o.hp - dmg)
-      o.x += f.face * (blocked ? m.knock * 0.3 : m.knock) * 0.25
-      f.meter = Math.min(100, f.meter + (blocked ? 4 : 12))
-      o.meter = Math.min(100, o.meter + 6)
-      if (f === me) s.dealt += dmg
-      if (!blocked) {
-        setState(o, 'hit')
-        o.stun = m.stun
-      }
-      haptic(f === me ? (blocked ? 'light' : 'medium') : blocked ? 'light' : 'heavy')
-      if (o.hp <= 0) {
-        setState(o, 'ko')
-        roundOver(s, o === them)
-      }
-    }
-    if (s.pause <= 0 && s.t >= ROUND) roundOver(s, me.hp > them.hp, me.hp === them.hp)
-    if (c) draw(c, s)
-    if (Math.round(s.t * 8) !== Math.round((s.t - dt) * 8)) setHud({ hp: [me.hp, them.hp], meter: [me.meter, them.meter], left: Math.max(0, Math.ceil(ROUND - s.t)), round: s.round, won: s.won, lost: s.lost, said: s.said })
-  }
+/* ---------- Who to fight ---------- */
 
-  const roundOver = (s: typeof st.current, won: boolean, tie = false) => {
-    if (s.pause > 0) return
-    if (tie) (s.won++, s.lost++)
-    else if (won) s.won++
-    else s.lost++
-    s.said = tie ? 'Égalité' : won ? (s.them.hp <= 0 ? 'K.O. !' : 'Round gagné') : s.me.hp <= 0 ? 'K.O.…' : 'Round perdu'
-    s.pause = 1.8
-    haptic(won ? 'success' : 'error')
-    setHud((h) => ({ ...h, hp: [s.me.hp, s.them.hp], won: s.won, lost: s.lost, said: s.said }))
-  }
-  const end = (s: typeof st.current) => {
-    if (s.over) return
-    s.over = true
-    const win = s.won >= 2 && s.won > s.lost
-    s.said = win ? 'Victoire !' : 'Défaite'
-    setHud((h) => ({ ...h, said: s.said }))
-    setTimeout(() => onEnd(fightScore(win ? 2 : Math.min(1, s.won), s.lost, s.me.hp, s.dealt)), 1300)
-  }
-  useLoop(step)
-
-  const bar = (v: number, right: boolean) => (
-    <div className={`h-3 flex-1 overflow-hidden rounded-full bg-black/50 ring-1 ring-white/30 ${right ? 'rotate-180' : ''}`}>
-      <div className="h-full rounded-full transition-[width] duration-150" style={{ width: `${v}%`, background: v > 50 ? '#40c057' : v > 25 ? '#ffc233' : '#e03131' }} />
+function Pick({ onPick }: { onPick: (f: Foe) => void }) {
+  const done = useMemo(beaten, [])
+  return (
+    <div className="flex h-full flex-col overflow-y-auto bg-[radial-gradient(circle_at_50%_0%,#3b1d5c,#120d24)] px-4 pt-14 pb-6 text-white">
+      <div className="text-center font-display text-[26px] leading-tight font-extrabold">Choisis ton adversaire</div>
+      <p className="mt-1 text-center text-[13px] font-bold text-white/70">Plus il est fort, plus la victoire rapporte.</p>
+      <div className="mt-4 space-y-2.5">
+        {FOES.map((f, k) => (
+          <button key={f.id} className="flex w-full items-center gap-3 rounded-[22px] bg-white/10 p-3 text-left ring-1 ring-white/10 transition active:scale-[0.98]" onClick={() => onPick(f)}>
+            <span className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-white/15">
+              <Portrait look={foeLook(f)} gender={f.gender} framing="head" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center gap-1.5 font-display text-[18px] leading-tight font-extrabold">
+                {f.name}
+                {done.includes(f.id) && <Trophy size={15} className="text-[#ffc233]" />}
+              </span>
+              <span className="block text-[12.5px] leading-snug font-bold text-white/70">{f.about}</span>
+              <span className="mt-1 flex items-center gap-1 text-[11.5px] font-extrabold text-[#ffc233]">
+                {[0, 1, 2].map((s) => (
+                  <Skull key={s} size={13} className={s <= k ? '' : 'opacity-25'} />
+                ))}
+                <span className="ml-1 text-white/60">jusqu'à {[70, 85, 100][k]} points</span>
+              </span>
+            </span>
+          </button>
+        ))}
+      </div>
+      <div className="mt-4 rounded-2xl bg-black/25 p-3 text-[12.5px] leading-snug font-bold text-white/75">
+        <div className="mb-1 font-extrabold text-white">Les coups</div>
+        Poing, Poing, Poing : la série qui finit en uppercut. Pied : le coup de pied haut (accroupi, on l'esquive). ▼ + Pied : le balayage. Garde + Poing de près : la saisie, qui passe la garde. Deux fois ◀ ou ▶ : un pas rapide. Jauge
+        pleine : Super.
+      </div>
     </div>
+  )
+}
+
+/* ---------- The match ---------- */
+
+type Hud = { hp: [number, number]; meter: [number, number]; clock: number; wins: [number, number]; round: number; combo: number; said: string; saidAt: number; note: string; noteAt: number }
+
+function Match({ foe, me, onEnd }: { foe: Foe; me?: Me; onEnd: (score: number) => void }) {
+  const F = useRef<Fight>(createFight())
+  const mind = useRef(newMind())
+  const keys = useKeys()
+  const pad = useRef({ x: 0, up: false, down: false, guard: false, punch: false, kick: false, sup: false })
+  const ended = useRef(false)
+  const rank = FOES.indexOf(foe)
+  const looks = useMemo<[FighterLook, FighterLook]>(() => {
+    const mine = me ?? { look: randomLook('homme', rng('me')), gender: 'homme' as const }
+    return [
+      { look: mine.look, gender: mine.gender, seed: 3 },
+      { look: foeLook(foe), gender: foe.gender, seed: foe.seed },
+    ]
+  }, [me, foe])
+  const [hud, setHud] = useState<Hud>({ hp: [100, 100], meter: [0, 0], clock: ROUND_TIME, wins: [0, 0], round: 1, combo: 0, said: '', saidAt: 0, note: '', noteAt: 0 })
+  const shown = useRef(hud)
+  // The red under the life bar: what was just lost, catching up.
+  const [trail, setTrail] = useState<[number, number]>([100, 100])
+  useEffect(() => {
+    const t = setTimeout(() => setTrail(hud.hp), 450)
+    return () => clearTimeout(t)
+  }, [hud.hp])
+  // The keys' blows as presses (a tap shorter than a frame still counts).
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.repeat) return
+      if (e.code === 'KeyJ') pad.current.punch = true
+      else if (e.code === 'KeyK') pad.current.kick = true
+      else if (e.code === 'Space') pad.current.sup = true
+    }
+    window.addEventListener('keydown', down)
+    return () => window.removeEventListener('keydown', down)
+  }, [])
+  // In development, the fight for the test pilot in the browser.
+  if (import.meta.env.DEV) Object.assign(globalThis, { __combat: F })
+
+  const onFrame = (dt: number): FightEvent[] => {
+    const fight = F.current
+    const k = keys.current
+    const p = pad.current
+    const x = Math.max(-1, Math.min(1, p.x + (k.has('ArrowRight') || k.has('KeyD') ? 1 : 0) - (k.has('ArrowLeft') || k.has('KeyA') ? 1 : 0)))
+    const mine: Pad = {
+      x,
+      up: p.up || k.has('ArrowUp') || k.has('KeyW'),
+      down: p.down || k.has('ArrowDown') || k.has('KeyS'),
+      guard: p.guard || k.has('KeyL') || k.has('ShiftLeft'),
+      punch: p.punch,
+      kick: p.kick,
+      sup: p.sup,
+    }
+    p.punch = p.kick = p.sup = false
+    const before = fight.saidAt
+    // In the lab, ?dummy: the other one stands still (to look at the moves).
+    const still = import.meta.env.DEV && location.search.includes('dummy')
+    stepFight(fight, dt, [mine, still ? NO_PAD : aiPad(fight, 1, foe, mind.current)])
+    const evs = fight.events.splice(0)
+    if (fight.saidAt !== before && fight.said === 'Combat !') sfx.bell()
+    let note = ''
+    for (const e of evs) {
+      const mineHit = e.by === 0
+      if (e.kind === 'swing') sfx.swish(e.heavy)
+      else if (e.kind === 'hit' || e.kind === 'counter' || e.kind === 'throw') {
+        sfx.punch(e.heavy || e.kind !== 'hit')
+        haptic(mineHit ? 'medium' : 'heavy')
+        if (e.kind === 'counter') note = mineHit ? 'Contre !' : ''
+        if (e.kind === 'throw' && mineHit) note = 'Saisie !'
+      } else if (e.kind === 'block') sfx.guard()
+      else if (e.kind === 'land' && e.heavy) sfx.fall()
+      else if (e.kind === 'super') {
+        sfx.rise()
+        note = mineHit ? 'Coupé-décalé !' : ''
+      } else if (e.kind === 'ko') sfx.bell(3)
+    }
+    // The bars and the words, when they change.
+    const [a, b] = fight.f
+    const next: Hud = {
+      hp: [a.hp, b.hp],
+      meter: [Math.floor(a.meter), Math.floor(b.meter)],
+      clock: Math.ceil(fight.clock),
+      wins: [fight.wins[0], fight.wins[1]],
+      round: fight.round,
+      combo: b.combo,
+      said: fight.said,
+      saidAt: fight.saidAt,
+      note: note || shown.current.note,
+      noteAt: note ? fight.time : shown.current.noteAt,
+    }
+    const s = shown.current
+    if (
+      next.hp[0] !== s.hp[0] ||
+      next.hp[1] !== s.hp[1] ||
+      next.meter[0] !== s.meter[0] ||
+      next.meter[1] !== s.meter[1] ||
+      next.clock !== s.clock ||
+      next.combo !== s.combo ||
+      next.saidAt !== s.saidAt ||
+      next.noteAt !== s.noteAt ||
+      next.wins[0] !== s.wins[0] ||
+      next.wins[1] !== s.wins[1]
+    ) {
+      shown.current = next
+      setHud(next)
+    }
+    // The match over: the score, a moment after the last word.
+    if (fight.phase === 'over' && fight.phaseT > 2.2 && !ended.current) {
+      ended.current = true
+      const won = fight.wins[0] > fight.wins[1]
+      if (won)
+        try {
+          localStorage.setItem(BEATEN, JSON.stringify([...new Set([...beaten(), foe.id])]))
+        } catch {
+          /* private mode: not kept */
+        }
+      haptic(won ? 'success' : 'error')
+      onEnd(fightScore(fight.wins[0], fight.wins[1], a.hp, fight.dealt[0], rank))
+    }
+    return evs
+  }
+
+  const t = F.current.time
+  const saying = hud.said && t - hud.saidAt < (hud.said === 'Combat !' ? 0.7 : 1.4)
+  const noting = hud.note && t - hud.noteAt < 0.9
+  const bar = (v: number, back: number, right: boolean) => (
+    <div className={`relative h-[14px] flex-1 overflow-hidden rounded-[4px] bg-black/60 ring-2 ring-white/70 ${right ? '-scale-x-100' : ''}`}>
+      <div className="absolute inset-y-0 left-0 bg-[#e03131] transition-[width] duration-300" style={{ width: `${back}%` }} />
+      <div className="absolute inset-y-0 left-0" style={{ width: `${v}%`, background: v > 50 ? 'linear-gradient(#ffe066,#fab005)' : v > 25 ? 'linear-gradient(#ffc078,#fd7e14)' : 'linear-gradient(#ff8787,#e03131)' }} />
+    </div>
+  )
+  const gauge = (v: number, right: boolean) => (
+    <div className={`h-[7px] w-[46%] overflow-hidden rounded-full bg-black/55 ring-1 ring-white/30 ${right ? '-scale-x-100' : ''}`}>
+      <div className={`h-full ${v >= 100 ? 'animate-pulse' : ''}`} style={{ width: `${v}%`, background: v >= 100 ? 'linear-gradient(90deg,#ff3d7f,#ffd43b)' : '#7048e8' }} />
+    </div>
+  )
+  const pips = (n: number) => (
+    <span className="flex gap-1">
+      {[0, 1].map((k) => (
+        <span key={k} className={`h-2.5 w-2.5 rounded-full ring-1 ring-white/60 ${k < n ? 'bg-[#ffc233]' : 'bg-black/40'}`} />
+      ))}
+    </span>
+  )
+  const dir = (d: -1 | 1) =>
+    hold(
+      () => (pad.current.x = d),
+      () => pad.current.x === d && (pad.current.x = 0),
+    )
+  const key = 'grid touch-none place-items-center rounded-2xl bg-white/85 text-[#16161c] shadow-[0_4px_0_rgba(0,0,0,0.35)] select-none active:translate-y-0.5'
+  const btn = (label: string, color: string, on: () => void, off?: () => void, dim?: boolean) => (
+    <button
+      className={`grid h-[60px] w-[60px] touch-none place-items-center rounded-full font-display text-[13px] leading-none font-extrabold text-white shadow-[0_4px_0_rgba(0,0,0,0.4)] select-none active:translate-y-0.5 ${dim ? 'opacity-40' : ''}`}
+      style={{ background: color }}
+      {...hold(on, off ?? (() => undefined))}
+    >
+      {label}
+    </button>
   )
   return (
-    <div className="flex h-full flex-col bg-[#120d24]">
-      <div className="px-3 pt-3 text-white">
-        <div className="flex items-center gap-2 font-display text-[13px] font-extrabold">
-          <span className="w-12 truncate">TOI</span>
-          {bar(hud.hp[0], false)}
-          <span className="w-9 rounded-md bg-black/50 text-center text-base tabular-nums">{hud.left}</span>
-          {bar(hud.hp[1], true)}
-          <span className="w-12 truncate text-right">BOSS</span>
-        </div>
-        <div className="mt-1 flex items-center justify-between text-[11px] font-extrabold">
-          <span className="flex items-center gap-1">
-            {[0, 1].map((k) => (
-              <span key={k} className={`h-2.5 w-2.5 rounded-full ${k < hud.won ? 'bg-[#ffc233]' : 'bg-white/20'}`} />
-            ))}
-            <span className="ml-1 h-1.5 w-16 overflow-hidden rounded-full bg-white/15">
-              <span className="block h-full" style={{ width: `${hud.meter[0]}%`, background: hud.meter[0] >= 100 ? '#ff3d7f' : '#7048e8' }} />
-            </span>
-          </span>
-          <span className="text-white/70">
-            Round {hud.round} · {RIVAL}
-          </span>
-          <span className="flex items-center gap-1">
-            {[0, 1].map((k) => (
-              <span key={k} className={`h-2.5 w-2.5 rounded-full ${k < hud.lost ? 'bg-[#ffc233]' : 'bg-white/20'}`} />
-            ))}
-          </span>
-        </div>
+    <div className="relative h-full w-full overflow-hidden bg-[#0f0b22]">
+      <div className="absolute inset-0">
+        <FightCanvas F={F} looks={looks} onFrame={onFrame} />
       </div>
-      <div className="relative min-h-0 flex-1">
-        <div className="absolute inset-2 grid place-items-center">
-          <canvas ref={ref} className="rounded-xl" />
+      {/* The Super: the street darkened for an instant. */}
+      <div className="pointer-events-none absolute inset-0 bg-black transition-opacity duration-150" style={{ opacity: F.current.flash > 0 ? 0.25 : 0 }} />
+      {/* The bars. */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 px-3 pt-3 text-white">
+        <div className="flex items-center gap-2">
+          {bar(hud.hp[0], trail[0], false)}
+          <span className="grid h-9 w-11 place-items-center rounded-lg bg-black/70 font-display text-[22px] font-extrabold tabular-nums ring-2 ring-white/60">{hud.clock}</span>
+          {bar(hud.hp[1], trail[1], true)}
         </div>
-        <Count n={n} go="Combat !" />
-        {hud.said && <div key={hud.said + hud.round} className="animate-pop pointer-events-none absolute inset-x-0 top-1/3 text-center font-display text-[42px] font-extrabold text-white [text-shadow:0_4px_0_rgba(0,0,0,0.5)]">{hud.said}</div>}
+        <div className="mt-1 flex items-center justify-between font-display text-[13px] font-extrabold [text-shadow:0_2px_0_rgba(0,0,0,0.6)]">
+          <span className="flex items-center gap-1.5">TOI {pips(hud.wins[0])}</span>
+          <span className="flex items-center gap-1.5">
+            {pips(hud.wins[1])} {foe.name.toUpperCase()}
+          </span>
+        </div>
+        <div className="mt-1 flex justify-between">
+          {gauge(hud.meter[0], false)}
+          {gauge(hud.meter[1], true)}
+        </div>
+        {hud.meter[0] >= 100 && <div className="mt-0.5 font-display text-[12px] font-extrabold text-[#ffd43b] [text-shadow:0_2px_0_rgba(0,0,0,0.6)]">SUPER prêt !</div>}
       </div>
-      <div className="flex h-[150px] shrink-0 items-center justify-between gap-2 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-        <div className="flex gap-2">
-          {([-1, 1] as const).map((d) => (
-            <button key={d} className="grid h-[66px] w-[66px] touch-none place-items-center rounded-full bg-white/90 text-[#16161c] shadow-[0_5px_0_rgba(0,0,0,0.3)] select-none active:translate-y-1" {...hold(() => (ask.current.dir = d), () => ask.current.dir === d && (ask.current.dir = 0))} aria-label={d < 0 ? 'Reculer' : 'Avancer'}>
-              {d < 0 ? <ChevronLeft size={36} strokeWidth={3} /> : <ChevronRight size={36} strokeWidth={3} />}
-            </button>
-          ))}
+      {/* The announcer, the combo, a counter. */}
+      {saying && (
+        <div
+          key={hud.saidAt}
+          className="animate-pop pointer-events-none absolute inset-x-0 top-[26%] text-center font-display text-[46px] leading-none font-extrabold text-white [text-shadow:0_5px_0_rgba(0,0,0,0.55)]"
+          style={{ color: hud.said.startsWith('K.O') ? '#ffd43b' : hud.said === 'Défaite' ? '#ff8787' : undefined }}
+        >
+          {hud.said}
+        </div>
+      )}
+      {hud.combo >= 2 && (
+        <div key={hud.combo} className="animate-pop pointer-events-none absolute top-[17%] left-3 font-display text-[26px] leading-none font-extrabold text-[#ffd43b] [text-shadow:0_3px_0_rgba(0,0,0,0.6)]">
+          {hud.combo} coups !
+        </div>
+      )}
+      {noting && (
+        <div key={hud.noteAt} className="animate-pop pointer-events-none absolute top-[17%] right-3 font-display text-[22px] leading-none font-extrabold text-[#ff8a5c] [text-shadow:0_3px_0_rgba(0,0,0,0.6)]">
+          {hud.note}
+        </div>
+      )}
+      {/* The pad. */}
+      <div className="absolute inset-x-0 bottom-0 flex items-end justify-between px-3 pb-[max(0.9rem,env(safe-area-inset-bottom))]">
+        <div className="grid grid-cols-3 grid-rows-3 gap-1">
+          <span />
+          <button
+            className={`${key} h-[52px] w-[52px]`}
+            {...hold(
+              () => (pad.current.up = true),
+              () => (pad.current.up = false),
+            )}
+            aria-label="Sauter"
+          >
+            <ChevronUp size={30} strokeWidth={3} />
+          </button>
+          <span />
+          <button className={`${key} h-[52px] w-[52px]`} {...dir(-1)} aria-label="À gauche">
+            <ChevronLeft size={30} strokeWidth={3} />
+          </button>
+          <span />
+          <button className={`${key} h-[52px] w-[52px]`} {...dir(1)} aria-label="À droite">
+            <ChevronRight size={30} strokeWidth={3} />
+          </button>
+          <span />
+          <button
+            className={`${key} h-[52px] w-[52px]`}
+            {...hold(
+              () => (pad.current.down = true),
+              () => (pad.current.down = false),
+            )}
+            aria-label="S'accroupir"
+          >
+            <ChevronDown size={30} strokeWidth={3} />
+          </button>
+          <span />
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <PadButton label="Poing" color="#e03131" size={58} on={() => (ask.current.punch = true)} />
-          <PadButton label="Pied" color="#1c7ed6" size={58} on={() => (ask.current.kick = true)} />
-          <PadButton label="Garde" color="#495057" size={58} on={() => (ask.current.guard = true)} off={() => (ask.current.guard = false)} />
-          <PadButton label="Super" color="#ff3d7f" size={58} dim={hud.meter[0] < 100} on={() => (ask.current.super = true)} />
+          {btn('Poing', '#e03131', () => (pad.current.punch = true))}
+          {btn('Pied', '#1c7ed6', () => (pad.current.kick = true))}
+          {btn(
+            'Garde',
+            '#495057',
+            () => (pad.current.guard = true),
+            () => (pad.current.guard = false),
+          )}
+          {btn('Super', '#ff3d7f', () => (pad.current.sup = true), undefined, hud.meter[0] < 100)}
         </div>
       </div>
     </div>
   )
-}
-
-function fighter(x: number, face: 1 | -1): F {
-  return { x, vx: 0, hp: 100, state: 'idle', t: 0, stun: 0, meter: 0, landed: false, face, ai: 0.5, blockFor: 0 }
-}
-function setState(f: F, s: State) {
-  f.state = s
-  f.t = 0
-  f.landed = false
-}
-/** What a fighter does this frame: a move started, the guard, a step, or nothing (busy with a move). */
-function act(f: F, dir: number, guard: boolean, punch: boolean, kick: boolean, sup: boolean) {
-  if (busy(f)) return
-  if (sup && f.meter >= 100) {
-    f.meter = 0
-    return setState(f, 'super')
-  }
-  if (punch) return setState(f, 'punch')
-  if (kick) return setState(f, 'kick')
-  if (guard) return f.state !== 'block' && setState(f, 'block')
-  if (dir) {
-    if (f.state !== 'walk') setState(f, 'walk')
-    f.vx = dir * 110
-  } else if (f.state !== 'idle') setState(f, 'idle')
-}
-
-function draw(c: CanvasRenderingContext2D, s: { me: F; them: F; t: number; said: string }) {
-  // Treichville at night: the sky, the buildings and their windows, the maquis's sign, the red earth.
-  const sky = c.createLinearGradient(0, 0, 0, GROUND)
-  sky.addColorStop(0, '#1b1440')
-  sky.addColorStop(1, '#5a2a5e')
-  c.fillStyle = sky
-  c.fillRect(0, 0, W, GROUND)
-  for (const [x, w, h, col] of [[0, 70, 150, '#2b2350'], [66, 60, 120, '#33295c'], [124, 80, 170, '#2b2350'], [200, 64, 130, '#3a2e66'], [262, 98, 160, '#2b2350']] as const) {
-    c.fillStyle = col
-    c.fillRect(x, GROUND - h, w, h)
-    for (let wy = GROUND - h + 14; wy < GROUND - 40; wy += 22)
-      for (let wx = x + 8; wx < x + w - 12; wx += 18) {
-        c.fillStyle = (wx * 7 + wy * 3) % 5 < 2 ? '#ffd27a' : '#1d1838'
-        c.fillRect(wx, wy, 8, 10)
-      }
-  }
-  c.fillStyle = '#ff3d7f'
-  c.fillRect(150, GROUND - 120, 76, 20)
-  c.fillStyle = '#fff'
-  c.font = "900 13px 'Baloo 2', system-ui, sans-serif"
-  c.textAlign = 'center'
-  c.fillText('MAQUIS', 188, GROUND - 105)
-  c.fillStyle = '#a0522d'
-  c.fillRect(0, GROUND, W, H - GROUND)
-  c.fillStyle = '#8b4513'
-  for (let x = 0; x < W; x += 24) c.fillRect(x + ((x / 24) % 2) * 6, GROUND + 14, 10, 3)
-  // The crowd at the front, heads bobbing.
-  for (let k = 0; k < 14; k++) {
-    const x = 8 + k * 26
-    const y = H - 12 + Math.sin(s.t * 6 + k) * 2
-    c.fillStyle = '#140f24'
-    c.beginPath()
-    c.arc(x, y - 16, 8, 0, Math.PI * 2)
-    c.fill()
-    c.fillRect(x - 11, y - 8, 22, 20)
-  }
-  for (const [f, top, flash] of [[s.them, '#12a150', s.them.state === 'hit'], [s.me, '#ff7a00', s.me.state === 'hit']] as const) person(c, f, top, flash)
-}
-
-/** A fighter, the game's block people: legs, body, arms, head, the pose of what it's doing. */
-function person(c: CanvasRenderingContext2D, f: F, top: string, flash: boolean) {
-  const skin = '#6e4024'
-  const pants = '#1f2a44'
-  const d = f.face
-  c.save()
-  c.translate(Math.round(f.x), GROUND)
-  if (f.state === 'ko') {
-    c.fillStyle = 'rgba(0,0,0,0.3)'
-    c.fillRect(-40, -4, 80, 6)
-    // Down on its back, the head away from the other.
-    c.fillStyle = pants
-    c.fillRect(d > 0 ? 6 : -46, -12, 40, 11)
-    c.fillStyle = top
-    c.fillRect(d > 0 ? -34 : -6, -16, 40, 15)
-    c.fillStyle = skin
-    c.fillRect(d > 0 ? -52 : 34, -18, 18, 16)
-    c.restore()
-    return
-  }
-  const m = f.state === 'punch' || f.state === 'kick' || f.state === 'super' ? MOVES[f.state] : null
-  const out = m ? clamp(f.t / m.start, 0, 1) * (f.t < m.start + m.active ? 1 : clamp(1 - (f.t - m.start - m.active) / m.rec, 0, 1)) : 0
-  const lean = f.state === 'hit' ? -6 * d : f.state === 'super' ? 8 * d : 0
-  const bob = f.state === 'idle' ? Math.sin(f.t * 5) * 1.5 : 0
-  const step = f.state === 'walk' ? Math.sin(f.t * 14) * 6 : 0
-  c.fillStyle = 'rgba(0,0,0,0.35)'
-  c.beginPath()
-  c.ellipse(0, -2, 22, 5, 0, 0, Math.PI * 2)
-  c.fill()
-  // Legs (the front one out for a kick).
-  c.fillStyle = pants
-  c.fillRect(-12 + step, -40, 10, 40)
-  if (f.state === 'kick') {
-    c.fillRect(d > 0 ? 0 : -46 * out, -44, 10 + 36 * out, 11)
-    c.fillStyle = '#e9ecef'
-    c.fillRect(d > 0 ? 6 + 36 * out : -46 * out, -45, 8, 13)
-  } else c.fillRect(2 - step, -40, 10, 40)
-  // Body and head.
-  c.fillStyle = flash && Math.floor(f.t * 20) % 2 ? '#ffffff' : top
-  c.fillRect(-14 + lean, -82 + bob, 28, 44)
-  c.fillStyle = skin
-  c.fillRect(-10 + lean * 1.3, -104 + bob, 20, 22)
-  c.fillStyle = '#141010'
-  c.fillRect(-10 + lean * 1.3, -106 + bob, 20, 7)
-  c.fillStyle = '#fff'
-  c.fillRect(d > 0 ? 3 + lean * 1.3 : -7 + lean * 1.3, -96 + bob, 4, 3)
-  // Arms: the guard up before the face, a punch thrown, both forward for the dash.
-  c.fillStyle = skin
-  if (f.state === 'block') {
-    c.fillRect(d > 0 ? 8 : -20, -96, 12, 30)
-    c.fillRect(d > 0 ? 2 : -14, -92, 12, 26)
-  } else if (f.state === 'punch' || f.state === 'super') {
-    const reach = (f.state === 'super' ? 30 : 34) * out
-    c.fillRect(d > 0 ? 10 + lean : -10 - 10 - reach + lean, -78 + bob, 10 + reach, 9)
-    c.fillStyle = '#e03131'
-    c.fillRect(d > 0 ? 16 + reach + lean : -24 - reach + lean, -80 + bob, 10, 13)
-    if (f.state === 'super') {
-      c.fillStyle = 'rgba(255,61,127,0.45)'
-      for (let k = 1; k <= 3; k++) c.fillRect(-14 - d * k * 14, -82, 28, 44)
-    }
-  } else {
-    c.fillRect(d > 0 ? 12 : -22, -78 + bob, 10, 30)
-    c.fillRect(d > 0 ? -18 : 8, -78 + bob, 10, 28)
-  }
-  c.restore()
 }

@@ -11,6 +11,7 @@ import { fetchRace, joinRace, KartNet, type OnlineRace } from './online'
 import { serverNow } from '../lib/worldClock'
 import { Circuit, Hazards, KartView } from './scene'
 import { buildTrack, LAPS, type Track } from './track'
+import { holdScenes } from '../world3d/hold'
 
 // Babi Karting: a race of three laps against five drivers of the quarter,
 // the player at the wheel. Phone: auto-throttle (and the drift button held
@@ -128,11 +129,14 @@ function Raceway({ name, look, gender, onExit, simId, token, onReplay, online }:
   const [replaying, setReplaying] = useState(false)
   const [note, setNote] = useState<string | null>(null)
   useKeyboard(input, touch)
+  // The world underneath holds still during the race.
+  const held = useRef<(() => void) | null>(null)
+  useEffect(() => () => held.current?.(), [])
 
   const done = hud.done
   return (
     <div className="fixed inset-0 z-50 touch-none bg-[#87c5ef] select-none">
-      <Canvas shadows dpr={[1, 1.5]} camera={{ fov: 62, near: 0.3, far: 1200, position: [0, 6, -10] }}>
+      <Canvas shadows dpr={[1, 1.5]} camera={{ fov: 62, near: 0.3, far: 1200, position: [0, 6, -10] }} onCreated={({ gl }) => void (held.current = holdScenes(gl.domElement))}>
         <color attach="background" args={['#9fd3f2']} />
         <fog attach="fog" args={['#9fd3f2', 180, 620]} />
         <hemisphereLight args={['#ffffff', '#6b8f4a', 1.1]} />
