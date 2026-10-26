@@ -100,6 +100,7 @@ import { cutsAround, inCut, zoneOf, type PowerCut } from '../power'
 import { CUTS } from './textures'
 import { RainSky } from './rainSky'
 import { NPC_NAMES, type Npc } from '../talk'
+import { CITY_FAR, FarGrow } from '../../avatar/LowHuman'
 
 /** Bloom at night, downloaded only on phones that show it. */
 const NightBloom = lazy(() => import('../effects').then((m) => ({ default: m.NightBloom })))
@@ -317,7 +318,10 @@ export function OpenWorld(props: Props & { token: string; onFail: () => void; on
       {/* Resolution follows what the device can keep up with */}
       <PerformanceMonitor onDecline={() => setDpr((d) => Math.max(0.75, d - 0.25))} onIncline={() => setDpr((d) => Math.min(maxDpr, d + 0.25))} flipflops={4} onFallback={() => setDpr(1)} />
       <Suspense fallback={null}>
-        <World {...props} night={night} dusk={dusk} sky={sky} />
+        {/* The city seen from its usual height (80 m off): the people bulk up further away, as at the stadium, so they read as people. */}
+        <FarGrow.Provider value={CITY_FAR}>
+          <World {...props} night={night} dusk={dusk} sky={sky} />
+        </FarGrow.Provider>
       </Suspense>
     </Canvas>
   )

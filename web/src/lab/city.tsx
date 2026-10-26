@@ -76,7 +76,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Interior } from '../world3d/Interior'
 import { Character } from '../world3d/Character'
 import { Human } from '../avatar/Human'
-import { FarGrow } from '../avatar/LowHuman'
+import { CITY_FAR, FarGrow } from '../avatar/LowHuman'
 import { ChatSheet } from '../components/ChatSheet'
 import { npcReact, useNpcReaction } from '../world3d/open/npcReact'
 import { OutdoorAction, outdoorLook, outdoorPose } from '../world3d/OutdoorAction'
@@ -972,7 +972,8 @@ function FarLab() {
         <planeGeometry args={[5, 300]} />
         <meshLambertMaterial color="#4a4d55" />
       </mesh>
-      {q.get('old') === '1' ? <FarGrow.Provider value={{ grow: 0, from: 1e9, over: 1 }}>{scene}</FarGrow.Provider> : scene}
+      {/* &old=1 without the far bulk; &city=1 as the city draws it (CITY_FAR) */}
+      {q.get('old') === '1' ? <FarGrow.Provider value={{ grow: 0, from: 1e9, over: 1 }}>{scene}</FarGrow.Provider> : q.get('city') === '1' ? <FarGrow.Provider value={CITY_FAR}>{scene}</FarGrow.Provider> : scene}
     </Canvas>
   )
 }
