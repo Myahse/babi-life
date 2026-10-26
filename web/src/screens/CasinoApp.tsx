@@ -9,6 +9,8 @@ import { Blackjack } from './casino/Blackjack'
 import { Envol } from './casino/Envol'
 import { Roulette } from './casino/Roulette'
 import { Trade } from './casino/Trade'
+import { pct, scaled, useCasinoRates } from '../lib/casino'
+import { GameHistory } from '../components/GameHistory'
 
 /**
  * Babi Casino (backend game/casino.go, sims/casino.go): the roulette with its
@@ -29,6 +31,7 @@ export function CasinoApp({ world, sim, act, onConfirmAdult }: Omit<Props, 'hold
   const [table, setTable] = useState<'roulette' | '21' | 'grattage' | 'envol' | 'trade' | null>(null)
   const [held, hold] = useState<number | null>(null)
   const roundsLeft = (world.casino?.perDay ?? 300) - (sim.today?.casino?.times ?? 0)
+  const rates = useCasinoRates()
   const shell = '-mx-3 -mt-1 min-h-full p-3 pb-6 text-white'
   const bg = { background: 'radial-gradient(circle at 50% 0%, #1f7a4d, #0b3d26 55%, #06210f)' }
   if (!adult)
@@ -113,7 +116,9 @@ export function CasinoApp({ world, sim, act, onConfirmAdult }: Omit<Props, 'hold
       <p className="mt-4 text-center text-[11.5px] leading-snug font-bold text-white/60">
         Argent du jeu seulement · 18 ans et plus · encore {Math.max(0, roundsLeft)} tours aujourd'hui.
         <br />
-        La roulette rend 36 pour 37 misés, le 21 un peu moins que ce qu'on mise, les tickets environ deux tiers de leur prix, L'Envol 95 %, Babi Trade 92,5 %.
+        {/* The « taux de retour » (lib/casino.ts): what each game gives back on average, for 100 staked. */}
+        Taux de retour : la roulette {pct(rates.roulette?.rate ?? 36 / 37)}, le 21 {pct(rates['21']?.rate ?? 0.985)}, les tickets {pct(rates.tickets?.rate ?? 0.644)}, L'Envol {pct(rates.envol?.rate ?? 0.95)}, Babi Trade {pct(rates.trade?.rate ?? 0.925)}.
+        {(rates.roulette?.set || rates['21']?.set) && ' À la roulette et au 21, les gains se paient comme partout, moins une commission de la maison sur le gain net, dite à chaque résultat.'}
       </p>
     </div>
   )
@@ -142,7 +147,9 @@ const TICKET_LOOK: Record<string, [string, string]> = {
 }
 
 function Scratch({ world, sim, act, hold }: Props) {
-  const tickets = world.casino?.tickets ?? []
+  // Their prizes as printed now: scaled by the casino's rate when the team set one (lib/casino.ts; the server's game.ScratchAt).
+  const tr = useCasinoRates().tickets
+  const tickets = (world.casino?.tickets ?? []).map((t) => (tr?.set ? { ...t, prizes: t.prizes.map((p) => ({ ...p, amount: Math.floor(scaled(p.amount, tr, tr.variants?.[t.id]) / 10) * 10 })) } : t))
   const [bought, setBought] = useState<{ res: ActionResult; data: ScratchResult; t: ScratchTicket } | null>(null)
   const [revealed, setRevealed] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -221,6 +228,7 @@ function Scratch({ world, sim, act, hold }: Props) {
         )
       })}
       {error && <p className="text-center text-[13px] font-bold text-[#ffb3b3]">{error}</p>}
+      <GameHistory simId={sim.id} jeu="tickets" tick={busy} />
     </div>
   )
 }

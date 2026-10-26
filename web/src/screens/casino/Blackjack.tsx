@@ -6,6 +6,8 @@ import type { BlackjackMove, BlackjackResult, BlackjackView, Sim, World } from '
 import type { Act } from '../phoneApps'
 import { CardBack, PlayingCard } from '../../components/PlayingCards'
 import { StakeField, stakeOK } from '../../components/StakeField'
+import { pct, useCasinoRates } from '../../lib/casino'
+import { GameHistory } from '../../components/GameHistory'
 
 /**
  * Le 21 of Babi Casino (backend game/casino.go): against the bank, which draws
@@ -101,6 +103,7 @@ function Cards({ cards, w, room, place, order, round, back }: { cards: number[];
 export function Blackjack({ world, sim, act, hold }: Props) {
   const stakes = world.casino?.stakes ?? [100, 500, 1000]
   const [hand, setHand] = useState<BlackjackView | null>(null)
+  const br = useCasinoRates()['21']
   // The view before the last move, to tell which cards are new, and the round's number, to deal a new round afresh.
   const [before, setBefore] = useState<BlackjackView | null>(null)
   const [round, setRound] = useState(0)
@@ -264,7 +267,10 @@ export function Blackjack({ world, sim, act, hold }: Props) {
       )}
       <p className="mt-2 text-center text-[11.5px] font-bold text-white/55">
         Approche 21 sans le dépasser. Les figures valent 10, l'as 1 ou 11. Doubler : ta mise doublée, une seule carte de plus. Séparer : une paire devient deux mains, une mise de plus.
+        {/* At a rate the team set (lib/casino.ts), the house's commission on the net winnings (the server's game.Commission21). */}
+        {br?.set && br.rate < 0.985 && ` Taux de retour ${pct(br.rate)} : la maison garde ${pct(Math.min(1, (0.985 - br.rate) / 0.4577))} du gain net.`}
       </p>
+      <GameHistory simId={sim.id} jeu="21" tick={hand?.done} />
     </div>
   )
 }

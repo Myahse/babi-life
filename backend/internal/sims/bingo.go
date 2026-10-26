@@ -13,6 +13,7 @@ import (
 
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
+	"github.com/myahse/babi-life/backend/internal/odds"
 )
 
 // Babi Bingo (game/bingo.go, web screens/BingoApp.tsx): four rooms whose
@@ -270,7 +271,9 @@ func settleBingo(ctx context.Context, tx pgx.Tx, s *Sim, now int64) ([]Event, er
 		status, prize, pay := "lost", "", 0
 		if ok {
 			if p, won := game.BingoBest(g, ints(c.nums), game.BingoBalls(g, c.draw)); won {
-				status, prize, pay = "won", p.Label, c.stake*p.Times
+				// At the rate of when the draw began (odds: untouched, the room's own).
+				rate, _ := odds.Default.RateAt(game.OddsBingo, time.Unix(g.Start(c.draw), 0))
+				status, prize, pay = "won", p.Label, game.Scaled(c.stake*p.Times, rate, game.BingoNatural[g.ID])
 			}
 		}
 		if _, err := tx.Exec(ctx, `UPDATE bingo_cards SET status = $2, prize = $3, payout = $4 WHERE id = $1`, c.id, status, prize, pay); err != nil {

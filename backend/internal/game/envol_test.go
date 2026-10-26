@@ -13,7 +13,7 @@ func TestEnvolCrash(t *testing.T) {
 	targets := []float64{1.5, 2, 5, 10, 50}
 	instant := 0
 	for n := int64(0); n < N; n++ {
-		c := EnvolCrash(n)
+		c := EnvolCrash(n, 0)
 		if c < 1 || c > EnvolMax {
 			t.Fatalf("round %d flies off at %.2f", n, c)
 		}
@@ -34,7 +34,7 @@ func TestEnvolCrash(t *testing.T) {
 	if f := float64(instant) / N; f < 0.03 || f > 0.08 {
 		t.Errorf("%.1f %% of planes fly off at once", f*100)
 	}
-	if EnvolCrash(7) != EnvolCrash(7) {
+	if EnvolCrash(7, 0) != EnvolCrash(7, 0) {
 		t.Error("a round's plane changes")
 	}
 }
@@ -48,12 +48,12 @@ func TestEnvolFlight(t *testing.T) {
 		t.Errorf("×2 at its time: %.2f", m)
 	}
 	for n := int64(100); n < 2100; n++ {
-		took, flown := EnvolTakeoff(n), EnvolFlown(n)
+		took, flown := EnvolTakeoff(n), EnvolFlown(n, 0)
 		if flown < took || flown-took > EnvolMaxFlight*1000+1 || flown > (n+1)*EnvolPeriod*1000 {
 			t.Fatalf("round %d: off at %d, flies off at %d", n, took, flown)
 		}
-		if m := EnvolAt(flown - took); m+0.011 < EnvolCrash(n) {
-			t.Fatalf("round %d: ×%.2f when it flies off at ×%.2f", n, m, EnvolCrash(n))
+		if m := EnvolAt(flown - took); m+0.011 < EnvolCrash(n, 0) {
+			t.Fatalf("round %d: ×%.2f when it flies off at ×%.2f", n, m, EnvolCrash(n, 0))
 		}
 	}
 }

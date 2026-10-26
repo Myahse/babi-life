@@ -35,6 +35,7 @@ import (
 	"github.com/myahse/babi-life/backend/internal/live"
 	"github.com/myahse/babi-life/backend/internal/mail"
 	"github.com/myahse/babi-life/backend/internal/news"
+	"github.com/myahse/babi-life/backend/internal/odds"
 	"github.com/myahse/babi-life/backend/internal/politics"
 	"github.com/myahse/babi-life/backend/internal/push"
 	"github.com/myahse/babi-life/backend/internal/shop"
@@ -108,6 +109,8 @@ func main() {
 	}
 	// The updates the team opens one by one from the admin (features: closed until then).
 	features.Default = &features.Store{DB: pool}
+	// The casino's « taux de retour » as the team sets them (odds: each game untouched until then).
+	odds.Default = &odds.Store{DB: pool}
 	simsH := &sims.Handler{DB: pool, RealPhotos: os.Getenv("STORIES_REAL_PHOTOS") == "true", Karts: karts, Courts: courts, Push: pushes, Bucket: bucket}
 	go simsH.WatchBets(ctx)
 	go simsH.PruneJournal(ctx)
@@ -151,6 +154,8 @@ func main() {
 		r.Get("/push/key", pushes.Key)
 		// What the phone hides (the updates not opened yet) and what just came.
 		r.Get("/features", features.Default.Public)
+		// Each money game's « taux de retour » now, for its « Règles ».
+		r.Get("/casino/taux", odds.Default.Public)
 		r.With(middleware.Compress(5, "application/json")).Get("/world", func(w http.ResponseWriter, r *http.Request) {
 			// The same for everyone until the next deploy: let browsers keep it a while.
 			w.Header().Set("Cache-Control", "public, max-age=600")

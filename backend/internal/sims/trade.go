@@ -13,6 +13,7 @@ import (
 
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
+	"github.com/myahse/babi-life/backend/internal/odds"
 )
 
 // Babi Trade (game/envol.go, web screens/casino/Trade.tsx): a call that a
@@ -161,7 +162,7 @@ func tradeCheck(asset, dir string, stake, secs int) (game.TradeAsset, error) {
 
 // settleTrade: the Sim's calls whose time is up: won, tie or lost, paid.
 func settleTrade(ctx context.Context, tx pgx.Tx, s *Sim, now int64) error {
-	rows, err := tx.Query(ctx, `SELECT id, asset, dir, stake, entry_price, expiry_at FROM trade_bets WHERE sim = $1 AND status = 'open' AND expiry_at <= $2`, s.ID, now)
+	rows, err := tx.Query(ctx, `SELECT id, asset, dir, stake, entry_price, entry_at, expiry_at FROM trade_bets WHERE sim = $1 AND status = 'open' AND expiry_at <= $2`, s.ID, now)
 	if err != nil {
 		return err
 	}
@@ -170,12 +171,12 @@ func settleTrade(ctx context.Context, tx pgx.Tx, s *Sim, now int64) error {
 		asset, dir string
 		stake      int
 		entry      float64
-		expiry     int64
+		at, expiry int64
 	}
 	var calls []call
 	for rows.Next() {
 		var c call
-		if err := rows.Scan(&c.id, &c.asset, &c.dir, &c.stake, &c.entry, &c.expiry); err != nil {
+		if err := rows.Scan(&c.id, &c.asset, &c.dir, &c.stake, &c.entry, &c.at, &c.expiry); err != nil {
 			rows.Close()
 			return err
 		}
@@ -188,7 +189,9 @@ func settleTrade(ctx context.Context, tx pgx.Tx, s *Sim, now int64) error {
 			continue
 		}
 		exit := game.TradePrice(a, c.expiry)
-		pay, status := tradePayout(c.dir, c.stake, c.entry, exit)
+		// At the rate of when the call was taken (odds).
+		rate, _ := odds.Default.RateAt(game.OddsTrade, time.Unix(c.at, 0))
+		pay, status := tradePayout(c.dir, c.stake, c.entry, exit, game.TradePaysAt(rate))
 		if _, err := tx.Exec(ctx, `UPDATE trade_bets SET status = $2, exit_price = $3, payout = $4 WHERE id = $1`, c.id, status, exit, pay); err != nil {
 			return err
 		}
@@ -198,13 +201,13 @@ func settleTrade(ctx context.Context, tx pgx.Tx, s *Sim, now int64) error {
 }
 
 // tradePayout: what a call gives back, and how it ended.
-func tradePayout(dir string, stake int, entry, exit float64) (int, string) {
+func tradePayout(dir string, stake int, entry, exit, pays float64) (int, string) {
 	won, tie := game.TradeWins(dir, entry, exit)
 	switch {
 	case tie:
 		return stake, "tie"
 	case won:
-		return int(math.Floor(float64(stake) * game.TradePays)), "won"
+		return int(math.Floor(float64(stake) * pays)), "won"
 	}
 	return 0, "lost"
 }

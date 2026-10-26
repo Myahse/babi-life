@@ -10,10 +10,10 @@ import (
 // L'Envol: cashed in at the plane's multiplier, or at the target reached first; not before take-off, not once gone.
 func TestEnvolCashAt(t *testing.T) {
 	n := int64(1000)
-	for game.EnvolCrash(n) < 3 {
+	for envolCrash(n) < 3 {
 		n++
 	}
-	took, flown := game.EnvolTakeoff(n), game.EnvolFlown(n)
+	took, flown := game.EnvolTakeoff(n), envolFlown(n)
 	if _, err := envolCashAt(n, took-1, 0); !errors.Is(err, errEnvolWait) {
 		t.Errorf("before take-off: %v", err)
 	}
@@ -29,8 +29,8 @@ func TestEnvolCashAt(t *testing.T) {
 	if m, _ := envolCashAt(n, flown-1, 1.2); m != 1.2 {
 		t.Errorf("past its target ×1,2: ×%v", m)
 	}
-	if m, _ := envolCashAt(n, flown-1, 0); m > game.EnvolCrash(n) {
-		t.Errorf("above where it flies off: ×%v > ×%v", m, game.EnvolCrash(n))
+	if m, _ := envolCashAt(n, flown-1, 0); m > envolCrash(n) {
+		t.Errorf("above where it flies off: ×%v > ×%v", m, envolCrash(n))
 	}
 	s := adultSim(game.Families[0], "")
 	s.Money = 1000
@@ -71,7 +71,7 @@ func TestTradeCall(t *testing.T) {
 		pay         int
 		status      string
 	}{{"hausse", 100, 101, 1850, "won"}, {"hausse", 100, 99, 0, "lost"}, {"baisse", 100, 99, 1850, "won"}, {"baisse", 100, 100, 1000, "tie"}} {
-		if pay, status := tradePayout(c.dir, 1000, c.entry, c.exit); pay != c.pay || status != c.status {
+		if pay, status := tradePayout(c.dir, 1000, c.entry, c.exit, game.TradePays); pay != c.pay || status != c.status {
 			t.Errorf("%s %v→%v: %d %s", c.dir, c.entry, c.exit, pay, status)
 		}
 	}

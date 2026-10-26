@@ -39,6 +39,7 @@ var List = []Feature{
 	{ID: "arcade", Label: "La borne d'arcade", About: "« Moustiques ! » à la borne de la salle de jeux.", Interactions: []string{"borne-arcade"}},
 	{ID: "tikitoko", Label: "Tikitoko", About: "L'appli des vidéos courtes dans le téléphone du perso.", Keys: []string{"app:tikitoko"}},
 	{ID: "babigram", Label: "Babigram", About: "L'appli des photos dans le téléphone du perso.", Keys: []string{"app:babigram"}},
+	{ID: "historique", Label: "L'historique des jeux d'argent", About: "Dans chaque jeu du casino, au bingo, aux paris et au loto : tes dernières parties, ce que tu as misé et récupéré aujourd'hui et sur 7 jours.", Keys: []string{"historique"}},
 }
 
 // Find is the update of that ID.
