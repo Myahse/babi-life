@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<title>Keke contre Awa — habillage</title>
+<style>
+  @font-face { font-family: 'Baloo'; src: url('../web/node_modules/@fontsource/baloo-2/files/baloo-2-latin-800-normal.woff2') format('woff2'); font-weight: 800; }
+  @font-face { font-family: 'Baloo'; src: url('../web/node_modules/@fontsource/baloo-2/files/baloo-2-latin-700-normal.woff2') format('woff2'); font-weight: 700; }
+  html, body { margin: 0; background: transparent; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920" style="width: 540px; height: 960px"></canvas>
+<script>
+// What's drawn over the filmed game in « Keke contre Awa » (jeux.mjs): who speaks and what (the
+// captions), the duel's score climbing with each game, the « NOUVEAU » sticker on each new game, and
+// the title and end cards. window.__frame(t) draws the moment t of the film; jeux.mjs takes each frame.
+const c = document.getElementById('c')
+const g = c.getContext('2d')
+const W = 1080, H = 1920
+const AWA = '#ff7a00', KEKE = '#1d7cf2', NIGHT = '#0f1230', GOLD = '#ffc233', GREEN = '#00b86b'
+let PLAN = null
+let QR = null
+window.__setPlan = (plan, qr) => {
+  PLAN = plan
+  if (qr) {
+    QR = new Image()
+    QR.src = qr
+  }
+}
+const ease = (x) => 1 - Math.pow(1 - Math.min(1, Math.max(0, x)), 3)
+
+function round(x, y, w, h, r, fill) {
+  g.beginPath()
+  g.roundRect(x, y, w, h, r)
+  g.fillStyle = fill
+  g.fill()
+}
+function text(s, x, y, size, color, align = 'center', weight = 800, stroke = 0) {
+  g.font = `${weight} ${size}px Baloo`
+  g.textAlign = align
+  g.textBaseline = 'middle'
+  if (stroke) {
+    g.lineWidth = stroke
+    g.strokeStyle = 'rgba(0,0,0,0.55)'
+    g.lineJoin = 'round'
+    g.strokeText(s, x, y)
+  }
+  g.fillStyle = color
+  g.fillText(s, x, y)
+}
+/** Lines of at most `max` px, broken on spaces. */
+function wrap(s, size, max) {
+  g.font = `800 ${size}px Baloo`
+  const out = []
+  let line = ''
+  for (const w of s.split(' ')) {
+    const t = line ? line + ' ' + w : w
+    if (g.measureText(t).width > max && line) {
+      out.push(line)
+      line = w
+    } else line = t
+  }
+  out.push(line)
+  return out
+}
+
+/** Who speaks, what: a bubble low on the screen, the name in the speaker's colour. */
+function caption(line, t) {
+  const k = ease((t - line.from) / 0.18)
+  const who = line.who === 'awa' ? 'AWA' : 'KEKE'
+  const col = line.who === 'awa' ? AWA : KEKE
+  const rows = wrap(line.text, 62, 900)
+  const h = 70 + rows.length * 74
+  // On the end card, below the QR code and the address.
+  const y = (t >= PLAN.outro ? 1760 : 1430) - h / 2 + (1 - k) * 40
+  g.globalAlpha = k
+  round(70, y, 940, h, 40, 'rgba(15,18,48,0.82)')
+  round(110, y - 30, 190, 62, 31, col)
+  text(who, 205, y + 1, 40, '#fff')
+  rows.forEach((r, i) => text(r, 540, y + 70 + i * 74, 62, '#fff'))
+  g.globalAlpha = 1
+}
+
+/** The duel's score at the top: AWA n – m KEKE, the number bouncing when it goes up. */
+function score(t) {
+  let awa = 0
+  let since = 99
+  for (const s of PLAN.points) if (t >= s) ((awa += 1), (since = t - s))
+  const pop = since < 0.4 ? 1 + 0.35 * Math.sin((since / 0.4) * Math.PI) : 1
+  round(250, 150, 580, 118, 59, 'rgba(15,18,48,0.85)')
+  text('AWA', 340, 211, 50, AWA)
+  text('KEKE', 740, 211, 50, KEKE)
+  g.save()
+  g.translate(475, 209)
+  g.scale(pop, pop)
+  text(String(awa), 0, 0, 84, '#fff')
+  g.restore()
+  text('–', 540, 207, 70, 'rgba(255,255,255,0.7)')
+  text('0', 605, 209, 84, '#fff')
+}
+
+/** The sticker on a new game: tilted, sliding in. */
+function sticker(s, t) {
+  const k = ease((t - s.from) / 0.3)
+  g.save()
+  g.translate(540 - (1 - k) * 700, 330)
+  g.rotate(-0.04)
+  g.font = '800 54px Baloo'
+  const w = g.measureText(s.text).width + 200
+  round(-w / 2, -52, w, 104, 26, '#fff')
+  round(-w / 2 + 14, -36, 150, 72, 18, s.nouveau ? GREEN : AWA)
+  text(s.nouveau ? 'NOUVEAU' : 'ET AUSSI', -w / 2 + 89, 2, 30, '#fff')
+  text(s.text, -w / 2 + 180, 2, 54, NIGHT, 'left')
+  g.restore()
+}
+
+/** The title: KEKE 🆚 AWA, the two names coming in from each side. */
+function title(t) {
+  const k = ease(t / 0.5)
+  round(0, 520, W, 360, 0, 'rgba(15,18,48,0.72)')
+  text('KEKE', 290 - (1 - k) * 600, 640, 150, KEKE, 'center', 800, 10)
+  text('AWA', 790 + (1 - k) * 600, 640, 150, AWA, 'center', 800, 10)
+  text('VS', 540, 640, 90, GOLD, 'center', 800, 8)
+  g.globalAlpha = ease((t - 0.5) / 0.4)
+  text('les nouveaux jeux de Babi Life', 540, 800, 56, '#fff')
+  g.globalAlpha = 1
+}
+
+/** The end card: the date, the list, the QR code. */
+function outro(t, from) {
+  const k = ease((t - from) / 0.45)
+  g.globalAlpha = k
+  g.fillStyle = 'rgba(15,18,48,0.93)'
+  g.fillRect(0, 0, W, H)
+  text('BABI LIFE', 540, 420, 150, AWA, 'center', 800)
+  text('sort mercredi', 540, 600, 80, '#fff')
+  round(190, 670, 700, 150, 40, GOLD)
+  text('28 octobre', 540, 748, 104, NIGHT)
+  text('Inscris-toi sur la liste', 540, 930, 62, '#fff')
+  if (QR && QR.complete) {
+    round(330, 1000, 420, 420, 30, '#fff')
+    g.drawImage(QR, 350, 1020, 380, 380)
+  }
+  text(PLAN.short, 540, 1480, 50, GOLD)
+  text('et viens nous défier ! 🎮', 540, 1580, 56, '#fff')
+  g.globalAlpha = 1
+}
+
+window.__frame = (t) => {
+  g.clearRect(0, 0, W, H)
+  if (!PLAN) return
+  if (t >= PLAN.outro) outro(t, PLAN.outro)
+  else {
+    if (t < PLAN.titleUntil) title(t)
+    if (t >= PLAN.scoreFrom) score(t)
+    for (const s of PLAN.stickers) if (t >= s.from && t < s.to) sticker(s, t)
+  }
+  for (const l of PLAN.lines) if (t >= l.from && t < l.to) caption(l, t)
+}
+window.__ready = document.fonts.load('800 40px Baloo').then(() => document.fonts.load('700 40px Baloo'))
+</script>
+</body>
+</html>
