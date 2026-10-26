@@ -352,6 +352,8 @@ var Kinds = map[string]PlaceKind{
 			{ID: StadiumMatchID, Label: "Regarder le match", Icon: "trophy", Minutes: 120, Cost: 2000, Effect: Needs{Fun: 40, Social: 25, Energy: -10}},
 			{ID: StadiumConcertID, Label: "Aller au concert", Icon: "music", Minutes: 180, Cost: 5000, Effect: Needs{Fun: 50, Social: 25, Energy: -15}},
 			{ID: "stade-footing", Label: "Faire des tours de stade en courant", Icon: "footprints", Minutes: 30, Effect: Needs{Fun: 10, Energy: -20, Hygiene: -20}, MinHour: 6, MaxHour: 20},
+			// Eleven against eleven on the pitch with the other players there (courts.go, package court), when it isn't taken by a match or a concert.
+			{ID: Foot11ID, Label: "Jouer à 11 contre 11 sur la pelouse", Icon: "volleyball", Minutes: 90, Effect: Needs{Fun: 40, Social: 30, Energy: -30, Hygiene: -30}, MinHour: 7, MaxHour: 22},
 		},
 		Events: []RandomEvent{
 			{Text: "Toute la tribune se lève et chante : tu as des frissons.", Effect: Needs{Fun: 10, Social: 10}},

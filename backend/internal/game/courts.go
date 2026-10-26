@@ -17,6 +17,8 @@ var Courts = map[string]string{
 	"plateau-basket":    "basket",
 	"treich-palais":     "basket",
 	"portbouet-terrain": "foot",
+	// The stadium's pitch, eleven against eleven, between its matches and concerts (stadium.go).
+	"plateau-stade": "foot11",
 }
 
 // courtsFor: the courts of one sport, for an interaction's Places.
@@ -38,16 +40,23 @@ func CourtSport(interaction string) string {
 		return "foot"
 	case "play-basket":
 		return "basket"
+	case Foot11ID:
+		return "foot11"
 	}
 	return ""
 }
 
+// Foot11ID: eleven against eleven on the stadium's pitch (court.Cap: 22 players).
+const Foot11ID = "play-foot11"
+
 func init() {
-	k := Kinds["sport"]
-	for i, it := range k.Interactions {
-		if s := CourtSport(it.ID); s != "" {
-			k.Interactions[i].Places = courtsFor(s)
+	for _, kind := range []string{"sport", StadiumKind} {
+		k := Kinds[kind]
+		for i, it := range k.Interactions {
+			if s := CourtSport(it.ID); s != "" {
+				k.Interactions[i].Places = courtsFor(s)
+			}
 		}
+		Kinds[kind] = k
 	}
-	Kinds["sport"] = k
 }

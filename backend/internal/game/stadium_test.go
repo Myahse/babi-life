@@ -1,6 +1,7 @@
 package game
 
 import (
+	"slices"
 	"strings"
 	"testing"
 )
@@ -81,3 +82,19 @@ func TestAtStadium(t *testing.T) {
 }
 
 func itoa(n int) string { return string(rune('0' + n)) }
+
+// The pitch for eleven against eleven: taken during a match or a concert, free otherwise.
+func TestFoot11AtStadium(t *testing.T) {
+	w := int64(100) * week
+	ev := StadiumAgenda("plateau-stade", w, w, w+week)
+	it, _ := Kinds[StadiumKind].Interaction(Foot11ID)
+	if _, err := AtStadium("plateau-stade", it, ev[0].Start+10); err == nil || !strings.Contains(err.Error(), "La pelouse est prise") {
+		t.Errorf("during %q: %v", ev[0].Title, err)
+	}
+	if _, err := AtStadium("plateau-stade", it, ev[0].Start-24*60); err != nil {
+		t.Errorf("a day before: %v", err)
+	}
+	if !slices.Equal(it.Places, []string{"plateau-stade"}) {
+		t.Errorf("played at %v", it.Places)
+	}
+}
