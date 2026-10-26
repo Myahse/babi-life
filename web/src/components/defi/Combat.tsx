@@ -1,3 +1,4 @@
+import { rumble, stickOwner, useGamepad } from '../../lib/gamepad'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Skull, Trophy } from 'lucide-react'
 import { haptic } from '../../lib/native'
@@ -124,6 +125,21 @@ function Match({ foe, me, onEnd }: { foe: Foe; me?: Me; onEnd: (score: number) =
     window.addEventListener('keydown', down)
     return () => window.removeEventListener('keydown', down)
   }, [])
+  // A controller: the left stick (or the cross) moves, up jumps, down crouches;
+  // X punches, A kicks, Y the Super, RB/LB/LT hold the guard.
+  const padStick = useMemo(() => stickOwner(), [])
+  const padHeld = useRef({ up: false, down: false, guard: false })
+  useGamepad((g) => {
+    const p = pad.current
+    const dx = (g.held.has('right') ? 1 : 0) - (g.held.has('left') ? 1 : 0)
+    padStick(g.lx || dx, 0, (x) => (p.x = x))
+    const now = { up: g.ly < -0.55 || g.held.has('up'), down: g.ly > 0.55 || g.held.has('down'), guard: g.held.has('rb') || g.held.has('lb') || g.lt > 0.4 }
+    for (const k of ['up', 'down', 'guard'] as const) if (now[k] !== padHeld.current[k]) p[k] = now[k]
+    padHeld.current = now
+    if (g.pressed.has('x')) p.punch = true
+    if (g.pressed.has('a') || g.pressed.has('b')) p.kick = true
+    if (g.pressed.has('y') || g.pressed.has('rt')) p.sup = true
+  })
   // In development, the fight for the test pilot in the browser.
   if (import.meta.env.DEV) Object.assign(globalThis, { __combat: F })
 
@@ -155,6 +171,7 @@ function Match({ foe, me, onEnd }: { foe: Foe; me?: Me; onEnd: (score: number) =
       else if (e.kind === 'hit' || e.kind === 'counter' || e.kind === 'throw') {
         sfx.punch(e.heavy || e.kind !== 'hit')
         haptic(mineHit ? 'medium' : 'heavy')
+        rumble(mineHit ? 0.35 : e.heavy ? 0.9 : 0.6, e.heavy ? 220 : 120)
         if (e.kind === 'counter') note = mineHit ? 'Contre !' : ''
         if (e.kind === 'throw' && mineHit) note = 'Saisie !'
       } else if (e.kind === 'block') sfx.guard()

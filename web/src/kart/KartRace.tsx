@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, Flag, RotateCcw, X } from 'lucide-react'
 import type { Look } from '../lib/types'
 import { randomLook } from '../avatar/options'
 import { rng } from '../world3d/themes'
+import { rumble, stickOwner, useGamepad, usePadConnected } from '../lib/gamepad'
 import { applyVec, autoInput, COUNTDOWN, createRace, fmtTime, ITEMS, kartVec, NO_INPUT, playerOf, standings, step, takeOver, type Input, type Race, type Seat } from './physics'
 import { fetchRace, joinRace, KartNet, type OnlineRace } from './online'
 import { serverNow } from '../lib/worldClock'
@@ -124,11 +125,15 @@ function Raceway({ name, look, gender, onExit, simId, token, onReplay, online }:
   // In development, the race is reachable from the console (the labs drive it).
   if (import.meta.env.DEV) (globalThis as { kartRace?: Race }).kartRace = race
   const input = useRef<Input>({ ...NO_INPUT })
-  const touch = useMemo(() => typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches, [])
+  const coarse = useMemo(() => typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches, [])
+  // With a controller on a phone, its trigger accelerates: not the touch screen's automatic throttle.
+  const padOn = usePadConnected()
+  const touch = coarse && !padOn
   const [hud, setHud] = useState(() => hudOf(race))
   const [replaying, setReplaying] = useState(false)
   const [note, setNote] = useState<string | null>(null)
   useKeyboard(input, touch)
+  usePad(input)
   // The world underneath holds still during the race.
   const held = useRef<(() => void) | null>(null)
   useEffect(() => () => held.current?.(), [])
@@ -285,6 +290,7 @@ function hudOf(race: Race): Hud {
 
 /** The race steps every frame; the HUD is refreshed ten times a second. */
 function Loop({ race, input, touch, onHud, online, net, simId }: { race: Race; input: React.MutableRefObject<Input>; touch: boolean; onHud: (h: Hud) => void; online: OnlineRace | null; net: KartNet | null; simId?: string }) {
+  const spun = useRef(false)
   const acc = useRef(0)
   const sent = useRef(0)
   const engine = useEngine()
@@ -335,6 +341,9 @@ function Loop({ race, input, touch, onHud, online, net, simId }: { race: Race; i
     }
     const me = playerOf(race)
     engine(me.speed, me.boost > 0)
+    // A controller shakes when the kart spins out (a banana, a coconut).
+    if (me.spin > 0 && !spun.current) rumble(0.8, 300)
+    spun.current = me.spin > 0
     if (me.finished !== null && !saved.current) {
       saved.current = true
       const best = readBest()
@@ -397,6 +406,30 @@ function MiniMap({ track, race, tick }: { track: Track; race: Race; tick: number
   )
 }
 
+/**
+ * A controller: the left stick (or the cross) steers, RT or A accelerates, LT
+ * or B brakes, RB or LB drifts, X or Y throws the item. Each control writes
+ * while it's used and once more when let go, so the keys still work.
+ */
+function usePad(input: React.MutableRefObject<Input>) {
+  const steer = useMemo(() => stickOwner(), [])
+  const gas = useMemo(() => stickOwner(), [])
+  const held = useRef({ drift: false })
+  useGamepad((p) => {
+    const i = input.current
+    const dx = (p.held.has('right') ? 1 : 0) - (p.held.has('left') ? 1 : 0)
+    steer(p.lx || dx, 0, (x) => (i.steer = x))
+    const throttle = Math.max(p.rt, p.held.has('a') ? 1 : 0)
+    const brake = Math.max(p.lt, p.held.has('b') ? 1 : 0)
+    gas(throttle, brake, (t, b) => ((i.throttle = t), (i.brake = b)))
+    const drift = p.held.has('rb') || p.held.has('lb')
+    if (drift !== held.current.drift) i.drift = drift
+    held.current.drift = drift
+    if (p.pressed.has('x') || p.pressed.has('y')) i.use = true
+    if (p.pressed.has('a') || p.pressed.has('rt')) i.throttle = 1
+  })
+}
+
 /** The keyboard: arrows or WASD, Space to drift, E or Shift for the item. */
 function useKeyboard(input: React.MutableRefObject<Input>, touch: boolean) {
   useEffect(() => {
@@ -457,7 +490,7 @@ function Pad({ input, touch }: { input: React.MutableRefObject<Input>; touch: bo
         <button className={`${btn} h-16 w-16 !bg-[#ffd43b] text-sm`} onPointerDown={() => (input.current.use = true)}>
           Objet
         </button>
-        {!touch && <span className="col-span-2 text-right text-[11px] font-bold text-white drop-shadow">↑ accélérer · Espace déraper · E objet</span>}
+        {!touch && <span className="col-span-2 text-right text-[11px] font-bold text-white drop-shadow">↑ ou RT accélérer · Espace ou RB déraper · E ou X objet</span>}
         <button className={`${btn} col-span-2 h-16 w-full !rounded-3xl !bg-[#ff8200] text-base text-white`} {...hold((on) => (input.current.drift = on))}>
           Déraper
         </button>
