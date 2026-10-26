@@ -7,9 +7,11 @@ import { rng } from '../world3d/themes'
 import { COUNTDOWN, NO_INPUT, buttons, createGame, outcome, step, type Game, type Input, type Rules, type Sport, type Stats } from './game'
 import { holdScenes } from '../world3d/hold'
 import { BallView, Crowd, Follow, Ground, PlayerView, upright } from './scene'
+import { Referee } from './stadium'
 import { likesFor } from '../world3d/fans'
 import { serverNow } from '../lib/worldClock'
 import { rumble, stickOwner, useGamepad, usePadConnected } from '../lib/gamepad'
+import { sfx } from '../lib/sfx'
 import { MatchNet, fetchMatch, leaveMatch, type CourtEntry, type CourtMatch } from './online'
 
 // The street match the player plays (game.ts, scene.tsx): opened when the
@@ -17,6 +19,9 @@ import { MatchNet, fetchMatch, leaveMatch, type CourtEntry, type CourtMatch } fr
 // Phone: the stick on the left; Passe, Tir, Crochet and Défense on the right.
 // Keyboard: arrows / WASD / ZQSD to run, Space to shoot, J (or X) to pass,
 // K (or C) for the crossover, L (or E) to defend (held: the stance).
+// The console's football (`rules` with a referee, switching or the eleven)
+// has more: Shift (RT) sprints, Space (B) held charges the shot, U (Y) the
+// through ball, I (X) the lob or cross, Tab or R (LB) changes player.
 
 export type MatchResult = { sport: Sport; score: [number, number]; result: 'win' | 'loss' | 'draw'; stats: Stats }
 
@@ -32,18 +37,59 @@ type Props = {
   online?: { token: string; simId: string; match: CourtMatch }
   /** The console's match at the salle de jeux (components/defi/Foot.tsx): its length, the other side's strength, the golden goal. No replay: the console goes on. */
   rules?: Rules
+  /** The console: the two sides' names and shirts (the player's first). */
+  teams?: [string, string]
+  kits?: [string, string]
 }
 
 /** The two teams' kits: the player's team in orange, the others in green (or blue on the court). */
 const KITS: Record<Sport, [string, string]> = { basket: ['#ff7a00', '#1d4ed8'], foot: ['#ff7a00', '#009e60'] }
 const KEEPER = '#141416'
+/** With a referee (in black), the keepers in their own colours. */
+const KEEPERS = ['#fcc419', '#7950f2']
 
 const mmss = (s: number) => {
   const t = Math.max(0, Math.ceil(s))
   return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`
 }
 
-type Hud = { score: [number, number]; left: number; time: number; flash: string | null; has: boolean; dunk: boolean; over: boolean; clear: boolean; /** At a court, seconds before the whistle (the others are coming). */ waiting: number }
+type Hud = {
+  score: [number, number]
+  left: number
+  time: number
+  flash: string | null
+  has: boolean
+  dunk: boolean
+  over: boolean
+  clear: boolean
+  /** At a court, seconds before the whistle (the others are coming). */
+  waiting: number
+  /** The console's football: the breath left, Tir held so far, what to do at a set piece. */
+  stamina: number
+  charge: number
+  hint: string | null
+}
+
+/** At a set piece, what the hands can do. */
+function hintOf(g: Game): string | null {
+  const sp = g.set
+  if (!sp) return null
+  const mine = sp.team === g.ps[g.me].team
+  if (!mine) return sp.kind === 'pen' ? 'Penalty contre toi : le stick en haut ou en bas, ton gardien plonge de ce côté.' : null
+  if (sp.taker !== g.me) return null
+  switch (sp.kind) {
+    case 'pen':
+      return 'Penalty : vise avec le stick, tiens Tir pour la puissance, lâche pour frapper.'
+    case 'free':
+      return 'Coup franc : vise avec le stick ; Tir (tenu) frappe au but, Passe ou Centre pour un partenaire.'
+    case 'corner':
+      return 'Corner : Centre (ou Tir) dans la surface, Passe pour le jouer court.'
+    case 'throw':
+      return 'Touche : vise avec le stick et Passe.'
+    default:
+      return null
+  }
+}
 
 function hudOf(g: Game, waiting = 0): Hud {
   const b = buttons(g)
@@ -59,10 +105,18 @@ function hudOf(g: Game, waiting = 0): Hud {
     // Basketball: won back under the basket, the player's team has to take it out past the arc.
     clear: g.sport === 'basket' && !g.cleared && g.poss === me.team && g.phase === 'play',
     waiting,
+    stamina: me.stamina,
+    charge: me.charge,
+    hint: hintOf(g),
   }
 }
 
-export default function StreetMatch({ sport, name, look, gender, onExit, seed, online, rules }: Props) {
+export default function StreetMatch({ sport, name, look, gender, onExit, seed, online, rules, teams, kits: kitsProp }: Props) {
+  // The console's football: its extra moves and its HUD.
+  const fifa = sport === 'foot' && !!rules && !!(rules.referee || rules.switching || rules.size === 11)
+  const kits = kitsProp ?? KITS[sport]
+  // The stadium's eleven: a bigger ground to light and to see across.
+  const big = sport === 'foot' && rules?.size === 11
   const [round, setRound] = useState(0)
   const game = useMemo(() => {
     let s = (seed ?? Math.floor(Math.random() * 1e9)) + round * 7919
@@ -124,7 +178,7 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
   const looks = useMemo(() => {
     const r = rng(`street-${sport}`)
     return game.ps.map((p) => {
-      const kit = p.keeper ? KEEPER : KITS[sport][p.team]
+      const kit = p.keeper ? (rules?.referee ? KEEPERS[p.team] : KEEPER) : kits[p.team]
       const outfit = sport === 'basket' ? 'basket' : 'jersey'
       if (p.id === game.me) return { look: { ...look, outfit, outfitColor: kit, accessory: 'none' }, gender }
       const e = entries.find((x) => x.slot === p.id)
@@ -133,12 +187,14 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
       const base = randomLook(g, r)
       return { look: { ...base, outfit, outfitColor: kit, accessory: 'none', hair: base.hair === 'headwrap' ? 'short' : base.hair }, gender: g }
     })
-  }, [game, sport, look, gender, entries])
-  const input = useRef<Input>({ ...NO_INPUT })
+  }, [game, sport, look, gender, entries, kits])
+  // The console's hands can hold Tir (the power) and the sprint: starting them defined is what tells the game.
+  const fresh = (): Input => (fifa ? { ...NO_INPUT, charge: false, sprint: false } : { ...NO_INPUT })
+  const input = useRef<Input>(fresh())
   const touch = useMemo(() => typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches, [])
   const [hud, setHud] = useState<Hud>(() => hudOf(game))
-  useKeyboard(input)
-  usePad(input)
+  useKeyboard(input, fifa)
+  usePad(input, sport, fifa)
   const padOn = usePadConnected()
   const sceneSeed = `${sport}-${seed ?? 'street'}`
   // The world underneath holds still during the match.
@@ -147,17 +203,18 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
 
   return (
     <div className="fixed inset-0 z-50 touch-none bg-[#9fd3f2] select-none">
-      <Canvas shadows dpr={[1, 1.5]} camera={{ fov: 50, near: 0.3, far: 400, position: [0, 9, 14] }} onCreated={({ gl }) => void (held.current = holdScenes(gl.domElement))}>
+      <Canvas shadows dpr={[1, 1.5]} camera={{ fov: 50, near: 0.3, far: big ? 700 : 400, position: [0, 9, 14] }} onCreated={({ gl }) => void (held.current = holdScenes(gl.domElement))}>
         <color attach="background" args={['#9fd3f2']} />
-        <fog attach="fog" args={['#9fd3f2', 60, 180]} />
+        <fog attach="fog" args={['#9fd3f2', big ? 140 : 60, big ? 420 : 180]} />
         <hemisphereLight args={['#ffffff', '#8a7a5c', 1.15]} />
-        <directionalLight position={[18, 30, 14]} intensity={1.7} castShadow shadow-mapSize={[1024, 1024]} shadow-camera-left={-24} shadow-camera-right={24} shadow-camera-top={24} shadow-camera-bottom={-24} />
+        <directionalLight position={big ? [40, 70, 30] : [18, 30, 14]} intensity={1.7} castShadow shadow-mapSize={[big ? 2048 : 1024, big ? 2048 : 1024]} shadow-camera-left={big ? -70 : -24} shadow-camera-right={big ? 70 : 24} shadow-camera-top={big ? 60 : 24} shadow-camera-bottom={big ? -60 : -24} shadow-camera-far={big ? 200 : 100} />
         <Suspense fallback={null}>
           <Ground g={game} seed={sceneSeed} />
           {game.ps.map((p, i) => (
             <PlayerView key={`${round}-${p.id}`} g={game} i={i} look={looks[i].look} gender={looks[i].gender} />
           ))}
           <BallView g={game} />
+          <Referee g={game} />
           <Crowd g={game} seed={sceneSeed} />
         </Suspense>
         <Loop game={game} input={input} onHud={setHud} net={net} entries={entries} start={online?.match.start ?? 0} simId={online?.simId ?? ''} />
@@ -167,11 +224,13 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
       {/* The score, the clock */}
       <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <div className="flex items-center gap-2 rounded-2xl bg-[#0f1230]/75 px-3 py-2 text-white">
-          <span className="h-4 w-4 rounded-sm" style={{ background: KITS[sport][0] }} />
+          {teams && <span className="max-w-[6.5rem] truncate text-xs font-extrabold">{teams[0]}</span>}
+          <span className="h-4 w-4 rounded-sm" style={{ background: kits[0] }} />
           <span className="font-display text-3xl leading-none font-extrabold tabular-nums">{hud.score[0]}</span>
           <span className="text-lg font-extrabold opacity-60">-</span>
           <span className="font-display text-3xl leading-none font-extrabold tabular-nums">{hud.score[1]}</span>
-          <span className="h-4 w-4 rounded-sm" style={{ background: KITS[sport][1] }} />
+          <span className="h-4 w-4 rounded-sm" style={{ background: kits[1] }} />
+          {teams && <span className="max-w-[6.5rem] truncate text-xs font-extrabold">{teams[1]}</span>}
           <span className="ml-2 rounded-lg bg-white/15 px-2 py-0.5 text-sm font-extrabold tabular-nums">{game.extra ? 'But en or' : mmss(hud.left)}</span>
         </div>
         <button
@@ -202,7 +261,13 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
         </div>
       )}
 
-      {!hud.over && <Pad input={input} hud={hud} sport={sport} touch={touch && !padOn} pad={padOn} />}
+      {hud.hint && !hud.over && (
+        <div className="pointer-events-none absolute inset-x-0 top-[max(8.4rem,calc(env(safe-area-inset-top)+7.8rem))] px-4 text-center">
+          <span className="inline-block max-w-md rounded-xl bg-[#0f1230]/75 px-3 py-1.5 text-xs font-extrabold text-white">{hud.hint}</span>
+        </div>
+      )}
+      {fifa && !hud.over && <Gauges hud={hud} />}
+      {!hud.over && (fifa ? <FifaPad input={input} hud={hud} touch={touch && !padOn} pad={padOn} /> : <Pad input={input} hud={hud} sport={sport} touch={touch && !padOn} pad={padOn} />)}
       {online && hud.waiting > 0 && <Waiting entries={entries} cap={online.match.cap} left={hud.waiting} sport={sport} />}
 
       {hud.over && (
@@ -218,7 +283,7 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
             online || rules
               ? undefined
               : () => {
-                  input.current = { ...NO_INPUT }
+                  input.current = fresh()
                   setRound((r) => r + 1)
                 }
           }
@@ -234,7 +299,11 @@ function Loop({ game, input, onHud, net, entries, start, simId }: { game: Game; 
   const sent = useRef(0)
   const said = useRef<string | null>(null)
   const synced = useRef(false)
-  const seen = useRef(0)
+  // The last big moment heard (by its time: the game keeps only the last dozen), the referee's last whistle, the end.
+  const seen = useRef(-99)
+  const whistled = useRef(-9)
+  const ended = useRef(false)
+  const started = useRef(false)
   const size = useThree((s) => s.size)
   useFrame((_, dtRaw) => {
     const total = Math.min(Math.max(dtRaw, 0), 0.25)
@@ -269,26 +338,44 @@ function Loop({ game, input, onHud, net, entries, start, simId }: { game: Game; 
       if (host) {
         const others = net?.inputs(entries)
         for (let i = 0; i < steps; i++) {
-          step(game, dt, i === 0 ? mine : { ...mine, pass: false, shoot: false, skill: false, defend: false }, others)
+          step(game, dt, i === 0 ? mine : { ...mine, pass: false, shoot: false, skill: false, defend: false, through: false, lob: false, swap: false }, others)
           // The others' presses count once, on the first small step.
-          if (i === 0 && others) for (const [k, v] of others) others.set(k, { ...v, pass: false, shoot: false, skill: false, defend: false })
+          if (i === 0 && others) for (const [k, v] of others) others.set(k, { ...v, pass: false, shoot: false, skill: false, defend: false, through: false, lob: false, swap: false })
         }
         if (net && game.flash && game.flash.text !== said.current) net.say(game.flash.text)
         said.current = game.flash?.text ?? null
       } else if (!net!.apply(game, boss)) {
         // The match's phone has gone quiet: this one plays on from where it was.
-        for (let i = 0; i < steps; i++) step(game, dt, i === 0 ? mine : { ...mine, pass: false, shoot: false, skill: false, defend: false }, net!.inputs(entries))
+        for (let i = 0; i < steps; i++) step(game, dt, i === 0 ? mine : { ...mine, pass: false, shoot: false, skill: false, defend: false, through: false, lob: false, swap: false }, net!.inputs(entries))
       }
     }
     // A controller shakes for a goal or a basket (hard for one's own team), and for one's own big move.
-    while (seen.current < game.moments.length) {
-      const m = game.moments[seen.current++]
+    for (const m of game.moments) {
+      if (m.t <= seen.current) continue
+      seen.current = m.t
       const mine = m.team === game.ps[game.me].team
       if (m.kind === 'goal' || m.kind === 'basket' || m.kind === 'three' || m.kind === 'dunk') rumble(mine ? 0.9 : 0.35, mine ? 320 : 160)
       else if (m.by === game.me) rumble(0.5, 120)
+      if (m.kind === 'goal') sfx.roar()
+    }
+    // The referee's whistle: the kick-off, a foul, a set piece, the end (three long ones).
+    if (game.sport === 'foot') {
+      if (game.referee && game.ref.whistle > whistled.current) {
+        whistled.current = game.ref.whistle
+        sfx.whistle()
+      }
+      if (!started.current && game.time >= 0 && game.referee) {
+        started.current = true
+        sfx.whistle()
+      }
+      if (game.phase === 'over' && !ended.current) {
+        ended.current = true
+        if (game.referee) sfx.whistle(true)
+      }
     }
     // The buttons are presses, not holds.
     inp.pass = inp.shoot = inp.skill = inp.defend = false
+    inp.through = inp.lob = inp.swap = false
     if (net) {
       sent.current += total
       if (sent.current > 0.075) {
@@ -331,7 +418,7 @@ function Waiting({ entries, cap, left, sport }: { entries: CourtEntry[]; cap: nu
 }
 
 /** The keyboard: arrows / WASD / ZQSD, Space shoot, J or X pass, K or C crossover, L or E defend. */
-function useKeyboard(input: React.MutableRefObject<Input>) {
+function useKeyboard(input: React.MutableRefObject<Input>, fifa: boolean) {
   useEffect(() => {
     const keys = new Set<string>()
     const apply = () => {
@@ -342,14 +429,22 @@ function useKeyboard(input: React.MutableRefObject<Input>) {
       i.mx = x / l
       i.mz = z / l
       i.guard = keys.has('KeyL') || keys.has('KeyE')
+      // The console: Shift sprints, Space held charges the shot.
+      if (fifa) {
+        i.sprint = keys.has('ShiftLeft') || keys.has('ShiftRight')
+        i.charge = keys.has('Space')
+      }
     }
     const down = (e: KeyboardEvent) => {
-      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault()
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Tab'].includes(e.code)) e.preventDefault()
       if (!e.repeat) {
         if (e.code === 'Space') input.current.shoot = true
         if (e.code === 'KeyJ' || e.code === 'KeyX') input.current.pass = true
         if (e.code === 'KeyK' || e.code === 'KeyC') input.current.skill = true
         if (e.code === 'KeyL' || e.code === 'KeyE') input.current.defend = true
+        if (fifa && e.code === 'KeyU') input.current.through = true
+        if (fifa && e.code === 'KeyI') input.current.lob = true
+        if (fifa && (e.code === 'Tab' || e.code === 'KeyR')) input.current.swap = true
       }
       keys.add(e.code)
       apply()
@@ -370,7 +465,7 @@ function useKeyboard(input: React.MutableRefObject<Input>) {
       window.removeEventListener('keyup', up)
       window.removeEventListener('blur', blur)
     }
-  }, [input])
+  }, [input, fifa])
 }
 
 /** The stick: drag the knob to run; it springs back on release. */
@@ -459,9 +554,10 @@ function Pad({ input, hud, sport, touch, pad }: { input: React.MutableRefObject<
  * shoots or jumps, X the crossover, RB (or LB, LT) defends, held for the
  * stance. Written into the same input as the keys and the touch buttons.
  */
-function usePad(input: React.MutableRefObject<Input>) {
+function usePad(input: React.MutableRefObject<Input>, sport: Sport, fifa: boolean) {
   const run = useMemo(() => stickOwner(), [])
   const guard = useRef(false)
+  const held = useRef({ sprint: false, charge: false })
   useGamepad((p) => {
     const i = input.current
     const dx = (p.held.has('right') ? 1 : 0) - (p.held.has('left') ? 1 : 0)
@@ -470,12 +566,105 @@ function usePad(input: React.MutableRefObject<Input>) {
     run(x, y, (mx, mz) => ((i.mx = mx), (i.mz = mz)))
     if (p.pressed.has('a')) i.pass = true
     if (p.pressed.has('b')) i.shoot = true
+    if (fifa && sport === 'foot') {
+      // The console's football, as the big football games lay it out: X the lob, Y the through ball, RB the crochet, LB changes player, RT sprints, B held the power, LT defends.
+      if (p.pressed.has('x')) i.lob = true
+      if (p.pressed.has('y')) i.through = true
+      if (p.pressed.has('rb')) i.skill = true
+      if (p.pressed.has('lb')) i.swap = true
+      const now = { sprint: p.rt > 0.3, charge: p.held.has('b') }
+      if (now.sprint !== held.current.sprint) i.sprint = now.sprint
+      if (now.charge !== held.current.charge) i.charge = now.charge
+      held.current = now
+      const g = p.lt > 0.4
+      if (g && !guard.current) i.defend = true
+      if (g !== guard.current) i.guard = g
+      guard.current = g
+      return
+    }
     if (p.pressed.has('x') || p.pressed.has('y')) i.skill = true
     const g = p.held.has('rb') || p.held.has('lb') || p.lt > 0.4
     if (g && !guard.current) i.defend = true
     if (g !== guard.current) i.guard = g
     guard.current = g
   })
+}
+
+/** The console's football on a phone: the breath and, Tir held, the power. */
+function Gauges({ hud }: { hud: Hud }) {
+  return (
+    <div className="pointer-events-none absolute bottom-[max(10.5rem,calc(env(safe-area-inset-bottom)+10rem))] left-4 w-36 space-y-1.5">
+      <div className="h-2 overflow-hidden rounded-full bg-[#0f1230]/50">
+        <div className={`h-full rounded-full ${hud.stamina < 0.25 ? 'bg-[#e03131]' : 'bg-[#37b24d]'}`} style={{ width: `${Math.round(hud.stamina * 100)}%` }} />
+      </div>
+      {hud.charge > 0 && (
+        <div className="h-3 overflow-hidden rounded-full bg-[#0f1230]/60">
+          <div className={`h-full rounded-full ${hud.charge > 0.85 ? 'bg-[#e03131]' : 'bg-[#ffd43b]'}`} style={{ width: `${Math.round(hud.charge * 100)}%` }} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * The console's football buttons: Passe, Tir (held: the power), Profondeur,
+ * Centre, Crochet, and Sprint held by the stick. Without the ball, Passe
+ * changes player and Tir tackles. Their keys and pad buttons in the corners.
+ */
+function FifaPad({ input, hud, touch, pad }: { input: React.MutableRefObject<Input>; hud: Hud; touch: boolean; pad: boolean }) {
+  const press = (k: 'pass' | 'through' | 'lob' | 'skill' | 'swap') => (e: React.PointerEvent) => {
+    e.preventDefault()
+    input.current[k] = true
+  }
+  const hold = (k: 'charge' | 'sprint') => ({
+    onPointerDown: (e: React.PointerEvent) => {
+      e.preventDefault()
+      ;(e.target as HTMLElement).setPointerCapture?.(e.pointerId)
+      input.current[k] = true
+      if (k === 'charge') input.current.shoot = true
+    },
+    onPointerUp: () => void (input.current[k] = false),
+    onPointerCancel: () => void (input.current[k] = false),
+  })
+  const btn = 'pointer-events-auto relative grid place-items-center rounded-full font-display font-extrabold shadow-[0_6px_0_rgba(0,0,0,0.25)] active:translate-y-[3px] active:shadow-[0_3px_0_rgba(0,0,0,0.25)] transition-opacity select-none'
+  const off = 'opacity-45'
+  const k = (keyName: string, padName: string) => !touch && <Key>{pad ? padName : keyName}</Key>
+  return (
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+      <div className="flex items-end gap-3">
+        <Stick input={input} />
+        <button className={`${btn} h-14 w-14 bg-[#0f1230]/70 text-[11px] text-white`} {...hold('sprint')}>
+          Sprint
+          {k('Maj', 'RT')}
+        </button>
+      </div>
+      <div className="flex flex-col items-end gap-2">
+        {!touch && <span className="text-right text-[11px] font-bold text-white drop-shadow">{pad ? 'RT sprint · B tenu tir · A passe · Y profondeur · X centre · RB crochet · LB changer' : 'Maj sprint · Espace tenu tir · J passe · U profondeur · I centre · K crochet · Tab changer'}</span>}
+        <div className="grid grid-cols-3 gap-2.5">
+          <button className={`${btn} h-14 w-14 bg-[#7048e8] text-[11px] text-white ${hud.has ? '' : off}`} onPointerDown={press('through')}>
+            Profondeur
+            {k('U', 'Y')}
+          </button>
+          <button className={`${btn} h-14 w-14 bg-[#0ca678] text-[11px] text-white ${hud.has ? '' : off}`} onPointerDown={press('lob')}>
+            Centre
+            {k('I', 'X')}
+          </button>
+          <button className={`${btn} h-14 w-14 bg-[#ffd43b] text-[11px] text-[#141416] ${hud.has ? '' : off}`} onPointerDown={press('skill')}>
+            Crochet
+            {k('K', 'RB')}
+          </button>
+          <button className={`${btn} col-span-1 h-16 w-16 bg-[#2563eb] text-sm text-white`} onPointerDown={press(hud.has ? 'pass' : 'swap')}>
+            {hud.has ? 'Passe' : 'Changer'}
+            {k(hud.has ? 'J' : 'Tab', hud.has ? 'A' : 'LB')}
+          </button>
+          <button className={`${btn} col-span-2 h-16 w-full rounded-3xl text-base text-white ${hud.has ? 'bg-[#ff8200]' : 'bg-[#e03131]'}`} {...hold('charge')}>
+            {hud.has ? 'Tir (tiens)' : 'Tacle'}
+            {k('Espace', 'B')}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 /** On a computer: the key of a move, in the corner of its button. */

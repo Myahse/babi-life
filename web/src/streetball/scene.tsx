@@ -9,6 +9,8 @@ import { rng } from '../world3d/themes'
 import { StaticMerge } from '../world3d/staticMerge'
 import { PostedBubble, likesFor } from '../world3d/fans'
 import { ARC, BAR, BOARD_Z, COURT, HOOP, MOUTH, PITCH, RIM_Y, holder, type Game } from './game'
+import { Arc, Line } from './marks'
+import { Stadium } from './stadium'
 
 // What the street match looks like: the court chalked and painted on the
 // concrete under its basket on a stand (or the maracana's green carpet and
@@ -19,25 +21,11 @@ import { ARC, BAR, BOARD_Z, COURT, HOOP, MOUTH, PITCH, RIM_Y, holder, type Game 
 
 const BOX = new THREE.BoxGeometry(1, 1, 1)
 const flat = (color: string) => new THREE.MeshLambertMaterial({ color })
-const chalk = flat('#f4f4f0')
 const steel = flat('#4b5563')
 const white = flat('#f8f9fa')
 const orange = flat('#e85d04')
 const netMat = new THREE.MeshBasicMaterial({ color: '#ffffff', wireframe: true, transparent: true, opacity: 0.7 })
 
-/** A painted line on the ground, from a to b. */
-function Line({ a, b, w = 0.1 }: { a: [number, number]; b: [number, number]; w?: number }) {
-  const len = Math.hypot(b[0] - a[0], b[1] - a[1])
-  return <mesh geometry={BOX} material={chalk} position={[(a[0] + b[0]) / 2, 0.035, (a[1] + b[1]) / 2]} rotation={[0, -Math.atan2(b[1] - a[1], b[0] - a[0]), 0]} scale={[len, 0.01, w]} />
-}
-/** A painted arc round (x, z), the angles as the ring's (θ in the plane, the world's z = -sin θ). */
-function Arc({ at, r, from, to }: { at: [number, number]; r: number; from: number; to: number }) {
-  return (
-    <mesh position={[at[0], 0.036, at[1]]} rotation={[-Math.PI / 2, 0, 0]} material={chalk}>
-      <ringGeometry args={[r - 0.05, r + 0.05, 48, 1, from, to - from]} />
-    </mesh>
-  )
-}
 
 /* ---------- The fence and the quarter ---------- */
 
@@ -244,6 +232,8 @@ function Nets({ g }: { g: Game }) {
 /** The ground, its markings, the fence, the quarter round it (all baked into a few meshes). */
 export function Ground({ g, seed }: { g: Game; seed: string }) {
   const basket = g.sport === 'basket'
+  // The console's eleven: the stadium.
+  if (!basket && g.size === 11) return <Stadium g={g} />
   return (
     <>
       <StaticMerge>
@@ -262,36 +252,37 @@ export function Ground({ g, seed }: { g: Game; seed: string }) {
 export function PlayerView({ g, i, look, gender }: { g: Game; i: number; look: Look; gender: 'femme' | 'homme' }) {
   const root = useRef<THREE.Group>(null)
   const inner = useRef<THREE.Group>(null)
+  const mark = useRef<THREE.Group>(null)
   const [view, setView] = useState<{ pose: Pose; speed: number }>({ pose: 'idle', speed: 0 })
   useFrame(() => {
     const p = g.ps[i]
     const r = root.current
     if (!r) return
+    // The ring goes with the local hands (the console moves them from one team-mate to another).
+    if (mark.current) mark.current.visible = i === g.me
     r.position.set(p.x, 0, p.z)
     r.rotation.y = p.face
     inner.current?.scale.set(p.flip ? -1 : 1, 1, 1)
     const speed = Math.round(Math.hypot(p.vx, p.vz))
     if (p.pose !== view.pose || speed !== view.speed) setView({ pose: p.pose, speed })
   })
-  // Only the phone's own player: at a court the other humans are players too, and a ring on each hid which one was yours.
-  const me = i === g.me
+  // Only the phone's own player: at a court the other humans are players too, and a ring on each hid which one was yours. Bigger on the stadium's pitch, seen from further.
+  const k = g.size === 11 ? 1.8 : 1
   return (
     <group ref={root}>
       <group ref={inner}>
         <Human look={look} gender={gender} pose={view.pose} seed={i * 7.3} speed={view.speed || undefined} />
       </group>
-      {me && (
-        <>
-          <mesh position={[0, 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <ringGeometry args={[0.45, 0.58, 28]} />
-            <meshBasicMaterial color="#ff8200" transparent opacity={0.9} />
-          </mesh>
-          <mesh position={[0, 2.35, 0]} rotation={[Math.PI, 0, 0]}>
-            <coneGeometry args={[0.13, 0.26, 4]} />
-            <meshBasicMaterial color="#ff8200" />
-          </mesh>
-        </>
-      )}
+      <group ref={mark} visible={i === g.me}>
+        <mesh position={[0, 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[k, k, k]}>
+          <ringGeometry args={[0.45, 0.58, 28]} />
+          <meshBasicMaterial color="#ff8200" transparent opacity={0.9} />
+        </mesh>
+        <mesh position={[0, 2.35 + (k - 1) * 0.5, 0]} rotation={[Math.PI, 0, 0]} scale={[k, k, k]}>
+          <coneGeometry args={[0.13, 0.26, 4]} />
+          <meshBasicMaterial color="#ff8200" />
+        </mesh>
+      </group>
     </group>
   )
 }
@@ -396,6 +387,11 @@ export function Crowd({ g, seed }: { g: Game; seed: string }) {
       for (let x = -6.5; x <= 6.5; x += 1.5) spots.push({ at: [x + r() * 0.4, 8.9 + r() * 0.5], face: Math.PI })
       // Behind the basket too, along the back fence: they're the ones the camera sees.
       for (let x = -7.4; x <= 7.4; x += 1.25) if (Math.abs(x) > 0.7) spots.push({ at: [x + r() * 0.3, -9 - r() * 0.7], face: 0 })
+    } else if (g.size === 11) {
+      // At the stadium, the ones standing at the front, behind the boards (the stands are full behind them).
+      const F = g.field
+      for (let x = -F.x + 4; x <= F.x - 4; x += 4.5) spots.push({ at: [x + r() * 1.2, -F.z - 6.5 - r()], face: 0 })
+      for (const s of [-1, 1]) for (let z = -F.z + 6; z <= F.z - 6; z += 6) spots.push({ at: [s * (F.x + 7.5 + r()), z + r()], face: -s * (Math.PI / 2) })
     } else {
       for (let x = -16; x <= 16; x += 2.1) {
         spots.push({ at: [x + r() * 0.6, -12.3 - r() * 0.6], face: 0 })
@@ -408,7 +404,7 @@ export function Crowd({ g, seed }: { g: Game; seed: string }) {
       const sd = r() * 100
       return { look: randomLook(gender, r), gender, seed: sd, at: s.at, face: s.face, filmer: r() < 0.38, posts: r() < 0.65, delay: 0.6 + r() * 1.8, likes: likesFor(sd), kid: r() < 0.18 }
     })
-  }, [g.sport, seed])
+  }, [g.sport, g.size, g.field, seed])
   const [poses, setPoses] = useState<Pose[]>(() => fans.map(() => 'idle'))
   const tick = useRef(0)
   /** The last moment worth posting, and since when. */
@@ -425,7 +421,7 @@ export function Crowd({ g, seed }: { g: Game; seed: string }) {
     const b = g.ball
     const h = holder(g)
     // Hot: someone driving at the basket, the ball near a goal, a big moment.
-    const hot = g.sport === 'basket' ? (!!h && Math.hypot(h.x - HOOP[0], h.z - HOOP[1]) < 6.5) || !!b.flight : Math.abs(b.x) > PITCH.x - 9
+    const hot = g.sport === 'basket' ? (!!h && Math.hypot(h.x - HOOP[0], h.z - HOOP[1]) < 6.5) || !!b.flight : Math.abs(b.x) > g.field.x - (g.size === 11 ? 18 : 9)
     const next = fans.map((f, i): Pose => {
       const n = Math.sin(Math.floor((g.time + f.seed * 3) / 4) * 12.9898 + f.seed * 78.233) * 43758.5453
       const mood = n - Math.floor(n)
@@ -498,6 +494,22 @@ export function Follow({ g }: { g: Game }) {
       const zz = Math.max(-2, Math.min(6, fz))
       want = new THREE.Vector3(fx * 0.5, tall ? 9.5 : 7, zz + (tall ? 13 : 10.5))
       target = new THREE.Vector3(fx * 0.6, 1.2, Math.min(zz - 3, -1.5))
+    } else if (g.size === 11) {
+      // The stadium, like on TV: high on the side, following the ball along the pitch (the controlled player's pull a little less: the play is wide); upright, from behind the player's own half.
+      const F = g.field
+      const bx = b.x * 0.8 + me.x * 0.2
+      const bz = b.z * 0.8 + me.z * 0.2
+      if (tall) {
+        const xx = dir * Math.max(-F.x + 6, Math.min(F.x - 10, dir * bx))
+        const zz = Math.max(-F.z + 6, Math.min(F.z - 6, bz))
+        want = new THREE.Vector3(xx - 20 * dir, 19, zz)
+        target = new THREE.Vector3(xx + 9 * dir, 0, zz)
+      } else {
+        const xx = Math.max(-F.x + 14, Math.min(F.x - 14, bx))
+        const zz = Math.max(-F.z + 8, Math.min(F.z - 8, bz * 0.7))
+        want = new THREE.Vector3(xx, 21, zz + 27)
+        target = new THREE.Vector3(xx, 0, zz - 1)
+      }
     } else if (tall) {
       // A phone held upright: from behind the player's own goal, the attack going up the screen.
       const xx = dir * Math.max(-PITCH.x + 4, Math.min(PITCH.x - 6, dir * fx))

@@ -170,6 +170,69 @@ export const sfx = {
     if (!c) return
     tone(c, c.currentTime, 900 + Math.random() * 300, 0.07, 0.08, 'square', 300)
   },
+  /** The referee's whistle: a pea trilling (three long ones at the end of a match). */
+  whistle(long = false) {
+    const c = audio()
+    if (!c) return
+    const t = c.currentTime
+    const blow = (at: number, length: number) => {
+      const o = c.createOscillator()
+      o.type = 'square'
+      o.frequency.setValueAtTime(2900, at)
+      // The pea rattling in the whistle: the pitch wobbling fast.
+      const lfo = c.createOscillator()
+      lfo.frequency.value = 32
+      const depth = c.createGain()
+      depth.gain.value = 180
+      lfo.connect(depth).connect(o.frequency)
+      const f = c.createBiquadFilter()
+      f.type = 'bandpass'
+      f.frequency.value = 2900
+      f.Q.value = 3
+      const g = c.createGain()
+      g.gain.setValueAtTime(0.0001, at)
+      g.gain.exponentialRampToValueAtTime(0.09, at + 0.02)
+      g.gain.setValueAtTime(0.09, at + length - 0.05)
+      g.gain.exponentialRampToValueAtTime(0.0001, at + length)
+      o.connect(f).connect(g).connect(c.destination)
+      o.start(at)
+      lfo.start(at)
+      o.stop(at + length + 0.02)
+      lfo.stop(at + length + 0.02)
+    }
+    if (long) [0, 0.55, 1.1].forEach((d, i) => blow(t + d, i === 2 ? 0.9 : 0.4))
+    else blow(t, 0.32)
+  },
+  /** A ball struck: a thump, harder for a shot. */
+  kick(power = 0.5) {
+    const c = audio()
+    if (!c) return
+    const t = c.currentTime
+    tone(c, t, 150 + power * 60, 0.12, 0.12 + power * 0.12, 'sine', 55)
+    noise(c, t, 0.04, 1400, 1.5, 0.12 + power * 0.1)
+  },
+  /** The crowd going up for a goal: a roar that swells and fades. */
+  roar() {
+    const c = audio()
+    if (!c) return
+    const t = c.currentTime
+    const buf = c.createBuffer(1, Math.floor(c.sampleRate * 2.4), c.sampleRate)
+    const d = buf.getChannelData(0)
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1
+    const src = c.createBufferSource()
+    src.buffer = buf
+    const f = c.createBiquadFilter()
+    f.type = 'bandpass'
+    f.frequency.value = 900
+    f.Q.value = 0.6
+    const g = c.createGain()
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.exponentialRampToValueAtTime(0.22, t + 0.35)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 2.4)
+    src.connect(f).connect(g).connect(c.destination)
+    src.start(t)
+    src.stop(t + 2.45)
+  },
   /** A tick (the plane's multiplier climbing, the price moving). */
   tick(pitch = 1) {
     const c = audio()

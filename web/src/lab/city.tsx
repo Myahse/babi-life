@@ -110,6 +110,7 @@ const seededLab = (n: number) => () => ((n = (n * 16807) % 2147483647) / 2147483
 // into the cycle, frozen; without t it plays);
 // ?view=field&sport=foot|basket (&len=40&wid=20 &night &t= &cam= &target=) a pitch or a court and its match;
 // ?view=hoops the playable 3 against 3 under one basket, ?view=foot5 the 5 against 5 (&seed=);
+// ?view=fifa5 | fifa11 the console's football (referee, switching; fifa11 the stadium's eleven) (&seed=, &foe=);
 // ?view=family&f=gnambro (&g=homme &seed=3) a family at the birth, in front of its home;
 // ?view=interior&kind=home&id=sleep (&housing=villa &g=homme &stage=bebe
 // &seed=3 &night) the inside of a place, the Sim doing that activity;
@@ -683,6 +684,19 @@ function Lab() {
   if (view === 'chantier') return <ChantierLab />
   if (view === 'plan') return <PlanLab />
   if (view === 'inside') return <InsideLab />
+  if (view === 'fifa5' || view === 'fifa11')
+    return (
+      <StreetMatch
+        sport="foot"
+        name="Awa"
+        look={randomLook('femme', seededLab(5))}
+        gender="femme"
+        seed={Number(q.get('seed') ?? 7)}
+        rules={{ size: view === 'fifa11' ? 11 : 5, referee: true, switching: true, length: 300, foe: Number(q.get('foe') ?? 1) }}
+        teams={['Babi FC', 'Les Lagunaires']}
+        onExit={() => location.reload()}
+      />
+    )
   if (view === 'hoops' || view === 'foot5') return <StreetMatch sport={view === 'hoops' ? 'basket' : 'foot'} name="Awa" look={randomLook('femme', seededLab(5))} gender="femme" seed={Number(q.get('seed') ?? 7)} onExit={() => location.reload()} />
   if (view === 'kart') return <KartRace name="Awa" look={randomLook('femme', seededLab(5))} gender="femme" onExit={() => location.reload()} />
   if (view === 'stadium') return <StadiumLab />
