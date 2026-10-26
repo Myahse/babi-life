@@ -17,6 +17,7 @@ import type { Nav } from './nav'
 import { placeIn, useJoined } from './joinIn'
 import { useShare } from '../../lib/share'
 import { GameHistory } from '../../components/GameHistory'
+import { keyOpen, useFeatures } from '../../lib/features'
 
 // The sellers of the street, at the edge of the real streets around the Sim,
 // always at the same corners:
@@ -396,6 +397,8 @@ const LT = {
 /** The loto ticket: which draw, 1 to 3 numbers out of 90, the stake (game/loto.go). */
 function LotoMenu({ onChoose, onClose }: { onChoose: (choice: string) => void; onClose: () => void }) {
   const simId = useShare((x) => x.simId)
+  // The loto comes with its update (lib/features.ts): till then, the kiosk says so.
+  const feats = useFeatures()
   const [draws, setDraws] = useState<{ id: number; name: string; at: number; numbers?: number[] }[]>([])
   const [pays, setPays] = useState<Record<number, number>>({ 1: 15, 2: 250, 3: 2500 })
   const [draw, setDraw] = useState<number | null>(null)
@@ -416,6 +419,15 @@ function LotoMenu({ onChoose, onClose }: { onChoose: (choice: string) => void; o
   const last = [...draws].reverse().find((d) => d.numbers)
   const toggle = (n: number) => setPicked((p) => (p.includes(n) ? p.filter((x) => x !== n) : p.length < 3 ? [...p, n] : p))
   const hour = (at: number) => new Date(at * 1000).toISOString().slice(11, 13) + ' h'
+  if (!keyOpen(feats, 'loto'))
+    return (
+      <div className="w-[240px] rounded-2xl bg-white p-3 text-center text-[13px] font-extrabold text-[#141416] shadow-lg">
+        Le Loto Chance arrive bientôt dans le jeu !
+        <button className="mt-2 w-full rounded-xl bg-[#f26b1d] py-1.5 text-white" onClick={onClose}>
+          D'accord
+        </button>
+      </div>
+    )
   return (
     <div className="w-[300px] rounded-[22px] bg-white p-3 text-[var(--color-ink)] shadow-[0_18px_36px_-14px_rgba(0,0,0,0.6)]" onPointerDown={(e) => e.stopPropagation()}>
       <div className="flex items-center justify-between">

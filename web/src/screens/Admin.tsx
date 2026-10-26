@@ -593,8 +593,39 @@ function Updates({ k }: { k: string }) {
     }
   }
   const live = list.filter((u) => u.live).length
+  // Everything at once (the launch, or a test): each one opened, the list read back at the end.
+  const openAll = async () => {
+    setE(null)
+    try {
+      for (const u of list.filter((x) => !x.live)) await call(`/admin/features/${u.id}`, k, { method: 'POST', body: JSON.stringify({ open: true, opensAt: '' }) })
+      await load()
+      setOk('Tout est ouvert.')
+      setSure(null)
+    } catch (x) {
+      setE(x instanceof Error ? x.message : 'Erreur')
+    }
+  }
   return (
     <div className="space-y-4">
+      {live < list.length && (
+        <div className="flex items-center gap-2">
+          {sure === '*' ? (
+            <>
+              <span className="text-sm text-[#374151]">Ouvrir les {list.length - live} mises à jour fermées à tous les joueurs ?</span>
+              <Btn tone="light" onClick={() => setSure(null)}>
+                Annuler
+              </Btn>
+              <Btn tone="orange" onClick={() => void openAll()}>
+                Oui, tout ouvrir
+              </Btn>
+            </>
+          ) : (
+            <Btn tone="light" onClick={() => setSure('*')}>
+              Tout ouvrir
+            </Btn>
+          )}
+        </div>
+      )}
       <p className="text-sm text-[#6b7280]">
         Chaque nouveauté arrive fermée : les joueurs ne la voient pas (ni bouton, ni activité, ni appli) et le serveur la refuse. Ouvre-les une par une, maintenant ou à une date, pour que le jeu ait des mises à jour au fil des semaines. À l'ouverture, chaque joueur voit une fois « Nouveau dans Babi Life » avec le texte ci-dessous. Ouvertes : {live}/{list.length}.
       </p>

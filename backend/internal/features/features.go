@@ -40,6 +40,30 @@ var List = []Feature{
 	{ID: "tikitoko", Label: "Tikitoko", About: "L'appli des vidéos courtes dans le téléphone du perso.", Keys: []string{"app:tikitoko"}},
 	{ID: "babigram", Label: "Babigram", About: "L'appli des photos dans le téléphone du perso.", Keys: []string{"app:babigram"}},
 	{ID: "historique", Label: "L'historique des jeux d'argent", About: "Dans chaque jeu du casino, au bingo, aux paris et au loto : tes dernières parties, ce que tu as misé et récupéré aujourd'hui et sur 7 jours.", Keys: []string{"historique"}},
+	// The phone's apps (each one hidden in the Store and on the phone, and refused by the server, until opened).
+	{ID: "app-waye", Label: "Waye", About: "Envoyer et recevoir de l'argent entre amis, depuis le téléphone du perso.", Keys: []string{"app:waye"}},
+	{ID: "app-gbairai", Label: "Gbairai", About: "La messagerie des amis et des groupes.", Keys: []string{"app:gbairai"}},
+	{ID: "app-flashe", Label: "Flashé", About: "Payer en flashant le code des commerçants.", Keys: []string{"app:flashe"}},
+	{ID: "app-golvo", Label: "Golvo", About: "La livraison de repas à domicile, le livreur qui arrive en moto.", Keys: []string{"app:golvo"}},
+	{ID: "app-dodo", Label: "Dodo", About: "Réserver une maison ou un appartement pour quelques nuits.", Keys: []string{"app:dodo"}},
+	{ID: "app-kineo", Label: "Kinéo", About: "Le cinéma : les films à l'affiche et les places.", Keys: []string{"app:kineo"}},
+	{ID: "app-bolide", Label: "Bolide", About: "Acheter son vélo, sa moto ou sa voiture, et la conduire en ville.", Keys: []string{"app:bolide"}},
+	{ID: "app-gnango", Label: "Gnango", About: "Commander un taxi et faire le trajet dedans.", Keys: []string{"app:gnango"}},
+	{ID: "app-idrive", Label: "iDrive", About: "Les VTC : une voiture avec chauffeur jusqu'à ta destination.", Keys: []string{"app:idrive"}},
+	{ID: "app-dames", Label: "Dames 225", About: "Le jeu de dames contre les gens du quartier ou un ami.", Keys: []string{"app:dames"}},
+	{ID: "app-huit", Label: "8 américain", About: "Le jeu de cartes, contre le quartier ou entre amis.", Keys: []string{"app:huit"}},
+	{ID: "app-bet225", Label: "Bet225", About: "Les paris sur les matchs du jeu (18 ans et plus).", Keys: []string{"app:bet225"}},
+	{ID: "app-parisfoot", Label: "ParisFoot", About: "L'autre appli de paris, ses cotes et ses combinés (18 ans et plus).", Keys: []string{"app:parisfoot"}},
+	{ID: "app-bingo", Label: "Babi Bingo", About: "Quatre salles de bingo, une partie toutes les quelques minutes (18 ans et plus).", Keys: []string{"app:bingo"}},
+	{ID: "app-casino", Label: "Babi Casino", About: "La roulette, le 21, les tickets à gratter, L'Envol et Babi Trade (18 ans et plus).", Keys: []string{"app:casino"}},
+	// What isn't an app.
+	{ID: "soirees", Label: "Organiser une soirée", About: "Inviter ses amis chez soi ou dans un lieu, la musique, à boire, la soirée qui dure.", Keys: []string{"soiree"}},
+	{ID: "politique", Label: "La politique", About: "Les élections du quartier et du pays, les campagnes, la présidence.", Keys: []string{"app:politique"}},
+	{ID: "loto", Label: "Le loto", About: "Les kiosques Loto Chance dans les rues et leurs tirages.", Keys: []string{"loto"}},
+	{ID: "machines", Label: "Les machines à sous", About: "Aux maquis et au casino de l'Hôtel Ivoire (18 ans et plus).", Interactions: []string{"machine-maquis", "machine-casino"}},
+	{ID: "casino-ivoire", Label: "La soirée au casino de l'Hôtel Ivoire", About: "Passer la soirée au casino du grand hôtel.", Interactions: []string{"casino-ivoire"}},
+	{ID: "tournoi-console", Label: "Le tournoi console du samedi", About: "Quart, demie et finale à la salle de jeux, la coupe à gagner.", Interactions: []string{"tournoi-console"}},
+	{ID: "console-defi", Label: "Le défi console « le perdant paie »", About: "Défier un gars du quartier à la console, le perdant paie.", Interactions: []string{"console-defi"}},
 }
 
 // Find is the update of that ID.
