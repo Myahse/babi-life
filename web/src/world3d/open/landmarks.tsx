@@ -9,6 +9,7 @@ import { HotelIvoire } from './hotelIvoire'
 import { HotelPoulman } from './poulman'
 import { HotelNoum } from './noum'
 import { HotelAzale } from './azale'
+import { CapSud } from './capsud'
 import { HotelRabisson } from './rabisson'
 import { StadiumLive } from './stadiumLive'
 import { Zoo } from './zoo'
@@ -44,6 +45,7 @@ export const LANDMARKS: Record<string, number> = {
   'plateau-poulman': 42,
   'plateau-noum': 42,
   'marcory-azale': 40,
+  'marcory-capsud': 52,
   'pb-rabisson': 56,
   'yakro-basilique': 130,
   'pb-aeroport': 150,
@@ -86,6 +88,7 @@ export const LANDMARK_FRONT: Record<string, number> = {
 export const LANDMARK_GROUND: Record<string, [number, number, number, number]> = {
   'cocody-playce': [-51, 51, -34, 37],
   'marcory-playce': [-49, 49, -36, 35],
+  'marcory-capsud': [-45, 45, -38, 35],
 }
 
 /** Grounds where the game builds none of its own houses (the map's buildings stay): a fairground, metres round the place. */
@@ -176,6 +179,8 @@ export function Landmark({ id, night, demo, open = true }: { id: string; night: 
       return <HotelNoum night={night} />
     case 'marcory-azale':
       return <HotelAzale night={night} />
+    case 'marcory-capsud':
+      return <CapSud night={night} />
     case 'pb-rabisson':
       return <HotelRabisson night={night} />
     case 'yakro-basilique':
