@@ -18,7 +18,7 @@ func TestScaled(t *testing.T) {
 
 // The roulette's commission brings every kind of bet to the rate.
 func TestRouletteCommission(t *testing.T) {
-	for _, rate := range []float64{0.55, 0.7, 0.85, 0.95} {
+	for _, rate := range []float64{OddsFloor(OddsRoulette), 0.55, 0.7, 0.85, 0.95} {
 		for _, times := range []int{1, 2, 5, 8, 11, 17, 35} {
 			c := RouletteCommission(rate, times)
 			p := float64(36/(times+1)) / 37
@@ -82,7 +82,7 @@ func TestScratchAt(t *testing.T) {
 		if ScratchAt(tk, 0).Prizes[0] != tk.Prizes[0] {
 			t.Fatal("untouched must print as before")
 		}
-		for _, rate := range []float64{0.55, 0.7, 0.9} {
+		for _, rate := range []float64{0.3, 0.55, 0.7, 0.9} {
 			if k := ScratchReturn(ScratchAt(tk, rate)); math.Abs(k-rate) > 0.01 {
 				t.Errorf("%s at %.2f gives back %.4f", tk.ID, rate, k)
 			}
@@ -92,7 +92,7 @@ func TestScratchAt(t *testing.T) {
 
 // L'Envol at a rate: P(≥ x) = rate / x.
 func TestEnvolAtRate(t *testing.T) {
-	for _, rate := range []float64{0.55, 0.8, 0.95} {
+	for _, rate := range []float64{0.3, 0.55, 0.8, 0.95} {
 		over := 0
 		const n = 100_000
 		for i := int64(1); i <= n; i++ {
@@ -108,10 +108,10 @@ func TestEnvolAtRate(t *testing.T) {
 
 // At the lowest rate the admin allows, le 21 still gives back what's said (its commission under 1).
 func TestCommission21AtTheFloor(t *testing.T) {
-	if c := Commission21(OddsMin); c >= 1 {
-		t.Fatalf("le 21 at %.2f: commission %.3f, it can't give back so little", OddsMin, c)
+	if c := Commission21(OddsFloor(Odds21)); c >= 1 {
+		t.Fatalf("le 21 at %.2f: commission %.3f, it can't give back so little", OddsFloor(Odds21), c)
 	}
-	if TradePaysAt(OddsMin) <= 1 {
+	if TradePaysAt(OddsFloor(OddsTrade)) <= 1 {
 		t.Fatal("Babi Trade must pay more than the stake on a right call")
 	}
 }

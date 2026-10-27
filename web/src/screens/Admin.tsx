@@ -707,7 +707,7 @@ function Updates({ k }: { k: string }) {
 
 /* ---------- Casino ---------- */
 
-type OddsRate = { id: string; label: string; rate: number; natural: number; set: boolean; own: boolean }
+type OddsRate = { id: string; label: string; rate: number; natural: number; set: boolean; own: boolean; /** the lowest it can be set to */ min?: number }
 type OddsState = { games: OddsRate[]; level: number | null; history: { game: string; rate: number | null; at: string }[]; min: number; max: number }
 const pc = (r: number) => `${(Math.round(r * 1000) / 10).toLocaleString('fr-FR')} %`
 
@@ -741,7 +741,7 @@ function Casino({ k }: { k: string }) {
     <div className="space-y-4">
       <p className="text-sm text-[#6b7280]">
         Le taux de retour, c'est ce qu'un jeu rend en moyenne pour 100 Djai misés : le reste, la maison le garde. Il est le même pour tous les joueurs, compte dès la prochaine partie (une partie commencée garde le sien) et s'affiche dans les règles de chaque jeu : on ne le cache pas, les joueurs
-        achètent leurs Djai avec de l'argent réel. De {pc(st.min)} à {pc(st.max)}.
+        peuvent acheter leurs Djai avec de l'argent réel. De {pc(st.min)} à {pc(st.max)} ; la roulette pas sous 50 %, le 21 et Babi Trade pas sous 55 % (en dessous ils ne pourraient plus rendre le taux annoncé) : un niveau pour tous plus bas les laisse à leur minimum, et c'est celui-là qu'ils affichent.
       </p>
       <Err e={e} />
       <Ok t={ok} />
@@ -775,7 +775,8 @@ function Casino({ k }: { k: string }) {
               {st.games.map((g) => {
                 const v = typed[g.id] ?? ''
                 const n = Number(v.replace(',', '.'))
-                const good = v !== '' && n >= lo && n <= hi
+                const gl = (g.min ?? st.min) * 100
+                const good = v !== '' && n >= gl && n <= hi
                 return (
                   <tr key={g.id} className="border-t border-[#f3f4f6]">
                     <td className="py-2 font-medium">{g.label}</td>
@@ -789,7 +790,7 @@ function Casino({ k }: { k: string }) {
                         <input
                           value={v}
                           onChange={(x) => setTyped((t) => ({ ...t, [g.id]: x.target.value }))}
-                          placeholder={`${lo}–${hi}`}
+                          placeholder={`${gl}–${hi}`}
                           inputMode="decimal"
                           className="w-20 rounded-lg border border-[#d1d5db] px-2 py-1 outline-none focus:border-[#ea580c]"
                         />

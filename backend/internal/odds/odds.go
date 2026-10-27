@@ -8,6 +8,7 @@ package odds
 import (
 	"context"
 	"errors"
+	"math"
 	"net/http"
 	"sort"
 	"sync"
@@ -85,11 +86,12 @@ func (s *Store) RateAt(id string, t time.Time) (float64, bool) {
 			all = c.Rate
 		}
 	}
+	// A level for all under what a game can keep to: that game at its floor (and so it says).
 	switch {
 	case own != nil:
-		return *own, true
+		return math.Max(*own, game.OddsFloor(id)), true
 	case all != nil:
-		return *all, true
+		return math.Max(*all, game.OddsFloor(id)), true
 	}
 	return 0, false
 }
@@ -98,11 +100,11 @@ func (s *Store) RateAt(id string, t time.Time) (float64, bool) {
 func (s *Store) Now(id string) (float64, bool) { return s.RateAt(id, time.Now()) }
 
 // ErrRange: a rate outside what the casino allows.
-var ErrRange = errors.New("le taux de retour va de 55 % à 97 %")
+var ErrRange = errors.New("taux de retour hors limites : de 30 % à 97 % pour tous, 50 % au moins pour la roulette, 55 % pour le 21 et Babi Trade")
 
 // Set records a change from now (nil rate: back to the level for all, or untouched for All).
 func (s *Store) Set(ctx context.Context, id string, rate *float64) error {
-	if rate != nil && (*rate < game.OddsMin || *rate > game.OddsMax) {
+	if rate != nil && (*rate < game.OddsFloor(id)-1e-9 || *rate > game.OddsMax) {
 		return ErrRange
 	}
 	_, err := s.DB.Exec(ctx, `INSERT INTO casino_odds (game, rate) VALUES ($1, $2)`, id, rate)
@@ -134,6 +136,8 @@ type Rate struct {
 	// Set: by the team (its own or the level for all); Own: its own.
 	Set bool `json:"set"`
 	Own bool `json:"own"`
+	// Min: the lowest it can be set to (game.OddsFloor).
+	Min float64 `json:"min"`
 	// Variants: the tickets' and the bingo rooms' own untouched rates (their prizes are scaled by rate / theirs).
 	Variants map[string]float64 `json:"variants,omitempty"`
 }
@@ -156,7 +160,7 @@ func (s *Store) Rates() []Rate {
 		if !set {
 			r = nat
 		}
-		x := Rate{ID: g.ID, Label: g.Label, Rate: r, Natural: nat, Set: set, Own: ownSet[g.ID]}
+		x := Rate{ID: g.ID, Label: g.Label, Rate: r, Natural: nat, Set: set, Own: ownSet[g.ID], Min: game.OddsFloor(g.ID)}
 		switch g.ID {
 		case game.OddsBingo:
 			x.Variants = game.BingoNatural
