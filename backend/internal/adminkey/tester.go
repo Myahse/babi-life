@@ -11,6 +11,12 @@ import (
 // The code itself is never in the repository.
 const TesterCodeSHA256 = "92b21e0ee6aa63de70e43ad4d37d005b992d0c44837a0e4f6ad4773123971e4d"
 
+// TestersOff (TESTER_TOOLS=off, set once at start): the testers' code opens
+// nothing any more, and the testers' toolbox (free money, ageing, finishing
+// an activity) is shut for everyone. For once the game is out: the code's hash
+// is in the web app, so a weak code can be found by anyone who looks.
+var TestersOff bool
+
 // Tester: the testers' code (any case) or the master key.
 func Tester(pass string) bool {
 	pass = strings.TrimSpace(pass)
@@ -18,7 +24,7 @@ func Tester(pass string) bool {
 		return false
 	}
 	sum := sha256.Sum256([]byte(strings.ToLower(pass)))
-	if hex.EncodeToString(sum[:]) == TesterCodeSHA256 {
+	if !TestersOff && hex.EncodeToString(sum[:]) == TesterCodeSHA256 {
 		return true
 	}
 	return Master != "" && subtle.ConstantTimeCompare([]byte(pass), []byte(Master)) == 1

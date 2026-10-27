@@ -45,9 +45,22 @@ func (h *Handler) tester(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
 		return
 	}
+	// The game out (TESTER_TOOLS=off): no toolbox for anyone.
+	if adminkey.TestersOff {
+		httpx.Error(w, http.StatusForbidden, errNotTester.Error())
+		return
+	}
+	user := auth.UserID(r.Context())
+	if auth.FailedCodes.Full(user) {
+		httpx.Error(w, http.StatusTooManyRequests, "trop d'essais : réessaie dans une heure")
+		return
+	}
 	var tester, off bool
-	_ = h.DB.QueryRow(r.Context(), `SELECT tester, tester_off FROM users WHERE id = $1`, auth.UserID(r.Context())).Scan(&tester, &off)
+	_ = h.DB.QueryRow(r.Context(), `SELECT tester, tester_off FROM users WHERE id = $1`, user).Scan(&tester, &off)
 	if !tester && (off || !adminkey.Tester(req.Pass)) {
+		if req.Pass != "" {
+			auth.FailedCodes.Hit(user)
+		}
 		httpx.Error(w, http.StatusForbidden, errNotTester.Error())
 		return
 	}

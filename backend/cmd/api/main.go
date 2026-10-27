@@ -92,6 +92,11 @@ func main() {
 	}
 	// ADMIN_KEY opens every admin part at once (the /admin page).
 	adminkey.Master = os.Getenv("ADMIN_KEY")
+	// TESTER_TOOLS=off once the game is out: the testers' code and toolbox shut.
+	adminkey.TestersOff = os.Getenv("TESTER_TOOLS") == "off"
+	if adminkey.TestersOff {
+		log.Println("Testers' toolbox off (TESTER_TOOLS=off)")
+	}
 	karts := kart.NewLobby()
 	courts := court.NewLobby()
 	// Notifications to the phones (internal/push): the site's Web Push keys, the app's Firebase account.
