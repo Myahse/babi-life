@@ -351,7 +351,52 @@ function farOf<T extends Record<string, THREE.Material>>(mats: T): T {
 const FAR_WALLS = ['#efe6d6', '#e9dcc3', '#f3f1ec', '#d9cbb0', '#f0d9b5', '#e8d2c0', '#dfe4e8'].map((c) => new THREE.Color(c))
 const FAR_GLASS = new THREE.Color('#b9cad9')
 const FAR_BOX = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0)
+const FAR_NIGHT = { value: 0 }
+/**
+ * The blocks' walls drawn by the shader, as the city's: rows of windows a storey apart (3 m), a
+ * column every 2.6 m along each wall, from the first floor up; the roof a shade of its own; the foot
+ * of the walls darker (the shade of the street); at night a part of the windows lit, warm, by
+ * where they are (the same ones every night).
+ */
 const farBlockMat = new THREE.MeshLambertMaterial({ color: '#ffffff' })
+farBlockMat.onBeforeCompile = (sh) => {
+  sh.uniforms.uFarNight = FAR_NIGHT
+  sh.vertexShader = sh.vertexShader
+    .replace('#include <common>', '#include <common>\nvarying vec3 vFarL;\nvarying vec3 vFarN;\nvarying vec3 vFarW;')
+    .replace(
+      '#include <begin_vertex>',
+      `#include <begin_vertex>
+      #ifdef USE_INSTANCING
+        vec3 farScale = vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz));
+        vFarW = (modelMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+      #else
+        vec3 farScale = vec3(1.0);
+        vFarW = vec3(0.0);
+      #endif
+      vFarL = position * farScale;
+      vFarN = normal;`,
+    )
+  sh.fragmentShader = sh.fragmentShader
+    .replace('#include <common>', '#include <common>\nvarying vec3 vFarL;\nvarying vec3 vFarN;\nvarying vec3 vFarW;\nuniform float uFarNight;\nfloat farHash(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }\nfloat farWin;')
+    .replace(
+      '#include <color_fragment>',
+      `#include <color_fragment>
+      float farRoof = step(0.5, vFarN.y);
+      float farAlong = abs(vFarN.x) > 0.5 ? vFarL.z : vFarL.x;
+      float fy = fract(vFarL.y / 3.0);
+      float fx = fract(farAlong / 2.6);
+      farWin = (1.0 - farRoof) * step(0.3, fy) * step(fy, 0.78) * step(0.22, fx) * step(fx, 0.78) * step(2.6, vFarL.y);
+      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.26, 0.31, 0.38), farWin * 0.7);
+      diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.78, 0.76, 0.74), farRoof);
+      diffuseColor.rgb *= mix(0.7, 1.0, smoothstep(0.0, 2.4, vFarL.y) + farRoof);`,
+    )
+    .replace(
+      '#include <emissivemap_fragment>',
+      `#include <emissivemap_fragment>
+      float farLit = step(0.62, farHash(vec3(floor(farAlong / 2.6), floor(vFarL.y / 3.0), floor(vFarW.x + vFarW.z * 1.7))));
+      totalEmissiveRadiance += uFarNight * farWin * farLit * vec3(1.0, 0.78, 0.45) * 0.85;`,
+    )
+}
 
 /**
  * The city past the loaded streets (the horizon's tiles): its buildings as plain blocks, one draw
@@ -374,12 +419,13 @@ export function FarBlocks({ blocks, hide, night }: { blocks: FarBlock[]; hide: B
       m.setMatrixAt(i, o.matrix)
       const k = Math.abs(Math.sin(x * 12.9898 + z * 78.233) * 43758.5453) % 1
       c.copy(h > 24 ? FAR_GLASS : FAR_WALLS[Math.floor(k * FAR_WALLS.length)])
-      if (night) c.multiplyScalar(0.32)
+      if (night) c.multiplyScalar(0.36)
       m.setColorAt(i, c)
     })
     m.instanceMatrix.needsUpdate = true
     if (m.instanceColor) m.instanceColor.needsUpdate = true
     m.computeBoundingSphere()
+    FAR_NIGHT.value = night ? 1 : 0
   }, [blocks, hide, night])
   return <instancedMesh ref={ref} args={[FAR_BOX, farBlockMat, blocks.length]} frustumCulled />
 }

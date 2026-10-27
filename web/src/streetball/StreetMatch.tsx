@@ -8,7 +8,7 @@ import { COUNTDOWN, METER_GOOD, NO_INPUT, buttons, createGame, outcome, shootout
 import { holdScenes } from '../world3d/hold'
 import { BallView, Crowd, Follow, Ground, PlayerView, upright } from './scene'
 import { HAZE, Sky } from './looks'
-import { FarGrow } from '../avatar/LowHuman'
+import { FarGrow, GroundShade } from '../avatar/LowHuman'
 import { NearUpTo } from '../avatar/Human'
 import { Referee } from './stadium'
 import { likesFor } from '../world3d/fans'
@@ -237,6 +237,8 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
   return (
     <div className="fixed inset-0 z-50 touch-none select-none" style={{ background: HAZE }}>
       <Canvas shadows dpr={[1, 1.5]} camera={{ fov: 50, near: 0.3, far: big ? 700 : 400, position: [0, 9, 14] }} onCreated={({ gl }) => void (held.current = holdScenes(gl.domElement))}>
+        {/* The players have their own shade on the grass (scene.tsx Blob): the far figures add none. */}
+        <GroundShade.Provider value={false}>
         <color attach="background" args={[HAZE]} />
         <fog attach="fog" args={[HAZE, big ? 160 : 70, big ? 520 : 260]} />
         {/* The afternoon: a warm sun high to the side, the sky's blue from above and the grass's green from below. */}
@@ -260,6 +262,7 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
         </Suspense>
         <Loop game={game} input={input} onHud={setHud} net={net} entries={entries} start={online?.match.start ?? 0} simId={online?.simId ?? ''} />
         <Follow g={game} />
+        </GroundShade.Provider>
       </Canvas>
 
       {/* The score, the clock */}
