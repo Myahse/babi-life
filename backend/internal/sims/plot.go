@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/myahse/babi-life/backend/internal/features"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
 	"github.com/myahse/babi-life/backend/internal/world"
@@ -50,6 +52,9 @@ type Lot struct {
 	City    string `json:"city"`
 	Commune string `json:"commune"`
 	Paid    int    `json:"paid"`
+	// Lat, Lng: where the player set it on the map (an update: lot-carte); none, the spot the game drew (world3d lotSpot).
+	Lat *float64 `json:"lat,omitempty"`
+	Lng *float64 `json:"lng,omitempty"`
 }
 
 type Plot struct {
@@ -97,14 +102,14 @@ func (p Plot) house() game.House {
 func (p Plot) bare() bool { return len(p.Blocks) == 0 && len(p.Furniture) == 0 && len(p.Zones) == 0 }
 
 // plotColumns, then the key and whether it's the home (p for plots, s for its Sim).
-const plotColumns = `p.id, p.sim_id, p.blocks, p.built, p.furniture, p.zones, p.lot_w, p.lot_d, p.lot_city, p.lot_commune, p.lot_paid,
+const plotColumns = `p.id, p.sim_id, p.blocks, p.built, p.furniture, p.zones, p.lot_w, p.lot_d, p.lot_city, p.lot_commune, p.lot_paid, p.lot_lat, p.lot_lng,
 	CASE WHEN p.id = (SELECT min(q.id) FROM plots q WHERE q.sim_id = p.sim_id) THEN p.sim_id::text ELSE p.sim_id::text || ':' || p.id END,
 	COALESCE(s.home_plot = p.id AND s.housing = '` + game.OwnHouse + `', false), p.build_from, p.build_until`
 
 func scanPlot(row pgx.Row, extra ...any) (Plot, error) {
 	var p Plot
 	var l Lot
-	err := row.Scan(append([]any{&p.ID, &p.SimID, &p.Blocks, &p.Built, &p.Furniture, &p.Zones, &l.W, &l.D, &l.City, &l.Commune, &l.Paid, &p.Key, &p.Home, &p.BuildFrom, &p.BuildUntil}, extra...)...)
+	err := row.Scan(append([]any{&p.ID, &p.SimID, &p.Blocks, &p.Built, &p.Furniture, &p.Zones, &l.W, &l.D, &l.City, &l.Commune, &l.Paid, &l.Lat, &l.Lng, &p.Key, &p.Home, &p.BuildFrom, &p.BuildUntil}, extra...)...)
 	if err == nil && l.W > 0 {
 		l.Area = l.W * l.D
 		p.Lot = &l
@@ -170,14 +175,152 @@ func savePlot(ctx context.Context, tx pgx.Tx, p *Plot) error {
 	}
 	if p.ID == 0 {
 		return tx.QueryRow(ctx, `
-			INSERT INTO plots (sim_id, blocks, built, furniture, zones, lot_w, lot_d, lot_city, lot_commune, lot_paid, updated_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now()) RETURNING id`,
-			p.SimID, p.Blocks, p.Built, p.Furniture, p.Zones, l.W, l.D, l.City, l.Commune, l.Paid).Scan(&p.ID)
+			INSERT INTO plots (sim_id, blocks, built, furniture, zones, lot_w, lot_d, lot_city, lot_commune, lot_paid, lot_lat, lot_lng, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now()) RETURNING id`,
+			p.SimID, p.Blocks, p.Built, p.Furniture, p.Zones, l.W, l.D, l.City, l.Commune, l.Paid, l.Lat, l.Lng).Scan(&p.ID)
 	}
 	_, err := tx.Exec(ctx, `UPDATE plots SET blocks = $2, built = $3, furniture = $4, zones = $5, lot_w = $6, lot_d = $7,
-		lot_city = $8, lot_commune = $9, lot_paid = $10, updated_at = now() WHERE id = $1`,
-		p.ID, p.Blocks, p.Built, p.Furniture, p.Zones, l.W, l.D, l.City, l.Commune, l.Paid)
+		lot_city = $8, lot_commune = $9, lot_paid = $10, lot_lat = $11, lot_lng = $12, updated_at = now() WHERE id = $1`,
+		p.ID, p.Blocks, p.Built, p.Furniture, p.Zones, l.W, l.D, l.City, l.Commune, l.Paid, l.Lat, l.Lng)
 	return err
+}
+
+// latLng: where a lot was set (nil when the game drew its spot, or no lot).
+func (l *Lot) latLng() (*float64, *float64) {
+	if l == nil {
+		return nil, nil
+	}
+	return l.Lat, l.Lng
+}
+
+var (
+	errSpotFar   = errors.New("choisis un endroit dans la commune")
+	errSpotTaken = errors.New("ce coin est déjà pris : choisis un peu plus loin")
+	errNotBare   = errors.New("on ne déplace qu'un terrain vide : il y a déjà une maison dessus")
+)
+
+const (
+	// spotReach: how far from the commune's centre a lot may be set; spotGap: how close to another one.
+	spotReach = 6000.0
+	spotGap   = 30.0
+)
+
+// spotFree: the spot is in the commune, and no other lot set on the map stands too close (not `except`, the lot moved).
+func spotFree(ctx context.Context, q queryer, city, commune string, lat, lng float64, except int64) error {
+	_, cm, ok := world.FindCommune(city, commune)
+	if !ok {
+		return errNoSuchCommune
+	}
+	if math.IsNaN(lat) || math.IsNaN(lng) || metres(cm.Lat, cm.Lng, lat, lng) > spotReach {
+		return errSpotFar
+	}
+	rows, err := q.Query(ctx, `SELECT lot_lat, lot_lng FROM plots WHERE lot_city = $1 AND lot_commune = $2 AND lot_lat IS NOT NULL AND lot_w > 0 AND id <> $3`, city, commune, except)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var a, b float64
+		if rows.Scan(&a, &b) == nil && metres(a, b, lat, lng) < spotGap {
+			return errSpotTaken
+		}
+	}
+	return rows.Err()
+}
+
+// metres between two points (close together: flat enough).
+func metres(lat1, lng1, lat2, lng2 float64) float64 {
+	const r = 6371000.0
+	dy := (lat2 - lat1) * math.Pi / 180 * r
+	dx := (lng2 - lng1) * math.Pi / 180 * r * math.Cos((lat1+lat2)/2*math.Pi/180)
+	return math.Hypot(dx, dy)
+}
+
+// moveLot: POST /sims/{id}/lot/move {lot, lat, lng} — an empty lot set somewhere else on the map (an update: lot-carte).
+func (h *Handler) moveLot(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Lot int64   `json:"lot"`
+		Lat float64 `json:"lat"`
+		Lng float64 `json:"lng"`
+	}
+	if err := httpx.Decode(r, &req); err != nil {
+		httpx.Error(w, http.StatusBadRequest, "requête invalide")
+		return
+	}
+	if features.Default.BlocksKey(r.Context(), "lot-carte") != "" {
+		httpx.Error(w, http.StatusForbidden, "bientôt dans le jeu")
+		return
+	}
+	ctx := r.Context()
+	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
+		lots, err := loadLots(ctx, tx, s.ID)
+		if err != nil {
+			return game.Outcome{}, nil, err
+		}
+		for _, p := range lots {
+			if p.ID != req.Lot {
+				continue
+			}
+			if !p.bare() || p.BuildUntil != nil {
+				return game.Outcome{}, nil, errNotBare
+			}
+			if err := spotFree(ctx, tx, p.Lot.City, p.Lot.Commune, req.Lat, req.Lng, p.ID); err != nil {
+				return game.Outcome{}, nil, err
+			}
+			p.Lot.Lat, p.Lot.Lng = &req.Lat, &req.Lng
+			if err := savePlot(ctx, tx, &p); err != nil {
+				return game.Outcome{}, nil, err
+			}
+			return game.Outcome{Text: "Ton terrain est à sa nouvelle place. À toi de bâtir !"}, nil, nil
+		}
+		return game.Outcome{}, nil, errNoSuchLot
+	})
+}
+
+// lotSpots: GET /sims/{id}/lots/spots?city=&commune= — the lots of a commune, for the map where one picks a spot:
+// where each is (set on the map, or its key, for the spot the game draws), its size, and the player's own.
+func (h *Handler) lotSpots(w http.ResponseWriter, r *http.Request) {
+	id, _, _, err := h.mySim(r)
+	if err != nil {
+		httpx.Error(w, http.StatusNotFound, "sim introuvable")
+		return
+	}
+	city, commune := r.URL.Query().Get("city"), r.URL.Query().Get("commune")
+	if _, _, ok := world.FindCommune(city, commune); !ok {
+		httpx.Error(w, http.StatusNotFound, errNoSuchCommune.Error())
+		return
+	}
+	rows, err := h.DB.Query(r.Context(), `
+		SELECT `+plotColumns+` FROM plots p JOIN sims s ON s.id = p.sim_id
+		WHERE p.lot_city = $1 AND p.lot_commune = $2 AND p.lot_w > 0 LIMIT 400`, city, commune)
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+		return
+	}
+	defer rows.Close()
+	type spot struct {
+		Key  string   `json:"key"`
+		Lat  *float64 `json:"lat,omitempty"`
+		Lng  *float64 `json:"lng,omitempty"`
+		W    int      `json:"w"`
+		D    int      `json:"d"`
+		Mine bool     `json:"mine,omitempty"`
+		Lot  int64    `json:"lot,omitempty"`
+		Bare bool     `json:"bare,omitempty"`
+	}
+	out := []spot{}
+	for rows.Next() {
+		p, err := scanPlot(rows)
+		if err != nil || p.Lot == nil {
+			continue
+		}
+		sp := spot{Key: p.Key, Lat: p.Lot.Lat, Lng: p.Lot.Lng, W: p.Lot.W, D: p.Lot.D}
+		if p.SimID == id {
+			sp.Mine, sp.Lot, sp.Bare = true, p.ID, p.bare() && p.BuildUntil == nil
+		}
+		out = append(out, sp)
+	}
+	httpx.JSON(w, http.StatusOK, out)
 }
 
 // lotParam: ?lot= (0 when absent: the home, or the first lot).
@@ -299,10 +442,16 @@ func (h *Handler) buyLot(w http.ResponseWriter, r *http.Request) {
 		City    string `json:"city"`
 		Commune string `json:"commune"`
 		Upgrade int64  `json:"upgrade"`
+		// Where on the map (an update: lot-carte); none, the game draws a spot.
+		Lat *float64 `json:"lat"`
+		Lng *float64 `json:"lng"`
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
 		return
+	}
+	if features.Default.BlocksKey(r.Context(), "lot-carte") != "" {
+		req.Lat, req.Lng = nil, nil
 	}
 	size, ok := game.FindLotSize(req.Size)
 	if !ok {
@@ -359,8 +508,16 @@ func (h *Handler) buyLot(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
+		// A new lot where the player put it (a bigger one stays where it was).
+		lat, lng := p.Lot.latLng()
+		if req.Upgrade == 0 && req.Lat != nil && req.Lng != nil {
+			if err := spotFree(ctx, tx, city, commune, *req.Lat, *req.Lng, 0); err != nil {
+				return game.Outcome{}, nil, err
+			}
+			lat, lng = req.Lat, req.Lng
+		}
 		s.Money -= offer.Payable
-		p.Lot = &Lot{W: size.W, D: size.D, Area: size.Area(), City: city, Commune: commune, Paid: offer.Price}
+		p.Lot = &Lot{W: size.W, D: size.D, Area: size.Area(), City: city, Commune: commune, Paid: offer.Price, Lat: lat, Lng: lng}
 		if err := savePlot(ctx, tx, &p); err != nil {
 			return game.Outcome{}, nil, err
 		}

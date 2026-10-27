@@ -1,8 +1,10 @@
 // The economy apps of the in-game phone: Boulot and Logement (money is in Waye).
 import { building, doneAt } from '../game/chantier'
-import { BadgeCheck, CalendarClock, Hammer, LandPlot, Clock3, Footprints, House, Map as MapIcon, TrendingUp, TriangleAlert } from 'lucide-react'
+import { BadgeCheck, CalendarClock, Hammer, LandPlot, Clock3, Footprints, House, Map as MapIcon, MapPin, TrendingUp, TriangleAlert } from 'lucide-react'
 import { api, type LotWhere } from '../lib/api'
 import { CommunePicker, LotOffers } from '../components/Lots'
+import { LotMap, lotMapReady } from '../components/LotMap'
+import { keyOpen, useFeatures } from '../lib/features'
 import type { ActionResult, Commune, Plot, Sim, World } from '../lib/types'
 import { iconFor, kindColors } from '../components/icons'
 import { Chip, Coin, IconTile, Row } from '../components/ui'
@@ -297,7 +299,10 @@ function MyLot({ world, sim, act, onBuild, onWalk, onMap }: { world: World; sim:
   const [version, setVersion] = useState(0)
   const [selling, setSelling] = useState<number | null>(null)
   const done = async (p: Promise<boolean>) => (await p) && setVersion((v) => v + 1)
-  const buy = (size: string, label: string, where: LotWhere, upgrade?: number) => act(label, 'land-plot', 'home', () => api.buyLot(sim.id, size, where, upgrade))
+  const buy = (size: string, label: string, where: LotWhere, upgrade?: number, spot?: { lat: number; lng: number }) => act(label, 'land-plot', 'home', () => api.buyLot(sim.id, size, where, upgrade, spot))
+  // An empty lot set somewhere else on the map (an update: lot-carte).
+  const [moving, setMoving] = useState<Plot | null>(null)
+  const lotMap = keyOpen(useFeatures(), 'lot-carte') && lotMapReady()
   const has = !!lots?.length
   return (
     <section className="rounded-[20px] bg-[#eef8f1] p-3">
@@ -349,6 +354,11 @@ function MyLot({ world, sim, act, onBuild, onWalk, onMap }: { world: World; sim:
                   Emménager
                 </button>
               )}
+              {lotMap && !built && !building(p) && (
+                <button className="rounded-full bg-[var(--color-canvas)] px-3 py-1.5 text-xs font-extrabold" onClick={() => setMoving(p)}>
+                  <MapPin size={13} className="mr-1 inline" /> Déplacer
+                </button>
+              )}
               {!p.home &&
                 (selling === p.id ? (
                   <button className="rounded-full bg-[#d81b3f] px-3 py-1.5 text-xs font-extrabold text-white" onClick={() => (setSelling(null), void done(act('Vendre le terrain', 'land-plot', 'home', () => api.sellLot(sim.id, p.id))))}>
@@ -370,6 +380,23 @@ function MyLot({ world, sim, act, onBuild, onWalk, onMap }: { world: World; sim:
       )}
       <div className={has && !more ? 'hidden' : ''}>
         <LotOffers sim={sim} buy={buy} onLoaded={setLots} version={version} />
+        {moving?.lot && (
+          <LotMap
+            sim={sim}
+            city={moving.lot.city}
+            commune={moving.lot.commune}
+            w={moving.lot.w}
+            d={moving.lot.d}
+            moving={moving.id}
+            onClose={() => setMoving(null)}
+            onPick={async (spot) => {
+              if (!spot) return false
+              const ok = await act('Déplacer le terrain', 'land-plot', 'home', () => api.moveLot(sim.id, moving.id, spot.lat, spot.lng))
+              if (ok) setVersion((v) => v + 1)
+              return ok
+            }}
+          />
+        )}
       </div>
     </section>
   )

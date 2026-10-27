@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView, LotSpot } from './types'
 import { useSession } from '../store/session'
 import { keepData, keptData, OFFLINE_TEXT, setOnline } from './offline'
 
@@ -419,7 +419,9 @@ export const api = {
   build: (id: string, place: Block[], remove: [number, number, number][], furnish: Piece[] = [], unfurnish: [number, number, number][] = [], lot = 0) => request<ActionResult>(`/sims/${id}/plot`, { method: 'PUT', body: JSON.stringify({ place, remove, furnish, unfurnish, lot }) }),
   /** The lots for sale in a commune (where the Sim is when none is given), and the Sim's own (two at most a commune). */
   lots: (id: string, where?: LotWhere) => request<{ offers: LotOffer[]; lots: Plot[]; fees: number; adult: boolean; perCommune: number; max: number }>(`/sims/${id}/lots${where ? `?city=${encodeURIComponent(where.city)}&commune=${encodeURIComponent(where.commune)}` : ''}`),
-  buyLot: (id: string, size: string, where?: LotWhere, upgrade = 0) => post<ActionResult>(`/sims/${id}/lot`, { size, ...where, upgrade }),
+  buyLot: (id: string, size: string, where?: LotWhere, upgrade = 0, spot?: { lat: number; lng: number }) => post<ActionResult>(`/sims/${id}/lot`, { size, ...where, upgrade, ...spot }),
+  lotSpots: (id: string, city: string, commune: string) => request<LotSpot[]>(`/sims/${id}/lots/spots?city=${encodeURIComponent(city)}&commune=${encodeURIComponent(commune)}`),
+  moveLot: (id: string, lot: number, lat: number, lng: number) => post<ActionResult>(`/sims/${id}/lot/move`, { lot, lat, lng }),
   /** A hotel's floors and prices, one floor's rooms, the Sim's stay; a room rented; the key handed back. */
   hotel: (id: string, place: string, floor = 0) => request<HotelView>(`/sims/${id}/hotel/${place}${floor ? `?floor=${floor}` : ''}`),
   bookRoom: (id: string, place: string, room: string, length: string) => post<ActionResult>(`/sims/${id}/hotel/${place}/book`, { room, length }),

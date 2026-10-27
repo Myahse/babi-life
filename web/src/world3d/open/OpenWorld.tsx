@@ -24,6 +24,7 @@ import { Html } from '@react-three/drei'
 import { Bande } from '../Nightlife'
 import { OtherPlayers } from '../Players'
 import { rng } from '../themes'
+import { lotAt } from './lotSpot'
 import { APPRENTI, CAR_COLORS, GBAKA_DOOR, Vehicle, type VehicleKind } from '../vehicles'
 import { Walker, type WalkNav } from '../Walker'
 import { homeSpotsOf } from '../homeSpots'
@@ -191,11 +192,6 @@ const PLOT_CLEAR = 12
 function homeSpot(simId: string): [number, number] {
   const r = rng(`home${simId}`)
   return [r() * Math.PI * 2, 120 + r() * 260]
-}
-/** Where a lot is in the commune it was bought in, by its key (backend Plot.Key: the Sim's id for its first lot): the same on every phone. */
-function lotSpot(key: string): [number, number] {
-  const r = rng(`lot${key}`)
-  return [r() * Math.PI * 2, 140 + r() * 300]
 }
 /** A lot's size (the plots from before lots are 12 × 12). */
 /** Inside the house, its blocks from this height up are hidden (the cutaway). */
@@ -528,12 +524,14 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     }
   }, [sim.id, commune.id, plotsVersion])
   const plotKey = (plots ?? []).map((p) => p.key).sort().join()
+  // (A lot set somewhere else on the map: its house moves with it.)
+  const plotPlaces = (plots ?? []).map((p) => `${p.key}@${p.lot?.lat ?? ''},${p.lot?.lng ?? ''}`).sort().join()
   // Where a soirée is: the house it's thrown in (resolved: one's own « Chez toi », the host's lot), else the host's home spot.
   const partyAt = (p: Soiree): { ref?: string; at: XZ } => {
     if (p.host === sim.id) return { ref: HOME_ID, at: [0, 0] }
     const lot = plots?.find((x) => x.simId === p.host && x.home)
-    const [pa, pd] = lot ? lotSpot(lot.key) : homeSpot(p.host)
-    return { ref: lot ? `plot:${lot.key}` : undefined, at: [Math.cos(pa) * pd, Math.sin(pa) * pd] }
+    const [pa, pd] = homeSpot(p.host)
+    return { ref: lot ? `plot:${lot.key}` : undefined, at: lot ? lotAt(origin, lot.key, lot.lot) : [Math.cos(pa) * pd, Math.sin(pa) * pd] }
   }
   const partyKey = (parties ?? []).map((p) => `${p.id}:${p.guests}:${plots?.find((x) => x.simId === p.host && x.home)?.key ?? ''}`).join()
   // The house the Sim lives in (one of its lots, here).
@@ -560,25 +558,26 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const places = useMemo(() => (mapList.length ? [...commune.places, ...mapList] : commune.places), [commune.places, mapList])
 
   const spots = useMemo<(PlaceSpot & { kind: string; name: string })[]>(() => {
-    const [a, d] = livesOnLot ? lotSpot(mine?.key ?? sim.id) : homeSpot(sim.id)
+    const [a, d] = homeSpot(sim.id)
+    // Home: the lot one lives on (where it was set on the map, or drawn), else where the Sim's family lives.
+    const homeAt: XZ = livesOnLot ? lotAt(origin, mine?.key ?? sim.id, mine?.lot) : [Math.cos(a) * d, Math.sin(a) * d]
     // A real place found on the map (by its name) stands where the map has it.
     const list: (PlaceSpot & { kind: string; name: string })[] = places.map((p) => ({ id: p.id, kind: p.kind, name: p.name, type: p.type, faith: p.faith, parent: p.parent, slot: p.slot, at: snaps.get(p.id) ?? toLocal(origin, p.lat, p.lng), landmark: LANDMARKS[p.id], front: LANDMARK_FRONT[p.id], noFill: NO_FILL[p.id] }))
     // A home with a house built on it clears its ground: the game draws the house.
-    if (home) list.unshift({ id: HOME_ID, kind: 'home', name: 'Chez toi', at: [Math.cos(a) * d, Math.sin(a) * d], landmark: myPlot ? lotClear(myPlot) : livesOnLot ? PLOT_CLEAR : undefined })
+    if (home) list.unshift({ id: HOME_ID, kind: 'home', name: 'Chez toi', at: homeAt, landmark: myPlot ? lotClear(myPlot) : livesOnLot ? PLOT_CLEAR : undefined })
     for (const id of plotKey ? plotKey.split(',') : []) {
       if (id === myPlot?.key && home && livesOnLot) continue
-      const [pa, pd] = lotSpot(id)
       const p = plots?.find((x) => x.key === id)
-      list.push({ id: `plot:${id}`, kind: 'plot', name: p?.simId === sim.id ? 'Mon terrain' : '', at: [Math.cos(pa) * pd, Math.sin(pa) * pd], landmark: p ? lotClear(p) : PLOT_CLEAR })
+      list.push({ id: `plot:${id}`, kind: 'plot', name: p?.simId === sim.id ? 'Mon terrain' : '', at: lotAt(origin, id, p?.lot), landmark: p ? lotClear(p) : PLOT_CLEAR })
     }
     list.push({ id: HAPPENING_KEY, kind: 'happening', name: '', at: [35, -20] })
     // The soirées: at the host's house (one's own home, a player's lot), else where the host lives.
     for (const p of parties ?? []) {
       const at = partyAt(p)
-      list.push({ id: `soiree:${p.id}`, kind: 'soiree', name: `${p.title} chez ${p.hostName}`, at: at.ref === HOME_ID ? [Math.cos(a) * d, Math.sin(a) * d] : at.at })
+      list.push({ id: `soiree:${p.id}`, kind: 'soiree', name: `${p.title} chez ${p.hostName}`, at: at.ref === HOME_ID ? homeAt : at.at })
     }
     return list
-  }, [places, origin, home, sim.id, snaps, plotKey, !!myPlot, livesOnLot, partyKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [places, origin, home, sim.id, snaps, plotKey, plotPlaces, !!myPlot, livesOnLot, partyKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const plotsRef = useRef(plots)
   plotsRef.current = plots
@@ -590,7 +589,9 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     const now = new Map(spots.filter((x) => x.landmark && (x.kind === 'plot' || x.id === HOME_ID)).map((x) => [x.id, x.at]))
     const was = plotSpots.current
     plotSpots.current = now
-    const changed = [...now.keys(), ...was.keys()].filter((id) => now.has(id) !== was.has(id)).map((id) => (now.get(id) ?? was.get(id))!)
+    // Appeared, gone, or set somewhere else on the map (then both places).
+    const moved = (id: string) => now.has(id) && was.has(id) && String(now.get(id)) !== String(was.get(id))
+    const changed = [...new Set([...now.keys(), ...was.keys()])].filter((id) => now.has(id) !== was.has(id) || moved(id)).flatMap((id) => (moved(id) ? [now.get(id)!, was.get(id)!] : [(now.get(id) ?? was.get(id))!]))
     if (!changed.length) return
     // Home with a house moves from the real building to the plot: that one too.
     if (now.has(HOME_ID) !== was.has(HOME_ID)) {
@@ -610,7 +611,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     })
     setResolved((m) => {
       const n = new Map(m)
-      for (const id of [...was.keys(), ...now.keys()]) if (now.has(id) !== was.has(id)) n.delete(id)
+      for (const id of [...was.keys(), ...now.keys()]) if (now.has(id) !== was.has(id) || moved(id)) n.delete(id)
       return n
     })
   }, [spots]) // eslint-disable-line react-hooks/exhaustive-deps

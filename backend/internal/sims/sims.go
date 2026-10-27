@@ -400,6 +400,8 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Get("/sims/{id}/lots", h.lotOffers)
 	r.Post("/sims/{id}/lot", h.buyLot)
 	r.Post("/sims/{id}/lot/sell", h.sellLot)
+	r.Post("/sims/{id}/lot/move", h.moveLot)
+	r.Get("/sims/{id}/lots/spots", h.lotSpots)
 	r.Get("/sims/{id}/hotel/{place}", h.hotel)
 	r.Post("/sims/{id}/hotel/{place}/book", h.bookRoom)
 	r.Post("/sims/{id}/stay/end", h.endStay)
