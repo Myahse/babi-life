@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -68,10 +69,12 @@ type NewPayment struct {
 
 // Payment: a payment as GeniusPay has it.
 type Payment struct {
-	Reference   string `json:"reference"`
-	Amount      Amount `json:"amount"`
-	Currency    string `json:"currency"`
-	Status      string `json:"status"`
+	Reference string `json:"reference"`
+	Amount    Amount `json:"amount"`
+	Currency  string `json:"currency"`
+	Status    string `json:"status"`
+	// Fees: GeniusPay's share, when it says so (the sum paid can include them).
+	Fees        Amount `json:"fees"`
 	CheckoutURL string `json:"checkout_url"`
 	PaymentURL  string `json:"payment_url"`
 	Environment string `json:"environment"`
@@ -153,11 +156,33 @@ func (g *GeniusPay) call(ctx context.Context, method, path string, body any) (Pa
 	if len(data) == 0 || data[0] != '{' {
 		data = raw.Bytes()
 	}
+	p, err := paymentIn(data)
+	if err != nil {
+		log.Printf("geniuspay %s %s: an answer without a payment: %.300s", method, path, raw.String())
+	}
+	return p, err
+}
+
+// paymentIn: the payment in an answer or a webhook's data, where it is, or one level down
+// (« payment », « transaction »).
+func paymentIn(data []byte) (Payment, error) {
 	var p Payment
 	if err := json.Unmarshal(data, &p); err != nil {
 		return Payment{}, err
 	}
 	if p.Reference == "" {
+		var in struct {
+			Payment     *Payment `json:"payment"`
+			Transaction *Payment `json:"transaction"`
+		}
+		if json.Unmarshal(data, &in) == nil {
+			if in.Payment != nil && in.Payment.Reference != "" {
+				return *in.Payment, nil
+			}
+			if in.Transaction != nil && in.Transaction.Reference != "" {
+				return *in.Transaction, nil
+			}
+		}
 		return Payment{}, errors.New("geniuspay: no reference in the answer")
 	}
 	return p, nil
