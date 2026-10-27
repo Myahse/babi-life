@@ -278,14 +278,14 @@ export function addBuilding(B: BuildingBuilders, bd: Building, style: Style = 'd
 
   // Balconies on the bigger buildings, along their longest side.
   if ((H >= 3 * BLOCK && r1 > 0.45 && !pub) || (style === 'hotel' && H >= 2 * BLOCK)) {
+    // (Along the longest whole wall: the outline comes in steps of a block.)
     let best = 0
-    let bi = 0
-    for (let i = 0; i < ring.length; i++) {
-      const l = Math.hypot(ring[(i + 1) % ring.length][0] - ring[i][0], ring[(i + 1) % ring.length][1] - ring[i][1])
-      if (l > best) [best, bi] = [l, i]
+    let run: [XZ, XZ] = [ring[0], ring[1]]
+    for (const r of wallRuns(ring)) {
+      const l = Math.hypot(r[1][0] - r[0][0], r[1][1] - r[0][1])
+      if (l > best) [best, run] = [l, r]
     }
-    const p = ring[bi]
-    const q = ring[(bi + 1) % ring.length]
+    const [p, q] = run
     const [nx, nz] = normal(p, q)
     const rot = Math.atan2(q[1] - p[1], q[0] - p[0])
     const len = Math.min(best * 0.6, 12)
@@ -295,6 +295,12 @@ export function addBuilding(B: BuildingBuilders, bd: Building, style: Style = 'd
       B.trim.box(mx + nx * 0.56, y + 0.6, mz + nz * 0.56, len, 0.9, 0.06, rot, RAIL)
     }
   }
+
+  // The life on the walls and the roofs: the split air-conditioners, the
+  // veranda in front of a small house's door, the washing drying up on a flat roof.
+  if (!pub && style !== 'hotel') airCons(B.trim, ring, H, bd.c)
+  if (pitched && r2 < 0.6) veranda(B, ring, tint, tinPaint(hash(bd.c[0] * 11, bd.c[1] * 13, 9)))
+  if (!pitched && rectLike && H <= 4 * BLOCK && hash(bd.c[0] * 23, bd.c[1] * 29, 4) < 0.35) washing(B.trim, rect, H, bd.c)
 
   // Shade on the ground, darkest against the wall.
   const out = offsetRing(ring, 1.6)
@@ -309,15 +315,111 @@ export function addBuilding(B: BuildingBuilders, bd: Building, style: Style = 'd
   }
 }
 
+const AC_GRILLE = new THREE.Color('#9aa0a8')
+/**
+ * A building's walls as whole runs: the ring's segments that carry on the same
+ * way joined into one (the outlines come in steps of a block, so a straight
+ * wall is many short pieces of it).
+ */
+function wallRuns(ring: XZ[]): [XZ, XZ][] {
+  const runs: [XZ, XZ][] = []
+  const dir = (a: XZ, b: XZ) => Math.atan2(b[1] - a[1], b[0] - a[0])
+  for (let i = 0; i < ring.length; i++) {
+    const [a, b] = [ring[i], ring[(i + 1) % ring.length]]
+    const last = runs[runs.length - 1]
+    if (last && Math.abs(Math.sin(dir(last[0], last[1]) - dir(a, b))) < 0.02 && Math.cos(dir(last[0], last[1]) - dir(a, b)) > 0) last[1] = b
+    else runs.push([a, b])
+  }
+  // The last run may carry on into the first.
+  if (runs.length > 1) {
+    const [f, l] = [runs[0], runs[runs.length - 1]]
+    if (l[1][0] === f[0][0] && l[1][1] === f[0][1] && Math.abs(Math.sin(dir(l[0], l[1]) - dir(f[0], f[1]))) < 0.02 && Math.cos(dir(l[0], l[1]) - dir(f[0], f[1])) > 0) {
+      runs[0] = [l[0], f[1]]
+      runs.pop()
+    }
+  }
+  return runs
+}
+/**
+ * The split air-conditioners hung on the walls (the street hears their hum):
+ * a white box with its grille, here and there along the walls, a floor at a time.
+ */
+function airCons(b: Builder, ring: XZ[], H: number, c: XZ) {
+  let n = 0
+  const runs = wallRuns(ring)
+  for (let i = 0; i < runs.length && n < 6; i++) {
+    const [p, q] = runs[i]
+    const len = Math.hypot(q[0] - p[0], q[1] - p[1])
+    if (len < 3.5) continue
+    const [nx, nz] = normal(p, q)
+    const rot = Math.atan2(q[1] - p[1], q[0] - p[0])
+    for (let y = 0; y < H; y += BLOCK) {
+      const u = hash(c[0] + i * 3.1, c[1] + y, 13)
+      if (u > 0.3) continue
+      n++
+      const t = 0.2 + 0.6 * hash(c[1] + i, c[0] - y, 17)
+      const [x, z] = [p[0] + (q[0] - p[0]) * t + nx * 0.2, p[1] + (q[1] - p[1]) * t + nz * 0.2]
+      const h = y + (y === 0 ? 2.15 : 1.7)
+      b.box(x, h, z, 0.82, 0.56, 0.3, rot, AC)
+      b.box(x + nx * 0.16, h - 0.02, z + nz * 0.16, 0.6, 0.4, 0.02, rot, AC_GRILLE)
+    }
+  }
+}
+
+/** The veranda before a small house's door: a sloping tin roof on two posts, along its longest wall. */
+function veranda(B: BuildingBuilders, ring: XZ[], tint: THREE.Color, tin: THREE.Color) {
+  let best = 0
+  let run: [XZ, XZ] | null = null
+  for (const r of wallRuns(ring)) {
+    const l = Math.hypot(r[1][0] - r[0][0], r[1][1] - r[0][1])
+    if (l > best) [best, run] = [l, r]
+  }
+  if (best < 5 || !run) return
+  const [p, q] = run
+  const [nx, nz] = normal(p, q)
+  const rot = Math.atan2(q[1] - p[1], q[0] - p[0])
+  const [ux, uz] = [(q[0] - p[0]) / best, (q[1] - p[1]) / best]
+  const w = Math.min(best - 1.5, 4.2)
+  const [mx, mz] = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2]
+  const out = 1.9
+  const post = tint.clone().multiplyScalar(0.55)
+  for (const s of [-1, 1]) B.trim.box(mx + ux * s * (w / 2 - 0.15) + nx * (out - 0.15), 1.2, mz + uz * s * (w / 2 - 0.15) + nz * (out - 0.15), 0.18, 2.4, 0.18, rot, post)
+  // The roof, in two steps down from the wall (blocky, like the house's own).
+  B.tin.box(mx + nx * (out * 0.3), 2.62, mz + nz * (out * 0.3), w + 0.3, 0.16, out * 0.6 + 0.1, rot, tin)
+  B.tin.box(mx + nx * (out * 0.8), 2.48, mz + nz * (out * 0.8), w + 0.3, 0.16, out * 0.45, rot, tin)
+  // A step of concrete before the door.
+  B.trim.box(mx + nx * (out / 2), 0.08, mz + nz * (out / 2), w, 0.16, out, rot, SLAB)
+}
+
+const CLOTHES = ['#e8590c', '#1c7ed6', '#f4f4f2', '#2f9e44', '#f08c00', '#c2255c', '#ffd43b', '#7048e8'].map((c) => new THREE.Color(c))
+/** Washing drying on a flat roof: a line between two posts, and the pagnes and shirts pegged on it. */
+function washing(b: Builder, rect: { cx: number; cz: number; w: number; d: number; angle: number }, H: number, c: XZ) {
+  const span = Math.min(rect.w - 2.5, 5)
+  if (span < 2 || rect.d < 4) return
+  const [ux, uz] = [Math.cos(rect.angle), Math.sin(rect.angle)]
+  const [nx, nz] = [-uz, ux]
+  const off = (hash(c[0], c[1], 31) - 0.5) * (rect.d - 3)
+  const [cx, cz] = [rect.cx + nx * off, rect.cz + nz * off]
+  for (const s of [-1, 1]) b.box(cx + ux * s * (span / 2), H + 0.85, cz + uz * s * (span / 2), 0.08, 1.7, 0.08, rect.angle, RAIL)
+  b.box(cx, H + 1.66, cz, span, 0.025, 0.025, rect.angle, RAIL)
+  const n = Math.floor(span / 0.75)
+  for (let k = 0; k < n; k++) {
+    if (hash(c[0] + k, c[1], 37) < 0.25) continue
+    const t = (k + 0.5) / n - 0.5
+    const h = 0.4 + hash(c[1], c[0] + k, 41) * 0.45
+    b.box(cx + ux * t * span, H + 1.64 - h / 2, cz + uz * t * span, 0.55, h, 0.03, rect.angle, CLOTHES[Math.floor(hash(k, c[0] + c[1], 43) * CLOTHES.length)])
+  }
+}
+
 /**
  * Sloping awnings over the shops: corrugated tin, or a painted canvas, 1.6 m
  * out from the wall over the pavement. Up to three a building.
  */
 function awnings(B: BuildingBuilders, ring: XZ[], c: XZ) {
   let n = 0
-  for (let i = 0; i < ring.length && n < 3; i++) {
-    const p = ring[i]
-    const q = ring[(i + 1) % ring.length]
+  const runs = wallRuns(ring)
+  for (let i = 0; i < runs.length && n < 3; i++) {
+    const [p, q] = runs[i]
     const len = Math.hypot(q[0] - p[0], q[1] - p[1])
     if (len < 7 || hash(c[0], i, 11) < 0.35) continue
     n++
@@ -332,7 +434,8 @@ function awnings(B: BuildingBuilders, ring: XZ[], c: XZ) {
     const nrm: [number, number, number] = [(nx * (top - low)) / up, out / up, (nz * (top - low)) / up]
     const tin = hash(c[0], c[1], i) < 0.5
     const to = tin ? B.tin : B.trim
-    const col = tin ? undefined : AWNINGS[Math.floor(hash(i, c[0], 3) * AWNINGS.length)]
+    // (Every vertex of the tin has its paint: the roofs' colours, weathering.ts.)
+    const col = tin ? tinPaint(hash(c[0] + i, c[1], 5)) : AWNINGS[Math.floor(hash(i, c[0], 3) * AWNINGS.length)]
     const ids = [
       to.vertex(ax, top, az, 0, 0, nrm, col),
       to.vertex(bx, top, bz, w / 2, 0, nrm, col),
