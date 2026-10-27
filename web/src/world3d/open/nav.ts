@@ -10,13 +10,18 @@ import type { ChunkData, Couloir } from './tiles'
 const SNAP = 1.5 // metres: ends of a street cut by two chunks join up
 const CELL = 24 // metres: spatial index cell
 
-type Edge = { a: number; b: number; len: number; width: number; /** a bridge's deck, wider than its roadway */ deck?: number; /** runs through a building (the map's street under a market, a mall…): walked, never driven */ walled?: boolean }
+type Edge = { a: number; b: number; len: number; width: number; /** an expressway (the VGE, the autoroute, their ramps): cars only, nobody walks it */ fast?: boolean; /** a bridge's deck, wider than its roadway */ deck?: number; /** runs through a building (the map's street under a market, a mall…): walked, never driven */ walled?: boolean }
+
+/** The expressways: the VGE, the autoroutes and their ramps, driven only. */
+const FAST = new Set(['motorway', 'trunk', 'motorway_link', 'trunk_link'])
+/** A `minWidth` for the people walking the streets: every street but the expressways. */
+export const FOOT = -1
 
 export class Nav {
   nodes: XZ[] = []
   /** Each node's height: 0 on the ground, up on a bridge. */
   ys: number[] = []
-  adj: { to: number; len: number; width: number; walled?: boolean }[][] = []
+  adj: { to: number; len: number; width: number; walled?: boolean; fast?: boolean }[][] = []
   edges: Edge[] = []
   /** The couloirs between the game's houses (not all between two walls: see nouchis.tsx). */
   couloirs: Couloir[] = []
@@ -35,7 +40,7 @@ export class Nav {
         let prev = this.node(r.pts[0], ys?.[0])
         for (let i = 1; i < r.pts.length; i++) {
           const cur = this.node(r.pts[i], ys?.[i])
-          if (cur !== prev) this.edge(prev, cur, r.width, r.bridge ? deckWidth(r, 0) : undefined)
+          if (cur !== prev) this.edge(prev, cur, r.width, r.bridge ? deckWidth(r, 0) : undefined, FAST.has(r.cls))
           prev = cur
         }
       }
@@ -88,7 +93,9 @@ export class Nav {
     return false
   }
   /** A street a vehicle may take: wide enough, and not through a building (only asked for a drive: minWidth > 0). */
-  private drivable(e: { width: number; walled?: boolean }, minWidth: number) {
+  private drivable(e: { width: number; walled?: boolean; fast?: boolean }, minWidth: number) {
+    // (On foot, the people of the street: FOOT, anything but the expressways.)
+    if (minWidth === FOOT) return !e.fast
     return e.width >= minWidth && !(minWidth > 0 && e.walled)
   }
 
@@ -111,11 +118,11 @@ export class Nav {
     else this.nodeGrid.set(k, [i])
     return i
   }
-  private edge(a: number, b: number, width: number, deck?: number) {
+  private edge(a: number, b: number, width: number, deck?: number, fast?: boolean) {
     const len = Math.hypot(this.nodes[a][0] - this.nodes[b][0], this.nodes[a][1] - this.nodes[b][1])
-    const e = this.edges.push({ a, b, len, width, deck }) - 1
-    this.adj[a].push({ to: b, len, width })
-    this.adj[b].push({ to: a, len, width })
+    const e = this.edges.push({ a, b, len, width, deck, fast }) - 1
+    this.adj[a].push({ to: b, len, width, fast })
+    this.adj[b].push({ to: a, len, width, fast })
     for (const k of this.cellsOf([this.nodes[a], this.nodes[b]])) {
       const list = this.edgeGrid.get(k)
       if (list) list.push(e)

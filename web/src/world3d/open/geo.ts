@@ -163,15 +163,15 @@ const RAMP = 60 // metres to climb from the bank to the deck
  * cut by the chunk's edge isn't a real end: the deck stays up there.
  */
 /** A deck `top` metres up (default: a lagoon bridge's), its ramps the longer the higher it goes. */
-export function bridgeHeights(pts: XZ[], b: Box, top = BRIDGE_HEIGHT, joined: (p: XZ) => boolean = () => false): number[] {
+export function bridgeHeights(pts: XZ[], b: Box, top = BRIDGE_HEIGHT, joined: (pts: XZ[], start: boolean) => boolean = () => false): number[] {
   const ramp = Math.max(RAMP, top * 7)
   const d: number[] = [0]
   for (let i = 1; i < pts.length; i++) d.push(d[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]))
   const total = d[d.length - 1]
   const cut = ([x, z]: XZ) => Math.min(Math.abs(x - b.x0), Math.abs(x - b.x1), Math.abs(z - b.z0), Math.abs(z - b.z1)) < 0.5
   // An end at the chunk's edge (the bridge goes on in the next chunk) or on another piece of it isn't a real end.
-  const startReal = !cut(pts[0]) && !joined(pts[0])
-  const endReal = !cut(pts[pts.length - 1]) && !joined(pts[pts.length - 1])
+  const startReal = !cut(pts[0]) && !joined(pts, true)
+  const endReal = !cut(pts[pts.length - 1]) && !joined(pts, false)
   const ease = (t: number) => t * t * (3 - 2 * t)
   return d.map((s) => {
     let k = 1

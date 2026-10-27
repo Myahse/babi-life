@@ -137,10 +137,12 @@ function markings(chunk: ChunkData, paint: Builder, trim: Builder) {
     paint.facing(up, ids[0], ids[1], ids[2])
     paint.facing(up, ids[0], ids[2], ids[3])
   }
+  // (The markings on a bridge at the height of its deck: the same joins as the deck, below.)
+  const onDeck = joinedEnds(chunk.roads)
   for (const r of chunk.roads) {
     const rank = RANK[r.cls] ?? 0
     if (!r.paved || rank < 4 || r.width < 6) continue
-    const ys = r.bridge ? bridgeHeights(r.pts, chunk.box, deckTop(r.cls, r.name)) : undefined
+    const ys = r.bridge ? bridgeHeights(r.pts, chunk.box, deckTop(r.cls, r.name), onDeck) : undefined
     const base = 0.065 + rank * 0.002
     const lines: { off: number; w: number; dash: number; gap: number }[] =
       rank >= 7
