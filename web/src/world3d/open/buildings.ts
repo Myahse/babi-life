@@ -50,6 +50,8 @@ const FACADES = ['#ffffff', '#fff3e0', '#f6d58e', '#fbe3a1', '#f4b89a', '#f7c9a8
 const GROUND = ['#c9b79c', '#b5654a', '#4f7fa8', '#6b8f5a', '#d8a24a', '#9a8f84'].map((c) => new THREE.Color(c))
 const AWNINGS = ['#c0392b', '#1f6fb5', '#2e8b57', '#e67e22', '#8e44ad'].map((c) => new THREE.Color(c))
 const DISH = new THREE.Color('#f2f2f0')
+/** The soubassements' paints: brick red, ochre, a dark green, slate grey, maroon, the blue of the doors. */
+const SOUBASSEMENT = ['#9c4a32', '#b8873e', '#3f6b4a', '#6b7078', '#6e3b32', '#3d5a80'].map((c) => new THREE.Color(c))
 const PLINTH = new THREE.Color('#8f8372')
 // Public buildings: whites, creams, pale grey-blue.
 const PUBLIC = ['#fdfbf5', '#f3ead7', '#e8eef3', '#f6f1e6'].map((c) => new THREE.Color(c))
@@ -192,8 +194,11 @@ export function addBuilding(B: BuildingBuilders, bd: Building, style: Style = 'd
   const pitched = (style === 'default' || style === 'home') && H <= 2 * BLOCK && (bd.tin || (rectLike && r1 < 0.8)) && Math.min(rect.w, rect.d) < 20
   const shops = style === 'commerce' || (style === 'default' && H >= 2 * BLOCK && r2 < 0.5)
 
-  // Plinth, ground floor, upper storeys.
-  band(B.trim, ring, 0, 0.45, 0.06, PLINTH, false)
+  // Plinth, ground floor, upper storeys. The small houses of the quarters most often have
+  // their soubassement painted apart, a darker band at the foot of the walls (where the rain splashes the earth).
+  const r4 = hash(bd.c[0] * 17, bd.c[1] * 19, 3)
+  if (pitched && r4 < 0.65) band(B.trim, ring, 0, 0.62, 0.05, SOUBASSEMENT[Math.floor(r4 * 31) % SOUBASSEMENT.length], false)
+  else band(B.trim, ring, 0, 0.45, 0.06, PLINTH, false)
   const glazed = pub || style === 'civic' || style === 'hotel'
   const shift = Math.floor(hash(bd.c[0], bd.c[1], 5) * 16)
   // Shops and homes often have their ground floor painted apart from the rest.
