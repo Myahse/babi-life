@@ -218,7 +218,7 @@ export function Guest({ sim, stage, way, spot, steer, onMoved, free, entrance, g
           </group>
         )}
       </group>
-      <TableAsker spot={spot} way={way} settled={settled} seed={sim.id} />
+      <TableAsker spot={spot} way={way} settled={settled} seed={sim.id} working={working} />
     </>
   )
 }
