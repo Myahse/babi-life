@@ -34,6 +34,7 @@ import { Snapper } from '../snapshot'
 import { ChatFraming } from '../chatFraming'
 import { CHUNK_ZOOM, hash, tileBox, tileOf, toLatLng, toLocal, type Box, type Origin, type XZ } from './geo'
 import { FOOT, Nav } from './nav'
+import { weather } from './weathering'
 import { along, anchorNode, DRIVABLE, round, routeLength, turnTo, useCellsAround, type Round } from './shared'
 import { ParkedVehicle } from './parkedVehicle'
 import { useParked } from '../drive'
@@ -278,13 +279,13 @@ export function makeWorldMaterials() {
     inst: lambert(t.inst, { vertexColors: true }),
     entrance: lambert(t.entrance, { vertexColors: true }),
     shop: lambert(t.shop, { vertexColors: true, emissiveMap: t.shopLights, emissive: new THREE.Color('#ffffff'), emissiveIntensity: 0 }),
-    house: lambert(t.house, { vertexColors: true }),
-    trim: lambert(t.plaster, { vertexColors: true, side: THREE.DoubleSide }),
+    house: weather(lambert(t.house, { vertexColors: true }), 'walls'),
+    trim: weather(lambert(t.plaster, { vertexColors: true, side: THREE.DoubleSide }), 'concrete'),
     kerb: lambert(t.plaster, { vertexColors: true }),
-    roofs: lambert(t.roof),
+    roofs: weather(lambert(t.roof), 'roofs'),
     tin: lambert(t.tin, { side: THREE.DoubleSide }),
     contact: new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }),
-    asphalt: lambert(t.asphalt, { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
+    asphalt: weather(lambert(t.asphalt, { vertexColors: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), 'asphalt'),
     laterite: lambert(t.laterite, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
     pavement: lambert(t.pavement, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
     // Glossy water: the sun glints on ripples that drift (a normal map).
@@ -297,11 +298,13 @@ export function makeWorldMaterials() {
     pitch: lambert(t.pitch, { polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 }),
     // Pushed back in the depth test: from afar, a few centimetres are too little to tell
     // the ground from the grass, the parks or a garden laid on it, and it showed through.
-    ground: new THREE.MeshLambertMaterial({ color: '#cbb38c', polygonOffset: true, polygonOffsetFactor: 6, polygonOffsetUnits: 6 }),
+    ground: weather(new THREE.MeshLambertMaterial({ color: '#cbb38c', polygonOffset: true, polygonOffsetFactor: 6, polygonOffsetUnits: 6 }), 'ground'),
     bark: lambert(t.bark),
     leaves: lambert(t.leaves),
   }
   m.walls.userData.litShare = windowsByHour(m.walls)
+  weather(m.walls, 'walls')
+  weather(m.shop, 'walls')
   return m
 }
 

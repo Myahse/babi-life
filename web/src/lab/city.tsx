@@ -1,3 +1,4 @@
+import { weather } from '../world3d/open/weathering'
 import { setSceneActions } from '../world3d/sceneActions'
 import { useMemo } from 'react'
 import { createRoot } from 'react-dom/client'
@@ -8,7 +9,6 @@ import * as THREE from 'three'
 import type { XZ } from '../world3d/open/geo'
 import type { ChunkData } from '../world3d/open/tiles'
 import { buildChunk } from '../world3d/open/meshes'
-import { makeTextures } from '../world3d/open/textures'
 import { blockRing } from '../world3d/open/voxel'
 import { Vehicle, carModel, type CarModel, type VehicleKind } from '../world3d/vehicles'
 import { Landmark, NO_FILL, STADIUM_SOLID } from '../world3d/open/landmarks'
@@ -133,6 +133,8 @@ const seededLab = (n: number) => () => ((n = (n * 16807) % 2147483647) / 2147483
 // ?view=app&app=awale|ludo the phone's board games; ?view=metro inside the métro's carriage; ?view=net a goal's net, a ball going in; ?view=farblocks the horizon's buildings as plain blocks (made-up streets, a near square hidden).
 // The interior takes &career=sante&level=1 for a Sim at work (&id=work).
 
+// The game's ground, its sand and earth and dry grass (weathering.ts).
+const LAB_GROUND = weather(new THREE.MeshLambertMaterial({ color: '#cbb38c' }), 'ground')
 const q = new URLSearchParams(location.search)
 const view = q.get('view') ?? 'city'
 const night = q.has('night')
@@ -181,24 +183,8 @@ function City() {
       aeroways: [],
       pois: [],
     }
-    const t = makeTextures()
-    const lambert = (map: THREE.Texture, extra: THREE.MeshLambertMaterialParameters = {}) => new THREE.MeshLambertMaterial({ map, ...extra })
-    const mats: Record<string, THREE.Material> = {
-      walls: lambert(t.wall, { vertexColors: true }),
-      inst: lambert(t.inst, { vertexColors: true }),
-      entrance: lambert(t.entrance, { vertexColors: true }),
-      shop: lambert(t.shop, { vertexColors: true }),
-      house: lambert(t.house, { vertexColors: true }),
-      trim: lambert(t.plaster, { vertexColors: true, side: THREE.DoubleSide }),
-      kerb: lambert(t.plaster, { vertexColors: true }),
-      roofs: lambert(t.roof),
-      tin: lambert(t.tin, { side: THREE.DoubleSide }),
-      contact: new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false }),
-      asphalt: lambert(t.asphalt, { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
-      laterite: lambert(t.laterite),
-      pavement: lambert(t.pavement, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
-      paint: new THREE.MeshLambertMaterial({ color: '#f4f4f0', polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }),
-    }
+    // The game's own materials (their wear too: weathering.ts).
+    const mats = makeWorldMaterials() as unknown as Record<string, THREE.Material>
     return { meshes: buildChunk(chunk, () => false), mats }
   }, [])
   return (
@@ -206,7 +192,7 @@ function City() {
       {Object.entries(meshes).map(([name, g]) => (g && mats[name] ? <mesh key={name} geometry={g} material={mats[name]} castShadow receiveShadow /> : null))}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]} receiveShadow>
         <planeGeometry args={[160, 120]} />
-        <meshLambertMaterial color="#cbb38c" />
+        <primitive object={LAB_GROUND} attach="material" />
       </mesh>
     </>
   )
@@ -269,7 +255,7 @@ function LandmarkLab() {
         )}
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[140, 140]} />
-        <meshLambertMaterial color="#cbb38c" />
+        <primitive object={LAB_GROUND} attach="material" />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 32]} receiveShadow>
         <planeGeometry args={[140, 10]} />
@@ -353,7 +339,7 @@ function MapLab() {
       ))}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
         <planeGeometry args={[8000, 8000]} />
-        <meshLambertMaterial color="#cbb38c" />
+        <primitive object={LAB_GROUND} attach="material" />
       </mesh>
       <OrbitControls target={look} />
     </Canvas>
@@ -394,7 +380,7 @@ function GbakaLab() {
       <directionalLight position={[20, 40, 20]} intensity={1.8} castShadow />
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[300, 60]} />
-        <meshLambertMaterial color="#cbb38c" />
+        <primitive object={LAB_GROUND} attach="material" />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} receiveShadow>
         <planeGeometry args={[300, 9]} />
@@ -604,7 +590,7 @@ function BridgeLab() {
       <BridgeLife chunks={[chunk]} night={night} />
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
         <planeGeometry args={[8000, 8000]} />
-        <meshLambertMaterial color="#cbb38c" />
+        <primitive object={LAB_GROUND} attach="material" />
       </mesh>
       <OrbitControls target={look} />
     </Canvas>
@@ -786,7 +772,7 @@ function FieldLab() {
       <directionalLight position={[20, 40, 15]} intensity={night ? 0.2 : 1.8} castShadow />
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[200, 200]} />
-        <meshLambertMaterial color="#cbb38c" />
+        <primitive object={LAB_GROUND} attach="material" />
       </mesh>
       {/* &city=1: the people as the city draws them, seen from its height (CITY_FAR) */}
       <FarGrow.Provider value={q.get('city') === '1' ? CITY_FAR : { grow: 0.15, from: 18, over: 40 }}>
@@ -1046,7 +1032,7 @@ function EmotesLab() {
         <directionalLight position={[10, 20, 12]} intensity={1.4} />
         <mesh rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[60, 40]} />
-          <meshLambertMaterial color="#cbb38c" />
+          <primitive object={LAB_GROUND} attach="material" />
         </mesh>
         {LAB_EMOTES.map((p, i) => (
           <group key={p} position={[(i % 8) * 2.6 - 9.1, 0, Math.floor(i / 8) * 4 - 4]}>
@@ -1083,7 +1069,7 @@ function TalkLab() {
         <Human look={look} gender="homme" pose={reaction?.pose ?? 'talk'} seed={7} />
         <mesh rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[40, 40]} />
-          <meshLambertMaterial color="#cbb38c" />
+          <primitive object={LAB_GROUND} attach="material" />
         </mesh>
         <OrbitControls target={[0, -0.4, 0]} />
       </Canvas>
@@ -1109,7 +1095,7 @@ function PhoneCamLab() {
         <Landmark id="yop-rue-princesse" night={false} />
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
           <planeGeometry args={[140, 140]} />
-          <meshLambertMaterial color="#cbb38c" />
+          <primitive object={LAB_GROUND} attach="material" />
         </mesh>
         <group position={[0, 0, 20]} rotation={[0, Math.PI, 0]}>
           <Character look={look} gender="femme" walking={false} running={false} busy={false} pose={mode ? 'phone' : 'idle'} marker={!mode} stage="adulte" />

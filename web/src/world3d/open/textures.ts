@@ -229,7 +229,8 @@ export function makeTextures() {
       // Corrugated sheet metal, the « tôle » of the courtyards.
       for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) px(x, y, x % 4 === 0 ? '#8e4a2c' : x % 4 === 2 ? '#e08a58' : `rgb(${196 + r() * 30},${104 + r() * 20},${66 + r() * 10})`)
     }, 9),
-    asphalt: texture(noisy([64, 66, 74], 20), 11),
+    // Grey rather than black: Abidjan's asphalt, sun-bleached (weathering.ts adds its wear).
+    asphalt: texture(noisy([84, 85, 88], 18), 11),
     pavement: texture((px, r) => {
       noisy([196, 188, 172], 16)(px, r)
       for (let i = 0; i < 16; i++) (px(i, 0, '#a59c8c'), px(0, i, '#a59c8c'), px(i, 8, '#a59c8c'), px(8, i, '#a59c8c'))
