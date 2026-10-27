@@ -734,7 +734,7 @@ function Lab() {
   if (view === 'map') return <MapLab />
   const cars = view === 'cars'
   return (
-    <Canvas shadows dpr={[1, 2]} camera={cars ? { position: (q.get('cam') ?? '4,6,30').split(',').map(Number) as [number, number, number], fov: 40 } : view === 'street' ? { position: [-18, 9, 26], fov: 50 } : { position: [55, 60, 70], fov: 45 }} style={{ width: '100vw', height: '100vh' }}>
+    <Canvas shadows dpr={[1, 2]} camera={cars ? { position: (q.get('cam') ?? '4,6,30').split(',').map(Number) as [number, number, number], fov: 40 } : q.get('cam') ? { position: q.get('cam')!.split(',').map(Number) as [number, number, number], fov: 45 } : view === 'street' ? { position: [-18, 9, 26], fov: 50 } : { position: [55, 60, 70], fov: 45 }} style={{ width: '100vw', height: '100vh' }}>
       <hemisphereLight args={['#ffffff', '#b8a27c', 1.2]} />
       <directionalLight position={[40, 80, 30]} intensity={1.8} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-70} shadow-camera-right={70} shadow-camera-top={70} shadow-camera-bottom={-70} />
       {cars ? (
@@ -751,7 +751,7 @@ function Lab() {
           <Cars z={-1} spread={7} />
         </>
       )}
-      <OrbitControls target={cars ? [0, 1, 0] : view === 'street' ? [-10, 3, -6] : [0, 0, 0]} />
+      <OrbitControls target={q.get('look') ? (q.get('look')!.split(',').map(Number) as [number, number, number]) : cars ? [0, 1, 0] : view === 'street' ? [-10, 3, -6] : [0, 0, 0]} />
     </Canvas>
   )
 }
