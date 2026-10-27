@@ -106,3 +106,24 @@ func TestPacks(t *testing.T) {
 		t.Errorf("thousands: %q", thousands(1120000))
 	}
 }
+
+func TestPaymentIn(t *testing.T) {
+	for _, c := range []string{
+		`{"reference":"MTX-1","amount":"500.00","currency":"XOF","status":"completed"}`,
+		`{"payment":{"reference":"MTX-1","amount":500,"currency":"XOF","status":"completed"}}`,
+		`{"transaction":{"reference":"MTX-1","amount":500,"status":"completed"}}`,
+	} {
+		p, err := paymentIn([]byte(c))
+		if err != nil || p.Reference != "MTX-1" || p.Amount != 500 || !paid(p.Status) {
+			t.Errorf("%s: %+v %v", c, p, err)
+		}
+	}
+	if _, err := paymentIn([]byte(`{"id":3}`)); err == nil {
+		t.Error("no reference: no payment")
+	}
+	for _, s := range []string{"completed", "successful", "success", "approved"} {
+		if !paid(s) {
+			t.Error(s)
+		}
+	}
+}

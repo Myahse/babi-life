@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -322,7 +323,7 @@ func open(status string) bool { return status == "pending" || status == "process
 // Paid: GeniusPay's words for a payment received.
 func paid(status string) bool {
 	switch status {
-	case "completed", "success", "succeeded", "paid":
+	case "completed", "complete", "success", "successful", "succeeded", "paid", "approved", "validated":
 		return true
 	}
 	return false
@@ -334,7 +335,13 @@ func (h *Handler) settle(ctx context.Context, id, reference string) (status stri
 	if err != nil {
 		return "pending", false, err
 	}
+	return h.settleWith(ctx, id, pay)
+}
+
+// settleWith: the purchase as this word from GeniusPay on its payment says (asked of it, or its signed webhook).
+func (h *Handler) settleWith(ctx context.Context, id string, pay Payment) (status string, credited bool, err error) {
 	status = strings.ToLower(pay.Status)
+	log.Printf("shop: purchase %s: GeniusPay says %q (%v %s)", id, status, float64(pay.Amount), pay.Currency)
 	if paid(status) {
 		return h.credit(ctx, id, pay)
 	}
@@ -366,8 +373,8 @@ func (h *Handler) credit(ctx context.Context, id string, pay Payment) (string, b
 	if already {
 		return "completed", true, nil
 	}
-	// Not the sum sold, or a test payment while the shop sells for real: nothing given (looked at by hand).
-	if int(pay.Amount) != price || pay.Currency != "" && !strings.EqualFold(pay.Currency, "XOF") || !h.Pay.Sandbox() && strings.EqualFold(pay.Environment, "sandbox") {
+	// Less than the sum sold (the fees can come on top of it, never off it), or a test payment while the shop sells for real: nothing given (looked at by hand).
+	if int(math.Round(float64(pay.Amount))) < price || pay.Currency != "" && !strings.EqualFold(pay.Currency, "XOF") || !h.Pay.Sandbox() && strings.EqualFold(pay.Environment, "sandbox") {
 		log.Printf("shop: purchase %s paid %v %s, sold %d XOF: not credited", id, float64(pay.Amount), pay.Currency, price)
 		_, err := tx.Exec(ctx, `UPDATE purchases SET status = 'mismatch', updated_at = now() WHERE id = $1`, id)
 		if err == nil {
@@ -592,19 +599,28 @@ func (h *Handler) Webhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var hook struct {
-		Event string `json:"event"`
-		Data  struct {
-			Reference string `json:"reference"`
-		} `json:"data"`
+		Event string          `json:"event"`
+		Data  json.RawMessage `json:"data"`
 	}
-	if err := json.Unmarshal(body, &hook); err != nil || hook.Data.Reference == "" {
+	_ = json.Unmarshal(body, &hook)
+	said, perr := paymentIn(hook.Data)
+	if perr != nil {
+		log.Printf("shop: webhook %q without a payment: %.300s", hook.Event, body)
 		httpx.JSON(w, http.StatusOK, map[string]string{"status": "ignored"})
 		return
 	}
+	log.Printf("shop: webhook %q for %s: %q", hook.Event, said.Reference, said.Status)
+	// The event says the status when the payment's own field doesn't (« payment.completed »).
+	if said.Status == "" {
+		if _, st, ok := strings.Cut(hook.Event, "."); ok {
+			said.Status = st
+		}
+	}
+	hook.Data = nil
 	ctx := r.Context()
 	var id string
 	var credited bool
-	err = h.DB.QueryRow(ctx, `SELECT id, credited_at IS NOT NULL FROM purchases WHERE reference = $1`, hook.Data.Reference).Scan(&id, &credited)
+	err = h.DB.QueryRow(ctx, `SELECT id, credited_at IS NOT NULL FROM purchases WHERE reference = $1`, said.Reference).Scan(&id, &credited)
 	if err != nil {
 		// Not one of ours (another site on the same account, a test): nothing to do.
 		httpx.JSON(w, http.StatusOK, map[string]string{"status": "unknown"})
@@ -614,7 +630,13 @@ func (h *Handler) Webhook(w http.ResponseWriter, r *http.Request) {
 		httpx.JSON(w, http.StatusOK, map[string]string{"status": "completed"})
 		return
 	}
-	status, _, err := h.settle(ctx, id, hook.Data.Reference)
+	status, _, err := h.settle(ctx, id, said.Reference)
+	// GeniusPay not answering about its own payment (its sandbox doesn't always): a webhook
+	// checked with the secret is believed as it is.
+	if err != nil && h.Pay.WebhookSecret != "" {
+		log.Printf("shop: webhook %s: asking GeniusPay failed (%v): its signed word taken", id, err)
+		status, _, err = h.settleWith(ctx, id, said)
+	}
 	if err != nil {
 		// GeniusPay sends it again later.
 		log.Printf("shop: webhook %s: %v", id, err)
