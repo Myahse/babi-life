@@ -41,11 +41,15 @@ const TILLS = [-33, -28, -23, -18]
 const BACK = [-5, 2.5, 10, 17.5, 25]
 const FRONT = [-5, 2.5, 25, 32.5]
 const SHOP_W = 7.2
+/** The clothes rails in the wax shop (back row, first shop), along its side walls. */
+const RAILS = [-7.6, -2.4]
 
 const SPOTS: Record<string, Spot> = {
   supermarche: { at: [-28, -8], rot: Math.PI / 2, pose: 'busy', from: [-28, 4.5] },
   'leche-vitrine': { at: [12, 0], rot: 0, pose: 'walk', from: [12, 6], loop: { c: [12, 0], r: [16, 4.5], speed: 0.08 } },
-  vetements: { at: [-5, -15.5], rot: Math.PI, pose: 'busy', from: [-5, -9.5] },
+  vetements: { at: [-5, -14.9], rot: Math.PI, pose: 'busy', from: [-5, -9.5] },
+  // Between the rails of the wax shop, looking at the pieces (the shop's sheet: components/ClothesShop).
+  'boutique-mode': { at: [-5, -12], rot: Math.PI, pose: 'walk', from: [-5, -9.5], loop: { c: [-5, -12], r: [1.7, 1.4], speed: 0.12 } },
   glace: { at: [30.5, 1.2], rot: 0, pose: 'eat', y: 0.05 },
 }
 
@@ -70,6 +74,8 @@ const SOLID: [number, number, number, number][] = (() => {
   // The atrium: the fountain, the benches, the escalator, the kiosk, the food court's tables.
   out.push([12, 0, 2.6, 2.6], [12, -5.5, 1.2, 0.4], [12, 5.5, 1.2, 0.4], [4, 0, 1.2, 3.6], [30.5, -5, 1.4, 1.2])
   for (const [x, z] of [[24, 0], [28, 3], [33, 0], [28, -3], [34, 4]]) out.push([x, z, 0.7, 0.7])
+  // The clothes rails of the wax shop.
+  for (const x of RAILS) out.push([x, -12, 0.3, 1.6])
   // The supermarket's bakery counter along its left wall.
   out.push([-37.2, -6, 0.5, 4])
   // The outer walls of the gallery, with the doors.
@@ -82,12 +88,17 @@ const SHOW_CAR: [number, number, number, number] = [-10, 0, 1.3, 2.6]
 
 /** Where one can walk in a centre of this look (Marcory's car is in the way there). */
 function freeOf(style?: MallLayout['style']) {
+  if (style === 'palmeraie') return (x: number, z: number) => free(x, z) && !onPalm(x, z, PALMS(style))
   if (style !== 'marcory') return free
   const [cx, cz, hw, hd] = SHOW_CAR
   return (x: number, z: number) => free(x, z) && !(Math.abs(x - cx) < hw + 0.3 && Math.abs(z - cz) < hd + 0.3)
 }
 
+/** On one of the palms in their pots along the gallery. */
+const onPalm = (x: number, z: number, xs: number[]) => xs.some((px) => Math.abs(x - px) < 0.75) && Math.abs(Math.abs(z) - 6.5) < 0.75
+
 function free(x: number, z: number) {
+  if (onPalm(x, z, PALMS())) return false
   if (x < -HW + 0.5 || x > HW - 0.5 || z < -HD + 0.5 || z > HD + 14) return false
   // Out on the car park: only in front of the doors.
   if (z > HD - 0.2 && (x < 4 || x > 20)) return false
@@ -409,6 +420,13 @@ function Shops({ night, layout }: { night: boolean; layout?: MallLayout }) {
           inside.push({ p: [x - 2.6 + j * 2.6, 1.1, back - deep * 0.5], s: [1.6, 2.2, 0.4], c: '#dfe3e8' })
           for (let y = 0; y < 3; y++) inside.push({ p: [x - 2.6 + j * 2.6, 0.5 + y * 0.6, back - deep * 0.75], s: [1.4, 0.35, 0.12], c: ['#e63946', '#f1c40f', '#2a9d8f', '#e76f51', '#457b9d', '#ffffff', '#d6336c'][Math.floor(r() * 7)] })
         }
+        // The wax shop: two clothes rails along its sides, the pieces hanging on them (bought from the shop's sheet).
+        if (k === 'back' && i === 0)
+          for (const rx of RAILS) {
+            for (const dz of [-1.5, 1.5]) inside.push({ p: [rx, 0.8, -12 + dz], s: [0.06, 1.6, 0.06], c: '#9aa1a8' })
+            inside.push({ p: [rx, 1.6, -12], s: [0.05, 0.05, 3.1], c: '#9aa1a8' })
+            for (let h = 0; h < 9; h++) inside.push({ p: [rx, 1.12, -13.3 + h * 0.33], s: [0.5, 0.86, 0.07], c: ['#ff7a00', '#1f4fd1', '#2f9e44', '#c92a2a', '#f2c94c', '#7b5cff', '#141416', '#e64980', '#6b4423'][Math.floor(r() * 9)] })
+          }
       })
     }
     return { walls, inside }
@@ -487,7 +505,8 @@ function Atrium({ style }: { style?: MallLayout['style'] }) {
 }
 
 /** Where the palms stand along the gallery: more of them at the Palmeraie. */
-const PALMS = (style?: MallLayout['style']) => (style === 'palmeraie' ? [-8, -2, 2, 8, 16, 20, 26] : [-6, 2, 20, 26])
+// Between the shops' doors, never in front of one.
+const PALMS = (style?: MallLayout['style']) => (style === 'palmeraie' ? [-9.5, -1.25, 6.25, 13.75, 21.25, 28.75] : [-1.25, 6.25, 21.25, 28.75])
 
 /* ---------- PlaYce Marcory's gallery ---------- */
 

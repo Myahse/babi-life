@@ -6,6 +6,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
 )
@@ -46,7 +48,17 @@ func (h *Handler) changeLookHandler(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
 		return
 	}
-	h.mutate(w, r, func(s *Sim) (game.Outcome, []Event, error) {
+	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
+		// The boutiques' own prints: worn by those who bought a piece with one (clothes.go).
+		var owned []string
+		if err := tx.QueryRow(r.Context(), `SELECT clothes FROM sims WHERE id = $1`, s.ID).Scan(&owned); err != nil {
+			return game.Outcome{}, nil, err
+		}
+		if nl.Pattern != s.Look.Pattern {
+			if err := piecePattern(nl.Pattern, owned); err != nil {
+				return game.Outcome{}, nil, err
+			}
+		}
 		cost, err := s.changeLook(nl)
 		if err != nil {
 			return game.Outcome{}, nil, err

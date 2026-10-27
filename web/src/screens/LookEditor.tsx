@@ -1,24 +1,30 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Glasses, Scissors, Shirt, X, type LucideIcon } from 'lucide-react'
+import { Glasses, Scissors, ShoppingBag, Shirt, X, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
-import type { Look, Sim } from '../lib/types'
-import { ACCESSORIES, ACCESSORY_COLORS, BEARDS, BOTTOM_COLORS, FEMME_OUTFITS, HAIR_COLORS, HAIRS, OUTFIT_COLORS, OUTFIT_DEFAULT_COLOR, OUTFITS, PATTERNS, PRESTIGE_ACCESSORIES, SHOE_COLORS, WAX_OUTFITS, defaultColors, fullLook } from '../avatar/options'
+import type { ClothingPiece, Look, Sim } from '../lib/types'
+import { forGender, wearPiece, wearing } from '../lib/clothes'
+import { useWorld } from '../store/world'
+import { ACCESSORIES, ACCESSORY_COLORS, BEARDS, BOTTOM_COLORS, FEMME_OUTFITS, HAIR_COLORS, HAIRS, OUTFIT_COLORS, OUTFIT_DEFAULT_COLOR, OUTFITS, PATTERNS, PIECE_PATTERNS, PRESTIGE_ACCESSORIES, SHOE_COLORS, WAX_OUTFITS, defaultColors, fullLook } from '../avatar/options'
 import { ColorPicker } from '../components/ColorPicker'
 import { AccessoryOptions, Options, Section } from '../components/LookOptions'
 import { Stage, type Focus } from '../avatar/Stage'
 import { waxSwatch } from '../avatar/BlockHuman'
 import { Chip } from '../components/ui'
+import { Portrait } from '../avatar/portrait'
 import { amount } from '../game/rules'
 
 // « Changer de look »: the wardrobe (clothes, pagne, colours, accessories)
 // is free; a new cut, hair colour or beard is a visit to the barber or the
-// salon. The body stays the Sim's own: no new skin, build or height.
+// salon. The body stays the Sim's own: no new skin, build or height. The
+// wardrobe also keeps the pieces bought in the boutiques (game/clothes.go),
+// put on with a tap; their own prints come with them.
 
 /** What the server charges for a new hairdo (sims.HairPrice). */
 const HAIR_PRICE = 2000
 
-type Tab = { id: 'tenue' | 'accessoire' | 'coiffure'; label: string; icon: LucideIcon; focus: Focus }
+type Tab = { id: 'garde-robe' | 'tenue' | 'accessoire' | 'coiffure'; label: string; icon: LucideIcon; focus: Focus }
+const WARDROBE: Tab = { id: 'garde-robe', label: 'Garde-robe', icon: ShoppingBag, focus: 'outfit' }
 const TABS: Tab[] = [
   { id: 'tenue', label: 'Tenue', icon: Shirt, focus: 'outfit' },
   { id: 'accessoire', label: 'Accessoire', icon: Glasses, focus: 'face' },
@@ -33,12 +39,15 @@ export function LookEditor() {
   const [tab, setTab] = useState<Tab['id']>(() => TABS.find((t) => t.id === params.get('tab'))?.id ?? 'tenue')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const world = useWorld((s) => s.world)
+  const [owned, setOwned] = useState<string[]>([])
 
   useEffect(() => {
     api.sims().then((sims) => {
       if (!sims.length) return navigate('/creer')
       setSim(sims[0])
       setLookState(fullLook(sims[0].look))
+      api.clothes(sims[0].id).then((r) => setOwned(r.owned)).catch(() => {})
     })
   }, [navigate])
 
@@ -53,7 +62,10 @@ export function LookEditor() {
   const cost = haircut ? HAIR_PRICE : 0
   const changed = (Object.keys(look) as (keyof Look)[]).some((k) => look[k] !== before[k])
   const defaults = defaultColors(look, femme)
-  const current = TABS.find((t) => t.id === tab)!
+  const mine: ClothingPiece[] = forGender(world?.clothes ?? [], sim.gender).filter((p) => owned.includes(p.id))
+  const tabs = mine.length ? [WARDROBE, ...TABS] : TABS
+  const current = tabs.find((t) => t.id === tab) ?? TABS[0]
+  const patterns = [...PATTERNS, ...PIECE_PATTERNS.filter((p) => mine.some((m) => m.pattern === p.id))]
 
   async function save() {
     setBusy(true)
@@ -88,7 +100,7 @@ export function LookEditor() {
 
       <section className="sheet relative z-10 -mt-6 flex max-h-[60%] flex-col rounded-t-[28px] lg:mt-0 lg:max-h-none lg:w-[540px] lg:rounded-none">
         <nav className="flex gap-1 px-3 pt-3 pb-2" role="tablist">
-          {TABS.map((t) => {
+          {tabs.map((t) => {
             const here = t.id === tab
             return (
               <button key={t.id} role="tab" aria-selected={here} onClick={() => setTab(t.id)} className={`flex flex-1 flex-col items-center gap-1 rounded-2xl px-1 py-1.5 transition ${here ? 'bg-[#fff1e3]' : 'hover:bg-[var(--color-canvas)]'}`}>
@@ -101,11 +113,25 @@ export function LookEditor() {
           })}
         </nav>
         <p className="px-4 pb-1 text-sm font-bold text-[var(--color-ink-soft)]">
-          {tab === 'coiffure' ? `Chez le coiffeur : ${amount(HAIR_PRICE)} Djai la nouvelle coiffure. Ton corps, lui, ne change pas.` : 'Dans ton armoire : gratuit.'}
+          {current.id === 'garde-robe' ? 'Les pièces achetées en boutique : touche pour la mettre.' : current.id === 'coiffure' ? `Chez le coiffeur : ${amount(HAIR_PRICE)} Djai la nouvelle coiffure. Ton corps, lui, ne change pas.` : 'Dans ton armoire : gratuit.'}
         </p>
 
         <div key={tab} className="animate-up flex-1 overflow-y-auto px-4 pt-2 pb-4">
-          {tab === 'tenue' && (
+          {current.id === 'garde-robe' && (
+            <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4">
+              {mine.map((p) => (
+                <button key={p.id} className="tile flex flex-col items-center overflow-hidden pb-1.5" aria-pressed={wearing(look, p)} onClick={() => setLookState(wearPiece(look, p))}>
+                  <span className={`block w-full ${p.kind === 'accessoire' ? 'aspect-square' : 'aspect-[3/4]'}`}>
+                    <Portrait look={wearPiece(look, p)} gender={sim.gender} framing={p.kind === 'accessoire' ? 'bust' : 'full'} />
+                  </span>
+                  <span className="px-1 text-center text-[11px] leading-tight font-extrabold">{p.label}</span>
+                  <span className="text-[10px] font-bold text-[var(--color-ink-soft)]">{p.brand}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {current.id === 'tenue' && (
             <div className="space-y-5">
               <Section title="Style">
                 <Options choices={OUTFITS.filter((o) => femme || !FEMME_OUTFITS.has(o.id))} value={look.outfit} onPick={(outfit) => setLook({ outfit, ...(OUTFIT_DEFAULT_COLOR[outfit] && { outfitColor: OUTFIT_DEFAULT_COLOR[outfit] }) })} look={look} gender={sim.gender} field="outfit" framing="full" />
@@ -113,7 +139,7 @@ export function LookEditor() {
               {(WAX_OUTFITS.has(look.outfit) || look.hair === 'headwrap') && (
                 <Section title="Motif du pagne">
                   <div className="grid grid-cols-4 gap-2.5">
-                    {PATTERNS.map((p) => (
+                    {patterns.map((p) => (
                       <button key={p.id} className="tile flex flex-col items-center gap-1 p-1.5 pb-2" aria-pressed={look.pattern === p.id} onClick={() => setLook({ pattern: p.id })}>
                         <span className="block aspect-square w-full rounded-xl bg-cover" style={{ backgroundImage: `url(${waxSwatch(look.outfitColor, p.id)})`, backgroundSize: '100%', imageRendering: 'pixelated' }} />
                         <span className="text-[11px] font-extrabold">{p.label}</span>
@@ -136,7 +162,7 @@ export function LookEditor() {
             </div>
           )}
 
-          {tab === 'accessoire' && (
+          {current.id === 'accessoire' && (
             <div className="space-y-5">
               <Section title="Accessoire" icon={Glasses}>
                 <AccessoryOptions choices={ACCESSORIES} value={look.accessory} onPick={(accessory) => setLook({ accessory })} look={look} gender={sim.gender} locked={sim.prestige ? undefined : PRESTIGE_ACCESSORIES} />
@@ -149,7 +175,7 @@ export function LookEditor() {
             </div>
           )}
 
-          {tab === 'coiffure' && (
+          {current.id === 'coiffure' && (
             <div className="space-y-5">
               <Section title="Coupe" right={<Chip tone="gold">{amount(HAIR_PRICE)} Djai</Chip>}>
                 <Options choices={HAIRS} value={look.hair} onPick={(hair) => setLook({ hair })} look={look} gender={sim.gender} field="hair" framing="head" />

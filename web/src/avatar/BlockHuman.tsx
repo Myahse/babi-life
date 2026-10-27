@@ -173,6 +173,39 @@ function waxPx(color: string, motif: string, x: number, y: number) {
       const cols = [color, '#f2b705', '#00a862', '#1d120b']
       return band === 1 && m6(x) < 3 ? '#b02e0c' : cols[band]
     }
+    // The boutiques' own prints (backend game/clothes.go PiecePatterns).
+    case 'bogolan': {
+      // Mud cloth: cream crosses and dots on the dark ground, in rows.
+      const row = ((y % 12) + 12) % 12
+      if (row === 0 || row === 6) return m6(x) % 2 ? cream : color
+      return row < 6 ? ((cx === 2 && cy !== 0) || (cy === 3 && cx > 0 && cx < 5) ? cream : color) : cx === 2 && cy === 2 ? ink : color
+    }
+    case 'madras': {
+      // Checks of crossing bands, the colour, the yellow and the green.
+      const [bx, by] = [((x % 8) + 8) % 8, ((y % 8) + 8) % 8]
+      if (bx < 2 && by < 2) return ink
+      return bx < 2 ? '#f2b705' : by < 2 ? '#00a862' : bx === 4 || by === 4 ? cream : color
+    }
+    case 'fleurs': {
+      // A flower in each tile: its heart, its petals round.
+      if (dx < 0.6 && dy < 0.6) return '#f2b705'
+      return dx + dy < 2 ? cream : dx + dy < 2.6 ? ink : color
+    }
+    case 'leopard': {
+      // Rosettes: a broken dark ring, a warmer middle.
+      const d = Math.hypot(cx - 2.5, cy - 2.5)
+      return d < 1 ? tint(color, -0.18) : d < 2 && (cx + cy) % 3 !== 0 ? '#1d120b' : color
+    }
+    case 'camo': {
+      // Blobs of three greens and a brown, by coarse cells.
+      const n = hash(Math.floor(x / 4) + Math.floor(y / 5) * 7, Math.floor(y / 4))
+      return n < 0.3 ? '#3a4128' : n < 0.55 ? '#7a8450' : n < 0.75 ? '#5c4630' : color
+    }
+    case 'adinkra': {
+      // A symbol in each tile: a square, a cross through it.
+      if (dx < 0.6 || dy < 0.6) return dx < 2 && dy < 2 ? ink : color
+      return Math.max(dx, dy) > 1.6 && Math.max(dx, dy) < 2.6 && Math.min(dx, dy) > 1.4 ? accent : color
+    }
     default: {
       // cercles
       const d = Math.max(dx, dy)

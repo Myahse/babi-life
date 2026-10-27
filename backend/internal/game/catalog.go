@@ -180,6 +180,7 @@ var Kinds = map[string]PlaceKind{
 			Gbairai,
 			{ID: "sell-goods", Ages: TeensUp, Label: "Vendre au petit commerce", Icon: "store", Minutes: 4 * 60, Cost: -1200, Effect: Needs{Energy: -20, Social: 15, Hygiene: -10}, MinHour: 6, MaxHour: 18},
 			// The Grand Marché de Treichville's own: its floor of pagnes, upstairs.
+			{ID: ShopMarketID, Ages: TeensUp, Label: "Acheter une tenue chez les vendeuses de wax", Icon: "shirt", Minutes: 30, Effect: Needs{Fun: 10, Social: 5}, MinHour: 7, MaxHour: 19},
 			{ID: "pagnes-treich", Ages: TeensUp, Label: "Choisir des pagnes à l'étage", Icon: "shirt", Minutes: 45, Cost: 6000, Effect: Needs{Fun: 25, Social: 10, Energy: -5}, MinHour: 7, MaxHour: 18, Places: []string{MarcheTreichID}},
 			// The market of Cocody's: the stalls of mèches and wigs, upstairs.
 			{ID: "meches-cocody", Ages: TeensUp, Label: "Choisir des mèches à l'étage", Icon: "sparkles", Minutes: 40, Cost: 5000, Effect: Needs{Fun: 20, Social: 10, Energy: -5}, MinHour: 7, MaxHour: 18, Places: []string{MarcheCocodyID}},
@@ -499,6 +500,8 @@ var Kinds = map[string]PlaceKind{
 			{ID: "supermarche", Ages: TeensUp, Label: "Faire les courses au supermarché", Icon: "shopping-cart", Minutes: 60, Cost: 8000, Effect: Needs{Hunger: 25, Fun: 5, Energy: -5}, MinHour: 8, MaxHour: 21},
 			{ID: "leche-vitrine", Label: "Faire du lèche-vitrine", Icon: "shopping-bag", Minutes: 60, Effect: Needs{Fun: 20, Social: 5, Energy: -5}, MinHour: 9, MaxHour: 21},
 			{ID: "vetements", Ages: TeensUp, Label: "S'acheter une tenue", Icon: "shirt", Minutes: 45, Cost: 15000, Effect: Needs{Fun: 35}, MinHour: 9, MaxHour: 21},
+			// The boutiques (clothes.go): the pieces chosen one by one, paid each, kept in the wardrobe.
+			{ID: ShopMallID, Ages: TeensUp, Label: "Faire les boutiques de vêtements", Icon: "shirt", Minutes: 40, Effect: Needs{Fun: 15}, MinHour: 9, MaxHour: 21},
 			{ID: "glace", Label: "Prendre une glace entre amis", Icon: "ice-cream-cone", Minutes: 30, Cost: 1500, Effect: Needs{Fun: 15, Social: 20, Hunger: 5}, MinHour: 10, MaxHour: 21},
 		},
 		Events: []RandomEvent{

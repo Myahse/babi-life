@@ -58,7 +58,7 @@ function request<T>(path: string, init: RequestInit = {}): Promise<T> {
  * Sim, the commune's places, the garage, the défis' records, the messages and
  * the snaps' list, the news), not the rest (a feed, a match going on).
  */
-const KEEP = /^\/(world|me|sims|news)(\?|$)|^\/sims\/[^/]+(\?|$)|^\/sims\/[^/]+\/(gbairai|photos|garage|defis|flashe|stories|lots|plots|emotes)(\?|$)|^\/places\?/
+const KEEP = /^\/(world|me|sims|news)(\?|$)|^\/sims\/[^/]+(\?|$)|^\/sims\/[^/]+\/(gbairai|photos|garage|defis|flashe|stories|lots|plots|emotes|clothes)(\?|$)|^\/places\?/
 
 /**
  * Played without network (lib/offlinePlay.ts): what it answers in the server's place (a Sim's
@@ -165,6 +165,9 @@ export const api = {
   /** The emotes bought; buying one. */
   emotes: (id: string) => request<{ owned: string[] }>(`/sims/${id}/emotes`),
   buyEmote: (id: string, emote: string) => post<ActionResult>(`/sims/${id}/emotes/${emote}`, {}),
+  /** The boutiques' pieces bought; buying one (in the shop that sells it). */
+  clothes: (id: string) => request<{ owned: string[] }>(`/sims/${id}/clothes`),
+  buyPiece: (id: string, piece: string) => post<ActionResult>(`/sims/${id}/clothes/${piece}`, {}),
   sessions: () => request<{ sessions: Device[]; legacy: boolean }>('/me/sessions'),
   revokeSession: (id: string) => request<void>(`/me/sessions/${id}`, { method: 'DELETE' }),
   revokeOthers: () => post<{ signedOut: number }>('/me/sessions/others', {}),
