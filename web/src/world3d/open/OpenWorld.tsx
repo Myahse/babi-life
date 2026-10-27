@@ -32,7 +32,7 @@ import { LotFence, fenceRuns, ownerColor } from '../build/Fence'
 import { whereabouts } from '../whereabouts'
 import { Snapper } from '../snapshot'
 import { ChatFraming } from '../chatFraming'
-import { CHUNK_ZOOM, hash, tileBox, tileOf, toLatLng, toLocal, type Origin, type XZ } from './geo'
+import { CHUNK_ZOOM, hash, tileBox, tileOf, toLatLng, toLocal, type Box, type Origin, type XZ } from './geo'
 import { Nav } from './nav'
 import { along, anchorNode, DRIVABLE, round, routeLength, turnTo, useCellsAround, type Round } from './shared'
 import { ParkedVehicle } from './parkedVehicle'
@@ -91,7 +91,7 @@ import { setVehicleNight } from '../vehicles'
 
 const RICH = typeof navigator === 'undefined' || (navigator.hardwareConcurrency ?? 4) > 4
 import { litShare, makeTextures, rippleNormals, windowsByHour } from './textures'
-import { FAR_ZOOM, type ChunkData } from './tiles'
+import { FAR_ZOOM, type ChunkData, type FarBlock } from './tiles'
 import type { ChunkRequest } from './chunkJob'
 import { requestKey } from './chunkCache'
 import { startChunkWorker, type ChunkWorker } from './chunkWorker'
@@ -345,6 +345,63 @@ function farOf<T extends Record<string, THREE.Material>>(mats: T): T {
       return [k, f]
     }),
   ) as T
+}
+
+/** The far horizon's walls, by the hash of where they stand: the sand, cream and white of Abidjan, the glass of the towers. */
+const FAR_WALLS = ['#efe6d6', '#e9dcc3', '#f3f1ec', '#d9cbb0', '#f0d9b5', '#e8d2c0', '#dfe4e8'].map((c) => new THREE.Color(c))
+const FAR_GLASS = new THREE.Color('#b9cad9')
+const FAR_BOX = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0)
+const farBlockMat = new THREE.MeshLambertMaterial({ color: '#ffffff' })
+
+/**
+ * The city past the loaded streets (the horizon's tiles): its buildings as plain blocks, one draw
+ * for a whole tile, their height from the map, their walls in the city's colours; none where a
+ * near chunk stands (its own buildings are there). Before, past 700 m the city was flat.
+ */
+export function FarBlocks({ blocks, hide, night }: { blocks: FarBlock[]; hide: Box[]; night: boolean }) {
+  const ref = useRef<THREE.InstancedMesh>(null)
+  useEffect(() => {
+    const m = ref.current
+    if (!m) return
+    const o = new THREE.Object3D()
+    const c = new THREE.Color()
+    blocks.forEach(([x, z, w, d, h, rot], i) => {
+      const inNear = hide.some((b) => x > b.x0 - 4 && x < b.x1 + 4 && z > b.z0 - 4 && z < b.z1 + 4)
+      o.position.set(x, 0, z)
+      o.rotation.set(0, -rot, 0)
+      o.scale.set(inNear ? 0 : w, inNear ? 0 : h, inNear ? 0 : d)
+      o.updateMatrix()
+      m.setMatrixAt(i, o.matrix)
+      const k = Math.abs(Math.sin(x * 12.9898 + z * 78.233) * 43758.5453) % 1
+      c.copy(h > 24 ? FAR_GLASS : FAR_WALLS[Math.floor(k * FAR_WALLS.length)])
+      if (night) c.multiplyScalar(0.32)
+      m.setColorAt(i, c)
+    })
+    m.instanceMatrix.needsUpdate = true
+    if (m.instanceColor) m.instanceColor.needsUpdate = true
+    m.computeBoundingSphere()
+  }, [blocks, hide, night])
+  return <instancedMesh ref={ref} args={[FAR_BOX, farBlockMat, blocks.length]} frustumCulled />
+}
+
+/**
+ * The depth's precision over the whole city: the camera's near plane follows how far it is from
+ * what it looks at (half a metre close up, a few metres from high over the city), so the far
+ * streets and roofs don't flicker into each other (the near plane at 0.5 for a view 6 km deep).
+ */
+function DepthRange() {
+  const camera = useThree((st) => st.camera) as THREE.PerspectiveCamera
+  const controls = useThree((st) => st.controls) as unknown as { target?: THREE.Vector3 } | null
+  useFrame(() => {
+    const t = controls?.target
+    const d = t ? camera.position.distanceTo(t) : camera.position.y
+    const near = Math.min(4, Math.max(0.3, d * 0.02))
+    if (Math.abs(near - camera.near) / camera.near > 0.15) {
+      camera.near = near
+      camera.updateProjectionMatrix()
+    }
+  })
+  return null
 }
 
 function useMaterials(night: boolean, hour: number) {
@@ -1244,8 +1301,11 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   }, [cuts, mats])
   const dark = useMemo(() => (cuts.length ? (x: number, z: number) => !!inCut(cuts, x, z) : undefined), [cuts])
   const simInCut = night && !!inCut(cuts, whereabouts.sim[0], whereabouts.sim[1])
+  // The near chunks' squares: the horizon's blocks don't stand in them (their own buildings are there).
+  const nearBoxes = useMemo(() => [...chunks.values()].filter((c) => !c.data.key.includes(':')).map((c) => c.data.box), [chunks])
   return (
     <>
+      <DepthRange />
       {/* Nights are blue but readable: the Sim and the streets stay visible on a phone. */}
       <hemisphereLight args={[night ? '#7484c4' : '#ffffff', night ? '#3a3a56' : '#b8a27c', (night ? 1.3 : 1.2) * (raining ? 0.7 : 1) * (simInCut ? 0.72 : 1)]} />
       <Sun night={night} dusk={dusk} dim={raining ? 0.35 : 1} />
@@ -1289,6 +1349,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
           {Object.entries(c.geos).map(([name, g]) => (
             <mesh key={name} name={name} geometry={g} material={(far ? farMats : mats)[(name === 'tinLow' ? 'tin' : name) as keyof typeof mats]} castShadow={shade && SOLID.has(name)} receiveShadow={!far && name !== 'contact'} visible={far || (NEAR_ONLY.has(name) ? detailed.has(c.data.key) : name !== 'tinLow' || !detailed.has(c.data.key))} />
           ))}
+          {far && c.data.farBlocks?.length ? <FarBlocks blocks={c.data.farBlocks} hide={nearBoxes} night={night} /> : null}
           <Trees pts={c.data.trees} bark={mats.bark} leaves={mats.leaves} shadows={shade} />
           <Forest pts={c.data.forest ?? []} bark={mats.bark} />
           <Palms pts={c.data.palms ?? []} bark={mats.bark} leaves={mats.leaves} shadows={shade} />

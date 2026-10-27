@@ -88,6 +88,33 @@ function roadsNear(roads: ChunkData['roads'], [x, z]: XZ): Road[] {
  */
 const FACING: Record<string, number> = { 'plateau-cathedrale': 0, 'plateau-tribunal': Math.PI, 'plateau-presidence': 0 }
 
+/**
+ * Landmarks on a boulevard that face it, not the lane nearer their map point: the Azalé Hôtel,
+ * on the boulevard VGE (from the carrefour de Marcory to the gare de Bassam), its entrance and
+ * its sign to the traffic. Within this many metres, the widest road (a motorway's class too:
+ * the big boulevards are drawn so on the map).
+ */
+const ON_BOULEVARD: Record<string, number> = { 'marcory-azale': 140 }
+
+/** The widest road within `within` metres (the nearest of the widest), for a landmark on its boulevard. */
+function mainRoad(chunk: ChunkData, [x, z]: XZ, within: number): Road | null {
+  let best: Road | null = null
+  for (const r of chunk.roads) {
+    if (r.cls === 'path') continue
+    for (let i = 1; i < r.pts.length; i++) {
+      const [ax, az] = r.pts[i - 1]
+      const [bx, bz] = r.pts[i]
+      const l2 = (bx - ax) ** 2 + (bz - az) ** 2
+      const t = l2 ? Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (z - az) * (bz - az)) / l2)) : 0
+      const at: XZ = [ax + (bx - ax) * t, az + (bz - az) * t]
+      const d = Math.hypot(at[0] - x, at[1] - z)
+      if (d > within) continue
+      if (!best || r.width > best.width + 0.5 || (Math.abs(r.width - best.width) <= 0.5 && d < best.d)) best = { at, d, angle: Math.atan2(bz - az, bx - ax), width: r.width }
+    }
+  }
+  return best
+}
+
 /** The point of a ring closest to p, and the outward normal of that side. */
 function closestOnRing(ring: XZ[], p: XZ): { at: XZ; d: number; n: XZ } {
   let best = { at: ring[0], d: Infinity, n: [0, 1] as XZ }
@@ -135,7 +162,7 @@ export function resolvePlaces(chunk: ChunkData, spots: PlaceSpot[], onReal?: (b:
   for (const s of order) {
     const [x, z] = s.at
     if (x < box.x0 || x >= box.x1 || z < box.z0 || z >= box.z1) continue
-    const road = (s.landmark && FACING[s.id] !== undefined && nearestRoad(chunk, s.at, FACING[s.id])) || nearestRoad(chunk, s.at)
+    const road = (s.landmark && ON_BOULEVARD[s.id] !== undefined && mainRoad(chunk, s.at, ON_BOULEVARD[s.id])) || (s.landmark && FACING[s.id] !== undefined && nearestRoad(chunk, s.at, FACING[s.id])) || nearestRoad(chunk, s.at)
 
     // A lot of the game's (the Sim's house, a plot bought): beside its street, and clear of
     // every other one (not across a corner, a lane behind it, a road the plot fell on), a
