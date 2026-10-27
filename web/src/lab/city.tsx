@@ -97,6 +97,8 @@ import { FlightView } from '../world3d/FlightView'
 import { AwaleApp } from '../screens/AwaleApp'
 import { MetroView } from '../world3d/MetroView'
 import { Net } from '../streetball/looks'
+import { FarBlocks } from '../world3d/open/OpenWorld'
+import { farBlockOf, type FarBlock } from '../world3d/open/tiles'
 import { LudoApp } from '../screens/LudoApp'
 
 const seededLab = (n: number) => () => ((n = (n * 16807) % 2147483647) / 2147483647)
@@ -128,7 +130,7 @@ const seededLab = (n: number) => () => ((n = (n * 16807) % 2147483647) / 2147483
 // ?view=bridge&kind=fhb|cdg|hkb|yop|ado one of the big bridges over a lagoon
 // (&cam, &look, &night);
 // ?view=party|nightstreet|nightcity: the nights (see night.tsx);
-// ?view=app&app=awale|ludo the phone's board games; ?view=metro inside the métro's carriage; ?view=net a goal's net, a ball going in.
+// ?view=app&app=awale|ludo the phone's board games; ?view=metro inside the métro's carriage; ?view=net a goal's net, a ball going in; ?view=farblocks the horizon's buildings as plain blocks (made-up streets, a near square hidden).
 // The interior takes &career=sante&level=1 for a Sim at work (&id=work).
 
 const q = new URLSearchParams(location.search)
@@ -649,6 +651,7 @@ function Lab() {
   if (view === 'emotes') return <EmotesLab />
   if (view === 'talk') return <TalkLab />
   // &sococe: the Sococé's own supermarket and shops, its Kinéo in the gallery.
+  if (view === 'farblocks') return <FarBlocksLab />
   if (view === 'net')
     return (
       <Canvas dpr={[1, 2]} camera={{ position: (q.get('cam') ?? '-6,2.6,4.5').split(',').map(Number) as [number, number, number], fov: 45 }} style={{ width: '100vw', height: '100vh', background: '#9ccbea' }}>
@@ -1402,5 +1405,35 @@ function NetLab() {
         <meshLambertMaterial color="#ffffff" />
       </mesh>
     </>
+  )
+}
+
+/** A made-up city 2 km round, its buildings as the horizon draws them; the square in the middle is a near chunk's (hidden). */
+function FarBlocksLab() {
+  const blocks = useMemo(() => {
+    const r = seededLab(11)
+    const out: FarBlock[] = []
+    for (let i = 0; i < 4000; i++) {
+      const [x, z] = [(r() - 0.5) * 2400, (r() - 0.5) * 2400]
+      const [w, d, a] = [8 + r() * 22, 8 + r() * 18, Math.floor(r() * 4) * (Math.PI / 2) + (r() - 0.5) * 0.2]
+      const ring: [number, number][] = [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]].map(([u, v]) => [x + u * Math.cos(a) - v * Math.sin(a), z + u * Math.sin(a) + v * Math.cos(a)])
+      const h = Math.hypot(x, z) < 500 && r() < 0.15 ? 30 + r() * 60 : 3 + Math.floor(r() * 4) * 3
+      const b = farBlockOf(ring, h)
+      if (b) out.push(b)
+    }
+    return out
+  }, [])
+  return (
+    <Canvas dpr={[1, 1.5]} camera={{ position: (q.get('cam') ?? '0,180,700').split(',').map(Number) as [number, number, number], fov: 45, near: 1, far: 6000 }} style={{ width: '100vw', height: '100vh', background: '#9ccbea' }}>
+      <hemisphereLight args={['#ffffff', '#b8a27c', 1.2]} />
+      <directionalLight position={[300, 500, 200]} intensity={1.1} />
+      <fog attach="fog" args={['#cfe3ee', 400, 5200]} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[6000, 6000]} />
+        <meshLambertMaterial color="#8a9a6b" />
+      </mesh>
+      <FarBlocks blocks={blocks} hide={[{ x0: -150, x1: 150, z0: -150, z1: 150 }]} night={q.has('night')} />
+      <OrbitControls target={[0, 0, 0]} />
+    </Canvas>
   )
 }
