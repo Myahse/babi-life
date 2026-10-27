@@ -66,6 +66,8 @@ var chatTopics = []chatTopic{
 		"« I ni ce ! » — « Nse ! I ka kɛnɛ wa ? » — « Tɔɔrɔ si tɛ ! » Vous vous serrez la main en riant.",
 		"« I ni wula ! » {name} répond « Nba ! » et te tape dans la main : « Tu es de la famille, toi ! »",
 	}},
+	// What the player typed themselves (npcchat): the answer is the model's words, its effect the game's, from how they took it.
+	{id: "libre", label: "Causer", icon: "messages-square", minutes: 4, ages: game.KidsUp, effect: game.Needs{Social: 6, Fun: 2}, yesEffect: game.Needs{Social: 10, Fun: 5}, noEffect: game.Needs{Social: 1, Fun: -2}},
 	// Causer
 	{id: "famille", label: "Demander la famille", icon: "users", minutes: 8, ages: game.KidsUp, effect: game.Needs{Social: 12}, yes: []string{
 		"« La famille va bien, grâce à Dieu. Le petit a commencé l'école, il veut déjà être président ! »",
@@ -412,6 +414,11 @@ func (s *Sim) chat(p Passerby, topicID, said string, adult bool, rng *rand.Rand)
 
 // chatIn is chat, with the language a greeting is said in (topic « langue »).
 func (s *Sim) chatIn(p Passerby, topicID, said, lang string, adult bool, rng *rand.Rand) (chatAnswer, error) {
+	return s.chatWith(p, topicID, said, lang, adult, rng, nil)
+}
+
+// chatWith is chatIn, with their answer already written (topic « libre »: what the player typed, answered by npcchat).
+func (s *Sim) chatWith(p Passerby, topicID, said, lang string, adult bool, rng *rand.Rand, free *chatAnswer) (chatAnswer, error) {
 	i := slices.IndexFunc(chatTopics, func(t chatTopic) bool { return t.id == topicID })
 	if i < 0 {
 		return chatAnswer{}, errUnknownTopic
@@ -424,6 +431,14 @@ func (s *Sim) chatIn(p Passerby, topicID, said, lang string, adult bool, rng *ra
 		p.Look = nil
 	}
 	t := chatTopics[i]
+	if (t.id == "libre") != (free != nil) {
+		return chatAnswer{}, errUnknownTopic
+	}
+	// Talking freely, one says many things: a longer conversation, and saying it again isn't « the same thing ».
+	turns := chatTurns
+	if free != nil {
+		turns = 2 * chatTurns
+	}
 	label := t.label + " avec " + p.Name
 	// A greeting, a question: the activity is what was said; a joke is told, not quoted whole there.
 	if said != "" && utf8.RuneCountInString(said) <= 60 {
@@ -442,21 +457,21 @@ func (s *Sim) chatIn(p Passerby, topicID, said, lang string, adult bool, rng *ra
 	if a := s.Activity; a != nil && a.Kind == "do" && a.PlaceKind != "chat" {
 		aside = true
 		if a.ChatWith == p.ID {
-			if len(a.Said) >= chatTurns {
+			if len(a.Said) >= turns {
 				return chatAnswer{Text: say(chatBye, p, s, rng), Mood: "bye"}, nil
 			}
 			before = a.Said
-			if slices.Contains(before, t.id) && t.id != "salut" {
+			if slices.Contains(before, t.id) && t.id != "salut" && t.id != "libre" {
 				it.ID, it.Minutes, it.Effect = "chat-again", 2, game.Needs{Social: -1}
 			}
 		}
 	}
 	if a := s.Activity; !aside && a != nil && a.Kind == "do" && a.PlaceKind == "chat" && a.PlaceName == p.Name {
-		if len(a.Said) >= chatTurns {
+		if len(a.Said) >= turns {
 			return chatAnswer{Text: say(chatBye, p, s, rng), Mood: "bye"}, nil
 		}
 		before = a.Said
-		if slices.Contains(before, t.id) && t.id != "salut" {
+		if slices.Contains(before, t.id) && t.id != "salut" && t.id != "libre" {
 			// Twice the same: a short « you said that already ».
 			it.ID, it.Minutes, it.Effect = "chat-again", 2, game.Needs{Social: -1}
 		}
@@ -475,6 +490,15 @@ func (s *Sim) chatIn(p Passerby, topicID, said, lang string, adult bool, rng *ra
 		return chatAnswer{}, err
 	}
 	switch {
+	case free != nil:
+		// Their own words; no money ever changes hands this way (the model can't give any).
+		ans = chatAnswer{Text: free.Text, Mood: strings.TrimPrefix(free.Mood, "neutral")}
+		switch free.Mood {
+		case "good":
+			it.Effect = t.yesEffect
+		case "bad":
+			it.Effect = t.noEffect
+		}
 	case isRomance:
 		ans = romantic
 	case t.id == "langue" && it.ID != "chat-again":

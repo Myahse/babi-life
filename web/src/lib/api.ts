@@ -284,6 +284,7 @@ export const api = {
   footRelease: (id: string, player: string) => post<FootCareerView>(`/sims/${id}/foot/release/${player}`, {}),
   /** An outing (backend sims/outing.go): friends met in the game come at once, player friends are invited. */
   outing: (id: string, o: { placeId: string; interactionId: string; friends: string[]; players: string[] }) => post<ActionResult>(`/sims/${id}/outing`, o),
+  chatFree: (id: string, npc: { id: string; name: string; gender: string; seed: number; look?: Look }, text: string, about: { before: { who: 'me' | 'them'; text: string }[]; job: string; doing?: string; languages: string[]; rapport: number; met: number }) => post<ActionResult>(`/sims/${id}/chat/free`, { with: npc, text, ...about }),
   chat: (id: string, npc: { id: string; name: string; gender: string; seed: number; look?: Look }, topic: string, said?: string, lang?: string) => post<ActionResult>(`/sims/${id}/chat`, { with: npc, topic, said: said ?? '', lang: lang ?? '' }),
   setLanguages: (id: string, languages: string[]) => request<{ languages: string[] }>(`/sims/${id}/languages`, { method: 'PUT', body: JSON.stringify({ languages }) }),
   street: (id: string, vendor: string, choice?: string) => post<ActionResult>(`/sims/${id}/street`, { vendor, choice: choice ?? '' }),

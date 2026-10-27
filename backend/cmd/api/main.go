@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"errors"
+	"github.com/myahse/babi-life/backend/internal/npcchat"
 	"log"
 	"math"
 	"net/http"
@@ -111,7 +112,7 @@ func main() {
 	features.Default = &features.Store{DB: pool}
 	// The casino's « taux de retour » as the team sets them (odds: each game untouched until then).
 	odds.Default = &odds.Store{DB: pool}
-	simsH := &sims.Handler{DB: pool, RealPhotos: os.Getenv("STORIES_REAL_PHOTOS") == "true", Karts: karts, Courts: courts, Push: pushes, Bucket: bucket}
+	simsH := &sims.Handler{DB: pool, RealPhotos: os.Getenv("STORIES_REAL_PHOTOS") == "true", Karts: karts, Courts: courts, Push: pushes, Bucket: bucket, Talk: npcchat.FromEnv()}
 	go simsH.WatchBets(ctx)
 	go simsH.PruneJournal(ctx)
 	headlines := news.New(cfg.NewsFeeds)
