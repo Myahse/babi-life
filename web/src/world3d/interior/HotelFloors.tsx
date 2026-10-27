@@ -10,7 +10,7 @@ import { iconFor } from '../../components/icons'
 import { Snapper } from '../snapshot'
 import { ChatFraming } from '../chatFraming'
 import { ActionProps, TvOn, Zzz } from './ActionProps'
-import { Guest, mat, sign, useBigWalk, type Spot, type XZ } from './bigPlace'
+import { Guest, mat, sign, useBigWalk, type Spot, type XZ, RichAO } from './bigPlace'
 import { isRoomAct, setLift, useLift } from '../hotelLift'
 import { CorridorDecor, LOOKS, PLAIN, RoomDecor, WindowWall, type Look } from './hotelStyles'
 
@@ -285,6 +285,7 @@ export function Upstairs({ sim, stage, look, view, floor, room, rooms, roomType,
         )}
       </Guest>
       <OrbitControls makeDefault target={center} enablePan={false} minDistance={4} maxDistance={30} minPolarAngle={0.3} maxPolarAngle={1.2} enableDamping />
+      <RichAO />
     </Canvas>
   )
 }

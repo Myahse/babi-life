@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { Sim } from '../../lib/types'
@@ -28,6 +28,19 @@ export type XZ = [number, number]
 export type Spot = { at: XZ; rot: number; pose: Pose; y?: number; lying?: boolean; swim?: number; from?: XZ; loop?: { c: XZ; r: XZ; speed: number; pose?: Pose; lean?: number } }
 
 const SPEED = 1.9
+
+const AmbientOcclusion = lazy(() => import('../effects'))
+/** The phones that can afford it: soft shade in the corners, under the tables, at the foot of the walls. */
+const RICH = typeof navigator === 'undefined' || (navigator.hardwareConcurrency ?? 4) > 4
+/** The big places' ambient occlusion (world3d/effects.tsx), on the phones that can afford it; nothing on the others. */
+export function RichAO({ radius = 1.6, falloff = 0.8, intensity = 2 }: { radius?: number; falloff?: number; intensity?: number }) {
+  if (!RICH) return null
+  return (
+    <Suspense fallback={null}>
+      <AmbientOcclusion radius={radius} falloff={falloff} intensity={intensity} />
+    </Suspense>
+  )
+}
 
 const mats = new Map<string, THREE.MeshLambertMaterial>()
 /** A plain material by colour (and glow), shared. */

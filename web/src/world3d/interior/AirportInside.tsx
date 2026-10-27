@@ -14,7 +14,7 @@ import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
 import { Airliner } from '../open/airport'
 import { Dish } from './ActionProps'
-import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere } from './bigPlace'
+import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere, RichAO } from './bigPlace'
 
 // Inside an airport's terminal (the FHB at Port-Bouët, the other cities'
 // own): the hall, the Air Lagune check-in desks and their queue, the
@@ -144,6 +144,7 @@ export function AirportInside({ sim, name, flights, interactionId, roam, night, 
           <SpotActions shown={!!roam && !interactionId} where={spotWhere(SPOTS)} entrance={[ENTRANCE[0], 0, ENTRANCE[1]]} />
           <OrbitControls makeDefault target={[0, 0, 0]} enablePan={false} minDistance={6} maxDistance={80} minPolarAngle={0.25} maxPolarAngle={1.3} enableDamping />
         </Suspense>
+        <RichAO />
       </Canvas>
     </div>
   )

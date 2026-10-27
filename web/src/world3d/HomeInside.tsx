@@ -20,6 +20,7 @@ import { Snapper } from './snapshot'
 import { ChatFraming } from './chatFraming'
 import { Swimmer } from './Swimmer'
 import { listenKeys, moveInput } from './input'
+import { RichAO } from './interior/bigPlace'
 
 // Inside one's own house, on a screen of its own: the house itself (the one
 // of the family's plan, or the one built on a bought lot), its rooms, its
@@ -443,6 +444,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
           <OrbitControls makeDefault target={[0, 0, 0]} enablePan={false} minDistance={4} maxDistance={span * 2.2} minPolarAngle={0.3} maxPolarAngle={1.2} enableDamping />
           <Focus on={there && spot ? [spot.at[0], 0, spot.at[1]] : null} span={span} />
         </Suspense>
+        <RichAO />
       </Canvas>
       {/* Fade to black: nothing is shown of the night */}
       {night2 && (

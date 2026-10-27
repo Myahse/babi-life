@@ -13,7 +13,7 @@ import { Snapper } from '../snapshot'
 import { ChatFraming } from '../chatFraming'
 import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
-import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere } from './bigPlace'
+import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere, RichAO } from './bigPlace'
 
 // Inside the Palais de la Culture (Treichville): its great hall, the salle
 // Anoumabo. The stage at the far end behind its red curtains drawn aside, the
@@ -90,6 +90,7 @@ export function PalaisCultureInside({ sim, interactionId, roam, night, stage }: 
           <SpotActions shown={!!roam && !interactionId} where={spotWhere(SPOTS)} entrance={[ENTRANCE[0], TOP, ENTRANCE[1]]} />
           <OrbitControls makeDefault target={[0, 3, -6]} enablePan={false} minDistance={6} maxDistance={90} minPolarAngle={0.25} maxPolarAngle={1.35} enableDamping />
         </Suspense>
+        <RichAO />
       </Canvas>
     </div>
   )

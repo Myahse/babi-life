@@ -12,7 +12,7 @@ import { Snapper } from '../snapshot'
 import { ChatFraming } from '../chatFraming'
 import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
-import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere } from './bigPlace'
+import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere, RichAO } from './bigPlace'
 
 // Inside the Musée des Civilisations (Plateau): its one great hall, as in
 // the real one, all on one floor. Masks along the back wall (the Dan's dark
@@ -95,6 +95,7 @@ export function MuseeInside({ sim, interactionId, roam, night, stage }: { sim: S
           <SpotActions shown={!!roam && !interactionId} where={spotWhere(SPOTS)} entrance={[ENTRANCE[0], 0, ENTRANCE[1]]} />
           <OrbitControls makeDefault target={[0, 1, 2]} enablePan={false} minDistance={5} maxDistance={60} minPolarAngle={0.25} maxPolarAngle={1.3} enableDamping />
         </Suspense>
+        <RichAO />
       </Canvas>
     </div>
   )

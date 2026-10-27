@@ -11,7 +11,7 @@ import { rng } from '../themes'
 import { Snapper } from '../snapshot'
 import { ChatFraming } from '../chatFraming'
 import { Character } from '../Character'
-import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere } from './bigPlace'
+import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere, RichAO } from './bigPlace'
 import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
 import { Cathedral, NAVE, TOWER, WINDOWS, naveHalf, roofAt, towerPoint, vitrail, windowAt } from '../open/cathedral'
@@ -271,6 +271,7 @@ function Nave({ sim, interactionId, roam, night, stage, mass }: { sim: Sim; inte
           <SpotActions shown={!!roam && !interactionId} where={spotWhere(SPOTS)} entrance={[ENTRANCE[0], 0, ENTRANCE[1]]} />
           <OrbitControls makeDefault target={[0, -3, NAVE.F - 16]} enablePan={false} minDistance={6} maxDistance={95} minPolarAngle={0.25} maxPolarAngle={1.3} enableDamping />
         </Suspense>
+        <RichAO />
       </Canvas>
     </div>
   )
@@ -569,6 +570,7 @@ function TowerTop({ sim, night, stage }: { sim: Sim; night: boolean; stage: stri
           </group>
           <OrbitControls makeDefault target={[4, -6, 12]} enablePan={false} minDistance={4} maxDistance={40} enableDamping />
         </Suspense>
+        <RichAO />
       </Canvas>
     </div>
   )

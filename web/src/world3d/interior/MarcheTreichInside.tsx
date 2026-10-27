@@ -15,7 +15,7 @@ import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
 import { Porter } from '../open/grandMarche'
 import { Gossip } from './doings'
-import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere } from './bigPlace'
+import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere, RichAO } from './bigPlace'
 
 // Inside the Grand Marché de Treichville: its great hall of food on the
 // ground floor, the tables two by two down its length with the tanties
@@ -120,6 +120,7 @@ export function MarcheTreichInside({ sim, interactionId, roam, night, stage }: {
           <SpotActions shown={!!roam && !interactionId} where={spotWhere(SPOTS)} entrance={[ENTRANCE[0], 0, ENTRANCE[1]]} />
           <OrbitControls makeDefault target={[0, 1, 0]} enablePan={false} minDistance={5} maxDistance={70} minPolarAngle={0.25} maxPolarAngle={1.35} enableDamping />
         </Suspense>
+        <RichAO />
       </Canvas>
     </div>
   )
