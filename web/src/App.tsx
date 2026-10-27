@@ -1,10 +1,10 @@
 import { lazy, Suspense, useEffect } from 'react'
+import { Splash } from './components/Splash'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useSession } from './store/session'
 import { useWorld } from './store/world'
 import { Title } from './screens/Title'
 import { Legal } from './screens/Legal'
-import { MoodPin } from './components/ui'
 import { ResetPassword } from './screens/ResetPassword'
 import { gameOpen, homeScreenApp } from './lib/launch'
 
@@ -21,11 +21,7 @@ const Admin = lazy(() => import('./screens/Admin').then((m) => ({ default: m.Adm
 const Tester = lazy(() => import('./screens/Tester'))
 const Profile = lazy(() => import('./screens/Profile').then((m) => ({ default: m.Profile })))
 
-const Loading = () => (
-  <div className="grid h-full place-items-center bg-[var(--color-night)]">
-    <MoodPin size={24} />
-  </div>
-)
+const Loading = () => <Splash />
 
 export function App() {
   const token = useSession((s) => s.token)

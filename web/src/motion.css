@@ -261,3 +261,150 @@
     animation: none;
   }
 }
+
+/* ---------- Sheets and dialogs (components/Sheet.tsx) ----------
+   The dimmed world fades in behind; the sheet comes up from the bottom edge
+   on a spring (on a computer, it pops in the middle), and goes back down
+   when it closes. */
+.motion-backdrop {
+  animation: motion-backdrop-in 0.3s ease-out both;
+}
+.motion-backdrop[data-closing] {
+  animation: motion-backdrop-out 0.22s ease-in both;
+}
+@keyframes motion-backdrop-in {
+  from { background-color: transparent; backdrop-filter: blur(0); -webkit-backdrop-filter: blur(0); }
+}
+@keyframes motion-backdrop-out {
+  to { background-color: transparent; backdrop-filter: blur(0); -webkit-backdrop-filter: blur(0); }
+}
+.motion-sheet {
+  animation: motion-sheet-in 0.52s var(--ease-spring) both;
+}
+.motion-sheet[data-closing] {
+  animation: motion-sheet-out 0.22s cubic-bezier(0.5, 0, 0.75, 0) both;
+}
+@keyframes motion-sheet-in {
+  from { transform: translateY(105%); }
+}
+@keyframes motion-sheet-out {
+  to { transform: translateY(105%); }
+}
+@media (min-width: 1024px) {
+  .motion-sheet {
+    animation-name: motion-dialog-in;
+    animation-duration: 0.42s;
+  }
+  .motion-sheet[data-closing] {
+    animation-name: motion-dialog-out;
+    animation-duration: 0.18s;
+  }
+}
+@keyframes motion-dialog-in {
+  from { transform: translateY(18px) scale(0.9); opacity: 0; }
+}
+@keyframes motion-dialog-out {
+  to { transform: translateY(10px) scale(0.95); opacity: 0; }
+}
+/* The little bar on top of a sheet: pull it down to close it. */
+.sheet-grab {
+  touch-action: none;
+  cursor: grab;
+}
+.sheet-grab::before {
+  content: '';
+  display: block;
+  width: 42px;
+  height: 5px;
+  margin: 0 auto;
+  border-radius: 9999px;
+  background: rgb(22 26 43 / 0.16);
+}
+
+/* Talking: a bubble grows out of its tail, theirs on the left, yours on the right */
+.motion-bubble-them {
+  transform-origin: 0 0;
+  animation: motion-bubble 0.4s var(--ease-spring) both;
+}
+.motion-bubble-me {
+  transform-origin: 100% 100%;
+  animation: motion-bubble 0.4s var(--ease-spring) both;
+}
+@keyframes motion-bubble {
+  from { transform: scale(0.5); opacity: 0; }
+}
+/* A heart won (or lost) floats up off the row of hearts */
+.motion-heart-up {
+  animation: motion-heart-up 1s var(--ease-out) forwards;
+}
+@keyframes motion-heart-up {
+  0% { transform: translateY(4px) scale(0.4); opacity: 0; }
+  25% { transform: translateY(-4px) scale(1.25); opacity: 1; }
+  100% { transform: translateY(-26px) scale(0.9); opacity: 0; }
+}
+/* The face of who you talk to, nodding a little while they speak */
+.motion-talk {
+  animation: motion-talk 0.5s ease-in-out infinite;
+}
+@keyframes motion-talk {
+  50% { transform: translateY(-1.5px) rotate(-1.5deg); }
+}
+
+/* ---------- Loading (components/Splash.tsx) ---------- */
+.splash-sun {
+  animation: splash-sun 3.2s ease-in-out infinite;
+}
+@keyframes splash-sun {
+  50% { transform: scale(1.12); opacity: 0.75; }
+}
+.splash-mark {
+  animation:
+    splash-drop 0.7s var(--ease-spring) both,
+    splash-bob 2.6s 0.7s ease-in-out infinite;
+}
+@keyframes splash-drop {
+  from { transform: translateY(-40px) scale(0.6); opacity: 0; }
+}
+@keyframes splash-bob {
+  50% { transform: translateY(-7px); }
+}
+.splash-shadow {
+  animation: splash-shadow 2.6s 0.7s ease-in-out infinite;
+}
+@keyframes splash-shadow {
+  50% { transform: scaleX(0.75); opacity: 0.3; }
+}
+.splash-letter {
+  display: inline-block;
+  animation: motion-rise 0.5s var(--ease-spring) both;
+}
+.splash-bar {
+  background: linear-gradient(90deg, transparent, var(--color-orange) 40%, var(--color-gold) 60%, transparent) 0 0 / 50% 100% no-repeat;
+  animation: splash-bar 1.4s ease-in-out infinite;
+}
+@keyframes splash-bar {
+  from { background-position: -100% 0; }
+  to { background-position: 200% 0; }
+}
+.splash-tip {
+  animation: splash-tip 3.2s ease-in-out both;
+}
+@keyframes splash-tip {
+  0% { opacity: 0; transform: translateY(6px); }
+  12%, 88% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translateY(-6px); }
+}
+
+/* Every other sheet of the game (the « sheet animate-up » ones): the same
+   spring up from the bottom, the world behind dimming in. */
+.sheet.animate-up {
+  animation: motion-sheet-in 0.52s var(--ease-spring) both;
+}
+:has(> .sheet.animate-up) {
+  animation: motion-backdrop-in 0.3s ease-out both;
+}
+@media (min-width: 1024px) {
+  .sheet.animate-up {
+    animation: motion-dialog-in 0.42s var(--ease-spring) both;
+  }
+}
