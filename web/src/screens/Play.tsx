@@ -95,6 +95,7 @@ import { haptic, onBack } from '../lib/native'
 import { drive, getIn, gps, parkedNow, parkIn, setParked, startDrive, stopDrive, topSpeed, useDriving, useParked, type Driven } from '../world3d/drive'
 import { FlightView } from '../world3d/FlightView'
 import { MetroView } from '../world3d/MetroView'
+import { PhoneIcon } from '../components/PhoneIcon'
 import { aCommune } from '../lib/french'
 
 /** Building one's house: its own screen, downloaded when opened. */
@@ -1512,6 +1513,7 @@ export function Play() {
           act={run}
           startApp={phoneApp}
           achat={achat}
+          onResult={apply}
           onConfirmAdult={async () => {
             const u = await api.confirmAdult()
             if (token) useSession.getState().signIn(token, u)
@@ -1679,6 +1681,8 @@ type PhoneProps = {
   startApp: PhoneAppId | null
   /** Back from GeniusPay: the purchase the Boutique asks about. */
   achat: { id: string; failed: boolean } | null
+  /** Something bought in an app outside `act` (the Boutique's clothes): the Sim after it. */
+  onResult: (r: ActionResult) => void
   /** The account says it's 18 or over (the Boutique's purchases need it). */
   onConfirmAdult: () => Promise<void>
   delivery: Delivery | null
@@ -1712,7 +1716,7 @@ type PhoneProps = {
   onDrive: (v: Driven) => void
 }
 
-function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startApp, achat, onConfirmAdult, delivery, onDelivery, onCollect, onClose, onMap, onCamera, onFlashe, onPractice, street, onWalk, onBuild, onDames, onDamesOnline, onDamesResume, onHuitTable, onHuitFriend, onHuitResume, onDrive }: PhoneProps) {
+function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startApp, achat, onResult, onConfirmAdult, delivery, onDelivery, onCollect, onClose, onMap, onCamera, onFlashe, onPractice, street, onWalk, onBuild, onDames, onDamesOnline, onDamesResume, onHuitTable, onHuitFriend, onHuitResume, onDrive }: PhoneProps) {
   const [app, setApp] = useState<PhoneAppId | null>(startApp)
   // A photo of the gallery on its way to Tikitoko.
   const [tikiPhoto, setTikiPhoto] = useState<{ id: number; src: string } | undefined>()
@@ -1846,7 +1850,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                   {APPS.filter((a) => !DOCK.includes(a.id)).map((a) => (
                     <button key={a.id} onClick={a.open} className="flex min-w-0 flex-col items-center gap-1 active:scale-90">
                       <span className="relative">
-                        <IconTile icon={a.icon} colors={a.colors} size={56} radius={15} />
+                        <PhoneIcon id={a.id} icon={a.icon} colors={a.colors} />
                         {((a.id === 'friends' && sim.gang === 'invited') || (a.id === 'home' && sim.rentArrears > 0) || (a.id === 'jobs' && !sim.career)) && <Badge />}
                       </span>
                       <span className="w-full truncate text-center text-[11px] font-semibold text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.45)]">{a.label}</span>
@@ -1854,8 +1858,8 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                   ))}
                   {STORE_APPS.map((a) => (
                     <button key={a.id} onClick={a.open} className="flex min-w-0 flex-col items-center gap-1 active:scale-90">
-                      <span className="relative">
-                        <AppLogo id={a.id} size={56} radius={15} />
+                      <span className="relative block h-14 w-14">
+                        <AppLogo id={a.id} size={56} radius={13} />
                         {a.id === 'golvo' && delivery && <Badge />}
                       </span>
                       <span className="w-full truncate text-center text-[11px] font-semibold text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.45)]">{a.label}</span>
@@ -1874,7 +1878,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                   .map((a) => (
                     <button key={a.id} onClick={a.open} className="flex justify-center active:scale-90" aria-label={a.label}>
                       <span className="relative">
-                        <IconTile icon={a.icon} colors={a.colors} size={56} radius={15} />
+                        <PhoneIcon id={a.id} icon={a.icon} colors={a.colors} />
                         {a.id === 'messages' && journal.length > 0 && <Badge n={Math.min(99, journal.length)} />}
                       </span>
                     </button>
@@ -1954,7 +1958,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                   </div>
                 )}
                 {app === 'store' && ownPhone && <StoreApp world={world} sim={sim} act={act} onOpen={(id) => (id === 'gnango' || id === 'idrive' ? onMap() : id === 'flashe' ? onFlashe() : setApp(id as PhoneAppId))} />}
-                {app === 'boutique' && <BoutiqueApp sim={sim} back={achat} onConfirmAdult={onConfirmAdult} />}
+                {app === 'boutique' && <BoutiqueApp sim={sim} back={achat} onConfirmAdult={onConfirmAdult} onResult={onResult} />}
                 {app === 'idees' && <IdeasApp sim={sim} />}
                 {app === 'politique' && <PolitiqueApp world={world} sim={sim} commune={commune} at={at} onWalk={(id) => (onClose(), onWalk(id))} />}
                 {app === 'waye' && <WayeApp world={world} sim={sim} act={act} journal={journal} renderJournal={(events) => <Journal events={events} />} payTo={wayeTo} />}

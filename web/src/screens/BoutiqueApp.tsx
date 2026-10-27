@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
-import { BadgeCheck, Clock3, Crown, Lock, ShieldCheck, ShoppingBag, Star, XCircle, Zap } from 'lucide-react'
+import { BadgeCheck, Clock3, Lock, ShieldCheck, ShoppingBag, XCircle } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
-import type { ShopPurchase, ShopView, Sim } from '../lib/types'
+import type { ActionResult, ShopPurchase, ShopView, Sim } from '../lib/types'
 import { amount } from '../game/rules'
-import { Chip, Coin } from '../components/ui'
+import { Chip } from '../components/ui'
+import { BoutiqueClothes } from '../components/BoutiqueClothes'
+import { useWorld } from '../store/world'
+import { activityOpen, useFeatures } from '../lib/features'
 
 // La boutique (backend shop/): what's paid with real money, on GeniusPay's
 // page (Wave, Orange Money, MTN, Moov, a card), for accounts of 18 or over:
@@ -31,9 +34,88 @@ export const passOn = (sim: Pick<Sim, 'passUntil'>) => !!sim.passUntil && Date.p
 const day = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
 /** What a purchase brought, in a few words (a pack: its Djai). */
 const bought = (p: ShopPurchase) => (p.kind === 'djai' ? `${amount(p.djai)} Djai` : p.kind === 'pass' ? 'Babi Pass · 30 jours' : p.kind === 'energie' ? "Plein d'énergie" : p.kind === 'prestige' ? 'Pack Prestige' : p.item)
-const ICONS = { pass: Star, energie: Zap, prestige: Crown }
 
-export function BoutiqueApp({ sim, back, onConfirmAdult }: { sim: Sim; /** Back from GeniusPay's page: the purchase, and whether it came back by the error way. */ back?: { id: string; failed: boolean } | null; onConfirmAdult: () => Promise<void> }) {
+/** The Pass: a gold ticket, its star. */
+function PassArt() {
+  return (
+    <svg viewBox="0 0 48 48" width="44" height="44" aria-hidden>
+      <defs>
+        <linearGradient id="pass-g" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#fff3b0" />
+          <stop offset="0.5" stopColor="#f2b705" />
+          <stop offset="1" stopColor="#b07a00" />
+        </linearGradient>
+      </defs>
+      <rect x="4" y="11" width="40" height="26" rx="5" fill="url(#pass-g)" />
+      <circle cx="4" cy="24" r="4" fill="#fff" />
+      <circle cx="44" cy="24" r="4" fill="#fff" />
+      <path d="M24 15l2.6 5.4 5.9.8-4.3 4.1 1 5.9L24 28.4l-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z" fill="#fff" stroke="#b07a00" strokeWidth="0.8" />
+    </svg>
+  )
+}
+/** Plein d'énergie: a can, its lightning. */
+function EnergyArt() {
+  return (
+    <svg viewBox="0 0 48 48" width="44" height="44" aria-hidden>
+      <defs>
+        <linearGradient id="can-g" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#00a862" />
+          <stop offset="0.45" stopColor="#5fe0a0" />
+          <stop offset="1" stopColor="#007a47" />
+        </linearGradient>
+      </defs>
+      <rect x="13" y="6" width="22" height="36" rx="5" fill="url(#can-g)" />
+      <rect x="15" y="4" width="18" height="4" rx="2" fill="#c9d1d9" />
+      <path d="M26 12l-8 13h6l-2 11 8-14h-6z" fill="#ffe066" stroke="#7a5a00" strokeWidth="0.8" />
+    </svg>
+  )
+}
+/** The Pack Prestige: the crown. */
+function CrownArt() {
+  return (
+    <svg viewBox="0 0 48 48" width="44" height="44" aria-hidden>
+      <defs>
+        <linearGradient id="crown-g" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#fff3b0" />
+          <stop offset="1" stopColor="#c48a00" />
+        </linearGradient>
+      </defs>
+      <path d="M7 34l-2-18 10 8 9-13 9 13 10-8-2 18z" fill="url(#crown-g)" stroke="#8a5a00" strokeWidth="1" />
+      <rect x="7" y="34" width="34" height="6" rx="2" fill="#c48a00" />
+      {[14, 24, 34].map((x, i) => (
+        <circle key={x} cx={x} cy="37" r="1.8" fill={['#e03131', '#1c7ed6', '#2f9e44'][i]} />
+      ))}
+    </svg>
+  )
+}
+/** A pack of Djai: a pile of coins, higher with the pack (1 to 5). */
+function CoinsArt({ n }: { n: number }) {
+  const coins = Math.max(1, Math.min(5, n))
+  return (
+    <svg viewBox="0 0 48 48" width="44" height="44" aria-hidden>
+      {[...Array(coins)].map((_, i) => {
+        const y = 38 - i * 5.5
+        const x = 24 + (i % 2 ? 2 : -2) * (coins > 3 ? 1 : 0)
+        return (
+          <g key={i}>
+            <ellipse cx={x} cy={y + 2.4} rx="14" ry="5" fill="#a86800" />
+            <ellipse cx={x} cy={y} rx="14" ry="5" fill="#f7c948" stroke="#c48a00" strokeWidth="0.8" />
+            <ellipse cx={x} cy={y} rx="8" ry="2.6" fill="none" stroke="#c48a00" strokeWidth="0.8" />
+          </g>
+        )
+      })}
+      {coins >= 4 && <path d="M37 9l1.2 2.6 2.8.4-2 2 .5 2.8-2.5-1.3-2.5 1.3.5-2.8-2-2 2.8-.4z" fill="#fff3b0" />}
+    </svg>
+  )
+}
+const ART: Record<string, () => React.ReactNode> = { pass: PassArt, energie: EnergyArt, prestige: CrownArt }
+
+export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim; /** Back from GeniusPay's page: the purchase, and whether it came back by the error way. */ back?: { id: string; failed: boolean } | null; onConfirmAdult: () => Promise<void>; /** A piece or a lot of clothes bought in Djai: the Sim after it. */ onResult: (r: ActionResult) => void }) {
+  const world = useWorld((s) => s.world)
+  const feats = useFeatures()
+  // The clothes (in Djai) come with the boutiques' update (lib/features.ts).
+  const clothes = !!world?.clothes?.length && activityOpen(feats, 'boutique-mode')
+  const [tab, setTab] = useState<'djai' | 'habits'>('djai')
   const [view, setView] = useState<ShopView | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [buying, setBuying] = useState<string | null>(null)
@@ -89,7 +171,7 @@ export function BoutiqueApp({ sim, back, onConfirmAdult }: { sim: Sim; /** Back 
         <ShoppingBag size={28} strokeWidth={2.4} />
         <div className="min-w-0 flex-1 leading-tight">
           <div className="font-display text-[19px] font-extrabold">Boutique</div>
-          <div className="text-[12px] font-bold text-[var(--color-ink)]/75">Des Djai, le Pass, la couronne</div>
+          <div className="text-[12px] font-bold text-[var(--color-ink)]/75">{clothes ? 'Des Djai, le Pass, des vêtements' : 'Des Djai, le Pass, la couronne'}</div>
         </div>
         <div className="text-right text-[12px] font-extrabold">
           <div className="text-[var(--color-ink)]/65">Ton solde</div>
@@ -97,10 +179,27 @@ export function BoutiqueApp({ sim, back, onConfirmAdult }: { sim: Sim; /** Back 
         </div>
       </div>
 
+      {clothes && (
+        <div className="segmented" role="tablist">
+          {(
+            [
+              ['djai', 'Djai & Pass'],
+              ['habits', 'Vêtements'],
+            ] as const
+          ).map(([id, label]) => (
+            <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {returned && <Returned purchase={returned} failed={!!back?.failed} />}
       {error && <p className="text-sm font-bold text-[var(--color-rose)]">{error}</p>}
 
-      {!view.adult ? (
+      {tab === 'habits' && clothes && world ? (
+        <BoutiqueClothes world={world} sim={sim} onResult={onResult} />
+      ) : !view.adult ? (
         <div className="grid place-items-center gap-3 px-6 py-12 text-center">
           <Lock size={34} className="text-[var(--color-ink-soft)]" />
           <p className="font-display text-xl font-extrabold">Réservé aux 18 ans et plus</p>
@@ -122,13 +221,13 @@ export function BoutiqueApp({ sim, back, onConfirmAdult }: { sim: Sim; /** Back 
             <div className="label mb-1.5">Le Pass et les coups de pouce</div>
             <ul className="motion-stagger space-y-2">
               {view.items.map((it) => {
-                const Icon = ICONS[it.id as keyof typeof ICONS] ?? Star
+                const Art = ART[it.id] ?? PassArt
                 const have = it.id === 'prestige' && view.prestige
                 return (
                   <li key={it.id} className="card p-3">
                     <div className="flex items-center gap-3">
-                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#fff4d6] text-[#a86800]">
-                        <Icon size={22} strokeWidth={2.4} />
+                      <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-b from-[#fff8e6] to-[#ffe4a8] shadow-[inset_0_0_0_1px_rgba(168,104,0,0.12)]">
+                        <Art />
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="font-display text-[17px] leading-tight font-extrabold">{it.label}</div>
@@ -151,9 +250,11 @@ export function BoutiqueApp({ sim, back, onConfirmAdult }: { sim: Sim; /** Back 
           <div>
             <div className="label mb-1.5">Les packs de Djai</div>
             <ul className="motion-stagger space-y-2">
-              {view.packs.map((p) => (
+              {view.packs.map((p, i) => (
                 <li key={p.id} className="card flex items-center gap-3 p-3">
-                  <Coin size={34} />
+                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-b from-[#fff8e6] to-[#ffe4a8] shadow-[inset_0_0_0_1px_rgba(168,104,0,0.12)]">
+                    <CoinsArt n={i + 1} />
+                  </span>
                   <div className="min-w-0 flex-1">
                     <div className="font-display text-[17px] leading-tight font-extrabold">{amount(p.djai)} Djai</div>
                     <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[12px] font-extrabold text-[var(--color-ink-soft)]">

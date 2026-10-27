@@ -137,3 +137,82 @@ func FindPiece(id string) (ClothingPiece, bool) {
 	}
 	return ClothingPiece{}, false
 }
+
+// The exclusive collection: only in the phone's Boutique (shop « exclu »), for more Djai, the
+// pieces one sees on the stars of Babi; and the boutiques' pieces, all of them, can be bought
+// there too (sims/clothes.go: from the app).
+var Exclusives = []ClothingPiece{
+	exclu("exclu-elephants-or", "Maillot des Éléphants, édition or", "Babi Life Édition", "", 60000, "jersey", "#c9a227", "", "#00a862", "#ff7a00"),
+	exclu("exclu-coupe-decale", "Costume du coupé-décalé, doré", "Babi Life Édition", "", 150000, "suit", "#d4af37", "", "#141416", "#c9a227"),
+	exclu("exclu-boubou-roi", "Grand boubou brodé or, blanc", "Babi Life Édition", "", 120000, "bazin", "#f8f9fa", "", "#f8f9fa", "#d4af37"),
+	exclu("exclu-robe-gala", "Robe de gala rouge et or", "Babi Life Édition", "femme", 130000, "robe", "#9b111e", "", "", "#d4af37"),
+	exclu("exclu-kaba-reine", "Kaba de la reine, kente", "Babi Life Édition", "femme", 90000, "kaba", "#6741d9", "kente", "", "#d4af37"),
+	exclu("exclu-survet-babi", "Survêtement Babi Life orange et vert", "Babi Life Édition", "", 45000, "survet", "#ff7a00", "", "#00a862", "#f8f9fa"),
+	exclu("exclu-bogolan-noir", "Boubou bogolan noir et blanc", "Babi Life Édition", "", 80000, "boubou", "#1d120b", "bogolan", "#1d120b", "#f8f9fa"),
+	exclu("exclu-leopard-soiree", "Chemise léopard de soirée & pantalon blanc", "Babi Life Édition", "", 70000, "chemise-pagne", "#b8860b", "leopard", "#f8f9fa", "#d4af37"),
+	{ID: "exclu-chaine-or", Label: "Grosse chaîne en or", Brand: "Babi Life Édition", Kind: "accessoire", Price: 50000, Accessory: "chain", AccessoryColor: "#ffd700", Shop: "exclu"},
+	{ID: "exclu-lunettes-star", Label: "Lunettes de star dorées", Brand: "Babi Life Édition", Kind: "accessoire", Price: 35000, Accessory: "sunglasses", AccessoryColor: "#d4af37", Shop: "exclu"},
+}
+
+func exclu(id, label, brand, gender string, price int, outfit, color, pattern, bottom, shoes string) ClothingPiece {
+	p := tenue(id, label, brand, gender, price, outfit, color, pattern, bottom, shoes, "exclu")
+	return p
+}
+
+func init() { Clothes = append(Clothes, Exclusives...) }
+
+// ClothingPack: a lot of pieces at once, a quarter off what they'd cost one by one (only those
+// the Sim can wear and hasn't yet: PackPrice).
+type ClothingPack struct {
+	ID     string   `json:"id"`
+	Label  string   `json:"label"`
+	About  string   `json:"about"`
+	Pieces []string `json:"pieces"`
+}
+
+var ClothingPacks = []ClothingPack{
+	{ID: "pack-wax", Label: "Pack Wax", About: "Le pagne, la chemise, le boubou et le kaba du marché.", Pieces: []string{"wax-pagne-orange", "wax-chemise-kente", "wax-boubou-blanc", "wax-kaba-vert", "wax-chemise-zigzag"}},
+	{ID: "pack-street", Label: "Pack Street", About: "Le sweat, le jogging, la casquette et le casque de Kôrô Wear et Zôgô Street.", Pieces: []string{"koro-sweat-gris", "koro-jogging-blanc", "koro-leopard", "zogo-casquette-noire", "zogo-casque"}},
+	{ID: "pack-soiree", Label: "Pack Soirée", About: "De quoi briller la nuit : la tenue chic, la chaîne et la montre.", Pieces: []string{"plateau-costume-bleu", "ebene-robe-rouge", "zogo-chaine", "zogo-montre", "zogo-lunettes"}},
+	{ID: "pack-bureau", Label: "Pack Bureau", About: "Pour le Plateau : chemises, costume et le sac.", Pieces: []string{"plateau-chemise-blanche", "plateau-chemise-ciel", "plateau-costume-gris", "ebene-jupe-noire", "zogo-sac"}},
+	{ID: "pack-sport", Label: "Pack Sport", About: "Le survêtement, la tenue de basket, le maillot et le bob.", Pieces: []string{"lagune-survet-orange", "lagune-basket-bleu", "lagune-maillot-blanc", "lagune-bain", "zogo-bob"}},
+	{ID: "pack-babi", Label: "Pack Babi Life Édition", About: "Toute la collection exclusive.", Pieces: []string{"exclu-elephants-or", "exclu-coupe-decale", "exclu-boubou-roi", "exclu-robe-gala", "exclu-kaba-reine", "exclu-survet-babi", "exclu-bogolan-noir", "exclu-leopard-soiree", "exclu-chaine-or", "exclu-lunettes-star"}},
+}
+
+// FindClothingPack: a lot by its id.
+func FindClothingPack(id string) (ClothingPack, bool) {
+	for _, p := range ClothingPacks {
+		if p.ID == id {
+			return p, true
+		}
+	}
+	return ClothingPack{}, false
+}
+
+// PackPieces and PackPrice: what a lot brings a Sim of this gender who has `owned`, and for how
+// much (three quarters of the pieces' prices, to the 500 Djai).
+func PackPieces(p ClothingPack, gender string, owned []string) []ClothingPiece {
+	var out []ClothingPiece
+	for _, id := range p.Pieces {
+		c, ok := FindPiece(id)
+		if !ok || c.Gender != "" && c.Gender != gender {
+			continue
+		}
+		had := false
+		for _, o := range owned {
+			had = had || o == id
+		}
+		if !had {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+func PackPrice(pieces []ClothingPiece) int {
+	sum := 0
+	for _, c := range pieces {
+		sum += c.Price
+	}
+	return (sum*3/4 + 250) / 500 * 500
+}
