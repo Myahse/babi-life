@@ -186,7 +186,10 @@ function Typed({ text, onType, onDone }: { text: string; onType?: () => void; on
     const t = setInterval(() => setN((k) => (k >= text.length ? (clearInterval(t), k) : k + 2)), step)
     return () => clearInterval(t)
   }, [text])
-  useEffect(() => onType?.(), [n]) // eslint-disable-line react-hooks/exhaustive-deps
+  // (A block: scrolling returns a promise in newer browsers, and an effect may only return its cleanup.)
+  useEffect(() => {
+    onType?.()
+  }, [n]) // eslint-disable-line react-hooks/exhaustive-deps
   const done = n >= text.length
   useEffect(() => void (done && onDone?.()), [done]) // eslint-disable-line react-hooks/exhaustive-deps
   return (
@@ -212,7 +215,7 @@ function Hearts({ rapport }: { rapport: number }) {
         <span key={k} className="relative">
           <Heart size={14} strokeWidth={2.6} className={`${k < rapport ? 'fill-[var(--color-rose)] text-[var(--color-rose)]' : 'text-black/15'} ${change?.k === k ? 'motion-gram-like' : ''}`} key={change?.k === k ? change.id : 0} />
           {change?.k === k && (
-            <span key={change.id} className="motion-heart-up pointer-events-none absolute -top-1 left-1/2 -ml-2">
+            <span key={`up${change.id}`} className="motion-heart-up pointer-events-none absolute -top-1 left-1/2 -ml-2">
               {change.up ? <Heart size={16} className="fill-[var(--color-rose)] text-[var(--color-rose)]" /> : <HeartCrack size={16} className="text-[var(--color-ink-soft)]" />}
             </span>
           )}
@@ -259,8 +262,10 @@ export function ChatSheet({ npc, simGender, onSay, onType, onClose, onBye, onDam
   // They're saying their line (written out): their face nods.
   const [talking, setTalking] = useState(true)
   const log = useRef<HTMLDivElement>(null)
-  useEffect(() => remember(npc.id, mem), [npc.id, mem])
-  const scroll = () => log.current?.scrollTo({ top: log.current.scrollHeight })
+  useEffect(() => {
+    remember(npc.id, mem)
+  }, [npc.id, mem])
+  const scroll = () => void log.current?.scrollTo({ top: log.current.scrollHeight })
   useEffect(() => {
     log.current?.scrollTo({ top: log.current.scrollHeight, behavior: 'smooth' })
   }, [lines, busy])

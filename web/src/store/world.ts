@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { api } from '../lib/api'
+import { api, errorText } from '../lib/api'
 import type { World } from '../lib/types'
 
 type WorldState = { world: World | null; error: string | null; load: () => Promise<void> }
@@ -12,7 +12,7 @@ export const useWorld = create<WorldState>((set, get) => ({
     try {
       set({ world: await api.world(), error: null })
     } catch (e) {
-      set({ error: e instanceof Error ? e.message : 'Serveur injoignable' })
+      set({ error: errorText(e, 'Serveur injoignable') })
     }
   },
 }))

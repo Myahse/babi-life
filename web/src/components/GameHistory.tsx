@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ChevronDown, History } from 'lucide-react'
-import { api, type HistRound, type Historique, type HistTotal } from '../lib/api'
+import { api, type HistRound, type Historique, type HistTotal, errorText } from '../lib/api'
 import { keyOpen, useFeatures } from '../lib/features'
 
 // The « Historique » of a money game (backend sims/historique.go): the Sim's
@@ -59,7 +59,7 @@ export function GameHistory({ simId, jeu, tick }: { simId: string; jeu: string; 
       setH({ ...h, rounds: [...h.rounds, ...x.rounds] })
       setMore(x.rounds.length >= 50)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Pas de réseau')
+      setError(errorText(e, 'Pas de réseau'))
     }
   }
   return (

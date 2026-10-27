@@ -10,6 +10,30 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * What a player may read of a refusal: the server's own sentences in the game's
+ * words, never its insides (a database, a code, a key, a variable, English).
+ * The admin screens see it as it came.
+ */
+const TECHNICAL = /\b(database|could not|not found|unavailable|try again|internal|server error|bad gateway|sql|pgx|null|undefined|token|api|https?|json|timeout|panic|stack|env|requête|[A-Z][A-Z0-9]*_[A-Z0-9_]+)\b/i
+export function playerText(status: number, message: string): string {
+  if (location.pathname.startsWith('/admin')) return message
+  if (!message || TECHNICAL.test(message) || /^[\x20-\x7e]+$/.test(message) && !/[éèàùçêô]/i.test(message) && /\b(the|is|not|error|failed|invalid)\b/i.test(message)) {
+    return status === 404 ? "Ce n'est pas encore là : reviens un peu plus tard." : 'Petit souci de notre côté : réessaie dans un instant.'
+  }
+  return message
+}
+
+/** A refusal or a failure, as a player may read it (`fallback` when it says nothing usable). */
+export function errorText(e: unknown, fallback = 'Erreur'): string {
+  if (e instanceof ApiError) return e.message || fallback
+  if (e instanceof Error) {
+    const t = playerText(0, e.message)
+    return t === e.message ? t : fallback
+  }
+  return fallback
+}
+
 /** A photo behind the login (a story, a post): fetched with the token, as an object URL. */
 export async function photoURL(path: string) {
   const token = useSession.getState().token
@@ -108,7 +132,7 @@ async function send<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
     // A 404 with no message of ours: the server doesn't know this address yet (an older version is running).
-    throw new ApiError(res.status, body.error ?? (res.status === 404 ? "Le serveur n'a pas encore cette fonction : il doit être mis à jour." : res.statusText))
+    throw new ApiError(res.status, playerText(res.status, body.error ?? ''))
   }
   if (res.status === 204) return undefined as T
   const data = (await res.json()) as T

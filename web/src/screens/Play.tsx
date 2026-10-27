@@ -4,7 +4,7 @@ import type { Pose } from '../avatar/Human'
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2, ShoppingBag, Lightbulb, Landmark, PartyPopper } from 'lucide-react'
-import { api, ApiError } from '../lib/api'
+import { api, ApiError, errorText } from '../lib/api'
 import { useOnline } from '../lib/offline'
 import { onSynced, pendingOffline, picking } from '../lib/offlinePlay'
 import type { ActionResult, City, Commune, HappeningNow, Interaction, JobTask, JournalEvent, Player, Sim, Soiree, World, Ride, Place, Plot, StreetRide } from '../lib/types'
@@ -113,6 +113,7 @@ import { activityOpen, keyOpen, useFeatures } from '../lib/features'
 import { FeatureNews } from '../components/FeatureNews'
 import { Sheet } from '../components/Sheet'
 import { Splash } from '../components/Splash'
+import { Helper } from '../components/Helper'
 const IvoireInside = lazy(() => import('../world3d/interior/IvoireInside').then((m) => ({ default: m.IvoireInside })))
 const CathedralInside = lazy(() => import('../world3d/interior/CathedralInside').then((m) => ({ default: m.CathedralInside })))
 const MosqueM6Inside = lazy(() => import('../world3d/interior/MosqueM6Inside').then((m) => ({ default: m.MosqueM6Inside })))
@@ -643,7 +644,7 @@ export function Play() {
       if (money) toast({ tone: 'done', title: label, money, kind: 'social', icon: 'messages-square' })
       return { text, mood }
     } catch (e) {
-      toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? 'Hors ligne' : 'Pas possible', text: e instanceof Error ? e.message : 'Erreur', money: 0 })
+      toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? 'Hors ligne' : 'Pas possible', text: errorText(e, 'Erreur'), money: 0 })
       return null
     }
   }
@@ -660,7 +661,7 @@ export function Play() {
       if (mood) npcReact(npc.id, mood, mood === 'bye' ? 2.5 : 3.2)
       return { text: answer, mood }
     } catch (e) {
-      toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? 'Hors ligne' : 'Pas possible', text: e instanceof Error ? e.message : 'Erreur', money: 0 })
+      toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? 'Hors ligne' : 'Pas possible', text: errorText(e, 'Erreur'), money: 0 })
       return null
     }
   }
@@ -674,7 +675,7 @@ export function Play() {
       if (kind === 'social') refreshPlayers()
       return true
     } catch (e) {
-      toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? 'Hors ligne' : 'Pas possible', text: e instanceof Error ? e.message : 'Erreur', money: 0 })
+      toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? 'Hors ligne' : 'Pas possible', text: errorText(e, 'Erreur'), money: 0 })
       return false
     } finally {
       setPending(null)
@@ -1598,7 +1599,7 @@ export function Play() {
               apply(res)
               return res
             } catch (e) {
-              toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? 'Hors ligne' : 'Pas possible', text: e instanceof Error ? e.message : 'Erreur', money: 0 })
+              toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? 'Hors ligne' : 'Pas possible', text: errorText(e, 'Erreur'), money: 0 })
               return null
             }
           }}
@@ -1621,7 +1622,7 @@ export function Play() {
             try {
               return await api.machineSpin(sim.id, stake)
             } catch (e) {
-              toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? 'Hors ligne' : 'Pas possible', text: e instanceof Error ? e.message : 'Erreur', money: 0 })
+              toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? 'Hors ligne' : 'Pas possible', text: errorText(e, 'Erreur'), money: 0 })
               return null
             }
           }}
@@ -2829,7 +2830,7 @@ function JobTasks({ world, sim, onTask }: { world: World; sim: Sim; onTask: (t: 
       const out = await onTask(t)
       setSaid({ text: out.text, money: out.money })
     } catch (e) {
-      setSaid({ text: e instanceof Error ? e.message : 'Pas possible maintenant.', bad: true })
+      setSaid({ text: errorText(e, 'Pas possible maintenant.'), bad: true })
     } finally {
       setBusy(null)
     }
@@ -2889,7 +2890,8 @@ function ToastCard({ toast: t }: { toast: Toast }) {
     t.tone === 'random' || t.tone === 'event' ? ['#ffd54f', '#ffa000'] : t.tone === 'promo' ? ['#69e2a0', '#00a862'] : t.tone === 'error' ? ['#ff8a9b', '#ff3d57'] : kindColors(t.kind ?? '')
   return (
     <div className={`card motion-toast pointer-events-auto flex items-center gap-3 p-3 ${t.tone === 'random' || t.tone === 'event' ? 'ring-2 ring-[var(--color-gold)]' : t.tone === 'promo' ? 'ring-2 ring-[var(--color-emerald)]' : ''}`}>
-      <IconTile icon={icon} colors={colors} size={44} />
+      {/* Something that didn't go through: Koffi comes to say it, kindly */}
+      {t.tone === 'error' ? <Helper offline={t.title === 'Hors ligne'} /> : <IconTile icon={icon} colors={colors} size={44} />}
       <div className="min-w-0 flex-1">
         <div className="font-display text-[15px] leading-tight font-extrabold">{t.title}</div>
         {t.text && <div className="text-sm leading-snug font-semibold text-[var(--color-ink-soft)]">{t.text}</div>}
@@ -3156,7 +3158,7 @@ function Billets({ money, onThrow, amounts = [1000, 5000, 10000], label = 'Lance
     try {
       setSaid({ text: await onThrow(amount) })
     } catch (e) {
-      setSaid({ text: e instanceof Error ? e.message : 'Pas possible', bad: true })
+      setSaid({ text: errorText(e, 'Pas possible'), bad: true })
     } finally {
       setBusy(false)
     }

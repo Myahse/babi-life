@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BadgeCheck, Bandage, Check, ChevronLeft, ChevronRight, Dices, Baby, Glasses, Heart, IdCard, PersonStanding, Scissors, Shirt, Smile, X, type LucideIcon } from 'lucide-react'
-import { api, type NewSim } from '../lib/api'
+import { api, type NewSim, errorText } from '../lib/api'
 import type { Family, Look } from '../lib/types'
 import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
@@ -166,7 +166,7 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
       if (drawn) setBorn({ family: drawn, commune: place, located: !!pos || !!from })
       else navigate('/jeu', { viewTransition: true })
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erreur')
+      setError(errorText(e, 'Erreur'))
     } finally {
       setBusy(false)
     }

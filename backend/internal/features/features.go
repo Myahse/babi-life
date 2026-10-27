@@ -21,9 +21,12 @@ import (
 // activities it opens (catalog interaction IDs, refused while closed), and the
 // phone's keys it shows (apps, modes: web lib/features.ts).
 type Feature struct {
-	ID           string   `json:"id"`
-	Label        string   `json:"label"`
-	About        string   `json:"about"`
+	ID    string `json:"id"`
+	Label string `json:"label"`
+	// About: what the players read when it opens (never anything of the server's).
+	About string `json:"about"`
+	// Note: for the team only, in the admin (a key to set, a date to pick).
+	Note         string   `json:"note,omitempty"`
 	Interactions []string `json:"interactions,omitempty"`
 	Keys         []string `json:"keys,omitempty"`
 }
@@ -66,10 +69,10 @@ var List = []Feature{
 	{ID: "casino-ivoire", Label: "La soirée au casino de l'Hôtel Ivoire", About: "Passer la soirée au casino du grand hôtel.", Interactions: []string{"casino-ivoire"}},
 	{ID: "tournoi-console", Label: "Le tournoi console du samedi", About: "Quart, demie et finale à la salle de jeux, la coupe à gagner.", Interactions: []string{"tournoi-console"}},
 	{ID: "console-defi", Label: "Le défi console « le perdant paie »", About: "Défier un gars du quartier à la console, le perdant paie.", Interactions: []string{"console-defi"}},
-	{ID: "metro", Label: "Le métro d'Abidjan (ligne 1)", About: "La ligne 1, d'Anyama à Port-Bouët par Abobo, Adjamé, le Plateau, Treichville, Marcory et Koumassi : un ticket, pas d'embouteillage. Mets sa date d'ouverture : il ouvre tout seul ce jour-là.", Keys: []string{"metro"}},
+	{ID: "metro", Label: "Le métro d'Abidjan (ligne 1)", About: "La ligne 1, d'Anyama à Port-Bouët par Abobo, Adjamé, le Plateau, Treichville, Marcory et Koumassi : un ticket, pas d'embouteillage.", Note: "Mets sa date d'ouverture : il ouvre tout seul ce jour-là.", Keys: []string{"metro"}},
 	{ID: "boutiques", Label: "Les boutiques de vêtements et la garde-robe", About: "Au centre commercial et chez les vendeuses de wax du marché : près de 60 pièces de marques d'ici (Babi Denim, Kôrô Wear, Wax d'Adjamé, Bogolan & Co…) à essayer et acheter une par une, rangées dans ta garde-robe.", Interactions: []string{"boutique-mode", "boutique-wax"}},
 	{ID: "traverser", Label: "Aider les anciens à traverser", About: "Au bord des rues, une maman ou un vieux père attend pour traverser et te demande un coup de main : vous traversez ensemble.", Interactions: []string{"street-traverser"}},
-	{ID: "parler-libre", Label: "Parler librement aux gens", About: "Dans la discussion avec un passant, tu tapes ce que tu veux comme dans une vraie conversation, et il te répond avec ses propres mots, dans son personnage (son métier, son quartier, votre entente). Il faut une clé NPC_CHAT_KEY sur Render (Groq, gratuit).", Keys: []string{"chat-libre"}},
+	{ID: "parler-libre", Label: "Parler librement aux gens", About: "Dans la discussion avec un passant, tu tapes ce que tu veux comme dans une vraie conversation, et il te répond avec ses propres mots, dans son personnage (son métier, son quartier, votre entente).", Note: "Il faut la clé NPC_CHAT_KEY sur Render (Groq, gratuit).", Keys: []string{"chat-libre"}},
 	{ID: "table", Label: "Les gens viennent te parler dans les lieux", About: "« Je peux m'asseoir à ta table ? » au resto ou au bar (tu acceptes et vous causez, ou tu refuses poliment), et au travail les clients qui viennent te demander de l'aide.", Keys: []string{"table"}},
 }
 

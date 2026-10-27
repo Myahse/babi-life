@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { ChevronLeft, Eye, EyeOff, Lock } from 'lucide-react'
 import { Logo } from '../components/ui'
-import { api } from '../lib/api'
+import { api, errorText } from '../lib/api'
 
 /**
  * /mot-de-passe?token=…: the link of the « mot de passe oublié » e-mail
@@ -46,7 +46,7 @@ export function ResetPassword() {
                 try {
                   setDone((await api.resetPassword(token, password)).text)
                 } catch (err) {
-                  setError(err instanceof Error ? err.message : 'Réessaie dans un instant')
+                  setError(errorText(err, 'Réessaie dans un instant'))
                 } finally {
                   setBusy(false)
                 }

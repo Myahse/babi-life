@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Lock, X } from 'lucide-react'
-import { api } from '../lib/api'
+import { api, errorText } from '../lib/api'
 import type { ActionResult, Emote, Sim, World } from '../lib/types'
 import type { Pose } from '../avatar/Human'
 import { playEmote } from '../world3d/emoteNow'
@@ -32,7 +32,7 @@ export function EmoteSheet({ world, sim, onClose, onResult }: { world: World; si
       setOwned((o) => [...(o ?? []), e.id])
       setBuying(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "L'achat n'est pas passé")
+      setError(errorText(err, "L'achat n'est pas passé"))
     } finally {
       setBusy(false)
     }

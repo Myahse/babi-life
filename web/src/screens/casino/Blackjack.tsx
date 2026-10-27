@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { api, ApiError } from '../../lib/api'
+import { api, ApiError, errorText } from '../../lib/api'
 import { haptic } from '../../lib/native'
 import { sfx } from '../../lib/sfx'
 import type { BlackjackMove, BlackjackResult, BlackjackView, Sim, World } from '../../lib/types'
@@ -19,7 +19,7 @@ import { RulesFold } from '../../components/RulesFold'
  */
 
 const nf = (n: number) => n.toLocaleString('fr-FR')
-const errText = (e: unknown) => (e instanceof ApiError && e.status === 0 ? 'Hors ligne' : e instanceof Error ? e.message : 'Erreur')
+const errText = (e: unknown) => (e instanceof ApiError && e.status === 0 ? 'Hors ligne' : errorText(e, 'Erreur'))
 const STAGGER = 260
 
 type Props = { world: World; sim: Sim; act: Act; hold: (money: number | null) => void }

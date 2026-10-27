@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp, TriangleAlert } from 'lucide-react'
-import { api, ApiError } from '../../lib/api'
+import { api, ApiError, errorText } from '../../lib/api'
 import { haptic } from '../../lib/native'
 import type { Sim, TradeCall, TradeState, World } from '../../lib/types'
 import type { Act } from '../phoneApps'
@@ -24,7 +24,7 @@ const price = (p: number) =>
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })
-const errText = (e: unknown) => (e instanceof ApiError && e.status === 0 ? 'Hors ligne' : e instanceof Error ? e.message : 'Erreur')
+const errText = (e: unknown) => (e instanceof ApiError && e.status === 0 ? 'Hors ligne' : errorText(e, 'Erreur'))
 const length = (s: number) => (s < 60 ? `${s} s` : `${s / 60} min`)
 const UP = '#2fd27a'
 const DOWN = '#ff5a6a'

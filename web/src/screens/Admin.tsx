@@ -559,7 +559,7 @@ function Announcements({ k }: { k: string }) {
 
 /* ---------- Mises à jour ---------- */
 
-type Update = { id: string; label: string; about: string; open: boolean; opensAt: string | null; openedAt: string | null; live: boolean }
+type Update = { id: string; label: string; about: string; /** for the team only */ note?: string; open: boolean; opensAt: string | null; openedAt: string | null; live: boolean }
 
 /** An ISO time as the date-time field wants it (local), and back. */
 const toField = (iso: string | null) => {
@@ -640,6 +640,7 @@ function Updates({ k }: { k: string }) {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-[#374151]">{u.about}</p>
+                    {u.note && <p className="mt-1 text-xs font-semibold text-[#b45309]">{u.note}</p>}
                     <p className="mt-1 text-xs text-[#9ca3af]">
                       {u.live ? `Avec les joueurs${u.openedAt ? ` depuis le ${when(u.openedAt)}` : u.opensAt ? ` depuis le ${when(u.opensAt)}` : ''}` : u.opensAt ? `Fermée : ouvre toute seule le ${when(u.opensAt)}` : 'Fermée'}
                     </p>

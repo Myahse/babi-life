@@ -4,7 +4,9 @@ import { music, type Track } from '../audio/music'
 
 /** Plays the music of where the Sim is; renders nothing. */
 export function Soundtrack({ track, seed, level = 1 }: { track: Track | null; seed: string; /** How near (0–1): a party heard from the street. */ level?: number }) {
-  useEffect(() => music.play(track, seed), [track, seed])
+  useEffect(() => {
+    music.play(track, seed)
+  }, [track, seed])
   useEffect(() => {
     music.setLevel(level)
   }, [level])

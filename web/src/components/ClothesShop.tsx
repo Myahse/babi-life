@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Check, ShoppingBag, X } from 'lucide-react'
-import { api } from '../lib/api'
+import { api, errorText } from '../lib/api'
 import { forGender, wearPiece, wearing } from '../lib/clothes'
 import type { ActionResult, ClothingPiece, Sim, World } from '../lib/types'
 import { fullLook } from '../avatar/options'
 import { Portrait } from '../avatar/portrait'
 import { Stage } from '../avatar/Stage'
 import { Chip } from './ui'
+import { Helper } from './Helper'
 import { amount } from '../game/rules'
 
 // In the boutique (« Faire les boutiques » at the centre, the wax sellers of
@@ -44,7 +45,7 @@ export function ClothesShop({ world, sim, shop, onResult, onClose, onLeave }: { 
       after?.()
       if (r.outcome?.text) setSaid({ tone: 'ok', text: r.outcome.text })
     } catch (e) {
-      setSaid({ tone: 'error', text: e instanceof Error ? e.message : 'Erreur' })
+      setSaid({ tone: 'error', text: errorText(e, 'Erreur') })
     } finally {
       setBusy(false)
     }
@@ -98,7 +99,9 @@ export function ClothesShop({ world, sim, shop, onResult, onClose, onLeave }: { 
             })}
           </div>
         </div>
-        {said && <p className={`mx-3 mb-2 rounded-xl px-3 py-2 text-sm font-bold ${said.tone === 'error' ? 'motion-shake bg-[#ffeef1] text-[#d81b3f]' : 'bg-[#e9f9ef] text-[#1b7a43]'}`}>{said.text}</p>}
+        {said && <p className={`flex items-center gap-2.5 mx-3 mb-2 rounded-xl px-3 py-2 text-sm font-bold ${said.tone === 'error' ? 'motion-shake bg-[#ffeef1] text-[#d81b3f]' : 'bg-[#e9f9ef] text-[#1b7a43]'}`}>{said.tone === 'error' && <Helper size={34} />}
+          <span className="min-w-0 flex-1">{said.text}</span>
+        </p>}
         <footer className="flex items-center gap-2 border-t border-[var(--color-line)] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <button className="btn btn-soft shrink-0 px-4" onClick={app ? onClose : onLeave}>
             {app ? 'Fermer' : 'Sortir'}

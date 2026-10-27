@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Images, RefreshCcw, X } from 'lucide-react'
-import { api, photoURL } from '../lib/api'
+import { api, photoURL, errorText } from '../lib/api'
 import type { Photo, Sim } from '../lib/types'
 import { photoCam, setPhotoMode, usePhotoMode } from '../world3d/photoCam'
 import { placeHere, takePhoto } from '../world3d/snapshot'
@@ -41,7 +41,7 @@ export function CameraView({ sim, street, onClose, onGallery }: { sim: Sim; /** 
     try {
       await api.takePhoto(sim.id, shot, mode === 'selfie' ? 'selfie' : 'photo', placeHere())
     } catch (e) {
-      setError(e instanceof Error ? e.message : "La photo n'est pas partie")
+      setError(errorText(e, "La photo n'est pas partie"))
     } finally {
       setBusy(false)
     }

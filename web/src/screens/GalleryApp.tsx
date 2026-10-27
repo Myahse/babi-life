@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Camera, ChevronLeft, CircleDashed, Download, Trash2 } from 'lucide-react'
-import { api } from '../lib/api'
+import { api, errorText } from '../lib/api'
 import type { Photo, Sim } from '../lib/types'
 import { usePhotoSrc } from './CameraView'
 import { keepPicture } from './BabigramArt'
@@ -14,7 +14,7 @@ export function GalleryApp({ sim, onCamera, onTiki, onGram = null, story }: { si
   const [open, setOpen] = useState<Photo | null>(null)
   const [error, setError] = useState<string | null>(null)
   useEffect(() => {
-    void api.photos(sim.id).then((r) => setPhotos(r.photos)).catch((e) => setError(e instanceof Error ? e.message : 'La galerie ne répond pas'))
+    void api.photos(sim.id).then((r) => setPhotos(r.photos)).catch((e) => setError(errorText(e, 'La galerie ne répond pas')))
   }, [sim.id])
 
   if (open) return <Viewer photo={open} onBack={() => setOpen(null)} onTiki={onTiki} onGram={onGram} onStory={story ? (caption) => api.storyFromGallery(sim.id, open.id, caption).then(() => undefined) : null} onDelete={async () => {
@@ -63,7 +63,7 @@ function Viewer({ photo, onBack, onTiki, onGram, onStory, onDelete }: { photo: P
       await onStory(caption)
       setStory('done')
     } catch (e) {
-      setStory(e instanceof Error ? e.message : "La story n'est pas partie")
+      setStory(errorText(e, "La story n'est pas partie"))
     }
   }
   const when = new Date(photo.at).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
