@@ -56,7 +56,7 @@ export type Ride = { app?: string; class?: string; offer?: number; party?: numbe
 /** Waited for at the roadside (components/RideFlow.tsx): the one the player chose. */
 export type StreetRide = 'woro' | 'compteur' | 'gbaka'
 /** taxi = a town's taxi (or an older trip); yango/indrive = older trips. */
-export type TripMode = 'woro' | 'compteur' | 'gbaka' | 'moto' | 'taxi' | 'car' | 'avion' | 'gnango' | 'idrive' | 'yango' | 'indrive' | 'perso'
+export type TripMode = 'woro' | 'compteur' | 'gbaka' | 'moto' | 'taxi' | 'car' | 'avion' | 'metro' | 'gnango' | 'idrive' | 'yango' | 'indrive' | 'perso'
 export type Expression = { id: string; text: string; lang: string; meaning: string; example: string; context?: string; source: Source }
 
 export type Interaction = {
@@ -223,6 +223,7 @@ export type JobTask = { id: string; label: string; icon: string; pose: string; m
 
 /** An emote: its pose (the id), name, emoji, price (0: free), how long it plays. */
 /** A piece of the boutiques (game/clothes.go): a whole outfit or one more accessory, bought once and kept in the wardrobe. */
+export type MetroLine = { name: string; stations: { commune: string; name: string }[]; fare: number; perStop: number; wait: number }
 export type ClothingPiece = { id: string; label: string; brand: string; kind: 'tenue' | 'accessoire'; gender?: 'femme' | 'homme'; price: number; outfit?: string; outfitColor?: string; pattern?: string; bottomColor?: string; shoeColor?: string; accessory?: string; accessoryColor?: string; shop: 'mall' | 'marche' }
 export type Emote = { id: string; label: string; emoji: string; price: number; seconds: number }
 export type World = {
@@ -257,6 +258,8 @@ export type World = {
   emotes?: Emote[]
   /** The boutiques' pieces (game/clothes.go). */
   clothes?: ClothingPiece[]
+  /** The métro's line 1 (world/metro.go): its stations by commune, one ticket, minutes a stop. */
+  metro?: MetroLine
   /** The slot machines (game/slots.go): the pictures and what they pay, the stakes each machine takes. */
   slots?: { symbols: SlotSymbol[]; stakes: Record<string, number[]>; perDay: number }
   /** Babi Bingo (game/bingo.go): the four games, the stakes, the cards a draw and a day. */
