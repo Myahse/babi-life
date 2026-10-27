@@ -96,28 +96,18 @@ function Pitch11({ g }: { g: Game }) {
   )
 }
 
-/** A goal: posts, bar and its net going back; the net bulges when the ball goes in. */
+/** A goal: posts, bar and its net going back; the net gives where the ball hits it (looks.tsx Net). */
 function Goals({ g }: { g: Game }) {
   const F = g.field
-  const nets = useRef<(THREE.Group | null)[]>([])
-  useFrame(() => {
-    const b = g.ball
-    ;[-1, 1].forEach((s, i) => {
-      const n = nets.current[i]
-      if (n) n.scale.x = b.dead && Math.sign(b.x) === s && Math.abs(b.x) > F.x ? 1.3 : 1
-    })
-  })
   return (
     <>
-      {[-1, 1].map((s, i) => (
+      {[-1, 1].map((s) => (
         <group key={s} position={[s * F.x, 0, 0]}>
           {[-F.mouth, F.mouth].map((z) => (
             <mesh key={z} geometry={BOX} material={white} position={[0, F.bar / 2, z]} scale={[0.14, F.bar, 0.14]} castShadow />
           ))}
           <mesh geometry={BOX} material={white} position={[0, F.bar, 0]} scale={[0.14, 0.14, F.mouth * 2 + 0.14]} castShadow />
-          <group ref={(n) => void (nets.current[i] = n)} scale={[1, 1, 1]}>
-            <Net mouth={F.mouth} bar={F.bar} depth={2.2} dir={s as 1 | -1} />
-          </group>
+          <Net mouth={F.mouth} bar={F.bar} depth={2.2} dir={s as 1 | -1} ball={() => g.ball} at={s * F.x} />
         </group>
       ))}
       {/* The corner flags */}
