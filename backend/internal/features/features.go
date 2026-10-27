@@ -64,6 +64,7 @@ var List = []Feature{
 	{ID: "casino-ivoire", Label: "La soirée au casino de l'Hôtel Ivoire", About: "Passer la soirée au casino du grand hôtel.", Interactions: []string{"casino-ivoire"}},
 	{ID: "tournoi-console", Label: "Le tournoi console du samedi", About: "Quart, demie et finale à la salle de jeux, la coupe à gagner.", Interactions: []string{"tournoi-console"}},
 	{ID: "console-defi", Label: "Le défi console « le perdant paie »", About: "Défier un gars du quartier à la console, le perdant paie.", Interactions: []string{"console-defi"}},
+	{ID: "table", Label: "« Je peux m'asseoir à ta table ? »", About: "Au resto, au maquis ou au bar des lieux, quelqu'un vient demander à s'asseoir avec toi : tu acceptes et vous causez, ou tu refuses poliment.", Keys: []string{"table"}},
 }
 
 // Find is the update of that ID.

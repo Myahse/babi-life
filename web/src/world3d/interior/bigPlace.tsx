@@ -9,6 +9,7 @@ import { Swimmer } from '../Swimmer'
 import { gridWay } from '../gridPath'
 import { listenKeys, moveInput } from '../input'
 import { useGesture } from '../gesture'
+import { TableAsker } from './TableAsker'
 
 // What the big places walked through share (the Hôtel Ivoire, the malls):
 // the Sim walking round what's in the way to where something is done, or
@@ -202,19 +203,22 @@ export function Guest({ sim, stage, way, spot, steer, onMoved, free, entrance, g
   const looping = !!spot?.loop && !walking
   const lean = looping ? (spot!.loop!.lean ?? 0) : 0
   return (
-    <group ref={g}>
-      {settled && spot?.swim ? (
-        <Swimmer len={spot.swim} look={{ ...sim.look, outfit: 'maillot', accessory: 'none' }} gender={sim.gender} stage={stage} />
-      ) : settled && spot ? (
-        <group rotation={spot.lying ? [-Math.PI / 2, 0, 0] : [0, 0, 0]}>
-          <Character look={worn ?? sim.look} gender={sim.gender} pose={working && gestureNow ? gestureNow : spot.pose} stage={stage} marker={!spot.lying} />
-          {children}
-        </group>
-      ) : (
-        <group rotation={[0, 0, -lean]}>
-          <Character look={sim.look} gender={sim.gender} walking={walking || looping} stage={stage} speed={looping ? 1.1 : SPEED} pose={looping ? spot!.loop!.pose : undefined} />
-        </group>
-      )}
-    </group>
+    <>
+      <group ref={g}>
+        {settled && spot?.swim ? (
+          <Swimmer len={spot.swim} look={{ ...sim.look, outfit: 'maillot', accessory: 'none' }} gender={sim.gender} stage={stage} />
+        ) : settled && spot ? (
+          <group rotation={spot.lying ? [-Math.PI / 2, 0, 0] : [0, 0, 0]}>
+            <Character look={worn ?? sim.look} gender={sim.gender} pose={working && gestureNow ? gestureNow : spot.pose} stage={stage} marker={!spot.lying} />
+            {children}
+          </group>
+        ) : (
+          <group rotation={[0, 0, -lean]}>
+            <Character look={sim.look} gender={sim.gender} walking={walking || looping} stage={stage} speed={looping ? 1.1 : SPEED} pose={looping ? spot!.loop!.pose : undefined} />
+          </group>
+        )}
+      </group>
+      <TableAsker spot={spot} way={way} settled={settled} seed={sim.id} />
+    </>
   )
 }
