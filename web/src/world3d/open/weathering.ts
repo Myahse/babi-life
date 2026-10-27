@@ -37,7 +37,23 @@ const LOOK: Record<Weather, string> = {
     diffuseColor.rgb *= 0.78 + wear * 0.4;
     float patchy = step(0.8, wNoise(floor(vWeatherW.xz / 3.0) * 0.37 + 5.0));
     diffuseColor.rgb *= mix(1.0, 0.8, patchy);
-    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.62, 0.55, 0.45), smoothstep(0.55, 0.9, wFbm(b / 60.0 + 3.0)) * 0.22);`,
+    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.62, 0.55, 0.45), smoothstep(0.55, 0.9, wFbm(b / 60.0 + 3.0)) * 0.22);
+    // Potholes, one road cell in a dozen (none up on the bridges): a ragged dark hole, a lighter broken rim.
+    vec2 cell = floor(vWeatherW.xz / 9.0);
+    if (wHash(cell + 17.0) > 0.92 && vWeatherW.y < 0.8) {
+      vec2 at = (cell + 0.2 + 0.6 * vec2(wHash(cell + 3.0), wHash(cell + 5.0))) * 9.0;
+      vec2 q = floor(vWeatherW.xz * 4.0) / 4.0 - at;
+      float rad = 0.45 + 0.5 * wHash(cell + 7.0) + 0.25 * (wNoise(q * 3.0 + cell) - 0.5);
+      float d = length(q * vec2(1.0, 0.75));
+      diffuseColor.rgb *= d < rad ? 0.5 : d < rad + 0.25 ? 1.12 : 1.0;
+    }
+    // A manhole cover now and then: a dark iron square with its grid.
+    vec2 mc = floor(vWeatherW.xz / 23.0);
+    if (wHash(mc + 41.0) > 0.85) {
+      vec2 at = (mc + 0.3 + 0.4 * vec2(wHash(mc + 43.0), wHash(mc + 47.0))) * 23.0;
+      vec2 q = abs(vWeatherW.xz - at);
+      if (max(q.x, q.y) < 0.4) diffuseColor.rgb = vec3(0.09, 0.09, 0.1) * (max(q.x, q.y) > 0.33 || fract((vWeatherW.x - at.x) * 6.0) < 0.3 ? 1.6 : 1.0);
+    }`,
   walls: `
     vec2 bw = floor(vec2(vWeatherW.x + vWeatherW.z, vWeatherW.y) * 3.0) / 3.0;
     float foot = smoothstep(0.0, 1.4, vWeatherW.y);

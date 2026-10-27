@@ -270,6 +270,7 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ, ring: XZ[]) => boolea
   const GALLERY = new Three.Color('#2c2a28')
   const STUD = new Three.Color('#fff3bf')
   const LAMP = new Three.Color('#8d939b')
+  const JOINT = new Three.Color('#3a3c40')
   const waters = chunk.areas.filter((a) => a.kind === 'water')
   const inWater = (x: number, z: number) => waters.some((a) => pointInRing([x, z], a.rings[0]) && !a.rings.slice(1).some((h) => pointInRing([x, z], h)))
   /** twin: which side the other carriageway is (+1 left, -1 right), 0 when the deck is all one. */
@@ -352,6 +353,8 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ, ring: XZ[]) => boolea
         const h = ys[i - 1] + (ys[i] - ys[i - 1]) * t - 0.9 - g
         if (h < 0.8) continue
         const [px, pz] = [x1 + (x2 - x1) * t, z1 + (z2 - z1) * t]
+        // Over each pier, the deck's expansion joint: a dark line right across, the cars thud over it.
+        B.trim.box(px, ys[i - 1] + (ys[i] - ys[i - 1]) * t + 0.075, pz, 0.22, 0.02, w - 0.5, rot, JOINT)
         const pier = stone.clone().multiplyScalar(0.85)
         const top = h
         const foot = -4
