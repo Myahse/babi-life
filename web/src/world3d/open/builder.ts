@@ -19,6 +19,33 @@ export class Builder {
     }
     return this.pos.length / 3 - 1
   }
+  /**
+   * A beam from (x1, z1) to (x2, z2), `w` wide, its bottom and top at each end
+   * (b1, t1 and b2, t2): a box that follows a slope (a ramp's girder, its
+   * railing, its embankment) instead of a flat block in steps.
+   */
+  ramp(x1: number, z1: number, x2: number, z2: number, b1: number, t1: number, b2: number, t2: number, w: number, c: THREE.Color) {
+    const len = Math.hypot(x2 - x1, z2 - z1)
+    if (len < 0.01) return
+    const [ux, uz] = [(x2 - x1) / len, (z2 - z1) / len]
+    const [nx, nz] = [-uz * (w / 2), ux * (w / 2)]
+    const face = (n: [number, number, number], v: [number, number, number, number, number][]) => {
+      const ids = v.map(([x, y, z, u, t]) => this.vertex(x, y, z, u, t, n, c))
+      this.facing(n, ids[0], ids[1], ids[2])
+      this.facing(n, ids[0], ids[2], ids[3])
+    }
+    // The two long sides.
+    for (const s of [1, -1]) {
+      const [ax, az, bx, bz] = [x1 + nx * s, z1 + nz * s, x2 + nx * s, z2 + nz * s]
+      face([-uz * s, 0, ux * s], [[ax, b1, az, 0, b1], [bx, b2, bz, len, b2], [bx, t2, bz, len, t2], [ax, t1, az, 0, t1]])
+    }
+    // The two ends.
+    for (const [px, pz, b, t, s] of [[x1, z1, b1, t1, -1], [x2, z2, b2, t2, 1]] as [number, number, number, number, number][])
+      face([ux * s, 0, uz * s], [[px - nx, b, pz - nz, 0, b], [px + nx, b, pz + nz, w, b], [px + nx, t, pz + nz, w, t], [px - nx, t, pz - nz, 0, t]])
+    // The top and the bottom.
+    for (const [y1, y2, up] of [[t1, t2, 1], [b1, b2, -1]] as [number, number, number][])
+      face([0, up, 0], [[x1 - nx, y1, z1 - nz, 0, 0], [x2 - nx, y2, z2 - nz, len, 0], [x2 + nx, y2, z2 + nz, len, w], [x1 + nx, y1, z1 + nz, 0, w]])
+  }
   /** A box turned by `rot` around Y, one colour, its faces textured per metre. */
   box(cx: number, cy: number, cz: number, sx: number, sy: number, sz: number, rot: number, c: THREE.Color) {
     const [cs, sn] = [Math.cos(rot), Math.sin(rot)]

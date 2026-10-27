@@ -348,25 +348,30 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ, ring: XZ[]) => boolea
       const rot = Math.atan2(z2 - z1, x2 - x1)
       const [nx, nz] = [-(z2 - z1) / len, (x2 - x1) / len]
       const ym = (ys[i - 1] + ys[i]) / 2
-      if (ym < 0.6) {
+      const [y1, y2] = [ys[i - 1], ys[i]]
+      // Along the deck, offset across it by `o` (a side, a railing): a beam that follows the slope.
+      const along = (o: number, b: number, t: number, width: number, c: Three.Color) => B.trim.ramp(x1 + nx * o, z1 + nz * o, x2 + nx * o, z2 + nz * o, y1 + b, y1 + t, y2 + b, y2 + t, width, c)
+      const [mx, mz] = [(x1 + x2) / 2, (z1 + z2) / 2]
+      const land = !inWater(mx, mz)
+      // Over land, the low end of a ramp stands on an embankment (higher up it
+      // stays on piers: a flyover crosses a road there), with a low wall along each side.
+      if (land && ym < Math.min(top, BRIDGE_HEIGHT) * 0.7) {
+        B.trim.ramp(x1, z1, x2, z2, -0.1, y1 - 0.02, -0.1, y2 - 0.02, w - 0.1, stone.clone().multiplyScalar(0.92))
+        for (const s of [1, -1]) along(s * (w / 2 - 0.15), 0, 0.55, 0.3, stone)
         run += len
         continue
       }
-      const [mx, mz] = [(x1 + x2) / 2, (z1 + z2) / 2]
-      // Over land, the low end of a ramp stands on an embankment (higher up it
-      // stays on piers: a flyover crosses a road there).
-      if (ym < Math.min(top, BRIDGE_HEIGHT) * 0.7 && !inWater(mx, mz)) {
-        B.trim.box(mx, (ym - 0.9) / 2, mz, len + 0.05, ym - 0.9, w - 0.2, rot, stone.clone().multiplyScalar(0.92))
+      if (ym < 0.6) {
         run += len
         continue
       }
       // The girder, down to where it can go above the water (and the ramps).
       const g = Math.min(how.girder, ym - 0.4)
       for (const s of [1, -1]) {
-        B.trim.box(mx + nx * s * (w / 2), ym - 0.45, mz + nz * s * (w / 2), len, 0.9, 0.3, rot, stone)
-        // the railing
-        B.trim.box(mx + nx * s * (w / 2 - 0.1), ym + 0.55, mz + nz * s * (w / 2 - 0.1), len, 0.12, 0.12, rot, RAILING)
-        B.trim.box(mx + nx * s * (w / 2 - 0.1), ym + 0.3, mz + nz * s * (w / 2 - 0.1), len, 0.5, 0.05, rot, stone)
+        along(s * (w / 2), -0.9, 0, 0.3, stone)
+        // the railing, on its low wall
+        along(s * (w / 2 - 0.1), 0.49, 0.61, 0.12, RAILING)
+        along(s * (w / 2 - 0.1), 0.05, 0.55, 0.05, stone)
       }
       const under = stone.clone().multiplyScalar(0.8)
       if (how.twin) {
@@ -388,11 +393,11 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ, ring: XZ[]) => boolea
           for (const s of [1, -1]) B.trim.box(px + nx * s * (w / 2 - 0.5), ym - 0.9 - g / 2, pz + nz * s * (w / 2 - 0.5), 0.6, g - 1.2, 0.6, rot, under)
         }
       } else {
-        B.trim.box(mx, ym - 0.9 - g / 2, mz, len, g, w - 0.6, rot, under)
+        along(0, -0.9 - g, -0.9, w - 0.6, under)
       }
       // A concrete barrier down the middle, between the two directions (with two carriageways: on the inner edge).
       const mid = twin * (w / 2 - 0.3)
-      if (how.median) B.trim.box(mx + nx * mid, ym + 0.4, mz + nz * mid, len, 0.8, 0.5, rot, RAILING.clone().multiplyScalar(0.92))
+      if (how.median) along(mid, 0, 0.8, 0.5, RAILING.clone().multiplyScalar(0.92))
       // Light studs along both edges, every 4 m.
       if (how.studs)
         for (let d = 2; d < len; d += 4) {
@@ -418,16 +423,18 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ, ring: XZ[]) => boolea
         B.trim.box(px, ys[i - 1] + (ys[i] - ys[i - 1]) * t + 0.075, pz, 0.22, 0.02, w - 0.5, rot, JOINT)
         const pier = stone.clone().multiplyScalar(0.85)
         const top = h
-        const foot = -4
-        if (how.pier === 'wall') B.trim.box(px, (top + foot) / 2, pz, 1.6, top - foot, w * 0.75, rot, pier)
+        // Down into the lagoon; on land, from the ground, and on columns rather than a blade of wall.
+        const dry = !inWater(px, pz)
+        const foot = dry ? 0 : -4
+        if (how.pier === 'wall' && !dry) B.trim.box(px, (top + foot) / 2, pz, 1.6, top - foot, w * 0.75, rot, pier)
         else {
           // A crosshead under the girders, on columns.
           B.trim.box(px, top - 0.7, pz, 2.2, 1.4, w * 0.9, rot, pier)
-          const cols = how.pier === 'round' ? [0] : [-w / 4, w / 4]
+          const cols = how.pier === 'round' || (how.pier === 'wall' && w < 12) ? [0] : [-w / 4, w / 4]
           for (const o of cols) {
             const [cx, cz] = [px + nx * o, pz + nz * o]
             if (how.pier === 'twin-square') B.trim.box(cx, (top - 1.4 + foot) / 2, cz, 1.4, top - 1.4 - foot, 1.4, rot, pier)
-            else B.trim.cylinder(cx, foot, cz, how.pier === 'round' ? 1.3 : 1, top - 1.4 - foot, pier)
+            else B.trim.cylinder(cx, foot, cz, how.pier === 'round' || how.pier === 'wall' ? 1.3 : 1, top - 1.4 - foot, pier)
           }
         }
       }

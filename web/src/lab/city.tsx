@@ -568,7 +568,8 @@ function BridgeLab() {
         { cls: 'trunk', pts: [...Array(67)].map((_, i) => [-330 + i * 10, 0] as XZ), width: 14, paved: true, bridge: true, name: BRIDGE_NAMES[kind] },
       ],
       buildings: [],
-      areas: [{ kind: 'water', rings: [[[-260, -120], [260, -120], [260, 120], [-260, 120]]] }],
+      // &land: a flyover over the ground (an interchange), not over the lagoon.
+      areas: q.has('land') ? [] : [{ kind: 'water', rings: [[[-260, -120], [260, -120], [260, 120], [-260, 120]]] }],
       trees: [],
       palms: [],
       aeroways: [],
