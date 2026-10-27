@@ -5,6 +5,8 @@ import { useWorld } from '../store/world'
 import type { LotOffer, Plot, Sim } from '../lib/types'
 import { amount } from '../game/rules'
 import { aCommune, capital } from '../lib/french'
+import { keyOpen, useFeatures } from '../lib/features'
+import { LotMap } from './LotMap'
 
 /**
  * The lots for sale (sims/plot.go): 150 to 600 m², priced by the m² of the
@@ -13,12 +15,15 @@ import { aCommune, capital } from '../lib/french'
  * Two lots at most in a commune: there, the ones one has can also grow (the
  * house stays, the difference is paid).
  */
-export type Buy = (size: string, label: string, where: LotWhere, upgrade?: number) => Promise<boolean>
+export type Buy = (size: string, label: string, where: LotWhere, upgrade?: number, spot?: { lat: number; lng: number }) => Promise<boolean>
 export function LotOffers({ sim, buy, onLoaded, version = 0 }: { sim: Sim; buy: Buy; onLoaded?: (lots: Plot[]) => void; version?: number }) {
   const [where, setWhere] = useState<LotWhere>({ city: sim.city, commune: sim.commune })
   const [data, setData] = useState<Awaited<ReturnType<typeof api.lots>> | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  // A new lot: where it goes, picked on the map first (an update: lot-carte).
+  const onMap = keyOpen(useFeatures(), 'lot-carte')
+  const [placing, setPlacing] = useState<LotOffer | null>(null)
   const load = () =>
     api
       .lots(sim.id, where)
@@ -50,12 +55,13 @@ export function LotOffers({ sim, buy, onLoaded, version = 0 }: { sim: Sim; buy: 
           className="btn shrink-0 !px-3 !py-2 !text-sm"
           disabled={!!busy || sim.money < o.payable}
           onClick={async () => {
+            if (onMap && !o.upgrade) return setPlacing(o)
             setBusy(k)
             if (await buy(o.id, o.upgrade ? `Agrandir le terrain : ${o.area} m²` : `Terrain de ${o.area} m²`, where, o.upgrade)) await load()
             setBusy(null)
           }}
         >
-          {busy === k ? '…' : sim.money < o.payable ? 'Trop cher' : o.upgrade ? 'Agrandir' : 'Acheter'}
+          {busy === k ? '…' : sim.money < o.payable ? 'Trop cher' : o.upgrade ? 'Agrandir' : onMap ? 'Choisir où' : 'Acheter'}
         </button>
       </li>
     )
@@ -78,6 +84,22 @@ export function LotOffers({ sim, buy, onLoaded, version = 0 }: { sim: Sim; buy: 
           <h5 className="label mt-3 mb-1">Agrandir {here.length > 1 ? 'tes terrains' : 'ton terrain'} {aCommune(name)}</h5>
           <ul className="space-y-2">{grow.map(row)}</ul>
         </>
+      )}
+      {placing && (
+        <LotMap
+          sim={sim}
+          city={where.city}
+          commune={where.commune}
+          w={placing.w}
+          d={placing.d}
+          price={placing.payable}
+          onClose={() => setPlacing(null)}
+          onPick={async (spot) => {
+            const ok = await buy(placing.id, `Terrain de ${placing.area} m²`, where, 0, spot ?? undefined)
+            if (ok) await load()
+            return ok
+          }}
+        />
       )}
     </div>
   )

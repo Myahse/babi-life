@@ -432,3 +432,21 @@
 @keyframes helper-bubble {
   from { transform: scale(0); }
 }
+
+/* The lots on the map where one picks a spot (components/LotMap.tsx): a neighbour's, one's own */
+.lot-mark {
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  background: #8a8f99;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.35);
+}
+.lot-mark.mine {
+  width: auto;
+  height: auto;
+  padding: 2px 7px;
+  background: var(--color-emerald);
+  color: #fff;
+  font: 800 11px var(--font-sans);
+}

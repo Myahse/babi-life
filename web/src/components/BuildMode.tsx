@@ -247,9 +247,9 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
           <p className="mb-3 text-sm font-bold text-[var(--color-ink-soft)]">Pour bâtir ta maison, il te faut d'abord un terrain à toi. Sa taille, c'est la place que tu as pour construire.</p>
           <LotOffers
             sim={sim}
-            buy={async (size, _label, where, upgrade) => {
+            buy={async (size, _label, where, upgrade, spot) => {
               try {
-                onResult(await api.buyLot(sim.id, size, where, upgrade))
+                onResult(await api.buyLot(sim.id, size, where, upgrade, spot))
                 await reload()
                 return true
               } catch (e) {
