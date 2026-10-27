@@ -58,6 +58,9 @@ function kerb(b: Builder, cx: number, cz: number, len: number, rot: number) {
 // Road markings and kerbs. They stop short of the junctions (points shared
 // by two roads), where they would paint across the other road.
 const KERB = new Three.Color('#d9d3c7')
+// The asphalt's dusty edges and its clean middle (they tint its texture).
+const DUST = new Three.Color(1.45, 1.28, 1.05)
+const CLEAN = new Three.Color(1, 1, 1)
 const CLEAR = 8 // metres kept clear around a junction
 function markings(chunk: ChunkData, paint: Builder, trim: Builder) {
   const key = ([x, z]: XZ) => `${Math.round(x * 2)},${Math.round(z * 2)}`
@@ -210,7 +213,36 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ, ring: XZ[]) => boolea
   const asphalt = new Builder()
   const laterite = new Builder()
   const pavement = new Builder()
-  const strip = (to: Builder, pts: XZ[], w: number, y: number, scale: number, ys?: number[]) => {
+  /**
+   * A ribbon of road along `pts`. `dusty` (the asphalt): its edges go
+   * lighter, the dust of the verge blown onto it, fading out a metre in
+   * (vertex colours: every vertex of that builder has one).
+   */
+  const strip = (to: Builder, pts: XZ[], w: number, y: number, scale: number, ys?: number[], dusty = false) => {
+    // Round the corners where segments meet (not along a straight line), first:
+    // the ribbon drawn after them covers them, they only fill the outside of a bend.
+    pts.forEach(([x, z], i) => {
+      if (i > 0 && i < pts.length - 1) {
+        const [a, b] = [pts[i - 1], pts[i + 1]]
+        const turn = Math.abs(Math.atan2(b[1] - z, b[0] - x) - Math.atan2(z - a[1], x - a[0]))
+        if (Math.min(turn, Math.PI * 2 - turn) < 0.03) return
+      }
+      const ring: XZ[] = [...Array(8)].map((_, k) => [x + Math.cos((k * Math.PI) / 4) * (w / 2), z + Math.sin((k * Math.PI) / 4) * (w / 2)])
+      to.flat([ring], y + (ys ? ys[i] : 0), scale, dusty ? DUST : undefined)
+    })
+    // Across the ribbon: its two edges, and with the dust, where it has faded out.
+    const fade = Math.min(1, w * 0.18)
+    const across: [number, THREE.Color | undefined][] = dusty
+      ? [
+          [-1, DUST],
+          [-1 + (2 * fade) / w, CLEAN],
+          [1 - (2 * fade) / w, CLEAN],
+          [1, DUST],
+        ]
+      : [
+          [-1, undefined],
+          [1, undefined],
+        ]
     for (let i = 1; i < pts.length; i++) {
       const [x1, z1] = pts[i - 1]
       const [x2, z2] = pts[i]
@@ -219,28 +251,20 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ, ring: XZ[]) => boolea
       if (len < 0.01) continue
       const [nx, nz] = [(-(z2 - z1) / len) * (w / 2), ((x2 - x1) / len) * (w / 2)]
       const up: [number, number, number] = [0, 1, 0]
-      const p = [
-        [x1 + nx, z1 + nz],
-        [x2 + nx, z2 + nz],
-        [x2 - nx, z2 - nz],
-        [x1 - nx, z1 - nz],
-      ].map(([x, z], k) => to.vertex(x, k === 1 || k === 2 ? y2 : y1, z, x / scale, -z / scale, up))
-      to.quad(p[0], p[1], p[2], p[3])
-    }
-    // Round the corners where segments meet (not along a straight line).
-    pts.forEach(([x, z], i) => {
-      if (i > 0 && i < pts.length - 1) {
-        const [a, b] = [pts[i - 1], pts[i + 1]]
-        const turn = Math.abs(Math.atan2(b[1] - z, b[0] - x) - Math.atan2(z - a[1], x - a[0]))
-        if (Math.min(turn, Math.PI * 2 - turn) < 0.03) return
+      const at = (k: number) => {
+        const [o, c] = across[k]
+        return [to.vertex(x1 + nx * o, y1, z1 + nz * o, (x1 + nx * o) / scale, -(z1 + nz * o) / scale, up, c), to.vertex(x2 + nx * o, y2, z2 + nz * o, (x2 + nx * o) / scale, -(z2 + nz * o) / scale, up, c)]
       }
-      const ring: XZ[] = [...Array(8)].map((_, k) => [x + Math.cos((k * Math.PI) / 4) * (w / 2), z + Math.sin((k * Math.PI) / 4) * (w / 2)])
-      to.flat([ring], y + (ys ? ys[i] : 0), scale)
-    })
+      for (let k = 1; k < across.length; k++) {
+        const [a1, a2] = at(k - 1)
+        const [b1, b2] = at(k)
+        to.quad(b1, b2, a2, a1)
+      }
+    }
   }
   // A bridge: its deck's edges, the railings, the girder under it and its
   // piers in the water, built the way that bridge is (bridgeNames.ts).
-  const CONCRETE = new Three.Color('#b9b4aa')
+  const CONCRETE = new Three.Color('#b4b2ad')
   const OLD = new Three.Color('#a9a49a')
   const RAILING = new Three.Color('#e9ecef')
   const GALLERY = new Three.Color('#2c2a28')
@@ -359,7 +383,7 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ, ring: XZ[]) => boolea
     if (r.paved) {
       // A pavement on each side of the bigger streets (and on bridges).
       if (rank >= 4 || ys) strip(pavement, r.pts, ys ? deck : r.width + 3.2, 0.03, 2, ys)
-      strip(asphalt, r.pts, r.width, 0.05 + rank * 0.002, 4, ys)
+      strip(asphalt, r.pts, r.width, 0.05 + rank * 0.002, 4, ys, true)
     } else strip(laterite, r.pts, r.width, 0.04, 3, ys)
     if (ys) bridge(r.pts, deck, ys, kind, twin)
   }
@@ -385,7 +409,7 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ, ring: XZ[]) => boolea
     })
   for (const w of chunk.aeroways) {
     const runway = w.cls === 'runway'
-    strip(asphalt, w.pts, runway ? 45 : 20, runway ? 0.055 : 0.052, 4)
+    strip(asphalt, w.pts, runway ? 45 : 20, runway ? 0.055 : 0.052, 4, undefined, true)
     if (runway) for (const off of [-20.5, 20.5]) strip(paint, along(w.pts, off), 0.9, 0.07, 4)
     // The centre line, in dashes.
     for (let i = 1; i < w.pts.length; i++) {
