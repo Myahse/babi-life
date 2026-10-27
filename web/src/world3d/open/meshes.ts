@@ -63,7 +63,13 @@ function kerb(b: Builder, cx: number, cz: number, len: number, rot: number) {
 const POLE = new Three.Color('#6b5039')
 const WIRE = new Three.Color('#1e1f22')
 const POLE_ROADS = new Set(['street', 'street_limited', 'tertiary'])
-function powerLines(chunk: ChunkData, trim: Builder) {
+function powerLines(chunk: ChunkData, trim: Builder, taken: (p: XZ, r: number) => boolean) {
+  const pitches = chunk.areas.filter((a) => a.kind === 'pitch').map((a) => a.rings[0])
+  // In a building (with `r` metres round it), the game's own or a landmark's ground, on a pitch.
+  const blocked = (x: number, z: number, r: number, minHeight = 0) =>
+    taken([x, z], r) ||
+    pitches.some((ring) => pointInRing([x, z], ring)) ||
+    chunk.buildings.some((bd) => bd.height >= minHeight && Math.hypot(bd.c[0] - x, bd.c[1] - z) < 60 && [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]].some(([dx, dz]) => pointInRing([x + dx, z + dz], bd.ring)))
   const ends: XZ[] = chunk.roads.flatMap((r) => [r.pts[0], r.pts[r.pts.length - 1]])
   const inRoad = (x: number, z: number) =>
     chunk.roads.some((r) => {
@@ -91,16 +97,18 @@ function powerLines(chunk: ChunkData, trim: Builder) {
       const rot = Math.atan2(tz, tx)
       for (let d = (30 - (walked % 30)) % 30; d < len; d += 30) {
         const [x, z] = [a[0] + tx * d - tz * off * side, a[1] + tz * d + tx * off * side]
-        if (ends.some((e) => Math.hypot(e[0] - x, e[1] - z) < 8) || inRoad(x, z) || chunk.buildings.some((bd) => Math.hypot(bd.c[0] - x, bd.c[1] - z) < 40 && pointInRing([x, z], bd.ring))) {
+        if (ends.some((e) => Math.hypot(e[0] - x, e[1] - z) < 8) || inRoad(x, z) || blocked(x, z, 0.6)) {
           prev = null
           continue
         }
         trim.box(x, TOP / 2, z, 0.22, TOP, 0.22, rot, POLE)
         trim.box(x, TOP - 0.35, z, 0.12, 0.1, 1.3, rot, POLE)
         // The wires from the last pole: two of them, sagging in four steps.
-        if (prev && Math.hypot(prev.x - x, prev.z - z) < 40) {
-          const [wx, wz] = [x - prev.x, z - prev.z]
-          const span = Math.hypot(wx, wz)
+        const [wx, wz] = prev ? [x - prev.x, z - prev.z] : [0, 0]
+        const span = Math.hypot(wx, wz)
+        // Not through a building taller than the wires hang (sampled every 2 m along them).
+        const clearWay = !!prev && [...Array(Math.ceil(span / 2))].every((_, k) => !blocked(prev!.x + (wx * (k + 0.5)) / Math.ceil(span / 2), prev!.z + (wz * (k + 0.5)) / Math.ceil(span / 2), 0.3, TOP - 1.5))
+        if (prev && span < 40 && clearWay) {
           const wr = Math.atan2(wz, wx)
           const [nx, nz] = [-wz / span, wx / span]
           for (let k = 0; k < 4; k++) {
@@ -267,7 +275,8 @@ function markings(chunk: ChunkData, paint: Builder, trim: Builder) {
 }
 
 /** Buildings the game draws itself (its places) are left out of the map's. */
-export function buildChunk(chunk: ChunkData, skip: (c: XZ, ring: XZ[]) => boolean, styleOf: (b: ChunkData['buildings'][number]) => Style = (b) => b.style ?? 'default'): ChunkMeshes {
+/** `taken`: where the street's things (the poles) can't stand, `r` metres round: the game's own buildings, a landmark's ground, a pitch. */
+export function buildChunk(chunk: ChunkData, skip: (c: XZ, ring: XZ[]) => boolean, styleOf: (b: ChunkData['buildings'][number]) => Style = (b) => b.style ?? 'default', taken: (p: XZ, r: number) => boolean = () => false): ChunkMeshes {
   const B = newBuildingBuilders()
   for (const b of chunk.buildings) if (!skip(b.c, b.ring)) addBuilding(B, b, styleOf(b))
 
@@ -460,7 +469,7 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ, ring: XZ[]) => boolea
   }
   const kerbs = new Builder()
   markings(chunk, paint, kerbs)
-  powerLines(chunk, B.trim)
+  powerLines(chunk, B.trim, taken)
 
   const water = new Builder()
   const green = new Builder()

@@ -43,8 +43,8 @@ export function StreetLights({ nav, night, dark }: { nav: Nav; night: boolean; /
         const [nx, nz] = [-uz * side, ux * side]
         const [x, z] = [a[0] + ux * d + nx * off, a[1] + uz * d + nz * off]
         const y = ya + (yb - ya) * (d / e.len)
-        // Not inside a building, nor in the water (unless on a bridge).
-        if (!y && !nav.walkable(x, z)) continue
+        // Not inside a building (the map's, the game's own, a landmark's), on a pitch, in another road or in the water (unless on a bridge).
+        if (!y && (!nav.free(x, z, 0.6) || nav.onRoadway([x, z], 0.3))) continue
         // The arm reaches over the road: it points back toward the middle.
         out.push({ x, y, z, rot: Math.atan2(-nx, -nz), led: hash(Math.round(x), Math.round(z), 77) < 0.3 })
       }
