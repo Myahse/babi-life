@@ -9,8 +9,9 @@ import { Blackjack } from './casino/Blackjack'
 import { Envol } from './casino/Envol'
 import { Roulette } from './casino/Roulette'
 import { Trade } from './casino/Trade'
-import { pct, scaled, useCasinoRates } from '../lib/casino'
+import { pct, scaledTicket, useCasinoRates } from '../lib/casino'
 import { GameHistory } from '../components/GameHistory'
+import { RulesFold } from '../components/RulesFold'
 
 /**
  * Babi Casino (backend game/casino.go, sims/casino.go): the roulette with its
@@ -115,11 +116,12 @@ export function CasinoApp({ world, sim, act, onConfirmAdult }: Omit<Props, 'hold
       </div>
       <p className="mt-4 text-center text-[11.5px] leading-snug font-bold text-white/60">
         Argent du jeu seulement · 18 ans et plus · encore {Math.max(0, roundsLeft)} tours aujourd'hui.
-        <br />
-        {/* The « taux de retour » (lib/casino.ts): what each game gives back on average, for 100 staked. */}
+      </p>
+      {/* The « taux de retour » (lib/casino.ts): what each game gives back on average, for 100 staked; in the rules. */}
+      <RulesFold>
         Taux de retour : la roulette {pct(rates.roulette?.rate ?? 36 / 37)}, le 21 {pct(rates['21']?.rate ?? 0.985)}, les tickets {pct(rates.tickets?.rate ?? 0.644)}, L'Envol {pct(rates.envol?.rate ?? 0.95)}, Babi Trade {pct(rates.trade?.rate ?? 0.925)}.
         {(rates.roulette?.set || rates['21']?.set) && ' À la roulette et au 21, les gains se paient comme partout, moins une commission de la maison sur le gain net, dite à chaque résultat.'}
-      </p>
+      </RulesFold>
     </div>
   )
 }
@@ -149,7 +151,7 @@ const TICKET_LOOK: Record<string, [string, string]> = {
 function Scratch({ world, sim, act, hold }: Props) {
   // Their prizes as printed now: scaled by the casino's rate when the team set one (lib/casino.ts; the server's game.ScratchAt).
   const tr = useCasinoRates().tickets
-  const tickets = (world.casino?.tickets ?? []).map((t) => (tr?.set ? { ...t, prizes: t.prizes.map((p) => ({ ...p, amount: Math.floor(scaled(p.amount, tr, tr.variants?.[t.id]) / 10) * 10 })) } : t))
+  const tickets = (world.casino?.tickets ?? []).map((t) => (tr?.set ? { ...t, prizes: t.prizes.map((p) => ({ ...p, amount: scaledTicket(p.amount, tr, tr.variants?.[t.id]) })) } : t))
   const [bought, setBought] = useState<{ res: ActionResult; data: ScratchResult; t: ScratchTicket } | null>(null)
   const [revealed, setRevealed] = useState(false)
   const [busy, setBusy] = useState(false)

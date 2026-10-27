@@ -9,6 +9,7 @@ import { BingoMark } from '../components/AppLogo'
 import { StakeField, stakeOK } from '../components/StakeField'
 import { pct, useCasinoRates } from '../lib/casino'
 import { GameHistory } from '../components/GameHistory'
+import { RulesFold } from '../components/RulesFold'
 
 /**
  * Babi Bingo (backend game/bingo.go, sims/bingo.go): four rooms whose draws
@@ -282,9 +283,8 @@ export function BingoApp({ world, sim, act, onConfirmAdult }: { world: World; si
       )}
       <p className="mt-4 text-center text-[11.5px] leading-snug font-bold text-white/60">
         Argent du jeu seulement · 18 ans et plus · encore {Math.max(0, cardsLeft)} cartons aujourd'hui.
-        <br />
-        Comme tous les jeux d'argent, le bingo garde un peu plus qu'il ne rend : taux de retour {pct(rate?.rate ?? 0.857)}, soit environ {Math.round((rate?.rate ?? 0.857) * 100)} Djai rendus pour 100 misés.
       </p>
+      <RulesFold>Comme tous les jeux d'argent, le bingo garde un peu plus qu'il ne rend : taux de retour {pct(rate?.rate ?? 0.857)}, soit environ {Math.round((rate?.rate ?? 0.857) * 100)} Djai rendus pour 100 misés.</RulesFold>
       <GameHistory simId={sim.id} jeu="bingo" />
     </div>
   )
