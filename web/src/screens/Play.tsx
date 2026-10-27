@@ -44,6 +44,8 @@ import { PolitiqueApp } from './PolitiqueApp'
 import { DodoApp } from './DodoApp'
 import { KineoApp } from './KineoApp'
 import { DamesApp } from './DamesApp'
+import { AwaleApp } from './AwaleApp'
+import { LudoApp } from './LudoApp'
 import { HuitApp } from './HuitApp'
 import { BingoApp } from './BingoApp'
 import { CasinoApp } from './CasinoApp'
@@ -1658,7 +1660,7 @@ export function Play() {
 
 /* ---------- The in-game phone ---------- */
 
-type PhoneAppId = 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'bingo' | 'casino' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'bolide' | 'jeux' | 'boutique' | 'idees' | 'politique'
+type PhoneAppId = 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'bingo' | 'casino' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'awale' | 'ludo' | 'bolide' | 'jeux' | 'boutique' | 'idees' | 'politique'
 type PhoneProps = {
   world: World
   sim: Sim
@@ -1754,6 +1756,8 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
     ...(has('bolide') ? [{ id: 'bolide', label: 'Bolide', open: () => setApp('bolide') }] : []),
     ...(has('dames') ? [{ id: 'dames', label: 'Dames', open: () => setApp('dames') }] : []),
     ...(has('huit') ? [{ id: 'huit', label: '8 américain', open: () => setApp('huit') }] : []),
+    ...(has('awale') ? [{ id: 'awale', label: 'Awalé', open: () => setApp('awale') }] : []),
+    ...(has('ludo') ? [{ id: 'ludo', label: 'Ludo', open: () => setApp('ludo') }] : []),
     ...(has('gnango') ? [{ id: 'gnango', label: 'Gnango', open: onMap }] : []),
     ...(has('idrive') ? [{ id: 'idrive', label: 'iDrive', open: onMap }] : []),
   ]
@@ -1781,7 +1785,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
     { id: 'profile', label: 'Profil', icon: UserRound, colors: ['#ff8a9b', '#ff3d57'], open: () => navigate('/profil', { viewTransition: true }) },
     ] as Tile[]
   ).filter((a) => !life.minor || (a.id !== 'jobs' && a.id !== 'home'))
-  const title: Record<PhoneAppId, string> = { bingo: 'Babi Bingo', casino: 'Babi Casino', here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', babigram: 'Babigram', bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: 'Galerie', guide: 'Encyclopédie de Babi', dodo: 'Dodo', kineo: 'Kinéo', dames: 'Dames 225', huit: '8 américain', bolide: 'Bolide', jeux: 'Jeux', boutique: 'Boutique', idees: 'Tes idées pour Babi Life', politique: 'Politique' }
+  const title: Record<PhoneAppId, string> = { bingo: 'Babi Bingo', casino: 'Babi Casino', here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', babigram: 'Babigram', bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: 'Galerie', guide: 'Encyclopédie de Babi', dodo: 'Dodo', kineo: 'Kinéo', dames: 'Dames 225', huit: '8 américain', awale: 'Awalé 225', ludo: 'Ludo 225', bolide: 'Bolide', jeux: 'Jeux', boutique: 'Boutique', idees: 'Tes idées pour Babi Life', politique: 'Politique' }
 
   return (
     <div className="absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center" onClick={onClose}>
@@ -1876,6 +1880,8 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                 {app === 'dodo' && <DodoApp world={world} sim={sim} act={act} onMap={onMap} />}
                 {app === 'bolide' && <BolideApp world={world} sim={sim} act={act} onDrive={onDrive} />}
                 {app === 'dames' && <DamesApp sim={sim} onOnline={onDamesOnline} onFriend={onDames} onResume={onDamesResume} />}
+                {app === 'awale' && <AwaleApp sim={sim} />}
+                {app === 'ludo' && <LudoApp sim={sim} />}
                 {app === 'huit' && <HuitApp sim={sim} onTable={onHuitTable} onFriend={onHuitFriend} onResume={onHuitResume} />}
                 {app === 'kineo' && <KineoApp world={world} sim={sim} act={act} onWalk={onWalk} onMap={onMap} onClose={onClose} />}
                 {app === 'friends' && <FriendsApp world={world} sim={sim} act={act} onPay={has('waye') ? (p) => (setWayeTo(p.id), setApp('waye')) : undefined} onDames={onDames} />}

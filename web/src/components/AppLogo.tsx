@@ -75,6 +75,8 @@ const LOOK: Record<string, { bg: string; fg: string; mark: (s: number) => React.
   kineo: { bg: 'linear-gradient(160deg,#e63946,#6b0716)', fg: '#c8102e', mark: (s) => <Clapperboard size={s} strokeWidth={2.4} color="#fff" /> },
   dames: { bg: 'linear-gradient(160deg,#c8894a,#5c3317)', fg: '#8a4b1f', mark: (s) => <Draughts size={s} /> },
   huit: { bg: 'linear-gradient(160deg,#2f9e44,#0b5d2a)', fg: '#1b7a3a', mark: (s) => <Cards size={s} /> },
+  awale: { bg: 'linear-gradient(160deg,#b9824a,#5c3317)', fg: '#7a4f2a', mark: (s) => <AwaleMark size={s} /> },
+  ludo: { bg: 'linear-gradient(160deg,#ff6b6b,#a51111)', fg: '#c92a2a', mark: (s) => <LudoMark size={s} /> },
   flashe: { bg: 'linear-gradient(160deg,#ff5fb0,#e01e7e 55%,#8a0f55)', fg: '#e01e7e', mark: (s) => <FlashEye size={s} /> },
   store: { bg: 'linear-gradient(160deg,#7aa7ff,#3b5bfd)', fg: '#fff', mark: (s) => <ShoppingBag size={s} strokeWidth={2.4} /> },
 }
@@ -101,6 +103,32 @@ function Draughts({ size }: { size: number }) {
       <rect x="4" y="7" width="16" height="3" fill="#e9dcc3" />
       <ellipse cx="12" cy="7" rx="8" ry="3.2" fill="#fff8ea" />
       <ellipse cx="12" cy="7" rx="4.2" ry="1.6" fill="none" stroke="#c8a676" strokeWidth="0.9" />
+    </svg>
+  )
+}
+
+/** Awalé: the board's two rows of holes, seeds in them. */
+function AwaleMark({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24">
+      <rect x="2" y="6" width="20" height="12" rx="5" fill="#e8c08a" />
+      {[0, 1].flatMap((r) => [0, 1, 2].map((c) => <circle key={`${r}${c}`} cx={6.5 + c * 5.5} cy={9.3 + r * 5.4} r="2" fill="#5c3317" />))}
+      {[[6, 9], [7.2, 9.8], [12, 14.4], [17.5, 9.2], [16.8, 14.8], [18, 14.2]].map(([x, y], i) => (
+        <circle key={i} cx={x} cy={y} r="0.8" fill="#fff3dc" />
+      ))}
+    </svg>
+  )
+}
+
+/** Ludo: the four colours of the board round its centre, a die. */
+function LudoMark({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24">
+      <rect x="3" y="3" width="8" height="8" rx="1.5" fill="#fff" />
+      <rect x="13" y="3" width="8" height="8" rx="1.5" fill="#2f9e44" />
+      <rect x="13" y="13" width="8" height="8" rx="1.5" fill="#f2b705" />
+      <rect x="3" y="13" width="8" height="8" rx="1.5" fill="#1c7ed6" />
+      <circle cx="7" cy="7" r="2.2" fill="#e03131" />
     </svg>
   )
 }

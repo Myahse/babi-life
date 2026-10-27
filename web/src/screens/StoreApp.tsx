@@ -15,14 +15,14 @@ import { keyOpen, useFeatures } from '../lib/features'
 
 const PLAY = '#01875f' // the install buttons' green
 
-const RATING: Record<string, number> = { waye: 4.8, gnango: 4.3, idrive: 4.1, golvo: 4.4, gbairai: 4.6, tikitoko: 4.5, babigram: 4.6, bet225: 4.2, parisfoot: 4.4, dodo: 4.4, kineo: 4.5, dames: 4.7, huit: 4.8 }
-const DOWNLOADS: Record<string, string> = { waye: '5 M+', gnango: '1 M+', idrive: '500 k+', gbairai: '1 M+', tikitoko: '5 M+', babigram: '1 M+', bet225: '1 M+', parisfoot: '500 k+', golvo: '500 k+', dodo: '100 k+', kineo: '100 k+', dames: '100 k+', huit: '500 k+' }
+const RATING: Record<string, number> = { waye: 4.8, gnango: 4.3, idrive: 4.1, golvo: 4.4, gbairai: 4.6, tikitoko: 4.5, babigram: 4.6, bet225: 4.2, parisfoot: 4.4, dodo: 4.4, kineo: 4.5, dames: 4.7, huit: 4.8, awale: 4.6, ludo: 4.7 }
+const DOWNLOADS: Record<string, string> = { waye: '5 M+', gnango: '1 M+', idrive: '500 k+', gbairai: '1 M+', tikitoko: '5 M+', babigram: '1 M+', bet225: '1 M+', parisfoot: '500 k+', golvo: '500 k+', dodo: '100 k+', kineo: '100 k+', dames: '100 k+', huit: '500 k+', awale: '100 k+', ludo: '1 M+' }
 /** Who's old enough for it, as the stores rate apps. */
 const AGE: Record<string, string> = { bet225: '18+', parisfoot: '18+', tikitoko: '12+', babigram: '12+', gbairai: '12+', dodo: '12+' }
 /** Made-up makers, by app. */
-const MAKER: Record<string, string> = { waye: 'Waye Mobile CI', gnango: 'Gnango Mobilité', idrive: 'iDrive Afrique', gbairai: 'Gbairai Studio', tikitoko: 'Tikitoko Média', babigram: 'Babigram Labs', bet225: 'Bet225 Gaming', parisfoot: 'ParisFoot SA', golvo: 'Golvo Livraisons', dodo: 'Dodo Séjours', kineo: 'Kinéo Cinémas', dames: 'Grin Studio', huit: 'Maquis Games' }
+const MAKER: Record<string, string> = { waye: 'Waye Mobile CI', gnango: 'Gnango Mobilité', idrive: 'iDrive Afrique', gbairai: 'Gbairai Studio', tikitoko: 'Tikitoko Média', babigram: 'Babigram Labs', bet225: 'Bet225 Gaming', parisfoot: 'ParisFoot SA', golvo: 'Golvo Livraisons', dodo: 'Dodo Séjours', kineo: 'Kinéo Cinémas', dames: 'Grin Studio', huit: 'Maquis Games', awale: 'Grin Studio', ludo: 'Maquis Games' }
 /** Up top on « Pour toi », in this order (when the world has them). */
-const FEATURED = ['huit', 'dames', 'kineo', 'tikitoko', 'dodo']
+const FEATURED = ['ludo', 'awale', 'huit', 'dames', 'kineo', 'tikitoko', 'dodo']
 
 const downloads = (id: string) => DOWNLOADS[id] ?? '10 k+'
 const order = (d: string) => parseFloat(d) * (d.includes('M') ? 1000 : 1)
@@ -212,6 +212,8 @@ export function StoreApp({ world, sim, act, onOpen }: { world: World; sim: Sim; 
 const BANNER: Record<string, string> = {
   huit: 'linear-gradient(135deg,#1f8a55,#073f24)',
   dames: 'linear-gradient(135deg,#b07a3c,#4a2a12)',
+  awale: 'linear-gradient(135deg,#b9824a,#4a2a12)',
+  ludo: 'linear-gradient(135deg,#e03131,#7a1020)',
   kineo: 'linear-gradient(135deg,#e63946,#6b0716)',
   tikitoko: 'linear-gradient(135deg,#25f4ee,#111 55%,#fe2c55)',
   dodo: 'linear-gradient(135deg,#8b5cf6,#4c1d95)',
