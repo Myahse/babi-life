@@ -171,7 +171,7 @@ function City() {
       box: { x0: -60, z0: -40, x1: 60, z1: 40 },
       roads: [
         { cls: 'primary', pts: [[-60, -2], [60, -4]], width: 10, paved: true, bridge: false },
-        { cls: 'residential', pts: [[16, -40], [18, 40]], width: 6, paved: true, bridge: false },
+        { cls: 'street', pts: [[16, -40], [18, 40]], width: 6, paved: true, bridge: false },
       ],
       buildings: FOOTPRINTS.map((f, i) => {
         const c = f.ring.reduce((s, p) => [s[0] + p[0] / f.ring.length, s[1] + p[1] / f.ring.length] as XZ, [0, 0] as XZ)

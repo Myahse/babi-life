@@ -55,6 +55,67 @@ function kerb(b: Builder, cx: number, cz: number, len: number, rot: number) {
   b.facing(n, ids[0], ids[2], ids[3])
 }
 
+/**
+ * The wooden poles along the quarters' streets, every 30 m on one side, their
+ * cross-arm and the two wires sagging from pole to pole (in steps, like the
+ * rest). None by a junction, on a bridge, or standing in another road.
+ */
+const POLE = new Three.Color('#6b5039')
+const WIRE = new Three.Color('#1e1f22')
+const POLE_ROADS = new Set(['street', 'street_limited', 'tertiary'])
+function powerLines(chunk: ChunkData, trim: Builder) {
+  const ends: XZ[] = chunk.roads.flatMap((r) => [r.pts[0], r.pts[r.pts.length - 1]])
+  const inRoad = (x: number, z: number) =>
+    chunk.roads.some((r) => {
+      for (let i = 1; i < r.pts.length; i++) {
+        const [a, b] = [r.pts[i - 1], r.pts[i]]
+        const [dx, dz] = [b[0] - a[0], b[1] - a[1]]
+        const l2 = dx * dx + dz * dz || 1
+        const t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / l2))
+        if (Math.hypot(a[0] + dx * t - x, a[1] + dz * t - z) < r.width / 2 + 0.4) return true
+      }
+      return false
+    })
+  const TOP = 7.2
+  for (const r of chunk.roads) {
+    if (!POLE_ROADS.has(r.cls) || r.bridge) continue
+    const side = (Math.round(r.pts[0][0] + r.pts[0][1]) & 1) * 2 - 1
+    const off = r.width / 2 + ((RANK[r.cls] ?? 0) >= 4 ? 1.9 : 0.7)
+    let prev: { x: number; z: number } | null = null
+    let walked = 0
+    for (let i = 1; i < r.pts.length; i++) {
+      const [a, b] = [r.pts[i - 1], r.pts[i]]
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1])
+      if (len < 0.01) continue
+      const [tx, tz] = [(b[0] - a[0]) / len, (b[1] - a[1]) / len]
+      const rot = Math.atan2(tz, tx)
+      for (let d = (30 - (walked % 30)) % 30; d < len; d += 30) {
+        const [x, z] = [a[0] + tx * d - tz * off * side, a[1] + tz * d + tx * off * side]
+        if (ends.some((e) => Math.hypot(e[0] - x, e[1] - z) < 8) || inRoad(x, z) || chunk.buildings.some((bd) => Math.hypot(bd.c[0] - x, bd.c[1] - z) < 40 && pointInRing([x, z], bd.ring))) {
+          prev = null
+          continue
+        }
+        trim.box(x, TOP / 2, z, 0.22, TOP, 0.22, rot, POLE)
+        trim.box(x, TOP - 0.35, z, 0.12, 0.1, 1.3, rot, POLE)
+        // The wires from the last pole: two of them, sagging in four steps.
+        if (prev && Math.hypot(prev.x - x, prev.z - z) < 40) {
+          const [wx, wz] = [x - prev.x, z - prev.z]
+          const span = Math.hypot(wx, wz)
+          const wr = Math.atan2(wz, wx)
+          const [nx, nz] = [-wz / span, wx / span]
+          for (let k = 0; k < 4; k++) {
+            const f = (k + 0.5) / 4
+            const sag = 0.7 * 4 * f * (1 - f)
+            for (const o of [-0.5, 0.5]) trim.box(prev.x + wx * f + nx * o, TOP - 0.3 - sag, prev.z + wz * f + nz * o, span / 4 + 0.05, 0.035, 0.035, wr, WIRE)
+          }
+        }
+        prev = { x, z }
+      }
+      walked += len
+    }
+  }
+}
+
 // Road markings and kerbs. They stop short of the junctions (points shared
 // by two roads), where they would paint across the other road.
 const KERB = new Three.Color('#d9d3c7')
@@ -392,6 +453,7 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ, ring: XZ[]) => boolea
   }
   const kerbs = new Builder()
   markings(chunk, paint, kerbs)
+  powerLines(chunk, B.trim)
 
   const water = new Builder()
   const green = new Builder()
