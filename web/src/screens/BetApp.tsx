@@ -1,5 +1,5 @@
 import { useShare } from '../lib/share'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Clock3, Radio, Send, Trash2, X } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
 import type { BetRounds, BetView, Sim, Sport, VirtualMatch } from '../lib/types'
@@ -45,6 +45,81 @@ function boostOf(slip: Leg[], share: number) {
   return n >= 3 ? 1 + share * (n - 2) : 1
 }
 const nf = (n: number) => n.toLocaleString('fr-FR')
+
+/** Whether a pick is winning at this score (football and basketball; tennis's sets are not told here). */
+function pickNow(m: VirtualMatch, pick: string): boolean | null {
+  if (!m.score || m.sport === 'tennis') return null
+  const [h, a] = m.score
+  const line = m.sport === 'basket' ? (m.line ?? 0) : 2.5
+  return ({ '1': h > a, N: h === a, '2': a > h, plus: h + a > line, moins: h + a < line, btsOui: h > 0 && a > 0, btsNon: !(h > 0 && a > 0) } as Record<string, boolean>)[pick] ?? null
+}
+
+/**
+ * A match being played, tapped open: the 90 minutes as a line, the goals on it (the home side's
+ * above, the away side's below), « BUT ! » the moment one goes in, and the player's open bets on it,
+ * winning or not at this score.
+ */
+function LiveMatch({ m, bets, dark, accent }: { m: VirtualMatch; bets: BetView[]; dark: boolean; accent: string }) {
+  const [open, setOpen] = useState(false)
+  const goals = m.score ? m.score[0] + m.score[1] : 0
+  const seen = useRef(goals)
+  const [but, setBut] = useState(false)
+  useEffect(() => {
+    if (goals > seen.current && m.sport !== 'tennis') {
+      setBut(true)
+      const t = setTimeout(() => setBut(false), 2200)
+      seen.current = goals
+      return () => clearTimeout(t)
+    }
+    seen.current = goals
+  }, [goals, m.sport])
+  const mine = bets.filter((b) => b.status === 'open').flatMap((b) => b.legs.filter((l) => l.match === m.key))
+  const foot = !m.sport || m.sport === 'foot'
+  const marks = foot ? (m.goals ?? []).map((g) => ({ min: Number(g.match(/^(\d+)'/)?.[1] ?? 0), home: g.slice(g.indexOf(' ') + 1) === m.home })) : []
+  const ink = dark ? 'text-white' : 'text-[var(--color-ink)]'
+  const soft = dark ? 'text-white/60' : 'text-[#6b6390]'
+  return (
+    <button onClick={() => setOpen(!open)} className={`relative block w-full text-left ${ink}`}>
+      <div className="flex items-center gap-2 text-[13px] font-bold">
+        <span className={`w-9 shrink-0 text-[11px] tabular-nums ${soft}`}>{m.minute ? (m.minute < 90 ? `${m.minute}'` : 'FT') : '–'}</span>
+        <span className="min-w-0 flex-1 truncate">{m.home}</span>
+        <span className={`shrink-0 rounded-md px-2 py-0.5 font-extrabold tabular-nums transition ${but ? 'scale-110' : ''}`} style={{ background: but ? accent : dark ? 'rgba(255,255,255,.1)' : '#1b1530', color: but ? '#0e1a14' : '#fff' }}>
+          {m.score ? `${m.score[0]} - ${m.score[1]}` : 'vs'}
+        </span>
+        <span className="min-w-0 flex-1 truncate text-right">{m.away}</span>
+        {mine.length > 0 && <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: mine.every((l) => pickNow(m, l.pick) !== false) ? '#22c55e' : '#ef4444' }} />}
+      </div>
+      {but && <span className="animate-pop pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full px-3 py-0.5 font-display text-lg font-extrabold text-[#0e1a14] shadow-lg" style={{ background: accent }}>BUT !</span>}
+      {open && (
+        <div className="mt-2">
+          {foot && (
+            <div className="relative h-8">
+              <div className={`absolute top-1/2 right-0 left-0 h-1 -translate-y-1/2 rounded-full ${dark ? 'bg-white/15' : 'bg-[#ede9fe]'}`} />
+              <div className="absolute top-1/2 left-0 h-1 -translate-y-1/2 rounded-full transition-[width] duration-1000" style={{ width: `${Math.min(100, (m.minute / 90) * 100)}%`, background: accent }} />
+              <div className={`absolute top-1/2 h-1 w-px -translate-y-1/2 ${dark ? 'bg-white/40' : 'bg-[#6b6390]'}`} style={{ left: '50%' }} />
+              {marks.map((g, i) => (
+                <span key={i} className="absolute text-[11px] leading-none" style={{ left: `calc(${(g.min / 90) * 100}% - 6px)`, top: g.home ? 0 : undefined, bottom: g.home ? undefined : 0 }} title={`${g.min}'`}>
+                  ⚽
+                </span>
+              ))}
+            </div>
+          )}
+          {!!m.goals?.length && <div className={`mt-1 text-[10.5px] font-bold ${soft}`}>{m.goals.join(' · ')}</div>}
+          {mine.map((l, i) => {
+            const ok = pickNow(m, l.pick)
+            return (
+              <div key={i} className="mt-1 flex items-center justify-between rounded-lg px-2 py-1 text-[11px] font-extrabold" style={{ background: dark ? 'rgba(255,255,255,.07)' : '#f5f3ff' }}>
+                <span>Ton pari : {pickLabel(m, l.pick)}</span>
+                <span style={{ color: ok === null ? undefined : ok ? '#16a34a' : '#dc2626' }}>{ok === null ? '…' : m.minute >= 90 ? (ok ? 'Gagné' : 'Perdu') : ok ? 'Ça passe pour l’instant' : 'Pas encore'}</span>
+              </div>
+            )
+          })}
+          {!m.goals?.length && !mine.length && <div className={`mt-1 text-[10.5px] font-bold ${soft}`}>Pas encore de but.</div>}
+        </div>
+      )}
+    </button>
+  )
+}
 const clockOf = (s: number) => `${Math.floor(Math.max(0, s) / 60)}:${String(Math.max(0, s) % 60).padStart(2, '0')}`
 
 /** « Partager » a ticket: to a friend, to the grin (components/SharedCard.tsx draws it there). */
@@ -229,6 +304,7 @@ function Bet225({ sim, s }: { sim: Sim; s: Betting }) {
           </section>
         ))}
 
+      {tab === 'live' && live.length > 0 && <p className="mt-2 text-center text-[11px] font-bold text-white/50">Touche un match pour le suivre</p>}
       {tab === 'live' &&
         live.map((r) => (
           <section key={r.round} className="mt-3">
@@ -243,11 +319,8 @@ function Bet225({ sim, s }: { sim: Sim; s: Betting }) {
             </div>
             <div className="space-y-1.5">
               {r.matches.map((m) => (
-                <div key={m.key} className="flex items-center gap-2 rounded-xl px-3 py-2 text-[13px] font-bold" style={{ background: b.card }}>
-                  <span className="w-9 shrink-0 text-[11px] text-white/60 tabular-nums">{m.minute ? `${m.minute}'` : '–'}</span>
-                  <span className="min-w-0 flex-1 truncate">{m.home}</span>
-                  <span className="shrink-0 rounded-md bg-white/10 px-2 py-0.5 font-extrabold tabular-nums">{m.score ? `${m.score[0]} - ${m.score[1]}` : 'vs'}</span>
-                  <span className="min-w-0 flex-1 truncate text-right">{m.away}</span>
+                <div key={m.key} className="rounded-xl px-3 py-2" style={{ background: b.card }}>
+                  <LiveMatch m={m} bets={bets} dark accent={b.accent} />
                 </div>
               ))}
             </div>
@@ -467,12 +540,7 @@ function ParisFoot({ sim, s }: { sim: Sim; s: Betting }) {
               </div>
               {r.matches.map((m) => (
                 <div key={m.key} className="border-t border-[#ede9fe] px-3 py-1.5">
-                  <div className="flex items-center text-[13px] font-bold">
-                    <span className="min-w-0 flex-1 truncate">{m.home}</span>
-                    <span className="mx-2 w-12 shrink-0 rounded bg-[#1b1530] py-0.5 text-center font-extrabold text-white tabular-nums">{m.score ? `${m.score[0]} : ${m.score[1]}` : '–'}</span>
-                    <span className="min-w-0 flex-1 truncate text-right">{m.away}</span>
-                  </div>
-                  {!!m.goals?.length && <div className="mt-0.5 truncate text-[10px] font-bold text-[#6b6390]">⚽ {m.goals.join(' · ')}</div>}
+                  <LiveMatch m={m} bets={bets} dark={false} accent={b.accent} />
                 </div>
               ))}
             </section>
