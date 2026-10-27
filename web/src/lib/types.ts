@@ -408,6 +408,19 @@ export type BlackjackResult = 'blackjack' | 'gagne' | 'egalite' | 'perdu' | 'sau
 /** One of the player's hands at le 21 (two once split). */
 export type BlackjackSeat = { cards: number[]; stake: number; doubled?: boolean; done?: boolean; result?: BlackjackResult; paid?: number }
 /** A round of le 21: `player` and `total` are the hand being played; `offer` while the bank, an ace up, asks about the insurance. */
+/** A round of godé (backend sims/gode.go): the dice thrown in order, more than one each when both were the same. */
+export type GodeRound = {
+  stake: number
+  first: 'me' | 'them'
+  them: string
+  call?: 'grand' | 'petit'
+  me: number[]
+  npc: number[]
+  done?: boolean
+  won?: boolean
+  paid?: number
+}
+
 export type BlackjackView = {
   stake: number
   hands: BlackjackSeat[]

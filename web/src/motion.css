@@ -450,3 +450,21 @@
   color: #fff;
   font: 800 11px var(--font-sans);
 }
+
+/* Le godé (screens/GodeApp.tsx): the godet shaken on the table, the die landing when it lifts */
+.gode-shake {
+  animation: gode-shake 0.18s ease-in-out infinite;
+}
+@keyframes gode-shake {
+  0%, 100% { transform: translate(0, 0) rotate(0); }
+  25% { transform: translate(-7px, -4px) rotate(-9deg); }
+  75% { transform: translate(7px, -2px) rotate(8deg); }
+}
+.gode-land {
+  animation: gode-land 0.55s var(--ease-spring) both;
+}
+@keyframes gode-land {
+  0% { transform: translateY(-26px) rotate(-120deg) scale(0.6); opacity: 0; }
+  60% { transform: translateY(3px) rotate(8deg) scale(1.08); opacity: 1; }
+  100% { transform: none; }
+}
