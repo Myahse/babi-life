@@ -32,5 +32,11 @@
         }
       ]
     }
-  ]
+  ],
+  "git": {
+    "deploymentEnabled": {
+      "claude/*": false,
+      "claude/modest-fermat-904lhi": false
+    }
+  }
 }
