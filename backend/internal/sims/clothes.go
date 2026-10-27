@@ -20,9 +20,10 @@ import (
 // kept in the wardrobe, put on with « Changer de look ».
 
 var (
-	errPieceMoney = errors.New("pas assez de Djai pour cette pièce")
-	errNotInShop  = errors.New("les pièces s'achètent en boutique : va faire les boutiques d'abord")
-	errPieceShop  = errors.New("cette pièce ne se vend pas ici")
+	errPieceMoney   = errors.New("pas assez de Djai pour cette pièce")
+	errNotInShop    = errors.New("les pièces s'achètent en boutique : va faire les boutiques d'abord")
+	errPieceShop    = errors.New("cette pièce ne se vend pas ici")
+	errPiecePremium = errors.New("cette pièce s'achète dans la Boutique du téléphone, en F CFA")
 )
 
 // clothesList: GET /sims/{id}/clothes, the pieces bought.
@@ -41,6 +42,10 @@ func (h *Handler) clothesList(w http.ResponseWriter, r *http.Request) {
 // buyPiece: in the shop that sells it (or from the phone's Boutique, `app`: any piece, the exclusive
 // collection only there), with the money, not had yet.
 func (s *Sim) buyPiece(p game.ClothingPiece, owned []string, app bool) (string, error) {
+	// Paid in F CFA in the Boutique (shop/), not in Djai.
+	if p.Shop == "premium" {
+		return "", errPiecePremium
+	}
 	if !app {
 		shop := ""
 		if s.Activity != nil {

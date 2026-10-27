@@ -14,12 +14,12 @@ import { amount } from '../game/rules'
 // one on (the Sim turns in the mirror); buy it, and it goes to the wardrobe,
 // or put on one already bought.
 
-const SHOP_NAME = { mall: 'Les boutiques du centre', marche: 'Les vendeuses de wax', exclu: 'Babi Life Édition', all: 'Tout le catalogue' }
+const SHOP_NAME = { mall: 'Les boutiques du centre', marche: 'Les vendeuses de wax', exclu: 'Babi Life Édition', premium: 'Babi Life Édition', all: 'Tout le catalogue' }
 
 export function ClothesShop({ world, sim, shop, onResult, onClose, onLeave }: { world: World; sim: Sim; /** A shop of the game, or from the phone's Boutique: the exclusive collection, or every piece (« all »). */ shop: ClothingPiece['shop'] | 'all'; onResult: (r: ActionResult) => void; onClose: () => void; onLeave: () => void }) {
   // From the phone (the exclusive collection, the whole catalogue), bought without walking to the shop.
   const app = shop === 'exclu' || shop === 'all'
-  const pieces = useMemo(() => forGender(world.clothes ?? [], sim.gender).filter((p) => shop === 'all' || p.shop === shop), [world.clothes, sim.gender, shop])
+  const pieces = useMemo(() => forGender(world.clothes ?? [], sim.gender).filter((p) => (shop === 'all' ? p.shop !== 'premium' : p.shop === shop)), [world.clothes, sim.gender, shop])
   const brands = useMemo(() => [...new Set(pieces.map((p) => p.brand))], [pieces])
   const [brand, setBrand] = useState<string | null>(null)
   const [owned, setOwned] = useState<string[]>([])

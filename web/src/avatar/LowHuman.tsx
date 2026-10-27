@@ -177,7 +177,8 @@ export function LowHuman({ look, gender, pose = 'idle', seed = 0, speed }: { loo
     const hop = pose === 'cheer' || pose === 'dance' || pose === 'airplane' || pose === 'leap' || pose === 'dunk'
     const bob = walk ? Math.abs(s) * (run ? 0.07 : 0.025) : hop ? Math.abs(Math.sin(t * 1.6)) * 0.12 : 0
     if (whole.current) {
-      whole.current.position.y = seatDrop + bob
+      // (The keeper's dive turns about the feet: lifted to lie on the grass, not in it.)
+      whole.current.position.y = seatDrop + bob + (pose === 'dive' ? 0.2 : 0)
       whole.current.rotation.z = pose === 'dive' ? 1.15 * (seed % 2 ? 1 : -1) : pose === 'idle' || pose === 'talk' ? Math.sin(t * 0.25) * 0.025 : 0
       whole.current.rotation.x = pose === 'slide' ? -0.9 : 0
     }

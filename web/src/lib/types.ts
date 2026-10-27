@@ -224,7 +224,7 @@ export type JobTask = { id: string; label: string; icon: string; pose: string; m
 /** An emote: its pose (the id), name, emoji, price (0: free), how long it plays. */
 /** A piece of the boutiques (game/clothes.go): a whole outfit or one more accessory, bought once and kept in the wardrobe. */
 export type MetroLine = { name: string; stations: { commune: string; name: string }[]; fare: number; perStop: number; wait: number }
-export type ClothingPiece = { id: string; label: string; brand: string; kind: 'tenue' | 'accessoire'; gender?: 'femme' | 'homme'; price: number; outfit?: string; outfitColor?: string; pattern?: string; bottomColor?: string; shoeColor?: string; accessory?: string; accessoryColor?: string; shop: 'mall' | 'marche' | 'exclu' }
+export type ClothingPiece = { id: string; label: string; brand: string; kind: 'tenue' | 'accessoire'; gender?: 'femme' | 'homme'; price: number; outfit?: string; outfitColor?: string; pattern?: string; bottomColor?: string; shoeColor?: string; accessory?: string; accessoryColor?: string; shop: 'mall' | 'marche' | 'exclu' | 'premium' }
 export type ClothingPack = { id: string; label: string; about: string; pieces: string[] }
 export type Emote = { id: string; label: string; emoji: string; price: number; seconds: number }
 export type World = {
@@ -491,7 +491,7 @@ export type ActionResult = { sim: Sim; outcome: Outcome; journal: JournalEvent[]
 /** La boutique (backend shop/): Djai for real money (F CFA), through GeniusPay. */
 export type ShopPack = { id: string; label: string; price: number; djai: number; bonus?: string }
 /** Something else than Djai: the Pass, a boost, the Pack Prestige (once: bought once and kept). */
-export type ShopItem = { id: string; label: string; text: string; price: number; once?: boolean }
+export type ShopItem = { id: string; label: string; text: string; price: number; once?: boolean; /** A piece of clothing into the wardrobe (game/clothes.go Premium). */ piece?: string }
 /** kind: djai | pass | energie | prestige (| pub, an advertiser's); item: the pack's or item's id. */
 export type ShopPurchase = { id: string; kind: string; item: string; price: number; djai: number; status: string; credited: boolean; at: string }
 /** open: GeniusPay set up; sandbox: its test keys; adult: the account said it's 18 or over; passUntil: the Pass on till then. */

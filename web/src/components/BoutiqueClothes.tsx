@@ -25,7 +25,7 @@ export function BoutiqueClothes({ world, sim, onResult }: { world: World; sim: S
   const [said, setSaid] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null)
   const load = () => api.clothes(sim.id).then((r) => setOwned(r.owned), () => undefined)
   useEffect(() => void load(), [sim.id]) // eslint-disable-line react-hooks/exhaustive-deps
-  const mine = useMemo(() => forGender(world.clothes ?? [], sim.gender), [world.clothes, sim.gender])
+  const mine = useMemo(() => forGender(world.clothes ?? [], sim.gender).filter((p) => p.shop !== 'premium'), [world.clothes, sim.gender])
   const exclu = mine.filter((p) => p.shop === 'exclu')
   const look = fullLook(sim.look)
   const packs = (world.clothingPacks ?? []).map((pk) => {

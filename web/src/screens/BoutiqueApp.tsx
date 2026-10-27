@@ -7,6 +7,9 @@ import { Chip } from '../components/ui'
 import { BoutiqueClothes } from '../components/BoutiqueClothes'
 import { useWorld } from '../store/world'
 import { activityOpen, useFeatures } from '../lib/features'
+import { Portrait } from '../avatar/portrait'
+import { fullLook } from '../avatar/options'
+import { wearPiece } from '../lib/clothes'
 
 // La boutique (backend shop/): what's paid with real money, on GeniusPay's
 // page (Wave, Orange Money, MTN, Moov, a card), for accounts of 18 or over:
@@ -33,7 +36,8 @@ const failure = (e: unknown) => (e instanceof ApiError ? e.message : 'Pas de ré
 export const passOn = (sim: Pick<Sim, 'passUntil'>) => !!sim.passUntil && Date.parse(sim.passUntil) > Date.now()
 const day = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
 /** What a purchase brought, in a few words (a pack: its Djai). */
-const bought = (p: ShopPurchase) => (p.kind === 'djai' ? `${amount(p.djai)} Djai` : p.kind === 'pass' ? 'Babi Pass · 30 jours' : p.kind === 'energie' ? "Plein d'énergie" : p.kind === 'prestige' ? 'Pack Prestige' : p.item)
+const bought = (p: ShopPurchase) => (p.kind === 'djai' ? `${amount(p.djai)} Djai` : p.kind === 'pass' ? 'Babi Pass · 30 jours' : p.kind === 'energie' ? "Plein d'énergie" : p.kind === 'prestige' ? 'Pack Prestige' : p.kind === 'tenue' ? (PIECE_NAMES[p.item] ?? p.item) : p.item)
+const PIECE_NAMES: Record<string, string> = { 'veste-repos': 'La veste du repos', 'polo-mere-con': 'Le polo de mère con' }
 
 /** The Pass: a gold ticket, its star. */
 function PassArt() {
@@ -116,6 +120,11 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
   // The clothes (in Djai) come with the boutiques' update (lib/features.ts).
   const clothes = !!world?.clothes?.length && activityOpen(feats, 'boutique-mode')
   const [tab, setTab] = useState<'djai' | 'habits'>('djai')
+  // The pieces in the wardrobe: those paid in F CFA show « À toi ».
+  const [owned, setOwned] = useState<string[]>([])
+  useEffect(() => {
+    api.clothes(sim.id).then((r) => setOwned(r.owned), () => undefined)
+  }, [sim.id, back?.id])
   const [view, setView] = useState<ShopView | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [buying, setBuying] = useState<string | null>(null)
@@ -217,10 +226,34 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
       ) : (
         <>
           {view.sandbox && <Chip tone="gold">Mode test : rien n'est vraiment payé</Chip>}
+          {view.items.some((it) => it.piece) && (
+            <div>
+              <div className="label mb-1.5">Vêtements exclusifs</div>
+              <div className="grid grid-cols-2 gap-2">
+                {view.items
+                  .filter((it) => it.piece)
+                  .map((it) => {
+                    const p = world?.clothes?.find((c) => c.id === it.piece)
+                    const have = owned.includes(it.piece!)
+                    return (
+                      <div key={it.id} className="card overflow-hidden p-0">
+                        <span className="block aspect-[3/4] w-full bg-[radial-gradient(120%_90%_at_50%_10%,#e9fbfb,#9fe3e6_60%,#3cc6c8)]">{p && <Portrait look={wearPiece(fullLook(sim.look), p)} gender={sim.gender} framing="full" />}</span>
+                        <div className="p-2">
+                          <div className="font-display text-[14px] leading-tight font-extrabold">{it.label}</div>
+                          <button className="btn mt-1.5 w-full !py-1.5 !text-sm" disabled={!!buying || have} onClick={() => void buy({ item: it.id })}>
+                            {have ? 'À toi' : price(it.id, it.price)}
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+              </div>
+            </div>
+          )}
           <div>
             <div className="label mb-1.5">Le Pass et les coups de pouce</div>
             <ul className="motion-stagger space-y-2">
-              {view.items.map((it) => {
+              {view.items.filter((it) => !it.piece).map((it) => {
                 const Art = ART[it.id] ?? PassArt
                 const have = it.id === 'prestige' && view.prestige
                 return (
@@ -310,7 +343,7 @@ function Returned({ purchase: p, failed }: { purchase: ShopPurchase; failed: boo
         <BadgeCheck size={28} className="shrink-0 text-[var(--color-emerald-deep)]" />
         <div className="text-sm font-bold">
           <div className="font-display text-[17px] leading-tight font-extrabold">{p.kind === 'djai' ? `+${amount(p.djai)} Djai` : bought(p)}</div>
-          {p.kind === 'djai' ? "Merci ! C'est sur ton Waye." : p.kind === 'pass' ? 'Merci ! Un quart de Djai en plus sur ce que tu gagnes et sur tes plafonds du jour, et ton étoile dorée.' : p.kind === 'energie' ? 'Toutes tes jauges sont à fond !' : 'Merci ! La couronne est à toi : Profil, Mon look.'}
+          {p.kind === 'djai' ? "Merci ! C'est sur ton Waye." : p.kind === 'pass' ? 'Merci ! Un quart de Djai en plus sur ce que tu gagnes et sur tes plafonds du jour, et ton étoile dorée.' : p.kind === 'energie' ? 'Toutes tes jauges sont à fond !' : p.kind === 'tenue' ? 'Merci ! Elle est dans ta garde-robe : Profil, Mon look, Garde-robe.' : 'Merci ! La couronne est à toi : Profil, Mon look.'}
         </div>
       </div>
     )

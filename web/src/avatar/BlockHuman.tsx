@@ -174,6 +174,21 @@ function waxPx(color: string, motif: string, x: number, y: number) {
       const cols = [color, '#f2b705', '#00a862', '#1d120b']
       return band === 1 && m6(x) < 3 ? '#b02e0c' : cols[band]
     }
+    // The Boutique's pieces paid in F CFA: « La veste du repos », its patchwork of blocks
+    // (turquoise, navy with a diamond, white with navy stripes, the orange triangles), and the
+    // polo's wide orange and white bands.
+    case 'azur': {
+      const [bx, by] = [Math.floor(x / 4), Math.floor(y / 4)]
+      const [u, v] = [((x % 4) + 4) % 4, ((y % 4) + 4) % 4]
+      const kind = (((bx + by * 3) % 5) + 5) % 5
+      if (kind === 0) return v % 2 ? tint(color, 0.18) : color
+      if (kind === 1) return Math.abs(u - 1.5) + Math.abs(v - 1.5) < 1.6 ? color : '#1f3f9a'
+      if (kind === 2) return v % 2 ? '#f4f6f8' : '#1f3f9a'
+      if (kind === 3) return u + v < 3 ? (u > v ? '#1f3f9a' : '#f2a33a') : '#f4f6f8'
+      return Math.abs(u - 1.5) + Math.abs(v - 1.5) < 1.6 ? '#3b8fd0' : tint(color, 0.3)
+    }
+    case 'polo':
+      return Math.floor((((y % 4) + 4) % 4) / 2) ? '#f8f9fa' : color
     // The boutiques' own prints (backend game/clothes.go PiecePatterns).
     case 'bogolan': {
       // Mud cloth: cream crosses and dots on the dark ground, in rows.
