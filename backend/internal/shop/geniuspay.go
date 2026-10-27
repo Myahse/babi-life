@@ -29,6 +29,8 @@ type GeniusPay struct {
 	WebhookSecret string
 	Base          string
 	Client        *http.Client
+	// Test: told so in the environment (GENIUSPAY_SANDBOX), whatever the keys look like.
+	Test bool
 }
 
 const defaultBase = "https://pay.genius.ci/api/v1/merchant"
@@ -43,11 +45,15 @@ func FromEnv() *GeniusPay {
 	if base == "" {
 		base = defaultBase
 	}
-	return &GeniusPay{Key: key, Secret: secret, WebhookSecret: os.Getenv("GENIUSPAY_WEBHOOK_SECRET"), Base: base, Client: &http.Client{Timeout: 20 * time.Second}}
+	test, _ := strconv.ParseBool(os.Getenv("GENIUSPAY_SANDBOX"))
+	return &GeniusPay{Key: key, Secret: secret, WebhookSecret: os.Getenv("GENIUSPAY_WEBHOOK_SECRET"), Base: base, Client: &http.Client{Timeout: 20 * time.Second}, Test: test}
 }
 
-// Sandbox: test keys (pk_sandbox_…): nothing is really paid.
-func (g *GeniusPay) Sandbox() bool { return strings.HasPrefix(g.Key, "pk_sandbox_") }
+// Sandbox: test keys (pk_sandbox_…, pk_test_…, or GENIUSPAY_SANDBOX=true): nothing is really paid.
+func (g *GeniusPay) Sandbox() bool {
+	k := strings.ToLower(g.Key)
+	return g.Test || strings.HasPrefix(k, "pk_sandbox") || strings.HasPrefix(k, "pk_test") || strings.Contains(k, "_sandbox_") || strings.Contains(k, "_test_")
+}
 
 // Customer: who pays, as GeniusPay's page shows it.
 type Customer struct {

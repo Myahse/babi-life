@@ -317,8 +317,11 @@ func (h *Handler) settled(ctx context.Context, row pgx.Row) (Purchase, error) {
 	return p, nil
 }
 
-// open: GeniusPay hasn't said its last word yet.
-func open(status string) bool { return status == "pending" || status == "processing" }
+// open: GeniusPay hasn't said its last word yet; or the purchase was held « à vérifier » (asked again:
+// paid as sold, it's given then).
+func open(status string) bool {
+	return status == "pending" || status == "processing" || status == "mismatch"
+}
 
 // Paid: GeniusPay's words for a payment received.
 func paid(status string) bool {
@@ -374,8 +377,9 @@ func (h *Handler) credit(ctx context.Context, id string, pay Payment) (string, b
 		return "completed", true, nil
 	}
 	// Less than the sum sold (the fees can come on top of it, never off it), or a test payment while the shop sells for real: nothing given (looked at by hand).
-	if int(math.Round(float64(pay.Amount))) < price || pay.Currency != "" && !strings.EqualFold(pay.Currency, "XOF") || !h.Pay.Sandbox() && strings.EqualFold(pay.Environment, "sandbox") {
-		log.Printf("shop: purchase %s paid %v %s, sold %d XOF: not credited", id, float64(pay.Amount), pay.Currency, price)
+	// (No sum in GeniusPay's word: the payment it made for us, at our price.)
+	if pay.Amount > 0 && int(math.Round(float64(pay.Amount))) < price || pay.Currency != "" && !strings.EqualFold(pay.Currency, "XOF") || !h.Pay.Sandbox() && strings.EqualFold(pay.Environment, "sandbox") {
+		log.Printf("shop: purchase %s paid %v %s (%s, our keys sandbox: %v), sold %d XOF: not credited", id, float64(pay.Amount), pay.Currency, pay.Environment, h.Pay.Sandbox(), price)
 		_, err := tx.Exec(ctx, `UPDATE purchases SET status = 'mismatch', updated_at = now() WHERE id = $1`, id)
 		if err == nil {
 			err = tx.Commit(ctx)
@@ -660,7 +664,7 @@ func (h *Handler) Watch(ctx context.Context, every time.Duration) {
 			return
 		case <-t.C:
 		}
-		rows, err := h.DB.Query(ctx, `SELECT id, reference FROM purchases WHERE credited_at IS NULL AND status IN ('pending', 'processing')
+		rows, err := h.DB.Query(ctx, `SELECT id, reference FROM purchases WHERE credited_at IS NULL AND status IN ('pending', 'processing', 'mismatch')
 			AND reference IS NOT NULL AND created_at > now() - interval '25 hours' AND updated_at < now() - interval '2 minutes' ORDER BY created_at LIMIT 50`)
 		if err != nil {
 			continue
