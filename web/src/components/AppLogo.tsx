@@ -76,6 +76,7 @@ const LOOK: Record<string, { bg: string; fg: string; mark: (s: number) => React.
   dames: { bg: 'linear-gradient(160deg,#c8894a,#5c3317)', fg: '#8a4b1f', mark: (s) => <Draughts size={s} /> },
   huit: { bg: 'linear-gradient(160deg,#2f9e44,#0b5d2a)', fg: '#1b7a3a', mark: (s) => <Cards size={s} /> },
   awale: { bg: 'linear-gradient(160deg,#b9824a,#5c3317)', fg: '#7a4f2a', mark: (s) => <AwaleMark size={s} /> },
+  gode: { bg: 'linear-gradient(160deg,#8a5a2b,#3a1f0c)', fg: '#5a2e12', mark: (s) => <GodeMark size={s} /> },
   ludo: { bg: 'linear-gradient(160deg,#ff6b6b,#a51111)', fg: '#c92a2a', mark: (s) => <LudoMark size={s} /> },
   flashe: { bg: 'linear-gradient(160deg,#ff5fb0,#e01e7e 55%,#8a0f55)', fg: '#e01e7e', mark: (s) => <FlashEye size={s} /> },
   store: { bg: 'linear-gradient(160deg,#7aa7ff,#3b5bfd)', fg: '#fff', mark: (s) => <ShoppingBag size={s} strokeWidth={2.4} /> },
@@ -103,6 +104,19 @@ function Draughts({ size }: { size: number }) {
       <rect x="4" y="7" width="16" height="3" fill="#e9dcc3" />
       <ellipse cx="12" cy="7" rx="8" ry="3.2" fill="#fff8ea" />
       <ellipse cx="12" cy="7" rx="4.2" ry="1.6" fill="none" stroke="#c8a676" strokeWidth="0.9" />
+    </svg>
+  )
+}
+
+/** Godé: the die beside its godet. */
+function GodeMark({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24">
+      <path d="M2.5 19 L4.5 5 Q8 3.4 11.5 5 L13.5 19 Q8 20.6 2.5 19 Z" fill="#5a2e12" stroke="#ffcc33" strokeWidth="0.9" />
+      <rect x="13" y="10.5" width="9" height="9" rx="2.2" fill="#fffaf0" />
+      <circle cx="15.3" cy="12.8" r="1" fill="#1b1d21" />
+      <circle cx="17.5" cy="15" r="1" fill="#1b1d21" />
+      <circle cx="19.7" cy="17.2" r="1" fill="#1b1d21" />
     </svg>
   )
 }
