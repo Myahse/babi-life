@@ -17,11 +17,31 @@ export type Way = { pts: P[]; cum: number[]; len: number }
 const RAMP = 60
 const JOIN = 2.5 // metres: two pieces' ends this close are one bridge going on
 
-/** Where a bridge piece's end meets another bridge piece (not a real end of the bridge). */
-export function joinedEnds(roads: Road[]): (p: XZ) => boolean {
-  const ends: XZ[] = []
-  for (const r of roads) if (r.bridge) ends.push(r.pts[0], r.pts[r.pts.length - 1])
-  return (p) => ends.filter((q) => Math.hypot(q[0] - p[0], q[1] - p[1]) < JOIN).length > 1
+/** Which way a line leaves its start (or its end), a few metres in. */
+function outward(pts: XZ[], start: boolean): XZ {
+  const line = start ? pts : [...pts].reverse()
+  const [ax, az] = line[0]
+  let k = 1
+  while (k < line.length - 1 && Math.hypot(line[k][0] - ax, line[k][1] - az) < 6) k++
+  const [dx, dz] = [line[k][0] - ax, line[k][1] - az]
+  const l = Math.hypot(dx, dz) || 1
+  return [dx / l, dz / l]
+}
+
+/**
+ * Where a bridge piece's end meets another piece that carries it on (not a
+ * real end of the bridge): the other one leaves that point the other way.
+ * Two ramps of an interchange coming down side by side to the same spot
+ * both leave it the same way: they meet on the ground, each ramps down.
+ */
+export function joinedEnds(roads: Road[]): (pts: XZ[], start: boolean) => boolean {
+  const ends: { at: XZ; out: XZ }[] = []
+  for (const r of roads) if (r.bridge && r.pts.length > 1) ends.push({ at: r.pts[0], out: outward(r.pts, true) }, { at: r.pts[r.pts.length - 1], out: outward(r.pts, false) })
+  return (pts, start) => {
+    const p = start ? pts[0] : pts[pts.length - 1]
+    const out = outward(pts, start)
+    return ends.some((e) => Math.hypot(e.at[0] - p[0], e.at[1] - p[1]) < JOIN && e.out[0] * out[0] + e.out[1] * out[1] < -0.5)
+  }
 }
 
 /**

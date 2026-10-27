@@ -33,7 +33,7 @@ import { whereabouts } from '../whereabouts'
 import { Snapper } from '../snapshot'
 import { ChatFraming } from '../chatFraming'
 import { CHUNK_ZOOM, hash, tileBox, tileOf, toLatLng, toLocal, type Box, type Origin, type XZ } from './geo'
-import { Nav } from './nav'
+import { FOOT, Nav } from './nav'
 import { along, anchorNode, DRIVABLE, round, routeLength, turnTo, useCellsAround, type Round } from './shared'
 import { ParkedVehicle } from './parkedVehicle'
 import { useParked } from '../drive'
@@ -2169,7 +2169,7 @@ function Passersby({ nav, focus, seed, onTalk, talkingTo }: { nav: Nav; focus: R
 
 function Passerby({ p, nav, routes, held, talking, react, refs, onClick, bubble }: { p: Walk; nav: Nav; routes: Map<string, XZ[]>; held: boolean; /** in a conversation with the Sim: comes up to it, face to face */ talking: boolean; react?: Pose; refs: Map<string, THREE.Group>; onClick: () => void; bubble: React.ReactNode }) {
   const ref = useRef<THREE.Group>(null)
-  const anchor = useMemo(() => anchorNode(nav, p.near), [nav, p.near])
+  const anchor = useMemo(() => anchorNode(nav, p.near, FOOT), [nav, p.near])
   const [moving, setMoving] = useState(true)
   useEffect(() => {
     const g = ref.current
@@ -2210,7 +2210,7 @@ function Passerby({ p, nav, routes, held, talking, react, refs, onClick, bubble 
       return
     }
     const reach = WALK_ROUND * 0.42 * p.speed
-    const path = (n: number) => routeFor(routes, nav, `${p.id}|${n}`, anchor, 6, 0, reach)
+    const path = (n: number) => routeFor(routes, nav, `${p.id}|${n}`, anchor, 6, FOOT, reach)
     const at = round(worldTime(), WALK_ROUND, p.offset, (n) => routeLength(path(n)), p.speed)
     const way = path(at.n)
     g.visible = way.length > 1
