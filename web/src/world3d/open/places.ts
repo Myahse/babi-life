@@ -91,10 +91,10 @@ const FACING: Record<string, number> = { 'plateau-cathedrale': 0, 'plateau-tribu
 /**
  * Landmarks on a boulevard that face it, not the lane nearer their map point: the Azalé Hôtel,
  * on the boulevard VGE (from the carrefour de Marcory to the gare de Bassam), its entrance and
- * its sign to the traffic. Within this many metres, the widest road (a motorway's class too:
+ * its sign to the traffic; the Poulman and the Noum, on the Plateau's boulevard, the same. Within this many metres, the widest road (a motorway's class too:
  * the big boulevards are drawn so on the map).
  */
-const ON_BOULEVARD: Record<string, number> = { 'marcory-azale': 140 }
+const ON_BOULEVARD: Record<string, number> = { 'marcory-azale': 140, 'plateau-poulman': 120, 'plateau-noum': 120 }
 
 /** The widest road within `within` metres (the nearest of the widest), for a landmark on its boulevard. */
 function mainRoad(chunk: ChunkData, [x, z]: XZ, within: number): Road | null {
