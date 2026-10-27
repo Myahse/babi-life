@@ -98,7 +98,7 @@ func (s *Store) RateAt(id string, t time.Time) (float64, bool) {
 func (s *Store) Now(id string) (float64, bool) { return s.RateAt(id, time.Now()) }
 
 // ErrRange: a rate outside what the casino allows.
-var ErrRange = errors.New("le taux de retour va de 70 % à 97 %")
+var ErrRange = errors.New("le taux de retour va de 55 % à 97 %")
 
 // Set records a change from now (nil rate: back to the level for all, or untouched for All).
 func (s *Store) Set(ctx context.Context, id string, rate *float64) error {

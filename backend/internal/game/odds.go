@@ -5,7 +5,8 @@ import "math"
 // The casino's « taux de retour » (backend odds/, the admin's « Casino » tab):
 // what the money games give back, on average, for 1 staked. Untouched, each
 // game gives back its own (Natural); the team may set a level for all of them
-// and one for any game, between OddsMin and OddsMax, the same for every
+// and one for any game, between OddsMin and OddsMax (not under 55 %: le 21
+// cannot go below about 53 %, Babi Trade would pay less than the stake), the same for every
 // player, from the next round. Each game's « Règles » says it, never hidden:
 // the slots, the tickets and bingo pay their prizes scaled (Scaled), L'Envol
 // flies off sooner or later (P(≥ x) = rate / x), Babi Trade pays 2 × rate,
@@ -13,7 +14,7 @@ import "math"
 // the net winnings, said with the result.
 
 const (
-	OddsMin = 0.70
+	OddsMin = 0.55
 	OddsMax = 0.97
 )
 
@@ -117,7 +118,7 @@ func TradePaysAt(rate float64) float64 {
 	return 2 * rate
 }
 
-// ScratchAt: a ticket with its prizes at a rate (rounded down to 10 Djai; untouched: as printed).
+// ScratchAt: a ticket with its prizes at a rate (to the nearest 10 Djai, so the small tickets keep to it too; untouched: as printed).
 func ScratchAt(t ScratchTicket, rate float64) ScratchTicket {
 	nat := ScratchReturn(t)
 	if rate <= 0 || math.Abs(rate-nat) < 1e-9 {
@@ -126,7 +127,7 @@ func ScratchAt(t ScratchTicket, rate float64) ScratchTicket {
 	out := t
 	out.Prizes = make([]ScratchPrize, len(t.Prizes))
 	for i, p := range t.Prizes {
-		out.Prizes[i] = ScratchPrize{Amount: Scaled(p.Amount, rate, nat) / 10 * 10, Odds: p.Odds}
+		out.Prizes[i] = ScratchPrize{Amount: int(math.Round(float64(p.Amount)*rate/nat/10)) * 10, Odds: p.Odds}
 	}
 	return out
 }
