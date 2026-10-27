@@ -2,6 +2,7 @@ import { bridgeHeights, pointInRing, type XZ } from './geo'
 import { deckTop } from './bridgeNames'
 import { deckWidth, joinedEnds } from './bridgeLine'
 import type { ChunkData, Couloir } from './tiles'
+import { MADE_HALF, onFieldGround, type Field } from './places'
 
 // Getting around the open world: a graph of the real streets of the loaded
 // chunks (Sims walk along them to a place, by the shortest way), and what
@@ -30,9 +31,15 @@ export class Nav {
   private blockGrid = new Map<string, XZ[][]>()
   private heights = new Map<XZ[], number>()
   private water: XZ[][][] = []
+  private pitches: XZ[][] = []
 
   /** `solids`: the game's own buildings standing in place of the map's (the landmarks: a middle, a radius), which no vehicle drives through. */
-  constructor(chunks: ChunkData[], skipBuilding: (c: XZ, ring: XZ[]) => boolean = () => false, private solids: { at: XZ; r: number }[] = []) {
+  /**
+   * `solids`: the game's own buildings standing in place of the map's (the landmarks: a middle, a radius), which no vehicle drives through;
+   * `made`: the places the game builds on their own square lot (their middles); `fields`: the pitches and courts.
+   * What stands in the street (a lamp, a board, a pole) keeps off all of them: `free`.
+   */
+  constructor(chunks: ChunkData[], skipBuilding: (c: XZ, ring: XZ[]) => boolean = () => false, private solids: { at: XZ; r: number }[] = [], private made: XZ[] = [], private fields: Field[] = []) {
     for (const ch of chunks) {
       const joined = joinedEnds(ch.roads)
       for (const r of ch.roads) {
@@ -54,6 +61,8 @@ export class Nav {
         }
       }
       for (const a of ch.areas) if (a.kind === 'water') this.water.push(a.rings)
+      // The map's own pitches and courts: nothing stands on them either (free).
+      for (const a of ch.areas) if (a.kind === 'pitch') this.pitches.push(a.rings[0])
       if (ch.couloirs) this.couloirs.push(...ch.couloirs)
     }
     this.wallOff()
@@ -229,6 +238,22 @@ export class Nav {
   }
 
   /** Can a Sim stand here? Not inside a building, not in the water. */
+  /**
+   * Room to stand something here, `r` metres round (a lamp post, a billboard's feet): not in a
+   * building (the map's, the game's own, a landmark's), not on a pitch, not in the water.
+   */
+  free(x: number, z: number, r = 0.5) {
+    if (this.wet(x, z)) return false
+    for (const [dx, dz] of [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]]) {
+      const p: XZ = [x + dx, z + dz]
+      for (const ring of this.blockGrid.get(this.key(p[0], p[1])) ?? []) if (pointInRing(p, ring)) return false
+    }
+    if (this.solids.some(({ at, r: s }) => Math.hypot(x - at[0], z - at[1]) < s + r)) return false
+    if (this.made.some((m) => Math.abs(m[0] - x) < MADE_HALF + r && Math.abs(m[1] - z) < MADE_HALF + r)) return false
+    if (this.pitches.some((ring) => [[0, 0], [r + 1, 0], [-r - 1, 0], [0, r + 1], [0, -r - 1]].some(([dx, dz]) => pointInRing([x + dx, z + dz], ring)))) return false
+    return !this.fields.some((f) => onFieldGround(f, [x, z], 2 + r))
+  }
+
   walkable(x: number, z: number) {
     const p: XZ = [x, z]
     for (const ring of this.blockGrid.get(this.key(x, z)) ?? []) if (pointInRing(p, ring)) return false

@@ -62,7 +62,7 @@ export async function chunkJob(req: ChunkRequest): Promise<{ msg: ChunkReply; tr
     data.trees = data.trees.filter((q) => !bare(q))
     data.palms = data.palms.filter((q) => !bare(q))
     if (data.forest) data.forest = data.forest.filter((q) => !bare(q))
-    const meshes = buildChunk(data, (c, ring) => inTheWay(made, c, landmarks, ring) || fields.some((f) => onFieldGround(f, c) || ring.some((q) => onFieldGround(f, q, 0.3))), styleOf)
+    const meshes = buildChunk(data, (c, ring) => inTheWay(made, c, landmarks, ring) || fields.some((f) => onFieldGround(f, c) || ring.some((q) => onFieldGround(f, q, 0.3))), styleOf, (q, r) => fields.some((f) => onFieldGround(f, q, 2 + r)) || inTheWay(made, q, landmarks.map((l) => ({ at: l.at, r: l.r + r }))))
     const out: Record<string, Arrays> = {}
     const transfer: ArrayBuffer[] = []
     for (const [name, g] of Object.entries(meshes)) {

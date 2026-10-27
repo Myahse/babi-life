@@ -54,7 +54,8 @@ export function Billboards({ nav, seed, night, places = [] }: { nav: Nav; seed: 
   const all = useMemo(() => {
     const out: Board[] = []
     const add = (format: BoardFormat, at: XZ, rot: number, span?: number, featured?: boolean) => {
-      if (!nav.walkable(at[0], at[1])) return
+      // Room for it: no building of any kind, no pitch (nav.free), round its feet and its panel's width.
+      if (!nav.free(at[0], at[1], format === 'banderole' ? 0.5 : FORMATS[format].w / 2)) return
       // Never standing on a roadway (a crossing street, a boulevard beside): only the banderole spans one, high above it.
       // (Its feet: the pole of a sucette, a giant or a screen; the two legs of a 4×3.)
       const across = format === '4x3' ? FORMATS[format].w * 0.35 : 0
@@ -123,7 +124,7 @@ export function Billboards({ nav, seed, night, places = [] }: { nav: Nav; seed: 
       add('led', [x + Math.cos(a) * (w / 2 + 8), z + Math.sin(a) * (w / 2 + 8)], Math.atan2(-Math.cos(a), -Math.sin(a)))
     })
     return out
-  }, [nav])
+  }, [nav, places])
 
   // The day's ads for the commune, again every five minutes.
   const [ads, setAds] = useState<Ad[]>([])

@@ -1001,8 +1001,10 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         [...chunks.values()].filter((c) => !c.data.key.includes(':')).map((c) => c.data),
         (c, ring) => inTheWay(made, c, marks, ring),
         marks.map((m) => ({ at: m.at, r: m.r * 0.6 })),
+        made,
+        [...resolved.values()].flatMap((r) => (r.field ? [r.field] : [])),
       ),
-    [chunks, made, marks],
+    [chunks, made, marks, resolved],
   )
 
   // The soirées stand at the house they're thrown in (its resolved lot), else on the street nearest

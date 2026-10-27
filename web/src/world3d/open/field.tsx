@@ -278,7 +278,7 @@ function kitsOf(r: () => number, foot: boolean) {
  * The match: ten players moved every frame from the match's script, and the
  * ball. A pose changes only now and then, so React redraws them rarely.
  */
-function Players({ field, seed, without }: { field: Field; seed: string; without: number | null }) {
+export function Players({ field, seed, without }: { field: Field; seed: string; without: number | null }) {
   const match = matchFor(seed, field)
   const foot = field.sport === 'foot'
   const players = useMemo<Player[]>(() => {

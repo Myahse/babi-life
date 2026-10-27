@@ -1,3 +1,5 @@
+import { Players } from './field'
+import type { Field } from './places'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Citrus, Croissant, CupSoda, Droplet, MessagesSquare, Music, Smartphone, Trophy, Volleyball } from 'lucide-react'
 import { JoinBubble, placeIn, useJoined, type Joining } from './joinIn'
@@ -409,29 +411,51 @@ export function Grin({ seed }: { seed: string }) {
 }
 
 /** Children playing football: the ball goes from one to the other. */
-function Foot({ seed }: { seed: string }) {
+export function Foot({ seed }: { seed: string }) {
   const cast = useCast(seed, 4)
   const spots: XZ[] = [[-3, -2], [3, -2.5], [2.5, 3], [-2.5, 2.5]]
   const ball = useRef<THREE.Mesh>(null)
+  const kids = useRef<(THREE.Group | null)[]>([])
   // Pass n goes from player a(n−1) to a(n), with a(n) = (2n + b(n)) mod 4 and
   // b(n) a coin flip seeded by n: never to oneself, worked out from the shared
-  // clock alone, so every screen sees the same pass.
-  const [to, setTo] = useState(0)
+  // clock alone, so every screen sees the same pass. The one passing kicks it,
+  // the one it goes to runs to meet it and stops it; the others shuffle about
+  // in their place, and everyone keeps an eye on the ball.
+  const [poses, setPoses] = useState<Pose[]>(['idle', 'idle', 'idle', 'idle'])
   const offset = useMemo(() => rng(`foot${seed}`)() * 100, [seed])
   useFrame(() => {
-    const u = (worldTime() + offset) / 1.1
+    const t = worldTime() + offset
+    const u = t / 1.1
     const n = Math.floor(u)
     const who = (m: number) => (2 * m + (rng(`${seed}|${m}`)() < 0.5 ? 0 : 1)) % 4
-    const [a, b] = [spots[who(n - 1)], spots[who(n)]]
-    if (who(n) !== to) setTo(who(n))
+    const [from, to] = [who(n - 1), who(n)]
     const k = u - n
-    ball.current?.position.set(a[0] + (b[0] - a[0]) * k, 0.12 + Math.sin(k * Math.PI) * 0.6, a[1] + (b[1] - a[1]) * k)
+    // Where each one stands now: their spot, shuffling about it; the one the ball goes to, coming to meet it.
+    const at = spots.map(([x, z], i): XZ => [x + Math.sin(t * 0.9 + i * 2.1) * 0.45, z + Math.cos(t * 0.7 + i * 1.3) * 0.35])
+    const meet = (i: number): XZ => {
+      const [ax, az] = at[from]
+      const [bx, bz] = at[i]
+      const go = Math.min(1, k * 1.4) * 0.35
+      return [bx + (ax - bx) * go, bz + (az - bz) * go]
+    }
+    const [ax, az] = at[from]
+    const [bx, bz] = meet(to)
+    const bp: XZ = [ax + (bx - ax) * k, az + (bz - az) * k]
+    ball.current?.position.set(bp[0], 0.12 + Math.sin(k * Math.PI) * 0.6, bp[1])
+    const next = cast.map((_, i): Pose => (i === from && k < 0.3 ? 'kick' : i === to ? (k < 0.75 ? 'run' : 'touch') : Math.sin(t * 1.3 + i) > 0.85 ? 'cheer' : 'walk'))
+    kids.current.forEach((g, i) => {
+      if (!g) return
+      const [x, z] = i === to ? [bx, bz] : at[i]
+      g.position.set(x, 0, z)
+      g.rotation.y = Math.atan2(bp[0] - x, bp[1] - z)
+    })
+    if (next.some((p, i) => p !== poses[i])) setPoses(next)
   })
   return (
     <group>
       {cast.map((p, i) => (
-        <group key={i} position={[spots[i][0], 0, spots[i][1]]} rotation={[0, Math.atan2(-spots[i][0], -spots[i][1]), 0]} scale={0.62}>
-          <Human look={p.look} gender={p.gender} pose={(i === to ? 'cheer' : 'idle') as Pose} seed={p.seed} headScale={1.2} />
+        <group key={i} ref={(g) => void (kids.current[i] = g)} position={[spots[i][0], 0, spots[i][1]]} scale={0.62}>
+          <Human look={p.look} gender={p.gender} pose={poses[i]} seed={p.seed} headScale={1.2} speed={poses[i] === 'walk' ? 0.6 : undefined} />
         </group>
       ))}
       <mesh ref={ball} material={ballMat}>
@@ -536,15 +560,16 @@ function people(seed: string, n: number, kit: Partial<Look>) {
   })
 }
 
-function Pitch({ spot, night }: { spot: Spot; night: boolean }) {
-  const side = useMemo(() => people(`foot${spot.id}`, 6, { outfit: 'jersey', outfitColor: '#ff7a00' }), [spot.id])
+export function Pitch({ spot, night }: { spot: Spot; night: boolean }) {
   const watch = useMemo(() => people(`crowd${spot.id}`, 5, { outfit: 'casual' }), [spot.id])
-  const ball = useRef<THREE.Mesh>(null)
-  useFrame(() => {
-    const t = worldTime() + spot.seed * 8
-    ball.current?.position.set(Math.sin(t * 0.7) * 7, 0.28 + Math.abs(Math.sin(t * 2.4)) * 0.55, Math.cos(t * 0.55) * 2.2)
-  })
+  // A real game on it, five a side in two kits, keepers and all (the pitches' own match: field.tsx, match.ts).
+  const field = useMemo<Field>(() => ({ at: spot.at, angle: -spot.rot, len: 20.8, wid: 12.4, sport: 'foot', map: false }), [spot.at, spot.rot])
   return (
+    <>
+    {/* The match moves: outside the merged ground and fence */}
+    <group position={[spot.at[0], 0, spot.at[1]]} rotation={[0, spot.rot, 0]}>
+      <Players field={field} seed={`street${spot.id}`} without={null} />
+    </group>
     <StaticMerge version={night ? 1 : 0}>
     <group position={[spot.at[0], 0, spot.at[1]]} rotation={[0, spot.rot, 0]}>
       <mesh position={[0, 0.03, 0]} material={grass} receiveShadow>
@@ -573,17 +598,9 @@ function Pitch({ spot, night }: { spot: Spot; night: boolean }) {
           </mesh>
         </group>
       ))}
-      <mesh ref={ball} material={white} userData={{ live: true }}>
-        <sphereGeometry args={[0.22, 10, 8]} />
-      </mesh>
       <FieldFence hl={11.3} hw={6.8} id={spot.id} />
       <Lights night={night} w={22} d={13} />
       <NoShadows>
-        {side.map((p, i) => (
-          <group key={i} position={[((i % 3) - 1) * 4, 0, (i < 3 ? -1 : 1) * 2.4]}>
-            <Human look={p.look} gender={p.gender} pose={i % 2 ? 'run' : 'idle'} seed={p.seed} />
-          </group>
-        ))}
         {watch.map((p, i) => (
           <group key={i} position={[-8 + i * 3.2, 0, 8]} rotation={[0, Math.PI, 0]}>
             <TalkHuman id={`pitch:${spot.id}:${i}`} look={p.look} gender={p.gender} pose={i % 2 ? 'cheer' : 'idle'} seed={p.seed} />
@@ -592,18 +609,19 @@ function Pitch({ spot, night }: { spot: Spot; night: boolean }) {
       </NoShadows>
     </group>
     </StaticMerge>
+    </>
   )
 }
 
-function Court({ spot, night }: { spot: Spot; night: boolean }) {
-  const side = useMemo(() => people(`basket${spot.id}`, 4, { outfit: 'basket', outfitColor: '#1d428a' }), [spot.id])
+export function Court({ spot, night }: { spot: Spot; night: boolean }) {
   const watch = useMemo(() => people(`bcrowd${spot.id}`, 4, {}), [spot.id])
-  const ball = useRef<THREE.Mesh>(null)
-  useFrame(() => {
-    const k = (worldTime() * 0.35 + spot.seed) % 1
-    ball.current?.position.set(-5 + k * 10, 0.45 + Math.sin(k * Math.PI) * 3.1, Math.sin(k * Math.PI * 2) * 0.6)
-  })
+  // A real game on it, half-court (its rim under the +x board), in two kits (field.tsx, match.ts).
+  const field = useMemo<Field>(() => ({ at: spot.at, angle: -spot.rot, len: 16.6, wid: 8.6, sport: 'basket', map: false }), [spot.at, spot.rot])
   return (
+    <>
+    <group position={[spot.at[0], 0, spot.at[1]]} rotation={[0, spot.rot, 0]}>
+      <Players field={field} seed={`streetb${spot.id}`} without={null} />
+    </group>
     <StaticMerge version={night ? 1 : 0}>
     <group position={[spot.at[0], 0, spot.at[1]]} rotation={[0, spot.rot, 0]}>
       <mesh position={[0, 0.03, 0]} material={concrete} receiveShadow>
@@ -622,17 +640,9 @@ function Court({ spot, night }: { spot: Spot; night: boolean }) {
           </mesh>
         </group>
       ))}
-      <mesh ref={ball} material={hoop} userData={{ live: true }}>
-        <sphereGeometry args={[0.2, 10, 8]} />
-      </mesh>
       <FieldFence hl={8.3} hw={4.8} id={spot.id} />
       <Lights night={night} w={16} d={9} />
       <NoShadows>
-        {side.map((p, i) => (
-          <group key={i} position={[-3 + (i % 2) * 5, 0, i < 2 ? -1.4 : 1.4]}>
-            <Human look={p.look} gender={p.gender} pose={i === 0 ? 'throw' : 'run'} seed={p.seed} />
-          </group>
-        ))}
         {watch.map((p, i) => (
           <group key={i} position={[-4.5 + i * 3, 0, 6.2]} rotation={[0, Math.PI, 0]}>
             <TalkHuman id={`court:${spot.id}:${i}`} look={p.look} gender={p.gender} pose={i % 2 ? 'cheer' : 'wave'} seed={p.seed} />
@@ -641,6 +651,7 @@ function Court({ spot, night }: { spot: Spot; night: boolean }) {
       </NoShadows>
     </group>
     </StaticMerge>
+    </>
   )
 }
 

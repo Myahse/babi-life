@@ -1,3 +1,4 @@
+import { Pitch as StreetPitch, Court as StreetCourt, Foot as StreetKids } from '../world3d/open/streetlife'
 import { weather } from '../world3d/open/weathering'
 import { setSceneActions } from '../world3d/sceneActions'
 import { useMemo } from 'react'
@@ -614,6 +615,7 @@ function Lab() {
   if (view === 'stalls') return <StallsLab />
   if (view === 'tolls') return <TollsLab />
   if (view === 'streetfoot') return <StreetFootLab />
+  if (view === 'streetpitch') return <StreetPitchLab />
   if (view === 'people') return <PeopleLab />
   if (view === 'far') return <FarLab />
   if (view === 'grin') {
@@ -859,6 +861,28 @@ function TollsLab() {
 }
 
 /** The little maracana in a street, and a car coming through now and then (?view=streetfoot&cam=). */
+/** The street's pitch, its basketball court and the children's game of passes, side by side (streetlife.tsx). */
+function StreetPitchLab() {
+  const cam = (q.get('cam') ?? '0,16,26').split(',').map(Number) as [number, number, number]
+  return (
+    <Canvas shadows dpr={[1, 1.5]} camera={{ position: cam, fov: 50 }} style={{ width: '100vw', height: '100vh' }}>
+      <color attach="background" args={['#a9d3f0']} />
+      <hemisphereLight args={['#ffffff', '#b8a27c', 1.2]} />
+      <directionalLight position={[10, 20, 12]} intensity={1.6} castShadow />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[200, 200]} />
+        <primitive object={LAB_GROUND} attach="material" />
+      </mesh>
+      <StreetPitch spot={{ id: 'lab-pitch', at: [-14, 0], rot: 0.2, seed: 0.3 }} night={night} />
+      <StreetCourt spot={{ id: 'lab-court', at: [12, -2], rot: -0.3, seed: 0.6 }} night={night} />
+      <group position={[0, 0, 12]}>
+        <StreetKids seed="lab-kids" />
+      </group>
+      <OrbitControls target={(q.get('look') ?? '0,1,0').split(',').map(Number) as [number, number, number]} />
+    </Canvas>
+  )
+}
+
 function StreetFootLab() {
   const cam = (q.get('cam') ?? '0,9,16').split(',').map(Number) as [number, number, number]
   return (

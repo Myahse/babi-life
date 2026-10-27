@@ -324,7 +324,7 @@ function inWater(chunk: ChunkData, p: XZ) {
 }
 
 /** Half the side of the ground a game-made building takes, its yard round it. */
-const MADE_HALF = 8
+export const MADE_HALF = 8
 
 /** How many points of a square of half-side `half` turned by `angle` round `c` are on a street (looked at every quarter of the half side, its edges too); counting stops at `enough`. */
 function squareHits(roads: ChunkData['roads'], c: XZ, angle: number, half: number, enough = Infinity) {
