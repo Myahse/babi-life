@@ -64,6 +64,7 @@ var List = []Feature{
 	{ID: "casino-ivoire", Label: "La soirée au casino de l'Hôtel Ivoire", About: "Passer la soirée au casino du grand hôtel.", Interactions: []string{"casino-ivoire"}},
 	{ID: "tournoi-console", Label: "Le tournoi console du samedi", About: "Quart, demie et finale à la salle de jeux, la coupe à gagner.", Interactions: []string{"tournoi-console"}},
 	{ID: "console-defi", Label: "Le défi console « le perdant paie »", About: "Défier un gars du quartier à la console, le perdant paie.", Interactions: []string{"console-defi"}},
+	{ID: "boutiques", Label: "Les boutiques de vêtements et la garde-robe", About: "Au centre commercial et chez les vendeuses de wax du marché : près de 60 pièces de marques d'ici (Babi Denim, Kôrô Wear, Wax d'Adjamé, Bogolan & Co…) à essayer et acheter une par une, rangées dans ta garde-robe.", Interactions: []string{"boutique-mode", "boutique-wax"}},
 	{ID: "traverser", Label: "Aider les anciens à traverser", About: "Au bord des rues, une maman ou un vieux père attend pour traverser et te demande un coup de main : vous traversez ensemble.", Interactions: []string{"street-traverser"}},
 	{ID: "table", Label: "Les gens viennent te parler dans les lieux", About: "« Je peux m'asseoir à ta table ? » au resto ou au bar (tu acceptes et vous causez, ou tu refuses poliment), et au travail les clients qui viennent te demander de l'aide.", Keys: []string{"table"}},
 }

@@ -71,6 +71,8 @@ import { InviteBanner, PlayersChip, PlayersSheet, usePlayers } from '../componen
 import { DamesBanner, DamesSheet, DamesStake } from '../components/Dames'
 import { HuitBanner, HuitSheet, HuitStake } from '../components/Huit'
 import { MachineButton, MachineSheet, isSlots } from '../components/Machine'
+import { ClothesShop } from '../components/ClothesShop'
+import { SHOP_OF } from '../lib/clothes'
 import { SoundToggle, Soundtrack } from '../components/Soundtrack'
 import { usePartySound } from '../world3d/open/party'
 import { MiniMap, WhereTo } from '../components/Navigator'
@@ -570,6 +572,10 @@ export function Play() {
   const [machineOpen, setMachineOpen] = useState(false)
   const machineAt = sim?.activity?.kind === 'do' && isSlots(sim.activity.interaction.id) ? sim.activity.start : null
   useEffect(() => setMachineOpen(machineAt !== null), [machineAt])
+  // In a boutique: the shop's pieces, open as one starts shopping (components/ClothesShop).
+  const [shopOpen, setShopOpen] = useState(false)
+  const shopAt = sim?.activity?.kind === 'do' && SHOP_OF[sim.activity.interaction.id] ? sim.activity.start : null
+  useEffect(() => setShopOpen(shopAt !== null), [shopAt])
   const toast = useCallback((t: Omit<Toast, 'id'>) => {
     const id = Date.now() + Math.random()
     setToasts((ts) => [...ts.slice(-1), { ...t, id }])
@@ -763,6 +769,7 @@ export function Play() {
     if (practice) return (setPractice(null), true)
     if (huitOpen) return (setHuitOpen(false), true)
     if (machineOpen) return (setMachineOpen(false), true)
+    if (shopOpen) return (setShopOpen(false), true)
     if (damesOpen) return (setDamesOpen(false), true)
     if (overlay) return (setOverlay(null), setPhoneApp(null), true)
     if (whereTo) return (setWhereTo(false), true)
@@ -1434,7 +1441,7 @@ export function Play() {
       {players && <PlayersSheet sim={sim} around={around} communeName={commune.name} focus={players.focus} act={run} onClose={() => setPlayers(null)} />}
 
       {/* (Its time up, the bar goes at once: the server is settling it, nothing left to follow.) */}
-      {sim.activity && !ended && !placeId && !defi && <ActivityBar world={world} onTask={sim.activity.kind === 'do' && sim.activity.career && sim.activity.career === sim.career ? (t) => api.jobTask(sim.id, t.id).then((res) => (apply(res), gesture(t.pose as Pose), res.outcome)) : undefined} onDefi={defiNow ? () => (defiNow === 'ski' && setOutside(false), setDefi(defiNow)) : undefined} onRejoin={ballKey && played === ballKey ? { sport: ballSport!, go: rejoin } : undefined} sim={sim} onStop={stop} stopping={!!pending} onRoute={() => setOverlay('map')} onMore={onGrounds ? () => (setPlaceId(doing!.placeId!), setMenuOpen(true)) : undefined} onFilm={() => setWatching(true)} onMachine={doing && isSlots(doing.interaction.id) ? () => setMachineOpen(true) : undefined} />}
+      {sim.activity && !ended && !placeId && !defi && <ActivityBar world={world} onTask={sim.activity.kind === 'do' && sim.activity.career && sim.activity.career === sim.career ? (t) => api.jobTask(sim.id, t.id).then((res) => (apply(res), gesture(t.pose as Pose), res.outcome)) : undefined} onDefi={defiNow ? () => (defiNow === 'ski' && setOutside(false), setDefi(defiNow)) : undefined} onRejoin={ballKey && played === ballKey ? { sport: ballSport!, go: rejoin } : undefined} sim={sim} onStop={stop} stopping={!!pending} onRoute={() => setOverlay('map')} onMore={onGrounds ? () => (setPlaceId(doing!.placeId!), setMenuOpen(true)) : undefined} onFilm={() => setWatching(true)} onMachine={doing && isSlots(doing.interaction.id) ? () => setMachineOpen(true) : undefined} onShop={doing && SHOP_OF[doing.interaction.id] ? () => setShopOpen(true) : undefined} />}
       {/* The ciné-club's film, watched for real (screens/FilmPlayer.tsx). */}
       {watching && doing?.seance?.video && doing.seance.at !== undefined && <FilmPlayer video={doing.seance.video} at={doing.seance.at} title={doing.seance.title ?? doing.interaction.label} credit={doing.seance.credit} file={doing.seance.file} onClose={() => setWatching(false)} />}
 
@@ -1574,6 +1581,7 @@ export function Play() {
         />
       )}
       {practice && !defi && <DefiSheet kind={practice} simId={sim.id} me={sim} practice onResult={apply} onClose={() => setPractice(null)} />}
+      {shopOpen && doing && SHOP_OF[doing.interaction.id] && <ClothesShop world={world} sim={sim} shop={SHOP_OF[doing.interaction.id]} onResult={apply} onClose={() => setShopOpen(false)} onLeave={() => (setShopOpen(false), stop())} />}
       {machineOpen && doing && isSlots(doing.interaction.id) && (
         <MachineSheet
           world={world}
@@ -2019,6 +2027,8 @@ function usePlaceActions(world: World, sim: Sim, city: City, commune: Commune, p
     .filter((it) => civicState(it, terrain, placeId, commune.id).show)
     // What an update hasn't brought yet (lib/features.ts).
     .filter((it) => activityOpen(feats, it.id))
+    // Once the boutiques are open, they take the place of the old « S'acheter une tenue ».
+    .filter((it) => it.id !== 'vetements' || !activityOpen(feats, 'boutique-mode'))
     .map((it) => (it.id === 'passer-nuit' && partner ? { ...it, label: `Passer la nuit avec ${partner.name}` } : it))
     // The president's measures of the week: some prices lowered for everyone.
     .map((it) => withMeasures(world, sim, place.kind, it))
@@ -2609,7 +2619,7 @@ function DropRouteAsk({ from, moto }: { from: string; moto: boolean }) {
 }
 
 /** What the Sim is busy with, on real time: progress, time left, and a way to stop. */
-function ActivityBar({ world, sim, onStop, stopping, onRoute, onMore, onRejoin, onDefi, onTask, onFilm, onMachine }: { world: World; sim: Sim; onStop: () => void; stopping: boolean; onRoute: () => void; /** At a slot machine: back to it. */ onMachine?: () => void; /** At the ciné-club: the real film, to watch. */ onFilm?: () => void; /** At the zoo: the other things to do there. */ onMore?: () => void; /** A match left before its end: back onto the pitch. */ onRejoin?: { sport: 'foot' | 'basket'; go: () => void }; /** The activity taken on as a défi. */ onDefi?: () => void; /** At work: one of the job's tasks (backend sims/jobs.go). */ onTask?: (t: JobTask) => Promise<ActionResult['outcome']> }) {
+function ActivityBar({ world, sim, onStop, stopping, onRoute, onMore, onRejoin, onDefi, onTask, onFilm, onMachine, onShop }: { world: World; sim: Sim; onStop: () => void; stopping: boolean; onRoute: () => void; /** At a slot machine: back to it. */ onMachine?: () => void; /** In a boutique: back to its rails. */ onShop?: () => void; /** At the ciné-club: the real film, to watch. */ onFilm?: () => void; /** At the zoo: the other things to do there. */ onMore?: () => void; /** A match left before its end: back onto the pitch. */ onRejoin?: { sport: 'foot' | 'basket'; go: () => void }; /** The activity taken on as a défi. */ onDefi?: () => void; /** At work: one of the job's tasks (backend sims/jobs.go). */ onTask?: (t: JobTask) => Promise<ActionResult['outcome']> }) {
   const a = sim.activity!
   const span = Math.max(1, a.end - a.start)
   const done = Math.min(1, Math.max(0, (sim.gameMinutes - a.start) / span))
@@ -2653,6 +2663,11 @@ function ActivityBar({ world, sim, onStop, stopping, onRoute, onMore, onRejoin, 
       {onFilm && a.seance?.video && a.seance.at !== undefined && <FilmButton at={a.seance.at} onWatch={onFilm} />}
       {onDefi && defiOf(a.interaction.id) && <DefiButton kind={defiOf(a.interaction.id)!} interactionId={a.interaction.id} onClick={onDefi} />}
       {onMachine && <MachineButton onClick={onMachine} />}
+      {onShop && (
+        <button className="btn animate-pop mt-2 w-full !py-2.5" onClick={onShop}>
+          <Shirt size={18} /> Voir les vêtements
+        </button>
+      )}
       {onRejoin && (
         <button className="btn animate-pop mt-2 w-full !py-2.5" onClick={onRejoin.go}>
           <Volleyball size={18} /> {onRejoin.sport === 'basket' ? 'Revenir sur le terrain' : 'Revenir au match'}

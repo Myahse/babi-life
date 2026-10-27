@@ -122,6 +122,15 @@ export const PATTERNS: Choice[] = [
   { id: 'damier', label: 'Damier' },
   { id: 'kente', label: 'Kente' },
 ]
+/** The boutiques' own prints (backend game/clothes.go): worn by those who bought a piece with one. */
+export const PIECE_PATTERNS: Choice[] = [
+  { id: 'bogolan', label: 'Bogolan' },
+  { id: 'madras', label: 'Madras' },
+  { id: 'fleurs', label: 'Fleurs' },
+  { id: 'leopard', label: 'Léopard' },
+  { id: 'camo', label: 'Camouflage' },
+  { id: 'adinkra', label: 'Adinkra' },
+]
 
 /** Outfits that use the wax pattern. */
 export const WAX_OUTFITS = new Set(['pagne', 'boubou', 'robe', 'chemise-pagne', 'kaba'])
