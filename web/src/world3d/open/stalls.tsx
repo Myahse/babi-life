@@ -17,6 +17,7 @@ import type { Nav } from './nav'
 import { placeIn, useJoined } from './joinIn'
 import { useShare } from '../../lib/share'
 import { GameHistory } from '../../components/GameHistory'
+import { LOTO_ODDS, LotoTickets } from '../../components/LotoTickets'
 import { keyOpen, useFeatures } from '../../lib/features'
 
 // The sellers of the street, at the edge of the real streets around the Sim,
@@ -448,7 +449,13 @@ function LotoMenu({ onChoose, onClose }: { onChoose: (choice: string) => void; o
           </button>
         ))}
       </div>
-      <p className="mt-2 text-[11px] font-bold text-[var(--color-ink-soft)]">Choisis 1 à 3 numéros : ils doivent tous sortir parmi les 5.</p>
+      <div className="mt-2 flex items-center gap-1.5">
+        <p className="min-w-0 flex-1 text-[11px] font-bold text-[var(--color-ink-soft)]">Choisis 1 à 3 numéros : ils doivent tous sortir parmi les 5.</p>
+        {/* « Flash »: the kiosk picks them (as many as already chosen, else one). */}
+        <button className="shrink-0 rounded-full bg-[#141416] px-2.5 py-1 text-[11px] font-extrabold text-white" onClick={() => setPicked((p) => [...Array(90)].map((_, i) => i + 1).sort(() => Math.random() - 0.5).slice(0, Math.max(1, p.length)))}>
+          Flash
+        </button>
+      </div>
       <div className="mt-1 grid grid-cols-10 gap-0.5">
         {[...Array(90)].map((_, i) => (
           <button key={i} onClick={() => toggle(i + 1)} className={`rounded py-0.5 text-[11px] font-extrabold tabular-nums ${picked.includes(i + 1) ? 'bg-[#f26b1d] text-white' : 'bg-[var(--color-canvas)]'}`}>
@@ -468,6 +475,10 @@ function LotoMenu({ onChoose, onClose }: { onChoose: (choice: string) => void; o
         ))}
       </div>
       {badStake && <p className="mt-1 text-[11px] font-bold text-[#d81b3f]">{badStake}</p>}
+      {/* The real chances, told plainly. */}
+      <p className="mt-1 text-[10.5px] font-bold text-[var(--color-ink-soft)]">
+        {[1, 2, 3].map((k) => `${k} n° : 1 chance sur ${Math.round(LOTO_ODDS[k]).toLocaleString('fr-FR')}, ×${pays[k]}`).join(' · ')}
+      </p>
       <button
         disabled={!draw || picked.length === 0 || !!badStake}
         onClick={() => onChoose(JSON.stringify({ draw, numbers: picked, stake }))}
@@ -475,6 +486,7 @@ function LotoMenu({ onChoose, onClose }: { onChoose: (choice: string) => void; o
       >
         {picked.length ? `Jouer ${picked.join('-')} · ${stake} Djai → ${(stake * (pays[picked.length] ?? 0)).toLocaleString('fr-FR')} Djai` : 'Choisis tes numéros'}
       </button>
+      {simId && <LotoTickets simId={simId} />}
       {/* The tickets played before, what they came to (components/GameHistory.tsx). */}
       {simId && (
         <div className="mt-2 rounded-xl bg-[#0f1230] px-2 pt-0.5 pb-2">
