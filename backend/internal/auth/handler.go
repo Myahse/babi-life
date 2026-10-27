@@ -186,7 +186,13 @@ func (h *Handler) BecomeTester(w http.ResponseWriter, r *http.Request) {
 		Code  string `json:"code"`
 		Typed bool   `json:"typed"`
 	}
+	user := UserID(r.Context())
+	if FailedCodes.Full(user) {
+		httpx.Error(w, http.StatusTooManyRequests, "trop d'essais : réessaie dans une heure")
+		return
+	}
 	if err := httpx.Decode(r, &body); err != nil || !adminkey.Tester(body.Code) {
+		FailedCodes.Hit(user)
 		httpx.Error(w, http.StatusForbidden, "code testeur incorrect")
 		return
 	}

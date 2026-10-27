@@ -7,15 +7,26 @@ import (
 	"net/mail"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/myahse/babi-life/backend/internal/httpx"
+	"github.com/myahse/babi-life/backend/internal/throttle"
 )
 
 const minPassword = 8
+
+// Wrong passwords: 10 per account and 40 per network in 15 minutes, then a pause.
+// Sign-ups: 15 an hour per network. The testers' code: 8 wrong tries an hour per account.
+var (
+	failedLogins    = throttle.New(10, 15*time.Minute)
+	signUps         = throttle.New(15, time.Hour)
+	FailedCodes     = throttle.New(8, time.Hour)
+	errTooManyTries = errors.New("trop d'essais : attends un quart d'heure avant de réessayer")
+)
 
 type credentials struct {
 	FirstName string `json:"firstName"`
@@ -97,6 +108,10 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
 		return
 	}
+	if !signUps.Allow(throttle.IP(r)) {
+		httpx.Error(w, http.StatusTooManyRequests, "trop de comptes créés depuis ce réseau : réessaie dans une heure")
+		return
+	}
 	c.clean()
 	switch {
 	case c.FirstName == "" || len(c.FirstName) > 40:
@@ -149,6 +164,16 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	c.clean()
+	// Too many wrong passwords for this account, or from this network: a pause (guessing passwords takes forever).
+	ip := throttle.IP(r)
+	if failedLogins.Full("acct|"+c.Email) || failedLogins.Full("ip|"+ip) {
+		httpx.Error(w, http.StatusTooManyRequests, errTooManyTries.Error())
+		return
+	}
+	failed := func() {
+		failedLogins.Hit("acct|" + c.Email)
+		failedLogins.Hit("ip|" + ip)
+	}
 	var u User
 	var hash *string
 	err := h.DB.QueryRow(r.Context(), `
@@ -156,6 +181,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		RETURNING `+userColumns+`, password_hash`, c.Email,
 	).Scan(&u.ID, &u.Email, &u.Name, &u.FirstName, &u.LastName, &u.Username, &u.AvatarURL, &u.CreatedAt, &u.Tester, &u.Adult, &hash) // userColumns, then the hash
 	if errors.Is(err, pgx.ErrNoRows) {
+		failed()
 		httpx.Error(w, http.StatusUnauthorized, "e-mail, pseudo ou mot de passe incorrect")
 		return
 	}
@@ -168,6 +194,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if bcrypt.CompareHashAndPassword([]byte(*hash), []byte(c.Password)) != nil {
+		failed()
 		httpx.Error(w, http.StatusUnauthorized, "e-mail, pseudo ou mot de passe incorrect")
 		return
 	}

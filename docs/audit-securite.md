@@ -83,7 +83,35 @@ S'il a besoin de quelque chose de plus, il le demande, et on le crée pour le te
 6. **Le WebSocket** : se faire passer pour un autre joueur, piloter un match ou une course qui n'est pas le sien, envoyer des messages énormes ou en rafale.
 7. **Le reste** : les envois de fichiers (taille, type), les requêtes en rafale, les en-têtes de sécurité du site, CORS, les dépendances (`go.mod`, `web/package.json`).
 
-## 7. Après le test
+## 7. Déjà vérifié et corrigé avant l'audit (revue du code, 27 octobre)
+
+**Vérifié, sans problème trouvé :**
+- jetons de session signés, avec expiration et déconnexion à distance ;
+- mots de passe hachés (bcrypt) ;
+- liens de réinitialisation : aléatoires, à usage unique, 30 minutes, limités par heure ;
+- chaque route d'un perso vérifie qu'il appartient bien au joueur ;
+- l'admin et ses parties exigent leur clé, comparée en temps constant ;
+- paiements :
+  - webhook signé, paiement reconfirmé auprès de GeniusPay ;
+  - crédit verrouillé en base, donc jamais deux fois ;
+  - montant, devise et mode test vérifiés ;
+- le site n'injecte jamais de HTML brut (React échappe tout) ;
+- le WebSocket :
+  - vérifie le jeton, le perso et l'origine du site ;
+  - limite la taille des messages.
+
+**Corrigé :**
+- **Les essais de mots de passe sont limités** (`internal/throttle`) :
+  - 10 mauvais mots de passe par compte et 40 par réseau en 15 minutes ;
+  - 15 inscriptions par réseau et par heure ;
+  - 8 mauvais codes testeur par compte et par heure.
+- **Le code testeur** : avec lui, n'importe quel compte pouvait se donner de l'argent par la boîte à outils, et son empreinte est dans le site public (un code court se retrouve hors ligne). Désormais `TESTER_TOOLS=off` ferme le code et la boîte à outils pour tout le monde. **À mettre sur Render à la sortie du jeu.**
+
+**Reste à décider :**
+- Pendant les tests, choisir un code testeur long (une phrase de plusieurs mots), pour qu'on ne puisse pas le retrouver.
+- L'adresse IP vient de l'en-tête `X-Forwarded-For`, que l'appelant peut falsifier. La limite par compte, elle, ne se contourne pas.
+
+## 8. Après le test
 
 - Le propriétaire trie les failles par gravité.
 - On les corrige dans le code, en commençant par l'argent et les comptes.
