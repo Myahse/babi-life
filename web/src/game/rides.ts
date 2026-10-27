@@ -54,6 +54,17 @@ export function compteurQuote(t: { minutes: number; fare: number; toll?: number 
   return { minutes: Math.round(t.minutes * 0.85), fare: withToll(t.fare, t.toll ?? 0, 2, 500, 50) }
 }
 
+/** The métro's orange (line 1). */
+export const METRO = '#f77f00'
+
+/** Mirrors world.MetroQuote: from one station's commune to another's, a ticket each, minutes by the stops. */
+export function metroQuote(world: World, city: string, from: string, to: string) {
+  const s = world.metro?.stations ?? []
+  const [a, b] = [s.findIndex((x) => x.commune === from), s.findIndex((x) => x.commune === to)]
+  if (city !== 'abidjan' || a < 0 || b < 0 || a === b) return null
+  return { minutes: world.metro!.wait + Math.abs(b - a) * world.metro!.perStop, fare: world.metro!.fare, from: s[a].name, to: s[b].name }
+}
+
 /** Mirrors world.GbakaQuote: stopping all along the way, slower than the woro-woro; a seat costs less. */
 export function gbakaQuote(t: { minutes: number; fare: number }) {
   return { minutes: Math.round(t.minutes * 1.25), fare: Math.max(200, Math.round((t.fare * 0.7) / 50) * 50) }

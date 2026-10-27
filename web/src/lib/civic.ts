@@ -33,7 +33,7 @@ export function fareOff(world: World, sim: Sim) {
   return off
 }
 /** The rides the « transport » measure halves (backend sims.publicFare). */
-export const PUBLIC_RIDES = new Set(['taxi', 'woro', 'compteur', 'gbaka', 'car'])
+export const PUBLIC_RIDES = new Set(['taxi', 'woro', 'compteur', 'gbaka', 'car', 'metro'])
 
 /** A price with a share off, rounded to 25 Djai, as the server does. */
 export const discounted = (price: number, off: number) => (price <= 0 || off <= 0 ? price : Math.max(0, Math.round((price * (1 - off)) / 25) * 25))

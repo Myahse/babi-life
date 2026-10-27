@@ -42,7 +42,7 @@ func (h *Handler) activeMeasures(ctx context.Context) []string {
 
 // publicFare: whether a trip's mode is public transport (the « transport » measure halves it).
 func publicFare(mode string) bool {
-	return slices.Contains([]string{"taxi", "woro", "compteur", "gbaka", "car"}, mode)
+	return slices.Contains([]string{"taxi", "woro", "compteur", "gbaka", "car", "metro"}, mode)
 }
 
 // civicAct: what an interaction of the republic does once started (interactAt has

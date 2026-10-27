@@ -95,6 +95,7 @@ import { throwBillets } from '../world3d/clubBillets'
 import type { ActionResult, Block, Furniture, HousePlan, Material, Piece, Plot, Sim, World } from '../lib/types'
 import { FlightView } from '../world3d/FlightView'
 import { AwaleApp } from '../screens/AwaleApp'
+import { MetroView } from '../world3d/MetroView'
 import { LudoApp } from '../screens/LudoApp'
 
 const seededLab = (n: number) => () => ((n = (n * 16807) % 2147483647) / 2147483647)
@@ -126,7 +127,7 @@ const seededLab = (n: number) => () => ((n = (n * 16807) % 2147483647) / 2147483
 // ?view=bridge&kind=fhb|cdg|hkb|yop|ado one of the big bridges over a lagoon
 // (&cam, &look, &night);
 // ?view=party|nightstreet|nightcity: the nights (see night.tsx);
-// ?view=app&app=awale|ludo the phone's board games.
+// ?view=app&app=awale|ludo the phone's board games; ?view=metro inside the métro's carriage.
 // The interior takes &career=sante&level=1 for a Sim at work (&id=work).
 
 const q = new URLSearchParams(location.search)
@@ -647,6 +648,11 @@ function Lab() {
   if (view === 'emotes') return <EmotesLab />
   if (view === 'talk') return <TalkLab />
   // &sococe: the Sococé's own supermarket and shops, its Kinéo in the gallery.
+  if (view === 'metro') {
+    const sim = { id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)), gameMinutes: Number(q.get('m') ?? 12), activity: { kind: 'travel', start: 0, end: 27, interaction: { label: 'Trajet Plateau → Port-Bouët en métro (Ligne 1)' }, trip: { mode: 'metro', fromCity: 'abidjan', fromCommune: 'plateau', city: 'abidjan', commune: 'port-bouet' } } } as unknown as Sim
+    const world = { metro: { name: 'Ligne 1', fare: 500, perStop: 3, wait: 6, stations: ['anyama', 'abobo', 'adjame', 'plateau', 'treichville', 'marcory', 'koumassi', 'port-bouet'].map((c) => ({ commune: c, name: c })) } } as unknown as World
+    return <MetroView world={world} sim={sim} night={night} onMap={() => undefined} />
+  }
   if (view === 'app') {
     const sim = { id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)) } as unknown as Sim
     return <div className="mx-auto h-full max-w-[420px] overflow-y-auto bg-white px-3 pt-2">{q.get('app') === 'ludo' ? <LudoApp sim={sim} /> : <AwaleApp sim={sim} />}</div>

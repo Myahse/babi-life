@@ -186,6 +186,7 @@ func main() {
 				"furniture":     game.Furnitures,
 				"emotes":        game.Emotes,
 				"clothes":       game.Clothes,
+				"metro":         world.Metro,
 				"slots":         map[string]any{"symbols": game.SlotSymbols, "stakes": game.SlotStakes, "perDay": game.SlotsPerDay},
 				"bingo":         map[string]any{"games": game.BingoGames, "stakes": game.BingoStakes, "perDraw": game.BingoCardsPerDraw, "perDay": game.BingoPerDay},
 				"casino":        map[string]any{"chips": game.RouletteChips, "maxTotal": game.RouletteMaxTotal, "maxBets": game.RouletteMaxBets, "stakes": game.BlackjackStakes, "tickets": game.ScratchTickets, "perDay": game.CasinoPerDay, "envol": map[string]any{"stakes": game.EnvolStakes, "period": game.EnvolPeriod, "wait": game.EnvolWait, "maxFlight": game.EnvolMaxFlight, "max": game.EnvolMax}, "trade": map[string]any{"assets": game.TradeAssets, "stakes": game.TradeStakes, "secs": game.TradeSecs, "pays": game.TradePays, "open": game.TradeOpen}},

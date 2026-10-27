@@ -1,12 +1,14 @@
 package sims
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/rand/v2"
 	"slices"
 	"time"
 
+	"github.com/myahse/babi-life/backend/internal/features"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/world"
 )
@@ -308,6 +310,8 @@ const MaxParty = 4
 var (
 	errBikeTooFar   = errors.New("trop loin pour y aller à vélo")
 	errNoRideHere   = errors.New("cette appli ne fait pas ce trajet")
+	errMetroClosed  = errors.New("le métro n'est pas encore ouvert : la ligne 1 est en travaux")
+	errNoMetro      = errors.New("le métro ne va pas là : la ligne 1 passe par Anyama, Abobo, Adjamé, le Plateau, Treichville, Marcory, Koumassi et Port-Bouët")
 	errNoRideClass  = errors.New("cette catégorie de voiture n'existe pas sur l'appli")
 	errOfferRefused = errors.New("aucun chauffeur n'a accepté ton prix : propose un peu plus")
 	errNoWoro       = errors.New("pas de woro-woro ici : prends un taxi compteur")
@@ -413,6 +417,19 @@ func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, ride Ride, r
 		}
 		mode, label = "gbaka", fmt.Sprintf("Trajet %s → %s en gbaka", fromCommune.Name, toCommune.Name)
 		fare *= party // one fare per seat
+	case app == "metro":
+		// The line 1 (world/metro.go), once the update is open (on its date, or by hand).
+		if !features.Default.Open(context.Background(), "metro") {
+			return errMetroClosed
+		}
+		var ok bool
+		var line world.Path
+		if minutes, fare, line, ok = world.MetroQuote(fromCity, fromCommune, toCommune); !ok {
+			return errNoMetro
+		}
+		path = line
+		mode, label = "metro", fmt.Sprintf("Trajet %s → %s en métro (%s)", fromCommune.Name, toCommune.Name, world.Metro.Name)
+		fare *= party // a ticket each
 	case app == "moto":
 		if party > 1 {
 			return errMotoOne

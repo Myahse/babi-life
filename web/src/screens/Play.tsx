@@ -94,6 +94,7 @@ import { Tutorial, beginner, openTutorial, useTutorialAsked } from '../component
 import { haptic, onBack } from '../lib/native'
 import { drive, getIn, gps, parkedNow, parkIn, setParked, startDrive, stopDrive, topSpeed, useDriving, useParked, type Driven } from '../world3d/drive'
 import { FlightView } from '../world3d/FlightView'
+import { MetroView } from '../world3d/MetroView'
 import { aCommune } from '../lib/french'
 
 /** Building one's house: its own screen, downloaded when opened. */
@@ -715,6 +716,8 @@ export function Play() {
     }
     // A flight is booked at the airport (Flights): no driver to find, straight on board.
     if (ride?.app === 'avion') return void (setOverlay(null), run(label, 'plane', 'transport', () => api.travel(sim!.id, cityId, communeId, ride)))
+    // The métro: down to the station, on the next train.
+    if (ride?.app === 'metro') return void (setOverlay(null), run(label, 'train-front', 'transport', () => api.travel(sim!.id, cityId, communeId, ride)))
     // A moto-taxi: one stops right away, the Sim gets on behind.
     if (ride?.app === 'moto') return void (setOverlay(null), run(label, 'bike', 'transport', () => api.travel(sim!.id, cityId, communeId, { app: 'moto' })))
     // The woro-woro, the taxi compteur, the gbaka: waited for at the roadside, the one chosen.
@@ -1113,7 +1116,7 @@ export function Play() {
             // Busy inside (the street seen through « Voir la rue »): the Sim is in there, not at the door.
             indoors: !!inside && !!doing,
             // In the air (FlightView over the street), no name floating over the clouds.
-            nameTag: sim.activity?.trip?.mode === 'avion' ? undefined : `${mine.crew ? `[${mine.crew}] ` : ''}${user?.username ? `@${user.username}` : sim.firstName}${passOn(sim) ? ' ★' : ''}${mine.title ? ` · ${mine.title}` : ''}`,
+            nameTag: sim.activity?.trip?.mode === 'avion' || sim.activity?.trip?.mode === 'metro' ? undefined : `${mine.crew ? `[${mine.crew}] ` : ''}${user?.username ? `@${user.username}` : sim.firstName}${passOn(sim) ? ' ★' : ''}${mine.title ? ` · ${mine.title}` : ''}`,
             happening,
             onNear: setNear,
             // Busy, the Sim isn't frozen: it does what it does where it stands, and walking far
@@ -1623,6 +1626,7 @@ export function Play() {
       {!overlay && (dropAsk ? <DropRouteAsk from={dropAsk.from} moto={dropAsk.moto} /> : <MotoOffer world={world} sim={sim} commune={commune} act={run} />)}
       {/* On a flight: the plane over the clouds (the map is a tap away) */}
       {!overlay && sim.activity?.kind === 'travel' && sim.activity.trip?.mode === 'avion' && <FlightView sim={sim} night={c.isNight} onMap={() => setOverlay('map')} />}
+      {!overlay && sim.activity?.kind === 'travel' && sim.activity.trip?.mode === 'metro' && <MetroView world={world} sim={sim} night={c.isNight} onMap={() => setOverlay('map')} />}
       {chat && (
         <ChatSheet
           npc={chat}
@@ -2449,7 +2453,7 @@ function tripLeft(world: World, a: NonNullable<Sim['activity']>, now: number) {
   const total = t.path && t.path.length > 1 ? t.path.reduce((s, p, i) => (i ? s + km({ lng: t.path![i - 1][0], lat: t.path![i - 1][1] }, { lng: p[0], lat: p[1] }) : 0), 0) : from && to ? km(from, to) * 1.25 : 0
   if (!total) return undefined
   // Hailed at the roadside (or one's own), it's waiting at the kerb a moment; else the driver comes.
-  const pick = t.city !== t.fromCity || t.mode === 'avion' ? 0 : t.mode === 'perso' ? 0.2 : waitsAtKerb(t.mode) ? kerbWait(a.end - a.start) : Math.min(3, Math.max(0.75, (a.end - a.start) * 0.33))
+  const pick = t.city !== t.fromCity || t.mode === 'avion' || t.mode === 'metro' ? 0 : t.mode === 'perso' ? 0.2 : waitsAtKerb(t.mode) ? kerbWait(a.end - a.start) : Math.min(3, Math.max(0.75, (a.end - a.start) * 0.33))
   const at = now - a.start
   if (at < pick) return null
   return total * (1 - Math.min(1, Math.max(0, (at - pick) / Math.max(0.5, a.end - a.start - pick))))
