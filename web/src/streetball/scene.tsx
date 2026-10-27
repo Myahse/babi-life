@@ -348,23 +348,13 @@ function Pitch() {
   )
 }
 
-/** The goals' nets, apart: they bulge when the ball goes in. */
+/** The goals' nets, apart: they give where the ball hits them (looks.tsx Net). */
 function Nets({ g }: { g: Game }) {
-  const refs = useRef<(THREE.Group | null)[]>([])
-  useFrame(() => {
-    const b = g.ball
-    ;[-1, 1].forEach((s, i) => {
-      const m = refs.current[i]
-      if (!m) return
-      const inside = b.dead && Math.sign(b.x) === s && Math.abs(b.x) > PITCH.x
-      m.scale.x = inside ? 1.25 : 1
-    })
-  })
   return (
     <>
-      {[-1, 1].map((s, i) => (
-        <group key={s} ref={(m) => void (refs.current[i] = m)} position={[s * PITCH.x, 0, 0]}>
-          <Net mouth={MOUTH} bar={BAR} depth={1} dir={s as 1 | -1} />
+      {[-1, 1].map((s) => (
+        <group key={s} position={[s * PITCH.x, 0, 0]}>
+          <Net mouth={MOUTH} bar={BAR} depth={1} dir={s as 1 | -1} ball={() => g.ball} at={s * PITCH.x} />
         </group>
       ))}
     </>

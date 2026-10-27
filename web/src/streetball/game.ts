@@ -167,6 +167,8 @@ export type Ball = {
   dead: boolean
   /** Football: a lofted ball (a lob, a cross, a goal kick) still in the air: heads go up for it. */
   lofted: boolean
+  /** The console's football: where the ball is from the feet of the one who has it (eased, so it never jumps). */
+  rel?: V
 }
 
 export type Stats = { points: number; goals: number; dunks: number; assists: number; steals: number; blocks: number; ankles: number }
@@ -497,6 +499,7 @@ function give(g: Game, p: Player) {
   const b = g.ball
   const changed = p.team !== g.poss
   b.owner = p.id
+  b.rel = undefined
   b.flight = null
   b.lastTeam = p.team
   b.lastBy = p.id
@@ -1908,7 +1911,9 @@ function act(g: Game, p: Player, dt: number) {
   if (p.act === 'none' || p.act === 'cross' || p.act === 'celebrate') {
     const sp = speedOf(p)
     const b = g.ball
-    const want = sp > 0.6 ? Math.atan2(p.vx, p.vz) : g.sport === 'basket' && b.owner === p.id ? Math.atan2(HOOP[0] - p.x, HOOP[1] - p.z) : Math.atan2(b.x - p.x, b.z - p.z)
+    // The console's football, the ball at his feet: he turns only by running (looking at the ball at his own feet would spin him round it).
+    const own = g.sport === 'foot' && b.owner === p.id && fifa(g)
+    const want = own ? (sp > 0.3 ? Math.atan2(p.vx, p.vz) : p.face) : sp > 0.6 ? Math.atan2(p.vx, p.vz) : g.sport === 'basket' && b.owner === p.id ? Math.atan2(HOOP[0] - p.x, HOOP[1] - p.z) : Math.atan2(b.x - p.x, b.z - p.z)
     let d = want - p.face
     d = Math.atan2(Math.sin(d), Math.cos(d))
     p.face += d * (1 - Math.exp(-12 * dt))
@@ -1969,6 +1974,21 @@ function moveBall(g: Game, dt: number) {
       b.x = h.x + fx * 0.3
       b.z = h.z + fz * 0.3
       b.y = 1.05
+    } else if (fifa(g)) {
+      // The console: little touches, the ball knocked on quickly and caught up slowly (no
+      // snapping back), bigger the faster he runs; it eases to where it should be at his feet,
+      // so a pass taken while moving, or a turn, never makes it jump about.
+      const amp = 0.38 * clamp((sp - 0.7) / 3, 0, 1)
+      const f = b.phase % 1
+      const push = 0.3 + amp * (f < 0.2 ? f / 0.2 : (1 - f) / 0.8)
+      const rel = b.rel ?? [b.x - h.x, b.z - h.z]
+      const k = 1 - Math.exp(-14 * dt)
+      rel[0] += (fx * push - rel[0]) * k
+      rel[1] += (fz * push - rel[1]) * k
+      b.rel = rel
+      b.x = h.x + rel[0]
+      b.z = h.z + rel[1]
+      b.y = R
     } else {
       // Little touches: the ball pushed ahead, the player catching it up.
       const push = sp > 0.7 ? 0.3 + 0.38 * (b.phase % 1) : 0.32

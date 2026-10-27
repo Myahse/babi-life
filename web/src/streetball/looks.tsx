@@ -140,16 +140,20 @@ export function Blob({ size = 1.25 }: { size?: number }) {
   return <mesh geometry={blobGeo} material={blobMat} position={[0, 0.042, 0]} scale={[size, 1, size]} renderOrder={1} />
 }
 
-/** The netting: thin white cords in squares. */
+/** The netting: cords knotted in squares, a little grey in the knots, a faint veil between (it reads from afar). */
 function netTexture() {
   return once(
-    'net',
+    'net3',
     (c) => {
       const g = c.getContext('2d')!
       g.clearRect(0, 0, 32, 32)
-      g.fillStyle = 'rgba(255,255,255,0.95)'
-      g.fillRect(0, 0, 32, 2)
-      g.fillRect(0, 0, 2, 32)
+      g.fillStyle = 'rgba(255,255,255,0.07)'
+      g.fillRect(0, 0, 32, 32)
+      g.fillStyle = 'rgba(248,249,250,1)'
+      g.fillRect(0, 0, 32, 3)
+      g.fillRect(0, 0, 3, 32)
+      g.fillStyle = 'rgba(206,210,216,1)'
+      g.fillRect(0, 0, 4, 4)
     },
     [32, 32],
   )
@@ -159,29 +163,115 @@ function netTexture() {
 function netMaterial(w: number, h: number) {
   const t = netTexture().clone()
   t.repeat.set(w / 0.12, h / 0.12)
+  t.anisotropy = 8
   t.needsUpdate = true
-  return new THREE.MeshBasicMaterial({ map: t, transparent: true, alphaTest: 0.35, side: THREE.DoubleSide })
+  return new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, side: THREE.DoubleSide })
 }
 
+const rodMat = new THREE.MeshLambertMaterial({ color: '#d9dde2' })
+const rodGeo = new THREE.CylinderGeometry(0.025, 0.025, 1, 6)
+
+/** A rod from a to b (the frame holding the net up at the back). */
+function Rod({ a, b }: { a: [number, number, number]; b: [number, number, number] }) {
+  const { pos, quat, len } = useMemo(() => {
+    const va = new THREE.Vector3(...a)
+    const vb = new THREE.Vector3(...b)
+    const d = vb.clone().sub(va)
+    return { pos: va.add(vb).multiplyScalar(0.5), quat: new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.clone().normalize()), len: d.length() }
+  }, [a, b])
+  return <mesh geometry={rodGeo} material={rodMat} position={pos} quaternion={quat} scale={[1, len, 1]} />
+}
+
+/** The ball as a net sees it (the game's ball): where it is, and whether a goal has just gone in. */
+export type NetBall = { x: number; y: number; z: number; dead: boolean }
+
 /**
- * A goal's net going back from the line at x = 0 towards `dir` (±1): the back,
- * the roof, the two sides; `mouth` the half-width, `bar` the height.
+ * A goal's net going back from the line at x = 0 towards `dir` (±1), as on a
+ * real goal: the roof sloping down from the bar to the back, the back and the
+ * sides hanging a little slack, the white frame holding it at the back and on
+ * the ground; `mouth` the half-width, `bar` the height. With `ball` (and the
+ * goal line's `at`), the net gives where the ball hits it, a hollow round the
+ * ball, then shakes back.
  */
-export function Net({ mouth, bar, depth, dir }: { mouth: number; bar: number; depth: number; dir: 1 | -1 }) {
-  const mats = useMemo(() => ({ back: netMaterial(mouth * 2, bar), roof: netMaterial(depth, mouth * 2), side: netMaterial(depth, bar) }), [mouth, bar, depth])
+export function Net({ mouth, bar, depth, dir, ball, at = 0 }: { mouth: number; bar: number; depth: number; dir: 1 | -1; ball?: () => NetBall; at?: number }) {
+  const low = bar * 0.78
+  const parts = useMemo(() => {
+    // Back: the plane at x = depth, subdivided so it can sag and give.
+    const back = new THREE.PlaneGeometry(mouth * 2, low, 24, 10)
+    back.rotateY(Math.PI / 2)
+    back.translate(dir * depth, low / 2, 0)
+    // Roof: from the bar (x = 0, y = bar) down to the back's top (x = depth, y = low).
+    const roof = new THREE.PlaneGeometry(depth, mouth * 2, 8, 24)
+    roof.rotateX(-Math.PI / 2)
+    const rp = roof.attributes.position
+    for (let i = 0; i < rp.count; i++) {
+      const u = rp.getX(i) / depth + 0.5 // 0 at the bar, 1 at the back
+      const v = rp.getZ(i) / (mouth * 2) + 0.5
+      rp.setX(i, dir * u * depth)
+      // Sloping down, sagging a little in the middle between the rods.
+      rp.setY(i, bar + (low - bar) * u - Math.sin(u * Math.PI) * Math.sin(v * Math.PI) * 0.12)
+    }
+    // Sides: a quad whose top follows the roof.
+    const side = (z: number) => {
+      const g = new THREE.PlaneGeometry(depth, bar, 8, 8)
+      const sp = g.attributes.position
+      for (let i = 0; i < sp.count; i++) {
+        const u = sp.getX(i) / depth + 0.5
+        const h = sp.getY(i) / bar + 0.5
+        const top = bar + (low - bar) * u
+        sp.setXYZ(i, dir * u * depth, h * top, z + Math.sign(z) * Math.sin(u * Math.PI) * Math.sin(h * Math.PI) * 0.06)
+      }
+      return g
+    }
+    const sides = [side(-mouth), side(mouth)]
+    for (const g of [back, roof, ...sides]) g.computeBoundingSphere()
+    return { back, roof, sides, base: Float32Array.from(back.attributes.position.array as Float32Array) }
+  }, [mouth, bar, depth, dir, low])
+  const mats = useMemo(() => ({ back: netMaterial(mouth * 2, low), roof: netMaterial(depth, mouth * 2), side: netMaterial(depth, bar) }), [mouth, bar, depth, low])
+  // Where it was hit and when: the hollow round the ball, then the shaking.
+  const hit = useRef<{ y: number; z: number; t: number; push: number } | null>(null)
+  useFrame((_, dt) => {
+    if (!ball) return
+    const b = ball()
+    const into = (b.x - at) * dir // how far behind the line
+    if (b.dead && into > depth * 0.6 && Math.abs(b.z) < mouth + 0.3 && b.y < bar + 0.3) {
+      const push = Math.min(0.55, Math.max(0, into - depth * 0.6) + 0.25)
+      if (!hit.current || hit.current.t > 0.3) hit.current = { y: b.y, z: b.z, t: 0, push }
+      else hit.current.push = Math.max(hit.current.push, push)
+    }
+    const h = hit.current
+    const pos = parts.back.attributes.position
+    if (!h) return
+    h.t += Math.min(dt, 0.05)
+    // Out with the ball, then shaking back, dying away.
+    const amp = h.push * (h.t < 0.12 ? h.t / 0.12 : Math.exp(-(h.t - 0.12) * 3.2) * Math.cos((h.t - 0.12) * 14))
+    for (let i = 0; i < pos.count; i++) {
+      const y = parts.base[i * 3 + 1]
+      const z = parts.base[i * 3 + 2]
+      const w = Math.exp(-((y - h.y) ** 2 + (z - h.z) ** 2) / 0.45)
+      pos.setX(i, parts.base[i * 3] + dir * amp * w)
+    }
+    pos.needsUpdate = true
+    if (h.t > 2.5) {
+      hit.current = null
+      for (let i = 0; i < pos.count; i++) pos.setX(i, parts.base[i * 3])
+    }
+  })
+  const d = dir * depth
   return (
     <group>
-      <mesh material={mats.back} position={[dir * depth, bar / 2, 0]} rotation={[0, Math.PI / 2, 0]}>
-        <planeGeometry args={[mouth * 2, bar]} />
-      </mesh>
-      <mesh material={mats.roof} position={[(dir * depth) / 2, bar, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[depth, mouth * 2]} />
-      </mesh>
-      {[-1, 1].map((s) => (
-        <mesh key={s} material={mats.side} position={[(dir * depth) / 2, bar / 2, s * mouth]}>
-          <planeGeometry args={[depth, bar]} />
-        </mesh>
+      <mesh geometry={parts.back} material={mats.back} />
+      <mesh geometry={parts.roof} material={mats.roof} />
+      {parts.sides.map((g, i) => (
+        <mesh key={i} geometry={g} material={mats.side} />
       ))}
+      {/* The frame: the two back posts, the bar across the top of the back, the rods along the ground. */}
+      <Rod a={[d, 0, -mouth]} b={[d, low, -mouth]} />
+      <Rod a={[d, 0, mouth]} b={[d, low, mouth]} />
+      <Rod a={[d, low, -mouth]} b={[d, low, mouth]} />
+      <Rod a={[0, 0.02, -mouth]} b={[d, 0.02, -mouth]} />
+      <Rod a={[0, 0.02, mouth]} b={[d, 0.02, mouth]} />
+      <Rod a={[d, 0.02, -mouth]} b={[d, 0.02, mouth]} />
     </group>
   )
 }

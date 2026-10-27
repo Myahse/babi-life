@@ -96,6 +96,7 @@ import type { ActionResult, Block, Furniture, HousePlan, Material, Piece, Plot, 
 import { FlightView } from '../world3d/FlightView'
 import { AwaleApp } from '../screens/AwaleApp'
 import { MetroView } from '../world3d/MetroView'
+import { Net } from '../streetball/looks'
 import { LudoApp } from '../screens/LudoApp'
 
 const seededLab = (n: number) => () => ((n = (n * 16807) % 2147483647) / 2147483647)
@@ -127,7 +128,7 @@ const seededLab = (n: number) => () => ((n = (n * 16807) % 2147483647) / 2147483
 // ?view=bridge&kind=fhb|cdg|hkb|yop|ado one of the big bridges over a lagoon
 // (&cam, &look, &night);
 // ?view=party|nightstreet|nightcity: the nights (see night.tsx);
-// ?view=app&app=awale|ludo the phone's board games; ?view=metro inside the métro's carriage.
+// ?view=app&app=awale|ludo the phone's board games; ?view=metro inside the métro's carriage; ?view=net a goal's net, a ball going in.
 // The interior takes &career=sante&level=1 for a Sim at work (&id=work).
 
 const q = new URLSearchParams(location.search)
@@ -648,6 +649,15 @@ function Lab() {
   if (view === 'emotes') return <EmotesLab />
   if (view === 'talk') return <TalkLab />
   // &sococe: the Sococé's own supermarket and shops, its Kinéo in the gallery.
+  if (view === 'net')
+    return (
+      <Canvas dpr={[1, 2]} camera={{ position: (q.get('cam') ?? '-6,2.6,4.5').split(',').map(Number) as [number, number, number], fov: 45 }} style={{ width: '100vw', height: '100vh', background: '#9ccbea' }}>
+        <hemisphereLight args={['#ffffff', '#6b5a3a', 1.1]} />
+        <directionalLight position={[-8, 12, 6]} intensity={1.2} />
+        <NetLab />
+        <OrbitControls target={[1, 1.1, 0]} />
+      </Canvas>
+    )
   if (view === 'metro') {
     const sim = { id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)), gameMinutes: Number(q.get('m') ?? 12), activity: { kind: 'travel', start: 0, end: 27, interaction: { label: 'Trajet Plateau → Port-Bouët en métro (Ligne 1)' }, trip: { mode: 'metro', fromCity: 'abidjan', fromCommune: 'plateau', city: 'abidjan', commune: 'port-bouet' } } } as unknown as Sim
     const world = { metro: { name: 'Ligne 1', fare: 500, perStop: 3, wait: 6, stations: ['anyama', 'abobo', 'adjame', 'plateau', 'treichville', 'marcory', 'koumassi', 'port-bouet'].map((c) => ({ commune: c, name: c })) } } as unknown as World
@@ -1343,5 +1353,45 @@ function InsideLab() {
     <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
       <HomeInside sim={sim} world={world} plot={plot} interactionId={q.get('act') ?? undefined} roam night={q.has('night')} stage={q.get('stage') ?? 'adulte'} partner={q.has('partner') ? { id: 'p-lab', name: 'Koffi', gender: 'homme', seed: 3, commune: '', friendship: 90, met: 0, seen: 0, adult: true, partner: true, home: true } : undefined} />
     </div>
+  )
+}
+
+/** A goal of the stadium close up, a ball going in now and then (streetball/looks.tsx Net). */
+function NetLab() {
+  const ball = useRef({ x: -3, y: 0.6, z: 0.6, dead: false })
+  const mesh = useRef<THREE.Mesh>(null)
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime % 3
+    const b = ball.current
+    // From the penalty spot into the top corner, held in the net a moment.
+    const k = Math.min(1, t / 0.6)
+    b.x = -6 + k * 8.3
+    b.y = 0.3 + k * 0.9
+    b.z = -0.5 + k * 2.2
+    b.dead = t > 0.4 && t < 1.6
+    mesh.current?.position.set(b.x, b.y, b.z)
+  })
+  return (
+    <>
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[40, 40]} />
+        <meshLambertMaterial color="#3f9b3f" />
+      </mesh>
+      {[-3.4, 3.4].map((z) => (
+        <mesh key={z} position={[0, 1.22, z]}>
+          <boxGeometry args={[0.14, 2.44, 0.14]} />
+          <meshLambertMaterial color="#ffffff" />
+        </mesh>
+      ))}
+      <mesh position={[0, 2.44, 0]}>
+        <boxGeometry args={[0.14, 0.14, 6.94]} />
+        <meshLambertMaterial color="#ffffff" />
+      </mesh>
+      <Net mouth={3.4} bar={2.44} depth={2.2} dir={1} ball={() => ball.current} at={0} />
+      <mesh ref={mesh}>
+        <sphereGeometry args={[0.11, 16, 12]} />
+        <meshLambertMaterial color="#ffffff" />
+      </mesh>
+    </>
   )
 }
