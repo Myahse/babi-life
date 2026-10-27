@@ -48,7 +48,7 @@ func TestStreetSellers(t *testing.T) {
 	for _, c := range []struct {
 		prefix string
 		cost   int
-	}{{"porc", 1500}, {"cafe", 150}, {"the", 100}, {"foot", 0}, {"basket", 0}, {"causerie", 0}, {"preche", 0}, {"oranges", 200}, {"eau", 50}, {"credit", 500}, {"pain", 150}} {
+	}{{"porc", 1500}, {"cafe", 150}, {"the", 100}, {"foot", 0}, {"basket", 0}, {"causerie", 0}, {"preche", 0}, {"traverser", 0}, {"oranges", 200}, {"eau", 50}, {"credit", 500}, {"pain", 150}} {
 		s := newSim() // at noon
 		var had string
 		for i := 0; i < 80 && had == ""; i++ {
