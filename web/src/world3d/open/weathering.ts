@@ -9,7 +9,7 @@ import type * as THREE from 'three'
 // the world (no texture to load), in blocks of a few decimetres so it keeps
 // the game's blocky look, and added to each material's own shader.
 
-export type Weather = 'ground' | 'asphalt' | 'walls' | 'roofs' | 'concrete' | 'tin'
+export type Weather = 'ground' | 'asphalt' | 'walls' | 'roofs' | 'concrete' | 'tin' | 'paint' | 'pavement'
 
 const NOISE = `
 varying vec3 vWeatherW;
@@ -73,6 +73,17 @@ const LOOK: Record<Weather, string> = {
     vec2 bw = floor(vWeatherW.xz * 2.0) / 2.0;
     float rust = smoothstep(0.58, 0.85, wFbm(bw / 3.0 + 9.0));
     diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.25, 0.62, 0.32), rust * 0.35);`,
+  // The paint on the road worn away where the wheels go: grey patches through the white.
+  paint: `
+    vec2 b = floor(vWeatherW.xz * 4.0) / 4.0;
+    float worn = smoothstep(0.45, 0.75, wFbm(b / 1.8 + 21.0));
+    diffuseColor.rgb *= mix(1.0, 0.5, worn);`,
+  // The pavement's slabs: some darker, sand blown onto them, a few cracked.
+  pavement: `
+    vec2 slab = floor(vWeatherW.xz);
+    diffuseColor.rgb *= 0.9 + wHash(slab) * 0.14;
+    float drift = smoothstep(0.55, 0.85, wFbm(floor(vWeatherW.xz * 2.0) / 2.0 / 7.0 + 31.0));
+    diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.08, 0.95, 0.78), drift * 0.6);`,
   concrete: `
     vec2 bw = floor(vec2(vWeatherW.x + vWeatherW.z, vWeatherW.y) * 3.0) / 3.0;
     float streak = smoothstep(0.55, 0.9, wNoise(vec2(bw.x * 1.3, bw.y * 0.15)));
