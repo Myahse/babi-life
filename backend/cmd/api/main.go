@@ -186,6 +186,7 @@ func main() {
 				"furniture":     game.Furnitures,
 				"emotes":        game.Emotes,
 				"clothes":       game.Clothes,
+				"clothingPacks": game.ClothingPacks,
 				"metro":         world.Metro,
 				"slots":         map[string]any{"symbols": game.SlotSymbols, "stakes": game.SlotStakes, "perDay": game.SlotsPerDay},
 				"bingo":         map[string]any{"games": game.BingoGames, "stakes": game.BingoStakes, "perDraw": game.BingoCardsPerDraw, "perDay": game.BingoPerDay},

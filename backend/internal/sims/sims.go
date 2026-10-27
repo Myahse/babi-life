@@ -349,6 +349,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/emotes/{emote}", h.emoteBuy)
 	r.Get("/sims/{id}/clothes", h.clothesList)
 	r.Post("/sims/{id}/clothes/{piece}", h.clothesBuy)
+	r.Post("/sims/{id}/clothes/pack/{pack}", h.clothesPack)
 	r.Get("/sims/{id}/photos", h.photoList)
 	r.Post("/sims/{id}/photos", h.photoTake)
 	r.Get("/sims/{id}/photos/{photo}/raw", h.photoRaw)

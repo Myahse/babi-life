@@ -224,7 +224,8 @@ export type JobTask = { id: string; label: string; icon: string; pose: string; m
 /** An emote: its pose (the id), name, emoji, price (0: free), how long it plays. */
 /** A piece of the boutiques (game/clothes.go): a whole outfit or one more accessory, bought once and kept in the wardrobe. */
 export type MetroLine = { name: string; stations: { commune: string; name: string }[]; fare: number; perStop: number; wait: number }
-export type ClothingPiece = { id: string; label: string; brand: string; kind: 'tenue' | 'accessoire'; gender?: 'femme' | 'homme'; price: number; outfit?: string; outfitColor?: string; pattern?: string; bottomColor?: string; shoeColor?: string; accessory?: string; accessoryColor?: string; shop: 'mall' | 'marche' }
+export type ClothingPiece = { id: string; label: string; brand: string; kind: 'tenue' | 'accessoire'; gender?: 'femme' | 'homme'; price: number; outfit?: string; outfitColor?: string; pattern?: string; bottomColor?: string; shoeColor?: string; accessory?: string; accessoryColor?: string; shop: 'mall' | 'marche' | 'exclu' }
+export type ClothingPack = { id: string; label: string; about: string; pieces: string[] }
 export type Emote = { id: string; label: string; emoji: string; price: number; seconds: number }
 export type World = {
   cities: City[]
@@ -258,6 +259,8 @@ export type World = {
   emotes?: Emote[]
   /** The boutiques' pieces (game/clothes.go). */
   clothes?: ClothingPiece[]
+  /** Lots of pieces at once, in the phone's Boutique (game/clothes.go). */
+  clothingPacks?: ClothingPack[]
   /** The métro's line 1 (world/metro.go): its stations by commune, one ticket, minutes a stop. */
   metro?: MetroLine
   /** The slot machines (game/slots.go): the pictures and what they pay, the stakes each machine takes. */

@@ -167,7 +167,8 @@ export const api = {
   buyEmote: (id: string, emote: string) => post<ActionResult>(`/sims/${id}/emotes/${emote}`, {}),
   /** The boutiques' pieces bought; buying one (in the shop that sells it). */
   clothes: (id: string) => request<{ owned: string[] }>(`/sims/${id}/clothes`),
-  buyPiece: (id: string, piece: string) => post<ActionResult>(`/sims/${id}/clothes/${piece}`, {}),
+  buyPiece: (id: string, piece: string, app = false) => post<ActionResult>(`/sims/${id}/clothes/${piece}${app ? '?app=1' : ''}`, {}),
+  buyClothingPack: (id: string, pack: string) => post<ActionResult>(`/sims/${id}/clothes/pack/${pack}`, {}),
   sessions: () => request<{ sessions: Device[]; legacy: boolean }>('/me/sessions'),
   revokeSession: (id: string) => request<void>(`/me/sessions/${id}`, { method: 'DELETE' }),
   revokeOthers: () => post<{ signedOut: number }>('/me/sessions/others', {}),

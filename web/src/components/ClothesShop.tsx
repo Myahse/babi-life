@@ -14,10 +14,12 @@ import { amount } from '../game/rules'
 // one on (the Sim turns in the mirror); buy it, and it goes to the wardrobe,
 // or put on one already bought.
 
-const SHOP_NAME = { mall: 'Les boutiques du centre', marche: 'Les vendeuses de wax' }
+const SHOP_NAME = { mall: 'Les boutiques du centre', marche: 'Les vendeuses de wax', exclu: 'Babi Life Édition', all: 'Tout le catalogue' }
 
-export function ClothesShop({ world, sim, shop, onResult, onClose, onLeave }: { world: World; sim: Sim; shop: ClothingPiece['shop']; onResult: (r: ActionResult) => void; onClose: () => void; onLeave: () => void }) {
-  const pieces = useMemo(() => forGender(world.clothes ?? [], sim.gender).filter((p) => p.shop === shop), [world.clothes, sim.gender, shop])
+export function ClothesShop({ world, sim, shop, onResult, onClose, onLeave }: { world: World; sim: Sim; /** A shop of the game, or from the phone's Boutique: the exclusive collection, or every piece (« all »). */ shop: ClothingPiece['shop'] | 'all'; onResult: (r: ActionResult) => void; onClose: () => void; onLeave: () => void }) {
+  // From the phone (the exclusive collection, the whole catalogue), bought without walking to the shop.
+  const app = shop === 'exclu' || shop === 'all'
+  const pieces = useMemo(() => forGender(world.clothes ?? [], sim.gender).filter((p) => shop === 'all' || p.shop === shop), [world.clothes, sim.gender, shop])
   const brands = useMemo(() => [...new Set(pieces.map((p) => p.brand))], [pieces])
   const [brand, setBrand] = useState<string | null>(null)
   const [owned, setOwned] = useState<string[]>([])
@@ -47,7 +49,7 @@ export function ClothesShop({ world, sim, shop, onResult, onClose, onLeave }: { 
       setBusy(false)
     }
   }
-  const buy = (p: ClothingPiece) => run(() => api.buyPiece(sim.id, p.id), () => setOwned((o) => [...o, p.id]))
+  const buy = (p: ClothingPiece) => run(() => api.buyPiece(sim.id, p.id, app), () => setOwned((o) => [...o, p.id]))
   const putOn = (p: ClothingPiece) => run(() => api.changeLook(sim.id, wearPiece(look, p)))
 
   return (
@@ -98,8 +100,8 @@ export function ClothesShop({ world, sim, shop, onResult, onClose, onLeave }: { 
         </div>
         {said && <p className={`mx-3 mb-2 rounded-xl px-3 py-2 text-sm font-bold ${said.tone === 'error' ? 'motion-shake bg-[#ffeef1] text-[#d81b3f]' : 'bg-[#e9f9ef] text-[#1b7a43]'}`}>{said.text}</p>}
         <footer className="flex items-center gap-2 border-t border-[var(--color-line)] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <button className="btn btn-soft shrink-0 px-4" onClick={onLeave}>
-            Sortir
+          <button className="btn btn-soft shrink-0 px-4" onClick={app ? onClose : onLeave}>
+            {app ? 'Fermer' : 'Sortir'}
           </button>
           {!tried ? (
             <span className="flex-1 text-center text-sm font-bold text-[var(--color-ink-soft)]">Touche une pièce pour l'essayer</span>
