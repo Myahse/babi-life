@@ -4,7 +4,7 @@ import "testing"
 
 // Every vehicle can be kept somewhere, is drawn by a known body, and comes in colours.
 func TestVehicleModels(t *testing.T) {
-	bodies := map[string]bool{"velo": true, "moto": true, "saloon": true, "berline": true, "suv": true, "4x4": true, "limo": true}
+	bodies := map[string]bool{"velo": true, "moto": true, "saloon": true, "berline": true, "suv": true, "4x4": true, "limo": true, "cruiser": true, "pickup": true, "hyper": true}
 	for _, m := range VehicleModels {
 		if !bodies[m.Body] {
 			t.Errorf("%s: body %q", m.ID, m.Body)

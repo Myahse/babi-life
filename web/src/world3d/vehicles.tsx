@@ -64,15 +64,17 @@ type V3 = [number, number, number]
 /** One block: centre and size, in metres. */
 const K = ({ p, s, m, cast = true }: { p: V3; s: V3; m: THREE.Material; cast?: boolean }) => <mesh geometry={UNIT} material={m} position={p} scale={s} castShadow={cast} />
 
-/** Square wheels, a lighter hub on the outside. */
-function Wheels({ x, r, wide }: { x: number[]; r: number; wide: number }) {
+/** Square wheels, a lighter hub on the outside (`hub`: its colour; `caliper`: the brake showing through it). */
+function Wheels({ x, r, wide, hub = '#c3c7cf', caliper }: { x: number[]; r: number; wide: number; hub?: string; caliper?: string }) {
   return (
     <>
       {x.flatMap((wx) =>
         [-1, 1].map((sz) => (
           <group key={`${wx}${sz}`} position={[wx, r, sz * (wide / 2 - 0.1)]}>
             <K p={[0, 0, 0]} s={[r * 2, r * 2, 0.3]} m={paint('#1b1b20')} cast={false} />
-            <K p={[0, 0, sz * 0.16]} s={[r, r, 0.02]} m={paint('#c3c7cf')} cast={false} />
+            <K p={[0, 0, sz * 0.16]} s={[r * 1.15, r * 1.15, 0.02]} m={paint(hub)} cast={false} />
+            {hub !== '#c3c7cf' && <K p={[0, 0, sz * 0.165]} s={[r * 0.3, r * 0.3, 0.02]} m={paint('#1b1b20')} cast={false} />}
+            {caliper && <K p={[r * 0.32, r * 0.1, sz * 0.163]} s={[r * 0.28, r * 0.46, 0.02]} m={paint(caliper)} cast={false} />}
           </group>
         )),
       )}
@@ -135,19 +137,24 @@ function Car4({ type, body, trim, roofSign }: { type: 'saloon' | 'suv'; body: st
  * berline of the Plateau's managers (long, low, chrome), an SUV, the 4x4 of the up-country
  * roads (tall, bull bar, spare wheel, roof rack) and now and then a limousine (a wedding, a big man).
  */
-export type CarModel = 'saloon' | 'berline' | 'suv' | '4x4' | 'limo'
+export type CarModel = 'saloon' | 'berline' | 'suv' | '4x4' | 'limo' | 'cruiser' | 'pickup' | 'hyper'
 export function carModel(seed: number): CarModel {
   const u = (Math.abs(Math.sin(seed * 12.9898) * 43758.5453) % 1 + 1) % 1
-  return u < 0.3 ? 'saloon' : u < 0.52 ? 'berline' : u < 0.74 ? 'suv' : u < 0.92 ? '4x4' : 'limo'
+  return u < 0.26 ? 'saloon' : u < 0.44 ? 'berline' : u < 0.6 ? 'suv' : u < 0.7 ? '4x4' : u < 0.8 ? 'cruiser' : u < 0.93 ? 'pickup' : u < 0.975 ? 'limo' : 'hyper'
 }
 /** Length, width, wheel radius: what the far shape also needs. */
-const CAR_SIZE: Record<CarModel, [number, number, number]> = { saloon: [4.4, 1.66, 0.32], berline: [4.9, 1.82, 0.34], suv: [4.6, 1.82, 0.38], '4x4': [4.8, 1.92, 0.44], limo: [6.4, 1.84, 0.34] }
+const CAR_SIZE: Record<CarModel, [number, number, number]> = { saloon: [4.4, 1.66, 0.32], berline: [4.9, 1.82, 0.34], suv: [4.6, 1.82, 0.38], '4x4': [4.8, 1.92, 0.44], limo: [6.4, 1.84, 0.34], cruiser: [4.92, 1.98, 0.42], pickup: [5.4, 2.0, 0.46], hyper: [4.55, 2.04, 0.36] }
+/** How tall each looks far off (the body's block). */
+const FAR_TALL: Record<CarModel, number> = { saloon: 1.05, berline: 1.05, suv: 1.3, '4x4': 1.5, limo: 1.05, cruiser: 1.55, pickup: 1.45, hyper: 0.7 }
 const CHROME = new THREE.MeshPhongMaterial({ color: '#d9dee5', shininess: 160, specular: new THREE.Color('#ffffff') })
 /** A limousine's or a big car's tinted glass, darker than the rest. */
 const TINT = new THREE.MeshPhongMaterial({ color: '#0d1117', shininess: 140, specular: new THREE.Color('#8b9bb0') })
 
 function PrivateCar({ model, body }: { model: CarModel; body: string }) {
   if (model === 'saloon' || model === 'suv') return <Car4 type={model} body={body} />
+  if (model === 'cruiser') return <Cruiser body={body} />
+  if (model === 'pickup') return <Pickup body={body} />
+  if (model === 'hyper') return <Hyper body={body} />
   const [len, wide, r] = CAR_SIZE[model]
   const p = paint(body)
   const tall = model === '4x4'
@@ -188,6 +195,201 @@ function PrivateCar({ model, body }: { model: CarModel; body: string }) {
       )}
       <Wheels x={wheels} r={r} wide={wide} />
       <Ends len={len} wide={wide} y={tall ? 0.95 : 0.66} mirror={[cabX + cabLen / 2 - 0.1, c1 + 0.12]} />
+    </group>
+  )
+}
+
+const BLACK = '#202328'
+
+/** A car's front and back of its own: the bumpers, the lights, the plate, the mirrors, the beam at night. */
+function Face({ len, wide, y, lights, bumper, mirror, plate = true }: { len: number; wide: number; y: number; /** the lamps' width and height */ lights: [number, number]; bumper: number; mirror?: [number, number]; plate?: boolean }) {
+  const h = len / 2
+  return (
+    <>
+      {[-1, 1].map((s) => (
+        <group key={s}>
+          <K p={[h + 0.03, y, s * (wide / 2 - lights[0] / 2 - 0.08)]} s={[0.06, lights[1], lights[0]]} m={HEAD} cast={false} />
+          <K p={[-h - 0.03, y, s * (wide / 2 - 0.2)]} s={[0.06, lights[1] * 1.2, 0.26]} m={TAIL} cast={false} />
+          {mirror && <K p={[mirror[0], mirror[1], s * (wide / 2 + 0.12)]} s={[0.16, 0.16, 0.18]} m={paint(BLACK)} cast={false} />}
+          <K p={[s * (h + 0.06), bumper, 0]} s={[0.14, 0.24, wide + 0.04]} m={paint(BLACK)} cast={false} />
+        </group>
+      ))}
+      {plate && (
+        <>
+          <K p={[h + 0.14, bumper + 0.02, 0]} s={[0.02, 0.12, 0.44]} m={paint('#f4f4f4')} cast={false} />
+          <K p={[-h - 0.14, bumper + 0.02, 0]} s={[0.02, 0.12, 0.44]} m={paint('#f4f4f4')} cast={false} />
+        </>
+      )}
+      <mesh geometry={BEAM_GEO} material={BEAM} position={[h + 0.2, 0.08, 0]} />
+    </>
+  )
+}
+
+/** Black wheel arches standing out over the wheels (the big 4x4s and the pick-ups). */
+function Flares({ x, r, wide, y, out = 0.08 }: { x: number[]; r: number; wide: number; y: number; out?: number }) {
+  return (
+    <>
+      {x.flatMap((wx) =>
+        [-1, 1].map((s) => (
+          <group key={`${wx}${s}`}>
+            <K p={[wx, y, s * (wide / 2 + out / 2)]} s={[r * 2.5, 0.16, out + 0.04]} m={paint(BLACK)} cast={false} />
+            {[-1, 1].map((e) => (
+              <K key={e} p={[wx + e * r * 1.2, y - 0.2, s * (wide / 2 + out / 2)]} s={[0.12, 0.34, out + 0.04]} m={paint(BLACK)} cast={false} />
+            ))}
+          </group>
+        )),
+      )}
+    </>
+  )
+}
+
+/**
+ * The big square 4x4 of the bosses and the ministers (the Savane Cruiser):
+ * upright and boxy, a flat bonnet, the wide grille with its bars and the thin
+ * lamps at its corners, black cladding all round the bottom and over the
+ * wheels, the side step, the roof rails, the rear lamps standing up.
+ */
+function Cruiser({ body }: { body: string }) {
+  const [len, wide, r] = CAR_SIZE.cruiser
+  const p = paint(body)
+  const [c0, c1, top] = [0.52, 1.28, 2.06]
+  const [cabLen, cabX] = [3.35, -0.5]
+  const midY = (c1 + top) / 2
+  const wheels = [-1.48, 1.5]
+  return (
+    <group>
+      <K p={[0, (c0 + c1) / 2, 0]} s={[len, c1 - c0, wide]} m={p} />
+      {/* The black cladding round the bottom, the skid plate under the nose */}
+      <K p={[0, c0 + 0.12, 0]} s={[len + 0.02, 0.26, wide + 0.04]} m={paint(BLACK)} cast={false} />
+      <K p={[len / 2 - 0.05, c0 - 0.06, 0]} s={[0.5, 0.08, wide * 0.6]} m={CHROME} cast={false} />
+      {/* The cabin: almost the car's width, upright */}
+      <K p={[cabX, midY, 0]} s={[cabLen, top - c1, wide - 0.1]} m={p} />
+      <K p={[cabX, midY + 0.02, 0]} s={[cabLen - 0.24, (top - c1) * 0.66, wide - 0.06]} m={TINT} cast={false} />
+      <K p={[cabX + cabLen / 2 + 0.005, midY + 0.02, 0]} s={[0.02, (top - c1) * 0.66, wide - 0.36]} m={GLASS} cast={false} />
+      {/* The pillars: the black ones between the doors, the thick one at the back in the paint */}
+      <K p={[cabX + 0.35, midY, 0]} s={[0.12, top - c1, wide - 0.04]} m={paint(BLACK)} cast={false} />
+      <K p={[cabX - cabLen / 2 + 0.3, midY, 0]} s={[0.36, top - c1, wide - 0.04]} m={p} cast={false} />
+      {/* The grille: wide, black, three bright bars, the lamps a thin line at its ends */}
+      <K p={[len / 2 + 0.02, c1 - 0.3, 0]} s={[0.05, 0.42, wide * 0.72]} m={paint('#15171b')} cast={false} />
+      {[0, 1, 2].map((k) => (
+        <K key={k} p={[len / 2 + 0.05, c1 - 0.16 - k * 0.13, 0]} s={[0.02, 0.04, wide * 0.66]} m={CHROME} cast={false} />
+      ))}
+      <Face len={len} wide={wide} y={c1 - 0.12} lights={[0.32, 0.1]} bumper={c0 + 0.1} mirror={[cabX + cabLen / 2 - 0.12, c1 + 0.16]} />
+      {/* Side step, roof rails and their bars */}
+      {[-1, 1].map((s) => (
+        <group key={s}>
+          <K p={[0, c0 - 0.1, s * (wide / 2 + 0.06)]} s={[wheels[1] - wheels[0] - r * 2.6, 0.06, 0.2]} m={paint('#3a3f46')} cast={false} />
+          <K p={[cabX, top + 0.08, s * (wide / 2 - 0.22)]} s={[cabLen - 0.5, 0.06, 0.07]} m={paint('#2b2f36')} cast={false} />
+        </group>
+      ))}
+      {[-0.9, 0.5].map((x) => (
+        <K key={x} p={[cabX + x, top + 0.13, 0]} s={[0.06, 0.04, wide - 0.4]} m={paint('#2b2f36')} cast={false} />
+      ))}
+      <Flares x={wheels} r={r} wide={wide} y={c0 + r * 1.35} />
+      <Wheels x={wheels} r={r} wide={wide} hub="#b8bdc4" />
+    </group>
+  )
+}
+
+/**
+ * The double-cab pick-up (the Baobab): tall on its big tyres, wide black arches,
+ * the big black grille and its silver bar, the skid plate, a stripe down its
+ * flank, four doors, and behind them the bed with its sport bar.
+ */
+function Pickup({ body }: { body: string }) {
+  const [len, wide, r] = CAR_SIZE.pickup
+  const p = paint(body)
+  const [c0, c1, top] = [0.58, 1.3, 2.08]
+  const [cabLen, cabX] = [2.55, 0.3]
+  const bedX = -len / 2 + 0.85 // the middle of the bed
+  const bedLen = len / 2 + cabX - cabLen / 2 - 0.1
+  const midY = (c1 + top) / 2
+  const wheels = [-1.7, 1.7]
+  const dark = paint(BLACK)
+  return (
+    <group>
+      <K p={[0, (c0 + c1) / 2, 0]} s={[len, c1 - c0, wide]} m={p} />
+      <K p={[0, c0 + 0.1, 0]} s={[len + 0.02, 0.2, wide + 0.04]} m={dark} cast={false} />
+      {/* The cab and its glass, the pillar between the two doors */}
+      <K p={[cabX, midY, 0]} s={[cabLen, top - c1, wide - 0.14]} m={p} />
+      <K p={[cabX, midY + 0.02, 0]} s={[cabLen - 0.24, (top - c1) * 0.66, wide - 0.1]} m={TINT} cast={false} />
+      <K p={[cabX + cabLen / 2 + 0.005, midY + 0.02, 0]} s={[0.02, (top - c1) * 0.66, wide - 0.4]} m={GLASS} cast={false} />
+      <K p={[cabX - cabLen / 2 - 0.005, midY + 0.04, 0]} s={[0.02, (top - c1) * 0.5, wide - 0.6]} m={GLASS} cast={false} />
+      <K p={[cabX - 0.1, midY, 0]} s={[0.12, top - c1, wide - 0.08]} m={dark} cast={false} />
+      {/* The bed: its sides and tailgate standing over the body, a black floor, the sport bar behind the cab */}
+      {[-1, 1].map((s) => (
+        <K key={s} p={[bedX, c1 + 0.17, s * (wide / 2 - 0.05)]} s={[bedLen, 0.34, 0.1]} m={p} />
+      ))}
+      <K p={[-len / 2 + 0.06, c1 + 0.17, 0]} s={[0.12, 0.34, wide - 0.1]} m={p} />
+      <K p={[bedX, c1 + 0.01, 0]} s={[bedLen - 0.1, 0.02, wide - 0.2]} m={paint('#15171b')} cast={false} />
+      {[-1, 1].map((s) => (
+        <K key={s} p={[cabX - cabLen / 2 - 0.25, c1 + 0.45, s * (wide / 2 - 0.2)]} s={[0.1, 0.9, 0.1]} m={dark} cast={false} />
+      ))}
+      <K p={[cabX - cabLen / 2 - 0.25, c1 + 0.88, 0]} s={[0.1, 0.1, wide - 0.3]} m={dark} cast={false} />
+      {/* The big black grille, its silver bar, the skid plate */}
+      <K p={[len / 2 + 0.02, c1 - 0.3, 0]} s={[0.05, 0.46, wide * 0.78]} m={paint('#111316')} cast={false} />
+      <K p={[len / 2 + 0.05, c1 - 0.52, 0]} s={[0.03, 0.07, wide * 0.8]} m={CHROME} cast={false} />
+      <K p={[len / 2 - 0.05, c0 - 0.08, 0]} s={[0.6, 0.08, wide * 0.62]} m={CHROME} cast={false} />
+      {/* The stripe down the flank */}
+      {[-1, 1].map((s) => (
+        <K key={s} p={[-0.6, c1 - 0.22, s * (wide / 2 + 0.005)]} s={[len * 0.55, 0.06, 0.01]} m={paint('#c3c7cf')} cast={false} />
+      ))}
+      <Face len={len} wide={wide} y={c1 - 0.1} lights={[0.36, 0.12]} bumper={c0 + 0.08} mirror={[cabX + cabLen / 2 - 0.15, c1 + 0.18]} />
+      <Flares x={wheels} r={r} wide={wide} y={c0 + r * 1.3} out={0.12} />
+      <Wheels x={wheels} r={r} wide={wide} hub="#2b2f36" />
+    </group>
+  )
+}
+
+/**
+ * The hypercar (the Éclair): low and wide, a small glass canopy, the horseshoe
+ * grille, the great chrome curve on the flank round the side intake, the rear
+ * in the second colour, the light bar right across the back, and the wing.
+ */
+function Hyper({ body }: { body: string }) {
+  const [len, wide, r] = CAR_SIZE.hyper
+  const p = paint(body)
+  const second = paint(body === '#0f1115' || body === '#16161c' ? '#1b2a6b' : '#0f1115')
+  const [c0, c1, top] = [0.2, 0.74, 1.16]
+  const [cabLen, cabX] = [1.9, -0.15]
+  const wheels = [-1.4, 1.36]
+  return (
+    <group>
+      {/* The nose in the paint, the back in the second colour */}
+      <K p={[0.55, (c0 + c1) / 2, 0]} s={[len - 1.1, c1 - c0, wide]} m={p} />
+      <K p={[-len / 2 + 0.55, (c0 + c1) / 2 + 0.03, 0]} s={[1.1, c1 - c0 + 0.06, wide]} m={second} />
+      <K p={[len / 2 - 0.5, c1 - 0.04, 0]} s={[1.0, 0.08, wide - 0.3]} m={p} cast={false} />
+      {/* The canopy: almost all glass, narrow, set back */}
+      <K p={[cabX, (c1 + top) / 2, 0]} s={[cabLen, top - c1, wide - 0.5]} m={second} />
+      <K p={[cabX + 0.1, (c1 + top) / 2 + 0.01, 0]} s={[cabLen - 0.2, (top - c1) * 0.8, wide - 0.46]} m={TINT} cast={false} />
+      <K p={[cabX + cabLen / 2 + 0.005, (c1 + top) / 2, 0]} s={[0.02, (top - c1) * 0.8, wide - 0.7]} m={GLASS} cast={false} />
+      {/* The great chrome curve down each flank, round the dark intake behind the door */}
+      {[-1, 1].map((s) => (
+        <group key={s}>
+          <K p={[-0.55, (c0 + top) / 2, s * (wide / 2 + 0.01)]} s={[0.07, top - c0 - 0.1, 0.02]} m={CHROME} cast={false} />
+          <K p={[-0.15, top - 0.08, s * (wide / 2 - 0.12)]} s={[0.8, 0.05, 0.02]} m={CHROME} cast={false} />
+          <K p={[0.2, c0 + 0.08, s * (wide / 2 + 0.01)]} s={[1.5, 0.05, 0.02]} m={CHROME} cast={false} />
+          <K p={[-0.85, (c0 + c1) / 2 + 0.05, s * (wide / 2 + 0.005)]} s={[0.5, 0.3, 0.01]} m={paint('#0b0c0f')} cast={false} />
+          <K p={[cabX + cabLen / 2 - 0.1, c1 + 0.08, s * (wide / 2 - 0.2)]} s={[0.12, 0.1, 0.16]} m={second} cast={false} />
+        </group>
+      ))}
+      {/* The horseshoe grille in the middle of the nose, the thin lamps either side */}
+      <K p={[len / 2 + 0.02, c0 + 0.28, 0]} s={[0.04, 0.34, 0.36]} m={paint('#0b0c0f')} cast={false} />
+      {[-1, 1].map((s) => (
+        <K key={s} p={[len / 2 + 0.04, c0 + 0.3, s * 0.19]} s={[0.03, 0.36, 0.04]} m={CHROME} cast={false} />
+      ))}
+      <K p={[len / 2 + 0.04, c0 + 0.11, 0]} s={[0.03, 0.04, 0.3]} m={CHROME} cast={false} />
+      {[-1, 1].map((s) => (
+        <K key={s} p={[len / 2 + 0.03, c1 - 0.2, s * (wide / 2 - 0.36)]} s={[0.05, 0.07, 0.42]} m={HEAD} cast={false} />
+      ))}
+      {/* The light bar across the back, the wing on its two struts */}
+      <K p={[-len / 2 - 0.03, c1 - 0.14, 0]} s={[0.05, 0.06, wide - 0.2]} m={TAIL} cast={false} />
+      {[-1, 1].map((s) => (
+        <K key={s} p={[-len / 2 + 0.25, c1 + 0.12, s * 0.5]} s={[0.12, 0.22, 0.05]} m={second} cast={false} />
+      ))}
+      <K p={[-len / 2 + 0.22, c1 + 0.24, 0]} s={[0.36, 0.04, wide - 0.2]} m={second} cast={false} />
+      <mesh geometry={BEAM_GEO} material={BEAM} position={[len / 2 + 0.2, 0.08, 0]} />
+      <Wheels x={wheels} r={r} wide={wide} hub="#9aa0a6" caliper="#2f6fe0" />
     </group>
   )
 }
@@ -342,7 +544,7 @@ const FAR_BOX = new THREE.BoxGeometry(1, 1, 1)
 function FarVehicle({ p, r = 0, kind = 'taxi', color, seed = 0, model: own }: VehicleProps) {
   // A private car far off keeps its length and height (a limousine stays long, a 4x4 tall) and its paint.
   const model = kind === 'car' ? (own ?? carModel(seed)) : null
-  const [l, h, w] = model ? [CAR_SIZE[model][0], model === '4x4' ? 1.5 : model === 'suv' ? 1.3 : 1.05, CAR_SIZE[model][1]] : FAR_SIZE[kind]
+  const [l, h, w] = model ? [CAR_SIZE[model][0], FAR_TALL[model], CAR_SIZE[model][1]] : FAR_SIZE[kind]
   const body = model ? carPaint(model, seed, color) : (color ?? (kind === 'taxi' ? '#ff7a00' : kind === 'gbaka' ? '#f4c430' : kind === 'moto' ? '#c92a2a' : kind === 'sotra' ? '#f4f6f5' : '#e9ecef'))
   return (
     <group position={p} rotation={[0, r, 0]}>

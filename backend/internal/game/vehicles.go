@@ -50,6 +50,12 @@ var VehicleModels = []VehicleModel{
 		About: "Le 4x4 qui passe partout, des pistes de l'intérieur aux caniveaux de la saison des pluies."},
 	{ID: "auto-prestige", Kind: "voiture", Name: "Prestige limousine", Price: 32000000, TopSpeed: 90, Body: "limo", FuelPerKm: 150, Colors: []string{"#0f1115", "#f4f4f2"},
 		About: "La longue voiture des mariages et des stars : on te regarde passer."},
+	{ID: "auto-baobab-pick", Kind: "voiture", Name: "Baobab double cabine", Price: 17000000, TopSpeed: 90, Body: "pickup", FuelPerKm: 125, Colors: []string{"#16161c", "#f8f9fa", "#c92a2a", "#8a8f96"},
+		About: "Le pick-up qui en impose : gros pneus, ailes noires, une benne pour tout le chantier, et l'arceau derrière la cabine."},
+	{ID: "auto-savane-cruiser", Kind: "voiture", Name: "Savane Cruiser", Price: 26000000, TopSpeed: 90, Body: "cruiser", FuelPerKm: 130, Colors: []string{"#9aa0a6", "#f8f9fa", "#212529", "#c9b48a"},
+		About: "Le grand 4x4 carré des patrons et des ministres : la calandre large, les barres de toit, le marchepied. Il passe partout, et en silence."},
+	{ID: "auto-eclair", Kind: "voiture", Name: "Éclair de Babi", Price: 180000000, TopSpeed: 140, Body: "hyper", FuelPerKm: 260, Colors: []string{"#1b2a6b", "#0f1115", "#c92a2a", "#f4f4f2"},
+		About: "L'hypercar : basse, large, la calandre en fer à cheval et la grande courbe chromée sur le flanc. Il n'y en a qu'une poignée à Abidjan."},
 }
 
 var ParkingKinds = []ParkingKind{

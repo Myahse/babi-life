@@ -208,15 +208,17 @@ const CARS: [VehicleKind, string | undefined, string | undefined][] = [
 ]
 
 /** &private: one of each of the people's own cars (vehicles.tsx carModel), side by side. */
-const MODELS: CarModel[] = ['saloon', 'berline', 'suv', '4x4', 'limo']
+const MODELS: CarModel[] = ['saloon', 'berline', 'suv', '4x4', 'limo', 'cruiser', 'pickup', 'hyper']
 const modelSeed = (m: CarModel) => [...Array(400).keys()].find((n) => carModel(n) === m) ?? 0
 
 function Cars({ z = 0, spread = 6.5 }: { z?: number; spread?: number }) {
+  // &car=cruiser&color=…: that one alone, close up (with &cam=x,y,z).
+  if (q.get('car')) return <Vehicle p={[0, 0, z]} r={Number(q.get('r') ?? 0)} kind="car" model={q.get('car') as CarModel} color={q.get('color') ? `#${q.get('color')}` : undefined} seed={1} />
   if (q.has('private'))
     return (
       <>
         {MODELS.map((m, i) => (
-          <Vehicle key={m} p={[(i - 2) * spread - 2, 0, z]} kind="car" color={['#f8f9fa', '#1b2a4a', '#212529', '#c9b48a', undefined][i]} seed={modelSeed(m)} />
+          <Vehicle key={m} p={[(i - 2) * spread - 2, 0, z]} kind="car" color={['#f8f9fa', '#1b2a4a', '#212529', '#c9b48a', undefined, '#9aa0a6', '#16161c', '#1b2a6b'][i]} seed={modelSeed(m)} />
         ))}
       </>
     )
@@ -731,7 +733,7 @@ function Lab() {
   if (view === 'map') return <MapLab />
   const cars = view === 'cars'
   return (
-    <Canvas shadows dpr={[1, 2]} camera={cars ? { position: [4, 6, 30], fov: 40 } : view === 'street' ? { position: [-18, 9, 26], fov: 50 } : { position: [55, 60, 70], fov: 45 }} style={{ width: '100vw', height: '100vh' }}>
+    <Canvas shadows dpr={[1, 2]} camera={cars ? { position: (q.get('cam') ?? '4,6,30').split(',').map(Number) as [number, number, number], fov: 40 } : view === 'street' ? { position: [-18, 9, 26], fov: 50 } : { position: [55, 60, 70], fov: 45 }} style={{ width: '100vw', height: '100vh' }}>
       <hemisphereLight args={['#ffffff', '#b8a27c', 1.2]} />
       <directionalLight position={[40, 80, 30]} intensity={1.8} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-70} shadow-camera-right={70} shadow-camera-top={70} shadow-camera-bottom={-70} />
       {cars ? (
