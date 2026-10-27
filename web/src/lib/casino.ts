@@ -53,3 +53,10 @@ export function scaled(amount: number, rate: CasinoRate | undefined, natural?: n
   if (!rate || !rate.set || !nat || Math.abs(rate.rate - nat) < 1e-9) return amount
   return Math.floor((amount * rate.rate) / nat)
 }
+
+/** Mirrors game.ScratchAt: a ticket's prize at the rate, to the nearest 10 Djai. */
+export function scaledTicket(amount: number, rate: CasinoRate | undefined, natural?: number) {
+  const nat = natural ?? rate?.natural
+  if (!rate || !rate.set || !nat || Math.abs(rate.rate - nat) < 1e-9) return amount
+  return Math.round((amount * rate.rate) / nat / 10) * 10
+}

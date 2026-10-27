@@ -8,6 +8,7 @@ import type { Act } from '../phoneApps'
 import { StakeField, stakeOK } from '../../components/StakeField'
 import { pct, useCasinoRates } from '../../lib/casino'
 import { GameHistory } from '../../components/GameHistory'
+import { RulesFold } from '../../components/RulesFold'
 
 /**
  * L'Envol (backend game/envol.go, sims/envol.go), in Babi Casino: a bet before
@@ -208,10 +209,10 @@ export function Envol({ world, sim, act }: Props) {
           })}
         </div>
       )}
-      <p className="mt-3 text-center text-[11.5px] leading-snug font-bold text-white/55">
+      <RulesFold>
         Mise avant le décollage. Tant que l'avion vole, le multiplicateur monte : encaisse avant qu'il parte et tu gagnes ta mise fois le multiplicateur. Parti avant, ta mise est perdue. Où il part, personne ne le sait avant : le jeu rend
         {pct(back)} des mises en moyenne (son taux de retour), quel que soit le moment où tu encaisses.
-      </p>
+      </RulesFold>
       <GameHistory simId={sim.id} jeu="envol" tick={st?.round?.n} />
     </div>
   )

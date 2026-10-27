@@ -7,6 +7,7 @@ import type { Act } from '../phoneApps'
 import { StakeField, stakeOK } from '../../components/StakeField'
 import { pct, useCasinoRates } from '../../lib/casino'
 import { GameHistory } from '../../components/GameHistory'
+import { RulesFold } from '../../components/RulesFold'
 
 /**
  * Babi Trade (backend game/envol.go, sims/trade.go), in Babi Casino: made-up
@@ -197,10 +198,11 @@ export function Trade({ world, sim, act }: Props) {
       <div className="mt-3 flex gap-2 rounded-[18px] border border-[#ffcc33]/40 bg-[#ffcc33]/10 p-3 text-[12px] leading-snug font-bold text-[#ffe7a3]">
         <TriangleAlert size={18} className="mt-0.5 shrink-0" />
         <span>
-          Ce n'est pas du vrai trading : les cours sont tirés au hasard chaque seconde, la courbe ne dit rien de la suite, et le jeu garde en moyenne {pct(1 - pays / 2)} des mises (taux de retour {pct(pays / 2)}). Le marché ouvre par séances d'une heure, chacune à un nouveau cours : un
+          Ce n'est pas du vrai trading : les cours sont tirés au hasard chaque seconde, la courbe ne dit rien de la suite, et le jeu garde une part des mises. Le marché ouvre par séances d'une heure, chacune à un nouveau cours : un
           pari se termine avant la clôture. Dans la vraie vie, les « options binaires » et les « traders » qui promettent de doubler ton argent sur les réseaux sont presque toujours des arnaques.
         </span>
       </div>
+      <RulesFold>Un bon pari paie ×{pays.toFixed(2).replace('.', ',')} ta mise ; un mauvais, ta mise est perdue. Le jeu garde en moyenne {pct(1 - pays / 2)} des mises (taux de retour {pct(pays / 2)}).</RulesFold>
       <GameHistory simId={sim.id} jeu="trade" tick={(st?.calls ?? []).filter((c) => c.status !== 'open').length} />
     </div>
   )

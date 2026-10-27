@@ -7,6 +7,7 @@ import type { Act } from '../phoneApps'
 import { StakeField, stakeOK } from '../../components/StakeField'
 import { pct, useCasinoRates } from '../../lib/casino'
 import { GameHistory } from '../../components/GameHistory'
+import { RulesFold } from '../../components/RulesFold'
 
 /**
  * La roulette of Babi Casino (backend game/casino.go): the European wheel with
@@ -437,11 +438,11 @@ export function Roulette({ world, sim, act, hold }: Props) {
           {spinning ? 'Rien ne va plus…' : result && Object.keys(last).length ? `Relancer · ${nf(total)}` : `Lancer la bille · ${nf(total)}`}
         </button>
       </div>
-      <p className="mt-2 text-center text-[11.5px] font-bold text-white/55">
+      <RulesFold>
         Plein ×35 · cheval ×17 · transversale ×11 · carré ×8 · sixain ×5 · douzaine et colonne ×2 · rouge, noir, pair, impair, 1-18, 19-36 ×1. Le zéro gagne pour la banque.
         {/* At a rate the team set (lib/casino.ts), the house's commission on the net winnings, by bet (the server's game.RouletteCommission). */}
-        {rr?.set && rr.rate < 36 / 37 && ` Taux de retour ${pct(rr.rate)} : la maison garde une commission sur le gain net, de ${pct(commission(rr.rate, 35))} sur un plein à ${pct(commission(rr.rate, 1))} sur les chances simples.`}
-      </p>
+        {rr?.set && rr.rate < 36 / 37 ? ` Taux de retour ${pct(rr.rate)} : la maison garde une commission sur le gain net, de ${pct(commission(rr.rate, 35))} sur un plein à ${pct(commission(rr.rate, 1))} sur les chances simples.` : ` Taux de retour ${pct(36 / 37)}.`}
+      </RulesFold>
       <GameHistory simId={sim.id} jeu="roulette" tick={result} />
     </div>
   )
