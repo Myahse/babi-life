@@ -1,11 +1,13 @@
 package sims
 
 import (
+	"context"
 	"errors"
 	"hash/fnv"
 	"net/http"
 	"strings"
 
+	"github.com/myahse/babi-life/backend/internal/features"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
 )
@@ -67,6 +69,10 @@ var streetSellers = map[string]streetSeller{
 		"Les dames sous le lampadaire", "", "« Il va manger trois pions là ! » Tu supportes avec les autres.", never},
 	"preche": {game.Interaction{ID: "street-preche", Label: "Écouter le prêcheur de rue", Icon: "book-open", Minutes: 15, Effect: game.Needs{Social: 4, Fun: 2}, MinHour: 7, MaxHour: 19},
 		"Le prêcheur du carrefour", "", "« Amen ! » Tu écoutes la parole avec les autres.", never},
+	// An old woman or man at the kerb asking for a hand across the road (streetPeople.tsx Vieux):
+	// a moment, free, and nothing to earn but the blessing.
+	"traverser": {game.Interaction{ID: "street-traverser", Label: "Aider quelqu'un à traverser la route", Icon: "hand-heart", Minutes: 5, Effect: game.Needs{Social: 6, Fun: 2}, MinHour: 6, MaxHour: 21},
+		"Au bord de la route", "", "« Merci mon enfant, que Dieu te garde ! » Vous traversez ensemble, doucement.", never},
 	// The marchands who walk the street (streetlife.tsx Marchand): oranges peeled, frozen water in
 	// its bag, phone credit, the bread of the morning.
 	"oranges": {game.Interaction{ID: "street-oranges", Label: "Manger des oranges épluchées", Icon: "citrus", Minutes: 10, Cost: 200, Effect: game.Needs{Hunger: 12, Energy: 3}, MinHour: 7, MaxHour: 20},
@@ -89,7 +95,7 @@ type StreetActivity struct {
 }
 
 // streetOrder: the street's sellers and scenes, in the encyclopedia's order.
-var streetOrder = []string{"alloco", "porc", "brochette", "cafe", "the", "grin", "oranges", "eau", "pain", "credit", "foot", "basket", "causerie", "travail", "dames", "preche"}
+var streetOrder = []string{"alloco", "porc", "brochette", "cafe", "the", "grin", "oranges", "eau", "pain", "credit", "foot", "basket", "causerie", "travail", "dames", "preche", "traverser"}
 
 // StreetActivities: every activity of the street (the sellers, the scenes joined, the garbadrome).
 func StreetActivities() []StreetActivity {
@@ -149,6 +155,10 @@ func (s *Sim) buyStreet(vendor string) (string, error) {
 		return "", game.ErrBusy
 	}
 	sl := sellerOf(vendor)
+	// An update the team hasn't opened yet (features, the admin's « Mises à jour »).
+	if features.Default.Blocks(context.Background(), sl.it.ID) != "" {
+		return "", errors.New("bientôt dans le jeu")
+	}
 	if !hasStock(vendor, s.GameMinutes) {
 		return sl.soldOut, nil
 	}

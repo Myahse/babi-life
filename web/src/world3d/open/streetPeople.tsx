@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useContext, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import * as THREE from 'three'
@@ -11,8 +11,9 @@ import { whereabouts } from '../whereabouts'
 import { hash, type XZ } from './geo'
 import { TalkHuman } from '../Talkable'
 import type { Nav } from './nav'
-import { BookOpen } from 'lucide-react'
-import { inScene, JoinBubble, placeIn, type Joining } from './joinIn'
+import { BookOpen, HandHeart } from 'lucide-react'
+import { activityOpen, useFeatures } from '../../lib/features'
+import { inScene, JoinBubble, JoinIn, placeIn, type Joining } from './joinIn'
 
 // The people of the street, each at their own street, always the same:
 // - le fou du quartier, who walks up and down talking to nobody, his
@@ -25,10 +26,12 @@ import { inScene, JoinBubble, placeIn, type Joining } from './joinIn'
 // - at the Plateau, the fonctionnaires: suits, shirts and skirts, the
 //   briefcase or the folder under the arm, coming in late in the morning and
 //   going home well before the offices close (« la descente », from 14 h 30;
-//   from noon on Fridays, in pagne as the offices wear it that day).
+//   from noon on Fridays, in pagne as the offices wear it that day);
+// - an old maman or papa at the kerb, waiting to cross: « Mon enfant, tu
+//   m'aides à traverser ? » (behind the update « traverser »).
 // From the shared clock: the same words and steps on every screen.
 
-type Kind = 'fou' | 'pasteur' | 'ecole' | 'bureau'
+type Kind = 'fou' | 'pasteur' | 'ecole' | 'bureau' | 'vieux'
 type Spot = { id: string; kind: Kind; at: XZ; rot: number; w: number; len: number; seed: number }
 
 const NEAR = 240 // metres: drawn around the Sim
@@ -45,6 +48,7 @@ function outNow(kind: Kind, day: number, h: number) {
   if (kind === 'fou') return h >= 6 && h < 23
   if (kind === 'pasteur') return (h >= 7 && h < 12) || (h >= 16 && h < 19.5)
   if (kind === 'bureau') return officeWalk(day, h) !== 0
+  if (kind === 'vieux') return h >= 6 && h < 21
   return schoolWalk(day, h) > 0
 }
 
@@ -75,13 +79,15 @@ export function StreetPeople({ nav, seed }: { nav: Nav; seed: string }) {
       const m: XZ = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]
       const h = hash(Math.round(m[0]), Math.round(m[1]), 377)
       // Pupils on many streets, a pastor here and there, a fou rarely; at the Plateau, the offices' people on the avenues too.
-      const kind: Kind | null = plateau && h > 0.7 ? 'bureau' : e.width > 14 ? null : h < 0.012 ? 'fou' : h < 0.03 ? 'pasteur' : h < 0.1 ? 'ecole' : null
+      const kind: Kind | null = plateau && h > 0.7 ? 'bureau' : e.width > 14 ? null : h < 0.012 ? 'fou' : h < 0.03 ? 'pasteur' : h < 0.1 ? 'ecole' : h < 0.14 ? 'vieux' : null
       if (!kind) continue
       const [ux, uz] = [(b[0] - a[0]) / e.len, (b[1] - a[1]) / e.len]
       out.push({ id: `${kind}:${seed}:${Math.round(m[0])}:${Math.round(m[1])}`, kind, at: m, rot: Math.atan2(-uz, ux), w: e.width, len: e.len, seed: hash(m[0], m[1], 5) })
     }
     return out
   }, [nav, seed])
+  const feats = useFeatures()
+  const elders = activityOpen(feats, 'street-traverser')
   const [shown, setShown] = useState<Spot[]>([])
   const tick = useRef(10)
   useFrame((_, dt) => {
@@ -91,7 +97,7 @@ export function StreetPeople({ nav, seed }: { nav: Nav; seed: string }) {
     const [day, h] = clock()
     const [sx, sz] = whereabouts.sim
     const near = all
-      .filter((s) => outNow(s.kind, day, h))
+      .filter((s) => outNow(s.kind, day, h) && (s.kind !== 'vieux' || elders))
       .map((s) => ({ s, d: Math.hypot(s.at[0] - sx, s.at[1] - sz) }))
       .filter((x) => x.d < NEAR)
       .sort((a, b) => a.d - b.d)
@@ -105,6 +111,7 @@ export function StreetPeople({ nav, seed }: { nav: Nav; seed: string }) {
         <group key={s.id}>
           <StreetSpot spot={s} />
           {s.kind === 'pasteur' && <JoinBubble j={preacherJoin(s)} />}
+          {s.kind === 'vieux' && <JoinBubble j={crossJoin(s)} />}
         </group>
       ))}
     </>
@@ -124,10 +131,16 @@ function preacherJoin(s: Spot): Joining {
   return { vendor: `preche:${s.id}`, activity: 'street-preche', at, y: 2.9, ask: 'Écouter le prêcheur', icon: BookOpen, far: 'Approche, écoute la parole !', spot: placeIn(s, x * Math.cos(q) + z * Math.sin(q), side * (s.w / 2 + 1.6) - x * Math.sin(q) + z * Math.cos(q), a + Math.PI + q, 'idle') }
 }
 
+/** Helping across: the Sim's place is on the far kerb, facing on (walked to across the road, the old one beside it). */
+function crossJoin(s: Spot): Joining {
+  const side = s.seed < 0.5 ? 1 : -1
+  return { vendor: `traverser:${s.id}`, activity: 'street-traverser', at: inScene(s, 0, side * (s.w / 2 + 0.8)), y: 2.5, reach: 10, ask: 'Mon enfant, tu m’aides à traverser ?', icon: HandHeart, far: 'Approche, mon enfant !', spot: placeIn(s, 0, -side * (s.w / 2 + 1.4), side > 0 ? Math.PI : 0, 'idle') }
+}
+
 export function StreetSpot({ spot }: { spot: Spot }) {
   return (
     <group position={[spot.at[0], 0, spot.at[1]]} rotation={[0, spot.rot, 0]}>
-      {spot.kind === 'fou' ? <Fou spot={spot} /> : spot.kind === 'pasteur' ? <Pasteur spot={spot} /> : spot.kind === 'bureau' ? <Fonctionnaires spot={spot} /> : <Pupils spot={spot} />}
+      {spot.kind === 'fou' ? <Fou spot={spot} /> : spot.kind === 'vieux' ? <Vieux spot={spot} /> : spot.kind === 'pasteur' ? <Pasteur spot={spot} /> : spot.kind === 'bureau' ? <Fonctionnaires spot={spot} /> : <Pupils spot={spot} />}
     </group>
   )
 }
@@ -138,6 +151,68 @@ function Say({ text, y = 2.3, tone = 'white' }: { text: string; y?: number; tone
     <Html position={[0, y, 0]} center zIndexRange={[20, 0]}>
       <div className={`rounded-2xl rounded-bl-sm px-3 py-1.5 text-[13px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_6px_14px_-8px_rgba(0,0,0,0.5)] ${tone === 'gold' ? 'bg-[#fff3c4]' : 'bg-white'}`}>{text}</div>
     </Html>
+  )
+}
+
+// ——— The old one waiting to cross ———
+
+/** Who crossed when (by spot): on the far kerb a while, then another one waits there again. */
+const crossed = new Map<string, number>()
+
+function Vieux({ spot }: { spot: Spot }) {
+  const { doing } = useContext(JoinIn)
+  const who = useMemo(() => {
+    const r = rng(spot.id)
+    const gender: 'femme' | 'homme' = r() < 0.6 ? 'femme' : 'homme'
+    const base = randomLook(gender, r)
+    // Grey hair, the pagne or the boubou of the old ones, glasses now and then.
+    const look = { ...base, hairColor: '#cfcac2', hair: gender === 'femme' ? 'headwrap' : 'short', beard: gender === 'homme' ? 'full' : 'none', outfit: gender === 'femme' ? 'pagne' : 'boubou', accessory: r() < 0.4 ? 'glasses' : 'none' } as Required<Look>
+    return { gender, look, seed: r() * 100 }
+  }, [spot.id])
+  const vendor = `traverser:${spot.id}`
+  const side = spot.seed < 0.5 ? 1 : -1
+  const [from, to] = [side * (spot.w / 2 + 0.8), -side * (spot.w / 2 + 0.9)]
+  const ref = useRef<THREE.Group>(null)
+  const [state, setState] = useState<{ pose: Pose; say: string | null }>({ pose: 'idle', say: null })
+  const last = useRef({ x: 0, z: from })
+  useFrame((_, dt) => {
+    const g = ref.current
+    if (!g) return
+    const t = worldTime()
+    const helping = doing === 'street-traverser' && whereabouts.joined?.id === vendor
+    // The Sim, in the scene's frame (x along the street, z across).
+    const [dx, dz] = [whereabouts.sim[0] - spot.at[0], whereabouts.sim[1] - spot.at[1]]
+    const [sx, sz] = [dx * Math.cos(spot.rot) - dz * Math.sin(spot.rot), dx * Math.sin(spot.rot) + dz * Math.cos(spot.rot)]
+    const done = crossed.get(spot.id)
+    if (done !== undefined && t - done > 600) crossed.delete(spot.id)
+    let [x, z] = [0, crossed.has(spot.id) ? to : from]
+    let pose: Pose = 'idle'
+    let say: string | null = null
+    if (helping && !crossed.has(spot.id)) {
+      // Beside the Sim once it's at the kerb, across with it, slowly.
+      const across = (sz - from) * Math.sign(to - from)
+      if (Math.abs(sx) < 3 && across > -2.5) {
+        x = sx + 0.7
+        z = Math.max(Math.min(sz, Math.max(from, to)), Math.min(from, to))
+        if ((z - to) * Math.sign(from - to) < 0.3) crossed.set(spot.id, t)
+      }
+    }
+    if (crossed.has(spot.id) && t - crossed.get(spot.id)! < 20) say = 'Merci mon enfant, que Dieu te garde !'
+    const moved = Math.hypot(x - last.current.x, z - last.current.z) > (dt || 0.016) * 0.3
+    if (moved) pose = 'walk'
+    last.current = { x, z }
+    g.position.set(x, 0, z)
+    // Turned to the road and the far side, waiting or crossing.
+    g.rotation.y = Math.atan2(0, to - from)
+    if (pose !== state.pose || say !== state.say) setState({ pose, say })
+  })
+  return (
+    <group ref={ref}>
+      <NoShadows>
+        <TalkHuman id={`vieux-${spot.id}`} look={who.look} gender={who.gender} pose={state.pose} seed={who.seed} />
+      </NoShadows>
+      {state.say && <Say text={state.say} />}
+    </group>
   )
 }
 

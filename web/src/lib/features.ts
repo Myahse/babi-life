@@ -58,5 +58,5 @@ export const activityOpen = (s: State, id: string) => LAB || (!s.interactions.ha
 export const keyOpen = (s: State, key: string) => LAB || (!s.keys.has(key) && (s.known || !MAYBE_KEYS.has(key)))
 
 // What an update may hide (the same as backend features.List): held back while the server's answer hasn't come.
-const MAYBE_INTERACTIONS = new Set(['play-foot11', 'console-combat', 'console-course', 'course-kart', 'regarder-kart', 'borne-arcade', 'machine-maquis', 'machine-casino', 'casino-ivoire', 'tournoi-console', 'console-defi'])
+const MAYBE_INTERACTIONS = new Set(['play-foot11', 'console-combat', 'console-course', 'course-kart', 'regarder-kart', 'borne-arcade', 'machine-maquis', 'machine-casino', 'casino-ivoire', 'tournoi-console', 'console-defi', 'street-traverser'])
 const MAYBE_KEYS = new Set(['foot11', 'foot-coupe', 'foot-carriere', 'historique', 'soiree', 'loto', 'table', 'app:waye', 'app:gbairai', 'app:tikitoko', 'app:babigram', 'app:flashe', 'app:golvo', 'app:dodo', 'app:kineo', 'app:bolide', 'app:gnango', 'app:idrive', 'app:dames', 'app:huit', 'app:bet225', 'app:parisfoot', 'app:bingo', 'app:casino', 'app:politique'])
