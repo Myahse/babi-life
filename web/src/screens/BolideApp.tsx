@@ -50,7 +50,7 @@ export function VehicleArt({ body, color, width = 150 }: { body: string; color: 
       </svg>
     )
   // Cars: how long, how tall, how high off the ground.
-  const [len, tall, lift] = ({ saloon: [104, 22, 0], berline: [112, 22, 0], suv: [108, 28, 3], '4x4': [110, 30, 5], limo: [118, 20, 0] } as Record<string, number[]>)[body] ?? [104, 22, 0]
+  const [len, tall, lift] = ({ saloon: [104, 22, 0], berline: [112, 22, 0], suv: [108, 28, 3], '4x4': [110, 30, 5], limo: [118, 20, 0], cruiser: [112, 31, 5], pickup: [118, 29, 6], hyper: [108, 15, 0] } as Record<string, number[]>)[body] ?? [104, 22, 0]
   const x0 = (120 - len) / 2
   const base = 38 - lift
   const roof = base - tall
