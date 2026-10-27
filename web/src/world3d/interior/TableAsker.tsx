@@ -13,11 +13,26 @@ import type { Spot, XZ } from './bigPlace'
 // At a table or at the bar, a while after the Sim has sat down, someone comes
 // up the way it came: « Je peux m'asseoir à ta table ? ». Yes: they sit across
 // (at the bar, beside) and the chat opens; no: they go on their way. Once per
-// sitting, not every time. Behind the update « table » (lib/features).
+// sitting, not every time. At work, the customers come one after another
+// with their question: help them, or say you're busy (nothing to earn: it's
+// the place living round you). Behind the update « table » (lib/features).
 
 type Phase = 'wait' | 'come' | 'ask' | 'sit' | 'gone' | 'leave'
 
 const SPEED = 1.4
+
+/** What the customers ask whoever works there. */
+const ASKS = [
+  'Bonjour, c’est où les toilettes ?',
+  'Pardon, vous avez la monnaie de 10 000 ?',
+  'Excusez-moi, vous travaillez ici ? Je cherche le rayon des jus.',
+  'C’est combien, ça ?',
+  'Vous fermez à quelle heure ce soir ?',
+  'On m’a dit de demander à vous : le distributeur, c’est par où ?',
+  'Bonsoir, je peux laisser mon sac ici deux minutes ?',
+  'Mon fils s’est perdu un peu, vous n’avez pas vu un petit en maillot jaune ?',
+]
+const THANKS = ['Merci beaucoup, que Dieu te bénisse !', 'Ah merci, tu es gentil·le !', 'Merci, bonne journée à toi !', 'Voilà, c’est ça que je cherchais. Merci !']
 // The lab (city.html?…&table): someone comes at once, every time.
 const QUICK = typeof location !== 'undefined' && location.pathname.endsWith('city.html') && location.search.includes('table')
 
@@ -36,24 +51,29 @@ function pathOf(way: XZ[], spot: Spot): XZ[] | null {
   return [[from[0] + (dx / l) * 3, from[1] + (dz / l) * 3], from]
 }
 
-export function TableAsker({ spot, way, settled, seed }: { spot: Spot | null; way: XZ[]; settled: boolean; /** Whose sitting (the Sim's id). */ seed: string }) {
+export function TableAsker({ spot, way, settled, seed, working }: { spot: Spot | null; way: XZ[]; settled: boolean; /** Whose sitting (the Sim's id). */ seed: string; /** At work there: customers come up instead. */ working?: boolean }) {
   const feats = useFeatures()
-  const at = spot && (spot.pose === 'eat' || spot.pose === 'drink') && !spot.loop ? spot : null
+  const kind = !spot || spot.loop ? null : working ? 'work' : spot.pose === 'eat' || spot.pose === 'drink' ? 'table' : null
+  const at = kind ? spot : null
+  // At work, one customer after another.
+  const [visit, setVisit] = useState(0)
   const plan = useMemo(() => {
     if (!at) return null
     const path = pathOf(way, at)
     if (!path) return null
-    const r = rng(`table|${seed}|${at.at.join(',')}|${Date.now()}`)
-    if (r() > 0.7 && !QUICK) return null
+    const r = rng(`table|${seed}|${at.at.join(',')}|${visit}|${Date.now()}`)
+    if (kind === 'table' && r() > 0.7 && !QUICK) return null
     const gender: 'femme' | 'homme' = r() < 0.5 ? 'femme' : 'homme'
     const n = Math.floor(r() * 1000)
     // Across the table, facing the Sim; at the bar, beside it, facing the counter too.
     const [fx, fz] = [Math.sin(at.rot), Math.cos(at.rot)]
     const seat: XZ = at.pose === 'eat' ? [at.at[0] + fx * 1.5, at.at[1] + fz * 1.5] : [at.at[0] + fz * 0.9, at.at[1] - fx * 0.9]
     const seatRot = at.pose === 'eat' ? at.rot + Math.PI : at.rot
-    return { path, gender, n, look: randomLook(gender, r), name: nameFor(gender, n), delay: QUICK ? 2 : 14 + r() * 26, seat, seatRot }
+    const ask = ASKS[Math.floor(r() * ASKS.length)]
+    const thanks = THANKS[Math.floor(r() * THANKS.length)]
+    return { path, gender, n, look: randomLook(gender, r), name: nameFor(gender, n), delay: QUICK ? 2 : kind === 'work' ? 20 + r() * 40 : 14 + r() * 26, seat, seatRot, ask, thanks }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [at, seed])
+  }, [at, seed, visit])
   const open = keyOpen(feats, 'table')
   const [phase, setPhase] = useState<Phase>('wait')
   const [said, setSaid] = useState<string | null>(null)
@@ -89,7 +109,10 @@ export function TableAsker({ spot, way, settled, seed }: { spot: Spot | null; wa
       o.position.set(x, 0, z)
       o.rotation.set(0, phase === 'come' ? ry : ry + Math.PI, 0)
       if (phase === 'come' && c.d >= len) setPhase('ask')
-      if (phase === 'leave' && c.d <= 0) setPhase('gone')
+      if (phase === 'leave' && c.d <= 0) {
+        setPhase('gone')
+        if (kind === 'work') setVisit((v) => v + 1)
+      }
     } else if (phase === 'ask') {
       // Turned to the Sim.
       const [x, z] = plan.path[plan.path.length - 1]
@@ -122,11 +145,17 @@ export function TableAsker({ spot, way, settled, seed }: { spot: Spot | null; wa
     gender: plan.gender,
     seed: plan.n,
     look: plan.look,
-    doing: at!.pose === 'eat' ? 'à ta table' : 'au bar, à côté de toi',
+    doing: kind === 'work' ? 'venu·e te demander quelque chose' : at!.pose === 'eat' ? 'à ta table' : 'au bar, à côté de toi',
   }
   const pose: Pose = phase === 'sit' ? at!.pose : phase === 'ask' ? 'talk' : 'walk'
   const answer = (yes: boolean) => {
-    if (yes) {
+    if (kind === 'work') {
+      setSaid(yes ? plan.thanks : 'Ah d’accord, je vais demander à quelqu’un d’autre.')
+      setTimeout(() => {
+        setSaid(null)
+        setPhase('leave')
+      }, 1800)
+    } else if (yes) {
       setSaid(at!.pose === 'eat' ? 'Merci, c’est gentil !' : 'Ah, on va bien causer !')
       setPhase('sit')
       setTimeout(() => {
@@ -148,14 +177,14 @@ export function TableAsker({ spot, way, settled, seed }: { spot: Spot | null; wa
         {phase === 'ask' && !said ? (
           <div className="flex flex-col items-center gap-1.5" onPointerDown={(e) => e.stopPropagation()}>
             <div className="rounded-2xl rounded-bl-sm border border-black/5 bg-white px-3 py-1.5 text-[13px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_6px_14px_-8px_rgba(0,0,0,0.5)]">
-              <span className="text-[var(--color-orange)]">{plan.name}</span> · {at!.pose === 'eat' ? 'Je peux m’asseoir à ta table ?' : 'Je peux me poser à côté de toi ?'}
+              <span className="text-[var(--color-orange)]">{plan.name}</span> · {kind === 'work' ? plan.ask : at!.pose === 'eat' ? 'Je peux m’asseoir à ta table ?' : 'Je peux me poser à côté de toi ?'}
             </div>
             <div className="flex gap-1.5">
               <button className="rounded-full bg-[var(--color-orange)] px-3 py-1 text-[12px] font-extrabold text-white shadow" onClick={() => answer(true)}>
-                Oui, assieds-toi
+                {kind === 'work' ? 'Je t’aide' : 'Oui, assieds-toi'}
               </button>
               <button className="rounded-full bg-black/65 px-3 py-1 text-[12px] font-extrabold text-white shadow" onClick={() => answer(false)}>
-                Non merci
+                {kind === 'work' ? 'Je suis occupé·e' : 'Non merci'}
               </button>
             </div>
           </div>
