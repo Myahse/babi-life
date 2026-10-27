@@ -78,7 +78,7 @@ import { SHOP_OF } from '../lib/clothes'
 import { SoundToggle, Soundtrack } from '../components/Soundtrack'
 import { usePartySound } from '../world3d/open/party'
 import { MiniMap, WhereTo } from '../components/Navigator'
-import { ChatSheet, type Reply } from '../components/ChatSheet'
+import { ChatSheet, type FreeTalk, type Reply } from '../components/ChatSheet'
 import { SERVICES } from '../world3d/interior/worshipRooms'
 import { npcReact } from '../world3d/open/npcReact'
 import type { Npc } from '../world3d/open/OpenWorld'
@@ -642,6 +642,23 @@ export function Play() {
       if (mood) npcReact(npc.id, mood, mood === 'bye' ? 2.5 : 3.2)
       if (money) toast({ tone: 'done', title: label, money, kind: 'social', icon: 'messages-square' })
       return { text, mood }
+    } catch (e) {
+      toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? 'Hors ligne' : 'Pas possible', text: e instanceof Error ? e.message : 'Erreur', money: 0 })
+      return null
+    }
+  }
+
+  // What the player typed themselves (an update: parler-libre): answered in the passer-by's own words (backend sims/chatfree.go).
+  const features = useFeatures()
+  const sayFree = async (text: string, about: FreeTalk): Promise<Reply | null> => {
+    const npc = chat!
+    talkedTo.current = npc.id
+    try {
+      const res = await api.chatFree(sim!.id, { id: npc.id, name: npc.name, gender: npc.gender, seed: npc.seed, look: npc.look }, text, about)
+      apply(res)
+      const { text: answer, mood } = res.outcome
+      if (mood) npcReact(npc.id, mood, mood === 'bye' ? 2.5 : 3.2)
+      return { text: answer, mood }
     } catch (e) {
       toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? 'Hors ligne' : 'Pas possible', text: e instanceof Error ? e.message : 'Erreur', money: 0 })
       return null
@@ -1636,6 +1653,7 @@ export function Play() {
           npc={chat}
           simGender={sim.gender}
           onSay={say}
+          onType={keyOpen(features, 'chat-libre') ? sayFree : undefined}
           onClose={() => setChat(null)}
           onDames={/^(grin:|dames-)/.test(chat.id) && lifeOf(world, sim).stage?.id !== 'enfant' ? () => (setChat(null), setDamesAsk({ with: 'npc', name: chat.name, max: 2000 })) : undefined}
           onBye={() => {

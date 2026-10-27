@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Beer, BookOpen, Briefcase, Check, Coffee, Grid3x3, Hand, HandCoins, HandHelping, Handshake, Heart, HeartCrack, House, Laugh, Lightbulb, MapPin, MessageCircleQuestion, MessagesSquare, Scissors, Smartphone, Smile, Sparkles, Trophy, Users, Utensils, X, type LucideIcon } from 'lucide-react'
+import { SendHorizontal, Beer, BookOpen, Briefcase, Check, Coffee, Grid3x3, Hand, HandCoins, HandHelping, Handshake, Heart, HeartCrack, House, Laugh, Lightbulb, MapPin, MessageCircleQuestion, MessagesSquare, Scissors, Smartphone, Smile, Sparkles, Trophy, Users, Utensils, X, type LucideIcon } from 'lucide-react'
 import type { Npc } from '../world3d/open/OpenWorld'
 import type { Friend } from '../lib/types'
 import { greetingsFor, helloFrom } from '../lib/nouchi'
@@ -105,6 +105,9 @@ function loveTopics(friend: Friend | undefined, taken?: string): Topic[] {
     { id: 'rompre', label: 'Rompre', icon: HeartCrack, hint: 'C’est fini entre vous', says: ['Il faut qu’on parle… c’est fini entre nous.'] },
   ]
 }
+
+/** What goes with a line typed by the player: the conversation so far and who they are, for their answer. */
+export type FreeTalk = { before: { who: 'me' | 'them'; text: string }[]; job: string; doing?: string; languages: string[]; rapport: number; met: number }
 
 /** What they answered, and how they took it. */
 export type Reply = { text: string; mood?: 'good' | 'bad' | 'bye' }
@@ -219,10 +222,12 @@ function Hearts({ rapport }: { rapport: number }) {
   )
 }
 
-export function ChatSheet({ npc, simGender, onSay, onClose, onBye, onDames, languages = [], onLanguages, gameMinutes = 0, friend, taken, grownUp, adultAccount, onConfirmAdult }: {
+export function ChatSheet({ npc, simGender, onSay, onType, onClose, onBye, onDames, languages = [], onLanguages, gameMinutes = 0, friend, taken, grownUp, adultAccount, onConfirmAdult }: {
   npc: Npc
   simGender: 'femme' | 'homme'
   onSay: (topic: string, label: string, said?: string, lang?: string) => Promise<Reply | null>
+  /** Saying anything, typed (an update: parler-libre); not there, only the topics. */
+  onType?: (text: string, about: FreeTalk) => Promise<Reply | null>
   onClose: () => void
   /** « Au revoir »: the chat is over (not one more thing said). */
   onBye?: () => void
@@ -277,6 +282,25 @@ export function ChatSheet({ npc, simGender, onSay, onClose, onBye, onDames, lang
       const step = r.mood === 'good' ? 1 : -1
       setMem((m) => ({ ...m, rapport: Math.min(5, Math.max(0, m.rapport + step)) }))
     }
+  }
+  // Typed: said as it is, answered in their own words.
+  const [draft, setDraft] = useState('')
+  const typed = useRef<HTMLInputElement>(null)
+  const sendFree = async () => {
+    const text = draft.trim()
+    if (!text || busy || !onType) return
+    setDraft('')
+    setBusy(true)
+    const before = lines.map((l) => ({ who: l.who, text: l.text }))
+    setLines((l) => [...l, { who: 'me', text }])
+    const r = await onType(text, { before, job: jobOf(npc), doing: npc.doing, languages: theirs.map(languageLabel), rapport: mem.rapport, met: mem.met })
+    setBusy(false)
+    if (!r) return (setLines((l) => l.slice(0, -1)), setDraft(text))
+    setLines((l) => [...l, { who: 'them', text: r.text, mood: r.mood }])
+    setTalking(true)
+    if (r.mood === 'bye') return setGone(true)
+    if (r.mood) setMem((m) => ({ ...m, rapport: Math.min(5, Math.max(0, m.rapport + (r.mood === 'good' ? 1 : -1))) }))
+    typed.current?.focus()
   }
   const love = loveTopics(friend, taken)
   // What they speak besides French; the greetings in the player's own languages.
@@ -354,6 +378,18 @@ export function ChatSheet({ npc, simGender, onSay, onClose, onBye, onDames, lang
             </div>
           )}
         </div>
+        {/* Typing what you want to say, like in a messaging app */}
+        {onType && !gone && (
+          <form
+            className="mt-2 flex shrink-0 items-center gap-2 rounded-[22px] border-2 border-[var(--color-line)] bg-white p-1 pl-3.5 transition-colors focus-within:border-[var(--color-orange)]"
+            onSubmit={(e) => (e.preventDefault(), void sendFree())}
+          >
+            <input ref={typed} value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={280} enterKeyHint="send" autoComplete="off" placeholder={`Écris à ${npc.name}…`} aria-label={`Écrire à ${npc.name}`} className="min-w-0 flex-1 bg-transparent py-2 text-[15px] font-bold outline-none placeholder:text-[#9aa0b4] focus-visible:outline-none" />
+            <button type="submit" disabled={!draft.trim() || busy} className={`grid h-10 w-10 shrink-0 place-items-center rounded-full text-white transition ${draft.trim() && !busy ? 'motion-pop bg-[var(--color-orange)] shadow-[inset_0_-3px_0_rgba(0,0,0,0.15)]' : 'bg-[#d6d9e5]'}`} aria-label="Envoyer">
+              <SendHorizontal size={19} strokeWidth={2.6} />
+            </button>
+          </form>
+        )}
         {gone ? (
           <button className="btn motion-pop mt-3 w-full shrink-0" onClick={close}>
             À plus, {npc.name} !

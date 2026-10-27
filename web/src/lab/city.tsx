@@ -1087,7 +1087,7 @@ function TalkLab() {
         </mesh>
         <OrbitControls target={[0, -0.4, 0]} />
       </Canvas>
-      <ChatSheet npc={npc} simGender="femme" onSay={onSay} onClose={() => location.reload()} grownUp={q.has('grown')} adultAccount={q.has('grown')} />
+      <ChatSheet npc={npc} simGender="femme" onSay={onSay} onType={q.has('free') ? async (text) => (await new Promise((r) => setTimeout(r, 900)), { text: `Koffi rigole : « ${text} ? Toi tu es fort dèh ! On est ensemble. »`, mood: 'good' as const }) : undefined} onClose={() => location.reload()} grownUp={q.has('grown')} adultAccount={q.has('grown')} />
     </div>
   )
 }

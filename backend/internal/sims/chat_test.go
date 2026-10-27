@@ -5,6 +5,7 @@ import (
 	"math/rand/v2"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/myahse/babi-life/backend/internal/game"
 )
@@ -65,8 +66,8 @@ func newSimPtr() *Sim { s := newSim(); return &s }
 func TestEveryChatTopic(t *testing.T) {
 	p := Passerby{ID: "x2", Name: "Koffi", Gender: "homme", Seed: 5}
 	for _, topic := range chatTopics {
-		if romantic(topic.id) || topic.id == "langue" {
-			continue // TestRomance, TestGreetIn
+		if romantic(topic.id) || topic.id == "langue" || topic.id == "libre" {
+			continue // TestRomance, TestGreetIn, TestChatFree
 		}
 		if len(topic.yes) == 0 && topic.id != "numero" {
 			t.Errorf("%s has nothing to answer", topic.id)
@@ -231,5 +232,48 @@ func TestGreetIn(t *testing.T) {
 		if langs := game.NpcLanguages(seed); game.LanguageLabel(langs[0]) == "" {
 			t.Fatalf("seed %d: %v", seed, langs)
 		}
+	}
+}
+
+// What the player typed, answered in the passer-by's own words: the game counts it like a chat, never money.
+func TestChatFree(t *testing.T) {
+	p := Passerby{ID: "f1", Name: "Awa", Gender: "femme", Seed: 3}
+	s := newSim()
+	if _, err := s.chat(p, "libre", "Salut", true, rand.New(rand.NewPCG(1, 2))); err != errUnknownTopic {
+		t.Fatalf("libre without an answer: %v", err)
+	}
+	money := s.Money
+	for i := range 2 * chatTurns {
+		ans, err := s.chatWith(p, "libre", "On dit quoi ?", "", true, rand.New(rand.NewPCG(uint64(i), 2)), &chatAnswer{Text: "Y a rien, on est là !", Mood: "good", Money: 5000})
+		if err != nil || ans.Text != "Y a rien, on est là !" || ans.Mood != "good" || ans.Money != 0 {
+			t.Fatalf("turn %d: %+v %v", i, ans, err)
+		}
+	}
+	if s.Money != money {
+		t.Errorf("money changed: %d → %d", money, s.Money)
+	}
+	ans, _ := s.chatWith(p, "libre", "Encore ?", "", true, rand.New(rand.NewPCG(9, 2)), &chatAnswer{Text: "…", Mood: "neutral"})
+	if ans.Mood != "bye" {
+		t.Errorf("a long talk ends: %+v", ans)
+	}
+	s.Activity = nil
+	if ans, _ := s.chatWith(p, "libre", "Bof", "", true, rand.New(rand.NewPCG(9, 2)), &chatAnswer{Text: "Ah bon.", Mood: "neutral"}); ans.Mood != "" {
+		t.Errorf("neutral: %+v", ans)
+	}
+}
+
+func TestTalkQuota(t *testing.T) {
+	var q talkQuota
+	now := time.Date(2026, 10, 27, 12, 0, 0, 0, time.UTC)
+	if q.take("u", now) != nil || q.take("u", now.Add(time.Second)) == nil {
+		t.Fatal("two messages in a second")
+	}
+	for i := 1; i < freeDaily; i++ {
+		if err := q.take("u", now.Add(time.Duration(i)*2*time.Second)); err != nil {
+			t.Fatalf("message %d: %v", i, err)
+		}
+	}
+	if q.take("u", now.Add(time.Hour)) == nil || q.take("v", now.Add(time.Hour)) != nil || q.take("u", now.Add(24*time.Hour)) != nil {
+		t.Error("daily quota")
 	}
 }

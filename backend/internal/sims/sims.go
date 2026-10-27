@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/myahse/babi-life/backend/internal/npcchat"
 	"math/rand/v2"
 	"net/http"
 	"regexp"
@@ -252,6 +253,8 @@ type Handler struct {
 	Bucket *ads.Bucket
 	// Online: how many players are connected now (the live hub); nil in tests.
 	Online func() int
+	// Talk: the passers-by answering what the player types (chatfree.go); nil: off.
+	Talk *npcchat.Client
 }
 
 func (h *Handler) Routes(r chi.Router) {
@@ -310,6 +313,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/street", h.street)
 	r.Post("/sims/{id}/robbed", h.robbed)
 	r.Post("/sims/{id}/chat", h.chatHandler)
+	r.Post("/sims/{id}/chat/free", h.chatFreeHandler)
 	r.Put("/sims/{id}/languages", h.setLanguages)
 	r.Put("/sims/{id}/auto-work", h.setAutoWork)
 	r.Post("/sims/{id}/job-task", h.doJobTask)
