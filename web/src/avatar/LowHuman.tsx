@@ -82,6 +82,29 @@ const BODY: Record<string, { w: number; limb: number; depth: number }> = {
 // the vertices: a person is five meshes (the body, two legs, two arms) of one
 // shared material, and people who look alike share the geometries too.
 const material = new THREE.MeshLambertMaterial({ vertexColors: true })
+/** Lying, swimming, sliding: no shade under the standing figure. */
+const LYING = new Set<Pose>(['swim', 'sleep', 'dive', 'slide'])
+
+/** Whether the far figure lays its own shade on the ground (no: a scene that draws one under each of its people, the matches). */
+export const GroundShade = createContext(true)
+
+/** The shade on the ground under a far figure (they cast none of their own): it stands on the street, not over it. */
+const blobGeo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2)
+let blobMat: THREE.MeshBasicMaterial | null = null
+function blob() {
+  if (blobMat) return blobMat
+  const c = document.createElement('canvas')
+  c.width = c.height = 64
+  const g = c.getContext('2d')!
+  const grad = g.createRadialGradient(32, 32, 2, 32, 32, 31)
+  grad.addColorStop(0, 'rgba(0,0,0,0.42)')
+  grad.addColorStop(0.6, 'rgba(0,0,0,0.22)')
+  grad.addColorStop(1, 'rgba(0,0,0,0)')
+  g.fillStyle = grad
+  g.fillRect(0, 0, 64, 64)
+  blobMat = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 })
+  return blobMat
+}
 type Box = { c: string; s: [number, number, number]; p?: [number, number, number]; hang?: boolean }
 const baked = new Map<string, THREE.BufferGeometry>()
 function part(boxes: Box[]) {
@@ -223,6 +246,7 @@ export function LowHuman({ look, gender, pose = 'idle', seed = 0, speed }: { loo
       }
     }
   })
+  const shade = useContext(GroundShade)
   const seatDrop = pose === 'sit' || pose === 'eat' || pose === 'drink' || pose === 'write' ? -0.41 : 0
   const sleeve = LONG_SLEEVES.has(l.outfit) ? 1 : l.outfit === 'debardeur' || l.outfit === 'basket' || l.outfit === 'souscorps' ? 0 : 0.35
   // The veil, the imam's cap: they're what shows on the head from afar.
@@ -258,6 +282,8 @@ export function LowHuman({ look, gender, pose = 'idle', seed = 0, speed }: { loo
     ...(sleeve > 0 ? [{ c: top, s: [r3(aw), r3((ARM + 0.03) * sleeve), r3(aw)] as [number, number, number], p: [0, 0.03, 0] as [number, number, number], hang: true }] : []),
   ])
   return (
+    <>
+    {shade && seatDrop === 0 && !LYING.has(pose) && <mesh geometry={blobGeo} material={blob()} position={[0, 0.03, 0]} scale={[0.75 * size, 1, 0.6 * size]} renderOrder={1} />}
     <group ref={whole} scale={size} position={[0, seatDrop, 0]}>
       {[0, 1].map((i) => (
         <group key={i} ref={legs[i]} position={[(i ? 1 : -1) * (tw / 4), HIP_Y, 0]}>
@@ -277,5 +303,6 @@ export function LowHuman({ look, gender, pose = 'idle', seed = 0, speed }: { loo
         </group>
       </group>
     </group>
+    </>
   )
 }

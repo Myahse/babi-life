@@ -119,6 +119,18 @@ function outfitOf(l: Required<Look>, femme: boolean) {
   return !femme && FEMME_OUTFITS.has(l.outfit) ? (l.outfit === 'kaba' ? 'boubou' : l.outfit === 'abaya' ? 'imam' : l.outfit === 'soeur' ? 'soutane' : 'casual') : l.outfit
 }
 
+/**
+ * The pixels' filters: crisp up close (each pixel a square), and from a few metres on, the smaller
+ * versions of the sheet (mipmaps) and some anisotropy, so a face, a pagne, a jersey don't sparkle
+ * and shimmer as the person walks away (they did: the full sheet sampled at a few pixels).
+ */
+function pixelFilters(t: THREE.Texture) {
+  t.magFilter = THREE.NearestFilter
+  t.minFilter = THREE.NearestMipmapLinearFilter
+  t.generateMipmaps = true
+  t.anisotropy = 4
+}
+
 /** A stable 0..1 value per pixel, for the grain of hair and cloth. */
 function hash(x: number, y: number) {
   const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453
@@ -1105,8 +1117,7 @@ function paintSheet(l: Required<Look>, femme: boolean, young: boolean) {
   if ((l.marks === 'griffures' || l.marks === 'bagarre') && cut.armRows < 7) for (const [x, y] of [[1, 7], [2, 8], [1, 9]]) p.at(R.arm[1], 'R', x, y, '#a8322a')
 
   const t = canvasTexture(c)
-  t.magFilter = t.minFilter = THREE.NearestFilter
-  t.generateMipmaps = false
+  pixelFilters(t)
   t.colorSpace = THREE.SRGBColorSpace
   return { texture: t, cut, hair }
 }
@@ -1190,8 +1201,7 @@ function pixelTex(key: string, size: number, paint: (x: number, y: number) => st
         g.fillRect(x, y, 1, 1)
       }
     t = canvasTexture(c)
-    t.magFilter = t.minFilter = THREE.NearestFilter
-    t.generateMipmaps = false
+    pixelFilters(t)
     t.colorSpace = THREE.SRGBColorSpace
     texCache.set(key, t)
   }
