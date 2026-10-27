@@ -5,8 +5,7 @@ import "math"
 // The casino's « taux de retour » (backend odds/, the admin's « Casino » tab):
 // what the money games give back, on average, for 1 staked. Untouched, each
 // game gives back its own (Natural); the team may set a level for all of them
-// and one for any game, between OddsMin and OddsMax (not under 55 %: le 21
-// cannot go below about 53 %, Babi Trade would pay less than the stake), the same for every
+// and one for any game, between its floor (OddsFloor) and OddsMax, the same for every
 // player, from the next round. Each game's « Règles » says it, never hidden:
 // the slots, the tickets and bingo pay their prizes scaled (Scaled), L'Envol
 // flies off sooner or later (P(≥ x) = rate / x), Babi Trade pays 2 × rate,
@@ -14,9 +13,23 @@ import "math"
 // the net winnings, said with the result.
 
 const (
-	OddsMin = 0.55
+	OddsMin = 0.30
 	OddsMax = 0.97
 )
+
+// OddsFloor: the lowest a game can give back and still keep to what it says: the roulette's even-money
+// bets give back at least their chance (18 in 37) once the commission takes all the winnings; le 21
+// can't go below about 53 % (its commission all), Babi Trade would pay less than the stake. The
+// others (their prizes scaled, L'Envol flying off sooner) down to OddsMin.
+func OddsFloor(id string) float64 {
+	switch id {
+	case OddsRoulette:
+		return 0.50
+	case Odds21, OddsTrade:
+		return 0.55
+	}
+	return OddsMin
+}
 
 // The games a rate is set for (the admin's ids).
 const (
