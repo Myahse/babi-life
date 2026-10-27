@@ -111,6 +111,8 @@ const MallInside = lazy(() => import('../world3d/interior/MallInside').then((m) 
 import type { MallLayout } from '../world3d/interior/MallInside'
 import { activityOpen, keyOpen, useFeatures } from '../lib/features'
 import { FeatureNews } from '../components/FeatureNews'
+import { Sheet } from '../components/Sheet'
+import { Splash } from '../components/Splash'
 const IvoireInside = lazy(() => import('../world3d/interior/IvoireInside').then((m) => ({ default: m.IvoireInside })))
 const CathedralInside = lazy(() => import('../world3d/interior/CathedralInside').then((m) => ({ default: m.CathedralInside })))
 const MosqueM6Inside = lazy(() => import('../world3d/interior/MosqueM6Inside').then((m) => ({ default: m.MosqueM6Inside })))
@@ -983,7 +985,7 @@ export function Play() {
       {/* An update the team just opened (the admin's « Mises à jour »), once. */}
       <FeatureNews />
       {racing && (
-        <Suspense fallback={<div className="fixed inset-0 z-50 grid place-items-center bg-[#87c5ef] font-display text-2xl font-extrabold text-white">Babi Karting…</div>}>
+        <Suspense fallback={<div className="fixed inset-0 z-50"><Splash label="Babi Karting…" /></div>}>
           <KartRace
             key={racing}
             name={sim.firstName}
@@ -1006,7 +1008,7 @@ export function Play() {
         </Suspense>
       )}
       {ballKey && ballKey !== played && !racing && (!courtKey || court?.key === courtKey) && (
-        <Suspense fallback={<div className="fixed inset-0 z-50 grid place-items-center bg-[#9fd3f2] font-display text-2xl font-extrabold text-white">{ballSport === 'basket' ? 'Sur le terrain…' : eleven ? 'Au stade…' : 'Au maracana…'}</div>}>
+        <Suspense fallback={<div className="fixed inset-0 z-50"><Splash label={ballSport === 'basket' ? 'Sur le terrain…' : eleven ? 'Au stade…' : 'Au maracana…'} /></div>}>
           <StreetMatch key={ballKey} sport={ballSport!} name={sim.firstName} look={sim.look} gender={sim.gender} online={courtKey ? (court?.online ?? undefined) : undefined} rules={elevenRules} onExit={() => setPlayed(ballKey)} />
         </Suspense>
       )}
@@ -2280,15 +2282,17 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
 
   // Mobile (and "not here"): a thumb-friendly action sheet.
   return (
-    <div className="absolute inset-0 z-30 flex flex-col justify-end bg-[#0f1230]/55 backdrop-blur-[3px] lg:items-center lg:justify-center" onClick={onClose}>
-      <div className="sheet animate-up max-h-[80%] w-full overflow-y-auto rounded-t-[28px] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:w-[440px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-4 flex items-center gap-3">
-          <IconTile icon={iconFor(kind.icon)} colors={colors} size={52} />
+    <Sheet onClose={onClose} className="max-h-[80%] overflow-y-auto p-4 lg:w-[440px] [&>*]:shrink-0">
+      {(close) => (
+        <>
+        {/* The place: its colour washing down from the top, its sign popping in */}
+        <div className="-mx-4 -mt-4 mb-3 flex items-center gap-3 rounded-t-[28px] px-4 pt-6 pb-3" style={{ background: `linear-gradient(180deg, ${colors[1]}30, ${colors[1]}00)` }}>
+          <IconTile icon={iconFor(kind.icon)} colors={colors} size={54} className="motion-pop" style={{ boxShadow: 'inset 0 -4px 0 rgba(0,0,0,0.18), inset 0 2px 0 rgba(255,255,255,0.3), 0 10px 18px -10px rgba(0,0,0,0.5)' }} />
           <div className="min-w-0 flex-1">
             <div className="label">{kind.label}</div>
-            <div className="truncate font-display text-[22px] leading-tight font-extrabold">{place.name}</div>
+            <div className="truncate font-display text-[23px] leading-tight font-extrabold">{place.name}</div>
           </div>
-          <button className="icon-btn bg-[var(--color-canvas)]" onClick={onClose} aria-label="Fermer">
+          <button className="icon-btn self-start bg-white/80" onClick={close} aria-label="Fermer">
             <X size={22} strokeWidth={2.6} />
           </button>
         </div>
@@ -2336,8 +2340,9 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
             <TravelCTA world={world} sim={sim} cityId={city.id} communeId={commune.id} onTravel={onTravel} />
           </>
         )}
-      </div>
-    </div>
+        </>
+      )}
+    </Sheet>
   )
 }
 
@@ -2369,9 +2374,9 @@ function ActionButton({ it, colors, open, broke, busy, reason, onPick, compact }
     <button
       disabled={disabled}
       onClick={onPick}
-      className={`flex items-center gap-3 rounded-[20px] p-2.5 text-left transition ${compact ? 'w-60 bg-white shadow-[0_14px_30px_-10px_rgba(0,0,0,0.45)] hover:scale-105' : 'w-full bg-[var(--color-canvas)] active:scale-[0.98]'} ${disabled ? 'opacity-55 grayscale-[0.6] hover:scale-100' : ''}`}
+      className={`flex items-center gap-3 rounded-[20px] p-2.5 text-left transition ${compact ? 'w-60 bg-white shadow-[0_14px_30px_-10px_rgba(0,0,0,0.45)] hover:scale-105' : 'w-full bg-[var(--color-canvas)] shadow-[inset_0_-3px_0_rgba(15,18,48,0.07)] active:translate-y-[2px] active:shadow-none'} ${disabled ? 'opacity-55 grayscale-[0.6] hover:scale-100' : ''}`}
     >
-      <IconTile icon={disabled && (!open || reason) ? Lock : iconFor(it.icon)} colors={colors} size={44} />
+      <IconTile icon={disabled && (!open || reason) ? Lock : iconFor(it.icon)} colors={colors} size={44} style={{ boxShadow: 'inset 0 -3px 0 rgba(0,0,0,0.16), inset 0 2px 0 rgba(255,255,255,0.28)' }} />
       <span className="min-w-0 flex-1">
         <span className="block font-display text-[15px] leading-tight font-extrabold">{it.label}</span>
         <span className="mt-1 flex flex-wrap items-center gap-1">

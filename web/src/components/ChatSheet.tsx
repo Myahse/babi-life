@@ -5,6 +5,8 @@ import type { Friend } from '../lib/types'
 import { greetingsFor, helloFrom } from '../lib/nouchi'
 import { LANGUAGES, goodbyeIn, greetingIn, languageLabel, npcLanguages } from '../lib/languages'
 import { IconTile } from './ui'
+import { Portrait } from '../avatar/portrait'
+import { Sheet } from './Sheet'
 
 // Talking to someone in the street (tap them): their first name, what they
 // do, how well you get on, and a conversation that goes on as long as you
@@ -139,7 +141,7 @@ function remember(id: string, m: Memory) {
   }
 }
 
-/** A light colour (a white shirt, a yellow pagne): the initial on it goes dark. */
+/** A light colour (a white shirt, a yellow pagne): the initial in it goes dark. */
 function light(c?: string) {
   const m = /^#?([0-9a-f]{6})$/i.exec(c ?? '')
   if (!m) return false
@@ -169,6 +171,52 @@ function greeting(npc: Npc, simGender: 'femme' | 'homme', m: Memory): string {
   if (m.rapport >= 4) return `Eh ${toi} ! Mon ami${simGender === 'femme' ? 'e' : ''} ! Viens, viens, on cause !`
   if (m.rapport <= 0) return 'Encore toi ? Bon… dis vite.'
   return ['Te revoilà !', `On se connaît, ${toi} ! Ça dit quoi ?`, "Ah, c'est toi encore ! Ça va un peu ?"][m.met % 3]
+}
+
+/** Their answer, written out letter by letter as they say it (a tap shows it all). */
+function Typed({ text, onType, onDone }: { text: string; onType?: () => void; onDone?: () => void }) {
+  const [n, setN] = useState(0)
+  useEffect(() => {
+    setN(0)
+    // About a second and a half for a long line, quicker for short ones.
+    const step = Math.max(8, Math.min(28, 1400 / text.length))
+    const t = setInterval(() => setN((k) => (k >= text.length ? (clearInterval(t), k) : k + 2)), step)
+    return () => clearInterval(t)
+  }, [text])
+  useEffect(() => onType?.(), [n]) // eslint-disable-line react-hooks/exhaustive-deps
+  const done = n >= text.length
+  useEffect(() => void (done && onDone?.()), [done]) // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <span onClick={() => setN(text.length)}>
+      {text.slice(0, n)}
+      {/* The rest kept in place (invisible), so the bubble doesn't grow line by line. */}
+      {!done && <span className="opacity-0">{text.slice(n)}</span>}
+    </span>
+  )
+}
+
+/** How well you get on, as five hearts: one won pops and floats up, one lost breaks off. */
+function Hearts({ rapport }: { rapport: number }) {
+  const prev = useRef(rapport)
+  const [change, setChange] = useState<{ k: number; up: boolean; id: number } | null>(null)
+  useEffect(() => {
+    if (rapport !== prev.current) setChange({ k: Math.max(rapport, prev.current) - 1, up: rapport > prev.current, id: Date.now() })
+    prev.current = rapport
+  }, [rapport])
+  return (
+    <span className="relative flex gap-0.5" aria-label={`Entente ${rapport} sur 5`}>
+      {[0, 1, 2, 3, 4].map((k) => (
+        <span key={k} className="relative">
+          <Heart size={14} strokeWidth={2.6} className={`${k < rapport ? 'fill-[var(--color-rose)] text-[var(--color-rose)]' : 'text-black/15'} ${change?.k === k ? 'motion-gram-like' : ''}`} key={change?.k === k ? change.id : 0} />
+          {change?.k === k && (
+            <span key={change.id} className="motion-heart-up pointer-events-none absolute -top-1 left-1/2 -ml-2">
+              {change.up ? <Heart size={16} className="fill-[var(--color-rose)] text-[var(--color-rose)]" /> : <HeartCrack size={16} className="text-[var(--color-ink-soft)]" />}
+            </span>
+          )}
+        </span>
+      ))}
+    </span>
+  )
 }
 
 export function ChatSheet({ npc, simGender, onSay, onClose, onBye, onDames, languages = [], onLanguages, gameMinutes = 0, friend, taken, grownUp, adultAccount, onConfirmAdult }: {
@@ -203,11 +251,17 @@ export function ChatSheet({ npc, simGender, onSay, onClose, onBye, onDames, lang
   const [busy, setBusy] = useState(false)
   const [gone, setGone] = useState(false)
   const [group, setGroup] = useState(GROUPS[0].id)
+  // They're saying their line (written out): their face nods.
+  const [talking, setTalking] = useState(true)
   const log = useRef<HTMLDivElement>(null)
   useEffect(() => remember(npc.id, mem), [npc.id, mem])
+  const scroll = () => log.current?.scrollTo({ top: log.current.scrollHeight })
   useEffect(() => {
     log.current?.scrollTo({ top: log.current.scrollHeight, behavior: 'smooth' })
   }, [lines, busy])
+  // Their colours: the tint of the header from their clothes, the ring round their face from how you get on.
+  const tint = /^#[0-9a-f]{6}$/i.test(npc.look.outfitColor ?? '') ? npc.look.outfitColor! : '#ff7a00'
+  const ring = mem.rapport >= 4 ? 'linear-gradient(135deg,#3ee08f,#00a862)' : mem.rapport <= 1 ? 'linear-gradient(135deg,#ff8fa3,#e0245e)' : 'linear-gradient(135deg,#ffd76a,#ff9f1c)'
   const say = async (id: string, label: string, said?: string, lang?: string) => {
     setBusy(true)
     // What the Sim says, word for word (a greeting in a language the game has no words for: what it does).
@@ -216,6 +270,7 @@ export function ChatSheet({ npc, simGender, onSay, onClose, onBye, onDames, lang
     setBusy(false)
     if (!r) return setLines((l) => l.slice(0, -1))
     setLines((l) => [...l, { who: 'them', text: r.text, mood: r.mood }])
+    setTalking(true)
     setUsed((u) => (u.includes(id) ? u : [...u, id]))
     if (r.mood === 'bye') return setGone(true)
     if (r.mood) {
@@ -241,67 +296,80 @@ export function ChatSheet({ npc, simGender, onSay, onClose, onBye, onDames, lang
     void say(t.id, t.label, line, t.lang)
   }
   return (
-    <div className="absolute inset-0 z-30 flex flex-col justify-end bg-[#0f1230]/15 lg:items-center lg:justify-center" onClick={onClose}>
-      <div className="sheet animate-up flex max-h-[68vh] w-full flex-col rounded-t-[28px] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:w-[460px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
-        <div className="flex shrink-0 items-center gap-3">
-          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full font-display text-xl font-extrabold" style={{ background: npc.look.outfitColor ?? '#ff7a00', color: light(npc.look.outfitColor) ? '#141416' : '#ffffff' }}>
-            {npc.name[0]}
+    <Sheet onClose={onClose} dim="bg-[#0f1230]/20" className="max-h-[70vh] p-4 lg:w-[460px]">
+      {(close) => (
+        <>
+        {/* Who you're talking to: their face (nodding while they speak), what they do, how well you get on */}
+        <div className="-mx-4 -mt-4 flex shrink-0 items-center gap-3 rounded-t-[28px] px-4 pt-6 pb-2 lg:rounded-t-[28px]" style={{ background: `linear-gradient(180deg, ${tint}2e, ${tint}00)` }}>
+          <div className={`relative h-[64px] w-[64px] shrink-0 rounded-full p-[3px] ${talking && !busy ? 'motion-talk' : ''}`} style={{ background: ring }}>
+            <div className="relative h-full w-full overflow-hidden rounded-full bg-[radial-gradient(circle_at_50%_35%,#fff6e6,#ffd9a8)]">
+              <span className="absolute inset-0 grid place-items-center font-display text-2xl font-extrabold" style={{ color: light(tint) ? '#5b6178' : tint }}>
+                {npc.name[0]}
+              </span>
+              <Portrait look={npc.look} gender={npc.gender} framing="head" className="absolute inset-0 h-full w-full scale-[1.15] object-cover" alt={npc.name} />
+            </div>
           </div>
           <div className="min-w-0 flex-1">
-            <div className="label truncate">
-              {jobOf(npc)} · {npc.doing ? `${npc.doing} · ` : ''}{mem.met <= 1 ? '1re rencontre' : `Vu·e ${mem.met} fois`}
-            </div>
             <div className="flex items-center gap-2">
-              <span className="font-display text-[22px] leading-tight font-extrabold">{npc.name}</span>
-              <span className="flex gap-0.5" aria-label={`Entente ${mem.rapport} sur 5`}>
-                {[0, 1, 2, 3, 4].map((k) => (
-                  <Heart key={k} size={13} strokeWidth={2.6} className={k < mem.rapport ? 'fill-[var(--color-rose)] text-[var(--color-rose)]' : 'text-black/15'} />
-                ))}
-              </span>
+              <span className="truncate font-display text-[23px] leading-tight font-extrabold">{npc.name}</span>
+              <Hearts rapport={mem.rapport} />
+            </div>
+            <div className="truncate text-[12.5px] font-extrabold text-[var(--color-ink-soft)]">
+              {jobOf(npc)}
+              {npc.doing ? ` · ${npc.doing}` : ''}
             </div>
             {/* What they speak besides French: a greeting in it pleases them */}
-            <div className="truncate text-xs font-bold text-[var(--color-ink-soft)]">Parle {theirs.map((l) => languageLabel(l).toLowerCase()).join(', ')}{shared ? ' · comme toi' : ''}</div>
+            <div className="mt-0.5 flex items-center gap-1.5 truncate text-[11.5px] font-bold text-[var(--color-ink-soft)]">
+              <span className="rounded-full bg-white/80 px-2 py-0.5">{mem.met <= 1 ? '1re rencontre' : `Vu·e ${mem.met} fois`}</span>
+              <span className="truncate">
+                Parle {theirs.map((l) => languageLabel(l).toLowerCase()).join(', ')}
+                {shared ? ' · comme toi' : ''}
+              </span>
+            </div>
           </div>
-          <button className="icon-btn bg-[var(--color-canvas)]" onClick={onClose} aria-label="Fermer">
+          <button className="icon-btn self-start bg-white/80" onClick={close} aria-label="Fermer">
             <X size={22} strokeWidth={2.6} />
           </button>
         </div>
         {/* The conversation so far */}
-        <div ref={log} className="mt-3 flex max-h-[22vh] min-h-[48px] shrink-0 flex-col gap-1.5 overflow-y-auto pr-0.5">
-          {lines.map((l, i) => (
-            <div
-              key={i}
-              className={
-                l.who === 'me'
-                  ? 'max-w-[85%] self-end rounded-2xl rounded-br-sm bg-[var(--color-orange)] px-3.5 py-2 text-[14px] font-extrabold text-white'
-                  : `max-w-[90%] self-start rounded-2xl rounded-tl-sm border-2 bg-[var(--color-canvas)] px-3.5 py-2 text-[15px] font-bold ${l.mood === 'good' ? 'border-[var(--color-emerald)]/35' : l.mood === 'bad' ? 'border-[var(--color-rose)]/35' : 'border-transparent'}`
-              }
-            >
-              {l.who === 'them' && !l.text.startsWith('«') && !l.text.includes(npc.name) ? `« ${l.text} »` : l.text}
-            </div>
-          ))}
+        <div ref={log} className="mt-2 flex max-h-[24vh] min-h-[52px] shrink-0 flex-col gap-2 overflow-y-auto px-0.5 pt-1 pb-1">
+          {lines.map((l, i) => {
+            const text = l.who === 'them' && !l.text.startsWith('«') && !l.text.includes(npc.name) ? `« ${l.text} »` : l.text
+            const last = i === lines.length - 1
+            return l.who === 'me' ? (
+              <div key={i} className="motion-bubble-me max-w-[85%] self-end rounded-[20px] rounded-br-md bg-[var(--color-orange)] px-3.5 py-2 text-[14px] font-extrabold text-white shadow-[inset_0_-2px_0_rgba(0,0,0,0.12)]">
+                {text}
+              </div>
+            ) : (
+              <div key={i} className={`motion-bubble-them relative max-w-[90%] self-start rounded-[20px] rounded-tl-md border-2 bg-white px-3.5 py-2 text-[15px] leading-snug font-bold shadow-[0_6px_14px_-10px_rgba(15,18,48,0.5)] ${l.mood === 'good' ? 'border-[var(--color-emerald)]/45' : l.mood === 'bad' ? 'border-[var(--color-rose)]/45' : 'border-[var(--color-line)]'}`}>
+                {last ? <Typed text={text} onType={scroll} onDone={() => setTalking(false)} /> : text}
+              </div>
+            )
+          })}
           {busy && (
-            <div className="flex gap-1 self-start rounded-2xl rounded-tl-sm bg-[var(--color-canvas)] px-3.5 py-3" aria-label={`${npc.name} répond`}>
+            <div className="motion-bubble-them flex gap-1 self-start rounded-[20px] rounded-tl-md border-2 border-[var(--color-line)] bg-white px-3.5 py-3" aria-label={`${npc.name} répond`}>
               {[0, 1, 2].map((k) => (
-                <span key={k} className="h-2 w-2 animate-bounce rounded-full bg-[var(--color-ink-soft)]" style={{ animationDelay: `${k * 0.15}s` }} />
+                <span key={k} className="motion-typing" style={{ animationDelay: `${k * 0.15}s` }} />
               ))}
             </div>
           )}
         </div>
         {gone ? (
-          <button className="btn mt-3 w-full shrink-0" onClick={onClose}>
+          <button className="btn motion-pop mt-3 w-full shrink-0" onClick={close}>
             À plus, {npc.name} !
           </button>
         ) : (
           <>
             {/* The groups (greet, chat, ask, offer, tease, love), all in sight on one row: a scrolling row hid the last ones on small phones */}
-            <div className="mt-3 flex shrink-0 gap-0.5" role="tablist">
+            <div className="relative mt-3 flex shrink-0 rounded-[18px] bg-[var(--color-canvas)] p-1" role="tablist">
+              {/* The pill under the group chosen, sliding from one to the other */}
+              <span className="absolute top-1 bottom-1 left-1 rounded-[14px] bg-white shadow-[0_2px_8px_-3px_rgba(15,18,48,0.3),inset_0_-2px_0_rgba(15,18,48,0.06)]" style={{ width: `calc((100% - 8px) / ${groups.length})`, transform: `translateX(${groups.indexOf(g) * 100}%)`, transition: 'transform 0.42s var(--ease-spring)' }} aria-hidden />
               {groups.map((x) => {
                 const on = x.id === g.id
                 return (
-                  <button key={x.id} role="tab" aria-selected={on} className="flex flex-auto flex-col items-center gap-1 rounded-2xl px-1 pt-1.5 pb-1 transition-colors" style={{ background: on ? `${x.colors[1]}1f` : 'transparent' }} onClick={() => setGroup(x.id)}>
-                    <IconTile icon={x.icon} colors={on ? x.colors : ['#e6e7ee', '#e6e7ee']} size={32} className={on ? '' : '!text-[var(--color-ink-soft)]'} />
-                    <span className="text-[10px] leading-tight font-extrabold whitespace-nowrap min-[360px]:text-[11px]" style={{ color: on ? x.colors[1] : 'var(--color-ink-soft)' }}>
+                  <button key={x.id} role="tab" aria-selected={on} className="relative z-10 flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-[14px] px-0.5 pt-1.5 pb-1" onClick={() => setGroup(x.id)}>
+                    <x.icon size={21} strokeWidth={2.5} className={on ? 'motion-boing' : ''} style={{ color: on ? x.colors[1] : 'var(--color-ink-soft)', transition: 'color 0.2s' }} />
+                    <span className="text-[10px] leading-tight font-extrabold whitespace-nowrap min-[360px]:text-[11px]" style={{ color: on ? x.colors[1] : 'var(--color-ink-soft)', transition: 'color 0.2s' }}>
                       {x.label}
                     </span>
                   </button>
@@ -310,7 +378,7 @@ export function ChatSheet({ npc, simGender, onSay, onClose, onBye, onDames, lang
             </div>
             <div className="mt-2 min-h-0 flex-1 overflow-y-auto">
               {group === 'saluer' && (
-                <div className="mb-2 flex flex-wrap gap-1.5">
+                <div key="salut" className="motion-stagger mb-2 flex flex-wrap gap-1.5">
                   {greetingsFor(npc.gender).map((phrase) => (
                     <button key={phrase} className="tile flex-auto px-3 py-2 text-center text-[14px] font-extrabold disabled:opacity-50" disabled={busy} onClick={() => say('salut', 'Saluer', phrase)}>
                       « {phrase} »
@@ -351,11 +419,11 @@ export function ChatSheet({ npc, simGender, onSay, onClose, onBye, onDames, lang
                   Mes langues
                 </button>
               )}
-              <ul className={`grid gap-1.5 ${g.id === 'coeur' && !adultAccount ? 'hidden' : ''}`}>
+              <ul key={g.id} className={`motion-stagger grid gap-1.5 ${g.id === 'coeur' && !adultAccount ? 'hidden' : ''}`}>
                 {g.topics.map((t) => (
                   <li key={t.id + (t.lang ?? '')}>
-                    <button className="tile flex w-full items-center gap-3 p-2.5 text-left disabled:opacity-50" disabled={busy} onClick={() => pick(t)}>
-                      <IconTile icon={t.icon} colors={g.colors} size={38} />
+                    <button className="tile flex w-full items-center gap-3 p-2.5 text-left shadow-[inset_0_-3px_0_rgba(15,18,48,0.05)] disabled:opacity-50" disabled={busy} onClick={() => pick(t)}>
+                      <IconTile icon={t.icon} colors={g.colors} size={38} style={{ boxShadow: 'inset 0 -3px 0 rgba(0,0,0,0.15), inset 0 2px 0 rgba(255,255,255,0.3)' }} />
                       <span className="min-w-0 flex-1">
                         <span className="block font-display text-[15px] leading-tight font-extrabold">{t.label}</span>
                         <span className="text-xs font-bold text-[var(--color-ink-soft)]">{used.includes(t.id) && t.id !== 'langue' ? 'Déjà dit : ça risque de lasser' : t.hint}</span>
@@ -373,12 +441,13 @@ export function ChatSheet({ npc, simGender, onSay, onClose, onBye, onDames, lang
               </button>
             )}
             {/* Taking leave ends the chat there and then, in a language you share if you have one */}
-            <button className="mt-3 w-full shrink-0 rounded-2xl bg-[var(--color-canvas)] py-2.5 text-sm font-extrabold text-[var(--color-ink-soft)]" onClick={onBye ?? onClose}>
+            <button className="mt-3 w-full shrink-0 rounded-2xl bg-[var(--color-canvas)] py-2.5 text-sm font-extrabold text-[var(--color-ink-soft)]" onClick={onBye ?? close}>
               {goodbyeIn(shared, npc.name)}
             </button>
           </>
         )}
-      </div>
-    </div>
+        </>
+      )}
+    </Sheet>
   )
 }

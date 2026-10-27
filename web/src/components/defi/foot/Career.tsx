@@ -1,3 +1,4 @@
+import { Splash } from '../../Splash'
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, Trophy, UserMinus, UserPlus } from 'lucide-react'
 import type { ActionResult, FootCareerView, FootRecruit, Look } from '../../../lib/types'
@@ -253,7 +254,7 @@ export function Career({ me, simId, onEnd, onBack, onResult }: { me: Me; simId: 
 
   if (playing && theirs && rules && season)
     return (
-      <Suspense fallback={<div className="grid h-full place-items-center bg-[#0b2e1a] px-6 text-center font-display text-xl font-extrabold text-white">{`Journée ${season.day + 1} : ${mine.name} contre ${theirs.name}…`}</div>}>
+      <Suspense fallback={<Splash className="bg-[#0b2e1a]" label={`Journée ${season.day + 1} : ${mine.name} contre ${theirs.name}…`} />}>
         <StreetMatch
           key={round}
           sport="foot"

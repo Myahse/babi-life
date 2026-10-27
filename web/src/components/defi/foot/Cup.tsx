@@ -1,3 +1,4 @@
+import { Splash } from '../../Splash'
 import { lazy, Suspense, useMemo, useState } from 'react'
 import { ChevronLeft, Trophy } from 'lucide-react'
 import type { Look } from '../../../lib/types'
@@ -138,7 +139,7 @@ export function Cup({ me, onEnd, onBack }: { me: Me; onEnd: (score: number) => v
   if (playing && theirs && rules) {
     const them = teamOf(theirs)
     return (
-      <Suspense fallback={<div className="grid h-full place-items-center bg-[#0b2e1a] px-6 text-center font-display text-xl font-extrabold text-white">{`${ROUNDS[cup.round]} : ${mine.name} contre ${them.name}…`}</div>}>
+      <Suspense fallback={<Splash className="bg-[#0b2e1a]" label={`${ROUNDS[cup.round]} : ${mine.name} contre ${them.name}…`} />}>
         <StreetMatch
           key={round}
           sport="foot"
