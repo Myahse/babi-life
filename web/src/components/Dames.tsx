@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Crown, Flag, Grid3x3, RotateCcw, X } from 'lucide-react'
-import { api } from '../lib/api'
+import { api, errorText } from '../lib/api'
 import { haptic } from '../lib/native'
 import type { DameGame, DameInvite, DamesMove } from '../lib/types'
 import { fcfa } from '../game/rules'
@@ -191,7 +191,7 @@ export function DamesSheet({ simId, onClose, onAgain, onMoney }: { simId: string
     setPick(null)
     setError(null)
     // The move played out while the server answers; the reply (a man of the grin's) after it.
-    const answer = api.damesAct(simId, game.id, 'move', m.path).catch((e: unknown) => (setError(e instanceof Error ? e.message : 'Erreur'), null))
+    const answer = api.damesAct(simId, game.id, 'move', m.path).catch((e: unknown) => (setError(errorText(e, 'Erreur')), null))
     const after = await playOut(game.board, m)
     const r = await answer
     if (r?.game.last && r.game.board.join() !== after.join()) {

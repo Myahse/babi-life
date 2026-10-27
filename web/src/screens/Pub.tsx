@@ -1,3 +1,4 @@
+import { errorText } from '../lib/api'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeft, Check, Eye, Upload } from 'lucide-react'
@@ -184,7 +185,7 @@ function SendForm({ code, label }: { code: string; label: string }) {
       })
       setSent(c.token)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Envoi impossible')
+      setError(errorText(err, 'Envoi impossible'))
     } finally {
       setProgress(null)
     }

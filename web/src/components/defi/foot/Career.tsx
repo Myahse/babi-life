@@ -2,7 +2,7 @@ import { Splash } from '../../Splash'
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, Trophy, UserMinus, UserPlus } from 'lucide-react'
 import type { ActionResult, FootCareerView, FootRecruit, Look } from '../../../lib/types'
-import { api } from '../../../lib/api'
+import { api, errorText } from '../../../lib/api'
 import { LENGTHS, Shirt, Stars } from './Hub'
 import { CLUBS, clubOf, foeFor, kitsFor, LEVELS, teamOf, type Team } from './teams'
 import { matchScore, scoreOf } from './sim'
@@ -220,7 +220,7 @@ export function Career({ me, simId, onEnd, onBack, onResult }: { me: Me; simId: 
       setNote(r.outcome.text)
       setView(await api.footCareer(simId))
     } catch (e) {
-      setNote(e instanceof Error ? e.message : 'Pas possible pour le moment.')
+      setNote(errorText(e, 'Pas possible pour le moment.'))
     } finally {
       setBusy(null)
     }
@@ -232,7 +232,7 @@ export function Career({ me, simId, onEnd, onBack, onResult }: { me: Me; simId: 
       setView(await api.footRelease(simId, p.id))
       setNote(`${p.name} quitte le club.`)
     } catch (e) {
-      setNote(e instanceof Error ? e.message : 'Pas possible pour le moment.')
+      setNote(errorText(e, 'Pas possible pour le moment.'))
     } finally {
       setBusy(null)
     }

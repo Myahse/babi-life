@@ -5,7 +5,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { InstallButton } from '../components/InstallButton'
 import { useOnline } from '../lib/pwa'
 import { Clock3, Eye, EyeOff, Lock, Mail, MapPinned, Newspaper, Shirt, UserRound, type LucideIcon } from 'lucide-react'
-import { api } from '../lib/api'
+import { api, errorText } from '../lib/api'
 import type { Look, User } from '../lib/types'
 import { useSession } from '../store/session'
 import { useWorld } from '../store/world'
@@ -89,7 +89,7 @@ export function Title() {
       signIn(token, user)
       navigate(gameOpen ? '/jeu' : '/liste', { viewTransition: true })
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Connexion impossible')
+      setError(errorText(e, 'Connexion impossible'))
     } finally {
       setBusy(false)
     }
@@ -217,7 +217,7 @@ export function Title() {
                   setError(null)
                   api
                     .forgotPassword(email)
-                    .then((r) => setSent(r.text), (err) => setError(err instanceof Error ? err.message : 'Réessaie dans un instant'))
+                    .then((r) => setSent(r.text), (err) => setError(errorText(err, 'Réessaie dans un instant')))
                     .finally(() => setBusy(false))
                   return
                 }

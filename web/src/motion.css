@@ -408,3 +408,27 @@
     animation: motion-dialog-in 0.42s var(--ease-spring) both;
   }
 }
+
+/* Koffi on a message that didn't go through (components/Helper.tsx): he hops in, tilts his head as if thinking, and his « ? » pops */
+.helper-in {
+  animation: helper-in 0.55s var(--ease-spring) both;
+}
+@keyframes helper-in {
+  from { transform: translateY(14px) scale(0.5) rotate(-20deg); opacity: 0; }
+}
+.helper-think {
+  transform-origin: 50% 90%;
+  animation: helper-think 2.4s 0.5s ease-in-out 2;
+}
+@keyframes helper-think {
+  0%, 100% { transform: rotate(0); }
+  20% { transform: rotate(-9deg); }
+  40% { transform: rotate(6deg) translateY(-1px); }
+  60% { transform: rotate(-4deg); }
+}
+.helper-bubble {
+  animation: helper-bubble 0.5s 0.35s var(--ease-spring) both, motion-breathe 1.8s 1s ease-in-out 3;
+}
+@keyframes helper-bubble {
+  from { transform: scale(0); }
+}

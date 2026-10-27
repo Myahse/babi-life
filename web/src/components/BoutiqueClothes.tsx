@@ -7,6 +7,7 @@ import { fullLook } from '../avatar/options'
 import { Portrait } from '../avatar/portrait'
 import { amount } from '../game/rules'
 import { Chip } from './ui'
+import { Helper } from './Helper'
 import { ClothesShop } from './ClothesShop'
 
 // The phone's Boutique, its clothes (backend game/clothes.go), in Djai: the
@@ -125,7 +126,9 @@ export function BoutiqueClothes({ world, sim, onResult }: { world: World; sim: S
         <Chip>{owned.length} à toi</Chip>
       </button>
 
-      {said && <p className={`rounded-xl px-3 py-2 text-sm font-bold ${said.tone === 'error' ? 'bg-[#ffeef1] text-[#d81b3f]' : 'bg-[#e9f9ef] text-[#1b7a43]'}`}>{said.text}</p>}
+      {said && <p className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-bold ${said.tone === 'error' ? 'bg-[#ffeef1] text-[#d81b3f]' : 'bg-[#e9f9ef] text-[#1b7a43]'}`}>{said.tone === 'error' && <Helper size={34} />}
+          <span className="min-w-0 flex-1">{said.text}</span>
+        </p>}
 
       {shop && <ClothesShop world={world} sim={sim} shop={shop} onResult={(r) => (onResult(r), void load())} onClose={() => (setShop(null), void load())} onLeave={() => setShop(null)} />}
     </div>

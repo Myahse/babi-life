@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Plane } from 'lucide-react'
-import { api, ApiError } from '../../lib/api'
+import { api, ApiError, errorText } from '../../lib/api'
 import { haptic } from '../../lib/native'
 import { serverNow } from '../../lib/worldClock'
 import type { EnvolBet, EnvolState, Sim, World } from '../../lib/types'
@@ -20,7 +20,7 @@ import { RulesFold } from '../../components/RulesFold'
  */
 
 const nf = (n: number) => n.toLocaleString('fr-FR')
-const errText = (e: unknown) => (e instanceof ApiError && e.status === 0 ? 'Hors ligne' : e instanceof Error ? e.message : 'Erreur')
+const errText = (e: unknown) => (e instanceof ApiError && e.status === 0 ? 'Hors ligne' : errorText(e, 'Erreur'))
 const times = (m: number) => `×${m.toFixed(2).replace('.', ',')}`
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 /** A plane's colour by how far it went (the history's chips). */

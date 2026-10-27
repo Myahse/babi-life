@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Flag, RotateCcw, RotateCw, Spade, X } from 'lucide-react'
-import { api } from '../lib/api'
+import { api, errorText } from '../lib/api'
 import { haptic } from '../lib/native'
 import type { DameInvite, HuitGame, HuitStep } from '../lib/types'
 import { fcfa } from '../game/rules'
@@ -352,7 +352,7 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
       out = fly(play.card, slot(play.card), pileAt(play.card), false, 380)
       setAway((a) => new Set([...a, play.card]))
     }
-    const r = await api.huitAct(simId, game.id, action, play ? { ...play, carte } : undefined).catch((e: unknown) => (setError(e instanceof Error ? e.message : 'Erreur'), null))
+    const r = await api.huitAct(simId, game.id, action, play ? { ...play, carte } : undefined).catch((e: unknown) => (setError(errorText(e, 'Erreur')), null))
     setCarte(false)
     await out
     if (r) {

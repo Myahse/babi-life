@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Glasses, Scissors, ShoppingBag, Shirt, X, type LucideIcon } from 'lucide-react'
-import { api } from '../lib/api'
+import { api, errorText } from '../lib/api'
 import type { ClothingPiece, Look, Sim } from '../lib/types'
 import { forGender, wearPiece, wearing } from '../lib/clothes'
 import { useWorld } from '../store/world'
@@ -74,7 +74,7 @@ export function LookEditor() {
       await api.changeLook(sim!.id, look!)
       back()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erreur')
+      setError(errorText(e, 'Erreur'))
     } finally {
       setBusy(false)
     }

@@ -1,3 +1,4 @@
+import { errorText } from '../lib/api'
 import { useEffect, useState } from 'react'
 import { FlaskConical, KeyRound, LogOut, Play } from 'lucide-react'
 import { homeScreenApp, isTester, isTesterCode, setTester, testerPass } from '../lib/launch'
@@ -55,7 +56,7 @@ export default function Tester() {
         res = await fetch(`${BASE}/admin/stats`, { headers: { 'X-Admin-Key': key.trim() } })
       } catch {
         // No answer at all: the server is waking up (Render), or it doesn't accept this site (ALLOWED_ORIGINS).
-        throw new Error(`Le serveur ne répond pas (${new URL(BASE).host}). S'il dormait, réessaie dans une minute ; sinon ${location.origin} doit être dans ALLOWED_ORIGINS sur Render.`)
+        throw new Error('Le jeu se réveille : réessaie dans une minute.')
       }
       if (res.status === 401) throw new Error("Code incorrect.")
       if (!res.ok) throw new Error(`Le serveur a répondu ${res.status} : réessaie dans un instant.`)
@@ -64,7 +65,7 @@ export default function Tester() {
       // version from before this page existed, which only knows the wish list.
       await freshStart('/jeu')
     } catch (x) {
-      setError(x instanceof Error ? x.message : 'Pas de réseau.')
+      setError(errorText(x, 'Pas de réseau.'))
     } finally {
       setBusy(false)
     }

@@ -65,7 +65,7 @@ const STEPS: Step[] = [
   { id: 'fin', title: "C'est toi le boss !", text: () => "Tu sais l'essentiel, le reste tu le découvres en vivant. Pour revoir ce tuto : l'Encyclo, dans ton téléphone. On se voit au grin !" },
 ]
 
-const KOFFI = { ...randomLook('homme', rng('koffi-guide')), outfit: 'jersey', outfitColor: '#ff7a00', accessory: 'cap' }
+export const KOFFI = { ...randomLook('homme', rng('koffi-guide')), outfit: 'jersey', outfitColor: '#ff7a00', accessory: 'cap' }
 const mouse = () => typeof matchMedia !== 'undefined' && matchMedia('(hover: hover) and (pointer: fine)').matches
 
 export function Tutorial({ state, onEnd }: { state: TutoState; onEnd: () => void }) {

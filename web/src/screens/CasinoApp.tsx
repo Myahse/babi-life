@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent as RPointerEvent } from 'react'
 import { ChevronLeft, CircleDot, Plane, Spade, Ticket, TrendingUp } from 'lucide-react'
-import { api, ApiError } from '../lib/api'
+import { api, ApiError, errorText } from '../lib/api'
 import { haptic } from '../lib/native'
 import { useSession } from '../store/session'
 import type { ActionResult, ScratchResult, ScratchTicket, Sim, World } from '../lib/types'
@@ -24,7 +24,7 @@ import { RulesFold } from '../components/RulesFold'
  */
 
 const nf = (n: number) => n.toLocaleString('fr-FR')
-const errText = (e: unknown) => (e instanceof ApiError && e.status === 0 ? 'Hors ligne' : e instanceof Error ? e.message : 'Erreur')
+const errText = (e: unknown) => (e instanceof ApiError && e.status === 0 ? 'Hors ligne' : errorText(e, 'Erreur'))
 type Props = { world: World; sim: Sim; act: Act; /** While a round is shown (the wheel turning, a ticket under its silver): the money as it was, so a sync doesn't tell the result first. */ hold: (money: number | null) => void }
 
 export function CasinoApp({ world, sim, act, onConfirmAdult }: Omit<Props, 'hold'> & { onConfirmAdult: () => Promise<void> }) {

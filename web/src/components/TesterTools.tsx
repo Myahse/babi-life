@@ -76,7 +76,7 @@ export function TesterTools({ sim, act }: { sim: Sim; act: Act }) {
     } catch (x) {
       setError(
         x instanceof ApiError && x.status === 404
-          ? "Code bon, outils ouverts sur ce navigateur. Le serveur n'a pas encore la mise à jour des comptes testeurs (Render) : ton compte le deviendra tout seul après."
+          ? "Code bon, outils ouverts sur ce navigateur. Ton compte deviendra testeur tout seul dans peu de temps."
           : x instanceof ApiError
             ? `Code bon, outils ouverts sur ce navigateur. Le serveur a répondu : ${x.message}`
             : 'Code bon, outils ouverts sur ce navigateur. Le serveur ne répond pas pour le compte : réessaie plus tard.',

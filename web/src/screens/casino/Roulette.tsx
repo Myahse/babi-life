@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { api, ApiError } from '../../lib/api'
+import { api, ApiError, errorText } from '../../lib/api'
 import { haptic } from '../../lib/native'
 import { sfx } from '../../lib/sfx'
 import type { ActionResult, RouletteBet, RouletteSpin, Sim, World } from '../../lib/types'
@@ -20,7 +20,7 @@ import { RulesFold } from '../../components/RulesFold'
  */
 
 const nf = (n: number) => n.toLocaleString('fr-FR')
-const errText = (e: unknown) => (e instanceof ApiError && e.status === 0 ? 'Hors ligne' : e instanceof Error ? e.message : 'Erreur')
+const errText = (e: unknown) => (e instanceof ApiError && e.status === 0 ? 'Hors ligne' : errorText(e, 'Erreur'))
 const short = (n: number) => (n >= 1000 ? `${n / 1000}k` : String(n))
 
 /** The wheel's numbers, round from the zero (the European wheel). */
