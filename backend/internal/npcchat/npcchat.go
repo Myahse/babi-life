@@ -7,11 +7,14 @@
 package npcchat
 
 import (
+	"bytes"
 	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -54,21 +57,114 @@ type Reply struct {
 // ErrOff: no key set, the street keeps its own lines.
 var ErrOff = errors.New("npcchat: off")
 
+// ErrBusy: the model's quota is used up for now (a free plan's day, its minute).
+var ErrBusy = errors.New("npcchat: busy")
+
+// A model answering: the system prompt, the user's turn, its JSON text back.
 type Client struct {
-	api   anthropic.Client
+	ask   func(ctx context.Context, system, user string) (string, error)
 	model string
 }
 
-// FromEnv: ANTHROPIC_API_KEY (unset: off), NPC_CHAT_MODEL to pick the model.
+// FromEnv picks who answers, the first one set:
+//   - NPC_CHAT_KEY: any OpenAI-style chat API, Groq's free plan by default
+//     (NPC_CHAT_URL for another one, NPC_CHAT_MODEL for its model);
+//   - ANTHROPIC_API_KEY: Claude (NPC_CHAT_MODEL for the model).
+//
+// Neither: off.
 func FromEnv() *Client {
-	if os.Getenv("ANTHROPIC_API_KEY") == "" {
-		return nil
+	if key := os.Getenv("NPC_CHAT_KEY"); key != "" {
+		url := cmp.Or(os.Getenv("NPC_CHAT_URL"), "https://api.groq.com/openai/v1/chat/completions")
+		model := cmp.Or(os.Getenv("NPC_CHAT_MODEL"), "openai/gpt-oss-120b")
+		return &Client{ask: openAIStyle(url, key, model), model: model}
 	}
-	return &Client{
-		api:   anthropic.NewClient(option.WithRequestTimeout(25*time.Second), option.WithMaxRetries(1)),
-		model: cmp.Or(os.Getenv("NPC_CHAT_MODEL"), "claude-opus-5-5"),
+	if os.Getenv("ANTHROPIC_API_KEY") != "" {
+		model := cmp.Or(os.Getenv("NPC_CHAT_MODEL"), "claude-opus-5-5")
+		return &Client{ask: claude(model), model: model}
+	}
+	return nil
+}
+
+// claude: the Messages API, the answer's shape held by the schema.
+func claude(model string) func(context.Context, string, string) (string, error) {
+	api := anthropic.NewClient(option.WithRequestTimeout(25*time.Second), option.WithMaxRetries(1))
+	return func(ctx context.Context, system, user string) (string, error) {
+		resp, err := api.Beta.Messages.New(ctx, anthropic.BetaMessageNewParams{
+			Model:     model,
+			MaxTokens: 4000,
+			System:    []anthropic.BetaTextBlockParam{{Text: system}},
+			Messages:  []anthropic.BetaMessageParam{anthropic.NewBetaUserMessage(anthropic.NewBetaTextBlock(user))},
+			// A chat: quick and short.
+			OutputConfig: anthropic.BetaOutputConfigParam{Effort: anthropic.BetaOutputConfigEffortLow, Format: anthropic.BetaJSONOutputFormatParam{Schema: schema}},
+			// A request the model declines is answered by another one (the server's choice).
+			Fallbacks: anthropic.BetaFallbacksParamOfDefault(),
+			Betas:     []anthropic.AnthropicBeta{anthropic.AnthropicBetaServerSideFallback2026_07_01},
+		})
+		var apiErr *anthropic.Error
+		if errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusTooManyRequests {
+			return "", ErrBusy
+		}
+		if err != nil {
+			return "", err
+		}
+		if resp.StopReason == anthropic.BetaStopReasonRefusal {
+			return "", errors.New("npcchat: declined")
+		}
+		for _, b := range resp.Content {
+			if t, ok := b.AsAny().(anthropic.BetaTextBlock); ok {
+				return t.Text, nil
+			}
+		}
+		return "", errors.New("npcchat: no text")
 	}
 }
+
+// openAIStyle: a chat completions API (Groq, and the others speaking the same), asked for a JSON object.
+func openAIStyle(url, key, model string) func(context.Context, string, string) (string, error) {
+	hc := &http.Client{Timeout: 25 * time.Second}
+	return func(ctx context.Context, system, user string) (string, error) {
+		body, _ := json.Marshal(map[string]any{
+			"model":           model,
+			"messages":        []map[string]string{{"role": "system", "content": system + jsonOnly}, {"role": "user", "content": user}},
+			"response_format": map[string]string{"type": "json_object"},
+			"max_tokens":      2000,
+		})
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+		if err != nil {
+			return "", err
+		}
+		req.Header.Set("Authorization", "Bearer "+key)
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := hc.Do(req)
+		if err != nil {
+			return "", err
+		}
+		defer resp.Body.Close()
+		raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+		if resp.StatusCode == http.StatusTooManyRequests {
+			return "", ErrBusy
+		}
+		if resp.StatusCode != http.StatusOK {
+			return "", fmt.Errorf("npcchat: %s: %.300s", resp.Status, raw)
+		}
+		var out struct {
+			Choices []struct {
+				Message struct {
+					Content string `json:"content"`
+				} `json:"message"`
+			} `json:"choices"`
+		}
+		if err := json.Unmarshal(raw, &out); err != nil || len(out.Choices) == 0 {
+			return "", fmt.Errorf("npcchat: unreadable answer: %.300s", raw)
+		}
+		return out.Choices[0].Message.Content, nil
+	}
+}
+
+// jsonOnly: the shape, said in words (a model without a schema to hold it).
+const jsonOnly = `
+
+Réponds uniquement avec un objet JSON, sans rien autour : {"text": "ce que tu réponds", "mood": "good" | "bad" | "neutral" | "bye"}.`
 
 const system = `Tu joues un personnage de « Babi Life », un jeu de vie à Abidjan (Côte d'Ivoire). Un joueur te parle dans la rue. Réponds comme ce personnage, jamais comme une IA ni un assistant.
 
@@ -105,40 +201,24 @@ func (c *Client) Answer(ctx context.Context, p Persona, pl Player, before []Line
 	if c == nil {
 		return Reply{}, ErrOff
 	}
-	resp, err := c.api.Beta.Messages.New(ctx, anthropic.BetaMessageNewParams{
-		Model:     c.model,
-		MaxTokens: 4000,
-		System:    []anthropic.BetaTextBlockParam{{Text: system}},
-		Messages:  []anthropic.BetaMessageParam{anthropic.NewBetaUserMessage(anthropic.NewBetaTextBlock(prompt(p, pl, before, said)))},
-		// A chat: quick and short.
-		OutputConfig: anthropic.BetaOutputConfigParam{Effort: anthropic.BetaOutputConfigEffortLow, Format: anthropic.BetaJSONOutputFormatParam{Schema: schema}},
-		// A request the model declines is answered by another one (the server's choice).
-		Fallbacks: anthropic.BetaFallbacksParamOfDefault(),
-		Betas:     []anthropic.AnthropicBeta{anthropic.AnthropicBetaServerSideFallback2026_07_01},
-	})
+	text, err := c.ask(ctx, system, prompt(p, pl, before, said))
 	if err != nil {
 		return Reply{}, err
 	}
-	if resp.StopReason == anthropic.BetaStopReasonRefusal {
-		return Reply{}, errors.New("npcchat: declined")
+	var r Reply
+	// (Some models wrap it in a code fence all the same.)
+	text = strings.TrimSuffix(strings.TrimPrefix(strings.TrimPrefix(strings.TrimSpace(text), "```json"), "```"), "```")
+	if err := json.Unmarshal([]byte(strings.TrimSpace(text)), &r); err != nil {
+		return Reply{}, fmt.Errorf("npcchat: %w", err)
 	}
-	for _, b := range resp.Content {
-		if t, ok := b.AsAny().(anthropic.BetaTextBlock); ok {
-			var r Reply
-			if err := json.Unmarshal([]byte(t.Text), &r); err != nil {
-				return Reply{}, fmt.Errorf("npcchat: %w", err)
-			}
-			r.Text = strings.TrimSpace(r.Text)
-			if r.Text == "" {
-				return Reply{}, errors.New("npcchat: nothing said")
-			}
-			if r.Mood != "good" && r.Mood != "bad" && r.Mood != "bye" {
-				r.Mood = "neutral"
-			}
-			return r, nil
-		}
+	r.Text = strings.TrimSpace(r.Text)
+	if r.Text == "" {
+		return Reply{}, errors.New("npcchat: nothing said")
 	}
-	return Reply{}, errors.New("npcchat: no text")
+	if r.Mood != "good" && r.Mood != "bad" && r.Mood != "bye" {
+		r.Mood = "neutral"
+	}
+	return r, nil
 }
 
 // prompt: who they are, who's talking, the conversation so far, and what the player just said.

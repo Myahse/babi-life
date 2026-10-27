@@ -118,6 +118,10 @@ func (h *Handler) chatFreeHandler(w http.ResponseWriter, r *http.Request) {
 		npcchat.Persona{Name: req.With.Name, Gender: req.With.Gender, Job: clip(req.Job, 60), Doing: clip(req.Doing, 60), Languages: req.Languages, Rapport: min(5, max(0, req.Rapport)), Met: max(0, req.Met)},
 		npcchat.Player{FirstName: s.FirstName, Gender: s.Gender, Minor: s.minor(), Commune: s.Commune, Hour: fmt.Sprintf("%d h %02d", game.HourOf(s.GameMinutes), s.GameMinutes%60)},
 		req.Before, req.Text)
+	if errors.Is(err, npcchat.ErrBusy) {
+		httpx.Error(w, http.StatusServiceUnavailable, "Tout le quartier cause en même temps… Réessaie dans un moment !")
+		return
+	}
 	if err != nil {
 		log.Printf("npcchat: %v", err)
 		httpx.Error(w, http.StatusBadGateway, req.With.Name+" n'a pas bien entendu… Redis-le ?")
