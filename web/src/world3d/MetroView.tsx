@@ -8,6 +8,7 @@ import { Character } from './Character'
 import { rng } from './themes'
 import type { Sim, World } from '../lib/types'
 import { METRO } from '../game/rides'
+import { RichAO } from './interior/bigPlace'
 
 // On the métro (a trip on line 1, backend world/metro.go): instead of the
 // street, inside the carriage, the Sim on its seat among the passengers,
@@ -211,6 +212,7 @@ export function MetroView({ world, sim, night, onMap }: { world: World; sim: Sim
     <div className="absolute inset-0 z-20">
       <Canvas dpr={[1, 1.5]} camera={{ fov: 62, near: 0.05, far: 600, position: [-0.6, 1.55, 7.6] }} onCreated={({ camera }) => camera.lookAt(0.3, 1.1, -4)}>
         <Ride sim={sim} night={night} stops={stops} share={share} />
+        <RichAO />
       </Canvas>
       <div className="hud pointer-events-auto absolute top-[max(5.5rem,calc(env(safe-area-inset-top)+5rem))] left-1/2 w-[min(380px,calc(100vw-24px))] -translate-x-1/2 rounded-[22px] p-3">
         <div className="flex items-center gap-2 text-sm font-extrabold">

@@ -14,7 +14,7 @@ import { Character } from '../Character'
 import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
 import { Dish } from './ActionProps'
-import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere } from './bigPlace'
+import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere, RichAO } from './bigPlace'
 
 // A beach on the ocean (Port-Bouët, Bassam, San-Pédro): one comes down from
 // the road onto the sand, the Atlantic's rollers breaking white and running
@@ -140,6 +140,7 @@ export function BeachScene({ sim, placeId, interactionId, roam, night, stage, ot
           <SpotActions shown={!!roam && !interactionId} where={spotWhere(SPOTS)} entrance={[ENTRANCE[0], 0, ENTRANCE[1]]} />
           <OrbitControls makeDefault target={[0, 0, 14]} enablePan={false} minDistance={6} maxDistance={90} minPolarAngle={0.25} maxPolarAngle={1.35} enableDamping />
         </Suspense>
+        <RichAO radius={3} falloff={1.5} intensity={1.6} />
       </Canvas>
     </div>
   )

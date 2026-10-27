@@ -15,7 +15,7 @@ import { ChatFraming } from '../chatFraming'
 import { Character } from '../Character'
 import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
-import { Guest, mat, sign, useBigWalk, type XZ } from './bigPlace'
+import { Guest, mat, sign, useBigWalk, type XZ, RichAO } from './bigPlace'
 import { Cinema } from './doings'
 import { drawReel, REEL_H, REEL_W } from './filmReel'
 
@@ -166,6 +166,7 @@ function Room({ sim, placeId, seance, popcorn, stage }: { sim: Sim; placeId: str
           </group>
           <OrbitControls makeDefault target={[sx / 2, (sy + 4.2) / 2, sz / 2]} enablePan={false} minDistance={3} maxDistance={40} enableDamping />
         </Suspense>
+        <RichAO />
       </Canvas>
     </div>
   )
@@ -335,6 +336,7 @@ function Lobby({ sim, placeId, roam, night, stage }: { sim: Sim; placeId: string
           <SpotActions shown={!!roam} where={() => [COUNTER[0], 0, COUNTER[1] + 1.6]} entrance={[ENTRANCE[0], 0, ENTRANCE[1]]} />
           <OrbitControls makeDefault target={[0, 0, 0]} enablePan={false} minDistance={6} maxDistance={50} minPolarAngle={0.25} maxPolarAngle={1.3} enableDamping />
         </Suspense>
+        <RichAO />
       </Canvas>
     </div>
   )

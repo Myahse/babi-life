@@ -14,7 +14,7 @@ import { ChatFraming } from '../chatFraming'
 import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
 import { WavingFlag } from '../open/flag'
-import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere } from './bigPlace'
+import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere, RichAO } from './bigPlace'
 
 // Inside the Assemblée nationale: the hemicycle. The deputies' rows in arcs
 // rising round the floor, a desk before each seat; the perch at the far end
@@ -116,6 +116,7 @@ export function AssembleeInside({ sim, interactionId, roam, night, stage }: { si
           <SpotActions shown={!!roam && !interactionId} where={spotWhere(SPOTS)} entrance={[ENTRANCE[0], GAL, ENTRANCE[1]]} />
           <OrbitControls makeDefault target={[0, 2, -2]} enablePan={false} minDistance={5} maxDistance={70} minPolarAngle={0.25} maxPolarAngle={1.35} enableDamping />
         </Suspense>
+        <RichAO />
       </Canvas>
     </div>
   )

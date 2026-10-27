@@ -12,7 +12,7 @@ import { ChatFraming } from '../chatFraming'
 import { Character } from '../Character'
 import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
-import { Guest, mat, useBigWalk, type Spot, type XZ } from './bigPlace'
+import { Guest, mat, useBigWalk, type Spot, type XZ, RichAO } from './bigPlace'
 import { SKI_BUOY, SKI_GAP, SKI_SIDES, skiDefi, type SkiGate } from '../defiSki'
 
 // Île Boulay, across the lagoon from Azito (Yopougon): the pinasse lands on
@@ -115,6 +115,7 @@ export function BoulayScene({ sim, interactionId, night, stage }: { sim: Sim; in
           {ski ? <Skier sim={sim} stage={stage} /> : <Walker sim={sim} stage={stage} interactionId={interactionId} />}
           <OrbitControls makeDefault target={ski ? [10, 0, -40] : [-22, 0, 9]} enablePan={false} minDistance={6} maxDistance={140} minPolarAngle={0.25} maxPolarAngle={1.35} enableDamping />
         </Suspense>
+        <RichAO radius={3} falloff={1.5} intensity={1.6} />
       </Canvas>
     </div>
   )

@@ -8,6 +8,7 @@ import { randomLook } from '../../avatar/options'
 import { worldTime } from '../../lib/worldClock'
 import { Character } from '../Character'
 import { rng } from '../themes'
+import { RichAO } from './bigPlace'
 
 // Inside the Palais des Sports de Treichville, as it looks since its
 // renovation: the light wooden court with its blue paint and blue apron, the
@@ -474,6 +475,7 @@ export function Arena(props: { sim: Sim; placeId: string; interactionId?: string
         <ArenaWorld {...props} />
         <OrbitControls makeDefault target={target} enablePan={false} minDistance={3} maxDistance={30} minPolarAngle={0.3} maxPolarAngle={1.55} enableDamping />
       </Suspense>
+      <RichAO />
     </Canvas>
   )
 }

@@ -14,7 +14,7 @@ import { Vehicle } from '../vehicles'
 import { BOX, Blocks } from '../open/ruePrincesse'
 import { TalkHuman } from '../Talkable'
 import { ActionProps } from './ActionProps'
-import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere } from './bigPlace'
+import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere, RichAO } from './bigPlace'
 
 // Inside a big shopping centre (PlaYce and the others, kind « mall »): not a
 // room but a whole mall to walk through. The doors on the car park; the
@@ -197,6 +197,7 @@ export function MallInside({ sim, name, interactionId, roam, night, stage, layou
           <SpotActions shown={!!roam && !interactionId} where={(id) => (id === 'work' ? spotWhere(WORK)(sim.career ?? '') : spotWhere(SPOTS)(id))} entrance={[ENTRANCE[0], 0, ENTRANCE[1]]} />
           <OrbitControls makeDefault target={view?.look ?? [12, 1, HD - 6]} enablePan={false} minDistance={6} maxDistance={80} minPolarAngle={0.25} maxPolarAngle={1.25} enableDamping />
         </Suspense>
+        <RichAO />
       </Canvas>
     </div>
   )
