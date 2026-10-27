@@ -1789,61 +1789,112 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
     { id: 'profile', label: 'Profil', icon: UserRound, colors: ['#ff8a9b', '#ff3d57'], open: () => navigate('/profil', { viewTransition: true }) },
     ] as Tile[]
   ).filter((a) => !life.minor || (a.id !== 'jobs' && a.id !== 'home'))
+  // The dock: the map, the messages, the friends, the camera (when the phone is one's own; else the games).
+  const DOCK = ['map', 'messages', 'friends', ownPhone ? 'camera' : 'jeux']
   const title: Record<PhoneAppId, string> = { bingo: 'Babi Bingo', casino: 'Babi Casino', here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', babigram: 'Babigram', bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: 'Galerie', guide: 'Encyclopédie de Babi', dodo: 'Dodo', kineo: 'Kinéo', dames: 'Dames 225', huit: '8 américain', awale: 'Awalé 225', ludo: 'Ludo 225', bolide: 'Bolide', jeux: 'Jeux', boutique: 'Boutique', idees: 'Tes idées pour Babi Life', politique: 'Politique' }
 
   return (
     <div className="absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center" onClick={onClose}>
+      {/* The phone: a metal band round it, its buttons on the sides, the black border, the screen. */}
       <div
-        className="animate-up relative h-[min(92%,760px)] w-[min(100%,380px)] rounded-[44px] bg-[#14161f] p-2.5 shadow-[0_40px_80px_-20px_rgba(0,0,0,0.7)] max-sm:h-[88%] max-sm:rounded-b-none max-sm:pb-0"
+        className="animate-up relative h-[min(92%,780px)] w-[min(100%,384px)] rounded-[56px] p-[3px] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.75),inset_0_0_0_1px_rgba(255,255,255,0.25)] max-sm:h-[88%] max-sm:rounded-b-none max-sm:pb-0"
+        style={{ background: 'linear-gradient(145deg,#d4d7dd 0%,#7a7e87 22%,#30333a 50%,#8d919a 78%,#e1e4e9 100%)' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="phone-screen relative flex h-full flex-col overflow-hidden rounded-[36px] bg-[radial-gradient(120%_80%_at_50%_0%,#ffb27a,#e0306a_55%,#3b1d6e)] max-sm:rounded-b-none">
-          {/* The status bar: the time, the island in the very middle, the network */}
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-6 pt-3 pb-1 text-xs font-extrabold text-white">
-            <span className="tnum">{time}</span>
-            <span className="h-5 w-20 rounded-full bg-black" />
-            <span className="truncate text-right">Oranjo CI · 4G</span>
-          </div>
+        {[
+          ['left', 104, 26],
+          ['left', 150, 50],
+          ['left', 212, 50],
+          ['right', 170, 78],
+        ].map(([side, top, h]) => (
+          <span key={`${side}${top}`} className={`absolute w-[3px] rounded-sm max-sm:hidden ${side === 'left' ? '-left-[3px]' : '-right-[3px]'}`} style={{ top: top as number, height: h as number, background: 'linear-gradient(90deg,#5d616a,#a9adb5)' }} />
+        ))}
+        <div className="relative h-full rounded-[53px] bg-black p-[8px] max-sm:rounded-b-none max-sm:pb-0">
+          <div className={`phone-screen relative flex h-full flex-col overflow-hidden rounded-[45px] max-sm:rounded-b-none ${app === null ? 'bg-[#1a1033]' : 'bg-white'}`}>
+            {/* The wallpaper: a sunset over the lagoon, its soft lights. */}
+            {app === null && (
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_80%_at_50%_0%,#ffb27a,#e0306a_55%,#3b1d6e)]">
+                <span className="absolute -top-10 -left-16 h-56 w-56 rounded-full bg-[#ffd166]/40 blur-3xl" />
+                <span className="absolute top-1/3 -right-20 h-64 w-64 rounded-full bg-[#7048e8]/40 blur-3xl" />
+                <span className="absolute -bottom-16 left-6 h-56 w-56 rounded-full bg-[#00a862]/25 blur-3xl" />
+              </div>
+            )}
+            {/* The status bar: the time, the Dynamic Island in the middle, the network and the battery (the Sim's energy). */}
+            <div className={`relative z-10 grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-7 pt-[11px] pb-1 text-[13px] font-bold ${app === null ? 'text-white' : 'text-[#111]'}`}>
+              <span className="tnum">{time}</span>
+              <span className="flex h-[30px] w-[108px] items-center justify-end rounded-full bg-black pr-3">
+                <span className="h-[9px] w-[9px] rounded-full bg-[radial-gradient(circle_at_35%_35%,#3b4a7a,#0b0d16)] ring-1 ring-[#1c1f2b]" />
+              </span>
+              <span className="flex items-center justify-end gap-1.5">
+                <SignalBars />
+                <span className="text-[11px] font-extrabold">4G</span>
+                <Battery level={sim.needs.energy} />
+              </span>
+            </div>
 
           {app === null ? (
-            <div className="flex-1 overflow-y-auto px-5 pt-6">
-              <div className="mb-6 text-center text-white">
-                <div className="font-display text-5xl leading-none font-extrabold">{time}</div>
-                <div className="mt-1 text-sm font-bold opacity-80">
-                  {commune.name}, {city.name}
+            <>
+              <div className="relative flex-1 overflow-y-auto px-4 pt-5 pb-28">
+                <div className="mb-5 text-center text-white">
+                  <div className="text-sm font-semibold opacity-85">
+                    {commune.name}, {city.name}
+                  </div>
+                  <div className="font-display text-[64px] leading-none font-extrabold tracking-tight [text-shadow:0_2px_12px_rgba(0,0,0,0.25)]">{time}</div>
+                </div>
+                <WordOfTheDay world={world} gameMinutes={sim.gameMinutes} />
+                <div className="motion-stagger grid grid-cols-4 gap-x-2 gap-y-4">
+                  {APPS.filter((a) => !DOCK.includes(a.id)).map((a) => (
+                    <button key={a.id} onClick={a.open} className="flex min-w-0 flex-col items-center gap-1 active:scale-90">
+                      <span className="relative">
+                        <IconTile icon={a.icon} colors={a.colors} size={56} radius={15} />
+                        {((a.id === 'friends' && sim.gang === 'invited') || (a.id === 'home' && sim.rentArrears > 0) || (a.id === 'jobs' && !sim.career)) && <Badge />}
+                      </span>
+                      <span className="w-full truncate text-center text-[11px] font-semibold text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.45)]">{a.label}</span>
+                    </button>
+                  ))}
+                  {STORE_APPS.map((a) => (
+                    <button key={a.id} onClick={a.open} className="flex min-w-0 flex-col items-center gap-1 active:scale-90">
+                      <span className="relative">
+                        <AppLogo id={a.id} size={56} radius={15} />
+                        {a.id === 'golvo' && delivery && <Badge />}
+                      </span>
+                      <span className="w-full truncate text-center text-[11px] font-semibold text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.45)]">{a.label}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-5 flex justify-center gap-1.5">
+                  <span className="h-[7px] w-[7px] rounded-full bg-white" />
+                  <span className="h-[7px] w-[7px] rounded-full bg-white/40" />
                 </div>
               </div>
-              <WordOfTheDay world={world} gameMinutes={sim.gameMinutes} />
-              <div className="motion-stagger grid grid-cols-3 gap-x-3 gap-y-5">
-                {APPS.map((a) => (
-                  <button key={a.id} onClick={a.open} className="flex flex-col items-center gap-1.5 active:scale-95">
-                    <span className="relative">
-                      <IconTile icon={a.icon} colors={a.colors} size={60} radius={18} />
-                      {((a.id === 'messages' && journal.length > 0) || (a.id === 'friends' && sim.gang === 'invited') || (a.id === 'home' && sim.rentArrears > 0) || (a.id === 'jobs' && !sim.career)) && (
-                        <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-[var(--color-rose)] ring-2 ring-white" />
-                      )}
-                    </span>
-                    <span className="text-xs font-bold text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.35)]">{a.label}</span>
-                  </button>
-                ))}
-                {STORE_APPS.map((a) => (
-                  <button key={a.id} onClick={a.open} className="flex flex-col items-center gap-1.5 active:scale-95">
-                    <span className="relative">
-                      <AppLogo id={a.id} />
-                      {a.id === 'golvo' && delivery && <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-[var(--color-rose)] ring-2 ring-white" />}
-                    </span>
-                    <span className="text-xs font-bold text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.35)]">{a.label}</span>
-                  </button>
-                ))}
+              {/* The dock: four apps always at hand, on frosted glass. */}
+              <div className="absolute inset-x-3 bottom-6 z-10 grid grid-cols-4 gap-2 rounded-[32px] bg-white/25 px-3 py-3 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.25)] backdrop-blur-xl max-sm:bottom-7">
+                {DOCK.map((id) => APPS.find((a) => a.id === id))
+                  .filter((a): a is Tile => !!a)
+                  .map((a) => (
+                    <button key={a.id} onClick={a.open} className="flex justify-center active:scale-90" aria-label={a.label}>
+                      <span className="relative">
+                        <IconTile icon={a.icon} colors={a.colors} size={56} radius={15} />
+                        {a.id === 'messages' && journal.length > 0 && <Badge n={Math.min(99, journal.length)} />}
+                      </span>
+                    </button>
+                  ))}
               </div>
-            </div>
+              {/* The home bar: a tap puts the phone away. */}
+              <button className="absolute bottom-1.5 left-1/2 z-10 h-5 w-36 -translate-x-1/2" onClick={onClose} aria-label="Ranger le téléphone">
+                <span className="mx-auto block h-[5px] w-[124px] rounded-full bg-white/85" />
+              </button>
+            </>
           ) : (
-            <div key={app} className="motion-app mt-2 flex flex-1 flex-col overflow-hidden rounded-t-[28px] bg-white">
-              <div className="flex items-center gap-2 p-3">
-                <button className="icon-btn bg-[var(--color-canvas)]" onClick={() => setApp(null)} aria-label="Retour">
-                  <ChevronLeft size={22} strokeWidth={2.6} />
+            <div key={app} className="motion-app relative flex flex-1 flex-col overflow-hidden bg-white">
+              {/* The app's bar: back to the home screen on the left, its name in the middle. */}
+              <div className="grid grid-cols-[auto_1fr_auto] items-center gap-1 border-b border-black/5 px-2 pt-1 pb-2">
+                <button className="flex items-center text-[15px] font-semibold text-[var(--color-orange)] active:opacity-60" onClick={() => setApp(null)} aria-label="Retour">
+                  <ChevronLeft size={26} strokeWidth={2.6} />
+                  Accueil
                 </button>
-                <h3 className="font-display text-xl font-extrabold">{title[app]}</h3>
+                <h3 className="truncate text-center font-display text-[17px] font-extrabold">{title[app]}</h3>
+                <span className="w-[76px]" />
               </div>
               <div className="flex-1 overflow-y-auto px-3 pb-6">
                 {app === 'here' && (
@@ -1916,12 +1967,49 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                 {app === 'casino' && <CasinoApp world={world} sim={sim} act={act} onConfirmAdult={onConfirmAdult} />}
                 {app === 'golvo' && <GolvoApp world={world} sim={sim} delivery={delivery} onOrder={onDelivery} onCancel={() => onDelivery(null)} onCollect={onCollect} />}
               </div>
+              {/* The home bar: a tap goes back to the home screen. */}
+              <button className="flex h-6 shrink-0 items-center justify-center bg-white" onClick={() => setApp(null)} aria-label="Écran d'accueil">
+                <span className="block h-[5px] w-[124px] rounded-full bg-black/80" />
+              </button>
             </div>
           )}
-          <div className="mx-auto mt-auto mb-2 h-1.5 w-28 shrink-0 rounded-full bg-white/70 max-sm:hidden" />
+          </div>
         </div>
       </div>
     </div>
+  )
+}
+
+/** The network's bars in the status bar: four, all full (Babi is well covered). */
+function SignalBars() {
+  return (
+    <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor" aria-hidden>
+      {[0, 1, 2, 3].map((i) => (
+        <rect key={i} x={i * 4.5} y={8 - i * 2.6} width="3" height={3 + i * 2.6} rx="0.8" />
+      ))}
+    </svg>
+  )
+}
+
+/** The battery: the Sim's energy (red below a fifth). */
+function Battery({ level }: { level: number }) {
+  const k = Math.max(0, Math.min(100, level)) / 100
+  return (
+    <span className="flex items-center gap-[1px]" title={`Énergie ${Math.round(level)} %`}>
+      <span className="relative h-[12px] w-[24px] rounded-[4px] border border-current/40 p-[1.5px]">
+        <span className="block h-full rounded-[2px]" style={{ width: `${Math.max(8, k * 100)}%`, background: k < 0.2 ? '#ff3b30' : 'currentColor' }} />
+      </span>
+      <span className="h-[4px] w-[1.5px] rounded-r-sm bg-current/40" />
+    </span>
+  )
+}
+
+/** A notification badge on an app: a red dot, or a count. */
+function Badge({ n }: { n?: number }) {
+  return n ? (
+    <span className="absolute -top-1.5 -right-1.5 grid h-[20px] min-w-[20px] place-items-center rounded-full bg-[#ff3b30] px-1 text-[11px] font-bold text-white">{n}</span>
+  ) : (
+    <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-[#ff3b30] ring-2 ring-white/80" />
   )
 }
 
