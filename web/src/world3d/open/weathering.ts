@@ -9,7 +9,7 @@ import type * as THREE from 'three'
 // the world (no texture to load), in blocks of a few decimetres so it keeps
 // the game's blocky look, and added to each material's own shader.
 
-export type Weather = 'ground' | 'asphalt' | 'walls' | 'roofs' | 'concrete'
+export type Weather = 'ground' | 'asphalt' | 'walls' | 'roofs' | 'concrete' | 'tin'
 
 const NOISE = `
 varying vec3 vWeatherW;
@@ -50,6 +50,13 @@ const LOOK: Record<Weather, string> = {
     float stain = smoothstep(0.5, 0.85, wFbm(b / 5.0));
     diffuseColor.rgb *= 1.0 - stain * 0.18;
     diffuseColor.rgb *= 0.94 + wHash(floor(vWeatherW.xz / 9.0)) * 0.1;`,
+  // The sheet's own light and shade, its colour the house's (the vertex colour, applied next); rust running down it.
+  tin: `
+    float l = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
+    diffuseColor.rgb = vec3(l / 0.26);
+    vec2 bw = floor(vWeatherW.xz * 2.0) / 2.0;
+    float rust = smoothstep(0.58, 0.85, wFbm(bw / 3.0 + 9.0));
+    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.25, 0.62, 0.32), rust * 0.35);`,
   concrete: `
     vec2 bw = floor(vec2(vWeatherW.x + vWeatherW.z, vWeatherW.y) * 3.0) / 3.0;
     float streak = smoothstep(0.55, 0.9, wNoise(vec2(bw.x * 1.3, bw.y * 0.15)));

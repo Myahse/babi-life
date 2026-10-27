@@ -283,7 +283,7 @@ export function makeWorldMaterials() {
     trim: weather(lambert(t.plaster, { vertexColors: true, side: THREE.DoubleSide }), 'concrete'),
     kerb: lambert(t.plaster, { vertexColors: true }),
     roofs: weather(lambert(t.roof), 'roofs'),
-    tin: lambert(t.tin, { side: THREE.DoubleSide }),
+    tin: weather(lambert(t.tin, { vertexColors: true, side: THREE.DoubleSide }), 'tin'),
     contact: new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }),
     asphalt: weather(lambert(t.asphalt, { vertexColors: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), 'asphalt'),
     laterite: lambert(t.laterite, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
@@ -345,6 +345,9 @@ function farOf<T extends Record<string, THREE.Material>>(mats: T): T {
       const f = m.clone()
       Object.assign(f, { stencilWrite: true, stencilRef: 1, stencilFunc: THREE.NotEqualStencilFunc, stencilWriteMask: 0, stencilFail: THREE.KeepStencilOp, stencilZFail: THREE.KeepStencilOp, stencilZPass: THREE.KeepStencilOp })
       f.userData = m.userData
+      // (A clone keeps neither: the windows going out by the hour, the wear, the roofs' paint.)
+      f.onBeforeCompile = m.onBeforeCompile
+      f.customProgramCacheKey = m.customProgramCacheKey
       return [k, f]
     }),
   ) as T

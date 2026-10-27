@@ -233,7 +233,7 @@ export function addBuilding(B: BuildingBuilders, bd: Building, style: Style = 'd
     }
     const step = CELL / 2
     const o = step
-    const tin = new THREE.Color('#ffffff')
+    const tin = tinPaint(hash(bd.c[0] * 11, bd.c[1] * 13, 9))
     // The game's houses in the quarters (fill.ts) have the low roofs of
     // the cours: the same steps, a third as high (about 18°).
     const rise = bd.tin ? step / 3 : step
@@ -343,6 +343,26 @@ function awnings(B: BuildingBuilders, ring: XZ[], c: XZ) {
     B.trim.facing(dn, jds[0], jds[1], jds[2])
     B.trim.facing(dn, jds[0], jds[2], jds[3])
   }
+}
+
+/**
+ * The tin of a roof, one per house: painted orange or red, gone to rust,
+ * the grey of galvanised sheet, a faded green (the texture's own shading is
+ * kept, the colour is this: weathering.ts 'tin').
+ */
+const TIN_PAINTS: [string, number][] = [
+  ['#c8643a', 0.3],
+  ['#b5452f', 0.14],
+  ['#9a5532', 0.18],
+  ['#a3abb0', 0.2],
+  ['#6f8f86', 0.1],
+  ['#7a5640', 0.08],
+]
+const TIN_COLORS = TIN_PAINTS.map(([c]) => new THREE.Color(c))
+function tinPaint(u: number) {
+  let acc = 0
+  for (let i = 0; i < TIN_PAINTS.length; i++) if (u < (acc += TIN_PAINTS[i][1])) return TIN_COLORS[i]
+  return TIN_COLORS[0]
 }
 
 /** A roof of two plain slopes over a rectangle (half-length hw along `rot`, half-depth hd), its ridge along the length, and its gable ends. */
