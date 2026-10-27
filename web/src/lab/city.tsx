@@ -94,6 +94,8 @@ import { SkyDome } from '../world3d/open/sky'
 import { throwBillets } from '../world3d/clubBillets'
 import type { ActionResult, Block, Furniture, HousePlan, Material, Piece, Plot, Sim, World } from '../lib/types'
 import { FlightView } from '../world3d/FlightView'
+import { AwaleApp } from '../screens/AwaleApp'
+import { LudoApp } from '../screens/LudoApp'
 
 const seededLab = (n: number) => () => ((n = (n * 16807) % 2147483647) / 2147483647)
 
@@ -123,7 +125,8 @@ const seededLab = (n: number) => () => ((n = (n * 16807) % 2147483647) / 2147483
 // ?view=police the checkpoint on a big road's shoulder;
 // ?view=bridge&kind=fhb|cdg|hkb|yop|ado one of the big bridges over a lagoon
 // (&cam, &look, &night);
-// ?view=party|nightstreet|nightcity: the nights (see night.tsx).
+// ?view=party|nightstreet|nightcity: the nights (see night.tsx);
+// ?view=app&app=awale|ludo the phone's board games.
 // The interior takes &career=sante&level=1 for a Sim at work (&id=work).
 
 const q = new URLSearchParams(location.search)
@@ -644,6 +647,10 @@ function Lab() {
   if (view === 'emotes') return <EmotesLab />
   if (view === 'talk') return <TalkLab />
   // &sococe: the Sococé's own supermarket and shops, its Kinéo in the gallery.
+  if (view === 'app') {
+    const sim = { id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)) } as unknown as Sim
+    return <div className="mx-auto h-full max-w-[420px] overflow-y-auto bg-white px-3 pt-2">{q.get('app') === 'ludo' ? <LudoApp sim={sim} /> : <AwaleApp sim={sim} />}</div>
+  }
   if (view === 'mall') return <MallInside sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)) } as unknown as Sim} name={q.has('sococe') ? 'Sococé' : q.get('style') === 'palmeraie' ? 'PlaYce Palmeraie' : 'PlaYce Marcory'} interactionId={q.get('act') ?? undefined} roam={!q.get('act')} night={night} stage="adulte" layout={q.has('sococe') ? { market: 'SOCOCÉ', back: ['PRESSING DES 2 PLATEAUX', 'BOULANGERIE', 'PHONE 225', 'PHARMACIE', 'MODE WAX'], front: ['LIBRAIRIE', 'BEAUTÉ & CO', '', 'CAFÉ DES PLATEAUX'], kineo: true } : q.get('style') ? { style: q.get('style') as 'marcory' | 'palmeraie' } : undefined} view={q.get('cam') ? { cam: q.get('cam')!.split(',').map(Number) as [number, number, number], look: (q.get('look') ?? '0,0,0').split(',').map(Number) as [number, number, number] } : undefined} />
   if (view === 'hotel') return <HotelInside sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)) } as unknown as Sim} placeId={q.get('id') ?? 'plateau-poulman'} name={q.get('name') ?? 'Hôtel Poulman'} interactionId={q.get('act') ?? undefined} night={night} stage="adulte" />
   // ?view=hotelroom&type=suite&act=rs-poisson: a hotel room (standard, superieure, suite), the Sim doing what's done in it.

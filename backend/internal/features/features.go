@@ -52,6 +52,8 @@ var List = []Feature{
 	{ID: "app-idrive", Label: "iDrive", About: "Les VTC : une voiture avec chauffeur jusqu'à ta destination.", Keys: []string{"app:idrive"}},
 	{ID: "app-dames", Label: "Dames 225", About: "Le jeu de dames contre les gens du quartier ou un ami.", Keys: []string{"app:dames"}},
 	{ID: "app-huit", Label: "8 américain", About: "Le jeu de cartes, contre le quartier ou entre amis.", Keys: []string{"app:huit"}},
+	{ID: "app-awale", Label: "Awalé 225", About: "L'awalé sur le téléphone, contre l'ordinateur à trois niveaux, sans mise.", Keys: []string{"app:awale"}},
+	{ID: "app-ludo", Label: "Ludo 225", About: "Le Ludo sur le téléphone, à deux ou à quatre contre l'ordinateur, sans mise.", Keys: []string{"app:ludo"}},
 	{ID: "app-bet225", Label: "Bet225", About: "Les paris sur les matchs du jeu (18 ans et plus).", Keys: []string{"app:bet225"}},
 	{ID: "app-parisfoot", Label: "ParisFoot", About: "L'autre appli de paris, ses cotes et ses combinés (18 ans et plus).", Keys: []string{"app:parisfoot"}},
 	{ID: "app-bingo", Label: "Babi Bingo", About: "Quatre salles de bingo, une partie toutes les quelques minutes (18 ans et plus).", Keys: []string{"app:bingo"}},
