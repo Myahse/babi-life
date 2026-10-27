@@ -48,7 +48,7 @@ func ShopOf(interactionID string) string {
 }
 
 // PiecePatterns: the prints that only come with a piece.
-var PiecePatterns = []string{"bogolan", "madras", "fleurs", "leopard", "camo", "adinkra"}
+var PiecePatterns = []string{"bogolan", "madras", "fleurs", "leopard", "camo", "adinkra", "azur", "polo"}
 
 func tenue(id, label, brand, gender string, price int, outfit, color, pattern, bottom, shoes, shop string) ClothingPiece {
 	return ClothingPiece{ID: id, Label: label, Brand: brand, Kind: "tenue", Gender: gender, Price: price, Outfit: outfit, OutfitColor: color, Pattern: pattern, BottomColor: bottom, ShoeColor: shoes, Shop: shop}
@@ -159,7 +159,13 @@ func exclu(id, label, brand, gender string, price int, outfit, color, pattern, b
 	return p
 }
 
-func init() { Clothes = append(Clothes, Exclusives...) }
+// Premium: pieces bought with real money in the phone's Boutique (shop/ Items with a Piece), never with Djai.
+var Premium = []ClothingPiece{
+	tenue("veste-repos", "La veste du repos", "Babi Life Édition", "", 0, "chemise-pagne", "#3cc6c8", "azur", "#1f2a44", "#f8f9fa", "premium"),
+	tenue("polo-mere-con", "Le polo de mère con", "Babi Life Édition", "", 0, "chemise-pagne", "#ff6b1a", "polo", "#f3ead8", "#f8f9fa", "premium"),
+}
+
+func init() { Clothes = append(append(Clothes, Exclusives...), Premium...) }
 
 // ClothingPack: a lot of pieces at once, a quarter off what they'd cost one by one (only those
 // the Sim can wear and hasn't yet: PackPrice).

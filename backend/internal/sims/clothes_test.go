@@ -33,7 +33,7 @@ func TestBuyPiece(t *testing.T) {
 func TestPiecesAndPatterns(t *testing.T) {
 	seen := map[string]bool{}
 	for _, p := range game.Clothes {
-		if seen[p.ID] || p.Price <= 0 || (p.Shop != "mall" && p.Shop != "marche" && p.Shop != "exclu") {
+		if seen[p.ID] || (p.Price <= 0) != (p.Shop == "premium") || (p.Shop != "mall" && p.Shop != "marche" && p.Shop != "exclu" && p.Shop != "premium") {
 			t.Errorf("piece %s", p.ID)
 		}
 		seen[p.ID] = true

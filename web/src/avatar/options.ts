@@ -130,6 +130,8 @@ export const PIECE_PATTERNS: Choice[] = [
   { id: 'leopard', label: 'Léopard' },
   { id: 'camo', label: 'Camouflage' },
   { id: 'adinkra', label: 'Adinkra' },
+  { id: 'azur', label: 'Azur' },
+  { id: 'polo', label: 'Rayures du polo' },
 ]
 
 /** Outfits that use the wax pattern. */

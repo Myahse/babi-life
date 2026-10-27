@@ -368,9 +368,11 @@ function sportBody(pose: Pose, t: number, since: number): { y?: number; x?: numb
     case 'guard':
       return { y: -0.1, x: Math.sin(t * 3) * 0.12, rx: 0.15, head: 0.05 }
     case 'dive': {
-      // Off the feet and sideways, down onto the grass.
+      // Off the feet and sideways, flying a moment, then down on the side on the grass. The body
+      // turns about the feet: lifted by the half-width of the body lying down, so it rests on the
+      // grass and doesn't go through it.
       const k = ease(clamp01(since / 0.35))
-      return { y: -0.42 * k + Math.sin(k * Math.PI) * 0.25, rz: -1.35 * k, head: 0 }
+      return { y: 0.2 * k + Math.sin(k * Math.PI) * 0.32, rz: -1.4 * k, head: 0 }
     }
     case 'airplane':
       return { rz: Math.sin(t * 2.6) * 0.3, rx: 0.05, head: -0.15 }

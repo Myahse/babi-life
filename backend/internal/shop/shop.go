@@ -58,6 +58,8 @@ type Item struct {
 	Price int    `json:"price"`
 	// Once: bought once and kept (the pack Prestige); the others again and again.
 	Once bool `json:"once,omitempty"`
+	// Piece: a piece of clothing (game/clothes.go Premium), into the wardrobe.
+	Piece string `json:"piece,omitempty"`
 }
 
 // PassDays: how long the Babi Pass lasts, from its purchase (or the end of the one before).
@@ -67,6 +69,8 @@ var Items = []Item{
 	{ID: "pass", Label: "Babi Pass · 30 jours", Text: "Un quart de Djai en plus sur tout ce que tu gagnes (boulot, petits boulots, défis), et l'étoile dorée à ton nom.", Price: 1500},
 	{ID: "energie", Label: "Plein d'énergie", Text: "Faim, énergie, hygiène, social, loisirs : toutes les jauges à fond, tout de suite.", Price: 300},
 	{ID: "prestige", Label: "Pack Prestige", Text: "La couronne, à porter pour toujours (Profil, Mon look).", Price: 2000, Once: true},
+	{ID: "veste-repos", Label: "La veste du repos", Text: "La chemise patchwork turquoise, bleu nuit, blanc et orange, son motif qu'on ne trouve nulle part ailleurs : dans ta garde-robe pour toujours.", Price: 1500, Once: true, Piece: "veste-repos"},
+	{ID: "polo-mere-con", Label: "Le polo de mère con", Text: "Le polo à larges rayures orange et blanches, son col blanc : dans ta garde-robe pour toujours.", Price: 1500, Once: true, Piece: "polo-mere-con"},
 }
 
 func FindPack(id string) (Pack, bool) {
@@ -208,6 +212,9 @@ func (h *Handler) buy(w http.ResponseWriter, r *http.Request) {
 		description = fmt.Sprintf("Babi Life · %s Djai (%s)", thousands(pack.Djai), pack.Label)
 	} else if it, ok := FindItem(req.Item); ok {
 		kind, id, label, price = it.ID, it.ID, it.Label, it.Price
+		if it.Piece != "" {
+			kind = "tenue"
+		}
 		description = "Babi Life · " + it.Label
 	} else {
 		httpx.Error(w, http.StatusUnprocessableEntity, "article inconnu")
@@ -230,6 +237,13 @@ func (h *Handler) buy(w http.ResponseWriter, r *http.Request) {
 	if !adult {
 		httpx.Error(w, http.StatusForbidden, errMinor.Error())
 		return
+	}
+	if kind == "tenue" {
+		var have bool
+		if err := h.DB.QueryRow(ctx, `SELECT $2 = ANY(clothes) FROM sims WHERE id = $1`, simID, id).Scan(&have); err == nil && have {
+			httpx.Error(w, http.StatusUnprocessableEntity, errHave.Error())
+			return
+		}
 	}
 	if kind == "prestige" {
 		var have bool
@@ -449,6 +463,12 @@ func give(ctx context.Context, tx pgx.Tx, simID, kind, item string, djai int) er
 			return err
 		}
 		text = "Boutique : Pack Prestige. La couronne est à toi (Profil, Mon look)."
+	case "tenue":
+		it, _ := FindItem(item)
+		if err := tx.QueryRow(ctx, `UPDATE sims SET clothes = CASE WHEN $2 = ANY(clothes) THEN clothes ELSE array_append(clothes, $2) END WHERE id = $1 RETURNING game_minutes`, simID, it.Piece).Scan(&minutes); err != nil {
+			return err
+		}
+		text = fmt.Sprintf("Boutique : %s, dans ta garde-robe (Mon look, Garde-robe).", it.Label)
 	default:
 		return fmt.Errorf("unknown purchase kind %q", kind)
 	}
@@ -485,6 +505,9 @@ func (h *Handler) refund(ctx context.Context, id string) error {
 			}
 		case kind == "pass":
 			_, err = tx.Exec(ctx, `UPDATE sims SET pass_until = NULL WHERE id = $1`, *simID)
+		case kind == "tenue":
+			it, _ := FindItem(item)
+			_, err = tx.Exec(ctx, `UPDATE sims SET clothes = array_remove(clothes, $2) WHERE id = $1`, *simID, it.Piece)
 		case kind == "prestige":
 			// The crown taken off, with the pack.
 			_, err = tx.Exec(ctx, `UPDATE sims SET prestige = false, look = jsonb_set(look, '{accessory}', to_jsonb(nullif(trim(both ',' from replace(replace(coalesce(look->>'accessory', 'none'), 'couronne', ''), ',,', ',')), '')), true) WHERE id = $1`, *simID)

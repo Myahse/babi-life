@@ -1360,6 +1360,11 @@ function InsideLab() {
 function NetLab() {
   const ball = useRef({ x: -3, y: 0.6, z: 0.6, dead: false })
   const mesh = useRef<THREE.Mesh>(null)
+  const [dive, setDive] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => setDive((d) => d + 3), 3000)
+    return () => clearInterval(t)
+  }, [])
   useFrame(({ clock }) => {
     const t = clock.elapsedTime % 3
     const b = ball.current
@@ -1388,6 +1393,10 @@ function NetLab() {
         <meshLambertMaterial color="#ffffff" />
       </mesh>
       <Net mouth={3.4} bar={2.44} depth={2.2} dir={1} ball={() => ball.current} at={0} />
+      {/* The keeper diving, again and again (?view=net&pose=dive): lying on the grass, not in it. */}
+      <group position={[0.8, 0, 0]} rotation={[0, -Math.PI / 2, 0]}>
+        <Human key={Math.floor(dive / 3)} look={randomLook('homme', seededLab(3))} gender="homme" pose={q.get('pose') === 'keeper' ? 'keeper' : 'dive'} seed={1} full />
+      </group>
       <mesh ref={mesh}>
         <sphereGeometry args={[0.11, 16, 12]} />
         <meshLambertMaterial color="#ffffff" />
