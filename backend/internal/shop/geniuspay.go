@@ -157,6 +157,8 @@ func (g *GeniusPay) call(ctx context.Context, method, path string, body any) (Pa
 		if out.Message == "" {
 			out.Message = res.Status
 		}
+		// The whole answer in the server's log: GeniusPay says there which field it refused.
+		log.Printf("geniuspay %s %s: %d %.400s", method, path, res.StatusCode, raw.String())
 		return Payment{}, fmt.Errorf("geniuspay %s %s: %s", method, path, out.Message)
 	}
 	// The payment under « data », or the answer itself.
