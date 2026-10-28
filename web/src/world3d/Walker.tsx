@@ -1070,6 +1070,9 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     if (trip && tripRide.boarded) {
       if (!aboard) setAboard(true)
     } else if (aboard) setAboard(false)
+    // In the car from this very frame (not the next render), and while the player taps about: never standing through its roof.
+    if (tripRide.active && tripRide.boarded) g.visible = false
+    else if (!g.visible && !hidden && !aboard) g.visible = true
     // The car in sight: an arm up to it (not to one already standing there for the Sim).
     const hail = trip && !tripRide.boarded && !tripRide.parked && Math.hypot(tripRide.x - g.position.x, tripRide.z - g.position.z) < 45
     if (hail !== hailing) setHailing(hail)
