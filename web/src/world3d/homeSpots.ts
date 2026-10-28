@@ -162,10 +162,14 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
     for (const id of ['maison-foot', 'maison-course', 'maison-combat']) out[id] = spot
   }
   // A baby's things are done on the floor in front of a piece, the mother kneeling with it (ActionProps):
-  // the biberon, the bouillie, the rattle and the cuddle in front of the sofa (or the bed), the bath in front of the shower.
-  const onFloor = (s: HomeSpot): HomeSpot => ({ at: s.from, from: s.from, y: 0, rot: s.rot, pose: 'busy', lying: false, wall: s.wall })
+  // the biberon, the bouillie, the rattle, the cuddle and the little accidents in front of the sofa (or the bed), the bath in front of the shower.
+  // (Turned away from the piece, into the room: whoever is with the baby kneels there, not in a wall — the natte lies along one.)
+  const away = (s: HomeSpot) => (Math.hypot(s.from[0] - s.at[0], s.from[1] - s.at[1]) > 0.1 ? Math.atan2(s.from[0] - s.at[0], s.from[1] - s.at[1]) : Math.atan2(center[0] - s.from[0], center[1] - s.from[1]))
+  const onFloor = (s: HomeSpot): HomeSpot => ({ at: s.from, from: s.from, y: 0, rot: away(s), pose: 'busy', lying: false, wall: s.wall })
   const seat = out['call-family'] ?? out.sleep
-  if (seat) for (const id of ['biberon', 'bouillie', 'hochet', 'calin']) out[id] ??= onFloor(seat)
+  if (seat) for (const id of ['biberon', 'bouillie', 'hochet', 'calin', 'caca', 'pipi', 'vomir', 'pleurer']) out[id] ??= onFloor(seat)
+  // (Crying: the fists to the eyes.)
+  if (out.pleurer) out.pleurer = { ...out.pleurer, pose: 'cry' }
   const bath = out.shower ?? seat
   if (bath) out['bain-bebe'] ??= onFloor(bath)
   // Calling the family from the sofa: sitting, the phone at the ear.

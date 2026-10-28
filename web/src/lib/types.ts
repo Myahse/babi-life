@@ -85,6 +85,8 @@ export type Interaction = {
   gender?: 'femme' | 'homme'
   /** At home, the room it's done in: the menu shows the house room by room. */
   room?: 'salle-de-bain' | 'chambre' | 'cuisine' | 'salon' | 'cour'
+  /** Only with a full tummy (a baby's caca, pipi…: after the biberon). */
+  fed?: boolean
 }
 export type PlaceKind = { id: string; label: string; icon: string; interactions: Interaction[] }
 export type Option = { id: string; label: string; icon: string; hint: string }

@@ -7,7 +7,7 @@ import {
   Volleyball, Waves, Baby, Bird, BookOpen, BrushCleaning, Cake, CarTaxiFront, Drama, Drum, FileText, Flag, Flower2, Gift, GraduationCap, Hammer,
   Hospital, Library, Presentation, Shovel, Stamp, Stethoscope, Utensils, ShoppingBag, ShoppingCart, Shirt, IceCreamCone, Hamburger, CupSoda, Scissors, Hotel, Hand, Send, Fuel, Bike, Dumbbell, PawPrint, UserPlus, Snowflake, Clapperboard, Popcorn, Plane, TrainFront, Dice5, Toilet, Toothbrush, Sailboat, HardHat, Citrus, Croissant, Droplet, Grid3x3, type LucideIcon,
   Gamepad2, Joystick, Swords, Eye, HeartHandshake, Cherry,
-  Droplets, Sprout, LampFloor, Piano, GlassWater, Apple, Refrigerator, Archive, Fan, Armchair, RectangleHorizontal, ChevronsUp,
+  Frown, Annoyed, Droplets, Sprout, LampFloor, Piano, GlassWater, Apple, Refrigerator, Archive, Fan, Armchair, RectangleHorizontal, ChevronsUp,
   Mail, PenLine, Receipt, Megaphone, Coins, HeartPulse, Syringe, ScanLine, Calculator, ConciergeBell, Luggage, Handshake, Gavel, Pill, ClipboardList,
 } from 'lucide-react'
 
@@ -36,7 +36,7 @@ const REGISTRY: Record<string, LucideIcon> = {
   scissors: Scissors, hotel: Hotel, hand: Hand, send: Send, fuel: Fuel, bike: Bike, dumbbell: Dumbbell, 'paw-print': PawPrint, 'hard-hat': HardHat,
   citrus: Citrus, croissant: Croissant, droplet: Droplet, 'grid-3x3': Grid3x3,
   // The house's furniture (backend game/house.go) and the fridge's things (game/fridge.go).
-  droplets: Droplets, sprout: Sprout, 'lamp-floor': LampFloor, piano: Piano, 'glass-water': GlassWater, apple: Apple, refrigerator: Refrigerator, archive: Archive, fan: Fan, armchair: Armchair, 'rectangle-horizontal': RectangleHorizontal, 'chevrons-up': ChevronsUp,
+  frown: Frown, annoyed: Annoyed, droplets: Droplets, sprout: Sprout, 'lamp-floor': LampFloor, piano: Piano, 'glass-water': GlassWater, apple: Apple, refrigerator: Refrigerator, archive: Archive, fan: Fan, armchair: Armchair, 'rectangle-horizontal': RectangleHorizontal, 'chevrons-up': ChevronsUp,
   // The salle de jeux vidéo.
   'gamepad-2': Gamepad2, joystick: Joystick, 'heart-handshake': HeartHandshake, swords: Swords, eye: Eye,
   // At work (backend game/jobs.go).

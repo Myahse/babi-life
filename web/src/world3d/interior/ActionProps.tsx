@@ -9,7 +9,7 @@ import { randomLook } from '../../avatar/options'
 import { Bottle, Sparkler } from '../clubNight'
 import { sizeOf } from '../Character'
 import type { Look } from '../../lib/types'
-import { Balloons, Campaign, Cinema, Gossip, Clothes, Cocktail, Coffee, Conference, Counter, Desk, Doctor, Fitting, Foam, Gallery, HairMoves, Manicure, Market, Mother, RoomService, Roulette, SchoolBag, Show, Visit, Wedding, YardBall, type Papers, type Tray } from './doings'
+import { Balloons, Campaign, Cinema, Gossip, Clothes, Cocktail, Coffee, Conference, Counter, Desk, Doctor, Fitting, Foam, Gallery, HairMoves, Manicure, Market, Mother, BabyMess, type Mess, RoomService, Roulette, SchoolBag, Show, Visit, Wedding, YardBall, type Papers, type Tray } from './doings'
 
 // What shows what the Sim is doing, around it: the water of the shower, the
 // plate of garba, the bottle, the blanket, the notebook, the prayer mat…
@@ -36,7 +36,7 @@ const BABY = /^(biberon|bouillie|hochet|calin)$/
  * its own shower head; 'room' for a hotel room); stage: the Sim's age, for
  * what it carries; partner: the one it marries.
  */
-export function ActionProps({ id, kind, lying, stage = 'adulte', partner, bath, mum }: { id?: string; kind: string; lying: boolean; stage?: string; partner?: { look: Look; gender: 'femme' | 'homme' }; /** A hotel room with a bathtub. */ bath?: boolean; /** A baby's maman (its family's), for the things done with her. */ mum?: Look }) {
+export function ActionProps({ id, kind, lying, stage = 'adulte', partner, bath, mum, carer = 'maman', nappy = true }: { id?: string; kind: string; lying: boolean; stage?: string; partner?: { look: Look; gender: 'femme' | 'homme' }; /** A hotel room with a bathtub. */ bath?: boolean; /** A baby's maman (its family's), or the nounou or gouvernante looking after it (HomeInside babyCare). */ mum?: Look; carer?: 'maman' | 'nounou' | 'gouvernante'; /** The family can buy nappies: the caca and the pipi go in it, not on the floor. */ nappy?: boolean }) {
   // (Cooking: the pot is on the stove, drawn where the stove is.)
   if (!id || id === 'cook-attieke') return null
   if (HAIR.test(id) && (kind === 'barbier' || kind === 'salon')) return <Hairdresser id={id} salon={kind === 'salon'} />
@@ -47,6 +47,7 @@ export function ActionProps({ id, kind, lying, stage = 'adulte', partner, bath, 
   if (id === 'shower' || id === 'logement-douche' || id === 'chambre-douche' || (id === 'chambre-bain' && !bath)) return <Shower fixtures={kind !== 'house' && kind !== 'room'} />
   if (id === 'chambre-bain') return <Foam />
   if (id === 'bain-bebe') return <Mother doing="bain" look={mum} />
+  if (/^(caca|pipi|vomir|pleurer)$/.test(id)) return <BabyMess kind={id as Mess} look={mum} carer={carer} nappy={nappy} />
   if (BABY.test(id)) return <Mother doing={id as 'biberon' | 'bouillie' | 'hochet' | 'calin'} look={mum} />
   if (id === 'jouer-cour') return <YardBall scale={sizeOf(stage).scale} />
   if (id === 'aller-ecole') return <SchoolBag scale={sizeOf(stage).scale} />
