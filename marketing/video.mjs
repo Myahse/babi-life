@@ -5,6 +5,7 @@
 // FILM=arnaque, Awa scammed through a link on Gbairai, 51 s, voice out/voix-arnaque.mp3 when there;
 // FILM=keke, Keke's street interview « what do you want in Babi Life? », 58 s, voice out/voix-keke.mp3;
 // FILM=sortie, Awa announcing the game comes out on Wednesday 28 October and what is new in it, 35 s, voice out/voix-sortie.mp3;
+// FILM=bienvenue, Awa welcoming the new players on opening night, 51 s, voice out/voix-bienvenue.mp3;
 // FILM=gameplay, how you play, 39 s, its beat out/son-gameplay.mp3 from beat.py;
 // FILM=tout, the trailer of everything, 53 s, Awa's voice out/voix-tout.mp3 over its beat out/son-tout.mp3),
 // 1080 × 1920 (WhatsApp status, TikTok, Reels), drawn frame
@@ -22,7 +23,7 @@ import { HERE, OUT, SHORT, URL, browser } from './shared.mjs'
 const FPS = Number(process.env.FPS ?? 24)
 /** Which film: lancement (the launch), bouger (gbaka, Gnango, Rue Princesse), bande-annonce (the trailer) or decouverte (the tour). */
 const FILM = process.env.FILM ?? 'lancement'
-const PORTS = { lancement: 5233, bouger: 5235, 'bande-annonce': 5236, decouverte: 5237, live: 5239, merci: 5240, gameplay: 5241, arnaque: 5242, keke: 5243, tout: 5244, sortie: 5245 }
+const PORTS = { lancement: 5233, bouger: 5235, 'bande-annonce': 5236, decouverte: 5237, live: 5239, merci: 5240, gameplay: 5241, arnaque: 5242, keke: 5243, tout: 5244, sortie: 5245, bienvenue: 5246 }
 const NAME = FILM === 'lancement' ? 'babi-life-video' : `babi-life-video-${FILM}`
 const SRC = FILM === 'lancement' ? 'video' : `video-${FILM}`
 const PORT = PORTS[FILM] ?? 5238

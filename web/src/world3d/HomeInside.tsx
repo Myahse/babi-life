@@ -263,7 +263,7 @@ function Walking({ sim, stage, way, spot, doing, onThere, steer, onMoved, onLeve
   })
   const look = spot?.pose === 'wash' ? { ...sim.look, outfit: 'serviette', accessory: 'none' } : sim.look
   return (
-    <group ref={g}>
+    <group ref={g} name="me">
       {settled && spot?.swim ? (
         <Swimmer len={spot.swim} look={{ ...sim.look, outfit: 'maillot', accessory: 'none' }} gender={sim.gender} stage={stage} />
       ) : settled && spot ? (
@@ -425,7 +425,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
     <div className="absolute inset-0">
       <Canvas shadows dpr={[1, 2]} camera={{ position: [span * 0.55, span * 0.85, span * 0.95], fov: 42 }} style={{ background: night ? '#0b1026' : '#a9d3f0' }}>
         <Snapper />
-        {import.meta.env.DEV && <DevCam spot={spot} />}
+        {import.meta.env.DEV && <DevCam spot={spot} where={where} />}
         <ChatFraming />
         <Suspense fallback={null}>
           <hemisphereLight args={[night ? '#5a6ab0' : '#ffffff', '#b8a27c', night ? 0.55 : 1.15]} />
@@ -813,9 +813,10 @@ function Box3({ p, s, c }: { p: [number, number, number]; s: [number, number, nu
 }
 
 /** In development, for tests in the browser: the house's camera, and where the Sim does what it does. */
-function DevCam({ spot }: { spot: HomeSpot | null }) {
+function DevCam({ spot, where }: { spot: HomeSpot | null; where: { current: XZ } }) {
   const camera = useThree((st) => st.camera)
   const controls = useThree((st) => st.controls)
-  useEffect(() => void Object.assign(globalThis, { __home: { camera, controls, spot } }), [camera, controls, spot])
+  const scene = useThree((st) => st.scene)
+  useEffect(() => void Object.assign(globalThis, { __home: { camera, controls, spot, where, scene } }), [camera, controls, spot, where, scene])
   return null
 }
