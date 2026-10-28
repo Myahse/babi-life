@@ -5,6 +5,8 @@ import * as THREE from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { Look, Sim } from '../lib/types'
 import { Baby, Human, type Pose } from './Human'
+import { sizeOf } from '../world3d/Character'
+import { lookAt } from './options'
 
 // The creator's turntable: the Sim on a round podium, drag to spin it.
 // `focus` glides the camera between the whole body and a close-up of the face.
@@ -17,25 +19,35 @@ const SHOTS: Record<Focus, { y: number; dist: number }> = {
   face: { y: 1.5, dist: 1.25 },
 }
 
-function Rig({ focus, height }: { focus: Focus; height: number }) {
+// A baby sitting on the podium (at 1.5×): its own shots.
+const BABY_SHOTS: Record<Focus, { y: number; dist: number }> = {
+  body: { y: 0.5, dist: 2.5 },
+  outfit: { y: 0.5, dist: 2.3 },
+  face: { y: 0.72, dist: 1.4 },
+}
+
+function Rig({ focus, height, baby, back = 1 }: { focus: Focus; height: number; baby?: boolean; /** Further back (a child's big head). */ back?: number }) {
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null
   const camera = useThree((s) => s.camera)
   const want = useRef(new THREE.Vector3())
   useFrame((_, dt) => {
     if (!controls) return
-    const shot = SHOTS[focus]
+    const shot = (baby ? BABY_SHOTS : SHOTS)[focus]
     const k = 1 - Math.exp(-dt * 5)
     controls.target.lerp(want.current.set(0, shot.y * height, 0), k)
     const dir = camera.position.clone().sub(controls.target).normalize()
     const dist = camera.position.distanceTo(controls.target)
-    camera.position.copy(controls.target).add(dir.multiplyScalar(THREE.MathUtils.lerp(dist, shot.dist * height, k)))
+    camera.position.copy(controls.target).add(dir.multiplyScalar(THREE.MathUtils.lerp(dist, shot.dist * height * back, k)))
     controls.update()
   })
   return null
 }
 
-export function Stage({ look, gender, focus = 'body', pose = 'idle', className = '', baby = false }: { look: Look; gender: Sim['gender']; focus?: Focus; pose?: Pose; className?: string; /** Show the Sim as the baby it will be born. */ baby?: boolean }) {
-  const h = look.height ?? 1
+export function Stage({ look, gender, focus = 'body', pose = 'idle', className = '', baby = false, stage }: { look: Look; gender: Sim['gender']; focus?: Focus; pose?: Pose; className?: string; /** Show the Sim as the baby it will be born. */ baby?: boolean; /** Show the Sim at its age, in what fits it (« Changer de look »). */ stage?: string }) {
+  const young = stage && stage !== 'adulte' && stage !== 'bebe' ? sizeOf(stage) : null
+  const worn = stage ? lookAt(look, stage) : look
+  // The camera frames a child as small as it is.
+  const h = stage === 'bebe' ? 1 : (look.height ?? 1) * (young ? young.scale * 1.08 : 1)
   return (
     <Canvas className={className} shadows dpr={[1, 2]} camera={{ position: [0.9, 1.1, 4.3], fov: 28 }} gl={{ antialias: true, alpha: true }}>
       <hemisphereLight args={['#fff4e6', '#c0704f', 1.2]} />
@@ -51,15 +63,19 @@ export function Stage({ look, gender, focus = 'body', pose = 'idle', className =
         <meshBasicMaterial color="#ff9a2e" />
       </mesh>
       <ContactShadows position={[0, 0.001, 0]} opacity={0.35} scale={2.4} blur={2.5} far={1.5} />
-      {baby ? (
-        <group scale={2.6}>
-          <Baby look={look} gender={gender} pose="busy" />
+      {baby || stage === 'bebe' ? (
+        <group scale={stage === 'bebe' ? 1.5 : 2.6}>
+          <Baby look={worn} fitted={!!stage} gender={gender} pose="busy" />
+        </group>
+      ) : young ? (
+        <group scale={young.scale}>
+          <Human look={worn} fitted gender={gender} pose={pose} headScale={young.head} />
         </group>
       ) : (
-        <Human look={look} gender={gender} pose={pose} />
+        <Human look={worn} gender={gender} pose={pose} />
       )}
       <OrbitControls makeDefault enablePan={false} enableZoom={false} minPolarAngle={1.05} maxPolarAngle={1.75} rotateSpeed={0.7} />
-      <Rig focus={focus} height={h} />
+      <Rig focus={focus} height={h} baby={stage === 'bebe'} back={young?.head} />
     </Canvas>
   )
 }

@@ -5,8 +5,9 @@ import type { Look } from '../lib/types'
 import { BlockBaby, BlockHuman } from '../avatar/BlockHuman'
 import { LowHuman } from '../avatar/LowHuman'
 import type { Pose } from '../avatar/Human'
-import { ACCESSORIES, BEARDS, DEFAULT_LOOK, FEMME_OUTFITS, HAIRS, OUTFIT_DEFAULT_COLOR, OUTFITS, PATTERNS } from '../avatar/options'
+import { ACCESSORIES, BABY_ACCESSORIES, BABY_HAIRS, BABY_OUTFITS, BEARDS, DEFAULT_LOOK, FEMME_OUTFITS, HAIRS, KID_ACCESSORIES, KID_HAIRS, KID_OUTFITS, OUTFIT_DEFAULT_COLOR, OUTFITS, PATTERNS, TEEN_ACCESSORIES, TEEN_OUTFITS } from '../avatar/options'
 import { NoteShower } from '../world3d/money'
+import { Character } from '../world3d/Character'
 
 // Dev-only lab (/lab.html): a row of blocky Sims, one per outfit, hair and
 // accessory, to check them side by side. ?pose=walk sets everyone's pose,
@@ -14,7 +15,8 @@ import { NoteShower } from '../world3d/money'
 // ?pose=throw shows the travaillement, notes and all; ?far shows the
 // low-detail Sims seen from afar, ?baby the babies in the same looks;
 // ?all=outfits|hairs|accessories|stacks|beards|patterns&row=n lays out every
-// choice, six at a time.
+// choice, six at a time; ?all=bebe|enfant|ado the looks of each age, on
+// the Sim at that age (?cam=x,y,z&at=x,y,z to look closer).
 
 const q = new URLSearchParams(location.search)
 const pose = (q.get('pose') ?? 'idle') as Pose
@@ -39,6 +41,21 @@ function everyChoice(kind: string): Sample[] {
       return ['glasses,bag,watch', 'sunglasses,chain,cap', 'earrings,beads,bag', 'glasses,earrings,watch,bag', 'headphones,sunglasses,chain,watch,bag', 'hat,glasses,croix'].map((a, i) =>
         L({ accessory: a, hair: i === 2 || i === 3 ? 'braids' : 'short', outfit: 'casual', outfitColor: ['#00a862', '#f4efe6', '#d6336c', '#74c0fc', '#ff7a00', '#7b5cff'][i], skin: skins[i % 4] }, i === 2 || i === 3 ? 'femme' : 'homme'),
       )
+    case 'bebe':
+      return [
+        ...BABY_OUTFITS.map((o, i) => L({ outfit: o.id, outfitColor: OUTFIT_DEFAULT_COLOR[o.id], hair: BABY_HAIRS[i % 4].id, accessory: 'none', skin: skins[i % 4] }, o.id === 'robe-bebe' ? 'femme' : 'homme', { stage: 'bebe' })),
+        ...BABY_ACCESSORIES.slice(1).map((a, i) => L({ outfit: 'grenouillere', outfitColor: '#cdeac0', hair: 'touffe', accessory: a.id, skin: skins[i % 4] }, 'femme', { stage: 'bebe' })),
+      ]
+    case 'enfant':
+    case 'ado': {
+      const outfits = kind === 'enfant' ? KID_OUTFITS : TEEN_OUTFITS
+      const accs = kind === 'enfant' ? KID_ACCESSORIES : TEEN_ACCESSORIES
+      return [
+        ...outfits.map((o, i) => L({ outfit: o.id, outfitColor: OUTFIT_DEFAULT_COLOR[o.id], hair: i % 2 ? 'short' : KID_HAIRS[i % 2].id, accessory: 'none', skin: skins[i % 4] }, FEMME_OUTFITS.has(o.id) || i % 2 === 0 ? 'femme' : 'homme', { stage: kind })),
+        ...KID_HAIRS.map((h, i) => L({ outfit: 'tee-short', outfitColor: '#74c0fc', hair: h.id, accessory: 'none', skin: skins[i % 4] }, 'femme', { stage: kind })),
+        ...accs.map((a, i) => L({ outfit: kind === 'enfant' ? 'uniforme' : 'oversize', outfitColor: OUTFIT_DEFAULT_COLOR[kind === 'enfant' ? 'uniforme' : 'oversize'], hair: 'twists', accessory: a.id, skin: skins[i % 4] }, i % 2 ? 'homme' : 'femme', { stage: kind })),
+      ]
+    }
     case 'beards':
       return BEARDS.map((b, i) => L({ beard: b.id, hair: 'short', outfit: 'chemise', accessory: 'none', skin: skins[i % 4] }))
     default:
@@ -46,7 +63,7 @@ function everyChoice(kind: string): Sample[] {
   }
 }
 
-type Sample = { look: Partial<Look>; gender: 'femme' | 'homme'; headScale?: number; scale?: number }
+type Sample = { look: Partial<Look>; gender: 'femme' | 'homme'; headScale?: number; scale?: number; stage?: string }
 const L = (look: Partial<Look>, gender: 'femme' | 'homme' = 'homme', extra: Partial<Sample> = {}): Sample => ({ look, gender, ...extra })
 
 const ROWS: Sample[][] = [
@@ -71,11 +88,12 @@ const ROWS: Sample[][] = [
 function Lab() {
   // ?all=…&page=n: six at a time, in one row.
   const samples = all ? everyChoice(all).slice(row * 6, row * 6 + 6) : (ROWS[row] ?? ROWS[0])
-  const gap = 0.9
+  const babies = all === 'bebe'
+  const gap = babies ? 0.5 : 0.9
   const perRow = samples.length
   const x0 = (-(Math.min(perRow, samples.length) - 1) * gap) / 2
   return (
-    <Canvas shadows dpr={[1, 2]} style={{ width: '100vw', height: '100vh' }} camera={face ? { position: [0, 1.6, 3.6], fov: 32 } : { position: [0, 1.4, 6.2], fov: 38 }}>
+    <Canvas shadows dpr={[1, 2]} style={{ width: '100vw', height: '100vh' }} camera={q.get('cam') ? { position: q.get('cam')!.split(',').map(Number) as [number, number, number], fov: 38 } : babies ? { position: [0, 0.9, 2.6], fov: 38 } : face ? { position: [0, 1.6, 3.6], fov: 32 } : { position: [0, 1.4, 6.2], fov: 38 }}>
       <color attach="background" args={['#f3e9dc']} />
       <hemisphereLight args={['#fff4e6', '#c0704f', 1.2]} />
       <directionalLight position={[2.5, 4, 3]} intensity={2.3} castShadow shadow-mapSize={[1024, 1024]} />
@@ -87,7 +105,9 @@ function Lab() {
       </mesh>
       {samples.map((s, i) => (
         <group key={i} position={[x0 + (i % perRow) * gap, 0, -Math.floor(i / perRow) * 1.6]} scale={s.scale ?? 1}>
-          {baby ? (
+          {s.stage ? (
+            <Character look={{ ...DEFAULT_LOOK, ...s.look }} gender={s.gender} stage={s.stage} pose={s.stage === 'bebe' ? 'busy' : pose} marker={false} seed={i} />
+          ) : baby ? (
             <BlockBaby look={{ ...DEFAULT_LOOK, ...s.look }} gender={s.gender} pose={pose} seed={i} />
           ) : far ? (
             <LowHuman look={{ ...DEFAULT_LOOK, ...s.look }} gender={s.gender} pose={pose} seed={i} speed={pose === 'run' ? 6 : 1.4} />
@@ -97,7 +117,7 @@ function Lab() {
           {pose === 'throw' && <NoteShower from={[0.3, 1.72, 0.3]} toward={[0, 0.35, 1]} seed={i} />}
         </group>
       ))}
-      <OrbitControls target={face ? [0, 1.5, 0] : [0, 0.9, 0]} />
+      <OrbitControls target={q.get('at') ? (q.get('at')!.split(',').map(Number) as [number, number, number]) : babies ? [0, 0.3, 0] : face ? [0, 1.5, 0] : [0, 0.9, 0]} />
     </Canvas>
   )
 }

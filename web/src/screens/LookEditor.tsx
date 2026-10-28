@@ -5,14 +5,15 @@ import { api, errorText } from '../lib/api'
 import type { ClothingPiece, Look, Sim } from '../lib/types'
 import { forGender, wearPiece, wearing } from '../lib/clothes'
 import { useWorld } from '../store/world'
-import { ACCESSORIES, ACCESSORY_COLORS, BEARDS, BOTTOM_COLORS, FEMME_OUTFITS, HAIR_COLORS, HAIRS, OUTFIT_COLORS, OUTFIT_DEFAULT_COLOR, OUTFITS, PATTERNS, PIECE_PATTERNS, PRESTIGE_ACCESSORIES, SHOE_COLORS, WAX_OUTFITS, defaultColors, fullLook } from '../avatar/options'
+import { ACCESSORIES, ACCESSORY_COLORS, BEARDS, BOTTOM_COLORS, FEMME_OUTFITS, HAIR_COLORS, HAIRS, OUTFIT_COLORS, OUTFIT_DEFAULT_COLOR, OUTFITS, PATTERNS, PIECE_PATTERNS, PRESTIGE_ACCESSORIES, SHOE_COLORS, WAX_OUTFITS, accessoriesFor, beardsFor, defaultColors, fullLook, hairsFor, outfitsFor } from '../avatar/options'
 import { ColorPicker } from '../components/ColorPicker'
 import { AccessoryOptions, Options, Section } from '../components/LookOptions'
 import { Stage, type Focus } from '../avatar/Stage'
 import { waxSwatch } from '../avatar/BlockHuman'
 import { Chip } from '../components/ui'
 import { Portrait } from '../avatar/portrait'
-import { amount } from '../game/rules'
+import { amount, lifeOf } from '../game/rules'
+import { keyOpen, useFeatures } from '../lib/features'
 
 // « Changer de look »: the wardrobe (clothes, pagne, colours, accessories)
 // is free; a new cut, hair colour or beard is a visit to the barber or the
@@ -41,6 +42,7 @@ export function LookEditor() {
   const [error, setError] = useState<string | null>(null)
   const world = useWorld((s) => s.world)
   const [owned, setOwned] = useState<string[]>([])
+  const feats = useFeatures()
 
   useEffect(() => {
     api.sims().then((sims) => {
@@ -58,8 +60,16 @@ export function LookEditor() {
   const setLook = (patch: Partial<Look>) => setLookState((l) => ({ ...l!, ...patch }))
   const femme = sim.gender === 'femme'
   const before = fullLook(sim.look)
+  // The looks of each age (« looks-age »): a baby, a child, a teen picks among its own; maman does a child's hair, for free.
+  const stage = keyOpen(feats, 'looks-age') && world ? lifeOf(world, sim).stage?.id : undefined
+  const young = !!stage && stage !== 'adulte'
+  const baby = stage === 'bebe'
+  const outfits = stage ? outfitsFor(stage, femme) : OUTFITS.filter((o) => femme || !FEMME_OUTFITS.has(o.id))
+  const hairs = stage ? hairsFor(stage) : HAIRS
+  const accessories = stage ? accessoriesFor(stage) : ACCESSORIES
+  const beards = stage ? beardsFor(stage) : BEARDS
   const haircut = look.hair !== before.hair || look.hairColor !== before.hairColor || look.beard !== before.beard
-  const cost = haircut ? HAIR_PRICE : 0
+  const cost = haircut && !young ? HAIR_PRICE : 0
   const changed = (Object.keys(look) as (keyof Look)[]).some((k) => look[k] !== before[k])
   const defaults = defaultColors(look, femme)
   const mine: ClothingPiece[] = forGender(world?.clothes ?? [], sim.gender).filter((p) => owned.includes(p.id))
@@ -83,7 +93,7 @@ export function LookEditor() {
   return (
     <div className="flex h-full flex-col bg-[var(--color-night)] lg:flex-row">
       <section className="relative flex min-h-[42%] flex-1 flex-col overflow-hidden bg-[radial-gradient(110%_90%_at_50%_15%,#ffe7c7_0%,#ffb27a_45%,#ff7a59_78%,#c94a6a_100%)]">
-        <Stage look={look} gender={sim.gender} focus={current.focus} className="!absolute inset-0" />
+        <Stage look={look} gender={sim.gender} focus={current.focus} stage={stage} className="!absolute inset-0" />
         <header className="pointer-events-none relative z-10 flex items-start justify-between gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:p-5">
           <div className="rounded-2xl bg-white/25 px-3 py-2 text-white backdrop-blur">
             <div className="text-[11px] font-extrabold tracking-wider uppercase opacity-90">
@@ -113,7 +123,7 @@ export function LookEditor() {
           })}
         </nav>
         <p className="px-4 pb-1 text-sm font-bold text-[var(--color-ink-soft)]">
-          {current.id === 'garde-robe' ? 'Les pièces achetées en boutique : touche pour la mettre.' : current.id === 'coiffure' ? `Chez le coiffeur : ${amount(HAIR_PRICE)} Djai la nouvelle coiffure. Ton corps, lui, ne change pas.` : 'Dans ton armoire : gratuit.'}
+          {current.id === 'garde-robe' ? 'Les pièces achetées en boutique : touche pour la mettre.' : current.id === 'coiffure' ? (young ? 'Maman te coiffe : gratuit. Ton corps, lui, ne change pas.' : `Chez le coiffeur : ${amount(HAIR_PRICE)} Djai la nouvelle coiffure. Ton corps, lui, ne change pas.`) : 'Dans ton armoire : gratuit.'}
         </p>
 
         <div key={tab} className="animate-up flex-1 overflow-y-auto px-4 pt-2 pb-4">
@@ -134,7 +144,7 @@ export function LookEditor() {
           {current.id === 'tenue' && (
             <div className="space-y-5">
               <Section title="Style">
-                <Options choices={OUTFITS.filter((o) => femme || !FEMME_OUTFITS.has(o.id))} value={look.outfit} onPick={(outfit) => setLook({ outfit, ...(OUTFIT_DEFAULT_COLOR[outfit] && { outfitColor: OUTFIT_DEFAULT_COLOR[outfit] }) })} look={look} gender={sim.gender} field="outfit" framing="full" />
+                <Options choices={outfits} value={look.outfit} onPick={(outfit) => setLook({ outfit, ...(OUTFIT_DEFAULT_COLOR[outfit] && { outfitColor: OUTFIT_DEFAULT_COLOR[outfit] }) })} look={look} gender={sim.gender} field="outfit" framing="full" stage={stage} />
               </Section>
               {(WAX_OUTFITS.has(look.outfit) || look.hair === 'headwrap') && (
                 <Section title="Motif du pagne">
@@ -151,21 +161,23 @@ export function LookEditor() {
               <Section title={WAX_OUTFITS.has(look.outfit) ? 'Couleur du pagne' : 'Couleur du haut'}>
                 <ColorPicker label="Haut" presets={OUTFIT_COLORS} value={look.outfitColor} onChange={(outfitColor) => setLook({ outfitColor })} />
               </Section>
-              {look.outfit !== 'robe' && (
+              {look.outfit !== 'robe' && !baby && (
                 <Section title={look.outfit === 'pagne' && femme ? 'Couleur de la jupe' : 'Couleur du bas'}>
                   <ColorPicker label="Bas" presets={BOTTOM_COLORS} auto={defaults.bottom} value={look.bottomColor} onChange={(bottomColor) => setLook({ bottomColor })} />
                 </Section>
               )}
-              <Section title="Couleur des chaussures">
-                <ColorPicker label="Chaussures" presets={SHOE_COLORS} auto={defaults.shoe} value={look.shoeColor} onChange={(shoeColor) => setLook({ shoeColor })} />
-              </Section>
+              {!baby && (
+                <Section title="Couleur des chaussures">
+                  <ColorPicker label="Chaussures" presets={SHOE_COLORS} auto={defaults.shoe} value={look.shoeColor} onChange={(shoeColor) => setLook({ shoeColor })} />
+                </Section>
+              )}
             </div>
           )}
 
           {current.id === 'accessoire' && (
             <div className="space-y-5">
               <Section title="Accessoire" icon={Glasses}>
-                <AccessoryOptions choices={ACCESSORIES} value={look.accessory} onPick={(accessory) => setLook({ accessory })} look={look} gender={sim.gender} locked={sim.prestige ? undefined : PRESTIGE_ACCESSORIES} />
+                <AccessoryOptions choices={accessories} value={look.accessory} onPick={(accessory) => setLook({ accessory })} look={look} gender={sim.gender} locked={sim.prestige ? undefined : PRESTIGE_ACCESSORIES} stage={stage} />
               </Section>
               {look.accessory !== 'none' && (
                 <Section title="Couleur de l'accessoire">
@@ -177,15 +189,15 @@ export function LookEditor() {
 
           {current.id === 'coiffure' && (
             <div className="space-y-5">
-              <Section title="Coupe" right={<Chip tone="gold">{amount(HAIR_PRICE)} Djai</Chip>}>
-                <Options choices={HAIRS} value={look.hair} onPick={(hair) => setLook({ hair })} look={look} gender={sim.gender} field="hair" framing="head" />
+              <Section title="Coupe" right={young ? <Chip tone="good">Gratuit</Chip> : <Chip tone="gold">{amount(HAIR_PRICE)} Djai</Chip>}>
+                <Options choices={hairs} value={look.hair} onPick={(hair) => setLook({ hair })} look={look} gender={sim.gender} field="hair" framing="head" stage={stage} />
               </Section>
               <Section title="Couleur">
                 <ColorPicker label="Cheveux" presets={HAIR_COLORS} value={look.hairColor} onChange={(hairColor) => setLook({ hairColor })} />
               </Section>
-              {!femme && (
+              {!femme && beards.length > 0 && (
                 <Section title="Barbe">
-                  <Options choices={BEARDS} value={look.beard} onPick={(beard) => setLook({ beard })} look={look} gender={sim.gender} field="beard" framing="head" />
+                  <Options choices={beards} value={look.beard} onPick={(beard) => setLook({ beard })} look={look} gender={sim.gender} field="beard" framing="head" stage={stage} />
                 </Section>
               )}
             </div>

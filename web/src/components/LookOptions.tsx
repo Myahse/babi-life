@@ -21,13 +21,13 @@ export function Section({ title, right, icon: Icon, children }: { title: string;
 }
 
 /** A grid of options, each shown as a picture of the Sim wearing it. */
-export function Options({ choices, value, onPick, look, gender, field, framing }: { choices: Choice[]; value: string; onPick: (id: string) => void; look: Required<Look>; gender: 'femme' | 'homme'; field: keyof Look; framing: Framing }) {
+export function Options({ choices, value, onPick, look, gender, field, framing, stage }: { choices: Choice[]; value: string; onPick: (id: string) => void; look: Required<Look>; gender: 'femme' | 'homme'; field: keyof Look; framing: Framing; /** Pictured at its age. */ stage?: string }) {
   return (
     <div className={`grid gap-2.5 ${framing === 'full' ? 'grid-cols-3 sm:grid-cols-4' : 'grid-cols-4'}`}>
       {choices.map((c) => (
         <button key={c.id} className="tile flex flex-col items-center overflow-hidden pb-1.5" aria-pressed={value === c.id} onClick={() => onPick(c.id)}>
           <span className={`block w-full ${framing === 'full' ? 'aspect-[3/4]' : 'aspect-square'}`}>
-            <Portrait look={{ ...look, [field]: c.id }} gender={gender} framing={framing} />
+            <Portrait look={{ ...look, [field]: c.id }} gender={gender} framing={framing} stage={stage} />
           </span>
           <span className="px-1 text-center text-[11px] leading-tight font-extrabold">{c.label}</span>
         </button>
@@ -41,7 +41,7 @@ export function Options({ choices, value, onPick, look, gender, field, framing }
  * on the body, five at most. A tap puts one on or takes it off; each picture
  * shows the Sim with it added to what it already wears.
  */
-export function AccessoryOptions({ choices, value, onPick, look, gender, locked }: { choices: Choice[]; value: string; onPick: (accessory: string) => void; look: Required<Look>; gender: 'femme' | 'homme'; /** Not this Sim's (the Pack Prestige's crown): shown, with a lock, not picked. */ locked?: Set<string> }) {
+export function AccessoryOptions({ choices, value, onPick, look, gender, locked, stage }: { choices: Choice[]; value: string; onPick: (accessory: string) => void; look: Required<Look>; gender: 'femme' | 'homme'; /** Not this Sim's (the Pack Prestige's crown): shown, with a lock, not picked. */ locked?: Set<string>; /** Pictured at its age. */ stage?: string }) {
   const worn = accessoriesOf({ accessory: value })
   return (
     <div>
@@ -55,7 +55,7 @@ export function AccessoryOptions({ choices, value, onPick, look, gender, locked 
           return (
             <button key={c.id} className="tile relative flex flex-col items-center overflow-hidden pb-1.5 disabled:opacity-60" aria-pressed={on} disabled={shut} title={shut ? 'Avec le Pack Prestige (Boutique)' : undefined} onClick={() => onPick(toggleAccessory(value, c.id))}>
               <span className="block aspect-square w-full">
-                <Portrait look={{ ...look, accessory: c.id === 'none' ? 'none' : on ? value : toggleAccessory(value, c.id) }} gender={gender} framing="bust" />
+                <Portrait look={{ ...look, accessory: c.id === 'none' ? 'none' : on ? value : toggleAccessory(value, c.id) }} gender={gender} framing="bust" stage={stage} />
               </span>
               <span className="px-1 text-center text-[11px] leading-tight font-extrabold">{c.label}</span>
               {shut && (

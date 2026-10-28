@@ -1,9 +1,10 @@
-import { useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { Look, Sim } from '../lib/types'
 import { Baby, Human, type Pose } from '../avatar/Human'
 import { worldTime } from '../lib/worldClock'
+import { lookAt } from '../avatar/options'
 
 // The player's Sim in the 3D neighbourhood: the same blocky Sim as in the
 // creator, with a shadow and the mood losange floating above.
@@ -23,6 +24,8 @@ export const sizeOf = (stage = 'adulte') => SIZE[stage] ?? { scale: 1, head: 1, 
 export function Character({ look, gender, walking, running, busy, moodColor = '#00b86b', marker = true, seed = 0, stage = 'adulte', pose, speed }: Props & { /** How fast it moves (m/s): the steps follow. */ speed?: number }) {
   const doing: Pose = pose ?? (busy ? 'busy' : walking ? (running ? 'run' : 'walk') : 'idle')
   const size = sizeOf(stage)
+  // What it wears, kept to its age: a baby's things come off when it grows up.
+  const worn = useMemo(() => lookAt(look, stage), [look, stage])
   const gem = useRef<THREE.Group>(null)
   useFrame(() => {
     if (!gem.current) return
@@ -37,10 +40,10 @@ export function Character({ look, gender, walking, running, busy, moodColor = '#
         <meshBasicMaterial color="#000" transparent opacity={0.2} />
       </mesh>
       {stage === 'bebe' ? (
-        <Baby look={look} gender={gender} pose={doing === 'walk' || doing === 'run' ? 'walk' : doing === 'idle' || doing === 'sit' ? 'idle' : 'busy'} seed={seed} />
+        <Baby look={worn} fitted gender={gender} pose={doing === 'walk' || doing === 'run' ? 'walk' : doing === 'idle' || doing === 'sit' ? 'idle' : 'busy'} seed={seed} />
       ) : (
         <group scale={size.scale}>
-          <Human look={look} gender={gender} pose={doing} seed={seed} headScale={size.head} speed={speed} />
+          <Human look={worn} fitted gender={gender} pose={doing} seed={seed} headScale={size.head} speed={speed} />
         </group>
       )}
       {marker && (

@@ -1,6 +1,7 @@
 package sims
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"slices"
@@ -8,12 +9,14 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/myahse/babi-life/backend/internal/features"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
 )
 
 // HairPrice: a new haircut, hair colour or beard is a visit to the barber or
 // the salon. Clothes, colours, pagne and accessories come from the wardrobe.
+// With « looks-age », maman does a child's hair: free until 18.
 const HairPrice = 2000
 
 // changeLook puts on a new look and says what it cost. The body stays the
@@ -28,10 +31,14 @@ func (s *Sim) changeLook(nl Look) (int, error) {
 	if !s.Prestige && slices.Contains(strings.Split(nl.Accessory, ","), "couronne") {
 		return 0, errors.New("la couronne vient avec le Pack Prestige (Boutique)")
 	}
+	ageLooks := features.Default.BlocksKey(context.Background(), "looks-age") == ""
+	if !ageLooks && nl.usesAgeLooks() {
+		return 0, errors.New("ce look arrive bientôt")
+	}
 	old := s.Look
 	nl.Skin, nl.Body, nl.Height, nl.Eyes, nl.Marks = old.Skin, old.Body, old.Height, old.Eyes, old.Marks
 	cost := 0
-	if nl.Hair != old.Hair || nl.HairColor != old.HairColor || nl.Beard != old.Beard {
+	if (nl.Hair != old.Hair || nl.HairColor != old.HairColor || nl.Beard != old.Beard) && !(ageLooks && s.minor()) {
 		cost = HairPrice
 	}
 	if s.Money < cost {

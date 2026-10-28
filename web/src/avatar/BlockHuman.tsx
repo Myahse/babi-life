@@ -2,7 +2,7 @@ import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { Look, Sim } from '../lib/types'
-import { FEMME_OUTFITS, HEADWEAR, TALL_HAIR, UNIFORM_HATS, VEILED, accessoryColor, defaultColors, fullLook, hasAcc, headwearOf } from './options'
+import { BABY_OUTFITS, FEMME_OUTFITS, HEADWEAR, TALL_HAIR, UNIFORM_HATS, VEILED, accessoryColor, defaultColors, fullLook, hasAcc, headwearOf } from './options'
 import { tint } from './textures'
 import { fidgetAt, useCastShadows, usePoseRig, type Pose, type RigStyle } from './Human'
 import { worldTime } from '../lib/worldClock'
@@ -16,7 +16,7 @@ import { Wad } from '../world3d/money'
 // Hair, caps, earrings and skirts are extra boxes. Units are metres: feet on
 // y=0, facing +Z, the same joints as the other Sims so the poses drive it.
 
-type Props = { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; /** Children have bigger heads for their size (1 = adult). */ headScale?: number; /** Walking speed (m/s): the steps follow it. */ speed?: number; /** A count: when it changes, the pose starts over. */ take?: number; /** The seconds into the pose, kept by something else. */ clock?: () => number }
+type Props = { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; /** Children have bigger heads for their size (1 = adult). */ headScale?: number; /** Walking speed (m/s): the steps follow it. */ speed?: number; /** A count: when it changes, the pose starts over. */ take?: number; /** The seconds into the pose, kept by something else. */ clock?: () => number; /** The look is already fitted to the Sim's age (options lookAt): a child's own accessories show. */ fitted?: boolean }
 type V3 = [number, number, number]
 
 /* ---------- Proportions ---------- */
@@ -416,7 +416,7 @@ function paintSheet(l: Required<Look>, femme: boolean, young: boolean) {
   const hair = veiled ? 'covered' : (capOn || kufiOn || uniformHat) && TALL_HAIR.has(l.hair) ? 'short' : l.hair
   const hairC = tint(l.hairColor, 0.08)
   const hairPx = (x: number, y: number) =>
-    hair === 'braids' || hair === 'cornrows'
+    hair === 'braids' || hair === 'cornrows' || hair === 'nattes-perles'
       ? x % 2
         ? tint(hairC, hair === 'cornrows' ? -0.4 : -0.25)
         : grain(hairC, x, y, 0.2)
@@ -440,6 +440,8 @@ function paintSheet(l: Required<Look>, femme: boolean, young: boolean) {
     puffs: [1, 2, 4],
     bob: [3, 7, 7],
     degrade: [1, 2, 4],
+    couettes: [1, 2, 4],
+    'nattes-perles': [1, 3, 8],
   }
   const line = LINE[hair]
   if (line) {
@@ -831,6 +833,97 @@ function paintSheet(l: Required<Look>, femme: boolean, young: boolean) {
       trousers(4, cloth(bottom))
       p.rows(b, 9, 10, tint(bottom, -0.2))
       shoes('slide')
+      break
+    }
+    case 'tee-short':
+    case 'maillot-club': {
+      // The child's tee-shirt with a round print and shorts; the club shirt
+      // with its stripes, the sponsor's band, the badge, and socks up.
+      const club = outfit === 'maillot-club'
+      const ink = luminance(top) > 0.6 ? '#14213d' : '#f8f9fa'
+      shirt(10, cloth(top))
+      sleeves(3, cloth(top), club ? ink : undefined)
+      if (club) {
+        for (let row = 0; row < 10; row++)
+          for (const x of [1, 6]) {
+            p.at(b, 'F', x, row, tint(top, 0.3))
+            p.at(b, 'B', x, row, tint(top, 0.3))
+          }
+        for (let x = 1; x < 7; x++) p.at(b, 'F', x, 4, ink)
+        p.at(b, 'F', 5, 1, '#e8b93c')
+        for (const g of R.leg) p.rows(g, 6, 10, top)
+      } else {
+        for (const [x, y] of [[3, 2], [4, 2], [2, 3], [5, 3], [2, 4], [5, 4], [3, 5], [4, 5]]) p.at(b, 'F', x, y, ink)
+        for (const [x, y] of [[3, 3], [4, 3], [3, 4], [4, 4]]) p.at(b, 'F', x, y, '#ff7a00')
+      }
+      p.rows(b, 9, 10, tint(bottom, -0.25))
+      trousers(4, cloth(bottom))
+      shoes(club ? 'boot' : 'sandal')
+      break
+    }
+    case 'robe-volants': {
+      // The little girl's dress: puffed sleeves, a white collar, a ribbon at the
+      // waist and a flared skirt with frills, white socks.
+      shirt(12, cloth(top))
+      sleeves(2, cloth(tint(top, 0.18)))
+      for (let x = 2; x < 6; x++) p.at(b, 'F', x, 0, '#f8f9fa')
+      p.rows(b, 7, 8, tint(top, -0.28))
+      cut.skirt = { paint: (x: number, y: number) => (y % 4 === 3 ? tint(top, 0.3) : grain(top, x, y, 0.06)), band: tint(top, -0.28), w: 1.3, d: 1.5, hem: 0.46 }
+      for (const g of R.leg) p.rows(g, 8, 10, '#f8f9fa')
+      shoes('dress')
+      break
+    }
+    case 'ensemble-pagne': {
+      // A child's wax shirt over wax shorts (a wax skirt for the girls).
+      const fabric = l.bottomColor || top
+      shirt(10, wax(top))
+      sleeves(3, wax(top))
+      if (femme) cut.skirt = { paint: wax(fabric), band: tint(fabric, -0.3), w: 1.14, d: 1.3, hem: 0.42 }
+      else {
+        p.rows(b, 9, 10, tint(fabric, -0.3))
+        trousers(5, wax(fabric))
+      }
+      shoes('sandal')
+      break
+    }
+    case 'pyjama': {
+      // Top and trousers alike, little stars, the collar's piping; claquettes.
+      const star = (x: number, y: number) => ((x * 3 + y * 5) % 7 === 0 ? tint(top, 0.55) : grain(top, x, y, 0.05))
+      shirt(12, star)
+      sleeves(10, star, tint(top, 0.4))
+      for (let x = 2; x < 6; x++) p.at(b, 'F', x, 0, tint(top, 0.4))
+      trousers(11, star)
+      shoes('slide')
+      break
+    }
+    case 'oversize': {
+      // The teen's big tee down over the hips, a bold print, sleeves to the
+      // elbows, cargo trousers with side pockets, white sneakers.
+      const ink = luminance(top) > 0.6 ? '#17171a' : '#f8f9fa'
+      trousers(10, cloth(bottom), false)
+      shirt(12, cloth(top))
+      sleeves(5, cloth(top))
+      for (let x = 1; x < 7; x++) {
+        p.at(b, 'F', x, 3, ink)
+        p.at(b, 'F', x, 6, ink)
+      }
+      for (const x of [2, 5]) for (const y of [4, 5]) p.at(b, 'F', x, y, '#ff7a00')
+      R.leg.forEach((g, i) => {
+        for (const row of [4, 5, 6]) for (const col of [1, 2]) p.at(g, i ? 'R' : 'L', col, row, tint(bottom, row === 4 ? -0.3 : -0.14))
+      })
+      shoes('sneaker')
+      break
+    }
+    case 'crop': {
+      // A crop top over the belly and a high-waisted jean.
+      shirt(6, cloth(top))
+      sleeves(2, cloth(top))
+      for (let x = 2; x < 6; x++) p.at(b, 'F', x, 0, skin)
+      p.rows(b, 8, 12, cloth(bottom))
+      p.rows(b, 8, 9, tint(bottom, -0.25))
+      p.at(b, 'F', 4, 8, '#d8c27a')
+      trousers(10, cloth(bottom))
+      shoes('sneaker')
       break
     }
     case 'jogging': {
@@ -1232,6 +1325,7 @@ const hairMat = (color: string, kind: string) =>
       const n = hash(x + 3, y + 11)
       switch (kind) {
         case 'braids':
+        case 'nattes-perles':
           // A plait: V-shaped crossings down the strand, a dark seam at its edges.
           return x % 8 === 0 || x % 8 === 7 ? tint(color, -0.38) : tint(color, (y + Math.abs((x % 8) - 3.5)) % 4 < 2 ? 0.1 : -0.14)
         case 'locks':
@@ -1258,7 +1352,7 @@ const clothMat = (color: string) => lambert('#fff', pixelTex(`cloth|${color}`, 8
 /* ---------- Hair, caps, earrings: extra boxes on the head ---------- */
 
 /** Hair that hangs loose, and sways. */
-const LOOSE = new Set(['braids', 'locks', 'twists', 'weave', 'ponytail', 'bob'])
+const LOOSE = new Set(['braids', 'locks', 'twists', 'weave', 'ponytail', 'bob', 'nattes-perles'])
 
 /** One box of hair (or headwear): at module level, so a re-render of the head (a new pose) keeps its meshes. */
 function Box({ s, p, r, mat, m, cast }: { s: V3; p: V3; r?: V3; mat?: THREE.Material; m: THREE.Material; cast: boolean }) {
@@ -1336,6 +1430,23 @@ function HeadBoxes({ l, hair, young, cast, femme, pose, seed }: { l: Required<Lo
         <group>
           <Box m={m} cast={cast} s={[H * 0.3, H * 0.3, H * 0.24]} p={[0, H * 0.82, -H * 0.62]} />
           <Box m={m} cast={cast} s={[H * 0.24, H * 0.62, H * 0.22]} p={[0, H * 0.5, -H * 0.72]} r={[0.3, 0, 0]} />
+        </group>
+      )
+      break
+    case 'nattes-perles':
+      // Shorter plaits, a bead of each colour at their ends.
+      hairBoxes = <group>{strands(11, 0.036, 0.3, '#f2b705')}</group>
+      break
+    case 'couettes':
+      // Two bunches above the ears, each tied with its bobble.
+      hairBoxes = (
+        <group>
+          {[-1, 1].map((s) => (
+            <group key={s}>
+              <Box m={m} cast={cast} s={[H * 0.34, H * 0.36, H * 0.34]} p={[s * H * 0.74, H * 0.78, -H * 0.12]} />
+              <Box m={m} cast={cast} s={[H * 0.1, H * 0.18, H * 0.18]} p={[s * H * 0.56, H * 0.78, -H * 0.12]} mat={lambert('#f783ac')} />
+            </group>
+          ))}
         </group>
       )
       break
@@ -1490,6 +1601,19 @@ function HeadBoxes({ l, hair, young, cast, femme, pose, seed }: { l: Required<Lo
           ))}
         </group>
       )}
+      {/* Barrettes: three little clips across the front of the hair */}
+      {!young &&
+        hasAcc(l, 'barrettes') &&
+        [-1, 0, 1].map((k) => <Box key={`clip${k}`} m={m} cast={cast} s={[H * 0.16, H * 0.07, H * 0.1]} p={[k * H * 0.3, H * 1.09, H * 0.34 - Math.abs(k) * H * 0.06]} r={[0, 0, k * 0.3]} mat={lambert(k ? accOf('barrettes') : tint(accOf('barrettes'), 0.35))} />)}
+      {/* Earbuds: a bud in each ear, its little stem down */}
+      {!young &&
+        hasAcc(l, 'ecouteurs') &&
+        [-1, 1].map((s) => (
+          <group key={`bud${s}`} position={[s * (H / 2 + 0.012), H * 0.42, H * 0.06]}>
+            <Box m={m} cast={cast} s={[0.024, 0.026, 0.026]} p={[0, 0, 0]} mat={lambert(accOf('ecouteurs'))} />
+            <Box m={m} cast={cast} s={[0.01, 0.05, 0.01]} p={[0, -0.034, 0.004]} mat={lambert(accOf('ecouteurs'))} />
+          </group>
+        ))}
       {/* Earrings: a stud and a gold hoop hanging from each ear */}
       {!young &&
         hasAcc(l, 'earrings') &&
@@ -1514,8 +1638,9 @@ function HeadBoxes({ l, hair, young, cast, femme, pose, seed }: { l: Required<Lo
 
 /* ---------- The whole Sim ---------- */
 
-export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 1, speed, take, clock }: Props) {
-  const young = headScale > 1
+export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 1, speed, take, clock, fitted }: Props) {
+  // A child seen in the street wears nothing on top of its clothes; a player's child wears what fits its age.
+  const young = headScale > 1 && !fitted
   const l = fullLook(look)
   const femme = gender === 'femme'
   const cast = useCastShadows()
@@ -1617,6 +1742,28 @@ export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 
                 {mesh(cube(0.02, 0.05, 0.075), [0.07, 0.07, 0], clothMat(tint(accessoryColor(l, 'bag'), -0.1)))}
               </group>
             )}
+            {/* The cartable or the sac à dos on the back, its straps over the shoulders */}
+            {!young && (hasAcc(l, 'cartable') || hasAcc(l, 'sac-a-dos')) && (
+              <group position={[0, TORSO_BOTTOM + 0.31, -td / 2 - 0.055]}>
+                {(() => {
+                  const school = hasAcc(l, 'cartable')
+                  const c = accessoryColor(l, school ? 'cartable' : 'sac-a-dos')
+                  return (
+                    <>
+                      {mesh(cube(tw * 0.82, school ? 0.3 : 0.34, 0.1), [0, 0, 0], clothMat(c))}
+                      {/* The cartable's flap and its two buckles; the bag's front pocket and zip */}
+                      {school ? mesh(cube(tw * 0.84, 0.14, 0.104), [0, 0.09, -0.002], clothMat(tint(c, -0.18))) : mesh(cube(tw * 0.6, 0.13, 0.03), [0, -0.07, -0.06], clothMat(tint(c, 0.12)))}
+                      {school
+                        ? [-1, 1].map((s) => <group key={s}>{mesh(cube(0.025, 0.035, 0.01), [s * tw * 0.2, 0.03, -0.054], lambert('#d8c27a'))}</group>)
+                        : mesh(cube(tw * 0.7, 0.008, 0.104), [0, 0.12, 0], lambert(tint(c, -0.35)))}
+                      {[-1, 1].map((s) => (
+                        <group key={`strap${s}`}>{mesh(cube(0.03, 0.26, 0.012), [s * tw * 0.27, -0.02, td + 0.06], clothMat(tint(c, -0.25)))}</group>
+                      ))}
+                    </>
+                  )
+                })()}
+              </group>
+            )}
           </group>
           {skirt && mesh(box(skW, 0.17, skD, R.skirtTop), [0, 0.885, 0])}
 
@@ -1671,6 +1818,14 @@ export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 
                       {mesh(cube(aw * 1.08, 0.022, aw * 1.08), [0, 0, 0], lambert('#17171a'))}
                       {mesh(cube(0.03, 0.03, 0.012), [-aw / 2 - 0.006, 0, 0], lambert(accessoryColor(l, 'watch')))}
                       {mesh(cube(0.022, 0.022, 0.004), [-aw / 2 - 0.013, 0, 0], lambert('#e7f5ff'))}
+                    </group>
+                  )}
+                  {/* A lollipop in the right hand, when it is free */}
+                  {!young && i === 1 && hasAcc(l, 'sucette') && !['film', 'toilet', 'brush', 'throw'].includes(pose) && (
+                    <group position={[0, -FOREARM - 0.02, aw / 2 + 0.01]}>
+                      {mesh(cube(0.012, 0.1, 0.012), [0, 0.03, 0.02], lambert('#f8f9fa'))}
+                      {mesh(cube(0.06, 0.06, 0.02), [0, 0.1, 0.02], lambert(accessoryColor(l, 'sucette')))}
+                      {mesh(cube(0.03, 0.03, 0.022), [0, 0.1, 0.02], lambert(tint(accessoryColor(l, 'sucette'), 0.45)))}
                     </group>
                   )}
                   {/* The travaillement: the wad of notes in the left hand */}
@@ -1750,23 +1905,38 @@ export function FilmingPhone({ y }: { y: number }) {
 
 /* ---------- A baby ---------- */
 
+const BABY_OUTFIT_IDS = new Set(BABY_OUTFITS.map((o) => o.id))
 const BABY_COLORS = ['#bde0fe', '#ffc8dd', '#cdeac0', '#fff1a8', '#e2cfea']
 
 /**
  * A baby in blocks: a big cube head with the face of the Sim it will grow
  * into, a onesie and a nappy, short arms and legs. Sits and babbles when
- * still, crawls when it moves, claps when busy.
+ * still, crawls when it moves, claps when busy. A player's baby (`fitted`)
+ * wears what was picked for it: the grenouillère, the body, the little
+ * dress, the pagne, the dungarees; the tétine, the bib, the bonnet, the
+ * rattle; a tuft or two little puffs.
  */
-export function BlockBaby({ look, gender, pose = 'idle', seed = 0 }: Props) {
+export function BlockBaby({ look, gender, pose = 'idle', seed = 0, fitted }: Props) {
   const full = fullLook(look)
+  const own = fitted && BABY_OUTFIT_IDS.has(full.outfit) ? full.outfit : null
+  const hairdo = fitted && (full.hair === 'touffe' || full.hair === 'puffs') ? full.hair : null
   const l: Required<Look> = { ...full, hair: full.hair === 'bald' ? 'bald' : 'short', beard: 'none', accessory: 'none', marks: 'none' }
   const cast = useCastShadows()
   const sheet = sheetFor(l, gender === 'femme', true)
-  const fresh = BABY_COLORS[Math.abs(Math.round(seed * 7)) % BABY_COLORS.length] ?? '#bde0fe'
+  const fresh = own ? full.outfitColor : (BABY_COLORS[Math.abs(Math.round(seed * 7)) % BABY_COLORS.length] ?? '#bde0fe')
+  const worn = (c: string) => (full.wear === 'dechire' ? '#a39478' : full.wear === 'use' ? tint(c, -0.18) : c)
   // The poorest babies' onesie has seen better days.
-  const onesie = clothMat(full.wear === 'dechire' ? '#a39478' : full.wear === 'use' ? tint(fresh, -0.18) : fresh)
-  const nappy = lambert(full.wear === 'dechire' ? '#cfc4ad' : '#f8f9fa')
+  const onesie = own === 'pagne-bebe' ? waxMat(worn(fresh), full.pattern) : clothMat(worn(fresh))
   const skin = lambert(l.skin)
+  const nappy = lambert(full.wear === 'dechire' ? '#cfc4ad' : '#f8f9fa')
+  const tee = clothMat('#f8f9fa')
+  // What covers each part: the body and the dress leave the legs bare; the dungarees go over a white tee.
+  const top = own === 'salopette-bebe' ? tee : onesie
+  const sleeve = own === 'body' || own === 'robe-bebe' ? skin : top
+  const leg = own === 'body' || own === 'robe-bebe' ? skin : onesie
+  const pants = own === 'body' ? onesie : nappy
+  const acc = (id: string) => fitted && hasAcc(full, id)
+  const accC = (id: string) => lambert(accessoryColor(full, id))
   const root = useRef<THREE.Group>(null)
   const head = useRef<THREE.Group>(null)
   const arms = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
@@ -1802,26 +1972,64 @@ export function BlockBaby({ look, gender, pose = 'idle', seed = 0 }: Props) {
   return (
     <group ref={root}>
       {/* Body in a onesie, and the nappy */}
-      {b([0.2, 0.2, 0.15], [0, 0.25, 0], onesie)}
-      {b([0.21, 0.09, 0.16], [0, 0.12, 0], nappy)}
+      {b([0.2, 0.2, 0.15], [0, 0.25, 0], top)}
+      {b([0.21, 0.09, 0.16], [0, 0.12, 0], pants)}
+      {/* The dungarees' bib and straps, the dress's flared skirt, the bib round the neck */}
+      {own === 'salopette-bebe' && (
+        <>
+          {b([0.21, 0.1, 0.16], [0, 0.18, 0], onesie)}
+          {b([0.13, 0.08, 0.01], [0, 0.26, 0.078], onesie)}
+          {[-1, 1].map((k) => <group key={k}>{b([0.025, 0.1, 0.01], [k * 0.055, 0.31, 0.078], onesie)}</group>)}
+        </>
+      )}
+      {own === 'robe-bebe' && b([0.27, 0.09, 0.21], [0, 0.13, 0], onesie)}
+      {acc('bavoir') && b([0.15, 0.11, 0.012], [0, 0.29, 0.08], accC('bavoir'))}
       {/* Legs: short, sticking out in front when sitting */}
       {[0, 1].map((i) => (
         <group key={i} ref={legs[i]} position={[(i ? 1 : -1) * 0.055, 0.1, 0]}>
-          {b([0.08, 0.17, 0.08], [0, -0.085, 0], onesie)}
-          {b([0.075, 0.05, 0.09], [0, -0.185, 0.01], skin)}
+          {b([0.08, 0.17, 0.08], [0, -0.085, 0], leg)}
+          {b([0.075, 0.05, 0.09], [0, -0.185, 0.01], own === 'grenouillere' ? onesie : skin)}
         </group>
       ))}
-      {/* Arms */}
+      {/* Arms, the rattle in the right hand */}
       {[0, 1].map((i) => (
         <group key={i} ref={arms[i]} position={[(i ? 1 : -1) * 0.13, 0.33, 0]}>
-          {b([0.065, 0.15, 0.065], [0, -0.075, 0], onesie)}
+          {b([0.065, 0.15, 0.065], [0, -0.075, 0], sleeve)}
+          {sleeve === skin && b([0.075, 0.05, 0.075], [0, -0.02, 0], top)}
           {b([0.06, 0.05, 0.06], [0, -0.175, 0], skin)}
+          {i === 1 && acc('hochet') && (
+            <group position={[0, -0.2, 0.03]}>
+              {b([0.016, 0.08, 0.016], [0, 0, 0], lambert('#f8f9fa'))}
+              {b([0.06, 0.06, 0.06], [0, -0.06, 0], accC('hochet'))}
+              {b([0.03, 0.03, 0.065], [0, -0.06, 0], lambert('#ff6b6b'))}
+            </group>
+          )}
         </group>
       ))}
       {/* A big head: the cube and the hair layer, painted like the grown-up Sim's */}
       <group ref={head} position={[0, 0.35, 0.01]}>
         <mesh geometry={box(H, H, H, R.head)} material={sheet.material} position={[0, H / 2, 0]} castShadow={cast} />
         {sheet.hair !== 'bald' && <mesh geometry={box(H * HAT, H * HAT, H * HAT, R.hat)} material={sheet.material} position={[0, H / 2, 0]} />}
+        {/* A tuft on top, or two little puffs */}
+        {hairdo === 'touffe' && !acc('bonnet-bebe') && b([0.05, 0.05, 0.06], [0, H + 0.03, 0.04], hairMat(tint(l.hairColor, 0.08), 'puffs'))}
+        {hairdo === 'puffs' &&
+          !acc('bonnet-bebe') &&
+          [-1, 1].map((k) => <group key={k}>{b([0.075, 0.07, 0.075], [k * 0.075, H + 0.03, -0.01], hairMat(tint(l.hairColor, 0.08), 'puffs'))}</group>)}
+        {/* The tétine over the mouth: its shield and ring */}
+        {acc('tetine') && (
+          <group position={[0, H * 0.22, H / 2 + 0.008]}>
+            {b([0.07, 0.045, 0.014], [0, 0, 0], accC('tetine'))}
+            {b([0.03, 0.03, 0.012], [0, 0, 0.012], lambert('#f8f9fa'))}
+          </group>
+        )}
+        {/* The knitted bonnet and its pompom */}
+        {acc('bonnet-bebe') && (
+          <group>
+            {b([H * 1.16, H * 0.42, H * 1.16], [0, H * 0.86, -0.004], knitMat(accessoryColor(full, 'bonnet-bebe')))}
+            {b([H * 1.2, H * 0.1, H * 1.2], [0, H * 0.66, -0.004], lambert(tint(accessoryColor(full, 'bonnet-bebe'), -0.15)))}
+            {b([H * 0.26, H * 0.24, H * 0.26], [0, H * 1.16, 0], lambert(tint(accessoryColor(full, 'bonnet-bebe'), 0.3)))}
+          </group>
+        )}
       </group>
     </group>
   )

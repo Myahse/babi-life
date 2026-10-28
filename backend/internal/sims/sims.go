@@ -113,6 +113,34 @@ var accessorySlot = map[string]string{
 	"chain":    "neck", "beads": "neck", "croix": "neck", "chapelet": "hand",
 	"watch": "wrist",
 	"bag":   "bag",
+	// The looks of each age (features « looks-age »).
+	"tetine": "mouth", "bavoir": "neck", "bonnet-bebe": "head", "hochet": "hand",
+	"cartable": "bag", "barrettes": "clips", "sucette": "hand",
+	"ecouteurs": "ears", "sac-a-dos": "bag",
+}
+
+// ageLookIDs are the outfits, hairdos and accessories the « looks-age » update
+// brings (web/src/avatar/options.ts AGE_LOOK_IDS): refused while it is closed.
+var ageLookIDs = map[string]bool{
+	"grenouillere": true, "body": true, "robe-bebe": true, "pagne-bebe": true, "salopette-bebe": true,
+	"tee-short": true, "robe-volants": true, "ensemble-pagne": true, "pyjama": true,
+	"oversize": true, "crop": true, "maillot-club": true,
+	"touffe": true, "couettes": true, "nattes-perles": true,
+	"tetine": true, "bavoir": true, "bonnet-bebe": true, "hochet": true,
+	"cartable": true, "barrettes": true, "sucette": true, "ecouteurs": true, "sac-a-dos": true,
+}
+
+// usesAgeLooks: something in the look comes with « looks-age ».
+func (l Look) usesAgeLooks() bool {
+	if ageLookIDs[l.Outfit] || ageLookIDs[l.Hair] {
+		return true
+	}
+	for _, a := range strings.Split(l.Accessory, ",") {
+		if ageLookIDs[a] {
+			return true
+		}
+	}
+	return false
 }
 
 const maxAccessories = 5
