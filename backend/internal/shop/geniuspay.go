@@ -147,6 +147,12 @@ func (g *GeniusPay) call(ctx context.Context, method, path string, body any) (Pa
 	var out struct {
 		Message string          `json:"message"`
 		Data    json.RawMessage `json:"data"`
+		// Its errors: {"success": false, "error": {"code", "message"}}, the fields refused under « errors ».
+		Error struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+		} `json:"error"`
+		Errors json.RawMessage `json:"errors"`
 	}
 	raw := new(bytes.Buffer)
 	if _, err := raw.ReadFrom(http.MaxBytesReader(nil, res.Body, 1<<20)); err != nil {
@@ -154,8 +160,14 @@ func (g *GeniusPay) call(ctx context.Context, method, path string, body any) (Pa
 	}
 	_ = json.Unmarshal(raw.Bytes(), &out)
 	if res.StatusCode >= 300 {
+		if out.Message == "" && out.Error.Message != "" {
+			out.Message = out.Error.Code + " " + out.Error.Message
+		}
 		if out.Message == "" {
 			out.Message = res.Status
+		}
+		if len(out.Errors) > 0 && string(out.Errors) != "null" {
+			out.Message += " " + string(out.Errors)
 		}
 		// The whole answer in the server's log: GeniusPay says there which field it refused.
 		log.Printf("geniuspay %s %s: %d %.400s", method, path, res.StatusCode, raw.String())
