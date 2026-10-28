@@ -28,7 +28,7 @@ export type SchoolPart = 'classe' | 'recre' | 'creche'
 /** The part of the day: class, the récré in the middle, class again; the crèche all along. */
 export function schoolPart(interactionId: string | undefined, progress: number): SchoolPart {
   if (interactionId === 'creche') return 'creche'
-  return progress > 0.4 && progress < 0.62 ? 'recre' : 'classe'
+  return progress > 0.35 && progress < 0.65 ? 'recre' : 'classe'
 }
 
 /** What's going on, said at the top of the screen. */
