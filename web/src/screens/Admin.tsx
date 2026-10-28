@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Bell, Dices, Download, ExternalLink, Flag, LayoutDashboard, Lightbulb, ListChecks, LogOut, Megaphone, MessageCircle, Package, RefreshCw, ScrollText, Search, Send, ShieldCheck, Users } from 'lucide-react'
+import { Bell, Dices, Download, ExternalLink, Flag, LayoutDashboard, Lightbulb, ListChecks, LogOut, Mail, Megaphone, MessageCircle, Package, RefreshCw, ScrollText, Search, Send, ShieldCheck, Users } from 'lucide-react'
 import { Preview, STATUS, type Status } from './Pub'
 
 // /admin: everything Babi Life's team manages, behind one key (ADMIN_KEY on
@@ -12,6 +12,8 @@ import { Preview, STATUS, type Status } from './Pub'
 // - Annonces: a message from Babi Life in every Sim's phone;
 // - WhatsApp: a message to the wish list's numbers, through WhatsApp's API
 //   with an approved template, or by hand with click-to-chat links;
+// - E-mails: the models of the game's e-mails (backend/internal/mail/news.go), seen as they'll
+//   arrive, their words changed, a test, then to an audience (Brevo; admin/email.go);
 // - Liste d'attente, Pub (backend/internal/ads), Signalements (moderation);
 // - Idées: what the players suggest from the phone (backend/internal/ideas), answered here;
 // - Mises à jour: the features that ship closed, opened one by one (now or at a set time) (backend/internal/features);
@@ -21,13 +23,14 @@ import { Preview, STATUS, type Status } from './Pub'
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
 const STORE = 'babi.adminKey'
 
-type Tab = 'tableau' | 'joueurs' | 'journal' | 'annonces' | 'whatsapp' | 'liste' | 'pub' | 'signalements' | 'idees' | 'majs' | 'casino'
+type Tab = 'tableau' | 'joueurs' | 'journal' | 'annonces' | 'whatsapp' | 'emails' | 'liste' | 'pub' | 'signalements' | 'idees' | 'majs' | 'casino'
 const TABS: { id: Tab; label: string; icon: typeof Flag }[] = [
   { id: 'tableau', label: 'Tableau de bord', icon: LayoutDashboard },
   { id: 'joueurs', label: 'Joueurs', icon: Users },
   { id: 'journal', label: 'Journal', icon: ScrollText },
   { id: 'annonces', label: 'Annonces', icon: Bell },
   { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
+  { id: 'emails', label: 'E-mails', icon: Mail },
   { id: 'liste', label: "Liste d'attente", icon: ListChecks },
   { id: 'pub', label: 'Pub', icon: Megaphone },
   { id: 'signalements', label: 'Signalements', icon: Flag },
@@ -151,6 +154,8 @@ export function Admin() {
           <Announcements k={key} />
         ) : tab === 'whatsapp' ? (
           <WhatsApp k={key} />
+        ) : tab === 'emails' ? (
+          <Emails k={key} />
         ) : tab === 'liste' ? (
           <Waitlist k={key} />
         ) : tab === 'pub' ? (
@@ -1023,6 +1028,254 @@ function WhatsApp({ k }: { k: string }) {
               Retirer
             </Btn>
           </div>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
+/* ---------- E-mails ---------- */
+
+type MailTemplate = { id: string; label: string; use: string; subject: string; preheader: string; tagline: string; title: string; text: string; button?: string; link?: string; note?: string; system?: boolean }
+type MailCampaign = { id: number; template: string; subject: string; audience: string; total: number; sent: number; failed: number; status: 'running' | 'done' | 'stopped'; at: string; errors?: string[] }
+type MailState = { configured: boolean; counts: Record<string, number>; audiences: Record<string, string>; optouts: number; templates: MailTemplate[]; campaigns: MailCampaign[] }
+type Words = Pick<MailTemplate, 'subject' | 'preheader' | 'title' | 'text' | 'button' | 'link' | 'note'>
+const AUDIENCES = ['liste', 'beta', 'joueurs', 'testeurs', 'tous']
+
+function Emails({ k }: { k: string }) {
+  const [st, setSt] = useState<MailState | null>(null)
+  const [e, setE] = useState<string | null>(null)
+  const [ok, setOk] = useState<string | null>(null)
+  const [pick, setPick] = useState('sortie')
+  // The words of each model, as changed here (kept when going from one to another).
+  const [edits, setEdits] = useState<Record<string, Words>>({})
+  const [preview, setPreview] = useState<{ subject: string; html: string } | null>(null)
+  const [audience, setAudience] = useState('liste')
+  const [test, setTest] = useState('')
+  const [sure, setSure] = useState(false)
+  const [optout, setOptout] = useState('')
+  const load = () => call<MailState>(`/admin/email?template=${pick}`, k).then(setSt, (x: Error) => setE(x.message))
+  useEffect(() => {
+    void load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [k, pick])
+  const running = st?.campaigns.some((c) => c.status === 'running')
+  useEffect(() => {
+    if (!running) return
+    const t = setInterval(load, 3000)
+    return () => clearInterval(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [running])
+  const tpl = st?.templates.find((t) => t.id === pick)
+  const words: Words | null = tpl ? (edits[pick] ?? { subject: tpl.subject, preheader: tpl.preheader, title: tpl.title, text: tpl.text, button: tpl.button ?? '', link: tpl.link ?? '', note: tpl.note ?? '' }) : null
+  const set = (f: keyof Words, v: string) => words && (setEdits({ ...edits, [pick]: { ...words, [f]: v } }), setSure(false))
+  // The e-mail as it will arrive, a moment after the words stop changing.
+  useEffect(() => {
+    if (!tpl || !words) return
+    const t = setTimeout(() => {
+      call<{ subject: string; html: string }>('/admin/email/preview', k, { method: 'POST', body: JSON.stringify({ template: pick, words }) }).then(
+        (p) => (setPreview(p), setE(null)),
+        (x: Error) => setE(x.message),
+      )
+    }, 350)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pick, JSON.stringify(words), st?.templates.length])
+  const post = async (body: object, done: (r: { text?: string; total?: number }) => string) => {
+    setE(null)
+    setOk(null)
+    try {
+      const r = await call<{ text?: string; total?: number }>('/admin/email', k, { method: 'POST', body: JSON.stringify(body) })
+      setOk(done(r))
+      setSure(false)
+      void load()
+    } catch (x) {
+      setE(x instanceof Error ? x.message : 'Erreur')
+    }
+  }
+  const target = st?.counts[audience] ?? 0
+  return (
+    <div className="space-y-6">
+      <Card title="Les modèles">
+        <p className="mb-3 text-sm text-[#6b7280]">Tous les e-mails du jeu, dans son style. Choisis-en un, change ses mots si besoin : l'aperçu montre l'e-mail tel qu'il arrivera. {'{prénom}'} est remplacé par le prénom de chacun.</p>
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          {st?.templates.map((t) => (
+            <button key={t.id} onClick={() => (setPick(t.id), setSure(false))} className={`rounded-lg border p-3 text-left ${pick === t.id ? 'border-[#ea580c] bg-[#fff7ed]' : 'border-[#e5e7eb] hover:bg-[#f9fafb]'}`}>
+              <div className="flex items-center justify-between gap-2 text-sm font-semibold">
+                {t.label}
+                {t.system && <span className="rounded bg-[#f3f4f6] px-1.5 text-[10px] font-semibold text-[#6b7280]">envoyé par le jeu</span>}
+              </div>
+              <div className="mt-1 text-xs text-[#6b7280]">{t.use}</div>
+            </button>
+          ))}
+        </div>
+      </Card>
+
+      <div className="grid gap-6 xl:grid-cols-[1fr_minmax(360px,560px)]">
+        <div className="space-y-6">
+          {tpl && words && (
+            <Card title={tpl.system ? `${tpl.label} (envoyé par le jeu)` : `Écrire : ${tpl.label}`} right={!tpl.system && edits[pick] ? <Btn tone="light" onClick={() => setEdits({ ...edits, [pick]: undefined as unknown as Words })}>Remettre le texte du modèle</Btn> : undefined}>
+              <Err e={e} />
+              <Ok t={ok} />
+              {tpl.system ? (
+                <p className="text-sm text-[#6b7280]">Celui-là part tout seul quand quelqu'un demande un nouveau mot de passe : il ne s'envoie pas d'ici. L'aperçu le montre tel qu'il arrive.</p>
+              ) : (
+                <div className="grid gap-3">
+                  <label className="text-sm font-medium">
+                    Objet
+                    <Field className="mt-1" maxLength={150} value={words.subject} onChange={(x) => set('subject', x.target.value)} />
+                  </label>
+                  <label className="text-sm font-medium">
+                    La ligne à côté de l'objet (aperçu dans la boîte mail)
+                    <Field className="mt-1" maxLength={200} value={words.preheader} onChange={(x) => set('preheader', x.target.value)} />
+                  </label>
+                  <label className="text-sm font-medium">
+                    Titre
+                    <Field className="mt-1" maxLength={80} value={words.title} onChange={(x) => set('title', x.target.value)} />
+                  </label>
+                  <label className="text-sm font-medium">
+                    Texte (une ligne vide entre deux paragraphes)
+                    <textarea maxLength={5000} rows={8} value={words.text} onChange={(x) => set('text', x.target.value)} className="mt-1 w-full rounded-lg border border-[#d1d5db] p-3 text-sm outline-none focus:border-[#ea580c]" />
+                  </label>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="text-sm font-medium">
+                      Bouton (vide : pas de bouton)
+                      <Field className="mt-1" maxLength={40} value={words.button ?? ''} onChange={(x) => set('button', x.target.value)} />
+                    </label>
+                    <label className="text-sm font-medium">
+                      Lien du bouton (/jeu, ou https://…)
+                      <Field className="mt-1" maxLength={300} value={words.link ?? ''} onChange={(x) => set('link', x.target.value)} />
+                    </label>
+                  </div>
+                  <label className="text-sm font-medium">
+                    Encadré (l'ardoise, facultatif)
+                    <Field className="mt-1" maxLength={400} value={words.note ?? ''} onChange={(x) => set('note', x.target.value)} />
+                  </label>
+                </div>
+              )}
+            </Card>
+          )}
+
+          {tpl && !tpl.system && (
+            <Card title="Envoyer">
+              {!st?.configured ? (
+                <div className="rounded-lg border border-dashed border-[#d1d5db] p-4 text-sm text-[#374151]">
+                  <p className="font-semibold">L'e-mail n'est pas branché sur l'API.</p>
+                  <p className="mt-1 text-[#6b7280]">
+                    Sur Render (service API) : <code>BREVO_API_KEY</code> et <code>MAIL_FROM</code>, puis redéployer.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-3">
+                  <div className="flex gap-2">
+                    <Field type="email" placeholder="Ton adresse pour un test" value={test} onChange={(x) => setTest(x.target.value)} />
+                    <Btn tone="light" disabled={!test.includes('@')} onClick={() => void post({ template: pick, words, test }, (r) => r.text ?? 'Envoyé.')}>
+                      Tester
+                    </Btn>
+                  </div>
+                  <p className="rounded-lg bg-[#fffbeb] px-3 py-2 text-xs text-[#92400e]">
+                    Seulement des nouvelles du jeu (sortie, nouveautés, événements), jamais de pub : les gens se sont inscrits pour être prévenus. Chaque e-mail a son lien « Ne plus recevoir ces e-mails ». Le plan gratuit de Brevo envoie 300 e-mails par jour : au-delà, les suivants échouent. Relance le même modèle le lendemain : il repart où il s'était arrêté (personne ne le reçoit deux fois). Les nombres ci-dessous comptent ceux qui ne l'ont pas encore reçu.
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 border-t border-[#f3f4f6] pt-3">
+                    <select value={audience} onChange={(x) => (setAudience(x.target.value), setSure(false))} className="rounded-lg border border-[#d1d5db] px-3 py-2 text-sm">
+                      {AUDIENCES.map((a) => (
+                        <option key={a} value={a}>
+                          {st.audiences[a]} ({nf(st.counts[a] ?? 0)})
+                        </option>
+                      ))}
+                    </select>
+                    {sure ? (
+                      <>
+                        <span className="text-sm">
+                          Envoyer « {words?.subject} » à {nf(target)} adresses ?
+                        </span>
+                        <Btn tone="light" onClick={() => setSure(false)}>
+                          Annuler
+                        </Btn>
+                        <Btn tone="orange" onClick={() => void post({ template: pick, words, audience }, (r) => `Envoi lancé : ${nf(r.total ?? 0)} adresses.`)}>
+                          <Send size={14} /> Oui, envoyer
+                        </Btn>
+                      </>
+                    ) : (
+                      <Btn tone="orange" disabled={!target || running} onClick={() => setSure(true)}>
+                        <Send size={14} /> Envoyer à {nf(target)} adresses
+                      </Btn>
+                    )}
+                  </div>
+                </div>
+              )}
+            </Card>
+          )}
+
+          {!!st?.campaigns.length && (
+            <Card title="Envois">
+              <ul className="space-y-4">
+                {st.campaigns.map((c) => (
+                  <li key={c.id} className="text-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-medium">
+                        {c.subject} · {st.audiences[c.audience] ?? c.audience}
+                      </span>
+                      <span className="text-xs text-[#9ca3af]">{when(c.at)}</span>
+                    </div>
+                    <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-[#f3f4f6]">
+                      <i className="block h-full bg-[#16a34a]" style={{ width: `${((c.sent + c.failed) / Math.max(1, c.total)) * 100}%` }} />
+                    </div>
+                    <div className="mt-1 flex items-center justify-between text-xs text-[#6b7280]">
+                      <span>
+                        {nf(c.sent)} envoyés · {nf(c.failed)} échecs · {nf(c.total)} en tout · {c.status === 'running' ? 'en cours…' : c.status === 'stopped' ? 'arrêté' : 'terminé'}
+                      </span>
+                      {c.status === 'running' && (
+                        <button className="font-semibold text-[#dc2626]" onClick={() => void call(`/admin/email/${c.id}/stop`, k, { method: 'POST', body: '{}' }).then(load)}>
+                          Arrêter
+                        </button>
+                      )}
+                    </div>
+                    {c.errors?.map((x) => (
+                      <p key={x} className="mt-1 text-xs text-[#b91c1c]">
+                        {x}
+                      </p>
+                    ))}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+
+          <Card title="Ne plus écrire à…">
+            <p className="mb-3 text-sm text-[#6b7280]">
+              Quelqu'un demande à ne plus recevoir d'e-mails autrement que par le lien ? Ajoute son adresse. ({nf(st?.optouts ?? 0)} désinscrits)
+            </p>
+            <div className="flex gap-2">
+              <Field type="email" placeholder="adresse@exemple.com" value={optout} onChange={(x) => setOptout(x.target.value)} />
+              <Btn
+                tone="light"
+                disabled={!optout.includes('@')}
+                onClick={() =>
+                  void call('/admin/email/optout', k, { method: 'POST', body: JSON.stringify({ email: optout }) }).then(
+                    () => (setOptout(''), setOk('Adresse retirée : elle ne recevra plus rien.'), void load()),
+                    (x: Error) => setE(x.message),
+                  )
+                }
+              >
+                Retirer
+              </Btn>
+            </div>
+          </Card>
+        </div>
+
+        <Card title="Aperçu" className="xl:sticky xl:top-6 xl:self-start">
+          {preview ? (
+            <>
+              <div className="mb-2 text-sm">
+                <span className="text-[#6b7280]">Objet : </span>
+                <span className="font-semibold">{preview.subject}</span>
+              </div>
+              <iframe title="Aperçu de l'e-mail" srcDoc={preview.html} sandbox="" className="h-[760px] w-full rounded-lg border border-[#e5e7eb] bg-white" />
+            </>
+          ) : (
+            <p className="text-sm text-[#6b7280]">Chargement…</p>
+          )}
         </Card>
       </div>
     </div>

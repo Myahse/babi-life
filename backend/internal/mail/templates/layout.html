@@ -55,8 +55,9 @@
       {{if .Link}}<p style="margin:22px 0 0;font-size:12px;line-height:1.5;font-weight:600;color:#6b5a4c;">Le bouton ne marche pas ? Copie ce lien dans ton navigateur :<br><a href="{{.Link}}" style="color:#1f8f88;word-break:break-all;">{{.Link}}</a></p>{{end}}
     </td></tr>
     <tr><td style="padding:22px 22px 30px;font-family:Nunito,'Segoe UI',Arial,sans-serif;font-size:12px;line-height:1.5;font-weight:600;color:#6b5a4c;border-top:1px solid #d9c9a8;">
-      Tu reçois cet e-mail parce qu'il concerne ton compte Babi Life.<br>
+      {{if .Footer}}{{.Footer}}{{else}}Tu reçois cet e-mail parce qu'il concerne ton compte Babi Life.{{end}}<br>
       <a href="{{.Site}}" style="color:#6b5a4c;">lifeinbabi.com</a> · Fait ici, pour nous.
+      {{if .Unsubscribe}}<br><a href="{{.Unsubscribe}}" style="color:#6b5a4c;">Ne plus recevoir ces e-mails</a>{{end}}
     </td></tr>
   </table>
 </td></tr>
