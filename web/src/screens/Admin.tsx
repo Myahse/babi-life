@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Bell, Dices, Download, ExternalLink, Flag, LayoutDashboard, Lightbulb, ListChecks, LogOut, Mail, Megaphone, MessageCircle, Package, RefreshCw, ScrollText, Search, Send, ShieldCheck, Users } from 'lucide-react'
-import { Preview, STATUS, type Status } from './Pub'
+import { PLACES, Preview, STATUS, type Place, type Status } from './Pub'
 
 // /admin: everything Babi Life's team manages, behind one key (ADMIN_KEY on
 // the API). A plain dashboard, not the game's look:
@@ -1340,7 +1340,7 @@ function Waitlist({ k }: { k: string }) {
 
 /* ---------- Pub ---------- */
 
-type Invite = { code: string; label: string; createdAt: string; usedAt: string | null; campaign: string | null }
+type Invite = { code: string; label: string; createdAt: string; usedAt: string | null; revokedAt?: string | null; campaign: string | null }
 
 function Pub({ k }: { k: string }) {
   const [list, setList] = useState<Status[] | null>(null)
@@ -1357,7 +1357,17 @@ function Pub({ k }: { k: string }) {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [k])
-  const update = async (id: string, change: Partial<Pick<Status, 'status' | 'paid' | 'price' | 'note'>>) => {
+  // A send link taken back before it's used: it no longer works.
+  const revoke = async (code: string) => {
+    if (!confirm('Révoquer ce lien ? Il ne marchera plus.')) return
+    try {
+      await call(`/ads/admin/invites/${encodeURIComponent(code)}/revoke`, k, { method: 'POST' })
+      load()
+    } catch (x) {
+      setE(x instanceof Error ? x.message : 'Erreur')
+    }
+  }
+  const update = async (id: string, change: Partial<Pick<Status, 'status' | 'paid' | 'price' | 'note' | 'link'>>) => {
     try {
       await call(`/ads/admin/${id}`, k, { method: 'POST', body: JSON.stringify(change) })
       load()
@@ -1401,10 +1411,17 @@ function Pub({ k }: { k: string }) {
                 <span className="text-xs text-[#9ca3af]">{when(i.createdAt)}</span>
                 {i.usedAt ? (
                   <span className="text-xs font-semibold text-[#16a34a]">Utilisé</span>
+                ) : i.revokedAt ? (
+                  <span className="text-xs font-semibold text-[#9ca3af]">Révoqué</span>
                 ) : (
-                  <button className="text-xs font-semibold text-[#ea580c]" onClick={() => void navigator.clipboard?.writeText(linkOf(i.code))}>
-                    Copier le lien
-                  </button>
+                  <>
+                    <button className="text-xs font-semibold text-[#ea580c]" onClick={() => void navigator.clipboard?.writeText(linkOf(i.code))}>
+                      Copier le lien
+                    </button>
+                    <button className="text-xs font-semibold text-[#dc2626]" onClick={() => void revoke(i.code)}>
+                      Révoquer
+                    </button>
+                  </>
                 )}
               </li>
             ))}
@@ -1423,7 +1440,7 @@ function Pub({ k }: { k: string }) {
   )
 }
 
-function Campaign({ c, onChange }: { c: Status; onChange: (change: Partial<Pick<Status, 'status' | 'paid' | 'price' | 'note'>>) => void }) {
+function Campaign({ c, onChange }: { c: Status; onChange: (change: Partial<Pick<Status, 'status' | 'paid' | 'price' | 'note' | 'link'>>) => void }) {
   const [price, setPrice] = useState(String(c.price || ''))
   const [note, setNote] = useState(c.note)
   return (
@@ -1436,8 +1453,24 @@ function Campaign({ c, onChange }: { c: Status; onChange: (change: Partial<Pick<
           <span className="text-[#6b7280]">{c.contact}</span>
         </div>
         <div className="text-[#6b7280]">
-          {c.starts} → {c.ends} · {c.communes.length ? c.communes.join(', ') : 'partout'} · {nf(c.views)} vues
+          {c.starts} {c.startTime ?? '00:00'} → {c.ends} {c.endTime ?? '24:00'} · {c.communes.length ? c.communes.join(', ') : 'partout'} · {nf(c.views)} vues
         </div>
+        <div className="text-[#6b7280]">
+          {(c.places?.length ? c.places : (['panneaux'] as Place[])).map((p) => PLACES[p][0]).join(' · ')}
+          {c.appName && ` · appli « ${c.appName} »`}
+        </div>
+        {c.link && (
+          <div className="flex items-center gap-2">
+            {c.icon && <img src={c.icon} alt="" className="h-8 w-8 rounded-md object-cover" />}
+            <a href={c.link} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate text-[#2563eb] underline">
+              {c.link}
+            </a>
+            {/* A link gone bad (or not wanted): taken off, the ad stays, nothing opens on a tap; the phone's app goes. */}
+            <button className="text-xs font-semibold text-[#dc2626]" onClick={() => confirm('Révoquer le lien de cette pub ? Le bouton « En savoir plus » et l\'appli du téléphone disparaissent.') && onChange({ link: '' })}>
+              Révoquer le lien
+            </button>
+          </div>
+        )}
         <span className="inline-block rounded px-2 py-0.5 text-xs font-semibold text-white" style={{ background: { pending: '#d97706', approved: '#16a34a', rejected: '#dc2626', paused: '#6b7280' }[c.status] }}>
           {STATUS[c.status][0]}
           {c.paid ? ' · payée' : ' · non payée'}

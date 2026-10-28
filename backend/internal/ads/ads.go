@@ -28,6 +28,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/myahse/babi-life/backend/internal/features"
 	"github.com/myahse/babi-life/backend/internal/httpx"
 	"github.com/myahse/babi-life/backend/internal/waitlist"
 	"github.com/myahse/babi-life/backend/internal/world"
@@ -69,12 +70,21 @@ type liveCache struct {
 
 // LiveAd is an ad as the game gets it.
 type LiveAd struct {
-	ID         string `json:"id"`
-	Advertiser string `json:"advertiser"`
-	Title      string `json:"title"`
-	Type       string `json:"type"`
-	URL        string `json:"url"`
+	ID         string   `json:"id"`
+	Advertiser string   `json:"advertiser"`
+	Title      string   `json:"title"`
+	Type       string   `json:"type"`
+	URL        string   `json:"url"`
+	Places     []string `json:"places"`
+	Link       string   `json:"link,omitempty"`
+	AppName    string   `json:"appName,omitempty"`
+	Icon       string   `json:"icon,omitempty"`
 }
+
+// Places is where an ad can show: the street's billboards, between
+// Tikitoko's videos, in Babigram's feed, as an app on the phone's home
+// screen (its icon and name; a tap opens its link).
+var Places = []string{"panneaux", "tikitoko", "babigram", "telephone"}
 
 // allow: at most n requests an hour from one address, for one purpose.
 func (h *Handler) allow(r *http.Request, purpose string, n int) bool {
@@ -159,6 +169,62 @@ type Campaign struct {
 	Communes   []string `json:"communes"`
 	Starts     string   `json:"starts"` // 2026-11-01
 	Ends       string   `json:"ends"`
+	// From what time on its first day, to what time on its last (« 08:00 »; Abidjan time, UTC).
+	StartTime string   `json:"startTime"`
+	EndTime   string   `json:"endTime"`
+	Places    []string `json:"places"`
+	Link      string   `json:"link"`
+	AppName   string   `json:"appName"`
+	IconKey   string   `json:"iconKey"`
+}
+
+// clock reads « 08:30 » as minutes of the day; empty: def.
+func clock(s string, def int) (int, error) {
+	if s == "" {
+		return def, nil
+	}
+	t, err := time.Parse("15:04", s)
+	if err != nil {
+		return 0, err
+	}
+	m := t.Hour()*60 + t.Minute()
+	if m == 0 && def == 24*60 {
+		// « 00:00 » as an end: midnight at the end of the last day.
+		return def, nil
+	}
+	return m, nil
+}
+
+// placed checks where an ad goes and what that needs: a link (http…), and for the phone its app's name and icon.
+func (c *Campaign) placed() error {
+	if len(c.Places) == 0 {
+		c.Places = []string{"panneaux"}
+	}
+	slices.Sort(c.Places)
+	c.Places = slices.Compact(c.Places)
+	for _, p := range c.Places {
+		if !slices.Contains(Places, p) {
+			return fmt.Errorf("emplacement inconnu : %s", p)
+		}
+	}
+	c.Link, c.AppName = strings.TrimSpace(c.Link), strings.TrimSpace(c.AppName)
+	if c.Link != "" && (len(c.Link) > 300 || !(strings.HasPrefix(c.Link, "https://") || strings.HasPrefix(c.Link, "http://")) || strings.ContainsAny(c.Link, " \"<>")) {
+		return errors.New("le lien doit être une adresse web (https://…)")
+	}
+	if slices.Contains(c.Places, "telephone") {
+		if c.Link == "" {
+			return errors.New("sur le téléphone, ton appli ou ton site a besoin de son lien")
+		}
+		if c.AppName == "" || utf8.RuneCountInString(c.AppName) > 18 {
+			return errors.New("le nom de ton appli sur le téléphone (18 caractères au plus)")
+		}
+		if !strings.HasPrefix(c.IconKey, "ads/") || strings.Contains(c.IconKey, "..") || len(c.IconKey) > 120 {
+			return errors.New("l'icône de ton appli manque : envoie-la")
+		}
+	} else {
+		c.AppName, c.IconKey = "", ""
+	}
+	return nil
 }
 
 // clean checks a campaign and puts it in shape: trimmed words, a real
@@ -193,6 +259,17 @@ func (c *Campaign) clean(today time.Time) (starts, ends time.Time, err error) {
 	if ends, err = time.Parse("2006-01-02", c.Ends); err != nil {
 		return starts, ends, errors.New("la date de fin")
 	}
+	from, err1 := clock(c.StartTime, 0)
+	to, err2 := clock(c.EndTime, 24*60)
+	if err1 != nil || err2 != nil {
+		return starts, ends, errors.New("l'heure de début ou de fin (comme 08:00)")
+	}
+	if starts.Equal(ends) && to <= from {
+		return starts, ends, errors.New("sur un seul jour, la fin vient après le début")
+	}
+	if err := c.placed(); err != nil {
+		return starts, ends, err
+	}
 	day := today.UTC().Truncate(24 * time.Hour)
 	switch {
 	case starts.Before(day):
@@ -220,6 +297,11 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	// Anywhere but the billboards: once the update is open (features « pubs-applis »).
+	if features.Default.BlocksKey(r.Context(), "pubs-applis") != "" && slices.ContainsFunc(c.Places, func(p string) bool { return p != "panneaux" }) {
+		httpx.Error(w, http.StatusBadRequest, "pour l'instant, Babi Pub passe sur les panneaux seulement")
+		return
+	}
 	if !h.allow(r, "campaign", 10) {
 		httpx.Error(w, http.StatusTooManyRequests, "trop de campagnes depuis ce réseau : réessaie plus tard")
 		return
@@ -240,7 +322,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer tx.Rollback(r.Context())
-	tag, err := tx.Exec(r.Context(), `UPDATE ad_invites SET used_at = now() WHERE code = $1 AND used_at IS NULL`, c.Code)
+	tag, err := tx.Exec(r.Context(), `UPDATE ad_invites SET used_at = now() WHERE code = $1 AND used_at IS NULL AND revoked_at IS NULL`, c.Code)
 	if err != nil || tag.RowsAffected() != 1 {
 		httpx.Error(w, http.StatusForbidden, errNoInvite.Error())
 		return
@@ -248,9 +330,9 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	token := randomID(18)
 	var id string
 	err = tx.QueryRow(r.Context(), `
-		INSERT INTO ad_campaigns (token, advertiser, contact, title, media_key, media_type, communes, starts, ends)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
-		token, c.Advertiser, c.Contact, c.Title, c.Key, media[c.Type].kind, c.Communes, starts, ends).Scan(&id)
+		INSERT INTO ad_campaigns (token, advertiser, contact, title, media_key, media_type, communes, starts, ends, places, link, app_name, icon_key, start_min, end_min)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id`,
+		token, c.Advertiser, c.Contact, c.Title, c.Key, media[c.Type].kind, c.Communes, starts, ends, c.Places, c.Link, c.AppName, c.IconKey, minutes(c.StartTime, 0), minutes(c.EndTime, 24*60)).Scan(&id)
 	if err == nil {
 		_, err = tx.Exec(r.Context(), `UPDATE ad_invites SET campaign_id = $2 WHERE code = $1`, c.Code, id)
 	}
@@ -264,6 +346,15 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusOK, map[string]string{"id": id, "token": token, "status": "pending"})
 }
 
+// minutes: an hour already checked (clean), as minutes of the day.
+func minutes(s string, def int) int {
+	m, _ := clock(s, def)
+	return m
+}
+
+// hhmm writes minutes of the day as « 08:30 » (the end of the day as « 24:00 »).
+func hhmm(m int) string { return fmt.Sprintf("%02d:%02d", m/60, m%60) }
+
 // Status is a campaign as its advertiser (or the admin) sees it.
 type Status struct {
 	ID         string         `json:"id"`
@@ -276,6 +367,12 @@ type Status struct {
 	Communes   []string       `json:"communes"`
 	Starts     string         `json:"starts"`
 	Ends       string         `json:"ends"`
+	StartTime  string         `json:"startTime"`
+	EndTime    string         `json:"endTime"`
+	Places     []string       `json:"places"`
+	Link       string         `json:"link"`
+	AppName    string         `json:"appName"`
+	Icon       string         `json:"icon"`
 	Status     string         `json:"status"`
 	Paid       bool           `json:"paid"`
 	Price      int            `json:"price"`
@@ -285,18 +382,23 @@ type Status struct {
 	CreatedAt  time.Time      `json:"createdAt"`
 }
 
-const statusColumns = `c.id, c.token, c.advertiser, c.contact, c.title, c.media_type, c.media_key, c.communes, c.starts, c.ends, c.status, c.paid, c.price, c.note, c.created_at`
+const statusColumns = `c.id, c.token, c.advertiser, c.contact, c.title, c.media_type, c.media_key, c.communes, c.starts, c.ends, c.status, c.paid, c.price, c.note, c.created_at, c.places, c.link, c.app_name, c.icon_key, c.start_min, c.end_min`
 
 func (h *Handler) scanStatus(row pgx.Row) (Status, error) {
 	var s Status
-	var key string
+	var key, icon string
 	var starts, ends time.Time
-	if err := row.Scan(&s.ID, &s.Token, &s.Advertiser, &s.Contact, &s.Title, &s.Type, &key, &s.Communes, &starts, &ends, &s.Status, &s.Paid, &s.Price, &s.Note, &s.CreatedAt); err != nil {
+	var from, to int
+	if err := row.Scan(&s.ID, &s.Token, &s.Advertiser, &s.Contact, &s.Title, &s.Type, &key, &s.Communes, &starts, &ends, &s.Status, &s.Paid, &s.Price, &s.Note, &s.CreatedAt, &s.Places, &s.Link, &s.AppName, &icon, &from, &to); err != nil {
 		return s, err
 	}
 	s.Starts, s.Ends = starts.Format("2006-01-02"), ends.Format("2006-01-02")
+	s.StartTime, s.EndTime = hhmm(from), hhmm(to)
 	if h.Bucket.Ready() {
 		s.URL = h.Bucket.Public(key)
+		if icon != "" {
+			s.Icon = h.Bucket.Public(icon)
+		}
 	}
 	return s, nil
 }
@@ -353,8 +455,15 @@ func (h *Handler) Follow(w http.ResponseWriter, r *http.Request) {
 
 // Shows: does an ad run in this commune on this day?
 func Shows(status string, paid bool, communes []string, starts, ends time.Time, commune string, day time.Time) bool {
-	d := day.UTC().Truncate(24 * time.Hour)
-	return status == "approved" && paid && !d.Before(starts) && !d.After(ends) && (len(communes) == 0 || slices.Contains(communes, commune))
+	return ShowsAt(status, paid, communes, starts, ends, 0, 24*60, commune, day)
+}
+
+// ShowsAt: does an ad run in this commune at this moment, from its start time on its first day to its end time on its last?
+func ShowsAt(status string, paid bool, communes []string, starts, ends time.Time, from, to int, commune string, now time.Time) bool {
+	begin := starts.UTC().Truncate(24 * time.Hour).Add(time.Duration(from) * time.Minute)
+	end := ends.UTC().Truncate(24 * time.Hour).Add(time.Duration(to) * time.Minute)
+	t := now.UTC()
+	return status == "approved" && paid && !t.Before(begin) && t.Before(end) && (len(communes) == 0 || slices.Contains(communes, commune))
 }
 
 // Live gives the game the ads of the day for a commune.
@@ -372,7 +481,7 @@ func (h *Handler) Live(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rows, err := h.DB.Query(r.Context(), `
-		SELECT id::text, advertiser, title, media_type, media_key, status, paid, communes, starts, ends FROM ad_campaigns
+		SELECT id::text, advertiser, title, media_type, media_key, status, paid, communes, starts, ends, places, link, app_name, icon_key, start_min, end_min FROM ad_campaigns
 		WHERE status = 'approved' AND paid AND starts <= current_date AND ends >= current_date ORDER BY created_at`)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "pubs indisponibles")
@@ -382,16 +491,20 @@ func (h *Handler) Live(w http.ResponseWriter, r *http.Request) {
 	ads := []LiveAd{}
 	for rows.Next() {
 		var a LiveAd
-		var key, status string
+		var key, status, icon string
 		var paid bool
 		var communes []string
 		var starts, ends time.Time
-		if err := rows.Scan(&a.ID, &a.Advertiser, &a.Title, &a.Type, &key, &status, &paid, &communes, &starts, &ends); err != nil {
+		var from, to int
+		if err := rows.Scan(&a.ID, &a.Advertiser, &a.Title, &a.Type, &key, &status, &paid, &communes, &starts, &ends, &a.Places, &a.Link, &a.AppName, &icon, &from, &to); err != nil {
 			httpx.Error(w, http.StatusInternalServerError, "pubs indisponibles")
 			return
 		}
-		if Shows(status, paid, communes, starts, ends, commune, time.Now()) {
+		if ShowsAt(status, paid, communes, starts, ends, from, to, commune, time.Now()) {
 			a.URL = h.Bucket.Public(key)
+			if icon != "" {
+				a.Icon = h.Bucket.Public(icon)
+			}
 			ads = append(ads, a)
 		}
 	}
@@ -478,6 +591,8 @@ func (h *Handler) AdminUpdate(w http.ResponseWriter, r *http.Request) {
 		Paid   *bool   `json:"paid"`
 		Price  *int    `json:"price"`
 		Note   *string `json:"note"`
+		// The ad's link changed, or taken off (« » : nothing opens on a tap; not for an app on the phone).
+		Link *string `json:"link"`
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
@@ -491,9 +606,18 @@ func (h *Handler) AdminUpdate(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, "prix invalide")
 		return
 	}
+	if req.Link != nil {
+		*req.Link = strings.TrimSpace(*req.Link)
+		if c := (Campaign{Link: *req.Link, Places: []string{"panneaux"}}); *req.Link != "" && c.placed() != nil {
+			httpx.Error(w, http.StatusBadRequest, "le lien doit être une adresse web (https://…)")
+			return
+		}
+	}
 	tag, err := h.DB.Exec(r.Context(), `
-		UPDATE ad_campaigns SET status = COALESCE($2, status), paid = COALESCE($3, paid), price = COALESCE($4, price), note = COALESCE($5, note)
-		WHERE id::text = $1`, chi.URLParam(r, "id"), req.Status, req.Paid, req.Price, req.Note)
+		UPDATE ad_campaigns SET status = COALESCE($2, status), paid = COALESCE($3, paid), price = COALESCE($4, price), note = COALESCE($5, note),
+			-- An app on the phone keeps a link: taken off, it leaves the phone.
+			link = COALESCE($6, link), places = CASE WHEN $6 = '' THEN array_remove(places, 'telephone') ELSE places END
+		WHERE id::text = $1`, chi.URLParam(r, "id"), req.Status, req.Paid, req.Price, req.Note, req.Link)
 	if err != nil || tag.RowsAffected() == 0 {
 		httpx.Error(w, http.StatusNotFound, "campagne introuvable")
 		return
@@ -513,7 +637,7 @@ func (h *Handler) inviteOpen(ctx context.Context, code string) bool {
 		return false
 	}
 	var ok bool
-	err := h.DB.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM ad_invites WHERE code = $1 AND used_at IS NULL)`, code).Scan(&ok)
+	err := h.DB.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM ad_invites WHERE code = $1 AND used_at IS NULL AND revoked_at IS NULL)`, code).Scan(&ok)
 	return err == nil && ok
 }
 
@@ -535,6 +659,7 @@ type InviteRow struct {
 	Label     string     `json:"label"`
 	CreatedAt time.Time  `json:"createdAt"`
 	UsedAt    *time.Time `json:"usedAt"`
+	RevokedAt *time.Time `json:"revokedAt"`
 	Campaign  *string    `json:"campaign"`
 }
 
@@ -543,7 +668,7 @@ func (h *Handler) AdminInvites(w http.ResponseWriter, r *http.Request) {
 	if !h.admin(w, r) {
 		return
 	}
-	rows, err := h.DB.Query(r.Context(), `SELECT code, label, created_at, used_at, campaign_id::text FROM ad_invites ORDER BY created_at DESC LIMIT 200`)
+	rows, err := h.DB.Query(r.Context(), `SELECT code, label, created_at, used_at, revoked_at, campaign_id::text FROM ad_invites ORDER BY created_at DESC LIMIT 200`)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "liste indisponible")
 		return
@@ -552,7 +677,7 @@ func (h *Handler) AdminInvites(w http.ResponseWriter, r *http.Request) {
 	list := []InviteRow{}
 	for rows.Next() {
 		var i InviteRow
-		if err := rows.Scan(&i.Code, &i.Label, &i.CreatedAt, &i.UsedAt, &i.Campaign); err != nil {
+		if err := rows.Scan(&i.Code, &i.Label, &i.CreatedAt, &i.UsedAt, &i.RevokedAt, &i.Campaign); err != nil {
 			httpx.Error(w, http.StatusInternalServerError, "liste indisponible")
 			return
 		}
@@ -579,6 +704,19 @@ func (h *Handler) AdminInvite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.JSON(w, http.StatusOK, map[string]string{"code": code})
+}
+
+// AdminRevoke takes back a send link not used yet (sent to the wrong person, a deal off): it no longer works.
+func (h *Handler) AdminRevoke(w http.ResponseWriter, r *http.Request) {
+	if !h.admin(w, r) {
+		return
+	}
+	tag, err := h.DB.Exec(r.Context(), `UPDATE ad_invites SET revoked_at = now() WHERE code = $1 AND used_at IS NULL AND revoked_at IS NULL`, chi.URLParam(r, "code"))
+	if err != nil || tag.RowsAffected() == 0 {
+		httpx.Error(w, http.StatusNotFound, "lien introuvable, déjà utilisé ou déjà révoqué")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // HeadHTTP checks a file with a plain HEAD request.

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Bookmark, Camera, ChevronLeft, Flag, Grid3x3, Heart, Home as HomeIcon, Inbox, MessageCircle, Music2, Play, Plus, RotateCcw, Send, Share2, Sparkles, Timer, Trash2, User, Users, VolumeX, X } from 'lucide-react'
 import { api, ApiError, photoURL } from '../lib/api'
 import type { Chat, Sim, TikiComment, TikiMe, TikiNPC, TikiPost, TikiProfile } from '../lib/types'
@@ -12,6 +12,9 @@ import { canRecord, CLIP_MAX_MS, ClipCam, type Clip } from '../world3d/clip'
 import { playSound, soundOf, SOUNDS, tikiAudio, wakeAudio } from '../lib/tikiSounds'
 import { npcLook, SceneCard, TikiScene } from './TikiScene'
 import type { Act } from './phoneApps'
+import { AD_EVERY, TikiAd, withAds } from '../components/AdSlots'
+import { useAds } from '../lib/ads'
+import { keyOpen, useFeatures } from '../lib/features'
 
 /**
  * Tikitoko (backend sims/tikitoko.go, tikisocial.go) works like TikTok: a
@@ -166,6 +169,10 @@ function Feed({ sim, source, title, empty, nav, onBack }: { sim: Sim; source: So
   // As on TikTok: the feed starts muted (browsers only autoplay that way), the first tap brings the sound.
   const [soundOn, setSoundOn] = useState(false)
   const box = useRef<HTMLDivElement>(null)
+  // Babi Pub: an ad between the videos of the feed, every few (features « pubs-applis »).
+  const feats = useFeatures()
+  const ads = useAds(!given && keyOpen(feats, 'pubs-applis') ? sim.commune : undefined, 'tikitoko')
+  const items = useMemo(() => posts && withAds(posts, ads, AD_EVERY.tikitoko), [posts, ads])
 
   useEffect(() => {
     if (given) return
@@ -204,7 +211,10 @@ function Feed({ sim, source, title, empty, nav, onBack }: { sim: Sim; source: So
         className="h-full snap-y snap-mandatory overflow-y-scroll overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         onScroll={(e) => setCurrent(Math.round(e.currentTarget.scrollTop / e.currentTarget.clientHeight))}
       >
-        {posts?.map((p, i) => (
+        {items?.map((it, i) => {
+          if ('ad' in it) return <TikiAd key={it.key} ad={it.ad} commune={sim.commune} active={i === current} />
+          const p = it.post
+          return (
           <Video
             key={p.id}
             sim={sim}
@@ -220,7 +230,8 @@ function Feed({ sim, source, title, empty, nav, onBack }: { sim: Sim; source: So
             onShare={() => setSharing(p)}
             onProfile={() => nav({ kind: 'profile', id: p.author.id })}
           />
-        ))}
+          )
+        })}
         {posts?.length === 0 && <p className="grid h-full place-items-center px-10 text-center text-sm font-bold text-white/60">{empty}</p>}
         {posts === null && !error && <p className="grid h-full place-items-center text-sm font-bold text-white/60">Chargement…</p>}
         {error && <p className="grid h-full place-items-center px-10 text-center text-sm font-bold text-[#ffa8a8]">{error}</p>}

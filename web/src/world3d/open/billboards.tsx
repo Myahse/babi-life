@@ -133,7 +133,8 @@ export function Billboards({ nav, seed, night, places = [] }: { nav: Nav; seed: 
     const load = () =>
       fetch(`${BASE}/ads/live?commune=${encodeURIComponent(seed)}`)
         .then((r) => (r.ok ? r.json() : []))
-        .then((list: Ad[]) => !stop && setAds(Array.isArray(list) ? list : []))
+        // (Only those for the billboards: some go to the apps only, lib/ads.ts.)
+        .then((list: (Ad & { places?: string[] })[]) => !stop && setAds(Array.isArray(list) ? list.filter((a) => !a.places?.length || a.places.includes('panneaux')) : []))
         .catch(() => undefined)
     void load()
     const t = setInterval(load, 5 * 60_000)
