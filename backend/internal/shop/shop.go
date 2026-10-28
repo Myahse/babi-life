@@ -81,16 +81,17 @@ var Items = []Item{
 }
 
 // GrowPrice: what growing up at once costs, in F CFA, from the stage the Sim
-// is at to the one bought: a step at a time 2 500 (bébé → enfant, enfant →
-// ado, ado → adulte), or from the cradle 5 000 to ado and 10 000 to adulte.
+// is at to the one bought: the baby's 2 hours 1 000, then a step at a time
+// 2 000 (enfant → ado, ado → adulte), or from the cradle 3 000 to ado and
+// 5 000 to adulte.
 // 0: not offered (already older, or a jump not sold).
 func GrowPrice(from, to string) int {
 	return map[[2]string]int{
-		{game.StageBebe, game.StageEnfant}: 2500,
-		{game.StageEnfant, game.StageAdo}:  2500,
-		{game.StageAdo, game.StageAdulte}:  2500,
-		{game.StageBebe, game.StageAdo}:    5000,
-		{game.StageBebe, game.StageAdulte}: 10_000,
+		{game.StageBebe, game.StageEnfant}: 1000,
+		{game.StageEnfant, game.StageAdo}:  2000,
+		{game.StageAdo, game.StageAdulte}:  2000,
+		{game.StageBebe, game.StageAdo}:    3000,
+		{game.StageBebe, game.StageAdulte}: 5000,
 	}[[2]string{from, to}]
 }
 
