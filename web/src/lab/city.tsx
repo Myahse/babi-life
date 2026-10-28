@@ -77,6 +77,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Interior } from '../world3d/Interior'
 import { Character } from '../world3d/Character'
 import { API_BASE } from '../lib/env'
+import { homePlanFor } from '../game/rules'
 import { ActionProps } from '../world3d/interior/ActionProps'
 import { Human } from '../avatar/Human'
 import { CITY_FAR, FarGrow } from '../avatar/LowHuman'
@@ -793,6 +794,7 @@ function Lab() {
   // ?view=postures: sitting on the ground and leaning on a tree (&turn= the camera round).
   if (view === 'postures') return <PosturesLab />
   if (view === 'meubles') return <MeublesLab />
+  if (view === 'famille') return <FamilleLab />
   if (view === 'talk') return <TalkLab />
   // &sococe: the Sococé's own supermarket and shops, its Kinéo in the gallery.
   if (view === 'farblocks') return <FarBlocksLab />
@@ -1329,6 +1331,32 @@ function MeublesLab() {
       })}
       <OrbitControls target={target} />
     </Canvas>
+  )
+}
+
+/**
+ * A child at its family's home, papa and maman about the house at a given hour
+ * (?view=famille&f=poignon&h=7&day=2&act=biberon): the family's own home plan, from the API.
+ */
+function FamilleLab() {
+  const [world, setWorld] = useState<World | null>(null)
+  useEffect(() => {
+    fetch(`${API_BASE}/world`)
+      .then((r) => r.json())
+      .then(setWorld)
+      .catch(() => undefined)
+  }, [])
+  const family = q.get('f') ?? 'poignon'
+  const fam = world?.families?.find((x) => x.id === family)
+  const minutes = Number(q.get('day') ?? 2) * 1440 + Number(q.get('h') ?? 7) * 60
+  const sim = useMemo(() => ({ id: 'lab', firstName: 'Kouadio', gender: 'homme', look: randomLook('homme', seededLab(5)), family, housing: fam?.housing ?? 'appart', gameMinutes: minutes, friends: [] }) as unknown as Sim, [family, fam, minutes])
+  const plan = world ? homePlanFor(world, sim) : undefined
+  if (!world || !plan) return null
+  const plot = { id: 0, key: 'lab', simId: 'lab', blocks: plan.blocks, furniture: plan.furniture, zones: plan.zones, built: 0, lot: { w: plan.w, d: plan.d, area: plan.w * plan.d, city: 'abidjan', commune: 'cocody', paid: 0 }, livable: true } as unknown as Plot
+  return (
+    <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
+      <HomeInside sim={sim} world={world} plot={plot} interactionId={q.get('act') ?? undefined} roam={false} night={Number(q.get('h') ?? 7) < 6 || Number(q.get('h') ?? 7) >= 19} stage={q.get('stage') ?? 'bebe'} parents />
+    </div>
   )
 }
 
