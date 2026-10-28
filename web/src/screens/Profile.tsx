@@ -76,7 +76,7 @@ export function Profile() {
           <div className="flex flex-col items-center">
             <MoodPin size={16} color={needColor(mood(sim.needs))} />
             <span className="block h-[220px] w-[165px]">
-              <Portrait look={sim.look} gender={sim.gender} framing="full" />
+              <Portrait look={sim.look} gender={sim.gender} framing="full" stage={stage} />
             </span>
           </div>
           <div className="pb-4">

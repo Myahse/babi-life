@@ -9,7 +9,7 @@ import { API_BASE } from './env'
 // hidden (a closed feature never shows by mistake).
 
 export type FeatureNews = { id: string; label: string; about: string; at: string }
-type State = { known: boolean; closed: Set<string>; interactions: Set<string>; keys: Set<string>; news: FeatureNews[]; /** When the game opens to everyone, set and not yet come (ISO). */ opening?: string }
+type State = { known: boolean; closed: Set<string>; interactions: Set<string>; keys: Set<string>; news: FeatureNews[]; /** The server says the game is open to everyone (an older server says nothing: shut). */ game?: boolean; /** When the game opens to everyone, set and not yet come (ISO). */ opening?: string }
 
 let state: State = { known: false, closed: new Set(), interactions: new Set(), keys: new Set(), news: [] }
 const listeners = new Set<() => void>()
@@ -20,8 +20,8 @@ async function ask() {
   try {
     const res = await fetch(`${API_BASE}/features`)
     if (!res.ok) return
-    const d = (await res.json()) as { closed: string[]; interactions: string[]; keys: string[]; new: FeatureNews[]; opening?: string }
-    state = { known: true, closed: new Set(d.closed), interactions: new Set(d.interactions), keys: new Set(d.keys), news: d.new ?? [], opening: d.opening }
+    const d = (await res.json()) as { closed: string[]; interactions: string[]; keys: string[]; new: FeatureNews[]; opening?: string; game?: boolean }
+    state = { known: true, closed: new Set(d.closed), interactions: new Set(d.interactions), keys: new Set(d.keys), news: d.new ?? [], opening: d.opening, game: d.game === true }
     last = Date.now()
     listeners.forEach((f) => f())
   } catch {

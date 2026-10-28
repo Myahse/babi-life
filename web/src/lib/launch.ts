@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { keyOpen, useFeatures } from './features'
+import { useFeatures } from './features'
 
 /**
  * The streets stay shut until launch. Set VITE_GAME_OPEN=true to open them, or (no new build)
@@ -108,5 +108,6 @@ export function useGameOpen(): boolean | null {
   }, [feats.known])
   if (gameOpen) return true
   if (!feats.known) return late ? false : null
-  return keyOpen(feats, 'jeu')
+  // Only on the server's yes: an older server, which doesn't know the opening, keeps it shut.
+  return feats.game === true
 }

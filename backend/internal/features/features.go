@@ -95,6 +95,9 @@ var List = []Feature{
 // OpeningID is the game's opening to everyone, set like an update.
 const OpeningID = "ouverture"
 
+// GameOpenEnv: GAME_OPEN=true on the server (cmd/api), the game open whatever the opening says.
+var GameOpenEnv bool
+
 // OpeningDefault is when the game opens if the admin hasn't set it: Wednesday 28 October 2026, 21:30 in Abidjan.
 var OpeningDefault = time.Date(2026, 10, 28, 21, 30, 0, 0, time.UTC)
 
@@ -254,13 +257,18 @@ func (s *Store) Public(w http.ResponseWriter, r *http.Request) {
 		Interactions []string `json:"interactions"`
 		Keys         []string `json:"keys"`
 		New          []News   `json:"new"`
+		// The game open to everyone now (GAME_OPEN, or the opening's hour come): the site opens only on a yes.
+		Game bool `json:"game"`
 		// When the game opens to everyone, set but not yet come (the wish list's countdown).
 		Opening *time.Time `json:"opening,omitempty"`
 	}{Closed: []string{}, Interactions: []string{}, Keys: []string{}, New: []News{}}
 	for _, f := range List {
 		v := st[f.ID]
-		if f.ID == OpeningID && !v.Live(now) && v.OpensAt != nil {
-			out.Opening = v.OpensAt
+		if f.ID == OpeningID {
+			out.Game = GameOpenEnv || v.Live(now)
+			if !v.Live(now) && v.OpensAt != nil {
+				out.Opening = v.OpensAt
+			}
 		}
 		if !v.Live(now) {
 			out.Closed = append(out.Closed, f.ID)

@@ -115,6 +115,7 @@ func main() {
 	}
 	// The updates the team opens one by one from the admin (features: closed until then).
 	features.Default = &features.Store{DB: pool}
+	features.GameOpenEnv = cfg.GameOpen
 	// The casino's « taux de retour » as the team sets them (odds: each game untouched until then).
 	odds.Default = &odds.Store{DB: pool}
 	simsH := &sims.Handler{DB: pool, RealPhotos: os.Getenv("STORIES_REAL_PHOTOS") == "true", Karts: karts, Courts: courts, Push: pushes, Bucket: bucket, Talk: npcchat.FromEnv()}
