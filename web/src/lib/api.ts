@@ -277,6 +277,9 @@ export const api = {
   /** What was played offline (lib/offlinePlay.ts), sent once online: the server plays it again (backend sims/sync.go). */
   sync: (id: string, steps: unknown[]) => post<ActionResult>(`/sims/${id}/sync`, { clock: Date.now(), steps }),
   createSim: (sim: NewSim) => post<Sim>('/sims', sim),
+  /** « Retrouver ma famille de la liste »: the offer (null: none), and the answer, once. */
+  listedFamily: (id: string) => request<{ offer: { family: { id: string; label: string; icon: string; hint: string; sector: string }; commune: string } | null }>(`/sims/${id}/listed-family`),
+  answerListedFamily: (id: string, accept: boolean) => post<ActionResult>(`/sims/${id}/listed-family`, { accept }),
   /** The perso made on the wish list with this account's e-mail (404: none). */
   waitlistSim: () => request<{ firstName: string; sim: Partial<NewSim>; family?: string; commune?: string }>('/me/waitlist-sim'),
   deleteSim: (id: string) => request<void>(`/sims/${id}`, { method: 'DELETE' }),

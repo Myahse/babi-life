@@ -92,6 +92,7 @@ var List = []Feature{
 	{ID: "gbairai-bebe", Label: "Gbairai dès le berceau", About: "Bébés et enfants ont Gbairai eux aussi, sans attendre leur téléphone à 12 ans : ils écrivent à leurs amis du jeu (toujours seulement à leurs amis, liens et numéros masqués).", Keys: []string{"gbairai-bebe"}},
 	{ID: "frais-operateur", Label: "Les frais de l'opérateur", About: "À la Boutique, avant de payer, tu choisis Wave, Orange Money, MTN Money ou Moov Money : tu vois les frais de chacun (Wave 1,5 %, les autres 3,5 %) et le total, avant d'aller sur la page de paiement.", Keys: []string{"frais-operateur"}},
 	{ID: "arrivee", Label: "L'arrivée à Babi", About: "La première fois dans le jeu : la caméra survole ta commune, ses rues et ses gens, puis « Bienvenue à Babi Life » et le message d'Awa, avant que Koffi te fasse le tour.", Keys: []string{"arrivee"}},
+	{ID: "famille-liste", Label: "Retrouver sa famille de la liste", About: "Ceux qui avaient créé leur perso sur la liste d'attente avant que le compte le reprenne peuvent retrouver la famille (et la commune) tirée sur la liste, ou garder la leur : une seule fois.", Keys: []string{"famille-liste"}},
 	{ID: "table", Label: "Les gens viennent te parler dans les lieux", About: "« Je peux m'asseoir à ta table ? » au resto ou au bar (tu acceptes et vous causez, ou tu refuses poliment), et au travail les clients qui viennent te demander de l'aide.", Keys: []string{"table"}},
 }
 
