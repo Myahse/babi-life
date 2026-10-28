@@ -368,6 +368,59 @@
 @keyframes splash-bob {
   50% { transform: translateY(-7px); }
 }
+/* The perso dancing the coupé-décalé (components/SplashDancer.tsx) */
+.splash-dancer {
+  animation: splash-drop 0.7s var(--ease-spring) both;
+  overflow: visible;
+}
+.splash-dancer g {
+  transform-box: view-box;
+}
+.dancer-body {
+  animation: dancer-bounce 0.45s ease-in-out infinite alternate;
+}
+@keyframes dancer-bounce {
+  to { transform: translateY(3px); }
+}
+.dancer-arm-l {
+  transform-origin: 16px 38px;
+  animation: dancer-arm-l 0.9s ease-in-out infinite;
+}
+@keyframes dancer-arm-l {
+  0%, 100% { transform: rotate(15deg); }
+  50% { transform: rotate(155deg); }
+}
+.dancer-arm-r {
+  transform-origin: 48px 38px;
+  animation: dancer-arm-r 0.9s ease-in-out infinite;
+}
+@keyframes dancer-arm-r {
+  0%, 100% { transform: rotate(-155deg); }
+  50% { transform: rotate(-15deg); }
+}
+.dancer-leg-l {
+  transform-origin: 26px 60px;
+  animation: dancer-leg 0.9s ease-in-out infinite;
+}
+.dancer-leg-r {
+  transform-origin: 38px 60px;
+  animation: dancer-leg 0.9s 0.45s ease-in-out infinite;
+}
+@keyframes dancer-leg {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-10deg) translateY(-2px); }
+}
+.dancer-head {
+  transform-origin: 32px 36px;
+  animation: dancer-head 0.9s ease-in-out infinite;
+}
+@keyframes dancer-head {
+  0%, 100% { transform: rotate(-6deg); }
+  50% { transform: rotate(6deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .splash-dancer, .splash-dancer g { animation: none; }
+}
 .splash-shadow {
   animation: splash-shadow 2.6s 0.7s ease-in-out infinite;
 }
