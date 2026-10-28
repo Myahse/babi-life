@@ -1,3 +1,4 @@
+import { Pram } from '../world3d/Pram'
 import { Pitch as StreetPitch, Court as StreetCourt, Foot as StreetKids } from '../world3d/open/streetlife'
 import { weather } from '../world3d/open/weathering'
 import { setSceneActions } from '../world3d/sceneActions'
@@ -801,6 +802,7 @@ function Lab() {
   if (view === 'talk') return <TalkLab />
   // ?view=cabin: a ride's car, the driver at the wheel and the Sim in the back (&kind=woro|car).
   if (view === 'cabin') return <CabinLab />
+  if (view === 'pram') return <PramLab />
   // &sococe: the Sococé's own supermarket and shops, its Kinéo in the gallery.
   if (view === 'farblocks') return <FarBlocksLab />
   if (view === 'net')
@@ -1394,6 +1396,23 @@ function CabinLab() {
         <primitive object={LAB_GROUND} attach="material" />
       </mesh>
       <OrbitControls target={[0, 0.8, 0]} />
+    </Canvas>
+  )
+}
+
+function PramLab() {
+  const sim = useMemo(() => ({ id: 'lab', firstName: 'Awa', gender: 'femme', family: q.get('family') ?? 'poignon', look: randomLook('femme', seededLab(5)) }) as unknown as Sim, [])
+  return (
+    <Canvas dpr={[1, 1.5]} camera={{ position: (q.get('cam') ?? '3.2,2.2,3.6').split(',').map(Number) as [number, number, number], fov: 40 }} style={{ width: '100vw', height: '100vh' }}>
+      <color attach="background" args={['#a9d3f0']} />
+      <hemisphereLight args={['#ffffff', '#b8a27c', 1.2]} />
+      <directionalLight position={[10, 20, 10]} intensity={1.6} />
+      <Pram sim={sim} walking={!q.has('still')} speed={1.4} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[40, 40]} />
+        <primitive object={LAB_GROUND} attach="material" />
+      </mesh>
+      <OrbitControls target={[0, 0.7, 0]} />
     </Canvas>
   )
 }
