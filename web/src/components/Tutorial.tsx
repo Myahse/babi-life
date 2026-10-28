@@ -52,7 +52,7 @@ const CHILDHOOD: Step[] = [
   { id: 'besoins', title: 'Tes besoins', target: 'besoins', text: () => "Ces cinq ronds : manger, l'énergie, la propreté, les amis et le moral. Ils baissent avec le temps. Quand un rond passe au rouge, occupe-toi de lui !" },
   { id: 'maison', title: 'La maison de tes parents', target: 'que-faire', text: () => "Tu vis chez papa et maman. Les icônes au-dessus des meubles, c'est ce qu'on fait ici : le biberon, la bouillie, le bain avec maman, dormir… Plus tard les devoirs et l'école.", task: 'Entre chez toi et touche « Que faire ? ».', done: (s) => !!s.menu },
   { id: 'parents', title: 'Papa et maman', text: () => "Ils sont là toute la journée : maman à la cuisine aux repas, papa au salon le soir. Touche-les pour leur parler : un câlin, ta journée, un conseil… et même l'argent de poche !" },
-  { id: 'grandir', title: 'Tu grandis pour de vrai', text: () => "Bébé pendant un jour, puis enfant et ado le lendemain (l'école en semaine le matin), même appli fermée. À 18 ans tu quittes la maison avec l'argent de départ de ta famille : le boulot, ton logement, ta vie." },
+  { id: 'grandir', title: 'Tu grandis pour de vrai', text: () => "Tu grandis en jouant : bébé pendant 24 h de jeu, puis enfant et ado pendant 24 h de jeu (l'école en semaine le matin). Appli fermée, ton âge t'attend. Un bébé a vite faim, sommeil et besoin d'un câlin : occupe-toi de lui ! À 18 ans tu quittes la maison avec l'argent de départ de ta famille : le boulot, ton logement, ta vie." },
   { id: 'fin', title: "C'est toi le boss !", text: () => "Le reste tu le découvres en vivant. Je reviens te voir à tes 18 ans pour la suite. Pour revoir ce tuto : l'Encyclo, dans ton téléphone." },
 ]
 const ADULTHOOD: Step[] = [

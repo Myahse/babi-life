@@ -90,17 +90,11 @@ func (s *Sim) hold(minutes int64) []Event {
 	}
 	from := s.GameMinutes
 	s.GameMinutes += minutes
-	// Childhood counts real days: a minor's age runs on while away (birthdays,
-	// and 18 with its leaving home, said on the way); from 18 it waits for the player.
+	// One grows up by playing: 24 hours in the game a baby, then a child and a teen, whatever the
+	// account's age; away, the age waits for the player, at every age (and the baby's needs too).
 	var grown []Event
 	if s.BornAt != 0 {
-		adultAt := s.BornAt + game.MinutesToAge(game.AdultAge)
-		if adultAt > from {
-			grown = s.growUp(from, min(adultAt, s.GameMinutes))
-			s.BornAt += max(0, s.GameMinutes-adultAt)
-		} else {
-			s.BornAt += minutes
-		}
+		s.BornAt += minutes
 	}
 	if a := s.Activity; a != nil {
 		a.Start += minutes
@@ -116,6 +110,17 @@ func (s *Sim) hold(minutes int64) []Event {
 		return grown
 	}
 	return append(grown, s.weekEnd(s.GameMinutes)...)
+}
+
+// BabyDecay: a baby's needs drop this many times faster (it has to be looked after: fed, changed, rocked).
+const BabyDecay = 2
+
+// decayed: these minutes, as the needs feel them (a baby's go twice as fast).
+func (s *Sim) decayed(minutes int64) int64 {
+	if s.BornAt != 0 && s.stage().ID == game.StageBebe {
+		return minutes * BabyDecay
+	}
+	return minutes
 }
 
 // advanceTo lets the Sim's time run to the game minute `to`.
@@ -134,7 +139,7 @@ func (s *Sim) advanceTo(to int64, rng *rand.Rand) []Event {
 		from := s.GameMinutes
 		if a := s.Activity; a != nil {
 			end := min(to, a.End)
-			s.Needs = a.Progress(game.Decay(s.Needs, end-from), from, end)
+			s.Needs = a.Progress(game.Decay(s.Needs, s.decayed(end-from)), from, end)
 			s.GameMinutes = end
 			events = append(events, s.settleRange(from, end)...)
 			continue
@@ -143,7 +148,7 @@ func (s *Sim) advanceTo(to int64, rng *rand.Rand) []Event {
 		if s.AutoWork && s.goToWork() {
 			continue
 		}
-		s.Needs = game.DecayIdle(s.Needs, to-from)
+		s.Needs = game.DecayIdle(s.Needs, s.decayed(to-from))
 		s.GameMinutes = to
 		events = append(events, s.settleRange(from, to)...)
 	}
