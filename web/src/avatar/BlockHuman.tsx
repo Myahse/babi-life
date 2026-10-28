@@ -1669,6 +1669,15 @@ export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 
                   )}
                   {/* Filming: the phone held up in the right hand, its screen lit */}
                   {pose === 'film' && i === 1 && <FilmingPhone y={-FOREARM - 0.03} />}
+                  {/* On the toilets: the phone in the right hand, its screen up to the face */}
+                  {pose === 'toilet' && i === 1 && (
+                    <group position={[0, -FOREARM - 0.04, 0.03]} rotation={[0.9, 0, 0]}>
+                      <FilmingPhone y={0} />
+                    </group>
+                  )}
+                  {/* Brushing the teeth: the brush in the right hand, the glass of water in the left */}
+                  {pose === 'brush' && i === 1 && <Toothbrush y={-FOREARM - 0.02} />}
+                  {pose === 'brush' && i === 0 && <RinseGlass y={-FOREARM - 0.02} />}
                 </group>
               </group>
             )
@@ -1677,6 +1686,30 @@ export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 
       </group>
     </group>
   )
+}
+
+/* ---------- The bathroom's little things in the hand ---------- */
+
+const BRUSH = new THREE.BoxGeometry(0.018, 0.17, 0.018)
+const BRISTLES = new THREE.BoxGeometry(0.022, 0.035, 0.03)
+const GLASS = new THREE.CylinderGeometry(0.035, 0.03, 0.1, 10)
+const brushMat = new THREE.MeshLambertMaterial({ color: '#4dabf7' })
+const bristleMat = new THREE.MeshLambertMaterial({ color: '#ffffff' })
+const glassCup = new THREE.MeshLambertMaterial({ color: '#9fd3e8', transparent: true, opacity: 0.75 })
+
+/** A toothbrush held in the fist, across to the mouth, the bristles at its end. */
+export function Toothbrush({ y }: { y: number }) {
+  return (
+    <group position={[0, y, 0.02]} rotation={[0, 0, -1.45]}>
+      <mesh geometry={BRUSH} material={brushMat} position={[0, -0.07, 0]} />
+      <mesh geometry={BRISTLES} material={bristleMat} position={[0, -0.15, 0.015]} />
+    </group>
+  )
+}
+
+/** The glass of water for rinsing, upright in the hand. */
+export function RinseGlass({ y }: { y: number }) {
+  return <mesh geometry={GLASS} material={glassCup} position={[0, y - 0.02, 0.04]} rotation={[1.5, 0, 0]} />
 }
 
 /* ---------- The phone held up to film ---------- */

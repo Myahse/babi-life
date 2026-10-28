@@ -34,9 +34,9 @@ var defiFor = map[string][]string{
 	"the":     {"street-grin", "chat-grin"},
 	"ski":     {"ski-boulay"},
 	"courses": {"supermarche", "courses"},
-	"foot":    {"console-foot", "console-defi", "tournoi-console"},
-	"course":  {"console-course"},
-	"combat":  {"console-combat"},
+	"foot":    {"console-foot", "console-defi", "tournoi-console", "maison-foot"},
+	"course":  {"console-course", "maison-course"},
+	"combat":  {"console-combat", "maison-combat"},
 	"arcade":  {"borne-arcade"},
 }
 

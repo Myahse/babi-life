@@ -138,6 +138,10 @@ var Kinds = map[string]PlaceKind{
 			{ID: "dents", Room: RoomBath, Label: "Se brosser les dents", Icon: "toothbrush", Minutes: 10, Effect: Needs{Hygiene: 18, Social: 4}},
 			{ID: "cook-attieke", Room: RoomKitchen, Ages: Adults, Label: "Préparer attiéké-poisson", Icon: "cooking-pot", Minutes: 45, Cost: 1500, Effect: Needs{Hunger: 55, Fun: 5}},
 			{ID: "watch-tv", Room: RoomLiving, Label: "Regarder RTI 1", Icon: "tv", Minutes: 60, Effect: Needs{Fun: 25, Energy: -3}},
+			// The console at home (its furniture, the update « console-maison »): the game room's games, nothing to pay.
+			{ID: "maison-foot", Room: RoomLiving, Label: "Un match de Babi Foot à la console", Icon: "gamepad-2", Minutes: 20, Effect: Needs{Fun: 22, Energy: -4}},
+			{ID: "maison-course", Room: RoomLiving, Label: "Une course de voitures à la console", Icon: "car", Minutes: 20, Effect: Needs{Fun: 22, Energy: -4}},
+			{ID: "maison-combat", Room: RoomLiving, Label: "Un combat de rue à la console", Icon: "swords", Minutes: 20, Effect: Needs{Fun: 22, Energy: -4}},
 			// Only with a pool (CanSwimAtHome): one's own, or the rented villa's.
 			{ID: SwimID, Room: RoomYard, Label: "Nager dans la piscine", Icon: "waves", Minutes: 45, Effect: Needs{Fun: 35, Hygiene: 10, Energy: -12}, Ages: []string{StageEnfant, StageAdo, StageAdulte}},
 			// With one's partner living at home (sims: interactAt checks it), adults only: a fade to black.

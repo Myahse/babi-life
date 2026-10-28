@@ -354,6 +354,9 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Get("/sims/{id}/clothes", h.clothesList)
 	r.Post("/sims/{id}/clothes/{piece}", h.clothesBuy)
 	r.Post("/sims/{id}/clothes/pack/{pack}", h.clothesPack)
+	r.Get("/sims/{id}/fridge", h.fridgeOf)
+	r.Post("/sims/{id}/fridge/buy", h.fridgeBuy)
+	r.Post("/sims/{id}/fridge/eat", h.fridgeEat)
 	r.Get("/sims/{id}/photos", h.photoList)
 	r.Post("/sims/{id}/photos", h.photoTake)
 	r.Get("/sims/{id}/photos/{photo}/raw", h.photoRaw)
@@ -745,6 +748,10 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 				if why := game.CanSwimAtHome(s.Housing, s.Furnished); why != "" {
 					return game.Interaction{}, errors.New(why)
 				}
+			}
+			// The console's games: only in one's own house, on its console.
+			if strings.HasPrefix(it.ID, "maison-") && s.Housing != game.OwnHouse {
+				return game.Interaction{}, errors.New("la console, c'est dans ta propre maison (appli Logement, Ma maison)")
 			}
 			if s.Housing == game.OwnHouse {
 				if need := game.HomeNeeds(it.ID, s.Furnished); need != "" {

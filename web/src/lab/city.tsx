@@ -76,6 +76,8 @@ import { worldTime } from '../lib/worldClock'
 import { useEffect, useRef, useState } from 'react'
 import { Interior } from '../world3d/Interior'
 import { Character } from '../world3d/Character'
+import { API_BASE } from '../lib/env'
+import { ActionProps } from '../world3d/interior/ActionProps'
 import { Human } from '../avatar/Human'
 import { CITY_FAR, FarGrow } from '../avatar/LowHuman'
 import { ChatSheet } from '../components/ChatSheet'
@@ -790,6 +792,7 @@ function Lab() {
   if (view === 'emotes') return <EmotesLab />
   // ?view=postures: sitting on the ground and leaning on a tree (&turn= the camera round).
   if (view === 'postures') return <PosturesLab />
+  if (view === 'meubles') return <MeublesLab />
   if (view === 'talk') return <TalkLab />
   // &sococe: the Sococé's own supermarket and shops, its Kinéo in the gallery.
   if (view === 'farblocks') return <FarBlocksLab />
@@ -1268,6 +1271,63 @@ function PosturesLab() {
         </group>
       ))}
       <OrbitControls target={[0, 0.9, 0]} />
+    </Canvas>
+  )
+}
+
+/**
+ * Every piece of furniture (from the API's catalogue), laid out by room on a big lot, and
+ * the Sim doing the home's things where homeSpots puts them (?view=meubles&acts=dents,toilettes&cam=&look=).
+ */
+function MeublesLab() {
+  const [catalog, setCatalog] = useState<Furniture[]>([])
+  useEffect(() => {
+    fetch(`${API_BASE}/world`)
+      .then((r) => r.json())
+      .then((w: { furniture: Furniture[] }) => setCatalog(w.furniture))
+      .catch(() => undefined)
+  }, [])
+  const rooms = ['chambre', 'salon', 'cuisine', 'bain', 'deco']
+  const [W, D] = [44, 26]
+  const plot = useMemo(() => {
+    const furniture: Piece[] = []
+    rooms.forEach((room, r) => {
+      let x = 1
+      for (const f of catalog.filter((f) => (f.room ?? 'salon') === room && f.id !== 'escalier')) {
+        furniture.push([x, 0, 1 + r * 5, 0, f.id])
+        x += f.w + 1.0
+      }
+    })
+    return { simId: 'lab', blocks: [], built: 0, furniture: furniture.map((p) => [Math.round(p[0]), p[1], p[2], p[3], p[4]] as Piece), lot: { w: W, d: D }, livable: true } as unknown as Plot
+  }, [catalog]) // eslint-disable-line react-hooks/exhaustive-deps
+  const spots = useMemo(() => (catalog.length ? homeSpotsOf(plot, [W, D], [0, 0], 0, catalog) : {}), [plot, catalog])
+  const acts = (q.get('acts') ?? 'dents,toilettes,maison-foot,frigo,shower,watch-tv').split(',')
+  const looks = useMemo(() => acts.map((_, i) => randomLook(i % 2 ? 'homme' : 'femme', seededLab(10 + i))), []) // eslint-disable-line react-hooks/exhaustive-deps
+  const cam = (q.get('cam') ?? '0,24,30').split(',').map(Number) as [number, number, number]
+  const target = (q.get('look') ?? '0,0,0').split(',').map(Number) as [number, number, number]
+  return (
+    <Canvas shadows dpr={[1, 1.5]} camera={{ position: cam, fov: 40 }} style={{ width: '100vw', height: '100vh' }}>
+      <color attach="background" args={['#a9d3f0']} />
+      <hemisphereLight args={['#ffffff', '#b8a27c', 1.25]} />
+      <directionalLight position={[10, 20, 12]} intensity={1.5} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-30} shadow-camera-right={30} shadow-camera-top={30} shadow-camera-bottom={-30} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[W + 10, D + 10]} />
+        <meshLambertMaterial color="#d9cbb2" />
+      </mesh>
+      <group position={[-W / 2, 0, -D / 2]}>
+        <FurnitureSet pieces={plot.furniture} catalog={catalog} />
+      </group>
+      {acts.map((id, i) => {
+        const sp = spots[id]
+        if (!sp) return null
+        return (
+          <group key={id} position={[sp.at[0], sp.y, sp.at[1]]} rotation={[0, sp.rot, 0]}>
+            <Character look={looks[i]} gender={i % 2 ? 'homme' : 'femme'} pose={sp.pose} stage="adulte" marker={false} seed={i} />
+            <ActionProps id={id} kind="house" lying={sp.lying} />
+          </group>
+        )
+      })}
+      <OrbitControls target={target} />
     </Canvas>
   )
 }

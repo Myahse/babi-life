@@ -3,11 +3,12 @@ import { gesture } from '../world3d/gesture'
 import type { Pose } from '../avatar/Human'
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2, ShoppingBag, Lightbulb, Landmark, PartyPopper } from 'lucide-react'
+import { Refrigerator, BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2, ShoppingBag, Lightbulb, Landmark, PartyPopper } from 'lucide-react'
 import { api, ApiError, errorText } from '../lib/api'
 import { useOnline } from '../lib/offline'
 import { onSynced, pendingOffline, picking } from '../lib/offlinePlay'
-import type { ActionResult, City, Commune, HappeningNow, Interaction, JobTask, JournalEvent, Player, Sim, Soiree, World, Ride, Place, Plot, StreetRide } from '../lib/types'
+import { kindOf, type ActionResult, type City, type Commune, type HappeningNow, type Interaction, type JobTask, type JournalEvent, type Player, type Sim, type Soiree, type World, type Ride, type Place, type Plot, type StreetRide } from '../lib/types'
+import { FridgeSheet } from '../components/Fridge'
 import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
 import { joinMatch, type CourtMatch } from '../streetball/online'
@@ -584,6 +585,9 @@ export function Play() {
   useEffect(() => setMachineOpen(machineAt !== null), [machineAt])
   // In a boutique: the shop's pieces, open as one starts shopping (components/ClothesShop).
   const [shopOpen, setShopOpen] = useState(false)
+  // The fridge (components/Fridge): filled while shopping, opened at home.
+  const [fridgeOpen, setFridgeOpen] = useState<'fill' | 'open' | null>(null)
+  const feats = useFeatures()
   const shopAt = sim?.activity?.kind === 'do' && SHOP_OF[sim.activity.interaction.id] ? sim.activity.start : null
   useEffect(() => setShopOpen(shopAt !== null), [shopAt])
   const toast = useCallback((t: Omit<Toast, 'id'>) => {
@@ -799,6 +803,7 @@ export function Play() {
     if (huitOpen) return (setHuitOpen(false), true)
     if (machineOpen) return (setMachineOpen(false), true)
     if (shopOpen) return (setShopOpen(false), true)
+    if (fridgeOpen) return (setFridgeOpen(null), true)
     if (damesOpen) return (setDamesOpen(false), true)
     if (overlay) return (setOverlay(null), setPhoneApp(null), true)
     if (whereTo) return (setWhereTo(false), true)
@@ -1453,7 +1458,7 @@ export function Play() {
       )}
       {/* (Looking at the street from inside: no menu over it, the « Entrer » button at the top takes the Sim back in.) */}
       {placeId && placeId !== 'happening' && !placeId.startsWith('soiree:') && (!roaming || menuOpen) && !(outside && inside) && (
-        <InteractionMenu world={world} sim={sim} city={city} commune={commune} placeId={placeId} desktop={desktop} onClose={() => (roaming ? setMenuOpen(false) : setPlaceId(null))} onPick={interact} onTravel={travel} onStop={stop} onBuild={() => (setPlaceId(null), setBuilding(0))} soiree={mySoiree} onSoiree={() => (mySoiree ? setPlaceId(`soiree:${mySoiree.id}`) : (setMenuOpen(false), setSoireeAsk(true)))} />
+        <InteractionMenu world={world} sim={sim} city={city} commune={commune} placeId={placeId} desktop={desktop} onClose={() => (roaming ? setMenuOpen(false) : setPlaceId(null))} onPick={interact} onTravel={travel} onStop={stop} onBuild={() => (setPlaceId(null), setBuilding(0))} soiree={mySoiree} onSoiree={() => (mySoiree ? setPlaceId(`soiree:${mySoiree.id}`) : (setMenuOpen(false), setSoireeAsk(true)))} onFridge={() => (roaming && setMenuOpen(false), setFridgeOpen('open'))} />
       )}
       {visiting && !menuOpen && <SpotSheet />}
       {visiting && !menuOpen && placeId && (
@@ -1487,7 +1492,7 @@ export function Play() {
       {players && <PlayersSheet sim={sim} around={around} communeName={commune.name} focus={players.focus} act={run} onClose={() => setPlayers(null)} />}
 
       {/* (Its time up, the bar goes at once: the server is settling it, nothing left to follow.) */}
-      {sim.activity && !ended && !placeId && !defi && <ActivityBar world={world} onTask={sim.activity.kind === 'do' && sim.activity.career && sim.activity.career === sim.career ? (t) => api.jobTask(sim.id, t.id).then((res) => (apply(res), gesture(t.pose as Pose), res.outcome)) : undefined} onDefi={defiNow ? () => (defiNow === 'ski' && setOutside(false), setDefi(defiNow)) : undefined} onRejoin={ballKey && played === ballKey ? { sport: ballSport!, go: rejoin } : undefined} sim={sim} onStop={stop} stopping={!!pending} onRoute={() => setOverlay('map')} onMore={onGrounds ? () => (setPlaceId(doing!.placeId!), setMenuOpen(true)) : undefined} onFilm={() => setWatching(true)} onMachine={doing && isSlots(doing.interaction.id) ? () => setMachineOpen(true) : undefined} onShop={doing && SHOP_OF[doing.interaction.id] ? () => setShopOpen(true) : undefined} />}
+      {sim.activity && !ended && !placeId && !defi && <ActivityBar world={world} onTask={sim.activity.kind === 'do' && sim.activity.career && sim.activity.career === sim.career ? (t) => api.jobTask(sim.id, t.id).then((res) => (apply(res), gesture(t.pose as Pose), res.outcome)) : undefined} onDefi={defiNow ? () => (defiNow === 'ski' && setOutside(false), setDefi(defiNow)) : undefined} onRejoin={ballKey && played === ballKey ? { sport: ballSport!, go: rejoin } : undefined} sim={sim} onStop={stop} stopping={!!pending} onRoute={() => setOverlay('map')} onMore={onGrounds ? () => (setPlaceId(doing!.placeId!), setMenuOpen(true)) : undefined} onFilm={() => setWatching(true)} onMachine={doing && isSlots(doing.interaction.id) ? () => setMachineOpen(true) : undefined} onShop={doing && SHOP_OF[doing.interaction.id] ? () => setShopOpen(true) : undefined} onFridge={doing && FRIDGE_SHOPPING.has(doing.interaction.id) && keyOpen(feats, 'frigo') && hasFridge(world, sim) ? () => setFridgeOpen('fill') : undefined} />}
       {/* The ciné-club's film, watched for real (screens/FilmPlayer.tsx). */}
       {watching && doing?.seance?.video && doing.seance.at !== undefined && <FilmPlayer video={doing.seance.video} at={doing.seance.at} title={doing.seance.title ?? doing.interaction.label} credit={doing.seance.credit} file={doing.seance.file} onClose={() => setWatching(false)} />}
 
@@ -1629,6 +1634,7 @@ export function Play() {
         />
       )}
       {practice && !defi && <DefiSheet kind={practice} simId={sim.id} me={sim} practice onResult={apply} onClose={() => setPractice(null)} />}
+      {fridgeOpen && <FridgeSheet world={world} sim={sim} how={fridgeOpen} onResult={apply} onClose={() => setFridgeOpen(null)} onStarted={() => (setPlaceId(null), setMenuOpen(false), setOutside(false), setBackTo('home'))} />}
       {shopOpen && doing && SHOP_OF[doing.interaction.id] && <ClothesShop world={world} sim={sim} shop={SHOP_OF[doing.interaction.id]} onResult={apply} onClose={() => setShopOpen(false)} onLeave={() => (setShopOpen(false), stop())} />}
       {machineOpen && doing && isSlots(doing.interaction.id) && (
         <MachineSheet
@@ -2079,7 +2085,14 @@ type MenuProps = {
   /** At home: one's soirée going on, or throwing one. */
   soiree?: Soiree
   onSoiree?: () => void
+  /** At home: the fridge opened (the update « frigo »). */
+  onFridge?: () => void
 }
+
+/** The Sim's house has a fridge (or a finer one). */
+const hasFridge = (world: World, sim: Sim) => sim.housing === 'maison' && (sim.furnished ?? []).some((id) => kindOf(world.furniture?.find((f) => f.id === id) ?? { id }) === 'frigo')
+/** The shopping during which the fridge is filled (backend game/fridge.go FridgeShopping). */
+const FRIDGE_SHOPPING = new Set(['buy-food', 'supermarche', 'courses'])
 
 /**
  * Walking about inside a place: what's done there, for the scene to show
@@ -2205,7 +2218,7 @@ function usePlaceActions(world: World, sim: Sim, city: City, commune: Commune, p
   return { place, kind, home, career, life, roomHere, items, busy, here, agenda, on, state }
 }
 
-function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose, onPick, onTravel, onStop, onBuild, soiree, onSoiree }: MenuProps) {
+function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose, onPick, onTravel, onStop, onBuild, soiree, onSoiree, onFridge }: MenuProps) {
   const navigate = useNavigate()
   const pa = usePlaceActions(world, sim, city, commune, placeId)
   const feats = useFeatures()
@@ -2263,6 +2276,16 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
       </span>
     </button>
   )
+  // At home: the fridge, what's in it, to eat or drink (backend sims/fridge.go).
+  const fridge = placeId === 'home' && here && onFridge && keyOpen(feats, 'frigo') && hasFridge(world, sim) && (
+    <button onClick={onFridge} className="flex w-full items-center gap-3 rounded-[20px] bg-[#e9f6ff] p-2.5 text-left transition active:scale-[0.98]">
+      <IconTile icon={Refrigerator} colors={['#74c0fc', '#1c7ed6']} size={44} />
+      <span className="min-w-0 flex-1">
+        <span className="block font-display text-[15px] leading-tight font-extrabold">Ouvrir le frigo</span>
+        <span className="mt-0.5 block text-xs font-bold text-[var(--color-ink-soft)]">Ce que tu as acheté au marché, à manger ou à boire</span>
+      </span>
+    </button>
+  )
   // The wardrobe at home and at the couturier; a new hairdo at the barber or the salon.
   const lookTab = { home: 'tenue', couture: 'tenue', boutique: 'tenue', salon: 'coiffure', barbier: 'coiffure' }[place.kind]
   const restyle = lookTab && here && (
@@ -2297,10 +2320,11 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
             <IconTile icon={iconFor(kind.icon)} colors={colors} size={96} radius={34} />
             <span className="mt-2 rounded-full bg-white px-4 py-1.5 font-display text-lg font-extrabold shadow-lg">{place.name}</span>
           </button>
-          {(build || restyle || billing || rooms || party) && (
+          {(build || restyle || billing || rooms || party || fridge) && (
             <div className="absolute top-full left-1/2 mt-[200px] grid w-64 -translate-x-1/2 gap-2">
               {billing}
               {party}
+              {fridge}
               {build}
               {restyle}
               {rooms}
@@ -2358,6 +2382,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
           <div className="motion-stagger grid gap-2">
             {billing}
             {party}
+            {fridge}
             {build}
             {restyle}
             {rooms}
@@ -2768,7 +2793,7 @@ function DropRouteAsk({ from, moto }: { from: string; moto: boolean }) {
 }
 
 /** What the Sim is busy with, on real time: progress, time left, and a way to stop. */
-function ActivityBar({ world, sim, onStop, stopping, onRoute, onMore, onRejoin, onDefi, onTask, onFilm, onMachine, onShop }: { world: World; sim: Sim; onStop: () => void; stopping: boolean; onRoute: () => void; /** At a slot machine: back to it. */ onMachine?: () => void; /** In a boutique: back to its rails. */ onShop?: () => void; /** At the ciné-club: the real film, to watch. */ onFilm?: () => void; /** At the zoo: the other things to do there. */ onMore?: () => void; /** A match left before its end: back onto the pitch. */ onRejoin?: { sport: 'foot' | 'basket'; go: () => void }; /** The activity taken on as a défi. */ onDefi?: () => void; /** At work: one of the job's tasks (backend sims/jobs.go). */ onTask?: (t: JobTask) => Promise<ActionResult['outcome']> }) {
+function ActivityBar({ world, sim, onStop, stopping, onRoute, onMore, onRejoin, onDefi, onTask, onFilm, onMachine, onShop, onFridge }: { world: World; sim: Sim; onStop: () => void; stopping: boolean; onRoute: () => void; /** At a slot machine: back to it. */ onMachine?: () => void; /** In a boutique: back to its rails. */ onShop?: () => void; /** Doing the shopping: some for the fridge at home. */ onFridge?: () => void; /** At the ciné-club: the real film, to watch. */ onFilm?: () => void; /** At the zoo: the other things to do there. */ onMore?: () => void; /** A match left before its end: back onto the pitch. */ onRejoin?: { sport: 'foot' | 'basket'; go: () => void }; /** The activity taken on as a défi. */ onDefi?: () => void; /** At work: one of the job's tasks (backend sims/jobs.go). */ onTask?: (t: JobTask) => Promise<ActionResult['outcome']> }) {
   const a = sim.activity!
   const span = Math.max(1, a.end - a.start)
   const done = Math.min(1, Math.max(0, (sim.gameMinutes - a.start) / span))
@@ -2815,6 +2840,11 @@ function ActivityBar({ world, sim, onStop, stopping, onRoute, onMore, onRejoin, 
       {onShop && (
         <button className="btn animate-pop mt-2 w-full !py-2.5" onClick={onShop}>
           <Shirt size={18} /> Voir les vêtements
+        </button>
+      )}
+      {onFridge && (
+        <button className="btn animate-pop mt-2 w-full !py-2.5" onClick={onFridge}>
+          <Refrigerator size={18} /> Remplir le frigo
         </button>
       )}
       {onRejoin && (

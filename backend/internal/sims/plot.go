@@ -567,9 +567,26 @@ func (h *Handler) build(w http.ResponseWriter, r *http.Request) {
 		Remove    []game.Block `json:"remove"`
 		Furnish   []game.Piece `json:"furnish"`
 		Unfurnish []game.Piece `json:"unfurnish"`
+		// Move: pieces picked up and put down elsewhere, [from, to], for nothing (the update « deco-premium »).
+		Move [][2]game.Piece `json:"move"`
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
+		return
+	}
+	// The pieces an update hasn't brought yet: not in the shop.
+	for _, p := range req.Furnish {
+		if f, ok := game.FindFurniture(p.ID); ok && f.Key != "" && features.Default.BlocksKey(r.Context(), f.Key) != "" {
+			httpx.Error(w, http.StatusForbidden, "ce meuble n'est pas encore en vente")
+			return
+		}
+	}
+	if len(req.Move) > 0 && features.Default.BlocksKey(r.Context(), "deplacer-meubles") != "" {
+		httpx.Error(w, http.StatusForbidden, "bientôt dans le jeu")
+		return
+	}
+	if len(req.Move) > game.MaxEdit {
+		httpx.Error(w, http.StatusUnprocessableEntity, game.ErrTooMuch.Error())
 		return
 	}
 	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
@@ -584,7 +601,13 @@ func (h *Handler) build(w http.ResponseWriter, r *http.Request) {
 		if on, left := p.building(time.Now()); on {
 			return game.Outcome{}, nil, chantierErr(left)
 		}
-		house, placed, cost, err := p.house().Edit(req.Place, req.Remove, req.Furnish, req.Unfurnish)
+		before := p.house()
+		for _, m := range req.Move {
+			if before, err = before.Move(m[0], m[1]); err != nil {
+				return game.Outcome{}, nil, err
+			}
+		}
+		house, placed, cost, err := before.Edit(req.Place, req.Remove, req.Furnish, req.Unfurnish)
 		if err != nil {
 			return game.Outcome{}, nil, err
 		}
@@ -604,6 +627,8 @@ func (h *Handler) build(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case len(req.Furnish) > 0 && placed == 0:
 			text = "Les meubles sont installés."
+		case len(req.Move) > 0 && placed == 0 && cost == 0:
+			text = "Les meubles ont changé de place."
 		case placed == 0 && cost < 0:
 			text = "Démoli : la moitié revendue."
 		}

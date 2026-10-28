@@ -27,9 +27,23 @@ const clamp01 = (v: number) => Math.min(1, Math.max(0, v))
 const sobs = (t: number) => 0.55 + 0.45 * Math.sin(t * 0.9)
 const lean = (rx: number): Body => ({ y: 0.84 - 0.84 * Math.cos(rx), z: -0.84 * Math.sin(rx), rx })
 
+/** Brushing the teeth: 7 s brushing, then 3 s bent over the basin rinsing; again (from when it started). */
+const rinsing = (since: number) => since % 10 > 7
+/** On the toilets: scrolling the phone, now and then a look up from it. */
+const lookingUp = (since: number) => since % 13 > 9.5
+
 function armsOf(pose: Pose, out: number, t: number, since: number): Arm | null {
   const right = out > 0
   switch (pose) {
+    case 'brush':
+      // The brush in the right hand at the mouth, going side to side; the glass in the left at the chest.
+      // Rinsing: the glass to the mouth, the brush hand down.
+      if (rinsing(since)) return right ? [-0.35, 0, 0.12, -0.6, 0] : [-1.15, 0, -0.32, -2.05, 0]
+      return right ? [-1.3, Math.sin(t * 13) * 0.16, 0.3, -2.1, 0] : [-0.7, 0, -0.18, -1.5, 0]
+    case 'toilet':
+      // Sitting, the phone in the right hand in front of the face, the thumb going; the left forearm on the thigh.
+      if (right) return [-0.5 + Math.sin(t * 2.1) * 0.03, 0, -0.08, -1.2 - (lookingUp(since) ? 0 : Math.sin(t * 5) * 0.03), 0]
+      return [-0.6, 0, -0.06, -0.85, 0]
     case 'clap': {
       // Hands meeting in front of the chest, and apart, quick.
       // Not a metronome: the tempo drifts, and the hands come up a little on the louder claps.
@@ -141,6 +155,16 @@ function legsOf(pose: Pose, out: number, t: number): Leg | null {
 
 function bodyOf(pose: Pose, t: number, since: number): Body | null {
   switch (pose) {
+    case 'brush':
+      // Upright at the mirror, the head moving a little with the brush; then bent over the basin to rinse and spit.
+      if (rinsing(since)) {
+        const k = Math.min(1, (since % 10) - 7) * Math.min(1, (10 - (since % 10)) * 2)
+        return { ...lean(0.55 * k), head: -0.1 * k }
+      }
+      return { head: -0.08 + Math.sin(t * 13) * 0.02, ry: Math.sin(t * 0.7) * 0.06 }
+    case 'toilet':
+      // Sitting (hips at the seat), bent a little forward over the phone, head down to it; looking up now and then.
+      return { y: -0.41, rx: 0.22, head: lookingUp(since) ? -0.05 : 0.42, ry: lookingUp(since) ? Math.sin(t * 0.9) * 0.3 : 0 }
     case 'clap':
       return { head: -0.05 }
     case 'thumbsup':
@@ -206,7 +230,7 @@ function bodyOf(pose: Pose, t: number, since: number): Body | null {
 // while it's held. Each person a little differently (the seed is in t).
 
 /** The emotes that loop a move; the others strike a pose and hold it. */
-const LOOPED = new Set<Pose>(['clap', 'shrug', 'laugh', 'cry', 'kiss', 'bow', 'flex', 'zouglou', 'gweta', 'robot', 'moonwalk', 'shout'])
+const LOOPED = new Set<Pose>(['clap', 'shrug', 'laugh', 'cry', 'kiss', 'bow', 'flex', 'zouglou', 'gweta', 'robot', 'moonwalk', 'shout', 'brush', 'toilet'])
 const REST: Arm = [0, 0, 0.1, -0.12, 0]
 /** 0 → 1 over `d` seconds, going about 8 % past the end and back. */
 const overshoot = (since: number, d: number) => {

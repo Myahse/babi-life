@@ -77,24 +77,85 @@ type Furniture struct {
 	Comfort float64  `json:"comfort"`
 	Unlocks []string `json:"unlocks,omitempty"`
 	Color   string   `json:"color"`
+	// Base: the plain piece this one is a finer version of (a canopy bed is a bed): it does
+	// what that one does in the house (web world3d/homeSpots.ts, Livable).
+	Base string `json:"base,omitempty"`
+	// Tier: "" the basics, "confort" a step up, "prestige" the very best.
+	Tier string `json:"tier,omitempty"`
+	// Room: where it goes, for the editor's shelves (chambre, salon, cuisine, bain, deco).
+	Room string `json:"room"`
+	// Key: the update (features) it waits for: hidden and refused till it's open.
+	Key string `json:"key,omitempty"`
+	// Stock: a fridge's room, in things kept (sims/fridge.go).
+	Stock int `json:"stock,omitempty"`
 }
 
+// Kind: what the piece is in the house (its base, or itself).
+func (f Furniture) Kind() string {
+	if f.Base != "" {
+		return f.Base
+	}
+	return f.ID
+}
+
+// The tiers of furniture, and the updates the new pieces come with.
+const (
+	TierConfort  = "confort"
+	TierPrestige = "prestige"
+	// DecoKey: the finer pieces and the decoration (features "deco-premium").
+	DecoKey = "deco-premium"
+	// ConsoleKey: the game console at home (features "console-maison").
+	ConsoleKey = "console-maison"
+)
+
 var Furnitures = []Furniture{
-	{ID: "natte", Label: "Natte", Icon: "rectangle-horizontal", W: 1, D: 2, H: 1, Price: 2000, Comfort: 0, Unlocks: []string{"sleep", "nap", NightID}, Color: "#d9b26b"},
-	{ID: "lit", Label: "Lit avec matelas", Icon: "bed-double", W: 2, D: 2, H: 1, Price: 25000, Comfort: 0.15, Unlocks: []string{"sleep", "nap", NightID}, Color: "#5a7fbf"},
-	{ID: "chaises", Label: "Chaises en plastique", Icon: "armchair", W: 1, D: 1, H: 1, Price: 3000, Comfort: 0.03, Color: "#e8e3d6"},
-	{ID: "table", Label: "Table à manger", Icon: "utensils", W: 1, D: 2, H: 1, Price: 8000, Comfort: 0.05, Color: "#8a5a32"},
-	{ID: "canape", Label: "Canapé", Icon: "sofa", W: 2, D: 1, H: 1, Price: 40000, Comfort: 0.1, Color: "#7a4a8a"},
-	{ID: "gaziniere", Label: "Gazinière et bonbonne", Icon: "cooking-pot", W: 1, D: 1, H: 1, Price: 15000, Comfort: 0.03, Unlocks: []string{"cook-attieke"}, Color: "#cfd3d6"},
-	{ID: "frigo", Label: "Frigo", Icon: "refrigerator", W: 1, D: 1, H: 2, Price: 60000, Comfort: 0.06, Color: "#f4f6f8"},
-	{ID: "tele", Label: "Télé", Icon: "tv", W: 1, D: 1, H: 1, Price: 45000, Comfort: 0.05, Unlocks: []string{"watch-tv"}, Color: "#222222"},
-	{ID: "ventilo", Label: "Ventilateur", Icon: "fan", W: 1, D: 1, H: 2, Price: 10000, Comfort: 0.08, Color: "#3a8fd8"},
-	{ID: "armoire", Label: "Armoire", Icon: "archive", W: 1, D: 1, H: 2, Price: 20000, Comfort: 0.03, Color: "#6b4426"},
-	{ID: "douche", Label: "Douche", Icon: "shower-head", W: 1, D: 1, H: 2, Price: 12000, Comfort: 0.04, Unlocks: []string{"shower", "dents"}, Color: "#9fd3e8"},
-	{ID: "transat", Label: "Transat", Icon: "armchair", W: 1, D: 2, H: 1, Price: 15000, Comfort: 0.03, Color: "#f4f1ea"},
-	{ID: "wc", Label: "Toilettes", Icon: "toilet", W: 1, D: 1, H: 1, Price: 15000, Comfort: 0.05, Unlocks: []string{"toilettes", "dents"}, Color: "#ffffff"},
+	{ID: "natte", Label: "Natte", Icon: "rectangle-horizontal", W: 1, D: 2, H: 1, Price: 2000, Comfort: 0, Unlocks: []string{"sleep", "nap", NightID}, Color: "#d9b26b", Room: "chambre"},
+	{ID: "lit", Label: "Lit avec matelas", Icon: "bed-double", W: 2, D: 2, H: 1, Price: 25000, Comfort: 0.15, Unlocks: []string{"sleep", "nap", NightID}, Color: "#5a7fbf", Room: "chambre"},
+	{ID: "chaises", Label: "Chaises en plastique", Icon: "armchair", W: 1, D: 1, H: 1, Price: 3000, Comfort: 0.03, Color: "#e8e3d6", Room: "salon"},
+	{ID: "table", Label: "Table à manger", Icon: "utensils", W: 1, D: 2, H: 1, Price: 8000, Comfort: 0.05, Color: "#8a5a32", Room: "cuisine"},
+	{ID: "canape", Label: "Canapé", Icon: "sofa", W: 2, D: 1, H: 1, Price: 40000, Comfort: 0.1, Color: "#7a4a8a", Room: "salon"},
+	{ID: "gaziniere", Label: "Gazinière et bonbonne", Icon: "cooking-pot", W: 1, D: 1, H: 1, Price: 15000, Comfort: 0.03, Unlocks: []string{"cook-attieke"}, Color: "#cfd3d6", Room: "cuisine"},
+	{ID: "frigo", Label: "Frigo", Icon: "refrigerator", W: 1, D: 1, H: 2, Price: 60000, Comfort: 0.06, Color: "#f4f6f8", Room: "cuisine", Stock: 12},
+	{ID: "tele", Label: "Télé", Icon: "tv", W: 1, D: 1, H: 1, Price: 45000, Comfort: 0.05, Unlocks: []string{"watch-tv"}, Color: "#222222", Room: "salon"},
+	{ID: "ventilo", Label: "Ventilateur", Icon: "fan", W: 1, D: 1, H: 2, Price: 10000, Comfort: 0.08, Color: "#3a8fd8", Room: "chambre"},
+	{ID: "armoire", Label: "Armoire", Icon: "archive", W: 1, D: 1, H: 2, Price: 20000, Comfort: 0.03, Color: "#6b4426", Room: "chambre"},
+	{ID: "douche", Label: "Douche", Icon: "shower-head", W: 1, D: 1, H: 2, Price: 12000, Comfort: 0.04, Unlocks: []string{"shower", "dents"}, Color: "#9fd3e8", Room: "bain"},
+	{ID: "transat", Label: "Transat", Icon: "armchair", W: 1, D: 2, H: 1, Price: 15000, Comfort: 0.03, Color: "#f4f1ea", Room: "deco"},
+	{ID: "wc", Label: "Toilettes", Icon: "toilet", W: 1, D: 1, H: 1, Price: 15000, Comfort: 0.05, Unlocks: []string{"toilettes", "dents"}, Color: "#ffffff", Room: "bain"},
 	// Up one floor (a duplex, a triplex): four steps a metre each, from its front (the foot) to its back (the top).
-	{ID: StairsID, Label: "Escalier (monte d'un étage)", Icon: "chevrons-up", W: 1, D: Storey, H: Storey, Price: 30000, Comfort: 0, Color: "#cfc8bb"},
+	{ID: StairsID, Label: "Escalier (monte d'un étage)", Icon: "chevrons-up", W: 1, D: Storey, H: Storey, Price: 30000, Comfort: 0, Color: "#cfc8bb", Room: "salon"},
+
+	// The washbasin and its mirror: the teeth brushed there.
+	{ID: "lavabo", Label: "Lavabo et miroir", Icon: "droplets", W: 1, D: 1, H: 2, Price: 18000, Comfort: 0.03, Unlocks: []string{"dents"}, Color: "#f1f3f5", Room: "bain", Key: DecoKey},
+	// The console and its screen: the game room's games, at home.
+	{ID: "console", Label: "Console de jeux et écran", Icon: "gamepad-2", W: 1, D: 1, H: 1, Price: 85000, Comfort: 0.04, Unlocks: []string{"maison-foot", "maison-course", "maison-combat"}, Color: "#1d1f2b", Room: "salon", Key: ConsoleKey},
+
+	// A step up.
+	{ID: "lit-coffre", Label: "Lit coffre capitonné", Icon: "bed-double", W: 2, D: 2, H: 1, Price: 120000, Comfort: 0.04, Unlocks: []string{"sleep", "nap", NightID}, Color: "#c9b79c", Base: "lit", Tier: TierConfort, Room: "chambre", Key: DecoKey},
+	{ID: "canape-velours", Label: "Canapé trois places en velours", Icon: "sofa", W: 3, D: 1, H: 1, Price: 150000, Comfort: 0.04, Color: "#1f6f6a", Base: "canape", Tier: TierConfort, Room: "salon", Key: DecoKey},
+	{ID: "tele-led", Label: "Télé LED 55 pouces", Icon: "tv", W: 2, D: 1, H: 1, Price: 150000, Comfort: 0.03, Unlocks: []string{"watch-tv"}, Color: "#141418", Base: "tele", Tier: TierConfort, Room: "salon", Key: DecoKey},
+	{ID: "bibliotheque", Label: "Bibliothèque en bois", Icon: "library", W: 2, D: 1, H: 2, Price: 90000, Comfort: 0.03, Color: "#7a4e2a", Tier: TierConfort, Room: "salon", Key: DecoKey},
+	{ID: "tapis", Label: "Tapis tissé main", Icon: "rectangle-horizontal", W: 2, D: 2, H: 1, Price: 60000, Comfort: 0.02, Color: "#b0412e", Tier: TierConfort, Room: "deco", Key: DecoKey},
+	{ID: "plante", Label: "Grande plante en pot", Icon: "sprout", W: 1, D: 1, H: 2, Price: 15000, Comfort: 0.02, Color: "#3f8f3a", Tier: TierConfort, Room: "deco", Key: DecoKey},
+	{ID: "lampadaire", Label: "Lampadaire doré", Icon: "lamp-floor", W: 1, D: 1, H: 2, Price: 45000, Comfort: 0.02, Color: "#d4a73a", Tier: TierConfort, Room: "deco", Key: DecoKey},
+
+	// The very best: the finer versions of the basics, and pieces only to be admired.
+	{ID: "lit-baldaquin", Label: "Lit king à baldaquin", Icon: "bed-double", W: 2, D: 2, H: 2, Price: 350000, Comfort: 0.06, Unlocks: []string{"sleep", "nap", NightID}, Color: "#7a1f3d", Base: "lit", Tier: TierPrestige, Room: "chambre", Key: DecoKey},
+	{ID: "dressing", Label: "Dressing vitré éclairé", Icon: "archive", W: 2, D: 1, H: 2, Price: 300000, Comfort: 0.04, Color: "#2b2b30", Base: "armoire", Tier: TierPrestige, Room: "chambre", Key: DecoKey},
+	{ID: "clim", Label: "Climatiseur colonne", Icon: "snowflake", W: 1, D: 1, H: 2, Price: 220000, Comfort: 0.06, Color: "#eef2f5", Base: "ventilo", Tier: TierPrestige, Room: "chambre", Key: DecoKey},
+	{ID: "canape-cuir", Label: "Canapé d'angle en cuir", Icon: "sofa", W: 3, D: 2, H: 1, Price: 280000, Comfort: 0.06, Color: "#e9e1d2", Base: "canape", Tier: TierPrestige, Room: "salon", Key: DecoKey},
+	{ID: "tele-geante", Label: "Écran géant 85 pouces", Icon: "tv", W: 2, D: 1, H: 2, Price: 450000, Comfort: 0.05, Unlocks: []string{"watch-tv"}, Color: "#0c0c10", Base: "tele", Tier: TierPrestige, Room: "salon", Key: DecoKey},
+	{ID: "table-marbre", Label: "Table en marbre et six chaises", Icon: "utensils", W: 2, D: 3, H: 1, Price: 250000, Comfort: 0.05, Color: "#efeae3", Base: "table", Tier: TierPrestige, Room: "cuisine", Key: DecoKey},
+	{ID: "cuisine-ilot", Label: "Cuisine équipée, plan en granit", Icon: "cooking-pot", W: 3, D: 1, H: 1, Price: 400000, Comfort: 0.05, Unlocks: []string{"cook-attieke"}, Color: "#2f3a46", Base: "gaziniere", Tier: TierPrestige, Room: "cuisine", Key: DecoKey},
+	{ID: "frigo-americain", Label: "Frigo américain deux portes", Icon: "refrigerator", W: 1, D: 1, H: 2, Price: 320000, Comfort: 0.04, Color: "#b9c0c7", Base: "frigo", Tier: TierPrestige, Room: "cuisine", Key: DecoKey, Stock: 30},
+	{ID: "douche-italienne", Label: "Douche à l'italienne", Icon: "shower-head", W: 1, D: 1, H: 2, Price: 200000, Comfort: 0.04, Unlocks: []string{"shower", "dents"}, Color: "#d9dee3", Base: "douche", Tier: TierPrestige, Room: "bain", Key: DecoKey},
+	{ID: "baignoire", Label: "Baignoire balnéo", Icon: "bath", W: 2, D: 1, H: 2, Price: 380000, Comfort: 0.06, Unlocks: []string{"shower"}, Color: "#ffffff", Base: "douche", Tier: TierPrestige, Room: "bain", Key: DecoKey},
+	{ID: "wc-design", Label: "WC suspendu design", Icon: "toilet", W: 1, D: 1, H: 1, Price: 150000, Comfort: 0.03, Unlocks: []string{"toilettes", "dents"}, Color: "#fbfbfb", Base: "wc", Tier: TierPrestige, Room: "bain", Key: DecoKey},
+	{ID: "vasque-double", Label: "Double vasque en marbre", Icon: "droplets", W: 2, D: 1, H: 2, Price: 180000, Comfort: 0.03, Unlocks: []string{"dents"}, Color: "#efeae3", Base: "lavabo", Tier: TierPrestige, Room: "bain", Key: DecoKey},
+	{ID: "aquarium", Label: "Aquarium tropical", Icon: "fish", W: 2, D: 1, H: 2, Price: 180000, Comfort: 0.04, Color: "#2a8fd0", Tier: TierPrestige, Room: "deco", Key: DecoKey},
+	{ID: "piano", Label: "Piano à queue", Icon: "piano", W: 2, D: 2, H: 1, Price: 900000, Comfort: 0.05, Color: "#111114", Tier: TierPrestige, Room: "deco", Key: DecoKey},
+	{ID: "sculpture", Label: "Masque en bronze sur socle", Icon: "drama", W: 1, D: 1, H: 2, Price: 400000, Comfort: 0.03, Color: "#9a6b2f", Tier: TierPrestige, Room: "deco", Key: DecoKey},
+	{ID: "toile", Label: "Toile d'un peintre d'Abidjan", Icon: "palette", W: 1, D: 1, H: 2, Price: 120000, Comfort: 0.02, Color: "#e07a1f", Tier: TierPrestige, Room: "deco", Key: DecoKey},
 }
 
 func FindFurniture(id string) (Furniture, bool) {
@@ -379,7 +440,8 @@ func (h House) Livable() bool {
 	}
 	bed, wc := false, false
 	for _, p := range h.Furniture {
-		switch p.ID {
+		f, _ := FindFurniture(p.ID)
+		switch f.Kind() {
 		case "lit", "natte":
 			bed = bed || covered(p)
 		case "wc":
@@ -390,14 +452,19 @@ func (h House) Livable() bool {
 }
 
 // HomeComfort: one's own house is as comfortable as what is in it.
+// The basics make a house up to 1.35; the finer pieces (a tier up) add on top, up to 1.5.
 func HomeComfort(furnished []string) float64 {
-	c := 0.75
+	c, fine := 0.75, 0.0
 	for _, id := range furnished {
 		if f, ok := FindFurniture(id); ok {
-			c += f.Comfort
+			if f.Tier != "" {
+				fine += f.Comfort
+			} else {
+				c += f.Comfort
+			}
 		}
 	}
-	return math.Min(1.35, math.Round(c*100)/100)
+	return math.Round((math.Min(1.35, c)+math.Min(0.15, fine))*100) / 100
 }
 
 // HomeNeeds: the furniture a home activity needs in one's own house ("" when none).
@@ -420,8 +487,27 @@ func HomeNeeds(interaction string, furnished []string) string {
 	if len(need) == 0 {
 		return ""
 	}
-	return need[len(need)-1]
+	// The plainest piece that does it.
+	return need[0]
 }
 
 // OwnHouse: the housing of a Sim living in the house it built.
 const OwnHouse = "maison"
+
+// ErrStairsStay: a staircase opens the floor above it, so it stays where it was built.
+var ErrStairsStay = errors.New("l'escalier ne se déplace pas : enlève-le et repose-le")
+
+// Move: a piece picked up and put down elsewhere in the house (turned or not), for nothing:
+// the one standing on `from`'s cell goes to `to` (its id kept), if there's room there.
+func (h House) Move(from, to Piece) (House, error) {
+	i := slices.IndexFunc(h.Furniture, func(p Piece) bool { return slices.Contains(p.cells(), cell{from.X, from.Y, from.Z}) })
+	if i < 0 {
+		return h, ErrNoPiece
+	}
+	if h.Furniture[i].ID == StairsID {
+		return h, ErrStairsStay
+	}
+	to.ID = h.Furniture[i].ID
+	out, _, _, err := h.Edit(nil, nil, []Piece{to}, []Piece{{X: from.X, Y: from.Y, Z: from.Z}})
+	return out, err
+}

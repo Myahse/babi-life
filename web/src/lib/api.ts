@@ -82,7 +82,7 @@ function request<T>(path: string, init: RequestInit = {}): Promise<T> {
  * Sim, the commune's places, the garage, the défis' records, the messages and
  * the snaps' list, the news), not the rest (a feed, a match going on).
  */
-const KEEP = /^\/(world|me|sims|news)(\?|$)|^\/sims\/[^/]+(\?|$)|^\/sims\/[^/]+\/(gbairai|photos|garage|defis|flashe|stories|lots|plots|emotes|clothes)(\?|$)|^\/places\?/
+const KEEP = /^\/(world|me|sims|news)(\?|$)|^\/sims\/[^/]+(\?|$)|^\/sims\/[^/]+\/(gbairai|photos|garage|defis|flashe|stories|lots|plots|emotes|clothes|fridge)(\?|$)|^\/places\?/
 
 /**
  * Played without network (lib/offlinePlay.ts): what it answers in the server's place (a Sim's
@@ -193,6 +193,10 @@ export const api = {
   clothes: (id: string) => request<{ owned: string[] }>(`/sims/${id}/clothes`),
   buyPiece: (id: string, piece: string, app = false) => post<ActionResult>(`/sims/${id}/clothes/${piece}${app ? '?app=1' : ''}`, {}),
   buyClothingPack: (id: string, pack: string) => post<ActionResult>(`/sims/${id}/clothes/pack/${pack}`, {}),
+  /** The fridge of one's house (backend sims/fridge.go): what's in it, how much it holds; filled while shopping, eaten from at home. */
+  fridge: (id: string) => request<{ stock: Record<string, number>; room: number }>(`/sims/${id}/fridge`),
+  fillFridge: (id: string, item: string, n = 1) => post<ActionResult>(`/sims/${id}/fridge/buy`, { item, n }),
+  eatFromFridge: (id: string, item: string) => post<ActionResult>(`/sims/${id}/fridge/eat`, { item }),
   sessions: () => request<{ sessions: Device[]; legacy: boolean }>('/me/sessions'),
   revokeSession: (id: string) => request<void>(`/me/sessions/${id}`, { method: 'DELETE' }),
   revokeOthers: () => post<{ signedOut: number }>('/me/sessions/others', {}),
@@ -416,7 +420,7 @@ export const api = {
   plot: (id: string, lot = 0) => request<Plot>(`/sims/${id}/plot${lot ? `?lot=${lot}` : ''}`),
   plots: (id: string) => request<Plot[]>(`/sims/${id}/plots`),
   /** Blocks placed and taken down; paid from the Sim's money. */
-  build: (id: string, place: Block[], remove: [number, number, number][], furnish: Piece[] = [], unfurnish: [number, number, number][] = [], lot = 0) => request<ActionResult>(`/sims/${id}/plot`, { method: 'PUT', body: JSON.stringify({ place, remove, furnish, unfurnish, lot }) }),
+  build: (id: string, place: Block[], remove: [number, number, number][], furnish: Piece[] = [], unfurnish: [number, number, number][] = [], lot = 0, move: [Piece, Piece][] = []) => request<ActionResult>(`/sims/${id}/plot`, { method: 'PUT', body: JSON.stringify({ place, remove, furnish, unfurnish, lot, ...(move.length ? { move } : {}) }) }),
   /** The lots for sale in a commune (where the Sim is when none is given), and the Sim's own (two at most a commune). */
   lots: (id: string, where?: LotWhere) => request<{ offers: LotOffer[]; lots: Plot[]; fees: number; adult: boolean; perCommune: number; max: number }>(`/sims/${id}/lots${where ? `?city=${encodeURIComponent(where.city)}&commune=${encodeURIComponent(where.commune)}` : ''}`),
   buyLot: (id: string, size: string, where?: LotWhere, upgrade = 0, spot?: { lat: number; lng: number }) => post<ActionResult>(`/sims/${id}/lot`, { size, ...where, upgrade, ...spot }),

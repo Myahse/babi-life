@@ -336,8 +336,10 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
         }
     return out
   }, [plot, w, d, world.furniture, levels])
-  // A Golvo meal (golvo-garba…): at the table; no table, on a seat.
-  const spot = interactionId ? ((interactionId.startsWith('golvo-') ? (spots.golvo ?? (spots['watch-tv'] && { ...spots['watch-tv'], pose: 'eat' as const })) : spots[interactionId]) ?? null) : null
+  // A Golvo meal (golvo-garba…): at the table; no table, on a seat. Something from the fridge: a drink at its door, a dish at the table.
+  const fromFridge = interactionId?.startsWith('frigo-') ? world.groceries?.find((g) => `frigo-${g.id}` === interactionId) : undefined
+  const atTable = spots.golvo ?? (spots['watch-tv'] && { ...spots['watch-tv'], pose: 'eat' as const })
+  const spot = interactionId ? ((interactionId.startsWith('golvo-') ? atTable : fromFridge ? (fromFridge.drink ? spots.frigo : (atTable ?? spots.frigo)) : spots[interactionId]) ?? null) : null
   const gate: XZ = [0, d / 2 + 1.5]
   // Where to walk to (a tap on the floor, a floor's button), and on which floor.
   const [tapped, setTapped] = useState<{ at: XZ; level: number } | null>(null)
@@ -435,7 +437,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
           )}
           {there && spot?.screen && (
             <group position={[spot.screen.at[0], 0, spot.screen.at[1]]} rotation={[0, spot.screen.rot, 0]}>
-              <TvOn />
+              <TvOn y={spot.screen.y} w={spot.screen.w} h={spot.screen.h} />
             </group>
           )}
           {there && spot?.lying && /^(sleep|nap)$/.test(interactionId ?? '') && <Zzz at={[spot.at[0], spot.y + 0.8, spot.at[1]]} />}

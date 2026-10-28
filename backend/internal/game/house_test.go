@@ -78,3 +78,32 @@ func TestHomeComfortAndNeeds(t *testing.T) {
 		t.Error("a mat is enough to sleep")
 	}
 }
+
+// A piece moved goes for nothing, turned or not; the staircase stays; a finer piece adds comfort past the basics' cap.
+func TestMoveAndFinerPieces(t *testing.T) {
+	h := House{W: 10, D: 10, Furniture: []Piece{{X: 1, Y: 0, Z: 1, ID: "canape"}}}
+	moved, err := h.Move(Piece{X: 2, Y: 0, Z: 1}, Piece{X: 5, Y: 0, Z: 5, R: 1})
+	if err != nil || len(moved.Furniture) != 1 || moved.Furniture[0] != (Piece{X: 5, Y: 0, Z: 5, R: 1, ID: "canape"}) {
+		t.Fatalf("moved %v, %v", moved.Furniture, err)
+	}
+	if _, err := h.Move(Piece{X: 8, Y: 0, Z: 8}, Piece{X: 5, Y: 0, Z: 5}); err != ErrNoPiece {
+		t.Errorf("nothing there: %v", err)
+	}
+	if _, err := (House{W: 10, D: 10, Furniture: []Piece{{X: 0, Y: 0, Z: 0, ID: StairsID}}}).Move(Piece{}, Piece{X: 5, Y: 0, Z: 0}); err != ErrStairsStay {
+		t.Errorf("stairs: %v", err)
+	}
+	basics := []string{"lit", "chaises", "table", "canape", "gaziniere", "frigo", "tele", "ventilo", "armoire", "douche", "wc"}
+	if c := HomeComfort(basics); c != 1.35 {
+		t.Errorf("basics %v", c)
+	}
+	if c := HomeComfort(append(basics, "lit-baldaquin", "piano", "aquarium", "clim")); c != 1.5 {
+		t.Errorf("with the finer pieces %v", c)
+	}
+	// A canopy bed is a bed: one can move in with it.
+	if !(House{W: 10, D: 10, Furniture: []Piece{{X: 0, Y: 0, Z: 0, ID: "lit-baldaquin"}, {X: 5, Y: 0, Z: 5, ID: "wc-design"}}, Blocks: []Block{{0, 3, 0, "banco"}, {1, 3, 0, "banco"}, {0, 3, 1, "banco"}, {1, 3, 1, "banco"}}}).Livable() {
+		t.Error("a canopy bed and designer toilets should be livable")
+	}
+	if FridgeRoom([]string{"frigo", "frigo-americain"}) != 42 || FridgeRoom([]string{"lit"}) != 0 {
+		t.Error("fridge room")
+	}
+}
