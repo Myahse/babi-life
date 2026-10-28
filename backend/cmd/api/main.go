@@ -128,6 +128,7 @@ func main() {
 	sessions.OnRevoke = players.Kick
 	simsH.Online = players.Online
 	simsH.Connected = players.Connected
+	simsH.Ring = players.Message
 	players.Karts = karts
 	players.Courts = courts
 	go players.Run(ctx)

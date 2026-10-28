@@ -40,6 +40,8 @@ export function sampleLive(id: string): LiveSample | null {
 /** Keeps this player connected while the street is on screen. */
 /** The window event when the Sim changed somewhere (detail: its id). */
 export const SIM_CHANGED = 'babi:sim-changed'
+/** The window event when a Gbairai message arrived for this Sim (detail: from, name, text). */
+export const MESSAGE_IN = 'babi:message-in'
 
 export function useLive(simId: string | undefined, mode: 'open' | 'street', where: string) {
   const token = useSession((s) => s.token)
@@ -87,6 +89,8 @@ function connect(token: string, sim: string, mode: 'open' | 'street') {
       else if (m.t === 'leave') snaps.delete(m.id)
       // The Sim changed (on another device of the same account, or here): load it again (screens/Play.tsx).
       else if (m.t === 'sim') window.dispatchEvent(new CustomEvent(SIM_CHANGED, { detail: m.id }))
+      // A Gbairai message for this Sim: the ring and the phone button that shakes (screens/Play.tsx).
+      else if (m.t === 'msg') window.dispatchEvent(new CustomEvent(MESSAGE_IN, { detail: { from: m.from, name: m.name, text: m.text } }))
       else if (m.t === 'states')
         for (const s of m.players as (Snap & { id: string })[]) {
           if (s.id === sim) continue

@@ -346,6 +346,10 @@ func (h *Handler) write(w http.ResponseWriter, r *http.Request) {
 		preview = "a envoyé un sticker"
 	}
 	h.Push.ToSim(to, push.Message{Title: name + " · Gbairai", Body: preview, URL: "/jeu?app=gbairai", Tag: "gbairai-" + me})
+	// The game open: it rings now (the update « sonnerie-gbairai », web lib/live.ts).
+	if h.Ring != nil && features.Default.BlocksKey(ctx, "sonnerie-gbairai") == "" {
+		h.Ring(to, me, name, preview)
+	}
 	httpx.JSON(w, http.StatusOK, m)
 }
 

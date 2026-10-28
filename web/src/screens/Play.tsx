@@ -14,7 +14,8 @@ import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
 import { joinMatch, type CourtMatch } from '../streetball/online'
 import { serverNow } from '../lib/worldClock'
-import { SIM_CHANGED, useLive } from '../lib/live'
+import { MESSAGE_IN, SIM_CHANGED, useLive } from '../lib/live'
+import { sfx } from '../lib/sfx'
 import { WorldMap } from './WorldMap'
 import { Joystick, RunButton, WalkKeys } from '../components/Joystick'
 import { cameraTurn } from '../world3d/input'
@@ -802,6 +803,25 @@ export function Play() {
   const tutoAsked = useTutorialAsked()
   // The arrival before it (update « arrivee », components/Arrival.tsx): the flight over the commune, the welcome, Awa.
   const [arriving, setArriving] = useState(() => beginner() && arrivalDue())
+  // A Gbairai message arriving (the update « sonnerie-gbairai », lib/live.ts): the ring, a buzz, the phone button
+  // shaking, and a dot on it until the phone is opened.
+  const [buzz, setBuzz] = useState(0)
+  const [newMsgs, setNewMsgs] = useState(0)
+  useEffect(() => {
+    const on = () => {
+      sfx.ring()
+      haptic('medium')
+      try {
+        navigator.vibrate?.([70, 50, 70])
+      } catch {
+        /* not on this device */
+      }
+      setBuzz(Date.now())
+      setNewMsgs((n) => n + 1)
+    }
+    window.addEventListener(MESSAGE_IN, on)
+    return () => window.removeEventListener(MESSAGE_IN, on)
+  }, [])
   // The baptism (the update « bapteme »): asked once a baby is in the game.
   const [baptism, setBaptism] = useState(false)
   const babyNow = !!sim && !!world && lifeOf(world, sim).stage?.id === 'bebe'
@@ -1388,12 +1408,15 @@ export function Play() {
         </div>
         <button
           data-tour="phone"
-          className="pointer-events-auto relative flex h-16 w-16 flex-col items-center justify-center gap-0.5 rounded-[22px] bg-[var(--color-orange)] text-[11px] font-extrabold text-white shadow-[0_8px_20px_-10px_rgba(224,90,0,0.8)] transition hover:bg-[#f26f00] active:scale-95"
-          onClick={() => (setOverlay('phone'), setSeen(journal[0]?.id ?? 0))}
+          key={buzz}
+          className={`pointer-events-auto relative flex h-16 w-16 flex-col items-center justify-center gap-0.5 rounded-[22px] bg-[var(--color-orange)] text-[11px] font-extrabold text-white shadow-[0_8px_20px_-10px_rgba(224,90,0,0.8)] transition hover:bg-[#f26f00] active:scale-95 ${buzz ? 'phone-buzz' : ''}`}
+          onClick={() => (setOverlay('phone'), setSeen(journal[0]?.id ?? 0), setNewMsgs(0))}
         >
           <Smartphone size={24} strokeWidth={2.4} />
           Phone
           {unseen > 0 && <span className="absolute -top-1.5 -right-1.5 grid h-6 min-w-6 place-items-center rounded-full bg-[var(--color-rose)] px-1 text-xs text-white ring-2 ring-white">{unseen}</span>}
+          {/* New Gbairai messages: a green bubble on the other corner */}
+          {newMsgs > 0 && <span className="absolute -top-1.5 -left-1.5 grid h-6 min-w-6 place-items-center rounded-full bg-[#25a35a] px-1 text-xs text-white ring-2 ring-white">{newMsgs}</span>}
         </button>
       </footer>
 

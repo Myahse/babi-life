@@ -287,6 +287,8 @@ type Handler struct {
 	Online func() int
 	// Connected: whether a Sim has the game open now (the live hub); nil in tests (then everyone played lately counts).
 	Connected func(sim string) bool
+	// Ring: a Gbairai message arrived for a Sim (the live hub: its devices ring); nil in tests.
+	Ring func(to, from, name, text string)
 	// Talk: the passers-by answering what the player types (chatfree.go); nil: off.
 	Talk *npcchat.Client
 }

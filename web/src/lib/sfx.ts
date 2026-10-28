@@ -55,6 +55,15 @@ function tone(c: AudioContext, at: number, freq: number, length: number, gain: n
 }
 
 export const sfx = {
+  /** A Gbairai message: the phone's two-note « ding-ding », bright and short. */
+  ring() {
+    const c = audio()
+    if (!c) return
+    const t = c.currentTime
+    tone(c, t, 1318, 0.16, 0.22, 'sine')
+    tone(c, t + 0.13, 1760, 0.28, 0.2, 'sine')
+    tone(c, t + 0.13, 3520, 0.12, 0.04, 'sine')
+  },
   /** A chip put down on the cloth. */
   chip() {
     const c = audio()
