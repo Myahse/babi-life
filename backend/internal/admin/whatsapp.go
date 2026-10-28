@@ -224,7 +224,7 @@ func (h *Handler) waSend(w http.ResponseWriter, r *http.Request) {
 			httpx.Error(w, http.StatusBadRequest, "numéro de test invalide")
 			return
 		}
-		if err := h.WA.send(ctx, num, req.Template, req.Lang, "Test"); err != nil {
+		if err := h.WA.send(ctx, num, req.Template, req.Lang, h.testName(ctx, num)); err != nil {
 			httpx.Error(w, http.StatusBadGateway, "WhatsApp : "+err.Error())
 			return
 		}
