@@ -96,6 +96,7 @@ import { answerDrop, useDropAsk } from '../world3d/dropRoute'
 import { DefiButton, DefiSheet, defiLook, defiOf, PRACTICE, type DefiKind } from '../components/Defi'
 import { BolideApp } from './BolideApp'
 import { Tutorial, adultChapterDue, beginner, openTutorial, useTutorialAsked } from '../components/Tutorial'
+import { Arrival, arrivalDue } from '../components/Arrival'
 import { haptic, onBack } from '../lib/native'
 import { openAd, seen, useAds } from '../lib/ads'
 import { drive, getIn, gps, parkedNow, parkIn, setParked, startDrive, stopDrive, topSpeed, useDriving, useParked, type Driven } from '../world3d/drive'
@@ -783,6 +784,8 @@ export function Play() {
   // Started with the tuto: the two old first tips (FirstSteps) aren't needed after it.
   const [firstTime] = useState(beginner)
   const tutoAsked = useTutorialAsked()
+  // The arrival before it (update « arrivee », components/Arrival.tsx): the flight over the commune, the welcome, Awa.
+  const [arriving, setArriving] = useState(() => beginner() && arrivalDue())
   // The tuto's chapter for the Sim's age: growing up at home, or an adult's life (the second one comes by itself at 18).
   const tutoChapter = sim && lifeOf(world, sim).minor ? 'enfance' : 'adulte'
   const grownNow = tutoChapter === 'adulte'
@@ -1033,7 +1036,7 @@ export function Play() {
   const trackSeed = partyHeard ? `party${party.id}` : showInside ? inside!.id : `${commune.id}${happeningId ?? ''}`
 
   return (
-    <div className="relative h-full overflow-hidden bg-[var(--color-night)] select-none">
+    <div className="relative h-full overflow-hidden bg-[var(--color-night)] select-none" data-cinema={(arriving && keyOpen(features, 'arrivee') && !classic) || undefined}>
       {/* An update the team just opened (the admin's « Mises à jour »), once. */}
       <FeatureNews />
       {racing && (
@@ -1161,7 +1164,7 @@ export function Play() {
           )}
         </div>
       )}
-      <div className={`absolute inset-0 ${showInside ? 'invisible' : ''}`}>
+      <div className={`street-view absolute inset-0 ${showInside ? 'invisible' : ''}`}>
         {(() => {
           const street = {
             world,
@@ -1386,7 +1389,12 @@ export function Play() {
 
       {!classic && <FirstSteps pad={padShown} hidden={showInside || !!placeId || !!overlay || !!players || whereTo || !!sim.activity || !!pending || tuto || tutoAsked || firstTime} />}
       {/* The first time (or asked for again from the Encyclo): Koffi shows the beginner round */}
-      {(tuto || tutoAsked || (grownNow && adultChapterDue())) && !classic && <Tutorial key={tutoChapter} chapter={tutoChapter} state={{ whereTo, placeId, overlay, menu: menuOpen }} onEnd={() => setTuto(false)} />}
+      {arriving && keyOpen(features, 'arrivee') && !classic && (
+        <div className="cinema-keep">
+          <Arrival commune={commune.name} firstName={sim.firstName} onEnd={() => setArriving(false)} />
+        </div>
+      )}
+      {(tuto || tutoAsked || (grownNow && adultChapterDue())) && !classic && !(arriving && keyOpen(features, 'arrivee')) && <Tutorial key={tutoChapter} chapter={tutoChapter} state={{ whereTo, placeId, overlay, menu: menuOpen }} onEnd={() => setTuto(false)} />}
       {/* Walking: the keys always (arrows / WASD); the pad on screen only in the shoulder view (the third-person
           view, chosen with the view button), so the other views stay clear. There, one walks with « Où aller ? »,
           the mini-map and the places' signs. The classic street has no views: the pad stays. */}

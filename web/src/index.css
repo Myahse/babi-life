@@ -850,3 +850,8 @@ textarea,
 .lever-pull {
   animation: lever-pull 520ms ease-in-out;
 }
+
+/* The arrival's flight (components/Arrival.tsx): only the street and the film, the game's buttons away. */
+[data-cinema] > :not(.street-view):not(.cinema-keep) {
+  visibility: hidden;
+}

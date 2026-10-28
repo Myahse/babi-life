@@ -48,12 +48,24 @@ type Step = { id: string; title: string; text: (desk: boolean) => string; /** Wh
 // Two chapters: growing up at the family's home (from birth), then adult life (at 18, or straight
 // away for a Sim made grown up). Each one once; the Encyclo shows the one of the Sim's age again.
 const CHILDHOOD: Step[] = [
-  { id: 'bienvenue', title: 'Akwaba à Babi !', text: () => "Moi c'est Koffi, du quartier. Ici c'est Abidjan, et c'est ta vie depuis le berceau. Le temps passe quand tu joues : appli fermée, ton perso t'attend." },
-  { id: 'besoins', title: 'Tes besoins', target: 'besoins', text: () => "Ces cinq ronds : manger, l'énergie, la propreté, les amis et le moral. Ils baissent avec le temps. Quand un rond passe au rouge, occupe-toi de lui !" },
-  { id: 'maison', title: 'La maison de tes parents', target: 'que-faire', text: () => "Tu vis chez papa et maman. Les icônes au-dessus des meubles, c'est ce qu'on fait ici : le biberon, la bouillie, le bain avec maman, dormir… Plus tard les devoirs et l'école.", task: 'Entre chez toi et touche « Que faire ? ».', done: (s) => !!s.menu },
-  { id: 'parents', title: 'Papa et maman', text: () => "Ils sont là toute la journée : maman à la cuisine aux repas, papa au salon le soir. Touche-les pour leur parler : un câlin, ta journée, un conseil… et même l'argent de poche !" },
-  { id: 'grandir', title: 'Tu grandis pour de vrai', text: () => "Tu grandis en jouant : bébé pendant 24 h de jeu, puis enfant et ado pendant 24 h de jeu (l'école en semaine le matin). Appli fermée, ton âge t'attend. Un bébé a vite faim, sommeil et besoin d'un câlin : occupe-toi de lui ! À 18 ans tu quittes la maison avec l'argent de départ de ta famille : le boulot, ton logement, ta vie." },
-  { id: 'fin', title: "C'est toi le boss !", text: () => "Le reste tu le découvres en vivant. Je reviens te voir à tes 18 ans pour la suite. Pour revoir ce tuto : l'Encyclo, dans ton téléphone." },
+  { id: 'bienvenue', title: 'Akwaba à Babi !', text: () => "Moi c'est Koffi, le grand frère du quartier. Je vais te montrer comment ça marche, pas à pas. Ici c'est Abidjan, et ta vie commence au berceau !" },
+  { id: 'besoins', title: 'Tes besoins', target: 'besoins', text: () => "Ces cinq ronds, c'est toi : manger, l'énergie, la propreté, les amis et le moral. Ils baissent avec le temps (vite, chez un bébé !). Un rond au rouge ? Occupe-toi de lui tout de suite." },
+  {
+    id: 'marcher',
+    title: 'Bouger',
+    target: 'vue',
+    text: (desk) => (desk ? 'Les flèches (ou ZQSD) pour avancer, la souris pour tourner la vue. Tu peux aussi cliquer sur le sol : ton perso y va.' : 'Touche le sol : ton perso y va. Glisse ton doigt sur l’écran pour tourner la vue ; ce bouton la change (de haut, de près, à l’épaule).'),
+    task: 'Fais quelques pas.',
+    done: (s) => s.moved > 3,
+  },
+  { id: 'maison', title: 'Chez toi', target: 'que-faire', text: () => "Tu vis chez papa et maman. Entre dans la maison : les icônes au-dessus des meubles, c'est ce qu'on fait ici. Le biberon, la bouillie, le bain avec maman, le hochet, dormir…", task: 'Entre chez toi et touche « Que faire ? ».', done: (s) => !!s.menu },
+  { id: 'bebe', title: 'Un bébé, ça se gère !', text: () => "Après manger, bébé fait caca, pipi, il pleure ou il vomit : maman (ou la nounou) arrive et nettoie. Fais un câlin à maman quand ton moral baisse, et dors quand l'énergie est basse." },
+  { id: 'parents', title: 'Papa et maman', text: () => "Ils sont là toute la journée : maman à la cuisine aux repas, papa au salon le soir. Touche-les pour leur parler : un câlin, ta journée, un conseil… et plus tard l'argent de poche !" },
+  { id: 'rue', title: 'La sortie en poussette', text: () => "« Voir la rue » : tu sors dans ta poussette, maman pousse et toi tu choisis où aller. Un bébé reste dans sa commune : le reste de Babi, tu le découvres en grandissant." },
+  { id: 'phone', title: 'Le téléphone', target: 'phone', text: () => "Même petit, tu as le téléphone de la maison : les Jeux, l'Encyclo (tout sur Babi), Messages et Amis pour causer avec les autres joueurs, la Boutique, et tes Idées à nous envoyer.", task: 'Ouvre le téléphone.', done: (s) => s.overlay === 'phone' },
+  { id: 'amis', title: 'Les autres joueurs', text: () => "Les autres bébés, enfants et grands que tu croises sont de vrais joueurs : touche-les pour faire connaissance et devenir amis. Entre amis, on s'écrit et on joue ensemble." },
+  { id: 'grandir', title: 'Tu grandis en jouant', text: () => "Bébé pendant 24 h de jeu, puis enfant et ado (l'école en semaine le matin). Appli fermée, ton âge t'attend : c'est en jouant que tu grandis. À 18 ans tu quittes la maison avec l'argent de départ de ta famille : le boulot, ton logement, ta vie." },
+  { id: 'fin', title: "C'est toi le boss !", text: () => "Voilà, tu sais tout pour commencer. Je reviens te voir à tes 18 ans pour la suite. Pour revoir ce tuto : l'Encyclo, dans le téléphone. On se voit au grin !" },
 ]
 const ADULTHOOD: Step[] = [
   { id: 'bienvenue', title: 'Te voilà grand·e !', text: () => "C'est encore Koffi. Maintenant c'est ta vie d'adulte à Abidjan : tu travailles, tu sors, tu te fais des amis, à ton rythme. Le temps passe quand tu joues : appli fermée, ton perso t'attend." },
