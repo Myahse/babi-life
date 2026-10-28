@@ -2,6 +2,7 @@ package live
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/myahse/babi-life/backend/internal/auth"
 	"testing"
 	"time"
@@ -82,5 +83,83 @@ func TestOnlyNewStatesAreResent(t *testing.T) {
 	h.broadcast(now.Add(2*Tick), true)
 	if len(b.send) != 1 {
 		t.Fatal("a's new state should be sent")
+	}
+}
+
+func TestFarPlayersNowAndThen(t *testing.T) {
+	h := NewHub(nil, auth.Tokens{}, nil)
+	me := &client{sim: "me", room: "r", send: make(chan []byte, 8)}
+	near := &client{sim: "near", room: "r", send: make(chan []byte, 8)}
+	far := &client{sim: "far", room: "r", send: make(chan []byte, 8)}
+	for _, c := range []*client{me, near, far} {
+		h.join(c)
+	}
+	ids := func() map[string]bool {
+		got := map[string]bool{}
+		for len(me.send) > 0 {
+			var m struct{ Players []State }
+			_ = json.Unmarshal(<-me.send, &m)
+			for _, p := range m.Players {
+				got[p.ID] = true
+			}
+		}
+		return got
+	}
+	now := time.Now()
+	walk := func(at time.Time) {
+		h.update(me, State{ID: "me", P: "idle", At: at.UnixMilli() - 1})
+		h.update(near, State{ID: "near", X: 10, P: "walk", At: at.UnixMilli() - 1})
+		h.update(far, State{ID: "far", X: 500, P: "walk", At: at.UnixMilli() - 1})
+	}
+	// The first tick: everyone, the far one too.
+	walk(now)
+	h.broadcast(now, true)
+	if got := ids(); !got["near"] || !got["far"] || got["me"] {
+		t.Fatalf("first tick should send near and far, not me: %v", got)
+	}
+	// The next: only the near one, though the far one moved.
+	walk(now.Add(Tick))
+	h.broadcast(now.Add(Tick), true)
+	if got := ids(); !got["near"] || got["far"] {
+		t.Fatalf("a far player was sent before FarEvery: %v", got)
+	}
+	// FarEvery later: the far one again.
+	later := now.Add(FarEvery)
+	walk(later)
+	h.broadcast(later, true)
+	if got := ids(); !got["near"] || !got["far"] {
+		t.Fatalf("the far player should come back after FarEvery: %v", got)
+	}
+}
+
+func TestACrowdSendsTheClosest(t *testing.T) {
+	h := NewHub(nil, auth.Tokens{}, nil)
+	me := &client{sim: "me", room: "r", send: make(chan []byte, 8)}
+	h.join(me)
+	now := time.Now()
+	h.update(me, State{ID: "me", P: "idle", At: now.UnixMilli() - 1})
+	for i := range MaxNear + 20 {
+		c := &client{sim: fmt.Sprint(i), room: "r", send: make(chan []byte, 8)}
+		h.join(c)
+		h.update(c, State{ID: c.sim, X: float64(i) / 2, P: "walk", At: now.UnixMilli() - 1})
+	}
+	h.broadcast(now, true) // the first: everyone
+	<-me.send
+	next := now.Add(Tick)
+	for id := range h.states["r"] {
+		s := h.states["r"][id]
+		s.At = next.UnixMilli() - 1
+		h.states["r"][id] = s
+	}
+	h.broadcast(next, true)
+	var m struct{ Players []State }
+	_ = json.Unmarshal(<-me.send, &m)
+	if len(m.Players) != MaxNear {
+		t.Fatalf("a crowd should send the %d closest, got %d", MaxNear, len(m.Players))
+	}
+	for _, p := range m.Players {
+		if p.X >= float64(MaxNear)/2 {
+			t.Fatalf("%s at %.1f m was sent before a closer one", p.ID, p.X)
+		}
 	}
 }

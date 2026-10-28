@@ -9,6 +9,7 @@
 package live
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -16,6 +17,8 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -37,9 +40,16 @@ const (
 	// Stale: a player not heard from for this long is no longer shown.
 	Stale = 10 * time.Second
 	// MaxRoom: players per commune and mode; more simply aren't sent. Each
-	// tick only sends the states heard since the last one (see broadcast), so
-	// a full room costs about what its moving players send, not its square.
-	MaxRoom = 150
+	// tick only sends the states heard since the last one, and the far ones
+	// only now and then (see broadcast), so a full room costs about what its
+	// moving players send to those around them, not its square.
+	MaxRoom = 300
+	// Near: in the streets, the players this close (metres) are sent every
+	// Tick, the closest MaxNear of them in a crowd; the others, too small or
+	// too hidden to see move, every FarEvery, which keeps them inside Stale.
+	Near     = 80.0
+	MaxNear  = 50
+	FarEvery = 2 * time.Second
 )
 
 // Poses a player may say it is in (what avatar/Human.tsx can show).
@@ -72,6 +82,8 @@ type client struct {
 	sim  string
 	room string
 	send chan []byte
+	// farSent: when this phone was last sent the far players of its street (ms).
+	farSent int64
 	// The session (the device) it was opened from, and how to close it when that device is signed out.
 	sid  string
 	kick context.CancelFunc
@@ -151,24 +163,88 @@ func (h *Hub) broadcast(now time.Time, streets bool) {
 		if isFast(room) {
 			since = 0
 		}
-		players := make([]State, 0, len(h.states[room]))
+		ms := now.UnixMilli()
 		for id, s := range h.states[room] {
-			if now.UnixMilli()-s.At > Stale.Milliseconds() {
+			if ms-s.At > Stale.Milliseconds() {
 				delete(h.states[room], id)
-				continue
-			}
-			if s.At > since {
-				players = append(players, s)
 			}
 		}
-		h.sent[room] = now.UnixMilli()
-		if len(clients) < 2 || len(players) == 0 {
+		h.sent[room] = ms
+		if len(clients) < 2 || len(h.states[room]) == 0 {
 			continue
 		}
-		msg, _ := json.Marshal(map[string]any{"t": "states", "now": now.UnixMilli(), "players": players})
+		if isFast(room) {
+			players := make([]State, 0, len(h.states[room]))
+			for _, s := range h.states[room] {
+				players = append(players, s)
+			}
+			msg, _ := json.Marshal(map[string]any{"t": "states", "now": ms, "players": players})
+			for c := range clients {
+				select {
+				case c.send <- msg:
+				default: // a slow phone misses this one: the next comes 75 ms later
+				}
+			}
+			continue
+		}
+		// The streets: each phone its own list, the new states of those near
+		// it, and every FarEvery the far ones' (all heard since it last had
+		// them). Each state is written out once for all of them.
+		type one struct {
+			s    State
+			enc  []byte
+			d    float64 // squared, from the phone being served
+			near bool
+		}
+		all := make([]one, 0, len(h.states[room]))
+		for _, s := range h.states[room] {
+			enc, _ := json.Marshal(s)
+			all = append(all, one{s: s, enc: enc})
+		}
+		head := `{"t":"states","now":` + strconv.FormatInt(ms, 10) + `,"players":[`
+		nearest := make([]int, 0, len(all))
 		for c := range clients {
+			me, placed := h.states[room][c.sim]
+			far := ms-c.farSent >= FarEvery.Milliseconds()
+			nearest = nearest[:0]
+			for i := range all {
+				o := &all[i]
+				o.d = (o.s.X-me.X)*(o.s.X-me.X) + (o.s.Z-me.Z)*(o.s.Z-me.Z)
+				o.near = !placed
+				if placed && o.s.ID != c.sim && o.d <= Near*Near {
+					nearest = append(nearest, i)
+				}
+			}
+			// A crowd: only the closest MaxNear are near.
+			if len(nearest) > MaxNear {
+				slices.SortFunc(nearest, func(a, b int) int { return cmp.Compare(all[a].d, all[b].d) })
+				nearest = nearest[:MaxNear]
+			}
+			for _, i := range nearest {
+				all[i].near = true
+			}
+			var b []byte
+			for i := range all {
+				o := &all[i]
+				if o.s.ID == c.sim || o.near && o.s.At <= since || !o.near && (!far || o.s.At <= c.farSent) {
+					continue
+				}
+				if b == nil {
+					b = append(b, head...)
+				} else {
+					b = append(b, ',')
+				}
+				b = append(b, o.enc...)
+			}
+			if far {
+				c.farSent = ms
+			}
+			if b == nil {
+				continue
+			}
+			b = append(b, "]}"...)
 			select {
-			case c.send <- msg:
+			case c.send <- b:
 			default: // a slow phone misses this one: the next comes 150 ms later
 			}
 		}
