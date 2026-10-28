@@ -86,6 +86,26 @@ func (h *Handler) mailRecipients(ctx context.Context, audience, template string)
 	return out, rows.Err()
 }
 
+// testName: the first name a test goes out with: the one the wish list or
+// a player's account has for that address or number, else « Test ».
+func (h *Handler) testName(ctx context.Context, contact string) string {
+	var n string
+	digits := strings.Map(func(c rune) rune {
+		if c >= '0' && c <= '9' {
+			return c
+		}
+		return -1
+	}, contact)
+	err := h.DB.QueryRow(ctx, `SELECT n FROM (
+			SELECT first_name, 0 FROM waitlist WHERE lower(contact) = $1 OR ($2 <> '' AND kind = 'phone' AND regexp_replace(contact, '\D', '', 'g') = $2)
+			UNION ALL SELECT split_part(name, ' ', 1), 1 FROM users WHERE lower(email) = $1
+		) AS x(n, o) WHERE n <> '' ORDER BY o LIMIT 1`, strings.ToLower(strings.TrimSpace(contact)), digits).Scan(&n)
+	if err != nil || n == "" {
+		return "Test"
+	}
+	return n
+}
+
 // stopLink: the person's own « ne plus recevoir » link.
 func (h *Handler) stopLink(email string) string {
 	if h.Mail == nil || h.Mail.API == "" {
@@ -254,7 +274,7 @@ func (h *Handler) mailSend(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	if req.Test != "" {
 		to := strings.ToLower(strings.TrimSpace(req.Test))
-		m, err := mail.News(h.site(), t, to, "Test", h.stopLink(to))
+		m, err := mail.News(h.site(), t, to, h.testName(ctx, to), h.stopLink(to))
 		if err == nil {
 			m.Subject = "[Test] " + m.Subject
 			err = h.Mail.Mail.Send(ctx, m)
