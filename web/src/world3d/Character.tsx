@@ -40,7 +40,7 @@ export function Character({ look, gender, walking, running, busy, moodColor = '#
         <meshBasicMaterial color="#000" transparent opacity={0.2} />
       </mesh>
       {stage === 'bebe' ? (
-        <Baby look={worn} fitted gender={gender} pose={doing === 'walk' || doing === 'run' ? 'walk' : doing === 'idle' || doing === 'sit' ? 'idle' : 'busy'} seed={seed} />
+        <Baby look={worn} fitted gender={gender} pose={doing === 'walk' || doing === 'run' ? 'walk' : doing === 'idle' || doing === 'sit' ? 'idle' : doing === 'sleep' ? 'sleep' : 'busy'} seed={seed} />
       ) : (
         <group scale={size.scale}>
           <Human look={worn} fitted gender={gender} pose={doing} seed={seed} headScale={size.head} speed={speed} />

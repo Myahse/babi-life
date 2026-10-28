@@ -1942,17 +1942,23 @@ export function BlockBaby({ look, gender, pose = 'idle', seed = 0, fitted }: Pro
   useFrame(() => {
     const t = worldTime() + seed
     const crawl = pose === 'walk'
+    const asleep = pose === 'sleep'
     // On all fours to crawl; sitting up otherwise.
     root.current!.rotation.x = crawl ? 1.05 : 0
     root.current!.position.y = crawl ? 0.17 + Math.abs(Math.sin(t * 6)) * 0.01 : 0
     root.current!.position.z = crawl ? -0.12 : 0
-    head.current!.rotation.x = crawl ? -0.9 : Math.sin(t * 1.3) * 0.08
-    head.current!.rotation.z = crawl ? 0 : Math.sin(t * 0.9) * 0.1
+    // Asleep on its back: still, the chest rising and falling.
+    root.current!.scale.y = asleep ? 1 + Math.sin(t * 2.2) * 0.015 : 1
+    head.current!.rotation.x = crawl ? -0.9 : asleep ? 0 : Math.sin(t * 1.3) * 0.08
+    head.current!.rotation.z = crawl || asleep ? 0 : Math.sin(t * 0.9) * 0.1
     for (const i of [0, 1]) {
       const out = i === 0 ? -1 : 1
       const a = arms[i].current!
       const g = legs[i].current!
-      if (crawl) {
+      if (asleep) {
+        a.rotation.set(-0.15, 0, out * 0.35)
+        g.rotation.set(-0.1, 0, out * 0.12)
+      } else if (crawl) {
         const step = Math.sin(t * 6 + i * Math.PI)
         a.rotation.set(-1.25 + step * 0.35, 0, 0)
         g.rotation.set(-0.25 - step * 0.3, 0, 0)

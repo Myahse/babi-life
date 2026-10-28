@@ -45,6 +45,8 @@ export function ActionProps({ id, kind, lying, stage = 'adulte', partner, bath, 
   if (id === 'manucure') return <Manicure />
   if (id === 'retouche') return <Fitting />
   if (id === 'shower' || id === 'logement-douche' || id === 'chambre-douche' || (id === 'chambre-bain' && !bath)) return <Shower fixtures={kind !== 'house' && kind !== 'room'} />
+  // The toilets where the room has none of its own (a rented room, a bathroom corner): the bowl under the Sim, the tank at its back.
+  if (id === 'toilettes' && kind !== 'house') return <Toilet />
   if (id === 'chambre-bain') return <Foam />
   if (id === 'bain-bebe') return <Mother doing="bain" look={mum} />
   if (/^(caca|pipi|vomir|pleurer)$/.test(id)) return <BabyMess kind={id as Mess} look={mum} carer={carer} nappy={nappy} />
@@ -127,6 +129,19 @@ export function ActionProps({ id, kind, lying, stage = 'adulte', partner, bath, 
 /* ---------- The shower ---------- */
 
 /** Water falling from the shower head over the Sim, and the steam rising. */
+/** A toilet bowl and its tank, the Sim sitting on it facing out (+z). */
+function Toilet() {
+  return (
+    <group position={[0, 0, -0.06]}>
+      <Box p={[0, 0.19, 0.02]} s={[0.4, 0.38, 0.48]} c="#f1f3f5" />
+      <Box p={[0, 0.39, 0.02]} s={[0.44, 0.04, 0.52]} c="#ffffff" />
+      <Box p={[0, 0.58, -0.3]} s={[0.46, 0.4, 0.2]} c="#f1f3f5" />
+      <Box p={[0, 0.8, -0.3]} s={[0.48, 0.04, 0.22]} c="#ffffff" />
+      <Box p={[0.15, 0.82, -0.3]} s={[0.06, 0.02, 0.04]} c="#adb5bd" />
+    </group>
+  )
+}
+
 export function Shower({ fixtures = true }: { /** The pipe, the head, the bucket: not where the furniture has its own. */ fixtures?: boolean }) {
   const drops = useRef<THREE.InstancedMesh>(null)
   const puffs = useRef<THREE.InstancedMesh>(null)

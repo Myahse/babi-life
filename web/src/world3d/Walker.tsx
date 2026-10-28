@@ -105,7 +105,7 @@ export type WalkNav = {
 }
 
 /** Where the Sim does a home action on its own furniture: walked to from `from`, then settled `at` (y up), turned `rot`. */
-export type HomeSpot = { at: XZ; y: number; rot: number; pose: Pose; lying: boolean; from: XZ; /** A stool under the Sim (at the table). */ stool?: boolean; /** The spot is in a wall (the piece is against one on both sides). */ wall?: boolean; /** Swimming lengths of the pool: half the length (m). */ swim?: number; /** Watching TV: the screen (on, while watching), its height and size (the plain TV's when not said). */ screen?: { at: XZ; rot: number; y?: number; w?: number; h?: number } }
+export type HomeSpot = { at: XZ; y: number; rot: number; pose: Pose; lying: boolean; from: XZ; /** A stool under the Sim (at the table). */ stool?: boolean; /** The spot is in a wall (the piece is against one on both sides). */ wall?: boolean; /** Swimming lengths of the pool: half the length (m). */ swim?: number; /** A baby's cot round it (HomeInside Crib). */ crib?: boolean; /** Watching TV: the screen (on, while watching), its height and size (the plain TV's when not said). */ screen?: { at: XZ; rot: number; y?: number; w?: number; h?: number } }
 
 type Props = {
   sim: Sim
