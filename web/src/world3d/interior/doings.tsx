@@ -7,6 +7,7 @@ import { worldTime } from '../../lib/worldClock'
 import { Human, NoShadows, type Pose } from '../../avatar/Human'
 import { OUTFIT_DEFAULT_COLOR, randomLook } from '../../avatar/options'
 import type { Look } from '../../lib/types'
+import { carerShown } from '../carer'
 
 // More of what shows what the Sim is doing, round it (as ActionProps): the
 // papers on a counter and the clerk's stamp, the market woman handing over
@@ -18,6 +19,16 @@ const BOX = new THREE.BoxGeometry(1, 1, 1)
 const seeded = (n: number) => () => ((n = (n * 16807) % 2147483647) / 2147483647)
 
 /** Someone with the Sim (the clerk, the seller, the mother…): the same look every time (its seed). */
+/** Maman's place in a baby's scene: empty until she has walked up (HomeInside Parents, carer.ts). */
+function Carer({ children }: { children: React.ReactNode }) {
+  const [shown, setShown] = useState(carerShown)
+  useFrame(() => {
+    const now = carerShown()
+    if (now !== shown) setShown(now)
+  })
+  return shown ? <>{children}</> : null
+}
+
 export function Person({ p, r = 0, pose, g, seed, outfit, look: given, scale }: { p: [number, number, number]; r?: number; pose: Pose; g: 'femme' | 'homme'; seed: number; outfit?: string; look?: Look; scale?: number }) {
   const look = useMemo(() => {
     if (given) return given
@@ -694,7 +705,9 @@ export function Mother({ doing, look }: { doing: 'biberon' | 'bouillie' | 'bain'
   })
   return (
     <group>
-      <Person p={[0, 0, 0.75]} r={Math.PI} pose={doing === 'calin' ? 'hug' : 'pray'} g="femme" seed={113} look={look} />
+      <Carer>
+        <Person p={[0, 0, 0.75]} r={Math.PI} pose={doing === 'calin' ? 'hug' : 'pray'} g="femme" seed={113} look={look} />
+      </Carer>
       {doing === 'biberon' && (
         <group position={[0, 0.42, 0.17]} rotation={[-1.0, 0, 0]}>
           <Box p={[0, 0, 0]} s={[0.06, 0.16, 0.06]} c="#f8f9fa" />
@@ -823,7 +836,7 @@ export function BabyMess({ kind, look, carer = 'maman', nappy = true }: { kind: 
   const said = (carer === 'maman' ? '' : carer === 'nounou' ? 'Nounou : ' : 'Gouvernante : ') + lines[phase === 'done' ? 1 : 0]
   return (
     <group>
-      {mum}
+      <Carer>{mum}</Carer>
       <Html position={[kind === 'pleurer' || change || phase !== 'cry' ? 0 : 0.35, 1.95, 0.5]} center zIndexRange={[20, 0]}>
         <div className="rounded-2xl rounded-bl-sm bg-white px-3 py-1.5 text-[13px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_6px_14px_-8px_rgba(0,0,0,0.5)]">{said}</div>
       </Html>

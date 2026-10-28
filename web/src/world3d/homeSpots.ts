@@ -54,16 +54,28 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
           const at = under.get(`${Math.floor(a + w / 2)},${Math.floor(b + d / 2)}`)
           return at !== undefined && at !== k
         }
-        return { at: toWorld(u, v), y, rot: rot + sface, pose, lying, from: toWorld(au, av), stool, wall: wallAt(u, v) || wallAt(au, av) || other(u, v) || other(au, av) }
+        // (The toilets, in a small room: nor a wall between the way in and the seat.)
+        const through = turnable && [0.25, 0.5, 0.75].some((k) => wallAt(au + (u - au) * k, av + (v - av) * k))
+        return { at: toWorld(u, v), y, rot: rot + sface, pose, lying, from: toWorld(au, av), stool, wall: wallAt(u, v) || wallAt(au, av) || other(u, v) || other(au, av) || through }
       }
       // Up against a wall on that side: the other side of the piece, if it's free there.
       let spot = place(x, z, face, half + 0.6)
-      // (Not a seat: sitting on its back would be sitting the wrong way round; the toilets can turn to the room.)
-      if (spot.wall && !lying && (pose !== 'sit' || turnable)) {
+      // The toilets: always on the bowl, back to the tank; in a narrow WC, come up to it closer, or from its side.
+      if (turnable) {
+        for (const [front, side] of [[half + 0.35, 0], [0, f.w / 2 + 0.45], [0, -(f.w / 2 + 0.45)]]) {
+          if (!spot.wall) break
+          const other = place(x, z, face, front, side)
+          if (!other.wall) spot = other
+        }
+        for (const id of ids) out[id] ??= spot
+        return spot
+      }
+      // (Not a seat: sitting on its back would be sitting the wrong way round.)
+      if (spot.wall && !lying && pose !== 'sit') {
         const other = place(-x, -z, face + Math.PI, -(half + 0.6))
         if (!other.wall) spot = other
         // Both blocked (a fridge in front of the stove, the wall behind): at its side, turned to it.
-        else if (pose !== 'sit')
+        else
           for (const side of [1, -1]) {
             const beside = place(side * (f.w / 2 + 0.4), 0, -side * (Math.PI / 2), 0, side * (f.w / 2 + 0.8))
             if (!beside.wall) {
@@ -167,7 +179,9 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
   // of a natte isn't checked against the walls (one sleeps on it), and in a small house it was outside
   // them. Turned away from the piece, into the room.
   const toLot = (p: XZ): XZ => [(p[0] - center[0]) * c - (p[1] - center[1]) * s, (p[0] - center[0]) * s + (p[1] - center[1]) * c]
-  const free = (u: number, v: number) => Math.abs(u) < w / 2 - 0.3 && Math.abs(v) < d / 2 - 0.3 && !wallAt(u, v) && !under.has(`${Math.floor(u + w / 2)},${Math.floor(v + d / 2)}`)
+  // The cells the baby's cot stands on, once it is placed.
+  const cotCells = new Set<string>()
+  const free = (u: number, v: number) => Math.abs(u) < w / 2 - 0.3 && Math.abs(v) < d / 2 - 0.3 && !wallAt(u, v) && !under.has(`${Math.floor(u + w / 2)},${Math.floor(v + d / 2)}`) && !cotCells.has(`${Math.floor(u + w / 2)},${Math.floor(v + d / 2)}`)
   // Inside: a wall somewhere on all four sides.
   const inside = (u: number, v: number) =>
     [[1, 0], [-1, 0], [0, 1], [0, -1]].every(([du, dv]) => {
@@ -181,10 +195,18 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
   const roomy = (u: number, v: number, a: number, strict: boolean) => {
     const [sa, ca] = [Math.sin(a), Math.cos(a)]
     const at = (x: number, z: number): XZ => [u + x * ca + z * sa, v - x * sa + z * ca]
-    if (!strict) return [at(0, 0), at(0, 0.45), at(0, 0.7)].every(([pu, pv]) => free(pu, pv) && inside(pu, pv))
-    return [at(0, 0), at(0, 0.5), at(0.35, 0.55)].every(([pu, pv]) => clear(pu, pv))
+    if (!strict) return [at(0, 0), at(0, 0.45), at(0, 0.7), at(0, 0.9)].every(([pu, pv]) => free(pu, pv) && inside(pu, pv))
+    // (Maman kneels at 0.75 in front, her body to about 1 m.)
+    return [at(0, 0), at(0, 0.5), at(0.35, 0.55), at(0, 0.95)].every(([pu, pv]) => clear(pu, pv))
   }
-  const onFloor = (s: HomeSpot): HomeSpot => {
+  // The cot's whole footprint (Crib: 0.62 × 1.02 behind where the baby lies) on free floor, inside.
+  const COT = [[0, 0.25], [0, -0.25], [0, -0.75], [0.3, 0.25], [-0.3, 0.25], [0.3, -0.75], [-0.3, -0.75], [0.3, -0.25], [-0.3, -0.25]]
+  const cotAt = (u: number, v: number, a: number) => {
+    const [sa, ca] = [Math.sin(a), Math.cos(a)]
+    return COT.map(([x, z]): XZ => [u + x * ca + z * sa, v - x * sa + z * ca])
+  }
+  const cotFits = (u: number, v: number, a: number) => cotAt(u, v, a).every(([pu, pv]) => free(pu, pv) && inside(pu, pv))
+  const onFloor = (s: HomeSpot, cot = false): HomeSpot => {
     const [pu, pv] = toLot(s.at)
     const tries: XZ[] = [toLot(s.from)]
     for (const r of [0.5, 0.8, 1.1, 1.4, 1.8]) for (let i = 0; i < 16; i++) tries.push([pu + Math.sin((i * Math.PI) / 8) * r, pv + Math.cos((i * Math.PI) / 8) * r])
@@ -193,12 +215,22 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
         const away = Math.hypot(u - pu, v - pv) > 0.1 ? Math.atan2(u - pu, v - pv) : 0
         // Turned away from the piece; where it's too tight, any way round that leaves room.
         for (const a of strict ? [away] : [0, 1, 2, 3, 4, 5, 6, 7].map((i) => away + (i * Math.PI) / 4)) {
-          if (!roomy(u, v, a, strict)) continue
+          if (cot ? !cotFits(u, v, a) : !roomy(u, v, a, strict)) continue
           const at = toWorld(u, v)
           return { at, from: at, y: 0, rot: rot0 + a, pose: 'busy', lying: false, wall: false }
         }
       }
-    return { at: s.from, from: s.from, y: 0, rot: s.rot, pose: 'busy', lying: false, wall: s.wall }
+    // (No room for the cot: said as in a wall, and there's none.)
+    return { at: s.from, from: s.from, y: 0, rot: s.rot, pose: 'busy', lying: false, wall: cot || s.wall }
+  }
+  // A baby sleeps in its cot, by the family's bed: on its back on the mattress, the cot round it (HomeInside Crib).
+  // Placed first; the baby's other things are done on the floor round it.
+  const placed = out.sleep && onFloor(out.sleep, true)
+  if (placed && !placed.wall) {
+    const cot = { ...placed, y: 0.33, pose: 'sleep' as const, lying: true, crib: true }
+    out.berceau = cot
+    const [u, v] = toLot(cot.at)
+    for (const [pu, pv] of cotAt(u, v, cot.rot - rot0)) cotCells.add(`${Math.floor(pu + w / 2)},${Math.floor(pv + d / 2)}`)
   }
   const seat = out['call-family'] ?? out.sleep
   if (seat) for (const id of ['biberon', 'bouillie', 'hochet', 'calin', 'caca', 'pipi', 'vomir', 'pleurer']) out[id] ??= onFloor(seat)

@@ -25,6 +25,8 @@ import { familyCast } from '../avatar/Family'
 import { Talkable } from './Talkable'
 import { doingOf } from './talk'
 import { clock, weekdayOf } from '../game/rules'
+import { carer } from './carer'
+import { tint } from '../avatar/textures'
 
 // Inside one's own house, on a screen of its own: the house itself (the one
 // of the family's plan, or the one built on a bought lot), its rooms, its
@@ -158,7 +160,7 @@ function Walking({ sim, stage, way, spot, doing, onThere, steer, onMoved, onLeve
   const controls = useThree((st) => st.controls) as unknown as { target: THREE.Vector3; update: () => void } | null
   const manual = useRef(false)
   const at = useRef<{ x: number; y: number; z: number; rot: number }>({ x: way[0]?.[0] ?? 0, y: way[0]?.[2] ?? 0, z: way[0]?.[1] ?? 0, rot: Math.PI })
-  const level = useRef(0)
+  const level = useRef(Math.round((way[0]?.[2] ?? 0) / STOREY))
   const step = useRef(1)
   const settle = useRef(0)
   const [walking, setWalking] = useState(way.length > 1)
@@ -314,7 +316,24 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
     const top = Math.max(0, ...plot.blocks.map((b) => b[1]))
     return Math.max(1, Math.ceil((top + 1) / STOREY) - (top % STOREY === 0 && top > 0 ? 1 : 0))
   }, [plot.blocks])
-  const [floor, setFloor] = useState(0)
+  // Where the Sim last stood in the house (this browser): back there when the page opens again, not at the gate.
+  const memKey = `babi.home.${sim.id}.${plot.key ?? plot.id}`
+  const [kept] = useState<[number, number, number] | null>(() => {
+    try {
+      const v = JSON.parse(localStorage.getItem(memKey) ?? 'null')
+      return Array.isArray(v) && v.length === 3 && v.every(Number.isFinite) ? (v as [number, number, number]) : null
+    } catch {
+      return null
+    }
+  })
+  const keep = (p: XZ, level: number) => {
+    try {
+      localStorage.setItem(memKey, JSON.stringify([Math.round(p[0] * 100) / 100, Math.round(p[1] * 100) / 100, level]))
+    } catch {
+      // No storage: from the gate next time.
+    }
+  }
+  const [floor, setFloor] = useState(kept?.[2] ?? 0)
   // Doing something: down on the ground floor, where it's done.
   useEffect(() => {
     if (interactionId) setFloor(0)
@@ -322,7 +341,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
   const levels = useLevels(plot, w, d, world)
   const flights = useFlights(plot, w, d, levels)
   // The floor the Sim is on (where it walks); the one looked at follows it.
-  const lvl = useRef(0)
+  const lvl = useRef(kept?.[2] ?? 0)
   // The arrow keys and WASD walk the Sim about the house.
   useEffect(() => (roam && !interactionId ? listenKeys() : undefined), [roam, interactionId])
   // Where each thing is done, in the lot's metres from its middle.
@@ -343,13 +362,20 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
   // A Golvo meal (golvo-garba…): at the table; no table, on a seat. Something from the fridge: a drink at its door, a dish at the table.
   const fromFridge = interactionId?.startsWith('frigo-') ? world.groceries?.find((g) => `frigo-${g.id}` === interactionId) : undefined
   const atTable = spots.golvo ?? (spots['watch-tv'] && { ...spots['watch-tv'], pose: 'eat' as const })
-  const spot = interactionId ? ((interactionId.startsWith('golvo-') ? atTable : fromFridge ? (fromFridge.drink ? spots.frigo : (atTable ?? spots.frigo)) : spots[interactionId]) ?? null) : null
+  // A baby sleeps in its cot.
+  const cot = stage === 'bebe' && /^(sleep|nap)$/.test(interactionId ?? '') ? spots.berceau : undefined
+  const spot = cot ?? (interactionId ? ((interactionId.startsWith('golvo-') ? atTable : fromFridge ? (fromFridge.drink ? spots.frigo : (atTable ?? spots.frigo)) : spots[interactionId]) ?? null) : null)
   const gate: XZ = [0, d / 2 + 1.5]
   // Where to walk to (a tap on the floor, a floor's button), and on which floor.
   const [tapped, setTapped] = useState<{ at: XZ; level: number } | null>(null)
   useEffect(() => setTapped(null), [interactionId])
   // (Come in while doing something already, the app just opened: there already, not walking from the gate.)
-  const where = useRef<XZ>(spot ? spot.from : gate)
+  const [back] = useState(() => {
+    const ok = kept && kept[2] < floors && levels(kept[2])(kept[0], kept[1]) ? kept : null
+    if (!ok) lvl.current = 0
+    return ok
+  })
+  const where = useRef<XZ>(spot ? spot.from : back ? [back[0], back[1]] : gate)
   const way = useMemo<P[]>(() => {
     const to = spot ? { at: spot.from, level: 0 } : tapped
     const from = where.current
@@ -379,7 +405,8 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
     const last = way[way.length - 1]
     where.current = [last[0], last[1]]
     lvl.current = Math.round(last[2] / STOREY)
-  }, [way])
+    keep(where.current, lvl.current)
+  }, [way]) // eslint-disable-line react-hooks/exhaustive-deps
   const [there, setThere] = useState(false)
   // A night together: once both are in the bed, the screen goes slowly to black.
   const night2 = interactionId === 'passer-nuit'
@@ -435,8 +462,13 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
             </mesh>
           )}
           {partner && <Partner friend={partner} spots={spots} doing={interactionId} spot={spot} />}
-          {parents && sim.family && <Parents sim={sim} spots={spots} doing={interactionId} spot={spot} />}
-          <Walking sim={sim} stage={stage} way={way} spot={spot} doing={interactionId} onThere={setThere} steer={roam && !interactionId ? levels(lvl.current) : undefined} onMoved={(p) => ((where.current = p), setTapped(null))} onLevel={setFloor} />
+          {stage === 'bebe' && spots.berceau && (
+            <group position={[spots.berceau.at[0], 0, spots.berceau.at[1]]} rotation={[0, spots.berceau.rot, 0]}>
+              <Crib />
+            </group>
+          )}
+          {parents && sim.family && <Parents sim={sim} spots={spots} doing={interactionId} spot={spot} free={levels(0)} span={span} />}
+          <Walking sim={sim} stage={stage} way={way} spot={spot} doing={interactionId} onThere={setThere} steer={roam && !interactionId ? levels(lvl.current) : undefined} onMoved={(p) => ((where.current = p), keep(p, lvl.current), setTapped(null))} onLevel={setFloor} />
           {there && interactionId === 'cook-attieke' && spot && (
             <group position={[spot.at[0] + Math.sin(spot.rot) * 0.6, 0, spot.at[1] + Math.cos(spot.rot) * 0.6]}>
               <Pot />
@@ -578,7 +610,7 @@ const MESS = /^(caca|pipi|vomir)$/
  * at the table; papa at work on weekdays from 8 to 17; the evening on the sofa; at night in bed.
  * Never on the very spot the Sim is using: the next one along.
  */
-function Parents({ sim, spots, doing, spot }: { sim: Sim; spots: Record<string, HomeSpot>; doing?: string; spot: HomeSpot | null }) {
+function Parents({ sim, spots, doing, spot, free, span }: { sim: Sim; spots: Record<string, HomeSpot>; doing?: string; spot: HomeSpot | null; /** The ground floor's free ground, to walk about. */ free: (x: number, z: number) => boolean; span: number }) {
   const cast = useMemo(() => familyCast(sim.family!, sim.look), [sim.family, sim.look])
   const care = useMemo(() => babyCare(sim.family!, sim.look), [sim.family, sim.look])
   const { hour } = clock(sim.gameMinutes)
@@ -594,11 +626,25 @@ function Parents({ sim, spots, doing, spot }: { sim: Sim; spots: Record<string, 
   const bedsLeft = [...beds].reverse()
   let papa: HomeSpot | undefined
   let maman: HomeSpot | undefined
+  // A baby's thing done with maman: she walks up to it (and its scene's maman takes over once she's there, carer.ts).
+  const mumGoes = !asleep && WITH_MUM.test(doing ?? '') && care.carer === 'maman' && !!spot
+  const toBaby: HomeSpot | undefined = spot ? (() => {
+    const at: XZ = [spot.at[0] + Math.sin(spot.rot) * 0.65, spot.at[1] + Math.cos(spot.rot) * 0.65]
+    return { ...spot, at, from: at, y: 0, rot: spot.rot + Math.PI, pose: 'idle', lying: false, stool: false, screen: undefined }
+  })() : undefined
+  useEffect(() => {
+    carer.coming = mumGoes
+    carer.here = false
+    return () => {
+      carer.coming = false
+      carer.here = false
+    }
+  }, [mumGoes, doing])
   if (asleep) {
     papa = first(bedsLeft)
     maman = first(bedsLeft, papa)
   } else {
-    maman = WITH_MUM.test(doing ?? '') && care.carer === 'maman' ? undefined : meal && doing !== 'cook-attieke' ? first(['cook-attieke', ...seats]) : first([...seats, 'golvo'])
+    maman = mumGoes ? toBaby : meal && doing !== 'cook-attieke' ? first(['cook-attieke', ...seats]) : first([...seats, 'golvo'])
     if (maman === spots['cook-attieke']) maman = maman && { ...maman, pose: 'cook' }
     else if (maman && !maman.lying) maman = { ...maman, pose: hour % 2 ? 'call' : 'sit' }
     if (!working) {
@@ -624,7 +670,10 @@ function Parents({ sim, spots, doing, spot }: { sim: Sim; spots: Record<string, 
     <>
       {who.map(([s, p, i]) =>
         s ? (
-          <group key={i} position={[s.at[0], s.y, s.at[1]]} rotation={[0, s.rot, 0]}>
+          <Stroll key={i} to={s} free={free} span={span} hide={i === 2 && mumGoes} onThere={i === 2 && mumGoes ? () => (carer.here = true) : undefined}>
+            {(s, walking) => walking ? (
+              <Character look={p.look} gender={p.gender} walking stage="adulte" marker={false} seed={i * 7.7} speed={STROLL} />
+            ) : (
             <group rotation={s.lying ? [-Math.PI / 2, 0, 0] : [0, 0, 0]}>
               {s.stool && !s.lying && (
                 <mesh position={[0, 0.2 - s.y, -0.05]}>
@@ -641,9 +690,123 @@ function Parents({ sim, spots, doing, spot }: { sim: Sim; spots: Record<string, 
                 </Talkable>
               )}
             </group>
-          </group>
+            )}
+          </Stroll>
         ) : null,
       )}
     </>
+  )
+}
+
+/** Papa and maman walk about the house at this pace (m/s). */
+const STROLL = 1.3
+
+/**
+ * Someone of the house going from one place to the next on foot, round the
+ * furniture (never popping from the sofa to the kitchen): the new place's
+ * way in, then into it. Where they first show, they're there already.
+ * `hide`: gone once there (the baby's scene shows maman from then on).
+ */
+function Stroll({ to, free, span, hide, onThere, children }: { to: HomeSpot; free: (x: number, z: number) => boolean; span: number; hide?: boolean; onThere?: () => void; children: (s: HomeSpot, walking: boolean) => React.ReactNode }) {
+  const g = useRef<THREE.Group>(null)
+  const at = useRef({ x: to.at[0], z: to.at[1], y: to.y, rot: to.rot })
+  const path = useRef<XZ[]>([])
+  const [walking, setWalking] = useState(false)
+  const [gone, setGone] = useState(false)
+  const key = `${to.at[0].toFixed(2)},${to.at[1].toFixed(2)},${to.rot.toFixed(2)},${to.y}`
+  const first = useRef(true)
+  useEffect(() => {
+    setGone(false)
+    if (first.current) {
+      // Where they first show: there already.
+      first.current = false
+      // (After the house's own effects: Parents marks maman on her way first.)
+      setTimeout(() => onThere?.(), 0)
+      if (hide) setGone(true)
+      return
+    }
+    const a = at.current
+    const from: XZ = [a.x, a.z]
+    if (Math.hypot(from[0] - to.from[0], from[1] - to.from[1]) < 0.3 && Math.hypot(from[0] - to.at[0], from[1] - to.at[1]) < 0.6) {
+      Object.assign(a, { x: to.at[0], z: to.at[1], y: to.y, rot: to.rot })
+      setTimeout(() => onThere?.(), 0)
+      if (hide) setGone(true)
+      return
+    }
+    // Off the seat or out of bed first, to the floor; then round the furniture to the way in, then in.
+    a.y = 0
+    const way = gridWay(from, to.from, free, 0.35, span, 160 * 160) ?? [from, to.from]
+    path.current = [...way.slice(1), to.at]
+    setWalking(true)
+  }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
+  useFrame((_, dtIn) => {
+    const o = g.current
+    if (!o) return
+    const a = at.current
+    if (walking) {
+      const dt = Math.min(dtIn, 0.05)
+      const next = path.current[0]
+      if (!next) {
+        Object.assign(a, { x: to.at[0], z: to.at[1], y: to.y, rot: to.rot })
+        setWalking(false)
+        onThere?.()
+        if (hide) setGone(true)
+      } else {
+        const [dx, dz] = [next[0] - a.x, next[1] - a.z]
+        const d = Math.hypot(dx, dz)
+        const stepLen = STROLL * dt
+        if (d <= stepLen) {
+          a.x = next[0]
+          a.z = next[1]
+          path.current.shift()
+        } else {
+          a.x += (dx / d) * stepLen
+          a.z += (dz / d) * stepLen
+          const want = Math.atan2(dx, dz)
+          a.rot += Math.atan2(Math.sin(want - a.rot), Math.cos(want - a.rot)) * Math.min(1, dt * 8)
+        }
+      }
+    }
+    o.position.set(a.x, a.y, a.z)
+    o.rotation.set(0, a.rot, 0)
+  })
+  if (gone) return null
+  return <group ref={g}>{children(to, walking)}</group>
+}
+
+/**
+ * The baby's cot, by the family's bed: a mattress raised in a frame of bars,
+ * long the way the baby lies (its head towards -z from where it lies, like
+ * a Sim in a bed).
+ */
+function Crib() {
+  const wood = '#d9b48a'
+  const bars = []
+  for (let k = -0.42; k <= 0.42; k += 0.105) for (const x of [-0.3, 0.3]) bars.push(<Box3 key={`${x}${k}`} p={[x, 0.55, -0.25 + k]} s={[0.025, 0.4, 0.025]} c={wood} />)
+  for (let k = -0.22; k <= 0.22; k += 0.11) for (const z of [-0.75, 0.25]) bars.push(<Box3 key={`e${z}${k}`} p={[k, 0.55, z]} s={[0.025, 0.4, 0.025]} c={wood} />)
+  return (
+    <group>
+      {/* The four posts on their feet, the frame under the mattress */}
+      {[[-0.31, 0.26], [0.31, 0.26], [-0.31, -0.76], [0.31, -0.76]].map(([x, z], i) => (
+        <Box3 key={i} p={[x, 0.39, z]} s={[0.05, 0.78, 0.05]} c={tint(wood, -0.12)} />
+      ))}
+      <Box3 p={[0, 0.25, -0.25]} s={[0.62, 0.06, 1.02]} c={tint(wood, -0.08)} />
+      {/* The mattress and its sheet, the little pillow at the head */}
+      <Box3 p={[0, 0.3, -0.25]} s={[0.56, 0.06, 0.96]} c="#f8f9fa" />
+      <Box3 p={[0, 0.35, -0.62]} s={[0.3, 0.05, 0.16]} c="#ffc8dd" />
+      {/* The bars, and the rail along the top */}
+      {bars}
+      {[-0.3, 0.3].map((x) => <Box3 key={x} p={[x, 0.76, -0.25]} s={[0.04, 0.04, 1.04]} c={wood} />)}
+      {[-0.75, 0.25].map((z) => <Box3 key={z} p={[0, 0.76, z]} s={[0.64, 0.04, 0.04]} c={wood} />)}
+    </group>
+  )
+}
+
+function Box3({ p, s, c }: { p: [number, number, number]; s: [number, number, number]; c: string }) {
+  return (
+    <mesh position={p} castShadow>
+      <boxGeometry args={s} />
+      <meshLambertMaterial color={c} />
+    </mesh>
   )
 }
