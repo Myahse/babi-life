@@ -1620,7 +1620,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       )}
       {/* A trip booked to another commune: the driver comes up the streets, the Sim gets in, off they go */}
       {ready && nav.nodes.length > 0 && sim.activity?.kind === 'travel' && <TripRide sim={sim} nav={nav} world={world} />}
-      {/* A Golvo order on its way: the courier rides up to the Sim */}
+      {/* A Garbaya order on its way: the courier rides up to the Sim */}
       <Courier delivery={delivery ?? null} nav={nav} onCollect={onCollect} />
     </>
   )

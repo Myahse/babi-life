@@ -50,7 +50,7 @@ export type Props = {
   frozen?: boolean
   /** Busy, the Sim walked far from where it's done: the activity stops (Walker). */
   onLeave?: () => void
-  /** A Golvo order on its way: its courier rides up in the street (open/courier.tsx); a tap on him collects it. */
+  /** A Garbaya order on its way: its courier rides up in the street (open/courier.tsx); a tap on him collects it. */
   delivery?: Delivery | null
   onCollect?: () => void
   /** Other players in the commune right now. */

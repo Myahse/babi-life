@@ -359,7 +359,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
         }
     return out
   }, [plot, w, d, world.furniture, levels])
-  // A Golvo meal (golvo-garba…): at the table; no table, on a seat. Something from the fridge: a drink at its door, a dish at the table.
+  // A Garbaya meal (golvo-garba…): at the table; no table, on a seat. Something from the fridge: a drink at its door, a dish at the table.
   const fromFridge = interactionId?.startsWith('frigo-') ? world.groceries?.find((g) => `frigo-${g.id}` === interactionId) : undefined
   const atTable = spots.golvo ?? (spots['watch-tv'] && { ...spots['watch-tv'], pose: 'eat' as const })
   // A baby sleeps in its cot.

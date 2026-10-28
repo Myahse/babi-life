@@ -15,13 +15,13 @@ import (
 	"github.com/myahse/babi-life/backend/internal/world"
 )
 
-// The phone's apps: the store, Waye (mobile money) and Golvo (food delivery).
+// The phone's apps: the store, Waye (mobile money) and Garbaya (food delivery).
 
 var (
 	errUnknownApp  = errors.New("appli inconnue")
 	errNoContact   = errors.New("contact inconnu")
 	errNoDish      = errors.New("ce plat n'est pas au menu")
-	errNotAbidjan  = errors.New("Golvo ne livre qu'à Abidjan")
+	errNotAbidjan  = errors.New("Garbaya ne livre qu'à Abidjan")
 	errNotHome     = errors.New("ton repas t'attend chez toi : rentre d'abord")
 	errPlaceClosed = errors.New("ce lieu a fermé")
 )
@@ -83,7 +83,7 @@ func (s *Sim) send(to string, amount int) (Event, error) {
 	return Event{Kind: "transfer", Text: text, Money: -(amount + fee), GameTime: s.GameMinutes}, nil
 }
 
-// order: the Golvo courier has arrived; the Sim pays and eats where they
+// order: the Garbaya courier has arrived; the Sim pays and eats where they
 // are, or (home) in the house, at the table: delivered home, or taken in.
 func (s *Sim) order(placeID, dishID string, home bool) error {
 	if err := needApp(s, "golvo"); err != nil {
@@ -111,7 +111,7 @@ func (s *Sim) order(placeID, dishID string, home bool) error {
 	if !ok {
 		return errNotAbidjan
 	}
-	it := game.Interaction{ID: "golvo-" + d.ID, Label: d.Label + " (livré par Golvo)", Icon: d.Icon, Minutes: d.Minutes, Cost: d.Price + fee, Effect: d.Effect, MinHour: d.MinHour, MaxHour: d.MaxHour}
+	it := game.Interaction{ID: "golvo-" + d.ID, Label: d.Label + " (livré par Garbaya)", Icon: d.Icon, Minutes: d.Minutes, Cost: d.Price + fee, Effect: d.Effect, MinHour: d.MinHour, MaxHour: d.MaxHour}
 	if home {
 		return s.start(it, HomePlaceID, "home", "Chez toi", nil, "")
 	}
@@ -185,6 +185,6 @@ func (h *Handler) order(w http.ResponseWriter, r *http.Request) {
 			return game.Outcome{}, nil, err
 		}
 		a := s.Activity
-		return game.Outcome{Text: fmt.Sprintf("Golvo : %s, bon appétit !", a.Interaction.Label), Money: -a.Interaction.Cost}, nil, nil
+		return game.Outcome{Text: fmt.Sprintf("Garbaya : %s, bon appétit !", a.Interaction.Label), Money: -a.Interaction.Cost}, nil, nil
 	})
 }

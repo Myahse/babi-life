@@ -11,7 +11,7 @@ import { deliveryState, type Delivery } from '../../screens/GolvoApp'
 import type { Nav } from './nav'
 import type { XZ } from './geo'
 
-// The Golvo courier (screens/GolvoApp.tsx), seen in the street: over the last
+// The Garbaya courier (screens/GolvoApp.tsx), seen in the street: over the last
 // stretch of the delivery he rides up the streets to the Sim (to its house's
 // door, for an order delivered home; only seen there) on his moto, the
 // yellow box on the back; there he gets off with the bag and waits (a tap on
@@ -146,7 +146,7 @@ export function Courier({ delivery, nav, onCollect }: { delivery: Delivery | nul
             </mesh>
             <Html position={[0, 2.3, 0]} center zIndexRange={[25, 0]}>
               <button className="rounded-2xl rounded-bl-sm bg-white px-3 py-1.5 text-[13px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_6px_14px_-8px_rgba(0,0,0,0.5)]" onClick={() => onCollect?.()}>
-                « Golvo ! Ta commande est là ! » 🛵
+                « Garbaya ! Ta commande est là ! » 🛵
               </button>
             </Html>
           </group>

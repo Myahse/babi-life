@@ -167,7 +167,7 @@ function useIsDesktop() {
 // In development, ?hour=22 shows the street at that hour (to check the night).
 const HOUR_OVERRIDE = import.meta.env.DEV && new URLSearchParams(location.search).get('hour') ? Number(new URLSearchParams(location.search).get('hour')) : undefined
 const MAP_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
-/** The Golvo order on its way, kept on the device. */
+/** The Garbaya order on its way, kept on the device. */
 const GOLVO_KEY = 'babi-golvo'
 
 /**
@@ -267,7 +267,7 @@ export function Play() {
   // street before the Sim is seen at it), and open again once it's done, for another thing there
   // (Sortir is what leaves).
   const [backTo, setBackTo] = useState<string | null>(null)
-  // A Golvo order on its way, and the phone app to open.
+  // A Garbaya order on its way, and the phone app to open.
   // Kept on the device: the phone dropping the tab (or a reload) mid-delivery no longer loses the order.
   const [delivery, setDelivery] = useState<Delivery | null>(() => {
     try {
@@ -968,7 +968,7 @@ export function Play() {
   // Inside a place: while doing something there, or looking at what it offers.
   const inside = (() => {
     if (doing) {
-      // A Golvo meal eaten where the Sim is: in the street (eaten at home, its place is « home »).
+      // A Garbaya meal eaten where the Sim is: in the street (eaten at home, its place is « home »).
       if (doing.placeId === 'golvo') return null
       // At school, at the crèche (an update, « ecole-vivante »): the day there, seen (world3d/interior/SchoolDay).
       if (doing.placeId === 'home' && (doing.interaction.id === 'aller-ecole' || doing.interaction.id === 'creche') && keyOpen(feats, 'ecole-vivante')) return { id: 'ecole', kind: 'schoolday', it: doing.interaction.id }
@@ -1897,7 +1897,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
     ...(has('bingo') ? [{ id: 'bingo', label: 'Babi Bingo', open: () => setApp('bingo') }] : []),
     ...(has('casino') ? [{ id: 'casino', label: 'Babi Casino', open: () => setApp('casino') }] : []),
     ...(has('gode') ? [{ id: 'gode', label: 'Godé', open: () => setApp('gode') }] : []),
-    ...(has('golvo') ? [{ id: 'golvo', label: 'Golvo', open: () => setApp('golvo') }] : []),
+    ...(has('golvo') ? [{ id: 'golvo', label: 'Garbaya', open: () => setApp('golvo') }] : []),
     ...(has('dodo') ? [{ id: 'dodo', label: 'Dodo', open: () => setApp('dodo') }] : []),
     ...(has('kineo') ? [{ id: 'kineo', label: 'Kinéo', open: () => setApp('kineo') }] : []),
     ...(has('bolide') ? [{ id: 'bolide', label: 'Bolide', open: () => setApp('bolide') }] : []),
@@ -1936,7 +1936,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
   ).filter((a) => !life.minor || (a.id !== 'jobs' && a.id !== 'home'))
   // The dock: the map, the messages, the friends, the camera (when the phone is one's own; else the games).
   const DOCK = ['map', 'messages', 'friends', ownPhone ? 'camera' : 'jeux']
-  const title: Record<PhoneAppId, string> = { mentor: 'Ton mentor', bingo: 'Babi Bingo', casino: 'Babi Casino', here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', babigram: 'Babigram', bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: 'Galerie', guide: 'Encyclopédie de Babi', dodo: 'Dodo', kineo: 'Kinéo', dames: 'Dames 225', huit: '8 américain', awale: 'Awalé 225', ludo: 'Ludo 225', gode: 'Godé', bolide: 'Bolide', jeux: 'Jeux', boutique: 'Boutique', idees: 'Tes idées pour Babi Life', politique: 'Politique' }
+  const title: Record<PhoneAppId, string> = { mentor: 'Ton mentor', bingo: 'Babi Bingo', casino: 'Babi Casino', here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Garbaya', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', babigram: 'Babigram', bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: 'Galerie', guide: 'Encyclopédie de Babi', dodo: 'Dodo', kineo: 'Kinéo', dames: 'Dames 225', huit: '8 américain', awale: 'Awalé 225', ludo: 'Ludo 225', gode: 'Godé', bolide: 'Bolide', jeux: 'Jeux', boutique: 'Boutique', idees: 'Tes idées pour Babi Life', politique: 'Politique' }
 
   return (
     <div className="phone-backdrop absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center" data-away={away || undefined} onClick={putAway}>
@@ -2113,7 +2113,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                     <Lock size={34} className="text-[var(--color-ink-soft)]" />
                     <p className="font-display text-xl font-extrabold">Pas encore de téléphone</p>
                     <p className="text-sm font-bold text-[var(--color-ink-soft)]">
-                      {sim.firstName} aura son téléphone à 12 ans, avec Waye dessus : le Store s'ouvre alors (Gbairai, Tikitoko, Golvo, Gnango…).
+                      {sim.firstName} aura son téléphone à 12 ans, avec Waye dessus : le Store s'ouvre alors (Gbairai, Tikitoko, Garbaya, Gnango…).
                       {(() => {
                         const left = Math.ceil((sim.bornAt ?? 0) + minutesToAge(world, 12) - sim.gameMinutes)
                         return left > 0 ? ` Encore ${duration(left)}.` : ''
@@ -3147,7 +3147,7 @@ function WordOfTheDay({ world, gameMinutes }: { world: World; gameMinutes: numbe
   )
 }
 
-/** The Golvo courier on the way, over the street. */
+/** The Garbaya courier on the way, over the street. */
 /**
  * A long way on foot: a moto-taxi is offered, for a fare by the distance
  * (world3d/moto.ts, backend sims/moto.go). Paid, the Sim rides the rest;

@@ -60,7 +60,7 @@ var PhoneApps = []PhoneApp{
 	{ID: "casino", Name: "Babi Casino", Tagline: "Roulette, 21 et tickets à gratter", Category: "Jeux", SizeMB: 66,
 		About:  "La roulette et son zéro, le 21 contre la banque, les tickets à gratter Pinda, Akwaba et Super Banco. Argent du jeu seulement, dès 18 ans.",
 		Source: &game.Source{Status: game.StatusFictional, Checked: game.Checked, Note: "Appli du jeu sur le modèle des casinos et des jeux de grattage. Les règles sont celles des vraies tables ; aucun argent réel."}},
-	{ID: "golvo", Name: "Golvo", Tagline: "Les maquis livrés chez toi", Category: "Repas", SizeMB: 52,
+	{ID: "golvo", Name: "Garbaya", Tagline: "Les maquis livrés chez toi", Category: "Repas", SizeMB: 52,
 		About:  "Commande au maquis, au resto ou en boîte : un livreur à moto t'apporte ça où tu es dans Abidjan.",
 		Source: inspired("Appli du jeu inspirée de Glovo, à Abidjan depuis 2019 : livraison de repas par des coursiers à moto, frais de 500 F au lancement.", srcGlovo, srcGlovo2)},
 	{ID: "dodo", Name: "Dodo", Tagline: "Des chez-soi à louer, à la nuit", Category: "Voyage", SizeMB: 61,
@@ -117,7 +117,7 @@ func SendFee(amount int) int {
 	return min(5000, int(math.Ceil(float64(amount)/100)))
 }
 
-// Golvo menus, by kind of place. Prices and effects are game rules.
+// Garbaya menus, by kind of place. Prices and effects are game rules.
 type Dish struct {
 	ID      string     `json:"id"`
 	Label   string     `json:"label"`

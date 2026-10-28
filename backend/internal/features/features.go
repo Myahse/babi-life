@@ -47,7 +47,7 @@ var List = []Feature{
 	{ID: "app-waye", Label: "Waye", About: "Envoyer et recevoir de l'argent entre amis, depuis le téléphone du perso.", Keys: []string{"app:waye"}},
 	{ID: "app-gbairai", Label: "Gbairai", About: "La messagerie des amis et des groupes.", Keys: []string{"app:gbairai"}},
 	{ID: "app-flashe", Label: "Flashé", About: "Payer en flashant le code des commerçants.", Keys: []string{"app:flashe"}},
-	{ID: "app-golvo", Label: "Golvo", About: "La livraison de repas à domicile, le livreur qui arrive en moto.", Keys: []string{"app:golvo"}},
+	{ID: "app-golvo", Label: "Garbaya", About: "La livraison de repas à domicile, le livreur qui arrive en moto.", Keys: []string{"app:golvo"}},
 	{ID: "app-dodo", Label: "Dodo", About: "Réserver une maison ou un appartement pour quelques nuits.", Keys: []string{"app:dodo"}},
 	{ID: "app-kineo", Label: "Kinéo", About: "Le cinéma : les films à l'affiche et les places.", Keys: []string{"app:kineo"}},
 	{ID: "app-bolide", Label: "Bolide", About: "Acheter son vélo, sa moto ou sa voiture, et la conduire en ville.", Keys: []string{"app:bolide"}},

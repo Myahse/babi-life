@@ -48,7 +48,7 @@ func TestWayeSendsWithAOnePercentFee(t *testing.T) {
 func TestGolvoDeliversAndTheSimEats(t *testing.T) {
 	s := newSim() // in Yopougon at noon, 10 000 F
 	if err := s.order("marcory-bietry", "garba", false); err == nil {
-		t.Fatal("Golvo must be installed")
+		t.Fatal("Garbaya must be installed")
 	}
 	s.Apps = []string{"golvo"}
 	if err := s.order("yop-rue-princesse", "brochettes", false); err != errPlaceClosed {

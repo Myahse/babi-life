@@ -9,13 +9,13 @@ import { whereabouts } from './whereabouts'
 // camera (a frame callback after the others, which then draws the frame
 // itself); landed, the camera goes back where it was.
 
-const state = { start: 0, seconds: 0 }
+const state = { start: 0, seconds: 0, hold: null as null | [number, number, number] }
 const subs = new Set<() => void>()
 const tell = () => subs.forEach((f) => f())
 
 /** Flies for that long; the promise is kept when it has landed. */
 export function playCinematic(seconds: number): Promise<void> {
-  Object.assign(state, { start: performance.now(), seconds })
+  Object.assign(state, { start: performance.now(), seconds, hold: null })
   tell()
   return new Promise((done) => setTimeout(() => (stopCinematic(), done()), seconds * 1000))
 }
@@ -25,6 +25,14 @@ export function stopCinematic() {
   tell()
 }
 const flying = () => state.seconds > 0
+
+/** Development only (captures): the camera held at [ahead, up, aside] metres from the Sim, as it faces, looking at it. */
+export function holdCamera(at: [number, number, number], seconds = 30) {
+  Object.assign(state, { start: performance.now(), seconds, hold: at })
+  tell()
+  setTimeout(stopCinematic, seconds * 1000)
+}
+if (import.meta.env.DEV) Object.assign(globalThis, { __holdCamera: holdCamera })
 const useFlying = () => useSyncExternalStore((f) => (subs.add(f), () => void subs.delete(f)), flying)
 
 /** In the street's Canvas (OpenWorld): nothing, or the flight. */
@@ -45,6 +53,14 @@ function Flight() {
     const u = Math.min(1, (performance.now() - state.start) / (state.seconds * 1000))
     const e = ease(u)
     const [x, z] = whereabouts.sim
+    if (state.hold) {
+      const [ahead, up, aside] = state.hold
+      const h = whereabouts.simHeading
+      st.camera.position.set(x + Math.sin(h) * ahead + Math.cos(h) * aside, up, z + Math.cos(h) * ahead - Math.sin(h) * aside)
+      st.camera.lookAt(x, up * 0.6, z)
+      st.gl.render(st.scene, st.camera)
+      return
+    }
     // A wide turn coming down: from high over the commune onto the Sim, a little behind it at the end.
     const a = 0.6 + u * 2.6
     const r = 150 + (14 - 150) * e

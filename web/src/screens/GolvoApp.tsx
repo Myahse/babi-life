@@ -6,7 +6,7 @@ import { routeIn } from '../game/roads'
 import { iconFor } from '../components/icons'
 import { IconTile } from '../components/ui'
 
-/** A Golvo order on its way. home: to the Sim's house (eaten there, at the table), else where the Sim is. */
+/** A Garbaya order on its way. home: to the Sim's house (eaten there, at the table), else where the Sim is. */
 export type Delivery = { place: Place; commune: Commune; dish: Dish; fee: number; minutes: number; courier: string; start: number; lost: number; stage: 'kitchen' | 'road' | 'here'; home?: boolean }
 
 export const DELIVERY_SECONDS_PER_MIN = 3 // the courier's minutes go by quickly
@@ -36,12 +36,12 @@ export function deliveryState(d: Delivery, now: number) {
 }
 
 /**
- * Golvo, the game's food delivery (modelled on Glovo): the maquis, restaurants
+ * Garbaya, the game's food delivery (modelled on Glovo): the maquis, restaurants
  * and clubs of Abidjan, their menus, and a courier on a moto.
  */
 export function GolvoApp({ world, sim, delivery, onOrder, onCancel, onCollect }: { world: World; sim: Sim; delivery: Delivery | null; onOrder: (d: Delivery) => void; onCancel: () => void; /** home: eaten in the house, at the table (else where the Sim is). */ onCollect: (home: boolean) => void }) {
   const [shop, setShop] = useState<{ place: Place; commune: Commune } | null>(null)
-  // Where to: here, where the Sim is, or home (a house in Abidjan: Golvo doesn't deliver elsewhere).
+  // Where to: here, where the Sim is, or home (a house in Abidjan: Garbaya doesn't deliver elsewhere).
   const homeHere = sim.homeCity === 'abidjan'
   const [toHome, setToHome] = useState(false)
   const inHomeCommune = sim.city === sim.homeCity && sim.commune === sim.homeCommune
@@ -52,7 +52,7 @@ export function GolvoApp({ world, sim, delivery, onOrder, onCancel, onCollect }:
     .sort((a, b) => a.q.minutes - b.q.minutes)
   const dishOpen = (d: Dish) => openAt({ id: d.id, label: d.label, icon: d.icon, minutes: d.minutes, cost: d.price, effect: {}, minHour: d.minHour, maxHour: d.maxHour } as never, sim.gameMinutes)
 
-  if (sim.city !== 'abidjan') return <p className="p-3 text-sm font-bold text-[var(--color-ink-soft)]">Golvo ne livre qu'à Abidjan.</p>
+  if (sim.city !== 'abidjan') return <p className="p-3 text-sm font-bold text-[var(--color-ink-soft)]">Garbaya ne livre qu'à Abidjan.</p>
 
   if (delivery) {
     const st = deliveryState(delivery, Date.now())
@@ -198,7 +198,7 @@ function Header() {
   return (
     <div className="rounded-2xl bg-[linear-gradient(160deg,#ffd45c,#ffb703)] p-4 text-[#0b4a35]">
       <div className="flex items-center gap-2 text-xs font-extrabold tracking-wider uppercase">
-        <Bike size={14} /> Golvo
+        <Bike size={14} /> Garbaya
       </div>
       <div className="font-display text-2xl leading-tight font-extrabold">Les maquis livrés où tu es</div>
     </div>

@@ -20,7 +20,7 @@ const DOWNLOADS: Record<string, string> = { waye: '5 M+', gnango: '1 M+', idrive
 /** Who's old enough for it, as the stores rate apps. */
 const AGE: Record<string, string> = { bet225: '18+', parisfoot: '18+', tikitoko: '12+', babigram: '12+', gbairai: '12+', dodo: '12+' }
 /** Made-up makers, by app. */
-const MAKER: Record<string, string> = { waye: 'Waye Mobile CI', gnango: 'Gnango Mobilité', idrive: 'iDrive Afrique', gbairai: 'Gbairai Studio', tikitoko: 'Tikitoko Média', babigram: 'Babigram Labs', bet225: 'Bet225 Gaming', parisfoot: 'ParisFoot SA', golvo: 'Golvo Livraisons', dodo: 'Dodo Séjours', kineo: 'Kinéo Cinémas', dames: 'Grin Studio', huit: 'Maquis Games', awale: 'Grin Studio', ludo: 'Maquis Games', gode: 'Maquis Games' }
+const MAKER: Record<string, string> = { waye: 'Waye Mobile CI', gnango: 'Gnango Mobilité', idrive: 'iDrive Afrique', gbairai: 'Gbairai Studio', tikitoko: 'Tikitoko Média', babigram: 'Babigram Labs', bet225: 'Bet225 Gaming', parisfoot: 'ParisFoot SA', golvo: 'Garbaya Livraisons', dodo: 'Dodo Séjours', kineo: 'Kinéo Cinémas', dames: 'Grin Studio', huit: 'Maquis Games', awale: 'Grin Studio', ludo: 'Maquis Games', gode: 'Maquis Games' }
 /** Up top on « Pour toi », in this order (when the world has them). */
 const FEATURED = ['ludo', 'awale', 'huit', 'dames', 'kineo', 'tikitoko', 'dodo']
 
