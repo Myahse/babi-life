@@ -12,7 +12,7 @@ import { fightArms, fightBody, fightLegs, isFight, type FightPose } from './figh
 // simpler blocky figure (avatar/LowHuman.tsx) far away, and the poses that
 // move them both (usePoseRig). Units are metres: feet on y=0, facing +Z.
 
-export type Pose = 'idle' | 'walk' | 'run' | 'leap' | 'hang' | 'wash' | 'sleep' | 'pray' | 'cook' | 'phone' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper' | 'touch' | 'mark' | 'guard' | 'dive' | 'airplane' | 'pass' | 'salat' | 'swim' | 'dunk' | 'layup' | 'crossover' | 'block' | 'steal' | 'slide' | 'stumble' | 'bouncepass' | 'film' | 'call' | 'snack' | 'dj' | 'brush' | 'toilet' | EmotePose | FightPose
+export type Pose = 'idle' | 'walk' | 'run' | 'leap' | 'hang' | 'wash' | 'sleep' | 'pray' | 'cook' | 'phone' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper' | 'touch' | 'mark' | 'guard' | 'dive' | 'airplane' | 'pass' | 'salat' | 'swim' | 'dunk' | 'layup' | 'crossover' | 'block' | 'steal' | 'slide' | 'stumble' | 'bouncepass' | 'film' | 'call' | 'snack' | 'dj' | 'brush' | 'toilet' | 'push' | EmotePose | FightPose
 
 /** Poses done sitting on a chair (hips at seat height): 'call' is the phone at the ear, sitting. */
 export const SEATED: Pose[] = ['sit', 'eat', 'drink', 'write', 'call', 'toilet']
@@ -455,7 +455,8 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
     if (began.current.pose !== pose || began.current.take !== take) began.current = { pose, take, t: worldTime() + seed }
     const since = clock ? clock() : worldTime() + seed - began.current.t
     const run = pose === 'run' || pose === 'touch' || pose === 'airplane'
-    const walk = pose === 'walk' || run || pose === 'dribble'
+    // (Pushing a pram: walking, the hands on its handle.)
+    const walk = pose === 'walk' || run || pose === 'dribble' || pose === 'push'
     const seated = SEATED.includes(pose)
     // Steps follow the speed: cadence and stride grow with it, so feet don't slide.
     const v = speed ?? (run ? 8 : 1.4)
@@ -567,6 +568,9 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
       } else if (pose === 'cheer') {
         // Arms up, hands shaking, a little further up at the top of the jump.
         ;[sx, sz, ex] = [-0.25, out * (2.55 + Math.max(0, jump) * 0.25 + Math.sin(t * 13 + i) * 0.08), -0.25]
+      } else if (pose === 'push') {
+        // Both hands forward on the pram's handle, at the waist.
+        ;[sx, sz, ex] = [-0.95, out * 0.08, -0.35]
       } else if (pose === 'busy') {
         ;[sx, sz, ex] = [-1.1 + Math.sin(t * 6 + i) * 0.25, out * 0.15, -0.9 + Math.sin(t * 6 + i) * 0.2]
       } else if (pose === 'wave' && out > 0) {
