@@ -43,7 +43,7 @@ import { weather } from './weathering'
 import { along, anchorNode, DRIVABLE, round, routeLength, turnTo, useCellsAround, type Round } from './shared'
 import { ParkedVehicle } from './parkedVehicle'
 import { useParked } from '../drive'
-import { blockedAhead, giveWay, junctionsOf, lightsOf, queueOf, redAhead, report, stopForPapers, TrafficLights, waiting, type Junction, type Light } from './trafficFlow'
+import { blockedAhead, giveWay, holdJunctions, junctionsOf, lightsOf, litJunctions, queueOf, redAhead, report, spotTaken, stopForPapers, TrafficLights, waiting, type Junction, type Light } from './trafficFlow'
 import { inTheWay, resolvePlaces, spaceFields, type PlaceSpot, type Resolved } from './places'
 import { SportField } from './field'
 import { FuelStation } from './station'
@@ -1909,13 +1909,13 @@ const CARS_PER_CELL = RICH ? 5 : 3
 const CAR_ROUND = 90 // seconds
 
 /** Woro-woro, taxis, gbakas, motos and SITRA buses on the big streets around the Sim: the same ones on every screen. */
-export function RoadTraffic({ nav, focus, seed, woro }: { nav: Nav; focus: React.RefObject<XZ>; seed: string; woro?: { color?: string; trim?: string; none?: boolean } }) {
+export function RoadTraffic({ nav, focus, seed, woro, perCell = CARS_PER_CELL }: { nav: Nav; focus: React.RefObject<XZ>; seed: string; woro?: { color?: string; trim?: string; none?: boolean }; /** cars in each cell (the lab puts more, to test the crossroads) */ perCell?: number }) {
   const cells = useCellsAround(focus, CAR_CELL)
   const routes = useRoutes(nav)
   const cars = useMemo(
     () =>
       cells.flatMap((cell) =>
-        [...Array(CARS_PER_CELL)].map((_, k) => {
+        [...Array(perCell)].map((_, k) => {
           const r = rng(`otraffic${seed}|${cell.key}|${k}`)
           // Abidjan's streets are its taxis, woro-woros, gbakas and buses first (seven in ten); the people's
           // own cars after (saloons, berlines, SUVs, 4x4s, a limousine now and then: vehicles.tsx carModel).
@@ -1934,16 +1934,32 @@ export function RoadTraffic({ nav, focus, seed, woro }: { nav: Nav; focus: React
           }
         }),
       ),
-    [cells, seed, woro],
+    [cells, seed, woro, perCell],
   )
+  // Cars starting from the same street node would park at the same spot at the end of their round, one in the
+  // other: each takes its place in line there (Car's `slot`).
+  const slots = useMemo(() => {
+    const seen = new Map<number, number>()
+    return new Map(
+      cars.map((c) => {
+        const a = anchorNode(nav, c.near, c.kind === 'sotra' ? 9 : 7) ?? -1
+        const k = seen.get(a) ?? 0
+        seen.set(a, k + 1)
+        return [c.id, k] as const
+      }),
+    )
+  }, [cars, nav])
   // The lights at the big crossroads round the Sim, which the cars stop at.
   const lights = useMemo(() => lightsOf(nav, cells, CAR_CELL), [nav, cells])
   // The other crossroads, where they give way (trafficFlow.tsx giveWay).
-  const junctions = useMemo(() => junctionsOf(nav, cells, CAR_CELL, lights), [nav, cells, lights])
+  // (The lit ones too: there the lights say who goes, and nobody goes in across a car still crossing.)
+  const junctions = useMemo(() => [...junctionsOf(nav, cells, CAR_CELL, lights), ...litJunctions(lights)], [nav, cells, lights])
+  // (In development, for tests in the browser: the crossroads with and without lights.)
+  if (import.meta.env.DEV) Object.assign(globalThis, { __junctions: junctions, __lights: lights })
   return (
     <>
       {cars.map((c) => (
-        <Car key={c.id} car={c} nav={nav} routes={routes} lights={lights} junctions={junctions} />
+        <Car key={c.id} car={c} slot={slots.get(c.id) ?? 0} nav={nav} routes={routes} lights={lights} junctions={junctions} />
       ))}
       <TrafficLights lights={lights} />
     </>
@@ -1958,7 +1974,7 @@ const SOLID_LANDMARKS: Record<string, number> = { 'treich-palais': 34, 'plateau-
 /** A vehicle's length and width, for what it blocks. */
 const CAR_SIZE: Record<VehicleKind, [number, number]> = { taxi: [4.4, 1.7], woro: [4.4, 1.7], car: [4.5, 1.8], gbaka: [5.3, 1.9], moto: [1.9, 0.6], sotra: [11, 2.5] }
 
-function Car({ car, nav, routes, lights, junctions }: { car: { id: string; kind: VehicleKind; color?: string; trim?: string; seed: number; near: XZ; speed: number; offset: number }; nav: Nav; routes: Map<string, XZ[]>; lights: Light[]; junctions: Junction[] }) {
+function Car({ car, slot, nav, routes, lights, junctions }: { car: { id: string; kind: VehicleKind; color?: string; trim?: string; seed: number; near: XZ; speed: number; offset: number }; /** its place in line where it parks (0: first) */ slot: number; nav: Nav; routes: Map<string, XZ[]>; lights: Light[]; junctions: Junction[] }) {
   const ref = useRef<THREE.Group>(null)
   // The SITRA keeps to the bigger roads (not only the 12 m ones: most quarters have none, and the
   // bus, finding no road, never showed).
@@ -1977,26 +1993,62 @@ function Car({ car, nav, routes, lights, junctions }: { car: { id: string; kind:
   const v = useRef(1)
   // The road it's on (how wide), looked at now and then: slower in the small streets.
   const road = useRef({ width: 10, t: -1 })
+  // How far right of the route's line it is (left: negative): in its lane (2 m) one way, in the other lane
+  // coming back, pulled over to the kerb when parked; eased, so the U-turn at the end crosses the road.
+  const side = useRef<number | null>(null)
   useFrame((_, dtRaw) => {
     const g = ref.current
     if (!g) return
     const dt = Math.min(dtRaw, 0.1)
+    // (The time since the last frame as it is, up to half a second: on a slow phone, a frame is long, and the car
+    // must not go on through what it had stopped for.)
+    const dtv = Math.min(dtRaw, 0.5)
+    // Behind its schedule by what it didn't drive since the last frame, at the speed it had.
+    late.current += dtv * (1 - v.current)
     const [l, w] = CAR_SIZE[car.kind]
     const reach = CAR_ROUND * 0.42 * car.speed
     const path = (n: number) => routeFor(routes, nav, `${car.id}|${n}`, anchor, 14, wide, reach)
+    // Its place in line where it parks, at both ends of the round (none on a route too short for it).
+    const gapOf = (len: number) => (len > slot * 14 + 30 ? slot * 7 : 0)
     const now = worldTime() - late.current
-    const at = round(now, CAR_ROUND, car.offset, (n) => routeLength(path(n)), car.speed)
+    const at = round(now, CAR_ROUND, car.offset, (n) => routeLength(path(n)) - 2 * gapOf(routeLength(path(n))), car.speed)
     const way = path(at.n)
     g.visible = way.length > 1
     if (!g.visible) return report(car.id, null)
+    const len = routeLength(way)
+    const gap = gapOf(len)
     // A gbaka pulls away and pulls in (an apprenti has to be able to run
     // after it): the same leg in the same time, eased at both ends.
-    const d = stops ? eased(at, routeLength(way), car.speed, CAR_ROUND, car.offset, leg.current, now) : at.d
-    const p = along(way, d)
+    const d = gap + (stops ? eased(at, len - 2 * gap, car.speed, CAR_ROUND, car.offset, leg.current, now) : at.d)
+    // Its way through a bend: the line through the points a few metres before and after (a corner is rounded,
+    // the car doesn't swing its lane across it at the corner's point).
+    const p0 = along(way, d)
+    const [pa, pb] = [along(way, Math.max(0, d - 3)), along(way, Math.min(len, d + 3))]
+    const p = { x: p0.x, z: p0.z, r: Math.hypot(pb.x - pa.x, pb.z - pa.z) > 0.5 ? Math.atan2(pb.x - pa.x, pb.z - pa.z) : p0.r }
     const heading = at.forward ? p.r : p.r + Math.PI
-    // Drive on the right: shift to the right of the way it goes.
-    const off = 2
-    const [x, z] = [p.x + Math.cos(heading) * -off, p.z - Math.sin(heading) * -off]
+    // Drive on the right: shift to the right of the way it goes. At the end of its way it pulls over to the
+    // kerb and goes into a yard (out of sight: two rounds ending at the same spot never park one in the
+    // other, and nobody drives into a parked car); it comes out on the other side of the road, the way it
+    // goes back, once nothing is on that spot.
+    const lane = (at.forward ? 1 : -1) * (at.moving ? 2 : 3.9)
+    if (side.current === null) side.current = lane
+    const spot = (o: number): XZ => [p.x - Math.cos(p.r) * o, p.z + Math.sin(p.r) * o]
+    let yard = false
+    if (!at.moving) {
+      side.current += (lane - side.current) * (1 - Math.exp(-3 * dt))
+      yard = Math.abs(side.current - lane) < 0.3
+    } else if (Math.sign(side.current) !== Math.sign(lane)) {
+      if (spotTaken(car.id, ...spot(lane))) yard = true
+      else side.current = lane
+    } else side.current += (lane - side.current) * (1 - Math.exp(-2.5 * dt))
+    if (yard) {
+      // (Waiting to come out: its round held meanwhile.)
+      if (at.moving) v.current = 0
+      g.visible = false
+      moveObstacle(car.id, null)
+      return report(car.id, null)
+    }
+    const [x, z] = spot(side.current)
     const t = worldTime()
     if (t - road.current.t > 0.5) {
       const n = nav.nearest([p.x, p.z], 20)
@@ -2007,17 +2059,19 @@ function Car({ car, nav, routes, lights, junctions }: { car: { id: string; kind:
     // further, to brake in time); someone crossing in front of it (the Sim); a crossroads it gives way at.
     const papers = at.moving && !stops && stopForPapers(car.id, x, z, heading, l / 2, t)
     const red = at.moving && !papers && redAhead(lights, x, z, heading, l / 2, t)
-    const ahead = at.moving && !papers && !red ? blockedAhead(car.id, x, z, heading, l / 2, 3) : null
+    // (Looked at further on a slow phone: the car covers more before the next frame.)
+    const ahead = at.moving && !papers && !red ? blockedAhead(car.id, x, z, heading, l / 2, 3 + car.speed * v.current * dtv) : null
+    if (at.moving) holdJunctions(car.id, junctions, x, z, heading, l / 2, t)
     const [fx, fz] = [Math.sin(heading), Math.cos(heading)]
     const [sx, sz] = [whereabouts.sim[0] - x, whereabouts.sim[1] - z]
     const walker = at.moving && sx * fx + sz * fz > 0 && sx * fx + sz * fz < l / 2 + 7 && Math.abs(sx * fz - sz * fx) < w / 2 + 1
-    const yieldTo = at.moving && !papers && !red && !ahead && !walker ? giveWay(car.id, junctions, x, z, heading, l / 2, road.current.width, v.current, t) : null
-    // Behind a queue at a light or a checkpoint, it waits its turn; nose to nose with a car waiting for it, one gets by after a moment;
-    // given way for a long while (four at a crossroads, each with one on its right), it goes.
+    const yieldTo = at.moving && !papers && !red && !ahead && !walker ? giveWay(car.id, junctions, x, z, heading, l / 2, road.current.width, v.current, t, held.current) : null
+    // Behind a queue at a light, a checkpoint or a crossroads, it waits its turn; nose to nose with a car waiting
+    // for it, one gets by after a moment; given way for a long while at a crossroads, it goes (giveWay's patience).
     const queue = ahead && queueOf(car.id, ahead)
     const waitFor = papers ? 'papers' : red ? 'red' : walker ? 'pieton' : (ahead ?? yieldTo)
-    const stuck = (ahead && queue !== 'light') || (yieldTo && yieldTo !== 'stop' && yieldTo !== 'junction')
-    const blocked = papers || red || walker || (ahead && (queue === 'light' || held.current < (queue === 'jam' ? 3 : 8))) || (yieldTo && (!stuck || held.current < 4))
+    const stuck = (ahead && queue !== 'light') || yieldTo === 'prio'
+    const blocked = papers || red || walker || (ahead && (queue === 'light' || held.current < (queue === 'jam' ? 3 : 8))) || !!yieldTo
     if (blocked) {
       if (stuck) held.current += dt
       waiting(car.id, waitFor ?? '')
@@ -2031,14 +2085,12 @@ function Car({ car, nav, routes, lights, junctions }: { car: { id: string; kind:
       want = Math.min(road.current.width < 6.5 ? 0.6 : road.current.width < 8.5 ? 0.8 : 1, bend > 0.6 ? 0.45 : bend > 0.3 ? 0.7 : 1)
     }
     // Braking is quicker than speeding up.
-    v.current += Math.max(-2.2 * dt, Math.min(0.55 * dt, want - v.current))
+    v.current += Math.max(-2.2 * dtv, Math.min(0.55 * dt, want - v.current))
     if (v.current < 0.02 && want === 0) v.current = 0
-    // Behind its schedule by what it didn't drive.
-    late.current += dt * (1 - v.current)
     g.position.set(x, nav.heightAt(x, z), z)
     // A U-turn at each end, eased so it isn't a snap.
     g.rotation.y = turnTo(g.rotation.y, heading - Math.PI / 2, 1 - Math.exp(-6 * dt))
-    report(car.id, { x, z, h: heading, half: l / 2, wait: blocked ? (waitFor ?? undefined) : undefined })
+    report(car.id, { x, z, h: heading, half: l / 2, wait: !at.moving ? 'parked' : blocked ? (waitFor ?? undefined) : undefined })
     // Nobody walks through it.
     moveObstacle(car.id, { x: g.position.x, z: g.position.z, hw: l / 2, hd: w / 2, rot: g.rotation.y })
   })
