@@ -41,12 +41,22 @@ const closeTutorial = () => ((asked = false), listeners.forEach((f) => f()))
 export const useTutorialAsked = () => useSyncExternalStore((f) => (listeners.add(f), () => void listeners.delete(f)), () => asked)
 
 /** What the game is showing, for the steps done by doing them. */
-export type TutoState = { whereTo: boolean; placeId: string | null; overlay: string | null }
+export type TutoState = { whereTo: boolean; placeId: string | null; overlay: string | null; /** A place's « Que faire ? » open. */ menu?: boolean }
 
 type Step = { id: string; title: string; text: (desk: boolean) => string; /** What it points at (data-tour). */ target?: string; /** What to do, for it to move on. */ task?: string; done?: (s: TutoState & { moved: number }) => boolean }
 
-const STEPS: Step[] = [
-  { id: 'bienvenue', title: 'Akwaba à Babi !', text: () => "Moi c'est Koffi, du quartier. Ici c'est Abidjan, et c'est ta vie : tu travailles, tu sors, tu te fais des amis, à ton rythme. Le temps passe pour de vrai, même quand le jeu est fermé." },
+// Two chapters: growing up at the family's home (from birth), then adult life (at 18, or straight
+// away for a Sim made grown up). Each one once; the Encyclo shows the one of the Sim's age again.
+const CHILDHOOD: Step[] = [
+  { id: 'bienvenue', title: 'Akwaba à Babi !', text: () => "Moi c'est Koffi, du quartier. Ici c'est Abidjan, et c'est ta vie depuis le berceau. Le temps passe quand tu joues : appli fermée, ton perso t'attend." },
+  { id: 'besoins', title: 'Tes besoins', target: 'besoins', text: () => "Ces cinq ronds : manger, l'énergie, la propreté, les amis et le moral. Ils baissent avec le temps. Quand un rond passe au rouge, occupe-toi de lui !" },
+  { id: 'maison', title: 'La maison de tes parents', target: 'que-faire', text: () => "Tu vis chez papa et maman. Les icônes au-dessus des meubles, c'est ce qu'on fait ici : le biberon, la bouillie, le bain avec maman, dormir… Plus tard les devoirs et l'école.", task: 'Entre chez toi et touche « Que faire ? ».', done: (s) => !!s.menu },
+  { id: 'parents', title: 'Papa et maman', text: () => "Ils sont là toute la journée : maman à la cuisine aux repas, papa au salon le soir. Touche-les pour leur parler : un câlin, ta journée, un conseil… et même l'argent de poche !" },
+  { id: 'grandir', title: 'Tu grandis vite', text: () => "Bébé 5 minutes de jeu, enfant 20 minutes (l'école en semaine le matin), ado 30 minutes. À 18 ans tu quittes la maison avec l'argent de départ de ta famille : le boulot, ton logement, ta vie." },
+  { id: 'fin', title: "C'est toi le boss !", text: () => "Le reste tu le découvres en vivant. Je reviens te voir à tes 18 ans pour la suite. Pour revoir ce tuto : l'Encyclo, dans ton téléphone." },
+]
+const ADULTHOOD: Step[] = [
+  { id: 'bienvenue', title: 'Te voilà grand·e !', text: () => "C'est encore Koffi. Maintenant c'est ta vie d'adulte à Abidjan : tu travailles, tu sors, tu te fais des amis, à ton rythme. Le temps passe quand tu joues : appli fermée, ton perso t'attend." },
   { id: 'besoins', title: 'Tes besoins', target: 'besoins', text: () => "Ces cinq ronds : manger, l'énergie, la propreté, les amis et le moral. Ils baissent avec le temps. Quand un rond passe au rouge, occupe-toi de lui !" },
   {
     id: 'marcher',
@@ -56,19 +66,27 @@ const STEPS: Step[] = [
     task: 'Fais quelques pas.',
     done: (s) => s.moved > 4,
   },
-  { id: 'ou-aller', title: 'Où aller ?', target: 'ou-aller', text: () => "Tous les lieux du quartier sont là : le maquis, le marché, l'église ou la mosquée, l'école, ton futur boulot…", task: 'Touche « Où aller ? ».', done: (s) => s.whereTo },
+  { id: 'ou-aller', title: 'Où aller ?', target: 'ou-aller', text: () => "Tous les lieux du quartier sont là : le maquis, le marché, l'église ou la mosquée, ton futur boulot…", task: 'Touche « Où aller ? ».', done: (s) => s.whereTo },
   { id: 'lieu', title: 'Un lieu', text: () => "Choisis un lieu : ton perso y marche (si c'est loin, une moto-taxi te propose de t'emmener). Arrivé, touche son panneau : tu vois tout ce qu'on peut y faire.", task: 'Ouvre un lieu.', done: (s) => !!s.placeId },
-  { id: 'activite', title: 'Les activités', text: () => "Chaque activité prend du vrai temps et remplit tes besoins, ou te paie au boulot. Pendant certaines, un bouton doré « Défi » te propose un petit jeu : faire le thé, le slalom en ski nautique, la liste de courses…" },
+  { id: 'activite', title: 'Les activités', text: () => "Chaque activité prend du temps et remplit tes besoins, ou te paie au boulot. Pendant certaines, un bouton doré « Défi » te propose un petit jeu : faire le thé, le slalom en ski nautique, la liste de courses…" },
   { id: 'phone', title: 'Ton téléphone', target: 'phone', text: () => 'Boulot pour trouver un travail, Logement pour ta maison, et le Store pour les applis : taxis, livraison, Bolide pour ton vélo, ta moto ou ta voiture, les jeux…', task: 'Ouvre ton téléphone.', done: (s) => s.overlay === 'phone' },
   { id: 'carte', title: 'La carte', target: 'carte', text: () => "La carte d'Abidjan et du pays : touche une autre commune pour y aller, en woro-woro, en taxi ou avec ton propre véhicule. Le chauffeur vient te chercher.", task: 'Ouvre la carte.', done: (s) => s.overlay === 'map' },
   { id: 'gens', title: 'Les gens', text: () => "Touche quelqu'un dans la rue pour lui parler. Au grin, on joue aux dames et au 8 américain ; tes amis du jeu t'écrivent sur Gbairai." },
   { id: 'fin', title: "C'est toi le boss !", text: () => "Tu sais l'essentiel, le reste tu le découvres en vivant. Pour revoir ce tuto : l'Encyclo, dans ton téléphone. On se voit au grin !" },
 ]
+/** The chapter for the Sim's age. */
+export type Chapter = 'enfance' | 'adulte'
+const CHAPTERS: Record<Chapter, Step[]> = { enfance: CHILDHOOD, adulte: ADULTHOOD }
+/** The adult chapter, seen (the childhood one is KEY, the first tuto). */
+const ADULT_KEY = 'babi.tuto.adulte'
+/** Grown up, the adult chapter not seen yet (after a childhood played here). */
+export const adultChapterDue = () => read(KEY) === 'done' && read(ADULT_KEY) !== 'done'
 
 export const KOFFI = { ...randomLook('homme', rng('koffi-guide')), outfit: 'jersey', outfitColor: '#ff7a00', accessory: 'cap' }
 const mouse = () => typeof matchMedia !== 'undefined' && matchMedia('(hover: hover) and (pointer: fine)').matches
 
-export function Tutorial({ state, onEnd }: { state: TutoState; onEnd: () => void }) {
+export function Tutorial({ state, onEnd, chapter = 'adulte' }: { state: TutoState; onEnd: () => void; /** Growing up at home, or an adult's life. */ chapter?: Chapter }) {
+  const STEPS = CHAPTERS[chapter]
   const [k, setK] = useState(0)
   const [bravo, setBravo] = useState(false)
   const desk = useMemo(mouse, [])
@@ -94,6 +112,7 @@ export function Tutorial({ state, onEnd }: { state: TutoState; onEnd: () => void
   const end = () => {
     write(KEY)
     write(FIRST)
+    if (chapter === 'adulte') write(ADULT_KEY)
     closeTutorial()
     onEnd()
   }

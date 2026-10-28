@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Car, Check, Clock3, Coffee, Gamepad2, Joystick, Link2, Send, ShoppingCart, Swords, Ticket, Trophy, Users, Waves, X, type LucideIcon } from 'lucide-react'
+import { GraduationCap, Car, Check, Clock3, Coffee, Gamepad2, Joystick, Link2, Send, ShoppingCart, Swords, Ticket, Trophy, Users, Waves, X, type LucideIcon } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
 import { share as shareOut } from '../lib/native'
 import { DEFI, TICKET, defiSharing, useShare, type Sharing } from '../lib/share'
@@ -21,6 +21,7 @@ const DEFI_NAMES: Record<DefiKind, { title: string; icon: LucideIcon; colors: [s
   course: { title: 'La course à deux', icon: Car, colors: ['#4dabf7', '#1c7ed6'] },
   combat: { title: 'Le combat de rue', icon: Swords, colors: ['#ff6b6b', '#c92a2a'] },
   arcade: { title: 'Moustiques !', icon: Joystick, colors: ['#b197fc', '#7048e8'] },
+  ecole: { title: 'La leçon du maître', icon: GraduationCap, colors: ['#4dabf7', '#1864ab'] },
 }
 const APPS: Record<string, string> = { bet225: 'Bet225', parisfoot: 'ParisFoot' }
 const nf = (n: number) => n.toLocaleString('fr-FR')

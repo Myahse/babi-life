@@ -276,6 +276,10 @@ func (s *Sim) start(it game.Interaction, placeID, placeKind, placeName string, s
 		Kind: "do", PlaceID: placeID, PlaceKind: placeKind, PlaceName: placeName, Interaction: it,
 		Start: s.GameMinutes, End: s.GameMinutes + max(it.Minutes, 1), Career: career, Surprises: slices.Clone(surprises),
 	}
+	// The crèche, the school: the friend from childhood is there (childhood.go).
+	if ev := s.toSchool(it); ev != nil {
+		s.pending = append(s.pending, *ev)
+	}
 	return nil
 }
 
