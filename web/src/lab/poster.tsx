@@ -1669,7 +1669,7 @@ const FILMS: Record<FilmId, { shots: Shot[]; intro: number; outro: number; lengt
       { from: 43, to: 49, scene: 'fete', n: 8, title: 'Fais la fête', sub: 'Maquis, coupé-décalé, travaillement' },
       { from: 49, to: 55, scene: 'basket', n: 9, title: 'Fais du sport', sub: 'Basket au Palais des Sports, foot au quartier' },
       { from: 55, to: 61, scene: 'siporex', n: 10, title: "Les vrais lieux d'Abidjan", sub: 'Gare de Siporex, Rue Princesse, les ponts…' },
-      { from: 61, to: 66.5, scene: 'phone', n: 11, title: 'Ton téléphone', sub: 'Waye, Gnango, Golvo, Store, les infos du pays' },
+      { from: 61, to: 66.5, scene: 'phone', n: 11, title: 'Ton téléphone', sub: 'Waye, Gnango, Garbaya, Store, les infos du pays' },
       { from: 66.5, to: 71, scene: 'crew' },
     ],
     intro: 3.4,
@@ -2740,7 +2740,7 @@ function PhoneApps({ t }: { t: number }) {
   const apps: { id?: string; icon?: typeof MapIcon; bg?: string; label: string }[] = [
     { id: 'waye', label: 'Waye' },
     { id: 'gnango', label: 'Gnango' },
-    { id: 'golvo', label: 'Golvo' },
+    { id: 'golvo', label: 'Garbaya' },
     { id: 'store', label: 'Store' },
     { id: 'idrive', label: 'iDrive' },
     { icon: Newspaper, bg: '#d6336c', label: 'Infos' },

@@ -43,7 +43,7 @@ export type Commune = {
 export type PhoneApp = { id: string; name: string; tagline: string; about: string; category: string; sizeMB: number; preinstalled?: boolean; source: Source }
 /** Someone to send money to with Waye. */
 export type Contact = { id: string; name: string; note: string; effect: Partial<Needs> }
-/** A dish on Golvo. */
+/** A dish on Garbaya. */
 export type Dish = { id: string; label: string; icon: string; price: number; minutes: number; effect: Partial<Needs>; minHour?: number; maxHour?: number }
 export type Woro = { color?: string; trim?: string; label?: string; none?: boolean; source: Source }
 export type City = { id: string; name: string; blurb: string; lat: number; lng: number; zoom: number; admin?: { type: string; region?: string; source?: Source }; communes: Commune[] }

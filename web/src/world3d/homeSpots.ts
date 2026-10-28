@@ -7,7 +7,7 @@ type XZ = [number, number]
  * In one's own house, the things done at home are done on its furniture:
  * sleeping in the bed (or on the natte), the shower, cooking at the
  * gazinière, the TV or the phone call from the sofa (or a chair), homework
- * and the Golvo delivery at the table. The house
+ * and the Garbaya delivery at the table. The house
  * stands at `center`, turned `rot0`, its lot `w` × `d` metres; a piece's
  * front is its +z, as FurnitureSet turns it. Action id → where it's done.
  */

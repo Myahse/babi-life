@@ -21,7 +21,7 @@ export function outdoorLook<L extends { outfit: string; accessory?: string }>(lo
 
 /** How the Sim stands (or sits) for an outdoor activity; undefined if there's no scene for it. */
 export function outdoorPose(id?: string): Pose | undefined {
-  // A Golvo meal eaten where the courier found the Sim: on a stool, the plate on the lap.
+  // A Garbaya meal eaten where the courier found the Sim: on a stool, the plate on the lap.
   if (id?.startsWith('golvo-')) return 'eat'
   switch (id) {
     case 'play-football':
@@ -648,7 +648,7 @@ function Hiker() {
 /** On the lap of a Sim sitting on a stool. */
 const LAP: [number, number, number] = [0, 0.56, 0.3]
 
-/** A Golvo meal in the street: a stool, the yellow bag open beside it, the dish on the lap. */
+/** A Garbaya meal in the street: a stool, the yellow bag open beside it, the dish on the lap. */
 function GolvoMeal({ id }: { id: string }) {
   return (
     <group>
