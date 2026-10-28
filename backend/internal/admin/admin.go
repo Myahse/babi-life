@@ -60,6 +60,7 @@ func (h *Handler) Routes(r chi.Router) {
 		r.Post("/users/{id}/official", h.setOfficial)
 		r.Post("/users/{id}/identifiants", h.sendAccount)
 		r.Post("/testers/reset", h.resetTesters)
+		r.Post("/testers/revoke", h.revokeTesters)
 		r.Get("/whatsapp", h.waStatus)
 		r.Post("/whatsapp", h.waSend)
 		r.Post("/whatsapp/{id}/stop", h.waStop)
@@ -319,7 +320,7 @@ func (h *Handler) setTester(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var name string
-	if err := h.DB.QueryRow(r.Context(), `UPDATE users SET tester = $2, tester_off = tester_off AND NOT $2 WHERE id::text = $1 RETURNING name`, chi.URLParam(r, "id"), req.Tester).Scan(&name); err != nil {
+	if err := h.DB.QueryRow(r.Context(), `UPDATE users SET tester = $2, tester_off = tester_off AND NOT $2, tester_revoked = tester_revoked AND NOT $2 WHERE id::text = $1 RETURNING name`, chi.URLParam(r, "id"), req.Tester).Scan(&name); err != nil {
 		httpx.Error(w, http.StatusNotFound, "compte introuvable")
 		return
 	}
@@ -352,6 +353,20 @@ func (h *Handler) setOfficial(w http.ResponseWriter, r *http.Request) {
 	}
 	h.Log(r.Context(), action, name)
 	httpx.JSON(w, http.StatusOK, map[string]bool{"official": req.Official})
+}
+
+// revokeTesters: every tester account an ordinary player's at once, their persos kept as they are
+// (the official account stays), and no more game before its opening. The testers' code kept in a
+// browser no longer makes them testers again; typed again (or « Testeur » here), it does.
+func (h *Handler) revokeTesters(w http.ResponseWriter, r *http.Request) {
+	tag, err := h.DB.Exec(r.Context(), `UPDATE users SET tester = false, tester_off = false, tester_revoked = true WHERE (tester OR tester_off) AND NOT official`)
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+		return
+	}
+	n := int(tag.RowsAffected())
+	h.Log(r.Context(), "Testeurs retirés", strconv.Itoa(n)+" comptes")
+	httpx.JSON(w, http.StatusOK, map[string]int{"revoked": n})
 }
 
 // resetTesters: before launch, every tester's Sim goes back to just after it

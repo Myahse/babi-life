@@ -91,6 +91,7 @@ var List = []Feature{
 	{ID: "pubs-applis", Label: "Les pubs dans les applis", About: "Babi Pub ne s'arrête plus aux panneaux : les annonceurs passent aussi entre les vidéos de Tikitoko, dans le fil de Babigram, et ceux qui ont une appli ou un site ont leur icône sur l'écran du téléphone (un toucher ouvre leur lien).", Keys: []string{"pubs-applis"}},
 	{ID: "gbairai-bebe", Label: "Gbairai dès le berceau", About: "Bébés et enfants ont Gbairai eux aussi, sans attendre leur téléphone à 12 ans : ils écrivent à leurs amis du jeu (toujours seulement à leurs amis, liens et numéros masqués).", Keys: []string{"gbairai-bebe"}},
 	{ID: "frais-operateur", Label: "Les frais de l'opérateur", About: "À la Boutique, avant de payer, tu choisis Wave, Orange Money, MTN Money ou Moov Money : tu vois les frais de chacun (Wave 1,5 %, les autres 3,5 %) et le total, avant d'aller sur la page de paiement.", Keys: []string{"frais-operateur"}},
+	{ID: "arrivee", Label: "L'arrivée à Babi", About: "La première fois dans le jeu : la caméra survole ta commune, ses rues et ses gens, puis « Bienvenue à Babi Life » et le message d'Awa, avant que Koffi te fasse le tour.", Keys: []string{"arrivee"}},
 	{ID: "table", Label: "Les gens viennent te parler dans les lieux", About: "« Je peux m'asseoir à ta table ? » au resto ou au bar (tu acceptes et vous causez, ou tu refuses poliment), et au travail les clients qui viennent te demander de l'aide.", Keys: []string{"table"}},
 }
 

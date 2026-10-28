@@ -302,6 +302,19 @@ function ResetTesters({ k, onDone }: { k: string; onDone: () => void }) {
   const [sure, setSure] = useState(false)
   const [e, setE] = useState<string | null>(null)
   const [ok, setOk] = useState<string | null>(null)
+  // Only the toolbox taken away: every tester an ordinary player at once, the persos kept.
+  const [sureRevoke, setSureRevoke] = useState(false)
+  const revoke = async () => {
+    setE(null)
+    try {
+      const r = await call<{ revoked: number }>('/admin/testers/revoke', k, { method: 'POST' })
+      setOk(`${nf(r.revoked)} comptes ne sont plus testeurs. Leurs persos restent comme ils sont.`)
+      setSureRevoke(false)
+      onDone()
+    } catch (x) {
+      setE(x instanceof Error ? x.message : 'Erreur')
+    }
+  }
   const reset = async () => {
     setE(null)
     try {
@@ -335,6 +348,24 @@ function ResetTesters({ k, onDone }: { k: string; onDone: () => void }) {
           Remettre les testeurs à zéro
         </Btn>
       )}
+      <div className="mt-4 border-t border-[#f3f4f6] pt-4">
+        <p className="mb-3 text-sm text-[#6b7280]">Ou seulement retirer le statut testeur à tout le monde d'un coup (la boîte à outils et l'accès avant l'ouverture), sans toucher aux persos. Le compte officiel Babi Life le garde.</p>
+        {sureRevoke ? (
+          <span className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-[#374151]">Retirer tous les testeurs ?</span>
+            <Btn tone="light" onClick={() => setSureRevoke(false)}>
+              Annuler
+            </Btn>
+            <Btn tone="orange" onClick={() => void revoke()}>
+              Oui, retirer
+            </Btn>
+          </span>
+        ) : (
+          <Btn tone="light" onClick={() => (setSureRevoke(true), setOk(null))}>
+            Retirer tous les testeurs
+          </Btn>
+        )}
+      </div>
     </Card>
   )
 }
