@@ -47,10 +47,12 @@ export function TesterTools({ sim, act }: { sim: Sim; act: Act }) {
           // The tests are over for this account (the testers' reset) and the code was only kept: the toolbox asks
           // for it again. The game stays open here: sending the person back to the wish list mid-game, without a
           // word, was taken for a bug (and before launch, it shut the game for them).
+          // The account is no tester's any more (the testers' reset, « Retirer tous les testeurs »): the browser
+          // forgets it too, and the button goes.
           if (x instanceof ApiError && x.status === 403) {
             testerAnswered(true)
             setPass('')
-            setError('Les tests ont été remis à zéro pour ton compte : entre le code testeur pour retrouver les outils.')
+            setTester(false)
           }
         },
       )
@@ -58,7 +60,8 @@ export function TesterTools({ sim, act }: { sim: Sim; act: Act }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account])
 
-  if (!account && !isTester()) return null
+  // Only a tester account sees the toolbox (a browser that only remembers the code no longer does: the server decides).
+  if (!account) return null
   const tap = (label: string, call: () => ReturnType<typeof api.tester>) => void act(label, 'sparkles', '', call)
   const unlock = async () => {
     setError(null)
