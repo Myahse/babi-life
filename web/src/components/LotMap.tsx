@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type * as MapboxGL from 'mapbox-gl'
+import 'mapbox-gl/dist/mapbox-gl.css'
 import { Check, LandPlot, LocateFixed, MapPin, X } from 'lucide-react'
 import { api } from '../lib/api'
 import type { LotSpot, Sim } from '../lib/types'
@@ -9,6 +10,7 @@ import { aCommune } from '../lib/french'
 import { lotAt } from '../world3d/open/lotSpot'
 import { toLatLng, toLocal } from '../world3d/open/geo'
 import { Helper } from './Helper'
+import { nearOf } from './LotPlaceHud'
 
 // Where one's land goes, picked on the map of the commune, as one picks a pick-up
 // spot in a ride app: the pin stays in the middle and the map moves under it; the
@@ -73,7 +75,7 @@ export function LotMap({ sim, city, commune, w, d, price, moving, onPick, onClos
         style: 'mapbox://styles/mapbox/standard',
         config: { basemap: { lightPreset: 'day', showPointOfInterestLabels: true } },
         center: [start.lng, start.lat],
-        zoom: 16.4,
+        zoom: 17.6,
         minZoom: 13,
         maxZoom: 19,
         pitch: 0,
@@ -105,12 +107,14 @@ export function LotMap({ sim, city, commune, w, d, price, moving, onPick, onClos
       })
       m.on('error', () => setFailed(true))
       m.on('load', () => (m.resize(), sync()))
+      // The lot's size at this zoom from the start, not only once every tile is in.
+      sync()
       // The neighbours' lots (and one's own), a little marker each.
       for (const s of placed) {
         if (s.lot && s.lot === moving) continue
         const el = document.createElement('div')
-        el.className = `lot-mark${s.mine ? ' mine' : ''}`
         el.textContent = s.mine ? 'À toi' : ''
+        Object.assign(el.style, s.mine ? MINE : NEIGHBOUR)
         markers.push(new mapboxgl.Marker({ element: el }).setLngLat([s.pos.lng, s.pos.lat]).addTo(m))
       }
     }, () => setFailed(true))
@@ -142,12 +146,15 @@ export function LotMap({ sim, city, commune, w, d, price, moving, onPick, onClos
     setBusy(false)
     if (ok) onClose()
   }
-  const recentre = () => map.current?.flyTo({ center: [(own?.pos ?? origin).lng, (own?.pos ?? origin).lat], zoom: 16.4 })
+  const recentre = () => map.current?.flyTo({ center: [(own?.pos ?? origin).lng, (own?.pos ?? origin).lat], zoom: 17.6 })
 
   return (
     <div className="animate-up fixed inset-0 z-[60] flex flex-col bg-[var(--color-night)]">
       <div className="relative min-h-0 flex-1">
-        <div ref={box} className="absolute inset-0" />
+        {/* Mapbox's own CSS makes its container position: relative: the map in a box of its own */}
+        <div className="absolute inset-0">
+          <div ref={box} className="h-full w-full" />
+        </div>
         {(!TOKEN || failed) && (
           <div className="absolute inset-0 grid place-items-center bg-[#e9e1cf] p-6 text-center">
             <div className="flex max-w-xs flex-col items-center gap-3">
@@ -169,7 +176,7 @@ export function LotMap({ sim, city, commune, w, d, price, moving, onPick, onClos
         <header className="absolute inset-x-0 top-0 flex items-start gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
           <div className="hud min-w-0 flex-1 rounded-2xl px-3 py-2">
             <div className="label">{moving ? 'Déplacer ton terrain' : 'Où mettre ton terrain ?'}</div>
-            <div className="truncate font-display text-[16px] leading-tight font-extrabold">{moved || own ? (near && near.m < 900 ? `Près de ${near.name}` : capitalFirst(aCommune(cm?.name ?? ''))) : 'Déplace la carte sous l’épingle'}</div>
+            <div className="truncate font-display text-[16px] leading-tight font-extrabold">{moved || own ? (near && near.m < 900 ? nearOf(near.name) : capitalFirst(aCommune(cm?.name ?? ''))) : 'Déplace la carte sous l’épingle'}</div>
           </div>
           <button className="icon-btn hud shrink-0" onClick={onClose} aria-label="Fermer">
             <X size={22} strokeWidth={2.6} />
@@ -196,5 +203,9 @@ export function LotMap({ sim, city, commune, w, d, price, moving, onPick, onClos
     </div>
   )
 }
+
+/** The neighbours' lots on the map, and one's own. */
+const NEIGHBOUR = { width: '16px', height: '16px', borderRadius: '5px', background: '#8a8f99', border: '2px solid #fff', boxShadow: '0 2px 6px rgb(0 0 0 / 0.35)' }
+const MINE = { ...NEIGHBOUR, width: 'auto', height: 'auto', padding: '2px 7px', background: '#00a862', color: '#fff', font: '800 11px var(--font-sans, sans-serif)' }
 
 const capitalFirst = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
