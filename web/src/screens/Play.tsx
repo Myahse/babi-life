@@ -1295,7 +1295,7 @@ export function Play() {
             <div className="flex items-center gap-1.5 max-sm:[&>*]:h-9 max-sm:[&>*]:w-auto max-sm:[&>*]:min-w-9 max-sm:[&>*]:px-2.5 sm:gap-2">
               <SoundToggle />
               <TesterTools sim={sim} act={run} />
-              <PlayersChip count={around.players.length} online={around.online} invites={around.invites.length} onOpen={() => setPlayers({ focus: null })} />
+              <PlayersChip count={around.here ?? around.players.length} online={around.online} invites={around.invites.length} onOpen={() => setPlayers({ focus: null })} />
             </div>
           </div>
           {inside && (

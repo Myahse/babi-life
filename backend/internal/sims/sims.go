@@ -285,6 +285,8 @@ type Handler struct {
 	Bucket *ads.Bucket
 	// Online: how many players are connected now (the live hub); nil in tests.
 	Online func() int
+	// Connected: whether a Sim has the game open now (the live hub); nil in tests (then everyone played lately counts).
+	Connected func(sim string) bool
 	// Talk: the passers-by answering what the player types (chatfree.go); nil: off.
 	Talk *npcchat.Client
 }

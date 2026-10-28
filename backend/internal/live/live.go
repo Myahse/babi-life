@@ -122,6 +122,20 @@ func (h *Hub) Online() int {
 	return len(seen)
 }
 
+// Connected: whether that Sim has the game open on a screen right now.
+func (h *Hub) Connected(sim string) bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for _, clients := range h.rooms {
+		for c := range clients {
+			if c.sim == sim {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func NewHub(db *pgxpool.Pool, tokens auth.Tokens, origins []string) *Hub {
 	return &Hub{DB: db, Tokens: tokens, Origins: origins, rooms: map[string]map[*client]bool{}, states: map[string]map[string]State{}, sent: map[string]int64{}}
 }

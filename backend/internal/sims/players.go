@@ -193,6 +193,20 @@ func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 		return
 	}
+	// In the commune lately: counted; shown (in the street, in the list) only those connected now.
+	here := len(players)
+	if h.Connected != nil {
+		live := players[:0]
+		for _, p := range players {
+			if h.Connected(p.ID) {
+				live = append(live, p)
+			}
+		}
+		players = live
+		for i := range friends {
+			friends[i].Online = h.Connected(friends[i].ID)
+		}
+	}
 	c.mark(friends)
 	c.mark(players) // in the street too: a heart over one's partner
 	h.titles(ctx, players)
@@ -202,7 +216,7 @@ func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
 	if h.Online != nil {
 		online = max(h.Online(), 1) // connected now (« ici » counts the last 20 minutes); at least the one asking
 	}
-	httpx.JSON(w, http.StatusOK, map[string]any{"players": players, "friends": friends, "invites": invites, "requests": requests, "online": online, "dames": dame, "huit": huit, "parties": parties})
+	httpx.JSON(w, http.StatusOK, map[string]any{"players": players, "here": here, "friends": friends, "invites": invites, "requests": requests, "online": online, "dames": dame, "huit": huit, "parties": parties})
 }
 
 // requestState: the SQL for a friend request between `other` and `me`: "sent" (me → other), "received", or "".

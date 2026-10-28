@@ -17,7 +17,7 @@ import (
 	"time"
 )
 
-// GeniusPay: the payment service (pay.genius.ci), Mobile Money and cards in
+// GeniusPay: the payment service (geniuspay.ci, formerly pay.genius.ci), Mobile Money and cards in
 // Côte d'Ivoire. A payment is created without a method: GeniusPay's own page
 // (checkout_url) lets the player choose Wave, Orange Money, MTN, Moov or a
 // card, then sends them back to the game. Its word on a payment is only
@@ -33,7 +33,8 @@ type GeniusPay struct {
 	Test bool
 }
 
-const defaultBase = "https://pay.genius.ci/api/v1/merchant"
+// The API moved from pay.genius.ci to geniuspay.ci (the old host's firewall turns servers away).
+const defaultBase = "https://geniuspay.ci/api/v1/merchant"
 
 // FromEnv: GeniusPay with the keys in the environment (never in the code), or nil: the shop shut.
 func FromEnv() *GeniusPay {
@@ -45,6 +46,8 @@ func FromEnv() *GeniusPay {
 	if base == "" {
 		base = defaultBase
 	}
+	// An old address left in the environment: the new host.
+	base = strings.Replace(base, "://pay.genius.ci", "://geniuspay.ci", 1)
 	test, _ := strconv.ParseBool(os.Getenv("GENIUSPAY_SANDBOX"))
 	return &GeniusPay{Key: key, Secret: secret, WebhookSecret: os.Getenv("GENIUSPAY_WEBHOOK_SECRET"), Base: base, Client: &http.Client{Timeout: 20 * time.Second}, Test: test}
 }
