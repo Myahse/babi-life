@@ -41,7 +41,15 @@ var defiFor = map[string][]string{
 	"arcade":  {"borne-arcade"},
 	// The maître's lesson, at school (the update « ecole-vivante »).
 	"ecole": {"aller-ecole"},
+	// The baby's games (the update « bebe-jeux »).
+	"coucou": {"coucou"},
+	"cubes":  {"cubes"},
+	"pas":    {"premiers-pas"},
+	"hochet": {"hochet"},
 }
+
+// babyDefis: the baby's games, behind the update « bebe-jeux ».
+var babyDefis = []string{"coucou", "cubes", "pas", "hochet"}
 
 // The tournament's prizes: the cup, the final lost (the entry is 1 000; played once a day, game.FromTournament).
 const (
@@ -117,6 +125,18 @@ func defiReward(kind, interaction string, score, cost int) (game.Needs, int, str
 	case "ecole":
 		lines := []string{"Le maître secoue la tête : « Il faut réviser, hein ! » Ce soir, les devoirs.", "« Bien ! » dit le maître. Quelques erreurs, mais tu as suivi.", "« Excellent ! Applaudissez-le ! » Toute la classe tape dans les mains. Ça compte pour le bac !"}
 		return game.Needs{Fun: math.Round(10 * k), Social: math.Round(8 * k)}, 0, lines[tier]
+	case "coucou":
+		lines := []string{"Maman a fait coucou, tu as regardé ailleurs. On recommence !", "Des petits rires : maman est ravie.", "Tu éclates de rire à chaque coucou : maman t'embrasse partout !"}
+		return game.Needs{Fun: math.Round(14 * k), Social: math.Round(10 * k)}, 0, lines[tier]
+	case "cubes":
+		lines := []string{"La tour s'écroule… et ça te fait rire quand même.", "Une jolie tour de cubes !", "Une tour immense : papa prend une photo !"}
+		return game.Needs{Fun: math.Round(16 * k)}, 0, lines[tier]
+	case "pas":
+		lines := []string{"Boum, boum : les fesses par terre. Demain ça ira mieux.", "Quelques pas tout seul : papa applaudit !", "Tu marches jusqu'à papa sans tomber : toute la maison crie de joie !"}
+		return game.Needs{Fun: math.Round(12 * k), Social: math.Round(10 * k)}, 0, lines[tier]
+	case "hochet":
+		lines := []string{"Le hochet part dans tous les sens.", "Tu secoues en rythme : maman chante avec toi.", "Un vrai petit percussionniste : maman sort le tam-tam !"}
+		return game.Needs{Fun: math.Round(16 * k)}, 0, lines[tier]
 	case "arcade":
 		lines := []string{"Les moustiques ont gagné cette nuit.", "Pas mal de moustiques au tapis.", "Un massacre de moustiques : ton nom tout en haut de la borne !"}
 		return game.Needs{Fun: math.Round(14 * k)}, 0, lines[tier]
@@ -142,7 +162,7 @@ func (h *Handler) defi(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
 		return
 	}
-	if req.Kind == "ecole" && features.Default.BlocksKey(r.Context(), "ecole-vivante") != "" {
+	if (req.Kind == "ecole" && features.Default.BlocksKey(r.Context(), "ecole-vivante") != "") || (slices.Contains(babyDefis, req.Kind) && features.Default.BlocksKey(r.Context(), "bebe-jeux") != "") {
 		httpx.Error(w, http.StatusForbidden, "bientôt dans le jeu")
 		return
 	}

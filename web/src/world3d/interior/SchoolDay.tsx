@@ -148,7 +148,10 @@ function Person({ npc, p, r = 0, pose, stage, look, gender, seed }: { npc?: Npc;
 /** The friend from childhood, as the scene needs them. */
 export type Buddy = { id: string; name: string; look: Look; gender: 'femme' | 'homme' }
 
-export function SchoolDay({ sim, stage, part, buddy, night }: { sim: Sim; stage: string; part: SchoolPart; buddy?: Buddy; night?: boolean }) {
+/** Another player's baby at the crèche too (the update « creche-ensemble »). */
+export type Mate = { id: string; firstName: string; look: Look; gender: 'femme' | 'homme' }
+
+export function SchoolDay({ sim, stage, part, buddy, night, mates = [], onMate }: { sim: Sim; stage: string; part: SchoolPart; buddy?: Buddy; night?: boolean; /** The players' babies there now, in their blue; tapped, their card. */ mates?: Mate[]; onMate?: (id: string) => void }) {
   const kids = useClass(sim.id, 12)
   const k = sizeOf(stage).scale
   const teacher = useMemo(() => {
@@ -268,7 +271,13 @@ export function SchoolDay({ sim, stage, part, buddy, night }: { sim: Sim; stage:
           {/* The Sim among the babies, its friend from the crèche beside it */}
           <Person p={[-1.5, 0.04, 0]} pose="busy" stage="bebe" look={sim.look} gender={sim.gender} seed={0} />
           {buddy && <Person npc={buddyNpc} p={[-0.9, 0.04, 0.2]} r={-1} pose="clap" stage="bebe" look={buddy.look} gender={buddy.gender} seed={7} />}
-          {kids.slice(0, 4).map((b, i) => (
+          {/* The other players' babies, there too: on the green mat, playing; their pin in the players' blue */}
+          {mates.slice(0, 4).map((m, i) => (
+            <group key={m.id} position={[-0.6 + (i % 2) * 0.7, 0.04, 2.0 + Math.floor(i / 2) * 0.6]} rotation={[0, Math.PI + i, 0]} onClick={(e) => (e.stopPropagation(), onMate?.(m.id))}>
+              <Character look={m.look} gender={m.gender} pose={i % 2 ? 'clap' : 'busy'} stage="bebe" moodColor="#3b82f6" seed={20 + i} />
+            </group>
+          ))}
+          {kids.slice(0, Math.max(0, 4 - mates.length)).map((b, i) => (
             <Person key={i} p={[1.0 + (i % 2) * 0.6, 0.04, 0.2 + Math.floor(i / 2) * 0.6 + (i === 3 ? 1.5 : 0)]} r={i} pose={i % 2 ? 'idle' : 'busy'} stage="bebe" look={{ ...b.look, outfit: 'casual' }} gender={b.gender} seed={b.seed} />
           ))}
           {/* The nounous, kneeling with the little ones */}

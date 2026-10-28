@@ -74,7 +74,7 @@ var Items = []Item{
 	{ID: "prestige", Label: "Pack Prestige", Text: "La couronne, à porter pour toujours (Profil, Mon look).", Price: 2000, Once: true},
 	{ID: "veste-repos", Label: "La veste du repos", Text: "La chemise patchwork turquoise, bleu nuit, blanc et orange, son motif qu'on ne trouve nulle part ailleurs : dans ta garde-robe pour toujours.", Price: 1500, Once: true, Piece: "veste-repos"},
 	// Growing up at once: its price set by the stage the Sim is at (GrowPrice), shown only when offered.
-	{ID: "grandir-enfant", Label: "Enfant tout de suite", Text: "3 ans tout de suite : l'école, la récré, les copains. Sinon le bébé grandit tout seul, en un jour.", Grow: game.StageEnfant},
+	{ID: "grandir-enfant", Label: "Enfant tout de suite", Text: "3 ans tout de suite : l'école, la récré, les copains. Sinon le bébé grandit tout seul, en deux heures de jeu.", Grow: game.StageEnfant},
 	{ID: "grandir-ado", Label: "Ado tout de suite", Text: "12 ans tout de suite : le collège, et ton premier téléphone avec ses applis.", Grow: game.StageAdo},
 	{ID: "grandir-adulte", Label: "Adulte tout de suite", Text: "18 ans tout de suite : tu quittes la maison avec l'argent de ta famille, le boulot, ton mentor.", Grow: game.StageAdulte},
 	{ID: "polo-mere-con", Label: "Le polo de mère con", Text: "Le polo à larges rayures orange et blanches, son col blanc : dans ta garde-robe pour toujours.", Price: 1500, Once: true, Piece: "polo-mere-con"},

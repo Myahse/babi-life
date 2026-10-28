@@ -30,6 +30,8 @@ const HAIR = /^(degrade|boule-a-zero|taille-barbe|tresses|tissage|chignon|coupe-
 const PAPERS: Record<string, Papers> = { 'etat-civil': 'register', legalisation: 'stamp', 'declaration-perte': 'form', 'porter-plainte': 'typing', renseignement: 'map', 'abonnement-salle': 'signup', medicaments: 'boxes' }
 const TRAYS: Record<string, Tray> = { 'rs-petitdej': 'petitdej', 'rs-club': 'club', 'rs-poisson': 'poisson', 'rs-glace': 'glace', 'rs-cocktail': 'cocktail' }
 const BABY = /^(biberon|bouillie|hochet|calin)$/
+/** The baby's little games (the update « bebe-jeux »): maman with it, as for the hochet or the câlin. */
+const BABY_GAMES: Record<string, 'hochet' | 'calin'> = { coucou: 'calin', cubes: 'hochet', 'premiers-pas': 'calin' }
 
 /**
  * kind: the place's kind ('house' for one's own house, whose furniture has
@@ -50,6 +52,7 @@ export function ActionProps({ id, kind, lying, stage = 'adulte', partner, bath, 
   if (id === 'chambre-bain') return <Foam />
   if (id === 'bain-bebe') return <Mother doing="bain" look={mum} />
   if (/^(caca|pipi|vomir|pleurer)$/.test(id)) return <BabyMess kind={id as Mess} look={mum} carer={carer} nappy={nappy} />
+  if (BABY_GAMES[id]) return <Mother doing={BABY_GAMES[id]} look={mum} />
   if (BABY.test(id)) return <Mother doing={id as 'biberon' | 'bouillie' | 'hochet' | 'calin'} look={mum} />
   if (id === 'jouer-cour') return <YardBall scale={sizeOf(stage).scale} />
   if (id === 'aller-ecole') return <SchoolBag scale={sizeOf(stage).scale} />

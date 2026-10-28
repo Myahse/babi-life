@@ -295,6 +295,8 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Get("/sims", h.list)
 	r.Get("/me/waitlist-sim", h.waitlistSim)
 	r.Get("/sims/{id}/listed-family", h.listedFamily)
+	r.Get("/sims/{id}/bapteme", h.baptismDue)
+	r.Post("/sims/{id}/bapteme", h.baptise)
 	r.Post("/sims/{id}/listed-family", h.answerListedFamily)
 	r.Post("/sims", h.create)
 	r.Get("/sims/{id}", h.get)

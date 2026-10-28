@@ -133,13 +133,17 @@ var Kinds = map[string]PlaceKind{
 			{ID: "bain-bebe", Room: RoomBath, Label: "Prendre le bain avec maman", Icon: "bath", Minutes: 20, Effect: Needs{Hygiene: 70, Fun: 10, Social: 10}, Ages: Babies},
 			{ID: "hochet", Room: RoomBed, Label: "Jouer avec le hochet", Icon: "baby", Minutes: 30, Effect: Needs{Fun: 35, Energy: -5}, Ages: Babies},
 			{ID: "calin", Room: RoomBed, Label: "Faire un câlin à maman", Icon: "heart", Minutes: 15, Effect: Needs{Social: 40}, Ages: Babies},
+			// The baby's little games (the update « bebe-jeux »: each a défi, sims/defi.go).
+			{ID: "coucou", Room: RoomBed, Label: "Jouer à coucou-caché avec maman", Icon: "baby", Minutes: 20, Effect: Needs{Fun: 30, Social: 20}, Ages: Babies},
+			{ID: "cubes", Room: RoomBed, Label: "Empiler les cubes", Icon: "blocks", Minutes: 20, Effect: Needs{Fun: 30, Energy: -4}, Ages: Babies},
+			{ID: "premiers-pas", Room: RoomBed, Label: "Faire ses premiers pas vers papa", Icon: "footprints", Minutes: 20, Effect: Needs{Fun: 20, Social: 15, Energy: -8}, Ages: Babies},
 			// What a baby does once fed (Fed): it empties the tummy, and papa and maman come running to clean up.
 			{ID: "caca", Room: RoomBed, Label: "Faire caca", Icon: "baby", Minutes: 10, Effect: Needs{Hunger: -30, Hygiene: -15, Fun: 10}, Ages: Babies, Fed: true},
 			{ID: "pipi", Room: RoomBed, Label: "Faire pipi", Icon: "droplets", Minutes: 5, Effect: Needs{Hunger: -15, Hygiene: -10, Fun: 5}, Ages: Babies, Fed: true},
 			{ID: "vomir", Room: RoomBed, Label: "Vomir", Icon: "frown", Minutes: 10, Effect: Needs{Hunger: -40, Hygiene: -15, Social: 10}, Ages: Babies, Fed: true},
 			{ID: "pleurer", Room: RoomBed, Label: "Pleurer", Icon: "annoyed", Minutes: 10, Effect: Needs{Hunger: -10, Social: 25, Energy: -5}, Ages: Babies, Fed: true},
-			// The crèche, on weekday mornings (the update « ecole-vivante »): the other babies, the nounous.
-			{ID: "creche", Label: "Aller à la crèche", Icon: "baby", Minutes: 3 * 60, Effect: Needs{Social: 25, Fun: 20, Energy: -12, Hunger: -10}, MinHour: 7, MaxHour: 10, Days: Weekdays, Ages: Babies},
+			// The crèche, every day from 7 to 17 (a baby's life is short: it can go whenever it plays; the update « ecole-vivante »): the other babies, the nounous.
+			{ID: "creche", Label: "Aller à la crèche", Icon: "baby", Minutes: 3 * 60, Effect: Needs{Social: 25, Fun: 20, Energy: -12, Hunger: -10}, MinHour: 7, MaxHour: 17, Ages: Babies},
 			// School days: class in the morning, homework after. Both count towards the bac.
 			{ID: "aller-ecole", Label: "Aller à l'école", Icon: "school", Minutes: 5 * 60, Effect: Needs{Social: 25, Fun: -10, Energy: -20, Hunger: -15}, MinHour: 7, MaxHour: 9, Days: Weekdays, Ages: Kids},
 			{ID: "devoirs", Room: RoomLiving, Label: "Faire ses devoirs", Icon: "notebook-pen", Minutes: 60, Effect: Needs{Fun: -10, Energy: -5}, MinHour: 14, MaxHour: 21, Ages: Kids},

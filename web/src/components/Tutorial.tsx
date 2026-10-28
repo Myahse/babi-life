@@ -75,7 +75,7 @@ const CHILDHOOD: Step[] = [
   { id: 'rue', title: 'La sortie en poussette', text: () => "« Voir la rue » : tu sors dans ta poussette, maman pousse et toi tu choisis où aller. Un bébé reste dans sa commune : le reste de Babi, tu le découvres en grandissant." },
   { id: 'phone', title: 'Le téléphone', target: 'phone', text: () => "Même petit, tu as le téléphone de la maison : les Jeux, l'Encyclo (tout sur Babi), Messages et Amis pour causer avec les autres joueurs, la Boutique, et tes Idées à nous envoyer.", task: 'Ouvre le téléphone.', done: (s) => s.overlay === 'phone' },
   { id: 'amis', title: 'Les autres joueurs', text: () => "Les autres bébés, enfants et grands que tu croises sont de vrais joueurs : touche-les pour faire connaissance et devenir amis. Entre amis, on s'écrit et on joue ensemble." },
-  { id: 'grandir', title: 'Tu grandis en jouant', text: () => "Bébé pendant 24 h de jeu, puis enfant et ado (l'école en semaine le matin). Appli fermée, ton âge t'attend : c'est en jouant que tu grandis. À 18 ans tu quittes la maison avec l'argent de départ de ta famille : le boulot, ton logement, ta vie." },
+  { id: 'grandir', title: 'Tu grandis en jouant', text: () => "Bébé pendant 2 h de jeu, puis enfant et ado (l'école en semaine le matin). Appli fermée, ton âge t'attend : c'est en jouant que tu grandis. À 18 ans tu quittes la maison avec l'argent de départ de ta famille : le boulot, ton logement, ta vie." },
   { id: 'fin', title: "C'est toi le boss !", text: () => "Voilà, tu sais tout pour commencer. Je reviens te voir à tes 18 ans pour la suite. Pour revoir ce tuto : l'Encyclo, dans le téléphone. On se voit au grin !" },
 ]
 const ADULTHOOD: Step[] = [

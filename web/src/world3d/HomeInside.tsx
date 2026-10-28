@@ -605,7 +605,7 @@ export function babyCare(family: string, look: Look): { mum: Look; carer: Carer;
 }
 
 /** A baby's things done with maman (ActionProps Mother): she's there already, kneeling with it. */
-const WITH_MUM = /^(biberon|bouillie|hochet|calin|bain-bebe|caca|pipi|vomir|pleurer)$/
+const WITH_MUM = /^(biberon|bouillie|hochet|calin|coucou|cubes|premiers-pas|bain-bebe|caca|pipi|vomir|pleurer)$/
 /** The baby's accidents: papa, if he's home and up, can't believe it either. */
 const MESS = /^(caca|pipi|vomir)$/
 
