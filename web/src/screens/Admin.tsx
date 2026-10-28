@@ -617,7 +617,8 @@ function Updates({ k }: { k: string }) {
   const openAll = async () => {
     setE(null)
     try {
-      for (const u of list.filter((x) => !x.live)) await call(`/admin/features/${u.id}`, k, { method: 'POST', body: JSON.stringify({ open: true, opensAt: '' }) })
+      // (Not the game's opening itself: that one has its own day and hour.)
+      for (const u of list.filter((x) => !x.live && x.id !== 'ouverture')) await call(`/admin/features/${u.id}`, k, { method: 'POST', body: JSON.stringify({ open: true, opensAt: '' }) })
       await load()
       setOk('Tout est ouvert.')
       setSure(null)
@@ -852,7 +853,7 @@ function Casino({ k }: { k: string }) {
 
 /* ---------- WhatsApp ---------- */
 
-type WaCampaign = { id: number; template: string; audience: string; total: number; sent: number; failed: number; status: 'running' | 'done' | 'stopped'; at: string; errors?: string[] }
+type WaCampaign = { id: number; template: string; audience: string; total: number; sent: number; failed: number; status: 'running' | 'scheduled' | 'done' | 'stopped'; at: string; errors?: string[]; sendAt?: string }
 type WaState = { configured: boolean; numbers: number; beta: number; optouts: number; campaigns: WaCampaign[]; list?: { firstName: string; contact: string; beta: boolean }[] }
 
 function WhatsApp({ k }: { k: string }) {
@@ -866,6 +867,8 @@ function WhatsApp({ k }: { k: string }) {
   const [sure, setSure] = useState(false)
   const [optout, setOptout] = useState('')
   const [manual, setManual] = useState(false)
+  // Later, by itself: the day and hour (the game's opening, say), else now.
+  const [later, setLater] = useState('')
   const [text, setText] = useState("Bonjour {prénom} ! Babi Life ouvre bientôt : ta vie à Abidjan, dans ton téléphone. On te prévient dès que c'est prêt. (Réponds STOP pour ne plus recevoir de message.)")
   const load = () => call<WaState>(`/admin/whatsapp${manual ? '?numbers=1' : ''}`, k).then(setSt, (x: Error) => setE(x.message))
   useEffect(() => {
@@ -933,19 +936,26 @@ function WhatsApp({ k }: { k: string }) {
                 </select>
                 {sure ? (
                   <>
-                    <span className="text-sm">Envoyer « {template} » à {nf(target)} numéros ?</span>
+                    <span className="text-sm">
+                      {later ? `Programmer « ${template} » pour le ${when(new Date(later).toISOString())} ?` : `Envoyer « ${template} » à ${nf(target)} numéros ?`}
+                    </span>
                     <Btn tone="light" onClick={() => setSure(false)}>
                       Annuler
                     </Btn>
-                    <Btn tone="orange" onClick={() => void post({ template, lang, audience }, (r) => `Envoi lancé : ${nf(r.total ?? 0)} numéros.`)}>
-                      <Send size={14} /> Oui, envoyer
+                    <Btn tone="orange" onClick={() => void post(later ? { template, lang, audience, at: new Date(later).toISOString() } : { template, lang, audience }, (r) => (later ? `Envoi programmé : il partira tout seul le ${when(new Date(later).toISOString())}.` : `Envoi lancé : ${nf(r.total ?? 0)} numéros.`))}>
+                      <Send size={14} /> {later ? 'Oui, programmer' : 'Oui, envoyer'}
                     </Btn>
                   </>
                 ) : (
-                  <Btn tone="orange" disabled={!template || !target || running} onClick={() => setSure(true)}>
-                    <Send size={14} /> Envoyer à {nf(target)} numéros
+                  <Btn tone="orange" disabled={!template || !target || (running && !later)} onClick={() => setSure(true)}>
+                    <Send size={14} /> {later ? 'Programmer' : `Envoyer à ${nf(target)} numéros`}
                   </Btn>
                 )}
+                <label className="flex items-center gap-2 text-sm text-[#374151]">
+                  ou le
+                  <input type="datetime-local" value={later} onChange={(x) => (setLater(x.target.value), setSure(false))} className="rounded-lg border border-[#d1d5db] px-2 py-1.5 text-sm" />
+                </label>
+                <p className="w-full text-xs text-[#6b7280]">Programmé, il part tout seul à l'heure dite (par exemple à l'ouverture du jeu), aux numéros qui ne l'ont pas encore reçu.</p>
               </div>
             </div>
           )}
@@ -967,9 +977,9 @@ function WhatsApp({ k }: { k: string }) {
                   </div>
                   <div className="mt-1 flex items-center justify-between text-xs text-[#6b7280]">
                     <span>
-                      {nf(c.sent)} envoyés · {nf(c.failed)} échecs · {nf(c.total)} en tout · {c.status === 'running' ? 'en cours…' : c.status === 'stopped' ? 'arrêté' : 'terminé'}
+                      {nf(c.sent)} envoyés · {nf(c.failed)} échecs · {nf(c.total)} en tout · {c.status === 'running' ? 'en cours…' : c.status === 'scheduled' ? `programmé le ${c.sendAt ? when(c.sendAt) : ''}` : c.status === 'stopped' ? 'arrêté' : 'terminé'}
                     </span>
-                    {c.status === 'running' && (
+                    {(c.status === 'running' || c.status === 'scheduled') && (
                       <button className="font-semibold text-[#dc2626]" onClick={() => void call(`/admin/whatsapp/${c.id}/stop`, k, { method: 'POST', body: '{}' }).then(load)}>
                         Arrêter
                       </button>

@@ -99,11 +99,17 @@ type recipient struct {
 	Beta      bool   `json:"beta"`
 }
 
-// recipients: the wish list's WhatsApp numbers (all, or those who want to test), minus those who said stop.
-func (h *Handler) recipients(ctx context.Context, audience string) ([]recipient, error) {
+// recipients: the wish list's WhatsApp numbers (all, or those who want to test), minus those who said stop,
+// and (for a template) those it already went to: a campaign sent again picks up where it stopped.
+func (h *Handler) recipients(ctx context.Context, audience string, template ...string) ([]recipient, error) {
+	tpl := ""
+	if len(template) > 0 {
+		tpl = template[0]
+	}
 	rows, err := h.DB.Query(ctx, `SELECT first_name, contact, beta FROM waitlist w
 		WHERE kind = 'phone' AND ($1 <> 'beta' OR beta) AND NOT EXISTS(SELECT 1 FROM wa_optout o WHERE o.contact = w.contact)
-		ORDER BY created_at`, audience)
+			AND NOT EXISTS(SELECT 1 FROM wa_sends s JOIN wa_campaigns c ON c.id = s.campaign WHERE $2 <> '' AND c.template = $2 AND s.contact = w.contact AND s.status = 'sent')
+		ORDER BY created_at`, audience, tpl)
 	if err != nil {
 		return nil, err
 	}
@@ -143,13 +149,15 @@ func (h *Handler) waStatus(w http.ResponseWriter, r *http.Request) {
 		Status   string    `json:"status"`
 		At       time.Time `json:"at"`
 		Errors   []string  `json:"errors,omitempty"`
+		// A campaign set for later: when it starts by itself.
+		SendAt *time.Time `json:"sendAt,omitempty"`
 	}
 	camps := []campaign{}
-	rows, err := h.DB.Query(ctx, `SELECT id, template, audience, total, sent, failed, status, created_at FROM wa_campaigns ORDER BY id DESC LIMIT 20`)
+	rows, err := h.DB.Query(ctx, `SELECT id, template, audience, total, sent, failed, status, created_at, send_at FROM wa_campaigns ORDER BY id DESC LIMIT 20`)
 	if err == nil {
 		for rows.Next() {
 			var c campaign
-			if rows.Scan(&c.ID, &c.Template, &c.Audience, &c.Total, &c.Sent, &c.Failed, &c.Status, &c.At) == nil {
+			if rows.Scan(&c.ID, &c.Template, &c.Audience, &c.Total, &c.Sent, &c.Failed, &c.Status, &c.At, &c.SendAt) == nil {
 				camps = append(camps, c)
 			}
 		}
@@ -186,6 +194,8 @@ func (h *Handler) waSend(w http.ResponseWriter, r *http.Request) {
 		Lang     string `json:"lang"`
 		Audience string `json:"audience"` // 'liste' | 'beta'
 		Test     string `json:"test"`     // a number: only to it
+		// Later, by itself (RFC 3339): the game's opening, say. Empty: now.
+		At string `json:"at"`
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
@@ -225,13 +235,33 @@ func (h *Handler) waSend(w http.ResponseWriter, r *http.Request) {
 	if req.Audience != "beta" {
 		req.Audience = "liste"
 	}
+	if req.At != "" {
+		at, err := time.Parse(time.RFC3339, req.At)
+		if err != nil || at.Before(time.Now()) || at.After(time.Now().Add(60*24*time.Hour)) {
+			httpx.Error(w, http.StatusBadRequest, "la date d'envoi doit être dans l'avenir (60 jours au plus)")
+			return
+		}
+		list, err := h.recipients(ctx, req.Audience, req.Template)
+		if err != nil {
+			httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+			return
+		}
+		var id int64
+		if err := h.DB.QueryRow(ctx, `INSERT INTO wa_campaigns (template, lang, audience, total, status, send_at) VALUES ($1, $2, $3, $4, 'scheduled', $5) RETURNING id`, req.Template, req.Lang, req.Audience, len(list), at).Scan(&id); err != nil {
+			httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+			return
+		}
+		h.Log(ctx, "WhatsApp : envoi programmé", fmt.Sprintf("%s le %s", req.Template, at.Format("02/01 15:04 MST")))
+		httpx.JSON(w, http.StatusOK, map[string]any{"id": id, "total": len(list), "at": at})
+		return
+	}
 	var running bool
 	_ = h.DB.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM wa_campaigns WHERE status = 'running')`).Scan(&running)
 	if running {
 		httpx.Error(w, http.StatusConflict, "un envoi est déjà en cours : attends qu'il finisse, ou arrête-le")
 		return
 	}
-	list, err := h.recipients(ctx, req.Audience)
+	list, err := h.recipients(ctx, req.Audience, req.Template)
 	if err != nil || len(list) == 0 {
 		httpx.Error(w, http.StatusBadRequest, "aucun numéro WhatsApp à qui écrire")
 		return
@@ -244,6 +274,41 @@ func (h *Handler) waSend(w http.ResponseWriter, r *http.Request) {
 	h.Log(ctx, "WhatsApp : envoi lancé", fmt.Sprintf("%s à %d numéros", req.Template, len(list)))
 	go h.run(id, req.Template, req.Lang, list)
 	httpx.JSON(w, http.StatusOK, map[string]any{"id": id, "total": len(list)})
+}
+
+// WatchWhatsApp starts the campaigns set for later when their time comes (one at a time, after any
+// running one), to the numbers then on the list that haven't had that template yet.
+func (h *Handler) WatchWhatsApp(ctx context.Context, every time.Duration) {
+	t := time.NewTicker(every)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+		}
+		if !h.WA.Configured() {
+			continue
+		}
+		var id int64
+		var template, lang, audience string
+		err := h.DB.QueryRow(ctx, `UPDATE wa_campaigns SET status = 'running' WHERE id = (
+				SELECT id FROM wa_campaigns WHERE status = 'scheduled' AND send_at <= now()
+					AND NOT EXISTS (SELECT 1 FROM wa_campaigns WHERE status = 'running')
+				ORDER BY send_at LIMIT 1)
+			RETURNING id, template, lang, audience`).Scan(&id, &template, &lang, &audience)
+		if err != nil {
+			continue
+		}
+		list, err := h.recipients(ctx, audience, template)
+		if err != nil {
+			_, _ = h.DB.Exec(ctx, `UPDATE wa_campaigns SET status = 'scheduled' WHERE id = $1`, id)
+			continue
+		}
+		_, _ = h.DB.Exec(ctx, `UPDATE wa_campaigns SET total = $2 WHERE id = $1`, id, len(list))
+		h.Log(ctx, "WhatsApp : envoi programmé lancé", fmt.Sprintf("%s à %d numéros", template, len(list)))
+		go h.run(id, template, lang, list)
+	}
 }
 
 // run sends a campaign one message at a time, and stops when asked.
@@ -274,7 +339,7 @@ func (h *Handler) run(id int64, template, lang string, list []recipient) {
 
 func (h *Handler) waStop(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	_, _ = h.DB.Exec(r.Context(), `UPDATE wa_campaigns SET status = 'stopped' WHERE id = $1 AND status = 'running'`, id)
+	_, _ = h.DB.Exec(r.Context(), `UPDATE wa_campaigns SET status = 'stopped' WHERE id = $1 AND status IN ('running', 'scheduled')`, id)
 	h.Log(r.Context(), "WhatsApp : envoi arrêté", "campagne "+strconv.FormatInt(id, 10))
 	httpx.JSON(w, http.StatusOK, map[string]bool{"stopped": true})
 }

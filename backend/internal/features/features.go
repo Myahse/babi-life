@@ -85,9 +85,15 @@ var List = []Feature{
 	{ID: "bebe-besoins", Label: "Les bêtises du bébé", About: "Le bébé bien nourri peut faire caca, faire pipi, vomir ou pleurer. Papa et maman s'exclament, et maman nettoie tout (ou te console).", Interactions: []string{"caca", "pipi", "vomir", "pleurer"}},
 	{ID: "grandir-vite", Label: "Grandir tout de suite", About: "L'enfance dure de vrais jours : bébé un jour, puis enfant et ado le lendemain. Pressé ? Dans la Boutique, grandir tout de suite : une étape 2 500 F (bébé → enfant, enfant → ado, ado → adulte), ou bébé → ado 5 000 F, bébé → adulte 10 000 F.", Keys: []string{"grandir-vite"}},
 	{ID: "looks-age", Label: "Un look pour chaque âge", About: "Dans « Changer de look », le bébé a ses habits (grenouillère, body, petite robe, ensemble en pagne, petite salopette), sa tétine, son bavoir, son bonnet et son hochet ; l'enfant son tee-shirt et short, sa robe à volants, son pyjama, son cartable, ses barrettes, sa sucette, ses couettes et ses nattes à perles ; l'ado son tee large et cargo, son crop top, son maillot de club, ses écouteurs et son sac à dos. Jusqu'à 18 ans, c'est maman qui coiffe : gratuit.", Keys: []string{"looks-age"}},
+	// The game itself, for every account (auth.GameGate, web lib/launch.ts useGameOpen): set its day and hour here
+	// and it opens by itself (GAME_OPEN=true opens it anyway). Not one of the « Nouveau » news.
+	{ID: OpeningID, Label: "L'ouverture de Babi Life", About: "Le jeu s'ouvre à tous les comptes : la liste d'attente entre dans les rues. Programme le jour et l'heure, il s'ouvre tout seul.", Keys: []string{"jeu"}},
 	{ID: "pubs-applis", Label: "Les pubs dans les applis", About: "Babi Pub ne s'arrête plus aux panneaux : les annonceurs passent aussi entre les vidéos de Tikitoko, dans le fil de Babigram, et ceux qui ont une appli ou un site ont leur icône sur l'écran du téléphone (un toucher ouvre leur lien).", Keys: []string{"pubs-applis"}},
 	{ID: "table", Label: "Les gens viennent te parler dans les lieux", About: "« Je peux m'asseoir à ta table ? » au resto ou au bar (tu acceptes et vous causez, ou tu refuses poliment), et au travail les clients qui viennent te demander de l'aide.", Keys: []string{"table"}},
 }
+
+// OpeningID is the game's opening to everyone, set like an update.
+const OpeningID = "ouverture"
 
 // Find is the update of that ID.
 func Find(id string) (Feature, bool) {
@@ -240,9 +246,14 @@ func (s *Store) Public(w http.ResponseWriter, r *http.Request) {
 		Interactions []string `json:"interactions"`
 		Keys         []string `json:"keys"`
 		New          []News   `json:"new"`
+		// When the game opens to everyone, set but not yet come (the wish list's countdown).
+		Opening *time.Time `json:"opening,omitempty"`
 	}{Closed: []string{}, Interactions: []string{}, Keys: []string{}, New: []News{}}
 	for _, f := range List {
 		v := st[f.ID]
+		if f.ID == OpeningID && !v.Live(now) && v.OpensAt != nil {
+			out.Opening = v.OpensAt
+		}
 		if !v.Live(now) {
 			out.Closed = append(out.Closed, f.ID)
 			out.Interactions = append(out.Interactions, f.Interactions...)
@@ -254,7 +265,7 @@ func (s *Store) Public(w http.ResponseWriter, r *http.Request) {
 		if at == nil {
 			at = v.OpensAt
 		}
-		if at != nil && now.Sub(*at) < 14*24*time.Hour {
+		if at != nil && now.Sub(*at) < 14*24*time.Hour && f.ID != OpeningID {
 			out.New = append(out.New, News{ID: f.ID, Label: f.Label, About: f.About, At: *at})
 		}
 	}

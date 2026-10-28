@@ -6,7 +6,7 @@ import { useWorld } from './store/world'
 import { Title } from './screens/Title'
 import { Legal } from './screens/Legal'
 import { ResetPassword } from './screens/ResetPassword'
-import { gameOpen, homeScreenApp } from './lib/launch'
+import { homeScreenApp, useGameOpen } from './lib/launch'
 
 // Each screen is its own download: the title screen opens without the 3D
 // game, and the game without the creator.
@@ -27,6 +27,8 @@ export function App() {
   const token = useSession((s) => s.token)
   const { world, error, load } = useWorld()
   const { pathname: path, search, key } = useLocation()
+  // Open to everyone: by the build, for a tester, or at the hour set in the admin (lib/launch.ts).
+  const open = useGameOpen()
 
   useEffect(() => {
     load()
@@ -36,7 +38,7 @@ export function App() {
   // iOS opens it there again each time it was closed (or put to sleep while
   // playing), so it goes on to the game. Only on opening (key 'default'):
   // the wish list stays reachable from inside.
-  if (path === '/liste' && gameOpen && key === 'default' && homeScreenApp()) return <Navigate to="/jeu" replace />
+  if (path === '/liste' && open && key === 'default' && homeScreenApp()) return <Navigate to="/jeu" replace />
 
   // The wish list is open to everyone, signed in or not, even if the API is down.
   if (path === '/liste' || path === '/liste/inscription')
@@ -80,7 +82,8 @@ export function App() {
   }
 
   // The streets are shut for everyone: the home page, a saved /jeu, an old install.
-  if (!gameOpen) return <Navigate to={{ pathname: '/liste', search }} replace />
+  if (open === null) return <Loading />
+  if (!open) return <Navigate to={{ pathname: '/liste', search }} replace />
 
   if (!world && !error) return <Loading />
 

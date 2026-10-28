@@ -425,6 +425,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
     <div className="absolute inset-0">
       <Canvas shadows dpr={[1, 2]} camera={{ position: [span * 0.55, span * 0.85, span * 0.95], fov: 42 }} style={{ background: night ? '#0b1026' : '#a9d3f0' }}>
         <Snapper />
+        {import.meta.env.DEV && <DevCam spot={spot} />}
         <ChatFraming />
         <Suspense fallback={null}>
           <hemisphereLight args={[night ? '#5a6ab0' : '#ffffff', '#b8a27c', night ? 0.55 : 1.15]} />
@@ -809,4 +810,12 @@ function Box3({ p, s, c }: { p: [number, number, number]; s: [number, number, nu
       <meshLambertMaterial color={c} />
     </mesh>
   )
+}
+
+/** In development, for tests in the browser: the house's camera, and where the Sim does what it does. */
+function DevCam({ spot }: { spot: HomeSpot | null }) {
+  const camera = useThree((st) => st.camera)
+  const controls = useThree((st) => st.controls)
+  useEffect(() => void Object.assign(globalThis, { __home: { camera, controls, spot } }), [camera, controls, spot])
+  return null
 }

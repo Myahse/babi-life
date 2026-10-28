@@ -5,7 +5,8 @@ import { useWorld } from '../store/world'
 import { Community, Share } from '../components/WaitlistShare'
 import { Consent } from '../components/Consent'
 import { InstallButton } from '../components/InstallButton'
-import { homeScreenApp } from '../lib/launch'
+import { homeScreenApp, useGameOpen } from '../lib/launch'
+import { useFeatures } from '../lib/features'
 import { Discover, Trailer } from '../components/Discover'
 import { firebaseConfigured, googleBlocked, googleCancelled, googleRedirectResult, preloadGoogle, signInWithGoogle } from '../lib/google'
 
@@ -190,6 +191,7 @@ export function Waitlist({ form = false }: { form?: boolean }) {
         </div>
       </header>
       <div className="ci-stripe" aria-hidden />
+      <Opening />
 
       {form ? (
         <main className="mx-auto flex max-w-md flex-col gap-4 px-4 pt-6 pb-12">
@@ -267,5 +269,42 @@ function GoogleMark() {
       <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z" />
       <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z" />
     </svg>
+  )
+}
+
+/**
+ * The opening, as set in the admin (« L'ouverture de Babi Life »): the time left, to the second; once
+ * it's come, the way in. Nothing while no hour is set.
+ */
+function Opening() {
+  const feats = useFeatures()
+  const open = useGameOpen()
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [])
+  const at = feats.opening ? new Date(feats.opening).getTime() : null
+  if (open)
+    return (
+      <div className="bg-[var(--ci-green)] px-4 py-3 text-center text-[var(--cream)]">
+        <span className="text-[17px] font-extrabold">C'est ouvert ! </span>
+        <Link to="/jeu" className="ml-2 inline-block rounded-md bg-[var(--cream)] px-3 py-1 text-[15px] font-extrabold text-[var(--brown)]">
+          Entrer dans Babi Life
+        </Link>
+      </div>
+    )
+  if (!at) return null
+  const left = Math.max(0, Math.floor((at - now) / 1000))
+  const [h, m, s] = [Math.floor(left / 3600), Math.floor((left % 3600) / 60), left % 60]
+  const hour = new Date(at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Abidjan' })
+  const day = new Date(at).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Africa/Abidjan' })
+  return (
+    <div className="bg-[var(--brown)] px-4 py-3 text-center text-[var(--cream)]">
+      <p className="text-[14px] font-extrabold opacity-90">
+        Ouverture le {day} à {hour.replace(':', 'h')}
+      </p>
+      <p className="paint text-[34px] leading-tight tabular-nums">{left > 0 ? `${h > 0 ? `${h} h ` : ''}${String(m).padStart(2, '0')} min ${String(s).padStart(2, '0')} s` : "C'est l'heure !"}</p>
+    </div>
   )
 }
