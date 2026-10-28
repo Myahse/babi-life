@@ -102,6 +102,18 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
       /* private browsing: the draft lasts as long as the page */
     }
   }, [sim, step])
+  // Made on the wish list with this e-mail: the creator starts from that perso (not over a draft).
+  const [listed, setListed] = useState(false)
+  useEffect(() => {
+    if (waitlist || readDraft()) return
+    api
+      .waitlistSim()
+      .then(({ firstName, sim: s }) => {
+        setSim((d) => ({ ...d, ...(firstName ? { firstName } : {}), ...s, look: { ...d.look, ...s.look } as Required<Look> }))
+        setListed(true)
+      })
+      .catch(() => undefined)
+  }, [waitlist])
 
   if (!world) return null
   type Draft = NewSim & { look: Required<Look> }
@@ -197,6 +209,9 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
             )}
           </div>
         </header>
+        {listed && step === 0 && (
+          <div className="animate-pop relative z-10 mx-3 self-start rounded-2xl bg-white px-3 py-2 text-[13px] font-extrabold text-[var(--color-ink)] shadow-lg lg:mx-5">Ton perso de la liste d'attente est là ! Change ce que tu veux.</div>
+        )}
 
         <div className="pointer-events-none relative z-10 mt-auto p-3 text-center text-white lg:pb-8">
           <div className="font-display text-[26px] leading-none font-extrabold [text-shadow:0_2px_0_rgba(0,0,0,0.15)] lg:text-4xl">
