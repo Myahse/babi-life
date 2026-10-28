@@ -48,12 +48,12 @@ func TestABabyStaysABaby(t *testing.T) {
 }
 
 func TestChildhoodLastsRealDays(t *testing.T) {
-	// A baby for a day, a child for half a day, a teenager for the other half; then a year is YearMinutes.
+	// A baby for 2 hours, a child for half a day, a teenager for the other half; then a year is YearMinutes.
 	const h = 60
 	for _, c := range []struct {
 		min int64
 		age int
-	}{{0, 0}, {16 * h, 2}, {24 * h, 3}, {28 * h, 6}, {36 * h, 12}, {48*h - 1, 17}, {48 * h, 18}, {48*h + game.YearMinutes, 19}} {
+	}{{0, 0}, {80, 2}, {2 * h, 3}, {6 * h, 6}, {14 * h, 12}, {26*h - 1, 17}, {26 * h, 18}, {26*h + game.YearMinutes, 19}} {
 		if got := game.AgeAt(1, 1+c.min); got != c.age {
 			t.Errorf("after %d minutes: %d years old, want %d", c.min, got, c.age)
 		}

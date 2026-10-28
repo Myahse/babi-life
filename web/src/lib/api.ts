@@ -278,6 +278,9 @@ export const api = {
   sync: (id: string, steps: unknown[]) => post<ActionResult>(`/sims/${id}/sync`, { clock: Date.now(), steps }),
   createSim: (sim: NewSim) => post<Sim>('/sims', sim),
   /** « Retrouver ma famille de la liste »: the offer (null: none), and the answer, once. */
+  /** The baptism (update « bapteme »): due for this baby, and the family's gift (once). */
+  baptismDue: (id: string) => request<{ due: boolean }>(`/sims/${id}/bapteme`),
+  baptise: (id: string) => post<ActionResult>(`/sims/${id}/bapteme`, {}),
   listedFamily: (id: string) => request<{ offer: { family: { id: string; label: string; icon: string; hint: string; sector: string }; commune: string } | null }>(`/sims/${id}/listed-family`),
   answerListedFamily: (id: string, accept: boolean) => post<ActionResult>(`/sims/${id}/listed-family`, { accept }),
   /** The perso made on the wish list with this account's e-mail (404: none). */

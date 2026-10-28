@@ -93,7 +93,7 @@ import { NotifyPrompt } from '../components/NotifyPrompt'
 import { motoPaid, motoWalk, rideFare, RIDES, useMoto, type RideKind } from '../world3d/moto'
 import { GBAKA, inkOn, kerbWait, MOTO, waitsAtKerb } from '../game/rides'
 import { answerDrop, useDropAsk } from '../world3d/dropRoute'
-import { DefiButton, DefiSheet, defiLook, defiOf, PRACTICE, type DefiKind } from '../components/Defi'
+import { BABY_DEFIS, DefiButton, DefiSheet, defiLook, defiOf, PRACTICE, type DefiKind } from '../components/Defi'
 import { BolideApp } from './BolideApp'
 import { Tutorial, adultChapterDue, beginner, openTutorial, useTutorialAsked } from '../components/Tutorial'
 import { Arrival, arrivalDue } from '../components/Arrival'
@@ -118,6 +118,7 @@ const MallInside = lazy(() => import('../world3d/interior/MallInside').then((m) 
 import type { MallLayout } from '../world3d/interior/MallInside'
 import { activityOpen, keyOpen, useFeatures } from '../lib/features'
 import { ListedFamily } from '../components/ListedFamily'
+import { Bapteme } from '../components/Bapteme'
 import { FeatureNews } from '../components/FeatureNews'
 import { Sheet } from '../components/Sheet'
 import { Splash } from '../components/Splash'
@@ -801,6 +802,18 @@ export function Play() {
   const tutoAsked = useTutorialAsked()
   // The arrival before it (update « arrivee », components/Arrival.tsx): the flight over the commune, the welcome, Awa.
   const [arriving, setArriving] = useState(() => beginner() && arrivalDue())
+  // The baptism (the update « bapteme »): asked once a baby is in the game.
+  const [baptism, setBaptism] = useState(false)
+  const babyNow = !!sim && !!world && lifeOf(world, sim).stage?.id === 'bebe'
+  useEffect(() => {
+    if (!sim || !babyNow || !keyOpen(features, 'bapteme')) return
+    let gone = false
+    api
+      .baptismDue(sim.id)
+      .then((r) => !gone && setBaptism(r.due))
+      .catch(() => undefined)
+    return () => void (gone = true)
+  }, [sim?.id, babyNow, features]) // eslint-disable-line react-hooks/exhaustive-deps
   // The tuto's chapter for the Sim's age: growing up at home, or an adult's life (the second one comes by itself at 18).
   const tutoChapter = sim && lifeOf(world, sim).minor ? 'enfance' : 'adulte'
   const grownNow = tutoChapter === 'adulte'
@@ -964,7 +977,7 @@ export function Play() {
   const doing = sim.activity?.kind === 'do' ? sim.activity : null
   // The défi this activity can be taken on as, not yet played (the ski off the island only, seen there).
   // (The school's lesson: an update, « ecole-vivante ».)
-  const defiNow = doing && !doing.defi && !(doing.interaction.id === 'aller-ecole' && !keyOpen(feats, 'ecole-vivante')) ? defiOf(doing.interaction.id) : null
+  const defiNow = doing && !doing.defi && !(doing.interaction.id === 'aller-ecole' && !keyOpen(feats, 'ecole-vivante')) && !(BABY_DEFIS.has(defiOf(doing.interaction.id)!) && !keyOpen(feats, 'bebe-jeux')) ? defiOf(doing.interaction.id) : null
   const stop = () => run('Arrêter', 'x', '', () => api.stop(sim.id))
   // The pad shows in the shoulder view (and the classic street); the buttons over the street sit beside it, or in the middle.
   // (At the wheel, the pedals and the wheel take its place.)
@@ -1016,6 +1029,8 @@ export function Play() {
   // the stadium, the crowd of the match or the concert; and in the street, the
   // fanfare of a wedding cortège, a concert, the masks.
   const happeningId = street?.happening?.id
+  // At the crèche: the other players' babies there now (the update « creche-ensemble »).
+  const crecheMates = inside?.it === 'creche' && keyOpen(features, 'creche-ensemble') ? around.players.filter((p) => p.stage === 'bebe' && p.activity?.interactionId === 'creche') : []
   const doingId = doing?.interaction.id
   const track: Track | null = showInside
     ? inside!.kind === 'club'
@@ -1049,6 +1064,8 @@ export function Play() {
       {/* An update the team just opened (the admin's « Mises à jour »), once. */}
       <FeatureNews />
       {keyOpen(features, 'famille-liste') && !arriving && !tuto && !classic && <ListedFamily simId={sim.id} onResult={apply} />}
+      {/* The baptism, once, in the baby's first days (after the arrival's flight) */}
+      {baptism && !arriving && <Bapteme sim={sim} onResult={apply} onEnd={() => setBaptism(false)} />}
       {racing && (
         <Suspense fallback={<div className="fixed inset-0 z-50"><Splash label="Babi Karting…" /></div>}>
           <KartRace
@@ -1081,7 +1098,18 @@ export function Play() {
         <div className="absolute inset-0 z-[1]">
           {inside!.kind === 'schoolday' && doing ? (
             <>
-              <SchoolDay sim={sim} stage={lifeOf(world, sim).stage?.id ?? 'enfant'} part={schoolPart(inside!.it, Math.min(1, Math.max(0, (sim.gameMinutes - doing.start) / Math.max(1, doing.end - doing.start))))} buddy={childhoodBuddy(sim)} night={c.isNight} />
+              <SchoolDay sim={sim} stage={lifeOf(world, sim).stage?.id ?? 'enfant'} part={schoolPart(inside!.it, Math.min(1, Math.max(0, (sim.gameMinutes - doing.start) / Math.max(1, doing.end - doing.start))))} buddy={childhoodBuddy(sim)} night={c.isNight} mates={crecheMates} onMate={(id) => setPlayers({ focus: id })} />
+              {/* The players' babies at the crèche too: their names, tapped, their card (to become friends) */}
+              {crecheMates.length > 0 && (
+                <div className="absolute inset-x-3 bottom-[7.5rem] z-10 flex flex-wrap items-center justify-center gap-1.5">
+                  <span className="hud rounded-full px-3 py-1.5 text-[12px] font-extrabold">Avec toi à la crèche :</span>
+                  {crecheMates.map((m) => (
+                    <button key={m.id} className="rounded-full bg-[#2563eb] px-3 py-1.5 text-[12px] font-extrabold text-white shadow active:scale-95" onClick={() => setPlayers({ focus: m.id })}>
+                      {m.username ? `@${m.username}` : m.firstName}
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="hud pointer-events-none absolute top-[max(5rem,calc(env(safe-area-inset-top)+4.5rem))] left-1/2 -translate-x-1/2 rounded-full px-4 py-2 text-sm font-extrabold whitespace-nowrap">
                 {SCHOOL_LINE[schoolPart(inside!.it, Math.min(1, Math.max(0, (sim.gameMinutes - doing.start) / Math.max(1, doing.end - doing.start))))]}
               </div>

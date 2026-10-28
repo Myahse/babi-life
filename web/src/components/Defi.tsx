@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { GraduationCap, ShoppingCart, Trophy, Waves, Coffee, Gamepad2, Car, Swords, Joystick, X, type LucideIcon } from 'lucide-react'
+import { GraduationCap, ShoppingCart, Trophy, Waves, Coffee, Gamepad2, Car, Swords, Joystick, X, Baby, Blocks, Footprints, Music, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import { haptic } from '../lib/native'
 import type { ActionResult, Look } from '../lib/types'
@@ -13,6 +13,7 @@ import { CourseDefi } from './defi/Course'
 import { CombatDefi } from './defi/Combat'
 import { MoustiquesDefi } from './defi/Moustiques'
 import { EcoleDefi } from './defi/Ecole'
+import { CoucouDefi, CubesDefi, HochetDefi, PasDefi } from './defi/Bebe'
 
 // Les défis: while making tea at the grin, water-skiing off Île Boulay, doing
 // the shopping or playing at the salle de jeux vidéo (the foot, the car race,
@@ -21,11 +22,13 @@ import { EcoleDefi } from './defi/Ecole'
 // out of 100 and what it earned (backend sims/defi.go: once each time, a small
 // bonus, the best score kept as a record to beat).
 
-export type DefiKind = 'the' | 'ski' | 'courses' | 'foot' | 'course' | 'combat' | 'arcade' | 'ecole'
+export type DefiKind = 'the' | 'ski' | 'courses' | 'foot' | 'course' | 'combat' | 'arcade' | 'ecole' | 'coucou' | 'cubes' | 'pas' | 'hochet'
+/** The baby's games (the update « bebe-jeux »). */
+export const BABY_DEFIS = new Set<DefiKind>(['coucou', 'cubes', 'pas', 'hochet'])
 
 /** The défi of an activity (backend sims/defi.go defiFor says the same), or null. The pousse-pousse's tea is served: no défi. */
 export const defiOf = (interactionId?: string): DefiKind | null =>
-  ({ 'street-grin': 'the', 'chat-grin': 'the', 'ski-boulay': 'ski', supermarche: 'courses', courses: 'courses', 'console-foot': 'foot', 'console-defi': 'foot', 'tournoi-console': 'foot', 'console-course': 'course', 'console-combat': 'combat', 'borne-arcade': 'arcade', 'maison-foot': 'foot', 'maison-course': 'course', 'maison-combat': 'combat', 'aller-ecole': 'ecole' } as Record<string, DefiKind>)[interactionId ?? ''] ?? null
+  ({ 'street-grin': 'the', 'chat-grin': 'the', 'ski-boulay': 'ski', supermarche: 'courses', courses: 'courses', 'console-foot': 'foot', 'console-defi': 'foot', 'tournoi-console': 'foot', 'console-course': 'course', 'console-combat': 'combat', 'borne-arcade': 'arcade', 'maison-foot': 'foot', 'maison-course': 'course', 'maison-combat': 'combat', 'aller-ecole': 'ecole', coucou: 'coucou', cubes: 'cubes', 'premiers-pas': 'pas', hochet: 'hochet' } as Record<string, DefiKind>)[interactionId ?? ''] ?? null
 
 /** The foot's three ways: a match, the challenge where the loser pays, the Saturday tournament. */
 const footMode = (interactionId?: string) => (interactionId === 'console-defi' ? 'defi' : interactionId === 'tournoi-console' ? 'tournoi' : 'match')
@@ -91,6 +94,38 @@ const DEFIS: Record<DefiKind, { title: string; button: string; icon: LucideIcon;
     colors: ['#4dabf7', '#1864ab'],
     how: ['Le maître pose six questions à la classe : calcul, français, la Côte d’Ivoire…', 'Lève la main : touche la bonne réponse parmi les trois.', 'Beaucoup de bonnes réponses : le maître te félicite, et ça compte pour le bac.'],
     bg: 'linear-gradient(#1b3a2c, #0f2219)',
+  },
+  coucou: {
+    title: 'Coucou-caché',
+    button: 'Jouer à coucou-caché',
+    icon: Baby,
+    colors: ['#ff8fb1', '#e64980'],
+    how: ['Maman cache son visage dans ses mains.', 'Quand elle les ouvre (« Coucou ! »), touche « Rire » le plus vite possible.', 'Trop tôt, ça ne compte pas. Six fois.'],
+    bg: 'linear-gradient(#ffb3c8, #e64980)',
+  },
+  cubes: {
+    title: 'La tour de cubes',
+    button: 'Jouer aux cubes',
+    icon: Blocks,
+    colors: ['#4dabf7', '#1c7ed6'],
+    how: ['Le cube glisse d’un côté à l’autre : touche pour le lâcher.', 'Ce qui dépasse du cube du dessous tombe : le suivant est plus petit.', 'Huit cubes, la tour la plus large possible.'],
+    bg: 'linear-gradient(#74c0fc, #1c7ed6)',
+  },
+  pas: {
+    title: 'Les premiers pas',
+    button: 'Faire ses premiers pas',
+    icon: Footprints,
+    colors: ['#69db7c', '#2f9e44'],
+    how: ['Bébé marche vers papa, mais ça tangue !', 'Garde l’aiguille dans le vert : tiens « Pencher » du côté opposé.', 'Trop penché, boum, on tombe et on se relève. Vite et sans tomber : le meilleur score.'],
+    bg: 'linear-gradient(#8ce99a, #2f9e44)',
+  },
+  hochet: {
+    title: 'Le hochet en rythme',
+    button: 'Secouer en rythme',
+    icon: Music,
+    colors: ['#b197fc', '#7048e8'],
+    how: ['Un cercle se resserre sur l’anneau jaune, à chaque temps.', 'Secoue le hochet pile quand il le touche.', 'Douze temps : parfait, bien, presque… ou raté.'],
+    bg: 'linear-gradient(#4b2e83, #2b1d4a)',
   },
   courses: {
     title: 'La liste de courses',
@@ -168,6 +203,14 @@ export function DefiSheet({ kind, simId, big, older, interactionId, practice, se
           <MoustiquesDefi onEnd={(s) => void end(s)} />
         ) : kind === 'ecole' ? (
           <EcoleDefi older={!!older} onEnd={(s) => void end(s)} />
+        ) : kind === 'coucou' ? (
+          <CoucouDefi onEnd={(s) => void end(s)} />
+        ) : kind === 'cubes' ? (
+          <CubesDefi onEnd={(s) => void end(s)} />
+        ) : kind === 'pas' ? (
+          <PasDefi onEnd={(s) => void end(s)} />
+        ) : kind === 'hochet' ? (
+          <HochetDefi onEnd={(s) => void end(s)} />
         ) : (
           <SkiDefi onEnd={(s) => void end(s)} />
         ))}

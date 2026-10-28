@@ -94,6 +94,9 @@ var List = []Feature{
 	{ID: "arrivee", Label: "L'arrivée à Babi", About: "La première fois dans le jeu : la caméra survole ta commune, ses rues et ses gens, puis « Bienvenue à Babi Life » et le message d'Awa, avant que Koffi te fasse le tour.", Keys: []string{"arrivee"}},
 	{ID: "famille-liste", Label: "Retrouver sa famille de la liste", About: "Ceux qui avaient créé leur perso sur la liste d'attente avant que le compte le reprenne peuvent retrouver la famille (et la commune) tirée sur la liste, ou garder la leur : une seule fois.", Keys: []string{"famille-liste"}},
 	{ID: "ambiance-sonore", Label: "Le son de la rue", About: "La pluie s'entend (étouffée sur le toit quand on est dedans) ; l'orage gronde ; la rue bourdonne, un taxi klaxonne au loin ; les oiseaux le jour, les grillons la nuit.", Keys: []string{"ambiance-sonore"}},
+	{ID: "bebe-jeux", Label: "Les jeux de bébé", About: "Coucou-caché avec maman ; la tour de cubes ; les premiers pas vers papa ; le hochet en rythme. Quatre petits jeux pour le bébé, avec un score à battre.", Interactions: []string{"coucou", "cubes", "premiers-pas"}, Keys: []string{"bebe-jeux"}},
+	{ID: "bapteme", Label: "Le baptême", About: "Le bébé est accueilli par toute la famille : les tantes, les oncles, la grand-mère qui lui donne son nom ; on danse, on offre des cadeaux.", Keys: []string{"bapteme"}},
+	{ID: "creche-ensemble", Label: "Les bébés ensemble à la crèche", About: "À la crèche, les bébés des autres joueurs sont là aussi : on les voit, on joue avec eux, on peut devenir amis. La crèche est ouverte tous les jours de 7 h à 17 h.", Keys: []string{"creche-ensemble"}},
 	{ID: "table", Label: "Les gens viennent te parler dans les lieux", About: "« Je peux m'asseoir à ta table ? » au resto ou au bar (tu acceptes et vous causez, ou tu refuses poliment), et au travail les clients qui viennent te demander de l'aide.", Keys: []string{"table"}},
 }
 
