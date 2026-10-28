@@ -333,6 +333,25 @@ func (h *Hub) Changed(sims ...string) {
 	}
 }
 
+// Message: a Gbairai message for this Sim, from that one: every device it's
+// open on hears it at once (the ring, the phone button that shakes).
+func (h *Hub) Message(to, from, name, text string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	msg, _ := json.Marshal(map[string]any{"t": "msg", "id": to, "from": from, "name": name, "text": text})
+	for _, clients := range h.rooms {
+		for c := range clients {
+			if c.sim != to {
+				continue
+			}
+			select {
+			case c.send <- msg:
+			default:
+			}
+		}
+	}
+}
+
 // Kick: these sessions were signed out (auth.Sessions): their live connections close now.
 func (h *Hub) Kick(sids ...string) {
 	gone := map[string]bool{}

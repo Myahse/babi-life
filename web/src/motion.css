@@ -563,3 +563,16 @@
   }
 }
 
+
+/* A Gbairai message just arrived: the phone button shakes, like a phone buzzing on the table (screens/Play.tsx). */
+@keyframes phone-buzz {
+  0%, 100% { transform: rotate(0) }
+  10%, 30%, 50%, 70% { transform: rotate(-9deg) scale(1.06) }
+  20%, 40%, 60%, 80% { transform: rotate(9deg) scale(1.06) }
+}
+.phone-buzz {
+  animation: phone-buzz 0.7s ease-in-out 2;
+}
+@media (prefers-reduced-motion: reduce) {
+  .phone-buzz { animation: none }
+}
