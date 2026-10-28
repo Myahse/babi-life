@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView, LotSpot, GodeRound } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView, LotSpot, GodeRound, Mentor } from './types'
 import { useSession } from '../store/session'
 import { keepData, keptData, OFFLINE_TEXT, setOnline } from './offline'
 
@@ -82,7 +82,7 @@ function request<T>(path: string, init: RequestInit = {}): Promise<T> {
  * Sim, the commune's places, the garage, the défis' records, the messages and
  * the snaps' list, the news), not the rest (a feed, a match going on).
  */
-const KEEP = /^\/(world|me|sims|news)(\?|$)|^\/sims\/[^/]+(\?|$)|^\/sims\/[^/]+\/(gbairai|photos|garage|defis|flashe|stories|lots|plots|emotes|clothes|fridge)(\?|$)|^\/places\?/
+const KEEP = /^\/(world|me|sims|news)(\?|$)|^\/sims\/[^/]+(\?|$)|^\/sims\/[^/]+\/(gbairai|photos|garage|defis|flashe|stories|lots|plots|emotes|clothes|fridge|mentor)(\?|$)|^\/places\?/
 
 /**
  * Played without network (lib/offlinePlay.ts): what it answers in the server's place (a Sim's
@@ -194,6 +194,9 @@ export const api = {
   buyPiece: (id: string, piece: string, app = false) => post<ActionResult>(`/sims/${id}/clothes/${piece}${app ? '?app=1' : ''}`, {}),
   buyClothingPack: (id: string, pack: string) => post<ActionResult>(`/sims/${id}/clothes/pack/${pack}`, {}),
   /** The fridge of one's house (backend sims/fridge.go): what's in it, how much it holds; filled while shopping, eaten from at home. */
+  /** The family's mentor, from 18 (backend sims/mentor.go): who they are, when a hand can be asked again (game minutes). */
+  mentor: (id: string) => request<{ mentor: Mentor; helpIn: number }>(`/sims/${id}/mentor`),
+  askMentor: (id: string, ask: 'conseil' | 'aide') => post<ActionResult>(`/sims/${id}/mentor`, { ask }),
   fridge: (id: string) => request<{ stock: Record<string, number>; room: number }>(`/sims/${id}/fridge`),
   fillFridge: (id: string, item: string, n = 1) => post<ActionResult>(`/sims/${id}/fridge/buy`, { item, n }),
   eatFromFridge: (id: string, item: string) => post<ActionResult>(`/sims/${id}/fridge/eat`, { item }),

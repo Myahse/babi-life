@@ -191,6 +191,7 @@ func main() {
 				"plot":          map[string]int{"w": game.PlotW, "d": game.PlotD, "h": game.PlotH},
 				"furniture":     game.Furnitures,
 				"groceries":     game.Groceries,
+				"mentors":       game.Mentors,
 				"emotes":        game.Emotes,
 				"clothes":       game.Clothes,
 				"clothingPacks": game.ClothingPacks,

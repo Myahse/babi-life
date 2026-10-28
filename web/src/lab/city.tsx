@@ -78,6 +78,7 @@ import { Interior } from '../world3d/Interior'
 import { Character } from '../world3d/Character'
 import { API_BASE } from '../lib/env'
 import { homePlanFor } from '../game/rules'
+import { SchoolDay, type SchoolPart } from '../world3d/interior/SchoolDay'
 import { ActionProps } from '../world3d/interior/ActionProps'
 import { Human } from '../avatar/Human'
 import { CITY_FAR, FarGrow } from '../avatar/LowHuman'
@@ -795,6 +796,7 @@ function Lab() {
   if (view === 'postures') return <PosturesLab />
   if (view === 'meubles') return <MeublesLab />
   if (view === 'famille') return <FamilleLab />
+  if (view === 'ecole') return <EcoleLab />
   if (view === 'talk') return <TalkLab />
   // &sococe: the Sococé's own supermarket and shops, its Kinéo in the gallery.
   if (view === 'farblocks') return <FarBlocksLab />
@@ -1356,6 +1358,17 @@ function FamilleLab() {
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
       <HomeInside sim={sim} world={world} plot={plot} interactionId={q.get('act') ?? undefined} roam={false} night={Number(q.get('h') ?? 7) < 6 || Number(q.get('h') ?? 7) >= 19} stage={q.get('stage') ?? 'bebe'} parents />
+    </div>
+  )
+}
+
+/** A day at school, a part of it (?view=ecole&part=classe|recre|creche&stage=enfant|ado): the class, the récré, the crèche. */
+function EcoleLab() {
+  const sim = useMemo(() => ({ id: 'lab-ecole', firstName: 'Kouadio', gender: 'homme', look: randomLook('homme', seededLab(5)) }) as unknown as Sim, [])
+  const buddy = useMemo(() => ({ id: 'enfance-lab', name: 'Aya', gender: 'femme' as const, look: randomLook('femme', seededLab(8)) }), [])
+  return (
+    <div style={{ width: '100vw', height: '100vh' }}>
+      <SchoolDay sim={sim} stage={q.get('stage') ?? 'enfant'} part={(q.get('part') ?? 'classe') as SchoolPart} buddy={buddy} />
     </div>
   )
 }

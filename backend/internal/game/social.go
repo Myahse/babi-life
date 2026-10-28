@@ -28,6 +28,8 @@ type Friend struct {
 	Seen    int64 `json:"seen"`
 	// Look: met in the street (or a maquis, a club…), the face they had there (sims.Passerby).
 	Look json.RawMessage `json:"look,omitempty"`
+	// Childhood: the friend from the crèche or the school, grown up with the Sim (sims/childhood.go).
+	Childhood bool `json:"childhood,omitempty"`
 }
 
 // MaxFriends: anyone met can become a friend, in the street, the maquis, the club…
@@ -35,7 +37,7 @@ const MaxFriends = 30
 
 // Social places: doing these, a Sim may meet someone or see a friend again.
 var SocialInteractions = []string{
-	"aller-ecole", "jouer-cour", "play-football", "play-basket", "watch-match", "drink-with-friends", "dance-coupe-decale",
+	"aller-ecole", "creche", "jouer-cour", "play-football", "play-basket", "watch-match", "drink-with-friends", "dance-coupe-decale",
 	"party", "glace", "anniversaire-resto", "spectacle", "pray", "coffee-break", "eat-poulet-braise",
 	"gbairai", "tresses", "amphi", "resto-u", "bar-hotel",
 }
@@ -66,7 +68,8 @@ func Meet(friends []Friend, commune string, now int64, rng *rand.Rand) (f *Frien
 // FadeFriends: a week apart costs a little friendship.
 func FadeFriends(friends []Friend, now int64) {
 	for i := range friends {
-		if now-friends[i].Seen > 7*24*60 && friends[i].Friendship > 5 {
+		// (The friend from childhood never drifts below a real friendship.)
+		if now-friends[i].Seen > 7*24*60 && friends[i].Friendship > 5 && !(friends[i].Childhood && friends[i].Friendship <= 50) {
 			friends[i].Friendship -= 5
 			friends[i].Seen = now - 3*24*60 // fades again next week
 		}
@@ -124,3 +127,16 @@ var CleanRecordCareers = []string{"bureau", "mairie", "enseignement", "sante", "
 
 // ReportReasons: why a player reports a message, a post or a president's words (the web's ReportSheet).
 var ReportReasons = []string{"insultes", "harcèlement", "contenu choquant", "arnaque", "autre"}
+
+// ChildhoodFriend: the friend made at the crèche or at school, from the quarter, the same age.
+func ChildhoodFriend(simID, commune string, now int64, rng *rand.Rand) Friend {
+	g, names := "femme", girls
+	if rng.IntN(2) == 0 {
+		g, names = "homme", boys
+	}
+	id := simID
+	if len(id) > 8 {
+		id = id[:8]
+	}
+	return Friend{ID: "p-enfance-" + id, Name: names[rng.IntN(len(names))], Gender: g, Seed: rng.IntN(1 << 20), Commune: commune, Friendship: 55, Met: now, Seen: now, Childhood: true}
+}

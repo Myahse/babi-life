@@ -3,12 +3,13 @@ import { gesture } from '../world3d/gesture'
 import type { Pose } from '../avatar/Human'
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Refrigerator, BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2, ShoppingBag, Lightbulb, Landmark, PartyPopper } from 'lucide-react'
+import { GraduationCap, Refrigerator, BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2, ShoppingBag, Lightbulb, Landmark, PartyPopper } from 'lucide-react'
 import { api, ApiError, errorText } from '../lib/api'
 import { useOnline } from '../lib/offline'
 import { onSynced, pendingOffline, picking } from '../lib/offlinePlay'
 import { kindOf, type ActionResult, type City, type Commune, type HappeningNow, type Interaction, type JobTask, type JournalEvent, type Player, type Sim, type Soiree, type World, type Ride, type Place, type Plot, type StreetRide } from '../lib/types'
 import { FridgeSheet } from '../components/Fridge'
+import { MentorApp } from '../components/MentorApp'
 import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
 import { joinMatch, type CourtMatch } from '../streetball/online'
@@ -54,6 +55,8 @@ import { GodeApp } from './GodeApp'
 import { RideFlow, type FlowRequest } from '../components/RideFlow'
 import { INDOOR, Interior, SCENES } from '../world3d/Interior'
 import { HomeInside } from '../world3d/HomeInside'
+import { SCHOOL_LINE, SchoolDay, schoolPart } from '../world3d/interior/SchoolDay'
+import { childhoodBuddy } from '../game/childhood'
 import { ARENAS, Arena } from '../world3d/interior/Arena'
 import { AppLogo } from '../components/AppLogo'
 import { TesterTools } from '../components/TesterTools'
@@ -92,7 +95,7 @@ import { GBAKA, inkOn, kerbWait, MOTO, waitsAtKerb } from '../game/rides'
 import { answerDrop, useDropAsk } from '../world3d/dropRoute'
 import { DefiButton, DefiSheet, defiLook, defiOf, PRACTICE, type DefiKind } from '../components/Defi'
 import { BolideApp } from './BolideApp'
-import { Tutorial, beginner, openTutorial, useTutorialAsked } from '../components/Tutorial'
+import { Tutorial, adultChapterDue, beginner, openTutorial, useTutorialAsked } from '../components/Tutorial'
 import { haptic, onBack } from '../lib/native'
 import { drive, getIn, gps, parkedNow, parkIn, setParked, startDrive, stopDrive, topSpeed, useDriving, useParked, type Driven } from '../world3d/drive'
 import { FlightView } from '../world3d/FlightView'
@@ -304,7 +307,7 @@ export function Play() {
   useEffect(() => {
     const q = new URLSearchParams(location.search)
     const want = q.get('app') as PhoneAppId | 'flashe' | null
-    if (!want || !['gbairai', 'bet225', 'parisfoot', 'guide', 'flashe', 'boutique'].includes(want)) return
+    if (!want || !['gbairai', 'bet225', 'parisfoot', 'guide', 'flashe', 'boutique', 'mentor'].includes(want)) return
     // Flashé opens over the game (its camera sees the street), not in the phone.
     if (want === 'flashe') setOverlay('flashe')
     else (setPhoneApp(want), setOverlay('phone'))
@@ -779,6 +782,9 @@ export function Play() {
   // Started with the tuto: the two old first tips (FirstSteps) aren't needed after it.
   const [firstTime] = useState(beginner)
   const tutoAsked = useTutorialAsked()
+  // The tuto's chapter for the Sim's age: growing up at home, or an adult's life (the second one comes by itself at 18).
+  const tutoChapter = sim && lifeOf(world, sim).minor ? 'enfance' : 'adulte'
+  const grownNow = tutoChapter === 'adulte'
   // A défi taken on during the activity (components/Defi.tsx): the one going on.
   const [defi, setDefi] = useState<DefiKind | null>(null)
   // One of the phone's « Jeux », played for practice.
@@ -944,7 +950,8 @@ export function Play() {
   // The activity the Sim is acting out here, if any (a trip happens on the road).
   const doing = sim.activity?.kind === 'do' ? sim.activity : null
   // The défi this activity can be taken on as, not yet played (the ski off the island only, seen there).
-  const defiNow = doing && !doing.defi ? defiOf(doing.interaction.id) : null
+  // (The school's lesson: an update, « ecole-vivante ».)
+  const defiNow = doing && !doing.defi && !(doing.interaction.id === 'aller-ecole' && !keyOpen(feats, 'ecole-vivante')) ? defiOf(doing.interaction.id) : null
   const stop = () => run('Arrêter', 'x', '', () => api.stop(sim.id))
   // The pad shows in the shoulder view (and the classic street); the buttons over the street sit beside it, or in the middle.
   // (At the wheel, the pedals and the wheel take its place.)
@@ -959,6 +966,8 @@ export function Play() {
     if (doing) {
       // A Golvo meal eaten where the Sim is: in the street (eaten at home, its place is « home »).
       if (doing.placeId === 'golvo') return null
+      // At school, at the crèche (an update, « ecole-vivante »): the day there, seen (world3d/interior/SchoolDay).
+      if (doing.placeId === 'home' && (doing.interaction.id === 'aller-ecole' || doing.interaction.id === 'creche') && keyOpen(feats, 'ecole-vivante')) return { id: 'ecole', kind: 'schoolday', it: doing.interaction.id }
       // In a home booked on Dodo: a home's inside, what's done in it as at home.
       if (doing.placeId === 'logement') return { id: 'logement', kind: 'home', it: DODO_AT_HOME[doing.interaction.id] ?? 'watch-tv' }
       // At a player's soirée: in its club.
@@ -1056,7 +1065,14 @@ export function Play() {
       )}
       {showInside && (
         <div className="absolute inset-0 z-[1]">
-          {inside!.id === 'logement' && dodoPlot ? (
+          {inside!.kind === 'schoolday' && doing ? (
+            <>
+              <SchoolDay sim={sim} stage={lifeOf(world, sim).stage?.id ?? 'enfant'} part={schoolPart(inside!.it, Math.min(1, Math.max(0, (sim.gameMinutes - doing.start) / Math.max(1, doing.end - doing.start))))} buddy={childhoodBuddy(sim)} night={c.isNight} />
+              <div className="hud pointer-events-none absolute top-[max(5rem,calc(env(safe-area-inset-top)+4.5rem))] left-1/2 -translate-x-1/2 rounded-full px-4 py-2 text-sm font-extrabold whitespace-nowrap">
+                {SCHOOL_LINE[schoolPart(inside!.it, Math.min(1, Math.max(0, (sim.gameMinutes - doing.start) / Math.max(1, doing.end - doing.start))))]}
+              </div>
+            </>
+          ) : inside!.id === 'logement' && dodoPlot ? (
             // A home booked on Dodo: its own house, walked in like one's own.
             <HomeInside sim={sim} world={world} plot={dodoPlot} interactionId={inside!.it} roam={false} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
           ) : inside!.kind === 'home' && inside!.id !== 'logement' && homePlot && !classic ? (
@@ -1369,7 +1385,7 @@ export function Play() {
 
       {!classic && <FirstSteps pad={padShown} hidden={showInside || !!placeId || !!overlay || !!players || whereTo || !!sim.activity || !!pending || tuto || tutoAsked || firstTime} />}
       {/* The first time (or asked for again from the Encyclo): Koffi shows the beginner round */}
-      {(tuto || tutoAsked) && !classic && <Tutorial state={{ whereTo, placeId, overlay }} onEnd={() => setTuto(false)} />}
+      {(tuto || tutoAsked || (grownNow && adultChapterDue())) && !classic && <Tutorial key={tutoChapter} chapter={tutoChapter} state={{ whereTo, placeId, overlay, menu: menuOpen }} onEnd={() => setTuto(false)} />}
       {/* Walking: the keys always (arrows / WASD); the pad on screen only in the shoulder view (the third-person
           view, chosen with the view button), so the other views stay clear. There, one walks with « Où aller ? »,
           the mini-map and the places' signs. The classic street has no views: the pad stays. */}
@@ -1477,7 +1493,7 @@ export function Play() {
               <div className="truncate font-display text-[15px] font-extrabold">{placeName(placeId!)}</div>
               <div className="text-[11px] font-bold text-[var(--color-ink-soft)]">{strolling ? (desktop ? 'Flèches ou WASD pour visiter' : 'Le joystick pour visiter') : desktop ? 'Marche, clique une icône pour agir' : 'Marche, touche une icône pour agir'}</div>
             </div>
-            <button className="btn !px-3 !py-2.5 !text-sm" onClick={() => setMenuOpen(true)}>
+            <button data-tour="que-faire" className="btn !px-3 !py-2.5 !text-sm" onClick={() => setMenuOpen(true)}>
               <Sparkles size={18} /> Que faire ?
             </button>
           </div>
@@ -1617,6 +1633,7 @@ export function Play() {
           kind={defi}
           simId={sim.id}
           big={sim.activity.interaction.id === 'supermarche'}
+          older={lifeOf(world, sim).stage?.id === 'ado'}
           interactionId={sim.activity.interaction.id}
           me={sim}
           send={async (score) => {
@@ -1715,7 +1732,7 @@ export function Play() {
 
 /* ---------- The in-game phone ---------- */
 
-type PhoneAppId = 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'bingo' | 'casino' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'awale' | 'ludo' | 'gode' | 'bolide' | 'jeux' | 'boutique' | 'idees' | 'politique'
+type PhoneAppId = 'mentor' | 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'bingo' | 'casino' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'awale' | 'ludo' | 'gode' | 'bolide' | 'jeux' | 'boutique' | 'idees' | 'politique'
 type PhoneProps = {
   world: World
   sim: Sim
@@ -1839,13 +1856,15 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
     { id: 'guide', label: 'Encyclo', icon: BookOpen, colors: ['#9fa8ff', '#4b4fd6'], open: () => setApp('guide') },
     { id: 'boutique', label: 'Boutique', icon: ShoppingBag, colors: ['#ffc233', '#e07800'], open: () => setApp('boutique') },
     { id: 'idees', label: 'Idées', icon: Lightbulb, colors: ['#ffe066', '#f5a000'], open: () => setApp('idees') },
+    // The family's mentor, from 18 (an update: « mentor »).
+    ...(!life.minor && keyOpen(feats, 'mentor') ? [{ id: 'mentor', label: 'Mentor', icon: GraduationCap, colors: ['#ffd36e', '#c98a00'] as [string, string], open: () => setApp('mentor') }] : []),
     ...(keyOpen(feats, 'app:politique') ? [{ id: 'politique', label: 'Politique', icon: Landmark, colors: ['#8c9eff', '#3d4fd6'] as [string, string], open: () => setApp('politique') }] : []),
     { id: 'profile', label: 'Profil', icon: UserRound, colors: ['#ff8a9b', '#ff3d57'], open: () => navigate('/profil', { viewTransition: true }) },
     ] as Tile[]
   ).filter((a) => !life.minor || (a.id !== 'jobs' && a.id !== 'home'))
   // The dock: the map, the messages, the friends, the camera (when the phone is one's own; else the games).
   const DOCK = ['map', 'messages', 'friends', ownPhone ? 'camera' : 'jeux']
-  const title: Record<PhoneAppId, string> = { bingo: 'Babi Bingo', casino: 'Babi Casino', here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', babigram: 'Babigram', bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: 'Galerie', guide: 'Encyclopédie de Babi', dodo: 'Dodo', kineo: 'Kinéo', dames: 'Dames 225', huit: '8 américain', awale: 'Awalé 225', ludo: 'Ludo 225', gode: 'Godé', bolide: 'Bolide', jeux: 'Jeux', boutique: 'Boutique', idees: 'Tes idées pour Babi Life', politique: 'Politique' }
+  const title: Record<PhoneAppId, string> = { mentor: 'Ton mentor', bingo: 'Babi Bingo', casino: 'Babi Casino', here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', babigram: 'Babigram', bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: 'Galerie', guide: 'Encyclopédie de Babi', dodo: 'Dodo', kineo: 'Kinéo', dames: 'Dames 225', huit: '8 américain', awale: 'Awalé 225', ludo: 'Ludo 225', gode: 'Godé', bolide: 'Bolide', jeux: 'Jeux', boutique: 'Boutique', idees: 'Tes idées pour Babi Life', politique: 'Politique' }
 
   return (
     <div className="absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center" onClick={onClose}>
@@ -1985,6 +2004,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                     </ul>
                   </div>
                 )}
+                {app === 'mentor' && <MentorApp sim={sim} onResult={onResult} />}
                 {app === 'guide' && <GuideApp world={world} onTutorial={() => (onClose(), openTutorial())} onGo={(kind) => goToKind(kind, commune, onWalk, onMap)} />}
                 {app === 'dodo' && <DodoApp world={world} sim={sim} act={act} onMap={onMap} />}
                 {app === 'bolide' && <BolideApp world={world} sim={sim} act={act} onDrive={onDrive} />}

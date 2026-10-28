@@ -71,6 +71,16 @@ func (s *Sim) comeOfAge(at int64) []Event {
 	s.Performance = 0
 	h, _ := game.FindHousing(f.Leave)
 	events = append(events, Event{Kind: "life", Text: fmt.Sprintf("%s a 18 ans et quitte la maison familiale pour un %s. La famille donne %s pour démarrer.", s.FirstName, h.Label, game.FCFA(f.Start)), Money: f.Start, GameTime: at})
+	// The friend from childhood is 18 too: friends still, grown-ups now (childhood.go).
+	if b := s.childhoodFriend(); b != nil {
+		b.Adult = true
+		b.Friendship = min(100, b.Friendship+10)
+		events = append(events, Event{Kind: "life", Text: fmt.Sprintf("%s, ton ami d'enfance, a 18 ans aussi. Depuis la crèche, vous ne vous êtes pas lâchés.", b.Name), GameTime: at})
+	}
+	// The family's mentor takes over (mentor.go).
+	if ev := s.mentorIntro(at); ev != nil {
+		events = append(events, *ev)
+	}
 	return events
 }
 

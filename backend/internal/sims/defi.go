@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/myahse/babi-life/backend/internal/features"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
 )
@@ -38,6 +39,8 @@ var defiFor = map[string][]string{
 	"course":  {"console-course", "maison-course"},
 	"combat":  {"console-combat", "maison-combat"},
 	"arcade":  {"borne-arcade"},
+	// The maître's lesson, at school (the update « ecole-vivante »).
+	"ecole": {"aller-ecole"},
 }
 
 // The tournament's prizes: the cup, the final lost (the entry is 1 000; played once a day, game.FromTournament).
@@ -111,6 +114,9 @@ func defiReward(kind, interaction string, score, cost int) (game.Needs, int, str
 	case "combat":
 		lines := []string{"Ton adversaire t'a mis K.O. : entraîne-toi.", "Un combat accroché, round après round.", "Ton adversaire au tapis : la salle crie ton nom !"}
 		return game.Needs{Fun: math.Round(14 * k), Social: math.Round(4 * k)}, 0, lines[tier]
+	case "ecole":
+		lines := []string{"Le maître secoue la tête : « Il faut réviser, hein ! » Ce soir, les devoirs.", "« Bien ! » dit le maître. Quelques erreurs, mais tu as suivi.", "« Excellent ! Applaudissez-le ! » Toute la classe tape dans les mains. Ça compte pour le bac !"}
+		return game.Needs{Fun: math.Round(10 * k), Social: math.Round(8 * k)}, 0, lines[tier]
 	case "arcade":
 		lines := []string{"Les moustiques ont gagné cette nuit.", "Pas mal de moustiques au tapis.", "Un massacre de moustiques : ton nom tout en haut de la borne !"}
 		return game.Needs{Fun: math.Round(14 * k)}, 0, lines[tier]
@@ -134,6 +140,10 @@ func (h *Handler) defi(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
+		return
+	}
+	if req.Kind == "ecole" && features.Default.BlocksKey(r.Context(), "ecole-vivante") != "" {
+		httpx.Error(w, http.StatusForbidden, "bientôt dans le jeu")
 		return
 	}
 	if _, ok := defiFor[req.Kind]; !ok {
@@ -191,7 +201,15 @@ func playDefi(ctx context.Context, tx pgx.Tx, s *Sim, kind string, score int) (s
 	}
 	// The défi was what the activity was for: played, it's over (the tea at the grin drunk, the match at
 	// the console done), not left running for the rest of its time. Talking on is an action of its own.
-	a.End = min(a.End, s.GameMinutes)
+	// (Not the school's lesson: the day goes on, the récré, class again.)
+	if kind == "ecole" {
+		// Answered well: a good mark, towards the bac.
+		if score >= 85 {
+			s.schoolMark(game.Interaction{ID: "aller-ecole"})
+		}
+	} else {
+		a.End = min(a.End, s.GameMinutes)
+	}
 	return fmt.Sprintf("Défi %d/100. %s", score, text), back, nil
 }
 

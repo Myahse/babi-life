@@ -200,6 +200,8 @@ type Sim struct {
 	party *Party
 	// purse: what the account (all its Sims) got by playing these last days, for the day's limits (money.go).
 	purse *game.Purse
+	// pending: journal lines from deep inside an action (sims/childhood.go), written with the rest.
+	pending []Event
 	// Today: the account's day so far by source, and its limits (game/money.go), for the apps.
 	Today map[game.Income]game.Limit `json:"today,omitempty"`
 }
@@ -355,6 +357,8 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/clothes/{piece}", h.clothesBuy)
 	r.Post("/sims/{id}/clothes/pack/{pack}", h.clothesPack)
 	r.Get("/sims/{id}/fridge", h.fridgeOf)
+	r.Get("/sims/{id}/mentor", h.mentorOf)
+	r.Post("/sims/{id}/mentor", h.mentorAsk)
 	r.Post("/sims/{id}/fridge/buy", h.fridgeBuy)
 	r.Post("/sims/{id}/fridge/eat", h.fridgeEat)
 	r.Get("/sims/{id}/photos", h.photoList)
@@ -995,6 +999,9 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 		}
 		fresh = append(fresh, events...)
 	}
+	// What happened along the way, said where it happened (a friend from childhood made…).
+	fresh = append(fresh, s.pending...)
+	s.pending = nil
 
 	// The Sim saved, the journal's new lines written and the journal read back,
 	// in one round trip to the database (they're one after the other on it).

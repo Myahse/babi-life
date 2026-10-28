@@ -93,7 +93,7 @@ export type Origin = Option & { money: number; loan: number; housing: string }
 /** The family a Sim is born into: debout, laté, lagnon, poignon, coulé, gnambro. */
 export type Family = { id: string; label: string; icon: string; hint: string; /** The kind of neighbourhood, found in every commune. */ sector: string; housing: string; pocket: number; start: number; leave: string; bacGift: number; weight: number }
 /** Someone the Sim knows. */
-export type Friend = { id: string; name: string; gender: 'femme' | 'homme'; seed: number; commune: string; friendship: number; gang?: boolean; met: number; seen: number; /** Met as an adult: romance possible. */ adult?: boolean; /** Together. */ partner?: boolean; /** Lives at home with the Sim. */ home?: boolean; /** The face they had when met (a passer-by, someone at the maquis…): the same one at your side and at home. */ look?: Look }
+export type Friend = { id: string; name: string; gender: 'femme' | 'homme'; seed: number; commune: string; friendship: number; gang?: boolean; met: number; seen: number; /** Met as an adult: romance possible. */ adult?: boolean; /** Together. */ partner?: boolean; /** Lives at home with the Sim. */ home?: boolean; /** The face they had when met (a passer-by, someone at the maquis…): the same one at your side and at home. */ look?: Look; /** The friend from childhood (the crèche, the school), grown up with the Sim. */ childhood?: boolean }
 /** Another player's Sim, as others see it. */
 export type Player = {
   id: string
@@ -256,6 +256,7 @@ export type World = {
   plot?: { w: number; d: number; h: number }
   furniture?: Furniture[]
   groceries?: Grocery[]
+  mentors?: Mentor[]
   /** The emotes (game/emotes.go): free ones, and ones bought once with Djai. */
   emotes?: Emote[]
   /** The boutiques' pieces (game/clothes.go). */
@@ -515,6 +516,8 @@ export type Furniture = {
 }
 /** What a piece is in the house: its base, or itself. */
 export const kindOf = (f: Pick<Furniture, 'id' | 'base'>) => f.base || f.id
+/** The family's mentor, from 18 (backend game/mentor.go). */
+export type Mentor = { family: string; name: string; gender: 'femme' | 'homme'; title: string; intro: string; help: [number, number] }
 /** A thing kept in the fridge (backend game/fridge.go). */
 export type Grocery = { id: string; label: string; icon: string; price: number; minutes: number; effect: Partial<Record<'hunger' | 'energy' | 'hygiene' | 'fun' | 'social', number>>; drink?: boolean }
 export type Lot = { w: number; d: number; area: number; city: string; commune: string; paid: number; /** Where the player set it on the map (none: the spot the game drew). */ lat?: number; lng?: number }
