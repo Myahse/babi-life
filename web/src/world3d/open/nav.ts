@@ -31,6 +31,8 @@ export class Nav {
   private blockGrid = new Map<string, XZ[][]>()
   private heights = new Map<XZ[], number>()
   private water: XZ[][][] = []
+  /** The map's own buildings (not the houses the game fills the quarters with). */
+  private real = new WeakSet<XZ[]>()
   private pitches: XZ[][] = []
 
   /** `solids`: the game's own buildings standing in place of the map's (the landmarks: a middle, a radius), which no vehicle drives through. */
@@ -54,6 +56,7 @@ export class Nav {
       for (const b of ch.buildings) {
         if (skipBuilding(b.c, b.ring)) continue
         this.heights.set(b.ring, b.height)
+        if (!b.fill) this.real.add(b.ring)
         for (const k of this.cellsOf(b.ring)) {
           const list = this.blockGrid.get(k)
           if (list) list.push(b.ring)
@@ -252,6 +255,32 @@ export class Nav {
     if (this.made.some((m) => Math.abs(m[0] - x) < MADE_HALF + r && Math.abs(m[1] - z) < MADE_HALF + r)) return false
     if (this.pitches.some((ring) => [[0, 0], [r + 1, 0], [-r - 1, 0], [0, r + 1], [0, -r - 1]].some(([dx, dz]) => pointInRing([x + dx, z + dz], ring)))) return false
     return !this.fields.some((f) => onFieldGround(f, [x, z], 2 + r))
+  }
+
+  /** On the carriageway itself (its pavement not counted). */
+  onStreet(p: XZ) {
+    const n = this.nearest(p, 20)
+    const e = n && this.edges[n.edge]
+    return !!e && n.dist <= (e.deck ? e.deck / 2 : e.width / 2)
+  }
+
+  /** In one of the map's own buildings (a house the game filled the quarter with doesn't count: it's cleared for a lot). */
+  inRealBuilding(x: number, z: number) {
+    const p: XZ = [x, z]
+    return (this.blockGrid.get(this.key(x, z)) ?? []).some((ring) => this.real.has(ring) && pointInRing(p, ring))
+  }
+
+  /** Open ground for a lot: no water, no street, no pitch, field or place the game built. */
+  openGround(x: number, z: number) {
+    if (this.wet(x, z) || this.onStreet([x, z])) return false
+    if (this.made.some((m) => Math.abs(m[0] - x) < MADE_HALF && Math.abs(m[1] - z) < MADE_HALF)) return false
+    if (this.pitches.some((ring) => pointInRing([x, z], ring))) return false
+    return !this.fields.some((f) => onFieldGround(f, [x, z], 1))
+  }
+
+  /** In the water (not on a bridge). */
+  inWater(x: number, z: number) {
+    return this.wet(x, z)
   }
 
   walkable(x: number, z: number) {

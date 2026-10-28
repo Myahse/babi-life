@@ -99,6 +99,11 @@ import { AwaleApp } from '../screens/AwaleApp'
 import { MetroView } from '../world3d/MetroView'
 import { Net } from '../streetball/looks'
 import { FarBlocks } from '../world3d/open/OpenWorld'
+import { LotMap } from '../components/LotMap'
+import { useWorld } from '../store/world'
+import { LotGhost } from '../world3d/open/lotGhost'
+import { LotPlaceHud } from '../components/LotPlaceHud'
+import { useLotPlace } from '../store/lotPlace'
 import { farBlockOf, type FarBlock } from '../world3d/open/tiles'
 import { LudoApp } from '../screens/LudoApp'
 
@@ -346,6 +351,72 @@ function MapLab() {
       </mesh>
       <OrbitControls target={look} />
     </Canvas>
+  )
+}
+
+/** A made-up quarter for LotPlaceLab: three streets each way, the big road, houses along them with gaps, the lagoon to the south. */
+function quarter(): ChunkData {
+  const r = seededLab(11)
+  const box = { x0: -160, z0: -130, x1: 160, z1: 130 }
+  const xs = [-100, -10, 80]
+  const zs = [-70, 10, 80]
+  const roads: ChunkData['roads'] = [
+    ...xs.map((x) => ({ cls: 'street', pts: [[x, -130], [x + 2, 105]] as XZ[], width: 7, paved: true, bridge: false })),
+    ...zs.map((z, i) => ({ cls: i === 1 ? 'primary' : 'street', pts: [[-160, z], [160, z + 1]] as XZ[], width: i === 1 ? 12 : 7, paved: true, bridge: false })),
+  ]
+  const buildings: ChunkData['buildings'] = []
+  // Along each street, both sides, a house every ~14 m, some gaps left (empty ground).
+  for (const z of zs)
+    for (let x = -155; x < 155; x += 14)
+      for (const sd of [-1, 1]) {
+        if (r() < 0.3 || xs.some((sx) => Math.abs(sx - x) < 14)) continue
+        const [w, d] = [9 + r() * 3, 8 + r() * 4]
+        const c: XZ = [x, z + sd * (8 + d / 2)]
+        if (c[1] > 100) continue
+        buildings.push({ ring: blockRing(rect(c[0], c[1], w, d), [], c), holes: [], height: r() < 0.25 ? 6 : 3, c, tint: r(), fill: r() < 0.6, tin: true })
+      }
+  const lagoon: XZ[] = [[-160, 100], [160, 98], [160, 130], [-160, 130]]
+  return { key: 'lotlab', tx: 0, ty: 0, box, roads, buildings, areas: [{ kind: 'water', rings: [lagoon] }], trees: [], palms: [], aeroways: [], pois: [] }
+}
+
+function LotPlaceLab() {
+  const data = useMemo(quarter, [])
+  const mats = useMemo(() => makeWorldMaterials() as unknown as Record<string, THREE.Material>, [])
+  const meshes = useMemo(() => buildChunk(data, () => false), [data])
+  const nav = useMemo(() => new Nav([data]), [data])
+  useEffect(() => {
+    useLotPlace.getState().start({ w: 20, d: 25, price: 2500000, label: 'Acheter ici · 2 500 000 Djai', onPick: () => new Promise((ok) => setTimeout(() => ok(true), 600)) })
+  }, [])
+  const placing = useLotPlace((s) => s.placing)
+  const [x, z] = [Number(q.get('x') ?? -40), Number(q.get('z') ?? -20)]
+  return (
+    <>
+      <Canvas dpr={[1, 2]} camera={{ position: [x, 64, z + 46], fov: 45, far: 4000 }} style={{ width: '100vw', height: '100vh' }}>
+        <color attach="background" args={['#a9d3f0']} />
+        <hemisphereLight args={['#ffffff', '#b8a27c', 1.3]} />
+        <directionalLight position={[60, 110, 35]} intensity={1.7} />
+        {Object.entries(meshes).map(([name, g]) => (g && mats[name] ? <mesh key={name} geometry={g} material={mats[name]} /> : null))}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
+          <planeGeometry args={[4000, 4000]} />
+          <primitive object={LAB_GROUND} attach="material" />
+        </mesh>
+        {placing && (
+          <LotGhost
+            nav={nav}
+            origin={{ lat: 5.3025, lng: -3.9835 }}
+            w={placing.w}
+            d={placing.d}
+            resolve={(at) => resolvePlaces(data, [{ id: 'ghost', kind: 'plot', at, landmark: Math.max(12, Math.hypot(placing.w, placing.d) / 2 + 3) }])[0] ?? null}
+            others={[{ at: [55, 40], r: 19 }]}
+            seeds={[[55, 40]]}
+            named={[{ name: 'le marché de Marcory', at: [-60, 30] }, { name: 'la pharmacie Akwaba', at: [60, -40] }]}
+            onGhost={(ghost) => useLotPlace.setState({ ghost })}
+          />
+        )}
+        <OrbitControls makeDefault target={[x, 0, z]} enablePan screenSpacePanning={false} mouseButtons={{ LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE }} touches={{ ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE }} />
+      </Canvas>
+      <LotPlaceHud />
+    </>
   )
 }
 
@@ -656,6 +727,15 @@ function Lab() {
     const sim = { id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)), gameMinutes: Number(q.get('m') ?? 12), activity: { kind: 'travel', start: 0, end: 27, interaction: { label: 'Trajet Plateau → Port-Bouët en métro (Ligne 1)' }, trip: { mode: 'metro', fromCity: 'abidjan', fromCommune: 'plateau', city: 'abidjan', commune: 'port-bouet' } } } as unknown as Sim
     const world = { metro: { name: 'Ligne 1', fare: 500, perStop: 3, wait: 6, stations: ['anyama', 'abobo', 'adjame', 'plateau', 'treichville', 'marcory', 'koumassi', 'port-bouet'].map((c) => ({ commune: c, name: c })) } } as unknown as World
     return <MetroView world={world} sim={sim} night={night} onMap={() => undefined} />
+  }
+  // ?view=lotplace: a lot set in the 3D world, over a quarter of streets, houses and the lagoon (&x=,&z= where the view starts).
+  if (view === 'lotplace') return <LotPlaceLab />
+  // ?view=lotmap: where one's land goes, picked on the map of Marcory (needs VITE_MAPBOX_TOKEN at build).
+  if (view === 'lotmap') {
+    const marcory = { id: 'marcory', name: 'Marcory', lat: 5.3025, lng: -3.9835, places: [{ name: 'le marché de Marcory', lat: 5.3031, lng: -3.9829 }, { name: 'la Cap Sud', lat: 5.2969, lng: -3.9866 }] }
+    if (!useWorld.getState().world) useWorld.setState({ world: { cities: [{ id: 'abidjan', communes: [marcory] }] } as unknown as World })
+    const sim = { id: 'lab', firstName: 'Awa', money: 900000 } as unknown as Sim
+    return <LotMap sim={sim} city="abidjan" commune="marcory" w={20} d={25} price={2500000} moving={q.has('move') ? 7 : undefined} onPick={async () => true} onClose={() => undefined} />
   }
   if (view === 'app') {
     const sim = { id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)) } as unknown as Sim

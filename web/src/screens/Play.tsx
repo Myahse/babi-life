@@ -115,6 +115,8 @@ import { FeatureNews } from '../components/FeatureNews'
 import { Sheet } from '../components/Sheet'
 import { Splash } from '../components/Splash'
 import { Helper } from '../components/Helper'
+import { LotPlaceHud } from '../components/LotPlaceHud'
+import { useLotPlace } from '../store/lotPlace'
 const IvoireInside = lazy(() => import('../world3d/interior/IvoireInside').then((m) => ({ default: m.IvoireInside })))
 const CathedralInside = lazy(() => import('../world3d/interior/CathedralInside').then((m) => ({ default: m.CathedralInside })))
 const MosqueM6Inside = lazy(() => import('../world3d/interior/MosqueM6Inside').then((m) => ({ default: m.MosqueM6Inside })))
@@ -840,6 +842,15 @@ export function Play() {
   }, [dodoStay?.type, dodoStay?.seed, dodoStay?.lot, hostPlot, world]) // eslint-disable-line react-hooks/exhaustive-deps
   // Building on one of the Sim's lots (its id; 0: the one lived in, else the first), or not.
   const [building, setBuilding] = useState<number | false>(false)
+  // A lot being set in the 3D world (store/lotPlace.ts): the phone and the rest put away, the world seen from above.
+  const placingLot = useLotPlace((s) => !!s.placing)
+  useEffect(() => {
+    if (!placingLot) return
+    setOverlay(null)
+    setPhoneApp(null)
+    setPlaceId(null)
+    setBuilding(false)
+  }, [placingLot])
   // Arrived at one of one's lots (« plot:<key> »): building on that one; someone else's lot has nothing to do.
   const buildAt = async (key: string) => {
     if (key !== sim?.id && !key.startsWith(`${sim?.id}:`)) return
@@ -1561,6 +1572,7 @@ export function Play() {
         />
       )}
       {/* At the wheel: the pedals, the wheel, the speed, and to park */}
+      {placingLot && <LotPlaceHud />}
       {driven && <DriveHud driven={driven} onPark={park} onWhere={() => setWhereTo(true)} onParkAt={(id) => (park(), walkTo(id))} />}
       {/* Its vehicle parked near: get back in */}
       {!driven && !showInside && !placeId && !overlay && !sim.activity && <GetIn simId={sim.id} commune={commune.id} />}
