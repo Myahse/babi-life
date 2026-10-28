@@ -916,6 +916,13 @@ export function Play() {
   // Kept from render to render (a new one would start the match over); alone (no court match), the console's switching too.
   const elevenRules = useMemo(() => (eleven ? { size: 11 as const, referee: true, switching: !court?.online } : undefined), [eleven, court?.online])
 
+  // « Voir la rue » is only for while inside: going in again (the street's « Entrer », arriving at a door,
+  // back in after an action) shows the inside (else, back at the door, the street stayed on screen and
+  // the house never showed again).
+  useEffect(() => {
+    if (placeId) setOutside(false)
+  }, [placeId])
+
   if (!sim) {
     return (
       <div className="grid h-full place-items-center bg-[var(--color-night)] text-white">
@@ -1444,7 +1451,8 @@ export function Play() {
           }}
         />
       )}
-      {placeId && placeId !== 'happening' && !placeId.startsWith('soiree:') && (!roaming || menuOpen) && (
+      {/* (Looking at the street from inside: no menu over it, the « Entrer » button at the top takes the Sim back in.) */}
+      {placeId && placeId !== 'happening' && !placeId.startsWith('soiree:') && (!roaming || menuOpen) && !(outside && inside) && (
         <InteractionMenu world={world} sim={sim} city={city} commune={commune} placeId={placeId} desktop={desktop} onClose={() => (roaming ? setMenuOpen(false) : setPlaceId(null))} onPick={interact} onTravel={travel} onStop={stop} onBuild={() => (setPlaceId(null), setBuilding(0))} soiree={mySoiree} onSoiree={() => (mySoiree ? setPlaceId(`soiree:${mySoiree.id}`) : (setMenuOpen(false), setSoireeAsk(true)))} />
       )}
       {visiting && !menuOpen && <SpotSheet />}
