@@ -47,12 +47,13 @@ func TestABabyStaysABaby(t *testing.T) {
 	}
 }
 
-func TestChildhoodGoesFast(t *testing.T) {
-	// A baby for five minutes, a child for twenty, a teenager for thirty; then a year is YearMinutes.
+func TestChildhoodLastsRealDays(t *testing.T) {
+	// A baby for a day, a child for half a day, a teenager for the other half; then a year is YearMinutes.
+	const h = 60
 	for _, c := range []struct {
 		min int64
 		age int
-	}{{0, 0}, {4, 2}, {5, 3}, {15, 7}, {25, 12}, {54, 17}, {55, 18}, {55 + game.YearMinutes, 19}} {
+	}{{0, 0}, {16 * h, 2}, {24 * h, 3}, {28 * h, 6}, {36 * h, 12}, {48*h - 1, 17}, {48 * h, 18}, {48*h + game.YearMinutes, 19}} {
 		if got := game.AgeAt(1, 1+c.min); got != c.age {
 			t.Errorf("after %d minutes: %d years old, want %d", c.min, got, c.age)
 		}
@@ -118,4 +119,44 @@ func hasText(ev []Event, s string) bool {
 		}
 	}
 	return false
+}
+
+func TestChildhoodRunsOnWhileAway(t *testing.T) {
+	// Away 30 hours as a newborn: a child on coming back, its birthday said.
+	s := Sim{FirstName: "Awa", GameMinutes: 1000, BornAt: 1000, Family: "poignon"}
+	events := s.hold(30 * 60)
+	if got := s.stage().ID; got != game.StageEnfant {
+		t.Fatalf("after 30 h away: %s, want enfant", got)
+	}
+	if len(events) == 0 {
+		t.Error("the birthday wasn't said")
+	}
+	// Away three days as a teenager: 18 on the way, then the adult's time waits.
+	s = Sim{FirstName: "Awa", GameMinutes: 10000, BornAt: 10000 - 40*60, Family: "poignon"}
+	s.hold(72 * 60)
+	if got := s.age(); got != game.AdultAge {
+		t.Fatalf("after 3 days away from 15: %d years old, want 18", got)
+	}
+	// An adult away: nothing moves.
+	s.hold(24 * 60)
+	if got := s.age(); got != game.AdultAge {
+		t.Errorf("an adult aged while away: %d", got)
+	}
+}
+
+func TestGrowBought(t *testing.T) {
+	s := Sim{FirstName: "Awa", GameMinutes: 5000, BornAt: 5000, Family: "poignon", growing: game.StageAdulte}
+	events := s.grow()
+	if s.age() != game.AdultAge || s.growing != "" {
+		t.Fatalf("bought « adulte tout de suite »: %d years old, still growing %q", s.age(), s.growing)
+	}
+	if len(events) < 3 {
+		t.Errorf("birthdays and leaving home not said: %v", events)
+	}
+	// Bought again by mistake: never younger.
+	s.growing = game.StageEnfant
+	s.grow()
+	if s.age() != game.AdultAge {
+		t.Errorf("made younger: %d", s.age())
+	}
 }

@@ -535,7 +535,7 @@ export type ActionResult = { sim: Sim; outcome: Outcome; journal: JournalEvent[]
 /** La boutique (backend shop/): Djai for real money (F CFA), through GeniusPay. */
 export type ShopPack = { id: string; label: string; price: number; djai: number; bonus?: string }
 /** Something else than Djai: the Pass, a boost, the Pack Prestige (once: bought once and kept). */
-export type ShopItem = { id: string; label: string; text: string; price: number; once?: boolean; /** A piece of clothing into the wardrobe (game/clothes.go Premium). */ piece?: string }
+export type ShopItem = { id: string; label: string; text: string; price: number; once?: boolean; /** A piece of clothing into the wardrobe (game/clothes.go Premium). */ piece?: string; /** Growing up at once to this stage (« enfant », « adulte »). */ grow?: string }
 /** kind: djai | pass | energie | prestige (| pub, an advertiser's); item: the pack's or item's id. */
 export type ShopPurchase = { id: string; kind: string; item: string; price: number; djai: number; status: string; credited: boolean; at: string }
 /** open: GeniusPay set up; sandbox: its test keys; adult: the account said it's 18 or over; passUntil: the Pass on till then. */

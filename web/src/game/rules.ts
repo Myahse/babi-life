@@ -223,6 +223,13 @@ export function ageOf(world: World, bornAt: number, gameMinutes: number) {
   return 0
 }
 
+/** Childhood's time left before a stage (« enfant », « adulte »), in minutes; 0 when there. */
+export function minutesTill(world: World, sim: Pick<Sim, 'bornAt' | 'gameMinutes'>, stage: string) {
+  const from = world.stages?.find((s) => s.id === stage)?.from ?? 18
+  if (!sim.bornAt) return 0
+  return Math.max(0, Math.ceil(sim.bornAt + minutesToAge(world, from) - sim.gameMinutes))
+}
+
 /** How many minutes after birth a Sim turns `age` (mirrors game.MinutesToAge). */
 export function minutesToAge(world: World, age: number) {
   const pts = world.growUp ?? [[0, 0]]

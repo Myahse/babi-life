@@ -1791,16 +1791,75 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
   // A player friend to send money to, picked in Amis.
   const [wayeTo, setWayeTo] = useState<string | undefined>()
   const navigate = useNavigate()
+  // Like a phone's own: an app grows out of its icon and shrinks back into it;
+  // the phone slides down when put away; on a real phone, the edge swiped
+  // back and the home bar swiped up.
+  const screen = useRef<HTMLDivElement>(null)
+  const panel = useRef<HTMLDivElement>(null)
+  const [origin, setOrigin] = useState('50% 50%')
+  const [leaving, setLeaving] = useState(false)
+  const [away, setAway] = useState(false)
+  const openFrom = (e: React.MouseEvent, open: () => void) => {
+    const r = screen.current?.getBoundingClientRect()
+    const b = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    if (r) setOrigin(`${b.left + b.width / 2 - r.left}px ${b.top + b.height / 2 - r.top}px`)
+    open()
+  }
+  const goHome = () => {
+    if (leaving) return
+    setLeaving(true)
+    setTimeout(() => (setApp(null), setLeaving(false)), 200)
+  }
+  const putAway = () => {
+    if (away) return
+    setAway(true)
+    setTimeout(onClose, 220)
+  }
+  const swipe = useRef<{ x: number; y: number; t: number; kind: 'back' | 'home' } | null>(null)
+  const swipeStart = (kind: 'back' | 'home') => (e: React.PointerEvent) => {
+    swipe.current = { x: e.clientX, y: e.clientY, t: e.timeStamp, kind }
+    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+  }
+  const swipeMove = (e: React.PointerEvent) => {
+    const g = swipe.current
+    const el = g?.kind === 'back' ? panel.current : screen.current
+    if (!g || !el) return
+    el.style.transition = 'none'
+    if (g.kind === 'back') el.style.transform = `translateX(${Math.max(0, e.clientX - g.x)}px)`
+    else {
+      const up = Math.max(0, g.y - e.clientY)
+      el.style.transform = `translateY(${-up * 0.6}px) scale(${1 - Math.min(0.25, up / 900)})`
+    }
+  }
+  const swipeEnd = (e: React.PointerEvent) => {
+    const g = swipe.current
+    swipe.current = null
+    const el = g?.kind === 'back' ? panel.current : screen.current
+    if (!g || !el) return
+    const d = g.kind === 'back' ? e.clientX - g.x : g.y - e.clientY
+    const fast = d / Math.max(1, e.timeStamp - g.t) > 0.5
+    const tap = Math.abs(d) < 6 && Math.abs(e.clientY - g.y) < 6
+    el.style.transition = 'transform 0.3s var(--ease-out)'
+    if (g.kind === 'back' && (d > 110 || (d > 30 && fast))) {
+      el.style.transform = 'translateX(100%)'
+      return void setTimeout(() => setApp(null), 230)
+    }
+    el.style.transform = ''
+    if (g.kind === 'home' && (tap || d > 60 || (d > 20 && fast))) {
+      if (app) goHome()
+      else putAway()
+    }
+  }
   // On a computer, Échap goes back: out of the app, then the phone away.
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
-      if (app) setApp(null)
-      else onClose()
+      if (app) goHome()
+      else putAway()
     }
     window.addEventListener('keydown', key)
     return () => window.removeEventListener('keydown', key)
-  }, [app, onClose])
+  }, [app, onClose]) // eslint-disable-line react-hooks/exhaustive-deps
   const home = sim.homeCity === sim.city && sim.homeCommune === commune.id
   const places = [...(home ? [{ id: 'home', name: 'Chez toi', kind: 'home' }] : []), ...commune.places]
   const city = world.cities.find((c) => c.id === sim.city)!
@@ -1867,10 +1926,12 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
   const title: Record<PhoneAppId, string> = { mentor: 'Ton mentor', bingo: 'Babi Bingo', casino: 'Babi Casino', here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', babigram: 'Babigram', bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: 'Galerie', guide: 'Encyclopédie de Babi', dodo: 'Dodo', kineo: 'Kinéo', dames: 'Dames 225', huit: '8 américain', awale: 'Awalé 225', ludo: 'Ludo 225', gode: 'Godé', bolide: 'Bolide', jeux: 'Jeux', boutique: 'Boutique', idees: 'Tes idées pour Babi Life', politique: 'Politique' }
 
   return (
-    <div className="absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center" onClick={onClose}>
-      {/* The phone: a metal band round it, its buttons on the sides, the black border, the screen. */}
+    <div className="phone-backdrop absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center" data-away={away || undefined} onClick={putAway}>
+      {/* The phone: a metal band round it, its buttons on the sides, the black border, the screen. On a
+          real phone, no phone drawn in it: the game's phone takes the whole screen, as its own would. */}
       <div
-        className="animate-up relative h-[min(92%,780px)] w-[min(100%,384px)] rounded-[56px] p-[3px] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.75),inset_0_0_0_1px_rgba(255,255,255,0.25)] max-sm:h-[88%] max-sm:rounded-b-none max-sm:pb-0"
+        className="phone-body animate-up relative h-[min(92%,780px)] w-[min(100%,384px)] rounded-[56px] p-[3px] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.75),inset_0_0_0_1px_rgba(255,255,255,0.25)] max-sm:h-full max-sm:w-full max-sm:rounded-none max-sm:p-0 max-sm:shadow-none"
+        data-away={away || undefined}
         style={{ background: 'linear-gradient(145deg,#d4d7dd 0%,#7a7e87 22%,#30333a 50%,#8d919a 78%,#e1e4e9 100%)' }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -1882,8 +1943,8 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
         ].map(([side, top, h]) => (
           <span key={`${side}${top}`} className={`absolute w-[3px] rounded-sm max-sm:hidden ${side === 'left' ? '-left-[3px]' : '-right-[3px]'}`} style={{ top: top as number, height: h as number, background: 'linear-gradient(90deg,#5d616a,#a9adb5)' }} />
         ))}
-        <div className="relative h-full rounded-[53px] bg-black p-[8px] max-sm:rounded-b-none max-sm:pb-0">
-          <div className={`phone-screen relative flex h-full flex-col overflow-hidden rounded-[45px] max-sm:rounded-b-none ${app === null ? 'bg-[#1a1033]' : 'bg-white'}`}>
+        <div className="relative h-full rounded-[53px] bg-black p-[8px] max-sm:rounded-none max-sm:p-0">
+          <div ref={screen} className={`phone-screen relative flex h-full flex-col overflow-hidden rounded-[45px] max-sm:rounded-none ${app === null ? 'bg-[#1a1033]' : 'bg-white'}`}>
             {/* The wallpaper: a sunset over the lagoon, its soft lights. */}
             {app === null && (
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_80%_at_50%_0%,#ffb27a,#e0306a_55%,#3b1d6e)]">
@@ -1893,7 +1954,8 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
               </div>
             )}
             {/* The status bar: the time, the Dynamic Island in the middle, the network and the battery (the Sim's energy). */}
-            <div className={`relative z-10 grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-7 pt-[11px] pb-1 text-[13px] font-bold ${app === null ? 'text-white' : 'text-[#111]'}`}>
+            <div className="h-[max(8px,env(safe-area-inset-top))] shrink-0 sm:hidden" />
+            <div className={`relative z-10 grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-7 pt-[11px] pb-1 text-[13px] font-bold max-sm:hidden ${app === null ? 'text-white' : 'text-[#111]'}`}>
               <span className="tnum">{time}</span>
               <span className="flex h-[30px] w-[108px] items-center justify-end rounded-full bg-black pr-3">
                 <span className="h-[9px] w-[9px] rounded-full bg-[radial-gradient(circle_at_35%_35%,#3b4a7a,#0b0d16)] ring-1 ring-[#1c1f2b]" />
@@ -1917,7 +1979,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                 <WordOfTheDay world={world} gameMinutes={sim.gameMinutes} />
                 <div className="motion-stagger grid grid-cols-4 gap-x-2 gap-y-4">
                   {APPS.filter((a) => !DOCK.includes(a.id)).map((a) => (
-                    <button key={a.id} onClick={a.open} className="flex min-w-0 flex-col items-center gap-1 active:scale-90">
+                    <button key={a.id} onClick={(e) => openFrom(e, a.open)} className="flex min-w-0 flex-col items-center gap-1 transition-transform active:scale-90">
                       <span className="relative">
                         <PhoneIcon id={a.id} icon={a.icon} colors={a.colors} />
                         {((a.id === 'friends' && sim.gang === 'invited') || (a.id === 'home' && sim.rentArrears > 0) || (a.id === 'jobs' && !sim.career)) && <Badge />}
@@ -1926,7 +1988,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                     </button>
                   ))}
                   {STORE_APPS.map((a) => (
-                    <button key={a.id} onClick={a.open} className="flex min-w-0 flex-col items-center gap-1 active:scale-90">
+                    <button key={a.id} onClick={(e) => openFrom(e, a.open)} className="flex min-w-0 flex-col items-center gap-1 transition-transform active:scale-90">
                       <span className="relative block h-14 w-14">
                         <AppLogo id={a.id} size={56} radius={13} />
                         {a.id === 'golvo' && delivery && <Badge />}
@@ -1941,11 +2003,11 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                 </div>
               </div>
               {/* The dock: four apps always at hand, on frosted glass. */}
-              <div className="absolute inset-x-3 bottom-6 z-10 grid grid-cols-4 gap-2 rounded-[32px] bg-white/25 px-3 py-3 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.25)] backdrop-blur-xl max-sm:bottom-7">
+              <div className="absolute inset-x-3 bottom-6 z-10 grid grid-cols-4 gap-2 rounded-[32px] bg-white/25 px-3 py-3 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.25)] backdrop-blur-xl max-sm:bottom-[calc(env(safe-area-inset-bottom)+22px)]">
                 {DOCK.map((id) => APPS.find((a) => a.id === id))
                   .filter((a): a is Tile => !!a)
                   .map((a) => (
-                    <button key={a.id} onClick={a.open} className="flex justify-center active:scale-90" aria-label={a.label}>
+                    <button key={a.id} onClick={(e) => openFrom(e, a.open)} className="flex justify-center transition-transform active:scale-90" aria-label={a.label}>
                       <span className="relative">
                         <PhoneIcon id={a.id} icon={a.icon} colors={a.colors} />
                         {a.id === 'messages' && journal.length > 0 && <Badge n={Math.min(99, journal.length)} />}
@@ -1953,16 +2015,25 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                     </button>
                   ))}
               </div>
-              {/* The home bar: a tap puts the phone away. */}
-              <button className="absolute bottom-1.5 left-1/2 z-10 h-5 w-36 -translate-x-1/2" onClick={onClose} aria-label="Ranger le téléphone">
-                <span className="mx-auto block h-[5px] w-[124px] rounded-full bg-white/85" />
+              {/* The home bar: a tap, or a swipe up, puts the phone away. */}
+              <button
+                className="absolute bottom-1.5 left-1/2 z-10 flex h-6 w-44 -translate-x-1/2 touch-none items-end justify-center pb-1 max-sm:bottom-[env(safe-area-inset-bottom)]"
+                onPointerDown={swipeStart('home')}
+                onPointerMove={swipeMove}
+                onPointerUp={swipeEnd}
+                onPointerCancel={swipeEnd}
+                aria-label="Ranger le téléphone"
+              >
+                <span className="block h-[5px] w-[124px] rounded-full bg-white/85" />
               </button>
             </>
           ) : (
-            <div key={app} className="motion-app relative flex flex-1 flex-col overflow-hidden bg-white">
+            <div key={app} ref={panel} className="phone-app relative flex flex-1 flex-col overflow-hidden bg-white" style={{ transformOrigin: origin }} data-leaving={leaving || undefined}>
+              {/* The left edge: swiped right, back to the home screen (a phone's back). */}
+              <div className="absolute inset-y-0 left-0 z-20 w-4 touch-none sm:hidden" onPointerDown={swipeStart('back')} onPointerMove={swipeMove} onPointerUp={swipeEnd} onPointerCancel={swipeEnd} aria-hidden />
               {/* The app's bar: back to the home screen on the left, its name in the middle. */}
               <div className="grid grid-cols-[auto_1fr_auto] items-center gap-1 border-b border-black/5 px-2 pt-1 pb-2">
-                <button className="flex items-center text-[15px] font-semibold text-[var(--color-orange)] active:opacity-60" onClick={() => setApp(null)} aria-label="Retour">
+                <button className="flex items-center text-[15px] font-semibold text-[var(--color-orange)] active:opacity-60" onClick={goHome} aria-label="Retour">
                   <ChevronLeft size={26} strokeWidth={2.6} />
                   Accueil
                 </button>
@@ -2042,8 +2113,15 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                 {app === 'gode' && <GodeApp sim={sim} act={act} onConfirmAdult={onConfirmAdult} />}
                 {app === 'golvo' && <GolvoApp world={world} sim={sim} delivery={delivery} onOrder={onDelivery} onCancel={() => onDelivery(null)} onCollect={onCollect} />}
               </div>
-              {/* The home bar: a tap goes back to the home screen. */}
-              <button className="flex h-6 shrink-0 items-center justify-center bg-white" onClick={() => setApp(null)} aria-label="Écran d'accueil">
+              {/* The home bar: a tap, or a swipe up, goes back to the home screen. */}
+              <button
+                className="flex h-6 shrink-0 touch-none items-center justify-center bg-white max-sm:h-[calc(env(safe-area-inset-bottom)+22px)] max-sm:items-start max-sm:pt-2"
+                onPointerDown={swipeStart('home')}
+                onPointerMove={swipeMove}
+                onPointerUp={swipeEnd}
+                onPointerCancel={swipeEnd}
+                aria-label="Écran d'accueil"
+              >
                 <span className="block h-[5px] w-[124px] rounded-full bg-black/80" />
               </button>
             </div>

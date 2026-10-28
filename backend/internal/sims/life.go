@@ -118,3 +118,40 @@ func (s *Sim) schoolMark(it game.Interaction) {
 		s.Performance++
 	}
 }
+
+// ageTo puts the Sim at the start of a stage now (the tester's ages, the
+// shop's « tout de suite »); growing older, the birthdays on the way are said
+// (and at 18, leaving home).
+func (s *Sim) ageTo(st game.Stage) []Event {
+	old := s.GameMinutes - s.BornAt
+	if s.BornAt == 0 {
+		old = game.MinutesToAge(game.AdultAge) // a Sim from before births is an adult
+	}
+	if s.Family == "" {
+		s.Family = "poignon" // leaving home at 18 needs a family
+	}
+	to := game.MinutesToAge(float64(st.From))
+	s.BornAt = s.GameMinutes - to
+	if s.BornAt == 0 {
+		s.BornAt = -1 // 0 means "no birth date"
+	}
+	var events []Event
+	if to > old {
+		events = s.growUp(s.BornAt+old, s.GameMinutes)
+		if s.age() < game.AdultAge {
+			events = append(events, s.pocketMoney(s.BornAt+old, s.GameMinutes)...)
+		}
+	}
+	return events
+}
+
+// grow: the shop's « Enfant / Adulte tout de suite » paid for (shop.give
+// sets grow_to): the Sim reaches that stage on its next turn, never younger.
+func (s *Sim) grow() []Event {
+	st := game.StageByID(s.growing)
+	s.growing = ""
+	if s.BornAt == 0 || s.age() >= st.From {
+		return nil
+	}
+	return s.ageTo(st)
+}

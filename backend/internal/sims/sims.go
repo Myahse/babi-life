@@ -202,6 +202,8 @@ type Sim struct {
 	purse *game.Purse
 	// pending: journal lines from deep inside an action (sims/childhood.go), written with the rest.
 	pending []Event
+	// growing: the stage bought in the shop (« tout de suite »), reached on this turn (life.go grow).
+	growing string
 	// Today: the account's day so far by source, and its limits (game/money.go), for the apps.
 	Today map[game.Income]game.Limit `json:"today,omitempty"`
 }
@@ -439,14 +441,14 @@ func (h *Handler) Routes(r chi.Router) {
 
 const simColumns = `id, first_name, last_name, gender, look, traits, aspiration,
 	home_city, home_commune, city, commune, needs, money, game_minutes,
-	origin, housing, loan, rent_arrears, career, career_level, performance, activity, apps, born_at, family, friends, gang, record, created_at, last_tick, furnished, stay, languages, auto_work, paused_at, pass_until, prestige, sect`
+	origin, housing, loan, rent_arrears, career, career_level, performance, activity, apps, born_at, family, friends, gang, record, created_at, last_tick, furnished, stay, languages, auto_work, paused_at, pass_until, prestige, sect, grow_to`
 
 // scanSim reads simColumns, then any extra columns selected after them into extra.
 func scanSim(row pgx.Row, extra ...any) (Sim, error) {
 	var s Sim
 	err := row.Scan(append([]any{&s.ID, &s.FirstName, &s.LastName, &s.Gender, &s.Look, &s.Traits, &s.Aspiration,
 		&s.HomeCity, &s.HomeCommune, &s.City, &s.Commune, &s.Needs, &s.Money, &s.GameMinutes,
-		&s.Origin, &s.Housing, &s.Loan, &s.RentArrears, &s.Career, &s.CareerLevel, &s.Performance, &s.Activity, &s.Apps, &s.BornAt, &s.Family, &s.Friends, &s.Gang, &s.Record, &s.CreatedAt, &s.lastTick, &s.Furnished, &s.Stay, &s.Languages, &s.AutoWork, &s.pausedAt, &s.PassUntil, &s.Prestige, &s.Sect}, extra...)...)
+		&s.Origin, &s.Housing, &s.Loan, &s.RentArrears, &s.Career, &s.CareerLevel, &s.Performance, &s.Activity, &s.Apps, &s.BornAt, &s.Family, &s.Friends, &s.Gang, &s.Record, &s.CreatedAt, &s.lastTick, &s.Furnished, &s.Stay, &s.Languages, &s.AutoWork, &s.pausedAt, &s.PassUntil, &s.Prestige, &s.Sect, &s.growing}, extra...)...)
 	return s, err
 }
 
@@ -982,6 +984,9 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 	if advance {
 		fresh = s.advance(time.Now(), newRand())
 	}
+	if s.growing != "" {
+		fresh = append(fresh, s.grow()...)
+	}
 	// Bets and loto tickets that are over pay out.
 	won, err := settle(ctx, tx, &s, due)
 	if err != nil {
@@ -1010,10 +1015,10 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 		UPDATE sims SET city = $2, commune = $3, needs = $4, money = $5, game_minutes = $6, last_tick = $7,
 		       home_city = $8, home_commune = $9, housing = $10, loan = $11, rent_arrears = $12,
 		       career = $13, career_level = $14, performance = $15, activity = $16, apps = $17,
-		       friends = $18, gang = $19, record = $20, look = $21, born_at = $22, family = $23, furnished = $24, stay = $25, paused_at = $26
+		       friends = $18, gang = $19, record = $20, look = $21, born_at = $22, family = $23, furnished = $24, stay = $25, paused_at = $26, grow_to = $27
 		WHERE id = $1`, s.ID, s.City, s.Commune, s.Needs, s.Money, s.GameMinutes, s.lastTick,
 		s.HomeCity, s.HomeCommune, s.Housing, s.Loan, s.RentArrears, s.Career, s.CareerLevel, s.Performance, s.Activity, s.Apps,
-		friendsOrEmpty(s.Friends), s.Gang, s.Record, s.Look, s.BornAt, s.Family, furnishedOrEmpty(s.Furnished), s.Stay, s.pausedAt)
+		friendsOrEmpty(s.Friends), s.Gang, s.Record, s.Look, s.BornAt, s.Family, furnishedOrEmpty(s.Furnished), s.Stay, s.pausedAt, s.growing)
 	tallied := queuePurse(b, auth.UserID(ctx), s.purse)
 	for _, ev := range fresh {
 		b.Queue(`INSERT INTO sim_events (sim_id, kind, text, money, game_time) VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at`, s.ID, ev.Kind, ev.Text, ev.Money, ev.GameTime)
