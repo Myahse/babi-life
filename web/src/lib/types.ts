@@ -118,6 +118,8 @@ export type Player = {
   /** In office (politics): « Présidente », « Maire de Cocody »; the tag of their gang. */
   title?: string
   crew?: string
+  /** Their family (the commune's players only): who pushes a baby's pram. */
+  family?: string
 }
 export type Invite = { id: string; from: string; fromName: string; placeId: string; interactionId: string; label: string; at: string }
 /** A soirée thrown by a player at home (backend sims/party.go): its lights over the house, the others in the commune come. */

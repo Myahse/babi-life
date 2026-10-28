@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { sceneDpr } from '../lib/device'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import * as THREE from 'three'
@@ -91,7 +92,7 @@ export function Neighbourhood(props: Props) {
     <Canvas
       orthographic
       shadows
-      dpr={[1, 2]}
+      dpr={sceneDpr}
       camera={{ position: [30, 32, 30], zoom: 30, near: -300, far: 600 }}
       style={{ background: sky, transition: 'background 1s' }}
       gl={{ antialias: true, preserveDrawingBuffer: true }}

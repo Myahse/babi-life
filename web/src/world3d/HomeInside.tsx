@@ -1,4 +1,5 @@
 import { SpotActions } from './SpotActions'
+import { sceneDpr } from '../lib/device'
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
@@ -426,7 +427,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
   const name = sim.firstName
   return (
     <div className="absolute inset-0">
-      <Canvas shadows dpr={[1, 2]} camera={{ position: [span * 0.55, span * 0.85, span * 0.95], fov: 42 }} style={{ background: night ? '#0b1026' : '#a9d3f0' }}>
+      <Canvas shadows dpr={sceneDpr} camera={{ position: [span * 0.55, span * 0.85, span * 0.95], fov: 42 }} style={{ background: night ? '#0b1026' : '#a9d3f0' }}>
         <Snapper />
         {import.meta.env.DEV && <DevCam spot={spot} where={where} />}
         <ChatFraming />
