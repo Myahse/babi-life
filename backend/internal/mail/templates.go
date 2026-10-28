@@ -75,3 +75,44 @@ func Reset(site, to, firstName, link string, minutes int) (Message, error) {
 	}
 	return Message{To: to, Name: firstName, Subject: p.Subject, Text: t, HTML: h, Tag: "mot-de-passe"}, nil
 }
+
+// Account: « comment te connecter », for someone who no longer knows: the
+// address and the pseudo of their account, whether it's Google or a
+// password (or both), and a link to choose a (new) password, good for minutes.
+func Account(site, to, firstName, username string, google, password bool, link string, minutes int) (Message, error) {
+	hello := "Bonjour,"
+	if firstName != "" {
+		hello = "Bonjour " + firstName + ","
+	}
+	paras := []string{hello, "Tu ne sais plus comment tu te connectes à Babi Life ? Voici ton compte."}
+	id := "Ton adresse e-mail : " + to + "."
+	if username != "" {
+		id += " Ton pseudo : " + username + "."
+	}
+	paras = append(paras, id)
+	switch {
+	case google && password:
+		paras = append(paras, "Tu peux entrer de deux façons : avec « Continuer avec Google » (le compte Google "+to+"), ou avec ton e-mail (ou ton pseudo) et ton mot de passe.")
+	case google:
+		paras = append(paras, "Tu t'es inscrit·e avec Google : sur l'écran de connexion, touche « Continuer avec Google » et choisis le compte Google "+to+".", "Tu préfères un mot de passe ? Le bouton t'en fait choisir un : ensuite tu pourras aussi entrer avec ton e-mail ou ton pseudo, sans Google.")
+	default:
+		paras = append(paras, "Tu entres avec ton e-mail (ou ton pseudo) et ton mot de passe. Tu l'as oublié ? Le bouton t'en fait choisir un nouveau.")
+	}
+	paras = append(paras, fmt.Sprintf("Le lien marche une seule fois, pendant %d minutes.", minutes))
+	p := Page{
+		Site:       site,
+		Subject:    "Babi Life : comment te connecter",
+		Preheader:  "Ton adresse, ton pseudo, et comment entrer dans Babi Life.",
+		Title:      "Ton compte",
+		Tagline:    "Ton compte",
+		Paragraphs: paras,
+		Button:     "Choisir mon mot de passe",
+		Link:       link,
+		Note:       "Tu n'as rien demandé ? Ignore cet e-mail : rien ne change, et personne ne peut entrer sans ce lien.",
+	}
+	h, t, err := p.Render()
+	if err != nil {
+		return Message{}, err
+	}
+	return Message{To: to, Name: firstName, Subject: p.Subject, Text: t, HTML: h, Tag: "compte"}, nil
+}

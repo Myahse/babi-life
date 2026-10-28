@@ -82,6 +82,10 @@ func (b *Brevo) Send(ctx context.Context, m Message) error {
 	if err != nil {
 		return fmt.Errorf("MAIL_FROM: %w", err)
 	}
+	// Brevo refuses a sender without a name, and MAIL_FROM is often a bare address.
+	if from.Name == "" {
+		from.Name = "Babi Life"
+	}
 	to := map[string]string{"email": m.To}
 	if m.Name != "" {
 		to["name"] = m.Name

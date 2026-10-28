@@ -16,11 +16,11 @@ export const CONTACT = {
 
 export type ContactLink = { id: keyof typeof CONTACT; label: string; href: string; shown: string }
 
-/** The ways to reach us that are filled in, as links. */
-export function contactLinks(subject = 'Pub dans Babi Life'): ContactLink[] {
+/** The ways to reach us that are filled in, as links (the WhatsApp message and the e-mail's subject by what it's about). */
+export function contactLinks(subject = 'Pub dans Babi Life', message = 'Bonjour, je veux mettre une pub dans Babi Life.'): ContactLink[] {
   const c = CONTACT
   const out: ContactLink[] = []
-  if (c.whatsapp) out.push({ id: 'whatsapp', label: 'WhatsApp', href: `https://wa.me/${c.whatsapp}?text=${encodeURIComponent(`Bonjour, je veux mettre une pub dans Babi Life.`)}`, shown: `+${c.whatsapp}` })
+  if (c.whatsapp) out.push({ id: 'whatsapp', label: 'WhatsApp', href: `https://wa.me/${c.whatsapp}?text=${encodeURIComponent(message)}`, shown: `+${c.whatsapp}` })
   if (c.email) out.push({ id: 'email', label: 'E-mail', href: `mailto:${c.email}?subject=${encodeURIComponent(subject)}`, shown: c.email })
   if (c.tiktok) out.push({ id: 'tiktok', label: 'TikTok', href: `https://www.tiktok.com/@${c.tiktok}`, shown: `@${c.tiktok}` })
   if (c.x) out.push({ id: 'x', label: 'X', href: `https://x.com/${c.x}`, shown: `@${c.x}` })

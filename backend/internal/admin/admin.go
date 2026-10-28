@@ -31,6 +31,10 @@ type Handler struct {
 	WA *WhatsApp
 	// E-mails of news (email.go); nil: not set up.
 	Mail *Emails
+	// Accounts sends someone how they sign in (auth.Handler.SendAccount), from Joueurs.
+	Accounts interface {
+		SendAccount(ctx context.Context, id string) error
+	}
 	// The players' ideas (the phone's Idées app): read and answered here.
 	Ideas *ideas.Handler
 }
@@ -53,6 +57,7 @@ func (h *Handler) Routes(r chi.Router) {
 		r.Post("/announcements", h.announce)
 		r.Post("/money", h.giveMoney)
 		r.Post("/users/{id}/tester", h.setTester)
+		r.Post("/users/{id}/identifiants", h.sendAccount)
 		r.Post("/testers/reset", h.resetTesters)
 		r.Get("/whatsapp", h.waStatus)
 		r.Post("/whatsapp", h.waSend)
@@ -116,11 +121,13 @@ func (h *Handler) stats(w http.ResponseWriter, r *http.Request) {
 
 // User is a player's account, with their Sim.
 type User struct {
-	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	Username  string    `json:"username"`
-	Email     string    `json:"email"`
-	Google    bool      `json:"google"`
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	Google   bool   `json:"google"`
+	// Password: signs in with a password too (or only).
+	Password  bool      `json:"password"`
 	CreatedAt time.Time `json:"createdAt"`
 	LastLogin time.Time `json:"lastLogin"`
 	Sims      int       `json:"sims"`
@@ -131,12 +138,13 @@ type User struct {
 	Tester    bool      `json:"tester"`
 }
 
-// users: every account, newest first, 50 a page (?q= searches name, username, e-mail; ?page=).
+// users: every account, newest first, 50 a page (?q= searches name, username, e-mail, and the Sims' names:
+// someone who forgot everything but their perso; ?page=).
 func (h *Handler) users(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
 	rows, err := h.DB.Query(r.Context(), `
-		SELECT u.id, u.name, COALESCE(u.username, ''), u.email, u.google_sub IS NOT NULL, u.created_at, u.last_login_at,
+		SELECT u.id, u.name, COALESCE(u.username, ''), u.email, u.google_sub IS NOT NULL, u.password_hash IS NOT NULL, u.created_at, u.last_login_at,
 			(SELECT count(*) FROM sims s WHERE s.user_id = u.id),
 			COALESCE(f.first_name || ' ' || f.last_name, ''), COALESCE(f.commune, ''), COALESCE(f.money, 0),
 			COALESCE(f.last_tick > now() - interval '5 minutes', false), u.tester,
@@ -144,6 +152,7 @@ func (h *Handler) users(w http.ResponseWriter, r *http.Request) {
 		FROM users u
 		LEFT JOIN LATERAL (SELECT * FROM sims s WHERE s.user_id = u.id ORDER BY s.created_at LIMIT 1) f ON true
 		WHERE $1 = '' OR u.name ILIKE '%' || $1 || '%' OR u.email ILIKE '%' || $1 || '%' OR COALESCE(u.username, '') ILIKE '%' || $1 || '%'
+			OR EXISTS (SELECT 1 FROM sims s WHERE s.user_id = u.id AND (s.first_name || ' ' || s.last_name) ILIKE '%' || $1 || '%')
 		ORDER BY u.created_at DESC LIMIT 50 OFFSET $2`, q, max(0, page)*50)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
@@ -154,7 +163,7 @@ func (h *Handler) users(w http.ResponseWriter, r *http.Request) {
 	total := 0
 	for rows.Next() {
 		var u User
-		if err := rows.Scan(&u.ID, &u.Name, &u.Username, &u.Email, &u.Google, &u.CreatedAt, &u.LastLogin, &u.Sims, &u.Sim, &u.Commune, &u.Money, &u.Online, &u.Tester, &total); err != nil {
+		if err := rows.Scan(&u.ID, &u.Name, &u.Username, &u.Email, &u.Google, &u.Password, &u.CreatedAt, &u.LastLogin, &u.Sims, &u.Sim, &u.Commune, &u.Money, &u.Online, &u.Tester, &total); err != nil {
 			httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 			return
 		}
@@ -418,4 +427,21 @@ func (h *Handler) setOdds(w http.ResponseWriter, r *http.Request) {
 	}
 	h.Log(r.Context(), "casino", "taux de retour, "+name+" : "+what)
 	h.casino(w, r)
+}
+
+// sendAccount: the team e-mails a player how they sign in (they forgot their address, their pseudo, Google or a password).
+func (h *Handler) sendAccount(w http.ResponseWriter, r *http.Request) {
+	if h.Accounts == nil {
+		httpx.Error(w, http.StatusServiceUnavailable, "l'e-mail n'est pas branché : BREVO_API_KEY et MAIL_FROM sur Render")
+		return
+	}
+	id := chi.URLParam(r, "id")
+	if err := h.Accounts.SendAccount(r.Context(), id); err != nil {
+		httpx.Error(w, http.StatusBadGateway, "e-mail pas parti : "+err.Error())
+		return
+	}
+	var email string
+	_ = h.DB.QueryRow(r.Context(), `SELECT email FROM users WHERE id::text = $1`, id).Scan(&email)
+	h.Log(r.Context(), "Identifiants envoyés", email[:min(3, len(email))]+"•••")
+	httpx.JSON(w, http.StatusOK, map[string]string{"text": "E-mail envoyé à " + email + " : comment se connecter, et un lien pour choisir un mot de passe (30 minutes)."})
 }

@@ -339,13 +339,14 @@ function ResetTesters({ k, onDone }: { k: string; onDone: () => void }) {
   )
 }
 
-type Player = { id: string; name: string; username: string; email: string; google: boolean; createdAt: string; lastLogin: string; sims: number; sim: string; commune: string; money: number; online: boolean; tester: boolean }
+type Player = { id: string; name: string; username: string; email: string; google: boolean; password: boolean; createdAt: string; lastLogin: string; sims: number; sim: string; commune: string; money: number; online: boolean; tester: boolean }
 
 function Players({ k }: { k: string }) {
   const [q, setQ] = useState('')
   const [page, setPage] = useState(0)
   const [data, setData] = useState<{ users: Player[]; total: number } | null>(null)
   const [e, setE] = useState<string | null>(null)
+  const [ok, setOk] = useState<string | null>(null)
   // Bumped after Djai are given, for the new amounts.
   const [version, setVersion] = useState(0)
   useEffect(() => {
@@ -359,10 +360,14 @@ function Players({ k }: { k: string }) {
       <ResetTesters k={k} onDone={() => setVersion((v) => v + 1)} />
       <Card>
         <Err e={e} />
+        <Ok t={ok} />
+        <p className="mb-3 text-xs text-[#6b7280]">
+          Quelqu'un ne sait plus avec quoi il s'est connecté ? Cherche son nom, son pseudo, son e-mail ou le nom de son perso, puis « Envoyer ses identifiants » : il reçoit son adresse, son pseudo, s'il entre avec Google ou un mot de passe, et un lien pour choisir un mot de passe.
+        </p>
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <div className="relative min-w-0 flex-1">
             <Search size={16} className="absolute top-1/2 left-3 -translate-y-1/2 text-[#9ca3af]" />
-            <Field className="!pl-9" placeholder="Chercher un nom, un pseudo, un e-mail…" value={q} onChange={(e) => (setQ(e.target.value), setPage(0))} />
+            <Field className="!pl-9" placeholder="Chercher un nom, un pseudo, un e-mail, un perso…" value={q} onChange={(e) => (setQ(e.target.value), setPage(0))} />
           </div>
           <span className="text-sm text-[#6b7280]">{nf(data?.total ?? 0)} comptes</span>
         </div>
@@ -391,6 +396,16 @@ function Players({ k }: { k: string }) {
                   </td>
                   <td className="py-2.5 pr-3 text-[#374151]">
                     {u.email} {u.google && <span className="ml-1 rounded bg-[#eef2ff] px-1.5 py-0.5 text-[10px] font-semibold text-[#4338ca]">Google</span>}
+                    {u.password && <span className="ml-1 rounded bg-[#f0fdf4] px-1.5 py-0.5 text-[10px] font-semibold text-[#15803d]">mot de passe</span>}
+                    {u.email.includes('@') && (
+                      <button
+                        className="ml-2 text-xs font-semibold text-[#ea580c] hover:underline"
+                        title="Lui envoyer par e-mail comment il se connecte, avec un lien pour choisir un mot de passe"
+                        onClick={() => (setE(null), setOk(null), call<{ text: string }>(`/admin/users/${u.id}/identifiants`, k, { method: 'POST', body: '{}' }).then((r) => setOk(r.text), (x: Error) => setE(x.message)))}
+                      >
+                        Envoyer ses identifiants
+                      </button>
+                    )}
                   </td>
                   <td className="py-2.5 pr-3">{u.sim ? `${u.sim} · ${u.commune}` : <span className="text-[#9ca3af]">pas de perso</span>}</td>
                   <td className="py-2.5 pr-3 text-right tabular-nums">{u.sim ? `${nf(u.money)} F` : '—'}</td>
