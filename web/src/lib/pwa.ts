@@ -5,7 +5,17 @@ import { homeScreenApp } from './launch'
 // Installable app: the service worker caches the shell and updates itself;
 // these hooks offer installation and tell when the network is gone.
 
-registerSW({ immediate: true })
+registerSW({
+  immediate: true,
+  // A new version: looked for every few minutes and each time the app comes back on screen (an app left
+  // open for days would otherwise wait for the browser's own daily check). Found, it installs itself.
+  onRegisteredSW(_url, reg) {
+    if (!reg) return
+    const check = () => void reg.update().catch(() => undefined)
+    setInterval(check, 5 * 60 * 1000)
+    document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && check())
+  },
+})
 // The page loaded fine: a later broken load may repair itself again (index.html).
 try {
   sessionStorage.removeItem('babi-repair')

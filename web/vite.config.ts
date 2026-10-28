@@ -25,7 +25,8 @@ export default defineConfig({
         scope: '/',
         display: 'standalone',
         orientation: 'portrait',
-        background_color: '#0f1230',
+        // The phone's own splash at launch: the loading screen's cream (components/Splash.tsx).
+        background_color: '#fff4e8',
         theme_color: '#0f1230',
         categories: ['games', 'entertainment'],
         icons: [
