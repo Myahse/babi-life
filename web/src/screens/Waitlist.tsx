@@ -26,6 +26,8 @@ type Done = { name: string; count: number; already: boolean }
 
 export function Waitlist({ form = false }: { form?: boolean }) {
   const navigate = useNavigate()
+  // The page's name in the tab and in search results.
+  useEffect(() => void (document.title = 'Babi Life · Joue à la vie à Abidjan, gratuit'), [])
   const world = useWorld((s) => s.world)
   const communes = world ? [...new Set(world.cities.flatMap((c) => c.communes.map((x) => x.name)))].sort((a, b) => a.localeCompare(b, 'fr')) : ABIDJAN
   const source = new URLSearchParams(location.search).get('src') ?? ''
