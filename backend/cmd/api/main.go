@@ -360,16 +360,23 @@ func main() {
 			r.Post("/me/adult", authH.ConfirmAdult)
 			r.Post("/me/push", pushes.Subscribe)
 			r.Delete("/me/push", pushes.Unsubscribe)
-			simsH.Routes(r)
-			shopH.Routes(r)
 			ideasH.Routes(r)
-			politicsH.Routes(r)
+			// The game itself: shut on the server until launch (auth.GameGate).
+			r.Group(func(r chi.Router) {
+				r.Use(auth.GameGate(pool, cfg.GameOpen))
+				simsH.Routes(r)
+				shopH.Routes(r)
+				politicsH.Routes(r)
+			})
 		})
 	})
 
 	srv := &http.Server{Addr: ":" + cfg.Port, Handler: r, ReadHeaderTimeout: 10 * time.Second}
 	go func() {
 		log.Printf("Babi Life API listening on :%s", cfg.Port)
+		if !cfg.GameOpen {
+			log.Println("Game shut until launch (GAME_OPEN not true): the wish list and the team's accounts only")
+		}
 		log.Printf("Sites allowed to call the API: %s", strings.Join(cfg.AllowedOrigins, ", "))
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatal(err)

@@ -19,6 +19,9 @@ type Config struct {
 	// DevLogin enables POST /api/v1/auth/dev so the game can be played locally
 	// without a Google client ID. Never enable it in production.
 	DevLogin bool
+	// GameOpen (GAME_OPEN=true) opens the game to every account on the server;
+	// until then only the wish list (making one's Sim) and the team's accounts.
+	GameOpen bool
 	// NewsFeeds are RSS feeds for the in-game "Infos" app (comma-separated);
 	// empty uses news.DefaultFeeds.
 	NewsFeeds []string
@@ -37,6 +40,7 @@ func Load() (Config, error) {
 		// (a typo or a setting saved without a restart can't shut it out).
 		AllowedOrigins: withSite(splitList(getenv("ALLOWED_ORIGINS", "http://localhost:5173"))),
 		DevLogin:       os.Getenv("DEV_LOGIN") == "true",
+		GameOpen:       os.Getenv("GAME_OPEN") == "true",
 		NewsFeeds:      splitList(os.Getenv("NEWS_FEEDS")),
 	}
 
