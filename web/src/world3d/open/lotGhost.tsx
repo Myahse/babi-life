@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
@@ -6,6 +6,7 @@ import type { Nav } from './nav'
 import type { Resolved } from './places'
 import { toLatLng, type Origin, type XZ } from './geo'
 import type { LotGhost as Ghost } from '../../store/lotPlace'
+import { LOT_CLIP } from './lotClip'
 
 // The lot one is about to buy (or move), drawn in the 3D world where the
 // view's middle is: beside its street and facing it, as the house will stand
@@ -43,6 +44,8 @@ export function LotGhost({ nav, origin, w, d, resolve, others, seeds, named, onG
   const ok = useRef(true)
   const fill = useMemo(() => new THREE.MeshBasicMaterial({ color: '#00b86b', transparent: true, opacity: 0.35, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -6 }), [])
   const edge = useMemo(() => new THREE.MeshBasicMaterial({ color: '#00b86b' }), [])
+  // Gone, nothing is hidden any more.
+  useEffect(() => () => void (LOT_CLIP.on.value = 0), [])
 
   useFrame(({ clock, camera }, dt) => {
     if (!controls) return
@@ -83,6 +86,10 @@ export function LotGhost({ nav, origin, w, d, resolve, others, seeds, named, onG
       }
       g.position.y = nav.heightAt(g.position.x, g.position.z)
       g.visible = true
+      // Where it can go: what will be cleared for it (its ground, as a bought lot's) goes from under it.
+      LOT_CLIP.on.value = ok.current ? 1 : 0
+      LOT_CLIP.at.value.set(g.position.x, g.position.z)
+      LOT_CLIP.r.value = Math.max(12, Math.hypot(w, d) / 2 + 3)
     }
     const colour = ok.current ? '#00b86b' : '#ff3d57'
     fill.color.set(colour)

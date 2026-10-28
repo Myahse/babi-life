@@ -28,6 +28,7 @@ import { lotAt } from './lotSpot'
 import { APPRENTI, CAR_COLORS, GBAKA_DOOR, Vehicle, type VehicleKind } from '../vehicles'
 import { Walker, type WalkNav } from '../Walker'
 import { LotGhost } from './lotGhost'
+import { lotClip } from './lotClip'
 import { useLotPlace } from '../../store/lotPlace'
 import { homeSpotsOf } from '../homeSpots'
 import { LotGround, Zones } from '../build/Zones'
@@ -303,6 +304,10 @@ export function makeWorldMaterials() {
   m.walls.userData.litShare = windowsByHour(m.walls)
   weather(m.walls, 'walls')
   weather(m.shop, 'walls')
+  // A lot being set: what will be cleared for it goes from under it at once (lotClip.ts).
+  for (const k of ['walls', 'inst', 'entrance', 'shop', 'house', 'trim', 'roofs', 'tin', 'contact'] as const) lotClip(m[k], 'buildings')
+  lotClip(m.bark, 'instances')
+  lotClip(m.leaves, 'instances')
   return m
 }
 
@@ -698,6 +703,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         g.setAttribute('uv', new THREE.BufferAttribute(a.uv, 2))
         g.setAttribute('normal', new THREE.BufferAttribute(a.normal, 3))
         if (a.color) g.setAttribute('color', new THREE.BufferAttribute(a.color, a.colorSize ?? 3))
+        if (a.lotBc) g.setAttribute('lotBc', new THREE.BufferAttribute(a.lotBc, 3))
         g.setIndex(new THREE.BufferAttribute(a.index, 1))
         g.computeBoundingSphere()
         geos[name] = g
