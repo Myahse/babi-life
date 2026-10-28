@@ -10,7 +10,7 @@ import type { Look } from '../lib/types'
 // are drawn deep in many different scenes.
 
 /** Someone you can talk to. `doing`: what they're at when you come up (« en train de danser »). */
-export type Npc = { id: string; name: string; gender: 'femme' | 'homme'; seed: number; look: Look; doing?: string }
+export type Npc = { id: string; name: string; gender: 'femme' | 'homme'; seed: number; look: Look; doing?: string; /** One's own papa or maman, at the family's home (backend sims/parents.go). */ kin?: 'papa' | 'maman' }
 
 let handler: ((npc: Npc) => void) | null = null
 /** The game screen listens; the returned function stops it. */
