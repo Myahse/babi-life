@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { ArrowLeft, Check, Eye, Upload } from 'lucide-react'
 import { useWorld } from '../store/world'
 import { contactLinks } from '../lib/contact'
+import { keyOpen, useFeatures } from '../lib/features'
 
 // Babi Pub (/pub): the ads on the game's billboards. An advertiser contacts
 // Babi Life first (WhatsApp, e-mail, TikTok, X… : lib/contact.ts) and agrees
@@ -28,6 +29,13 @@ export type Status = {
   communes: string[]
   starts: string
   ends: string
+  /** On its first day from, on its last day until (« 08:00 », Abidjan time). */
+  startTime?: string
+  endTime?: string
+  places?: Place[]
+  link?: string
+  appName?: string
+  icon?: string
   status: 'pending' | 'approved' | 'rejected' | 'paused'
   paid: boolean
   price: number
@@ -35,6 +43,21 @@ export type Status = {
   views: number
   byCommune: Record<string, number>
   createdAt: string
+}
+
+/** Where an ad shows (backend ads.Places). */
+export type Place = 'panneaux' | 'tikitoko' | 'babigram' | 'telephone'
+export const PLACES: Record<Place, [string, string]> = {
+  panneaux: ['Les panneaux de la rue', "Sur les panneaux, les sucettes et les écrans LED des communes choisies."],
+  tikitoko: ['Entre les vidéos de Tikitoko', 'En plein écran, entre les vidéos, avec ton bouton « En savoir plus ».'],
+  babigram: ['Dans le fil de Babigram', 'Un post « Sponsorisé » dans le fil, avec ton bouton « En savoir plus ».'],
+  telephone: ['Ton appli sur le téléphone', "Ton icône sur l'écran d'accueil du téléphone du jeu : un toucher ouvre ton appli ou ton site."],
+}
+/** « du 1 nov. à 08:00 au 15 nov. à 20:00 ». */
+export const when = (s: Pick<Status, 'starts' | 'ends' | 'startTime' | 'endTime'>) => {
+  const from = s.startTime && s.startTime !== '00:00' ? ` à ${s.startTime}` : ''
+  const to = s.endTime && s.endTime !== '24:00' ? ` à ${s.endTime}` : ''
+  return `du ${fr(s.starts)}${from} au ${fr(s.ends)}${to}`
 }
 
 export const STATUS: Record<Status['status'], [string, string]> = {
@@ -154,6 +177,18 @@ function SendForm({ code, label }: { code: string; label: string }) {
   const [everywhere, setEverywhere] = useState(true)
   const [starts, setStarts] = useState(today())
   const [ends, setEnds] = useState(plusDays(today(), 30))
+  const [startTime, setStartTime] = useState('00:00')
+  const [endTime, setEndTime] = useState('23:59')
+  // Where: the billboards, and (features « pubs-applis ») Tikitoko, Babigram, the phone.
+  const feats = useFeatures()
+  const apps = keyOpen(feats, 'pubs-applis')
+  const [places, setPlaces] = useState<Place[]>(['panneaux'])
+  const [link, setLink] = useState('')
+  const [appName, setAppName] = useState('')
+  const [icon, setIcon] = useState<File | null>(null)
+  const iconPreview = useMemo(() => (icon ? URL.createObjectURL(icon) : null), [icon])
+  useEffect(() => () => void (iconPreview && URL.revokeObjectURL(iconPreview)), [iconPreview])
+  const onPhone = places.includes('telephone')
   const [progress, setProgress] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [sent, setSent] = useState<string | null>(null)
@@ -165,8 +200,18 @@ function SendForm({ code, label }: { code: string; label: string }) {
     setError(null)
     if (!file) return setError('Choisis ton affiche ou ta vidéo.')
     if (!everywhere && where.length === 0) return setError('Choisis au moins une commune, ou « Partout ».')
+    if (places.length === 0) return setError('Choisis où passe ta pub.')
+    if (onPhone && (!link || !appName || !icon)) return setError("Pour le téléphone : le lien, le nom et l'icône de ton appli.")
     try {
       setProgress(0)
+      // The phone's icon first (a small square image), then the ad itself.
+      let iconKey = ''
+      if (onPhone && icon) {
+        const up = await call<{ key: string; url: string }>('/ads/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, type: icon.type, size: icon.size }) })
+        const res = await fetch(up.url, { method: 'PUT', headers: { 'Content-Type': icon.type }, body: icon })
+        if (!res.ok) throw new Error("L'envoi de l'icône a échoué : réessaie.")
+        iconKey = up.key
+      }
       const up = await call<{ key: string; url: string }>('/ads/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, type: file.type, size: file.size }) })
       // Straight into the bucket, with the progress shown.
       await new Promise<void>((resolve, reject) => {
@@ -181,7 +226,7 @@ function SendForm({ code, label }: { code: string; label: string }) {
       const c = await call<{ token: string }>('/ads/campaigns', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, advertiser, contact, title, key: up.key, type: file.type, communes: everywhere ? [] : where, starts, ends }),
+        body: JSON.stringify({ code, advertiser, contact, title, key: up.key, type: file.type, communes: everywhere ? [] : where, starts, ends, startTime, endTime, places, link, appName: onPhone ? appName : '', iconKey }),
       })
       setSent(c.token)
     } catch (err) {
@@ -267,6 +312,56 @@ function SendForm({ code, label }: { code: string; label: string }) {
             <input type="date" className="input text-base" value={ends} min={starts} max={plusDays(starts, 92)} onChange={(e) => setEnds(e.target.value)} required />
           </label>
         </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="flex flex-col gap-1 text-[15px] font-extrabold">
+            À partir de (le premier jour)
+            <input type="time" className="input text-base" value={startTime} onChange={(e) => setStartTime(e.target.value)} required />
+          </label>
+          <label className="flex flex-col gap-1 text-[15px] font-extrabold">
+            Jusqu'à (le dernier jour)
+            <input type="time" className="input text-base" value={endTime} onChange={(e) => setEndTime(e.target.value)} required />
+          </label>
+        </div>
+        <p className="-mt-2 text-[13px] font-bold opacity-75">
+          Ta pub passe {when({ starts, ends, startTime, endTime })} (heure d'Abidjan), sans arrêt entre les deux.
+        </p>
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1 text-[15px] font-extrabold">Dans le jeu, où ?</legend>
+          {(Object.keys(PLACES) as Place[])
+            .filter((p) => p === 'panneaux' || apps)
+            .map((p) => (
+              <label key={p} className="flex items-start gap-2 text-[15px] font-bold">
+                <input type="checkbox" className="mt-0.5 h-5 w-5 accent-[var(--rust)]" checked={places.includes(p)} onChange={(e) => setPlaces((l) => (e.target.checked ? [...l, p] : l.filter((x) => x !== p)))} />
+                <span>
+                  {PLACES[p][0]}
+                  <span className="block text-[13px] font-bold opacity-75">{PLACES[p][1]}</span>
+                </span>
+              </label>
+            ))}
+        </fieldset>
+        <label className="flex flex-col gap-1.5 text-[15px] font-extrabold">
+          Ton lien {onPhone ? '' : '(facultatif)'}
+          <span className="text-[13px] font-bold opacity-75">Ton site, ta page, ton appli sur le Play Store ou l'App Store : un toucher sur « En savoir plus » l'ouvre.</span>
+          <input type="url" className="input text-base" placeholder="https://…" value={link} onChange={(e) => setLink(e.target.value)} required={onPhone} maxLength={300} />
+        </label>
+        {onPhone && (
+          <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+            <label className="flex flex-col gap-1.5 text-[15px] font-extrabold">
+              Le nom de ton appli sous l'icône
+              <input className="input text-base" placeholder="ex. Garba Express" value={appName} onChange={(e) => setAppName(e.target.value)} required maxLength={18} />
+            </label>
+            <label className="flex cursor-pointer items-center gap-3 text-[15px] font-extrabold">
+              <span className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-[13px] bg-[var(--wall)]">
+                {iconPreview ? <img src={iconPreview} alt="" className="h-full w-full object-cover" /> : <Upload size={20} />}
+              </span>
+              <span>
+                Ton icône
+                <span className="block text-[13px] font-bold opacity-75">Image carrée, PNG ou JPG</span>
+              </span>
+              <input type="file" className="hidden" accept="image/png,image/jpeg,image/webp" onChange={(e) => setIcon(e.target.files?.[0] ?? null)} />
+            </label>
+          </div>
+        )}
         <p className="text-[13px] font-bold opacity-80">Pas de tabac, pas de paris pour les mineurs, rien de choquant : on refuse ce qui ne passerait pas sur un vrai panneau d'Abidjan.</p>
         {error && (
           <p className="bg-[#f6d9cf] px-3 py-2 text-sm font-bold text-[var(--rust)]" role="alert">
@@ -356,8 +451,19 @@ export function PubFollow({ token }: { token: string }) {
             )}
             {s.note && <p className="mt-3 bg-[var(--cream)] px-3 py-2 text-[15px] font-bold">{s.note}</p>}
             <p className="mt-3 text-[15px] font-bold">
-              Du {fr(s.starts)} au {fr(s.ends)} · {s.communes.length ? s.communes.map(name).join(', ') : 'toutes les communes'}
+              {when(s).replace(/^du/, 'Du')} · {s.communes.length ? s.communes.map(name).join(', ') : 'toutes les communes'}
             </p>
+            <p className="mt-1 text-[15px] font-bold">{(s.places?.length ? s.places : (['panneaux'] as Place[])).map((p) => PLACES[p][0]).join(' · ')}</p>
+            {s.link && (
+              <p className="mt-1 truncate text-[14px] font-bold">
+                Lien : <a href={s.link} target="_blank" rel="noopener noreferrer" className="underline">{s.link}</a>
+              </p>
+            )}
+            {s.icon && (
+              <p className="mt-2 flex items-center gap-2 text-[14px] font-bold">
+                <img src={s.icon} alt="" className="h-10 w-10 rounded-[9px] object-cover" /> {s.appName}
+              </p>
+            )}
             <p className="mt-4 flex items-center gap-2 text-[22px] font-extrabold">
               <Eye /> {s.views.toLocaleString('fr-FR')} vue{s.views > 1 ? 's' : ''}
             </p>
@@ -372,7 +478,7 @@ export function PubFollow({ token }: { token: string }) {
                   ))}
               </ul>
             )}
-            <p className="mt-3 text-[13px] font-bold opacity-75">Une vue : un joueur est passé devant un panneau pendant que ta pub y était. Personne n'est suivi : on compte seulement, par commune et par jour.</p>
+            <p className="mt-3 text-[13px] font-bold opacity-75">Une vue : un joueur a vu ta pub, sur un panneau, entre ses vidéos, dans son fil ou sur son téléphone. Personne n'est suivi : on compte seulement, par commune et par jour.</p>
           </div>
         </div>
       )}

@@ -298,6 +298,7 @@ func main() {
 		r.Get("/ads/invite/{code}", pub.Invite)
 		r.Get("/ads/admin/invites", pub.AdminInvites)
 		r.Post("/ads/admin/invites", pub.AdminInvite)
+		r.Post("/ads/admin/invites/{code}/revoke", pub.AdminRevoke)
 		r.Post("/ads/upload", pub.Upload)
 		r.Post("/ads/campaigns", pub.Create)
 		r.Get("/ads/campaigns/{token}", pub.Follow)

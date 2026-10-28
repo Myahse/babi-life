@@ -97,6 +97,7 @@ import { DefiButton, DefiSheet, defiLook, defiOf, PRACTICE, type DefiKind } from
 import { BolideApp } from './BolideApp'
 import { Tutorial, adultChapterDue, beginner, openTutorial, useTutorialAsked } from '../components/Tutorial'
 import { haptic, onBack } from '../lib/native'
+import { openAd, seen, useAds } from '../lib/ads'
 import { drive, getIn, gps, parkedNow, parkIn, setParked, startDrive, stopDrive, topSpeed, useDriving, useParked, type Driven } from '../world3d/drive'
 import { FlightView } from '../world3d/FlightView'
 import { MetroView } from '../world3d/MetroView'
@@ -1870,6 +1871,8 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
   // (An app an update hasn't opened yet doesn't show, even installed: lib/features.ts.)
   const feats = useFeatures()
   const has = (id: string) => ownPhone && (sim.apps?.includes(id) ?? false) && keyOpen(feats, `app:${id}`)
+  // Babi Pub: the advertisers' apps on the home screen (features « pubs-applis »), with their icon.
+  const adApps = useAds(ownPhone && keyOpen(feats, 'pubs-applis') ? sim.commune : undefined, 'telephone').filter((ad) => ad.icon && ad.appName && ad.link)
   // Apps from the store, once installed. The ride apps open the map to pick where to go.
   const STORE_APPS: { id: string; label: string; open: () => void }[] = [
     // Before 12 the Store is there, locked: it says when the phone comes.
@@ -1994,6 +1997,16 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                         {a.id === 'golvo' && delivery && <Badge />}
                       </span>
                       <span className="w-full truncate text-center text-[11px] font-semibold text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.45)]">{a.label}</span>
+                    </button>
+                  ))}
+                  {/* Babi Pub: the advertisers' apps and sites (their icon, their name); a tap opens their link, outside the game. */}
+                  {adApps.map((ad) => (
+                    <button key={ad.id} onClick={() => (seen(sim.commune, ad.id), openAd(ad))} className="flex min-w-0 flex-col items-center gap-1 transition-transform active:scale-90">
+                      <span className="relative block h-14 w-14 overflow-hidden rounded-[13px] bg-white shadow-[0_2px_6px_rgba(0,0,0,0.25)]">
+                        <img src={ad.icon} alt="" draggable={false} className="h-full w-full object-cover" />
+                        <span className="absolute right-0.5 bottom-0.5 rounded bg-black/55 px-1 text-[8px] leading-[12px] font-extrabold text-white">Pub</span>
+                      </span>
+                      <span className="w-full truncate text-center text-[11px] font-semibold text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.45)]">{ad.appName}</span>
                     </button>
                   ))}
                 </div>

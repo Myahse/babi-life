@@ -51,3 +51,49 @@ func TestShows(t *testing.T) {
 		t.Fatal("the last day doesn't show")
 	}
 }
+
+func TestShowsAtHours(t *testing.T) {
+	s, e := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC), time.Date(2026, 11, 3, 0, 0, 0, 0, time.UTC)
+	at := func(d, h int) time.Time { return time.Date(2026, 11, d, h, 0, 0, 0, time.UTC) }
+	// From 08:00 on the 1st to 20:00 on the 3rd.
+	for _, c := range []struct {
+		t    time.Time
+		want bool
+	}{{at(1, 7), false}, {at(1, 8), true}, {at(2, 2), true}, {at(3, 19), true}, {at(3, 20), false}} {
+		if got := ShowsAt("approved", true, nil, s, e, 8*60, 20*60, "cocody", c.t); got != c.want {
+			t.Fatalf("%v: %v, want %v", c.t, got, c.want)
+		}
+	}
+}
+
+func TestCampaignPlaces(t *testing.T) {
+	today := time.Date(2026, 10, 16, 15, 0, 0, 0, time.UTC)
+	base := Campaign{Advertiser: "Garba Chez Tanti", Contact: "07 07 07 07 07", Title: "Le garba", Key: "ads/2026-10/x.jpg", Type: "image/jpeg", Starts: "2026-10-16", Ends: "2026-11-15"}
+	c := base
+	if _, _, err := c.clean(today); err != nil || len(c.Places) != 1 || c.Places[0] != "panneaux" {
+		t.Fatalf("default places: %v %v", c.Places, err)
+	}
+	c = base
+	c.Places, c.Link, c.AppName, c.IconKey, c.StartTime, c.EndTime = []string{"telephone", "tikitoko"}, "https://garba.example", "Garba", "ads/2026-10/i.png", "08:00", "20:00"
+	if _, _, err := c.clean(today); err != nil {
+		t.Fatal(err)
+	}
+	if minutes(c.StartTime, 0) != 480 || minutes("", 24*60) != 1440 || hhmm(1440) != "24:00" {
+		t.Fatal("hours")
+	}
+	bad := []func(c *Campaign){
+		func(c *Campaign) { c.Places = []string{"radio"} },
+		func(c *Campaign) { c.Places = []string{"telephone"} },
+		func(c *Campaign) { c.Places, c.Link = []string{"telephone"}, "https://x.example" },
+		func(c *Campaign) { c.Link = "javascript:alert(1)" },
+		func(c *Campaign) { c.StartTime = "25:00" },
+		func(c *Campaign) { c.Ends, c.StartTime, c.EndTime = c.Starts, "20:00", "08:00" },
+	}
+	for i, f := range bad {
+		c := base
+		f(&c)
+		if _, _, err := c.clean(today); err == nil {
+			t.Fatalf("bad campaign %d accepted: %+v", i, c)
+		}
+	}
+}

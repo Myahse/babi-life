@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { BadgeCheck, Bookmark, Camera, ChevronLeft, Ellipsis, Flag, Grid3x3, Heart, Home as HomeIcon, MapPin, MessageCircle, RectangleVertical, Search, Send, Square, SquarePlus, Trash2, X } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
 import type { Chat, GramAccount, GramActivity, GramFound, GramPost, GramProfile, Photo as GalleryPhoto, Sim, TikiComment } from '../lib/types'
@@ -9,6 +9,9 @@ import { whereabouts } from '../world3d/whereabouts'
 import { usePhotoSrc } from './CameraView'
 import { Stories } from './Stories'
 import type { Act } from './phoneApps'
+import { AD_EVERY, GramAd, withAds } from '../components/AdSlots'
+import { useAds } from '../lib/ads'
+import { keyOpen, useFeatures } from '../lib/features'
 import { accountLook, bake, cssFilter, FILTERS, findFilter, keepPicture, NpcPhoto, ratioOf, VIGNETTE } from './BabigramArt'
 
 /**
@@ -161,6 +164,10 @@ function Feed({ sim, source, nav, empty, top }: { sim: Sim; source: Source; nav:
   const [sharing, setSharing] = useState<GramPost | null>(null)
   const [menu, setMenu] = useState<GramPost | null>(null)
   const box = useRef<HTMLDivElement>(null)
+  // Babi Pub: a sponsored post every few in the feed (features « pubs-applis »).
+  const feats = useFeatures()
+  const ads = useAds(!given && keyOpen(feats, 'pubs-applis') ? sim.commune : undefined, 'babigram')
+  const items = useMemo(() => posts && withAds(posts, ads, AD_EVERY.babigram), [posts, ads])
   useEffect(() => {
     if (given) return
     api
@@ -195,9 +202,13 @@ function Feed({ sim, source, nav, empty, top }: { sim: Sim; source: Source; nav:
     <div className="absolute inset-0">
       <div ref={box} className="h-full overflow-y-auto overscroll-contain">
         {top}
-        {posts?.map((p) => (
+        {items?.map((it) => {
+          if ('ad' in it) return <GramAd key={it.key} ad={it.ad} commune={sim.commune} />
+          const p = it.post
+          return (
           <Card key={p.id} post={p} onLike={(on) => like(p, on)} onSave={() => save(p)} onFollow={() => follow(p, true)} onComments={() => setComments(p)} onShare={() => setSharing(p)} onMenu={() => setMenu(p)} onProfile={() => nav({ kind: 'profile', id: p.account.id })} />
-        ))}
+          )
+        })}
         {posts?.length === 0 && <p className="px-10 py-16 text-center text-sm font-bold text-black/45">{empty}</p>}
         {posts === null && !error && <CardSkeleton />}
         {error && <p className="px-10 py-16 text-center text-sm font-bold text-[#d81b3f]">{error}</p>}
