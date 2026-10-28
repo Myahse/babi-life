@@ -45,7 +45,8 @@ export function Arrival({ commune, firstName, onEnd }: { commune: string; firstN
     return () => ((gone = true), clearInterval(tick), clearTimeout(go))
   }, [part])
   useEffect(() => {
-    if (part !== 'title') return
+    // (In development, a capture can hold it: globalThis.__holdArrival.)
+    if (part !== 'title' || (import.meta.env.DEV && (globalThis as { __holdArrival?: boolean }).__holdArrival)) return
     const k = setTimeout(() => setPart('awa'), 3200)
     return () => clearTimeout(k)
   }, [part])
@@ -106,7 +107,11 @@ export function Arrival({ commune, firstName, onEnd }: { commune: string; firstN
           </span>
         </button>
       ) : null}
-      <video ref={video} src="/video/akwaba.mp4" poster="/video/akwaba.jpg" playsInline preload="auto" className={part === 'watch' ? 'h-full max-h-[100dvh] w-auto' : 'hidden'} onEnded={end} />
+      {/* H.264 for most; WebM for the browsers without it */}
+      <video ref={video} poster="/video/akwaba.jpg" playsInline preload="auto" className={part === 'watch' ? 'h-full max-h-[100dvh] w-auto' : 'hidden'} onEnded={end}>
+        <source src="/video/akwaba.mp4" type="video/mp4" />
+        <source src="/video/akwaba.webm" type="video/webm" />
+      </video>
     </div>
   )
 }

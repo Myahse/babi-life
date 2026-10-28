@@ -123,7 +123,7 @@ export type Invite = { id: string; from: string; fromName: string; placeId: stri
 /** A soirée thrown by a player at home (backend sims/party.go): its lights over the house, the others in the commune come. */
 export type Soiree = { id: string; host: string; hostName: string; theme: string; title: string; city: string; commune: string; ends: string; guests: number }
 
-export type Around = { players: Player[]; friends: Player[]; invites: Invite[]; /** Friend requests waiting for an answer. */ requests?: Player[]; /** Players in the game right now, everywhere. */ online?: number; /** A game of dames waiting for an answer, or going on. */ dames?: DameInvite | null; /** A game of 8 américain waiting for an answer, or going on. */ huit?: DameInvite | null; /** The soirées going on in the commune. */ parties?: Soiree[] }
+export type Around = { /** Connected now, in the commune (the only ones shown). */ players: Player[]; /** Played in the commune lately (the count « ici »). */ here?: number; friends: Player[]; invites: Invite[]; /** Friend requests waiting for an answer. */ requests?: Player[]; /** Players in the game right now, everywhere. */ online?: number; /** A game of dames waiting for an answer, or going on. */ dames?: DameInvite | null; /** A game of 8 américain waiting for an answer, or going on. */ huit?: DameInvite | null; /** The soirées going on in the commune. */ parties?: Soiree[] }
 /** Les dames (backend sims/dames.go): a move, the squares (0–49) it goes through and the pieces it takes. */
 export type DamesMove = { path: number[]; taken?: number[] }
 export type DameSide = { id?: string; name: string; npc?: boolean }
