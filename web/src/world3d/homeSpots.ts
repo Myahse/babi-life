@@ -163,9 +163,43 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
   }
   // A baby's things are done on the floor in front of a piece, the mother kneeling with it (ActionProps):
   // the biberon, the bouillie, the rattle, the cuddle and the little accidents in front of the sofa (or the bed), the bath in front of the shower.
-  // (Turned away from the piece, into the room: whoever is with the baby kneels there, not in a wall — the natte lies along one.)
-  const away = (s: HomeSpot) => (Math.hypot(s.from[0] - s.at[0], s.from[1] - s.at[1]) > 0.1 ? Math.atan2(s.from[0] - s.at[0], s.from[1] - s.at[1]) : Math.atan2(center[0] - s.from[0], center[1] - s.from[1]))
-  const onFloor = (s: HomeSpot): HomeSpot => ({ at: s.from, from: s.from, y: 0, rot: away(s), pose: 'busy', lying: false, wall: s.wall })
+  // The floor by the piece, inside the house, with room for whoever is with the baby: the place in front
+  // of a natte isn't checked against the walls (one sleeps on it), and in a small house it was outside
+  // them. Turned away from the piece, into the room.
+  const toLot = (p: XZ): XZ => [(p[0] - center[0]) * c - (p[1] - center[1]) * s, (p[0] - center[0]) * s + (p[1] - center[1]) * c]
+  const free = (u: number, v: number) => Math.abs(u) < w / 2 - 0.3 && Math.abs(v) < d / 2 - 0.3 && !wallAt(u, v) && !under.has(`${Math.floor(u + w / 2)},${Math.floor(v + d / 2)}`)
+  // Inside: a wall somewhere on all four sides.
+  const inside = (u: number, v: number) =>
+    [[1, 0], [-1, 0], [0, 1], [0, -1]].every(([du, dv]) => {
+      for (let k = 0.5; k < 8; k += 0.5) if (wallAt(u + du * k, v + dv * k)) return true
+      return false
+    })
+  // Room for a body round it.
+  const clear = (u: number, v: number) => [[0, 0], [0.3, 0], [-0.3, 0], [0, 0.3], [0, -0.3]].every(([du, dv]) => free(u + du, v + dv)) && inside(u, v)
+  // Strict: room round the baby, whoever kneels in front and stands a step aside (as BabyMess places them);
+  // in a shack of three steps across, at least the baby's place and the one kneeling in front.
+  const roomy = (u: number, v: number, a: number, strict: boolean) => {
+    const [sa, ca] = [Math.sin(a), Math.cos(a)]
+    const at = (x: number, z: number): XZ => [u + x * ca + z * sa, v - x * sa + z * ca]
+    if (!strict) return [at(0, 0), at(0, 0.45), at(0, 0.7)].every(([pu, pv]) => free(pu, pv) && inside(pu, pv))
+    return [at(0, 0), at(0, 0.5), at(0.35, 0.55)].every(([pu, pv]) => clear(pu, pv))
+  }
+  const onFloor = (s: HomeSpot): HomeSpot => {
+    const [pu, pv] = toLot(s.at)
+    const tries: XZ[] = [toLot(s.from)]
+    for (const r of [0.5, 0.8, 1.1, 1.4, 1.8]) for (let i = 0; i < 16; i++) tries.push([pu + Math.sin((i * Math.PI) / 8) * r, pv + Math.cos((i * Math.PI) / 8) * r])
+    for (const strict of [true, false])
+      for (const [u, v] of tries) {
+        const away = Math.hypot(u - pu, v - pv) > 0.1 ? Math.atan2(u - pu, v - pv) : 0
+        // Turned away from the piece; where it's too tight, any way round that leaves room.
+        for (const a of strict ? [away] : [0, 1, 2, 3, 4, 5, 6, 7].map((i) => away + (i * Math.PI) / 4)) {
+          if (!roomy(u, v, a, strict)) continue
+          const at = toWorld(u, v)
+          return { at, from: at, y: 0, rot: rot0 + a, pose: 'busy', lying: false, wall: false }
+        }
+      }
+    return { at: s.from, from: s.from, y: 0, rot: s.rot, pose: 'busy', lying: false, wall: s.wall }
+  }
   const seat = out['call-family'] ?? out.sleep
   if (seat) for (const id of ['biberon', 'bouillie', 'hochet', 'calin', 'caca', 'pipi', 'vomir', 'pleurer']) out[id] ??= onFloor(seat)
   // (Crying: the fists to the eyes.)

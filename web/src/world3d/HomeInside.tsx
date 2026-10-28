@@ -348,7 +348,8 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
   // Where to walk to (a tap on the floor, a floor's button), and on which floor.
   const [tapped, setTapped] = useState<{ at: XZ; level: number } | null>(null)
   useEffect(() => setTapped(null), [interactionId])
-  const where = useRef<XZ>(gate)
+  // (Come in while doing something already, the app just opened: there already, not walking from the gate.)
+  const where = useRef<XZ>(spot ? spot.from : gate)
   const way = useMemo<P[]>(() => {
     const to = spot ? { at: spot.from, level: 0 } : tapped
     const from = where.current
@@ -523,16 +524,21 @@ function FocusOn({ at }: { at: [number, number, number] | null }) {
   const camera = useThree((s) => s.camera)
   const off = useMemo(() => new THREE.Spherical(), [])
   const v = useMemo(() => new THREE.Vector3(), [])
-  useFrame((_, dt) => {
+  // When the action began: the camera comes over it for a moment, then it's the player's again (zoom, turn).
+  const began = useRef({ key: '', t: 0 })
+  useFrame((state, dt) => {
     if (!controls) return
+    const key = at ? at.join(',') : ''
+    if (key !== began.current.key) began.current = { key, t: state.clock.elapsedTime }
+    const settling = !!at && state.clock.elapsedTime - began.current.t < 2.5
     const t = controls.target
     const k = 1 - Math.exp(-dt * 3)
     const [gx, gy, gz] = at ?? [0, 0, 0]
     const d = [(gx - t.x) * k, (gy - t.y) * k, (gz - t.z) * k]
     off.setFromVector3(v.subVectors(camera.position, t))
     // From above, over the walls, near enough to see the baby's face (never nearer than the player put it).
-    const far = at ? Math.max(0, off.radius - 6) * k : 0
-    const up = at ? Math.max(0, off.phi - 0.38) * k : 0
+    const far = settling ? Math.max(0, off.radius - 6) * k : 0
+    const up = settling ? Math.max(0, off.phi - 0.38) * k : 0
     if (Math.abs(d[0]) + Math.abs(d[1]) + Math.abs(d[2]) + far + up < 1e-4) return
     t.set(t.x + d[0], t.y + d[1], t.z + d[2])
     off.radius -= far
