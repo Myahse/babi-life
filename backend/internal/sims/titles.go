@@ -19,7 +19,20 @@ func (h *Handler) titles(ctx context.Context, list []Player) {
 		ids[i] = p.ID
 		at[p.ID] = i
 	}
-	rows, err := h.DB.Query(ctx, `SELECT sim_id, office FROM offices WHERE until > now() AND sim_id = ANY($1::uuid[]) ORDER BY office`, ids)
+	// The game's own account (admin: « Compte officiel »): its badge before any office.
+	rows, err := h.DB.Query(ctx, `SELECT s.id FROM sims s JOIN users u ON u.id = s.user_id WHERE u.official AND s.id = ANY($1::uuid[])`, ids)
+	if err == nil {
+		for rows.Next() {
+			var id string
+			if rows.Scan(&id) == nil {
+				if i, ok := at[id]; ok {
+					list[i].Title = "Babi Life · Officiel ✓"
+				}
+			}
+		}
+		rows.Close()
+	}
+	rows, err = h.DB.Query(ctx, `SELECT sim_id, office FROM offices WHERE until > now() AND sim_id = ANY($1::uuid[]) ORDER BY office`, ids)
 	if err == nil {
 		for rows.Next() {
 			var id, office string

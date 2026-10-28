@@ -267,7 +267,7 @@ export const api = {
   /** La boutique (backend shop/): the packs, and the account's purchases. */
   shop: (id: string) => request<ShopView>(`/sims/${id}/shop`),
   /** A pack or an item bought: the payment opened at GeniusPay, its page to go to. */
-  buy: (id: string, what: { pack?: string; item?: string }) => post<{ id: string; url: string }>(`/sims/${id}/shop`, what),
+  buy: (id: string, what: { pack?: string; item?: string; operator?: string }) => post<{ id: string; url: string }>(`/sims/${id}/shop`, what),
   /** Back from GeniusPay: the purchase as it stands (its Djai added once paid). */
   purchase: (id: string, purchase: string) => post<ShopPurchase>(`/sims/${id}/shop/${purchase}`, {}),
   sims: () => request<Sim[]>('/sims'),

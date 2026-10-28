@@ -541,7 +541,7 @@ export type ShopItem = { id: string; label: string; text: string; price: number;
 /** kind: djai | pass | energie | prestige (| pub, an advertiser's); item: the pack's or item's id. */
 export type ShopPurchase = { id: string; kind: string; item: string; price: number; djai: number; status: string; credited: boolean; at: string }
 /** open: GeniusPay set up; sandbox: its test keys; adult: the account said it's 18 or over; passUntil: the Pass on till then. */
-export type ShopView = { open: boolean; sandbox?: boolean; adult: boolean; passUntil?: string; prestige: boolean; packs: ShopPack[]; items: ShopItem[]; purchases: ShopPurchase[] }
+export type ShopView = { open: boolean; sandbox?: boolean; adult: boolean; passUntil?: string; prestige: boolean; packs: ShopPack[]; items: ShopItem[]; purchases: ShopPurchase[]; /** Update « frais-operateur »: how to pay, and what each keeps (percent, on top of the price). */ operators?: { id: string; label: string; rate: number }[] }
 
 export type Happening = { id: string; label: string; icon: string; text: string; category?: string; minHour?: number; maxHour?: number; days?: number[]; join?: Interaction; source?: Source }
 export type HappeningNow = { happening: Happening | null; start: number; end: number }

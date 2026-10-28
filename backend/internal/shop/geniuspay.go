@@ -63,14 +63,16 @@ type Customer struct {
 
 // NewPayment: what's asked of GeniusPay (amount in F CFA, XOF, 200 at least).
 type NewPayment struct {
-	Amount      int               `json:"amount"`
-	Currency    string            `json:"currency"`
-	Description string            `json:"description"`
-	Customer    *Customer         `json:"customer,omitempty"`
-	SuccessURL  string            `json:"success_url"`
-	ErrorURL    string            `json:"error_url"`
-	WebhookURL  string            `json:"webhook_url,omitempty"`
-	Metadata    map[string]string `json:"metadata,omitempty"`
+	Amount      int       `json:"amount"`
+	Currency    string    `json:"currency"`
+	Description string    `json:"description"`
+	Customer    *Customer `json:"customer,omitempty"`
+	// PaymentMethod: the operator the player chose (wave, orange_money…), GeniusPay's page opened on it.
+	PaymentMethod string            `json:"payment_method,omitempty"`
+	SuccessURL    string            `json:"success_url"`
+	ErrorURL      string            `json:"error_url"`
+	WebhookURL    string            `json:"webhook_url,omitempty"`
+	Metadata      map[string]string `json:"metadata,omitempty"`
 }
 
 // Payment: a payment as GeniusPay has it.

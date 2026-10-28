@@ -1871,6 +1871,8 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
   // (An app an update hasn't opened yet doesn't show, even installed: lib/features.ts.)
   const feats = useFeatures()
   const has = (id: string) => ownPhone && (sim.apps?.includes(id) ?? false) && keyOpen(feats, `app:${id}`)
+  // Gbairai from the cradle (update « gbairai-bebe »): babies and children write to their friends too, without a phone.
+  const gbairai = has('gbairai') || keyOpen(feats, 'gbairai-bebe')
   // Babi Pub: the advertisers' apps on the home screen (features « pubs-applis »), with their icon.
   const adApps = useAds(ownPhone && keyOpen(feats, 'pubs-applis') ? sim.commune : undefined, 'telephone').filter((ad) => ad.icon && ad.appName && ad.link)
   // Apps from the store, once installed. The ride apps open the map to pick where to go.
@@ -1878,7 +1880,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
     // Before 12 the Store is there, locked: it says when the phone comes.
     { id: 'store', label: 'Store', open: () => setApp('store') },
     ...(has('waye') ? [{ id: 'waye', label: 'Waye', open: () => setApp('waye') }] : []),
-    ...(has('gbairai') ? [{ id: 'gbairai', label: 'Gbairai', open: () => setApp('gbairai') }] : []),
+    ...(gbairai ? [{ id: 'gbairai', label: 'Gbairai', open: () => setApp('gbairai') }] : []),
     ...(has('tikitoko') ? [{ id: 'tikitoko', label: 'Tikitoko', open: () => setApp('tikitoko') }] : []),
     ...(has('babigram') ? [{ id: 'babigram', label: 'Babigram', open: () => setApp('babigram') }] : []),
     ...(has('flashe') ? [{ id: 'flashe', label: 'Flashé', open: onFlashe }] : []),
