@@ -11,11 +11,11 @@ func TestGrowPrice(t *testing.T) {
 		from, to string
 		price    int
 	}{
-		{game.StageBebe, game.StageEnfant, 2500},
-		{game.StageEnfant, game.StageAdo, 2500},
-		{game.StageAdo, game.StageAdulte, 2500},
-		{game.StageBebe, game.StageAdo, 5000},
-		{game.StageBebe, game.StageAdulte, 10_000},
+		{game.StageBebe, game.StageEnfant, 1000},
+		{game.StageEnfant, game.StageAdo, 2000},
+		{game.StageAdo, game.StageAdulte, 2000},
+		{game.StageBebe, game.StageAdo, 3000},
+		{game.StageBebe, game.StageAdulte, 5000},
 		{game.StageEnfant, game.StageAdulte, 0}, // not sold: a step at a time
 		{game.StageAdulte, game.StageAdulte, 0},
 	} {
