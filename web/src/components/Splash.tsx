@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { LogoMark } from './ui'
+import { SplashDancer } from './SplashDancer'
 
-// Loading: the Abidjan dusk, the app's mark dropping in and bobbing over its
-// shadow, « Babi Life » letter by letter, a light running along the bar, and
+// Loading: the Abidjan dusk, a blocky perso dancing the coupé-décalé over its
+// shadow (SplashDancer), « Babi Life » letter by letter, a light running along the bar, and
 // a little word of the street changing every few seconds.
 
 const TIPS = [
@@ -27,9 +27,8 @@ export function Splash({ label, className = 'bg-[var(--color-night)]' }: { /** W
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_45%_at_50%_62%,rgba(255,138,26,0.35),transparent_70%)]" aria-hidden />
       <div className="splash-sun pointer-events-none absolute top-[56%] left-1/2 -ml-[110px] h-[220px] w-[220px] rounded-full bg-[radial-gradient(circle,rgba(255,194,51,0.35),transparent_65%)]" aria-hidden />
       <div className="relative flex flex-col items-center">
-        <div className="splash-mark">
-          <LogoMark size={84} className="drop-shadow-[0_14px_22px_rgba(0,0,0,0.45)]" />
-        </div>
+        {/* A perso dancing the coupé-décalé while it loads */}
+        <SplashDancer size={92} />
         <div className="splash-shadow mt-2 h-2.5 w-14 rounded-[50%] bg-black/45 blur-[2px]" aria-hidden />
         <div className="mt-4 font-display text-[34px] leading-none font-extrabold tracking-[-0.02em]" aria-label="Babi Life">
           {[...'Babi Life'].map((c, i) => (
