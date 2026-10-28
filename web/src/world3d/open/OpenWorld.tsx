@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { sceneDpr, weakDevice } from '../../lib/device'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { Cinematic } from '../cinematic'
@@ -259,7 +260,7 @@ function Sun({ night, dusk, dim = 1 }: { night: boolean; dusk: boolean; /** Unde
       castShadow
       intensity={(night ? 0.6 : dusk ? 1.1 : 1.7) * dim}
       color={night ? '#8fa8ff' : dusk ? '#ffb38a' : '#fff4e0'}
-      shadow-mapSize={[2048, 2048]}
+      shadow-mapSize={weakDevice ? [1024, 1024] : [2048, 2048]}
       shadow-camera-left={-90}
       shadow-camera-right={90}
       shadow-camera-top={90}
@@ -317,8 +318,8 @@ export function OpenWorld(props: Props & { token: string; onFail: () => void; on
   const night = props.hour < 6 || props.hour >= 19
   const dusk = props.hour >= 17 && props.hour < 19
   const sky = night ? '#141a3d' : dusk ? '#f7a072' : '#8ec9f0'
-  const maxDpr = Math.min(1.75, typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1)
-  const [dpr, setDpr] = useState(Math.min(1.5, maxDpr))
+  const maxDpr = Math.min(sceneDpr[1], typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1)
+  const [dpr, setDpr] = useState(Math.min(weakDevice ? 1 : 1.5, maxDpr))
   return (
     <Canvas shadows dpr={dpr} camera={{ position: [45, 48, 45], fov: 45, near: 0.5, far: 6000 }} style={{ background: sky, transition: 'background 1s' }} gl={{ antialias: true, stencil: true }} onCreated={({ gl, scene, camera }) => void (import.meta.env.DEV && Object.assign(window, { __gl: gl, __scene: scene, __camera: camera, __where: whereabouts }))}>
       <Snapper street />

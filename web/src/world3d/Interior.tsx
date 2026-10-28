@@ -1,4 +1,5 @@
 import { SpotActions } from './SpotActions'
+import { sceneDpr } from '../lib/device'
 import { useGesture } from './gesture'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Snapper } from './snapshot'
@@ -1188,7 +1189,7 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
             ? workLook(sim.look, sim.career, sim.careerLevel)
             : sim.look
   return (
-    <Canvas shadows dpr={[1, 2]} camera={{ position: kind === 'club' ? CLUB_CAMERA : [8.4, 8.6, 10.8], fov: 42 }} style={{ background: dark ? '#0b0d1f' : '#2a2340' }}>
+    <Canvas shadows dpr={sceneDpr} camera={{ position: kind === 'club' ? CLUB_CAMERA : [8.4, 8.6, 10.8], fov: 42 }} style={{ background: dark ? '#0b0d1f' : '#2a2340' }}>
       <Snapper />
       <ChatFraming />
       <Suspense fallback={null}>

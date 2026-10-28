@@ -4,6 +4,7 @@ import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import type { Player } from '../lib/types'
 import { Character } from './Character'
+import { Pram } from './Pram'
 import { EXTENT_X, SIDEWALK, type Lot } from './layout'
 import { rng } from './themes'
 import { sampleLive, type LivePose } from '../lib/live'
@@ -90,7 +91,12 @@ function OtherPlayer({ player, at, labels, onPick }: { player: Player; at: [numb
   const tag = `${player.crew ? `[${player.crew}] ` : ''}${player.username ? `@${player.username}` : player.firstName}${player.title ? ` · ${player.title}` : ''}`
   return (
     <group ref={ref}>
+      {player.stage === 'bebe' ? (
+        // A baby out: in its pram, its maman (or the nounou) pushing, as for one's own.
+        <Pram sim={player} walking={walking || livePose === 'walk' || livePose === 'run'} other moodColor={PLAYER_BLUE} speed={3.2} />
+      ) : (
       <Character look={player.look} gender={player.gender} stage={player.stage} walking={walking} busy={!!at} pose={livePose ?? undefined} moodColor={PLAYER_BLUE} seed={player.id.charCodeAt(0)} speed={livePose === 'run' ? 8.5 : 3.2} />
+      )}
       {close && <Hearts />}
       {labels && (
         <Html position={[0, 2.45, 0]} center zIndexRange={[27, 20]}>

@@ -65,6 +65,8 @@ type Player struct {
 	// In office (politics: « Présidente », « Maire de Cocody »), and the gang's tag over the name.
 	Title string `json:"title,omitempty"`
 	Crew  string `json:"crew,omitempty"`
+	// Family: the commune's players only (a baby out goes in its pram, its maman pushing).
+	Family string `json:"family,omitempty"`
 }
 
 type PlayerActivity struct {
@@ -138,7 +140,7 @@ func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
 	}
 	b.Queue(`
 		SELECT s.id, s.first_name, COALESCE(u.username, ''), s.gender, s.look, s.born_at, s.activity, COALESCE(b.friendship, 0), s.city, s.commune, s.last_tick > $3,
-		       COALESCE(b.friends, false), `+requestState("s.id", "$1::uuid")+`
+		       COALESCE(b.friends, false), `+requestState("s.id", "$1::uuid")+`, s.family
 		FROM sims me
 		JOIN sims s ON s.city = me.city AND s.commune = me.commune
 		JOIN users u ON u.id = s.user_id
@@ -240,7 +242,12 @@ func scanPlayers(rows pgx.Rows, now int64) ([]Player, error) {
 		var p Player
 		var born int64
 		var act *game.Activity
-		if err := rows.Scan(&p.ID, &p.FirstName, &p.Username, &p.Gender, &p.Look, &born, &act, &p.Friendship, &p.City, &p.Commune, &p.Online, &p.Friend, &p.Request); err != nil {
+		dst := []any{&p.ID, &p.FirstName, &p.Username, &p.Gender, &p.Look, &born, &act, &p.Friendship, &p.City, &p.Commune, &p.Online, &p.Friend, &p.Request}
+		// The commune's players also bring their family (who pushes a baby's pram).
+		if len(rows.FieldDescriptions()) > len(dst) {
+			dst = append(dst, &p.Family)
+		}
+		if err := rows.Scan(dst...); err != nil {
 			return nil, err
 		}
 		p.Stage = game.StageOf(game.AgeAt(born, now)).ID

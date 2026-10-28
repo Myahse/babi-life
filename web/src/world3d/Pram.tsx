@@ -47,11 +47,12 @@ function PramBody({ color }: { color: string }) {
   )
 }
 
-export function Pram({ sim, walking, speed }: { sim: Sim; walking: boolean; speed?: number }) {
-  const care = useMemo(() => babyCare(sim.family ?? 'poignon', sim.look), [sim.family, sim.look])
-  // Maman (or the nounou) busy cleaning up after the baby: papa pushes (world3d/carer.ts).
-  const [papa] = useState(() => pusher() === 'papa')
-  const dad = useMemo(() => familyCast(sim.family ?? 'poignon', sim.look).papa.look, [sim.family, sim.look])
+/** sim: the player's own baby, or another player's (world3d/Players.tsx: other, its marker in their blue). */
+export function Pram({ sim, walking, speed, other, moodColor }: { sim: Pick<Sim, 'look' | 'gender'> & { family?: string }; walking: boolean; speed?: number; other?: boolean; moodColor?: string }) {
+  const care = useMemo(() => babyCare(sim.family || 'poignon', sim.look), [sim.family, sim.look])
+  // Maman (or the nounou) busy cleaning up after the player's own baby: papa pushes (world3d/carer.ts).
+  const [papa] = useState(() => !other && pusher() === 'papa')
+  const dad = useMemo(() => familyCast(sim.family || 'poignon', sim.look).papa.look, [sim.family, sim.look])
   const color = care.carer === 'gouvernante' ? '#1f2a44' : care.carer === 'nounou' ? '#f783ac' : '#74c0fc'
   return (
     <group>
@@ -59,7 +60,7 @@ export function Pram({ sim, walking, speed }: { sim: Sim; walking: boolean; spee
         <PramBody color={color} />
         {/* The baby, sitting up in it */}
         <group position={[0, 0.5, 0.04]}>
-          <Character look={sim.look} gender={sim.gender} stage="bebe" pose="idle" marker />
+          <Character look={sim.look} gender={sim.gender} stage="bebe" pose="idle" marker moodColor={moodColor} />
         </group>
       </group>
       {/* Behind it, pushing */}
