@@ -668,7 +668,7 @@ export function Wedding({ spouse }: { spouse?: { look: Look; gender: 'femme' | '
 /* ---------- The baby, the child ---------- */
 
 /** The mother kneeling by her baby: holding the biberon, feeding the bouillie, washing, cuddling, shaking the rattle with it. */
-export function Mother({ doing }: { doing: 'biberon' | 'bouillie' | 'bain' | 'calin' | 'hochet' }) {
+export function Mother({ doing, look }: { doing: 'biberon' | 'bouillie' | 'bain' | 'calin' | 'hochet'; /** Her look: the baby's own maman (avatar/Family), else someone. */ look?: Look }) {
   const spoon = useRef<THREE.Group>(null)
   const rattle = useRef<THREE.Group>(null)
   const hearts = useRef<THREE.Group>(null)
@@ -693,7 +693,7 @@ export function Mother({ doing }: { doing: 'biberon' | 'bouillie' | 'bain' | 'ca
   })
   return (
     <group>
-      <Person p={[0, 0, 0.75]} r={Math.PI} pose={doing === 'calin' ? 'hug' : 'pray'} g="femme" seed={113} />
+      <Person p={[0, 0, 0.75]} r={Math.PI} pose={doing === 'calin' ? 'hug' : 'pray'} g="femme" seed={113} look={look} />
       {doing === 'biberon' && (
         <group position={[0, 0.42, 0.17]} rotation={[-1.0, 0, 0]}>
           <Box p={[0, 0, 0]} s={[0.06, 0.16, 0.06]} c="#f8f9fa" />

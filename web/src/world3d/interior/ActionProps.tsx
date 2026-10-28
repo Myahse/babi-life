@@ -36,7 +36,7 @@ const BABY = /^(biberon|bouillie|hochet|calin)$/
  * its own shower head; 'room' for a hotel room); stage: the Sim's age, for
  * what it carries; partner: the one it marries.
  */
-export function ActionProps({ id, kind, lying, stage = 'adulte', partner, bath }: { id?: string; kind: string; lying: boolean; stage?: string; partner?: { look: Look; gender: 'femme' | 'homme' }; /** A hotel room with a bathtub. */ bath?: boolean }) {
+export function ActionProps({ id, kind, lying, stage = 'adulte', partner, bath, mum }: { id?: string; kind: string; lying: boolean; stage?: string; partner?: { look: Look; gender: 'femme' | 'homme' }; /** A hotel room with a bathtub. */ bath?: boolean; /** A baby's maman (its family's), for the things done with her. */ mum?: Look }) {
   // (Cooking: the pot is on the stove, drawn where the stove is.)
   if (!id || id === 'cook-attieke') return null
   if (HAIR.test(id) && (kind === 'barbier' || kind === 'salon')) return <Hairdresser id={id} salon={kind === 'salon'} />
@@ -46,8 +46,8 @@ export function ActionProps({ id, kind, lying, stage = 'adulte', partner, bath }
   if (id === 'retouche') return <Fitting />
   if (id === 'shower' || id === 'logement-douche' || id === 'chambre-douche' || (id === 'chambre-bain' && !bath)) return <Shower fixtures={kind !== 'house' && kind !== 'room'} />
   if (id === 'chambre-bain') return <Foam />
-  if (id === 'bain-bebe') return <Mother doing="bain" />
-  if (BABY.test(id)) return <Mother doing={id as 'biberon' | 'bouillie' | 'hochet' | 'calin'} />
+  if (id === 'bain-bebe') return <Mother doing="bain" look={mum} />
+  if (BABY.test(id)) return <Mother doing={id as 'biberon' | 'bouillie' | 'hochet' | 'calin'} look={mum} />
   if (id === 'jouer-cour') return <YardBall scale={sizeOf(stage).scale} />
   if (id === 'aller-ecole') return <SchoolBag scale={sizeOf(stage).scale} />
   if (lying && /^(sleep|nap|nuit-hotel|chambre-dormir|chambre-sieste|passer-nuit)$/.test(id)) return <Blanket />

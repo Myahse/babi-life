@@ -21,6 +21,8 @@ import { ChatFraming } from './chatFraming'
 import { Swimmer } from './Swimmer'
 import { listenKeys, moveInput } from './input'
 import { RichAO } from './interior/bigPlace'
+import { familyCast } from '../avatar/Family'
+import { clock, weekdayOf } from '../game/rules'
 
 // Inside one's own house, on a screen of its own: the house itself (the one
 // of the family's plan, or the one built on a bought lot), its rooms, its
@@ -269,7 +271,7 @@ function Walking({ sim, stage, way, spot, doing, onThere, steer, onMoved, onLeve
             </mesh>
           )}
           <Character look={look} gender={sim.gender} pose={spot.pose} stage={stage} marker={!spot.lying} />
-          <ActionProps id={doing} kind="house" lying={spot.lying} stage={stage} />
+          <ActionProps id={doing} kind="house" lying={spot.lying} stage={stage} mum={sim.family ? familyCast(sim.family, sim.look).maman.look : undefined} />
         </group>
       ) : (
         <Character look={sim.look} gender={sim.gender} walking={walking} stage={stage} speed={SPEED} />
@@ -303,7 +305,7 @@ function Focus({ on, span }: { on: [number, number, number] | null; span: number
   return null
 }
 
-export function HomeInside({ sim, world, plot, interactionId, roam, night, stage, onBuild, partner }: { sim: Sim; world: World; plot: Plot; interactionId?: string; /** Just come in: tap the ground to walk. */ roam?: boolean; night: boolean; stage: string; /** Change the house: walls, furniture (components/BuildMode). */ onBuild?: () => void; /** The boyfriend or girlfriend living here. */ partner?: Friend }) {
+export function HomeInside({ sim, world, plot, interactionId, roam, night, stage, onBuild, partner, parents }: { sim: Sim; world: World; plot: Plot; interactionId?: string; /** Just come in: tap the ground to walk. */ roam?: boolean; night: boolean; stage: string; /** Change the house: walls, furniture (components/BuildMode). */ onBuild?: () => void; /** The boyfriend or girlfriend living here. */ partner?: Friend; /** Still a child at the family's home: papa and maman are there. */ parents?: boolean }) {
   const [w, d] = [plot.lot?.w ?? 12, plot.lot?.d ?? 12]
   const span = Math.max(w, d)
   const floors = useMemo(() => {
@@ -429,6 +431,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
             </mesh>
           )}
           {partner && <Partner friend={partner} spots={spots} doing={interactionId} spot={spot} />}
+          {parents && sim.family && <Parents sim={sim} spots={spots} doing={interactionId} spot={spot} />}
           <Walking sim={sim} stage={stage} way={way} spot={spot} doing={interactionId} onThere={setThere} steer={roam && !interactionId ? levels(lvl.current) : undefined} onMoved={(p) => ((where.current = p), setTapped(null))} onLevel={setFloor} />
           {there && interactionId === 'cook-attieke' && spot && (
             <group position={[spot.at[0] + Math.sin(spot.rot) * 0.6, 0, spot.at[1] + Math.cos(spot.rot) * 0.6]}>
@@ -503,5 +506,71 @@ function Partner({ friend, spots, doing, spot }: { friend: Friend; spots: Record
         <Character look={look} gender={friend.gender} pose={at.pose} marker={false} moodColor="#e0245e" />
       </group>
     </group>
+  )
+}
+
+/** A baby's things done with maman (ActionProps Mother): she's there already, kneeling with it. */
+const WITH_MUM = /^(biberon|bouillie|hochet|calin|bain-bebe)$/
+
+/**
+ * Papa and maman at home, while the Sim is a child there (its family's house): dressed as the family
+ * can afford (avatar/Family), going about the day. Up early, maman at the stove for the meals and papa
+ * at the table; papa at work on weekdays from 8 to 17; the evening on the sofa; at night in bed.
+ * Never on the very spot the Sim is using: the next one along.
+ */
+function Parents({ sim, spots, doing, spot }: { sim: Sim; spots: Record<string, HomeSpot>; doing?: string; spot: HomeSpot | null }) {
+  const cast = useMemo(() => familyCast(sim.family!, sim.look), [sim.family, sim.look])
+  const { hour } = clock(sim.gameMinutes)
+  const weekday = weekdayOf(sim.gameMinutes)
+  const asleep = hour >= 22 || hour < 6
+  const working = !asleep && weekday < 5 && hour >= 8 && hour < 17
+  const meal = (hour >= 6 && hour < 8) || (hour >= 12 && hour < 14) || (hour >= 18 && hour < 21)
+  const taken = (s?: HomeSpot) => !s || (!!spot && Math.hypot(s.at[0] - spot.at[0], s.at[1] - spot.at[1]) < 0.4)
+  const first = (keys: string[], skip?: HomeSpot) => keys.map((k) => spots[k]).find((s) => !taken(s) && s !== skip)
+  const beds = Object.keys(spots).filter((k) => k.startsWith('bed:')).sort()
+  const seats = Object.keys(spots).filter((k) => k.startsWith('seat:')).sort()
+  // The beds the Sim isn't in: the parents' (the last ones: the first bed is the child's).
+  const bedsLeft = [...beds].reverse()
+  let papa: HomeSpot | undefined
+  let maman: HomeSpot | undefined
+  if (asleep) {
+    papa = first(bedsLeft)
+    maman = first(bedsLeft, papa)
+  } else {
+    maman = WITH_MUM.test(doing ?? '') ? undefined : meal && doing !== 'cook-attieke' ? first(['cook-attieke', ...seats]) : first([...seats, 'golvo'])
+    if (maman === spots['cook-attieke']) maman = maman && { ...maman, pose: 'cook' }
+    else if (maman && !maman.lying) maman = { ...maman, pose: hour % 2 ? 'call' : 'sit' }
+    if (!working) {
+      papa = hour < 9 ? first(['golvo', ...seats], maman) : first([...seats, 'golvo'], maman)
+      if (papa) papa = { ...papa, pose: papa === spots.golvo ? 'eat' : hour % 3 ? 'sit' : 'phone' }
+      // No seat in the house (a natte, a shack): standing by maman, chatting; else by the bed, on the phone.
+      else {
+        const near = maman ?? spots.sleep
+        if (near) papa = { ...near, at: [near.from[0] + 0.9, near.from[1]], y: 0, rot: near.rot, pose: maman ? 'talk' : 'phone', lying: false, stool: false }
+      }
+    }
+  }
+  const who: [HomeSpot | undefined, (typeof cast)['papa'], number][] = [
+    [papa, cast.papa, 1],
+    [maman, cast.maman, 2],
+  ]
+  return (
+    <>
+      {who.map(([s, p, i]) =>
+        s ? (
+          <group key={i} position={[s.at[0], s.y, s.at[1]]} rotation={[0, s.rot, 0]}>
+            <group rotation={s.lying ? [-Math.PI / 2, 0, 0] : [0, 0, 0]}>
+              {s.stool && !s.lying && (
+                <mesh position={[0, 0.2 - s.y, -0.05]}>
+                  <boxGeometry args={[0.38, 0.4, 0.38]} />
+                  <meshLambertMaterial color="#7a5233" />
+                </mesh>
+              )}
+              <Character look={p.look} gender={p.gender} pose={s.lying ? 'sleep' : s.pose} stage="adulte" marker={false} seed={i * 7.7} />
+            </group>
+          </group>
+        ) : null,
+      )}
+    </>
   )
 }

@@ -408,7 +408,8 @@ func familyHouse(p *planner, x0, z0 int, wall, roof string) {
 	p.put("tele", x0+3, z0+1, 0)
 	p.put("canape", x0+2, z0+4, 2)
 	p.put("gaziniere", x0+1, z0+1, 0)
-	p.put("frigo", x0+1, z0+2, 0)
+	// (The fridge beside the stove, against the wall: not in front of it, where the cook stands.)
+	p.put("frigo", x0+2, z0+1, 0)
 	p.put("table", x0+1, z0+5, 0)
 	p.put("chaises", x0+2, z0+5, 0)
 	// The bedroom.

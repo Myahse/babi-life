@@ -18,13 +18,23 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
   // The walls: a block at body height in the cell (lot coordinates, from its middle).
   const walls = new Set(plot.blocks.filter((b) => b[1] === 1).map((b) => `${b[0]},${b[2]}`))
   const wallAt = (u: number, v: number) => walls.has(`${Math.floor(u + w / 2)},${Math.floor(v + d / 2)}`)
+  // The ground floor's cells under each piece: a spot inside another piece (a stove's front against the fridge) won't do.
+  const under = new Map<string, number>()
+  ;(plot.furniture ?? []).forEach((piece, k) => {
+    const f = catalog.find((x) => x.id === piece[4])
+    if (!f || piece[1] > 0) return
+    const [fw, fd] = piece[3] % 2 ? [f.d, f.w] : [f.w, f.d]
+    for (let x = 0; x < fw; x++) for (let z = 0; z < fd; z++) under.set(`${piece[0] + x},${piece[2] + z}`, k)
+  })
   // The TV and the seats one could watch it from (chosen after: the one turned most towards it).
   let tv: { at: XZ; rot: number; y?: number; w?: number; h?: number } | null = null
   // The game console: its screen, and in front of it (no seat facing it: a pouf on the floor).
   let pad: { at: XZ; rot: number; front: HomeSpot } | null = null
   const seats: HomeSpot[] = []
+  // Every bed, both sides of a double one: where the family sleeps (the parents, in a family's home).
+  const beds: HomeSpot[] = []
   let basin = false
-  for (const piece of plot.furniture ?? []) {
+  for (const [k, piece] of (plot.furniture ?? []).entries()) {
     const f = catalog.find((x) => x.id === piece[4])
     // Upstairs (a duplex's bedrooms): the Sim walks on the ground floor, so the pieces down there.
     if (!f || piece[1] > 0) continue
@@ -36,11 +46,15 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
     const [lc, ls] = [Math.cos(turn), Math.sin(turn)]
     const half = f.d / 2
     const at = (x: number, y: number, z: number, face: number, pose: HomeSpot['pose'], lying = false, ids: string[] = [], stool = false, turnable = false): HomeSpot => {
-      const place = (sx: number, sz: number, sface: number, front: number): HomeSpot => {
+      const place = (sx: number, sz: number, sface: number, front: number, frontX = 0): HomeSpot => {
         const [u, v] = [pu + sx * lc + sz * ls, pv - sx * ls + sz * lc]
-        // Where the Sim walks to first: just in front of the piece (or behind, turned round).
-        const [au, av] = [pu + front * ls, pv + front * lc]
-        return { at: toWorld(u, v), y, rot: rot + sface, pose, lying, from: toWorld(au, av), stool, wall: wallAt(u, v) || wallAt(au, av) }
+        // Where the Sim walks to first: just in front of the piece (or behind, turned round; or at its side).
+        const [au, av] = [pu + frontX * lc + front * ls, pv - frontX * ls + front * lc]
+        const other = (a: number, b: number) => {
+          const at = under.get(`${Math.floor(a + w / 2)},${Math.floor(b + d / 2)}`)
+          return at !== undefined && at !== k
+        }
+        return { at: toWorld(u, v), y, rot: rot + sface, pose, lying, from: toWorld(au, av), stool, wall: wallAt(u, v) || wallAt(au, av) || other(u, v) || other(au, av) }
       }
       // Up against a wall on that side: the other side of the piece, if it's free there.
       let spot = place(x, z, face, half + 0.6)
@@ -48,6 +62,15 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
       if (spot.wall && !lying && (pose !== 'sit' || turnable)) {
         const other = place(-x, -z, face + Math.PI, -(half + 0.6))
         if (!other.wall) spot = other
+        // Both blocked (a fridge in front of the stove, the wall behind): at its side, turned to it.
+        else if (pose !== 'sit')
+          for (const side of [1, -1]) {
+            const beside = place(side * (f.w / 2 + 0.4), 0, -side * (Math.PI / 2), 0, side * (f.w / 2 + 0.8))
+            if (!beside.wall) {
+              spot = beside
+              break
+            }
+          }
       }
       for (const id of ids) out[id] ??= spot
       return spot
@@ -56,10 +79,10 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
     const big = f.w >= 3
     switch (kindOf(f)) {
       case 'lit':
-        at(-0.45, 0.64, half - 0.15, 0, 'sleep', true, ['sleep', 'nap', 'passer-nuit'])
+        beds.push(at(-0.45, 0.64, half - 0.15, 0, 'sleep', true, ['sleep', 'nap', 'passer-nuit']), at(0.45, 0.64, half - 0.15, 0, 'sleep', true))
         break
       case 'natte':
-        at(0, 0.16, half - 0.1, 0, 'sleep', true, ['sleep', 'nap', 'passer-nuit'])
+        beds.push(at(0, 0.16, half - 0.1, 0, 'sleep', true, ['sleep', 'nap', 'passer-nuit']))
         break
       case 'canape':
         if (f.id === 'canape-cuir') seats.push(at(-1.0, 0.05, -0.45, 0, 'sit', false, ['watch-tv', 'call-family']), at(-0.33, 0.05, -0.45, 0, 'sit'), at(0.33, 0.05, -0.45, 0, 'sit'))
@@ -110,6 +133,8 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
         break
     }
   }
+  beds.forEach((b, i) => (out[`bed:${i}`] = b))
+  seats.forEach((b, i) => (out[`seat:${i}`] = b))
   // Watching TV: from the seat that faces it best (and not too far), turned to the screen; the screen comes on.
   if (tv && seats.length) {
     const t = tv as { at: XZ; rot: number }
