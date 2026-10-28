@@ -277,6 +277,8 @@ export const api = {
   /** What was played offline (lib/offlinePlay.ts), sent once online: the server plays it again (backend sims/sync.go). */
   sync: (id: string, steps: unknown[]) => post<ActionResult>(`/sims/${id}/sync`, { clock: Date.now(), steps }),
   createSim: (sim: NewSim) => post<Sim>('/sims', sim),
+  /** The perso made on the wish list with this account's e-mail (404: none). */
+  waitlistSim: () => request<{ firstName: string; sim: Partial<NewSim>; family?: string; commune?: string }>('/me/waitlist-sim'),
   deleteSim: (id: string) => request<void>(`/sims/${id}`, { method: 'DELETE' }),
   interact: (id: string, placeId: string, interactionId: string) =>
     post<ActionResult>(`/sims/${id}/interact`, { placeId, interactionId }),

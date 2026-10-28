@@ -293,6 +293,7 @@ type Handler struct {
 
 func (h *Handler) Routes(r chi.Router) {
 	r.Get("/sims", h.list)
+	r.Get("/me/waitlist-sim", h.waitlistSim)
 	r.Post("/sims", h.create)
 	r.Get("/sims/{id}", h.get)
 	r.Delete("/sims/{id}", h.delete)
@@ -594,6 +595,10 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	rng := newRand()
 	fam := game.BornInto(rng)
 	cityID, commune := birthplace(req.Lat, req.Lng, req.FromCity, req.FromCommune, rng)
+	// The perso made on the wish list: born where the list drew it.
+	if f, c, cm, ok := h.listedBirth(r.Context(), auth.UserID(r.Context())); ok {
+		fam, cityID, commune = f, c.ID, cm.ID
+	}
 	now := game.MinuteOf(time.Now())
 	s, err := scanSim(h.DB.QueryRow(r.Context(), `
 		INSERT INTO sims (user_id, first_name, last_name, gender, look, traits, aspiration,
