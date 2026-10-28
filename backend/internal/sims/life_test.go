@@ -121,26 +121,28 @@ func hasText(ev []Event, s string) bool {
 	return false
 }
 
-func TestChildhoodRunsOnWhileAway(t *testing.T) {
-	// Away 30 hours as a newborn: a child on coming back, its birthday said.
+func TestChildhoodWaitsWhileAway(t *testing.T) {
+	// Away 30 hours as a newborn: still a baby on coming back (one grows up by playing).
 	s := Sim{FirstName: "Awa", GameMinutes: 1000, BornAt: 1000, Family: "poignon"}
-	events := s.hold(30 * 60)
-	if got := s.stage().ID; got != game.StageEnfant {
-		t.Fatalf("after 30 h away: %s, want enfant", got)
+	s.hold(30 * 60)
+	if got := s.stage().ID; got != game.StageBebe {
+		t.Fatalf("after 30 h away: %s, want bebe", got)
 	}
-	if len(events) == 0 {
-		t.Error("the birthday wasn't said")
-	}
-	// Away three days as a teenager: 18 on the way, then the adult's time waits.
+	// Away three days as a teenager: still 15.
 	s = Sim{FirstName: "Awa", GameMinutes: 10000, BornAt: 10000 - 40*60, Family: "poignon"}
+	before := s.age()
 	s.hold(72 * 60)
-	if got := s.age(); got != game.AdultAge {
-		t.Fatalf("after 3 days away from 15: %d years old, want 18", got)
+	if got := s.age(); got != before {
+		t.Fatalf("a teenager aged while away: %d, was %d", got, before)
 	}
-	// An adult away: nothing moves.
-	s.hold(24 * 60)
-	if got := s.age(); got != game.AdultAge {
-		t.Errorf("an adult aged while away: %d", got)
+}
+
+func TestBabyNeedsDropFaster(t *testing.T) {
+	baby := Sim{FirstName: "Awa", GameMinutes: 1000, BornAt: 1000, Family: "poignon", Needs: game.Needs{Hunger: 100, Energy: 100, Hygiene: 100, Social: 100, Fun: 100}}
+	adult := baby
+	adult.BornAt = 0
+	if baby.decayed(60) != 60*BabyDecay || adult.decayed(60) != 60 {
+		t.Fatal("decayed")
 	}
 }
 
