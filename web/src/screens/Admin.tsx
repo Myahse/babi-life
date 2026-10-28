@@ -339,7 +339,7 @@ function ResetTesters({ k, onDone }: { k: string; onDone: () => void }) {
   )
 }
 
-type Player = { id: string; name: string; username: string; email: string; google: boolean; password: boolean; createdAt: string; lastLogin: string; sims: number; sim: string; commune: string; money: number; online: boolean; tester: boolean }
+type Player = { id: string; name: string; username: string; email: string; google: boolean; password: boolean; createdAt: string; lastLogin: string; sims: number; sim: string; commune: string; money: number; online: boolean; tester: boolean; official?: boolean }
 
 function Players({ k }: { k: string }) {
   const [q, setQ] = useState('')
@@ -418,6 +418,13 @@ function Players({ k }: { k: string }) {
                     onClick={() => call(`/admin/users/${u.id}/tester`, k, { method: 'POST', body: JSON.stringify({ tester: !u.tester }) }).then(() => setVersion((v) => v + 1), (x: Error) => setE(x.message))}
                   >
                     {u.tester ? 'Testeur' : 'Non'}
+                  </button>
+                  <button
+                    className={`ml-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${u.official ? 'bg-[#dcfce7] text-[#15803d]' : 'bg-[#f3f4f6] text-[#6b7280] hover:bg-[#e5e7eb]'}`}
+                    title={u.official ? 'Retirer le compte officiel' : 'En faire le compte officiel Babi Life (boîte à outils pour de bon, badge « Officiel ✓ », jamais remis à zéro)'}
+                    onClick={() => call(`/admin/users/${u.id}/official`, k, { method: 'POST', body: JSON.stringify({ official: !u.official }) }).then(() => setVersion((v) => v + 1), (x: Error) => setE(x.message))}
+                  >
+                    {u.official ? 'Officiel ✓' : 'Officiel ?'}
                   </button>
                 </td>
                 </tr>

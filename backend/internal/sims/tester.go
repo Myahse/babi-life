@@ -152,7 +152,7 @@ func ResetTesters(ctx context.Context, db *pgxpool.Pool) (int, error) {
 	rows, err := tx.Query(ctx, `
 		SELECT s.id, s.user_id, s.first_name, s.last_name, s.gender, s.aspiration, s.home_city, s.home_commune, s.family, s.look, s.traits, s.created_at
 		FROM sims s JOIN users u ON u.id = s.user_id
-		WHERE u.tester OR s.tested
+		WHERE (u.tester OR s.tested) AND NOT u.official
 		FOR UPDATE OF s`)
 	if err != nil {
 		return 0, err
@@ -207,7 +207,7 @@ func ResetTesters(ctx context.Context, db *pgxpool.Pool) (int, error) {
 		}
 	}
 	// Ordinary players now: the code kept in their browser no longer makes them testers again.
-	if _, err := tx.Exec(ctx, `UPDATE users SET tester = false, tester_off = true WHERE tester OR id IN (SELECT user_id FROM sims WHERE id = ANY($1))`, ids(all)); err != nil {
+	if _, err := tx.Exec(ctx, `UPDATE users SET tester = false, tester_off = true WHERE NOT official AND (tester OR id IN (SELECT user_id FROM sims WHERE id = ANY($1)))`, ids(all)); err != nil {
 		return 0, err
 	}
 	return len(all), tx.Commit(ctx)

@@ -158,7 +158,11 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
     return () => void (stop = true)
   }, [back?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const buy = async (what: { pack?: string; item?: string }) => {
+  // With the operators' fees (update « frais-operateur »): the player picks how to pay first, and sees what it adds.
+  const [choosing, setChoosing] = useState<{ what: { pack?: string; item?: string }; price: number; label: string } | null>(null)
+  const ask = (what: { pack?: string; item?: string }, price: number, label: string) => (view?.operators?.length ? setChoosing({ what, price, label }) : void buy(what))
+  const buy = async (what: { pack?: string; item?: string; operator?: string }) => {
+    setChoosing(null)
     setBuying(what.pack ?? what.item ?? null)
     setError(null)
     try {
@@ -181,6 +185,36 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
 
   return (
     <div className="space-y-3">
+      {choosing && view.operators && (
+        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-[#0f1230]/55 p-3 sm:items-center" onClick={() => setChoosing(null)}>
+          <div className="w-full max-w-sm rounded-3xl bg-white p-4 text-[var(--color-ink)] shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="font-display text-[19px] leading-tight font-extrabold">Comment tu paies ?</div>
+            <div className="mt-0.5 text-[13px] font-bold text-[var(--color-ink-soft)]">
+              {choosing.label} · {amount(choosing.price)} F CFA. Les frais de l'opérateur s'ajoutent au prix.
+            </div>
+            <div className="mt-3 space-y-2">
+              {view.operators.map((op) => {
+                const fee = Math.ceil((choosing.price * op.rate) / 100)
+                return (
+                  <button key={op.id} className="flex w-full items-center gap-3 rounded-2xl border-2 border-[#eef0f4] p-3 text-left transition active:scale-[0.98]" onClick={() => void buy({ ...choosing.what, operator: op.id })}>
+                    <Smartphone size={22} className="shrink-0 text-[var(--color-orange)]" />
+                    <span className="min-w-0 flex-1 leading-tight">
+                      <span className="block text-[15px] font-extrabold">{op.label}</span>
+                      <span className="block text-[12px] font-bold text-[var(--color-ink-soft)]">
+                        + {amount(fee)} F de frais ({String(op.rate).replace('.', ',')} %)
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-[15px] font-extrabold">{amount(choosing.price + fee)} F</span>
+                  </button>
+                )
+              })}
+            </div>
+            <button className="mt-3 w-full text-center text-sm font-extrabold text-[var(--color-ink-soft)]" onClick={() => setChoosing(null)}>
+              Annuler
+            </button>
+          </div>
+        </div>
+      )}
       {/* Ink on the gold, as the Encyclo's yellow banner: white wouldn't read on the light corner. */}
       <div className="flex items-center gap-2 rounded-2xl bg-gradient-to-br from-[#ffd36e] to-[#ff9a2e] p-3 text-[var(--color-ink)]">
         <ShoppingBag size={28} strokeWidth={2.4} />
@@ -253,7 +287,7 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
                             </div>
                           )}
                         </div>
-                        <button className="btn shrink-0 !py-2 !text-sm" disabled={!!buying} onClick={() => void buy({ item: it.id })}>
+                        <button className="btn shrink-0 !py-2 !text-sm" disabled={!!buying} onClick={() => ask({ item: it.id }, it.price, it.label)}>
                           {price(it.id, it.price)}
                         </button>
                       </div>
@@ -278,7 +312,7 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
                         <span className="block aspect-[3/4] w-full bg-[radial-gradient(120%_90%_at_50%_10%,#e9fbfb,#9fe3e6_60%,#3cc6c8)]">{p && <Portrait look={wearPiece(fullLook(sim.look), p)} gender={sim.gender} framing="full" />}</span>
                         <div className="p-2">
                           <div className="font-display text-[14px] leading-tight font-extrabold">{it.label}</div>
-                          <button className="btn mt-1.5 w-full !py-1.5 !text-sm" disabled={!!buying || have} onClick={() => void buy({ item: it.id })}>
+                          <button className="btn mt-1.5 w-full !py-1.5 !text-sm" disabled={!!buying || have} onClick={() => ask({ item: it.id }, it.price, it.label)}>
                             {have ? 'À toi' : price(it.id, it.price)}
                           </button>
                         </div>
@@ -308,7 +342,7 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
                           </div>
                         ) : null}
                       </div>
-                      <button className="btn shrink-0 !py-2 !text-sm" disabled={!!buying || have} onClick={() => void buy({ item: it.id })}>
+                      <button className="btn shrink-0 !py-2 !text-sm" disabled={!!buying || have} onClick={() => ask({ item: it.id }, it.price, it.label)}>
                         {have ? 'Acheté' : it.id === 'pass' && pass ? `Prolonger · ${amount(it.price)} F` : price(it.id, it.price)}
                       </button>
                     </div>
@@ -333,7 +367,7 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
                       {p.bonus && <Chip tone="good">{p.bonus}</Chip>}
                     </div>
                   </div>
-                  <button className="btn shrink-0 !py-2 !text-sm" disabled={!!buying} onClick={() => void buy({ pack: p.id })}>
+                  <button className="btn shrink-0 !py-2 !text-sm" disabled={!!buying} onClick={() => ask({ pack: p.id }, p.price, p.label)}>
                     {price(p.id, p.price)}
                   </button>
                 </li>

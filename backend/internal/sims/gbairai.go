@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/myahse/babi-life/backend/internal/auth"
+	"github.com/myahse/babi-life/backend/internal/features"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
 	"github.com/myahse/babi-life/backend/internal/push"
@@ -115,6 +116,10 @@ func (h *Handler) appSim(r *http.Request, app string) (string, error) {
 		return "", errNotFound
 	}
 	s.GameMinutes = game.MinuteOf(time.Now())
+	// Gbairai from the cradle (update « gbairai-bebe »): the little ones write to their friends too, without a phone of their own.
+	if app == "gbairai" && features.Default.BlocksKey(r.Context(), "gbairai-bebe") == "" {
+		return s.ID, nil
+	}
 	if !s.hasPhone() {
 		return "", errNoPhoneYet
 	}

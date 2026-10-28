@@ -156,6 +156,8 @@ type view struct {
 	PassUntil *time.Time `json:"passUntil,omitempty"`
 	Prestige  bool       `json:"prestige"`
 	Packs     []Pack     `json:"packs"`
+	// Operators: with the update « frais-operateur », the ways to pay and their fees (on top of the price).
+	Operators []Operator `json:"operators,omitempty"`
 	Items     []Item     `json:"items"`
 	Purchases []Purchase `json:"purchases"`
 }
@@ -190,6 +192,9 @@ func (h *Handler) view(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v := view{Adult: adult, Packs: Packs}
+	if features.Default.BlocksKey(ctx, "frais-operateur") == "" {
+		v.Operators = Operators
+	}
 	var born, minutes int64
 	if err := h.DB.QueryRow(ctx, `SELECT pass_until, prestige, born_at, game_minutes FROM sims WHERE id = $1`, simID).Scan(&v.PassUntil, &v.Prestige, &born, &minutes); err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
@@ -233,6 +238,8 @@ func (h *Handler) buy(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Pack string `json:"pack,omitempty"`
 		Item string `json:"item,omitempty"`
+		// Operator: how the player pays (update « frais-operateur »): its fees on top of the price.
+		Operator string `json:"operator,omitempty"`
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
@@ -324,8 +331,14 @@ func (h *Handler) buy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	back := h.Site + "/jeu?achat=" + pid
+	// The operator's fees, paid by the player on top (the purchase keeps the price: paid more, it's credited all the same).
+	total, method := price, ""
+	if op, ok := FindOperator(req.Operator); ok && features.Default.BlocksKey(ctx, "frais-operateur") == "" {
+		total, method = price+op.Fee(price), op.ID
+		description += fmt.Sprintf(" + %s F de frais %s", thousands(op.Fee(price)), op.Label)
+	}
 	np := NewPayment{
-		Amount: price, Currency: "XOF", Description: description,
+		Amount: total, Currency: "XOF", Description: description, PaymentMethod: method,
 		SuccessURL: back, ErrorURL: back + "&echec=1",
 		Metadata: map[string]string{"purchase": pid, "sim": simID, "item": id},
 	}
@@ -347,6 +360,12 @@ func (h *Handler) open(ctx context.Context, id string, np NewPayment) (string, e
 		np.WebhookURL = h.API + "/api/v1/shop/geniuspay"
 	}
 	pay, err := h.Pay.Create(ctx, np)
+	// An operator GeniusPay doesn't take that way: its page, where the player chooses (the sum stays, fees included).
+	if err != nil && np.PaymentMethod != "" {
+		log.Printf("shop: payment method %s refused (%v): without it", np.PaymentMethod, err)
+		np.PaymentMethod = ""
+		pay, err = h.Pay.Create(ctx, np)
+	}
 	if err != nil || pay.URL() == "" {
 		_, _ = h.DB.Exec(ctx, `UPDATE purchases SET status = 'error', updated_at = now() WHERE id = $1`, id)
 		if err == nil {
