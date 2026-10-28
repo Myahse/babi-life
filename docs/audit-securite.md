@@ -29,8 +29,10 @@ Le test se fait sur une **copie** du jeu, jamais sur la production où jouent de
 | Une API de test | Un deuxième service Render (offre gratuite), même code, branche au choix |
 | Une base de test | Une base Neon séparée (offre gratuite), données de test seulement |
 | Un site de test | Une préversion Vercel qui pointe vers l'API de test |
-| Les paiements | GeniusPay en **mode test (sandbox)**, clés de test, avec `GENIUSPAY_WEBHOOK_SECRET` réglé (sinon les webhooks ne sont pas vérifiés par signature) |
-| Les variables | De nouvelles valeurs, propres au test : `JWT_SECRET`, `ADMIN_KEY`, `MODERATION_KEY`, `ADS_ADMIN_KEY`, `WAITLIST_ADMIN_KEY`, clés VAPID et R2 de test (un autre bucket) |
+| Les paiements | GeniusPay en **mode test (sandbox)**, clés de test, avec `GENIUSPAY_WEBHOOK_SECRET` réglé (sinon les webhooks ne sont pas vérifiés par signature) et `GENIUSPAY_SANDBOX=true` |
+| Les variables | De nouvelles valeurs, propres au test : `JWT_SECRET`, `ADMIN_KEY`, `MODERATION_KEY`, `ADS_ADMIN_KEY`, `WAITLIST_ADMIN_KEY`, `BET_SECRET`, clés VAPID et R2 de test (un autre bucket) |
+| Ce qui contacte de vraies personnes | **Non réglé** sur le test : `WHATSAPP_TOKEN`, `FCM_SERVICE_ACCOUNT` ; pour les e-mails (`BREVO_API_KEY` ou `SMTP_*`), soit rien (le « mot de passe oublié » est alors fermé), soit un compte d'envoi de test, et des comptes de test dont l'adresse e-mail appartient au propriétaire ou au testeur |
+| Ce qui coûte | `NPC_CHAT_KEY` et `ANTHROPIC_API_KEY` non réglés (ou une clé de test avec un plafond de dépense), pour qu'une rafale de requêtes ne coûte rien |
 | `DEV_LOGIN` | **Désactivé**, comme en production : sinon n'importe qui se connecte sans compte, et le test ne voit pas le vrai fonctionnement |
 | `ALLOWED_ORIGINS` | L'adresse du site de test |
 | Les comptes | 3 ou 4 comptes joueurs de test, dont un adulte avec un perso avancé et de l'argent, un récent, un mineur ; et l'accès à l'admin de test (sa clé, celle du test seulement) |
@@ -44,7 +46,7 @@ Le test se fait sur une **copie** du jeu, jamais sur la production où jouent de
 
 ## 4. Ce qu'on ne lui donne jamais
 
-- Les clés de production : GeniusPay (clé et secret du webhook), R2, la clé privée VAPID, le compte de service Firebase / FCM, `JWT_SECRET`, les clés d'admin, WhatsApp.
+- Les clés de production : GeniusPay (clé et secret du webhook), R2, la clé privée VAPID, le compte de service Firebase / FCM, `JWT_SECRET`, `BET_SECRET`, les clés d'admin, WhatsApp, Brevo / SMTP, les clés de l'IA des PNJ (`NPC_CHAT_KEY`, `ANTHROPIC_API_KEY`).
 - Un accès à la base de production, à Render, Vercel ou Neon (les comptes du propriétaire).
 - Les données de vrais joueurs (comptes, messages, photos, e-mails).
 

@@ -9,7 +9,11 @@
 // It signs players in with the dev login (/auth/dev): run it against a local
 // or staging API started with DEV_LOGIN=true, never against production.
 //
-//   node tools/loadtest/run.mjs --players 20 --minutes 3 [--api http://localhost:8099/api/v1] [--pg postgres://…]
+// --spread: how far apart (metres) the players walk in their commune: 0, all
+// in the same 30 m circle (everyone near everyone); 1000, each round its own
+// spot within a kilometre of the middle, as players really are.
+//
+//   node tools/loadtest/run.mjs --players 20 --minutes 3 [--spread 1000] [--api http://localhost:8099/api/v1] [--pg postgres://…]
 
 import { execFileSync } from 'node:child_process'
 
@@ -21,6 +25,7 @@ const API = arg('api', 'http://localhost:8099/api/v1')
 const PLAYERS = Number(arg('players', 10))
 const MINUTES = Number(arg('minutes', 2))
 const PG = arg('pg', '')
+const SPREAD = Number(arg('spread', 0))
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 const LOOK = { skin: '#a46c42', hair: 'short', hairColor: '#141010', outfit: 'tshirt', outfitColor: '#ff7a00', body: 'moyen', height: 1, eyes: '#2b1a10', beard: 'none', accessory: 'none', pattern: 'none', bottomColor: '', shoeColor: '', accessoryColor: '', marks: 'none', wear: 'neuf' }
@@ -82,6 +87,7 @@ async function play(i, world, until) {
   await Promise.allSettled([call(token, `/places?commune=${s.commune}&lat=${commune.lat.toFixed(5)}&lng=${commune.lng.toFixed(5)}&r=1.2`), call(token, `/sims/${sim.id}/around`), call(token, `/sims/${sim.id}/plots`)])
 
   // The live socket: its Sim walking round in a circle.
+  const [cx, cz] = [(Math.random() * 2 - 1) * SPREAD, (Math.random() * 2 - 1) * SPREAD]
   const ws = new WebSocket(API.replace(/^http/, 'ws') + '/live')
   ws.onopen = () => {
     live.opened++
@@ -96,7 +102,7 @@ async function play(i, world, until) {
   const walk = setInterval(() => {
     if (ws.readyState !== WebSocket.OPEN) return
     const a = performance.now() / 4000 + i
-    ws.send(JSON.stringify({ t: 'state', x: Math.round(Math.cos(a) * 30 * 10) / 10, y: 0, z: Math.round(Math.sin(a) * 30 * 10) / 10, h: a, p: 'walk' }))
+    ws.send(JSON.stringify({ t: 'state', x: Math.round((cx + Math.cos(a) * 30) * 10) / 10, y: 0, z: Math.round((cz + Math.sin(a) * 30) * 10) / 10, h: a, p: 'walk' }))
     live.sent++
   }, 150)
   const ping = setInterval(() => ws.readyState === WebSocket.OPEN && ws.send(JSON.stringify({ t: 'ping', c: Date.now() })), 20000)
@@ -145,7 +151,7 @@ const sampler = PG
       }
     }, 2000)
   : null
-console.log(`${PLAYERS} joueurs, ${MINUTES} min, ${API}`)
+console.log(`${PLAYERS} joueurs, ${MINUTES} min, ${SPREAD} m d'écart, ${API}`)
 const started = performance.now()
 // Coming in over the first 20 seconds, as players do (not all in the same second).
 const runs = Array.from({ length: PLAYERS }, (_, i) => sleep((i * 20000) / PLAYERS).then(() => play(i, world, until).catch((e) => console.log(`joueur ${i}: ${e.message}`))))
