@@ -107,8 +107,8 @@ export function action(kind: string, id: string | undefined): { spot: string; po
   if (id === 'jouer-cour') return { spot: 'mat', pose: 'kick' }
   if (id === 'shower') return { spot: 'shower', pose: 'wash' }
   // The bathroom corner too: sitting on the toilets, standing at the basin for the teeth.
-  if (id === 'toilettes') return { spot: 'shower', pose: 'sit' }
-  if (id === 'dents') return { spot: 'shower', pose: 'busy' }
+  if (id === 'toilettes') return { spot: 'shower', pose: 'toilet' }
+  if (id === 'dents') return { spot: 'shower', pose: 'brush' }
   if (id === 'bain-bebe') return { spot: 'shower', pose: 'busy' }
   if (id === 'pray') return { spot: 'seat', pose: 'pray' }
   // At a counter: asking, explaining, filling in the papers; the shopping picked off the shelves.

@@ -24,7 +24,7 @@ export type DefiKind = 'the' | 'ski' | 'courses' | 'foot' | 'course' | 'combat' 
 
 /** The défi of an activity (backend sims/defi.go defiFor says the same), or null. The pousse-pousse's tea is served: no défi. */
 export const defiOf = (interactionId?: string): DefiKind | null =>
-  ({ 'street-grin': 'the', 'chat-grin': 'the', 'ski-boulay': 'ski', supermarche: 'courses', courses: 'courses', 'console-foot': 'foot', 'console-defi': 'foot', 'tournoi-console': 'foot', 'console-course': 'course', 'console-combat': 'combat', 'borne-arcade': 'arcade' } as Record<string, DefiKind>)[interactionId ?? ''] ?? null
+  ({ 'street-grin': 'the', 'chat-grin': 'the', 'ski-boulay': 'ski', supermarche: 'courses', courses: 'courses', 'console-foot': 'foot', 'console-defi': 'foot', 'tournoi-console': 'foot', 'console-course': 'course', 'console-combat': 'combat', 'borne-arcade': 'arcade', 'maison-foot': 'foot', 'maison-course': 'course', 'maison-combat': 'combat' } as Record<string, DefiKind>)[interactionId ?? ''] ?? null
 
 /** The foot's three ways: a match, the challenge where the loser pays, the Saturday tournament. */
 const footMode = (interactionId?: string) => (interactionId === 'console-defi' ? 'defi' : interactionId === 'tournoi-console' ? 'tournoi' : 'match')

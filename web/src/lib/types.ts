@@ -255,6 +255,7 @@ export type World = {
   materials?: Material[]
   plot?: { w: number; d: number; h: number }
   furniture?: Furniture[]
+  groceries?: Grocery[]
   /** The emotes (game/emotes.go): free ones, and ones bought once with Djai. */
   emotes?: Emote[]
   /** The boutiques' pieces (game/clothes.go). */
@@ -490,7 +491,32 @@ export type Block = [number, number, number, string]
 /** A piece of furniture in a house: corner cell, turned a quarter (1) or not, which piece. */
 export type Piece = [number, number, number, number, string]
 /** Furniture one can put in one's house (game/house.go). */
-export type Furniture = { id: string; label: string; icon: string; w: number; d: number; h: number; price: number; comfort: number; unlocks?: string[]; color: string }
+export type Furniture = {
+  id: string
+  label: string
+  icon: string
+  w: number
+  d: number
+  h: number
+  price: number
+  comfort: number
+  unlocks?: string[]
+  color: string
+  /** The plain piece this is a finer version of (a canopy bed is a 'lit'): it does what that one does. */
+  base?: string
+  /** '' the basics, 'confort' a step up, 'prestige' the very best. */
+  tier?: '' | 'confort' | 'prestige'
+  /** Where it goes: chambre, salon, cuisine, bain, deco. */
+  room?: string
+  /** The update it waits for (lib/features.ts keyOpen). */
+  key?: string
+  /** A fridge's room, in things kept. */
+  stock?: number
+}
+/** What a piece is in the house: its base, or itself. */
+export const kindOf = (f: Pick<Furniture, 'id' | 'base'>) => f.base || f.id
+/** A thing kept in the fridge (backend game/fridge.go). */
+export type Grocery = { id: string; label: string; icon: string; price: number; minutes: number; effect: Partial<Record<'hunger' | 'energy' | 'hygiene' | 'fun' | 'social', number>>; drink?: boolean }
 export type Lot = { w: number; d: number; area: number; city: string; commune: string; paid: number; /** Where the player set it on the map (none: the spot the game drew). */ lat?: number; lng?: number }
 /** A lot of a commune on the map where one picks a spot (backend sims/plot.go lotSpots). */
 export type LotSpot = { key: string; lat?: number; lng?: number; w: number; d: number; mine?: boolean; lot?: number; bare?: boolean }

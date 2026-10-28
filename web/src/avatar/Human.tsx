@@ -12,10 +12,10 @@ import { fightArms, fightBody, fightLegs, isFight, type FightPose } from './figh
 // simpler blocky figure (avatar/LowHuman.tsx) far away, and the poses that
 // move them both (usePoseRig). Units are metres: feet on y=0, facing +Z.
 
-export type Pose = 'idle' | 'walk' | 'run' | 'leap' | 'hang' | 'wash' | 'sleep' | 'pray' | 'cook' | 'phone' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper' | 'touch' | 'mark' | 'guard' | 'dive' | 'airplane' | 'pass' | 'salat' | 'swim' | 'dunk' | 'layup' | 'crossover' | 'block' | 'steal' | 'slide' | 'stumble' | 'bouncepass' | 'film' | 'call' | 'snack' | 'dj' | EmotePose | FightPose
+export type Pose = 'idle' | 'walk' | 'run' | 'leap' | 'hang' | 'wash' | 'sleep' | 'pray' | 'cook' | 'phone' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper' | 'touch' | 'mark' | 'guard' | 'dive' | 'airplane' | 'pass' | 'salat' | 'swim' | 'dunk' | 'layup' | 'crossover' | 'block' | 'steal' | 'slide' | 'stumble' | 'bouncepass' | 'film' | 'call' | 'snack' | 'dj' | 'brush' | 'toilet' | EmotePose | FightPose
 
 /** Poses done sitting on a chair (hips at seat height): 'call' is the phone at the ear, sitting. */
-export const SEATED: Pose[] = ['sit', 'eat', 'drink', 'write', 'call']
+export const SEATED: Pose[] = ['sit', 'eat', 'drink', 'write', 'call', 'toilet']
 const SEAT_DROP = 0.41
 
 const Shadows = createContext(true)

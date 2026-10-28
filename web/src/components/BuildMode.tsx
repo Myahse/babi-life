@@ -3,9 +3,11 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, type ThreeEvent } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
-import { Archive, Armchair, BedDouble, Check, CookingPot, Eye, EyeOff, Fan, Hammer, Home as HomeIcon, Lock, Pickaxe, RectangleHorizontal, Refrigerator, RotateCw, ShowerHead, Sofa, Toilet, Tv, Utensils, X, type LucideIcon } from 'lucide-react'
+import { Check, Crown, Eye, EyeOff, Hammer, Home as HomeIcon, Lock, Move, Pickaxe, RotateCw, Star, X } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
-import type { ActionResult, Block, Furniture, HousePlan, Material, Piece, Plot, Sim, World } from '../lib/types'
+import { kindOf, type ActionResult, type Block, type Furniture, type HousePlan, type Material, type Piece, type Plot, type Sim, type World } from '../lib/types'
+import { keyOpen, useFeatures } from '../lib/features'
+import { iconFor } from './icons'
 import { amount } from '../game/rules'
 import { Character } from '../world3d/Character'
 import { House, materialTexture } from '../world3d/build/House'
@@ -24,7 +26,17 @@ import { Coin } from './ui'
 // moves the Sim in: no more rent. Edits are saved in small batches, paid from
 // the Sim's money, and everyone in the commune sees the house on its lot.
 
-const FURNITURE_ICON: Record<string, LucideIcon> = { natte: RectangleHorizontal, lit: BedDouble, chaises: Armchair, table: Utensils, canape: Sofa, gaziniere: CookingPot, frigo: Refrigerator, tele: Tv, ventilo: Fan, armoire: Archive, douche: ShowerHead, wc: Toilet }
+/** The editor's shelves: the rooms, and the very best pieces all together. */
+const SHELVES = [
+  ['tout', 'Tout'],
+  ['chambre', 'Chambre'],
+  ['salon', 'Salon'],
+  ['cuisine', 'Cuisine'],
+  ['bain', 'Salle de bain'],
+  ['deco', 'Déco'],
+  ['prestige', 'Prestige'],
+] as const
+type Shelf = (typeof SHELVES)[number][0]
 
 type Cell = [number, number, number]
 const key = ([x, y, z]: Cell) => `${x},${y},${z}`
@@ -44,7 +56,15 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
   const [pick, setPick] = useState(materials[0]?.id ?? 'banco')
   const [pickF, setPickF] = useState(catalog[0]?.id ?? 'lit')
   const [rot, setRot] = useState(0)
-  const [mode, setMode] = useState<'place' | 'remove'>('place')
+  const [mode, setMode] = useState<'place' | 'remove' | 'move'>('place')
+  // The updates (lib/features.ts): the finer pieces, and moving a piece, once the team has opened them.
+  const feats = useFeatures()
+  const canMove = keyOpen(feats, 'deplacer-meubles')
+  const shop = catalog.filter((f) => !f.key || keyOpen(feats, f.key))
+  const [shelf, setShelf] = useState<Shelf>('tout')
+  const shelved = shop.filter((f) => (shelf === 'tout' ? true : shelf === 'prestige' ? f.tier === 'prestige' : f.room === shelf))
+  // « Déplacer »: the piece picked up (off the floor until it's put down again).
+  const [carry, setCarry] = useState<Piece | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [hover, setHover] = useState<Cell | null>(null)
   // « Voir dedans »: the roof and the top of the walls hidden, to furnish (as in a builder game).
@@ -103,8 +123,8 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
   useEffect(() => void reload(), [sim.id, wanted]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Edits waiting to be saved: sent together a moment after the last tap.
-  type Queue = { place: Map<string, Block>; remove: Map<string, Cell>; furnish: Map<string, Piece>; unfurnish: Map<string, Cell> }
-  const fresh = (): Queue => ({ place: new Map(), remove: new Map(), furnish: new Map(), unfurnish: new Map() })
+  type Queue = { place: Map<string, Block>; remove: Map<string, Cell>; furnish: Map<string, Piece>; unfurnish: Map<string, Cell>; move: [Piece, Piece][] }
+  const fresh = (): Queue => ({ place: new Map(), remove: new Map(), furnish: new Map(), unfurnish: new Map(), move: [] })
   const queue = useRef<Queue>(fresh())
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [pendingCost, setPendingCost] = useState(0)
@@ -113,12 +133,12 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
   const flush = () => {
     timer.current = null
     const q = queue.current
-    if (!q.place.size && !q.remove.size && !q.furnish.size && !q.unfurnish.size) return
+    if (!q.place.size && !q.remove.size && !q.furnish.size && !q.unfurnish.size && !q.move.length) return
     queue.current = fresh()
     const place = [...q.place.values()]
     setPendingCost(0)
     api
-      .build(sim.id, place, [...q.remove.values()], [...q.furnish.values()], [...q.unfurnish.values()], lotId)
+      .build(sim.id, place, [...q.remove.values()], [...q.furnish.values()], [...q.unfurnish.values()], lotId, q.move)
       .then((res) => {
         onResult(res)
         void reload() // the new state, and whether one can move in now
@@ -148,7 +168,7 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
   const furnished = useMemo(() => new Set(pieces.flatMap((p) => footprint(p).map(key))), [pieces]) // eslint-disable-line react-hooks/exhaustive-deps
   const inside = ([x, y, z]: Cell) => x >= 0 && x < W && z >= 0 && z < D && y >= 0 && y < H
   const material = materials.find((m) => m.id === pick)
-  const piece = catalog.find((f) => f.id === pickF)
+  const piece = catalog.find((f) => f.id === (carry ? carry[4] : pickF))
   const money = sim.money - pendingCost
   const placedSoFar = built + queue.current.place.size
 
@@ -163,13 +183,51 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
     setError(null)
     later()
   }
+  /** Why a piece can't stand there ('' when it can). */
+  const misfit = (p: Piece) => {
+    const cells = footprint(p)
+    if (cells.some((x) => !inside(x))) return 'Ça dépasse de ton terrain : tourne-le ou pose-le ailleurs.'
+    if (cells.some((x) => grid.has(key(x)) || furnished.has(key(x)))) return 'Pas la place : il y a déjà quelque chose ici.'
+    if (p[1] > 0 && cells.filter((x) => x[1] === p[1]).some((x) => !grid.has(key([x[0], x[1] - 1, x[2]])))) return 'Un meuble se pose sur le sol ou sur un plancher.'
+    return ''
+  }
+  // The piece carried, put down here: for nothing (only where it stands changes).
+  const putDown = (c: Cell) => {
+    if (!carry) return
+    const p: Piece = [c[0], c[1], c[2], rot, carry[4]]
+    const why = misfit(p)
+    if (why) return setError(why)
+    const from = key([carry[0], carry[1], carry[2]])
+    // Bought in this same batch: it's just bought here instead.
+    if (queue.current.furnish.delete(from)) queue.current.furnish.set(key(c), p)
+    else queue.current.move.push([carry, p])
+    setPieces([...pieces, p])
+    setCarry(null)
+    setError(null)
+    later()
+  }
+  const pickUp = (p: Piece) => {
+    if (p[4] === 'escalier') return setError("L'escalier ne se déplace pas : enlève-le et repose-le.")
+    if (timer.current) clearTimeout(timer.current)
+    timer.current = null
+    setCarry(p)
+    setRot(p[3])
+    setPieces(pieces.filter((x) => x !== p))
+    setError(null)
+  }
+  // Put back where it was (the move given up).
+  const putBack = () => {
+    if (!carry) return
+    setPieces((ps) => [...ps, carry])
+    setCarry(null)
+    later()
+  }
   const furnish = (c: Cell) => {
+    if (mode === 'move') return putDown(c)
     if (!piece) return
     const p: Piece = [c[0], c[1], c[2], rot, piece.id]
-    const cells = footprint(p)
-    if (cells.some((x) => !inside(x))) return setError('Ça dépasse de ton terrain : tourne-le ou pose-le ailleurs.')
-    if (cells.some((x) => grid.has(key(x)) || furnished.has(key(x)))) return setError("Pas la place : il y a déjà quelque chose ici.")
-    if (c[1] > 0 && cells.filter((x) => x[1] === c[1]).some((x) => !grid.has(key([x[0], x[1] - 1, x[2]])))) return setError('Un meuble se pose sur le sol ou sur un plancher.')
+    const why = misfit(p)
+    if (why) return setError(why)
     if (money < piece.price) return setError("Pas assez d'argent pour ce meuble.")
     queue.current.furnish.set(key(c), p)
     setPendingCost((x) => x + piece.price)
@@ -206,21 +264,25 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
   const put = (c: Cell) => (tab === 'meubles' ? furnish(c) : place(c))
   const onBlock = (c: Cell, n: Cell, e: ThreeEvent<MouseEvent>) => {
     if (e.delta > 6) return // that was a drag to turn the view
+    if (mode === 'move' && !carry) return
     if (mode === 'remove') remove(c)
     else put([c[0] + n[0], c[1] + n[1], c[2] + n[2]])
   }
   const onGround = (e: ThreeEvent<MouseEvent>) => {
-    if (e.delta > 6 || mode === 'remove') return
+    if (e.delta > 6 || mode === 'remove' || (mode === 'move' && !carry)) return
     e.stopPropagation()
     put([Math.floor(e.point.x + W / 2), 0, Math.floor(e.point.z + D / 2)])
   }
   const onPiece = (p: Piece, e: ThreeEvent<MouseEvent>) => {
-    if (e.delta > 6 || mode !== 'remove') return
+    if (e.delta > 6) return
+    if (mode === 'move' && !carry) return (e.stopPropagation(), pickUp(p))
+    if (mode !== 'remove') return
     e.stopPropagation()
     unfurnish(p)
   }
+  const placing = mode === 'place' || (mode === 'move' && !!carry)
   const ghost = hover && (mode === 'remove' || (inside(hover) && !grid.has(key(hover)))) ? hover : null
-  const ghostPiece: Piece | null = ghost && mode === 'place' && tab === 'meubles' && piece ? [ghost[0], ghost[1], ghost[2], rot, piece.id] : null
+  const ghostPiece: Piece | null = ghost && placing && tab === 'meubles' && piece ? [ghost[0], ghost[1], ghost[2], rot, piece.id] : null
 
   const moveIn = async () => {
     try {
@@ -230,8 +292,9 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
       setError(e instanceof ApiError ? e.message : 'Pas de réseau')
     }
   }
-  const hasBed = pieces.some((p) => p[4] === 'lit' || p[4] === 'natte')
-  const hasWc = pieces.some((p) => p[4] === 'wc')
+  const kindAt = (p: Piece) => kindOf(catalog.find((f) => f.id === p[4]) ?? { id: p[4] })
+  const hasBed = pieces.some((p) => kindAt(p) === 'lit' || kindAt(p) === 'natte')
+  const hasWc = pieces.some((p) => kindAt(p) === 'wc')
 
   // No lot yet: buy one first, here where the Sim is.
   if (plot && !plot.lot)
@@ -286,7 +349,7 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
           <directionalLight position={[8, 14, 6]} intensity={1.8} castShadow shadow-mapSize={[1024, 1024]} shadow-camera-left={-span} shadow-camera-right={span} shadow-camera-top={span} shadow-camera-bottom={-span} />
           <ambientLight intensity={0.35} />
           {/* The lot: grass, a grid of one-metre squares, the street's earth round it */}
-          <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow onClick={onGround} onPointerMove={(e) => (e.stopPropagation(), setHover(mode === 'remove' ? null : [Math.floor(e.point.x + W / 2), 0, Math.floor(e.point.z + D / 2)]))}>
+          <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow onClick={onGround} onPointerMove={(e) => (e.stopPropagation(), setHover(mode === 'remove' || (mode === 'move' && !carry) ? null : [Math.floor(e.point.x + W / 2), 0, Math.floor(e.point.z + D / 2)]))}>
             <planeGeometry args={[W, D]} />
             <meshLambertMaterial map={grass(W, D)} />
           </mesh>
@@ -305,7 +368,7 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
                 <Zones zones={preview.zones} blocks={preview.blocks} furniture={preview.furniture} w={preview.w} d={preview.d} cut={cut} />
               </group>
             )}
-            {blocks && <House blocks={cut ? blocks.filter((b) => b[1] < 2) : blocks} materials={materials} onBlock={onBlock} onHover={(c, n) => setHover(c && n && mode === 'place' ? [c[0] + n[0], c[1] + n[1], c[2] + n[2]] : c)} />}
+            {blocks && <House blocks={cut ? blocks.filter((b) => b[1] < 2) : blocks} materials={materials} onBlock={onBlock} onHover={(c, n) => setHover(c && n && (mode === 'place' || (mode === 'move' && carry)) ? [c[0] + n[0], c[1] + n[1], c[2] + n[2]] : mode === 'move' ? null : c)} />}
             <FurnitureSet pieces={cut ? downstairs(pieces) : pieces} catalog={catalog} onPiece={onPiece} />
             {ghostPiece ? (
               <FurnitureSet pieces={[ghostPiece]} catalog={catalog} ghost />
@@ -379,7 +442,7 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
                 ['meubles', 'Meubles'],
               ] as const
             ).map(([id, label]) => (
-              <button key={id} onClick={() => (setTab(id), setMode('place'), id === 'meubles' && setCut(true), id !== 'plans' && setPreview(null))} className={`flex-1 rounded-xl py-1.5 text-sm font-extrabold ${tab === id ? 'bg-[var(--color-orange)] text-white' : 'bg-[var(--color-canvas)]'}`}>
+              <button key={id} onClick={() => (putBack(), setTab(id), setMode('place'), id === 'meubles' && setCut(true), id !== 'plans' && setPreview(null))} className={`flex-1 rounded-xl py-1.5 text-sm font-extrabold ${tab === id ? 'bg-[var(--color-orange)] text-white' : 'bg-[var(--color-canvas)]'}`}>
                 {label}
               </button>
             ))}
@@ -419,15 +482,27 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
               </div>
             </div>
           ) : (
+          <>
+          {tab === 'meubles' && mode !== 'move' && (
+            <div className="mb-1.5 flex gap-1 overflow-x-auto pb-0.5">
+              {SHELVES.filter(([id]) => id === 'tout' || shop.some((f) => (id === 'prestige' ? f.tier === 'prestige' : f.room === id))).map(([id, label]) => (
+                <button key={id} onClick={() => setShelf(id)} aria-pressed={shelf === id} className={`flex shrink-0 items-center gap-1 rounded-full px-3 py-1 text-xs font-extrabold ${shelf === id ? 'bg-[var(--color-ink)] text-white' : 'bg-[var(--color-canvas)]'}`}>
+                  {id === 'prestige' && <Crown size={12} strokeWidth={2.8} className={shelf === id ? 'text-[#ffd166]' : 'text-[#c99a00]'} />}
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="flex items-stretch gap-2">
             <div className="flex shrink-0 flex-col gap-1">
               {(
                 [
-                  ['place', Hammer, tab === 'meubles' ? 'Poser' : 'Poser'],
+                  ['place', Hammer, 'Poser'],
                   ['remove', Pickaxe, tab === 'meubles' ? 'Enlever' : 'Casser'],
+                  ...(tab === 'meubles' && canMove ? ([['move', Move, 'Déplacer']] as const) : []),
                 ] as const
               ).map(([id, Icon, label]) => (
-                <button key={id} onClick={() => (setMode(id), setHover(null))} aria-pressed={mode === id} className={`flex h-11 w-[84px] items-center justify-center gap-1.5 rounded-2xl text-sm font-extrabold transition ${mode === id ? 'bg-[var(--color-ink)] text-white' : 'bg-[var(--color-canvas)]'}`}>
+                <button key={id} onClick={() => (putBack(), setMode(id), setHover(null))} aria-pressed={mode === id} className={`flex h-11 w-[84px] items-center justify-center gap-1.5 rounded-2xl text-sm font-extrabold transition ${mode === id ? 'bg-[var(--color-ink)] text-white' : 'bg-[var(--color-canvas)]'}`}>
                   <Icon size={16} strokeWidth={2.6} /> {label}
                 </button>
               ))}
@@ -440,9 +515,16 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
             <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto pb-1">
               {tab === 'materiaux'
                 ? materials.map((m) => <MaterialTile key={m.id} m={m} picked={pick === m.id && mode === 'place'} locked={m.unlock > placedSoFar} toGo={m.unlock - placedSoFar} onPick={() => (setPick(m.id), setMode('place'))} />)
-                : catalog.map((f) => <FurnitureTile key={f.id} f={f} picked={pickF === f.id && mode === 'place'} onPick={() => (setPickF(f.id), setMode('place'))} />)}
+                : mode === 'move'
+                  ? (
+                      <p className="self-center px-2 text-sm font-bold text-[var(--color-ink-soft)]">
+                        {carry ? `${piece?.label ?? 'Le meuble'} : touche où le poser (« Tourner » pour le tourner). Gratuit.` : 'Touche un meuble pour le prendre, puis touche où le poser.'}
+                      </p>
+                    )
+                  : shelved.map((f) => <FurnitureTile key={f.id} f={f} picked={pickF === f.id && mode === 'place'} onPick={() => (setPickF(f.id), setMode('place'))} />)}
             </div>
           </div>
+          </>
           )}
         </div>
       </div>
@@ -451,11 +533,19 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
 }
 
 function FurnitureTile({ f, picked, onPick }: { f: Furniture; picked: boolean; onPick: () => void }) {
-  const Icon = FURNITURE_ICON[f.id] ?? Armchair
-  const does = f.unlocks?.includes('sleep') ? 'Dormir' : f.unlocks?.includes('cook-attieke') ? 'Cuisiner' : f.unlocks?.includes('watch-tv') ? 'La télé' : f.unlocks?.includes('shower') ? 'Se doucher' : f.id === 'wc' ? 'Pour emménager' : `Confort +${Math.round(f.comfort * 100)}`
+  const Icon = iconFor(f.icon)
+  const kind = kindOf(f)
+  const does = f.unlocks?.includes('sleep') ? 'Dormir' : f.unlocks?.includes('cook-attieke') ? 'Cuisiner' : f.unlocks?.includes('watch-tv') ? 'La télé' : f.unlocks?.includes('shower') ? 'Se doucher' : f.unlocks?.includes('maison-foot') ? 'Jouer' : kind === 'wc' ? 'Pour emménager' : f.unlocks?.includes('dents') ? 'Les dents' : f.stock ? `${f.stock} choses au frais` : `Confort +${Math.round(f.comfort * 100)}`
+  // Light swatches get a dark icon.
+  const light = parseInt(f.color.slice(1, 3), 16) + parseInt(f.color.slice(3, 5), 16) + parseInt(f.color.slice(5, 7), 16) > 560
   return (
-    <button onClick={onPick} className={`flex w-[84px] shrink-0 flex-col items-center gap-0.5 rounded-2xl p-1.5 transition active:scale-95 ${picked ? 'bg-[#fff4e8] ring-2 ring-[var(--color-orange)]' : 'bg-[var(--color-canvas)]'}`}>
-      <span className="grid h-10 w-10 place-items-center rounded-lg" style={{ background: f.color, color: ['#ffffff', '#f4f6f8', '#e8e3d6', '#cfd3d6', '#9fd3e8', '#d9b26b'].includes(f.color) ? '#333' : '#fff', boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.12)' }}>
+    <button onClick={onPick} className={`relative flex w-[84px] shrink-0 flex-col items-center gap-0.5 rounded-2xl p-1.5 transition active:scale-95 ${picked ? 'bg-[#fff4e8] ring-2 ring-[var(--color-orange)]' : f.tier === 'prestige' ? 'bg-[#fff8e1]' : 'bg-[var(--color-canvas)]'}`}>
+      {f.tier && (
+        <span className={`absolute top-1 right-1 grid h-4 w-4 place-items-center rounded-full ${f.tier === 'prestige' ? 'bg-[#1f1a17] text-[#ffd166]' : 'bg-white text-[#e0a100]'}`} title={f.tier === 'prestige' ? 'Prestige' : 'Confort'}>
+          {f.tier === 'prestige' ? <Crown size={10} strokeWidth={3} /> : <Star size={10} strokeWidth={3} />}
+        </span>
+      )}
+      <span className="grid h-10 w-10 place-items-center rounded-lg" style={{ background: f.color, color: light ? '#333' : '#fff', boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.12)' }}>
         <Icon size={20} strokeWidth={2.4} />
       </span>
       <span className="w-full truncate text-center text-[11px] leading-tight font-extrabold">{f.label}</span>

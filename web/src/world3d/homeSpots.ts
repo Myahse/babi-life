@@ -1,4 +1,4 @@
-import type { Furniture, Plot } from '../lib/types'
+import { kindOf, type Furniture, type Plot } from '../lib/types'
 import type { HomeSpot } from './Walker'
 
 type XZ = [number, number]
@@ -19,8 +19,11 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
   const walls = new Set(plot.blocks.filter((b) => b[1] === 1).map((b) => `${b[0]},${b[2]}`))
   const wallAt = (u: number, v: number) => walls.has(`${Math.floor(u + w / 2)},${Math.floor(v + d / 2)}`)
   // The TV and the seats one could watch it from (chosen after: the one turned most towards it).
-  let tv: { at: XZ; rot: number } | null = null
+  let tv: { at: XZ; rot: number; y?: number; w?: number; h?: number } | null = null
+  // The game console: its screen, and in front of it (no seat facing it: a pouf on the floor).
+  let pad: { at: XZ; rot: number; front: HomeSpot } | null = null
   const seats: HomeSpot[] = []
+  let basin = false
   for (const piece of plot.furniture ?? []) {
     const f = catalog.find((x) => x.id === piece[4])
     // Upstairs (a duplex's bedrooms): the Sim walks on the ground floor, so the pieces down there.
@@ -49,7 +52,9 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
       for (const id of ids) out[id] ??= spot
       return spot
     }
-    switch (f.id) {
+    // The finer pieces are where they do what their plain piece does (a canopy bed is a bed), at their own size.
+    const big = f.w >= 3
+    switch (kindOf(f)) {
       case 'lit':
         at(-0.45, 0.64, half - 0.15, 0, 'sleep', true, ['sleep', 'nap', 'passer-nuit'])
         break
@@ -57,31 +62,51 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
         at(0, 0.16, half - 0.1, 0, 'sleep', true, ['sleep', 'nap', 'passer-nuit'])
         break
       case 'canape':
-        seats.push(at(-0.45, 0.05, 0.15, 0, 'sit', false, ['watch-tv', 'call-family']), at(0.45, 0.05, 0.15, 0, 'sit'))
+        if (f.id === 'canape-cuir') seats.push(at(-1.0, 0.05, -0.45, 0, 'sit', false, ['watch-tv', 'call-family']), at(-0.33, 0.05, -0.45, 0, 'sit'), at(0.33, 0.05, -0.45, 0, 'sit'))
+        else if (big) seats.push(at(-0.82, 0.05, 0.15, 0, 'sit', false, ['watch-tv', 'call-family']), at(0, 0.05, 0.15, 0, 'sit'), at(0.82, 0.05, 0.15, 0, 'sit'))
+        else seats.push(at(-0.45, 0.05, 0.15, 0, 'sit', false, ['watch-tv', 'call-family']), at(0.45, 0.05, 0.15, 0, 'sit'))
         break
       case 'chaises':
         seats.push(at(0, 0.05, 0.05, 0, 'sit', false, ['watch-tv', 'call-family']))
         break
-      case 'tele':
-        // The screen, on the piece's front (+z).
-        tv = { at: toWorld(pu + 0.05 * ls, pv + 0.05 * lc), rot }
+      case 'tele': {
+        // The screen, on the piece's front (+z): the big ones hang higher, wider.
+        const [y, sw, sh, z] = f.id === 'tele-geante' ? [1.35, 1.84, 1.02, -half + 0.095] : f.id === 'tele-led' ? [0.95, 1.26, 0.7, -half + 0.25] : [0.85, 0.84, 0.46, 0.05]
+        tv = { at: toWorld(pu + z * ls, pv + z * lc), rot, y, w: sw, h: sh }
         break
+      }
+      case 'console': {
+        const z = -half + 0.255
+        pad = { at: toWorld(pu + z * ls, pv + z * lc), rot, front: at(0, 0.05, half + 0.9, Math.PI, 'write', false, [], true) }
+        break
+      }
       case 'gaziniere':
         at(0, 0, half + 0.45, Math.PI, 'cook', false, ['cook-attieke'])
         break
+      case 'frigo':
+        // Taken out of the fridge: standing at its door.
+        at(0, 0, half + 0.5, Math.PI, 'snack', false, ['frigo'])
+        break
       case 'table':
-        // Sitting at the side of the table, on a stool: homework, the Golvo delivery.
-        at(0.75, 0.05, 0, -Math.PI / 2, 'write', false, ['devoirs'], true)
-        at(0.75, 0.05, 0, -Math.PI / 2, 'eat', false, ['golvo'], true)
+        // Sitting at the side of the table: on a stool, or the marble table's own chair.
+        at(0.75, 0.05, 0, -Math.PI / 2, 'write', false, ['devoirs'], f.id === 'table')
+        at(0.75, 0.05, 0, -Math.PI / 2, 'eat', false, ['golvo'], f.id === 'table')
         break
       case 'douche':
         at(0, 0.08, 0, 0, 'wash', false, ['shower'])
-        // The teeth, standing at the shower's tap (if there are no toilets to stand by).
-        at(0, 0.08, half + 0.35, Math.PI, 'busy', false, ['dents'])
+        // The teeth, standing at the shower's tap (if there's no washbasin or toilets to stand by).
+        if (f.unlocks?.includes('dents')) at(0, 0.08, half + 0.35, Math.PI, 'brush', false, ['dents'])
         break
+      case 'lavabo': {
+        // The teeth at the washbasin, in front of the mirror: always there when there is one.
+        const spot = at(f.w > 1 ? -0.45 : 0, 0, half + 0.38, Math.PI, 'brush')
+        if (!out.dents || !basin) out.dents = spot
+        basin = true
+        break
+      }
       case 'wc':
         // Sitting on the toilets, turned to face the room.
-        at(0, 0.05, -0.05, 0, 'sit', false, ['toilettes'], false, true)
+        at(0, 0.05, -0.05, 0, 'toilet', false, ['toilettes'], false, true)
         break
     }
   }
@@ -98,6 +123,18 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
     const toTv = Math.atan2(t.at[0] - seat.at[0], t.at[1] - seat.at[1])
     const turn = Math.max(-0.5, Math.min(0.5, Math.atan2(Math.sin(toTv - seat.rot), Math.cos(toTv - seat.rot))))
     out['watch-tv'] = { ...seat, rot: seat.rot + turn, screen: t }
+  }
+  // The console's games: from the seat facing its screen best (not further than 4 m), the controller in the hands; else on a pouf in front of it.
+  if (pad) {
+    const p = pad as { at: XZ; rot: number; front: HomeSpot }
+    const facing = (s: HomeSpot) => {
+      const [dx, dz] = [p.at[0] - s.at[0], p.at[1] - s.at[1]]
+      const len = Math.hypot(dx, dz) || 1
+      return len > 4 ? -9 : (Math.sin(s.rot) * dx + Math.cos(s.rot) * dz) / len - len * 0.04
+    }
+    const best = seats.reduce<HomeSpot | null>((a, b) => (facing(b) > (a ? facing(a) : 0.5) ? b : a), null)
+    const spot: HomeSpot = { ...(best ?? p.front), pose: 'write', screen: { at: p.at, rot: p.rot, y: 0.82, w: 0.84, h: 0.47 } }
+    for (const id of ['maison-foot', 'maison-course', 'maison-combat']) out[id] = spot
   }
   // A baby's things are done on the floor in front of a piece, the mother kneeling with it (ActionProps):
   // the biberon, the bouillie, the rattle and the cuddle in front of the sofa (or the bed), the bath in front of the shower.

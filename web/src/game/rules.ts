@@ -266,9 +266,16 @@ export function homePlanFor(world: World, sim: Sim) {
   const id = (fam && fam.housing === sim.housing && world.homeFor.family[fam.id]) || world.homeFor.housing[sim.housing]
   return id ? world.homePlans[id] : undefined
 }
+/** The basics make a house up to 1.35; the finer pieces (a tier up) add on top, up to 1.5 (game/house.go HomeComfort). */
 export function homeComfort(world: World, furnished: string[] = []) {
-  const c = 0.75 + furnished.reduce((t, id) => t + (world.furniture?.find((f) => f.id === id)?.comfort ?? 0), 0)
-  return Math.min(1.35, Math.round(c * 100) / 100)
+  let [c, fine] = [0.75, 0]
+  for (const id of furnished) {
+    const f = world.furniture?.find((x) => x.id === id)
+    if (!f) continue
+    if (f.tier) fine += f.comfort
+    else c += f.comfort
+  }
+  return Math.round((Math.min(1.35, c) + Math.min(0.15, fine)) * 100) / 100
 }
 /** Where the Sim lives: a rented tier, or the house it built. */
 export function housingOf(world: World, sim: Pick<Sim, 'housing' | 'furnished'>): Housing {
@@ -277,7 +284,8 @@ export function housingOf(world: World, sim: Pick<Sim, 'housing' | 'furnished'>)
 }
 /** In one's own house, the furniture a home activity needs and is missing ('' when nothing). */
 export function homeLacks(world: World, sim: Pick<Sim, 'housing' | 'furnished'>, interaction: string) {
-  if (sim.housing !== OWN_HOUSE) return ''
+  // The console's games: only in one's own house, on its console.
+  if (sim.housing !== OWN_HOUSE) return interaction.startsWith('maison-') ? 'une console, dans ta propre maison' : ''
   const pieces = (world.furniture ?? []).filter((f) => f.unlocks?.includes(interaction))
-  return pieces.length && !pieces.some((f) => sim.furnished?.includes(f.id)) ? pieces[pieces.length - 1].label : ''
+  return pieces.length && !pieces.some((f) => sim.furnished?.includes(f.id)) ? pieces[0].label : ''
 }

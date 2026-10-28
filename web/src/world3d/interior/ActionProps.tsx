@@ -41,7 +41,7 @@ export function ActionProps({ id, kind, lying, stage = 'adulte', partner, bath }
   if (!id || id === 'cook-attieke') return null
   if (HAIR.test(id) && (kind === 'barbier' || kind === 'salon')) return <Hairdresser id={id} salon={kind === 'salon'} />
   // Before the TV of the salle de jeux: the controller in the hands.
-  if (/^console-|^tournoi-console$/.test(id)) return <Controller />
+  if (/^console-|^tournoi-console$|^maison-(foot|course|combat)$/.test(id)) return <Controller />
   if (id === 'manucure') return <Manicure />
   if (id === 'retouche') return <Fitting />
   if (id === 'shower' || id === 'logement-douche' || id === 'chambre-douche' || (id === 'chambre-bain' && !bath)) return <Shower fixtures={kind !== 'house' && kind !== 'room'} />
@@ -455,7 +455,7 @@ export function TvScreen() {
 }
 
 /** The TV of one's own house on (build/Furniture.tsx 'tele'): its picture changing, a glow on the room. Placed at the screen, facing out. */
-export function TvOn() {
+export function TvOn({ y = 0.85, w = 0.84, h = 0.46 }: { y?: number; w?: number; h?: number } = {}) {
   const mat = useMemo(() => new THREE.MeshBasicMaterial({ color: '#4dabf7' }), [])
   const light = useRef<THREE.PointLight>(null)
   useFrame(() => {
@@ -469,10 +469,10 @@ export function TvOn() {
   })
   return (
     <group>
-      <mesh position={[0, 0.85, 0.008]} material={mat}>
-        <planeGeometry args={[0.84, 0.46]} />
+      <mesh position={[0, y, 0.008]} material={mat}>
+        <planeGeometry args={[w, h]} />
       </mesh>
-      <pointLight ref={light} position={[0, 0.9, 0.6]} distance={4} decay={2} />
+      <pointLight ref={light} position={[0, y + 0.05, 0.6]} distance={4 + w} decay={2} />
     </group>
   )
 }
