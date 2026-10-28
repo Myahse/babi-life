@@ -28,6 +28,7 @@ import type { Sim } from '../lib/types'
 import { Map as MapIcon, MessageCircle, Newspaper, Eye, Heart, Check, Lock, ShieldCheck, PhoneCall, TriangleAlert } from 'lucide-react'
 import { StreetStall } from '../world3d/open/stalls'
 import { StreetSpot } from '../world3d/open/streetPeople'
+import { Pram } from '../world3d/Pram'
 import { NouchiCorner } from '../world3d/open/nouchis'
 import { Shower } from '../world3d/interior/ActionProps'
 import { NaveWorld, NAVE_VIEW } from '../world3d/interior/CathedralInside'
@@ -47,7 +48,7 @@ const ALPHA = q.has('alpha')
 /** marketing/top20.mjs: &only=<scene> draws that scene alone (its clock from 0; &from=<s>: when its take starts in the film), &overlay only what goes over the game filmed. */
 const ONLY = q.get('only') as SceneId | null
 const OVERLAY = q.has('overlay')
-type SceneId = 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'princesse' | `famille-${string}` | 'palais' | 'basket' | 'fete' | 'cause' | 'look' | 'siporex' | 'phone' | 'visages' | 'coiffures' | 'selfie' | 'yop' | 'garba' | 'brochette' | 'plateau' | 'stade' | 'concert' | 'couloir' | 'amis' | 'salon' | 'douche' | 'zoo' | 'loto' | 'chambre' | 'chambre-choc' | 'cabine' | 'keke' | 'mt-yop' | 'mt-gbaka' | 'mt-maquis' | 'mt-stade' | 'mt-village' | 'mt-salon' | 'tourf' | 'messe' | 'grin' | 'zouglou' | 'lions'
+type SceneId = 'poussette' | 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'princesse' | `famille-${string}` | 'palais' | 'basket' | 'fete' | 'cause' | 'look' | 'siporex' | 'phone' | 'visages' | 'coiffures' | 'selfie' | 'yop' | 'garba' | 'brochette' | 'plateau' | 'stade' | 'concert' | 'couloir' | 'amis' | 'salon' | 'douche' | 'zoo' | 'loto' | 'chambre' | 'chambre-choc' | 'cabine' | 'keke' | 'mt-yop' | 'mt-gbaka' | 'mt-maquis' | 'mt-stade' | 'mt-village' | 'mt-salon' | 'tourf' | 'messe' | 'grin' | 'zouglou' | 'lions'
 /**
  * Which film: ?video (the launch), ?video=bouger (getting about: gbaka,
  * Gnango, Rue Princesse), ?video=bande-annonce (the trailer: gnambro or
@@ -70,9 +71,12 @@ type SceneId = 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'prin
  * ?video=sortie (Awa, at home, opens the gift she teased in « merci »: the game
  * comes out on Wednesday 28 October; what's new lately (politics, matches
  * with friends, Flashé, playing offline), sign up now:
- * marketing/scripts/sortie-28-octobre.md, voice voix-sortie.mp3).
+ * marketing/scripts/sortie-28-octobre.md, voice voix-sortie.mp3) or
+ * ?video=bienvenue (Awa welcomes the new players on opening night: born in a
+ * family drawn by lot, a baby to look after, then the phone and the city:
+ * marketing/scripts/bienvenue.md, voice voix-bienvenue.mp3).
  */
-type FilmId = 'lancement' | 'bouger' | 'bande-annonce' | 'decouverte' | 'live' | 'merci' | 'gameplay' | 'arnaque' | 'keke' | 'top20' | 'sortie'
+type FilmId = 'lancement' | 'bouger' | 'bande-annonce' | 'decouverte' | 'live' | 'merci' | 'gameplay' | 'arnaque' | 'keke' | 'top20' | 'sortie' | 'bienvenue'
 const FILM = (q.get('video') || 'lancement') as FilmId
 
 /** The materials as the server has them (game/build.go). */
@@ -121,7 +125,7 @@ const CREW: { look: Look; gender: 'femme' | 'homme'; pose: Pose }[] = [
 /** Awa, who streams the game (the wish list's guide): orange kaba, headwrap, earrings. */
 // Awa: her kaba and headscarf in the live; a new look for « Merci » (braids, a kente top and skirt, her jewels), kept at home since.
 const AWA =
-  FILM === 'merci' || FILM === 'sortie'
+  FILM === 'merci' || FILM === 'sortie' || FILM === 'bienvenue'
     ? L({ skin: '#8a5532', hair: 'braids', hairColor: '#24160e', outfit: 'jupe', outfitColor: '#12a37a', pattern: 'kente', accessory: 'earrings,beads,watch,bag' })
     : L({ skin: '#8a5532', hair: 'headwrap', outfit: 'kaba', outfitColor: '#ff7a00', pattern: 'cercles', accessory: 'earrings' })
 
@@ -546,6 +550,7 @@ function Camera({ at, look, near = 0.1, far = 100 }: { at: [number, number, numb
 /** One scene of the video (or a still), at t seconds into it. */
 function World({ scene, t }: { scene: SceneId; t: number }) {
   if (scene === 'salon') return <Salon t={t} />
+  if (scene === 'poussette') return <Poussette t={t} />
   if (scene === 'chambre' || scene === 'chambre-choc') return <Chambre t={t} shock={scene === 'chambre-choc'} />
   if (scene === 'cabine') return <Cabine t={t} />
   if (scene === 'keke' || scene.startsWith('mt-')) return <MicroTrottoir scene={scene} t={t} />
@@ -1777,6 +1782,36 @@ const FILMS: Record<FilmId, { shots: Shot[]; intro: number; outro: number; lengt
     length: 35,
     hook: ['', '', ''],
   },
+  // « Bienvenue » (marketing/scripts/bienvenue.md): Awa welcomes the new players on opening night.
+  bienvenue: {
+    // Timed on Awa's voice (marketing/out/voix-bienvenue.mp3, 44.4 s): each shot starts with its sentence.
+    shots: [
+      { from: 0, to: 4.52, scene: 'salon', cap: 'Akwaba ! Bienvenue dans Babi Life 👋' },
+      { from: 4.52, to: 6.44, scene: 'famille-gnambro', title: 'Ta famille', cap: 'Ici, tu ne choisis pas ta famille' },
+      { from: 6.44, to: 8.1, scene: 'famille-poignon', title: 'Ta famille', cap: 'Gnambro, poignon, laté… le sort a décidé 🎲' },
+      { from: 8.1, to: 9.8, scene: 'famille-late', title: 'Ta famille', cap: 'Gnambro, poignon, laté… le sort a décidé 🎲' },
+      { from: 9.8, to: 11.52, scene: 'look', cap: 'Mais la suite, c’est toi qui l’écris ✍🏾' },
+      { from: 11.52, to: 14.08, scene: 'poussette', title: 'Tu commences bébé 🍼', cap: 'Et un bébé, ça se gère hein !' },
+      { from: 14.08, to: 17.16, scene: 'poussette', title: 'Tu commences bébé 🍼', cap: 'Il a faim vite, il est fatigué vite, il veut son câlin' },
+      { from: 17.16, to: 19.84, scene: 'poussette', title: 'Tu commences bébé 🍼', cap: 'Occupe-toi de lui : c’est en jouant que ton perso grandit' },
+      { from: 19.84, to: 24.24, scene: 'amis', title: 'Puis enfant', cap: 'L’école, la récré, les amis' },
+      { from: 24.24, to: 26, scene: 'plateau', title: '18 ans', cap: 'Et à 18 ans, la vraie vie' },
+      { from: 26, to: 28.8, scene: 'fete', title: '18 ans', cap: 'Le boulot, le logement, le maquis, les sorties 🎉' },
+      { from: 28.8, to: 31.08, scene: 'phone', cap: 'Ton téléphone, c’est ton meilleur ami 📱' },
+      { from: 31.08, to: 32.32, scene: 'phone', cap: 'Gbairai pour causer' },
+      { from: 32.32, to: 33.48, scene: 'phone', cap: 'Waye pour l’argent' },
+      { from: 33.48, to: 34.84, scene: 'phone', cap: 'Tikitoko pour les vidéos' },
+      { from: 34.84, to: 37.64, scene: 'yop', cap: 'Et la carte pour aller partout, de Yop à Cocody' },
+      { from: 37.64, to: 40.16, scene: 'cause', title: 'Un conseil', cap: 'Parle aux gens dans la rue, essaie tout…' },
+      { from: 40.16, to: 42.08, scene: 'salon', cap: 'Et reviens souvent : ton perso t’attend' },
+      { from: 42.08, to: 44.5, scene: 'salon', cap: 'On se voit au grin. Allez… à toi de jouer !' },
+      { from: 44.5, to: 51, scene: 'crew' },
+    ],
+    intro: 0,
+    outro: 44.5,
+    length: 51,
+    hook: ['', '', ''],
+  },
   // How you play: born gnambro, the goal is debout, six steps, the money that comes and goes.
   gameplay: {
     shots: [
@@ -2309,6 +2344,73 @@ function SortieOverlay({ t, shot }: { t: number; shot: Shot }) {
           <div className="rounded-2xl bg-white px-5 py-2.5 text-center text-[34px] leading-tight font-extrabold text-[var(--color-ink)] shadow-[0_12px_30px_-10px_rgba(0,0,0,0.6)]">{shot.cap}</div>
         </div>
       )}
+    </>
+  )
+}
+
+/** « Bienvenue »: Awa's header, what the shot is about, her face while the game is shown, her words. */
+function BienvenueOverlay({ t, shot }: { t: number; shot: Shot }) {
+  const local = t - shot.from
+  return (
+    <>
+      <div className="absolute inset-x-0 top-0 flex items-center gap-3 bg-gradient-to-b from-black/55 to-transparent px-6 pt-8 pb-12 font-sans">
+        <span className="block h-14 w-14 overflow-hidden rounded-full border-[3px] border-[#ff7a00] bg-[#ffd8a8]">
+          <AwaFace t={t} size={56} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="text-[26px] leading-none font-extrabold">awa.babi</div>
+          <div className="mt-1 text-[18px] font-bold text-white/80">Bienvenue à Babi 👋🏾</div>
+        </div>
+        <span className="rounded-lg bg-[var(--color-orange)] px-3 py-1.5 text-[20px] font-extrabold">C’EST OUVERT</span>
+      </div>
+      {shot.title && (
+        <div className="absolute inset-x-0 top-[10%] flex justify-center">
+          <div className="rounded-full bg-[var(--color-orange)] px-7 py-2 text-[36px] leading-tight font-extrabold shadow-[0_10px_30px_-10px_rgba(0,0,0,0.6)]" style={{ opacity: Math.min(1, (t - (FILMS.bienvenue.shots.find((x) => x.title === shot.title)?.from ?? shot.from)) / 0.4) }}>
+            {shot.title}
+          </div>
+        </div>
+      )}
+      {shot.scene !== 'salon' && (
+        <div className="absolute top-[24%] right-6 h-[210px] w-[160px] overflow-hidden rounded-[28px] border-[4px] border-white/90 bg-[#ffb37a] shadow-[0_16px_40px_-14px_rgba(0,0,0,0.7)]">
+          <AwaFace t={t} size={210} talking />
+        </div>
+      )}
+      {shot.cap && (
+        <div className="absolute inset-x-0 bottom-[8%] flex justify-center px-10">
+          <div className="rounded-2xl bg-white px-5 py-2.5 text-center text-[34px] leading-tight font-extrabold text-[var(--color-ink)] shadow-[0_12px_30px_-10px_rgba(0,0,0,0.6)]" style={{ opacity: Math.min(1, local / 0.25) }}>
+            {shot.cap}
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+/** The baby out in its pram, maman pushing, down a quiet street; the camera in front, coming back with them. */
+function Poussette({ t }: { t: number }) {
+  const z = -3 + t * 0.55
+  const sim = useMemo(() => ({ id: 'poster-bebe', firstName: 'Awa', gender: 'femme', family: 'poignon', look: L({ skin: '#8a5532', outfit: 'grenouillere', outfitColor: '#ffd43b', accessory: 'tetine' }) }) as unknown as Sim, [])
+  return (
+    <>
+      <hemisphereLight args={['#fff4e6', '#c0704f', 1.15]} />
+      <directionalLight position={[4, 9, 6]} intensity={2.2} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-10} shadow-camera-right={10} shadow-camera-top={10} shadow-camera-bottom={-10} />
+      <ambientLight intensity={0.4} />
+      <Camera at={[0.9 + Math.sin(t * 0.3) * 0.2, 1.35, z + 3.4]} look={[0, 0.7, z]} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[80, 80]} />
+        <meshLambertMaterial color="#c9a27a" />
+      </mesh>
+      {[-1, 1].map((side) =>
+        [...Array(9)].map((_, i) => (
+          <mesh key={`${side}${i}`} position={[side * 3.4, 1.4, -14 + i * 4]} castShadow receiveShadow>
+            <boxGeometry args={[1.6, 2.8, 3.4]} />
+            <meshLambertMaterial color={['#f3e2a9', '#f8f9fa', '#ffd8a8', '#c3e6cb'][(i + (side > 0 ? 2 : 0)) % 4]} />
+          </mesh>
+        )),
+      )}
+      <group position={[0, 0, z]}>
+        <Pram sim={sim} walking speed={1.2} />
+      </group>
     </>
   )
 }
@@ -2914,10 +3016,11 @@ function Video({ t, qr, url, placeholder }: { t: number; qr: string; url: string
       {FILM === 'arnaque' && !outro && <ArnaqueOverlay t={t} shot={shot} />}
       {FILM === 'keke' && !outro && <KekeOverlay t={t} shot={shot} />}
       {FILM === 'sortie' && !outro && <SortieOverlay t={t} shot={shot} />}
+      {FILM === 'bienvenue' && !outro && <BienvenueOverlay t={t} shot={shot} />}
       {FILM === 'live' && shot.scene === 'garba' && local > 5.6 && local < 10.2 && <WayePay t={local - 5.6} />}
       {FILM === 'live' && shot.scene === 'amis' && local > 3 && <GbairaiChat t={local - 3} />}
       {/* Captions */}
-      {shot.title && FILM !== 'live' && FILM !== 'gameplay' && FILM !== 'sortie' && (
+      {shot.title && FILM !== 'live' && FILM !== 'gameplay' && FILM !== 'sortie' && FILM !== 'bienvenue' && (
         <div className="absolute inset-x-0 top-[9%] flex flex-col items-center px-8 text-center">
           <div className="flex items-center gap-3 rounded-full bg-[var(--color-orange)] px-6 py-2 text-[40px] leading-tight font-extrabold shadow-[0_10px_30px_-10px_rgba(0,0,0,0.6)]" style={pop(shot.from + 0.3)}>
             {shot.n && <span className="-ml-3 grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white text-[28px] text-[var(--color-orange)]">{shot.n}</span>}
@@ -2964,6 +3067,12 @@ function Video({ t, qr, url, placeholder }: { t: number; qr: string; url: string
                 <br />
                 <span className="text-[var(--color-orange)]">Bonne semaine ❤️</span>
               </>
+            ) : FILM === 'bienvenue' ? (
+              <>
+                C’est ouvert !
+                <br />
+                <span className="text-[var(--color-orange)]">À toi de jouer 🎮</span>
+              </>
             ) : FILM === 'sortie' ? (
               <>
                 Babi Life sort
@@ -2987,7 +3096,7 @@ function Video({ t, qr, url, placeholder }: { t: number; qr: string; url: string
             )}
           </div>
           <div className="flex flex-col items-center gap-4 rounded-[32px] bg-white p-6 text-[var(--color-ink)] shadow-[0_20px_50px_-15px_rgba(0,0,0,0.6)]" style={pop(O + 1.1)}>
-            <div className="text-[30px] leading-tight font-extrabold">Inscris-toi sur la liste</div>
+            <div className="text-[30px] leading-tight font-extrabold">{FILM === 'bienvenue' ? 'Joue maintenant' : 'Inscris-toi sur la liste'}</div>
             {qr && <img src={qr} alt="" className="h-[220px] w-[220px] [image-rendering:pixelated]" />}
             <div className="font-sans text-[24px] font-extrabold text-[var(--color-orange)]">{url}</div>
             {placeholder && <div className="rounded-lg bg-[#ffeef1] px-3 py-1 font-sans text-[16px] font-extrabold text-[#d81b3f]">ADRESSE PROVISOIRE</div>}
