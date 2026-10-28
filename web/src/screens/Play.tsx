@@ -117,6 +117,7 @@ const KartRace = lazy(() => import('../kart/KartRace'))
 const MallInside = lazy(() => import('../world3d/interior/MallInside').then((m) => ({ default: m.MallInside })))
 import type { MallLayout } from '../world3d/interior/MallInside'
 import { activityOpen, keyOpen, useFeatures } from '../lib/features'
+import { ListedFamily } from '../components/ListedFamily'
 import { FeatureNews } from '../components/FeatureNews'
 import { Sheet } from '../components/Sheet'
 import { Splash } from '../components/Splash'
@@ -1047,6 +1048,7 @@ export function Play() {
     <div className="relative h-full overflow-hidden bg-[var(--color-night)] select-none" data-cinema={(arriving && keyOpen(features, 'arrivee') && !classic) || undefined}>
       {/* An update the team just opened (the admin's « Mises à jour »), once. */}
       <FeatureNews />
+      {keyOpen(features, 'famille-liste') && !arriving && !tuto && !classic && <ListedFamily simId={sim.id} onResult={apply} />}
       {racing && (
         <Suspense fallback={<div className="fixed inset-0 z-50"><Splash label="Babi Karting…" /></div>}>
           <KartRace
