@@ -1589,6 +1589,12 @@ export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 
   const bell = sheet.cut.bell
   const kneeY = HIP_Y - THIGH
   const mesh = (g: THREE.BufferGeometry, p: V3, m: THREE.Material = sm) => <mesh geometry={g} material={m} position={p} castShadow={cast} />
+  // On the toilets: the trousers down round the shins (a skirt or a dress hitched up), the thighs bare,
+  // the shirt's tail over the lap: nothing shows that shouldn't.
+  const loo = pose === 'toilet'
+  const looSkin = lambert(l.skin)
+  const looRoll = clothMat(tint(l.bottomColor || defaultColors(l, femme).bottom, -0.08))
+  const looTail = clothMat(l.outfitColor)
 
   return (
     <group scale={l.height * (femme ? 0.96 : 1)}>
@@ -1635,11 +1641,15 @@ export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 
             const skX = side * (skW / 4 - hipX)
             return (
               <group key={i} ref={hip[i]} position={[side * hipX, HIP_Y, 0]}>
-                {mesh(box(lw, THIGH + 0.04, ld, R.leg[i], 0, 6), [0, (0.04 - THIGH) / 2, 0])}
-                {skirt && mesh(box(skW / 2, Math.min(THIGH, HIP_Y - skirt.hem) + 0.05, skD * 0.98, R.skirtLeg, 0, 5), [skX, 0.05 - (Math.min(THIGH, HIP_Y - skirt.hem) + 0.05) / 2, 0])}
+                {mesh(box(lw, THIGH + 0.04, ld, R.leg[i], 0, 6), [0, (0.04 - THIGH) / 2, 0], loo ? looSkin : sm)}
+                {skirt && !loo && mesh(box(skW / 2, Math.min(THIGH, HIP_Y - skirt.hem) + 0.05, skD * 0.98, R.skirtLeg, 0, 5), [skX, 0.05 - (Math.min(THIGH, HIP_Y - skirt.hem) + 0.05) / 2, 0])}
+                {/* The shirt's tail (or the hitched-up dress) laid over the lap, across both thighs */}
+                {loo && i === 0 && mesh(cube(tw * 1.04, 0.17, 0.03), [hipX, -0.07, ld / 2 + 0.016], looTail)}
                 <group ref={knee[i]} position={[0, -THIGH, 0]}>
                   {mesh(box(lw * 0.98, SHIN + 0.02, ld * 0.98, R.leg[i], 6, 6), [0, (0.02 - SHIN) / 2, 0])}
-                  {skirt && skirt.hem < kneeY && mesh(box(skW / 2, kneeY - skirt.hem + 0.03, skD * 0.98, R.skirtLeg, 5, 5), [skX, 0.03 - (kneeY - skirt.hem + 0.03) / 2, 0])}
+                  {skirt && !loo && skirt.hem < kneeY && mesh(box(skW / 2, kneeY - skirt.hem + 0.03, skD * 0.98, R.skirtLeg, 5, 5), [skX, 0.03 - (kneeY - skirt.hem + 0.03) / 2, 0])}
+                  {/* The trousers down: bunched round the shin, just under the knee */}
+                  {loo && !skirt && mesh(cube(lw * 1.22, 0.11, ld * 1.22), [0, -0.1, 0], looRoll)}
                 </group>
               </group>
             )
