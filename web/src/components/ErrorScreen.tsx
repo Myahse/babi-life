@@ -1,18 +1,37 @@
-import { Component, type ReactNode } from 'react'
+import { Component, lazy, Suspense, type ReactNode } from 'react'
 import { RotateCcw, House } from 'lucide-react'
 import { SplashDancer } from './SplashDancer'
 
+// The game's own perso, in 3D; if even that can't come (it's what broke?), the flat one.
+const SplashAvatar = lazy(() => import('./SplashAvatar'))
+const still = (
+  <div className="error-perso">
+    <SplashDancer size={84} />
+  </div>
+)
+class Fallback extends Component<{ children: ReactNode }, { broken: boolean }> {
+  state = { broken: false }
+  static getDerivedStateFromError() {
+    return { broken: true }
+  }
+  render() {
+    return this.state.broken ? still : this.props.children
+  }
+}
+
 // When something in the game breaks (a screen that crashes, a part of the
-// site that won't download): a perso scratching its head, a plain word, and
+// site that won't download): a perso of the game, a hand on its face, a plain word, and
 // the way back. Never the error itself: it goes to the console only.
 
 export function ErrorScreen() {
   return (
     <div className="grid h-full min-h-[100dvh] w-full place-items-center bg-[#fff4e8] px-6 text-center text-[var(--color-ink)]" role="alert">
       <div className="flex max-w-sm flex-col items-center">
-        <div className="error-perso">
-          <SplashDancer size={84} />
-        </div>
+        <Fallback>
+          <Suspense fallback={still}>
+            <SplashAvatar size={140} pose="facepalm" />
+          </Suspense>
+        </Fallback>
         <div className="mt-1 h-2.5 w-14 rounded-[50%] bg-black/15 blur-[2px]" aria-hidden />
         <h1 className="mt-5 font-display text-[30px] leading-tight font-extrabold">Oups, ça a calé !</h1>
         <p className="mt-2 text-[15px] font-bold text-[var(--color-ink-soft)]">Le jeu a eu un petit souci. Recharge la page : ton perso t'attend, rien n'est perdu.</p>
