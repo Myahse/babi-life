@@ -11,6 +11,7 @@ import type { XZ } from '../world3d/open/geo'
 import type { ChunkData } from '../world3d/open/tiles'
 import { buildChunk } from '../world3d/open/meshes'
 import { blockRing } from '../world3d/open/voxel'
+import { Cabin, tripRide } from '../world3d/open/tripRide'
 import { Vehicle, carModel, type CarModel, type VehicleKind } from '../world3d/vehicles'
 import { Landmark, NO_FILL, STADIUM_SOLID } from '../world3d/open/landmarks'
 import { CATHEDRAL_SOLID } from '../world3d/open/cathedral'
@@ -798,6 +799,8 @@ function Lab() {
   if (view === 'famille') return <FamilleLab />
   if (view === 'ecole') return <EcoleLab />
   if (view === 'talk') return <TalkLab />
+  // ?view=cabin: a ride's car, the driver at the wheel and the Sim in the back (&kind=woro|car).
+  if (view === 'cabin') return <CabinLab />
   // &sococe: the Sococé's own supermarket and shops, its Kinéo in the gallery.
   if (view === 'farblocks') return <FarBlocksLab />
   if (view === 'net')
@@ -1375,6 +1378,26 @@ function EcoleLab() {
 
 /** The phone's camera in the street (?view=phonecam): the Sim on the Rue Princesse, the viewfinder over it. */
 /** Talking to a passer-by: the chat sheet (answers made up here) and how they react. */
+function CabinLab() {
+  const sim = useMemo(() => ({ id: 'lab', firstName: 'Awa', gender: 'femme', look: randomLook('femme', seededLab(5)) }) as unknown as Sim, [])
+  tripRide.boarded = true
+  const kind = (q.get('kind') ?? 'taxi') as VehicleKind
+  return (
+    <Canvas dpr={[1, 1.5]} camera={{ position: (q.get('cam') ?? '3.2,2.6,4.2').split(',').map(Number) as [number, number, number], fov: 40 }} style={{ width: '100vw', height: '100vh' }}>
+      <color attach="background" args={['#a9d3f0']} />
+      <hemisphereLight args={['#ffffff', '#b8a27c', 1.2]} />
+      <directionalLight position={[10, 20, 10]} intensity={1.6} />
+      {!q.has('nocar') && <Vehicle p={[0, 0, 0]} kind={kind} seed={3} crew clear />}
+      <Cabin sim={sim} stage={q.get('stage') ?? 'adulte'} seed={3} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[40, 40]} />
+        <primitive object={LAB_GROUND} attach="material" />
+      </mesh>
+      <OrbitControls target={[0, 0.8, 0]} />
+    </Canvas>
+  )
+}
+
 function TalkLab() {
   const look = useMemo(() => randomLook('homme', seededLab(9)), [])
   const npc = useMemo(() => ({ id: 'lab-npc', name: 'Koffi', gender: 'homme' as const, seed: 7, look }), [look])

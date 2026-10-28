@@ -1,12 +1,17 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
+import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import type { Sim, World } from '../../lib/types'
 import { EPOCH } from '../../game/rules'
 import { kerbWait, rideLook, waitsAtKerb } from '../../game/rides'
 import { serverNow } from '../../lib/worldClock'
 import { Bicycle, Vehicle, type CarModel, type VehicleKind } from '../vehicles'
-import { Human, NoShadows } from '../../avatar/Human'
+import { Human, NoShadows, type Pose } from '../../avatar/Human'
+import { randomLook } from '../../avatar/options'
+import { Character } from '../Character'
+import { lifeOf } from '../../game/rules'
+import { worldTime } from '../../lib/worldClock'
 import { whereabouts } from '../whereabouts'
 import { rng } from '../themes'
 import type { Nav } from './nav'
@@ -188,9 +193,10 @@ export function TripRide({ sim, nav, world }: { sim: Sim; nav: Nav; world: World
     )
   return (
     <group ref={ref} visible={false}>
-      <Vehicle p={[0, 0, 0]} kind={kind} color={kind === 'sotra' ? undefined : look?.color} trim={look?.trim} seed={a.start % 97} crew />
-      {/* On a moto-taxi the Sim is seen, behind the driver (in a car, it's inside) */}
+      <Vehicle p={[0, 0, 0]} kind={kind} color={kind === 'sotra' ? undefined : look?.color} trim={look?.trim} seed={a.start % 97} crew clear={kind === 'taxi' || kind === 'woro'} />
+      {/* On a moto-taxi the Sim is seen, behind the driver; in a car, seated in the back, the driver at the wheel */}
       {kind === 'moto' && <Pillion sim={sim} />}
+      {(kind === 'taxi' || kind === 'woro' || kind === 'car') && <Cabin sim={sim} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} seed={a.start} seen={kind !== 'car'} />}
     </group>
   )
 }
@@ -207,5 +213,72 @@ function Pillion({ sim, at = [-0.62, 0.42, 0] }: { sim: Sim; at?: [number, numbe
         <Human look={sim.look} gender={sim.gender} pose="sit" seed={7} />
       </NoShadows>
     </group>
+  )
+}
+
+/** What the driver says on the way, now and then. */
+const DRIVER_LINES = [
+  'Ça va aller, on va arriver vite fait.',
+  "Ce embouteillage-là, c'est tous les jours hein !",
+  'Tu veux que je mets la musique un peu fort ?',
+  'Mon frère, la vie est chère dèh.',
+  "Ici c'est Babi, faut connaître les raccourcis.",
+  'Tu descends où exactement ?',
+  'Le gbaka-là veut nous couper la route !',
+  "On dit quoi ? Ça va un peu ?",
+]
+
+/**
+ * Inside the car on a ride (the car's nose is its +x, its left -z): the driver
+ * at the wheel, front left, and once aboard the Sim on the back seat, right,
+ * seated low enough to keep its head under the roof, seen through the glass.
+ * To pass the time: the Sim on its phone, chatting with the driver, looking
+ * out; the driver talks now and then (a line over the car).
+ */
+export function Cabin({ sim, stage, seed, seen = true }: { sim: Sim; stage: string; seed: number; /** Through clear glass (taxi, woro-woro); behind an app car's dark glass, only the talk. */ seen?: boolean }) {
+  const driver = useMemo(() => {
+    const r = rng(`chauffeur${seed}`)
+    return { ...randomLook('homme', r), accessory: 'none' }
+  }, [seed])
+  const back = useRef<THREE.Group>(null)
+  const [aboard, setAboard] = useState(false)
+  const [beat, setBeat] = useState(0)
+  useFrame(() => {
+    if (back.current) back.current.visible = tripRide.boarded
+    if (tripRide.boarded !== aboard) setAboard(tripRide.boarded)
+    // A new moment every few seconds of the ride.
+    const b = Math.floor(worldTime() / 5)
+    if (aboard && b !== beat) setBeat(b)
+  })
+  // On the phone, chatting with the driver, on the phone at the ear, looking out.
+  const moments: { me: Pose; driver: Pose; line?: boolean }[] = [
+    { me: 'sit', driver: 'sit' },
+    { me: 'call', driver: 'sit' },
+    { me: 'sit', driver: 'sit', line: true },
+    { me: 'sit', driver: 'sit' },
+    { me: 'call', driver: 'sit' },
+    { me: 'sit', driver: 'sit', line: true },
+  ]
+  const now = moments[beat % moments.length]
+  const line = now.line ? DRIVER_LINES[(beat + Math.round(seed)) % DRIVER_LINES.length] : null
+  return (
+    <NoShadows>
+      {/* On the seats (the floor at 0.3): a little smaller than outside, so heads stay under the roof (1.44) */}
+      {seen && (
+        <group position={[0.3, 0.3, -0.36]} rotation={[0, Math.PI / 2, 0]} scale={0.85}>
+          <Human look={driver} gender="homme" pose={now.driver} seed={seed % 13} />
+        </group>
+      )}
+      <group ref={back} position={[-0.75, 0.3, 0.36]} rotation={[0, Math.PI / 2, 0]} scale={0.85} visible={false}>
+        {seen && <Character look={sim.look} gender={sim.gender} pose={now.me} stage={stage} marker={false} seed={7} />}
+      </group>
+      {aboard && line && (
+        <Html position={[0, 2.3, 0]} center zIndexRange={[20, 0]}>
+          <div className="rounded-2xl rounded-bl-sm bg-white px-3 py-1.5 text-[13px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_6px_14px_-8px_rgba(0,0,0,0.5)]">
+            <span className="text-[var(--color-orange)]">Le chauffeur</span> · {line}
+          </div>
+        </Html>
+      )}
+    </NoShadows>
   )
 }

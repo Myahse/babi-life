@@ -19,6 +19,8 @@ const HEAD = new THREE.MeshLambertMaterial({ color: '#fff6cc', emissive: '#fff6c
 const TAIL = new THREE.MeshLambertMaterial({ color: '#d7263d', emissive: '#ff2a3d', emissiveIntensity: 0.4 })
 const BEAM = new THREE.MeshBasicMaterial({ color: '#fff1c4', transparent: true, opacity: 0.5, depthWrite: false, blending: THREE.AdditiveBlending, visible: false, polygonOffset: true, polygonOffsetFactor: -5, polygonOffsetUnits: -5 })
 const GLASS = new THREE.MeshPhongMaterial({ color: '#26303d', shininess: 120, specular: new THREE.Color('#b9c8d8') })
+/** A ride's car glass: see-through, the driver and the Sim inside (open/tripRide Cabin). */
+const CLEAR = new THREE.MeshPhongMaterial({ color: '#9fb4c8', shininess: 120, specular: new THREE.Color('#ffffff'), transparent: true, opacity: 0.28, depthWrite: false })
 const BEAM_GEO = (() => {
   // A fan of light on the road: narrow at the car, wide 12 m ahead.
   const s = new THREE.Shape([new THREE.Vector2(0, -0.7), new THREE.Vector2(12, -2.6), new THREE.Vector2(12, 2.6), new THREE.Vector2(0, 0.7)])
@@ -103,7 +105,8 @@ function Ends({ len, wide, y, mirror }: { len: number; wide: number; y: number; 
 }
 
 /** A saloon (taxi, woro-woro) or an SUV: a chassis block, a cabin block, glass all round. */
-function Car4({ type, body, trim, roofSign }: { type: 'saloon' | 'suv'; body: string; trim?: string; roofSign?: boolean }) {
+function Car4({ type, body, trim, roofSign, clear }: { type: 'saloon' | 'suv'; body: string; trim?: string; roofSign?: boolean; /** See-through glass (one's ride). */ clear?: boolean }) {
+  const glass = clear ? CLEAR : GLASS
   const suv = type === 'suv'
   const [len, wide, r] = suv ? [4.6, 1.82, 0.38] : [4.4, 1.66, 0.32]
   const [c0, c1] = suv ? [0.4, 1.1] : [0.32, 0.88] // chassis, bottom and top
@@ -112,11 +115,22 @@ function Car4({ type, body, trim, roofSign }: { type: 'saloon' | 'suv'; body: st
   return (
     <group>
       <K p={[0, (c0 + c1) / 2, 0]} s={[len, c1 - c0, wide]} m={p} />
-      <K p={[cabX, (c1 + cabTop) / 2, 0]} s={[cabLen, cabTop - c1, wide - 0.16]} m={p} />
+      {clear ? (
+        // Hollow: the roof on its pillars, the seats seen through the glass.
+        <>
+          <K p={[cabX, cabTop - 0.04, 0]} s={[cabLen, 0.08, wide - 0.16]} m={p} />
+          {[-1, 1].map((e) => (
+            <K key={e} p={[cabX + e * (cabLen / 2 - 0.06), (c1 + cabTop) / 2, 0]} s={[0.12, cabTop - c1, wide - 0.16]} m={p} cast={false} />
+          ))}
+          <K p={[cabX, c1 + 0.04, 0]} s={[cabLen, 0.08, wide - 0.16]} m={p} cast={false} />
+        </>
+      ) : (
+        <K p={[cabX, (c1 + cabTop) / 2, 0]} s={[cabLen, cabTop - c1, wide - 0.16]} m={p} />
+      )}
       {/* Glass: the sides, the windscreen, the rear window, and the pillars between */}
-      <K p={[cabX, (c1 + cabTop) / 2 + 0.01, 0]} s={[cabLen - 0.3, (cabTop - c1) * 0.72, wide - 0.12]} m={GLASS} cast={false} />
-      <K p={[cabX + cabLen / 2 + 0.005, (c1 + cabTop) / 2 + 0.01, 0]} s={[0.02, (cabTop - c1) * 0.72, wide - 0.4]} m={GLASS} cast={false} />
-      {!suv && <K p={[cabX - cabLen / 2 - 0.005, (c1 + cabTop) / 2 + 0.01, 0]} s={[0.02, (cabTop - c1) * 0.72, wide - 0.4]} m={GLASS} cast={false} />}
+      <K p={[cabX, (c1 + cabTop) / 2 + 0.01, 0]} s={[cabLen - 0.3, (cabTop - c1) * 0.72, wide - 0.12]} m={glass} cast={false} />
+      <K p={[cabX + cabLen / 2 + 0.005, (c1 + cabTop) / 2 + 0.01, 0]} s={[0.02, (cabTop - c1) * 0.72, wide - 0.4]} m={glass} cast={false} />
+      {!suv && <K p={[cabX - cabLen / 2 - 0.005, (c1 + cabTop) / 2 + 0.01, 0]} s={[0.02, (cabTop - c1) * 0.72, wide - 0.4]} m={glass} cast={false} />}
       {(suv ? [-1.15, 0.05] : [-0.28]).map((x) => (
         <K key={x} p={[cabX + x + (suv ? 0.55 : 0.25), (c1 + cabTop) / 2, 0]} s={[0.14, cabTop - c1, wide - 0.1]} m={p} cast={false} />
       ))}
@@ -512,7 +526,7 @@ function Moto({ color, rider = true }: { color: string; rider?: boolean }) {
 }
 
 /** Abidjan's traffic: orange taxi compteur, woro-woro, gbaka, cars and motos. */
-type VehicleProps = { p: [number, number, number]; r?: number; kind?: VehicleKind; color?: string; trim?: string; seed?: number; /** The gbaka's apprenti at the door, the moto's rider (false: someone else moves him, see OpenWorld's Gbaka; the Sim rides its own moto). */ crew?: boolean; /** A private car of this model (else one by the seed): the Sim's own (world3d/drive.ts). */ model?: CarModel; /** A bus as a coach up country, its skirt in its company's colour (a gare routière's). */ skirt?: string }
+type VehicleProps = { p: [number, number, number]; r?: number; kind?: VehicleKind; color?: string; trim?: string; seed?: number; /** The gbaka's apprenti at the door, the moto's rider (false: someone else moves him, see OpenWorld's Gbaka; the Sim rides its own moto). */ crew?: boolean; /** A private car of this model (else one by the seed): the Sim's own (world3d/drive.ts). */ model?: CarModel; /** A bus as a coach up country, its skirt in its company's colour (a gare routière's). */ skirt?: string; /** See-through windows: one's own ride, the people inside seen (taxi, woro-woro). */ clear?: boolean }
 
 /**
  * A vehicle in full detail up close; past FAR metres, a simple shape in the
@@ -558,7 +572,7 @@ function FarVehicle({ p, r = 0, kind = 'taxi', color, seed = 0, model: own }: Ve
   )
 }
 
-function NearVehicle({ p, r = 0, kind = 'taxi', color, trim, seed = 0, crew = true, model, skirt }: VehicleProps) {
+function NearVehicle({ p, r = 0, kind = 'taxi', color, trim, seed = 0, crew = true, model, skirt, clear }: VehicleProps) {
   return (
     <group position={p} rotation={[0, r, 0]}>
       {kind === 'moto' ? (
@@ -570,7 +584,7 @@ function NearVehicle({ p, r = 0, kind = 'taxi', color, trim, seed = 0, crew = tr
       ) : kind === 'car' ? (
         <PrivateCar model={model ?? carModel(seed)} body={carPaint(model ?? carModel(seed), seed, color)} />
       ) : (
-        <Car4 type="saloon" body={color ?? (kind === 'taxi' ? '#ff7a00' : '#e9ecef')} trim={kind === 'woro' ? trim : undefined} roofSign={kind === 'taxi'} />
+        <Car4 type="saloon" body={color ?? (kind === 'taxi' ? '#ff7a00' : '#e9ecef')} trim={kind === 'woro' ? trim : undefined} roofSign={kind === 'taxi'} clear={clear} />
       )}
     </group>
   )

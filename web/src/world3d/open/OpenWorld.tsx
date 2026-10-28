@@ -2470,14 +2470,17 @@ function Passerby({ p, nav, routes, held, talking, react, refs, onClick, bubble 
     refs.set(p.id, g)
     return () => void refs.delete(p.id)
   }, [refs, p.id])
-  // Back from a conversation: from where it stood to its way again, in a second.
-  const back = useRef<{ x: number; z: number; t: number } | null>(null)
+  // Back from a conversation: on along its way from where it had stopped (its clock held back by the time
+  // stopped, `lag`), walking from where it stood to it at its own pace; no jump to where it would be by now.
+  const back = useRef<{ x: number; z: number; t: number; dur: number } | null>(null)
+  const lag = useRef(0)
+  const since = useRef<number | null>(null)
   const [stepping, setStepping] = useState(false)
   useEffect(() => {
     if (!talking) return
     return () => {
       const g = ref.current
-      if (g) back.current = { x: g.position.x, z: g.position.z, t: 0 }
+      if (g) back.current = { x: g.position.x, z: g.position.z, t: 0, dur: 0 }
       whereabouts.faceTo = null
     }
   }, [talking])
@@ -2485,6 +2488,7 @@ function Passerby({ p, nav, routes, held, talking, react, refs, onClick, bubble 
     const g = ref.current
     if (!g) return
     if (held) {
+      since.current ??= worldTime()
       // The one you talk to (or who calls out to you) stops and turns to you;
       // in a conversation, comes up to you (a step apart, face to face).
       const [sx, sz] = whereabouts.sim
@@ -2502,10 +2506,14 @@ function Passerby({ p, nav, routes, held, talking, react, refs, onClick, bubble 
       if (talking) whereabouts.faceTo = [g.position.x, g.position.z]
       return
     }
+    if (since.current !== null) {
+      lag.current += worldTime() - since.current
+      since.current = null
+    }
     const reach = WALK_ROUND * 0.42 * p.speed
     // On the pavement, always the same side of the street, across the streets on their zebra (pavementLine).
     const path = (n: number) => pavementLine(nav, routeFor(routes, nav, `${p.id}|${n}`, anchor, 6, FOOT, reach), p.side)
-    const at = round(worldTime(), WALK_ROUND, p.offset, (n) => routeLength(path(n)), p.speed)
+    const at = round(worldTime() - lag.current, WALK_ROUND, p.offset, (n) => routeLength(path(n)), p.speed)
     const way = path(at.n)
     g.visible = way.length > 1
     if (!g.visible) return
@@ -2513,11 +2521,20 @@ function Passerby({ p, nav, routes, held, talking, react, refs, onClick, bubble 
     g.position.set(pt.x, nav.heightAt(pt.x, pt.z), pt.z)
     const b = back.current
     if (b) {
-      b.t = Math.min(1, b.t + dt)
-      const k = b.t * b.t * (3 - 2 * b.t)
-      g.position.x = b.x + (g.position.x - b.x) * k
-      g.position.z = b.z + (g.position.z - b.z) * k
-      if (b.t >= 1) back.current = null
+      // As long as the way back takes at a walk.
+      b.dur ||= Math.max(0.4, Math.hypot(pt.x - b.x, pt.z - b.z) / p.speed)
+      b.t = Math.min(1, b.t + dt / b.dur)
+      const [fx, fz] = [b.x + (pt.x - b.x) * b.t, b.z + (pt.z - b.z) * b.t]
+      g.rotation.y = turnTo(g.rotation.y, Math.atan2(pt.x - b.x, pt.z - b.z), 0.25)
+      g.position.x = fx
+      g.position.z = fz
+      g.position.y = nav.heightAt(fx, fz)
+      if (!stepping) setStepping(true)
+      if (b.t >= 1) {
+        back.current = null
+        setStepping(false)
+      }
+      return
     }
     g.rotation.y = turnTo(g.rotation.y, at.forward ? pt.r : pt.r + Math.PI, 0.25)
     if (at.moving !== moving) setMoving(at.moving)
