@@ -3,7 +3,9 @@ import { Lock, X } from 'lucide-react'
 import { api, errorText } from '../lib/api'
 import type { ActionResult, Emote, Sim, World } from '../lib/types'
 import type { Pose } from '../avatar/Human'
-import { playEmote } from '../world3d/emoteNow'
+import { LEAN_REACH, POSTURE_SECONDS, playEmote } from '../world3d/emoteNow'
+import { whereabouts } from '../world3d/whereabouts'
+import { keyOpen, useFeatures } from '../lib/features'
 
 // The « Émotes » sheet: every emote as a tile. The free ones and the ones
 // bought play at a tap (the Sim does it in the street, the other players see
@@ -18,6 +20,28 @@ export function EmoteSheet({ world, sim, onClose, onResult }: { world: World; si
     void api.emotes(sim.id).then((r) => setOwned(r.owned)).catch(() => setOwned([]))
   }, [sim.id])
   const list = world.emotes ?? []
+  // Se poser (an update: postures): sitting on the ground anywhere; its back to a tree, when there's one within reach.
+  const feats = useFeatures()
+  const postures = keyOpen(feats, 'postures')
+  const tree = (() => {
+    const [x, z] = whereabouts.sim
+    let best: [number, number] | null = null
+    let bd = LEAN_REACH
+    for (const t of whereabouts.trees) {
+      const d = Math.hypot(t[0] - x, t[1] - z)
+      if (d < bd) [best, bd] = [t, d]
+    }
+    return best
+  })()
+  const lean = () => {
+    if (!tree) return
+    const [x, z] = whereabouts.sim
+    const d = Math.hypot(x - tree[0], z - tree[1]) || 1
+    const [ux, uz] = d > 0.05 ? [(x - tree[0]) / d, (z - tree[1]) / d] : [0, 1]
+    // A step off the trunk (its bark, the Sim's back), facing away from it.
+    playEmote('lean', POSTURE_SECONDS, { x: tree[0] + ux * 0.55, z: tree[1] + uz * 0.55, h: Math.atan2(ux, uz) })
+    onClose()
+  }
   const has = (e: Emote) => e.price === 0 || !!owned?.includes(e.id)
   const play = (e: Emote) => {
     playEmote(e.id as Pose, e.seconds)
@@ -63,6 +87,26 @@ export function EmoteSheet({ world, sim, onClose, onResult }: { world: World; si
             </div>
           </div>
         ) : (
+          <>
+          {postures && (
+            <div className="mb-3">
+              <div className="label mb-1.5">Se poser</div>
+              <div className="grid grid-cols-2 gap-2">
+                <button className="flex items-center gap-2 rounded-2xl bg-[var(--color-canvas)] p-2.5 text-left active:scale-95" onClick={() => (playEmote('sitground', POSTURE_SECONDS), onClose())}>
+                  <span className="text-2xl">🧎</span>
+                  <span className="text-[12px] leading-tight font-extrabold">S'asseoir par terre</span>
+                </button>
+                <button className="flex items-center gap-2 rounded-2xl bg-[var(--color-canvas)] p-2.5 text-left active:scale-95 disabled:opacity-50" disabled={!tree} onClick={lean}>
+                  <span className="text-2xl">🌳</span>
+                  <span className="text-[12px] leading-tight font-extrabold">
+                    S'adosser à l'arbre
+                    {!tree && <span className="block text-[10px] font-bold text-[var(--color-ink-soft)]">Approche-toi d'un arbre</span>}
+                  </span>
+                </button>
+              </div>
+              <p className="mt-1 text-[11px] font-bold text-[var(--color-ink-soft)]">Tu restes ainsi jusqu'à ce que tu repartes.</p>
+            </div>
+          )}
           <div className="motion-stagger grid grid-cols-4 gap-2">
             {list.map((e) => {
               const mine = has(e)
@@ -79,6 +123,7 @@ export function EmoteSheet({ world, sim, onClose, onResult }: { world: World; si
               )
             })}
           </div>
+          </>
         )}
       </div>
     </div>

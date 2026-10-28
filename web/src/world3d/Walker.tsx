@@ -19,7 +19,7 @@ import { SIM_SLOT, matchFor, onField, simSeat, toField, worldFacing } from './op
 import { blocked, blockedFixed, topAt, vehicleAt } from './obstacles'
 import { clearLine, gridWay } from './gridPath'
 import { usePhotoMode } from './photoCam'
-import { stopEmote, useEmote } from './emoteNow'
+import { emoteNow, stopEmote, useEmote } from './emoteNow'
 import { Swimmer } from './Swimmer'
 import { Bicycle, Vehicle, type CarModel } from './vehicles'
 import { HANDLING, drive, driving, getIn, gps, nextTurn, onWay, parkIn, setParked, useDriving } from './drive'
@@ -79,7 +79,7 @@ function pathLength(pts: XZ[], from: XZ) {
 
 const NEAR_DOOR = 2.6 // metres from a door to be "at" a place
 /** The poses the other players are sent (backend/internal/live/live.go: its own and the emotes'). */
-const LIVE_POSES = new Set<string>(['idle', 'walk', 'run', 'busy', 'talk', 'sit', 'dance', 'wave', 'cheer', 'clap', 'shout', 'zouglou', 'gweta'])
+const LIVE_POSES = new Set<string>(['idle', 'walk', 'run', 'busy', 'talk', 'sit', 'dance', 'wave', 'cheer', 'clap', 'shout', 'zouglou', 'gweta', 'sitground', 'lean'])
 /** Further than this from the place, busy there, the activity stops (the Sim left). */
 const LEAVE = 40
 
@@ -174,6 +174,15 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   useEffect(() => {
     if (walking || busy) stopEmote()
   }, [walking, busy])
+  // A posture with its spot (its back to a tree): the Sim steps there and turns its back to the trunk.
+  useEffect(() => {
+    const at = emoteNow.at
+    const g = group.current
+    if (!emote || !at || !g) return
+    g.position.x = at.x
+    g.position.z = at.z
+    g.rotation.y = at.h
+  }, [emote]) // eslint-disable-line react-hooks/exhaustive-deps
   const speed = useRef(SPEED)
   const [run, setRun] = useState(false)
   // Running by itself, Courir or not: only the jog onto the street's pitch (going somewhere walks, unless the player runs).

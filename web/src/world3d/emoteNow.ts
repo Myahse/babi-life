@@ -6,14 +6,20 @@ import type { Pose } from '../avatar/Human'
 // goes to the other players as the live pose. It stops at its time, or as
 // soon as the Sim walks off.
 
-export const emoteNow = { pose: null as Pose | null, until: 0 }
+export const emoteNow = { pose: null as Pose | null, until: 0, /** where the Sim goes for it, and which way it faces (its back to a tree) */ at: null as { x: number; z: number; h: number } | null }
+
+/** The postures (« S'asseoir par terre », « S'adosser à un arbre »): held till the Sim walks off. */
+export const POSTURE_SECONDS = 3600
+/** The tree near enough to lean on (its trunk, metres from the Sim). */
+export const LEAN_REACH = 3
 
 const listeners = new Set<() => void>()
 const tell = () => listeners.forEach((f) => f())
 let timer: ReturnType<typeof setTimeout> | null = null
 
-export function playEmote(pose: Pose, seconds: number) {
+export function playEmote(pose: Pose, seconds: number, at: { x: number; z: number; h: number } | null = null) {
   emoteNow.pose = pose
+  emoteNow.at = at
   emoteNow.until = Date.now() + seconds * 1000
   if (timer) clearTimeout(timer)
   timer = setTimeout(stopEmote, seconds * 1000)
@@ -23,6 +29,7 @@ export function playEmote(pose: Pose, seconds: number) {
 export function stopEmote() {
   if (!emoteNow.pose) return
   emoteNow.pose = null
+  emoteNow.at = null
   if (timer) clearTimeout(timer)
   timer = null
   tell()

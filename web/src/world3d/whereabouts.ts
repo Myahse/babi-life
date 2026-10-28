@@ -25,6 +25,8 @@ export const whereabouts = {
   /** Street segments: from, to, width. */
   roads: [] as [XZ, XZ, number][],
   water: [] as XZ[][],
+  /** The trees and palms of the streets loaded (open world): the Sim leans its back against one. */
+  trees: [] as XZ[],
   /** Who the Sim is talking to stands here: the Sim turns to face them (Walker.tsx). */
   faceTo: null as XZ | null,
   /** On the way to somewhere (Walker.tsx): where (a place's name, or null for a spot), how far is left (m), how fast it goes (m/s), how. */

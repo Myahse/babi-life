@@ -788,6 +788,8 @@ function Lab() {
   if (view === 'flight') return <FlightView sim={{ id: 'lab', firstName: 'Awa', gameMinutes: 600, activity: { start: 580, end: 625, interaction: { label: 'Vol Abidjan → Yamoussoukro (Air Lagune)' } } } as unknown as Sim} night={night} onMap={() => undefined} />
   if (view === 'phonecam') return <PhoneCamLab />
   if (view === 'emotes') return <EmotesLab />
+  // ?view=postures: sitting on the ground and leaning on a tree (&turn= the camera round).
+  if (view === 'postures') return <PosturesLab />
   if (view === 'talk') return <TalkLab />
   // &sococe: the Sococé's own supermarket and shops, its Kinéo in the gallery.
   if (view === 'farblocks') return <FarBlocksLab />
@@ -1231,6 +1233,42 @@ function EmotesLab() {
         <OrbitControls target={[0, 1, 0]} />
       </Canvas>
     </div>
+  )
+}
+
+/** The postures (?view=postures): sitting on the ground, and leaning on a tree (its trunk where the game puts it, 0.55 m behind). */
+function PosturesLab() {
+  const looks = useMemo(() => [randomLook('femme', seededLab(4)), randomLook('homme', seededLab(5)), randomLook('homme', seededLab(6)), randomLook('femme', seededLab(7))], [])
+  const turn = Number(q.get('turn') ?? 0.5)
+  return (
+    <Canvas shadows dpr={[1, 1.5]} camera={{ position: [Math.sin(turn) * 7, 2.6, Math.cos(turn) * 7], fov: 40 }} style={{ width: '100vw', height: '100vh' }}>
+      <color attach="background" args={['#a9d3f0']} />
+      <hemisphereLight args={['#ffffff', '#b8a27c', 1.3]} />
+      <directionalLight position={[10, 20, 12]} intensity={1.4} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[60, 40]} />
+        <primitive object={LAB_GROUND} attach="material" />
+      </mesh>
+      {[-2.4, -0.8].map((x, i) => (
+        <group key={x} position={[x, 0, 0]}>
+          <Character look={looks[i]} gender={i % 2 ? 'homme' : 'femme'} pose="sitground" stage="adulte" marker={false} seed={i} />
+        </group>
+      ))}
+      {[0.9, 2.6].map((x, i) => (
+        <group key={x} position={[x, 0, 0]}>
+          <mesh position={[0, 1.6, -0.55]}>
+            <cylinderGeometry args={[0.22, 0.28, 3.2, 10]} />
+            <meshLambertMaterial color="#6b4a2e" />
+          </mesh>
+          <mesh position={[0, 3.6, -0.55]}>
+            <sphereGeometry args={[1.4, 12, 10]} />
+            <meshLambertMaterial color="#3f8a3a" />
+          </mesh>
+          <Character look={looks[i + 2]} gender={i % 2 ? 'femme' : 'homme'} pose="lean" stage="adulte" marker={false} seed={i + 2} />
+        </group>
+      ))}
+      <OrbitControls target={[0, 0.9, 0]} />
+    </Canvas>
   )
 }
 
