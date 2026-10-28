@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /testeur
+Disallow: /jeu
+Disallow: /profil
+Disallow: /look
+Disallow: /creer
+Disallow: /pub/envoi/
+Disallow: /pub/suivi/
+Disallow: /api/
+
+Sitemap: https://www.lifeinbabi.com/sitemap.xml

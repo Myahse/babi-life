@@ -105,6 +105,7 @@ export function Preview({ type, url, className = '' }: { type: 'image' | 'video'
 /* ---------- The front page: contact us first ---------- */
 
 export function Pub() {
+  useEffect(() => void (document.title = 'Babi Pub · Ta pub dans Babi Life, le jeu d’Abidjan'), [])
   const links = contactLinks()
   return (
     <Shell>
