@@ -1,11 +1,13 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { Sim } from '../lib/types'
 import { Character } from './Character'
 import { babyCare } from './HomeInside'
+import { familyCast } from '../avatar/Family'
+import { pusher } from './carer'
 
 // Out of the house, a baby goes in its pram, and never on its own: maman
 // pushes it (the nounou at the laté's, the gouvernante at the debout's,
-// HomeInside babyCare). The player steers as with any Sim; she walks behind,
+// HomeInside babyCare); papa when she's cleaning up after the baby. The player steers as with any Sim; she walks behind,
 // both hands on the handle. Facing +z like a Sim: the pram ahead, her behind.
 
 function Box({ p, s, c }: { p: [number, number, number]; s: [number, number, number]; c: string }) {
@@ -47,6 +49,9 @@ function PramBody({ color }: { color: string }) {
 
 export function Pram({ sim, walking, speed }: { sim: Sim; walking: boolean; speed?: number }) {
   const care = useMemo(() => babyCare(sim.family ?? 'poignon', sim.look), [sim.family, sim.look])
+  // Maman (or the nounou) busy cleaning up after the baby: papa pushes (world3d/carer.ts).
+  const [papa] = useState(() => pusher() === 'papa')
+  const dad = useMemo(() => familyCast(sim.family ?? 'poignon', sim.look).papa.look, [sim.family, sim.look])
   const color = care.carer === 'gouvernante' ? '#1f2a44' : care.carer === 'nounou' ? '#f783ac' : '#74c0fc'
   return (
     <group>
@@ -59,7 +64,7 @@ export function Pram({ sim, walking, speed }: { sim: Sim; walking: boolean; spee
       </group>
       {/* Behind it, pushing */}
       <group position={[0, 0, -0.42]}>
-        <Character look={care.mum} gender="femme" stage="adulte" pose={walking ? 'push' : 'idle'} marker={false} seed={113} speed={speed} />
+        <Character look={papa ? dad : care.mum} gender={papa ? 'homme' : 'femme'} stage="adulte" pose={walking ? 'push' : 'idle'} marker={false} seed={113} speed={speed} />
       </group>
     </group>
   )

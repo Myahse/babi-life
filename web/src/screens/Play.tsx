@@ -120,6 +120,7 @@ import { activityOpen, keyOpen, useFeatures } from '../lib/features'
 import { FeatureNews } from '../components/FeatureNews'
 import { Sheet } from '../components/Sheet'
 import { Splash } from '../components/Splash'
+import { pusher, startCleaning } from '../world3d/carer'
 import { Helper } from '../components/Helper'
 import { LotPlaceHud } from '../components/LotPlaceHud'
 import { useLotPlace } from '../store/lotPlace'
@@ -710,6 +711,17 @@ export function Play() {
     setOverlay(null)
     setGoTo({ placeId: id, nonce: Date.now() })
   }
+  // Out of the house into the street. A baby goes in its pram: maman pushes it, or papa if she's cleaning;
+  // both at it, it waits (world3d/carer.ts).
+  const goOut = () => {
+    if (sim && lifeOf(world, sim).stage?.id === 'bebe' && !pusher()) {
+      toast({ tone: 'random', title: 'Pas tout de suite', text: 'Maman et papa sont en train de nettoyer. Attends un peu pour sortir en poussette !', money: 0 })
+      return
+    }
+    setPlaceId(null)
+    setBackTo(null)
+    setOutside(false)
+  }
   const interact = (it: Interaction, kind: string) => {
     const id = placeId!
     setPlaceId(null)
@@ -720,6 +732,8 @@ export function Play() {
     // Without network the phone plays it: what it is at this place.
     const at = id === 'home' ? { kind: 'home', name: 'Chez toi' } : commune.places.find((p) => p.id === id)
     if (at) picking(id, it, { kind: at.kind, name: at.name })
+    // A baby's mess: maman cleans it (papa, if she's at one already); the pram waits for whoever is free.
+    if (id === 'home' && /^(caca|pipi|vomir)$/.test(it.id)) startCleaning()
     run(it.label, it.icon, kind, async () => {
       if (there) await api.stop(sim!.id)
       return api.interact(sim!.id, id, it.id)
@@ -1297,7 +1311,7 @@ export function Play() {
               className="hud pointer-events-auto rounded-full px-4 py-2 text-sm font-extrabold"
               // Nothing going on inside: « Voir la rue » takes the Sim straight out into the street (not the street
               // seen with the Sim still in the house); busy inside, the street is only looked at, the Sim stays in.
-              onClick={() => (!doing && !outside ? (setPlaceId(null), setBackTo(null), setOutside(false)) : setOutside((o) => !o))}
+              onClick={() => (!doing && !outside ? goOut() : setOutside((o) => !o))}
             >
               {outside ? `Entrer · ${placeName(inside.id) || 'Chez toi'}` : 'Voir la rue'}
             </button>
@@ -1493,7 +1507,7 @@ export function Play() {
         // Above the needs, the map and the phone, which stay in reach (it used to cover them on a phone).
         <div className="pointer-events-none absolute inset-x-0 bottom-[6.5rem] z-20 flex justify-center px-3 lg:bottom-[7.5rem]">
           <div className="hud pointer-events-auto flex w-full max-w-md items-center gap-2 rounded-[26px] p-2">
-            <button className="btn btn-soft !px-3 !py-2.5 !text-sm" onClick={() => setPlaceId(null)}>
+            <button className="btn btn-soft !px-3 !py-2.5 !text-sm" onClick={() => (placeId === 'home' ? goOut() : setPlaceId(null))}>
               {/* (At a hotel, the way out of the whole hotel: out of one's room is « Sortir de la chambre », up there.) */}
               <LogOut size={18} /> {placeId && commune.places.find((p) => p.id === placeId)?.kind === 'hotel' ? 'Quitter l’hôtel' : 'Sortir'}
             </button>
