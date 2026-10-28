@@ -28,6 +28,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/myahse/babi-life/backend/internal/auth"
+	"github.com/myahse/babi-life/backend/internal/features"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
 )
@@ -60,6 +61,8 @@ type Item struct {
 	Once bool `json:"once,omitempty"`
 	// Piece: a piece of clothing (game/clothes.go Premium), into the wardrobe.
 	Piece string `json:"piece,omitempty"`
+	// Grow: growing up at once to this stage (a child, an adult) instead of waiting the days of childhood.
+	Grow string `json:"grow,omitempty"`
 }
 
 // PassDays: how long the Babi Pass lasts, from its purchase (or the end of the one before).
@@ -70,6 +73,8 @@ var Items = []Item{
 	{ID: "energie", Label: "Plein d'énergie", Text: "Faim, énergie, hygiène, social, loisirs : toutes les jauges à fond, tout de suite.", Price: 300},
 	{ID: "prestige", Label: "Pack Prestige", Text: "La couronne, à porter pour toujours (Profil, Mon look).", Price: 2000, Once: true},
 	{ID: "veste-repos", Label: "La veste du repos", Text: "La chemise patchwork turquoise, bleu nuit, blanc et orange, son motif qu'on ne trouve nulle part ailleurs : dans ta garde-robe pour toujours.", Price: 1500, Once: true, Piece: "veste-repos"},
+	{ID: "grandir-enfant", Label: "Enfant tout de suite", Text: "Ton bébé a 3 ans tout de suite : l'école, la récré, les copains. Sinon il grandit tout seul, en un jour.", Price: 5000, Grow: game.StageEnfant},
+	{ID: "grandir-adulte", Label: "Adulte tout de suite", Text: "18 ans tout de suite : tu quittes la maison avec l'argent de ta famille, le boulot, ton mentor. Sinon il faut deux jours.", Price: 10_000, Grow: game.StageAdulte},
 	{ID: "polo-mere-con", Label: "Le polo de mère con", Text: "Le polo à larges rayures orange et blanches, son col blanc : dans ta garde-robe pour toujours.", Price: 1500, Once: true, Piece: "polo-mere-con"},
 }
 
@@ -146,6 +151,7 @@ var (
 	errTooMany  = errors.New("trop d'achats en attente : termine ou attends ceux en cours")
 	errNotFound = errors.New("achat introuvable")
 	errHave     = errors.New("tu l'as déjà")
+	errGrown    = errors.New("ton perso a déjà cet âge")
 )
 
 // owner: the account's Sim (and whether the account is 18 or over, a tester's, its name and e-mail for the receipt).
@@ -215,6 +221,9 @@ func (h *Handler) buy(w http.ResponseWriter, r *http.Request) {
 		if it.Piece != "" {
 			kind = "tenue"
 		}
+		if it.Grow != "" {
+			kind = "grandir"
+		}
 		description = "Babi Life · " + it.Label
 	} else {
 		httpx.Error(w, http.StatusUnprocessableEntity, "article inconnu")
@@ -242,6 +251,23 @@ func (h *Handler) buy(w http.ResponseWriter, r *http.Request) {
 		var have bool
 		if err := h.DB.QueryRow(ctx, `SELECT $2 = ANY(clothes) FROM sims WHERE id = $1`, simID, id).Scan(&have); err == nil && have {
 			httpx.Error(w, http.StatusUnprocessableEntity, errHave.Error())
+			return
+		}
+	}
+	if kind == "grandir" {
+		if features.Default.BlocksKey(ctx, "grandir-vite") != "" {
+			httpx.Error(w, http.StatusServiceUnavailable, errShut.Error())
+			return
+		}
+		// Only to grow: a baby to a child, a minor to an adult.
+		it, _ := FindItem(id)
+		var born, minutes int64
+		if err := h.DB.QueryRow(ctx, `SELECT born_at, game_minutes FROM sims WHERE id = $1`, simID).Scan(&born, &minutes); err != nil {
+			httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+			return
+		}
+		if game.AgeAt(born, minutes) >= game.StageByID(it.Grow).From {
+			httpx.Error(w, http.StatusUnprocessableEntity, errGrown.Error())
 			return
 		}
 	}
@@ -463,6 +489,13 @@ func give(ctx context.Context, tx pgx.Tx, simID, kind, item string, djai int) er
 			return err
 		}
 		text = "Boutique : Pack Prestige. La couronne est à toi (Profil, Mon look)."
+	case "grandir":
+		// Grown up on the Sim's next turn (sims: grow_to), its birthdays said then.
+		it, _ := FindItem(item)
+		if err := tx.QueryRow(ctx, `UPDATE sims SET grow_to = $2 WHERE id = $1 RETURNING game_minutes`, simID, it.Grow).Scan(&minutes); err != nil {
+			return err
+		}
+		text = fmt.Sprintf("Boutique : %s, merci !", strings.ToLower(it.Label))
 	case "tenue":
 		it, _ := FindItem(item)
 		if err := tx.QueryRow(ctx, `UPDATE sims SET clothes = CASE WHEN $2 = ANY(clothes) THEN clothes ELSE array_append(clothes, $2) END WHERE id = $1 RETURNING game_minutes`, simID, it.Piece).Scan(&minutes); err != nil {

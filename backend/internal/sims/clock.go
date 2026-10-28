@@ -79,7 +79,7 @@ func (s *Sim) withSect(earned int, kind string) int {
 }
 
 // hold: time gone by for the world but not for the Sim (the player away): its
-// clock jumps on, and what it was doing, its age, its friends' last news wait
+// clock jumps on, and what it was doing, its age (from 18), its friends' last news wait
 // where they were. Only the landlord doesn't wait: if a Saturday went by, he
 // passes once (rent and loan, as on a Saturday played; however many weeks the
 // player was away, only one), so the rent is paid by those who never play at
@@ -90,8 +90,17 @@ func (s *Sim) hold(minutes int64) []Event {
 	}
 	from := s.GameMinutes
 	s.GameMinutes += minutes
+	// Childhood counts real days: a minor's age runs on while away (birthdays,
+	// and 18 with its leaving home, said on the way); from 18 it waits for the player.
+	var grown []Event
 	if s.BornAt != 0 {
-		s.BornAt += minutes
+		adultAt := s.BornAt + game.MinutesToAge(game.AdultAge)
+		if adultAt > from {
+			grown = s.growUp(from, min(adultAt, s.GameMinutes))
+			s.BornAt += max(0, s.GameMinutes-adultAt)
+		} else {
+			s.BornAt += minutes
+		}
 	}
 	if a := s.Activity; a != nil {
 		a.Start += minutes
@@ -104,9 +113,9 @@ func (s *Sim) hold(minutes int64) []Event {
 		s.Friends[i].Seen += minutes
 	}
 	if game.Saturdays(from, s.GameMinutes) == 0 || (s.BornAt != 0 && game.AgeAt(s.BornAt, s.GameMinutes) < game.AdultAge) {
-		return nil
+		return grown
 	}
-	return s.weekEnd(s.GameMinutes)
+	return append(grown, s.weekEnd(s.GameMinutes)...)
 }
 
 // advanceTo lets the Sim's time run to the game minute `to`.

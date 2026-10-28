@@ -8,15 +8,16 @@ import (
 )
 
 // A Sim is born a baby and grows up: baby, child, teenager, adult. Childhood
-// goes fast, so a new player soon has the run of the city: a baby for five
-// minutes of play, a child for twenty, a teenager for half an hour (GrowUp). From 18,
-// a year of game life lasts YearMinutes real minutes. Sims created before
-// birth dates have none and are adults.
+// lasts real days: a baby for a whole day, then a child for half a day and a
+// teenager for the other half, adult two days after birth (GrowUp). It runs on
+// even with the app closed (sims/clock.go hold); growing up at once is bought
+// in the shop. From 18, a year of game life lasts YearMinutes real minutes of
+// play. Sims created before birth dates have none and are adults.
 const YearMinutes = 8 * 60
 
-// GrowUp: the minutes of play (since birth) at which a Sim reaches each age
-// of childhood; in between, the years go by evenly.
-var GrowUp = [][2]int64{{0, 0}, {3, 5}, {12, 25}, {AdultAge, 55}}
+// GrowUp: the minutes (since birth) at which a Sim reaches each age of
+// childhood; in between, the years go by evenly.
+var GrowUp = [][2]int64{{0, 0}, {3, 24 * 60}, {12, 36 * 60}, {AdultAge, 48 * 60}}
 
 const (
 	StageBebe   = "bebe"
@@ -78,6 +79,16 @@ func MinutesToAge(age float64) int64 {
 		}
 	}
 	return 0
+}
+
+// StageByID: the stage of that id (the baby's when unknown).
+func StageByID(id string) Stage {
+	for _, st := range Stages {
+		if st.ID == id {
+			return st
+		}
+	}
+	return Stages[0]
 }
 
 func StageOf(age int) Stage {

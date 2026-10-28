@@ -450,3 +450,41 @@
   60% { transform: translateY(3px) rotate(8deg) scale(1.08); opacity: 1; }
   100% { transform: none; }
 }
+
+/* The game's phone (screens/Play.tsx Phone): an app grows out of its icon
+   (its transform-origin, set on the tap) and shrinks back into it; the phone
+   slides down when put away. */
+.phone-app {
+  animation: phone-app-in 0.34s var(--ease-out) both;
+}
+.phone-app[data-leaving] {
+  animation: phone-app-out 0.2s ease-in both;
+}
+@keyframes phone-app-in {
+  from { transform: scale(0.12); opacity: 0; border-radius: 40px; }
+  40% { opacity: 1; }
+}
+@keyframes phone-app-out {
+  to { transform: scale(0.12); opacity: 0; border-radius: 40px; }
+}
+.phone-body.animate-up[data-away] {
+  animation: phone-away 0.22s ease-in both;
+}
+.phone-backdrop[data-away] {
+  animation: phone-backdrop-away 0.22s ease-in both;
+}
+@keyframes phone-away {
+  to { transform: translateY(100%); }
+}
+@keyframes phone-backdrop-away {
+  to { background-color: transparent; backdrop-filter: none; }
+}
+@media (max-width: 639px) {
+  /* Full screen on a phone: it rises from the bottom like an app opening. */
+  .phone-body.animate-up {
+    animation: phone-up 0.36s var(--ease-out) both;
+  }
+  @keyframes phone-up {
+    from { transform: translateY(100%); }
+  }
+}

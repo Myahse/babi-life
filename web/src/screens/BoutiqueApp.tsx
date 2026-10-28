@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
-import { BadgeCheck, Clock3, Lock, ShieldCheck, ShoppingBag, XCircle } from 'lucide-react'
+import { Baby, BadgeCheck, Clock3, Lock, ShieldCheck, ShoppingBag, Sprout, XCircle } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
 import type { ActionResult, ShopPurchase, ShopView, Sim } from '../lib/types'
-import { amount } from '../game/rules'
+import { amount, lifeOf, minutesTill } from '../game/rules'
 import { Chip } from '../components/ui'
 import { BoutiqueClothes } from '../components/BoutiqueClothes'
 import { useWorld } from '../store/world'
-import { activityOpen, useFeatures } from '../lib/features'
+import { activityOpen, keyOpen, useFeatures } from '../lib/features'
 import { Portrait } from '../avatar/portrait'
 import { fullLook } from '../avatar/options'
 import { wearPiece } from '../lib/clothes'
@@ -34,9 +34,11 @@ const waitingOn = (p: ShopPurchase) => !p.credited && (p.status === 'pending' ||
 const failure = (e: unknown) => (e instanceof ApiError ? e.message : 'Pas de réseau')
 /** The Babi Pass still on. */
 export const passOn = (sim: Pick<Sim, 'passUntil'>) => !!sim.passUntil && Date.parse(sim.passUntil) > Date.now()
+/** Childhood's time left, said short: « 18 h », « 40 min ». */
+const waitText = (min: number) => (min >= 60 ? `${Math.round(min / 60)} h` : `${min} min`)
 const day = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
 /** What a purchase brought, in a few words (a pack: its Djai). */
-const bought = (p: ShopPurchase) => (p.kind === 'djai' ? `${amount(p.djai)} Djai` : p.kind === 'pass' ? 'Babi Pass · 30 jours' : p.kind === 'energie' ? "Plein d'énergie" : p.kind === 'prestige' ? 'Pack Prestige' : p.kind === 'tenue' ? (PIECE_NAMES[p.item] ?? p.item) : p.item)
+const bought = (p: ShopPurchase) => (p.kind === 'djai' ? `${amount(p.djai)} Djai` : p.kind === 'pass' ? 'Babi Pass · 30 jours' : p.kind === 'energie' ? "Plein d'énergie" : p.kind === 'prestige' ? 'Pack Prestige' : p.kind === 'tenue' ? (PIECE_NAMES[p.item] ?? p.item) : p.kind === 'grandir' ? (p.item === 'grandir-enfant' ? 'Enfant tout de suite' : 'Adulte tout de suite') : p.item)
 const PIECE_NAMES: Record<string, string> = { 'veste-repos': 'La veste du repos', 'polo-mere-con': 'Le polo de mère con' }
 
 /** The Pass: a gold ticket, its star. */
@@ -172,6 +174,9 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
 
   if (!view) return error ? <p className="text-sm font-bold text-[var(--color-rose)]">{error}</p> : <p className="text-sm font-bold text-[var(--color-ink-soft)]">Chargement de la boutique…</p>
   const pass = view.passUntil && Date.parse(view.passUntil) > Date.now() ? view.passUntil : null
+  // Growing up at once (an update: « grandir-vite »): a baby to a child, a minor to an adult.
+  const life = world ? lifeOf(world, sim) : null
+  const grows = keyOpen(feats, 'grandir-vite') && life?.minor ? view.items.filter((it) => it.grow && (it.grow === 'adulte' || life.stage?.id === 'bebe')) : []
 
   return (
     <div className="space-y-3">
@@ -226,6 +231,38 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
       ) : (
         <>
           {view.sandbox && <Chip tone="gold">Mode test : rien n'est vraiment payé</Chip>}
+          {grows.length > 0 && world && (
+            <div>
+              <div className="label mb-1.5">Grandir tout de suite</div>
+              <ul className="motion-stagger space-y-2">
+                {grows.map((it) => {
+                  const wait = minutesTill(world, sim, it.grow!)
+                  const Icon = it.grow === 'enfant' ? Baby : Sprout
+                  return (
+                    <li key={it.id} className="card p-3">
+                      <div className="flex items-center gap-3">
+                        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-b from-[#e9fbef] to-[#bdeccd] text-[var(--color-emerald)] shadow-[inset_0_0_0_1px_rgba(0,120,60,0.12)]">
+                          <Icon size={24} strokeWidth={2.4} />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-display text-[17px] leading-tight font-extrabold">{it.label}</div>
+                          {wait > 0 && (
+                            <div className="mt-1">
+                              <Chip tone="neutral">{`Sinon dans ${waitText(wait)}`}</Chip>
+                            </div>
+                          )}
+                        </div>
+                        <button className="btn shrink-0 !py-2 !text-sm" disabled={!!buying} onClick={() => void buy({ item: it.id })}>
+                          {price(it.id, it.price)}
+                        </button>
+                      </div>
+                      <p className="mt-1.5 text-[12px] font-bold text-[var(--color-ink-soft)]">{it.text}</p>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          )}
           {view.items.some((it) => it.piece) && (
             <div>
               <div className="label mb-1.5">Vêtements exclusifs</div>
@@ -253,7 +290,7 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
           <div>
             <div className="label mb-1.5">Le Pass et les coups de pouce</div>
             <ul className="motion-stagger space-y-2">
-              {view.items.filter((it) => !it.piece).map((it) => {
+              {view.items.filter((it) => !it.piece && !it.grow).map((it) => {
                 const Art = ART[it.id] ?? PassArt
                 const have = it.id === 'prestige' && view.prestige
                 return (

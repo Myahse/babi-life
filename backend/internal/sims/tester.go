@@ -122,25 +122,7 @@ func (s *Sim) testerAge(stage string) ([]Event, error) {
 	if i < 0 {
 		return nil, fmt.Errorf("âge inconnu")
 	}
-	old := s.GameMinutes - s.BornAt
-	if s.BornAt == 0 {
-		old = game.MinutesToAge(game.AdultAge) // a Sim from before births is an adult
-	}
-	if s.Family == "" {
-		s.Family = "poignon" // leaving home at 18 needs a family
-	}
-	to := game.MinutesToAge(float64(game.Stages[i].From))
-	s.BornAt = s.GameMinutes - to
-	if s.BornAt == 0 {
-		s.BornAt = -1 // 0 means "no birth date"
-	}
-	var events []Event
-	if to > old {
-		events = s.growUp(s.BornAt+old, s.GameMinutes)
-		if s.age() < game.AdultAge {
-			events = append(events, s.pocketMoney(s.BornAt+old, s.GameMinutes)...)
-		}
-	}
+	events := s.ageTo(game.Stages[i])
 	text := fmt.Sprintf("Testeur : %s est maintenant %s (%d ans).", s.FirstName, strings.ToLower(game.Stages[i].Label), s.age())
 	if s.age() == 0 {
 		text = fmt.Sprintf("Testeur : %s est de nouveau un bébé.", s.FirstName)
