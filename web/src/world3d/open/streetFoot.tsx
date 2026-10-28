@@ -11,6 +11,7 @@ import { hash, type XZ } from './geo'
 import type { Nav } from './nav'
 import { Volleyball } from 'lucide-react'
 import { JoinBubble } from './joinIn'
+import { RainRunners, spread, useRain } from './rainRun'
 
 // The little maracana in the street: young people playing on the street
 // itself, a goal at each end (two stones, or two sandals), a plastic ball.
@@ -59,8 +60,12 @@ export function StreetFootball({ nav, seed, hour }: { nav: Nav; seed: string; ho
       .map((x) => x.g)
     if (near.map((g) => g.id).join() !== shown.map((g) => g.id).join()) setShown(near)
   })
+  // The rain: the children run for cover (rainRun.tsx).
+  const rain = useRain((r) => r.on)
+  const runners = useMemo(() => (rain ? shown.map((g) => ({ id: g.id, from: spread(g.id, g.at, g.rot, 7, 2 * HALF, g.w - 2), small: true })) : []), [rain, shown])
   // Out to play in the daytime, after school and on into the evening.
   if (hour < 8 || hour >= 19) return null
+  if (rain) return <RainRunners nav={nav} groups={runners} />
   return (
     <>
       {shown.map((g) => (

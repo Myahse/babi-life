@@ -19,6 +19,7 @@ import { TalkHuman } from '../Talkable'
 import { NoteShower } from '../money'
 import { hash, type XZ } from './geo'
 import type { Nav } from './nav'
+import { byGate, RainRunners, spread, useRain, type RainGroup } from './rainRun'
 import { worldTime } from '../../lib/worldClock'
 import { blockedAhead, checkpoints, PAPERS, queueOf, report, STALE, waiting } from './trafficFlow'
 import { along as alongWay, DRIVABLE, routeLength, turnTo } from './shared'
@@ -90,6 +91,15 @@ export function StreetLife({ nav, seed, night, taken }: { nav: Nav; seed: string
   const [basket, setBasket] = useState<Spot | null>(null)
   const [vendors, setVendors] = useState<Vendor[]>([])
   const tick = useRef(10)
+  // The rain: the scenes' people, the players on the pitch and the court, run for cover.
+  const rain = useRain((r) => r.on)
+  const runners = useMemo<RainGroup[]>(() => {
+    if (!rain) return []
+    const out: RainGroup[] = shown.map((sc) => ({ id: sc.id, from: spread(sc.id, sc.at, sc.rot, sc.kind === 'foot' ? 6 : sc.kind === 'grin' ? 4 : 3, 7, 4), small: sc.kind === 'foot' }))
+    if (foot) out.push({ id: `pitch:${foot.id}`, from: spread(foot.id, foot.at, foot.rot, 10, 18, 10), through: byGate(foot.at, foot.rot, 6.8) }, { id: `pitchw:${foot.id}`, from: spread(`w${foot.id}`, [foot.at[0] + Math.sin(foot.rot) * 8, foot.at[1] + Math.cos(foot.rot) * 8], foot.rot, 5, 14, 1) })
+    if (basket) out.push({ id: `court:${basket.id}`, from: spread(basket.id, basket.at, basket.rot, 6, 13, 7), through: byGate(basket.at, basket.rot, 4.8) }, { id: `courtw:${basket.id}`, from: spread(`w${basket.id}`, [basket.at[0] + Math.sin(basket.rot) * 6.2, basket.at[1] + Math.cos(basket.rot) * 6.2], basket.rot, 4, 10, 1) })
+    return out
+  }, [rain, shown, foot, basket])
   useFrame((_, dt) => {
     tick.current += dt
     if (tick.current < 1.5) return
@@ -119,8 +129,9 @@ export function StreetLife({ nav, seed, night, taken }: { nav: Nav; seed: string
   })
   return (
     <>
+      {rain && <RainRunners nav={nav} groups={runners} />}
       <NoShadows>
-        {shown.map((s) => (
+        {!rain && shown.map((s) => (
           <group key={s.id}>
             <group position={[s.at[0], 0, s.at[1]]} rotation={[0, s.rot, 0]}>
               {s.kind === 'grin' ? (
@@ -150,11 +161,11 @@ export function StreetLife({ nav, seed, night, taken }: { nav: Nav; seed: string
       <Solid parts>{post && <PolicePost spot={post} />}</Solid>
       {post && <PoliceAtWork spot={post} />}
       {post && <WavedOver post={post} nav={nav} />}
-      <Solid parts>{foot && <Pitch spot={foot} night={night} />}</Solid>
-      <Solid parts>{basket && <Court spot={basket} night={night} />}</Solid>
+      <Solid parts>{foot && <Pitch spot={foot} night={night} rain={rain} />}</Solid>
+      <Solid parts>{basket && <Court spot={basket} night={night} rain={rain} />}</Solid>
       {/* The street's pitch and court: the boys take whoever comes into their game (free) */}
-      {foot && <JoinBubble j={{ vendor: `foot:${foot.id}`, activity: 'street-foot', at: foot.at, y: 3.4, reach: 30, ask: 'Jouer avec les gars', icon: Volleyball, far: 'Approche du terrain !', pitch: { dir: along(foot), half: 8 } }} />}
-      {basket && <JoinBubble j={{ vendor: `basket:${basket.id}`, activity: 'street-basket', at: basket.at, y: 3.4, reach: 30, ask: 'Jouer au basket avec eux', icon: Trophy, far: 'Viens au playground !', pitch: { dir: along(basket), half: 5.5 } }} />}
+      {foot && !rain && <JoinBubble j={{ vendor: `foot:${foot.id}`, activity: 'street-foot', at: foot.at, y: 3.4, reach: 30, ask: 'Jouer avec les gars', icon: Volleyball, far: 'Approche du terrain !', pitch: { dir: along(foot), half: 8 } }} />}
+      {basket && !rain && <JoinBubble j={{ vendor: `basket:${basket.id}`, activity: 'street-basket', at: basket.at, y: 3.4, reach: 30, ask: 'Jouer au basket avec eux', icon: Trophy, far: 'Viens au playground !', pitch: { dir: along(basket), half: 5.5 } }} />}
       {vendors.map((v) => (
         <group key={v.id}>
           <Solid parts>
@@ -560,7 +571,7 @@ function people(seed: string, n: number, kit: Partial<Look>) {
   })
 }
 
-export function Pitch({ spot, night }: { spot: Spot; night: boolean }) {
+export function Pitch({ spot, night, rain }: { spot: Spot; night: boolean; /** raining: nobody on it (they ran for cover, rainRun.tsx) */ rain?: boolean }) {
   const watch = useMemo(() => people(`crowd${spot.id}`, 5, { outfit: 'casual' }), [spot.id])
   // A real game on it, five a side in two kits, keepers and all (the pitches' own match: field.tsx, match.ts).
   const field = useMemo<Field>(() => ({ at: spot.at, angle: -spot.rot, len: 20.8, wid: 12.4, sport: 'foot', map: false }), [spot.at, spot.rot])
@@ -568,9 +579,9 @@ export function Pitch({ spot, night }: { spot: Spot; night: boolean }) {
     <>
     {/* The match moves: outside the merged ground and fence */}
     <group position={[spot.at[0], 0, spot.at[1]]} rotation={[0, spot.rot, 0]}>
-      <Players field={field} seed={`street${spot.id}`} without={null} />
+      {!rain && <Players field={field} seed={`street${spot.id}`} without={null} />}
     </group>
-    <StaticMerge version={night ? 1 : 0}>
+    <StaticMerge version={(night ? 1 : 0) + (rain ? 2 : 0)}>
     <group position={[spot.at[0], 0, spot.at[1]]} rotation={[0, spot.rot, 0]}>
       <mesh position={[0, 0.03, 0]} material={grass} receiveShadow>
         <boxGeometry args={[22, 0.06, 13]} />
@@ -601,7 +612,7 @@ export function Pitch({ spot, night }: { spot: Spot; night: boolean }) {
       <FieldFence hl={11.3} hw={6.8} id={spot.id} />
       <Lights night={night} w={22} d={13} />
       <NoShadows>
-        {watch.map((p, i) => (
+        {!rain && watch.map((p, i) => (
           <group key={i} position={[-8 + i * 3.2, 0, 8]} rotation={[0, Math.PI, 0]}>
             <TalkHuman id={`pitch:${spot.id}:${i}`} look={p.look} gender={p.gender} pose={i % 2 ? 'cheer' : 'idle'} seed={p.seed} />
           </group>
@@ -613,16 +624,16 @@ export function Pitch({ spot, night }: { spot: Spot; night: boolean }) {
   )
 }
 
-export function Court({ spot, night }: { spot: Spot; night: boolean }) {
+export function Court({ spot, night, rain }: { spot: Spot; night: boolean; rain?: boolean }) {
   const watch = useMemo(() => people(`bcrowd${spot.id}`, 4, {}), [spot.id])
   // A real game on it, half-court (its rim under the +x board), in two kits (field.tsx, match.ts).
   const field = useMemo<Field>(() => ({ at: spot.at, angle: -spot.rot, len: 16.6, wid: 8.6, sport: 'basket', map: false }), [spot.at, spot.rot])
   return (
     <>
     <group position={[spot.at[0], 0, spot.at[1]]} rotation={[0, spot.rot, 0]}>
-      <Players field={field} seed={`streetb${spot.id}`} without={null} />
+      {!rain && <Players field={field} seed={`streetb${spot.id}`} without={null} />}
     </group>
-    <StaticMerge version={night ? 1 : 0}>
+    <StaticMerge version={(night ? 1 : 0) + (rain ? 2 : 0)}>
     <group position={[spot.at[0], 0, spot.at[1]]} rotation={[0, spot.rot, 0]}>
       <mesh position={[0, 0.03, 0]} material={concrete} receiveShadow>
         <boxGeometry args={[16, 0.06, 9]} />
@@ -643,7 +654,7 @@ export function Court({ spot, night }: { spot: Spot; night: boolean }) {
       <FieldFence hl={8.3} hw={4.8} id={spot.id} />
       <Lights night={night} w={16} d={9} />
       <NoShadows>
-        {watch.map((p, i) => (
+        {!rain && watch.map((p, i) => (
           <group key={i} position={[-4.5 + i * 3, 0, 6.2]} rotation={[0, Math.PI, 0]}>
             <TalkHuman id={`court:${spot.id}:${i}`} look={p.look} gender={p.gender} pose={i % 2 ? 'cheer' : 'wave'} seed={p.seed} />
           </group>

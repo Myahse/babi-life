@@ -29,6 +29,7 @@ import { APPRENTI, CAR_COLORS, GBAKA_DOOR, Vehicle, type VehicleKind } from '../
 import { Walker, type WalkNav } from '../Walker'
 import { LotGhost } from './lotGhost'
 import { lotClip } from './lotClip'
+import { Shelterer, useRain } from './rainRun'
 import { useLotPlace } from '../../store/lotPlace'
 import { homeSpotsOf } from '../homeSpots'
 import { LotGround, Zones } from '../build/Zones'
@@ -1349,6 +1350,9 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const stopsTraffic = !!happening && STOPS_TRAFFIC.has(happening.id)
   const parked = useParked()
   const raining = happening?.id === 'pluie'
+  // The street runs for cover (rainRun.tsx).
+  useEffect(() => useRain.setState({ on: raining }), [raining])
+  useEffect(() => () => useRain.setState({ on: false }), [])
   // Power cuts (world3d/power.ts): the zones round the Sim cut now, and the happening's « Délestage »
   // street's zone with them. Their windows go dark, their lamps out; the Sim in one, the night darker.
   const [cuts, setCuts] = useState<PowerCut[]>([])
@@ -1481,7 +1485,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
           <LotLabel key={lot.id} lot={lot} world={world} label={labels && labelOf.get(lot.id)} onPick={onPick} y={7} />
         ) : lot.field ? (
           <group key={lot.id}>
-            <SportField field={lot.field} seed={lot.id} night={night} withSim={stationAt === lot.id && !!busy?.id && /^play-/.test(busy.id)} onPick={() => onPick(lot.id)} />
+            <SportField nav={nav} field={lot.field} seed={lot.id} night={night} withSim={stationAt === lot.id && !!busy?.id && /^play-/.test(busy.id)} onPick={() => onPick(lot.id)} />
             <LotLabel lot={lot} world={world} label={labels && labelOf.get(lot.id)} onPick={onPick} y={5} />
           </group>
         ) : LANDMARKS[lot.id] ? (
@@ -2216,6 +2220,9 @@ function Passerby({ p, nav, routes, held, talking, react, refs, onClick, bubble 
   const ref = useRef<THREE.Group>(null)
   const anchor = useMemo(() => anchorNode(nav, p.near, FOOT), [nav, p.near])
   const [moving, setMoving] = useState(true)
+  // The rain: off for cover, back when it stops (rainRun.tsx).
+  const cover = useMemo(() => new Shelterer((p.seed % 7) - 3.5), [p.seed])
+  const [rainPose, setRainPose] = useState<Pose | null>(null)
   useEffect(() => {
     const g = ref.current
     if (!g) return
@@ -2274,10 +2281,16 @@ function Passerby({ p, nav, routes, held, talking, react, refs, onClick, bubble 
     }
     g.rotation.y = turnTo(g.rotation.y, at.forward ? pt.r : pt.r + Math.PI, 0.25)
     if (at.moving !== moving) setMoving(at.moving)
+    const c = cover.step(nav, [g.position.x, g.position.z], dt)
+    if (c) {
+      g.position.set(c.x, nav.heightAt(c.x, c.z), c.z)
+      g.rotation.y = turnTo(g.rotation.y, c.r, 0.3)
+    }
+    if ((c?.pose ?? null) !== rainPose) setRainPose(c?.pose ?? null)
   })
   return (
     <group ref={ref} onClick={(e) => (e.stopPropagation(), onClick())}>
-      <Human look={p.look} gender={p.gender} pose={stepping ? 'walk' : held ? (react ?? 'talk') : moving ? 'walk' : 'idle'} seed={p.seed} speed={p.speed} />
+      <Human look={p.look} gender={p.gender} pose={stepping ? 'walk' : held ? (react ?? 'talk') : (rainPose ?? (moving ? 'walk' : 'idle'))} seed={p.seed} speed={rainPose === 'run' ? 1.6 : p.speed} />
       {bubble}
     </group>
   )
