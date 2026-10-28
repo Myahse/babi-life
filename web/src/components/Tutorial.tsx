@@ -43,7 +43,7 @@ export const useTutorialAsked = () => useSyncExternalStore((f) => (listeners.add
 /** What the game is showing, for the steps done by doing them. */
 export type TutoState = { whereTo: boolean; placeId: string | null; overlay: string | null; /** A place's « Que faire ? » open. */ menu?: boolean }
 
-type Step = { id: string; title: string; text: (desk: boolean) => string; /** What it points at (data-tour). */ target?: string; /** What to do, for it to move on. */ task?: string; done?: (s: TutoState & { moved: number }) => boolean }
+type Step = { id: string; title: string; text: (desk: boolean) => string; /** What it points at (data-tour). */ target?: string; /** What to do, for it to move on. */ task?: string; done?: (s: TutoState & { moved: number; turned: number }) => boolean }
 
 // Two chapters: growing up at the family's home (from birth), then adult life (at 18, or straight
 // away for a Sim made grown up). Each one once; the Encyclo shows the one of the Sim's age again.
@@ -57,6 +57,17 @@ const CHILDHOOD: Step[] = [
     text: (desk) => (desk ? 'Les flèches (ou ZQSD) pour avancer, la souris pour tourner la vue. Tu peux aussi cliquer sur le sol : ton perso y va.' : 'Touche le sol : ton perso y va. Glisse ton doigt sur l’écran pour tourner la vue ; ce bouton la change (de haut, de près, à l’épaule).'),
     task: 'Fais quelques pas.',
     done: (s) => s.moved > 3,
+  },
+  {
+    id: 'camera',
+    title: 'Tourner la vue',
+    target: 'vue',
+    text: (desk) =>
+      desk
+        ? 'Clic gauche et glisse : la vue se déplace (ou tourne autour de toi, de près). Clic droit et glisse : elle pivote. La molette : zoomer, dézoomer.'
+        : '☝️ Un doigt qui glisse : la vue se déplace (de près, elle tourne autour de toi). ✌️ Deux doigts : écarte-les pour zoomer, pince pour reculer, tourne-les comme une clé pour faire pivoter la vue. Ce bouton change de vue : de haut, de près, à l’épaule.',
+    task: 'Fais pivoter la vue.',
+    done: (s) => s.turned > 0.6,
   },
   { id: 'maison', title: 'Chez toi', target: 'que-faire', text: () => "Tu vis chez papa et maman. Entre dans la maison : les icônes au-dessus des meubles, c'est ce qu'on fait ici. Le biberon, la bouillie, le bain avec maman, le hochet, dormir…", task: 'Entre chez toi et touche « Que faire ? ».', done: (s) => !!s.menu },
   { id: 'bebe', title: 'Un bébé, ça se gère !', text: () => "Après manger, bébé fait caca, pipi, il pleure ou il vomit : maman (ou la nounou) arrive et nettoie. Fais un câlin à maman quand ton moral baisse, et dors quand l'énergie est basse." },
@@ -77,6 +88,17 @@ const ADULTHOOD: Step[] = [
     text: (desk) => (desk ? 'Marche avec les flèches (ou ZQSD), Maj pour courir. Ou clique sur le sol : ton perso y va. Glisse avec la souris pour tourner la vue.' : 'Touche le sol : ton perso y va. Ce bouton change la vue ; en vue épaule, un rond apparaît pour marcher. Glisse l\'écran pour tourner la vue.'),
     task: 'Fais quelques pas.',
     done: (s) => s.moved > 4,
+  },
+  {
+    id: 'camera',
+    title: 'Tourner la vue',
+    target: 'vue',
+    text: (desk) =>
+      desk
+        ? 'Clic gauche et glisse : la vue se déplace (ou tourne autour de toi, de près). Clic droit et glisse : elle pivote. La molette : zoomer, dézoomer.'
+        : '☝️ Un doigt qui glisse : la vue se déplace (de près, elle tourne autour de toi). ✌️ Deux doigts : écarte-les pour zoomer, pince pour reculer, tourne-les comme une clé pour faire pivoter la vue. Ce bouton change de vue : de haut, de près, à l’épaule.',
+    task: 'Fais pivoter la vue.',
+    done: (s) => s.turned > 0.6,
   },
   { id: 'ou-aller', title: 'Où aller ?', target: 'ou-aller', text: () => "Tous les lieux du quartier sont là : le maquis, le marché, l'église ou la mosquée, ton futur boulot…", task: 'Touche « Où aller ? ».', done: (s) => s.whereTo },
   { id: 'lieu', title: 'Un lieu', text: () => "Choisis un lieu : ton perso y marche (si c'est loin, une moto-taxi te propose de t'emmener). Arrivé, touche son panneau : tu vois tout ce qu'on peut y faire.", task: 'Ouvre un lieu.', done: (s) => !!s.placeId },
@@ -106,11 +128,19 @@ export function Tutorial({ state, onEnd, chapter = 'adulte' }: { state: TutoStat
   // How far the Sim walked since the step began.
   const from = useRef<[number, number]>([...whereabouts.sim])
   const [moved, setMoved] = useState(0)
+  // How far the view turned since the step began (radians, whichever way).
+  const heading = useRef(whereabouts.heading)
+  const [turned, setTurned] = useState(0)
   useEffect(() => {
     from.current = [...whereabouts.sim]
+    heading.current = whereabouts.heading
     setMoved(0)
+    setTurned(0)
     if (!step.done) return
-    const t = setInterval(() => setMoved(Math.hypot(whereabouts.sim[0] - from.current[0], whereabouts.sim[1] - from.current[1])), 300)
+    const t = setInterval(() => {
+      setMoved(Math.hypot(whereabouts.sim[0] - from.current[0], whereabouts.sim[1] - from.current[1]))
+      setTurned(Math.abs(Math.atan2(Math.sin(whereabouts.heading - heading.current), Math.cos(whereabouts.heading - heading.current))))
+    }, 300)
     return () => clearInterval(t)
   }, [k]) // eslint-disable-line react-hooks/exhaustive-deps
   // Where the thing it's about is on the screen.
@@ -130,7 +160,7 @@ export function Tutorial({ state, onEnd, chapter = 'adulte' }: { state: TutoStat
   }
   const next = () => (k + 1 < STEPS.length ? setK(k + 1) : end())
   // Done by doing it: « Bravo », and on.
-  const did = !!step.done?.({ ...state, moved })
+  const did = !!step.done?.({ ...state, moved, turned })
   useEffect(() => {
     if (!did || bravo) return
     haptic('success')
