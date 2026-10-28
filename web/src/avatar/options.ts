@@ -134,10 +134,115 @@ export const PIECE_PATTERNS: Choice[] = [
   { id: 'polo', label: 'Rayures du polo' },
 ]
 
+/*
+ * Looks for each age (« looks-age » in the admin's « Mises à jour »): the
+ * baby's grenouillère and tétine, the child's cartable and couettes, the
+ * teen's oversized tee and earbuds. lookAt() keeps what a Sim wears to what
+ * fits its age: a baby's things come off when it grows up.
+ */
+export const BABY_OUTFITS: Choice[] = [
+  { id: 'grenouillere', label: 'Grenouillère' },
+  { id: 'body', label: 'Body & couche' },
+  { id: 'robe-bebe', label: 'Petite robe' },
+  { id: 'pagne-bebe', label: 'Ensemble en pagne' },
+  { id: 'salopette-bebe', label: 'Petite salopette' },
+]
+export const KID_OUTFITS: Choice[] = [
+  { id: 'tee-short', label: 'Tee-shirt & short' },
+  { id: 'robe-volants', label: 'Robe à volants' },
+  { id: 'ensemble-pagne', label: 'Ensemble en pagne' },
+  { id: 'pyjama', label: 'Pyjama' },
+]
+export const TEEN_OUTFITS: Choice[] = [
+  { id: 'oversize', label: 'Tee large & cargo' },
+  { id: 'crop', label: 'Crop top & jean' },
+  { id: 'maillot-club', label: 'Maillot de club' },
+]
+export const BABY_HAIRS: Choice[] = [
+  { id: 'short', label: 'Petits cheveux' },
+  { id: 'bald', label: 'Crâne lisse' },
+  { id: 'touffe', label: 'Petite touffe' },
+  { id: 'puffs', label: 'Petits macarons' },
+]
+export const KID_HAIRS: Choice[] = [
+  { id: 'couettes', label: 'Couettes' },
+  { id: 'nattes-perles', label: 'Nattes à perles' },
+]
+export const BABY_ACCESSORIES: Choice[] = [
+  { id: 'none', label: 'Rien' },
+  { id: 'tetine', label: 'Tétine' },
+  { id: 'bavoir', label: 'Bavoir' },
+  { id: 'bonnet-bebe', label: 'Bonnet de bébé' },
+  { id: 'hochet', label: 'Hochet' },
+]
+export const KID_ACCESSORIES: Choice[] = [
+  { id: 'cartable', label: 'Cartable' },
+  { id: 'barrettes', label: 'Barrettes' },
+  { id: 'sucette', label: 'Sucette' },
+]
+export const TEEN_ACCESSORIES: Choice[] = [
+  { id: 'ecouteurs', label: 'Écouteurs' },
+  { id: 'sac-a-dos', label: 'Sac à dos' },
+]
+/** Every id the age looks bring: closed with « looks-age » (backend sims ageLookIDs). */
+export const AGE_LOOK_IDS = new Set([...BABY_OUTFITS, ...KID_OUTFITS, ...TEEN_OUTFITS, ...KID_HAIRS, ...BABY_ACCESSORIES, ...KID_ACCESSORIES, ...TEEN_ACCESSORIES].map((c) => c.id).concat('touffe').filter((id) => id !== 'none'))
+
+const ids = (list: Choice[]) => new Set(list.map((c) => c.id))
+const BABY_OUTFIT_IDS = ids(BABY_OUTFITS)
+/** Jobs and the clergy: not for a child or a teen. */
+const GROWN_OUTFITS = new Set(['soutane', 'pasteur', 'imam', 'blouse', 'bleu', 'policier', 'gendarme', 'cuisinier', 'infirmier', 'vigile', 'soeur'])
+/** What a child may wear of the grown-ups' clothes. */
+const KID_OK = new Set(['pagne', 'boubou', 'casual', 'jersey', 'debardeur', 'survet', 'basket', 'chemise-pagne', 'uniforme', 'salopette', 'jogging', 'sweat', 'kaba', 'maillot', 'chemise', 'blouson', 'jupe', 'abaya'])
+const KID_ACC_OK = new Set(['cap', 'capback', 'buckethat', 'beanie', 'bandana', 'glasses', 'sunglasses', 'earrings', 'beads', 'watch', 'croix', 'chapelet', 'kufi', 'headphones'])
+/** Only for the little ones. */
+const KID_ONLY = new Set(['robe-volants', 'ensemble-pagne', 'cartable', 'sucette', 'couettes'])
+
+/** The outfits a Sim of that age can pick. */
+export function outfitsFor(stage: string, femme: boolean): Choice[] {
+  const mine = (list: Choice[]) => list.filter((o) => femme || !FEMME_OUTFITS.has(o.id))
+  if (stage === 'bebe') return mine(BABY_OUTFITS)
+  if (stage === 'enfant') return mine([...KID_OUTFITS, ...OUTFITS.filter((o) => KID_OK.has(o.id))])
+  if (stage === 'ado') return mine([...TEEN_OUTFITS, ...KID_OUTFITS.filter((o) => !KID_ONLY.has(o.id)), ...OUTFITS.filter((o) => !GROWN_OUTFITS.has(o.id))])
+  return mine([...OUTFITS, ...TEEN_OUTFITS, ...KID_OUTFITS.filter((o) => !KID_ONLY.has(o.id))])
+}
+export function hairsFor(stage: string): Choice[] {
+  if (stage === 'bebe') return BABY_HAIRS
+  if (stage === 'enfant') return [...KID_HAIRS, ...HAIRS]
+  return [...HAIRS, ...KID_HAIRS.filter((h) => !KID_ONLY.has(h.id))]
+}
+export function accessoriesFor(stage: string): Choice[] {
+  if (stage === 'bebe') return BABY_ACCESSORIES
+  if (stage === 'enfant') return [ACCESSORIES[0], ...KID_ACCESSORIES, ...ACCESSORIES.filter((a) => KID_ACC_OK.has(a.id))]
+  if (stage === 'ado') return [ACCESSORIES[0], ...TEEN_ACCESSORIES, ...KID_ACCESSORIES.filter((a) => a.id !== 'sucette'), ...ACCESSORIES.slice(1)]
+  return [...ACCESSORIES, ...TEEN_ACCESSORIES, ...KID_ACCESSORIES.filter((a) => !KID_ONLY.has(a.id))]
+}
+export function beardsFor(stage: string): Choice[] {
+  if (stage === 'bebe' || stage === 'enfant') return []
+  if (stage === 'ado') return BEARDS.filter((b) => b.id === 'none' || b.id === 'moustache')
+  return BEARDS
+}
+
+/** The look as worn at that age: what doesn't fit comes off (a baby's grenouillère on a child, a beard on a child, a cartable on a grown-up). Only the creator's own pieces are looked at: the towel, a work uniform stay. */
+export function lookAt<L extends Look>(look: L, stage = 'adulte'): L {
+  const baby = stage === 'bebe'
+  const outfits = new Set(outfitsFor(stage, true).map((o) => o.id))
+  const known = (list: Choice[], id: string) => list.some((c) => c.id === id)
+  const out: L = { ...look }
+  // A baby in another outfit keeps its plain onesie (BlockBaby); grown, the baby clothes become a child's or a grown-up's.
+  if (!baby && look.outfit && !outfits.has(look.outfit) && (BABY_OUTFIT_IDS.has(look.outfit) || known(KID_OUTFITS, look.outfit) || (stage === 'enfant' && known(OUTFITS, look.outfit))))
+    out.outfit = stage === 'enfant' ? 'tee-short' : 'casual'
+  if (!baby && (look.hair === 'touffe' || look.hair === 'couettes') && !hairsFor(stage).some((h) => h.id === look.hair)) out.hair = look.hair === 'couettes' ? 'puffs' : 'short'
+  if (look.beard && !beardsFor(stage).some((b) => b.id === look.beard)) out.beard = 'none'
+  const accs = new Set(accessoriesFor(stage).map((a) => a.id))
+  const worn = accessoriesOf(look).filter((a) => accs.has(a) || !ACCESSORY_SLOT[a])
+  out.accessory = worn.length ? worn.join(',') : 'none'
+  return out
+}
+
 /** Outfits that use the wax pattern. */
-export const WAX_OUTFITS = new Set(['pagne', 'boubou', 'robe', 'chemise-pagne', 'kaba'])
+export const WAX_OUTFITS = new Set(['pagne', 'boubou', 'robe', 'chemise-pagne', 'kaba', 'ensemble-pagne', 'pagne-bebe'])
 /** Outfits only women wear (a man who picks one gets the nearest men's outfit). */
-export const FEMME_OUTFITS = new Set(['robe', 'kaba', 'jupe', 'abaya', 'soeur'])
+export const FEMME_OUTFITS = new Set(['robe', 'kaba', 'jupe', 'abaya', 'soeur', 'robe-bebe', 'robe-volants', 'crop'])
 /** Hairdos a cap or a hat goes over: they're drawn short under it. */
 export const TALL_HAIR = new Set(['afro', 'bun', 'headwrap', 'puffs', 'mohawk', 'ponytail'])
 /** Accessories worn on the head (a hat, a cap…). */
@@ -157,6 +262,9 @@ export const ACCESSORY_SLOT: Record<string, string> = {
   chain: 'neck', beads: 'neck', croix: 'neck', chapelet: 'hand',
   watch: 'wrist',
   bag: 'bag',
+  tetine: 'mouth', bavoir: 'neck', 'bonnet-bebe': 'head', hochet: 'hand',
+  cartable: 'bag', barrettes: 'clips', sucette: 'hand',
+  ecouteurs: 'ears', 'sac-a-dos': 'bag',
 }
 
 /** The accessories worn, in the order they were put on. */
@@ -192,6 +300,8 @@ export function accessoryColor(l: { accessory?: string; accessoryColor?: string;
   if (id === 'kufi') return '#f8f9fa'
   if (id === 'chapelet' || id === 'bag') return '#6b4423'
   if (id === 'watch') return '#d8d8de'
+  const kids: Record<string, string> = { tetine: '#74c0fc', bavoir: '#f8f9fa', 'bonnet-bebe': '#ffc8dd', hochet: '#ffd43b', cartable: '#2a6cf0', barrettes: '#f783ac', sucette: '#ff6b6b', ecouteurs: '#f8f9fa', 'sac-a-dos': '#17171a' }
+  if (kids[id]) return kids[id]
   if (HEADWEAR.has(id)) return l.outfitColor === '#f4efe6' ? '#14213d' : (l.outfitColor ?? '#14213d')
   return '#e8b93c'
 }
@@ -227,7 +337,7 @@ export const metres = (scale: number, gender: 'femme' | 'homme') => BASE_HEIGHT[
 export const scaleFor = (m: number, gender: 'femme' | 'homme') => m / BASE_HEIGHT[gender]
 
 /** Colours an outfit starts with when it's picked: the kit of the Éléphants is orange. */
-export const OUTFIT_DEFAULT_COLOR: Record<string, string> = { jersey: '#ff8200', suit: '#1f2a44', debardeur: '#f8f9fa', basket: '#1d428a', uniforme: '#c8b07a', chemise: '#74c0fc', bazin: '#0f9d8a', blouson: '#3d64a8', salopette: '#3d64a8', souscorps: '#f4f4f4', jogging: '#f4efe6', sweat: '#6c7280', soutane: '#17171a', pasteur: '#17171a', imam: '#f8f9fa', abaya: '#14213d', blouse: '#f8f9fa', bleu: '#1d4ed8', policier: '#8ec5ee', gendarme: '#6b7a4a', cuisinier: '#f8f9fa', infirmier: '#e7f5ff', vigile: '#17171a', soeur: '#5b6470' }
+export const OUTFIT_DEFAULT_COLOR: Record<string, string> = { jersey: '#ff8200', suit: '#1f2a44', debardeur: '#f8f9fa', basket: '#1d428a', uniforme: '#c8b07a', chemise: '#74c0fc', bazin: '#0f9d8a', blouson: '#3d64a8', salopette: '#3d64a8', souscorps: '#f4f4f4', jogging: '#f4efe6', sweat: '#6c7280', soutane: '#17171a', pasteur: '#17171a', imam: '#f8f9fa', abaya: '#14213d', blouse: '#f8f9fa', bleu: '#1d4ed8', policier: '#8ec5ee', gendarme: '#6b7a4a', cuisinier: '#f8f9fa', infirmier: '#e7f5ff', vigile: '#17171a', soeur: '#5b6470', grenouillere: '#bde0fe', body: '#f8f9fa', 'robe-bebe': '#ffc8dd', 'pagne-bebe': '#ff7a00', 'salopette-bebe': '#74c0fc', 'tee-short': '#f2b705', 'robe-volants': '#f783ac', 'ensemble-pagne': '#00a862', pyjama: '#74c0fc', oversize: '#f4efe6', crop: '#d6336c', 'maillot-club': '#7a1f3d' }
 
 /** Sims made before the creator grew: fill the new fields. */
 export function fullLook(look: Look): Required<Look> {
@@ -281,8 +391,8 @@ export const ACCESSORY_COLORS = ['#e8b93c', '#d8d8de', '#17171a', '#b02e0c', '#2
 
 /** The colours an outfit's parts have when the player hasn't picked one. */
 export function defaultColors(l: Required<Look>, femme: boolean) {
-  const bottom: Record<string, string> = { pagne: femme ? l.outfitColor : '#2b2f45', jersey: '#f8f9fa', casual: '#3d64a8', debardeur: '#1f2a44', basket: l.outfitColor, 'chemise-pagne': '#2b2f45', chemise: '#2b2f45', uniforme: femme ? '#1d4ed8' : '#a08850', jupe: '#2b2f45', blouson: '#3d64a8', salopette: l.outfitColor, kaba: l.outfitColor, bazin: l.outfitColor, souscorps: '#3d64a8', jogging: '#6c7280', sweat: '#6c7280', soutane: l.outfitColor, pasteur: '#17171a', imam: '#f8f9fa', abaya: '#2b2f45', blouse: '#2b2f45', bleu: l.outfitColor, policier: '#1f2a44', gendarme: '#4f5b36', cuisinier: '#2b2f45', infirmier: l.outfitColor, vigile: '#17171a', soeur: l.outfitColor }
-  const shoe: Record<string, string> = { policier: '#141416', gendarme: '#141416', cuisinier: '#141416', infirmier: '#f4f4f4', vigile: '#141416', soeur: '#141416', souscorps: '#141416', jogging: '#f4f4f4', sweat: '#141416', soutane: '#141416', pasteur: '#141416', imam: '#e8d9b5', abaya: '#141416', blouse: '#f4f4f4', bleu: '#141416', 'chemise-pagne': '#6b4423', kaba: '#8a5a2b', bazin: '#e8d9b5', chemise: '#141416', uniforme: '#141416', jupe: '#f4f4f4', blouson: '#f4f4f4', salopette: '#f4f4f4', debardeur: '#141416', basket: '#f8f9fa', survet: '#f4f4f4', pagne: femme ? '#8a5a2b' : '#6b4423', boubou: '#e8d9b5', robe: '#1c1c22', suit: '#141416', jersey: '#141416', casual: '#f4f4f4' }
+  const bottom: Record<string, string> = { pagne: femme ? l.outfitColor : '#2b2f45', jersey: '#f8f9fa', casual: '#3d64a8', debardeur: '#1f2a44', basket: l.outfitColor, 'chemise-pagne': '#2b2f45', chemise: '#2b2f45', uniforme: femme ? '#1d4ed8' : '#a08850', jupe: '#2b2f45', blouson: '#3d64a8', salopette: l.outfitColor, kaba: l.outfitColor, bazin: l.outfitColor, souscorps: '#3d64a8', jogging: '#6c7280', sweat: '#6c7280', soutane: l.outfitColor, pasteur: '#17171a', imam: '#f8f9fa', abaya: '#2b2f45', blouse: '#2b2f45', bleu: l.outfitColor, policier: '#1f2a44', gendarme: '#4f5b36', cuisinier: '#2b2f45', infirmier: l.outfitColor, vigile: '#17171a', soeur: l.outfitColor, 'tee-short': '#3d64a8', 'maillot-club': '#f8f9fa', 'robe-volants': l.outfitColor, 'ensemble-pagne': l.outfitColor, pyjama: l.outfitColor, oversize: '#6b7a4a', crop: '#3d64a8' }
+  const shoe: Record<string, string> = { policier: '#141416', gendarme: '#141416', cuisinier: '#141416', infirmier: '#f4f4f4', vigile: '#141416', soeur: '#141416', souscorps: '#141416', jogging: '#f4f4f4', sweat: '#141416', soutane: '#141416', pasteur: '#141416', imam: '#e8d9b5', abaya: '#141416', blouse: '#f4f4f4', bleu: '#141416', 'chemise-pagne': '#6b4423', kaba: '#8a5a2b', bazin: '#e8d9b5', chemise: '#141416', uniforme: '#141416', jupe: '#f4f4f4', blouson: '#f4f4f4', salopette: '#f4f4f4', debardeur: '#141416', basket: '#f8f9fa', survet: '#f4f4f4', 'tee-short': '#2a6cf0', 'maillot-club': '#141416', 'robe-volants': '#d6336c', 'ensemble-pagne': '#8a5a2b', pyjama: '#74c0fc', oversize: '#f4f4f4', crop: '#f4f4f4', pagne: femme ? '#8a5a2b' : '#6b4423', boubou: '#e8d9b5', robe: '#1c1c22', suit: '#141416', jersey: '#141416', casual: '#f4f4f4' }
   const outfit = !femme && FEMME_OUTFITS.has(l.outfit) ? (l.outfit === 'kaba' ? 'boubou' : l.outfit === 'abaya' ? 'imam' : l.outfit === 'soeur' ? 'soutane' : 'casual') : l.outfit
   return {
     bottom: bottom[outfit] ?? l.outfitColor,

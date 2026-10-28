@@ -84,3 +84,20 @@ func TestValidAccessories(t *testing.T) {
 		}
 	}
 }
+
+func TestChildLook(t *testing.T) {
+	// A baby: its grenouillère and tétine; maman does its hair, for free.
+	base := Look{Skin: "#5a3a22", Hair: "short", HairColor: "#111111", Outfit: "casual", OutfitColor: "#ff0000"}
+	s := &Sim{Gender: "femme", Look: base, GameMinutes: 1000, BornAt: 1000}
+	nl := base
+	nl.Outfit, nl.Accessory, nl.Hair = "grenouillere", "tetine,bavoir,bonnet-bebe,hochet", "puffs"
+	if cost, err := s.changeLook(nl); err != nil || cost != 0 {
+		t.Fatalf("baby look: cost %d err %v", cost, err)
+	}
+	if !nl.usesAgeLooks() || base.usesAgeLooks() {
+		t.Fatal("usesAgeLooks")
+	}
+	if validAccessories("cartable,sac-a-dos") == nil {
+		t.Fatal("two bags accepted")
+	}
+}
