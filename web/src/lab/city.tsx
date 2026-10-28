@@ -422,8 +422,27 @@ function LotPlaceLab() {
   )
 }
 
+/**
+ * The quarter for the traffic: its streets meeting at real crossroads (the
+ * map's streets share a point where they cross; quarter()'s don't, so its
+ * cars could neither turn nor give way). The big road's crossings have
+ * lights; the street at z -70 is a little wider than those crossing it (a
+ * stop coming out of them); at z 80 they're all alike (priority to the right).
+ */
+function trafficQuarter(): ChunkData {
+  const q = quarter()
+  const xs = [-100, -10, 80]
+  const zs = [-70, 10, 80]
+  const widths = [8.5, 12, 7]
+  const roads: ChunkData['roads'] = [
+    ...xs.map((x) => ({ cls: 'street', pts: [[x, -130], ...zs.map((z) => [x, z]), [x, 95]] as XZ[], width: 7, paved: true, bridge: false })),
+    ...zs.map((z, i) => ({ cls: i === 1 ? 'primary' : 'street', pts: [[-160, z], ...xs.map((x) => [x, z]), [160, z]] as XZ[], width: widths[i], paved: true, bridge: false })),
+  ]
+  return { ...q, roads }
+}
+
 function TrafficLab() {
-  const data = useMemo(quarter, [])
+  const data = useMemo(trafficQuarter, [])
   const mats = useMemo(() => makeWorldMaterials() as unknown as Record<string, THREE.Material>, [])
   const meshes = useMemo(() => buildChunk(data, () => false), [data])
   const nav = useMemo(() => new Nav([data]), [data])
@@ -438,7 +457,7 @@ function TrafficLab() {
         <planeGeometry args={[4000, 4000]} />
         <primitive object={LAB_GROUND} attach="material" />
       </mesh>
-      <RoadTraffic nav={nav} focus={focus} seed="lab" />
+      <RoadTraffic nav={nav} focus={focus} seed="lab" perCell={Number(new URLSearchParams(location.search).get('cars') ?? 5)} />
       <OrbitControls target={[-10, 0, 10]} />
     </Canvas>
   )

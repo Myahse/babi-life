@@ -27,26 +27,44 @@ export const waiting = (id: string, why: string) => {
 /** The gap kept to the car ahead, bumper to bumper (metres). */
 const GAP = 1.6
 
-/** The vehicle a vehicle at (x, z), heading h, would run into (one ahead of it in its lane, or crossing in front), if any; `look`: metres further ahead, to brake in time. */
+/**
+ * The vehicle a vehicle at (x, z), heading h, would run into (one ahead of it
+ * in its lane, or crossing in front: its body as it lies, a car seen side on
+ * is long across the lane), if any. `look`: metres further ahead, to brake in
+ * time.
+ */
 export function blockedAhead(id: string, x: number, z: number, h: number, half: number, look = 0) {
   const [fx, fz] = [Math.sin(h), Math.cos(h)]
   for (const [other, o] of moving) {
     if (other === id) continue
     const [dx, dz] = [o.x - x, o.z - z]
     const ahead = dx * fx + dz * fz
-    if (ahead <= 0 || ahead > half + o.half + GAP + 2 + look) continue
-    // In its lane (the cars coming the other way keep to theirs, 4 m off), or across it.
+    // (Two right on the same spot, neither ahead of the other: the second of them waits for the first to get clear.)
+    if (ahead <= 0 && !(ahead > -0.6 && other < id && Math.abs(dx * fz - dz * fx) < 1.2)) continue
+    // How far its body reaches along this car's way, and across it.
+    const [c, sn] = [Math.abs(Math.cos(o.h - h)), Math.abs(Math.sin(o.h - h))]
+    const along = o.half * c + 0.9 * sn
+    const across = o.half * sn + 0.9 * c
+    if (ahead > half + along + GAP + 2 + look) continue
+    // In its lane (the cars coming the other way keep to theirs, 4 m off, and the parked ones to the kerb), or across it.
     const side = Math.abs(dx * fz - dz * fx)
-    if (side < 1.7) return other
+    if (side < Math.max(o.wait === 'parked' ? 1.2 : 1.7, across + 0.7)) return other
   }
   return null
+}
+
+/** A spot on the road with a vehicle on it, or about to be (within `r` metres): a car coming out of a yard waits for it to be clear. */
+export function spotTaken(id: string, x: number, z: number, r = 6.5) {
+  for (const [other, o] of moving) if (other !== id && Math.abs(o.x - x) < r + o.half && Math.abs(o.z - z) < r + o.half && Math.hypot(o.x - x, o.z - z) < r + o.half) return true
+  return false
 }
 
 /**
  * What the queue ahead of a car waits for, down to its head: a red light or
  * a checkpoint (it waits its turn, however long), this very car (two cars
- * nose to nose at a crossing: one squeezes by), or nothing it knows of (a car
- * parked at the end of its round: it gets by after a while).
+ * nose to nose at a crossing: one squeezes by), or nothing it knows of (it
+ * gets by after a while). A car pulling over at the end of its round: it
+ * waits behind it.
  */
 export function queueOf(id: string, ahead: string): 'light' | 'jam' | 'other' {
   let cur = ahead
@@ -54,7 +72,7 @@ export function queueOf(id: string, ahead: string): 'light' | 'jam' | 'other' {
     const w = moving.get(cur)?.wait
     if (!w) return 'other'
     // (A red light, a checkpoint, a stop, a crossroads given way at, someone crossing: it waits its turn behind.)
-    if (w === 'red' || w === 'papers' || w === 'stop' || w === 'junction' || w === 'pieton') return 'light'
+    if (w === 'red' || w === 'papers' || w === 'stop' || w === 'junction' || w === 'prio' || w === 'pieton' || w === 'parked') return 'light'
     if (w === id) return 'jam'
     cur = w
   }
@@ -221,7 +239,10 @@ export function TrafficLights({ lights }: { lights: Light[] }) {
  * roads alike, priority to the right; and nobody goes into it while another car
  * is crossing it.
  */
-export type Junction = { key: string; x: number; z: number; r: number; major: number }
+export type Junction = { key: string; x: number; z: number; r: number; major: number; /** at a traffic light: the lights decide who goes, the crossroads is only kept clear */ lit?: boolean }
+
+/** The crossroads with lights, kept clear as the others are (giveWay): two cars on the same axis go together, never two across each other. */
+export const litJunctions = (lights: Light[]): Junction[] => lights.map((l) => ({ key: `lit${Math.round(l.x)},${Math.round(l.z)}`, x: l.x, z: l.z, r: l.width / 2 + 2.5, major: l.width, lit: true }))
 
 export function junctionsOf(nav: Nav, cells: { x0: number; z0: number }[], size: number, lights: Light[]): Junction[] {
   const out: Junction[] = []
@@ -237,27 +258,64 @@ export function junctionsOf(nav: Nav, cells: { x0: number; z0: number }[], size:
   return out
 }
 
-/** Who is in each crossroads now, and who is coming up to it (with which way they come and on how wide a road). */
-const inside = new Map<string, { id: string; seen: number }>()
-const coming = new Map<string, Map<string, { x: number; z: number; width: number; seen: number }>>()
+/**
+ * Who has the crossroads (the cars crossing it, or about to: two going the
+ * same way, or facing each other, go together; nobody goes across them
+ * meanwhile), and who is coming up to it (from which side, on how wide a
+ * road, whether it is giving way itself).
+ */
+const holders = new Map<string, Map<string, { h: number; seen: number }>>()
+const coming = new Map<string, Map<string, { x: number; z: number; width: number; yielding: boolean; seen: number }>>()
 /** Where each car made its stop (`car|junction`), and since when it has been standing there. */
 const stopped = new Map<string, number>()
+const FRESH = 0.3
+/** Another car having the crossroads across this one's way (not on the same axis). */
+const across = (j: Junction, id: string, h: number, t: number) => {
+  for (const [other, o] of holders.get(j.key) ?? []) if (other !== id && t - o.seen < FRESH && Math.abs(Math.sin(o.h - h)) > 0.5) return true
+  return false
+}
+const take = (j: Junction, id: string, h: number, t: number) => {
+  let m = holders.get(j.key)
+  if (!m) holders.set(j.key, (m = new Map()))
+  m.set(id, { h, seen: t })
+  if (m.size > 12) for (const [k, o] of m) if (t - o.seen > 2) m.delete(k)
+}
+
+/**
+ * Every frame, whatever holds it up: a car in a crossroads keeps it (else,
+ * stopped in it behind another, it would be crossed through), and one that
+ * has taken it keeps it on the way in.
+ */
+export function holdJunctions(id: string, js: Junction[], x: number, z: number, h: number, half: number, t: number) {
+  const [fx, fz] = [Math.sin(h), Math.cos(h)]
+  for (const j of js) {
+    const [dx, dz] = [j.x - x, j.z - z]
+    if (Math.abs(dx) > 40 || Math.abs(dz) > 40) continue
+    const mine = holders.get(j.key)?.get(id)
+    if (Math.hypot(dx, dz) < j.r + half) take(j, id, h, t)
+    else if (mine && t - mine.seen < FRESH && dx * fx + dz * fz > 0) take(j, id, h, t)
+  }
+}
 
 /**
  * Whether a car at (x, z), heading h, on a road `width` wide, must wait before
- * the crossroads just ahead: a car in it, a stop not made yet, a car coming
- * from its right on a road as wide, or one on a bigger road. `v`: how fast it
- * goes now (0 to 1), for the stop.
+ * the crossroads just ahead: 'junction' while another car is crossing it the
+ * other way, 'stop' for the full stop coming out of a smaller street, 'prio'
+ * for a car coming from its right on a road as wide or on a bigger road (at
+ * the lights, only the first: the lights do the rest). `v`: how fast it goes
+ * now (0 to 1), for the stop; `patience`: how long it has given way already
+ * (four cars, each with one on its right, would wait for ever: past a while,
+ * the first of them goes, still never across another). Free to go, it takes
+ * the crossroads.
  */
-export function giveWay(id: string, js: Junction[], x: number, z: number, h: number, half: number, width: number, v: number, t: number): string | null {
+export function giveWay(id: string, js: Junction[], x: number, z: number, h: number, half: number, width: number, v: number, t: number, patience = 0): 'junction' | 'stop' | 'prio' | null {
   const [fx, fz] = [Math.sin(h), Math.cos(h)]
   const [rx, rz] = [-Math.cos(h), Math.sin(h)]
   for (const j of js) {
     const [dx, dz] = [j.x - x, j.z - z]
     if (Math.abs(dx) > 40 || Math.abs(dz) > 40) continue
-    const d = Math.hypot(dx, dz)
-    if (d < j.r) {
-      inside.set(j.key, { id, seen: t })
+    // In it: it goes on through.
+    if (Math.hypot(dx, dz) < j.r + half) {
       coming.get(j.key)?.delete(id)
       continue
     }
@@ -265,24 +323,41 @@ export function giveWay(id: string, js: Junction[], x: number, z: number, h: num
     if (ahead <= 0 || ahead > half + j.r + 8 || Math.abs(dx * fz - dz * fx) > j.r + 2) continue
     let near = coming.get(j.key)
     if (!near) coming.set(j.key, (near = new Map()))
-    near.set(id, { x, z, width, seen: t })
-    const busy = inside.get(j.key)
-    if (busy && busy.id !== id && t - busy.seen < 0.5) return 'junction'
-    // At the line (it's close): the stop, coming from the small street.
-    const key = `${id}|${j.key}`
-    if (width < j.major - 1.5 && ahead < half + j.r + 3) {
-      if (v > 0.05) return 'stop'
-      const since = stopped.get(key) ?? t
-      stopped.set(key, since)
-      if (stopped.size > 3000) stopped.clear()
-      if (t - since < 1.2) return 'stop'
+    const say = (why: 'junction' | 'stop' | 'prio' | null) => {
+      near.set(id, { x, z, width, yielding: !!why, seen: t })
+      if (near.size > 24) for (const [k, o] of near) if (t - o.seen > 2) near.delete(k)
+      return why
     }
-    for (const [other, o] of near) {
-      if (other === id || t - o.seen > 0.4) continue
-      // A bigger road goes first; on roads alike, the one coming from the right.
-      const right = (o.x - j.x) * rx + (o.z - j.z) * rz > 2
-      if (o.width > width + 1.5 || (Math.abs(o.width - width) <= 1.5 && right)) return other
+    // (Taken by this car just now, on its way in: not on an earlier pass.)
+    const held = holders.get(j.key)?.get(id)
+    const mine = !!held && t - held.seen < FRESH
+    // Someone crossing it the other way: wait.
+    if (across(j, id, h, t)) return say('junction')
+    if (!j.lit && !mine) {
+      // Coming out of a smaller street, close to the line: the full stop first.
+      const key = `${id}|${j.key}`
+      if (width <= j.major - 1.5 && ahead < half + j.r + 3) {
+        if (v > 0.05) return say('stop')
+        const since = stopped.get(key) ?? t
+        stopped.set(key, since)
+        if (stopped.size > 3000) stopped.clear()
+        if (t - since < 1.2) return say('stop')
+      }
+      // A bigger road goes first; on roads alike, the one coming from the right (unless it gives way
+      // itself and this car has waited long enough: it goes, and that one waits for it to be through).
+      for (const [other, o] of near) {
+        if (other === id || t - o.seen > 0.4) continue
+        const right = (o.x - j.x) * rx + (o.z - j.z) * rz > 2
+        if (o.width > width + 1.5 || (Math.abs(o.width - width) <= 1.5 && right)) {
+          if (o.yielding && patience > 3) continue
+          return say('prio')
+        }
+      }
+      stopped.delete(key)
     }
+    // Its turn: it takes the crossroads.
+    take(j, id, h, t)
+    say(null)
   }
   return null
 }
