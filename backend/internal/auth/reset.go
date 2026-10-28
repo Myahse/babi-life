@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -8,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -38,7 +40,10 @@ func hashToken(t string) string {
 	return hex.EncodeToString(h[:])
 }
 
-// Forgot answers POST /auth/forgot {email}.
+// Forgot answers POST /auth/forgot {email}: « identifiants oubliés ». For any
+// account of that address or pseudo (Google or password), an e-mail saying how
+// it signs in and a link to choose a (new) password; the answer is the same
+// whether the account exists or not.
 func (h *Handler) Forgot(w http.ResponseWriter, r *http.Request) {
 	var c credentials
 	if err := httpx.Decode(r, &c); err != nil {
@@ -50,13 +55,11 @@ func (h *Handler) Forgot(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusServiceUnavailable, errResetsOff.Error())
 		return
 	}
-	sent := map[string]string{"text": "Si un compte existe pour cette adresse, un e-mail vient de partir avec un lien pour choisir un nouveau mot de passe (valable 30 minutes). Regarde aussi dans les spams."}
+	sent := map[string]string{"text": "Si un compte existe pour cette adresse ou ce pseudo, un e-mail vient de partir : il dit comment tu te connectes (Google ou mot de passe) et donne un lien pour choisir un mot de passe (valable 30 minutes). Regarde aussi dans les spams."}
 	ctx := r.Context()
-	var id, email, first string
-	var recent int
-	err := h.DB.QueryRow(ctx, `SELECT u.id, u.email, u.first_name, (SELECT count(*) FROM password_resets p WHERE p.user_id = u.id AND p.created_at > now() - interval '1 hour')
-		FROM users u WHERE (u.email = $1 OR lower(u.username) = $1) AND u.password_hash IS NOT NULL`, c.Email).Scan(&id, &email, &first, &recent)
-	if errors.Is(err, pgx.ErrNoRows) || recent >= resetsPerHour {
+	var id string
+	err := h.DB.QueryRow(ctx, `SELECT id FROM users WHERE email = $1 OR lower(username) = $1`, c.Email).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
 		httpx.JSON(w, http.StatusOK, sent)
 		return
 	}
@@ -64,24 +67,48 @@ func (h *Handler) Forgot(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusInternalServerError, "réessaie dans un instant")
 		return
 	}
-	b := make([]byte, 32)
-	_, _ = rand.Read(b)
-	token := hex.EncodeToString(b)
-	if _, err := h.DB.Exec(ctx, `INSERT INTO password_resets (token_hash, user_id, expires_at) VALUES ($1, $2, $3)`, hashToken(token), id, time.Now().Add(ResetFor)); err != nil {
-		httpx.Error(w, http.StatusInternalServerError, "réessaie dans un instant")
-		return
-	}
-	link := h.SiteURL + "/mot-de-passe?token=" + token
-	msg, err := mail.Reset(h.SiteURL, email, first, link, int(ResetFor/time.Minute))
-	if err == nil {
-		err = h.Mail.Send(ctx, msg)
-	}
-	if err != nil {
-		log.Printf("auth: reset mail: %v", err)
+	if err := h.SendAccount(ctx, id); err != nil && !errors.Is(err, errTooManyResets) {
+		log.Printf("auth: account mail: %v", err)
 		httpx.Error(w, http.StatusBadGateway, "l'e-mail n'est pas parti, réessaie dans un instant")
 		return
 	}
 	httpx.JSON(w, http.StatusOK, sent)
+}
+
+var errTooManyResets = errors.New("too many account e-mails this hour")
+
+// SendAccount e-mails an account how it signs in (its address, its pseudo,
+// Google and/or a password) with a link to choose a password (/admin's « Envoyer
+// ses identifiants » too); a few an hour at most.
+func (h *Handler) SendAccount(ctx context.Context, id string) error {
+	if h.Mail == nil {
+		return errResetsOff
+	}
+	var email, first, username string
+	var google, password bool
+	var recent int
+	if err := h.DB.QueryRow(ctx, `SELECT u.email, u.first_name, coalesce(u.username, ''), u.google_sub IS NOT NULL, u.password_hash IS NOT NULL,
+		(SELECT count(*) FROM password_resets p WHERE p.user_id = u.id AND p.created_at > now() - interval '1 hour')
+		FROM users u WHERE u.id = $1`, id).Scan(&email, &first, &username, &google, &password, &recent); err != nil {
+		return err
+	}
+	if recent >= resetsPerHour {
+		return errTooManyResets
+	}
+	if !strings.Contains(email, "@") {
+		return fmt.Errorf("pas d'adresse e-mail sur ce compte")
+	}
+	b := make([]byte, 32)
+	_, _ = rand.Read(b)
+	token := hex.EncodeToString(b)
+	if _, err := h.DB.Exec(ctx, `INSERT INTO password_resets (token_hash, user_id, expires_at) VALUES ($1, $2, $3)`, hashToken(token), id, time.Now().Add(ResetFor)); err != nil {
+		return err
+	}
+	msg, err := mail.Account(h.SiteURL, email, first, username, google, password, h.SiteURL+"/mot-de-passe?token="+token, int(ResetFor/time.Minute))
+	if err != nil {
+		return err
+	}
+	return h.Mail.Send(ctx, msg)
 }
 
 // Reset answers POST /auth/reset {token, password}.

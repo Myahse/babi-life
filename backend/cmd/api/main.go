@@ -320,6 +320,9 @@ func main() {
 			emails.API = "http://localhost:" + cfg.Port
 		}
 		adminH := &admin.Handler{DB: pool, WA: &admin.WhatsApp{Token: os.Getenv("WHATSAPP_TOKEN"), PhoneID: os.Getenv("WHATSAPP_PHONE_ID"), API: os.Getenv("WHATSAPP_API")}, Ideas: ideasH, Mail: emails}
+		if authH.Mail != nil {
+			adminH.Accounts = authH
+		}
 		adminH.Routes(r)
 		r.Get("/mail/stop", adminH.MailStop)
 		// Moderation of Gbairai's reports (MODERATION_KEY).

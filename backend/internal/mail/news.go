@@ -77,12 +77,12 @@ var Templates = []Template{
 		Button: "J'y vais", Link: "/jeu",
 	},
 	{
-		ID: "mot-de-passe", Label: "Nouveau mot de passe", Use: "Envoyé par le jeu quand quelqu'un demande « mot de passe oublié ».",
-		Subject: "Babi Life : ton nouveau mot de passe", Preheader: "Ton lien pour choisir un nouveau mot de passe (valable 60 minutes).",
-		Tagline: "Ton compte", Title: "Nouveau mot de passe",
-		Text:   "Bonjour {prénom},\n\nQuelqu'un (toi, on espère) a demandé un nouveau mot de passe pour ton compte Babi Life.\n\nTouche le bouton pour en choisir un. Le lien marche une seule fois, pendant 60 minutes.",
+		ID: "compte", Label: "Ton compte (identifiants)", Use: "Envoyé par le jeu (« Identifiants oubliés ? ») ou par l'équipe depuis Joueurs : comment la personne se connecte, et un lien pour un mot de passe.",
+		Subject: "Babi Life : comment te connecter", Preheader: "Ton adresse, ton pseudo, et comment entrer dans Babi Life.",
+		Tagline: "Ton compte", Title: "Ton compte",
+		Text:   "Bonjour {prénom},\n\nTu ne sais plus comment tu te connectes à Babi Life ? Voici ton compte.\n\nTon adresse e-mail : awa@example.com. Ton pseudo : awa225.\n\nTu t'es inscrit·e avec Google : sur l'écran de connexion, touche « Continuer avec Google » et choisis le compte Google awa@example.com.\n\nTu préfères un mot de passe ? Le bouton t'en fait choisir un : ensuite tu pourras aussi entrer avec ton e-mail ou ton pseudo, sans Google.\n\nLe lien marche une seule fois, pendant 30 minutes.",
 		Button: "Choisir mon mot de passe", Link: "/mot-de-passe",
-		Note:   "Ce n'était pas toi ? Ignore cet e-mail : ton mot de passe ne change pas, et personne ne peut entrer sans ce lien.",
+		Note:   "Tu n'as rien demandé ? Ignore cet e-mail : rien ne change, et personne ne peut entrer sans ce lien.",
 		System: true,
 	},
 }

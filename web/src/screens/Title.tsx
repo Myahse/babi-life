@@ -14,6 +14,7 @@ import { IconTile } from '../components/ui'
 import { UsernameField } from '../components/UsernameField'
 import { suggestFrom } from '../lib/username'
 import { gameOpen } from '../lib/launch'
+import { contactLinks } from '../lib/contact'
 import { firebaseConfigured, firebaseFromGoogle, googleBlocked, googleCancelled, googleRedirectResult, preloadGoogle, signInWithGoogle } from '../lib/google'
 
 const GOOGLE_ENABLED = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID)
@@ -155,7 +156,7 @@ export function Title() {
 
         {/* ---------- Account card, a sign on the wall ---------- */}
         <section id="compte" className="w-full scroll-mt-6 border-2 border-[var(--brown)] bg-[var(--cream)] p-5 sm:p-6">
-          <h2 className="paint mb-3 text-[40px]">{mode === 'login' ? 'Je me connecte' : mode === 'forgot' ? 'Mot de passe oublié' : 'Je crée mon compte'}</h2>
+          <h2 className="paint mb-3 text-[40px]">{mode === 'login' ? 'Je me connecte' : mode === 'forgot' ? 'Identifiants oubliés' : 'Je crée mon compte'}</h2>
           {/* Se connecter / Créer un compte */}
           <div className="segmented mb-4" role="tablist">
             {(['login', 'register'] as const).map((m) => (
@@ -250,7 +251,8 @@ export function Title() {
                   required
                 />
               </label>
-              {mode === 'forgot' && <p className="text-sm font-bold">{sent ?? 'Ton e-mail (ou ton pseudo) : on t’envoie un lien pour choisir un nouveau mot de passe.'}</p>}
+              {mode === 'forgot' && <p className="text-sm font-bold">{sent ?? 'Ton e-mail (ou ton pseudo) : on t’envoie comment tu te connectes (Google ou mot de passe) et un lien pour choisir un mot de passe.'}</p>}
+              {mode === 'forgot' && <LostAccount />}
               {mode !== 'forgot' && (
                 <label className="relative">
                   <Lock size={18} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[var(--color-ink-soft)]" />
@@ -272,12 +274,12 @@ export function Title() {
               )}
               {mode === 'login' && (
                 <button type="button" className="self-end text-sm font-extrabold text-[var(--rust)] underline-offset-4 hover:underline" onClick={() => (setMode('forgot'), setError(null), setSent(null))}>
-                  Mot de passe oublié ?
+                  Identifiants oubliés ?
                 </button>
               )}
               {error && <p className="bg-[#f6d9cf] px-3 py-2 text-sm font-bold text-[var(--rust)]" role="alert">{error}</p>}
               <button className="sign-btn mt-1 w-full" disabled={busy}>
-                {busy ? 'Un instant…' : mode === 'login' ? 'Se connecter' : mode === 'forgot' ? 'Envoyer le lien' : 'Créer mon compte'}
+                {busy ? 'Un instant…' : mode === 'login' ? 'Se connecter' : mode === 'forgot' ? 'Recevoir mes identifiants' : 'Créer mon compte'}
               </button>
             </form>
 
@@ -348,5 +350,23 @@ function GoogleIcon() {
       <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z" />
       <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z" />
     </svg>
+  )
+}
+
+/**
+ * Neither the e-mail nor the pseudo comes back: the team finds the account from
+ * the perso's name (/admin, Joueurs, « Envoyer ses identifiants »).
+ */
+function LostAccount() {
+  const links = contactLinks('Je ne retrouve plus mon compte Babi Life', "Bonjour, je ne retrouve plus mon compte Babi Life. Mon perso s'appelle : ")
+  return (
+    <p className="text-xs font-bold text-[var(--color-ink-soft)]">
+      Rien ne te revient, ni l’e-mail ni le pseudo ? Écris à l’équipe avec le nom de ton perso : on retrouve ton compte et on t’envoie tes identifiants.
+      {links.map((l) => (
+        <a key={l.id} href={l.href} target="_blank" rel="noreferrer" className="ml-1.5 font-extrabold text-[var(--rust)] underline">
+          {l.label}
+        </a>
+      ))}
+    </p>
   )
 }
