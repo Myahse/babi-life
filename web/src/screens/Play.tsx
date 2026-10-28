@@ -1700,6 +1700,7 @@ export function Play() {
           friend={sim.friends?.find((f) => f.id === `p-${chat.id}`)}
           taken={sim.friends?.find((f) => f.partner && f.id !== `p-${chat.id}`)?.name}
           grownUp={!lifeOf(world, sim).minor}
+          baby={lifeOf(world, sim).stage?.id === 'bebe'}
           adultAccount={!!user?.adult}
           onConfirmAdult={async () => {
             const u = await api.confirmAdult()

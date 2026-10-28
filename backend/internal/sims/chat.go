@@ -419,6 +419,10 @@ func (s *Sim) chatIn(p Passerby, topicID, said, lang string, adult bool, rng *ra
 
 // chatWith is chatIn, with their answer already written (topic « libre »: what the player typed, answered by npcchat).
 func (s *Sim) chatWith(p Passerby, topicID, said, lang string, adult bool, rng *rand.Rand, free *chatAnswer) (chatAnswer, error) {
+	// Papa and maman, at home (parents.go): their own topics, answered at once.
+	if strings.HasPrefix(p.ID, ParentPrefix) {
+		return s.chatParent(p, topicID, rng, free)
+	}
 	i := slices.IndexFunc(chatTopics, func(t chatTopic) bool { return t.id == topicID })
 	if i < 0 {
 		return chatAnswer{}, errUnknownTopic

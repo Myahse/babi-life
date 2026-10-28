@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { SendHorizontal, Beer, BookOpen, Briefcase, Check, Coffee, Grid3x3, Hand, HandCoins, HandHelping, Handshake, Heart, HeartCrack, House, Laugh, Lightbulb, MapPin, MessageCircleQuestion, MessagesSquare, Scissors, Smartphone, Smile, Sparkles, Trophy, Users, Utensils, X, type LucideIcon } from 'lucide-react'
+import { Baby, SendHorizontal, Beer, BookOpen, Briefcase, Check, Coffee, Grid3x3, Hand, HandCoins, HandHelping, Handshake, Heart, HeartCrack, House, Laugh, Lightbulb, MapPin, MessageCircleQuestion, MessagesSquare, Scissors, Smartphone, Smile, Sparkles, Trophy, Users, Utensils, X, type LucideIcon } from 'lucide-react'
 import type { Npc } from '../world3d/open/OpenWorld'
 import type { Friend } from '../lib/types'
 import { greetingsFor, helloFrom } from '../lib/nouchi'
@@ -93,6 +93,44 @@ const GROUPS: { id: string; label: string; icon: LucideIcon; colors: [string, st
   },
 ]
 
+// Papa and maman at home (backend sims/parents.go): a baby babbles and hugs; a child greets them,
+// tells its day, asks for advice, help, to go out, a little pocket money.
+function parentGroups(baby: boolean, kin: 'papa' | 'maman'): typeof GROUPS {
+  const P = kin === 'papa' ? 'Papa' : 'Maman'
+  const calin = { id: 'parent-calin', label: baby ? 'Tendre les bras' : 'Faire un câlin', icon: Heart, hint: '3 min · ça réchauffe le cœur', says: baby ? ['(tend les bras)'] : [`Un câlin, ${P} !`, `Je t'aime, ${P}.`] }
+  if (baby)
+    return [
+      { id: 'bebe', label: 'Bébé', icon: Smile, colors: ['#ff8fb1', '#e0245e'], topics: [calin, { id: 'parent-babiller', label: 'Babiller', icon: Baby, hint: '3 min · areu areu', says: ['Areu areu !', 'Ba-ba-ba !', `${P.slice(0, 2)}-${P.slice(0, 2).toLowerCase()} !`] }] },
+    ]
+  return [
+    { id: 'saluer', label: 'Saluer', icon: Hand, colors: ['#ffa040', '#ff6a00'], topics: [{ id: 'salut', label: `Dire bonjour à ${P}`, icon: Hand, hint: 'Bien élevé·e', says: [`Bonjour ${P} !`, `Bonsoir ${P}, ça va ?`, `${P}, tu as bien dormi ?`] }] },
+    {
+      id: 'causer',
+      label: 'Causer',
+      icon: MessagesSquare,
+      colors: ['#64b5ff', '#2a6cf0'],
+      topics: [
+        { id: 'parent-journee', label: 'Raconter sa journée', icon: MessagesSquare, hint: "8 min · l'école, les copains", says: ["Tu sais ce qui s'est passé aujourd'hui ?", `${P}, écoute ma journée !`] },
+        { id: 'parent-conseil', label: 'Demander un conseil', icon: Lightbulb, hint: '6 min · la sagesse de la maison', says: [`${P}, je peux te demander un conseil ?`] },
+        { id: 'histoire', label: 'Demander une histoire', icon: BookOpen, hint: '10 min · les contes de chez nous', says: [`Raconte-moi une histoire, ${P} !`] },
+        { id: 'blague', label: 'Lancer une blague', icon: Laugh, hint: 'Faire rire la maison', says: GROUPS[1].topics.find((t) => t.id === 'blague')?.says },
+      ],
+    },
+    {
+      id: 'demander',
+      label: 'Demander',
+      icon: MessageCircleQuestion,
+      colors: ['#69e2a0', '#00a862'],
+      topics: [
+        { id: 'parent-devoirs', label: "De l'aide pour les devoirs", icon: BookOpen, hint: '15 min · ensemble, ça va mieux', says: [`${P}, tu m'aides pour mes devoirs ?`] },
+        { id: 'parent-sortir', label: 'Demander à sortir', icon: House, hint: 'Oui… ou non', says: [`${P}, je peux aller jouer dehors ?`] },
+        { id: 'parent-poche', label: "Demander l'argent de poche", icon: HandCoins, hint: 'Un petit billet… peut-être', says: [`${P}, tu peux me donner un peu d'argent de poche ?`] },
+      ],
+    },
+    { id: 'tendresse', label: 'Tendresse', icon: Heart, colors: ['#ff8fb1', '#e0245e'], topics: [calin] },
+  ]
+}
+
 // Romance, between adults only: the Sim grown up, the person met as an adult
 // (their number taken), and the player who said once they're 18 or over.
 const LOVE = { id: 'coeur', label: 'Cœur', icon: Heart, colors: ['#ff8fb1', '#e0245e'] as [string, string] }
@@ -165,6 +203,13 @@ const BUSY_HELLO: Record<string, string[]> = {
   'en train de travailler les billets': ['Approche ! Le travaillement, c’est pour les vrais !'],
 }
 
+/** Papa or maman, when their child comes to talk. */
+function parentHello(kin: 'papa' | 'maman', simGender: 'femme' | 'homme', baby: boolean) {
+  const enfant = simGender === 'femme' ? 'ma fille' : 'mon fils'
+  if (baby) return kin === 'maman' ? 'Mon bébé ! Viens voir maman, viens…' : 'Eh, le petit chef ! Viens voir papa !'
+  return [`Oui, ${enfant} ? Je t'écoute.`, `Ah, ${enfant} ! Ça va à l'école ?`, `Viens t'asseoir, ${enfant}. Dis-moi.`][Math.floor(Math.random() * 3)]
+}
+
 /** How they greet you: a first time (from what they're doing, if they're busy), or « you again ». */
 function greeting(npc: Npc, simGender: 'femme' | 'homme', m: Memory): string {
   const busy = npc.doing ? BUSY_HELLO[npc.doing] : undefined
@@ -225,7 +270,7 @@ function Hearts({ rapport }: { rapport: number }) {
   )
 }
 
-export function ChatSheet({ npc, simGender, onSay, onType, onClose, onBye, onDames, languages = [], onLanguages, gameMinutes = 0, friend, taken, grownUp, adultAccount, onConfirmAdult }: {
+export function ChatSheet({ npc, simGender, onSay, onType: typing, onClose, onBye, onDames, languages = [], onLanguages, gameMinutes = 0, friend, taken, grownUp, adultAccount, onConfirmAdult, baby }: {
   npc: Npc
   simGender: 'femme' | 'homme'
   onSay: (topic: string, label: string, said?: string, lang?: string) => Promise<Reply | null>
@@ -250,15 +295,20 @@ export function ChatSheet({ npc, simGender, onSay, onType, onClose, onBye, onDam
   /** The player said they're 18 or over. */
   adultAccount?: boolean
   onConfirmAdult?: () => Promise<void>
+  /** The Sim is a baby (with its parents: babbling, hugs). */
+  baby?: boolean
 }) {
+  const kin = npc.kin
+  // A baby doesn't type.
+  const onType = kin && baby ? undefined : typing
   // What you were to them before (for the greeting), and now: met once more.
   const [before] = useState(() => recall(npc.id))
   const [mem, setMem] = useState<Memory>(() => ({ met: before.met + 1, rapport: before.met === 0 ? 1 : before.rapport }))
-  const [lines, setLines] = useState<Line[]>(() => [{ who: 'them', text: greeting(npc, simGender, before) }])
+  const [lines, setLines] = useState<Line[]>(() => [{ who: 'them', text: kin ? parentHello(kin, simGender, !!baby) : greeting(npc, simGender, before) }])
   const [used, setUsed] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
   const [gone, setGone] = useState(false)
-  const [group, setGroup] = useState(GROUPS[0].id)
+  const [group, setGroup] = useState(kin && baby ? 'bebe' : GROUPS[0].id)
   // They're saying their line (written out): their face nods.
   const [talking, setTalking] = useState(true)
   const log = useRef<HTMLDivElement>(null)
@@ -298,7 +348,7 @@ export function ChatSheet({ npc, simGender, onSay, onType, onClose, onBye, onDam
     setBusy(true)
     const before = lines.map((l) => ({ who: l.who, text: l.text }))
     setLines((l) => [...l, { who: 'me', text }])
-    const r = await onType(text, { before, job: jobOf(npc), doing: npc.doing, languages: theirs.map(languageLabel), rapport: mem.rapport, met: mem.met })
+    const r = await onType(text, { before, job: kin ? `${kin === 'papa' ? 'le père' : 'la mère'} de la personne qui te parle (son enfant), chez vous à la maison` : jobOf(npc), doing: npc.doing, languages: theirs.map(languageLabel), rapport: mem.rapport, met: mem.met })
     setBusy(false)
     if (!r) return (setLines((l) => l.slice(0, -1)), setDraft(text))
     setLines((l) => [...l, { who: 'them', text: r.text, mood: r.mood }])
@@ -317,7 +367,7 @@ export function ChatSheet({ npc, simGender, onSay, onType, onClose, onBye, onDam
     ? languages.map((l) => ({ id: 'langue', lang: l, label: `Saluer en ${languageLabel(l).toLowerCase()}`, icon: Hand, hint: theirs.includes(l) ? `${greetingIn(l, gameMinutes, npc.gender)} · ${npc.name} le parle` : greetingIn(l, gameMinutes, npc.gender), says: [greetingIn(l, gameMinutes, npc.gender)] }))
     : [{ id: 'langues', label: 'Tu parles d’autres langues ?', icon: Hand, hint: 'Dioula, baoulé, bété… choisis les tiennes' }]
   const base = GROUPS.map((x) => (x.id === 'saluer' ? { ...x, topics: greetings } : x))
-  const groups = grownUp ? [...base, { ...LOVE, topics: love }] : base
+  const groups = kin ? parentGroups(!!baby, kin) : grownUp ? [...base, { ...LOVE, topics: love }] : base
   const g = groups.find((x) => x.id === group) ?? groups[0]
   const pick = (t: Topic) => {
     if (t.id === 'langues') return setPicking(true)
@@ -344,12 +394,12 @@ export function ChatSheet({ npc, simGender, onSay, onType, onClose, onBye, onDam
               <Hearts rapport={mem.rapport} />
             </div>
             <div className="truncate text-[12.5px] font-extrabold text-[var(--color-ink-soft)]">
-              {jobOf(npc)}
+              {kin ? (kin === 'papa' ? 'Ton papa' : 'Ta maman') : jobOf(npc)}
               {npc.doing ? ` · ${npc.doing}` : ''}
             </div>
             {/* What they speak besides French: a greeting in it pleases them */}
             <div className="mt-0.5 flex items-center gap-1.5 truncate text-[11.5px] font-bold text-[var(--color-ink-soft)]">
-              <span className="rounded-full bg-white/80 px-2 py-0.5">{mem.met <= 1 ? '1re rencontre' : `Vu·e ${mem.met} fois`}</span>
+              <span className="rounded-full bg-white/80 px-2 py-0.5">{kin ? 'À la maison' : mem.met <= 1 ? '1re rencontre' : `Vu·e ${mem.met} fois`}</span>
               <span className="truncate">
                 Parle {theirs.map((l) => languageLabel(l).toLowerCase()).join(', ')}
                 {shared ? ' · comme toi' : ''}
@@ -418,7 +468,7 @@ export function ChatSheet({ npc, simGender, onSay, onType, onClose, onBye, onDam
               })}
             </div>
             <div className="mt-2 min-h-0 flex-1 overflow-y-auto">
-              {group === 'saluer' && (
+              {group === 'saluer' && !kin && (
                 <div key="salut" className="motion-stagger mb-2 flex flex-wrap gap-1.5">
                   {greetingsFor(npc.gender).map((phrase) => (
                     <button key={phrase} className="tile flex-auto px-3 py-2 text-center text-[14px] font-extrabold disabled:opacity-50" disabled={busy} onClick={() => say('salut', 'Saluer', phrase)}>
@@ -455,7 +505,7 @@ export function ChatSheet({ npc, simGender, onSay, onType, onClose, onBye, onDam
                   </button>
                 </div>
               )}
-              {g.id === 'saluer' && languages.length > 0 && !picking && (
+              {g.id === 'saluer' && !kin && languages.length > 0 && !picking && (
                 <button className="mb-2 text-xs font-extrabold text-[var(--color-ink-soft)] underline" onClick={() => setPicking(true)}>
                   Mes langues
                 </button>

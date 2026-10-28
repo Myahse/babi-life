@@ -22,6 +22,8 @@ import { Swimmer } from './Swimmer'
 import { listenKeys, moveInput } from './input'
 import { RichAO } from './interior/bigPlace'
 import { familyCast } from '../avatar/Family'
+import { Talkable } from './Talkable'
+import { doingOf } from './talk'
 import { clock, weekdayOf } from '../game/rules'
 
 // Inside one's own house, on a screen of its own: the house itself (the one
@@ -566,7 +568,14 @@ function Parents({ sim, spots, doing, spot }: { sim: Sim; spots: Record<string, 
                   <meshLambertMaterial color="#7a5233" />
                 </mesh>
               )}
-              <Character look={p.look} gender={p.gender} pose={s.lying ? 'sleep' : s.pose} stage="adulte" marker={false} seed={i * 7.7} />
+              {/* Tapped: a word with papa or maman (asleep: not woken up) */}
+              {s.lying ? (
+                <Character look={p.look} gender={p.gender} pose="sleep" stage="adulte" marker={false} seed={i * 7.7} />
+              ) : (
+                <Talkable npc={{ id: `parent:${i === 1 ? 'papa' : 'maman'}`, name: i === 1 ? 'Papa' : 'Maman', gender: p.gender, seed: i, look: p.look, doing: doingOf(s.pose), kin: i === 1 ? 'papa' : 'maman' }} pose={s.pose}>
+                  {(shown) => <Character look={p.look} gender={p.gender} pose={shown} stage="adulte" marker={false} seed={i * 7.7} />}
+                </Talkable>
+              )}
             </group>
           </group>
         ) : null,
