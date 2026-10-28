@@ -104,6 +104,9 @@ export function action(kind: string, id: string | undefined): { spot: string; po
   if (/^(sleep|nap)$/.test(id)) return { spot: 'bed', pose: 'sleep' }
   // The baby's things on the play mat, the mother kneeling with it (ActionProps); the child's ball in the yard.
   if (/^(biberon|bouillie|hochet|calin)$/.test(id)) return { spot: 'mat', pose: 'busy' }
+  // The baby's little accidents on the mat (maman cleaning up, ActionProps BabyMess); crying, its fists to its eyes.
+  if (/^(caca|pipi|vomir)$/.test(id)) return { spot: 'mat', pose: 'busy' }
+  if (id === 'pleurer') return { spot: 'mat', pose: 'cry' }
   if (id === 'jouer-cour') return { spot: 'mat', pose: 'kick' }
   if (id === 'shower') return { spot: 'shower', pose: 'wash' }
   // The bathroom corner too: sitting on the toilets, standing at the basin for the teeth.

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Baby, BadgeCheck, Clock3, Lock, ShieldCheck, ShoppingBag, Sprout, XCircle } from 'lucide-react'
+import { Baby, BadgeCheck, Clock3, Lock, ShieldCheck, ShoppingBag, Smartphone, Sprout, XCircle } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
 import type { ActionResult, ShopPurchase, ShopView, Sim } from '../lib/types'
 import { amount, lifeOf, minutesTill } from '../game/rules'
@@ -38,7 +38,7 @@ export const passOn = (sim: Pick<Sim, 'passUntil'>) => !!sim.passUntil && Date.p
 const waitText = (min: number) => (min >= 60 ? `${Math.round(min / 60)} h` : `${min} min`)
 const day = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
 /** What a purchase brought, in a few words (a pack: its Djai). */
-const bought = (p: ShopPurchase) => (p.kind === 'djai' ? `${amount(p.djai)} Djai` : p.kind === 'pass' ? 'Babi Pass · 30 jours' : p.kind === 'energie' ? "Plein d'énergie" : p.kind === 'prestige' ? 'Pack Prestige' : p.kind === 'tenue' ? (PIECE_NAMES[p.item] ?? p.item) : p.kind === 'grandir' ? (p.item === 'grandir-enfant' ? 'Enfant tout de suite' : 'Adulte tout de suite') : p.item)
+const bought = (p: ShopPurchase) => (p.kind === 'djai' ? `${amount(p.djai)} Djai` : p.kind === 'pass' ? 'Babi Pass · 30 jours' : p.kind === 'energie' ? "Plein d'énergie" : p.kind === 'prestige' ? 'Pack Prestige' : p.kind === 'tenue' ? (PIECE_NAMES[p.item] ?? p.item) : p.kind === 'grandir' ? ({ 'grandir-enfant': 'Enfant tout de suite', 'grandir-ado': 'Ado tout de suite' }[p.item] ?? 'Adulte tout de suite') : p.item)
 const PIECE_NAMES: Record<string, string> = { 'veste-repos': 'La veste du repos', 'polo-mere-con': 'Le polo de mère con' }
 
 /** The Pass: a gold ticket, its star. */
@@ -176,7 +176,8 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
   const pass = view.passUntil && Date.parse(view.passUntil) > Date.now() ? view.passUntil : null
   // Growing up at once (an update: « grandir-vite »): a baby to a child, a minor to an adult.
   const life = world ? lifeOf(world, sim) : null
-  const grows = keyOpen(feats, 'grandir-vite') && life?.minor ? view.items.filter((it) => it.grow && (it.grow === 'adulte' || life.stage?.id === 'bebe')) : []
+  // (The server sends only what's offered at the Sim's stage, at its price: a step 2 500, the cradle to ado 5 000, to adulte 10 000.)
+  const grows = keyOpen(feats, 'grandir-vite') && life?.minor ? view.items.filter((it) => it.grow) : []
 
   return (
     <div className="space-y-3">
@@ -237,7 +238,7 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
               <ul className="motion-stagger space-y-2">
                 {grows.map((it) => {
                   const wait = minutesTill(world, sim, it.grow!)
-                  const Icon = it.grow === 'enfant' ? Baby : Sprout
+                  const Icon = it.grow === 'enfant' ? Baby : it.grow === 'ado' ? Smartphone : Sprout
                   return (
                     <li key={it.id} className="card p-3">
                       <div className="flex items-center gap-3">

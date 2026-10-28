@@ -1,5 +1,6 @@
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
+import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { Box } from '../props'
 import { worldTime } from '../../lib/worldClock'
@@ -737,6 +738,171 @@ export function Mother({ doing, look }: { doing: 'biberon' | 'bouillie' | 'bain'
             <Box key={i} p={[x, 0.31, z]} s={[0.07, 0.06, 0.07]} c="#ffffff" />
           ))}
         </group>
+      )}
+    </group>
+  )
+}
+
+/** A baby's little accident on the mat (or its tears). */
+export type Mess = 'caca' | 'pipi' | 'vomir' | 'pleurer'
+
+/** What's said while changing the nappy, then once it's done. */
+const NAPPY_LINES: Partial<Record<Mess, [string, string]>> = {
+  caca: ['Ouh ! La couche est pleine…', 'Voilà, une couche toute propre !'],
+  pipi: ['Couche mouillée, on change ça !', 'Voilà, bien au sec !'],
+}
+
+/** What maman cries out, then says once it's all clean (or the baby calmed down). */
+const MESS_LINES: Record<Mess, [string, string]> = {
+  caca: ['Ehhh Dieu ! Caca partout !', 'Voilà, tout propre !'],
+  pipi: ['Aïe ! Pipi sur la natte !', 'Voilà, c\'est sec !'],
+  vomir: ['Ehhh ! Tout le biberon est sorti !', 'Doucement, mon bébé…'],
+  pleurer: ['Chhh… Maman est là.', 'Ça va aller, mon bébé.'],
+}
+
+/**
+ * The baby's accident (ActionProps): the mess on the mat (the poo and its
+ * smell, the puddle, the vomit) or its tears; maman runs up crying out,
+ * then kneels and wipes it all away with her cloth, the bucket by her (for
+ * the tears, she rocks it). With nappies (from the poignon up), the caca
+ * and the pipi stay in the nappy: she kneels and changes it, the full one
+ * into the bin. At the laté's a nounou does it all, at the debout's the
+ * gouvernante. Seconds from when it's seen: a cry, the cleaning, the last word.
+ */
+export function BabyMess({ kind, look, carer = 'maman', nappy = true }: { kind: Mess; look?: Look; carer?: 'maman' | 'nounou' | 'gouvernante'; nappy?: boolean }) {
+  // In the nappy: nothing on the floor, a change instead.
+  const change = nappy && (kind === 'caca' || kind === 'pipi')
+  const [phase, setPhase] = useState<'cry' | 'clean' | 'done'>('cry')
+  const start = useRef(worldTime())
+  const mess = useRef<THREE.Group>(null)
+  const cloth = useRef<THREE.Group>(null)
+  const stink = useRef<THREE.Group>(null)
+  const tears = useRef<THREE.Group>(null)
+  useEffect(() => {
+    const a = setTimeout(() => setPhase('clean'), 4500)
+    const b = setTimeout(() => setPhase('done'), 26000)
+    return () => (clearTimeout(a), clearTimeout(b))
+  }, [])
+  // Where the mess is: the puddle under the baby, the vomit before it, the poo by its side.
+  const at: [number, number] = kind === 'pipi' ? [0, 0.05] : kind === 'vomir' ? [0, 0.34] : [0.3, 0.2]
+  useFrame(() => {
+    const t = worldTime()
+    const since = t - start.current
+    // Wiped away little by little while she cleans.
+    const left = Math.max(0, Math.min(1, 1 - (since - 4.5) / 20))
+    if (mess.current) mess.current.scale.setScalar(Math.max(0.001, left))
+    if (cloth.current) {
+      cloth.current.visible = phase === 'clean'
+      cloth.current.position.set(at[0] + Math.sin(t * 5) * 0.12, 0.04, at[1] + Math.cos(t * 3.5) * 0.08)
+    }
+    stink.current?.children.forEach((w, i) => {
+      const k = (t * 0.5 + i / 3) % 1
+      w.position.set(at[0] + Math.sin(k * 7 + i * 2) * 0.05, 0.12 + k * 0.45, at[1])
+      ;((w as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = (1 - k) * 0.8 * left
+    })
+    tears.current?.children.forEach((d, i) => {
+      const k = (t * 1.4 + i / 4) % 1
+      const side = i % 2 ? 1 : -1
+      d.position.set(side * (0.07 + k * 0.03), 0.6 - k * 0.45, 0.1 + k * 0.05)
+      d.visible = since < 18
+    })
+  })
+  const kneel: [number, number, number] = [at[0], 0, at[1] + 0.42]
+  // Maman: crying out standing at first; then on her knees by the mess (or rocking the crying baby).
+  const mum =
+    kind === 'pleurer' ? (
+      <Person p={[0, 0, 0.5]} r={Math.PI} pose={phase === 'cry' ? 'shout' : 'hug'} g="femme" seed={113} look={look} />
+    ) : change ? (
+      <Person p={[0, 0, 0.45]} r={Math.PI} pose={phase === 'done' ? 'hug' : 'pray'} g="femme" seed={113} look={look} />
+    ) : phase === 'cry' ? (
+      <Person p={[0.35, 0, 0.55]} r={Math.PI + 0.5} pose="shout" g="femme" seed={113} look={look} />
+    ) : (
+      <Person p={kneel} r={Math.PI} pose={phase === 'clean' ? 'pray' : 'hug'} g="femme" seed={113} look={look} />
+    )
+  const lines = (change && NAPPY_LINES[kind]) || MESS_LINES[kind]
+  const said = (carer === 'maman' ? '' : carer === 'nounou' ? 'Nounou : ' : 'Gouvernante : ') + lines[phase === 'done' ? 1 : 0]
+  return (
+    <group>
+      {mum}
+      <Html position={[kind === 'pleurer' || change || phase !== 'cry' ? 0 : 0.35, 1.95, 0.5]} center zIndexRange={[20, 0]}>
+        <div className="rounded-2xl rounded-bl-sm bg-white px-3 py-1.5 text-[13px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_6px_14px_-8px_rgba(0,0,0,0.5)]">{said}</div>
+      </Html>
+      {change && (
+        // The change: the mat under the baby, the clean nappies by it, the full one rolled up for the bin.
+        <group>
+          <Box p={[0, 0.01, 0.05]} s={[0.55, 0.02, 0.45]} c="#74c0fc" />
+          <Box p={[-0.32, 0.06, 0.3]} s={[0.16, 0.12, 0.1]} c="#e7f5ff" />
+          {phase !== 'done' && <Box p={[0.26, 0.05, 0.28]} s={[0.12, 0.08, 0.1]} c={kind === 'caca' ? '#d9c08c' : '#f4e3a1'} />}
+          <mesh position={[0.5, 0.13, 0.4]}>
+            <cylinderGeometry args={[0.09, 0.08, 0.26, 10]} />
+            <meshLambertMaterial color="#868e96" />
+          </mesh>
+        </group>
+      )}
+      {kind !== 'pleurer' && !change && (
+        <group ref={mess} position={[at[0], 0, at[1]]}>
+          {kind === 'caca' && (
+            // The little brown swirl.
+            <>
+              <Box p={[0, 0.04, 0]} s={[0.24, 0.08, 0.24]} c="#6b4423" />
+              <Box p={[0, 0.11, 0]} s={[0.16, 0.07, 0.16]} c="#5c3a1e" />
+              <Box p={[0.01, 0.17, 0]} s={[0.08, 0.05, 0.08]} c="#6b4423" />
+            </>
+          )}
+          {kind === 'pipi' && (
+            <mesh position={[0, 0.012, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+              <circleGeometry args={[0.38, 20]} />
+              <meshBasicMaterial color="#f2c300" transparent opacity={0.8} depthWrite={false} />
+            </mesh>
+          )}
+          {kind === 'vomir' && (
+            <>
+              <mesh position={[0, 0.012, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                <circleGeometry args={[0.28, 14]} />
+                <meshBasicMaterial color="#c9b458" />
+              </mesh>
+              {[[0.07, 0.04], [-0.06, -0.05], [0.02, -0.08]].map(([x, z], i) => (
+                <Box key={i} p={[x, 0.025, z]} s={[0.06, 0.035, 0.06]} c="#a8913a" />
+              ))}
+            </>
+          )}
+        </group>
+      )}
+      {kind === 'caca' && (phase === 'cry' || !change) && (
+        // The smell rising off it, green and wavy.
+        <group ref={stink}>
+          {[0, 1, 2].map((i) => (
+            <mesh key={i}>
+              <boxGeometry args={[0.035, 0.14, 0.035]} />
+              <meshBasicMaterial color="#82c91e" transparent depthWrite={false} />
+            </mesh>
+          ))}
+        </group>
+      )}
+      {kind === 'pleurer' && (
+        <group ref={tears}>
+          {[0, 1, 2, 3].map((i) => (
+            <Box key={i} p={[0, 0, 0]} s={[0.045, 0.06, 0.045]} c="#1c7ed6" />
+          ))}
+        </group>
+      )}
+      {/* The cloth in her hand, and the bucket by her (the tears need none). */}
+      {kind !== 'pleurer' && !change && phase !== 'cry' && (
+        <>
+          <group ref={cloth}>
+            <Box p={[0, 0, 0]} s={[0.13, 0.02, 0.09]} c="#f8f9fa" />
+          </group>
+          <group position={[kneel[0] + 0.38, 0, kneel[2] - 0.1]}>
+            <mesh position={[0, 0.11, 0]}>
+              <cylinderGeometry args={[0.1, 0.08, 0.22, 12]} />
+              <meshLambertMaterial color="#1c7ed6" />
+            </mesh>
+            <mesh position={[0, 0.215, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+              <circleGeometry args={[0.09, 12]} />
+              <meshBasicMaterial color="#a5d8ff" />
+            </mesh>
+          </group>
+        </>
       )}
     </group>
   )

@@ -73,9 +73,25 @@ var Items = []Item{
 	{ID: "energie", Label: "Plein d'énergie", Text: "Faim, énergie, hygiène, social, loisirs : toutes les jauges à fond, tout de suite.", Price: 300},
 	{ID: "prestige", Label: "Pack Prestige", Text: "La couronne, à porter pour toujours (Profil, Mon look).", Price: 2000, Once: true},
 	{ID: "veste-repos", Label: "La veste du repos", Text: "La chemise patchwork turquoise, bleu nuit, blanc et orange, son motif qu'on ne trouve nulle part ailleurs : dans ta garde-robe pour toujours.", Price: 1500, Once: true, Piece: "veste-repos"},
-	{ID: "grandir-enfant", Label: "Enfant tout de suite", Text: "Ton bébé a 3 ans tout de suite : l'école, la récré, les copains. Sinon il grandit tout seul, en un jour.", Price: 5000, Grow: game.StageEnfant},
-	{ID: "grandir-adulte", Label: "Adulte tout de suite", Text: "18 ans tout de suite : tu quittes la maison avec l'argent de ta famille, le boulot, ton mentor. Sinon il faut deux jours.", Price: 10_000, Grow: game.StageAdulte},
+	// Growing up at once: its price set by the stage the Sim is at (GrowPrice), shown only when offered.
+	{ID: "grandir-enfant", Label: "Enfant tout de suite", Text: "3 ans tout de suite : l'école, la récré, les copains. Sinon le bébé grandit tout seul, en un jour.", Grow: game.StageEnfant},
+	{ID: "grandir-ado", Label: "Ado tout de suite", Text: "12 ans tout de suite : le collège, et ton premier téléphone avec ses applis.", Grow: game.StageAdo},
+	{ID: "grandir-adulte", Label: "Adulte tout de suite", Text: "18 ans tout de suite : tu quittes la maison avec l'argent de ta famille, le boulot, ton mentor.", Grow: game.StageAdulte},
 	{ID: "polo-mere-con", Label: "Le polo de mère con", Text: "Le polo à larges rayures orange et blanches, son col blanc : dans ta garde-robe pour toujours.", Price: 1500, Once: true, Piece: "polo-mere-con"},
+}
+
+// GrowPrice: what growing up at once costs, in F CFA, from the stage the Sim
+// is at to the one bought: a step at a time 2 500 (bébé → enfant, enfant →
+// ado, ado → adulte), or from the cradle 5 000 to ado and 10 000 to adulte.
+// 0: not offered (already older, or a jump not sold).
+func GrowPrice(from, to string) int {
+	return map[[2]string]int{
+		{game.StageBebe, game.StageEnfant}: 2500,
+		{game.StageEnfant, game.StageAdo}:  2500,
+		{game.StageAdo, game.StageAdulte}:  2500,
+		{game.StageBebe, game.StageAdo}:    5000,
+		{game.StageBebe, game.StageAdulte}: 10_000,
+	}[[2]string{from, to}]
 }
 
 func FindPack(id string) (Pack, bool) {
@@ -152,6 +168,7 @@ var (
 	errNotFound = errors.New("achat introuvable")
 	errHave     = errors.New("tu l'as déjà")
 	errGrown    = errors.New("ton perso a déjà cet âge")
+	errNotSold  = errors.New("pas à cet âge : grandis d'abord d'une étape")
 )
 
 // owner: the account's Sim (and whether the account is 18 or over, a tester's, its name and e-mail for the receipt).
@@ -172,10 +189,21 @@ func (h *Handler) view(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusNotFound, errNoSim.Error())
 		return
 	}
-	v := view{Adult: adult, Packs: Packs, Items: Items}
-	if err := h.DB.QueryRow(ctx, `SELECT pass_until, prestige FROM sims WHERE id = $1`, simID).Scan(&v.PassUntil, &v.Prestige); err != nil {
+	v := view{Adult: adult, Packs: Packs}
+	var born, minutes int64
+	if err := h.DB.QueryRow(ctx, `SELECT pass_until, prestige, born_at, game_minutes FROM sims WHERE id = $1`, simID).Scan(&v.PassUntil, &v.Prestige, &born, &minutes); err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 		return
+	}
+	// Growing up: only what's offered at the Sim's stage, at its price.
+	stage := game.StageOf(game.AgeAt(born, minutes)).ID
+	for _, it := range Items {
+		if it.Grow != "" {
+			if it.Price = GrowPrice(stage, it.Grow); it.Price == 0 {
+				continue
+			}
+		}
+		v.Items = append(v.Items, it)
 	}
 	if v.PassUntil != nil && v.PassUntil.Before(time.Now()) {
 		v.PassUntil = nil
@@ -268,6 +296,10 @@ func (h *Handler) buy(w http.ResponseWriter, r *http.Request) {
 		}
 		if game.AgeAt(born, minutes) >= game.StageByID(it.Grow).From {
 			httpx.Error(w, http.StatusUnprocessableEntity, errGrown.Error())
+			return
+		}
+		if price = GrowPrice(game.StageOf(game.AgeAt(born, minutes)).ID, it.Grow); price == 0 {
+			httpx.Error(w, http.StatusUnprocessableEntity, errNotSold.Error())
 			return
 		}
 	}

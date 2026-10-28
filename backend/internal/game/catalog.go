@@ -31,7 +31,12 @@ type Interaction struct {
 	Gender string `json:"gender,omitempty"`
 	// Room: at home, the room it's done in (RoomBath…): the menu shows the house room by room.
 	Room string `json:"room,omitempty"`
+	// Fed: only with a full tummy (Hunger at FedHunger or more): a baby's caca, pipi… come after the biberon.
+	Fed bool `json:"fed,omitempty"`
 }
+
+// FedHunger: how full the tummy must be for what comes after a meal (Interaction.Fed).
+const FedHunger = 70
 
 // The rooms of a home, as the menu shows them.
 const (
@@ -128,6 +133,11 @@ var Kinds = map[string]PlaceKind{
 			{ID: "bain-bebe", Room: RoomBath, Label: "Prendre le bain avec maman", Icon: "bath", Minutes: 20, Effect: Needs{Hygiene: 70, Fun: 10, Social: 10}, Ages: Babies},
 			{ID: "hochet", Room: RoomBed, Label: "Jouer avec le hochet", Icon: "baby", Minutes: 30, Effect: Needs{Fun: 35, Energy: -5}, Ages: Babies},
 			{ID: "calin", Room: RoomBed, Label: "Faire un câlin à maman", Icon: "heart", Minutes: 15, Effect: Needs{Social: 40}, Ages: Babies},
+			// What a baby does once fed (Fed): it empties the tummy, and papa and maman come running to clean up.
+			{ID: "caca", Room: RoomBed, Label: "Faire caca", Icon: "baby", Minutes: 20, Effect: Needs{Hunger: -30, Hygiene: -15, Fun: 10}, Ages: Babies, Fed: true},
+			{ID: "pipi", Room: RoomBed, Label: "Faire pipi", Icon: "droplets", Minutes: 15, Effect: Needs{Hunger: -15, Hygiene: -10, Fun: 5}, Ages: Babies, Fed: true},
+			{ID: "vomir", Room: RoomBed, Label: "Vomir", Icon: "frown", Minutes: 20, Effect: Needs{Hunger: -40, Hygiene: -15, Social: 10}, Ages: Babies, Fed: true},
+			{ID: "pleurer", Room: RoomBed, Label: "Pleurer", Icon: "annoyed", Minutes: 20, Effect: Needs{Hunger: -10, Social: 25, Energy: -5}, Ages: Babies, Fed: true},
 			// The crèche, on weekday mornings (the update « ecole-vivante »): the other babies, the nounous.
 			{ID: "creche", Label: "Aller à la crèche", Icon: "baby", Minutes: 3 * 60, Effect: Needs{Social: 25, Fun: 20, Energy: -12, Hunger: -10}, MinHour: 7, MaxHour: 10, Days: Weekdays, Ages: Babies},
 			// School days: class in the morning, homework after. Both count towards the bac.

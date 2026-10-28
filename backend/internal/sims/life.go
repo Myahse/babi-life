@@ -15,6 +15,7 @@ var (
 	errTooSmallToTravel = errors.New("trop petit·e pour prendre la route seul·e")
 	errNoPhoneYet       = errors.New("pas encore de téléphone : il arrive à 12 ans")
 	errTooYoungToWork   = errors.New("pas de travail avant 18 ans : va à l'école")
+	errNotFed           = errors.New("il faut d'abord manger : le biberon ou la bouillie")
 )
 
 func (s *Sim) age() int            { return game.AgeAt(s.BornAt, s.GameMinutes) }

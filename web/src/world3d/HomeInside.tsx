@@ -3,7 +3,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
-import type { Friend, Plot, Sim, World } from '../lib/types'
+import type { Friend, Look, Plot, Sim, World } from '../lib/types'
 import { randomLook } from '../avatar/options'
 import { rng } from './themes'
 import { Character } from './Character'
@@ -273,7 +273,7 @@ function Walking({ sim, stage, way, spot, doing, onThere, steer, onMoved, onLeve
             </mesh>
           )}
           <Character look={look} gender={sim.gender} pose={spot.pose} stage={stage} marker={!spot.lying} />
-          <ActionProps id={doing} kind="house" lying={spot.lying} stage={stage} mum={sim.family ? familyCast(sim.family, sim.look).maman.look : undefined} />
+          <ActionProps id={doing} kind="house" lying={spot.lying} stage={stage} {...(sim.family ? babyCare(sim.family, sim.look) : {})} />
         </group>
       ) : (
         <Character look={sim.look} gender={sim.gender} walking={walking} stage={stage} speed={SPEED} />
@@ -389,7 +389,8 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
     return () => clearTimeout(t)
   }, [night2, there])
   // The floors above the one looked at are off; its own walls full height, but down to one block between the camera and the Sim (build/CutHouse).
-  const cut = floor * STOREY + 3
+  // (Doing something: lower still, the tin roof of a small house off too, to see inside.)
+  const cut = floor * STOREY + (interactionId ? 2 : 3)
   const pieces = useMemo(() => (plot.furniture ?? []).filter((p) => p[1] < cut), [plot.furniture, cut])
   const name = sim.firstName
   return (
@@ -448,6 +449,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
           {there && spot?.lying && /^(sleep|nap)$/.test(interactionId ?? '') && <Zzz at={[spot.at[0], spot.y + 0.8, spot.at[1]]} />}
           {/* What's done here, over where it's done (SpotActions): tap one, the Sim goes */}
           <SpotActions shown={!!roam && !interactionId} where={(id) => (spots[id] ? [spots[id].at[0], spots[id].y, spots[id].at[1]] : null)} entrance={[gate[0], 0, gate[1]]} />
+          <FocusOn at={spot ? [spot.at[0], spot.y + 0.4, spot.at[1]] : null} />
           <OrbitControls makeDefault target={[0, 0, 0]} enablePan={false} minDistance={4} maxDistance={span * 2.2} minPolarAngle={0.3} maxPolarAngle={1.2} enableDamping />
           <Focus on={there && spot ? [spot.at[0], 0, spot.at[1]] : null} span={span} />
         </Suspense>
@@ -511,8 +513,58 @@ function Partner({ friend, spots, doing, spot }: { friend: Friend; spots: Record
   )
 }
 
+/**
+ * Doing something: the camera turns to where it's done and comes a little
+ * closer (on a phone, the whole house doesn't fit the screen and the baby by
+ * the sofa was off it); done, it eases back over the middle of the lot.
+ */
+function FocusOn({ at }: { at: [number, number, number] | null }) {
+  const controls = useThree((s) => s.controls) as unknown as { target: THREE.Vector3; update: () => void } | null
+  const camera = useThree((s) => s.camera)
+  const off = useMemo(() => new THREE.Spherical(), [])
+  const v = useMemo(() => new THREE.Vector3(), [])
+  useFrame((_, dt) => {
+    if (!controls) return
+    const t = controls.target
+    const k = 1 - Math.exp(-dt * 3)
+    const [gx, gy, gz] = at ?? [0, 0, 0]
+    const d = [(gx - t.x) * k, (gy - t.y) * k, (gz - t.z) * k]
+    off.setFromVector3(v.subVectors(camera.position, t))
+    // From above, over the walls, near enough to see the baby's face (never nearer than the player put it).
+    const far = at ? Math.max(0, off.radius - 6) * k : 0
+    const up = at ? Math.max(0, off.phi - 0.38) * k : 0
+    if (Math.abs(d[0]) + Math.abs(d[1]) + Math.abs(d[2]) + far + up < 1e-4) return
+    t.set(t.x + d[0], t.y + d[1], t.z + d[2])
+    off.radius -= far
+    off.phi -= up
+    camera.position.copy(t).add(v.setFromSpherical(off))
+    controls.update()
+  })
+  return null
+}
+
+/** Who looks after the baby (ActionProps Mother, BabyMess): a nounou at the laté's, a gouvernante at the debout's. */
+export type Carer = 'maman' | 'nounou' | 'gouvernante'
+
+/**
+ * How a baby is looked after, by its family's means: the debout have a
+ * gouvernante and the laté a nounou (the parents have no time); below,
+ * maman does it herself. From the poignon up there are nappies; the coulé
+ * and the gnambro can't buy many, so the caca and the pipi go on the floor.
+ */
+export function babyCare(family: string, look: Look): { mum: Look; carer: Carer; nappy: boolean } {
+  const carer: Carer = family === 'debout' ? 'gouvernante' : family === 'late' ? 'nounou' : 'maman'
+  const nappy = family !== 'gnambro' && family !== 'coule'
+  if (carer === 'maman') return { mum: familyCast(family, look).maman.look, carer, nappy }
+  // The nounou in her pink blouse, the gouvernante in navy: always the same one in the house.
+  const her = randomLook('femme', rng(`${carer}:${look.skin}:${look.hair}`))
+  return { mum: { ...her, outfit: 'blouse', outfitColor: carer === 'nounou' ? '#f783ac' : '#1f2a44', accessory: 'none' }, carer, nappy }
+}
+
 /** A baby's things done with maman (ActionProps Mother): she's there already, kneeling with it. */
-const WITH_MUM = /^(biberon|bouillie|hochet|calin|bain-bebe)$/
+const WITH_MUM = /^(biberon|bouillie|hochet|calin|bain-bebe|caca|pipi|vomir|pleurer)$/
+/** The baby's accidents: papa, if he's home and up, can't believe it either. */
+const MESS = /^(caca|pipi|vomir)$/
 
 /**
  * Papa and maman at home, while the Sim is a child there (its family's house): dressed as the family
@@ -522,6 +574,7 @@ const WITH_MUM = /^(biberon|bouillie|hochet|calin|bain-bebe)$/
  */
 function Parents({ sim, spots, doing, spot }: { sim: Sim; spots: Record<string, HomeSpot>; doing?: string; spot: HomeSpot | null }) {
   const cast = useMemo(() => familyCast(sim.family!, sim.look), [sim.family, sim.look])
+  const care = useMemo(() => babyCare(sim.family!, sim.look), [sim.family, sim.look])
   const { hour } = clock(sim.gameMinutes)
   const weekday = weekdayOf(sim.gameMinutes)
   const asleep = hour >= 22 || hour < 6
@@ -539,12 +592,17 @@ function Parents({ sim, spots, doing, spot }: { sim: Sim; spots: Record<string, 
     papa = first(bedsLeft)
     maman = first(bedsLeft, papa)
   } else {
-    maman = WITH_MUM.test(doing ?? '') ? undefined : meal && doing !== 'cook-attieke' ? first(['cook-attieke', ...seats]) : first([...seats, 'golvo'])
+    maman = WITH_MUM.test(doing ?? '') && care.carer === 'maman' ? undefined : meal && doing !== 'cook-attieke' ? first(['cook-attieke', ...seats]) : first([...seats, 'golvo'])
     if (maman === spots['cook-attieke']) maman = maman && { ...maman, pose: 'cook' }
     else if (maman && !maman.lying) maman = { ...maman, pose: hour % 2 ? 'call' : 'sit' }
     if (!working) {
       papa = hour < 9 ? first(['golvo', ...seats], maman) : first([...seats, 'golvo'], maman)
       if (papa) papa = { ...papa, pose: papa === spots.golvo ? 'eat' : hour % 3 ? 'sit' : 'phone' }
+      // Up from his seat, a step from the baby (not on it), hand to his head.
+      if (papa && spot && MESS.test(doing ?? '') && (doing === 'vomir' || !care.nappy)) {
+        const side: XZ = [spot.at[0] + Math.cos(spot.rot) * 1.1, spot.at[1] - Math.sin(spot.rot) * 1.1]
+        papa = { ...papa, at: side, from: side, y: 0, rot: Math.atan2(spot.at[0] - side[0], spot.at[1] - side[1]), pose: 'facepalm', lying: false, stool: false }
+      }
       // No seat in the house (a natte, a shack): standing by maman, chatting; else by the bed, on the phone.
       else {
         const near = maman ?? spots.sleep

@@ -94,6 +94,7 @@ export function daysLabel(days: number[]) {
 
 /** Why this Sim can't do it (mirrors game.Requirement.Check), or null. */
 export function blockedBy(it: Interaction, sim: Sim, cityId: string, communeId: string): string | null {
+  if (it.fed && sim.needs.hunger < FED_HUNGER) return "Mange d'abord"
   const r = it.requires
   if (!r) return null
   if (r.resident && !(sim.homeCity === cityId && sim.homeCommune === communeId && sim.city === cityId && sim.commune === communeId)) return 'Habitants seulement'
@@ -102,6 +103,9 @@ export function blockedBy(it: Interaction, sim: Sim, cityId: string, communeId: 
   if (r.anyTrait?.length && !r.anyTrait.some((t) => sim.traits.includes(t))) return 'Pas ton caractère'
   return null
 }
+
+/** How full the tummy must be for what comes after a meal (mirrors game.FedHunger). */
+export const FED_HUNGER = 70
 
 export const fcfa = (n: number) => `${n.toLocaleString('fr-FR')} Djai`
 export const amount = (n: number) => n.toLocaleString('fr-FR')

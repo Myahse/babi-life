@@ -255,6 +255,20 @@ func Windfall(pool []RandomEvent, ev RandomEvent, rng *rand.Rand) RandomEvent {
 
 // Calm: a surprise from the pool that brings no money (or costs some); the
 // first of the pool if every one brings money.
+// Quiet: a surprise that neither brings nor costs money (for a child, or a Sim who hasn't the money).
+func Quiet(pool []RandomEvent, rng *rand.Rand) RandomEvent {
+	var quiet []RandomEvent
+	for _, e := range pool {
+		if e.Money == 0 {
+			quiet = append(quiet, e)
+		}
+	}
+	if len(quiet) == 0 {
+		return RandomEvent{Text: pool[0].Text, Effect: pool[0].Effect}
+	}
+	return quiet[rng.IntN(len(quiet))]
+}
+
 func Calm(pool []RandomEvent, rng *rand.Rand) RandomEvent {
 	var calm []RandomEvent
 	for _, e := range pool {

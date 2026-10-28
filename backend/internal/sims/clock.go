@@ -192,6 +192,12 @@ func (s *Sim) finish(rng *rand.Rand) []Event {
 			calm := game.Calm(append(append([]game.RandomEvent{}, a.Surprises...), game.GenericEvents...), rng)
 			ev = &calm
 		}
+		// A child (no phone credit, no cousin to send money to) or a Sim without
+		// the money: something that costs nothing happens instead.
+		if ev.Money < 0 && (s.minor() || s.Money < -ev.Money) {
+			quiet := game.Quiet(append(append([]game.RandomEvent{}, a.Surprises...), game.GenericEvents...), rng)
+			ev = &quiet
+		}
 		s.Needs = s.Needs.Add(ev.Effect)
 		if ev.Money > 0 && !paidBack {
 			s.earn(game.FromLuck, ev.Money)
@@ -274,6 +280,9 @@ func (s *Sim) weekEnd(at int64) []Event {
 func (s *Sim) start(it game.Interaction, placeID, placeKind, placeName string, surprises []game.RandomEvent, career string) error {
 	if s.Activity != nil {
 		return game.ErrBusy
+	}
+	if it.Fed && s.Needs.Hunger < game.FedHunger {
+		return errNotFed
 	}
 	st, err := game.Begin(s.state(), it)
 	if err != nil {
