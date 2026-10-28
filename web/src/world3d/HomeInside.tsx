@@ -7,6 +7,7 @@ import type { Friend, Look, Plot, Sim, World } from '../lib/types'
 import { randomLook } from '../avatar/options'
 import { rng } from './themes'
 import { Character } from './Character'
+import { NeedsAura } from './NeedsAura'
 import { CutHouse } from './build/CutHouse'
 import { FurnitureSet } from './build/Furniture'
 import { Zones, LotGround } from './build/Zones'
@@ -278,7 +279,9 @@ function Walking({ sim, stage, way, spot, doing, onThere, steer, onMoved, onLeve
           <ActionProps id={doing} kind="house" lying={spot.lying} stage={stage} {...(sim.family ? babyCare(sim.family, sim.look) : {})} />
         </group>
       ) : (
-        <Character look={sim.look} gender={sim.gender} walking={walking} stage={stage} speed={SPEED} />
+        <NeedsAura needs={sim.needs} stage={stage} walking={walking}>
+          <Character look={sim.look} gender={sim.gender} walking={walking} stage={stage} speed={SPEED} />
+        </NeedsAura>
       )}
     </group>
   )

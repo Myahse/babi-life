@@ -105,7 +105,7 @@ export function blockedBy(it: Interaction, sim: Sim, cityId: string, communeId: 
 }
 
 /** How full the tummy must be for what comes after a meal (mirrors game.FedHunger). */
-export const FED_HUNGER = 70
+export const FED_HUNGER = 40
 
 export const fcfa = (n: number) => `${n.toLocaleString('fr-FR')} Djai`
 export const amount = (n: number) => n.toLocaleString('fr-FR')

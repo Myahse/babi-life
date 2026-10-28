@@ -36,7 +36,7 @@ type Interaction struct {
 }
 
 // FedHunger: how full the tummy must be for what comes after a meal (Interaction.Fed).
-const FedHunger = 70
+const FedHunger = 40
 
 // The rooms of a home, as the menu shows them.
 const (
