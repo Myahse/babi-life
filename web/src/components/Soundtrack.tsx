@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Volume2, VolumeX } from 'lucide-react'
 import { music, type Track } from '../audio/music'
+import { ambience } from '../audio/ambience'
 
 /** Plays the music of where the Sim is; renders nothing. */
 export function Soundtrack({ track, seed, level = 1 }: { track: Track | null; seed: string; /** How near (0–1): a party heard from the street. */ level?: number }) {
@@ -11,6 +12,15 @@ export function Soundtrack({ track, seed, level = 1 }: { track: Track | null; se
     music.setLevel(level)
   }, [level])
   useEffect(() => () => music.play(null), [])
+  return null
+}
+
+/** The sound of where the Sim is (audio/ambience.ts): the rain and its thunder, the street, birds or crickets; renders nothing. */
+export function Ambience({ rain, night, inside, music: playing }: { rain: boolean; night: boolean; inside: boolean; music: boolean }) {
+  useEffect(() => {
+    ambience.set({ rain, night, inside, music: playing })
+  }, [rain, night, inside, playing])
+  useEffect(() => () => ambience.set(null), [])
   return null
 }
 
