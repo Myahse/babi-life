@@ -548,6 +548,11 @@ function start(track: Track, seed: string) {
 }
 
 export const music = {
+  /** The game's sound out (the context and the master, muted with the music): for the street's ambience (ambience.ts). */
+  out(): { ctx: AudioContext; master: GainNode } | null {
+    const c = ensure()
+    return c && master ? { ctx: c, master } : null
+  },
   /** Play this track (null: silence). The same call twice keeps it going. */
   play(track: Track | null, seed = '') {
     if (!track) {

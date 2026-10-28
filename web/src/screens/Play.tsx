@@ -80,7 +80,7 @@ import { HuitBanner, HuitSheet, HuitStake } from '../components/Huit'
 import { MachineButton, MachineSheet, isSlots } from '../components/Machine'
 import { ClothesShop } from '../components/ClothesShop'
 import { SHOP_OF } from '../lib/clothes'
-import { SoundToggle, Soundtrack } from '../components/Soundtrack'
+import { Ambience, SoundToggle, Soundtrack } from '../components/Soundtrack'
 import { usePartySound } from '../world3d/open/party'
 import { MiniMap, WhereTo } from '../components/Navigator'
 import { ChatSheet, type FreeTalk, type Reply } from '../components/ChatSheet'
@@ -1370,6 +1370,8 @@ export function Play() {
       </footer>
 
       <Soundtrack track={partyHeard ? 'club' : track} seed={trackSeed} level={partyHeard ? party.level : 1} />
+      {/* The street's sound (update « ambiance-sonore »): the rain, the thunder, the hum, birds or crickets */}
+      {keyOpen(features, 'ambiance-sonore') && <Ambience rain={happeningId === 'pluie'} night={c.isNight} inside={showInside} music={!!(partyHeard || track)} />}
       {/* Finding the way: the mini-map, and every place of the quarter (at the wheel, the GPS does it) */}
       {!showInside && !placeId && !overlay && !players && !driven && (
         <div className="pointer-events-none absolute top-[4.5rem] left-3 z-20 flex flex-col items-start gap-2 sm:top-[5.5rem] lg:left-5">
