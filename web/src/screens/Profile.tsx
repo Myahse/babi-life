@@ -26,7 +26,7 @@ export function Profile() {
     api.sims().then((sims) => (sims.length ? api.sim(sims[0].id).then((r) => setSim({ ...r.sim, journal: r.journal })) : navigate('/creer')))
   }, [navigate])
 
-  if (!sim) return <div className="h-full bg-[var(--color-canvas)]" />
+  if (!sim) return <div className="h-full bg-[#fff4e8]" />
 
   const home = findCommune(world, sim.homeCity, sim.homeCommune)
   const here = findCommune(world, sim.city, sim.commune)
@@ -61,9 +61,9 @@ export function Profile() {
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-[var(--color-canvas)]">
-      {/* Hero: the Sim card */}
-      <section className="relative overflow-hidden bg-[radial-gradient(120%_90%_at_50%_0%,#ffe7c7_0%,#ffb27a_45%,#ff7a59_75%,#c94a6a_100%)] pb-16">
+    <div className="h-full overflow-y-auto bg-[#fff4e8]">
+      {/* Hero: the Sim card, on the game's flat orange (no gradient), the flag's green under it */}
+      <section className="relative overflow-hidden border-b-[6px] border-[var(--color-emerald)] bg-[var(--color-orange)] pb-16">
         <div className="mx-auto flex max-w-3xl items-center justify-between p-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:p-5">
           <Link to="/jeu" viewTransition className="icon-btn bg-white/90 shadow-lg" aria-label="Retour au jeu">
             <ChevronLeft size={24} strokeWidth={2.6} />
