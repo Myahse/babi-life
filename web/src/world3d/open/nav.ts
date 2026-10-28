@@ -257,6 +257,50 @@ export class Nav {
     return !this.fields.some((f) => onFieldGround(f, [x, z], 2 + r))
   }
 
+  /**
+   * Where to wait out the rain near `p`: against a building's wall (under its
+   * eaves), the nearest first, each `jitter` metres along the wall from the
+   * wall's nearest point so a crowd doesn't stand in one spot. Points in the
+   * open, off the street.
+   */
+  shelters(p: XZ, radius = 45, jitter = 0): XZ[] {
+    const seen = new Set<XZ[]>()
+    const found: { at: XZ; d: number }[] = []
+    const [cx, cz] = [Math.floor(p[0] / CELL), Math.floor(p[1] / CELL)]
+    const reach = Math.ceil(radius / CELL)
+    for (let dx = -reach; dx <= reach; dx++)
+      for (let dz = -reach; dz <= reach; dz++)
+        for (const ring of this.blockGrid.get(`${cx + dx},${cz + dz}`) ?? []) {
+          if (seen.has(ring)) continue
+          seen.add(ring)
+          for (let i = 0; i < ring.length; i++) {
+            const [ax, az] = ring[i]
+            const [bx, bz] = ring[(i + 1) % ring.length]
+            const l = Math.hypot(bx - ax, bz - az)
+            if (l < 1.5) continue
+            const [ux, uz] = [(bx - ax) / l, (bz - az) / l]
+            const t = Math.max(0.6, Math.min(l - 0.6, (p[0] - ax) * ux + (p[1] - az) * uz + jitter))
+            const q: XZ = [ax + ux * t, az + uz * t]
+            // Out from the wall, on the side away from the building.
+            for (const sd of [1, -1]) {
+              const at: XZ = [q[0] - uz * sd * 0.8, q[1] + ux * sd * 0.8]
+              if (pointInRing(at, ring)) continue
+              const d = Math.hypot(at[0] - p[0], at[1] - p[1])
+              if (d < radius && this.walkable(at[0], at[1]) && !this.onRoad(at)) found.push({ at, d })
+              break
+            }
+          }
+        }
+    return found.sort((a, b) => a.d - b.d).map((f) => f.at)
+  }
+
+  /** A straight walk from a to b through no building and no water. */
+  clearLine(a: XZ, b: XZ) {
+    const n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 0.7)
+    for (let i = 1; i < n; i++) if (!this.walkable(a[0] + ((b[0] - a[0]) * i) / n, a[1] + ((b[1] - a[1]) * i) / n)) return false
+    return true
+  }
+
   /** On the carriageway itself (its pavement not counted). */
   onStreet(p: XZ) {
     const n = this.nearest(p, 20)

@@ -104,6 +104,8 @@ import { useWorld } from '../store/world'
 import { LotGhost } from '../world3d/open/lotGhost'
 import { LotPlaceHud } from '../components/LotPlaceHud'
 import { useLotPlace } from '../store/lotPlace'
+import { byGate as byGateLab, RainRunners, spread, useRain } from '../world3d/open/rainRun'
+import { Pitch } from '../world3d/open/streetlife'
 import { farBlockOf, type FarBlock } from '../world3d/open/tiles'
 import { LudoApp } from '../screens/LudoApp'
 
@@ -420,6 +422,40 @@ function LotPlaceLab() {
   )
 }
 
+function RainLab() {
+  const data = useMemo(quarter, [])
+  const mats = useMemo(() => makeWorldMaterials() as unknown as Record<string, THREE.Material>, [])
+  const meshes = useMemo(() => buildChunk(data, () => false), [data])
+  const nav = useMemo(() => new Nav([data]), [data])
+  const rain = useRain((r) => r.on)
+  useEffect(() => {
+    if (q.has('dry')) return
+    const t = setTimeout(() => useRain.setState({ on: true }), 1000)
+    return () => clearTimeout(t)
+  }, [])
+  const pitch = { id: 'labpitch', at: [-55, 45] as XZ, rot: 0, seed: 0.3 }
+  const groups = [
+    { id: 'causerie', from: spread('causerie', [-40, -2] as XZ, 0, 4, 6, 3) },
+    { id: 'pupils', from: spread('pupils', [10, -60] as XZ, 0, 5, 10, 2), small: true },
+    { id: 'grin', from: spread('grin', [40, 22] as XZ, 0, 4, 5, 3) },
+  ]
+  return (
+    <Canvas dpr={[1, 2]} camera={{ position: [-30, 70, 75], fov: 45, far: 4000 }} style={{ width: '100vw', height: '100vh' }}>
+      <color attach="background" args={['#8a96a3']} />
+      <hemisphereLight args={['#ffffff', '#b8a27c', 1.2]} />
+      <directionalLight position={[60, 110, 35]} intensity={1.1} />
+      {Object.entries(meshes).map(([name, g]) => (g && mats[name] ? <mesh key={name} geometry={g} material={mats[name]} /> : null))}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
+        <planeGeometry args={[4000, 4000]} />
+        <primitive object={LAB_GROUND} attach="material" />
+      </mesh>
+      <Pitch spot={pitch} night={false} rain={rain} />
+      {rain ? <RainRunners nav={nav} groups={[...groups, { id: 'pitchp', from: spread('p', pitch.at, 0, 10, 18, 10), through: byGateLab(pitch.at, 0, 6.8) }]} /> : null}
+      <OrbitControls target={[-20, 0, 15]} />
+    </Canvas>
+  )
+}
+
 /** One gbaka down a straight street: 5 s at the stop, 14 s to go 110 m, and again. */
 function GbakaRun() {
   const car = useRef<THREE.Group>(null)
@@ -730,6 +766,8 @@ function Lab() {
   }
   // ?view=lotplace: a lot set in the 3D world, over a quarter of streets, houses and the lagoon (&x=,&z= where the view starts).
   if (view === 'lotplace') return <LotPlaceLab />
+  // ?view=rain: the quarter, a street pitch and people; the rain starts after a second (&dry: never).
+  if (view === 'rain') return <RainLab />
   // ?view=lotmap: where one's land goes, picked on the map of Marcory (needs VITE_MAPBOX_TOKEN at build).
   if (view === 'lotmap') {
     const marcory = { id: 'marcory', name: 'Marcory', lat: 5.3025, lng: -3.9835, places: [{ name: 'le marché de Marcory', lat: 5.3031, lng: -3.9829 }, { name: 'la Cap Sud', lat: 5.2969, lng: -3.9866 }] }

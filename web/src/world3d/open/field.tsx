@@ -12,6 +12,8 @@ import { StaticMerge } from '../staticMerge'
 import { PostedBubble, likesFor } from '../fans'
 import { asphalt, grassMaterial, turf } from '../../streetball/looks'
 import { NearUpTo } from '../../avatar/Human'
+import { byGate, RainRunners, spread, useRain } from './rainRun'
+import type { Nav } from './nav'
 
 // A maracana or a basketball court on the map, and the match always being
 // played on it (open/match.ts): the surface and its lines, the goals or the
@@ -471,8 +473,21 @@ function Watchers({ field, seed }: { field: Field; seed: string }) {
  * The whole field at its place on the map. `withSim`: the Sim is playing
  * here, in the place of one of the players (the Walker moves it).
  */
-export function SportField({ field, seed, night, withSim, onPick }: { field: Field; seed: string; night: boolean; withSim: boolean; onPick?: () => void }) {
+export function SportField({ field, seed, night, withSim, onPick, nav }: { field: Field; seed: string; night: boolean; withSim: boolean; onPick?: () => void; /** for the rain: the players and the watchers run for cover (rainRun.tsx) */ nav?: Nav }) {
+  const rain = useRain((r) => r.on) && !!nav && !withSim
+  const runners = useMemo(() => {
+    if (!rain) return []
+    const rot = -field.angle
+    const hw = field.wid / 2 + FENCE_OUT
+    const foot = field.sport === 'foot'
+    return [
+      { id: `field:${seed}`, from: spread(seed, field.at, rot, foot ? 12 : 8, field.len * 0.8, field.wid * 0.8), through: byGate(field.at, rot, hw) },
+      { id: `fieldw:${seed}`, from: spread(`w${seed}`, [field.at[0] + Math.sin(rot) * (hw + 2.5), field.at[1] + Math.cos(rot) * (hw + 2.5)], rot, foot ? 6 : 4, field.len * 0.7, 1) },
+    ]
+  }, [rain, field, seed])
   return (
+    <>
+    {rain && nav && <RainRunners nav={nav} groups={runners} />}
     <group
       position={[field.at[0], 0, field.at[1]]}
       rotation={[0, -field.angle, 0]}
@@ -491,8 +506,9 @@ export function SportField({ field, seed, night, withSim, onPick }: { field: Fie
       </StaticMerge>
       <Scoreboard field={field} seed={seed} />
       <FieldFence hl={field.len / 2 + FENCE_OUT} hw={field.wid / 2 + FENCE_OUT} id={seed} />
-      <Players field={field} seed={seed} without={withSim ? SIM_SLOT[field.sport] : null} />
-      <Watchers field={field} seed={seed} />
+      {!rain && <Players field={field} seed={seed} without={withSim ? SIM_SLOT[field.sport] : null} />}
+      {!rain && <Watchers field={field} seed={seed} />}
     </group>
+    </>
   )
 }

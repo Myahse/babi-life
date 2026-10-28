@@ -14,6 +14,7 @@ import type { Nav } from './nav'
 import { BookOpen, HandHeart } from 'lucide-react'
 import { activityOpen, useFeatures } from '../../lib/features'
 import { inScene, JoinBubble, JoinIn, placeIn, type Joining } from './joinIn'
+import { RainRunners, spread, useRain } from './rainRun'
 
 // The people of the street, each at their own street, always the same:
 // - le fou du quartier, who walks up and down talking to nobody, his
@@ -35,6 +36,8 @@ type Kind = 'fou' | 'pasteur' | 'ecole' | 'bureau' | 'vieux'
 type Spot = { id: string; kind: Kind; at: XZ; rot: number; w: number; len: number; seed: number }
 
 const NEAR = 240 // metres: drawn around the Sim
+/** How many run for cover from each, in the rain. */
+const RAIN_GROUP: Record<Kind, number> = { fou: 1, pasteur: 3, ecole: 5, bureau: 4, vieux: 1 }
 const MAX = 4
 
 /** Seconds since Monday 00:00 → [day 0..6, hour as a fraction]. */
@@ -105,6 +108,20 @@ export function StreetPeople({ nav, seed }: { nav: Nav; seed: string }) {
       .map((x) => x.s)
     if (near.map((s) => s.id).join() !== shown.map((s) => s.id).join()) setShown(near)
   })
+  // The rain: each runs for cover from the pavement they were on (rainRun.tsx).
+  const rain = useRain((r) => r.on)
+  const runners = useMemo(
+    () =>
+      rain
+        ? shown.map((s) => {
+            const side = s.w / 2 + 3
+            const at: XZ = [s.at[0] + Math.sin(s.rot) * side, s.at[1] + Math.cos(s.rot) * side]
+            return { id: s.id, from: spread(s.id, at, s.rot, RAIN_GROUP[s.kind], 12, 2), small: s.kind === 'ecole' }
+          })
+        : [],
+    [rain, shown],
+  )
+  if (rain) return <RainRunners nav={nav} groups={runners} />
   return (
     <>
       {shown.map((s) => (

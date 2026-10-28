@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { Human, NoShadows } from '../../avatar/Human'
+import { useRain } from './rainRun'
 import { randomLook } from '../../avatar/options'
 import { serverNow, worldTime } from '../../lib/worldClock'
 import { Vehicle, type VehicleKind } from '../vehicles'
@@ -161,12 +162,16 @@ function Walkers({ kind, way, night }: { kind: BridgeKind; way: Way; night: bool
   }, [n, kind, way.len])
   const refs = useRef<(THREE.Group | null)[]>([])
   const half = (how.width ?? 18) / 2 - 1.8
-  useFrame(() => {
+  // The rain: on a bridge there's no cover, they run across (rainRun.tsx).
+  const rain = useRain((r) => r.on)
+  const ahead = useRef(0)
+  useFrame((_, dt) => {
     const t = worldTime()
+    if (rain) ahead.current += Math.min(dt, 0.1) * 2
     people.forEach((q, i) => {
       const g = refs.current[i]
       if (!g) return
-      const d = (((q.start + t * q.pace) % way.len) + way.len) % way.len
+      const d = (((q.start + (t + ahead.current) * q.pace) % way.len) + way.len) % way.len
       const s = q.side > 0 ? d : way.len - d
       const p = at(way, s)
       const dir = q.side
@@ -178,7 +183,7 @@ function Walkers({ kind, way, night }: { kind: BridgeKind; way: Way; night: bool
     <NoShadows>
       {people.map((q, i) => (
         <group key={i} ref={(g) => void (refs.current[i] = g)}>
-          <Human look={q.look} gender={q.gender} pose="walk" seed={q.seed} speed={q.pace} />
+          <Human look={q.look} gender={q.gender} pose={rain ? 'run' : 'walk'} seed={q.seed} speed={rain ? q.pace * 1.6 : q.pace} />
         </group>
       ))}
     </NoShadows>
