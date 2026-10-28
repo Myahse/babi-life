@@ -92,3 +92,16 @@ export function onBack(close: () => boolean) {
     if (i >= 0) backs.splice(i, 1)
   }
 }
+
+// A light tick under the finger on the game's buttons, like an app's: in the
+// app always, in a phone's browser too (its vibration, where there is one).
+if (typeof document !== 'undefined')
+  document.addEventListener(
+    'pointerdown',
+    (e) => {
+      if (e.pointerType !== 'touch') return
+      const b = (e.target as Element | null)?.closest?.('.btn, [role="tab"]')
+      if (b && !(b as HTMLButtonElement).disabled) haptic('light')
+    },
+    { capture: true, passive: true },
+  )
