@@ -139,6 +139,8 @@ func (g *GeniusPay) call(ctx context.Context, method, path string, body any) (Pa
 	req.Header.Set("X-API-Secret", g.Secret)
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/json")
+	// Named, not Go's default client: GeniusPay's firewall (Imunify360) turns away anonymous « bots ».
+	req.Header.Set("User-Agent", "BabiLife/1.0 (+https://www.lifeinbabi.com)")
 	res, err := g.Client.Do(req)
 	if err != nil {
 		return Payment{}, err
