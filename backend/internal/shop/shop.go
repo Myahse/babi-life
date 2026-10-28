@@ -348,6 +348,8 @@ func (h *Handler) buy(w http.ResponseWriter, r *http.Request) {
 	url, err := h.open(ctx, pid, np)
 	if err != nil {
 		log.Printf("shop: payment not created for %s (%s): %v", pid, label, err)
+		// In the admin's activity log too: the team sees why without the server's logs.
+		_, _ = h.DB.Exec(ctx, `INSERT INTO admin_log (action, detail) VALUES ('GeniusPay a refusé un paiement', $1)`, fmt.Sprintf("%s (%d F) : %.300s", label, total, err.Error()))
 		httpx.Error(w, http.StatusBadGateway, "GeniusPay ne répond pas : réessaie dans un instant")
 		return
 	}
