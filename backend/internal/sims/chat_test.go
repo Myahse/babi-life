@@ -78,6 +78,9 @@ func TestEveryChatTopic(t *testing.T) {
 		for seed := uint64(0); seed < 30; seed++ {
 			s := newSim()
 			s.Gender = "femme"
+			if strings.HasPrefix(topic.id, "bebe-") {
+				s.BornAt = s.GameMinutes // a baby in its pram: only it says these
+			}
 			ans, err := s.chat(p, topic.id, "C'est comment ?", true, rand.New(rand.NewPCG(seed, 3)))
 			reply := ans.Text
 			if err != nil {

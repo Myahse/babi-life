@@ -34,7 +34,7 @@ import { GROUNDS, LANDMARKS, OPEN_AIR } from '../world3d/open/landmarks'
 import { rooftopFor } from '../world3d/open/rooftops'
 import { iconFor, kindColors } from '../components/icons'
 import { SOIREE_COST, SOIREE_HOURS, SOIREE_THEMES } from '../game/soirees'
-import { Chip, Coin, DayNight, IconTile, MotiveRing, MoodPin, Row, needColor } from '../components/ui'
+import { Chip, Coin, DayNight, IconTile, MotiveRing, Row, needColor } from '../components/ui'
 import { EPOCH, NEEDS, km, actionLength, ageBlock, amount, fcfa, atHome, blockedBy, homeLacks, housingOf, lifeOf, minutesToAge, clock, duration, mood, openAt, openingLabel, predict, shift, trip } from '../game/rules'
 import { DOORS_OPEN, eventAt, useStadium, when } from '../lib/stadium'
 import { CIVIC_KINDS, civicState, discounted, fareOff, PUBLIC_RIDES, useTerrain, withMeasures } from '../lib/civic'
@@ -939,14 +939,8 @@ export function Play() {
   }, [placeId])
 
   if (!sim) {
-    return (
-      <div className="grid h-full place-items-center bg-[var(--color-night)] text-white">
-        <div className="flex flex-col items-center gap-3">
-          <MoodPin size={22} />
-          <span className="font-display text-xl font-bold">Chargement de Babi…</span>
-        </div>
-      </div>
-    )
+    // The same loading screen as everywhere: the perso dancing (components/Splash.tsx).
+    return <Splash label="Chargement de Babi…" />
   }
 
   const c = clock(sim.gameMinutes)

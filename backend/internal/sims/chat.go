@@ -42,6 +42,26 @@ type chatTopic struct {
 // feminine ending; {toi} what they call your Sim (mon frère, ma sœur), {go}
 // the familiar one (mon gars, ma go).
 var chatTopics = []chatTopic{
+	// A baby in its pram: the passers-by melt (only that: talking freely comes with adult life).
+	{id: "bebe-sourire", label: "Faire un sourire", icon: "smile", minutes: 2, ages: game.Babies, effect: game.Needs{Social: 8, Fun: 6}, yes: []string{
+		"« Ohhh le joli bébé ! Regardez-moi ce sourire ! »",
+		"« Comme il est mignon ! Dieu le garde ! »",
+		"« Eh, le petit chef nous sourit ! Tu vas faire tomber les filles toi ! »",
+		"« Qu'il est beau ce bébé ! Maman, tu as bien travaillé ! »",
+		"« Regardez ces joues ! On a envie de croquer ! »",
+	}},
+	{id: "bebe-coucou", label: "Faire coucou", icon: "hand", minutes: 2, ages: game.Babies, effect: game.Needs{Social: 8, Fun: 6}, yes: []string{
+		"« Coucou toi ! Coucou ! Oh il fait coucou ! »",
+		"« Ah le bébé dit bonjour ! Bonjour mon bébé ! »",
+		"« Coucou petit ! Tu es sage avec maman ? »",
+		"« Il est poli dèh, il salue déjà ! »",
+	}},
+	{id: "bebe-babiller", label: "Babiller", icon: "baby", minutes: 2, ages: game.Babies, effect: game.Needs{Social: 10, Fun: 8}, yes: []string{
+		"« Areu areu ! Oui oui, tu as raison mon bébé ! »",
+		"« Il cause déjà ! Il va être avocat celui-là ! »",
+		"« Ba-ba-ba ! Ohhh qu'il est chou ! »",
+		"« Tu racontes quoi comme ça ? Toi tu as beaucoup de choses à dire hein ! »",
+	}},
 	// Saluer
 	{id: "salut", label: "Saluer", icon: "hand", minutes: 3, ages: game.KidsUp, effect: game.Needs{Social: 6}, yes: []string{
 		"« Bonne arrivée ! On est ensemble. »",

@@ -93,6 +93,22 @@ const GROUPS: { id: string; label: string; icon: LucideIcon; colors: [string, st
   },
 ]
 
+// A baby with a passer-by (backend sims/chat.go « bebe-… »): it smiles, waves, babbles; they melt.
+const BABY_HELLO = ['Ohhh le joli bébé !', 'Eh, regardez-moi ce bébé ! Qu’il est mignon !', 'Coucou le bébé ! Bonjour maman !', 'Ah le petit chef ! Dieu le garde !']
+const BABY_GROUPS: typeof GROUPS = [
+  {
+    id: 'bebe',
+    label: 'Bébé',
+    icon: Smile,
+    colors: ['#ff8fb1', '#e0245e'],
+    topics: [
+      { id: 'bebe-sourire', label: 'Faire un sourire', icon: Smile, hint: '2 min · on fond', says: ['(fait un grand sourire)'] },
+      { id: 'bebe-coucou', label: 'Faire coucou', icon: Hand, hint: '2 min · la petite main', says: ['(fait coucou de la main)'] },
+      { id: 'bebe-babiller', label: 'Babiller', icon: Baby, hint: '2 min · areu areu', says: ['Areu areu !', 'Ba-ba-ba !', 'Aaah !'] },
+    ],
+  },
+]
+
 // Papa and maman at home (backend sims/parents.go): a baby babbles and hugs; a child greets them,
 // tells its day, asks for advice, help, to go out, a little pocket money.
 function parentGroups(baby: boolean, kin: 'papa' | 'maman'): typeof GROUPS {
@@ -299,16 +315,16 @@ export function ChatSheet({ npc, simGender, onSay, onType: typing, onClose, onBy
   baby?: boolean
 }) {
   const kin = npc.kin
-  // A baby doesn't type.
-  const onType = kin && baby ? undefined : typing
+  // Talking freely (typing) is for adult life; before 18, the choices only.
+  const onType = grownUp && !baby ? typing : undefined
   // What you were to them before (for the greeting), and now: met once more.
   const [before] = useState(() => recall(npc.id))
   const [mem, setMem] = useState<Memory>(() => ({ met: before.met + 1, rapport: before.met === 0 ? 1 : before.rapport }))
-  const [lines, setLines] = useState<Line[]>(() => [{ who: 'them', text: kin ? parentHello(kin, simGender, !!baby) : greeting(npc, simGender, before) }])
+  const [lines, setLines] = useState<Line[]>(() => [{ who: 'them', text: kin ? parentHello(kin, simGender, !!baby) : baby ? BABY_HELLO[Math.floor(Math.random() * BABY_HELLO.length)] : greeting(npc, simGender, before) }])
   const [used, setUsed] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
   const [gone, setGone] = useState(false)
-  const [group, setGroup] = useState(kin && baby ? 'bebe' : GROUPS[0].id)
+  const [group, setGroup] = useState(baby ? 'bebe' : GROUPS[0].id)
   // They're saying their line (written out): their face nods.
   const [talking, setTalking] = useState(true)
   const log = useRef<HTMLDivElement>(null)
@@ -367,7 +383,8 @@ export function ChatSheet({ npc, simGender, onSay, onType: typing, onClose, onBy
     ? languages.map((l) => ({ id: 'langue', lang: l, label: `Saluer en ${languageLabel(l).toLowerCase()}`, icon: Hand, hint: theirs.includes(l) ? `${greetingIn(l, gameMinutes, npc.gender)} · ${npc.name} le parle` : greetingIn(l, gameMinutes, npc.gender), says: [greetingIn(l, gameMinutes, npc.gender)] }))
     : [{ id: 'langues', label: 'Tu parles d’autres langues ?', icon: Hand, hint: 'Dioula, baoulé, bété… choisis les tiennes' }]
   const base = GROUPS.map((x) => (x.id === 'saluer' ? { ...x, topics: greetings } : x))
-  const groups = kin ? parentGroups(!!baby, kin) : grownUp ? [...base, { ...LOVE, topics: love }] : base
+  // A baby in its pram: a smile, a « coucou », babbling, and the passer-by melts; nothing else before it can talk.
+  const groups = kin ? parentGroups(!!baby, kin) : baby ? BABY_GROUPS : grownUp ? [...base, { ...LOVE, topics: love }] : base
   const g = groups.find((x) => x.id === group) ?? groups[0]
   const pick = (t: Topic) => {
     if (t.id === 'langues') return setPicking(true)
