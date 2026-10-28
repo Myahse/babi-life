@@ -76,7 +76,7 @@ export function Arrival({ commune, firstName, onEnd }: { commune: string; firstN
 
   if (part === 'title')
     return (
-      <div className="fixed inset-0 z-[90] flex flex-col items-center justify-center gap-5 bg-gradient-to-b from-[#ff8a3d] to-[#e8590c] px-8 text-center text-white" onClick={() => setPart('awa')}>
+      <div className="fixed inset-0 z-[90] flex flex-col items-center justify-center gap-5 bg-[var(--color-orange)] px-8 text-center text-white" onClick={() => setPart('awa')}>
         {skip}
         <div className="animate-pop">
           <Logo size={72} tone="dark" />
