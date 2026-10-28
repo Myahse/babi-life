@@ -1248,7 +1248,7 @@ export function Play() {
         <Link to="/profil" viewTransition className="hud pointer-events-auto flex min-w-0 items-center gap-2 rounded-full py-1 pr-3 pl-1 transition active:scale-95 max-sm:max-w-[52vw] short:max-w-[36vw] sm:gap-2.5 sm:pr-4">
           <span className="block shrink-0 rounded-full p-[3px]" style={{ background: `conic-gradient(${moodHex} ${mood(sim.needs) * 3.6}deg, #e7e9f2 0)` }}>
             <span className="block h-9 w-9 overflow-hidden rounded-full border-2 border-white bg-gradient-to-b sm:h-11 sm:w-11 from-[#ffe7c7] to-[#ffb27a]">
-              <Portrait look={sim.look} gender={sim.gender} framing="head" />
+              <Portrait look={sim.look} gender={sim.gender} framing="head" stage={lifeOf(world, sim).stage?.id} />
             </span>
           </span>
           <span className="min-w-0 leading-tight">
