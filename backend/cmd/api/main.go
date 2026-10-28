@@ -325,6 +325,8 @@ func main() {
 			adminH.Accounts = authH
 		}
 		adminH.Routes(r)
+		// WhatsApp campaigns set for later (the opening) start by themselves.
+		go adminH.WatchWhatsApp(ctx, 30*time.Second)
 		r.Get("/mail/stop", adminH.MailStop)
 		// Moderation of Gbairai's reports (MODERATION_KEY).
 		mod := &sims.Moderation{H: simsH, Key: os.Getenv("MODERATION_KEY")}
@@ -374,7 +376,9 @@ func main() {
 			ideasH.Routes(r)
 			// The game itself: shut on the server until launch (auth.GameGate).
 			r.Group(func(r chi.Router) {
-				r.Use(auth.GameGate(pool, cfg.GameOpen))
+				r.Use(auth.GameGate(pool, func(ctx context.Context) bool {
+					return cfg.GameOpen || features.Default.BlocksKey(ctx, "jeu") == ""
+				}))
 				simsH.Routes(r)
 				shopH.Routes(r)
 				politicsH.Routes(r)
@@ -386,7 +390,7 @@ func main() {
 	go func() {
 		log.Printf("Babi Life API listening on :%s", cfg.Port)
 		if !cfg.GameOpen {
-			log.Println("Game shut until launch (GAME_OPEN not true): the wish list and the team's accounts only")
+			log.Println("Game shut until launch (GAME_OPEN not true, « L'ouverture de Babi Life » not open): the wish list and the team's accounts only")
 		}
 		log.Printf("Sites allowed to call the API: %s", strings.Join(cfg.AllowedOrigins, ", "))
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {

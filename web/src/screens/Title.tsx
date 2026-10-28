@@ -13,7 +13,7 @@ import { Portrait } from '../avatar/portrait'
 import { IconTile } from '../components/ui'
 import { UsernameField } from '../components/UsernameField'
 import { suggestFrom } from '../lib/username'
-import { gameOpen } from '../lib/launch'
+import { useGameOpen } from '../lib/launch'
 import { contactLinks } from '../lib/contact'
 import { firebaseConfigured, firebaseFromGoogle, googleBlocked, googleCancelled, googleRedirectResult, preloadGoogle, signInWithGoogle } from '../lib/google'
 
@@ -34,6 +34,7 @@ const FEATURES: { icon: LucideIcon; colors: [string, string]; title: string; tex
 ]
 
 export function Title() {
+  const open = useGameOpen()
   const signIn = useSession((s) => s.signIn)
   const world = useWorld((s) => s.world)
   const worldError = useWorld((s) => s.error)
@@ -88,7 +89,7 @@ export function Title() {
     try {
       const { token, user } = await p
       signIn(token, user)
-      navigate(gameOpen ? '/jeu' : '/liste', { viewTransition: true })
+      navigate(open ? '/jeu' : '/liste', { viewTransition: true })
     } catch (e) {
       setError(errorText(e, 'Connexion impossible'))
     } finally {

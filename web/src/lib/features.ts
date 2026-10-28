@@ -9,7 +9,7 @@ import { API_BASE } from './env'
 // hidden (a closed feature never shows by mistake).
 
 export type FeatureNews = { id: string; label: string; about: string; at: string }
-type State = { known: boolean; closed: Set<string>; interactions: Set<string>; keys: Set<string>; news: FeatureNews[] }
+type State = { known: boolean; closed: Set<string>; interactions: Set<string>; keys: Set<string>; news: FeatureNews[]; /** When the game opens to everyone, set and not yet come (ISO). */ opening?: string }
 
 let state: State = { known: false, closed: new Set(), interactions: new Set(), keys: new Set(), news: [] }
 const listeners = new Set<() => void>()
@@ -20,8 +20,8 @@ async function ask() {
   try {
     const res = await fetch(`${API_BASE}/features`)
     if (!res.ok) return
-    const d = (await res.json()) as { closed: string[]; interactions: string[]; keys: string[]; new: FeatureNews[] }
-    state = { known: true, closed: new Set(d.closed), interactions: new Set(d.interactions), keys: new Set(d.keys), news: d.new ?? [] }
+    const d = (await res.json()) as { closed: string[]; interactions: string[]; keys: string[]; new: FeatureNews[]; opening?: string }
+    state = { known: true, closed: new Set(d.closed), interactions: new Set(d.interactions), keys: new Set(d.keys), news: d.new ?? [], opening: d.opening }
     last = Date.now()
     listeners.forEach((f) => f())
   } catch {
@@ -59,4 +59,4 @@ export const keyOpen = (s: State, key: string) => LAB || (!s.keys.has(key) && (s
 
 // What an update may hide (the same as backend features.List): held back while the server's answer hasn't come.
 const MAYBE_INTERACTIONS = new Set(['caca', 'pipi', 'vomir', 'pleurer', 'play-foot11', 'console-combat', 'console-course', 'course-kart', 'regarder-kart', 'borne-arcade', 'machine-maquis', 'machine-casino', 'casino-ivoire', 'tournoi-console', 'console-defi', 'street-traverser', 'boutique-mode', 'boutique-wax', 'maison-foot', 'maison-course', 'maison-combat', 'creche'])
-const MAYBE_KEYS = new Set(['chat-libre', 'lot-carte', 'foot11', 'foot-coupe', 'foot-carriere', 'historique', 'soiree', 'loto', 'table', 'app:waye', 'app:gbairai', 'app:tikitoko', 'app:babigram', 'app:flashe', 'app:golvo', 'app:dodo', 'app:kineo', 'app:bolide', 'app:gnango', 'app:idrive', 'app:dames', 'app:huit', 'app:awale', 'app:ludo', 'app:bet225', 'app:parisfoot', 'app:bingo', 'app:casino', 'app:gode', 'app:politique', 'postures', 'deco-premium', 'deplacer-meubles', 'console-maison', 'frigo', 'ecole-vivante', 'ami-enfance', 'mentor', 'grandir-vite', 'looks-age', 'pubs-applis'])
+const MAYBE_KEYS = new Set(['chat-libre', 'lot-carte', 'foot11', 'foot-coupe', 'foot-carriere', 'historique', 'soiree', 'loto', 'table', 'app:waye', 'app:gbairai', 'app:tikitoko', 'app:babigram', 'app:flashe', 'app:golvo', 'app:dodo', 'app:kineo', 'app:bolide', 'app:gnango', 'app:idrive', 'app:dames', 'app:huit', 'app:awale', 'app:ludo', 'app:bet225', 'app:parisfoot', 'app:bingo', 'app:casino', 'app:gode', 'app:politique', 'postures', 'deco-premium', 'deplacer-meubles', 'console-maison', 'frigo', 'ecole-vivante', 'ami-enfance', 'mentor', 'grandir-vite', 'looks-age', 'pubs-applis', 'jeu'])
