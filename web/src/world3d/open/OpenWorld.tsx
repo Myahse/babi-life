@@ -1167,6 +1167,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     whereabouts.roads = nav.edges.map((e) => [nav.nodes[e.a], nav.nodes[e.b], e.width] as [XZ, XZ, number])
     if (import.meta.env.DEV) Object.assign(window, { __nav: nav })
     whereabouts.water = [...chunks.values()].flatMap((c) => c.data.areas.filter((a) => a.kind === 'water').map((a) => a.rings[0]))
+    whereabouts.trees = [...chunks.values()].filter((c) => !c.data.key.includes(':')).flatMap((c) => [...c.data.trees, ...c.data.palms, ...(c.data.forest ?? [])])
   }, [nav, chunks])
 
   // The airport's runways (the horizon shows them too), and the big bridges

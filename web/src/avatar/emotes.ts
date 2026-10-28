@@ -8,7 +8,7 @@ import type { Pose } from './Human'
 // Legs: [hip forward/back, hip out, knee bend]. Body: height, sway, lean
 // forward (rx), sideways (rz), turn (ry), the head's nod.
 
-export const EMOTE_POSES = ['clap', 'thumbsup', 'shrug', 'laugh', 'dab', 'heart', 'salute', 'facepalm', 'cry', 'kiss', 'bow', 'flex', 'zouglou', 'gweta', 'robot', 'moonwalk', 'kneeslide', 'meditate', 'shout'] as const
+export const EMOTE_POSES = ['clap', 'thumbsup', 'shrug', 'laugh', 'dab', 'heart', 'salute', 'facepalm', 'cry', 'kiss', 'bow', 'flex', 'zouglou', 'gweta', 'robot', 'moonwalk', 'kneeslide', 'meditate', 'shout', 'sitground', 'lean'] as const
 export type EmotePose = (typeof EMOTE_POSES)[number]
 const IS = new Set<string>(EMOTE_POSES)
 export const isEmote = (p: string): p is EmotePose => IS.has(p)
@@ -91,6 +91,12 @@ function armsOf(pose: Pose, out: number, t: number, since: number): Arm | null {
     case 'meditate':
       // Hands on the knees.
       return [-0.6, 0, out * 0.35, -0.5, 0]
+    case 'sitground':
+      // Sitting on the ground, leaning back on its hands flat behind it.
+      return [0.6, 0, out * 0.32, -0.05, 0]
+    case 'lean':
+      // Its back to the tree, arms crossed on the chest.
+      return [-0.35, 0, out * -0.18, -1.75, 0]
     case 'shout':
       // The atalaku: the mic at the mouth, the other arm pumping up.
       return right ? [-1.45, 0, 0.15, -2.35, 0] : [-0.3, 0, out * (2.2 + up(Math.sin(t * 6)) * 0.4), -0.3, 0]
@@ -118,6 +124,12 @@ function legsOf(pose: Pose, out: number, t: number): Leg | null {
     case 'meditate':
       // Cross-legged.
       return [-1.45, out * 0.9, 2.3]
+    case 'sitground':
+      // The knees up in front, the feet flat on the ground.
+      return [-1.95, out * 0.14, 1.95]
+    case 'lean':
+      // One foot against the trunk behind (the right), the other leg straight.
+      return out > 0 ? [0.45, out * 0.05, 1.25] : [0.05, out * 0.04, 0.05]
     case 'bow':
       return [0, 0, 0.05]
     case 'shout':
@@ -172,6 +184,12 @@ function bodyOf(pose: Pose, t: number, since: number): Body | null {
       return { y: -0.4, rx: -0.3, head: -0.4 }
     case 'meditate':
       return { y: -0.62 + Math.sin(t * 1.5) * 0.03, head: 0.15 }
+    case 'sitground':
+      // On the ground, the back a little rounded, looking about now and then.
+      return { y: -0.62, rx: -0.2, ry: Math.sin(t * 0.25) * 0.15, head: 0.1 + Math.sin(t * 0.4) * 0.06 }
+    case 'lean':
+      // Leaning back on the trunk, easy.
+      return { y: -0.03, z: -0.05, rx: -0.1, head: -0.04 + Math.sin(t * 0.3) * 0.05 }
     case 'shout':
       return { y: up(Math.sin(t * 6)) * 0.1, rx: 0.15, head: -0.1 }
     default:

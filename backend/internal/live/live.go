@@ -25,6 +25,7 @@ import (
 
 	"github.com/myahse/babi-life/backend/internal/auth"
 	"github.com/myahse/babi-life/backend/internal/court"
+	"github.com/myahse/babi-life/backend/internal/features"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/kart"
 )
@@ -43,7 +44,10 @@ const (
 )
 
 // Poses a player may say it is in (what avatar/Human.tsx can show).
-var poses = map[string]bool{"idle": true, "walk": true, "run": true, "busy": true, "talk": true, "sit": true, "dance": true, "wave": true, "cheer": true, "kart": true}
+var poses = map[string]bool{"idle": true, "walk": true, "run": true, "busy": true, "talk": true, "sit": true, "dance": true, "wave": true, "cheer": true, "kart": true, "sitground": true, "lean": true}
+
+// The postures, an update (features: postures): while it's closed, the others see the Sim standing.
+var postures = map[string]bool{"sitground": true, "lean": true}
 
 // And the emotes (game/emotes.go): the others see the Sim play them.
 func init() {
@@ -363,6 +367,9 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			// At most 20 a second, sane numbers, a known pose.
 			if time.Since(last) < 50*time.Millisecond || !finite(m.X, m.Y, m.Z, m.H) || !poses[m.P] {
 				continue
+			}
+			if postures[m.P] && features.Default.BlocksKey(context.Background(), "postures") != "" {
+				m.P = "idle"
 			}
 			st := State{ID: c.sim, X: m.X, Y: m.Y, Z: m.Z, H: m.H, P: m.P}
 			if isKart(c.room) {
