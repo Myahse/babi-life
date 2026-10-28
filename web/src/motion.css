@@ -421,6 +421,27 @@
 @media (prefers-reduced-motion: reduce) {
   .splash-dancer, .splash-dancer g { animation: none; }
 }
+/* The error screen (components/ErrorScreen.tsx): the same perso, still, scratching its head, the head tilting */
+.error-perso .dancer-body,
+.error-perso .dancer-arm-l,
+.error-perso .dancer-leg-l,
+.error-perso .dancer-leg-r {
+  animation: none;
+}
+.error-perso .dancer-arm-r {
+  animation: error-scratch 0.5s ease-in-out infinite alternate;
+}
+@keyframes error-scratch {
+  from { transform: rotate(-150deg); }
+  to { transform: rotate(-168deg); }
+}
+.error-perso .dancer-head {
+  animation: error-tilt 2.4s ease-in-out infinite;
+}
+@keyframes error-tilt {
+  0%, 100% { transform: rotate(-8deg); }
+  50% { transform: rotate(4deg); }
+}
 .splash-shadow {
   animation: splash-shadow 2.6s 0.7s ease-in-out infinite;
 }
