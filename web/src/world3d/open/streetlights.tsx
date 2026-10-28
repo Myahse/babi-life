@@ -6,9 +6,10 @@ import { whereabouts } from '../whereabouts'
 import { hash, type XZ } from './geo'
 import type { Nav } from './nav'
 
-// Street lights (lampadaires) along the real streets: a grey pole at the
-// edge of the pavement, an arm over the road and its lamp, every 30-odd
-// metres, one side then the other. At night the lamps glow and each throws
+// Street lights (lampadaires) along the real streets: on its concrete foot
+// at the edge of the pavement, a tapered grey pole, its neck bending out
+// over the road and the long « cobra » head with its lens underneath, every
+// 30-odd metres, one side then the other. At night the lamps glow and each throws
 // a pool of light on the street (most the old sodium orange, some the new
 // white LEDs), a halo round the lamp that shows from far down the street,
 // and up close a faint cone of light in the night air. No real lights: all
@@ -23,6 +24,7 @@ const CONES = 70
 const SODIUM = new THREE.Color('#ffb54d')
 const OUT = new THREE.Color('#000000')
 const LED = new THREE.Color('#e8f0ff')
+const GLASS = new THREE.Color('#9aa4ad')
 
 type Lamp = { x: number; y: number; z: number; rot: number; led: boolean }
 
@@ -82,9 +84,12 @@ export function StreetLights({ nav, night, dark }: { nav: Nav; night: boolean; /
     )
   })
 
+  const feet = useRef<THREE.InstancedMesh>(null)
   const poles = useRef<THREE.InstancedMesh>(null)
+  const necks = useRef<THREE.InstancedMesh>(null)
   const arms = useRef<THREE.InstancedMesh>(null)
   const heads = useRef<THREE.InstancedMesh>(null)
+  const lenses = useRef<THREE.InstancedMesh>(null)
   const pools = useRef<THREE.InstancedMesh>(null)
   const cones = useRef<THREE.InstancedMesh>(null)
   const halos = useMemo(() => {
@@ -98,26 +103,36 @@ export function StreetLights({ nav, night, dark }: { nav: Nav; night: boolean; /
     const m = new THREE.Matrix4()
     const q = new THREE.Quaternion()
     const yAxis = new THREE.Vector3(0, 1, 0)
+    const xAxis = new THREE.Vector3(1, 0, 0)
+    const one = new THREE.Vector3(1, 1, 1)
+    // The neck leans out and up from the top of the pole; the arm and the head tilt up a little, as they do.
+    const neckTilt = new THREE.Quaternion().setFromAxisAngle(xAxis, -0.75)
+    const armTilt = new THREE.Quaternion().setFromAxisAngle(xAxis, -0.08)
+    const at = (l: Lamp, fwd: THREE.Vector3, out: number, up: number) => new THREE.Vector3(l.x + fwd.x * out, l.y + up, l.z + fwd.z * out)
     shown.forEach((l, i) => {
       q.setFromAxisAngle(yAxis, l.rot)
       const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(q)
-      poles.current?.setMatrixAt(i, m.compose(new THREE.Vector3(l.x, l.y + 3.6, l.z), q, new THREE.Vector3(1, 1, 1)))
-      arms.current?.setMatrixAt(i, m.compose(new THREE.Vector3(l.x + fwd.x * 0.9, l.y + 7.1, l.z + fwd.z * 0.9), q, new THREE.Vector3(1, 1, 1)))
-      heads.current?.setMatrixAt(i, m.compose(new THREE.Vector3(l.x + fwd.x * 1.75, l.y + 6.95, l.z + fwd.z * 1.75), q, new THREE.Vector3(1, 1, 1)))
-      pools.current?.setMatrixAt(i, m.compose(new THREE.Vector3(l.x + fwd.x * 2.4, l.y + 0.08, l.z + fwd.z * 2.4), new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0)), new THREE.Vector3(1, 1, 1)))
-      // A lamp in a cut zone: its pool, halo and cone black (added light: nothing shows).
+      feet.current?.setMatrixAt(i, m.compose(at(l, fwd, 0, 0.3), q, one))
+      poles.current?.setMatrixAt(i, m.compose(at(l, fwd, 0, 3.6), q, one))
+      necks.current?.setMatrixAt(i, m.compose(at(l, fwd, 0.28, 7.42), q.clone().multiply(neckTilt), one))
+      arms.current?.setMatrixAt(i, m.compose(at(l, fwd, 1.15, 7.72), q.clone().multiply(armTilt), one))
+      heads.current?.setMatrixAt(i, m.compose(at(l, fwd, 2.05, 7.8), q.clone().multiply(armTilt), one))
+      lenses.current?.setMatrixAt(i, m.compose(at(l, fwd, 2.08, 7.71), q.clone().multiply(new THREE.Quaternion().setFromAxisAngle(xAxis, Math.PI / 2 - 0.08)), one))
+      pools.current?.setMatrixAt(i, m.compose(at(l, fwd, 2.4, 0.08), new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, l.rot)), one))
+      // A lamp in a cut zone: its lens, pool, halo and cone black (added light: nothing shows).
       const c = dark?.(l.x, l.z) ? OUT : l.led ? LED : SODIUM
       pools.current?.setColorAt(i, c)
-      // The halo, just under the lamp head.
-      const [hx, hy, hz] = [l.x + fwd.x * 1.75, l.y + 6.8, l.z + fwd.z * 1.75]
+      lenses.current?.setColorAt(i, night ? (dark?.(l.x, l.z) ? GLASS : c) : GLASS)
+      // The halo, round the lens.
+      const [hx, hy, hz] = [l.x + fwd.x * 2.08, l.y + 7.6, l.z + fwd.z * 2.08]
       halos.attributes.position.setXYZ(i, hx, hy, hz)
       halos.attributes.color.setXYZ(i, c.r, c.g, c.b)
       if (i < CONES) {
-        cones.current?.setMatrixAt(i, m.compose(new THREE.Vector3(hx, l.y + 3.45, hz), new THREE.Quaternion(), new THREE.Vector3(1, 1, 1)))
+        cones.current?.setMatrixAt(i, m.compose(new THREE.Vector3(hx, l.y + 3.8, hz), new THREE.Quaternion(), one))
         cones.current?.setColorAt(i, c)
       }
     })
-    for (const r of [poles, arms, heads, pools, cones]) {
+    for (const r of [feet, poles, necks, arms, heads, lenses, pools, cones]) {
       if (!r.current) continue
       r.current.count = r === cones ? Math.min(CONES, shown.length) : shown.length
       r.current.instanceMatrix.needsUpdate = true
@@ -127,36 +142,44 @@ export function StreetLights({ nav, night, dark }: { nav: Nav; night: boolean; /
     halos.attributes.color.needsUpdate = true
     halos.setDrawRange(0, shown.length)
     halos.computeBoundingSphere()
-  }, [shown, halos, dark])
+  }, [shown, halos, dark, night])
 
   const mats = useMemo(
     () => ({
+      foot: new THREE.MeshLambertMaterial({ color: '#a7a297' }),
       pole: new THREE.MeshLambertMaterial({ color: '#7b8088' }),
-      head: new THREE.MeshLambertMaterial({ color: '#d9dde2', emissive: '#ffd27a', emissiveIntensity: 0 }),
-      pool: new THREE.MeshBasicMaterial({ map: poolTexture(), color: '#ffffff', transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -6 }),
+      head: new THREE.MeshLambertMaterial({ color: '#c9ced4' }),
+      // The lens: lit by its own colour at night (sodium, LED), glass by day; never shaded.
+      lens: new THREE.MeshBasicMaterial({ color: '#ffffff', toneMapped: false, side: THREE.DoubleSide }),
+      pool: new THREE.MeshBasicMaterial({ map: poolTexture(), color: '#ffffff', transparent: true, opacity: 0.75, depthWrite: false, blending: THREE.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -6 }),
       halo: new THREE.PointsMaterial({ map: poolTexture(), size: 4.2, sizeAttenuation: true, vertexColors: true, transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending }),
       cone: new THREE.MeshBasicMaterial({ map: coneTexture(), transparent: true, opacity: 0.16, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false }),
     }),
     [],
   )
-  useEffect(() => {
-    mats.head.emissiveIntensity = night ? 1.6 : 0
-    mats.head.color.set(night ? '#fff2cc' : '#d9dde2')
-  }, [night, mats])
 
   return (
     <>
+      <instancedMesh ref={feet} args={[undefined, mats.foot, MAX]} frustumCulled={false}>
+        <boxGeometry args={[0.44, 0.6, 0.44]} />
+      </instancedMesh>
       <instancedMesh ref={poles} args={[undefined, mats.pole, MAX]} castShadow frustumCulled={false}>
-        <cylinderGeometry args={[0.09, 0.14, 7.2, 6]} />
+        <cylinderGeometry args={[0.075, 0.15, 7.2, 8]} />
+      </instancedMesh>
+      <instancedMesh ref={necks} args={[undefined, mats.pole, MAX]} frustumCulled={false}>
+        <boxGeometry args={[0.09, 0.09, 0.75]} />
       </instancedMesh>
       <instancedMesh ref={arms} args={[undefined, mats.pole, MAX]} frustumCulled={false}>
-        <boxGeometry args={[0.1, 0.1, 1.9]} />
+        <boxGeometry args={[0.09, 0.09, 1.3]} />
       </instancedMesh>
-      <instancedMesh ref={heads} args={[undefined, mats.head, MAX]} frustumCulled={false}>
-        <boxGeometry args={[0.38, 0.16, 0.75]} />
+      <instancedMesh ref={heads} args={[undefined, mats.head, MAX]} castShadow frustumCulled={false}>
+        <boxGeometry args={[0.44, 0.17, 0.92]} />
+      </instancedMesh>
+      <instancedMesh ref={lenses} args={[undefined, mats.lens, MAX]} frustumCulled={false}>
+        <planeGeometry args={[0.4, 0.78]} />
       </instancedMesh>
       <instancedMesh ref={pools} args={[undefined, mats.pool, MAX]} visible={night} frustumCulled={false}>
-        <circleGeometry args={[5.5, 20]} />
+        <circleGeometry args={[6, 24]} />
       </instancedMesh>
       <points geometry={halos} material={mats.halo} visible={night} frustumCulled={false} />
       <instancedMesh ref={cones} args={[undefined, mats.cone, CONES]} visible={night} frustumCulled={false}>
