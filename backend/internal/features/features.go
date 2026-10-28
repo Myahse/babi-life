@@ -95,6 +95,9 @@ var List = []Feature{
 // OpeningID is the game's opening to everyone, set like an update.
 const OpeningID = "ouverture"
 
+// OpeningDefault is when the game opens if the admin hasn't set it: Wednesday 28 October 2026, 21:30 in Abidjan.
+var OpeningDefault = time.Date(2026, 10, 28, 21, 30, 0, 0, time.UTC)
+
 // Find is the update of that ID.
 func Find(id string) (Feature, bool) {
 	i := slices.IndexFunc(List, func(f Feature) bool { return f.ID == id })
@@ -152,6 +155,11 @@ func (s *Store) states(ctx context.Context) map[string]State {
 		if rows.Scan(&id, &v.Open, &v.OpensAt, &v.OpenedAt) == nil {
 			next[id] = v
 		}
+	}
+	// The launch: tonight at 21:30 in Abidjan (UTC), unless the admin has set it otherwise.
+	if _, set := next[OpeningID]; !set {
+		at := OpeningDefault
+		next[OpeningID] = State{OpensAt: &at}
 	}
 	s.mu.Lock()
 	s.state, s.loaded = next, time.Now()
