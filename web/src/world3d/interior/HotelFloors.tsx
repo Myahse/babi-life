@@ -270,7 +270,7 @@ export function Upstairs({ sim, stage, look, view, floor, room, rooms, roomType,
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
         </mesh>
       )}
-      <Guest sim={sim} stage={stage} way={way} spot={spot} steer={!interactionId} onMoved={onMoved} free={free} entrance={entrance} look={spot?.pose === 'wash' ? { ...sim.look, outfit: 'serviette', accessory: 'none' } : undefined}>
+      <Guest sim={sim} stage={stage} way={way} spot={spot} steer={!interactionId} onMoved={onMoved} free={free} entrance={entrance} look={spot?.pose === 'wash' || interactionId === 'chambre-bain' ? { ...sim.look, outfit: 'serviette', accessory: 'none' } : undefined}>
         <ActionProps id={interactionId} kind="room" lying={!!spot?.lying} bath={roomType !== 'standard'} />
         {/* The TV across from the bed, on; the Z… z… of the sleeper (back upright, from the lying frame) */}
         {interactionId === 'chambre-tele' && (

@@ -1174,7 +1174,8 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
   // At the hairdresser's: the cap comes off.
   // At work: in the job's uniform.
   const look =
-    act.spot === 'shower' && interactionId === 'shower'
+    // (Every shower: at home, the rented flat's, the gym's changing room; not the ablutions before prayer.)
+    act.pose === 'wash' && !byFaith
       ? { ...sim.look, outfit: 'serviette', accessory: 'none' }
       : act.spot === 'chair' && (kind === 'barbier' || kind === 'salon')
         ? { ...sim.look, accessory: 'none' }
