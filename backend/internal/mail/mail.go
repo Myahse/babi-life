@@ -31,6 +31,8 @@ type Message struct {
 	To, Name, Subject, Text, HTML string
 	// Tag: what kind of e-mail (Brevo's statistics sort by it).
 	Tag string
+	// Unsubscribe: a news e-mail's « ne plus recevoir » link (the List-Unsubscribe header too).
+	Unsubscribe string
 }
 
 // Sender sends a Message (Brevo, SMTP, or the log in development).
@@ -93,6 +95,9 @@ func (b *Brevo) Send(ctx context.Context, m Message) error {
 	}
 	if m.Tag != "" {
 		body["tags"] = []string{m.Tag}
+	}
+	if m.Unsubscribe != "" {
+		body["headers"] = map[string]string{"List-Unsubscribe": "<" + m.Unsubscribe + ">"}
 	}
 	raw, _ := json.Marshal(body)
 	api := b.API

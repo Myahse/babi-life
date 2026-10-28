@@ -24,6 +24,8 @@ type Page struct {
 	Tagline            string
 	Paragraphs         []string
 	Button, Link, Note string
+	// Footer: why the person gets it (an account's e-mail by default); Unsubscribe: the news e-mails' way out.
+	Footer, Unsubscribe string
 }
 
 // Render: the HTML and the plain text of a page.
@@ -44,6 +46,9 @@ func (p Page) Render() (htmlBody, text string, err error) {
 		t.WriteString(p.Note + "\n\n")
 	}
 	t.WriteString("À tout de suite dans Babi !\n" + p.Site + "\n")
+	if p.Unsubscribe != "" {
+		t.WriteString("\nNe plus recevoir ces e-mails : " + p.Unsubscribe + "\n")
+	}
 	return b.String(), t.String(), nil
 }
 

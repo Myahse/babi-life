@@ -314,7 +314,14 @@ func main() {
 		go politicsH.Watch(ctx, time.Minute)
 		// The campaign's posters on the boards, as public as the ads (politics/presidency.go).
 		r.Get("/politics/affiches", politicsH.Posters)
-		(&admin.Handler{DB: pool, WA: &admin.WhatsApp{Token: os.Getenv("WHATSAPP_TOKEN"), PhoneID: os.Getenv("WHATSAPP_PHONE_ID"), API: os.Getenv("WHATSAPP_API")}, Ideas: ideasH}).Routes(r)
+		// E-mails of news from /admin (Brevo, like « mot de passe oublié »), with their « ne plus recevoir » link here.
+		emails := &admin.Emails{Mail: authH.Mail, Site: authH.SiteURL, API: shopH.API, Secret: []byte(cfg.JWTSecret)}
+		if _, dev := authH.Mail.(mail.Log); dev && emails.API == "" {
+			emails.API = "http://localhost:" + cfg.Port
+		}
+		adminH := &admin.Handler{DB: pool, WA: &admin.WhatsApp{Token: os.Getenv("WHATSAPP_TOKEN"), PhoneID: os.Getenv("WHATSAPP_PHONE_ID"), API: os.Getenv("WHATSAPP_API")}, Ideas: ideasH, Mail: emails}
+		adminH.Routes(r)
+		r.Get("/mail/stop", adminH.MailStop)
 		// Moderation of Gbairai's reports (MODERATION_KEY).
 		mod := &sims.Moderation{H: simsH, Key: os.Getenv("MODERATION_KEY")}
 		r.Get("/moderation/reports", mod.Reports)

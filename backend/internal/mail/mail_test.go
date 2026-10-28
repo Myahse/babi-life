@@ -55,3 +55,27 @@ func TestBrevo(t *testing.T) {
 		t.Error("an error from Brevo is an error")
 	}
 }
+
+func TestNews(t *testing.T) {
+	tpl, ok := FindTemplate("sortie")
+	if !ok {
+		t.Fatal("no « sortie » model")
+	}
+	m, err := News("https://www.lifeinbabi.com", tpl, "awa@example.com", "Awa", "https://api.example.com/api/v1/mail/stop?e=x&t=y")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"Bonjour Awa,", "https://www.lifeinbabi.com/jeu", "Ne plus recevoir ces e-mails", "mail/stop?e=x&amp;t=y"} {
+		if !strings.Contains(m.HTML, want) {
+			t.Errorf("HTML lacks %q", want)
+		}
+	}
+	if strings.Contains(m.Text, "{prénom}") || !strings.Contains(m.Text, "Bonjour Awa,") {
+		t.Errorf("text not named: %q", m.Text[:80])
+	}
+	// No first name: the greeting without a gap.
+	m, _ = News("https://www.lifeinbabi.com", tpl, "x@example.com", "", "")
+	if !strings.Contains(m.Text, "Bonjour,") || strings.Contains(m.HTML, "Ne plus recevoir") {
+		t.Errorf("unnamed greeting or a stray link: %q", m.Text[:60])
+	}
+}

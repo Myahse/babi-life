@@ -1,6 +1,7 @@
 // Package admin is the API of the /admin page (web/src/screens/Admin.tsx),
 // behind ADMIN_KEY: the players' accounts, the activity log, announcements
-// to every Sim, and WhatsApp messages to the wish list (whatsapp.go).
+// to every Sim, WhatsApp messages to the wish list (whatsapp.go) and e-mails
+// of news (email.go).
 package admin
 
 import (
@@ -28,6 +29,8 @@ import (
 type Handler struct {
 	DB *pgxpool.Pool
 	WA *WhatsApp
+	// E-mails of news (email.go); nil: not set up.
+	Mail *Emails
 	// The players' ideas (the phone's Idées app): read and answered here.
 	Ideas *ideas.Handler
 }
@@ -55,6 +58,11 @@ func (h *Handler) Routes(r chi.Router) {
 		r.Post("/whatsapp", h.waSend)
 		r.Post("/whatsapp/{id}/stop", h.waStop)
 		r.Post("/whatsapp/optout", h.waOptout)
+		r.Get("/email", h.mailStatus)
+		r.Post("/email/preview", h.mailPreview)
+		r.Post("/email", h.mailSend)
+		r.Post("/email/{id}/stop", h.mailStop)
+		r.Post("/email/optout", h.mailOptout)
 		r.Get("/features", h.features)
 		r.Post("/features/{id}", h.setFeature)
 		r.Get("/casino", h.casino)
