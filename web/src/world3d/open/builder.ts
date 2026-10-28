@@ -9,10 +9,14 @@ export class Builder {
   nor: number[] = []
   col: number[] = []
   idx: number[] = []
+  /** The building being added (its middle x, z and how far its outline reaches): every vertex carries it (lotClip.ts). */
+  tag: [number, number, number] | null = null
+  bc: number[] = []
   vertex(x: number, y: number, z: number, u: number, v: number, n: [number, number, number], c?: THREE.Color, a = 1) {
     this.pos.push(x, y, z)
     this.uv.push(u, v)
     this.nor.push(...n)
+    if (this.tag) this.bc.push(...this.tag)
     if (c) {
       this.col.push(c.r, c.g, c.b)
       if (this.alpha) this.col.push(a)
@@ -135,6 +139,7 @@ export class Builder {
     g.setAttribute('uv', new THREE.Float32BufferAttribute(this.uv, 2))
     g.setAttribute('normal', new THREE.Float32BufferAttribute(this.nor, 3))
     if (this.col.length) g.setAttribute('color', new THREE.Float32BufferAttribute(this.col, this.alpha ? 4 : 3))
+    if (this.bc.length && this.bc.length === this.pos.length) g.setAttribute('lotBc', new THREE.Float32BufferAttribute(this.bc, 3))
     g.setIndex(this.idx)
     g.computeBoundingSphere()
     return g
