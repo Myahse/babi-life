@@ -135,12 +135,16 @@ type Props = {
   homeSpot?: HomeSpot
   /** Inside a place (doing something there): not drawn in the street. */
   hidden?: boolean
+  /** Setting a lot in the world (store/lotPlace.ts): the camera up over the quarter, a drag slides it, a tap walks nowhere. */
+  aerial?: boolean
   /** Joined in what's happening in the street: its spot there (world frame), what it faces, its pose. */
   joinRole?: { at: XZ; face: XZ; pose: Pose; /** On the move with the scene (the wedding cortège): its place in it at a time, and the way it goes. */ move?: (t: number) => { at: XZ; heading: number } } | null
 }
 
 /** The player's Sim: walks to places, with the pad or by tapping the ground; the camera follows. */
-export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy, stationAt, nameTag, labels, onNear, frozen, onLeave, recenter, onFreeCamera, perspective, close, shoulder, homeSpot, hidden, joinRole }: Props) {
+export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy, stationAt, nameTag, labels, onNear, frozen, onLeave, recenter, onFreeCamera, perspective, close: closeView, shoulder, homeSpot, hidden, joinRole, aerial }: Props) {
+  // Setting a lot: the view from above, whatever view the player had.
+  const close = !!closeView && !aerial
   const group = useRef<THREE.Group>(null)
   // At work out in the street (the gare), a task done (gesture.ts): its gesture a moment.
   const gestureNow = useGesture()
@@ -338,6 +342,33 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     controls.update()
     setFree(false)
   }, [close, shoulder, controls]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Setting a lot: the camera glides up over the quarter and stays where the player slides it;
+  // done, it comes back down to where it was, and follows the Sim again.
+  const aerialWas = useRef<THREE.Vector3 | null>(null)
+  const glide = useRef<THREE.Vector3 | null>(null)
+  useEffect(() => {
+    if (!controls) return
+    if (aerial) {
+      aerialWas.current = camera.position.clone().sub(controls.target)
+      const off = aerialWas.current.clone().setY(0)
+      if (off.lengthSq() < 1) off.set(0, 0, 1)
+      glide.current = off.setLength(46).setY(64)
+      setFree(true)
+    } else if (aerialWas.current) {
+      // (Back to the close view: the switch of views above puts the camera behind the Sim.)
+      glide.current = closeView ? null : aerialWas.current
+      aerialWas.current = null
+      setFree(false)
+    }
+  }, [aerial, controls]) // eslint-disable-line react-hooks/exhaustive-deps
+  useFrame((_, dt) => {
+    const off = glide.current
+    if (!off || !controls) return
+    const want = controls.target.clone().add(off)
+    camera.position.lerp(want, 1 - Math.exp(-4 * Math.min(dt, 0.1)))
+    if (camera.position.distanceTo(want) < 0.3) glide.current = null
+    controls.update()
+  })
   useEffect(() => {
     if (!controls) return
     const start = () => (gesture.current = true)
@@ -636,7 +667,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       if (path.current.length) setRoute(null)
       path.current = []
       target.current = null
-      if (free.current) setFree(false)
+      if (free.current && !aerial) setFree(false)
       const fwd = new THREE.Vector3(controls ? controls.target.x - camera.position.x : -1, 0, controls ? controls.target.z - camera.position.z : -1).normalize()
       const right = new THREE.Vector3(-fwd.z, 0, fwd.x)
       const dir = right.multiplyScalar(input.x).add(fwd.multiplyScalar(input.y)).normalize()
@@ -1343,7 +1374,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         rotation={[-Math.PI / 2, 0, 0]}
         position={[0, 0.3, 0]}
         onClick={(e) => {
-          if (e.delta > 6 || e.intersections[0]?.object !== e.object) return
+          if (aerial || e.delta > 6 || e.intersections[0]?.object !== e.object) return
           walkToPoint(e.point.x, e.point.z)
         }}
       >

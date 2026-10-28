@@ -27,6 +27,8 @@ import { rng } from '../themes'
 import { lotAt } from './lotSpot'
 import { APPRENTI, CAR_COLORS, GBAKA_DOOR, Vehicle, type VehicleKind } from '../vehicles'
 import { Walker, type WalkNav } from '../Walker'
+import { LotGhost } from './lotGhost'
+import { useLotPlace } from '../../store/lotPlace'
 import { homeSpotsOf } from '../homeSpots'
 import { LotGround, Zones } from '../build/Zones'
 import { LotFence, fenceRuns, ownerColor } from '../build/Fence'
@@ -489,6 +491,12 @@ function useMaterials(night: boolean, hour: number) {
 
 function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, indoors, nameTag, onNear, frozen, onLeave, delivery, onCollect, players, onPickPlayer, recenter, onFreeCamera, closeView, shoulderView, token, onFail, onLoaded, onStreetBuy, onRobbed, onTalk, talkingTo, plotsVersion, onMapPlaces, onHomeSpots, onHomePlot, parties }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void; onLoaded?: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void; onHomePlot?: (plot: Plot | undefined) => void }) {
   const origin = useMemo<Origin>(() => ({ lat: commune.lat, lng: commune.lng }), [commune.lat, commune.lng])
+  // A lot set in the 3D world (store/lotPlace.ts): here, in this commune.
+  const placing = useLotPlace((s) => s.placing)
+  useEffect(() => {
+    useLotPlace.setState({ shown: commune.id })
+    return () => useLotPlace.setState({ shown: null, placing: null, ghost: null })
+  }, [commune.id])
   const cityCommunes = useMemo(() => world.cities.find((c) => c.communes.some((m) => m.id === commune.id))?.communes ?? [commune], [world.cities, commune])
   // The landmarks seen from the whole city (the Tour F), where they stand in this commune's metres:
   // drawn far off while their own lot isn't (another commune, or its streets not loaded yet).
@@ -1548,8 +1556,30 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       {nav.nodes.length > 0 && <Passersby nav={nav} focus={focus} seed={commune.id} onTalk={onTalk} talkingTo={talkingTo} />}
       {players && players.length > 0 && <OtherPlayers players={players} lots={walkLots} labels={labels} onPick={(id) => onPickPlayer?.(id)} />}
 
+      {placing && nav.nodes.length > 0 && (
+        <LotGhost
+          nav={nav}
+          origin={origin}
+          w={placing.w}
+          d={placing.d}
+          resolve={(at) => {
+            const clear = Math.max(PLOT_CLEAR, Math.hypot(placing.w, placing.d) / 2 + 3)
+            for (const c of chunks.values()) {
+              const { key, box } = c.data
+              if (key.includes(':') || at[0] < box.x0 || at[0] >= box.x1 || at[1] < box.z0 || at[1] >= box.z1) continue
+              return resolvePlaces(c.data, [{ id: 'ghost', kind: 'plot', at, landmark: clear }])[0] ?? null
+            }
+            return null
+          }}
+          others={[...resolved.values()].filter((r) => (r.id.startsWith('plot:') || r.id === HOME_ID) && clears.has(r.id) && r.id !== `plot:${placing.moving}`).map((r) => ({ at: r.center, r: clears.get(r.id)! }))}
+          seeds={spots.filter((x) => x.kind === 'plot' && x.id !== `plot:${placing.moving}`).map((x) => x.at)}
+          named={spots.filter((x) => x.name && x.kind !== 'plot' && x.kind !== 'soiree' && x.id !== HOME_ID).map((x) => ({ name: x.name, at: x.at }))}
+          onGhost={(ghost) => useLotPlace.setState({ ghost })}
+        />
+      )}
       {ready && (
         <Walker
+          aerial={!!placing}
           hidden={indoors}
           perspective
           close={!!closeView}

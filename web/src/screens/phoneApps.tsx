@@ -4,6 +4,7 @@ import { BadgeCheck, CalendarClock, Hammer, LandPlot, Clock3, Footprints, House,
 import { api, type LotWhere } from '../lib/api'
 import { CommunePicker, LotOffers } from '../components/Lots'
 import { LotMap, lotMapReady } from '../components/LotMap'
+import { useLotPlace } from '../store/lotPlace'
 import { keyOpen, useFeatures } from '../lib/features'
 import type { ActionResult, Commune, Plot, Sim, World } from '../lib/types'
 import { iconFor, kindColors } from '../components/icons'
@@ -302,7 +303,24 @@ function MyLot({ world, sim, act, onBuild, onWalk, onMap }: { world: World; sim:
   const buy = (size: string, label: string, where: LotWhere, upgrade?: number, spot?: { lat: number; lng: number }) => act(label, 'land-plot', 'home', () => api.buyLot(sim.id, size, where, upgrade, spot))
   // An empty lot set somewhere else on the map (an update: lot-carte).
   const [moving, setMoving] = useState<Plot | null>(null)
-  const lotMap = keyOpen(useFeatures(), 'lot-carte') && lotMapReady()
+  const lotMap = keyOpen(useFeatures(), 'lot-carte')
+  // The commune seen in 3D: an empty lot is moved right there, in the world (else on the map).
+  const shown = useLotPlace((s) => s.shown)
+  const move = (p: Plot) => {
+    const lot = p.lot!
+    if (shown !== lot.commune || sim.city !== lot.city || sim.commune !== lot.commune) return lotMapReady() ? setMoving(p) : undefined
+    useLotPlace.getState().start({
+      w: lot.w,
+      d: lot.d,
+      label: 'Mettre mon terrain ici',
+      moving: p.key,
+      onPick: async (spot) => {
+        const ok = await act('Déplacer le terrain', 'land-plot', 'home', () => api.moveLot(sim.id, p.id, spot.lat, spot.lng))
+        if (ok) setVersion((v) => v + 1)
+        return ok
+      },
+    })
+  }
   const has = !!lots?.length
   return (
     <section className="rounded-[20px] bg-[#eef8f1] p-3">
@@ -355,7 +373,7 @@ function MyLot({ world, sim, act, onBuild, onWalk, onMap }: { world: World; sim:
                 </button>
               )}
               {lotMap && !built && !building(p) && (
-                <button className="rounded-full bg-[var(--color-canvas)] px-3 py-1.5 text-xs font-extrabold" onClick={() => setMoving(p)}>
+                <button className="rounded-full bg-[var(--color-canvas)] px-3 py-1.5 text-xs font-extrabold" onClick={() => move(p)}>
                   <MapPin size={13} className="mr-1 inline" /> Déplacer
                 </button>
               )}

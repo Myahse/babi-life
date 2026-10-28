@@ -49,6 +49,7 @@ import { LudoApp } from './LudoApp'
 import { HuitApp } from './HuitApp'
 import { BingoApp } from './BingoApp'
 import { CasinoApp } from './CasinoApp'
+import { GodeApp } from './GodeApp'
 import { RideFlow, type FlowRequest } from '../components/RideFlow'
 import { INDOOR, Interior, SCENES } from '../world3d/Interior'
 import { HomeInside } from '../world3d/HomeInside'
@@ -114,6 +115,8 @@ import { FeatureNews } from '../components/FeatureNews'
 import { Sheet } from '../components/Sheet'
 import { Splash } from '../components/Splash'
 import { Helper } from '../components/Helper'
+import { LotPlaceHud } from '../components/LotPlaceHud'
+import { useLotPlace } from '../store/lotPlace'
 const IvoireInside = lazy(() => import('../world3d/interior/IvoireInside').then((m) => ({ default: m.IvoireInside })))
 const CathedralInside = lazy(() => import('../world3d/interior/CathedralInside').then((m) => ({ default: m.CathedralInside })))
 const MosqueM6Inside = lazy(() => import('../world3d/interior/MosqueM6Inside').then((m) => ({ default: m.MosqueM6Inside })))
@@ -839,6 +842,15 @@ export function Play() {
   }, [dodoStay?.type, dodoStay?.seed, dodoStay?.lot, hostPlot, world]) // eslint-disable-line react-hooks/exhaustive-deps
   // Building on one of the Sim's lots (its id; 0: the one lived in, else the first), or not.
   const [building, setBuilding] = useState<number | false>(false)
+  // A lot being set in the 3D world (store/lotPlace.ts): the phone and the rest put away, the world seen from above.
+  const placingLot = useLotPlace((s) => !!s.placing)
+  useEffect(() => {
+    if (!placingLot) return
+    setOverlay(null)
+    setPhoneApp(null)
+    setPlaceId(null)
+    setBuilding(false)
+  }, [placingLot])
   // Arrived at one of one's lots (« plot:<key> »): building on that one; someone else's lot has nothing to do.
   const buildAt = async (key: string) => {
     if (key !== sim?.id && !key.startsWith(`${sim?.id}:`)) return
@@ -1560,6 +1572,7 @@ export function Play() {
         />
       )}
       {/* At the wheel: the pedals, the wheel, the speed, and to park */}
+      {placingLot && <LotPlaceHud />}
       {driven && <DriveHud driven={driven} onPark={park} onWhere={() => setWhereTo(true)} onParkAt={(id) => (park(), walkTo(id))} />}
       {/* Its vehicle parked near: get back in */}
       {!driven && !showInside && !placeId && !overlay && !sim.activity && <GetIn simId={sim.id} commune={commune.id} />}
@@ -1687,7 +1700,7 @@ export function Play() {
 
 /* ---------- The in-game phone ---------- */
 
-type PhoneAppId = 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'bingo' | 'casino' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'awale' | 'ludo' | 'bolide' | 'jeux' | 'boutique' | 'idees' | 'politique'
+type PhoneAppId = 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'bingo' | 'casino' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'awale' | 'ludo' | 'gode' | 'bolide' | 'jeux' | 'boutique' | 'idees' | 'politique'
 type PhoneProps = {
   world: World
   sim: Sim
@@ -1779,6 +1792,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
     ...(has('parisfoot') ? [{ id: 'parisfoot', label: 'ParisFoot', open: () => setApp('parisfoot') }] : []),
     ...(has('bingo') ? [{ id: 'bingo', label: 'Babi Bingo', open: () => setApp('bingo') }] : []),
     ...(has('casino') ? [{ id: 'casino', label: 'Babi Casino', open: () => setApp('casino') }] : []),
+    ...(has('gode') ? [{ id: 'gode', label: 'Godé', open: () => setApp('gode') }] : []),
     ...(has('golvo') ? [{ id: 'golvo', label: 'Golvo', open: () => setApp('golvo') }] : []),
     ...(has('dodo') ? [{ id: 'dodo', label: 'Dodo', open: () => setApp('dodo') }] : []),
     ...(has('kineo') ? [{ id: 'kineo', label: 'Kinéo', open: () => setApp('kineo') }] : []),
@@ -1816,7 +1830,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
   ).filter((a) => !life.minor || (a.id !== 'jobs' && a.id !== 'home'))
   // The dock: the map, the messages, the friends, the camera (when the phone is one's own; else the games).
   const DOCK = ['map', 'messages', 'friends', ownPhone ? 'camera' : 'jeux']
-  const title: Record<PhoneAppId, string> = { bingo: 'Babi Bingo', casino: 'Babi Casino', here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', babigram: 'Babigram', bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: 'Galerie', guide: 'Encyclopédie de Babi', dodo: 'Dodo', kineo: 'Kinéo', dames: 'Dames 225', huit: '8 américain', awale: 'Awalé 225', ludo: 'Ludo 225', bolide: 'Bolide', jeux: 'Jeux', boutique: 'Boutique', idees: 'Tes idées pour Babi Life', politique: 'Politique' }
+  const title: Record<PhoneAppId, string> = { bingo: 'Babi Bingo', casino: 'Babi Casino', here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Golvo', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', babigram: 'Babigram', bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: 'Galerie', guide: 'Encyclopédie de Babi', dodo: 'Dodo', kineo: 'Kinéo', dames: 'Dames 225', huit: '8 américain', awale: 'Awalé 225', ludo: 'Ludo 225', gode: 'Godé', bolide: 'Bolide', jeux: 'Jeux', boutique: 'Boutique', idees: 'Tes idées pour Babi Life', politique: 'Politique' }
 
   return (
     <div className="absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center" onClick={onClose}>
@@ -1990,6 +2004,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                 {(app === 'bet225' || app === 'parisfoot') && <BetApp sim={sim} act={act} app={app} />}
                 {app === 'bingo' && <BingoApp world={world} sim={sim} act={act} onConfirmAdult={onConfirmAdult} />}
                 {app === 'casino' && <CasinoApp world={world} sim={sim} act={act} onConfirmAdult={onConfirmAdult} />}
+                {app === 'gode' && <GodeApp sim={sim} act={act} onConfirmAdult={onConfirmAdult} />}
                 {app === 'golvo' && <GolvoApp world={world} sim={sim} delivery={delivery} onOrder={onDelivery} onCancel={() => onDelivery(null)} onCollect={onCollect} />}
               </div>
               {/* The home bar: a tap goes back to the home screen. */}

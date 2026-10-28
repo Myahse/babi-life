@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView, LotSpot } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView, LotSpot, GodeRound } from './types'
 import { useSession } from '../store/session'
 import { keepData, keptData, OFFLINE_TEXT, setOnline } from './offline'
 
@@ -469,6 +469,9 @@ export const api = {
   historique: (id: string, jeu: string, avant?: string) => request<Historique>(`/sims/${id}/historique?jeu=${jeu}${avant ? `&avant=${encodeURIComponent(avant)}` : ''}`),
   buyBingo: (id: string, game: string, cards: number, stake: number) => post<ActionResult>(`/sims/${id}/bingo`, { game, cards, stake }),
   bingoPay: (id: string) => post<ActionResult>(`/sims/${id}/bingo/paye`, {}),
+  /** Le godé (backend sims/gode.go): the round going on (or the last); start one with a stake, throw, call « grand » or « petit ». */
+  gode: (id: string) => request<{ round: GodeRound | null }>(`/sims/${id}/gode`),
+  godePlay: (id: string, action: 'start' | 'throw' | 'call', stake = 0, call = '') => post<ActionResult>(`/sims/${id}/gode`, { action, stake, call }),
   /** Babi Casino (backend sims/casino.go): a spin of the roulette, le 21 (the hand going on; a move), a ticket à gratter. */
   roulette: (id: string, bets: RouletteBet[]) => post<ActionResult>(`/sims/${id}/casino/roulette`, { bets }),
   blackjack: (id: string) => request<{ hand: BlackjackView | null }>(`/sims/${id}/casino/21`),

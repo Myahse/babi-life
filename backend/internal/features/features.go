@@ -56,6 +56,7 @@ var List = []Feature{
 	{ID: "app-dames", Label: "Dames 225", About: "Le jeu de dames contre les gens du quartier ou un ami.", Keys: []string{"app:dames"}},
 	{ID: "app-huit", Label: "8 américain", About: "Le jeu de cartes, contre le quartier ou entre amis.", Keys: []string{"app:huit"}},
 	{ID: "app-awale", Label: "Awalé 225", About: "L'awalé sur le téléphone, contre l'ordinateur à trois niveaux, sans mise.", Keys: []string{"app:awale"}},
+	{ID: "app-gode", Label: "Godé", About: "Le dé du maquis sur le téléphone : un dé chacun, « mon grand » ou « mon petit », on mise à chaque manche contre les gars du quartier (18 ans et plus).", Keys: []string{"app:gode"}},
 	{ID: "app-ludo", Label: "Ludo 225", About: "Le Ludo sur le téléphone, à deux ou à quatre contre l'ordinateur, sans mise.", Keys: []string{"app:ludo"}},
 	{ID: "app-bet225", Label: "Bet225", About: "Les paris sur les matchs du jeu (18 ans et plus).", Keys: []string{"app:bet225"}},
 	{ID: "app-parisfoot", Label: "ParisFoot", About: "L'autre appli de paris, ses cotes et ses combinés (18 ans et plus).", Keys: []string{"app:parisfoot"}},
@@ -73,7 +74,7 @@ var List = []Feature{
 	{ID: "boutiques", Label: "Les boutiques de vêtements et la garde-robe", About: "Au centre commercial et chez les vendeuses de wax du marché : près de 60 pièces de marques d'ici (Babi Denim, Kôrô Wear, Wax d'Adjamé, Bogolan & Co…) à essayer et acheter une par une, rangées dans ta garde-robe.", Interactions: []string{"boutique-mode", "boutique-wax"}},
 	{ID: "traverser", Label: "Aider les anciens à traverser", About: "Au bord des rues, une maman ou un vieux père attend pour traverser et te demande un coup de main : vous traversez ensemble.", Interactions: []string{"street-traverser"}},
 	{ID: "parler-libre", Label: "Parler librement aux gens", About: "Dans la discussion avec un passant, tu tapes ce que tu veux comme dans une vraie conversation, et il te répond avec ses propres mots, dans son personnage (son métier, son quartier, votre entente).", Note: "Il faut la clé NPC_CHAT_KEY sur Render (Groq, gratuit).", Keys: []string{"chat-libre"}},
-	{ID: "lot-carte", Label: "Choisir son terrain sur la carte", About: "Quand tu achètes un terrain, tu choisis toi-même l'endroit sur la carte de la commune : tu déplaces la carte sous l'épingle, tu vois la taille du terrain et ceux des voisins, et ta maison sera bâtie là. Un terrain encore vide se déplace aussi.", Keys: []string{"lot-carte"}},
+	{ID: "lot-carte", Label: "Choisir son terrain dans la ville", About: "Quand tu achètes un terrain dans la commune où tu es, la caméra monte au-dessus du quartier et ton terrain apparaît dans la ville en 3D, au bord de la rue : tu fais glisser la vue, il passe au vert là où c'est libre, au rouge sur la route, dans l'eau, sur une maison ou chez un voisin, et ta maison sera bâtie exactement là. Pour une autre commune, tu choisis sur la carte. Un terrain encore vide se déplace aussi.", Keys: []string{"lot-carte"}},
 	{ID: "table", Label: "Les gens viennent te parler dans les lieux", About: "« Je peux m'asseoir à ta table ? » au resto ou au bar (tu acceptes et vous causez, ou tu refuses poliment), et au travail les clients qui viennent te demander de l'aide.", Keys: []string{"table"}},
 }
 

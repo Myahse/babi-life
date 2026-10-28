@@ -7,6 +7,7 @@ import { amount } from '../game/rules'
 import { aCommune, capital } from '../lib/french'
 import { keyOpen, useFeatures } from '../lib/features'
 import { LotMap } from './LotMap'
+import { useLotPlace } from '../store/lotPlace'
 
 /**
  * The lots for sale (sims/plot.go): 150 to 600 m², priced by the m² of the
@@ -24,6 +25,9 @@ export function LotOffers({ sim, buy, onLoaded, version = 0 }: { sim: Sim; buy: 
   // A new lot: where it goes, picked on the map first (an update: lot-carte).
   const onMap = keyOpen(useFeatures(), 'lot-carte')
   const [placing, setPlacing] = useState<LotOffer | null>(null)
+  // The commune the Sim is in, seen in 3D: the lot is set right there, in the world.
+  const shown = useLotPlace((s) => s.shown)
+  const inWorld = shown === where.commune && sim.city === where.city && sim.commune === where.commune
   const load = () =>
     api
       .lots(sim.id, where)
@@ -55,6 +59,20 @@ export function LotOffers({ sim, buy, onLoaded, version = 0 }: { sim: Sim; buy: 
           className="btn shrink-0 !px-3 !py-2 !text-sm"
           disabled={!!busy || sim.money < o.payable}
           onClick={async () => {
+            if (onMap && !o.upgrade && inWorld) {
+              const label = `Terrain de ${o.area} m²`
+              return useLotPlace.getState().start({
+                w: o.w,
+                d: o.d,
+                price: o.payable,
+                label: `Acheter ici · ${amount(o.payable)} Djai`,
+                onPick: async (spot) => {
+                  const ok = await buy(o.id, label, where, 0, spot)
+                  if (ok) await load()
+                  return ok
+                },
+              })
+            }
             if (onMap && !o.upgrade) return setPlacing(o)
             setBusy(k)
             if (await buy(o.id, o.upgrade ? `Agrandir le terrain : ${o.area} m²` : `Terrain de ${o.area} m²`, where, o.upgrade)) await load()

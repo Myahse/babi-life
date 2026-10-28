@@ -433,20 +433,20 @@
   from { transform: scale(0); }
 }
 
-/* The lots on the map where one picks a spot (components/LotMap.tsx): a neighbour's, one's own */
-.lot-mark {
-  width: 16px;
-  height: 16px;
-  border-radius: 5px;
-  background: #8a8f99;
-  border: 2px solid #fff;
-  box-shadow: 0 2px 6px rgb(0 0 0 / 0.35);
+/* Le godé (screens/GodeApp.tsx): the godet shaken on the table, the die landing when it lifts */
+.gode-shake {
+  animation: gode-shake 0.18s ease-in-out infinite;
 }
-.lot-mark.mine {
-  width: auto;
-  height: auto;
-  padding: 2px 7px;
-  background: var(--color-emerald);
-  color: #fff;
-  font: 800 11px var(--font-sans);
+@keyframes gode-shake {
+  0%, 100% { transform: translate(0, 0) rotate(0); }
+  25% { transform: translate(-7px, -4px) rotate(-9deg); }
+  75% { transform: translate(7px, -2px) rotate(8deg); }
+}
+.gode-land {
+  animation: gode-land 0.55s var(--ease-spring) both;
+}
+@keyframes gode-land {
+  0% { transform: translateY(-26px) rotate(-120deg) scale(0.6); opacity: 0; }
+  60% { transform: translateY(3px) rotate(8deg) scale(1.08); opacity: 1; }
+  100% { transform: none; }
 }
