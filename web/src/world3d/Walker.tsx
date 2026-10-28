@@ -22,6 +22,7 @@ import { usePhotoMode } from './photoCam'
 import { emoteNow, stopEmote, useEmote } from './emoteNow'
 import { Swimmer } from './Swimmer'
 import { Pram } from './Pram'
+import { NeedsAura } from './NeedsAura'
 import { Bicycle, Vehicle, type CarModel } from './vehicles'
 import { HANDLING, drive, driving, getIn, gps, nextTurn, onWay, parkIn, setParked, useDriving } from './drive'
 import { report } from './open/trafficFlow'
@@ -1451,9 +1452,13 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
           <group rotation={[0, chatting && !walking ? 0.9 : 0, 0]}>
             {stage === 'bebe' ? (
               // A baby outside: in its pram, maman (or the nounou) pushing.
-              <Pram sim={sim} walking={walking || looping || touring === 'walk'} speed={SPEED} />
+              <NeedsAura needs={sim.needs} stage="enfant">
+                <Pram sim={sim} walking={walking || looping || touring === 'walk'} speed={SPEED} />
+              </NeedsAura>
             ) : (
-            <Character look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking || looping || touring === 'walk'} running={run || (looping && !!loopKind?.run)} busy={!!busy && !walking && !looping && !chatting && touring !== 'walk'} marker={!photoMode} pose={hailing && !walking ? 'wave' : photoMode && photoMode !== 'film' && !busy && !walking ? 'phone' : emote && !busy && !walking ? emote : busy?.kind === 'chat' || (chatting && !walking) ? 'talk' : (inMatch || onTouchline || joining) && !walking ? matchPose : touring && touring !== 'walk' && !walking ? touring : busy?.id === 'work' && gestureNow && !walking ? gestureNow : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={looping && loopKind ? loopKind.speed : touring === 'walk' ? (tourRoute?.speed ?? SPEED) : run ? RUN : SPEED} />
+            <NeedsAura needs={sim.needs} stage={stage} walking={walking || looping}>
+              <Character look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking || looping || touring === 'walk'} running={run || (looping && !!loopKind?.run)} busy={!!busy && !walking && !looping && !chatting && touring !== 'walk'} marker={!photoMode} pose={hailing && !walking ? 'wave' : photoMode && photoMode !== 'film' && !busy && !walking ? 'phone' : emote && !busy && !walking ? emote : busy?.kind === 'chat' || (chatting && !walking) ? 'talk' : (inMatch || onTouchline || joining) && !walking ? matchPose : touring && touring !== 'walk' && !walking ? touring : busy?.id === 'work' && gestureNow && !walking ? gestureNow : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={looping && loopKind ? loopKind.speed : touring === 'walk' ? (tourRoute?.speed ?? SPEED) : run ? RUN : SPEED} />
+            </NeedsAura>
             )}
           </group>
         )}

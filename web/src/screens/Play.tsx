@@ -1299,7 +1299,12 @@ export function Play() {
             </div>
           </div>
           {inside && (
-            <button className="hud pointer-events-auto rounded-full px-4 py-2 text-sm font-extrabold" onClick={() => setOutside((o) => !o)}>
+            <button
+              className="hud pointer-events-auto rounded-full px-4 py-2 text-sm font-extrabold"
+              // Nothing going on inside: « Voir la rue » takes the Sim straight out into the street (not the street
+              // seen with the Sim still in the house); busy inside, the street is only looked at, the Sim stays in.
+              onClick={() => (!doing && !outside ? (setPlaceId(null), setBackTo(null), setOutside(false)) : setOutside((o) => !o))}
+            >
               {outside ? `Entrer · ${placeName(inside.id) || 'Chez toi'}` : 'Voir la rue'}
             </button>
           )}
