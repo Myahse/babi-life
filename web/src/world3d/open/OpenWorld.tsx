@@ -43,7 +43,7 @@ import { weather } from './weathering'
 import { along, anchorNode, DRIVABLE, round, routeLength, turnTo, useCellsAround, type Round } from './shared'
 import { ParkedVehicle } from './parkedVehicle'
 import { useParked } from '../drive'
-import { blockedAhead, lightsOf, queueOf, redAhead, report, stopForPapers, TrafficLights, waiting, type Light } from './trafficFlow'
+import { blockedAhead, giveWay, junctionsOf, lightsOf, queueOf, redAhead, report, stopForPapers, TrafficLights, waiting, type Junction, type Light } from './trafficFlow'
 import { inTheWay, resolvePlaces, spaceFields, type PlaceSpot, type Resolved } from './places'
 import { SportField } from './field'
 import { FuelStation } from './station'
@@ -1909,7 +1909,7 @@ const CARS_PER_CELL = RICH ? 5 : 3
 const CAR_ROUND = 90 // seconds
 
 /** Woro-woro, taxis, gbakas, motos and SITRA buses on the big streets around the Sim: the same ones on every screen. */
-function RoadTraffic({ nav, focus, seed, woro }: { nav: Nav; focus: React.RefObject<XZ>; seed: string; woro?: { color?: string; trim?: string; none?: boolean } }) {
+export function RoadTraffic({ nav, focus, seed, woro }: { nav: Nav; focus: React.RefObject<XZ>; seed: string; woro?: { color?: string; trim?: string; none?: boolean } }) {
   const cells = useCellsAround(focus, CAR_CELL)
   const routes = useRoutes(nav)
   const cars = useMemo(
@@ -1938,10 +1938,12 @@ function RoadTraffic({ nav, focus, seed, woro }: { nav: Nav; focus: React.RefObj
   )
   // The lights at the big crossroads round the Sim, which the cars stop at.
   const lights = useMemo(() => lightsOf(nav, cells, CAR_CELL), [nav, cells])
+  // The other crossroads, where they give way (trafficFlow.tsx giveWay).
+  const junctions = useMemo(() => junctionsOf(nav, cells, CAR_CELL, lights), [nav, cells, lights])
   return (
     <>
       {cars.map((c) => (
-        <Car key={c.id} car={c} nav={nav} routes={routes} lights={lights} />
+        <Car key={c.id} car={c} nav={nav} routes={routes} lights={lights} junctions={junctions} />
       ))}
       <TrafficLights lights={lights} />
     </>
@@ -1956,7 +1958,7 @@ const SOLID_LANDMARKS: Record<string, number> = { 'treich-palais': 34, 'plateau-
 /** A vehicle's length and width, for what it blocks. */
 const CAR_SIZE: Record<VehicleKind, [number, number]> = { taxi: [4.4, 1.7], woro: [4.4, 1.7], car: [4.5, 1.8], gbaka: [5.3, 1.9], moto: [1.9, 0.6], sotra: [11, 2.5] }
 
-function Car({ car, nav, routes, lights }: { car: { id: string; kind: VehicleKind; color?: string; trim?: string; seed: number; near: XZ; speed: number; offset: number }; nav: Nav; routes: Map<string, XZ[]>; lights: Light[] }) {
+function Car({ car, nav, routes, lights, junctions }: { car: { id: string; kind: VehicleKind; color?: string; trim?: string; seed: number; near: XZ; speed: number; offset: number }; nav: Nav; routes: Map<string, XZ[]>; lights: Light[]; junctions: Junction[] }) {
   const ref = useRef<THREE.Group>(null)
   // The SITRA keeps to the bigger roads (not only the 12 m ones: most quarters have none, and the
   // bus, finding no road, never showed).
@@ -1971,6 +1973,10 @@ function Car({ car, nav, routes, lights }: { car: { id: string; kind: VehicleKin
   const late = useRef(0)
   // How long it has been held up: past a while, it squeezes by (no two cars stuck nose to nose for ever).
   const held = useRef(0)
+  // How fast it goes, from 0 to its own speed (1): it speeds up and brakes, never jumps from one to the other.
+  const v = useRef(1)
+  // The road it's on (how wide), looked at now and then: slower in the small streets.
+  const road = useRef({ width: 10, t: -1 })
   useFrame((_, dtRaw) => {
     const g = ref.current
     if (!g) return
@@ -1991,25 +1997,48 @@ function Car({ car, nav, routes, lights }: { car: { id: string; kind: VehicleKin
     // Drive on the right: shift to the right of the way it goes.
     const off = 2
     const [x, z] = [p.x + Math.cos(heading) * -off, p.z - Math.sin(heading) * -off]
-    // The car ahead too close, or a red light just ahead: it waits where it is (its schedule held back).
-    // (Waved over at a police checkpoint, it stops for its papers; the bus and the gbaka with their passengers aren't.)
     const t = worldTime()
+    if (t - road.current.t > 0.5) {
+      const n = nav.nearest([p.x, p.z], 20)
+      road.current = { width: n ? nav.edges[n.edge].width : 10, t }
+    }
+    // The code de la route. Waved over at a police checkpoint, it stops for its papers (the bus and the gbaka
+    // with their passengers aren't); a red light just ahead; the car ahead too close (looked at a little
+    // further, to brake in time); someone crossing in front of it (the Sim); a crossroads it gives way at.
     const papers = at.moving && !stops && stopForPapers(car.id, x, z, heading, l / 2, t)
     const red = at.moving && !papers && redAhead(lights, x, z, heading, l / 2, t)
-    const ahead = at.moving && !papers && !red ? blockedAhead(car.id, x, z, heading, l / 2) : null
-    // Behind a queue at a light or a checkpoint, it waits its turn; nose to nose with a car waiting for it, one gets by after a moment.
+    const ahead = at.moving && !papers && !red ? blockedAhead(car.id, x, z, heading, l / 2, 3) : null
+    const [fx, fz] = [Math.sin(heading), Math.cos(heading)]
+    const [sx, sz] = [whereabouts.sim[0] - x, whereabouts.sim[1] - z]
+    const walker = at.moving && sx * fx + sz * fz > 0 && sx * fx + sz * fz < l / 2 + 7 && Math.abs(sx * fz - sz * fx) < w / 2 + 1
+    const yieldTo = at.moving && !papers && !red && !ahead && !walker ? giveWay(car.id, junctions, x, z, heading, l / 2, road.current.width, v.current, t) : null
+    // Behind a queue at a light or a checkpoint, it waits its turn; nose to nose with a car waiting for it, one gets by after a moment;
+    // given way for a long while (four at a crossroads, each with one on its right), it goes.
     const queue = ahead && queueOf(car.id, ahead)
-    if (papers || red || (ahead && (queue === 'light' || held.current < (queue === 'jam' ? 3 : 8)))) {
-      late.current += dt
-      if (ahead && queue !== 'light') held.current += dt
-      waiting(car.id, papers ? 'papers' : red ? 'red' : (ahead ?? ''))
-      return
+    const waitFor = papers ? 'papers' : red ? 'red' : walker ? 'pieton' : (ahead ?? yieldTo)
+    const stuck = (ahead && queue !== 'light') || (yieldTo && yieldTo !== 'stop' && yieldTo !== 'junction')
+    const blocked = papers || red || walker || (ahead && (queue === 'light' || held.current < (queue === 'jam' ? 3 : 8))) || (yieldTo && (!stuck || held.current < 4))
+    if (blocked) {
+      if (stuck) held.current += dt
+      waiting(car.id, waitFor ?? '')
+    } else held.current = at.moving ? Math.max(0, held.current - dt * 4) : 0
+    // How fast it wants to go: stopped, or slower in the small streets and in the bends.
+    let want = 1
+    if (blocked) want = 0
+    else if (at.moving) {
+      const next = along(way, at.forward ? d + 9 : d - 9)
+      const bend = Math.abs(Math.atan2(Math.sin(next.r - p.r), Math.cos(next.r - p.r)))
+      want = Math.min(road.current.width < 6.5 ? 0.6 : road.current.width < 8.5 ? 0.8 : 1, bend > 0.6 ? 0.45 : bend > 0.3 ? 0.7 : 1)
     }
-    held.current = at.moving ? Math.max(0, held.current - dt * 4) : 0
+    // Braking is quicker than speeding up.
+    v.current += Math.max(-2.2 * dt, Math.min(0.55 * dt, want - v.current))
+    if (v.current < 0.02 && want === 0) v.current = 0
+    // Behind its schedule by what it didn't drive.
+    late.current += dt * (1 - v.current)
     g.position.set(x, nav.heightAt(x, z), z)
     // A U-turn at each end, eased so it isn't a snap.
     g.rotation.y = turnTo(g.rotation.y, heading - Math.PI / 2, 1 - Math.exp(-6 * dt))
-    report(car.id, { x, z, h: heading, half: l / 2 })
+    report(car.id, { x, z, h: heading, half: l / 2, wait: blocked ? (waitFor ?? undefined) : undefined })
     // Nobody walks through it.
     moveObstacle(car.id, { x: g.position.x, z: g.position.z, hw: l / 2, hd: w / 2, rot: g.rotation.y })
   })
