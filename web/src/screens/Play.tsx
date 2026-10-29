@@ -1365,7 +1365,7 @@ export function Play() {
             <span className="flex min-w-0 items-center gap-1 text-[11px] font-extrabold text-[var(--color-ink-soft)]">
               <MapPin size={11} strokeWidth={3} className="shrink-0" />
               <span className="truncate">
-                {commune.name} · <span className="max-sm:hidden">{lifeOf(world, sim).stage?.label ?? ''}, </span>
+                {commune.name} · <span className="max-sm:hidden short:hidden">{lifeOf(world, sim).stage?.label ?? ''}, </span>
                 {lifeOf(world, sim).age < 1 ? "moins d'un an" : `${lifeOf(world, sim).age} an${lifeOf(world, sim).age > 1 ? 's' : ''}`}
               </span>
             </span>
@@ -1645,7 +1645,8 @@ export function Play() {
       {watching && doing?.seance?.video && doing.seance.at !== undefined && <FilmPlayer video={doing.seance.video} at={doing.seance.at} title={doing.seance.title ?? doing.interaction.label} credit={doing.seance.credit} file={doing.seance.file} onClose={() => setWatching(false)} />}
 
       {/* The invitation and the toasts in one column under the top bar: they stack, never on top of each other */}
-      <div className="pointer-events-none absolute top-[5.5rem] left-1/2 z-40 flex w-[min(400px,calc(100vw-24px))] -translate-x-1/2 flex-col gap-2 lg:top-24">
+      {/* (A phone held sideways, the screen low: narrower, and the last toast only, so the street stays in sight.) */}
+      <div className="pointer-events-none absolute top-[5.5rem] left-1/2 z-40 flex w-[min(400px,calc(100vw-24px))] -translate-x-1/2 flex-col gap-2 lg:top-24 short:top-[4.25rem] short:w-[min(340px,calc(100vw-24px))] short:gap-1.5 short:[&>.toast-card:not(:last-child)]:hidden">
         {!players && !placeId && !overlay && !damesOpen && around.dames && !damesSeen.includes(around.dames.id) && (
           <DamesBanner
             dame={around.dames}
@@ -3184,12 +3185,12 @@ function ToastCard({ toast: t }: { toast: Toast }) {
   const colors: [string, string] =
     t.tone === 'random' || t.tone === 'event' ? ['#ffd54f', '#ffa000'] : t.tone === 'promo' ? ['#69e2a0', '#00a862'] : t.tone === 'error' ? ['#ff8a9b', '#ff3d57'] : kindColors(t.kind ?? '')
   return (
-    <div className={`card motion-toast pointer-events-auto flex items-center gap-3 p-3 ${t.tone === 'random' || t.tone === 'event' ? 'ring-2 ring-[var(--color-gold)]' : t.tone === 'promo' ? 'ring-2 ring-[var(--color-emerald)]' : ''}`}>
+    <div className={`toast-card card motion-toast pointer-events-auto flex items-center gap-3 p-3 short:gap-2 short:p-2 ${t.tone === 'random' || t.tone === 'event' ? 'ring-2 ring-[var(--color-gold)]' : t.tone === 'promo' ? 'ring-2 ring-[var(--color-emerald)]' : ''}`}>
       {/* Something that didn't go through: Koffi comes to say it, kindly */}
       {t.tone === 'error' ? <Helper offline={t.title === 'Hors ligne'} /> : <IconTile icon={icon} colors={colors} size={44} />}
       <div className="min-w-0 flex-1">
-        <div className="font-display text-[15px] leading-tight font-extrabold">{t.title}</div>
-        {t.text && <div className="text-sm leading-snug font-semibold text-[var(--color-ink-soft)]">{t.text}</div>}
+        <div className="font-display text-[15px] leading-tight font-extrabold short:text-[14px]">{t.title}</div>
+        {t.text && <div className="text-sm leading-snug font-semibold text-[var(--color-ink-soft)] short:line-clamp-2 short:text-[12.5px]">{t.text}</div>}
       </div>
       {t.money !== 0 && <MoneyDelta value={t.money} />}
     </div>
