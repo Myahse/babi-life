@@ -166,3 +166,16 @@ func TestArriveNow(t *testing.T) {
 		t.Error("quickRide: the plane or one's own car can be skipped")
 	}
 }
+
+// A défi played ends its activity at once: the Sim is free in the answer itself.
+func TestDefiEndsActivity(t *testing.T) {
+	s := &Sim{}
+	s.GameMinutes = game.MinuteOf(time.Now())
+	s.Activity = &game.Activity{Kind: "do", PlaceID: "home", PlaceKind: "home", Interaction: game.Interaction{ID: "shower", Minutes: 20, Effect: game.Needs{Hygiene: 60}}, Start: s.GameMinutes, End: s.GameMinutes + 20}
+	s.Needs = homeDone(s.Needs, s.Activity, 100)
+	s.Activity.End = min(s.Activity.End, s.GameMinutes)
+	s.advanceTo(s.GameMinutes, newRand())
+	if s.Activity != nil || s.Needs.Hygiene != 60 {
+		t.Errorf("after the shower played: %+v, hygiene %.0f", s.Activity, s.Needs.Hygiene)
+	}
+}

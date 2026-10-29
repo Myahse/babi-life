@@ -16,6 +16,7 @@ import { EcoleDefi } from './defi/Ecole'
 import { CoucouDefi, CubesDefi, HochetDefi, PasDefi } from './defi/Bebe'
 import { GESTES, GestesDefi, gesteOf, type GesteKind } from './defi/Gestes'
 import { GarbaDefi } from './defi/Garba'
+import { setLifted } from '../world3d/chatFraming'
 import { BarDefi } from './defi/Bar'
 import { DodoDefi } from './defi/Reve'
 import { AllocoDefi } from './defi/Alloco'
@@ -223,6 +224,12 @@ export function DefiSheet({ kind, act, simId, big, older, interactionId, practic
     setSaid(r?.outcome.text.replace(/^Défi \d+\/100\. /, '') ?? null)
   }
   const ski = kind === 'ski'
+  // Played over the scene (the house, the maquis): the picture lifted so the Sim is seen above the game.
+  useEffect(() => {
+    if (!GESTE_DEFIS.has(kind) || practice || challenge) return
+    setLifted(true)
+    return () => setLifted(false)
+  }, [kind, practice, challenge])
   // Over the scene (the lagoon, the house): the intro dims it, the game leaves it seen.
   const over = ski || GESTE_DEFIS.has(kind)
   const n = stars(score)

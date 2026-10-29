@@ -279,7 +279,13 @@ func (h *Handler) defi(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return game.Outcome{}, nil, err
 		}
-		return game.Outcome{Text: text, Money: back}, nil, nil
+		// The défi played, the activity is over there and then (not at the next look): the Sim is free,
+		// what it did is in the journal. (Not the school's lesson: the day goes on.)
+		var events []Event
+		if req.Kind != "ecole" {
+			events = s.advanceTo(s.GameMinutes, newRand())
+		}
+		return game.Outcome{Text: text, Money: back}, events, nil
 	})
 }
 

@@ -212,7 +212,8 @@ function Pan({ onDone }: { onDone: (score: number) => void }) {
 
   const f = PIECES.find((x) => x.id === want)!
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#1b120c]/80 p-4">
+    // The game in the bottom of the screen, the Sim seen above (the picture lifted: world3d/chatFraming.tsx).
+    <div className="absolute inset-0 flex flex-col items-center justify-end gap-2 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" style={{ background: 'linear-gradient(rgba(27,18,12,0) 0%, rgba(27,18,12,0) 34%, rgba(27,18,12,0.88) 50%)' }}>
       <style>{'@keyframes garba-sizzle { 0% { transform: scale(0.4); opacity: 0.9 } 100% { transform: scale(1.6) translateY(-6px); opacity: 0 } } @keyframes garba-smoke { 0% { transform: translateY(0) scale(1); opacity: 0.35 } 100% { transform: translateY(-60px) scale(2); opacity: 0 } }'}</style>
       <div className="card flex items-center gap-3 px-4 py-2">
         <span className="label whitespace-nowrap">La tantie</span>
@@ -223,7 +224,7 @@ function Pan({ onDone }: { onDone: (score: number) => void }) {
         Morceau {round + 1}/{ROUNDS} · pioche-le avant les autres clients
       </div>
       {/* The bassine on the fire: its black rim and handles, the oil and its bubbles */}
-      <div className="relative aspect-square w-[min(90vw,56vh,430px)]">
+      <div className="relative aspect-square w-[min(82vw,42vh,380px)]">
         <div className="absolute top-1/2 -left-[4%] h-[14%] w-[10%] -translate-y-1/2 rounded-l-full border-[6px] border-r-0 border-[#26262a]" />
         <div className="absolute top-1/2 -right-[4%] h-[14%] w-[10%] -translate-y-1/2 rounded-r-full border-[6px] border-l-0 border-[#26262a]" />
         <div className="absolute inset-0 rounded-full p-[4.5%]" style={{ background: 'radial-gradient(circle at 35% 30%, #5b5b62, #2a2a2e 45%, #111114 75%)', boxShadow: '0 0 60px 10px rgba(255,120,30,0.35), inset 0 2px 0 rgba(255,255,255,0.25)' }}>
@@ -331,12 +332,12 @@ function Plate({ onDone }: { onDone: (score: number) => void }) {
     setThroat((v) => Math.max(0, v - 45))
   }
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#1b120c]/70 p-4">
+    <div className="absolute inset-0 flex flex-col items-center justify-end gap-2 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" style={{ background: 'linear-gradient(rgba(27,18,12,0) 0%, rgba(27,18,12,0) 34%, rgba(27,18,12,0.88) 50%)' }}>
       <div className="card px-4 py-2 text-center">
         <div className="font-display text-[17px] font-extrabold">Mange ton garba !</div>
         <div className="text-[12.5px] font-bold text-[var(--color-ink-soft)]">Pique l’attiéké, pomme une boule… et bois avant de t’étouffer.</div>
       </div>
-      <div className="flex w-full max-w-[470px] items-center gap-3">
+      <div className="flex w-full max-w-[min(470px,60vh)] items-center gap-3">
         <div className="flex flex-col items-center gap-1">
           <div className="relative h-44 w-5 overflow-hidden rounded-full bg-white/20">
             <div className={`absolute inset-x-0 bottom-0 rounded-full ${throat > 75 ? 'bg-[#ff3d57]' : 'bg-[#ffc233]'}`} style={{ height: `${Math.min(100, throat)}%` }} />
