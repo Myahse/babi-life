@@ -4,8 +4,8 @@ import * as THREE from 'three'
 import { whereabouts } from './whereabouts'
 
 // The arrival's flight over the commune (components/Arrival.tsx): the game's
-// own street, its roads and its people, seen from the sky, the camera coming
-// down in a wide turn onto the player's Sim. While it flies it holds the
+// own street, its roads and its people, seen low over the rooftops, the
+// camera coming down in a wide turn onto the player's Sim. While it flies it holds the
 // camera (a frame callback after the others, which then draws the frame
 // itself); landed, the camera goes back where it was.
 
@@ -61,12 +61,13 @@ function Flight() {
       st.gl.render(st.scene, st.camera)
       return
     }
-    // A wide turn coming down: from high over the commune onto the Sim, a little behind it at the end.
-    const a = 0.6 + u * 2.6
-    const r = 150 + (14 - 150) * e
-    const h = 95 + (6 - 95) * Math.pow(e, 0.8)
+    // Low over the rooftops, so the streets, the cars and the people are seen (not the sky): a wide
+    // turn round the Sim's quartier, then down among the houses, round the Sim, close behind it at the end.
+    const a = 0.6 + u * 3.2
+    const r = u < 0.55 ? 70 + (26 - 70) * ease(u / 0.55) : 26 + (7 - 26) * ease((u - 0.55) / 0.45)
+    const h = u < 0.55 ? 38 + (14 - 38) * ease(u / 0.55) : 14 + (2.6 - 14) * ease((u - 0.55) / 0.45)
     st.camera.position.set(x + Math.sin(a) * r, h, z + Math.cos(a) * r)
-    st.camera.lookAt(x, 1.2 * e, z)
+    st.camera.lookAt(x, 0.6 + 0.5 * e, z)
     st.gl.render(st.scene, st.camera)
   }, 1)
   return null

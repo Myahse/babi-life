@@ -1,13 +1,17 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Play, SkipForward, Volume2 } from 'lucide-react'
 import { Logo } from './ui'
 import { playCinematic, stopCinematic } from '../world3d/cinematic'
+import { whereabouts } from '../world3d/whereabouts'
 
 // The arrival (update « arrivee »): the first time in the game, before Koffi's
-// tuto. The camera flies over the player's commune, its roads and its people
-// (world3d/cinematic.tsx), « Bienvenue à Babi Life », then Awa's welcome
-// (public/video/akwaba.mp4, marketing/scripts/bienvenue.md). Each part can be
-// skipped; it's seen once (on this browser).
+// tuto. Once the street has come (never over an empty sky), the camera flies
+// low over the player's commune, its roads and its people, down onto the Sim
+// (world3d/cinematic.tsx); then inside its home, the Sim with its family (the
+// game's own inside, given by screens/Play.tsx); « Bienvenue à Babi Life »;
+// then Awa's welcome (public/video/akwaba.mp4, marketing/scripts/bienvenue.md).
+// Each part can be skipped, none can hang (each has its own end); it's seen
+// once (on this browser).
 
 const KEY = 'babi.arrivee'
 export const arrivalDue = () => {
@@ -25,10 +29,36 @@ const seen = () => {
   }
 }
 
-const FLIGHT = 13
+const FLIGHT = 12
+/** The street not there after this long (a slow network): straight to the home. */
+const WAIT = 12000
+const HOME = 6500
 
-export function Arrival({ commune, firstName, onEnd }: { commune: string; firstName: string; onEnd: () => void }) {
-  const [part, setPart] = useState<'fly' | 'title' | 'awa' | 'watch'>('fly')
+export type ArrivalPart = 'wait' | 'fly' | 'home' | 'title' | 'awa' | 'watch'
+
+export function Arrival({ commune, firstName, home, onPart, onEnd }: { commune: string; firstName: string; /** The Sim's home, inside, with its family (screens/Play.tsx). */ home?: ReactNode; /** Each part as it comes (the street is shown during the flight). */ onPart?: (p: ArrivalPart) => void; onEnd: () => void }) {
+  const [part, setPart] = useState<ArrivalPart>('wait')
+  // (Whether there's a home to show, not the element: a new one comes with every render, and the parts mustn't start over.)
+  const hasHome = !!home
+  useEffect(() => onPart?.(part), [part, onPart])
+  // Waiting for the street to come (its buildings, its roads): then the flight; too long, the home.
+  useEffect(() => {
+    if (part !== 'wait') return
+    const since = performance.now()
+    const k = setInterval(() => {
+      if (whereabouts.streetReady) setTimeout(() => setPart('fly'), 900)
+      else if (performance.now() - since > WAIT) setPart(hasHome ? 'home' : 'title')
+      else return
+      clearInterval(k)
+    }, 250)
+    return () => clearInterval(k)
+  }, [part, hasHome])
+  // The home: a moment inside with the family, then the title.
+  useEffect(() => {
+    if (part !== 'home') return
+    const k = setTimeout(() => setPart('title'), HOME)
+    return () => clearTimeout(k)
+  }, [part])
   const [t, setT] = useState(0)
   const end = () => {
     stopCinematic()
@@ -41,9 +71,12 @@ export function Arrival({ commune, firstName, onEnd }: { commune: string; firstN
     let gone = false
     const since = performance.now()
     const tick = setInterval(() => setT((performance.now() - since) / 1000), 200)
-    const go = setTimeout(() => void playCinematic(FLIGHT).then(() => !gone && setPart('title')), 600)
-    return () => ((gone = true), clearInterval(tick), clearTimeout(go))
-  }, [part])
+    const next = () => !gone && setPart(hasHome ? 'home' : 'title')
+    void playCinematic(FLIGHT).then(next)
+    // Whatever happens to the flight (a hidden tab holds its timers back), it ends.
+    const guard = setTimeout(next, (FLIGHT + 3) * 1000)
+    return () => ((gone = true), clearInterval(tick), clearTimeout(guard), stopCinematic())
+  }, [part, hasHome])
   useEffect(() => {
     // (In development, a capture can hold it: globalThis.__holdArrival.)
     if (part !== 'title' || (import.meta.env.DEV && (globalThis as { __holdArrival?: boolean }).__holdArrival)) return
@@ -54,10 +87,41 @@ export function Arrival({ commune, firstName, onEnd }: { commune: string; firstN
   useEffect(() => () => stopCinematic(), [])
 
   const skip = (
-    <button className="pointer-events-auto fixed top-[max(0.9rem,env(safe-area-inset-top))] right-3 z-[92] flex items-center gap-1.5 rounded-full bg-black/45 px-3.5 py-2 text-[13px] font-extrabold text-white backdrop-blur" onClick={part === 'fly' ? () => (stopCinematic(), setPart('title')) : end}>
+    <button className="pointer-events-auto fixed top-[max(0.9rem,env(safe-area-inset-top))] right-3 z-[92] flex items-center gap-1.5 rounded-full bg-black/45 px-3.5 py-2 text-[13px] font-extrabold text-white backdrop-blur" onClick={part === 'wait' || part === 'fly' ? () => (stopCinematic(), setPart(hasHome ? 'home' : 'title')) : part === 'home' ? () => setPart('title') : end}>
       Passer <SkipForward size={15} />
     </button>
   )
+
+  if (part === 'wait')
+    return (
+      <div className="pointer-events-none fixed inset-0 z-[90] flex items-end bg-[var(--color-night)]">
+        <div className="absolute inset-x-0 top-0 h-[9vh] bg-black" />
+        <div className="absolute inset-x-0 bottom-0 h-[9vh] bg-black" />
+        {skip}
+        <div className="mb-[13vh] ml-5 text-white">
+          <div className="text-[13px] font-extrabold tracking-[0.25em] uppercase opacity-85">Abidjan</div>
+          <div className="font-display text-[42px] leading-none font-extrabold">{commune}</div>
+          <div className="mt-2 flex items-center gap-2 text-[15px] font-bold opacity-90">
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> La ville arrive…
+          </div>
+        </div>
+      </div>
+    )
+
+  if (part === 'home')
+    return (
+      <div className="fixed inset-0 z-[90] bg-[var(--color-night)]">
+        <div className="absolute inset-0">{home}</div>
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-[9vh] bg-black" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[9vh] bg-black" />
+        {skip}
+        <div className="animate-pop pointer-events-none absolute bottom-[13vh] left-5 right-5 text-white [text-shadow:0_2px_12px_rgba(0,0,0,0.8)]">
+          <div className="text-[13px] font-extrabold tracking-[0.25em] uppercase opacity-85">À la maison</div>
+          <div className="font-display text-[34px] leading-tight font-extrabold">Ta famille t'attend.</div>
+          <div className="mt-1 text-[16px] font-bold opacity-95">Et ça, c'est toi, {firstName} : ta vie commence ici.</div>
+        </div>
+      </div>
+    )
 
   if (part === 'fly')
     return (
