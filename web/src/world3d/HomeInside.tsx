@@ -28,7 +28,7 @@ import { Talkable } from './Talkable'
 import { doingOf } from './talk'
 import { clock, weekdayOf } from '../game/rules'
 import { carer } from './carer'
-import { useGesture, useHomeStep } from './gesture'
+import { setHomeArrived, useGesture, useHomeStep } from './gesture'
 import { tint } from '../avatar/textures'
 
 // Inside one's own house, on a screen of its own: the house itself (the one
@@ -425,7 +425,12 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
     const to = spot ? { at: spot.from, level: 0 } : tapped
     const from = where.current
     const fromL = lvl.current
-    const flat = (a: XZ, b: XZ, level: number): P[] => (gridWay(a, b, levels(level), 0.4, span, 200 * 200) ?? [a, b]).map(([x, z]) => [x, z, level * STOREY])
+    // Round the walls, always: the house's grid first; a big house, a finer search close round the two
+    // ends, then a coarser one over the whole house (never straight through a wall unless all fail).
+    const flat = (a: XZ, b: XZ, level: number): P[] => {
+      const free = levels(level)
+      return (gridWay(a, b, free, 0.4, span, 200 * 200) ?? gridWay(a, b, free, 0.3, 8, 400 * 400) ?? gridWay(a, b, free, 0.6, span, 600 * 600) ?? [a, b]).map(([x, z]) => [x, z, level * STOREY])
+    }
     if (!to) return [[from[0], from[1], fromL * STOREY]]
     if (to.level === fromL) return flat(from, to.at, fromL)
     // Another floor: by the stairs, one floor at a time.
@@ -453,6 +458,12 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
     keep(where.current, lvl.current)
   }, [way]) // eslint-disable-line react-hooks/exhaustive-deps
   const [there, setThere] = useState(false)
+  // A played action's step: its arrows wait until the Sim is there (components/defi/Gestes.tsx).
+  useEffect(() => {
+    if (!stepSpot) return setHomeArrived(null)
+    setHomeArrived(there)
+  }, [there, !!stepSpot]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => setHomeArrived(null), [])
   // A night together: once both are in the bed, the screen goes slowly to black.
   const night2 = interactionId === 'passer-nuit'
   const [dark, setDark] = useState(false)

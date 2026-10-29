@@ -11,7 +11,7 @@ import { gesture } from '../../world3d/gesture'
 // Le garba, played (the update « gestes-maison »). First at the garbadrome's
 // bassine: the pieces of fried fish sizzle in the oil, the tantie calls one
 // (« La darne de thon ! ») and you fish it out before the other customers' hands
-// do. Then the plate: tap the attiéké with the fork, « pommer » a ball in the hand
+// do. Then the plate: take the attiéké by hand (a pinch), « pommer » a ball in the hand
 // (held: it packs, let go in the green), but every mouthful fills the throat: the
 // attiéké doesn't go down easily. Too full and you choke (time lost): drink some
 // water. Plate empty, the garba is eaten.
@@ -369,7 +369,7 @@ function Pan({ onDone }: { onDone: (score: number) => void }) {
   )
 }
 
-/** One forkful of attiéké: a little heap of grains in their shades of cream. */
+/** One pinch of attiéké: a little heap of grains in their shades of cream. */
 function Clump({ seed }: { seed: number }) {
   return (
     <group>
@@ -382,32 +382,7 @@ function Clump({ seed }: { seed: number }) {
   )
 }
 
-/** The fork going down into the attiéké and up with the mouthful (a bit of thon with it, now and then). */
-function Fork({ x, z, fish }: { x: number; z: number; fish: boolean }) {
-  const g = useRef<THREE.Group>(null)
-  const t = useRef(0)
-  useFrame((_, dt) => {
-    t.current += dt
-    const k = t.current
-    const down = Math.min(1, k / 0.22)
-    const up = Math.max(0, (k - 0.3) / 0.35)
-    g.current?.position.set(x, 2.2 - 2 * down + 3.2 * up, z + 1.2 * (1 - down) + 2.6 * up)
-  })
-  return (
-    <group ref={g} position={[x, 2.2, z + 1.2]} rotation={[-0.5, 0, 0]}>
-      <Box p={[0, 0.9, 0.55]} s={[0.12, 0.06, 1.2]} c="#c3c7cf" />
-      <Box p={[0, 0.9, -0.08]} s={[0.26, 0.05, 0.12]} c="#c3c7cf" />
-      {[-0.1, -0.03, 0.04, 0.11].map((dx) => (
-        <Box key={dx} p={[dx, 0.9, -0.28]} s={[0.035, 0.04, 0.3]} c="#c3c7cf" />
-      ))}
-      {/* The mouthful on its tines */}
-      <Box p={[0, 0.98, -0.25]} s={[0.24, 0.1, 0.2]} c="#f7eccb" />
-      {fish && <Box p={[0.06, 1.03, -0.22]} s={[0.12, 0.06, 0.1]} c="#a8601c" />}
-    </group>
-  )
-}
-
-/** The plate is 6 wide (0..1 across it, as the forkfuls lie). */
+/** The plate is 6 wide (0..1 across it, as the pinches lie). */
 const PLATE = 6
 const on = (x: number, y: number): [number, number, number] => [(x - 0.5) * PLATE, 0.12, (y - 0.5) * PLATE]
 
@@ -452,7 +427,7 @@ function PlateTable({ choke, left, children }: { choke: boolean; /** What's left
   )
 }
 
-/** The plate: the attiéké with the fork, the balls « pommées », water for the throat. */
+/** The plate: the attiéké by hand, the balls « pommées », water for the throat. */
 function Plate({ onDone }: { onDone: (score: number) => void }) {
   const [clumps, setClumps] = useState(() =>
     [...Array(24)].map((_, i) => {
@@ -466,7 +441,7 @@ function Plate({ onDone }: { onDone: (score: number) => void }) {
   const [water, setWater] = useState(3)
   const [press, setPress] = useState<number | null>(null)
   const st = useRef({ t0: performance.now(), chokes: 0, done: false, key: 0 })
-  // The mouthful being taken: the fork (a tap), or your hand making the ball (« pommer »).
+  // The mouthful being taken, by hand: a pinch (a tap), or the ball made in the palm (« pommer »).
   const [bite, setBite] = useState<{ key: number; x: number; z: number; ball: boolean } | null>(null)
   useEffect(() => {
     const t = setInterval(() => setThroat((v) => Math.max(0, v - 1.2)), 200)
@@ -474,7 +449,7 @@ function Plate({ onDone }: { onDone: (score: number) => void }) {
   }, [])
   const swallow = (n: number, fill: number, which?: number) => {
     if (choke || st.current.done) return
-    // The forkful tapped first (then the rest of the heap, from its edge).
+    // The pinch tapped first (then the rest of the heap, from its edge).
     if (which !== undefined) {
       const i = clumps.findIndex((c) => c.i === which)
       if (i > 0) clumps.unshift(...clumps.splice(i, 1))
@@ -527,7 +502,7 @@ function Plate({ onDone }: { onDone: (score: number) => void }) {
     <div className="absolute inset-0 flex flex-col items-center justify-end gap-2 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" style={{ background: 'linear-gradient(rgba(27,18,12,0) 0%, rgba(27,18,12,0) 34%, rgba(27,18,12,0.88) 50%)' }}>
       <div className="card px-4 py-2 text-center">
         <div className="font-display text-[17px] font-extrabold">Mange ton garba !</div>
-        <div className="text-[12.5px] font-bold text-[var(--color-ink-soft)]">Pique l’attiéké, pomme une boule… et bois avant de t’étouffer.</div>
+        <div className="text-[12.5px] font-bold text-[var(--color-ink-soft)]">Prends l’attiéké à la main, pomme une boule… et bois avant de t’étouffer.</div>
       </div>
       <div className="flex w-full max-w-[min(470px,60vh)] items-center gap-3">
         <div className="flex flex-col items-center gap-1">
@@ -536,7 +511,7 @@ function Plate({ onDone }: { onDone: (score: number) => void }) {
           </div>
           <span className="text-[10px] font-extrabold text-white/80">Gorge</span>
         </div>
-        {/* The plate in 3D: tap a forkful of the attiéké */}
+        {/* The plate in 3D: tap the attiéké to take a pinch of it */}
         <div className="relative aspect-square flex-1">
           <Table3d className="!absolute inset-0" cam={[0, 7.4, 3.2]}>
             <PlateTable choke={choke} left={clumps.length / 24}>
@@ -549,7 +524,11 @@ function Plate({ onDone }: { onDone: (score: number) => void }) {
                     </mesh>
                   </Grab>
                 ) : (
-                  <Fork key={bite.key} x={bite.x} z={bite.z} fish={bite.key % 3 === 0} />
+                  // A pinch taken with the fingers (the attiéké is eaten by hand), a bit of thon with it now and then.
+                  <Grab key={bite.key} x={bite.x} z={bite.z} mine>
+                    <Box p={[0, 0.06, 0]} s={[0.22, 0.1, 0.2]} c="#f7eccb" />
+                    {bite.key % 3 === 0 && <Box p={[0.05, 0.13, 0]} s={[0.12, 0.06, 0.1]} c="#a8601c" />}
+                  </Grab>
                 ))}
               {clumps.length > 0 && (
                 <mesh position={[-0.5, 0.1, 0]} scale={[0.4 + (clumps.length / 24) * 0.6, 1, 0.4 + (clumps.length / 24) * 0.6]}>
