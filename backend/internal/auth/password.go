@@ -153,6 +153,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusInternalServerError, "could not create account")
 		return
 	}
+	_ = RecordReferral(r.Context(), h.DB, u.ID, refOf(r))
 	h.issue(w, r, u)
 }
 

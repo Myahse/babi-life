@@ -3,13 +3,15 @@ import { gesture } from '../world3d/gesture'
 import type { Pose } from '../avatar/Human'
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { GraduationCap, Refrigerator, BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2, ShoppingBag, Lightbulb, Landmark, PartyPopper, Settings } from 'lucide-react'
+import { GraduationCap, Refrigerator, BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2, ShoppingBag, Lightbulb, Landmark, PartyPopper, Settings, Gift } from 'lucide-react'
 import { api, ApiError, errorText } from '../lib/api'
 import { useOnline } from '../lib/offline'
 import { onSynced, pendingOffline, picking } from '../lib/offlinePlay'
 import { kindOf, type ActionResult, type City, type Commune, type HappeningNow, type Interaction, type JobTask, type JournalEvent, type Player, type Sim, type Soiree, type World, type Ride, type Place, type Plot, type StreetRide } from '../lib/types'
 import { FridgeSheet } from '../components/Fridge'
 import { MentorApp } from '../components/MentorApp'
+import { InviteApp } from '../components/InviteApp'
+import { GiftsSheet, useFriendGifts } from '../components/GiftDrawer'
 import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
 import { joinMatch, type CourtMatch } from '../streetball/online'
@@ -322,7 +324,7 @@ export function Play() {
   useEffect(() => {
     const q = new URLSearchParams(location.search)
     const want = q.get('app') as PhoneAppId | 'flashe' | null
-    if (!want || !['gbairai', 'bet225', 'parisfoot', 'guide', 'flashe', 'boutique', 'mentor'].includes(want)) return
+    if (!want || !['gbairai', 'bet225', 'parisfoot', 'guide', 'flashe', 'boutique', 'mentor', 'inviter'].includes(want)) return
     // Flashé opens over the game (its camera sees the street), not in the phone.
     if (want === 'flashe') setOverlay('flashe')
     else (setPhoneApp(want), setOverlay('phone'))
@@ -605,6 +607,9 @@ export function Play() {
   const [shopOpen, setShopOpen] = useState(false)
   // The fridge (components/Fridge): filled while shopping, opened at home.
   const [fridgeOpen, setFridgeOpen] = useState<'fill' | 'open' | null>(null)
+  // The friends' gifts (components/GiftDrawer, update « parrainage »): the drawer at home, the phone's « Inviter ».
+  const gifts = useFriendGifts(sim?.id)
+  const [drawerOpen, setDrawerOpen] = useState(false)
   const feats = useFeatures()
   const shopAt = sim?.activity?.kind === 'do' && SHOP_OF[sim.activity.interaction.id] ? sim.activity.start : null
   useEffect(() => setShopOpen(shopAt !== null), [shopAt])
@@ -892,6 +897,7 @@ export function Play() {
     if (machineOpen) return (setMachineOpen(false), true)
     if (shopOpen) return (setShopOpen(false), true)
     if (fridgeOpen) return (setFridgeOpen(null), true)
+    if (drawerOpen) return (setDrawerOpen(false), true)
     if (damesOpen) return (setDamesOpen(false), true)
     if (overlay) return (setOverlay(null), setPhoneApp(null), true)
     if (whereTo) return (setWhereTo(false), true)
@@ -1205,7 +1211,7 @@ export function Play() {
             // A home booked on Dodo: its own house, walked in like one's own.
             <HomeInside sim={sim} world={world} plot={dodoPlot} interactionId={inside!.it} roam={false} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
           ) : inside!.kind === 'home' && inside!.id !== 'logement' && homePlot && !classic ? (
-            <HomeInside partner={sim.friends?.find((f) => f.partner && f.home)} parents={sim.housing !== 'maison' && lifeOf(world, sim).stage?.id !== 'adulte'} sim={sim} world={world} plot={homePlot} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} onBuild={() => setBuilding(0)} />
+            <HomeInside partner={sim.friends?.find((f) => f.partner && f.home)} parents={sim.housing !== 'maison' && lifeOf(world, sim).stage?.id !== 'adulte'} sim={sim} world={world} plot={homePlot} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} onBuild={() => setBuilding(0)} drawer={gifts.on ? { count: gifts.wrapped, onOpen: () => setDrawerOpen(true) } : undefined} />
           ) : inside!.kind === 'mall' ? (
             <Suspense fallback={null}>
               <MallInside sim={sim} name={placeName(inside!.id)} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} layout={MALLS[inside!.id]} />
@@ -1731,6 +1737,7 @@ export function Play() {
           time={c.time}
           act={run}
           startApp={phoneApp}
+          gifts={gifts}
           achat={achat}
           onResult={apply}
           onConfirmAdult={async () => {
@@ -1834,6 +1841,7 @@ export function Play() {
         </div>
       )}
       {practice && !defi && <DefiSheet kind={practice} simId={sim.id} me={sim} practice onResult={apply} onClose={() => setPractice(null)} />}
+      {drawerOpen && gifts.on && <GiftsSheet world={world} sim={sim} view={gifts.view} onResult={apply} onOpened={gifts.reload} onClose={() => setDrawerOpen(false)} />}
       {fridgeOpen && <FridgeSheet world={world} sim={sim} how={fridgeOpen} onResult={apply} onClose={() => setFridgeOpen(null)} onStarted={() => (setPlaceId(null), setMenuOpen(false), setOutside(false), setBackTo('home'))} />}
       {shopOpen && doing && SHOP_OF[doing.interaction.id] && <ClothesShop world={world} sim={sim} shop={SHOP_OF[doing.interaction.id]} onResult={apply} onClose={() => setShopOpen(false)} onLeave={() => (setShopOpen(false), stop())} />}
       {machineOpen && doing && isSlots(doing.interaction.id) && (
@@ -1933,7 +1941,7 @@ export function Play() {
 
 /* ---------- The in-game phone ---------- */
 
-type PhoneAppId = 'mentor' | 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'bingo' | 'casino' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'awale' | 'ludo' | 'gode' | 'bolide' | 'jeux' | 'boutique' | 'idees' | 'politique' | 'reglages'
+type PhoneAppId = 'inviter' | 'mentor' | 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'bingo' | 'casino' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'awale' | 'ludo' | 'gode' | 'bolide' | 'jeux' | 'boutique' | 'idees' | 'politique' | 'reglages'
 type PhoneProps = {
   world: World
   sim: Sim
@@ -1946,6 +1954,8 @@ type PhoneProps = {
   time: string
   act: Act
   startApp: PhoneAppId | null
+  /** The friends' gifts (update « parrainage »): the « Inviter » app. */
+  gifts: ReturnType<typeof useFriendGifts>
   /** Back from GeniusPay: the purchase the Boutique asks about. */
   achat: { id: string; failed: boolean } | null
   /** Something bought in an app outside `act` (the Boutique's clothes): the Sim after it. */
@@ -1983,7 +1993,7 @@ type PhoneProps = {
   onDrive: (v: Driven) => void
 }
 
-function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startApp, achat, onResult, onConfirmAdult, delivery, onDelivery, onCollect, onClose, onMap, onCamera, onFlashe, onPractice, street, onWalk, onBuild, onDames, onDamesOnline, onDamesResume, onHuitTable, onHuitFriend, onHuitResume, onDrive }: PhoneProps) {
+function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startApp, gifts, achat, onResult, onConfirmAdult, delivery, onDelivery, onCollect, onClose, onMap, onCamera, onFlashe, onPractice, street, onWalk, onBuild, onDames, onDamesOnline, onDamesResume, onHuitTable, onHuitFriend, onHuitResume, onDrive }: PhoneProps) {
   const [app, setApp] = useState<PhoneAppId | null>(startApp)
   // A photo of the gallery on its way to Tikitoko.
   const [tikiPhoto, setTikiPhoto] = useState<{ id: number; src: string } | undefined>()
@@ -2072,7 +2082,10 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
   const feats = useFeatures()
   const has = (id: string) => ownPhone && (sim.apps?.includes(id) ?? false) && keyOpen(feats, `app:${id}`)
   // Gbairai from the cradle (update « gbairai-bebe »): babies and children write to their friends too, without a phone.
-  const gbairai = has('gbairai') || keyOpen(feats, 'gbairai-bebe')
+  const gbairaiFriends = has('gbairai') || keyOpen(feats, 'gbairai-bebe')
+  // Papa and maman in Gbairai from 3 (update « gbairai-parents »): before 12, only them unless « gbairai-bebe ».
+  const gbairaiParents = keyOpen(feats, 'gbairai-parents') && life.minor && life.stage?.id !== 'bebe'
+  const gbairai = gbairaiFriends || gbairaiParents
   // Babi Pub: the advertisers' apps on the home screen (features « pubs-applis »), with their icon.
   const adApps = useAds(ownPhone && keyOpen(feats, 'pubs-applis') ? sim.commune : undefined, 'telephone').filter((ad) => ad.icon && ad.appName && ad.link)
   // Apps from the store, once installed. The ride apps open the map to pick where to go.
@@ -2122,6 +2135,8 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
     { id: 'idees', label: 'Idées', icon: Lightbulb, colors: ['#ffe066', '#f5a000'], open: () => setApp('idees') },
     // The family's mentor, from 18 (an update: « mentor »).
     ...(!life.minor && keyOpen(feats, 'mentor') ? [{ id: 'mentor', label: 'Mentor', icon: GraduationCap, colors: ['#ffd36e', '#c98a00'] as [string, string], open: () => setApp('mentor') }] : []),
+    // One's link to send to friends, and the gifts they brought (an update: « parrainage »).
+    ...(gifts.on ? [{ id: 'inviter', label: 'Inviter', icon: Gift, colors: ['#ffb066', '#e8590c'] as [string, string], open: () => setApp('inviter') }] : []),
     ...(keyOpen(feats, 'app:politique') ? [{ id: 'politique', label: 'Politique', icon: Landmark, colors: ['#8c9eff', '#3d4fd6'] as [string, string], open: () => setApp('politique') }] : []),
     // How the game is shown on this phone: held sideways (components/Reglages.tsx).
     { id: 'reglages', label: 'Réglages', icon: Settings, colors: ['#b8c0cc', '#5c6676'], open: () => setApp('reglages') },
@@ -2130,7 +2145,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
   ).filter((a) => !life.minor || (a.id !== 'jobs' && a.id !== 'home'))
   // The dock: the map, the messages, the friends, the camera (when the phone is one's own; else the games).
   const DOCK = ['map', 'messages', 'friends', ownPhone ? 'camera' : 'jeux']
-  const title: Record<PhoneAppId, string> = { mentor: 'Ton mentor', bingo: 'Babi Bingo', casino: 'Babi Casino', here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Garbaya', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', babigram: 'Babigram', bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: 'Galerie', guide: 'Encyclopédie de Babi', dodo: 'Dodo', kineo: 'Kinéo', dames: 'Dames 225', huit: '8 américain', awale: 'Awalé 225', ludo: 'Ludo 225', gode: 'Godé', bolide: 'Bolide', jeux: 'Jeux', boutique: 'Boutique', idees: 'Tes idées pour Babi Life', politique: 'Politique', reglages: 'Réglages' }
+  const title: Record<PhoneAppId, string> = { inviter: 'Inviter mes amis', mentor: 'Ton mentor', bingo: 'Babi Bingo', casino: 'Babi Casino', here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Garbaya', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', babigram: 'Babigram', bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: 'Galerie', guide: 'Encyclopédie de Babi', dodo: 'Dodo', kineo: 'Kinéo', dames: 'Dames 225', huit: '8 américain', awale: 'Awalé 225', ludo: 'Ludo 225', gode: 'Godé', bolide: 'Bolide', jeux: 'Jeux', boutique: 'Boutique', idees: 'Tes idées pour Babi Life', politique: 'Politique', reglages: 'Réglages' }
 
   return (
     <div className="phone-backdrop absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center short:items-stretch short:justify-end" data-away={away || undefined} onClick={putAway}>
@@ -2191,6 +2206,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                       <span className="relative">
                         <PhoneIcon id={a.id} icon={a.icon} colors={a.colors} />
                         {((a.id === 'friends' && sim.gang === 'invited') || (a.id === 'home' && sim.rentArrears > 0) || (a.id === 'jobs' && !sim.career)) && <Badge />}
+                        {a.id === 'inviter' && gifts.wrapped > 0 && <Badge n={gifts.wrapped} />}
                       </span>
                       <span className="w-full truncate text-center text-[11px] font-semibold text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.45)]">{a.label}</span>
                     </button>
@@ -2294,6 +2310,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                   </div>
                 )}
                 {app === 'mentor' && <MentorApp sim={sim} onResult={onResult} />}
+                {app === 'inviter' && <InviteApp world={world} sim={sim} view={gifts.view} onResult={onResult} onOpened={gifts.reload} />}
                 {app === 'guide' && <GuideApp world={world} onTutorial={() => (onClose(), openTutorial())} onGo={(kind) => goToKind(kind, commune, onWalk, onMap)} />}
                 {app === 'dodo' && <DodoApp world={world} sim={sim} act={act} onMap={onMap} />}
                 {app === 'bolide' && <BolideApp world={world} sim={sim} act={act} onDrive={onDrive} />}
@@ -2322,7 +2339,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                 {app === 'reglages' && <ReglagesApp />}
                 {app === 'politique' && <PolitiqueApp world={world} sim={sim} commune={commune} at={at} onWalk={(id) => (onClose(), onWalk(id))} />}
                 {app === 'waye' && <WayeApp world={world} sim={sim} act={act} journal={journal} renderJournal={(events) => <Journal events={events} />} payTo={wayeTo} />}
-                {app === 'gbairai' && <GbairaiApp world={world} sim={sim} />}
+                {app === 'gbairai' && <GbairaiApp world={world} sim={sim} parents={gbairaiParents} friends={gbairaiFriends} />}
                 {app === 'tikitoko' && <TikitokoApp sim={sim} act={act} photo={tikiPhoto} street={street} onClose={() => (setApp(null), setTikiPhoto(undefined))} />}
                 {app === 'babigram' && <BabigramApp sim={sim} act={act} photo={gramPhoto} stories={has('gbairai')} onClose={() => (setApp(null), setGramPhoto(undefined))} />}
                 {app === 'galerie' && <GalleryApp sim={sim} onCamera={onCamera} story={has('gbairai')} onTiki={has('tikitoko') ? (p, src) => (setTikiPhoto({ id: p.id, src }), setApp('tikitoko')) : null} onGram={has('babigram') ? (p, src) => (setGramPhoto({ id: p.id, src }), setApp('babigram')) : null} />}

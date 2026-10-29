@@ -169,6 +169,8 @@ export type HuitGame = {
 export type Quote = { name: string; body: string; kind: 'text' | 'sticker' | 'photo'; mine?: boolean; deleted?: boolean }
 export type ChatMessage = { id: number; mine: boolean; body: string; at: string; readAt?: string; replyTo?: number; quote?: Quote }
 export type Chat = { friend: Player; last?: ChatMessage; unread: number; blocked?: boolean }
+/** Papa or maman in a child's Gbairai (update « gbairai-parents », backend sims/gbairaiparents.go). */
+export type ParentChat = { who: 'papa' | 'maman'; name: string; gender: 'homme' | 'femme'; last?: ChatMessage; unread: number; typing?: boolean }
 /** The betting apps (Bet225, ParisFoot): the virtual football and the bets. */
 export type BetOdds = Record<'1' | 'N' | '2' | 'plus' | 'moins' | 'btsOui' | 'btsNon', number>
 export type VirtualMatch = { key: string; round: number; home: string; away: string; kickoff: number; end: number; odds: BetOdds; minute: number; score?: [number, number]; goals?: string[]; /** foot, basket, tennis */ sport?: Sport; /** basketball's points line */ line?: number }

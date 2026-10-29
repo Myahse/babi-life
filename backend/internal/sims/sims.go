@@ -372,6 +372,9 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/gbairai/{other}", h.write)
 	r.Post("/sims/{id}/gbairai/{other}/block", h.block)
 	r.Post("/sims/{id}/gbairai/{other}/report", h.report)
+	r.Get("/sims/{id}/gbairai-parents", h.parentChats)
+	r.Get("/sims/{id}/gbairai-parents/{who}", h.parentThread)
+	r.Post("/sims/{id}/gbairai-parents/{who}", h.parentWrite)
 	r.Get("/bets/rounds", h.betRounds)
 	r.Get("/loto/draws", h.lotoDraws)
 	r.Post("/sims/{id}/loto", h.buyLoto)
@@ -406,6 +409,8 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/mentor", h.mentorAsk)
 	r.Post("/sims/{id}/fridge/buy", h.fridgeBuy)
 	r.Post("/sims/{id}/fridge/eat", h.fridgeEat)
+	r.Get("/sims/{id}/parrainage", h.parrainage)
+	r.Post("/sims/{id}/parrainage/{gift}/open", h.giftOpen)
 	r.Get("/sims/{id}/photos", h.photoList)
 	r.Post("/sims/{id}/photos", h.photoTake)
 	r.Get("/sims/{id}/photos/{photo}/raw", h.photoRaw)
@@ -1136,6 +1141,8 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 		}
 	}
 	h.postMoments(ctx, moments)
+	// Played a while: the gift of the one whose link the account came by (parrainage.go).
+	h.referralCheck(ctx, auth.UserID(ctx), &s)
 
 	if fresh == nil {
 		fresh = []Event{}

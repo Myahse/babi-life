@@ -119,9 +119,8 @@ func (h *Handler) appSim(r *http.Request, app string) (string, error) {
 		return "", errNotFound
 	}
 	s.GameMinutes = game.MinuteOf(time.Now())
-	// Gbairai from the cradle (update « gbairai-bebe »): the little ones write to their friends too, without a phone of their own.
-	if app == "gbairai" && features.Default.BlocksKey(r.Context(), "gbairai-bebe") == "" {
-		return s.ID, nil
+	if app == "gbairai" {
+		return s.ID, friendsGbairai(r.Context(), &s)
 	}
 	if !s.hasPhone() {
 		return "", errNoPhoneYet
@@ -133,6 +132,22 @@ func (h *Handler) appSim(r *http.Request, app string) (string, error) {
 		return "", needApp(&s, app)
 	}
 	return s.ID, nil
+}
+
+// friendsGbairai: why this Sim can't write to its friends, nil when it can. Before 12 a child
+// writes only to papa and maman (gbairaiparents.go), unless the update « gbairai-bebe » is open:
+// then the little ones write to their friends too, without a phone of their own.
+func friendsGbairai(ctx context.Context, s *Sim) error {
+	if features.Default.BlocksKey(ctx, "gbairai-bebe") == "" {
+		return nil
+	}
+	if !s.hasPhone() {
+		return errNoPhoneYet
+	}
+	if !s.hasApp("gbairai") {
+		return errNoGbairai
+	}
+	return nil
 }
 
 // canWrite: friends in the game, and neither has blocked the other.

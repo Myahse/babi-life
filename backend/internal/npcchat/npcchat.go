@@ -205,6 +205,11 @@ func (c *Client) Answer(ctx context.Context, p Persona, pl Player, before []Line
 	if err != nil {
 		return Reply{}, err
 	}
+	return parse(text)
+}
+
+// parse: the model's JSON answer, checked.
+func parse(text string) (Reply, error) {
 	var r Reply
 	// (Some models wrap it in a code fence all the same.)
 	text = strings.TrimSuffix(strings.TrimPrefix(strings.TrimPrefix(strings.TrimSpace(text), "```json"), "```"), "```")

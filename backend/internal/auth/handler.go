@@ -121,7 +121,8 @@ func (h *Handler) signIn(w http.ResponseWriter, r *http.Request, id GoogleIdenti
 		id.FirstName, id.LastName, _ = strings.Cut(id.Name, " ")
 	}
 	var u User
-	err := scanUser(h.DB.QueryRow(ctx, `
+	var created bool
+	err := h.DB.QueryRow(ctx, `
 		INSERT INTO users (google_sub, email, name, first_name, last_name, avatar_url)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT (google_sub) DO UPDATE
@@ -129,12 +130,16 @@ func (h *Handler) signIn(w http.ResponseWriter, r *http.Request, id GoogleIdenti
 		       first_name = CASE WHEN users.first_name = '' THEN EXCLUDED.first_name ELSE users.first_name END,
 		       last_name  = CASE WHEN users.last_name  = '' THEN EXCLUDED.last_name  ELSE users.last_name  END,
 		       last_login_at = now()
-		RETURNING `+userColumns,
+		RETURNING `+userColumns+`, xmax = 0`,
 		id.Sub, id.Email, id.Name, id.FirstName, id.LastName, id.Picture,
-	), &u)
+	).Scan(&u.ID, &u.Email, &u.Name, &u.FirstName, &u.LastName, &u.Username, &u.AvatarURL, &u.CreatedAt, &u.Tester, &u.Adult, &created) // userColumns, then whether it was just made
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "could not save user")
 		return
+	}
+	// A new account, by a friend's link (referral.go).
+	if created {
+		_ = RecordReferral(ctx, h.DB, u.ID, refOf(r))
 	}
 	h.issue(w, r, u)
 }
