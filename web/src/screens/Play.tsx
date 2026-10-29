@@ -121,6 +121,7 @@ import { activityOpen, keyOpen, useFeatures } from '../lib/features'
 import { lowNeeds } from '../world3d/NeedsAura'
 import { ListedFamily } from '../components/ListedFamily'
 import { Bapteme } from '../components/Bapteme'
+import { ChoiceSheet, FirstsChip, useFirsts } from '../components/Firsts'
 import { FeatureNews } from '../components/FeatureNews'
 import { Sheet } from '../components/Sheet'
 import { Splash } from '../components/Splash'
@@ -804,6 +805,10 @@ export function Play() {
   const tutoAsked = useTutorialAsked()
   // The arrival before it (update « arrivee », components/Arrival.tsx): the flight over the commune, the welcome, Awa.
   const [arriving, setArriving] = useState(() => beginner() && arrivalDue())
+  // A baby's « premières fois » and its choices (updates « premieres-fois », « choix-bebe »): fetched again as actions start and end.
+  const isBaby = !!sim && !!world && lifeOf(world, sim).stage?.id === 'bebe'
+  const [firstsView, setFirstsView] = useFirsts(sim?.id ?? '', isBaby && (keyOpen(features, 'premieres-fois') || keyOpen(features, 'choix-bebe')), `${sim?.activity?.interaction.id ?? ''}${sim?.activity?.start ?? ''}`)
+  const [choiceShut, setChoiceShut] = useState('')
   // A Gbairai message arriving (the update « sonnerie-gbairai », lib/live.ts): the ring, a buzz, the phone button
   // shaking, and a dot on it until the phone is opened.
   const [buzz, setBuzz] = useState(0)
@@ -1087,6 +1092,12 @@ export function Play() {
       {/* An update the team just opened (the admin's « Mises à jour »), once. */}
       <FeatureNews />
       {keyOpen(features, 'famille-liste') && !arriving && !tuto && !classic && <ListedFamily simId={sim.id} onResult={apply} />}
+      {/* The baby's « premières fois »: the chip (inside, top left; out, under « Où aller ? ») */}
+      {firstsView && isBaby && keyOpen(features, 'premieres-fois') && showInside && !overlay && !players && <FirstsChip view={firstsView} className="absolute top-[max(4.75rem,calc(env(safe-area-inset-top)+4.25rem))] left-3 z-20" />}
+      {/* Choosing the toy, the first word, while doing it */}
+      {firstsView && isBaby && keyOpen(features, 'choix-bebe') && doing && (doing.interaction.id === 'jouets' || doing.interaction.id === 'premier-mot') && choiceShut !== `${doing.interaction.id}${doing.start}` && (
+        <ChoiceSheet simId={sim.id} kind={doing.interaction.id === 'jouets' ? 'talent' : 'mot'} view={firstsView} onResult={(r) => (apply(r), void api.firsts(sim.id).then(setFirstsView).catch(() => undefined))} onDone={() => setChoiceShut(`${doing.interaction.id}${doing.start}`)} />
+      )}
       {/* The baptism, once, in the baby's first days (after the arrival's flight) */}
       {baptism && !arriving && <Bapteme sim={sim} onResult={apply} onEnd={() => setBaptism(false)} />}
       {racing && (
@@ -1443,6 +1454,7 @@ export function Play() {
           <WayLeft />
           {/* The power cut where the Sim stands */}
           <PowerCutBadge commune={commune.id} />
+          {firstsView && isBaby && keyOpen(features, 'premieres-fois') && <FirstsChip view={firstsView} />}
         </div>
       )}
       {whereTo && (

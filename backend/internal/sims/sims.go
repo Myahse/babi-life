@@ -298,6 +298,8 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Get("/me/waitlist-sim", h.waitlistSim)
 	r.Get("/sims/{id}/listed-family", h.listedFamily)
 	r.Get("/sims/{id}/bapteme", h.baptismDue)
+	r.Get("/sims/{id}/firsts", h.firsts)
+	r.Post("/sims/{id}/choice", h.choose)
 	r.Post("/sims/{id}/bapteme", h.baptise)
 	r.Post("/sims/{id}/listed-family", h.answerListedFamily)
 	r.Post("/sims", h.create)
@@ -706,7 +708,9 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 		if said != "" {
 			text = said
 		}
-		return game.Outcome{Text: text, Money: paid - max(it.Cost, 0)}, gymEvents(s, it), nil
+		// A baby's « première fois », if this brings one (firsts.go).
+		events := append(gymEvents(s, it), firstFor(r.Context(), tx, s, it.ID)...)
+		return game.Outcome{Text: text, Money: paid - max(it.Cost, 0)}, events, nil
 	})
 }
 

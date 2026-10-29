@@ -31,7 +31,7 @@ const PAPERS: Record<string, Papers> = { 'etat-civil': 'register', legalisation:
 const TRAYS: Record<string, Tray> = { 'rs-petitdej': 'petitdej', 'rs-club': 'club', 'rs-poisson': 'poisson', 'rs-glace': 'glace', 'rs-cocktail': 'cocktail' }
 const BABY = /^(biberon|bouillie|hochet|calin)$/
 /** The baby's little games (the update « bebe-jeux »): maman with it, as for the hochet or the câlin. */
-const BABY_GAMES: Record<string, 'hochet' | 'calin'> = { coucou: 'calin', cubes: 'hochet', 'premiers-pas': 'calin' }
+const BABY_GAMES: Record<string, 'hochet' | 'calin'> = { coucou: 'calin', cubes: 'hochet', 'premiers-pas': 'calin', jouets: 'hochet', 'premier-mot': 'calin' }
 
 /**
  * kind: the place's kind ('house' for one's own house, whose furniture has
