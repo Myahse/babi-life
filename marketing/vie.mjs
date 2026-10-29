@@ -259,7 +259,19 @@ const VIE = [
     warm: 200,
     stage: 'ENFANT · 3 ANS',
     text: 'Deux heures de jeu, et hop : tu as 3 ans ! Enfant, c’est l’école : la classe, la récré, le maître qui pose des questions.',
-    at: (p) => ({ 60: click(p, /Lever la main/), 95: click(p, /C.est parti/) }),
+    at: (p) => ({
+      60: click(p, /Lever la main/),
+      95: click(p, /C.est parti/),
+      // An answer touched, the maître's question on the board (whichever it is).
+      150: () =>
+        p.evaluate(() => {
+          const answers = [...document.querySelectorAll('button')].filter((b) => {
+            const r = b.getBoundingClientRect()
+            return r.height > 0 && r.top > 250 && r.top < 620 && b.innerText.trim().length > 2 && !/Lever|Phone|Carte|Voir|Rire|parti/.test(b.innerText)
+          })
+          ;(answers[1] ?? answers[0])?.click()
+        }),
+    }),
   },
   {
     id: 'ado',
@@ -278,7 +290,7 @@ const VIE = [
     warm: 200,
     stage: 'PRESSÉ·E ?',
     text: 'Tu ne veux pas attendre ? Va dans la Boutique : enfant, ado ou adulte tout de suite. Tu paies une fois, et tu as accès à tout le jeu.',
-    at: (p) => ({ 40: () => p.getByText(/tout de suite/).first().scrollIntoViewIfNeeded({ timeout: 4000 }) }),
+    at: (p) => ({ 10: click(p, /18 ans ou plus/), 50: () => p.getByText(/tout de suite/).first().evaluate((el) => el.scrollIntoView({ block: 'center' })) }),
   },
   {
     id: 'adulte',
