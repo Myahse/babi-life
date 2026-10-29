@@ -151,6 +151,7 @@ const seededLab = (n: number) => () => ((n = (n * 16807) % 2147483647) / 2147483
 const LAB_GROUND = weather(new THREE.MeshLambertMaterial({ color: '#cbb38c' }), 'ground')
 const q = new URLSearchParams(location.search)
 const view = q.get('view') ?? 'city'
+const STREET_RULES = { street: true, foe: Number(q.get('foe') ?? 1), length: Number(q.get('length') ?? 180) }
 const night = q.has('night')
 
 const rect = (x: number, z: number, w: number, d: number, a = 0): XZ[] =>
@@ -901,6 +902,8 @@ function Lab() {
         onExit={() => location.reload()}
       />
     )
+  // Le foot de rue: ?view=footrue (&seed=, &foe=).
+  if (view === 'footrue') return <StreetMatch sport="foot" name="Awa" look={randomLook('femme', seededLab(5))} gender="femme" seed={Number(q.get('seed') ?? 7)} rules={STREET_RULES} onExit={() => location.reload()} />
   if (view === 'hoops' || view === 'foot5') return <StreetMatch sport={view === 'hoops' ? 'basket' : 'foot'} name="Awa" look={randomLook('femme', seededLab(5))} gender="femme" seed={Number(q.get('seed') ?? 7)} onExit={() => location.reload()} />
   if (view === 'kart') return <KartRace name="Awa" look={randomLook('femme', seededLab(5))} gender="femme" onExit={() => location.reload()} />
   if (view === 'stadium') return <StadiumLab />

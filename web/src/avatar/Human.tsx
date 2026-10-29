@@ -13,7 +13,7 @@ import { fightArms, fightBody, fightLegs, isFight, type FightPose } from './figh
 // simpler blocky figure (avatar/LowHuman.tsx) far away, and the poses that
 // move them both (usePoseRig). Units are metres: feet on y=0, facing +Z.
 
-export type Pose = 'idle' | 'walk' | 'run' | 'leap' | 'hang' | 'wash' | 'sleep' | 'pray' | 'cook' | 'phone' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper' | 'touch' | 'mark' | 'guard' | 'dive' | 'airplane' | 'pass' | 'salat' | 'swim' | 'dunk' | 'layup' | 'crossover' | 'block' | 'steal' | 'slide' | 'stumble' | 'bouncepass' | 'film' | 'call' | 'snack' | 'dj' | 'brush' | 'toilet' | 'push' | JobPose | EmotePose | FightPose
+export type Pose = 'idle' | 'walk' | 'run' | 'leap' | 'hang' | 'wash' | 'sleep' | 'pray' | 'cook' | 'phone' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper' | 'touch' | 'mark' | 'guard' | 'dive' | 'airplane' | 'pass' | 'salat' | 'swim' | 'dunk' | 'layup' | 'crossover' | 'block' | 'steal' | 'slide' | 'stumble' | 'bouncepass' | 'stepover' | 'roulette' | 'poke' | 'rainbow' | 'feint' | 'flick' | 'backheel' | 'juggle' | 'nutmegged' | 'lookup' | 'flinch' | 'film' | 'call' | 'snack' | 'dj' | 'brush' | 'toilet' | 'push' | JobPose | EmotePose | FightPose
 
 /** Poses done sitting on a chair (hips at seat height): 'call' is the phone at the ear, sitting. */
 export const SEATED: Pose[] = ['sit', 'eat', 'drink', 'write', 'call', 'toilet']
@@ -240,6 +240,88 @@ function sportLegs(pose: Pose, out: number, t: number, since: number): [number, 
     }
     case 'bouncepass':
       return out > 0 ? [-0.5, 0, 0.6] : [0.2, 0, 0.35]
+    /* The street's moves (streetball/game.ts Geste), and the man they beat. */
+    case 'stepover': {
+      // Two stepovers: the right foot round the ball from inside to out, then the left; then the push away.
+      if (since > 0.42) return out > 0 ? [-0.5, 0, 0.6] : [0.3, 0, 0.4]
+      const lead = since < 0.21 ? 1 : -1
+      const k = clamp01((since - (lead > 0 ? 0 : 0.21)) / 0.21)
+      if (out === lead) {
+        const s = Math.sin(k * Math.PI)
+        return [-0.25 - 0.45 * s, out * (-0.3 + 0.8 * k), 0.35 + 0.55 * s]
+      }
+      return [-0.05, out * 0.14, 0.42]
+    }
+    case 'roulette':
+      // The Marseille turn: the sole of one foot on the ball, then the other's, the body spinning round it.
+      if (since > 0.6) return out > 0 ? [-0.55, 0, 0.7] : [0.3, 0, 0.35]
+      return out === (since < 0.3 ? 1 : -1) ? [-0.5, out * 0.1, 0.25] : [0.1, out * 0.12, 0.45]
+    case 'poke':
+      // The nutmeg: a quick poke with the toe, then off round him.
+      if (since < 0.16) {
+        const k = ease(since / 0.16)
+        return out > 0 ? [-0.1 - 0.75 * k, 0, 0.9 - 0.8 * k] : [0.05, 0, 0.35]
+      }
+      return out > 0 ? [-0.3, 0, 0.5] : [0.25, 0, 0.6]
+    case 'rainbow': {
+      // The sombrero: the ball dragged back onto the heel, the heel flicked up behind, a little hop.
+      if (since < 0.18) return out > 0 ? [0.05, out * 0.05, 0.45] : [-0.35 + 0.5 * ease(since / 0.18), 0, 0.35]
+      if (since < 0.36) {
+        const k = Math.sin(((since - 0.18) / 0.18) * Math.PI)
+        return out > 0 ? [0.1 + 0.45 * k, 0, 0.6 + 1.5 * k] : [0.1, 0, 0.3]
+      }
+      return out > 0 ? [-0.45, 0, 0.6] : [0.25, 0, 0.45]
+    }
+    case 'feint': {
+      // The fake shot: the leg drawn back as for a kick, brought over the ball, then the cut away.
+      if (since < 0.22) {
+        const k = ease(since / 0.22)
+        return out > 0 ? [0.6 * k, 0, 1.35 * k] : [-0.1, 0, 0.32]
+      }
+      if (since < 0.32) return out > 0 ? [-0.3, out * 0.15, 0.5] : [-0.05, 0, 0.4]
+      return out > 0 ? [-0.4, out * 0.35, 0.6] : [0.2, out * 0.2, 0.4]
+    }
+    case 'flick': {
+      // The aile de pigeon: the right foot across behind the standing leg, the outside of the heel flicking it on.
+      if (out < 0) return [-0.1, out * 0.1, 0.35]
+      if (since < 0.14) {
+        const k = ease(since / 0.14)
+        return [0.35 * k, -0.45 * k, 0.4 + 0.6 * k]
+      }
+      if (since < 0.3) {
+        const k = ease((since - 0.14) / 0.16)
+        return [0.35 - 0.15 * k, -0.45 + 0.85 * k, 1.0 - 0.6 * k]
+      }
+      return [0, 0.1, 0.3]
+    }
+    case 'backheel': {
+      // The back-heel: the foot over the ball, then swung back through it.
+      if (out < 0) return [-0.15, out * 0.08, 0.4]
+      if (since < 0.08) return [-0.35 * ease(since / 0.08), 0, 0.45]
+      if (since < 0.24) {
+        const k = ease((since - 0.08) / 0.16)
+        return [-0.35 + 1.0 * k, 0, 0.45 + 0.4 * k]
+      }
+      const k = ease(clamp01((since - 0.24) / 0.2))
+      return [0.65 - 0.6 * k, 0, 0.85 - 0.5 * k]
+    }
+    case 'juggle': {
+      // Keepy-ups: one foot, then the other, comes up to meet the ball (streetball JUGGLE_T: a touch every 0.48 s).
+      const n = Math.round(since / 0.48)
+      const lead = n % 2 === 0 ? 1 : -1
+      if (out !== lead) return [-0.05, out * 0.1, 0.3]
+      const bump = Math.exp(-(((since - n * 0.48) / 0.11) ** 2))
+      return [-0.15 - 0.75 * bump, out * 0.05, 0.35 + 0.35 * bump]
+    }
+    case 'nutmegged':
+      // Legs apart (the ball went through), then turning round for it.
+      return since < 0.4 ? [-0.1, out * 0.42, 0.4] : [out * 0.25 - 0.1, out * 0.2, 0.5]
+    case 'lookup':
+      // A step back, looking for the ball over his head.
+      return [out > 0 ? 0.25 : -0.1, out * 0.1, 0.4]
+    case 'flinch':
+      // Fallen for the fake shot: a leg stuck out to block it, turning away.
+      return out > 0 ? [-0.6, out * 0.5, 0.25] : [0.05, out * 0.08, 0.55]
     case 'salat': {
       const { step } = salatStep()
       // Bowing: the body leans, the legs stay upright. Prostrated: kneeling, the thighs forward a little, the shins flat behind. Sitting: on the heels.
@@ -326,6 +408,26 @@ function sportArms(pose: Pose, out: number, t: number, since: number, armSwing: 
       const k = ease(clamp01(since / 0.3))
       return [-1.0 + 0.35 * k, 0, out * (0.3 - 0.15 * k), -1.8 + 1.7 * k, 0]
     }
+    case 'stepover':
+    case 'roulette':
+    case 'rainbow':
+    case 'flick':
+    case 'backheel':
+      // The street's moves: arms out wide for the balance.
+      return [-0.25 + Math.sin(t * 7 + out) * 0.08, 0, out * (pose === 'roulette' ? 1.0 : 0.8), -0.5, 0]
+    case 'poke':
+      return [out < 0 ? -0.6 : 0.4, 0, out * 0.5, -0.7, 0]
+    case 'feint':
+      return since < 0.32 ? [out < 0 ? -0.8 : 0.45, 0, out * 0.75, -0.35, 0] : [-0.3, 0, out * 0.9, -0.45, 0]
+    case 'juggle':
+      return [-0.25 + Math.sin(t * 6.5 + out) * 0.1, 0, out * 0.65, -0.6, 0]
+    case 'nutmegged':
+      return [0.05, 0, out * 0.5, -0.3, 0]
+    case 'lookup':
+      return [-1.2, 0, out * 0.4, -0.5, 0]
+    case 'flinch':
+      // Arms in, over the face.
+      return [-0.7, 0, out * 0.25, -1.9, 0]
     case 'dj': {
       // The DJ: the right hand on the platter, scratching (the record pushed and pulled); every eight beats
       // up in the air for the crowd. The left one holds the headphones to the ear, then goes down to the fader.
@@ -352,7 +454,7 @@ function sportArms(pose: Pose, out: number, t: number, since: number, armSwing: 
   }
 }
 /** The body as a whole: height, lean forward (rx) and sideways (rz), the head's nod; null where the pose doesn't change it. */
-function sportBody(pose: Pose, t: number, since: number): { y?: number; x?: number; z?: number; rx?: number; rz?: number; head?: number } | null {
+function sportBody(pose: Pose, t: number, since: number): { y?: number; x?: number; z?: number; rx?: number; rz?: number; ry?: number; head?: number } | null {
   switch (pose) {
     case 'kick':
       return { rx: since < 0.3 ? 0.08 : -0.12, head: 0.3 }
@@ -410,6 +512,35 @@ function sportBody(pose: Pose, t: number, since: number): { y?: number; x?: numb
     }
     case 'bouncepass':
       return { y: -0.06, rx: 0.25, head: 0.1 }
+    case 'stepover': {
+      // The hips thrown one way then the other with each foot, the shoulders selling it.
+      const lead = since < 0.21 ? 1 : -1
+      const s = since > 0.42 ? 0 : Math.sin(clamp01((since - (lead > 0 ? 0 : 0.21)) / 0.21) * Math.PI)
+      return { y: -0.1, x: lead * 0.12 * s, rx: since > 0.42 ? 0.3 : 0.22, rz: -lead * 0.16 * s, ry: lead * 0.35 * s, head: 0.3 }
+    }
+    case 'roulette':
+      return { y: -0.08, rx: 0.12, head: 0.25 }
+    case 'poke':
+      return { y: -0.06, rx: since < 0.16 ? 0.12 : 0.18, head: 0.3 }
+    case 'rainbow':
+      return { y: since > 0.18 && since < 0.36 ? 0.06 : -0.05, rx: since < 0.36 ? 0.3 : 0.1, head: since < 0.3 ? 0.35 : -0.3 }
+    case 'feint':
+      return since < 0.32 ? { rx: since < 0.22 ? 0.08 : -0.1, head: 0.3 } : { y: -0.08, rx: 0.2, rz: 0.22, ry: 0.35, head: 0.25 }
+    case 'flick':
+      return { y: -0.06, rx: 0.12, rz: -0.1, ry: 0.3, head: 0.25 }
+    case 'backheel':
+      return { y: -0.06, rx: 0.25, head: 0.15 }
+    case 'juggle':
+      return { y: -0.03, rx: 0.08, head: 0.3 + Math.sin(t * 13) * 0.05 }
+    case 'nutmegged':
+      // Looking down between his legs, then round.
+      return since < 0.4 ? { y: -0.08, rx: 0.15, head: 0.55 } : { y: -0.1, rx: 0.05, rz: 0.15, head: 0.1 }
+    case 'lookup':
+      return { y: -0.02, rx: -0.25, head: -0.7 }
+    case 'flinch': {
+      const k = ease(clamp01((since - 0.45) / 0.3))
+      return { y: -0.12 - 0.08 * k, rz: 0.25 + 0.2 * k, ry: 0.7, rx: 0.15, head: 0.4 }
+    }
     case 'film':
       return { head: -0.06 }
     case 'dj': {
@@ -429,7 +560,7 @@ function sportBody(pose: Pose, t: number, since: number): { y?: number; x?: numb
 }
 
 /** Quick moves: the joints follow closely, or the jump would be over before the body got there. */
-const SNAPPY = new Set<Pose>(['dunk', 'layup', 'crossover', 'block', 'steal', 'slide', 'stumble', 'bouncepass'])
+const SNAPPY = new Set<Pose>(['dunk', 'layup', 'crossover', 'block', 'steal', 'slide', 'stumble', 'bouncepass', 'stepover', 'roulette', 'poke', 'rainbow', 'feint', 'flick', 'backheel', 'juggle', 'nutmegged', 'lookup', 'flinch'])
 
 /**
  * Moves a rig for a pose, every frame: index 0 of each pair is the side at -x.

@@ -1,7 +1,7 @@
 import { clockSample, localNow, serverNow } from '../lib/worldClock'
 import type { Look } from '../lib/types'
 import type { Pose } from '../avatar/Human'
-import { NO_INPUT, type Act, type Game, type Input, type Moment } from './game'
+import { GESTES, NO_INPUT, type Act, type Game, type Input, type Moment } from './game'
 
 // Playing at a court with other players. The API puts everyone who starts
 // playing at the same pitch or court in one match, up to the sport's places
@@ -22,18 +22,19 @@ export type CourtEntry = { sim: string; name: string; gender: 'femme' | 'homme';
 export type CourtMatch = { id: string; place: string; sport: 'foot' | 'basket' | 'foot11'; start: number; end: number; cap: number; entries: CourtEntry[] }
 
 /** The poses and moves, by number on the wire. */
-const POSES: Pose[] = ['idle', 'walk', 'run', 'dribble', 'pass', 'bouncepass', 'shoot', 'dunk', 'layup', 'crossover', 'steal', 'block', 'slide', 'stumble', 'kick', 'keeper', 'dive', 'airplane', 'cheer', 'guard', 'mark', 'touch', 'hang', 'leap']
-const ACTS: Act[] = ['none', 'pass', 'shoot', 'dunk', 'layup', 'cross', 'steal', 'block', 'slide', 'beaten', 'kick', 'dive', 'hold', 'celebrate', 'cheer', 'head', 'throw']
-const MOMENTS: Moment['kind'][] = ['dunk', 'basket', 'three', 'goal', 'block', 'steal', 'ankle', 'save', 'tackle', 'post']
+const POSES: Pose[] = ['idle', 'walk', 'run', 'dribble', 'pass', 'bouncepass', 'shoot', 'dunk', 'layup', 'crossover', 'steal', 'block', 'slide', 'stumble', 'kick', 'keeper', 'dive', 'airplane', 'cheer', 'guard', 'mark', 'touch', 'hang', 'leap', 'stepover', 'roulette', 'poke', 'rainbow', 'feint', 'flick', 'backheel', 'juggle', 'nutmegged', 'lookup', 'flinch']
+const ACTS: Act[] = ['none', 'pass', 'shoot', 'dunk', 'layup', 'cross', 'steal', 'block', 'slide', 'beaten', 'kick', 'dive', 'hold', 'celebrate', 'cheer', 'head', 'throw', 'geste', 'juggle']
+const MOMENTS: Moment['kind'][] = ['dunk', 'basket', 'three', 'goal', 'block', 'steal', 'ankle', 'save', 'tackle', 'post', 'geste', 'gbe']
 const PHASES: Game['phase'][] = ['count', 'play', 'dead', 'over']
 const SETS: NonNullable<Game['set']>['kind'][] = ['free', 'pen', 'corner', 'throw', 'goal']
 
 /**
  * The buttons, counted: what a phone sends (k) and what the host makes of it.
  * The console's (the stadium's eleven): the through ball and the lob counted
- * too, the sprint and Tir held (undefined: the street's tap).
+ * too, the sprint and Tir held (undefined: the street's tap). Le foot de rue:
+ * the moves counted (and the last one's kind), the keepy-ups held.
  */
-type Hands = { mx: number; mz: number; pass: number; shoot: number; skill: number; defend: number; guard: boolean; through: number; lob: number; sprint?: boolean; charge?: boolean }
+type Hands = { mx: number; mz: number; pass: number; shoot: number; skill: number; defend: number; guard: boolean; through: number; lob: number; sprint?: boolean; charge?: boolean; geste: number; kind: number; juggle: boolean }
 
 export class MatchNet {
   private ws: WebSocket | null = null
@@ -47,7 +48,7 @@ export class MatchNet {
   private flash: string | null = null
   private opened = serverNow()
   /** This phone's presses so far. */
-  private presses = { pass: 0, shoot: 0, skill: 0, defend: 0, through: 0, lob: 0 }
+  private presses = { pass: 0, shoot: 0, skill: 0, defend: 0, through: 0, lob: 0, geste: 0, kind: 0 }
   connected = false
 
   constructor(
@@ -78,7 +79,7 @@ export class MatchNet {
         for (const s of m.players as { id: string; at: number; k?: number[]; b?: number[][] }[]) {
           if (s.id === this.sim) continue
           this.heard.set(s.id, s.at)
-          if (s.k?.length) this.hands.set(s.id, { mx: s.k[0], mz: s.k[1], pass: s.k[2], shoot: s.k[3], skill: s.k[4], defend: s.k[5], guard: s.k[6] > 0, through: s.k[7] ?? 0, lob: s.k[8] ?? 0, ...(s.k.length > 10 ? { sprint: s.k[9] > 0, charge: s.k[10] < 0 ? undefined : s.k[10] > 0 } : {}) })
+          if (s.k?.length) this.hands.set(s.id, { mx: s.k[0], mz: s.k[1], pass: s.k[2], shoot: s.k[3], skill: s.k[4], defend: s.k[5], guard: s.k[6] > 0, through: s.k[7] ?? 0, lob: s.k[8] ?? 0, ...(s.k.length > 10 ? { sprint: s.k[9] > 0, charge: s.k[10] < 0 ? undefined : s.k[10] > 0 } : {}), geste: s.k[11] ?? 0, kind: s.k[12] ?? 0, juggle: (s.k[13] ?? 0) > 0 })
           if (s.b?.length && s.at > (this.snaps.get(s.id)?.at ?? 0)) this.snaps.set(s.id, { at: s.at, b: s.b })
         }
     }
@@ -116,12 +117,16 @@ export class MatchNet {
     if (i.defend) this.presses.defend++
     if (i.through) this.presses.through++
     if (i.lob) this.presses.lob++
+    if (i.geste) {
+      this.presses.geste++
+      this.presses.kind = GESTES.indexOf(i.geste)
+    }
   }
 
   /** This phone's hands, and the whole match if it runs it. */
   send(i: Input, at: [number, number], g: Game | null) {
     if (this.ws?.readyState !== WebSocket.OPEN) return
-    const k = [r2(i.mx), r2(i.mz), this.presses.pass, this.presses.shoot, this.presses.skill, this.presses.defend, i.guard ? 1 : 0, this.presses.through, this.presses.lob, i.sprint ? 1 : 0, i.charge === undefined ? -1 : i.charge ? 1 : 0]
+    const k = [r2(i.mx), r2(i.mz), this.presses.pass, this.presses.shoot, this.presses.skill, this.presses.defend, i.guard ? 1 : 0, this.presses.through, this.presses.lob, i.sprint ? 1 : 0, i.charge === undefined ? -1 : i.charge ? 1 : 0, this.presses.geste, this.presses.kind, i.juggle ? 1 : 0]
     this.ws.send(JSON.stringify({ t: 'state', x: r2(at[0]), y: 0, z: r2(at[1]), h: 0, p: 'idle', k, ...(g ? { b: encode(g) } : {}) }))
   }
 
@@ -141,7 +146,7 @@ export class MatchNet {
         continue
       }
       const was = this.used.get(e.sim) ?? h
-      out.set(e.slot, { mx: h.mx, mz: h.mz, guard: h.guard, pass: h.pass > was.pass, shoot: h.shoot > was.shoot, skill: h.skill > was.skill, defend: h.defend > was.defend, through: h.through > was.through, lob: h.lob > was.lob, sprint: h.sprint, charge: h.charge })
+      out.set(e.slot, { mx: h.mx, mz: h.mz, guard: h.guard, pass: h.pass > was.pass, shoot: h.shoot > was.shoot, skill: h.skill > was.skill, defend: h.defend > was.defend, through: h.through > was.through, lob: h.lob > was.lob, sprint: h.sprint, charge: h.charge, geste: h.geste > was.geste ? (GESTES[h.kind] ?? null) : null, juggle: h.juggle })
       this.used.set(e.sim, h)
     }
     return out
@@ -174,9 +179,9 @@ function encode(g: Game): number[][] {
   const last = g.moments[g.moments.length - 1]
   const sp = g.set
   return [
-    [r2(g.time), PHASES.indexOf(g.phase), g.score[0], g.score[1], r2(b.x), r2(b.y), r2(b.z), r2(b.vx), r2(b.vz), b.owner, b.dead ? 1 : 0, 0, r2(g.rim.t), r2(g.rim.amp), r2(g.swish), g.poss * 2 + (g.cleared ? 1 : 0)],
+    [r2(g.time), PHASES.indexOf(g.phase), g.score[0], g.score[1], r2(b.x), r2(b.y), r2(b.z), r2(b.vx), r2(b.vz), b.owner, b.dead ? 1 : 0, r2(g.gbe), r2(g.rim.t), r2(g.rim.amp), r2(g.swish), g.poss * 2 + (g.cleared ? 1 : 0)],
     last ? [g.moments.length, MOMENTS.indexOf(last.kind), last.team, last.by, r2(last.t)] : [0],
-    ...g.ps.map((p) => [r2(p.x), r2(p.z), r2(p.face), r2(p.vx), r2(p.vz), Math.max(0, POSES.indexOf(p.pose)), Math.max(0, ACTS.indexOf(p.act)), r2(p.at), p.flip ? 1 : 0, p.side, r2(p.call)]),
+    ...g.ps.map((p) => [r2(p.x), r2(p.z), r2(p.face), r2(p.vx), r2(p.vz), Math.max(0, POSES.indexOf(p.pose)), Math.max(0, ACTS.indexOf(p.act)), r2(p.at), p.flip ? 1 : 0, p.side, r2(p.call), r2(p.style), p.take]),
     [sp ? SETS.indexOf(sp.kind) + 1 : 0, sp?.team ?? 0, sp?.taker ?? -1, r2(g.ref.x), r2(g.ref.z), r2(g.ref.face)],
   ]
 }
@@ -190,6 +195,7 @@ function decode(g: Game, rows: number[][]) {
   // Not the flight itself (the host's step needs it whole, this phone only
   // draws): if this phone takes over the match, the ball falls from where it is.
   g.ball.flight = null
+  if (t[11]) g.gbe = t[11]
   g.rim = { t: t[12], amp: t[13] }
   g.swish = t[14]
   g.poss = (t[15] >> 1) as 0 | 1
@@ -212,6 +218,10 @@ function decode(g: Game, rows: number[][]) {
     p.flip = r[8] > 0
     p.side = r[9] < 0 ? -1 : 1
     p.call = r[10]
+    if (r.length > 12) {
+      p.style = r[11]
+      p.take = r[12]
+    }
   })
   // The set piece (for whoever takes it: what to do) and the referee where the host has him.
   if (more) {

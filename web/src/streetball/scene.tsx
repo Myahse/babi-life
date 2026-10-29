@@ -147,8 +147,8 @@ function Fence({ hx, hz, z0 = 0 }: { hx: number; hz: number; z0?: number }) {
   )
 }
 
-/** The houses of the quarter round the ground: low walls of colour, tin roofs, a tree or two. */
-function Quarter({ hx, hz, seed }: { hx: number; hz: number; seed: string }) {
+/** The houses of the quarter round the ground: low walls of colour, tin roofs, a tree or two; `gap`: how far back from the fence they start. */
+export function Quarter({ hx, hz, seed, gap = 9 }: { hx: number; hz: number; seed: string; gap?: number }) {
   const houses = useMemo(() => {
     const r = rng(`quarter${seed}`)
     const COLORS = ['#e9c46a', '#f4a261', '#c8d5b9', '#8ecae6', '#f1faee', '#e07a5f', '#d4a373']
@@ -159,7 +159,7 @@ function Quarter({ hx, hz, seed }: { hx: number; hz: number; seed: string }) {
         const w = 5 + r() * 3
         const d = 5 + r() * 2
         const h = 3 + (r() < 0.25 ? 3 : 0)
-        const off = (side < 2 ? hz : hx) + 9 + r() * 3
+        const off = (side < 2 ? hz : hx) + gap + r() * 3
         const [x, z] = side === 0 ? [u, -off] : side === 1 ? [u, off] : side === 2 ? [-off, u] : [off, u]
         // The side towards the camera stays open, past the people.
         if (side === 1 && Math.abs(u) < along) continue
@@ -167,7 +167,7 @@ function Quarter({ hx, hz, seed }: { hx: number; hz: number; seed: string }) {
       }
     }
     return out
-  }, [hx, hz, seed])
+  }, [hx, hz, seed, gap])
   // Each wall painted (a few variants of each colour), the roofs in corrugated tin.
   const mats = useMemo(() => {
     const m = new Map<string, THREE.Material>()
@@ -184,10 +184,10 @@ function Quarter({ hx, hz, seed }: { hx: number; hz: number; seed: string }) {
     return [...Array(6)].map((_, i) => {
       const side = i % 3
       const u = (r() - 0.5) * (side === 0 ? hx * 1.6 : hz * 1.4)
-      const off = (side === 0 ? hz : hx) + 5 + r() * 2
+      const off = (side === 0 ? hz : hx) + Math.min(5, gap - 2) + r() * 2
       return { p: (side === 0 ? [u, -off] : side === 1 ? [-off, u] : [off, u]) as [number, number], s: 0.8 + r() * 0.5 }
     })
-  }, [hx, hz, seed])
+  }, [hx, hz, seed, gap])
   return (
     <group>
       {houses.map((h, i) => (
@@ -381,6 +381,8 @@ export function Ground({ g, seed, teams }: { g: Game; seed: string; /** The side
 /* ---------- The players and the ball ---------- */
 
 /** One player: placed every frame; the pose handed to React when it changes. The player's own one has a ring under the feet. */
+/** The street's moves and the men they beat: timed on the move itself (the ball goes with the feet, on every phone). */
+const MOVE_POSES = new Set<Pose>(['stepover', 'roulette', 'poke', 'rainbow', 'feint', 'flick', 'backheel', 'juggle', 'nutmegged', 'lookup', 'flinch'])
 /** Past this from the camera, the stadium's team disc grows with the distance, so it stays as big on the screen. */
 const DISC_FROM = 22
 
@@ -389,7 +391,7 @@ export function PlayerView({ g, i, look, gender, kit }: { g: Game; i: number; lo
   const inner = useRef<THREE.Group>(null)
   const mark = useRef<THREE.Group>(null)
   const disc = useRef<THREE.Group>(null)
-  const [view, setView] = useState<{ pose: Pose; speed: number }>({ pose: 'idle', speed: 0 })
+  const [view, setView] = useState<{ pose: Pose; speed: number; take: number }>({ pose: 'idle', speed: 0, take: 0 })
   useFrame(({ camera }) => {
     const p = g.ps[i]
     const r = root.current
@@ -406,7 +408,8 @@ export function PlayerView({ g, i, look, gender, kit }: { g: Game; i: number; lo
       disc.current.scale.set(s, s, s)
     }
     const speed = Math.round(Math.hypot(p.vx, p.vz))
-    if (p.pose !== view.pose || speed !== view.speed) setView({ pose: p.pose, speed })
+    // (A street move done twice in a row starts over: its count.)
+    if (p.pose !== view.pose || speed !== view.speed || p.take !== view.take) setView({ pose: p.pose, speed, take: p.take })
   })
   // Only the phone's own player: at a court the other humans are players too, and a ring on each hid which one was yours. Bigger on the stadium's pitch, seen from further.
   const k = g.size === 11 ? 1.8 : 1
@@ -427,7 +430,7 @@ export function PlayerView({ g, i, look, gender, kit }: { g: Game; i: number; lo
         </group>
       )}
       <group ref={inner}>
-        <Human look={look} gender={gender} pose={view.pose} seed={i * 7.3} speed={view.speed || undefined} />
+        <Human look={look} gender={gender} pose={view.pose} seed={i * 7.3} speed={view.speed || undefined} take={view.take} clock={MOVE_POSES.has(view.pose) ? () => g.ps[i].at : undefined} />
       </group>
       <group ref={mark} visible={i === g.me}>
         <mesh position={[0, 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[k, k, k]}>
@@ -522,7 +525,7 @@ export function BallView({ g }: { g: Game }) {
 type Fan = { look: Look; gender: 'femme' | 'homme'; seed: number; at: [number, number]; face: number; filmer: boolean; posts: boolean; delay: number; likes: string; kid: boolean }
 
 /** The big moments that get filmed and posted. */
-const POSTED = new Set(['dunk', 'goal', 'ankle', 'three', 'block'])
+const POSTED = new Set(['dunk', 'goal', 'ankle', 'three', 'block', 'gbe'])
 
 /**
  * The people along the fence: chatting, calling, up on their feet for a
@@ -543,6 +546,12 @@ export function Crowd({ g, seed }: { g: Game; seed: string }) {
       // (Not along the near side: the camera looks over it, they'd stand in front of the game.)
       // Behind the basket too, along the back fence: they're the ones the camera sees.
       for (let x = -7.4; x <= 7.4; x += 1.25) if (Math.abs(x) > 0.7) spots.push({ at: [x + r() * 0.3, -9 - r() * 0.7], face: 0 })
+    } else if (g.street) {
+      // The street: along the far wall (it's low: they lean on it), behind the walls at the ends, kids at the near corners.
+      const F = g.field
+      for (let x = -F.x + 0.6; x <= F.x - 0.6; x += 1.35) spots.push({ at: [x + r() * 0.4, -F.z - 1.45 - r() * 0.7], face: 0 })
+      for (const s of [-1, 1]) for (let z = -F.z + 0.8; z <= F.z - 0.8; z += 1.5) if (Math.abs(z) > F.mouth + 0.8) spots.push({ at: [s * (F.x + 0.85 + r() * 0.6), z + r() * 0.3], face: -s * (Math.PI / 2) })
+      for (const s of [-1, 1]) for (const k of [0, 1, 2]) spots.push({ at: [s * (F.x - 0.6 - k * 0.8), F.z + 1.35 + r() * 0.3], face: Math.PI })
     } else if (g.size === 11) {
       // At the stadium, the ones standing at the front, behind the boards (the stands are full behind them).
       const F = g.field
@@ -558,9 +567,9 @@ export function Crowd({ g, seed }: { g: Game; seed: string }) {
     return spots.map((s) => {
       const gender: 'femme' | 'homme' = r() < 0.42 ? 'femme' : 'homme'
       const sd = r() * 100
-      return { look: randomLook(gender, r), gender, seed: sd, at: s.at, face: s.face, filmer: r() < 0.38, posts: r() < 0.65, delay: 0.6 + r() * 1.8, likes: likesFor(sd), kid: r() < 0.18 }
+      return { look: randomLook(gender, r), gender, seed: sd, at: s.at, face: s.face, filmer: r() < 0.38, posts: r() < 0.65, delay: 0.6 + r() * 1.8, likes: likesFor(sd), kid: r() < (g.street ? 0.45 : 0.18) }
     })
-  }, [g.sport, g.size, g.field, seed])
+  }, [g.sport, g.size, g.field, g.street, seed])
   const [poses, setPoses] = useState<Pose[]>(() => fans.map(() => 'idle'))
   const tick = useRef(0)
   /** The last moment worth posting, and since when. */
@@ -577,13 +586,13 @@ export function Crowd({ g, seed }: { g: Game; seed: string }) {
     const b = g.ball
     const h = holder(g)
     // Hot: someone driving at the basket, the ball near a goal, a big moment.
-    const hot = g.sport === 'basket' ? (!!h && Math.hypot(h.x - HOOP[0], h.z - HOOP[1]) < 6.5) || !!b.flight : Math.abs(b.x) > g.field.x - (g.size === 11 ? 18 : 9)
+    const hot = g.sport === 'basket' ? (!!h && Math.hypot(h.x - HOOP[0], h.z - HOOP[1]) < 6.5) || !!b.flight : Math.abs(b.x) > g.field.x - (g.size === 11 ? 18 : g.street ? 6 : 9)
     const next = fans.map((f, i): Pose => {
       const n = Math.sin(Math.floor((g.time + f.seed * 3) / 4) * 12.9898 + f.seed * 78.233) * 43758.5453
       const mood = n - Math.floor(n)
       if (f.filmer && (hot || (recent && POSTED.has(recent.kind)) || mood < 0.3)) return 'film'
-      if (recent && (recent.kind === 'dunk' || recent.kind === 'goal' || recent.kind === 'ankle' || recent.kind === 'three' || recent.kind === 'block')) return (i + Math.floor(g.time * 2)) % 5 === 0 ? 'wave' : 'cheer'
-      if (recent && (recent.kind === 'basket' || recent.kind === 'save' || recent.kind === 'steal' || recent.kind === 'tackle')) return mood < 0.5 ? 'cheer' : 'wave'
+      if (recent && (recent.kind === 'dunk' || recent.kind === 'goal' || recent.kind === 'ankle' || recent.kind === 'three' || recent.kind === 'block' || recent.kind === 'gbe')) return (i + Math.floor(g.time * 2)) % 5 === 0 ? 'wave' : 'cheer'
+      if (recent && (recent.kind === 'basket' || recent.kind === 'save' || recent.kind === 'steal' || recent.kind === 'tackle' || recent.kind === 'geste')) return mood < 0.5 ? 'cheer' : 'wave'
       if (recent && recent.kind === 'post') return 'wave'
       if (g.phase === 'over') return mood < 0.6 ? 'cheer' : 'wave'
       return mood < 0.5 ? 'idle' : mood < 0.75 ? 'talk' : 'wave'
@@ -666,6 +675,20 @@ export function Follow({ g }: { g: Game }) {
         want = new THREE.Vector3(xx, 18, zz + 23)
         target = new THREE.Vector3(xx, 0, zz - 1)
       }
+    } else if (g.street) {
+      // The street: closer and lower, in the play (upright, from behind the player's own goal too).
+      const F = g.field
+      if (tall) {
+        const xx = dir * Math.max(-F.x + 3, Math.min(F.x - 4.5, dir * fx))
+        const zz = Math.max(-4, Math.min(4, me.z * 0.75 + b.z * 0.25))
+        want = new THREE.Vector3(xx - 8.5 * dir, 7.6, zz)
+        target = new THREE.Vector3(xx + 3.5 * dir, 0, zz)
+      } else {
+        const xx = Math.max(-F.x + 6, Math.min(F.x - 6, fx))
+        const zz = Math.max(-2.5, Math.min(2.5, fz * 0.5))
+        want = new THREE.Vector3(xx, 5.6, zz + 8.4)
+        target = new THREE.Vector3(xx, 0.3, zz - 1)
+      }
     } else if (tall) {
       // A phone held upright: from behind the player's own goal, the attack going up the screen.
       const xx = dir * Math.max(-PITCH.x + 4, Math.min(PITCH.x - 6, dir * fx))
@@ -717,7 +740,8 @@ export function Follow({ g }: { g: Game }) {
     if (so || intro) return
     const y = feet.current.set(me.x, 0, me.z).project(camera).y
     const floor = -1 + (2 * 190) / Math.max(size.height, 300)
-    if (y < floor) lift.current = Math.min(14, lift.current + dt * 10)
+    // (Not far back on the street's little ground: past its near wall there's only the road.)
+    if (y < floor) lift.current = Math.min(g.street ? 4 : 14, lift.current + dt * 10)
     else if (y > floor + 0.2) lift.current = Math.max(0, lift.current - dt * 4)
     // The ball high up the screen while the Sim is held low: further back, to see both.
     const by = ballAt.current.set(b.x, 0.3, b.z).project(camera).y

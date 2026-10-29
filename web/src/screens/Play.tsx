@@ -1008,6 +1008,9 @@ export function Play() {
   const party = usePartySound()
   // Kept from render to render (a new one would start the match over); alone (no court match), the console's switching too.
   const elevenRules = useMemo(() => (eleven ? { size: 11 as const, referee: true, switching: !court?.online } : undefined), [eleven, court?.online])
+  // Le foot de rue (the street, the quarter's courts, the quarter's match): four a side and the moves, once its update is open.
+  const streetFoot = ballSport === 'foot' && !eleven && keyOpen(features, 'foot-de-rue')
+  const streetRules = useMemo(() => (streetFoot ? { street: true } : undefined), [streetFoot])
 
   // « Voir la rue » is only for while inside: going in again (the street's « Entrer », arriving at a door,
   // back in after an action) shows the inside (else, back at the door, the street stayed on screen and
@@ -1174,8 +1177,8 @@ export function Play() {
         </Suspense>
       )}
       {ballKey && ballKey !== played && !racing && (!courtKey || court?.key === courtKey) && (
-        <Suspense fallback={<div className="fixed inset-0 z-50"><Splash label={ballSport === 'basket' ? 'Sur le terrain…' : eleven ? 'Au stade…' : 'Au maracana…'} /></div>}>
-          <StreetMatch key={ballKey} sport={ballSport!} name={sim.firstName} look={sim.look} gender={sim.gender} online={courtKey ? (court?.online ?? undefined) : undefined} rules={elevenRules} onExit={() => setPlayed(ballKey)} />
+        <Suspense fallback={<div className="fixed inset-0 z-50"><Splash label={ballSport === 'basket' ? 'Sur le terrain…' : eleven ? 'Au stade…' : streetFoot ? 'Au terrain du quartier…' : 'Au maracana…'} /></div>}>
+          <StreetMatch key={ballKey} sport={ballSport!} name={sim.firstName} look={sim.look} gender={sim.gender} online={courtKey ? (court?.online ?? undefined) : undefined} rules={elevenRules ?? streetRules} onExit={() => setPlayed(ballKey)} />
         </Suspense>
       )}
       {showInside && (
