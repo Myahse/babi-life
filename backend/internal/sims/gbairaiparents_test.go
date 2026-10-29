@@ -100,6 +100,23 @@ func TestCannedParentAnswers(t *testing.T) {
 	}
 }
 
+// The same words over and over: never the same answer twice in a row.
+func TestCannedParentNoRepeat(t *testing.T) {
+	s := newSimPtr()
+	s.Gender = "femme"
+	s.GameMinutes = 3*24*60 + 15*60
+	s.Needs = game.FreshNeeds()
+	rng := rand.New(rand.NewPCG(1, 2))
+	last := ""
+	for i := range 200 {
+		got := cannedParent("maman", s, "coucou", rng, last)
+		if got == last {
+			t.Fatalf("draw %d: %q twice in a row", i, got)
+		}
+		last = got
+	}
+}
+
 // A child of 3 writes to maman and gets an answer (canned, no model here); a baby can't.
 // Without « gbairai-bebe », the same child can't write to another player.
 func TestChildTextsParents(t *testing.T) {

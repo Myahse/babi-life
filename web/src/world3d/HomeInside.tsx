@@ -424,6 +424,20 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
       }
     return best
   }, [!!drawer, plot, w, d, levels, spots]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Where the Sim can walk: the house's floors, less the drawer of gifts (its 0.96 × 0.56 top, and a little room round it).
+  const walk = useMemo(() => {
+    if (!drawerAt) return levels
+    const [x, z] = drawerAt.at
+    const [c, sn] = [Math.cos(drawerAt.rot), Math.sin(drawerAt.rot)]
+    return (level: number) => {
+      const free = levels(level)
+      if (level !== 0) return free
+      return (u: number, v: number) => {
+        const [du, dv] = [u - x, v - z]
+        return free(u, v) && !(Math.abs(du * c - dv * sn) < 0.68 && Math.abs(du * sn + dv * c) < 0.48)
+      }
+    }
+  }, [levels, drawerAt])
   // A Garbaya meal (golvo-garba…): at the table; no table, on a seat. Something from the fridge: a drink at its door, a dish at the table.
   const fromFridge = interactionId?.startsWith('frigo-') ? world.groceries?.find((g) => `frigo-${g.id}` === interactionId) : undefined
   const atTable = spots.golvo ?? (spots['watch-tv'] && { ...spots['watch-tv'], pose: 'eat' as const })
@@ -441,7 +455,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
   useEffect(() => setTapped(null), [interactionId])
   // (Come in while doing something already, the app just opened: there already, not walking from the gate.)
   const [back] = useState(() => {
-    const ok = kept && kept[2] < floors && levels(kept[2])(kept[0], kept[1]) ? kept : null
+    const ok = kept && kept[2] < floors && walk(kept[2])(kept[0], kept[1]) ? kept : null
     if (!ok) lvl.current = 0
     return ok
   })
@@ -453,7 +467,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
     // Round the walls, always: the house's grid first; a big house, a finer search close round the two
     // ends, then a coarser one over the whole house (never straight through a wall unless all fail).
     const flat = (a: XZ, b: XZ, level: number): P[] => {
-      const free = levels(level)
+      const free = walk(level)
       return (gridWay(a, b, free, 0.4, span, 200 * 200) ?? gridWay(a, b, free, 0.3, 8, 400 * 400) ?? gridWay(a, b, free, 0.6, span, 600 * 600) ?? [a, b]).map(([x, z]) => [x, z, level * STOREY])
     }
     if (!to) return [[from[0], from[1], fromL * STOREY]]
@@ -536,7 +550,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
                 if (e.delta > 6) return
                 e.stopPropagation()
                 const p: XZ = [e.point.x, e.point.z]
-                if (levels(floor)(p[0], p[1])) setTapped({ at: p, level: floor })
+                if (walk(floor)(p[0], p[1])) setTapped({ at: p, level: floor })
               }}
             >
               <planeGeometry args={[w, d]} />
@@ -554,8 +568,8 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
               <Crib />
             </group>
           )}
-          {parents && sim.family && <Parents sim={sim} spots={spots} doing={interactionId} spot={spot} free={levels(0)} span={span} />}
-          <Walking sim={sim} stage={stage} way={way} spot={spot} follow={!!stepSpot} doing={interactionId} onThere={setThere} steer={roam && !interactionId ? levels(lvl.current) : undefined} onMoved={(p) => ((where.current = p), keep(p, lvl.current), setTapped(null))} onLevel={setFloor} />
+          {parents && sim.family && <Parents sim={sim} spots={spots} doing={interactionId} spot={spot} free={walk(0)} span={span} />}
+          <Walking sim={sim} stage={stage} way={way} spot={spot} follow={!!stepSpot} doing={interactionId} onThere={setThere} steer={roam && !interactionId ? walk(lvl.current) : undefined} onMoved={(p) => ((where.current = p), keep(p, lvl.current), setTapped(null))} onLevel={setFloor} />
           {there && interactionId === 'cook-attieke' && spot && (
             <group position={[spot.at[0] + Math.sin(spot.rot) * 0.6, 0, spot.at[1] + Math.cos(spot.rot) * 0.6]}>
               <Pot />

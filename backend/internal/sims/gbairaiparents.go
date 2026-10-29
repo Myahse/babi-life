@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand/v2"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -287,7 +288,17 @@ func (h *Handler) parentAnswer(ctx context.Context, s *Sim, who, user string) (s
 			log.Printf("npcchat (parents): %v", err)
 		}
 	}
-	return cannedParent(who, s, text, newRand()), nil
+	// What the parent said lately: never the same line twice in a row.
+	var lately []string
+	for _, m := range msgs[:i] {
+		if !m.Mine {
+			lately = append(lately, m.Body)
+		}
+	}
+	if len(lately) > 4 {
+		lately = lately[len(lately)-4:]
+	}
+	return cannedParent(who, s, text, newRand(), lately...), nil
 }
 
 // stickerWords: a sticker, said in words for the parent reading it.
@@ -479,12 +490,22 @@ var (
 	}
 )
 
-// cannedParent: papa's or maman's answer, by what the child wrote, then by its day.
-func cannedParent(who string, s *Sim, said string, rng *rand.Rand) string {
+// cannedParent: papa's or maman's answer, by what the child wrote, then by its day; not one of
+// the lines said lately when there's another.
+func cannedParent(who string, s *Sim, said string, rng *rand.Rand, lately ...string) string {
 	n := plainWords(said)
 	hour := game.HourOf(s.GameMinutes)
 	atSchool := s.Activity != nil && s.Activity.Interaction.ID == "aller-ecole"
-	pick := func(lines []string) string { return sayToChild(lines[rng.IntN(len(lines))], who, s, rng) }
+	pick := func(lines []string) string {
+		var line string
+		for range 12 {
+			line = sayToChild(lines[rng.IntN(len(lines))], who, s, rng)
+			if !slices.Contains(lately, line) {
+				break
+			}
+		}
+		return line
+	}
 	// Out of place, private, or a worry: that first, whatever the hour.
 	switch {
 	case says(n, unfitWords...):
