@@ -297,7 +297,7 @@ export const api = {
   travel: (id: string, city: string, commune: string, ride?: Ride) => post<ActionResult>(`/sims/${id}/travel`, { city, commune, ...ride }),
   career: (id: string, career: string) => post<ActionResult>(`/sims/${id}/career`, { career }),
   /** One of the job's tasks, during the shift (backend sims/jobs.go). */
-  jobTask: (id: string, task: string) => post<ActionResult>(`/sims/${id}/job-task`, { task }),
+  jobTask: (id: string, task: string, score?: number) => post<ActionResult>(`/sims/${id}/job-task`, { task, score }),
   /** Going to work by oneself as the shift's hours come. */
   autoWork: (id: string, on: boolean) => request<{ autoWork: boolean }>(`/sims/${id}/auto-work`, { method: 'PUT', body: JSON.stringify({ on }) }),
   move: (id: string, housing: string, where?: LotWhere) => post<ActionResult>(`/sims/${id}/move`, { housing, ...where }),

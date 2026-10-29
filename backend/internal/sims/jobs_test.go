@@ -11,28 +11,38 @@ import (
 func TestJobTask(t *testing.T) {
 	rng := rand.New(rand.NewPCG(1, 2))
 	s := &Sim{Career: "caisse", GameMinutes: 600}
-	if _, err := s.jobTask("encaisser", rng); err != errNotAtWork {
+	if _, err := s.jobTask("encaisser", 90, rng); err != errNotAtWork {
 		t.Fatalf("off shift: %v, want errNotAtWork", err)
 	}
 	s.Activity = &game.Activity{Kind: "do", Career: "caisse", Start: 540, End: 960}
-	if _, err := s.jobTask("cloture", rng); err != errNotYours {
+	if _, err := s.jobTask("cloture", 90, rng); err != errNotYours {
 		t.Errorf("a task of a higher rung: %v, want errNotYours", err)
 	}
-	if _, err := s.jobTask("encaisser", rng); err != nil {
+	if _, err := s.jobTask("encaisser", 20, rng); err != nil {
 		t.Fatalf("on shift: %v", err)
 	}
-	if s.Performance != 1 {
-		t.Errorf("performance %d after the first time, want 1", s.Performance)
+	if s.Performance != 0 {
+		t.Errorf("performance %d after a task played badly, want 0", s.Performance)
 	}
-	if _, err := s.jobTask("encaisser", rng); err != errNotYet {
-		t.Errorf("again at once: %v, want errNotYet", err)
-	}
-	s.GameMinutes += game.TaskCooldown
-	if _, err := s.jobTask("encaisser", rng); err != nil {
-		t.Fatalf("an hour later: %v", err)
+	if _, err := s.jobTask("monnaie", 90, rng); err != nil {
+		t.Fatalf("another one: %v", err)
 	}
 	if s.Performance != 1 {
-		t.Errorf("performance %d after doing it again, want 1 (once a shift)", s.Performance)
+		t.Errorf("performance %d after one played well, want 1", s.Performance)
+	}
+	// Five a day, then no more until tomorrow.
+	for i := 0; i < game.TasksADay-2; i++ {
+		if _, err := s.jobTask("encaisser", 90, rng); err != nil {
+			t.Fatalf("task %d: %v", i+3, err)
+		}
+	}
+	if _, err := s.jobTask("encaisser", 90, rng); err == nil {
+		t.Error("a sixth task the same day: played")
+	}
+	s.GameMinutes += 24 * 60
+	s.Activity.End = s.GameMinutes + 60
+	if _, err := s.jobTask("encaisser", 90, rng); err != nil {
+		t.Errorf("the next day: %v", err)
 	}
 }
 

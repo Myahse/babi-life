@@ -21,13 +21,13 @@ import (
 
 var (
 	errNotAtWork = errors.New("tu n'es pas au travail : commence ton service d'abord")
-	errNotYet    = errors.New("c'est déjà fait : refais-le un peu plus tard dans ton service")
 	errNotYours  = errors.New("pas encore à ton échelon")
 )
 
-// jobTask: one of the job's tasks, during the shift. Once a shift it counts
-// towards the promotion; where customers tip, half the time there's one.
-func (s *Sim) jobTask(id string, rng *rand.Rand) (game.Outcome, error) {
+// jobTask: one of the job's tasks, played during the shift (its own little game, web components/defi/jeux),
+// five a day. The first time a shift, played well enough, it counts towards the promotion; where customers
+// tip, the better it's played the likelier there's one.
+func (s *Sim) jobTask(id string, score int, rng *rand.Rand) (game.Outcome, error) {
 	a := s.Activity
 	if a == nil || a.Kind != "do" || a.Career == "" || a.Career != s.Career || a.End <= s.GameMinutes {
 		return game.Outcome{}, errNotAtWork
@@ -40,21 +40,25 @@ func (s *Sim) jobTask(id string, rng *rand.Rand) (game.Outcome, error) {
 	if !ok {
 		return game.Outcome{}, errNotYours
 	}
-	last, done := a.Tasks[id]
-	if done && s.GameMinutes-last < game.TaskCooldown {
-		return game.Outcome{}, errNotYet
+	if !s.wallet().Can(s.today(), game.FromTask) {
+		return game.Outcome{}, game.ErrFull(game.FromTask)
 	}
+	s.wallet().Use(s.today(), game.FromTask)
+	score = max(0, min(100, score))
+	_, done := a.Tasks[id]
 	if a.Tasks == nil {
 		a.Tasks = map[string]int64{}
 	}
 	a.Tasks[id] = s.GameMinutes
 	text := t.Lines[rng.IntN(len(t.Lines))]
-	if !done {
+	if score < 50 {
+		text = "Pas terrible… le chef a vu. " + text
+	} else if !done {
 		s.Performance++
 		text += " (+1 pour ta promotion)"
 	}
 	tip := 0
-	if t.Tip > 0 && rng.Float64() < 0.5 {
+	if t.Tip > 0 && rng.Float64() < float64(score)/100*0.8 {
 		// Within the day's tips (money.go): past them, the customer just says thank you.
 		if tip = s.earn(game.FromTips, game.TaskTip(t, s.CareerLevel, rng.Float64())); tip > 0 {
 			text += fmt.Sprintf(" Pourboire : %s.", game.FCFA(tip))
@@ -67,13 +71,19 @@ func (s *Sim) jobTask(id string, rng *rand.Rand) (game.Outcome, error) {
 func (h *Handler) doJobTask(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Task string `json:"task"`
+		// Score: how the task's game went (0..100); an older client sends none.
+		Score *int `json:"score"`
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
 		return
 	}
 	h.mutate(w, r, func(s *Sim) (game.Outcome, []Event, error) {
-		out, err := s.jobTask(req.Task, newRand())
+		score := 60
+		if req.Score != nil {
+			score = *req.Score
+		}
+		out, err := s.jobTask(req.Task, score, newRand())
 		return out, nil, err
 	})
 }

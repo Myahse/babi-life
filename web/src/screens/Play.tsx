@@ -100,6 +100,7 @@ import { TripLoading } from '../components/TripLoading'
 import { rideLook } from '../game/rides'
 import { setDrop } from '../world3d/open/tripDrop'
 import { gesteOK } from '../components/defi/Gestes'
+import { JeuDefi, JEUX } from '../components/defi/jeux'
 import { BABY_DEFIS, GESTE_DEFIS, DefiButton, DefiSheet, defiLook, defiOf, PRACTICE, type DefiKind } from '../components/Defi'
 import { BolideApp } from './BolideApp'
 import { Tutorial, adultChapterDue, beginner, openTutorial, useTutorialAsked } from '../components/Tutorial'
@@ -866,6 +867,8 @@ export function Play() {
   const grownNow = tutoChapter === 'adulte'
   // A défi taken on during the activity (components/Defi.tsx): the one going on.
   const [defi, setDefi] = useState<DefiKind | null>(null)
+  // A job's task being played (its own little game, components/defi/jeux): then sent with its score.
+  const [taskGame, setTaskGame] = useState<{ t: JobTask; resolve: (o: ActionResult['outcome']) => void; reject: (e: unknown) => void } | null>(null)
   // One of the phone's « Jeux », played for practice.
   const [practice, setPractice] = useState<DefiKind | null>(null)
   // At the wheel of one's own vehicle (world3d/drive.ts): parked, the petrol paid on the distance.
@@ -1016,7 +1019,8 @@ export function Play() {
   // The home's gestures (the update « gestes-maison »): the action is the game, it opens as soon as it starts
   // (not played yet; left with « Plus tard », the action goes on in its time).
   // (Every other action, the same way: played as gestures made from what it is.)
-  const gesteNow = sim?.activity?.kind === 'do' && !sim.activity.defi && keyOpen(feats, 'gestes-maison') ? (defiOf(sim.activity.interaction.id) ?? (gesteOK(sim.activity) ? 'geste' : null)) : null
+  // (At work, not at once: the job's tasks can be played first; the shift's own game from the bar's button.)
+  const gesteNow = sim?.activity?.kind === 'do' && !sim.activity.defi && !sim.activity.career && keyOpen(feats, 'gestes-maison') ? (defiOf(sim.activity.interaction.id) ?? (gesteOK(sim.activity) ? 'geste' : null)) : null
   const gesteAt = gesteNow && GESTE_DEFIS.has(gesteNow) ? `${sim!.activity!.interaction.id}@${sim!.activity!.start}` : null
   useEffect(() => {
     if (gesteAt && gesteNow) setDefi(gesteNow)
@@ -1658,7 +1662,7 @@ export function Play() {
       {players && <PlayersSheet sim={sim} around={around} communeName={commune.name} communes={city.communes} myStage={lifeOf(world, sim).stage?.id} onDuel={keyOpen(feats, 'combat-joueurs') ? (p) => void api.challenge(sim.id, p.id).then(() => (setPlayers(null), window.dispatchEvent(new CustomEvent(DUEL_IN)))).catch((e) => toast({ tone: 'error', title: 'Pas possible', text: errorText(e, 'Erreur'), money: 0 })) : undefined} focus={players.focus} act={run} onClose={() => setPlayers(null)} />}
 
       {/* (Its time up, the bar goes at once: the server is settling it, nothing left to follow.) */}
-      {sim.activity && !ended && !placeId && !defi && <ActivityBar world={world} onTask={sim.activity.kind === 'do' && sim.activity.career && sim.activity.career === sim.career ? (t) => api.jobTask(sim.id, t.id).then((res) => (apply(res), gesture(t.pose as Pose), res.outcome)) : undefined} onDefi={defiNow ? () => (defiNow === 'ski' && setOutside(false), setDefi(defiNow)) : undefined} onRejoin={ballKey && played === ballKey ? { sport: ballSport!, go: rejoin } : undefined} sim={sim} onStop={stop} stopping={!!pending} onRoute={() => setOverlay('map')} onMore={onGrounds ? () => (setPlaceId(doing!.placeId!), setMenuOpen(true)) : undefined} onFilm={() => setWatching(true)} onMachine={doing && isSlots(doing.interaction.id) ? () => setMachineOpen(true) : undefined} onShop={doing && SHOP_OF[doing.interaction.id] ? () => setShopOpen(true) : undefined} onFridge={doing && FRIDGE_SHOPPING.has(doing.interaction.id) && keyOpen(feats, 'frigo') && hasFridge(world, sim) ? () => setFridgeOpen('fill') : undefined} />}
+      {sim.activity && !ended && !placeId && !defi && <ActivityBar world={world} onTask={sim.activity.kind === 'do' && sim.activity.career && sim.activity.career === sim.career ? (t) => new Promise<ActionResult['outcome']>((resolve, reject) => setTaskGame({ t, resolve, reject })) : undefined} onDefi={defiNow ? () => (defiNow === 'ski' && setOutside(false), setDefi(defiNow)) : undefined} onRejoin={ballKey && played === ballKey ? { sport: ballSport!, go: rejoin } : undefined} sim={sim} onStop={stop} stopping={!!pending} onRoute={() => setOverlay('map')} onMore={onGrounds ? () => (setPlaceId(doing!.placeId!), setMenuOpen(true)) : undefined} onFilm={() => setWatching(true)} onMachine={doing && isSlots(doing.interaction.id) ? () => setMachineOpen(true) : undefined} onShop={doing && SHOP_OF[doing.interaction.id] ? () => setShopOpen(true) : undefined} onFridge={doing && FRIDGE_SHOPPING.has(doing.interaction.id) && keyOpen(feats, 'frigo') && hasFridge(world, sim) ? () => setFridgeOpen('fill') : undefined} />}
       {/* The ciné-club's film, watched for real (screens/FilmPlayer.tsx). */}
       {watching && doing?.seance?.video && doing.seance.at !== undefined && <FilmPlayer video={doing.seance.video} at={doing.seance.at} title={doing.seance.title ?? doing.interaction.label} credit={doing.seance.credit} file={doing.seance.file} onClose={() => setWatching(false)} />}
 
@@ -1806,6 +1810,25 @@ export function Play() {
             setDefi(null)
           }}
         />
+      )}
+      {taskGame && sim.activity?.career && (
+        <div className="fixed inset-0 z-[70]">
+          <JeuDefi
+            act={{ id: `task:${sim.activity.career}:${taskGame.t.id}`, icon: taskGame.t.icon, label: taskGame.t.label }}
+            jeu={JEUX[`task:${sim.activity.career}:${taskGame.t.id}`]}
+            onEnd={(score) => {
+              const { t, resolve, reject } = taskGame
+              setTaskGame(null)
+              api
+                .jobTask(sim.id, t.id, score)
+                .then((res) => (apply(res), gesture(t.pose as Pose), resolve(res.outcome)))
+                .catch(reject)
+            }}
+          />
+          <button className="absolute top-12 right-2 z-20 grid h-8 w-8 place-items-center rounded-full bg-black/45 text-white" onClick={() => (taskGame.reject(new Error('Tâche laissée tombée.')), setTaskGame(null))} aria-label="Laisser tomber la tâche">
+            <X size={17} strokeWidth={2.6} />
+          </button>
+        </div>
       )}
       {practice && !defi && <DefiSheet kind={practice} simId={sim.id} me={sim} practice onResult={apply} onClose={() => setPractice(null)} />}
       {fridgeOpen && <FridgeSheet world={world} sim={sim} how={fridgeOpen} onResult={apply} onClose={() => setFridgeOpen(null)} onStarted={() => (setPlaceId(null), setMenuOpen(false), setOutside(false), setBackTo('home'))} />}
@@ -3148,14 +3171,11 @@ function ActivityBar({ world, sim, onStop, stopping, onRoute, onMore, onRejoin, 
   )
 }
 
-/** A job's tasks done once a shift count for the promotion; the same one again after an hour of the shift (backend game.TaskCooldown). */
-const TASK_COOLDOWN = 60
-
 /**
  * At work: the job's tasks as buttons (the cashier scans, the lawyer
- * pleads, the DG signs), those of the Sim's rung; each makes the Sim's
- * gesture in the room and says how it went. One done waits an hour of the
- * shift before it can be done again.
+ * pleads, the DG signs), those of the Sim's rung; each one played as its own
+ * little game (five a day, backend game.TasksADay), then the Sim's gesture in
+ * the room and how it went.
  */
 function JobTasks({ world, sim, onTask }: { world: World; sim: Sim; onTask: (t: JobTask) => Promise<ActionResult['outcome']> }) {
   const career = world.careers.find((c) => c.id === sim.career)
@@ -3182,18 +3202,17 @@ function JobTasks({ world, sim, onTask }: { world: World; sim: Sim; onTask: (t: 
   }
   return (
     <div className="card animate-pop mt-2 p-2.5">
-      <div className="label mb-1.5 px-0.5">Au travail · {career.levels[sim.careerLevel]?.title}</div>
+      <div className="label mb-1.5 px-0.5">Au travail · {career.levels[sim.careerLevel]?.title} · 5 tâches par jour</div>
       <div className="grid grid-cols-2 gap-1.5">
         {tasks.map((t) => {
           const last = done[t.id]
-          const wait = last === undefined ? 0 : Math.max(0, last + TASK_COOLDOWN - sim.gameMinutes)
           const Icon = iconFor(t.icon)
           return (
-            <button key={t.id} className="tile flex min-w-0 items-center gap-2 p-2 text-left disabled:opacity-50" disabled={wait > 0 || !!busy} onClick={() => go(t)}>
+            <button key={t.id} className="tile flex min-w-0 items-center gap-2 p-2 text-left disabled:opacity-50" disabled={!!busy} onClick={() => go(t)}>
               <IconTile icon={Icon} colors={kindColors(career.kind)} size={32} />
               <span className="min-w-0 flex-1 leading-tight">
                 <span className="block text-[12.5px] font-extrabold">{t.label}</span>
-                <span className="block text-[10.5px] font-bold text-[var(--color-ink-soft)]">{wait > 0 ? `Encore ${duration(actionLength(wait))}` : last !== undefined ? 'Fait · à refaire' : t.tip ? 'Pourboires possibles' : '+1 pour la promotion'}</span>
+                <span className="block text-[10.5px] font-bold text-[var(--color-ink-soft)]">{last !== undefined ? 'Fait · à rejouer' : t.tip ? 'Pourboires possibles' : '+1 pour la promotion'}</span>
               </span>
             </button>
           )
