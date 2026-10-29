@@ -25,22 +25,24 @@ type Props = {
   looks: [FighterLook, FighterLook]
   /** Steps the fight (the pads, the engine) and returns what happened this frame. */
   onFrame: (dt: number) => FightEvent[]
+  /** The baby fight (« bagarre-bebe »): the bedroom, the family round, the fighters with a baby's big head. */
+  baby?: boolean
 }
 
-export function FightCanvas({ F, looks, onFrame }: Props) {
+export function FightCanvas({ F, looks, onFrame, baby }: Props) {
   // The world underneath holds still while the fight is on.
   const release = useRef<(() => void) | null>(null)
   useEffect(() => () => release.current?.(), [])
   return (
     <Canvas shadows dpr={[1, 1.5]} camera={{ fov: 42, near: 0.2, far: 120, position: [-4, 2, 4] }} gl={{ antialias: true }} onCreated={({ gl }) => void (release.current = holdScenes(gl.domElement))}>
-      <color attach="background" args={['#0f0b22']} />
-      <fog attach="fog" args={['#0f0b22', 16, 42]} />
-      <World F={F} looks={looks} onFrame={onFrame} />
+      <color attach="background" args={[baby ? '#3a2a4a' : '#0f0b22']} />
+      <fog attach="fog" args={[baby ? '#3a2a4a' : '#0f0b22', 16, 42]} />
+      <World F={F} looks={looks} onFrame={onFrame} baby={baby} />
     </Canvas>
   )
 }
 
-function World({ F, looks, onFrame }: Props) {
+function World({ F, looks, onFrame, baby }: Props) {
   const fx = useRef<FightEvent[]>([])
   const dust = useRef<FightEvent[]>([])
   const trails = useRef<FightEvent[]>([])
@@ -66,10 +68,10 @@ function World({ F, looks, onFrame }: Props) {
     <>
       <CameraRig F={F} shake={shake} punch={punch} />
       <Lights F={F} />
-      <Street />
-      <Crowd cheer={cheer} />
-      <FighterView F={F} i={0} who={looks[0]} />
-      <FighterView F={F} i={1} who={looks[1]} />
+      {baby ? <Bedroom /> : <Street />}
+      <Crowd cheer={cheer} family={baby} />
+      <FighterView F={F} i={0} who={looks[0]} baby={baby} />
+      <FighterView F={F} i={1} who={looks[1]} baby={baby} />
       <Sparks fx={fx} />
       <Dust fx={dust} />
       <Trails F={F} fx={trails} />
@@ -331,6 +333,59 @@ function Street() {
 
 /* ---------- The crowd ---------- */
 
+/** The baby fight's room: the tiled floor, the walls painted, the mats where they fight, the cot, the toys all about, the lamp. */
+function Bedroom() {
+  return (
+    <group>
+      <ambientLight intensity={0.55} color="#ffe8cc" />
+      <pointLight position={[0, 4.2, 1.5]} intensity={18} distance={14} color="#fff1d6" />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[24, 14]} />
+        <meshLambertMaterial color="#e9dcc3" />
+      </mesh>
+      <mesh position={[0, 2.6, -4.2]}>
+        <boxGeometry args={[24, 5.2, 0.1]} />
+        <meshLambertMaterial color="#ffd8a8" />
+      </mesh>
+      <mesh position={[0, 0.6, -4.12]}>
+        <boxGeometry args={[24, 1.2, 0.04]} />
+        <meshLambertMaterial color="#74c0fc" />
+      </mesh>
+      {/* The mats, side by side across the floor: the ring */}
+      {['#ff8fb1', '#8ce99a', '#ffd43b', '#74c0fc', '#b197fc'].map((c, k) => (
+        <mesh key={c} position={[-6 + k * 3, 0.02, 0.3]} receiveShadow>
+          <boxGeometry args={[3, 0.04, 3]} />
+          <meshLambertMaterial color={c} />
+        </mesh>
+      ))}
+      {/* The cot against the wall, its bars */}
+      <group position={[-4.5, 0, -3.4]}>
+        <mesh position={[0, 0.7, 0]}>
+          <boxGeometry args={[1.8, 0.08, 0.9]} />
+          <meshLambertMaterial color="#f8f9fa" />
+        </mesh>
+        {[...Array(10)].map((_, k) => (
+          <mesh key={k} position={[-0.85 + k * 0.19, 0.95, 0.42]}>
+            <boxGeometry args={[0.04, 0.6, 0.04]} />
+            <meshLambertMaterial color="#f1f3f5" />
+          </mesh>
+        ))}
+      </group>
+      {/* The toy everyone wants, and the cubes knocked over */}
+      <mesh position={[3.6, 0.35, -3.2]}>
+        <sphereGeometry args={[0.35, 16, 12]} />
+        <meshLambertMaterial color="#ff6b6b" />
+      </mesh>
+      {['#ff6b6b', '#ffd43b', '#4dabf7', '#69db7c', '#b197fc'].map((c, k) => (
+        <mesh key={c} position={[5 + (k % 3) * 0.4, 0.15 + Math.floor(k / 3) * 0.3, -2.8 + k * 0.1]} rotation={[0, k * 0.5, 0]}>
+          <boxGeometry args={[0.3, 0.3, 0.3]} />
+          <meshLambertMaterial color={c} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
 const SPOTS: [number, number, number][] = [
   [-6.4, -1.6, 0.9],
   [-6.6, 0.4, 1.4],
@@ -344,8 +399,16 @@ const SPOTS: [number, number, number][] = [
   [6.6, 0.2, -1.3],
 ]
 
-function Crowd({ cheer }: { cheer: React.RefObject<number> }) {
-  const people = useMemo(() => SPOTS.map((p, i) => ({ p, gender: (i % 3 === 1 ? 'femme' : 'homme') as 'femme' | 'homme', look: randomLook(i % 3 === 1 ? 'femme' : 'homme', rng(`crowd${i}`)), seed: i * 13 })), [])
+function Crowd({ cheer, family }: { cheer: React.RefObject<number>; /** The baby fight: the family round, in pagne and boubou, more mamans than papas. */ family?: boolean }) {
+  const people = useMemo(
+    () =>
+      SPOTS.map((p, i) => {
+        const gender = (family ? i % 3 !== 1 : i % 3 === 1) ? 'femme' : 'homme'
+        const look = randomLook(gender, rng(`crowd${i}`))
+        return { p, gender: gender as 'femme' | 'homme', look: family ? { ...look, outfit: gender === 'femme' ? 'pagne' : 'boubou', accessory: 'none' } : look, seed: i * 13 }
+      }),
+    [family],
+  )
   const [loud, setLoud] = useState(false)
   useFrame(() => {
     const on = (cheer.current ?? 0) > 0
@@ -364,7 +427,7 @@ function Crowd({ cheer }: { cheer: React.RefObject<number> }) {
 
 /* ---------- The fighters ---------- */
 
-function FighterView({ F, i, who }: { F: React.RefObject<Fight>; i: 0 | 1; who: FighterLook }) {
+function FighterView({ F, i, who, baby }: { F: React.RefObject<Fight>; i: 0 | 1; who: FighterLook; baby?: boolean }) {
   const g = useRef<THREE.Group>(null)
   const shadow = useRef<THREE.Mesh>(null)
   const [pose, setPose] = useState<{ pose: Pose; take: number }>({ pose: 'fstance', take: 0 })
@@ -393,7 +456,7 @@ function FighterView({ F, i, who }: { F: React.RefObject<Fight>; i: 0 | 1; who: 
   return (
     <>
       <group ref={g}>
-        <Human look={who.look} gender={who.gender} pose={pose.pose} take={pose.take} clock={clock} seed={who.seed} full />
+        <Human look={who.look} gender={who.gender} pose={pose.pose} take={pose.take} clock={clock} seed={who.seed} full headScale={baby ? 1.5 : undefined} fitted={baby} />
       </group>
       <mesh ref={shadow} rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[0.45, 20]} />

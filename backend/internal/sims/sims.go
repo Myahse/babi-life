@@ -442,6 +442,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/gram/comments/{comment}/like", h.gramCommentLike)
 	r.Post("/sims/{id}/gram/comments/{comment}/report", h.gramCommentReport)
 	r.Get("/sims/{id}/around", h.around)
+	r.Get("/sims/{id}/everyone", h.everyone)
 	r.Get("/sims/{id}/plot", h.plot)
 	r.Put("/sims/{id}/plot", h.build)
 	r.Get("/sims/{id}/plots", h.plots)

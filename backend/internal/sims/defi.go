@@ -46,6 +46,8 @@ var defiFor = map[string][]string{
 	"cubes":  {"cubes"},
 	"pas":    {"premiers-pas"},
 	"hochet": {"hochet"},
+	// The baby fight (the update « bagarre-bebe »).
+	"bagarre": {"bagarre-bebe"},
 }
 
 // babyDefis: the baby's games, behind the update « bebe-jeux ».
@@ -137,6 +139,9 @@ func defiReward(kind, interaction string, score, cost int) (game.Needs, int, str
 	case "hochet":
 		lines := []string{"Le hochet part dans tous les sens.", "Tu secoues en rythme : maman chante avec toi.", "Un vrai petit percussionniste : maman sort le tam-tam !"}
 		return game.Needs{Fun: math.Round(16 * k)}, 0, lines[tier]
+	case "bagarre":
+		lines := []string{"Le cousin t'a pris le jouet… et tu pleures dans les bras de maman.", "Une bagarre serrée : maman sépare tout le monde, chacun son jouet.", "Le cousin au tapis, le jouet est à toi ! Toute la famille rit aux éclats."}
+		return game.Needs{Fun: math.Round(14 * k), Social: math.Round(6 * k)}, 0, lines[tier]
 	case "arcade":
 		lines := []string{"Les moustiques ont gagné cette nuit.", "Pas mal de moustiques au tapis.", "Un massacre de moustiques : ton nom tout en haut de la borne !"}
 		return game.Needs{Fun: math.Round(14 * k)}, 0, lines[tier]
@@ -162,7 +167,7 @@ func (h *Handler) defi(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
 		return
 	}
-	if (req.Kind == "ecole" && features.Default.BlocksKey(r.Context(), "ecole-vivante") != "") || (slices.Contains(babyDefis, req.Kind) && features.Default.BlocksKey(r.Context(), "bebe-jeux") != "") {
+	if (req.Kind == "ecole" && features.Default.BlocksKey(r.Context(), "ecole-vivante") != "") || (slices.Contains(babyDefis, req.Kind) && features.Default.BlocksKey(r.Context(), "bebe-jeux") != "") || (req.Kind == "bagarre" && features.Default.BlocksKey(r.Context(), "bagarre-bebe") != "") {
 		httpx.Error(w, http.StatusForbidden, "bientôt dans le jeu")
 		return
 	}

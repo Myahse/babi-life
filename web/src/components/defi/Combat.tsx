@@ -4,11 +4,12 @@ import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Skull, Trophy } from
 import { haptic } from '../../lib/native'
 import { sfx } from '../../lib/sfx'
 import type { Look } from '../../lib/types'
-import { randomLook } from '../../avatar/options'
+import { lookAt, randomLook } from '../../avatar/options'
 import { Portrait } from '../../avatar/portrait'
 import { rng } from '../../world3d/themes'
 import { hold, useKeys } from './arcade'
-import { aiPad, FOES, newMind, type Foe } from './combat/ai'
+import { aiPad, BABY_FOES, FOES, newMind, type Foe } from './combat/ai'
+import { baby as babyVoice } from '../../audio/baby'
 import { createFight, fightScore, NO_PAD, ROUND_TIME, stepFight, type Fight, type FightEvent, type Pad } from './combat/engine'
 import { FightCanvas, type FighterLook } from './combat/Scene'
 
@@ -28,8 +29,18 @@ const FOE_LOOK: Record<Foe['id'], Partial<Look>> = {
   yao: { body: 'mince', height: 0.95, outfit: 'debardeur', outfitColor: '#f6c445', bottomColor: '#2b3a67', hair: 'degrade', skin: '#7a4a2a', beard: 'none' },
   go: { body: 'mince', height: 1.02, outfit: 'jogging', outfitColor: '#ff3d7f', bottomColor: '#1d1d24', hair: 'cornrows', hairColor: '#1a1010', skin: '#5b3620' },
   boss: { body: 'fort', height: 1.1, outfit: 'blouson', outfitColor: '#1f2937', bottomColor: '#111827', hair: 'bald', skin: '#3e2516' },
+  // The cousins, in their grenouillères (the update « bagarre-bebe »).
+  koffi: { body: 'mince', height: 0.78, outfit: 'grenouillere', outfitColor: '#74c0fc', hair: 'short', skin: '#7a4a2a', beard: 'none', accessory: 'tetine' },
+  aya: { body: 'mince', height: 0.76, outfit: 'robe-bebe', outfitColor: '#ffc8dd', skin: '#5b3620', beard: 'none', accessory: 'bonnet-bebe' },
+  gros: { body: 'fort', height: 0.84, outfit: 'grenouillere', outfitColor: '#ffd43b', hair: 'bald', skin: '#3e2516', beard: 'none', accessory: 'tetine' },
 }
-const foeLook = (f: Foe): Look => ({ ...randomLook(f.gender, rng(`foe-${f.id}`)), ...FOE_LOOK[f.id] })
+/** The player's own baby in the fight: its baby clothes (a grenouillère if it wears grown-up ones), a toddler's height. */
+const BABY_CLOTHES = ['grenouillere', 'body', 'robe-bebe', 'pagne-bebe', 'salopette-bebe']
+const babyLook = (l: Look): Look => {
+  const b = lookAt(l, 'bebe')
+  return { ...b, outfit: BABY_CLOTHES.includes(b.outfit) ? b.outfit : 'grenouillere', height: 0.78, beard: 'none' }
+}
+const foeLook = (f: Foe): Look => lookAt({ ...randomLook(f.gender, rng(`foe-${f.id}`)), ...FOE_LOOK[f.id] }, BABY_FOES.includes(f) ? 'bebe' : 'adulte')
 
 function beaten(): string[] {
   try {
@@ -39,26 +50,26 @@ function beaten(): string[] {
   }
 }
 
-export function CombatDefi({ onEnd, me, onStart }: { onEnd: (score: number) => void; me?: Me; /** The opponent chosen: the fight is on (or off again). */ onStart?: (on: boolean) => void }) {
+export function CombatDefi({ onEnd, me, onStart, baby }: { onEnd: (score: number) => void; me?: Me; /** The opponent chosen: the fight is on (or off again). */ onStart?: (on: boolean) => void; /** The baby fight (« bagarre-bebe »): babies, the cousins, a bedroom. */ baby?: boolean }) {
   const [foe, setFoe] = useState<Foe | null>(null)
   useEffect(() => {
     onStart?.(!!foe)
     return () => onStart?.(false)
   }, [foe, onStart])
-  if (!foe) return <Pick onPick={setFoe} />
-  return <Match foe={foe} me={me} onEnd={onEnd} />
+  if (!foe) return <Pick baby={baby} onPick={setFoe} />
+  return <Match foe={foe} me={me} baby={baby} onEnd={onEnd} />
 }
 
 /* ---------- Who to fight ---------- */
 
-function Pick({ onPick }: { onPick: (f: Foe) => void }) {
+function Pick({ onPick, baby }: { onPick: (f: Foe) => void; baby?: boolean }) {
   const done = useMemo(beaten, [])
   return (
     <div className="flex h-full flex-col overflow-y-auto bg-[radial-gradient(circle_at_50%_0%,#3b1d5c,#120d24)] px-4 pt-14 pb-6 text-white">
-      <div className="text-center font-display text-[26px] leading-tight font-extrabold">Choisis ton adversaire</div>
-      <p className="mt-1 text-center text-[13px] font-bold text-white/70">Plus il est fort, plus la victoire rapporte.</p>
+      <div className="text-center font-display text-[26px] leading-tight font-extrabold">{baby ? 'Qui veut ton jouet ?' : 'Choisis ton adversaire'}</div>
+      <p className="mt-1 text-center text-[13px] font-bold text-white/70">{baby ? 'Plus le cousin est terrible, plus la victoire rapporte.' : 'Plus il est fort, plus la victoire rapporte.'}</p>
       <div className="mt-4 space-y-2.5">
-        {FOES.map((f, k) => (
+        {(baby ? BABY_FOES : FOES).map((f, k) => (
           <button key={f.id} className="flex w-full items-center gap-3 rounded-[22px] bg-white/10 p-3 text-left ring-1 ring-white/10 transition active:scale-[0.98]" onClick={() => onPick(f)}>
             <span className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-white/15">
               <Portrait look={foeLook(f)} gender={f.gender} framing="head" />
@@ -92,20 +103,20 @@ function Pick({ onPick }: { onPick: (f: Foe) => void }) {
 
 type Hud = { hp: [number, number]; meter: [number, number]; clock: number; wins: [number, number]; round: number; combo: number; said: string; saidAt: number; note: string; noteAt: number }
 
-function Match({ foe, me, onEnd }: { foe: Foe; me?: Me; onEnd: (score: number) => void }) {
+function Match({ foe, me, baby, onEnd }: { foe: Foe; me?: Me; baby?: boolean; onEnd: (score: number) => void }) {
   const F = useRef<Fight>(createFight())
   const mind = useRef(newMind())
   const keys = useKeys()
   const pad = useRef({ x: 0, up: false, down: false, guard: false, punch: false, kick: false, sup: false })
   const ended = useRef(false)
-  const rank = FOES.indexOf(foe)
+  const rank = (baby ? BABY_FOES : FOES).indexOf(foe)
   const looks = useMemo<[FighterLook, FighterLook]>(() => {
     const mine = me ?? { look: randomLook('homme', rng('me')), gender: 'homme' as const }
     return [
-      { look: mine.look, gender: mine.gender, seed: 3 },
+      { look: baby ? babyLook(mine.look) : mine.look, gender: mine.gender, seed: 3 },
       { look: foeLook(foe), gender: foe.gender, seed: foe.seed },
     ]
-  }, [me, foe])
+  }, [me, foe, baby])
   const [hud, setHud] = useState<Hud>({ hp: [100, 100], meter: [0, 0], clock: ROUND_TIME, wins: [0, 0], round: 1, combo: 0, said: '', saidAt: 0, note: '', noteAt: 0 })
   const shown = useRef(hud)
   // The red under the life bar: what was just lost, catching up.
@@ -185,8 +196,12 @@ function Match({ foe, me, onEnd }: { foe: Foe; me?: Me; onEnd: (score: number) =
       else if (e.kind === 'land' && e.heavy) sfx.fall()
       else if (e.kind === 'super') {
         sfx.rise()
-        note = mineHit ? 'Coupé-décalé !' : ''
-      } else if (e.kind === 'ko') sfx.bell(3)
+        note = mineHit ? (baby ? 'Colère de bébé !' : 'Coupé-décalé !') : ''
+      } else if (e.kind === 'ko') {
+        sfx.bell(3)
+        // The babies: the one down cries, or laughs when it's the cousin.
+        if (baby) void (e.by === 0 ? babyVoice.giggle() : babyVoice.cry())
+      }
     }
     flashV.current = Math.max(0, flashV.current - dt * 2.2)
     if (flashEl.current) flashEl.current.style.opacity = String(flashV.current)
@@ -275,7 +290,7 @@ function Match({ foe, me, onEnd }: { foe: Foe; me?: Me; onEnd: (score: number) =
   return (
     <div className="relative h-full w-full overflow-hidden bg-[#0f0b22]">
       <div className="absolute inset-0">
-        <FightCanvas F={F} looks={looks} onFrame={onFrame} />
+        <FightCanvas F={F} looks={looks} onFrame={onFrame} baby={baby} />
       </div>
       {/* The Super: the street darkened for an instant. */}
       <div className="pointer-events-none absolute inset-0 bg-black transition-opacity duration-150" style={{ opacity: F.current.flash > 0 ? 0.25 : 0 }} />

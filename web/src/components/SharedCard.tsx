@@ -26,6 +26,7 @@ const DEFI_NAMES: Record<DefiKind, { title: string; icon: LucideIcon; colors: [s
   cubes: { title: 'La tour de cubes', icon: Blocks, colors: ['#4dabf7', '#1c7ed6'] },
   pas: { title: 'Les premiers pas', icon: Footprints, colors: ['#69db7c', '#2f9e44'] },
   hochet: { title: 'Le hochet en rythme', icon: Music, colors: ['#b197fc', '#7048e8'] },
+  bagarre: { title: 'La bagarre de bébés', icon: Swords, colors: ['#ff8fb1', '#e64980'] },
 }
 const APPS: Record<string, string> = { bet225: 'Bet225', parisfoot: 'ParisFoot' }
 const nf = (n: number) => n.toLocaleString('fr-FR')

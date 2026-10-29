@@ -139,6 +139,8 @@ var Kinds = map[string]PlaceKind{
 			// The choices that count (the update « choix-bebe », sims/firsts.go): the toy it goes for, its first word.
 			{ID: "jouets", Room: RoomBed, Label: "Choisir parmi les jouets", Icon: "gift", Minutes: 10, Effect: Needs{Fun: 15}, Ages: Babies},
 			{ID: "premier-mot", Room: RoomBed, Label: "Dire son premier mot", Icon: "messages-square", Minutes: 10, Effect: Needs{Social: 20}, Ages: Babies},
+			// The baby fight (the update « bagarre-bebe », a défi: the street fight's moves, the babies' size): with the cousin, over the toy.
+			{ID: "bagarre-bebe", Room: RoomBed, Label: "Se bagarrer avec le cousin", Icon: "swords", Minutes: 10, Effect: Needs{Fun: 25, Social: 10, Energy: -8}, Ages: Babies},
 			{ID: "premiers-pas", Room: RoomBed, Label: "Faire ses premiers pas vers papa", Icon: "footprints", Minutes: 20, Effect: Needs{Fun: 20, Social: 15, Energy: -8}, Ages: Babies},
 			// What a baby does once fed (Fed): it empties the tummy, and papa and maman come running to clean up.
 			{ID: "caca", Room: RoomBed, Label: "Faire caca", Icon: "baby", Minutes: 10, Effect: Needs{Hunger: -30, Hygiene: -15, Fun: 10}, Ages: Babies, Fed: true},
@@ -471,11 +473,24 @@ var Kinds = map[string]PlaceKind{
 		Interactions: []Interaction{
 			{ID: "cours-du-soir", Ages: Adults, Label: "Suivre un cours du soir", Icon: "book-open", Minutes: 120, Cost: 1000, Effect: Needs{Fun: -5, Energy: -15, Social: 15}, MinHour: 17, MaxHour: 20, Days: Weekdays},
 			{ID: "bibliotheque", Label: "Réviser à la bibliothèque", Icon: "library", Minutes: 90, Effect: Needs{Fun: -5, Energy: -10}, MinHour: 8, MaxHour: 18, Days: Workweek},
+			// The children's day at the commune's school (as from home: world/ecoles.go puts one in every commune).
+			{ID: "aller-ecole", Label: "Aller à l'école", Icon: "school", Minutes: 5 * 60, Effect: Needs{Social: 25, Fun: -10, Energy: -20, Hunger: -15}, MinHour: 7, MaxHour: 9, Days: Weekdays, Ages: Kids},
 			{ID: "conference", Ages: TeensUp, Label: "Assister à une conférence", Icon: "presentation", Minutes: 90, Effect: Needs{Fun: 15, Social: 15, Energy: -5}, MinHour: 9, MaxHour: 17, Days: Weekdays},
 		},
 		Events: []RandomEvent{
 			{Text: "Ton professeur te félicite devant toute la classe.", Effect: Needs{Fun: 20}},
 			{Text: "Grève surprise : les cours sont annulés.", Effect: Needs{Fun: 10, Social: 5}},
+		},
+	},
+	// The commune's crèche (world/ecoles.go): the babies, the nounous, every day from 7 to 17.
+	"creche": {
+		ID: "creche", Label: "Crèche", Icon: "baby",
+		Interactions: []Interaction{
+			{ID: "creche", Label: "Aller à la crèche", Icon: "baby", Minutes: 3 * 60, Effect: Needs{Social: 25, Fun: 20, Energy: -12, Hunger: -10}, MinHour: 7, MaxHour: 17, Ages: Babies},
+		},
+		Events: []RandomEvent{
+			{Text: "La tantie nounou chante une berceuse : tous les bébés s'endorment.", Effect: Needs{Energy: 10, Fun: 5}},
+			{Text: "Un bébé te pique ton hochet… puis te le rend en riant.", Effect: Needs{Social: 10, Fun: 10}},
 		},
 	},
 	"health": {

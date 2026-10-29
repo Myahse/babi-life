@@ -5,7 +5,7 @@ import { MOVES, NO_PAD, type Fight, type Pad } from './engine'
 // up, go in, kick, catch a jump, punish a blow that missed, throw one who
 // hides behind the guard, finish a chain, set off the Super.
 
-export type FoeId = 'yao' | 'go' | 'boss'
+export type FoeId = 'yao' | 'go' | 'boss' | 'koffi' | 'aya' | 'gros'
 export type Foe = {
   id: FoeId
   name: string
@@ -150,3 +150,11 @@ export function aiPad(F: Fight, i: 0 | 1, foe: Foe, mind: Mind, rnd: () => numbe
   if (r < foe.aggro + (1 - foe.aggro) * foe.block) return hold({ guard: true, down: rnd() < 0.3 }, 0.35)
   return hold({ x: -toward }, 0.25)
 }
+
+/** The baby fight (the update « bagarre-bebe »): the cousins after the toy, the same minds, the babies' names. */
+export const BABY_FOES: Foe[] = FOES.map((f, i) => ({
+  ...f,
+  id: (['koffi', 'aya', 'gros'] as FoeId[])[i],
+  name: ['Le petit cousin Koffi', 'La cousine Aya', 'Gros Bébé'][i],
+  about: ['Il tape un peu partout, et il rit en même temps.', 'Elle tire les cheveux et donne des coups de pied.', 'Le plus lourd de la famille : il pare, et il s’assoit sur toi.'][i],
+}))
