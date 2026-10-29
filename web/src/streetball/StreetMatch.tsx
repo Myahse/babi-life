@@ -4,13 +4,14 @@ import { RotateCcw, Trophy, Users, X } from 'lucide-react'
 import type { Look } from '../lib/types'
 import { randomLook } from '../avatar/options'
 import { rng } from '../world3d/themes'
-import { COUNTDOWN, METER_GOOD, NO_INPUT, buttons, createGame, outcome, shootoutScore, step, type Game, type Input, type Rules, type Sport, type Stats } from './game'
+import { COUNTDOWN, METER_GOOD, NO_INPUT, buttons, createGame, outcome, shootoutScore, step, type Game, type Geste, type Input, type Rules, type Sport, type Stats } from './game'
 import { holdScenes } from '../world3d/hold'
 import { BallView, Crowd, Follow, Ground, PlayerView, upright } from './scene'
 import { HAZE, Sky } from './looks'
 import { FarGrow, GroundShade } from '../avatar/LowHuman'
 import { NearUpTo } from '../avatar/Human'
 import { Referee } from './stadium'
+import { GbeTrail, StreetGround } from './rue'
 import { likesFor } from '../world3d/fans'
 import { serverNow } from '../lib/worldClock'
 import { rumble, stickOwner, useGamepad, usePadConnected } from '../lib/gamepad'
@@ -25,6 +26,11 @@ import { MatchNet, fetchMatch, leaveMatch, type CourtEntry, type CourtMatch } fr
 // The console's football (`rules` with a referee, switching or the eleven)
 // has more: Shift (RT) sprints, Space (B) held charges the shot, U (Y) the
 // through ball, I (X) the lob or cross, Tab or R (LB) changes player.
+// Le foot de rue (`rules.street`) has the moves instead (StreetPad): on the
+// phone, the Geste button (a tap, a swipe each way, held for the keepy-ups)
+// and Feinte; on the keyboard K passement, U roulette, I petit pont,
+// O sombrero, C feinte de frappe, H aile de pigeon, N talonnade, G held the
+// jongles; Space with the style gauge full is the Gbê.
 
 export type MatchResult = { sport: Sport; score: [number, number]; result: 'win' | 'loss' | 'draw'; stats: Stats; /** A draw settled on penalties: the shoot-out's score. */ pens?: [number, number] }
 
@@ -92,6 +98,9 @@ type Hud = {
   switching: boolean
   /** The shoot-out's kicks so far, each side's (in or not). */
   pens: [boolean[], boolean[]] | null
+  /** Le foot de rue: the style gauge (full: the Gbê), and what the people along the wall shout. */
+  style: number
+  shout: { text: string; k: number } | null
 }
 
 /** At a set piece, what the hands can do. */
@@ -118,7 +127,7 @@ function hintOf(g: Game): string | null {
   }
 }
 
-function hudOf(g: Game, waiting = 0): Hud {
+function hudOf(g: Game, waiting = 0, shout: Hud['shout'] = null): Hud {
   const b = buttons(g)
   const me = g.ps[g.me]
   return {
@@ -138,12 +147,24 @@ function hudOf(g: Game, waiting = 0): Hud {
     hint: hintOf(g),
     switching: g.switching,
     pens: g.shootout ? [[...g.shootout.kicks[0]], [...g.shootout.kicks[1]]] : null,
+    style: me.style,
+    shout,
   }
+}
+
+/** What the people along the wall shout at a move, a nutmeg or a sombrero, a Gbê. */
+const SHOUTS = {
+  geste: ['Hooo !', 'Ça c’est ivoirien !', 'Mets-lui encore !', 'Dêh ! Regarde ça !', 'C’est le Zidane du quartier !', 'On dit quoi ?!'],
+  ankle: ['Hooo ! Il l’a tué !', 'Va chercher !', 'Yako, mon frère…', 'Ça c’est ivoirien !', 'Il est où ? Il est où ?!'],
+  gbe: ['GBÊÊÊ !', 'Frappe de mule !', 'Le filet a crié !', 'C’est quel pied ça ?!'],
 }
 
 export default function StreetMatch({ sport, name, look, gender, onExit, seed, online, rules, teams, kits: kitsProp, shorts }: Props) {
   // The console's football: its extra moves and its HUD.
   const fifa = sport === 'foot' && !!rules && !!(rules.referee || rules.switching || rules.size === 11)
+  // Le foot de rue: the street's rules and moves (not the console's: a replay, the film of it).
+  const street = sport === 'foot' && !!rules?.street && rules.size !== 11
+  const consoleRules = rules && !street ? rules : undefined
   const kits = kitsProp ?? KITS[sport]
   // The scoreboard's three letters: the console's own, else from the names.
   const labels = shorts ?? (teams ? [short3(teams[0]), short3(teams[1])] : null)
@@ -198,6 +219,8 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
         const e = entries.find((x) => x.slot === p.id)
         p.human = p.id === game.me || (!!e && net.here(e.sim))
         if (e && p.id !== game.me) p.name = e.name
+        // The street's fifth place (four a side): a ninth and tenth player come on all the same.
+        if (game.street && p.role === 0) p.out = !p.human
       }
     }
     fix()
@@ -226,8 +249,8 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
   const input = useRef<Input>(fresh())
   const touch = useMemo(() => typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches, [])
   const [hud, setHud] = useState<Hud>(() => hudOf(game))
-  useKeyboard(input, fifa, sport === 'basket')
-  usePad(input, sport, fifa)
+  useKeyboard(input, fifa, sport === 'basket', street)
+  usePad(input, sport, fifa, street)
   const padOn = usePadConnected()
   const sceneSeed = `${sport}-${seed ?? 'street'}`
   // The world underneath holds still during the match.
@@ -246,7 +269,8 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
         <directionalLight color="#fff1dc" position={big ? [40, 70, 30] : [18, 30, 14]} intensity={1.85} castShadow shadow-mapSize={[big ? 2048 : 1024, big ? 2048 : 1024]} shadow-camera-left={big ? -70 : -24} shadow-camera-right={big ? 70 : 24} shadow-camera-top={big ? 60 : 24} shadow-camera-bottom={big ? -60 : -24} shadow-camera-far={big ? 200 : 100} />
         <Sky radius={big ? 600 : 330} />
         <Suspense fallback={null}>
-          <Ground g={game} seed={sceneSeed} teams={teams} />
+          {street ? <StreetGround g={game} seed={sceneSeed} /> : <Ground g={game} seed={sceneSeed} teams={teams} />}
+          {street && <GbeTrail g={game} />}
           {/* The players seen from afar a little bigger (more at the stadium, from high up), so they read as people, not sticks. */}
           <FarGrow.Provider value={big ? FAR_STADIUM : FAR_PITCH}>
             {/* The players and the referee in full, running and kicking, far up the pitch too (the crowd stays the simple figures). */}
@@ -319,13 +343,20 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
       )}
       {fifa && !hud.over && <Gauges hud={hud} />}
       {sport === 'basket' && !hud.over && hud.meter >= 0 && <ShotMeter v={hud.meter} />}
-      {!hud.over && (fifa ? <FifaPad input={input} hud={hud} touch={touch && !padOn} pad={padOn} /> : <Pad input={input} hud={hud} sport={sport} touch={touch && !padOn} pad={padOn} />)}
+      {street && !hud.over && <StyleGauge v={hud.style} />}
+      {street && !hud.over && hud.time > 0 && hud.time < 9 && (
+        <div className="pointer-events-none absolute inset-x-0 top-[max(4.8rem,calc(env(safe-area-inset-top)+4.2rem))] px-4 text-center">
+          <span className="inline-block max-w-sm rounded-xl bg-[#0f1230]/75 px-3 py-1.5 text-xs font-extrabold text-white">{touch && !padOn ? 'Geste : tape, glisse ↑ ↓ ← →, ou tiens pour jongler.' : 'Les gestes : K U I O C H N, G tenu pour jongler.'} Face à un défenseur, au bon moment : il est dans le vent !</span>
+        </div>
+      )}
+      {street && !hud.over && hud.shout && <Shout key={hud.shout.k} text={hud.shout.text} k={hud.shout.k} />}
+      {!hud.over && (fifa ? <FifaPad input={input} hud={hud} touch={touch && !padOn} pad={padOn} /> : street ? <StreetPad input={input} hud={hud} touch={touch && !padOn} pad={padOn} /> : <Pad input={input} hud={hud} sport={sport} touch={touch && !padOn} pad={padOn} />)}
       {online && hud.waiting > 0 && <Waiting entries={entries} cap={online.match.cap} left={hud.waiting} sport={sport} />}
 
       {hud.over && (
         <Result
           game={game}
-          played={!!rules}
+          played={!!consoleRules}
           kits={kits}
           onExit={() => {
             if (online) void leaveMatch(online.token, online.simId, online.match.id)
@@ -333,7 +364,7 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
           }}
           // At a court the next match is the court's: back on from the street.
           onReplay={
-            online || rules
+            online || consoleRules
               ? undefined
               : () => {
                   input.current = fresh()
@@ -357,9 +388,17 @@ function Loop({ game, input, onHud, net, entries, start, simId }: { game: Game; 
   const whistled = useRef(-9)
   const ended = useRef(false)
   const started = useRef(false)
+  const shout = useRef<Hud['shout']>(null)
   const size = useThree((s) => s.size)
   useFrame((_, dtRaw) => {
-    const total = Math.min(Math.max(dtRaw, 0), 0.25)
+    let total = Math.min(Math.max(dtRaw, 0), 0.25)
+    // The labs step the match by hand, frame by frame (globalThis.streetLab = { frames, dt }).
+    const lab = import.meta.env.DEV ? (globalThis as { streetLab?: { frames: number; dt: number } }).streetLab : undefined
+    if (lab) {
+      if (lab.frames <= 0) return
+      lab.frames--
+      total = lab.dt
+    }
     const steps = Math.max(1, Math.ceil(total / (1 / 60)))
     const dt = total / steps
     // Football on a phone held upright: the camera looks up the pitch from
@@ -391,15 +430,15 @@ function Loop({ game, input, onHud, net, entries, start, simId }: { game: Game; 
       if (host) {
         const others = net?.inputs(entries)
         for (let i = 0; i < steps; i++) {
-          step(game, dt, i === 0 ? mine : { ...mine, pass: false, shoot: false, skill: false, defend: false, through: false, lob: false, swap: false }, others)
+          step(game, dt, i === 0 ? mine : { ...mine, pass: false, shoot: false, skill: false, defend: false, through: false, lob: false, swap: false, geste: null }, others)
           // The others' presses count once, on the first small step.
-          if (i === 0 && others) for (const [k, v] of others) others.set(k, { ...v, pass: false, shoot: false, skill: false, defend: false, through: false, lob: false, swap: false })
+          if (i === 0 && others) for (const [k, v] of others) others.set(k, { ...v, pass: false, shoot: false, skill: false, defend: false, through: false, lob: false, swap: false, geste: null })
         }
         if (net && game.flash && game.flash.text !== said.current) net.say(game.flash.text)
         said.current = game.flash?.text ?? null
       } else if (!net!.apply(game, boss)) {
         // The match's phone has gone quiet: this one plays on from where it was.
-        for (let i = 0; i < steps; i++) step(game, dt, i === 0 ? mine : { ...mine, pass: false, shoot: false, skill: false, defend: false, through: false, lob: false, swap: false }, net!.inputs(entries))
+        for (let i = 0; i < steps; i++) step(game, dt, i === 0 ? mine : { ...mine, pass: false, shoot: false, skill: false, defend: false, through: false, lob: false, swap: false, geste: null }, net!.inputs(entries))
       }
     }
     // A controller shakes for a goal or a basket (hard for one's own team), and for one's own big move.
@@ -410,7 +449,16 @@ function Loop({ game, input, onHud, net, entries, start, simId }: { game: Game; 
       if (m.kind === 'goal' || m.kind === 'basket' || m.kind === 'three' || m.kind === 'dunk') rumble(mine ? 0.9 : 0.35, mine ? 320 : 160)
       else if (m.by === game.me) rumble(0.5, 120)
       if (m.kind === 'goal') sfx.roar()
+      // The street: the wall shouts at a move, roars at a nutmeg, a sombrero, a Gbê.
+      if (game.street && (m.kind === 'geste' || m.kind === 'ankle' || m.kind === 'gbe')) {
+        const list = SHOUTS[m.kind]
+        shout.current = { text: list[Math.floor(Math.random() * list.length)], k: m.t }
+        if (m.kind === 'geste') sfx.swish()
+        else sfx.roar()
+        if (m.kind === 'gbe') sfx.kick(1)
+      }
     }
+    if (shout.current && game.time - shout.current.k > 1.8) shout.current = null
     // The referee's whistle: the kick-off, a foul, a set piece, the end (three long ones).
     if (game.sport === 'foot') {
       if (game.referee && game.ref.whistle > whistled.current) {
@@ -429,6 +477,7 @@ function Loop({ game, input, onHud, net, entries, start, simId }: { game: Game; 
     // The buttons are presses, not holds.
     inp.pass = inp.shoot = inp.skill = inp.defend = false
     inp.through = inp.lob = inp.swap = false
+    inp.geste = null
     if (net) {
       sent.current += total
       if (sent.current > 0.075) {
@@ -441,7 +490,7 @@ function Loop({ game, input, onHud, net, entries, start, simId }: { game: Game; 
     // The HUD ten times a second; the shot meter climbing, every few hundredths (it's timed by the eye).
     if (acc.current > (game.ps[game.me].meter >= 0 ? 0.03 : 0.1)) {
       acc.current = 0
-      onHud(hudOf(game, waiting))
+      onHud(hudOf(game, waiting, shout.current))
     }
   })
   return null
@@ -471,8 +520,11 @@ function Waiting({ entries, cap, left, sport }: { entries: CourtEntry[]; cap: nu
   )
 }
 
-/** The keyboard: arrows / WASD / ZQSD, Space shoot, J or X pass, K or C crossover, L or E defend. */
-function useKeyboard(input: React.MutableRefObject<Input>, fifa: boolean, basket: boolean) {
+/** The keys of the street's moves (K the stepover; C, the crochet key, the fake shot). */
+const GESTE_KEYS: Record<string, Geste> = { KeyK: 'passement', KeyU: 'roulette', KeyI: 'petitpont', KeyO: 'sombrero', KeyC: 'crochet', KeyH: 'aile', KeyN: 'talonnade' }
+
+/** The keyboard: arrows / WASD / ZQSD, Space shoot, J or X pass, K or C crossover, L or E defend; the street, its moves (GESTE_KEYS, G held the keepy-ups). */
+function useKeyboard(input: React.MutableRefObject<Input>, fifa: boolean, basket: boolean, street = false) {
   useEffect(() => {
     const keys = new Set<string>()
     const apply = () => {
@@ -490,13 +542,15 @@ function useKeyboard(input: React.MutableRefObject<Input>, fifa: boolean, basket
       }
       // Basketball: Space held, the shot meter.
       if (basket) i.charge = keys.has('Space')
+      if (street) i.juggle = keys.has('KeyG')
     }
     const down = (e: KeyboardEvent) => {
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Tab'].includes(e.code)) e.preventDefault()
       if (!e.repeat) {
         if (e.code === 'Space') input.current.shoot = true
         if (e.code === 'KeyJ' || e.code === 'KeyX') input.current.pass = true
-        if (e.code === 'KeyK' || e.code === 'KeyC') input.current.skill = true
+        if (street && GESTE_KEYS[e.code]) input.current.geste = GESTE_KEYS[e.code]
+        else if (e.code === 'KeyK' || e.code === 'KeyC') input.current.skill = true
         if (e.code === 'KeyL' || e.code === 'KeyE') input.current.defend = true
         if (fifa && e.code === 'KeyU') input.current.through = true
         if (fifa && e.code === 'KeyI') input.current.lob = true
@@ -521,7 +575,7 @@ function useKeyboard(input: React.MutableRefObject<Input>, fifa: boolean, basket
       window.removeEventListener('keyup', up)
       window.removeEventListener('blur', blur)
     }
-  }, [input, fifa])
+  }, [input, fifa, basket, street])
 }
 
 /** The stick: drag the knob to run; it springs back on release. */
@@ -619,10 +673,11 @@ function Pad({ input, hud, sport, touch, pad }: { input: React.MutableRefObject<
  * shoots or jumps, X the crossover, RB (or LB, LT) defends, held for the
  * stance. Written into the same input as the keys and the touch buttons.
  */
-function usePad(input: React.MutableRefObject<Input>, sport: Sport, fifa: boolean) {
+function usePad(input: React.MutableRefObject<Input>, sport: Sport, fifa: boolean, street = false) {
   const run = useMemo(() => stickOwner(), [])
   const guard = useRef(false)
   const held = useRef({ sprint: false, charge: false })
+  const flicked = useRef(false)
   useGamepad((p) => {
     const i = input.current
     const dx = (p.held.has('right') ? 1 : 0) - (p.held.has('left') ? 1 : 0)
@@ -631,6 +686,23 @@ function usePad(input: React.MutableRefObject<Input>, sport: Sport, fifa: boolea
     run(x, y, (mx, mz) => ((i.mx = mx), (i.mz = mz)))
     if (p.pressed.has('a')) i.pass = true
     if (p.pressed.has('b')) i.shoot = true
+    if (street) {
+      // The street, as the big street games lay it out: the right stick flicked for the moves (like the Geste button's swipes),
+      // X the stepover, Y the flick, RB the fake shot, LB the back-heel, the right stick pressed in held for the keepy-ups; LT defends.
+      const r = Math.hypot(p.rx, p.ry)
+      if (r > 0.7 && !flicked.current) i.geste = SWIPE[Math.abs(p.rx) > Math.abs(p.ry) ? (p.rx > 0 ? 'right' : 'left') : p.ry > 0 ? 'down' : 'up']
+      flicked.current = r > 0.4
+      if (p.pressed.has('x')) i.geste = 'passement'
+      if (p.pressed.has('y')) i.geste = 'aile'
+      if (p.pressed.has('rb')) i.skill = true
+      if (p.pressed.has('lb')) i.geste = 'talonnade'
+      i.juggle = p.held.has('rs')
+      const g = p.lt > 0.4
+      if (g && !guard.current) i.defend = true
+      if (g !== guard.current) i.guard = g
+      guard.current = g
+      return
+    }
     if (fifa && sport === 'foot') {
       // The console's football, as the big football games lay it out: X the lob, Y the through ball, RB the crochet, LB changes player, RT sprints, B held the power, LT defends.
       if (p.pressed.has('x')) i.lob = true
@@ -753,6 +825,194 @@ function FifaPad({ input, hud, touch, pad }: { input: React.MutableRefObject<Inp
   )
 }
 
+/** The Geste button's swipes, and the move each one is. */
+type Swipe = 'up' | 'down' | 'left' | 'right'
+const SWIPE: Record<Swipe, Geste> = { up: 'sombrero', down: 'petitpont', left: 'roulette', right: 'aile' }
+const SWIPE_LABEL: Record<Swipe | 'tap' | 'hold', string> = { up: 'Sombrero', down: 'Petit pont', left: 'Roulette', right: 'Aile de pigeon', tap: 'Passement', hold: 'Jongles' }
+
+/**
+ * Le foot de rue on a phone: Passe, Tir (with the style gauge full, the Gbê),
+ * Feinte (a tap: the fake shot; a swipe: the back-heel) and Geste: a tap the
+ * stepover, a swipe up the sombrero, down the nutmeg, left the Marseille
+ * turn, right the flick; held, the keepy-ups. Without the ball, Geste is
+ * Défense (held: the stance).
+ */
+function StreetPad({ input, hud, touch, pad }: { input: React.MutableRefObject<Input>; hud: Hud; touch: boolean; pad: boolean }) {
+  const btn = 'pointer-events-auto relative grid place-items-center rounded-full font-display font-extrabold shadow-[0_6px_0_rgba(0,0,0,0.25)] active:translate-y-[3px] active:shadow-[0_3px_0_rgba(0,0,0,0.25)] transition-opacity select-none touch-none'
+  const off = 'opacity-45'
+  const press = (k: 'pass' | 'shoot') => (e: React.PointerEvent) => {
+    e.preventDefault()
+    input.current[k] = true
+  }
+  const gbe = hud.has && hud.style >= 1
+  return (
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+      <Stick input={input} />
+      <div className="flex flex-col items-end gap-2">
+        {!touch && <span className="max-w-[22rem] text-right text-[11px] font-bold text-white drop-shadow">{pad ? 'B tir · A passe · X passement · Y aile de pigeon · RB feinte · LB talonnade · stick droit : ↑ sombrero ↓ petit pont ← → roulette / aile · R3 tenu jongles · LT défense' : 'Espace tir · J passe · L défense · K passement · U roulette · I petit pont · O sombrero · C feinte · H aile de pigeon · N talonnade · G tenu jongles'}</span>}
+        <div className="grid grid-cols-2 items-center justify-items-center gap-3">
+          <button className={`${btn} h-16 w-16 bg-[#2563eb] text-sm text-white`} onPointerDown={press('pass')}>
+            {hud.has ? 'Passe' : 'Appelle'}
+            {!touch && <Key>{pad ? 'A' : 'J'}</Key>}
+          </button>
+          <button className={`${btn} h-20 w-20 text-base text-white ${gbe ? 'animate-pulse bg-gradient-to-b from-[#ffd43b] to-[#e8590c] text-lg' : 'bg-[#ff8200]'} ${hud.has ? '' : off}`} onPointerDown={press('shoot')}>
+            {gbe ? 'GBÊ !' : 'Tir'}
+            {!touch && <Key>{pad ? 'B' : 'Espace'}</Key>}
+          </button>
+          <GesteButton input={input} has={hud.has} touch={touch} pad={pad} className={btn} />
+          <FeinteButton input={input} has={hud.has} touch={touch} pad={pad} className={`${btn} ${hud.has ? '' : off}`} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** The Geste button: a tap, a swipe each way (the move fires as the finger crosses), held for the keepy-ups; the moves round it while it's held. */
+function GesteButton({ input, has, touch, pad, className }: { input: React.MutableRefObject<Input>; has: boolean; touch: boolean; pad: boolean; className: string }) {
+  const st = useRef<{ x: number; y: number; done: boolean; timer: ReturnType<typeof setTimeout> | null } | null>(null)
+  const [open, setOpen] = useState<null | Swipe | 'tap' | 'hold' | 'ring'>(null)
+  const end = () => {
+    const s = st.current
+    if (s?.timer) clearTimeout(s.timer)
+    input.current.juggle = false
+    input.current.guard = false
+    st.current = null
+    setTimeout(() => setOpen(null), 260)
+  }
+  useEffect(() => () => void (st.current?.timer && clearTimeout(st.current.timer)), [])
+  return (
+    <div className="relative">
+      <button
+        className={`${className} h-20 w-20 text-sm ${has ? 'bg-[#7048e8] text-white' : 'bg-[#16a34a] text-white'}`}
+        onPointerDown={(e) => {
+          e.preventDefault()
+          ;(e.target as HTMLElement).setPointerCapture?.(e.pointerId)
+          if (!has) {
+            input.current.defend = true
+            input.current.guard = true
+            st.current = { x: e.clientX, y: e.clientY, done: true, timer: null }
+            return
+          }
+          const s = { x: e.clientX, y: e.clientY, done: false, timer: null as ReturnType<typeof setTimeout> | null }
+          // Held still: the keepy-ups, for as long as it's held.
+          s.timer = setTimeout(() => {
+            if (st.current !== s || s.done) return
+            s.done = true
+            input.current.juggle = true
+            setOpen('hold')
+          }, 320)
+          st.current = s
+          setOpen('ring')
+        }}
+        onPointerMove={(e) => {
+          const s = st.current
+          if (!s || s.done) return
+          const [dx, dy] = [e.clientX - s.x, e.clientY - s.y]
+          if (Math.hypot(dx, dy) < 26) return
+          const dir: Swipe = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up'
+          s.done = true
+          input.current.geste = SWIPE[dir]
+          setOpen(dir)
+        }}
+        onPointerUp={() => {
+          const s = st.current
+          if (s && !s.done) {
+            input.current.geste = 'passement'
+            setOpen('tap')
+          }
+          end()
+        }}
+        onPointerCancel={end}
+      >
+        {has ? 'Geste' : 'Défense'}
+        {!touch && <Key>{pad ? 'X' : 'K'}</Key>}
+        {/* Little arrows round it: there's more than a tap. */}
+        {has && touch && (
+          <>
+            <span className="absolute top-0.5 left-1/2 -translate-x-1/2 text-[9px] leading-none opacity-70">▲</span>
+            <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 text-[9px] leading-none opacity-70">▼</span>
+            <span className="absolute top-1/2 left-1 -translate-y-1/2 text-[9px] leading-none opacity-70">◀</span>
+            <span className="absolute top-1/2 right-1 -translate-y-1/2 text-[9px] leading-none opacity-70">▶</span>
+          </>
+        )}
+      </button>
+      {open && has && (
+        <div className="pointer-events-none absolute inset-0 z-10">
+          {(['up', 'down', 'left', 'right'] as Swipe[]).map((d) => (
+            <span
+              key={d}
+              className={`absolute rounded-full px-2 py-0.5 text-[10px] font-extrabold whitespace-nowrap shadow ${open === d ? 'bg-[#ffd43b] text-[#141416]' : 'bg-[#0f1230]/80 text-white'}`}
+              style={d === 'up' ? { left: '50%', top: -26, transform: 'translateX(-50%)' } : d === 'down' ? { left: '50%', bottom: -16, transform: 'translateX(-50%)' } : d === 'left' ? { right: '100%', top: '50%', transform: 'translate(-6px,-50%)' } : { left: '100%', top: '50%', transform: 'translate(6px,-50%)' }}
+            >
+              {SWIPE_LABEL[d]}
+            </span>
+          ))}
+          {(open === 'tap' || open === 'hold') && <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#ffd43b] px-2 py-0.5 text-[10px] font-extrabold whitespace-nowrap text-[#141416] shadow">{SWIPE_LABEL[open]}</span>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Feinte: a tap, the fake shot (the crochet); a swipe any way, the back-heel. */
+function FeinteButton({ input, has, touch, pad, className }: { input: React.MutableRefObject<Input>; has: boolean; touch: boolean; pad: boolean; className: string }) {
+  const st = useRef<{ x: number; y: number; done: boolean } | null>(null)
+  return (
+    <button
+      className={`${className} h-16 w-16 bg-[#ffd43b] text-[11px] leading-tight text-[#141416]`}
+      onPointerDown={(e) => {
+        e.preventDefault()
+        ;(e.target as HTMLElement).setPointerCapture?.(e.pointerId)
+        st.current = { x: e.clientX, y: e.clientY, done: false }
+      }}
+      onPointerMove={(e) => {
+        const s = st.current
+        if (!s || s.done || Math.hypot(e.clientX - s.x, e.clientY - s.y) < 26) return
+        s.done = true
+        input.current.geste = 'talonnade'
+      }}
+      onPointerUp={() => {
+        if (st.current && !st.current.done) input.current.skill = true
+        st.current = null
+      }}
+      onPointerCancel={() => void (st.current = null)}
+    >
+      <span>
+        Feinte
+        {touch && has && <span className="block text-[8px] font-bold opacity-70">glisse : talonnade</span>}
+      </span>
+      {!touch && <Key>{pad ? 'RB' : 'C'}</Key>}
+    </button>
+  )
+}
+
+/** The style gauge: each move fills it; full, the next shot is the Gbê. */
+function StyleGauge({ v }: { v: number }) {
+  const full = v >= 1
+  return (
+    <div className="pointer-events-none absolute right-4 bottom-[max(13.2rem,calc(env(safe-area-inset-bottom)+12.7rem))] w-40">
+      <div className={`mb-0.5 text-right text-[11px] font-extrabold text-white drop-shadow ${full ? 'animate-pulse text-[#ffd43b]' : ''}`}>{full ? 'Gbê prêt ! Frappe !' : 'Style'}</div>
+      <div className="h-3 overflow-hidden rounded-full bg-[#0f1230]/60 ring-2 ring-white/60">
+        <div className="h-full rounded-full bg-gradient-to-r from-[#ffd43b] via-[#ff8200] to-[#e03131] transition-[width] duration-200" style={{ width: `${Math.round(Math.min(1, v) * 100)}%` }} />
+      </div>
+    </div>
+  )
+}
+
+/** What someone along the wall shouts, in a bubble: left or right, by the moment. */
+function Shout({ text }: { text: string; k: number }) {
+  // (On the left: the style gauge is on the right.)
+  const left = true
+  return (
+    <div className={`pointer-events-none absolute top-[max(8.6rem,calc(env(safe-area-inset-top)+8rem))] ${left ? 'left-4' : 'right-4'}`}>
+      <span className="animate-up relative inline-block rounded-2xl bg-white px-3 py-1.5 font-display text-lg font-extrabold text-[#141416] shadow-lg">
+        {text}
+        <span className={`absolute -bottom-1.5 h-3 w-3 rotate-45 bg-white ${left ? 'left-4' : 'right-4'}`} />
+      </span>
+    </div>
+  )
+}
+
 /** On a computer: the key of a move, in the corner of its button. */
 function Key({ children }: { children: string }) {
   return <kbd className="absolute -top-1.5 -right-1.5 rounded-md bg-white px-1 font-sans text-[10px] leading-4 font-extrabold text-[#141416] shadow">{children}</kbd>
@@ -788,7 +1048,7 @@ function Result({ game, onExit, onReplay, played, kits }: { game: Game; onExit: 
           ['Buts', s.goals],
           ['Passes décisives', s.assists],
           ['Ballons récupérés', s.steals],
-          ['Chevilles cassées', s.ankles],
+          [game.street ? 'Gestes réussis' : 'Chevilles cassées', s.ankles],
         ]
       : [
           ['Points', s.points],
@@ -800,7 +1060,7 @@ function Result({ game, onExit, onReplay, played, kits }: { game: Game; onExit: 
         ]
   ) as [string, number][]
   // The player's best moment, filmed from the fence.
-  const best = s.dunks ? 'ton dunk' : s.goals ? 'ton but' : s.ankles ? 'ta cheville cassée' : s.blocks ? 'ton contre' : null
+  const best = s.dunks ? 'ton dunk' : s.goals ? 'ton but' : s.ankles ? (game.street ? 'ton geste' : 'ta cheville cassée') : s.blocks ? 'ton contre' : null
   return (
     <div className="absolute inset-0 grid place-items-center bg-[#0f1230]/60 p-4">
       <div className="sheet animate-up w-full max-w-sm rounded-[28px] p-5">
