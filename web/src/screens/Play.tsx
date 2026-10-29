@@ -1077,6 +1077,8 @@ export function Play() {
                 : null
   // Out in the street at night, the party at the Rue Princesse or Blockhauss is heard from down the road, louder as one comes near.
   const partyHeard = !track && !showInside && party.id !== null && party.level > 0
+  // The party is in the Sim's own commune (Rue Princesse for Yopougon, Blockhauss for Cocody).
+  const partyHere = !!party.id && commune.places.some((p) => p.id === party.id)
   const trackSeed = partyHeard ? `party${party.id}` : showInside ? inside!.id : `${commune.id}${happeningId ?? ''}`
 
   return (
@@ -1420,7 +1422,8 @@ export function Play() {
         </button>
       </footer>
 
-      <Soundtrack track={partyHeard ? 'club' : track} seed={trackSeed} level={partyHeard ? party.level : 1} />
+      {/* A party heard from the street: loud in its own commune, faint from the next one */}
+      <Soundtrack track={partyHeard ? 'club' : track} seed={trackSeed} level={partyHeard ? (partyHere ? Math.min(1, party.level * 1.4 + 0.15) : party.level * 0.3) : 1} />
       {/* The street's sound (update « ambiance-sonore »): the rain, the thunder, the hum, birds or crickets */}
       {keyOpen(features, 'ambiance-sonore') && <Ambience rain={happeningId === 'pluie'} night={c.isNight} inside={showInside} music={!!(partyHeard || track)} />}
       {/* Finding the way: the mini-map, and every place of the quarter (at the wheel, the GPS does it) */}
