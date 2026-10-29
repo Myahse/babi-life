@@ -81,9 +81,14 @@ async function open(b, k, query = '') {
 const tick = (page, n = 1) => page.evaluate((n) => {
   for (let i = 0; i < n; i++) window.__advance(1000 / 30)
 }, n)
-/** Frames on while the game loads (real time too, for what comes from the network). */
+/** Frames on while the game loads: until the street has come (its tiles come in real time), then `frames` more. */
 async function warm(page, frames) {
   await sleep(3000)
+  for (let i = 0; i < 400; i++) {
+    await tick(page)
+    if (i % 10 === 0) await sleep(250)
+    if (i > 60 && i % 10 === 0 && (await page.evaluate(() => !!window.__where?.streetReady || !!document.querySelector('.sheet')))) break
+  }
   for (let i = 0; i < frames; i++) {
     await tick(page)
     if (i % 20 === 0) await sleep(200)
@@ -126,7 +131,18 @@ async function film(page, dir, frames, at = {}, each) {
   }
 }
 
-const click = (page, name) => () => page.getByRole('button', { name }).first().click({ timeout: 4000 })
+/**
+ * A tap on a button, as a finger does it (pointer down, up, click), sent in the page: Playwright's own
+ * click waits for the button to hold still over animation frames, and the stopped clock gives none.
+ */
+const tap = (loc) =>
+  loc.first().evaluate((el) => {
+    const o = { bubbles: true, cancelable: true, pointerId: 1, isPrimary: true, pointerType: 'touch' }
+    el.dispatchEvent(new PointerEvent('pointerdown', o))
+    el.dispatchEvent(new PointerEvent('pointerup', o))
+    el.click()
+  }, null, { timeout: 4000 })
+const click = (page, name) => () => tap(page.getByRole('button', { name }))
 
 /* ---------- The takes ---------- */
 
@@ -144,21 +160,26 @@ const TAKES = [
   {
     id: 'maison',
     seconds: 6,
-    make: () => koffi(),
-    warm: 160,
-    before: (p) => click(p, /ENTRER/)(),
+    make: async () => {
+      const k = await koffi()
+      await call(k.token, `/sims/${k.sim.id}/interact`, 'POST', { placeId: 'home', interactionId: 'calin' })
+      return k
+    },
+    warm: 90,
     stage: BEBE,
     text: 'Ce n’est pas un bug : c’est voulu. Comme dans la vraie vie, tout commence là, et ce que tu vis bébé compte pour la suite.',
   },
   {
     id: 'biberon',
     seconds: 4.44,
-    make: () => koffi(),
-    warm: 160,
-    before: (p) => click(p, /ENTRER/)(),
+    make: async () => {
+      const k = await koffi()
+      await call(k.token, `/sims/${k.sim.id}/interact`, 'POST', { placeId: 'home', interactionId: 'biberon' })
+      return k
+    },
+    warm: 90,
     stage: BEBE,
     text: 'Il a faim ? Biberon ! Sommeil ? Au berceau. Il pleure ? Un câlin.',
-    at: (p) => ({ 6: click(p, /Que faire/), 30: click(p, /Boire le biberon/) }),
   },
   {
     id: 'coucou',
@@ -179,7 +200,7 @@ const TAKES = [
         const open = await p.getByText('Coucou !', { exact: true }).count()
         if (!open) return void (seenAt = -1)
         if (seenAt < 0) seenAt = i
-        if (i - seenAt === 7) await p.getByRole('button', { name: 'Rire !' }).click({ timeout: 1000 })
+        if (i - seenAt === 7) await tap(p.getByRole('button', { name: 'Rire !' }))
       }
     },
   },
@@ -217,7 +238,7 @@ const TAKES = [
     warm: 200,
     stage: 'ADO · 12 ANS',
     text: 'Ado, tu as ton premier téléphone : Gbairai pour causer avec tes amis.',
-    at: (p) => ({ 8: () => p.locator('[data-tour="phone"]').click({ timeout: 4000 }), 50: click(p, /^Gbairai/) }),
+    at: (p) => ({ 8: () => tap(p.locator('[data-tour="phone"]')), 50: click(p, /^Gbairai/) }),
   },
   {
     id: 'boutique',
