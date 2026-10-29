@@ -26,7 +26,7 @@ import { NeedsAura } from './NeedsAura'
 import { Bicycle, Vehicle, type CarModel } from './vehicles'
 import { HANDLING, drive, driving, getIn, gps, nextTurn, onWay, parkIn, setParked, useDriving } from './drive'
 import { report } from './open/trafficFlow'
-import { motoAsking, motoTaken, offerMoto, RIDES, type Taken } from './moto'
+import { motoAsking, motoTaken, offerMoto, RIDES, takeRideThere, type Taken } from './moto'
 import { tripRide } from './open/tripRide'
 import { askDrop, answerDrop, takeDrop } from './dropRoute'
 import { along, routeLength, turnTo } from './open/shared'
@@ -1091,6 +1091,22 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         near.current = id
         onNear(id)
       }
+    }
+    // A short ride (the update « trajet-court »): its loading screen over, set down at the end of the way.
+    if (takeRideThere() && path.current.length) {
+      const [ex, ez] = path.current[path.current.length - 1]
+      g.position.x = ex
+      g.position.z = ez
+      path.current = []
+      setRoute(null)
+      setWalking(false)
+      riding.current = false
+      kerb.current = null
+      setRide(null)
+      speed.current = SPEED
+      const lot = lots.find((l) => l.id === target.current)
+      if (lot) g.rotation.y = Math.atan2(lot.x - g.position.x, lot.z - g.position.z)
+      if (target.current) onArrive(target.current)
     }
     // A long way: the Sim waits for the player to choose how it goes (on foot or a ride), then sets off.
     // A ride goes only by the streets: till its way by them is found, it waits.

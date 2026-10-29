@@ -95,7 +95,7 @@ import type { Npc } from '../world3d/open/OpenWorld'
 import { setTalkHandler, setTalking } from '../world3d/talk'
 import type { Track } from '../audio/music'
 import { NotifyPrompt } from '../components/NotifyPrompt'
-import { motoPaid, motoWalk, rideFare, RIDES, useMoto, type RideKind } from '../world3d/moto'
+import { motoPaid, motoWalk, rideFare, rideThere, RIDES, useMoto, type RideKind, type Taken } from '../world3d/moto'
 import { GBAKA, inkOn, kerbWait, MOTO, waitsAtKerb } from '../game/rides'
 import { answerDrop, useDropAsk } from '../world3d/dropRoute'
 import { TripLoading } from '../components/TripLoading'
@@ -1039,6 +1039,8 @@ export function Play() {
   // and it's there (the server ends the ride: sims.go arriveNow); then the vehicle drops it in the street.
   const ride = sim?.activity?.kind === 'travel' && sim.activity.trip && !['avion', 'perso', 'metro'].includes(sim.activity.trip.mode) && keyOpen(feats, 'trajet-court') ? sim.activity : null
   const [rideDone, setRideDone] = useState<number | null>(null)
+  // A ride in the commune, short too: the same loading screen, then set down there (world3d/Walker), the vehicle dropping the Sim.
+  const [townRide, setTownRide] = useState<(Taken & { to: string }) | null>(null)
 
   if (!sim) {
     // The same loading screen as everywhere: the perso dancing (components/Splash.tsx).
@@ -1880,8 +1882,24 @@ export function Play() {
         </>
       )}
       {sharing && <ShareSheet sharing={sharing} onClose={() => shareThis(null)} />}
-      {!overlay && (dropAsk ? <DropRouteAsk from={dropAsk.from} moto={dropAsk.moto} /> : <MotoOffer world={world} sim={sim} commune={commune} act={run} />)}
+      {!overlay && (dropAsk ? <DropRouteAsk from={dropAsk.from} moto={dropAsk.moto} /> : <MotoOffer world={world} sim={sim} commune={commune} act={run} onTaken={keyOpen(feats, 'trajet-court') ? (r) => setTownRide({ ...r, to: whereabouts.way?.to ?? commune.name }) : undefined} />)}
       {/* On a flight: the plane over the clouds (the map is a tap away) */}
+      {townRide && (
+        <TripLoading
+          mode={townRide.kind}
+          to={townRide.to}
+          look={sim.look}
+          gender={sim.gender}
+          stage={lifeOf(world, sim).stage?.id}
+          color={townRide.color}
+          trim={townRide.trim}
+          onDone={() => {
+            rideThere()
+            setTownRide(null)
+            setDrop({ mode: townRide.kind === 'taxi' ? 'compteur' : townRide.kind, fromCity: sim.city, fromCommune: sim.commune, at: performance.now() })
+          }}
+        />
+      )}
       {ride && rideDone !== ride.start && (() => {
         const t = ride.trip!
         const to = world.cities.find((c) => c.id === t.city)?.communes.find((c) => c.id === t.commune)?.name ?? t.commune
@@ -3371,7 +3389,7 @@ function WordOfTheDay({ world, gameMinutes }: { world: World; gameMinutes: numbe
  * fare: the moto-taxi (the quickest), the taxi, the commune's woro-woro (where it has one), the
  * gbaka (in Abidjan). Picked, it's paid, and the Sim rides it in the street.
  */
-function MotoOffer({ world, sim, commune, act }: { world: World; sim: Sim; commune: Commune; act: Act }) {
+function MotoOffer({ world, sim, commune, act, onTaken }: { world: World; sim: Sim; commune: Commune; act: Act; /** Paid (the update « trajet-court »): the short loading screen instead of the whole ride. */ onTaken?: (r: Taken) => void }) {
   const { offer, paid, walk } = useMoto()
   if (!offer || paid || walk) return null
   const abidjan = !!world.compteur?.cities.includes(sim.city)
@@ -3383,7 +3401,7 @@ function MotoOffer({ world, sim, commune, act }: { world: World; sim: Sim; commu
     ...(abidjan ? [{ kind: 'gbaka' as const, color: GBAKA, trim: '#00a862' }] : []),
   ]
   const take = async (r: (typeof rides)[number]) => {
-    if (await act(RIDES[r.kind].name, r.kind === 'moto' ? 'bike' : r.kind === 'gbaka' ? 'bus' : 'car-taxi-front', 'transport', () => api.moto(sim.id, offer, r.kind))) motoPaid(r)
+    if (await act(RIDES[r.kind].name, r.kind === 'moto' ? 'bike' : r.kind === 'gbaka' ? 'bus' : 'car-taxi-front', 'transport', () => api.moto(sim.id, offer, r.kind))) (motoPaid(r), onTaken?.(r))
   }
   return (
     <div className="hud animate-up absolute bottom-[calc(7.5rem+env(safe-area-inset-bottom))] left-1/2 z-30 w-[min(400px,calc(100vw-24px))] -translate-x-1/2 rounded-[22px] p-2.5 text-sm font-extrabold">
