@@ -28,7 +28,7 @@ import { Talkable } from './Talkable'
 import { doingOf } from './talk'
 import { clock, weekdayOf } from '../game/rules'
 import { carer } from './carer'
-import { useGesture } from './gesture'
+import { useGesture, useHomeStep } from './gesture'
 import { tint } from '../avatar/textures'
 
 // Inside one's own house, on a screen of its own: the house itself (the one
@@ -157,7 +157,7 @@ function useFlights(plot: Plot, w: number, d: number, levels: (level: number) =>
 }
 
 /** The Sim: walks its way, then settles on the spot (lying, sitting…). */
-function Walking({ sim, stage, way, spot, doing, onThere, steer, onMoved, onLevel }: { sim: Sim; stage: string; way: P[]; spot: HomeSpot | null; /** What it does there: what shows it round it (ActionProps). */ doing?: string; onThere: (there: boolean) => void; /** Walking about: the keys or the pad move the Sim, where the ground is free. */ steer?: (x: number, z: number) => boolean; onMoved?: (at: XZ) => void; /** The floor the Sim is on now (going up or down the stairs). */ onLevel?: (level: number) => void }) {
+function Walking({ sim, stage, way, spot, doing, onThere, steer, onMoved, onLevel, follow }: { /** The camera keeps on the Sim, close (a played action's steps: from the bed to the basin and back). */ follow?: boolean; sim: Sim; stage: string; way: P[]; spot: HomeSpot | null; /** What it does there: what shows it round it (ActionProps). */ doing?: string; onThere: (there: boolean) => void; /** Walking about: the keys or the pad move the Sim, where the ground is free. */ steer?: (x: number, z: number) => boolean; onMoved?: (at: XZ) => void; /** The floor the Sim is on now (going up or down the stairs). */ onLevel?: (level: number) => void }) {
   const g = useRef<THREE.Group>(null)
   const camera = useThree((st) => st.camera)
   const controls = useThree((st) => st.controls) as unknown as { target: THREE.Vector3; update: () => void } | null
@@ -168,6 +168,23 @@ function Walking({ sim, stage, way, spot, doing, onThere, steer, onMoved, onLeve
   const settle = useRef(0)
   const [walking, setWalking] = useState(way.length > 1)
   const [settled, setSettled] = useState(false)
+  // Following: the camera close on the Sim wherever it goes, at its angle.
+  useFrame((_, dt) => {
+    const o = g.current
+    if (!follow || !o || !controls) return
+    const k = Math.min(1, dt * 3)
+    // From where the camera already looks (its bearing kept), 40° up, 6.5 m off: the Sim and what's round it.
+    const flat = camera.position.clone().sub(controls.target).setY(0)
+    if (flat.lengthSq() < 0.01) flat.set(0, 0, 1)
+    flat.normalize()
+    const want = flat.multiplyScalar(6.5 * Math.cos(0.7)).setY(6.5 * Math.sin(0.7))
+    controls.target.x += (o.position.x - controls.target.x) * k
+    controls.target.y += (0.9 + o.position.y - controls.target.y) * k
+    controls.target.z += (o.position.z - controls.target.z) * k
+    const off = camera.position.clone().sub(controls.target).lerp(want, k)
+    camera.position.copy(controls.target).add(off)
+    controls.update()
+  })
   useEffect(() => {
     step.current = 1
     settle.current = 0
@@ -388,7 +405,11 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
   const atTable = spots.golvo ?? (spots['watch-tv'] && { ...spots['watch-tv'], pose: 'eat' as const })
   // A baby sleeps in its cot.
   const cot = stage === 'bebe' && /^(sleep|nap)$/.test(interactionId ?? '') ? spots.berceau : undefined
-  const spot = cot ?? (interactionId ? ((interactionId.startsWith('golvo-') ? atTable : fromFridge ? (fromFridge.drink ? spots.frigo : (atTable ?? spots.frigo)) : spots[interactionId]) ?? null) : null)
+  // A played action's step (components/defi/Gestes.tsx): done where it's done in the house, standing
+  // by the bed to make it, at the basin for the teeth, under the shower: the Sim walks there.
+  const step = useHomeStep()
+  const stepSpot = step && spots[step.at] ? { ...spots[step.at], pose: step.pose, ...(step.standing ? { at: spots[step.at].from, y: 0, lying: false } : {}) } : null
+  const spot = stepSpot ?? cot ?? (interactionId ? ((interactionId.startsWith('golvo-') ? atTable : fromFridge ? (fromFridge.drink ? spots.frigo : (atTable ?? spots.frigo)) : spots[interactionId]) ?? null) : null)
   const gate: XZ = [0, d / 2 + 1.5]
   // Where to walk to (a tap on the floor, a floor's button), and on which floor.
   const [tapped, setTapped] = useState<{ at: XZ; level: number } | null>(null)
@@ -493,7 +514,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
             </group>
           )}
           {parents && sim.family && <Parents sim={sim} spots={spots} doing={interactionId} spot={spot} free={levels(0)} span={span} />}
-          <Walking sim={sim} stage={stage} way={way} spot={spot} doing={interactionId} onThere={setThere} steer={roam && !interactionId ? levels(lvl.current) : undefined} onMoved={(p) => ((where.current = p), keep(p, lvl.current), setTapped(null))} onLevel={setFloor} />
+          <Walking sim={sim} stage={stage} way={way} spot={spot} follow={!!stepSpot} doing={interactionId} onThere={setThere} steer={roam && !interactionId ? levels(lvl.current) : undefined} onMoved={(p) => ((where.current = p), keep(p, lvl.current), setTapped(null))} onLevel={setFloor} />
           {there && interactionId === 'cook-attieke' && spot && (
             <group position={[spot.at[0] + Math.sin(spot.rot) * 0.6, 0, spot.at[1] + Math.cos(spot.rot) * 0.6]}>
               <Pot />
@@ -509,7 +530,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
           <SpotActions shown={!!roam && !interactionId} where={(id) => (spots[id] ? [spots[id].at[0], spots[id].y, spots[id].at[1]] : null)} entrance={[gate[0], 0, gate[1]]} />
           <FocusOn at={spot ? [spot.at[0], spot.y + 0.4, spot.at[1]] : null} />
           <OrbitControls makeDefault target={[0, 0, 0]} enablePan={false} minDistance={4} maxDistance={span * 2.2} minPolarAngle={0.3} maxPolarAngle={1.2} enableDamping />
-          {closeUp ? <CloseUp at={where} /> : <Focus on={there && spot ? [spot.at[0], 0, spot.at[1]] : null} span={span} />}
+          {closeUp ? <CloseUp at={where} /> : stepSpot ? null : <Focus on={there && spot ? [spot.at[0], 0, spot.at[1]] : null} span={span} />}
         </Suspense>
         <RichAO />
       </Canvas>

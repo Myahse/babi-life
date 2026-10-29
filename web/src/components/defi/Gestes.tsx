@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Annoyed, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Baby, Bath, BedDouble, CookingPot, Droplets, Frown, Heart, Milk, ShowerHead, Soup, Utensils, Volleyball, type LucideIcon } from 'lucide-react'
 import { haptic } from '../../lib/native'
-import { gesture } from '../../world3d/gesture'
+import { gesture, setHomeStep } from '../../world3d/gesture'
 import type { Pose } from '../../avatar/Human'
 import type { Look } from '../../lib/types'
 import { StepScene, type SceneId } from './Scenes'
@@ -17,7 +17,7 @@ import { StepScene, type SceneId } from './Scenes'
 
 export type GesteKind = 'douche' | 'cuisine' | 'repas' | 'dodo' | 'cour' | 'biberon' | 'bouillie' | 'bain' | 'calin' | 'caca' | 'pipi' | 'vomir' | 'pleurer'
 type Dir = 'up' | 'down' | 'left' | 'right'
-type Step = { label: string; combo: Dir[]; pose: Pose; /** What it is, seen being done (Scenes.tsx). */ scene?: SceneId }
+type Step = { label: string; combo: Dir[]; pose: Pose; /** What it is, seen being done (Scenes.tsx: the lab page; in the game, the house itself). */ scene?: SceneId; /** Where in the house it's done (a spot of world3d/homeSpots.ts), standing by it or as the spot has it. */ at?: string; standing?: boolean }
 
 const U: Dir = 'up'
 const D: Dir = 'down'
@@ -26,20 +26,20 @@ const R: Dir = 'right'
 
 const STEPS: Record<GesteKind, Step[]> = {
   douche: [
-    { label: 'Ouvrir l’eau', combo: [U, U, R], pose: 'busy', scene: 'eau' },
-    { label: 'Se savonner les bras', combo: [L, R, L, R], pose: 'wash', scene: 'savon' },
-    { label: 'Frotter le dos', combo: [D, U, D, U], pose: 'wash', scene: 'dos' },
-    { label: 'Le shampooing', combo: [U, L, U, R], pose: 'wash', scene: 'shampooing' },
-    { label: 'Rincer', combo: [D, D, D], pose: 'wash', scene: 'rincer' },
-    { label: 'Se sécher', combo: [R, L, R, L, U], pose: 'busy', scene: 'secher' },
+    { label: 'Ouvrir l’eau', combo: [U, U, R], pose: 'busy', scene: 'eau', at: 'shower' },
+    { label: 'Se savonner les bras', combo: [L, R, L, R], pose: 'wash', scene: 'savon', at: 'shower' },
+    { label: 'Frotter le dos', combo: [D, U, D, U], pose: 'wash', scene: 'dos', at: 'shower' },
+    { label: 'Le shampooing', combo: [U, L, U, R], pose: 'wash', scene: 'shampooing', at: 'shower' },
+    { label: 'Rincer', combo: [D, D, D], pose: 'wash', scene: 'rincer', at: 'shower' },
+    { label: 'Se sécher', combo: [R, L, R, L, U], pose: 'busy', scene: 'secher', at: 'shower' },
   ],
   cuisine: [
-    { label: 'Écailler le poisson', combo: [L, L, R, R], pose: 'cook' },
-    { label: 'Piment, oignon, cube', combo: [U, R, D], pose: 'cook' },
-    { label: 'Allumer le feu', combo: [D, U, D], pose: 'busy' },
-    { label: 'Retourner le poisson', combo: [U, U, D], pose: 'cook' },
-    { label: 'Égrener l’attiéké', combo: [L, R, L, R, D], pose: 'cook' },
-    { label: 'Servir l’assiette', combo: [R, U], pose: 'hero' },
+    { label: 'Écailler le poisson', combo: [L, L, R, R], pose: 'cook', at: 'cook-attieke' },
+    { label: 'Piment, oignon, cube', combo: [U, R, D], pose: 'cook', at: 'cook-attieke' },
+    { label: 'Allumer le feu', combo: [D, U, D], pose: 'busy', at: 'cook-attieke' },
+    { label: 'Retourner le poisson', combo: [U, U, D], pose: 'cook', at: 'cook-attieke' },
+    { label: 'Égrener l’attiéké', combo: [L, R, L, R, D], pose: 'cook', at: 'cook-attieke' },
+    { label: 'Servir l’assiette', combo: [R, U], pose: 'hero', at: 'cook-attieke' },
   ],
   repas: [
     { label: 'Se laver les mains', combo: [L, R, L], pose: 'wash' },
@@ -50,18 +50,18 @@ const STEPS: Record<GesteKind, Step[]> = {
   ],
   // Then the dream (Reve.tsx): the night is played there.
   dodo: [
-    { label: 'Faire le lit', combo: [L, R, L], pose: 'busy', scene: 'lit' },
-    { label: 'Se brosser les dents', combo: [U, D, U, D], pose: 'brush', scene: 'dents' },
-    { label: 'Éteindre la lumière', combo: [U, R], pose: 'busy', scene: 'lumiere' },
-    { label: 'Se coucher', combo: [D, D], pose: 'sleep', scene: 'coucher' },
+    { label: 'Faire le lit', combo: [L, R, L], pose: 'busy', scene: 'lit', at: 'sleep', standing: true },
+    { label: 'Se brosser les dents', combo: [U, D, U, D], pose: 'brush', scene: 'dents', at: 'dents' },
+    { label: 'Éteindre la lumière', combo: [U, R], pose: 'busy', scene: 'lumiere', at: 'sleep', standing: true },
+    { label: 'Se coucher', combo: [D, D], pose: 'sleep', scene: 'coucher', at: 'sleep' },
   ],
   cour: [
-    { label: 'Jongler avec le ballon', combo: [U, U, U], pose: 'kick' },
-    { label: 'Dribbler le copain', combo: [L, R, L], pose: 'dribble' },
-    { label: 'Tirer au but !', combo: [D, U, R], pose: 'shoot' },
-    { label: 'Saute-mouton', combo: [U, D, U, D], pose: 'leap' },
-    { label: 'La marelle', combo: [R, U, R, U, R], pose: 'leap' },
-    { label: 'La danse de la victoire', combo: [L, R, U, D], pose: 'dance' },
+    { label: 'Jongler avec le ballon', combo: [U, U, U], pose: 'kick', at: 'jouer-cour' },
+    { label: 'Dribbler le copain', combo: [L, R, L], pose: 'dribble', at: 'jouer-cour' },
+    { label: 'Tirer au but !', combo: [D, U, R], pose: 'shoot', at: 'jouer-cour' },
+    { label: 'Saute-mouton', combo: [U, D, U, D], pose: 'leap', at: 'jouer-cour' },
+    { label: 'La marelle', combo: [R, U, R, U, R], pose: 'leap', at: 'jouer-cour' },
+    { label: 'La danse de la victoire', combo: [L, R, U, D], pose: 'dance', at: 'jouer-cour' },
   ],
   // The baby's day, with papa and maman.
   biberon: [
@@ -185,7 +185,7 @@ const KEYS: Record<string, Dir> = { ArrowUp: U, ArrowDown: D, ArrowLeft: L, Arro
 /** A step's time: a little more for a longer combination, a little less as the steps go. */
 const timeFor = (step: Step, k: number) => 3.2 + step.combo.length * 0.85 - k * 0.15
 
-export function GestesDefi({ kind, act, look, gender, onEnd }: { kind: GesteKind | 'geste'; /** The perso itself, seen in the scenes of its steps. */ look?: Look; gender?: 'femme' | 'homme'; /** Any other action: its steps made from it (stepsFor). */ act?: { id: string; icon: string }; onEnd: (score: number) => void }) {
+export function GestesDefi({ kind, act, look, gender, scenes, onEnd }: { kind: GesteKind | 'geste'; /** The perso itself, seen in the scenes of its steps. */ look?: Look; gender?: 'femme' | 'homme'; /** Its steps seen in little scenes of their own (the lab page, away from the house); in the game, the house shows them. */ scenes?: boolean; /** Any other action: its steps made from it (stepsFor). */ act?: { id: string; icon: string }; onEnd: (score: number) => void }) {
   const [steps] = useState(() => (kind === 'geste' ? stepsFor(act ?? { id: '', icon: '' }) : STEPS[kind]))
   const [k, setK] = useState(0)
   const [got, setGot] = useState(0)
@@ -195,6 +195,12 @@ export function GestesDefi({ kind, act, look, gender, onEnd }: { kind: GesteKind
   const [, redraw] = useState(0)
   // The Sim gets ready: the first step's gesture.
   useEffect(() => gesture(steps[0].pose, 1500), [steps])
+  // At home, each step done where it's done (world3d/HomeInside.tsx walks the Sim there); over, as before.
+  useEffect(() => {
+    const st = steps[k]
+    setHomeStep(st?.at ? { at: st.at, pose: st.pose, standing: st.standing } : null)
+  }, [k, steps])
+  useEffect(() => () => setHomeStep(null), [])
 
   const next = (score: number) => {
     const s = st.current
@@ -273,7 +279,7 @@ export function GestesDefi({ kind, act, look, gender, onEnd }: { kind: GesteKind
   return (
     <div className="pointer-events-none absolute inset-0 flex flex-col justify-end p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
       {/* What's being done, seen as the arrows go: the bed made, the brush scrubbing, the light going out */}
-      {step.scene && (
+      {scenes && step.scene && (
         <div className="card pointer-events-auto mx-auto mb-2 w-full max-w-[560px] overflow-hidden p-1.5">
           <div className="h-[min(26vh,190px)] overflow-hidden rounded-xl">
             <StepScene id={step.scene} k={got / step.combo.length} look={look} gender={gender} />

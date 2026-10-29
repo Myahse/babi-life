@@ -27,7 +27,11 @@ const useLifted = () =>
   )
 
 export function ChatFraming() {
-  const talking = useTalking() || useLifted()
+  const talk = useTalking()
+  const lift = useLifted()
+  const talking = talk || lift
+  // (A played action's game takes less of the screen than a chat sheet: lifted less.)
+  const by = talk ? LIFT : LIFT * 0.55
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera
   const size = useThree((s) => s.size)
   const k = useRef(0)
@@ -37,7 +41,7 @@ export function ChatFraming() {
     k.current += (want - k.current) * Math.min(1, dt * 5)
     if (Math.abs(k.current - want) < 0.003) k.current = want
     if (k.current === 0) camera.clearViewOffset()
-    else camera.setViewOffset(size.width, size.height, 0, size.height * LIFT * k.current, size.width, size.height)
+    else camera.setViewOffset(size.width, size.height, 0, size.height * by * k.current, size.width, size.height)
   })
   return null
 }
