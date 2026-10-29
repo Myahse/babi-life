@@ -700,6 +700,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         return
       }
       loadedOnce.current = true
+      whereabouts.streetReady = true
       onLoaded?.()
       const geos: Record<string, THREE.BufferGeometry> = {}
       for (const [name, a] of Object.entries(e.data.meshes ?? {})) {

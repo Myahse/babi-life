@@ -36,7 +36,7 @@ import { rooftopFor } from '../world3d/open/rooftops'
 import { iconFor, kindColors } from '../components/icons'
 import { SOIREE_COST, SOIREE_HOURS, SOIREE_THEMES } from '../game/soirees'
 import { Chip, Coin, DayNight, IconTile, MotiveRing, Row, needColor } from '../components/ui'
-import { EPOCH, NEEDS, km, actionLength, ageBlock, amount, fcfa, atHome, blockedBy, homeLacks, housingOf, lifeOf, minutesToAge, clock, duration, mood, openAt, openingLabel, predict, shift, trip } from '../game/rules'
+import { EPOCH, NEEDS, km, actionLength, homePlanFor, ageBlock, amount, fcfa, atHome, blockedBy, homeLacks, housingOf, lifeOf, minutesToAge, clock, duration, mood, openAt, openingLabel, predict, shift, trip } from '../game/rules'
 import { DOORS_OPEN, eventAt, useStadium, when } from '../lib/stadium'
 import { CIVIC_KINDS, civicState, discounted, fareOff, PUBLIC_RIDES, useTerrain, withMeasures } from '../lib/civic'
 import { HomeApp, JobsApp, type Act } from './phoneApps'
@@ -98,7 +98,7 @@ import { answerDrop, useDropAsk } from '../world3d/dropRoute'
 import { BABY_DEFIS, DefiButton, DefiSheet, defiLook, defiOf, PRACTICE, type DefiKind } from '../components/Defi'
 import { BolideApp } from './BolideApp'
 import { Tutorial, adultChapterDue, beginner, openTutorial, useTutorialAsked } from '../components/Tutorial'
-import { Arrival, arrivalDue } from '../components/Arrival'
+import { Arrival, arrivalDue, type ArrivalPart } from '../components/Arrival'
 import { haptic, onBack } from '../lib/native'
 import { openAd, seen, useAds } from '../lib/ads'
 import { drive, getIn, gps, parkedNow, parkIn, setParked, startDrive, stopDrive, topSpeed, useDriving, useParked, type Driven } from '../world3d/drive'
@@ -806,6 +806,9 @@ export function Play() {
   const tutoAsked = useTutorialAsked()
   // The arrival before it (update « arrivee », components/Arrival.tsx): the flight over the commune, the welcome, Awa.
   const [arriving, setArriving] = useState(() => beginner() && arrivalDue())
+  // Which part of it: while it waits for the street and flies over it, the street is what's shown (not the inside).
+  const [arrivalPart, setArrivalPart] = useState<ArrivalPart | null>(null)
+  const arrivalPlot = useRef<{ key: string; plot?: Plot } | null>(null)
   // A baby's « premières fois » and its choices (updates « premieres-fois », « choix-bebe »): fetched again as actions start and end.
   const isBaby = !!sim && !!world && lifeOf(world, sim).stage?.id === 'bebe'
   const [firstsView, setFirstsView] = useFirsts(sim?.id ?? '', isBaby && (keyOpen(features, 'premieres-fois') || keyOpen(features, 'choix-bebe')), `${sim?.activity?.interaction.id ?? ''}${sim?.activity?.start ?? ''}`)
@@ -1041,7 +1044,18 @@ export function Play() {
     }
     return null
   })()
-  const showInside = !!inside && !outside
+  // The home the arrival shows: the house the street has for the Sim, or its family's (game/rules homePlanFor), drawn the same way (kept, so it isn't rebuilt each render).
+  let arrivalHome = homePlot
+  if (!arrivalHome && arriving) {
+    const key = `${sim.id}|${sim.housing}|${sim.family}`
+    if (arrivalPlot.current?.key !== key) {
+      const plan = homePlanFor(world, sim)
+      arrivalPlot.current = { key, plot: plan ? { id: 0, key: sim.id, simId: sim.id, blocks: plan.blocks, furniture: plan.furniture, zones: plan.zones, built: 0, lot: { w: plan.w, d: plan.d, area: plan.w * plan.d, city: sim.homeCity, commune: sim.homeCommune, paid: 0 }, livable: true } : undefined }
+    }
+    arrivalHome = arrivalPlot.current.plot
+  }
+  const arrivalStreet = arriving && keyOpen(features, 'arrivee') && !classic && (arrivalPart === 'wait' || arrivalPart === 'fly')
+  const showInside = !!inside && !outside && !arrivalStreet
   // Doing something at the zoo or round the hotel's grounds: the Sim walks about them freely meanwhile.
   const onGrounds = !!doing?.placeId && GROUNDS.has(doing.placeId) && sim.city === city.id && sim.commune === commune.id && !classic
   // Just come in (nothing being done yet): the Sim can walk about the room.
@@ -1479,7 +1493,13 @@ export function Play() {
       {/* The first time (or asked for again from the Encyclo): Koffi shows the beginner round */}
       {arriving && keyOpen(features, 'arrivee') && !classic && (
         <div className="cinema-keep">
-          <Arrival commune={commune.name} firstName={sim.firstName} onEnd={() => setArriving(false)} />
+          <Arrival
+            commune={commune.name}
+            firstName={sim.firstName}
+            onPart={setArrivalPart}
+            home={arrivalHome && <HomeInside parents={sim.housing !== 'maison' && lifeOf(world, sim).stage?.id !== 'adulte'} sim={sim} world={world} plot={arrivalHome} roam={false} closeUp night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />}
+            onEnd={() => (setArriving(false), setArrivalPart(null))}
+          />
         </div>
       )}
       {(tuto || tutoAsked || (grownNow && adultChapterDue())) && !classic && !(arriving && keyOpen(features, 'arrivee')) && <Tutorial key={tutoChapter} chapter={tutoChapter} state={{ whereTo, placeId, overlay, menu: menuOpen }} onEnd={() => setTuto(false)} />}

@@ -20,6 +20,8 @@ export const whereabouts = {
   places: [] as { id: string; kind: string; name: string; door: XZ }[],
   /** The commune's other places, not set down in the streets yet (too far): where the map puts them, for « Où aller ». */
   further: [] as { id: string; kind: string; name: string; door: XZ }[],
+  /** The street's buildings and roads have come once (OpenWorld): the arrival's flight waits for them (components/Arrival.tsx). */
+  streetReady: false,
   /** A point of the map in the street's metres (null before the street is there). */
   toLocal: null as ((lat: number, lng: number) => XZ) | null,
   /** Street segments: from, to, width. */

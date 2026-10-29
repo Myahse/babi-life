@@ -313,7 +313,23 @@ function Focus({ on, span }: { on: [number, number, number] | null; span: number
   return null
 }
 
-export function HomeInside({ sim, world, plot, interactionId, roam, night, stage, onBuild, partner, parents }: { sim: Sim; world: World; plot: Plot; interactionId?: string; /** Just come in: tap the ground to walk. */ roam?: boolean; night: boolean; stage: string; /** Change the house: walls, furniture (components/BuildMode). */ onBuild?: () => void; /** The boyfriend or girlfriend living here. */ partner?: Friend; /** Still a child at the family's home: papa and maman are there. */ parents?: boolean }) {
+/** The arrival's moment at home (components/Arrival.tsx): the camera turning slowly round the Sim, close, its family about it. */
+function CloseUp({ at }: { at: React.RefObject<XZ | null> }) {
+  const controls = useThree((st) => st.controls) as unknown as { target: THREE.Vector3; update: () => void } | null
+  useFrame(({ camera, clock }) => {
+    const [x, z] = at.current ?? [0, 0]
+    const a = 0.5 + clock.elapsedTime * 0.12
+    const r = Math.max(3.6, 6.5 - clock.elapsedTime * 0.5)
+    camera.position.set(x + Math.sin(a) * r, 2.6 + r * 0.25, z + Math.cos(a) * r)
+    if (controls) {
+      controls.target.set(x, 0.7, z)
+      controls.update()
+    } else camera.lookAt(x, 0.7, z)
+  })
+  return null
+}
+
+export function HomeInside({ sim, world, plot, interactionId, roam, night, stage, onBuild, partner, parents, closeUp }: { /** The arrival: the camera close on the Sim, turning round it. */ closeUp?: boolean; sim: Sim; world: World; plot: Plot; interactionId?: string; /** Just come in: tap the ground to walk. */ roam?: boolean; night: boolean; stage: string; /** Change the house: walls, furniture (components/BuildMode). */ onBuild?: () => void; /** The boyfriend or girlfriend living here. */ partner?: Friend; /** Still a child at the family's home: papa and maman are there. */ parents?: boolean }) {
   const [w, d] = [plot.lot?.w ?? 12, plot.lot?.d ?? 12]
   const span = Math.max(w, d)
   const floors = useMemo(() => {
@@ -489,7 +505,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
           <SpotActions shown={!!roam && !interactionId} where={(id) => (spots[id] ? [spots[id].at[0], spots[id].y, spots[id].at[1]] : null)} entrance={[gate[0], 0, gate[1]]} />
           <FocusOn at={spot ? [spot.at[0], spot.y + 0.4, spot.at[1]] : null} />
           <OrbitControls makeDefault target={[0, 0, 0]} enablePan={false} minDistance={4} maxDistance={span * 2.2} minPolarAngle={0.3} maxPolarAngle={1.2} enableDamping />
-          <Focus on={there && spot ? [spot.at[0], 0, spot.at[1]] : null} span={span} />
+          {closeUp ? <CloseUp at={where} /> : <Focus on={there && spot ? [spot.at[0], 0, spot.at[1]] : null} span={span} />}
         </Suspense>
         <RichAO />
       </Canvas>
