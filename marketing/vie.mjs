@@ -5,7 +5,7 @@
 // testers' toolbox) to a child at school, a teen with its phone, the Boutique's « grandir tout de
 // suite », and the adult in the street of Abidjan. Each take's caption is drawn in the page over the
 // game; the end card after; the sound (beat.py, FILM=vie) and Awa's voice (out/voix-vie.mp3) under it.
-// The script: marketing/scripts/vie.md.
+// The script: marketing/scripts/vie.md; each take as long as Awa's sentences on it (out/voix-vie.mp3, 51 s).
 //
 //   API=http://localhost:8099/api/v1 GAME=http://localhost:5175 node vie.mjs
 //   PROBE=1 node vie.mjs        # a few frames of each take only (out/video-frames/vie/probe-*.jpg)
@@ -134,35 +134,35 @@ const BEBE = 'BÉBÉ'
 const TAKES = [
   {
     id: 'bapteme',
-    seconds: 6,
+    seconds: 5.8,
     make: () => koffi({ baptised: false }),
     warm: 160,
     stage: BEBE,
-    text: 'Tu viens d’arriver dans Babi Life… et tu es un bébé ! Toute la famille fête ton baptême.',
+    text: 'Tu viens d’arriver dans Babi Life… et tu es un bébé. Tu te demandes sûrement pourquoi ?',
     at: (p) => ({ 60: click(p, 'Suite'), 125: click(p, 'Suite') }),
   },
   {
     id: 'maison',
-    seconds: 7,
+    seconds: 6,
     make: () => koffi(),
     warm: 160,
     before: (p) => click(p, /ENTRER/)(),
     stage: BEBE,
-    text: 'Pourquoi tu commences bébé ? Ce n’est pas un bug : c’est voulu. Comme dans la vraie vie, tout commence là.',
+    text: 'Ce n’est pas un bug : c’est voulu. Comme dans la vraie vie, tout commence là, et ce que tu vis bébé compte pour la suite.',
   },
   {
     id: 'biberon',
-    seconds: 7,
+    seconds: 4.44,
     make: () => koffi(),
     warm: 160,
     before: (p) => click(p, /ENTRER/)(),
     stage: BEBE,
     text: 'Il a faim ? Biberon ! Sommeil ? Au berceau. Il pleure ? Un câlin.',
-    at: (p) => ({ 12: click(p, /Que faire/), 45: click(p, /Boire le biberon/) }),
+    at: (p) => ({ 6: click(p, /Que faire/), 30: click(p, /Boire le biberon/) }),
   },
   {
     id: 'coucou',
-    seconds: 7,
+    seconds: 3.6,
     make: async () => {
       const k = await koffi()
       await call(k.token, `/sims/${k.sim.id}/interact`, 'POST', { placeId: 'home', interactionId: 'coucou' })
@@ -170,7 +170,7 @@ const TAKES = [
     },
     warm: 160,
     stage: BEBE,
-    text: 'Des petits jeux : coucou-caché, les cubes, les premiers pas…',
+    text: 'Il y a des petits jeux : coucou-caché, les cubes, les premiers pas…',
     at: (p) => ({ 5: click(p, /coucou-caché/i), 30: click(p, /C.est parti/) }),
     // Laughing a moment after maman's hands open (« Coucou ! » on the screen).
     each: (p) => {
@@ -185,7 +185,7 @@ const TAKES = [
   },
   {
     id: 'creche',
-    seconds: 6,
+    seconds: 2.32,
     make: async () => {
       const k = await koffi()
       await call(k.token, `/sims/${k.sim.id}/interact`, 'POST', { placeId: 'home', interactionId: 'creche' })
@@ -197,7 +197,7 @@ const TAKES = [
   },
   {
     id: 'ecole',
-    seconds: 8,
+    seconds: 6.84,
     // School is in the morning: the day's activity started as « Jouer dans la cour », then made the school day.
     make: async () => {
       const k = await koffi({ stage: 'enfant' })
@@ -207,37 +207,37 @@ const TAKES = [
     },
     warm: 200,
     stage: 'ENFANT · 3 ANS',
-    text: 'Deux heures de jeu, et hop : tu as 3 ans ! L’école, la récré, le maître qui pose des questions.',
-    at: (p) => ({ 70: click(p, /Lever la main/), 100: click(p, /C.est parti/) }),
+    text: 'Deux heures de jeu, et hop : tu as 3 ans ! Enfant, c’est l’école : la classe, la récré, le maître qui pose des questions.',
+    at: (p) => ({ 60: click(p, /Lever la main/), 95: click(p, /C.est parti/) }),
   },
   {
     id: 'ado',
-    seconds: 7,
+    seconds: 3.8,
     make: () => koffi({ stage: 'ado' }),
     warm: 200,
     stage: 'ADO · 12 ANS',
     text: 'Ado, tu as ton premier téléphone : Gbairai pour causer avec tes amis.',
-    at: (p) => ({ 30: () => p.locator('[data-tour="phone"]').click({ timeout: 4000 }), 75: click(p, /^Gbairai/) }),
+    at: (p) => ({ 8: () => p.locator('[data-tour="phone"]').click({ timeout: 4000 }), 50: click(p, /^Gbairai/) }),
   },
   {
     id: 'boutique',
-    seconds: 9,
+    seconds: 7.56,
     make: () => koffi(),
     query: '&app=boutique',
     warm: 200,
     stage: 'PRESSÉ·E ?',
     text: 'Tu ne veux pas attendre ? Va dans la Boutique : enfant, ado ou adulte tout de suite. Tu paies une fois, et tu as accès à tout le jeu.',
-    at: (p) => ({ 50: () => p.getByText(/tout de suite/).first().scrollIntoViewIfNeeded({ timeout: 4000 }) }),
+    at: (p) => ({ 40: () => p.getByText(/tout de suite/).first().scrollIntoViewIfNeeded({ timeout: 4000 }) }),
   },
   {
     id: 'adulte',
-    seconds: 8,
+    seconds: 5.24,
     make: () => koffi({ stage: 'adulte' }),
     warm: 260,
     stage: 'ADULTE · 18 ANS',
     text: 'Adulte, c’est la vraie vie d’Abidjan : ton boulot, ton argent, tes sorties, ta maison à construire.',
     // Walking up the street, the stick held forward.
-    at: (p) => ({ 10: () => p.keyboard.down('ArrowUp'), 200: () => p.keyboard.up('ArrowUp') }),
+    at: (p) => ({ 5: () => p.keyboard.down('ArrowUp'), 150: () => p.keyboard.up('ArrowUp') }),
   },
 ]
 
@@ -285,7 +285,7 @@ for (const t of TAKES) {
   await ctx.close()
   console.log(`${t.id}: ${Math.round((Date.now() - started) / 1000)} s`)
 }
-if (!ONLY || ONLY.includes('fin')) await endCard(b, path.join(FRAMES, 'fin'), 5 * FPS)
+if (!ONLY || ONLY.includes('fin')) await endCard(b, path.join(FRAMES, 'fin'), Math.round(5.9 * FPS))
 await b.close()
 if (PROBE) process.exit(0)
 

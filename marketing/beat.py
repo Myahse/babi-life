@@ -38,7 +38,7 @@ if FILM == 'top20':
 elif FILM == 'vie':
     # « Ta vie dans Babi Life » (vie.mjs): its takes one after the other (6, 7, 7, 7, 6, 8, 7, 9, 8 s), the end card (5 s).
     BPM = 116
-    takes = [6, 7, 7, 7, 6, 8, 7, 9, 8, 5]
+    takes = [5.8, 6.0, 4.44, 3.6, 2.32, 6.84, 3.8, 7.56, 5.24, 5.9]
     CUTS = [sum(takes[:i]) for i in range(1, len(takes))]
     LENGTH = float(sum(takes))
     TICKS = []
@@ -50,13 +50,13 @@ elif FILM == 'bebe':
     # « Tout ce que ton bébé peut faire » (FILMS.bebe): a gentler groove, the cuts, and the
     # baby's real laughs, cries and babble (web/public/audio/bebe/) where the film shows them.
     BPM = 112
-    LENGTH = 85.5
-    CUTS = [3.4, 9.4, 14.4, 20.4, 25.4, 30.4, 35.4, 40.4, 46.4, 52.4, 57.4, 62.4, 68.4, 73.4, 79.4]
+    LENGTH = 78.5
+    CUTS = [4.24, 10.96, 18, 24, 27.4, 30.4, 33.16, 34.88, 39, 46.24, 52.48, 57.24, 62.72, 66.16, 72.44]
     TICKS = []
     HITS = [0.8, 1.3, 1.8]
     CASH = []
     CROWD = []
-    GROOVE, LEAD_FROM = 3.4, 3.4
+    GROOVE, LEAD_FROM = 4.24, 4.24
 else:
     LENGTH = 39.0
     CUTS = [2.4, 4.8, 8.6, 11.8, 16.4, 21, 24.6, 29, 33.4]
@@ -203,9 +203,9 @@ for c in CROWD:
     at(c, crowd(), 0.6)
 
 # The baby's voice, recorded (CC0, web/public/audio/bebe/SOURCES.md), over the groove.
-BABY = [(2.0, 'rire-1'), (8.5, 'gazouille-1'), (15.0, 'pleurs-1'), (22.5, 'rire-2'), (25.0, 'rire-3'), (29.5, 'gazouille-2')] if FILM == 'vie' else [(7.6, 'rire-1'), (9.8, 'pleurs-1'), (12.1, 'pleurs-2'), (17.4, 'rire-2'), (21.55, 'rire-1'), (23.7, 'rire-3'), (27.5, 'gazouille-1'),
-        (33.2, 'rire-2'), (38.2, 'gazouille-2'), (44.6, 'pleurs-3'), (48.6, 'gazouille-3'), (55.0, 'rire-3'), (60.0, 'gazouille-4'),
-        (64.2, 'gazouille-5'), (66.6, 'rire-1'), (70.2, 'gazouille-6'), (74.0, 'gazouille-7')]
+BABY = [(1.0, 'rire-1'), (12.0, 'gazouille-1'), (14.6, 'pleurs-1'), (17.4, 'rire-2'), (20.0, 'rire-3')] if FILM == 'vie' else [(8.0, 'rire-1'), (13.2, 'pleurs-1'), (15.5, 'pleurs-2'), (21.5, 'rire-2'), (25.4, 'rire-1'), (26.6, 'rire-3'), (28.6, 'gazouille-1'),
+        (31.8, 'rire-2'), (37.0, 'pleurs-3'), (42.0, 'gazouille-3'), (49.6, 'rire-3'), (54.0, 'gazouille-4'),
+        (59.0, 'gazouille-5'), (61.4, 'rire-1'), (64.4, 'gazouille-6'), (68.0, 'gazouille-7')]
 if FILM in ('bebe', 'vie'):
     clips = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'web', 'public', 'audio', 'bebe')
     for t, name in BABY:
