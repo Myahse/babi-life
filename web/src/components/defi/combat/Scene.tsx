@@ -333,8 +333,8 @@ function Street() {
 
 /* ---------- The crowd ---------- */
 
-/** The baby fight's room: the tiled floor, the walls painted, the mats where they fight, the cot, the toys all about, the lamp. */
-function Bedroom() {
+/** The baby fight's room (also in the baby video, lab/bebeFilm.tsx): the tiled floor, the walls painted, the mats where they fight, the cot, the toys all about, the lamp. */
+export function Bedroom() {
   return (
     <group>
       <ambientLight intensity={0.55} color="#ffe8cc" />

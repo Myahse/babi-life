@@ -35,6 +35,7 @@ import { NaveWorld, NAVE_VIEW } from '../world3d/interior/CathedralInside'
 import { Grin } from '../world3d/open/streetlife'
 import { Character } from '../world3d/Character'
 import { rng } from '../world3d/themes'
+import { BebeOverlay, BebeWorld, type BebeScreen } from './bebeFilm'
 
 // Dev-only (/poster.html): the game's own blocky Sims for the flyer and the
 // video (marketing/). Stills: ?scene=crew|house|dance&t=2 (&alpha for a
@@ -48,7 +49,7 @@ const ALPHA = q.has('alpha')
 /** marketing/top20.mjs: &only=<scene> draws that scene alone (its clock from 0; &from=<s>: when its take starts in the film), &overlay only what goes over the game filmed. */
 const ONLY = q.get('only') as SceneId | null
 const OVERLAY = q.has('overlay')
-type SceneId = 'poussette' | 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'princesse' | `famille-${string}` | 'palais' | 'basket' | 'fete' | 'cause' | 'look' | 'siporex' | 'phone' | 'visages' | 'coiffures' | 'selfie' | 'yop' | 'garba' | 'brochette' | 'plateau' | 'stade' | 'concert' | 'couloir' | 'amis' | 'salon' | 'douche' | 'zoo' | 'loto' | 'chambre' | 'chambre-choc' | 'cabine' | 'keke' | 'mt-yop' | 'mt-gbaka' | 'mt-maquis' | 'mt-stade' | 'mt-village' | 'mt-salon' | 'tourf' | 'messe' | 'grin' | 'zouglou' | 'lions'
+type SceneId = 'poussette' | 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'princesse' | `famille-${string}` | 'palais' | 'basket' | 'fete' | 'cause' | 'look' | 'siporex' | 'phone' | 'visages' | 'coiffures' | 'selfie' | 'yop' | 'garba' | 'brochette' | 'plateau' | 'stade' | 'concert' | 'couloir' | 'amis' | 'salon' | 'douche' | 'zoo' | 'loto' | 'chambre' | 'chambre-choc' | 'cabine' | 'keke' | 'mt-yop' | 'mt-gbaka' | 'mt-maquis' | 'mt-stade' | 'mt-village' | 'mt-salon' | 'tourf' | 'messe' | 'grin' | 'zouglou' | 'lions' | `bebe:${string}` | 'bebe-bapteme' | 'bebe-bagarre' | 'bebe-creche' | 'bebe-balade' | 'bebe-grandit'
 /**
  * Which film: ?video (the launch), ?video=bouger (getting about: gbaka,
  * Gnango, Rue Princesse), ?video=bande-annonce (the trailer: gnambro or
@@ -76,7 +77,7 @@ type SceneId = 'poussette' | 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'g
  * family drawn by lot, a baby to look after, then the phone and the city:
  * marketing/scripts/bienvenue.md, voice voix-bienvenue.mp3).
  */
-type FilmId = 'lancement' | 'bouger' | 'bande-annonce' | 'decouverte' | 'live' | 'merci' | 'gameplay' | 'arnaque' | 'keke' | 'top20' | 'sortie' | 'bienvenue'
+type FilmId = 'lancement' | 'bouger' | 'bande-annonce' | 'decouverte' | 'live' | 'merci' | 'gameplay' | 'arnaque' | 'keke' | 'top20' | 'sortie' | 'bienvenue' | 'bebe'
 const FILM = (q.get('video') || 'lancement') as FilmId
 
 /** The materials as the server has them (game/build.go). */
@@ -549,6 +550,7 @@ function Camera({ at, look, near = 0.1, far = 100 }: { at: [number, number, numb
 
 /** One scene of the video (or a still), at t seconds into it. */
 function World({ scene, t }: { scene: SceneId; t: number }) {
+  if (scene.startsWith('bebe')) return <BebeWorld scene={scene} t={t} />
   if (scene === 'salon') return <Salon t={t} />
   if (scene === 'poussette') return <Poussette t={t} />
   if (scene === 'chambre' || scene === 'chambre-choc') return <Chambre t={t} shock={scene === 'chambre-choc'} />
@@ -1610,7 +1612,7 @@ function GbairaiChat({ t }: { t: number }) {
 
 /* ---------- The video: 25 seconds, scene after scene ---------- */
 
-type Shot = { from: number; to: number; scene: SceneId; title?: string; sub?: string; /** Its number, in the film that goes through everything. */ n?: number; /** The live: what Awa says, as a subtitle. */ cap?: string; /** « Merci »: the follower counter, the gift that hides. */ counter?: boolean; tease?: boolean; /** « Arnaque »: what the phone shows, and the tip. */ phone?: 'msg' | 'page' | 'drain' | 'call' | 'masque'; tip?: number; /** « top20 »: what Awa says (the captions). */ say?: string; /** « Sortie »: the gift opens on the date; the date pinned at the top; what's new in the game, shown. */ reveal?: boolean; date?: boolean; nouveau?: 'politique' | 'matchs' | 'flashe' | 'horsligne' }
+type Shot = { from: number; to: number; scene: SceneId; title?: string; sub?: string; /** Its number, in the film that goes through everything. */ n?: number; /** The live: what Awa says, as a subtitle. */ cap?: string; /** « Merci »: the follower counter, the gift that hides. */ counter?: boolean; tease?: boolean; /** « Arnaque »: what the phone shows, and the tip. */ phone?: 'msg' | 'page' | 'drain' | 'call' | 'masque'; tip?: number; /** « top20 »: what Awa says (the captions). */ say?: string; /** « Sortie »: the gift opens on the date; the date pinned at the top; what's new in the game, shown. */ reveal?: boolean; date?: boolean; nouveau?: 'politique' | 'matchs' | 'flashe' | 'horsligne'; /** « Bébé »: the game's screen played over the scene (lab/bebeFilm.tsx). */ screen?: BebeScreen }
 /** Each film: its shots, when the intro ends and the outro starts, its length (marketing/video.mjs reads it). */
 const FILMS: Record<FilmId, { shots: Shot[]; intro: number; outro: number; length: number; hook: [string, string, string] }> = {
   lancement: {
@@ -1811,6 +1813,31 @@ const FILMS: Record<FilmId, { shots: Shot[]; intro: number; outro: number; lengt
     outro: 44.5,
     length: 51,
     hook: ['', '', ''],
+  },
+  // « Tout ce que ton bébé peut faire » (marketing/scripts/bebe.md): the baby's things, one by one, with the game's screens played (lab/bebeFilm.tsx).
+  bebe: {
+    shots: [
+      { from: 0, to: 3.4, scene: 'poussette' },
+      { from: 3.4, to: 9.4, scene: 'bebe:soins', n: 1, title: 'Occupe-toi de lui', sub: 'Biberon, bouillie, bain, câlin : ses jauges', screen: 'soins' },
+      { from: 9.4, to: 14.4, scene: 'bebe:pleurer', n: 2, title: 'Il pleure pour de vrai', sub: 'Faim, sommeil, couche : écoute-le 🔊', screen: 'pleure' },
+      { from: 14.4, to: 20.4, scene: 'bebe-bapteme', n: 3, title: 'Son baptême', sub: 'Toute la famille, la grand-mère, les cadeaux', screen: 'bapteme' },
+      { from: 20.4, to: 25.4, scene: 'bebe:coucou', n: 4, title: 'Coucou-caché', sub: 'Ris quand maman ouvre les mains', screen: 'coucou' },
+      { from: 25.4, to: 30.4, scene: 'bebe:cubes', n: 5, title: 'La tour de cubes', sub: 'Lâche chaque cube pile dessus', screen: 'cubes' },
+      { from: 30.4, to: 35.4, scene: 'bebe:premiers-pas', n: 6, title: 'Ses premiers pas', sub: 'Garde l’équilibre jusqu’à papa', screen: 'pas' },
+      { from: 35.4, to: 40.4, scene: 'bebe:hochet', n: 7, title: 'Le hochet en rythme', sub: 'Secoue quand le cercle touche l’anneau', screen: 'hochet' },
+      { from: 40.4, to: 46.4, scene: 'bebe-bagarre', n: 8, title: 'La bagarre de bébés', sub: 'Défends ton jouet contre le cousin', screen: 'bagarre' },
+      { from: 46.4, to: 52.4, scene: 'bebe:calin', n: 9, title: 'Ses premières fois', sub: '8 à vivre : sourire, dent, premiers pas…', screen: 'firsts' },
+      { from: 52.4, to: 57.4, scene: 'bebe:jouets', n: 10, title: 'Le jouet qu’il attrape', sub: 'Son talent pour toute la vie', screen: 'talent' },
+      { from: 57.4, to: 62.4, scene: 'bebe:premier-mot', n: 11, title: 'Son premier mot', sub: 'Toute la famille va le répéter', screen: 'mot' },
+      { from: 62.4, to: 68.4, scene: 'bebe-creche', n: 12, title: 'La crèche', sub: 'Avec les bébés des autres joueurs, de 7 h à 17 h', screen: 'creche' },
+      { from: 68.4, to: 73.4, scene: 'bebe-balade', n: 13, title: 'La balade en poussette', sub: 'Les autres joueurs te voient passer', screen: 'balade' },
+      { from: 73.4, to: 79.4, scene: 'bebe-grandit', n: 14, title: 'Puis il grandit', sub: '2 h de jeu bébé, puis l’enfance', screen: 'grandit' },
+      { from: 79.4, to: 85.5, scene: 'crew' },
+    ],
+    intro: 3.4,
+    outro: 79.4,
+    length: 85.5,
+    hook: ['Ton bébé', 'à Babi', 'fait tout ça !'],
   },
   // How you play: born gnambro, the goal is debout, six steps, the money that comes and goes.
   gameplay: {
@@ -3017,6 +3044,7 @@ function Video({ t, qr, url, placeholder }: { t: number; qr: string; url: string
       {FILM === 'keke' && !outro && <KekeOverlay t={t} shot={shot} />}
       {FILM === 'sortie' && !outro && <SortieOverlay t={t} shot={shot} />}
       {FILM === 'bienvenue' && !outro && <BienvenueOverlay t={t} shot={shot} />}
+      {FILM === 'bebe' && !outro && !intro && <BebeOverlay screen={shot.screen} t={local} />}
       {FILM === 'live' && shot.scene === 'garba' && local > 5.6 && local < 10.2 && <WayePay t={local - 5.6} />}
       {FILM === 'live' && shot.scene === 'amis' && local > 3 && <GbairaiChat t={local - 3} />}
       {/* Captions */}
@@ -3073,6 +3101,12 @@ function Video({ t, qr, url, placeholder }: { t: number; qr: string; url: string
                 <br />
                 <span className="text-[var(--color-orange)]">À toi de jouer 🎮</span>
               </>
+            ) : FILM === 'bebe' ? (
+              <>
+                Ton bébé
+                <br />
+                <span className="text-[var(--color-orange)]">t’attend 🍼</span>
+              </>
             ) : FILM === 'sortie' ? (
               <>
                 Babi Life sort
@@ -3096,7 +3130,7 @@ function Video({ t, qr, url, placeholder }: { t: number; qr: string; url: string
             )}
           </div>
           <div className="flex flex-col items-center gap-4 rounded-[32px] bg-white p-6 text-[var(--color-ink)] shadow-[0_20px_50px_-15px_rgba(0,0,0,0.6)]" style={pop(O + 1.1)}>
-            <div className="text-[30px] leading-tight font-extrabold">{FILM === 'bienvenue' ? 'Joue maintenant' : 'Inscris-toi sur la liste'}</div>
+            <div className="text-[30px] leading-tight font-extrabold">{FILM === 'bienvenue' || FILM === 'bebe' ? 'Joue maintenant' : 'Inscris-toi sur la liste'}</div>
             {qr && <img src={qr} alt="" className="h-[220px] w-[220px] [image-rendering:pixelated]" />}
             <div className="font-sans text-[24px] font-extrabold text-[var(--color-orange)]">{url}</div>
             {placeholder && <div className="rounded-lg bg-[#ffeef1] px-3 py-1 font-sans text-[16px] font-extrabold text-[#d81b3f]">ADRESSE PROVISOIRE</div>}

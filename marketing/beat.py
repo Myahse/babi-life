@@ -35,6 +35,17 @@ if FILM == 'top20':
     CASH = []
     CROWD = plan['payoffs'][-1:]
     GROOVE, LEAD_FROM = hook, plan['slots'][1]['from']
+elif FILM == 'bebe':
+    # « Tout ce que ton bébé peut faire » (FILMS.bebe): a gentler groove, the cuts, and the
+    # baby's real laughs, cries and babble (web/public/audio/bebe/) where the film shows them.
+    BPM = 112
+    LENGTH = 85.5
+    CUTS = [3.4, 9.4, 14.4, 20.4, 25.4, 30.4, 35.4, 40.4, 46.4, 52.4, 57.4, 62.4, 68.4, 73.4, 79.4]
+    TICKS = []
+    HITS = [0.8, 1.3, 1.8]
+    CASH = []
+    CROWD = []
+    GROOVE, LEAD_FROM = 3.4, 3.4
 else:
     LENGTH = 39.0
     CUTS = [2.4, 4.8, 8.6, 11.8, 16.4, 21, 24.6, 29, 33.4]
@@ -179,6 +190,23 @@ for c in CASH:
     at(c, cash(), 0.7)
 for c in CROWD:
     at(c, crowd(), 0.6)
+
+# The baby's voice, recorded (CC0, web/public/audio/bebe/SOURCES.md), over the groove.
+BABY = [(7.6, 'rire-1'), (9.8, 'pleurs-1'), (12.1, 'pleurs-2'), (17.4, 'rire-2'), (21.55, 'rire-1'), (23.7, 'rire-3'), (27.5, 'gazouille-1'),
+        (33.2, 'rire-2'), (38.2, 'gazouille-2'), (44.6, 'pleurs-3'), (48.6, 'gazouille-3'), (55.0, 'rire-3'), (60.0, 'gazouille-4'),
+        (64.2, 'gazouille-5'), (66.6, 'rire-1'), (70.2, 'gazouille-6'), (74.0, 'gazouille-7')]
+if FILM == 'bebe':
+    clips = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'web', 'public', 'audio', 'bebe')
+    for t, name in BABY:
+        raw = subprocess.run(['ffmpeg', '-loglevel', 'error', '-i', os.path.join(clips, name + '.mp3'), '-f', 'f32le', '-ac', '1', '-ar', str(SR), '-'], check=True, capture_output=True).stdout
+        clip = np.frombuffer(raw, dtype='<f4').astype(float)[: int(3.2 * SR)]
+        # A short fade at its end, so a long piece never cuts off sharp.
+        f = min(len(clip), int(0.3 * SR))
+        clip[-f:] *= np.linspace(1, 0, f)
+        # The groove steps back while the baby is heard.
+        i, j = int(t * SR), min(n, int(t * SR) + len(clip))
+        mix[i:j] *= 0.45
+        at(t, clip / max(1e-6, np.max(np.abs(clip))), 1.1)
 
 # Fade out at the end, then normalise.
 fade = int(2.0 * SR)
