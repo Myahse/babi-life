@@ -7,7 +7,7 @@
 // game; the end card after; the sound (beat.py, FILM=vie) and Awa's voice (out/voix-vie.mp3) under it.
 // The script: marketing/scripts/vie.md; each take as long as Awa's sentences on it (out/voix-vie.mp3, 51 s).
 //
-// FILM=sortie: « Babi Life est sorti ! » (34 s, marketing/scripts/c-est-sorti.md, voice out/voix-sortie-officielle.mp3),
+// FILM=sortie: « Babi Life est sorti ! » (about 40 s with the first day's numbers, marketing/scripts/c-est-sorti.md, voice out/voix-sortie-officielle.mp3),
 // other scenes of the real game: the city from above, the perso made, its family drawn, the baby out in its
 // pram, Yopougon, Waye, the other players there at the same time (connected on the live hub here).
 //
@@ -417,6 +417,27 @@ const SORTIE = [
     live: (p) => crowd(p),
     text: 'Et surtout : tous les joueurs sont là, en vrai, au même moment. Tes amis, ton quartier.',
     at: (p) => ({ 70: () => tap(p.locator('button.hud:has(svg.lucide-users)')), 105: click(p, /Tout Babi/) }),
+  },
+  // The first day's numbers, big over the city (« en moins de vingt-quatre heures… »): the lengths to
+  // set on the new voice's line once it's in out/voix-sortie-officielle.mp3.
+  {
+    id: 'comptes',
+    seconds: 2.6,
+    make: () => koffi({ stage: 'adulte', at: [5.3237, -4.0197] }),
+    warm: 200,
+    big: '345 comptes<br><em>en moins de 24 h</em>',
+    zoom: 8,
+    turn: 0.4,
+  },
+  {
+    id: 'connectes',
+    seconds: 2.6,
+    make: () => koffi({ stage: 'adulte' }),
+    warm: 200,
+    live: (p) => crowd(p),
+    big: '129 déjà<br><em>dans la ville</em>',
+    zoom: 4,
+    turn: 0.3,
   },
 ]
 const TAKES = FILM === 'sortie' ? SORTIE : VIE
