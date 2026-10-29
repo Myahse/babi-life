@@ -2,6 +2,7 @@ package sims
 
 import (
 	"math"
+	"math/rand/v2"
 	"slices"
 	"testing"
 	"time"
@@ -184,7 +185,8 @@ func TestDefiEndsActivity(t *testing.T) {
 	s.Activity = &game.Activity{Kind: "do", PlaceID: "home", PlaceKind: "home", Interaction: game.Interaction{ID: "shower", Minutes: 20, Effect: game.Needs{Hygiene: 60}}, Start: s.GameMinutes, End: s.GameMinutes + 20}
 	s.Needs = homeDone(s.Needs, s.Activity, 100)
 	s.Activity.End = min(s.Activity.End, s.GameMinutes)
-	s.advanceTo(s.GameMinutes, newRand())
+	// (A fixed draw with no surprise at the end: a random one would change the needs.)
+	s.advanceTo(s.GameMinutes, rand.New(rand.NewPCG(7, 7)))
 	if s.Activity != nil || s.Needs.Hygiene != 60 {
 		t.Errorf("after the shower played: %+v, hygiene %.0f", s.Activity, s.Needs.Hygiene)
 	}
