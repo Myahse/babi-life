@@ -155,11 +155,11 @@ export function stepsFor(act: { id: string; icon: string }): Step[] {
 }
 
 /** Whether an activity with no défi of its own is played: the server's rule (sims/defi.go gesteOK): every one, the work too, but a talk. */
-const GESTE_NOT = ['machine-maquis', 'machine-casino', 'passer-nuit', 'petit-travaillement', 'travaillement', 'grand-travaillement', 'aller-ecole', 'creche', 'play-basket', 'street-basket', 'play-football', 'play-foot11', 'street-foot', 'boutique-mode', 'boutique-wax']
+const GESTE_NOT = ['machine-maquis', 'machine-casino', 'passer-nuit', 'petit-travaillement', 'travaillement', 'grand-travaillement', 'aller-ecole', 'creche', 'play-basket', 'street-basket', 'play-football', 'play-foot11', 'street-foot', 'boutique-mode', 'boutique-wax', 'course-kart', 'jouets', 'premier-mot', 'buy-food']
 /** The street happenings joined that are a match of their own. */
 const GESTE_NOT_LABELS = ['Jouer avec eux', 'Jouer un match']
-export const gesteOK = (a: { kind: string; career?: string; placeKind?: string; interaction: { id: string; label?: string; cost: number; minutes: number } }) =>
-  a.kind === 'do' && a.placeKind !== 'chat' && !GESTE_NOT.includes(a.interaction.id) && !(a.interaction.id === 'join' && GESTE_NOT_LABELS.includes(a.interaction.label ?? ''))
+export const gesteOK = (a: { kind: string; career?: string; placeKind?: string; seance?: unknown; interaction: { id: string; label?: string; cost: number; minutes: number } }) =>
+  a.kind === 'do' && a.placeKind !== 'chat' && !GESTE_NOT.includes(a.interaction.id) && !(a.interaction.id === 'join' && GESTE_NOT_LABELS.includes(a.interaction.label ?? '')) && !a.seance
 
 /** Each one's title, icon and colours, and the button that starts it. */
 export const GESTES: Record<GesteKind, { title: string; button: string; icon: LucideIcon; colors: [string, string] }> = {
