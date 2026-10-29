@@ -130,13 +130,10 @@ async function shoot(page, dir, i) {
   }
 }
 
-/** Inside the home: the camera pulled back and lowered (the wheel, a drag up), so the baby and maman are seen whole. */
+/** Inside the home: the camera pulled back (the wheel), so the room, the baby and maman are seen whole, from above as the game shows it. */
 async function frameInside(page) {
   await page.mouse.move(202, 400)
-  for (let i = 0; i < 3; i++) (await page.mouse.wheel(0, 220), await tick(page, 3))
-  await page.mouse.down()
-  for (let i = 0; i < 12; i++) (await page.mouse.move(202, 400 - (110 * (i + 1)) / 12), await tick(page))
-  await page.mouse.up()
+  for (let i = 0; i < 4; i++) (await page.mouse.wheel(0, 240), await tick(page, 3))
   await tick(page, 20)
 }
 
