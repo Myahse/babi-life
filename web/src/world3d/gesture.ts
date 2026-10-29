@@ -30,3 +30,21 @@ const subscribe = (f: () => void) => {
 export function useGesture(): Pose | null {
   return useSyncExternalStore(subscribe, () => now?.pose ?? null)
 }
+
+// A played action's step at home (components/defi/Gestes.tsx): where in the house it's done (a spot
+// of world3d/homeSpots.ts: the bed, the basin, the shower…), standing by it or as the spot has it,
+// and the pose: the house's own scene shows the Sim there, walking from one to the next.
+export type HomeStep = { at: string; pose: Pose; standing?: boolean }
+let step: HomeStep | null = null
+const stepSubs = new Set<() => void>()
+export function setHomeStep(s: HomeStep | null) {
+  if (step?.at === s?.at && step?.pose === s?.pose && step?.standing === s?.standing) return
+  step = s
+  stepSubs.forEach((f) => f())
+}
+export function useHomeStep(): HomeStep | null {
+  return useSyncExternalStore(
+    (f) => (stepSubs.add(f), () => void stepSubs.delete(f)),
+    () => step,
+  )
+}
