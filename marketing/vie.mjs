@@ -7,7 +7,12 @@
 // game; the end card after; the sound (beat.py, FILM=vie) and Awa's voice (out/voix-vie.mp3) under it.
 // The script: marketing/scripts/vie.md; each take as long as Awa's sentences on it (out/voix-vie.mp3, 51 s).
 //
+// FILM=sortie: « Babi Life est sorti ! » (34 s, marketing/scripts/c-est-sorti.md, voice out/voix-sortie-officielle.mp3),
+// other scenes of the real game: the city from above, the perso made, its family drawn, the baby out in its
+// pram, Yopougon, Waye, the other players there at the same time (connected on the live hub here).
+//
 //   API=http://localhost:8099/api/v1 GAME=http://localhost:5175 node vie.mjs
+//   FILM=sortie node vie.mjs
 //   PROBE=1 node vie.mjs        # a few frames of each take only (out/video-frames/vie/probe-*.jpg)
 //   ONLY=coucou,ecole node vie.mjs   # those takes again, the others kept, then put together
 //
@@ -27,7 +32,8 @@ const GAME = process.env.GAME ?? 'http://localhost:5175'
 const DB = process.env.DATABASE_URL ?? 'postgres://postgres:pg@localhost:5432/babi'
 const PROBE = !!process.env.PROBE
 const ONLY = process.env.ONLY?.split(',')
-const FRAMES = path.join(OUT, 'video-frames', 'vie')
+const FILM = process.env.FILM ?? 'vie'
+const FRAMES = path.join(OUT, 'video-frames', FILM)
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 /* ---------- A perso on the local API ---------- */
@@ -42,15 +48,17 @@ const psql = (q) => execFileSync('psql', [DB, '-tAc', q]).toString().trim()
 const LOOK = { skin: '#6e4024', hair: 'short', hairColor: '#141010', outfit: 'casual', outfitColor: '#ff7a00', body: 'moyen', height: 1, eyes: '#2b1a10', beard: 'none', accessory: 'none', pattern: 'cercles', bottomColor: '', shoeColor: '', accessoryColor: '', marks: 'none', wear: 'neuf' }
 
 /** Koffi, born in Cocody (a poignon family), at the stage asked; baptised unless it's the baptism's take. */
-async function koffi({ stage = 'bebe', baptised = true } = {}) {
-  const { token } = await call(null, '/auth/dev', 'POST', { name: `Koffi${Date.now().toString(36).slice(-4)}` })
+async function koffi({ stage = 'bebe', baptised = true, at = [5.348, -3.987], noSim = false, apps = false, name = 'Koffi' } = {}) {
+  const { token } = await call(null, '/auth/dev', 'POST', { name: `${name}${Date.now().toString(36).slice(-4)}` })
   const me = await call(token, '/me')
   psql(`UPDATE users SET tester = true WHERE id = '${me.id}'`)
-  const made = await call(token, '/sims', 'POST', { firstName: 'Koffi', lastName: 'Koné', gender: 'homme', look: LOOK, traits: ['ambianceur', 'sportif'], aspiration: 'ambiance', lat: 5.348, lng: -3.987 })
+  if (noSim) return { token, user: await call(token, '/me'), sim: null }
+  const made = await call(token, '/sims', 'POST', { firstName: name, lastName: 'Koné', gender: 'homme', look: LOOK, traits: ['ambianceur', 'sportif'], aspiration: 'ambiance', lat: at[0], lng: at[1] })
   const sim = made.sim ?? made
   psql(`UPDATE sims SET family = 'poignon', baptised = ${baptised} WHERE id = '${sim.id}'`)
   if (stage !== 'bebe') await call(token, `/sims/${sim.id}/tester`, 'POST', { action: 'age', stage })
   await call(token, `/sims/${sim.id}/tester`, 'POST', { action: 'needs' })
+  if (apps) await call(token, `/sims/${sim.id}/tester`, 'POST', { action: 'apps' }).catch(() => undefined)
   const user = await call(token, '/me')
   return { token, user, sim }
 }
@@ -60,7 +68,7 @@ async function koffi({ stage = 'bebe', baptised = true } = {}) {
 const seen = async () => ((await call(null, '/features')).new ?? []).map((n) => n.id)
 
 /** The game on a phone's screen (1080 × 1920), the perso's session in it, its clock stopped. */
-async function open(b, k, query = '') {
+async function open(b, k, query = '', route = '/jeu') {
   const ctx = await b.newContext({ viewport: { width: 405, height: 720 }, deviceScaleFactor: PROBE ? 1 : 1080 / 405, isMobile: true, hasTouch: true, locale: 'fr-FR' })
   await ctx.addInitScript(
     ([token, user, seen]) => {
@@ -77,7 +85,7 @@ async function open(b, k, query = '') {
   page.on('pageerror', (e) => console.error('page:', String(e).slice(0, 200)))
   // No « Flash info » over the takes (the country's news).
   await page.route('**/news*', (r) => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ items: [] }) }))
-  await page.goto(`${GAME}/jeu?hour=10${query}`)
+  await page.goto(`${GAME}${route}?hour=10${query}`)
   return { ctx, page }
 }
 const tick = (page, n = 1) => page.evaluate((n) => {
@@ -98,24 +106,26 @@ async function warm(page, frames) {
 }
 
 /** The take's caption, drawn over the game: the stage of life at the top, what Awa says at the bottom. */
-function caption(page, stage, text) {
+function caption(page, stage, text, big = '') {
   return page.evaluate(
-    ([stage, text, fonts]) => {
+    ([stage, text, fonts, big]) => {
       let el = document.getElementById('vie-cap')
       if (!el) {
         const st = document.createElement('style')
         st.textContent = `${fonts}
 #vie-cap{position:fixed;inset:0;z-index:2147483647;pointer-events:none;font-family:'Nunito',sans-serif}
 #vie-cap .st{position:absolute;top:96px;left:50%;transform:translateX(-50%);background:#ff7a00;color:#fff;font-family:'Baloo 2';font-weight:800;font-size:22px;padding:4px 18px;border-radius:999px;box-shadow:0 6px 18px -6px rgba(0,0,0,.5);white-space:nowrap}
+#vie-cap .big{position:absolute;left:0;right:0;top:36%;text-align:center;color:#fff;font-family:'Baloo 2';font-weight:800;font-size:62px;line-height:.95;text-shadow:0 6px 0 rgba(0,0,0,.35),0 0 30px rgba(0,0,0,.4)}
+#vie-cap .big em{font-style:normal;color:#ff7a00}
 #vie-cap .tx{position:absolute;left:16px;right:16px;top:142px;background:rgba(15,18,48,.86);color:#fff;font-weight:800;font-size:19px;line-height:1.25;text-align:center;padding:10px 14px;border-radius:18px}`
         document.head.appendChild(st)
         el = document.createElement('div')
         el.id = 'vie-cap'
         document.body.appendChild(el)
       }
-      el.innerHTML = `${stage ? `<div class="st">${stage}</div>` : ''}${text ? `<div class="tx">${text}</div>` : ''}`
+      el.innerHTML = `${stage ? `<div class="st">${stage}</div>` : ''}${text ? `<div class="tx">${text}</div>` : ''}${big ? `<div class="big">${big}</div>` : ''}`
     },
-    [stage, text, fontFaces()],
+    [stage, text, fontFaces(), big],
   )
 }
 
@@ -165,7 +175,7 @@ const click = (page, name) => () => tap(page.getByRole('button', { name }))
 /* ---------- The takes ---------- */
 
 const BEBE = 'BÉBÉ'
-const TAKES = [
+const VIE = [
   {
     id: 'bapteme',
     seconds: 5.8,
@@ -282,10 +292,116 @@ const TAKES = [
   },
 ]
 
+/**
+ * The other players there at the same time: a few persos of the commune connected to the live hub
+ * from here, walking round the filmed one in the street (their states, as a phone sends them).
+ */
+async function crowd(page, n = 4) {
+  const at = await page.evaluate(() => window.__where?.sim ?? [0, 0])
+  const names = ['Aya', 'Bema', 'Fanta', 'Yao', 'Mariam']
+  const socks = []
+  for (let i = 0; i < n; i++) {
+    const k = await koffi({ stage: 'adulte', name: names[i % names.length] })
+    psql(`UPDATE sims SET last_tick = now() WHERE id = '${k.sim.id}'`)
+    const ws = new WebSocket(API.replace(/^http/, 'ws') + '/live')
+    await new Promise((r) => (ws.onopen = r))
+    ws.send(JSON.stringify({ t: 'hello', token: k.token, sim: k.sim.id, mode: 'open' }))
+    const a0 = (i / n) * Math.PI * 2
+    let t = 0
+    const step = setInterval(() => {
+      t += 0.2
+      const a = a0 + t * 0.15
+      const r = 4 + i
+      ws.readyState === 1 && ws.send(JSON.stringify({ t: 'state', x: at[0] + Math.cos(a) * r, y: 0, z: at[1] + Math.sin(a) * r, h: a + Math.PI / 2, p: 'walk' }))
+    }, 200)
+    socks.push(() => (clearInterval(step), ws.close()))
+  }
+  return () => socks.forEach((f) => f())
+}
+
+// « Babi Life est sorti ! », on Awa's voice (out/voix-sortie-officielle.mp3, 34 s).
+const SORTIE = [
+  {
+    id: 'ville',
+    seconds: 3.2,
+    make: () => koffi({ stage: 'adulte', at: [5.3237, -4.0197] }),
+    warm: 200,
+    big: 'C’EST<br><em>SORTI !</em>',
+    // High over the Plateau: the wheel out, the camera turned slowly.
+    zoom: 9,
+    turn: 0.5,
+  },
+  {
+    id: 'rue',
+    seconds: 2.52,
+    make: () => koffi({ stage: 'adulte', at: [5.3237, -4.0197] }),
+    warm: 200,
+    text: 'Le jeu de la vie à Abidjan, dans ton téléphone.',
+    at: (p) => ({ 2: () => p.keyboard.down('ArrowUp'), 74: () => p.keyboard.up('ArrowUp') }),
+    turn: 0.3,
+  },
+  {
+    id: 'creation',
+    seconds: 2.72,
+    make: () => koffi({ noSim: true }),
+    route: '/creer',
+    warm: 60,
+    text: 'Tu crées ton perso…',
+    at: (p) => ({ 5: click(p, /Perso au hasard/), 30: click(p, /Perso au hasard/), 55: click(p, /Perso au hasard/) }),
+  },
+  {
+    id: 'naissance',
+    seconds: 1.88,
+    make: () => koffi({ noSim: true }),
+    route: '/creer',
+    warm: 60,
+    before: (p) => click(p, /Naissance/)(),
+    text: '… et le sort choisit ta famille : gnambro, poignon ou laté !',
+  },
+  {
+    id: 'poussette',
+    seconds: 5.36,
+    make: () => koffi(),
+    warm: 200,
+    stage: 'BÉBÉ',
+    text: 'Tu commences bébé, tu grandis : l’école, les amis, puis la vraie vie à 18 ans.',
+    at: (p) => ({ 2: () => p.keyboard.down('ArrowUp'), 150: () => p.keyboard.up('ArrowUp') }),
+  },
+  {
+    id: 'yop',
+    seconds: 5.56,
+    make: () => koffi({ stage: 'adulte', at: [5.3364, -4.0866] }),
+    warm: 220,
+    text: 'Les vrais quartiers d’Abidjan : Yop, Cocody, le Plateau… le gbaka, le maquis, le boulot.',
+    zoom: 3,
+    turn: 0.6,
+    at: (p) => ({ 2: () => p.keyboard.down('ArrowUp'), 160: () => p.keyboard.up('ArrowUp') }),
+  },
+  {
+    id: 'waye',
+    seconds: 3.72,
+    make: () => koffi({ stage: 'adulte', apps: true }),
+    warm: 200,
+    text: 'Ton téléphone dans le jeu : Gbairai pour causer, Waye pour l’argent.',
+    at: (p) => ({ 4: () => tap(p.locator('[data-tour="phone"]')), 40: click(p, /^Waye/) }),
+  },
+  {
+    id: 'joueurs',
+    seconds: 4.64,
+    make: () => koffi({ stage: 'adulte' }),
+    warm: 200,
+    live: (p) => crowd(p),
+    text: 'Et surtout : tous les joueurs sont là, en vrai, au même moment. Tes amis, ton quartier.',
+    at: (p) => ({ 70: () => tap(p.locator('button.hud:has(svg.lucide-users)')), 105: click(p, /Tout Babi/) }),
+  },
+]
+const TAKES = FILM === 'sortie' ? SORTIE : VIE
+const END = FILM === 'sortie' ? { seconds: 4.5, title: 'C’est sorti !<br><em>Joue maintenant</em>' } : { seconds: 5.9, title: 'Ta vie, c’est toi<br>qui l’<em>écris</em>' }
+
 /* ---------- The end card ---------- */
 
-async function endCard(b, dir, frames) {
-  const qr = await QRCode.toDataURL('https://lifeinbabi.com/?src=video-vie', { margin: 1, width: 440, color: { dark: BRAND.ink, light: '#ffffff' } })
+async function endCard(b, dir, frames, title) {
+  const qr = await QRCode.toDataURL(`https://lifeinbabi.com/?src=video-${FILM}`, { margin: 1, width: 440, color: { dark: BRAND.ink, light: '#ffffff' } })
   const logo = `data:image/svg+xml;base64,${fs.readFileSync(path.join(OUT, 'logos/babi-life-logo-on-dark.svg')).toString('base64')}`
   const page = await b.newPage({ viewport: { width: 405, height: 720 }, deviceScaleFactor: PROBE ? 1 : 1080 / 405 })
   await page.setContent(`<!doctype html><html><head><meta charset="utf-8"><style>${fontFaces()}
@@ -296,7 +412,7 @@ img.l{height:46px}h1{font-family:'Baloo 2';font-weight:800;font-size:40px;line-h
 .c img{width:160px;image-rendering:pixelated}.c div{font-family:'Baloo 2';font-weight:800;font-size:20px;color:#ff7a00}
 .f{position:absolute;bottom:0;left:0;right:0;height:8px;display:flex}.f i{flex:1}</style></head><body>
 <img class="l" src="${logo}"><div class="s"><b>Bébé</b><b>Enfant</b><b>Ado</b><b>Adulte</b></div>
-<h1>Ta vie, c’est toi<br>qui l’<em>écris</em></h1>
+<h1>${title}</h1>
 <div class="c"><img src="${qr}"><div>lifeinbabi.com</div><span style="font-weight:800;font-size:13px;color:#5a5f73">Gratuit · 100 % ivoirien</span></div>
 <div class="f"><i style="background:#ff8200"></i><i style="background:#fff"></i><i style="background:#009a44"></i></div></body></html>`)
   await sleep(500)
@@ -315,19 +431,32 @@ for (const t of TAKES) {
   if (ONLY && !ONLY.includes(t.id)) continue
   const started = Date.now()
   const k = await t.make()
-  const { ctx, page } = await open(b, k, t.query ?? '')
+  const { ctx, page } = await open(b, k, t.query ?? '', t.route)
   await warm(page, t.warm)
   if (t.before) {
     await t.before(page).catch((e) => console.error(t.id, 'before', String(e).slice(0, 160)))
     for (let i = 0; i < 60; i++) (await tick(page), i % 20 === 0 && (await sleep(200)))
   }
   if (t.inside) await frameInside(page).catch((e) => console.error(t.id, 'inside', String(e).slice(0, 160)))
-  await caption(page, t.stage, t.text)
-  await film(page, path.join(FRAMES, t.id), Math.round(t.seconds * FPS), t.at?.(page) ?? {}, t.each?.(page))
+  if (t.zoom) {
+    await page.mouse.move(202, 360)
+    for (let i = 0; i < t.zoom; i++) (await page.mouse.wheel(0, 260), await tick(page, 3))
+    await tick(page, 15)
+  }
+  const stopLive = t.live ? await t.live(page).catch((e) => (console.error(t.id, 'live', String(e).slice(0, 160)), null)) : null
+  if (stopLive) for (let i = 0; i < 40; i++) (await tick(page), await sleep(100))
+  await caption(page, t.stage, t.text, t.big)
+  // The camera turned slowly while it's taken (a drag across), when the take asks for it.
+  if (t.turn) (await page.mouse.move(150, 300), await page.mouse.down())
+  const turn = t.turn ? async (i) => page.mouse.move(150 + i * t.turn, 300) : undefined
+  const each = t.each?.(page)
+  await film(page, path.join(FRAMES, t.id), Math.round(t.seconds * FPS), t.at?.(page) ?? {}, each || turn ? async (i) => (await each?.(i), await turn?.(i)) : undefined)
+  if (t.turn) await page.mouse.up()
+  stopLive?.()
   await ctx.close()
   console.log(`${t.id}: ${Math.round((Date.now() - started) / 1000)} s`)
 }
-if (!ONLY || ONLY.includes('fin')) await endCard(b, path.join(FRAMES, 'fin'), Math.round(5.9 * FPS))
+if (!ONLY || ONLY.includes('fin')) await endCard(b, path.join(FRAMES, 'fin'), Math.round(END.seconds * FPS), END.title)
 await b.close()
 if (PROBE) process.exit(0)
 
@@ -343,8 +472,8 @@ for (const id of order) {
 fs.writeFileSync(list, clips.join('\n'))
 const silent = path.join(FRAMES, 'silent.mp4')
 execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', silent])
-const [voice, beat] = ['voix-vie.mp3', 'son-vie.mp3'].map((f) => path.join(OUT, f)).map((f) => (fs.existsSync(f) ? f : ''))
-const mp4 = path.join(OUT, 'babi-life-video-vie-1080x1920.mp4')
+const [voice, beat] = (FILM === 'sortie' ? ['voix-sortie-officielle.mp3', 'son-sortie-officielle.mp3'] : ['voix-vie.mp3', 'son-vie.mp3']).map((f) => path.join(OUT, f)).map((f) => (fs.existsSync(f) ? f : ''))
+const mp4 = path.join(OUT, `babi-life-video-${FILM === 'sortie' ? 'sortie-officielle' : 'vie'}-1080x1920.mp4`)
 const sound =
   voice && beat
     ? ['-i', voice, '-i', beat, '-filter_complex', '[1:a]apad[v];[2:a]volume=0.32[b];[v][b]amix=inputs=2:duration=first:normalize=0[a]', '-map', '0:v', '-map', '[a]', '-c:a', 'aac', '-b:a', '192k', '-shortest']
