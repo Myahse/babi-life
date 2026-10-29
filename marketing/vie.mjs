@@ -68,8 +68,9 @@ async function koffi({ stage = 'bebe', baptised = true, at = [5.348, -3.987], no
 const seen = async () => ((await call(null, '/features')).new ?? []).map((n) => n.id)
 
 /** The game on a phone's screen (1080 × 1920), the perso's session in it, its clock stopped. */
-async function open(b, k, query = '', route = '/jeu') {
-  const ctx = await b.newContext({ viewport: { width: 405, height: 720 }, deviceScaleFactor: PROBE ? 1 : 1080 / 405, isMobile: true, hasTouch: true, locale: 'fr-FR' })
+async function open(b, k, query = '', route = '/jeu', mouse = false) {
+  // (A mouse rather than a touch screen when the take turns or pulls back the camera: the wheel and the drag are the mouse's.)
+  const ctx = await b.newContext({ viewport: { width: 405, height: 720 }, deviceScaleFactor: PROBE ? 1 : 1080 / 405, ...(mouse ? {} : { isMobile: true, hasTouch: true }), locale: 'fr-FR' })
   await ctx.addInitScript(
     ([token, user, seen]) => {
       localStorage.setItem('ivoire-life-session', JSON.stringify({ state: { token, user }, version: 0 }))
@@ -369,6 +370,8 @@ const SORTIE = [
     warm: 60,
     before: (p) => click(p, /Naissance/)(),
     text: '… et le sort choisit ta famille : gnambro, poignon ou laté !',
+    // « Naître »: the family drawn, its home, as the game shows it.
+    at: (p) => ({ 3: click(p, /^Naître/) }),
   },
   {
     id: 'poussette',
@@ -377,7 +380,7 @@ const SORTIE = [
     warm: 200,
     stage: 'BÉBÉ',
     text: 'Tu commences bébé, tu grandis : l’école, les amis, puis la vraie vie à 18 ans.',
-    at: (p) => ({ 2: () => p.keyboard.down('ArrowUp'), 150: () => p.keyboard.up('ArrowUp') }),
+    at: (p) => ({ 2: () => p.keyboard.down('ArrowUp'), 45: () => p.keyboard.up('ArrowUp') }),
   },
   {
     id: 'yop',
@@ -443,7 +446,7 @@ for (const t of TAKES) {
   if (ONLY && !ONLY.includes(t.id)) continue
   const started = Date.now()
   const k = await t.make()
-  const { ctx, page } = await open(b, k, t.query ?? '', t.route)
+  const { ctx, page } = await open(b, k, t.query ?? '', t.route, !!(t.zoom || t.turn))
   await warm(page, t.warm)
   if (t.before) {
     await t.before(page).catch((e) => console.error(t.id, 'before', String(e).slice(0, 160)))
