@@ -35,6 +35,17 @@ if FILM == 'top20':
     CASH = []
     CROWD = plan['payoffs'][-1:]
     GROOVE, LEAD_FROM = hook, plan['slots'][1]['from']
+elif FILM == 'vie':
+    # « Ta vie dans Babi Life » (vie.mjs): its takes one after the other (6, 7, 7, 7, 6, 8, 7, 9, 8 s), the end card (5 s).
+    BPM = 116
+    takes = [6, 7, 7, 7, 6, 8, 7, 9, 8, 5]
+    CUTS = [sum(takes[:i]) for i in range(1, len(takes))]
+    LENGTH = float(sum(takes))
+    TICKS = []
+    HITS = [0.4]
+    CASH = [CUTS[6] + 4.0]
+    CROWD = []
+    GROOVE, LEAD_FROM = 0.0, CUTS[4]
 elif FILM == 'bebe':
     # « Tout ce que ton bébé peut faire » (FILMS.bebe): a gentler groove, the cuts, and the
     # baby's real laughs, cries and babble (web/public/audio/bebe/) where the film shows them.
@@ -192,10 +203,10 @@ for c in CROWD:
     at(c, crowd(), 0.6)
 
 # The baby's voice, recorded (CC0, web/public/audio/bebe/SOURCES.md), over the groove.
-BABY = [(7.6, 'rire-1'), (9.8, 'pleurs-1'), (12.1, 'pleurs-2'), (17.4, 'rire-2'), (21.55, 'rire-1'), (23.7, 'rire-3'), (27.5, 'gazouille-1'),
+BABY = [(2.0, 'rire-1'), (8.5, 'gazouille-1'), (15.0, 'pleurs-1'), (22.5, 'rire-2'), (25.0, 'rire-3'), (29.5, 'gazouille-2')] if FILM == 'vie' else [(7.6, 'rire-1'), (9.8, 'pleurs-1'), (12.1, 'pleurs-2'), (17.4, 'rire-2'), (21.55, 'rire-1'), (23.7, 'rire-3'), (27.5, 'gazouille-1'),
         (33.2, 'rire-2'), (38.2, 'gazouille-2'), (44.6, 'pleurs-3'), (48.6, 'gazouille-3'), (55.0, 'rire-3'), (60.0, 'gazouille-4'),
         (64.2, 'gazouille-5'), (66.6, 'rire-1'), (70.2, 'gazouille-6'), (74.0, 'gazouille-7')]
-if FILM == 'bebe':
+if FILM in ('bebe', 'vie'):
     clips = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'web', 'public', 'audio', 'bebe')
     for t, name in BABY:
         raw = subprocess.run(['ffmpeg', '-loglevel', 'error', '-i', os.path.join(clips, name + '.mp3'), '-f', 'f32le', '-ac', '1', '-ar', str(SR), '-'], check=True, capture_output=True).stdout
