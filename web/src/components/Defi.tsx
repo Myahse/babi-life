@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { GraduationCap, ShoppingCart, Trophy, Waves, Coffee, Gamepad2, Car, Swords, Joystick, X, Baby, Blocks, Footprints, Music, type LucideIcon } from 'lucide-react'
+import { Beer, Banana, Fish, Sparkles, GraduationCap, ShoppingCart, Trophy, Waves, Coffee, Gamepad2, Car, Swords, Joystick, X, Baby, Blocks, Footprints, Music, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import { haptic } from '../lib/native'
 import type { ActionResult, Look } from '../lib/types'
@@ -14,6 +14,11 @@ import { CombatDefi } from './defi/Combat'
 import { MoustiquesDefi } from './defi/Moustiques'
 import { EcoleDefi } from './defi/Ecole'
 import { CoucouDefi, CubesDefi, HochetDefi, PasDefi } from './defi/Bebe'
+import { GESTES, GestesDefi, gesteOf, type GesteKind } from './defi/Gestes'
+import { GarbaDefi } from './defi/Garba'
+import { BarDefi } from './defi/Bar'
+import { DodoDefi } from './defi/Reve'
+import { AllocoDefi } from './defi/Alloco'
 
 // Les défis: while making tea at the grin, water-skiing off Île Boulay, doing
 // the shopping or playing at the salle de jeux vidéo (the foot, the car race,
@@ -22,13 +27,15 @@ import { CoucouDefi, CubesDefi, HochetDefi, PasDefi } from './defi/Bebe'
 // out of 100 and what it earned (backend sims/defi.go: once each time, a small
 // bonus, the best score kept as a record to beat).
 
-export type DefiKind = 'the' | 'ski' | 'courses' | 'foot' | 'course' | 'combat' | 'arcade' | 'ecole' | 'coucou' | 'cubes' | 'pas' | 'hochet' | 'bagarre'
+export type DefiKind = 'the' | 'ski' | 'courses' | 'foot' | 'course' | 'combat' | 'arcade' | 'ecole' | 'coucou' | 'cubes' | 'pas' | 'hochet' | 'bagarre' | GesteKind | 'geste' | 'garba' | 'alloco' | 'bar'
 /** The baby's games (the update « bebe-jeux »). */
 export const BABY_DEFIS = new Set<DefiKind>(['coucou', 'cubes', 'pas', 'hochet'])
+/** The home's gestures (the update « gestes-maison »): played, the action is done. */
+export const GESTE_DEFIS = new Set<DefiKind>([...(Object.keys(GESTES) as GesteKind[]), 'geste', 'garba', 'alloco', 'bar'])
 
 /** The défi of an activity (backend sims/defi.go defiFor says the same), or null. The pousse-pousse's tea is served: no défi. */
 export const defiOf = (interactionId?: string): DefiKind | null =>
-  ({ 'street-grin': 'the', 'chat-grin': 'the', 'ski-boulay': 'ski', supermarche: 'courses', courses: 'courses', 'console-foot': 'foot', 'console-defi': 'foot', 'tournoi-console': 'foot', 'console-course': 'course', 'console-combat': 'combat', 'borne-arcade': 'arcade', 'maison-foot': 'foot', 'maison-course': 'course', 'maison-combat': 'combat', 'aller-ecole': 'ecole', coucou: 'coucou', cubes: 'cubes', 'premiers-pas': 'pas', hochet: 'hochet', 'bagarre-bebe': 'bagarre' } as Record<string, DefiKind>)[interactionId ?? ''] ?? null
+  ({ 'street-grin': 'the', 'chat-grin': 'the', 'ski-boulay': 'ski', supermarche: 'courses', courses: 'courses', 'console-foot': 'foot', 'console-defi': 'foot', 'tournoi-console': 'foot', 'console-course': 'course', 'console-combat': 'combat', 'borne-arcade': 'arcade', 'maison-foot': 'foot', 'maison-course': 'course', 'maison-combat': 'combat', 'aller-ecole': 'ecole', coucou: 'coucou', cubes: 'cubes', 'premiers-pas': 'pas', hochet: 'hochet', 'bagarre-bebe': 'bagarre', 'eat-garba': 'garba', 'eat-alloco': 'alloco', 'drink-with-friends': 'bar' } as Record<string, DefiKind>)[interactionId ?? ''] ?? gesteOf(interactionId)
 
 /** The foot's three ways: a match, the challenge where the loser pays, the Saturday tournament. */
 const footMode = (interactionId?: string) => (interactionId === 'console-defi' ? 'defi' : interactionId === 'tournoi-console' ? 'tournoi' : 'match')
@@ -38,7 +45,36 @@ const FOOT: Record<ReturnType<typeof footMode>, { title: string; button: string;
   tournoi: { title: 'Le tournoi du samedi', button: 'Jouer le tournoi', how: 'Quart, demi, finale, chaque équipe plus forte que la précédente ; un nul se joue au but en or. La coupe : 2 000 Djai ; la finale : 800. Un tournoi par jour.' },
 }
 
+// The home's gestures: played over the house, the Sim seen making each one.
+const DODO_HOW = ['Fais le lit, brosse-toi les dents, couche-toi : quelques flèches.', 'Puis tu rêves : glisse le doigt vers le haut ou le bas, attrape 25 étoiles (un mouton en vaut deux).', 'Les cauchemars (le moustique géant, la facture de la CIE, le maître et sa chicotte) te font perdre des étoiles ; trois, et tu te réveilles.']
+const GESTE_HOW = ['Chaque étape est une combinaison de flèches : enchaîne-les avant la fin du temps.', 'Chaque flèche juste, ton perso fait le geste. Une erreur, et la combinaison recommence.', 'La dernière étape faite, c’est fait : pas besoin d’attendre.']
 const DEFIS: Record<DefiKind, { title: string; button: string; icon: LucideIcon; colors: [string, string]; how: string[]; bg: string }> = {
+  garba: {
+    title: 'Le garba',
+    button: 'Manger ton garba',
+    icon: Fish,
+    colors: ['#ffa94d', '#e8590c'],
+    how: ['La tantie annonce un poisson : pioche-le dans l’huile avant les mains des autres clients.', 'Puis mange : pique les grains, ou tiens « Pommer » et lâche dans le vert pour une grosse boule.', 'L’attiéké ne passe pas facilement : surveille ta gorge et bois de l’eau, sinon tu t’étouffes.'],
+    bg: 'transparent',
+  },
+  alloco: {
+    title: 'L’alloco',
+    button: 'Prendre ton alloco',
+    icon: Banana,
+    colors: ['#ffd43b', '#f08c00'],
+    how: ['Avec un œuf ? 100 Djai de plus.', 'La tantie verse l’alloco : glisse le papier dessous et attrape tout.', 'Avec l’œuf : écaille-le, chaque morceau de coquille.'],
+    bg: 'transparent',
+  },
+  bar: {
+    title: 'Le pot au maquis',
+    button: 'S’asseoir à la table',
+    icon: Beer,
+    colors: ['#ffd166', '#e8a400'],
+    how: ['« Boire » une gorgée à la fois : l’ambiance monte… et l’alcool aussi.', 'Le verre vide : « Resservir » (une tournée, 500 Djai). « Billets » : lance l’argent, la table s’enflamme (payé).', 'Surveille l’alcool, bois de l’eau : au trait rouge, tu es soûl et la soirée finit mal. « Se lever » quand l’ambiance est au top.'],
+    bg: 'transparent',
+  },
+  geste: { title: 'L’action', button: 'Jouer l’action', icon: Sparkles, colors: ['#ffc233', '#e09a00'], how: GESTE_HOW, bg: 'transparent' },
+  ...(Object.fromEntries(Object.entries(GESTES).map(([k, g]) => [k, { ...g, how: k === 'dodo' ? DODO_HOW : GESTE_HOW, bg: 'transparent' }])) as Record<GesteKind, { title: string; button: string; icon: LucideIcon; colors: [string, string]; how: string[]; bg: string }>),
   the: {
     title: 'Le thé du grin',
     button: 'Défi : fais le thé',
@@ -162,9 +198,9 @@ export function DefiButton({ kind, interactionId, onClick }: { kind: DefiKind; i
 const stars = (score: number) => (score >= 85 ? 3 : score >= 50 ? 2 : score >= 15 ? 1 : 0)
 
 /** The défi: how it's played, the game, the score and what it earned. */
-export function DefiSheet({ kind, simId, big, older, interactionId, practice, send, challenge, me, onResult, onClose }: { /** At school, a teenager: the harder questions. */ older?: boolean; kind: DefiKind; simId: string; /** The player's Sim, to play as itself (the fight; the foot's career: its money, its commune). */ me?: { look: Look; gender: 'femme' | 'homme'; money?: number; homeCommune?: string }; /** Something bought along the way (a signing in the foot's career): the server's answer, applied to the Sim. */ onResult?: (r: ActionResult) => void; /** The shopping at the supermarket: the longer list. */ big?: boolean; /** The activity it's played during (the foot's match, challenge or tournament). */ interactionId?: string; /** Played from the phone's « Jeux », for practice: nothing sent, nothing earned. */ practice?: boolean; /** The score sent: the server's answer (applied to the Sim), or null if it failed. */ send?: (score: number) => Promise<ActionResult | null>; /** Taken on from someone's score (a message, a link): played for the fun of it, nothing sent. */ challenge?: { score: number; from: string }; onClose: () => void }) {
+export function DefiSheet({ kind, act, simId, big, older, interactionId, practice, send, challenge, me, onResult, onClose }: { /** Any action played as gestures: which (its name is the title, its icon its kind). */ act?: { id: string; label: string; icon: string }; /** At school, a teenager: the harder questions. */ older?: boolean; kind: DefiKind; simId: string; /** The player's Sim, to play as itself (the fight; the foot's career: its money, its commune). */ me?: { look: Look; gender: 'femme' | 'homme'; money?: number; homeCommune?: string }; /** Something bought along the way (a signing in the foot's career): the server's answer, applied to the Sim. */ onResult?: (r: ActionResult) => void; /** The shopping at the supermarket: the longer list. */ big?: boolean; /** The activity it's played during (the foot's match, challenge or tournament). */ interactionId?: string; /** Played from the phone's « Jeux », for practice: nothing sent, nothing earned. */ practice?: boolean; /** The score sent: the server's answer (applied to the Sim), or null if it failed. */ send?: (score: number, extra?: string) => Promise<ActionResult | null>; /** Taken on from someone's score (a message, a link): played for the fun of it, nothing sent. */ challenge?: { score: number; from: string }; onClose: () => void }) {
   const mode = footMode(challenge ? undefined : interactionId)
-  const d = kind === 'foot' ? { ...DEFIS.foot, title: FOOT[mode].title, how: [...DEFIS.foot.how, FOOT[mode].how] } : DEFIS[kind]
+  const d = kind === 'foot' ? { ...DEFIS.foot, title: FOOT[mode].title, how: [...DEFIS.foot.how, FOOT[mode].how] } : kind === 'geste' && act ? { ...DEFIS.geste, title: act.label } : DEFIS[kind]
   const [phase, setPhase] = useState<'intro' | 'play' | 'result'>('intro')
   const [best, setBest] = useState<number | null>(null)
   const [score, setScore] = useState(0)
@@ -177,16 +213,18 @@ export function DefiSheet({ kind, simId, big, older, interactionId, practice, se
       .then((r) => setBest(r.best[kind] ?? 0))
       .catch(() => setBest(0))
   }, [simId, kind])
-  const end = async (s: number) => {
+  const end = async (s: number, extra?: string) => {
     if (s >= 50) haptic('success')
     setScore(s)
     setPhase('result')
     if (practice) return setSaid(best && s > best ? 'Nouveau record d’entraînement ! Le vrai défi se joue sur place (la salle de jeux, le grin, le supermarché).' : 'Entraînement : rien n’est envoyé. Le vrai défi se joue sur place, et il rapporte.')
     if (challenge) return setSaid(s > challenge.score ? `Tu as battu ${challenge.from} (${challenge.score}) ! Renvoie-lui ton score.` : s === challenge.score ? `Égalité avec ${challenge.from} : ${s} partout !` : `${challenge.from} reste devant avec ${challenge.score}. Retente !`)
-    const r = await send?.(s)
+    const r = await send?.(s, extra)
     setSaid(r?.outcome.text.replace(/^Défi \d+\/100\. /, '') ?? null)
   }
   const ski = kind === 'ski'
+  // Over the scene (the lagoon, the house): the intro dims it, the game leaves it seen.
+  const over = ski || GESTE_DEFIS.has(kind)
   const n = stars(score)
   // On a computer, Échap leaves the game (nothing sent: it can be played again later).
   useEffect(() => {
@@ -195,7 +233,7 @@ export function DefiSheet({ kind, simId, big, older, interactionId, practice, se
     return () => window.removeEventListener('keydown', key)
   }, [onClose])
   return (
-    <div className="absolute inset-0 z-50 flex flex-col" style={{ background: phase === 'play' || !ski ? d.bg : 'rgba(15,18,48,0.35)' }}>
+    <div className="absolute inset-0 z-50 flex flex-col" style={{ background: phase === 'play' || !over ? d.bg : 'rgba(15,18,48,0.35)' }}>
       {phase === 'play' &&
         (kind === 'the' ? (
           <TeaDefi onEnd={(s) => void end(s)} />
@@ -219,6 +257,16 @@ export function DefiSheet({ kind, simId, big, older, interactionId, practice, se
           <PasDefi onEnd={(s) => void end(s)} />
         ) : kind === 'hochet' ? (
           <HochetDefi onEnd={(s) => void end(s)} />
+        ) : kind === 'dodo' ? (
+          <DodoDefi onEnd={(s) => void end(s)} />
+        ) : kind === 'bar' ? (
+          <BarDefi money={me?.money ?? 0} onEnd={(s, extra) => void end(s, extra)} />
+        ) : kind === 'garba' ? (
+          <GarbaDefi onEnd={(s) => void end(s)} />
+        ) : kind === 'alloco' ? (
+          <AllocoDefi onEnd={(s, egg) => void end(s, egg ? 'oeuf' : undefined)} />
+        ) : GESTE_DEFIS.has(kind) ? (
+          <GestesDefi kind={kind as GesteKind | 'geste'} act={act} onEnd={(s) => void end(s)} />
         ) : (
           <SkiDefi onEnd={(s) => void end(s)} />
         ))}
@@ -292,7 +340,8 @@ export function DefiSheet({ kind, simId, big, older, interactionId, practice, se
                 Super !
               </button>
             </div>
-            <ChallengeButton kind={kind} score={score} title={d.title} />
+            {/* (The home's gestures are no challenge to send: the action, done.) */}
+            {!GESTE_DEFIS.has(kind) && <ChallengeButton kind={kind} score={score} title={d.title} />}
           </div>
         </div>
       )}

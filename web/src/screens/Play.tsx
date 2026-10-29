@@ -96,7 +96,8 @@ import { NotifyPrompt } from '../components/NotifyPrompt'
 import { motoPaid, motoWalk, rideFare, RIDES, useMoto, type RideKind } from '../world3d/moto'
 import { GBAKA, inkOn, kerbWait, MOTO, waitsAtKerb } from '../game/rides'
 import { answerDrop, useDropAsk } from '../world3d/dropRoute'
-import { BABY_DEFIS, DefiButton, DefiSheet, defiLook, defiOf, PRACTICE, type DefiKind } from '../components/Defi'
+import { gesteOK } from '../components/defi/Gestes'
+import { BABY_DEFIS, GESTE_DEFIS, DefiButton, DefiSheet, defiLook, defiOf, PRACTICE, type DefiKind } from '../components/Defi'
 import { BolideApp } from './BolideApp'
 import { Tutorial, adultChapterDue, beginner, openTutorial, useTutorialAsked } from '../components/Tutorial'
 import { Arrival, arrivalDue, type ArrivalPart } from '../components/Arrival'
@@ -1009,6 +1010,15 @@ export function Play() {
     if (placeId) setOutside(false)
   }, [placeId])
 
+  // The home's gestures (the update « gestes-maison »): the action is the game, it opens as soon as it starts
+  // (not played yet; left with « Plus tard », the action goes on in its time).
+  // (Every other action, the same way: played as gestures made from what it is.)
+  const gesteNow = sim?.activity?.kind === 'do' && !sim.activity.defi && keyOpen(feats, 'gestes-maison') ? (defiOf(sim.activity.interaction.id) ?? (gesteOK(sim.activity) ? 'geste' : null)) : null
+  const gesteAt = gesteNow && GESTE_DEFIS.has(gesteNow) ? `${sim!.activity!.interaction.id}@${sim!.activity!.start}` : null
+  useEffect(() => {
+    if (gesteAt && gesteNow) setDefi(gesteNow)
+  }, [gesteAt]) // eslint-disable-line react-hooks/exhaustive-deps
+
   if (!sim) {
     // The same loading screen as everywhere: the perso dancing (components/Splash.tsx).
     return <Splash label="Chargement de Babi…" />
@@ -1020,7 +1030,7 @@ export function Play() {
   const doing = sim.activity?.kind === 'do' ? sim.activity : null
   // The défi this activity can be taken on as, not yet played (the ski off the island only, seen there).
   // (The school's lesson: an update, « ecole-vivante ».)
-  const defiNow = doing && !doing.defi && !(doing.interaction.id === 'aller-ecole' && !keyOpen(feats, 'ecole-vivante')) && !(BABY_DEFIS.has(defiOf(doing.interaction.id)!) && !keyOpen(feats, 'bebe-jeux')) && !(doing.interaction.id === 'bagarre-bebe' && !keyOpen(feats, 'bagarre-bebe')) ? defiOf(doing.interaction.id) : null
+  const defiNow = doing && !doing.defi && !(doing.interaction.id === 'aller-ecole' && !keyOpen(feats, 'ecole-vivante')) && !(BABY_DEFIS.has(defiOf(doing.interaction.id)!) && !keyOpen(feats, 'bebe-jeux')) && !(doing.interaction.id === 'bagarre-bebe' && !keyOpen(feats, 'bagarre-bebe')) && !(GESTE_DEFIS.has(defiOf(doing.interaction.id)!) && !keyOpen(feats, 'gestes-maison')) ? (defiOf(doing.interaction.id) ?? (keyOpen(feats, 'gestes-maison') && gesteOK(doing) ? 'geste' : null)) : null
   const stop = () => run('Arrêter', 'x', '', () => api.stop(sim.id))
   // The pad shows in the shoulder view (and the classic street); the buttons over the street sit beside it, or in the middle.
   // (At the wheel, the pedals and the wheel take its place.)
@@ -1348,7 +1358,7 @@ export function Play() {
       )}
 
       {/* ---------- Top HUD ---------- */}
-      <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:p-5">
+      <header className={`pointer-events-none absolute inset-x-0 top-0 z-20 ${defi ? 'hidden' : 'flex'} items-start justify-between gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:p-5`}>
         <Link to="/profil" viewTransition className="hud pointer-events-auto flex min-w-0 items-center gap-2 rounded-full py-1 pr-3 pl-1 transition active:scale-95 max-sm:max-w-[52vw] short:max-w-[36vw] sm:gap-2.5 sm:pr-4">
           <span className="block shrink-0 rounded-full p-[3px]" style={{ background: `conic-gradient(${moodHex} ${mood(sim.needs) * 3.6}deg, #e7e9f2 0)` }}>
             <span className="block h-9 w-9 overflow-hidden rounded-full border-2 border-white bg-gradient-to-b sm:h-11 sm:w-11 from-[#ffe7c7] to-[#ffb27a]">
@@ -1439,7 +1449,7 @@ export function Play() {
       </header>
 
       {/* ---------- Bottom HUD: needs, map, phone ---------- */}
-      <footer className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex items-end justify-between gap-2 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:p-5">
+      <footer className={`pointer-events-none absolute inset-x-0 bottom-0 z-20 ${defi ? 'hidden' : 'flex'} items-end justify-between gap-2 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:p-5`}>
         <button data-tour="carte" className="hud pointer-events-auto flex h-16 w-16 flex-col items-center justify-center gap-0.5 rounded-[20px] text-[11px] font-extrabold transition active:scale-95" onClick={() => setOverlay('map')}>
           <MapIcon size={24} strokeWidth={2.4} className="text-[var(--color-emerald)]" />
           Carte
@@ -1471,7 +1481,7 @@ export function Play() {
       {keyOpen(features, 'ambiance-sonore') && <Ambience rain={happeningId === 'pluie'} night={c.isNight} inside={showInside} music={!!(partyHeard || track)} />}
       {/* Finding the way: the mini-map, and every place of the quarter (at the wheel, the GPS does it) */}
       {!showInside && !placeId && !overlay && !players && !driven && (
-        <div className="pointer-events-none absolute top-[4.5rem] left-3 z-20 flex flex-col items-start gap-2 sm:top-[5.5rem] lg:left-5">
+        <div className="pointer-events-none absolute top-[4.5rem] left-3 z-20 flex flex-col items-start gap-2 sm:top-[5.5rem] lg:left-5 short:top-[4.25rem] short:flex-row">
           {/* A smaller map on a phone (scaled: the canvas keeps its sharpness) */}
           <div className="origin-top-left max-sm:-mr-[33px] max-sm:-mb-[33px] max-sm:scale-75 short:-mr-[53px] short:-mb-[53px] short:scale-[0.6]">
             <MiniMap onWalk={walkTo} />
@@ -1521,7 +1531,7 @@ export function Play() {
           the mini-map and the places' signs. The classic street has no views: the pad stays. */}
       {(!placeId || (strolling && !menuOpen)) && !overlay && !sim.activity && <WalkKeys />}
       {(!placeId ? padShown : roaming && !menuOpen && (strolling || !desktop)) && !overlay && !sim.activity && (
-        <div className={`pointer-events-none absolute left-3 z-20 lg:left-5 ${placeId ? 'bottom-[11rem] lg:bottom-[12rem]' : 'bottom-[6.25rem] lg:bottom-[7.5rem]'}`}>
+        <div className={`pointer-events-none absolute left-3 z-20 lg:left-5 ${placeId ? 'bottom-[11rem] lg:bottom-[12rem]' : 'bottom-[6.25rem] lg:bottom-[7.5rem]'} short:bottom-[5.25rem] short:flex short:flex-row-reverse short:items-end short:gap-2`}>
           <RunButton />
           <Joystick disabled={!!sim.activity || !!pending} className="pointer-events-auto" />
         </div>
@@ -1646,7 +1656,7 @@ export function Play() {
 
       {/* The invitation and the toasts in one column under the top bar: they stack, never on top of each other */}
       {/* (A phone held sideways, the screen low: narrower, and the last toast only, so the street stays in sight.) */}
-      <div className="pointer-events-none absolute top-[5.5rem] left-1/2 z-40 flex w-[min(400px,calc(100vw-24px))] -translate-x-1/2 flex-col gap-2 lg:top-24 short:top-[4.25rem] short:w-[min(340px,calc(100vw-24px))] short:gap-1.5 short:[&>.toast-card:not(:last-child)]:hidden">
+      <div className={`pointer-events-none absolute top-[5.5rem] left-1/2 z-40 ${defi ? 'hidden' : 'flex'} w-[min(400px,calc(100vw-24px))] -translate-x-1/2 flex-col gap-2 lg:top-24 short:top-[4.25rem] short:w-[min(340px,calc(100vw-24px))] short:gap-1.5 short:[&>.toast-card:not(:last-child)]:hidden`}>
         {!players && !placeId && !overlay && !damesOpen && around.dames && !damesSeen.includes(around.dames.id) && (
           <DamesBanner
             dame={around.dames}
@@ -1764,14 +1774,15 @@ export function Play() {
       {defi && sim.activity && (
         <DefiSheet
           kind={defi}
+          act={sim.activity.interaction}
           simId={sim.id}
           big={sim.activity.interaction.id === 'supermarche'}
           older={lifeOf(world, sim).stage?.id === 'ado'}
           interactionId={sim.activity.interaction.id}
           me={sim}
-          send={async (score) => {
+          send={async (score, extra) => {
             try {
-              const res = await api.defi(sim.id, defi, score)
+              const res = await api.defi(sim.id, defi, score, extra)
               apply(res)
               return res
             } catch (e) {
@@ -2059,11 +2070,12 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
   const title: Record<PhoneAppId, string> = { mentor: 'Ton mentor', bingo: 'Babi Bingo', casino: 'Babi Casino', here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Garbaya', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', babigram: 'Babigram', bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: 'Galerie', guide: 'Encyclopédie de Babi', dodo: 'Dodo', kineo: 'Kinéo', dames: 'Dames 225', huit: '8 américain', awale: 'Awalé 225', ludo: 'Ludo 225', gode: 'Godé', bolide: 'Bolide', jeux: 'Jeux', boutique: 'Boutique', idees: 'Tes idées pour Babi Life', politique: 'Politique', reglages: 'Réglages' }
 
   return (
-    <div className="phone-backdrop absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center" data-away={away || undefined} onClick={putAway}>
+    <div className="phone-backdrop absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center short:items-stretch short:justify-end" data-away={away || undefined} onClick={putAway}>
       {/* The phone: a metal band round it, its buttons on the sides, the black border, the screen. On a
-          real phone, no phone drawn in it: the game's phone takes the whole screen, as its own would. */}
+          real phone, no phone drawn in it: the game's phone takes the whole screen, as its own would; held
+          sideways, it stands on the right, the whole height, the street still in sight on the left. */}
       <div
-        className="phone-body animate-up relative h-[min(92%,780px)] w-[min(100%,384px)] rounded-[56px] p-[3px] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.75),inset_0_0_0_1px_rgba(255,255,255,0.25)] max-sm:h-full max-sm:w-full max-sm:rounded-none max-sm:p-0 max-sm:shadow-none"
+        className="phone-body animate-up relative h-[min(92%,780px)] w-[min(100%,384px)] rounded-[56px] p-[3px] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.75),inset_0_0_0_1px_rgba(255,255,255,0.25)] max-sm:h-full max-sm:w-full max-sm:rounded-none max-sm:p-0 max-sm:shadow-none short:h-full short:w-[min(100%,420px)] short:rounded-none short:p-0"
         data-away={away || undefined}
         style={{ background: 'linear-gradient(145deg,#d4d7dd 0%,#7a7e87 22%,#30333a 50%,#8d919a 78%,#e1e4e9 100%)' }}
         onClick={(e) => e.stopPropagation()}
@@ -2074,10 +2086,10 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
           ['left', 212, 50],
           ['right', 170, 78],
         ].map(([side, top, h]) => (
-          <span key={`${side}${top}`} className={`absolute w-[3px] rounded-sm max-sm:hidden ${side === 'left' ? '-left-[3px]' : '-right-[3px]'}`} style={{ top: top as number, height: h as number, background: 'linear-gradient(90deg,#5d616a,#a9adb5)' }} />
+          <span key={`${side}${top}`} className={`absolute w-[3px] rounded-sm max-sm:hidden short:hidden ${side === 'left' ? '-left-[3px]' : '-right-[3px]'}`} style={{ top: top as number, height: h as number, background: 'linear-gradient(90deg,#5d616a,#a9adb5)' }} />
         ))}
-        <div className="relative h-full rounded-[53px] bg-black p-[8px] max-sm:rounded-none max-sm:p-0">
-          <div ref={screen} className={`phone-screen relative flex h-full flex-col overflow-hidden rounded-[45px] max-sm:rounded-none ${app === null ? 'bg-[#1a1033]' : 'bg-white'}`}>
+        <div className="relative h-full rounded-[53px] bg-black p-[8px] max-sm:rounded-none max-sm:p-0 short:rounded-none short:p-0">
+          <div ref={screen} className={`phone-screen relative flex h-full flex-col overflow-hidden rounded-[45px] max-sm:rounded-none short:rounded-none ${app === null ? 'bg-[#1a1033]' : 'bg-white'}`}>
             {/* The wallpaper: a sunset over the lagoon, its soft lights. */}
             {app === null && (
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_80%_at_50%_0%,#ffb27a,#e0306a_55%,#3b1d6e)]">

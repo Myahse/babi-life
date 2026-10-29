@@ -7,6 +7,8 @@ import (
 	"math"
 	"net/http"
 	"slices"
+	"strconv"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 
@@ -48,6 +50,83 @@ var defiFor = map[string][]string{
 	"hochet": {"hochet"},
 	// The baby fight (the update « bagarre-bebe »).
 	"bagarre": {"bagarre-bebe"},
+	// The home's everyday things played as combos (the update « gestes-maison »): done, the action is done.
+	// (The meal: whatever is eaten from the fridge, game.FromFridgePrefix.)
+	"douche":  {"shower"},
+	"cuisine": {"cook-attieke"},
+	"repas":   {},
+	"dodo":    {"sleep", "nap"},
+	"cour":    {"jouer-cour"},
+	// The baby's day, played too.
+	"biberon":  {"biberon"},
+	"bouillie": {"bouillie"},
+	"bain":     {"bain-bebe"},
+	"calin":    {"calin"},
+	"caca":     {"caca"},
+	"pipi":     {"pipi"},
+	"vomir":    {"vomir"},
+	"pleurer":  {"pleurer"},
+	// The street food, played its own way: the fish fished out of the oil, the alloco caught in its paper.
+	"garba":  {"eat-garba"},
+	"alloco": {"eat-alloco"},
+	// The pot with the friends at the maquis: sat at the table, drinking, served again, the banknotes
+	// thrown, and the alcohol to watch (web components/defi/Bar.tsx).
+	"bar": {"drink-with-friends"},
+}
+
+// homeDefis: the home's gestures, behind the update « gestes-maison »: their score is the action itself.
+var homeDefis = []string{"douche", "cuisine", "repas", "dodo", "cour", "biberon", "bouillie", "bain", "calin", "caca", "pipi", "vomir", "pleurer", "garba", "alloco", "bar"}
+
+// The bar (the « bar » défi's extra « tournees:N;billets:M;soul »): a round served again, the banknotes
+// thrown at most, and what being drunk costs.
+const (
+	barRound   = 500
+	barRounds  = 6
+	barBillets = 20000
+)
+
+var barDrunk = game.Needs{Energy: -25, Hygiene: -10}
+
+// The alloco's egg (the alloco défi's extra « oeuf »): what it costs, what it fills.
+const (
+	allocoEgg     = 100
+	allocoEggFill = 12
+)
+
+// gesteLong: past this, an activity is a day out (school, a long visit): it goes on in its time.
+const gesteLong = 180
+
+// gesteNot: the activities with a screen of their own (the slot machine, the banknotes thrown, the night
+// together's fade to black): not played as gestures.
+var gesteNot = []string{game.SlotsMaquisID, game.SlotsCasinoID, game.NightID, "petit-travaillement", "travaillement", "grand-travaillement", "aller-ecole", "creche"}
+
+// gesteOK: whether an activity with no défi of its own can be played as gestures (the update
+// « gestes-maison », every action: web components/defi/Gestes.tsx makes its steps from what it is).
+// Never work that pays (the pay comes with the time worked, not with arrows) nor a talk (its own sheet).
+func gesteOK(a *game.Activity) bool {
+	it := a.Interaction
+	return a.Kind == "do" && a.Career == "" && it.Cost >= 0 && it.Minutes <= gesteLong && a.PlaceKind != "chat" && defiOf(it.ID) == "" && !slices.Contains(gesteNot, it.ID)
+}
+
+// homeLines: what's said after a home gesture, played badly, well, perfectly.
+var homeLines = map[string][3]string{
+	"douche":   {"Une douche vite fait : il reste du savon derrière les oreilles.", "Une bonne douche, propre et frais.", "La douche parfaite : tu sens bon jusqu'au bout de la rue !"},
+	"cuisine":  {"Le poisson a un peu brûlé… mais ça se mange.", "Un bon attiéké-poisson, bien assaisonné.", "Attiéké-poisson de chef : même la voisine vient goûter !"},
+	"repas":    {"Mangé trop vite : un peu lourd sur l'estomac.", "Un bon repas, tranquillement.", "Un repas savouré jusqu'à la dernière bouchée : le ventre content !"},
+	"dodo":     {"Une nuit agitée, tu t'es retourné·e dans tous les sens.", "Une bonne nuit de sommeil.", "Dormi comme un bébé : tu te lèves en pleine forme !"},
+	"cour":     {"Tombé·e sur les genoux : un pansement et on recommence.", "Une belle partie dans la cour avec les copains.", "Le roi de la cour : les copains crient ton nom !"},
+	"biberon":  {"Du lait partout sur le menton…", "Le biberon bu, le petit rot fait.", "Biberon fini d'un trait : maman te félicite !"},
+	"bouillie": {"La moitié de la bouillie sur le bavoir.", "Toute la bouillie mangée.", "Tu ouvres grand à chaque cuillère : maman est ravie !"},
+	"bain":     {"De l'eau partout dans la salle de bain !", "Un bon bain avec les petits canards.", "Le plus beau bain du monde : tout propre et tout content !"},
+	"calin":    {"Un câlin un peu gigotant.", "Un doux câlin dans les bras de maman.", "Le câlin le plus tendre : maman fond !"},
+	"caca":     {"Ça déborde un peu… maman soupire.", "Caca fait, couche changée.", "Caca fait, couche propre en un clin d'œil : bravo bébé !"},
+	"pipi":     {"Un peu à côté…", "Pipi fait, papa change la couche.", "Pipi fait au bon moment : couche propre !"},
+	"vomir":    {"Bleuh, partout sur papa !", "Un petit renvoi, maman nettoie.", "Juste un petit renvoi dans le bavoir : propre !"},
+	"pleurer":  {"Des pleurs à réveiller tout le quartier.", "Quelques larmes, et maman te console.", "Un petit chagrin vite consolé : tu souris déjà !"},
+	"geste":    {"Fait, mais un peu à la va-vite.", "Bien fait !", "Parfait, du début à la fin !"},
+	"garba":    {"Un autre client a eu ton thon, et l'attiéké t'a fait tousser…", "Un bon garba, bien mangé.", "Le meilleur morceau et pas une toux : garba de champion !"},
+	"alloco":   {"La moitié de l'alloco dans le sable…", "Presque tout l'alloco dans le papier.", "Tout l'alloco attrapé, rien de perdu !"},
+	"bar":      {"Une soirée un peu molle à la table.", "Une bonne ambiance avec les amis.", "La table la plus ambiancée du maquis !"},
 }
 
 // babyDefis: the baby's games, behind the update « bebe-jeux ».
@@ -67,6 +146,9 @@ var (
 
 // defiOf: the défi of an interaction, or "".
 func defiOf(interaction string) string {
+	if strings.HasPrefix(interaction, game.FromFridgePrefix) {
+		return "repas"
+	}
 	for k, ids := range defiFor {
 		if slices.Contains(ids, interaction) {
 			return k
@@ -85,6 +167,9 @@ func defiReward(kind, interaction string, score, cost int) (game.Needs, int, str
 		tier = 2
 	case score >= 50:
 		tier = 1
+	}
+	if l, ok := homeLines[kind]; ok {
+		return game.Needs{}, 0, l[tier]
 	}
 	switch kind {
 	case "the":
@@ -162,16 +247,18 @@ func (h *Handler) defi(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Kind  string `json:"kind"`
 		Score int    `json:"score"`
+		// What was chosen along the way: the alloco's egg (« oeuf »).
+		Extra string `json:"extra"`
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
 		return
 	}
-	if (req.Kind == "ecole" && features.Default.BlocksKey(r.Context(), "ecole-vivante") != "") || (slices.Contains(babyDefis, req.Kind) && features.Default.BlocksKey(r.Context(), "bebe-jeux") != "") || (req.Kind == "bagarre" && features.Default.BlocksKey(r.Context(), "bagarre-bebe") != "") {
+	if (req.Kind == "ecole" && features.Default.BlocksKey(r.Context(), "ecole-vivante") != "") || (slices.Contains(babyDefis, req.Kind) && features.Default.BlocksKey(r.Context(), "bebe-jeux") != "") || (req.Kind == "bagarre" && features.Default.BlocksKey(r.Context(), "bagarre-bebe") != "") || ((slices.Contains(homeDefis, req.Kind) || req.Kind == "geste") && features.Default.BlocksKey(r.Context(), "gestes-maison") != "") {
 		httpx.Error(w, http.StatusForbidden, "bientôt dans le jeu")
 		return
 	}
-	if _, ok := defiFor[req.Kind]; !ok {
+	if _, ok := defiFor[req.Kind]; !ok && req.Kind != "geste" {
 		httpx.Error(w, http.StatusUnprocessableEntity, errDefiKind.Error())
 		return
 	}
@@ -179,6 +266,16 @@ func (h *Handler) defi(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
 		text, back, err := playDefi(ctx, tx, s, req.Kind, score)
+		if err == nil && req.Kind == "alloco" && req.Extra == "oeuf" {
+			var paid int
+			text, paid = allocoWithEgg(s, text)
+			back -= paid
+		}
+		if err == nil && req.Kind == "bar" {
+			var spent int
+			text, spent = barNight(s, req.Extra, text)
+			back -= spent
+		}
 		if err != nil {
 			return game.Outcome{}, nil, err
 		}
@@ -189,7 +286,7 @@ func (h *Handler) defi(w http.ResponseWriter, r *http.Request) {
 // playDefi: the défi played during the Sim's activity (once): its bonus, the record; the line said and the money back.
 func playDefi(ctx context.Context, tx pgx.Tx, s *Sim, kind string, score int) (string, int, error) {
 	a := s.Activity
-	if a == nil || a.Kind != "do" || defiOf(a.Interaction.ID) != kind {
+	if a == nil || a.Kind != "do" || (kind == "geste" && !gesteOK(a)) || (kind != "geste" && defiOf(a.Interaction.ID) != kind) {
 		return "", 0, errDefiNot
 	}
 	if a.Defi > 0 {
@@ -198,6 +295,11 @@ func playDefi(ctx context.Context, tx pgx.Tx, s *Sim, kind string, score int) (s
 	a.Defi = max(1, score)
 	needs, back, text := defiReward(kind, a.Interaction.ID, score, a.Interaction.Cost)
 	s.Needs = s.Needs.Add(needs)
+	// The home's gestures are the action itself: played, all of it is done at once (well done, all its
+	// good; badly, a little less), whatever time it had left.
+	if slices.Contains(homeDefis, kind) || kind == "geste" {
+		s.Needs = homeDone(s.Needs, a, score)
+	}
 	// What comes back up to what was paid (the stake, money saved on the
 	// shopping) isn't a gain; what's won over it is, within the day's limit
 	// (the score is the phone's: a made-up one buys little).
@@ -236,6 +338,69 @@ func playDefi(ctx context.Context, tx pgx.Tx, s *Sim, kind string, score int) (s
 		a.End = min(a.End, s.GameMinutes)
 	}
 	return fmt.Sprintf("Défi %d/100. %s", score, text), back, nil
+}
+
+// allocoWithEgg: the egg taken with the alloco: paid, eaten (none when there's not enough money left).
+func allocoWithEgg(s *Sim, text string) (string, int) {
+	if s.Money < allocoEgg {
+		return text + " Pas assez pour l'œuf : ce sera pour la prochaine fois.", 0
+	}
+	s.Money -= allocoEgg
+	s.Needs = s.Needs.Add(game.Needs{Hunger: allocoEggFill})
+	return text + fmt.Sprintf(" Avec l'œuf (%s).", game.FCFA(allocoEgg)), allocoEgg
+}
+
+// barNight: the rounds served again and the banknotes thrown, paid (as far as the money goes), and
+// drunk, its cost. extra: « tournees:2;billets:5000;soul ». What was spent, and the line.
+func barNight(s *Sim, extra, text string) (string, int) {
+	rounds, billets, drunk := 0, 0, false
+	for _, part := range strings.Split(extra, ";") {
+		k, v, _ := strings.Cut(part, ":")
+		n, _ := strconv.Atoi(v)
+		switch k {
+		case "tournees":
+			rounds = min(max(n, 0), barRounds)
+		case "billets":
+			billets = min(max(n, 0), barBillets) / 100 * 100
+		case "soul":
+			drunk = true
+		}
+	}
+	spent := 0
+	if c := rounds * barRound; c > 0 {
+		c = min(c, s.Money/barRound*barRound)
+		s.Money -= c
+		spent += c
+		text += fmt.Sprintf(" Tournées : %s.", game.FCFA(c))
+	}
+	if b := min(billets, s.Money/100*100); b > 0 {
+		s.Money -= b
+		spent += b
+		s.Needs = s.Needs.Add(game.Needs{Social: math.Min(20, float64(b)/1000)})
+		text += fmt.Sprintf(" Billets lancés : %s, la table crie ton nom !", game.FCFA(b))
+	}
+	if drunk {
+		s.Needs = s.Needs.Add(barDrunk)
+		text += " Mais tu as trop bu : les amis te ramènent, la tête qui tourne."
+	}
+	return text, spent
+}
+
+// homeDone: a home gesture played: what was left of the action's good, all at once (0.6 of it played
+// badly, all of it played perfectly), and the action counted as done.
+// (What it costs, hunger after caca, is all of it however it's played; only the good is scaled.)
+func homeDone(n game.Needs, a *game.Activity, score int) game.Needs {
+	left := max(0, 1-a.Applied)
+	well := 0.6 + 0.4*float64(score)/100
+	part := func(v float64) float64 {
+		if v < 0 {
+			return v * left
+		}
+		return v * left * well
+	}
+	e := a.Interaction.Effect
+	a.Applied = 1
+	return n.Add(game.Needs{Hunger: part(e.Hunger), Energy: part(e.Energy), Hygiene: part(e.Hygiene), Social: part(e.Social), Fun: part(e.Fun)})
 }
 
 // defis: GET: the Sim's best score at each défi (none played: not there).

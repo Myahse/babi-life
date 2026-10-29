@@ -28,6 +28,7 @@ import { Talkable } from './Talkable'
 import { doingOf } from './talk'
 import { clock, weekdayOf } from '../game/rules'
 import { carer } from './carer'
+import { useGesture } from './gesture'
 import { tint } from '../avatar/textures'
 
 // Inside one's own house, on a screen of its own: the house itself (the one
@@ -263,6 +264,9 @@ function Walking({ sim, stage, way, spot, doing, onThere, steer, onMoved, onLeve
       }
     }
   })
+  // A gesture played (the home's gestures, components/defi/Gestes.tsx): made a moment over the action's pose (not lying in bed).
+  const gestureNow = useGesture()
+  const pose = gestureNow && !spot?.lying ? gestureNow : spot?.pose
   const look = spot?.pose === 'wash' ? { ...sim.look, outfit: 'serviette', accessory: 'none' } : sim.look
   return (
     <group ref={g} name="me">
@@ -276,7 +280,7 @@ function Walking({ sim, stage, way, spot, doing, onThere, steer, onMoved, onLeve
               <meshLambertMaterial color="#7a5233" />
             </mesh>
           )}
-          <Character look={look} gender={sim.gender} pose={spot.pose} stage={stage} marker={!spot.lying} />
+          <Character look={look} gender={sim.gender} pose={pose} stage={stage} marker={!spot.lying} />
           <ActionProps id={doing} kind="house" lying={spot.lying} stage={stage} {...(sim.family ? babyCare(sim.family, sim.look) : {})} />
         </group>
       ) : (

@@ -321,7 +321,8 @@ export const api = {
   garageAct: (id: string, action: 'parking' | 'buy' | 'sell' | 'drive', body: { kind?: string; model?: string; color?: string; vehicle?: number; metres?: number }) => post<ActionResult>(`/sims/${id}/garage/${action}`, body),
   /** Les défis (backend sims/defi.go): the best scores, and a score played during the activity. */
   defis: (id: string) => request<{ best: Record<string, number> }>(`/sims/${id}/defis`),
-  defi: (id: string, kind: string, score: number) => post<ActionResult>(`/sims/${id}/defi`, { kind, score }),
+  /** extra: what was chosen along the way (the alloco's egg: « oeuf », 100 Djai more). */
+  defi: (id: string, kind: string, score: number, extra?: string) => post<ActionResult>(`/sims/${id}/defi`, { kind, score, extra }),
   /** Babi Foot's career: read, the season saved, a player signed (paid in Djai) or let go. */
   footCareer: (id: string) => request<FootCareerView>(`/sims/${id}/foot`),
   footSave: (id: string, club: string, season: unknown) => request<FootCareerView>(`/sims/${id}/foot`, { method: 'PUT', body: JSON.stringify({ club, season }) }),

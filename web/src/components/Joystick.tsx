@@ -81,7 +81,7 @@ export function RunButton() {
   useEffect(() => () => void (sprint.on = false), [])
   return (
     <button
-      className={`pointer-events-auto mb-2 ml-1 flex h-10 items-center gap-1.5 rounded-full px-3.5 sm:h-12 sm:px-4 text-sm font-extrabold shadow-[0_8px_20px_-10px_rgba(0,0,0,0.6)] transition active:scale-95 ${on ? 'bg-[var(--color-orange)] text-white' : 'hud'}`}
+      className={`pointer-events-auto mb-2 ml-1 short:mb-0 short:ml-0 flex h-10 items-center gap-1.5 rounded-full px-3.5 sm:h-12 sm:px-4 text-sm font-extrabold shadow-[0_8px_20px_-10px_rgba(0,0,0,0.6)] transition active:scale-95 ${on ? 'bg-[var(--color-orange)] text-white' : 'hud'}`}
       onClick={() => {
         sprint.on = !on
         setOn(!on)

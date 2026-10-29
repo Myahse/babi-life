@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Baby, Blocks, Footprints, Music, GraduationCap, Car, Check, Clock3, Coffee, Gamepad2, Joystick, Link2, Send, ShoppingCart, Swords, Ticket, Trophy, Users, Waves, X, type LucideIcon } from 'lucide-react'
+import { Beer, Banana, Fish, Sparkles, Baby, Blocks, Footprints, Music, GraduationCap, Car, Check, Clock3, Coffee, Gamepad2, Joystick, Link2, Send, ShoppingCart, Swords, Ticket, Trophy, Users, Waves, X, type LucideIcon } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
 import { share as shareOut } from '../lib/native'
 import { DEFI, TICKET, defiSharing, useShare, type Sharing } from '../lib/share'
 import type { BetView, Chat, LotoTicket } from '../lib/types'
 import { pickLabel } from '../screens/BetApp'
 import type { DefiKind } from './Defi'
+import { GESTES } from './defi/Gestes'
 import { IconTile } from './ui'
 
 // What the chats draw as a card instead of words (lib/share.ts): a ticket someone shared (the bet
@@ -14,6 +15,11 @@ import { IconTile } from './ui'
 // to a friend in Gbairai, to everyone in the grin, or outside the game (a link).
 
 const DEFI_NAMES: Record<DefiKind, { title: string; icon: LucideIcon; colors: [string, string] }> = {
+  ...GESTES,
+  geste: { title: 'L’action', icon: Sparkles, colors: ['#ffc233', '#e09a00'] },
+  garba: { title: 'Le garba', icon: Fish, colors: ['#ffa94d', '#e8590c'] },
+  alloco: { title: 'L’alloco', icon: Banana, colors: ['#ffd43b', '#f08c00'] },
+  bar: { title: 'Le pot au maquis', icon: Beer, colors: ['#ffd166', '#e8a400'] },
   the: { title: 'Le thé du grin', icon: Coffee, colors: ['#ff9a3c', '#c8641e'] },
   ski: { title: 'Le slalom de Boulay', icon: Waves, colors: ['#3ba7ff', '#1c6fd6'] },
   courses: { title: 'La liste de courses', icon: ShoppingCart, colors: ['#00b86b', '#00894f'] },
