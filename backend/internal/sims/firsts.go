@@ -178,7 +178,7 @@ func (h *Handler) choose(w http.ResponseWriter, r *http.Request) {
 			if tag.RowsAffected() == 0 {
 				return game.Outcome{}, nil, errChosen
 			}
-			text := fmt.Sprintf("« %s » : le premier mot de %s ! Toute la famille le répète, et il le dira encore longtemps.", req.Value, s.FirstName)
+			text := fmt.Sprintf("« %s » : le premier mot de %s ! Toute la famille le répète ; on l'entendra encore longtemps.", req.Value, s.FirstName)
 			events := []Event{{Kind: "life", Text: text, GameTime: s.GameMinutes}}
 			if features.Default.BlocksKey(r.Context(), "premieres-fois") == "" {
 				events = append(events, markFirst(r.Context(), tx, s, Firsts[len(Firsts)-1], fmt.Sprintf("« %s ».", req.Value))...)
