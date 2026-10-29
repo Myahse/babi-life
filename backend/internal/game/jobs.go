@@ -20,8 +20,8 @@ type JobTask struct {
 	Lines []string `json:"-"`
 }
 
-// TaskCooldown: game minutes before the same task can be done again (an hour of the shift).
-const TaskCooldown = 60
+// TasksADay: the job's tasks a player can play in a day (each its own little game: no clock to wait on).
+const TasksADay = 5
 
 // TaskOf: the career's task by its id, if the Sim's rung allows it.
 func (c Career) TaskOf(id string, level int) (JobTask, bool) {

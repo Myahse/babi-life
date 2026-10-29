@@ -24,6 +24,8 @@ const (
 	FromGig Income = "boulot"
 	// FromTips: the tips at work (game.JobTask).
 	FromTips Income = "pourboire"
+	// FromTask: the job's tasks played at work (each its own little game), five a day.
+	FromTask Income = "tache"
 	// FromDefi: the money a défi wins over what it cost (sims/defi.go).
 	FromDefi Income = "defi"
 	// FromTournament: the Saturday tournament's prize.
@@ -72,6 +74,7 @@ var Caps = map[Income]Cap{
 	FromWork:       {Times: 1, Full: "Tu as déjà fait ta journée de travail aujourd'hui : reviens demain."},
 	FromGig:        {Djai: 2000, Full: "Plus de petit boulot aujourd'hui : reviens demain."},
 	FromTips:       {Djai: 800, Full: "Plus de pourboire aujourd'hui."},
+	FromTask:       {Times: TasksADay, Full: "Tu as déjà fait tes 5 tâches de travail aujourd'hui : reviens demain."},
 	FromDefi:       {Djai: 1000, Full: "Les gars du quartier ne misent plus contre toi aujourd'hui : reviens demain."},
 	FromTournament: {Djai: 2000, Times: 1, Full: "Tu as déjà joué le tournoi aujourd'hui."},
 	FromGames:      {Djai: 1500, Full: "Plus personne ne veut jouer de l'argent contre toi aujourd'hui : reviens demain."},
