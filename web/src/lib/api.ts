@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView, LotSpot, GodeRound, Mentor } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView, LotSpot, GodeRound, Mentor, Quote } from './types'
 
 /** A challenge to the street fight, or the fight it became. */
 export type Duel = { id: string; from: string; to: string; names: [string, string]; baby: boolean; state: 'pending' | 'on' | 'off'; at: string }
@@ -350,7 +350,7 @@ export const api = {
   /** Gbairai: the chats, a thread (after a message id), writing, blocking, reporting. */
   chats: (id: string) => request<Chat[]>(`/sims/${id}/gbairai`),
   thread: (id: string, friend: string, after = 0) => request<ChatMessage[]>(`/sims/${id}/gbairai/${friend}?after=${after}`),
-  write: (id: string, friend: string, body: string) => post<ChatMessage>(`/sims/${id}/gbairai/${friend}`, { body }),
+  write: (id: string, friend: string, body: string, replyTo?: number) => post<ChatMessage>(`/sims/${id}/gbairai/${friend}`, { body, replyTo }),
   /** Says whether this player is writing to the friend, and answers whether the friend is writing back. */
   typing: (id: string, friend: string, writing: boolean) => request<{ typing: boolean }>(`/sims/${id}/gbairai/${friend}/typing?writing=${writing ? 1 : 0}`),
   block: (id: string, friend: string, blocked: boolean) => post<{ blocked: boolean }>(`/sims/${id}/gbairai/${friend}/block`, { blocked }),
@@ -371,7 +371,7 @@ export const api = {
   clearPlot: (id: string, lot = 0) => post<ActionResult>(`/sims/${id}/plot/plan`, { clear: true, lot }),
   myBets: (id: string, app = '') => request<BetView[]>(`/sims/${id}/bets?app=${app}`),
   grin: (id: string, room: 'babi' | 'commune', after = 0) => request<{ room: string; messages: GrinMessage[] }>(`/sims/${id}/grin?room=${room}&after=${after}`),
-  sayGrin: (id: string, room: 'babi' | 'commune', body: string) => post<{ id: number; body: string }>(`/sims/${id}/grin`, { room, body }),
+  sayGrin: (id: string, room: 'babi' | 'commune', body: string, replyTo?: number) => post<{ id: number; body: string; replyTo?: number; quote?: Quote }>(`/sims/${id}/grin`, { room, body, replyTo }),
   reportGrin: (id: string, msg: number, reason: string) => post<{ text: string }>(`/sims/${id}/grin/${msg}/report`, { reason }),
   direct: (id: string, after = 0) => request<{ name: string; reactions: string[]; posts: DirectPost[] }>(`/sims/${id}/grin/direct?after=${after}`),
   reactDirect: (id: string, postId: number, emoji: string) => post<{ reactions: Record<string, number>; mine: string }>(`/sims/${id}/grin/direct/${postId}/react`, { emoji }),
@@ -385,7 +385,7 @@ export const api = {
   tikiFeed: (id: string, tab: 'pour-toi' | 'abonnements' | 'favoris' | 'auteur', author = '') => request<TikiPost[]>(`/sims/${id}/tiki?tab=${tab}&author=${encodeURIComponent(author)}`),
   tikiProfile: (id: string, other: string) => request<TikiProfile>(`/sims/${id}/tiki/profile/${other}`),
   tikiComments: (id: string, postId: number) => request<TikiComment[]>(`/sims/${id}/tiki/${postId}/comments`),
-  tikiComment: (id: string, postId: number, body: string) => post<{ id: string; body: string }>(`/sims/${id}/tiki/${postId}/comments`, { body }),
+  tikiComment: (id: string, postId: number, body: string, replyTo?: string) => post<{ id: string; body: string }>(`/sims/${id}/tiki/${postId}/comments`, { body, replyTo }),
   tikiUncomment: (id: string, comment: string) => request<void>(`/sims/${id}/tiki/comments/${comment}`, { method: 'DELETE' }),
   tikiCommentLike: (id: string, comment: string, liked: boolean) => post<{ liked: boolean }>(`/sims/${id}/tiki/comments/${comment}/like`, { liked }),
   tikiCommentReport: (id: string, comment: string, reason: string) => post<{ text: string }>(`/sims/${id}/tiki/comments/${comment}/report`, { reason }),

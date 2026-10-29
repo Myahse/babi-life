@@ -77,6 +77,9 @@ type TikiComment struct {
 	ByCreator bool         `json:"byCreator"`
 	CanDelete bool         `json:"canDelete"`
 	At        time.Time    `json:"at"`
+	// The comment it answers (update « repondre-message », reply.go), and a short quote of it.
+	ReplyTo string `json:"replyTo,omitempty"`
+	Quote   *Quote `json:"quote,omitempty"`
 }
 
 // npcCommentList: the audience's comments on a post, always the same for a post.
@@ -131,43 +134,10 @@ func (h *Handler) tikiComments(w http.ResponseWriter, r *http.Request) {
 	}
 	// On the game's posts the players' comments are in their own table, and
 	// their ids carry an « n » (their hearts stay on the screen, like the audience's).
-	q := `
-		SELECT c.id, o.id, o.first_name, o.gender, o.look, COALESCE(u.username, ''), c.body, c.created_at,
-			(SELECT count(*) FROM tiki_comment_likes l WHERE l.comment = c.id),
-			EXISTS(SELECT 1 FROM tiki_comment_likes l WHERE l.comment = c.id AND l.sim = $2)
-		FROM tiki_comments c JOIN sims o ON o.id = c.sim JOIN users u ON u.id = o.user_id
-		WHERE c.post = $1
-			AND NOT EXISTS(SELECT 1 FROM blocks k WHERE (k.sim = $2 AND k.blocked = c.sim) OR (k.sim = c.sim AND k.blocked = $2))
-		ORDER BY c.created_at DESC LIMIT 200`
-	prefix := ""
-	if id < 0 {
-		q, prefix = `
-		SELECT c.id, o.id, o.first_name, o.gender, o.look, COALESCE(u.username, ''), c.body, c.created_at, 0, false
-		FROM tiki_npc_comments c JOIN sims o ON o.id = c.sim JOIN users u ON u.id = o.user_id
-		WHERE c.post = $1
-			AND NOT EXISTS(SELECT 1 FROM blocks k WHERE (k.sim = $2 AND k.blocked = c.sim) OR (k.sim = c.sim AND k.blocked = $2))
-		ORDER BY c.created_at DESC LIMIT 200`, "n"
-	}
-	rows, err := h.DB.Query(r.Context(), q, id, me)
+	out, err := tikiCommentList(r.Context(), h.DB, me, id, owner)
 	if err != nil {
 		h.gbairaiFail(w, err)
 		return
-	}
-	defer rows.Close()
-	out := []TikiComment{}
-	for rows.Next() {
-		var c TikiComment
-		var a StoryAuthor
-		var cid int64
-		var username string
-		if err := rows.Scan(&cid, &a.ID, &a.FirstName, &a.Gender, &a.Look, &username, &c.Body, &c.At, &c.Likes, &c.Liked); err != nil {
-			h.gbairaiFail(w, err)
-			return
-		}
-		c.ID, c.Author, c.Name, c.Handle = prefix+strconv.FormatInt(cid, 10), &a, a.FirstName, tikiHandle(username, a.FirstName)
-		c.Mine, c.ByCreator = a.ID == me, a.ID == owner
-		c.CanDelete = c.Mine || owner == me
-		out = append(out, c)
 	}
 	// The audience under the players, the most liked first.
 	npc := npcCommentList(id, theme, npcComments(grown(views, at, time.Now())), at)
@@ -177,10 +147,15 @@ func (h *Handler) tikiComments(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) tikiComment(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Body string `json:"body"`
+		Body    string `json:"body"`
+		ReplyTo string `json:"replyTo"`
 	}
 	if err := httpx.Decode(r, &req); err != nil || strings.TrimSpace(req.Body) == "" {
 		httpx.Error(w, http.StatusBadRequest, errTikiComment.Error())
+		return
+	}
+	if req.ReplyTo != "" && !replyOpen(r.Context()) {
+		httpx.Error(w, http.StatusForbidden, "bientôt dans le jeu")
 		return
 	}
 	body, err := cleanCaption(req.Body)
@@ -206,16 +181,12 @@ func (h *Handler) tikiComment(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusTooManyRequests, errTikiTooChatty.Error())
 		return
 	}
-	var cid int64
-	table, prefix := "tiki_comments", ""
-	if id < 0 {
-		table, prefix = "tiki_npc_comments", "n"
-	}
-	if err := h.DB.QueryRow(ctx, `INSERT INTO `+table+` (post, sim, body) VALUES ($1, $2, $3) RETURNING id`, id, me, body).Scan(&cid); err != nil {
+	cid, err := addTikiComment(ctx, h.DB, me, id, body, req.ReplyTo)
+	if err != nil {
 		h.gbairaiFail(w, err)
 		return
 	}
-	httpx.JSON(w, http.StatusOK, map[string]any{"id": prefix + strconv.FormatInt(cid, 10), "body": body})
+	httpx.JSON(w, http.StatusOK, map[string]any{"id": cid, "body": body, "replyTo": req.ReplyTo})
 }
 
 // tikiUncomment: one's own comment, or any comment under one's own video.

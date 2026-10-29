@@ -478,26 +478,58 @@ function RailButton({ label, onClick, aria, children }: { label: string; onClick
 
 /* ---------- Comments, in a sheet ---------- */
 
+// The replies under the comment they answer (update « repondre-message »), one level deep like TikTok:
+// a reply to a reply goes under the same first comment. More than this, they wait for « Voir N réponses ».
+const REPLIES_SHOWN = 2
+
+/** The comments as TikTok lays them: the first ones, each with its replies (oldest first). */
+function threads(list: TikiComment[]) {
+  const byId = new Map(list.map((c) => [c.id, c]))
+  const rootOf = (c: TikiComment) => {
+    let r = c
+    for (let i = 0; i < 20 && r.replyTo && byId.has(r.replyTo); i++) r = byId.get(r.replyTo)!
+    return r
+  }
+  const replies = new Map<string, TikiComment[]>()
+  const tops: TikiComment[] = []
+  for (const c of list) {
+    const root = rootOf(c)
+    if (root === c) tops.push(c)
+    else replies.set(root.id, [...(replies.get(root.id) ?? []), c])
+  }
+  for (const r of replies.values()) r.sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
+  return { tops, replies, byId, rootOf }
+}
+
 function Comments({ sim, post, onClose, onCount }: { sim: Sim; post: TikiPost; onClose: () => void; onCount: (n: number) => void }) {
   const [list, setList] = useState<TikiComment[] | null>(null)
   const [text, setText] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [reporting, setReporting] = useState<TikiComment | null>(null)
   const [busy, setBusy] = useState(false)
+  const [replying, setReplying] = useState<TikiComment | null>(null)
+  const [unfolded, setUnfolded] = useState<Set<string>>(new Set())
+  const input = useRef<HTMLInputElement>(null)
+  const feats = useFeatures()
+  const canReply = keyOpen(feats, 'repondre-message')
   const load = () =>
     api
       .tikiComments(sim.id, post.id)
       .then((l) => (setList(l), onCount(l.length)))
       .catch((e) => setError(e instanceof ApiError ? e.message : 'Pas de réseau'))
   useEffect(() => void load(), []) // eslint-disable-line react-hooks/exhaustive-deps
+  const tree = useMemo(() => list && threads(list), [list])
 
   const send = async () => {
     if (!text.trim() || busy) return
     setBusy(true)
     setError(null)
     try {
-      await api.tikiComment(sim.id, post.id, text)
+      await api.tikiComment(sim.id, post.id, text, replying?.id)
       setText('')
+      // The thread answered stays open, the reply in sight.
+      if (replying && tree) setUnfolded((u) => new Set(u).add(tree.rootOf(replying).id))
+      setReplying(null)
       await load()
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Pas de réseau')
@@ -510,6 +542,54 @@ function Comments({ sim, post, onClose, onCount }: { sim: Sim; post: TikiPost; o
     // The audience's comments live in the game only, and the players' under a game creator's video have no
     // hearts on the server: their hearts stay on this screen.
     if (c.author && !c.id.startsWith('n')) void api.tikiCommentLike(sim.id, c.id, !c.liked).catch(() => undefined)
+  }
+  const answer = (c: TikiComment) => {
+    setReplying(c)
+    input.current?.focus()
+  }
+  // A comment, or a reply under one (smaller); a reply to a reply says to whom, one whose comment is gone says so.
+  const row = (c: TikiComment, reply: boolean) => {
+    const parent = c.replyTo ? tree?.byId.get(c.replyTo) : undefined
+    const to = reply && parent && parent.replyTo ? parent.handle : !parent && c.quote && !c.quote.deleted ? c.quote.name : null
+    return (
+      <div className="flex gap-3">
+        <span className={`block shrink-0 overflow-hidden rounded-full bg-[#eee] ${reply ? 'h-7 w-7' : 'h-9 w-9'}`}>
+          {c.author ? <Portrait look={c.author.look} gender={c.author.gender} framing="head" /> : <span className="grid h-full place-items-center text-sm font-extrabold text-black/60" style={{ background: `hsl(${(c.handle.length * 47) % 360} 70% 85%)` }}>{c.name[0]}</span>}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[12px] font-bold text-black/50">
+            {c.handle} {c.byCreator && <span className="ml-1 rounded bg-[#ff7a00] px-1 text-[10px] text-white">Créateur</span>}
+          </p>
+          {!parent && c.quote?.deleted && <p className="text-[11px] font-semibold text-black/40 italic">En réponse à un commentaire supprimé</p>}
+          <p className="text-[14px] leading-snug font-semibold text-black">
+            {to && <span className="mr-1 text-black/45">▸ @{to}</span>}
+            {c.body}
+          </p>
+          <p className="mt-0.5 flex gap-3 text-[11px] font-bold text-black/40">
+            {ago(c.at)}
+            {canReply && c.author && (
+              <button onClick={() => answer(c)} className="flex items-center gap-0.5">
+                Répondre
+              </button>
+            )}
+            {c.canDelete && c.author && (
+              <button onClick={() => void api.tikiUncomment(sim.id, c.id).then(load).catch(() => undefined)} className="flex items-center gap-0.5">
+                <Trash2 size={11} /> Supprimer
+              </button>
+            )}
+            {c.author && !c.mine && (
+              <button onClick={() => setReporting(c)} className="flex items-center gap-0.5">
+                <Flag size={11} /> Signaler
+              </button>
+            )}
+          </p>
+        </div>
+        <button onClick={() => like(c)} className="flex flex-col items-center text-[11px] font-bold text-black/40" aria-label="J'aime le commentaire">
+          <Heart size={16} className={c.liked ? 'fill-[#ff3b5c] text-[#ff3b5c]' : ''} />
+          {c.likes > 0 && nf(c.likes)}
+        </button>
+      </div>
+    )
   }
   return (
     <Sheet onClose={onClose} title={`${nf(list?.length ?? post.comments)} commentaires`}>
@@ -532,45 +612,44 @@ function Comments({ sim, post, onClose, onCount }: { sim: Sim; post: TikiPost; o
           </div>
         )}
         <ul className="space-y-4 py-2">
-          {list?.map((c) => (
-            <li key={c.id} className="flex gap-3">
-              <span className="block h-9 w-9 shrink-0 overflow-hidden rounded-full bg-[#eee]">
-                {c.author ? <Portrait look={c.author.look} gender={c.author.gender} framing="head" /> : <span className="grid h-full place-items-center text-sm font-extrabold text-black/60" style={{ background: `hsl(${(c.handle.length * 47) % 360} 70% 85%)` }}>{c.name[0]}</span>}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-[12px] font-bold text-black/50">
-                  {c.handle} {c.byCreator && <span className="ml-1 rounded bg-[#ff7a00] px-1 text-[10px] text-white">Créateur</span>}
-                </p>
-                <p className="text-[14px] leading-snug font-semibold text-black">{c.body}</p>
-                <p className="mt-0.5 flex gap-3 text-[11px] font-bold text-black/40">
-                  {ago(c.at)}
-                  {c.canDelete && c.author && (
-                    <button onClick={() => void api.tikiUncomment(sim.id, c.id).then(load).catch(() => undefined)} className="flex items-center gap-0.5">
-                      <Trash2 size={11} /> Supprimer
-                    </button>
-                  )}
-                  {c.author && !c.mine && (
-                    <button onClick={() => setReporting(c)} className="flex items-center gap-0.5">
-                      <Flag size={11} /> Signaler
-                    </button>
-                  )}
-                </p>
-              </div>
-              <button onClick={() => like(c)} className="flex flex-col items-center text-[11px] font-bold text-black/40" aria-label="J'aime le commentaire">
-                <Heart size={16} className={c.liked ? 'fill-[#ff3b5c] text-[#ff3b5c]' : ''} />
-                {c.likes > 0 && nf(c.likes)}
-              </button>
-            </li>
-          ))}
+          {tree?.tops.map((c) => {
+            const replies = tree.replies.get(c.id) ?? []
+            const open = replies.length <= REPLIES_SHOWN || unfolded.has(c.id)
+            return (
+              <li key={c.id}>
+                {row(c, false)}
+                {replies.length > 0 && (
+                  <div className="mt-3 ml-12 space-y-3">
+                    {open && replies.map((r) => <div key={r.id}>{row(r, true)}</div>)}
+                    {replies.length > REPLIES_SHOWN && (
+                      <button onClick={() => setUnfolded((u) => (u.has(c.id) ? new Set([...u].filter((x) => x !== c.id)) : new Set(u).add(c.id)))} className="flex items-center gap-2 text-[12px] font-bold text-black/45">
+                        <span className="h-px w-6 bg-black/20" />
+                        {open ? 'Masquer' : `Voir ${replies.length} réponses`}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </li>
+            )
+          })}
         </ul>
       </div>
       {error && <p className="px-4 pb-1 text-xs font-bold text-[#d81b3f]">{error}</p>}
-      <div className="flex items-center gap-2 border-t border-black/10 p-3">
+      {replying && (
+        <div className="flex items-center gap-2 border-t border-black/10 bg-[#f8f8f8] px-4 py-2 text-[12px] font-bold text-black/55">
+          <span className="min-w-0 flex-1 truncate">Réponse à @{replying.handle}</span>
+          <button onClick={() => setReplying(null)} aria-label="Ne plus répondre" className="grid h-6 w-6 place-items-center rounded-full text-black/50 active:bg-black/5">
+            <X size={15} />
+          </button>
+        </div>
+      )}
+      <div className={`flex items-center gap-2 p-3 ${replying ? '' : 'border-t border-black/10'}`}>
         <input
+          ref={input}
           value={text}
           onChange={(e) => setText(e.target.value.slice(0, 150))}
           onKeyDown={(e) => e.key === 'Enter' && void send()}
-          placeholder="Ajoute un commentaire…"
+          placeholder={replying ? `Réponds à @${replying.handle}…` : 'Ajoute un commentaire…'}
           className="min-w-0 flex-1 rounded-full bg-[#f1f1f2] px-4 py-2.5 text-sm font-semibold text-black outline-none"
         />
         <button onClick={() => void send()} disabled={!text.trim() || busy} aria-label="Envoyer" className="grid h-10 w-10 place-items-center rounded-full bg-[#ff7a00] text-white disabled:opacity-40">

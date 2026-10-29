@@ -95,6 +95,9 @@ type Message struct {
 	Body   string     `json:"body"`
 	At     time.Time  `json:"at"`
 	ReadAt *time.Time `json:"readAt,omitempty"`
+	// The message it answers (update « repondre-message », reply.go), and a short quote of it.
+	ReplyTo *int64 `json:"replyTo,omitempty"`
+	Quote   *Quote `json:"quote,omitempty"`
 }
 
 // Chat is a friend in the list, with the last message.
@@ -159,7 +162,7 @@ func (h *Handler) gbairaiFail(w http.ResponseWriter, err error) {
 		httpx.Error(w, http.StatusTooManyRequests, err.Error())
 	case errors.Is(err, errNotFriends), errors.Is(err, errBlocked), errors.Is(err, errNoGbairai), errors.Is(err, errNoPhoneYet), strings.HasPrefix(err.Error(), "installe d'abord"):
 		httpx.Error(w, http.StatusForbidden, err.Error())
-	case errors.Is(err, errEmpty), errors.Is(err, errTooLong), errors.Is(err, errNoReason), errors.Is(err, errNoSuchMsg):
+	case errors.Is(err, errEmpty), errors.Is(err, errTooLong), errors.Is(err, errNoReason), errors.Is(err, errNoSuchMsg), errors.Is(err, errNoReplyTo):
 		httpx.Error(w, http.StatusBadRequest, err.Error())
 	default:
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
@@ -237,27 +240,11 @@ func (h *Handler) thread(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	after, _ := strconv.ParseInt(r.URL.Query().Get("after"), 10, 64)
-	rows, err := h.DB.Query(ctx, `SELECT id, from_sim, body, created_at, read_at FROM (
-		SELECT * FROM messages
-		WHERE LEAST(from_sim, to_sim) = $1::uuid AND GREATEST(from_sim, to_sim) = $2::uuid AND id > $3
-		ORDER BY id DESC LIMIT 60) m ORDER BY id`, x, y, after)
+	msgs, err := threadMessages(ctx, h.DB, me, other, after)
 	if err != nil {
 		h.gbairaiFail(w, err)
 		return
 	}
-	msgs := []Message{}
-	for rows.Next() {
-		var m Message
-		var from string
-		if err := rows.Scan(&m.ID, &from, &m.Body, &m.At, &m.ReadAt); err != nil {
-			rows.Close()
-			h.gbairaiFail(w, err)
-			return
-		}
-		m.Mine = from == me
-		msgs = append(msgs, m)
-	}
-	rows.Close()
 	_, _ = h.DB.Exec(ctx, `UPDATE messages SET read_at = now() WHERE to_sim = $1 AND from_sim = $2 AND read_at IS NULL`, me, other)
 	httpx.JSON(w, http.StatusOK, msgs)
 }
@@ -303,10 +290,15 @@ func isWriting(from, to string) bool {
 // write: send a message to a friend.
 func (h *Handler) write(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Body string `json:"body"`
+		Body    string `json:"body"`
+		ReplyTo *int64 `json:"replyTo"`
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
+		return
+	}
+	if req.ReplyTo != nil && !replyOpen(r.Context()) {
+		httpx.Error(w, http.StatusForbidden, "bientôt dans le jeu")
 		return
 	}
 	me, err := h.texter(r)
@@ -331,8 +323,8 @@ func (h *Handler) write(w http.ResponseWriter, r *http.Request) {
 		h.gbairaiFail(w, errTooFast)
 		return
 	}
-	m := Message{Mine: true, Body: body}
-	if err := h.DB.QueryRow(ctx, `INSERT INTO messages (from_sim, to_sim, body) VALUES ($1, $2, $3) RETURNING id, created_at`, me, to, body).Scan(&m.ID, &m.At); err != nil {
+	m, err := sendMessage(ctx, h.DB, me, to, body, req.ReplyTo)
+	if err != nil {
 		h.gbairaiFail(w, err)
 		return
 	}

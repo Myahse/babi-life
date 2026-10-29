@@ -7,7 +7,8 @@ import { Stories } from './Stories'
 import { Grin } from './Grin'
 import { NotifyBanner } from '../components/NotifyPrompt'
 import { previewOf } from '../components/Stickers'
-import { ChatAvatar, ChatScreen, clock } from '../components/ChatScreen'
+import { ChatAvatar, ChatScreen, clock, type ChatLine } from '../components/ChatScreen'
+import { keyOpen, useFeatures } from '../lib/features'
 
 /**
  * Gbairai: write to the players your Sim has made friends with in the game,
@@ -102,6 +103,7 @@ function Thread({ sim, chat, onBack }: { sim: Sim; chat: Chat; onBack: () => voi
   const [note, setNote] = useState<string | null>(null)
   const [reporting, setReporting] = useState<ChatMessage | 'friend' | null>(null)
   const last = useRef(0)
+  const feats = useFeatures()
 
   // The thread, then the new ones every 4 s.
   useEffect(() => {
@@ -143,10 +145,10 @@ function Thread({ sim, chat, onBack }: { sim: Sim; chat: Chat; onBack: () => voi
   const lastFromFriend = msgs.filter((m) => !m.mine).at(-1)?.id
   useEffect(() => setFriendTyping(false), [lastFromFriend])
 
-  const send = async (body: string) => {
+  const send = async (body: string, replyTo?: ChatLine) => {
     typed.current = { at: 0, text: false }
     try {
-      const m = await api.write(sim.id, chat.friend.id, body)
+      const m = await api.write(sim.id, chat.friend.id, body, replyTo?.id)
       last.current = Math.max(last.current, m.id)
       setMsgs((old) => [...old, m])
       setNote(null)
@@ -193,6 +195,7 @@ function Thread({ sim, chat, onBack }: { sim: Sim; chat: Chat; onBack: () => voi
       placeholder="Message"
       locked={blocked ? 'Bloqué·e' : undefined}
       onSend={send}
+      canReply={keyOpen(feats, 'repondre-message')}
       typing={friendTyping && !blocked ? chat.friend.firstName : undefined}
       onTyping={(text) => (typed.current = { at: Date.now(), text })}
       onReport={(m) => setReporting(msgs.find((x) => x.id === m.id) ?? null)}
