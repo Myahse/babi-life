@@ -1854,6 +1854,8 @@ export function Play() {
             mode={t.mode}
             to={to}
             look={sim.look}
+            gender={sim.gender}
+            stage={lifeOf(world, sim).stage?.id}
             color={look.color}
             trim={look.trim}
             onDone={() => {

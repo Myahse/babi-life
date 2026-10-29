@@ -16,7 +16,7 @@ export type SceneId = 'lit' | 'dents' | 'lumiere' | 'coucher' | 'eau' | 'savon' 
 
 type Props = { id: SceneId; k: number; look?: Look; gender?: 'femme' | 'homme'; stage?: string }
 
-const DEFAULT_LOOK = { skin: '#6e4024', hair: 'short', hairColor: '#141010', outfit: 'casual', outfitColor: '#ff7a00', body: 'moyen', height: 1, eyes: '#2b1a10', beard: 'none', accessory: 'none', pattern: 'cercles', marks: 'none', wear: 'neuf' } as unknown as Look
+export const DEFAULT_LOOK = { skin: '#6e4024', hair: 'short', hairColor: '#141010', outfit: 'casual', outfitColor: '#ff7a00', body: 'moyen', height: 1, eyes: '#2b1a10', beard: 'none', accessory: 'none', pattern: 'cercles', marks: 'none', wear: 'neuf' } as unknown as Look
 
 /** The pose the perso holds at each step. */
 const POSE: Record<SceneId, Pose> = { lit: 'busy', dents: 'brush', lumiere: 'busy', coucher: 'sleep', eau: 'wash', savon: 'wash', dos: 'wash', shampooing: 'wash', rincer: 'wash', secher: 'busy' }

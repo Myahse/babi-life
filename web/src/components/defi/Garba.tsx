@@ -1,5 +1,10 @@
-import { useEffect, useId, useRef, useState } from 'react'
-import { GlassWater, Hand } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { useFrame } from '@react-three/fiber'
+import type { ThreeEvent } from '@react-three/fiber'
+import * as THREE from 'three'
+import { GlassWater } from 'lucide-react'
+import { Box } from '../../world3d/props'
+import { Table3d } from './Table3d'
 import { haptic } from '../../lib/native'
 import { gesture } from '../../world3d/gesture'
 
@@ -20,92 +25,181 @@ const PIECES = [
 type PieceId = (typeof PIECES)[number]['id']
 type Piece = { key: number; kind: PieceId; x: number; y: number; vx: number; vy: number; rot: number }
 
+const CRUST = '#a8601c'
+const GOLD = '#d68a2e'
+const FLESH = '#ecc79a'
+
 /**
- * A piece of fried fish, as it comes out of the oil: the crust browned at the
- * edges and golden on top, the flesh paler where it was cut, the skin (silver on
- * the chinchard, scaled on the carpe), the backbone in the darne.
+ * A piece of fried fish as it comes out of the oil, in the game's blocks: the
+ * darne of thon (a thick round slice, the cut face pale, the backbone in the
+ * middle), the length of chinchard (silver skin crisped, the tail, the cut end),
+ * the chunk of carpe (its scales browned in rows), the carpe's head (the eye, the
+ * open mouth, the gill). About a hand long.
  */
-export function FishPiece({ kind, size = 1 }: { kind: PieceId; size?: number }) {
-  const id = useId().replace(/:/g, '')
-  const w = PIECES.find((p) => p.id === kind)!.w * size
-  const crust = (
-    <radialGradient id={`c${id}`} cx="45%" cy="38%" r="70%">
-      <stop offset="0" stopColor="#e6a24a" />
-      <stop offset="0.55" stopColor="#b8681f" />
-      <stop offset="1" stopColor="#5e2f0c" />
-    </radialGradient>
-  )
-  const flesh = (
-    <radialGradient id={`f${id}`} cx="50%" cy="45%" r="60%">
-      <stop offset="0" stopColor="#f3d2ad" />
-      <stop offset="0.7" stopColor="#d9a173" />
-      <stop offset="1" stopColor="#a8622a" />
-    </radialGradient>
-  )
-  const shine = <ellipse cx="38" cy="18" rx="16" ry="5" fill="#fff6d8" opacity="0.35" />
+export function FishPiece({ kind }: { kind: PieceId }) {
+  if (kind === 'thon')
+    return (
+      <group scale={[1, 1, 0.78]}>
+        <mesh position={[0, 0.14, 0]}>
+          <cylinderGeometry args={[0.55, 0.58, 0.28, 10]} />
+          <meshLambertMaterial color={CRUST} flatShading />
+        </mesh>
+        <mesh position={[0, 0.285, 0]}>
+          <cylinderGeometry args={[0.44, 0.48, 0.02, 10]} />
+          <meshLambertMaterial color={FLESH} flatShading />
+        </mesh>
+        {[-0.24, -0.08, 0.08, 0.24].map((x) => (
+          <Box key={x} p={[x, 0.3, 0]} s={[0.03, 0.01, 0.7]} c="#c98d55" />
+        ))}
+        <mesh position={[0, 0.3, 0]}>
+          <cylinderGeometry args={[0.1, 0.1, 0.03, 8]} />
+          <meshLambertMaterial color="#efe3cf" />
+        </mesh>
+        <Box p={[0, 0.32, 0]} s={[0.05, 0.02, 0.05]} c="#8a5a32" />
+      </group>
+    )
+  if (kind === 'chinchard')
+    return (
+      <group>
+        <Box p={[0, 0.13, 0]} s={[1.0, 0.26, 0.36]} c="#7d8893" />
+        <Box p={[0.02, 0.27, 0]} s={[0.9, 0.04, 0.26]} c={GOLD} />
+        <Box p={[0, 0.24, 0.12]} s={[0.92, 0.02, 0.04]} c="#e8e2d0" />
+        <Box p={[-0.51, 0.13, 0]} s={[0.03, 0.24, 0.34]} c={FLESH} />
+        <Box p={[-0.52, 0.13, 0]} s={[0.02, 0.06, 0.06]} c="#efe3cf" />
+        <group position={[0.55, 0.13, 0]}>
+          <mesh position={[0.1, 0, 0.1]} rotation={[0, 0.7, 0]}>
+            <boxGeometry args={[0.3, 0.04, 0.1]} />
+            <meshLambertMaterial color="#4a3524" flatShading />
+          </mesh>
+          <mesh position={[0.1, 0, -0.1]} rotation={[0, -0.7, 0]}>
+            <boxGeometry args={[0.3, 0.04, 0.1]} />
+            <meshLambertMaterial color="#4a3524" flatShading />
+          </mesh>
+        </group>
+      </group>
+    )
+  if (kind === 'carpe')
+    return (
+      <group>
+        <Box p={[0, 0.17, 0]} s={[0.8, 0.34, 0.6]} c={CRUST} />
+        {[0, 1, 2].map((r) =>
+          [0, 1, 2, 3].map((c) => <Box key={`${r}${c}`} p={[-0.27 + c * 0.18 + (r % 2) * 0.06, 0.35, -0.18 + r * 0.18]} s={[0.12, 0.03, 0.1]} c={(r + c) % 2 ? '#7a3d10' : GOLD} />),
+        )}
+        <Box p={[0.41, 0.17, 0]} s={[0.02, 0.28, 0.52]} c={FLESH} />
+        <Box p={[-0.41, 0.17, 0]} s={[0.02, 0.28, 0.52]} c={FLESH} />
+      </group>
+    )
   return (
-    <svg width={w} height={w * 0.7} viewBox="0 0 100 70" aria-hidden style={{ filter: 'drop-shadow(0 3px 2px rgba(60,25,0,0.55))' }}>
-      <defs>
-        {crust}
-        {flesh}
-        <linearGradient id={`s${id}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#c9d1d8" />
-          <stop offset="0.5" stopColor="#7d8893" />
-          <stop offset="1" stopColor="#4a3524" />
-        </linearGradient>
-      </defs>
-      {kind === 'thon' && (
-        <g>
-          {/* The darne: a thick slice, the crust all round, the cut face, the backbone */}
-          <path d="M14 30 Q12 10 40 8 Q72 4 86 20 Q96 34 84 50 Q66 66 38 62 Q12 58 14 30 Z" fill={`url(#c${id})`} stroke="#4a2408" strokeWidth="2" />
-          <path d="M24 31 Q24 17 44 16 Q68 14 77 25 Q84 36 76 46 Q62 56 42 53 Q24 50 24 31 Z" fill={`url(#f${id})`} />
-          {[0, 1, 2, 3].map((i) => (
-            <path key={i} d={`M${34 + i * 9} 20 Q${30 + i * 9} 35 ${34 + i * 9} 50`} stroke="#b97a45" strokeWidth="1.6" fill="none" opacity="0.7" />
-          ))}
-          <circle cx="52" cy="34" r="5" fill="#efe3cf" stroke="#8a5a32" strokeWidth="1.5" />
-          <circle cx="52" cy="34" r="1.8" fill="#8a5a32" />
-          <path d="M20 26 Q17 40 26 52" stroke="#3a1a04" strokeWidth="3" fill="none" opacity="0.5" />
-          {shine}
-        </g>
-      )}
-      {kind === 'chinchard' && (
-        <g>
-          {/* A length of chinchard cut across: the silver skin crisped brown, the tail, the pale cut end */}
-          <path d="M6 36 Q20 14 58 14 Q74 14 80 24 L96 12 L92 36 L97 58 L80 46 Q72 58 56 58 Q20 58 6 36 Z" fill={`url(#s${id})`} stroke="#3a2a1c" strokeWidth="2" />
-          <path d="M14 36 Q24 20 52 20 Q66 22 74 30 Q66 50 52 52 Q24 52 14 36 Z" fill={`url(#c${id})`} opacity="0.75" />
-          <ellipse cx="9" cy="36" rx="6" ry="15" fill={`url(#f${id})`} stroke="#6b3a12" strokeWidth="1.5" />
-          <circle cx="9" cy="36" r="2" fill="#efe3cf" />
-          <path d="M22 34 Q46 30 72 34" stroke="#e8e2d0" strokeWidth="2" fill="none" opacity="0.8" />
-          {[0, 1, 2, 3, 4].map((i) => (
-            <path key={i} d={`M${82 + i * 2} ${24 + i * 2} L${92 + i} ${16 + i * 9}`} stroke="#2f2216" strokeWidth="1" opacity="0.6" />
-          ))}
-          {shine}
-        </g>
-      )}
-      {kind === 'carpe' && (
-        <g>
-          {/* A chunk of carpe: the scaled skin on top, crisped, the cut sides */}
-          <path d="M10 40 Q8 14 34 10 Q66 6 88 18 Q98 38 86 56 Q58 66 30 62 Q10 58 10 40 Z" fill={`url(#c${id})`} stroke="#4a2408" strokeWidth="2" />
-          {[0, 1, 2, 3].map((r) =>
-            [0, 1, 2, 3, 4].map((c) => <path key={`${r}${c}`} d={`M${20 + c * 13 + (r % 2) * 6} ${20 + r * 9} q5 6 10 0`} stroke="#7a3d10" strokeWidth="1.6" fill="none" opacity="0.75" />),
-          )}
-          <path d="M86 20 Q96 38 86 54 Q80 38 86 20 Z" fill={`url(#f${id})`} />
-          {shine}
-        </g>
-      )}
-      {kind === 'tete' && (
-        <g>
-          {/* The head of a carpe: the gill plate, the eye, the open mouth, browned all over */}
-          <path d="M8 34 Q10 12 40 10 Q64 8 80 16 Q90 36 80 56 Q60 64 38 60 Q12 56 8 34 Z" fill={`url(#c${id})`} stroke="#4a2408" strokeWidth="2" />
-          <path d="M58 14 Q48 36 58 58" stroke="#5e2f0c" strokeWidth="3" fill="none" />
-          <path d="M80 16 Q90 36 80 56 Q74 36 80 16 Z" fill={`url(#f${id})`} />
-          <circle cx="30" cy="28" r="7" fill="#f2efe6" stroke="#3a1a04" strokeWidth="2" />
-          <circle cx="31" cy="28" r="3" fill="#1a0e06" />
-          <path d="M8 36 L18 40 L8 44" fill="#3a1a04" />
-          {shine}
-        </g>
-      )}
-    </svg>
+    <group>
+      <Box p={[0, 0.18, 0]} s={[0.66, 0.36, 0.56]} c="#94511a" />
+      <Box p={[-0.36, 0.14, 0]} s={[0.14, 0.24, 0.4]} c={CRUST} />
+      <Box p={[-0.44, 0.12, 0]} s={[0.06, 0.08, 0.24]} c="#3a1a04" />
+      <Box p={[0.06, 0.37, 0]} s={[0.04, 0.02, 0.5]} c="#5e2f0c" />
+      <Box p={[-0.15, 0.3, 0.29]} s={[0.14, 0.14, 0.02]} c="#f2efe6" />
+      <Box p={[-0.15, 0.3, 0.3]} s={[0.06, 0.06, 0.02]} c="#1a0e06" />
+      <Box p={[-0.15, 0.3, -0.29]} s={[0.14, 0.14, 0.02]} c="#f2efe6" />
+      <Box p={[0.34, 0.18, 0]} s={[0.02, 0.3, 0.48]} c={FLESH} />
+    </group>
+  )
+}
+
+/** The bassine is 6 wide (0..1 across it, as the pieces move). */
+const PAN = 6
+const at = (x: number, y: number): [number, number, number] => [(x - 0.5) * PAN, 0, (y - 0.5) * PAN]
+
+/** The oil seething: bubbles coming up all over and bursting. */
+function Sizzle() {
+  const g = useRef<THREE.Group>(null)
+  const spots = useRef([...Array(18)].map((_, i) => ({ a: i * 2.39, r: 0.3 + ((i * 7) % 10) / 10 * 2.1, p: (i * 0.37) % 1 })))
+  useFrame((_, dt) => {
+    g.current?.children.forEach((m, i) => {
+      const s = spots.current[i]
+      s.p = (s.p + dt * (0.9 + (i % 4) * 0.25)) % 1
+      m.position.set(Math.cos(s.a) * s.r, 0.36, Math.sin(s.a) * s.r)
+      m.scale.setScalar(0.04 + s.p * 0.1)
+      ;((m as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = 0.8 * (1 - s.p)
+    })
+  })
+  return (
+    <group ref={g}>
+      {spots.current.map((_, i) => (
+        <mesh key={i}>
+          <sphereGeometry args={[1, 6, 6]} />
+          <meshBasicMaterial color="#fff1b8" transparent />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+/** The smoke going up off the oil. */
+function Smoke() {
+  const g = useRef<THREE.Group>(null)
+  useFrame(({ clock }) => {
+    g.current?.children.forEach((m, i) => {
+      const k = (clock.elapsedTime / 3 + i / 3) % 1
+      m.position.set(-1.2 + i * 1.2, 0.6 + k * 3, -0.6 + Math.sin(k * 6 + i) * 0.3)
+      m.scale.setScalar(0.4 + k * 0.9)
+      ;((m as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = 0.28 * (1 - k)
+    })
+  })
+  return (
+    <group ref={g}>
+      {[0, 1, 2].map((i) => (
+        <mesh key={i}>
+          <sphereGeometry args={[1, 8, 8]} />
+          <meshBasicMaterial color="#ffffff" transparent depthWrite={false} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+/** The bassine on its fire: the black iron, the handles, the oil, the glow under it. */
+function Bassine() {
+  return (
+    <group>
+      <mesh position={[0, 0.1, 0]}>
+        <cylinderGeometry args={[3.0, 2.5, 0.6, 24, 1, true]} />
+        <meshLambertMaterial color="#2a2a2e" side={THREE.DoubleSide} flatShading />
+      </mesh>
+      <mesh position={[0, 0.41, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[3.0, 0.08, 6, 32]} />
+        <meshLambertMaterial color="#45454c" />
+      </mesh>
+      <mesh position={[0, 0.3, 0]}>
+        <cylinderGeometry args={[2.88, 2.88, 0.04, 32]} />
+        <meshLambertMaterial color="#d88f1f" emissive="#b8660c" emissiveIntensity={0.35} />
+      </mesh>
+      {[-1, 1].map((s) => (
+        <mesh key={s} position={[s * 3.25, 0.38, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.3, 0.07, 6, 12, Math.PI]} />
+          <meshLambertMaterial color="#26262a" />
+        </mesh>
+      ))}
+      <Box p={[0, -0.3, 0]} s={[4.6, 0.2, 4.6]} c="#3a2a1c" />
+      <pointLight position={[0, -0.1, 0]} color="#ff8a2a" intensity={2} distance={6} />
+    </group>
+  )
+}
+
+/** Another customer's hand, coming down on the piece: the arm, the palm, the fingers. */
+function OtherHand({ x, y }: { x: number; y: number }) {
+  const g = useRef<THREE.Group>(null)
+  const t = useRef(0)
+  useFrame((_, dt) => {
+    t.current += dt
+    if (g.current) g.current.position.y = Math.max(0.5, 3 - t.current * 8)
+  })
+  const [px, , pz] = at(x, y)
+  return (
+    <group ref={g} position={[px, 3, pz]}>
+      <Box p={[0, 0.1, 0]} s={[0.6, 0.18, 0.7]} c="#7b4a2a" />
+      {[-0.21, -0.07, 0.07, 0.21].map((dx) => (
+        <Box key={dx} p={[dx, 0.06, 0.48]} s={[0.12, 0.12, 0.34]} c="#7b4a2a" />
+      ))}
+      <Box p={[0, 0.25, -1.1]} s={[0.46, 0.4, 1.6]} c="#3a6fb0" />
+    </group>
   )
 }
 
@@ -222,63 +316,86 @@ function Pan({ onDone }: { onDone: (score: number) => void }) {
   return (
     // The game in the bottom of the screen, the Sim seen above (the picture lifted: world3d/chatFraming.tsx).
     <div className="absolute inset-0 flex flex-col items-center justify-end gap-2 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" style={{ background: 'linear-gradient(rgba(27,18,12,0) 0%, rgba(27,18,12,0) 34%, rgba(27,18,12,0.88) 50%)' }}>
-      <style>{'@keyframes garba-sizzle { 0% { transform: scale(0.4); opacity: 0.9 } 100% { transform: scale(1.6) translateY(-6px); opacity: 0 } } @keyframes garba-smoke { 0% { transform: translateY(0) scale(1); opacity: 0.35 } 100% { transform: translateY(-60px) scale(2); opacity: 0 } }'}</style>
       <div className="card flex items-center gap-3 px-4 py-2">
         <span className="label whitespace-nowrap">La tantie</span>
         <span className="font-display text-[17px] leading-tight font-extrabold">« {f.name} ! »</span>
-        <FishPiece kind={want} size={0.62} />
       </div>
       <div className="text-[13px] font-extrabold text-white/80">
         Morceau {round + 1}/{ROUNDS} · pioche-le avant les autres clients
       </div>
-      {/* The bassine on the fire: its black rim and handles, the oil and its bubbles */}
-      <div className="relative aspect-square w-[min(82vw,42vh,380px)]">
-        <div className="absolute top-1/2 -left-[4%] h-[14%] w-[10%] -translate-y-1/2 rounded-l-full border-[6px] border-r-0 border-[#26262a]" />
-        <div className="absolute top-1/2 -right-[4%] h-[14%] w-[10%] -translate-y-1/2 rounded-r-full border-[6px] border-l-0 border-[#26262a]" />
-        <div className="absolute inset-0 rounded-full p-[4.5%]" style={{ background: 'radial-gradient(circle at 35% 30%, #5b5b62, #2a2a2e 45%, #111114 75%)', boxShadow: '0 0 60px 10px rgba(255,120,30,0.35), inset 0 2px 0 rgba(255,255,255,0.25)' }}>
-          <div className="relative h-full w-full overflow-hidden rounded-full" style={{ background: 'radial-gradient(circle at 42% 36%, #f6c45a, #d88f1f 40%, #9a560c 75%, #5a2e05)', boxShadow: 'inset 0 0 40px rgba(60,20,0,0.85)' }}>
-            {/* The oil's sheen */}
-            <div className="absolute top-[14%] left-[22%] h-[18%] w-[38%] rotate-[-18deg] rounded-full bg-[#fff2c0]/25 blur-md" />
-            {[...Array(16)].map((_, i) => (
-              <span key={i} className="absolute h-[2.2%] w-[2.2%] rounded-full border border-[#fff1b8]/70" style={{ left: `${12 + ((i * 37) % 76)}%`, top: `${12 + ((i * 53) % 76)}%`, animation: `garba-sizzle ${0.9 + (i % 5) * 0.25}s ease-out ${i * 0.17}s infinite` }} />
-            ))}
-            {pieces.map((p) => (
-              <button key={p.key} className="absolute p-1" style={{ left: `${p.x * 100}%`, top: `${p.y * 100}%`, transform: `translate(-50%,-50%) rotate(${p.rot}deg)` }} onPointerDown={(e) => (e.preventDefault(), pick(p))} aria-label={PIECES.find((x) => x.id === p.kind)!.name}>
-                {/* The sizzle round each piece */}
-                <span className="absolute inset-[-6px] rounded-[40%] border-2 border-[#fff1b8]/40" style={{ animation: `garba-sizzle 1.1s ease-out ${(p.key % 7) * 0.13}s infinite` }} />
-                <FishPiece kind={p.kind} size={1.3} />
-              </button>
-            ))}
-          </div>
-        </div>
-        {/* The smoke going up */}
-        {[0, 1, 2].map((i) => (
-          <span key={i} className="pointer-events-none absolute h-16 w-16 rounded-full bg-white/20 blur-xl" style={{ left: `${25 + i * 22}%`, top: '8%', animation: `garba-smoke 3s ease-out ${i}s infinite` }} />
-        ))}
-        {hand && (
-          <span className="pointer-events-none absolute animate-pop text-[#8a5a3a]" style={{ left: `${hand.x * 100}%`, top: `${hand.y * 100}%`, transform: 'translate(-50%,-50%)' }}>
-            <Hand size={58} strokeWidth={2.2} fill="#9b6338" />
-          </span>
-        )}
+      {/* The bassine on the fire, the pieces in the oil: tap the one called */}
+      <div className="relative aspect-square w-[min(92vw,46vh,420px)]">
+        <Table3d className="!absolute inset-0">
+          <Bassine />
+          <Sizzle />
+          <Smoke />
+          {pieces.map((p) => (
+            <group key={p.key} position={[at(p.x, p.y)[0], 0.3, at(p.x, p.y)[2]]} rotation={[0, (p.rot * Math.PI) / 180, 0]} onPointerDown={(e: ThreeEvent<PointerEvent>) => (e.stopPropagation(), pick(p))}>
+              <FishPiece kind={p.kind} />
+              {/* A wide invisible hold round each piece: a finger finds it */}
+              <mesh visible={false}>
+                <boxGeometry args={[1.2, 0.8, 1.0]} />
+              </mesh>
+            </group>
+          ))}
+          {hand && <OtherHand x={hand.x} y={hand.y} />}
+        </Table3d>
       </div>
       <div className="h-6 text-[15px] font-extrabold text-[#ffd76a]">{said}</div>
     </div>
   )
 }
 
-/** One spoonful's worth of attiéké: a heap of little grains, each its own shade. */
+/** One forkful of attiéké: a little heap of grains in their shades of cream. */
 function Clump({ seed }: { seed: number }) {
-  const grains = [...Array(14)].map((_, i) => {
-    const a = (seed * 7 + i * 2.39) % (Math.PI * 2)
-    const r = ((seed * 13 + i * 5) % 9) * 1.2
-    return { x: 13 + Math.cos(a) * r, y: 12 + Math.sin(a) * r * 0.75, c: ['#fff8dc', '#f7eccb', '#efe0b4', '#fffdf0'][(seed + i) % 4] }
+  return (
+    <group>
+      {[...Array(7)].map((_, i) => {
+        const a = seed * 1.7 + i * 2.39
+        const r = (i % 3) * 0.09
+        return <Box key={i} p={[Math.cos(a) * r, 0.06 + (i % 2) * 0.05 + (i === 0 ? 0.06 : 0), Math.sin(a) * r]} s={[0.12, 0.1, 0.12]} c={['#fff8dc', '#f7eccb', '#efe0b4', '#fffdf0'][(seed + i) % 4]} />
+      })}
+    </group>
+  )
+}
+
+/** The plate is 6 wide (0..1 across it, as the forkfuls lie). */
+const PLATE = 6
+const on = (x: number, y: number): [number, number, number] => [(x - 0.5) * PLATE, 0.12, (y - 0.5) * PLATE]
+
+/** The plate shaking with the coughs, its trimmings: the onion rings, the tomato, the piment, the thon. */
+function PlateTable({ choke, children }: { choke: boolean; children: React.ReactNode }) {
+  const g = useRef<THREE.Group>(null)
+  useFrame(({ clock }) => {
+    if (g.current) g.current.position.x = choke ? Math.sin(clock.elapsedTime * 50) * 0.12 : 0
   })
   return (
-    <svg width="28" height="24" viewBox="0 0 26 24" aria-hidden>
-      {grains.map((g, i) => (
-        <circle key={i} cx={g.x} cy={g.y} r="2" fill={g.c} stroke="#d6c38f" strokeWidth="0.5" />
+    <group ref={g}>
+      <mesh position={[0, 0, 0]}>
+        <cylinderGeometry args={[3.0, 2.6, 0.16, 32]} />
+        <meshLambertMaterial color="#e9edf1" />
+      </mesh>
+      <mesh position={[0, 0.085, 0]}>
+        <cylinderGeometry args={[2.4, 2.4, 0.02, 32]} />
+        <meshLambertMaterial color="#fbfcfd" />
+      </mesh>
+      {[[1.3, -1.1], [1.6, -0.5]].map(([x, z], i) => (
+        <mesh key={i} position={[x, 0.14, z]} rotation={[-Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.28, 0.06, 6, 14]} />
+          <meshLambertMaterial color="#b0478a" />
+        </mesh>
       ))}
-    </svg>
+      <mesh position={[0.4, 0.14, -1.6]}>
+        <cylinderGeometry args={[0.32, 0.32, 0.06, 12]} />
+        <meshLambertMaterial color="#e03131" />
+      </mesh>
+      <Box p={[-1.5, 0.16, 1.3]} s={[0.6, 0.12, 0.16]} c="#e03131" />
+      <Box p={[-1.12, 0.18, 1.3]} s={[0.16, 0.06, 0.06]} c="#2b8a3e" />
+      <group position={[1.3, 0.1, 1.2]} rotation={[0, 0.4, 0]} scale={1.3}>
+        <FishPiece kind="thon" />
+      </group>
+      {children}
+    </group>
   )
 }
 
@@ -352,29 +469,27 @@ function Plate({ onDone }: { onDone: (score: number) => void }) {
           </div>
           <span className="text-[10px] font-extrabold text-white/80">Gorge</span>
         </div>
-        {/* The plate: the attiéké heaped, the onion and tomato, the piment, the piece of thon */}
-        <div className={`relative aspect-square flex-1 rounded-full shadow-[0_12px_30px_rgba(0,0,0,0.55)] ${choke ? 'motion-shake' : ''}`} style={{ background: 'radial-gradient(circle at 40% 35%, #ffffff, #e9edf1 70%, #c9d1d8)' }}>
-          <div className="absolute inset-[7%] rounded-full" style={{ background: 'radial-gradient(circle at 45% 40%, #fbfcfd, #eef1f4)', boxShadow: 'inset 0 3px 8px rgba(0,0,0,0.12)' }} />
-          {/* The heap's bed, under the clumps still there */}
-          {clumps.length > 0 && <div className="absolute top-[24%] left-[14%] h-[52%] w-[56%] rounded-[50%] opacity-90" style={{ background: 'radial-gradient(circle at 45% 40%, #fffbe8, #f1e4bb 70%, transparent 72%)', transform: `scale(${0.4 + (clumps.length / 24) * 0.6})` }} />}
-          {clumps.map((c) => (
-            <button key={c.i} className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${c.x * 100}%`, top: `${c.y * 100}%` }} onPointerDown={(e) => (e.preventDefault(), swallow(1, 9))} aria-label="Piquer">
-              <Clump seed={c.i} />
-            </button>
-          ))}
-          {/* Onion rings, tomato, the piment */}
-          {[[0.72, 0.3], [0.78, 0.42]].map(([x, y], i) => (
-            <span key={i} className="pointer-events-none absolute h-[11%] w-[11%] -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-[#b0478a] bg-[#f6e6f0]/60" style={{ left: `${x * 100}%`, top: `${y * 100}%` }} />
-          ))}
-          <span className="pointer-events-none absolute top-[20%] left-[56%] h-[12%] w-[12%] rounded-full border-2 border-[#c92a2a] bg-[radial-gradient(circle,#ff8787_30%,#e03131_32%,#e03131_45%,#ff8787_47%)]" />
-          <svg className="pointer-events-none absolute top-[64%] left-[18%] rotate-[-20deg]" width="38" height="16" viewBox="0 0 38 16" aria-hidden>
-            <path d="M2 8 Q14 1 34 6 Q36 8 34 10 Q14 15 2 8 Z" fill="#e03131" stroke="#8a1414" strokeWidth="1" />
-            <path d="M34 7 L38 4" stroke="#2b8a3e" strokeWidth="2.4" />
-          </svg>
-          <span className="pointer-events-none absolute right-[10%] bottom-[14%] rotate-12">
-            <FishPiece kind="thon" size={1.05} />
-          </span>
-          {choke && <div className="absolute inset-0 grid place-items-center font-display text-[28px] font-extrabold text-[#d81b3f] [text-shadow:0_2px_0_#fff]">Kof kof !</div>}
+        {/* The plate in 3D: tap a forkful of the attiéké */}
+        <div className="relative aspect-square flex-1">
+          <Table3d className="!absolute inset-0" cam={[0, 7.4, 3.2]}>
+            <PlateTable choke={choke}>
+              {clumps.length > 0 && (
+                <mesh position={[-0.5, 0.1, 0]} scale={[0.4 + (clumps.length / 24) * 0.6, 1, 0.4 + (clumps.length / 24) * 0.6]}>
+                  <cylinderGeometry args={[1.5, 1.7, 0.14, 16]} />
+                  <meshLambertMaterial color="#f1e4bb" />
+                </mesh>
+              )}
+              {clumps.map((c) => (
+                <group key={c.i} position={on(c.x, c.y)} onPointerDown={(e: ThreeEvent<PointerEvent>) => (e.stopPropagation(), swallow(1, 9))}>
+                  <Clump seed={c.i} />
+                  <mesh visible={false}>
+                    <boxGeometry args={[0.5, 0.4, 0.5]} />
+                  </mesh>
+                </group>
+              ))}
+            </PlateTable>
+          </Table3d>
+          {choke && <div className="pointer-events-none absolute inset-0 grid place-items-center font-display text-[28px] font-extrabold text-[#d81b3f] [text-shadow:0_2px_0_#fff]">Kof kof !</div>}
         </div>
       </div>
       <div className="flex w-full max-w-[470px] gap-2">

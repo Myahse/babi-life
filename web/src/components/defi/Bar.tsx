@@ -91,12 +91,9 @@ export function BarDefi({ money, onEnd }: { /** What the Sim has: no round nor b
       {said && <div className="mx-auto mb-2 animate-pop rounded-2xl bg-[#0f1230]/85 px-4 py-2 text-center text-[14px] font-extrabold text-white">{said}</div>}
       <div className="card pointer-events-auto mx-auto w-full max-w-[560px] p-3">
         <div className="flex items-end gap-3">
-          {/* The glass */}
-          <div className="relative h-20 w-12 shrink-0 overflow-hidden rounded-b-xl border-[3px] border-[#c9d3dc] bg-white/60">
-            <div className="absolute inset-x-0 bottom-0 bg-[linear-gradient(#ffd166,#e8a400)] transition-[height] duration-300" style={{ height: `${glass * 85}%` }} />
-            {glass > 0 && <div className="absolute inset-x-0 bg-white" style={{ bottom: `${glass * 85}%`, height: 6 }} />}
-          </div>
+          {/* (The glass itself is the one in the perso's hand, in the bar: only the gauges here.) */}
           <div className="min-w-0 flex-1 space-y-2">
+            <Gauge label="Verre" value={glass * 100} color="#e8a400" />
             <Gauge label="Ambiance" value={ambiance} color="#00a862" />
             <Gauge label="Alcool" value={alcohol} color={alcohol > 75 ? '#ff3d57' : '#ffa000'} line={DRUNK} />
             <div className="text-[11.5px] font-extrabold text-[var(--color-ink-soft)]">
