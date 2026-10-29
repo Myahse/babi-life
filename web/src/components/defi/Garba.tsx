@@ -343,7 +343,7 @@ function Pan({ onDone }: { onDone: (score: number) => void }) {
         Morceau {round + 1}/{ROUNDS} · pioche-le avant les autres clients
       </div>
       {/* The bassine on the fire, the pieces in the oil: tap the one called */}
-      <div className="relative aspect-square w-[min(92vw,46vh,420px)]">
+      <div className="relative aspect-square w-[min(92vw,46vh,420px)] short:w-[min(60vw,64vh)]">
         <Table3d className="!absolute inset-0">
           <Bassine />
           <Sizzle />

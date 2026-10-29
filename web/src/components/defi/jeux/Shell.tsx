@@ -13,15 +13,19 @@ import type { Decor, Host } from './types'
 
 export function JeuShell({ title, how, status, children, controls, said, tall }: { title: string; how: string; /** Where it's at (« 2/3 », « 12 attrapés »). */ status?: ReactNode; /** The 3D (a Stage). */ children: ReactNode; /** Buttons under the square. */ controls?: ReactNode; /** A word for what just happened. */ said?: string | null; /** A taller square (the runs, the rhythm). */ tall?: boolean }) {
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-end gap-2 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" style={{ background: 'linear-gradient(rgba(15,18,48,0) 0%, rgba(15,18,48,0) 30%, rgba(15,18,48,0.86) 48%)' }}>
-      <div className="card w-full max-w-[440px] px-4 py-2 text-center short:py-1">
-        <div className="font-display text-[17px] leading-tight font-extrabold">{title}</div>
-        <div className="text-[12.5px] leading-snug font-bold text-[var(--color-ink-soft)] short:hidden">{how}</div>
-        {status && <div className="mt-0.5 text-[12.5px] font-extrabold text-[var(--color-orange)]">{status}</div>}
+    // Portrait: the card, the square, the buttons, one under the other. Landscape (the phone turned):
+    // the card and the buttons on the left, the square big on the right.
+    <div className="absolute inset-0 flex flex-col items-center justify-end gap-2 bg-[linear-gradient(rgba(15,18,48,0)_0%,rgba(15,18,48,0)_30%,rgba(15,18,48,0.86)_48%)] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] short:flex-row short:items-center short:justify-center short:gap-5 short:bg-[rgba(15,18,48,0.7)] short:py-2">
+      <div className="contents short:flex short:w-[40vw] short:max-w-[420px] short:flex-col short:items-center short:gap-2">
+        <div className="card order-1 w-full max-w-[440px] px-4 py-2 text-center">
+          <div className="font-display text-[17px] leading-tight font-extrabold">{title}</div>
+          <div className="text-[12.5px] leading-snug font-bold text-[var(--color-ink-soft)]">{how}</div>
+          {status && <div className="mt-0.5 text-[12.5px] font-extrabold text-[var(--color-orange)]">{status}</div>}
+        </div>
+        {controls && <div className="order-3 flex w-full max-w-[440px] gap-2">{controls}</div>}
+        <div className="order-4 h-6 text-[15px] font-extrabold text-[#ffd76a]">{said}</div>
       </div>
-      <div className={`relative w-[min(92vw,44vh,420px)] short:w-[min(60vw,40vh)] ${tall ? 'aspect-[4/5]' : 'aspect-square'}`}>{children}</div>
-      {controls && <div className="flex w-full max-w-[440px] gap-2">{controls}</div>}
-      <div className="h-6 text-[15px] font-extrabold text-[#ffd76a]">{said}</div>
+      <div className={`relative order-2 short:order-none ${tall ? 'aspect-[4/5] w-[min(92vw,44vh,420px)] short:w-[min(44vw,70vh)]' : 'aspect-square w-[min(92vw,44vh,420px)] short:w-[min(50vw,86vh)]'}`}>{children}</div>
     </div>
   )
 }

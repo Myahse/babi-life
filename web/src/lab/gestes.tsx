@@ -7,6 +7,7 @@ import { DodoDefi, ReveDefi } from '../components/defi/Reve'
 import { GestesDefi } from '../components/defi/Gestes'
 import { TripLoading } from '../components/TripLoading'
 import { DoucheJeu } from '../components/defi/Douche'
+import { ToilettesJeu } from '../components/defi/Toilettes'
 import { JeuDefi, JEUX } from '../components/defi/jeux'
 import { PropsGallery } from './PropsGallery'
 import type { Jeu } from '../components/defi/jeux/types'
@@ -36,6 +37,6 @@ const DEMOS: Record<string, Jeu | null> = { choisir: demoChoisir, attraper: demo
 const scene = g === 'reve' || g === 'dodo' ? '#2a2140' : g === 'bar' ? 'linear-gradient(#3b2414, #1a0f08)' : 'linear-gradient(#cfa77a, #8a5a32)'
 createRoot(document.getElementById('root')!).render(
   <div style={{ position: 'fixed', inset: 0, background: scene }}>
-    {g === 'laver' ? <DoucheJeu look={LOOK} onEnd={done} /> : g.startsWith('props') ? <PropsGallery from={Number(g.split(':')[1]?.split('-')[0] ?? 0)} to={g.includes(':') ? Number(g.split('-')[1]) : undefined} /> : g.startsWith('demo:') ? <JeuDefi act={{ id: '', icon: '', label: '' }} jeu={DEMOS[g.slice(5)] ?? undefined} onEnd={done} /> : g.startsWith('jeu:') ? <JeuDefi act={{ id: g.slice(4), icon: '', label: g.slice(4) }} jeu={JEUX[g.slice(4)]} onEnd={done} /> : g.startsWith('act:') ? <GestesDefi kind="geste" act={{ id: g.slice(4), icon: '' }} look={LOOK} onEnd={done} /> : g === 'taxi' || g === 'gbaka' || g === 'woro' || g === 'moto' ? <TripLoading mode={g} to="Yopougon" look={LOOK} onDone={() => done(100)} /> : g === 'garba' ? <GarbaDefi onEnd={done} /> : g === 'alloco' ? <AllocoDefi onEnd={done} /> : g === 'bar' ? <BarDefi money={20000} onEnd={done} /> : g === 'reve' ? <ReveDefi look={LOOK} onEnd={done} /> : g === 'dodo' ? <DodoDefi look={LOOK} scenes onEnd={done} /> : <GestesDefi kind={g as 'douche'} look={LOOK} scenes onEnd={done} />}
+    {g === 'wc' ? <ToilettesJeu look={LOOK} onEnd={done} /> : g === 'laver' ? <DoucheJeu look={LOOK} onEnd={done} /> : g.startsWith('props') ? <PropsGallery from={Number(g.split(':')[1]?.split('-')[0] ?? 0)} to={g.includes(':') ? Number(g.split('-')[1]) : undefined} /> : g.startsWith('demo:') ? <JeuDefi act={{ id: '', icon: '', label: '' }} jeu={DEMOS[g.slice(5)] ?? undefined} onEnd={done} /> : g.startsWith('jeu:') ? <JeuDefi act={{ id: g.slice(4), icon: '', label: g.slice(4) }} jeu={JEUX[g.slice(4)]} onEnd={done} /> : g.startsWith('act:') ? <GestesDefi kind="geste" act={{ id: g.slice(4), icon: '' }} look={LOOK} onEnd={done} /> : g === 'taxi' || g === 'gbaka' || g === 'woro' || g === 'moto' ? <TripLoading mode={g} to="Yopougon" look={LOOK} onDone={() => done(100)} /> : g === 'garba' ? <GarbaDefi onEnd={done} /> : g === 'alloco' ? <AllocoDefi onEnd={done} /> : g === 'bar' ? <BarDefi money={20000} onEnd={done} /> : g === 'reve' ? <ReveDefi look={LOOK} onEnd={done} /> : g === 'dodo' ? <DodoDefi look={LOOK} scenes onEnd={done} /> : <GestesDefi kind={g as 'douche'} look={LOOK} scenes onEnd={done} />}
   </div>,
 )
