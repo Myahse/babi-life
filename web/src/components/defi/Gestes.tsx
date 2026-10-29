@@ -185,7 +185,7 @@ const KEYS: Record<string, Dir> = { ArrowUp: U, ArrowDown: D, ArrowLeft: L, Arro
 /** A step's time: a little more for a longer combination, a little less as the steps go. */
 const timeFor = (step: Step, k: number) => 3.2 + step.combo.length * 0.85 - k * 0.15
 
-export function GestesDefi({ kind, act, look, onEnd }: { kind: GesteKind | 'geste'; /** The perso, drawn in the scenes of its steps. */ look?: Look; /** Any other action: its steps made from it (stepsFor). */ act?: { id: string; icon: string }; onEnd: (score: number) => void }) {
+export function GestesDefi({ kind, act, look, gender, onEnd }: { kind: GesteKind | 'geste'; /** The perso itself, seen in the scenes of its steps. */ look?: Look; gender?: 'femme' | 'homme'; /** Any other action: its steps made from it (stepsFor). */ act?: { id: string; icon: string }; onEnd: (score: number) => void }) {
   const [steps] = useState(() => (kind === 'geste' ? stepsFor(act ?? { id: '', icon: '' }) : STEPS[kind]))
   const [k, setK] = useState(0)
   const [got, setGot] = useState(0)
@@ -276,7 +276,7 @@ export function GestesDefi({ kind, act, look, onEnd }: { kind: GesteKind | 'gest
       {step.scene && (
         <div className="card pointer-events-auto mx-auto mb-2 w-full max-w-[560px] overflow-hidden p-1.5">
           <div className="h-[min(26vh,190px)] overflow-hidden rounded-xl">
-            <StepScene id={step.scene} k={got / step.combo.length} look={look} />
+            <StepScene id={step.scene} k={got / step.combo.length} look={look} gender={gender} />
           </div>
         </div>
       )}
