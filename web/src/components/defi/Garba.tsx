@@ -183,22 +183,38 @@ function Bassine() {
   )
 }
 
-/** Another customer's hand, coming down on the piece: the arm, the palm, the fingers. */
-function OtherHand({ x, y }: { x: number; y: number }) {
+/**
+ * A hand coming down on a piece and taking it away: another customer's (from the far side, a blue
+ * sleeve) or yours (from your side, your sleeve). Down, it closes on the piece, then off with it.
+ */
+function Grab({ x, z, mine, children }: { x: number; z: number; mine?: boolean; /** What it takes (it shows in the hand once it's got there). */ children?: React.ReactNode }) {
   const g = useRef<THREE.Group>(null)
+  const held = useRef<THREE.Group>(null)
   const t = useRef(0)
+  const from = mine ? 1 : -1
   useFrame((_, dt) => {
     t.current += dt
-    if (g.current) g.current.position.y = Math.max(0.5, 3 - t.current * 8)
+    const k = t.current
+    const o = g.current
+    if (!o) return
+    // Down (0.3 s), a beat on the piece, then up and back where it came from.
+    const down = Math.min(1, k / 0.3)
+    const up = Math.max(0, (k - 0.4) / 0.4)
+    o.position.set(x, 3 - 2.55 * down + 3 * up, z + from * (1.5 * (1 - down) + 2.5 * up))
+    if (held.current) held.current.visible = k > 0.3
   })
-  const [px, , pz] = at(x, y)
+  const skin = mine ? '#6e4024' : '#7b4a2a'
   return (
-    <group ref={g} position={[px, 3, pz]}>
-      <Box p={[0, 0.1, 0]} s={[0.6, 0.18, 0.7]} c="#7b4a2a" />
+    <group ref={g} position={[x, 3, z + from * 1.5]} rotation={[0, mine ? Math.PI : 0, 0]}>
+      <Box p={[0, 0.1, 0]} s={[0.6, 0.18, 0.7]} c={skin} />
       {[-0.21, -0.07, 0.07, 0.21].map((dx) => (
-        <Box key={dx} p={[dx, 0.06, 0.48]} s={[0.12, 0.12, 0.34]} c="#7b4a2a" />
+        <Box key={dx} p={[dx, 0.06, 0.48]} s={[0.12, 0.12, 0.34]} c={skin} />
       ))}
-      <Box p={[0, 0.25, -1.1]} s={[0.46, 0.4, 1.6]} c="#3a6fb0" />
+      <Box p={[0.34, 0.05, 0.2]} s={[0.12, 0.12, 0.3]} c={skin} />
+      <Box p={[0, 0.25, -1.1]} s={[0.46, 0.4, 1.6]} c={mine ? '#ff7a00' : '#3a6fb0'} />
+      <group ref={held} position={[0, -0.25, 0.25]} visible={false}>
+        {children}
+      </group>
     </group>
   )
 }
@@ -218,7 +234,7 @@ function Pan({ onDone }: { onDone: (score: number) => void }) {
   piecesRef.current = pieces
   const [want, setWant] = useState<PieceId>('thon')
   const [round, setRound] = useState(0)
-  const [hand, setHand] = useState<{ x: number; y: number } | null>(null)
+  const [hand, setHand] = useState<{ x: number; y: number; kind: PieceId; mine?: boolean; key: number } | null>(null)
   const [said, setSaid] = useState<string | null>(null)
   const st = useRef({ got: 0, wrong: 0, key: 0, busy: false })
   // A fresh batch out of the oil each round: two of each, drifting in the sizzle.
@@ -272,8 +288,8 @@ function Pan({ onDone }: { onDone: (score: number) => void }) {
     const t = setTimeout(() => {
       const p = piecesRef.current.find((q) => q.kind === want)
       if (!p || st.current.busy) return
-      setHand({ x: p.x, y: p.y })
-      setTimeout(() => setHand(null), 600)
+      setHand({ x: p.x, y: p.y, kind: p.kind, key: p.key })
+      setTimeout(() => setHand(null), 900)
       setPieces((ps) => ps.filter((q) => q.key !== p.key))
     }, 2600 - round * 400)
     return () => clearTimeout(t)
@@ -295,6 +311,9 @@ function Pan({ onDone }: { onDone: (score: number) => void }) {
       haptic('success')
       gesture('busy', 1200)
       setSaid(`${PIECES.find((f) => f.id === want)!.name}, dans le plat !`)
+      // Your hand goes in and takes it out of the oil.
+      setHand({ x: p.x, y: p.y, kind: p.kind, mine: true, key: p.key })
+      setTimeout(() => setHand(null), 900)
       setPieces((ps) => ps.filter((q) => q.key !== p.key))
       next()
     } else {
@@ -338,7 +357,11 @@ function Pan({ onDone }: { onDone: (score: number) => void }) {
               </mesh>
             </group>
           ))}
-          {hand && <OtherHand x={hand.x} y={hand.y} />}
+          {hand && (
+            <Grab key={hand.key} x={at(hand.x, hand.y)[0]} z={at(hand.x, hand.y)[2]} mine={hand.mine}>
+              <FishPiece kind={hand.kind} />
+            </Grab>
+          )}
         </Table3d>
       </div>
       <div className="h-6 text-[15px] font-extrabold text-[#ffd76a]">{said}</div>
@@ -359,12 +382,37 @@ function Clump({ seed }: { seed: number }) {
   )
 }
 
+/** The fork going down into the attiéké and up with the mouthful (a bit of thon with it, now and then). */
+function Fork({ x, z, fish }: { x: number; z: number; fish: boolean }) {
+  const g = useRef<THREE.Group>(null)
+  const t = useRef(0)
+  useFrame((_, dt) => {
+    t.current += dt
+    const k = t.current
+    const down = Math.min(1, k / 0.22)
+    const up = Math.max(0, (k - 0.3) / 0.35)
+    g.current?.position.set(x, 2.2 - 2 * down + 3.2 * up, z + 1.2 * (1 - down) + 2.6 * up)
+  })
+  return (
+    <group ref={g} position={[x, 2.2, z + 1.2]} rotation={[-0.5, 0, 0]}>
+      <Box p={[0, 0.9, 0.55]} s={[0.12, 0.06, 1.2]} c="#c3c7cf" />
+      <Box p={[0, 0.9, -0.08]} s={[0.26, 0.05, 0.12]} c="#c3c7cf" />
+      {[-0.1, -0.03, 0.04, 0.11].map((dx) => (
+        <Box key={dx} p={[dx, 0.9, -0.28]} s={[0.035, 0.04, 0.3]} c="#c3c7cf" />
+      ))}
+      {/* The mouthful on its tines */}
+      <Box p={[0, 0.98, -0.25]} s={[0.24, 0.1, 0.2]} c="#f7eccb" />
+      {fish && <Box p={[0.06, 1.03, -0.22]} s={[0.12, 0.06, 0.1]} c="#a8601c" />}
+    </group>
+  )
+}
+
 /** The plate is 6 wide (0..1 across it, as the forkfuls lie). */
 const PLATE = 6
 const on = (x: number, y: number): [number, number, number] => [(x - 0.5) * PLATE, 0.12, (y - 0.5) * PLATE]
 
 /** The plate shaking with the coughs, its trimmings: the onion rings, the tomato, the piment, the thon. */
-function PlateTable({ choke, children }: { choke: boolean; children: React.ReactNode }) {
+function PlateTable({ choke, left, children }: { choke: boolean; /** What's left of the plate (1 full, 0 eaten): the fish goes with the attiéké. */ left: number; children: React.ReactNode }) {
   const g = useRef<THREE.Group>(null)
   useFrame(({ clock }) => {
     if (g.current) g.current.position.x = choke ? Math.sin(clock.elapsedTime * 50) * 0.12 : 0
@@ -391,9 +439,14 @@ function PlateTable({ choke, children }: { choke: boolean; children: React.React
       </mesh>
       <Box p={[-1.5, 0.16, 1.3]} s={[0.6, 0.12, 0.16]} c="#e03131" />
       <Box p={[-1.12, 0.18, 1.3]} s={[0.16, 0.06, 0.06]} c="#2b8a3e" />
-      <group position={[1.3, 0.1, 1.2]} rotation={[0, 0.4, 0]} scale={1.3}>
-        <FishPiece kind="thon" />
-      </group>
+      {/* The thon, eaten bite by bite along with the attiéké: a smaller piece each time, then only the bone */}
+      {left > 0 ? (
+        <group position={[1.3, 0.1, 1.2]} rotation={[0, 0.4, 0]} scale={[1.3 * (0.25 + 0.75 * left), 1.3, 1.3 * (0.35 + 0.65 * left)]}>
+          <FishPiece kind="thon" />
+        </group>
+      ) : (
+        <Box p={[1.3, 0.14, 1.2]} s={[0.5, 0.05, 0.08]} c="#efe3cf" />
+      )}
       {children}
     </group>
   )
@@ -412,14 +465,28 @@ function Plate({ onDone }: { onDone: (score: number) => void }) {
   const [choke, setChoke] = useState(false)
   const [water, setWater] = useState(3)
   const [press, setPress] = useState<number | null>(null)
-  const st = useRef({ t0: performance.now(), chokes: 0, done: false })
+  const st = useRef({ t0: performance.now(), chokes: 0, done: false, key: 0 })
+  // The mouthful being taken: the fork (a tap), or your hand making the ball (« pommer »).
+  const [bite, setBite] = useState<{ key: number; x: number; z: number; ball: boolean } | null>(null)
   useEffect(() => {
     const t = setInterval(() => setThroat((v) => Math.max(0, v - 1.2)), 200)
     return () => clearInterval(t)
   }, [])
-  const swallow = (n: number, fill: number) => {
+  const swallow = (n: number, fill: number, which?: number) => {
     if (choke || st.current.done) return
+    // The forkful tapped first (then the rest of the heap, from its edge).
+    if (which !== undefined) {
+      const i = clumps.findIndex((c) => c.i === which)
+      if (i > 0) clumps.unshift(...clumps.splice(i, 1))
+    }
     const left = clumps.length - n
+    // Seen taken: from where it was on the plate.
+    const c0 = clumps[0]
+    if (c0) {
+      const [x, , z] = on(c0.x, c0.y)
+      setBite({ key: st.current.key++, x, z, ball: n > 1 })
+      setTimeout(() => setBite(null), 800)
+    }
     setClumps((c) => c.slice(n))
     gesture('snack', 1000)
     const now = throat + fill
@@ -472,7 +539,18 @@ function Plate({ onDone }: { onDone: (score: number) => void }) {
         {/* The plate in 3D: tap a forkful of the attiéké */}
         <div className="relative aspect-square flex-1">
           <Table3d className="!absolute inset-0" cam={[0, 7.4, 3.2]}>
-            <PlateTable choke={choke}>
+            <PlateTable choke={choke} left={clumps.length / 24}>
+              {bite &&
+                (bite.ball ? (
+                  <Grab key={bite.key} x={bite.x} z={bite.z} mine>
+                    <mesh position={[0, 0.1, 0]}>
+                      <sphereGeometry args={[0.28, 8, 6]} />
+                      <meshLambertMaterial color="#f7eccb" flatShading />
+                    </mesh>
+                  </Grab>
+                ) : (
+                  <Fork key={bite.key} x={bite.x} z={bite.z} fish={bite.key % 3 === 0} />
+                ))}
               {clumps.length > 0 && (
                 <mesh position={[-0.5, 0.1, 0]} scale={[0.4 + (clumps.length / 24) * 0.6, 1, 0.4 + (clumps.length / 24) * 0.6]}>
                   <cylinderGeometry args={[1.5, 1.7, 0.14, 16]} />
@@ -480,7 +558,7 @@ function Plate({ onDone }: { onDone: (score: number) => void }) {
                 </mesh>
               )}
               {clumps.map((c) => (
-                <group key={c.i} position={on(c.x, c.y)} onPointerDown={(e: ThreeEvent<PointerEvent>) => (e.stopPropagation(), swallow(1, 9))}>
+                <group key={c.i} position={on(c.x, c.y)} onPointerDown={(e: ThreeEvent<PointerEvent>) => (e.stopPropagation(), swallow(1, 9, c.i))}>
                   <Clump seed={c.i} />
                   <mesh visible={false}>
                     <boxGeometry args={[0.5, 0.4, 0.5]} />
