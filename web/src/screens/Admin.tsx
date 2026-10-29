@@ -297,6 +297,52 @@ function GiveMoney({ k, onDone }: { k: string; onDone: () => void }) {
   )
 }
 
+/** Every player's perso grown up at once to an age (never younger), on its next turn, its birthdays said. */
+function GrowAll({ k }: { k: string }) {
+  const [sure, setSure] = useState<'enfant' | 'ado' | 'adulte' | null>(null)
+  const [e, setE] = useState<string | null>(null)
+  const [ok, setOk] = useState<string | null>(null)
+  const LABEL = { enfant: 'Enfant (3 ans)', ado: 'Ado (12 ans)', adulte: 'Adulte (18 ans)' }
+  const grow = async (stage: 'enfant' | 'ado' | 'adulte') => {
+    setE(null)
+    try {
+      const r = await call<{ sims: number }>('/admin/grow', k, { method: 'POST', body: JSON.stringify({ stage }) })
+      setOk(`${nf(r.sims)} persos passent à ${LABEL[stage].toLowerCase()} à leur prochain passage (ceux déjà plus âgés ne changent pas).`)
+      setSure(null)
+    } catch (x) {
+      setE(x instanceof Error ? x.message : 'Erreur')
+    }
+  }
+  return (
+    <Card title="Faire grandir tout le monde" className="mb-6">
+      <p className="mb-3 text-sm text-[#6b7280]">
+        Tous les persos des joueurs passent d'un coup à cet âge, à leur prochain passage dans le jeu : leurs anniversaires sont dits, le premier téléphone à 12 ans, et à 18 ans le départ de la maison avec l'argent de la famille. Personne ne rajeunit : un perso déjà plus âgé ne change pas.
+      </p>
+      <Err e={e} />
+      <Ok t={ok} />
+      {sure ? (
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="text-sm text-[#374151]">Tout le monde passe à {LABEL[sure].toLowerCase()} ?</span>
+          <Btn tone="light" onClick={() => setSure(null)}>
+            Annuler
+          </Btn>
+          <Btn tone="orange" onClick={() => void grow(sure)}>
+            Oui, faire grandir
+          </Btn>
+        </span>
+      ) : (
+        <span className="flex flex-wrap gap-2">
+          {(['enfant', 'ado', 'adulte'] as const).map((st) => (
+            <Btn key={st} tone="light" onClick={() => (setSure(st), setOk(null))}>
+              {LABEL[st]}
+            </Btn>
+          ))}
+        </span>
+      )}
+    </Card>
+  )
+}
+
 /** Before launch: every tester's perso back to just after it was created, the accounts made ordinary players. */
 function ResetTesters({ k, onDone }: { k: string; onDone: () => void }) {
   const [sure, setSure] = useState(false)
@@ -388,6 +434,7 @@ function Players({ k }: { k: string }) {
   return (
     <>
       <GiveMoney k={k} onDone={() => setVersion((v) => v + 1)} />
+      <GrowAll k={k} />
       <ResetTesters k={k} onDone={() => setVersion((v) => v + 1)} />
       <Card>
         <Err e={e} />

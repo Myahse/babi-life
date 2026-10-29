@@ -1311,7 +1311,8 @@ export function Play() {
         return <Billets money={sim.money} amounts={[100, 500, 1000, 5000]} label={label} color="#c9a14a" onThrow={(amount) => api.offrande(sim.id, amount).then((res) => (apply(res), res.outcome.text))} />
       })()}
       {/* Never over a match or a race: it waits till the street */}
-      {!showInside && !overlay && building === false && !(ballKey && ballKey !== played) && !racing && <NotifyPrompt />}
+      {/* Asked inside too (a baby lives at home), not over the arrival or the baptism */}
+      {!overlay && building === false && !(ballKey && ballKey !== played) && !racing && !arriving && !baptism && <NotifyPrompt />}
       {mapSlow && (
         <div className="pointer-events-none absolute inset-x-0 top-[38%] z-10 flex justify-center px-6">
           <p className="hud rounded-2xl px-4 py-2.5 text-center text-sm font-extrabold">La carte de Babi charge… Le réseau est lent : on réessaie tout seul.</p>

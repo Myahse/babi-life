@@ -78,8 +78,8 @@ func TestSyncHoldsAfterSilence(t *testing.T) {
 	if s.Activity == nil {
 		t.Fatal("still selling")
 	}
-	if left := s.Activity.End - s.GameMinutes; left != 7 {
-		t.Errorf("3 min played and 1 after the last sign: 7 left, got %d", left)
+	if left := s.Activity.End - s.GameMinutes; left != 3 {
+		t.Errorf("3 min played and 1 after the last sign: 3 left, got %d", left)
 	}
 }
 

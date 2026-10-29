@@ -3,7 +3,7 @@ package game
 import "testing"
 
 func TestLength(t *testing.T) {
-	for m, want := range map[int64]int64{0: 1, 15: 2, 20: 2, 30: 3, 60: 4, 120: 6, 240: 10, 7 * 60: 15, 8 * 60: 15, 24 * 60: 15} {
+	for m, want := range map[int64]int64{0: 1, 15: 1, 20: 1, 30: 2, 60: 3, 120: 4, 240: 6, 7 * 60: 8, 8 * 60: 8, 24 * 60: 8} {
 		if got := Length(m); got != want {
 			t.Errorf("Length(%d) = %d, want %d", m, got, want)
 		}

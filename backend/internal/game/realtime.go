@@ -20,18 +20,18 @@ func TimeOf(m int64) time.Time { return Epoch.Add(time.Duration(m) * time.Minute
 
 // MaxAction is the longest an action takes, in real minutes: only the
 // heaviest ones (a work shift, a night's sleep) take that long.
-const MaxAction = 15
+const MaxAction = 8
 
 // Length is how many real minutes an action takes, from its length as the
 // catalog writes it (a shift of 8 h, a shower of 20 min): life in Babi goes
-// faster than life. Up to half an hour, a tenth of it (a shower, 2 min);
-// beyond, three minutes and one more per half hour, never over MaxAction
-// (the zoo's 2 h: 6 min; a 4 h party: 10 min; sleep or work: 15 min).
+// faster than life. Up to half an hour, a twentieth of it, a minute at
+// least (a shower, 1 min); beyond, two minutes and one more per hour, never
+// over MaxAction (the zoo's 2 h: 4 min; a 4 h party: 6 min; sleep or work: 8 min).
 func Length(m int64) int64 {
 	if m <= 30 {
-		return max(1, (m+9)/10)
+		return max(1, (m+19)/20)
 	}
-	return min(MaxAction, 3+(m-30+15)/30)
+	return min(MaxAction, 2+m/60)
 }
 
 // IdleFloor is as low as a need drops while the Sim is left alone: someone who

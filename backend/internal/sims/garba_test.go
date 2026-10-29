@@ -9,7 +9,7 @@ func TestGarba(t *testing.T) {
 	noon := int64(12 * 60)
 	s := &Sim{Money: 5000, GameMinutes: noon}
 	said, cost, err := s.buyGarba("garba:x:1:2", "petit-huile")
-	if err != nil || cost != 500 || !strings.Contains(said, "huile") || s.Activity == nil || s.Activity.End-s.Activity.Start != 3 {
+	if err != nil || cost != 500 || !strings.Contains(said, "huile") || s.Activity == nil || s.Activity.End-s.Activity.Start != 2 {
 		t.Fatalf("petit-huile: %q %d %v %+v", said, cost, err, s.Activity)
 	}
 	if _, _, err := (&Sim{Money: 5000, GameMinutes: noon}).buyGarba("garba:x", "poulet"); err == nil {
