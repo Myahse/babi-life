@@ -61,6 +61,7 @@ func (h *Handler) Routes(r chi.Router) {
 		r.Post("/users/{id}/identifiants", h.sendAccount)
 		r.Post("/testers/reset", h.resetTesters)
 		r.Post("/testers/revoke", h.revokeTesters)
+		r.Post("/grow", h.growAll)
 		r.Get("/whatsapp", h.waStatus)
 		r.Post("/whatsapp", h.waSend)
 		r.Post("/whatsapp/{id}/stop", h.waStop)
@@ -367,6 +368,32 @@ func (h *Handler) revokeTesters(w http.ResponseWriter, r *http.Request) {
 	n := int(tag.RowsAffected())
 	h.Log(r.Context(), "Testeurs retirés", strconv.Itoa(n)+" comptes")
 	httpx.JSON(w, http.StatusOK, map[string]int{"revoked": n})
+}
+
+// growAll: POST /admin/grow {stage}: every player's perso grows to that age (enfant, ado, adulte) at once:
+// on its next turn, its birthdays said (sims grow_to, as the shop's « tout de suite »). Never younger:
+// those already that age or older stay as they are.
+func (h *Handler) growAll(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Stage string `json:"stage"`
+	}
+	if err := httpx.Decode(r, &req); err != nil {
+		httpx.Error(w, http.StatusBadRequest, "requête invalide")
+		return
+	}
+	st := game.StageByID(req.Stage)
+	if st.ID != req.Stage || st.ID == game.StageBebe {
+		httpx.Error(w, http.StatusUnprocessableEntity, "âge inconnu")
+		return
+	}
+	tag, err := h.DB.Exec(r.Context(), `UPDATE sims SET grow_to = $1 WHERE born_at <> 0`, st.ID)
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+		return
+	}
+	n := int(tag.RowsAffected())
+	h.Log(r.Context(), "Tout le monde grandit", st.Label+" · "+strconv.Itoa(n)+" persos")
+	httpx.JSON(w, http.StatusOK, map[string]int{"sims": n})
 }
 
 // resetTesters: before launch, every tester's Sim goes back to just after it

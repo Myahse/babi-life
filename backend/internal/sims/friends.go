@@ -12,6 +12,7 @@ import (
 
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
+	"github.com/myahse/babi-life/backend/internal/push"
 	"github.com/myahse/babi-life/backend/internal/world"
 )
 
@@ -79,6 +80,7 @@ func (h *Handler) askFriend(ctx context.Context, tx pgx.Tx, s *Sim, o other) (ga
 		return game.Outcome{}, nil, err
 	}
 	_ = insertEvent(ctx, tx, o.ID, "social", fmt.Sprintf("%s veut être ton ami·e : réponds dans « Joueurs ».", s.FirstName), 0, now)
+	h.Push.ToSim(o.ID, push.Message{Title: "Babi Life · Amis", Body: fmt.Sprintf("%s veut être ton ami·e", s.FirstName), URL: "/jeu", Tag: "ami-" + s.ID})
 	text := fmt.Sprintf("Tu demandes à %s d'être ton ami·e.", o.FirstName)
 	return game.Outcome{Text: text}, []Event{{Kind: "social", Text: text, GameTime: s.GameMinutes}}, nil
 }

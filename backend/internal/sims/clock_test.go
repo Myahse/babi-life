@@ -40,7 +40,7 @@ func TestOnHoldWhileAway(t *testing.T) {
 	s := newSim()
 	s.BornAt = s.GameMinutes - game.MinutesToAge(25)
 	born := s.BornAt
-	sell, _ := game.Kinds["market"].Interaction("sell-goods") // 10 real minutes, earns 1 200F
+	sell, _ := game.Kinds["market"].Interaction("sell-goods") // 6 real minutes, earns 1 200F
 	_ = s.start(sell, "yop-marche", "market", "Marché de Siporex", nil, "")
 	s.advance(noon.Add(2*time.Minute), noLuck())
 	money := s.Money
@@ -51,8 +51,8 @@ func TestOnHoldWhileAway(t *testing.T) {
 	if s.GameMinutes != game.MinuteOf(noon.Add(20*time.Hour)) {
 		t.Error("the Sim's clock is the world's when back")
 	}
-	if left := s.Activity.End - s.GameMinutes; left != 7 {
-		t.Errorf("selling: 2 min played, 1 counted after the last word, 7 left; got %d", left)
+	if left := s.Activity.End - s.GameMinutes; left != 3 {
+		t.Errorf("selling: 2 min played, 1 counted after the last word, 3 left; got %d", left)
 	}
 	// As if played only that minute more.
 	twin := newSim()
@@ -96,35 +96,35 @@ func TestOnHoldWhileAway(t *testing.T) {
 // Put away (the app closed or hidden): held from that very moment, not a minute more.
 func TestPausedHeldAtOnce(t *testing.T) {
 	s := newSim()
-	sell, _ := game.Kinds["market"].Interaction("sell-goods") // 10 real minutes
+	sell, _ := game.Kinds["market"].Interaction("sell-goods") // 6 real minutes
 	_ = s.start(sell, "yop-marche", "market", "Marché de Siporex", nil, "")
 	s.advance(noon.Add(2*time.Minute), noLuck())
 	at := noon.Add(2 * time.Minute)
 	s.pausedAt = &at
 	// Back a minute later (under the gap that would hold an app gone without a word): still nothing went by.
 	s.advance(noon.Add(3*time.Minute), noLuck())
-	if left := s.Activity.End - s.GameMinutes; left != 8 || s.pausedAt != nil {
-		t.Fatalf("paused at 2 min, back at 3: 8 min left, got %d (paused %v)", s.Activity.End-s.GameMinutes, s.pausedAt)
+	if left := s.Activity.End - s.GameMinutes; left != 4 || s.pausedAt != nil {
+		t.Fatalf("paused at 2 min, back at 3: 4 min left, got %d (paused %v)", s.Activity.End-s.GameMinutes, s.pausedAt)
 	}
 	// Played on: it goes by again.
 	s.advance(noon.Add(4*time.Minute), noLuck())
-	if left := s.Activity.End - s.GameMinutes; left != 7 {
-		t.Errorf("played a minute more: 7 left, got %d", left)
+	if left := s.Activity.End - s.GameMinutes; left != 3 {
+		t.Errorf("played a minute more: 3 left, got %d", left)
 	}
 }
 
 func TestActivityEndsWhileAway(t *testing.T) {
 	s := newSim()
-	sell, _ := game.Kinds["market"].Interaction("sell-goods") // 4 h (10 real minutes), earns 1 200F
+	sell, _ := game.Kinds["market"].Interaction("sell-goods") // 4 h (6 real minutes), earns 1 200F
 	if err := s.start(sell, "yop-marche", "market", "Marché de Siporex", nil, ""); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.start(sell, "yop-marche", "market", "Marché de Siporex", nil, ""); err != game.ErrBusy {
 		t.Fatalf("a busy Sim can't start something else, got %v", err)
 	}
-	ev := s.advance(noon.Add(5*time.Minute), noLuck())
+	ev := s.advance(noon.Add(4*time.Minute), noLuck())
 	if s.Activity == nil || len(ev) != 0 || s.Money != 10000 {
-		t.Fatalf("after 5 min it is still selling: %+v %v %d", s.Activity, ev, s.Money)
+		t.Fatalf("after 4 min it is still selling: %+v %v %d", s.Activity, ev, s.Money)
 	}
 	ev = played(&s, noon.Add(6*time.Hour))
 	if s.Activity != nil || s.Money < 11200 || len(ev) == 0 || !strings.Contains(ev[0].Text, "Vendre") {
@@ -139,10 +139,10 @@ func TestStopPaysProRata(t *testing.T) {
 	s := newSim()
 	sell, _ := game.Kinds["market"].Interaction("sell-goods")
 	_ = s.start(sell, "yop-marche", "market", "Marché de Siporex", nil, "")
-	played(&s, noon.Add(5*time.Minute))
+	played(&s, noon.Add(3*time.Minute))
 	ev, err := s.stop()
 	if err != nil || s.Activity != nil || s.Money != 10600 || ev.Money != 600 {
-		t.Fatalf("5 min of 10: money %d ev %+v err %v", s.Money, ev, err)
+		t.Fatalf("3 min of 6: money %d ev %+v err %v", s.Money, ev, err)
 	}
 }
 

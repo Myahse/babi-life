@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { InstallButton } from '../components/InstallButton'
+import { NotifyBanner } from '../components/NotifyPrompt'
 import { Briefcase, CalendarDays, Languages, ChevronLeft, House, LogOut, MapPin, Monitor, MonitorSmartphone, Shirt, Share2, Smartphone, Sparkles, Trash2, TrendingDown, TrendingUp, type LucideIcon } from 'lucide-react'
 import { api, type Device } from '../lib/api'
 import type { JournalEvent, Sim } from '../lib/types'
@@ -163,6 +164,8 @@ export function Profile() {
         <Devices />
 
         <InstallButton />
+        {/* Notifications off here: turn them on (or how to, in the phone's settings) */}
+        <NotifyBanner what="quand un ami t'écrit, t'invite ou veut être ton ami" />
 
         <button className="mx-auto flex items-center gap-1.5 text-sm font-extrabold text-[#d81b3f] hover:underline" onClick={removeSim}>
           <Trash2 size={15} /> Supprimer ce perso

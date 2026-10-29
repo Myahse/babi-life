@@ -47,7 +47,7 @@ export function NotifyPrompt() {
           <div className="min-w-0 flex-1">
             <p className="font-display text-lg leading-tight font-extrabold">Active les notifications</p>
             <p className="mt-1 text-sm font-semibold text-[var(--color-ink-soft)]">
-              {state === 'denied' ? SETTINGS_HELP : 'On te prévient quand un ami t’écrit sur Gbairai, et quand les matchs de ton pari sont finis.'}
+              {state === 'denied' ? SETTINGS_HELP : 'On te prévient quand un ami t’écrit sur Gbairai, t’invite ou veut être ton ami, et quand les matchs de ton pari sont finis.'}
             </p>
           </div>
           <button className="text-[var(--color-ink-soft)]" aria-label="Fermer" onClick={() => (askLater(), setShow(false))}>

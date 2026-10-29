@@ -13,6 +13,7 @@ import (
 
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
+	"github.com/myahse/babi-life/backend/internal/push"
 )
 
 // Two players together. Between friends (bonds.friends), both adults (the
@@ -106,6 +107,7 @@ func (h *Handler) couple(w http.ResponseWriter, r *http.Request) {
 				return game.Outcome{}, nil, err
 			}
 			tell(to, fmt.Sprintf("%s te demande de sortir ensemble ❤ Réponds dans l'appli Amis.", s.FirstName))
+			h.Push.ToSim(to, push.Message{Title: "Babi Life · Amis", Body: fmt.Sprintf("%s te demande de sortir ensemble ❤", s.FirstName), URL: "/jeu", Tag: "couple-" + s.ID})
 			text := fmt.Sprintf("Tu demandes à %s de sortir ensemble. Réponse dans l'appli Amis.", name)
 			return game.Outcome{Text: text}, []Event{{Kind: "social", Text: text, GameTime: s.GameMinutes}}, nil
 		case "accepter", "refuser":
