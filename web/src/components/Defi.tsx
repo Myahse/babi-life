@@ -22,13 +22,13 @@ import { CoucouDefi, CubesDefi, HochetDefi, PasDefi } from './defi/Bebe'
 // out of 100 and what it earned (backend sims/defi.go: once each time, a small
 // bonus, the best score kept as a record to beat).
 
-export type DefiKind = 'the' | 'ski' | 'courses' | 'foot' | 'course' | 'combat' | 'arcade' | 'ecole' | 'coucou' | 'cubes' | 'pas' | 'hochet'
+export type DefiKind = 'the' | 'ski' | 'courses' | 'foot' | 'course' | 'combat' | 'arcade' | 'ecole' | 'coucou' | 'cubes' | 'pas' | 'hochet' | 'bagarre'
 /** The baby's games (the update « bebe-jeux »). */
 export const BABY_DEFIS = new Set<DefiKind>(['coucou', 'cubes', 'pas', 'hochet'])
 
 /** The défi of an activity (backend sims/defi.go defiFor says the same), or null. The pousse-pousse's tea is served: no défi. */
 export const defiOf = (interactionId?: string): DefiKind | null =>
-  ({ 'street-grin': 'the', 'chat-grin': 'the', 'ski-boulay': 'ski', supermarche: 'courses', courses: 'courses', 'console-foot': 'foot', 'console-defi': 'foot', 'tournoi-console': 'foot', 'console-course': 'course', 'console-combat': 'combat', 'borne-arcade': 'arcade', 'maison-foot': 'foot', 'maison-course': 'course', 'maison-combat': 'combat', 'aller-ecole': 'ecole', coucou: 'coucou', cubes: 'cubes', 'premiers-pas': 'pas', hochet: 'hochet' } as Record<string, DefiKind>)[interactionId ?? ''] ?? null
+  ({ 'street-grin': 'the', 'chat-grin': 'the', 'ski-boulay': 'ski', supermarche: 'courses', courses: 'courses', 'console-foot': 'foot', 'console-defi': 'foot', 'tournoi-console': 'foot', 'console-course': 'course', 'console-combat': 'combat', 'borne-arcade': 'arcade', 'maison-foot': 'foot', 'maison-course': 'course', 'maison-combat': 'combat', 'aller-ecole': 'ecole', coucou: 'coucou', cubes: 'cubes', 'premiers-pas': 'pas', hochet: 'hochet', 'bagarre-bebe': 'bagarre' } as Record<string, DefiKind>)[interactionId ?? ''] ?? null
 
 /** The foot's three ways: a match, the challenge where the loser pays, the Saturday tournament. */
 const footMode = (interactionId?: string) => (interactionId === 'console-defi' ? 'defi' : interactionId === 'tournoi-console' ? 'tournoi' : 'match')
@@ -127,6 +127,14 @@ const DEFIS: Record<DefiKind, { title: string; button: string; icon: LucideIcon;
     how: ['Un cercle se resserre sur l’anneau jaune, à chaque temps.', 'Secoue le hochet pile quand il le touche.', 'Douze temps : parfait, bien, presque… ou raté.'],
     bg: 'linear-gradient(#4b2e83, #2b1d4a)',
   },
+  bagarre: {
+    title: 'La bagarre de bébés',
+    button: 'Se bagarrer !',
+    icon: Swords,
+    colors: ['#ff8fb1', '#e64980'],
+    how: ['Le cousin veut ton jouet : défends-le ! Les mêmes coups que le combat de rue, en tout petit.', '◀ ▶ pour avancer à quatre pattes… enfin presque. « Poing » : les petites tapes ; « Pied » : le coup de pied de bébé.', '« Garde » tenue pare. Jauge pleine : la « Colère de bébé ». Deux rounds pour garder le jouet.'],
+    bg: '#2a1838',
+  },
   courses: {
     title: 'La liste de courses',
     button: 'Défi : la liste',
@@ -197,8 +205,8 @@ export function DefiSheet({ kind, simId, big, older, interactionId, practice, se
           <FootDefi mode={mode} me={me} simId={simId} onResult={onResult} onQuit={onClose} onEnd={(s) => void end(s)} />
         ) : kind === 'course' ? (
           <CourseDefi onStart={setInMatch} onEnd={(s) => void end(s)} />
-        ) : kind === 'combat' ? (
-          <CombatDefi me={me} onStart={setInMatch} onEnd={(s) => void end(s)} />
+        ) : kind === 'combat' || kind === 'bagarre' ? (
+          <CombatDefi me={me} baby={kind === 'bagarre'} onStart={setInMatch} onEnd={(s) => void end(s)} />
         ) : kind === 'arcade' ? (
           <MoustiquesDefi onEnd={(s) => void end(s)} />
         ) : kind === 'ecole' ? (
@@ -216,7 +224,7 @@ export function DefiSheet({ kind, simId, big, older, interactionId, practice, se
         ))}
       {/* Left halfway: nothing sent, the défi can be taken on again */}
       {phase === 'play' && kind !== 'foot' && (
-        <button className={`absolute right-2 z-20 grid h-8 w-8 place-items-center rounded-full bg-black/45 text-white ${inMatch && kind === 'combat' ? 'top-[96px]' : inMatch && kind === 'course' ? 'top-[150px]' : 'top-12'}`} onClick={onClose} aria-label="Quitter la partie">
+        <button className={`absolute right-2 z-20 grid h-8 w-8 place-items-center rounded-full bg-black/45 text-white ${inMatch && (kind === 'combat' || kind === 'bagarre') ? 'top-[96px]' : inMatch && kind === 'course' ? 'top-[150px]' : 'top-12'}`} onClick={onClose} aria-label="Quitter la partie">
           <X size={17} strokeWidth={2.6} />
         </button>
       )}

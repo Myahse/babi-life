@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -220,6 +221,41 @@ func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
 		online = max(h.Online(), 1) // connected now (« ici » counts the last 20 minutes); at least the one asking
 	}
 	httpx.JSON(w, http.StatusOK, map[string]any{"players": players, "here": here, "friends": friends, "invites": invites, "requests": requests, "online": online, "dames": dame, "huit": huit, "parties": parties})
+}
+
+// everyone: the players in the game now, in every commune of the city (the
+// players chip, « Tout Babi »): where each one is and what they're doing, the
+// friends first. Seen from afar: greeting, joining and inviting stay for the
+// ones in the same commune.
+func (h *Handler) everyone(w http.ResponseWriter, r *http.Request) {
+	id, city, _, err := h.mySim(r)
+	if errors.Is(err, pgx.ErrNoRows) {
+		httpx.Error(w, http.StatusNotFound, "sim introuvable")
+		return
+	}
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+		return
+	}
+	ctx := r.Context()
+	now := game.MinuteOf(time.Now())
+	list, err := h.players(ctx, now, `
+		SELECT s.id, s.first_name, COALESCE(u.username, ''), s.gender, s.look, s.born_at, s.activity, COALESCE(b.friendship, 0), s.city, s.commune, true,
+		       COALESCE(b.friends, false), `+requestState("s.id", "$1::uuid")+`
+		FROM sims s
+		JOIN users u ON u.id = s.user_id
+		LEFT JOIN bonds b ON b.sim_a = LEAST(s.id, $1::uuid) AND b.sim_b = GREATEST(s.id, $1::uuid)
+		WHERE s.city = $2 AND s.user_id <> $3 AND s.last_tick > $4
+		ORDER BY COALESCE(b.friends, false) DESC, s.last_tick DESC LIMIT 200`, id, city, auth.UserID(ctx), time.Now().Add(-OnlineWindow))
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+		return
+	}
+	// Connected now only, when the hub can say (the ones who closed the game a minute ago aren't « en ligne »).
+	if h.Connected != nil {
+		list = slices.DeleteFunc(list, func(p Player) bool { return !h.Connected(p.ID) })
+	}
+	httpx.JSON(w, http.StatusOK, map[string]any{"players": list})
 }
 
 // requestState: the SQL for a friend request between `other` and `me`: "sent" (me → other), "received", or "".

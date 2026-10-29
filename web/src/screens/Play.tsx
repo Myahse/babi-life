@@ -1003,7 +1003,7 @@ export function Play() {
   const doing = sim.activity?.kind === 'do' ? sim.activity : null
   // The défi this activity can be taken on as, not yet played (the ski off the island only, seen there).
   // (The school's lesson: an update, « ecole-vivante ».)
-  const defiNow = doing && !doing.defi && !(doing.interaction.id === 'aller-ecole' && !keyOpen(feats, 'ecole-vivante')) && !(BABY_DEFIS.has(defiOf(doing.interaction.id)!) && !keyOpen(feats, 'bebe-jeux')) ? defiOf(doing.interaction.id) : null
+  const defiNow = doing && !doing.defi && !(doing.interaction.id === 'aller-ecole' && !keyOpen(feats, 'ecole-vivante')) && !(BABY_DEFIS.has(defiOf(doing.interaction.id)!) && !keyOpen(feats, 'bebe-jeux')) && !(doing.interaction.id === 'bagarre-bebe' && !keyOpen(feats, 'bagarre-bebe')) ? defiOf(doing.interaction.id) : null
   const stop = () => run('Arrêter', 'x', '', () => api.stop(sim.id))
   // The pad shows in the shoulder view (and the classic street); the buttons over the street sit beside it, or in the middle.
   // (At the wheel, the pedals and the wheel take its place.)
@@ -1018,8 +1018,8 @@ export function Play() {
     if (doing) {
       // A Garbaya meal eaten where the Sim is: in the street (eaten at home, its place is « home »).
       if (doing.placeId === 'golvo') return null
-      // At school, at the crèche (an update, « ecole-vivante »): the day there, seen (world3d/interior/SchoolDay).
-      if (doing.placeId === 'home' && (doing.interaction.id === 'aller-ecole' || doing.interaction.id === 'creche') && keyOpen(feats, 'ecole-vivante')) return { id: 'ecole', kind: 'schoolday', it: doing.interaction.id }
+      // At school, at the crèche (an update, « ecole-vivante »), from home or at the commune's own (backend world/ecoles.go): the day there, seen (world3d/interior/SchoolDay).
+      if ((doing.placeId === 'home' || doing.placeKind === 'school' || doing.placeKind === 'creche') && (doing.interaction.id === 'aller-ecole' || doing.interaction.id === 'creche') && keyOpen(feats, 'ecole-vivante')) return { id: 'ecole', kind: 'schoolday', it: doing.interaction.id }
       // In a home booked on Dodo: a home's inside, what's done in it as at home.
       if (doing.placeId === 'logement') return { id: 'logement', kind: 'home', it: DODO_AT_HOME[doing.interaction.id] ?? 'watch-tv' }
       // At a player's soirée: in its club.
@@ -1601,7 +1601,7 @@ export function Play() {
         </Suspense>
       )}
 
-      {players && <PlayersSheet sim={sim} around={around} communeName={commune.name} focus={players.focus} act={run} onClose={() => setPlayers(null)} />}
+      {players && <PlayersSheet sim={sim} around={around} communeName={commune.name} communes={city.communes} focus={players.focus} act={run} onClose={() => setPlayers(null)} />}
 
       {/* (Its time up, the bar goes at once: the server is settling it, nothing left to follow.) */}
       {sim.activity && !ended && !placeId && !defi && <ActivityBar world={world} onTask={sim.activity.kind === 'do' && sim.activity.career && sim.activity.career === sim.career ? (t) => api.jobTask(sim.id, t.id).then((res) => (apply(res), gesture(t.pose as Pose), res.outcome)) : undefined} onDefi={defiNow ? () => (defiNow === 'ski' && setOutside(false), setDefi(defiNow)) : undefined} onRejoin={ballKey && played === ballKey ? { sport: ballSport!, go: rejoin } : undefined} sim={sim} onStop={stop} stopping={!!pending} onRoute={() => setOverlay('map')} onMore={onGrounds ? () => (setPlaceId(doing!.placeId!), setMenuOpen(true)) : undefined} onFilm={() => setWatching(true)} onMachine={doing && isSlots(doing.interaction.id) ? () => setMachineOpen(true) : undefined} onShop={doing && SHOP_OF[doing.interaction.id] ? () => setShopOpen(true) : undefined} onFridge={doing && FRIDGE_SHOPPING.has(doing.interaction.id) && keyOpen(feats, 'frigo') && hasFridge(world, sim) ? () => setFridgeOpen('fill') : undefined} />}
