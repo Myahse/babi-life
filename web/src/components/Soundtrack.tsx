@@ -35,7 +35,7 @@ export function BabyVoice({ act, low }: { act: string | null; low: boolean }) {
       else if (act === 'caca') baby.push()
       else if (act === 'pipi') baby.babble()
       else if (act === 'vomir') (baby.bleh(), setTimeout(() => baby.whimper(), 1500))
-      else if (act && /^(hochet|coucou|cubes|premiers-pas|calin|bain-bebe|biberon|bouillie)$/.test(act)) Math.random() < 0.5 ? baby.babble() : baby.giggle()
+      else if (act && /^(hochet|coucou|cubes|premiers-pas|jouets|premier-mot|calin|bain-bebe|biberon|bouillie)$/.test(act)) Math.random() < 0.5 ? baby.babble() : baby.giggle()
       else if (low) baby.whimper()
       else if (Math.random() < 0.4) baby.babble()
     }

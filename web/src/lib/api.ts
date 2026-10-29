@@ -278,6 +278,9 @@ export const api = {
   sync: (id: string, steps: unknown[]) => post<ActionResult>(`/sims/${id}/sync`, { clock: Date.now(), steps }),
   createSim: (sim: NewSim) => post<Sim>('/sims', sim),
   /** « Retrouver ma famille de la liste »: the offer (null: none), and the answer, once. */
+  /** A baby's « premières fois » and its choices (backend sims/firsts.go). */
+  firsts: (id: string) => request<{ list: { id: string; label: string; icon: string; how: string }[]; done: string[]; talent: string; word: string; talents: { id: string; label: string; icon: string; gift: string }[]; words: string[] }>(`/sims/${id}/firsts`),
+  choose: (id: string, kind: 'talent' | 'mot', value: string) => post<ActionResult>(`/sims/${id}/choice`, { kind, value }),
   /** The baptism (update « bapteme »): due for this baby, and the family's gift (once). */
   baptismDue: (id: string) => request<{ due: boolean }>(`/sims/${id}/bapteme`),
   baptise: (id: string) => post<ActionResult>(`/sims/${id}/bapteme`, {}),

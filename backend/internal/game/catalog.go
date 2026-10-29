@@ -136,6 +136,9 @@ var Kinds = map[string]PlaceKind{
 			// The baby's little games (the update « bebe-jeux »: each a défi, sims/defi.go).
 			{ID: "coucou", Room: RoomBed, Label: "Jouer à coucou-caché avec maman", Icon: "baby", Minutes: 20, Effect: Needs{Fun: 30, Social: 20}, Ages: Babies},
 			{ID: "cubes", Room: RoomBed, Label: "Empiler les cubes", Icon: "blocks", Minutes: 20, Effect: Needs{Fun: 30, Energy: -4}, Ages: Babies},
+			// The choices that count (the update « choix-bebe », sims/firsts.go): the toy it goes for, its first word.
+			{ID: "jouets", Room: RoomBed, Label: "Choisir parmi les jouets", Icon: "gift", Minutes: 10, Effect: Needs{Fun: 15}, Ages: Babies},
+			{ID: "premier-mot", Room: RoomBed, Label: "Dire son premier mot", Icon: "messages-square", Minutes: 10, Effect: Needs{Social: 20}, Ages: Babies},
 			{ID: "premiers-pas", Room: RoomBed, Label: "Faire ses premiers pas vers papa", Icon: "footprints", Minutes: 20, Effect: Needs{Fun: 20, Social: 15, Energy: -8}, Ages: Babies},
 			// What a baby does once fed (Fed): it empties the tummy, and papa and maman come running to clean up.
 			{ID: "caca", Room: RoomBed, Label: "Faire caca", Icon: "baby", Minutes: 10, Effect: Needs{Hunger: -30, Hygiene: -15, Fun: 10}, Ages: Babies, Fed: true},

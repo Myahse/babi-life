@@ -233,7 +233,7 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
     for (const [pu, pv] of cotAt(u, v, cot.rot - rot0)) cotCells.add(`${Math.floor(pu + w / 2)},${Math.floor(pv + d / 2)}`)
   }
   const seat = out['call-family'] ?? out.sleep
-  if (seat) for (const id of ['biberon', 'bouillie', 'hochet', 'calin', 'coucou', 'cubes', 'premiers-pas', 'caca', 'pipi', 'vomir', 'pleurer']) out[id] ??= onFloor(seat)
+  if (seat) for (const id of ['biberon', 'bouillie', 'hochet', 'calin', 'coucou', 'cubes', 'premiers-pas', 'jouets', 'premier-mot', 'caca', 'pipi', 'vomir', 'pleurer']) out[id] ??= onFloor(seat)
   // (Crying: the fists to the eyes.)
   if (out.pleurer) out.pleurer = { ...out.pleurer, pose: 'cry' }
   const bath = out.shower ?? seat
