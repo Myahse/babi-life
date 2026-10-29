@@ -12,6 +12,7 @@ import { aiPad, BABY_FOES, FOES, newMind, type Foe } from './combat/ai'
 import { baby as babyVoice } from '../../audio/baby'
 import { createFight, fightScore, NO_PAD, ROUND_TIME, stepFight, type Fight, type FightEvent, type Pad } from './combat/engine'
 import { FightCanvas, type FighterLook } from './combat/Scene'
+import type { FightNet } from './combat/net'
 
 // Le combat de rue, on the console of the salle de jeux: your own Sim
 // against a fighter of the street (combat/ai.ts), in a road of Treichville at
@@ -103,7 +104,16 @@ function Pick({ onPick, baby }: { onPick: (f: Foe) => void; baby?: boolean }) {
 
 type Hud = { hp: [number, number]; meter: [number, number]; clock: number; wins: [number, number]; round: number; combo: number; said: string; saidAt: number; note: string; noteAt: number }
 
-function Match({ foe, me, baby, onEnd }: { foe: Foe; me?: Me; baby?: boolean; onEnd: (score: number) => void }) {
+/** Player against player (update « combat-joueurs »): the other player, the line between the two phones, and how it ended. */
+export type Versus = { name: string; look: Look; gender: 'femme' | 'homme'; net: FightNet; onOver: (won: boolean, gone?: boolean) => void }
+
+/** A fight against another player (components/Duel.tsx): the same match, the other fighter played from its phone. */
+export function DuelMatch({ me, baby, versus }: { me: Me; baby?: boolean; versus: Versus }) {
+  const foe = useMemo(() => ({ ...FOES[1], name: versus.name }), [versus.name])
+  return <Match foe={foe} me={me} baby={baby} versus={versus} onEnd={() => undefined} />
+}
+
+function Match({ foe, me, baby, versus, onEnd }: { foe: Foe; me?: Me; baby?: boolean; versus?: Versus; onEnd: (score: number) => void }) {
   const F = useRef<Fight>(createFight())
   const mind = useRef(newMind())
   const keys = useKeys()
@@ -114,9 +124,10 @@ function Match({ foe, me, baby, onEnd }: { foe: Foe; me?: Me; baby?: boolean; on
     const mine = me ?? { look: randomLook('homme', rng('me')), gender: 'homme' as const }
     return [
       { look: baby ? babyLook(mine.look) : mine.look, gender: mine.gender, seed: 3 },
-      { look: foeLook(foe), gender: foe.gender, seed: foe.seed },
+      versus ? { look: baby ? babyLook(versus.look) : versus.look, gender: versus.gender, seed: 9 } : { look: foeLook(foe), gender: foe.gender, seed: foe.seed },
     ]
-  }, [me, foe, baby])
+  }, [me, foe, baby, versus])
+  const [waiting, setWaiting] = useState<boolean | null>(null)
   const [hud, setHud] = useState<Hud>({ hp: [100, 100], meter: [0, 0], clock: ROUND_TIME, wins: [0, 0], round: 1, combo: 0, said: '', saidAt: 0, note: '', noteAt: 0 })
   const shown = useRef(hud)
   // The red under the life bar: what was just lost, catching up.
@@ -173,9 +184,31 @@ function Match({ foe, me, baby, onEnd }: { foe: Foe; me?: Me; baby?: boolean; on
     }
     p.punch = p.kick = p.sup = false
     const before = fight.saidAt
-    // In the lab, ?dummy: the other one stands still (to look at the moves).
-    const still = import.meta.env.DEV && location.search.includes('dummy')
-    stepFight(fight, dt, [mine, still ? NO_PAD : aiPad(fight, 1, foe, mind.current)])
+    const net = versus?.net
+    if (net) {
+      net.press(mine)
+      // The other player gone: the fight stops there.
+      if (net.gone && !ended.current) {
+        ended.current = true
+        versus.onOver(false, true)
+        return []
+      }
+      // Not there yet: say we are, and wait for it.
+      if (!net.there) {
+        net.send(NO_PAD, fight)
+        if (waiting !== true) setWaiting(true)
+        return []
+      }
+      if (waiting) setWaiting(false)
+      // The guest: the host's fight when one comes, stepped on between two.
+      net.take(fight)
+      stepFight(fight, dt, [mine, net.remote()])
+      net.send(mine, fight)
+    } else {
+      // In the lab, ?dummy: the other one stands still (to look at the moves).
+      const still = import.meta.env.DEV && location.search.includes('dummy')
+      stepFight(fight, dt, [mine, still ? NO_PAD : aiPad(fight, 1, foe, mind.current)])
+    }
     const evs = fight.events.splice(0)
     if (fight.saidAt !== before && fight.said === 'Combat !') sfx.bell()
     let note = ''
@@ -239,6 +272,11 @@ function Match({ foe, me, baby, onEnd }: { foe: Foe; me?: Me; baby?: boolean; on
     if (fight.phase === 'over' && fight.phaseT > 2.2 && !ended.current) {
       ended.current = true
       const won = fight.wins[0] > fight.wins[1]
+      if (versus) {
+        haptic(won ? 'success' : 'error')
+        versus.onOver(won)
+        return evs
+      }
       if (won)
         try {
           localStorage.setItem(BEATEN, JSON.stringify([...new Set([...beaten(), foe.id])]))
@@ -335,6 +373,9 @@ function Match({ foe, me, baby, onEnd }: { foe: Foe; me?: Me; baby?: boolean; on
         <div key={hud.noteAt} className="animate-pop pointer-events-none absolute top-[17%] right-3 font-display text-[22px] leading-none font-extrabold text-[#ff8a5c] [text-shadow:0_3px_0_rgba(0,0,0,0.6)]">
           {hud.note}
         </div>
+      )}
+      {waiting && (
+        <div className="pointer-events-none absolute inset-x-6 top-[38%] rounded-2xl bg-black/65 px-4 py-3 text-center font-display text-[17px] font-extrabold text-white">En attente de {foe.name}…</div>
       )}
       {/* The pad. */}
       <div className="absolute inset-x-0 bottom-0 flex items-end justify-between px-3 pb-[max(0.9rem,env(safe-area-inset-bottom))]">

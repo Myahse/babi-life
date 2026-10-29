@@ -42,6 +42,8 @@ export function sampleLive(id: string): LiveSample | null {
 export const SIM_CHANGED = 'babi:sim-changed'
 /** The window event when a Gbairai message arrived for this Sim (detail: from, name, text). */
 export const MESSAGE_IN = 'babi:message-in'
+/** A challenge to a fight, or its answer (components/Duel.tsx). */
+export const DUEL_IN = 'babi:duel-in'
 
 export function useLive(simId: string | undefined, mode: 'open' | 'street', where: string) {
   const token = useSession((s) => s.token)
@@ -91,6 +93,8 @@ function connect(token: string, sim: string, mode: 'open' | 'street') {
       else if (m.t === 'sim') window.dispatchEvent(new CustomEvent(SIM_CHANGED, { detail: m.id }))
       // A Gbairai message for this Sim: the ring and the phone button that shakes (screens/Play.tsx).
       else if (m.t === 'msg') window.dispatchEvent(new CustomEvent(MESSAGE_IN, { detail: { from: m.from, name: m.name, text: m.text } }))
+      // A challenge to a fight, or its answer: look again at once (components/Duel.tsx).
+      else if (m.t === 'duel') window.dispatchEvent(new CustomEvent(DUEL_IN, { detail: m.id }))
       else if (m.t === 'states')
         for (const s of m.players as (Snap & { id: string })[]) {
           if (s.id === sim) continue
