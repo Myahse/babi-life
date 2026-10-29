@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { Annoyed, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Baby, Bath, BedDouble, CookingPot, Droplets, Frown, Heart, Milk, ShowerHead, Soup, Utensils, Volleyball, type LucideIcon } from 'lucide-react'
 import { haptic } from '../../lib/native'
 import { gesture, setHomeStep } from '../../world3d/gesture'
-import type { Pose } from '../../avatar/Human'
+import { SEATED, type Pose } from '../../avatar/Human'
 import type { Look } from '../../lib/types'
 import { StepScene, type SceneId } from './Scenes'
+import { RECIPES } from './recipes'
 
 // The home's everyday things played (the update « gestes-maison »): the shower,
 // the cooking, the meal, going to bed, playing in the yard, and the baby's day
@@ -149,7 +150,8 @@ export function stepsFor(act: { id: string; icon: string }): Step[] {
   for (const ch of act.id) h = Math.imul(h ^ ch.charCodeAt(0), 16777619)
   const r = () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) ^ Math.imul(h ^ (h >>> 13), 3266489909)) >>> 0) / 4294967296
   const dirs = [U, D, L, R]
-  return PLAN[kindOfIcon(act.icon)].map(([label, pose], k) => ({ label, pose, combo: Array.from({ length: 3 + Math.min(2, Math.floor(r() * 2) + (k > 1 ? 1 : 0)) }, () => dirs[Math.floor(r() * 4)]) }))
+  // Its own steps when written (recipes/), else its kind's.
+  return (RECIPES[act.id] ?? PLAN[kindOfIcon(act.icon)]).map(([label, pose], k) => ({ label, pose, combo: Array.from({ length: 3 + Math.min(2, Math.floor(r() * 2) + (k > 1 ? 1 : 0)) }, () => dirs[Math.floor(r() * 4)]) }))
 }
 
 /** Whether an activity with no défi of its own is played as gestures: the server's rule (sims/defi.go gesteOK). */
@@ -254,7 +256,8 @@ export function GestesDefi({ kind, act, look, gender, scenes, onEnd }: { kind: G
       return
     }
     haptic('light')
-    gesture(step.pose, 1800)
+    // (A seated pose isn't made standing in the air: the place's own animation goes on.)
+    if (!SEATED.includes(step.pose)) gesture(step.pose, 1800)
     if (got + 1 < step.combo.length) return setGot(got + 1)
     // The whole combination: what's left of its time and the mistakes make its score.
     const time = Math.max(0, s.left) / timeFor(step, k)
