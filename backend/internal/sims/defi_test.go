@@ -12,7 +12,7 @@ import (
 
 // Each défi is played during its own activities only.
 func TestDefiOf(t *testing.T) {
-	for id, want := range map[string]string{"street-grin": "the", "street-the": "", "chat-grin": "the", "ski-boulay": "ski", "supermarche": "courses", "courses": "courses", "shower": "douche", "sleep": "dodo", "nap": "dodo", "cook-attieke": "cuisine", "jouer-cour": "cour", "frigo-garba": "repas", "eat-garba": "garba", "eat-alloco": "alloco", "caca": "caca", "bain-bebe": "bain", "calin": "calin", "jouets": "", "watch-tv": "", "chat-dance": "",
+	for id, want := range map[string]string{"street-grin": "the", "street-the": "", "chat-grin": "the", "ski-boulay": "ski", "supermarche": "courses", "courses": "courses", "shower": "douche", "sleep": "dodo", "nap": "dodo", "cook-attieke": "cuisine", "jouer-cour": "cour", "frigo-garba": "repas", "eat-garba": "garba", "street-garba": "garba", "eat-alloco": "alloco", "street-alloco": "alloco", "caca": "caca", "bain-bebe": "bain", "calin": "calin", "jouets": "", "watch-tv": "", "chat-dance": "",
 		"console-foot": "foot", "console-defi": "foot", "tournoi-console": "foot", "console-course": "course", "console-combat": "combat", "borne-arcade": "arcade", "regarder-console": ""} {
 		if got := defiOf(id); got != want {
 			t.Errorf("%s: %q, want %q", id, got, want)

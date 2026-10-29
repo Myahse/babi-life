@@ -67,8 +67,8 @@ var defiFor = map[string][]string{
 	"vomir":    {"vomir"},
 	"pleurer":  {"pleurer"},
 	// The street food, played its own way: the fish fished out of the oil, the alloco caught in its paper.
-	"garba":  {"eat-garba"},
-	"alloco": {"eat-alloco"},
+	"garba":  {"eat-garba", "street-garba"},
+	"alloco": {"eat-alloco", "street-alloco"},
 	// The pot with the friends at the maquis: sat at the table, drinking, served again, the banknotes
 	// thrown, and the alcohol to watch (web components/defi/Bar.tsx).
 	"bar": {"drink-with-friends"},
