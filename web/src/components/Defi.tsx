@@ -265,7 +265,7 @@ export function DefiSheet({ kind, act, simId, big, older, interactionId, practic
         ) : kind === 'hochet' ? (
           <HochetDefi onEnd={(s) => void end(s)} />
         ) : kind === 'dodo' ? (
-          <DodoDefi nap={interactionId === 'nap'} look={me?.look} onEnd={(s) => void end(s)} />
+          <DodoDefi nap={interactionId === 'nap'} look={me?.look} gender={me?.gender} onEnd={(s) => void end(s)} />
         ) : kind === 'bar' ? (
           <BarDefi money={me?.money ?? 0} onEnd={(s, extra) => void end(s, extra)} />
         ) : kind === 'garba' ? (
@@ -273,7 +273,7 @@ export function DefiSheet({ kind, act, simId, big, older, interactionId, practic
         ) : kind === 'alloco' ? (
           <AllocoDefi onEnd={(s, egg) => void end(s, egg ? 'oeuf' : undefined)} />
         ) : GESTE_DEFIS.has(kind) ? (
-          <GestesDefi kind={kind as GesteKind | 'geste'} act={act} look={me?.look} onEnd={(s) => void end(s)} />
+          <GestesDefi kind={kind as GesteKind | 'geste'} act={act} look={me?.look} gender={me?.gender} onEnd={(s) => void end(s)} />
         ) : (
           <SkiDefi onEnd={(s) => void end(s)} />
         ))}

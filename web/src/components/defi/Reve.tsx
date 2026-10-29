@@ -247,7 +247,7 @@ export function ReveDefi({ onEnd, target = 25, look }: { onEnd: (score: number) 
 }
 
 /** Going to bed (the gestures, each one seen), then the night dreamt: the dream counts most. A nap: a shorter dream. */
-export function DodoDefi({ onEnd, nap, look }: { onEnd: (score: number) => void; nap?: boolean; look?: Look }) {
+export function DodoDefi({ onEnd, nap, look, gender }: { onEnd: (score: number) => void; nap?: boolean; look?: Look; gender?: 'femme' | 'homme' }) {
   const [bed, setBed] = useState<number | null>(null)
-  return bed === null ? <GestesDefi kind="dodo" look={look} onEnd={setBed} /> : <ReveDefi target={nap ? 15 : 25} look={look} onEnd={(dream) => onEnd(Math.round(bed * 0.25 + dream * 0.75))} />
+  return bed === null ? <GestesDefi kind="dodo" look={look} gender={gender} onEnd={setBed} /> : <ReveDefi target={nap ? 15 : 25} look={look} onEnd={(dream) => onEnd(Math.round(bed * 0.25 + dream * 0.75))} />
 }
