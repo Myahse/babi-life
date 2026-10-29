@@ -408,7 +408,8 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
   // A played action's step (components/defi/Gestes.tsx): done where it's done in the house, standing
   // by the bed to make it, at the basin for the teeth, under the shower: the Sim walks there.
   const step = useHomeStep()
-  const stepSpot = step && spots[step.at] ? { ...spots[step.at], pose: step.pose, ...(step.standing ? { at: spots[step.at].from, y: 0, lying: false } : {}) } : null
+  // (Kept the same object while the step is the same: a new one each render would send the Sim off again and again.)
+  const stepSpot = useMemo(() => (step && spots[step.at] ? { ...spots[step.at], pose: step.pose, ...(step.standing ? { at: spots[step.at].from, y: 0, lying: false } : {}) } : null), [step, spots])
   const spot = stepSpot ?? cot ?? (interactionId ? ((interactionId.startsWith('golvo-') ? atTable : fromFridge ? (fromFridge.drink ? spots.frigo : (atTable ?? spots.frigo)) : spots[interactionId]) ?? null) : null)
   const gate: XZ = [0, d / 2 + 1.5]
   // Where to walk to (a tap on the floor, a floor's button), and on which floor.

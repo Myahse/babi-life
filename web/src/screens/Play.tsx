@@ -1008,6 +1008,9 @@ export function Play() {
   const party = usePartySound()
   // Kept from render to render (a new one would start the match over); alone (no court match), the console's switching too.
   const elevenRules = useMemo(() => (eleven ? { size: 11 as const, referee: true, switching: !court?.online } : undefined), [eleven, court?.online])
+  // Le foot de rue (the street, the quarter's courts, the quarter's match): four a side and the moves, once its update is open.
+  const streetFoot = ballSport === 'foot' && !eleven && keyOpen(features, 'foot-de-rue')
+  const streetRules = useMemo(() => (streetFoot ? { street: true } : undefined), [streetFoot])
 
   // « Voir la rue » is only for while inside: going in again (the street's « Entrer », arriving at a door,
   // back in after an action) shows the inside (else, back at the door, the street stayed on screen and
@@ -1174,8 +1177,8 @@ export function Play() {
         </Suspense>
       )}
       {ballKey && ballKey !== played && !racing && (!courtKey || court?.key === courtKey) && (
-        <Suspense fallback={<div className="fixed inset-0 z-50"><Splash label={ballSport === 'basket' ? 'Sur le terrain…' : eleven ? 'Au stade…' : 'Au maracana…'} /></div>}>
-          <StreetMatch key={ballKey} sport={ballSport!} name={sim.firstName} look={sim.look} gender={sim.gender} online={courtKey ? (court?.online ?? undefined) : undefined} rules={elevenRules} onExit={() => setPlayed(ballKey)} />
+        <Suspense fallback={<div className="fixed inset-0 z-50"><Splash label={ballSport === 'basket' ? 'Sur le terrain…' : eleven ? 'Au stade…' : streetFoot ? 'Au terrain du quartier…' : 'Au maracana…'} /></div>}>
+          <StreetMatch key={ballKey} sport={ballSport!} name={sim.firstName} look={sim.look} gender={sim.gender} online={courtKey ? (court?.online ?? undefined) : undefined} rules={elevenRules ?? streetRules} onExit={() => setPlayed(ballKey)} />
         </Suspense>
       )}
       {showInside && (
@@ -3114,6 +3117,8 @@ function ActivityBar({ world, sim, onStop, stopping, onRoute, onMore, onRejoin, 
   const done = Math.min(1, Math.max(0, (sim.gameMinutes - a.start) / span))
   const left = Math.max(0, Math.ceil(a.end - sim.gameMinutes))
   const travel = a.kind === 'travel'
+  // Played, not waited for (the update « gestes-maison »): no time to show, the game finishes it.
+  const toPlay = !!onDefi && a.kind === 'do' && (gesteOK(a) || GESTE_DEFIS.has(defiOf(a.interaction.id)!))
   // On the server's clock, like the car in the street (the Sim's minutes come with its updates, late).
   const road = travel ? tripLeft(world, a, (serverNow() - EPOCH) / 60000) : undefined
   // In one's own vehicle: it, in its colour.
@@ -3127,10 +3132,12 @@ function ActivityBar({ world, sim, onStop, stopping, onRoute, onMore, onRejoin, 
         <div className="min-w-0 flex-1">
           <div className="label truncate">{travel ? 'En route' : a.placeName}</div>
           <div className="truncate font-display text-[15px] leading-tight font-extrabold">{travel ? a.trip!.label.replace(/^Trajet /, '') : a.interaction.label}</div>
-          <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-[var(--color-canvas)]">
-            <div className="h-full rounded-full bg-[var(--color-emerald)] transition-[width] duration-1000 ease-linear" style={{ width: `${done * 100}%` }} />
-          </div>
-          <div className="mt-1 text-[11px] font-extrabold text-[var(--color-ink-soft)]">{left <= 0 ? 'Presque fini…' : road === null ? `${a.trip?.mode === 'perso' ? 'Tu montes' : a.trip && waitsAtKerb(a.trip.mode) ? 'Il t’attend au bord de la route' : 'Le chauffeur arrive'} · encore ${duration(left)}` : `Encore ${duration(left)}${road !== undefined ? ` · ${metres(road * 1000)}` : ''} · fin à ${clock(a.end).time}`}</div>
+          {!toPlay && (
+            <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-[var(--color-canvas)]">
+              <div className="h-full rounded-full bg-[var(--color-emerald)] transition-[width] duration-1000 ease-linear" style={{ width: `${done * 100}%` }} />
+            </div>
+          )}
+          <div className="mt-1 text-[11px] font-extrabold text-[var(--color-ink-soft)]">{toPlay ? 'Joue-la pour la faire : pas de temps qui compte' : left <= 0 ? 'Presque fini…' : road === null ? `${a.trip?.mode === 'perso' ? 'Tu montes' : a.trip && waitsAtKerb(a.trip.mode) ? 'Il t’attend au bord de la route' : 'Le chauffeur arrive'} · encore ${duration(left)}` : `Encore ${duration(left)}${road !== undefined ? ` · ${metres(road * 1000)}` : ''} · fin à ${clock(a.end).time}`}</div>
         </div>
         {travel && (
           <button className="icon-btn shrink-0 bg-[var(--color-canvas)]" onClick={onRoute} aria-label="Voir le trajet" title="Voir le trajet">

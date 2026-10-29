@@ -95,6 +95,15 @@ const (
 
 // gesteNot: the activities with a screen of their own (the slot machine, the banknotes thrown, the night
 // together's fade to black): not played as gestures.
+// playedHold: how long an action that's played waits for its game (game minutes): a day.
+const playedHold = 24 * 60
+
+// playedNoClock: the actions are played, not timed (the update « gestes-maison » open with the players).
+// Without a store (the tests, a database-less run) the clock stays: what they check is the clock.
+func playedNoClock() bool {
+	return features.Default != nil && features.Default.BlocksKey(context.Background(), "gestes-maison") == ""
+}
+
 var gesteNot = []string{game.SlotsMaquisID, game.SlotsCasinoID, game.NightID, "petit-travaillement", "travaillement", "grand-travaillement", "aller-ecole", "creche",
 	// The matches on the courts and in the street (their own 3D match, web streetball/), the clothes shops (their own shop).
 	"play-basket", "street-basket", "play-football", "play-foot11", "street-foot", "boutique-mode", "boutique-wax",
