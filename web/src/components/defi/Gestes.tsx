@@ -3,6 +3,8 @@ import { Annoyed, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Baby, Bath, BedDoub
 import { haptic } from '../../lib/native'
 import { gesture } from '../../world3d/gesture'
 import type { Pose } from '../../avatar/Human'
+import type { Look } from '../../lib/types'
+import { StepScene, type SceneId } from './Scenes'
 
 // The home's everyday things played (the update « gestes-maison »): the shower,
 // the cooking, the meal, going to bed, playing in the yard, and the baby's day
@@ -15,7 +17,7 @@ import type { Pose } from '../../avatar/Human'
 
 export type GesteKind = 'douche' | 'cuisine' | 'repas' | 'dodo' | 'cour' | 'biberon' | 'bouillie' | 'bain' | 'calin' | 'caca' | 'pipi' | 'vomir' | 'pleurer'
 type Dir = 'up' | 'down' | 'left' | 'right'
-type Step = { label: string; combo: Dir[]; pose: Pose }
+type Step = { label: string; combo: Dir[]; pose: Pose; /** What it is, seen being done (Scenes.tsx). */ scene?: SceneId }
 
 const U: Dir = 'up'
 const D: Dir = 'down'
@@ -24,12 +26,12 @@ const R: Dir = 'right'
 
 const STEPS: Record<GesteKind, Step[]> = {
   douche: [
-    { label: 'Ouvrir l’eau', combo: [U, U, R], pose: 'busy' },
-    { label: 'Se savonner les bras', combo: [L, R, L, R], pose: 'wash' },
-    { label: 'Frotter le dos', combo: [D, U, D, U], pose: 'wash' },
-    { label: 'Le shampooing', combo: [U, L, U, R], pose: 'wash' },
-    { label: 'Rincer', combo: [D, D, D], pose: 'wash' },
-    { label: 'Se sécher', combo: [R, L, R, L, U], pose: 'busy' },
+    { label: 'Ouvrir l’eau', combo: [U, U, R], pose: 'busy', scene: 'eau' },
+    { label: 'Se savonner les bras', combo: [L, R, L, R], pose: 'wash', scene: 'savon' },
+    { label: 'Frotter le dos', combo: [D, U, D, U], pose: 'wash', scene: 'dos' },
+    { label: 'Le shampooing', combo: [U, L, U, R], pose: 'wash', scene: 'shampooing' },
+    { label: 'Rincer', combo: [D, D, D], pose: 'wash', scene: 'rincer' },
+    { label: 'Se sécher', combo: [R, L, R, L, U], pose: 'busy', scene: 'secher' },
   ],
   cuisine: [
     { label: 'Écailler le poisson', combo: [L, L, R, R], pose: 'cook' },
@@ -48,9 +50,10 @@ const STEPS: Record<GesteKind, Step[]> = {
   ],
   // Then the dream (Reve.tsx): the night is played there.
   dodo: [
-    { label: 'Faire le lit', combo: [L, R, L], pose: 'busy' },
-    { label: 'Se brosser les dents', combo: [U, D, U, D], pose: 'brush' },
-    { label: 'Se coucher', combo: [D, D], pose: 'sleep' },
+    { label: 'Faire le lit', combo: [L, R, L], pose: 'busy', scene: 'lit' },
+    { label: 'Se brosser les dents', combo: [U, D, U, D], pose: 'brush', scene: 'dents' },
+    { label: 'Éteindre la lumière', combo: [U, R], pose: 'busy', scene: 'lumiere' },
+    { label: 'Se coucher', combo: [D, D], pose: 'sleep', scene: 'coucher' },
   ],
   cour: [
     { label: 'Jongler avec le ballon', combo: [U, U, U], pose: 'kick' },
@@ -182,7 +185,7 @@ const KEYS: Record<string, Dir> = { ArrowUp: U, ArrowDown: D, ArrowLeft: L, Arro
 /** A step's time: a little more for a longer combination, a little less as the steps go. */
 const timeFor = (step: Step, k: number) => 3.2 + step.combo.length * 0.85 - k * 0.15
 
-export function GestesDefi({ kind, act, onEnd }: { kind: GesteKind | 'geste'; /** Any other action: its steps made from it (stepsFor). */ act?: { id: string; icon: string }; onEnd: (score: number) => void }) {
+export function GestesDefi({ kind, act, look, onEnd }: { kind: GesteKind | 'geste'; /** The perso, drawn in the scenes of its steps. */ look?: Look; /** Any other action: its steps made from it (stepsFor). */ act?: { id: string; icon: string }; onEnd: (score: number) => void }) {
   const [steps] = useState(() => (kind === 'geste' ? stepsFor(act ?? { id: '', icon: '' }) : STEPS[kind]))
   const [k, setK] = useState(0)
   const [got, setGot] = useState(0)
@@ -269,6 +272,14 @@ export function GestesDefi({ kind, act, onEnd }: { kind: GesteKind | 'geste'; /*
   const share = Math.max(0, st.current.left / timeFor(step, k))
   return (
     <div className="pointer-events-none absolute inset-0 flex flex-col justify-end p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      {/* What's being done, seen as the arrows go: the bed made, the brush scrubbing, the light going out */}
+      {step.scene && (
+        <div className="card pointer-events-auto mx-auto mb-2 w-full max-w-[560px] overflow-hidden p-1.5">
+          <div className="h-[min(26vh,190px)] overflow-hidden rounded-xl">
+            <StepScene id={step.scene} k={got / step.combo.length} look={look} />
+          </div>
+        </div>
+      )}
       <div className="pointer-events-auto mx-auto flex w-full max-w-[560px] items-end gap-3 short:max-w-[720px]">
         {/* The step, its combination, its time */}
         <div className={`card min-w-0 flex-1 p-3 ${miss ? 'motion-shake' : ''}`}>

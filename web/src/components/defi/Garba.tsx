@@ -130,8 +130,16 @@ function Pan({ onDone }: { onDone: (score: number) => void }) {
   // A fresh batch out of the oil each round: two of each, drifting in the sizzle.
   const fill = () => {
     const ps: Piece[] = []
-    for (const p of PIECES)
-      for (let i = 0; i < 2; i++) ps.push({ key: st.current.key++, kind: p.id, x: 0.2 + Math.random() * 0.6, y: 0.22 + Math.random() * 0.56, vx: (Math.random() - 0.5) * 0.08, vy: (Math.random() - 0.5) * 0.08, rot: Math.random() * 360 })
+    // Spread round the bassine (each on its own bit of oil), not heaped in the middle.
+    const n = PIECES.length * 2
+    const turn = Math.random() * Math.PI * 2
+    PIECES.forEach((p, j) =>
+      [0, 1].forEach((i) => {
+        const a = turn + ((j * 2 + i) / n) * Math.PI * 2
+        const r = i ? 0.26 : 0.14
+        ps.push({ key: st.current.key++, kind: p.id, x: 0.5 + Math.cos(a) * r, y: 0.5 + Math.sin(a) * r, vx: (Math.random() - 0.5) * 0.06, vy: (Math.random() - 0.5) * 0.06, rot: Math.random() * 360 })
+      }),
+    )
     setPieces(ps)
     setWant(PIECES[Math.floor(Math.random() * PIECES.length)].id)
     st.current.busy = false

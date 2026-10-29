@@ -47,7 +47,7 @@ const FOOT: Record<ReturnType<typeof footMode>, { title: string; button: string;
 }
 
 // The home's gestures: played over the house, the Sim seen making each one.
-const DODO_HOW = ['Fais le lit, brosse-toi les dents, couche-toi : quelques flèches.', 'Puis tu rêves : glisse le doigt vers le haut ou le bas, attrape 25 étoiles (un mouton en vaut deux).', 'Les cauchemars (le moustique géant, la facture de la CIE, le maître et sa chicotte) te font perdre des étoiles ; trois, et tu te réveilles.']
+const DODO_HOW = ['Fais le lit, brosse-toi les dents, éteins la lumière, couche-toi : quelques flèches, et tu vois ton perso le faire.', 'Puis tu rêves, sur un matelas volant au-dessus d’Abidjan : touche pour monter, lâche pour descendre, attrape les étoiles (un mouton en vaut deux).', 'Les cauchemars (le moustique géant, la facture de la CIE, le maître et sa chicotte) te font perdre des étoiles ; trois, et tu te réveilles.']
 const GESTE_HOW = ['Chaque étape est une combinaison de flèches : enchaîne-les avant la fin du temps.', 'Chaque flèche juste, ton perso fait le geste. Une erreur, et la combinaison recommence.', 'La dernière étape faite, c’est fait : pas besoin d’attendre.']
 const DEFIS: Record<DefiKind, { title: string; button: string; icon: LucideIcon; colors: [string, string]; how: string[]; bg: string }> = {
   garba: {
@@ -265,7 +265,7 @@ export function DefiSheet({ kind, act, simId, big, older, interactionId, practic
         ) : kind === 'hochet' ? (
           <HochetDefi onEnd={(s) => void end(s)} />
         ) : kind === 'dodo' ? (
-          <DodoDefi onEnd={(s) => void end(s)} />
+          <DodoDefi nap={interactionId === 'nap'} look={me?.look} onEnd={(s) => void end(s)} />
         ) : kind === 'bar' ? (
           <BarDefi money={me?.money ?? 0} onEnd={(s, extra) => void end(s, extra)} />
         ) : kind === 'garba' ? (
@@ -273,7 +273,7 @@ export function DefiSheet({ kind, act, simId, big, older, interactionId, practic
         ) : kind === 'alloco' ? (
           <AllocoDefi onEnd={(s, egg) => void end(s, egg ? 'oeuf' : undefined)} />
         ) : GESTE_DEFIS.has(kind) ? (
-          <GestesDefi kind={kind as GesteKind | 'geste'} act={act} onEnd={(s) => void end(s)} />
+          <GestesDefi kind={kind as GesteKind | 'geste'} act={act} look={me?.look} onEnd={(s) => void end(s)} />
         ) : (
           <SkiDefi onEnd={(s) => void end(s)} />
         ))}
