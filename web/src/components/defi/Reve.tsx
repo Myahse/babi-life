@@ -1,7 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
-import { Bug, Receipt, Ruler, Star, type LucideIcon } from 'lucide-react'
+import { memo, Suspense, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import * as THREE from 'three'
+import { Bug, Star } from 'lucide-react'
 import { haptic } from '../../lib/native'
 import type { Look } from '../../lib/types'
+import { sceneDpr } from '../../lib/device'
+import { Character, sizeOf } from '../../world3d/Character'
+import { Box, Palm, Sign } from '../../world3d/props'
+import { Zzz } from '../../world3d/interior/ActionProps'
+import { randomLook } from '../../avatar/options'
+import { DEFAULT_LOOK } from './Scenes'
 import { GestesDefi } from './Gestes'
 
 // Le rêve (the update « gestes-maison »): once in bed, the night is a dream.
@@ -19,100 +27,308 @@ const GRAVITY = 1.1
 const FLAP = -0.55
 type Thing = { key: number; kind: 'etoile' | 'mouton' | 'moustique' | 'facture' | 'maitre'; x: number; y: number; v: number; hit?: boolean; wob: number }
 const GOOD = new Set(['etoile', 'mouton'])
-// (Drawn, not emoji: the same on every phone.)
-const FACE: Record<Exclude<Thing['kind'], 'mouton'>, [LucideIcon, string]> = { etoile: [Star, '#ffd43b'], moustique: [Bug, '#ff6b6b'], facture: [Receipt, '#ff922b'], maitre: [Ruler, '#e64980'] }
+type State = { y: number; vy: number; key: number; good: number; bad: number; next: number; t: number; done: boolean; shift: number; started: boolean; things: Thing[] }
 const NAME: Record<string, string> = { moustique: 'Le moustique géant !', facture: 'La facture de la CIE !', maitre: 'Le maître et sa chicotte !' }
 
-/** A sheep jumping its little fence, to count. */
-function Sheep() {
+/** Where a thing of the dream stands (0..1 across the screen, 0 at the top) in the scene, at z = 0. */
+function useField() {
+  const { viewport, camera } = useThree()
+  const v = viewport.getCurrentViewport(camera, [0, 0, 0])
+  // The size of the dreamer and of the things: the mattress a quarter of the screen, never too big in landscape.
+  const k = Math.min(v.width * 0.4, v.height * 0.3) / 2.4
+  return { w: v.width, h: v.height, k, X: (x: number) => (x - 0.5) * v.width, Y: (y: number) => (0.5 - y) * v.height }
+}
+
+const yOf = (th: Thing, now: number) => (th.kind === 'moustique' ? th.y + Math.sin(now / 250 + th.wob) * 0.04 : th.y)
+
+/** A star of the dream: five gold blocks round a heart, turning. */
+function StarBlock() {
   return (
-    <svg width="46" height="40" viewBox="0 0 46 40" aria-hidden>
-      <rect x="4" y="30" width="38" height="3" fill="#a07a4a" />
-      <rect x="8" y="26" width="3" height="12" fill="#a07a4a" />
-      <rect x="35" y="26" width="3" height="12" fill="#a07a4a" />
-      {[12, 20, 28, 34].map((x) => (
-        <rect key={x} x={x} y="18" width="3" height="8" fill="#2b2b2b" />
+    <>
+      {[0, 1, 2, 3, 4].map((i) => (
+        <group key={i} rotation={[0, 0, (i * Math.PI * 2) / 5]}>
+          <Box p={[0, 0.32, 0]} s={[0.22, 0.5, 0.18]} c="#ffd43b" glow={0.8} />
+        </group>
       ))}
-      {[[14, 10], [22, 7], [30, 9], [35, 13], [18, 15], [27, 15]].map(([x, y], i) => (
-        <circle key={i} cx={x} cy={y} r="7" fill="#fbfbfb" />
-      ))}
-      <ellipse cx="8" cy="10" rx="5" ry="6" fill="#2b2b2b" />
-    </svg>
+      <Box p={[0, 0, 0]} s={[0.36, 0.36, 0.24]} c="#ffe066" glow={0.9} />
+    </>
   )
 }
 
-/** The sleeper on the flying mattress: pyjama, nightcap, the blanket, « Zzz ». */
-function Sleeper({ look, tilt }: { look?: Look; tilt: number }) {
-  const skin = look?.skin ?? '#6e4024'
+/** A sheep jumping its fence, to count: the wool in blocks, the black head and legs. */
+function SheepBlock() {
   return (
-    <svg width="134" height="76" viewBox="0 0 96 54" aria-hidden style={{ transform: `rotate(${tilt}deg)`, transition: 'transform 0.15s', filter: 'drop-shadow(0 6px 10px rgba(20,0,60,0.5))' }}>
-      {/* The mattress, its stripes, the little tassels flapping */}
-      <rect x="4" y="30" width="86" height="14" rx="6" fill="#e9e4ff" stroke="#6b5bb5" strokeWidth="2" />
-      {[16, 30, 44, 58, 72].map((x) => (
-        <rect key={x} x={x} y="31" width="4" height="12" fill="#c4bcf5" />
-      ))}
-      <path d="M4 40 l-4 4 M90 40 l5 4" stroke="#ffd43b" strokeWidth="3" />
-      {/* The pillow and the head, the nightcap */}
-      <ellipse cx="18" cy="26" rx="13" ry="7" fill="#fff" stroke="#c4bcf5" strokeWidth="1.5" />
-      <circle cx="20" cy="20" r="8" fill={skin} />
-      <path d="M13 16 Q22 2 32 10 L36 4" fill="#ff6b9a" stroke="#c2255c" strokeWidth="1.5" />
-      <circle cx="36" cy="4" r="3" fill="#fff" />
-      <path d="M17 21 q2 1.5 4 0" stroke="#1a0e06" strokeWidth="1.2" fill="none" />
-      {/* Under the blanket, the feet out at the end */}
-      <path d="M26 30 Q50 16 84 26 L84 32 L26 32 Z" fill={look?.outfitColor ?? '#4dabf7'} stroke="#1c4f8a" strokeWidth="1.5" />
-      <ellipse cx="86" cy="27" rx="4" ry="3" fill={skin} />
-      <text x="40" y="12" fontSize="11" fontWeight="800" fill="#fff">
-        Zzz
-      </text>
-    </svg>
+    <>
+      <Box p={[-0.5, -0.5, 0]} s={[0.08, 0.5, 0.08]} c="#a07a4a" />
+      <Box p={[0.5, -0.5, 0]} s={[0.08, 0.5, 0.08]} c="#a07a4a" />
+      <Box p={[0, -0.4, 0]} s={[1.1, 0.07, 0.06]} c="#a07a4a" />
+      <group position={[0, 0.15, 0]} rotation={[0, 0, 0.25]}>
+        <Box p={[0, 0, 0]} s={[0.7, 0.42, 0.42]} c="#f8f9fa" />
+        <Box p={[-0.12, 0.2, 0]} s={[0.36, 0.14, 0.36]} c="#ffffff" />
+        <Box p={[0.15, 0.18, 0.05]} s={[0.26, 0.12, 0.3]} c="#f1f3f5" />
+        <Box p={[-0.45, 0.12, 0]} s={[0.24, 0.26, 0.24]} c="#2b2b2b" />
+        <Box p={[-0.5, 0.2, 0.13]} s={[0.12, 0.05, 0.04]} c="#2b2b2b" />
+        {[[-0.22, -0.12], [-0.22, 0.12], [0.22, -0.12], [0.22, 0.12]].map(([x, z], i) => (
+          <Box key={i} p={[x, -0.32, z]} s={[0.08, 0.26, 0.08]} c="#2b2b2b" />
+        ))}
+      </group>
+    </>
   )
 }
 
-/** Abidjan by night far below, going by: the Plateau's towers, the cathedral, the Pyramide, the bridge on the lagoon. */
-function City({ shift }: { shift: number }) {
-  const skyline = (
-    <svg width="800" height="160" viewBox="0 0 800 160" preserveAspectRatio="none" aria-hidden>
-      {/* The lagoon and the bridge */}
-      <rect x="0" y="128" width="800" height="32" fill="#1b1f4b" />
-      <path d="M520 128 L520 112 L800 112 L800 128" fill="none" stroke="#3a3f7a" strokeWidth="4" />
-      {[540, 580, 620, 660, 700, 740, 780].map((x) => (
-        <rect key={x} x={x} y="112" width="4" height="16" fill="#3a3f7a" />
-      ))}
-      {/* Towers with their lit windows */}
-      {[[20, 70, 30], [60, 100, 26], [94, 60, 34], [140, 120, 24], [170, 84, 30], [300, 64, 28], [336, 92, 22], [420, 54, 36]].map(([x, h, w], i) => (
-        <g key={i}>
-          <rect x={x} y={128 - h} width={w} height={h} fill="#141737" />
-          {[...Array(Math.floor(h / 14))].map((_, r) =>
-            [...Array(Math.floor(w / 9))].map((_, c) => ((r * 7 + c * 3 + i) % 4 ? <rect key={`${r}${c}`} x={x + 3 + c * 9} y={128 - h + 5 + r * 14} width="4" height="5" fill="#ffd76a" opacity="0.8" /> : null)),
-          )}
-        </g>
-      ))}
-      {/* The Pyramide, the cathedral's leaning tower */}
-      <path d="M210 128 L240 60 L270 128 Z" fill="#191c45" />
-      <path d="M370 128 L380 128 L410 30 L402 28 Z" fill="#191c45" />
-      <path d="M352 128 Q380 96 420 128 Z" fill="#191c45" />
-      {/* Palm trees */}
-      {[480, 500].map((x) => (
-        <g key={x}>
-          <rect x={x} y="96" width="3" height="32" fill="#0f1230" />
-          <path d={`M${x + 1} 96 q-12 -2 -16 6 M${x + 1} 96 q12 -2 16 6 M${x + 1} 96 q-4 -10 -12 -12 M${x + 1} 96 q4 -10 12 -12`} stroke="#0f1230" strokeWidth="3" fill="none" />
-        </g>
-      ))}
-    </svg>
-  )
+/** The giant mosquito: the body, the sting, the red eyes, the wings beating. */
+function MosquitoBlock() {
+  const w = useRef<THREE.Group>(null)
+  useFrame(({ clock }) => {
+    if (w.current) w.current.rotation.x = Math.sin(clock.elapsedTime * 40) * 0.6
+  })
   return (
-    <div className="absolute inset-x-0 bottom-0 h-[26%] overflow-hidden opacity-90">
-      <div className="absolute bottom-0 flex h-full" style={{ transform: `translateX(${-(shift % 800)}px)` }}>
-        {skyline}
-        {skyline}
-        {skyline}
-      </div>
-    </div>
+    <>
+      <Box p={[0.1, 0, 0]} s={[0.6, 0.22, 0.22]} c="#343a40" />
+      <Box p={[0.5, -0.04, 0]} s={[0.36, 0.14, 0.16]} c="#495057" />
+      <Box p={[-0.28, 0.04, 0]} s={[0.26, 0.24, 0.24]} c="#212529" />
+      <Box p={[-0.38, 0.08, 0.12]} s={[0.08, 0.08, 0.04]} c="#ff3d57" glow={1} />
+      <Box p={[-0.38, 0.08, -0.12]} s={[0.08, 0.08, 0.04]} c="#ff3d57" glow={1} />
+      <Box p={[-0.62, -0.06, 0]} s={[0.42, 0.03, 0.03]} c="#212529" />
+      {[-0.1, 0.1, 0.3].map((x) => (
+        <Box key={x} p={[x, -0.28, 0]} s={[0.03, 0.36, 0.03]} c="#212529" />
+      ))}
+      <group ref={w} position={[0.05, 0.12, 0]}>
+        <mesh position={[0, 0.02, 0.3]}>
+          <boxGeometry args={[0.36, 0.02, 0.5]} />
+          <meshLambertMaterial color="#d0ebff" transparent opacity={0.65} />
+        </mesh>
+        <mesh position={[0, 0.02, -0.3]}>
+          <boxGeometry args={[0.36, 0.02, 0.5]} />
+          <meshLambertMaterial color="#d0ebff" transparent opacity={0.65} />
+        </mesh>
+      </group>
+    </>
   )
 }
 
-export function ReveDefi({ onEnd, target = 25, look }: { onEnd: (score: number) => void; /** The stars to gather (a nap: fewer). */ target?: number; look?: Look }) {
-  const st = useRef({ y: 0.45, vy: 0, key: 0, good: 0, bad: 0, next: 0.6, t: 0, done: false, shift: 0, started: false, things: [] as Thing[] })
+/** The electricity bill: the sheet, its header, its lines, the sum in red. */
+function BillBlock() {
+  return (
+    <group rotation={[0, 0, 0.15]}>
+      <Box p={[0, 0, 0]} s={[0.8, 1.05, 0.04]} c="#fdfdfd" />
+      <Sign p={[0, 0.38, 0.03]} w={0.7} text="CIE" bg="#ff922b" />
+      {[0.12, -0.02, -0.16].map((y) => (
+        <Box key={y} p={[-0.05, y, 0.03]} s={[0.55, 0.05, 0.01]} c="#adb5bd" />
+      ))}
+      <Box p={[0.15, -0.36, 0.03]} s={[0.36, 0.12, 0.01]} c="#e03131" />
+    </group>
+  )
+}
+
+/** The maître of the school days, the game's own perso, the chicotte up. */
+function MaitreBlock() {
+  const look = useMemo(() => ({ ...randomLook('homme', () => 0.37), outfit: 'chemise', outfitColor: '#c9b28f', accessory: 'glasses' }) as Look, [])
+  const arm = useRef<THREE.Group>(null)
+  useFrame(({ clock }) => {
+    if (arm.current) arm.current.rotation.z = -0.4 + Math.sin(clock.elapsedTime * 9) * 0.5
+  })
+  return (
+    <group position={[0, -0.95, 0]} scale={0.85}>
+      <group rotation={[0, -Math.PI / 2.6, 0]}>
+        <Character look={look} gender="homme" pose="rant" marker={false} />
+      </group>
+      <group ref={arm} position={[-0.3, 1.45, 0.3]}>
+        <Box p={[0, 0.45, 0]} s={[0.05, 0.9, 0.05]} c="#8a5a32" />
+      </group>
+    </group>
+  )
+}
+
+const BLOCK: Record<Thing['kind'], () => ReactElement> = { etoile: StarBlock, mouton: SheepBlock, moustique: MosquitoBlock, facture: BillBlock, maitre: MaitreBlock }
+
+/** One thing of the dream, flying across from the right. */
+function ThingMesh({ th }: { th: Thing }) {
+  const g = useRef<THREE.Group>(null)
+  const f = useField()
+  useFrame(({ clock }) => {
+    const o = g.current
+    if (!o) return
+    o.position.set(f.X(th.x), f.Y(yOf(th, performance.now())), 0)
+    o.scale.setScalar(f.k * (th.kind === 'etoile' ? 0.7 : 0.85) * (th.hit ? 0.6 : 1))
+    if (th.kind === 'etoile') o.rotation.y = clock.elapsedTime * 2.5 + th.wob
+    if (th.kind === 'mouton') o.position.y += Math.abs(Math.sin(clock.elapsedTime * 4 + th.wob)) * f.k * 0.25
+  })
+  const B = BLOCK[th.kind]
+  return (
+    <group ref={g}>
+      <B />
+    </group>
+  )
+}
+
+/** The things on screen: re-listed only when one comes or goes (each moves on its own). */
+function Things({ st }: { st: { current: { things: Thing[] } } }) {
+  const [list, setList] = useState<Thing[]>([])
+  const sig = useRef('')
+  useFrame(() => {
+    const now = st.current.things.map((t) => t.key).join(',')
+    if (now !== sig.current) {
+      sig.current = now
+      setList([...st.current.things])
+    }
+  })
+  return (
+    <>
+      {list.map((th) => (
+        <ThingMesh key={th.key} th={th} />
+      ))}
+    </>
+  )
+}
+
+/** The dreamer: the perso itself asleep on its flying mattress, under its blanket, the tassels flapping. */
+function Dreamer({ st, look, gender, stage }: { st: { current: { y: number; vy: number } }; look: Look; gender: 'femme' | 'homme'; stage: string }) {
+  const g = useRef<THREE.Group>(null)
+  const f = useField()
+  useFrame(() => {
+    const o = g.current
+    if (!o) return
+    const s = st.current
+    o.position.set(f.X(0.24), f.Y(s.y), 0)
+    o.scale.setScalar(f.k)
+    o.rotation.z += (-Math.max(-0.25, Math.min(0.25, s.vy * 0.4)) - o.rotation.z) * 0.2
+    // Leant a little to the camera: the mattress's top, the perso lying on it.
+    o.rotation.x = 0.75
+  })
+  const size = sizeOf(stage)
+  return (
+    <group ref={g}>
+      {/* The mattress, its stripes, the gold tassels */}
+      <Box p={[0, -0.18, 0]} s={[2.4, 0.3, 1.1]} c="#e9e4ff" />
+      {[-0.8, -0.4, 0, 0.4, 0.8].map((x) => (
+        <Box key={x} p={[x, -0.18, 0.56]} s={[0.12, 0.26, 0.01]} c="#c4bcf5" />
+      ))}
+      <Box p={[-1.25, -0.25, 0.5]} s={[0.12, 0.12, 0.12]} c="#ffd43b" glow={0.5} />
+      <Box p={[1.25, -0.25, 0.5]} s={[0.12, 0.12, 0.12]} c="#ffd43b" glow={0.5} />
+      <Box p={[-0.92, 0.04, 0]} s={[0.5, 0.16, 0.7]} c="#ffffff" />
+      {/* The perso lying, head on the pillow (the game's model, its clothes) */}
+      <group position={[-1.05 + 0.95 * size.top, 0.06, 0]} rotation={[0, Math.PI / 2, 0]}>
+        <group rotation={[-Math.PI / 2, 0, 0]}>
+          <Character look={look} gender={gender} pose="sleep" stage={stage} marker={false} />
+        </group>
+      </group>
+      {/* The blanket over the legs */}
+      <Box p={[0.62, 0.3, 0]} s={[1.1, 0.08, 0.85]} c="#4dabf7" />
+      <Box p={[0.62, 0.345, 0]} s={[1.1, 0.01, 0.2]} c="#ffd43b" />
+      <Zzz at={[-0.9, 0.9, 0]} />
+    </group>
+  )
+}
+
+/** Abidjan by night far below, going by: towers with their windows lit, the Pyramide, the cathedral's tower, palms, the lagoon and its bridge. */
+function City({ st }: { st: { current: { shift: number } } }) {
+  const { viewport, camera } = useThree()
+  const Z = -8
+  const v = viewport.getCurrentViewport(camera, [0, 0, Z])
+  const H = v.height
+  const u = H / 20
+  const base = -H / 2 + 1.4 * u
+  // One stretch of the city (in u), repeated.
+  const L = 60
+  const towers = useMemo(() => {
+    let r = 7
+    const rnd = () => ((r = (r * 9301 + 49297) % 233280), r / 233280)
+    const out: { x: number; w: number; h: number; c: string }[] = []
+    for (let x = 0; x < L - 4; ) {
+      const w = 1.6 + rnd() * 1.6
+      if (x > 20 && x < 26) {
+        x = 26
+        continue
+      }
+      out.push({ x: x + w / 2, w, h: 2 + rnd() * 4.5, c: ['#262b63', '#2d3270', '#222759'][Math.floor(rnd() * 3)] })
+      x += w + 0.3 + rnd() * 0.8
+    }
+    return out
+  }, [])
+  const copies = Math.ceil(v.width / (L * u)) + 1
+  const g = useRef<THREE.Group>(null)
+  useFrame(() => {
+    if (g.current) g.current.position.x = -v.width / 2 - ((st.current.shift * u * 0.02) % (L * u))
+  })
+  return (
+    <group position={[0, 0, Z]}>
+      {/* The lagoon */}
+      <Box p={[0, base - 0.75 * u, 0]} s={[v.width * 1.2, 1.5 * u, 2 * u]} c="#1b1f4b" />
+      <group ref={g}>
+        {[...Array(copies)].map((_, c) => (
+          <group key={c} position={[c * L * u, base, 0]} scale={u}>
+            {towers.map((t, i) => (
+              <group key={i}>
+                <Box p={[t.x, t.h / 2, 0]} s={[t.w, t.h, 1]} c={t.c} />
+                {[...Array(Math.floor(t.h / 0.9))].map((_, rr) =>
+                  [...Array(Math.max(1, Math.floor(t.w / 0.7)))].map((_, cc) =>
+                    (rr * 7 + cc * 3 + i) % 4 ? <Box key={`${rr}-${cc}`} p={[t.x - t.w / 2 + 0.4 + cc * 0.7, 0.5 + rr * 0.9, 0.51]} s={[0.3, 0.35, 0.02]} c="#ffd76a" glow={0.9} /> : null,
+                  ),
+                )}
+              </group>
+            ))}
+            {/* The Pyramide, the cathedral's leaning tower */}
+            <mesh position={[22, 1.8, 0]} rotation={[0, Math.PI / 4, 0]}>
+              <coneGeometry args={[2.2, 3.6, 4]} />
+              <meshLambertMaterial color="#20245a" flatShading />
+            </mesh>
+            <group position={[24.6, 0, 0]} rotation={[0, 0, -0.35]}>
+              <Box p={[0, 3, 0]} s={[0.35, 6, 0.35]} c="#20245a" />
+            </group>
+            <Box p={[25.2, 0.6, 0]} s={[2.4, 1.2, 1]} c="#1d2150" />
+            <Palm p={[57, 0, 0.6]} h={3.2} />
+            {/* The bridge on its piers */}
+            <Box p={[L / 2, -0.4, 1]} s={[L, 0.18, 0.5]} c="#3a3f7a" />
+            {[...Array(10)].map((_, i) => (
+              <Box key={i} p={[i * 6 + 3, -0.8, 1]} s={[0.25, 0.8, 0.25]} c="#3a3f7a" />
+            ))}
+          </group>
+        ))}
+      </group>
+    </group>
+  )
+}
+
+/** The night's sky: the moon, the far stars. */
+function Sky() {
+  const { viewport, camera } = useThree()
+  const v = viewport.getCurrentViewport(camera, [0, 0, -12])
+  const stars = useMemo(() => [...Array(40)].map((_, i) => [((i * 41) % 100) / 100, ((i * 67) % 70) / 100, 0.6 + (i % 3) * 0.3] as const), [])
+  return (
+    <group position={[0, 0, -12]}>
+      <mesh position={[v.width * 0.36, v.height * 0.36, 0]}>
+        <sphereGeometry args={[v.height * 0.06, 20, 20]} />
+        <meshBasicMaterial color="#fff6d0" />
+      </mesh>
+      {stars.map(([x, y, s], i) => (
+        <mesh key={i} position={[(x - 0.5) * v.width, (0.5 - y) * v.height, 0]}>
+          <boxGeometry args={[0.06 * s, 0.06 * s, 0.06 * s]} />
+          <meshBasicMaterial color="#ffffff" />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+/** The dream in 3D (only its props: stable, so the HUD redrawing each frame doesn't touch it). */
+const Night = memo(function Night({ st, look, gender, stage }: { st: { current: State }; look: Look; gender: 'femme' | 'homme'; stage: string }) {
+  return (
+    <Canvas dpr={sceneDpr} camera={{ position: [0, 0, 10], fov: 50 }} gl={{ alpha: true }} style={{ position: 'absolute', inset: 0 }}>
+      <hemisphereLight args={['#b9b4ff', '#2a1d5a', 1.1]} />
+      <directionalLight position={[-4, 6, 8]} intensity={0.9} color="#fff3d6" />
+      <Sky />
+      <City st={st} />
+      <Suspense fallback={null}>
+        <Things st={st} />
+        <Dreamer st={st} look={look} gender={gender} stage={stage} />
+      </Suspense>
+    </Canvas>
+  )
+})
+
+export function ReveDefi({ onEnd, target = 25, look = DEFAULT_LOOK, gender = 'homme', stage = 'adulte' }: { onEnd: (score: number) => void; /** The stars to gather (a nap: fewer). */ target?: number; look?: Look; gender?: 'femme' | 'homme'; stage?: string }) {
+  const st = useRef<State>({ y: 0.45, vy: 0, key: 0, good: 0, bad: 0, next: 0.6, t: 0, done: false, shift: 0, started: false, things: [] as Thing[] })
   const [, redraw] = useState(0)
   const [said, setSaid] = useState<string | null>(null)
   const finish = useRef(onEnd)
@@ -197,15 +413,9 @@ export function ReveDefi({ onEnd, target = 25, look }: { onEnd: (score: number) 
     return () => cancelAnimationFrame(raf)
   }, [target])
   const s = st.current
-  const now = performance.now()
   return (
     <div className="absolute inset-0 touch-none overflow-hidden select-none" style={{ background: 'linear-gradient(#1a0f4a 0%, #4b2a8a 55%, #8a4fa8 80%, #2a1d5a 100%)' }} onPointerDown={(e) => (e.preventDefault(), flap())}>
-      {/* The sky: the stars far away twinkling, the moon */}
-      {[...Array(30)].map((_, i) => (
-        <span key={i} className="absolute h-1 w-1 animate-pulse rounded-full bg-white/60" style={{ left: `${(i * 41) % 100}%`, top: `${(i * 67) % 70}%`, animationDelay: `${(i % 7) * 0.3}s` }} />
-      ))}
-      <div className="absolute top-[8%] right-[10%] h-16 w-16 rounded-full bg-[#fff6d0] shadow-[0_0_40px_10px_rgba(255,240,180,0.35)]" />
-      <City shift={s.shift} />
+      <Night st={st} look={look} gender={gender} stage={stage} />
       <div className="absolute top-4 left-1/2 flex -translate-x-1/2 items-center gap-3 rounded-full bg-black/35 px-4 py-1.5 text-[13px] font-extrabold text-white">
         <span className="flex items-center gap-1">
           <Star size={14} fill="#ffd43b" color="#ffd43b" /> {Math.min(s.good, target)}/{target}
@@ -214,26 +424,6 @@ export function ReveDefi({ onEnd, target = 25, look }: { onEnd: (score: number) 
           <Bug size={14} color="#ff6b6b" /> {s.bad}/{WAKE}
         </span>
       </div>
-      {s.things.map((th) => {
-        const y = th.kind === 'moustique' ? th.y + Math.sin(now / 250 + th.wob) * 0.04 : th.y
-        return (
-          <span key={th.key} className={`absolute -translate-x-1/2 -translate-y-1/2 ${th.hit ? 'opacity-40' : ''}`} style={{ left: `${th.x * 100}%`, top: `${y * 100}%` }}>
-            {th.kind === 'mouton' ? (
-              <Sheep />
-            ) : (
-              (() => {
-                const [Icon, color] = FACE[th.kind]
-                const big = th.kind !== 'etoile'
-                return <Icon size={big ? 44 : 32} strokeWidth={2.4} color={color} fill={th.kind === 'etoile' ? color : big ? `${color}33` : 'none'} />
-              })()
-            )}
-          </span>
-        )
-      })}
-      {/* The dreamer on the flying mattress */}
-      <span className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: '24%', top: `${s.y * 100}%` }}>
-        <Sleeper look={look} tilt={Math.max(-14, Math.min(14, s.vy * 22))} />
-      </span>
       {said && <div className="absolute top-16 left-1/2 -translate-x-1/2 animate-pop rounded-2xl bg-[#ff3d57] px-4 py-2 font-display text-[16px] font-extrabold whitespace-nowrap text-white">{said}</div>}
       {/* Before the first tap: how it's played (then the sky is all the dream's) */}
       {!s.started && (
@@ -249,5 +439,5 @@ export function ReveDefi({ onEnd, target = 25, look }: { onEnd: (score: number) 
 /** Going to bed (the gestures, each one seen), then the night dreamt: the dream counts most. A nap: a shorter dream. */
 export function DodoDefi({ onEnd, nap, look, gender, scenes }: { onEnd: (score: number) => void; nap?: boolean; look?: Look; gender?: 'femme' | 'homme'; /** The lab page: the steps in little scenes of their own. */ scenes?: boolean }) {
   const [bed, setBed] = useState<number | null>(null)
-  return bed === null ? <GestesDefi kind="dodo" look={look} gender={gender} scenes={scenes} onEnd={setBed} /> : <ReveDefi target={nap ? 15 : 25} look={look} onEnd={(dream) => onEnd(Math.round(bed * 0.25 + dream * 0.75))} />
+  return bed === null ? <GestesDefi kind="dodo" look={look} gender={gender} scenes={scenes} onEnd={setBed} /> : <ReveDefi target={nap ? 15 : 25} look={look} gender={gender} onEnd={(dream) => onEnd(Math.round(bed * 0.25 + dream * 0.75))} />
 }
