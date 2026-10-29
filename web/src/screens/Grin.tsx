@@ -5,6 +5,7 @@ import type { DirectPost, GrinMessage, Sim, World } from '../lib/types'
 import { ReportSheet } from '../components/Social'
 import { ChatScreen, type ChatLine } from '../components/ChatScreen'
 import { aCommune, deNom } from '../lib/french'
+import { keyOpen, useFeatures } from '../lib/features'
 
 /**
  * Le grin, in Gbairai (backend sims/grin.go): the public chat, where people
@@ -64,6 +65,7 @@ function Room({ sim, room, title, icon, communeName, onBack }: { sim: Sim; room:
   const [reporting, setReporting] = useState<GrinMessage | null>(null)
   const last = useRef(0)
   const lastPost = useRef(0)
+  const feats = useFeatures()
 
   useEffect(() => {
     let stop = false
@@ -113,12 +115,12 @@ function Room({ sim, room, title, icon, communeName, onBack }: { sim: Sim; room:
     }
   }, [sim.id, room])
 
-  const send = async (body: string) => {
+  const send = async (body: string, replyTo?: ChatLine) => {
     try {
-      const r = await api.sayGrin(sim.id, room, body)
+      const r = await api.sayGrin(sim.id, room, body, replyTo?.id)
       setNote(null)
       last.current = Math.max(last.current, r.id)
-      setMsgs((old) => [...old, { id: r.id, sim: sim.id, firstName: sim.firstName, gender: sim.gender, look: sim.look, commune: sim.commune, mine: true, friend: false, body: r.body, at: new Date().toISOString() }])
+      setMsgs((old) => [...old, { id: r.id, sim: sim.id, firstName: sim.firstName, gender: sim.gender, look: sim.look, commune: sim.commune, mine: true, friend: false, body: r.body, at: new Date().toISOString(), replyTo: r.replyTo, quote: r.quote }])
       return true
     } catch (e) {
       setNote(e instanceof ApiError ? e.message : 'Pas de réseau, réessaie.')
@@ -144,7 +146,7 @@ function Room({ sim, room, title, icon, communeName, onBack }: { sim: Sim; room:
 
   const people = new Set(msgs.filter((m) => !m.mine).map((m) => m.firstName))
   const lines: ChatLine[] = [
-    ...msgs.map((m) => ({ id: m.id, mine: m.mine, body: m.body, at: m.at, sender: { key: m.sim, name: m.firstName, sub: communeName(m.commune), look: m.look, gender: m.gender, friend: m.friend } })),
+    ...msgs.map((m) => ({ id: m.id, mine: m.mine, body: m.body, at: m.at, replyTo: m.replyTo, quote: m.quote, sender: { key: m.sim, name: m.firstName, sub: communeName(m.commune), look: m.look, gender: m.gender, friend: m.friend } })),
     ...posts.map((p) => ({
       id: -p.id,
       mine: false,
@@ -170,6 +172,7 @@ function Room({ sim, room, title, icon, communeName, onBack }: { sim: Sim; room:
       empty="C'est calme au grin. Lance la discussion !"
       placeholder={room === 'babi' ? 'Écris à tout Babi' : `Écris ${aCommune(communeName(sim.commune))}`}
       onSend={send}
+      canReply={keyOpen(feats, 'repondre-message')}
       onReport={(l) => setReporting(msgs.find((m) => m.id === l.id) ?? null)}
       onReact={react}
       note={note}

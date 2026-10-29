@@ -106,6 +106,7 @@ var List = []Feature{
 	{ID: "premieres-fois", Label: "Les premières fois du bébé", About: "Le premier sourire, la première bouillie, le premier bain, la première dent, le premier éclat de rire, les premiers pas, le premier jour de crèche, le premier mot : chacune arrive la première fois que le bébé fait ce qu'il faut ; « Mes premières fois 3/8 » montre où il en est ; toutes, et le bébé est aux anges.", Keys: []string{"premieres-fois"}},
 	{ID: "choix-bebe", Label: "Les choix du bébé", About: "Parmi les jouets, le bébé va vers le ballon, le tam-tam, le livre ou le téléphone de papa : l'enfant en garde un talent (sportif, artiste, de bonnes notes d'avance, charmeur) ; et son premier mot, choisi par le joueur, reste le sien.", Interactions: []string{"jouets", "premier-mot"}, Keys: []string{"choix-bebe"}},
 	{ID: "table", Label: "Les gens viennent te parler dans les lieux", About: "« Je peux m'asseoir à ta table ? » au resto ou au bar (tu acceptes et vous causez, ou tu refuses poliment), et au travail les clients qui viennent te demander de l'aide.", Keys: []string{"table"}},
+	{ID: "repondre-message", Label: "Répondre à un message", About: "Dans Gbairai et au grin, glisse un message vers la droite (ou appuie longtemps dessus) pour y répondre : ta réponse le cite, et un toucher sur la citation ramène au message. Sous les vidéos de Tikitoko, « Répondre » sous un commentaire : les réponses s'affichent en dessous, comme sur TikTok.", Keys: []string{"repondre-message"}},
 }
 
 // OpeningID is the game's opening to everyone, set like an update.

@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { ArrowLeft, Check, CheckCheck, EllipsisVertical, Keyboard, Lock, Send, Smile, UserCheck } from 'lucide-react'
-import type { Look, Sim } from '../lib/types'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { ArrowLeft, Ban, Check, CheckCheck, EllipsisVertical, Keyboard, Lock, Reply, Send, Smile, UserCheck, X } from 'lucide-react'
+import type { Look, Quote, Sim } from '../lib/types'
 import { Portrait } from '../avatar/portrait'
 import { EmojiPanel, StickerView, stickerOf } from './Stickers'
-import { SharedCard, isCard } from './SharedCard'
+import { SharedCard, cardPreview, isCard } from './SharedCard'
 
 type Gender = Sim['gender']
 
@@ -15,7 +15,10 @@ type Gender = Sim['gender']
 // round message box with the emoji inside and the round send button. Used by
 // Gbairai's chats with a friend and by the grin's two group chats. A post of
 // the game (Babi Direct, in « Tout Babi ») is a group message with its own
-// round picture and colour, and the reactions under it.
+// round picture and colour, and the reactions under it. With the update
+// « repondre-message », a message is answered by swiping it right, a long
+// press, or « Répondre » (tap, or the arrow on hover): the reply quotes it,
+// and a tap on the quote goes back to it.
 
 export type ChatLine = {
   id: number
@@ -28,6 +31,9 @@ export type ChatLine = {
   sender?: { key: string; name: string; sub?: string; look?: Look; gender?: Gender; friend?: boolean; avatar?: ReactNode; color?: string }
   /** Reactions under the message: how many of each, mine, and those one can give. */
   reactions?: { counts: Record<string, number>; mine: string; choices: string[] }
+  /** The message it answers, and a short quote of it. */
+  replyTo?: number
+  quote?: Quote
 }
 
 export type ChatMenuItem = { label: string; onClick: () => void; danger?: boolean }
@@ -59,6 +65,108 @@ function nameColor(key: string) {
   for (const c of key) h = (h * 31 + c.charCodeAt(0)) >>> 0
   return NAME_COLORS[h % NAME_COLORS.length]
 }
+/** What a quote says of a message: « Sticker », a card's line, or the text's first line. */
+export function quoteText(body: string, kind?: Quote['kind']) {
+  if (kind === 'photo') return 'Photo'
+  const st = stickerOf(body)
+  if (kind === 'sticker' || st) return st ? `Sticker ${st.emoji}` : 'Sticker'
+  return cardPreview(body) ?? body.split('\n')[0]
+}
+
+/** The quoted message, in a bubble or above the box: the coloured bar, who wrote it, two lines. */
+export function QuoteBlock({ q, color, onClick }: { q: Quote; color: string; onClick?: () => void }) {
+  return (
+    <button type="button" onClick={onClick} disabled={!onClick} className="mb-1 flex w-full min-w-0 overflow-hidden rounded-md bg-black/[0.06] text-left">
+      <span className="w-1 shrink-0" style={{ background: q.deleted ? '#8696a0' : color }} />
+      <span className="min-w-0 flex-1 px-2 py-1">
+        {q.deleted ? (
+          <span className="flex items-center gap-1 text-[12.5px] font-semibold text-[#667781] italic">
+            <Ban size={12} /> Message supprimé
+          </span>
+        ) : (
+          <>
+            <span className="block truncate text-[12.5px] font-extrabold" style={{ color }}>
+              {q.mine ? 'Toi' : q.name}
+            </span>
+            <span className="line-clamp-2 text-[12.5px] leading-snug font-medium break-words text-[#54656f]">{quoteText(q.body, q.kind)}</span>
+          </>
+        )}
+      </span>
+    </button>
+  )
+}
+
+/** A message's row: swiped right (touch) or held down, it's the one answered. */
+function SwipeRow({ enabled, onReply, children, className, lit }: { enabled: boolean; onReply: () => void; children: ReactNode; className: string; lit: boolean }) {
+  const [dx, setDx] = useState(0)
+  const g = useRef<{ x: number; y: number; id: number; swiping: boolean; timer?: ReturnType<typeof setTimeout> } | null>(null)
+  const held = useRef(false)
+  const clear = () => {
+    if (g.current?.timer) clearTimeout(g.current.timer)
+  }
+  const down = (e: ReactPointerEvent) => {
+    if (!enabled || (e.pointerType === 'mouse' && e.button !== 0)) return
+    held.current = false
+    g.current = {
+      x: e.clientX,
+      y: e.clientY,
+      id: e.pointerId,
+      swiping: false,
+      timer: setTimeout(() => {
+        if (!g.current || g.current.swiping) return
+        held.current = true
+        navigator.vibrate?.(15)
+        onReply()
+      }, 450),
+    }
+  }
+  const move = (e: ReactPointerEvent) => {
+    const s = g.current
+    if (!s || s.id !== e.pointerId) return
+    const x = e.clientX - s.x
+    const y = e.clientY - s.y
+    if (!s.swiping && (Math.abs(x) > 8 || Math.abs(y) > 8)) {
+      clear()
+      // Up and down is scrolling; only a touch swipes.
+      if (e.pointerType !== 'touch' || Math.abs(y) > Math.abs(x) || x < 0) {
+        g.current = null
+        return
+      }
+      s.swiping = true
+    }
+    if (s.swiping) setDx(Math.max(0, Math.min(80, x)))
+  }
+  const up = () => {
+    clear()
+    if (g.current?.swiping && dx >= 56) onReply()
+    g.current = null
+    setDx(0)
+  }
+  return (
+    <div
+      className={`relative -mx-3 px-3 transition-colors duration-500 ${enabled ? 'pointer-coarse:select-none' : ''} ${lit ? 'bg-[#c2410c]/15' : ''}`}
+      style={enabled ? { touchAction: 'pan-y' } : undefined}
+      onPointerDown={down}
+      onPointerMove={move}
+      onPointerUp={up}
+      onPointerCancel={up}
+      onClickCapture={(e) => {
+        // A long press that answered isn't a tap too.
+        if (held.current) e.stopPropagation()
+        held.current = false
+      }}
+    >
+      {dx > 0 && (
+        <span className="absolute top-1/2 left-1 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-[#54656f] shadow-sm" style={{ opacity: Math.min(1, dx / 56) }}>
+          <Reply size={17} />
+        </span>
+      )}
+      <div className={className} style={dx ? { transform: `translateX(${dx}px)` } : { transition: 'transform 0.15s' }}>
+        {children}
+      </div>
+    </div>
+  )
+}
 
 /** The round photo in the bar or beside a group message. */
 export function ChatAvatar({ look, gender, size = 40, children }: { look: Look; gender: Gender; size?: number; children?: ReactNode }) {
@@ -88,6 +196,7 @@ export function ChatScreen({
   below,
   typing,
   onTyping,
+  canReply,
 }: {
   title: string
   subtitle?: string
@@ -101,8 +210,8 @@ export function ChatScreen({
   placeholder: string
   /** Writing closed (blocked): the box says why. */
   locked?: string
-  /** Send a message; true when it went. */
-  onSend: (body: string) => Promise<boolean>
+  /** Send a message (an answer to `replyTo`); true when it went. */
+  onSend: (body: string, replyTo?: ChatLine) => Promise<boolean>
   onReport?: (line: ChatLine) => void
   /** React to a line that takes reactions ("" takes mine back). */
   onReact?: (line: ChatLine, emoji: string) => void
@@ -112,12 +221,17 @@ export function ChatScreen({
   typing?: string
   /** The text in the box changed: whether there is something being written. */
   onTyping?: (writing: boolean) => void
+  /** Messages can be answered one by one (the update « repondre-message »). */
+  canReply?: boolean
 }) {
   const [text, setText] = useState('')
   const [panel, setPanel] = useState<'emoji' | 'stickers' | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [picked, setPicked] = useState<number | null>(null)
   const [sending, setSending] = useState(false)
+  const [replying, setReplying] = useState<ChatLine | null>(null)
+  const [flash, setFlash] = useState<number | null>(null)
+  const box = useRef<HTMLTextAreaElement>(null)
   const end = useRef<HTMLDivElement>(null)
   useEffect(() => {
     end.current?.scrollIntoView({ block: 'end' })
@@ -127,13 +241,31 @@ export function ChatScreen({
     if (!body.trim() || sending || locked) return
     setSending(true)
     try {
-      if (await onSend(body.trim())) {
+      if (await onSend(body.trim(), replying ?? undefined)) {
+        setReplying(null)
         if (sticker) setPanel(null)
         else setText('')
       }
     } finally {
       setSending(false)
     }
+  }
+
+  const replyTo = (m: ChatLine) => {
+    setPicked(null)
+    setReplying(m)
+    if (!locked) box.current?.focus()
+  }
+  // Who wrote a line, as a quote names them.
+  const authorOf = (m: ChatLine) => (m.mine ? 'Toi' : (m.sender?.name ?? title))
+  const colorOf = (m: { mine: boolean; sender?: ChatLine['sender'] }) => (m.mine ? HEADER : (m.sender?.color ?? (m.sender ? nameColor(m.sender.key) : '#1971c2')))
+  // The quote's original: brought into view, lit up a moment.
+  const goTo = (id: number) => {
+    const el = document.getElementById(`chat-line-${id}`)
+    if (!el) return
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    setFlash(id)
+    setTimeout(() => setFlash((f) => (f === id ? null : f)), 1400)
   }
 
   return (
@@ -187,6 +319,11 @@ export function ChatScreen({
             const bare = !!st || big || card
             const group = !!m.sender && !m.mine
             const reportable = !!onReport && !m.mine && !m.reactions
+            const replyable = !!canReply && !m.reactions && !locked
+            const original = m.quote && m.replyTo !== undefined ? lines.find((l) => l.id === m.replyTo) : undefined
+            const quote = m.quote && (
+              <QuoteBlock q={m.quote} color={m.quote.deleted ? '#8696a0' : original ? colorOf(original) : m.quote.mine ? HEADER : '#1971c2'} onClick={m.quote.deleted || m.replyTo === undefined ? undefined : () => goTo(m.replyTo!)} />
+            )
             const ticks = m.mine && m.readAt !== undefined ? (m.readAt ? <CheckCheck size={15} className="text-[#2b9ce8]" /> : <Check size={15} className="opacity-60" />) : null
             const stamp = (
               <span className="flex items-center gap-0.5 text-[11px] leading-none font-semibold text-[#667781]">
@@ -195,15 +332,20 @@ export function ChatScreen({
               </span>
             )
             return (
-              <div key={m.id}>
+              <div key={m.id} id={`chat-line-${m.id}`}>
                 {newDay && (
                   <div className="my-2 flex justify-center">
                     <span className="rounded-lg bg-white/90 px-2.5 py-1 text-[12px] font-semibold text-[#54656f] shadow-sm first-letter:uppercase">{dayLabel(m.at)}</span>
                   </div>
                 )}
-                <div className={`flex items-start gap-1.5 ${m.mine ? 'justify-end' : 'justify-start'} ${first ? 'mt-2' : 'mt-0.5'}`}>
+                <SwipeRow enabled={replyable} onReply={() => replyTo(m)} lit={flash === m.id} className={`group flex items-start gap-1.5 ${m.mine ? 'justify-end' : 'justify-start'} ${first ? 'mt-2' : 'mt-0.5'}`}>
+                  {replyable && m.mine && (
+                    <button className="hidden self-center rounded-full p-1 text-[#54656f] opacity-0 group-hover:opacity-100 pointer-fine:block" onClick={(e) => (e.stopPropagation(), replyTo(m))} aria-label="Répondre">
+                      <Reply size={16} />
+                    </button>
+                  )}
                   {group && (first ? (m.sender!.avatar ?? (m.sender!.look && m.sender!.gender ? <ChatAvatar look={m.sender!.look} gender={m.sender!.gender} size={30} /> : <span className="w-[30px] shrink-0" />)) : <span className="w-[30px] shrink-0" />)}
-                  <div className={`relative max-w-[78%] ${bare ? '' : 'rounded-lg px-2 pt-1.5 pb-1 shadow-[0_1px_0.5px_rgba(0,0,0,0.13)]'} ${!bare && first ? (m.mine ? 'rounded-tr-none' : 'rounded-tl-none') : ''}`} style={bare ? undefined : { background: m.mine ? MINE : THEIRS }} onClick={(e) => (e.stopPropagation(), reportable && setPicked((p) => (p === m.id ? null : m.id)))} onContextMenu={(e) => (e.preventDefault(), reportable && setPicked(m.id))}>
+                  <div className={`relative max-w-[78%] ${bare ? '' : 'rounded-lg px-2 pt-1.5 pb-1 shadow-[0_1px_0.5px_rgba(0,0,0,0.13)]'} ${!bare && first ? (m.mine ? 'rounded-tr-none' : 'rounded-tl-none') : ''}`} style={bare ? undefined : { background: m.mine ? MINE : THEIRS }} onClick={(e) => (e.stopPropagation(), (reportable || replyable) && setPicked((p) => (p === m.id ? null : m.id)))} onContextMenu={(e) => (e.preventDefault(), !replyable && reportable && setPicked(m.id))}>
                     {!bare && first && (
                       <svg viewBox="0 0 8 13" className={`absolute top-0 h-[13px] w-2 ${m.mine ? '-right-2' : '-left-2'}`} aria-hidden>
                         <path d={m.mine ? 'M0 0H8L0 13z' : 'M8 0H0L8 13z'} fill={m.mine ? MINE : THEIRS} />
@@ -216,6 +358,7 @@ export function ChatScreen({
                         {m.sender!.sub && <span className="font-semibold text-[#8696a0]">· {m.sender!.sub}</span>}
                       </div>
                     )}
+                    {quote && (bare ? <div className="rounded-lg bg-white/90 p-1 shadow-sm">{quote}</div> : quote)}
                     {card ? (
                       <div className={`flex flex-col gap-1 ${m.mine ? 'items-end' : 'items-start'}`}>
                         <SharedCard body={m.body} mine={m.mine} from={m.sender?.name ?? title} />
@@ -256,13 +399,27 @@ export function ChatScreen({
                         <span className="absolute right-2 bottom-1">{stamp}</span>
                       </p>
                     )}
-                    {picked === m.id && onReport && reportable && (
-                      <button className="absolute top-full left-0 z-10 mt-1 rounded-lg bg-white px-3 py-1.5 text-[13px] font-bold whitespace-nowrap text-[#c92a2a] shadow-lg" onClick={(e) => (e.stopPropagation(), setPicked(null), onReport(m))}>
-                        Signaler ce message
-                      </button>
+                    {picked === m.id && (reportable || replyable) && (
+                      <div className={`absolute top-full z-10 mt-1 flex overflow-hidden rounded-lg bg-white text-[13px] font-bold whitespace-nowrap shadow-lg ${m.mine ? 'right-0' : 'left-0'}`}>
+                        {replyable && (
+                          <button className="flex items-center gap-1 px-3 py-1.5 text-[#111b21] active:bg-black/5" onClick={(e) => (e.stopPropagation(), replyTo(m))}>
+                            <Reply size={14} /> Répondre
+                          </button>
+                        )}
+                        {reportable && onReport && (
+                          <button className="px-3 py-1.5 text-[#c92a2a] active:bg-black/5" onClick={(e) => (e.stopPropagation(), setPicked(null), onReport(m))}>
+                            Signaler ce message
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
-                </div>
+                  {replyable && !m.mine && (
+                    <button className="hidden self-center rounded-full p-1 text-[#54656f] opacity-0 group-hover:opacity-100 pointer-fine:block" onClick={(e) => (e.stopPropagation(), replyTo(m))} aria-label="Répondre">
+                      <Reply size={16} />
+                    </button>
+                  )}
+                </SwipeRow>
               </div>
             )
           })}
@@ -282,6 +439,16 @@ export function ChatScreen({
         <div className="bg-[#f0ebe4] px-2 pt-1.5 pb-[max(env(safe-area-inset-bottom),8px)]">
           {note && <p className="mb-1.5 rounded-lg bg-[#fff3c4] px-3 py-2 text-xs font-bold text-[#5c4a00]">{note}</p>}
           {below}
+          {replying && !locked && (
+            <div className="motion-pop mb-1.5 flex items-start gap-1 rounded-xl bg-white p-1.5 shadow-sm">
+              <div className="min-w-0 flex-1">
+                <QuoteBlock q={{ name: authorOf(replying), body: replying.body, kind: 'text' }} color={colorOf(replying)} onClick={() => goTo(replying.id)} />
+              </div>
+              <button type="button" className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[#54656f] active:bg-black/5" onClick={() => setReplying(null)} aria-label="Ne pas répondre à ce message">
+                <X size={18} />
+              </button>
+            </div>
+          )}
           {panel && !locked && <EmojiPanel tab={panel} onTab={setPanel} onEmoji={(e) => setText((t) => (t + e).slice(0, 500))} onSticker={(s) => void send(`[sticker:${s.id}]`, true)} />}
           <form
             className="flex items-end gap-1.5"
@@ -295,6 +462,7 @@ export function ChatScreen({
                 {panel ? <Keyboard size={22} /> : <Smile size={23} />}
               </button>
               <textarea
+                ref={box}
                 value={text}
                 onChange={(e) => (setText(e.target.value.slice(0, 500)), onTyping?.(!!e.target.value.trim()))}
                 onFocus={() => setPanel(null)}

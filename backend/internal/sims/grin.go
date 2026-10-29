@@ -43,6 +43,9 @@ type GrinMessage struct {
 	Friend    bool      `json:"friend"`
 	Body      string    `json:"body"`
 	At        time.Time `json:"at"`
+	// The message it answers (update « repondre-message », reply.go), and a short quote of it.
+	ReplyTo *int64 `json:"replyTo,omitempty"`
+	Quote   *Quote `json:"quote,omitempty"`
 }
 
 // grinRoom: « babi », or the commune the Sim is in.
@@ -74,8 +77,12 @@ func (h *Handler) grin(w http.ResponseWriter, r *http.Request) {
 	_, _ = h.DB.Exec(ctx, `DELETE FROM grin WHERE created_at < now() - interval '7 days'`)
 	rows, err := h.DB.Query(ctx, `SELECT * FROM (
 		SELECT g.id, g.sim, s.first_name, s.gender, s.look, s.commune, g.body, g.created_at,
-			EXISTS(SELECT 1 FROM bonds b WHERE b.sim_a = LEAST(g.sim, $1::uuid) AND b.sim_b = GREATEST(g.sim, $1::uuid) AND b.friends)
+			EXISTS(SELECT 1 FROM bonds b WHERE b.sim_a = LEAST(g.sim, $1::uuid) AND b.sim_b = GREATEST(g.sim, $1::uuid) AND b.friends),
+			g.reply_to, q.sim, qs.first_name, q.body
 		FROM grin g JOIN sims s ON s.id = g.sim
+			LEFT JOIN grin q ON q.id = g.reply_to AND NOT q.hidden
+				AND NOT EXISTS(SELECT 1 FROM blocks k WHERE (k.sim = $1 AND k.blocked = q.sim) OR (k.sim = q.sim AND k.blocked = $1))
+			LEFT JOIN sims qs ON qs.id = q.sim
 		WHERE g.room = $2 AND g.id > $3 AND NOT g.hidden
 			AND NOT EXISTS(SELECT 1 FROM blocks k WHERE (k.sim = $1 AND k.blocked = g.sim) OR (k.sim = g.sim AND k.blocked = $1))
 		ORDER BY g.id DESC LIMIT $4) x ORDER BY id`, me, room, after, GrinPage)
@@ -87,11 +94,13 @@ func (h *Handler) grin(w http.ResponseWriter, r *http.Request) {
 	out := []GrinMessage{}
 	for rows.Next() {
 		var m GrinMessage
-		if err := rows.Scan(&m.ID, &m.Sim, &m.FirstName, &m.Gender, &m.Look, &m.Commune, &m.Body, &m.At, &m.Friend); err != nil {
+		var qSim, qName, qBody *string
+		if err := rows.Scan(&m.ID, &m.Sim, &m.FirstName, &m.Gender, &m.Look, &m.Commune, &m.Body, &m.At, &m.Friend, &m.ReplyTo, &qSim, &qName, &qBody); err != nil {
 			h.gbairaiFail(w, err)
 			return
 		}
 		m.Mine = m.Sim == me
+		m.Quote = quoteOf(m.ReplyTo, qName, qBody, qSim != nil && *qSim == me)
 		out = append(out, m)
 	}
 	httpx.JSON(w, http.StatusOK, map[string]any{"room": room, "messages": out})
@@ -100,11 +109,16 @@ func (h *Handler) grin(w http.ResponseWriter, r *http.Request) {
 // sayGrin: write in the room.
 func (h *Handler) sayGrin(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Room string `json:"room"`
-		Body string `json:"body"`
+		Room    string `json:"room"`
+		Body    string `json:"body"`
+		ReplyTo *int64 `json:"replyTo"`
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
+		return
+	}
+	if req.ReplyTo != nil && !replyOpen(r.Context()) {
+		httpx.Error(w, http.StatusForbidden, "bientôt dans le jeu")
 		return
 	}
 	me, err := h.texter(r)
@@ -130,12 +144,16 @@ func (h *Handler) sayGrin(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusTooManyRequests, errGrinTooFast.Error())
 		return
 	}
-	var id int64
-	if err := h.DB.QueryRow(ctx, `INSERT INTO grin (room, sim, body) VALUES ($1, $2, $3) RETURNING id`, room, me, body).Scan(&id); err != nil {
+	id, err := sayInGrin(ctx, h.DB, me, room, body, req.ReplyTo)
+	if err != nil {
 		h.gbairaiFail(w, err)
 		return
 	}
-	httpx.JSON(w, http.StatusOK, map[string]any{"id": id, "body": body})
+	out := map[string]any{"id": id, "body": body}
+	if req.ReplyTo != nil {
+		out["replyTo"], out["quote"] = *req.ReplyTo, grinQuote(ctx, h.DB, me, req.ReplyTo)
+	}
+	httpx.JSON(w, http.StatusOK, out)
 }
 
 // reportGrin: flag a message of the grin; its author is blocked for the reporter.

@@ -165,7 +165,9 @@ export type HuitGame = {
   steps?: HuitStep[] | null
 }
 /** Gbairai: a message, and a friend's chat in the list. */
-export type ChatMessage = { id: number; mine: boolean; body: string; at: string; readAt?: string }
+/** The message (or comment) a reply answers, quoted (update « repondre-message »); deleted: it's gone. */
+export type Quote = { name: string; body: string; kind: 'text' | 'sticker' | 'photo'; mine?: boolean; deleted?: boolean }
+export type ChatMessage = { id: number; mine: boolean; body: string; at: string; readAt?: string; replyTo?: number; quote?: Quote }
 export type Chat = { friend: Player; last?: ChatMessage; unread: number; blocked?: boolean }
 /** The betting apps (Bet225, ParisFoot): the virtual football and the bets. */
 export type BetOdds = Record<'1' | 'N' | '2' | 'plus' | 'moins' | 'btsOui' | 'btsNon', number>
@@ -176,7 +178,7 @@ export type BetLeg = { match: string; label: string; pick: string; odds: number;
 export type LotoTicket = { id: number; draw: number; name: string; numbers: number[]; drawn?: number[]; stake: number; status: 'open' | 'won' | 'lost'; payout: number }
 export type BetView = { id: number; app: string; stake: number; odds: number; status: 'open' | 'won' | 'lost'; payout: number; at: string; legs: BetLeg[] }
 /** Le grin: the public chat (all of Babi, or the commune). */
-export type GrinMessage = { id: number; sim: string; firstName: string; gender: 'femme' | 'homme'; look: Look; commune: string; mine: boolean; friend: boolean; body: string; at: string }
+export type GrinMessage = { id: number; sim: string; firstName: string; gender: 'femme' | 'homme'; look: Look; commune: string; mine: boolean; friend: boolean; body: string; at: string; replyTo?: number; quote?: Quote }
 /** Babi Direct, in the grin's « Tout Babi »: what happens in the game, posted by the game; one reaction a player. */
 export type DirectPost = { id: number; kind: 'quartier' | 'stade' | 'bet' | 'joueur'; emoji: string; body: string; commune: string; at: string; reactions: Record<string, number>; mine: string }
 /** Stories (in Gbairai) and Tikitoko. */
@@ -187,7 +189,7 @@ export type TikiPost = { id: number; author: Author; handle: string; fans: numbe
 /** The seeds of a game creator's video: their look, the scene. */
 export type TikiNPC = { look: number; scene: number }
 /** A comment under a video; no author: the game's audience. */
-export type TikiComment = { id: string; author?: Author; name: string; handle: string; body: string; likes: number; liked: boolean; mine: boolean; byCreator: boolean; canDelete: boolean; at: string }
+export type TikiComment = { id: string; author?: Author; name: string; handle: string; body: string; likes: number; liked: boolean; mine: boolean; byCreator: boolean; canDelete: boolean; at: string; /** The comment it answers (an id of the same list), quoted. */ replyTo?: string; quote?: Quote }
 export type TikiProfile = { author: Author; handle: string; tier: string; following: number; fans: number; likes: number; posts: number; followed: boolean; mine: boolean; npc?: TikiNPC }
 /** A photo of the phone's gallery: in the bucket (url), or from the API with the token (path). */
 export type Photo = { id: number; url?: string; path?: string; kind: 'photo' | 'selfie'; place: string; at: string }
