@@ -41,5 +41,14 @@ const WAIT = 20_000
 export const motoAsking = () => state.offer !== null && !state.paid && !state.walk && performance.now() - state.since < WAIT
 /** Read in the frame loop: the ride paid for, if any. */
 export const motoTaken = () => state.paid
+/** A ride in the commune, short (the update « trajet-court »): the loading screen over, the Sim is set down there at once. */
+let there = false
+export const rideThere = () => void (there = true)
+/** Read in the frame loop: set down there now (once). */
+export const takeRideThere = () => {
+  const t = there
+  there = false
+  return t
+}
 const subscribe = (f: () => void) => (listeners.add(f), () => void listeners.delete(f))
 export const useMoto = () => useSyncExternalStore(subscribe, () => state)
