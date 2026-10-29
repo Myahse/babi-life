@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useSyncExternalStore } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useTalking } from './talk'
@@ -11,8 +11,23 @@ import { useTalking } from './talk'
 /** How far up the picture goes, as a share of the screen's height. */
 const LIFT = 0.3
 
+// The same while an action is played (components/defi: the garba, the shower…): its game takes the bottom
+// of the screen, the Sim seen making its gestures above it.
+let lifted = false
+const subs = new Set<() => void>()
+export function setLifted(on: boolean) {
+  if (lifted === on) return
+  lifted = on
+  subs.forEach((f) => f())
+}
+const useLifted = () =>
+  useSyncExternalStore(
+    (f) => (subs.add(f), () => void subs.delete(f)),
+    () => lifted,
+  )
+
 export function ChatFraming() {
-  const talking = useTalking()
+  const talking = useTalking() || useLifted()
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera
   const size = useThree((s) => s.size)
   const k = useRef(0)

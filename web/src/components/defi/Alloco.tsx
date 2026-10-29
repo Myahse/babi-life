@@ -18,7 +18,7 @@ export function AllocoDefi({ onEnd }: { /** The score, and whether the egg was t
   const caught = useRef(0)
   if (phase === 'ask')
     return (
-      <div className="absolute inset-0 grid place-items-center bg-[#2a1a08]/70 p-5">
+      <div className="absolute inset-0 flex items-end justify-center p-5 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         <div className="card animate-pop w-full max-w-[340px] p-4 text-center">
           <div className="font-display text-[19px] font-extrabold">Avec un œuf ?</div>
           <p className="mt-1 text-[13.5px] font-bold text-[var(--color-ink-soft)]">La tantie a des œufs durs : 100 Djai de plus, à écailler toi-même.</p>
@@ -125,12 +125,12 @@ function Catch({ onDone }: { onDone: (score: number) => void }) {
     return () => cancelAnimationFrame(raf)
   }, [])
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[#2a1a08]/70 p-4">
+    <div className="absolute inset-0 flex flex-col items-center justify-end gap-2 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" style={{ background: 'linear-gradient(rgba(42,26,8,0) 0%, rgba(42,26,8,0) 34%, rgba(42,26,8,0.85) 50%)' }}>
       <div className="card px-4 py-2 text-center">
         <div className="font-display text-[17px] font-extrabold">Attrape ton alloco !</div>
         <div className="text-[12.5px] font-bold text-[var(--color-ink-soft)]">Glisse le papier sous la louche. {n.caught}/{PIECES} attrapés</div>
       </div>
-      <div ref={box} className="relative h-[min(60vh,440px)] w-[min(90vw,420px)] touch-none overflow-hidden rounded-3xl" style={{ background: 'linear-gradient(#3a2412 0 22%, #6b4426 22% 24%, #e6cf9c 24%)' }} onPointerDown={(e) => move(e.clientX)} onPointerMove={(e) => e.buttons && move(e.clientX)}>
+      <div ref={box} className="relative h-[min(46vh,380px)] w-[min(90vw,420px)] touch-none overflow-hidden rounded-3xl" style={{ background: 'linear-gradient(#3a2412 0 22%, #6b4426 22% 24%, #e6cf9c 24%)' }} onPointerDown={(e) => move(e.clientX)} onPointerMove={(e) => e.buttons && move(e.clientX)}>
         {/* The tantie's table: the black pan of oil on its stove, a few slices frying, her ladle */}
         <div className="absolute top-[2%] left-1/2 h-[17%] w-[70%] -translate-x-1/2 rounded-b-[50%] border-[5px] border-t-0 border-[#1d1d20]" style={{ background: 'radial-gradient(ellipse at 50% 0%, #f2b13a, #b8650f 70%)' }}>
           {[18, 34, 52, 70].map((x, i) => (
@@ -177,7 +177,7 @@ function Peel({ onDone }: { onDone: (score: number) => void }) {
     }
   }
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#2a1a08]/70 p-4">
+    <div className="absolute inset-0 flex flex-col items-center justify-end gap-3 p-3 pb-[max(1.5rem,env(safe-area-inset-bottom))]" style={{ background: 'linear-gradient(rgba(42,26,8,0) 0%, rgba(42,26,8,0) 34%, rgba(42,26,8,0.85) 50%)' }}>
       <div className="card px-4 py-2 text-center">
         <div className="font-display text-[17px] font-extrabold">Écaille l’œuf</div>
         <div className="text-[12.5px] font-bold text-[var(--color-ink-soft)]">Touche chaque morceau de coquille. Reste {bits.length}</div>
