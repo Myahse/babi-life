@@ -38,6 +38,7 @@ import { LotGround, Zones } from '../build/Zones'
 import { LotFence, fenceRuns, ownerColor } from '../build/Fence'
 import { whereabouts } from '../whereabouts'
 import { Snapper } from '../snapshot'
+import { TripDrop } from './tripDrop'
 import { ChatFraming } from '../chatFraming'
 import { CHUNK_ZOOM, hash, tileBox, tileOf, toLatLng, toLocal, type Box, type Origin, type XZ } from './geo'
 import { FOOT, Nav } from './nav'
@@ -1622,6 +1623,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       )}
       {/* A trip booked to another commune: the driver comes up the streets, the Sim gets in, off they go */}
       {ready && nav.nodes.length > 0 && sim.activity?.kind === 'travel' && <TripRide sim={sim} nav={nav} world={world} />}
+      {/* Just dropped off (a short ride, « trajet-court »): the taxi or the gbaka at the kerb, then off at full speed */}
+      {ready && nav.nodes.length > 0 && <TripDrop nav={nav} world={world} />}
       {/* A Garbaya order on its way: the courier rides up to the Sim */}
       <Courier delivery={delivery ?? null} nav={nav} onCollect={onCollect} />
     </>

@@ -337,6 +337,8 @@ export const api = {
   /** The nouchis of a couloir got the Sim: they take what's in its pockets (the API says how much). */
   robbed: (id: string, spot: string) => post<ActionResult>(`/sims/${id}/robbed`, { spot }),
   stop: (id: string) => post<ActionResult>(`/sims/${id}/stop`, {}),
+  /** A ride in town over at once (the update « trajet-court »: the short loading screen, components/TripLoading.tsx). */
+  arrive: (id: string) => post<ActionResult>(`/sims/${id}/arrive`, {}),
   /** The testers' toolbox (pass: the code typed on /testeur). */
   tester: (id: string, pass: string, action: 'age' | 'money' | 'needs' | 'finish' | 'apps', extra: { stage?: string; amount?: number } = {}) => post<ActionResult>(`/sims/${id}/tester`, { pass, action, ...extra }),
   /** Other players: who's in the commune, invitations, player friends. */
