@@ -16,6 +16,8 @@ type Style = { bpm: number; steps: number; swing: number; build: (r: () => numbe
 type Song = (ctx: AudioContext, out: AudioNode, step: number, t: number, dur: number) => void
 
 const KEY = 'babi-music'
+/** How loud the game's sound is: gentle, in the background (was 0.5). */
+const VOLUME = 0.3
 let ctx: AudioContext | null = null
 let master: GainNode | null = null
 let current: { track: Track; seed: string } | null = null
@@ -488,10 +490,13 @@ function ensure() {
   if (!AC) return null
   ctx = new AC()
   master = ctx.createGain()
-  master.gain.value = muted ? 0 : 0.5
-  // A touch of compression keeps it even on phone speakers.
+  master.gain.value = muted ? 0 : VOLUME
+  // A touch of compression keeps it even on phone speakers; the top softened, so it's never shrill.
   const comp = ctx.createDynamicsCompressor()
-  master.connect(comp).connect(ctx.destination)
+  const soft = ctx.createBiquadFilter()
+  soft.type = 'lowpass'
+  soft.frequency.value = 6500
+  master.connect(soft).connect(comp).connect(ctx.destination)
   near = ctx.createGain()
   near.gain.value = level
   near.connect(master)
@@ -579,7 +584,7 @@ export const music = {
     } catch {
       // Private mode: the choice lasts until the page closes.
     }
-    if (master && ctx) master.gain.setTargetAtTime(m ? 0 : 0.5, ctx.currentTime, 0.1)
+    if (master && ctx) master.gain.setTargetAtTime(m ? 0 : VOLUME, ctx.currentTime, 0.1)
   },
 }
 
