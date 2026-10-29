@@ -289,6 +289,9 @@ type Handler struct {
 	Connected func(sim string) bool
 	// Ring: a Gbairai message arrived for a Sim (the live hub: its devices ring); nil in tests.
 	Ring func(to, from, name, text string)
+	// Notify: something for a Sim's devices at once (the live hub); nil in tests. Duels: the fights between players (duel.go).
+	Notify func(to string, v map[string]any)
+	Duels  *Duels
 	// Talk: the passers-by answering what the player types (chatfree.go); nil: off.
 	Talk *npcchat.Client
 }
@@ -443,6 +446,10 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/gram/comments/{comment}/report", h.gramCommentReport)
 	r.Get("/sims/{id}/around", h.around)
 	r.Get("/sims/{id}/everyone", h.everyone)
+	r.Get("/sims/{id}/duel", h.duelNow)
+	r.Post("/sims/{id}/duel", h.duelChallenge)
+	r.Post("/sims/{id}/duel/{duel}", h.duelAnswer)
+	r.Post("/sims/{id}/duel/{duel}/end", h.duelEnd)
 	r.Get("/sims/{id}/plot", h.plot)
 	r.Put("/sims/{id}/plot", h.build)
 	r.Get("/sims/{id}/plots", h.plots)

@@ -1,4 +1,7 @@
 import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView, LotSpot, GodeRound, Mentor } from './types'
+
+/** A challenge to the street fight, or the fight it became. */
+export type Duel = { id: string; from: string; to: string; names: [string, string]; baby: boolean; state: 'pending' | 'on' | 'off'; at: string }
 import { useSession } from '../store/session'
 import { API_BASE as BASE } from './env'
 import { blobUrl } from './blobUrl'
@@ -479,6 +482,11 @@ export const api = {
   huitAccept: (id: string, game: number) => post<ActionResult>(`/sims/${id}/huit/${game}/accept`, {}),
   huitAct: (id: string, game: number, action: 'play' | 'draw' | 'pass' | 'resign' | 'decline', play?: { card: number; suit: number; carte: boolean }) => post<{ game: HuitGame }>(`/sims/${id}/huit/${game}/${action}`, play ?? {}),
   answerInvite: (id: string, invite: string, answer: 'accepter' | 'refuser') => post<ActionResult>(`/sims/${id}/invites/${invite}`, { answer }),
+  /** Player against player at the street fight (backend sims/duel.go). */
+  duel: (id: string) => request<{ duel: Duel | null; other?: { id: string; look: Look; gender: 'femme' | 'homme' } }>(`/sims/${id}/duel`),
+  challenge: (id: string, to: string) => post<Duel>(`/sims/${id}/duel`, { to }),
+  answerDuel: (id: string, duel: string, accept: boolean) => post<Duel>(`/sims/${id}/duel/${duel}`, { accept }),
+  endDuel: (id: string, duel: string, won: boolean, quit = false) => post<ActionResult>(`/sims/${id}/duel/${duel}/end`, { won, quit }),
   /** A soirée at home (backend sims/party.go): thrown with one of its themes, ended by its host. */
   throwParty: (id: string, theme: string) => post<ActionResult>(`/sims/${id}/soiree`, { theme }),
   /** One turn of the slot machine the Sim is playing (backend sims/machine.go). */

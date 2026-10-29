@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Check, Hand, MapPin, Send, UserCheck, UserPlus, Users, X } from 'lucide-react'
+import { Check, Hand, MapPin, Send, Swords, UserCheck, UserPlus, Users, X } from 'lucide-react'
 import { api } from '../lib/api'
 import type { Around, Invite, Player, Sim } from '../lib/types'
 import { Portrait } from '../avatar/portrait'
@@ -167,7 +167,7 @@ function Everyone({ sim, communes }: { sim: Sim; communes: { id: string; name: s
 }
 
 /** The players in the commune: greet them, join them, invite them; and everyone in the city (« Tout Babi »). */
-export function PlayersSheet({ sim, around, communeName, communes = [], focus, act, onClose }: { sim: Sim; around: Around; communeName: string; /** The city's communes (« Tout Babi »). */ communes?: { id: string; name: string }[]; focus: string | null; act: Act; onClose: () => void }) {
+export function PlayersSheet({ sim, around, communeName, communes = [], focus, act, onDuel, myStage, onClose }: { sim: Sim; around: Around; communeName: string; /** The city's communes (« Tout Babi »). */ communes?: { id: string; name: string }[]; focus: string | null; act: Act; /** Challenge to the street fight (update « combat-joueurs », components/Duel.tsx), when open; a baby only another baby. */ onDuel?: (p: Player) => void; /** The player's own stage of life. */ myStage?: string; onClose: () => void }) {
   const [all, setAll] = useState(false)
   const canInvite = joinableActivity(sim)
   const busy = !!sim.activity
@@ -270,6 +270,11 @@ export function PlayersSheet({ sim, around, communeName, communes = [], focus, a
                         <Send size={14} /> Inviter
                       </button>
                     </div>
+                    {onDuel && (p.stage === 'bebe') === (myStage === 'bebe') && (
+                      <button className="btn btn-soft mt-2 w-full !py-1.5 !text-xs !text-[#c92a2a]" onClick={() => onDuel(p)}>
+                        <Swords size={14} /> {p.stage === 'bebe' ? 'Bagarre de bébés !' : 'Défier au combat'}
+                      </button>
+                    )}
                   </div>
                 ))
               )}

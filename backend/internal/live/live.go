@@ -86,7 +86,9 @@ type Hub struct {
 	// Karts: who races on which grid at Babi Karting (the "kart" rooms).
 	Karts *kart.Lobby
 	// Courts: who plays in which match at the pitches and courts (the "match" rooms).
-	Courts  *court.Lobby
+	Courts *court.Lobby
+	// Duels: who fights whom, player against player (the "fight" rooms, sims/duel.go).
+	Duels   interface{ Has(duel, sim string) bool }
 	Tokens  auth.Tokens
 	Origins []string
 
@@ -150,8 +152,12 @@ func isKart(room string) bool { return strings.HasPrefix(room, "kart:") }
 // (streetball/online.ts): sent as fast as a race, everything each time.
 func isMatch(room string) bool { return strings.HasPrefix(room, "match:") }
 
+// isFight: two players' street fight (sims/duel.go), run by the one who
+// challenged (web components/defi/combat/net.ts): as fast as a match.
+func isFight(room string) bool { return strings.HasPrefix(room, "fight:") }
+
 // isFast: the rooms sent every KartTick, whole.
-func isFast(room string) bool { return isKart(room) || isMatch(room) }
+func isFast(room string) bool { return isKart(room) || isMatch(room) || isFight(room) }
 
 // broadcast: the kart rooms every KartTick, the streets every other one (Tick).
 func (h *Hub) broadcast(now time.Time, streets bool) {
@@ -263,6 +269,24 @@ func (h *Hub) Message(to, from, name, text string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	msg, _ := json.Marshal(map[string]any{"t": "msg", "id": to, "from": from, "name": name, "text": text})
+	for _, clients := range h.rooms {
+		for c := range clients {
+			if c.sim != to {
+				continue
+			}
+			select {
+			case c.send <- msg:
+			default:
+			}
+		}
+	}
+}
+
+// Notify: something for this Sim's devices at once (a challenge to a fight, its answer: sims/duel.go).
+func (h *Hub) Notify(to string, v map[string]any) {
+	msg, _ := json.Marshal(v)
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	for _, clients := range h.rooms {
 		for c := range clients {
 			if c.sim != to {
@@ -410,8 +434,8 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					continue
 				}
 				st.K, st.B = m.K, m.B
-			} else if isMatch(c.room) {
-				if !matchOK(m.K, m.B) {
+			} else if isMatch(c.room) || isFight(c.room) {
+				if !matchOK(m.K, m.B, isFight(c.room)) {
 					continue
 				}
 				st.K, st.B = m.K, m.B
@@ -446,12 +470,17 @@ func kartOK(k []float64, b [][]float64) bool {
 // matchOK: a player's hands, or the match as its first player runs it (ten
 // players, or twenty-two at the stadium; the ball and the clock, the set
 // piece and the referee), sane and not too many.
-func matchOK(k []float64, b [][]float64) bool {
+func matchOK(k []float64, b [][]float64, fight bool) bool {
 	if len(k) > 16 || len(b) > 26 || !finite(k...) {
 		return false
 	}
+	// A fight's fighters say a little more each (web combat/net.ts).
+	row := 16
+	if fight {
+		row = 24
+	}
 	for _, x := range b {
-		if len(x) > 16 || !finite(x...) {
+		if len(x) > row || !finite(x...) {
 			return false
 		}
 	}
@@ -510,6 +539,13 @@ func (h *Hub) hello(ctx context.Context, conn *websocket.Conn) (*client, error) 
 		}
 		log.Printf("live: %s joins match %s", m.Sim, m.Race)
 		return &client{sim: m.Sim, room: "match:" + m.Race, send: make(chan []byte, 32), sid: sid}, nil
+	}
+	// A fight between two players: its own room, for the two of them.
+	if m.Mode == "fight" {
+		if h.Duels == nil || !h.Duels.Has(m.Race, m.Sim) {
+			return nil, errors.New("pas dans ce combat")
+		}
+		return &client{sim: m.Sim, room: "fight:" + m.Race, send: make(chan []byte, 32), sid: sid}, nil
 	}
 	mode := "street"
 	if m.Mode == "open" {

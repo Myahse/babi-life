@@ -129,6 +129,9 @@ func main() {
 	simsH.Online = players.Online
 	simsH.Connected = players.Connected
 	simsH.Ring = players.Message
+	simsH.Notify = players.Notify
+	simsH.Duels = &sims.Duels{}
+	players.Duels = simsH.Duels
 	players.Karts = karts
 	players.Courts = courts
 	go players.Run(ctx)

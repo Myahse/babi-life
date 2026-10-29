@@ -14,7 +14,7 @@ import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
 import { joinMatch, type CourtMatch } from '../streetball/online'
 import { serverNow } from '../lib/worldClock'
-import { MESSAGE_IN, SIM_CHANGED, useLive } from '../lib/live'
+import { DUEL_IN, MESSAGE_IN, SIM_CHANGED, useLive } from '../lib/live'
 import { sfx } from '../lib/sfx'
 import { WorldMap } from './WorldMap'
 import { Joystick, RunButton, WalkKeys } from '../components/Joystick'
@@ -76,6 +76,7 @@ import { FlasheApp } from './FlasheApp'
 import { EmoteSheet } from './EmoteSheet'
 import { GalleryApp } from './GalleryApp'
 import { InviteBanner, PlayersChip, PlayersSheet, usePlayers } from '../components/Players'
+import { DuelLayer } from '../components/Duel'
 import { DamesBanner, DamesSheet, DamesStake } from '../components/Dames'
 import { HuitBanner, HuitSheet, HuitStake } from '../components/Huit'
 import { MachineButton, MachineSheet, isSlots } from '../components/Machine'
@@ -1601,7 +1602,8 @@ export function Play() {
         </Suspense>
       )}
 
-      {players && <PlayersSheet sim={sim} around={around} communeName={commune.name} communes={city.communes} focus={players.focus} act={run} onClose={() => setPlayers(null)} />}
+      <DuelLayer sim={sim} token={token} on={keyOpen(feats, 'combat-joueurs')} act={run} />
+      {players && <PlayersSheet sim={sim} around={around} communeName={commune.name} communes={city.communes} myStage={lifeOf(world, sim).stage?.id} onDuel={keyOpen(feats, 'combat-joueurs') ? (p) => void api.challenge(sim.id, p.id).then(() => (setPlayers(null), window.dispatchEvent(new CustomEvent(DUEL_IN)))).catch((e) => toast({ tone: 'error', title: 'Pas possible', text: errorText(e, 'Erreur'), money: 0 })) : undefined} focus={players.focus} act={run} onClose={() => setPlayers(null)} />}
 
       {/* (Its time up, the bar goes at once: the server is settling it, nothing left to follow.) */}
       {sim.activity && !ended && !placeId && !defi && <ActivityBar world={world} onTask={sim.activity.kind === 'do' && sim.activity.career && sim.activity.career === sim.career ? (t) => api.jobTask(sim.id, t.id).then((res) => (apply(res), gesture(t.pose as Pose), res.outcome)) : undefined} onDefi={defiNow ? () => (defiNow === 'ski' && setOutside(false), setDefi(defiNow)) : undefined} onRejoin={ballKey && played === ballKey ? { sport: ballSport!, go: rejoin } : undefined} sim={sim} onStop={stop} stopping={!!pending} onRoute={() => setOverlay('map')} onMore={onGrounds ? () => (setPlaceId(doing!.placeId!), setMenuOpen(true)) : undefined} onFilm={() => setWatching(true)} onMachine={doing && isSlots(doing.interaction.id) ? () => setMachineOpen(true) : undefined} onShop={doing && SHOP_OF[doing.interaction.id] ? () => setShopOpen(true) : undefined} onFridge={doing && FRIDGE_SHOPPING.has(doing.interaction.id) && keyOpen(feats, 'frigo') && hasFridge(world, sim) ? () => setFridgeOpen('fill') : undefined} />}
