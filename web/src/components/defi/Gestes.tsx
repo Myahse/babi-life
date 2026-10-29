@@ -11,7 +11,7 @@ import { RECIPES } from './recipes'
 // the cooking, the meal, going to bed, playing in the yard, and the baby's day
 // (the bottle, the porridge, the bath, the cuddle, caca, pipi…). Each is a few steps
 // (« Se savonner les bras », « Retourner le poisson »…), each step a combination
-// of arrows to chain before its time runs out. Every arrow right, the Sim makes
+// of arrows to chain (no clock: take the time it takes). Every arrow right, the Sim makes
 // the step's gesture in the house behind (world3d/gesture.ts); a wrong one and
 // the combination starts again. When the last step is done, so is the action:
 // the server counts all of it at once (backend sims/defi.go homeDone).
@@ -154,10 +154,10 @@ export function stepsFor(act: { id: string; icon: string }): Step[] {
   return (RECIPES[act.id] ?? PLAN[kindOfIcon(act.icon)]).map(([label, pose], k) => ({ label, pose, combo: Array.from({ length: 3 + Math.min(2, Math.floor(r() * 2) + (k > 1 ? 1 : 0)) }, () => dirs[Math.floor(r() * 4)]) }))
 }
 
-/** Whether an activity with no défi of its own is played as gestures: the server's rule (sims/defi.go gesteOK). */
+/** Whether an activity with no défi of its own is played: the server's rule (sims/defi.go gesteOK): every one, the work too, but a talk. */
 const GESTE_NOT = ['machine-maquis', 'machine-casino', 'passer-nuit', 'petit-travaillement', 'travaillement', 'grand-travaillement', 'aller-ecole', 'creche']
 export const gesteOK = (a: { kind: string; career?: string; placeKind?: string; interaction: { id: string; cost: number; minutes: number } }) =>
-  a.kind === 'do' && !a.career && a.interaction.cost >= 0 && a.interaction.minutes <= 180 && a.placeKind !== 'chat' && !GESTE_NOT.includes(a.interaction.id)
+  a.kind === 'do' && a.placeKind !== 'chat' && !GESTE_NOT.includes(a.interaction.id)
 
 /** Each one's title, icon and colours, and the button that starts it. */
 export const GESTES: Record<GesteKind, { title: string; button: string; icon: LucideIcon; colors: [string, string] }> = {
@@ -180,21 +180,18 @@ export const GESTES: Record<GesteKind, { title: string; button: string; icon: Lu
 export const gesteOf = (interactionId?: string): GesteKind | null =>
   interactionId?.startsWith('frigo-')
     ? 'repas'
-    : (({ shower: 'douche', 'cook-attieke': 'cuisine', sleep: 'dodo', nap: 'dodo', 'jouer-cour': 'cour', biberon: 'biberon', bouillie: 'bouillie', 'bain-bebe': 'bain', calin: 'calin', caca: 'caca', pipi: 'pipi', vomir: 'vomir', pleurer: 'pleurer' } as Record<string, GesteKind>)[interactionId ?? ''] ?? null)
+    : (({ shower: 'douche', 'cook-attieke': 'cuisine', sleep: 'dodo', nap: 'dodo', 'chambre-dormir': 'dodo', 'logement-dormir': 'dodo', 'nuit-hotel': 'dodo', 'jouer-cour': 'cour', biberon: 'biberon', bouillie: 'bouillie', 'bain-bebe': 'bain', calin: 'calin', caca: 'caca', pipi: 'pipi', vomir: 'vomir', pleurer: 'pleurer' } as Record<string, GesteKind>)[interactionId ?? ''] ?? null)
 
 const ICON: Record<Dir, LucideIcon> = { up: ArrowUp, down: ArrowDown, left: ArrowLeft, right: ArrowRight }
 const KEYS: Record<string, Dir> = { ArrowUp: U, ArrowDown: D, ArrowLeft: L, ArrowRight: R, w: U, s: D, a: L, d: R, z: U, q: L }
-/** A step's time: a little more for a longer combination, a little less as the steps go. */
-const timeFor = (step: Step, k: number) => 3.2 + step.combo.length * 0.85 - k * 0.15
 
 export function GestesDefi({ kind, act, look, gender, scenes, onEnd }: { kind: GesteKind | 'geste'; /** The perso itself, seen in the scenes of its steps. */ look?: Look; gender?: 'femme' | 'homme'; /** Its steps seen in little scenes of their own (the lab page, away from the house); in the game, the house shows them. */ scenes?: boolean; /** Any other action: its steps made from it (stepsFor). */ act?: { id: string; icon: string }; onEnd: (score: number) => void }) {
   const [steps] = useState(() => (kind === 'geste' ? stepsFor(act ?? { id: '', icon: '' }) : STEPS[kind]))
   const [k, setK] = useState(0)
   const [got, setGot] = useState(0)
   const [miss, setMiss] = useState(false)
-  const [flash, setFlash] = useState<'ok' | 'late' | null>(null)
-  const st = useRef({ left: timeFor(steps[0], 0), mistakes: 0, scores: [] as number[], done: false })
-  const [, redraw] = useState(0)
+  const [flash, setFlash] = useState(false)
+  const st = useRef({ mistakes: 0, scores: [] as number[], done: false })
   // The Sim gets ready: the first step's gesture.
   useEffect(() => gesture(steps[0].pose, 1500), [steps])
   // At home, each step done where it's done (world3d/HomeInside.tsx walks the Sim there); over, as before.
@@ -208,39 +205,18 @@ export function GestesDefi({ kind, act, look, gender, scenes, onEnd }: { kind: G
     const s = st.current
     s.scores.push(score)
     s.mistakes = 0
-    setFlash(score > 0 ? 'ok' : 'late')
-    setTimeout(() => setFlash(null), 500)
+    setFlash(true)
+    setTimeout(() => setFlash(false), 500)
     if (k + 1 >= steps.length) {
       s.done = true
       const total = Math.round(s.scores.reduce((a, b) => a + b, 0) / steps.length)
       setTimeout(() => onEnd(total), 700)
       return
     }
-    s.left = timeFor(steps[k + 1], k + 1)
     setK(k + 1)
     setGot(0)
     gesture(steps[k + 1].pose, 1500)
   }
-
-  // The step's time runs out: it's missed, on to the next.
-  useEffect(() => {
-    let raf = 0
-    let last = performance.now()
-    const tick = (t: number) => {
-      const s = st.current
-      if (!s.done) {
-        s.left -= (t - last) / 1000
-        if (s.left <= 0) {
-          haptic('error')
-          next(0)
-        } else redraw((n) => n + 1)
-      }
-      last = t
-      raf = requestAnimationFrame(tick)
-    }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [k]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const press = (dir: Dir) => {
     const s = st.current
@@ -259,9 +235,8 @@ export function GestesDefi({ kind, act, look, gender, scenes, onEnd }: { kind: G
     // (A seated pose isn't made standing in the air: the place's own animation goes on.)
     if (!SEATED.includes(step.pose)) gesture(step.pose, 1800)
     if (got + 1 < step.combo.length) return setGot(got + 1)
-    // The whole combination: what's left of its time and the mistakes make its score.
-    const time = Math.max(0, s.left) / timeFor(step, k)
-    next(Math.round(Math.max(20, 100 - s.mistakes * 20) * (0.75 + 0.25 * time)))
+    // The whole combination: the mistakes make its score (no clock).
+    next(Math.max(20, 100 - s.mistakes * 20))
   }
 
   // On a computer: the arrow keys (or ZQSD / WASD).
@@ -278,7 +253,6 @@ export function GestesDefi({ kind, act, look, gender, scenes, onEnd }: { kind: G
   })
 
   const step = steps[k]
-  const share = Math.max(0, st.current.left / timeFor(step, k))
   return (
     <div className="pointer-events-none absolute inset-0 flex flex-col justify-end p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
       {/* What's being done, seen as the arrows go: the bed made, the brush scrubbing, the light going out */}
@@ -290,7 +264,7 @@ export function GestesDefi({ kind, act, look, gender, scenes, onEnd }: { kind: G
         </div>
       )}
       <div className="pointer-events-auto mx-auto flex w-full max-w-[560px] items-end gap-3 short:max-w-[720px]">
-        {/* The step, its combination, its time */}
+        {/* The step, its combination */}
         <div className={`card min-w-0 flex-1 p-3 ${miss ? 'motion-shake' : ''}`}>
           <div className="flex items-center justify-between gap-2">
             <span className="label">
@@ -313,10 +287,7 @@ export function GestesDefi({ kind, act, look, gender, scenes, onEnd }: { kind: G
               )
             })}
           </div>
-          <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-black/10">
-            <div className={`h-full rounded-full ${share < 0.3 ? 'bg-[#ff3d57]' : 'bg-[#ffc233]'}`} style={{ width: `${share * 100}%` }} />
-          </div>
-          {flash && <div className={`mt-1.5 text-[13px] font-extrabold ${flash === 'ok' ? 'text-[var(--color-emerald-deep)]' : 'text-[#d81b3f]'}`}>{flash === 'ok' ? 'Bien joué !' : 'Trop lent…'}</div>}
+          {flash && <div className="mt-1.5 text-[13px] font-extrabold text-[var(--color-emerald-deep)]">Bien joué !</div>}
         </div>
         {/* The four arrows, under the thumb */}
         <div className="grid shrink-0 grid-cols-3 grid-rows-3 gap-1">
