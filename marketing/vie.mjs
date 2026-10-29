@@ -7,9 +7,11 @@
 // game; the end card after; the sound (beat.py, FILM=vie) and Awa's voice (out/voix-vie.mp3) under it.
 // The script: marketing/scripts/vie.md; each take as long as Awa's sentences on it (out/voix-vie.mp3, 51 s).
 //
-// FILM=sortie: « Babi Life est sorti ! » (about 40 s with the first day's numbers, marketing/scripts/c-est-sorti.md, voice out/voix-sortie-officielle.mp3),
+// FILM=sortie: « Babi Life est sorti ! » (57 s, marketing/scripts/c-est-sorti.md, voice out/voix-sortie-officielle.mp3),
 // other scenes of the real game: the city from above, the perso made, its family drawn, the baby out in its
-// pram, Yopougon, Waye, the other players there at the same time (connected on the live hub here).
+// pram, school, the played actions (the garba, the alloco, the shower: update « gestes-maison », open on the
+// API), the foot de rue (the lab, city.html?view=footrue), Yopougon, Waye, the other players there at the same
+// time (connected on the live hub here), the first day's numbers, the « Inviter » app and the gift drawer.
 //
 //   API=http://localhost:8099/api/v1 GAME=http://localhost:5175 node vie.mjs
 //   FILM=sortie node vie.mjs
@@ -65,12 +67,43 @@ async function koffi({ stage = 'bebe', baptised = true, at = [5.348, -3.987], no
 
 /* ---------- Filming ---------- */
 
+/** Planted in the page: a component's hooks (its state and refs, in order) found up from one of its elements, one of its states set; where a point of a little 3D table (Table3d: its camera) is on the screen. */
+const PAGE_HELPERS = `(() => {
+  window.__hooks = (el, name) => {
+    const key = el && Object.keys(el).find((k) => k.startsWith('__reactFiber$'))
+    let f = key && el[key]
+    while (f && f.type?.name !== name) f = f.return
+    const out = []
+    for (let h = f?.memoizedState; h; h = h.next) out.push(h.memoizedState)
+    return out
+  }
+  window.__setState = (el, name, i, v) => {
+    const key = el && Object.keys(el).find((k) => k.startsWith('__reactFiber$'))
+    let f = key && el[key]
+    while (f && f.type?.name !== name) f = f.return
+    let h = f?.memoizedState
+    for (let k = 0; k < i && h; k++) h = h.next
+    h?.queue?.dispatch(v)
+  }
+  window.__onScreen = (canvas, cam, look, fov, p) => {
+    const r = canvas.getBoundingClientRect()
+    const sub = (a, b) => a.map((v, i) => v - b[i])
+    const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+    const unit = (a) => a.map((v) => v / Math.hypot(...a))
+    const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]
+    const f = unit(sub(look, cam)), s = unit(cross(f, [0, 1, 0])), u = cross(s, f)
+    const d = sub(p, cam), t = Math.tan((fov * Math.PI) / 360), z = dot(d, f)
+    return [r.left + ((1 + dot(d, s) / (z * t * (r.width / r.height))) * r.width) / 2, r.top + ((1 - dot(d, u) / (z * t)) * r.height) / 2]
+  }
+  window.__text = (sel, text) => [...document.querySelectorAll(sel)].find((e) => e.textContent?.trim() === text)
+})()`
+
 const seen = async () => ((await call(null, '/features')).new ?? []).map((n) => n.id)
 
 /** The game on a phone's screen (1080 × 1920), the perso's session in it, its clock stopped. */
-async function open(b, k, query = '', route = '/jeu', mouse = false) {
+async function open(b, k, query = '', route = '/jeu', mouse = false, geo = false) {
   // (A mouse rather than a touch screen when the take turns or pulls back the camera: the wheel and the drag are the mouse's.)
-  const ctx = await b.newContext({ viewport: { width: 405, height: 720 }, deviceScaleFactor: PROBE ? 1 : 1080 / 405, ...(mouse ? {} : { isMobile: true, hasTouch: true }), locale: 'fr-FR' })
+  const ctx = await b.newContext({ viewport: { width: 405, height: 720 }, deviceScaleFactor: PROBE ? 1 : 1080 / 405, ...(mouse ? {} : { isMobile: true, hasTouch: true }), ...(geo ? { geolocation: { latitude: 5.348, longitude: -3.987 }, permissions: ['geolocation'] } : {}), locale: 'fr-FR' })
   await ctx.addInitScript(
     ([token, user, seen]) => {
       localStorage.setItem('ivoire-life-session', JSON.stringify({ state: { token, user }, version: 0 }))
@@ -82,6 +115,7 @@ async function open(b, k, query = '', route = '/jeu', mouse = false) {
     [k.token, k.user, await seen()],
   )
   await ctx.addInitScript(STOPPED_CLOCK)
+  await ctx.addInitScript(PAGE_HELPERS)
   const page = await ctx.newPage()
   page.on('pageerror', (e) => console.error('page:', String(e).slice(0, 200)))
   // No « Flash info » over the takes (the country's news).
@@ -332,11 +366,154 @@ async function crowd(page, n = 4) {
   return () => socks.forEach((f) => f())
 }
 
-// « Babi Life est sorti ! », on Awa's voice (out/voix-sortie-officielle.mp3, 34 s).
+/* ---------- The played actions (update « gestes-maison »), played here as a finger would ---------- */
+
+/** A tap where the finger goes on the screen (sent in the page: quick taps on one spot aren't taken for a double tap). */
+const touch = (page, at) =>
+  at &&
+  page.evaluate(([x, y]) => {
+    const el = document.elementFromPoint(x, y)
+    const o = { bubbles: true, cancelable: true, clientX: x, clientY: y, pointerId: 1, isPrimary: true, pointerType: 'touch' }
+    el?.dispatchEvent(new PointerEvent('pointerdown', o))
+    el?.dispatchEvent(new PointerEvent('pointerup', o))
+  }, at)
+/** A key pressed and let go over one frame. */
+async function press(page, key) {
+  await page.keyboard.down(key)
+  await tick(page)
+  await page.keyboard.up(key)
+}
+
+/**
+ * Le garba: at the bassine, the piece the tantie calls fished out of the oil (a tap on it, before the
+ * other customers' hands), three times; then the plate, the attiéké « pommé » in the hand (held, let go in the green).
+ */
+function garba(p) {
+  let picked = -99
+  let held = -1
+  return async (i) => {
+    const at = await p.evaluate(() => {
+      const el = window.__text('.label', 'La tantie')
+      if (!el) return null
+      const h = window.__hooks(el, 'Pan')
+      const pieces = h.find((v) => Array.isArray(v) && v[0]?.kind)
+      const want = h.find((v) => ['thon', 'chinchard', 'carpe', 'tete'].includes(v))
+      const busy = h.find((v) => typeof v?.current === 'object' && v.current && 'busy' in v.current)?.current.busy
+      const q = pieces?.find((x) => x.kind === want)
+      return q && !busy ? window.__onScreen(el.closest('.absolute').querySelector('canvas'), [0, 7, 3.4], [0, 0, 0.2], 40, [(q.x - 0.5) * 6, 0.35, (q.y - 0.5) * 6]) : null
+    })
+    if (at && i - picked >= 12) return void ((picked = i), await touch(p, at))
+    // The plate: Pommer held about 0.6 s (in the green), let go, again.
+    const pommer = p.getByRole('button', { name: /^Pomm|Lâche|Trop serré/ })
+    if (!at && (await pommer.count())) {
+      const ev = (type) => pommer.first().evaluate((el, type) => el.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 1, isPrimary: true, pointerType: 'touch' })), type)
+      if (held < 0 && i - picked > 20) (held = i), await ev('pointerdown')
+      else if (held >= 0 && i - held >= 19) (held = -1), (picked = i - 14), await ev('pointerup')
+    }
+  }
+}
+
+/** L'alloco: the paper slid under the slice that lands first (a finger on it, a little at a time). */
+const underAlloco = (p) =>
+  p.evaluate(() => {
+    const el = window.__text('div', 'Attrape ton alloco !')
+    if (!el) return
+    const h = window.__hooks(el, 'Catch')
+    const st = h.find((v) => typeof v?.current === 'object' && v.current && 'paper' in v.current)?.current
+    const live = h.find((v) => Array.isArray(v?.current))?.current
+    const next = live?.filter((d) => d.y < 0.82).sort((a, b) => b.y - a.y)[0]
+    if (!st || !next) return
+    const to = st.paper + Math.max(-0.07, Math.min(0.07, next.x - st.paper))
+    const box = el.closest('.absolute').querySelector('.touch-none')
+    const r = box.getBoundingClientRect()
+    box.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: r.left + to * r.width, clientY: r.top + r.height * 0.8, pointerId: 1, pointerType: 'touch', isPrimary: true }))
+  })
+
+/** Under the shower: the next part of the body rubbed with the soap (three times each), then each bit of foam rinsed. */
+function shower(p) {
+  const done = new Set()
+  return async () => {
+    const at = await p.evaluate((done) => {
+      const el = window.__text('.font-display', 'Sous la douche')
+      if (!el) return null
+      const h = window.__hooks(el, 'DoucheJeu')
+      const rubs = h[0] ?? {}
+      const foam = h[1] ?? []
+      const zones = [['tete', [0, 1.95, 0.35]], ['bras-g', [-0.42, 1.3, 0.2]], ['bras-d', [0.42, 1.3, 0.2]], ['ventre', [0, 1.25, 0.3]], ['jambes', [0, 0.55, 0.27]]]
+      const next = zones.find(([id]) => (rubs[id] ?? 0) < 3)
+      const blob = next ? null : foam.find((f) => !done.includes(f.key))
+      const where = next ? next[1] : blob?.p
+      if (!where) return null
+      return { key: blob?.key, at: window.__onScreen(el.closest('.absolute').querySelector('canvas'), [0, 1.6, 4.2], [0, 1.15, 0], 38, where) }
+    }, [...done])
+    if (!at) return
+    if (at.key !== undefined) done.add(at.key)
+    await touch(p, at.at)
+  }
+}
+
+/* ---------- Le foot de rue (update « foot-de-rue »), in the lab: the perso's moves at its keys ---------- */
+
+/**
+ * The ball given to the perso, a man coming at it: a petit pont (I), then a sombrero (O) on the next
+ * one, each when he's at the right distance; the ball got back after each, and the gauge full, the Gbê (Space) at goal.
+ */
+function footMoves(p) {
+  const moves = ['KeyI', 'KeyO']
+  let gbe = false
+  return async (i) => {
+    const s = await p.evaluate((gbe) => {
+      const g = globalThis.streetMatch
+      if (!g) return null
+      const me = g.ps[g.me]
+      const b = g.ball
+      let d = 9
+      for (const q of g.ps) {
+        if (q.team === me.team || q.keeper || q.out) continue
+        const e = Math.hypot(q.x - me.x, q.z - me.z)
+        if ((q.x - me.x) / e > 0.35 && e < d) d = e
+      }
+      // (The ball loose or taken after a move: back at its feet, the take is the moves.)
+      if (!gbe && b.owner !== me.id && me.act === 'none' && (b.owner < 0 || g.ps[b.owner].team !== me.team) && Math.hypot(b.x - me.x, b.z - me.z) < 3) b.owner = me.id
+      return { d, has: b.owner === me.id, free: me.act === 'none', x: me.x, end: g.field.x }
+    }, gbe)
+    if (!s?.has || !s.free) return
+    // The move beats its man (the game's dice, for that one move).
+    const lucky = (r) => p.evaluate((r) => {
+      const g = globalThis.streetMatch
+      const rnd = g.rnd
+      g.rnd = () => r
+      setTimeout(() => (g.rnd = rnd), 100)
+    }, r)
+    if (moves.length && s.d > 1.1 && s.d < 2) return void (await lucky(0.05), await press(p, moves.shift()))
+    if (!moves.length && !gbe && (s.x > s.end - 7 || i > 100)) {
+      gbe = true
+      await p.evaluate(() => (globalThis.streetMatch.ps[globalThis.streetMatch.me].style = 1))
+      await lucky(0.3)
+      await press(p, 'Space')
+    }
+  }
+}
+
+/** A friend come by the perso's link, its gift wrapped in the drawer (backend sims/parrainage.go: here written in, no 30 minutes of play waited). */
+async function friends(k, names) {
+  const { code } = await call(k.token, `/sims/${k.sim.id}/parrainage`)
+  for (const name of names) {
+    const f = await call(null, `/auth/dev?p=${code}`, 'POST', { name: `${name}${Date.now().toString(36).slice(-4)}` })
+    const me = await call(f.token, '/me')
+    psql(`UPDATE users SET tester = true WHERE id = '${me.id}'`)
+    await call(f.token, '/sims', 'POST', { firstName: name, lastName: 'Kouassi', gender: 'femme', look: LOOK, traits: ['ambianceur'], aspiration: 'ambiance', lat: 5.348, lng: -3.987 })
+    psql(`INSERT INTO referral_gifts (user_id, friend_id, friend_name) VALUES ('${k.user.id}', '${me.id}', '${name}')`)
+  }
+  return k
+}
+
+// « Babi Life est sorti ! », on Awa's voice (out/voix-sortie-officielle.mp3, 55.95 s): each take as long as its
+// sentence (where it starts and ends in the take, measured with Whisper), the end card over the last one.
 const SORTIE = [
   {
     id: 'ville',
-    seconds: 3.2,
+    seconds: 3.4,
     make: () => koffi({ stage: 'adulte', at: [5.3237, -4.0197] }),
     warm: 200,
     big: 'C’EST<br><em>SORTI !</em>',
@@ -346,7 +523,7 @@ const SORTIE = [
   },
   {
     id: 'rue',
-    seconds: 2.52,
+    seconds: 2.5,
     make: () => koffi({ stage: 'adulte', at: [5.3237, -4.0197] }),
     warm: 200,
     text: 'Le jeu de la vie à Abidjan, dans ton téléphone.',
@@ -355,36 +532,156 @@ const SORTIE = [
   },
   {
     id: 'creation',
-    seconds: 2.72,
+    seconds: 1.1,
     make: () => koffi({ noSim: true }),
     route: '/creer',
     warm: 60,
     text: 'Tu crées ton perso…',
-    at: (p) => ({ 5: click(p, /Perso au hasard/), 30: click(p, /Perso au hasard/), 55: click(p, /Perso au hasard/) }),
+    at: (p) => ({ 2: click(p, /Perso au hasard/), 18: click(p, /Perso au hasard/) }),
   },
   {
     id: 'naissance',
-    seconds: 1.88,
+    seconds: 3.5,
     make: () => koffi({ noSim: true }),
     route: '/creer',
     warm: 60,
-    before: (p) => click(p, /Naissance/)(),
+    // (Its position shared: born at once, in Cocody.)
+    geo: true,
+    // The families and their chances first, then « Naître »: the family drawn, its home, as the game shows it.
+    before: async (p) => {
+      await click(p, /Naissance/)()
+      await tick(p, 5)
+      await p.getByText(/des naissances/).first().evaluate((el) => el.scrollIntoView({ block: 'center' }))
+    },
     text: '… et le sort choisit ta famille : gnambro, poignon ou laté !',
-    // « Naître »: the family drawn, its home, as the game shows it.
-    at: (p) => ({ 3: click(p, /^Naître/) }),
+    at: (p) => ({ 40: click(p, /^Naître/) }),
   },
   {
     id: 'poussette',
-    seconds: 5.36,
+    seconds: 1.9,
     make: () => koffi(),
     warm: 200,
     stage: 'BÉBÉ',
-    text: 'Tu commences bébé, tu grandis : l’école, les amis, puis la vraie vie à 18 ans.',
+    text: 'Tu commences bébé, tu grandis…',
     at: (p) => ({ 2: () => p.keyboard.down('ArrowUp'), 45: () => p.keyboard.up('ArrowUp') }),
   },
   {
+    id: 'ecole',
+    seconds: 3.1,
+    // School is in the morning: the day's activity started as « Jouer dans la cour », then made the school day.
+    make: async () => {
+      const k = await koffi({ stage: 'enfant' })
+      await call(k.token, `/sims/${k.sim.id}/interact`, 'POST', { placeId: 'home', interactionId: 'jouer-cour' })
+      psql(`UPDATE sims SET activity = jsonb_set(jsonb_set(jsonb_set(activity, '{interaction,id}', '"aller-ecole"'), '{interaction,label}', '"Aller à l''école"'), '{interaction,icon}', '"school"') WHERE id = '${k.sim.id}'`)
+      return k
+    },
+    warm: 200,
+    stage: 'ENFANT',
+    text: 'L’école, les amis, puis la vraie vie à 18 ans.',
+    at: (p) => ({
+      40: click(p, /Lever la main/),
+      58: click(p, /C.est parti/),
+      // An answer touched, the maître's question on the board (whichever it is).
+      80: () =>
+        p.evaluate(() => {
+          const answers = [...document.querySelectorAll('button')].filter((b) => {
+            const r = b.getBoundingClientRect()
+            return r.height > 0 && r.top > 250 && r.top < 620 && b.innerText.trim().length > 2 && !/Lever|Phone|Carte|Voir|Rire|parti/.test(b.innerText)
+          })
+          ;(answers[1] ?? answers[0])?.click()
+        }),
+    }),
+  },
+  {
+    id: 'garba',
+    seconds: 5,
+    // At the maquis of Danga: the garba ordered, its game opens over the room.
+    make: async () => {
+      const k = await koffi({ stage: 'adulte' })
+      await call(k.token, `/sims/${k.sim.id}/interact`, 'POST', { placeId: 'cocody-danga', interactionId: 'eat-garba' })
+      return k
+    },
+    warm: 200,
+    text: 'Chaque action est un jeu : tu pioches ton poisson dans l’huile du garba…',
+    at: (p) => ({ 12: click(p, /C.est parti/) }),
+    each: garba,
+  },
+  {
+    id: 'alloco',
+    seconds: 1.8,
+    // At the market of Cocody: the tantie's alloco, already being caught when the take starts.
+    make: async () => {
+      const k = await koffi({ stage: 'adulte' })
+      await call(k.token, `/sims/${k.sim.id}/interact`, 'POST', { placeId: 'cocody-marche', interactionId: 'eat-alloco' })
+      return k
+    },
+    warm: 200,
+    before: async (p) => {
+      await click(p, /C.est parti/)()
+      await tick(p, 10)
+      await click(p, /Non merci/)()
+      for (let i = 0; i < 120; i++) (await underAlloco(p), await tick(p), i % 20 === 0 && (await sleep(100)))
+    },
+    settle: 0,
+    text: '… tu attrapes ton alloco dans le papier…',
+    each: (p) => () => underAlloco(p),
+  },
+  {
+    id: 'douche',
+    seconds: 1.4,
+    // The shower's own game, in the lab (gestes.html: the same component over a plain wall; in the house, its
+    // getting ready walks the perso from step to step for minutes at this film's pace): most of the soap on
+    // before the take, then the rinse.
+    make: () => koffi({ noSim: true }),
+    route: '/gestes.html',
+    query: '&g=laver',
+    warm: 60,
+    // The soap on, every part foaming (its state set: quick rubs here would each count once), then the rinse played.
+    before: (p) =>
+      p.evaluate(() => {
+        const el = window.__text('.font-display', 'Sous la douche')
+        const zones = [['tete', [0, 1.95, 0.1], [0.55, 0.45, 0.55]], ['bras-g', [-0.42, 1.3, 0.05], [0.3, 0.6, 0.35]], ['bras-d', [0.42, 1.3, 0.05], [0.3, 0.6, 0.35]], ['ventre', [0, 1.25, 0.15], [0.5, 0.5, 0.3]], ['jambes', [0, 0.55, 0.12], [0.5, 0.7, 0.3]]]
+        const foam = zones.flatMap(([zone, at, size], z) => [0, 1, 2].map((r) => {
+          const k = z * 3 + r
+          return { key: k, zone, p: [at[0] + Math.sin(k * 2.1) * size[0] * 0.35, at[1] + Math.cos(k * 1.7) * size[1] * 0.3, at[2] + size[2] * 0.5], s: 0.8 + (k % 3) * 0.2 }
+        }))
+        window.__setState(el, 'DoucheJeu', 1, foam)
+        window.__setState(el, 'DoucheJeu', 0, Object.fromEntries(zones.map(([id]) => [id, 3])))
+        window.__hooks(el, 'DoucheJeu')[3].current.key = foam.length
+      }),
+    settle: 0,
+    text: '… tu te savonnes sous la douche !',
+    each: (p) => {
+      const rub = shower(p)
+      return async (i) => i % 2 === 0 && (await rub())
+    },
+  },
+  {
+    id: 'foot',
+    seconds: 4.8,
+    make: () => koffi({ noSim: true }),
+    route: '/city.html',
+    query: '&view=footrue',
+    warm: 120,
+    text: 'Au quartier, le foot de rue : petit pont, sombrero… et la frappe Gbê !',
+    // The ball at the perso's feet, the other side's men in front, coming.
+    before: (p) =>
+      p.evaluate(() => {
+        const g = globalThis.streetMatch
+        const me = g.ps[g.me]
+        me.face = Math.PI / 2
+        g.ball.owner = me.id
+        g.ball.x = me.x + 0.4
+        g.ball.z = me.z
+        g.ps.filter((q) => q.team !== me.team && !q.keeper && !q.out).forEach((q, k) => Object.assign(q, { x: me.x + 5 + k * 4.5, z: me.z + (k % 2 ? 1.5 : -0.3), vx: 0, vz: 0, act: 'none' }))
+      }),
+    settle: 0,
+    at: (p) => ({ 0: () => p.keyboard.down('ArrowUp'), 140: () => p.keyboard.up('ArrowUp') }),
+    each: footMoves,
+  },
+  {
     id: 'yop',
-    seconds: 5.56,
+    seconds: 5.7,
     make: () => koffi({ stage: 'adulte', at: [5.3364, -4.0866] }),
     warm: 220,
     text: 'Les vrais quartiers d’Abidjan : Yop, Cocody, le Plateau… le gbaka, le maquis, le boulot.',
@@ -394,7 +691,7 @@ const SORTIE = [
   },
   {
     id: 'waye',
-    seconds: 3.72,
+    seconds: 3.7,
     make: () => koffi({ stage: 'adulte', apps: true }),
     warm: 200,
     text: 'Ton téléphone dans le jeu : Gbairai pour causer, Waye pour l’argent.',
@@ -411,18 +708,17 @@ const SORTIE = [
   },
   {
     id: 'joueurs',
-    seconds: 4.64,
+    seconds: 3.1,
     make: () => koffi({ stage: 'adulte' }),
     warm: 200,
     live: (p) => crowd(p),
-    text: 'Et surtout : tous les joueurs sont là, en vrai, au même moment. Tes amis, ton quartier.',
-    at: (p) => ({ 70: () => tap(p.locator('button.hud:has(svg.lucide-users)')), 105: click(p, /Tout Babi/) }),
+    text: 'Et surtout : tous les joueurs sont là, en vrai, au même moment.',
+    at: (p) => ({ 40: () => tap(p.locator('button.hud:has(svg.lucide-users)')), 70: click(p, /Tout Babi/) }),
   },
-  // The first day's numbers, big over the city (« en moins de vingt-quatre heures… »): the lengths to
-  // set on the new voice's line once it's in out/voix-sortie-officielle.mp3.
+  // The first day's numbers, big over the city (« en moins de vingt-quatre heures… »).
   {
     id: 'comptes',
-    seconds: 2.6,
+    seconds: 2.9,
     make: () => koffi({ stage: 'adulte', at: [5.3237, -4.0197] }),
     warm: 200,
     big: '345 comptes<br><em>en moins de 24 h</em>',
@@ -431,7 +727,7 @@ const SORTIE = [
   },
   {
     id: 'connectes',
-    seconds: 2.6,
+    seconds: 2.2,
     make: () => koffi({ stage: 'adulte' }),
     warm: 200,
     live: (p) => crowd(p),
@@ -439,9 +735,34 @@ const SORTIE = [
     zoom: 4,
     turn: 0.3,
   },
+  // Inviting one's friends (update « parrainage »): the phone's « Inviter », then the drawer at home.
+  {
+    id: 'invite',
+    seconds: 2.3,
+    make: async () => friends(await koffi({ stage: 'adulte', apps: true }), ['Aya', 'Fanta', 'Yao']),
+    query: '&app=inviter',
+    warm: 200,
+    text: 'Invite tes amis avec ton lien : chaque ami qui s’inscrit…',
+    at: (p) => ({ 40: () => p.evaluate(() => document.querySelector('.overflow-y-auto:has(.space-y-4)')?.scrollBy({ top: 220, behavior: 'instant' })) }),
+    // The link as the players see it (the game's own address, not this dev server's).
+    each: (p) => () =>
+      p.evaluate((game) => {
+        const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+        for (let n = w.nextNode(); n; n = w.nextNode()) if (n.nodeValue.includes(game)) n.nodeValue = n.nodeValue.replace(game, 'lifeinbabi.com')
+      }, new URL(GAME).host),
+  },
+  {
+    id: 'tiroir',
+    seconds: 2.7,
+    make: async () => friends(await koffi({ stage: 'adulte' }), ['Mariam', 'Bema']),
+    query: '&place=home',
+    warm: 200,
+    text: '… c’est un cadeau pour toi, qui t’attend dans ton tiroir !',
+    at: (p) => ({ 6: () => tap(p.getByRole('button', { name: /Tiroir à cadeaux/ })), 30: click(p, /Ouvrir/) }),
+  },
 ]
 const TAKES = FILM === 'sortie' ? SORTIE : VIE
-const END = FILM === 'sortie' ? { seconds: 4.5, title: 'C’est sorti !<br><em>Joue maintenant</em>' } : { seconds: 5.9, title: 'Ta vie, c’est toi<br>qui l’<em>écris</em>' }
+const END = FILM === 'sortie' ? { seconds: 6, title: 'C’est sorti !<br><em>Joue maintenant</em>' } : { seconds: 5.9, title: 'Ta vie, c’est toi<br>qui l’<em>écris</em>' }
 
 /* ---------- The end card ---------- */
 
@@ -476,11 +797,11 @@ for (const t of TAKES) {
   if (ONLY && !ONLY.includes(t.id)) continue
   const started = Date.now()
   const k = await t.make()
-  const { ctx, page } = await open(b, k, t.query ?? '', t.route, !!(t.zoom || t.turn))
+  const { ctx, page } = await open(b, k, t.query ?? '', t.route, !!(t.zoom || t.turn), t.geo)
   await warm(page, t.warm)
   if (t.before) {
     await t.before(page).catch((e) => console.error(t.id, 'before', String(e).slice(0, 160)))
-    for (let i = 0; i < 60; i++) (await tick(page), i % 20 === 0 && (await sleep(200)))
+    for (let i = 0; i < (t.settle ?? 60); i++) (await tick(page), i % 20 === 0 && (await sleep(200)))
   }
   if (t.inside) await frameInside(page).catch((e) => console.error(t.id, 'inside', String(e).slice(0, 160)))
   if (t.zoom) {
@@ -526,4 +847,6 @@ const sound =
       ? ['-i', voice || beat, '-af', 'apad', '-map', '0:v', '-map', '1:a', '-c:a', 'aac', '-b:a', '160k', '-shortest']
       : []
 execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', silent, ...sound, '-c:v', 'copy', '-movflags', '+faststart', mp4])
+// Its cover: the title over the city.
+execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-ss', '1.6', '-i', mp4, '-frames:v', '1', mp4.replace('-1080x1920.mp4', '-cover.png')])
 console.log('video →', mp4)

@@ -36,14 +36,18 @@ if FILM == 'top20':
     CROWD = plan['payoffs'][-1:]
     GROOVE, LEAD_FROM = hook, plan['slots'][1]['from']
 elif FILM == 'sortie-officielle':
-    # « Babi Life est sorti ! » (vie.mjs FILM=sortie): its takes on Awa's voice, the end card.
+    # « Babi Life est sorti ! » (vie.mjs FILM=sortie): its takes on Awa's voice (55.95 s), the end card.
     BPM = 122
-    CUTS = [3.2, 5.72, 8.44, 10.32, 15.68, 21.24, 24.96, 29.6]
-    LENGTH = 34.1
+    takes = [3.4, 2.5, 1.1, 3.5, 1.9, 3.1, 5.0, 1.8, 1.4, 4.8, 5.7, 3.7, 3.1, 2.9, 2.2, 2.3, 2.7, 6.0]
+    CUTS = [round(sum(takes[:i]), 2) for i in range(1, len(takes))]
+    LENGTH = round(sum(takes), 2)
     TICKS = []
-    HITS = [0.3, 1.2]
-    CASH = [CUTS[5] + 1.6]
-    CROWD = [CUTS[6] + 0.4]
+    # C'EST SORTI !, then the two numbers slammed on the city.
+    HITS = [0.3, 1.2, CUTS[12] + 0.1, CUTS[13] + 0.1]
+    # Waye; the drawer's gift opened.
+    CASH = [CUTS[10] + 1.6, CUTS[15] + 1.4]
+    # The Gbê in the net (the foot's take), the players all there.
+    CROWD = [CUTS[8] + 3.5, CUTS[11] + 0.4]
     GROOVE, LEAD_FROM = 0.0, 0.0
 elif FILM == 'vie':
     # « Ta vie dans Babi Life » (vie.mjs): its takes one after the other (6, 7, 7, 7, 6, 8, 7, 9, 8 s), the end card (5 s).
@@ -213,7 +217,7 @@ for c in CROWD:
     at(c, crowd(), 0.6)
 
 # The baby's voice, recorded (CC0, web/public/audio/bebe/SOURCES.md), over the groove.
-BABY = [(11.0, 'rire-2')] if FILM == 'sortie-officielle' else [(1.0, 'rire-1'), (12.0, 'gazouille-1'), (14.6, 'pleurs-1'), (17.4, 'rire-2'), (20.0, 'rire-3')] if FILM == 'vie' else [(8.0, 'rire-1'), (13.2, 'pleurs-1'), (15.5, 'pleurs-2'), (21.5, 'rire-2'), (25.4, 'rire-1'), (26.6, 'rire-3'), (28.6, 'gazouille-1'),
+BABY = [(10.7, 'rire-2')] if FILM == 'sortie-officielle' else [(1.0, 'rire-1'), (12.0, 'gazouille-1'), (14.6, 'pleurs-1'), (17.4, 'rire-2'), (20.0, 'rire-3')] if FILM == 'vie' else [(8.0, 'rire-1'), (13.2, 'pleurs-1'), (15.5, 'pleurs-2'), (21.5, 'rire-2'), (25.4, 'rire-1'), (26.6, 'rire-3'), (28.6, 'gazouille-1'),
         (31.8, 'rire-2'), (37.0, 'pleurs-3'), (42.0, 'gazouille-3'), (49.6, 'rire-3'), (54.0, 'gazouille-4'),
         (59.0, 'gazouille-5'), (61.4, 'rire-1'), (64.4, 'gazouille-6'), (68.0, 'gazouille-7')]
 if FILM in ('bebe', 'vie', 'sortie-officielle'):
