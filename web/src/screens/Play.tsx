@@ -1017,7 +1017,10 @@ export function Play() {
   const elevenRules = useMemo(() => (eleven ? { size: 11 as const, referee: true, switching: !court?.online } : undefined), [eleven, court?.online])
   // Le foot de rue (the street, the quarter's courts, the quarter's match): four a side and the moves, once its update is open.
   const streetFoot = ballSport === 'foot' && !eleven && keyOpen(features, 'foot-de-rue')
-  const streetRules = useMemo(() => (streetFoot ? { street: true } : undefined), [streetFoot])
+  // Le basket de rue (the quarter's courts, the street, the quarter's tournament; not the Palais des Sports' arena): three a side under one iron hoop and the moves, once its update is open.
+  // (A court's match begun as le basket de rue, its eight places, plays as it began.)
+  const streetBasket = ballSport === 'basket' && ballAct?.placeId !== 'treich-palais' && (keyOpen(features, 'basket-de-rue') || court?.online?.match.sport === 'basket-rue')
+  const streetRules = useMemo(() => (streetFoot || streetBasket ? { street: true } : undefined), [streetFoot, streetBasket])
 
   // « Voir la rue » is only for while inside: going in again (the street's « Entrer », arriving at a door,
   // back in after an action) shows the inside (else, back at the door, the street stayed on screen and
@@ -1197,7 +1200,7 @@ export function Play() {
         </Suspense>
       )}
       {ballKey && ballKey !== played && !racing && (!courtKey || court?.key === courtKey) && (
-        <Suspense fallback={<div className="fixed inset-0 z-50"><Splash label={ballSport === 'basket' ? 'Sur le terrain…' : eleven ? 'Au stade…' : streetFoot ? 'Au terrain du quartier…' : 'Au maracana…'} /></div>}>
+        <Suspense fallback={<div className="fixed inset-0 z-50"><Splash label={ballSport === 'basket' ? (streetBasket ? 'Au terrain du quartier…' : 'Sur le terrain…') : eleven ? 'Au stade…' : streetFoot ? 'Au terrain du quartier…' : 'Au maracana…'} /></div>}>
           <StreetMatch key={ballKey} sport={ballSport!} name={sim.firstName} look={sim.look} gender={sim.gender} online={courtKey ? (court?.online ?? undefined) : undefined} rules={elevenRules ?? streetRules} onExit={() => setPlayed(ballKey)} />
         </Suspense>
       )}

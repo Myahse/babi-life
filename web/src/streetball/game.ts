@@ -28,13 +28,28 @@ import type { Pose } from '../avatar/Human'
 // back-heel, the keepy-ups. Done in front of a man at the right moment, he's
 // beaten; too late, he takes it. Each one fills the style gauge, and full, the
 // next shot is the « Gbê ».
+//
+// And the street's basketball, « le basket de rue » (Rules.street with
+// basketball): three against three under one iron hoop on the quarter's
+// concrete, the fourth of each side waiting behind the wall; 1 point a basket,
+// 2 from past the arc, the first to 11 (else 3 minutes, then the next basket
+// wins), the side that scores keeps the ball (make it, take it); the moves
+// (Geste): the crossover, between the legs, behind the back, the spin, the
+// hesitation, the dribble show, the pump fake, the step-back. The man in front
+// beaten breaks his ankles (down on his backside), turns round, or stands
+// frozen; too late, he steals it. The gauge full, the next shot is the
+// basket's Gbê: a flying dunk from far out that bends the iron, or a shot in
+// flames; a pass to a team-mate running in by the ring goes up for the
+// alley-oop.
 
 export type Sport = 'basket' | 'foot'
 type V = [number, number]
 
-/** The street's skill moves (Rules.street). */
-export type Geste = 'passement' | 'roulette' | 'petitpont' | 'sombrero' | 'crochet' | 'aile' | 'talonnade' | 'jongle'
-export const GESTES: Geste[] = ['passement', 'roulette', 'petitpont', 'sombrero', 'crochet', 'aile', 'talonnade', 'jongle']
+/** The street's skill moves (Rules.street): the football's, then le basket de rue's. */
+export type Geste = 'passement' | 'roulette' | 'petitpont' | 'sombrero' | 'crochet' | 'aile' | 'talonnade' | 'jongle' | HoopGeste
+export type HoopGeste = 'crossover' | 'entrejambe' | 'dos' | 'spin' | 'hesitation' | 'show' | 'pompe' | 'stepback'
+// (In this order on the wire: streetball/online.ts.)
+export const GESTES: Geste[] = ['passement', 'roulette', 'petitpont', 'sombrero', 'crochet', 'aile', 'talonnade', 'jongle', 'crossover', 'entrejambe', 'dos', 'spin', 'hesitation', 'show', 'pompe', 'stepback']
 
 /** The player's hands: the stick (x right, z down the screen), and the buttons, each a press. */
 export type Input = {
@@ -54,12 +69,14 @@ export type Input = {
   swap?: boolean
   /** Football, Tir held: the shot's power grows until it's let go. Where the hands can hold it (the keys, a pad, the touch button), `shoot` alone is no longer a shot. */
   charge?: boolean
-  /** The street: a skill move (a press), and the keepy-ups (held). */
+  /** The street: a skill move (a press), and the keepy-ups (held; basketball, the dribble show). */
   geste?: Geste | null
   juggle?: boolean
 }
 export const NO_INPUT: Input = { mx: 0, mz: 0, pass: false, shoot: false, skill: false, defend: false, guard: false }
 
+/** Le basket de rue: the points that win it. */
+export const HOOP_TO = 11
 /** Seconds of play, and of the 3-2-1 before. */
 export const LENGTH = 180
 export const COUNTDOWN = 3
@@ -143,10 +160,10 @@ export type Player = {
   judged: boolean
   /** Basketball: a jump shot on the meter (Tir held), how far it has filled (0 to 1; −1: none). */
   meter: number
-  /** The street: the move going on, the style gauge (0…1, full: the Gbê), how a beaten man was fooled, a count of moves (the pose starts over), the facing when the move began. */
+  /** The street: the move going on, the style gauge (0…1, full: the Gbê), how a beaten man was fooled (basketball: down on his backside, turned round, frozen, up for a pump fake), a count of moves (the pose starts over), the facing when the move began. */
   move: Geste | null
   style: number
-  fooled: 'legs' | 'sky' | 'shot' | 'wrong' | null
+  fooled: 'legs' | 'sky' | 'shot' | 'wrong' | 'ankles' | 'turned' | 'frozen' | 'jump' | null
   take: number
   face0: number
   /** The last move and when (the same one twice in a row is read; showing off counts once in a while). */
@@ -155,6 +172,8 @@ export type Player = {
   /** A move's run round the man beaten (where to), and how far it turns the body (the back-heel turning back with the ball). */
   way: V | null
   turn: number
+  /** Le basket de rue: this dunk is the Gbê (flying in from far out). */
+  gbe: boolean
 }
 
 /** Something worth cheering, filming and posting. */
@@ -249,10 +268,12 @@ export type Game = {
   /** A draw at the end goes to penalties (the cup); the shoot-out once it's begun. */
   pens: boolean
   shootout: Shootout | null
-  /** Le foot de rue: its rules and moves; the goals that win it (0: none); when the last Gbê was struck. */
+  /** Le foot de rue (and le basket de rue): its rules and moves; the goals that win it (basketball: the points; 0: none); when the last Gbê was struck. */
   street: boolean
   goals: number
   gbe: number
+  /** Le basket de rue, four players who came on one side: whose turn it is to wait behind the wall. */
+  rota: [number, number]
 }
 
 /** The penalty shoot-out: each side's kicks so far (in or not), whose turn, the one taking it, when it was struck (-1: not yet). */
@@ -269,7 +290,7 @@ export type SetPiece = { kind: 'free' | 'pen' | 'corner' | 'throw' | 'goal'; tea
  * one pair of hands), a referee (fouls, free kicks, penalties, cards), and the
  * teams' names by place in the team (the player's own name goes on `me`).
  */
-export type Rules = { length?: number; foe?: number; golden?: boolean; shootout?: boolean; size?: 5 | 11; switching?: boolean; referee?: boolean; names?: [string[], string[]]; /** Le foot de rue: four a side, the moves, the first to five. */ street?: boolean }
+export type Rules = { length?: number; foe?: number; golden?: boolean; shootout?: boolean; size?: 5 | 11; switching?: boolean; referee?: boolean; names?: [string[], string[]]; /** Le foot de rue: four a side, the moves, the first to five; basketball, le basket de rue: the moves, the first to 11. */ street?: boolean }
 
 /** When the player last held Défense (the stance reads a crossover). */
 let lastGuard = -9
@@ -305,7 +326,7 @@ const fifa = (g: Game) => g.referee || g.switching || g.size === 11
 const striker = (g: Game) => (g.size === 11 ? 9 : 4)
 
 function makePlayer(id: number, team: 0 | 1, role: number, name: string, x: number, z: number): Player {
-  return { id, team, human: false, keeper: false, name, role, x, z, vx: 0, vz: 0, face: 0, want: [0, 0], act: 'none', at: 0, len: 0, side: 1, cool: 0, think: 0, call: 0, from: [0, 0], to: [0, 0], pending: null, pendingAt: 0, spot: role, pose: 'idle', flip: false, stamina: 1, charge: 0, cards: 0, out: false, judged: false, meter: -1, move: null, style: 0, fooled: null, take: 0, face0: 0, last: null, lastT: -9, way: null, turn: 0 }
+  return { id, team, human: false, keeper: false, name, role, x, z, vx: 0, vz: 0, face: 0, want: [0, 0], act: 'none', at: 0, len: 0, side: 1, cool: 0, think: 0, call: 0, from: [0, 0], to: [0, 0], pending: null, pendingAt: 0, spot: role, pose: 'idle', flip: false, stamina: 1, charge: 0, cards: 0, out: false, judged: false, meter: -1, move: null, style: 0, fooled: null, take: 0, face0: 0, last: null, lastT: -9, way: null, turn: 0, gbe: false }
 }
 
 /** A seeded random (the labs replay the same match), or Math.random. */
@@ -325,6 +346,8 @@ export function createGame(sport: Sport, name: string, rnd: () => number = Math.
     // 3 against 3: the player and two mates, three in front.
     for (let i = 0; i < 3; i++) ps.push(makePlayer(i, 0, i, i === 0 ? name : NAMES.mates[i - 1], 0, 0))
     for (let i = 0; i < 3; i++) ps.push(makePlayer(3 + i, 1, i, NAMES.them[i], 0, 0))
+    // Le basket de rue: a fourth each side (after the six, so a court's places stay as they were), next in, behind the wall.
+    if (rules.street) for (const team of [0, 1] as const) ps.push(makePlayer(6 + team, team, 3, team === 0 ? NAMES.mates[2] : NAMES.them[3], 0, 0))
   } else if (size === 11) {
     // 11 against 11: the player starts up front (the kick-off is theirs), and takes over whoever the play needs.
     const names = rules.names ?? [ELEVEN.mates, ELEVEN.them]
@@ -338,8 +361,8 @@ export function createGame(sport: Sport, name: string, rnd: () => number = Math.
     for (const p of ps) p.keeper = p.role === 0
   }
   // The street: four a side. The fifth (the place 0) waits behind the wall; the one at the back keeps goal, and comes out with it.
-  const street = sport === 'foot' && size === 5 && !!rules.street
-  if (street)
+  const street = size === 5 && !!rules.street
+  if (street && sport === 'foot')
     for (const p of ps) {
       p.out = p.role === 0
       p.keeper = p.role === 1
@@ -371,7 +394,7 @@ export function createGame(sport: Sport, name: string, rnd: () => number = Math.
     foe: rules.foe ?? 1,
     golden: rules.golden ?? street,
     extra: false,
-    field: street ? STREET : FIELDS[size],
+    field: street && sport === 'foot' ? STREET : FIELDS[size],
     size,
     switching: !!rules.switching,
     referee: !!rules.referee,
@@ -381,8 +404,9 @@ export function createGame(sport: Sport, name: string, rnd: () => number = Math.
     pens: !!rules.shootout,
     shootout: null,
     street,
-    goals: street ? 5 : 0,
+    goals: street ? (sport === 'basket' ? HOOP_TO : 5) : 0,
     gbe: -9,
+    rota: [0, 0],
   }
   restart(g, 0)
   return g
@@ -469,8 +493,13 @@ function restart(g: Game, team: 0 | 1) {
     p.flip = false
   }
   if (g.sport === 'basket') {
-    const att = g.ps.filter((p) => p.team === team)
-    const def = g.ps.filter((p) => p.team !== team)
+    // Le basket de rue: who's on, who waits behind the wall.
+    if (g.street) {
+      lineup(g, g.phase !== 'count')
+      for (const p of g.ps) if (p.out) offPitch(g, p)
+    }
+    const att = g.ps.filter((p) => p.team === team && !p.out)
+    const def = g.ps.filter((p) => p.team !== team && !p.out)
     // The ball to the player when it's their team's: the game is theirs to play.
     const first = att.find((p) => p.human) ?? att[0]
     const order = [first, ...att.filter((p) => p !== first)]
@@ -545,7 +574,38 @@ function offPitch(g: Game, p: Player) {
   p.vx = p.vz = 0
   p.want = [0, 0]
   p.face = g.street ? 0 : Math.PI
+  // Le basket de rue's: behind the side wall by the basket, his side's, with the people leaning on it.
+  if (g.sport === 'basket') {
+    const s = p.team === 0 ? -1 : 1
+    ;[p.x, p.z] = [s * (COURT_FENCE.x + 0.85), -6.9]
+    p.face = -s * (Math.PI / 2)
+  }
   p.act = 'none'
+}
+
+/**
+ * Le basket de rue: three a side on the court, the fourth behind the wall.
+ * The players who came play before the quarter's (the last of those waits);
+ * four who came on one side take turns (the last come first), one sitting out each basket (`turn`:
+ * the next one's turn now). Whether anyone changed places.
+ */
+function lineup(g: Game, turn: boolean) {
+  let moved = false
+  for (const team of [0, 1] as const) {
+    const side = g.ps.filter((p) => p.team === team)
+    const humans = side.filter((p) => p.human)
+    const sit = humans.length >= side.length ? humans[((turn ? ++g.rota[team] : g.rota[team]) + humans.length - 1) % humans.length] : [...side].reverse().find((p) => !p.human)!
+    for (const p of side) {
+      if (p.out !== (p === sit)) moved = true
+      p.out = p === sit
+    }
+  }
+  return moved
+}
+
+/** Le basket de rue, before the whistle: the players who came onto the court (the fourth's place behind the wall). */
+export function seat(g: Game) {
+  if (g.sport === 'basket' && g.street && g.phase === 'count' && lineup(g, false)) restart(g, 0)
 }
 
 /** The ball into someone's hands (or at their feet). */
@@ -635,6 +695,8 @@ export function pass(g: Game, p: Player, aim: V | null, kind: 'ground' | 'throug
   p.cool = 0.35
   to.call = 0
   if (g.sport === 'basket') {
+    // Le basket de rue: a team-mate running in by the ring with room gets it up over it, the alley-oop.
+    if (g.street && alleyFor(g, p, to)) return alley(g, p, to)
     const target: V = [to.x + to.vx * 0.35, to.z + to.vz * 0.35]
     const bounce = laneGap(enemies, [p.x, p.z], target) < 1.3
     const d = hyp(target[0] - p.x, target[1] - p.z)
@@ -702,6 +764,8 @@ export function shoot(g: Game, p: Player, aim: V | null, power?: number, metered
   const b = g.ball
   if (b.owner !== p.id || locked(p)) return
   if (g.sport === 'foot') return kickAtGoal(g, p, aim, power)
+  // Le basket de rue: the gauge full, the Gbê.
+  if (g.street && p.style >= 1) return hoopGbe(g, p)
   const d = fromHoop(p.x, p.z)
   const sp = speedOf(p)
   const toward = sp > 0.1 ? ((HOOP[0] - p.x) * p.vx + (HOOP[1] - p.z) * p.vz) / (d * sp || 1) : 0
@@ -813,11 +877,11 @@ function swat(g: Game, by: Player, shooter: Player) {
   if (shooter.act === 'dunk') startAct(shooter, 'layup', 0.6)
 }
 
-/** The ball let go towards the ring: in or out is decided now (the man guarding takes some off). */
-function release(g: Game, p: Player, chance: number, len: number) {
+/** The ball let go towards the ring: in or out is decided now (the man guarding takes some off; not off the Gbê's, `sure`). */
+function release(g: Game, p: Player, chance: number, len: number, sure = false) {
   const b = g.ball
   const d = fromHoop(p.x, p.z)
-  const q = guardOf(g, p)
+  const q = sure ? null : guardOf(g, p)
   let contest = 0
   if (q) {
     const e = dist(q, p)
@@ -840,8 +904,8 @@ function release(g: Game, p: Player, chance: number, len: number) {
   p.cool = 0.4
 }
 
-/** The dunk goes down through the ring: the ring pulled down, the net flying, two hands on the iron. */
-function dunkThrough(g: Game, p: Player) {
+/** The dunk goes down through the ring: the ring pulled down, the net flying, two hands on the iron (the alley-oop's, the Gbê's: `how`). */
+function dunkThrough(g: Game, p: Player, how?: 'alley' | 'gbe') {
   const b = g.ball
   b.owner = -1
   b.flight = null
@@ -851,13 +915,13 @@ function dunkThrough(g: Game, p: Player) {
   b.vx = b.vz = 0
   b.vy = -3.5
   b.dead = true
-  g.rim = { t: g.time, amp: 0.16 }
+  g.rim = { t: g.time, amp: how === 'gbe' ? 0.32 : 0.16 }
   g.swish = g.time
-  scored(g, p, 1, true)
+  scored(g, p, 1, true, how)
 }
 
 /** A basket: the points (if the ball went out past the arc first), the crowd, then the others check it at the top. */
-function scored(g: Game, p: Player, points: number, dunk: boolean) {
+function scored(g: Game, p: Player, points: number, dunk: boolean, how?: 'alley' | 'gbe') {
   const other: 0 | 1 = p.team === 0 ? 1 : 0
   if (!g.cleared) {
     say(g, 'Panier refusé : la balle devait ressortir !')
@@ -871,13 +935,94 @@ function scored(g: Game, p: Player, points: number, dunk: boolean) {
     g.stats.points += points
     if (dunk) g.stats.dunks++
   } else if (p.team === g.ps[g.me].team && g.lastPass?.mine && g.time - g.lastPass.t < 4) g.stats.assists++
-  say(g, dunk ? (p.human ? 'DUNK !!! Le terrain explose !' : 'DUNK !!!') : points === 2 ? 'De loin ! 2 points !' : 'Paniiier !')
+  say(g, how === 'alley' ? 'ALLEY-OOP !!!' : how === 'gbe' ? 'GBÊÊÊ !!! Le cercle a plié !' : dunk ? (p.human ? 'DUNK !!! Le terrain explose !' : 'DUNK !!!') : points === 2 ? 'De loin ! 2 points !' : 'Paniiier !')
   moment(g, dunk ? 'dunk' : points === 2 ? 'three' : 'basket', p)
   g.phase = 'dead'
   g.wait = dunk ? 2.4 : 1.5
-  g.then = () => restart(g, other)
+  // Le basket de rue: make it, take it (the side that scored checks it again).
+  g.then = () => restart(g, g.street ? p.team : other)
   // The others cheer him.
   for (const q of g.ps) if (q.team === p.team && q !== p && !locked(q)) startAct(q, 'cheer', g.wait)
+}
+
+/* ---------- Le basket de rue's flights ---------- */
+
+/** The Gbê's dunk: from this close (m), else the shot in flames. */
+export const GBE_REACH = 7.5
+
+/** An alley-oop to `q`: running in near the ring, nobody on him, far enough from the pass (the AI's passer sees it about half the time). */
+function alleyFor(g: Game, p: Player, q: Player) {
+  const d = fromHoop(q.x, q.z)
+  if (d > 3.4 || d < 0.9 || dist(p, q) < 2.6 || q.act !== 'none' || q.out) return false
+  if (nearest(foes(g, q), q.x, q.z)[1] < 0.95) return false
+  return p.human || g.rnd() < 0.55
+}
+
+/** The alley-oop: lobbed up by the ring, the team-mate going up to meet it, caught at the top and put down through. */
+function alley(g: Game, p: Player, q: Player) {
+  const b = g.ball
+  const d = fromHoop(q.x, q.z) || 1
+  const [ux, uz] = [(q.x - HOOP[0]) / d, (q.z - HOOP[1]) / d]
+  const len = 0.62
+  const [fx, fz] = fwd(p)
+  // (Lobbed from over the head: over the hands of the man in front.)
+  b.flight = { kind: 'pass', from: [p.x + fx * 0.35, 2.3, p.z + fz * 0.35], to: [HOOP[0] + ux * 0.45, 2.85, HOOP[1] + uz * 0.45], t: 0, len, apex: 1.0, by: p.id, team: p.team, target: q.id, make: false, points: 0, tried: [] }
+  startAct(p, 'pass', 0.35)
+  p.side = 1
+  p.face = Math.atan2(HOOP[0] - p.x, HOOP[1] - p.z)
+  if (p.human) say(g, 'Alley-oop !')
+  // Up off the ground as it comes: there at the top, the ball in his hands, down through the ring.
+  startAct(q, 'dunk', 1.7)
+  q.gbe = false
+  q.from = [q.x, q.z]
+  q.to = [HOOP[0] + ux * 0.32, HOOP[1] + uz * 0.32]
+  q.face = Math.atan2(HOOP[0] - q.x, HOOP[1] - q.z)
+  q.pending = () => {
+    // Cut out on its way, or not there: down again with nothing.
+    if (b.owner !== q.id) {
+      q.len = Math.min(q.len, q.at + 0.5)
+      return
+    }
+    q.pending = () => dunkThrough(g, q, 'alley')
+    q.pendingAt = q.at + 0.14
+  }
+  q.pendingAt = len + 0.06
+}
+
+/**
+ * The basket's Gbê: the gauge full, the next shot. Near enough, a run and a
+ * flight from far out to the ring, the ball swung round and thrown down, the
+ * iron bent (a hand gets to it once in a long while); further, a shot in
+ * flames that hardly ever misses.
+ */
+function hoopGbe(g: Game, p: Player) {
+  const d = fromHoop(p.x, p.z)
+  p.style = 0
+  p.meter = -1
+  g.gbe = g.time
+  moment(g, 'gbe', p)
+  p.face = Math.atan2(HOOP[0] - p.x, HOOP[1] - p.z)
+  if (d < GBE_REACH) {
+    say(g, p.human ? 'GBÊÊÊ !!! Il s’envole !' : `Le Gbê de ${p.name} !`)
+    startAct(p, 'dunk', 1.9)
+    p.gbe = true
+    p.from = [p.x, p.z]
+    p.to = [HOOP[0] + ((p.x - HOOP[0]) / (d || 1)) * 0.32, HOOP[1] + ((p.z - HOOP[1]) / (d || 1)) * 0.32]
+    const blocker = guardOf(g, p)
+    p.pending = () => {
+      if (blocker && dist(blocker, p) < 1.3 && g.rnd() < 0.07) return swat(g, blocker, p)
+      p.pending = () => dunkThrough(g, p, 'gbe')
+      p.pendingAt = 0.95
+    }
+    p.pendingAt = 0.5
+    return
+  }
+  say(g, p.human ? 'GBÊÊÊ !!! En feu !' : `Le Gbê de ${p.name} !`)
+  startAct(p, 'shoot', 0.8)
+  p.vx *= 0.2
+  p.vz *= 0.2
+  p.pending = () => release(g, p, 0.93, 0.8 + d * 0.04, true)
+  p.pendingAt = 0.42
 }
 
 /**
@@ -1060,12 +1205,25 @@ const MOVES: Record<Geste, { len: number; at: number; chance: number; style: num
   aile: { len: 0.45, at: 0.14, chance: 0.82, style: 0.22, name: 'Aile de pigeon !' },
   talonnade: { len: 0.45, at: 0.14, chance: 0.82, style: 0.2, name: 'Talonnade !' },
   jongle: { len: 60, at: 0, chance: 0, style: 0, name: 'Les jongles !' },
+  // Le basket de rue's.
+  crossover: { len: 0.5, at: 0.24, chance: 0.78, style: 0.2, name: 'Crossover !' },
+  entrejambe: { len: 0.56, at: 0.28, chance: 0.74, style: 0.24, name: 'Entre les jambes !' },
+  dos: { len: 0.6, at: 0.3, chance: 0.72, style: 0.26, name: 'Dans le dos !' },
+  spin: { len: 0.72, at: 0.42, chance: 0.74, style: 0.3, name: 'Spin move !' },
+  hesitation: { len: 0.7, at: 0.42, chance: 0.76, style: 0.22, name: 'Hésitation !' },
+  show: { len: 60, at: 0, chance: 0, style: 0, name: 'Le show !' },
+  pompe: { len: 0.62, at: 0.32, chance: 0.75, style: 0.2, name: 'Feinte de tir !' },
+  stepback: { len: 0.55, at: 0.2, chance: 0.8, style: 0.24, name: 'Step-back !' },
 }
 /** The moves the AI likes (the stepover and the fake shot more). */
 const AI_MOVES: Geste[] = ['passement', 'passement', 'roulette', 'petitpont', 'sombrero', 'crochet', 'crochet', 'aile']
-const GESTE_POSE: Record<Geste, Pose> = { passement: 'stepover', roulette: 'roulette', petitpont: 'poke', sombrero: 'rainbow', crochet: 'feint', aile: 'flick', talonnade: 'backheel', jongle: 'juggle' }
+const GESTE_POSE: Record<Geste, Pose> = { passement: 'stepover', roulette: 'roulette', petitpont: 'poke', sombrero: 'rainbow', crochet: 'feint', aile: 'flick', talonnade: 'backheel', jongle: 'juggle', crossover: 'crossover', entrejambe: 'between', dos: 'backdribble', spin: 'spinmove', hesitation: 'hesi', show: 'dribbleshow', pompe: 'pumpfake', stepback: 'stepback' }
+/** The moves the AI likes on the court (the crossover more). */
+const AI_HOOP: Geste[] = ['crossover', 'crossover', 'entrejambe', 'dos', 'spin', 'hesitation', 'pompe', 'stepback']
 /** The right moment: the man in front between these (m). Closer, it's late: he's on the ball. */
 export const GESTE_WINDOW: V = [0.85, 2.4]
+/** The court's (the man guarding plays closer than on the pitch). */
+export const HOOP_WINDOW: V = [0.6, 2.1]
 /** A keepy-up's beat (s). */
 export const JUGGLE_T = 0.48
 /** What a beaten defender says on his way down (the player's own moves). */
@@ -1092,14 +1250,16 @@ function manInFront(g: Game, p: Player, keepers: boolean): [Player | null, numbe
  * it more often than not; too far, nothing to beat (showing off).
  */
 function judge(g: Game, p: Player, q: Player | null, d: number, kind: Geste): 'beat' | 'lost' | 'none' {
-  if (!q || d > GESTE_WINDOW[1]) return 'none'
+  const [near, far] = g.sport === 'basket' ? HOOP_WINDOW : GESTE_WINDOW
+  if (!q || d > far) return 'none'
   const m = MOVES[kind]
   let c = m.chance
-  if (d < GESTE_WINDOW[0]) c *= 0.42
+  if (d < near) c *= 0.42
   if (kind === 'petitpont' && d > 1.9) c *= 0.65
   if (q.id === g.me && g.time - lastGuard < 0.35) c -= 0.22
   if (p.last === kind && g.time - p.lastT < 4) c -= 0.18
-  if (q.act === 'beaten' || q.act === 'slide') c = 0.95
+  // Caught going for the ball (a lunge, a jump), he's had.
+  if (q.act === 'beaten' || q.act === 'slide' || (g.sport === 'basket' && (q.act === 'steal' || q.act === 'block'))) c = 0.95
   // The other side's strength, on the player's moves.
   if (p.human && !q.human) c -= (g.foe - 1) * 0.1
   return g.rnd() < c ? 'beat' : 'lost'
@@ -1109,6 +1269,7 @@ function judge(g: Game, p: Player, q: Player | null, d: number, kind: Geste): 'b
 export function geste(g: Game, p: Player, kind: Geste, aim: V | null) {
   const b = g.ball
   if (!g.street || b.owner !== p.id || locked(p) || g.set || p.act === 'juggle') return
+  if (g.sport === 'basket') return hoopGeste(g, p, kind, aim)
   const m = MOVES[kind]
   startAct(p, kind === 'jongle' ? 'juggle' : 'geste', kind === 'jongle' ? (p.human ? m.len : 1.6 + g.rnd() * 1.4) : m.len)
   p.move = kind
@@ -1231,10 +1392,12 @@ function fool(q: Player, how: NonNullable<Player['fooled']>, v: V, len: number) 
 function beaten(g: Game, p: Player, q: Player, kind: Geste) {
   const m = MOVES[kind]
   p.style = Math.min(1, p.style + m.style)
-  // The nutmeg and the sombrero get filmed.
-  moment(g, kind === 'petitpont' || kind === 'sombrero' ? 'ankle' : 'geste', p)
+  // The nutmeg and the sombrero get filmed; on the court, a man left on his backside.
+  const down = q.fooled === 'ankles'
+  moment(g, kind === 'petitpont' || kind === 'sombrero' || down ? 'ankle' : 'geste', p)
   if (p.id === g.me) g.stats.ankles++
-  say(g, p.human ? m.name : q.id === g.me ? `${m.name.replace(' !', '')} de ${p.name}…` : `${m.name.replace(' !', '')} de ${p.name} !`)
+  const name = down ? 'Chevilles cassées !' : m.name
+  say(g, p.human ? (down ? `${m.name.replace(' !', '')} : chevilles cassées !!` : name) : q.id === g.me ? `${name.replace(' !', '')} de ${p.name}…` : `${name.replace(' !', '')} de ${p.name} !`)
 }
 
 /** A move with nobody to beat: a little style (showing off isn't beating a man). */
@@ -1253,7 +1416,7 @@ function lose(g: Game, p: Player, q: Player) {
   p.style = Math.max(0, p.style - 0.1)
   if (p.human) say(g, LOST[Math.floor(g.rnd() * LOST.length)])
   else if (q.human) say(g, 'Bien lu ! Ballon récupéré !')
-  moment(g, 'tackle', q)
+  moment(g, g.sport === 'basket' ? 'steal' : 'tackle', q)
   if (q.id === g.me) g.stats.steals++
 }
 
@@ -1423,22 +1586,23 @@ function juggling(g: Game, p: Player, dt: number) {
   p.style = Math.min(1, p.style + dt * 0.08)
   if (p.at >= 1.9 && p.at - dt < 1.9) {
     moment(g, 'geste', p)
-    if (p.human) say(g, 'Hooo ! Les jongles !')
+    if (p.human) say(g, g.sport === 'basket' ? 'Hooo ! Le show !' : 'Hooo ! Les jongles !')
   }
   for (const q of foes(g, p)) {
     if (q.keeper || q.cool > 0 || q.act === 'beaten' || dist(q, p) > 1.1 || g.rnd() > dt * 1.6) continue
     give(g, q)
     startAct(p, 'beaten', 0.5)
     p.cool = 0.6
-    say(g, p.human ? 'Il t’a pris le ballon en pleine jongle !' : 'Ballon récupéré !')
+    say(g, g.sport === 'basket' ? (p.human ? 'Il t’a piqué la balle en plein show !' : 'Interception !') : p.human ? 'Il t’a pris le ballon en pleine jongle !' : 'Ballon récupéré !')
     return
   }
 }
 
-/** The keepy-ups over: the ball let drop to the feet (his to take again). */
+/** The keepy-ups over: the ball let drop to the feet (his to take again); the dribble show, the ball kept in hand. */
 function dropJuggle(g: Game, p: Player) {
   p.act = 'none'
   p.move = null
+  if (g.sport === 'basket') return
   const b = g.ball
   if (b.owner !== p.id) return
   b.owner = -1
@@ -1463,6 +1627,176 @@ function gbe(g: Game, p: Player, aim: V | null) {
   say(g, p.human ? 'GBÊÊÊ !!!' : `Le Gbê de ${p.name} !`)
   moment(g, 'gbe', p)
   fire(g, p, goal, side * F.mouth * (0.45 + g.rnd() * 0.35), F.bar * (0.25 + g.rnd() * 0.45), 30, 'kick', true)
+}
+
+/* ---------- Le basket de rue's moves ---------- */
+
+/** A move with the ball on the court (the dribble show held, the others a press). `aim`: the stick, for the side it goes. */
+function hoopGeste(g: Game, p: Player, kind: Geste, aim: V | null) {
+  const m = MOVES[kind]
+  p.take++
+  p.move = kind
+  p.fooled = null
+  p.way = null
+  p.turn = 0
+  if (kind === 'show') {
+    startAct(p, 'juggle', p.human ? m.len : 1.4 + g.rnd() * 1.2)
+    p.vx *= 0.3
+    p.vz *= 0.3
+    return
+  }
+  startAct(p, 'geste', m.len)
+  p.face0 = p.face
+  // Which side: where the stick points across the body, else the other hand from last time.
+  const [rx, rz] = right(p)
+  const lat = aim ? aim[0] * rx + aim[1] * rz : 0
+  p.side = Math.abs(lat) > 0.3 ? (lat > 0 ? 1 : -1) : p.side === 1 ? -1 : 1
+  p.from = [p.x, p.z]
+  p.vx *= 0.5
+  p.vz *= 0.5
+  const [q, d] = manInFront(g, p, false)
+  const verdict = judge(g, p, q, d, kind)
+  p.last = kind
+  p.lastT = g.time
+  p.pending = () => hoopLand(g, p, q, verdict, kind)
+  p.pendingAt = m.at
+}
+
+/** The move bites: the man in front beaten (or the ball stolen), and away past him. */
+function hoopLand(g: Game, p: Player, q: Player | null, verdict: 'beat' | 'lost' | 'none', kind: Geste) {
+  if (g.ball.owner !== p.id) return
+  if (verdict === 'lost' && q && dist(q, p) < 2.4 && !q.out) return lose(g, p, q)
+  const beat = verdict === 'beat' && q ? q : null
+  const f0: V = [Math.sin(p.face0), Math.cos(p.face0)]
+  const r0: V = [Math.cos(p.face0), -Math.sin(p.face0)]
+  const s = p.side
+  const burst = (fw: number, sd: number, v: number) => {
+    const [x, z] = [f0[0] * fw + r0[0] * s * sd, f0[1] * fw + r0[1] * s * sd]
+    const l = hyp(x, z) || 1
+    p.vx = (x / l) * v
+    p.vz = (z / l) * v
+  }
+  // Which way he goes: the wrong way, after the ball's first side.
+  const wrong: V = [-r0[0] * s * 2.6, -r0[1] * s * 2.6]
+  switch (kind) {
+    case 'crossover':
+      burst(0.6, 0.8, 6.6)
+      // Hard enough, and the man goes down.
+      if (beat) {
+        const down = g.rnd() < 0.38
+        fool(beat, down ? 'ankles' : 'wrong', down ? [wrong[0] * 0.3, wrong[1] * 0.3] : wrong, down ? 1.6 : 0.95)
+      }
+      break
+    case 'entrejambe':
+      burst(0.75, 0.55, 6.3)
+      if (beat) fool(beat, 'frozen', [0, 0], 1.0)
+      break
+    case 'dos':
+      burst(0.65, 0.75, 6.4)
+      if (beat) fool(beat, 'turned', [-r0[0] * s * 1.2, -r0[1] * s * 1.2], 1.0)
+      break
+    case 'spin':
+      // Spun off him, out the other side: round him to the ring.
+      if (beat) {
+        fool(beat, 'turned', [0, 0], 1.05)
+        beat.side = s
+        p.way = [beat.x + r0[0] * s * 0.95 + f0[0] * 1.0, beat.z + r0[1] * s * 0.95 + f0[1] * 1.0]
+      } else burst(0.8, 0.45, 6)
+      break
+    case 'hesitation':
+      // Stopped as for the shot, then gone straight past.
+      burst(0.95, 0.2, 7.2)
+      if (beat) fool(beat, 'frozen', [0, 0], 0.95)
+      break
+    case 'pompe':
+      // He goes up for the block; under him and past.
+      burst(0.55, 0.7, 6)
+      if (beat) fool(beat, 'jump', [0, 0], 1.05)
+      break
+    case 'stepback':
+      // A hop back: room for the shot; the man lunging in loses his feet.
+      burst(-0.95, 0.25, 5.4)
+      if (beat) {
+        const down = g.rnd() < 0.5
+        fool(beat, down ? 'ankles' : 'wrong', [-f0[0] * 1.6, -f0[1] * 1.6], down ? 1.6 : 0.9)
+      }
+      break
+  }
+  if (beat) beaten(g, p, beat, kind)
+  else showOff(p)
+}
+
+/** A move's body on the court: planted for the trick, then away (round the man spun off). */
+function hoopRun(p: Player, dt: number) {
+  const m = MOVES[p.move ?? 'crossover']
+  const before = p.at < m.at
+  // The spin: a full turn on the pivot foot, back to the man, then out.
+  if (p.move === 'spin') p.face = p.face0 - p.side * Math.PI * 2 * ease01(clamp(p.at / (m.at + 0.1), 0, 1))
+  if (p.way && !before) {
+    runTo(p, p.way[0], p.way[1], 7)
+    const k = 1 - Math.exp(-14 * dt)
+    p.vx += (p.want[0] - p.vx) * k
+    p.vz += (p.want[1] - p.vz) * k
+    if (hyp(p.way[0] - p.x, p.way[1] - p.z) < 0.45) p.way = null
+  } else {
+    // Into the move he slows (the hesitation all but stops); out of it the burst carries on.
+    const drag = Math.exp(-(before ? (p.move === 'hesitation' ? 9 : 5) : 1.1) * dt)
+    p.vx *= drag
+    p.vz *= drag
+  }
+  // Out of it, facing where he runs (the step-back still faces the ring).
+  if (!before && p.move !== 'spin' && p.move !== 'stepback' && speedOf(p) > 0.8) {
+    let d = Math.atan2(p.vx, p.vz) - p.face
+    d = Math.atan2(Math.sin(d), Math.cos(d))
+    p.face += d * (1 - Math.exp(-10 * dt))
+  }
+  p.x += p.vx * dt
+  p.z += p.vz * dt
+}
+
+/** The ball in a move on the court: hand to hand low, between the legs, round the back, palmed in the spin, up for the pump fake; the show, every way at once. */
+function hoopBall(g: Game, h: Player, R: number) {
+  const b = g.ball
+  const [fx, fz] = fwd(h)
+  const [rx, rz] = right(h)
+  const m = MOVES[h.move!]
+  const u = clamp(h.at / Math.max(m.at * 1.6, 0.01), 0, 1)
+  // From the old hand to the new one (side: the new one).
+  const hand = -h.side * Math.cos(u * Math.PI)
+  let [f, r, y] = [0.22, h.side * 0.32, R + Math.abs(Math.sin(b.phase)) * 0.8]
+  switch (h.move) {
+    case 'crossover':
+      ;[f, r, y] = [0.32, hand * 0.32, R + Math.abs(Math.cos(u * Math.PI)) * 0.45]
+      break
+    case 'entrejambe':
+      // Bounced through, under him.
+      ;[f, r, y] = [0.22 - 0.3 * Math.sin(u * Math.PI), hand * 0.3, R + Math.abs(Math.cos(u * Math.PI)) * 0.55]
+      break
+    case 'dos':
+      ;[f, r, y] = [0.18 - 0.55 * Math.sin(u * Math.PI), hand * 0.36, R + 0.1 + Math.abs(Math.cos(u * Math.PI)) * 0.5]
+      break
+    case 'spin':
+      // Held in the hand as he turns, out at the side.
+      if (h.at < m.at + 0.1) [f, r, y] = [0.12, h.side * 0.4, 0.95]
+      break
+    case 'hesitation':
+      // A high slow bounce while he stops, as if to pull up.
+      if (h.at < m.at) y = R + Math.abs(Math.sin(h.at * 5)) * 0.95
+      break
+    case 'pompe': {
+      // Both hands, up over the head as for the shot, and back down.
+      const k = h.at < 0.24 ? ease01(h.at / 0.24) : Math.max(0, 1 - (h.at - 0.24) / 0.18)
+      if (h.at < 0.42) [f, r, y] = [0.3, 0, 1.15 + 1.0 * k]
+      break
+    }
+    case 'show':
+      // Crossovers and between the legs in a blur, low and quick.
+      ;[f, r, y] = [0.2 - 0.18 * Math.max(0, Math.sin(h.at * 3.1)), 0.32 * Math.cos(h.at * 6.2), R + Math.abs(Math.sin(h.at * 12.4)) * 0.45]
+      break
+  }
+  b.x = h.x + fx * f + rx * r
+  b.z = h.z + fz * f + rz * r
+  b.y = y
 }
 
 /** Défense: go for the ball. Close to the one with it, a steal or a tackle; at full speed (football), a slide tackle. */
@@ -1844,7 +2178,9 @@ function basketCarry(g: Game, p: Player) {
   if (human.team === p.team && human.call > 0 && laneGap(enemies, [p.x, p.z], [human.x, human.z]) > 0.6 && g.rnd() < 0.85) return pass(g, p, [human.x - p.x, human.z - p.z])
   if (d < 3.2 && (speedOf(p) > 2.2 || d < 2.4)) return shoot(g, p, null)
   if ((d < 7.5 && ((dd > 1.8 && g.rnd() < 0.45) || (dd > 1.1 && g.rnd() < 0.16))) || forced) return shoot(g, p, null)
-  if (def && inFront && dd < 1.6 && g.rnd() < 0.45) return skill(g, p, null)
+  // (Le basket de rue: a move on the man in front, from a little further; now and then the show, nobody near.)
+  if (def && inFront && dd < (g.street ? 2 : 1.6) && g.rnd() < 0.45) return g.street ? geste(g, p, AI_HOOP[Math.floor(g.rnd() * AI_HOOP.length)], null) : skill(g, p, null)
+  if (g.street && dd > 4 && g.possT > 2 && g.rnd() < 0.04) return geste(g, p, 'show', null)
   if (g.rnd() < (human.team === p.team && openness(g, human) > 2 ? 0.45 : 0.3)) return pass(g, p, null)
 }
 
@@ -1862,7 +2198,7 @@ function basketSupport(g: Game, p: Player) {
 
 function basketDefend(g: Game, p: Player) {
   // Each on his man (the same place in the other team): between him and the ring, closer on the one with the ball.
-  const man = g.ps.find((q) => q.team !== p.team && q.role === p.role)!
+  const man = g.street ? manOf(g, p) : g.ps.find((q) => q.team !== p.team && q.role === p.role)!
   const onBall = g.ball.owner === man.id
   const d = fromHoop(man.x, man.z) || 1
   const off = onBall ? 0.95 : Math.min(2.2, 1.2 + d * 0.12)
@@ -1870,6 +2206,13 @@ function basketDefend(g: Game, p: Player) {
   if (p.think > 0) return
   p.think = 0.45 + g.rnd() * 0.3
   if (onBall && dist(p, man) < 1.35 && g.rnd() < 0.09 && p.cool <= 0) defend(g, p)
+}
+
+/** Le basket de rue: the man a defender guards, the one in the same place of the three on the court. */
+function manOf(g: Game, p: Player) {
+  const mine = g.ps.filter((q) => q.team === p.team && !q.out)
+  const theirs = g.ps.filter((q) => q.team !== p.team && !q.out)
+  return theirs[Math.max(0, mine.indexOf(p))] ?? theirs[0]
 }
 
 /* Football */
@@ -2084,7 +2427,7 @@ export function step(g: Game, dt: number, input: Input, others?: Map<number, Inp
     if (g.golden && g.score[0] === g.score[1]) {
       if (!g.extra) {
         g.extra = true
-        say(g, 'But en or : le premier qui marque gagne !')
+        say(g, g.sport === 'basket' ? 'Panier en or : le prochain panier gagne !' : 'But en or : le premier qui marque gagne !')
       }
       return false
     }
@@ -2257,6 +2600,13 @@ function hands(g: Game, me: Player, input: Input, playing: boolean, dt: number) 
   // At a set piece the stick aims: the taker turns to it.
   if (set && aim) me.face = Math.atan2(aim[0], aim[1])
   if (!foot) {
+    // Le basket de rue: the moves (Feinte is the pump fake); the dribble show goes on while held.
+    if (g.street && has) {
+      if (me.act === 'juggle' && !input.juggle) dropJuggle(g, me)
+      if (input.geste) return geste(g, me, input.geste, aim)
+      if (input.skill) return geste(g, me, 'pompe', aim)
+      if (input.juggle && me.act === 'none') return geste(g, me, 'show', aim)
+    }
     if (input.pass) has ? pass(g, me, aim) : call(me)
     // Tir held where the hands can hold it: the jump shot on the meter.
     if (input.shoot) has ? shoot(g, me, aim, undefined, input.charge !== undefined) : jump(g, me)
@@ -2320,8 +2670,8 @@ function act(g: Game, p: Player, dt: number) {
   }
   const k = 1 - Math.exp(-(p.act === 'cross' ? 2 : 9) * dt)
   if (p.act === 'dunk') {
-    // Up to the ring and hanging there; then down.
-    const e = Math.min(1, p.at / 0.5)
+    // Up to the ring and hanging there; then down. (The Gbê flies further, for longer.)
+    const e = Math.min(1, p.at / (p.gbe ? 0.85 : 0.5))
     const s = e * e * (3 - 2 * e)
     const [x, z] = [p.from[0] + (p.to[0] - p.from[0]) * s, p.from[1] + (p.to[1] - p.from[1]) * s]
     p.vx = (x - p.x) / Math.max(dt, 1e-3)
@@ -2391,8 +2741,11 @@ function act(g: Game, p: Player, dt: number) {
       d = Math.atan2(Math.sin(d), Math.cos(d))
       if (p.at > 0.35) p.face += d * (1 - Math.exp(-4 * dt))
     }
+    // Turned round by a move on the court: spun the wrong way, his back to the play.
+    if (p.fooled === 'turned' && p.at < 0.5) p.face += p.side * (Math.PI / 0.5) * dt
   } else if (p.act === 'geste') {
-    gesteRun(g, p, dt)
+    if (g.sport === 'basket') hoopRun(p, dt)
+    else gesteRun(g, p, dt)
   } else if (p.act === 'shoot' || (p.act === 'block' && p.at < 0.6) || p.act === 'hold' || p.act === 'head' || p.act === 'throw') {
     p.vx *= Math.exp(-8 * dt)
     p.vz *= Math.exp(-8 * dt)
@@ -2431,6 +2784,7 @@ function act(g: Game, p: Player, dt: number) {
     p.flip = false
     p.fooled = null
     p.move = null
+    p.gbe = false
   }
   // Juggling: the style fills, the crowd loves it after a moment; a man close in can take it.
   if (p.act === 'juggle') juggling(g, p, dt)
@@ -2469,10 +2823,12 @@ function moveBall(g: Game, dt: number) {
     if (g.sport === 'basket') {
       if (h.act === 'dunk' || h.act === 'layup' || h.act === 'shoot' || h.act === 'pass') {
         // In both hands: at the chest, then over the head.
-        const up = h.act === 'dunk' ? 1.2 + 2.1 * Math.min(1, h.at / 0.55) : h.act === 'pass' ? 1.15 : 1.3 + Math.min(1, h.at / 0.4) * 1.1
+        const up = h.act === 'dunk' ? 1.2 + 2.1 * Math.min(1, h.at / (h.gbe ? 0.9 : 0.55)) : h.act === 'pass' ? 1.15 : 1.3 + Math.min(1, h.at / 0.4) * 1.1
         b.x = h.x + fx * 0.3
         b.z = h.z + fz * 0.3
         b.y = up
+      } else if (g.street && (h.act === 'geste' || h.act === 'juggle') && h.move) {
+        hoopBall(g, h, R)
       } else {
         // The crossover takes it across low in front; the dribble is at the side, hand to floor and back.
         const cross = h.act === 'cross' ? Math.cos(Math.min(1, h.at / h.len) * Math.PI) : 1
@@ -2773,7 +3129,7 @@ function poseOf(g: Game, p: Player) {
   let pose: Pose
   switch (p.act) {
     case 'dunk':
-      pose = 'dunk'
+      pose = p.gbe ? 'windmill' : 'dunk'
       break
     case 'layup':
       pose = 'layup'
@@ -2806,13 +3162,13 @@ function poseOf(g: Game, p: Player) {
       pose = 'slide'
       break
     case 'beaten':
-      pose = p.fooled === 'legs' ? 'nutmegged' : p.fooled === 'sky' ? 'lookup' : p.fooled === 'shot' ? 'flinch' : 'stumble'
+      pose = p.fooled === 'legs' ? 'nutmegged' : p.fooled === 'sky' ? 'lookup' : p.fooled === 'shot' ? 'flinch' : p.fooled === 'ankles' ? 'ankles' : p.fooled === 'turned' ? 'turned' : p.fooled === 'frozen' ? 'frozen' : p.fooled === 'jump' ? 'block' : 'stumble'
       break
     case 'geste':
       pose = GESTE_POSE[p.move ?? 'passement']
       break
     case 'juggle':
-      pose = 'juggle'
+      pose = g.sport === 'basket' ? 'dribbleshow' : 'juggle'
       break
     case 'dive':
       pose = 'dive'

@@ -5,7 +5,8 @@ import { GESTES, NO_INPUT, type Act, type Game, type Input, type Moment } from '
 
 // Playing at a court with other players. The API puts everyone who starts
 // playing at the same pitch or court in one match, up to the sport's places
-// (backend/internal/court): ten for football, six for basketball, twenty-two
+// (backend/internal/court): ten for football, six for basketball (eight at
+// le basket de rue: the fourth of each side waits behind the wall), twenty-two
 // at the stadium's eleven against eleven (foot11, on the console's rules,
 // each in its own place), the rest AI. Over the live WebSocket (mode "match") every phone sends its hands
 // (the stick, and how many times each button was pressed, so a press is
@@ -19,10 +20,10 @@ const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
 const GONE = 4000
 
 export type CourtEntry = { sim: string; name: string; gender: 'femme' | 'homme'; look: Look; slot: number }
-export type CourtMatch = { id: string; place: string; sport: 'foot' | 'basket' | 'foot11'; start: number; end: number; cap: number; entries: CourtEntry[] }
+export type CourtMatch = { id: string; place: string; /** basket-rue: le basket de rue's, eight places (the fourth of each side behind the wall). */ sport: 'foot' | 'basket' | 'foot11' | 'basket-rue'; start: number; end: number; cap: number; entries: CourtEntry[] }
 
 /** The poses and moves, by number on the wire. */
-const POSES: Pose[] = ['idle', 'walk', 'run', 'dribble', 'pass', 'bouncepass', 'shoot', 'dunk', 'layup', 'crossover', 'steal', 'block', 'slide', 'stumble', 'kick', 'keeper', 'dive', 'airplane', 'cheer', 'guard', 'mark', 'touch', 'hang', 'leap', 'stepover', 'roulette', 'poke', 'rainbow', 'feint', 'flick', 'backheel', 'juggle', 'nutmegged', 'lookup', 'flinch']
+const POSES: Pose[] = ['idle', 'walk', 'run', 'dribble', 'pass', 'bouncepass', 'shoot', 'dunk', 'layup', 'crossover', 'steal', 'block', 'slide', 'stumble', 'kick', 'keeper', 'dive', 'airplane', 'cheer', 'guard', 'mark', 'touch', 'hang', 'leap', 'stepover', 'roulette', 'poke', 'rainbow', 'feint', 'flick', 'backheel', 'juggle', 'nutmegged', 'lookup', 'flinch', 'between', 'backdribble', 'spinmove', 'hesi', 'dribbleshow', 'pumpfake', 'stepback', 'ankles', 'turned', 'frozen', 'windmill']
 const ACTS: Act[] = ['none', 'pass', 'shoot', 'dunk', 'layup', 'cross', 'steal', 'block', 'slide', 'beaten', 'kick', 'dive', 'hold', 'celebrate', 'cheer', 'head', 'throw', 'geste', 'juggle']
 const MOMENTS: Moment['kind'][] = ['dunk', 'basket', 'three', 'goal', 'block', 'steal', 'ankle', 'save', 'tackle', 'post', 'geste', 'gbe']
 const PHASES: Game['phase'][] = ['count', 'play', 'dead', 'over']

@@ -4,7 +4,7 @@ import { RotateCcw, Trophy, Users, X } from 'lucide-react'
 import type { Look } from '../lib/types'
 import { randomLook } from '../avatar/options'
 import { rng } from '../world3d/themes'
-import { COUNTDOWN, METER_GOOD, NO_INPUT, buttons, createGame, outcome, shootoutScore, step, type Game, type Geste, type Input, type Rules, type Sport, type Stats } from './game'
+import { COUNTDOWN, GBE_REACH, HOOP, HOOP_TO, METER_GOOD, NO_INPUT, buttons, createGame, outcome, seat, shootoutScore, step, type Game, type Geste, type Input, type Rules, type Sport, type Stats } from './game'
 import { holdScenes } from '../world3d/hold'
 import { BallView, Crowd, Follow, Ground, PlayerView, upright } from './scene'
 import { HAZE, Sky } from './looks'
@@ -12,6 +12,7 @@ import { FarGrow, GroundShade } from '../avatar/LowHuman'
 import { NearUpTo } from '../avatar/Human'
 import { Referee } from './stadium'
 import { GbeTrail, StreetGround } from './rue'
+import { StreetCourt } from './panier'
 import { likesFor } from '../world3d/fans'
 import { serverNow } from '../lib/worldClock'
 import { rumble, stickOwner, useGamepad, usePadConnected } from '../lib/gamepad'
@@ -31,6 +32,12 @@ import { MatchNet, fetchMatch, leaveMatch, type CourtEntry, type CourtMatch } fr
 // and Feinte; on the keyboard K passement, U roulette, I petit pont,
 // O sombrero, C feinte de frappe, H aile de pigeon, N talonnade, G held the
 // jongles; Space with the style gauge full is the Gbê.
+// Le basket de rue (basketball with `rules.street`) the same way: the Geste
+// button's tap the crossover, a swipe up between the legs, down behind the
+// back, left the spin, right the hesitation, held the dribble show; Feinte
+// the pump fake, swiped the step-back; on the keyboard K, O, I, U, H, G held,
+// C, N (the foot's keys for the same gestures); Tir with the gauge full is the
+// basket's Gbê.
 
 export type MatchResult = { sport: Sport; score: [number, number]; result: 'win' | 'loss' | 'draw'; stats: Stats; /** A draw settled on penalties: the shoot-out's score. */ pens?: [number, number] }
 
@@ -101,12 +108,16 @@ type Hud = {
   /** Le foot de rue: the style gauge (full: the Gbê), and what the people along the wall shout. */
   style: number
   shout: { text: string; k: number } | null
+  /** Le basket de rue: the Gbê would be the flying dunk (close enough), and the player waits behind the wall for a turn. */
+  fly: boolean
+  bench: boolean
 }
 
 /** At a set piece, what the hands can do. */
 function hintOf(g: Game): string | null {
-  // Basketball, the first half-minute: how the shot meter goes.
-  if (g.sport === 'basket') return g.time < 30 && g.ball.owner === g.me && g.phase === 'play' ? 'Tiens Tir : la jauge monte. Lâche dans le vert pour un tir parfait.' : null
+  // Basketball, the first half-minute: how the shot meter goes (le basket de rue: once its moves have been told). Behind the wall: when it's one's turn.
+  if (g.sport === 'basket' && g.street && g.ps[g.me].out) return 'Tu attends ton tour derrière le mur : tu rentres au prochain panier.'
+  if (g.sport === 'basket') return g.time < 30 && (!g.street || g.time > 9) && g.ball.owner === g.me && g.phase === 'play' ? 'Tiens Tir : la jauge monte. Lâche dans le vert pour un tir parfait.' : null
   const sp = g.set
   if (!sp) return null
   const mine = sp.team === g.ps[g.me].team
@@ -149,6 +160,8 @@ function hudOf(g: Game, waiting = 0, shout: Hud['shout'] = null): Hud {
     pens: g.shootout ? [[...g.shootout.kicks[0]], [...g.shootout.kicks[1]]] : null,
     style: me.style,
     shout,
+    fly: Math.hypot(me.x - HOOP[0], me.z - HOOP[1]) < GBE_REACH,
+    bench: me.out,
   }
 }
 
@@ -158,12 +171,20 @@ const SHOUTS = {
   ankle: ['Hooo ! Il l’a tué !', 'Va chercher !', 'Yako, mon frère…', 'Ça c’est ivoirien !', 'Il est où ? Il est où ?!'],
   gbe: ['GBÊÊÊ !', 'Frappe de mule !', 'Le filet a crié !', 'C’est quel pied ça ?!'],
 }
+/** Le basket de rue's wall: at a move, a man left on the ground, a dunk, the Gbê. */
+const HOOP_SHOUTS = {
+  geste: ['Hooo !', 'Il danse avec lui !', 'Mets-lui encore !', 'Dêh ! Regarde ça !', 'C’est le Bronx ici !', 'On dit quoi ?!'],
+  ankle: ['Il l’a cassé !', 'Hooo ! Il est assis !', 'Ramassez-le !', 'Ses chevilles sont où ?!', 'Yako, mon frère…'],
+  dunk: ['Sur sa tête !', 'Le terrain est gâté !', 'Hooo ! Dunk !', 'C’est le Bronx ici !'],
+  gbe: ['GBÊÊÊ !', 'Le cercle a plié !', 'Il vole, il vole !', 'C’est le Bronx ici !'],
+}
 
 export default function StreetMatch({ sport, name, look, gender, onExit, seed, online, rules, teams, kits: kitsProp, shorts }: Props) {
   // The console's football: its extra moves and its HUD.
   const fifa = sport === 'foot' && !!rules && !!(rules.referee || rules.switching || rules.size === 11)
-  // Le foot de rue: the street's rules and moves (not the console's: a replay, the film of it).
-  const street = sport === 'foot' && !!rules?.street && rules.size !== 11
+  // Le foot de rue and le basket de rue: the street's rules and moves (not the console's: a replay, the film of it).
+  const street = !!rules?.street && rules.size !== 11
+  const hoops = street && sport === 'basket'
   const consoleRules = rules && !street ? rules : undefined
   const kits = kitsProp ?? KITS[sport]
   // The scoreboard's three letters: the console's own, else from the names.
@@ -220,8 +241,10 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
         p.human = p.id === game.me || (!!e && net.here(e.sim))
         if (e && p.id !== game.me) p.name = e.name
         // The street's fifth place (four a side): a ninth and tenth player come on all the same.
-        if (game.street && p.role === 0) p.out = !p.human
+        if (game.street && game.sport === 'foot' && p.role === 0) p.out = !p.human
       }
+      // Le basket de rue: before the whistle, the players who came onto the court (after it, at the next basket).
+      seat(game)
     }
     fix()
     const t = setInterval(fix, 1000)
@@ -269,7 +292,7 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
         <directionalLight color="#fff1dc" position={big ? [40, 70, 30] : [18, 30, 14]} intensity={1.85} castShadow shadow-mapSize={[big ? 2048 : 1024, big ? 2048 : 1024]} shadow-camera-left={big ? -70 : -24} shadow-camera-right={big ? 70 : 24} shadow-camera-top={big ? 60 : 24} shadow-camera-bottom={big ? -60 : -24} shadow-camera-far={big ? 200 : 100} />
         <Sky radius={big ? 600 : 330} />
         <Suspense fallback={null}>
-          {street ? <StreetGround g={game} seed={sceneSeed} /> : <Ground g={game} seed={sceneSeed} teams={teams} />}
+          {hoops ? <StreetCourt g={game} seed={sceneSeed} /> : street ? <StreetGround g={game} seed={sceneSeed} /> : <Ground g={game} seed={sceneSeed} teams={teams} />}
           {street && <GbeTrail g={game} />}
           {/* The players seen from afar a little bigger (more at the stadium, from high up), so they read as people, not sticks. */}
           <FarGrow.Provider value={big ? FAR_STADIUM : FAR_PITCH}>
@@ -306,7 +329,7 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
             {labels && <span className="text-[13px] font-extrabold tracking-wide">{labels[1]}</span>}
             <span className="h-5 w-1.5 rounded-full" style={{ background: kits[1] }} />
           </span>
-          <span className="flex items-center bg-[#ff8200] px-2 text-[13px] font-extrabold whitespace-nowrap tabular-nums">{game.extra ? 'But en or' : hud.pens ? <Pens pens={hud.pens} /> : mmss(hud.left)}</span>
+          <span className="flex items-center bg-[#ff8200] px-2 text-[13px] font-extrabold whitespace-nowrap tabular-nums">{game.extra ? (sport === 'basket' ? 'Panier en or' : 'But en or') : hud.pens ? <Pens pens={hud.pens} /> : mmss(hud.left)}</span>
         </div>
         <button
           className="pointer-events-auto grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#0f1230]/70 text-white"
@@ -343,14 +366,20 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
       )}
       {fifa && !hud.over && <Gauges hud={hud} />}
       {sport === 'basket' && !hud.over && hud.meter >= 0 && <ShotMeter v={hud.meter} />}
-      {street && !hud.over && <StyleGauge v={hud.style} />}
+      {street && !hud.over && !hud.bench && <StyleGauge v={hud.style} high={!(touch && !padOn)} ready={hoops ? (hud.fly ? 'Gbê prêt ! Tir : il s’envole !' : 'Gbê prêt ! Tir : en feu !') : undefined} />}
       {street && !hud.over && hud.time > 0 && hud.time < 9 && (
         <div className="pointer-events-none absolute inset-x-0 top-[max(4.8rem,calc(env(safe-area-inset-top)+4.2rem))] px-4 text-center">
-          <span className="inline-block max-w-sm rounded-xl bg-[#0f1230]/75 px-3 py-1.5 text-xs font-extrabold text-white">{touch && !padOn ? 'Geste : tape, glisse ↑ ↓ ← →, ou tiens pour jongler.' : 'Les gestes : K U I O C H N, G tenu pour jongler.'} Face à un défenseur, au bon moment : il est dans le vent !</span>
+          {hoops ? (
+            <span className="inline-block max-w-sm rounded-xl bg-[#0f1230]/75 px-3 py-1.5 text-xs font-extrabold text-white">
+              {touch && !padOn ? 'Geste : tape, glisse ↑ ↓ ← →, ou tiens pour le show.' : padOn ? 'Les gestes : stick droit, X, Y, RB, LB.' : 'Les gestes : K O I U H C N, G tenu pour le show.'} Face au défenseur, au bon moment : il est par terre ! Le premier à {HOOP_TO} (2 derrière l’arc) ; qui marque garde la balle.
+            </span>
+          ) : (
+            <span className="inline-block max-w-sm rounded-xl bg-[#0f1230]/75 px-3 py-1.5 text-xs font-extrabold text-white">{touch && !padOn ? 'Geste : tape, glisse ↑ ↓ ← →, ou tiens pour jongler.' : 'Les gestes : K U I O C H N, G tenu pour jongler.'} Face à un défenseur, au bon moment : il est dans le vent !</span>
+          )}
         </div>
       )}
       {street && !hud.over && hud.shout && <Shout key={hud.shout.k} text={hud.shout.text} k={hud.shout.k} />}
-      {!hud.over && (fifa ? <FifaPad input={input} hud={hud} touch={touch && !padOn} pad={padOn} /> : street ? <StreetPad input={input} hud={hud} touch={touch && !padOn} pad={padOn} /> : <Pad input={input} hud={hud} sport={sport} touch={touch && !padOn} pad={padOn} />)}
+      {!hud.over && (fifa ? <FifaPad input={input} hud={hud} touch={touch && !padOn} pad={padOn} /> : street ? <StreetPad input={input} hud={hud} sport={sport} touch={touch && !padOn} pad={padOn} /> : <Pad input={input} hud={hud} sport={sport} touch={touch && !padOn} pad={padOn} />)}
       {online && hud.waiting > 0 && <Waiting entries={entries} cap={online.match.cap} left={hud.waiting} sport={sport} />}
 
       {hud.over && (
@@ -449,8 +478,13 @@ function Loop({ game, input, onHud, net, entries, start, simId }: { game: Game; 
       if (m.kind === 'goal' || m.kind === 'basket' || m.kind === 'three' || m.kind === 'dunk') rumble(mine ? 0.9 : 0.35, mine ? 320 : 160)
       else if (m.by === game.me) rumble(0.5, 120)
       if (m.kind === 'goal') sfx.roar()
-      // The street: the wall shouts at a move, roars at a nutmeg, a sombrero, a Gbê.
-      if (game.street && (m.kind === 'geste' || m.kind === 'ankle' || m.kind === 'gbe')) {
+      // The street: the wall shouts at a move, roars at a nutmeg, a sombrero, a Gbê (on the court, a man left on the ground, a dunk).
+      if (game.street && game.sport === 'basket' && (m.kind === 'geste' || m.kind === 'ankle' || m.kind === 'gbe' || m.kind === 'dunk')) {
+        const list = HOOP_SHOUTS[m.kind]
+        shout.current = { text: list[Math.floor(Math.random() * list.length)], k: m.t }
+        if (m.kind === 'geste') sfx.swish()
+        else sfx.roar()
+      } else if (game.street && (m.kind === 'geste' || m.kind === 'ankle' || m.kind === 'gbe')) {
         const list = SHOUTS[m.kind]
         shout.current = { text: list[Math.floor(Math.random() * list.length)], k: m.t }
         if (m.kind === 'geste') sfx.swish()
@@ -522,6 +556,8 @@ function Waiting({ entries, cap, left, sport }: { entries: CourtEntry[]; cap: nu
 
 /** The keys of the street's moves (K the stepover; C, the crochet key, the fake shot). */
 const GESTE_KEYS: Record<string, Geste> = { KeyK: 'passement', KeyU: 'roulette', KeyI: 'petitpont', KeyO: 'sombrero', KeyC: 'crochet', KeyH: 'aile', KeyN: 'talonnade' }
+/** Le basket de rue's, on the same keys as the foot's gestures (the swipe each key stands for): K the crossover, O between the legs, I behind the back, U the spin, H the hesitation, C the pump fake, N the step-back. */
+const HOOP_KEYS: Record<string, Geste> = { KeyK: 'crossover', KeyO: 'entrejambe', KeyI: 'dos', KeyU: 'spin', KeyH: 'hesitation', KeyC: 'pompe', KeyN: 'stepback' }
 
 /** The keyboard: arrows / WASD / ZQSD, Space shoot, J or X pass, K or C crossover, L or E defend; the street, its moves (GESTE_KEYS, G held the keepy-ups). */
 function useKeyboard(input: React.MutableRefObject<Input>, fifa: boolean, basket: boolean, street = false) {
@@ -549,7 +585,8 @@ function useKeyboard(input: React.MutableRefObject<Input>, fifa: boolean, basket
       if (!e.repeat) {
         if (e.code === 'Space') input.current.shoot = true
         if (e.code === 'KeyJ' || e.code === 'KeyX') input.current.pass = true
-        if (street && GESTE_KEYS[e.code]) input.current.geste = GESTE_KEYS[e.code]
+        const moves = basket ? HOOP_KEYS : GESTE_KEYS
+        if (street && moves[e.code]) input.current.geste = moves[e.code]
         else if (e.code === 'KeyK' || e.code === 'KeyC') input.current.skill = true
         if (e.code === 'KeyL' || e.code === 'KeyE') input.current.defend = true
         if (fifa && e.code === 'KeyU') input.current.through = true
@@ -689,14 +726,21 @@ function usePad(input: React.MutableRefObject<Input>, sport: Sport, fifa: boolea
     if (street) {
       // The street, as the big street games lay it out: the right stick flicked for the moves (like the Geste button's swipes),
       // X the stepover, Y the flick, RB the fake shot, LB the back-heel, the right stick pressed in held for the keepy-ups; LT defends.
+      // (Le basket de rue the same: X the crossover, Y the hesitation, RB the pump fake, LB the step-back, R3 held the show; B held the shot meter.)
+      const hoop = sport === 'basket'
       const r = Math.hypot(p.rx, p.ry)
-      if (r > 0.7 && !flicked.current) i.geste = SWIPE[Math.abs(p.rx) > Math.abs(p.ry) ? (p.rx > 0 ? 'right' : 'left') : p.ry > 0 ? 'down' : 'up']
+      if (r > 0.7 && !flicked.current) i.geste = (hoop ? HOOP_SWIPE : SWIPE)[Math.abs(p.rx) > Math.abs(p.ry) ? (p.rx > 0 ? 'right' : 'left') : p.ry > 0 ? 'down' : 'up']
       flicked.current = r > 0.4
-      if (p.pressed.has('x')) i.geste = 'passement'
-      if (p.pressed.has('y')) i.geste = 'aile'
+      if (p.pressed.has('x')) i.geste = hoop ? 'crossover' : 'passement'
+      if (p.pressed.has('y')) i.geste = hoop ? 'hesitation' : 'aile'
       if (p.pressed.has('rb')) i.skill = true
-      if (p.pressed.has('lb')) i.geste = 'talonnade'
+      if (p.pressed.has('lb')) i.geste = hoop ? 'stepback' : 'talonnade'
       i.juggle = p.held.has('rs')
+      if (hoop) {
+        const charge = p.held.has('b')
+        if (charge !== held.current.charge) i.charge = charge
+        held.current = { ...held.current, charge }
+      }
       const g = p.lt > 0.4
       if (g && !guard.current) i.defend = true
       if (g !== guard.current) i.guard = g
@@ -829,15 +873,21 @@ function FifaPad({ input, hud, touch, pad }: { input: React.MutableRefObject<Inp
 type Swipe = 'up' | 'down' | 'left' | 'right'
 const SWIPE: Record<Swipe, Geste> = { up: 'sombrero', down: 'petitpont', left: 'roulette', right: 'aile' }
 const SWIPE_LABEL: Record<Swipe | 'tap' | 'hold', string> = { up: 'Sombrero', down: 'Petit pont', left: 'Roulette', right: 'Aile de pigeon', tap: 'Passement', hold: 'Jongles' }
+/** Le basket de rue's. */
+const HOOP_SWIPE: Record<Swipe, Geste> = { up: 'entrejambe', down: 'dos', left: 'spin', right: 'hesitation' }
+const HOOP_LABEL: Record<Swipe | 'tap' | 'hold', string> = { up: 'Entre les jambes', down: 'Dans le dos', left: 'Spin', right: 'Hésitation', tap: 'Crossover', hold: 'Show' }
 
 /**
  * Le foot de rue on a phone: Passe, Tir (with the style gauge full, the Gbê),
  * Feinte (a tap: the fake shot; a swipe: the back-heel) and Geste: a tap the
  * stepover, a swipe up the sombrero, down the nutmeg, left the Marseille
  * turn, right the flick; held, the keepy-ups. Without the ball, Geste is
- * Défense (held: the stance).
+ * Défense (held: the stance). Le basket de rue: Tir held for the shot meter
+ * (Saut without the ball), Geste's tap the crossover, up between the legs,
+ * down behind the back, left the spin, right the hesitation, held the
+ * dribble show; Feinte the pump fake, swiped the step-back.
  */
-function StreetPad({ input, hud, touch, pad }: { input: React.MutableRefObject<Input>; hud: Hud; touch: boolean; pad: boolean }) {
+function StreetPad({ input, hud, sport, touch, pad }: { input: React.MutableRefObject<Input>; hud: Hud; sport: Sport; touch: boolean; pad: boolean }) {
   const btn = 'pointer-events-auto relative grid place-items-center rounded-full font-display font-extrabold shadow-[0_6px_0_rgba(0,0,0,0.25)] active:translate-y-[3px] active:shadow-[0_3px_0_rgba(0,0,0,0.25)] transition-opacity select-none touch-none'
   const off = 'opacity-45'
   const press = (k: 'pass' | 'shoot') => (e: React.PointerEvent) => {
@@ -845,22 +895,40 @@ function StreetPad({ input, hud, touch, pad }: { input: React.MutableRefObject<I
     input.current[k] = true
   }
   const gbe = hud.has && hud.style >= 1
+  const hoop = sport === 'basket'
+  // Basketball: Tir held fills the shot meter, let go the ball leaves.
+  const lift = () => void (hoop && (input.current.charge = false))
+  const help = hoop
+    ? pad
+      ? 'B tenu tir · A passe · X crossover · Y hésitation · RB feinte · LB step-back · stick droit ↑ jambes ↓ dos ← spin · R3 show · LT défense'
+      : 'Espace tenu tir · J passe · L défense · K crossover · O jambes · I dos · U spin · H hésitation · C feinte · N step-back · G show'
+    : pad
+      ? 'B tir · A passe · X passement · Y aile de pigeon · RB feinte · LB talonnade · stick droit : ↑ sombrero ↓ petit pont ← → roulette / aile · R3 tenu jongles · LT défense'
+      : 'Espace tir · J passe · L défense · K passement · U roulette · I petit pont · O sombrero · C feinte · H aile de pigeon · N talonnade · G tenu jongles'
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
       <Stick input={input} />
       <div className="flex flex-col items-end gap-2">
-        {!touch && <span className="max-w-[22rem] text-right text-[11px] font-bold text-white drop-shadow">{pad ? 'B tir · A passe · X passement · Y aile de pigeon · RB feinte · LB talonnade · stick droit : ↑ sombrero ↓ petit pont ← → roulette / aile · R3 tenu jongles · LT défense' : 'Espace tir · J passe · L défense · K passement · U roulette · I petit pont · O sombrero · C feinte · H aile de pigeon · N talonnade · G tenu jongles'}</span>}
+        {!touch && <span className="max-w-[22rem] text-right text-[11px] font-bold text-white drop-shadow">{help}</span>}
         <div className="grid grid-cols-2 items-center justify-items-center gap-3">
           <button className={`${btn} h-16 w-16 bg-[#2563eb] text-sm text-white`} onPointerDown={press('pass')}>
             {hud.has ? 'Passe' : 'Appelle'}
             {!touch && <Key>{pad ? 'A' : 'J'}</Key>}
           </button>
-          <button className={`${btn} h-20 w-20 text-base text-white ${gbe ? 'animate-pulse bg-gradient-to-b from-[#ffd43b] to-[#e8590c] text-lg' : 'bg-[#ff8200]'} ${hud.has ? '' : off}`} onPointerDown={press('shoot')}>
-            {gbe ? 'GBÊ !' : 'Tir'}
+          <button
+            className={`${btn} h-20 w-20 text-base text-white ${gbe ? 'animate-pulse bg-gradient-to-b from-[#ffd43b] to-[#e8590c] text-lg' : hud.dunk ? 'animate-pulse bg-[#e11d48]' : 'bg-[#ff8200]'} ${hud.has || hoop ? '' : off}`}
+            onPointerDown={(e) => {
+              if (hoop) ((e.target as HTMLElement).setPointerCapture?.(e.pointerId), (input.current.charge = true))
+              press('shoot')(e)
+            }}
+            onPointerUp={lift}
+            onPointerCancel={lift}
+          >
+            {gbe ? 'GBÊ !' : hoop && hud.dunk ? 'Dunk !' : hoop && !hud.has ? 'Saut' : 'Tir'}
             {!touch && <Key>{pad ? 'B' : 'Espace'}</Key>}
           </button>
-          <GesteButton input={input} has={hud.has} touch={touch} pad={pad} className={btn} />
-          <FeinteButton input={input} has={hud.has} touch={touch} pad={pad} className={`${btn} ${hud.has ? '' : off}`} />
+          <GesteButton input={input} has={hud.has} hoop={hoop} touch={touch} pad={pad} className={btn} />
+          <FeinteButton input={input} has={hud.has} hoop={hoop} touch={touch} pad={pad} className={`${btn} ${hud.has ? '' : off}`} />
         </div>
       </div>
     </div>
@@ -868,7 +936,8 @@ function StreetPad({ input, hud, touch, pad }: { input: React.MutableRefObject<I
 }
 
 /** The Geste button: a tap, a swipe each way (the move fires as the finger crosses), held for the keepy-ups; the moves round it while it's held. */
-function GesteButton({ input, has, touch, pad, className }: { input: React.MutableRefObject<Input>; has: boolean; touch: boolean; pad: boolean; className: string }) {
+function GesteButton({ input, has, hoop, touch, pad, className }: { input: React.MutableRefObject<Input>; has: boolean; /** Le basket de rue's moves. */ hoop: boolean; touch: boolean; pad: boolean; className: string }) {
+  const [moves, labels] = hoop ? [HOOP_SWIPE, HOOP_LABEL] : [SWIPE, SWIPE_LABEL]
   const st = useRef<{ x: number; y: number; done: boolean; timer: ReturnType<typeof setTimeout> | null } | null>(null)
   const [open, setOpen] = useState<null | Swipe | 'tap' | 'hold' | 'ring'>(null)
   const end = () => {
@@ -911,13 +980,13 @@ function GesteButton({ input, has, touch, pad, className }: { input: React.Mutab
           if (Math.hypot(dx, dy) < 26) return
           const dir: Swipe = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up'
           s.done = true
-          input.current.geste = SWIPE[dir]
+          input.current.geste = moves[dir]
           setOpen(dir)
         }}
         onPointerUp={() => {
           const s = st.current
           if (s && !s.done) {
-            input.current.geste = 'passement'
+            input.current.geste = hoop ? 'crossover' : 'passement'
             setOpen('tap')
           }
           end()
@@ -944,18 +1013,18 @@ function GesteButton({ input, has, touch, pad, className }: { input: React.Mutab
               className={`absolute rounded-full px-2 py-0.5 text-[10px] font-extrabold whitespace-nowrap shadow ${open === d ? 'bg-[#ffd43b] text-[#141416]' : 'bg-[#0f1230]/80 text-white'}`}
               style={d === 'up' ? { left: '50%', top: -26, transform: 'translateX(-50%)' } : d === 'down' ? { left: '50%', bottom: -16, transform: 'translateX(-50%)' } : d === 'left' ? { right: '100%', top: '50%', transform: 'translate(-6px,-50%)' } : { left: '100%', top: '50%', transform: 'translate(6px,-50%)' }}
             >
-              {SWIPE_LABEL[d]}
+              {labels[d]}
             </span>
           ))}
-          {(open === 'tap' || open === 'hold') && <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#ffd43b] px-2 py-0.5 text-[10px] font-extrabold whitespace-nowrap text-[#141416] shadow">{SWIPE_LABEL[open]}</span>}
+          {(open === 'tap' || open === 'hold') && <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#ffd43b] px-2 py-0.5 text-[10px] font-extrabold whitespace-nowrap text-[#141416] shadow">{labels[open]}</span>}
         </div>
       )}
     </div>
   )
 }
 
-/** Feinte: a tap, the fake shot (the crochet); a swipe any way, the back-heel. */
-function FeinteButton({ input, has, touch, pad, className }: { input: React.MutableRefObject<Input>; has: boolean; touch: boolean; pad: boolean; className: string }) {
+/** Feinte: a tap, the fake shot (the crochet); a swipe any way, the back-heel (le basket de rue: the pump fake, the step-back). */
+function FeinteButton({ input, has, hoop, touch, pad, className }: { input: React.MutableRefObject<Input>; has: boolean; hoop: boolean; touch: boolean; pad: boolean; className: string }) {
   const st = useRef<{ x: number; y: number; done: boolean } | null>(null)
   return (
     <button
@@ -969,7 +1038,7 @@ function FeinteButton({ input, has, touch, pad, className }: { input: React.Muta
         const s = st.current
         if (!s || s.done || Math.hypot(e.clientX - s.x, e.clientY - s.y) < 26) return
         s.done = true
-        input.current.geste = 'talonnade'
+        input.current.geste = hoop ? 'stepback' : 'talonnade'
       }}
       onPointerUp={() => {
         if (st.current && !st.current.done) input.current.skill = true
@@ -979,19 +1048,19 @@ function FeinteButton({ input, has, touch, pad, className }: { input: React.Muta
     >
       <span>
         Feinte
-        {touch && has && <span className="block text-[8px] font-bold opacity-70">glisse : talonnade</span>}
+        {touch && has && <span className="block text-[8px] font-bold opacity-70">{hoop ? 'glisse : step-back' : 'glisse : talonnade'}</span>}
       </span>
       {!touch && <Key>{pad ? 'RB' : 'C'}</Key>}
     </button>
   )
 }
 
-/** The style gauge: each move fills it; full, the next shot is the Gbê. */
-function StyleGauge({ v }: { v: number }) {
+/** The style gauge: each move fills it; full, the next shot is the Gbê (`ready`: what it says then, on the court). */
+function StyleGauge({ v, ready, high }: { v: number; ready?: string; /** Over the keys' help (a computer, a controller). */ high?: boolean }) {
   const full = v >= 1
   return (
-    <div className="pointer-events-none absolute right-4 bottom-[max(13.2rem,calc(env(safe-area-inset-bottom)+12.7rem))] w-40">
-      <div className={`mb-0.5 text-right text-[11px] font-extrabold text-white drop-shadow ${full ? 'animate-pulse text-[#ffd43b]' : ''}`}>{full ? 'Gbê prêt ! Frappe !' : 'Style'}</div>
+    <div className={`pointer-events-none absolute right-4 w-40 ${high ? 'bottom-[max(15.4rem,calc(env(safe-area-inset-bottom)+14.9rem))]' : 'bottom-[max(13.2rem,calc(env(safe-area-inset-bottom)+12.7rem))]'}`}>
+      <div className={`mb-0.5 text-right text-[11px] font-extrabold text-white drop-shadow ${full ? 'animate-pulse text-[#ffd43b]' : ''}`}>{full ? (ready ?? 'Gbê prêt ! Frappe !') : 'Style'}</div>
       <div className="h-3 overflow-hidden rounded-full bg-[#0f1230]/60 ring-2 ring-white/60">
         <div className="h-full rounded-full bg-gradient-to-r from-[#ffd43b] via-[#ff8200] to-[#e03131] transition-[width] duration-200" style={{ width: `${Math.round(Math.min(1, v) * 100)}%` }} />
       </div>
@@ -1056,7 +1125,7 @@ function Result({ game, onExit, onReplay, played, kits }: { game: Game; onExit: 
           ['Passes décisives', s.assists],
           ['Interceptions', s.steals],
           ['Contres', s.blocks],
-          ['Chevilles cassées', s.ankles],
+          [game.street ? 'Gestes réussis' : 'Chevilles cassées', s.ankles],
         ]
   ) as [string, number][]
   // The player's best moment, filmed from the fence.

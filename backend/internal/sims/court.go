@@ -1,6 +1,7 @@
 package sims
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/myahse/babi-life/backend/internal/auth"
 	"github.com/myahse/babi-life/backend/internal/court"
+	"github.com/myahse/babi-life/backend/internal/features"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
 )
@@ -21,6 +23,30 @@ func courtEntry(s *Sim) court.Entry {
 	return court.Entry{Sim: s.ID, Name: s.FirstName, Gender: s.Gender, Look: look}
 }
 
+// lobbySport: the match a court holds. Le basket de rue (the update « basket-de-rue » open) takes eight at
+// the quarter's courts, the fourth of each side waiting behind the wall; not at the Palais des Sports (an
+// arena: the match as before). Without a store (the tests), the courts as they were.
+func lobbySport(place, sport string) string {
+	if sport == "basket" && place != "treich-palais" && features.Default != nil && features.Default.BlocksKey(context.Background(), "basket-de-rue") == "" {
+		return "basket-rue"
+	}
+	return sport
+}
+
+// joinCourt: a place in the court's match. The update just switched, the match already there plays on
+// as it began (six places, or eight), so the Sim joins that one.
+func (h *Handler) joinCourt(place, sport string, e court.Entry) (court.Match, string, error) {
+	s := lobbySport(place, sport)
+	m, err := h.Courts.Join(place, s, e, time.Now())
+	var full court.Full
+	if alt := map[string]string{"basket": "basket-rue", "basket-rue": "basket"}[s]; alt != "" && errors.As(err, &full) {
+		if n, e2 := h.Courts.Join(place, alt, e, time.Now()); e2 == nil {
+			return n, alt, nil
+		}
+	}
+	return m, s, err
+}
+
 // courtTake: starting to play at a court takes a place in its match, or says
 // it's full (before the Sim spends its time walking on).
 func (h *Handler) courtTake(s *Sim, placeID string, it game.Interaction) error {
@@ -28,7 +54,7 @@ func (h *Handler) courtTake(s *Sim, placeID string, it game.Interaction) error {
 	if h.Courts == nil || sport == "" || game.Courts[placeID] != sport {
 		return nil
 	}
-	_, err := h.Courts.Join(placeID, sport, courtEntry(s), time.Now())
+	_, sport, err := h.joinCourt(placeID, sport, courtEntry(s))
 	var full court.Full
 	if errors.As(err, &full) {
 		left := max(1, int(time.Until(time.UnixMilli(full.Until)).Minutes()+0.5))
@@ -60,7 +86,7 @@ func (h *Handler) courtJoin(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusConflict, "ce n'est pas un terrain")
 		return
 	}
-	m, err := h.Courts.Join(act.PlaceID, sport, courtEntry(&s), time.Now())
+	m, _, err := h.joinCourt(act.PlaceID, sport, courtEntry(&s))
 	var full court.Full
 	if errors.As(err, &full) {
 		httpx.Error(w, http.StatusConflict, "terrain complet")
@@ -112,7 +138,7 @@ func (h *Handler) courtAt(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusNotFound, "ce n'est pas un terrain")
 		return
 	}
-	out := map[string]any{"sport": sport, "cap": court.Cap[sport], "players": 0}
+	out := map[string]any{"sport": sport, "cap": court.Cap[lobbySport(place, sport)], "players": 0}
 	if m, ok := h.Courts.At(place, time.Now()); ok {
 		out["sport"], out["cap"], out["players"], out["start"], out["end"] = m.Sport, m.Cap, len(m.Entries), m.Start, m.End
 	}

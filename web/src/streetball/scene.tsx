@@ -381,8 +381,8 @@ export function Ground({ g, seed, teams }: { g: Game; seed: string; /** The side
 /* ---------- The players and the ball ---------- */
 
 /** One player: placed every frame; the pose handed to React when it changes. The player's own one has a ring under the feet. */
-/** The street's moves and the men they beat: timed on the move itself (the ball goes with the feet, on every phone). */
-const MOVE_POSES = new Set<Pose>(['stepover', 'roulette', 'poke', 'rainbow', 'feint', 'flick', 'backheel', 'juggle', 'nutmegged', 'lookup', 'flinch'])
+/** The street's moves and the men they beat: timed on the move itself (the ball goes with the feet, on every phone); le basket de rue's too. */
+const MOVE_POSES = new Set<Pose>(['stepover', 'roulette', 'poke', 'rainbow', 'feint', 'flick', 'backheel', 'juggle', 'nutmegged', 'lookup', 'flinch', 'between', 'backdribble', 'spinmove', 'hesi', 'dribbleshow', 'pumpfake', 'stepback', 'ankles', 'turned', 'frozen', 'windmill'])
 /** Past this from the camera, the stadium's team disc grows with the distance, so it stays as big on the screen. */
 const DISC_FROM = 22
 
@@ -655,7 +655,12 @@ export function Follow({ g }: { g: Game }) {
     const fz = me.z * 0.55 + b.z * 0.45
     let want: THREE.Vector3
     let target: THREE.Vector3
-    if (g.sport === 'basket') {
+    if (g.sport === 'basket' && g.street) {
+      // Le basket de rue: closer and lower, in the play, the hoop and the wall behind it.
+      const zz = Math.max(-2.5, Math.min(5.5, fz))
+      want = new THREE.Vector3(fx * 0.55, tall ? 7.2 : 4.6, zz + (tall ? 10 : 7.6))
+      target = new THREE.Vector3(fx * 0.65, 1.5, Math.min(zz - 2.6, -1.6))
+    } else if (g.sport === 'basket') {
       const zz = Math.max(-2, Math.min(6, fz))
       want = new THREE.Vector3(fx * 0.5, tall ? 9.5 : 7, zz + (tall ? 13 : 10.5))
       target = new THREE.Vector3(fx * 0.6, 1.2, Math.min(zz - 3, -1.5))
@@ -741,7 +746,7 @@ export function Follow({ g }: { g: Game }) {
     const y = feet.current.set(me.x, 0, me.z).project(camera).y
     const floor = -1 + (2 * 190) / Math.max(size.height, 300)
     // (Not far back on the street's little ground: past its near wall there's only the road.)
-    if (y < floor) lift.current = Math.min(g.street ? 4 : 14, lift.current + dt * 10)
+    if (y < floor) lift.current = Math.min(g.street && g.sport === 'foot' ? 4 : 14, lift.current + dt * 10)
     else if (y > floor + 0.2) lift.current = Math.max(0, lift.current - dt * 4)
     // The ball high up the screen while the Sim is held low: further back, to see both.
     const by = ballAt.current.set(b.x, 0.3, b.z).project(camera).y
