@@ -227,7 +227,7 @@ function Catch({ onDone }: { onDone: (score: number) => void }) {
         <div className="font-display text-[17px] font-extrabold">Attrape ton alloco !</div>
         <div className="text-[12.5px] font-bold text-[var(--color-ink-soft)]">Glisse le papier sous la louche. {n.caught}/{PIECES} attrapés</div>
       </div>
-      <div ref={box} className="relative h-[min(46vh,380px)] w-[min(90vw,420px)] touch-none overflow-hidden rounded-3xl bg-[#e6cf9c]" onPointerDown={(e) => move(e.clientX)} onPointerMove={(e) => e.buttons && move(e.clientX)}>
+      <div ref={box} className="relative h-[min(46vh,380px)] w-[min(90vw,420px)] short:h-[62vh] short:w-[min(70vw,560px)] touch-none overflow-hidden rounded-3xl bg-[#e6cf9c]" onPointerDown={(e) => move(e.clientX)} onPointerMove={(e) => e.buttons && move(e.clientX)}>
         <Table3d className="!absolute inset-0" cam={[0, 0, 10]} look={[0, 0, 0]} fov={50}>
           <Stall />
           <Falling live={live} />
@@ -259,7 +259,7 @@ function Peel({ onDone }: { onDone: (score: number) => void }) {
         <div className="font-display text-[17px] font-extrabold">Écaille l’œuf</div>
         <div className="text-[12.5px] font-bold text-[var(--color-ink-soft)]">Touche chaque morceau de coquille. Reste {bits.length}</div>
       </div>
-      <div className="relative aspect-[4/5] w-[min(70vw,44vh,300px)]">
+      <div className="relative aspect-[4/5] w-[min(70vw,44vh,300px)] short:w-[min(40vw,52vh)]">
         <Table3d className="!absolute inset-0" cam={[0, 0.6, 5]} look={[0, 0, 0]} fov={40}>
           <EggShell bits={bits} onPeel={peel} />
         </Table3d>
