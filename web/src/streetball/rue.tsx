@@ -14,7 +14,7 @@ import { Quarter } from './scene'
 // (the ball comes back off them), the two little goals of welded iron set in
 // gaps at the ends, a few bricks at their feet; palms, the electric pole,
 // a stack of tyres; the quarter close round it. And the Gbê's fire behind
-// the ball.
+// the ball (le basket de rue's too).
 
 const BOX = new THREE.BoxGeometry(1, 1, 1)
 const flat = (color: string) => new THREE.MeshLambertMaterial({ color })
@@ -300,7 +300,8 @@ export function GbeTrail({ g }: { g: Game }) {
     const t = trail.current
     if (!t) return
     const b = g.ball
-    const on = g.time - g.gbe < 1.4 && g.time - g.gbe > 0.12 && Math.hypot(b.vx, b.vz) > 5
+    // (Le basket de rue's: in the hands of the dunker flying in too, or on the shot.)
+    const on = g.sport === 'basket' ? g.time - g.gbe < 1.6 && g.time - g.gbe > 0.05 : g.time - g.gbe < 1.4 && g.time - g.gbe > 0.12 && Math.hypot(b.vx, b.vz) > 5
     t.visible = on
     if (!on) {
       past.current = []

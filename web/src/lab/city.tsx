@@ -904,6 +904,8 @@ function Lab() {
     )
   // Le foot de rue: ?view=footrue (&seed=, &foe=).
   if (view === 'footrue') return <StreetMatch sport="foot" name="Awa" look={randomLook('femme', seededLab(5))} gender="femme" seed={Number(q.get('seed') ?? 7)} rules={STREET_RULES} onExit={() => location.reload()} />
+  // Le basket de rue: ?view=basketrue (&seed=, &foe=, &length=).
+  if (view === 'basketrue') return <StreetMatch sport="basket" name="Awa" look={randomLook('femme', seededLab(5))} gender="femme" seed={Number(q.get('seed') ?? 7)} rules={STREET_RULES} onExit={() => location.reload()} />
   if (view === 'hoops' || view === 'foot5') return <StreetMatch sport={view === 'hoops' ? 'basket' : 'foot'} name="Awa" look={randomLook('femme', seededLab(5))} gender="femme" seed={Number(q.get('seed') ?? 7)} onExit={() => location.reload()} />
   if (view === 'kart') return <KartRace name="Awa" look={randomLook('femme', seededLab(5))} gender="femme" onExit={() => location.reload()} />
   if (view === 'stadium') return <StadiumLab />
