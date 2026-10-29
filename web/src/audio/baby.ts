@@ -1,14 +1,14 @@
 import { music } from './music'
 
 // The baby's voice: real babies, recorded (public/audio/bebe/, from Wikimedia
-// Commons, in the public domain: see its SOURCES.md). Its cries, its whimpers,
+// Commons and Freesound, in the public domain (CC0): see its SOURCES.md). Its cries, its whimpers,
 // its laughs and babbling, cut into short pieces and played at random so it
 // never sounds the same twice. Through the music's master: « couper le son »
 // cuts it too.
 
 type Kind = 'pleurs' | 'gemit' | 'rire' | 'gazouille'
 /** The pieces there are of each (public/audio/bebe/<kind>-<n>.mp3). */
-const PIECES: Record<Kind, number> = { pleurs: 4, gemit: 0, rire: 0, gazouille: 0 }
+const PIECES: Record<Kind, number> = { pleurs: 4, gemit: 0, rire: 3, gazouille: 8 }
 /** What stands in for a kind with no piece of its own yet. */
 const STANDIN: Record<Kind, Kind> = { pleurs: 'pleurs', gemit: 'pleurs', rire: 'gazouille', gazouille: 'gazouille' }
 const VOLUME: Record<Kind, number> = { pleurs: 0.55, gemit: 0.3, rire: 0.5, gazouille: 0.45 }
