@@ -37,7 +37,7 @@ Branche de travail : `claude/modest-fermat-904lhi` (dépôt `Myahse/babi-life`).
 
 ## Encore à faire
 
-- **Lampadaires** : un plus beau modèle, et une plus belle lumière la nuit (halo, flaque de lumière au sol). Pas commencé. Fichiers : `world3d/open/streetlights.tsx`.
+- **Lampadaires** : fait (pied en béton, mât effilé, col de cygne, tête « cobra » ; la nuit, la flaque de lumière au sol, le halo et le cône). Fichier : `world3d/open/streetlights.tsx`.
 - Finir et vérifier le code de la route (ci-dessus), puis pousser sur main **en une seule fois** : les points 1, 2 et 3.
 - En attente de l'utilisateur :
   - ouvrir dans l'admin « Choisir son terrain dans la ville », « Godé », « Parler librement aux gens » ;
