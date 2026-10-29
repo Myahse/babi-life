@@ -75,6 +75,8 @@ async function open(b, k, query = '') {
   await ctx.addInitScript(STOPPED_CLOCK)
   const page = await ctx.newPage()
   page.on('pageerror', (e) => console.error('page:', String(e).slice(0, 200)))
+  // No « Flash info » over the takes (the country's news).
+  await page.route('**/news*', (r) => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ items: [] }) }))
   await page.goto(`${GAME}/jeu?hour=10${query}`)
   return { ctx, page }
 }
@@ -117,7 +119,26 @@ function caption(page, stage, text) {
   )
 }
 
-const shoot = (page, dir, i) => page.screenshot({ path: path.join(dir, `${String(i).padStart(5, '0')}.jpg`), type: 'jpeg', quality: 92 })
+/** One frame taken (again, if the machine was too busy to give it in time). */
+async function shoot(page, dir, i) {
+  for (let k = 0; ; k++) {
+    try {
+      return await page.screenshot({ path: path.join(dir, `${String(i).padStart(5, '0')}.jpg`), type: 'jpeg', quality: 92, timeout: 90000 })
+    } catch (e) {
+      if (k >= 2) throw e
+    }
+  }
+}
+
+/** Inside the home: the camera pulled back and lowered (the wheel, a drag up), so the baby and maman are seen whole. */
+async function frameInside(page) {
+  await page.mouse.move(202, 400)
+  for (let i = 0; i < 3; i++) (await page.mouse.wheel(0, 220), await tick(page, 3))
+  await page.mouse.down()
+  for (let i = 0; i < 12; i++) (await page.mouse.move(202, 400 - (110 * (i + 1)) / 12), await tick(page))
+  await page.mouse.up()
+  await tick(page, 20)
+}
 
 /** Takes `frames` frames, doing each thing at its frame (and `each` before every frame, for what reacts to the game). */
 async function film(page, dir, frames, at = {}, each) {
@@ -159,6 +180,7 @@ const TAKES = [
   },
   {
     id: 'maison',
+    inside: true,
     seconds: 6,
     make: async () => {
       const k = await koffi()
@@ -171,6 +193,7 @@ const TAKES = [
   },
   {
     id: 'biberon',
+    inside: true,
     seconds: 4.44,
     make: async () => {
       const k = await koffi()
@@ -301,6 +324,7 @@ for (const t of TAKES) {
     await t.before(page).catch((e) => console.error(t.id, 'before', String(e).slice(0, 160)))
     for (let i = 0; i < 60; i++) (await tick(page), i % 20 === 0 && (await sleep(200)))
   }
+  if (t.inside) await frameInside(page).catch((e) => console.error(t.id, 'inside', String(e).slice(0, 160)))
   await caption(page, t.stage, t.text)
   await film(page, path.join(FRAMES, t.id), Math.round(t.seconds * FPS), t.at?.(page) ?? {}, t.each?.(page))
   await ctx.close()
