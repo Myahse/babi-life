@@ -3,7 +3,7 @@
     "name": "Babi Life",
     "slug": "babi-life",
     "version": "2.0.0",
-    "orientation": "portrait",
+    "orientation": "landscape",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {

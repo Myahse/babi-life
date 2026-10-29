@@ -229,7 +229,7 @@ g.confirm = () => true
 g.prompt = () => null
 g.getComputedStyle = () => ({ getPropertyValue: () => '' })
 g.visualViewport = { get width() { return Dimensions.get('window').width }, get height() { return Dimensions.get('window').height }, offsetTop: 0, addEventListener() {}, removeEventListener() {} }
-g.screen = { get width() { return Dimensions.get('screen').width }, get height() { return Dimensions.get('screen').height }, orientation: { type: 'portrait-primary', lock: async () => {}, unlock() {}, addEventListener() {}, removeEventListener() {} } }
+g.screen = { get width() { return Dimensions.get('screen').width }, get height() { return Dimensions.get('screen').height }, orientation: { get type() { const d = Dimensions.get('screen'); return d.width > d.height ? 'landscape-primary' : 'portrait-primary' }, lock: async () => {}, unlock() {}, addEventListener() {}, removeEventListener() {} } }
 g.CSS = { supports: () => false, escape: (s: string) => s }
 
 /* ---------- The document ---------- */
