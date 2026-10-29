@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { haptic } from '../../lib/native'
+import { baby } from '../../audio/baby'
 
 // The baby's little games (the update « bebe-jeux », as défis: components/Defi.tsx):
 // coucou-caché with maman (laugh the moment her hands open), the cubes piled
@@ -60,6 +61,7 @@ export function CoucouDefi({ onEnd }: End) {
     if (done.current) return
     if (!open) return result(0, 'Trop tôt ! Ses mains sont encore fermées.')
     const rt = performance.now() - opened.current
+    baby.giggle()
     result(Math.max(10, Math.round(100 - rt / 9)), rt < 350 ? 'Éclat de rire ! Maman fond.' : 'Hihihi ! Maman sourit.')
   }
   return (
@@ -186,10 +188,12 @@ export function PasDefi({ onEnd }: End) {
             s.down = 1.2
             s.lean = 0
             haptic('error')
+            baby.whimper()
           }
           if (s.d >= 100) {
             s.over = true
             haptic('success')
+            baby.giggle()
             const score = Math.round(Math.max(10, Math.min(100, 110 - s.falls * 15 - Math.max(0, s.t - 16) * 3)))
             setTimeout(() => onEnd(score), 800)
           }

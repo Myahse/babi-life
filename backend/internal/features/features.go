@@ -98,6 +98,7 @@ var List = []Feature{
 	{ID: "bapteme", Label: "Le baptême", About: "Le bébé est accueilli par toute la famille : les tantes, les oncles, la grand-mère qui lui donne son nom ; on danse, on offre des cadeaux.", Keys: []string{"bapteme"}},
 	{ID: "creche-ensemble", Label: "Les bébés ensemble à la crèche", About: "À la crèche, les bébés des autres joueurs sont là aussi : on les voit, on joue avec eux, on peut devenir amis. La crèche est ouverte tous les jours de 7 h à 17 h.", Keys: []string{"creche-ensemble"}},
 	{ID: "sonnerie-gbairai", Label: "La sonnerie de Gbairai", About: "Un message Gbairai arrive pendant qu'on joue : le téléphone sonne (« ding-ding »), vibre, et le bouton Téléphone tremble ; une bulle verte compte les nouveaux messages.", Keys: []string{"sonnerie-gbairai"}},
+	{ID: "sons-bebe", Label: "La voix du bébé", About: "Étant bébé, on entend sa voix : les pleurs quand il pleure, le petit effort du caca, le « bleh » quand il vomit, les gazouillis et les rires quand il joue, un petit gémissement quand il a faim, sommeil ou besoin d'un bain.", Keys: []string{"sons-bebe"}},
 	{ID: "table", Label: "Les gens viennent te parler dans les lieux", About: "« Je peux m'asseoir à ta table ? » au resto ou au bar (tu acceptes et vous causez, ou tu refuses poliment), et au travail les clients qui viennent te demander de l'aide.", Keys: []string{"table"}},
 }
 

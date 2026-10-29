@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Volume2, VolumeX } from 'lucide-react'
 import { music, type Track } from '../audio/music'
 import { ambience } from '../audio/ambience'
+import { baby } from '../audio/baby'
 
 /** Plays the music of where the Sim is; renders nothing. */
 export function Soundtrack({ track, seed, level = 1 }: { track: Track | null; seed: string; /** How near (0–1): a party heard from the street. */ level?: number }) {
@@ -21,6 +22,29 @@ export function Ambience({ rain, night, inside, music: playing }: { rain: boolea
     ambience.set({ rain, night, inside, music: playing })
   }, [rain, night, inside, playing])
   useEffect(() => () => ambience.set(null), [])
+  return null
+}
+
+/** The baby's voice (update « sons-bebe », audio/baby.ts): crying while it cries, the little push of the caca,
+ * « bleh », babbling as it plays, a whimper now and then when a need runs low; quiet asleep. Renders nothing. */
+export function BabyVoice({ act, low }: { act: string | null; low: boolean }) {
+  useEffect(() => {
+    if (act === 'sleep' || act === 'nap') return
+    const play = () => {
+      if (act === 'pleurer') baby.cry()
+      else if (act === 'caca') baby.push()
+      else if (act === 'pipi') baby.babble()
+      else if (act === 'vomir') (baby.bleh(), setTimeout(() => baby.whimper(), 1500))
+      else if (act && /^(hochet|coucou|cubes|premiers-pas|calin|bain-bebe|biberon|bouillie)$/.test(act)) Math.random() < 0.5 ? baby.babble() : baby.giggle()
+      else if (low) baby.whimper()
+      else if (Math.random() < 0.4) baby.babble()
+    }
+    // Crying goes on and on; the rest now and then.
+    const every = act === 'pleurer' ? 4500 : act === 'caca' || act === 'vomir' ? 7000 : act ? 6500 : low ? 18000 : 30000
+    const first = setTimeout(play, act ? 400 : 3000)
+    const loop = setInterval(play, every)
+    return () => (clearTimeout(first), clearInterval(loop))
+  }, [act, low])
   return null
 }
 
