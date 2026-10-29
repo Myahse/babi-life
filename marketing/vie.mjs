@@ -398,7 +398,16 @@ const SORTIE = [
     make: () => koffi({ stage: 'adulte', apps: true }),
     warm: 200,
     text: 'Ton téléphone dans le jeu : Gbairai pour causer, Waye pour l’argent.',
-    at: (p) => ({ 4: () => tap(p.locator('[data-tour="phone"]')), 40: click(p, /^Waye/) }),
+    at: (p) => ({
+      4: () => tap(p.locator('[data-tour="phone"]')),
+      // Waye's tile, wherever it is on the phone's pages.
+      40: () =>
+        p.evaluate(() => {
+          const el = [...document.querySelectorAll('button, a, [role="button"]')].find((b) => b.textContent?.trim() === 'Waye')
+          el?.scrollIntoView({ inline: 'center', block: 'center' })
+          ;(el)?.click()
+        }),
+    }),
   },
   {
     id: 'joueurs',
