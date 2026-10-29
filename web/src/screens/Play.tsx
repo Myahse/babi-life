@@ -96,6 +96,9 @@ import { NotifyPrompt } from '../components/NotifyPrompt'
 import { motoPaid, motoWalk, rideFare, RIDES, useMoto, type RideKind } from '../world3d/moto'
 import { GBAKA, inkOn, kerbWait, MOTO, waitsAtKerb } from '../game/rides'
 import { answerDrop, useDropAsk } from '../world3d/dropRoute'
+import { TripLoading } from '../components/TripLoading'
+import { rideLook } from '../game/rides'
+import { setDrop } from '../world3d/open/tripDrop'
 import { gesteOK } from '../components/defi/Gestes'
 import { BABY_DEFIS, GESTE_DEFIS, DefiButton, DefiSheet, defiLook, defiOf, PRACTICE, type DefiKind } from '../components/Defi'
 import { BolideApp } from './BolideApp'
@@ -1019,6 +1022,11 @@ export function Play() {
     if (gesteAt && gesteNow) setDefi(gesteNow)
   }, [gesteAt]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // A ride in town, short (the update « trajet-court »): a short loading screen, the perso climbing in,
+  // and it's there (the server ends the ride: sims.go arriveNow); then the vehicle drops it in the street.
+  const ride = sim?.activity?.kind === 'travel' && sim.activity.trip && !['avion', 'perso', 'metro'].includes(sim.activity.trip.mode) && keyOpen(feats, 'trajet-court') ? sim.activity : null
+  const [rideDone, setRideDone] = useState<number | null>(null)
+
   if (!sim) {
     // The same loading screen as everywhere: the perso dancing (components/Splash.tsx).
     return <Splash label="Chargement de Babi…" />
@@ -1835,6 +1843,28 @@ export function Play() {
       {sharing && <ShareSheet sharing={sharing} onClose={() => shareThis(null)} />}
       {!overlay && (dropAsk ? <DropRouteAsk from={dropAsk.from} moto={dropAsk.moto} /> : <MotoOffer world={world} sim={sim} commune={commune} act={run} />)}
       {/* On a flight: the plane over the clouds (the map is a tap away) */}
+      {ride && rideDone !== ride.start && (() => {
+        const t = ride.trip!
+        const to = world.cities.find((c) => c.id === t.city)?.communes.find((c) => c.id === t.commune)?.name ?? t.commune
+        const from = world.cities.find((c) => c.id === t.fromCity)?.communes.find((c) => c.id === t.fromCommune)
+        const look = rideLook(world, t.mode, from, t.class)
+        return (
+          <TripLoading
+            key={ride.start}
+            mode={t.mode}
+            to={to}
+            look={sim.look}
+            color={look.color}
+            trim={look.trim}
+            onDone={() => {
+              setRideDone(ride.start)
+              // (Already over by itself, a very short ride: there all the same, the vehicle dropping the Sim.)
+              const drop = () => setDrop({ mode: t.mode, class: t.class, fromCity: t.fromCity, fromCommune: t.fromCommune, at: performance.now() })
+              void api.arrive(sim.id).then((res) => (apply(res), drop()), drop)
+            }}
+          />
+        )
+      })()}
       {!overlay && sim.activity?.kind === 'travel' && sim.activity.trip?.mode === 'avion' && <FlightView sim={sim} night={c.isNight} onMap={() => setOverlay('map')} />}
       {!overlay && sim.activity?.kind === 'travel' && sim.activity.trip?.mode === 'metro' && <MetroView world={world} sim={sim} night={c.isNight} onMap={() => setOverlay('map')} />}
       {chat && (
