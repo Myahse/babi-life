@@ -41,10 +41,29 @@ export function setHomeStep(s: HomeStep | null) {
   if (step?.at === s?.at && step?.pose === s?.pose && step?.standing === s?.standing) return
   step = s
   stepSubs.forEach((f) => f())
+  // A new place to go to: not there yet (when a house is showing).
+  if (arrived !== null) setHomeArrived(false)
 }
 export function useHomeStep(): HomeStep | null {
   return useSyncExternalStore(
     (f) => (stepSubs.add(f), () => void stepSubs.delete(f)),
     () => step,
+  )
+}
+
+// Whether the Sim has got to the step's place in the house (HomeInside walks it there): the step's
+// arrows wait for it (components/defi/Gestes.tsx), so a quick player never leaves it halfway in a
+// big house. null: no house showing (the lab, a hotel): nothing to wait for.
+let arrived: boolean | null = null
+const arrivedSubs = new Set<() => void>()
+export function setHomeArrived(v: boolean | null) {
+  if (arrived === v) return
+  arrived = v
+  arrivedSubs.forEach((f) => f())
+}
+export function useHomeArrived(): boolean | null {
+  return useSyncExternalStore(
+    (f) => (arrivedSubs.add(f), () => void arrivedSubs.delete(f)),
+    () => arrived,
   )
 }

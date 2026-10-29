@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Annoyed, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Baby, Bath, BedDouble, CookingPot, Droplets, Frown, Heart, Milk, ShowerHead, Soup, Utensils, Volleyball, type LucideIcon } from 'lucide-react'
 import { haptic } from '../../lib/native'
-import { gesture, setHomeStep } from '../../world3d/gesture'
+import { gesture, setHomeStep, useHomeArrived } from '../../world3d/gesture'
 import { SEATED, type Pose } from '../../avatar/Human'
 import type { Look } from '../../lib/types'
 import { StepScene, type SceneId } from './Scenes'
@@ -185,8 +185,8 @@ export const gesteOf = (interactionId?: string): GesteKind | null =>
 const ICON: Record<Dir, LucideIcon> = { up: ArrowUp, down: ArrowDown, left: ArrowLeft, right: ArrowRight }
 const KEYS: Record<string, Dir> = { ArrowUp: U, ArrowDown: D, ArrowLeft: L, ArrowRight: R, w: U, s: D, a: L, d: R, z: U, q: L }
 
-export function GestesDefi({ kind, act, look, gender, scenes, onEnd }: { kind: GesteKind | 'geste'; /** The perso itself, seen in the scenes of its steps. */ look?: Look; gender?: 'femme' | 'homme'; /** Its steps seen in little scenes of their own (the lab page, away from the house); in the game, the house shows them. */ scenes?: boolean; /** Any other action: its steps made from it (stepsFor). */ act?: { id: string; icon: string }; onEnd: (score: number) => void }) {
-  const [steps] = useState(() => (kind === 'geste' ? stepsFor(act ?? { id: '', icon: '' }) : STEPS[kind]))
+export function GestesDefi({ kind, act, look, gender, scenes, prep, onEnd }: { /** Only the first steps: getting it ready, the action itself then played as its game (Action.tsx). */ prep?: number; kind: GesteKind | 'geste'; /** The perso itself, seen in the scenes of its steps. */ look?: Look; gender?: 'femme' | 'homme'; /** Its steps seen in little scenes of their own (the lab page, away from the house); in the game, the house shows them. */ scenes?: boolean; /** Any other action: its steps made from it (stepsFor). */ act?: { id: string; icon: string }; onEnd: (score: number) => void }) {
+  const [steps] = useState(() => (kind === 'geste' ? stepsFor(act ?? { id: '', icon: '' }) : STEPS[kind]).slice(0, prep ?? 99))
   const [k, setK] = useState(0)
   const [got, setGot] = useState(0)
   const [miss, setMiss] = useState(false)
@@ -218,9 +218,12 @@ export function GestesDefi({ kind, act, look, gender, scenes, onEnd }: { kind: G
     gesture(steps[k + 1].pose, 1500)
   }
 
+  // In the house, the step waits until the Sim has walked to where it's done.
+  const arrived = useHomeArrived()
+  const going = !!steps[k]?.at && arrived === false
   const press = (dir: Dir) => {
     const s = st.current
-    if (s.done) return
+    if (s.done || going) return
     const step = steps[k]
     if (step.combo[got] !== dir) {
       // Wrong: the combination starts again.
@@ -277,7 +280,8 @@ export function GestesDefi({ kind, act, look, gender, scenes, onEnd }: { kind: G
             </span>
           </div>
           <div className="mt-1 font-display text-[19px] leading-tight font-extrabold short:text-[17px]">{step.label}</div>
-          <div className="mt-2 flex flex-wrap gap-1.5">
+          {going && <div className="text-[12.5px] font-extrabold text-[var(--color-ink-soft)]">Ton perso y va…</div>}
+          <div className={`mt-2 flex flex-wrap gap-1.5 ${going ? 'opacity-40' : ''}`}>
             {step.combo.map((d, i) => {
               const Icon = ICON[d]
               return (

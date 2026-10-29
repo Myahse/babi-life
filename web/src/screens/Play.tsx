@@ -1783,6 +1783,7 @@ export function Play() {
         <DefiSheet
           kind={defi}
           act={sim.activity.interaction}
+          career={sim.activity.career}
           simId={sim.id}
           big={sim.activity.interaction.id === 'supermarche'}
           older={lifeOf(world, sim).stage?.id === 'ado'}

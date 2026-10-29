@@ -14,7 +14,9 @@ import { CombatDefi } from './defi/Combat'
 import { MoustiquesDefi } from './defi/Moustiques'
 import { EcoleDefi } from './defi/Ecole'
 import { CoucouDefi, CubesDefi, HochetDefi, PasDefi } from './defi/Bebe'
-import { GESTES, GestesDefi, gesteOf, type GesteKind } from './defi/Gestes'
+import { GESTES, gesteOf, type GesteKind } from './defi/Gestes'
+import { jeuOf } from './defi/jeux'
+import { ActionDefi } from './defi/Action'
 import { GarbaDefi } from './defi/Garba'
 import { setLifted } from '../world3d/chatFraming'
 import { BarDefi } from './defi/Bar'
@@ -55,7 +57,7 @@ const DEFIS: Record<DefiKind, { title: string; button: string; icon: LucideIcon;
     button: 'Manger ton garba',
     icon: Fish,
     colors: ['#ffa94d', '#e8590c'],
-    how: ['La tantie annonce un poisson : pioche-le dans l’huile avant les mains des autres clients.', 'Puis mange : pique les grains, ou tiens « Pommer » et lâche dans le vert pour une grosse boule.', 'L’attiéké ne passe pas facilement : surveille ta gorge et bois de l’eau, sinon tu t’étouffes.'],
+    how: ['La tantie annonce un poisson : pioche-le dans l’huile avant les mains des autres clients.', 'Puis mange à la main : prends une pincée d’attiéké, ou tiens « Pommer » et lâche dans le vert pour une grosse boule.', 'L’attiéké ne passe pas facilement : surveille ta gorge et bois de l’eau, sinon tu t’étouffes.'],
     bg: 'transparent',
   },
   alloco: {
@@ -199,9 +201,9 @@ export function DefiButton({ kind, interactionId, onClick }: { kind: DefiKind; i
 const stars = (score: number) => (score >= 85 ? 3 : score >= 50 ? 2 : score >= 15 ? 1 : 0)
 
 /** The défi: how it's played, the game, the score and what it earned. */
-export function DefiSheet({ kind, act, simId, big, older, interactionId, practice, send, challenge, me, onResult, onClose }: { /** Any action played as gestures: which (its name is the title, its icon its kind). */ act?: { id: string; label: string; icon: string }; /** At school, a teenager: the harder questions. */ older?: boolean; kind: DefiKind; simId: string; /** The player's Sim, to play as itself (the fight; the foot's career: its money, its commune). */ me?: { look: Look; gender: 'femme' | 'homme'; money?: number; homeCommune?: string }; /** Something bought along the way (a signing in the foot's career): the server's answer, applied to the Sim. */ onResult?: (r: ActionResult) => void; /** The shopping at the supermarket: the longer list. */ big?: boolean; /** The activity it's played during (the foot's match, challenge or tournament). */ interactionId?: string; /** Played from the phone's « Jeux », for practice: nothing sent, nothing earned. */ practice?: boolean; /** The score sent: the server's answer (applied to the Sim), or null if it failed. */ send?: (score: number, extra?: string) => Promise<ActionResult | null>; /** Taken on from someone's score (a message, a link): played for the fun of it, nothing sent. */ challenge?: { score: number; from: string }; onClose: () => void }) {
+export function DefiSheet({ kind, act, career, simId, big, older, interactionId, practice, send, challenge, me, onResult, onClose }: { /** Any action played as gestures: which (its name is the title, its icon its kind). */ act?: { id: string; label: string; icon: string }; /** At work: the career (its own game). */ career?: string; /** At school, a teenager: the harder questions. */ older?: boolean; kind: DefiKind; simId: string; /** The player's Sim, to play as itself (the fight; the foot's career: its money, its commune). */ me?: { look: Look; gender: 'femme' | 'homme'; money?: number; homeCommune?: string }; /** Something bought along the way (a signing in the foot's career): the server's answer, applied to the Sim. */ onResult?: (r: ActionResult) => void; /** The shopping at the supermarket: the longer list. */ big?: boolean; /** The activity it's played during (the foot's match, challenge or tournament). */ interactionId?: string; /** Played from the phone's « Jeux », for practice: nothing sent, nothing earned. */ practice?: boolean; /** The score sent: the server's answer (applied to the Sim), or null if it failed. */ send?: (score: number, extra?: string) => Promise<ActionResult | null>; /** Taken on from someone's score (a message, a link): played for the fun of it, nothing sent. */ challenge?: { score: number; from: string }; onClose: () => void }) {
   const mode = footMode(challenge ? undefined : interactionId)
-  const d = kind === 'foot' ? { ...DEFIS.foot, title: FOOT[mode].title, how: [...DEFIS.foot.how, FOOT[mode].how] } : kind === 'geste' && act ? { ...DEFIS.geste, title: act.label } : DEFIS[kind]
+  const d = kind === 'foot' ? { ...DEFIS.foot, title: FOOT[mode].title, how: [...DEFIS.foot.how, FOOT[mode].how] } : kind === 'geste' && act ? (() => { const j = jeuOf(act, career); return { ...DEFIS.geste, title: j.title, how: [j.how] } })() : DEFIS[kind]
   const [phase, setPhase] = useState<'intro' | 'play' | 'result'>('intro')
   const [best, setBest] = useState<number | null>(null)
   const [score, setScore] = useState(0)
@@ -273,7 +275,7 @@ export function DefiSheet({ kind, act, simId, big, older, interactionId, practic
         ) : kind === 'alloco' ? (
           <AllocoDefi onEnd={(s, egg) => void end(s, egg ? 'oeuf' : undefined)} />
         ) : GESTE_DEFIS.has(kind) ? (
-          <GestesDefi kind={kind as GesteKind | 'geste'} act={act} look={me?.look} gender={me?.gender} onEnd={(s) => void end(s)} />
+          <ActionDefi kind={kind as GesteKind | 'geste'} act={act} career={career} look={me?.look} gender={me?.gender} onEnd={(s) => void end(s)} />
         ) : (
           <SkiDefi onEnd={(s) => void end(s)} />
         ))}
