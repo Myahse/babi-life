@@ -121,6 +121,7 @@ func TestGesteOK(t *testing.T) {
 		"slots":  do(game.Interaction{ID: game.SlotsMaquisID, Minutes: 60}),
 		"tea":    do(game.Interaction{ID: "street-grin", Minutes: 30}),
 		"match":  do(game.Interaction{ID: "play-football", Minutes: 60}),
+		"kart":   do(game.Interaction{ID: "course-kart", Minutes: 30}),
 		"street": do(game.Interaction{ID: game.JoinHappeningID, Label: "Jouer avec eux", Minutes: 60}),
 	} {
 		if gesteOK(a) {
