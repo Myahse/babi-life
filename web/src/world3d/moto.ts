@@ -22,14 +22,15 @@ export const motoFare = (metres: number) => rideFare('moto', metres)
 /** The ride taken: which, and its colours (the commune's woro-woro). */
 export type Taken = { kind: RideKind; color: string; trim?: string }
 /** `walk`: the player chose to go on foot. `since`: when the offer came (ms), the Sim waiting for the choice till then. */
-type Moto = { offer: number | null; paid: Taken | null; walk: boolean; since: number }
+/** `held`: a short ride paid for (the update « trajet-court »), the Sim waiting at the kerb for it, then set down there. */
+type Moto = { offer: number | null; paid: Taken | null; walk: boolean; since: number; held?: boolean }
 let state: Moto = { offer: null, paid: null, walk: false, since: 0 }
 const listeners = new Set<() => void>()
 const set = (s: Moto) => ((state = s), listeners.forEach((f) => f()))
 
 /** A long way ahead (metres), or none. */
 export const offerMoto = (metres: number | null) => {
-  if (metres !== state.offer || (metres === null && state.paid)) set({ offer: metres, paid: metres === null ? null : state.paid, walk: false, since: performance.now() })
+  if (metres !== state.offer || (metres === null && state.paid)) set({ offer: metres, paid: metres === null ? null : state.paid, walk: false, since: performance.now(), held: metres === null ? false : state.held })
 }
 /** The player paid: the Sim gets on. */
 export const motoPaid = (taken: Taken = { kind: 'moto', color: '#c92a2a' }) => set({ ...state, paid: taken })
@@ -38,12 +39,14 @@ export const motoWalk = () => set({ ...state, walk: true })
 /** How long the Sim waits for the choice at most (the offer unseen: a screen without it). */
 const WAIT = 20_000
 /** Read in the frame loop: the way is long and the player hasn't chosen yet — the Sim waits to know how it goes. */
-export const motoAsking = () => state.offer !== null && !state.paid && !state.walk && performance.now() - state.since < WAIT
+export const motoAsking = () => !!state.held || (state.offer !== null && !state.paid && !state.walk && performance.now() - state.since < WAIT)
+/** A short ride paid for: the Sim waits where it is for it (then `rideThere`). */
+export const motoHold = () => set({ ...state, held: true })
 /** Read in the frame loop: the ride paid for, if any. */
 export const motoTaken = () => state.paid
 /** A ride in the commune, short (the update « trajet-court »): the loading screen over, the Sim is set down there at once. */
 let there = false
-export const rideThere = () => void (there = true)
+export const rideThere = () => ((there = true), set({ ...state, held: false }))
 /** Read in the frame loop: set down there now (once). */
 export const takeRideThere = () => {
   const t = there
