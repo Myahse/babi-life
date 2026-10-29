@@ -7,11 +7,18 @@ import { music } from '../audio/music'
 // bell. Silent when the game's music button is off.
 
 let ctx: AudioContext | null = null
+/** All the sounds go through it: gentle, under the game (0.6 of full). */
+let out: GainNode | null = null
 
 function audio(): AudioContext | null {
   if (music.muted) return null
   try {
-    ctx ??= new AudioContext()
+    if (!ctx) {
+      ctx = new AudioContext()
+      out = ctx.createGain()
+      out.gain.value = 0.6
+      out.connect(ctx.destination)
+    }
     if (ctx.state === 'suspended') void ctx.resume()
     return ctx
   } catch {
@@ -34,7 +41,7 @@ function noise(c: AudioContext, at: number, length: number, freq: number, q: num
   const g = c.createGain()
   g.gain.setValueAtTime(gain, at)
   g.gain.exponentialRampToValueAtTime(0.001, at + length)
-  src.connect(f).connect(g).connect(c.destination)
+  src.connect(f).connect(g).connect(out ?? c.destination)
   src.start(at)
   src.stop(at + length + 0.02)
 }
@@ -49,7 +56,7 @@ function tone(c: AudioContext, at: number, freq: number, length: number, gain: n
   g.gain.setValueAtTime(0.0001, at)
   g.gain.exponentialRampToValueAtTime(gain, at + 0.01)
   g.gain.exponentialRampToValueAtTime(0.0001, at + length)
-  o.connect(g).connect(c.destination)
+  o.connect(g).connect(out ?? c.destination)
   o.start(at)
   o.stop(at + length + 0.02)
 }
@@ -60,9 +67,8 @@ export const sfx = {
     const c = audio()
     if (!c) return
     const t = c.currentTime
-    tone(c, t, 1318, 0.16, 0.22, 'sine')
-    tone(c, t + 0.13, 1760, 0.28, 0.2, 'sine')
-    tone(c, t + 0.13, 3520, 0.12, 0.04, 'sine')
+    tone(c, t, 1318, 0.16, 0.13, 'sine')
+    tone(c, t + 0.13, 1760, 0.28, 0.12, 'sine')
   },
   /** A chip put down on the cloth. */
   chip() {
@@ -203,7 +209,7 @@ export const sfx = {
       g.gain.exponentialRampToValueAtTime(0.09, at + 0.02)
       g.gain.setValueAtTime(0.09, at + length - 0.05)
       g.gain.exponentialRampToValueAtTime(0.0001, at + length)
-      o.connect(f).connect(g).connect(c.destination)
+      o.connect(f).connect(g).connect(out ?? c.destination)
       o.start(at)
       lfo.start(at)
       o.stop(at + length + 0.02)
@@ -238,7 +244,7 @@ export const sfx = {
     g.gain.setValueAtTime(0.0001, t)
     g.gain.exponentialRampToValueAtTime(0.22, t + 0.35)
     g.gain.exponentialRampToValueAtTime(0.0001, t + 2.4)
-    src.connect(f).connect(g).connect(c.destination)
+    src.connect(f).connect(g).connect(out ?? c.destination)
     src.start(t)
     src.stop(t + 2.45)
   },

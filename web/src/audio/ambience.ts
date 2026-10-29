@@ -117,26 +117,26 @@ function tick() {
   // Birds by day, out, in the dry: two or three chirps.
   if (!night && !rain && !inside && now > next.bird) {
     const base = 2400 + r() * 1400
-    for (let k = 0, m = 2 + Math.floor(r() * 3); k < m; k++) tone(n, 'sine', base, base * (1.25 + r() * 0.3), now + k * 0.13, 0.08, 0.035)
-    next.bird = now + 1.5 + r() * 4
+    for (let k = 0, m = 2 + Math.floor(r() * 3); k < m; k++) tone(n, 'sine', base, base * (1.25 + r() * 0.3), now + k * 0.13, 0.08, 0.018)
+    next.bird = now + 3 + r() * 6
   }
   // Crickets at night, out, in the dry: a trill now and then.
   if (night && !rain && !inside && now > next.cricket) {
-    for (let k = 0; k < 3; k++) tone(n, 'sine', 4600, 4700, now + k * 0.05, 0.03, 0.02)
+    for (let k = 0; k < 3; k++) tone(n, 'sine', 4600, 4700, now + k * 0.05, 0.03, 0.01)
     next.cricket = now + 0.5 + r() * 0.9
   }
   // A horn far off (a taxi's « pin-pin »), out.
   if (!inside && now > next.horn) {
     const f = 380 + r() * 160
     const twice = r() < 0.5
-    tone(n, 'square', f, f, now, 0.16, 0.018, 1400)
-    if (twice) tone(n, 'square', f, f, now + 0.24, 0.2, 0.018, 1400)
-    next.horn = now + 7 + r() * 14
+    tone(n, 'square', f, f, now, 0.16, 0.008, 1100)
+    if (twice) tone(n, 'square', f, f, now + 0.24, 0.2, 0.008, 1100)
+    next.horn = now + 18 + r() * 25
   }
   // Thunder in the rain, every half-minute or so.
   if (rain && now > next.thunder) {
-    if (next.thunder) thunder(n, now, (inside ? 0.35 : 0.6) * (0.6 + r() * 0.4))
-    next.thunder = now + 20 + r() * 35
+    if (next.thunder) thunder(n, now, (inside ? 0.18 : 0.3) * (0.6 + r() * 0.4))
+    next.thunder = now + 40 + r() * 50
   }
 }
 
@@ -145,12 +145,12 @@ function apply() {
   if (!n) return
   const t = n.ctx.currentTime
   const s = scene
-  n.out.gain.setTargetAtTime(s ? 0.7 : 0, t, 0.6)
+  n.out.gain.setTargetAtTime(s ? 0.45 : 0, t, 0.6)
   if (!s) return
-  n.rain.gain.setTargetAtTime(s.rain ? (s.inside ? 0.22 : 0.5) : 0, t, 1.2)
+  n.rain.gain.setTargetAtTime(s.rain ? (s.inside ? 0.14 : 0.32) : 0, t, 1.5)
   // Indoors, the rain is on the roof: only its low drumming comes through.
   n.rainTone.frequency.setTargetAtTime(s.inside ? 650 : 5000, t, 0.3)
-  n.street.gain.setTargetAtTime(s.inside ? 0.04 : (s.night ? 0.22 : 0.4) * (s.music ? 0.4 : 1) * (s.rain ? 0.5 : 1), t, 1)
+  n.street.gain.setTargetAtTime(s.inside ? 0.04 : (s.night ? 0.14 : 0.24) * (s.music ? 0.4 : 1) * (s.rain ? 0.5 : 1), t, 1)
 }
 
 export const ambience = {
