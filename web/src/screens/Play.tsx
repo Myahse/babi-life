@@ -669,6 +669,18 @@ export function Play() {
     }
   }
 
+  // « Au revoir », « À plus » once they've said goodbye, or the sheet shut: the chat is over there and then
+  // (the talk with them stops; no Sim and passer-by left face to face, still « discussing »).
+  const endChat = () => {
+    const npc = chat
+    if (!npc) return
+    const a = sim?.activity
+    if (sim && a?.kind === 'do' && a.placeKind === 'chat' && a.placeName === npc.name) void api.stop(sim.id).then(apply, () => undefined)
+    npcReact(npc.id, 'bye', 2.5)
+    talkedTo.current = null
+    setChat(null)
+  }
+
   // What the player typed themselves (an update: parler-libre): answered in the passer-by's own words (backend sims/chatfree.go).
   const features = useFeatures()
   const sayFree = async (text: string, about: FreeTalk): Promise<Reply | null> => {
@@ -1819,15 +1831,9 @@ export function Play() {
           simGender={sim.gender}
           onSay={say}
           onType={keyOpen(features, 'chat-libre') ? sayFree : undefined}
-          onClose={() => setChat(null)}
+          onClose={endChat}
           onDames={/^(grin:|dames-)/.test(chat.id) && lifeOf(world, sim).stage?.id !== 'enfant' ? () => (setChat(null), setDamesAsk({ with: 'npc', name: chat.name, max: 2000 })) : undefined}
-          onBye={() => {
-            // « Au revoir » is the end: the chat stops there, nothing more is said or done.
-            const a = sim.activity
-            if (a?.kind === 'do' && a.placeKind === 'chat' && a.placeName === chat.name) void api.stop(sim.id).then(apply, () => undefined)
-            npcReact(chat.id, 'bye', 2.5)
-            setChat(null)
-          }}
+          onBye={endChat}
           languages={sim.languages ?? []}
           onLanguages={async (langs) => {
             const r = await api.setLanguages(sim.id, langs).catch(() => null)
