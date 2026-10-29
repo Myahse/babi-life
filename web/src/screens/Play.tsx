@@ -1799,7 +1799,11 @@ export function Play() {
             }
           }}
           onResult={apply}
-          onClose={() => setDefi(null)}
+          onClose={() => {
+            // An action left without playing it isn't done (no clock to finish it any more): it stops.
+            if (GESTE_DEFIS.has(defi) && sim.activity && !sim.activity.defi) stop()
+            setDefi(null)
+          }}
         />
       )}
       {practice && !defi && <DefiSheet kind={practice} simId={sim.id} me={sim} practice onResult={apply} onClose={() => setPractice(null)} />}

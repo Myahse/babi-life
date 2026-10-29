@@ -55,7 +55,7 @@ var defiFor = map[string][]string{
 	"douche":  {"shower"},
 	"cuisine": {"cook-attieke"},
 	"repas":   {},
-	"dodo":    {"sleep", "nap"},
+	"dodo":    {"sleep", "nap", "chambre-dormir", "logement-dormir", "nuit-hotel"},
 	"cour":    {"jouer-cour"},
 	// The baby's day, played too.
 	"biberon":  {"biberon"},
@@ -93,19 +93,18 @@ const (
 	allocoEggFill = 12
 )
 
-// gesteLong: past this, an activity is a day out (school, a long visit): it goes on in its time.
-const gesteLong = 180
 
 // gesteNot: the activities with a screen of their own (the slot machine, the banknotes thrown, the night
 // together's fade to black): not played as gestures.
 var gesteNot = []string{game.SlotsMaquisID, game.SlotsCasinoID, game.NightID, "petit-travaillement", "travaillement", "grand-travaillement", "aller-ecole", "creche"}
 
-// gesteOK: whether an activity with no défi of its own can be played as gestures (the update
-// « gestes-maison », every action: web components/defi/Gestes.tsx makes its steps from what it is).
-// Never work that pays (the pay comes with the time worked, not with arrows) nor a talk (its own sheet).
+// gesteOK: whether an activity with no défi of its own is played (the update « gestes-maison »: every
+// action is a game, nothing waits on a clock any more; web components/defi/jeux). The work shift and
+// the jobs that pay too: the game played, the pay comes (scaled by how well, playDefi). Never a talk
+// (its own sheet).
 func gesteOK(a *game.Activity) bool {
 	it := a.Interaction
-	return a.Kind == "do" && a.Career == "" && it.Cost >= 0 && it.Minutes <= gesteLong && a.PlaceKind != "chat" && defiOf(it.ID) == "" && !slices.Contains(gesteNot, it.ID)
+	return a.Kind == "do" && a.PlaceKind != "chat" && defiOf(it.ID) == "" && !slices.Contains(gesteNot, it.ID)
 }
 
 // homeLines: what's said after a home gesture, played badly, well, perfectly.
@@ -305,6 +304,10 @@ func playDefi(ctx context.Context, tx pgx.Tx, s *Sim, kind string, score int) (s
 	// good; badly, a little less), whatever time it had left.
 	if slices.Contains(homeDefis, kind) || kind == "geste" {
 		s.Needs = homeDone(s.Needs, a, score)
+		// What it pays (the shift, the petit boulot): the whole of it played well, a little less played badly.
+		if a.Interaction.Cost < 0 {
+			a.Interaction.Cost = int(math.Round(float64(a.Interaction.Cost) * (0.6 + 0.4*float64(score)/100)))
+		}
 	}
 	// What comes back up to what was paid (the stake, money saved on the
 	// shopping) isn't a gain; what's won over it is, within the day's limit

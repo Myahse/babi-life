@@ -101,16 +101,23 @@ func TestGesteOK(t *testing.T) {
 	if !gesteOK(do(game.Interaction{ID: "eat-poulet-braise", Minutes: 45, Cost: 3500})) {
 		t.Error("eating a poulet braisé: not played")
 	}
-	work := do(game.Interaction{ID: "work-shift", Minutes: 60})
+	// No clock any more: the work shift, the jobs that pay, the long ones are played too.
+	work := do(game.Interaction{ID: "work", Minutes: 480, Cost: -8000})
 	work.Career = "vendeur"
+	for name, a := range map[string]*game.Activity{
+		"paid": do(game.Interaction{ID: "odd-job", Minutes: 60, Cost: -2000}),
+		"work": work,
+		"long": do(game.Interaction{ID: "visit-long", Minutes: 240}),
+	} {
+		if !gesteOK(a) {
+			t.Errorf("%s: not played", name)
+		}
+	}
 	chat := do(game.Interaction{ID: "chat-salut", Minutes: 5})
 	chat.PlaceKind = "chat"
 	for name, a := range map[string]*game.Activity{
-		"paid":   do(game.Interaction{ID: "odd-job", Minutes: 60, Cost: -2000}),
-		"work":   work,
 		"chat":   chat,
 		"school": do(game.Interaction{ID: "aller-ecole", Minutes: 300}),
-		"long":   do(game.Interaction{ID: "visit-long", Minutes: 240}),
 		"slots":  do(game.Interaction{ID: game.SlotsMaquisID, Minutes: 60}),
 		"tea":    do(game.Interaction{ID: "street-grin", Minutes: 30}),
 	} {
