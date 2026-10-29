@@ -56,6 +56,8 @@ const (
 	Casino Income = "casino"
 	// Gode: the rounds of godé against the game's players (game/gode.go), counted; what's won counts as FromGames.
 	Gode Income = "gode"
+	// FromParrainage: the Djai found in a friend's gift (sims/parrainage.go), on its own limit, out of the day's total.
+	FromParrainage Income = "parrainage"
 )
 
 // Cap: what an account may get from a source in a real day.
@@ -89,6 +91,7 @@ var Caps = map[Income]Cap{
 	Bingo:          {Times: BingoPerDay, Full: "Assez de cartons de bingo pour aujourd'hui : reviens demain."},
 	Casino:         {Times: CasinoPerDay, Full: "Le casino ferme pour toi aujourd'hui : reviens demain."},
 	Gode:           {Times: GodePerDay, Full: "Assez de godé pour aujourd'hui : les gars rangent le godet, reviens demain."},
+	FromParrainage: {Djai: 5000, Full: "Assez de Djai dans les cadeaux pour aujourd'hui : les autres attendent demain."},
 }
 
 // DailyTotal: the most an account earns by playing in a real day, every
@@ -156,7 +159,7 @@ func limit(src Income, pass bool) int {
 
 // inTotal: the sources the day's total counts.
 func inTotal(src Income) bool {
-	return src != FromPlayers && src != ToPlayers && src != FromRental && src != EarnedTotal && src != Slots && src != Bingo && src != Casino
+	return src != FromPlayers && src != ToPlayers && src != FromRental && src != EarnedTotal && src != Slots && src != Bingo && src != Casino && src != FromParrainage
 }
 
 // Left: the Djai a source can still bring today (math.MaxInt: no limit).

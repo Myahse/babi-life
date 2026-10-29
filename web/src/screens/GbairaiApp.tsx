@@ -9,6 +9,7 @@ import { NotifyBanner } from '../components/NotifyPrompt'
 import { previewOf } from '../components/Stickers'
 import { ChatAvatar, ChatScreen, clock, type ChatLine } from '../components/ChatScreen'
 import { keyOpen, useFeatures } from '../lib/features'
+import { ParentChats } from './GbairaiParents'
 
 /**
  * Gbairai: write to the players your Sim has made friends with in the game,
@@ -19,9 +20,19 @@ import { keyOpen, useFeatures } from '../lib/features'
  * chats, and each chat full screen (components/ChatScreen).
  */
 
-/** Gbairai: the friends' chats, and the grin (the public chat). */
-export function GbairaiApp({ world, sim }: { world: World; sim: Sim }) {
+/**
+ * Gbairai: the friends' chats, and the grin (the public chat). A child has papa and maman at the
+ * top (update « gbairai-parents »); before its phone, without « gbairai-bebe », only them.
+ */
+export function GbairaiApp({ world, sim, parents, friends = true }: { world: World; sim: Sim; parents?: boolean; friends?: boolean }) {
   const [tab, setTab] = useState<'amis' | 'grin'>('amis')
+  if (!friends)
+    return (
+      <div className="flex h-full flex-col">
+        <p className="mb-1 px-1 text-[13px] font-bold text-[var(--color-ink-soft)]">Tes contacts : papa et maman. Tes amis viendront avec ton téléphone, à 12 ans.</p>
+        {parents && <ParentChats sim={sim} />}
+      </div>
+    )
   return (
     <div className="flex h-full flex-col">
       <div className="mb-2 flex gap-1 border-b border-black/5">
@@ -37,12 +48,12 @@ export function GbairaiApp({ world, sim }: { world: World; sim: Sim }) {
         ))}
       </div>
       <NotifyBanner what="quand un ami t’écrit" />
-      {tab === 'grin' ? <Grin world={world} sim={sim} /> : <Chats world={world} sim={sim} />}
+      {tab === 'grin' ? <Grin world={world} sim={sim} /> : <Chats world={world} sim={sim} parents={parents} />}
     </div>
   )
 }
 
-function Chats({ world, sim }: { world: World; sim: Sim }) {
+function Chats({ world, sim, parents }: { world: World; sim: Sim; parents?: boolean }) {
   const [chats, setChats] = useState<Chat[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState<Chat | null>(null)
@@ -67,6 +78,7 @@ function Chats({ world, sim }: { world: World; sim: Sim }) {
       <Stories sim={sim} realPhotos={!!world.config.realPhotos} />
       {error && <p className="rounded-2xl bg-[#ffe3e3] p-3 text-sm font-bold text-[#c92a2a]">{error}</p>}
       {chats === null && !error && <p className="p-3 text-sm font-bold text-[var(--color-ink-soft)]">Chargement…</p>}
+      {parents && <ParentChats sim={sim} />}
       {chats?.length === 0 && <p className="p-3 text-sm font-bold text-[var(--color-ink-soft)]">Pas encore d'amis à qui écrire. Va saluer les joueurs de ta commune : ils apparaîtront ici.</p>}
       <ul>
         {chats?.map((c) => (

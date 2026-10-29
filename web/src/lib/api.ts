@@ -1,9 +1,14 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView, LotSpot, GodeRound, Mentor, Quote } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView, LotSpot, GodeRound, Mentor, Quote, ParentChat } from './types'
+
+/** A friend's gift (backend sims/parrainage.go Gift): wrapped, or opened and what it was. */
+export type FriendGift = { id: number; from: string; at: string; opened: boolean; kind?: 'habit' | 'frigo' | 'deco' | 'djai'; item?: string; label?: string; amount?: number; rare?: boolean }
+export type Parrainage = { code: string; friends: { name: string; at: string; gifted: boolean }[]; gifts: FriendGift[]; perDay: number; played: number }
 
 /** A challenge to the street fight, or the fight it became. */
 export type Duel = { id: string; from: string; to: string; names: [string, string]; baby: boolean; state: 'pending' | 'on' | 'off'; at: string }
 import { useSession } from '../store/session'
 import { keepData, keptData, OFFLINE_TEXT, setOnline } from './offline'
+import { parrainQuery } from './parrain'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
 
@@ -193,6 +198,9 @@ export const api = {
   emotes: (id: string) => request<{ owned: string[] }>(`/sims/${id}/emotes`),
   buyEmote: (id: string, emote: string) => post<ActionResult>(`/sims/${id}/emotes/${emote}`, {}),
   /** The boutiques' pieces bought; buying one (in the shop that sells it). */
+  /** Inviting friends (backend sims/parrainage.go): the link's code, the friends come by it, their gifts. */
+  parrainage: (id: string) => request<Parrainage>(`/sims/${id}/parrainage`),
+  openGift: (id: string, gift: number) => post<ActionResult & { outcome: { data?: FriendGift } }>(`/sims/${id}/parrainage/${gift}/open`, {}),
   clothes: (id: string) => request<{ owned: string[] }>(`/sims/${id}/clothes`),
   buyPiece: (id: string, piece: string, app = false) => post<ActionResult>(`/sims/${id}/clothes/${piece}${app ? '?app=1' : ''}`, {}),
   buyClothingPack: (id: string, pack: string) => post<ActionResult>(`/sims/${id}/clothes/pack/${pack}`, {}),
@@ -252,9 +260,10 @@ export const api = {
   setSect: (id: string, sect: string) => post<{ text: string }>(`/sims/${id}/politics/sect`, { sect }),
   sendIdea: (simId: string, topic: Idea['topic'], text: string) => post<{ idea: Idea; text: string }>('/me/ideas', { simId, topic, text }),
   happening: (city: string, commune: string, gameMinutes: number) => request<HappeningNow>(`/happening?city=${encodeURIComponent(city)}&commune=${encodeURIComponent(commune)}&t=${Math.floor(gameMinutes)}`),
-  googleLogin: (credential: string) => post<Session>('/auth/google', { credential }),
-  devLogin: (name: string) => post<Session>('/auth/dev', { name }),
-  register: (u: { firstName: string; lastName: string; username: string; email: string; password: string }) => post<Session>('/auth/register', u),
+  // (With the code of the friend's link this browser came by: lib/parrain.ts.)
+  googleLogin: (credential: string) => post<Session>(`/auth/google${parrainQuery()}`, { credential }),
+  devLogin: (name: string) => post<Session>(`/auth/dev${parrainQuery()}`, { name }),
+  register: (u: { firstName: string; lastName: string; username: string; email: string; password: string }) => post<Session>(`/auth/register${parrainQuery()}`, u),
   /** `login` is an e-mail or a username. */
   login: (login: string, password: string) => post<Session>('/auth/login', { email: login, password }),
   /** « Mot de passe oublié » (backend auth/reset.go): the e-mail with the link, then the new password. */
@@ -353,6 +362,10 @@ export const api = {
   write: (id: string, friend: string, body: string, replyTo?: number) => post<ChatMessage>(`/sims/${id}/gbairai/${friend}`, { body, replyTo }),
   /** Says whether this player is writing to the friend, and answers whether the friend is writing back. */
   typing: (id: string, friend: string, writing: boolean) => request<{ typing: boolean }>(`/sims/${id}/gbairai/${friend}/typing?writing=${writing ? 1 : 0}`),
+  /** A child's papa and maman in Gbairai (update « gbairai-parents »): their chats, a thread (and whether they're writing back), a message to them. */
+  parentChats: (id: string) => request<ParentChat[]>(`/sims/${id}/gbairai-parents`),
+  parentThread: (id: string, who: string, after = 0) => request<{ messages: ChatMessage[]; typing: boolean }>(`/sims/${id}/gbairai-parents/${who}?after=${after}`),
+  parentWrite: (id: string, who: string, body: string) => post<ChatMessage>(`/sims/${id}/gbairai-parents/${who}`, { body }),
   block: (id: string, friend: string, blocked: boolean) => post<{ blocked: boolean }>(`/sims/${id}/gbairai/${friend}/block`, { blocked }),
   report: (id: string, friend: string, reason: string, messageId?: number) => post<{ text: string }>(`/sims/${id}/gbairai/${friend}/report`, { reason, messageId }),
   lotoDraws: () => request<{ now: number; pays: Record<number, number>; draws: { id: number; name: string; at: number; numbers?: number[] }[] }>('/loto/draws'),

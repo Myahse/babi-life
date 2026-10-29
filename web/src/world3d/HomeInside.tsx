@@ -30,6 +30,7 @@ import { clock, weekdayOf } from '../game/rules'
 import { carer } from './carer'
 import { setHomeArrived, useGesture, useHomeStep } from './gesture'
 import { tint } from '../avatar/textures'
+import { GiftChest } from '../components/GiftDrawer'
 
 // Inside one's own house, on a screen of its own: the house itself (the one
 // of the family's plan, or the one built on a bought lot), its rooms, its
@@ -350,7 +351,7 @@ function CloseUp({ at }: { at: React.RefObject<XZ | null> }) {
   return null
 }
 
-export function HomeInside({ sim, world, plot, interactionId, roam, night, stage, onBuild, partner, parents, closeUp }: { /** The arrival: the camera close on the Sim, turning round it. */ closeUp?: boolean; sim: Sim; world: World; plot: Plot; interactionId?: string; /** Just come in: tap the ground to walk. */ roam?: boolean; night: boolean; stage: string; /** Change the house: walls, furniture (components/BuildMode). */ onBuild?: () => void; /** The boyfriend or girlfriend living here. */ partner?: Friend; /** Still a child at the family's home: papa and maman are there. */ parents?: boolean }) {
+export function HomeInside({ sim, world, plot, interactionId, roam, night, stage, onBuild, partner, parents, closeUp, drawer }: { /** The friends' gifts (update « parrainage »): the drawer that holds them, how many wait, a tap opens it. */ drawer?: { count: number; onOpen: () => void }; /** The arrival: the camera close on the Sim, turning round it. */ closeUp?: boolean; sim: Sim; world: World; plot: Plot; interactionId?: string; /** Just come in: tap the ground to walk. */ roam?: boolean; night: boolean; stage: string; /** Change the house: walls, furniture (components/BuildMode). */ onBuild?: () => void; /** The boyfriend or girlfriend living here. */ partner?: Friend; /** Still a child at the family's home: papa and maman are there. */ parents?: boolean }) {
   const [w, d] = [plot.lot?.w ?? 12, plot.lot?.d ?? 12]
   const span = Math.max(w, d)
   const floors = useMemo(() => {
@@ -400,6 +401,29 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
         }
     return out
   }, [plot, w, d, world.furniture, levels])
+  // The drawer of gifts: against a wall under the roof, out of the way of where things are done; else in the yard.
+  const drawerAt = useMemo(() => {
+    if (!drawer) return null
+    const free = levels(0)
+    const solid = new Set(plot.blocks.map((b) => `${b[0]},${b[1]},${b[2]}`))
+    const roof = new Set(plot.blocks.filter((b) => b[1] >= 2).map((b) => `${b[0]},${b[2]}`))
+    const used = Object.values(spots).flatMap((p) => [p.from, p.at])
+    const clear = (u: number, v: number) => free(u, v) && used.every((q) => Math.hypot(q[0] - u, q[1] - v) > 0.9) && Math.hypot(u, d / 2 + 1.5 - v) > 2.5
+    // The best spot: under the roof against one wall, then against a wall (even outside), then the yard near the middle.
+    let best: { at: XZ; rot: number; score: number } | null = null
+    for (let cz = 0; cz < d; cz++)
+      for (let cx = 0; cx < w; cx++) {
+        const [u, v] = [cx + 0.5 - w / 2, cz + 0.5 - d / 2]
+        if (!clear(u, v)) continue
+        // The wall behind it (a block at body height next to it): it faces away from it, into the room.
+        const walls = ([[0, -1], [0, 1], [-1, 0], [1, 0]] as const).filter(([dx, dz]) => solid.has(`${cx + dx},1,${cz + dz}`))
+        const open = ([[0, -1], [0, 1], [-1, 0], [1, 0]] as const).filter(([dx, dz]) => free(u + dx, v + dz)).length
+        if (open < 2) continue
+        const score = (roof.has(`${cx},${cz}`) ? 100 : 0) + (walls.length ? 50 : 0) - Math.hypot(u, v)
+        if (!best || score > best.score) best = { at: [u, v], rot: walls.length ? Math.atan2(-walls[0][0], -walls[0][1]) : 0, score }
+      }
+    return best
+  }, [!!drawer, plot, w, d, levels, spots]) // eslint-disable-line react-hooks/exhaustive-deps
   // A Garbaya meal (golvo-garba…): at the table; no table, on a seat. Something from the fridge: a drink at its door, a dish at the table.
   const fromFridge = interactionId?.startsWith('frigo-') ? world.groceries?.find((g) => `frigo-${g.id}` === interactionId) : undefined
   const atTable = spots.golvo ?? (spots['watch-tv'] && { ...spots['watch-tv'], pose: 'eat' as const })
@@ -518,6 +542,11 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
               <planeGeometry args={[w, d]} />
               <meshBasicMaterial transparent opacity={0} depthWrite={false} />
             </mesh>
+          )}
+          {drawer && drawerAt && (
+            <group position={[drawerAt.at[0], 0, drawerAt.at[1]]} rotation={[0, drawerAt.rot, 0]}>
+              <GiftChest count={drawer.count} onOpen={drawer.onOpen} />
+            </group>
           )}
           {partner && <Partner friend={partner} spots={spots} doing={interactionId} spot={spot} />}
           {stage === 'bebe' && spots.berceau && (

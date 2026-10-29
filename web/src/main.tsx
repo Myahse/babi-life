@@ -8,6 +8,8 @@ import { OfflineBanner } from './components/InstallButton'
 import './lib/pwa'
 // Played offline: sent before anything else once online (and answered on the phone till then).
 import './lib/offlinePlay'
+// Come by a friend's link (?p=code): its code kept for the sign-up.
+import './lib/parrain'
 import { startClockSync } from './lib/worldClock'
 import './index.css'
 import './motion.css'

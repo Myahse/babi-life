@@ -15,6 +15,7 @@ import { UsernameField } from '../components/UsernameField'
 import { suggestFrom } from '../lib/username'
 import { useGameOpen } from '../lib/launch'
 import { contactLinks } from '../lib/contact'
+import { parrainDone } from '../lib/parrain'
 import { firebaseConfigured, firebaseFromGoogle, googleBlocked, googleCancelled, googleRedirectResult, preloadGoogle, signInWithGoogle } from '../lib/google'
 
 const GOOGLE_ENABLED = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID)
@@ -89,6 +90,7 @@ export function Title() {
     try {
       const { token, user } = await p
       signIn(token, user)
+      parrainDone()
       navigate(open ? '/jeu' : '/liste', { viewTransition: true })
     } catch (e) {
       setError(errorText(e, 'Connexion impossible'))

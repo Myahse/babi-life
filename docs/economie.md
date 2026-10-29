@@ -153,6 +153,7 @@ Par compte (tous ses persos ensemble), de minuit à minuit à Abidjan. Le Babi P
 | `machine` (les tours de machine à sous) | 200 tours | « Assez de machine à sous pour aujourd'hui : reviens demain. » Ce qu'elles paient n'est pas compté comme gagné (comme les paris, ce sont les mises qui reviennent, moins l'avantage de la maison). |
 | `bingo` (les cartons de bingo) | 120 cartons | « Assez de cartons de bingo pour aujourd'hui : reviens demain. » Ce qu'ils paient n'est pas compté comme gagné, comme les paris. |
 | `casino` (les tours de Babi Casino : un tour de roue, une main, un ticket, une mise à L'Envol, un pari à Babi Trade) | 300 tours | « Le casino ferme pour toi aujourd'hui : reviens demain. » Ce qu'ils paient n'est pas compté comme gagné. |
+| `parrainage` (les Djai trouvés dans le cadeau d'un ami venu par ton lien) | 5 000 | « Assez de Djai dans les cadeaux pour aujourd'hui : les autres attendent demain. » Hors du total : au plus 5 cadeaux arrivent par jour, un seul par ami. |
 
 Les comptes sont gardés dans la table `earnings` (migration `059_earnings.sql`), lus avec le perso et enregistrés avec lui dans la même transaction (`sims/money.go`). La synchronisation hors ligne (`sims/sync.go`) rejoue les actions par les mêmes fonctions : elle compte pareil, et un téléphone qui ment sur l'heure ne crée pas de jour en plus (le temps est borné entre la dernière fois que le serveur l'a entendu et maintenant). L'appli Boulot montre la journée (le service fait ou pas, les petits boulots, le total), envoyée par le serveur avec le perso (`today`).
 
