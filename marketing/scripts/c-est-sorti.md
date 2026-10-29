@@ -1,4 +1,4 @@
-# « Babi Life est sorti ! » (vidéo d'environ 58 s)
+# « Babi Life est sorti ! » (vidéo d'environ 63 s)
 
 Awa annonce à tout le monde que le jeu est sorti et qu'on peut y jouer dès maintenant. Ton : la grande nouvelle, l'énergie d'une annonce, sourire dans la voix. On voit le vrai jeu, filmé en train d'être joué (comme la vidéo « de bébé à adulte »), et à la fin le lien et le QR code.
 
@@ -16,9 +16,10 @@ Format : 1080 × 1920 (statut WhatsApp, TikTok, Reels). La voix d'Awa dans `mark
 | 38 – 42 s | Le téléphone du jeu : Gbairai, Waye | « Ton téléphone dans le jeu : Gbairai pour causer, Waye pour l'argent. » |
 | 42 – 46 s | D'autres joueurs dans la rue, le bouton des joueurs en ligne | « Et surtout : tous les joueurs sont là, en vrai, au même moment. » |
 | 46 – 52 s | Les chiffres en grand sur la ville : « 345 comptes en moins de 24 h », puis « 129 déjà dans la ville » | « En moins de vingt-quatre heures : trois cent quarante-cinq comptes créés… et cent vingt-neuf joueurs déjà dans la ville ! » |
-| 52 – 58 s | La fin : « Joue maintenant », lifeinbabi.com, le QR code | « C'est gratuit, c'est cent pour cent ivoirien. Va sur lifeinbabi.com… on t'attend ! » |
+| 52 – 57 s | Le téléphone : « Inviter mes amis », le lien partagé sur WhatsApp ; à la maison, le tiroir à cadeaux qui s'ouvre, un cadeau déballé | « Invite tes amis avec ton lien : chaque ami qui s'inscrit, c'est un cadeau pour toi, qui t'attend dans ton tiroir ! » |
+| 57 – 63 s | La fin : « Joue maintenant », lifeinbabi.com, le QR code | « C'est gratuit, c'est cent pour cent ivoirien. Va sur lifeinbabi.com… on t'attend ! » |
 
-À savoir avant de publier : les mini-jeux (« Les actions se jouent ») et le foot de rue (« Le foot de rue ») sont des mises à jour à ouvrir dans l'admin ; ouvre-les avant de poster la vidéo, sinon les joueurs ne trouveront pas ce qu'elle montre.
+À savoir avant de publier : les mini-jeux (« Les actions se jouent ») et le foot de rue (« Le foot de rue ») sont des mises à jour à ouvrir dans l'admin ; de même le parrainage (« Inviter ses amis (cadeaux) ») ; ouvre-les avant de poster la vidéo, sinon les joueurs ne trouveront pas ce qu'elle montre.
 
 ## Le texte d'un seul tenant (pour la voix, ElevenLabs)
 
@@ -31,6 +32,7 @@ Les vrais quartiers d'Abidjan : Yop, Cocody, le Plateau… le gbaka, le maquis, 
 Ton téléphone dans le jeu : Gbairai pour causer, Waye pour l'argent.
 Et surtout : tous les joueurs sont là, en vrai, au même moment.
 En moins de vingt-quatre heures : trois cent quarante-cinq comptes créés… et cent vingt-neuf joueurs déjà dans la ville !
+Invite tes amis avec ton lien : chaque ami qui s'inscrit, c'est un cadeau pour toi, qui t'attend dans ton tiroir !
 C'est gratuit, c'est cent pour cent ivoirien. Va sur lifeinbabi.com… on t'attend !
 
 ## La légende du post (TikTok, Instagram, statut, Facebook)
@@ -40,5 +42,6 @@ Tu nais gnambro ou laté ? Bébé, enfant, ado, adulte… ta vie, c'est toi qui 
 Chaque action est un jeu : garba, alloco, foot de rue… 🎮
 Tous les joueurs en vrai, au même moment 👀
 345 comptes en moins de 24 h, 129 déjà dans la ville 🔥 Et toi ?
+Invite tes amis avec ton lien : un cadeau pour chaque ami qui s'inscrit 🎁
 Gratuit 👉 lifeinbabi.com
 #BabiLife #Abidjan #CôteDIvoire #Babi #JeuIvoirien #CestSorti
