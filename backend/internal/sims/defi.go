@@ -93,10 +93,14 @@ const (
 	allocoEggFill = 12
 )
 
-
 // gesteNot: the activities with a screen of their own (the slot machine, the banknotes thrown, the night
 // together's fade to black): not played as gestures.
-var gesteNot = []string{game.SlotsMaquisID, game.SlotsCasinoID, game.NightID, "petit-travaillement", "travaillement", "grand-travaillement", "aller-ecole", "creche"}
+var gesteNot = []string{game.SlotsMaquisID, game.SlotsCasinoID, game.NightID, "petit-travaillement", "travaillement", "grand-travaillement", "aller-ecole", "creche",
+	// The matches on the courts and in the street (their own 3D match, web streetball/), the clothes shops (their own shop).
+	"play-basket", "street-basket", "play-football", "play-foot11", "street-foot", "boutique-mode", "boutique-wax"}
+
+// gesteNotLabels: the street happenings joined that are a match of their own (the neighbourhood foot, the basket tournament).
+var gesteNotLabels = []string{"Jouer avec eux", "Jouer un match"}
 
 // gesteOK: whether an activity with no défi of its own is played (the update « gestes-maison »: every
 // action is a game, nothing waits on a clock any more; web components/defi/jeux). The work shift and
@@ -104,7 +108,7 @@ var gesteNot = []string{game.SlotsMaquisID, game.SlotsCasinoID, game.NightID, "p
 // (its own sheet).
 func gesteOK(a *game.Activity) bool {
 	it := a.Interaction
-	return a.Kind == "do" && a.PlaceKind != "chat" && defiOf(it.ID) == "" && !slices.Contains(gesteNot, it.ID)
+	return a.Kind == "do" && a.PlaceKind != "chat" && defiOf(it.ID) == "" && !slices.Contains(gesteNot, it.ID) && !(it.ID == game.JoinHappeningID && slices.Contains(gesteNotLabels, it.Label))
 }
 
 // homeLines: what's said after a home gesture, played badly, well, perfectly.

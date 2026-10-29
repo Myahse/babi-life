@@ -120,6 +120,8 @@ func TestGesteOK(t *testing.T) {
 		"school": do(game.Interaction{ID: "aller-ecole", Minutes: 300}),
 		"slots":  do(game.Interaction{ID: game.SlotsMaquisID, Minutes: 60}),
 		"tea":    do(game.Interaction{ID: "street-grin", Minutes: 30}),
+		"match":  do(game.Interaction{ID: "play-football", Minutes: 60}),
+		"street": do(game.Interaction{ID: game.JoinHappeningID, Label: "Jouer avec eux", Minutes: 60}),
 	} {
 		if gesteOK(a) {
 			t.Errorf("%s: played as gestures", name)
