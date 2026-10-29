@@ -66,13 +66,13 @@ function env(c: AudioContext, out: AudioNode, t: number, peak: number, attack: n
   return g
 }
 
-function kick(c: AudioContext, out: AudioNode, t: number, vol = 0.9) {
+function kick(c: AudioContext, out: AudioNode, t: number, vol = 0.9, deep = false) {
   const o = c.createOscillator()
-  o.frequency.setValueAtTime(130, t)
-  o.frequency.exponentialRampToValueAtTime(42, t + 0.14)
-  o.connect(env(c, out, t, vol, 0.004, 0.28))
+  o.frequency.setValueAtTime(deep ? 150 : 130, t)
+  o.frequency.exponentialRampToValueAtTime(deep ? 36 : 42, t + (deep ? 0.18 : 0.14))
+  o.connect(env(c, out, t, vol, 0.004, deep ? 0.4 : 0.28))
   o.start(t)
-  o.stop(t + 0.32)
+  o.stop(t + (deep ? 0.45 : 0.32))
 }
 
 function hiss(c: AudioContext, out: AudioNode, t: number, { vol, decay, type, freq, q = 1 }: { vol: number; decay: number; type: BiquadFilterType; freq: number; q?: number }) {
@@ -115,6 +115,15 @@ function conga(c: AudioContext, out: AudioNode, t: number, freq: number, vol = 0
   o.connect(env(c, out, t, vol, 0.003, 0.18))
   o.start(t)
   o.stop(t + 0.25)
+}
+
+/** The sub under the bass: felt more than heard, what makes the floor move. */
+function sub(c: AudioContext, out: AudioNode, t: number, midi: number, dur: number, vol = 0.3) {
+  const o = c.createOscillator()
+  o.frequency.value = hz(midi)
+  o.connect(env(c, out, t, vol, 0.01, dur))
+  o.start(t)
+  o.stop(t + dur + 0.05)
 }
 
 function bass(c: AudioContext, out: AudioNode, t: number, midi: number, dur: number, vol = 0.32) {
@@ -297,14 +306,22 @@ function coupeDecale(r: () => number, light: boolean): Song {
     const s = step % 16
     const chord = loop[bar % loop.length]
     const breakdown = bar % 16 === 15 // a bar without kick before the drop
-    if (s % 4 === 0 && !breakdown) kick(c, out, t, light ? 0.7 : 0.95)
+    if (s % 4 === 0 && !breakdown) kick(c, out, t, light ? 0.7 : 1, !light)
     if (s === 4 || s === 12) clap(c, out, t, light ? 0.35 : 0.5)
     if (breakdown && s >= 8) snare(c, out, t, 0.12 + (s - 8) * 0.04) // the roll into the drop
     if (s % 2 === 0) hat(c, out, t, s % 4 === 2, light ? 0.1 : 0.16)
     shaker(c, out, t, light ? 0.05 : 0.07)
     if (light && (s === 3 || s === 6 || s === 10 || s === 11)) conga(c, out, t, s === 6 ? 180 : 240)
+    // The club: the congas answering off the beat, the groove that makes the floor bounce.
+    if (!light && !breakdown && (s === 3 || s === 7 || s === 10 || s === 14 || (s === 15 && bar % 2 === 1))) conga(c, out, t, s === 7 || s === 15 ? 170 : 230, 0.3)
     const bi = bassSteps.indexOf(s)
-    if (bi >= 0) bass(c, out, t, chord.root - 12 + bassNotes[bi], dur * 2.2, light ? 0.26 : 0.32)
+    if (bi >= 0) {
+      bass(c, out, t, chord.root - 12 + bassNotes[bi], dur * 2.2, light ? 0.26 : 0.34)
+      // Under it, the sub an octave down (louder in the club).
+      sub(c, out, t, chord.root - 24 + bassNotes[bi], dur * 2.4, light ? 0.18 : 0.34)
+    }
+    // A bouncing ghost note of the bass before the bar turns over.
+    if (!light && !breakdown && s === 15) bass(c, out, t, chord.root - 12 + 7, dur * 0.9, 0.2)
     if (riff[s] >= 0 && bar % 8 >= 2) {
       const tones = chord.tones
       const n = riff[s]
