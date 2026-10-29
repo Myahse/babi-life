@@ -28,6 +28,7 @@ import { HANDLING, drive, driving, getIn, gps, nextTurn, onWay, parkIn, setParke
 import { report } from './open/trafficFlow'
 import { motoAsking, motoTaken, offerMoto, RIDES, takeRideThere, type Taken } from './moto'
 import { tripRide } from './open/tripRide'
+import { inDrop } from './open/tripDrop'
 import { askDrop, answerDrop, takeDrop } from './dropRoute'
 import { along, routeLength, turnTo } from './open/shared'
 import { laneStart, lanePoint, laneStretch, STADIUM_TRACKS, toWorld, type Track } from './open/stadiumTrack'
@@ -1073,7 +1074,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       if (!aboard) setAboard(true)
     } else if (aboard) setAboard(false)
     // In the car from this very frame (not the next render), and while the player taps about: never standing through its roof.
-    if (tripRide.active && tripRide.boarded) g.visible = false
+    // (In a short ride's vehicle at the kerb, getting in or about to get out: not seen either.)
+    if ((tripRide.active && tripRide.boarded) || inDrop()) g.visible = false
     else if (!g.visible && !hidden && !aboard) g.visible = true
     // The car in sight: an arm up to it (not to one already standing there for the Sim).
     const hail = trip && !tripRide.boarded && !tripRide.parked && Math.hypot(tripRide.x - g.position.x, tripRide.z - g.position.z) < 45
@@ -1093,24 +1095,33 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       }
     }
     // A short ride (the update « trajet-court »): its loading screen over, set down at the end of the way.
+    // Set down in the street by the place (the vehicle pulls up there and the Sim gets out, world3d/open/tripDrop),
+    // then on foot the last few metres to its door.
     if (takeRideThere() && path.current.length) {
-      const [ex, ez] = path.current[path.current.length - 1]
-      g.position.x = ex
-      g.position.z = ez
-      path.current = []
-      setRoute(null)
+      const end = path.current[path.current.length - 1]
+      const street = nav.route([g.position.x, g.position.z], end, target.current !== null)
+      const kerbAt = street && street.length > 2 ? street[street.length - 2] : null
+      const at: XZ = kerbAt && Math.hypot(kerbAt[0] - end[0], kerbAt[1] - end[1]) < 60 ? kerbAt : end
+      g.position.x = at[0]
+      g.position.z = at[1]
+      path.current = at === end ? [] : (findWay(at, end, target.current !== null)?.slice(1) ?? [end])
+      setRoute(path.current.length ? [...path.current] : null)
       setWalking(false)
       riding.current = false
       kerb.current = null
       setRide(null)
       speed.current = SPEED
-      const lot = lots.find((l) => l.id === target.current)
-      if (lot) g.rotation.y = Math.atan2(lot.x - g.position.x, lot.z - g.position.z)
-      if (target.current) onArrive(target.current)
+      offerMoto(null)
+      if (!path.current.length) {
+        const lot = lots.find((l) => l.id === target.current)
+        if (lot) g.rotation.y = Math.atan2(lot.x - g.position.x, lot.z - g.position.z)
+        if (target.current) onArrive(target.current)
+      } else g.rotation.y = Math.atan2(path.current[0][0] - at[0], path.current[0][1] - at[1])
     }
     // A long way: the Sim waits for the player to choose how it goes (on foot or a ride), then sets off.
     // A ride goes only by the streets: till its way by them is found, it waits.
-    if (path.current.length && ((!riding.current && motoAsking()) || (riding.current && !onStreets.current))) {
+    // (Still in the vehicle pulling up, a short ride's end: it waits to get out.)
+    if (path.current.length && ((!riding.current && (motoAsking() || inDrop())) || (riding.current && !onStreets.current))) {
       if (walking && !riding.current) setWalking(false)
     } else if (path.current.length) {
       // Off again once the choice is made (walking, or the ride taking over).

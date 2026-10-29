@@ -95,12 +95,13 @@ import type { Npc } from '../world3d/open/OpenWorld'
 import { setTalkHandler, setTalking } from '../world3d/talk'
 import type { Track } from '../audio/music'
 import { NotifyPrompt } from '../components/NotifyPrompt'
-import { motoPaid, motoWalk, rideFare, rideThere, RIDES, useMoto, type RideKind, type Taken } from '../world3d/moto'
+import { motoHold, motoPaid, motoWalk, rideFare, rideThere, RIDES, useMoto, type RideKind, type Taken } from '../world3d/moto'
 import { GBAKA, inkOn, kerbWait, MOTO, waitsAtKerb } from '../game/rides'
 import { answerDrop, useDropAsk } from '../world3d/dropRoute'
 import { TripLoading } from '../components/TripLoading'
 import { rideLook } from '../game/rides'
 import { setDrop } from '../world3d/open/tripDrop'
+import { tripRide } from '../world3d/open/tripRide'
 import { gesteOK } from '../components/defi/Gestes'
 import { JeuDefi, JEUX } from '../components/defi/jeux'
 import { BABY_DEFIS, GESTE_DEFIS, DefiButton, DefiSheet, defiLook, defiOf, PRACTICE, type DefiKind } from '../components/Defi'
@@ -1039,6 +1040,17 @@ export function Play() {
   // and it's there (the server ends the ride: sims.go arriveNow); then the vehicle drops it in the street.
   const ride = sim?.activity?.kind === 'travel' && sim.activity.trip && !['avion', 'perso', 'metro'].includes(sim.activity.trip.mode) && keyOpen(feats, 'trajet-court') ? sim.activity : null
   const [rideDone, setRideDone] = useState<number | null>(null)
+  // Its loading screen once the Sim is in (the vehicle at the kerb, world3d/open/tripRide); no street seen (the classic view), at once.
+  const [rideIn, setRideIn] = useState<number | null>(null)
+  useEffect(() => {
+    if (!ride) return
+    const t0 = performance.now()
+    const t = setInterval(() => {
+      const since = performance.now() - t0
+      if ((tripRide.active && tripRide.boarded) || (!tripRide.active && since > 2500) || since > 40_000) (setRideIn(ride.start), clearInterval(t))
+    }, 200)
+    return () => clearInterval(t)
+  }, [ride?.start]) // eslint-disable-line react-hooks/exhaustive-deps
   // A ride in the commune, short too: the same loading screen, then set down there (world3d/Walker), the vehicle dropping the Sim.
   const [townRide, setTownRide] = useState<(Taken & { to: string }) | null>(null)
 
@@ -1882,15 +1894,30 @@ export function Play() {
         </>
       )}
       {sharing && <ShareSheet sharing={sharing} onClose={() => shareThis(null)} />}
-      {!overlay && (dropAsk ? <DropRouteAsk from={dropAsk.from} moto={dropAsk.moto} /> : <MotoOffer world={world} sim={sim} commune={commune} act={run} onTaken={keyOpen(feats, 'trajet-court') ? (r) => setTownRide({ ...r, to: whereabouts.way?.to ?? commune.name }) : undefined} />)}
+      {!overlay && (dropAsk ? <DropRouteAsk from={dropAsk.from} moto={dropAsk.moto} /> : <MotoOffer
+                world={world}
+                sim={sim}
+                commune={commune}
+                act={run}
+                onTaken={
+                  keyOpen(feats, 'trajet-court')
+                    ? (r) => {
+                        // It pulls up at the kerb, the Sim gets in (world3d/open/tripDrop), then the loading screen.
+                        const to = whereabouts.way?.to ?? commune.name
+                        let shown = false
+                        const show = () => void (shown || ((shown = true), setTownRide({ ...r, to })))
+                        setDrop({ pickup: true, mode: r.kind === 'taxi' ? 'compteur' : r.kind, fromCity: sim.city, fromCommune: sim.commune, at: performance.now(), onIn: show })
+                        // (No street seen here, the classic view: straight to the loading screen.)
+                        setTimeout(show, 7000)
+                      }
+                    : undefined
+                }
+              />)}
       {/* On a flight: the plane over the clouds (the map is a tap away) */}
       {townRide && (
         <TripLoading
           mode={townRide.kind}
           to={townRide.to}
-          look={sim.look}
-          gender={sim.gender}
-          stage={lifeOf(world, sim).stage?.id}
           color={townRide.color}
           trim={townRide.trim}
           onDone={() => {
@@ -1900,7 +1927,7 @@ export function Play() {
           }}
         />
       )}
-      {ride && rideDone !== ride.start && (() => {
+      {ride && rideDone !== ride.start && rideIn === ride.start && (() => {
         const t = ride.trip!
         const to = world.cities.find((c) => c.id === t.city)?.communes.find((c) => c.id === t.commune)?.name ?? t.commune
         const from = world.cities.find((c) => c.id === t.fromCity)?.communes.find((c) => c.id === t.fromCommune)
@@ -1910,9 +1937,6 @@ export function Play() {
             key={ride.start}
             mode={t.mode}
             to={to}
-            look={sim.look}
-            gender={sim.gender}
-            stage={lifeOf(world, sim).stage?.id}
             color={look.color}
             trim={look.trim}
             onDone={() => {
@@ -3390,8 +3414,8 @@ function WordOfTheDay({ world, gameMinutes }: { world: World; gameMinutes: numbe
  * gbaka (in Abidjan). Picked, it's paid, and the Sim rides it in the street.
  */
 function MotoOffer({ world, sim, commune, act, onTaken }: { world: World; sim: Sim; commune: Commune; act: Act; /** Paid (the update « trajet-court »): the short loading screen instead of the whole ride. */ onTaken?: (r: Taken) => void }) {
-  const { offer, paid, walk } = useMoto()
-  if (!offer || paid || walk) return null
+  const { offer, paid, walk, held } = useMoto()
+  if (!offer || paid || walk || held) return null
   const abidjan = !!world.compteur?.cities.includes(sim.city)
   const woro = abidjan && commune.woro && !commune.woro.none ? commune.woro : null
   const rides: { kind: RideKind; color: string; trim?: string }[] = [
@@ -3401,7 +3425,10 @@ function MotoOffer({ world, sim, commune, act, onTaken }: { world: World; sim: S
     ...(abidjan ? [{ kind: 'gbaka' as const, color: GBAKA, trim: '#00a862' }] : []),
   ]
   const take = async (r: (typeof rides)[number]) => {
-    if (await act(RIDES[r.kind].name, r.kind === 'moto' ? 'bike' : r.kind === 'gbaka' ? 'bus' : 'car-taxi-front', 'transport', () => api.moto(sim.id, offer, r.kind))) (motoPaid(r), onTaken?.(r))
+    if (await act(RIDES[r.kind].name, r.kind === 'moto' ? 'bike' : r.kind === 'gbaka' ? 'bus' : 'car-taxi-front', 'transport', () => api.moto(sim.id, offer, r.kind))) {
+      if (onTaken) (motoHold(), onTaken(r))
+      else motoPaid(r)
+    }
   }
   return (
     <div className="hud animate-up absolute bottom-[calc(7.5rem+env(safe-area-inset-bottom))] left-1/2 z-30 w-[min(400px,calc(100vw-24px))] -translate-x-1/2 rounded-[22px] p-2.5 text-sm font-extrabold">
