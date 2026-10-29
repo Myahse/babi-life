@@ -119,8 +119,8 @@ export function ChoiceSheet({ simId, kind, view, onResult, onDone }: { simId: st
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end bg-[#0f1230]/55 backdrop-blur-[3px] lg:items-center lg:justify-center">
       <div className="sheet animate-up w-full rounded-t-[28px] px-5 pt-5 lg:w-[420px] lg:rounded-[28px]">
-        <div className="font-display text-[22px] font-extrabold">{kind === 'talent' ? 'Quel jouet il attrape ?' : 'Son premier mot ?'}</div>
-        <p className="mt-1 text-[13px] font-bold text-[var(--color-ink-soft)]">{kind === 'talent' ? "Ce qu'il choisit, l'enfant le gardera : un talent pour toute la vie." : 'Toute la famille va le répéter, et il le dira encore longtemps. On ne choisit qu’une fois.'}</p>
+        <div className="font-display text-[22px] font-extrabold">{kind === 'talent' ? 'Quel jouet attraper ?' : 'Son premier mot ?'}</div>
+        <p className="mt-1 text-[13px] font-bold text-[var(--color-ink-soft)]">{kind === 'talent' ? "Ce qu'il choisit, l'enfant le gardera : un talent pour toute la vie." : 'Toute la famille va le répéter, et on l’entendra encore longtemps. On ne choisit qu’une fois.'}</p>
         <div className="mt-4 grid grid-cols-2 gap-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
           {kind === 'talent'
             ? view.talents.map((t) => {
