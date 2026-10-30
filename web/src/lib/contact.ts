@@ -8,11 +8,11 @@ export const CONTACT = {
   whatsapp: '',
   email: '',
   /** Handles without the @. */
-  tiktok: '',
+  tiktok: 'babi.life.sim',
   x: '',
   instagram: '',
   /** The page's address part: « babilife » for facebook.com/babilife. */
-  facebook: '',
+  facebook: 'lifeinBABI',
 }
 
 export type ContactLink = { id: keyof typeof CONTACT; label: string; href: string; shown: string }
