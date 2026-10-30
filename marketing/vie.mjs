@@ -1,10 +1,12 @@
-// « Ta vie dans Babi Life, de bébé à adulte » (about 75 s, 1080 × 1920, 30 images a second): the real
+// « Ta vie dans Babi Life, de bébé à adulte » (51.5 s, 1080 × 1920, 30 images a second): the real
 // game filmed being played, on a machine too slow to play it (clock.mjs stops the page's clock: each
-// frame is moved on by hand, then taken). A perso made for each take on a local API: the baptism, the
-// baby at home, the biberon picked in « Que faire ? », coucou-caché played, the crèche; then grown (the
-// testers' toolbox) to a child at school, a teen with its phone, the Boutique's « grandir tout de
-// suite », and the adult in the street of Abidjan. Each take's caption is drawn in the page over the
-// game; the end card after; the sound (beat.py, FILM=vie) and Awa's voice (out/voix-vie.mp3) under it.
+// frame is moved on by hand, then taken). A perso made for each take on a local API, its day put at ten
+// in the morning: the baptism, the baby walking into the house, out in its pram, the biberon played (its
+// arrows, then its game), coucou-caché, the crèche; two hours gone by and it's 3; then grown (the testers'
+// toolbox) to a child answering the maître, a teen texting maman on Gbairai, the Boutique's « grandir tout
+// de suite », the foot de rue (the lab), and the adult: a taxi to the Plateau, the garba at the maquis, the
+// lot to build on. Each take's caption is drawn in the page over the game, clear of its own buttons; the end
+// card after; the sound (beat.py, FILM=vie) and Awa's voice (out/voix-vie.mp3) under it.
 // The script: marketing/scripts/vie.md; each take as long as Awa's sentences on it (out/voix-vie.mp3, 51 s).
 //
 // FILM=sortie: « Babi Life est sorti ! » (57 s, marketing/scripts/c-est-sorti.md, voice out/voix-sortie-officielle.mp3),
@@ -33,6 +35,8 @@ const API = process.env.API ?? 'http://localhost:8099/api/v1'
 const GAME = process.env.GAME ?? 'http://localhost:5175'
 const DB = process.env.DATABASE_URL ?? 'postgres://postgres:pg@localhost:5432/babi'
 const PROBE = !!process.env.PROBE
+// (PROBE=10: a frame in ten, rather than one a second.)
+const PROBE_EVERY = Number(process.env.PROBE) > 1 ? Number(process.env.PROBE) : 30
 const ONLY = process.env.ONLY?.split(',')
 const FILM = process.env.FILM ?? 'vie'
 const FRAMES = path.join(OUT, 'video-frames', FILM)
@@ -58,6 +62,8 @@ async function koffi({ stage = 'bebe', baptised = true, at = [5.348, -3.987], no
   const made = await call(token, '/sims', 'POST', { firstName: name, lastName: 'Koné', gender: 'homme', look: LOOK, traits: ['ambianceur', 'sportif'], aspiration: 'ambiance', lat: at[0], lng: at[1] })
   const sim = made.sim ?? made
   psql(`UPDATE sims SET family = 'poignon', baptised = ${baptised} WHERE id = '${sim.id}'`)
+  // Its day at ten in the morning (the light, the school, what's open), its age kept.
+  psql(`UPDATE sims SET born_at = born_at + ((600 - game_minutes % 1440) + 1440) % 1440, game_minutes = game_minutes + ((600 - game_minutes % 1440) + 1440) % 1440 WHERE id = '${sim.id}'`)
   if (stage !== 'bebe') await call(token, `/sims/${sim.id}/tester`, 'POST', { action: 'age', stage })
   await call(token, `/sims/${sim.id}/tester`, 'POST', { action: 'needs' })
   if (apps) await call(token, `/sims/${sim.id}/tester`, 'POST', { action: 'apps' }).catch(() => undefined)
@@ -69,18 +75,27 @@ async function koffi({ stage = 'bebe', baptised = true, at = [5.348, -3.987], no
 
 /** Planted in the page: a component's hooks (its state and refs, in order) found up from one of its elements, one of its states set; where a point of a little 3D table (Table3d: its camera) is on the screen. */
 const PAGE_HELPERS = `(() => {
+  // (Found down from the page's root as it now stands: an element's own fiber can be the old copy React keeps.)
+  window.__fiber = (name) => {
+    const root = document.getElementById('root')
+    const key = root && Object.keys(root).find((k) => k.startsWith('__reactContainer$'))
+    const stack = key ? [root[key].stateNode.current] : []
+    while (stack.length) {
+      const f = stack.pop()
+      if (f.type?.name === name) return f
+      if (f.sibling) stack.push(f.sibling)
+      if (f.child) stack.push(f.child)
+    }
+    return null
+  }
   window.__hooks = (el, name) => {
-    const key = el && Object.keys(el).find((k) => k.startsWith('__reactFiber$'))
-    let f = key && el[key]
-    while (f && f.type?.name !== name) f = f.return
+    const f = el ? window.__fiber(name) : null
     const out = []
     for (let h = f?.memoizedState; h; h = h.next) out.push(h.memoizedState)
     return out
   }
   window.__setState = (el, name, i, v) => {
-    const key = el && Object.keys(el).find((k) => k.startsWith('__reactFiber$'))
-    let f = key && el[key]
-    while (f && f.type?.name !== name) f = f.return
+    const f = el ? window.__fiber(name) : null
     let h = f?.memoizedState
     for (let k = 0; k < i && h; k++) h = h.next
     h?.queue?.dispatch(v)
@@ -101,18 +116,20 @@ const PAGE_HELPERS = `(() => {
 const seen = async () => ((await call(null, '/features')).new ?? []).map((n) => n.id)
 
 /** The game on a phone's screen (1080 × 1920), the perso's session in it, its clock stopped. */
-async function open(b, k, query = '', route = '/jeu', mouse = false, geo = false) {
+async function open(b, k, query = '', route = '/jeu', mouse = false, geo = false, view = '') {
   // (A mouse rather than a touch screen when the take turns or pulls back the camera: the wheel and the drag are the mouse's.)
   const ctx = await b.newContext({ viewport: { width: 405, height: 720 }, deviceScaleFactor: PROBE ? 1 : 1080 / 405, ...(mouse ? {} : { isMobile: true, hasTouch: true }), ...(geo ? { geolocation: { latitude: 5.348, longitude: -3.987 }, permissions: ['geolocation'] } : {}), locale: 'fr-FR' })
   await ctx.addInitScript(
-    ([token, user, seen]) => {
+    ([token, user, seen, view]) => {
       localStorage.setItem('ivoire-life-session', JSON.stringify({ state: { token, user }, version: 0 }))
       localStorage.setItem('babi-testeur', '1')
       for (const key of ['babi.firstSteps', 'babi.tuto', 'babi.tuto.adulte', 'babi.arrivee']) localStorage.setItem(key, 'done')
       localStorage.setItem('babi.featuresSeen', JSON.stringify(seen))
       localStorage.setItem('babi.pushAsked', String(Date.now()))
+      // The street's camera: close behind (« pres »), at the shoulder, or from above (« haut »).
+      if (view) localStorage.setItem('babi.view', view)
     },
-    [k.token, k.user, await seen()],
+    [k.token, k.user, await seen(), view],
   )
   await ctx.addInitScript(STOPPED_CLOCK)
   await ctx.addInitScript(PAGE_HELPERS)
@@ -123,9 +140,17 @@ async function open(b, k, query = '', route = '/jeu', mouse = false, geo = false
   await page.goto(`${GAME}${route}?hour=10${query}`)
   return { ctx, page }
 }
-const tick = (page, n = 1) => page.evaluate((n) => {
-  for (let i = 0; i < n; i++) window.__advance(1000 / 30)
-}, n)
+const tick = (page, n = 1) =>
+  page
+    .evaluate((n) => {
+      for (let i = 0; i < n; i++) window.__advance(1000 / 30)
+    }, n)
+    // (The dev server reloading the page under it: a moment for it to come back.)
+    .catch(async (e) => {
+      if (!/context was destroyed|__advance/.test(String(e))) throw e
+      console.error('page reloaded')
+      await sleep(3000)
+    })
 /** Frames on while the game loads: until the street has come (its tiles come in real time), then `frames` more. */
 async function warm(page, frames) {
   await sleep(3000)
@@ -140,27 +165,29 @@ async function warm(page, frames) {
   }
 }
 
-/** The take's caption, drawn over the game: the stage of life at the top, what Awa says at the bottom. */
-function caption(page, stage, text, big = '') {
+/** The take's caption, drawn over the game: the stage of life and what Awa says, at the top (or at `y`: a top in px, 'bottom' or 'bottom:<px>'); a big title in the middle. */
+function caption(page, stage, text, big = '', y = stage ? 96 : 142) {
   return page.evaluate(
-    ([stage, text, fonts, big]) => {
+    ([stage, text, fonts, big, y]) => {
       let el = document.getElementById('vie-cap')
       if (!el) {
         const st = document.createElement('style')
         st.textContent = `${fonts}
 #vie-cap{position:fixed;inset:0;z-index:2147483647;pointer-events:none;font-family:'Nunito',sans-serif}
-#vie-cap .st{position:absolute;top:96px;left:50%;transform:translateX(-50%);background:#ff7a00;color:#fff;font-family:'Baloo 2';font-weight:800;font-size:22px;padding:4px 18px;border-radius:999px;box-shadow:0 6px 18px -6px rgba(0,0,0,.5);white-space:nowrap}
+#vie-cap .box{position:absolute;left:16px;right:16px;display:flex;flex-direction:column;align-items:center;gap:8px}
+#vie-cap .st{background:#ff7a00;color:#fff;font-family:'Baloo 2';font-weight:800;font-size:22px;padding:4px 18px;border-radius:999px;box-shadow:0 6px 18px -6px rgba(0,0,0,.5);white-space:nowrap}
 #vie-cap .big{position:absolute;left:0;right:0;top:36%;text-align:center;color:#fff;font-family:'Baloo 2';font-weight:800;font-size:62px;line-height:.95;text-shadow:0 6px 0 rgba(0,0,0,.35),0 0 30px rgba(0,0,0,.4)}
 #vie-cap .big em{font-style:normal;color:#ff7a00}
-#vie-cap .tx{position:absolute;left:16px;right:16px;top:142px;background:rgba(15,18,48,.86);color:#fff;font-weight:800;font-size:19px;line-height:1.25;text-align:center;padding:10px 14px;border-radius:18px}`
+#vie-cap .tx{align-self:stretch;background:rgba(15,18,48,.86);color:#fff;font-weight:800;font-size:19px;line-height:1.25;text-align:center;padding:10px 14px;border-radius:18px}`
         document.head.appendChild(st)
         el = document.createElement('div')
         el.id = 'vie-cap'
         document.body.appendChild(el)
       }
-      el.innerHTML = `${stage ? `<div class="st">${stage}</div>` : ''}${text ? `<div class="tx">${text}</div>` : ''}${big ? `<div class="big">${big}</div>` : ''}`
+      const at = String(y).startsWith('bottom') ? `bottom:${String(y).split(':')[1] ?? 22}px` : `top:${y}px`
+      el.innerHTML = `${stage || text ? `<div class="box" style="${at}">${stage ? `<div class="st">${stage}</div>` : ''}${text ? `<div class="tx">${text}</div>` : ''}</div>` : ''}${big ? `<div class="big">${big}</div>` : ''}`
     },
-    [stage, text, fontFaces(), big],
+    [stage, text, fontFaces(), big, y],
   )
 }
 
@@ -173,6 +200,35 @@ async function shoot(page, dir, i) {
       if (k >= 2) throw e
     }
   }
+}
+
+/** The activity bar's clock (« Encore 5 min · fin à 10:05 » and its bar), hidden: what's waited for, not played (the crèche, the school day's start, a ride). */
+const hideTimer = (page) =>
+  page.evaluate(() => {
+    for (const el of document.querySelectorAll('.card div')) {
+      if (!/^(Encore .*fin à|Le chauffeur arrive|Il t’attend|Tu montes)/.test(el.textContent ?? '') || el.children.length) continue
+      el.style.visibility = 'hidden'
+      if (el.previousElementSibling?.classList.contains('overflow-hidden')) el.previousElementSibling.style.visibility = 'hidden'
+    }
+  })
+
+/** In the house: the camera kept over the perso as it walks about (above and behind, the walls cut as the game cuts them). */
+const homeFollow = (page) =>
+  page.evaluate(() => {
+    const hm = globalThis.__home
+    let me
+    hm?.scene.traverse((o) => o.name === 'me' && (me = o))
+    if (!me) return
+    const v = me.getWorldPosition(me.position.clone())
+    hm.controls.target.set(v.x, 0.6, v.z)
+    hm.camera.position.set(v.x + 1.4, 4.6, v.z + 2.6)
+    hm.controls.update()
+  })
+
+/** Come into the house: the perso walked in from the gate (past the fence), the camera with it. */
+async function walkIn(page, frames = 90) {
+  await page.keyboard.down('ArrowUp')
+  for (let i = 0; i < frames; i++) (await homeFollow(page), await tick(page), i % 20 === 0 && (await sleep(100)))
 }
 
 /** Inside the home: the camera pulled back (the wheel), so the room, the baby and maman are seen whole, from above as the game shows it. */
@@ -190,7 +246,7 @@ async function film(page, dir, frames, at = {}, each) {
     if (at[i]) await at[i]().catch((e) => console.error(path.basename(dir), i, String(e).slice(0, 160)))
     if (each) await each(i).catch(() => undefined)
     await tick(page)
-    if (!PROBE || i % 30 === 0 || i === frames - 1) await shoot(page, dir, i)
+    if (!PROBE || i % PROBE_EVERY === 0 || i === frames - 1) await shoot(page, dir, i)
   }
 }
 
@@ -209,42 +265,117 @@ const click = (page, name) => () => tap(page.getByRole('button', { name }))
 
 /* ---------- The takes ---------- */
 
+/** A home gesture's arrows (GestesDefi: each step's combination, pressed one a few frames apart), then its own game held and let go in the green (the « tenir » engine). */
+function homeGeste(p) {
+  let last = -99
+  let held = false
+  return async (i) => {
+    const dir = await p.evaluate(() => {
+      const [steps, k, got] = window.__hooks(document.body, 'GestesDefi')
+      return steps?.[k]?.combo[got] ?? null
+    })
+    if (dir) {
+      if (i - last >= 4) (last = i), await press(p, `Arrow${dir[0].toUpperCase()}${dir.slice(1)}`)
+      return
+    }
+    // The game: held, let go when it says so.
+    const label = await p.evaluate(() => [...document.querySelectorAll('.z-50 button')].map((b) => b.textContent?.trim() ?? '').find((t) => /\(tiens\)|^Lâche|^Trop|…$/.test(t)) ?? null)
+    if (!label) return
+    const ev = (type) =>
+      p.evaluate((type) => {
+        const b = [...document.querySelectorAll('.z-50 button')].find((b) => /\(tiens\)|^Lâche|^Trop|…$/.test(b.textContent?.trim() ?? ''))
+        b?.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 1, isPrimary: true, pointerType: 'touch' }))
+      }, type)
+    if (!held && /\(tiens\)/.test(label) && i - last >= 8) (held = true), await ev('pointerdown')
+    else if (held && /^Lâche/.test(label)) (held = false), (last = i), await ev('pointerup')
+  }
+}
+
+/** The maître's question: the right answer touched (the game's own, read from the lesson), a moment after it's asked. */
+function rightAnswer(p) {
+  let asked = -1
+  let seen = -1
+  return async (i) => {
+    const s = await p.evaluate(() => {
+      const el = [...document.querySelectorAll('.z-50 button.tile')][0]
+      if (!el) return null
+      const h = window.__hooks(el, 'EcoleDefi')
+      const qs = h[0]?.[0]
+      return qs ? { k: h[1], ok: qs[h[1]].ok, chose: h[3] } : null
+    })
+    if (!s || s.chose !== null) return
+    if (s.k !== seen) (seen = s.k), (asked = i)
+    if (i - asked === 14) await p.evaluate((ok) => document.querySelectorAll('.z-50 button.tile')[ok]?.click(), s.ok)
+  }
+}
+
+/** Typed into the chat a few letters a frame, then sent. */
+function typeAndSend(p, text, from) {
+  return async (i) => {
+    const n = Math.min(text.length, (i - from) * 3)
+    if (i < from || n <= 0) return
+    const box = p.getByPlaceholder('Message')
+    if (n < text.length || i === from + Math.ceil(text.length / 3)) await box.fill(text.slice(0, n)).catch(() => undefined)
+    if (i === from + Math.ceil(text.length / 3) + 4) await tap(p.getByRole('button', { name: 'Envoyer' }))
+  }
+}
+
 const BEBE = 'BÉBÉ'
+// « De bébé à adulte », on Awa's voice (out/voix-vie.mp3, 51 s): each take as long as its sentence (measured
+// with Whisper); the end card over the last line.
 const VIE = [
   {
     id: 'bapteme',
-    seconds: 5.8,
+    seconds: 3.2,
     make: () => koffi({ baptised: false }),
     warm: 160,
     stage: BEBE,
-    text: 'Tu viens d’arriver dans Babi Life… et tu es un bébé. Tu te demandes sûrement pourquoi ?',
-    at: (p) => ({ 60: click(p, 'Suite'), 125: click(p, 'Suite') }),
+    text: 'Tu viens d’arriver dans Babi Life… et tu es un bébé.',
   },
   {
     id: 'maison',
-    inside: true,
-    seconds: 6,
-    make: async () => {
-      const k = await koffi()
-      await call(k.token, `/sims/${k.sim.id}/interact`, 'POST', { placeId: 'home', interactionId: 'calin' })
-      return k
-    },
-    warm: 90,
+    seconds: 4.4,
+    // Come into the house (nothing being done): the baby toddles in, the camera over it.
+    make: () => koffi(),
+    query: '&place=home',
+    warm: 200,
+    before: walkIn,
+    settle: 0,
     stage: BEBE,
-    text: 'Ce n’est pas un bug : c’est voulu. Comme dans la vraie vie, tout commence là, et ce que tu vis bébé compte pour la suite.',
+    text: 'Pourquoi tu commences bébé ? Ce n’est pas un bug : c’est voulu.',
+    at: (p) => ({ 40: () => p.keyboard.up('ArrowUp') }),
+    each: (p) => () => homeFollow(p),
+  },
+  {
+    id: 'poussette',
+    seconds: 4.2,
+    make: () => koffi(),
+    warm: 220,
+    stage: BEBE,
+    text: 'Comme dans la vraie vie, tout commence là, et ce que tu vis bébé compte pour la suite.',
+    // Out in the pram with maman, along the street (stopped before the wall ahead), the camera turned round them.
+    turn: 0.5,
+    at: (p) => ({ 2: () => p.keyboard.down('ArrowUp'), 50: () => p.keyboard.up('ArrowUp') }),
   },
   {
     id: 'biberon',
-    inside: true,
-    seconds: 4.44,
+    seconds: 4.4,
+    // The biberon played: its arrows (the baby takes it, drinks, the burp), then its game (hold to drink, let go in the green).
     make: async () => {
       const k = await koffi()
       await call(k.token, `/sims/${k.sim.id}/interact`, 'POST', { placeId: 'home', interactionId: 'biberon' })
       return k
     },
-    warm: 90,
-    stage: BEBE,
+    warm: 200,
     text: 'Il a faim ? Biberon ! Sommeil ? Au berceau. Il pleure ? Un câlin.',
+    // (Over the game's own card.)
+    capY: 40,
+    at: (p) => ({ 4: click(p, /C.est parti/) }),
+    // The house seen from a little above the baby and maman (not straight down from the ceiling).
+    each: (p) => {
+      const play = homeGeste(p)
+      return async (i) => (await homeFollow(p), await play(i))
+    },
   },
   {
     id: 'coucou',
@@ -254,10 +385,11 @@ const VIE = [
       await call(k.token, `/sims/${k.sim.id}/interact`, 'POST', { placeId: 'home', interactionId: 'coucou' })
       return k
     },
-    warm: 160,
+    warm: 200,
     stage: BEBE,
-    text: 'Il y a des petits jeux : coucou-caché, les cubes, les premiers pas…',
-    at: (p) => ({ 5: click(p, /coucou-caché/i), 30: click(p, /C.est parti/) }),
+    text: 'Des petits jeux : coucou-caché, les cubes, les premiers pas…',
+    // (The baby's games wait for their button: no clock on them.)
+    at: (p) => ({ 2: click(p, /coucou-caché/i), 16: click(p, /C.est parti/) }),
     // Laughing a moment after maman's hands open (« Coucou ! » on the screen).
     each: (p) => {
       let seenAt = -1
@@ -271,7 +403,7 @@ const VIE = [
   },
   {
     id: 'creche',
-    seconds: 2.32,
+    seconds: 2.4,
     make: async () => {
       const k = await koffi()
       await call(k.token, `/sims/${k.sim.id}/interact`, 'POST', { placeId: 'home', interactionId: 'creche' })
@@ -279,11 +411,32 @@ const VIE = [
     },
     warm: 200,
     stage: BEBE,
-    text: 'La crèche, avec les bébés des autres joueurs.',
+    text: 'Et la crèche, avec les bébés des autres joueurs.',
+    each: (p) => () => hideTimer(p),
+  },
+  {
+    id: 'grandir',
+    seconds: 2.4,
+    // Two hours of play gone by (its birth put back two hours): the game sees it as soon as it asks again, and the baby is a child.
+    make: () => koffi(),
+    query: '&place=home',
+    warm: 200,
+    before: async (p) => (await walkIn(p, 110), await p.keyboard.up('ArrowUp')),
+    settle: 0,
+    stage: BEBE,
+    text: 'Deux heures de jeu, et hop…',
+    each: (p) => () => homeFollow(p),
+    at: (p, k) => ({
+      10: async () => {
+        psql(`UPDATE sims SET born_at = game_minutes - 121 WHERE id = '${k.sim.id}'`)
+        await p.evaluate((sim) => window.dispatchEvent(new CustomEvent('babi:sim-changed', { detail: sim })), k.sim.id)
+      },
+      30: () => caption(p, 'ENFANT · 3 ANS', 'Deux heures de jeu, et hop…', 'tu as<br><em>3 ans !</em>', 96),
+    }),
   },
   {
     id: 'ecole',
-    seconds: 6.84,
+    seconds: 4.2,
     // School is in the morning: the day's activity started as « Jouer dans la cour », then made the school day.
     make: async () => {
       const k = await koffi({ stage: 'enfant' })
@@ -292,50 +445,110 @@ const VIE = [
       return k
     },
     warm: 200,
-    stage: 'ENFANT · 3 ANS',
-    text: 'Deux heures de jeu, et hop : tu as 3 ans ! Enfant, c’est l’école : la classe, la récré, le maître qui pose des questions.',
+    stage: 'ENFANT',
+    text: 'Enfant, c’est l’école : la classe, la récré, le maître qui te pose des questions.',
+    // (Over the classroom, then under the blackboard and its answers.)
     at: (p) => ({
-      60: click(p, /Lever la main/),
-      95: click(p, /C.est parti/),
-      // An answer touched, the maître's question on the board (whichever it is).
-      150: () =>
-        p.evaluate(() => {
-          const answers = [...document.querySelectorAll('button')].filter((b) => {
-            const r = b.getBoundingClientRect()
-            return r.height > 0 && r.top > 250 && r.top < 620 && b.innerText.trim().length > 2 && !/Lever|Phone|Carte|Voir|Rire|parti/.test(b.innerText)
-          })
-          ;(answers[1] ?? answers[0])?.click()
-        }),
+      30: click(p, /Lever la main/),
+      46: async () => (await click(p, /C.est parti/)(), await caption(p, 'ENFANT', 'Enfant, c’est l’école : la classe, la récré, le maître qui te pose des questions.', '', 'bottom')),
     }),
+    each: (p) => {
+      const answer = rightAnswer(p)
+      return async (i) => (await hideTimer(p), await answer(i))
+    },
   },
   {
     id: 'ado',
-    seconds: 3.8,
+    seconds: 4,
+    // The phone on Gbairai: maman's chat, a message written to her, her answer coming.
     make: () => koffi({ stage: 'ado' }),
+    query: '&app=gbairai',
     warm: 200,
     stage: 'ADO · 12 ANS',
-    text: 'Ado, tu as ton premier téléphone : Gbairai pour causer avec tes amis.',
-    at: (p) => ({ 8: () => tap(p.locator('[data-tour="phone"]')), 50: click(p, /^Gbairai/) }),
+    text: 'Ado, ton premier téléphone : Gbairai pour causer.',
+    // (Low, over the empty end of the chat: clear of its messages and of the box where it's typed.)
+    capY: 'bottom:70',
+    // Maman's chat opened before the take, so the game asks for her answer again (every 4 s) just after it's sent.
+    before: (p) => tap(p.getByRole('button', { name: /maman/i })),
+    settle: 88,
+    each: (p) => typeAndSend(p, 'Maman, je rentre après le foot !', 2),
   },
   {
     id: 'boutique',
-    seconds: 7.56,
+    seconds: 6,
     make: () => koffi(),
     query: '&app=boutique',
     warm: 200,
     stage: 'PRESSÉ·E ?',
-    text: 'Tu ne veux pas attendre ? Va dans la Boutique : enfant, ado ou adulte tout de suite. Tu paies une fois, et tu as accès à tout le jeu.',
-    at: (p) => ({ 10: click(p, /18 ans ou plus/), 50: () => p.getByText(/tout de suite/).first().evaluate((el) => el.scrollIntoView({ block: 'center' })) }),
+    text: 'Va dans la Boutique : enfant, ado ou adulte tout de suite. Tu paies une fois.',
+    capY: 'bottom',
+    at: (p) => ({
+      6: click(p, /18 ans ou plus/),
+      // Down the shop, slowly: growing up at once, then the Djai.
+      ...Object.fromEntries([...Array(60)].map((_, k) => [70 + k, () => p.evaluate(() => [...document.querySelectorAll('.overflow-y-auto')].find((e) => e.textContent?.includes('Boutique'))?.scrollBy(0, 3))])),
+    }),
   },
   {
-    id: 'adulte',
-    seconds: 5.24,
-    make: () => koffi({ stage: 'adulte' }),
-    warm: 260,
+    id: 'foot',
+    seconds: 1.6,
+    // « … accès à tout le jeu » : the foot de rue (the lab), the Gbê and the goal (the end of the moves' take).
+    filmed: 4.8,
+    keep: [[86, 134]],
+    make: () => koffi({ noSim: true }),
+    route: '/city.html',
+    query: '&view=footrue',
+    warm: 120,
+    text: '… et tu as accès à tout le jeu.',
+    before: footStart,
+    settle: 0,
+    at: (p) => ({ 0: () => p.keyboard.down('ArrowUp'), 140: () => p.keyboard.up('ArrowUp') }),
+    each: footMoves,
+  },
+  {
+    id: 'taxi',
+    seconds: 3.2,
+    // A taxi to the Plateau: it pulls up at the kerb, the perso gets in, the loading screen, then set down there.
+    filmed: 16,
+    // (Its frames as they fell on the last run: pulled up by the perso, the loading screen, out at the Plateau's kerb.)
+    keep: [[84, 124], [190, 206], [324, 364]],
+    make: async () => {
+      const k = await koffi({ stage: 'adulte' })
+      await call(k.token, `/sims/${k.sim.id}/travel`, 'POST', { city: 'abidjan', commune: 'plateau', app: 'compteur' })
+      return k
+    },
+    // (Filmed as soon as the street is there: the taxi pulling up comes at once.)
+    warm: 0,
     stage: 'ADULTE · 18 ANS',
-    text: 'Adulte, c’est la vraie vie d’Abidjan : ton boulot, ton argent, tes sorties, ta maison à construire.',
-    // Walking up the street, the stick held forward.
-    at: (p) => ({ 5: () => p.keyboard.down('ArrowUp'), 150: () => p.keyboard.up('ArrowUp') }),
+    text: 'Adulte, c’est la vraie vie d’Abidjan : ton boulot, ton argent…',
+    each: (p) => () => hideTimer(p),
+  },
+  {
+    id: 'sortie',
+    seconds: 0.8,
+    // At the maquis, the garba: the hand fishes out the called piece.
+    make: async () => {
+      const k = await koffi({ stage: 'adulte' })
+      await call(k.token, `/sims/${k.sim.id}/interact`, 'POST', { placeId: 'cocody-danga', interactionId: 'eat-garba' })
+      return k
+    },
+    warm: 200,
+    before: async (p) => {
+      await click(p, /C.est parti/)()
+      await tick(p, 20)
+    },
+    settle: 0,
+    text: '… tes sorties…',
+    each: garba,
+  },
+  {
+    id: 'construire',
+    seconds: 1.2,
+    // At home: « Modifier la maison », the house to build.
+    make: () => koffi({ stage: 'adulte' }),
+    query: '&place=home',
+    warm: 200,
+    text: '… ta maison à construire.',
+    at: (p) => ({ 3: click(p, /Modifier la maison/) }),
   },
 ]
 
@@ -453,6 +666,19 @@ function shower(p) {
 }
 
 /* ---------- Le foot de rue (update « foot-de-rue »), in the lab: the perso's moves at its keys ---------- */
+
+/** The ball at the perso's feet, the other side's men in front, coming. */
+function footStart(p) {
+  return p.evaluate(() => {
+    const g = globalThis.streetMatch
+    const me = g.ps[g.me]
+    me.face = Math.PI / 2
+    g.ball.owner = me.id
+    g.ball.x = me.x + 0.4
+    g.ball.z = me.z
+    g.ps.filter((q) => q.team !== me.team && !q.keeper && !q.out).forEach((q, k) => Object.assign(q, { x: me.x + 5 + k * 4.5, z: me.z + (k % 2 ? 1.5 : -0.3), vx: 0, vz: 0, act: 'none' }))
+  })
+}
 
 /**
  * The ball given to the perso, a man coming at it: a petit pont (I), then a sombrero (O) on the next
@@ -664,17 +890,7 @@ const SORTIE = [
     query: '&view=footrue',
     warm: 120,
     text: 'Au quartier, le foot de rue : petit pont, sombrero… et la frappe Gbê !',
-    // The ball at the perso's feet, the other side's men in front, coming.
-    before: (p) =>
-      p.evaluate(() => {
-        const g = globalThis.streetMatch
-        const me = g.ps[g.me]
-        me.face = Math.PI / 2
-        g.ball.owner = me.id
-        g.ball.x = me.x + 0.4
-        g.ball.z = me.z
-        g.ps.filter((q) => q.team !== me.team && !q.keeper && !q.out).forEach((q, k) => Object.assign(q, { x: me.x + 5 + k * 4.5, z: me.z + (k % 2 ? 1.5 : -0.3), vx: 0, vz: 0, act: 'none' }))
-      }),
+    before: footStart,
     settle: 0,
     at: (p) => ({ 0: () => p.keyboard.down('ArrowUp'), 140: () => p.keyboard.up('ArrowUp') }),
     each: footMoves,
@@ -797,7 +1013,7 @@ for (const t of TAKES) {
   if (ONLY && !ONLY.includes(t.id)) continue
   const started = Date.now()
   const k = await t.make()
-  const { ctx, page } = await open(b, k, t.query ?? '', t.route, !!(t.zoom || t.turn), t.geo)
+  const { ctx, page } = await open(b, k, t.query ?? '', t.route, !!(t.zoom || t.turn), t.geo, t.view)
   await warm(page, t.warm)
   if (t.before) {
     await t.before(page).catch((e) => console.error(t.id, 'before', String(e).slice(0, 160)))
@@ -811,12 +1027,20 @@ for (const t of TAKES) {
   }
   const stopLive = t.live ? await t.live(page).catch((e) => (console.error(t.id, 'live', String(e).slice(0, 160)), null)) : null
   if (stopLive) for (let i = 0; i < 40; i++) (await tick(page), await sleep(100))
-  await caption(page, t.stage, t.text, t.big)
+  await caption(page, t.stage, t.text, t.big, t.capY ?? (t.stage ? 96 : 142))
   // The camera turned slowly while it's taken (a drag across), when the take asks for it.
   if (t.turn) (await page.mouse.move(150, 300), await page.mouse.down())
   const turn = t.turn ? async (i) => page.mouse.move(150 + i * t.turn, 300) : undefined
-  const each = t.each?.(page)
-  await film(page, path.join(FRAMES, t.id), Math.round(t.seconds * FPS), t.at?.(page) ?? {}, each || turn ? async (i) => (await each?.(i), await turn?.(i)) : undefined)
+  const each = t.each?.(page, k)
+  const dir = path.join(FRAMES, t.id)
+  await film(page, dir, Math.round((t.filmed ?? t.seconds) * FPS), t.at?.(page, k) ?? {}, each || turn ? async (i) => (await each?.(i), await turn?.(i)) : undefined)
+  // A take filmed longer than it's shown: only its kept stretches, one after the other.
+  if (t.keep && !PROBE) {
+    const kept = t.keep.flatMap(([a, b]) => [...Array(b - a)].map((_, j) => a + j))
+    kept.forEach((f, j) => fs.renameSync(path.join(dir, `${String(f).padStart(5, '0')}.jpg`), path.join(dir, `k${String(j).padStart(5, '0')}.jpg`)))
+    for (const f of fs.readdirSync(dir)) if (!f.startsWith('k')) fs.rmSync(path.join(dir, f))
+    for (const f of fs.readdirSync(dir)) fs.renameSync(path.join(dir, f), path.join(dir, f.slice(1)))
+  }
   if (t.turn) await page.mouse.up()
   stopLive?.()
   await ctx.close()
