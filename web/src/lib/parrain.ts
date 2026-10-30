@@ -33,9 +33,9 @@ export function inviteLink(code: string) {
   return `${origin}/?p=${code}`
 }
 
-// Come by a link: the code kept (the first one: a later link doesn't take its place).
-if (typeof location !== 'undefined') {
-  const p = new URLSearchParams(location.search).get('p')?.trim().toLowerCase()
+/** Come by a link (its `?p=code`): the code kept (the first one: a later link doesn't take its place). */
+export function keepParrain(search: string) {
+  const p = new URLSearchParams(search).get('p')?.trim().toLowerCase()
   if (p && CODE.test(p) && !parrainCode()) {
     try {
       localStorage.setItem(KEY, p)
@@ -44,3 +44,5 @@ if (typeof location !== 'undefined') {
     }
   }
 }
+
+if (typeof location !== 'undefined') keepParrain(location.search)

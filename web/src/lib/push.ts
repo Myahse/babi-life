@@ -48,7 +48,8 @@ export async function pushState(): Promise<PushState> {
       const r = (await nativeNotifications('status')) as string
       return r === 'granted' ? 'on' : r === 'denied' ? 'denied' : 'off'
     } catch {
-      return 'unsupported'
+      // (Not the browser's diagnostics: the app always has its own notifications; « Activer » asks again.)
+      return 'off'
     }
   }
   if (!webSupported()) return isIOS() && !standalone() ? 'install' : 'unsupported'

@@ -15,6 +15,12 @@ const configure = () => {
   GoogleSignin.configure({ webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID })
 }
 
+// A notification while the game is open: shown as when it's closed (its banner, its picture: Firebase's
+// notification.image, which expo-notifications draws big), not kept quiet as Android would.
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }),
+})
+
 /** In the Babi Life app: always, here. */
 export const inApp = () => true
 

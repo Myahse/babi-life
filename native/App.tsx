@@ -1,7 +1,7 @@
 // The browser's world (window, document, localStorage, fetch's page address…) before any game code reads it.
 import './src/dom/globals'
 import { useEffect, useState, useSyncExternalStore, type ComponentType } from 'react'
-import { BackHandler, StyleSheet, View } from 'react-native'
+import { BackHandler, Linking, StyleSheet, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import * as SplashScreen from 'expo-splash-screen'
 import * as Font from 'expo-font'
@@ -55,12 +55,17 @@ export default function Root() {
 
   useEffect(() => {
     let live = true
+    let linked: { remove: () => void } | undefined
     ;(async () => {
       // The saved session and settings first: the game's stores read them as they're made.
       await Promise.all([loadStorage(), Font.loadAsync(FONTS), paintFonts(PAINT).catch(() => undefined)])
       // (After the storage: the game's modules read what's saved as they load.)
-      const [{ App }, { OfflineBanner }, { startClockSync }, { Onboarding, onboarded }, portrait] = await Promise.all([import('@web/App'), import('@web/components/InstallButton'), import('@web/lib/worldClock'), import('./src/Onboarding'), import('@web/avatar/portrait')])
+      const [{ App }, { OfflineBanner }, { startClockSync }, { Onboarding, onboarded }, portrait, { keepParrain }] = await Promise.all([import('@web/App'), import('@web/components/InstallButton'), import('@web/lib/worldClock'), import('./src/Onboarding'), import('@web/avatar/portrait'), import('@web/lib/parrain')])
       startClockSync()
+      // Opened by a friend's link (« babilife://?p=code »): its code kept for the sign-up, as the site keeps « lifeinbabi.com/?p=code »'s.
+      const keep = (url?: string | null) => url && keepParrain(url.includes('?') ? url.slice(url.indexOf('?')) : '')
+      keep(await Linking.getInitialURL().catch(() => null))
+      linked = Linking.addEventListener('url', (e) => keep(e.url))
       // (The Sims' pictures are drawn in a GL view of the app's own: portrait.native.tsx. A browser's look at the app has the web's.)
       const PortraitHost = (portrait as { PortraitHost?: ComponentType }).PortraitHost
       if (live) setGame({ App, OfflineBanner, Onboarding, onboarded, PortraitHost })
@@ -70,6 +75,7 @@ export default function Root() {
     window.addEventListener('__reload', reload)
     return () => {
       live = false
+      linked?.remove()
       window.removeEventListener('__reload', reload)
     }
   }, [])
