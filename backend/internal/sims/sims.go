@@ -971,14 +971,17 @@ func (h *Handler) stopActivity(w http.ResponseWriter, r *http.Request) {
 
 // arriveNow: a ride in town over at once (the update « trajet-court »: a short loading screen, the Sim
 // climbing into the taxi or the gbaka, and there it is). Not a plane, nor one's own vehicle (driven there).
+// A flight or a coach to another city ends the same way, after its own short trip in 3D (the update
+// « voyages-villes »: boarding at the airport or the gare, the plane in the sky or the coach on the road, the arrival).
 func (h *Handler) arriveNow(w http.ResponseWriter, r *http.Request) {
-	if features.Default.BlocksKey(r.Context(), "trajet-court") != "" {
+	short := features.Default.BlocksKey(r.Context(), "trajet-court") == ""
+	if !short && !travelOpen() {
 		httpx.Error(w, http.StatusForbidden, "bientôt dans le jeu")
 		return
 	}
 	h.mutate(w, r, func(s *Sim) (game.Outcome, []Event, error) {
 		a := s.Activity
-		if a == nil || a.Kind != "travel" || a.Trip == nil || !quickRide(a.Trip.Mode) {
+		if a == nil || a.Kind != "travel" || a.Trip == nil || !(short && quickRide(a.Trip.Mode)) && !(travelOpen() && intercity(a.Trip) && a.Trip.Mode != "perso") {
 			return game.Outcome{}, nil, errNoRide
 		}
 		a.End = min(a.End, s.GameMinutes)
@@ -991,6 +994,9 @@ var errNoRide = errors.New("pas de trajet en cours")
 
 // quickRide: the rides that can be over at once (the plane flies its time, one's own vehicle is driven).
 func quickRide(mode string) bool { return mode != "avion" && mode != "perso" }
+
+// intercity: a trip from one city to another (a flight, a coach, one's own car on the road).
+func intercity(t *game.Trip) bool { return t.FromCity != t.City }
 
 func (h *Handler) travel(w http.ResponseWriter, r *http.Request) {
 	var req struct {

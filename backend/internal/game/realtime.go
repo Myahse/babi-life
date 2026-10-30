@@ -111,6 +111,13 @@ type Trip struct {
 	Party int `json:"party,omitempty"`
 	// Vehicle: the Sim's own (mode "perso"), the one it drives there.
 	Vehicle *TripVehicle `json:"vehicle,omitempty"`
+	// A flight or a coach (the update « voyages-villes »): the airport or the gare
+	// it leaves from and the one it arrives at (the Sim is set down there), the
+	// airline or the coach company, and the coach's hour of departure (game minute).
+	FromPlace string `json:"fromPlace,omitempty"`
+	Place     string `json:"place,omitempty"`
+	Company   string `json:"company,omitempty"`
+	Departs   int64  `json:"departs,omitempty"`
 }
 
 // TripVehicle: one's own vehicle on a trip, as the street draws it and the

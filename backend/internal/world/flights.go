@@ -26,10 +26,14 @@ type FlightRoute struct {
 	To      string `json:"to"`
 	ToName  string `json:"toName"`
 	Commune string `json:"commune"` // where one lands
+	ToPlace string `json:"toPlace"` // the airport one lands at
 	Minutes int64  `json:"minutes"` // real minutes, as the trip lasts
+	Game    int64  `json:"game"`    // game minutes, as the timetable says
 	Fare    int    `json:"fare"`
 	Km      int    `json:"km"`
 	Airline string `json:"airline"`
+	// Key: the update this flight waits for (Grand-Bassam's aérodrome: « voyages-villes »).
+	Key string `json:"key,omitempty"`
 }
 
 // FlightRoutes: every flight there is, both ways.
@@ -46,7 +50,7 @@ func FlightRoutes() []FlightRoute {
 				continue
 			}
 			minutes, fare := game.FlightQuote(km)
-			out = append(out, FlightRoute{From: from.ID, Place: a.Place, To: to.ID, ToName: to.Name, Commune: landIn.ID, Minutes: game.Length(minutes), Fare: fare, Km: int(km), Airline: game.Airline})
+			out = append(out, FlightRoute{From: from.ID, Place: a.Place, To: to.ID, ToName: to.Name, Commune: landIn.ID, ToPlace: game.Airports[to.ID].Place, Minutes: game.Length(minutes), Game: minutes, Fare: fare, Km: int(km), Airline: game.Airline, Key: game.FlightKey(from.ID, to.ID)})
 		}
 	}
 	return out

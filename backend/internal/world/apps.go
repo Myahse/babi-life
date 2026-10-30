@@ -63,6 +63,10 @@ var PhoneApps = []PhoneApp{
 	{ID: "golvo", Name: "Garbaya", Tagline: "Les maquis livrés chez toi", Category: "Repas", SizeMB: 52,
 		About:  "Commande au maquis, au resto ou en boîte : un livreur à moto t'apporte ça où tu es dans Abidjan.",
 		Source: inspired("Appli du jeu inspirée de Glovo, à Abidjan depuis 2019 : livraison de repas par des coursiers à moto, frais de 500 F au lancement.", srcGlovo, srcGlovo2)},
+	// The game's airline (game.Airline), its flights from the city's airport (the update « voyages-villes »).
+	{ID: game.AirlineApp, Name: game.Airline, Tagline: "Tous les vols entre les villes du pays", Category: "Voyage", SizeMB: 57,
+		About:  "Les vols d'Air Lagune depuis l'aéroport de ta ville vers toutes les autres : l'heure, la durée, le prix. À l'aéroport, tu embarques tout de suite ; d'ailleurs, l'appli t'y emmène.",
+		Source: &game.Source{Status: game.StatusFictional, Checked: game.Checked, Note: "Compagnie aérienne et appli inventées pour le jeu, sur le modèle des applis des compagnies. Les vols, les durées et les prix sont des règles du jeu."}},
 	{ID: "dodo", Name: "Dodo", Tagline: "Des chez-soi à louer, à la nuit", Category: "Voyage", SizeMB: 61,
 		About:  "Loue un studio, un appartement ou une villa pour quelques nuits, dans toutes les communes et toutes les villes, et réserve d'où tu es. Tu as une maison de plus ? Mets-la en location : les voyageurs te paient la nuit (Dodo garde 10 %).",
 		Source: &game.Source{Status: game.StatusFictional, Checked: game.Checked, Note: "Appli du jeu sur le modèle des plateformes de location entre particuliers. Les logements du jeu, leurs hôtes et leurs prix sont des règles du jeu."}},

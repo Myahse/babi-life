@@ -213,6 +213,7 @@ func main() {
 				"growUp":        game.GrowUp,
 				"friendActions": game.FriendActions,
 				"flights":       world.FlightRoutes(),
+				"coaches":       map[string]any{"routes": world.CoachRoutes(), "companies": game.CoachCompanies},
 				"holidays":      game.Holidays,
 				"materials":     game.Materials,
 				"plot":          map[string]int{"w": game.PlotW, "d": game.PlotD, "h": game.PlotH},
