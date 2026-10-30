@@ -306,6 +306,12 @@ func (s *Sim) start(it game.Interaction, placeID, placeKind, placeName string, s
 			s.Activity.End = s.GameMinutes + max(it.Minutes, playedHold)
 		}
 	}
+	// The jam regulated (jam.go): no clock ends it either, the junction's game does; held while the jam lasts.
+	if defiOf(it.ID) == "circulation" {
+		if _, start, ok := game.HappeningAt(s.City, s.Commune, s.GameMinutes); ok {
+			s.Activity.End = max(s.Activity.End, start+game.HappeningMinutes)
+		}
+	}
 	// The crèche, the school: the friend from childhood is there (childhood.go).
 	if ev := s.toSchool(it); ev != nil {
 		s.pending = append(s.pending, *ev)

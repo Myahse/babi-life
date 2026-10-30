@@ -1150,6 +1150,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     return { id: 'happening', kind: 'happening', name: happening.label, x: door[0], z: door[1], rot: 0, door, seed: 0 }
   }, [happening, spot, jam])
   const walkLots = useMemo(() => (happeningLot ? [...lots, happeningLot] : lots), [lots, happeningLot])
+  // (Development, for tests in the browser: where the happening is joined, to start the Sim there with ?at=x,z.)
+  if (import.meta.env.DEV) Object.assign(globalThis, { __happeningDoor: happeningLot?.door, __jam: jam })
   // Joined in: the Sim's place in the scene (a chair, the crowd), turned to the real street like the scene.
   const joinRole = useMemo(() => {
     const r = happening && spot && !jam ? HAPPENING_ROLES[happening.id] : undefined
@@ -1537,7 +1539,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         return g ? <CampusGate key={`gate${lot.id}`} name={lot.name} kind={lot.kind} at={g.at} rot={g.rot} width={g.width} night={night} /> : null
       })}
       {/* The cars stuck in it: walked round, not through */}
-      {jam && crawl && !flowing && <MovingJam path={jam.path} width={jam.width} clearing={clearing} onCleared={() => setFlowing(true)} seed={commune.id} />}
+      {jam && crawl && !flowing && <MovingJam path={jam.path} centre={jam.centre} width={jam.width} clearing={clearing} onCleared={() => setFlowing(true)} seed={commune.id} />}
       {jam && !crawl && (
         <Solid parts>
           <JamOnRoad cars={jam.cars} />

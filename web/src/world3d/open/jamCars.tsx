@@ -57,9 +57,11 @@ export function DriverArm({ out, at }: { out: { current: number }; at: [number, 
 
 type Slot = { lane: 1 | -1; i: number; kind: VehicleKind; color?: string; seed: number; arm: boolean; key: string }
 
-export function MovingJam({ path, width, clearing, onCleared, seed }: { path: XZ[]; width: number; /** Regulated: since when (performance.now() ms); null: still jammed. */ clearing: number | null; onCleared: () => void; seed: string }) {
+export function MovingJam({ path, centre, width, clearing, onCleared, seed }: { path: XZ[]; /** How far along the path the jam's middle is. */ centre: number; width: number; /** Regulated: since when (performance.now() ms); null: still jammed. */ clearing: number | null; onCleared: () => void; seed: string }) {
   const L = useMemo(() => routeLength(path), [path])
   const n = Math.max(2, Math.min(12, Math.floor((L - 6) / GAP)))
+  // The stretch the queues stand on: round the middle, kept on the path.
+  const from = Math.max(0, Math.min(L - n * GAP - 6, centre - (n * GAP) / 2))
   const slots = useMemo<Slot[]>(() => {
     const h = [...seed].reduce((a, c) => a + c.charCodeAt(0), 0)
     return ([1, -1] as const).flatMap((lane) =>
@@ -92,11 +94,12 @@ export function MovingJam({ path, width, clearing, onCleared, seed }: { path: XZ
       let q = 3 + ((s.i * GAP + moved) % (n * GAP))
       if (since !== null) q += drivenOff(since - lag * 0.8)
       // Off the stretch (or about to wrap round to its back): not there.
-      const visible = since !== null ? q < L : q > 4.5 && q < 3 + n * GAP - 1.5
+      // (Driven off: gone past the stretch's end, out of sight round the next streets.)
+      const visible = since !== null ? q < n * GAP + 70 && (s.lane > 0 ? from + q < L : from + n * GAP + 6 - q > 0) : q > 4.5 && q < 3 + n * GAP - 1.5
       g.visible = visible
       if (!visible) return moveObstacle(s.key, null)
       shown++
-      const u = s.lane > 0 ? q : L - q
+      const u = s.lane > 0 ? Math.min(L, from + q) : Math.max(0, from + n * GAP + 6 - q)
       const [pa, pb] = [along(path, Math.max(0, u - 3)), along(path, Math.min(L, u + 3))]
       const p = along(path, u)
       const r = Math.hypot(pb.x - pa.x, pb.z - pa.z) > 0.5 ? Math.atan2(pb.x - pa.x, pb.z - pa.z) : p.r
