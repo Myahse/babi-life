@@ -46,6 +46,7 @@ import { Snapper } from '../snapshot'
 import { TripDrop } from './tripDrop'
 import { ChatFraming } from '../chatFraming'
 import { CHUNK_ZOOM, hash, tileBox, tileOf, toLatLng, toLocal, type Box, type Origin, type XZ } from './geo'
+import { CELLS, cellBox, cellName, cellOf } from './cells'
 import { FOOT, Nav } from './nav'
 import { weather } from './weathering'
 import { along, anchorNode, DRIVABLE, round, routeLength, turnTo, useCellsAround, type Round } from './shared'
@@ -146,9 +147,10 @@ type Loaded = { data: ChunkData; geos: Record<string, THREE.BufferGeometry>; res
 // left and come back to (another commune and back by taxi, the profile and
 // back, a chunk gone out of range and in again) stands at once, without the
 // worker, the database or the network. The oldest go when there are too many
-// (their geometry freed, unless a street still draws it).
+// (their geometry freed, unless a street still draws it). Fewer on a small phone: a dense
+// quarter's chunk is some twenty megabytes, and the browser's database has them again at once.
 const BUILT = new Map<string, Loaded>()
-const BUILT_MAX = 60
+const BUILT_MAX = weakDevice ? 40 : 60
 function keepBuilt(c: Loaded, drawn: Map<string, Loaded>) {
   BUILT.delete(c.mem)
   BUILT.set(c.mem, c)
@@ -320,14 +322,22 @@ export function makeWorldMaterials() {
   return m
 }
 
+/** The renderer made: its shaders unchecked outside development (each check waits for the GPU); in development (or a VITE_PERF build, for the benchmarks) the scene for tests in the browser. */
+function onCreated({ gl, scene, camera }: { gl: THREE.WebGLRenderer; scene: THREE.Scene; camera: THREE.Camera }) {
+  gl.debug.checkShaderErrors = import.meta.env.DEV
+  if (import.meta.env.DEV || import.meta.env.VITE_PERF === '1') Object.assign(window, { __gl: gl, __scene: scene, __camera: camera, __where: whereabouts })
+}
+
 export function OpenWorld(props: Props & { token: string; onFail: () => void; onLoaded?: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void; onHomePlot?: (plot: Plot | undefined) => void }) {
   const night = props.hour < 6 || props.hour >= 19
   const dusk = props.hour >= 17 && props.hour < 19
   const sky = night ? '#141a3d' : dusk ? '#f7a072' : '#8ec9f0'
   const maxDpr = Math.min(sceneDpr[1], typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1)
   const [dpr, setDpr] = useState(Math.min(weakDevice ? 1 : 1.5, maxDpr))
+  // (The shadows as three draws them: it has no soft ones any more, and fell back to these at the
+  // first frame, after the shaders compiled ahead had been made for the soft ones: WarmShaders.)
   return (
-    <Canvas shadows dpr={dpr} camera={{ position: [45, 48, 45], fov: 45, near: 0.5, far: 6000 }} style={{ background: sky, transition: 'background 1s' }} gl={{ antialias: true, stencil: true }} onCreated={({ gl, scene, camera }) => void (import.meta.env.DEV && Object.assign(window, { __gl: gl, __scene: scene, __camera: camera, __where: whereabouts }))}>
+    <Canvas shadows="percentage" dpr={dpr} camera={{ position: [45, 48, 45], fov: 45, near: 0.5, far: 6000 }} style={{ background: sky, transition: 'background 1s' }} gl={{ antialias: true, stencil: true }} onCreated={onCreated}>
       <Snapper street />
       <ChatFraming />
       {/* The arrival's flight over the commune (world3d/cinematic.tsx) */}
@@ -370,7 +380,14 @@ function farOf<T extends Record<string, THREE.Material>>(mats: T): T {
 /** The far horizon's walls, by the hash of where they stand: the sand, cream and white of Abidjan, the glass of the towers. */
 const FAR_WALLS = ['#efe6d6', '#e9dcc3', '#f3f1ec', '#d9cbb0', '#f0d9b5', '#e8d2c0', '#dfe4e8'].map((c) => new THREE.Color(c))
 const FAR_GLASS = new THREE.Color('#b9cad9')
-const FAR_BOX = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0)
+// (Without its underside, never seen: a sixth of the horizon's triangles.)
+const FAR_BOX = (() => {
+  const g = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0)
+  const i = g.getIndex()!.array
+  g.setIndex([...i.slice(0, 18), ...i.slice(24)])
+  g.clearGroups()
+  return g
+})()
 const FAR_NIGHT = { value: 0 }
 /**
  * The blocks' walls drawn by the shader, as the city's: rows of windows a storey apart (3 m), a
@@ -430,18 +447,21 @@ export function FarBlocks({ blocks, hide, night }: { blocks: FarBlock[]; hide: B
     if (!m) return
     const o = new THREE.Object3D()
     const c = new THREE.Color()
-    blocks.forEach(([x, z, w, d, h, rot], i) => {
-      const inNear = hide.some((b) => x > b.x0 - 4 && x < b.x1 + 4 && z > b.z0 - 4 && z < b.z1 + 4)
+    // Only the blocks shown, one after the other: none drawn flat where a near chunk stands.
+    let i = 0
+    for (const [x, z, w, d, h, rot] of blocks) {
+      if (hide.some((b) => x > b.x0 - 4 && x < b.x1 + 4 && z > b.z0 - 4 && z < b.z1 + 4)) continue
       o.position.set(x, 0, z)
       o.rotation.set(0, -rot, 0)
-      o.scale.set(inNear ? 0 : w, inNear ? 0 : h, inNear ? 0 : d)
+      o.scale.set(w, h, d)
       o.updateMatrix()
       m.setMatrixAt(i, o.matrix)
       const k = Math.abs(Math.sin(x * 12.9898 + z * 78.233) * 43758.5453) % 1
       c.copy(h > 24 ? FAR_GLASS : FAR_WALLS[Math.floor(k * FAR_WALLS.length)])
       if (night) c.multiplyScalar(0.36)
-      m.setColorAt(i, c)
-    })
+      m.setColorAt(i++, c)
+    }
+    m.count = i
     m.instanceMatrix.needsUpdate = true
     if (m.instanceColor) m.instanceColor.needsUpdate = true
     m.computeBoundingSphere()
@@ -467,6 +487,52 @@ function DepthRange() {
       camera.updateProjectionMatrix()
     }
   })
+  return null
+}
+
+/** The street's meshes, by the name a chunk gives them (meshes.ts), as WarmShaders makes them. */
+const STREET_MESHES = ['walls', 'shop', 'inst', 'entrance', 'house', 'trim', 'roofs', 'tin', 'contact', 'asphalt', 'laterite', 'pavement', 'water', 'foam', 'paint', 'kerb', 'green', 'sand', 'pitch'] as const
+
+/**
+ * The street's shaders compiled from the start, while its first chunks are still fetched and built
+ * (seconds on a phone), not all at once in the first frame with buildings: that one frame held the
+ * phone for as long again. One small mesh for each way the street draws a material (near and far,
+ * the trees and the horizon's blocks instanced), compiled with the scene's lights and fog, never drawn.
+ */
+function WarmShaders({ mats, far }: { mats: ReturnType<typeof makeWorldMaterials>; far: ReturnType<typeof makeWorldMaterials> }) {
+  const gl = useThree((st) => st.gl)
+  const scene = useThree((st) => st.scene)
+  const camera = useThree((st) => st.camera)
+  useEffect(() => {
+    const geo = (colours: number) => {
+      const g = new THREE.BufferGeometry()
+      g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(9), 3))
+      g.setAttribute('normal', new THREE.BufferAttribute(new Int8Array(9), 3, true))
+      g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(6), 2))
+      g.setAttribute('color', new THREE.BufferAttribute(new Uint8Array(3 * colours), colours, true))
+      g.setAttribute('lotBc', new THREE.BufferAttribute(new Int16Array(9), 3))
+      return g
+    }
+    const [rgb, rgba] = [geo(3), geo(4)]
+    const group = new THREE.Group()
+    for (const name of STREET_MESHES)
+      for (const [set, near] of [[mats, true], [far, false]] as const) {
+        const m = new THREE.Mesh(name === 'contact' ? rgba : rgb, set[name])
+        m.receiveShadow = near && name !== 'contact'
+        group.add(m)
+      }
+    for (const [material, receive] of [[mats.bark, false], [mats.leaves, true], [farBlockMat, false]] as const) {
+      const m = new THREE.InstancedMesh(FAR_BOX, material, 1)
+      if (material === farBlockMat) m.setColorAt(0, new THREE.Color())
+      m.receiveShadow = receive
+      group.add(m)
+    }
+    group.add(new THREE.Mesh(rgb, CHUNK_MASK))
+    void gl
+      .compileAsync(group, camera, scene)
+      .catch(() => undefined)
+      .then(() => [rgb, rgba].forEach((g) => g.dispose()))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   return null
 }
 
@@ -660,7 +726,14 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     if (shadowTick.current < 0.5 || !view) return
     shadowTick.current = 0
     const { x, z } = view.target
-    const within = (R: number) => [...chunks.values()].filter((c) => !c.data.key.includes(':') && x > c.data.box.x0 - R && x < c.data.box.x1 + R && z > c.data.box.z0 - R && z < c.data.box.z1 + R).map((c) => c.data.key)
+    const nearBox = (b: Box, R: number) => x > b.x0 - R && x < b.x1 + R && z > b.z0 - R && z < b.z1 + R
+    // A square's nearest point within R (not its box's corner: a circle round the view).
+    const nearCell = (b: Box, R: number) => Math.hypot(Math.max(b.x0 - x, 0, x - b.x1), Math.max(b.z0 - z, 0, z - b.z1)) < R
+    // The chunks within R, and their squares within R (cells.ts): `key` and `key@cell`.
+    const within = (R: number) =>
+      [...chunks.values()]
+        .filter((c) => !c.data.key.includes(':') && nearBox(c.data.box, R))
+        .flatMap((c) => [c.data.key, ...Array.from({ length: CELLS * CELLS }, (_, i) => i).filter((i) => nearCell(cellBox(c.data.box, i), R)).map((i) => cellName(c.data.key, i))])
     const same = (a: string[], b: Set<string>) => a.length === b.size && a.every((k) => b.has(k))
     const near = within(150)
     if (!same(near, shadowed)) setShadowed(new Set(near))
@@ -713,8 +786,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         const g = new THREE.BufferGeometry()
         g.setAttribute('position', new THREE.BufferAttribute(a.position, 3))
         g.setAttribute('uv', new THREE.BufferAttribute(a.uv, 2))
-        g.setAttribute('normal', new THREE.BufferAttribute(a.normal, 3))
-        if (a.color) g.setAttribute('color', new THREE.BufferAttribute(a.color, a.colorSize ?? 3))
+        g.setAttribute('normal', new THREE.BufferAttribute(a.normal, 3, true))
+        if (a.color) g.setAttribute('color', new THREE.BufferAttribute(a.color, a.colorSize ?? 3, a.color instanceof Uint8Array))
         if (a.lotBc) g.setAttribute('lotBc', new THREE.BufferAttribute(a.lotBc, 3))
         g.setIndex(new THREE.BufferAttribute(a.index, 1))
         g.computeBoundingSphere()
@@ -1020,17 +1093,26 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const clears = useMemo(() => new Map(spots.filter((x) => x.landmark).map((x) => [x.id, x.landmark!])), [spots])
   const made = useMemo<XZ[]>(() => [...resolved.values()].filter((r) => !r.real && !r.field && !r.station && !clears.has(r.id) && !isSoiree(r.id)).map((r) => r.center), [resolved, clears])
   const marks = useMemo(() => [...resolved.values()].filter((r) => clears.has(r.id)).map((r) => ({ at: r.center, r: clears.get(r.id)! })), [resolved, clears])
+  // The near chunks alone (not the horizon's tiles): the same list while they're the same, so what's
+  // worked out from them (the ways, and all that stands along them) isn't again each time a horizon tile comes in.
+  const nearRef = useRef<ChunkData[]>([])
+  const nearList = useMemo(() => {
+    const list = [...chunks.values()].filter((c) => !c.data.key.includes(':')).map((c) => c.data)
+    const was = nearRef.current
+    if (list.length === was.length && list.every((d, i) => d === was[i])) return was
+    return (nearRef.current = list)
+  }, [chunks])
   // The landmarks' buildings stand in their cleared ground's middle: the traffic keeps off the streets the map runs through there.
   const nav = useMemo(
     () =>
       new Nav(
-        [...chunks.values()].filter((c) => !c.data.key.includes(':')).map((c) => c.data),
+        nearList,
         (c, ring) => inTheWay(made, c, marks, ring),
         marks.map((m) => ({ at: m.at, r: m.r * 0.6 })),
         made,
         [...resolved.values()].flatMap((r) => (r.field ? [r.field] : [])),
       ),
-    [chunks, made, marks, resolved],
+    [nearList, made, marks, resolved],
   )
 
   // The soirées stand at the house they're thrown in (its resolved lot), else on the street nearest
@@ -1131,10 +1213,10 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   // A jam follows the real street (its bends, where it ends), not a straight line over the grass.
   const jam = useMemo(() => {
     if (happening?.id !== 'embouteillage' || !spot) return null
-    const roads = [...chunks.values()].filter((c) => !c.data.key.includes(':')).flatMap((c) => c.data.roads)
+    const roads = nearList.flatMap((c) => c.roads)
     const found = jamAlong(roads, spot.door, 7.5, 6)
     return found.cars.length ? found : null
-  }, [happening?.id, spot, chunks])
+  }, [happening?.id, spot, nearList])
   const happeningLot = useMemo<Lot | null>(() => {
     if (!happening || !spot) return null
     // A jam: the Sim goes to the side of the big road it's on.
@@ -1190,9 +1272,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const runways = useMemo(() => [...chunks.values()].flatMap((c) => (c.data.aeroways ?? []).filter((w) => w.cls === 'runway').map((w) => w.pts)), [chunks])
   const bridgeLabels = useMemo(() => {
     const best = new Map<string, { at: XZ; len: number }>()
-    for (const c of chunks.values()) {
-      if (c.data.key.includes(':')) continue
-      for (const r of c.data.roads) {
+    for (const c of nearList) {
+      for (const r of c.roads) {
         const kind = bridgeKind(r.name)
         if (!kind) continue
         const name = BRIDGE_LABEL[kind]
@@ -1204,8 +1285,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       }
     }
     return [...best].map(([name, { at }]) => ({ name, at }))
-  }, [chunks])
-  const nearWater = useMemo(() => [...chunks.values()].filter((c) => !c.data.key.includes(':')).flatMap((c) => c.data.areas.filter((a) => a.kind === 'water').map((a) => a.rings)), [chunks])
+  }, [nearList])
+  const nearWater = useMemo(() => nearList.flatMap((c) => c.areas.filter((a) => a.kind === 'water').map((a) => a.rings)), [nearList])
 
   // The big landmarks can't be walked through (the Rue Princesse, the gares, the squares can).
   useEffect(() => {
@@ -1403,10 +1484,11 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const dark = useMemo(() => (cuts.length ? (x: number, z: number) => !!inCut(cuts, x, z) : undefined), [cuts])
   const simInCut = night && !!inCut(cuts, whereabouts.sim[0], whereabouts.sim[1])
   // The near chunks' squares: the horizon's blocks don't stand in them (their own buildings are there).
-  const nearBoxes = useMemo(() => [...chunks.values()].filter((c) => !c.data.key.includes(':')).map((c) => c.data.box), [chunks])
+  const nearBoxes = useMemo(() => nearList.map((c) => c.box), [nearList])
   return (
     <>
       <DepthRange />
+      <WarmShaders mats={mats} far={farMats} />
       {/* Nights are blue but readable: the Sim and the streets stay visible on a phone. */}
       <hemisphereLight args={[night ? '#7484c4' : '#ffffff', night ? '#3a3a56' : '#b8a27c', (night ? 1.3 : 1.2) * (raining ? 0.7 : 1) * (simInCut ? 0.72 : 1)]} />
       <Sun night={night} dusk={dusk} dim={raining ? 0.35 : 1} />
@@ -1447,9 +1529,14 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
               <planeGeometry args={[c.data.box.x1 - c.data.box.x0, c.data.box.z1 - c.data.box.z0]} />
             </mesh>
           )}
-          {Object.entries(c.geos).map(([name, g]) => (
-            <mesh key={name} name={name} geometry={g} material={(far ? farMats : mats)[(name === 'tinLow' ? 'tin' : name) as keyof typeof mats]} castShadow={shade && SOLID.has(name)} receiveShadow={!far && name !== 'contact'} visible={far || (NEAR_ONLY.has(name) ? detailed.has(c.data.key) : name !== 'tinLow' || !detailed.has(c.data.key))} />
-          ))}
+          {Object.entries(c.geos).map(([full, g]) => {
+            // A mesh in one of the chunk's squares (cells.ts) is drawn and casts shadows by its square's distance.
+            const [name, cell] = cellOf(full)
+            const at = cell === undefined ? c.data.key : cellName(c.data.key, cell)
+            // The tin roofs in steps near the view, plain slopes further: in a chunk near the view square by square, a whole chunk's at once further off.
+            const low = name === 'tinLow' && (cell === undefined ? !detailed.has(c.data.key) : detailed.has(c.data.key) && !detailed.has(at))
+            return <mesh key={full} name={name} geometry={g} material={(far ? farMats : mats)[(name === 'tinLow' ? 'tin' : name) as keyof typeof mats]} castShadow={shade && SOLID.has(name) && shadowed.has(at)} receiveShadow={!far && name !== 'contact'} visible={far || (NEAR_ONLY.has(name) ? detailed.has(at) : name !== 'tinLow' || low)} />
+          })}
           {far && c.data.farBlocks?.length ? <FarBlocks blocks={c.data.farBlocks} hide={nearBoxes} night={night} /> : null}
           <Trees pts={c.data.trees} bark={mats.bark} leaves={mats.leaves} shadows={shade} />
           <Forest pts={c.data.forest ?? []} bark={mats.bark} />
@@ -1585,7 +1672,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       <SkyPlanes focus={focus} />
       <BridgeSights chunks={[...chunks.values()].map((c) => c.data)} night={night} />
       {/* The traffic on the near chunks' deck only: the far horizon's coarser pieces would set it beside the deck. */}
-      <BridgeLife chunks={[...chunks.values()].filter((c) => !c.data.key.includes(':')).map((c) => c.data)} night={night} />
+      <BridgeLife chunks={nearList} night={night} />
       {bridgeLabels.map((b) => (
         <Html key={b.name} position={[b.at[0], 12, b.at[1]]} center zIndexRange={[15, 0]}>
           <div className="flex items-center gap-1.5 rounded-xl border border-black/5 bg-white/95 px-2.5 py-1 text-[12.5px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_4px_12px_-6px_rgba(0,0,0,0.45)]">

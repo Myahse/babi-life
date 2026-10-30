@@ -19,12 +19,13 @@ export type Cached = { data: ChunkData; meshes: Record<string, Arrays>; resolved
 const DB = 'babi-chunks'
 const STORE = 'chunks'
 const SEEN = 'seen'
-/** Chunks kept at most (each a few hundred kilobytes: about 100 MB in all). */
+/** Chunks kept at most (each a few megabytes, twenty for a dense quarter's: the storage's room is looked at too, prune). */
 const MAX = 400
 
 // In development the worker's file name doesn't change with its code: no cache there.
 const ON = !import.meta.env.DEV && typeof indexedDB !== 'undefined'
-const VERSION = `v1|${self.location.pathname}`
+// (v2: the meshes in bytes and in squares, cells.ts.)
+const VERSION = `v2|${self.location.pathname}`
 
 let opening: Promise<IDBDatabase | null> | null = null
 function open(): Promise<IDBDatabase | null> {
@@ -142,8 +143,18 @@ export function putChunk(db: IDBDatabase | null, key: string, value: Cached) {
   }
 }
 
-/** Too many: the least recently seen go, down to three quarters of the most. */
+/** Too many (or too big): the least recently seen go, down to three quarters of the most. */
 async function prune(db: IDBDatabase) {
+  // Past half the room the browser gives the site, the oldest go too, down to half of them: when
+  // it's full the browser refuses the next ones (or throws the site's whole cache away).
+  // (Asked before the transaction: it would end while waiting for anything but the database.)
+  let full = false
+  try {
+    const { usage = 0, quota = Infinity } = (await navigator.storage?.estimate?.()) ?? {}
+    full = usage > quota / 2
+  } catch {
+    // No estimate: the count alone.
+  }
   const t = db.transaction([STORE, SEEN], 'readwrite')
   const seen = t.objectStore(SEEN)
   const all = await new Promise<{ key: string; at: number }[]>((res) => {
@@ -157,9 +168,10 @@ async function prune(db: IDBDatabase) {
     }
     r.onerror = () => res(out)
   })
-  if (all.length > MAX) {
+  const keep = Math.min(all.length > MAX ? Math.floor(MAX * 0.75) : all.length, full ? Math.floor(all.length / 2) : Infinity)
+  if (keep < all.length) {
     all.sort((a, b) => a.at - b.at)
-    for (const { key } of all.slice(0, all.length - Math.floor(MAX * 0.75))) {
+    for (const { key } of all.slice(0, all.length - keep)) {
       t.objectStore(STORE).delete(key)
       seen.delete(key)
     }

@@ -1,27 +1,98 @@
 import * as THREE from 'three'
 import type { XZ } from './geo'
 
-/** Collects one material's triangles; colours are RGB, or RGBA with `alpha`. */
+/** A growing array of floats: written in place, doubled when full (no number[] to convert at the end). */
+class Floats {
+  a = new Float32Array(1024)
+  n = 0
+  room(k: number) {
+    if (this.n + k <= this.a.length) return
+    const b = new Float32Array(Math.max(this.a.length * 2, this.n + k))
+    b.set(this.a.subarray(0, this.n))
+    this.a = b
+  }
+}
+
+/**
+ * Collects one material's triangles; colours are RGB, or RGBA with `alpha`.
+ * The arrays come out small: normals in bytes, colours in bytes (unless one
+ * is brighter than white), the building tags in whole metres, the index in
+ * 16 bits when it can be. A chunk's street weighed tens of megabytes in floats.
+ */
 export class Builder {
   constructor(readonly alpha = false) {}
-  pos: number[] = []
-  uv: number[] = []
-  nor: number[] = []
-  col: number[] = []
-  idx: number[] = []
+  private p = new Floats()
+  private t = new Floats()
+  private o = new Floats()
+  private c = new Floats()
+  private b = new Floats()
+  private i = new Uint32Array(1024)
+  private ni = 0
+  private colours = false
   /** The building being added (its middle x, z and how far its outline reaches): every vertex carries it (lotClip.ts). */
   tag: [number, number, number] | null = null
-  bc: number[] = []
-  vertex(x: number, y: number, z: number, u: number, v: number, n: [number, number, number], c?: THREE.Color, a = 1) {
-    this.pos.push(x, y, z)
-    this.uv.push(u, v)
-    this.nor.push(...n)
-    if (this.tag) this.bc.push(...this.tag)
-    if (c) {
-      this.col.push(c.r, c.g, c.b)
-      if (this.alpha) this.col.push(a)
+  private tagged = 0
+  /** How many vertices so far. */
+  get vertices() {
+    return this.p.n / 3
+  }
+  /** How many indices so far (three a triangle). */
+  get indices() {
+    return this.ni
+  }
+  /** The triangles added since index `from` turned to face the other way. */
+  flipFrom(from: number) {
+    const i = this.i
+    for (let k = from; k < this.ni; k += 3) [i[k + 1], i[k + 2]] = [i[k + 2], i[k + 1]]
+  }
+  private push(...ids: number[]) {
+    if (this.ni + ids.length > this.i.length) {
+      const b = new Uint32Array(Math.max(this.i.length * 2, this.ni + ids.length))
+      b.set(this.i.subarray(0, this.ni))
+      this.i = b
     }
-    return this.pos.length / 3 - 1
+    for (const id of ids) this.i[this.ni++] = id
+  }
+  vertex(x: number, y: number, z: number, u: number, v: number, n: [number, number, number], c?: THREE.Color, a = 1) {
+    const { p, t, o } = this
+    p.room(3)
+    t.room(2)
+    o.room(3)
+    const k = p.n / 3
+    p.a[p.n] = x
+    p.a[p.n + 1] = y
+    p.a[p.n + 2] = z
+    p.n += 3
+    t.a[t.n] = u
+    t.a[t.n + 1] = v
+    t.n += 2
+    o.a[o.n] = n[0]
+    o.a[o.n + 1] = n[1]
+    o.a[o.n + 2] = n[2]
+    o.n += 3
+    if (this.tag) {
+      const b = this.b
+      b.room(3)
+      b.a[b.n] = this.tag[0]
+      b.a[b.n + 1] = this.tag[1]
+      b.a[b.n + 2] = this.tag[2]
+      b.n += 3
+      this.tagged++
+    }
+    if (c) {
+      const col = this.c
+      const size = this.alpha ? 4 : 3
+      // (A vertex without a colour among coloured ones keeps black, in its own place.)
+      col.room(k * size + size - col.n)
+      col.n = k * size
+      col.a[col.n] = c.r
+      col.a[col.n + 1] = c.g
+      col.a[col.n + 2] = c.b
+      if (this.alpha) col.a[col.n + 3] = a
+      col.n += size
+      this.colours = true
+    }
+    return k
   }
   /**
    * A beam from (x1, z1) to (x2, z2), `w` wide, its bottom and top at each end
@@ -93,9 +164,9 @@ export class Builder {
     for (let k = 0; k < sides; k++) this.quad(ring[k][0], ring[k][1], ring[k + 1][1], ring[k + 1][0])
     const top = this.vertex(cx, y0 + h + r * 0.25, cz, 0, 0, [0, 1, 0], c)
     for (let k = 0; k < sides; k++) {
-      const a = this.vertex(this.pos[ring[k][1] * 3], y0 + h, this.pos[ring[k][1] * 3 + 2], 0, 0, [0, 1, 0], c)
-      const b = this.vertex(this.pos[ring[k + 1][1] * 3], y0 + h, this.pos[ring[k + 1][1] * 3 + 2], 1, 0, [0, 1, 0], c)
-      this.idx.push(top, b, a)
+      const a = this.vertex(this.p.a[ring[k][1] * 3], y0 + h, this.p.a[ring[k][1] * 3 + 2], 0, 0, [0, 1, 0], c)
+      const b = this.vertex(this.p.a[ring[k + 1][1] * 3], y0 + h, this.p.a[ring[k + 1][1] * 3 + 2], 1, 0, [0, 1, 0], c)
+      this.push(top, b, a)
     }
   }
   /** A flat polygon (with holes) at height y, textured in world space. */
@@ -108,41 +179,68 @@ export class Builder {
     } catch {
       return
     }
-    const base = this.pos.length / 3
+    const base = this.vertices
     for (const p of [outer, ...holes].flat()) this.vertex(p.x, y, p.y, p.x / scale, -p.y / scale, [0, 1, 0], c)
     // Rings are drawn from above: keep every triangle facing up.
+    const P = this.p.a
     for (const [a, b, d] of faces) {
-      const pa = this.pos.slice((base + a) * 3, (base + a) * 3 + 3)
-      const pb = this.pos.slice((base + b) * 3, (base + b) * 3 + 3)
-      const pd = this.pos.slice((base + d) * 3, (base + d) * 3 + 3)
-      const up = (pb[0] - pa[0]) * (pd[2] - pa[2]) - (pb[2] - pa[2]) * (pd[0] - pa[0]) < 0
-      this.idx.push(base + a, ...(up ? [base + b, base + d] : [base + d, base + b]))
+      const [ia, ib, id] = [(base + a) * 3, (base + b) * 3, (base + d) * 3]
+      const up = (P[ib] - P[ia]) * (P[id + 2] - P[ia + 2]) - (P[ib + 2] - P[ia + 2]) * (P[id] - P[ia]) < 0
+      this.push(base + a, ...(up ? [base + b, base + d] : [base + d, base + b]))
     }
   }
   quad(a: number, b: number, c: number, d: number) {
-    this.idx.push(a, b, c, a, c, d)
+    this.push(a, b, c, a, c, d)
   }
   /** A triangle wound so its front faces along n, whatever order it came in. */
   facing(n: [number, number, number], a: number, b: number, c: number) {
-    const p = (i: number) => [this.pos[i * 3], this.pos[i * 3 + 1], this.pos[i * 3 + 2]]
-    const [pa, pb, pc] = [p(a), p(b), p(c)]
-    const u = [pb[0] - pa[0], pb[1] - pa[1], pb[2] - pa[2]]
-    const v = [pc[0] - pa[0], pc[1] - pa[1], pc[2] - pa[2]]
+    const P = this.p.a
+    const [ia, ib, ic] = [a * 3, b * 3, c * 3]
+    const u = [P[ib] - P[ia], P[ib + 1] - P[ia + 1], P[ib + 2] - P[ia + 2]]
+    const v = [P[ic] - P[ia], P[ic + 1] - P[ia + 1], P[ic + 2] - P[ia + 2]]
     const cross = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]]
     const along = cross[0] * n[0] + cross[1] * n[1] + cross[2] * n[2]
-    this.idx.push(a, ...(along >= 0 ? [b, c] : [c, b]))
+    this.push(a, ...(along >= 0 ? [b, c] : [c, b]))
   }
   geometry() {
-    if (!this.idx.length) return null
+    if (!this.ni) return null
+    const nv = this.vertices
     const g = new THREE.BufferGeometry()
-    g.setAttribute('position', new THREE.Float32BufferAttribute(this.pos, 3))
-    g.setAttribute('uv', new THREE.Float32BufferAttribute(this.uv, 2))
-    g.setAttribute('normal', new THREE.Float32BufferAttribute(this.nor, 3))
-    if (this.col.length) g.setAttribute('color', new THREE.Float32BufferAttribute(this.col, this.alpha ? 4 : 3))
-    if (this.bc.length && this.bc.length === this.pos.length) g.setAttribute('lotBc', new THREE.Float32BufferAttribute(this.bc, 3))
-    g.setIndex(this.idx)
+    g.setAttribute('position', new THREE.BufferAttribute(this.p.a.slice(0, nv * 3), 3))
+    g.setAttribute('uv', new THREE.BufferAttribute(this.t.a.slice(0, nv * 2), 2))
+    // Unit normals in bytes (-127…127), read back as -1…1 by the GPU.
+    const nor = new Int8Array(nv * 3)
+    for (let k = 0; k < nv * 3; k++) nor[k] = Math.round(this.o.a[k] * 127)
+    g.setAttribute('normal', new THREE.BufferAttribute(nor, 3, true))
+    if (this.colours) {
+      const size = this.alpha ? 4 : 3
+      const col = new Float32Array(nv * size)
+      col.set(this.c.a.subarray(0, Math.min(this.c.n, nv * size)))
+      // In bytes, unless a colour is brighter than white (the dust on the streets' edges).
+      let bright = false
+      for (let k = 0; k < col.length && !bright; k++) bright = col[k] > 1
+      if (bright) g.setAttribute('color', new THREE.BufferAttribute(col, size))
+      else {
+        const bytes = new Uint8Array(nv * size)
+        for (let k = 0; k < col.length; k++) bytes[k] = Math.round(Math.max(0, col[k]) * 255)
+        g.setAttribute('color', new THREE.BufferAttribute(bytes, size, true))
+      }
+    }
+    // The buildings' tags in whole metres (their reach rounded up: a lot clears a little more, never less).
+    if (this.tagged && this.tagged === nv) {
+      const bc = new Int16Array(nv * 3)
+      const b = this.b.a
+      const metres = (v: number) => Math.max(-32768, Math.min(32767, v))
+      for (let k = 0; k < nv * 3; k += 3) {
+        bc[k] = metres(Math.round(b[k]))
+        bc[k + 1] = metres(Math.round(b[k + 1]))
+        bc[k + 2] = metres(Math.ceil(b[k + 2]))
+      }
+      g.setAttribute('lotBc', new THREE.BufferAttribute(bc, 3))
+    }
+    const idx = this.i.subarray(0, this.ni)
+    g.setIndex(new THREE.BufferAttribute(nv <= 65535 ? Uint16Array.from(idx) : idx.slice(), 1))
     g.computeBoundingSphere()
     return g
   }
 }
-

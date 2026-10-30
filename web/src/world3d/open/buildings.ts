@@ -146,10 +146,10 @@ function band(b: Builder, ring: XZ[], y0: number, y1: number, out: number, c: TH
   if (out > 0) {
     // The ledge's top and underside.
     b.flat([r, [...ring].reverse()], y1, 1, c)
-    const under = b.idx.length
+    const under = b.indices
     b.flat([r, [...ring].reverse()], y0, 1, c.clone().multiplyScalar(0.7))
     // Underside faces down: flip the triangles just added.
-    for (let k = under; k < b.idx.length; k += 3) [b.idx[k + 1], b.idx[k + 2]] = [b.idx[k + 2], b.idx[k + 1]]
+    b.flipFrom(under)
   }
 }
 
