@@ -41,7 +41,7 @@ import (
 // (pvp_stakes) until paid, and given back if the server stopped before.
 
 const (
-	pvpAsk    = 90 * time.Second
+	pvpAsk    = 3 * time.Minute
 	pvpQueue  = 75 * time.Second
 	pvpLast   = 40 * time.Minute
 	pvpMove   = 60 * time.Second
