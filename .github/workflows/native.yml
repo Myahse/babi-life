@@ -37,13 +37,30 @@ jobs:
       - run: npm ci
       # The version number Android and the Play Store compare: this run's, above the old app's (2).
       - run: echo "ANDROID_VERSION_CODE=$((100 + ${{ github.run_number }}))" >> "$GITHUB_ENV"
-      # Firebase, for the notifications: the Firebase console's Android app (public identifiers, in every
-      # installed app anyway), the repository's variables FCM_APP_ID and FCM_API_KEY if set.
+      # Firebase (the notifications) and Google's sign-in: the Firebase console's google-services.json of the
+      # Android app com.lifeinbabi.babi_life, pasted whole into the repository's secret or variable
+      # GOOGLE_SERVICES_JSON (public identifiers, in every installed app anyway: its oauth_client entries say
+      # which signing keys Google knows, native/README.md). Without it, a file made from FCM_APP_ID and
+      # FCM_API_KEY (the notifications only).
       - name: Firebase
         env:
+          SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON || vars.GOOGLE_SERVICES_JSON }}
           APP_ID: ${{ vars.FCM_APP_ID || '1:115685300024:android:9d87f4913fe5f373b3d3cd' }}
           API_KEY: ${{ vars.FCM_API_KEY || 'AIzaSyCWL8bpyY5sPd7RhT-AopRpibfhbrIbsgY' }}
         run: |
+          if [ -n "$SERVICES_JSON" ]; then
+            printf '%s' "$SERVICES_JSON" > google-services.json
+            # The right file: valid JSON, for this app; what Google knows of its keys said in the log.
+            node -e '
+              const j = JSON.parse(require("fs").readFileSync("google-services.json", "utf8"))
+              const c = j.client.find((c) => c.client_info.android_client_info.package_name === "com.lifeinbabi.babi_life")
+              if (!c) { console.error("::error::GOOGLE_SERVICES_JSON has no Android app com.lifeinbabi.babi_life"); process.exit(1) }
+              const android = c.oauth_client.filter((o) => o.client_type === 1)
+              console.log("google-services.json: " + android.length + " Android OAuth client(s), SHA-1 " + android.map((o) => o.android_info && o.android_info.certificate_hash).join(", "))
+              if (!android.length) console.log("::warning::google-services.json has no Android OAuth client: Google sign-in will fail (code 10) until the SHA-1s are added in Firebase (native/README.md)")
+            '
+            exit 0
+          fi
           [ -n "$APP_ID" ] && [ -n "$API_KEY" ] || exit 0
           cat > google-services.json <<JSON
           {"project_info":{"project_number":"115685300024","project_id":"babilife-38e39","storage_bucket":"babilife-38e39.firebasestorage.app"},

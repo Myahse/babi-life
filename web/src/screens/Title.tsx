@@ -5,7 +5,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { InstallButton } from '../components/InstallButton'
 import { useOnline } from '../lib/pwa'
 import { Clock3, Eye, EyeOff, Lock, Mail, MapPinned, Newspaper, Shirt, UserRound, type LucideIcon } from 'lucide-react'
-import { api, errorText } from '../lib/api'
+import { api, ApiError, errorText } from '../lib/api'
 import type { Look, User } from '../lib/types'
 import { useSession } from '../store/session'
 import { useWorld } from '../store/world'
@@ -37,7 +37,24 @@ const FEATURES: { icon: LucideIcon; colors: [string, string]; title: string; tex
   { icon: Newspaper, colors: ['#64b5ff', '#2a6cf0'], title: t('La vraie actu'), text: t('Les infos du pays arrivent sur le téléphone de ton perso, et la rue a sa vie : mariages, matchs, maquis.') },
 ]
 
+// A phone's screen (either way up) or the app: the sign-in alone, made to fit without scrolling.
+const PHONE = '(max-width: 640px), (max-height: 520px)'
+const phoneScreen = () => typeof matchMedia !== 'undefined' && matchMedia(PHONE).matches
+
+function useCompact() {
+  const [on, setOn] = useState(() => inApp() || phoneScreen())
+  useEffect(() => {
+    if (inApp() || typeof matchMedia === 'undefined') return
+    const mq = matchMedia(PHONE)
+    const changed = () => setOn(mq.matches)
+    mq.addEventListener('change', changed)
+    return () => mq.removeEventListener('change', changed)
+  }, [])
+  return on
+}
+
 export function Title() {
+  const compact = useCompact()
   const open = useGameOpen()
   const langChoice = useLangChoice()
   const signIn = useSession((s) => s.signIn)
@@ -88,6 +105,70 @@ export function Title() {
     }
   }
 
+  // In the app, Google's sign-in is the phone's own (it won't open in a web view).
+  async function appGoogle() {
+    setError(null)
+    let token: string | null
+    try {
+      token = await nativeGoogleSignIn()
+    } catch (e) {
+      setError((e as Error).message || t('Connexion Google impossible'))
+      return
+    }
+    if (!token) return
+    const signedIn = (async () => {
+      try {
+        return await api.googleLogin(firebaseConfigured ? await firebaseFromGoogle(token) : token)
+      } catch (e) {
+        console.warn('[google sign-in] refused by the server:', (e as Error)?.message)
+        if (e instanceof ApiError && e.status === 401) throw new ApiError(401, t('Le serveur a refusé ce compte Google : réessaie, ou connecte-toi avec ton e-mail.'))
+        throw e
+      }
+    })()
+    await finish(signedIn)
+  }
+
+  function submit(e: { preventDefault: () => void }) {
+    e.preventDefault()
+    if (mode === 'forgot') {
+      setBusy(true)
+      setError(null)
+      api
+        .forgotPassword(email)
+        .then((r) => setSent(r.text), (err) => setError(errorText(err, t('Réessaie dans un instant'))))
+        .finally(() => setBusy(false))
+      return
+    }
+    finish(mode === 'login' ? api.login(email, password) : api.register({ firstName: first, lastName: last, username, email, password }))
+  }
+
+  const googleLabel = mode !== 'register' ? t('Continuer avec Google') : t("S'inscrire avec Google")
+  const googleButton = (cls: string) =>
+    (GOOGLE_ENABLED || firebaseConfigured) && inApp() ? (
+      <button type="button" className={`btn btn-white w-full ${cls}`} disabled={busy} onClick={() => void appGoogle()}>
+        <GoogleIcon /> {googleLabel}
+      </button>
+    ) : firebaseConfigured ? (
+      <button type="button" className={`btn btn-white w-full ${cls}`} disabled={busy} onClick={() => void google()}>
+        <GoogleIcon /> {googleLabel}
+      </button>
+    ) : GOOGLE_ENABLED ? (
+      <div className="flex h-[50px] justify-center [&>div]:w-full">
+        <GoogleLogin
+          onSuccess={(r) => r.credential && finish(api.googleLogin(r.credential))}
+          onError={() => setError(t('Connexion Google annulée'))}
+          shape="pill"
+          size="large"
+          text={mode !== 'register' ? 'continue_with' : 'signup_with'}
+          width="360"
+        />
+      </div>
+    ) : (
+      <button className={`btn btn-white w-full ${cls}`} disabled title={t('Ajoute VITE_GOOGLE_CLIENT_ID pour activer')}>
+        <GoogleIcon /> {googleLabel}
+      </button>
+    )
+
   async function finish(p: Promise<{ token: string; user: User }>) {
     setBusy(true)
     setError(null)
@@ -110,6 +191,149 @@ export function Title() {
     document.getElementById('compte')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     setTimeout(() => document.querySelector<HTMLInputElement>('#compte input')?.focus({ preventScroll: true }), 450)
   }
+
+  const switchMode = (m: 'login' | 'register' | 'forgot') => (setMode(m), setError(null), setSent(null))
+  const legal = (
+    <p className="flex flex-wrap items-baseline justify-center gap-x-2.5 text-[10px] leading-tight font-bold opacity-70">
+      <span>{t('© {year} Babi Life · Tous droits réservés', { year: new Date().getFullYear() })}</span>
+      <Link to="/conditions" className="underline">
+        {t('Conditions')}
+      </Link>
+      <Link to="/confidentialite" className="underline">
+        {t('Confidentialité')}
+      </Link>
+      <Link to="/suppression-compte" className="underline">
+        {t('Supprimer son compte')}
+      </Link>
+      {langChoice && (
+        <button className="underline" onClick={() => setLang(lang() === 'en' ? 'fr' : 'en')}>
+          {lang() === 'en' ? 'Français' : 'English'}
+        </button>
+      )}
+      <span>
+        {t('Version')} {String(import.meta.env.VERCEL_GIT_COMMIT_SHA ?? 'dev').slice(0, 7)}
+      </span>
+    </p>
+  )
+
+  // On a phone and in the app: one screen, no scrolling. Google first, then the e-mail and its
+  // password, « Se connecter » / « Créer un compte » as a toggle; side by side when the phone lies down.
+  if (compact)
+    return (
+      <div className="street worn flex min-h-dvh flex-col pt-[env(safe-area-inset-top)] pb-[max(0.25rem,env(safe-area-inset-bottom))]">
+        <div className="ci-stripe !h-1" aria-hidden />
+        <AccountGone />
+        <main className="mx-auto flex w-full max-w-3xl min-h-0 flex-1 flex-col justify-center gap-3 px-4 py-2 landscape:flex-row landscape:items-center landscape:gap-6">
+          <section className="flex flex-col gap-2.5 landscape:w-[42%]">
+            <div className="flex items-baseline justify-between gap-3 landscape:flex-col landscape:items-start landscape:gap-0.5">
+              <span className="paint flex items-center gap-2 text-[26px] short:text-[22px]" aria-label={t('Babi Life')}>
+                <svg width="15" height="21" viewBox="0 0 40 56" aria-hidden>
+                  <path d="M20 54C14 45 4 36 4 20a16 16 0 0 1 32 0c0 16-10 25-16 34Z" fill="#b5432c" />
+                  <circle cx="20" cy="20" r="7" fill="#fbf5e6" />
+                </svg>
+                {t('Babi')} <span className="text-[var(--turq)]">{t('Life')}</span>
+              </span>
+              <span className="chalk-hand text-[20px] leading-none text-[var(--ci-green)]">{t('Le sort décide.')}</span>
+            </div>
+            {googleButton('!min-h-[46px] short:!min-h-[42px] !text-[16px]')}
+            {error && (
+              <p className="bg-[#f6d9cf] px-2.5 py-1.5 text-[13px] leading-snug font-bold text-[var(--rust)]" role="alert">
+                {error}
+              </p>
+            )}
+            {worldError && online && <p className="bg-[#f6d9cf] px-2.5 py-1 text-[12px] font-bold text-[var(--rust)]">{t('Serveur injoignable :')} {worldError}</p>}
+            {world?.config.devLogin && (
+              <details className="bg-[var(--wall)] px-2 py-1 text-[13px]">
+                <summary className="cursor-pointer font-extrabold">{t('Mode test (local)')}</summary>
+                <div className="mt-1.5 flex gap-2">
+                  <input className="input !h-9 min-w-0 flex-1 text-base" value={devName} onChange={(e) => setDevName(e.target.value)} aria-label={t('Nom du joueur test')} />
+                  <button className="btn btn-emerald !min-h-9 shrink-0 px-4" disabled={busy || !devName.trim()} onClick={() => finish(api.devLogin(devName))}>
+                    {t('Jouer')}
+                  </button>
+                </div>
+              </details>
+            )}
+            <div className="portrait:hidden">{legal}</div>
+          </section>
+
+          <section className="flex flex-col gap-2 landscape:flex-1">
+            <div className="flex items-center gap-3 text-[11px] font-extrabold landscape:hidden">
+              <span className="h-px flex-1 bg-[var(--brown)]/25" />
+              {t('ou avec ton e-mail')}
+              <span className="h-px flex-1 bg-[var(--brown)]/25" />
+            </div>
+            <div className="segmented !p-[3px]" role="tablist">
+              {(['login', 'register'] as const).map((m) => (
+                <button key={m} type="button" role="tab" className="!py-1.5 !text-[14px]" aria-selected={mode === m || (m === 'login' && mode === 'forgot')} onClick={() => switchMode(m)}>
+                  {m === 'login' ? t('Se connecter') : t('Créer un compte')}
+                </button>
+              ))}
+            </div>
+            <form className="flex flex-col gap-1.5" onSubmit={submit}>
+              {mode === 'register' && (
+                <>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <input className="input !h-10 text-base" placeholder={t('Prénom')} autoComplete="given-name" value={first} onChange={(e) => pickName(e.target.value, last)} aria-label={t('Prénom')} required />
+                    <input className="input !h-10 text-base" placeholder={t('Nom')} autoComplete="family-name" value={last} onChange={(e) => pickName(first, e.target.value)} aria-label={t('Nom')} required />
+                  </div>
+                  <UsernameField compact value={username} onChange={(v) => (setUsername(v), setUsernameTouched(true))} first={first} last={last} />
+                </>
+              )}
+              <div className={`grid gap-1.5 ${mode === 'register' ? 'landscape:grid-cols-2' : ''}`}>
+                <label className="relative">
+                  <Mail size={16} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[var(--color-ink-soft)]" />
+                  <input
+                    className="input !h-10 !pl-9 text-base"
+                    type={mode !== 'register' ? 'text' : 'email'}
+                    placeholder={mode !== 'register' ? t('E-mail ou pseudo') : t('E-mail')}
+                    autoComplete={mode !== 'register' ? 'username' : 'email'}
+                    autoCapitalize="none"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    aria-label={mode !== 'register' ? t('E-mail ou pseudo') : t('E-mail')}
+                    required
+                  />
+                </label>
+                {mode !== 'forgot' && (
+                  <label className="relative">
+                    <Lock size={16} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[var(--color-ink-soft)]" />
+                    <input
+                      className="input !h-10 !pr-10 !pl-9 text-base"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder={mode === 'register' ? t('Mot de passe (8 min.)') : t('Mot de passe')}
+                      autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+                      minLength={mode === 'register' ? 8 : undefined}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      aria-label={t('Mot de passe')}
+                      required
+                    />
+                    <button type="button" className="absolute top-1/2 right-2 -translate-y-1/2 p-1 text-[var(--color-ink-soft)]" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? t('Cacher le mot de passe') : t('Afficher le mot de passe')}>
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </label>
+                )}
+              </div>
+              {mode === 'forgot' && <p className="text-[12px] leading-snug font-bold">{sent ?? t('On t’envoie par e-mail comment te connecter, et un lien pour choisir un mot de passe.')}</p>}
+              <button className="sign-btn mt-0.5 w-full !py-2.5 !text-[16px]" disabled={busy}>
+                {busy ? t('Un instant…') : mode === 'login' ? t('Se connecter') : mode === 'forgot' ? t('Recevoir mes identifiants') : t('Créer mon compte')}
+              </button>
+              {mode === 'login' && (
+                <button type="button" className="self-center text-[13px] font-extrabold text-[var(--rust)] underline underline-offset-4" onClick={() => switchMode('forgot')}>
+                  {t('Mot de passe oublié ?')}
+                </button>
+              )}
+              {mode === 'forgot' && (
+                <button type="button" className="self-center text-[13px] font-extrabold text-[var(--rust)] underline underline-offset-4" onClick={() => switchMode('login')}>
+                  {t('Retour à la connexion')}
+                </button>
+              )}
+            </form>
+          </section>
+        </main>
+        <div className="px-4 landscape:hidden">{legal}</div>
+      </div>
+    )
 
   return (
     <div className="street worn min-h-full overflow-x-clip">
@@ -175,41 +399,7 @@ export function Title() {
           </div>
 
           <div className="flex flex-col gap-3">
-            {(GOOGLE_ENABLED || firebaseConfigured) && inApp() ? (
-              // In the app, Google's sign-in is the phone's own (it won't open in a web view).
-              <button
-                className="btn btn-white w-full"
-                onClick={async () => {
-                  try {
-                    const token = await nativeGoogleSignIn()
-                    if (token) finish(api.googleLogin(firebaseConfigured ? await firebaseFromGoogle(token) : token))
-                  } catch {
-                    setError('Connexion Google impossible')
-                  }
-                }}
-              >
-                <GoogleIcon /> {mode !== 'register' ? t('Continuer avec Google') : t("S'inscrire avec Google")}
-              </button>
-            ) : firebaseConfigured ? (
-              <button type="button" className="btn btn-white w-full" disabled={busy} onClick={() => void google()}>
-                <GoogleIcon /> {mode !== 'register' ? t('Continuer avec Google') : t("S'inscrire avec Google")}
-              </button>
-            ) : GOOGLE_ENABLED ? (
-              <div className="flex h-[50px] justify-center [&>div]:w-full">
-                <GoogleLogin
-                  onSuccess={(r) => r.credential && finish(api.googleLogin(r.credential))}
-                  onError={() => setError('Connexion Google annulée')}
-                  shape="pill"
-                  size="large"
-                  text={mode !== 'register' ? 'continue_with' : 'signup_with'}
-                  width="360"
-                />
-              </div>
-            ) : (
-              <button className="btn btn-white w-full" disabled title={t('Ajoute VITE_GOOGLE_CLIENT_ID pour activer')}>
-                <GoogleIcon /> {mode !== 'register' ? t('Continuer avec Google') : t("S'inscrire avec Google")}
-              </button>
-            )}
+            {googleButton('')}
 
             <div className="flex items-center gap-3 text-xs font-extrabold">
               <span className="h-px flex-1 bg-[var(--brown)]/25" />
@@ -219,19 +409,7 @@ export function Title() {
 
             <form
               className="flex flex-col gap-2.5"
-              onSubmit={(e) => {
-                e.preventDefault()
-                if (mode === 'forgot') {
-                  setBusy(true)
-                  setError(null)
-                  api
-                    .forgotPassword(email)
-                    .then((r) => setSent(r.text), (err) => setError(errorText(err, 'Réessaie dans un instant')))
-                    .finally(() => setBusy(false))
-                  return
-                }
-                finish(mode === 'login' ? api.login(email, password) : api.register({ firstName: first, lastName: last, username, email, password }))
-              }}
+              onSubmit={submit}
             >
               {mode === 'register' && (
                 <div className="motion-stagger flex flex-col gap-2.5">

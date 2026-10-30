@@ -263,12 +263,100 @@ def onboarding():
     wait_for(r'^Suivant|Passer', 120)
     wait(3)
     shot('onboarding-1')
-    for i in range(2, 5):
+    for i in range(2, 4):
         if not tap(r'^Suivant', 5, after=2.5):
             break
         shot(f'onboarding-{i}')
-    tap(r"C'est parti", 8, after=6)
+    tap(r"^Commencer|C'est parti", 8, after=6)
     shot('title')
+
+
+# The e-mail account the walk-through registers, then signs in with.
+EMAIL = os.environ.get('REVIEW_EMAIL', 'revue.test@example.com')
+PASSWORD = 'revue-mot-de-passe'
+
+
+def field(pat, text, shot_name=None):
+    """Types into the field showing these words (its placeholder or label)."""
+    n = find(pat)
+    if not n:
+        log('no field', pat)
+        return False
+    tap_xy(*center(n))
+    wait(1.2)
+    if shot_name:
+        shot(shot_name, 'keyboard open: is the field still in view?')
+    type_text(text)
+    wait(0.6)
+    return True
+
+
+def keyboard_down():
+    if 'mInputShown=true' in sh('dumpsys input_method | grep mInputShown'):
+        back(1)
+
+
+def google_button():
+    # Google's sign-in in the emulator: no account (or no Play services) there, so its error must show.
+    if not tap(r'Continuer avec Google', 8, after=8):
+        return
+    shot('google-after-tap', 'the Google sign-in: its error, or Google\'s own window')
+    if not find(r'Connexion Google|Se connecter|Créer un compte'):
+        back(3)
+    shot('google-back')
+
+
+def register_email():
+    tap(r'^Créer un compte$', 8, after=2)
+    shot('register')
+    field(r'^Prénom$', 'Revue')
+    keyboard_down()
+    field(r'^Nom$', 'Test')
+    keyboard_down()
+    field(r'^Pseudo$|^@', 'revue_test')
+    keyboard_down()
+    field(r'^E-mail$', EMAIL, 'register-keyboard')
+    keyboard_down()
+    field(r'^Mot de passe', PASSWORD)
+    keyboard_down()
+    wait(2)
+    shot('register-filled')
+    tap(r'^Créer mon compte$', 8, after=10, last=True)
+    shot('after-register')
+
+
+def login_email():
+    # A fresh start (the app's data cleared): « Passer », then the e-mail and the password.
+    launch(clear=True)
+    wait_for(r'^Passer', 120)
+    tap(r'^Passer', 5, after=5)
+    shot('login')
+    field(r'E-mail ou pseudo', EMAIL, 'login-keyboard')
+    keyboard_down()
+    field(r'^Mot de passe$', PASSWORD)
+    keyboard_down()
+    tap(r'^Se connecter$', 8, after=10, last=True)
+    shot('after-login')
+
+
+def small_phone():
+    # A small phone (640 x 360 dp lying down): the welcome and the sign-in still fit, nothing scrolls.
+    sh('wm size 720x1280')
+    sh('wm density 320')
+    screen_size()
+    launch(clear=True)
+    wait_for(r'^Suivant|Passer', 120)
+    wait(3)
+    shot('small-onboarding')
+    tap(r'^Passer', 5, after=5)
+    shot('small-login')
+    tap(r'^Créer un compte$', 8, after=2)
+    shot('small-register')
+    field(r'^Mot de passe', 'abc', 'small-register-keyboard')
+    keyboard_down()
+    sh('wm size 720x1520')
+    sh('wm density 280')
+    screen_size()
 
 
 def sign_in():
@@ -496,11 +584,20 @@ def back_button():
         wait(40)
 
 
+# What a run plays (REVIEW_PARTS): « login », the welcome and the sign-in (Google's error, an e-mail
+# account made then signed in with, a small phone), then the Sim's birth; « full », the whole game.
+PARTS = {
+    'login': ('onboarding', 'google_button', 'register_email', 'login_email', 'create_sim', 'street_baby', 'small_phone'),
+    'full': ('onboarding', 'sign_in', 'create_sim', 'street_baby', 'grow_up', 'walk', 'phone_apps', 'map_and_trip', 'place_action', 'defi', 'back_button'),
+}
+
+
 def main():
     screen_size()
     log('API', API)
-    for f in (onboarding, sign_in, create_sim, street_baby, grow_up, walk, phone_apps, map_and_trip, place_action, defi, back_button):
-        part(f)
+    names = PARTS.get(os.environ.get('REVIEW_PARTS', 'full'), PARTS['full'])
+    for name in names:
+        part(globals()[name])
     save()
     log('done', n_shot, 'shots')
 

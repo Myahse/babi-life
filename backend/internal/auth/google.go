@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -27,15 +29,27 @@ type GoogleIdentity struct {
 	Picture   string
 }
 
+// AppWebClientID is the Firebase project's web OAuth client (public: it is in every installed
+// app). The Android app (native/, @react-native-google-signin with webClientId) asks Google for an
+// ID token for it, so its tokens' audience is this client, whatever GOOGLE_CLIENT_ID says.
+const AppWebClientID = "115685300024-jo2jvvpg0p1ue1gsv156lcmkjjb99s9t.apps.googleusercontent.com"
+
 // GoogleVerifier checks ID tokens issued by Google Sign-In against Google's
-// published signing keys, which it caches for an hour.
+// published signing keys, which it caches for an hour. A token is taken for
+// any of its client ids (the website's button, the Android app's web client).
 type GoogleVerifier struct {
-	clientID string
-	keys     *keySet
+	clientIDs []string
+	keys      *keySet
 }
 
-func NewGoogleVerifier(clientID string) *GoogleVerifier {
-	return &GoogleVerifier{clientID: clientID, keys: newKeySet(googleCertsURL)}
+func NewGoogleVerifier(clientIDs ...string) *GoogleVerifier {
+	var ids []string
+	for _, id := range clientIDs {
+		if id = strings.TrimSpace(id); id != "" && !slices.Contains(ids, id) {
+			ids = append(ids, id)
+		}
+	}
+	return &GoogleVerifier{clientIDs: ids, keys: newKeySet(googleCertsURL)}
 }
 
 // keySet caches an issuer's RSA public keys for an hour.
@@ -69,7 +83,7 @@ func (v *GoogleVerifier) Verify(ctx context.Context, idToken string) (GoogleIden
 		return v.keys.key(ctx, kid)
 	},
 		jwt.WithValidMethods([]string{"RS256"}),
-		jwt.WithAudience(v.clientID),
+		jwt.WithAudience(v.clientIDs...),
 		jwt.WithExpirationRequired(),
 	)
 	if err != nil {

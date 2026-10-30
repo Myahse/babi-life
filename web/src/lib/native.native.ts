@@ -1,7 +1,8 @@
 import { BackHandler, Linking, Share, Vibration } from 'react-native'
 import * as Haptics from 'expo-haptics'
 import * as Notifications from 'expo-notifications'
-import { GoogleSignin } from '@react-native-google-signin/google-signin'
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin'
+import { t } from '../lib/i18n'
 
 // In the app (native/; React Native picks this file over native.ts) the game
 // is the app itself: Google's sign-in, the share sheet, the haptics and the
@@ -24,13 +25,43 @@ Notifications.setNotificationHandler({
 /** In the Babi Life app: always, here. */
 export const inApp = () => true
 
-/** Google sign-in by the phone: the ID token for /auth/google, or null if cancelled. */
+/** What a failed Google sign-in says to the player: its code, and what to do. */
+function googleErrorText(code: string) {
+  switch (code) {
+    // DEVELOPER_ERROR: Google doesn't know this app's signing key (its SHA-1) for the project (native/README.md).
+    case '10':
+      return t('Connexion Google impossible (code 10) : cette version de l’appli n’est pas encore reconnue par Google. Connecte-toi avec ton e-mail en attendant.')
+    case '7':
+      return t('Connexion Google impossible (code 7) : pas de réseau. Réessaie.')
+    case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
+      return t('Connexion Google impossible : les services Google Play manquent ou sont à mettre à jour.')
+    case statusCodes.IN_PROGRESS:
+      return t('Connexion Google déjà en cours…')
+    case 'NO_ID_TOKEN':
+      return t('Connexion Google impossible : Google n’a pas répondu avec ton compte. Réessaie.')
+    default:
+      return t('Connexion Google impossible (code {code}). Connecte-toi avec ton e-mail en attendant.', { code: code || '?' })
+  }
+}
+
+/**
+ * Google sign-in by the phone: the ID token for /auth/google, or null if cancelled. A failure throws
+ * the player's sentence (with Google's code: 10 is a signing key Google doesn't know), and is logged.
+ */
 export async function nativeGoogleSignIn(): Promise<string | null> {
   configure()
-  await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true })
-  const r = await GoogleSignin.signIn()
-  if (r.type !== 'success') return null
-  return r.data.idToken ?? null
+  try {
+    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true })
+    const r = await GoogleSignin.signIn()
+    if (r.type !== 'success') return null
+    if (!r.data.idToken) throw Object.assign(new Error('no ID token (webClientId missing?)'), { code: 'NO_ID_TOKEN' })
+    return r.data.idToken
+  } catch (e) {
+    const code = String((e as { code?: unknown }).code ?? '')
+    console.warn(`[google sign-in] failed: code ${code}: ${(e as Error)?.message}`)
+    if (code === statusCodes.SIGN_IN_CANCELLED || code === '12501') return null
+    throw new Error(googleErrorText(code))
+  }
 }
 
 /** Share a text (and a link): the phone's share sheet. */

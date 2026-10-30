@@ -81,9 +81,13 @@ func main() {
 	} else {
 		log.Printf("⚠️  e-mail not set (MAIL_FROM with BREVO_API_KEY or SMTP_HOST): « mot de passe oublié » is off")
 	}
-	if cfg.GoogleClientID != "" {
-		authH.Verifier = auth.NewGoogleVerifier(cfg.GoogleClientID)
+	// GOOGLE_CLIENT_ID (one or several, comma-separated) and always the Android app's web client
+	// (its sign-in hands a plain Google ID token for it; GOOGLE_APP_CLIENT_ID changes it).
+	appClient := os.Getenv("GOOGLE_APP_CLIENT_ID")
+	if appClient == "" {
+		appClient = auth.AppWebClientID
 	}
+	authH.Verifier = auth.NewGoogleVerifier(append(strings.Split(cfg.GoogleClientID, ","), appClient)...)
 	if cfg.FirebaseProjectID != "" {
 		authH.Firebase = auth.NewFirebaseVerifier(cfg.FirebaseProjectID)
 	}

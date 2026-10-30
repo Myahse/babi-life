@@ -10,6 +10,10 @@ on:
   push:
     paths: ['.github/workflows/native-review.yml', 'native/review/**']
   workflow_dispatch:
+    inputs:
+      parts:
+        description: 'What to play: login (the welcome, the sign-in, an e-mail account, the birth) or full (the whole game)'
+        default: login
 
 jobs:
   review:
@@ -38,6 +42,8 @@ jobs:
       ADMIN_KEY: review-only-admin-key
       API: http://localhost:8080/api/v1
       OUT: /tmp/review
+      # native/review/drive.py's parts (a push plays the sign-in's).
+      REVIEW_PARTS: ${{ inputs.parts || 'login' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
