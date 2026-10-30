@@ -72,3 +72,18 @@ const DOING: Partial<Record<Pose, string>> = {
   dj: t('aux platines'),
 }
 export const doingOf = (pose: Pose): string | undefined => DOING[pose]
+
+/** The same said in the game's language: the French above is also how the chat sheet knows what they're at. */
+const DOING_SAID: Record<string, string> = {
+  'en train de danser': t('en train de danser'),
+  'en train de boire un verre': t('en train de boire un verre'),
+  'en train de manger': t('en train de manger'),
+  'au téléphone': t('au téléphone'),
+  'assis·e': t('assis·e'),
+  'en prière': t('en prière'),
+  "en train d'ambiancer": t("en train d'ambiancer"),
+  'en train de travailler les billets': t('en train de travailler les billets'),
+  'en train de parler tout seul': t('en train de parler tout seul'),
+  'au travail': t('au travail'),
+}
+export const doingSaid = (doing: string) => DOING_SAID[doing] ?? doing

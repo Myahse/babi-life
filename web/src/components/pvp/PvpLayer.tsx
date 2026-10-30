@@ -223,7 +223,7 @@ export function PvpOver({ won, draw, text, onClose }: { won: boolean; draw?: boo
     <div className="absolute inset-0 z-30 grid place-items-center bg-[#0f1230]/70 p-5" data-pvp="over">
       <div className="card animate-pop w-full max-w-[340px] p-5 text-center">
         <Trophy size={34} className={`mx-auto ${won ? 'text-[#ffc233]' : 'text-[var(--color-ink-soft)]'}`} />
-        <div className="mt-1 font-display text-[28px] leading-tight font-extrabold">{draw ? tr('Match nul') : won ? 'Victoire !' : 'Défaite'}</div>
+        <div className="mt-1 font-display text-[28px] leading-tight font-extrabold">{draw ? tr('Match nul') : won ? tr('Victoire !') : tr('Défaite')}</div>
         {text && <p className="mt-2 text-[14px] leading-snug font-bold text-[var(--color-ink-soft)]">{text}</p>}
         <button className="btn mt-4 w-full" onClick={onClose}>
           {tr('Retour au jeu')}

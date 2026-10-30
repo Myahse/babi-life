@@ -78,7 +78,7 @@ export function CoucouDefi({ onEnd, me }: End) {
           <CoucouScene me={me} open={open} laughing={laughing} />
         </div>
         {open && !said && <div className="animate-pop absolute top-6 font-display text-[34px] font-extrabold text-[#e05a00]">{tr('Coucou !')}</div>}
-        {said && <div className="animate-pop absolute inset-x-6 bottom-6 rounded-[18px] bg-white/95 p-3 text-center text-[15px] font-extrabold text-[var(--color-ink)]">{said}</div>}
+        {said && <div className="animate-pop absolute inset-x-6 bottom-6 rounded-[18px] bg-white/95 p-3 text-center text-[15px] font-extrabold text-[var(--color-ink)]">{(({ 'Parfait !': tr('Parfait !'), 'Bien !': tr('Bien !') }) as Record<string, string>)[said] ?? said}</div>}
       </div>
       <div className="p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <button className="btn w-full !py-4 !text-base" onPointerDown={laugh}>

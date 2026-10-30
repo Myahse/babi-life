@@ -1132,7 +1132,7 @@ function Result({ game, onExit, onReplay, played, kits }: { game: Game; onExit: 
       <div className="sheet animate-up w-full max-w-sm rounded-[28px] p-5">
         <div className="flex items-center gap-2">
           <Trophy size={22} className="text-[var(--color-orange)]" />
-          <div className="font-display text-2xl font-extrabold">{r === 'win' ? 'Victoire !' : r === 'loss' ? tr('Défaite…') : tr('Match nul')}</div>
+          <div className="font-display text-2xl font-extrabold">{r === 'win' ? tr('Victoire !') : r === 'loss' ? tr('Défaite…') : tr('Match nul')}</div>
         </div>
         <div className="mt-2 flex items-center justify-center gap-3 font-display text-4xl font-extrabold tabular-nums">
           <span className="h-5 w-5 rounded ring-1 ring-black/15" style={{ background: kits[0] }} />

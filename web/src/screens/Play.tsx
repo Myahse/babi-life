@@ -682,7 +682,7 @@ export function Play() {
       if (money) toast({ tone: 'done', title: label, money, kind: 'social', icon: 'messages-square' })
       return { text, mood }
     } catch (e) {
-      toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? 'Hors ligne' : tr('Pas possible'), text: errorText(e, tr('Erreur')), money: 0 })
+      toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? tr('Hors ligne') : tr('Pas possible'), text: errorText(e, tr('Erreur')), money: 0 })
       return null
     }
   }
@@ -711,7 +711,7 @@ export function Play() {
       if (mood) npcReact(npc.id, mood, mood === 'bye' ? 2.5 : 3.2)
       return { text: answer, mood }
     } catch (e) {
-      toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? 'Hors ligne' : tr('Pas possible'), text: errorText(e, tr('Erreur')), money: 0 })
+      toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? tr('Hors ligne') : tr('Pas possible'), text: errorText(e, tr('Erreur')), money: 0 })
       return null
     }
   }
@@ -725,7 +725,7 @@ export function Play() {
       if (kind === 'social') refreshPlayers()
       return true
     } catch (e) {
-      toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? 'Hors ligne' : tr('Pas possible'), text: errorText(e, tr('Erreur')), money: 0 })
+      toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? tr('Hors ligne') : tr('Pas possible'), text: errorText(e, tr('Erreur')), money: 0 })
       return false
     } finally {
       setPending(null)
@@ -1875,7 +1875,7 @@ export function Play() {
               if (defi === 'circulation') setStreetAsk((n) => n + 1)
               return res
             } catch (e) {
-              toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? 'Hors ligne' : tr('Pas possible'), text: errorText(e, tr('Erreur')), money: 0 })
+              toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? tr('Hors ligne') : tr('Pas possible'), text: errorText(e, tr('Erreur')), money: 0 })
               return null
             }
           }}
@@ -1923,7 +1923,7 @@ export function Play() {
             try {
               return await api.machineSpin(sim.id, stake)
             } catch (e) {
-              toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? 'Hors ligne' : tr('Pas possible'), text: errorText(e, tr('Erreur')), money: 0 })
+              toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? tr('Hors ligne') : tr('Pas possible'), text: errorText(e, tr('Erreur')), money: 0 })
               return null
             }
           }}
@@ -2223,7 +2223,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
           { id: 'galerie', label: tr('Galerie'), icon: Images, colors: ['#ffd36e', '#ff8a3d'], open: () => setApp('galerie') },
         ]
       : []),
-    { id: 'jeux', label: 'Jeux', icon: Gamepad2, colors: ['#c49bff', '#7048e8'], open: () => setApp('jeux') },
+    { id: 'jeux', label: tr('Jeux'), icon: Gamepad2, colors: ['#c49bff', '#7048e8'], open: () => setApp('jeux') },
     { id: 'guide', label: tr('Encyclo'), icon: BookOpen, colors: ['#9fa8ff', '#4b4fd6'], open: () => setApp('guide') },
     { id: 'boutique', label: tr('Boutique'), icon: ShoppingBag, colors: ['#ffc233', '#e07800'], open: () => setApp('boutique') },
     { id: 'idees', label: tr('Idées'), icon: Lightbulb, colors: ['#ffe066', '#f5a000'], open: () => setApp('idees') },
@@ -2239,7 +2239,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
   ).filter((a) => !life.minor || (a.id !== 'jobs' && a.id !== 'home'))
   // The dock: the map, the messages, the friends, the camera (when the phone is one's own; else the games).
   const DOCK = ['map', 'messages', 'friends', ownPhone ? 'camera' : 'jeux']
-  const title: Record<PhoneAppId, string> = { inviter: tr('Inviter mes amis'), mentor: tr('Ton mentor'), bingo: tr('Babi Bingo'), casino: tr('Babi Casino'), here: commune.name, jobs: tr('Boulot'), home: tr('Logement'), messages: tr('Messages'), news: tr('Infos · Côte d’Ivoire'), store: tr('Store'), waye: tr('Waye'), golvo: tr('Garbaya'), friends: tr('Amis'), gbairai: tr('Gbairai'), tikitoko: tr('Tikitoko'), babigram: tr('Babigram'), bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: tr('Galerie'), guide: tr('Encyclopédie de Babi'), dodo: tr('Dodo'), kineo: tr('Kinéo'), dames: tr('Dames 225'), huit: tr('8 américain'), awale: tr('Awalé 225'), ludo: tr('Ludo 225'), gode: tr('Godé'), bolide: tr('Bolide'), jeux: 'Jeux', boutique: tr('Boutique'), idees: tr('Tes idées pour Babi Life'), politique: tr('Politique'), reglages: tr('Réglages') }
+  const title: Record<PhoneAppId, string> = { inviter: tr('Inviter mes amis'), mentor: tr('Ton mentor'), bingo: tr('Babi Bingo'), casino: tr('Babi Casino'), here: commune.name, jobs: tr('Boulot'), home: tr('Logement'), messages: tr('Messages'), news: tr('Infos · Côte d’Ivoire'), store: tr('Store'), waye: tr('Waye'), golvo: tr('Garbaya'), friends: tr('Amis'), gbairai: tr('Gbairai'), tikitoko: tr('Tikitoko'), babigram: tr('Babigram'), bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: tr('Galerie'), guide: tr('Encyclopédie de Babi'), dodo: tr('Dodo'), kineo: tr('Kinéo'), dames: tr('Dames 225'), huit: tr('8 américain'), awale: tr('Awalé 225'), ludo: tr('Ludo 225'), gode: tr('Godé'), bolide: tr('Bolide'), jeux: tr('Jeux'), boutique: tr('Boutique'), idees: tr('Tes idées pour Babi Life'), politique: tr('Politique'), reglages: tr('Réglages') }
 
   return (
     <div className="phone-backdrop absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center short:items-stretch short:justify-end" data-away={away || undefined} onClick={putAway}>
@@ -2611,7 +2611,7 @@ function usePlaceActions(world: World, sim: Sim, city: City, commune: Commune, p
   // What's done in a rented room only shows with the room (backend sims/hotel.go): else the lift's « Les chambres ».
   const roomHere = !!sim.stay && sim.stay.place === placeId && sim.stay.until > sim.gameMinutes
   const items = [...(career ? [shift(career, sim.careerLevel)] : []), ...kind.interactions.map((it) => (placeId === 'home' ? atHome(it, home) : it))].filter((it) => !it.stay || roomHere)
-    .filter((it) => ageBlock(it, life.stage?.id) !== 'Plus de ton âge' && (!it.places || it.places.includes(placeId)) && (!it.cities || it.cities.includes(city.id)) && (!it.faiths || it.faiths.includes((place as Place).faith!)) && (!it.gender || it.gender === sim.gender))
+    .filter((it) => ageBlock(it, life.stage?.id) !== tr('Plus de ton âge') && (!it.places || it.places.includes(placeId)) && (!it.cities || it.cities.includes(city.id)) && (!it.faiths || it.faiths.includes((place as Place).faith!)) && (!it.gender || it.gender === sim.gender))
     .filter((it) => it.id !== 'passer-nuit' || (partner && adult && !life.minor))
     .filter((it) => civicState(it, terrain, placeId, commune.id).show)
     // What an update hasn't brought yet (lib/features.ts).
@@ -2956,7 +2956,7 @@ function SoireeSheet({ party, world, sim, city, commune, onClose, onPick, onEnd,
   const life = lifeOf(world, sim)
   const host = party?.host === sim.id
   const left = party ? Math.max(0, Math.round((new Date(party.ends).getTime() - serverNow()) / 60000)) : 0
-  const items = (world.kinds.soiree?.interactions ?? []).filter((it) => (it.id === 'recevoir-soiree' ? host : true) && ageBlock(it, life.stage?.id) !== 'Plus de ton âge')
+  const items = (world.kinds.soiree?.interactions ?? []).filter((it) => (it.id === 'recevoir-soiree' ? host : true) && ageBlock(it, life.stage?.id) !== tr('Plus de ton âge'))
   const colors: [string, string] = ['#ff5cc8', '#7a2bd6']
   return (
     <div className="absolute inset-0 z-30 flex flex-col justify-end bg-[#0f1230]/55 backdrop-blur-[3px] lg:items-center lg:justify-center" onClick={onClose}>

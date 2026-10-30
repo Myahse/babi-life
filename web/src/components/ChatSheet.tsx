@@ -8,6 +8,7 @@ import { IconTile } from './ui'
 import { Portrait } from '../avatar/portrait'
 import { Sheet } from './Sheet'
 import { t as tr, tx } from '../lib/i18n'
+import { doingSaid } from '../world3d/talk'
 
 // Talking to someone in the street (tap them): their first name, what they
 // do, how well you get on, and a conversation that goes on as long as you
@@ -413,7 +414,7 @@ export function ChatSheet({ npc, simGender, onSay, onType: typing, onClose, onBy
             </div>
             <div className="truncate text-[12.5px] font-extrabold text-[var(--color-ink-soft)]">
               {kin ? (kin === 'papa' ? tr('Ton papa') : tr('Ta maman')) : jobOf(npc)}
-              {npc.doing ? ` · ${npc.doing}` : ''}
+              {npc.doing ? ` · ${doingSaid(npc.doing)}` : ''}
             </div>
             {/* What they speak besides French: a greeting in it pleases them */}
             <div className="mt-0.5 flex items-center gap-1.5 truncate text-[11.5px] font-bold text-[var(--color-ink-soft)]">

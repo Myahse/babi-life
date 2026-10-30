@@ -31,7 +31,7 @@ const order = (d: string) => parseFloat(d) * (d.includes('M') ? 1000 : 1)
 type Tab = 'pour' | 'jeux' | 'applis' | 'mes'
 const TABS: { id: Tab; label: string }[] = [
   { id: 'pour', label: tr('Pour toi') },
-  { id: 'jeux', label: 'Jeux' },
+  { id: 'jeux', label: tr('Jeux') },
   { id: 'applis', label: tr('Applis') },
   { id: 'mes', label: tr('Mes applis') },
 ]
@@ -154,7 +154,7 @@ export function StoreApp({ world, sim, act, onOpen }: { world: World; sim: Sim; 
             <div className="-mx-3 mt-4 flex gap-2 overflow-x-auto px-3">
               {[...cats, 'Jeux'].map((c) => (
                 <button key={c} className="shrink-0 rounded-full border border-[var(--color-line)] px-3.5 py-1.5 text-[13px] font-extrabold" onClick={() => (c === 'Jeux' ? setTab('jeux') : (setTab('applis'), setCat(c)))}>
-                  {c}
+                  {c === 'Jeux' ? tr('Jeux') : c}
                 </button>
               ))}
             </div>

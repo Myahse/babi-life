@@ -519,7 +519,7 @@ function drawBoard(g: CanvasRenderingContext2D, flights: Flight[], gameMinutes: 
     const left = at - gameMinutes
     const y = 145 + i * 60
     const delayed = !((n * 7919) % 9)
-    const status = left < 30 ? 'EMBARQUEMENT' : delayed ? 'RETARDÉ' : tr('À L’HEURE')
+    const status = left < 30 ? tr('EMBARQUEMENT') : delayed ? tr('RETARDÉ') : tr('À L’HEURE')
     g.fillStyle = i % 2 ? '#0e1a3a' : '#0b1530'
     g.fillRect(0, y - 28, BOARD_W, 56)
     g.font = '800 30px sans-serif'
@@ -530,7 +530,7 @@ function drawBoard(g: CanvasRenderingContext2D, flights: Flight[], gameMinutes: 
     g.fillText(`AL ${300 + ((n * 37) % 600)}`, 560, y)
     g.fillText(String(1 + (n % 6)), 720, y)
     if (status !== 'EMBARQUEMENT' || blink) {
-      g.fillStyle = status === 'EMBARQUEMENT' ? '#51cf66' : status === 'RETARDÉ' ? '#ff6b6b' : '#ffffff'
+      g.fillStyle = left < 30 ? '#51cf66' : delayed ? '#ff6b6b' : '#ffffff'
       g.fillText(status, 810, y, 200)
     }
   }

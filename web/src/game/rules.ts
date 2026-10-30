@@ -261,7 +261,7 @@ export function ageBlock(it: Interaction, stage?: string) {
   if (!stage) return null
   const ages = it.ages?.length ? it.ages : ['enfant', 'ado', 'adulte']
   if (ages.includes(stage)) return null
-  return AGE_ORDER.indexOf(stage) < AGE_ORDER.indexOf(ages[0]) ? tr('Trop jeune pour ça') : "Plus de ton âge"
+  return AGE_ORDER.indexOf(stage) < AGE_ORDER.indexOf(ages[0]) ? tr('Trop jeune pour ça') : tr('Plus de ton âge')
 }
 
 /** One's own house (game/house.go): no rent, as comfortable as what is in it. */

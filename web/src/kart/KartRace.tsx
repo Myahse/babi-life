@@ -231,7 +231,7 @@ function Raceway({ name, look, gender, onExit, simId, token, onReplay, online }:
           <div className="sheet animate-up w-full max-w-sm rounded-[28px] p-5">
             <div className="flex items-center gap-2">
               <Flag size={22} className="text-[var(--color-orange)]" />
-              <div className="font-display text-2xl font-extrabold">{hud.place === 1 ? 'Victoire !' : hud.place <= 3 ? tr('Sur le podium !') : tr('Course terminée')}</div>
+              <div className="font-display text-2xl font-extrabold">{hud.place === 1 ? tr('Victoire !') : hud.place <= 3 ? tr('Sur le podium !') : tr('Course terminée')}</div>
             </div>
             <ol className="mt-3 space-y-1">
               {standings(race).map((k, i) => (

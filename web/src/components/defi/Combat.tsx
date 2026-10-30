@@ -361,7 +361,7 @@ function Match({ foe, me, baby, versus, onEnd }: { foe: Foe; me?: Me; baby?: boo
           className="animate-pop pointer-events-none absolute inset-x-0 top-[26%] text-center font-display text-[46px] leading-none font-extrabold text-white [text-shadow:0_5px_0_rgba(0,0,0,0.55)]"
           style={{ color: hud.said.startsWith('K.O') ? '#ffd43b' : hud.said === 'Défaite' ? '#ff8787' : undefined }}
         >
-          {hud.said}
+          {(({ 'Combat !': tr('Combat !'), 'Victoire !': tr('Victoire !'), Défaite: tr('Défaite') }) as Record<string, string>)[hud.said] ?? hud.said}
         </div>
       )}
       {hud.combo >= 2 && (

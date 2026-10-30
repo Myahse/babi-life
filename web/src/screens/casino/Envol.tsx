@@ -21,7 +21,7 @@ import { t as tr, tx as trx } from '../../lib/i18n'
  */
 
 const nf = (n: number) => n.toLocaleString('fr-FR')
-const errText = (e: unknown) => (e instanceof ApiError && e.status === 0 ? 'Hors ligne' : errorText(e, tr('Erreur')))
+const errText = (e: unknown) => (e instanceof ApiError && e.status === 0 ? tr('Hors ligne') : errorText(e, tr('Erreur')))
 const times = (m: number) => `×${m.toFixed(2).replace('.', ',')}`
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 /** A plane's colour by how far it went (the history's chips). */

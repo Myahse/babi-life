@@ -189,7 +189,7 @@ export function Drive({ rival, onEnd, versus }: { rival: Rival; onEnd: (score: n
         sfx.bell()
         said = tl('Dernier tour !')
       } else if (e.kind === 'pass') said = e.me ? tl('Tu le doubles !') : tl('Il te double !')
-      else if (e.kind === 'finish' && e.me) said = standing(r).first ? 'Victoire !' : tl('2e place')
+      else if (e.kind === 'finish' && e.me) said = standing(r).first ? tl('Victoire !') : tl('2e place')
       else if (e.kind === 'finish') said = tl('{name} a fini', { name: rival.name })
     }
     const st = me.progress >= r.cars[1].progress

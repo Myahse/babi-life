@@ -171,9 +171,9 @@ export function transform(file, compared) {
         if (orig === 't') T = el.name.text
         if (orig === 'tx') TX = el.name.text
       }
-  const tName = T ?? ['t', 'tr', 'tl'].find((n) => !locals.has(n))
-  const txName = TX ?? ['tx', 'trx', 'tlx'].find((n) => !locals.has(n))
-  if (!tName || !txName) throw new Error(`${file}: t, tr and tl are all taken`)
+  const tName = T ?? ['t', 'tr', 'tl', 'tt'].find((n) => !locals.has(n))
+  const txName = TX ?? ['tx', 'trx', 'tlx', 'ttx'].find((n) => !locals.has(n))
+  if (!tName || !txName) throw new Error(`${file}: t, tr, tl and tt are all taken`)
   let usedT = false, usedTX = false
   const strings = []
 
@@ -419,7 +419,8 @@ export function transform(file, compared) {
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const all = walkFiles(SRC)
-  const compared = collectCompared(all)
+  // (NOCOMPARE=1: what the comparisons alone keep in French, to look at by hand.)
+  const compared = process.env.NOCOMPARE ? new Set() : collectCompared(all)
   const files = only.length ? only : all
   let total = 0
   for (const f of files) {

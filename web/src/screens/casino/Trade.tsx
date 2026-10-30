@@ -25,7 +25,7 @@ const price = (p: number) =>
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })
-const errText = (e: unknown) => (e instanceof ApiError && e.status === 0 ? 'Hors ligne' : errorText(e, tl('Erreur')))
+const errText = (e: unknown) => (e instanceof ApiError && e.status === 0 ? tl('Hors ligne') : errorText(e, tl('Erreur')))
 const length = (s: number) => (s < 60 ? `${s} s` : `${s / 60} min`)
 const UP = '#2fd27a'
 const DOWN = '#ff5a6a'

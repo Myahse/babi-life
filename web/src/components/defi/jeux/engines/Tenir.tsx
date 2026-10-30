@@ -259,7 +259,7 @@ export function Tenir({ jeu, onEnd }: EngineProps<'tenir'>) {
     if (l.p >= l.lo && l.p <= l.hi) {
       haptic('success')
       gesture('cheer', 900)
-      say(['Parfait !', tr('Pile dedans !'), tr('Bien joué !')][st.current.round % 3])
+      say([tr('Parfait !'), tr('Pile dedans !'), tr('Bien joué !')][st.current.round % 3])
       end('good', 1)
     } else {
       const near = l.p >= l.lo - 0.07 && l.p <= l.hi + 0.07

@@ -225,7 +225,7 @@ export function Rythme({ jeu, onEnd }: EngineProps<'rythme'>) {
       s.flash[lane] = { c: perfect ? '#fff3bf' : '#69db7c', at: s.t }
       haptic(perfect ? 'medium' : 'light')
       gesture('dance', 1500)
-      say(s.combo >= 5 && s.combo % 5 === 0 ? tr('Combo ×{combo} !', { combo: s.combo }) : perfect ? 'Parfait !' : 'Bien !')
+      say(s.combo >= 5 && s.combo % 5 === 0 ? tr('Combo ×{combo} !', { combo: s.combo }) : perfect ? tr('Parfait !') : tr('Bien !'))
     } else if (best && Math.abs(d) <= NEAR) {
       best.done = 'miss'
       best.at = s.t

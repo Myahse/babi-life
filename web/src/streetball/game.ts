@@ -823,7 +823,7 @@ function letGo(g: Game, p: Player) {
   let chance: number
   if (q >= lo && q <= hi) {
     chance = Math.min(0.9, base + 0.3)
-    if (p.human) say(g, 'Parfait !')
+    if (p.human) say(g, tr('Parfait !'))
   } else {
     // The further off the green, the less it goes in.
     const off = q < lo ? lo - q : q - hi

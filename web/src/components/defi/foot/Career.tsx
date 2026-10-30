@@ -285,7 +285,7 @@ export function Career({ me, simId, onEnd, onBack, onResult }: { me: Me; simId: 
         {header(tr('Saison {n} · Journée {day}/{DAYS}', { n: season.n, day: season.day, DAYS }))}
         <div className="card animate-pop mt-4 p-4 text-[var(--color-ink)]">
           <div className="label">{tr('Journée')} {season.day}</div>
-          <div className="mt-1 font-display text-[22px] leading-tight font-extrabold">{after.won > 0 ? 'Victoire !' : after.won === 0 ? tr('Match nul') : tr('Défaite…')}</div>
+          <div className="mt-1 font-display text-[22px] leading-tight font-extrabold">{after.won > 0 ? tr('Victoire !') : after.won === 0 ? tr('Match nul') : tr('Défaite…')}</div>
           <ul className="mt-2 space-y-1">
             {after.day.map((r) => (
               <li key={r.a} className={`flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-[13px] font-extrabold ${r.a === club || r.b === club ? 'bg-[#fff3c4]' : 'bg-[var(--color-canvas)]'}`}>

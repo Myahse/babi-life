@@ -25,7 +25,7 @@ import { t as tl, tx } from '../lib/i18n'
  */
 
 const nf = (n: number) => n.toLocaleString('fr-FR')
-const errText = (e: unknown) => (e instanceof ApiError && e.status === 0 ? 'Hors ligne' : errorText(e, tl('Erreur')))
+const errText = (e: unknown) => (e instanceof ApiError && e.status === 0 ? tl('Hors ligne') : errorText(e, tl('Erreur')))
 type Props = { world: World; sim: Sim; act: Act; /** While a round is shown (the wheel turning, a ticket under its silver): the money as it was, so a sync doesn't tell the result first. */ hold: (money: number | null) => void }
 
 export function CasinoApp({ world, sim, act, onConfirmAdult }: Omit<Props, 'hold'> & { onConfirmAdult: () => Promise<void> }) {
