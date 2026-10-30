@@ -32,6 +32,7 @@ import (
 	"github.com/myahse/babi-life/backend/internal/features"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
+	"github.com/myahse/babi-life/backend/internal/i18n"
 	"github.com/myahse/babi-life/backend/internal/ideas"
 	"github.com/myahse/babi-life/backend/internal/kart"
 	"github.com/myahse/babi-life/backend/internal/live"
@@ -156,6 +157,8 @@ func main() {
 		AllowedHeaders: []string{"Authorization", "Content-Type", "X-Admin-Key", "Idempotency-Key", "X-Lang"},
 		MaxAge:         600,
 	}))
+	// The player's language (X-Lang): the server's words in English for who plays in English (internal/i18n).
+	r.Use(i18n.Middleware)
 
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		// Which version runs (Render sets RENDER_GIT_COMMIT), and which sites may call it.

@@ -47,7 +47,7 @@ func (c *Client) AnswerParent(ctx context.Context, p Parent, k Child, before []L
 	if c == nil {
 		return Reply{}, ErrOff
 	}
-	text, err := c.ask(ctx, parentSystem, parentPrompt(p, k, before, said))
+	text, err := c.ask(ctx, parentSystem, parentPrompt(p, k, before, said)+inLanguage(ctx))
 	if err != nil {
 		return Reply{}, err
 	}

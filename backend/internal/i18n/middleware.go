@@ -17,7 +17,8 @@ func Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		lang := FromRequest(r)
 		r = r.WithContext(WithLang(r.Context(), lang))
-		if lang != "en" || r.Header.Get("Upgrade") != "" || r.Method == http.MethodOptions {
+		// The team's admin stays in French, as its screens are.
+		if lang != "en" || r.Header.Get("Upgrade") != "" || r.Method == http.MethodOptions || strings.Contains(r.URL.Path, "/admin") {
 			next.ServeHTTP(w, r)
 			return
 		}
