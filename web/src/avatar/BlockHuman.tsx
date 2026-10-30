@@ -1943,9 +1943,11 @@ export function BlockBaby({ look, gender, pose = 'idle', seed = 0, fitted }: Pro
     const t = worldTime() + seed
     const crawl = pose === 'walk'
     const asleep = pose === 'sleep'
-    // On all fours to crawl; sitting up otherwise.
+    // Its first steps (the défi « premiers pas »): up on its legs, toddling.
+    const toddle = pose === 'stumble'
+    // On all fours to crawl; standing for the first steps; sitting up otherwise (bouncing with joy when it laughs).
     root.current!.rotation.x = crawl ? 1.05 : 0
-    root.current!.position.y = crawl ? 0.17 + Math.abs(Math.sin(t * 6)) * 0.01 : 0
+    root.current!.position.y = crawl ? 0.17 + Math.abs(Math.sin(t * 6)) * 0.01 : toddle ? 0.2 + Math.abs(Math.sin(t * 7)) * 0.012 : pose === 'cheer' ? Math.abs(Math.sin(t * 10)) * 0.03 : 0
     root.current!.position.z = crawl ? -0.12 : 0
     // Asleep on its back: still, the chest rising and falling.
     root.current!.scale.y = asleep ? 1 + Math.sin(t * 2.2) * 0.015 : 1
@@ -1962,6 +1964,14 @@ export function BlockBaby({ look, gender, pose = 'idle', seed = 0, fitted }: Pro
         const step = Math.sin(t * 6 + i * Math.PI)
         a.rotation.set(-1.25 + step * 0.35, 0, 0)
         g.rotation.set(-0.25 - step * 0.3, 0, 0)
+      } else if (toddle) {
+        // Arms up and out for balance, little stiff steps.
+        a.rotation.set(-1.35 + Math.sin(t * 7 + i) * 0.12, 0, out * 0.55)
+        g.rotation.set(Math.sin(t * 7 + i * Math.PI) * 0.35, 0, out * 0.06)
+      } else if (pose === 'cheer') {
+        // Laughing: both arms up, waving.
+        a.rotation.set(-2.5 + Math.sin(t * 12 + i) * 0.25, 0, out * 0.45)
+        g.rotation.set(-1.45 + Math.sin(t * 10 + i) * 0.15, 0, out * 0.3)
       } else if (pose === 'busy') {
         a.rotation.set(-1.2, 0, -out * (0.45 + Math.max(0, Math.sin(t * 9)) * 0.35))
         g.rotation.set(-1.45, 0, out * 0.25)

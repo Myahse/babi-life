@@ -8,7 +8,7 @@ import type { Pose } from './Human'
 // Legs: [hip forward/back, hip out, knee bend]. Body: height, sway, lean
 // forward (rx), sideways (rz), turn (ry), the head's nod.
 
-export const EMOTE_POSES = ['clap', 'thumbsup', 'shrug', 'laugh', 'dab', 'heart', 'salute', 'facepalm', 'cry', 'kiss', 'bow', 'flex', 'zouglou', 'gweta', 'robot', 'moonwalk', 'kneeslide', 'meditate', 'shout', 'sitground', 'lean'] as const
+export const EMOTE_POSES = ['clap', 'thumbsup', 'shrug', 'laugh', 'dab', 'heart', 'salute', 'facepalm', 'cry', 'kiss', 'bow', 'flex', 'zouglou', 'gweta', 'robot', 'moonwalk', 'kneeslide', 'meditate', 'shout', 'sitground', 'lean', 'cache', 'coucou'] as const
 export type EmotePose = (typeof EMOTE_POSES)[number]
 const IS = new Set<string>(EMOTE_POSES)
 export const isEmote = (p: string): p is EmotePose => IS.has(p)
@@ -111,6 +111,12 @@ function armsOf(pose: Pose, out: number, t: number, since: number): Arm | null {
     case 'lean':
       // Its back to the tree, arms crossed on the chest.
       return [-0.35, 0, out * -0.18, -1.75, 0]
+    case 'cache':
+      // Coucou-caché with the baby: kneeling, both hands flat over the face.
+      return [-1.55, 0, out * -0.55, -2.25, 0]
+    case 'coucou':
+      // … and the hands open out either side of the face: « Coucou ! »
+      return [-1.25, 0, out * 0.95, -1.7, 0]
     case 'shout':
       // The atalaku: the mic at the mouth, the other arm pumping up.
       return right ? [-1.45, 0, 0.15, -2.35, 0] : [-0.3, 0, out * (2.2 + up(Math.sin(t * 6)) * 0.4), -0.3, 0]
@@ -134,6 +140,8 @@ function legsOf(pose: Pose, out: number, t: number): Leg | null {
       return [0.05 + 0.1 * Math.sin(t * Math.PI * 2 + side), 0, 0.6 * k]
     }
     case 'kneeslide':
+    case 'cache':
+    case 'coucou':
       return [0.05, out * 0.08, 1.55]
     case 'meditate':
       // Cross-legged.
@@ -206,6 +214,10 @@ function bodyOf(pose: Pose, t: number, since: number): Body | null {
       return { z: 0.6 - back * 1.2, rx: -0.05, head: -0.05 + Math.sin(t * Math.PI * 2) * 0.03 }
     case 'kneeslide':
       return { y: -0.4, rx: -0.3, head: -0.4 }
+    case 'cache':
+      return { y: -0.4, rx: 0.12, head: 0.12 }
+    case 'coucou':
+      return { y: -0.4, rx: -0.08, head: -0.12 }
     case 'meditate':
       return { y: -0.62 + Math.sin(t * 1.5) * 0.03, head: 0.15 }
     case 'sitground':

@@ -1979,7 +1979,7 @@ export function Play() {
           }}
         />
       )}
-      {flow && <RideFlow world={world} req={flow} gameMinutes={sim.gameMinutes} onBoard={board} onClose={() => setFlow(null)} />}
+      {flow && <RideFlow world={world} req={flow} gameMinutes={sim.gameMinutes} me={{ look: sim.look, gender: sim.gender, stage: lifeOf(world, sim).stage?.id ?? 'adulte' }} onBoard={board} onClose={() => setFlow(null)} />}
     </div>
   )
 }
