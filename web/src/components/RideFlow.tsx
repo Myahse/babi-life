@@ -8,14 +8,16 @@ import { AppLogo } from './AppLogo'
 import { DriverCall, newCall, type Call } from './DriverCall'
 import { aCommune, deCommune } from '../lib/french'
 import { discounted } from '../lib/civic'
+import { RoadsideScene, type Me } from './RoadsideScene'
+import { randomLook } from '../avatar/options'
 
 /** A ride being arranged in town: hailing at the roadside, or booking an app. */
 export type FlowRequest = { cityId: string; from: Commune; to: Commune; kind: 'street' | string; offer?: number; fare: number; party: number; money?: number; /** The share off the public transport (the president's measure, lib/civic.ts). */ off?: number; /** At the roadside: the one the player chose to wait for (else the woro-woro or a taxi compteur, whichever). */ want?: StreetRide }
 
-export function RideFlow({ world, req, gameMinutes, onBoard, onClose }: { world: World; req: FlowRequest; gameMinutes: number; onBoard: (ride: Ride, label: string) => void; onClose: () => void }) {
+export function RideFlow({ world, req, gameMinutes, me, onBoard, onClose }: { world: World; req: FlowRequest; gameMinutes: number; /** Who waits at the roadside (the player's Sim). */ me?: Me; onBoard: (ride: Ride, label: string) => void; onClose: () => void }) {
   return (
     <div className="absolute inset-0 z-[70] flex items-end justify-center bg-black/45 p-3 backdrop-blur-[2px] sm:items-center" role="dialog" aria-modal="true">
-      {req.kind === 'street' ? <Roadside world={world} req={req} gameMinutes={gameMinutes} onBoard={onBoard} onClose={onClose} /> : <AppBooking world={world} req={req} onBoard={onBoard} onClose={onClose} />}
+      {req.kind === 'street' ? <Roadside world={world} req={req} gameMinutes={gameMinutes} me={me} onBoard={onBoard} onClose={onClose} /> : <AppBooking world={world} req={req} onBoard={onBoard} onClose={onClose} />}
     </div>
   )
 }
@@ -62,7 +64,7 @@ const CAR_COLORS = ['#f1f3f5', '#212529', '#adb5bd', '#c92a2a', '#1c7ed6', '#868
  * moto-taxi (one behind the driver), and cars you can't hail. Whichever was
  * chosen comes by more often, but any of them can be waved at. Wave, ask, get in.
  */
-function Roadside({ world, req, gameMinutes, onBoard, onClose }: { world: World; req: FlowRequest; gameMinutes: number; onBoard: (ride: Ride, label: string) => void; onClose: () => void }) {
+function Roadside({ world, req, gameMinutes, me, onBoard, onClose }: { world: World; req: FlowRequest; gameMinutes: number; me?: Me; onBoard: (ride: Ride, label: string) => void; onClose: () => void }) {
   const { from, to } = req
   const hour = clock(gameMinutes).hour
   const woroHere = !!from.woro && !from.woro.none
@@ -88,6 +90,8 @@ function Roadside({ world, req, gameMinutes, onBoard, onClose }: { world: World;
     },
   ])
   const [waved, setWaved] = useState(false)
+  // Without a Sim (the lab), someone of the town waits.
+  const [who] = useState<Me>(() => me ?? { look: randomLook('femme'), gender: 'femme' })
   const nextId = useRef(1)
   const timers = useRef<number[]>([])
   const later = (ms: number, f: () => void) => timers.current.push(window.setTimeout(f, ms))
@@ -226,8 +230,9 @@ function Roadside({ world, req, gameMinutes, onBoard, onClose }: { world: World;
             : 'Voiture'
 
   return (
-    <div className="animate-pop w-full max-w-[400px] overflow-hidden rounded-[28px] bg-[var(--color-surface)] shadow-2xl">
-      <div className="flex items-start gap-3 p-4 pb-3">
+    <div className="animate-pop w-full max-w-[400px] overflow-hidden rounded-[28px] bg-[var(--color-surface)] shadow-2xl short:grid short:max-h-[calc(100dvh-1.5rem)] short:max-w-[760px] short:grid-cols-2">
+      <div className="short:flex short:min-h-0 short:flex-col">
+      <div className="flex items-start gap-3 p-4 pb-3 short:pb-2">
         <div className="min-w-0 flex-1">
           <div className="label">Au bord de la route · {from.name}</div>
           <div className="font-display text-xl leading-tight font-extrabold">Direction {to.name}</div>
@@ -237,24 +242,15 @@ function Roadside({ world, req, gameMinutes, onBoard, onClose }: { world: World;
         </button>
       </div>
 
-      {/* The road: vehicles go by from left to right. */}
-      <div className="relative h-36 overflow-hidden bg-[linear-gradient(#9dd3a8_0_28%,#c9b28a_28%_34%,#3c4152_34%_92%,#c9b28a_92%)]">
-        <div className="absolute top-[62%] right-0 left-0 h-[3px] bg-[repeating-linear-gradient(90deg,#f8f9fa_0_22px,transparent_22px_44px)] opacity-80" />
-        <div className="absolute bottom-[8%] left-[46%] flex flex-col items-center">
-          <span className="grid h-7 w-7 place-items-center rounded-full border-2 border-white bg-[var(--color-orange)] text-white shadow">
-            <Hand size={14} />
-          </span>
-          <span className="mt-0.5 rounded bg-black/40 px-1 text-[9px] font-extrabold text-white">toi{party > 1 ? ` +${party - 1}` : ''}</span>
-        </div>
-        {car && (
-          <div className="absolute top-[30%] transition-[left] duration-300 ease-out" style={{ left: `${pos * 130 - 22}%` }}>
-            <div className={`mb-1 w-max -translate-x-1/4 rounded-full px-2 py-0.5 text-[10px] font-extrabold shadow ${hailable ? 'bg-white text-[var(--color-ink)]' : 'bg-black/50 text-white'}`}>{label}</div>
-            <VehicleSide kind={car.kind} color={car.color} trim={car.trim} taken={car.taken} />
-          </div>
-        )}
+      {/* The road in 3D: the game's vehicles go by from left to right, the Sim waves at the kerb. */}
+      <div className="relative h-40 overflow-hidden bg-[#a9d3f0] short:h-auto short:min-h-[150px] short:flex-1">
+        <RoadsideScene me={who} party={party} car={car} passMs={PASS_MS} stopAt={STOP_AT} stopped={!!stopped} waved={waved} board={!!stopped?.yes} hailing={!stopped && !!car && mine(car.kind) && pos < STOP_AT + 0.05} night={night(hour)} />
+        {car && <div className={`pointer-events-none absolute top-2 left-2 rounded-full px-2.5 py-0.5 text-[11px] font-extrabold shadow ${hailable ? 'bg-white text-[var(--color-ink)]' : 'bg-black/50 text-white'}`}>{label}</div>}
+      </div>
       </div>
 
-      <div className="flex min-h-[112px] flex-col justify-end gap-1.5 bg-[var(--color-canvas)] px-4 py-3">
+      <div className="short:flex short:min-h-0 short:flex-col">
+      <div className="flex min-h-[112px] flex-col justify-end gap-1.5 overflow-hidden bg-[var(--color-canvas)] px-4 py-3 short:min-h-0 short:flex-1">
         {talk.map((t, i) => (
           <div key={i} className={`animate-pop max-w-[85%] rounded-2xl px-3 py-1.5 text-sm font-bold ${t.who === 'toi' ? 'self-end rounded-br-sm bg-[var(--color-orange)] text-white' : t.who === 'chauffeur' ? 'self-start rounded-bl-sm bg-white' : 'self-center bg-transparent text-center text-xs text-[var(--color-ink-soft)]'}`}>
             {t.text}
@@ -262,7 +258,7 @@ function Roadside({ world, req, gameMinutes, onBoard, onClose }: { world: World;
         ))}
       </div>
 
-      <div className="grid gap-3 p-4">
+      <div className="grid gap-3 p-4 short:gap-2 short:p-3">
         {stopped?.yes ? (
           <div className="grid grid-cols-2 gap-2">
             <button className="btn btn-soft" onClick={() => car && leave(car)}>
@@ -284,6 +280,7 @@ function Roadside({ world, req, gameMinutes, onBoard, onClose }: { world: World;
           </span>
         </div>
       </div>
+      </div>
     </div>
   )
 }
@@ -294,52 +291,6 @@ const estimateMeter = (seat: number, toll = 0) => withToll(seat, toll, 2, 500, 5
 const gbakaSeat = (seat: number) => Math.max(200, Math.round((seat * 0.7) / 50) * 50)
 /** A gbaka's seats (the apprenti always finds one more). */
 const GBAKA_SEATS = 18
-
-/** A vehicle seen from the side, with heads in the windows for its passengers. */
-function VehicleSide({ kind, color, trim, taken }: { kind: Kind; color: string; trim?: string; taken: number }) {
-  if (kind === 'moto') {
-    return (
-      <svg width="56" height="40" viewBox="0 0 56 40" aria-hidden>
-        <circle cx="12" cy="31" r="7" fill="#1d1d24" />
-        <circle cx="44" cy="31" r="7" fill="#1d1d24" />
-        <path d="M12 31 L24 18 L38 18 L44 31" stroke={color} strokeWidth="6" fill="none" strokeLinecap="round" />
-        <circle cx="30" cy="8" r="6" fill="#6b4a32" />
-        {taken > 0 && <circle cx="21" cy="10" r="5.5" fill="#8a5a3b" />}
-      </svg>
-    )
-  }
-  const long = kind === 'gbaka'
-  const w = long ? 150 : 112
-  const seats = long ? 5 : 3
-  return (
-    <svg width={w} height="56" viewBox={`0 0 ${w} 56`} aria-hidden>
-      <path d={long ? `M6 44 V16 Q6 8 14 8 H${w - 14} Q${w - 4} 8 ${w - 4} 20 V44 Z` : `M4 44 V30 Q4 24 12 23 L28 10 Q31 8 36 8 H74 Q80 8 84 12 L96 23 Q${w - 4} 24 ${w - 4} 32 V44 Z`} fill={color} stroke="rgba(0,0,0,0.25)" strokeWidth="1.5" />
-      {trim && <rect x="5" y="36" width={w - 10} height="7" fill={trim} />}
-      {kind === 'compteur' && <rect x="44" y="2" width="20" height="7" rx="2" fill="#ffe066" stroke="rgba(0,0,0,0.25)" />}
-      {/* The apprenti hanging out of the gbaka's door */}
-      {long && (
-        <g>
-          <rect x={w - 52} y="14" width="9" height="20" rx="3" fill="#ff8200" />
-          <circle cx={w - 47.5} cy="9" r="5" fill="#5a3b26" />
-          <path d={`M${w - 43} 18 L${w - 33} 8`} stroke="#5a3b26" strokeWidth="3" strokeLinecap="round" />
-        </g>
-      )}
-      {[...Array(seats)].map((_, i) => {
-        const x = long ? 18 + i * 25 : 32 + i * 20
-        return (
-          <g key={i}>
-            <rect x={x} y={long ? 12 : 12} width={long ? 20 : 17} height="12" rx="2.5" fill="#2a3446" />
-            {i < Math.min(seats, kind === 'woro' ? taken + 1 : taken + 1) && <circle cx={x + (long ? 10 : 8.5)} cy="21" r="4" fill={i === 0 ? '#5a3b26' : '#8a5a3b'} />}
-          </g>
-        )
-      })}
-      <circle cx={long ? 26 : 26} cy="46" r="8" fill="#1d1d24" />
-      <circle cx={w - 26} cy="46" r="8" fill="#1d1d24" />
-      <circle cx={long ? 26 : 26} cy="46" r="3" fill="#adb5bd" />
-      <circle cx={w - 26} cy="46" r="3" fill="#adb5bd" />
-    </svg>
-  )
-}
 
 /* ---------------- Booking an app ---------------- */
 

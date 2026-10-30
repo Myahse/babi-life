@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { haptic } from '../../lib/native'
 import { baby } from '../../audio/baby'
+import { CoucouScene, CubesScene, HochetScene, PasScene, type BabyMe, type Fall, type Steps } from './BebeScene'
 
 // The baby's little games (the update « bebe-jeux », as défis: components/Defi.tsx):
 // coucou-caché with maman (laugh the moment her hands open), the cubes piled
 // up (drop each one on the one under it), the first steps to papa (keep the
 // balance) and the hochet shaken in rhythm. Each gives a score out of 100.
 
-type End = { onEnd: (score: number) => void }
+type End = { onEnd: (score: number) => void; /** The baby: the player's Sim (its look, its family's maman and papa). */ me?: BabyMe }
 
 /** The top line: the game's name, how far, the points so far. */
 function Top({ title, step, of, note }: { title: string; step: number; of: number; note?: string }) {
@@ -30,10 +31,11 @@ const avg = (xs: number[]) => (xs.length ? Math.round(xs.reduce((a, b) => a + b,
 
 const ROUNDS = 6
 
-export function CoucouDefi({ onEnd }: End) {
+export function CoucouDefi({ onEnd, me }: End) {
   const [round, setRound] = useState(0)
   const [open, setOpen] = useState(false)
   const [said, setSaid] = useState<string | null>(null)
+  const [laughing, setLaughing] = useState(false)
   const scores = useRef<number[]>([])
   const opened = useRef(0)
   const done = useRef(false)
@@ -62,23 +64,17 @@ export function CoucouDefi({ onEnd }: End) {
     if (!open) return result(0, 'Trop tôt ! Ses mains sont encore fermées.')
     const rt = performance.now() - opened.current
     baby.giggle()
+    setLaughing(true)
+    setTimeout(() => setLaughing(false), 1300)
     result(Math.max(10, Math.round(100 - rt / 9)), rt < 350 ? 'Éclat de rire ! Maman fond.' : 'Hihihi ! Maman sourit.')
   }
   return (
     <div className="flex h-full flex-col">
       <Top title="Coucou-caché avec maman" step={round} of={ROUNDS} />
       <div className="relative mx-3 mt-3 flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[24px] bg-[#ffe3c2]">
-        {/* Maman's face, her two hands over it, opening */}
-        <div className="relative h-56 w-48">
-          <div className="absolute inset-x-6 top-0 h-12 rounded-t-[22px] bg-[#1b1410]" />
-          <div className="absolute inset-x-6 top-8 h-40 rounded-[18px] bg-[#8a5532]">
-            <div className="absolute top-12 left-6 h-4 w-4 rounded-full bg-white" />
-            <div className="absolute top-12 right-6 h-4 w-4 rounded-full bg-white" />
-            <div className={`absolute left-1/2 -translate-x-1/2 rounded-full bg-[#7a1f2b] transition-all ${open ? 'top-24 h-8 w-14' : 'top-26 h-2 w-10'}`} />
-          </div>
-          {[-1, 1].map((s) => (
-            <div key={s} className="absolute top-14 h-24 w-20 rounded-[16px] bg-[#a46c42] shadow-lg transition-transform duration-150" style={{ left: s < 0 ? 18 : 94, transform: open ? `translateX(${s * 70}px) rotate(${s * 25}deg)` : 'none' }} />
-          ))}
+        {/* Maman kneeling on the mat, hiding her face in her hands, then « Coucou ! »; the baby laughing */}
+        <div className="absolute inset-0">
+          <CoucouScene me={me} open={open} laughing={laughing} />
         </div>
         {open && !said && <div className="animate-pop absolute top-6 font-display text-[34px] font-extrabold text-[#e05a00]">Coucou !</div>}
         {said && <div className="animate-pop absolute inset-x-6 bottom-6 rounded-[18px] bg-white/95 p-3 text-center text-[15px] font-extrabold text-[var(--color-ink)]">{said}</div>}
@@ -97,10 +93,13 @@ export function CoucouDefi({ onEnd }: End) {
 const CUBES = 8
 const COLORS = ['#ff6b6b', '#ffd43b', '#4dabf7', '#69db7c', '#b197fc', '#ff922b', '#f783ac', '#38d9a9']
 
-export function CubesDefi({ onEnd }: End) {
+export function CubesDefi({ onEnd, me }: End) {
   // Each cube's place across (0–100) and width; the one on top slides back and forth.
   const [stack, setStack] = useState<{ x: number; w: number }[]>([{ x: 25, w: 50 }])
   const [x, setX] = useState(0)
+  // What fell off (the overhang, or the whole block missed), and a cheer for a clean drop.
+  const [falls, setFalls] = useState<Fall[]>([])
+  const [cheer, setCheer] = useState(false)
   const dir = useRef(1)
   const over = useRef(false)
   const top = stack[stack.length - 1]
@@ -129,12 +128,16 @@ export function CubesDefi({ onEnd }: End) {
     const r = Math.min(x + top.w, top.x + top.w)
     const w = r - l
     const placed = stack.length - 1
+    const fell = (fx: number, fw: number) => fw > 0.5 && setFalls((f) => [...f.slice(-5), { x: fx, w: fw, i: stack.length, at: performance.now() }])
     if (w <= 2) {
       over.current = true
+      fell(x, top.w)
       haptic('error')
       return setTimeout(() => onEnd(Math.round((100 * placed) / CUBES)), 700)
     }
     haptic(w > top.w - 3 ? 'success' : 'medium')
+    fell(x < top.x ? x : r, top.w - w)
+    if (w > top.w - 3) (setCheer(true), setTimeout(() => setCheer(false), 900))
     const next = [...stack, { x: l, w }]
     setStack(next)
     if (next.length - 1 >= CUBES) {
@@ -143,16 +146,13 @@ export function CubesDefi({ onEnd }: End) {
       setTimeout(() => onEnd(Math.round(60 + 40 * (w / 50))), 700)
     }
   }
-  const H = 34
   return (
     <div className="flex h-full flex-col" onPointerDown={drop}>
       <Top title="La tour de cubes" step={stack.length - 1} of={CUBES} note="Touche pour lâcher" />
       <div className="relative mx-3 mt-3 min-h-0 flex-1 overflow-hidden rounded-[24px] bg-[#fff4e8]">
-        <div className="absolute inset-x-0 bottom-0 h-6 bg-[#e8c99a]" />
-        {stack.map((c, i) => (
-          <div key={i} className="absolute rounded-[6px] border-2 border-black/15" style={{ left: `${c.x}%`, width: `${c.w}%`, bottom: 24 + i * H, height: H, background: COLORS[i % COLORS.length] }} />
-        ))}
-        {!over.current && <div className="absolute rounded-[6px] border-2 border-black/15" style={{ left: `${x}%`, width: `${top.w}%`, bottom: 24 + stack.length * H + 18, height: H, background: COLORS[stack.length % COLORS.length] }} />}
+        <div className="absolute inset-0">
+          <CubesScene me={me} stack={stack} x={x} w={top.w} over={over.current} falls={falls} colors={COLORS} cheer={cheer} />
+        </div>
       </div>
       <div className="p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <button className="btn w-full !py-4 !text-base">Lâcher le cube</button>
@@ -163,9 +163,9 @@ export function CubesDefi({ onEnd }: End) {
 
 // ——— Les premiers pas ———
 
-export function PasDefi({ onEnd }: End) {
+export function PasDefi({ onEnd, me }: End) {
   // How far to papa (0–100), how the baby leans (-1 … 1: past that, it sits down hard).
-  const st = useRef({ d: 0, lean: 0, push: 0, hold: 0, falls: 0, down: 0, t: 0, over: false })
+  const st = useRef<Steps & { push: number; hold: number; falls: number; t: number }>({ d: 0, lean: 0, push: 0, hold: 0, falls: 0, down: 0, t: 0, over: false })
   const [, redraw] = useState(0)
   useEffect(() => {
     let raf = 0
@@ -216,17 +216,9 @@ export function PasDefi({ onEnd }: End) {
     <div className="flex h-full flex-col">
       <Top title="Les premiers pas vers papa" step={0} of={1} note={s.falls ? `${s.falls} chute${s.falls > 1 ? 's' : ''}` : undefined} />
       <div className="relative mx-3 mt-3 min-h-0 flex-1 overflow-hidden rounded-[24px] bg-[#fff4e8]">
-        <div className="absolute inset-x-0 bottom-0 h-[30%] bg-[#d9b38c]" />
-        {/* Papa, arms open, at the end */}
-        <div className="absolute right-[6%] bottom-[30%] flex flex-col items-center">
-          <div className="h-8 w-8 rounded-[8px] bg-[#6e4024]" />
-          <div className="h-14 w-16 rounded-[8px] bg-[#2a6cf0]" />
-          <div className="text-[12px] font-extrabold text-[var(--color-ink-soft)]">Papa</div>
-        </div>
-        {/* The baby, leaning, or sat down */}
-        <div className="absolute bottom-[30%] flex flex-col items-center transition-[left] duration-75" style={{ left: `${6 + s.d * 0.7}%`, transform: s.down > 0 ? 'translateY(10px) scaleY(0.7)' : `rotate(${s.lean * 35}deg)`, transformOrigin: '50% 100%' }}>
-          <div className="h-7 w-7 rounded-[7px] bg-[#8a5532]" />
-          <div className="h-9 w-9 rounded-[7px] bg-[#ffc9de]" />
+        {/* The baby toddling over to papa, kneeling at the end with his arms open */}
+        <div className="absolute inset-0">
+          <PasScene me={me} st={st} />
         </div>
         {s.down > 0 && <div className="animate-pop absolute top-6 inset-x-0 text-center font-display text-[24px] font-extrabold text-[#e05a00]">Boum ! On se relève…</div>}
         {/* How it leans: keep the needle in the green */}
@@ -251,12 +243,13 @@ export function PasDefi({ onEnd }: End) {
 const BEATS = 12
 const BEAT = 0.8
 
-export function HochetDefi({ onEnd }: End) {
+export function HochetDefi({ onEnd, me }: End) {
   const start = useRef(performance.now() + 1200)
   const hits = useRef<number[]>([])
   const [, redraw] = useState(0)
   const [said, setSaid] = useState<string | null>(null)
   const over = useRef(false)
+  const shook = useRef(0)
   useEffect(() => {
     let raf = 0
     const step = () => {
@@ -276,6 +269,7 @@ export function HochetDefi({ onEnd }: End) {
   const shake = () => {
     if (over.current) return
     const t = (performance.now() - start.current) / 1000
+    shook.current = performance.now()
     const i = Math.round(t / BEAT)
     if (i < hits.current.length || i >= BEATS || i < 0) return
     const off = Math.abs(t - i * BEAT)
@@ -286,18 +280,15 @@ export function HochetDefi({ onEnd }: End) {
     haptic(s >= 60 ? 'light' : 'error')
   }
   const t = (performance.now() - start.current) / 1000
-  const k = Math.max(0, Math.min(1, 1 - (((t % BEAT) + BEAT) % BEAT) / BEAT))
   return (
     <div className="flex h-full flex-col" onPointerDown={shake}>
       <Top title="Le hochet en rythme" step={hits.current.length} of={BEATS} note={said ?? undefined} />
       <div className="relative mx-3 mt-3 flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[24px] bg-[#2b1d4a]">
-        {/* The ring to hit, the circle closing in on it, each beat */}
-        <div className="absolute h-28 w-28 rounded-full border-[6px] border-[#ffd43b]" />
-        {t > -0.8 && <div className="absolute rounded-full border-[4px] border-white/80" style={{ width: 112 + k * 160, height: 112 + k * 160 }} />}
-        <div className="font-display text-[40px] font-extrabold text-white" style={{ transform: `rotate(${Math.sin(performance.now() / 60) * (said ? 18 : 4)}deg)` }}>
-          ♪
+        {/* The baby, the rattle in front of it, the ring to hit and the circle closing in on it, each beat */}
+        <div className="absolute inset-0">
+          <HochetScene me={me} start={start} beat={BEAT} shook={shook} good={said === 'Parfait !' || said === 'Bien !'} />
         </div>
-        {t < 0 && <div className="absolute bottom-6 text-[15px] font-extrabold text-white/80">Prêt… secoue quand le cercle touche l'anneau !</div>}
+        {t < 0 && <div className="absolute inset-x-6 bottom-6 rounded-[18px] bg-black/55 px-3 py-2 text-center text-[15px] font-extrabold text-white">Prêt… secoue quand le cercle touche l'anneau !</div>}
       </div>
       <div className="p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <button className="btn w-full !py-4 !text-base">Secouer le hochet</button>

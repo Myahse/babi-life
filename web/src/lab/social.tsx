@@ -89,7 +89,7 @@ function Lab() {
   // A défi on its own (?app=defi&kind=the|courses|foot|course|combat|arcade[&big][&ia=tournoi-console]), its score not sent anywhere.
   if (q.get('app') === 'defi')
     return (
-      <div className="relative mx-auto h-screen w-full max-w-[430px] overflow-hidden">
+      <div className="relative mx-auto h-screen w-full max-w-[430px] overflow-hidden short:max-w-none">
         <DefiSheet kind={(q.get('kind') ?? 'the') as 'the'} simId={q.get('sim') ?? 'lab'} big={q.has('big')} interactionId={q.get('ia') ?? undefined} send={async (score) => ({ outcome: { text: `Défi ${score}/100. C'est noté.`, money: 0 } }) as unknown as ActionResult} onClose={() => location.reload()} />
       </div>
     )

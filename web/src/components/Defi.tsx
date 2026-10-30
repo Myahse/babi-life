@@ -201,7 +201,7 @@ export function DefiButton({ kind, interactionId, onClick }: { kind: DefiKind; i
 const stars = (score: number) => (score >= 85 ? 3 : score >= 50 ? 2 : score >= 15 ? 1 : 0)
 
 /** The défi: how it's played, the game, the score and what it earned. */
-export function DefiSheet({ kind, act, career, simId, big, older, interactionId, practice, send, challenge, me, onResult, onClose }: { /** Any action played as gestures: which (its name is the title, its icon its kind). */ act?: { id: string; label: string; icon: string }; /** At work: the career (its own game). */ career?: string; /** At school, a teenager: the harder questions. */ older?: boolean; kind: DefiKind; simId: string; /** The player's Sim, to play as itself (the fight; the foot's career: its money, its commune). */ me?: { look: Look; gender: 'femme' | 'homme'; money?: number; homeCommune?: string }; /** Something bought along the way (a signing in the foot's career): the server's answer, applied to the Sim. */ onResult?: (r: ActionResult) => void; /** The shopping at the supermarket: the longer list. */ big?: boolean; /** The activity it's played during (the foot's match, challenge or tournament). */ interactionId?: string; /** Played from the phone's « Jeux », for practice: nothing sent, nothing earned. */ practice?: boolean; /** The score sent: the server's answer (applied to the Sim), or null if it failed. */ send?: (score: number, extra?: string) => Promise<ActionResult | null>; /** Taken on from someone's score (a message, a link): played for the fun of it, nothing sent. */ challenge?: { score: number; from: string }; onClose: () => void }) {
+export function DefiSheet({ kind, act, career, simId, big, older, interactionId, practice, send, challenge, me, onResult, onClose }: { /** Any action played as gestures: which (its name is the title, its icon its kind). */ act?: { id: string; label: string; icon: string }; /** At work: the career (its own game). */ career?: string; /** At school, a teenager: the harder questions. */ older?: boolean; kind: DefiKind; simId: string; /** The player's Sim, to play as itself (the fight; the foot's career: its money, its commune). */ me?: { look: Look; gender: 'femme' | 'homme'; money?: number; homeCommune?: string; /** Its family: the baby's maman and papa (avatar/Family). */ family?: string }; /** Something bought along the way (a signing in the foot's career): the server's answer, applied to the Sim. */ onResult?: (r: ActionResult) => void; /** The shopping at the supermarket: the longer list. */ big?: boolean; /** The activity it's played during (the foot's match, challenge or tournament). */ interactionId?: string; /** Played from the phone's « Jeux », for practice: nothing sent, nothing earned. */ practice?: boolean; /** The score sent: the server's answer (applied to the Sim), or null if it failed. */ send?: (score: number, extra?: string) => Promise<ActionResult | null>; /** Taken on from someone's score (a message, a link): played for the fun of it, nothing sent. */ challenge?: { score: number; from: string }; onClose: () => void }) {
   const mode = footMode(challenge ? undefined : interactionId)
   const d = kind === 'foot' ? { ...DEFIS.foot, title: FOOT[mode].title, how: [...DEFIS.foot.how, FOOT[mode].how] } : kind === 'geste' && act ? (() => { const j = jeuOf(act, career); return { ...DEFIS.geste, title: j.title, how: [j.how] } })() : DEFIS[kind]
   const [phase, setPhase] = useState<'intro' | 'play' | 'result'>('intro')
@@ -259,13 +259,13 @@ export function DefiSheet({ kind, act, career, simId, big, older, interactionId,
         ) : kind === 'ecole' ? (
           <EcoleDefi older={!!older} onEnd={(s) => void end(s)} />
         ) : kind === 'coucou' ? (
-          <CoucouDefi onEnd={(s) => void end(s)} />
+          <CoucouDefi me={me} onEnd={(s) => void end(s)} />
         ) : kind === 'cubes' ? (
-          <CubesDefi onEnd={(s) => void end(s)} />
+          <CubesDefi me={me} onEnd={(s) => void end(s)} />
         ) : kind === 'pas' ? (
-          <PasDefi onEnd={(s) => void end(s)} />
+          <PasDefi me={me} onEnd={(s) => void end(s)} />
         ) : kind === 'hochet' ? (
-          <HochetDefi onEnd={(s) => void end(s)} />
+          <HochetDefi me={me} onEnd={(s) => void end(s)} />
         ) : kind === 'dodo' ? (
           <DodoDefi nap={interactionId === 'nap'} look={me?.look} gender={me?.gender} onEnd={(s) => void end(s)} />
         ) : kind === 'bar' ? (

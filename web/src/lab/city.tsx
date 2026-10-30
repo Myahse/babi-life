@@ -1226,7 +1226,7 @@ function PeopleLab() {
 }
 /** The Sim on the back of a moto-taxi, as the Walker draws it (?view=ride&cam=). */
 /** Every emote at once, each figure with its name (?view=emotes&t=…). */
-const LAB_EMOTES = ['wave', 'clap', 'thumbsup', 'shrug', 'laugh', 'cheer', 'dance', 'film', 'dab', 'heart', 'salute', 'facepalm', 'cry', 'kiss', 'bow', 'flex', 'airplane', 'zouglou', 'gweta', 'robot', 'shout', 'moonwalk', 'meditate', 'kneeslide'] as const
+const LAB_EMOTES = ['wave', 'clap', 'thumbsup', 'shrug', 'laugh', 'cheer', 'dance', 'film', 'dab', 'heart', 'salute', 'facepalm', 'cry', 'kiss', 'bow', 'flex', 'airplane', 'zouglou', 'gweta', 'robot', 'shout', 'moonwalk', 'meditate', 'kneeslide', 'cache', 'coucou', 'pray'] as const
 function EmotesLab() {
   const fixed = q.get('t')
   if (fixed !== null) freezeWorldTime(Number(fixed))
