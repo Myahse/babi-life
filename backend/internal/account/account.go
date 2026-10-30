@@ -9,9 +9,8 @@
 //     push tokens, password resets, idempotency keys, ideas, votes, ratings,
 //     earnings and the referral gifts it received;
 //   - its Sims (sims), and with them everything a Sim owns or wrote: the
-//     journal, friends and couples (bonds, requests), Gbairai messages (both
-//     ways: a conversation with the deleted Sim goes for the other player too),
-//     blocks and reports (made and received), stories, Tikitoko, Babigram,
+//     journal, friends and couples (bonds, requests), blocks and reports
+//     (made and received), stories, Tikitoko, Babigram,
 //     Flashe, photos, lots, vehicles, bets and games, parties and crews it was
 //     in, soirées, politics…; the files of its photos and videos in the bucket
 //     are removed after (Result.Files);
@@ -23,7 +22,13 @@
 //   - a referral gift another player got when this one joined: its name
 //     becomes « Compte supprimé »;
 //   - a party or a crew this Sim led: the oldest member takes the lead (else it's dissolved);
-//   - an election it won, a post it named someone to: the Sim cleared (the foreign keys).
+//   - an election it won, a post it named someone to: the Sim cleared (the foreign keys);
+//   - its Gbairai conversations, with the players it talked to: both sides'
+//     messages stay with them, its side signed « Compte supprimé » (the Sim's id
+//     cleared, the conversation told apart by a new random id; a card it sent,
+//     a ticket, a défi, a live challenge, replaced), and so do its messages in
+//     the grin; a conversation whose other side is deleted too goes
+//     (the trigger of 098_deleted_chats.sql, whenever a Sim is deleted).
 //
 // The e-mail's « ne plus recevoir » (mail_optout) stays as it is: it's what keeps
 // the address from being written to again.
@@ -181,8 +186,16 @@ func Delete(ctx context.Context, db *pgxpool.Pool, userID, by string) (Result, e
 	}
 
 	// The Sims, and the account: everything else goes with them (the foreign keys, ON DELETE CASCADE / SET NULL).
-	if _, err := tx.Exec(ctx, `DELETE FROM sims WHERE user_id = $1`, userID); err != nil {
+	// One Sim at a time: each one's side of its chats is cleared before the next is deleted, so the
+	// trigger sees a chat between two Sims of this account as one with nobody left (098_deleted_chats.sql).
+	sims, err := column(ctx, tx, `SELECT id::text FROM sims WHERE user_id = $1`, userID)
+	if err != nil {
 		return out, err
+	}
+	for _, id := range sims {
+		if _, err := tx.Exec(ctx, `DELETE FROM sims WHERE id = $1`, id); err != nil {
+			return out, err
+		}
 	}
 	if _, err := tx.Exec(ctx, `DELETE FROM users WHERE id = $1`, userID); err != nil {
 		return out, err

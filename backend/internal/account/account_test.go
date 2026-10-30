@@ -96,11 +96,20 @@ func TestDelete(t *testing.T) {
 	awaU, awa := player(t, pool, "Awa")
 	koffiU, koffi := player(t, pool, "Koffi")
 	_, yao := player(t, pool, "Yao")
+	bintouU, bintou := player(t, pool, "Bintou")
 
 	// Awa's life, mixed with the others'.
 	exec(t, pool, `INSERT INTO sessions (user_id, device) VALUES ($1, 'test')`, awaU)
 	exec(t, pool, `INSERT INTO push_subs (user_id, kind, endpoint, p256dh, auth) VALUES ($1, 'fcm', 'tok-awa', '', '')`, awaU)
-	exec(t, pool, `INSERT INTO messages (from_sim, to_sim, body) VALUES ($1, $2, 'salut'), ($2, $1, 'ça va ?'), ($2, $3, 'yo')`, awa, koffi, yao)
+	exec(t, pool, `INSERT INTO messages (from_sim, to_sim, body) VALUES ($1, $2, 'salut'), ($2, $1, 'ça va ?'), ($2, $3, 'yo'), ($1, $2, '[ticket:bet:awa:abcdefghij]'), ($1, $3, 'on dit quoi'), ($1, $4, 'bintou ?')`, awa, koffi, yao, bintou)
+	exec(t, pool, `INSERT INTO grin (room, sim, body) VALUES ('babi', $1, 'bonjour le grin'), ('babi', $1, '[defi:garba:80]')`, awa)
+	// A second Sim of Awa's, which she wrote to: nobody left on either side, it goes.
+	var awa2 string
+	if err := pool.QueryRow(ctx, `INSERT INTO sims (user_id, first_name, last_name, gender, look, traits, aspiration, home_city, home_commune, city, commune, money, needs, game_minutes, origin, housing, loan, born_at, family, apps)
+		SELECT user_id, 'Awa2', last_name, gender, look, traits, aspiration, home_city, home_commune, city, commune, money, needs, game_minutes, origin, housing, loan, born_at, family, apps FROM sims WHERE id = $1 RETURNING id`, awa).Scan(&awa2); err != nil {
+		t.Fatal(err)
+	}
+	exec(t, pool, `INSERT INTO messages (from_sim, to_sim, body) VALUES ($1, $2, 'moi à moi'), ($2, $1, 'oui')`, awa, awa2)
 	exec(t, pool, `INSERT INTO bonds (sim_a, sim_b, friendship) VALUES (LEAST($1::uuid, $2::uuid), GREATEST($1::uuid, $2::uuid), 50)`, awa, koffi)
 	exec(t, pool, `INSERT INTO photos (sim, key, mime) VALUES ($1, 'photos/awa.jpg', 'image/jpeg'), ($2, 'photos/koffi.jpg', 'image/jpeg')`, awa, koffi)
 	exec(t, pool, `INSERT INTO ideas (user_id, sim_id, sim_name, topic, text) VALUES ($1, $2, 'Awa', 'autre', 'une idée')`, awaU, awa)
@@ -125,6 +134,14 @@ func TestDelete(t *testing.T) {
 	exec(t, pool, `INSERT INTO waitlist (first_name, contact, kind) VALUES ('Awa', 'awa@test.ci', 'email'), ('Yao', 'yao@test.ci', 'email')`)
 	exec(t, pool, `INSERT INTO mail_optout (email) VALUES ('awa@test.ci')`)
 	exec(t, pool, `INSERT INTO deletion_requests (email, username) VALUES ('awa@test.ci', 'awa')`)
+
+	// Bintou deleted first: her chat with Awa stays with Awa, until Awa goes too.
+	if _, err := Delete(ctx, pool, bintouU, "test"); err != nil {
+		t.Fatal(err)
+	}
+	if n := count(t, pool, `SELECT count(*) FROM messages WHERE to_sim IS NULL AND from_sim = $1 AND gone IS NOT NULL`, awa); n != 1 {
+		t.Fatalf("Awa's message to Bintou, kept for Awa: %d", n)
+	}
 
 	res, err := Delete(ctx, pool, awaU, "test")
 	if err != nil {
@@ -158,6 +175,9 @@ func TestDelete(t *testing.T) {
 		if n := count(t, pool, q, awaU, awa, "awa@test.ci"); n != 0 {
 			t.Errorf("%s.%s still holds Awa (%d rows)", c.table, c.name, n)
 		}
+		if n := count(t, pool, q, bintouU, bintou, awa2); n != 0 {
+			t.Errorf("%s.%s still holds Bintou or Awa's second Sim (%d rows)", c.table, c.name, n)
+		}
 	}
 
 	// What stays, anonymised.
@@ -186,7 +206,7 @@ func TestDelete(t *testing.T) {
 	if n := count(t, pool, `SELECT count(*) FROM mail_optout`); n != 1 {
 		t.Error("the opt-out stays")
 	}
-	if n := count(t, pool, `SELECT count(*) FROM admin_log WHERE action = 'Compte supprimé'`); n != 1 {
+	if n := count(t, pool, `SELECT count(*) FROM admin_log WHERE action = 'Compte supprimé'`); n != 2 { // Bintou's, Awa's
 		t.Error("the team's log should say it")
 	}
 
@@ -194,8 +214,27 @@ func TestDelete(t *testing.T) {
 	if n := count(t, pool, `SELECT count(*) FROM sims WHERE id IN ($1, $2)`, koffi, yao); n != 2 {
 		t.Error("the other Sims should stay")
 	}
-	if n := count(t, pool, `SELECT count(*) FROM messages`); n != 1 {
-		t.Errorf("messages left: %d, want Koffi's to Yao only", n)
+	// Her chats stay with Koffi and Yao, her side signed by nobody, each its own new id; the ticket she sent, withdrawn.
+	if n := count(t, pool, `SELECT count(*) FROM messages`); n != 5 {
+		t.Errorf("messages left: %d, want 5 (Koffi's to Yao, Awa's chats with them)", n)
+	}
+	if n := count(t, pool, `SELECT count(*) FROM messages WHERE (from_sim IS NULL AND to_sim = $1) OR (to_sim IS NULL AND from_sim = $1)`, koffi); n != 3 {
+		t.Errorf("Koffi's chat with Awa: %d messages, want 3", n)
+	}
+	if n := count(t, pool, `SELECT count(DISTINCT gone) FROM messages WHERE gone IS NOT NULL`); n != 2 {
+		t.Errorf("chats with Awa: %d ids, want 2 (Koffi's, Yao's)", n)
+	}
+	if n := count(t, pool, `SELECT count(*) FROM messages WHERE (from_sim IS NULL OR to_sim IS NULL) AND gone IS NULL`); n != 0 {
+		t.Errorf("%d messages of a deleted Sim without their chat's id", n)
+	}
+	if n := count(t, pool, `SELECT count(*) FROM messages WHERE from_sim IS NULL AND body = '[retire]'`); n != 1 {
+		t.Error("the ticket Awa sent should be withdrawn")
+	}
+	if n := count(t, pool, `SELECT count(*) FROM grin WHERE sim IS NULL`); n != 2 {
+		t.Errorf("Awa's messages in the grin: %d, want 2 kept", n)
+	}
+	if n := count(t, pool, `SELECT count(*) FROM grin WHERE body = '[retire]'`); n != 1 {
+		t.Error("the défi Awa shared in the grin should be withdrawn")
 	}
 	if n := count(t, pool, `SELECT count(*) FROM photos WHERE sim = $1`, koffi); n != 1 {
 		t.Error("Koffi's photo should stay")
