@@ -6,7 +6,7 @@ import { t } from './i18n'
 export const CONTACT = {
   /** WhatsApp number, international, digits only: « 2250700000000 ». */
   whatsapp: '',
-  email: '',
+  email: 'contact@lifeinbabi.com',
   /** Handles without the @. */
   tiktok: 'babi.life.sim',
   x: '',
