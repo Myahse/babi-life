@@ -17,6 +17,8 @@ func Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		lang := FromRequest(r)
 		r = r.WithContext(WithLang(r.Context(), lang))
+		// A cached answer (the browser's, a CDN's) is only good for the same language.
+		w.Header().Add("Vary", "X-Lang")
 		// The team's admin stays in French, as its screens are.
 		if lang != "en" || r.Header.Get("Upgrade") != "" || r.Method == http.MethodOptions || strings.Contains(r.URL.Path, "/admin") {
 			next.ServeHTTP(w, r)

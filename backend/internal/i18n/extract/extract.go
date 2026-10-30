@@ -26,7 +26,7 @@ var textField = map[string]bool{"Label": true, "Title": true, "Name": true, "Tex
 
 var (
 	frWord  = regexp.MustCompile(`(?i)(^|[\s'’])(le|la|les|un|une|des|du|de|tu|ton|ta|tes|ton|il|elle|on|et|au|aux|est|pour|avec|pas|ne|en|sur|dans|qui|que|ça|ce|cette|chez|plus|son|sa|ses|je|j|mon|ma|mes|nous|vous|ils|leur|par|à|d|l|c|n|s|qu)([\s'’]|$)`)
-	accent  = regexp.MustCompile(`[àâäéèêëîïôöùûüçœÀÂÉÈÊÎÔÙÛÇ«»’…]`)
+	accent  = regexp.MustCompile(`[àâäéèêëîïôöùûüçœÀÂÉÈÊÎÔÙÛÇ«»’…·]`)
 	sqlish  = regexp.MustCompile(`\b(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|WHERE|FROM|JOIN|RETURNING|CONFLICT|VALUES|COALESCE|ORDER BY|GROUP BY|LIMIT)\b`)
 	techy   = regexp.MustCompile(`^[a-z0-9_\-.:/#+*%=?&]+$|^https?:|^/|\.(png|jpg|svg|mp3|mp4|json|webp|glb)\b|\{\{|<[a-z]+[ >]`)
 	logCall = map[string]bool{"Printf": true, "Println": true, "Print": true, "Fatalf": true, "Fatal": true, "Debug": true, "Info": true, "Warn": true, "Logf": true, "Log": true, "Errorf": false, "Contains": true, "HasPrefix": true, "HasSuffix": true, "Index": true, "Split": true, "Replace": true, "ReplaceAll": true, "TrimPrefix": true, "TrimSuffix": true, "EqualFold": true, "MustCompile": true, "Compile": true, "Getenv": true, "Exec": true, "Query": true, "QueryRow": true, "Header": true, "Set": true, "Get": true, "Add": true, "Del": true, "URLParam": true, "FormValue": true}
@@ -115,6 +115,17 @@ func Literals(root string) (map[string]*Found, error) {
 			case *ast.IndexExpr:
 				if b, ok := x.Index.(*ast.BasicLit); ok {
 					skip[b] = true
+				}
+			case *ast.CompositeLit:
+				// A struct written by position, its name first (Level{"Stagiaire", 2500}): the name is shown.
+				if len(x.Elts) > 1 {
+					if b, ok := x.Elts[0].(*ast.BasicLit); ok && b.Kind == token.STRING {
+						if _, kv := x.Elts[1].(*ast.KeyValueExpr); !kv {
+							if _, lit := x.Elts[1].(*ast.BasicLit); lit && x.Elts[1].(*ast.BasicLit).Kind != token.STRING {
+								loose[b] = true
+							}
+						}
+					}
 				}
 			case *ast.KeyValueExpr:
 				if b, ok := x.Key.(*ast.BasicLit); ok {
