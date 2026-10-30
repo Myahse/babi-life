@@ -14,7 +14,9 @@ import { ClubCrowd, useClubFill } from './clubNight'
 import { BilletsBurst, ClubDecor } from './clubDecor'
 import { useRoomStyle } from './interior/Decor'
 import * as THREE from 'three'
-import type { Player, Sim } from '../lib/types'
+import type { Piece, Player, Sim, SoireeRoom } from '../lib/types'
+import { FurnitureSet } from './build/Furniture'
+import { before, keptAt } from '../game/soirees'
 import { Human, NoShadows, SEATED, type Pose } from '../avatar/Human'
 import { OUTFIT_DEFAULT_COLOR, randomLook, workLook } from '../avatar/options'
 import { Box } from './props'
@@ -368,13 +370,13 @@ function Speaker({ p }: { p: V3 }) {
 }
 
 /** The club for the night: its stage, bar and lights (clubDecor), and, while it's open, its crowd. */
-function ClubNight({ placeId, open, mixing, party, shout, podium }: { placeId: string; open: boolean; mixing: boolean; /** A player's soirée: its host's name on the wall, the floor full whatever the hour. */ party?: string; shout?: string; podium?: boolean }) {
+function ClubNight({ placeId, open, mixing, party, shout, podium, bare }: { placeId: string; open: boolean; mixing: boolean; /** A player's soirée: its host's name on the wall, the floor full whatever the hour. */ party?: string; shout?: string; podium?: boolean; /** Its room arranged by the host: the club's own bar and VIP corner aren't there, nor the people at them. */ bare?: boolean }) {
   const clubFill = useClubFill()
   const fill = party ? 0.75 : clubFill
   return (
     <>
-      <ClubDecor placeId={placeId} fill={open ? fill : 0} mixing={mixing} name={party ? `CHEZ ${party.toUpperCase()}` : undefined} shout={shout} podium={podium} />
-      {open && <ClubCrowd placeId={placeId} fill={party ? fill : undefined} cheer={!!shout} />}
+      <ClubDecor placeId={placeId} fill={open ? fill : 0} mixing={mixing} name={party ? `CHEZ ${party.toUpperCase()}` : undefined} shout={shout} podium={podium} bare={bare} />
+      {open && <ClubCrowd placeId={placeId} fill={party ? fill : undefined} cheer={!!shout} floorOnly={bare} />}
     </>
   )
 }
@@ -1131,14 +1133,72 @@ function Tour({ stops, look, gender, stage }: { stops: TourStop[]; look: Sim['lo
 
 /* ---------- The scene ---------- */
 
-export function Interior({ sim, kind, placeId, interactionId, roam, housing, night, stage, others = [], open = true, faith, party }: { sim: Sim; kind: string; placeId: string; interactionId?: string; /** A player's soirée in its club: the host's name. */ party?: string; /** A place of worship's: the mosque, the temple or the parish inside, full for its service. */ faith?: string; /** Just come in: the Sim walks about the room (tap the floor, or the keys). */ roam?: boolean; housing: string; night: boolean; stage: string; others?: Player[]; /** Within its hours: closed, nobody's in (no customers, no staff). */ open?: boolean }) {
+/** A soirée's room as its host arranged it (« soiree-deco »): the pieces, and what they are for. */
+export type PartyDeco = { room: SoireeRoom; layout: Piece[] }
+
+/**
+ * The club room of a soirée with the host's pieces (on the room's grid, its
+ * corner at the back left) in place of the club's own bar and sofas: the
+ * stage and the floor stay. The bar's spot is before the counter put in, the
+ * table's before the first sofa (or table); someone stands at each of them.
+ */
+function partyRoom(r: Room, deco: PartyDeco): Room {
+  const { room: pr, layout } = deco
+  const byId = new Map(pr.furniture.map((f) => [f.id, f]))
+  const first = (ids: string[]) => {
+    const p = layout.find((x) => ids.includes(x[4]))
+    const f = p && byId.get(p[4])
+    return p && f ? before(pr, f, p) : undefined
+  }
+  const counter = first(['comptoir'])
+  const table = first(['canape', 'canape-velours', 'canape-cuir', 'transat', 'table', 'table-marbre'])
+  const spots = { ...r.spots }
+  if (counter) spots.counter = { ...counter, pose: 'idle' }
+  if (table) spots.table = { ...table, pose: 'drink' }
+  // The room's people on the floor only; at the counter and the sofas, a few with a glass.
+  const keptHere = (x: number, z: number) => keptAt(pr, Math.floor(x + pr.w / 2), Math.floor(z + pr.d / 2))
+  const crowd: Spot[] = r.crowd.filter((c) => keptHere(c.p[0], c.p[2]))
+  layout
+    .filter((p) => ['comptoir', 'canape', 'canape-velours', 'canape-cuir'].includes(p[4]))
+    .slice(0, 4)
+    .forEach((p, i) => {
+      const f = byId.get(p[4])
+      if (!f) return
+      const at = before(pr, f, p, 0.75)
+      // Beside the Sim's own place, not on it.
+      const [dx, dz] = [Math.cos(at.r), -Math.sin(at.r)]
+      crowd.push({ p: [at.p[0] + dx * 0.7, 0, at.p[2] + dz * 0.7], r: at.r, pose: i % 2 ? 'talk' : 'drink' })
+    })
+  return {
+    ...r,
+    furniture: (
+      <>
+        <Box p={[1.5, 0.02, 0.5]} s={[5, 0.04, 4]} c="#3d2b6b" />
+        {/* Unseen: where the stage stands, so one walks round it (drawn by clubDecor) */}
+        <mesh position={[1.5, 0.6, -3.7]}>
+          <boxGeometry args={[3.8, 1.2, 1.4]} />
+          <meshBasicMaterial visible={false} />
+        </mesh>
+        <group position={[-pr.w / 2, 0, -pr.d / 2]}>
+          <FurnitureSet pieces={layout} catalog={pr.furniture} />
+        </group>
+      </>
+    ),
+    spots,
+    crowd,
+  }
+}
+
+export function Interior({ sim, kind, placeId, interactionId, roam, housing, night, stage, others = [], open = true, faith, party, deco }: { sim: Sim; kind: string; placeId: string; interactionId?: string; /** A player's soirée in its club: the host's name. */ party?: string; /** Its room as the host arranged it (« soiree-deco »): the club's own bar and sofas give way to its pieces. */ deco?: PartyDeco; /** A place of worship's: the mosque, the temple or the parish inside, full for its service. */ faith?: string; /** Just come in: the Sim walks about the room (tap the floor, or the keys). */ roam?: boolean; housing: string; night: boolean; stage: string; others?: Player[]; /** Within its hours: closed, nobody's in (no customers, no staff). */ open?: boolean }) {
   const [roamTo, setRoamTo] = useState<{ p: V3; facing: number } | null>(null)
   // At work, a task done (gesture.ts): the Sim makes its gesture a moment.
   const gestureNow = useGesture()
   // The arrow keys and WASD walk the Sim about the room.
   useEffect(() => (roam ? listenKeys() : undefined), [roam])
   const byFaith = kind === 'worship' && !!faith
-  const r = byFaith ? worshipRoom(faith, SERVICES.has(interactionId ?? '')) : room(kind, housing)
+  const plain = byFaith ? worshipRoom(faith, SERVICES.has(interactionId ?? '')) : room(kind, housing)
+  const decoKey = deco ? deco.layout.map((p) => p.join(':')).join('|') : ''
+  const r = useMemo(() => (kind === 'club' && deco ? partyRoom(plain, deco) : plain), [kind, decoKey, plain.crowd.length, housing]) // eslint-disable-line react-hooks/exhaustive-deps
   const style = useRoomStyle(kind, housing)
   const act = byFaith ? worshipAction(r, interactionId) : action(kind, interactionId)
   // Visiting it: round the room, not standing in one place.
@@ -1154,7 +1214,7 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
       if (s.kid) return { ...s, gender, look: { ...look, beard: 'none', accessory: 'none', marks: 'none' }, seed: rand() * 100 }
       return { ...s, gender, look: s.outfit ? { ...look, outfit: s.outfit, outfitColor: OUTFIT_DEFAULT_COLOR[s.outfit] ?? look.outfitColor, accessory: 'none' } : look, seed: rand() * 100 }
     })
-  }, [placeId, kind, r.crowd.length]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [placeId, kind, r.crowd.length, decoKey]) // eslint-disable-line react-hooks/exhaustive-deps
   // Doing the travaillement: face the dancers; they cheer as the notes fall.
   const throwing = act.pose === 'throw'
   const faceDancers = useMemo(() => {
@@ -1201,8 +1261,8 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
           {style.decor(dark)}
           {r.furniture}
         </group>
-        <SolidRoom key={`${kind}:${placeId}:${housing}:${open}:${r.crowd.length}`} root={furniture} people={open ? people.map((p) => [p.p[0], p.p[2]] as [number, number]) : []} onReady={(f) => setSolid(() => f)} />
-        {kind === 'club' && <ClubNight placeId={placeId} open={open} party={party} shout={arrived && act.spot === 'floor' && /^atalaku/.test(interactionId ?? '') ? sim.firstName : undefined} podium={act.spot === 'podium'} mixing={act.spot === 'decks' || others.some((o) => action(kind, o.activity?.interactionId).spot === 'decks')} />}
+        <SolidRoom key={`${kind}:${placeId}:${housing}:${open}:${r.crowd.length}:${decoKey}`} root={furniture} people={open ? people.map((p) => [p.p[0], p.p[2]] as [number, number]) : []} onReady={(f) => setSolid(() => f)} />
+        {kind === 'club' && <ClubNight placeId={placeId} open={open} party={party} bare={!!deco} shout={arrived && act.spot === 'floor' && /^atalaku/.test(interactionId ?? '') ? sim.firstName : undefined} podium={act.spot === 'podium'} mixing={act.spot === 'decks' || others.some((o) => action(kind, o.activity?.interactionId).spot === 'decks')} />}
         <NoShadows>
           {(open ? people : []).map((p, i) => {
             const pose = throwing && p.pose === 'dance' && i % 2 ? 'cheer' : p.pose

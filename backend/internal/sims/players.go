@@ -413,7 +413,8 @@ func (h *Handler) join(ctx context.Context, tx pgx.Tx, s *Sim, host other, a *ga
 	if err != nil {
 		return game.Outcome{}, nil, err
 	}
-	if err := h.arrive(ctx, tx, s); err != nil {
+	entry, err := h.arrive(ctx, tx, s)
+	if err != nil {
 		return game.Outcome{}, nil, err
 	}
 	// Better together.
@@ -422,8 +423,8 @@ func (h *Handler) join(ctx context.Context, tx pgx.Tx, s *Sim, host other, a *ga
 		return game.Outcome{}, nil, err
 	}
 	_ = insertEvent(ctx, tx, host.ID, "social", fmt.Sprintf("%s t'a rejoint·e : %s à %s.", s.FirstName, it.Label, a.PlaceName), 0, game.MinuteOf(time.Now()))
-	text := fmt.Sprintf("Tu rejoins %s : %s.", host.FirstName, it.Label)
-	return game.Outcome{Text: text, Money: -max(it.Cost, 0)}, []Event{{Kind: "social", Text: text, GameTime: s.GameMinutes}}, nil
+	text := entryNote(fmt.Sprintf("Tu rejoins %s : %s.", host.FirstName, it.Label), entry)
+	return game.Outcome{Text: text, Money: -max(it.Cost, 0) - entry}, []Event{{Kind: "social", Text: text, Money: -entry, GameTime: s.GameMinutes}}, nil
 }
 
 // answerInvite: join the host where they are, or say no.

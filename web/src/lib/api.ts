@@ -503,8 +503,10 @@ export const api = {
   challenge: (id: string, to: string) => post<Duel>(`/sims/${id}/duel`, { to }),
   answerDuel: (id: string, duel: string, accept: boolean) => post<Duel>(`/sims/${id}/duel/${duel}`, { accept }),
   endDuel: (id: string, duel: string, won: boolean, quit = false) => post<ActionResult>(`/sims/${id}/duel/${duel}/end`, { won, quit }),
-  /** A soirée at home (backend sims/party.go): thrown with one of its themes, ended by its host. */
-  throwParty: (id: string, theme: string) => post<ActionResult>(`/sims/${id}/soiree`, { theme }),
+  /** A soirée at home (backend sims/party.go): thrown with one of its themes (and, with « soiree-deco », its entry and its room), ended by its host. */
+  throwParty: (id: string, theme: string, deco?: { price: number; layout?: Piece[] }) => post<ActionResult>(`/sims/${id}/soiree`, { theme, ...deco }),
+  /** The host's soirée's room rearranged while it goes on (« soiree-deco »). */
+  arrangeParty: (id: string, layout: Piece[]) => post<ActionResult>(`/sims/${id}/soiree/salle`, { layout }),
   /** One turn of the slot machine the Sim is playing (backend sims/machine.go). */
   machineSpin: (id: string, stake: number) => post<ActionResult>(`/sims/${id}/machine`, { stake }),
   /** Babi Bingo (backend sims/bingo.go): the rooms and the Sim's cards; cards for a room's next draw; the cards over settled. */

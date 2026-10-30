@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArrowUp, Navigation, X } from 'lucide-react'
-import type { World } from '../lib/types'
+import type { Soiree, World } from '../lib/types'
+import { partyLine } from '../game/soirees'
 import { api } from '../lib/api'
 import { bearingTo, distanceTo, whereabouts } from '../world3d/whereabouts'
 import { iconFor, kindColors } from './icons'
@@ -138,7 +139,7 @@ type Spot = { id: string; kind: string; name: string; door: [number, number] }
  * off (where the map puts them), and, searching, the map's places anywhere
  * in the commune (the server has them all: thousands in Yopougon).
  */
-export function WhereTo({ world, commune, total, onWalk, onClose }: { world: World; commune: string; /** All the commune's places, its own and the map's: the number the map shows too. */ total: number; /** The place chosen (with where its door is: the GPS at the wheel goes there). */ onWalk: (id: string, spot: Spot) => void; onClose: () => void }) {
+export function WhereTo({ world, commune, total, onWalk, onClose, parties }: { world: World; commune: string; /** « soiree-deco »: the soirées going on, their entry and guests said. */ parties?: Soiree[]; /** All the commune's places, its own and the map's: the number the map shows too. */ total: number; /** The place chosen (with where its door is: the GPS at the wheel goes there). */ onWalk: (id: string, spot: Spot) => void; onClose: () => void }) {
   const [, tick] = useState(0)
   useEffect(() => {
     const t = setInterval(() => tick((n) => n + 1), 1000)
@@ -204,7 +205,7 @@ export function WhereTo({ world, commune, total, onWalk, onClose }: { world: Wor
                   <IconTile icon={iconFor(p.kind === 'home' ? 'house' : p.kind === 'plot' ? 'land-plot' : p.kind === 'happening' ? 'sparkles' : (kind?.icon ?? ''))} colors={kindColors(p.kind)} size={40} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-display text-[15px] leading-tight font-extrabold">{p.name}</span>
-                    <span className="text-xs font-bold text-[var(--color-ink-soft)]">{p.kind === 'home' ? 'Ta maison' : p.kind === 'plot' ? 'Ton terrain, clôturé' : (kind?.label ?? '')}</span>
+                    <span className="text-xs font-bold text-[var(--color-ink-soft)]">{p.kind === 'home' ? 'Ta maison' : p.kind === 'plot' ? 'Ton terrain, clôturé' : p.kind === 'soiree' && parties ? (partyLine(parties.find((x) => `soiree:${x.id}` === p.id)) ?? kind?.label) : (kind?.label ?? '')}</span>
                   </span>
                   <span className="flex shrink-0 items-center gap-1 text-sm font-extrabold text-[var(--color-ink-soft)]">
                     <ArrowUp size={16} strokeWidth={3} style={{ transform: `rotate(${bearingTo(p.door)}rad)` }} className="text-[var(--color-orange)]" />

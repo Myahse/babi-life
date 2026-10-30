@@ -86,7 +86,7 @@ function LedWall({ style }: { style: Style }) {
 }
 
 /** The stage, the DJ's desk, its two decks turning and the mixer, the laptop; the DJ himself. */
-function DjBooth({ style, placeId, mixing, shout }: { style: Style; placeId: string; mixing?: boolean; shout?: string }) {
+function DjBooth({ style, placeId, mixing, shout, empty }: { style: Style; placeId: string; mixing?: boolean; shout?: string; /** Nobody on the stage (a soirée's room being arranged). */ empty?: boolean }) {
   const decks = useRef<THREE.Group>(null)
   useFrame(() => {
     decks.current?.children.forEach((d, i) => (d.rotation.y = worldTime() * (i ? -3.3 : 3.3)))
@@ -127,9 +127,9 @@ function DjBooth({ style, placeId, mixing, shout }: { style: Style; placeId: str
       <mesh position={[1.5, 1.5, -3.5]} rotation={[-0.4, 0, 0]} material={M('#cfe8ff', 0.6)}>
         <boxGeometry args={[0.4, 0.26, 0.02]} />
       </mesh>
-      <Atalaku placeId={placeId} shout={shout} />
+      {!empty && <Atalaku placeId={placeId} shout={shout} />}
       {/* The resident DJ; gone down to the bar while the Sim plays its set */}
-      {mixing ? (
+      {empty ? null : mixing ? (
         <group position={[-2.6, 0, -2.6]} rotation={[0, 0.6, 0]}>
           <TalkHuman id={`dj-${placeId}`} look={dj} gender="homme" pose="drink" seed={7} />
         </group>
@@ -400,7 +400,7 @@ function Podiums({ style, placeId, mine }: { style: Style; placeId: string; /** 
 }
 
 /** Everything the club room adds for the night (Interior draws the room, the sofas and the crowd). */
-export function ClubDecor({ placeId, fill, mixing, name, shout, podium }: { placeId: string; fill: number; mixing?: boolean; /** Over the club's own (a player's soirée: « CHEZ AWA »). */ name?: string; /** The name the atalaku shouts (the Sim paid him). */ shout?: string; /** The Sim dances on the first podium. */ podium?: boolean }) {
+export function ClubDecor({ placeId, fill, mixing, name, shout, podium, bare, empty }: { placeId: string; fill: number; mixing?: boolean; /** Over the club's own (a player's soirée: « CHEZ AWA »). */ name?: string; /** The name the atalaku shouts (the Sim paid him). */ shout?: string; /** The Sim dances on the first podium. */ podium?: boolean; /** A soirée's room arranged by its host (« soiree-deco »): no bar nor VIP corner of the club's own. */ bare?: boolean; /** Nobody there, the stage too (its room being arranged). */ empty?: boolean }) {
   const style = useMemo(() => {
     const base = clubStyle(placeId)
     return name ? { ...base, name } : base
@@ -408,11 +408,11 @@ export function ClubDecor({ placeId, fill, mixing, name, shout, podium }: { plac
   return (
     <group>
       <LedWall style={style} />
-      <DjBooth style={style} placeId={placeId} mixing={mixing} shout={shout} />
+      <DjBooth style={style} placeId={placeId} mixing={mixing} shout={shout} empty={empty} />
       <SpeakerStack p={[-0.9, 0, -3.95]} />
       <SpeakerStack p={[3.9, 0, -3.95]} />
-      <Bar style={style} placeId={placeId} />
-      <Vip style={style} />
+      {!bare && <Bar style={style} placeId={placeId} />}
+      {!bare && <Vip style={style} />}
       <Lights style={style} fill={fill} />
       {style.bunting && <Bunting />}
       {fill > 0 && (

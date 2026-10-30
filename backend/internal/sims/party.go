@@ -2,6 +2,7 @@ package sims
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -24,6 +25,12 @@ import (
 // there (an action on the house, not on the Sim), and comes when it likes.
 // The host pays for it (a sink): nothing done there pays. Its theme is picked
 // from a list, like everything players say to one another (never free text).
+//
+// With the update « soiree-deco » (game.SoireeDecoKey), the host arranges the
+// soirée's room (its own: the house's furniture stays as it is) and chooses
+// the entry: free, or a price each guest pays coming in, to the host
+// (game.FromEntry); the host's friends, and those it invited there, come in
+// free. Closed, a soirée is as it was: free, in the club's own room.
 
 // PartyThemes: what a soirée can be (its title is « <theme> chez <host> »).
 var PartyThemes = []struct{ ID, Label string }{
@@ -48,6 +55,13 @@ type Party struct {
 	Commune  string    `json:"commune"`
 	Ends     time.Time `json:"ends"`
 	Guests   int       `json:"guests"`
+	// Starts: when it began (the map shows it).
+	Starts time.Time `json:"starts"`
+	// Price: the entry, in Djai (0: free); Layout: the room as the host arranged it (none: the club's own).
+	Price  int          `json:"price"`
+	Layout []game.Piece `json:"layout,omitempty"`
+	// Free: the one looking comes in without paying (the host's friend, invited, or in already).
+	Free bool `json:"free,omitempty"`
 }
 
 // PlaceID: the virtual place it's held at.
@@ -73,14 +87,40 @@ var (
 	errPartyHost   = errors.New("seul·e l'hôte reçoit ses invités")
 	errPartyTheme  = errors.New("choisis le thème de ta soirée")
 	errPartyNoneOn = errors.New("tu n'as pas de soirée en cours")
+	errDecoClosed  = errors.New("bientôt dans le jeu")
 )
 
-const partyColumns = `p.id, p.host_sim, h.first_name, p.theme, p.city, p.commune, p.ends_at, (SELECT count(*) FROM soiree_guests g WHERE g.soiree_id = p.id)`
+// decoOpen: the update « soiree-deco » is with the players (the room arranged, the entry paid).
+func decoOpen(ctx context.Context) bool {
+	return features.Default.BlocksKey(ctx, game.SoireeDecoKey) == ""
+}
 
-func scanParty(row pgx.Row) (Party, error) {
+// pieceOpen: a piece of the room the host may put in now (a finer one waits for its own update).
+func pieceOpen(ctx context.Context) func(game.Furniture) bool {
+	return func(f game.Furniture) bool { return f.Key == "" || features.Default.BlocksKey(ctx, f.Key) == "" }
+}
+
+// partyColumns: a soirée as the players see it; $1 is the Sim looking (whether it comes in free).
+const partyColumns = `p.id, p.host_sim, h.first_name, p.theme, p.city, p.commune, p.ends_at, (SELECT count(*) FROM soiree_guests g WHERE g.soiree_id = p.id),
+	p.created_at, p.price, COALESCE(p.layout, 'null'::jsonb), ` + freeSQL
+
+// freeSQL: the Sim $1 comes into the soirée p for nothing: the host's friend, invited there by the host, or in already.
+const freeSQL = `(EXISTS (SELECT 1 FROM bonds b WHERE b.friends AND ((b.sim_a = p.host_sim AND b.sim_b = $1) OR (b.sim_b = p.host_sim AND b.sim_a = $1)))
+	OR EXISTS (SELECT 1 FROM invites i WHERE i.from_sim = p.host_sim AND i.to_sim = $1 AND i.place_id = 'soiree:' || p.id::text)
+	OR EXISTS (SELECT 1 FROM soiree_guests g WHERE g.soiree_id = p.id AND g.sim_id = $1))`
+
+// scanParty: a soirée read; while « soiree-deco » is closed, free and in the club's own room, as before it.
+func scanParty(ctx context.Context, row pgx.Row) (Party, error) {
 	var p Party
-	err := row.Scan(&p.ID, &p.Host, &p.HostName, &p.Theme, &p.City, &p.Commune, &p.Ends, &p.Guests)
+	var layout []byte
+	err := row.Scan(&p.ID, &p.Host, &p.HostName, &p.Theme, &p.City, &p.Commune, &p.Ends, &p.Guests, &p.Starts, &p.Price, &layout, &p.Free)
 	p.Title, _ = themeLabel(p.Theme)
+	if err == nil {
+		_ = json.Unmarshal(layout, &p.Layout)
+	}
+	if !decoOpen(ctx) {
+		p.Price, p.Layout = 0, nil
+	}
 	return p, err
 }
 
@@ -90,7 +130,7 @@ func loadParty(ctx context.Context, q queryer, s *Sim, placeID string) error {
 	if !ok {
 		return nil
 	}
-	p, err := scanParty(q.QueryRow(ctx, `SELECT `+partyColumns+` FROM soirees p JOIN sims h ON h.id = p.host_sim WHERE p.id::text = $1 AND p.ends_at > now()`, id))
+	p, err := scanParty(ctx, q.QueryRow(ctx, `SELECT `+partyColumns+` FROM soirees p JOIN sims h ON h.id = p.host_sim WHERE p.id::text = $2 AND p.ends_at > now()`, s.ID, id))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return errPartyGone
 	}
@@ -119,20 +159,142 @@ func (s *Sim) atParty(placeID, interactionID string) (game.PlaceKind, string, er
 	return game.Kinds[game.SoireeKind], p.Name(), nil
 }
 
-// arrive: a guest's first time at the soirée: counted, the host told, the two closer.
-func (h *Handler) arrive(ctx context.Context, tx pgx.Tx, s *Sim) error {
+// arrive: a guest's first time at the soirée: counted, its entry paid (the
+// price, to the host: none for a friend or one invited), the host told, the
+// two closer. What the guest paid to come in.
+func (h *Handler) arrive(ctx context.Context, tx pgx.Tx, s *Sim) (int, error) {
 	p := s.party
 	if p == nil || p.Host == s.ID {
-		return nil
+		return 0, nil
 	}
 	tag, err := tx.Exec(ctx, `INSERT INTO soiree_guests (soiree_id, sim_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, p.ID, s.ID)
 	if err != nil || tag.RowsAffected() == 0 {
-		return err
+		return 0, err
+	}
+	paid := 0
+	if p.Price > 0 && !p.Free {
+		if paid, err = payEntry(ctx, tx, s, p); err != nil {
+			return 0, err
+		}
+		if _, err := tx.Exec(ctx, `UPDATE soiree_guests SET paid = $3 WHERE soiree_id = $1 AND sim_id = $2`, p.ID, s.ID, paid); err != nil {
+			return 0, err
+		}
 	}
 	if err := befriend(ctx, tx, s.ID, p.Host, JoinFriendship); err != nil {
+		return 0, err
+	}
+	line := fmt.Sprintf("%s est venu·e à ta soirée !", s.FirstName)
+	if paid > 0 {
+		line = fmt.Sprintf("%s est venu·e à ta soirée : %s d'entrée pour toi !", s.FirstName, game.FCFA(paid))
+	}
+	return paid, insertEvent(ctx, tx, p.Host, "social", line, paid, game.MinuteOf(time.Now()))
+}
+
+// payEntry: the soirée's entry, from the guest to the host, within what the
+// host may still take in today (game.FromEntry: past it, the entry is
+// offered). A guest without the money, or whose Djai can't go to another
+// player yet (money.go heldBack), doesn't come in.
+func payEntry(ctx context.Context, tx pgx.Tx, s *Sim, p *Party) (int, error) {
+	left, err := leftFor(ctx, tx, p.Host, game.FromEntry)
+	if err != nil {
+		return 0, err
+	}
+	price := min(p.Price, left)
+	if price <= 0 {
+		return 0, nil
+	}
+	if s.Money < price {
+		return 0, fmt.Errorf("l'entrée est à %s : il te manque %s", game.FCFA(price), game.FCFA(price-max(s.Money, 0)))
+	}
+	if err := heldBack(ctx, tx, s.ID); err != nil {
+		return 0, err
+	}
+	s.Money -= price
+	return takeFor(ctx, tx, p.Host, game.FromEntry, price)
+}
+
+// entryNote: the journal's line with the entry paid said.
+func entryNote(text string, paid int) string {
+	if paid <= 0 {
+		return text
+	}
+	return fmt.Sprintf("%s (entrée : %s)", text, game.FCFA(paid))
+}
+
+// partyDeco: the entry and the room asked for a new soirée, checked; while
+// « soiree-deco » is closed, none may be asked (errDecoClosed). No room sent:
+// the host's last soirée's, else game.PartyStart.
+func partyDeco(ctx context.Context, tx pgx.Tx, hostID string, price int, layout *[]game.Piece) (int, []game.Piece, error) {
+	if !decoOpen(ctx) {
+		if price != 0 || layout != nil {
+			return 0, nil, errDecoClosed
+		}
+		return 0, nil, nil
+	}
+	if err := game.CheckEntry(price); err != nil {
+		return 0, nil, err
+	}
+	if layout != nil {
+		if err := game.CheckLayout(*layout, pieceOpen(ctx)); err != nil {
+			return 0, nil, err
+		}
+		return price, *layout, nil
+	}
+	var last []byte
+	err := tx.QueryRow(ctx, `SELECT layout FROM soirees WHERE host_sim = $1 AND layout IS NOT NULL ORDER BY created_at DESC LIMIT 1`, hostID).Scan(&last)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return 0, nil, err
+	}
+	var pieces []game.Piece
+	if json.Unmarshal(last, &pieces) != nil || game.CheckLayout(pieces, pieceOpen(ctx)) != nil {
+		pieces = game.PartyStart
+	}
+	return price, pieces, nil
+}
+
+// arrangeParty: POST /sims/{id}/soiree/salle {layout}: the host rearranges its soirée's room while it goes on.
+func (h *Handler) arrangeParty(w http.ResponseWriter, r *http.Request) {
+	if !decoOpen(r.Context()) {
+		httpx.Error(w, http.StatusForbidden, errDecoClosed.Error())
+		return
+	}
+	var req struct {
+		Layout []game.Piece `json:"layout"`
+	}
+	if err := httpx.Decode(r, &req); err != nil {
+		httpx.Error(w, http.StatusBadRequest, "requête invalide")
+		return
+	}
+	ctx := r.Context()
+	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
+		if err := setLayout(ctx, tx, s.ID, req.Layout); err != nil {
+			return game.Outcome{}, nil, err
+		}
+		text := "La salle de ta soirée est prête : tes invités la voient comme tu l'as arrangée."
+		return game.Outcome{Text: text}, nil, nil
+	})
+}
+
+// setLayout: the room of the soirée the Sim is hosting (only its host's), checked and saved.
+func setLayout(ctx context.Context, tx pgx.Tx, hostID string, layout []game.Piece) error {
+	if err := game.CheckLayout(layout, pieceOpen(ctx)); err != nil {
 		return err
 	}
-	return insertEvent(ctx, tx, p.Host, "social", fmt.Sprintf("%s est venu·e à ta soirée !", s.FirstName), 0, game.MinuteOf(time.Now()))
+	if layout == nil {
+		layout = []game.Piece{}
+	}
+	raw, err := json.Marshal(layout)
+	if err != nil {
+		return err
+	}
+	tag, err := tx.Exec(ctx, `UPDATE soirees SET layout = $2 WHERE host_sim = $1 AND ends_at > now()`, hostID, raw)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return errPartyNoneOn
+	}
+	return nil
 }
 
 // throwParty: POST /sims/{id}/soiree {theme}: the soirée starts at home, the host receiving.
@@ -144,6 +306,9 @@ func (h *Handler) throwParty(w http.ResponseWriter, r *http.Request) {
 	}
 	var req struct {
 		Theme string `json:"theme"`
+		// With « soiree-deco »: the entry (0: free) and the room (none: the last soirée's).
+		Price  int           `json:"price"`
+		Layout *[]game.Piece `json:"layout"`
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
@@ -169,9 +334,19 @@ func (h *Handler) throwParty(w http.ResponseWriter, r *http.Request) {
 		if on {
 			return game.Outcome{}, nil, errPartyOn
 		}
-		p := Party{Host: s.ID, HostName: s.FirstName, Theme: req.Theme, Title: title, City: s.City, Commune: s.Commune}
-		if err := tx.QueryRow(ctx, `INSERT INTO soirees (host_sim, city, commune, theme, ends_at) VALUES ($1, $2, $3, $4, now() + $5 * interval '1 hour') RETURNING id, ends_at`,
-			s.ID, s.City, s.Commune, req.Theme, game.SoireeHours).Scan(&p.ID, &p.Ends); err != nil {
+		price, layout, err := partyDeco(ctx, tx, s.ID, req.Price, req.Layout)
+		if err != nil {
+			return game.Outcome{}, nil, err
+		}
+		var room []byte
+		if layout != nil {
+			if room, err = json.Marshal(layout); err != nil {
+				return game.Outcome{}, nil, err
+			}
+		}
+		p := Party{Host: s.ID, HostName: s.FirstName, Theme: req.Theme, Title: title, City: s.City, Commune: s.Commune, Price: price}
+		if err := tx.QueryRow(ctx, `INSERT INTO soirees (host_sim, city, commune, theme, ends_at, price, layout) VALUES ($1, $2, $3, $4, now() + $5 * interval '1 hour', $6, $7) RETURNING id, ends_at`,
+			s.ID, s.City, s.Commune, req.Theme, game.SoireeHours, price, room).Scan(&p.ID, &p.Ends); err != nil {
 			return game.Outcome{}, nil, err
 		}
 		// The soirée goes on at the house on its own: the host isn't held there, busy or not (« Recevoir
@@ -198,6 +373,9 @@ func (h *Handler) throwParty(w http.ResponseWriter, r *http.Request) {
 			h.Push.ToSim(f, push.Message{Title: title + " " + where, Body: "La soirée a commencé, viens danser !", URL: "/jeu", Tag: "soiree-" + p.ID})
 		}
 		text := fmt.Sprintf("%s : c'est parti chez toi pour %d h ! Les lumières sont allumées au-dessus de la maison, les joueurs du quartier peuvent venir. Rejoins-la quand tu veux.", title, game.SoireeHours)
+		if price > 0 {
+			text += fmt.Sprintf(" L'entrée est à %s (gratuite pour tes amis).", game.FCFA(price))
+		}
 		return game.Outcome{Text: text, Money: -game.SoireeCost}, []Event{{Kind: "social", Text: text, Money: -game.SoireeCost, GameTime: s.GameMinutes}}, nil
 	})
 }
@@ -231,7 +409,7 @@ func queueParties(b *pgx.Batch, simID string, into *[]Party) {
 		WHERE p.city = me.city AND p.commune = me.commune AND p.ends_at > now()
 		ORDER BY p.created_at DESC LIMIT 10`, simID).Query(func(rows pgx.Rows) error {
 		for rows.Next() {
-			if p, err := scanParty(rows); err == nil {
+			if p, err := scanParty(context.Background(), rows); err == nil {
 				*into = append(*into, p)
 			}
 		}
