@@ -133,6 +133,9 @@ func main() {
 	simsH.Notify = players.Notify
 	simsH.Duels = &sims.Duels{}
 	players.Duels = simsH.Duels
+	simsH.Pvp = &sims.Pvp{}
+	players.Pvp = simsH.Pvp
+	simsH.RefundPvp(ctx)
 	players.Karts = karts
 	players.Courts = courts
 	go players.Run(ctx)

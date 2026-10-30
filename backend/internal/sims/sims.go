@@ -294,6 +294,8 @@ type Handler struct {
 	// Notify: something for a Sim's devices at once (the live hub); nil in tests. Duels: the fights between players (duel.go).
 	Notify func(to string, v map[string]any)
 	Duels  *Duels
+	// Pvp: the games against real players (pvp.go, update « jeux-en-ligne »).
+	Pvp *Pvp
 	// Talk: the passers-by answering what the player types (chatfree.go); nil: off.
 	Talk *npcchat.Client
 }
@@ -458,6 +460,15 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/duel", h.duelChallenge)
 	r.Post("/sims/{id}/duel/{duel}", h.duelAnswer)
 	r.Post("/sims/{id}/duel/{duel}/end", h.duelEnd)
+	r.Get("/sims/{id}/pvp", h.pvpNow)
+	r.Get("/sims/{id}/pvp/games", h.pvpGames)
+	r.Get("/sims/{id}/pvp/classement", h.pvpRanking)
+	r.Post("/sims/{id}/pvp", h.pvpChallenge)
+	r.Post("/sims/{id}/pvp/queue", h.pvpQueue)
+	r.Delete("/sims/{id}/pvp/queue", h.pvpUnqueue)
+	r.Post("/sims/{id}/pvp/{match}/answer", h.pvpAnswer)
+	r.Post("/sims/{id}/pvp/{match}/move", h.pvpMoveHandler)
+	r.Post("/sims/{id}/pvp/{match}/end", h.pvpEnd)
 	r.Get("/sims/{id}/plot", h.plot)
 	r.Put("/sims/{id}/plot", h.build)
 	r.Get("/sims/{id}/plots", h.plots)

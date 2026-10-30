@@ -100,7 +100,9 @@ type Hub struct {
 	// Courts: who plays in which match at the pitches and courts (the "match" rooms).
 	Courts *court.Lobby
 	// Duels: who fights whom, player against player (the "fight" rooms, sims/duel.go).
-	Duels   interface{ Has(duel, sim string) bool }
+	Duels interface{ Has(duel, sim string) bool }
+	// Pvp: who plays whom at the games against real players (the "pvp" rooms, sims/pvp.go).
+	Pvp     interface{ Has(match, sim string) bool }
 	Tokens  auth.Tokens
 	Origins []string
 
@@ -168,8 +170,12 @@ func isMatch(room string) bool { return strings.HasPrefix(room, "match:") }
 // challenged (web components/defi/combat/net.ts): as fast as a match.
 func isFight(room string) bool { return strings.HasPrefix(room, "fight:") }
 
+// isPvp: a game between real players (sims/pvp.go: the console's foot, the
+// race, the fight, the arcade…), run by its first player (web components/pvp): as fast as a match.
+func isPvp(room string) bool { return strings.HasPrefix(room, "pvp:") }
+
 // isFast: the rooms sent every KartTick, whole.
-func isFast(room string) bool { return isKart(room) || isMatch(room) || isFight(room) }
+func isFast(room string) bool { return isKart(room) || isMatch(room) || isFight(room) || isPvp(room) }
 
 // broadcast: the kart rooms every KartTick, the streets every other one (Tick).
 func (h *Hub) broadcast(now time.Time, streets bool) {
@@ -510,8 +516,8 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					continue
 				}
 				st.K, st.B = m.K, m.B
-			} else if isMatch(c.room) || isFight(c.room) {
-				if !matchOK(m.K, m.B, isFight(c.room)) {
+			} else if isMatch(c.room) || isFight(c.room) || isPvp(c.room) {
+				if !matchOK(m.K, m.B, isFight(c.room) || isPvp(c.room)) {
 					continue
 				}
 				st.K, st.B = m.K, m.B
@@ -622,6 +628,13 @@ func (h *Hub) hello(ctx context.Context, conn *websocket.Conn) (*client, error) 
 			return nil, errors.New("pas dans ce combat")
 		}
 		return &client{sim: m.Sim, room: "fight:" + m.Race, send: make(chan []byte, 32), sid: sid}, nil
+	}
+	// A game between real players: its own room, for them.
+	if m.Mode == "pvp" {
+		if h.Pvp == nil || !h.Pvp.Has(m.Race, m.Sim) {
+			return nil, errors.New("pas dans cette partie")
+		}
+		return &client{sim: m.Sim, room: "pvp:" + m.Race, send: make(chan []byte, 32), sid: sid}, nil
 	}
 	mode := "street"
 	if m.Mode == "open" {
