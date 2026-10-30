@@ -206,10 +206,19 @@ Object.defineProperties(g, {
   outerHeight: { get: () => Dimensions.get('window').height, configurable: true },
   devicePixelRatio: { get: () => PixelRatio.get(), configurable: true },
 })
-g.window = g
-g.self = g
-g.top = g
-g.parent = g
+// (Hermes may have these already, read-only: the global itself, then nothing to do.)
+const put = (name: string, value: unknown) => {
+  if (g[name] === value) return
+  try {
+    g[name] = value
+  } catch {
+    Object.defineProperty(g, name, { value, configurable: true, writable: true })
+  }
+}
+put('window', g)
+put('self', g)
+put('top', g)
+put('parent', g)
 g.addEventListener = winEvents.addEventListener
 g.removeEventListener = winEvents.removeEventListener
 g.dispatchEvent = winEvents.dispatchEvent

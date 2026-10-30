@@ -1,11 +1,11 @@
 # The Android app opened in an emulator: built for the emulator's processor (x86_64), installed,
 # launched, and what the phone said kept (logcat: a crash at start shows here, with its cause).
-# Run by hand (Actions → Native app in the emulator → Run workflow), or on a change to this file.
+# Run on every change to the app (or by hand: Actions → Native app in the emulator → Run workflow).
 name: Native app in the emulator
 
 on:
   push:
-    paths: ['.github/workflows/native-smoke.yml']
+    paths: ['native/**', '.github/workflows/native-smoke.yml']
   workflow_dispatch:
 
 jobs:
