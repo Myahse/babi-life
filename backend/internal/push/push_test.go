@@ -32,3 +32,17 @@ func TestImageInPayloads(t *testing.T) {
 		t.Error("fcm notification has an empty image")
 	}
 }
+
+// A notification in English for an English player: the game's words through the catalogue, a player's own words as written.
+func TestSaid(t *testing.T) {
+	m := Said("en", Message{Title: "Nouveau maire d'Abobo", Body: "La soirée a commencé, viens danser !"})
+	if m.Title != "New mayor of Abobo" || m.Body != "The party has started, come and dance!" {
+		t.Errorf("en: %+v", m)
+	}
+	if m := Said("en", Message{Title: "Awa · Gbairai", Body: "Bonjour", Written: true}); m.Body != "Bonjour" {
+		t.Errorf("written: %+v", m)
+	}
+	if m := Said("fr", Message{Title: "Nouveau maire d'Abobo"}); m.Title != "Nouveau maire d'Abobo" {
+		t.Errorf("fr: %+v", m)
+	}
+}

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr" xmlns="http://www.w3.org/1999/xhtml">
+<html lang="{{if eq .Lang "en"}}en{{else}}fr{{end}}" xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -40,7 +40,7 @@
       {{if .VideoLink}}<!-- A video: mail apps don't play them, its poster (the play button drawn on it) opens its page on the site -->
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:10px 0 18px;max-width:516px;">
         <tr><td style="padding:0;line-height:0;"><a href="{{.VideoLink}}" target="_blank" style="display:block;"><img src="{{.Poster}}" width="516" alt="{{.ImageAlt}}" style="display:block;width:100%;max-width:516px;height:auto;border:0;border-radius:4px 4px 0 0;"></a></td></tr>
-        <tr><td align="center" bgcolor="#2b1d14" style="background:#2b1d14;padding:11px 14px;border-radius:0 0 4px 4px;"><a href="{{.VideoLink}}" target="_blank" style="font-family:'Alfa Slab One',Rockwell,Georgia,serif;font-size:17px;color:#fbf5e6;text-decoration:none;">&#9654;&nbsp; Regarder la vidéo</a></td></tr>
+        <tr><td align="center" bgcolor="#2b1d14" style="background:#2b1d14;padding:11px 14px;border-radius:0 0 4px 4px;"><a href="{{.VideoLink}}" target="_blank" style="font-family:'Alfa Slab One',Rockwell,Georgia,serif;font-size:17px;color:#fbf5e6;text-decoration:none;">&#9654;&nbsp; {{if eq .Lang "en"}}Watch the video{{else}}Regarder la vidéo{{end}}</a></td></tr>
       </table>
       {{end}}
       {{if .Button}}
@@ -60,13 +60,13 @@
         </td></tr>
       </table>
       {{end}}
-      <p style="margin:6px 0 0;font-family:Caveat,'Segoe Print','Comic Sans MS',cursive;font-size:28px;line-height:1.1;font-weight:700;color:#0b6b3d;">À tout de suite à Babi !</p>
-      {{if .Link}}<p style="margin:22px 0 0;font-size:12px;line-height:1.5;font-weight:600;color:#6b5a4c;">Le bouton ne marche pas ? Copie ce lien dans ton navigateur :<br><a href="{{.Link}}" style="color:#1f8f88;word-break:break-all;">{{.Link}}</a></p>{{end}}
+      <p style="margin:6px 0 0;font-family:Caveat,'Segoe Print','Comic Sans MS',cursive;font-size:28px;line-height:1.1;font-weight:700;color:#0b6b3d;">{{if eq .Lang "en"}}See you soon in Babi!{{else}}À tout de suite à Babi !{{end}}</p>
+      {{if .Link}}<p style="margin:22px 0 0;font-size:12px;line-height:1.5;font-weight:600;color:#6b5a4c;">{{if eq .Lang "en"}}The button doesn't work? Copy this link into your browser:{{else}}Le bouton ne marche pas ? Copie ce lien dans ton navigateur :{{end}}<br><a href="{{.Link}}" style="color:#1f8f88;word-break:break-all;">{{.Link}}</a></p>{{end}}
     </td></tr>
     <tr><td style="padding:22px 22px 30px;font-family:Nunito,'Segoe UI',Arial,sans-serif;font-size:12px;line-height:1.5;font-weight:600;color:#6b5a4c;border-top:1px solid #d9c9a8;">
-      {{if .Footer}}{{.Footer}}{{else}}Tu reçois cet e-mail parce qu'il concerne ton compte Babi Life.{{end}}<br>
-      <a href="{{.Site}}" style="color:#6b5a4c;">lifeinbabi.com</a> · Fait ici, pour nous.
-      {{if .Unsubscribe}}<br><a href="{{.Unsubscribe}}" style="color:#6b5a4c;">Ne plus recevoir ces e-mails</a>{{end}}
+      {{if .Footer}}{{.Footer}}{{else if eq .Lang "en"}}You're getting this e-mail because it's about your Babi Life account.{{else}}Tu reçois cet e-mail parce qu'il concerne ton compte Babi Life.{{end}}<br>
+      <a href="{{.Site}}" style="color:#6b5a4c;">lifeinbabi.com</a> · {{if eq .Lang "en"}}Made here, for us.{{else}}Fait ici, pour nous.{{end}}
+      {{if .Unsubscribe}}<br><a href="{{.Unsubscribe}}" style="color:#6b5a4c;">{{if eq .Lang "en"}}Stop getting these e-mails{{else}}Ne plus recevoir ces e-mails{{end}}</a>{{end}}
     </td></tr>
   </table>
 </td></tr>

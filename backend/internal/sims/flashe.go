@@ -443,7 +443,7 @@ func (h *Handler) flashSend(w http.ResponseWriter, r *http.Request) {
 		return game.Outcome{Text: text}, []Event{{Kind: "social", Text: text, GameTime: s.GameMinutes}}, nil
 	})
 	for _, id := range pushTo {
-		h.Push.ToSim(id, push.Message{Title: name + " · Flashé", Body: "📸 t'a envoyé un snap", URL: "/jeu?app=flashe", Tag: "flashe-" + id})
+		h.Push.ToSim(id, push.Message{Title: fmt.Sprintf("%s · Flashé", name), Body: "📸 t'a envoyé un snap", URL: "/jeu?app=flashe", Tag: "flashe-" + id})
 	}
 }
 

@@ -36,6 +36,21 @@ func TestEnglish(t *testing.T) {
 	}
 }
 
+func TestComposed(t *testing.T) {
+	cases := map[string]string{
+		// A date the code writes out, its day, month and hour in English.
+		"Le vote ouvre dimanche 2 novembre à 20 h. D'ici là, lis les programmes.": "Voting opens Sunday 2 November at 20:00. Until then, read the programmes.",
+		// A commune after its French preposition.
+		"Nouveau maire d'Abobo": "New mayor of Abobo",
+		"Tu es candidat·e à la mairie du Plateau ! Fais campagne : affiches, tournées, meeting.": "You're a candidate at the town hall of Plateau! Campaign: posters, tours, a rally.",
+	}
+	for fr, want := range cases {
+		if got := English(fr); got != want {
+			t.Errorf("English(%q) = %q, want %q", fr, got, want)
+		}
+	}
+}
+
 func TestSameVerbs(t *testing.T) {
 	if !SameVerbs("Tu as %d amis à %s", "You have %d friends in %s") {
 		t.Error("same verbs")

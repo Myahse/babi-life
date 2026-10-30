@@ -290,7 +290,8 @@ type Handler struct {
 	// Connected: whether a Sim has the game open now (the live hub); nil in tests (then everyone played lately counts).
 	Connected func(sim string) bool
 	// Ring: a Gbairai message arrived for a Sim (the live hub: its devices ring); nil in tests.
-	Ring func(to, from, name, text string)
+	// ours: the text is the game's words (a sticker said in words), not the player's.
+	Ring func(to, from, name, text string, ours bool)
 	// Notify: something for a Sim's devices at once (the live hub); nil in tests. Duels: the fights between players (duel.go).
 	Notify func(to string, v map[string]any)
 	Duels  *Duels

@@ -354,7 +354,7 @@ func (h *Handler) foundParty(w http.ResponseWriter, r *http.Request) {
 		if _, err := tx.Exec(ctx, `INSERT INTO party_members (sim_id, party_id) VALUES ($1, $2)`, s.ID, id); err != nil {
 			return nil, err
 		}
-		return map[string]any{"id": id, "text": "Le " + req.Acronym + " est né ! Trouve des membres, puis présente-toi aux élections."}, nil
+		return map[string]any{"id": id, "text": fmt.Sprintf("Le %s est né ! Trouve des membres, puis présente-toi aux élections.", req.Acronym)}, nil
 	})
 }
 
@@ -377,7 +377,7 @@ func (h *Handler) joinParty(w http.ResponseWriter, r *http.Request) {
 			return nil, err
 		}
 		_ = note(ctx, tx, s.ID, "Politique : tu prends ta carte du "+name+".", 0)
-		return map[string]any{"text": "Bienvenue au " + name + " !"}, nil
+		return map[string]any{"text": fmt.Sprintf("Bienvenue au %s !", name)}, nil
 	})
 }
 
@@ -594,20 +594,20 @@ func (h *Handler) declare(w http.ResponseWriter, r *http.Request) {
 			if s.HomeCommune != commune {
 				return nil, userError("On se présente à la mairie de sa commune (celle où l'on habite).")
 			}
-			what = "à la mairie " + communeDe(commune)
+			what = fmt.Sprintf("à la mairie %s", communeDe(commune))
 		}
 		var taken bool
 		_ = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM candidates WHERE election_id = $1 AND party_id = $2)`, req.Election, party).Scan(&taken)
 		if taken {
 			return nil, userError("Ton parti a déjà son candidat à cette élection.")
 		}
-		if err := charge(ctx, tx, s.ID, deposit, "Politique : ta caution de candidat "+what+"."); err != nil {
+		if err := charge(ctx, tx, s.ID, deposit, fmt.Sprintf("Politique : ta caution de candidat %s.", what)); err != nil {
 			return nil, err
 		}
 		if _, err := tx.Exec(ctx, `INSERT INTO candidates (election_id, sim_id, party_id, programme) VALUES ($1, $2, $3, $4) ON CONFLICT (election_id, sim_id) DO UPDATE SET programme = EXCLUDED.programme`, req.Election, s.ID, party, req.Programme); err != nil {
 			return nil, err
 		}
-		return map[string]any{"text": "Tu es candidat·e " + what + " ! Fais campagne : affiches, tournées, meeting."}, nil
+		return map[string]any{"text": fmt.Sprintf("Tu es candidat·e %s ! Fais campagne : affiches, tournées, meeting.", what)}, nil
 	})
 }
 
@@ -655,7 +655,7 @@ func (h *Handler) campaign(w http.ResponseWriter, r *http.Request) {
 		if where != "" {
 			label += " (" + communeName(where) + ")"
 		}
-		if err := charge(ctx, tx, s.ID, act.Cost, "Campagne : "+label+"."); err != nil {
+		if err := charge(ctx, tx, s.ID, act.Cost, fmt.Sprintf("Campagne : %s.", label)); err != nil {
 			return nil, err
 		}
 		if _, err := tx.Exec(ctx, `INSERT INTO campaign_acts (election_id, sim_id, kind, commune, cost, points) VALUES ($1, $2, $3, $4, $5, $6)`, req.Election, s.ID, act.ID, where, act.Cost, act.Points); err != nil {
@@ -686,10 +686,10 @@ func (h *Handler) vote(w http.ResponseWriter, r *http.Request) {
 		}
 		now := time.Now()
 		if now.Before(votesAt) {
-			return nil, userError("Le vote ouvre " + frenchDate(votesAt) + ". D'ici là, lis les programmes.")
+			return nil, userError(fmt.Sprintf("Le vote ouvre %s. D'ici là, lis les programmes.", frenchDate(votesAt)))
 		}
 		if now.After(closes) {
-			return nil, userError("Le vote est clos : les résultats tombent " + frenchDate(results) + ".")
+			return nil, userError(fmt.Sprintf("Le vote est clos : les résultats tombent %s.", frenchDate(results)))
 		}
 		// At a town hall: the commune's own for its mayor, any of the city's for the president.
 		_, c, p, ok := world.FindPlace(req.At)
@@ -697,7 +697,7 @@ func (h *Handler) vote(w http.ResponseWriter, r *http.Request) {
 			return nil, userError("On vote à la mairie : va dans une mairie, puis vote depuis ton téléphone.")
 		}
 		if kind == "maire" && (c.ID != commune || s.HomeCommune != commune) {
-			return nil, userError("Pour le maire, on vote à la mairie de sa commune : la mairie " + communeDe(commune) + ".")
+			return nil, userError(fmt.Sprintf("Pour le maire, on vote à la mairie de sa commune : la mairie %s.", communeDe(commune)))
 		}
 		var exists bool
 		_ = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM candidates WHERE election_id = $1 AND sim_id = $2)`, req.Election, req.Candidate).Scan(&exists)
@@ -713,7 +713,7 @@ func (h *Handler) vote(w http.ResponseWriter, r *http.Request) {
 			return nil, err
 		}
 		_ = note(ctx, tx, s.ID, "Politique : tu as voté à la "+p.Name+". L'encre sur ton doigt le prouve.", 0)
-		return map[string]any{"text": "Bulletin dans l'urne ! Les résultats tombent " + frenchDate(results) + "."}, nil
+		return map[string]any{"text": fmt.Sprintf("Bulletin dans l'urne ! Les résultats tombent %s.", frenchDate(results))}, nil
 	})
 }
 
@@ -874,7 +874,7 @@ func (h *Handler) settleOne(ctx context.Context, id int64, kind, commune string,
 			return err
 		}
 		_ = note(ctx, tx, winner, "Tu es élu·e président·e de la République pour la semaine ! Fais ton discours à la nation, décrète tes deux mesures, nomme tes ministres et les députés depuis l'appli Politique : ils t'attendent au Palais.", 0)
-		news = push.Message{Title: "Nouveau président·e : " + name, Body: fmt.Sprintf("%s%s est élu·e avec %d %% des voix. Son discours arrive.", name, with, share), URL: "/jeu", Tag: "presidentielle"}
+		news = push.Message{Title: fmt.Sprintf("Nouveau président·e : %s", name), Body: fmt.Sprintf("%s%s est élu·e avec %d %% des voix. Son discours arrive.", name, with, share), URL: "/jeu", Tag: "presidentielle"}
 	} else {
 		office := "maire:" + commune
 		if _, err := tx.Exec(ctx, `INSERT INTO offices (office, sim_id, until, election_id) VALUES ($1, $2, $3, $4) ON CONFLICT (office) DO UPDATE SET sim_id = EXCLUDED.sim_id, since = now(), until = EXCLUDED.until, paid_until = NULL, election_id = EXCLUDED.election_id`, office, winner, until, id); err != nil {
@@ -884,8 +884,8 @@ func (h *Handler) settleOne(ctx context.Context, id int64, kind, commune string,
 		if _, err := tx.Exec(ctx, `INSERT INTO sim_events (sim_id, kind, text, money, game_time) SELECT id, 'politique', $1, 0, $2 FROM sims WHERE home_commune = $3`, text, game.MinuteOf(time.Now()), commune); err != nil {
 			return err
 		}
-		_ = note(ctx, tx, winner, "Tu es élu·e maire "+communeDe(commune)+" ! Ton bureau t'attend à la mairie ; parle à ta commune depuis l'appli Politique.", 0)
-		news = push.Message{Title: "Nouveau maire " + communeDe(commune), Body: text, URL: "/jeu", Tag: "municipales-" + commune}
+		_ = note(ctx, tx, winner, fmt.Sprintf("Tu es élu·e maire %s ! Ton bureau t'attend à la mairie ; parle à ta commune depuis l'appli Politique.", communeDe(commune)), 0)
+		news = push.Message{Title: fmt.Sprintf("Nouveau maire %s", communeDe(commune)), Body: text, URL: "/jeu", Tag: "municipales-" + commune}
 		residents = commune
 	}
 	// The others hear it too.
@@ -917,7 +917,7 @@ func mandatesInMonth(ctx context.Context, q pgx.Tx, sim string, at time.Time) (i
 func campaignOpen(opens, votes, now time.Time) error {
 	switch {
 	case now.Before(opens):
-		return userError("La campagne ouvre " + frenchDate(opens) + ". D'ici là : ton programme, ton parti, tes militants.")
+		return userError(fmt.Sprintf("La campagne ouvre %s. D'ici là : ton programme, ton parti, tes militants.", frenchDate(opens)))
 	case !now.Before(votes):
 		return userError("La campagne est close : place au vote.")
 	}
@@ -962,7 +962,14 @@ func OfficeLabel(office, gender string) string {
 	}
 	switch {
 	case office == "president":
-		return "Président" + e
+		// Each word whole, for the catalogue.
+		switch e {
+		case "e":
+			return "Présidente"
+		case "":
+			return "Président"
+		}
+		return "Président·e"
 	case strings.HasPrefix(office, "ministre:"):
 		for _, p := range Portfolios {
 			if p.ID == strings.TrimPrefix(office, "ministre:") {
@@ -971,9 +978,16 @@ func OfficeLabel(office, gender string) string {
 		}
 		return "Ministre"
 	case strings.HasPrefix(office, "depute:"):
-		return "Député" + e + " " + communeDe(strings.TrimPrefix(office, "depute:"))
+		where := communeDe(strings.TrimPrefix(office, "depute:"))
+		switch e {
+		case "e":
+			return fmt.Sprintf("Députée %s", where)
+		case "":
+			return fmt.Sprintf("Député %s", where)
+		}
+		return fmt.Sprintf("Député·e %s", where)
 	case strings.HasPrefix(office, "maire:"):
-		return "Maire " + communeDe(strings.TrimPrefix(office, "maire:"))
+		return fmt.Sprintf("Maire %s", communeDe(strings.TrimPrefix(office, "maire:")))
 	}
 	return office
 }
@@ -1048,15 +1062,15 @@ func (h *Handler) name(w http.ResponseWriter, r *http.Request) {
 		}
 		var held string
 		if err := tx.QueryRow(ctx, `SELECT office FROM offices WHERE sim_id = $1 AND until > now() AND office <> $2 LIMIT 1`, req.Sim, req.Office).Scan(&held); err == nil {
-			return nil, userError(first + " a déjà un poste : " + OfficeLabel(held, gender) + ".")
+			return nil, userError(fmt.Sprintf("%s a déjà un poste : %s.", first, OfficeLabel(held, gender)))
 		}
 		if _, err := tx.Exec(ctx, `INSERT INTO offices (office, sim_id, until, named_by) VALUES ($1, $2, $3, $4) ON CONFLICT (office) DO UPDATE SET sim_id = EXCLUDED.sim_id, since = now(), until = EXCLUDED.until, named_by = EXCLUDED.named_by, paid_until = NULL`, req.Office, req.Sim, until, s.ID); err != nil {
 			return nil, err
 		}
 		label := OfficeLabel(req.Office, gender)
-		_ = note(ctx, tx, req.Sim, "Le·la président·e "+s.First+" te nomme "+lowerFirst(label)+" ! Tu sièges au Palais présidentiel, payé·e chaque jour.", 0)
+		_ = note(ctx, tx, req.Sim, fmt.Sprintf("Le·la président·e %s te nomme %s ! Tu sièges au Palais présidentiel, payé·e chaque jour.", s.First, lowerFirst(label)), 0)
 		h.changed(req.Sim)
-		return map[string]any{"text": first + " est nommé·e " + lowerFirst(label) + "."}, nil
+		return map[string]any{"text": fmt.Sprintf("%s est nommé·e %s.", first, lowerFirst(label))}, nil
 	})
 }
 
@@ -1085,7 +1099,7 @@ func (h *Handler) communique(w http.ResponseWriter, r *http.Request) {
 		if _, err := tx.Exec(ctx, `INSERT INTO communiques (commune, sim_id, text) VALUES ($1, $2, $3)`, commune, s.ID, req.Text); err != nil {
 			return nil, err
 		}
-		text := "Mairie " + communeDe(commune) + " · " + s.First + " " + s.Last + " : " + req.Text
+		text := fmt.Sprintf("Mairie %s · %s %s : %s", communeDe(commune), s.First, s.Last, req.Text)
 		tag, err := tx.Exec(ctx, `INSERT INTO sim_events (sim_id, kind, text, money, game_time) SELECT id, 'politique', $1, 0, $2 FROM sims WHERE home_commune = $3 OR commune = $3`, text, game.MinuteOf(time.Now()), commune)
 		if err != nil {
 			return nil, err
@@ -1353,7 +1367,7 @@ func (h *Handler) foundCrew(w http.ResponseWriter, r *http.Request) {
 			return nil, err
 		}
 		_, _ = tx.Exec(ctx, `DELETE FROM crew_requests WHERE sim_id = $1`, s.ID)
-		return map[string]any{"id": id, "text": req.Name + " tient " + communeName(s.HomeCommune) + " ! Les autres demandent à entrer, tu décides."}, nil
+		return map[string]any{"id": id, "text": fmt.Sprintf("%s tient %s ! Les autres demandent à entrer, tu décides.", req.Name, communeName(s.HomeCommune))}, nil
 	})
 }
 
@@ -1377,7 +1391,7 @@ func (h *Handler) askCrew(w http.ResponseWriter, r *http.Request) {
 		}
 		_ = note(ctx, tx, leader, "Gang : "+s.First+" "+s.Last+" demande à entrer dans "+name+". Réponds depuis l'appli Politique.", 0)
 		h.changed(leader)
-		return map[string]any{"text": "Demande envoyée au chef de " + name + "."}, nil
+		return map[string]any{"text": fmt.Sprintf("Demande envoyée au chef de %s.", name)}, nil
 	})
 }
 
@@ -1424,7 +1438,7 @@ func (h *Handler) acceptCrew(w http.ResponseWriter, r *http.Request) {
 		}
 		_ = note(ctx, tx, req.Sim, "Gang : tu es dans "+name+" ! Ton tag s'affiche au-dessus de toi.", 0)
 		h.changed(req.Sim)
-		return map[string]any{"text": "Un de plus dans " + name + "."}, nil
+		return map[string]any{"text": fmt.Sprintf("Un de plus dans %s.", name)}, nil
 	})
 }
 
@@ -1509,7 +1523,7 @@ func (h *Handler) fundCrew(w http.ResponseWriter, r *http.Request) {
 		if _, err := tx.Exec(ctx, `UPDATE crews SET treasury = treasury + $1 WHERE id = $2`, req.Amount, crew); err != nil {
 			return nil, err
 		}
-		return map[string]any{"text": "La caisse de " + name + " grossit."}, nil
+		return map[string]any{"text": fmt.Sprintf("La caisse de %s grossit.", name)}, nil
 	})
 }
 
@@ -1542,13 +1556,13 @@ func (h *Handler) setSect(w http.ResponseWriter, r *http.Request) {
 		if s.Sect != "" {
 			return nil, userError("On n'est que d'une société à la fois : quitte la tienne d'abord.")
 		}
-		if err := charge(ctx, tx, s.ID, sect.Fee, "Ton initiation : "+sect.Name+". « "+sect.Motto+" »"); err != nil {
+		if err := charge(ctx, tx, s.ID, sect.Fee, fmt.Sprintf("Ton initiation : %s. « %s »", sect.Name, sect.Motto)); err != nil {
 			return nil, err
 		}
 		if _, err := tx.Exec(ctx, `UPDATE sims SET sect = $1, sect_since = now() WHERE id = $2`, sect.ID, s.ID); err != nil {
 			return nil, err
 		}
-		return map[string]any{"text": "Tu es des leurs. " + sect.Perk + " Chaque lundi, " + thousands(sect.Dues) + " F pour la loge."}, nil
+		return map[string]any{"text": fmt.Sprintf("Tu es des leurs. %s Chaque lundi, %s F pour la loge.", sect.Perk, thousands(sect.Dues))}, nil
 	})
 }
 

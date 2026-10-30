@@ -353,9 +353,14 @@ func (h *Handler) throwParty(w http.ResponseWriter, r *http.Request) {
 		// tes invités » is one of its actions, when the host comes to it).
 		s.Money -= game.SoireeCost
 		// The friends are told, wherever they are; those with notifications on, on their phone.
-		where := "chez " + s.FirstName
+		// Said as one pattern (the catalogue's), the party's title and the host's name in it.
+		where := fmt.Sprintf("%s chez %s", title, s.FirstName)
 		if _, cm, ok := world.FindCommune(s.City, s.Commune); ok {
-			where += " " + inCommune(cm.Name)
+			if cm.Name == "Plateau" {
+				where = fmt.Sprintf("%s chez %s au Plateau", title, s.FirstName)
+			} else {
+				where = fmt.Sprintf("%s chez %s à %s", title, s.FirstName, cm.Name)
+			}
 		}
 		rows, err := tx.Query(ctx, `SELECT CASE WHEN sim_a = $1 THEN sim_b ELSE sim_a END FROM bonds WHERE (sim_a = $1 OR sim_b = $1) AND friends ORDER BY friendship DESC LIMIT 50`, s.ID)
 		if err != nil {
@@ -367,10 +372,10 @@ func (h *Handler) throwParty(w http.ResponseWriter, r *http.Request) {
 		}
 		now := game.MinuteOf(time.Now())
 		for _, f := range friends {
-			if err := insertEvent(ctx, tx, f, "social", fmt.Sprintf("%s %s : viens danser !", title, where), 0, now); err != nil {
+			if err := insertEvent(ctx, tx, f, "social", fmt.Sprintf("%s : viens danser !", where), 0, now); err != nil {
 				return game.Outcome{}, nil, err
 			}
-			h.Push.ToSim(f, push.Message{Title: title + " " + where, Body: "La soirée a commencé, viens danser !", URL: "/jeu", Tag: "soiree-" + p.ID})
+			h.Push.ToSim(f, push.Message{Title: where, Body: "La soirée a commencé, viens danser !", URL: "/jeu", Tag: "soiree-" + p.ID})
 		}
 		text := fmt.Sprintf("%s : c'est parti chez toi pour %d h ! Les lumières sont allumées au-dessus de la maison, les joueurs du quartier peuvent venir. Rejoins-la quand tu veux.", title, game.SoireeHours)
 		if price > 0 {

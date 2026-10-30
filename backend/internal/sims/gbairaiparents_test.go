@@ -100,6 +100,36 @@ func TestCannedParentAnswers(t *testing.T) {
 	}
 }
 
+// A child who plays in English: its English words understood, the answer in English, no French left.
+func TestCannedParentEnglish(t *testing.T) {
+	s := newSimPtr()
+	s.Gender = "homme"
+	s.GameMinutes = 3*24*60 + 15*60
+	s.Needs = game.FreshNeeds()
+	in := func(lines []string, said string) {
+		t.Helper()
+		got := cannedParentIn("en", "papa", s, said, rand.New(rand.NewPCG(3, 4)))
+		for _, l := range lines {
+			if sayToChildIn("en", l, "papa", s, rand.New(rand.NewPCG(0, 0)))[:7] == got[:7] {
+				if strings.ContainsAny(got, "{}") || strings.Contains(got, "mon ") {
+					t.Errorf("%q → %q: not all English", said, got)
+				}
+				return
+			}
+		}
+		t.Errorf("%q → %q", said, got)
+	}
+	in(unfitLines, "you're a bitch")
+	in(worriedLines, "I'm scared and sad")
+	in(privateLines, "what's your phone number?")
+	in(cannedTopics[0].lines, "I love you dad")
+	in(cannedTopics[2].lines, "I'm hungry")
+	in(cannedTopics[3].lines, "I finished my homework")
+	if got := cannedParentIn("en", "papa", s, "I'm hungry", rand.New(rand.NewPCG(3, 4))); got == cannedParent("papa", s, "I'm hungry", rand.New(rand.NewPCG(3, 4))) {
+		t.Errorf("still French: %q", got)
+	}
+}
+
 // The same words over and over: never the same answer twice in a row.
 func TestCannedParentNoRepeat(t *testing.T) {
 	s := newSimPtr()

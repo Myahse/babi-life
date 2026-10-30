@@ -30,6 +30,7 @@ import (
 	"github.com/myahse/babi-life/backend/internal/court"
 	"github.com/myahse/babi-life/backend/internal/features"
 	"github.com/myahse/babi-life/backend/internal/game"
+	"github.com/myahse/babi-life/backend/internal/i18n"
 	"github.com/myahse/babi-life/backend/internal/kart"
 )
 
@@ -91,6 +92,9 @@ type client struct {
 	// The session (the device) it was opened from, and how to close it when that device is signed out.
 	sid  string
 	kick context.CancelFunc
+	// lang: the language the phone plays in (its hello's), "en" only while English is open:
+	// what the server says over the socket is said in it.
+	lang string
 }
 
 type Hub struct {
@@ -346,15 +350,26 @@ func (h *Hub) Changed(sims ...string) {
 }
 
 // Message: a Gbairai message for this Sim, from that one: every device it's
-// open on hears it at once (the ring, the phone button that shakes).
-func (h *Hub) Message(to, from, name, text string) {
+// open on hears it at once (the ring, the phone button that shakes). ours:
+// the text is the game's words (« a envoyé un sticker »), said in each
+// device's language; else a player's own, as written.
+func (h *Hub) Message(to, from, name, text string, ours bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	msg, _ := json.Marshal(map[string]any{"t": "msg", "id": to, "from": from, "name": name, "text": text})
+	said := map[string][]byte{}
 	for _, clients := range h.rooms {
 		for c := range clients {
 			if c.sim != to {
 				continue
+			}
+			lang := "fr"
+			if ours {
+				lang = c.lang
+			}
+			msg, ok := said[lang]
+			if !ok {
+				msg, _ = json.Marshal(map[string]any{"t": "msg", "id": to, "from": from, "name": name, "text": i18n.In(lang, text)})
+				said[lang] = msg
 			}
 			select {
 			case c.send <- msg:
@@ -422,7 +437,8 @@ type message struct {
 	Race  string          `json:"race"` // hello, mode "kart": the race's grid (package kart)
 	K     []float64       `json:"k"`
 	B     [][]float64     `json:"b"`
-	D     json.RawMessage `json:"d"` // drop: an item left on the track or thrown (relayed as is)
+	D     json.RawMessage `json:"d"`    // drop: an item left on the track or thrown (relayed as is)
+	Lang  string          `json:"lang"` // hello: the language the phone plays in ("fr", "en")
 }
 
 func finite(v ...float64) bool {
@@ -459,6 +475,7 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	c.kick = cancel
+	c.lang = i18n.For(ctx, c.lang)
 	if !h.join(c) {
 		conn.Close(websocket.StatusTryAgainLater, "commune pleine")
 		return
@@ -602,6 +619,15 @@ func (h *Hub) hello(ctx context.Context, conn *websocket.Conn) (*client, error) 
 	if err != nil {
 		return nil, errors.New("session invalide")
 	}
+	c, err := h.room(ctx, m, user, sid)
+	if c != nil {
+		c.lang = m.Lang
+	}
+	return c, err
+}
+
+// room: the room the hello asks for, if the Sim may be in it.
+func (h *Hub) room(ctx context.Context, m message, user, sid string) (*client, error) {
 	var city, commune string
 	if err := h.DB.QueryRow(ctx, `SELECT city, commune FROM sims WHERE id = $1 AND user_id = $2`, m.Sim, user).Scan(&city, &commune); err != nil {
 		return nil, errors.New("sim introuvable")

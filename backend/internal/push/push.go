@@ -24,6 +24,7 @@ import (
 
 	"github.com/myahse/babi-life/backend/internal/auth"
 	"github.com/myahse/babi-life/backend/internal/httpx"
+	"github.com/myahse/babi-life/backend/internal/i18n"
 )
 
 type Service struct {
@@ -43,6 +44,8 @@ type Message struct {
 	Tag   string `json:"tag"`
 	// Image: a picture shown big in the notification (https; the admin's campaigns), "" for none.
 	Image string `json:"image,omitempty"`
+	// Written: the body is a player's own words (a Gbairai message, the president's speech): never translated.
+	Written bool `json:"-"`
 }
 
 // Enabled: whether anything can be sent at all.
@@ -135,7 +138,7 @@ func (s *Service) ToSim(simID string, m Message) {
 		if err := s.DB.QueryRow(ctx, `SELECT user_id FROM sims WHERE id = $1`, simID).Scan(&user); err != nil {
 			return
 		}
-		s.Deliver(ctx, user, m)
+		s.Deliver(ctx, user, s.said(ctx, user, m))
 	}()
 }
 
@@ -171,9 +174,31 @@ func (s *Service) toUsers(query string, m Message, args ...any) {
 		}
 		rows.Close()
 		for _, u := range users {
-			s.Deliver(ctx, u, m)
+			s.Deliver(ctx, u, s.said(ctx, u, m))
 		}
 	}()
+}
+
+// said: the game's notification in the player's language (users.lang, while
+// English is open): its title and body through the server's catalogue. The
+// admin's campaigns, written by the team, go out with Deliver as they are.
+func (s *Service) said(ctx context.Context, user string, m Message) Message {
+	var lang string
+	if err := s.DB.QueryRow(ctx, `SELECT lang FROM users WHERE id = $1`, user).Scan(&lang); err != nil {
+		return m
+	}
+	return Said(i18n.For(ctx, lang), m)
+}
+
+// Said: the message in that language ("en": English, else as written).
+func Said(lang string, m Message) Message {
+	if lang == "en" {
+		m.Title = i18n.English(m.Title)
+		if !m.Written {
+			m.Body = i18n.English(m.Body)
+		}
+	}
+	return m
 }
 
 // Counts: the subscriptions there are, the browsers', the Android app's, and the players they belong to.

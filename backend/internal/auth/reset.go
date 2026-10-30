@@ -16,6 +16,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/myahse/babi-life/backend/internal/httpx"
+	"github.com/myahse/babi-life/backend/internal/i18n"
 	"github.com/myahse/babi-life/backend/internal/mail"
 )
 
@@ -84,12 +85,12 @@ func (h *Handler) SendAccount(ctx context.Context, id string) error {
 	if h.Mail == nil {
 		return errResetsOff
 	}
-	var email, first, username string
+	var email, first, username, lang string
 	var google, password bool
 	var recent int
 	if err := h.DB.QueryRow(ctx, `SELECT u.email, u.first_name, coalesce(u.username, ''), u.google_sub IS NOT NULL, u.password_hash IS NOT NULL,
-		(SELECT count(*) FROM password_resets p WHERE p.user_id = u.id AND p.created_at > now() - interval '1 hour')
-		FROM users u WHERE u.id = $1`, id).Scan(&email, &first, &username, &google, &password, &recent); err != nil {
+		(SELECT count(*) FROM password_resets p WHERE p.user_id = u.id AND p.created_at > now() - interval '1 hour'), u.lang
+		FROM users u WHERE u.id = $1`, id).Scan(&email, &first, &username, &google, &password, &recent, &lang); err != nil {
 		return err
 	}
 	if recent >= resetsPerHour {
@@ -104,7 +105,12 @@ func (h *Handler) SendAccount(ctx context.Context, id string) error {
 	if _, err := h.DB.Exec(ctx, `INSERT INTO password_resets (token_hash, user_id, expires_at) VALUES ($1, $2, $3)`, hashToken(token), id, time.Now().Add(ResetFor)); err != nil {
 		return err
 	}
-	msg, err := mail.Account(h.SiteURL, email, first, username, google, password, h.SiteURL+"/mot-de-passe?token="+token, int(ResetFor/time.Minute))
+	// In the account's language (while English is open); never chosen: the language the request came in
+	// (« identifiants oubliés » from the sign-in screen; the admin's own requests are French).
+	if lang == "" {
+		lang = i18n.Lang(ctx)
+	}
+	msg, err := mail.Account(h.SiteURL, i18n.For(ctx, lang), email, first, username, google, password, h.SiteURL+"/mot-de-passe?token="+token, int(ResetFor/time.Minute))
 	if err != nil {
 		return err
 	}
