@@ -198,6 +198,23 @@ export const ambience = {
     tone(n, 'sawtooth', 1800, 1300, n.ctx.currentTime, 0.45, 0.02 * Math.min(1, vol), 3000)
   },
 
+  /** Fruit bats scared off a tree (the Plateau's, plateau-vivant): a burst of shrill squeaks. */
+  bats(vol = 1) {
+    const n = live()
+    if (!n || vol <= 0.02) return
+    const now = n.ctx.currentTime
+    for (let k = 0; k < 7; k++) {
+      const f = 3200 + Math.random() * 2200
+      tone(n, k % 2 ? 'square' : 'triangle', f, f * (0.82 + Math.random() * 0.1), now + k * 0.07 + Math.random() * 0.04, 0.06, 0.014 * Math.min(1, vol), 7000)
+    }
+  },
+  /** A lance-pierre's rubber let go: a short snap. */
+  snap(vol = 1) {
+    const n = live()
+    if (!n || vol <= 0.02) return
+    tone(n, 'triangle', 620, 160, n.ctx.currentTime, 0.09, 0.05 * Math.min(1, vol), 2400)
+  },
+
   /** Where the Sim is now (null: silence). */
   set(s: Scene | null) {
     scene = s

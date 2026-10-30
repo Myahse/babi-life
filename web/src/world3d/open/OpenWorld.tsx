@@ -13,13 +13,16 @@ import { HAPPENING_DOOR, HAPPENING_ROLES, HAPPENING_X, HappeningMarker, Happenin
 import { jamAlong } from './jam'
 import { MovingJam } from './jamCars'
 import { LivingCity } from './livingCity'
+import { useStreetDensity, type StreetDensity } from './density'
+import { BatTrees, Crowd, ParkedCars, type MapTree } from './plateauLife'
+import { sotraStops } from './sotra'
 import { pavementLine, routeFor, useRoutes } from './ways'
 import { underHud } from '../hudClear'
 import { HOME_ID, type Lot } from '../layout'
 import { LotView, type Props } from '../Neighbourhood'
 import { useSignTexture } from '../props'
 import type { Commune, Place, Plot, Soiree, World } from '../../lib/types'
-import { keyOpen, useFeatures } from '../../lib/features'
+import { activityOpen, keyOpen, useFeatures } from '../../lib/features'
 import { entryLabel, partyLine } from '../../game/soirees'
 import { api } from '../../lib/api'
 import { House } from '../build/House'
@@ -52,7 +55,7 @@ import { weather } from './weathering'
 import { along, anchorNode, DRIVABLE, round, routeLength, turnTo, useCellsAround, type Round } from './shared'
 import { ParkedVehicle } from './parkedVehicle'
 import { useParked } from '../drive'
-import { blockedAhead, giveWay, holdJunctions, junctionsOf, lightsOf, litJunctions, queueOf, redAhead, report, spotTaken, stopForPapers, TrafficLights, waiting, type Junction, type Light } from './trafficFlow'
+import { blockedAhead, giveWay, holdJunctions, junctionsOf, kerbTaken, lightsOf, litJunctions, queueOf, redAhead, report, spotTaken, stopForPapers, TrafficLights, waiting, type Junction, type Light } from './trafficFlow'
 import { inTheWay, resolvePlaces, spaceFields, type PlaceSpot, type Resolved } from './places'
 import { SportField } from './field'
 import { FuelStation } from './station'
@@ -1450,6 +1453,17 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const feats = useFeatures()
   const crawl = keyOpen(feats, 'circulation')
   const alive = keyOpen(feats, 'ville-vivante')
+  // How full the street is by the commune and the hour (the update « plateau-vivant », density.ts): the
+  // Plateau packed on a weekday, empty on the weekend; every other commune as it was.
+  const density = useStreetDensity(commune.id, keyOpen(feats, 'plateau-vivant'))
+  const plateauLife = keyOpen(feats, 'plateau-vivant') && commune.id === 'plateau'
+  // What the parked cars keep clear of: the places' doors and gates, the bus stops.
+  const kerbAvoid = useMemo<XZ[]>(() => (plateauLife ? lots.map((l) => l.door) : []), [plateauLife, lots])
+  const kerbStops = useMemo(() => (plateauLife && nav.nodes.length ? sotraStops(nav, commune.id) : []), [plateauLife, nav, commune.id])
+  // The map's trees and their heights (as Trees draws them), for the bats' colonies.
+  const mapTrees = useMemo<MapTree[]>(() => (plateauLife ? nearList.flatMap((d) => d.trees.map(([x, z], i) => ({ x, z, h: 3 + ((i * 7) % 3) }))) : []), [plateauLife, nearList])
+  // The bats are chased off on a weekend's daytime (backend game.Bats: Saturday and Sunday, 8 to 18).
+  const batsOn = plateauLife && activityOpen(feats, 'chasser-chauves-souris') && weekdayOf(sim.gameMinutes) >= 5 && hour >= 8 && hour < 18
   const [clearing, setClearing] = useState<number | null>(null)
   const [flowing, setFlowing] = useState(false)
   const cleared = !!happening?.cleared
@@ -1650,7 +1664,10 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         </group>
       )}
 
-      {nav.nodes.length > 0 && !stopsTraffic && <RoadTraffic nav={nav} focus={focus} seed={commune.id} woro={commune.woro} />}
+      {nav.nodes.length > 0 && !stopsTraffic && <RoadTraffic nav={nav} focus={focus} seed={commune.id} woro={commune.woro} perCell={trafficPerCell(density)} />}
+      {/* The Plateau alive: the kerbs full, the office crowd, the bats in the trees (plateauLife.tsx) */}
+      {nav.nodes.length > 0 && plateauLife && density.parked > 0 && <ParkedCars nav={nav} focus={focus} share={density.parked} avoid={kerbAvoid} stops={kerbStops} />}
+      {nav.nodes.length > 0 && plateauLife && (density.office > 0 || density.quiet) && <Crowd nav={nav} focus={focus} density={density} seed={commune.id} />}
       {/* The Sim's own vehicle, where it was left parked */}
       {parked && parked.sim === sim.id && parked.commune === commune.id && <ParkedVehicle p={parked} y={nav.heightAt(parked.x, parked.z)} />}
       <Boats water={nearWater} focus={focus} />
@@ -1661,7 +1678,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         {nav.nodes.length > 0 && night && <NightStreet nav={nav} seed={commune.id} />}
         {nav.nodes.length > 0 && <StreetFootball nav={nav} seed={commune.id} hour={hour} />}
         {nav.nodes.length > 0 && <StreetPeople nav={nav} seed={commune.id} />}
-        {nav.nodes.length > 0 && alive && <LivingCity nav={nav} focus={focus} seed={commune.id} hour={hour} night={night} rain={raining} cut={happening?.id === 'delestage'} sunday={weekdayOf(sim.gameMinutes) === 6} weekend={weekdayOf(sim.gameMinutes) >= 5} taken={taken} />}
+        {nav.nodes.length > 0 && alive && <LivingCity nav={nav} focus={focus} seed={commune.id} hour={hour} night={night} rain={raining} cut={happening?.id === 'delestage'} sunday={weekdayOf(sim.gameMinutes) === 6} weekend={weekdayOf(sim.gameMinutes) >= 5} taken={taken} busy={density.scenes} />}
+        {plateauLife && mapTrees.length > 0 && <BatTrees trees={mapTrees} joinable={batsOn} />}
         {nav.nodes.length > 0 && <StreetStalls nav={nav} seed={commune.id} hour={hour} onBuy={onStreetBuy} />}
       </JoinIn.Provider>
       {nav.nodes.length > 0 && <SotraStops nav={nav} seed={commune.id} hour={hour} night={night} />}
@@ -1681,7 +1699,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
           </div>
         </Html>
       ))}
-      {nav.nodes.length > 0 && <Passersby nav={nav} focus={focus} seed={commune.id} onTalk={onTalk} talkingTo={talkingTo} />}
+      {nav.nodes.length > 0 && <Passersby nav={nav} focus={focus} seed={commune.id} onTalk={onTalk} talkingTo={talkingTo} share={density.walkers} />}
       {players && players.length > 0 && <OtherPlayers players={players} lots={walkLots} labels={labels} onPick={(id) => onPickPlayer?.(id)} />}
 
       {placing && nav.nodes.length > 0 && (
@@ -2011,6 +2029,10 @@ const ALL_MAP_PLACES = 400
 // Busy streets, like Abidjan's; fewer on a small phone (each one drives and draws).
 const CARS_PER_CELL = RICH ? 5 : 3
 const CAR_ROUND = 90 // seconds
+/** The most cars a cell takes, however busy the street (density.ts): each one drives and draws. */
+const CARS_MAX = RICH ? 10 : 5
+/** The cars per cell for how busy the street is now (the Plateau's weekday: twice as many, its weekend a third). */
+export const trafficPerCell = (d: StreetDensity) => Math.max(1, Math.min(CARS_MAX, Math.round(CARS_PER_CELL * d.traffic)))
 
 /** Woro-woro, taxis, gbakas, motos and SITRA buses on the big streets around the Sim: the same ones on every screen. */
 export function RoadTraffic({ nav, focus, seed, woro, perCell = CARS_PER_CELL }: { nav: Nav; focus: React.RefObject<XZ>; seed: string; woro?: { color?: string; trim?: string; none?: boolean }; /** cars in each cell (the lab puts more, to test the crossroads) */ perCell?: number }) {
@@ -2139,8 +2161,12 @@ function Car({ car, slot, nav, routes, lights, junctions }: { car: { id: string;
     const spot = (o: number): XZ => [p.x - Math.cos(p.r) * o, p.z + Math.sin(p.r) * o]
     let yard = false
     if (!at.moving) {
-      side.current += (lane - side.current) * (1 - Math.exp(-3 * dt))
-      yard = Math.abs(side.current - lane) < 0.3
+      // (Its kerb full of parked cars, the Plateau on a weekday: it turns off where it is, into a car park.)
+      if (kerbTaken(...spot(lane))) yard = true
+      else {
+        side.current += (lane - side.current) * (1 - Math.exp(-3 * dt))
+        yard = Math.abs(side.current - lane) < 0.3
+      }
     } else if (Math.sign(side.current) !== Math.sign(lane)) {
       if (spotTaken(car.id, ...spot(lane))) yard = true
       else side.current = lane
@@ -2333,13 +2359,15 @@ type Walk = { id: string; name: string; gender: 'femme' | 'homme'; look: ReturnT
  * spot on every screen (see shared.ts). Each has a first name; tap one to
  * talk (they stop and turn to you). Now and then, one nearby calls out.
  */
-function Passersby({ nav, focus, seed, onTalk, talkingTo }: { nav: Nav; focus: React.RefObject<XZ>; seed: string; onTalk?: (npc: Npc) => void; talkingTo?: string | null }) {
+function Passersby({ nav, focus, seed, onTalk, talkingTo, share = 1 }: { nav: Nav; focus: React.RefObject<XZ>; seed: string; onTalk?: (npc: Npc) => void; talkingTo?: string | null; /** How many of the usual (density.ts): fewer on the Plateau's weekend. */ share?: number }) {
   const cells = useCellsAround(focus, WALK_CELL)
   const routes = useRoutes(nav)
+  // (The same people when the share changes: the first ones of each cell stay, the others come or go.)
+  const many = Math.round(Math.min(1.5, share) * 20) / 20
   const people = useMemo<Walk[]>(
     () =>
       cells.flatMap((cell) =>
-        [...Array(WALKERS_PER_CELL)].map((_, k) => {
+        [...Array(Math.max(0, Math.floor(WALKERS_PER_CELL * many + hash(cell.x0, cell.z0, 3))))].map((_, k) => {
           const r = rng(`opeople${seed}|${cell.key}|${k}`)
           const gender: 'femme' | 'homme' = r() < 0.5 ? 'femme' : 'homme'
           const names = NPC_NAMES[gender]
@@ -2356,7 +2384,7 @@ function Passersby({ nav, focus, seed, onTalk, talkingTo }: { nav: Nav; focus: R
           }
         }),
       ),
-    [cells, seed],
+    [cells, seed, many],
   )
   const refs = useRef(new Map<string, THREE.Group>())
   // (In development, for tests in the browser: where the passers-by are.)

@@ -48,7 +48,7 @@ import { SportField } from '../world3d/open/field'
 import { FuelStation } from '../world3d/open/station'
 import { StreetStall, type StallKind } from '../world3d/open/stalls'
 import { JoinIn, placeIn } from '../world3d/open/joinIn'
-import { BusStop } from '../world3d/open/sotra'
+import { BusStop, sotraStops, SotraStops } from '../world3d/open/sotra'
 import { CableStayed, TollPlaza } from '../world3d/open/bridges'
 import { StreetGame } from '../world3d/open/streetFoot'
 import { moveObstacle } from '../world3d/obstacles'
@@ -104,7 +104,9 @@ import { FlightView } from '../world3d/FlightView'
 import { AwaleApp } from '../screens/AwaleApp'
 import { MetroView } from '../world3d/MetroView'
 import { Net } from '../streetball/looks'
-import { FarBlocks, RoadTraffic } from '../world3d/open/OpenWorld'
+import { FarBlocks, RoadTraffic, trafficPerCell } from '../world3d/open/OpenWorld'
+import { streetDensity } from '../world3d/open/density'
+import { BatTrees, Crowd, ParkedCars } from '../world3d/open/plateauLife'
 import { LotMap } from '../components/LotMap'
 import { useWorld } from '../store/world'
 import { LotGhost } from '../world3d/open/lotGhost'
@@ -123,6 +125,8 @@ const seededLab = (n: number) => () => ((n = (n * 16807) % 2147483647) / 2147483
 // ?view=landmark&id=yop-rue-princesse (&night) for one landmark;
 // ?view=map&lat=5.345&lng=-4.082&n=1 for the real map's chunks there
 // (OpenFreeMap, no key), n chunks each way, seen from &cam; &lm=plateau-stade@5.3283,-4.0185;…
+// &plateau&m=<game minute> the Plateau alive at that minute (plateau-vivant: the traffic, the kerbs, the crowd, the bats; &m=480 a Monday at 8,
+// &m=750 Monday lunch, &m=7800 Saturday at 10) round &look, its frame rate in window.__fps;
 // draws those landmarks where the game would put them, their ground cleared;
 // ?view=mosquee (&act=pray|priere-vendredi|visit, &m=6510 a Friday at 12:30) the Mosquée Mohammed VI inside;
 // ?view=cathedrale (&act=pray|messe|visit|monter-tour, &m= a game minute: 9240 is a Sunday at 10) the cathedral inside;
@@ -329,10 +333,12 @@ function MapLab() {
   const look = (q.get('look') ?? '0,0,0').split(',').map(Number) as [number, number, number]
   // &nouchis: the couloirs' nouchis, once every chunk is in (window.__nouchis lists them; whereabouts.sim says round where).
   const all = (2 * n + 1) ** 2
-  const nav = useMemo(() => (q.has('nouchis') && chunks.length === all ? new Nav(chunks.map((c) => c.data)) : null), [chunks, all])
+  const nav = useMemo(() => ((q.has('nouchis') || q.has('plateau')) && chunks.length === all ? new Nav(chunks.map((c) => c.data)) : null), [chunks, all])
   return (
     <Canvas dpr={[1, 1.5]} camera={{ position: cam, fov: 45, far: 8000 }} style={{ width: '100vw', height: '100vh' }}>
-      {nav && <StreetNouchis nav={nav} seed="lab" />}
+      {nav && q.has('nouchis') && <StreetNouchis nav={nav} seed="lab" />}
+      {nav && q.has('plateau') && <PlateauLab nav={nav} chunks={chunks.map((c) => c.data)} at={[look[0], look[2]]} />}
+      {q.has('plateau') && <FpsLog />}
       <color attach="background" args={['#a9d3f0']} />
       <hemisphereLight args={['#ffffff', '#b8a27c', 1.3]} />
       <directionalLight position={[300, 600, 200]} intensity={1.7} />
@@ -361,6 +367,45 @@ function MapLab() {
       <OrbitControls target={look} />
     </Canvas>
   )
+}
+
+/** The Plateau alive at a game minute (&m=), round a point: the traffic, the parked cars, the crowd, the bats. */
+function PlateauLab({ nav, chunks, at }: { nav: Nav; chunks: ChunkData[]; at: XZ }) {
+  const minute = Number(q.get('m') ?? 480)
+  const density = useMemo(() => streetDensity('plateau', minute, !q.has('closed')), [minute])
+  const focus = useRef<XZ>(at)
+  whereabouts.sim = at
+  const stops = useMemo(() => sotraStops(nav, 'lab'), [nav])
+  const trees = useMemo(() => chunks.flatMap((d) => d.trees.map(([x, z], i) => ({ x, z, h: 3 + ((i * 7) % 3) }))), [chunks])
+  ;(window as unknown as { __density: unknown; __nav: Nav }).__density = density
+  ;(window as unknown as { __nav: Nav }).__nav = nav
+  const h = (minute % 1440) / 60
+  return (
+    <>
+      <RoadTraffic nav={nav} focus={focus} seed="plateau" perCell={trafficPerCell(density)} />
+      <SotraStops nav={nav} seed="lab" hour={Math.floor(h)} night={false} />
+      {density.parked > 0 && q.get('only') !== 'crowd' && <ParkedCars nav={nav} focus={focus} share={density.parked} avoid={[]} stops={stops} />}
+      {(density.office > 0 || density.quiet) && q.get('only') !== 'cars' && <Crowd nav={nav} focus={focus} density={density} seed="plateau" />}
+      {!q.has('closed') && <BatTrees trees={trees} joinable={Math.floor(minute / 1440) % 7 >= 5 && h >= 8 && h < 18} />}
+    </>
+  )
+}
+
+/** The frame rate, every two seconds: in window.__fps and the console. */
+function FpsLog() {
+  const n = useRef({ frames: 0, t: performance.now() })
+  useFrame(() => {
+    const c = n.current
+    c.frames++
+    const now = performance.now()
+    if (now - c.t < 2000) return
+    const fps = Math.round((c.frames * 1000) / (now - c.t))
+    ;(window as unknown as { __fps: number[] }).__fps = [...((window as unknown as { __fps?: number[] }).__fps ?? []), fps]
+    console.log(`fps ${fps}`)
+    c.frames = 0
+    c.t = now
+  })
+  return null
 }
 
 /** A made-up quarter for LotPlaceLab: three streets each way, the big road, houses along them with gaps, the lagoon to the south. */
