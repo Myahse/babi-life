@@ -66,7 +66,7 @@ export function SharedCard({ body, mine, from }: { body: string; mine: boolean; 
   return null
 }
 
-/** A challenge to play against the sender, live (components/pvp): Accepter / Refuser, as the notification has them. */
+/** A challenge to play against the sender, live (components/pvp): Accepter / Refuser, as the notification has them (three minutes to answer). */
 function JeuCard({ game, match, mine, from }: { game: PvpGameId; match: string; mine: boolean; from?: string }) {
   const d = PVP_GAMES[game]
   const simId = useShare((s) => s.simId)
