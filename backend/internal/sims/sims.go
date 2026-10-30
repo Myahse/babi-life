@@ -224,6 +224,8 @@ type Sim struct {
 	Measures []string `json:"measures,omitempty"`
 	// gymUntil: the game minute the gym membership runs out (0: none), read from the journal (gym.go).
 	gymUntil int64
+	// jamCleared: the street's jam already cleared at the junction (jam.go), read before joining it.
+	jamCleared bool
 	// party: the soirée the action is at, read for it (party.go).
 	party *Party
 	// purse: what the account (all its Sims) got by playing these last days, for the day's limits (money.go).
@@ -704,6 +706,13 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 		if err := loadParty(r.Context(), tx, s, req.PlaceID); err != nil {
 			return game.Outcome{}, nil, err
 		}
+		if req.PlaceID == HappeningPlaceID {
+			if _, ok, err := JamCleared(r.Context(), tx, s.City, s.Commune, s.GameMinutes); err != nil {
+				return game.Outcome{}, nil, err
+			} else {
+				s.jamCleared = ok
+			}
+		}
 		it, err := s.interactAt(req.PlaceID, req.InteractionID)
 		if err != nil {
 			return game.Outcome{}, nil, err
@@ -747,8 +756,12 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 		kind, partyName = k, name
 	} else if placeID == HappeningPlaceID {
 		h, _, ok := game.HappeningAt(s.City, s.Commune, s.GameMinutes)
-		if !ok || h.Join == nil || interactionID != game.JoinHappeningID {
+		if !ok || h.Join == nil || interactionID != h.Join.ID {
 			return game.Interaction{}, errors.New("c'est fini, il n'y a plus rien ici")
+		}
+		// The jam already cleared by someone at the junction (defi.go clearJam): nothing left to regulate.
+		if s.jamCleared {
+			return game.Interaction{}, errors.New("la circulation est déjà rétablie : merci à celui qui a réglé le carrefour")
 		}
 		kind = h.Kind()
 		kind.Interactions = []game.Interaction{*h.Join}

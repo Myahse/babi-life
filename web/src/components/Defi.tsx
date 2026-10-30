@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Beer, Banana, Fish, Sparkles, GraduationCap, ShoppingCart, Trophy, Waves, Coffee, Gamepad2, Car, Swords, Joystick, X, Baby, Blocks, Footprints, Music, type LucideIcon } from 'lucide-react'
+import { Beer, Banana, Hand, Fish, Sparkles, GraduationCap, ShoppingCart, Trophy, Waves, Coffee, Gamepad2, Car, Swords, Joystick, X, Baby, Blocks, Footprints, Music, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import { haptic } from '../lib/native'
 import type { ActionResult, Look } from '../lib/types'
@@ -22,6 +22,7 @@ import { setLifted } from '../world3d/chatFraming'
 import { BarDefi } from './defi/Bar'
 import { DodoDefi } from './defi/Reve'
 import { AllocoDefi } from './defi/Alloco'
+import { CirculationDefi } from './defi/Circulation'
 
 // Les défis: while making tea at the grin, water-skiing off Île Boulay, doing
 // the shopping or playing at the salle de jeux vidéo (the foot, the car race,
@@ -30,7 +31,7 @@ import { AllocoDefi } from './defi/Alloco'
 // out of 100 and what it earned (backend sims/defi.go: once each time, a small
 // bonus, the best score kept as a record to beat).
 
-export type DefiKind = 'the' | 'ski' | 'courses' | 'foot' | 'course' | 'combat' | 'arcade' | 'ecole' | 'coucou' | 'cubes' | 'pas' | 'hochet' | 'bagarre' | GesteKind | 'geste' | 'garba' | 'alloco' | 'bar'
+export type DefiKind = 'the' | 'ski' | 'courses' | 'foot' | 'course' | 'combat' | 'arcade' | 'ecole' | 'coucou' | 'cubes' | 'pas' | 'hochet' | 'bagarre' | GesteKind | 'geste' | 'garba' | 'alloco' | 'bar' | 'circulation'
 /** The baby's games (the update « bebe-jeux »). */
 export const BABY_DEFIS = new Set<DefiKind>(['coucou', 'cubes', 'pas', 'hochet'])
 /** The home's gestures (the update « gestes-maison »): played, the action is done. */
@@ -38,7 +39,7 @@ export const GESTE_DEFIS = new Set<DefiKind>([...(Object.keys(GESTES) as GesteKi
 
 /** The défi of an activity (backend sims/defi.go defiFor says the same), or null. The pousse-pousse's tea is served: no défi. */
 export const defiOf = (interactionId?: string): DefiKind | null =>
-  ({ 'street-grin': 'the', 'chat-grin': 'the', 'ski-boulay': 'ski', supermarche: 'courses', courses: 'courses', 'console-foot': 'foot', 'console-defi': 'foot', 'tournoi-console': 'foot', 'console-course': 'course', 'console-combat': 'combat', 'borne-arcade': 'arcade', 'maison-foot': 'foot', 'maison-course': 'course', 'maison-combat': 'combat', 'aller-ecole': 'ecole', coucou: 'coucou', cubes: 'cubes', 'premiers-pas': 'pas', hochet: 'hochet', 'bagarre-bebe': 'bagarre', 'eat-garba': 'garba', 'street-garba': 'garba', 'eat-alloco': 'alloco', 'street-alloco': 'alloco', 'drink-with-friends': 'bar' } as Record<string, DefiKind>)[interactionId ?? ''] ?? gesteOf(interactionId)
+  ({ 'street-grin': 'the', 'chat-grin': 'the', 'ski-boulay': 'ski', supermarche: 'courses', courses: 'courses', 'console-foot': 'foot', 'console-defi': 'foot', 'tournoi-console': 'foot', 'console-course': 'course', 'console-combat': 'combat', 'borne-arcade': 'arcade', 'maison-foot': 'foot', 'maison-course': 'course', 'maison-combat': 'combat', 'aller-ecole': 'ecole', coucou: 'coucou', cubes: 'cubes', 'premiers-pas': 'pas', hochet: 'hochet', 'bagarre-bebe': 'bagarre', 'eat-garba': 'garba', 'street-garba': 'garba', 'eat-alloco': 'alloco', 'street-alloco': 'alloco', 'drink-with-friends': 'bar', 'regler-circulation': 'circulation' } as Record<string, DefiKind>)[interactionId ?? ''] ?? gesteOf(interactionId)
 
 /** The foot's three ways: a match, the challenge where the loser pays, the Saturday tournament. */
 const footMode = (interactionId?: string) => (interactionId === 'console-defi' ? 'defi' : interactionId === 'tournoi-console' ? 'tournoi' : 'match')
@@ -75,6 +76,14 @@ const DEFIS: Record<DefiKind, { title: string; button: string; icon: LucideIcon;
     colors: ['#ffd166', '#e8a400'],
     how: ['« Boire » une gorgée à la fois : l’ambiance monte… et l’alcool aussi.', 'Le verre vide : « Resservir » (une tournée, 500 Djai). « Billets » : lance l’argent, la table s’enflamme (payé).', 'Surveille l’alcool, bois de l’eau : au trait rouge, tu es soûl et la soirée finit mal. « Se lever » quand l’ambiance est au top.'],
     bg: 'transparent',
+  },
+  circulation: {
+    title: 'Régler la circulation',
+    button: 'Prendre le sifflet',
+    icon: Hand,
+    colors: ['#ffd54f', '#ffa000'],
+    how: ['Tu es au carrefour, le sifflet et les gants blancs : les voitures de l’embouteillage attendent sur les quatre côtés.', 'Touche pour changer de sens (ou glisse ◀ ▶, ▲ ▼) : une file s’arrête, l’autre passe. Attends que le carrefour soit vide, sinon ça freine à mort et ça klaxonne.', 'Ne fais pas trop attendre une file. Vite et sans frayeur : le bouchon se vide pour tout le quartier.'],
+    bg: 'linear-gradient(#1b2a3a, #0f1230)',
   },
   geste: { title: 'L’action', button: 'Jouer l’action', icon: Sparkles, colors: ['#ffc233', '#e09a00'], how: GESTE_HOW, bg: 'transparent' },
   ...(Object.fromEntries(Object.entries(GESTES).map(([k, g]) => [k, { ...g, how: k === 'dodo' ? DODO_HOW : GESTE_HOW, bg: 'transparent' }])) as Record<GesteKind, { title: string; button: string; icon: LucideIcon; colors: [string, string]; how: string[]; bg: string }>),
@@ -272,6 +281,8 @@ export function DefiSheet({ kind, act, career, simId, big, older, interactionId,
           <BarDefi money={me?.money ?? 0} onEnd={(s, extra) => void end(s, extra)} />
         ) : kind === 'garba' ? (
           <GarbaDefi onEnd={(s) => void end(s)} />
+        ) : kind === 'circulation' ? (
+          <CirculationDefi onEnd={(s) => void end(s)} />
         ) : kind === 'alloco' ? (
           <AllocoDefi onEnd={(s, egg) => void end(s, egg ? 'oeuf' : undefined)} />
         ) : GESTE_DEFIS.has(kind) ? (

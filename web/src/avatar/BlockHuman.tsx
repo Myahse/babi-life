@@ -1192,6 +1192,13 @@ function paintSheet(l: Required<Look>, femme: boolean, young: boolean) {
     // Prayer beads hanging from the right hand.
     for (let row = 8; row < 12; row++) p.at(R.arm[1], 'F', 1 + (row % 2), row, row % 2 ? accOf('chapelet') : tint(accOf('chapelet'), 0.3))
   }
+  if (!young && hasAcc(l, 'gants')) {
+    // The traffic cop's white gloves (not in the wardrobe: worn at the junction, components/defi/Circulation.tsx).
+    for (const a of R.arm) {
+      p.rows(a, 9, 12, '#f8f9fa')
+      p.bottom(a, '#f8f9fa')
+    }
+  }
   if (!young && hasAcc(l, 'watch')) {
     // On the left wrist, all the way round; the face on top.
     p.rows(R.arm[0], 9, 10, '#17171a')

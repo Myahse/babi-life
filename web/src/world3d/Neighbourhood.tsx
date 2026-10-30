@@ -38,7 +38,7 @@ export type Props = {
   onPick: (placeId: string) => void
   busy: { icon: string; kind: string; /** The activity, to show it (outdoors). */ id?: string } | null
   /** What is going on in the street right now. */
-  happening: { id: string; icon: string; label: string } | null
+  happening: { id: string; icon: string; label: string; /** The jam regulated: its cars drive off (open/jamCars.tsx). */ cleared?: boolean } | null
   /** The place the Sim is busy at when the scene opens (it starts there). */
   stationAt?: string | null
   /** Busy inside a place (the bar, the bed, the counter): the Sim isn't seen out in the street. */
