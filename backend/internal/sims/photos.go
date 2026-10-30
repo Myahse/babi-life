@@ -292,6 +292,13 @@ func (h *Handler) bucketDelete(ctx context.Context, key string) error {
 	return nil
 }
 
+// RemoveFiles: these files gone from the bucket (a deleted account's photos and videos, auth.Handler.Erase).
+func (h *Handler) RemoveFiles(ctx context.Context, keys []string) {
+	for _, k := range keys {
+		_ = h.bucketDelete(ctx, k)
+	}
+}
+
 func randomKey() string {
 	b := make([]byte, 9)
 	_, _ = rand.Read(b)

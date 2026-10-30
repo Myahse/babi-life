@@ -41,6 +41,8 @@ type Handler struct {
 	// Notifications to the phones (notify.go; push.Service), and the bucket for the campaigns' pictures and videos (media.go).
 	Push   Pusher
 	Bucket *ads.Bucket
+	// Erase deletes an account and everything tied to it (auth.Handler.Erase), for the « Suppressions » tab (deletions.go).
+	Erase func(ctx context.Context, user, by string) error
 }
 
 func (h *Handler) Routes(r chi.Router) {
@@ -78,6 +80,8 @@ func (h *Handler) Routes(r chi.Router) {
 		h.notifyRoutes(r)
 		r.Get("/features", h.features)
 		r.Post("/features/{id}", h.setFeature)
+		r.Get("/deletions", h.deletions)
+		r.Post("/deletions/{id}", h.deletionAct)
 		r.Get("/casino", h.casino)
 		r.Post("/casino/{game}", h.setOdds)
 		if h.Ideas != nil {
@@ -106,6 +110,8 @@ func (h *Handler) stats(w http.ResponseWriter, r *http.Request) {
 		TikiPosts int `json:"tikiPosts"`
 		// The players' ideas not read yet.
 		Ideas int `json:"ideas"`
+		// Account deletions asked on the public page, not handled yet.
+		Deletions int `json:"deletions"`
 	}
 	err := h.DB.QueryRow(r.Context(), `SELECT
 		(SELECT count(*) FROM users),
@@ -118,8 +124,9 @@ func (h *Handler) stats(w http.ResponseWriter, r *http.Request) {
 		(SELECT count(*) FROM ad_campaigns WHERE status = 'pending'),
 		(SELECT count(*) FROM messages WHERE created_at > now() - interval '24 hours'),
 		(SELECT count(*) FROM tiki_posts WHERE created_at > now() - interval '24 hours'),
-		(SELECT count(*) FROM ideas WHERE status = 'new')`).
-		Scan(&s.Users, &s.Sims, &s.Online, &s.Today, &s.Waitlist, &s.Phones, &s.Reports, &s.Campaigns, &s.Messages, &s.TikiPosts, &s.Ideas)
+		(SELECT count(*) FROM ideas WHERE status = 'new'),
+		(SELECT count(*) FROM deletion_requests WHERE status = 'open')`).
+		Scan(&s.Users, &s.Sims, &s.Online, &s.Today, &s.Waitlist, &s.Phones, &s.Reports, &s.Campaigns, &s.Messages, &s.TikiPosts, &s.Ideas, &s.Deletions)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 		return
@@ -202,6 +209,7 @@ func (h *Handler) log(w http.ResponseWriter, r *http.Request) {
 		UNION ALL SELECT 'signalement', 'Signalement : ' || reason, created_at FROM reports
 		UNION ALL SELECT 'pub', 'Campagne de pub reçue : ' || title || ' (' || advertiser || ')', created_at FROM ad_campaigns
 		UNION ALL SELECT 'idee', 'Idée de ' || u.name || CASE WHEN i.sim_name <> '' THEN ' (' || i.sim_name || ')' ELSE '' END || ' : ' || left(i.text, 90) || CASE WHEN length(i.text) > 90 THEN '…' ELSE '' END, i.created_at FROM ideas i JOIN users u ON u.id = i.user_id
+		UNION ALL SELECT 'suppression', 'Demande de suppression de compte reçue (page publique)', created_at FROM deletion_requests
 		UNION ALL SELECT 'admin', action || CASE WHEN detail <> '' THEN ' : ' || detail ELSE '' END, created_at FROM admin_log
 	) x WHERE $1 = '' OR kind = $1 ORDER BY at DESC LIMIT 200`, kind)
 	if err != nil {

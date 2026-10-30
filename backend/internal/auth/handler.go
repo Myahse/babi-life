@@ -50,6 +50,9 @@ type Handler struct {
 	Mail Mailer
 	// SiteURL: where the game is, for the links in e-mails.
 	SiteURL string
+	// After an account is deleted (delete.go): its files in the bucket to remove, and the other Sims it changed.
+	RemoveFiles func(ctx context.Context, keys []string)
+	Changed     func(ids ...string)
 }
 
 type session struct {

@@ -533,6 +533,14 @@ func (h *Handler) creditIf(ctx context.Context, id string, sold func(price int) 
 			}
 			simID = &s
 		}
+		// Its account deleted since (account.Delete): nobody to give it to, never given.
+		if simID == nil && user == nil {
+			_, err := tx.Exec(ctx, `UPDATE purchases SET status = 'account-deleted', updated_at = now() WHERE id = $1`, id)
+			if err == nil {
+				err = tx.Commit(ctx)
+			}
+			return "account-deleted", false, err
+		}
 		if simID == nil {
 			return "pending", false, errors.New("no sim to credit")
 		}
