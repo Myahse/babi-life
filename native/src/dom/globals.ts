@@ -17,6 +17,14 @@ import { WEB_ORIGIN } from './origin'
 
 const g = globalThis as any
 
+// Hermes and React Native set some of the browser's names themselves, read-only
+// (window, navigator…): made writable first, so the lines below can set them.
+for (const name of ['Audio', 'AudioContext', 'CSS', 'Element', 'HTMLCanvasElement', 'HTMLElement', 'HTMLImageElement', 'HTMLInputElement', 'HTMLVideoElement', 'Image', 'IntersectionObserver', 'MutationObserver', 'Node', 'Notification', 'ResizeObserver', 'addEventListener', 'alert', 'confirm', 'crypto', 'dispatchEvent', 'document', 'getComputedStyle', 'history', 'localStorage', 'location', 'matchMedia', 'navigator', 'open', 'pageXOffset', 'pageYOffset', 'parent', 'prompt', 'removeEventListener', 'screen', 'scrollBy', 'scrollTo', 'scrollX', 'scrollY', 'self', 'sessionStorage', 'top', 'visualViewport', 'webkitAudioContext', 'window']) {
+  const d = Object.getOwnPropertyDescriptor(g, name)
+  if (d && d.configurable && 'value' in d && !d.writable) Object.defineProperty(g, name, { ...d, writable: true })
+  else if (d && d.configurable && d.get && !d.set) Object.defineProperty(g, name, { value: d.get.call(g), writable: true, configurable: true, enumerable: d.enumerable })
+}
+
 /* ---------- Events on window and document ---------- */
 
 type Listener = (e: any) => void
