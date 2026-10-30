@@ -11,6 +11,7 @@ L'appli Android de Babi Life, qui remplace l'appli Flutter (`mobile/`, une vue w
 | **Connexion Google** | Par la connexion Google du téléphone (`@react-native-google-signin`), pour le client web du projet Firebase ; le jeu envoie le jeton à l'API comme sur le site (`web/src/lib/native.native.ts`). |
 | **Notifications** | Un message sur Gbairai, un pari dont les matchs sont finis : par Firebase Cloud Messaging (`expo-notifications`). Le jeu les demande une fois ; refusées pour de bon, les réglages de l'appli s'ouvrent. Une notification touchée ouvre le jeu sur sa page (« /jeu?app=gbairai » : le téléphone ouvert sur Gbairai). |
 | **Partager** | La feuille de partage du téléphone. |
+| **Toucher** | Comme sur le site, un toucher remonte aux éléments qui l'entourent (un message de Gbairai glissé vers la droite ou tenu : on y répond), et une scène 3D le passe aussi à sa boîte (« Régler la circulation », les mini-jeux des actions). Une notification qui arrive pendant le jeu s'affiche avec son image ; un lien d'invitation `babilife://?p=code` garde le code du parrain pour l'inscription. |
 | **Position** | « Naître là où tu es » : le téléphone demande l'autorisation une fois (`expo-location`). |
 | **Bouton retour** | Ferme d'abord ce qui est ouvert dans le jeu (un défi, une table, le téléphone, la carte, un lieu ; au volant, il gare) ; sinon il revient en arrière ; au début, il quitte l'appli. |
 | **Vibrations** | Celles du jeu (`expo-haptics`). |

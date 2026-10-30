@@ -216,6 +216,10 @@ class Context2D {
   bezierCurveTo(c1x: number, c1y: number, c2x: number, c2y: number, x: number, y: number) {
     this.path.cubicTo(c1x, c1y, c2x, c2y, x, y)
   }
+  arcTo(x1: number, y1: number, x2: number, y2: number, r: number) {
+    if (this.path.isEmpty()) this.path.moveTo(x1, y1)
+    this.path.arcToTangent(x1, y1, x2, y2, r)
+  }
   rect(x: number, y: number, w: number, h: number) {
     this.path.addRect(Skia.XYWHRect(x, y, w, h))
   }
