@@ -10,7 +10,7 @@ import (
 )
 
 func TestReset(t *testing.T) {
-	m, err := Reset("https://www.lifeinbabi.com", "awa@mail.com", "Awa <3", "https://www.lifeinbabi.com/mot-de-passe?token=abc", 30)
+	m, err := Reset("https://www.lifeinbabi.com", "fr", "awa@mail.com", "Awa <3", "https://www.lifeinbabi.com/mot-de-passe?token=abc", 30)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -21,6 +21,30 @@ func TestReset(t *testing.T) {
 	}
 	if !strings.Contains(m.Text, "https://www.lifeinbabi.com/mot-de-passe?token=abc") || !strings.Contains(m.Text, "Bonjour Awa <3,") {
 		t.Errorf("text: %s", m.Text)
+	}
+}
+
+// A player who plays in English gets the account e-mail in English, the layout's words too.
+func TestAccountEnglish(t *testing.T) {
+	m, err := Account("https://www.lifeinbabi.com", "en", "awa@mail.com", "Awa", "awa", true, false, "https://www.lifeinbabi.com/mot-de-passe?token=abc", 30)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`lang="en"`, "Hi Awa,", "Continue with Google", "30 minutes", "See you soon in Babi!", "Copy this link"} {
+		if !strings.Contains(m.HTML, want) {
+			t.Errorf("html lacks %q", want)
+		}
+	}
+	for _, bad := range []string{"Bonjour", "Tu reçois", "Le bouton"} {
+		if strings.Contains(m.HTML, bad) || strings.Contains(m.Text, bad) {
+			t.Errorf("French left: %q", bad)
+		}
+	}
+	if m.Subject != "Babi Life: how to sign in" {
+		t.Errorf("subject %q", m.Subject)
+	}
+	if fr, _ := Account("https://x", "fr", "a@b.c", "", "", false, true, "https://x/y", 30); !strings.Contains(fr.HTML, "À tout de suite") {
+		t.Error("French layout lost")
 	}
 }
 
@@ -39,7 +63,7 @@ func TestBrevo(t *testing.T) {
 	}))
 	defer srv.Close()
 	b := &Brevo{Key: "k", From: "Babi Life <noreply@lifeinbabi.com>", API: srv.URL}
-	m, _ := Reset("https://www.lifeinbabi.com", "awa@mail.com", "Awa", "https://x/y", 30)
+	m, _ := Reset("https://www.lifeinbabi.com", "fr", "awa@mail.com", "Awa", "https://x/y", 30)
 	if err := b.Send(context.Background(), m); err != nil {
 		t.Fatal(err)
 	}

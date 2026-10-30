@@ -204,7 +204,7 @@ func (h *Handler) speak(w http.ResponseWriter, r *http.Request) {
 			if already {
 				return nil, userError("Une adresse à la nation par jour : reviens demain.")
 			}
-			title, journal = "Le·la président·e "+s.First+" s'adresse à la nation", "Adresse à la nation de "+s.First+" "+s.Last+" : « "+req.Text+" »"
+			title, journal = fmt.Sprintf("Le·la président·e %s s'adresse à la nation", s.First), fmt.Sprintf("Adresse à la nation de %s %s : « %s »", s.First, s.Last, req.Text)
 		default:
 			return nil, userError("discours ou adresse ?")
 		}
@@ -215,7 +215,7 @@ func (h *Handler) speak(w http.ResponseWriter, r *http.Request) {
 		if _, err := tx.Exec(ctx, `INSERT INTO president_words (election_id, sim_id, kind, text, journal_from, journal_to) VALUES ($1, $2, $3, $4, $5, $6)`, election, s.ID, req.Kind, req.Text, from, to); err != nil {
 			return nil, err
 		}
-		msg = push.Message{Title: title, Body: short(req.Text, 160), URL: "/jeu", Tag: "president-" + req.Kind}
+		msg = push.Message{Title: title, Body: short(req.Text, 160), URL: "/jeu", Tag: "president-" + req.Kind, Written: true}
 		return map[string]any{"text": "La nation t'a entendu·e : tous les joueurs ont reçu tes mots."}, nil
 	})
 	if msg.Title != "" {
@@ -320,8 +320,8 @@ func (h *Handler) decree(w http.ResponseWriter, r *http.Request) {
 		if _, _, err := toNation(ctx, tx, text); err != nil {
 			return nil, err
 		}
-		msg = push.Message{Title: "Mesure : " + m.Label, Body: m.About + " Jusqu'à lundi 9 h.", URL: "/jeu", Tag: "mesure-" + m.ID}
-		return map[string]any{"text": m.Label + " : c'est décrété, pour toute la semaine."}, nil
+		msg = push.Message{Title: fmt.Sprintf("Mesure : %s", m.Label), Body: fmt.Sprintf("%s Jusqu'à lundi 9 h.", m.About), URL: "/jeu", Tag: "mesure-" + m.ID}
+		return map[string]any{"text": fmt.Sprintf("%s : c'est décrété, pour toute la semaine.", m.Label)}, nil
 	})
 	if msg.Title != "" {
 		h.Push.ToAll(msg)
@@ -437,7 +437,7 @@ func (h *Handler) fete(w http.ResponseWriter, r *http.Request) {
 		if _, _, err := toNation(ctx, tx, text); err != nil {
 			return nil, err
 		}
-		msg = push.Message{Title: "Fête de la Nation " + frenchDate(start), Body: "Au " + p.Name + ", entrée libre : le·la président·e vous invite.", URL: "/jeu", Tag: "fete-nation"}
+		msg = push.Message{Title: fmt.Sprintf("Fête de la Nation %s", frenchDate(start)), Body: fmt.Sprintf("Au %s, entrée libre : le·la président·e vous invite.", p.Name), URL: "/jeu", Tag: "fete-nation"}
 		return map[string]any{"text": "La fête est annoncée à toute la nation."}, nil
 	})
 	if msg.Title != "" {
@@ -472,7 +472,7 @@ func (h *Handler) meeting(w http.ResponseWriter, r *http.Request) {
 		start := req.At.UTC().Truncate(time.Minute)
 		end := start.Add(game.MeetingHours * time.Hour)
 		if start.Before(opens) || end.After(votes) || start.Before(time.Now().Add(15*time.Minute)) {
-			return nil, userError("Le meeting se tient pendant la campagne (" + frenchDate(opens) + " – " + frenchDate(votes) + "), dans un quart d'heure au plus tôt.")
+			return nil, userError(fmt.Sprintf("Le meeting se tient pendant la campagne (%s – %s), dans un quart d'heure au plus tôt.", frenchDate(opens), frenchDate(votes)))
 		}
 		if err := stadiumFree(ctx, tx, req.Place, start, end); err != nil {
 			return nil, err
@@ -497,7 +497,7 @@ func (h *Handler) meeting(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return nil, err
 		}
-		msg = push.Message{Title: "Meeting de " + s.First + " " + s.Last, Body: frenchDate(start) + " au " + p.Name + ". Chaque personne venue compte !", URL: "/jeu", Tag: "meeting-" + s.ID}
+		msg = push.Message{Title: fmt.Sprintf("Meeting de %s %s", s.First, s.Last), Body: fmt.Sprintf("%s au %s. Chaque personne venue compte !", frenchDate(start), p.Name), URL: "/jeu", Tag: "meeting-" + s.ID}
 		return map[string]any{"text": "Ton meeting est annoncé. Chaque personne qui vient te rapporte des voix."}, nil
 	})
 	if msg.Title == "" {
@@ -535,7 +535,7 @@ func Attend(ctx context.Context, tx pgx.Tx, simID, placeID, interaction string) 
 	}
 	title := "la Fête de la Nation"
 	if kind == "meeting" {
-		title = "le meeting de " + name
+		title = fmt.Sprintf("le meeting de %s", name)
 		// A new face in the crowd: points for the candidate, up to the cap (never one's own).
 		var guests int
 		_ = tx.QueryRow(ctx, `SELECT count(*) FROM state_event_guests WHERE event_id = $1`, id).Scan(&guests)

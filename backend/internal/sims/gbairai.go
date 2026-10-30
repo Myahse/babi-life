@@ -348,14 +348,14 @@ func (h *Handler) write(w http.ResponseWriter, r *http.Request) {
 	// On the other's phone: who wrote, and what (the latest from the same friend replaces the one before).
 	var name string
 	_ = h.DB.QueryRow(ctx, `SELECT first_name FROM sims WHERE id = $1`, me).Scan(&name)
-	preview := body
+	preview, written := body, true
 	if reSticker.MatchString(body) {
-		preview = "a envoyé un sticker"
+		preview, written = "a envoyé un sticker", false
 	}
-	h.Push.ToSim(to, push.Message{Title: name + " · Gbairai", Body: preview, URL: "/jeu?app=gbairai", Tag: "gbairai-" + me})
+	h.Push.ToSim(to, push.Message{Title: name + " · Gbairai", Body: preview, URL: "/jeu?app=gbairai", Tag: "gbairai-" + me, Written: written})
 	// The game open: it rings now (the update « sonnerie-gbairai », web lib/live.ts).
 	if h.Ring != nil && features.Default.BlocksKey(ctx, "sonnerie-gbairai") == "" {
-		h.Ring(to, me, name, preview)
+		h.Ring(to, me, name, preview, !written)
 	}
 	httpx.JSON(w, http.StatusOK, m)
 }

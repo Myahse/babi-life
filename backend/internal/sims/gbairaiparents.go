@@ -19,6 +19,7 @@ import (
 	"github.com/myahse/babi-life/backend/internal/features"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
+	"github.com/myahse/babi-life/backend/internal/i18n"
 	"github.com/myahse/babi-life/backend/internal/npcchat"
 	"github.com/myahse/babi-life/backend/internal/push"
 )
@@ -224,6 +225,10 @@ func (h *Handler) parentAnswerLater(s Sim, who, user string) {
 	defer parentTyping.Delete(s.ID + ">" + who)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
+	// In the player's language (users.lang, while English is open): the model's answer and the canned lines.
+	var lang string
+	_ = h.DB.QueryRow(ctx, `SELECT lang FROM users WHERE id = $1`, user).Scan(&lang)
+	ctx = i18n.WithLang(ctx, i18n.For(ctx, lang))
 	for range 3 {
 		start := time.Now()
 		text, err := h.parentAnswer(ctx, &s, who, user)
@@ -298,7 +303,7 @@ func (h *Handler) parentAnswer(ctx context.Context, s *Sim, who, user string) (s
 	if len(lately) > 4 {
 		lately = lately[len(lately)-4:]
 	}
-	return cannedParent(who, s, text, newRand(), lately...), nil
+	return cannedParentIn(i18n.Lang(ctx), who, s, text, newRand(), lately...), nil
 }
 
 // stickerWords: a sticker, said in words for the parent reading it.
@@ -370,7 +375,10 @@ func says(n string, words ...string) bool {
 var unfitWords = []string{"sexe", "sexy", "sexuel*", "porno*", "nue", "nues", "toute nue", "tout nu", "bite", "zizi", "seins", "baise", "coucher avec",
 	"pute", "putain", "salope", "connard", "connasse", "encule*", "fdp", "ntm", "nique", "niquer", "batard", "merde", "con", "conne",
 	"drogue*", "cannabis", "beuh", "joint", "cocaine", "alcool*", "biere", "whisky", "vodka", "cigarette*", "fumer",
-	"arme", "armes", "pistolet", "fusil", "tuer", "flingue", "broute*"}
+	"arme", "armes", "pistolet", "fusil", "tuer", "flingue", "broute*",
+	// In English.
+	"sex", "sexual*", "naked", "nude*", "boobs", "dick", "fuck*", "shit*", "bitch*", "asshole", "bastard", "slut",
+	"drugs", "weed", "alcohol", "beer", "smoke", "smoking", "gun", "guns", "rifle", "kill", "knife"}
 
 func unfitForChild(s string) bool { return says(plainWords(s), unfitWords...) }
 
@@ -380,65 +388,76 @@ type cannedTopic struct {
 }
 
 // What a child asks of its real life (where it lives, a number, a password): never written here.
-var privateWords = []string{"adresse", "mot de passe", "password", "numero", "ton num", "whatsapp", "insta*", "snap*", "facebook", "tiktok", "ou tu habites", "ou j habite", "ma vraie", "mon vrai", "photo de moi", "en vrai"}
+var privateWords = []string{"adresse", "mot de passe", "password", "numero", "ton num", "whatsapp", "insta*", "snap*", "facebook", "tiktok", "ou tu habites", "ou j habite", "ma vraie", "mon vrai", "photo de moi", "en vrai",
+	"address", "phone number", "my number", "your number", "where do you live", "where i live", "real name", "photo of me", "pic of me", "in real life", "irl"}
 
 // Worried, sad, scared: comfort, and someone close to talk to.
-var worriedWords = []string{"triste", "peur", "pleur*", "j ai mal", "mal au", "malade", "bless*", "mourir", "suicide", "frappe*", "harcel*", "tout seul", "toute seule", "mechant*", "embete*"}
+var worriedWords = []string{"triste", "peur", "pleur*", "j ai mal", "mal au", "malade", "bless*", "mourir", "suicide", "frappe*", "harcel*", "tout seul", "toute seule", "mechant*", "embete*",
+	"sad", "scared", "afraid", "cry", "crying", "it hurts", "hurt", "hurts", "sick", "die", "dying", "bully*", "hit me", "alone", "lonely"}
 
 // {enfant} what they call the child, {moi} papa or maman, {e} the child's feminine ending.
 var cannedTopics = []cannedTopic{
-	{words: []string{"je t aime", "t aime", "je t adore", "bisou*", "calin*", "tu me manques", "manque"}, lines: []string{
+	{words: []string{"je t aime", "t aime", "je t adore", "bisou*", "calin*", "tu me manques", "manque",
+		"love you", "love u", "luv u", "kiss*", "hug*", "miss you", "miss u"}, lines: []string{
 		"Moi aussi je t'aime fort, {enfant}. Plus que l'attiéké-poisson, c'est pour te dire !",
 		"Ohhh ! {Moi} t'aime gros comme le Plateau. Gros bisou.",
 		"Dieu merci pour toi, {enfant}. Viens me faire un câlin tout à l'heure.",
 		"Toi tu sais parler à ton {moi} dèh ! Je t'aime aussi.",
 	}},
-	{words: []string{"bonjour", "bonsoir", "salut", "coucou", "cc", "slt", "hello", "ca va", "cv", "on dit quoi", "c est comment", "yo"}, lines: []string{
+	{words: []string{"bonjour", "bonsoir", "salut", "coucou", "cc", "slt", "hello", "ca va", "cv", "on dit quoi", "c est comment", "yo",
+		"hi", "hey", "good morning", "good evening", "how are you", "how r u", "whats up", "what s up", "sup"}, lines: []string{
 		"Coucou {enfant} ! Ça va bien ? Tu es sage ?",
 		"Bonjour mon bébé ! Tu as bien dormi ?",
 		"Eh, c'est mon enfant qui m'écrit ! Ça va, {enfant} ?",
 		"On est là, {enfant}. Et toi, ta journée se passe bien ?",
 	}},
-	{words: []string{"faim", "mang*", "repas", "manger", "garba", "attieke", "alloco", "foutou", "riz", "goute*", "bouffe*", "cuisine", "soif"}, lines: []string{
+	{words: []string{"faim", "mang*", "repas", "manger", "garba", "attieke", "alloco", "foutou", "riz", "goute*", "bouffe*", "cuisine", "soif",
+		"hungry", "eat", "eating", "food", "dinner", "lunch", "breakfast", "snack*", "rice", "kitchen", "thirsty"}, lines: []string{
 		"On mange {repas}, ne traîne pas dehors !",
 		"Il y a de l'attiéké dans la cuisine. Lave tes mains d'abord, hein.",
 		"Patience, la sauce est sur le feu. Mets la table en attendant.",
 		"Encore faim ? Toi tu vas finir la marmite ! Prends une banane.",
 	}},
-	{words: []string{"ecole", "devoir*", "lecon*", "maitre*", "classe", "note", "notes", "cahier*", "dictee", "calcul", "math*", "exam*", "interro*", "bac", "cepe"}, lines: []string{
+	{words: []string{"ecole", "devoir*", "lecon*", "maitre*", "classe", "note", "notes", "cahier*", "dictee", "calcul", "math*", "exam*", "interro*", "bac", "cepe",
+		"school", "homework", "lesson*", "teacher*", "class", "grade*", "test", "quiz"}, lines: []string{
 		"Tu as fini tes devoirs ? Les cahiers d'abord, le jeu après.",
 		"L'école, c'est ta richesse, {enfant}. Travaille bien, je suis {fier} de toi.",
 		"Montre-moi ton cahier ce soir, on regarde ensemble.",
 		"Le maître a dit quoi aujourd'hui ? Raconte-moi tout à la maison.",
 	}},
-	{words: []string{"joue*", "jouer", "jouons", "foot", "ballon", "jeu", "jeux", "console", "copain*", "copine*", "ami", "amis", "amie", "s amuser"}, lines: []string{
+	{words: []string{"joue*", "jouer", "jouons", "foot", "ballon", "jeu", "jeux", "console", "copain*", "copine*", "ami", "amis", "amie", "s amuser",
+		"play", "playing", "football", "soccer", "ball", "game", "games", "friend", "friends", "fun"}, lines: []string{
 		"Va jouer un peu, mais tu rentres avant la nuit. Pas une minute de plus !",
 		"Joue doucement, ne te salis pas trop. La lessive, c'est pas toi qui la fais !",
 		"D'accord pour jouer, mais les devoirs d'abord, hein.",
 		"Amuse-toi bien avec tes amis. Et sois {gentil} avec tout le monde.",
 	}},
-	{words: []string{"argent", "sous", "wari", "francs", "fcfa", "acheter", "achete", "bonbon*", "payer", "cadeau*", "poche"}, lines: []string{
+	{words: []string{"argent", "sous", "wari", "francs", "fcfa", "acheter", "achete", "bonbon*", "payer", "cadeau*", "poche",
+		"money", "buy", "candy", "sweets", "pay", "gift*", "pocket money"}, lines: []string{
 		"L'argent ne pousse pas sur les arbres, {enfant} ! On en reparle à la maison.",
 		"Des bonbons encore ? Tes dents vont partir en vacances !",
 		"Tu veux acheter quoi ? Explique-moi ça ce soir, on verra.",
 		"Mets de côté ce que tu as, c'est comme ça qu'on devient grand.",
 	}},
-	{words: []string{"sortir", "sors", "dehors", "aller", "partir", "quartier", "maquis", "plage"}, lines: []string{
+	{words: []string{"sortir", "sors", "dehors", "aller", "partir", "quartier", "maquis", "plage",
+		"go out", "outside", "beach", "neighbourhood", "neighborhood"}, lines: []string{
 		"Sortir ? Tu restes dans le quartier, et tu salues les voisins.",
 		"Pas trop loin hein ! Et tu rentres avant qu'il fasse noir.",
 		"Tu as demandé la permission ? Bon… d'accord, mais pas longtemps.",
 		"On ne traîne pas dehors, {enfant}. Le soir, tout le monde à la maison.",
 	}},
-	{words: []string{"fatigue*", "dormir", "dodo", "sommeil", "lit", "couche*", "nuit"}, lines: []string{
+	{words: []string{"fatigue*", "dormir", "dodo", "sommeil", "lit", "couche*", "nuit",
+		"tired", "sleep*", "bed", "nap", "night"}, lines: []string{
 		"Va te coucher, {enfant}. Demain il y a l'école.",
 		"Fatigué{e} ? Une douche et au lit, sans discuter !",
 		"Dors bien mon bébé. Que Dieu veille sur toi.",
 	}},
-	{words: []string{"merci", "mrc", "mci"}, lines: []string{
+	{words: []string{"merci", "mrc", "mci", "thank*", "thx", "ty"}, lines: []string{
 		"De rien {enfant}, c'est pour ça qu'on est là.",
 		"Merci à toi d'être sage. Ça fait plaisir à {moi}.",
 	}},
-	{words: []string{"ou es tu", "ou tu es", "t es ou", "tu es ou", "tu fais quoi", "tu rentres", "quand"}, lines: []string{
+	{words: []string{"ou es tu", "ou tu es", "t es ou", "tu es ou", "tu fais quoi", "tu rentres", "quand",
+		"where are you", "what are you doing", "wyd", "coming home", "when"}, lines: []string{
 		"Je suis à la maison, {enfant}. Tu me trouves au salon.",
 		"Je rentre bientôt, ne t'inquiète pas. Sois sage en attendant.",
 		"Je fais mes affaires, je suis là tout à l'heure.",
@@ -493,13 +512,18 @@ var (
 // cannedParent: papa's or maman's answer, by what the child wrote, then by its day; not one of
 // the lines said lately when there's another.
 func cannedParent(who string, s *Sim, said string, rng *rand.Rand, lately ...string) string {
+	return cannedParentIn("fr", who, s, said, rng, lately...)
+}
+
+// cannedParentIn: the same, in that language ("en": the line's English, from the catalogue).
+func cannedParentIn(lang, who string, s *Sim, said string, rng *rand.Rand, lately ...string) string {
 	n := plainWords(said)
 	hour := game.HourOf(s.GameMinutes)
 	atSchool := s.Activity != nil && s.Activity.Interaction.ID == "aller-ecole"
 	pick := func(lines []string) string {
 		var line string
 		for range 12 {
-			line = sayToChild(lines[rng.IntN(len(lines))], who, s, rng)
+			line = sayToChildIn(lang, lines[rng.IntN(len(lines))], who, s, rng)
 			if !slices.Contains(lately, line) {
 				break
 			}
@@ -543,6 +567,14 @@ func cannedParent(who string, s *Sim, said string, rng *rand.Rand, lately ...str
 }
 
 func sayToChild(line, who string, s *Sim, rng *rand.Rand) string {
+	return sayToChildIn("fr", line, who, s, rng)
+}
+
+// sayToChildIn: the line filled in for this child, in that language.
+func sayToChildIn(lang, line, who string, s *Sim, rng *rand.Rand) string {
+	if lang == "en" {
+		return sayToChildEN(i18n.English(line), who, s, rng)
+	}
 	enfant := []string{"mon fils", "mon bébé", "mon grand", "mon chéri"}
 	e2, ne := "", ""
 	if s.Gender == "femme" {
@@ -561,4 +593,22 @@ func sayToChild(line, who string, s *Sim, rng *rand.Rand) string {
 	moi := parentName(who)
 	return strings.NewReplacer("{enfant}", enfant[rng.IntN(len(enfant))], "{Moi}", moi, "{moi}", strings.ToLower(moi), "{e}", e2, "{ne}", ne,
 		"{gentil}", gentil, "{fier}", fier, "{repas}", repas).Replace(line)
+}
+
+// sayToChildEN: an English line (the catalogue's) filled in: what papa or maman call the child, in English.
+func sayToChildEN(line, who string, s *Sim, rng *rand.Rand) string {
+	enfant := []string{"my son", "my baby", "my big boy", "sweetheart"}
+	if s.Gender == "femme" {
+		enfant = []string{"my daughter", "my baby", "my big girl", "sweetheart"}
+	}
+	repas := "later"
+	switch h := game.HourOf(s.GameMinutes); {
+	case h < 12:
+		repas = "at noon"
+	case h < 19:
+		repas = "at 7 pm"
+	}
+	moi := parentName(who)
+	return strings.NewReplacer("{enfant}", enfant[rng.IntN(len(enfant))], "{Moi}", moi, "{moi}", moi, "{e}", "", "{ne}", "",
+		"{gentil}", "kind", "{fier}", "proud", "{repas}", repas).Replace(line)
 }

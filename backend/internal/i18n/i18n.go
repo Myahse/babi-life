@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"unicode"
 )
 
 //go:embed en.json
@@ -94,6 +95,12 @@ func load() *catalogue {
 			}
 			if p, ok := compile(fr, en); ok {
 				c.patterns = append(c.patterns, p)
+			}
+		}
+		// The days and months the code writes out (dates said in French: « lundi 3 novembre à 20 h »).
+		for fr, en := range calendar {
+			if _, ok := c.exact[fr]; !ok {
+				c.exact[fr] = en
 			}
 		}
 		// The longest literal first: the most precise pattern wins.
@@ -180,6 +187,51 @@ func fill(en string, names, args []string) string {
 	})
 }
 
+// calendar: the days and months in French, lower case and capitalised.
+var calendar = func() map[string]string {
+	m := map[string]string{}
+	add := func(fr, en string) {
+		m[fr] = en
+		m[strings.ToUpper(fr[:1])+fr[1:]] = en
+	}
+	for i, d := range []string{"lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"} {
+		add(d, []string{"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"}[i])
+	}
+	for i, d := range []string{"janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"} {
+		add(d, []string{"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"}[i])
+	}
+	return m
+}()
+
+// date: a date as the code writes it out, « dimanche 2 novembre à 20 h » (politics.frenchDate).
+var date = regexp.MustCompile(`^(\p{L}+) (\d{1,2}) (\p{L}+) à (\d{1,2}) h(?: (\d{2}))?$`)
+
+// placeOf: a proper name after its French preposition (communeDe, inCommune).
+var placeOf = regexp.MustCompile(`^(de |d'|d’|du |à |au )(\p{Lu}[\p{L}\-’' ]{1,30})$`)
+
+// hour: a time as French writes it, « 20 h » or « 9 h 05 ».
+var hour = regexp.MustCompile(`^(\d{1,2}) h(?: (\d{2}))?$`)
+
+// Open: whether English is with the players now (the update « anglais »).
+func Open(ctx context.Context) bool { return Allowed == nil || Allowed(ctx) }
+
+// For: the language to speak to a player who chose lang (users.lang): English
+// only while it is open, French otherwise.
+func For(ctx context.Context, lang string) string {
+	if Norm(lang) == "en" && Open(ctx) {
+		return "en"
+	}
+	return "fr"
+}
+
+// In: the French text in that language.
+func In(lang, s string) string {
+	if lang == "en" {
+		return English(s)
+	}
+	return s
+}
+
 // English: the French text in English, or the text as it is when the catalogue doesn't know it.
 func English(s string) string {
 	return load().translate(s, 0)
@@ -197,6 +249,36 @@ func (c *catalogue) translate(s string, depth int) string {
 		if en, ok := c.exact[t]; ok {
 			return strings.Replace(s, t, en, 1)
 		}
+	}
+	if depth > 0 {
+		// A part the code put in a sentence: « d'Abobo », « au Plateau » (a commune, said with
+		// its French preposition), « ministre de la Santé » (lowered to go mid-sentence).
+		if m := placeOf.FindStringSubmatch(s); m != nil {
+			if strings.HasPrefix(m[1], "à") || m[1] == "au " {
+				return "in " + m[2]
+			}
+			return "of " + m[2]
+		}
+		if r := []rune(s); unicode.IsLower(r[0]) {
+			up := string(unicode.ToUpper(r[0])) + string(r[1:])
+			if en, ok := c.exact[up]; ok {
+				e := []rune(en)
+				return string(unicode.ToLower(e[0])) + string(e[1:])
+			}
+		}
+	}
+	if m := hour.FindStringSubmatch(s); m != nil {
+		if m[2] == "" {
+			m[2] = "00"
+		}
+		return m[1] + ":" + m[2]
+	}
+	if m := date.FindStringSubmatch(s); m != nil && calendar[m[1]] != "" && calendar[m[3]] != "" {
+		at := m[4] + ":00"
+		if m[5] != "" {
+			at = m[4] + ":" + m[5]
+		}
+		return calendar[m[1]] + " " + m[2] + " " + calendar[m[3]] + " at " + at
 	}
 	if depth > 2 || !strings.ContainsAny(s, " '’") {
 		return s

@@ -391,7 +391,7 @@ func (h *Handler) invite(ctx context.Context, tx pgx.Tx, s *Sim, o other) (game.
 		return game.Outcome{}, nil, err
 	}
 	_ = insertEvent(ctx, tx, o.ID, "social", fmt.Sprintf("%s t'invite : %s.", s.FirstName, label), 0, game.MinuteOf(time.Now()))
-	h.Push.ToSim(o.ID, push.Message{Title: s.FirstName + " t'invite", Body: label, URL: "/jeu", Tag: "invite-" + s.ID})
+	h.Push.ToSim(o.ID, push.Message{Title: fmt.Sprintf("%s t'invite", s.FirstName), Body: fmt.Sprintf("Rendez-vous : %s à %s.", a.Interaction.Label, a.PlaceName), URL: "/jeu", Tag: "invite-" + s.ID})
 	text := fmt.Sprintf("Tu invites %s : %s.", o.FirstName, label)
 	return game.Outcome{Text: text}, []Event{{Kind: "social", Text: text, GameTime: s.GameMinutes}}, nil
 }

@@ -465,9 +465,9 @@ func (h *Handler) tellBets(ctx context.Context) {
 			continue
 		}
 		name := betApps[b.app].Name
-		m := push.Message{Title: name + " : pari perdu", Body: "Les matchs sont finis. Pas cette fois… la prochaine !", URL: "/jeu?app=" + b.app, Tag: "bet-" + b.app}
+		m := push.Message{Title: fmt.Sprintf("%s : pari perdu", name), Body: "Les matchs sont finis. Pas cette fois… la prochaine !", URL: "/jeu?app=" + b.app, Tag: "bet-" + b.app}
 		if !b.lost {
-			m.Title = name + " : pari gagné !"
+			m.Title = fmt.Sprintf("%s : pari gagné !", name)
 			m.Body = fmt.Sprintf("+%s Djai t'attendent : ouvre %s pour encaisser.", money(int(math.Round(float64(b.stake)*b.odds))), name)
 		}
 		h.Push.ToSim(b.sim, m)

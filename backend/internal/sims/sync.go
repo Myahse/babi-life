@@ -124,10 +124,11 @@ func (h *Handler) sync(w http.ResponseWriter, r *http.Request) {
 			last[m.to] = m.body
 		}
 		for to, body := range last {
+			written := true
 			if reSticker.MatchString(body) {
-				body = "a envoyé un sticker"
+				body, written = "a envoyé un sticker", false
 			}
-			h.Push.ToSim(to, push.Message{Title: name + " · Gbairai", Body: body, URL: "/jeu?app=gbairai", Tag: "gbairai-" + me})
+			h.Push.ToSim(to, push.Message{Title: name + " · Gbairai", Body: body, URL: "/jeu?app=gbairai", Tag: "gbairai-" + me, Written: written})
 		}
 	}
 }
