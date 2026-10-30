@@ -8,10 +8,11 @@ import { PerformanceMonitor } from '@react-three/drei'
 import { Human, NoShadows, type Pose } from '../../avatar/Human'
 import { useNpcReaction } from './npcReact'
 import { randomLook } from '../../avatar/options'
-import { OWN_HOUSE, homePlanFor, lifeOf, minuteOf, openAt } from '../../game/rules'
+import { OWN_HOUSE, homePlanFor, lifeOf, minuteOf, openAt, weekdayOf } from '../../game/rules'
 import { HAPPENING_DOOR, HAPPENING_ROLES, HAPPENING_X, HappeningMarker, HappeningScene, JamOnRoad, STOPS_TRAFFIC } from '../Happenings'
 import { jamAlong } from './jam'
 import { MovingJam } from './jamCars'
+import { LivingCity } from './livingCity'
 import { keyOpen, useFeatures } from '../../lib/features'
 import { pavementLine, routeFor, useRoutes } from './ways'
 import { underHud } from '../hudClear'
@@ -1362,9 +1363,10 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const labels = shownLabels && !high
 
   // The jam crawls, and regulated at the junction it drives off (the update « circulation », jamCars.tsx);
-  // gone, the street's traffic is back.
+  // gone, the street's traffic is back. The street lives by itself (the update « ville-vivante », livingCity.tsx).
   const feats = useFeatures()
   const crawl = keyOpen(feats, 'circulation')
+  const alive = keyOpen(feats, 'ville-vivante')
   const [clearing, setClearing] = useState<number | null>(null)
   const [flowing, setFlowing] = useState(false)
   const cleared = !!happening?.cleared
@@ -1570,6 +1572,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         {nav.nodes.length > 0 && night && <NightStreet nav={nav} seed={commune.id} />}
         {nav.nodes.length > 0 && <StreetFootball nav={nav} seed={commune.id} hour={hour} />}
         {nav.nodes.length > 0 && <StreetPeople nav={nav} seed={commune.id} />}
+        {nav.nodes.length > 0 && alive && <LivingCity nav={nav} focus={focus} seed={commune.id} hour={hour} night={night} rain={raining} cut={happening?.id === 'delestage'} sunday={weekdayOf(sim.gameMinutes) === 6} weekend={weekdayOf(sim.gameMinutes) >= 5} taken={taken} />}
         {nav.nodes.length > 0 && <StreetStalls nav={nav} seed={commune.id} hour={hour} onBuy={onStreetBuy} />}
       </JoinIn.Provider>
       {nav.nodes.length > 0 && <SotraStops nav={nav} seed={commune.id} hour={hour} night={night} />}
