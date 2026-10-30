@@ -3,6 +3,8 @@ package auth
 import (
 	"context"
 	"errors"
+	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -76,6 +78,8 @@ func (h *Handler) Google(w http.ResponseWriter, r *http.Request) {
 	}
 	id, err := h.Identify(r.Context(), body.Credential)
 	if err != nil {
+		// (The reason in the server's log: a token for an unknown client, expired, a wrong project.)
+		log.Printf("google sign-in refused: %v", err)
 		httpx.Error(w, http.StatusUnauthorized, "invalid google credential")
 		return
 	}
@@ -93,7 +97,11 @@ func (h *Handler) Identify(ctx context.Context, token string) (GoogleIdentity, e
 		first = err
 	}
 	if h.Firebase != nil {
-		return h.Firebase.Verify(ctx, token)
+		id, err := h.Firebase.Verify(ctx, token)
+		if err != nil && first != nil {
+			return id, fmt.Errorf("as a Google token: %v; as a Firebase token: %w", first, err)
+		}
+		return id, err
 	}
 	if first != nil {
 		return GoogleIdentity{}, first

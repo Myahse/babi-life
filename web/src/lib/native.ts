@@ -1,4 +1,4 @@
-import { t } from './i18n'
+import { t } from '../lib/i18n'
 // The Babi Life app (mobile/, Flutter) runs this same game in a web view and
 // lends it what a web page can't do well on a phone: Google's sign-in (it
 // refuses to open inside a web view), the phone's share sheet. Outside the
@@ -35,10 +35,15 @@ function call(name: string, arg?: string): Promise<unknown> {
 /** In the Babi Life app (its web view says so in its user agent)? */
 export const inApp = () => navigator.userAgent.includes('BabiLifeApp') || !!channel()
 
-/** Google sign-in by the phone: the ID token for /auth/google, or null if cancelled. */
+/** Google sign-in by the phone: the ID token for /auth/google, or null if cancelled; a failure throws what the app said. */
 export async function nativeGoogleSignIn(): Promise<string | null> {
-  const r = await call('googleSignIn')
-  return typeof r === 'string' && r ? r : null
+  try {
+    const r = await call('googleSignIn')
+    return typeof r === 'string' && r ? r : null
+  } catch (e) {
+    console.warn('[google sign-in] failed:', (e as Error)?.message)
+    throw new Error(t('Connexion Google impossible ({reason}). Connecte-toi avec ton e-mail en attendant.', { reason: (e as Error)?.message || '?' }))
+  }
 }
 
 /** Share a text (and a link): the phone's share sheet in the app, the browser's elsewhere; false if neither. */
