@@ -1,0 +1,73 @@
+# The Android app opened in an emulator: built for the emulator's processor (x86_64), installed,
+# launched, and what the phone said kept (logcat: a crash at start shows here, with its cause).
+# Run by hand (Actions → Native app in the emulator → Run workflow), or on a change to this file.
+name: Native app in the emulator
+
+on:
+  push:
+    paths: ['.github/workflows/native-smoke.yml']
+  workflow_dispatch:
+
+jobs:
+  emulator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: native
+    env:
+      EXPO_PUBLIC_API_URL: https://babi-life-jnvy.onrender.com/api/v1
+      EXPO_PUBLIC_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID || '115685300024-jo2jvvpg0p1ue1gsv156lcmkjjb99s9t.apps.googleusercontent.com' }}
+      EXPO_PUBLIC_COMMIT_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: native/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: npm ci
+      - name: Firebase
+        run: |
+          cat > google-services.json <<JSON
+          {"project_info":{"project_number":"115685300024","project_id":"babilife-38e39","storage_bucket":"babilife-38e39.firebasestorage.app"},
+           "client":[{"client_info":{"mobilesdk_app_id":"1:115685300024:android:9d87f4913fe5f373b3d3cd","android_client_info":{"package_name":"com.lifeinbabi.babi_life"}},
+            "oauth_client":[],"api_key":[{"current_key":"AIzaSyCWL8bpyY5sPd7RhT-AopRpibfhbrIbsgY"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}}],
+           "configuration_version":"1"}
+          JSON
+      - run: npx expo prebuild --platform android --no-install
+      - run: ./gradlew assembleRelease -PreactNativeArchitectures=x86_64 --no-daemon
+        working-directory: native/android
+      - name: KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          working-directory: native
+          script: |
+            adb install -r android/app/build/outputs/apk/release/app-release.apk
+            adb logcat -c
+            adb shell monkey -p com.lifeinbabi.babi_life -c android.intent.category.LAUNCHER 1
+            sleep 60
+            adb shell pidof com.lifeinbabi.babi_life && echo "APP STILL RUNNING" || echo "APP NOT RUNNING"
+            adb exec-out screencap -p > /tmp/screen.png
+            adb logcat -d > /tmp/logcat.txt
+            grep -E "AndroidRuntime|ReactNativeJS|FATAL|Exception|Error" /tmp/logcat.txt | grep -iv "chatty" | head -300
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: emulator-logcat
+          path: |
+            /tmp/logcat.txt
+            /tmp/screen.png
+          retention-days: 7
