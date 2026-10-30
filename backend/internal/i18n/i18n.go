@@ -57,47 +57,46 @@ func FromRequest(r *http.Request) string {
 }
 
 type pattern struct {
-	re     *regexp.Regexp
-	lit    string // its longest literal part: a cheap test before the regexp
-	en     string
-	nverbs int
+	re    *regexp.Regexp
+	lit   string // its longest literal part: a cheap test before the regexp
+	en    string
+	names []string // what each group is: "" for a fmt verb, the name of a {name}
 }
 
 type catalogue struct {
 	exact    map[string]string
 	patterns []pattern
-	cache    sync.Map
-	cached   int64
-	mu       sync.Mutex
+	mu       sync.RWMutex
+	cache    map[string]string
 }
 
 var (
 	once sync.Once
 	cat  *catalogue
 	verb = regexp.MustCompile(`%(\[\d+\])?[-+# 0]*\d*(\.\d+)?[vsdqfgxXtTceEb]|%%`)
+	// A part of a text: a fmt verb, or a {name} the code fills in (sims/chat.go).
+	hole = regexp.MustCompile(`%(\[\d+\])?[-+# 0]*\d*(\.\d+)?[vsdqfgxXtTceEb]|%%|\{[A-Za-z]\w*\}`)
 )
 
 func load() *catalogue {
 	once.Do(func() {
-		c := &catalogue{exact: map[string]string{}}
+		c := &catalogue{exact: map[string]string{}, cache: map[string]string{}}
 		raw := map[string]string{}
 		_ = json.Unmarshal(enJSON, &raw)
 		for fr, en := range raw {
 			if en == "" || en == "=" {
 				continue
 			}
-			if !verb.MatchString(fr) || !strings.Contains(fr, "%") {
-				c.exact[fr] = en
+			// As written (no Sprintf, nothing filled in): « 100 % », « Bonjour {name} » never shown as is but harmless.
+			c.exact[fr] = en
+			if !hole.MatchString(fr) {
 				continue
 			}
-			p, ok := compile(fr, en)
-			if ok {
+			if p, ok := compile(fr, en); ok {
 				c.patterns = append(c.patterns, p)
 			}
-			// A pattern may also be shown as written (no Sprintf): « 100 % ».
-			c.exact[fr] = en
 		}
-		// The longest first: the most precise pattern wins.
+		// The longest literal first: the most precise pattern wins.
 		sort.Slice(c.patterns, func(i, j int) bool { return len(c.patterns[i].lit) > len(c.patterns[j].lit) })
 		cat = c
 	})
@@ -107,18 +106,24 @@ func load() *catalogue {
 func compile(fr, en string) (pattern, bool) {
 	var b strings.Builder
 	b.WriteString("^")
-	last, n, longest := 0, 0, ""
-	for _, m := range verb.FindAllStringIndex(fr, -1) {
+	last, longest := 0, ""
+	var names []string
+	for _, m := range hole.FindAllStringIndex(fr, -1) {
 		part := fr[last:m[0]]
 		if len(part) > len(longest) {
 			longest = part
 		}
 		b.WriteString(regexp.QuoteMeta(part))
-		if fr[m[0]:m[1]] == "%%" {
+		switch h := fr[m[0]:m[1]]; {
+		case h == "%%":
 			b.WriteString("%")
-		} else {
+		case h[0] == '{':
+			// A name may be empty ({e}: the feminine ending).
+			b.WriteString("(.*?)")
+			names = append(names, h[1:len(h)-1])
+		default:
 			b.WriteString("(.+?)")
-			n++
+			names = append(names, "")
 		}
 		last = m[1]
 	}
@@ -127,22 +132,38 @@ func compile(fr, en string) (pattern, bool) {
 	}
 	b.WriteString(regexp.QuoteMeta(fr[last:]))
 	b.WriteString("$")
-	if n == 0 || len(strings.TrimSpace(longest)) < 3 {
+	if len(names) == 0 || len(strings.TrimSpace(longest)) < 3 {
 		return pattern{}, false
 	}
 	re, err := regexp.Compile(b.String())
 	if err != nil {
 		return pattern{}, false
 	}
-	return pattern{re: re, lit: longest, en: en, nverbs: n}, true
+	return pattern{re: re, lit: longest, en: en, names: names}, true
 }
 
-// fill: the English pattern with the parts found, in order or by their number (%[2]s).
-func fill(en string, args []string) string {
+// fill: the English pattern with the parts found: the fmt verbs in order or by
+// their number (%[2]s), the {names} by name.
+func fill(en string, names, args []string) string {
+	var verbs []string
+	byName := map[string]string{}
+	for i, n := range names {
+		if n == "" {
+			verbs = append(verbs, args[i])
+		} else if _, had := byName[n]; !had {
+			byName[n] = args[i]
+		}
+	}
 	next := 0
-	return verb.ReplaceAllStringFunc(en, func(v string) string {
-		if v == "%%" {
+	return hole.ReplaceAllStringFunc(en, func(v string) string {
+		switch {
+		case v == "%%":
 			return "%"
+		case v[0] == '{':
+			if a, ok := byName[v[1:len(v)-1]]; ok {
+				return a
+			}
+			return v
 		}
 		i := next
 		if strings.HasPrefix(v, "%[") {
@@ -152,8 +173,8 @@ func fill(en string, args []string) string {
 		} else {
 			next++
 		}
-		if i >= 0 && i < len(args) {
-			return args[i]
+		if i >= 0 && i < len(verbs) {
+			return verbs[i]
 		}
 		return ""
 	})
@@ -171,19 +192,32 @@ func (c *catalogue) translate(s string, depth int) string {
 	if en, ok := c.exact[s]; ok {
 		return en
 	}
-	// Surrounding spaces or a final full stop added by the code: the text inside.
+	// Surrounding spaces added by the code: the text inside.
 	if t := strings.TrimSpace(s); t != s && t != "" {
 		if en, ok := c.exact[t]; ok {
 			return strings.Replace(s, t, en, 1)
 		}
 	}
-	if depth > 1 || !strings.ContainsAny(s, " '’") {
+	if depth > 2 || !strings.ContainsAny(s, " '’") {
 		return s
 	}
-	if v, ok := c.cache.Load(s); ok {
-		return v.(string)
+	c.mu.RLock()
+	v, ok := c.cache[s]
+	c.mu.RUnlock()
+	if ok {
+		return v
 	}
-	out := s
+	out := c.match(s, depth)
+	c.mu.Lock()
+	if len(c.cache) > 50000 {
+		c.cache = map[string]string{}
+	}
+	c.cache[s] = out
+	c.mu.Unlock()
+	return out
+}
+
+func (c *catalogue) match(s string, depth int) string {
 	for _, p := range c.patterns {
 		if !strings.Contains(s, p.lit) {
 			continue
@@ -196,22 +230,29 @@ func (c *catalogue) translate(s string, depth int) string {
 		for i, a := range m[1:] {
 			args[i] = c.translate(a, depth+1)
 		}
-		out = fill(p.en, args)
-		break
+		return fill(p.en, p.names, args)
 	}
-	c.mu.Lock()
-	if c.cached > 50000 {
-		c.cache = sync.Map{}
-		c.cached = 0
+	// Two texts the code put one after the other (« A. » + « B »): each in English.
+	for i := 1; depth == 0 && i < len(s)-1; i++ {
+		if s[i] != ' ' || !strings.ContainsRune(".!?»)…:", rune(s[i-1])) && !strings.HasSuffix(s[:i], "…") && !strings.HasSuffix(s[:i], "»") {
+			continue
+		}
+		left, right := s[:i], s[i+1:]
+		l, r := c.translate(left, depth+1), c.translate(right, depth+1)
+		if l != left && r != right {
+			return l + " " + r
+		}
 	}
-	c.cached++
-	c.mu.Unlock()
-	c.cache.Store(s, out)
-	return out
+	return s
 }
 
 // SameVerbs: the English pattern gives every part the French one has (cmd/i18n -check).
 func SameVerbs(fr, en string) bool {
+	for _, n := range hole.FindAllString(en, -1) {
+		if n[0] == '{' && !strings.Contains(fr, n) {
+			return false
+		}
+	}
 	count := func(s string) (n int, max int) {
 		for _, v := range verb.FindAllString(s, -1) {
 			if v == "%%" {
