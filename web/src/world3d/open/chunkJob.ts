@@ -6,6 +6,7 @@ import { STYLE_OF_KIND, type Style } from './buildings'
 import { pointInRing, tileBox } from './geo'
 import { chunkKey, getChunk, openCache, putChunk } from './chunkCache'
 import type { Building, ChunkData } from './tiles'
+import { ALSO_WHOLE, CELLED, cellName, splitCells } from './cells'
 
 // A chunk of the street fetched, decoded and turned into geometry. In the
 // browser it's done off the main thread (worker.ts), so walking stays smooth
@@ -15,7 +16,8 @@ import type { Building, ChunkData } from './tiles'
 // the missing ones are fetched and built.
 
 export type ChunkRequest = { id: number; origin: Origin; tx: number; ty: number; token: string; places: PlaceSpot[]; z?: number; /** Another commune's landmark drawn from afar (the Tour F seen from Adjamé): the map's buildings and trees go from its ground here too. */ clear?: { at: XZ; r: number }[] }
-export type Arrays = { position: Float32Array; uv: Float32Array; normal: Float32Array; color?: Float32Array; colorSize?: number; /** The building each vertex belongs to (lotClip.ts). */ lotBc?: Float32Array; index: Uint32Array }
+/** A mesh's arrays: normals in bytes, colours in bytes (floats when brighter than white), the index in 16 bits when it can be (builder.ts). */
+export type Arrays = { position: Float32Array; uv: Float32Array; normal: Int8Array; color?: Uint8Array | Float32Array; colorSize?: number; /** The building each vertex belongs to, in whole metres (lotClip.ts). */ lotBc?: Int16Array; index: Uint16Array | Uint32Array }
 /** What comes back for a chunk: its data, meshes and places, or why not. */
 export type ChunkReply = { id: number; data?: ChunkData; meshes?: Record<string, Arrays>; resolved?: Resolved[]; cached?: boolean; error?: string }
 
@@ -67,10 +69,21 @@ export async function chunkJob(req: ChunkRequest): Promise<{ msg: ChunkReply; tr
     const transfer: ArrayBuffer[] = []
     for (const [name, g] of Object.entries(meshes)) {
       if (!g) continue
-      const arr = (n: string) => g.getAttribute(n)?.array as Float32Array | undefined
-      const a: Arrays = { position: arr('position')!, uv: arr('uv')!, normal: arr('normal')!, color: arr('color'), colorSize: g.getAttribute('color')?.itemSize, lotBc: arr('lotBc'), index: new Uint32Array(g.getIndex()!.array) }
-      out[name] = a
-      for (const v of [a.position, a.uv, a.normal, a.color, a.lotBc, a.index]) if (v) transfer.push(v.buffer as ArrayBuffer)
+      const a = {
+        position: g.getAttribute('position').array,
+        uv: g.getAttribute('uv').array,
+        normal: g.getAttribute('normal').array,
+        color: g.getAttribute('color')?.array,
+        colorSize: g.getAttribute('color')?.itemSize,
+        lotBc: g.getAttribute('lotBc')?.array,
+        index: g.getIndex()!.array,
+      } as Arrays
+      // A near chunk's small parts, in squares (cells.ts).
+      const parts = !z && CELLED.has(name) ? [...(ALSO_WHOLE.has(name) ? [[name, a] as const] : []), ...[...splitCells(a, data.box)].map(([c, p]) => [cellName(name, c), p] as const)] : [[name, a] as const]
+      for (const [n, p] of parts) {
+        out[n] = p
+        for (const v of [p.position, p.uv, p.normal, p.color, p.lotBc, p.index]) if (v) transfer.push(v.buffer as ArrayBuffer)
+      }
     }
     // Kept for next time: copied right here, before the arrays are handed over.
     putChunk(await openCache(), key, { data, meshes: out, resolved })

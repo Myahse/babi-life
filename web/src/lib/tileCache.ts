@@ -16,6 +16,13 @@ const online = () => typeof navigator === 'undefined' || navigator.onLine !== fa
  * of the map is the same streets).
  */
 export async function tileFetch(key: string, url: string, signal?: AbortSignal): Promise<Response> {
+  // The street's workers build side by side, and often want the same tile at once: one fetches
+  // it and keeps it, the others then find it kept (not the same tile downloaded three times).
+  const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined
+  return locks && can() ? await locks.request(`babi-tile:${key}`, () => tileFetchNow(key, url, signal, true)) : tileFetchNow(key, url, signal, false)
+}
+
+async function tileFetchNow(key: string, url: string, signal: AbortSignal | undefined, wait: boolean): Promise<Response> {
   const c = can() ? await caches.open(TILES).catch(() => null) : null
   const hit = c ? await c.match(keyUrl(key)).catch(() => undefined) : undefined
   const age = hit ? Date.now() - Number(hit.headers.get('x-kept') ?? 0) : Infinity
@@ -24,10 +31,10 @@ export async function tileFetch(key: string, url: string, signal?: AbortSignal):
     const res = await fetch(url, { signal })
     if (res.ok && c) {
       const body = await res.clone().arrayBuffer()
-      void c
-        .put(keyUrl(key), new Response(body, { status: res.status, headers: { 'content-type': res.headers.get('content-type') ?? 'application/octet-stream', 'x-kept': String(Date.now()) } }))
-        .then(() => trim(c))
-        .catch(() => undefined)
+      const kept = c.put(keyUrl(key), new Response(body, { status: res.status, headers: { 'content-type': res.headers.get('content-type') ?? 'application/octet-stream', 'x-kept': String(Date.now()) } }))
+      void kept.then(() => trim(c)).catch(() => undefined)
+      // (Kept before the others waiting for it look.)
+      if (wait) await kept.catch(() => undefined)
     }
     return res
   } catch (e) {
