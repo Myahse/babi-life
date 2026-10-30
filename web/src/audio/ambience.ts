@@ -153,7 +153,44 @@ function apply() {
   n.street.gain.setTargetAtTime(s.inside ? 0.04 : (s.night ? 0.14 : 0.24) * (s.music ? 0.4 : 1) * (s.rain ? 0.5 : 1), t, 1)
 }
 
+/** Out in the street with its sound on (the update « ambiance-sonore »): the street's own sounds can play. */
+const live = () => (scene && !scene.inside && nodes && nodes.ctx.state === 'running' ? nodes : null)
+
 export const ambience = {
+  /** A horn close by (a jam, a cortège): vol 0–1, how near; twice now and then, or held long (a horn storm). */
+  horn(vol = 1, long = false) {
+    const n = live()
+    if (!n || vol <= 0.02) return
+    const now = n.ctx.currentTime
+    const f = 340 + Math.random() * 220
+    const v = 0.03 * Math.min(1, vol)
+    if (long) return tone(n, 'square', f, f * 0.98, now, 0.9, v, 1400)
+    tone(n, 'square', f, f, now, 0.14, v, 1400)
+    if (Math.random() < 0.6) tone(n, 'square', f, f, now + 0.22, 0.18, v, 1400)
+  },
+  /** The traffic cop's whistle: one long blow, or two short. */
+  whistle(short = false) {
+    const n = live()
+    if (!n) return
+    const now = n.ctx.currentTime
+    if (short) for (const k of [0, 0.2]) tone(n, 'triangle', 2900, 2950, now + k, 0.12, 0.05, 6000)
+    else tone(n, 'triangle', 2800, 3100, now, 0.55, 0.05, 6000)
+  },
+  /** A police siren going by (the wail, up and down), vol by how near. */
+  siren(vol = 1) {
+    const n = live()
+    if (!n || vol <= 0.02) return
+    const now = n.ctx.currentTime
+    tone(n, 'sawtooth', 620, 980, now, 0.5, 0.012 * Math.min(1, vol), 2200)
+    tone(n, 'sawtooth', 980, 620, now + 0.5, 0.5, 0.012 * Math.min(1, vol), 2200)
+  },
+  /** Tyres screeching (a near miss). */
+  screech(vol = 1) {
+    const n = live()
+    if (!n || vol <= 0.02) return
+    tone(n, 'sawtooth', 1800, 1300, n.ctx.currentTime, 0.45, 0.02 * Math.min(1, vol), 3000)
+  },
+
   /** Where the Sim is now (null: silence). */
   set(s: Scene | null) {
     scene = s

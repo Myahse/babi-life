@@ -262,7 +262,17 @@ func main() {
 				httpx.JSON(w, http.StatusOK, map[string]any{"happening": nil, "start": start, "end": start + game.HappeningMinutes})
 				return
 			}
-			httpx.JSON(w, http.StatusOK, map[string]any{"happening": h, "start": start, "end": start + game.HappeningMinutes})
+			// The jam's own join behind its update (« circulation »): closed, nothing to do there, as before.
+			if h.Join != nil && features.Default.Blocks(r.Context(), h.Join.ID) != "" {
+				h.Join = nil
+			}
+			out := map[string]any{"happening": h, "start": start, "end": start + game.HappeningMinutes}
+			// Regulated by a player at the junction (sims jam.go): the jam is over, the cars drive off.
+			if at, cleared, err := sims.JamCleared(r.Context(), pool, r.URL.Query().Get("city"), r.URL.Query().Get("commune"), t); err == nil && cleared {
+				h.Join = nil
+				out["happening"], out["cleared"] = h, at
+			}
+			httpx.JSON(w, http.StatusOK, out)
 		})
 		// A stadium's agenda: what's on now (from the doors opening) and the next seven days.
 		r.Get("/stadium", func(w http.ResponseWriter, r *http.Request) {

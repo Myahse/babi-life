@@ -277,6 +277,8 @@ export function Play() {
   const [near, setNear] = useState<string | null>(null)
   const [toasts, setToasts] = useState<Toast[]>([])
   const [street, setStreet] = useState<HappeningNow | null>(null)
+  // Asked again after the jam was regulated (the update « circulation »): cleared, its cars drive off.
+  const [streetAsk, setStreetAsk] = useState(0)
   const [flow, setFlow] = useState<FlowRequest | null>(null)
   // Looking at the street rather than inside the place the Sim is in.
   const [outside, setOutside] = useState(false)
@@ -568,7 +570,7 @@ export function Play() {
     return () => {
       live = false
     }
-  }, [where, slot]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [where, slot, streetAsk]) // eslint-disable-line react-hooks/exhaustive-deps
   // Arrived (or still walking) after it ended: say so instead of opening nothing.
   useEffect(() => {
     if (placeId === 'happening' && street && !street.happening) {
@@ -576,7 +578,7 @@ export function Play() {
       toast({ tone: 'error', title: "C'est fini !", text: 'Tu es arrivé·e trop tard, tout le monde est rentré.', money: 0 })
     }
   }, [placeId, street]) // eslint-disable-line react-hooks/exhaustive-deps
-  const happening = useMemo(() => (street?.happening ? { id: street.happening.id, icon: street.happening.icon, label: street.happening.label } : null), [street])
+  const happening = useMemo(() => (street?.happening ? { id: street.happening.id, icon: street.happening.icon, label: street.happening.label, cleared: street.cleared !== undefined } : null), [street])
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -1043,6 +1045,11 @@ export function Play() {
   useEffect(() => {
     if (gesteAt && gesteNow) setDefi(gesteNow)
   }, [gesteAt]) // eslint-disable-line react-hooks/exhaustive-deps
+  // The jam joined (the update « circulation »): straight to the junction, the whistle in hand.
+  const jamAt = sim?.activity?.kind === 'do' && !sim.activity.defi && sim.activity.interaction.id === 'regler-circulation' && keyOpen(feats, 'circulation') ? sim.activity.start : null
+  useEffect(() => {
+    if (jamAt !== null) setDefi('circulation')
+  }, [jamAt])
 
   // A ride in town, short (the update « trajet-court »): a short loading screen, the perso climbing in,
   // and it's there (the server ends the ride: sims.go arriveNow); then the vehicle drops it in the street.
@@ -1593,7 +1600,7 @@ export function Play() {
         </button>
       )}
 
-      {street?.happening && !near && !placeId && !pending && !sim.activity && !motoAsking && (
+      {street?.happening && street.cleared === undefined && !near && !placeId && !pending && !sim.activity && !motoAsking && (
         <button
           className={`animate-pop absolute bottom-[6.5rem] ${padBeside} z-20 flex items-center lg:left-1/2 lg:max-w-md lg:-translate-x-1/2 gap-2 rounded-full bg-[var(--color-gold)] py-1.5 pr-4 pl-1.5 text-left text-[#5a3a00] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.6)] lg:bottom-[7.5rem]`}
           onClick={() => walkTo('happening')}
@@ -1626,7 +1633,7 @@ export function Play() {
       })()}
 
       {placeId === 'happening' && street?.happening && (
-        <HappeningSheet now={street} sim={sim} commune={commune} onClose={() => setPlaceId(null)} onJoin={(it) => (setPlaceId(null), run(it.label, it.icon, 'happening', () => api.interact(sim.id, 'happening', it.id)))} />
+        <HappeningSheet now={street} sim={sim} commune={commune} joinOpen={!street.happening.join || activityOpen(feats, street.happening.join.id)} onClose={() => setPlaceId(null)} onJoin={(it) => (setPlaceId(null), run(it.label, it.icon, 'happening', () => api.interact(sim.id, 'happening', it.id)))} />
       )}
       {placeId?.startsWith('soiree:') && (
         <SoireeSheet
@@ -1853,6 +1860,8 @@ export function Play() {
             try {
               const res = await api.defi(sim.id, defi, score, extra)
               apply(res)
+              // The jam regulated: the street asked again (cleared, its cars drive off for everyone there).
+              if (defi === 'circulation') setStreetAsk((n) => n + 1)
               return res
             } catch (e) {
               toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? 'Hors ligne' : 'Pas possible', text: errorText(e, 'Erreur'), money: 0 })
@@ -1862,7 +1871,7 @@ export function Play() {
           onResult={apply}
           onClose={() => {
             // An action left without playing it isn't done (no clock to finish it any more): it stops. (The baby's games too.)
-            if ((GESTE_DEFIS.has(defi) || BABY_DEFIS.has(defi)) && sim.activity && !sim.activity.defi) stop()
+            if ((GESTE_DEFIS.has(defi) || BABY_DEFIS.has(defi) || defi === 'circulation') && sim.activity && !sim.activity.defi) stop()
             setDefi(null)
           }}
         />
@@ -2880,7 +2889,7 @@ function ActionButton({ it, colors, open, broke, busy, reason, onPick, compact }
 
 /* ---------- What's going on in the street ---------- */
 
-function HappeningSheet({ now, sim, commune, onClose, onJoin }: { now: HappeningNow; sim: Sim; commune: Commune; onClose: () => void; onJoin: (it: Interaction) => void }) {
+function HappeningSheet({ now, sim, commune, joinOpen, onClose, onJoin }: { now: HappeningNow; sim: Sim; commune: Commune; /** Its join not waiting for an update (the jam's: « circulation »). */ joinOpen: boolean; onClose: () => void; onJoin: (it: Interaction) => void }) {
   const h = now.happening!
   const left = Math.max(0, now.end - sim.gameMinutes)
   return (
@@ -2905,7 +2914,9 @@ function HappeningSheet({ now, sim, commune, onClose, onJoin }: { now: Happening
           </div>
         </div>
         <div className="p-4">
-          {h.join ? (
+          {now.cleared !== undefined ? (
+            <p className="text-sm font-bold text-[var(--color-ink-soft)]">Quelqu’un a réglé le carrefour : la circulation est rétablie, les voitures repartent.</p>
+          ) : h.join && joinOpen ? (
             <ActionButton it={h.join} colors={['#ffd54f', '#ffa000']} open={openAt(h.join, sim.gameMinutes)} broke={h.join.cost > 0 && sim.money < h.join.cost} busy={!!sim.activity} reason={blockedBy(h.join, sim, sim.city, commune.id)} onPick={() => onJoin(h.join!)} />
           ) : (
             <p className="text-sm font-bold text-[var(--color-ink-soft)]">Rien à faire ici à part regarder… et attendre que ça passe.</p>

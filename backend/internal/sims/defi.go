@@ -72,7 +72,15 @@ var defiFor = map[string][]string{
 	// The pot with the friends at the maquis: sat at the table, drinking, served again, the banknotes
 	// thrown, and the alcohol to watch (web components/defi/Bar.tsx).
 	"bar": {"drink-with-friends"},
+	// The street's jam regulated at the junction (the update « circulation », jam.go).
+	"circulation": {game.RegulateTrafficID},
 }
+
+// The jam regulated: what the drivers slip the volunteer, played well and perfectly.
+const (
+	circulationTip     = 500
+	circulationTipBest = 1500
+)
 
 // homeDefis: the home's gestures, behind the update « gestes-maison »: their score is the action itself.
 var homeDefis = []string{"douche", "cuisine", "repas", "dodo", "cour", "biberon", "bouillie", "bain", "calin", "caca", "pipi", "vomir", "pleurer", "garba", "alloco", "bar"}
@@ -241,6 +249,20 @@ func defiReward(kind, interaction string, score, cost int) (game.Needs, int, str
 	case "bagarre":
 		lines := []string{"Le cousin t'a pris le jouet… et tu pleures dans les bras de maman.", "Une bagarre serrée : maman sépare tout le monde, chacun son jouet.", "Le cousin au tapis, le jouet est à toi ! Toute la famille rit aux éclats."}
 		return game.Needs{Fun: math.Round(14 * k), Social: math.Round(6 * k)}, 0, lines[tier]
+	case "circulation":
+		// Played well, the drivers thank the volunteer with a few coins (a gain, within the day's limit).
+		lines := []string{"Coups de klaxon et pare-chocs qui se frôlent : le bouchon est toujours là.", "Le carrefour se vide petit à petit : les chauffeurs te saluent de la main.", "Circulation fluide en un temps record ! Les chauffeurs t'applaudissent, un gbaka crie ton nom."}
+		tip := 0
+		switch tier {
+		case 2:
+			tip = circulationTipBest
+		case 1:
+			tip = circulationTip
+		}
+		if score < JamClearScore {
+			tip = 0
+		}
+		return game.Needs{Social: math.Round(12 * k), Fun: math.Round(8 * k)}, tip, lines[tier]
 	case "arcade":
 		lines := []string{"Les moustiques ont gagné cette nuit.", "Pas mal de moustiques au tapis.", "Un massacre de moustiques : ton nom tout en haut de la borne !"}
 		return game.Needs{Fun: math.Round(14 * k)}, 0, lines[tier]
@@ -268,7 +290,7 @@ func (h *Handler) defi(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
 		return
 	}
-	if (req.Kind == "ecole" && features.Default.BlocksKey(r.Context(), "ecole-vivante") != "") || (slices.Contains(babyDefis, req.Kind) && features.Default.BlocksKey(r.Context(), "bebe-jeux") != "") || (req.Kind == "bagarre" && features.Default.BlocksKey(r.Context(), "bagarre-bebe") != "") || ((slices.Contains(homeDefis, req.Kind) || req.Kind == "geste") && features.Default.BlocksKey(r.Context(), "gestes-maison") != "") {
+	if (req.Kind == "ecole" && features.Default.BlocksKey(r.Context(), "ecole-vivante") != "") || (slices.Contains(babyDefis, req.Kind) && features.Default.BlocksKey(r.Context(), "bebe-jeux") != "") || (req.Kind == "bagarre" && features.Default.BlocksKey(r.Context(), "bagarre-bebe") != "") || (req.Kind == "circulation" && features.Default.BlocksKey(r.Context(), "circulation") != "") || ((slices.Contains(homeDefis, req.Kind) || req.Kind == "geste") && features.Default.BlocksKey(r.Context(), "gestes-maison") != "") {
 		httpx.Error(w, http.StatusForbidden, "bientôt dans le jeu")
 		return
 	}
@@ -284,6 +306,16 @@ func (h *Handler) defi(w http.ResponseWriter, r *http.Request) {
 			var paid int
 			text, paid = allocoWithEgg(s, text)
 			back -= paid
+		}
+		if err == nil && req.Kind == "circulation" {
+			// Played well: the jam is over for the whole street (jam.go).
+			cleared, cerr := clearJam(ctx, tx, s, score)
+			if cerr != nil {
+				return game.Outcome{}, nil, cerr
+			}
+			if cleared {
+				text += " Le bouchon se vide : la circulation est rétablie dans tout le quartier !"
+			}
 		}
 		if err == nil && req.Kind == "bar" {
 			var spent int

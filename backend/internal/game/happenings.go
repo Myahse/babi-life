@@ -49,6 +49,9 @@ const (
 // JoinHappeningID is the interaction id used to join the current happening.
 const JoinHappeningID = "join"
 
+// RegulateTrafficID: the jam's own join, played as the traffic cop's mini-game (its défi, sims defi.go).
+const RegulateTrafficID = "regler-circulation"
+
 var Happenings = []Happening{
 	{ID: "mariage", Category: "famille", Source: Fictional, Label: "Mariage dans la rue", Icon: "heart", MinHour: 10, MaxHour: 19,
 		Text: "Un cortège de mariage passe en klaxonnant ! Les tantes sont toutes en pagne assorti.",
@@ -84,7 +87,10 @@ var Happenings = []Happening{
 			{Text: "Le vieux du quartier raconte des histoires de l'ancien temps.", Effect: Needs{Fun: 20, Social: 10}},
 		}},
 	{ID: "embouteillage", Category: "incident", Source: Fictional, Label: "Embouteillage", Icon: "car", MinHour: 6, MaxHour: 21,
-		Text: "Gros embouteillage sur le boulevard : les gbakas klaxonnent dans tous les sens."},
+		Text: "Gros embouteillage sur le boulevard : les gbakas klaxonnent dans tous les sens.",
+		// Behind the update « circulation » (features): the player at the junction with the whistle and the
+		// white gloves (web components/defi/Circulation.tsx); played well, the jam clears for the whole street (sims clearJam).
+		Join: &Interaction{ID: RegulateTrafficID, Label: "Régler la circulation", Icon: "hand", Minutes: 30, Effect: Needs{Social: 15, Fun: 10, Energy: -10}}},
 	{ID: "controle", Category: "incident", Source: Fictional, Label: "Contrôle de police", Icon: "shield", MinHour: 6, MaxHour: 23,
 		Text: "Barrage de police au carrefour : « Bonjour, vos papiers ! »",
 		Join: &Interaction{ID: JoinHappeningID, Label: "Montrer ses papiers", Icon: "id-card", Minutes: 15, Effect: Needs{Fun: -5}},

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Beer, Banana, Fish, Sparkles, Baby, Blocks, Footprints, Music, GraduationCap, Car, Check, Clock3, Coffee, Gamepad2, Joystick, Link2, Send, ShoppingCart, Swords, Ticket, Trophy, Users, Waves, X, type LucideIcon } from 'lucide-react'
+import { Beer, Banana, Hand, Fish, Sparkles, Baby, Blocks, Footprints, Music, GraduationCap, Car, Check, Clock3, Coffee, Gamepad2, Joystick, Link2, Send, ShoppingCart, Swords, Ticket, Trophy, Users, Waves, X, type LucideIcon } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
 import { share as shareOut } from '../lib/native'
 import { DEFI, TICKET, defiSharing, useShare, type Sharing } from '../lib/share'
@@ -20,6 +20,7 @@ const DEFI_NAMES: Record<DefiKind, { title: string; icon: LucideIcon; colors: [s
   garba: { title: 'Le garba', icon: Fish, colors: ['#ffa94d', '#e8590c'] },
   alloco: { title: 'L’alloco', icon: Banana, colors: ['#ffd43b', '#f08c00'] },
   bar: { title: 'Le pot au maquis', icon: Beer, colors: ['#ffd166', '#e8a400'] },
+  circulation: { title: 'Régler la circulation', icon: Hand, colors: ['#ffd54f', '#ffa000'] },
   the: { title: 'Le thé du grin', icon: Coffee, colors: ['#ff9a3c', '#c8641e'] },
   ski: { title: 'Le slalom de Boulay', icon: Waves, colors: ['#3ba7ff', '#1c6fd6'] },
   courses: { title: 'La liste de courses', icon: ShoppingCart, colors: ['#00b86b', '#00894f'] },
