@@ -13,7 +13,6 @@ import { HAPPENING_DOOR, HAPPENING_ROLES, HAPPENING_X, HappeningMarker, Happenin
 import { jamAlong } from './jam'
 import { MovingJam } from './jamCars'
 import { LivingCity } from './livingCity'
-import { keyOpen, useFeatures } from '../../lib/features'
 import { pavementLine, routeFor, useRoutes } from './ways'
 import { underHud } from '../hudClear'
 import { HOME_ID, type Lot } from '../layout'
