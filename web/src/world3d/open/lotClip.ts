@@ -1,5 +1,4 @@
 import * as THREE from 'three'
-import { t } from '../../lib/i18n'
 
 // While a lot is being set in the world (lotGhost.tsx) and it can go there,
 // what will be cleared for it goes at once: every building within its ground
@@ -20,9 +19,9 @@ export function lotClip<M extends THREE.Material>(m: M, by: 'buildings' | 'insta
     s.uniforms.uLotOn = LOT_CLIP.on
     s.uniforms.uLotAt = LOT_CLIP.at
     s.uniforms.uLotR = LOT_CLIP.r
-    const head = by === 'buildings' ? t('attribute vec3 lotBc;\nvarying vec3 vLotBc;') : t('varying vec3 vLotBc;')
+    const head = by === 'buildings' ? 'attribute vec3 lotBc;\nvarying vec3 vLotBc;' : 'varying vec3 vLotBc;'
     // (A mesh without the attribute reads 0 0 0: its radius 0, never hidden.)
-    const set = by === 'buildings' ? t('vLotBc = lotBc;') : '#ifdef USE_INSTANCING\n vec4 lotO = modelMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);\n vLotBc = vec3(lotO.x, lotO.z, 0.01);\n#else\n vLotBc = vec3(0.0);\n#endif'
+    const set = by === 'buildings' ? 'vLotBc = lotBc;' : '#ifdef USE_INSTANCING\n vec4 lotO = modelMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);\n vLotBc = vec3(lotO.x, lotO.z, 0.01);\n#else\n vLotBc = vec3(0.0);\n#endif'
     s.vertexShader = s.vertexShader.replace('#include <common>', `#include <common>\n${head}`).replace('#include <begin_vertex>', `#include <begin_vertex>\n${set}`)
     s.fragmentShader = s.fragmentShader
       .replace('#include <common>', '#include <common>\nuniform float uLotOn;\nuniform vec2 uLotAt;\nuniform float uLotR;\nvarying vec3 vLotBc;')

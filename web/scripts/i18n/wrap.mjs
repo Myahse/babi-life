@@ -44,7 +44,7 @@ const isCss = (s) => {
 const isUrl = (s) => /^\s*(\/|\.\.?\/|https?:|data:|blob:|mailto:|tel:|#|@|wss?:)/.test(s) || s.includes('://') || /\.(png|jpe?g|webp|svg|mp3|mp4|glb|gltf|json|woff2?|ttf|webm|ogg|wav|html|tsx?|css)\b/.test(s)
 const isIdent = (s) => /^[a-z0-9_\-.:/#+]+$/.test(s) || /^[A-Z0-9_]+$/.test(s) || /^[a-z]+[A-Z][A-Za-z0-9]*$/.test(s)
 const hasLetter = (s) => /[A-Za-zÀ-ÿ]/.test(s)
-const technical = (s) => /\d+(px|ms|deg|vh|vw|rem|em)\b|rgba?\(|hsla?\(|^#[0-9a-f]{3,8}$|\bvar\(--|^\s*[\d.]+\s*$|=>|\bfunction\b|\bcalc\(|^[a-z-]+\(/i.test(s) || /^(Content-Type|Authorization|Bearer|POST|GET|PUT|PATCH|DELETE|Idempotency-Key)$/.test(s)
+const technical = (s) => /\bvec[234]\b|\bgl_|#include|#ifdef|\b(uniform|varying|attribute) \w/.test(s) || /\d+(px|ms|deg|vh|vw|rem|em)\b|rgba?\(|hsla?\(|^#[0-9a-f]{3,8}$|\bvar\(--|^\s*[\d.]+\s*$|=>|\bfunction\b|\bcalc\(|^[a-z-]+\(/i.test(s) || /^(Content-Type|Authorization|Bearer|POST|GET|PUT|PATCH|DELETE|Idempotency-Key)$/.test(s)
 
 function prose(raw, loose) {
   const s = raw.trim()

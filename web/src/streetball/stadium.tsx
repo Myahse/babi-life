@@ -237,7 +237,7 @@ function Screens({ g, teams }: { g: Game; teams?: [string, string] }) {
     x.fillStyle = '#ffffff'
     x.textAlign = 'center'
     x.textBaseline = 'middle'
-    const [a, b] = (teams ?? ['DOMICILE', tr('EXTÉRIEUR')]).map((n) => n.toUpperCase())
+    const [a, b] = (teams ?? [tr('DOMICILE'), tr('EXTÉRIEUR')]).map((n) => n.toUpperCase())
     x.font = '800 30px sans-serif'
     x.fillText(a, 128, 62, 210)
     x.fillText(b, 384, 62, 210)
@@ -304,7 +304,7 @@ function People({ g }: { g: Game }) {
   const sway = (m: THREE.Material) => {
     m.onBeforeCompile = (s) => {
       s.uniforms.uTime = time
-      s.vertexShader = tr('uniform float uTime;\n') + s.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  transformed.y += max(0.0, sin(uTime * 2.6 + float(gl_InstanceID) * 2.399)) * 0.07;')
+      s.vertexShader = 'uniform float uTime;\n' + s.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  transformed.y += max(0.0, sin(uTime * 2.6 + float(gl_InstanceID) * 2.399)) * 0.07;')
     }
     return m
   }

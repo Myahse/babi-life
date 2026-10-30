@@ -52,7 +52,7 @@ export const langChosen = () => saved() !== null
 export async function loadLang(): Promise<void> {
   if (current === 'fr' || catalogue) return
   try {
-    catalogue = (await import('../i18n/lang-en.json')).default as Record<string, Entry>
+    catalogue = (await import('../i18n/lang-en.json')).default as unknown as Record<string, Entry>
   } catch {
     // No network for the chunk: the game in French this time.
     current = 'fr'

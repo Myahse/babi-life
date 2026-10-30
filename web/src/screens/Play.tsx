@@ -142,7 +142,7 @@ import { pusher, startCleaning } from '../world3d/carer'
 import { Helper } from '../components/Helper'
 import { LotPlaceHud } from '../components/LotPlaceHud'
 import { useLotPlace } from '../store/lotPlace'
-import { t as tr, tx } from '../lib/i18n'
+import { t as tr, tn, tx } from '../lib/i18n'
 const IvoireInside = lazy(() => import('../world3d/interior/IvoireInside').then((m) => ({ default: m.IvoireInside })))
 const CathedralInside = lazy(() => import('../world3d/interior/CathedralInside').then((m) => ({ default: m.CathedralInside })))
 const MosqueM6Inside = lazy(() => import('../world3d/interior/MosqueM6Inside').then((m) => ({ default: m.MosqueM6Inside })))
@@ -1435,7 +1435,7 @@ export function Play() {
               <MapPin size={11} strokeWidth={3} className="shrink-0" />
               <span className="truncate">
                 {commune.name} · <span className="max-sm:hidden short:hidden">{lifeOf(world, sim).stage?.label ?? ''}, </span>
-                {lifeOf(world, sim).age < 1 ? tr("moins d'un an") : `${lifeOf(world, sim).age} an${lifeOf(world, sim).age > 1 ? 's' : ''}`}
+                {lifeOf(world, sim).age < 1 ? tr("moins d'un an") : tn(lifeOf(world, sim).age, '{n} an', '{n} ans')}
               </span>
             </span>
           </span>
