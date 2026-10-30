@@ -149,7 +149,7 @@ function step(st: St, dt: number) {
 }
 
 function Sim({ st }: { st: { current: St } }) {
-  useFrame((_, dt) => step(st.current, Math.min(dt, 0.1)))
+  useFrame((_, dt) => step(st.current, Math.min(dt, 0.25)))
   return null
 }
 
@@ -259,7 +259,10 @@ function Onlookers() {
 }
 
 export function CirculationDefi({ onEnd }: { onEnd: (score: number) => void }) {
-  const st = useRef<St>({ t: 0, open: null, cars: startCars(), wait: [0, 0, 0, 0], crashes: 0, storms: 0, gone: 0, done: false, said: 'Siffle, et choisis qui passe !', saidAt: 0, nextHorn: 1 })
+  const [first] = useState<St>(() => ({ t: 0, open: null, cars: startCars(), wait: [0, 0, 0, 0], crashes: 0, storms: 0, gone: 0, done: false, said: 'Siffle, et choisis qui passe !', saidAt: 0, nextHorn: 1 }))
+  const st = useRef<St>(first)
+  // (Development, for tests in the browser: the junction as it is.)
+  if (import.meta.env.DEV) Object.assign(globalThis, { __circ: st.current })
   const [hud, setHud] = useState({ gone: 0, t: 0, open: null as Axis | null, said: st.current.said })
   const look = useMemo<Look>(() => ({ ...randomLook('homme', rng('agent-circulation')), outfit: 'policier', accessory: 'gants', hair: 'short', beard: 'none' }) as Look, [])
   const ended = useRef(false)

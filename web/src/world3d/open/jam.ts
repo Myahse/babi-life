@@ -12,7 +12,7 @@ const DETOUR: Record<string, number> = { motorway: 0, trunk: 0, primary: 0, seco
  * where a piece of the map ends), a car every `gap` metres on each side of
  * the middle line. Each car: where it stands and its heading (radians from +x).
  */
-export function jamAlong(roads: Road[], at: XZ, gap: number, each: number): { cars: { p: XZ; angle: number; lane: 1 | -1; width: number }[]; at: XZ; path: XZ[]; width: number } {
+export function jamAlong(roads: Road[], at: XZ, gap: number, each: number): { cars: { p: XZ; angle: number; lane: 1 | -1; width: number }[]; at: XZ; path: XZ[]; centre: number; width: number } {
   const ok = roads.filter((r) => !['path', 'pedestrian', 'track', 'service', 'construction'].includes(r.cls) && !r.bridge && r.pts.length > 1)
   let best: { r: Road; i: number; p: XZ; d: number; score: number } | null = null
   for (const r of ok)
@@ -25,7 +25,7 @@ export function jamAlong(roads: Road[], at: XZ, gap: number, each: number): { ca
       const score = d + (DETOUR[r.cls] ?? 400)
       if (!best || score < best.score) best = { r, i, p, d, score }
     }
-  if (!best || best.d > 600) return { cars: [], at, path: [], width: 0 }
+  if (!best || best.d > 600) return { cars: [], at, path: [], centre: 0, width: 0 }
   const width = best.r.width
   // The street ahead from the start, as a list of points (dir 1: toward the polyline's end).
   const ahead = (dir: 1 | -1): XZ[] => {
@@ -65,9 +65,12 @@ export function jamAlong(roads: Road[], at: XZ, gap: number, each: number): { ca
       walked += len
     }
   }
-  // The whole stretch, from the far end one way to the far end the other (the cars crawl along it: jamCars.tsx).
-  const path = [...lines[-1].slice(1).reverse(), ...lines[1]]
-  return { cars, at: best.p, path, width }
+  // The whole stretch, from the far end one way to the far end the other (the cars crawl along it: jamCars.tsx),
+  // and how far along it the jam's middle is.
+  const back = lines[-1]
+  const path = [...back.slice(1).reverse(), ...lines[1]]
+  const centre = back.reduce((s, p, i) => (i ? s + Math.hypot(p[0] - back[i - 1][0], p[1] - back[i - 1][1]) : 0), 0)
+  return { cars, at: best.p, path, centre, width }
 }
 
 const near = (a: XZ, b: XZ) => Math.abs(a[0] - b[0]) < 1.5 && Math.abs(a[1] - b[1]) < 1.5
