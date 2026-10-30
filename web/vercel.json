@@ -1,4 +1,21 @@
 {
+  "redirects": [
+    {
+      "source": "/sitemap",
+      "destination": "/sitemap.xml",
+      "permanent": true
+    },
+    {
+      "source": "/sitemap_index.xml",
+      "destination": "/sitemap.xml",
+      "permanent": true
+    },
+    {
+      "source": "/sitemap.txt",
+      "destination": "/sitemap.xml",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/__/auth/:path*",
