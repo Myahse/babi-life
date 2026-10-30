@@ -184,6 +184,13 @@ export const ambience = {
     tone(n, 'sawtooth', 620, 980, now, 0.5, 0.012 * Math.min(1, vol), 2200)
     tone(n, 'sawtooth', 980, 620, now + 0.5, 0.5, 0.012 * Math.min(1, vol), 2200)
   },
+  /** A procession's drum: a low beat, struck twice. */
+  drum(vol = 1) {
+    const n = live()
+    if (!n || vol <= 0.02) return
+    const now = n.ctx.currentTime
+    for (const k of [0, 0.28]) tone(n, 'sine', 150, 55, now + k, 0.22, 0.09 * Math.min(1, vol), 900)
+  },
   /** Tyres screeching (a near miss). */
   screech(vol = 1) {
     const n = live()
