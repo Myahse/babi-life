@@ -7,6 +7,8 @@ import { iconFor } from './icons'
 import { IconTile } from './ui'
 import type { Act } from '../screens/phoneApps'
 import { aCommune } from '../lib/french'
+import { keyOpen, useFeatures } from '../lib/features'
+import { openPvp } from './pvp/games'
 
 // Babi Life is played online: the other players whose Sims are in the same
 // commune show up in the street. Players meet through set gestures only
@@ -168,6 +170,8 @@ function Everyone({ sim, communes }: { sim: Sim; communes: { id: string; name: s
 
 /** The players in the commune: greet them, join them, invite them; and everyone in the city (« Tout Babi »). */
 export function PlayersSheet({ sim, around, communeName, communes = [], focus, act, onDuel, myStage, onClose }: { sim: Sim; around: Around; communeName: string; /** The city's communes (« Tout Babi »). */ communes?: { id: string; name: string }[]; focus: string | null; act: Act; /** Challenge to the street fight (update « combat-joueurs », components/Duel.tsx), when open; a baby only another baby. */ onDuel?: (p: Player) => void; /** The player's own stage of life. */ myStage?: string; onClose: () => void }) {
+  // The games against real players (update « jeux-en-ligne », components/pvp).
+  const pvpOn = keyOpen(useFeatures(), 'jeux-en-ligne')
   const [all, setAll] = useState(false)
   const canInvite = joinableActivity(sim)
   const busy = !!sim.activity
@@ -273,6 +277,11 @@ export function PlayersSheet({ sim, around, communeName, communes = [], focus, a
                     {onDuel && (p.stage === 'bebe') === (myStage === 'bebe') && (
                       <button className="btn btn-soft mt-2 w-full !py-1.5 !text-xs !text-[#c92a2a]" onClick={() => onDuel(p)}>
                         <Swords size={14} /> {p.stage === 'bebe' ? 'Bagarre de bébés !' : 'Défier au combat'}
+                      </button>
+                    )}
+                    {pvpOn && p.stage !== 'bebe' && myStage !== 'bebe' && (
+                      <button className="btn btn-soft mt-2 w-full !py-1.5 !text-xs !text-[#7048e8]" onClick={() => (onClose(), openPvp(undefined, p.id))}>
+                        <Swords size={14} /> Défier à un jeu
                       </button>
                     )}
                   </div>

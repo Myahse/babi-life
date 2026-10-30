@@ -64,6 +64,8 @@ export const SIM_CHANGED = 'babi:sim-changed'
 export const MESSAGE_IN = 'babi:message-in'
 /** A challenge to a fight, or its answer (components/Duel.tsx). */
 export const DUEL_IN = 'babi:duel-in'
+/** A game against a real player: a challenge, its answer, a move (components/pvp; detail: the server's words). */
+export const PVP_IN = 'babi:pvp-in'
 
 export function useLive(simId: string | undefined, mode: 'open' | 'street', where: string) {
   const token = useSession((s) => s.token)
@@ -115,6 +117,7 @@ function connect(token: string, sim: string, mode: 'open' | 'street') {
       else if (m.t === 'msg') window.dispatchEvent(new CustomEvent(MESSAGE_IN, { detail: { from: m.from, name: m.name, text: m.text } }))
       // A challenge to a fight, or its answer: look again at once (components/Duel.tsx).
       else if (m.t === 'duel') window.dispatchEvent(new CustomEvent(DUEL_IN, { detail: m.id }))
+      else if (m.t === 'pvp') window.dispatchEvent(new CustomEvent(PVP_IN, { detail: m }))
       else if (m.t === 'states')
         for (const s of m.players as (Snap & { id: string })[]) {
           if (s.id === sim) continue

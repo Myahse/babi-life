@@ -23,6 +23,8 @@ import { BarDefi } from './defi/Bar'
 import { DodoDefi } from './defi/Reve'
 import { AllocoDefi } from './defi/Alloco'
 import { CirculationDefi } from './defi/Circulation'
+import { PvpButton } from './pvp/PvpButton'
+import { pvpOfDefi } from './pvp/games'
 
 // Les défis: while making tea at the grin, water-skiing off Île Boulay, doing
 // the shopping or playing at the salle de jeux vidéo (the foot, the car race,
@@ -340,6 +342,8 @@ export function DefiSheet({ kind, act, career, simId, big, older, interactionId,
                 <Trophy size={16} /> C'est parti !
               </button>
             </div>
+            {/* The same game against a real player (update « jeux-en-ligne »). */}
+            {pvpOfDefi(kind) && !challenge && <PvpButton game={pvpOfDefi(kind)!} className="mt-2" />}
           </div>
         </div>
       )}

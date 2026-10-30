@@ -9,6 +9,8 @@ import type { ActionResult } from './types'
 
 export const TICKET = /^\[ticket:(bet|loto):([a-z]+):([a-z]{10})\]$/
 export const DEFI = /^\[defi:(the|ski|courses|foot|course|combat|arcade):(\d{1,3})\]$/
+/** A challenge to play against the sender (update « jeux-en-ligne », backend sims/pvp.go writes it): « [jeu:dames:<match>] ». */
+export const JEU = /^\[jeu:(foot|course|combat|arcade|the|courses|dames|huit|awale|ludo|gode):([a-z0-9]{4,40})\]$/
 
 export type Challenge = { kind: DefiKind; score: number; from: string }
 /** Something to send: the token for the chats, and for outside the game a text and its link. */

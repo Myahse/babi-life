@@ -50,7 +50,7 @@ type Props = {
   /** The labs: the same match every time. */
   seed?: number
   /** At a court: the match with the other players there (streetball/online.ts). */
-  online?: { token: string; simId: string; match: CourtMatch }
+  online?: { token: string; simId: string; match: CourtMatch; /** A game against a player (components/pvp): the hub's "pvp" room, no court to ask who's there. */ pvp?: boolean }
   /** The console's match at the salle de jeux (components/defi/Foot.tsx): its length, the other side's strength, the golden goal. No replay: the console goes on. */
   rules?: Rules
   /** The console: the two sides' names and shirts (the player's first), and their three letters for the scoreboard. */
@@ -220,7 +220,7 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
   const [net, setNet] = useState<MatchNet | null>(null)
   useEffect(() => {
     if (!online) return
-    const n = new MatchNet(online.token, online.simId, online.match.id)
+    const n = new MatchNet(online.token, online.simId, online.match.id, online.pvp ? 'pvp' : 'match')
     setNet(n)
     return () => {
       n.close()
@@ -228,7 +228,7 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
     }
   }, [online])
   useEffect(() => {
-    if (!online) return
+    if (!online || online.pvp) return
     const t = setInterval(() => fetchMatch(online.token, online.match.id).then((m) => m && setEntries(m.entries)), 3000)
     return () => clearInterval(t)
   }, [online])
@@ -334,7 +334,7 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
         <button
           className="pointer-events-auto grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#0f1230]/70 text-white"
           onClick={() => {
-            if (online) void leaveMatch(online.token, online.simId, online.match.id)
+            if (online && !online.pvp) void leaveMatch(online.token, online.simId, online.match.id)
             onExit(null)
           }}
           aria-label="Quitter le match"
@@ -388,7 +388,7 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
           played={!!consoleRules}
           kits={kits}
           onExit={() => {
-            if (online) void leaveMatch(online.token, online.simId, online.match.id)
+            if (online && !online.pvp) void leaveMatch(online.token, online.simId, online.match.id)
             onExit({ sport, score: [game.score[0], game.score[1]], result: outcome(game), stats: { ...game.stats }, pens: shootoutScore(game) ?? undefined })
           }}
           // At a court the next match is the court's: back on from the street.

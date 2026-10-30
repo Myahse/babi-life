@@ -56,6 +56,8 @@ export class MatchNet {
     private token: string,
     private sim: string,
     private match: string,
+    /** The hub's room: a court's match, or a game between two players (update « jeux-en-ligne », components/pvp). */
+    private mode: 'match' | 'pvp' = 'match',
   ) {
     this.open()
   }
@@ -66,7 +68,7 @@ export class MatchNet {
     ws.onopen = () => {
       this.connected = true
       this.opened = serverNow()
-      ws.send(JSON.stringify({ t: 'hello', token: this.token, sim: this.sim, mode: 'match', race: this.match }))
+      ws.send(JSON.stringify({ t: 'hello', token: this.token, sim: this.sim, mode: this.mode, race: this.match }))
       const ping = () => ws.readyState === WebSocket.OPEN && ws.send(JSON.stringify({ t: 'ping', c: localNow() }))
       ;[200, 700, 1500].forEach((d) => setTimeout(ping, d))
       this.timers.push(setInterval(ping, 10000))

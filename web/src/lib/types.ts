@@ -149,7 +149,7 @@ export type Around = { /** Connected now, in the commune (the only ones shown). 
 export type DamesMove = { path: number[]; taken?: number[] }
 export type DameSide = { id?: string; name: string; npc?: boolean }
 /** A game seen from one side: `you` 1 white (plays first, from the bottom), -1 black; the board's 50 dark squares (1 a man, 2 a dame, negative black). */
-export type DameGame = { id: number; you: 1 | -1; white: DameSide; black: DameSide; stake: number; board: number[]; turn: 1 | -1; status: 'invited' | 'playing' | 'done' | 'declined' | 'expired'; winner: number; last?: DamesMove; legal?: DamesMove[]; text?: string }
+export type DameGame = { id: number; you: 1 | -1; white: DameSide; black: DameSide; stake: number; board: number[]; turn: 1 | -1; status: 'invited' | 'playing' | 'done' | 'declined' | 'expired'; winner: number; last?: DamesMove; legal?: DamesMove[]; text?: string; /** Against a player on the spot (« Jouer contre un joueur », backend sims/pvp.go): when the one to play loses it (ms). */ live?: boolean; deadline?: number }
 export type DameInvite = { id: number; status: 'invited' | 'playing'; fromName: string; stake: number; mine: boolean }
 /**
  * 8 américain (backend game/huit.go, sims/huit.go). A card: 0–51 is suit × 13 + value − 1 (value 1 the ace … 13 the
@@ -182,6 +182,9 @@ export type HuitGame = {
   winner: number
   text?: string
   steps?: HuitStep[] | null
+  /** Against a player on the spot (« Jouer contre un joueur », backend sims/pvp.go): when the one to play loses it (ms). */
+  live?: boolean
+  deadline?: number
 }
 /** Gbairai: a message, and a friend's chat in the list. */
 /** The message (or comment) a reply answers, quoted (update « repondre-message »); deleted: it's gone. */

@@ -87,6 +87,8 @@ export type Race = {
   wait: number
   /** The player ahead (for the overtakes). */
   lead: boolean
+  /** Against a real player (components/pvp/course.tsx): the other car's hands, from its phone (none: the rival drives). */
+  remote?: RaceInput | null
 }
 
 export type RaceInput = { steer: number; brake: boolean; nitro: boolean }
@@ -183,7 +185,7 @@ function tick(R: Race, h: number, input: RaceInput, rival: Rival) {
   const [me, them] = R.cars
   for (const c of R.cars) {
     const done = c.finished !== null
-    const inp = c.me ? (done ? { steer: 0, brake: true, nitro: false } : input) : autoDrive(R, c, rival)
+    const inp = done && (c.me || R.remote) ? { steer: 0, brake: true, nitro: false } : c.me ? input : R.remote ? R.remote : autoDrive(R, c, rival)
     drive(R, c, inp, h)
   }
   // The two cars against each other: pushed apart, a little speed lost.
@@ -227,7 +229,7 @@ function drive(R: Race, c: Car, inp: RaceInput, h: number) {
     R.events.push({ kind: 'nitro', me: c.me, x: c.x, z: c.z })
   }
   // The rival eases off far ahead and pushes far behind (a race to the end).
-  const band = c.me ? 1 : clamp(1 - (c.progress - R.cars[0].progress) / 2500, 0.95, 1.04)
+  const band = c.me || R.remote ? 1 : clamp(1 - (c.progress - R.cars[0].progress) / 2500, 0.95, 1.04)
   const top = (c.boost > 0 ? NITRO_MAX : MAX) * c.skill * band
   if (c.boost > 0) {
     c.boost -= h

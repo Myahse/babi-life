@@ -7,6 +7,7 @@ import type { GodeRound, Sim } from '../lib/types'
 import type { Act } from './phoneApps'
 import { StakeField } from '../components/StakeField'
 import { RulesFold } from '../components/RulesFold'
+import { PvpButton } from '../components/pvp/PvpButton'
 
 /**
  * Le godé (backend game/gode.go, sims/gode.go), the maquis' dice: each throws
@@ -130,6 +131,7 @@ export function GodeApp({ sim, act, onConfirmAdult }: Props) {
   return (
     <div className={shell} style={bg}>
       <Brand />
+      <PvpButton game="gode" className="mt-3" />
       <div className="mt-3 rounded-[26px] border-4 border-[#3a1f0c] bg-[radial-gradient(circle_at_50%_35%,#c08a52,#7a4a22)] p-3 shadow-[inset_0_0_26px_rgba(0,0,0,0.45)]">
         <Seat name={round?.them ?? 'Le gars du maquis'} dice={round?.npc.slice(0, shown.npc) ?? []} shaking={shaking === 'npc'} hidden={!!playing && !shown.npc} first={round?.first === 'them'} />
         <div key={word} className="animate-pop my-3 rounded-2xl bg-black/30 px-3 py-2 text-center text-[14px] font-extrabold" style={{ color: settled ? (round!.won ? '#7cfc9a' : '#ffb3b3') : '#fff' }}>

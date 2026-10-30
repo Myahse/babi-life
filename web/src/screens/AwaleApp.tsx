@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { PvpButton } from '../components/pvp/PvpButton'
 import { ChevronDown, RotateCcw } from 'lucide-react'
 import type { Sim } from '../lib/types'
 import { legal, move, newAwale, play, think, winner, type Awale } from '../game/awale'
@@ -96,6 +97,7 @@ export function AwaleApp({ sim }: { sim: Sim }) {
         <div className="text-sm font-bold opacity-85">Les graines du grin, contre {level.who}</div>
       </div>
       <div className="px-3 pt-3 pb-4">
+        <PvpButton game="awale" className="mb-3" />
         <div className="mb-3 flex gap-1.5">
           {LEVELS.map((l) => (
             <button key={l.id} onClick={() => (setLevel(l), restart())} className={`flex-1 rounded-full px-2 py-1.5 text-xs font-extrabold ${l.id === level.id ? 'bg-[#8a4b1f] text-white' : 'bg-[var(--color-canvas)] text-[var(--color-ink-soft)]'}`}>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { PvpButton } from '../components/pvp/PvpButton'
 import { ChevronDown, Crown, Play, Swords } from 'lucide-react'
 import { api } from '../lib/api'
 import type { DameInvite, Player, Sim } from '../lib/types'
@@ -36,6 +37,7 @@ export function DamesApp({ sim, onOnline, onFriend, onResume }: { sim: Sim; /** 
         <div className="text-sm font-bold opacity-85">Le damier du grin dans ta poche</div>
       </div>
       <div className="px-3 pt-3 pb-4">
+        <PvpButton game="dames" className="mb-3" />
         {state?.game?.status === 'playing' && (
           <button className="mb-3 flex w-full items-center gap-3 rounded-[20px] bg-[#fff4e0] p-3 text-left" onClick={onResume}>
             <Crown size={22} className="shrink-0 text-[#8a4b1f]" />
