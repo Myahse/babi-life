@@ -7,7 +7,9 @@ name: Native app
 
 on:
   push:
-    paths: ['native/**', 'web/src/**', '.github/workflows/native.yml']
+    # Only the app's own changes (the repository is private: Actions minutes count); a game change
+    # reaches the app when it's built by hand (Actions → Native app → Run workflow).
+    paths: ['native/**', '.github/workflows/native.yml']
   workflow_dispatch:
 
 jobs:
