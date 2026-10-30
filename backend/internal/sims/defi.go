@@ -390,7 +390,8 @@ func playDefi(ctx context.Context, tx pgx.Tx, s *Sim, kind string, score int) (s
 		ON CONFLICT (sim_id, kind) DO UPDATE SET best = GREATEST(defis.best, EXCLUDED.best), played = defis.played + 1, updated_at = now()`, s.ID, kind, score); err != nil {
 		return "", 0, err
 	}
-	if score > before && before > 0 {
+	// (Not the happenings' choices: each its own game, one record would compare them.)
+	if score > before && before > 0 && kind != "evenement" {
 		text += fmt.Sprintf(" Nouveau record : %d (avant : %d) !", score, before)
 	}
 	// The défi was what the activity was for: played, it's over (the tea at the grin drunk, the match at
