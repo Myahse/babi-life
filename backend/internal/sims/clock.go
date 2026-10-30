@@ -169,6 +169,10 @@ func (s *Sim) finish(rng *rand.Rand) []Event {
 		money = -a.Interaction.Cost
 	}
 	s.schoolMark(a.Interaction)
+	// Homework done: a good mark, a child's « étape » (grandir.go).
+	if a.Interaction.ID == "devoirs" {
+		s.reach("note")
+	}
 	text := capNote(fmt.Sprintf("%s — %s", a.PlaceName, a.Interaction.Label), earnedFrom(a), earned, would)
 	// At a slot machine: the spins, and what the session came to.
 	if note, net, ok := machineNote(a); ok {
@@ -259,6 +263,8 @@ func (s *Sim) stop() (Event, error) {
 // settleRange charges rent and loan for every Saturday in (from, to].
 func (s *Sim) settleRange(from, to int64) []Event {
 	game.FadeFriends(s.Friends, to)
+	// Growing up by milestones (grandir.go): the baby, the child wait at the edge of their stage.
+	s.holdChildhood(from, to)
 	events := s.growUp(from, to)
 	// Children live with their family: no rent, pocket money instead.
 	if s.BornAt != 0 && game.AgeAt(s.BornAt, to) < game.AdultAge {
@@ -317,6 +323,8 @@ func (s *Sim) start(it game.Interaction, placeID, placeKind, placeName string, s
 	if ev := s.toSchool(it); ev != nil {
 		s.pending = append(s.pending, *ev)
 	}
+	// What brings a child's « étape » (grandir.go).
+	s.reachBy(it.ID)
 	return nil
 }
 

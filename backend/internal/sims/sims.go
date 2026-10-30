@@ -234,6 +234,11 @@ type Sim struct {
 	pending []Event
 	// growing: the stage bought in the shop (« tout de suite »), reached on this turn (life.go grow).
 	growing string
+	// reached: the child's « étapes » reached during this turn (grandir.go), recorded with the rest.
+	reached []string
+	// GrowHold: with « grandir-par-etapes » open, the most minutes since birth the baby or the child
+	// may have before its milestones are done (grandir.go): its age stops there, the app's clock too.
+	GrowHold int64 `json:"growHold,omitempty"`
 	// Today: the account's day so far by source, and its limits (game/money.go), for the apps.
 	Today map[game.Income]game.Limit `json:"today,omitempty"`
 }
@@ -486,6 +491,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/billets", h.billets)
 	r.Post("/sims/{id}/offrande", h.offrande)
 	r.Get("/sims/{id}/dodo", h.dodo)
+	r.Get("/sims/{id}/etapes", h.etapes)
 	r.Post("/sims/{id}/dodo/book", h.dodoBook)
 	r.Post("/sims/{id}/dodo/list", h.dodoList)
 	r.Post("/sims/{id}/dodo/unlist", h.dodoUnlist)
@@ -535,6 +541,7 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 	now := time.Now()
 	for i := range out {
 		out[i].advance(now, newRand()) // preview only; saved on the next request for that Sim
+		out[i].GrowHold = out[i].growHold(r.Context())
 	}
 	httpx.JSON(w, http.StatusOK, out)
 }
@@ -654,6 +661,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	cm, _ := city.Commune(s.HomeCommune)
 	_ = insertEvent(r.Context(), h.DB, s.ID, "random", fmt.Sprintf("%s est %s %s, dans %s, d'une famille %s. %s", s.FirstName, bornWord(s.Gender, "né", "née"), inCommune(cm.Name), fam.Sector, strings.ToLower(fam.Label), fam.Hint), 0, s.GameMinutes)
 	h.postMoments(r.Context(), []directItem{birthMoment(s)})
+	s.GrowHold = s.growHold(r.Context())
 	httpx.JSON(w, http.StatusCreated, s)
 }
 
@@ -1118,6 +1126,14 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 	// What happened along the way, said where it happened (a friend from childhood made…).
 	fresh = append(fresh, s.pending...)
 	s.pending = nil
+	// The baby's « premières fois » all done, the child's « étapes » too: the next stage (grandir.go).
+	grown, err := settleGrowth(ctx, tx, &s)
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+		return
+	}
+	fresh = append(fresh, grown...)
+	s.GrowHold = s.growHold(ctx)
 
 	// The Sim saved, the journal's new lines written and the journal read back,
 	// in one round trip to the database (they're one after the other on it).

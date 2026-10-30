@@ -116,7 +116,7 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
         break
       }
       case 'gaziniere':
-        at(0, 0, half + 0.45, Math.PI, 'cook', false, ['cook-attieke'])
+        at(0, 0, half + 0.45, Math.PI, 'cook', false, ['cook-attieke', 'aider-maison'])
         break
       case 'frigo':
         // Taken out of the fridge: standing at its door.

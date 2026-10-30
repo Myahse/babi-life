@@ -29,6 +29,8 @@ type First struct {
 	Icon  string `json:"icon"`
 	// How: what brings it (said in the list).
 	How string `json:"how"`
+	// Where: where it's done (the milestone childhood shows it, grandir.go).
+	Where string `json:"where"`
 	// Line: what the journal says when it comes.
 	Line string `json:"-"`
 	// By: the interaction that brings it.
@@ -36,19 +38,19 @@ type First struct {
 }
 
 var Firsts = []First{
-	{ID: "sourire", Label: "Le premier sourire", Icon: "heart", How: "Un câlin à maman", Line: "Premier sourire ! Maman fond, elle appelle toute la cour pour voir.", By: "calin"},
-	{ID: "bouillie", Label: "La première bouillie", Icon: "soup", How: "Manger la bouillie", Line: "Première bouillie : il y en a partout, et c'est délicieux.", By: "bouillie"},
-	{ID: "bain", Label: "Le premier bain", Icon: "bath", How: "Le bain avec maman", Line: "Premier bain : ça éclabousse, ça rigole.", By: "bain-bebe"},
-	{ID: "dent", Label: "La première dent", Icon: "baby", How: "Jouer avec le hochet", Line: "Première dent ! Le hochet en garde la trace.", By: "hochet"},
-	{ID: "rire", Label: "Le premier éclat de rire", Icon: "party-popper", How: "Coucou-caché avec maman", Line: "Premier éclat de rire, au coucou de maman : toute la maison rit avec toi.", By: "coucou"},
-	{ID: "pas", Label: "Les premiers pas", Icon: "footprints", How: "Les premiers pas vers papa", Line: "Premiers pas ! Trois petits pas jusqu'à papa, qui crie de joie.", By: "premiers-pas"},
-	{ID: "creche", Label: "Le premier jour de crèche", Icon: "users", How: "Aller à la crèche", Line: "Premier jour de crèche : de nouveaux copains, et la tantie nounou.", By: "creche"},
-	{ID: "mot", Label: "Le premier mot", Icon: "messages-square", How: "Dire son premier mot", Line: "Premier mot !", By: "premier-mot"},
+	{ID: "sourire", Label: "Le premier sourire", Icon: "heart", How: "Un câlin à maman", Where: "Chez toi", Line: "Premier sourire ! Maman fond, elle appelle toute la cour pour voir.", By: "calin"},
+	{ID: "bouillie", Label: "La première bouillie", Icon: "soup", How: "Manger la bouillie", Where: "Chez toi, à la cuisine", Line: "Première bouillie : il y en a partout, et c'est délicieux.", By: "bouillie"},
+	{ID: "bain", Label: "Le premier bain", Icon: "bath", How: "Le bain avec maman", Where: "Chez toi, à la salle de bain", Line: "Premier bain : ça éclabousse, ça rigole.", By: "bain-bebe"},
+	{ID: "dent", Label: "La première dent", Icon: "baby", How: "Jouer avec le hochet", Where: "Chez toi", Line: "Première dent ! Le hochet en garde la trace.", By: "hochet"},
+	{ID: "rire", Label: "Le premier éclat de rire", Icon: "party-popper", How: "Coucou-caché avec maman", Where: "Chez toi", Line: "Premier éclat de rire, au coucou de maman : toute la maison rit avec toi.", By: "coucou"},
+	{ID: "pas", Label: "Les premiers pas", Icon: "footprints", How: "Les premiers pas vers papa", Where: "Chez toi", Line: "Premiers pas ! Trois petits pas jusqu'à papa, qui crie de joie.", By: "premiers-pas"},
+	{ID: "creche", Label: "Le premier jour de crèche", Icon: "users", How: "Aller à la crèche", Where: "Chez toi, de 7 h à 17 h", Line: "Premier jour de crèche : de nouveaux copains, et la tantie nounou.", By: "creche"},
+	{ID: "mot", Label: "Le premier mot", Icon: "messages-square", How: "Dire son premier mot", Where: "Chez toi", Line: "Premier mot !", By: "premier-mot"},
 }
 
 // firstFor: the « première fois » this interaction brings, if it's the first (and the baby's), said; all done, the treat.
 func firstFor(ctx context.Context, tx pgx.Tx, s *Sim, interaction string) []Event {
-	if s.stage().ID != game.StageBebe || features.Default.BlocksKey(ctx, "premieres-fois") != "" {
+	if s.stage().ID != game.StageBebe || !firstsOn(ctx) {
 		return nil
 	}
 	i := slices.IndexFunc(Firsts, func(f First) bool { return f.By == interaction })
@@ -71,8 +73,12 @@ func markFirst(ctx context.Context, tx pgx.Tx, s *Sim, f First, extra string) []
 		line += " " + extra
 	}
 	events := []Event{{Kind: "life", Text: line, GameTime: s.GameMinutes}}
-	var n int
-	if tx.QueryRow(ctx, `SELECT count(*) FROM sim_firsts WHERE sim_id = $1`, s.ID).Scan(&n) == nil && n == len(Firsts) {
+	// All of them (those it can do, growing up by milestones: grandir.go firstsDue), the treat.
+	due := Firsts
+	if stepsOpen(ctx) {
+		due = firstsDue(ctx)
+	}
+	if done, err := doneIDs(ctx, tx, "sim_firsts", s.ID); err == nil && allDone(firstIDs(due), done) {
 		s.Needs = s.Needs.Add(game.Needs{Fun: 25, Social: 25})
 		events = append(events, Event{Kind: "life", Text: fmt.Sprintf("Toutes les premières fois de %s ! Papa et maman les racontent à toute la famille. Le bébé est aux anges.", s.FirstName), GameTime: s.GameMinutes})
 	}
@@ -98,7 +104,12 @@ func (h *Handler) firsts(w http.ResponseWriter, r *http.Request) {
 		}
 		rows.Close()
 	}
-	httpx.JSON(w, http.StatusOK, map[string]any{"list": Firsts, "done": done, "talent": talent, "word": word, "talents": Talents, "words": Words})
+	// Growing up by milestones (grandir.go): only those it can do now, and the baby becomes a child once they're done.
+	list, grow := Firsts, stepsOpen(r.Context())
+	if grow {
+		list = firstsDue(r.Context())
+	}
+	httpx.JSON(w, http.StatusOK, map[string]any{"list": list, "done": done, "talent": talent, "word": word, "talents": Talents, "words": Words, "grow": grow})
 }
 
 /* ---------- The choices that count ---------- */
@@ -180,7 +191,7 @@ func (h *Handler) choose(w http.ResponseWriter, r *http.Request) {
 			}
 			text := fmt.Sprintf("« %s » : le premier mot de %s ! Toute la famille le répète ; on l'entendra encore longtemps.", req.Value, s.FirstName)
 			events := []Event{{Kind: "life", Text: text, GameTime: s.GameMinutes}}
-			if features.Default.BlocksKey(r.Context(), "premieres-fois") == "" {
+			if firstsOn(r.Context()) {
 				events = append(events, markFirst(r.Context(), tx, s, Firsts[len(Firsts)-1], fmt.Sprintf("« %s ».", req.Value))...)
 			}
 			return game.Outcome{Text: text}, events, nil

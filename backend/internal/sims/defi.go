@@ -401,6 +401,7 @@ func playDefi(ctx context.Context, tx pgx.Tx, s *Sim, kind string, score int) (s
 		// Answered well: a good mark, towards the bac.
 		if score >= 85 {
 			s.schoolMark(game.Interaction{ID: "aller-ecole"})
+			s.reach("note")
 		}
 	} else {
 		a.End = min(a.End, s.GameMinutes)

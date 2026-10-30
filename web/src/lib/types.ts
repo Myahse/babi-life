@@ -402,6 +402,8 @@ export type Sim = {
   today?: Partial<Record<Income, DayLimit>>
   /** The Pack Prestige bought (Boutique): the crown may be worn. */
   prestige?: boolean
+  /** Growing up by milestones (update « grandir-par-etapes », backend sims/grandir.go): the most minutes since birth the baby or the child may have till its milestones are done; the clock stops its age there. */
+  growHold?: number
   /** The secret society joined (politics): '' none; baobab, sept, lumiere. */
   sect?: string
   /** The president's measures in force for everyone (backend game/civic.go): some prices lowered. */
@@ -675,3 +677,5 @@ export type DayLimit = { got: number; max?: number; times?: number; maxTimes?: n
 export type FootRecruit = { id: string; name: string; post: 'G' | 'D' | 'M' | 'A'; stars: number; price: number }
 /** The Sim's career (null: none yet; the season is the phone's), the market, the most signings. */
 export type FootCareerView = { career: { club: string; squad: string[]; season: unknown } | null; market: FootRecruit[]; max: number }
+/** A baby's « première fois » or a child's « étape » (backend sims/firsts.go, sims/grandir.go): what brings it, and where. */
+export type Milestone = { id: string; label: string; icon: string; how: string; where?: string }
