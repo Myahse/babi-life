@@ -834,7 +834,7 @@ export function BabyMess({ kind, look, carer = 'maman', nappy = true }: { kind: 
       <Person p={kneel} r={Math.PI} pose={phase === 'clean' ? 'pray' : 'hug'} g="femme" seed={113} look={look} />
     )
   const lines = (change && NAPPY_LINES[kind]) || MESS_LINES[kind]
-  const said = (carer === 'maman' ? '' : carer === 'nounou' ? 'Nounou : ' : 'Gouvernante : ') + lines[phase === 'done' ? 1 : 0]
+  const said = (carer === 'maman' ? '' : carer === 'nounou' ? tr('Nounou : ') : tr('Gouvernante : ')) + lines[phase === 'done' ? 1 : 0]
   return (
     <group>
       <Carer>{mum}</Carer>

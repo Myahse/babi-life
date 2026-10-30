@@ -20,7 +20,7 @@ export function UsernameField({ value, onChange, first, last, autoFocus }: { val
 
   const hint = {
     idle: t('Ton nom dans le jeu, visible par tous.'),
-    invalid: '3 à 24 caractères : lettres, chiffres, _ ou .',
+    invalid: t('3 à 24 caractères : lettres, chiffres, _ ou .'),
     checking: t('On vérifie…'),
     available: t('Disponible !'),
     taken: t('Déjà pris. Essaie :'),

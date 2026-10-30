@@ -34,7 +34,7 @@ export function schoolPart(interactionId: string | undefined, progress: number):
 
 /** What's going on, said at the top of the screen. */
 export const SCHOOL_LINE: Record<SchoolPart, string> = {
-  classe: 'En classe · le maître fait la leçon',
+  classe: tr('En classe · le maître fait la leçon'),
   recre: tr('La récré ! Tout le monde dans la cour'),
   creche: tr('À la crèche · on joue avec les autres bébés'),
 }

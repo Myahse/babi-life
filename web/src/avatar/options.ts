@@ -114,25 +114,25 @@ export const MARKS: Choice[] = [
 ]
 
 export const PATTERNS: Choice[] = [
-  { id: 'cercles', label: 'Cercles' },
-  { id: 'losanges', label: 'Losanges' },
-  { id: 'feuilles', label: 'Feuilles' },
-  { id: 'rayures', label: 'Rayures' },
-  { id: 'points', label: 'Pois' },
-  { id: 'zigzag', label: 'Zigzag' },
-  { id: 'damier', label: 'Damier' },
-  { id: 'kente', label: 'Kente' },
+  { id: 'cercles', label: t('Cercles') },
+  { id: 'losanges', label: t('Losanges') },
+  { id: 'feuilles', label: t('Feuilles') },
+  { id: 'rayures', label: t('Rayures') },
+  { id: 'points', label: t('Pois') },
+  { id: 'zigzag', label: t('Zigzag') },
+  { id: 'damier', label: t('Damier') },
+  { id: 'kente', label: t('Kente') },
 ]
 /** The boutiques' own prints (backend game/clothes.go): worn by those who bought a piece with one. */
 export const PIECE_PATTERNS: Choice[] = [
-  { id: 'bogolan', label: 'Bogolan' },
-  { id: 'madras', label: 'Madras' },
-  { id: 'fleurs', label: 'Fleurs' },
-  { id: 'leopard', label: 'Léopard' },
-  { id: 'camo', label: 'Camouflage' },
-  { id: 'adinkra', label: 'Adinkra' },
-  { id: 'azur', label: 'Azur' },
-  { id: 'polo', label: 'Rayures du polo' },
+  { id: 'bogolan', label: t('Bogolan') },
+  { id: 'madras', label: t('Madras') },
+  { id: 'fleurs', label: t('Fleurs') },
+  { id: 'leopard', label: t('Léopard') },
+  { id: 'camo', label: t('Camouflage') },
+  { id: 'adinkra', label: t('Adinkra') },
+  { id: 'azur', label: t('Azur') },
+  { id: 'polo', label: t('Rayures du polo') },
 ]
 
 /*

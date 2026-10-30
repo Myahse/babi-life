@@ -1,4 +1,5 @@
 import { t as tl } from './i18n'
+import { t as tt } from './i18n'
 // Tikitoko's sounds: a few short loops in the spirit of coupé-décalé,
 // afrobeat and zouglou, made right here with WebAudio oscillators and noise
 // (no audio file, so no licence to worry about). The same code plays them in
@@ -8,11 +9,11 @@ import { t as tl } from './i18n'
 export type TikiSound = { id: string; name: string; artist: string }
 
 export const SOUNDS: TikiSound[] = [
-  { id: '', name: tl('son original'), artist: '' },
-  { id: 'decale', name: tl('Décalé Express'), artist: tl('DJ Lagune') },
-  { id: 'afro', name: tl('Afro Plateau'), artist: tl('Les Gbakas') },
-  { id: 'zouglou', name: tl('Zouglou du campus'), artist: tl('Ambiance Facile') },
-  { id: 'lagune', name: tl('Nuit sur la lagune'), artist: tl('Babi Chill') },
+  { id: '', name: tl(tt('son original')), artist: '' },
+  { id: 'decale', name: tl(tt('Décalé Express')), artist: tl(tt('DJ Lagune')) },
+  { id: 'afro', name: tl(tt('Afro Plateau')), artist: tl(tt('Les Gbakas')) },
+  { id: 'zouglou', name: tl(tt('Zouglou du campus')), artist: tl(tt('Ambiance Facile')) },
+  { id: 'lagune', name: tl(tt('Nuit sur la lagune')), artist: tl(tt('Babi Chill')) },
 ]
 
 export const soundOf = (id: string) => SOUNDS.find((s) => s.id === id) ?? SOUNDS[0]

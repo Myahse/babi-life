@@ -260,7 +260,7 @@ function Onlookers() {
 }
 
 export function CirculationDefi({ onEnd }: { onEnd: (score: number) => void }) {
-  const [first] = useState<St>(() => ({ t: 0, open: null, cars: startCars(), wait: [0, 0, 0, 0], crashes: 0, storms: 0, gone: 0, done: false, said: 'Siffle, et choisis qui passe !', saidAt: 0, nextHorn: 1 }))
+  const [first] = useState<St>(() => ({ t: 0, open: null, cars: startCars(), wait: [0, 0, 0, 0], crashes: 0, storms: 0, gone: 0, done: false, said: tr('Siffle, et choisis qui passe !'), saidAt: 0, nextHorn: 1 }))
   const st = useRef<St>(first)
   // (Development, for tests in the browser: the junction as it is.)
   if (import.meta.env.DEV) Object.assign(globalThis, { __circ: st.current })

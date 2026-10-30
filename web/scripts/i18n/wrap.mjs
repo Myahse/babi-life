@@ -18,7 +18,7 @@ import path from 'node:path'
 
 const ROOT = path.resolve(import.meta.dirname, '../..')
 const SRC = path.join(ROOT, 'src')
-const SKIP_FILE = /(\.native\.|\.web\.|\.d\.ts$|\/lab\/|\/screens\/Admin|\/screens\/admin\/|\/lib\/i18n|\/i18n\/|\/lib\/types\.ts$|\.test\.)/
+const SKIP_FILE = /(\/lib\/french\.ts$|\.native\.|\.web\.|\.d\.ts$|\/lab\/|\/screens\/Admin|\/screens\/admin\/|\/lib\/i18n|\/i18n\/|\/lib\/types\.ts$|\.test\.)/
 
 const args = process.argv.slice(2)
 const WRITE = args.includes('--write')
@@ -44,7 +44,7 @@ const isCss = (s) => {
 const isUrl = (s) => /^\s*(\/|\.\.?\/|https?:|data:|blob:|mailto:|tel:|#|@|wss?:)/.test(s) || s.includes('://') || /\.(png|jpe?g|webp|svg|mp3|mp4|glb|gltf|json|woff2?|ttf|webm|ogg|wav|html|tsx?|css)\b/.test(s)
 const isIdent = (s) => /^[a-z0-9_\-.:/#+]+$/.test(s) || /^[A-Z0-9_]+$/.test(s) || /^[a-z]+[A-Z][A-Za-z0-9]*$/.test(s)
 const hasLetter = (s) => /[A-Za-zÀ-ÿ]/.test(s)
-const technical = (s) => /\bvec[234]\b|\bgl_|#include|#ifdef|\b(uniform|varying|attribute) \w/.test(s) || /\d+(px|ms|deg|vh|vw|rem|em)\b|rgba?\(|hsla?\(|^#[0-9a-f]{3,8}$|\bvar\(--|^\s*[\d.]+\s*$|=>|\bfunction\b|\bcalc\(|^[a-z-]+\(/i.test(s) || /^(Content-Type|Authorization|Bearer|POST|GET|PUT|PATCH|DELETE|Idempotency-Key)$/.test(s)
+const technical = (s) => /;\s*$|\bvec[234]\b|\bgl_|#include|#ifdef|\b(uniform|varying|attribute) \w/.test(s) || /\d+(px|ms|deg|vh|vw|rem|em)\b|rgba?\(|hsla?\(|^#[0-9a-f]{3,8}$|\bvar\(--|^\s*[\d.]+\s*$|=>|\bfunction\b|\bcalc\(|^[a-z-]+\(/i.test(s) || /^(Content-Type|Authorization|Bearer|POST|GET|PUT|PATCH|DELETE|Idempotency-Key)$/.test(s)
 
 function prose(raw, loose) {
   const s = raw.trim()
@@ -61,7 +61,9 @@ const ID_PROPS = new Set('id key kind type slug path url href src to icon iconNa
 const TEXT_PROPS = new Set('label title text desc description sub subtitle hint how placeholder alt aria-label ariaLabel caption message msg body note cta button verb tip help about info heading header question answer reply prompt tagline intro outro lead empty legend tooltip confirm ok cancel done error success warning line lines feedback hello bye says say greeting question q a'.split(' '))
 const SKIP_CALLS = new Set('startsWith endsWith includes indexOf lastIndexOf split replace replaceAll match matchAll test search has get delete getItem setItem removeItem querySelector querySelectorAll getElementById closest matches addEventListener removeEventListener dispatchEvent CustomEvent Event postMessage fetch request send post put patch del require import useTexture useGLTF useLoader load preload loadAsync createElement setAttribute getAttribute removeAttribute setProperty getPropertyValue matchMedia Symbol log warn error info debug trace cn clsx classNames twMerge keyOpen activityOpen navigate pushState replaceState track emit on off once Intl NumberFormat DateTimeFormat toLocaleString toLocaleDateString toLocaleTimeString Date RegExp URL URLSearchParams atob btoa encodeURIComponent decodeURIComponent structuredClone sfx play playSfx haptic vibrate beep sound animate keyframes localeCompare useFeatures getContext toDataURL toBlob canPlayType createLinearGradient addColorStop measureText assertNever keep kept keepData keptData photoURL blobUrl open lazy t tx tr trx tn'.split(' '))
 const COMPARE_CALLS = new Set('startsWith endsWith includes indexOf lastIndexOf has get delete localeCompare')
-const SKIP_VAR = /class|cls|style|css|font|color|colou?r|shadow|gradient|^bg|ring|tone|path|url|href|key$|^key|^id$|Id$|^ids?$|regex|^re$|pattern|selector|query|mime|format|locale/i
+// A name whose words say it holds no text (cls, bgColor, pathOf, keyFor…), word by word: « restyle » isn't a style.
+const SKIP_WORDS = new Set('class classname cls style styles css font fonts color colors colour shadow gradient bg ring tone tones path paths url urls href key keys id ids regex re pattern selector query mime format locale'.split(' '))
+const SKIP_VAR = { test: (name) => name.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase().split(/[\s_-]+/).some((w) => SKIP_WORDS.has(w)) }
 
 const callName = (e) => (ts.isIdentifier(e) ? e.text : ts.isPropertyAccessExpression(e) ? e.name.text : '')
 const propName = (n) => (n && (ts.isIdentifier(n) || ts.isStringLiteral(n) || ts.isPrivateIdentifier(n)) ? n.text : n && ts.isComputedPropertyName(n) ? '' : '')

@@ -12,10 +12,10 @@ import { t as tr } from '../../lib/i18n'
 // the air. The buttons and how it's going, over the 3D.
 
 const SAID: Record<NonNullable<SkiGate['result']>, [string, string]> = {
-  ok: ['Bouée !', '#2fb344'],
-  miss: ['Raté !', '#e03131'],
-  jump: ['Saut ! Une vrille !', '#ffc233'],
-  hop: ['Petit saut', '#74c0fc'],
+  ok: [tr('Bouée !'), '#2fb344'],
+  miss: [tr('Raté !'), '#e03131'],
+  jump: [tr('Saut ! Une vrille !'), '#ffc233'],
+  hop: [tr('Petit saut'), '#74c0fc'],
 }
 
 export function SkiDefi({ onEnd }: { onEnd: (score: number) => void }) {

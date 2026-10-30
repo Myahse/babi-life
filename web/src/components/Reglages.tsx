@@ -56,7 +56,7 @@ export function ReglagesApp() {
             </button>
           ))}
         </div>
-        {picked !== lang() && <p className="mt-2 text-[12px] font-bold text-[var(--color-ink-soft)]">{picked === 'en' ? 'Switching to English…' : 'On passe en français…'}</p>}
+        {picked !== lang() && <p className="mt-2 text-[12px] font-bold text-[var(--color-ink-soft)]">{picked === 'en' ? t('Switching to English…') : t('On passe en français…')}</p>}
       </div>
       {(note || (on && !canLock())) && (
         <p className="flex items-center gap-2 rounded-2xl bg-[#fff4e6] p-3 text-[13px] font-bold text-[var(--color-ink)]">

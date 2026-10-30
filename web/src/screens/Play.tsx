@@ -2722,8 +2722,8 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
     <button disabled={busy} onClick={() => navigate(`/look?tab=${lookTab}`, { viewTransition: true })} className={`flex w-full items-center gap-3 rounded-[20px] bg-[#fff4e8] p-2.5 text-left transition active:scale-[0.98] ${busy ? 'opacity-55 grayscale-[0.6]' : ''}`}>
       <IconTile icon={lookTab === 'coiffure' ? Scissors : Shirt} colors={colors} size={44} />
       <span className="min-w-0 flex-1">
-        <span className="block font-display text-[15px] leading-tight font-extrabold">Changer de look</span>
-        <span className="mt-0.5 block text-xs font-bold text-[var(--color-ink-soft)]">{lookTab === 'coiffure' ? (sim.gender === 'homme' ? 'Coupe, couleur, barbe' : 'Coupe, couleur') + ' · 2 000 Djai' : 'Tenue, pagne, couleurs, accessoire · gratuit'}</span>
+        <span className="block font-display text-[15px] leading-tight font-extrabold">{tr('Changer de look')}</span>
+        <span className="mt-0.5 block text-xs font-bold text-[var(--color-ink-soft)]">{lookTab === 'coiffure' ? (sim.gender === 'homme' ? tr('Coupe, couleur, barbe') : tr('Coupe, couleur')) + tr(' · 2 000 Djai') : tr('Tenue, pagne, couleurs, accessoire · gratuit')}</span>
       </span>
     </button>
   )

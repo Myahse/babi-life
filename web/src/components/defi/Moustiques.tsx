@@ -66,7 +66,7 @@ export function MoustiquesDefi({ onEnd }: { onEnd: (score: number) => void }) {
     if (!s.boss && s.t >= BOSS_AT) {
       s.boss = true
       s.bugs.push({ x: W / 2, y: -60, hp: 60, max: 60, tiger: true, dive: 0, phase: 0, boss: true })
-      setHud((h) => ({ ...h, said: 'Le Gros Moustique !' }))
+      setHud((h) => ({ ...h, said: t('Le Gros Moustique !') }))
       setTimeout(() => setHud((h) => ({ ...h, said: '' })), 1500)
     }
     for (const b of s.bugs) {
