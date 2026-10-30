@@ -49,9 +49,11 @@ var (
 	errNoReason   = errors.New("dis ce qui ne va pas")
 	errNoSuchMsg  = errors.New("message introuvable")
 	errNotFound   = errors.New("sim introuvable")
+	errGone       = errors.New("ce compte a été supprimé")
 	reLink        = regexp.MustCompile(`(?i)\b((https?://|www\.)\S+|[a-z0-9-]+\.(com|net|org|ci|fr|io|me|app|link|ly|gg|tv)\b(/\S*)?)`)
 	rePhone       = regexp.MustCompile(`(\+?\d[\d .-]{6,}\d)`)
 	reSticker     = regexp.MustCompile(`^\[sticker:[a-z0-9-]+\]$`)
+	reUUID        = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 	reportReasons = game.ReportReasons
 )
 
@@ -106,6 +108,46 @@ type Chat struct {
 	Last    *Message `json:"last,omitempty"`
 	Unread  int      `json:"unread"`
 	Blocked bool     `json:"blocked,omitempty"`
+	// Gone: a conversation with a deleted account (098_deleted_chats.sql). Friend is then
+	// only its conversation's own id and « Compte supprimé »: it can be read, not answered.
+	Gone bool `json:"gone,omitempty"`
+}
+
+// deletedName: who a deleted account is in its chats.
+const deletedName = "Compte supprimé"
+
+// goneChat: other is the id of a conversation of me's with a deleted account.
+func goneChat(ctx context.Context, q queryer, me, other string) bool {
+	if !reUUID.MatchString(other) {
+		return false
+	}
+	var ok bool
+	_ = q.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM messages WHERE gone = $1::uuid AND (from_sim = $2::uuid OR to_sim = $2::uuid))`, other, me).Scan(&ok)
+	return ok
+}
+
+// goneChats: the conversations with deleted accounts, the last message of each.
+func goneChats(ctx context.Context, q queryer, me string) ([]Chat, error) {
+	rows, err := q.Query(ctx, `
+		SELECT DISTINCT ON (m.gone) m.gone::text, m.id, COALESCE(m.from_sim = $1::uuid, false), m.body, m.created_at, m.read_at,
+			(SELECT count(*) FROM messages u WHERE u.gone = m.gone AND u.to_sim = $1::uuid AND u.read_at IS NULL)
+		FROM messages m WHERE m.gone IS NOT NULL AND (m.from_sim = $1::uuid OR m.to_sim = $1::uuid)
+		ORDER BY m.gone, m.id DESC LIMIT 200`, me)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []Chat{}
+	for rows.Next() {
+		var c Chat
+		var m Message
+		if err := rows.Scan(&c.Friend.ID, &m.ID, &m.Mine, &m.Body, &m.At, &m.ReadAt, &c.Unread); err != nil {
+			return nil, err
+		}
+		c.Friend.FirstName, c.Last, c.Gone = deletedName, &m, true
+		out = append(out, c)
+	}
+	return out, rows.Err()
 }
 
 // texter: the player's Sim, which must have a phone and Gbairai.
@@ -175,7 +217,7 @@ func (h *Handler) gbairaiFail(w http.ResponseWriter, err error) {
 		httpx.Error(w, http.StatusNotFound, "sim introuvable")
 	case errors.Is(err, errTooFast):
 		httpx.Error(w, http.StatusTooManyRequests, err.Error())
-	case errors.Is(err, errNotFriends), errors.Is(err, errBlocked), errors.Is(err, errNoGbairai), errors.Is(err, errNoPhoneYet), strings.HasPrefix(err.Error(), "installe d'abord"):
+	case errors.Is(err, errNotFriends), errors.Is(err, errBlocked), errors.Is(err, errGone), errors.Is(err, errNoGbairai), errors.Is(err, errNoPhoneYet), strings.HasPrefix(err.Error(), "installe d'abord"):
 		httpx.Error(w, http.StatusForbidden, err.Error())
 	case errors.Is(err, errEmpty), errors.Is(err, errTooLong), errors.Is(err, errNoReason), errors.Is(err, errNoSuchMsg), errors.Is(err, errNoReplyTo):
 		httpx.Error(w, http.StatusBadRequest, err.Error())
@@ -219,6 +261,12 @@ func (h *Handler) chats(w http.ResponseWriter, r *http.Request) {
 		_ = h.DB.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM blocks WHERE sim = $1 AND blocked = $2)`, me, f.ID).Scan(&c.Blocked)
 		out = append(out, c)
 	}
+	gone, err := goneChats(ctx, h.DB, me)
+	if err != nil {
+		h.gbairaiFail(w, err)
+		return
+	}
+	out = append(out, gone...)
 	// The latest conversations first, then the others by friendship.
 	sortChats(out)
 	httpx.JSON(w, http.StatusOK, out)
@@ -250,11 +298,22 @@ func (h *Handler) thread(w http.ResponseWriter, r *http.Request) {
 	other := chi.URLParam(r, "other")
 	x, y := pair(me, other)
 	var friends bool
+	after, _ := strconv.ParseInt(r.URL.Query().Get("after"), 10, 64)
 	if err := h.DB.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM bonds WHERE sim_a = $1 AND sim_b = $2 AND friends)`, x, y).Scan(&friends); err != nil || !friends {
-		h.gbairaiFail(w, errNotFriends)
+		// A conversation with a deleted account: read, as it was left.
+		if !goneChat(ctx, h.DB, me, other) {
+			h.gbairaiFail(w, errNotFriends)
+			return
+		}
+		msgs, err := goneMessages(ctx, h.DB, me, other, after)
+		if err != nil {
+			h.gbairaiFail(w, err)
+			return
+		}
+		_, _ = h.DB.Exec(ctx, `UPDATE messages SET read_at = now() WHERE gone = $1::uuid AND to_sim = $2 AND read_at IS NULL`, other, me)
+		httpx.JSON(w, http.StatusOK, msgs)
 		return
 	}
-	after, _ := strconv.ParseInt(r.URL.Query().Get("after"), 10, 64)
 	msgs, err := threadMessages(ctx, h.DB, me, other, after)
 	if err != nil {
 		h.gbairaiFail(w, err)
@@ -328,6 +387,10 @@ func (h *Handler) write(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	to := chi.URLParam(r, "other")
+	if goneChat(ctx, h.DB, me, to) {
+		h.gbairaiFail(w, errGone)
+		return
+	}
 	if err := canWrite(ctx, h.DB, me, to); err != nil {
 		h.gbairaiFail(w, err)
 		return
@@ -375,6 +438,10 @@ func (h *Handler) block(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	other := chi.URLParam(r, "other")
+	if goneChat(r.Context(), h.DB, me, other) {
+		h.gbairaiFail(w, errGone)
+		return
+	}
 	if req.Blocked {
 		_, err = h.DB.Exec(r.Context(), `INSERT INTO blocks (sim, blocked) VALUES ($1, $2) ON CONFLICT DO NOTHING`, me, other)
 	} else {
@@ -408,6 +475,10 @@ func (h *Handler) report(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	other := chi.URLParam(r, "other")
+	if goneChat(ctx, h.DB, me, other) {
+		h.gbairaiFail(w, errGone)
+		return
+	}
 	var excerpt string
 	var msg *int64
 	if req.MessageID != 0 {

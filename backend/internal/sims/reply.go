@@ -45,8 +45,13 @@ func quoteOf(replyTo *int64, name, body *string, mine bool) *Quote {
 	if replyTo == nil {
 		return nil
 	}
-	if name == nil || body == nil {
+	if body == nil {
 		return &Quote{Deleted: true}
+	}
+	if name == nil {
+		// Its author's account was deleted (098_deleted_chats.sql): the message stays.
+		n := deletedName
+		name = &n
 	}
 	if reSticker.MatchString(*body) {
 		return &Quote{Name: *name, Body: *body, Kind: "sticker", Mine: mine}
@@ -73,12 +78,12 @@ func scanMessages(rows pgx.Rows, me string) ([]Message, error) {
 	out := []Message{}
 	for rows.Next() {
 		var m Message
-		var from string
-		var qFrom, qName, qBody *string
+		// NULL: written by a deleted account.
+		var from, qFrom, qName, qBody *string
 		if err := rows.Scan(&m.ID, &from, &m.Body, &m.At, &m.ReadAt, &m.ReplyTo, &qFrom, &qName, &qBody); err != nil {
 			return nil, err
 		}
-		m.Mine = from == me
+		m.Mine = from != nil && *from == me
 		m.Quote = quoteOf(m.ReplyTo, qName, qBody, qFrom != nil && *qFrom == me)
 		out = append(out, m)
 	}
@@ -91,6 +96,17 @@ func threadMessages(ctx context.Context, db queryer, me, other string, after int
 	rows, err := db.Query(ctx, fmt.Sprintf(messageSelect, `(SELECT * FROM messages
 		WHERE LEAST(from_sim, to_sim) = $1::uuid AND GREATEST(from_sim, to_sim) = $2::uuid AND id > $3
 		ORDER BY id DESC LIMIT 60)`)+` ORDER BY m.id`, x, y, after)
+	if err != nil {
+		return nil, err
+	}
+	return scanMessages(rows, me)
+}
+
+// goneMessages: the same, in a conversation with a deleted account (gone, 098_deleted_chats.sql).
+func goneMessages(ctx context.Context, db queryer, me, gone string, after int64) ([]Message, error) {
+	rows, err := db.Query(ctx, fmt.Sprintf(messageSelect, `(SELECT * FROM messages
+		WHERE gone = $1::uuid AND (from_sim = $2::uuid OR to_sim = $2::uuid) AND id > $3
+		ORDER BY id DESC LIMIT 60)`)+` ORDER BY m.id`, gone, me, after)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +149,7 @@ func grinQuote(ctx context.Context, db queryer, me string, replyTo *int64) *Quot
 		return nil
 	}
 	var name, body, from *string
-	_ = db.QueryRow(ctx, `SELECT s.first_name, g.body, g.sim FROM grin g JOIN sims s ON s.id = g.sim
+	_ = db.QueryRow(ctx, `SELECT s.first_name, g.body, g.sim FROM grin g LEFT JOIN sims s ON s.id = g.sim
 		WHERE g.id = $1 AND NOT g.hidden
 			AND NOT EXISTS(SELECT 1 FROM blocks k WHERE (k.sim = $2 AND k.blocked = g.sim) OR (k.sim = g.sim AND k.blocked = $2))`, *replyTo, me).Scan(&name, &body, &from)
 	return quoteOf(replyTo, name, body, from != nil && *from == me)

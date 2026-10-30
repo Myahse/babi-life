@@ -46,6 +46,9 @@ type GrinMessage struct {
 	// The message it answers (update « repondre-message », reply.go), and a short quote of it.
 	ReplyTo *int64 `json:"replyTo,omitempty"`
 	Quote   *Quote `json:"quote,omitempty"`
+	// Gone: written by an account since deleted (098_deleted_chats.sql), signed « Compte supprimé »,
+	// without its Sim (no id, no portrait).
+	Gone bool `json:"gone,omitempty"`
 }
 
 // grinRoom: « babi », or the commune the Sim is in.
@@ -76,16 +79,16 @@ func (h *Handler) grin(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	_, _ = h.DB.Exec(ctx, `DELETE FROM grin WHERE created_at < now() - interval '7 days'`)
 	rows, err := h.DB.Query(ctx, `SELECT * FROM (
-		SELECT g.id, g.sim, s.first_name, s.gender, s.look, s.commune, g.body, g.created_at,
+		SELECT g.id, COALESCE(g.sim::text, ''), COALESCE(s.first_name, $5), COALESCE(s.gender, ''), COALESCE(s.look, '{}'), COALESCE(s.commune, ''), g.body, g.created_at,
 			EXISTS(SELECT 1 FROM bonds b WHERE b.sim_a = LEAST(g.sim, $1::uuid) AND b.sim_b = GREATEST(g.sim, $1::uuid) AND b.friends),
 			g.reply_to, q.sim, qs.first_name, q.body
-		FROM grin g JOIN sims s ON s.id = g.sim
+		FROM grin g LEFT JOIN sims s ON s.id = g.sim
 			LEFT JOIN grin q ON q.id = g.reply_to AND NOT q.hidden
 				AND NOT EXISTS(SELECT 1 FROM blocks k WHERE (k.sim = $1 AND k.blocked = q.sim) OR (k.sim = q.sim AND k.blocked = $1))
 			LEFT JOIN sims qs ON qs.id = q.sim
 		WHERE g.room = $2 AND g.id > $3 AND NOT g.hidden
 			AND NOT EXISTS(SELECT 1 FROM blocks k WHERE (k.sim = $1 AND k.blocked = g.sim) OR (k.sim = g.sim AND k.blocked = $1))
-		ORDER BY g.id DESC LIMIT $4) x ORDER BY id`, me, room, after, GrinPage)
+		ORDER BY g.id DESC LIMIT $4) x ORDER BY id`, me, room, after, GrinPage, deletedName)
 	if err != nil {
 		h.gbairaiFail(w, err)
 		return
@@ -99,7 +102,7 @@ func (h *Handler) grin(w http.ResponseWriter, r *http.Request) {
 			h.gbairaiFail(w, err)
 			return
 		}
-		m.Mine = m.Sim == me
+		m.Mine, m.Gone = m.Sim == me, m.Sim == ""
 		m.Quote = quoteOf(m.ReplyTo, qName, qBody, qSim != nil && *qSim == me)
 		out = append(out, m)
 	}
