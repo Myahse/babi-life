@@ -9,7 +9,7 @@ import { homeScreenApp, useGameOpen } from '../lib/launch'
 import { useFeatures } from '../lib/features'
 import { Discover, Trailer } from '../components/Discover'
 import { firebaseConfigured, googleBlocked, googleCancelled, googleRedirectResult, preloadGoogle, signInWithGoogle } from '../lib/google'
-import { t as tr, tx } from '../lib/i18n'
+import { lang, setLang, t as tr, tx } from '../lib/i18n'
 
 // The wish list: before the game opens, people leave a first name and an
 // e-mail or a WhatsApp number to hear when it does. /liste is the landing
@@ -249,6 +249,10 @@ export function Waitlist({ form = false }: { form?: boolean }) {
             <Link to="/confidentialite" className="underline">
               {tr('Confidentialité')}
             </Link>
+            {/* The other language (in the game: « Réglages »). */}
+            <button className="underline" onClick={() => setLang(lang() === 'en' ? 'fr' : 'en')}>
+              {lang() === 'en' ? 'Français' : 'English'}
+            </button>
             {/* The app on the home screen has no address bar to type /testeur in, and on an iPhone it doesn't share Safari's storage: the testers go in from here */}
             {homeScreenApp() && (
               <Link to="/testeur" className="opacity-50">

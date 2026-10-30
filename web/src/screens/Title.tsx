@@ -17,7 +17,7 @@ import { useGameOpen } from '../lib/launch'
 import { contactLinks } from '../lib/contact'
 import { parrainDone } from '../lib/parrain'
 import { firebaseConfigured, firebaseFromGoogle, googleBlocked, googleCancelled, googleRedirectResult, preloadGoogle, signInWithGoogle } from '../lib/google'
-import { t } from '../lib/i18n'
+import { lang, setLang, t } from '../lib/i18n'
 
 const GOOGLE_ENABLED = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID)
 
@@ -338,6 +338,10 @@ export function Title() {
             <Link to="/confidentialite" className="underline">
               {t('Confidentialité')}
             </Link>
+            {/* The other language, before even signing in (in the game: « Réglages »). */}
+            <button className="underline" onClick={() => setLang(lang() === 'en' ? 'fr' : 'en')}>
+              {lang() === 'en' ? 'Français' : 'English'}
+            </button>
           </span>
           <span className="chalk-hand text-[26px] text-[var(--ochre)]">{t('Fait à Abidjan')}</span>
         </div>
